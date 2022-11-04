@@ -2,105 +2,119 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BA90CC4332F
-	for <linux-nfs@archiver.kernel.org>; Fri,  4 Nov 2022 18:26:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 52842C43219
+	for <linux-nfs@archiver.kernel.org>; Fri,  4 Nov 2022 19:22:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231646AbiKDS0t (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 4 Nov 2022 14:26:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45570 "EHLO
+        id S229853AbiKDTWl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 4 Nov 2022 15:22:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54548 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231607AbiKDS0s (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2022 14:26:48 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D299EE57
-        for <linux-nfs@vger.kernel.org>; Fri,  4 Nov 2022 11:25:50 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1667586350;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ZFUa1oFqgpZIlGKGUlzPXnx8RQrTULWjpowCBC10GgQ=;
-        b=iHV8g0G4A8hYEy5rQKhc/v7iGMj4bdwkjTbOmlK5D9YXWTXB8iFQmehU2Fjfw/RA0aO1B/
-        3h969dPUN12G/uSTRWot4mvsJQFaAw0djPUt3j/+ooGT6LXFeJH7tkZImetznU/BhvpR4d
-        BJp7DyK8O068bnerq7D9FEqJehN8Dr4=
-Received: from mail-qt1-f198.google.com (mail-qt1-f198.google.com
- [209.85.160.198]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_128_GCM_SHA256) id
- us-mta-182-YJcl8wNHNz6iiiJZZjk4Sg-1; Fri, 04 Nov 2022 14:25:48 -0400
-X-MC-Unique: YJcl8wNHNz6iiiJZZjk4Sg-1
-Received: by mail-qt1-f198.google.com with SMTP id y19-20020a05622a121300b003a526e0ff9bso4283663qtx.15
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Nov 2022 11:25:48 -0700 (PDT)
+        with ESMTP id S229553AbiKDTWh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2022 15:22:37 -0400
+Received: from mail-oi1-x232.google.com (mail-oi1-x232.google.com [IPv6:2607:f8b0:4864:20::232])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA4114876C;
+        Fri,  4 Nov 2022 12:22:35 -0700 (PDT)
+Received: by mail-oi1-x232.google.com with SMTP id v81so6169446oie.5;
+        Fri, 04 Nov 2022 12:22:35 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20210112;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:sender:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=+CrrtBZaWaBIBfDEz9a9BacRZtXiPhURWnCTyiBknKU=;
+        b=f7SabvhELt4tvu58wD/HGUQtx2q3c42bp4689l/poRMwjHONs2y+uJybLQ6btnBic8
+         iSYK/T680hWQ8YubanyiQ/jk4TxtOOSgyzZyzTjBStaumbjkRAc3PTfrEP9z1ET4ppjL
+         os0cjm+F8kyIi27l3gX1TCu+EYDnb6I6sC6rEheSVAEJvEJuF1rkSUHHVYhQ9PjtWNZC
+         /KoHUhscmHo/jN1PCMTUxC8NT4KR3QukfsWt+gbIkumzBVh1p3Sny9bKzJeet5110tpk
+         HzVFo5k5iKj3j88DvNf1ucVPdH/av+bU0vEDu76g9bGVlHfWhJDUhqHlYTifQBH3QuBi
+         oWFg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=content-transfer-encoding:in-reply-to:references:to:from
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=ZFUa1oFqgpZIlGKGUlzPXnx8RQrTULWjpowCBC10GgQ=;
-        b=xKx1UVIyrHXYzliFTi+JVtiH813GLkMsMO9V0O9aet/vQ6TUnPhc8PYlOQFzd8kAeM
-         fjCAiK//QKIdqtsSVywNRmLr9c+mAcsEbjdQkbLF4jH06iIzagEz1xxyVfyzlP+q4ki6
-         hGdDCKYYYhizMLFMXlH9U3jmrNdvER5IOxhDJkdYzaQZKDBpmewYGLg4JGS5vVyIAOSY
-         Nq0rIz/UZ+dRCKq4AEIy6ydd31LYM2ZTQcF0H4yZ9tMTJ3eDYN5YxNPFDtC5CVs/dd+0
-         m4IuIFPax1HPMGh7r6B1IPT6ldbIhpKuFMMtY7HLulX/qDaW6ypF4TlK8aGDIEuTlQTg
-         txzQ==
-X-Gm-Message-State: ACrzQf20IwcEbT0Nq7JThb/I2kCQxjwem8HJEBH2Epf+85vS4WwEorq8
-        f+JPug8jqqZ+5CWl4DgjOqkLQOxJOSMx5EK0+LwXSJ+ctyEtGWt0lkIuNepJm1NaUykUCqMy9d4
-        UsxqXzd0bcM7/K9XEuBqP4rWaACQpVZAdR6c6Fx3P709KkXh+dtfMKQ1PY3hajbpYD1921A==
-X-Received: by 2002:a05:620a:51d3:b0:6fa:7934:8132 with SMTP id cx19-20020a05620a51d300b006fa79348132mr6818909qkb.581.1667586348031;
-        Fri, 04 Nov 2022 11:25:48 -0700 (PDT)
-X-Google-Smtp-Source: AMsMyM59ixHPOsUoKl0zwAeiqCZTC0aFUniDhHBeHbSBONLXNOdQUUufXbQsT0h79fqpBZV3Gzp/DA==
-X-Received: by 2002:a05:620a:51d3:b0:6fa:7934:8132 with SMTP id cx19-20020a05620a51d300b006fa79348132mr6818894qkb.581.1667586347686;
-        Fri, 04 Nov 2022 11:25:47 -0700 (PDT)
-Received: from [172.31.1.6] ([70.105.255.216])
-        by smtp.gmail.com with ESMTPSA id bi6-20020a05620a318600b006bb366779a4sm3374753qkb.6.2022.11.04.11.25.46
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 04 Nov 2022 11:25:47 -0700 (PDT)
-Message-ID: <bf5ac4a8-364f-c14a-567a-4e9d0f96daf6@redhat.com>
-Date:   Fri, 4 Nov 2022 14:25:46 -0400
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:sender:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=+CrrtBZaWaBIBfDEz9a9BacRZtXiPhURWnCTyiBknKU=;
+        b=kpb0AEjnpgyvCrUHBAaaEt+sLn/DmSZLAkavzi4Q/eEzc15S/9bNCI5Se3u8v6GYOc
+         LMEBwFvL+t17AYAC/zT5CQyCoAPzihSm4Z+f8P1+XidK6tGrvehttoqn3BfzMxbugouK
+         PSKRHswn6/DSy9a14G3cW8a6x2FSHZ9NpIxFLoAj4p9+qt6kWACR5cNg8zGgTt50ILSt
+         yQ5Q9tpnypVZEkRlk0ovHOcq2/FeegKRfAO9ZP4FH25aJw1juFgJtODXrnU/LCmiI57b
+         BX+q6wBTzPzHjpnwLsN4RfPXBz95Yj5LclVUebh2mKUqz3RJ8zHiMBOQ7o/uHB0m16/Y
+         WAsw==
+X-Gm-Message-State: ACrzQf0IxZ7/0qN9U151z1H/jqWr6wNonDkyUWLaJ2PzBtzz9DIpdrbB
+        Y96q9w60xSW54rGzRoVyjgo=
+X-Google-Smtp-Source: AMsMyM5j57nGJ6ihP9Jnolnn5vAnBZp3njFzbqkVuO45h5Gs91zBtM7qMBV3ZTA/jEfxwCmFGOBzYQ==
+X-Received: by 2002:aca:2819:0:b0:359:f8a7:c88 with SMTP id 25-20020aca2819000000b00359f8a70c88mr260428oix.278.1667589755023;
+        Fri, 04 Nov 2022 12:22:35 -0700 (PDT)
+Received: from server.roeck-us.net ([2600:1700:e321:62f0:329c:23ff:fee3:9d7c])
+        by smtp.gmail.com with ESMTPSA id n132-20020acabd8a000000b003547a3401e6sm1729901oif.43.2022.11.04.12.22.33
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 04 Nov 2022 12:22:34 -0700 (PDT)
+Sender: Guenter Roeck <groeck7@gmail.com>
+Date:   Fri, 4 Nov 2022 12:22:32 -0700
+From:   Guenter Roeck <linux@roeck-us.net>
+To:     Steven Rostedt <rostedt@goodmis.org>
+Cc:     linux-kernel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Stephen Boyd <sboyd@kernel.org>,
+        Anna-Maria Gleixner <anna-maria@linutronix.de>,
+        Andrew Morton <akpm@linux-foundation.org>, rcu@vger.kernel.org,
+        linux-doc@vger.kernel.org, linux-s390@vger.kernel.org,
+        linux-sh@vger.kernel.org, linux-edac@vger.kernel.org,
+        cgroups@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-acpi@vger.kernel.org,
+        linux-atm-general@lists.sourceforge.net, netdev@vger.kernel.org,
+        linux-pm@vger.kernel.org, drbd-dev@lists.linbit.com,
+        linux-bluetooth@vger.kernel.org,
+        openipmi-developer@lists.sourceforge.net,
+        linux-media@vger.kernel.org, dri-devel@lists.freedesktop.org,
+        linaro-mm-sig@lists.linaro.org, intel-gfx@lists.freedesktop.org,
+        linux-input@vger.kernel.org, linux-parisc@vger.kernel.org,
+        linux-leds@vger.kernel.org, intel-wired-lan@lists.osuosl.org,
+        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-staging@lists.linux.dev,
+        linux-ext4@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        bridge@lists.linux-foundation.org, netfilter-devel@vger.kernel.org,
+        coreteam@netfilter.org, lvs-devel@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+        tipc-discussion@lists.sourceforge.net, alsa-devel@alsa-project.org
+Subject: Re: [RFC][PATCH v3 00/33] timers: Use timer_shutdown*() before
+ freeing timers
+Message-ID: <20221104192232.GA2520396@roeck-us.net>
+References: <20221104054053.431922658@goodmis.org>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
- Thunderbird/102.4.0
-Subject: Re: [PATCH] nfsd.man: Explain that setting nfsv4=n turns off all v4
- versions
-Content-Language: en-US
-From:   Steve Dickson <steved@redhat.com>
-To:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20221028150547.19646-1-steved@redhat.com>
-In-Reply-To: <20221028150547.19646-1-steved@redhat.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20221104054053.431922658@goodmis.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
-
-On 10/28/22 11:05 AM, Steve Dickson wrote:
-> Update the man page to explicitly say setting
-> nfsv4=n turns off all v4 versions
+On Fri, Nov 04, 2022 at 01:40:53AM -0400, Steven Rostedt wrote:
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... (tag: nfs-utils-2-6-3-rc3)
-
-steved.
-> ---
->   utils/nfsd/nfsd.man | 4 +++-
->   1 file changed, 3 insertions(+), 1 deletion(-)
+> Back in April, I posted an RFC patch set to help mitigate a common issue
+> where a timer gets armed just before it is freed, and when the timer
+> goes off, it crashes in the timer code without any evidence of who the
+> culprit was. I got side tracked and never finished up on that patch set.
+> Since this type of crash is still our #1 crash we are seeing in the field,
+> it has become a priority again to finish it.
 > 
-> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-> index 634b8a6..bb99fe2 100644
-> --- a/utils/nfsd/nfsd.man
-> +++ b/utils/nfsd/nfsd.man
-> @@ -159,7 +159,9 @@ Enable or disable TCP support.
->   .B vers3
->   .TP
->   .B vers4
-> -Enable or disable a major NFS version.  3 and 4 are normally enabled
-> +Enable or disable
-> +.B all
-> +NFSv4 versions.  All versions are normally enabled
->   by default.
->   .TP
->   .B vers4.1
+> This is v3 of that patch set. Thomas Gleixner posted an untested version
+> that makes timer->function NULL as the flag that it is shutdown. I took that
+> code, tested it (fixed it up), added more comments, and changed the
+> name to timer_shutdown_sync(). I also converted it to use WARN_ON_ONCE()
+> instead of just WARN_ON() as Linus asked for.
+> 
 
+Unfortunately the renaming caused some symbol conflicts.
+
+Global definition: timer_shutdown
+
+  File             Line
+0 time.c            93 static inline void timer_shutdown(struct clock_event_device *evt)
+1 arm_arch_timer.c 690 static __always_inline int timer_shutdown(const int access,
+2 timer-fttmr010.c 105 int (*timer_shutdown)(struct clock_event_device *evt);
+3 timer-sp804.c    158 static inline void timer_shutdown(struct clock_event_device *evt)
+4 timer.h          239 static inline int timer_shutdown(struct timer_list *timer)
+
+Guenter
