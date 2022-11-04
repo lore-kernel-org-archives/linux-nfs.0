@@ -2,117 +2,111 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 809BCC433FE
-	for <linux-nfs@archiver.kernel.org>; Fri,  4 Nov 2022 19:28:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6F00C4321E
+	for <linux-nfs@archiver.kernel.org>; Fri,  4 Nov 2022 19:42:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229457AbiKDT2s (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 4 Nov 2022 15:28:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58466 "EHLO
+        id S229619AbiKDTmS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 4 Nov 2022 15:42:18 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39300 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229450AbiKDT2r (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2022 15:28:47 -0400
-Received: from mail-qk1-x72b.google.com (mail-qk1-x72b.google.com [IPv6:2607:f8b0:4864:20::72b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 11409C58
-        for <linux-nfs@vger.kernel.org>; Fri,  4 Nov 2022 12:28:47 -0700 (PDT)
-Received: by mail-qk1-x72b.google.com with SMTP id k4so3685730qkj.8
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Nov 2022 12:28:47 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:to
-         :from:from:to:cc:subject:date:message-id:reply-to;
-        bh=VBBIkkC0B7cKiJCFaBsMnsQeSB5nLT+mGHNYuE3aMOI=;
-        b=fMqJS5pWNLNSs2VwoT/NWUw7KmINcs09OTM5fjUbzDC00husAfrWPBOXzY289g930O
-         QeRSsHX4y5oLR7YO8S53bYhZvwzmlWDKJzm8lI1xxgJ3O83Uzsrogc8rJgTW6iFee9y8
-         Enml2NZQHp+iNGAaH3syJjXmSZuKoQ2VyBHk6YcuAXpQ0ZUxndyG4845nS/0rvHs4A8Z
-         Lv/D9JhGaEA45jvAy9HA9rh+VxykcOp2lmFrefljxNqp1Ivvf+wXgcW5mLts40FO90jH
-         rMx0B6wIROwmOHAJJiZx7HaO0CBWrg5bfSC4VTsvg4C0TfQpAavzmWLJ3vSObMUxHPXZ
-         wTWg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:to
-         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=VBBIkkC0B7cKiJCFaBsMnsQeSB5nLT+mGHNYuE3aMOI=;
-        b=UonDmHSrrUL5GPRYsrHIdWMV8qnhnGu9nj+4aleQxWz1gFP1GA9j+KvDeo03fLTRdr
-         JYURRLHiNpp45oVL6wqOfefMkP4vnlxTeFijVuDp7Pz2QIF9PciG9iwiFbflSsSIANs1
-         8JdYkLULqGDqkj0wX45cKlJ8Cn9xYJ6MagM8CRp3NoRIdEPIrZj0cK3M4CgFw2JJhuz+
-         fG8BL+hCI/tDbo2gWGPwduURqkAm5Lcmg0bcHJ+3o0n+pnel/4LPCYsJjYuCN/9ZVXs9
-         XUT2DnBuktjUnLLJwe5BovmIe7BFPoVVtv4F2GveLbcuK6ozI6r9rJST841pkM4Kav+I
-         czSA==
-X-Gm-Message-State: ACrzQf389wGjuzhqcUl+haY8pRMVFUC6/F6FYO+Z3ztYbcSt5ErJi74p
-        Z4K2+NOJ8PmSVXlv6ZalNwLwlOTQgA==
-X-Google-Smtp-Source: AMsMyM5yRDyfSsnWnedgu5elYZcT4USFx1fJX8/c+8Cs6n6KWrXuki7eyBlp4GzBCk3te0kGNYKr6A==
-X-Received: by 2002:a05:620a:e05:b0:6fa:509f:f551 with SMTP id y5-20020a05620a0e0500b006fa509ff551mr14455186qkm.505.1667590125757;
-        Fri, 04 Nov 2022 12:28:45 -0700 (PDT)
-Received: from localhost.localdomain (c-68-32-72-208.hsd1.mi.comcast.net. [68.32.72.208])
-        by smtp.gmail.com with ESMTPSA id ew13-20020a05622a514d00b0039cc944ebdasm96579qtb.54.2022.11.04.12.28.45
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 04 Nov 2022 12:28:45 -0700 (PDT)
-From:   trondmy@gmail.com
-X-Google-Original-From: trond.myklebust@hammerspace.com
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: Fix a deadlock between nfs4_open_recover_helper() and delegreturn
-Date:   Fri,  4 Nov 2022 15:22:19 -0400
-Message-Id: <20221104192219.396154-1-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.38.1
+        with ESMTP id S229457AbiKDTmP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Nov 2022 15:42:15 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B63E3110D;
+        Fri,  4 Nov 2022 12:42:13 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 4FDC962308;
+        Fri,  4 Nov 2022 19:42:13 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 32A74C433D6;
+        Fri,  4 Nov 2022 19:42:11 +0000 (UTC)
+Date:   Fri, 4 Nov 2022 15:42:09 -0400
+From:   Steven Rostedt <rostedt@goodmis.org>
+To:     Guenter Roeck <linux@roeck-us.net>
+Cc:     linux-kernel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Stephen Boyd <sboyd@kernel.org>,
+        Anna-Maria Gleixner <anna-maria@linutronix.de>,
+        Andrew Morton <akpm@linux-foundation.org>, rcu@vger.kernel.org,
+        linux-doc@vger.kernel.org, linux-s390@vger.kernel.org,
+        linux-sh@vger.kernel.org, linux-edac@vger.kernel.org,
+        cgroups@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-acpi@vger.kernel.org,
+        linux-atm-general@lists.sourceforge.net, netdev@vger.kernel.org,
+        linux-pm@vger.kernel.org, drbd-dev@lists.linbit.com,
+        linux-bluetooth@vger.kernel.org,
+        openipmi-developer@lists.sourceforge.net,
+        linux-media@vger.kernel.org, dri-devel@lists.freedesktop.org,
+        linaro-mm-sig@lists.linaro.org, intel-gfx@lists.freedesktop.org,
+        linux-input@vger.kernel.org, linux-parisc@vger.kernel.org,
+        linux-leds@vger.kernel.org, intel-wired-lan@lists.osuosl.org,
+        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-staging@lists.linux.dev,
+        linux-ext4@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        bridge@lists.linux-foundation.org, netfilter-devel@vger.kernel.org,
+        coreteam@netfilter.org, lvs-devel@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+        tipc-discussion@lists.sourceforge.net, alsa-devel@alsa-project.org
+Subject: Re: [RFC][PATCH v3 00/33] timers: Use timer_shutdown*() before
+ freeing timers
+Message-ID: <20221104154209.21b26782@rorschach.local.home>
+In-Reply-To: <20221104192232.GA2520396@roeck-us.net>
+References: <20221104054053.431922658@goodmis.org>
+        <20221104192232.GA2520396@roeck-us.net>
+X-Mailer: Claws Mail 3.17.8 (GTK+ 2.24.33; x86_64-pc-linux-gnu)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Fri, 4 Nov 2022 12:22:32 -0700
+Guenter Roeck <linux@roeck-us.net> wrote:
 
-If we're asked to recover open state while a delegation return is
-outstanding, then the state manager thread cannot use a cached open, so
-if the server returns a delegation, we can end up deadlocked behind the
-pending delegreturn.
-To avoid this problem, let's just ask the server not to give us a
-delegation unless we're explicitly reclaiming one.
+> Unfortunately the renaming caused some symbol conflicts.
+> 
+> Global definition: timer_shutdown
+> 
+>   File             Line
+> 0 time.c            93 static inline void timer_shutdown(struct clock_event_device *evt)
+> 1 arm_arch_timer.c 690 static __always_inline int timer_shutdown(const int access,
+> 2 timer-fttmr010.c 105 int (*timer_shutdown)(struct clock_event_device *evt);
+> 3 timer-sp804.c    158 static inline void timer_shutdown(struct clock_event_device *evt)
+> 4 timer.h          239 static inline int timer_shutdown(struct timer_list *timer)
 
-Fixes: be36e185bd26 ("NFSv4: nfs4_open_recover_helper() must set share access")
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/nfs4proc.c | 19 ++++++++++++++-----
- 1 file changed, 14 insertions(+), 5 deletions(-)
+$ git grep '\btimer_shutdown'
+arch/arm/mach-spear/time.c:static inline void timer_shutdown(struct clock_event_device *evt)
+arch/arm/mach-spear/time.c:     timer_shutdown(evt);
+arch/arm/mach-spear/time.c:     timer_shutdown(evt);
+arch/arm/mach-spear/time.c:     timer_shutdown(evt);
+drivers/clocksource/arm_arch_timer.c:static __always_inline int timer_shutdown(const int access,
+drivers/clocksource/arm_arch_timer.c:   return timer_shutdown(ARCH_TIMER_VIRT_ACCESS, clk);
+drivers/clocksource/arm_arch_timer.c:   return timer_shutdown(ARCH_TIMER_PHYS_ACCESS, clk);
+drivers/clocksource/arm_arch_timer.c:   return timer_shutdown(ARCH_TIMER_MEM_VIRT_ACCESS, clk);
+drivers/clocksource/arm_arch_timer.c:   return timer_shutdown(ARCH_TIMER_MEM_PHYS_ACCESS, clk);
+drivers/clocksource/timer-fttmr010.c:   int (*timer_shutdown)(struct clock_event_device *evt);
+drivers/clocksource/timer-fttmr010.c:   fttmr010->timer_shutdown(evt);
+drivers/clocksource/timer-fttmr010.c:   fttmr010->timer_shutdown(evt);
+drivers/clocksource/timer-fttmr010.c:   fttmr010->timer_shutdown(evt);
+drivers/clocksource/timer-fttmr010.c:           fttmr010->timer_shutdown = ast2600_timer_shutdown;
+drivers/clocksource/timer-fttmr010.c:           fttmr010->timer_shutdown = fttmr010_timer_shutdown;
+drivers/clocksource/timer-fttmr010.c:   fttmr010->clkevt.set_state_shutdown = fttmr010->timer_shutdown;
+drivers/clocksource/timer-fttmr010.c:   fttmr010->clkevt.tick_resume = fttmr010->timer_shutdown;
+drivers/clocksource/timer-sp804.c:static inline void timer_shutdown(struct clock_event_device *evt)
+drivers/clocksource/timer-sp804.c:      timer_shutdown(evt);
+drivers/clocksource/timer-sp804.c:      timer_shutdown(evt);
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index bd89c7f06952..c002e4b69761 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2131,18 +2131,27 @@ static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context
- }
- 
- static int nfs4_open_recover_helper(struct nfs4_opendata *opendata,
--		fmode_t fmode)
-+				    fmode_t fmode)
- {
- 	struct nfs4_state *newstate;
-+	struct nfs_server *server = NFS_SB(opendata->dentry->d_sb);
-+	int openflags = 0;
- 	int ret;
- 
- 	if (!nfs4_mode_match_open_stateid(opendata->state, fmode))
- 		return 0;
--	opendata->o_arg.open_flags = 0;
-+	/*
-+	 * If we're not recovering a delegation, then ask for no delegation.
-+	 * Otherwise the recovery thread could deadlock with an outstanding
-+	 * delegation return.
-+	 */
-+	if (opendata->o_arg.u.delegation_type == 0)
-+		openflags = O_DIRECT;
-+
-+	opendata->o_arg.open_flags = openflags;
- 	opendata->o_arg.fmode = fmode;
--	opendata->o_arg.share_access = nfs4_map_atomic_open_share(
--			NFS_SB(opendata->dentry->d_sb),
--			fmode, 0);
-+	opendata->o_arg.share_access =
-+		nfs4_map_atomic_open_share(server, fmode, openflags);
- 	memset(&opendata->o_res, 0, sizeof(opendata->o_res));
- 	memset(&opendata->c_res, 0, sizeof(opendata->c_res));
- 	nfs4_init_opendata_res(opendata);
--- 
-2.38.1
+Honestly, I think these need to be renamed, as "timer_shutdown()"
+should be specific to the timer code, and not individual timers.
 
+I'll start making a patch set that starts by renaming these timers,
+then adds the timer_shutdown() API, and finished with the trivial
+updates, and that will be a real "PATCH" (non RFC).
+
+Linus, should I also add any patches that has already been acked by the
+respective maintainer?
+
+-- Steve
