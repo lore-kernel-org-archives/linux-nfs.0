@@ -2,114 +2,76 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 590E8C433FE
-	for <linux-nfs@archiver.kernel.org>; Sat,  5 Nov 2022 06:01:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DCEFBC4332F
+	for <linux-nfs@archiver.kernel.org>; Sat,  5 Nov 2022 13:49:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229645AbiKEGBw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 5 Nov 2022 02:01:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60042 "EHLO
+        id S229479AbiKENtb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 5 Nov 2022 09:49:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58912 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229547AbiKEGBa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Nov 2022 02:01:30 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E32F030560;
-        Fri,  4 Nov 2022 23:01:29 -0700 (PDT)
+        with ESMTP id S229453AbiKENtb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Nov 2022 09:49:31 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EE8CF12613
+        for <linux-nfs@vger.kernel.org>; Sat,  5 Nov 2022 06:49:29 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 81756B830BB;
-        Sat,  5 Nov 2022 06:01:28 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 17943C433D7;
-        Sat,  5 Nov 2022 06:01:27 +0000 (UTC)
-Received: from rostedt by gandalf.local.home with local (Exim 4.96)
-        (envelope-from <rostedt@goodmis.org>)
-        id 1orCFf-007OfS-0g;
-        Sat, 05 Nov 2022 02:01:55 -0400
-Message-ID: <20221105060155.047357452@goodmis.org>
-User-Agent: quilt/0.66
-Date:   Sat, 05 Nov 2022 02:00:25 -0400
-From:   Steven Rostedt <rostedt@goodmis.org>
-To:     linux-kernel@vger.kernel.org
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Stephen Boyd <sboyd@kernel.org>,
-        Guenter Roeck <linux@roeck-us.net>,
-        Anna-Maria Gleixner <anna-maria@linutronix.de>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH v4a 01/38] SUNRPC/xprt: Use del_timer_sync() instead of
- del_singleshot_timer_sync()
-References: <20221105060024.598488967@goodmis.org>
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 7722E60B45
+        for <linux-nfs@vger.kernel.org>; Sat,  5 Nov 2022 13:49:29 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5A052C433C1;
+        Sat,  5 Nov 2022 13:49:28 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1667656168;
+        bh=z9U6FXSsDJfcG7IWTtRzElXSpoEX/TjKdF3j7No7uug=;
+        h=From:To:Cc:Subject:Date:From;
+        b=sTaFy11iq5oDEYlEeUbagDo0tyf4VZwmRctAo+ZhgyA1CVoWxmAEniFwn+Tk477SM
+         hjc6mmsqVU4ZbMEuF3JsHw3gi5BOKoT+HmoVkqidS3m6C20S7hOa0pjXOG2Ym6Xz+A
+         6vgzNiiB5J5zHkPw7FUUJdjnlLkmUUm24PiPoEOoFpKjv97F8PmQ7GJMTu2wi4kav5
+         t0lADr8ydb7J9lJida3kH/OGihB2Wx/7qFYjA2owkBhlix5WC4YAb3wGMu+5nRkg5Q
+         ODhL9a7hs21epb+Xr+DsSKPWx75Tg/hmCUD2Q4lqZCGMpsmRh1OQ7CdFqrU6WvMNMr
+         NuwMZBhs62vWQ==
+From:   Jeff Layton <jlayton@kernel.org>
+To:     chuck.lever@oracle.com
+Cc:     linux-nfs@vger.kernel.org, kernel test robot <lkp@intel.com>,
+        Dan Carpenter <error27@gmail.com>
+Subject: [PATCH] nfsd: fix use-after-free in nfsd_file_do_acquire tracepoint
+Date:   Sat,  5 Nov 2022 09:49:26 -0400
+Message-Id: <20221105134926.23726-1-jlayton@kernel.org>
+X-Mailer: git-send-email 2.38.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: "Steven Rostedt (Google)" <rostedt@goodmis.org>
+When we fail to insert into the hashtable with a non-retryable error,
+we'll free the object and then goto out_status. If the tracepoint is
+enabled, it'll end up accessing the freed object when it tries to
+grab the fields out of it.
 
-Back on June 22, 2005, it was decided to use del_singleshot_timer_sync()
-because it wouldn't loop like del_timer_sync(), and since the timer that
-was being removed was not about to be rearmed, it was considered an
-efficiency to use del_singleshot_timer_sync() over del_timer_sync().
+Set nf to NULL after freeing it to avoid the issue.
 
-But on June 23, 2005, commit 55c888d6d09a0 ("timers fixes/improvements")
-happened, which converted del_singleshot_timer_sync() into:
-
- #define del_singleshot_timer_sync(t) del_timer_sync(t)
-
-Making the to equivalent.
-
-Now work is being done to add a "shutdown" state to timers where a timer
-must be in that state in order to be freed to prevent use-after-free bugs
-caused by timers being re-armed just before being freed, the
-del_singleshot_timer_sync() is now being converted into something that
-will set the timer to the shutdown state. This means that once
-del_singleshot_timer_sync() is called, the timer can no longer be
-re-armed.
-
-As the timer here will be re-armed, it can not use del_singleshot_timer_sync().
-But as the reason it was used in the first place no longer exists, just
-use del_timer_sync().
-
-Link: https://lore.kernel.org/lkml/20221028145005.28bc324d@gandalf.local.home/
-
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jeff Layton <jlayton@kernel.org>
-Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <anna@kernel.org>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Eric Dumazet <edumazet@google.com>
-Cc: Jakub Kicinski <kuba@kernel.org>
-Cc: Paolo Abeni <pabeni@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: netdev@vger.kernel.org
-Fixes: 0f9dc2b16884b ("RPC: Clean up socket autodisconnect")
-Signed-off-by: Steven Rostedt (Google) <rostedt@goodmis.org>
+Fixes: 243a5263014a ("nfsd: rework hashtable handling in nfsd_do_file_acquire")
+Reported-by: kernel test robot <lkp@intel.com>
+Reported-by: Dan Carpenter <error27@gmail.com>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- net/sunrpc/xprt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/filecache.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 656cec208371..ab453ede54f0 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1164,7 +1164,7 @@ xprt_request_enqueue_receive(struct rpc_task *task)
- 	spin_unlock(&xprt->queue_lock);
+diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+index 687ab814b678..02c1454dfe50 100644
+--- a/fs/nfsd/filecache.c
++++ b/fs/nfsd/filecache.c
+@@ -1124,6 +1124,7 @@ nfsd_file_do_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		goto open_file;
  
- 	/* Turn off autodisconnect */
--	del_singleshot_timer_sync(&xprt->timer);
-+	del_timer_sync(&xprt->timer);
- 	return 0;
- }
- 
+ 	nfsd_file_slab_free(&nf->nf_rcu);
++	nf = NULL;
+ 	if (ret == -EEXIST)
+ 		goto retry;
+ 	trace_nfsd_file_insert_err(rqstp, key.inode, may_flags, ret);
 -- 
-2.35.1
+2.38.1
+
