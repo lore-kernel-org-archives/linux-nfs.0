@@ -2,153 +2,82 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 85731C433FE
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Nov 2022 04:05:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7859EC4167B
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Nov 2022 10:47:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230448AbiKGEFy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 6 Nov 2022 23:05:54 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36912 "EHLO
+        id S231693AbiKGKrI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Nov 2022 05:47:08 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50418 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230309AbiKGEFy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Nov 2022 23:05:54 -0500
-Received: from mail-yw1-x112d.google.com (mail-yw1-x112d.google.com [IPv6:2607:f8b0:4864:20::112d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1989360C5;
-        Sun,  6 Nov 2022 20:05:53 -0800 (PST)
-Received: by mail-yw1-x112d.google.com with SMTP id 00721157ae682-367b8adf788so93627147b3.2;
-        Sun, 06 Nov 2022 20:05:53 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=AkJkBFRHBq0yfkGW73lPxetYhgvhGPajTrAk3G/9Ib8=;
-        b=l76CZi9ffkLkjLH0uPqxFLum3ZPXPgvFsx94x92ZMW+iRTJpqvNZ6mJdin35gvI8Wy
-         oiQblbKk1IyBtVclvaaScdG89l2vbM/ocXun63GV7nsM/GCLfogubbVYjKhIYaDS/ClF
-         dOEI/CJr2t8D+nedgpbC2e/r0rjjfqCGy6EzQzN2SzRgThphX4Mkvrw08Z0M4vwgdMKB
-         2IOrV+Mq6lLdp86g51v+QccKOg9ViDjO3ey7FZWEv1x4vjpxi0nQVhRYpM+Q+nfXbMPv
-         w1+9eTc8GUk+ZpA8n7XN2n7+RxT59agVflnG9qUfafNRAjl/fsRW079igL96PhtN1qFS
-         pLwQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=AkJkBFRHBq0yfkGW73lPxetYhgvhGPajTrAk3G/9Ib8=;
-        b=kTtvtuM6hgISNhN7SsAwB6Z1ZU2E25r7y8GUaxmAJW2tY8ngct5L3XMpLP6YLoRDg4
-         sBuPZpCVYGCMOaJ5JzW8r7R/6yNMAFyRumHQ+Sk92PmxBFO0yXCwknMOiVzmMUROzTAA
-         Cakaxa9sVM/H+wslJAwGN9qjhOxK82bbeAINjQ5hPuuVfMv1x0SDDoe/EexIYs6X11rT
-         8r+dft2n2IZ5I+e7rLLNHlbZKLZ8wFRVCide1ztIficwK2LY/aIKA+n381VA4tbLlKOg
-         W5Zvn+Yd9HiMmoanrDael3NOTFfvqQXSxXB0xp6NMEwiFj5ZYkFBDkvRbjukzUs+QReK
-         adHg==
-X-Gm-Message-State: ACrzQf31oS3teWaS6srCONrHE0NLI95mVbPq3WE1Uo5k34eXeB+m9le5
-        zMWdmdI51fH3P5WUzTcRFJajbox+3DbFO371nieXwoFUS5g=
-X-Google-Smtp-Source: AMsMyM6IgCjLx4iJBoc5hixwYAuTEy1/iOgTcj82ZwiZJ8/dkS3LhmZEuwpI3Z1/u0393lQ6moQoTg5gWNanCTh7phg=
-X-Received: by 2002:a81:7b83:0:b0:370:2bf7:ec61 with SMTP id
- w125-20020a817b83000000b003702bf7ec61mr44305856ywc.46.1667793952354; Sun, 06
- Nov 2022 20:05:52 -0800 (PST)
+        with ESMTP id S231616AbiKGKrG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Nov 2022 05:47:06 -0500
+Received: from galois.linutronix.de (Galois.linutronix.de [IPv6:2a0a:51c0:0:12e:550::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3172F17E33;
+        Mon,  7 Nov 2022 02:47:06 -0800 (PST)
+From:   Thomas Gleixner <tglx@linutronix.de>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linutronix.de;
+        s=2020; t=1667818024;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=qnhu/C4/dTNGh+9YxTAUPF0AHXOgpdZiA4TofS1TDao=;
+        b=m8gFAB2FYV5B4BIkkbSCrPl5kngI1vwmC89wOqBJ/q73+RRLDUvN8153YBd0ancpYaUudU
+        +fTzmJoLwRrrXw9ulhVtc41yRIMLNrOmB9kVLUOAn2xwOs861TQYPTmwfVqoXOpGOLsPn5
+        hNBacxD9XN6Mi6tXS/NIbwjqzso2C6oqm6/L/mt2cpmfqfHELnCL8o8Pn38Ir7+eD8OVqk
+        Lj3kRr5Ls1MIF7+wsJc3Ym/BQIZf8UhWrd8aE7FpoY/qhjIfIvELeoa8/ZXUqY5eKhjinO
+        ZF4FT08X0F8jeyihKYji9kBCreFY8X9nEznXEcECfWmIcYVRm4zXH9JmYOmiiQ==
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=linutronix.de;
+        s=2020e; t=1667818024;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=qnhu/C4/dTNGh+9YxTAUPF0AHXOgpdZiA4TofS1TDao=;
+        b=bzVvnuX1mysTSSrkmkIGsLumN3FZV+biUwiIDeLZdScudMhEXojJ3c4U7ytkUdHNPdLCjD
+        NbhAMzPLE4OU4lBA==
+To:     Steven Rostedt <rostedt@goodmis.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Cc:     LKML <linux-kernel@vger.kernel.org>,
+        Stephen Boyd <sboyd@kernel.org>,
+        Guenter Roeck <linux@roeck-us.net>,
+        Anna-Maria Gleixner <anna-maria@linutronix.de>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Julia Lawall <Julia.Lawall@inria.fr>, linux-sh@vger.kernel.org,
+        linux-kernel@vger.kernel.org, cgroups@vger.kernel.org,
+        linux-block@vger.kernel.org, linux-acpi@vger.kernel.org,
+        linux-atm-general@lists.sourceforge.net, netdev@vger.kernel.org,
+        drbd-dev@lists.linbit.com, linux-bluetooth@vger.kernel.org,
+        intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+        linux-input@vger.kernel.org, linux-leds@vger.kernel.org,
+        linux-media@vger.kernel.org, intel-wired-lan@lists.osuosl.org,
+        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-staging@lists.linux.dev,
+        linux-ext4@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        bridge@lists.linux-foundation.org, netfilter-devel@vger.kernel.org,
+        coreteam@netfilter.org, lvs-devel@vger.kernel.org,
+        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
+        tipc-discussion@lists.sourceforge.net, alsa-devel@alsa-project.org
+Subject: Re: [GIT PULL] treewide: timers: Use timer_shutdown*() before
+ freeing timers
+In-Reply-To: <20221106223256.4bbdb018@rorschach.local.home>
+References: <20221106223256.4bbdb018@rorschach.local.home>
+Date:   Mon, 07 Nov 2022 11:47:04 +0100
+Message-ID: <87pmdzvy6v.ffs@tglx>
 MIME-Version: 1.0
-References: <20221105032329.2067299-1-zlang@kernel.org>
-In-Reply-To: <20221105032329.2067299-1-zlang@kernel.org>
-From:   Murphy Zhou <jencce.kernel@gmail.com>
-Date:   Mon, 7 Nov 2022 12:05:41 +0800
-Message-ID: <CADJHv_vHbto5c4Ubzpg0teYYQb3Cnre8OwPpTpa0EDao5skeCw@mail.gmail.com>
-Subject: Re: [PATCH] nfs: test files written size as expected
-To:     Zorro Lang <zlang@kernel.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Cc:     fstests@vger.kernel.org, linux-xfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Looks good to me.
+Linus,
 
-Ccing linux-nfs@ for reviewing.
+On Sun, Nov 06 2022 at 22:32, Steven Rostedt wrote:
+> As discussed here:
+>
+>   https://lore.kernel.org/all/20221106212427.739928660@goodmis.org/
 
-On Sat, Nov 5, 2022 at 11:49 AM Zorro Lang <zlang@kernel.org> wrote:
->
-> Test nfs and its underlying fs, make sure file size as expected
-> after writting a file, and the speculative allocation space can
-> be shrunken.
->
-> Signed-off-by: Zorro Lang <zlang@kernel.org>
-> ---
->
-> Hi,
->
-> The original bug reproducer is:
-> 1. mount nfs3 backed by xfs
-> 2. dd if=/dev/zero of=/nfs/10M bs=1M count=10
-> 3. du -sh /nfs/10M
-> 16M     /nfs/10M
->
-> As this was a xfs issue, so cc linux-xfs@ to get review.
->
-> Thanks,
-> Zorro
->
->  tests/nfs/002     | 43 +++++++++++++++++++++++++++++++++++++++++++
->  tests/nfs/002.out |  2 ++
->  2 files changed, 45 insertions(+)
->  create mode 100755 tests/nfs/002
->  create mode 100644 tests/nfs/002.out
->
-> diff --git a/tests/nfs/002 b/tests/nfs/002
-> new file mode 100755
-> index 00000000..3d29958d
-> --- /dev/null
-> +++ b/tests/nfs/002
-> @@ -0,0 +1,43 @@
-> +#! /bin/bash
-> +# SPDX-License-Identifier: GPL-2.0
-> +# Copyright (c) 2022 Red Hat, Inc.  All Rights Reserved.
-> +#
-> +# FS QA Test 002
-> +#
-> +# Make sure nfs gets expected file size after writting a big sized file. It's
-> +# not only testing nfs, test its underlying fs too. For example a known old bug
-> +# on xfs (underlying fs) caused nfs get larger file size (e.g. 16M) after
-> +# writting 10M data to a file. It's fixed by a series of patches around
-> +# 579b62faa5fb16 ("xfs: add background scanning to clear eofblocks inodes")
-> +#
-> +. ./common/preamble
-> +_begin_fstest auto rw
-> +
-> +# real QA test starts here
-> +_supported_fs nfs
-> +_require_test
-> +
-> +localfile=$TEST_DIR/testfile.$seq
-> +rm -rf $localfile
-> +
-> +$XFS_IO_PROG -f -t -c "pwrite 0 10m" -c "fsync" $localfile >>$seqres.full 2>&1
-> +block_size=`stat -c '%B' $localfile`
-> +iblocks_expected=$((10 * 1024 * 1024 / $block_size))
-> +# Try several times for the speculative allocated file size can be shrunken
-> +res=1
-> +for ((i=0; i<10; i++));do
-> +       iblocks_real=`stat -c '%b' $localfile`
-> +       if [ "$iblocks_expected" = "$iblocks_real" ];then
-> +               res=0
-> +               break
-> +       fi
-> +       sleep 10
-> +done
-> +if [ $res -ne 0 ];then
-> +       echo "Write $iblocks_expected blocks, but get $iblocks_real blocks"
-> +fi
-> +
-> +echo "Silence is golden"
-> +# success, all done
-> +status=0
-> +exit
-> diff --git a/tests/nfs/002.out b/tests/nfs/002.out
-> new file mode 100644
-> index 00000000..61705c7c
-> --- /dev/null
-> +++ b/tests/nfs/002.out
-> @@ -0,0 +1,2 @@
-> +QA output created by 002
-> +Silence is golden
-> --
-> 2.31.1
->
+Please hold off. It's only nits, but tip has documented rules and random
+pull requests are not making them go away.
+
+Thanks,
+
+        tglx
