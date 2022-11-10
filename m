@@ -2,52 +2,52 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C7B4C4321E
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06BE1C43219
 	for <linux-nfs@archiver.kernel.org>; Thu, 10 Nov 2022 04:17:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231298AbiKJERf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 9 Nov 2022 23:17:35 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35452 "EHLO
+        id S231273AbiKJERe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 9 Nov 2022 23:17:34 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35454 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231387AbiKJERc (ORCPT
+        with ESMTP id S231501AbiKJERc (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Nov 2022 23:17:32 -0500
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 37176B0F
-        for <linux-nfs@vger.kernel.org>; Wed,  9 Nov 2022 20:17:30 -0800 (PST)
-Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 2AA4AAGa007827;
-        Thu, 10 Nov 2022 04:17:26 GMT
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 832B7CCC
+        for <linux-nfs@vger.kernel.org>; Wed,  9 Nov 2022 20:17:31 -0800 (PST)
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 2AA4Cu04030278;
+        Thu, 10 Nov 2022 04:17:29 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
  subject : date : message-id : in-reply-to : references; s=corp-2022-7-12;
- bh=epNQbk8js5rpTfSM3LY+W+rNDSSYrc8EGcU74isXt1s=;
- b=iBwfBY+RwOR9CB/JndaTp+LZB14EsMFOMLLkMiUwAGT5IFoZR5fQ/VXW8plyDsuOGoR6
- cD3nkaAw3DqsYjIncmCzbtguLVWHkMlP/UG2vsdV3BXKZzhKXsebRJAFZIMnHy5ZvvKf
- 85IMQyJV+K8QTqn89G3NWAfQhI5fbwif/DgY43JDt5sJTHHoLbcJ6mw8k4Kk7v7xvZ5y
- JDcJlmb1Nm9atois7iw9fTY8w9EeeJMnSRWEGivQPHrd8ma3RSwj6kRkYefYNuyluigd
- YmmDE0NsO3I+M7nRszoDosnVfv4sMBavhnT2zM+7Mi8plOV1WFGxxYWle+E6L1eP7y7k ng== 
+ bh=KTzHq7l2v3aGbR0sRXVXF+1OHGlVMxLqedyhH/lRf74=;
+ b=VXHufflCLMQNe7o4CFSu6SNt8Xtko51dgAGq1Q0RXbRefIGDTsWHzcbikY3kHi80xJP1
+ XTflm1ZBTN+lx/FhkUtphM0BbykQh4h+CbZvPpACsJfeoqno67Yano58GG0pJIEBeUcN
+ V/dbZfDH3ZEtloLTBA+ckWe/MYdVCDlvzeXGdbnH3rZsYOwPTzQLtlpRl5kmNI/Uu95q
+ iWfYyUWZf8hLzLPLW+Wbz5SDNJ0yKvB8rUNeeviwBGh7vq+FQFCMRbZR7yi4vJraZXA1
+ oJYJt/8qvdNkZd2BTmbjFQKsJLVTURXu5ikW8qXWAInKrODDXnfa/q7ZqGNqs5QgV8zU wg== 
 Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3krskcr14r-1
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3krt2pr0a7-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 10 Nov 2022 04:17:26 +0000
+        Thu, 10 Nov 2022 04:17:29 +0000
 Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 2AA3bjlU040940;
-        Thu, 10 Nov 2022 04:17:26 GMT
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 2AA2CRrm000328;
+        Thu, 10 Nov 2022 04:17:28 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3kpcsfxc4b-1
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3kpcsfxc53-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 10 Nov 2022 04:17:26 +0000
+        Thu, 10 Nov 2022 04:17:28 +0000
 Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 2AA4HO7b005307;
-        Thu, 10 Nov 2022 04:17:25 GMT
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 2AA4HO7f005307;
+        Thu, 10 Nov 2022 04:17:27 GMT
 Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 3kpcsfxc35-2;
-        Thu, 10 Nov 2022 04:17:25 +0000
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 3kpcsfxc35-4;
+        Thu, 10 Nov 2022 04:17:27 +0000
 From:   Dai Ngo <dai.ngo@oracle.com>
 To:     chuck.lever@oracle.com, jlayton@kernel.org
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v4 1/3] NFSD: add support for sending CB_RECALL_ANY
-Date:   Wed,  9 Nov 2022 20:17:09 -0800
-Message-Id: <1668053831-7662-2-git-send-email-dai.ngo@oracle.com>
+Subject: [PATCH v4 3/3] NFSD: add CB_RECALL_ANY tracepoints
+Date:   Wed,  9 Nov 2022 20:17:11 -0800
+Message-Id: <1668053831-7662-4-git-send-email-dai.ngo@oracle.com>
 X-Mailer: git-send-email 1.8.3.1
 In-Reply-To: <1668053831-7662-1-git-send-email-dai.ngo@oracle.com>
 References: <1668053831-7662-1-git-send-email-dai.ngo@oracle.com>
@@ -58,157 +58,114 @@ X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 phishscore=0 mlxs
  adultscore=0 malwarescore=0 mlxlogscore=999 bulkscore=0 suspectscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2210170000
  definitions=main-2211100030
-X-Proofpoint-GUID: YJKzlHkUiEqZ0IBvc8is9Pbnw2XPl1hr
-X-Proofpoint-ORIG-GUID: YJKzlHkUiEqZ0IBvc8is9Pbnw2XPl1hr
+X-Proofpoint-GUID: E35mWL4sVO24D6W5YIWEIIN2IFpAcLls
+X-Proofpoint-ORIG-GUID: E35mWL4sVO24D6W5YIWEIIN2IFpAcLls
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add XDR encode and decode function for CB_RECALL_ANY.
+Add tracepoints to trace start and end of CB_RECALL_ANY operation.
 
 Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 ---
- fs/nfsd/nfs4callback.c | 62 ++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/state.h        |  1 +
- fs/nfsd/xdr4.h         |  5 ++++
- fs/nfsd/xdr4cb.h       |  6 +++++
- 4 files changed, 74 insertions(+)
+ fs/nfsd/nfs4state.c |  2 ++
+ fs/nfsd/trace.h     | 53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 55 insertions(+)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index f0e69edf5f0f..01226e5233cd 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -329,6 +329,25 @@ static void encode_cb_recall4args(struct xdr_stream *xdr,
- }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 813cdb67b370..eac7212c9218 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2859,6 +2859,7 @@ static int
+ nfsd4_cb_recall_any_done(struct nfsd4_callback *cb,
+ 				struct rpc_task *task)
+ {
++	trace_nfsd_cb_recall_any_done(cb, task);
+ 	switch (task->tk_status) {
+ 	case -NFS4ERR_DELAY:
+ 		rpc_delay(task, 2 * HZ);
+@@ -6242,6 +6243,7 @@ deleg_reaper(struct work_struct *deleg_work)
+ 		clp->cl_ra->ra_keep = 0;
+ 		clp->cl_ra->ra_bmval[0] = BIT(RCA4_TYPE_MASK_RDATA_DLG) |
+ 						BIT(RCA4_TYPE_MASK_WDATA_DLG);
++		trace_nfsd_cb_recall_any(clp->cl_ra);
+ 		nfsd4_run_cb(&clp->cl_ra->ra_cb);
+ 	}
  
- /*
-+ * CB_RECALLANY4args
-+ *
-+ *	struct CB_RECALLANY4args {
-+ *		uint32_t	craa_objects_to_keep;
-+ *		bitmap4		craa_type_mask;
-+ *	};
-+ */
-+static void
-+encode_cb_recallany4args(struct xdr_stream *xdr,
-+	struct nfs4_cb_compound_hdr *hdr, struct nfsd4_cb_recall_any *ra)
-+{
-+	encode_nfs_cb_opnum4(xdr, OP_CB_RECALL_ANY);
-+	WARN_ON_ONCE(xdr_stream_encode_u32(xdr, ra->ra_keep) < 0);
-+	WARN_ON_ONCE(xdr_stream_encode_uint32_array(xdr,
-+		ra->ra_bmval, sizeof(ra->ra_bmval) / sizeof(u32)) < 0);
-+	hdr->nops++;
-+}
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index 06a96e955bd0..efc69c96bcbd 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -9,9 +9,11 @@
+ #define _NFSD_TRACE_H
+ 
+ #include <linux/tracepoint.h>
++#include <linux/sunrpc/xprt.h>
+ 
+ #include "export.h"
+ #include "nfsfh.h"
++#include "xdr4.h"
+ 
+ #define NFSD_TRACE_PROC_RES_FIELDS \
+ 		__field(unsigned int, netns_ino) \
+@@ -1510,6 +1512,57 @@ DEFINE_NFSD_CB_DONE_EVENT(nfsd_cb_notify_lock_done);
+ DEFINE_NFSD_CB_DONE_EVENT(nfsd_cb_layout_done);
+ DEFINE_NFSD_CB_DONE_EVENT(nfsd_cb_offload_done);
+ 
++TRACE_EVENT(nfsd_cb_recall_any,
++	TP_PROTO(
++		const struct nfsd4_cb_recall_any *ra
++	),
++	TP_ARGS(ra),
++	TP_STRUCT__entry(
++		__field(u32, cl_boot)
++		__field(u32, cl_id)
++		__field(u32, ra_keep)
++		__field(u32, ra_bmval)
++		__array(unsigned char, addr, sizeof(struct sockaddr_in6))
++	),
++	TP_fast_assign(
++		__entry->cl_boot = ra->ra_cb.cb_clp->cl_clientid.cl_boot;
++		__entry->cl_id = ra->ra_cb.cb_clp->cl_clientid.cl_id;
++		__entry->ra_keep = ra->ra_keep;
++		__entry->ra_bmval = ra->ra_bmval[0];
++		memcpy(__entry->addr, &ra->ra_cb.cb_clp->cl_addr,
++			sizeof(struct sockaddr_in6));
++	),
++	TP_printk("client %08x:%08x addr=%pISpc ra_keep=%d ra_bmval=0x%x",
++		__entry->cl_boot, __entry->cl_id,
++		__entry->addr, __entry->ra_keep, __entry->ra_bmval
++	)
++);
 +
-+/*
-  * CB_SEQUENCE4args
-  *
-  *	struct CB_SEQUENCE4args {
-@@ -482,6 +501,26 @@ static void nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_cb_nops(&hdr);
- }
- 
-+/*
-+ * 20.6. Operation 8: CB_RECALL_ANY - Keep Any N Recallable Objects
-+ */
-+static void
-+nfs4_xdr_enc_cb_recall_any(struct rpc_rqst *req,
-+		struct xdr_stream *xdr, const void *data)
-+{
-+	const struct nfsd4_callback *cb = data;
-+	struct nfsd4_cb_recall_any *ra;
-+	struct nfs4_cb_compound_hdr hdr = {
-+		.ident = cb->cb_clp->cl_cb_ident,
-+		.minorversion = cb->cb_clp->cl_minorversion,
-+	};
++TRACE_EVENT(nfsd_cb_recall_any_done,
++	TP_PROTO(
++		const struct nfsd4_callback *cb,
++		const struct rpc_task *task
++	),
++	TP_ARGS(cb, task),
++	TP_STRUCT__entry(
++		__field(u32, cl_boot)
++		__field(u32, cl_id)
++		__field(int, status)
++		__array(unsigned char, addr, sizeof(struct sockaddr_in6))
++	),
++	TP_fast_assign(
++		__entry->status = task->tk_status;
++		__entry->cl_boot = cb->cb_clp->cl_clientid.cl_boot;
++		__entry->cl_id = cb->cb_clp->cl_clientid.cl_id;
++		memcpy(__entry->addr, &cb->cb_clp->cl_addr,
++			sizeof(struct sockaddr_in6));
++	),
++	TP_printk("client %08x:%08x addr=%pISpc status=%d",
++		__entry->cl_boot, __entry->cl_id,
++		__entry->addr, __entry->status
++	)
++);
 +
-+	ra = container_of(cb, struct nfsd4_cb_recall_any, ra_cb);
-+	encode_cb_compound4args(xdr, &hdr);
-+	encode_cb_sequence4args(xdr, cb, &hdr);
-+	encode_cb_recallany4args(xdr, &hdr, ra);
-+	encode_cb_nops(&hdr);
-+}
+ #endif /* _NFSD_TRACE_H */
  
- /*
-  * NFSv4.0 and NFSv4.1 XDR decode functions
-@@ -520,6 +559,28 @@ static int nfs4_xdr_dec_cb_recall(struct rpc_rqst *rqstp,
- 	return decode_cb_op_status(xdr, OP_CB_RECALL, &cb->cb_status);
- }
- 
-+/*
-+ * 20.6. Operation 8: CB_RECALL_ANY - Keep Any N Recallable Objects
-+ */
-+static int
-+nfs4_xdr_dec_cb_recall_any(struct rpc_rqst *rqstp,
-+				  struct xdr_stream *xdr,
-+				  void *data)
-+{
-+	struct nfsd4_callback *cb = data;
-+	struct nfs4_cb_compound_hdr hdr;
-+	int status;
-+
-+	status = decode_cb_compound4res(xdr, &hdr);
-+	if (unlikely(status))
-+		return status;
-+	status = decode_cb_sequence4res(xdr, cb);
-+	if (unlikely(status || cb->cb_seq_status))
-+		return status;
-+	status =  decode_cb_op_status(xdr, OP_CB_RECALL_ANY, &cb->cb_status);
-+	return status;
-+}
-+
- #ifdef CONFIG_NFSD_PNFS
- /*
-  * CB_LAYOUTRECALL4args
-@@ -783,6 +844,7 @@ static const struct rpc_procinfo nfs4_cb_procedures[] = {
- #endif
- 	PROC(CB_NOTIFY_LOCK,	COMPOUND,	cb_notify_lock,	cb_notify_lock),
- 	PROC(CB_OFFLOAD,	COMPOUND,	cb_offload,	cb_offload),
-+	PROC(CB_RECALL_ANY,	COMPOUND,	cb_recall_any,	cb_recall_any),
- };
- 
- static unsigned int nfs4_cb_counts[ARRAY_SIZE(nfs4_cb_procedures)];
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e2daef3cc003..6b33cbbe76d3 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -639,6 +639,7 @@ enum nfsd4_cb_op {
- 	NFSPROC4_CLNT_CB_OFFLOAD,
- 	NFSPROC4_CLNT_CB_SEQUENCE,
- 	NFSPROC4_CLNT_CB_NOTIFY_LOCK,
-+	NFSPROC4_CLNT_CB_RECALL_ANY,
- };
- 
- /* Returns true iff a is later than b: */
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 0eb00105d845..4fd2cf6d1d2d 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -896,5 +896,10 @@ struct nfsd4_operation {
- 			union nfsd4_op_u *);
- };
- 
-+struct nfsd4_cb_recall_any {
-+	struct nfsd4_callback	ra_cb;
-+	u32			ra_keep;
-+	u32			ra_bmval[1];
-+};
- 
- #endif
-diff --git a/fs/nfsd/xdr4cb.h b/fs/nfsd/xdr4cb.h
-index 547cf07cf4e0..0d39af1b00a0 100644
---- a/fs/nfsd/xdr4cb.h
-+++ b/fs/nfsd/xdr4cb.h
-@@ -48,3 +48,9 @@
- #define NFS4_dec_cb_offload_sz		(cb_compound_dec_hdr_sz  +      \
- 					cb_sequence_dec_sz +            \
- 					op_dec_sz)
-+#define NFS4_enc_cb_recall_any_sz	(cb_compound_enc_hdr_sz +       \
-+					cb_sequence_enc_sz +            \
-+					1 + 1 + 1)
-+#define NFS4_dec_cb_recall_any_sz	(cb_compound_dec_hdr_sz  +      \
-+					cb_sequence_dec_sz +            \
-+					op_dec_sz)
+ #undef TRACE_INCLUDE_PATH
 -- 
 2.9.5
 
