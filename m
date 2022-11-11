@@ -2,179 +2,194 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5E00C433FE
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Nov 2022 19:51:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 304E4C433FE
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Nov 2022 20:42:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233439AbiKKTvT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 11 Nov 2022 14:51:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45224 "EHLO
+        id S234229AbiKKUl7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 11 Nov 2022 15:41:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35486 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232918AbiKKTvS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2022 14:51:18 -0500
-X-Greylist: delayed 903 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 11 Nov 2022 11:51:13 PST
-Received: from wedge010.net.lu.se (wedge010.net.lu.se [130.235.56.200])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4DD2A82929
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2022 11:51:13 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; d=control.lth.se; s=edge;
-        c=relaxed/relaxed; t=1668195366; h=from:subject:to:date:message-id;
-        bh=Shk5woKA9/O9WZ3ayjdJt/8f7+tmjUpUnCyuJx/G9kU=;
-        b=iCDBku9ypedkfq8/bBq1p1maxWXCN1hmJ3JFJ6VUMAo4Ef6hB2rqjkzMTnZFWb9/+WdhaSrLfQw
-        CkxQha12lWwT4GtpGIAjTfytucul4NEBog7Amp7moAjA+zQTDRDnk4/ySPK2TxTnO4H8UAj0y7m35
-        k2i8OOYJF/ZUcx03SQ6IwBNpJW0b8TYDUMXlngvipqClGbBSBq2rH9JVWjS3CKjznz0Y6vaEq35dy
-        O7Vp/rSSk90xz2IcBbzCUTZzJdq20ud1Jw3tqpiMV+kxMDE2bbM48pFyGbUPNwohacDR9YVj5J07p
-        8q6geUGC++0YANHj86maj7pbYFAB24M2VuVg==
-Received: from wexc007.uw.lu.se (130.235.59.251) by mail.lu.se
- (130.235.56.200) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384_P256) id 15.1.2507.13; Fri, 11
- Nov 2022 20:35:54 +0100
-Received: from [130.235.83.196] (130.235.139.100) by wexc007.uw.lu.se
- (130.235.59.251) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384_P521) id 15.1.2507.13; Fri, 11
- Nov 2022 20:35:47 +0100
-Message-ID: <65115206-ec17-443e-8495-91661a2fd9be@control.lth.se>
-Date:   Fri, 11 Nov 2022 20:35:47 +0100
-MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
- Thunderbird/102.4.0
+        with ESMTP id S234115AbiKKUl6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2022 15:41:58 -0500
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7EC7685478
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2022 12:41:55 -0800 (PST)
+Received: from pps.filterd (m0246632.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.5/8.17.1.5) with ESMTP id 2ABKShZP020659;
+        Fri, 11 Nov 2022 20:41:44 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : references : in-reply-to : content-type :
+ content-id : content-transfer-encoding : mime-version; s=corp-2022-7-12;
+ bh=WJ0R/FHKJeJHlkgIXcqFzYMFjKpaRWXXruAdTOLzDhA=;
+ b=poYvK+whZ83t+2CaEbyfzXE/VyQkAGcONO191l/mzwCLOKQr+FKMMoOA70i2Zq+UNKeU
+ d6gY21R72Ia40mlTPx29EO5yphF7Sjh1w2bobWXYttF05SS8G7no0f1DWumY9uQRRSH8
+ fNjbPtGOy3mLcbEUgE25HJYdsN3bEPmZ05kAuCRwfIcU2E+wDlshM+nn8MWFv/+cdFIz
+ LByEe7RVZa8pHZQ3bd0Y1Kj69c0o2leu4axPLXJ7f0gYFUQq9uxaoCPChkREKzOfbCrQ
+ tZ9LmOvW3dg5R8Js+fKFy3Tl254VgYIymTG5VX9iyqbLZG0yfzuC08MvFz8SX0JZdGat ag== 
+Received: from iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta03.appoci.oracle.com [130.35.103.27])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3kswfag0kb-9
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 11 Nov 2022 20:41:44 +0000
+Received: from pps.filterd (iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 2ABI3VZw009073;
+        Fri, 11 Nov 2022 20:29:58 GMT
+Received: from nam10-mw2-obe.outbound.protection.outlook.com (mail-mw2nam10lp2105.outbound.protection.outlook.com [104.47.55.105])
+        by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3kpcqmwgqd-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 11 Nov 2022 20:29:58 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=JqOmmUKa7qTlToLz9p/F35Hg0LkLLFpqMuX7S3UTOc50mAN1fFoDg1hLv8w26vLPUBwJWXMhCmgWIHwyjG98x0LHn76YN1i85voCGrzSq6Jfx12xPQ6V7XCTV16MMCHPQ2HIlaydiQUYWkeniClCTHILXXLhKnNeoznfPXVZ1AYZ/iPpy84fs4jcGk3wQtxxJNkPIw2za1rcVOHBwJETkiok5a+XO9pT+9HrSTrTnqm0k666OG5pb9hbWUR6mz9QIXdzcfAeJ2oGABjD8MkU0JQGxwSLrxYPfLn5MFAsu0Mu8FN18ETjI8L7xTv+gj3g5/TWVOPeVaQEO58OrMGQmg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=WJ0R/FHKJeJHlkgIXcqFzYMFjKpaRWXXruAdTOLzDhA=;
+ b=iSG6HvxGezlqXpXr1VjX4fEJHNKUPZy3yRCtSPZEmVPZvXzEfEN2SaHw+bekGv6FvbVBQXDk8ZYE3v8uIVP/v7YZdqeBv6oAi3KnaoTpWFTfZ8LbCT3BOz7yySqbgIQpy1wi/bdJP1DfVBOm5x15MJ679T8Hy04S4HsfxuQwHcm8xZr1zz42YKTkGbN/qjg+GdS2xVpMYjDkEmtahFhC9GKMtHhkepgFRN34H3isZwe4lkSNAm8jY7ORH38XLAd7WdesiNYH6tWi1mytyaRucGiflJVSgM1w2wltEDwQai33NAzeBYtI3XN/J4yOC+gI1blKgOAIg/CUT7FbQaYUwg==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=WJ0R/FHKJeJHlkgIXcqFzYMFjKpaRWXXruAdTOLzDhA=;
+ b=cG5knK00A2B2NxXIt+zTatZqIZjVsc1ASel6k7D1XlFKKHbxf7u43/5ZVsZjnhYGIMbvp4n8p1rImgWxLUsgYILGMvawt/VXLnhF4mJkmuGNlW+aqEmnLSKcTOuqWty78o1ywgkqIwpzNa+JJgOpfFgQHCfAvOVdPIthKBNAIoE=
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
+ by BY5PR10MB4353.namprd10.prod.outlook.com (2603:10b6:a03:201::7) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.5813.14; Fri, 11 Nov
+ 2022 20:29:55 +0000
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::b500:ee42:3ca6:8a9e]) by BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::b500:ee42:3ca6:8a9e%6]) with mapi id 15.20.5813.013; Fri, 11 Nov 2022
+ 20:29:54 +0000
+From:   Chuck Lever III <chuck.lever@oracle.com>
+To:     Jeff Layton <jlayton@kernel.org>
+CC:     Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] lockd: fix file selection in nlmsvc_cancel_blocked
+Thread-Topic: [PATCH 3/4] lockd: fix file selection in nlmsvc_cancel_blocked
+Thread-Index: AQHY9gTwwKmHpOWzOECaqHw1tBDcK646LKuA
+Date:   Fri, 11 Nov 2022 20:29:54 +0000
+Message-ID: <1AE4E7CF-F76B-42E8-90D7-5DA52AFDE66E@oracle.com>
+References: <20221111193639.346992-1-jlayton@kernel.org>
+ <20221111193639.346992-4-jlayton@kernel.org>
+In-Reply-To: <20221111193639.346992-4-jlayton@kernel.org>
+Accept-Language: en-US
 Content-Language: en-US
-CC:     Anna Schumaker <anna@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>
-From:   Anders Blomdell <anders.blomdell@control.lth.se>
-To:     <linux-nfs@vger.kernel.org>
-Subject: Kernel 6.0.5 breaks virtual machines that boot from nfs mounted qcow2
- images
-Content-Type: text/plain; charset="UTF-8"; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Originating-IP: [130.235.139.100]
-X-ClientProxiedBy: wexc010.uw.lu.se (130.235.59.254) To wexc007.uw.lu.se
- (130.235.59.251)
-X-CrossPremisesHeadersFilteredBySendConnector: wexc007.uw.lu.se
-X-OrganizationHeadersPreserved: wexc007.uw.lu.se
-Received-SPF: Pass (wedge010.net.lu.se: domain of
- anders.blomdell@control.lth.se designates 130.235.59.251 as permitted sender)
- receiver=wedge010.net.lu.se; client-ip=130.235.59.251; helo=wexc007.uw.lu.se;
-X-CrossPremisesHeadersFilteredBySendConnector: wedge010.net.lu.se
-X-OrganizationHeadersPreserved: wedge010.net.lu.se
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-mailer: Apple Mail (2.3696.120.41.1.1)
+x-ms-publictraffictype: Email
+x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|BY5PR10MB4353:EE_
+x-ms-office365-filtering-correlation-id: 7e0b1a12-fce7-47c5-142c-08dac4237e55
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: loxsVKC9yVMuZMkOy5g07y5Jh4VpPyWtv1k3YNU3NJvtuWnDFYM+iECbOOvl3T3bsvZSwLM4UCS10CJmdbD16amh7VmVCtB/guju/M+Gl0ArySfBBbh1Zd5czdQEHTf96TPT6oQD+SlEL4zO0luSRsAGNSWXA9zcC7rl6mry7TZybVqIOcAV3B2UP+CWJT+ixAACWWhXEh6iYjIdAZYJ1tanR4FG5rnsEUImuljAPqLOobFUxuCt8wue4aBgvsdcZRMOyBtImRWTOqGg1qK5RRPpprAoPw4mX2X7/Pz18NlOH0a++u3q11yNb8SmR7dw60dp/kiJ/gmFOA7tXWpPDjH16O9y3lwNktCA+yvf59MtIRBPqbxt9Kqms1+CS0PjMNLBBU64oe9WXGEJFaKyJ+bQXwVzE9H482bFgHdr1ZykR+exQ2Ups9GkOnYmkedK5cwdsMkbMbO+WFKAzrN+INU5SjZZy82oL6ebZqTD6s+/DtPbM+jBDlRDrylMsqdzFSYOxWj3/Lzk9CsuIXc5sRVDZtSRwxw+51OVZZd7U4wE3MEA203K97uDu7f1RJMIVmj0vIXiLyqRLkJeBE6RQgU5wbLEsyemmUOMv71mmwrTNAa7k3McItwG5M+1Y7OCmhSjDFI9K0A0L8qv6mzUktcHZEM9jGrevq5IJIsiYAnJaqxItapNxeLowM205JjBKgYfqoxTEF+7+lGhlArV1919Ogtu8nr8XkepGNQFS+Bm2mwFxjKVxwC3jpfGcPxu3L0TnjqyCVc0NwMYWhBen0DnQJAcsoswBcYUv8a4jCk=
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230022)(136003)(396003)(346002)(366004)(39860400002)(376002)(451199015)(186003)(2616005)(26005)(53546011)(2906002)(6506007)(83380400001)(316002)(54906003)(6916009)(38070700005)(5660300002)(36756003)(8936002)(38100700002)(478600001)(6512007)(33656002)(41300700001)(8676002)(64756008)(66446008)(66476007)(86362001)(4326008)(71200400001)(6486002)(122000001)(91956017)(66946007)(66556008)(76116006)(45980500001);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?RfGcv5bU1VbwNhJwe9bOp77djzZjiP4Nc6PdJQb4zBT+JBFiP8p4PqhOfG18?=
+ =?us-ascii?Q?oOqsaG2vugVtWH+xjNvxejmnCNXVyT8AqF8kWkk/ims9khVJ3lqFu8VHL0VA?=
+ =?us-ascii?Q?gtiiHpWy1kobPCdjZHKy63MWETDR0Ll6i2C2BcrcVybZ0dztPBwXls4zpN2n?=
+ =?us-ascii?Q?eAyz4ICZHBwYyqrFYc3+R2N4fafi+l/EWJEBSv99LoFhIhltbH0EUpvx5Bk1?=
+ =?us-ascii?Q?yqYXV7he2Ag5TYuWCNtd7y5nWZQzSX2ivhoMcRrM9zncT9vhU1hHdIWM9928?=
+ =?us-ascii?Q?5JIJcaaByyLTVtFyqM3Ep683yGe7GlVF+BezxMLf9A14NDSMkRHm3tAST38x?=
+ =?us-ascii?Q?Ghfy4WnvIynSe5jMehITO0lr+Phaoo+N6Owz32Z2YXBEJMXugiOXRVnqUkV5?=
+ =?us-ascii?Q?/F8E5lSPmqwRKu7THVS055FFc4gGKFT0yFNusPphx/p25yzQM95hq9CPHMZl?=
+ =?us-ascii?Q?am8E+ODzPLD8q3eJiGsYWmxMGQuw3yAXRGYFJOjyUM03a8Jh/yPUMnCgVN7v?=
+ =?us-ascii?Q?M93Bs43Ib2HHv+uwft571uz7tTcdaIJELu+hSkkFgR9VSGTMx/kF26BD/vSw?=
+ =?us-ascii?Q?jNlxBWIqv9yJVgF16g1OtDmTy84kScgYdmPJgBVyYMsd1kk15Re9brrLKi1P?=
+ =?us-ascii?Q?iJxPeCa21Nr3xZcvQOzrou89F8CtqY8d9IM16I4xZuDmTohMF7P2RUoSOwP9?=
+ =?us-ascii?Q?mTdZu4fLUv9ucwNCNH+EUEV4qac6ah2k6Re0cdZPd+ZFSRaGPg14HATLVkk0?=
+ =?us-ascii?Q?M7kPQA8iR4RNZGevxgRuUUr22D5infC2uN7zsWKGIvz5Y8F1N9OURw/YDu9E?=
+ =?us-ascii?Q?vh5pFHtV+wMFcCWD4znNo/Ok+74ciA8pXnZdQ+TGfjY/Ca1oft2xp6+hnGEf?=
+ =?us-ascii?Q?p07PVfLsOj8+gbl7ml3Ipy9ljfZGGOK0bdeCMM8bpEMniq0X3TGhXRBVC7Xe?=
+ =?us-ascii?Q?nLkwAi3x2+G89R7kGnGWw2/znvujQTfOOkQAekM9yu6pHswXNd4UiOZuuIYl?=
+ =?us-ascii?Q?a5YRdIeDkbf/qXQ1Rpdy+etVerRybikUVf8d/X6GHUf1Hkj9CiyQzZAD6VFu?=
+ =?us-ascii?Q?fbFnmd3Vm5iojMliVTD8uhx5owIwT+YF0KFGwA63GnEY1769GhhYkO75XBUM?=
+ =?us-ascii?Q?HqqfBxnAJNywAV1ox1cNRSuAgJJ6Ys/MUgshZJbhiwFPxqlE7Jguq1Ogj/mF?=
+ =?us-ascii?Q?1g+ebfqwAszkS+AjCqiXLxm0OjtCskvtSI776u1a3QsOiA00e+kjEB3OtkZr?=
+ =?us-ascii?Q?1l/Zh/vkGUB2UEoVFAR/aJmMbrAV80azQaOt4SD7uTCmpZmUaEKpxGDUr5zI?=
+ =?us-ascii?Q?zte/ThSpcI/wty8qePEMJHWznle3TijGNg+jZpGd9sERqkkBixWGV8f/0TSC?=
+ =?us-ascii?Q?2gsvXsdd59/Xm0yufJ++JjCFHOlch7M3c2gfC8rzxbCiTXtyPEez53MTz/AR?=
+ =?us-ascii?Q?Vm1WFfswc8m10vGV85ievNFBaYKjgF0ckhgwvjjEelwI75lsHFkeWK4+2e8m?=
+ =?us-ascii?Q?gscyk58q+Y/7XRfQI/futeW53nB+a6miigG4qiliMHEAH+K5zZTK0TalSCej?=
+ =?us-ascii?Q?XVMzXVyfGdEq/bC/poBEjZh9ExDl9lxp/ZGvflOi9ldmXV8kOutuTtiQYdOc?=
+ =?us-ascii?Q?MQ=3D=3D?=
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <B7BB9F97E97BF740BB363CD03DB99AB2@namprd10.prod.outlook.com>
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0: rBLWsJwb5HfgvBV4gXUSIBT7w6YfDgIx6zO3Q5Iv5pxyelAOL0UpeGJusQcbrG3g27YIVPsc9pwmbFTMxLR5K3WHZ8CDjBOYojoGpFhZQd9hT22T3Uki4Qae89PKc1z2Zb0kMsJ65I1H0fYzhBFtnS9S4mWWQkV1Qs+qk4MuBJhafUW7aRQ1jLSTmkKNvcjQ7By2gXwxh+vdM+1Df9zQJZDLBIrqHv8Ok3VzYi7MN8Hyc1GhpaC7WXiuxCmUDmajMUb6cQilZpIq/xCVXZfYzNOlh4hkImZFeuPKOhVUcgoURL5qlJnj/2XcNXct1YU7iYNvTDdX89rIcGwPY6gGsVJMxUOnexRU/3qdd3lYrjpqME+9mxAKQGr/YDhihXmQ4OKhKH6KfcWbCdXKElGIxwa3+vC4QS6oiNx259wgqwWefSoGOOUc3FE9xFI0AiYAUdpDw1/ZgK39YF/oR4GI22aZBg1hxNVU1/oesYI7/qZVEMAGwCtNsotsO9wqEDkAzFf0SxfVNXkBsQP2h/WRSvdXeBwznmBDD+eSa2sLkRLWtb/rvE5eBes5MHt5icKIh6dQ3JVw1tUxKUC6RG8s2iFGqkHlDL73K/+noN7GXxhsl5qkHrJ+gqrTZPDJ/+orD0YISquzxMrKzWVfz14NQUhWdpWYfwbaqFFGjxtzmj7TIKCzVcHn+3Gw0z/8ItUUFHHsLMj6cKYgXs3ZoSSgM2Dv3iBB5MSQF8VN6TtHyRpfUzsdbRH4uFP3NrGE0osc8vIKpcbxuOlqa6GdsOLwsXvTc5K3w2rgpwG6eQZBPAeQXf2MpXj7Ydv//t1u6BsMqTm7FkPvHm/0QELsFtyU7g==
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 7e0b1a12-fce7-47c5-142c-08dac4237e55
+X-MS-Exchange-CrossTenant-originalarrivaltime: 11 Nov 2022 20:29:54.8282
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: KzTW/mtaSCbAMjrTJj/Y/a2Ttg9iD0FPIFvtl9odMrXAFM+Y+UlZK11qp2DDSlagdO+qlqcLaa9kAewAfQgdBQ==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BY5PR10MB4353
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.219,Aquarius:18.0.895,Hydra:6.0.545,FMLib:17.11.122.1
+ definitions=2022-11-11_10,2022-11-11_01,2022-06-22_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 adultscore=0 mlxscore=0
+ suspectscore=0 spamscore=0 malwarescore=0 bulkscore=0 phishscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2210170000
+ definitions=main-2211110140
+X-Proofpoint-GUID: CZkLwPIPvwRd9bryrlNuAvrJQbbaR8w_
+X-Proofpoint-ORIG-GUID: CZkLwPIPvwRd9bryrlNuAvrJQbbaR8w_
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The text below is an excerpt of  https://bugzilla.redhat.com/show_bug.cgi?id=2142132
-
-Description of problem:
-
-Virtual machines that boots from nfs mounted qcow2 images fails to boot when
-the nfs server runs kernel 6.0.5
-
-The erros are often
-
-   Booting from Hard Disk...
-   GRUB loading.
-   Welcome to GRUB!
-
-   error ../../grub-core/kern/dl.c:ELF header smaller than expected.
-   Entering rescue mode...
-   grub rescue>
-  
-Version-Release number of selected component (if applicable):
-
-   qemu-6.2.0-16.fc36.x86_64
-   kernel-6.0.5-200.fc36.x86_64
-
-How reproducible:
-
-   always
-
-Steps to Reproduce:
-1. Run a virtual machine with boot disk qcow2 formatted mounted from an nfs server
-    running kernel-6.0.5-200.fc36.x86_64
-
-Actual results:
-
-Machine fails to boot
-
-Expected results:
-
-Clean boot
-
-Additional info:
-
-Git repo is linux-stable
-
-A git bisect lands me at 310d9d5a5009a93377200b98daa2d84aa2bd8160
-
-So commit 746de1f86fcd works
-
-But cherry picking f0f6b614f83d 310d9d5a5009 bfbfb6182ad1 on top of 746de1f86fcd is broken.
-
-The bfbfb6182ad1 is picked due to the commit comment
-
-commit bfbfb6182ad1d7d184b16f25165faad879147f79
-Author: Al Viro <viro@zeniv.linux.org.uk>
-Date:   Sat Sep 10 22:14:02 2022 +0100
-
-     nfsd_splice_actor(): handle compound pages
-     
-     pipe_buffer might refer to a compound page (and contain more than a PAGE_SIZE
-     worth of data).  Theoretically it had been possible since way back, but
-     nfsd_splice_actor() hadn't run into that until copy_page_to_iter() change.
-     Fortunately, the only thing that changes for compound pages is that we
-     need to stuff each relevant subpage in and convert the offset into offset
-     in the first subpage.
-     
-     Acked-by: Chuck Lever <chuck.lever@oracle.com>
-     Tested-by: Benjamin Coddington <bcodding@redhat.com>
-     Fixes: f0f6b614f83d "copy_page_to_iter(): don't split high-order page in case of ITER_PIPE"
-     Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
-
-The bisect I did:
-
-git bisect start
-# status: waiting for both good and bad commits
-# bad: [3829606fc5dffeccdf80aebeed3aa75255257f35] Linux 6.0.5
-git bisect bad 3829606fc5dffeccdf80aebeed3aa75255257f35
-# status: waiting for good commit(s), bad commit known
-# good: [0b0649b1d27a768d37f23acf4d88e6e90cca7856] Linux 5.19.4
-git bisect good 0b0649b1d27a768d37f23acf4d88e6e90cca7856
-# good: [0b0649b1d27a768d37f23acf4d88e6e90cca7856] Linux 5.19.4
-git bisect good 0b0649b1d27a768d37f23acf4d88e6e90cca7856
-# good: [3d7cb6b04c3f3115719235cc6866b10326de34cd] Linux 5.19
-git bisect good 3d7cb6b04c3f3115719235cc6866b10326de34cd
-# good: [7c5c3a6177fa9646884114fc7f2e970b0bc50dc9] Merge tag 'for-linus' of git://git.kernel.org/pub/scm/virt/kvm/kvm
-git bisect good 7c5c3a6177fa9646884114fc7f2e970b0bc50dc9
-# bad: [eeac7730418563152b0e3172bce9bac4ff6d6bc4] perf pmu-events: Avoid passing pmu_events_map
-git bisect bad eeac7730418563152b0e3172bce9bac4ff6d6bc4
-# good: [f20c95b46b8fa3ad34b3ea2e134337f88591468b] Merge tag 'tpmdd-next-v5.20' of git://git.kernel.org/pub/scm/linux/kernel/git/jarkko/linux-tpmdd
-git bisect good f20c95b46b8fa3ad34b3ea2e134337f88591468b
-# good: [c993e07be023acdeec8e84e2e0743c52adb5fc94] Merge tag 'dma-mapping-5.20-2022-08-06' of git://git.infradead.org/users/hch/dma-mapping
-git bisect good c993e07be023acdeec8e84e2e0743c52adb5fc94
-# good: [e2ebff9c57fe4eb104ce4768f6ebcccf76bef849] vfs: Check the truncate maximum size in inode_newsize_ok()
-git bisect good e2ebff9c57fe4eb104ce4768f6ebcccf76bef849
-# good: [c8a684e2e110376c58f0bfa30fb3855d1e319670] Merge tag 'leds-5.20-rc1' of git://git.kernel.org/pub/scm/linux/kernel/git/pavel/linux-leds
-git bisect good c8a684e2e110376c58f0bfa30fb3855d1e319670
-# good: [c72687614b3627b3ea55d8d169e31cac70f56f3e] Merge tag 'rpmsg-v5.20' of git://git.kernel.org/pub/scm/linux/kernel/git/remoteproc/linux
-git bisect good c72687614b3627b3ea55d8d169e31cac70f56f3e
-# bad: [f30adc0d332fdfe5315cb98bd6a7ff0d5cf2aa38] Merge tag 'pull-work.iov_iter-rebased' of git://git.kernel.org/pub/scm/linux/kernel/git/viro/vfs
-git bisect bad f30adc0d332fdfe5315cb98bd6a7ff0d5cf2aa38
-# good: [60349fd52ecbb8b14545ff25aba2f2e230c4d618] remoteproc: using pm_runtime_resume_and_get instead of pm_runtime_get_sync
-git bisect good 60349fd52ecbb8b14545ff25aba2f2e230c4d618
-# good: [8520008417c581c4c22e39597f92b9814ae34c31] fold __pipe_get_pages() into pipe_get_pages()
-git bisect good 8520008417c581c4c22e39597f92b9814ae34c31
-# good: [746de1f86fcd33464acac047f111eea877f2f7a0] pipe_get_pages(): switch to append_pipe()
-git bisect good 746de1f86fcd33464acac047f111eea877f2f7a0
-# good: [5d5d353bed32dc3ea52e2619e0d1c60b17133b91] Merge tag 'rproc-v5.20' of git://git.kernel.org/pub/scm/linux/kernel/git/remoteproc/linux
-git bisect good 5d5d353bed32dc3ea52e2619e0d1c60b17133b91
-# bad: [f0f6b614f83dbae99d283b7b12ab5dd2e04df979] copy_page_to_iter(): don't split high-order page in case of ITER_PIPE
-git bisect bad f0f6b614f83dbae99d283b7b12ab5dd2e04df979
-# bad: [310d9d5a5009a93377200b98daa2d84aa2bd8160] expand those iov_iter_advance()...
-git bisect bad 310d9d5a5009a93377200b98daa2d84aa2bd8160
-# first bad commit: [310d9d5a5009a93377200b98daa2d84aa2bd8160] expand those iov_iter_advance()...
 
 
--- 
-Anders Blomdell                  Email: anders.blomdell@control.lth.se
-Department of Automatic Control
-Lund University                  Phone:    +46 46 222 4625
-P.O. Box 118
-SE-221 00 Lund, Sweden
+> On Nov 11, 2022, at 2:36 PM, Jeff Layton <jlayton@kernel.org> wrote:
+>=20
+> We currently do a lock_to_openmode call based on the arguments from the
+> NLM_UNLOCK call, but that will always set the fl_type of the lock to
+> F_UNLCK, the the O_RDONLY descriptor is always chosen.
+
+Except for the above sentence, these all look sane to me.
+I can apply them to nfsd's for-next once they've seen some
+review on fsdevel, as you mentioned in the other thread.
+
+
+> Fix it to use the file_lock from the block instead.
+>=20
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+> fs/lockd/svclock.c | 7 ++++---
+> 1 file changed, 4 insertions(+), 3 deletions(-)
+>=20
+> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> index 9eae99e08e69..4e30f3c50970 100644
+> --- a/fs/lockd/svclock.c
+> +++ b/fs/lockd/svclock.c
+> @@ -699,9 +699,10 @@ nlmsvc_cancel_blocked(struct net *net, struct nlm_fi=
+le *file, struct nlm_lock *l
+> 	block =3D nlmsvc_lookup_block(file, lock);
+> 	mutex_unlock(&file->f_mutex);
+> 	if (block !=3D NULL) {
+> -		mode =3D lock_to_openmode(&lock->fl);
+> -		vfs_cancel_lock(block->b_file->f_file[mode],
+> -				&block->b_call->a_args.lock.fl);
+> +		struct file_lock *fl =3D &block->b_call->a_args.lock.fl;
+> +
+> +		mode =3D lock_to_openmode(fl);
+> +		vfs_cancel_lock(block->b_file->f_file[mode], fl);
+> 		status =3D nlmsvc_unlink_block(block);
+> 		nlmsvc_release_block(block);
+> 	}
+> --=20
+> 2.38.1
+>=20
+
+--
+Chuck Lever
+
+
+
