@@ -2,73 +2,80 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 04734C4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Nov 2022 21:55:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E4A2C433FE
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Nov 2022 21:55:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233179AbiKKVzn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 11 Nov 2022 16:55:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59752 "EHLO
+        id S233353AbiKKVzr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 11 Nov 2022 16:55:47 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59762 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231911AbiKKVzl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2022 16:55:41 -0500
+        with ESMTP id S231564AbiKKVzo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2022 16:55:44 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5AFB64877F;
-        Fri, 11 Nov 2022 13:55:41 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 846494877F;
+        Fri, 11 Nov 2022 13:55:43 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id E4C62620E4;
-        Fri, 11 Nov 2022 21:55:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C48F3C433C1;
-        Fri, 11 Nov 2022 21:55:39 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 1EE75620D5;
+        Fri, 11 Nov 2022 21:55:43 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 06CF6C433D6;
+        Fri, 11 Nov 2022 21:55:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1668203740;
-        bh=ppNuqHgfgh6VS8z+UdUsS9MYS2XQh0sPVUBYG7uz4TE=;
-        h=From:To:Cc:Subject:Date:From;
-        b=fiOzLjpyLkR8q4H4aAPW+JUpi1X5Q8ugD8zZsPZdwmqDOqg6IE9KXFmud7ZgU8+nj
-         wi8h8HiWNLeEhKFQfbcq8U3txfkwcxen0LdO6XqKd57vj1+9cTujXIXDDmjOjGFD7r
-         zn1RrHFkMhH+iylcsvYkMSj3hkx0Ni/OOg0+95PlyX4n54XJTLz7b+7/E+TcCvrayn
-         98HpwN1sst238js2jtM+kytvQjn2AGkztVWGqxDe0aPWsKWqDIWOQ5MT4PXf/P+l6G
-         x9VGbcTpaVKL5BNBmCb18Bx4ORZzGVJUPfOYju4l1SP3OMm5pDtwSK4hhSnnto1pPy
-         CiTk6BSixoKJA==
+        s=k20201202; t=1668203742;
+        bh=Ex1Tus6ZTu7zMmrEK18Z5Di1hLUKGsUx2db/ut+O8ow=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=bRXVH4BprFTg9NTv4QvMskUAiF4ZO+5neFne/OhkXcGO0uti3u86o7em8ybzCddnb
+         8Kj3xZIE+dhuaVJ6Iet309weXodjY9uETxOSG6KrOZHhQkLPvAbAOHqn+Jn8GB9YQ4
+         Caj139sq1Bd9dhO3Gac1ztiZBclme7cC+w6HIaJT7tZdsEzV6iFYZsptPDAn2XhM7t
+         CGxO0uae0IQwbBLVjIuNwJfNi1Qy7radcTS8rTHpH8vfrfQrKrdQyY+kZ9Rn6BmycX
+         EEOdwvm4k4hyweuu1haWDfb5XnsquQ61qcS6bIFssXHdEnKVoxC6vGFNOL53Qv97yy
+         TmjsQVFnpdIGQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     chuck.lever@oracle.com
 Cc:     linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com,
         linux-fsdevel@vger.kernel.org
-Subject: [PATCH 0/4] filelock: WARN when @filp and fl_file don't match
-Date:   Fri, 11 Nov 2022 16:55:34 -0500
-Message-Id: <20221111215538.356543-1-jlayton@kernel.org>
+Subject: [PATCH 3/4] lockd: fix file selection in nlmsvc_cancel_blocked
+Date:   Fri, 11 Nov 2022 16:55:37 -0500
+Message-Id: <20221111215538.356543-4-jlayton@kernel.org>
 X-Mailer: git-send-email 2.38.1
+In-Reply-To: <20221111215538.356543-1-jlayton@kernel.org>
+References: <20221111215538.356543-1-jlayton@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Eventually, I'd like to reduce the redundant arguments to the locking
-APIs, but to get there we need to ensure the callers all set their file
-locks sanely.
+We currently do a lock_to_openmode call based on the arguments from the
+NLM_UNLOCK call, but that will always set the fl_type of the lock to
+F_UNLCK, and the O_RDONLY descriptor is always chosen.
 
-Adding the WARN_ON_ONCEs helped to find a couple of warts in lockd's
-file handling. The first 3 patches fix those.
+Fix it to use the file_lock from the block instead.
 
-I'd like to see these included in v6.2, with an eye toward a locking API
-cleanup in v6.3.
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/lockd/svclock.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-Thanks,
-
-Jeff Layton (4):
-  lockd: set missing fl_flags field when retrieving args
-  lockd: ensure we use the correct file description when unlocking
-  lockd: fix file selection in nlmsvc_cancel_blocked
-  filelock: WARN_ON_ONCE when ->fl_file and filp don't match
-
- fs/lockd/svc4proc.c |  1 +
- fs/lockd/svclock.c  | 17 ++++++++++-------
- fs/lockd/svcproc.c  |  1 +
- fs/locks.c          |  3 +++
- 4 files changed, 15 insertions(+), 7 deletions(-)
-
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 9eae99e08e69..4e30f3c50970 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -699,9 +699,10 @@ nlmsvc_cancel_blocked(struct net *net, struct nlm_file *file, struct nlm_lock *l
+ 	block = nlmsvc_lookup_block(file, lock);
+ 	mutex_unlock(&file->f_mutex);
+ 	if (block != NULL) {
+-		mode = lock_to_openmode(&lock->fl);
+-		vfs_cancel_lock(block->b_file->f_file[mode],
+-				&block->b_call->a_args.lock.fl);
++		struct file_lock *fl = &block->b_call->a_args.lock.fl;
++
++		mode = lock_to_openmode(fl);
++		vfs_cancel_lock(block->b_file->f_file[mode], fl);
+ 		status = nlmsvc_unlink_block(block);
+ 		nlmsvc_release_block(block);
+ 	}
 -- 
 2.38.1
 
