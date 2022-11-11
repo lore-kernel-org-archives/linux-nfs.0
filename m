@@ -2,105 +2,147 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 14E69C4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Nov 2022 14:53:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 271EDC433FE
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Nov 2022 15:08:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233776AbiKKOxQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 11 Nov 2022 09:53:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56906 "EHLO
+        id S234857AbiKKPIx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 11 Nov 2022 10:08:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35226 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233967AbiKKOxO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2022 09:53:14 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E71B35E9E5;
-        Fri, 11 Nov 2022 06:53:12 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 2F6BEB8262D;
-        Fri, 11 Nov 2022 14:53:11 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AC919C433D6;
-        Fri, 11 Nov 2022 14:53:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1668178389;
-        bh=WGPrvryZfOFC3wzVBHxzozHV97DRR/WI/YY1vZ/2/qE=;
-        h=In-Reply-To:References:From:Date:Subject:To:Cc:From;
-        b=EoNlpBMNR1ejsTCtegykgDZlopZro00NIke6A2KclFEqsmSdnfH+ul/G/mMGQgvaD
-         Cbd4ng3JRSeDL7S7/wrTgoTTf3nXutv2+6gUlR8CZbWnfm26pdLK5YaJ/BLwVPE//0
-         6i1xJD4nA46ZkJ72rfMGU6QkgSbUAsDQruNsTbSLZnGfVKhCrZifT6cp4cTNJvjW4s
-         9nH/QMKqatRhijj7R2P8oQt6EbuJU9vcaKVvCZKEgHEkfZS+3CQHSOvBQkUWIBuWRs
-         M5CSt894nfvGqdFLVMYrtX4cvqgjOspX3EMTmkNRbncYFpE6otDOvPIrFd1186KKKL
-         8i8ABK+aeOxtg==
-Received: by mail-oa1-f47.google.com with SMTP id 586e51a60fabf-12c8312131fso5651905fac.4;
-        Fri, 11 Nov 2022 06:53:09 -0800 (PST)
-X-Gm-Message-State: ANoB5pmSkGN1ZlbttgRIUpBoPoVx9aOfj+XihP+U7Pj0u/qYpNvac1pU
-        TEuU9X0FH4FPtQp0MM01f7k7Wb7OnRnTeTK7xBs=
-X-Google-Smtp-Source: AA0mqf6vJpHLx34mdSsrAzt/LKXi2o4W6WHbkOsKLVu8I5IX1EvXNngZJHlIpEv2ym4TxyVwGPbZMTx23gLOrARs2e0=
-X-Received: by 2002:a05:6870:5882:b0:13d:5167:43e3 with SMTP id
- be2-20020a056870588200b0013d516743e3mr1081624oab.257.1668178388804; Fri, 11
- Nov 2022 06:53:08 -0800 (PST)
+        with ESMTP id S234864AbiKKPH6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2022 10:07:58 -0500
+Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 59E8276FBC;
+        Fri, 11 Nov 2022 07:05:50 -0800 (PST)
+Received: from dggemv704-chm.china.huawei.com (unknown [172.30.72.53])
+        by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4N827v4msrz15MVY;
+        Fri, 11 Nov 2022 23:05:31 +0800 (CST)
+Received: from kwepemm600015.china.huawei.com (7.193.23.52) by
+ dggemv704-chm.china.huawei.com (10.3.19.47) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
+ 15.1.2375.31; Fri, 11 Nov 2022 23:05:46 +0800
+Received: from huawei.com (10.175.101.6) by kwepemm600015.china.huawei.com
+ (7.193.23.52) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id 15.1.2375.31; Fri, 11 Nov
+ 2022 23:05:45 +0800
+From:   ChenXiaoSong <chenxiaosong2@huawei.com>
+To:     <trond.myklebust@hammerspace.com>, <anna@kernel.org>
+CC:     <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <chenxiaosong2@huawei.com>, <yi.zhang@huawei.com>,
+        <zhangxiaoxu5@huawei.com>
+Subject: [PATCH] NFSv4.1: handle memory allocation failure in nfs4_schedule_state_manager()
+Date:   Sat, 12 Nov 2022 00:10:33 +0800
+Message-ID: <20221111161033.899541-1-chenxiaosong2@huawei.com>
+X-Mailer: git-send-email 2.31.1
 MIME-Version: 1.0
-Received: by 2002:a05:6839:1a4e:0:0:0:0 with HTTP; Fri, 11 Nov 2022 06:53:08
- -0800 (PST)
-In-Reply-To: <20221110155522.556225-1-amir73il@gmail.com>
-References: <20221110155522.556225-1-amir73il@gmail.com>
-From:   Namjae Jeon <linkinjeon@kernel.org>
-Date:   Fri, 11 Nov 2022 23:53:08 +0900
-X-Gmail-Original-Message-ID: <CAKYAXd--CCur4Pd9RhSTzV3ra7CV8zqsDgj-iOerun0sub1Xdw@mail.gmail.com>
-Message-ID: <CAKYAXd--CCur4Pd9RhSTzV3ra7CV8zqsDgj-iOerun0sub1Xdw@mail.gmail.com>
-Subject: Re: [PATCH] vfs: fix copy_file_range() averts filesystem freeze protection
-To:     Amir Goldstein <amir73il@gmail.com>
-Cc:     Al Viro <viro@zeniv.linux.org.uk>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Olga Kornievskaia <olga.kornievskaia@gmail.com>,
-        Luis Henriques <lhenriques@suse.com>,
-        linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 7BIT
+Content-Type:   text/plain; charset=US-ASCII
+X-Originating-IP: [10.175.101.6]
+X-ClientProxiedBy: dggems701-chm.china.huawei.com (10.3.19.178) To
+ kwepemm600015.china.huawei.com (7.193.23.52)
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-2022-11-11 0:55 GMT+09:00, Amir Goldstein <amir73il@gmail.com>:
-> Commit 868f9f2f8e00 ("vfs: fix copy_file_range() regression in cross-fs
-> copies") removed fallback to generic_copy_file_range() for cross-fs
-> cases inside vfs_copy_file_range().
->
-> To preserve behavior of nfsd and ksmbd server-side-copy, the fallback to
-> generic_copy_file_range() was added in nfsd and ksmbd code, but that
-> call is missing sb_start_write(), fsnotify hooks and more.
->
-> Ideally, nfsd and ksmbd would pass a flag to vfs_copy_file_range() that
-> will take care of the fallback, but that code would be subtle and we got
-> vfs_copy_file_range() logic wrong too many times already.
->
-> Instead, add a flag to explicitly request vfs_copy_file_range() to
-> perform only generic_copy_file_range() and let nfsd and ksmbd use this
-> flag only in the fallback path.
->
-> This choise keeps the logic changes to minimum in the non-nfsd/ksmbd code
-> paths to reduce the risk of further regressions.
->
-> Fixes: 868f9f2f8e00 ("vfs: fix copy_file_range() regression in cross-fs
-> copies")
-> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
-> ---
->
-> Hi Al,
->
-> Another fix for the long tradition of copy_file_range() regressions.
-> This one only affected cross-fs server-side-copy from nfsd/ksmbd.
->
-> I ran the copy_range fstests group on ext4/xfs/overlay to verify no
-> regressions in local fs and nfsv3/nfsv4 to test server-side-copy.
->
-> I also patched copy_file_range() to test the nfsd fallback code on
-> local fs.
->
-> Namje, could you please test ksmbd.
-Works fine. You can add tested-by tag for ksmbd.
-Tested-by: Namjae Jeon <linkinjeon@kernel.org>
+If memory allocation fail in nfs4_schedule_state_manager() when mount
+NFSv4.1/NFSv4.2, nfs4_run_state_manager() will not be called, and current
+construction state will never be marked as ready or failed,
+nfs_wait_client_init_complete() will wait forever, as shown below:
 
->
-> Thanks,
-> Amir.
+  syscall(mount)
+  ...
+    nfs4_init_client
+      nfs4_discover_server_trunking
+        nfs41_discover_server_trunking
+          nfs4_schedule_state_manager
+            kthread_run /* nfs4_run_state_manager() will not be called */
+              kthread_create
+                kthread_create_on_node
+                  __kthread_create_on_node
+                    create = kmalloc() = NULL
+                    return ERR_PTR(-ENOMEM)
+          nfs_wait_client_init_complete /* wait forever */
+
+Fix this by checking return value of nfs4_schedule_state_manager() which
+can indicate whether kernel thread is created successful.
+
+Signed-off-by: ChenXiaoSong <chenxiaosong2@huawei.com>
+---
+ fs/nfs/nfs4_fs.h   |  2 +-
+ fs/nfs/nfs4state.c | 15 ++++++++++-----
+ 2 files changed, 11 insertions(+), 6 deletions(-)
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index cfef738d765e..74c6d1504010 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -502,7 +502,7 @@ extern int nfs4_state_mark_reclaim_nograce(struct nfs_client *, struct nfs4_stat
+ extern void nfs4_schedule_lease_recovery(struct nfs_client *);
+ extern int nfs4_wait_clnt_recover(struct nfs_client *clp);
+ extern int nfs4_client_recover_expired_lease(struct nfs_client *clp);
+-extern void nfs4_schedule_state_manager(struct nfs_client *);
++extern int nfs4_schedule_state_manager(struct nfs_client *);
+ extern void nfs4_schedule_path_down_recovery(struct nfs_client *clp);
+ extern int nfs4_schedule_stateid_recovery(const struct nfs_server *, struct nfs4_state *);
+ extern int nfs4_schedule_migration_recovery(const struct nfs_server *);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index a2d2d5d1b088..127027f777c8 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -376,8 +376,9 @@ int nfs41_discover_server_trunking(struct nfs_client *clp,
+ 		else
+ 			set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+ 	}
+-	nfs4_schedule_state_manager(clp);
+-	status = nfs_wait_client_init_complete(clp);
++	status = nfs4_schedule_state_manager(clp);
++	if (!status)
++		status = nfs_wait_client_init_complete(clp);
+ 	if (status < 0)
+ 		nfs_put_client(clp);
+ 	return status;
+@@ -1201,11 +1202,12 @@ static void nfs4_clear_state_manager_bit(struct nfs_client *clp)
+ /*
+  * Schedule the nfs_client asynchronous state management routine
+  */
+-void nfs4_schedule_state_manager(struct nfs_client *clp)
++int nfs4_schedule_state_manager(struct nfs_client *clp)
+ {
+ 	struct task_struct *task;
+ 	char buf[INET6_ADDRSTRLEN + sizeof("-manager") + 1];
+ 	struct rpc_clnt *cl = clp->cl_rpcclient;
++	int ret = 0;
+ 
+ 	while (cl != cl->cl_parent)
+ 		cl = cl->cl_parent;
+@@ -1213,7 +1215,7 @@ void nfs4_schedule_state_manager(struct nfs_client *clp)
+ 	set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
+ 	if (test_and_set_bit(NFS4CLNT_MANAGER_AVAILABLE, &clp->cl_state) != 0) {
+ 		wake_up_var(&clp->cl_state);
+-		return;
++		goto out;
+ 	}
+ 	set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state);
+ 	__module_get(THIS_MODULE);
+@@ -1228,13 +1230,16 @@ void nfs4_schedule_state_manager(struct nfs_client *clp)
+ 	rcu_read_unlock();
+ 	task = kthread_run(nfs4_run_state_manager, clp, "%s", buf);
+ 	if (IS_ERR(task)) {
++		ret = PTR_ERR(task);
+ 		printk(KERN_ERR "%s: kthread_run: %ld\n",
+-			__func__, PTR_ERR(task));
++			__func__, ret);
+ 		nfs4_clear_state_manager_bit(clp);
+ 		clear_bit(NFS4CLNT_MANAGER_AVAILABLE, &clp->cl_state);
+ 		nfs_put_client(clp);
+ 		module_put(THIS_MODULE);
+ 	}
++out:
++	return ret;
+ }
+ 
+ /*
+-- 
+2.31.1
+
