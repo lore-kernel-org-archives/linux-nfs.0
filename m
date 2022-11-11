@@ -2,42 +2,41 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 01167C4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Nov 2022 19:36:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 90B64C43219
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Nov 2022 19:36:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234139AbiKKTgr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S234015AbiKKTgr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 11 Nov 2022 14:36:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37718 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37722 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234015AbiKKTgp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2022 14:36:45 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 03A761707F
+        with ESMTP id S234123AbiKKTgq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2022 14:36:46 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 532EF67F4E
         for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2022 11:36:45 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 923D6620C3
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2022 19:36:44 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 83FD5C43470;
-        Fri, 11 Nov 2022 19:36:43 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id F0AF3B8279D
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2022 19:36:43 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3DD88C433D7;
+        Fri, 11 Nov 2022 19:36:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1668195404;
-        bh=gkZZ3phGmC29ywySX6JEl3OOS1JDkneQIJNXEdcO4Qw=;
+        s=k20201202; t=1668195402;
+        bh=GUr/pvjzS+Gbv0NQ95I+TzMbAVc9/2m30a4t6CDpvKI=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=dbX7qT0T5QYD+wlk01tD7bgDCYCW1er+/FbUL65+roGJY9Xqn9LiDPOa74MT35Wh2
-         rEncoevgTdMMhK/sfRCXytNngnG4nnGA960XP9QlsckVLBm++wqksRlaFqAIL48we3
-         WE85XCNbktBqfoZZgBoC8G8IjcT/ZEb6Z5l/Oq4k9rMDinH8DeomVUHWovVNVCmXFn
-         XrS3eYRJt97uOt4v+NA39WpdjCXak/PZ7ps34m8/DaMRpqtSA+Vw/BfIR6u/Sks4bD
-         UCpf3Iod0uzpuDacUzfmrzE1x2RJxgKJ+d89sWfz3O3weL7j8X03SGYhSsOZpyvEpS
-         ATGpRvTv7PVvw==
+        b=PLx+V7GDpZkso7/H1/0LJsMesu61FSHVpfOxPsTKqvlesPInHVRBwcm6UkmZp1D5F
+         zywOOwR83dpr+2x8xZOddn2PH7WDttFk6Ot6qDkhzFXJRiK/6+5higwv9jvPsS4msW
+         tXMbq9znhGThJhkcyU7gIdN7FaNdfxXHq0jCXvFYOzCPCxKjBVoCWiH9Xd+QksAd3j
+         AuOCdBY49x1GgCf5uPlNxuB1+KWv/dL+sqyxjojlTs/DdLCzz1QE7sE6Em3TgLOeGP
+         rrdhpifuThHcbxJaOpoVoKOa4FHp8G05kEUQkIOlzwHdOSvsL1uAzFBGbIyr+v0CDC
+         6G7OFDQ/ny2iA==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     chuck.lever@oracle.com
-Cc:     trond.myklebust@hammerspace.com, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trondmy@hammerspace.com>
-Subject: [PATCH 4/4] filelock: WARN_ON_ONCE when ->fl_file and filp don't match
-Date:   Fri, 11 Nov 2022 14:36:39 -0500
-Message-Id: <20221111193639.346992-5-jlayton@kernel.org>
+Cc:     trond.myklebust@hammerspace.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 2/4] lockd: ensure we use the correct file description when unlocking
+Date:   Fri, 11 Nov 2022 14:36:37 -0500
+Message-Id: <20221111193639.346992-3-jlayton@kernel.org>
 X-Mailer: git-send-email 2.38.1
 In-Reply-To: <20221111193639.346992-1-jlayton@kernel.org>
 References: <20221111193639.346992-1-jlayton@kernel.org>
@@ -47,52 +46,37 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-vfs_lock_file, vfs_test_lock and vfs_cancel_lock all take both a struct
-file argument and a file_lock. The file_lock has a fl_file field in it
-howevever and it _must_ match the file passed in.
+Shared locks are set on O_RDONLY descriptors and exclusive locks are set
+on O_WRONLY ones. nlmsvc_unlock however calls vfs_lock_file twice, once
+for each descriptor, but it doesn't reset fl_file. Ensure that it does.
 
-While most of the locks.c routines use the separately-passed file
-argument, some filesystems rely on fl_file being filled out correctly.
-
-I'm working on a patch series to remove the redundant argument from
-these routines, but for now, let's ensure that the callers always set
-this properly by issuing a WARN_ON_ONCE if they ever don't match.
-
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trondmy@hammerspace.com>
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/locks.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/lockd/svclock.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 607f94a0e789..5876c8ff0edc 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -2146,6 +2146,7 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
-  */
- int vfs_test_lock(struct file *filp, struct file_lock *fl)
- {
-+	WARN_ON_ONCE(filp != fl->fl_file);
- 	if (filp->f_op->lock)
- 		return filp->f_op->lock(filp, F_GETLK, fl);
- 	posix_test_lock(filp, fl);
-@@ -2295,6 +2296,7 @@ int fcntl_getlk(struct file *filp, unsigned int cmd, struct flock *flock)
-  */
- int vfs_lock_file(struct file *filp, unsigned int cmd, struct file_lock *fl, struct file_lock *conf)
- {
-+	WARN_ON_ONCE(filp != fl->fl_file);
- 	if (filp->f_op->lock)
- 		return filp->f_op->lock(filp, cmd, fl);
- 	else
-@@ -2663,6 +2665,7 @@ void locks_remove_file(struct file *filp)
-  */
- int vfs_cancel_lock(struct file *filp, struct file_lock *fl)
- {
-+	WARN_ON_ONCE(filp != fl->fl_file);
- 	if (filp->f_op->lock)
- 		return filp->f_op->lock(filp, F_CANCELLK, fl);
- 	return 0;
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 9c1aa75441e1..9eae99e08e69 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -659,11 +659,13 @@ nlmsvc_unlock(struct net *net, struct nlm_file *file, struct nlm_lock *lock)
+ 	nlmsvc_cancel_blocked(net, file, lock);
+ 
+ 	lock->fl.fl_type = F_UNLCK;
+-	if (file->f_file[O_RDONLY])
+-		error = vfs_lock_file(file->f_file[O_RDONLY], F_SETLK,
++	lock->fl.fl_file = file->f_file[O_RDONLY];
++	if (lock->fl.fl_file)
++		error = vfs_lock_file(lock->fl.fl_file, F_SETLK,
+ 					&lock->fl, NULL);
+-	if (file->f_file[O_WRONLY])
+-		error = vfs_lock_file(file->f_file[O_WRONLY], F_SETLK,
++	lock->fl.fl_file = file->f_file[O_WRONLY];
++	if (lock->fl.fl_file)
++		error |= vfs_lock_file(lock->fl.fl_file, F_SETLK,
+ 					&lock->fl, NULL);
+ 
+ 	return (error < 0)? nlm_lck_denied_nolocks : nlm_granted;
 -- 
 2.38.1
 
