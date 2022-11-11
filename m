@@ -2,81 +2,69 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 90B64C43219
-	for <linux-nfs@archiver.kernel.org>; Fri, 11 Nov 2022 19:36:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F5A9C4332F
+	for <linux-nfs@archiver.kernel.org>; Fri, 11 Nov 2022 19:37:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234015AbiKKTgr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 11 Nov 2022 14:36:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37722 "EHLO
+        id S234123AbiKKThl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 11 Nov 2022 14:37:41 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37988 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234123AbiKKTgq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2022 14:36:46 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 532EF67F4E
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2022 11:36:45 -0800 (PST)
+        with ESMTP id S233965AbiKKThk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Nov 2022 14:37:40 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 48F047B228;
+        Fri, 11 Nov 2022 11:37:40 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id F0AF3B8279D
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Nov 2022 19:36:43 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3DD88C433D7;
-        Fri, 11 Nov 2022 19:36:42 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id D79A5620B9;
+        Fri, 11 Nov 2022 19:37:39 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 490ECC433D6;
+        Fri, 11 Nov 2022 19:37:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1668195402;
-        bh=GUr/pvjzS+Gbv0NQ95I+TzMbAVc9/2m30a4t6CDpvKI=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=PLx+V7GDpZkso7/H1/0LJsMesu61FSHVpfOxPsTKqvlesPInHVRBwcm6UkmZp1D5F
-         zywOOwR83dpr+2x8xZOddn2PH7WDttFk6Ot6qDkhzFXJRiK/6+5higwv9jvPsS4msW
-         tXMbq9znhGThJhkcyU7gIdN7FaNdfxXHq0jCXvFYOzCPCxKjBVoCWiH9Xd+QksAd3j
-         AuOCdBY49x1GgCf5uPlNxuB1+KWv/dL+sqyxjojlTs/DdLCzz1QE7sE6Em3TgLOeGP
-         rrdhpifuThHcbxJaOpoVoKOa4FHp8G05kEUQkIOlzwHdOSvsL1uAzFBGbIyr+v0CDC
-         6G7OFDQ/ny2iA==
-From:   Jeff Layton <jlayton@kernel.org>
-To:     chuck.lever@oracle.com
-Cc:     trond.myklebust@hammerspace.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 2/4] lockd: ensure we use the correct file description when unlocking
-Date:   Fri, 11 Nov 2022 14:36:37 -0500
-Message-Id: <20221111193639.346992-3-jlayton@kernel.org>
-X-Mailer: git-send-email 2.38.1
-In-Reply-To: <20221111193639.346992-1-jlayton@kernel.org>
-References: <20221111193639.346992-1-jlayton@kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+        s=k20201202; t=1668195459;
+        bh=nWaRwP/snHWppC/yNrCmHvi3W7vus7PaJekh2R7dz3I=;
+        h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
+        b=AtogUaO68Y46eGJOVXAZsFQ+i+VT/Ac+oDd99UGphEQ89ItCS/V7fMe7F2tIDlVve
+         vy4fc8VExGt2CKl2WwtrcGZR8w3dwVdsujt1X8nEgY5zHxpLrtI12W53RU50zsthio
+         OzdWKvzmIXZuJv826QwTtSVk5iAFn1kQ6wqw5WTMQbmj7Wp4DExqFvrPulwbTxsV33
+         Q//N+bDElEEfg1hr509ztDdknLAXDbCL9VTWf8jcCmjUPwEDKyI3hvjeBMZtbpN7hi
+         XzZYBgqmp50qGBk9EXXARgtk2SfdJixMvWX7eU7SuegGfFAQb0yfgBk9rMHlr8ClRI
+         14VQbs4grsYJQ==
+Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
+        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 29141C395FE;
+        Fri, 11 Nov 2022 19:37:39 +0000 (UTC)
+Subject: Re: [GIT PULL] 4th round of NFSD fixes for v6.1-rc
+From:   pr-tracker-bot@kernel.org
+In-Reply-To: <90885D9A-C975-4B82-BC17-137F80E14181@oracle.com>
+References: <90885D9A-C975-4B82-BC17-137F80E14181@oracle.com>
+X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
+X-PR-Tracked-Message-Id: <90885D9A-C975-4B82-BC17-137F80E14181@oracle.com>
+X-PR-Tracked-Remote: https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-6.1-4
+X-PR-Tracked-Commit-Id: 50256e4793a5e5ab77703c82a47344ad2e774a59
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: f9bbe0c99e5b76a76a1a7fe3bbdd7eaab9f5ab57
+Message-Id: <166819545915.1340.12265102164354320465.pr-tracker-bot@kernel.org>
+Date:   Fri, 11 Nov 2022 19:37:39 +0000
+To:     Chuck Lever III <chuck.lever@oracle.com>
+Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jlayton@kernel.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Shared locks are set on O_RDONLY descriptors and exclusive locks are set
-on O_WRONLY ones. nlmsvc_unlock however calls vfs_lock_file twice, once
-for each descriptor, but it doesn't reset fl_file. Ensure that it does.
+The pull request you sent on Fri, 11 Nov 2022 15:05:35 +0000:
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/lockd/svclock.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+> https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-6.1-4
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 9c1aa75441e1..9eae99e08e69 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -659,11 +659,13 @@ nlmsvc_unlock(struct net *net, struct nlm_file *file, struct nlm_lock *lock)
- 	nlmsvc_cancel_blocked(net, file, lock);
- 
- 	lock->fl.fl_type = F_UNLCK;
--	if (file->f_file[O_RDONLY])
--		error = vfs_lock_file(file->f_file[O_RDONLY], F_SETLK,
-+	lock->fl.fl_file = file->f_file[O_RDONLY];
-+	if (lock->fl.fl_file)
-+		error = vfs_lock_file(lock->fl.fl_file, F_SETLK,
- 					&lock->fl, NULL);
--	if (file->f_file[O_WRONLY])
--		error = vfs_lock_file(file->f_file[O_WRONLY], F_SETLK,
-+	lock->fl.fl_file = file->f_file[O_WRONLY];
-+	if (lock->fl.fl_file)
-+		error |= vfs_lock_file(lock->fl.fl_file, F_SETLK,
- 					&lock->fl, NULL);
- 
- 	return (error < 0)? nlm_lck_denied_nolocks : nlm_granted;
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/f9bbe0c99e5b76a76a1a7fe3bbdd7eaab9f5ab57
+
+Thank you!
+
 -- 
-2.38.1
-
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/prtracker.html
