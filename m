@@ -2,85 +2,84 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 72C29C4167B
-	for <linux-nfs@archiver.kernel.org>; Wed, 16 Nov 2022 15:17:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CB1DBC433FE
+	for <linux-nfs@archiver.kernel.org>; Wed, 16 Nov 2022 15:17:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233578AbiKPPRf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 16 Nov 2022 10:17:35 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36476 "EHLO
+        id S233627AbiKPPRg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 16 Nov 2022 10:17:36 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36448 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233496AbiKPPRc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Nov 2022 10:17:32 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 024EF4FF8E;
+        with ESMTP id S233540AbiKPPRd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Nov 2022 10:17:33 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72B184FF99;
         Wed, 16 Nov 2022 07:17:32 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id B2C15B81DC2;
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0A22E61E89;
+        Wed, 16 Nov 2022 15:17:32 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9A7DEC433D6;
         Wed, 16 Nov 2022 15:17:30 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9DB89C433C1;
-        Wed, 16 Nov 2022 15:17:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1668611849;
-        bh=eVaemk5bRp5UIAhx/BwapOwzeYPJ7UWbBodOfxndur8=;
-        h=From:To:Cc:Subject:Date:From;
-        b=F71CUEH5+o5c5rWc3RGIwNq4U9xmYW3X9g6dSZZKUNBri/UgqlEeQC+Cd7Nzbu6Gy
-         VRHH0BudcTr1hgViqIiw5Pk0eVnliQYu0MzP03imkse3UiZ4RgEkWKJQuznzgsRK82
-         eUCDv034JxLJnYSK8+krjpSWroUCUMoQ6LZT1BzoR8K1yChICmcr93oUmBwb2ykc7w
-         5oZYtYyrb8tK6g1GieJyOUMxhyRVI1XzoGcOssg/fwZScexdr+s6Fp1GVZRXX9w7tK
-         qwiBJtgpXWlqShpZabya3/nY8xWM1fp9l7pE+dpHnZDaIrtWMoNG8FXJ0HpNGt2/06
-         u84RlSTCfbelw==
+        s=k20201202; t=1668611851;
+        bh=TUD2k8y3eCAtEWkgfeRtEJwkTlc0W2hsoZ3J6u4H/dU=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=MnG3wSQSHPK5lq2pp3IPQJJSnvGfebGD8gee0jYnKZ016PUOhWPdlh8qobWv5/444
+         iZkTjL1eQVaOyCrTXNMNS5RMekMnEY1fEBnVmOys+SJUREB/TPv7rBLoUz4TrkvwYZ
+         5XggxGH9DStlz6i6dZHUXPOUjVaFjw8NYlNTnUAMypw+gRq65M3eYv8z+vWRp0GRL8
+         QfmvC6WClOaagAbkIz9J5mR4wyU0LP8uQ8M1ljq64oVxrFVKRVKchO3k3jNNa2RmlR
+         4IKmnkrmVTDpUn6UWSZ5kONUiVjkA3cqXBZnO4OPAkYAHVowgCk6mimheYuGy1JjX2
+         eaWQK4zpn11Bg==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     linux-fsdevel@vger.kernel.org
 Cc:     linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
         linux-cifs@vger.kernel.org, chuck.lever@oracle.com,
-        viro@zeniv.linux.org.uk, hch@lst.de
-Subject: [PATCH 0/7] fs: fix inode->i_flctx accesses
-Date:   Wed, 16 Nov 2022 10:17:19 -0500
-Message-Id: <20221116151726.129217-1-jlayton@kernel.org>
+        viro@zeniv.linux.org.uk, hch@lst.de, Xiubo Li <xiubli@redhat.com>
+Subject: [PATCH 2/7] ceph: use locks_inode_context helper
+Date:   Wed, 16 Nov 2022 10:17:21 -0500
+Message-Id: <20221116151726.129217-3-jlayton@kernel.org>
 X-Mailer: git-send-email 2.38.1
+In-Reply-To: <20221116151726.129217-1-jlayton@kernel.org>
+References: <20221116151726.129217-1-jlayton@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The inode->i_flctx field is set via a cmpxchg operation, which is a
-release op. This means that most callers need to use an acquire to
-access it.
+ceph currently doesn't access i_flctx safely. This requires a
+smp_load_acquire, as the pointer is set via cmpxchg (a release
+operation).
 
-This series adds a new helper function for that, and replaces the
-existing accesses of i_flctx with that. The later patches then convert
-the various subsystems that access i_flctx directly to use the new
-helper.
+Cc: Xiubo Li <xiubli@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/ceph/locks.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Assuming there are no objectsions, I'll plan to merge this for v6.2 via
-my tree. If any maintainers want to take the subsystem patches in via
-their trees, let me know and we'll work it out.
-
-Jeff Layton (7):
-  filelock: add a new locks_inode_context accessor function
-  ceph: use locks_inode_context helper
-  cifs: use locks_inode_context helper
-  ksmbd: use locks_inode_context helper
-  lockd: use locks_inode_context helper
-  nfs: use locks_inode_context helper
-  nfsd: use locks_inode_context helper
-
- fs/ceph/locks.c     |  4 ++--
- fs/cifs/file.c      |  2 +-
- fs/ksmbd/vfs.c      |  2 +-
- fs/lockd/svcsubs.c  |  4 ++--
- fs/locks.c          | 20 ++++++++++----------
- fs/nfs/delegation.c |  2 +-
- fs/nfs/nfs4state.c  |  2 +-
- fs/nfs/pagelist.c   |  2 +-
- fs/nfs/write.c      |  4 ++--
- fs/nfsd/nfs4state.c |  6 +++---
- include/linux/fs.h  | 14 ++++++++++++++
- 11 files changed, 38 insertions(+), 24 deletions(-)
-
+diff --git a/fs/ceph/locks.c b/fs/ceph/locks.c
+index 3e2843e86e27..f3b461c708a8 100644
+--- a/fs/ceph/locks.c
++++ b/fs/ceph/locks.c
+@@ -364,7 +364,7 @@ void ceph_count_locks(struct inode *inode, int *fcntl_count, int *flock_count)
+ 	*fcntl_count = 0;
+ 	*flock_count = 0;
+ 
+-	ctx = inode->i_flctx;
++	ctx = locks_inode_context(inode);
+ 	if (ctx) {
+ 		spin_lock(&ctx->flc_lock);
+ 		list_for_each_entry(lock, &ctx->flc_posix, fl_list)
+@@ -418,7 +418,7 @@ int ceph_encode_locks_to_buffer(struct inode *inode,
+ 				int num_fcntl_locks, int num_flock_locks)
+ {
+ 	struct file_lock *lock;
+-	struct file_lock_context *ctx = inode->i_flctx;
++	struct file_lock_context *ctx = locks_inode_context(inode);
+ 	int err = 0;
+ 	int seen_fcntl = 0;
+ 	int seen_flock = 0;
 -- 
 2.38.1
 
