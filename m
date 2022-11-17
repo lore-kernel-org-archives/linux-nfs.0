@@ -2,32 +2,32 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5154BC4332F
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Nov 2022 19:12:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6354CC4167B
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Nov 2022 19:12:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239803AbiKQTMR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S240431AbiKQTMR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 17 Nov 2022 14:12:17 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57610 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57950 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240555AbiKQTMM (ORCPT
+        with ESMTP id S240557AbiKQTMM (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Nov 2022 14:12:12 -0500
 Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 61D0287567;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 61383606A1;
         Thu, 17 Nov 2022 11:12:10 -0800 (PST)
 Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 953E963E516C;
+        by lithops.sigma-star.at (Postfix) with ESMTP id 6BD1663E5149;
         Thu, 17 Nov 2022 20:12:08 +0100 (CET)
 Received: from lithops.sigma-star.at ([127.0.0.1])
         by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id 2d-a3it2RGeZ; Thu, 17 Nov 2022 20:12:08 +0100 (CET)
+        with ESMTP id Ki1dMyhX9hbu; Thu, 17 Nov 2022 20:12:07 +0100 (CET)
 Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 4A76063E516F;
-        Thu, 17 Nov 2022 20:12:08 +0100 (CET)
+        by lithops.sigma-star.at (Postfix) with ESMTP id C5E7463E516C;
+        Thu, 17 Nov 2022 20:12:07 +0100 (CET)
 Received: from lithops.sigma-star.at ([127.0.0.1])
         by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id uDGT4ROq8FZk; Thu, 17 Nov 2022 20:12:08 +0100 (CET)
+        with ESMTP id O7S3p5HUjSNY; Thu, 17 Nov 2022 20:12:07 +0100 (CET)
 Received: from blindfold.corp.sigma-star.at (213-47-184-186.cable.dynamic.surfer.at [213.47.184.186])
-        by lithops.sigma-star.at (Postfix) with ESMTPSA id C32F463E516B;
+        by lithops.sigma-star.at (Postfix) with ESMTPSA id 4985B63E5149;
         Thu, 17 Nov 2022 20:12:07 +0100 (CET)
 From:   Richard Weinberger <richard@nod.at>
 To:     linux-nfs@vger.kernel.org
@@ -37,9 +37,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         raven@themaw.net, chris.chilvers@appsbroker.com,
         david.young@appsbroker.com, luis.turcitu@appsbroker.com,
         david@sigma-star.at, Richard Weinberger <richard@nod.at>
-Subject: [PATCH 2/3] fs: namei: Allow follow_down() to uncover auto mounts
-Date:   Thu, 17 Nov 2022 20:11:50 +0100
-Message-Id: <20221117191151.14262-3-richard@nod.at>
+Subject: [PATCH 1/3] NFSD: Teach nfsd_mountpoint() auto mounts
+Date:   Thu, 17 Nov 2022 20:11:49 +0100
+Message-Id: <20221117191151.14262-2-richard@nod.at>
 X-Mailer: git-send-email 2.26.2
 In-Reply-To: <20221117191151.14262-1-richard@nod.at>
 References: <20221117191151.14262-1-richard@nod.at>
@@ -49,30 +49,33 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This function is only used by NFSD to cross mount points.
-If a mount point is of type auto mount, follow_down() will
-not uncover it. Add LOOKUP_AUTOMOUNT to the lookup flags
-to have ->d_automount() called when NFSD walks down the
-mount tree.
+Currently nfsd_mountpoint() tests for mount points using d_mountpoint(),
+this works only when a mount point is already uncovered.
+In our case the mount point is of type auto mount and can be coverted.
+i.e. ->d_automount() was not called.
+
+Using d_managed() nfsd_mountpoint() can test whether a mount point is
+either already uncovered or can be uncovered later.
 
 Signed-off-by: Richard Weinberger <richard@nod.at>
 ---
- fs/namei.c | 2 +-
+ fs/nfsd/vfs.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 578c2110df02..000c4b84e6be 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -1462,7 +1462,7 @@ int follow_down(struct path *path)
- {
- 	struct vfsmount *mnt =3D path->mnt;
- 	bool jumped;
--	int ret =3D traverse_mounts(path, &jumped, NULL, 0);
-+	int ret =3D traverse_mounts(path, &jumped, NULL, LOOKUP_AUTOMOUNT);
-=20
- 	if (path->mnt !=3D mnt)
- 		mntput(mnt);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index f650afedd67f..157f0df0e93a 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -160,7 +160,7 @@ int nfsd_mountpoint(struct dentry *dentry, struct svc=
+_export *exp)
+ 		return 1;
+ 	if (nfsd4_is_junction(dentry))
+ 		return 1;
+-	if (d_mountpoint(dentry))
++	if (d_managed(dentry))
+ 		/*
+ 		 * Might only be a mountpoint in a different namespace,
+ 		 * but we need to check.
 --=20
 2.26.2
 
