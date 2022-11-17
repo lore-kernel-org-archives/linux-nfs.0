@@ -2,254 +2,117 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A756C43219
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Nov 2022 03:45:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E1592C433FE
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Nov 2022 04:58:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232097AbiKQDpQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 16 Nov 2022 22:45:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57350 "EHLO
+        id S233563AbiKQE6D (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 16 Nov 2022 23:58:03 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56668 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234454AbiKQDpL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Nov 2022 22:45:11 -0500
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B714D2DAB6
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Nov 2022 19:45:03 -0800 (PST)
-Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 2AH1uoKf025212;
-        Thu, 17 Nov 2022 03:44:59 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : in-reply-to : references; s=corp-2022-7-12;
- bh=59zWsvl1R0n4V5CvDvszGOHTVh3N7VHVhn5mJhjar4Y=;
- b=2vXpWpQBJ1cy3eALT3ez3EY7euqw6nrletir1jQwQYSLzmEIlSLuwpQeYBf6YmPvs3O3
- kAUEMyMK/KIEhjEz+8vIhCrMAsdAl/ImzKqywlrgiaItHCYgl05iIm3lIQrm5xdkt+OM
- sC6xQl0LXSetEdEVn+g+Mh+H3WckDZGYFfUJMtvVZgiThxwRoyraR6wRsX1CmR4QBcuD
- quy1oGcZQY+JW0B8utQRImf9lupfWhrt8VNtDMewKwe4W7E/6j3beWAJDJVFFynUnAQ/
- JOvjmjgqQog7C+0QkLaFPVUpu3U34qwDHNYnivevcoNrdwHzVMbGHMrpRXUlsxCaX3un /A== 
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.appoci.oracle.com [138.1.37.129])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3kv3n17swd-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 17 Nov 2022 03:44:59 +0000
-Received: from pps.filterd (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 2AH1I7Dk016882;
-        Thu, 17 Nov 2022 03:44:58 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3kuk1ya27f-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 17 Nov 2022 03:44:58 +0000
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 2AH3iutj030624;
-        Thu, 17 Nov 2022 03:44:57 GMT
-Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 3kuk1ya262-4;
-        Thu, 17 Nov 2022 03:44:57 +0000
-From:   Dai Ngo <dai.ngo@oracle.com>
-To:     chuck.lever@oracle.com, jlayton@kernel.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v5 3/4] NFSD: add delegation reaper to react to low memory condition
-Date:   Wed, 16 Nov 2022 19:44:47 -0800
-Message-Id: <1668656688-22507-4-git-send-email-dai.ngo@oracle.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1668656688-22507-1-git-send-email-dai.ngo@oracle.com>
-References: <1668656688-22507-1-git-send-email-dai.ngo@oracle.com>
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.219,Aquarius:18.0.895,Hydra:6.0.545,FMLib:17.11.122.1
- definitions=2022-11-16_03,2022-11-16_01,2022-06-22_01
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 bulkscore=0 spamscore=0
- mlxlogscore=999 phishscore=0 mlxscore=0 adultscore=0 suspectscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2210170000
- definitions=main-2211170024
-X-Proofpoint-GUID: 2DC_SrdSru4N2zSuMy-jDEmSt0rWeYky
-X-Proofpoint-ORIG-GUID: 2DC_SrdSru4N2zSuMy-jDEmSt0rWeYky
+        with ESMTP id S233151AbiKQE6B (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Nov 2022 23:58:01 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 311E92B180
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Nov 2022 20:57:07 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1668661026;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=cRNgsje5v+iSsOtKxKODca+zMELkto4gAPpZd/JZ4Wo=;
+        b=UWDu68h1PVK3ShlNTALbY4GMc4uIKbPm4lEOI5019Vxd6JSranyUHHyg45d2+jHR/cGw2K
+        a78q3+A43mO2u/xjEoSNA0HHDcHfYepa1BYhF/J4iQezb5U1UHKzR7SxCfGdtvznH4jslg
+        Oy+E2yeZFCUKBv/5BAZSJSZgoGh0rEg=
+Received: from mail-pg1-f199.google.com (mail-pg1-f199.google.com
+ [209.85.215.199]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_128_GCM_SHA256) id
+ us-mta-588-zIJJf7eDMxSPxbwJ8dbw_Q-1; Wed, 16 Nov 2022 23:57:04 -0500
+X-MC-Unique: zIJJf7eDMxSPxbwJ8dbw_Q-1
+Received: by mail-pg1-f199.google.com with SMTP id g193-20020a636bca000000b00476a2298bd1so629007pgc.12
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Nov 2022 20:57:04 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=content-language:content-transfer-encoding:in-reply-to:mime-version
+         :user-agent:date:message-id:from:references:cc:to:subject
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=cRNgsje5v+iSsOtKxKODca+zMELkto4gAPpZd/JZ4Wo=;
+        b=2FXwyLheuedNNttgnHl+1Gnx/CkUd1RYlbUBSJqZv2urnLEOuJRhS4B70/U+udxSU1
+         kztjbFpfM3Foe1enV/F9daYC6IDbsJHS6WJCnNHH7we7mhZvIIhe5GrJxPSSy9DxaHAe
+         owBV8kJ+IFxNF61/12gh9Xii8CuIQLBnUQUaUJ7K/pFOeAi2Pj1KCj8BoMDmZwBnJT6r
+         F3r6ey3FlzBrc0zi4fDQ7VLrszDT9ugpscPYHArbWlkYOCsGYHkqnIFrHtQUEdQrRqcD
+         UDgn5UZdTpyXFuA8hzAqUQLMKZOYi6eQNwe0Wyr/bt/maIyp6n7WqGF8QBKBDE7I1K8W
+         4t0Q==
+X-Gm-Message-State: ANoB5pkXlHSMiptXn7iNPmJce4kWJev/sQ6zWR5U0eEBZDU+fo45lSAE
+        pSQJkub67ff71gwsoimXHEdE4sxmx6famjdU0IyTiDiIJFtp2VwfDHGmy3N+I5kPggA28JPpXCP
+        q98maykU9fKskxXi23FHp
+X-Received: by 2002:a63:5f14:0:b0:43c:969f:18a7 with SMTP id t20-20020a635f14000000b0043c969f18a7mr635972pgb.12.1668661023832;
+        Wed, 16 Nov 2022 20:57:03 -0800 (PST)
+X-Google-Smtp-Source: AA0mqf63NoWprGlJIf07cPSVNjoTzWwiwPuTUjMvYVGNkdFlaO5oAfTME7Qg7XG1sR+f67MLmbpQ7Q==
+X-Received: by 2002:a63:5f14:0:b0:43c:969f:18a7 with SMTP id t20-20020a635f14000000b0043c969f18a7mr635959pgb.12.1668661023555;
+        Wed, 16 Nov 2022 20:57:03 -0800 (PST)
+Received: from [10.72.12.148] ([43.228.180.230])
+        by smtp.gmail.com with ESMTPSA id o6-20020a17090a55c600b0021870b3e4casm438628pjm.47.2022.11.16.20.57.00
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 16 Nov 2022 20:57:03 -0800 (PST)
+Subject: Re: [PATCH 2/7] ceph: use locks_inode_context helper
+To:     Jeff Layton <jlayton@kernel.org>, linux-fsdevel@vger.kernel.org
+Cc:     linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, chuck.lever@oracle.com,
+        viro@zeniv.linux.org.uk, hch@lst.de
+References: <20221116151726.129217-1-jlayton@kernel.org>
+ <20221116151726.129217-3-jlayton@kernel.org>
+From:   Xiubo Li <xiubli@redhat.com>
+Message-ID: <589a0fcc-569f-e5b2-0877-c1639736ae5e@redhat.com>
+Date:   Thu, 17 Nov 2022 12:56:58 +0800
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101
+ Thunderbird/78.10.1
+MIME-Version: 1.0
+In-Reply-To: <20221116151726.129217-3-jlayton@kernel.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Content-Language: en-US
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The delegation reaper is called by nfsd memory shrinker's on
-the 'count' callback. It scans the client list and sends the
-courtesy CB_RECALL_ANY to the clients that hold delegations.
 
-To avoid flooding the clients with CB_RECALL_ANY requests, the
-delegation reaper sends only one CB_RECALL_ANY request to each
-client per 5 seconds.
+On 16/11/2022 23:17, Jeff Layton wrote:
+> ceph currently doesn't access i_flctx safely. This requires a
+> smp_load_acquire, as the pointer is set via cmpxchg (a release
+> operation).
+>
+> Cc: Xiubo Li <xiubli@redhat.com>
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+>   fs/ceph/locks.c | 4 ++--
+>   1 file changed, 2 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/ceph/locks.c b/fs/ceph/locks.c
+> index 3e2843e86e27..f3b461c708a8 100644
+> --- a/fs/ceph/locks.c
+> +++ b/fs/ceph/locks.c
+> @@ -364,7 +364,7 @@ void ceph_count_locks(struct inode *inode, int *fcntl_count, int *flock_count)
+>   	*fcntl_count = 0;
+>   	*flock_count = 0;
+>   
+> -	ctx = inode->i_flctx;
+> +	ctx = locks_inode_context(inode);
+>   	if (ctx) {
+>   		spin_lock(&ctx->flc_lock);
+>   		list_for_each_entry(lock, &ctx->flc_posix, fl_list)
+> @@ -418,7 +418,7 @@ int ceph_encode_locks_to_buffer(struct inode *inode,
+>   				int num_fcntl_locks, int num_flock_locks)
+>   {
+>   	struct file_lock *lock;
+> -	struct file_lock_context *ctx = inode->i_flctx;
+> +	struct file_lock_context *ctx = locks_inode_context(inode);
+>   	int err = 0;
+>   	int seen_fcntl = 0;
+>   	int seen_flock = 0;
 
-Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
----
- fs/nfsd/nfs4state.c | 89 ++++++++++++++++++++++++++++++++++++++++++++++++++---
- fs/nfsd/state.h     |  8 +++++
- 2 files changed, 93 insertions(+), 4 deletions(-)
+Thanks Jeff!
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 142481bc96de..13f326ae928c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2131,6 +2131,7 @@ static void __free_client(struct kref *k)
- 	kfree(clp->cl_nii_domain.data);
- 	kfree(clp->cl_nii_name.data);
- 	idr_destroy(&clp->cl_stateids);
-+	kfree(clp->cl_ra);
- 	kmem_cache_free(client_slab, clp);
- }
- 
-@@ -2854,6 +2855,36 @@ static const struct tree_descr client_files[] = {
- 	[3] = {""},
- };
- 
-+static int
-+nfsd4_cb_recall_any_done(struct nfsd4_callback *cb,
-+				struct rpc_task *task)
-+{
-+	switch (task->tk_status) {
-+	case -NFS4ERR_DELAY:
-+		rpc_delay(task, 2 * HZ);
-+		return 0;
-+	default:
-+		return 1;
-+	}
-+}
-+
-+static void
-+nfsd4_cb_recall_any_release(struct nfsd4_callback *cb)
-+{
-+	struct nfs4_client *clp = cb->cb_clp;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	clear_bit(NFSD4_CLIENT_CB_RECALL_ANY, &clp->cl_flags);
-+	put_client_renew_locked(clp);
-+	spin_unlock(&nn->client_lock);
-+}
-+
-+static const struct nfsd4_callback_ops nfsd4_cb_recall_any_ops = {
-+	.done		= nfsd4_cb_recall_any_done,
-+	.release	= nfsd4_cb_recall_any_release,
-+};
-+
- static struct nfs4_client *create_client(struct xdr_netobj name,
- 		struct svc_rqst *rqstp, nfs4_verifier *verf)
- {
-@@ -2891,6 +2922,14 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 		free_client(clp);
- 		return NULL;
- 	}
-+	clp->cl_ra = kzalloc(sizeof(*clp->cl_ra), GFP_KERNEL);
-+	if (!clp->cl_ra) {
-+		free_client(clp);
-+		return NULL;
-+	}
-+	clp->cl_ra_time = 0;
-+	nfsd4_init_cb(&clp->cl_ra->ra_cb, clp, &nfsd4_cb_recall_any_ops,
-+			NFSPROC4_CLNT_CB_RECALL_ANY);
- 	return clp;
- }
- 
-@@ -4349,14 +4388,16 @@ nfsd4_init_slabs(void)
- static unsigned long
- nfsd_lowmem_shrinker_count(struct shrinker *shrink, struct shrink_control *sc)
- {
--	int cnt;
-+	int count;
- 	struct nfsd_net *nn = container_of(shrink,
- 			struct nfsd_net, nfsd_client_shrinker);
- 
--	cnt = atomic_read(&nn->nfsd_courtesy_clients);
--	if (cnt > 0)
-+	count = atomic_read(&nn->nfsd_courtesy_clients);
-+	if (!count)
-+		count = atomic_long_read(&num_delegations);
-+	if (count)
- 		mod_delayed_work(laundry_wq, &nn->nfsd_shrinker_work, 0);
--	return (unsigned long)cnt;
-+	return (unsigned long)count;
- }
- 
- static unsigned long
-@@ -6134,6 +6175,45 @@ courtesy_client_reaper(struct nfsd_net *nn)
- }
- 
- static void
-+deleg_reaper(struct nfsd_net *nn)
-+{
-+	struct list_head *pos, *next;
-+	struct nfs4_client *clp;
-+	struct list_head cblist;
-+
-+	INIT_LIST_HEAD(&cblist);
-+	spin_lock(&nn->client_lock);
-+	list_for_each_safe(pos, next, &nn->client_lru) {
-+		clp = list_entry(pos, struct nfs4_client, cl_lru);
-+		if (clp->cl_state != NFSD4_ACTIVE ||
-+			list_empty(&clp->cl_delegations) ||
-+			atomic_read(&clp->cl_delegs_in_recall) ||
-+			test_bit(NFSD4_CLIENT_CB_RECALL_ANY, &clp->cl_flags) ||
-+			(ktime_get_boottime_seconds() -
-+				clp->cl_ra_time < 5)) {
-+			continue;
-+		}
-+		list_add(&clp->cl_ra_cblist, &cblist);
-+
-+		/* release in nfsd4_cb_recall_any_release */
-+		atomic_inc(&clp->cl_rpc_users);
-+		set_bit(NFSD4_CLIENT_CB_RECALL_ANY, &clp->cl_flags);
-+		clp->cl_ra_time = ktime_get_boottime_seconds();
-+	}
-+	spin_unlock(&nn->client_lock);
-+
-+	while (!list_empty(&cblist)) {
-+		clp = list_first_entry(&cblist, struct nfs4_client,
-+					cl_ra_cblist);
-+		list_del_init(&clp->cl_ra_cblist);
-+		clp->cl_ra->ra_keep = 0;
-+		clp->cl_ra->ra_bmval[0] = BIT(RCA4_TYPE_MASK_RDATA_DLG) |
-+						BIT(RCA4_TYPE_MASK_WDATA_DLG);
-+		nfsd4_run_cb(&clp->cl_ra->ra_cb);
-+	}
-+}
-+
-+static void
- nfsd4_lowmem_shrinker(struct work_struct *work)
- {
- 	struct delayed_work *dwork = to_delayed_work(work);
-@@ -6141,6 +6221,7 @@ nfsd4_lowmem_shrinker(struct work_struct *work)
- 				nfsd_shrinker_work);
- 
- 	courtesy_client_reaper(nn);
-+	deleg_reaper(nn);
- }
- 
- static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid *stp)
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 6b33cbbe76d3..12ce9792c5b6 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -368,6 +368,7 @@ struct nfs4_client {
- #define NFSD4_CLIENT_UPCALL_LOCK	(5)	/* upcall serialization */
- #define NFSD4_CLIENT_CB_FLAG_MASK	(1 << NFSD4_CLIENT_CB_UPDATE | \
- 					 1 << NFSD4_CLIENT_CB_KILL)
-+#define	NFSD4_CLIENT_CB_RECALL_ANY	(6)
- 	unsigned long		cl_flags;
- 	const struct cred	*cl_cb_cred;
- 	struct rpc_clnt		*cl_cb_client;
-@@ -411,6 +412,10 @@ struct nfs4_client {
- 
- 	unsigned int		cl_state;
- 	atomic_t		cl_delegs_in_recall;
-+
-+	struct nfsd4_cb_recall_any	*cl_ra;
-+	time64_t		cl_ra_time;
-+	struct list_head	cl_ra_cblist;
- };
- 
- /* struct nfs4_client_reset
-@@ -642,6 +647,9 @@ enum nfsd4_cb_op {
- 	NFSPROC4_CLNT_CB_RECALL_ANY,
- };
- 
-+#define	RCA4_TYPE_MASK_RDATA_DLG	0
-+#define	RCA4_TYPE_MASK_WDATA_DLG	1
-+
- /* Returns true iff a is later than b: */
- static inline bool nfsd4_stateid_generation_after(stateid_t *a, stateid_t *b)
- {
--- 
-2.9.5
+Reviewed-by: Xiubo Li <xiubli@redhat.com>
+
 
