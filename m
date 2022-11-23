@@ -2,154 +2,72 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 52B7DC433FE
-	for <linux-nfs@archiver.kernel.org>; Tue, 22 Nov 2022 14:25:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C7C40C433FE
+	for <linux-nfs@archiver.kernel.org>; Wed, 23 Nov 2022 01:47:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232498AbiKVOY5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 22 Nov 2022 09:24:57 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43578 "EHLO
+        id S234298AbiKWBrD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 22 Nov 2022 20:47:03 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48734 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233310AbiKVOYw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Nov 2022 09:24:52 -0500
+        with ESMTP id S229728AbiKWBrC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Nov 2022 20:47:02 -0500
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B9F0BDF7B
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Nov 2022 06:23:47 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 38F2774CDD
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Nov 2022 17:46:09 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1669127026;
+        s=mimecast20190719; t=1669167968;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=geVsTAOXAFmfC1p8NU5oUZW9hh2dqn+X7qlWo6CR96Y=;
-        b=QD9HNhfwpjcZAyrcVDtGcyvcJC1Jt05Njs2nDDlxTHOvhswfgrgNAdHBiLEZ9+1+paIjfS
-        xvMFD3qCbJf6A6xMlIn0VpgRM8BByfNqUyTTD/aKI8613kGDOh1+aFjPHhlm3ubdqQY76a
-        4fjNNftK21PKnaEPXhuRK9+8oDaXYTo=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=YYPEk6DCV4s0DXwDFMXIAyeEVIlPhBVzUu+RgpdPU1w=;
+        b=PZybKJ/8bEGHPzJUZBsSUjG2iV45XCURtAHB6KMwUX9yJ+DmEBYtoAkxQKdxOzOGQdiMKd
+        oJVtEA84m30ZcohCvW6NAHneV3varg7jwXFGz99XReSArjRWIVdyR0xCXmYcyEViaHfilI
+        kPzQXsU3lbngaSSTkO+w/RRQmvAbSmA=
+Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
+ [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-583-clNrV_glOTiRpOT7AptSQA-1; Tue, 22 Nov 2022 09:23:45 -0500
-X-MC-Unique: clNrV_glOTiRpOT7AptSQA-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
+ us-mta-55-35lav5jRO0q9E4MweHtwJQ-1; Tue, 22 Nov 2022 20:45:59 -0500
+X-MC-Unique: 35lav5jRO0q9E4MweHtwJQ-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id E5F22101A52A;
-        Tue, 22 Nov 2022 14:23:42 +0000 (UTC)
-Received: from [172.16.176.1] (unknown [10.22.50.6])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id E09D61121325;
-        Tue, 22 Nov 2022 14:23:33 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     Shuah Khan <skhan@linuxfoundation.org>
-Cc:     David Howells <dhowells@redhat.com>, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Philipp Reisner <philipp.reisner@linbit.com>,
-        Lars Ellenberg <lars.ellenberg@linbit.com>,
-        =?utf-8?q?Christoph_B=C3=B6hmwalder?= 
-        <christoph.boehmwalder@linbit.com>, Jens Axboe <axboe@kernel.dk>,
-        Josef Bacik <josef@toxicpanda.com>,
-        Keith Busch <kbusch@kernel.org>,
-        Christoph Hellwig <hch@lst.de>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        Lee Duncan <lduncan@suse.com>, Chris Leech <cleech@redhat.com>,
-        Mike Christie <michael.christie@oracle.com>,
-        "James E.J. Bottomley" <jejb@linux.ibm.com>,
-        "Martin K. Petersen" <martin.petersen@oracle.com>,
-        Valentina Manea <valentina.manea.m@gmail.com>,
-        Shuah Khan <shuah@kernel.org>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Marc Dionne <marc.dionne@auristor.com>,
-        Steve French <sfrench@samba.org>,
-        Christine Caulfield <ccaulfie@redhat.com>,
-        David Teigland <teigland@redhat.com>,
-        Mark Fasheh <mark@fasheh.com>,
-        Joel Becker <jlbec@evilplan.org>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Xiubo Li <xiubli@redhat.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@kernel.org>, drbd-dev@lists.linbit.com,
-        linux-block@vger.kernel.org, nbd@other.debian.org,
-        linux-nvme@lists.infradead.org, open-iscsi@googlegroups.com,
-        linux-scsi@vger.kernel.org, linux-usb@vger.kernel.org,
-        linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        ocfs2-devel@oss.oracle.com, v9fs-developer@lists.sourceforge.net,
-        ceph-devel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 2/3] Treewide: Stop corrupting socket's task_frag
-Date:   Tue, 22 Nov 2022 09:23:29 -0500
-Message-ID: <C3E8B434-BAEE-42A8-85AF-3B676C65B2A6@redhat.com>
-In-Reply-To: <96114bec-1df7-0dcb-ec99-4f907587658d@linuxfoundation.org>
-References: <c2ec184226acd21a191ccc1aa46a1d7e43ca7104.1669036433.git.bcodding@redhat.com>
- <cover.1669036433.git.bcodding@redhat.com>
- <382872.1669039019@warthog.procyon.org.uk>
- <51B5418D-34FB-4E87-B87A-6C3FCDF8B21C@redhat.com>
- <4585e331-03ad-959f-e715-29af15f63712@linuxfoundation.org>
- <26d98c8f-372b-b9c8-c29f-096cddaff149@linuxfoundation.org>
- <A860595D-5BAB-461B-B449-8975C0424311@redhat.com>
- <96114bec-1df7-0dcb-ec99-4f907587658d@linuxfoundation.org>
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id DA34F3811F2D;
+        Wed, 23 Nov 2022 01:45:58 +0000 (UTC)
+Received: from localhost (yoyang-vm.hosts.qa.psi.pek2.redhat.com [10.73.149.36])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 3CBF917595;
+        Wed, 23 Nov 2022 01:45:57 +0000 (UTC)
+From:   Yongcheng Yang <yongcheng.yang@gmail.com>
+To:     Steve Dickson <steved@redhat.com>
+Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Yongcheng Yang <yongcheng.yang@gmail.com>
+Subject: [PATCH] nfs4_setfacl: man page example should use the new option index
+Date:   Wed, 23 Nov 2022 09:45:50 +0800
+Message-Id: <20221123014550.525927-1-yongcheng.yang@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.3
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.1 on 10.11.54.5
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 21 Nov 2022, at 17:32, Shuah Khan wrote:
+Signed-off-by: Yongcheng Yang <yongcheng.yang@gmail.com>
+---
+ man/man1/nfs4_setfacl.1 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> On 11/21/22 15:01, Benjamin Coddington wrote:
->> On 21 Nov 2022, at 16:43, Shuah Khan wrote:
->>
->>> On 11/21/22 14:40, Shuah Khan wrote:
->>>> On 11/21/22 07:34, Benjamin Coddington wrote:
->>>>> On 21 Nov 2022, at 8:56, David Howells wrote:
->>>>>
->>>>>> Benjamin Coddington <bcodding@redhat.com> wrote:
->>>>>>
->>>>>>> Since moving to memalloc_nofs_save/restore, SUNRPC has stopped se=
-tting the
->>>>>>> GFP_NOIO flag on sk_allocation which the networking system uses t=
-o decide
->>>>>>> when it is safe to use current->task_frag.
->>>>>>
->>>>>> Um, what's task_frag?
->>>>>
->>>>> Its a per-task page_frag used to coalesce small writes for networki=
-ng -- see:
->>>>>
->>>>> 5640f7685831 net: use a per task frag allocator
->>>>>
->>>>> Ben
->>>>>
->>>>>
->>>>
->>>> I am not seeing this in the mainline. Where can find this commit?
->>>>
->>>
->>> Okay. I see this commit in the mainline. However, I don't see the
->>> sk_use_task_frag in mainline.
->>
->> sk_use_task_frag is in patch 1/3 in this posting.
->>
->> https://lore.kernel.org/netdev/26d98c8f-372b-b9c8-c29f-096cddaff149@li=
-nuxfoundation.org/T/#m3271959c4cf8dcff1c0c6ba023b2b3821d9e7e99
->>
->
-> Aha. I don't have 1/3 in my Inbox - I think it would make
-> sense to cc people on the first patch so we can understand
-> the premise for the change.
-
-Yeah, I can do that if it goes to another version, I was just trying to b=
-e
-considerate of all the noise this sort of posting generates.
-
-Ben
+diff --git a/man/man1/nfs4_setfacl.1 b/man/man1/nfs4_setfacl.1
+index 61699ae..c4b4dbb 100644
+--- a/man/man1/nfs4_setfacl.1
++++ b/man/man1/nfs4_setfacl.1
+@@ -210,7 +210,7 @@ named `newacl.txt':
+ .IP - 2
+ delete the first ACE, but only print the resulting ACL (does not save changes):
+ .br
+-	$ nfs4_setfacl --test -x 1 foo
++	$ nfs4_setfacl --test -x -i 1 foo
+ .IP - 2
+ delete the last two ACEs above:
+ .br
+-- 
+2.31.1
 
