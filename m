@@ -2,65 +2,65 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A4A5C43217
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Nov 2022 14:07:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62EC4C4332F
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Nov 2022 14:07:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229717AbiKYOHK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Nov 2022 09:07:10 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59920 "EHLO
+        id S229601AbiKYOHL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Nov 2022 09:07:11 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59922 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229601AbiKYOHK (ORCPT
+        with ESMTP id S229648AbiKYOHK (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Nov 2022 09:07:10 -0500
-Received: from mail-ej1-x634.google.com (mail-ej1-x634.google.com [IPv6:2a00:1450:4864:20::634])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EF9201EAFA
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Nov 2022 06:07:08 -0800 (PST)
-Received: by mail-ej1-x634.google.com with SMTP id ha10so10620053ejb.3
+Received: from mail-ed1-x532.google.com (mail-ed1-x532.google.com [IPv6:2a00:1450:4864:20::532])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0382C1EC43
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Nov 2022 06:07:09 -0800 (PST)
+Received: by mail-ed1-x532.google.com with SMTP id e13so6533313edj.7
         for <linux-nfs@vger.kernel.org>; Fri, 25 Nov 2022 06:07:08 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:sender:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=A33yTDzifZAAnLHPVh6Tk9AoRA7BtVeBQ7dtOdMue8k=;
-        b=E/RgLsdBCqscHHZhTRNuqdG1wmO6LSqRDJapzeK+JbFBY+fFyGaUASxs25Bdy8WsOq
-         9vGFhCeCymgos6JCyL2Jksn20hb82F4wg8YijjRtL/6XgIgCC3LubzLiP5N/a9xGvbsW
-         iEtxXIKWwsXW7Isy6tz2CqCauQEpU6cskjzm4YRP7pH1/C6qsEL59+xmejqIavddQ+C/
-         FDu9WiY2f/U7VuSE8YdoVQKMLo64Z3tuL1sa0KPP0wItsu6Ylmf54SpFq3FfeOZFvewE
-         Wn2GT82I2TMwV4t/z2dNLHm+QeMoJqT0ZcXVlNbmTpMQcB+Lo9hR/foh/ssUT1qrWJ0L
-         Wcfw==
+        bh=y4UPRNgYkTTgkIOvGTjmVSedLlvmZSyOq0T81C3zGQQ=;
+        b=GzBphOai3x59cLnsLGgVud00By7NgbRGrVMsrTugVfnKlFdUxaxyAAk6my4jKS3GNs
+         Fv3uzZkChmT+Tq2ws7JY2zkjGUgVrIfo3juThdX4GaLZHGi7E0ixVxAdzD11ownXIgch
+         +J9YvgnarIc0CH2oqWta46pi7WHyduzW9JyYmKiMhDL+RmvRPKYIo3+NeOqwS6QH7l5W
+         58j4cZEspy2a2rh0zOvYUPYDL/KrxDGvOAgxMWmr4sNsI3oHBkPGaeuyGh7c4S8vfQRQ
+         EjJX3cqBHiOwHORlaTn/y25JaVwSX97TqIFUxifHM0sfQqte6vpI0h0awRFP+nQV575g
+         rR5g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:sender:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=A33yTDzifZAAnLHPVh6Tk9AoRA7BtVeBQ7dtOdMue8k=;
-        b=f0GYjkj+4T9wbB62J/YGrfpLH/CmHhHSYzBjcGA46v9OzW863Q2b4PeX1Vxcu4DjIo
-         mHuI8aY+pg8GcbnNowiM2EoHtfaowHkOdPRy8T+mcFr0OCHJBzYDMRqxJvcwHG06iC0L
-         etZkf3vMbD4Z2T+ZgYJficF4fAzuWc3nhvfQjtzldnKuZ9zj2jaHN+X3zO7Q8EJIJdb/
-         5Ro3Tm4Ue8g0aWY+WavMe3ZDMjelVBevD/URnzAJ4kvnGSF4CoqYd19rz2nP/DnES6ih
-         oBLUvHsLjwxlBTRaYpwcMXAYTVCuAIOU30Ub9FmE442Eouk6p/vJf1NuYI2HYxlKPMMW
-         LyBQ==
-X-Gm-Message-State: ANoB5pk5dACtcC/Yd1QY1AJf43dDRHZTpc94iVC+oaA1EE0erGjTtv1M
-        1vZsAEnAzUApd18EuhuBcn4+GEVE6re5YQ==
-X-Google-Smtp-Source: AA0mqf6UO7RMmqI2uMkQtTyXTyQt7RbjSNKA1Ba+jCjmO6zzs/I3+cJdCEYrgPDGKmWq2ryvyMi71w==
-X-Received: by 2002:a17:906:9f09:b0:7bc:db1b:206f with SMTP id fy9-20020a1709069f0900b007bcdb1b206fmr2131777ejc.719.1669385227282;
-        Fri, 25 Nov 2022 06:07:07 -0800 (PST)
+        bh=y4UPRNgYkTTgkIOvGTjmVSedLlvmZSyOq0T81C3zGQQ=;
+        b=6zXAoANN5YEq1/b7NGo7CzJ85anag7TwFSUIZ1icm7uwccp5LZGQFbQXu6OOyGSECt
+         ASPSbvUYJNlp2j8D/uXWf3R5B7zh7gwUIuMyhO9bGSFVZkecFTbjEPEewijW84QflXKy
+         aLR7k6dk1k+Ns4uFFdbMezfcP5PXqZ44WtTzVGOuRzIYVeH9wJmfIEoHTUfn7G8wWqBo
+         cXKkPhrbQZWcHsXxeR8vJxyBg/lc7I0IpbY2mi4sFw9EvB5ARqJPBkQCU0jKUiJu8I8N
+         ubLJ6zxYf/5CJ88VDp+mcq83vUoxxIg9l+l3oedT7ILOzUsJy52NJi6jPLah0I+NXsPY
+         e0MA==
+X-Gm-Message-State: ANoB5pn16azH9s/rbBvSYiwegR5oYvj1yWSVRZFmtyr1SHrVT9o4msgv
+        HrKvyVcSYkoRyYKHfT8rvr0=
+X-Google-Smtp-Source: AA0mqf4UcGJG9gKObzgQ6awmRef2OrxjB/91jtWA9K93sdhQyWRUyKEdMqNeDL0rmodgnvbqtKdDoA==
+X-Received: by 2002:a05:6402:370e:b0:464:fa1:9dc3 with SMTP id ek14-20020a056402370e00b004640fa19dc3mr20649757edb.343.1669385228491;
+        Fri, 25 Nov 2022 06:07:08 -0800 (PST)
 Received: from eldamar.lan (c-82-192-242-114.customer.ggaweb.ch. [82.192.242.114])
-        by smtp.gmail.com with ESMTPSA id a4-20020aa7d744000000b004615f7495e0sm1821729eds.8.2022.11.25.06.07.06
+        by smtp.gmail.com with ESMTPSA id j9-20020a1709066dc900b007ba46867e6asm1633919ejt.16.2022.11.25.06.07.07
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 25 Nov 2022 06:07:06 -0800 (PST)
+        Fri, 25 Nov 2022 06:07:08 -0800 (PST)
 Sender: Salvatore Bonaccorso <salvatore.bonaccorso@gmail.com>
 Received: by eldamar.lan (Postfix, from userid 1000)
-        id 0DF32BE2DE0; Fri, 25 Nov 2022 15:07:06 +0100 (CET)
+        id 71E26BE2DE0; Fri, 25 Nov 2022 15:07:07 +0100 (CET)
 From:   Salvatore Bonaccorso <carnil@debian.org>
 To:     NeilBrown <neilb@suse.de>, Steve Dickson <steved@redhat.com>,
         linux-nfs@vger.kernel.org
 Cc:     Andras Korn <korn-debbugs@elan.rulez.org>,
         Marco d'Itri <md@linux.it>, Michael Prokop <mika@debian.org>,
         Salvatore Bonaccorso <carnil@debian.org>
-Subject: [PATCH v2 1/4] Revert "configure: make modprobe.d directory configurable."
-Date:   Fri, 25 Nov 2022 15:06:53 +0100
-Message-Id: <20221125140656.1985137-2-carnil@debian.org>
+Subject: [PATCH v2 3/4] Revert "systemd: Apply all sysctl settings when NFS-related modules are loaded"
+Date:   Fri, 25 Nov 2022 15:06:55 +0100
+Message-Id: <20221125140656.1985137-4-carnil@debian.org>
 X-Mailer: git-send-email 2.38.1
 In-Reply-To: <20221125140656.1985137-1-carnil@debian.org>
 References: <20221125140656.1985137-1-carnil@debian.org>
@@ -70,58 +70,76 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This reverts commit 7d76dd2e6f09a141eb6303b7343baa5c4f9c85ad.
-
-This is part of the full revert of adding support via modprobe.d
-configuration to set sysctl settings of NFS-related modules when loading
-the modules.
+This reverts commit afc7132dfb212ac1f676a5ac36d29a9e06325645.
 
 The approach caused problems with sysctl from busybox and with kmod as
 reported in Debian (https://bugs.debian.org/1024082).
 
 Signed-off-by: Salvatore Bonaccorso <carnil@debian.org>
 ---
- configure.ac        | 12 ------------
- systemd/Makefile.am |  6 ++----
- 2 files changed, 2 insertions(+), 16 deletions(-)
+ systemd/50-nfs.conf | 16 ----------------
+ systemd/Makefile.am | 10 ++--------
+ 2 files changed, 2 insertions(+), 24 deletions(-)
+ delete mode 100644 systemd/50-nfs.conf
 
-diff --git a/configure.ac b/configure.ac
-index 5d9cbf317453..4280cc770a45 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -71,18 +71,6 @@ AC_ARG_WITH(systemd,
- 	AM_CONDITIONAL(INSTALL_SYSTEMD, [test "$use_systemd" = 1])
- 	AC_SUBST(unitdir)
- 
--modprobedir=/usr/lib/modprobe.d
--AC_ARG_WITH(modprobedir,
--	[AS_HELP_STRING([--with-modprobedir@<:@=modprobe-dir-path@:>@],[install modprobe config files @<:@Default: /usr/lib/modprobe.d@:>@])],
--	if test "$withval" != "no" ; then
--		modprobedir=$withval
--	else
--		modprobedir=
--	fi
--	)
--	AM_CONDITIONAL(INSTALL_MODPROBEDIR, [test -n "$modprobedir"])
--	AC_SUBST(modprobedir)
+diff --git a/systemd/50-nfs.conf b/systemd/50-nfs.conf
+deleted file mode 100644
+index b56b2d765969..000000000000
+--- a/systemd/50-nfs.conf
++++ /dev/null
+@@ -1,16 +0,0 @@
+-# Ensure all NFS systctl settings get applied when modules load
 -
- AC_ARG_ENABLE(nfsv4,
- 	[AS_HELP_STRING([--disable-nfsv4],[disable support for NFSv4 @<:@default=no@:>@])],
- 	enable_nfsv4=$enableval,
+-# sunrpc module supports "sunrpc.*" sysctls
+-install sunrpc /sbin/modprobe --ignore-install sunrpc $CMDLINE_OPTS && /sbin/sysctl -q --pattern sunrpc --system
+-
+-# rpcrdma module supports sunrpc.svc_rdma.*
+-install rpcrdma /sbin/modprobe --ignore-install rpcrdma $CMDLINE_OPTS && /sbin/sysctl -q --pattern sunrpc.svc_rdma --system
+-
+-# lockd module supports "fs.nfs.nlm*" and "fs.nfs.nsm*" sysctls
+-install lockd /sbin/modprobe --ignore-install lockd $CMDLINE_OPTS && /sbin/sysctl -q --pattern fs.nfs.n[sl]m --system
+-
+-# nfsv4 module supports "fs.nfs.*" sysctls (nfs_callback_tcpport and idmap_cache_timeout)
+-install nfsv4 /sbin/modprobe --ignore-install nfsv4 $CMDLINE_OPTS && /sbin/sysctl -q --pattern 'fs.nfs.(nfs_callback_tcpport|idmap_cache_timeout)' --system
+-
+-# nfs module supports "fs.nfs.*" sysctls
+-install nfs /sbin/modprobe --ignore-install nfs $CMDLINE_OPTS && /sbin/sysctl -q --pattern fs.nfs --system
 diff --git a/systemd/Makefile.am b/systemd/Makefile.am
-index 7b5ab84bd793..63a50bf2c07e 100644
+index 63a50bf2c07e..e7f5d818a913 100644
 --- a/systemd/Makefile.am
 +++ b/systemd/Makefile.am
-@@ -82,7 +82,5 @@ install-data-hook: $(unit_files) $(modprobe_files)
- else
- install-data-hook: $(modprobe_files)
+@@ -2,8 +2,6 @@
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+-modprobe_files = 50-nfs.conf
+-
+ unit_files =  \
+     nfs-client.target \
+     rpc_pipefs.target \
+@@ -53,7 +51,7 @@ endif
+ 
+ man5_MANS	= nfs.conf.man
+ man7_MANS	= nfs.systemd.man
+-EXTRA_DIST = $(unit_files) $(modprobe_files) $(man5_MANS) $(man7_MANS)
++EXTRA_DIST = $(unit_files) $(man5_MANS) $(man7_MANS)
+ 
+ generator_dir = $(unitdir)/../system-generators
+ 
+@@ -75,12 +73,8 @@ rpc_pipefs_generator_LDADD = ../support/nfs/libnfs.la
+ 
+ if INSTALL_SYSTEMD
+ genexec_PROGRAMS = nfs-server-generator rpc-pipefs-generator
+-install-data-hook: $(unit_files) $(modprobe_files)
++install-data-hook: $(unit_files)
+ 	mkdir -p $(DESTDIR)/$(unitdir)
+ 	cp $(unit_files) $(DESTDIR)/$(unitdir)
+ 	cp $(rpc_pipefs_mount_file) $(DESTDIR)/$(unitdir)/$(rpc_pipefsmount)
+-else
+-install-data-hook: $(modprobe_files)
  endif
--if INSTALL_MODPROBEDIR
--	mkdir -p $(DESTDIR)$(modprobedir)
--	cp $(modprobe_files) $(DESTDIR)$(modprobedir)
--endif
-+	mkdir -p $(DESTDIR)/usr/lib/modprobe.d
-+	cp $(modprobe_files) $(DESTDIR)/usr/lib/modprobe.d/
+-	mkdir -p $(DESTDIR)/usr/lib/modprobe.d
+-	cp $(modprobe_files) $(DESTDIR)/usr/lib/modprobe.d/
 -- 
 2.38.1
 
