@@ -2,112 +2,97 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C80EDC4167B
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Nov 2022 16:45:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06F1DC4332F
+	for <linux-nfs@archiver.kernel.org>; Sat, 26 Nov 2022 09:56:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229626AbiKYQpd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Nov 2022 11:45:33 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53592 "EHLO
+        id S229523AbiKZJ4q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 26 Nov 2022 04:56:46 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59972 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229487AbiKYQpd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Nov 2022 11:45:33 -0500
-Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [IPv6:2a03:a000:7:0:5054:ff:fe1c:15ff])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EFB262BB38;
-        Fri, 25 Nov 2022 08:45:31 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
-        MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=x53sQaWDa/88sDZr4eyy32ZPwwt0aIb86EtvxNAGN44=; b=FgIlSpJUVdmZH0PghTbL44P7IF
-        e4NY5MC1spnQ/Hghs2BPEnAn4l+90NGdQnegTxnvF3OJ+U61eJwM1xO7mu1dExG7v6tzYFJlIwp6P
-        B2aUL8HMJfhwXPEFKGEUx8W81rpFniQnI/SO1y7EbgaIaJZ1BUdY5gveE/1N4GNXa8B97uvPu85K6
-        Yklhfru9ymFK8ftcM08F8KvpHHcaOQRkbEAd2Tsqc4ddBcwjQEZAIlZg7vNI/YdzW+wA2axEbhN4Z
-        espCpyFT59uiQWc205hVxBxnTMNyu5Rhgwc6LnCyra/HjzGVoTTOmo0NKot9JbtDIoan182Jla8Wi
-        UlV/To0w==;
-Received: from viro by zeniv.linux.org.uk with local (Exim 4.96 #2 (Red Hat Linux))
-        id 1oyboR-006i8e-1U;
-        Fri, 25 Nov 2022 16:44:27 +0000
-Date:   Fri, 25 Nov 2022 16:44:27 +0000
-From:   Al Viro <viro@zeniv.linux.org.uk>
-To:     Jeff Layton <jlayton@kernel.org>
-Cc:     Eric Van Hensbergen <ericvh@gmail.com>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Christian Schoenebeck <linux_oss@crudebyte.com>,
-        David Howells <dhowells@redhat.com>,
-        Marc Dionne <marc.dionne@auristor.com>,
-        Xiubo Li <xiubli@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Steve French <sfrench@samba.org>, Paulo Alcantara <pc@cjr.nz>,
-        Ronnie Sahlberg <lsahlber@redhat.com>,
-        Shyam Prasad N <sprasad@microsoft.com>,
-        Tom Talpey <tom@talpey.com>,
-        Christine Caulfield <ccaulfie@redhat.com>,
-        David Teigland <teigland@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Namjae Jeon <linkinjeon@kernel.org>,
-        Sergey Senozhatsky <senozhatsky@chromium.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        Mark Fasheh <mark@fasheh.com>,
-        Joel Becker <jlbec@evilplan.org>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>,
-        Mike Marshall <hubcap@omnibond.com>,
-        Martin Brandenburg <martin@omnibond.com>,
-        "Darrick J. Wong" <djwong@kernel.org>, hch@lst.de,
-        linux-kernel@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, linux-fsdevel@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        devel@lists.orangefs.org, linux-xfs@vger.kernel.org
-Subject: Re: [PATCH] filelock: move file locking definitions to separate
- header file
-Message-ID: <Y4Dw65Nzt4bX9esd@ZenIV>
-References: <20221120210004.381842-1-jlayton@kernel.org>
- <Y4A6/ozhUncxbimi@ZenIV>
- <1d474f53670771f324745f597ec94b63a006d687.camel@kernel.org>
+        with ESMTP id S229475AbiKZJ4p (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Nov 2022 04:56:45 -0500
+Received: from mout.gmx.net (mout.gmx.net [212.227.15.15])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D404121E3E
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Nov 2022 01:56:43 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=gmx.de; s=s31663417;
+        t=1669456598; bh=yHnNWKtSSzDVa3fYcwEBTQuZKONm7vmROfbExzHQJEw=;
+        h=X-UI-Sender-Class:From:To:Cc:Subject:Date;
+        b=ISyFH/TnzjbnBli8UL7T66+FfCaYCI6hySJPWJd7buxoVTWa3n+xFn7exB5GfxDMe
+         i3IHKJyRynMQO94z5cfQTNNZJYE2MeVDdiIbOKuw0BL7EuylmJWU4IOwsXf8EKc/XD
+         m53eh58tkrKS+3zxjwxl5uUk/CMyhUEgZEOXz/rh0eSho/E3eDnXh9vAQvyQsCBPeq
+         QdMoW6LDHZIiuRBy1E1CqfOhAtyemdC7pfBzEs8hzi2zd9peLDNxBX6z1dGPlAG3/8
+         1dPNfHG/kgWpe/CiNlAa2asENBVX9d5sb3U8t+G0N6oradfCqUDH6f7SnIC8MdoYi2
+         vZA13RFh3/NOA==
+X-UI-Sender-Class: 724b4f7f-cbec-4199-ad4e-598c01a50d3a
+Received: from xook.jfalk.de ([91.15.234.204]) by mail.gmx.net (mrgmx004
+ [212.227.17.190]) with ESMTPSA (Nemesis) id 1MRCK6-1pLv500Vim-00NA1H; Sat, 26
+ Nov 2022 10:56:38 +0100
+From:   Joachim Falk <joachim.falk@gmx.de>
+To:     linux-nfs@vger.kernel.org
+Cc:     Joachim Falk <joachim.falk@gmx.de>, NeilBrown <neilb@suse.com>,
+        Steve Dickson <steved@redhat.com>,
+        Salvatore Bonaccorso <carnil@debian.org>
+Subject: [PATCH] auth-rpcgss-module.service: Don't fail inside linux container.
+Date:   Sat, 26 Nov 2022 10:55:50 +0100
+Message-Id: <20221126095550.174062-1-joachim.falk@gmx.de>
+X-Mailer: git-send-email 2.35.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <1d474f53670771f324745f597ec94b63a006d687.camel@kernel.org>
-Sender: Al Viro <viro@ftp.linux.org.uk>
+Content-Transfer-Encoding: quoted-printable
+X-Provags-ID: V03:K1:X0ulXe1maUCB4Ac854tuUKdH0Zpdv1MzjXQpyfdNRaa2R7XxFyq
+ ceG0lrTyxzf9nvplODaXq16p7aDspKBKSg7DJG+cpaV78etm55wIj94rT41OsIE3xWMyzIp
+ czRwZ5jFmRa+xCUVg5RL1Klqgm/oF/uZ6Tstbgdfkx6p9v2SsmH0AKgdSYSZWUCdV8Ygy0T
+ I/FGqGEuq/8U1c/78TOsQ==
+UI-OutboundReport: notjunk:1;M01:P0:feKd9h14f4o=;MHJSuCUC03visKdcchXC54TxW+U
+ 26D32lRdDsTxHuZceiyX1lDjr5xuyIswWD+Vn9DaUtNoo3F2KXQ/qpIxhmhF6eSiO4cqKK7ka
+ uCdkE926yqctgf3zk8diW8oX4VKw3qY5EmksYY2UwhP8O9IlAW87GBcDMYSl5BIgJPWJk5DKT
+ TVTRDEWiFim4W5Le9SlDQAuaSS2Y4koxHwyubgCIVLY7QWsg9jRsHfMNRMOh53iISh2bV/8KF
+ 5rrAnQS5qr0A600sjghzn40GuSHiRn+tOsdosioxY/sfMRiDlUt8cQ3Dvsdqpkz8Zb6OTYPrl
+ O3BoRGX/Lk7HkpRRsnM8+u4BLGZv2VPG292MBpVfoVxUhsJTNNXnqHUqQQWnt7NqzcZULlL09
+ E96ZIYRVEWFsAIQYWrhwGJ7ALxmrJSajkgZlLF8xgd51hzVxBkYpevDqPEYgOtnnAqpEUzIah
+ rAqHBmWUFlowiva27K3u435dFGij2o0LkljP1Qj3zj7IDl7w8kcf3QBnZon+1inlLD+u54OMZ
+ nLDLlOHIlK8FpByBwZgrl9+bSPKVpBwKQEUpFmbKcVAESaEgo4Ax4DU9+fyXgWOWJ99Ph+AlM
+ mgQqgjwnzxk2eOcj5bjB3VvVU7KrMsrDR6TSoosgyuZXWjjj8v07GTn58Nj03mYn7wqiOX1Qi
+ +pgRp0JiGSppihC5qRaWAHyxsNKxHiioUVs9qo+ZxhIzZZCWjUkBnSuYRoo2Atbc5tLEaWbY7
+ ItFRgPSBZ+hTXjHbWglrmbFAoA4D+LtUbsZYMOJkruVJMLQOHQRnocCOK0esg1/I4QNQiFx88
+ XEd/CPBCBWho+oe2WglEzHXY4ZA8pn6qnQEQGZbPPaDYY2OcigYZrF6h/74Lli4FmoKwjx8tv
+ nwkjnxp3eyFghoF8I60oxxmn7CNEqPST9k2wYJ4v2r8BGoV8NQU84TPgaYwkaDKD+CL//Adts
+ dNqJFawmVBrL7ldJOZtH8HiEJs8=
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, Nov 25, 2022 at 08:23:45AM -0500, Jeff Layton wrote:
+Only try to load the auth_rpcgss kernel module if we are not executing
+inside a Linux container. Otherwise, the auth-rpcgss-module service will
+fail inside a Linux container as the loading of kernel modules is
+forbidden for the container. Thus, the "/sbin/modprobe -q auth_rpcgss"
+call will fail even if the auth_rpcgss kernel module is already loaded.
+This situation occurs when the container host has already loaded the
+auth_rpcgss kernel module to enable kerberized NFS service for its
+containers. This behavior has been tested with kmod up to version
+30+20220630-3 (current in bookworm as of 2022-09-20).
 
-> I left it in fs.h for now. Some of the file_operations prototypes need
-> that typedef, and I figure that anyone who is including filelock.h will
-> almost certainly need to include fs.h anyway. We could move it into a
-> separate header too, but it's probably not worth it.
-> 
-> HCH mentioned years ago though that we should just get rid of fl_owner_t
-> altogether and just use 'void *'. I didn't do it at the time because I
-> was focused on other changes, but this might be a good time to change
-> it.
+Bug-Debian: http://bugs.debian.org/985000
+Discussion-Debian: https://salsa.debian.org/kernel-team/nfs-utils/-/merge_=
+requests/7
 
-Might be...
+Signed-off-by: Joachim Falk <joachim.falk@gmx.de>
+=2D--
+ systemd/auth-rpcgss-module.service | 1 +
+ 1 file changed, 1 insertion(+)
 
-> > > +extern void show_fd_locks(struct seq_file *f,
-> > > +			 struct file *filp, struct files_struct *files);
-> > 
-> > If anything, that would be better off as fl_owner_t...  Again, a separate
-> > patch.
-> 
-> I'm not sure what you mean here. This prototype hasn't changed, and is
-> only called from procfs.
+diff --git a/systemd/auth-rpcgss-module.service b/systemd/auth-rpcgss-modu=
+le.service
+index 45482833..25c9de80 100644
+=2D-- a/systemd/auth-rpcgss-module.service
++++ b/systemd/auth-rpcgss-module.service
+@@ -10,6 +10,7 @@ DefaultDependencies=3Dno
+ Before=3Dgssproxy.service rpc-svcgssd.service rpc-gssd.service
+ Wants=3Dgssproxy.service rpc-svcgssd.service rpc-gssd.service
+ ConditionPathExists=3D/etc/krb5.keytab
++ConditionVirtualization=3D!container
 
-Take a look at that function and its caller.  The use of 'files' argument there
-is (and can be) only as an opaque pointer to be compared to ->fl_owner; at that
-point it might be pointing to freed memory, for all we know (and give false
-positives if already reused).
+ [Service]
+ Type=3Doneshot
+=2D-
+2.35.1
 
-TBH, I'd never been able to finish the audit of files_struct pointers passed
-into locks subsystem; there definitely are moments when code from fs/locks.c
-is dealing with pointers to already freed instances - show_fd_locks() at the
-very least.  They are not dereferenced, but beyond that...
