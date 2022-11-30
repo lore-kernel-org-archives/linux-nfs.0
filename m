@@ -2,44 +2,42 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92C2BC4321E
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Nov 2022 18:18:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8BD18C4321E
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Nov 2022 18:18:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230141AbiK3SS1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 30 Nov 2022 13:18:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46974 "EHLO
+        id S230156AbiK3SSc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Nov 2022 13:18:32 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40000 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230150AbiK3SSA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2022 13:18:00 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 96BB398961
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2022 10:15:32 -0800 (PST)
+        with ESMTP id S230173AbiK3SSL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Nov 2022 13:18:11 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C35A18B184
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2022 10:15:38 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id B806261D53
+        by ams.source.kernel.org (Postfix) with ESMTPS id 6D2D6B81C9D
         for <linux-nfs@vger.kernel.org>; Wed, 30 Nov 2022 18:15:30 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C2187C43470;
-        Wed, 30 Nov 2022 18:15:29 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id ABBAFC433D6;
+        Wed, 30 Nov 2022 18:15:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1669832130;
-        bh=QPnelCYv5jKDf48ucN5jAht76+esA73F3wLbZi27lDw=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=sflsTx5diB9qRXPLH7gs4L6Aptaih79lezHIhIHwv1oyu1Ij2rrcCILckfYV05OLR
-         Pg8xCDfE05cZsgKsWn57b3OSM4ihv140VdMVWBBHnx5jissYzCq7rYaTN/79fEAJBl
-         Pt+2s3/hIK2Xv9R0d6PKZvgj6/YBO9LUtTWyQqwsm1r5QHJUZuJYm0LTb+kuQGkmoG
-         hSCQ0t7dNYJI3t6QiZLFUu5l+qKjoWF1mpzhwP+qqpSbv21VgU9GhwSRgjPn4ItkJD
-         SSlOjqPSpHWsO68MNenUOgPFAHldRwYUVKUt5xaBHEphkpfVQZxuIjtABzPkVBfv58
-         9ZznpV5oZwtPw==
+        s=k20201202; t=1669832129;
+        bh=8jF1vgKRCb+QRwGb6evUrsz3ZuHKcMT1cygCoD2VWS4=;
+        h=From:To:Cc:Subject:Date:From;
+        b=TD4orS8+j3ZaO+6iiGXeG39DjgT6NZnBIFCoUw8Wtntd3hk9FY520qQQuAc5El7Nb
+         gqZQDs6QzMb2Q0mN4zN0rhGssFy+eY3l4JZWrEwlMp49cy5rPKtbTpF4sm+F2aDBJc
+         HmzqRwYpKwf43mSyQQbSuIcY+PGXw6pR+YlY0q3X0z8RwMQ6LiA1+A6GAHsmuT8yD1
+         Q0xPT3Fx50Gj/6LByeOYH9WfztRUAUx7VJfK+XagftfKjcnR6bjaVavfz1R1BfAUUZ
+         H0KI3P88qKBBBij7t0ealK+vrfD1kegLO0BYRggAWI3FkokBmJ/xusz3+FWLqeld+Y
+         hi3mc8i86C8iA==
 From:   Anna Schumaker <anna@kernel.org>
 To:     linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com
 Cc:     anna@kernel.org
-Subject: [PATCH 3/3] NFSv4.2: Change the default KConfig value for READ_PLUS
-Date:   Wed, 30 Nov 2022 13:15:27 -0500
-Message-Id: <20221130181527.766485-3-anna@kernel.org>
+Subject: [PATCH 1/3] NFSv4.2: Set the correct size scratch buffer for decoding READ_PLUS
+Date:   Wed, 30 Nov 2022 13:15:25 -0500
+Message-Id: <20221130181527.766485-1-anna@kernel.org>
 X-Mailer: git-send-email 2.38.1
-In-Reply-To: <20221130181527.766485-1-anna@kernel.org>
-References: <20221130181527.766485-1-anna@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -48,32 +46,29 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Now that we've worked out performance issues and have a server patch
-addressing the failed xfstests, we can safely enable this feature by
-default.
+The scratch_buf array is 16 bytes, but I was passing 32 to the
+xdr_set_scratch_buffer() function. Fix this by using sizeof(), which is
+what I probably should have been doing this whole time.
 
+Fixes: d3b00a802c84 ("NFS: Replace the READ_PLUS decoding code")
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/Kconfig | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ fs/nfs/nfs42xdr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 14a72224b657..1ead5bd740c2 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -209,8 +209,8 @@ config NFS_DISABLE_UDP_SUPPORT
- config NFS_V4_2_READ_PLUS
- 	bool "NFS: Enable support for the NFSv4.2 READ_PLUS operation"
- 	depends on NFS_V4_2
--	default n
-+	default y
- 	help
--	 This is intended for developers only. The READ_PLUS operation has
--	 been shown to have issues under specific conditions and should not
--	 be used in production.
-+	 Choose Y here to enable the use of READ_PLUS over NFS v4.2. READ_PLUS
-+	 attempts to improve read performance by compressing out sparse holes
-+	 in the file contents.
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index fe1aeb0f048f..2fd465cab631 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -1142,7 +1142,7 @@ static int decode_read_plus(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+ 	if (!segs)
+ 		return -ENOMEM;
+ 
+-	xdr_set_scratch_buffer(xdr, &scratch_buf, 32);
++	xdr_set_scratch_buffer(xdr, &scratch_buf, sizeof(scratch_buf));
+ 	status = -EIO;
+ 	for (i = 0; i < segments; i++) {
+ 		status = decode_read_plus_segment(xdr, &segs[i]);
 -- 
 2.38.1
 
