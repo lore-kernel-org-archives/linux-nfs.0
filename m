@@ -2,75 +2,74 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 336C3C4321E
-	for <linux-nfs@archiver.kernel.org>; Mon,  5 Dec 2022 09:19:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E6DE9C4332F
+	for <linux-nfs@archiver.kernel.org>; Mon,  5 Dec 2022 17:39:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230324AbiLEJTx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 5 Dec 2022 04:19:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38954 "EHLO
+        id S230307AbiLERjQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 5 Dec 2022 12:39:16 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59688 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230478AbiLEJTf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2022 04:19:35 -0500
-Received: from mxhk.zte.com.cn (mxhk.zte.com.cn [63.216.63.35])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AB34612D32;
-        Mon,  5 Dec 2022 01:19:31 -0800 (PST)
-Received: from mse-fl2.zte.com.cn (unknown [10.5.228.133])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        with ESMTP id S230123AbiLERjP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Dec 2022 12:39:15 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D1C31C42
+        for <linux-nfs@vger.kernel.org>; Mon,  5 Dec 2022 09:38:21 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1670261899;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=474Veck1VYB4rPLuZHOcu9oupe9hsVxc3fxdcRWFKn0=;
+        b=SEOmf7JqiRYpNi4G/bgt87MtZaMhj6WLDj0uGBPC0e1ZmtdVyD8x1MTxbZJf4UXRTHAFwF
+        qsLTGnFgImUPpDRH7SD3rS9vLsODTRM8EF0VTY8HlgtXWwkZjkt4ceI3uEpRvrkgSziJDd
+        iD264cqg+etx5TuMjOaaJTLvnHEITNs=
+Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
+ [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-623-T3r9giCIPkC2n9rlrDiGmw-1; Mon, 05 Dec 2022 12:38:08 -0500
+X-MC-Unique: T3r9giCIPkC2n9rlrDiGmw-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mxhk.zte.com.cn (FangMail) with ESMTPS id 4NQdKZ1c5Sz4xVng;
-        Mon,  5 Dec 2022 17:19:30 +0800 (CST)
-Received: from xaxapp01.zte.com.cn ([10.88.40.50])
-        by mse-fl2.zte.com.cn with SMTP id 2B59JEZ4022117;
-        Mon, 5 Dec 2022 17:19:14 +0800 (+08)
-        (envelope-from ye.xingchen@zte.com.cn)
-Received: from mapi (xaxapp01[null])
-        by mapi (Zmail) with MAPI id mid31;
-        Mon, 5 Dec 2022 17:19:16 +0800 (CST)
-Date:   Mon, 5 Dec 2022 17:19:16 +0800 (CST)
-X-Zmail-TransId: 2af9638db79465f1e0a1
-X-Mailer: Zmail v1.0
-Message-ID: <202212051719169589575@zte.com.cn>
-Mime-Version: 1.0
-From:   <ye.xingchen@zte.com.cn>
-To:     <trond.myklebust@hammerspace.com>
-Cc:     <anna@kernel.org>, <linux-nfs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>
-Subject: =?UTF-8?B?W1BBVENIXSBmczogbmZzOiBzeXNmczogdXNlIHN5c2ZzX2VtaXQoKSB0byBpbnN0ZWFkIG9mIHNjbnByaW50Zigp?=
-Content-Type: text/plain;
-        charset="UTF-8"
-X-MAIL: mse-fl2.zte.com.cn 2B59JEZ4022117
-X-Fangmail-Gw-Spam-Type: 0
-X-FangMail-Miltered: at cgslv5.04-192.168.250.138.novalocal with ID 638DB7A2.000 by FangMail milter!
-X-FangMail-Envelope: 1670231970/4NQdKZ1c5Sz4xVng/638DB7A2.000/10.5.228.133/[10.5.228.133]/mse-fl2.zte.com.cn/<ye.xingchen@zte.com.cn>
-X-Fangmail-Anti-Spam-Filtered: true
-X-Fangmail-MID-QID: 638DB7A2.000/4NQdKZ1c5Sz4xVng
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id CE59C2823805;
+        Mon,  5 Dec 2022 17:38:07 +0000 (UTC)
+Received: from [172.16.176.1] (unknown [10.22.50.6])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 573C240C206B;
+        Mon,  5 Dec 2022 17:38:07 +0000 (UTC)
+From:   Benjamin Coddington <bcodding@redhat.com>
+To:     Jidong Xiao <jidong.xiao@gmail.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: Is Linux NFS block size 512 bytes or is this a bug?
+Date:   Mon, 05 Dec 2022 12:38:01 -0500
+Message-ID: <60C55655-4A83-4B93-AEEB-89C69EBEE472@redhat.com>
+In-Reply-To: <CAG4AFWYGYtYOoi8BuFos__GSNrLVXBwcaDpVR0D6fRv3ibPkmA@mail.gmail.com>
+References: <CAG4AFWYGYtYOoi8BuFos__GSNrLVXBwcaDpVR0D6fRv3ibPkmA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain
+X-Scanned-By: MIMEDefang 3.1 on 10.11.54.1
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: ye xingchen <ye.xingchen@zte.com.cn>
+On 5 Dec 2022, at 0:44, Jidong Xiao wrote:
 
-Follow the advice of the Documentation/filesystems/sysfs.rst and show()
-should only use sysfs_emit() or sysfs_emit_at() when formatting the
-value to be returned to user space.
+> Hi,
+>
+> I saw this line in fs/nfsd/nfs3xdr.c:
+>
+> /* used */
+> p = xdr_encode_hyper(p, ((u64)stat->blocks) << 9);
+>
+> It seems we are left-shifting the blocks 9 bits, to get the number of
+> bytes used. Is this a bug or we know the block size is always 512
+> bytes?
 
-Signed-off-by: ye xingchen <ye.xingchen@zte.com.cn>
----
- fs/nfs/sysfs.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+By calling vfs_getattr(), which needs to behave for stat(2) syscall as
+returning the number of 512 byte blocks.  I think we're stuck with the
+traditional idea that blocks are always 512 bytes in linux, at least from
+the perspective of stat().
 
-diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
-index 67a87800b3a9..0cbcd2dfa732 100644
---- a/fs/nfs/sysfs.c
-+++ b/fs/nfs/sysfs.c
-@@ -82,7 +82,7 @@ static ssize_t nfs_netns_identifier_show(struct kobject *kobj,
- 	ssize_t ret;
+The history of such is beyond my time, but I don't think this is a bug.
 
- 	rcu_read_lock();
--	ret = scnprintf(buf, PAGE_SIZE, "%s\n", rcu_dereference(c->identifier));
-+	ret = sysfs_emit(buf, "%s\n", rcu_dereference(c->identifier));
- 	rcu_read_unlock();
- 	return ret;
- }
--- 
-2.25.1
+Ben
+
