@@ -2,33 +2,33 @@ Return-Path: <linux-nfs-owner@kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C9359C63706
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Dec 2022 08:43:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BF535C47089
+	for <linux-nfs@archiver.kernel.org>; Wed,  7 Dec 2022 08:43:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229778AbiLGInc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229740AbiLGInc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 7 Dec 2022 03:43:32 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39068 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39070 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229523AbiLGIna (ORCPT
+        with ESMTP id S229480AbiLGIna (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Dec 2022 03:43:30 -0500
 Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 99076A44E;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 99642AE56;
         Wed,  7 Dec 2022 00:43:27 -0800 (PST)
 Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id C3E8F615CA0B;
-        Wed,  7 Dec 2022 09:43:24 +0100 (CET)
+        by lithops.sigma-star.at (Postfix) with ESMTP id 02DD864BA9DA;
+        Wed,  7 Dec 2022 09:43:26 +0100 (CET)
 Received: from lithops.sigma-star.at ([127.0.0.1])
         by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id SlEnw1moQhMV; Wed,  7 Dec 2022 09:43:24 +0100 (CET)
+        with ESMTP id Uj5DSkEG5Sw5; Wed,  7 Dec 2022 09:43:25 +0100 (CET)
 Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 0D44F64BA9D7;
-        Wed,  7 Dec 2022 09:43:24 +0100 (CET)
+        by lithops.sigma-star.at (Postfix) with ESMTP id AF7AF64BA9AE;
+        Wed,  7 Dec 2022 09:43:25 +0100 (CET)
 Received: from lithops.sigma-star.at ([127.0.0.1])
         by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id uI7tyEAeGD_P; Wed,  7 Dec 2022 09:43:23 +0100 (CET)
+        with ESMTP id QksFaxl55wz9; Wed,  7 Dec 2022 09:43:25 +0100 (CET)
 Received: from blindfold.corp.sigma-star.at (unknown [82.150.214.1])
-        by lithops.sigma-star.at (Postfix) with ESMTPSA id 647F164BA9AE;
-        Wed,  7 Dec 2022 09:43:23 +0100 (CET)
+        by lithops.sigma-star.at (Postfix) with ESMTPSA id E753464BA9B1;
+        Wed,  7 Dec 2022 09:43:24 +0100 (CET)
 From:   Richard Weinberger <richard@nod.at>
 To:     linux-nfs@vger.kernel.org
 Cc:     linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
@@ -38,69 +38,40 @@ Cc:     linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         david.young@appsbroker.com, luis.turcitu@appsbroker.com,
         david@sigma-star.at, benmaynard@google.com,
         Richard Weinberger <richard@nod.at>
-Subject: [PATCH 0/3 v2] NFS: NFSD: Allow crossing mounts when re-exporting
-Date:   Wed,  7 Dec 2022 09:43:06 +0100
-Message-Id: <20221207084309.8499-1-richard@nod.at>
+Subject: [PATCH 3/3] NFS: nfs_encode_fh: Remove S_AUTOMOUNT check
+Date:   Wed,  7 Dec 2022 09:43:09 +0100
+Message-Id: <20221207084309.8499-4-richard@nod.at>
 X-Mailer: git-send-email 2.26.2
+In-Reply-To: <20221207084309.8499-1-richard@nod.at>
+References: <20221207084309.8499-1-richard@nod.at>
 MIME-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Currently when re-exporting a NFS share the NFS cross mount feature does
-not work [0].
-This patch series outlines an approach to address the problem.
+Now with NFSD being able to cross into auto mounts,
+the check can be removed.
 
-Crossing mounts does not work for two reasons:
+Signed-off-by: Richard Weinberger <richard@nod.at>
+---
+ fs/nfs/export.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-1. As soon the NFS client (on the re-exporting server) sees a different
-filesystem id, it installs an automount. That way the other filesystem
-will be mounted automatically when someone enters the directory.
-But the cross mount logic of KNFS does not know about automount.
-This patch series addresses the problem and teach both KNFSD
-and the exportfs logic of NFS to deal with automount.
-
-2. When KNFSD detects crossing of a mount point, it asks rpc.mountd to in=
-stall
-a new export for the target mount point. Beside of authentication rpc.mou=
-ntd
-also has to find a filesystem id for the new export. Is the to be exporte=
-d
-filesystem a NFS share, rpc.mountd cannot derive a filesystem id from it =
-and
-refuses to export. In the logs you'll see errors such as:
-
-mountd: Cannot export /srv/nfs/vol0, possibly unsupported filesystem or f=
-sid=3D required
-
-To deal with that I've changed rpc.mountd to use generate and store fsids=
- [1].
-Since the kernel side of my changes did change for a long time I decided =
-to
-try upstreaming it first.
-A 3rd iteration of my rpc.mountd will happen soon.
-
-[0] https://marc.info/?l=3Dlinux-nfs&m=3D161653016627277&w=3D2
-[1] https://lore.kernel.org/linux-nfs/20220217131531.2890-1-richard@nod.a=
-t/
-
-Changes since v1:
-https://lore.kernel.org/linux-nfs/20221117191151.14262-1-richard@nod.at/
-
-- Use LOOKUP_AUTOMOUNT only when NFSEXP_CROSSMOUNT is set (Jeff Layton)
-
-Richard Weinberger (3):
-  NFSD: Teach nfsd_mountpoint() auto mounts
-  fs: namei: Allow follow_down() to uncover auto mounts
-  NFS: nfs_encode_fh: Remove S_AUTOMOUNT check
-
- fs/namei.c            | 6 +++---
- fs/nfs/export.c       | 2 +-
- fs/nfsd/vfs.c         | 8 ++++++--
- include/linux/namei.h | 2 +-
- 4 files changed, 11 insertions(+), 7 deletions(-)
-
+diff --git a/fs/nfs/export.c b/fs/nfs/export.c
+index 01596f2d0a1e..0a5ee1754d50 100644
+--- a/fs/nfs/export.c
++++ b/fs/nfs/export.c
+@@ -42,7 +42,7 @@ nfs_encode_fh(struct inode *inode, __u32 *p, int *max_l=
+en, struct inode *parent)
+ 	dprintk("%s: max fh len %d inode %p parent %p",
+ 		__func__, *max_len, inode, parent);
+=20
+-	if (*max_len < len || IS_AUTOMOUNT(inode)) {
++	if (*max_len < len) {
+ 		dprintk("%s: fh len %d too small, required %d\n",
+ 			__func__, *max_len, len);
+ 		*max_len =3D len;
 --=20
 2.26.2
 
