@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0C98EC3DA7A
-	for <linux-nfs@archiver.kernel.org>; Fri,  6 Jan 2023 15:33:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A03AC4708D
+	for <linux-nfs@archiver.kernel.org>; Fri,  6 Jan 2023 15:39:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235315AbjAFPd6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 6 Jan 2023 10:33:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48320 "EHLO
+        id S232849AbjAFPjP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 6 Jan 2023 10:39:15 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50342 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235491AbjAFPd4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2023 10:33:56 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1C70435936
-        for <linux-nfs@vger.kernel.org>; Fri,  6 Jan 2023 07:33:52 -0800 (PST)
+        with ESMTP id S235842AbjAFPjI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jan 2023 10:39:08 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E710876820
+        for <linux-nfs@vger.kernel.org>; Fri,  6 Jan 2023 07:39:05 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id A663CB81D9F
-        for <linux-nfs@vger.kernel.org>; Fri,  6 Jan 2023 15:33:51 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F3EABC433EF;
-        Fri,  6 Jan 2023 15:33:49 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id A25C4B81DA5
+        for <linux-nfs@vger.kernel.org>; Fri,  6 Jan 2023 15:39:04 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 06588C433D2;
+        Fri,  6 Jan 2023 15:39:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1673019230;
-        bh=dEt2Nspqb40esxLCGIj5lmXJCX8tUhEZPxrDBvS4PYc=;
+        s=k20201202; t=1673019543;
+        bh=YI1EgRfIL23H/lrhRZh/vL63jTkmc7NFYAalGEm1TEY=;
         h=From:To:Cc:Subject:Date:From;
-        b=OAj9rqrEV674IpPPM/ePrnW8bP4KK7Dix6sW8aLE4Rz5Kj0GiyQLW7tQYg0cerCaw
-         Ugz4L6ZJ5dgdHzkxgJNx8ZOFtu9+CYNxvu84yoSEH76+QR7QTylNsdaOUWB6ZuE0nq
-         yQeVgUmwxioBdHuvS7v4qysf2H5RhySXL38bPuQKtKndjzS6JvtxKqOOR/+kyR175i
-         yXwtzZ19QTTD5ALcOusfpe0oCSXZY0AW/kHbvaNZWwzxpuHAslwPYz6JzIrgKhjVzj
-         90xkaTW7+jhuq7k3lf7wo97qm9e3GDA5YI643DcgkePGETFit6p6to+yQ1KzSQhNCY
-         AIzRFkaSPwVPA==
+        b=aIKyBJjTEDzb9qc6FNRM8CosNgGSFV1j6vlFNL0DUKa1KDuHeobwfoBidsoPjvn3X
+         IzbBK33y9G6sTxEQfUjFVEUa2VcB4on0TUl/qf+o72BPdhnBmvXaOutjQ5535NM8w1
+         t1fWOD53hNYzqhYPcs/6g6McbkI/RUVpt7tu3c/noXLMlsBunbhU7Mq+Y6oWDJEwC/
+         n1HcwDkvmPf7UMLkWZvhB7sqaZ48R51tK4Tn7YqBoVSg+CzSA9yHHi/7ZtbMnyKQoD
+         NRjAiNAwm7Jmw3yZtqWwcXKxck1V+AlSlW74aSLyBp0oTTyDq1lQZy13Ph+U1eGgri
+         JWGsidDiTvHlA==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     chuck.lever@oracle.com
-Cc:     linux-nfs@vger.kernel.org, NeilBrown <neilb@suse.de>
-Subject: [PATCH v2 1/2] nfsd: allow nfsd_file_get to sanely handle a NULL pointer
-Date:   Fri,  6 Jan 2023 10:33:47 -0500
-Message-Id: <20230106153348.104214-1-jlayton@kernel.org>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v2] nfsd: NFSD_FILE_KEY_INODE only needs to find GC'ed entries
+Date:   Fri,  6 Jan 2023 10:39:00 -0500
+Message-Id: <20230106153901.105230-1-jlayton@kernel.org>
 X-Mailer: git-send-email 2.39.0
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -44,53 +44,47 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-...and remove some now-useless NULL pointer checks in its callers.
+Since v4 files are expected to be long-lived, there's little value in
+closing them out of the cache when there is conflicting access.
 
-Suggested-by: NeilBrown <neilb@suse.de>
+Change the comparator to also match the gc value in the key. Change both
+of the current users of that key to set the gc value in the key to
+"true".
+
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/filecache.c | 5 ++---
- fs/nfsd/nfs4state.c | 4 +---
- 2 files changed, 3 insertions(+), 6 deletions(-)
+ fs/nfsd/filecache.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 0ef070349014..58ac93e7e680 100644
+index d630b4b74783..3b52c1888421 100644
 --- a/fs/nfsd/filecache.c
 +++ b/fs/nfsd/filecache.c
-@@ -452,7 +452,7 @@ static bool nfsd_file_lru_remove(struct nfsd_file *nf)
- struct nfsd_file *
- nfsd_file_get(struct nfsd_file *nf)
- {
--	if (likely(refcount_inc_not_zero(&nf->nf_ref)))
-+	if (nf && refcount_inc_not_zero(&nf->nf_ref))
- 		return nf;
- 	return NULL;
- }
-@@ -1096,8 +1096,7 @@ nfsd_file_do_acquire(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	rcu_read_lock();
- 	nf = rhashtable_lookup(&nfsd_file_rhash_tbl, &key,
- 			       nfsd_file_rhash_params);
--	if (nf)
--		nf = nfsd_file_get(nf);
-+	nf = nfsd_file_get(nf);
- 	rcu_read_unlock();
+@@ -175,6 +175,8 @@ static int nfsd_file_obj_cmpfn(struct rhashtable_compare_arg *arg,
  
- 	if (nf) {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4809ae0f0138..655fcfec0ace 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -602,9 +602,7 @@ put_nfs4_file(struct nfs4_file *fi)
- static struct nfsd_file *
- __nfs4_get_fd(struct nfs4_file *f, int oflag)
- {
--	if (f->fi_fds[oflag])
--		return nfsd_file_get(f->fi_fds[oflag]);
--	return NULL;
-+	return nfsd_file_get(f->fi_fds[oflag]);
- }
+ 	switch (key->type) {
+ 	case NFSD_FILE_KEY_INODE:
++		if (test_bit(NFSD_FILE_GC, &nf->nf_flags) != key->gc)
++			return 1;
+ 		if (nf->nf_inode != key->inode)
+ 			return 1;
+ 		break;
+@@ -683,6 +685,7 @@ nfsd_file_queue_for_close(struct inode *inode, struct list_head *dispose)
+ 	struct nfsd_file_lookup_key key = {
+ 		.type	= NFSD_FILE_KEY_INODE,
+ 		.inode	= inode,
++		.gc	= true,
+ 	};
+ 	struct nfsd_file *nf;
  
- static struct nfsd_file *
+@@ -1059,6 +1062,7 @@ nfsd_file_is_cached(struct inode *inode)
+ 	struct nfsd_file_lookup_key key = {
+ 		.type	= NFSD_FILE_KEY_INODE,
+ 		.inode	= inode,
++		.gc	= true,
+ 	};
+ 	bool ret = false;
+ 
 -- 
 2.39.0
 
