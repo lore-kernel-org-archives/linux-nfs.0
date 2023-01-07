@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 19A90C54EBC
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CD58CC46467
 	for <linux-nfs@archiver.kernel.org>; Sat,  7 Jan 2023 17:42:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232442AbjAGRmS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 7 Jan 2023 12:42:18 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44918 "EHLO
+        id S232733AbjAGRmT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 7 Jan 2023 12:42:19 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44948 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229621AbjAGRmP (ORCPT
+        with ESMTP id S232618AbjAGRmP (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2023 12:42:15 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 97394AE40
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ECB92B868
         for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 09:42:14 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 3555B60B2D
-        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:14 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CE57DC433F2
+        by ams.source.kernel.org (Postfix) with ESMTPS id 9BA1FB802C6
         for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:13 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1E10BC433F1
+        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1673113334;
-        bh=rOpW5muFNFVXhWhzyIdHq62jbDbbJm4/eMvtlgEM3cQ=;
+        s=k20201202; t=1673113332;
+        bh=B4YVxejoLW3sUxQuhL5fwsaZCUpQjmUlg59kztt9KFY=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=g+ddrhH9/WzHueGH1D48HFeWRh3ABI0JaV8BQzHRsx3JOI6LWa8QDtN7qOZ8/rgjq
-         d/Q8Fp2XNkULjGaR9iHA4k/EyomXPum3NGV30tKxuwxk4FivwocLlEC64u0dhIIME/
-         ZzzR+L7sbgNhuA0SV4YdKheGQHSR5QjTmsQJuDXqXxZmrPAeSi3xyA5PQ/D2iDGdQl
-         9PDd3H/XPRd18PU5bcXXRP+gnjFqSQI3BHInPFRef0VYw5O3rmq7ZpkmtWWGO4+3Da
-         v91EA3YQBd1R3TwE5jv/aWAuppjNPWoTGtPMu8FdIsuWWr5WDZZumEvnThqBxdFNOz
-         wtyE0kuqrbYVw==
+        b=WQy82Ux820LVT2INsXpmBlnXOwU9z63xfjx1F1Av7Hcz5bF6DAQW7kY1AuHYuvQG8
+         WvXnRKzJM+SBxQAzFWNCGIVudVoQu8lyAtH0HEKO/NO4yQhb6qzkQ7pmD+xLIie99i
+         p9PNlzwa0pXkp6bAAfrut414/hmOPwPfsZPXrccq7H1cNF1Rjy6EOsNes5zzjyh3k2
+         1o//FoC8GZ9VAp/oumJFIWg6i+AY2hmYFji72b+dy0SbYu82wGi8xBo3KJKDGMNAOO
+         7bL5sX8JC+zlkZpFYwv5vS/YHH0FWaxP6FvWJ/fQuJNTWrt1PFbfG99bUShcj9O05/
+         CPE81zNwAjHpg==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 15/17] NFS: fix up nfs_release_folio() to try to release the page
-Date:   Sat,  7 Jan 2023 12:36:33 -0500
-Message-Id: <20230107173635.2025233-16-trondmy@kernel.org>
+Subject: [PATCH 11/17] NFS: Remove unused function nfs_wb_page()
+Date:   Sat,  7 Jan 2023 12:36:29 -0500
+Message-Id: <20230107173635.2025233-12-trondmy@kernel.org>
 X-Mailer: git-send-email 2.39.0
-In-Reply-To: <20230107173635.2025233-15-trondmy@kernel.org>
+In-Reply-To: <20230107173635.2025233-11-trondmy@kernel.org>
 References: <20230107173635.2025233-1-trondmy@kernel.org>
  <20230107173635.2025233-2-trondmy@kernel.org>
  <20230107173635.2025233-3-trondmy@kernel.org>
@@ -49,10 +49,6 @@ References: <20230107173635.2025233-1-trondmy@kernel.org>
  <20230107173635.2025233-9-trondmy@kernel.org>
  <20230107173635.2025233-10-trondmy@kernel.org>
  <20230107173635.2025233-11-trondmy@kernel.org>
- <20230107173635.2025233-12-trondmy@kernel.org>
- <20230107173635.2025233-13-trondmy@kernel.org>
- <20230107173635.2025233-14-trondmy@kernel.org>
- <20230107173635.2025233-15-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -61,34 +57,40 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the gfp context allows it, and we're not kswapd, then try to write
-out the folio that has private data.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/file.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ fs/nfs/write.c         | 5 -----
+ include/linux/nfs_fs.h | 1 -
+ 2 files changed, 6 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 563c5e0c55e8..3bed75c5250b 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -432,8 +432,13 @@ static bool nfs_release_folio(struct folio *folio, gfp_t gfp)
- 	dfprintk(PAGECACHE, "NFS: release_folio(%p)\n", folio);
- 
- 	/* If the private flag is set, then the folio is not freeable */
--	if (folio_test_private(folio))
--		return false;
-+	if (folio_test_private(folio)) {
-+		if ((current_gfp_context(gfp) & GFP_KERNEL) != GFP_KERNEL ||
-+		    current_is_kswapd())
-+			return false;
-+		if (nfs_wb_folio(folio_file_mapping(folio)->host, folio) < 0)
-+			return false;
-+	}
- 	return nfs_fscache_release_folio(folio, gfp);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 581ad66636a7..666e18e2ec3f 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -2115,11 +2115,6 @@ int nfs_wb_folio(struct inode *inode, struct folio *folio)
+ 	return ret;
  }
  
+-int nfs_wb_page(struct inode *inode, struct page *page)
+-{
+-	return nfs_wb_folio(inode, page_folio(page));
+-}
+-
+ #ifdef CONFIG_MIGRATION
+ int nfs_migrate_folio(struct address_space *mapping, struct folio *dst,
+ 		struct folio *src, enum migrate_mode mode)
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index a61bfd52d551..45c44211e50e 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -580,7 +580,6 @@ extern int  nfs_update_folio(struct file *file, struct folio *folio,
+ extern int nfs_sync_inode(struct inode *inode);
+ extern int nfs_wb_all(struct inode *inode);
+ extern int nfs_wb_folio(struct inode *inode, struct folio *folio);
+-extern int nfs_wb_page(struct inode *inode, struct page *page);
+ int nfs_wb_folio_cancel(struct inode *inode, struct folio *folio);
+ extern int  nfs_commit_inode(struct inode *, int);
+ extern struct nfs_commit_data *nfs_commitdata_alloc(void);
 -- 
 2.39.0
 
