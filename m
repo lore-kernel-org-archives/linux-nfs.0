@@ -2,44 +2,48 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1BBC3C63797
-	for <linux-nfs@archiver.kernel.org>; Sat,  7 Jan 2023 17:42:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2DDCEC46467
+	for <linux-nfs@archiver.kernel.org>; Sat,  7 Jan 2023 17:42:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232156AbjAGRmM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 7 Jan 2023 12:42:12 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44844 "EHLO
+        id S232386AbjAGRmN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 7 Jan 2023 12:42:13 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44858 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229621AbjAGRmK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2023 12:42:10 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 68BC71111
-        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 09:42:09 -0800 (PST)
+        with ESMTP id S232377AbjAGRmL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2023 12:42:11 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A517A240
+        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 09:42:10 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 0455260B94
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 416E060B2D
+        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:10 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EBD8EC433D2
         for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:09 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3A43BC433F0
-        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1673113328;
-        bh=PnIJNi97MQcKeEh9IXkDIPFsdikR+gdWTzjJx/w77pA=;
+        s=k20201202; t=1673113330;
+        bh=nLom5/x2NFYW6hilvMmAQ5tfsP9FDC+EsyxabKvK5CQ=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=Bs1aqnPJqfONJ1Ci3im5j3vIwTDw+VNPuyNUs0rjqxJEgM/MTTLXwefccRw2kyGxE
-         pKpo5EsGFLJhzZjy+FpBPX4UCykvzru2cc18fSFftVbh2nTyyCs25OBN03dfLTYk6L
-         A61XGuVeVyrfZFZsFbeE2IpxJfIdkO+Yf5lwbNYMmE8vEPu+WPoRDu7HOqxop8gS7h
-         eSidJ1Zec6eLwoR9Dn9bq4yKItN9rTfOp7E5NsMHfeK0eQKDiMZsaBYeEZUS+UkJHX
-         yofnNxxpQdNdrj4o5CiDPFZZTb1Nx7EaP/TAkMUgGG8HDQasrer6nLp3Dmf9Yi2T+A
-         DmNVkAjJYdaxg==
+        b=VsiZ0Fh8G3cXK/6Y3VYNRe/Y1vI/Y2txpxBWmhz77FhcJ30EevSoey+2o7mk+2dRI
+         Tq/aneC8o33pxAEB1ToaKGRKdXIAy+/nOvfMejMvu7GRmhi9frPReslvBGADVrbXD+
+         z0v9Aj9zEVJ5t4RPmqnwhU5LiW2AZ2xeeVxiY+GyeLr8dtVjNCHX1JsWbrYph74UtI
+         xcMm9bwce11J9T8lbSeIkNRDlyZBA4J4qUFSqTKt3Mh7X8ztwOQZtHblQ3GVd02jav
+         VnliwpYD3RS1C6MjikH99WSJEz5beE7Fd69MuOg0+NCEOuP93O8vhbnrv0jRtWZyfL
+         KSE7OtlIrLyPQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 02/17] NFS: Add basic functionality for tracking folios in struct nfs_page
-Date:   Sat,  7 Jan 2023 12:36:20 -0500
-Message-Id: <20230107173635.2025233-3-trondmy@kernel.org>
+Subject: [PATCH 06/17] NFS: Convert the remaining pagelist helper functions to support folios
+Date:   Sat,  7 Jan 2023 12:36:24 -0500
+Message-Id: <20230107173635.2025233-7-trondmy@kernel.org>
 X-Mailer: git-send-email 2.39.0
-In-Reply-To: <20230107173635.2025233-2-trondmy@kernel.org>
+In-Reply-To: <20230107173635.2025233-6-trondmy@kernel.org>
 References: <20230107173635.2025233-1-trondmy@kernel.org>
  <20230107173635.2025233-2-trondmy@kernel.org>
+ <20230107173635.2025233-3-trondmy@kernel.org>
+ <20230107173635.2025233-4-trondmy@kernel.org>
+ <20230107173635.2025233-5-trondmy@kernel.org>
+ <20230107173635.2025233-6-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -48,92 +52,158 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
+Allow creation of subrequests from a request that is carrying a folio.
+Add helpers to set up and tear down requests carrying folios.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pagelist.c        |  5 +++--
- include/linux/nfs_page.h | 38 +++++++++++++++++++++++++++++++++++++-
- 2 files changed, 40 insertions(+), 3 deletions(-)
+ fs/nfs/pagelist.c | 72 ++++++++++++++++++++++++++++++++---------------
+ 1 file changed, 50 insertions(+), 22 deletions(-)
 
 diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index b4b3e80e64cd..f496774d9d97 100644
+index 18a10f43612f..520556d6bfe2 100644
 --- a/fs/nfs/pagelist.c
 +++ b/fs/nfs/pagelist.c
-@@ -500,9 +500,10 @@ nfs_create_subreq(struct nfs_page *req,
+@@ -466,10 +466,9 @@ nfs_page_group_destroy(struct kref *kref)
+ 		nfs_release_request(head);
+ }
+ 
+-static struct nfs_page *
+-__nfs_create_request(struct nfs_lock_context *l_ctx, struct page *page,
+-		   unsigned int pgbase, unsigned int offset,
+-		   unsigned int count)
++static struct nfs_page *nfs_page_create(struct nfs_lock_context *l_ctx,
++					unsigned int pgbase, pgoff_t index,
++					unsigned int offset, unsigned int count)
+ {
+ 	struct nfs_page		*req;
+ 	struct nfs_open_context *ctx = l_ctx->open_context;
+@@ -488,19 +487,32 @@ __nfs_create_request(struct nfs_lock_context *l_ctx, struct page *page,
+ 	/* Initialize the request struct. Initially, we assume a
+ 	 * long write-back delay. This will be adjusted in
+ 	 * update_nfs_request below if the region is not locked. */
+-	req->wb_page    = page;
+-	if (page) {
+-		req->wb_index = page_index(page);
+-		get_page(page);
+-	}
+-	req->wb_offset  = offset;
+-	req->wb_pgbase	= pgbase;
+-	req->wb_bytes   = count;
++	req->wb_pgbase = pgbase;
++	req->wb_index = index;
++	req->wb_offset = offset;
++	req->wb_bytes = count;
+ 	kref_init(&req->wb_kref);
+ 	req->wb_nio = 0;
+ 	return req;
+ }
+ 
++static void nfs_page_assign_folio(struct nfs_page *req, struct folio *folio)
++{
++	if (folio != NULL) {
++		req->wb_folio = folio;
++		folio_get(folio);
++		set_bit(PG_FOLIO, &req->wb_flags);
++	}
++}
++
++static void nfs_page_assign_page(struct nfs_page *req, struct page *page)
++{
++	if (page != NULL) {
++		req->wb_page = page;
++		get_page(page);
++	}
++}
++
+ /**
+  * nfs_create_request - Create an NFS read/write request.
+  * @ctx: open context to use
+@@ -521,9 +533,11 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
+ 
+ 	if (IS_ERR(l_ctx))
+ 		return ERR_CAST(l_ctx);
+-	ret = __nfs_create_request(l_ctx, page, offset, offset, count);
+-	if (!IS_ERR(ret))
++	ret = nfs_page_create(l_ctx, offset, page_index(page), offset, count);
++	if (!IS_ERR(ret)) {
++		nfs_page_assign_page(ret, page);
+ 		nfs_page_group_init(ret, NULL);
++	}
+ 	nfs_put_lock_context(l_ctx);
+ 	return ret;
+ }
+@@ -536,11 +550,16 @@ nfs_create_subreq(struct nfs_page *req,
  {
  	struct nfs_page *last;
  	struct nfs_page *ret;
-+	struct page *page = nfs_page_to_page(req, pgbase);
++	struct folio *folio = nfs_page_to_folio(req);
+ 	struct page *page = nfs_page_to_page(req, pgbase);
  
--	ret = __nfs_create_request(req->wb_lock_context, req->wb_page,
--			pgbase, offset, count);
-+	ret = __nfs_create_request(req->wb_lock_context, page, pgbase, offset,
-+				   count);
+-	ret = __nfs_create_request(req->wb_lock_context, page, pgbase, offset,
+-				   count);
++	ret = nfs_page_create(req->wb_lock_context, pgbase, req->wb_index,
++			      offset, count);
  	if (!IS_ERR(ret)) {
++		if (folio)
++			nfs_page_assign_folio(ret, folio);
++		else
++			nfs_page_assign_page(ret, page);
  		/* find the last request */
  		for (last = req->wb_head;
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index ba7e2e4b0926..d2ddc9a594c5 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -25,6 +25,7 @@
- enum {
- 	PG_BUSY = 0,		/* nfs_{un}lock_request */
- 	PG_MAPPED,		/* page private set for buffered io */
-+	PG_FOLIO,		/* Tracking a folio (unset for O_DIRECT) */
- 	PG_CLEAN,		/* write succeeded */
- 	PG_COMMIT_TO_DS,	/* used by pnfs layouts */
- 	PG_INODE_REF,		/* extra ref held by inode when in writeback */
-@@ -41,7 +42,10 @@ enum {
- struct nfs_inode;
- struct nfs_page {
- 	struct list_head	wb_list;	/* Defines state of page: */
--	struct page		*wb_page;	/* page to read in/write out */
-+	union {
-+		struct page	*wb_page;	/* page to read in/write out */
-+		struct folio	*wb_folio;
-+	};
- 	struct nfs_lock_context	*wb_lock_context;	/* lock context info */
- 	pgoff_t			wb_index;	/* Offset >> PAGE_SHIFT */
- 	unsigned int		wb_offset,	/* Offset & ~PAGE_MASK */
-@@ -153,6 +157,38 @@ extern	int nfs_page_set_headlock(struct nfs_page *req);
- extern void nfs_page_clear_headlock(struct nfs_page *req);
- extern bool nfs_async_iocounter_wait(struct rpc_task *, struct nfs_lock_context *);
+ 		     last->wb_this_page != req->wb_head;
+@@ -548,7 +567,6 @@ nfs_create_subreq(struct nfs_page *req,
+ 			;
  
-+/**
-+ * nfs_page_to_folio - Retrieve a struct folio for the request
-+ * @req: pointer to a struct nfs_page
-+ *
-+ * If a folio was assigned to @req, then return it, otherwise return NULL.
-+ */
-+static inline struct folio *nfs_page_to_folio(const struct nfs_page *req)
-+{
-+	if (test_bit(PG_FOLIO, &req->wb_flags))
-+		return req->wb_folio;
-+	return NULL;
-+}
-+
-+/**
-+ * nfs_page_to_page - Retrieve a struct page for the request
-+ * @req: pointer to a struct nfs_page
-+ * @pgbase: folio byte offset
-+ *
-+ * Return the page containing the byte that is at offset @pgbase relative
-+ * to the start of the folio.
-+ * Note: The request starts at offset @req->wb_pgbase.
-+ */
-+static inline struct page *nfs_page_to_page(const struct nfs_page *req,
-+					    size_t pgbase)
-+{
-+	struct folio *folio = nfs_page_to_folio(req);
-+
-+	if (folio == NULL)
-+		return req->wb_page;
-+	return folio_page(folio, pgbase >> PAGE_SHIFT);
-+}
-+
- /*
-  * Lock the page of an asynchronous request
+ 		nfs_lock_request(ret);
+-		ret->wb_index = req->wb_index;
+ 		nfs_page_group_init(ret, last);
+ 		ret->wb_nio = req->wb_nio;
+ 	}
+@@ -587,11 +605,16 @@ void nfs_unlock_and_release_request(struct nfs_page *req)
   */
+ static void nfs_clear_request(struct nfs_page *req)
+ {
++	struct folio *folio = nfs_page_to_folio(req);
+ 	struct page *page = req->wb_page;
+ 	struct nfs_lock_context *l_ctx = req->wb_lock_context;
+ 	struct nfs_open_context *ctx;
+ 
+-	if (page != NULL) {
++	if (folio != NULL) {
++		folio_put(folio);
++		req->wb_folio = NULL;
++		clear_bit(PG_FOLIO, &req->wb_flags);
++	} else if (page != NULL) {
+ 		put_page(page);
+ 		req->wb_page = NULL;
+ 	}
+@@ -1471,16 +1494,21 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
+ {
+ 	struct nfs_pgio_mirror *mirror;
+ 	struct nfs_page *prev;
++	struct folio *folio;
+ 	u32 midx;
+ 
+ 	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
+ 		mirror = nfs_pgio_get_mirror(desc, midx);
+ 		if (!list_empty(&mirror->pg_list)) {
+ 			prev = nfs_list_entry(mirror->pg_list.prev);
+-			if (index != prev->wb_index + 1) {
+-				nfs_pageio_complete(desc);
+-				break;
+-			}
++			folio = nfs_page_to_folio(prev);
++			if (folio) {
++				if (index == folio_next_index(folio))
++					continue;
++			} else if (index == prev->wb_index + 1)
++				continue;
++			nfs_pageio_complete(desc);
++			break;
+ 		}
+ 	}
+ }
 -- 
 2.39.0
 
