@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7346FC54EBD
-	for <linux-nfs@archiver.kernel.org>; Sat,  7 Jan 2023 17:42:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4D573C46467
+	for <linux-nfs@archiver.kernel.org>; Sat,  7 Jan 2023 17:42:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229621AbjAGRmV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S232611AbjAGRmV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 7 Jan 2023 12:42:21 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44960 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44972 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232521AbjAGRmQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2023 12:42:16 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 742AB1C929
+        with ESMTP id S232671AbjAGRmR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2023 12:42:17 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3F0F2B91
         for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 09:42:15 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 12E3D60B97
-        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:15 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A7BD0C433F1
+        by ams.source.kernel.org (Postfix) with ESMTPS id D930FB802C4
         for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:14 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 65833C433F0
+        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1673113334;
-        bh=lOYi+fIs9C+kQMkaiHsFvwyAeISg2h7hFDuK/Ga12qs=;
+        s=k20201202; t=1673113333;
+        bh=To9gN1g2hxzLrRE709Bq3SQZN8E2WZm7y7FFT9mL/IE=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=uFklzXxMihm9nWcSi1knQe6+WPsUlDAWTUPL6Hqs+V5dWy+9HzWg5zJLgAzHlgoWC
-         nYDs9PEbCMP2wbdAkDVIix+ui3MhU8DYsrNF1wid4hVG8CL7kwrDZl0oZ3s89Ma5tZ
-         TracbWeJn7sPbpers/qWU6IaBxLYAATdG6/gagUPgRRpPMmM/NKjuvuwMlkM6nJv5G
-         vURe4Cn3IrDtaIrh5VQI1eRLCA6E/yZkIu4UiXs77TFa1ymXGFz8YkGHg4mPVobzyY
-         BVoxQGqZMzqLkwbJv6rU9bSCLacLb2roPuxNXgaDY6JL0wCNykkv3IWPMN4gZV/XIz
-         S5wQ3DveYKHbw==
+        b=GYAQ0xjCkom2uCArZ4u8rkslZmw8fmPWrAcv1onYo5IDODcGwQ64GObNjMfCTe/mk
+         M9w+vMTdEYGMRNN2rBudWoGXDuqYCqSKH7Y57EXKSbIfIOt5rNPOY9FMyuNj6wAVRx
+         v25Pp86iRVki1g9r/Sxzr4kCR4RYCidzUvQHJL1E17Pe+H+Tebo1ERjmAt+0A1tHsJ
+         7HsrnC1cBpHlNjGaZxH9sjWiXDvHiKVKvmNMi9/hejOR3RTtNjaNNgbVT/yL5sXt8E
+         9XWavQsdmT45y7cRBwJWpe5JfbeReijKB1L3YbaClLgNsLtZxjNof6/tI86DBe/3cL
+         7N2B8I2ZaxAUA==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 17/17] NFS: Improve tracing of nfs_wb_folio()
-Date:   Sat,  7 Jan 2023 12:36:35 -0500
-Message-Id: <20230107173635.2025233-18-trondmy@kernel.org>
+Subject: [PATCH 14/17] NFS: Clean up O_DIRECT request allocation
+Date:   Sat,  7 Jan 2023 12:36:32 -0500
+Message-Id: <20230107173635.2025233-15-trondmy@kernel.org>
 X-Mailer: git-send-email 2.39.0
-In-Reply-To: <20230107173635.2025233-17-trondmy@kernel.org>
+In-Reply-To: <20230107173635.2025233-14-trondmy@kernel.org>
 References: <20230107173635.2025233-1-trondmy@kernel.org>
  <20230107173635.2025233-2-trondmy@kernel.org>
  <20230107173635.2025233-3-trondmy@kernel.org>
@@ -52,9 +52,6 @@ References: <20230107173635.2025233-1-trondmy@kernel.org>
  <20230107173635.2025233-12-trondmy@kernel.org>
  <20230107173635.2025233-13-trondmy@kernel.org>
  <20230107173635.2025233-14-trondmy@kernel.org>
- <20230107173635.2025233-15-trondmy@kernel.org>
- <20230107173635.2025233-16-trondmy@kernel.org>
- <20230107173635.2025233-17-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -63,59 +60,114 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Include info about which folio is being traced.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfstrace.h | 5 +++--
- fs/nfs/write.c    | 4 ++--
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ fs/nfs/direct.c          | 12 ++++--------
+ fs/nfs/pagelist.c        | 15 +++++++++------
+ include/linux/nfs_page.h |  9 +++++----
+ 3 files changed, 18 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index 988f2c9b607f..624333ac1325 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -152,8 +152,6 @@ DEFINE_NFS_INODE_EVENT(nfs_getattr_enter);
- DEFINE_NFS_INODE_EVENT_DONE(nfs_getattr_exit);
- DEFINE_NFS_INODE_EVENT(nfs_setattr_enter);
- DEFINE_NFS_INODE_EVENT_DONE(nfs_setattr_exit);
--DEFINE_NFS_INODE_EVENT(nfs_writeback_page_enter);
--DEFINE_NFS_INODE_EVENT_DONE(nfs_writeback_page_exit);
- DEFINE_NFS_INODE_EVENT(nfs_writeback_inode_enter);
- DEFINE_NFS_INODE_EVENT_DONE(nfs_writeback_inode_exit);
- DEFINE_NFS_INODE_EVENT(nfs_fsync_enter);
-@@ -1032,6 +1030,9 @@ DECLARE_EVENT_CLASS(nfs_folio_event_done,
- DEFINE_NFS_FOLIO_EVENT(nfs_aop_readpage);
- DEFINE_NFS_FOLIO_EVENT_DONE(nfs_aop_readpage_done);
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 1707f46b1335..9a18c5a69ace 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -343,14 +343,12 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 			struct nfs_page *req;
+ 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
+ 			/* XXX do we need to do the eof zeroing found in async_filler? */
+-			req = nfs_create_request(dreq->ctx, pagevec[i],
+-						 pgbase, req_len);
++			req = nfs_page_create_from_page(dreq->ctx, pagevec[i],
++							pgbase, pos, req_len);
+ 			if (IS_ERR(req)) {
+ 				result = PTR_ERR(req);
+ 				break;
+ 			}
+-			req->wb_index = pos >> PAGE_SHIFT;
+-			req->wb_offset = pos & ~PAGE_MASK;
+ 			if (!nfs_pageio_add_request(&desc, req)) {
+ 				result = desc.pg_error;
+ 				nfs_release_request(req);
+@@ -802,8 +800,8 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 			struct nfs_page *req;
+ 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
  
-+DEFINE_NFS_FOLIO_EVENT(nfs_writeback_folio);
-+DEFINE_NFS_FOLIO_EVENT_DONE(nfs_writeback_folio_done);
-+
- DEFINE_NFS_FOLIO_EVENT(nfs_invalidate_folio);
- DEFINE_NFS_FOLIO_EVENT_DONE(nfs_launder_folio_done);
+-			req = nfs_create_request(dreq->ctx, pagevec[i],
+-						 pgbase, req_len);
++			req = nfs_page_create_from_page(dreq->ctx, pagevec[i],
++							pgbase, pos, req_len);
+ 			if (IS_ERR(req)) {
+ 				result = PTR_ERR(req);
+ 				break;
+@@ -816,8 +814,6 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 			}
  
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 666e18e2ec3f..d47247411877 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -2093,7 +2093,7 @@ int nfs_wb_folio(struct inode *inode, struct folio *folio)
- 	};
- 	int ret;
- 
--	trace_nfs_writeback_page_enter(inode);
-+	trace_nfs_writeback_folio(inode, folio);
- 
- 	for (;;) {
- 		folio_wait_writeback(folio);
-@@ -2111,7 +2111,7 @@ int nfs_wb_folio(struct inode *inode, struct folio *folio)
- 			goto out_error;
- 	}
- out_error:
--	trace_nfs_writeback_page_exit(inode, ret);
-+	trace_nfs_writeback_folio_done(inode, folio, ret);
- 	return ret;
+ 			nfs_lock_request(req);
+-			req->wb_index = pos >> PAGE_SHIFT;
+-			req->wb_offset = pos & ~PAGE_MASK;
+ 			if (!nfs_pageio_add_request(&desc, req)) {
+ 				result = desc.pg_error;
+ 				nfs_unlock_and_release_request(req);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 6706e0df1963..27fe7c07ec72 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -514,26 +514,29 @@ static void nfs_page_assign_page(struct nfs_page *req, struct page *page)
  }
  
+ /**
+- * nfs_create_request - Create an NFS read/write request.
++ * nfs_page_create_from_page - Create an NFS read/write request.
+  * @ctx: open context to use
+  * @page: page to write
+- * @offset: starting offset within the page for the write
++ * @pgbase: starting offset within the page for the write
++ * @offset: file offset for the write
+  * @count: number of bytes to read/write
+  *
+  * The page must be locked by the caller. This makes sure we never
+  * create two different requests for the same page.
+  * User should ensure it is safe to sleep in this function.
+  */
+-struct nfs_page *
+-nfs_create_request(struct nfs_open_context *ctx, struct page *page,
+-		   unsigned int offset, unsigned int count)
++struct nfs_page *nfs_page_create_from_page(struct nfs_open_context *ctx,
++					   struct page *page,
++					   unsigned int pgbase, loff_t offset,
++					   unsigned int count)
+ {
+ 	struct nfs_lock_context *l_ctx = nfs_get_lock_context(ctx);
+ 	struct nfs_page *ret;
+ 
+ 	if (IS_ERR(l_ctx))
+ 		return ERR_CAST(l_ctx);
+-	ret = nfs_page_create(l_ctx, offset, page_index(page), offset, count);
++	ret = nfs_page_create(l_ctx, pgbase, offset >> PAGE_SHIFT,
++			      offset_in_page(offset), count);
+ 	if (!IS_ERR(ret)) {
+ 		nfs_page_assign_page(ret, page);
+ 		nfs_page_group_init(ret, NULL);
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 3c71493d5cc3..a2f1ca657623 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -121,10 +121,11 @@ struct nfs_pageio_descriptor {
+ 
+ #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
+ 
+-extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
+-					    struct page *page,
+-					    unsigned int offset,
+-					    unsigned int count);
++extern struct nfs_page *nfs_page_create_from_page(struct nfs_open_context *ctx,
++						  struct page *page,
++						  unsigned int pgbase,
++						  loff_t offset,
++						  unsigned int count);
+ extern struct nfs_page *nfs_page_create_from_folio(struct nfs_open_context *ctx,
+ 						   struct folio *folio,
+ 						   unsigned int offset,
 -- 
 2.39.0
 
