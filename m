@@ -2,43 +2,47 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F13D5C54EBC
-	for <linux-nfs@archiver.kernel.org>; Sat,  7 Jan 2023 17:42:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F56BC64981
+	for <linux-nfs@archiver.kernel.org>; Sat,  7 Jan 2023 17:42:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232422AbjAGRmL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 7 Jan 2023 12:42:11 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44836 "EHLO
+        id S231445AbjAGRmN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 7 Jan 2023 12:42:13 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44856 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232156AbjAGRmK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2023 12:42:10 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4210B240
-        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 09:42:09 -0800 (PST)
+        with ESMTP id S232417AbjAGRmL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jan 2023 12:42:11 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4E826B91
+        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 09:42:10 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 94CAD60B8C
-        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:08 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C3E6EC433D2
-        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:07 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id E160260B98
+        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:09 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 82BF4C433F0
+        for <linux-nfs@vger.kernel.org>; Sat,  7 Jan 2023 17:42:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1673113328;
-        bh=EzSUmHPV0LS68WNrtNR1zMjdiuWsl5OOzjPLx81V0Ps=;
+        s=k20201202; t=1673113329;
+        bh=ueveN7A5UC42OUPcMshY6eat/c5aAWOSuJDRbj5z8Og=;
         h=From:To:Subject:Date:In-Reply-To:References:From;
-        b=lPdFfycDS+z6w36naE7TZdgqlXWWgfSa5DMWJLTWqkefmDdw+daWlM9OcgjC9HZs+
-         /HBPAqmSyPIjCkMrB+Am/xkJuQbUGDj9GLFn578zXBq6oo4uDKx2VUsKlfFFDuVpNo
-         O5Jksoxo3nxTn5ltyn4XQYwexqawymxtoftaVsEtgMpOEFu6X2bglwvkGp4GjAjWEC
-         l7B7aKesYSHBc3lhq99KypbjVYBEhtIxyozOvprSR109sHVQ07DJyv0jlPyf9N3zmY
-         vhkVAH6WdV7Z+wzL7daQmk7VVpHdI+15uB5SbyyafV3plAXGe0aSKILYKPVFkC0zfD
-         OC/XHClQO/rkQ==
+        b=GBOOu8yad6PxCuqYq660zuFzjFgdtvk2eBceBf/7ps2O0f/hHSuwGOLpe1wd6TPl6
+         fsO/lMum0NUeEekx0S7gKeLUL/Mp4n/bX1upimXFHNiWq4WDsTxX4HdIgxqBamC1s5
+         r2YZk8AAhoO8la7/olZwCfemlmZzp9CirjVF5VSGE1yXSZxz1vkjwPRykpguEFZJ7R
+         Yixm+nYwZ1N/TLXqkdSV292yq2SUbiunQviBMNnflC/xgYop2LQp04LI1GXPfGXQyA
+         gEpx8fG1KmwyolwXPmrpp6kebZ3D/KPJxRWm2iaKS6T21Ce82W/fleITaFTRC9vphv
+         z9V8BOAKKd2UQ==
 From:   trondmy@kernel.org
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 01/17] NFS: Fix for xfstests generic/208
-Date:   Sat,  7 Jan 2023 12:36:19 -0500
-Message-Id: <20230107173635.2025233-2-trondmy@kernel.org>
+Subject: [PATCH 05/17] NFS: Add a helper to convert a struct nfs_page into an inode
+Date:   Sat,  7 Jan 2023 12:36:23 -0500
+Message-Id: <20230107173635.2025233-6-trondmy@kernel.org>
 X-Mailer: git-send-email 2.39.0
-In-Reply-To: <20230107173635.2025233-1-trondmy@kernel.org>
+In-Reply-To: <20230107173635.2025233-5-trondmy@kernel.org>
 References: <20230107173635.2025233-1-trondmy@kernel.org>
+ <20230107173635.2025233-2-trondmy@kernel.org>
+ <20230107173635.2025233-3-trondmy@kernel.org>
+ <20230107173635.2025233-4-trondmy@kernel.org>
+ <20230107173635.2025233-5-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -47,29 +51,84 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the same page and data is being used for multiple requests,
-then ignore that when the request indicates we're reading from the start
-of the page.
+Replace all the open coded calls to page_file_mapping(req->wb_page)->host.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pagelist.c | 3 +++
- 1 file changed, 3 insertions(+)
+ fs/nfs/pagelist.c        |  2 +-
+ fs/nfs/write.c           |  7 +++----
+ include/linux/nfs_page.h | 13 +++++++++++++
+ 3 files changed, 17 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 317cedfa52bf..b4b3e80e64cd 100644
+index 30722cbcf5f4..18a10f43612f 100644
 --- a/fs/nfs/pagelist.c
 +++ b/fs/nfs/pagelist.c
-@@ -920,6 +920,9 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- 		req = nfs_list_entry(head->next);
- 		nfs_list_move_request(req, &hdr->pages);
+@@ -426,7 +426,7 @@ nfs_page_group_init(struct nfs_page *req, struct nfs_page *prev)
+ 		 * has extra ref from the write/commit path to handle handoff
+ 		 * between write and commit lists. */
+ 		if (test_bit(PG_INODE_REF, &prev->wb_head->wb_flags)) {
+-			inode = page_file_mapping(req->wb_page)->host;
++			inode = nfs_page_to_inode(req);
+ 			set_bit(PG_INODE_REF, &req->wb_flags);
+ 			kref_get(&req->wb_kref);
+ 			atomic_long_inc(&NFS_I(inode)->nrequests);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index f41d24b54fd1..f624b3d98cf7 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -421,7 +421,7 @@ static void nfs_set_page_writeback(struct page *page)
  
-+		if (req->wb_pgbase == 0)
-+			last_page = NULL;
+ static void nfs_end_page_writeback(struct nfs_page *req)
+ {
+-	struct inode *inode = page_file_mapping(req->wb_page)->host;
++	struct inode *inode = nfs_page_to_inode(req);
+ 	struct nfs_server *nfss = NFS_SERVER(inode);
+ 	bool is_done;
+ 
+@@ -592,8 +592,7 @@ nfs_lock_and_join_requests(struct page *page)
+ 
+ static void nfs_write_error(struct nfs_page *req, int error)
+ {
+-	trace_nfs_write_error(page_file_mapping(req->wb_page)->host, req,
+-			      error);
++	trace_nfs_write_error(nfs_page_to_inode(req), req, error);
+ 	nfs_mapping_set_error(req->wb_page, error);
+ 	nfs_inode_remove_request(req);
+ 	nfs_end_page_writeback(req);
+@@ -1420,7 +1419,7 @@ static void nfs_initiate_write(struct nfs_pgio_header *hdr,
+  */
+ static void nfs_redirty_request(struct nfs_page *req)
+ {
+-	struct nfs_inode *nfsi = NFS_I(page_file_mapping(req->wb_page)->host);
++	struct nfs_inode *nfsi = NFS_I(nfs_page_to_inode(req));
+ 
+ 	/* Bump the transmission count */
+ 	req->wb_nio++;
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 192071a6e5f6..b0b03ec4a209 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -189,6 +189,19 @@ static inline struct page *nfs_page_to_page(const struct nfs_page *req,
+ 	return folio_page(folio, pgbase >> PAGE_SHIFT);
+ }
+ 
++/**
++ * nfs_page_to_inode - Retrieve an inode for the request
++ * @req: pointer to a struct nfs_page
++ */
++static inline struct inode *nfs_page_to_inode(const struct nfs_page *req)
++{
++	struct folio *folio = nfs_page_to_folio(req);
 +
- 		if (!last_page || last_page != req->wb_page) {
- 			pageused++;
- 			if (pageused > pagecount)
++	if (folio == NULL)
++		return page_file_mapping(req->wb_page)->host;
++	return folio_file_mapping(folio)->host;
++}
++
+ /**
+  * nfs_page_max_length - Retrieve the maximum possible length for a request
+  * @req: pointer to a struct nfs_page
 -- 
 2.39.0
 
