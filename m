@@ -2,181 +2,139 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 83F44C53210
-	for <linux-nfs@archiver.kernel.org>; Sun,  8 Jan 2023 10:24:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 06925C53210
+	for <linux-nfs@archiver.kernel.org>; Sun,  8 Jan 2023 13:25:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232640AbjAHKYr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 8 Jan 2023 05:24:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34724 "EHLO
+        id S231269AbjAHNZq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 8 Jan 2023 08:25:46 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43720 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229520AbjAHKYq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jan 2023 05:24:46 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C0FD4DF8B
-        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 02:23:58 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1673173437;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ifyc/NpPD4xDrkXOelpV70x0wZHDxaX3KlAPaBK97ZE=;
-        b=S7aESQAPqVIS8YR6SFOr9cSzdegxUuZukxfA8xPDB1fa9C+qT7GHUKaO6Bgi0ci0lnYW52
-        vAjGuHgkLe+e4HuZFVHDU06uIt/Eeku5uLM6KOrTX4YgK5ifpnXvDcAiulMiIXvKgdDsZ2
-        Ogs7i1Zo2Xgy/SlYAU+6AGx6hrWhq7s=
-Received: from mail-qt1-f197.google.com (mail-qt1-f197.google.com
- [209.85.160.197]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_128_GCM_SHA256) id
- us-mta-635-uFYj4GtSOEaNywDitLSi-g-1; Sun, 08 Jan 2023 05:23:56 -0500
-X-MC-Unique: uFYj4GtSOEaNywDitLSi-g-1
-Received: by mail-qt1-f197.google.com with SMTP id k7-20020ac84747000000b003a87ca26200so3118787qtp.6
-        for <linux-nfs@vger.kernel.org>; Sun, 08 Jan 2023 02:23:56 -0800 (PST)
+        with ESMTP id S229483AbjAHNZp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jan 2023 08:25:45 -0500
+Received: from mail-wm1-x329.google.com (mail-wm1-x329.google.com [IPv6:2a00:1450:4864:20::329])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1EDE51005D
+        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 05:25:41 -0800 (PST)
+Received: by mail-wm1-x329.google.com with SMTP id ay12-20020a05600c1e0c00b003d9ea12bafcso1633579wmb.3
+        for <linux-nfs@vger.kernel.org>; Sun, 08 Jan 2023 05:25:41 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linaro.org; s=google;
+        h=content-transfer-encoding:in-reply-to:references:cc:to:from
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=gDnBglhmzrQ+ClSXJPmLD7+J1IxdL5cQgOysiOvvUiw=;
+        b=eNEHVpDt9oHcojHcitkH0RCFZbeCHiKuUEagDi9ApI0PQk7B6q6TOUmIbbLEdM1o1c
+         lrTJWPTi9nP3BTxC4nE+BQ3kpUS9/WmalhvXEVg3Ixw8aSv5GGpOww4ujobdhkNLmzW4
+         JLypJU8j7d6X7lL5kUfl7yWzn+04gMiE41Ny3txm70Rts0Zr8I2Ax+qoorYRoTD1Vg7H
+         5j7zosyfyOD9XwWxIm4VIqAe3vHRg1aw/lP8LC8BvDenCovDeKCMm8/N+slPLTRRnPUE
+         u3jBE9/Sw2cH6tHHcNG6wpuBpbPxEe+onr6Kh69FHruG98LFVJcVQfkBr4ZuTXuNczSt
+         /ShQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
-        h=mime-version:user-agent:content-transfer-encoding:references
-         :in-reply-to:date:cc:to:from:subject:message-id:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=ifyc/NpPD4xDrkXOelpV70x0wZHDxaX3KlAPaBK97ZE=;
-        b=Doeur76q9lDySno08EMmu955eeFfrcL28gVRo1TiZ6DfkhsSE9ue2L1q1yJgkc0g2G
-         zenXaoBiiytwWuY8TU9OrHZY3qzZVZOIj0nuoJ+J4Drav9yZisJsBKrv5jfRjoiAjnvr
-         eoj+yS1GleGaFAdl17MIkmFQkqmTgmd6NYOluslWx2F4ZPKyu9MalNJCzygGszd1wxdl
-         m1K2zxhAxN2mqZj60bMZrR42t/4cvz37+wQkQ6ShOntcuNPqEvQ390FhnIRNhJegmVDs
-         E5z0p+D3222gjbeOas0vhou0UsKKqhngVrMOckGpZeOPGo7Qdvt/SMmJ9ltbieW3JiJW
-         Px1g==
-X-Gm-Message-State: AFqh2kpE4TAt31wFVsiVI/wIahTy7Hz6W3y/R+Y6XW5+uzwA9EF9gORd
-        o0XGAr/0R8z7GurpM/mMSzFygJQGugKFW5xz9bVuKLtq/wowvxqFz4bQ4rjacA8ZcLtiKmriwBd
-        qALT86l5djTG59RDwoqhn
-X-Received: by 2002:ac8:6782:0:b0:3a8:2d7:af66 with SMTP id b2-20020ac86782000000b003a802d7af66mr95174557qtp.21.1673173435688;
-        Sun, 08 Jan 2023 02:23:55 -0800 (PST)
-X-Google-Smtp-Source: AMrXdXvinUcVeN3C2Q5Q9QCpHNOJFVhEA3iYudJmx+H8tbDdi1Xb5hPf5vc3iWUzZqUjLSRUm39apg==
-X-Received: by 2002:ac8:6782:0:b0:3a8:2d7:af66 with SMTP id b2-20020ac86782000000b003a802d7af66mr95174544qtp.21.1673173435369;
-        Sun, 08 Jan 2023 02:23:55 -0800 (PST)
-Received: from [192.168.1.3] (68-20-15-154.lightspeed.rlghnc.sbcglobal.net. [68.20.15.154])
-        by smtp.gmail.com with ESMTPSA id f9-20020ac80689000000b00343057845f7sm3089592qth.20.2023.01.08.02.23.54
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 08 Jan 2023 02:23:54 -0800 (PST)
-Message-ID: <a456ac8ccdb54f4d661fae5ef090d63d0bbcc690.camel@redhat.com>
-Subject: Re: NFSD: refcount_t: underflow; use-after-free from nfsd_file_free
-From:   Jeff Layton <jlayton@redhat.com>
-To:     dai.ngo@oracle.com, Chuck Lever III <chuck.lever@oracle.com>
-Cc:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date:   Sun, 08 Jan 2023 05:23:54 -0500
-In-Reply-To: <830543ab-10e0-3a62-c683-8bd95292db4b@oracle.com>
-References: <3c525b04-ef64-2bee-efc9-9a43069306f7@oracle.com>
-         <830543ab-10e0-3a62-c683-8bd95292db4b@oracle.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.46.2 (3.46.2-1.fc37) 
+        h=content-transfer-encoding:in-reply-to:references:cc:to:from
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=gDnBglhmzrQ+ClSXJPmLD7+J1IxdL5cQgOysiOvvUiw=;
+        b=GDt1UqrEiGyyJWnfs7AxH14kf3GKeKp28BRf8jWPQucZgkRmnhmIMNPyuPmZTNvh6Y
+         oj5Rysbm8CtxY8321sybcWlHcGuG1bcaT9hbscH9BFX5MQu0FBT+K9tP17WgNt2VevGl
+         JDSyQ3evI7S4tlpIe8uJqcgU828tbeAM601WePUbdotWF9QX0PoKlMn8qo9YJ7ceDP/0
+         I+eEIK/h5uvl95Yk+0RKq/679LzJzXpx8pqb8Uri3WbGwyd/IolnuhSFl3bl1uJJWTuT
+         CgtJfzqx304xMFn2WHmtyc0nJg/+S/SZfZQkiG1n+x8D1ccpf8+MO7uKj2UKEMUq+fVb
+         TGEg==
+X-Gm-Message-State: AFqh2koeTjheyggBSijVynLf48xMxwqlT7YVLZUHWxINYM9BBqItgtuy
+        NCRyzfRcIXCVZBzCqorXr/I9Nt98V+zT2smO
+X-Google-Smtp-Source: AMrXdXvmxxT+2bZviglEVMaCStY9tOI31zWc9TENsTM9uSLk3EaKSggauRRgvpQ6d98KRB5ltb90jA==
+X-Received: by 2002:a05:600c:4e04:b0:3d2:381f:2db5 with SMTP id b4-20020a05600c4e0400b003d2381f2db5mr42893495wmq.22.1673184339665;
+        Sun, 08 Jan 2023 05:25:39 -0800 (PST)
+Received: from [192.168.1.109] ([178.197.216.144])
+        by smtp.gmail.com with ESMTPSA id t9-20020a05600c198900b003d9e74dd9b2sm4060240wmq.9.2023.01.08.05.25.38
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 08 Jan 2023 05:25:39 -0800 (PST)
+Message-ID: <82526863-d07a-0a5d-2990-1555b1387f26@linaro.org>
+Date:   Sun, 8 Jan 2023 14:25:37 +0100
 MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.6.1
+Subject: Re: Regression: NULL pointer dereference after NFS_V4_2_READ_PLUS
+ (commit 7fd461c47)
+Content-Language: en-US
+From:   Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+To:     Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>
+Cc:     linux-nfs@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "regressions@lists.linux.dev" <regressions@lists.linux.dev>
+References: <f591b13c-4600-e2a4-8efa-aac6ad828dd1@linaro.org>
+In-Reply-To: <f591b13c-4600-e2a4-8efa-aac6ad828dd1@linaro.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sat, 2023-01-07 at 14:04 -0800, dai.ngo@oracle.com wrote:
+On 07/01/2023 16:44, Krzysztof Kozlowski wrote:
 > Hi,
->=20
-> This is a regression in 6.2.0-rc1.
->=20
-> The problem can be reproduced with a simple test:
-> . client mounts server's export using 4.1
-> . client cats a file on server's export
-> . on server stop nfs-server service
->=20
-> Bisect points to commit ac3a2585f018 (nfsd: rework refcounting in filecac=
-he)
->=20
-> -Dai
->=20
+> 
+> Bisect identified commit 7fd461c47c6c ("NFSv4.2: Change the default
+> KConfig value for READ_PLUS") as one leading to NULL pointer exception
+> when mounting NFS root on NFSv4 client:
+> 
+> [   25.739003] systemd[1]: Set hostname to <odroidhc1>.
+> [   25.771714] systemd[1]: Failed to bump fs.file-max, ignoring: Invalid
+> argument
+> [   26.199478] 8<--- cut here ---
+> [   26.201366] Unable to handle kernel NULL pointer dereference at
+> virtual address 00000004
+> ...
+> [   26.555522]  mmiocpy from xdr_inline_decode+0xec/0x16c
+> [   26.560628]  xdr_inline_decode from nfs4_xdr_dec_read_plus+0x178/0x358
+> [   26.567130]  nfs4_xdr_dec_read_plus from call_decode+0x204/0x304
+> 
+> Full OOPS attached. Full log available here:
+> https://krzk.eu/#/builders/21/builds/3901/steps/15/logs/serial0
+> 
+> Disabling NFS_V4_2_READ_PLUS fixes the issue, so obviously the commit is
+> not the cause, but rather making it default caused the regression.
+> 
+> I did not make the bisect yet which commit introduced it, if every
+> config includes NFS_V4_2_READ_PLUS.
+
+When every kernel is built with NFS_V4_2_READ_PLUS, bisect pointed to:
+d3b00a802c84 ("NFS: Replace the READ_PLUS decoding code")
+
+commit d3b00a802c845a6021148ce2e669b5a0b5729959
+Author: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Date:   Thu Jul 21 14:21:34 2022 -0400
+
+    NFS: Replace the READ_PLUS decoding code
+
+    We now take a 2-step process that allows us to place data and hole
+    segments directly at their final position in the xdr_stream without
+    needing to do a bunch of redundant copies to expand holes. Due to the
+    variable lengths of each segment, the xdr metadata might cross page
+    boundaries which I account for by setting a small scratch buffer so
+    xdr_inline_decode() won't fail.
+
+    Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+    Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+
+With a trace:
+[   25.898462] systemd[1]: Set hostname to <odroidhc1>.
+[   25.933746] systemd[1]: Failed to bump fs.file-max, ignoring: Invalid
+argument
+[   25.986237] random: crng init done
+[   26.264564] 8<--- cut here ---
+[   26.266823] Unable to handle kernel NULL pointer dereference at
+virtual address 00000fe8
+...
+[   26.597263]  nfs4_xdr_dec_read_plus from call_decode+0x204/0x304
+[   26.603222]  call_decode from __rpc_execute+0xd0/0x890
+[   26.608328]  __rpc_execute from rpc_async_schedule+0x1c/0x34
+[   26.613960]  rpc_async_schedule from process_one_work+0x294/0x790
+[   26.620030]  process_one_work from worker_thread+0x54/0x518
+[   26.625570]  worker_thread from kthread+0xf4/0x128
+[   26.630336]  kthread from ret_from_fork+0x14/0x2c
 
 
-This looks like the same problem that 789e1e10f214 ("nfsd: shut down the
-NFSv4 state objects before the filecache") is intended to fix. That
-patch was not in -rc1. Can you test a kernel that does have that patch
-and let us know if it fixes this?
-
-Thanks,
-Jeff
-
-
-> Jan  7 12:15:56 nfsvmf14 kernel: ------------[ cut here ]------------
-> Jan  7 12:15:56 nfsvmf14 kernel: refcount_t: underflow; use-after-free.
-> Jan  7 12:15:56 nfsvmf14 kernel: WARNING: CPU: 0 PID: 10420 at lib/refcou=
-nt.c:28 refcount_warn_saturate+0xb3/0x100
-> Jan  7 12:15:56 nfsvmf14 kernel: Modules linked in: rpcsec_gss_krb5 btrfs=
- blake2b_generic xor raid6_pq zstd_compress intel_powerclamp sg nfsd nfs_ac=
-l auth_rpcgss lockd grace sunrpc xfs dm_mirror dm_region_hash dm_log dm_mod
-> Jan  7 12:15:56 nfsvmf14 kernel: CPU: 0 PID: 10420 Comm: rpc.nfsd Kdump: =
-loaded Tainted: G        W          6.2.0-rc1 #1
-> Jan  7 12:15:56 nfsvmf14 kernel: Hardware name: innotek GmbH VirtualBox/V=
-irtualBox, BIOS VirtualBox 12/01/2006
-> Jan  7 12:15:56 nfsvmf14 kernel: RIP: 0010:refcount_warn_saturate+0xb3/0x=
-100
-> Jan  7 12:15:56 nfsvmf14 kernel: Code: 01 01 e8 3f 21 65 00 0f 0b c3 cc c=
-c cc cc 80 3d f5 d1 4a 01 00 75 5b 48 c7 c7 c3 4b 22 82 c6 05 e5 d1 4a 01 0=
-1 e8 1c 21 65 00 <0f> 0b c3 cc cc cc cc 80 3d d1 d1 4a 01 00 75 38 48 c7 c7=
- eb 4b 22
-> Jan  7 12:15:56 nfsvmf14 kernel: RSP: 0018:ffffc9000078fc98 EFLAGS: 00010=
-282
-> Jan  7 12:15:56 nfsvmf14 kernel: RAX: 0000000000000000 RBX: ffff88810e8a9=
-930 RCX: 0000000000000027
-> Jan  7 12:15:56 nfsvmf14 kernel: RDX: 00000000ffff7fff RSI: 0000000000000=
-003 RDI: ffff888217c1c640
-> Jan  7 12:15:56 nfsvmf14 kernel: RBP: ffff88810cbd7870 R08: 0000000000000=
-000 R09: ffffffff827d9f88
-> Jan  7 12:15:56 nfsvmf14 kernel: R10: 00000000756f6366 R11: 0000000063666=
-572 R12: ffff888111c9c000
-> Jan  7 12:15:56 nfsvmf14 kernel: R13: ffff88810fb5fa00 R14: ffff88810f980=
-058 R15: ffff88810e6d68b0
-> Jan  7 12:15:56 nfsvmf14 kernel: FS:  00007fa614d16840(0000) GS:ffff88821=
-7c00000(0000) knlGS:0000000000000000
-> Jan  7 12:15:56 nfsvmf14 kernel: CS:  0010 DS: 0000 ES: 0000 CR0: 0000000=
-080050033
-> Jan  7 12:15:56 nfsvmf14 kernel: CR2: 0000559a53e66908 CR3: 0000000110c72=
-000 CR4: 00000000000406f0
-> Jan  7 12:15:56 nfsvmf14 kernel: Call Trace:
-> Jan  7 12:15:56 nfsvmf14 kernel: <TASK>
-> Jan  7 12:15:56 nfsvmf14 kernel: __refcount_sub_and_test.constprop.0+0x2b=
-/0x36 [nfsd]
-> Jan  7 12:15:56 nfsvmf14 kernel: nfsd_file_free+0x119/0x182 [nfsd]
-> Jan  7 12:15:56 nfsvmf14 kernel: destroy_unhashed_deleg+0x65/0x8e [nfsd]
-> Jan  7 12:15:56 nfsvmf14 kernel: __destroy_client+0xc3/0x1ea [nfsd]
-> Jan  7 12:15:56 nfsvmf14 kernel: nfs4_state_shutdown_net+0x12c/0x236 [nfs=
-d]
-> Jan  7 12:15:56 nfsvmf14 kernel: nfsd_shutdown_net+0x35/0x58 [nfsd]
-> Jan  7 12:15:56 nfsvmf14 kernel: nfsd_put+0xbf/0x117 [nfsd]
-> Jan  7 12:15:56 nfsvmf14 kernel: nfsd_svc+0x2d0/0x2f2 [nfsd]
-> Jan  7 12:15:56 nfsvmf14 kernel: write_threads+0x6d/0xb9 [nfsd]
-> Jan  7 12:15:56 nfsvmf14 kernel: ? write_versions+0x333/0x333 [nfsd]
-> Jan  7 12:15:56 nfsvmf14 kernel: nfsctl_transaction_write+0x4f/0x6b [nfsd=
-]
-> Jan  7 12:15:56 nfsvmf14 kernel: vfs_write+0xdb/0x1e5
-> Jan  7 12:15:56 nfsvmf14 kernel: ? kmem_cache_free+0xf1/0x186
-> Jan  7 12:15:56 nfsvmf14 kernel: ? do_sys_openat2+0xcd/0xf5
-> Jan  7 12:15:56 nfsvmf14 kernel: ? __fget_light+0x2d/0x78
-> Jan  7 12:15:56 nfsvmf14 kernel: ksys_write+0x76/0xc3
-> Jan  7 12:15:56 nfsvmf14 kernel: do_syscall_64+0x56/0x71
-> Jan  7 12:15:56 nfsvmf14 kernel: entry_SYSCALL_64_after_hwframe+0x63/0xcd
-> Jan  7 12:15:56 nfsvmf14 kernel: RIP: 0033:0x7fa6142efa00
-> Jan  7 12:15:56 nfsvmf14 kernel: Code: 73 01 c3 48 8b 0d 70 74 2d 00 f7 d=
-8 64 89 01 48 83 c8 ff c3 66 0f 1f 44 00 00 83 3d bd d5 2d 00 00 75 10 b8 0=
-1 00 00 00 0f 05 <48> 3d 01 f0 ff ff 73 31 c3 48 83 ec 08 e8 ee cb 01 00 48=
- 89 04 24
-> Jan  7 12:15:56 nfsvmf14 kernel: RSP: 002b:00007ffc79bf4748 EFLAGS: 00000=
-246 ORIG_RAX: 0000000000000001
-> Jan  7 12:15:56 nfsvmf14 kernel: RAX: ffffffffffffffda RBX: 0000000000000=
-003 RCX: 00007fa6142efa00
-> Jan  7 12:15:56 nfsvmf14 kernel: RDX: 0000000000000002 RSI: 000055d4cb809=
-3e0 RDI: 0000000000000003
-> Jan  7 12:15:56 nfsvmf14 kernel: RBP: 000055d4cb8093e0 R08: 0000000000000=
-000 R09: 00007fa61424d2cd
-> Jan  7 12:15:56 nfsvmf14 kernel: R10: 0000000000000004 R11: 0000000000000=
-246 R12: 0000000000000000
-> Jan  7 12:15:56 nfsvmf14 kernel: R13: 0000000000000000 R14: 0000000000000=
-000 R15: 000000000000001f
-> Jan  7 12:15:56 nfsvmf14 kernel: </TASK>
-> Jan  7 12:15:56 nfsvmf14 kernel: ---[ end trace 0000000000000000 ]---
->=20
-
---=20
-Jeff Layton <jlayton@redhat.com>
+Best regards,
+Krzysztof
 
