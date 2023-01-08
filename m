@@ -2,40 +2,43 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A83CC53210
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F1003C54EBD
 	for <linux-nfs@archiver.kernel.org>; Sun,  8 Jan 2023 16:32:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232624AbjAHQcz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229520AbjAHQcz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sun, 8 Jan 2023 11:32:55 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60396 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33032 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234019AbjAHQ23 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jan 2023 11:28:29 -0500
+        with ESMTP id S236191AbjAHQ2r (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jan 2023 11:28:47 -0500
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 336AF5FF3
-        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 08:28:28 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 897071E1
+        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 08:28:46 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id C26C7B801BB
-        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 16:28:26 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3E11CC433D2
-        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 16:28:25 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 48EDEB801C1
+        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 16:28:45 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DD7D5C433D2
+        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 16:28:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1673195305;
-        bh=CJm/KRSSFn0HmKyWetudSHd9SMez/ZvnPSOW1/bCx7M=;
-        h=Subject:From:To:Date:From;
-        b=Tc55Dk671REokTRm//DyI4pz69KI+SqLEKqh/FTF2mFHlDNAjHnZJlzfbiOVY29BB
-         ytxw9NUnJZsLxdYON5nRJuGCaIohDpHIJViIDYtzIq5b/0tbB6DNvX0Sswdcko5/w4
-         4EqNjHObKdPlh9CKysRJfGOhxfqimmYuMuMxhBllePm2PTSvTHkZFLrwuv8MCAJGJ4
-         BHVFFUzlnNPsJaxNuMkwUzTQiR0+Pq5jDEB1b1LcOQXsej8sODlOZZPdxhZdU2OCG6
-         eorhrCelyo8r3ZSAL4YYo/oJdmDpjij3n9hNnRUMmC1xXFIWg6e0LVdw6NQF4ogY1m
-         Mz2WJelTLiieg==
-Subject: [PATCH v1 00/27] Server-side RPC reply header parsing overhaul
+        s=k20201202; t=1673195324;
+        bh=CgQt5z+QmRjPlG92uuk3VbwwdRA8HOGso7urp92tBzE=;
+        h=Subject:From:To:Date:In-Reply-To:References:From;
+        b=bzdOdsaT2nr6okbCWZpOjdIphWsp7MFk/w+iuguPK8F8OrhXJhqxrtdb4igJ7e4zp
+         tK4J/IaqCGMC88AikhTH686hHX5dG4v6WBK14JOWQ1BeeW0GE5RYwq9D+XithaWvvW
+         ql1X70/yZnx3Oot/IXmnGnnYAqTsLa0EYlsASFpJnGksi3danmerp46JK0Fay2RrEA
+         Dg+r12moguQ2ImnEPW6T2xo9VUl15hAw6FnWu0rZnCdWwtqcE70JlaUHdCfoW0Eqkt
+         WN6FgZoxd0VoOygPEJ8bxTOBSr5h/QEow8RflxvDqFwJkiXd7L2R6CTl2aFfTd22Kc
+         mn9JsgwEQ9Ryg==
+Subject: [PATCH v1 03/27] SUNRPC: Record gss_get_mic() errors in
+ svcauth_gss_wrap_integ()
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
-Date:   Sun, 08 Jan 2023 11:28:24 -0500
-Message-ID: <167319499150.7490.2294168831574653380.stgit@bazille.1015granger.net>
+Date:   Sun, 08 Jan 2023 11:28:42 -0500
+Message-ID: <167319532298.7490.6629715101889997663.stgit@bazille.1015granger.net>
+In-Reply-To: <167319499150.7490.2294168831574653380.stgit@bazille.1015granger.net>
+References: <167319499150.7490.2294168831574653380.stgit@bazille.1015granger.net>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -44,75 +47,89 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The purpose of this series is to replace the svc_put* macros in the
-Linux kernel server's RPC reply header construction code with
-xdr_stream helpers. I've measured no change in CPU utilization after
-the overhaul.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Memory safety: Buffer bounds checking after encoding each XDR item
-is more memory-safe than the current mechanism. Subsequent memory
-safety improvements to the common xdr_stream helpers will benefit
-all who use them.
+An error computing the checksum here is an exceptional event.
 
-Audit friendliness: The new code has additional comments and other
-clean-up to help align it with the relevant RPC protocol
-specifications. The use of common helpers also makes the encoders
-easier to audit and maintain.
-
-I've split the full series in half to make it easier to review. The
-patches posted here are the second half, handling RPC reply header
-encoding.
-
-Note that another benefit of this work is that we are taking one or
-two more strides closer to greater commonality between the client
-and server implementations of RPCSEC GSS.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ include/trace/events/rpcgss.h     |    1 +
+ net/sunrpc/auth_gss/svcauth_gss.c |   26 +++++++++++++-------------
+ 2 files changed, 14 insertions(+), 13 deletions(-)
 
-Chuck Lever (27):
-      SUNRPC: Clean up svcauth_gss_release()
-      SUNRPC: Rename automatic variables in svcauth_gss_wrap_resp_integ()
-      SUNRPC: Record gss_get_mic() errors in svcauth_gss_wrap_integ()
-      SUNRPC: Replace checksum construction in svcauth_gss_wrap_integ()
-      SUNRPC: Convert svcauth_gss_wrap_integ() to use xdr_stream()
-      SUNRPC: Rename automatic variables in svcauth_gss_wrap_resp_priv()
-      SUNRPC: Record gss_wrap() errors in svcauth_gss_wrap_priv()
-      SUNRPC: Add @head and @tail variables in svcauth_gss_wrap_priv()
-      SUNRPC: Convert svcauth_gss_wrap_priv() to use xdr_stream()
-      SUNRPC: Check rq_auth_stat when preparing to wrap a response
-      SUNRPC: Remove the rpc_stat variable in svc_process_common()
-      SUNRPC: Add XDR encoding helper for opaque_auth
-      SUNRPC: Push svcxdr_init_encode() into svc_process_common()
-      SUNRPC: Move svcxdr_init_encode() into ->accept methods
-      SUNRPC: Use xdr_stream to encode Reply verifier in svcauth_null_accept()
-      SUNRPC: Use xdr_stream to encode Reply verifier in svcauth_unix_accept()
-      SUNRPC: Use xdr_stream to encode Reply verifier in svcauth_tls_accept()
-      SUNRPC: Convert unwrap data paths to use xdr_stream for replies
-      SUNRPC: Use xdr_stream to encode replies in server-side GSS upcall helpers
-      SUNRPC: Use xdr_stream for encoding GSS reply verifiers
-      SUNRPC: Hoist init_encode out of svc_authenticate()
-      SUNRPC: Convert RPC Reply header encoding to use xdr_stream
-      SUNRPC: Final clean-up of svc_process_common()
-      SUNRPC: Remove no-longer-used helper functions
-      SUNRPC: Refactor RPC server dispatch method
-      SUNRPC: Set rq_accept_statp inside ->accept methods
-      SUNRPC: Go back to using gsd->body_start
+diff --git a/include/trace/events/rpcgss.h b/include/trace/events/rpcgss.h
+index 3f121eed369e..261751ac241c 100644
+--- a/include/trace/events/rpcgss.h
++++ b/include/trace/events/rpcgss.h
+@@ -208,6 +208,7 @@ DECLARE_EVENT_CLASS(rpcgss_svc_gssapi_class,
+ 
+ DEFINE_SVC_GSSAPI_EVENT(unwrap);
+ DEFINE_SVC_GSSAPI_EVENT(mic);
++DEFINE_SVC_GSSAPI_EVENT(get_mic);
+ 
+ TRACE_EVENT(rpcgss_svc_unwrap_failed,
+ 	TP_PROTO(
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index fe0bd0ad8ace..2d1e8431e903 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1782,10 +1782,9 @@ static int svcauth_gss_wrap_integ(struct svc_rqst *rqstp)
+ 	struct xdr_buf *buf = &rqstp->rq_res;
+ 	struct xdr_buf databody_integ;
+ 	struct xdr_netobj checksum;
++	u32 offset, len, maj_stat;
+ 	struct kvec *resv;
+-	u32 offset, len;
+ 	__be32 *p;
+-	int stat = -EINVAL;
+ 
+ 	p = svcauth_gss_prepare_to_wrap(buf, gsd);
+ 	if (p == NULL)
+@@ -1796,21 +1795,20 @@ static int svcauth_gss_wrap_integ(struct svc_rqst *rqstp)
+ 		goto out;
+ 	*p++ = htonl(len);
+ 	*p++ = htonl(gc->gc_seq);
+-	if (xdr_buf_subsegment(buf, &databody_integ, offset, len)) {
+-		WARN_ON_ONCE(1);
+-		goto out_err;
+-	}
++	if (xdr_buf_subsegment(buf, &databody_integ, offset, len))
++		goto wrap_failed;
+ 	if (!buf->tail[0].iov_base) {
+ 		if (buf->head[0].iov_len + RPC_MAX_AUTH_SIZE > PAGE_SIZE)
+-			goto out_err;
++			goto wrap_failed;
+ 		buf->tail[0].iov_base = buf->head[0].iov_base
+ 						+ buf->head[0].iov_len;
+ 		buf->tail[0].iov_len = 0;
+ 	}
+ 	resv = &buf->tail[0];
+ 	checksum.data = (u8 *)resv->iov_base + resv->iov_len + 4;
+-	if (gss_get_mic(gsd->rsci->mechctx, &databody_integ, &checksum))
+-		goto out_err;
++	maj_stat = gss_get_mic(gsd->rsci->mechctx, &databody_integ, &checksum);
++	if (maj_stat != GSS_S_COMPLETE)
++		goto bad_mic;
+ 	svc_putnl(resv, checksum.len);
+ 	memset(checksum.data + checksum.len, 0,
+ 	       round_up_to_quad(checksum.len) - checksum.len);
+@@ -1818,11 +1816,13 @@ static int svcauth_gss_wrap_integ(struct svc_rqst *rqstp)
+ 	/* not strictly required: */
+ 	buf->len += XDR_QUADLEN(checksum.len) << 2;
+ 	if (resv->iov_len > PAGE_SIZE)
+-		goto out_err;
++		goto wrap_failed;
+ out:
+-	stat = 0;
+-out_err:
+-	return stat;
++	return 0;
++bad_mic:
++	trace_rpcgss_svc_get_mic(rqstp, maj_stat);
++wrap_failed:
++	return -EINVAL;
+ }
+ 
+ static inline int
 
-
- fs/lockd/svc.c                    |   5 +-
- fs/nfs/callback_xdr.c             |   6 +-
- fs/nfsd/nfscache.c                |   4 +-
- fs/nfsd/nfsd.h                    |   2 +-
- fs/nfsd/nfssvc.c                  |  10 +-
- include/linux/sunrpc/svc.h        | 116 +++----
- include/linux/sunrpc/xdr.h        |  23 ++
- include/trace/events/rpcgss.h     |  22 ++
- net/sunrpc/auth_gss/svcauth_gss.c | 505 +++++++++++++++---------------
- net/sunrpc/svc.c                  |  91 +++---
- net/sunrpc/svcauth_unix.c         |  40 ++-
- net/sunrpc/xdr.c                  |  29 ++
- 12 files changed, 451 insertions(+), 402 deletions(-)
-
---
-Chuck Lever
 
