@@ -2,40 +2,40 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63C5CC63797
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 98086C67871
 	for <linux-nfs@archiver.kernel.org>; Sun,  8 Jan 2023 16:31:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233381AbjAHQbY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 8 Jan 2023 11:31:24 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36322 "EHLO
+        id S236196AbjAHQb0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 8 Jan 2023 11:31:26 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36556 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236238AbjAHQaz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jan 2023 11:30:55 -0500
+        with ESMTP id S236374AbjAHQbO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jan 2023 11:31:14 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DFF33D125
-        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 08:30:54 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 539EC1E1
+        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 08:31:13 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 692FE60C8C
-        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 16:30:54 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BB683C433F0
-        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 16:30:53 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id E66F860C58
+        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 16:31:12 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3FA4AC433D2
+        for <linux-nfs@vger.kernel.org>; Sun,  8 Jan 2023 16:31:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1673195453;
-        bh=4lC584jtj171PekqVOHcolTWrxY4SdAn+3yqCcCk0+g=;
+        s=k20201202; t=1673195472;
+        bh=1Okx2EaUPDqe8bGyg9i0ooG9E8JUu6bNXgvChRG7idU=;
         h=Subject:From:To:Date:In-Reply-To:References:From;
-        b=g0edeSs0MTF5aU8hk0E+qpBs/6lL4yA0eQfrnLsF4pqqTVwTcHK8YRQnF9pTwCVfZ
-         W6EDNL2l/2BgMHeFGHDnZEPogslgpVKPDseI4Zka1RGegjAvGHq0m+b/gMlnAepA62
-         caq6GWlkQ32awQZ5+ei+gHdUTLYiuZg1SgmuDzXYPRu5+JkzfOYwPMdI/7ysdIsmxK
-         epd/u/vjq1hNgfhJfzR8qyfXy0JzJcZdp8AE+bIfhNdkxi0iyEWpcEQQiyv/mxWEyx
-         R/N7r7Ax2hxOMJ24wtEzQPEMrHmZT2XaFGek6i2CHEI6EPFWBIBVO4gDw3+hd2lTaL
-         s2JT+VajNP0LQ==
-Subject: [PATCH v1 24/27] SUNRPC: Remove no-longer-used helper functions
+        b=dox6VNg/u9wGnUBklBoO7WzzVfiYfNJgbg6FAL0vlW0VDKARP25qgWUqANHCsArSk
+         FoiZEnVGs391ACZwxNpJUGja4LinMFbFLuDTVQjGg4/HOplE56e8qncJog2rMdFRO0
+         p3pmg96XY3i9cRA4ouo1fhbociHniPqGiW2SPWNIFpCQe7JRPZKa9WaKzmd5IDQUBd
+         CGgs6I60iwiy/CdJvAT/6FEEZq8Shp67ffrNV8m8tuFVE7OnFaCeYMYq2ANlc7iZy8
+         PzUc7OomC3ISKZE5pVl9ocpdZe9L33zaGlc0H3sFzqULQZkeXwg7ckyZAiOBla+3KE
+         EupAZUcGsrtUA==
+Subject: [PATCH v1 27/27] SUNRPC: Go back to using gsd->body_start
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
-Date:   Sun, 08 Jan 2023 11:30:52 -0500
-Message-ID: <167319545290.7490.4776771429759719974.stgit@bazille.1015granger.net>
+Date:   Sun, 08 Jan 2023 11:31:11 -0500
+Message-ID: <167319547140.7490.10549776139860828344.stgit@bazille.1015granger.net>
 In-Reply-To: <167319499150.7490.2294168831574653380.stgit@bazille.1015granger.net>
 References: <167319499150.7490.2294168831574653380.stgit@bazille.1015granger.net>
 User-Agent: StGit/1.5
@@ -48,110 +48,179 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-The svc_get/put helpers are no longer used.
+Now that svcauth_gss_prepare_to_wrap() no longer computes the
+location of RPC header fields in the response buffer,
+svcauth_gss_accept() can save the location of the databody
+rather than the location of the verifier.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc.h |   66 +-------------------------------------------
- 1 file changed, 1 insertion(+), 65 deletions(-)
+ net/sunrpc/auth_gss/svcauth_gss.c |   78 +++++++++++++++++--------------------
+ 1 file changed, 36 insertions(+), 42 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index dd9f68acd9f1..32eb98e621c3 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -193,40 +193,6 @@ extern u32 svc_max_payload(const struct svc_rqst *rqstp);
- #define RPCSVC_MAXPAGES		((RPCSVC_MAXPAYLOAD+PAGE_SIZE-1)/PAGE_SIZE \
- 				+ 2 + 1)
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 333873abb7d9..419d5ad6311c 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -71,9 +71,7 @@
+ struct gss_svc_data {
+ 	/* decoded gss client cred: */
+ 	struct rpc_gss_wire_cred	clcred;
+-	/* save a pointer to the beginning of the encoded verifier,
+-	 * for use in encryption/checksumming in svcauth_gss_release: */
+-	__be32				*verf_start;
++	u32				gsd_databody_offset;
+ 	struct rsc			*rsci;
  
--static inline u32 svc_getnl(struct kvec *iov)
--{
--	__be32 val, *vp;
--	vp = iov->iov_base;
--	val = *vp++;
--	iov->iov_base = (void*)vp;
--	iov->iov_len -= sizeof(__be32);
--	return ntohl(val);
--}
--
--static inline void svc_putnl(struct kvec *iov, u32 val)
--{
--	__be32 *vp = iov->iov_base + iov->iov_len;
--	*vp = htonl(val);
--	iov->iov_len += sizeof(__be32);
--}
--
--static inline __be32 svc_getu32(struct kvec *iov)
--{
--	__be32 val, *vp;
--	vp = iov->iov_base;
--	val = *vp++;
--	iov->iov_base = (void*)vp;
--	iov->iov_len -= sizeof(__be32);
--	return val;
--}
--
--static inline void svc_putu32(struct kvec *iov, __be32 val)
--{
--	__be32 *vp = iov->iov_base + iov->iov_len;
--	*vp = val;
--	iov->iov_len += sizeof(__be32);
--}
--
- /*
-  * The context of a single thread, including the request currently being
-  * processed.
-@@ -345,29 +311,6 @@ static inline struct sockaddr *svc_daddr(const struct svc_rqst *rqst)
- 	return (struct sockaddr *) &rqst->rq_daddr;
+ 	/* for temporary results */
+@@ -1595,7 +1593,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp)
+ 	if (!svcdata)
+ 		goto auth_err;
+ 	rqstp->rq_auth_data = svcdata;
+-	svcdata->verf_start = NULL;
++	svcdata->gsd_databody_offset = 0;
+ 	svcdata->rsci = NULL;
+ 	gc = &svcdata->clcred;
+ 
+@@ -1647,11 +1645,11 @@ svcauth_gss_accept(struct svc_rqst *rqstp)
+ 		goto complete;
+ 	case RPC_GSS_PROC_DATA:
+ 		rqstp->rq_auth_stat = rpcsec_gsserr_ctxproblem;
+-		svcdata->verf_start = xdr_reserve_space(&rqstp->rq_res_stream, 0);
+ 		if (!svcauth_gss_encode_verf(rqstp, rsci->mechctx, gc->gc_seq))
+ 			goto auth_err;
+ 		if (!svcxdr_set_accept_stat(rqstp))
+ 			goto auth_err;
++		svcdata->gsd_databody_offset = xdr_stream_pos(&rqstp->rq_res_stream);
+ 		rqstp->rq_cred = rsci->cred;
+ 		get_group_info(rsci->cred.cr_group_info);
+ 		rqstp->rq_auth_stat = rpc_autherr_badcred;
+@@ -1705,30 +1703,24 @@ svcauth_gss_accept(struct svc_rqst *rqstp)
+ 	return ret;
  }
  
--/*
-- * Check buffer bounds after decoding arguments
-- */
--static inline int
--xdr_argsize_check(struct svc_rqst *rqstp, __be32 *p)
--{
--	char *cp = (char *)p;
--	struct kvec *vec = &rqstp->rq_arg.head[0];
--	return cp >= (char*)vec->iov_base
--		&& cp <= (char*)vec->iov_base + vec->iov_len;
--}
--
--static inline int
--xdr_ressize_check(struct svc_rqst *rqstp, __be32 *p)
--{
--	struct kvec *vec = &rqstp->rq_res.head[0];
--	char *cp = (char*)p;
--
--	vec->iov_len = cp - (char*)vec->iov_base;
--
--	return vec->iov_len <= PAGE_SIZE;
--}
--
- static inline void svc_free_res_pages(struct svc_rqst *rqstp)
+-static __be32 *
++static u32
+ svcauth_gss_prepare_to_wrap(struct svc_rqst *rqstp, struct gss_svc_data *gsd)
  {
- 	while (rqstp->rq_next_page != rqstp->rq_respages) {
-@@ -540,9 +483,6 @@ static inline void svc_reserve_auth(struct svc_rqst *rqstp, int space)
-  * svcxdr_init_decode - Prepare an xdr_stream for Call decoding
-  * @rqstp: controlling server RPC transaction context
-  *
-- * This function currently assumes the RPC header in rq_arg has
-- * already been decoded. Upon return, xdr->p points to the
-- * location of the upper layer header.
-  */
- static inline void svcxdr_init_decode(struct svc_rqst *rqstp)
- {
-@@ -550,11 +490,7 @@ static inline void svcxdr_init_decode(struct svc_rqst *rqstp)
- 	struct xdr_buf *buf = &rqstp->rq_arg;
- 	struct kvec *argv = buf->head;
+-	__be32 *p;
+-	u32 verf_len;
++	u32 offset;
  
--	/*
--	 * svc_getnl() and friends do not keep the xdr_buf's ::len
--	 * field up to date. Refresh that field before initializing
--	 * the argument decoding stream.
--	 */
-+	WARN_ON(buf->len != buf->head->iov_len + buf->page_len + buf->tail->iov_len);
- 	buf->len = buf->head->iov_len + buf->page_len + buf->tail->iov_len;
+-	p = gsd->verf_start;
+-	gsd->verf_start = NULL;
++	/* Release can be called twice, but we only wrap once. */
++	offset = gsd->gsd_databody_offset;
++	gsd->gsd_databody_offset = 0;
  
- 	xdr_init_decode(xdr, buf, argv->iov_base, NULL);
+ 	/* AUTH_ERROR replies are not wrapped. */
+ 	if (rqstp->rq_auth_stat != rpc_auth_ok)
+-		return NULL;
+-
+-	/* Skip the verifier: */
+-	p += 1;
+-	verf_len = ntohl(*p++);
+-	p += XDR_QUADLEN(verf_len);
++		return 0;
+ 
+ 	/* Also don't wrap if the accept_stat is nonzero: */
+ 	if (*rqstp->rq_accept_statp != rpc_success)
+-		return NULL;
++		return 0;
+ 
+-	p++;
+-	return p;
++	return offset;
+ }
+ 
+ /*
+@@ -1756,21 +1748,21 @@ static int svcauth_gss_wrap_integ(struct svc_rqst *rqstp)
+ 	struct xdr_buf *buf = xdr->buf;
+ 	struct xdr_buf databody_integ;
+ 	struct xdr_netobj checksum;
+-	u32 offset, len, maj_stat;
+-	__be32 *p;
++	u32 offset, maj_stat;
+ 
+-	p = svcauth_gss_prepare_to_wrap(rqstp, gsd);
+-	if (p == NULL)
++	offset = svcauth_gss_prepare_to_wrap(rqstp, gsd);
++	if (!offset)
+ 		goto out;
+ 
+-	offset = (u8 *)(p + 1) - (u8 *)buf->head[0].iov_base;
+-	len = buf->len - offset;
+-	if (xdr_buf_subsegment(buf, &databody_integ, offset, len))
++	if (xdr_buf_subsegment(buf, &databody_integ, offset + XDR_UNIT,
++			       buf->len - offset - XDR_UNIT))
+ 		goto wrap_failed;
+ 	/* Buffer space for these has already been reserved in
+ 	 * svcauth_gss_accept(). */
+-	*p++ = cpu_to_be32(len);
+-	*p = cpu_to_be32(gc->gc_seq);
++	if (xdr_encode_word(buf, offset, databody_integ.len))
++		goto wrap_failed;
++	if (xdr_encode_word(buf, offset + XDR_UNIT, gc->gc_seq))
++		goto wrap_failed;
+ 
+ 	checksum.data = gsd->gsd_scratch;
+ 	maj_stat = gss_get_mic(gsd->rsci->mechctx, &databody_integ, &checksum);
+@@ -1817,17 +1809,19 @@ static int svcauth_gss_wrap_priv(struct svc_rqst *rqstp)
+ 	struct kvec *head = buf->head;
+ 	struct kvec *tail = buf->tail;
+ 	u32 offset, pad, maj_stat;
+-	__be32 *p, *lenp;
++	__be32 *p;
+ 
+-	p = svcauth_gss_prepare_to_wrap(rqstp, gsd);
+-	if (p == NULL)
++	offset = svcauth_gss_prepare_to_wrap(rqstp, gsd);
++	if (!offset)
+ 		return 0;
+ 
+-	lenp = p++;
+-	offset = (u8 *)p - (u8 *)head->iov_base;
+-	/* Buffer space for this field has already been reserved
+-	 * in svcauth_gss_accept(). */
+-	*p = cpu_to_be32(gc->gc_seq);
++	/*
++	 * Buffer space for this field has already been reserved
++	 * in svcauth_gss_accept(). Note that the GSS sequence
++	 * number is encrypted along with the RPC reply payload.
++	 */
++	if (xdr_encode_word(buf, offset + XDR_UNIT, gc->gc_seq))
++		goto wrap_failed;
+ 
+ 	/*
+ 	 * If there is currently tail data, make sure there is
+@@ -1863,12 +1857,15 @@ static int svcauth_gss_wrap_priv(struct svc_rqst *rqstp)
+ 		tail->iov_len = 0;
+ 	}
+ 
+-	maj_stat = gss_wrap(gsd->rsci->mechctx, offset, buf, buf->pages);
++	maj_stat = gss_wrap(gsd->rsci->mechctx, offset + XDR_UNIT, buf,
++			    buf->pages);
+ 	if (maj_stat != GSS_S_COMPLETE)
+ 		goto bad_wrap;
+ 
+-	*lenp = cpu_to_be32(buf->len - offset);
+-	pad = xdr_pad_size(buf->len - offset);
++	/* Wrapping can change the size of databody_priv. */
++	if (xdr_encode_word(buf, offset, buf->len - offset - XDR_UNIT))
++		goto wrap_failed;
++	pad = xdr_pad_size(buf->len - offset - XDR_UNIT);
+ 	p = (__be32 *)(tail->iov_base + tail->iov_len);
+ 	memset(p, 0, pad);
+ 	tail->iov_len += pad;
+@@ -1908,9 +1905,6 @@ svcauth_gss_release(struct svc_rqst *rqstp)
+ 	gc = &gsd->clcred;
+ 	if (gc->gc_proc != RPC_GSS_PROC_DATA)
+ 		goto out;
+-	/* Release can be called twice, but we only wrap once. */
+-	if (gsd->verf_start == NULL)
+-		goto out;
+ 
+ 	switch (gc->gc_svc) {
+ 	case RPC_GSS_SVC_NONE:
 
 
