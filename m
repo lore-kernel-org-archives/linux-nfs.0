@@ -2,472 +2,257 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DEEB8C46467
-	for <linux-nfs@archiver.kernel.org>; Tue, 10 Jan 2023 18:53:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8AA10C677F1
+	for <linux-nfs@archiver.kernel.org>; Tue, 10 Jan 2023 18:53:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235071AbjAJSw6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 10 Jan 2023 13:52:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34846 "EHLO
+        id S235191AbjAJSw7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 10 Jan 2023 13:52:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35384 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239744AbjAJSwL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2023 13:52:11 -0500
-Received: from mail-oi1-x236.google.com (mail-oi1-x236.google.com [IPv6:2607:f8b0:4864:20::236])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D4C15564E
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2023 10:46:47 -0800 (PST)
-Received: by mail-oi1-x236.google.com with SMTP id r132so300393oif.10
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2023 10:46:47 -0800 (PST)
+        with ESMTP id S239766AbjAJSwV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2023 13:52:21 -0500
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7DCC955849
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2023 10:47:04 -0800 (PST)
+Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 30AIhkes031976;
+        Tue, 10 Jan 2023 18:46:59 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=message-id : date :
+ subject : to : cc : references : from : in-reply-to : content-type :
+ content-transfer-encoding : mime-version; s=corp-2022-7-12;
+ bh=Xscj67xXSlPeQarWfEg5pN2Lz9W4jBi2hZF1Nl09lvI=;
+ b=I8w5vTzCqJa0ahXr39o7ggwlmukHrGWXWBFM29nFr+1bmPCcENTcaIiYQrsZrmAdFDaP
+ C5eJqLRJhs8WmSiMctKKtBJb8I06RC89HSiEcNtIuHjpU22UDvHV712T0L/lQmgNNro4
+ e/m4wRjs+l7sFSxxUO5EMnu9BjZFZiX1Qk447T4W/yn36S84yOr14MtZ9r7fLciYkYWW
+ FQLDqaVcixTp+gRuTOdG3KMV0+1yQXwGuCuNfedzAf65VyKNtUZCZOAUCZ+YfFk4FpCE
+ O1MX8D+gsaaGiEshJehciIpqwHEDdJgv2tj60Hk+sLEPGOFfpOCFiBrXS9qlozRbvQ4f Bg== 
+Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3n1cbq86jn-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 10 Jan 2023 18:46:58 +0000
+Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 30AIVs9N004112;
+        Tue, 10 Jan 2023 18:46:58 GMT
+Received: from nam12-dm6-obe.outbound.protection.outlook.com (mail-dm6nam12lp2173.outbound.protection.outlook.com [104.47.59.173])
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3n1b081gen-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Tue, 10 Jan 2023 18:46:58 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=aRI5CvBatQVDKv3P7j1nPHSQTgqqtSnAGmmmx+EijzjuBsmAUKRL+hwTvemqJwi+wQNEb0Sp/IIZFd1M0Ep+GX1t+A37bbelOXWflbTNGvQxdnskVs5DhpIG15d+n623VPpbn++F38yAk0qLUAzeYzALmRtYWYtNawmuc5nOVwV2ndQd4Ssf0Vn3bHyevO3FDMnFUsyYPNUVc/ldKUsMmINEyXLhLe4IljEk7oirVdu59UM6OtWH36/VaGZh/QLVTkVFG6VBbpfIqBP/5RdpzicToXMs6jULYjc8/okw2m67NVi4EKMAkXbRmg9ug/yZx8DJr5S5OpdY/7r8eEKktQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=Xscj67xXSlPeQarWfEg5pN2Lz9W4jBi2hZF1Nl09lvI=;
+ b=hzVAbjIuxiPOHdAlrXyp4cTx66PEeI2GgB1zgtBLzAR6uWcHESWnZdi2fFPrx50I7IK+7VXDvq34rgE1J3AoSabvg3k4my//1cExyBr20tNWuAR+usvsLX/KIqwInArzxDXOiHy24Vjva5gIkHYZsEhuebU9pOHwiEEo7eU1FwYlBR9hDTRHrKehyy5VZZxOVlDVffMb6DsQyy6BbO7Tu5eyJbmi1lSDZtDNbOfXmoRcN3AN5zCQjVqKo0a7iwnT0gLMnMYxRLa54zNsDu4X0cb7Itj39kfnwtUpAA1jnKzWwD6wCcTqrhpLbfm0SmPiP73QBQiujYBbUyuJI1EpQw==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=7AlYrDztWoz+DugdjOPeyxvgVHMdNdoGweZrVqz/ioo=;
-        b=nHnvBfD9OeKTy9vYno++wSKbYhrJiBbe6DQ5i+NEeX5BstOROIEwKmcrK6lW8dzBTV
-         O5JrGHxvsL8Mrro7GJZe1OnyF0nIaKfB7h/fCz1QhcnHro4mZlq5aIBMoKW/bWpXELww
-         osS4xH5np0SVeJ7jXExc1Qyg2Iqt4cv3X1MSMAj0GQbBykYqkiKK8OTK2LCkV5te9U6d
-         Lop6WpxFA9CNZOJm72neaWuMoPJYlsf6JmTaPeLo0KPMd9sZIocqun9K/TFEIAlCU2sp
-         GCJ8FHIvS1s+IA9AB4Vfnzn5FYBeSI8az+3QkFmQi5pl58fnUH6GvhsfDVSo173oE6Rz
-         JwjA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20210112;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=7AlYrDztWoz+DugdjOPeyxvgVHMdNdoGweZrVqz/ioo=;
-        b=0hW6Val5Z4uY8Hto/AcdNg/VXgLa7QzgdnB7j53PPdsxzorUOSvwtI3yXHdIyL+AcN
-         NC2bQEnssu6NeSrbh4va0NGqY+sKl/LAkfo4NCaThjRebO4AKjWD7FsFYJSsKMrTw660
-         VPoIgXdOUKG/kp/0hTVaDNiuzQxwDzTpSelyzPOZCjTsBKAuCWgdkeJ+X3hBh3U7WVtj
-         cM/pKY/Tr8Pxi+RjVJ03QpiUoYz6VkJYH4jRDpXi0tlBW9RISu7xxmpPXCz0oo06cTTi
-         xy3Kl4z8LEwtKf9CRe1jfDW8jAjHZqmF4HEAbKcUVCuKbyapAlwZNrdE6XGY4iHplCQk
-         MPNw==
-X-Gm-Message-State: AFqh2koq8EBmXXm9gGLeNIgdcReqGx6UxDLQFEoL8pLpOeCma9FQHhGf
-        kx1OhWdEOXOlcCNFqdO1Iau5C/VkPIE=
-X-Google-Smtp-Source: AMrXdXvs5qRGxGnmH+S6BcVyMFLNy4UtsX5HLqbo9y7+alFhnojt9nIID6SiSEO/zN2Z8kKCJnjkRg==
-X-Received: by 2002:a05:6808:a06:b0:355:1de9:6524 with SMTP id n6-20020a0568080a0600b003551de96524mr38316251oij.6.1673376405866;
-        Tue, 10 Jan 2023 10:46:45 -0800 (PST)
-Received: from localhost.localdomain (cpe-24-28-172-218.elp.res.rr.com. [24.28.172.218])
-        by smtp.gmail.com with ESMTPSA id t11-20020a9d590b000000b00677714a440fsm6438775oth.81.2023.01.10.10.46.44
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 10 Jan 2023 10:46:45 -0800 (PST)
-From:   Jorge Mora <jmora1300@gmail.com>
-X-Google-Original-From: Jorge Mora <mora@netapp.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     trond.myklebust@hammerspace.com, Anna.Schumaker@netapp.com
-Subject: [PATCH v1 1/2] NFS: add IO_ADVISE operation
-Date:   Tue, 10 Jan 2023 11:46:40 -0700
-Message-Id: <20230110184641.13334-2-mora@netapp.com>
-X-Mailer: git-send-email 2.37.1 (Apple Git-137.1)
-In-Reply-To: <20230110184641.13334-1-mora@netapp.com>
-References: <20230110184641.13334-1-mora@netapp.com>
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=Xscj67xXSlPeQarWfEg5pN2Lz9W4jBi2hZF1Nl09lvI=;
+ b=iAKqJUnPdLTZvNegsKIH7uILRX83LKxKHWJtSJhBhMpxbbxFRzIOrrPpCIK6dsP1zWQG8AslpquWdGHCgB1pk/4sOOeqxv820CZW54J0Ml7VfgU1wfBVM5TgDRtPRk9FEoPXlRJHJ01aJuvkGckvolFK7Tl7jgTkfA/oDfZi8Gw=
+Received: from BY5PR10MB4257.namprd10.prod.outlook.com (2603:10b6:a03:211::21)
+ by BN0PR10MB5383.namprd10.prod.outlook.com (2603:10b6:408:124::21) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.6002.10; Tue, 10 Jan
+ 2023 18:46:56 +0000
+Received: from BY5PR10MB4257.namprd10.prod.outlook.com
+ ([fe80::940c:19a:12c5:e152]) by BY5PR10MB4257.namprd10.prod.outlook.com
+ ([fe80::940c:19a:12c5:e152%7]) with mapi id 15.20.6002.012; Tue, 10 Jan 2023
+ 18:46:55 +0000
+Message-ID: <a6a0b2cc-1bc0-3884-8675-f90051454f94@oracle.com>
+Date:   Tue, 10 Jan 2023 10:46:52 -0800
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
+ Gecko/20100101 Thunderbird/102.6.1
+Subject: Re: [PATCH 1/1] NFSD: fix WARN_ON_ONCE in __queue_delayed_work
+Content-Language: en-US
+To:     Chuck Lever III <chuck.lever@oracle.com>
+Cc:     Jeff Layton <jlayton@kernel.org>, Mike Galbraith <efault@gmx.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <1673333310-24837-1-git-send-email-dai.ngo@oracle.com>
+ <57dc06d57b4b643b4bf04daf28acca202c9f7a85.camel@kernel.org>
+ <71672c07-5e53-31e6-14b1-e067fd56df57@oracle.com>
+ <8C3345FB-6EDF-411A-B942-5AFA03A89BA2@oracle.com>
+From:   dai.ngo@oracle.com
+In-Reply-To: <8C3345FB-6EDF-411A-B942-5AFA03A89BA2@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: SA1PR03CA0023.namprd03.prod.outlook.com
+ (2603:10b6:806:2d3::28) To BY5PR10MB4257.namprd10.prod.outlook.com
+ (2603:10b6:a03:211::21)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: BY5PR10MB4257:EE_|BN0PR10MB5383:EE_
+X-MS-Office365-Filtering-Correlation-Id: 93825a95-16fa-4b85-32ce-08daf33b0c01
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: cN4q7jZC+i9nI4v9LPIHqlGdnEu9UedOmfVsUpF8EcP/EwWOzVYWIySC1gWy3VM2XoYK6C/iP+FXppL/GVxz8ZX88zYWbUNYwaMLk9PmhU9WcmO4Rtap+wCXNhgo4XJcJ/oaiGL3yIc0Gl3RDwDzNBdBJrjSxOo9O8tRCcBQcL4kKMuFHR/mUgHuZJu7RKg7/bZ1vbceR+Jivq9fCPcTHMM8xxHrxNSZUtn9echkegOJmyktuYM2npqwQg3+MvXlWtbj+zBR8J2E8pHaZco6Yo0CCn2q92g3P2nl/69bONOl2dHPGiEY/d5YgVgk+bPkSXOIUGBPbCSYLzaulqcnuXRxfixDYpbaO4X3V75/Xon0SPU1+pksGJT8ZVYV+cEfFWf45upHe4+Ri3ZpK1kKcEHn5fQ80fV3vDrpuPUFS4an/e/8l6eVFWtTqKSacmXdagnkS+9njpd4IpyzeYw+wlwIEA5wkWWpU0mt/dYEqWA6QqFmqF/Fle00VpEoX7T3jSwl0MFtQTF+JvHhO2lnldNKLGH6VKLXiHoaSifhh5JfBbXQsntCCsM+yUaZ+w9ot2MFsnFCzX0a5I322IWpZxYChBoi4/asXnK/UtGxs82rXaEgDU3kB87dQaEwuMd3mR6mAORqnacveJJFkcsm29U+nQH9cx/VS+czMU3OoANWDl0G6iIn9ly801ylX9i4
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BY5PR10MB4257.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230022)(136003)(39860400002)(366004)(346002)(396003)(376002)(451199015)(36756003)(31686004)(86362001)(83380400001)(8676002)(31696002)(54906003)(41300700001)(66946007)(4326008)(66556008)(66476007)(38100700002)(53546011)(478600001)(6486002)(186003)(6506007)(26005)(6666004)(2906002)(8936002)(5660300002)(316002)(6862004)(37006003)(2616005)(6512007)(9686003)(43740500002);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: =?utf-8?B?bUMydnd3b21VMkJlNTRiOGxvb2NPN1hGYzh0OEZXdCtYQTdTdGFLdS9EL3NV?=
+ =?utf-8?B?Y0x6VDRQYnc2bUlxMU5IcTkrTjhEenJRdnZFMjQxaXhUd3lpZ2FsTmpVQkxJ?=
+ =?utf-8?B?T0pmWHY2WkV5QUcyMVNyYnErdVhRemdEamVPcUdsbkxZazFTQzB4d0VZSE5R?=
+ =?utf-8?B?R0dIdytYOW5RSnRaQWtYU2ZpVlY1b2VtWVBzNWg0WkJ1RUZhSnRleXF3TGUw?=
+ =?utf-8?B?cEN0UFNDc1ZCS29iR3paem8zMWVoKzhLeXo3a1RoeXE1UVQ0WHFSVDV4eldN?=
+ =?utf-8?B?QTlJQmU2SkpRek1tVWRWTTdMK3dheUV6TjBqSFIxTXJSMy85SHBTM3ZUWmd2?=
+ =?utf-8?B?emdkVXhrM2FOeVpIVTYvR2xoOHNvWFhSMTJFL3E0YzNkeHVDY2NxYXREUVVP?=
+ =?utf-8?B?dHhrMjkyOEJRdzBtMHZkZGEvVkM4L2krZXhRdHRBa0JTeDJ2QTZGd1F2bHcw?=
+ =?utf-8?B?TXNxckxncEg0Z3B6TUdaUXFrRVR6emF4VWdDVmxJaEwwbGp2eFRwdGdSUnlP?=
+ =?utf-8?B?VThpT2RjdWpkRFBDeXdZUkVHTXg2S0VONlhKc2xlRk52emtkTEl2Z21HeEQr?=
+ =?utf-8?B?cHZrZVBjWW1VUE8wUlBZVnhmQkpsbmVFamNOc1hvVHB5YUcrdS9XTU1UaGlt?=
+ =?utf-8?B?b0Z3OC9JVmc3ZkY4VFJWY1RjODhCMUFkL2lTcjlRWGFZZjBuZ21TdlRwMTdX?=
+ =?utf-8?B?bzg1cGhpNkprWk9GVUw3Y0VzR05kWnY4N1JmVHBlanh0cEY0Y3dlWVh2KytU?=
+ =?utf-8?B?aUV3NmJUaGpMcStWNFJpSFgrdm1FWjJVcHczdFlaSnByeVIzQ3VPak4wcWlt?=
+ =?utf-8?B?ZjYyWkRVQ1pneXRkWUtWZW91WVZCR2M1RDBiUUt5dG0vVmt2MDRzTHJ4Vk1r?=
+ =?utf-8?B?Z0FIT2JjN0JKZTljMjZwN2RORmdBMDgwMHllSWp6YXNkS0NnSDNMNVl5Um1X?=
+ =?utf-8?B?bHF3RjREa1IvRnJIS3ZXbE9qZDBsOEVEWDFtcEhEVm9KL09KU01oR2dZWlpX?=
+ =?utf-8?B?YnI3WHZKTjZEYjd4bXB2WFRGNjlhMjdUWW1BRzZjb3ZvT0lkL2tHZVdCWmhn?=
+ =?utf-8?B?YUJxbEIvSGVKRVdldWNJdzUwUTRPYkZPWjZQR0NjcncxOWw0WnlTb1JVRlBC?=
+ =?utf-8?B?UjVaMGI4L2xlWlZ6Q1dWcUlVOVFkOU9YeDViR1BsN3NrZjQ1UkU4a2R6ZmFt?=
+ =?utf-8?B?UGptR0NnbCtTbVFNK3JYbFZlL01nQW9rWWNoMWgxcmFUV3BJSTNJUGdsRFBF?=
+ =?utf-8?B?WHBUMFdTV0pVMzJ4SkpCYlhJNFFSVmQvMXRIT0c3WW9RT2FjUVRNRlZZZEFK?=
+ =?utf-8?B?MzFTUk1JUGtCeE9xWEJMN284YS9nd0luUGdqUGVZU1J3eGtXWVJQNEIwS3R4?=
+ =?utf-8?B?MENGZXRWbW1OY2UvT0ZMVFc5NzRrZ0hpb2tnazVaZUx0dCtGTCt5ck5TTUU2?=
+ =?utf-8?B?L0g5WDhDR3hYQWJJS1VGaFhVdlRwbnFLZkpKSS9EcjZaNjJFck9KSWRHTjB1?=
+ =?utf-8?B?NUp5UXlxK0pjdVh1eWdxQUtGdnRQVWVBZUpnbHZQbGQvMG1DYVZqTnVEb0Fv?=
+ =?utf-8?B?TmUxV0VyWmtsNENjcUUwRkkrb0JKbCsrTVdRTnBNYTRObm1IdmdMSDdydUhL?=
+ =?utf-8?B?K2ZLWUZXTFBwYXhOeW1uNlJWZ2dEamRtR29sUkhLamxoTTh2NFErQXA4OHlO?=
+ =?utf-8?B?SnRaeEtGTG1yTk8vVHYvZVpnTG41T2Jlcmt4QjFxaHBsVlpHbUdobWhkbnlo?=
+ =?utf-8?B?NlZLcXJXYUNWYjRBdndLZGhjWWh5L2JzcUsvSm04aEJKd0Q0NjBIazd3NVo1?=
+ =?utf-8?B?OUo4MDg2YU5DMms2RGpTaUtwd1hYcWVYa3BzSlVabnRld0tudklYdk1rVVdz?=
+ =?utf-8?B?MnkvS0w2Nk9sY0dpSCtBSlBRR3Brc2RrQjdTSFNhSmNDWHFhbGpuUUdKK28v?=
+ =?utf-8?B?Yzk4bkNKNVArQW1aODhZTThBZlFRVHVRblZyRVpnQnpuSXJpdVdTUWc4WEVL?=
+ =?utf-8?B?UGdzZFlQWEpVNU1sbmlIZHFrSW53Nk5xNGs2WEE3MHdqYXhnQlBoNCsxSDJa?=
+ =?utf-8?B?VFBuSnFoejVGcnM2aXFjTnp0TUV3dUJydGZ6dDJQb3luUjN5bDA4ZmM1b1hw?=
+ =?utf-8?Q?FtHkEu9HuraGeBM428IlSQUHh?=
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0: UE4SYgwI0/VFcu6birloDIfeT7+JJilTeTMf3gsuZBKBVF3gXtKyUI3G84zAf78PQO3wf8hCSunVFBkPDbzpGEOYMfTQRcGK6JyhKFe3lFuzFRWFPUz/MaOhSlUX2UrWu/iNzXC9jGYFHaKYKBO9MnFuhFOU3XNYNN5XbUbEkSkcT67zEfc9un5SEzaPZxqoOQPTLbe28eQttnyq84OKEQzkDjUZ6pHWe0j8XDARRAHe9m078TtFthU7ycxSebHretcpj/pp0Lk2mPDwvBkmJXuNC7Ooos/xHo/LKlYoCm/Vg1WZ+y7JzgqVch82+TnR0voSKKVT/W82KkwW0X6ZmdHlmJF4hDkzIKA2279V4ivumOWv7wlpvHweSKOHcZZBsqr4QMf3ZmlHwrZmTMjIZblmJKWeAW+xfrW37rtDFfF2p/wEhEl3CHbitX0Zs3nAdTM7iA1fHHzuI+Kzj3/FmktgoEB3JpjGnrflJ925Szv2UfYdGCuSMDar1yF6Es0BOlT70eyM9CdwJ44/KdDcuRv5HW7MpFolk4I+J9CihH8Bb2S854cxV8xve8B6FgdiiK370TwhBdBRVrENmu8qNd+7EbXTldS8r9h7ZnY2CriX7L8nO3+T5hrYhHOR5nusm2atZ1HkY5dIoz+x5v6vXMhVNwWwp6NikZ1HhlcCOXkcpUqCfFPHMO+JVOfpOs4uBPXq/W5+yy6n8NhSa1CiF4LGnGvenerPRE1aYNc0nQmNMSJiR2S3Z3hKlubYUV9puZmJqBkWbNu89T28JC3mFHOfxo43G8v1zFDFWx6PedfA8XgI+oF/aSO53wfjhfk1
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 93825a95-16fa-4b85-32ce-08daf33b0c01
+X-MS-Exchange-CrossTenant-AuthSource: BY5PR10MB4257.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 10 Jan 2023 18:46:55.8558
+ (UTC)
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: 1fFQa0XDX6JB73wXQx/LRoJoxoXIhevyfMd9IM/ytxF9QAYLCLSs3NPRaTTDrfncgjpQs/fwh+g3UpKBajxw1g==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BN0PR10MB5383
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.205,Aquarius:18.0.923,Hydra:6.0.545,FMLib:17.11.122.1
+ definitions=2023-01-10_07,2023-01-10_03,2022-06-22_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 spamscore=0 mlxscore=0
+ mlxlogscore=999 suspectscore=0 bulkscore=0 adultscore=0 phishscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2212070000
+ definitions=main-2301100122
+X-Proofpoint-ORIG-GUID: b-d7UnLq4WFoZPubTUJUd64mVG_k51YM
+X-Proofpoint-GUID: b-d7UnLq4WFoZPubTUJUd64mVG_k51YM
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Adds support for using the NFS v4.2 operation IO_ADVISE to
-send client I/O access pattern hints to the server.
 
-There is a one-to-one correspondence between the advice
-(POSIX_FADV_*) given in fadvise64() and the bitmap mask sent
-to the server. Any other advice given results in just
-calling generic_fadvise().
+On 1/10/23 10:17 AM, Chuck Lever III wrote:
+>
+>> On Jan 10, 2023, at 12:33 PM, Dai Ngo <dai.ngo@oracle.com> wrote:
+>>
+>>
+>> On 1/10/23 2:30 AM, Jeff Layton wrote:
+>>> On Mon, 2023-01-09 at 22:48 -0800, Dai Ngo wrote:
+>>>> Currently nfsd4_state_shrinker_worker can be schduled multiple times
+>>>> from nfsd4_state_shrinker_count when memory is low. This causes
+>>>> the WARN_ON_ONCE in __queue_delayed_work to trigger.
+>>>>
+>>>> This patch allows only one instance of nfsd4_state_shrinker_worker
+>>>> at a time using the nfsd_shrinker_active flag, protected by the
+>>>> client_lock.
+>>>>
+>>>> Replace mod_delayed_work with queue_delayed_work since we
+>>>> don't expect to modify the delay of any pending work.
+>>>>
+>>>> Fixes: 44df6f439a17 ("NFSD: add delegation reaper to react to low memory condition")
+>>>> Reported-by: Mike Galbraith <efault@gmx.de>
+>>>> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+>>>> ---
+>>>>   fs/nfsd/netns.h     |  1 +
+>>>>   fs/nfsd/nfs4state.c | 16 ++++++++++++++--
+>>>>   2 files changed, 15 insertions(+), 2 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+>>>> index 8c854ba3285b..801d70926442 100644
+>>>> --- a/fs/nfsd/netns.h
+>>>> +++ b/fs/nfsd/netns.h
+>>>> @@ -196,6 +196,7 @@ struct nfsd_net {
+>>>>   	atomic_t		nfsd_courtesy_clients;
+>>>>   	struct shrinker		nfsd_client_shrinker;
+>>>>   	struct delayed_work	nfsd_shrinker_work;
+>>>> +	bool			nfsd_shrinker_active;
+>>>>   };
+>>>>     /* Simple check to find out if a given net was properly initialized */
+>>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>>> index ee56c9466304..e00551af6a11 100644
+>>>> --- a/fs/nfsd/nfs4state.c
+>>>> +++ b/fs/nfsd/nfs4state.c
+>>>> @@ -4407,11 +4407,20 @@ nfsd4_state_shrinker_count(struct shrinker *shrink, struct shrink_control *sc)
+>>>>   	struct nfsd_net *nn = container_of(shrink,
+>>>>   			struct nfsd_net, nfsd_client_shrinker);
+>>>>   +	spin_lock(&nn->client_lock);
+>>>> +	if (nn->nfsd_shrinker_active) {
+>>>> +		spin_unlock(&nn->client_lock);
+>>>> +		return 0;
+>>>> +	}
+>>> Is this extra machinery really necessary? The bool and spinlock don't
+>>> seem to be needed. Typically there is no issue with calling
+>>> queued_delayed_work when the work is already queued. It just returns
+>>> false in that case without doing anything.
+>> When there are multiple calls to mod_delayed_work/queue_delayed_work
+>> we hit the WARN_ON_ONCE's in __queue_delayed_work and __queue_work if
+>> the work is queued but not execute yet.
+> The delay argument of zero is interesting. If it's set to a value
+> greater than zero, do you still see a problem?
 
-The bitmap mask given by the server reply is just ignored
-since the fadvise64() returns 0 on success. If server
-replies with more than one bitmap word, only the first word
-is stored on the nfs42_io_advise_res struct and all other
-words are ignored.
+I tried and tried but could not reproduce the problem that Mike
+reported. I guess my VMs don't have fast enough cpus to make it
+happen.
 
-Signed-off-by: Jorge Mora <mora@netapp.com>
----
- fs/nfs/nfs42.h            |  1 +
- fs/nfs/nfs42proc.c        | 67 +++++++++++++++++++++++++++++++
- fs/nfs/nfs42xdr.c         | 84 +++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4file.c         | 37 +++++++++++++++++
- fs/nfs/nfs4proc.c         |  1 +
- fs/nfs/nfs4xdr.c          |  1 +
- include/linux/nfs4.h      |  1 +
- include/linux/nfs_fs_sb.h |  1 +
- include/linux/nfs_xdr.h   | 28 +++++++++++++
- 9 files changed, 221 insertions(+)
+As Jeff mentioned, delay 0 should be safe and we want to run
+the shrinker as soon as possible when memory is low.
 
-diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
-index 0fe5aacbcfdf..c3e9fcd54c72 100644
---- a/fs/nfs/nfs42.h
-+++ b/fs/nfs/nfs42.h
-@@ -20,6 +20,7 @@ int nfs42_proc_allocate(struct file *, loff_t, loff_t);
- ssize_t nfs42_proc_copy(struct file *, loff_t, struct file *, loff_t, size_t,
- 			struct nl4_server *, nfs4_stateid *, bool);
- int nfs42_proc_deallocate(struct file *, loff_t, loff_t);
-+int nfs42_proc_io_advise(struct file *, loff_t, u64, u32);
- loff_t nfs42_proc_llseek(struct file *, loff_t, int);
- int nfs42_proc_layoutstats_generic(struct nfs_server *,
- 				   struct nfs42_layoutstat_data *);
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index ecb428512fe1..af40f705386a 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -172,6 +172,73 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
- 	return err;
- }
- 
-+static loff_t _nfs42_proc_io_advise(struct file *filep,
-+		struct nfs_lock_context *lock, loff_t offset,
-+		u64 count, u32 hints)
-+{
-+	struct inode *inode = file_inode(filep);
-+	struct nfs42_io_advise_args args = {
-+		.fh	= NFS_FH(inode),
-+		.offset	= offset,
-+		.count	= count,
-+		.hints	= hints,
-+	};
-+	struct nfs42_io_advise_res res;
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_IO_ADVISE],
-+		.rpc_argp = &args,
-+		.rpc_resp = &res,
-+	};
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	int status;
-+
-+	if (!nfs_server_capable(inode, NFS_CAP_IO_ADVISE))
-+		return -ENOTSUPP;
-+
-+	status = nfs4_set_rw_stateid(&args.stateid, lock->open_context,
-+			lock, FMODE_READ);
-+	if (status) {
-+		if (status == -EAGAIN)
-+			status = -NFS4ERR_BAD_STATEID;
-+		return status;
-+	}
-+
-+	status = nfs4_call_sync(server->client, server, &msg,
-+				&args.seq_args, &res.seq_res, 0);
-+	if (status == -ENOTSUPP)
-+		server->caps &= ~NFS_CAP_IO_ADVISE;
-+	return status;
-+}
-+
-+int nfs42_proc_io_advise(struct file *filep, loff_t offset, u64 count, u32 hints)
-+{
-+	struct nfs_server *server = NFS_SERVER(file_inode(filep));
-+	struct nfs4_exception exception = { };
-+	struct nfs_lock_context *lock;
-+	loff_t err;
-+
-+	lock = nfs_get_lock_context(nfs_file_open_context(filep));
-+	if (IS_ERR(lock))
-+		return PTR_ERR(lock);
-+
-+	exception.inode = file_inode(filep);
-+	exception.state = lock->open_context->state;
-+
-+	do {
-+		err = _nfs42_proc_io_advise(filep, lock, offset, count, hints);
-+		if (err >= 0)
-+			break;
-+		if (err == -ENOTSUPP) {
-+			err = -EOPNOTSUPP;
-+			break;
-+		}
-+		err = nfs4_handle_exception(server, err, &exception);
-+	} while (exception.retry);
-+
-+	nfs_put_lock_context(lock);
-+	return err;
-+}
-+
- static int handle_async_copy(struct nfs42_copy_res *res,
- 			     struct nfs_server *dst_server,
- 			     struct nfs_server *src_server,
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index d80ee88ca996..1e30729b0ed5 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -45,6 +45,14 @@
- #define encode_deallocate_maxsz		(op_encode_hdr_maxsz + \
- 					 encode_fallocate_maxsz)
- #define decode_deallocate_maxsz		(op_decode_hdr_maxsz)
-+#define nfs42_io_advise_bitmap_maxsz	2 /* bitmap length and hints mask */
-+#define encode_io_advise_maxsz		(op_encode_hdr_maxsz + \
-+					 encode_stateid_maxsz + \
-+					 2 /* offset */ + \
-+					 2 /* count */  + \
-+					 nfs42_io_advise_bitmap_maxsz /* hints */)
-+#define decode_io_advise_maxsz		(op_decode_hdr_maxsz + \
-+					 nfs42_io_advise_bitmap_maxsz /* hints */)
- #define encode_read_plus_maxsz		(op_encode_hdr_maxsz + \
- 					 encode_stateid_maxsz + 3)
- #define NFS42_READ_PLUS_DATA_SEGMENT_SIZE \
-@@ -138,6 +146,14 @@
- 					 decode_putfh_maxsz + \
- 					 decode_deallocate_maxsz + \
- 					 decode_getattr_maxsz)
-+#define NFS4_enc_io_advise_sz		(compound_encode_hdr_maxsz + \
-+					 encode_sequence_maxsz + \
-+					 encode_putfh_maxsz + \
-+					 encode_io_advise_maxsz)
-+#define NFS4_dec_io_advise_sz		(compound_decode_hdr_maxsz + \
-+					 decode_sequence_maxsz + \
-+					 decode_putfh_maxsz + \
-+					 decode_io_advise_maxsz)
- #define NFS4_enc_read_plus_sz		(compound_encode_hdr_maxsz + \
- 					 encode_sequence_maxsz + \
- 					 encode_putfh_maxsz + \
-@@ -342,6 +358,17 @@ static void encode_deallocate(struct xdr_stream *xdr,
- 	encode_fallocate(xdr, args);
- }
- 
-+static void encode_io_advise(struct xdr_stream *xdr,
-+			const struct nfs42_io_advise_args *args,
-+			struct compound_hdr *hdr)
-+{
-+	encode_op_hdr(xdr, OP_IO_ADVISE, decode_io_advise_maxsz, hdr);
-+	encode_nfs4_stateid(xdr, &args->stateid);
-+	encode_uint64(xdr, args->offset);
-+	encode_uint64(xdr, args->count);
-+	xdr_encode_bitmap4(xdr, &args->hints, 1);
-+}
-+
- static void encode_read_plus(struct xdr_stream *xdr,
- 			     const struct nfs_pgio_args *args,
- 			     struct compound_hdr *hdr)
-@@ -764,6 +791,25 @@ static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
- 	encode_nops(&hdr);
- }
- 
-+/*
-+ * Encode IO_ADVISE request
-+ */
-+static void nfs4_xdr_enc_io_advise(struct rpc_rqst *req,
-+				   struct xdr_stream *xdr,
-+				   const void *data)
-+{
-+	const struct nfs42_io_advise_args *args = data;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->seq_args, &hdr);
-+	encode_putfh(xdr, args->fh, &hdr);
-+	encode_io_advise(xdr, args, &hdr);
-+	encode_nops(&hdr);
-+}
-+
- /*
-  * Encode READ_PLUS request
-  */
-@@ -1034,6 +1080,19 @@ static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *re
- 	return decode_op_hdr(xdr, OP_DEALLOCATE);
- }
- 
-+static int decode_io_advise(struct xdr_stream *xdr, struct nfs42_io_advise_res *res)
-+{
-+	int status;
-+
-+	status = decode_op_hdr(xdr, OP_IO_ADVISE);
-+	if (status)
-+		return status;
-+
-+	if (unlikely(decode_bitmap4(xdr, &res->hints, 1) < 0))
-+		return -EIO;
-+	return 0;
-+}
-+
- struct read_plus_segment {
- 	enum data_content4 type;
- 	uint64_t offset;
-@@ -1337,6 +1396,31 @@ static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
- 	return status;
- }
- 
-+/*
-+ * Decode IO_ADVISE response
-+ */
-+static int nfs4_xdr_dec_io_advise(struct rpc_rqst *rqstp,
-+				  struct xdr_stream *xdr,
-+				  void *data)
-+{
-+	struct nfs42_io_advise_res *res = data;
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(xdr);
-+	if (status)
-+		goto out;
-+	status = decode_io_advise(xdr, res);
-+out:
-+	return status;
-+}
-+
- /*
-  * Decode READ_PLUS request
-  */
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 2563ed8580f3..5f6e4b5f1559 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -7,6 +7,7 @@
- #include <linux/fs.h>
- #include <linux/file.h>
- #include <linux/falloc.h>
-+#include <linux/fadvise.h>
- #include <linux/mount.h>
- #include <linux/nfs_fs.h>
- #include <linux/nfs_ssc.h>
-@@ -236,6 +237,41 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
- 	return nfs42_proc_allocate(filep, offset, len);
- }
- 
-+static int nfs42_file_fadvise(struct file *filep, loff_t start, loff_t len, int advice)
-+{
-+	int ret;
-+	unsigned int hints = 0;
-+
-+	switch (advice) {
-+	case POSIX_FADV_NORMAL:
-+		hints = NFS_IO_ADVISE4_NORMAL;
-+		break;
-+	case POSIX_FADV_RANDOM:
-+		hints = NFS_IO_ADVISE4_RANDOM;
-+		break;
-+	case POSIX_FADV_SEQUENTIAL:
-+		hints = NFS_IO_ADVISE4_SEQUENTIAL;
-+		break;
-+	case POSIX_FADV_WILLNEED:
-+		hints = NFS_IO_ADVISE4_WILLNEED;
-+		break;
-+	case POSIX_FADV_DONTNEED:
-+		hints = NFS_IO_ADVISE4_DONTNEED;
-+		break;
-+	case POSIX_FADV_NOREUSE:
-+		hints = NFS_IO_ADVISE4_NOREUSE;
-+		break;
-+	default:
-+		goto out;
-+	}
-+
-+	ret = nfs42_proc_io_advise(filep, start, len, hints);
-+	if (ret < 0)
-+		return ret;
-+out:
-+	return generic_fadvise(filep, start, len, advice);
-+}
-+
- static loff_t nfs42_remap_file_range(struct file *src_file, loff_t src_off,
- 		struct file *dst_file, loff_t dst_off, loff_t count,
- 		unsigned int remap_flags)
-@@ -462,6 +498,7 @@ const struct file_operations nfs4_file_operations = {
- 	.copy_file_range = nfs4_copy_file_range,
- 	.llseek		= nfs4_file_llseek,
- 	.fallocate	= nfs42_fallocate,
-+	.fadvise	= nfs42_file_fadvise,
- 	.remap_file_range = nfs42_remap_file_range,
- #else
- 	.llseek		= nfs_file_llseek,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 40d749f29ed3..89b21b94f948 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -10529,6 +10529,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
- 		| NFS_CAP_OFFLOAD_CANCEL
- 		| NFS_CAP_COPY_NOTIFY
- 		| NFS_CAP_DEALLOCATE
-+		| NFS_CAP_IO_ADVISE
- 		| NFS_CAP_SEEK
- 		| NFS_CAP_LAYOUTSTATS
- 		| NFS_CAP_CLONE
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index deec76cf5afe..962c5b023769 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -7698,6 +7698,7 @@ const struct rpc_procinfo nfs4_procedures[] = {
- 	PROC42(SEEK,		enc_seek,		dec_seek),
- 	PROC42(ALLOCATE,	enc_allocate,		dec_allocate),
- 	PROC42(DEALLOCATE,	enc_deallocate,		dec_deallocate),
-+	PROC42(IO_ADVISE,	enc_io_advise,		dec_io_advise),
- 	PROC42(LAYOUTSTATS,	enc_layoutstats,	dec_layoutstats),
- 	PROC42(CLONE,		enc_clone,		dec_clone),
- 	PROC42(COPY,		enc_copy,		dec_copy),
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 8d04b6a5964c..a1d925b1f06b 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -557,6 +557,7 @@ enum {
- 	NFSPROC4_CLNT_LISTXATTRS,
- 	NFSPROC4_CLNT_REMOVEXATTR,
- 	NFSPROC4_CLNT_READ_PLUS,
-+	NFSPROC4_CLNT_IO_ADVISE,
- };
- 
- /* nfs41 types */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index ea2f7e6b1b0b..38eb0cd86979 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -270,6 +270,7 @@ struct nfs_server {
- #define NFS_CAP_LGOPEN		(1U << 5)
- #define NFS_CAP_CASE_INSENSITIVE	(1U << 6)
- #define NFS_CAP_CASE_PRESERVING	(1U << 7)
-+#define NFS_CAP_IO_ADVISE	(1U << 13)
- #define NFS_CAP_POSIX_LOCK	(1U << 14)
- #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
- #define NFS_CAP_STATEID_NFSV41	(1U << 16)
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index e86cf6642d21..3a52e5dc2fea 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -17,6 +17,18 @@
- 
- #define NFS_BITMASK_SZ		3
- 
-+#define NFS_IO_ADVISE4_NORMAL			(1U << 0)
-+#define NFS_IO_ADVISE4_SEQUENTIAL		(1U << 1)
-+#define NFS_IO_ADVISE4_SEQUENTIAL_BACKWARDS	(1U << 2)
-+#define NFS_IO_ADVISE4_RANDOM			(1U << 3)
-+#define NFS_IO_ADVISE4_WILLNEED			(1U << 4)
-+#define NFS_IO_ADVISE4_WILLNEED_OPPORTUNISTIC	(1U << 5)
-+#define NFS_IO_ADVISE4_DONTNEED			(1U << 6)
-+#define NFS_IO_ADVISE4_NOREUSE			(1U << 7)
-+#define NFS_IO_ADVISE4_READ			(1U << 8)
-+#define NFS_IO_ADVISE4_WRITE			(1U << 9)
-+#define NFS_IO_ADVISE4_INIT_PROXIMITY		(1U << 10)
-+
- struct nfs4_string {
- 	unsigned int len;
- 	char *data;
-@@ -1449,6 +1461,22 @@ struct nfs42_falloc_res {
- 	const struct nfs_server		*falloc_server;
- };
- 
-+struct nfs42_io_advise_args {
-+	struct nfs4_sequence_args	seq_args;
-+
-+	struct nfs_fh			*fh;
-+	nfs4_stateid			stateid;
-+	loff_t				offset;
-+	u64				count;
-+	u32				hints;
-+};
-+
-+struct nfs42_io_advise_res {
-+	struct nfs4_sequence_res	seq_res;
-+
-+	u32				hints;
-+};
-+
- struct nfs42_copy_args {
- 	struct nfs4_sequence_args	seq_args;
- 
--- 
-2.31.1
+-Dai
 
+>
+>
+>> This problem was reported by Mike. I initially tried with only the
+>> bool but that was not enough that was why the spinlock was added.
+>> Mike verified that the patch fixed the problem.
+>>
+>> -Dai
+>>
+>>>>   	count = atomic_read(&nn->nfsd_courtesy_clients);
+>>>>   	if (!count)
+>>>>   		count = atomic_long_read(&num_delegations);
+>>>> -	if (count)
+>>>> -		mod_delayed_work(laundry_wq, &nn->nfsd_shrinker_work, 0);
+>>>> +	if (count) {
+>>>> +		nn->nfsd_shrinker_active = true;
+>>>> +		spin_unlock(&nn->client_lock);
+>>>> +		queue_delayed_work(laundry_wq, &nn->nfsd_shrinker_work, 0);
+>>>> +	} else
+>>>> +		spin_unlock(&nn->client_lock);
+>>>>   	return (unsigned long)count;
+>>>>   }
+>>>>   @@ -6239,6 +6248,9 @@ nfsd4_state_shrinker_worker(struct work_struct *work)
+>>>>     	courtesy_client_reaper(nn);
+>>>>   	deleg_reaper(nn);
+>>>> +	spin_lock(&nn->client_lock);
+>>>> +	nn->nfsd_shrinker_active = 0;
+>>>> +	spin_unlock(&nn->client_lock);
+>>>>   }
+>>>>     static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid *stp)
+> --
+> Chuck Lever
+>
+>
+>
