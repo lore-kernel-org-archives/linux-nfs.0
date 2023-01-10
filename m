@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BF4A5C678D6
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA9D1C678D8
 	for <linux-nfs@archiver.kernel.org>; Tue, 10 Jan 2023 18:53:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238417AbjAJSxA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S239050AbjAJSxA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 10 Jan 2023 13:53:00 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36628 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35400 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239743AbjAJSwL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2023 13:52:11 -0500
-Received: from mail-ot1-x32f.google.com (mail-ot1-x32f.google.com [IPv6:2607:f8b0:4864:20::32f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 977395564D
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2023 10:46:45 -0800 (PST)
-Received: by mail-ot1-x32f.google.com with SMTP id m6-20020a9d7e86000000b0066ec505ae93so7507132otp.9
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2023 10:46:45 -0800 (PST)
+        with ESMTP id S238435AbjAJSwf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jan 2023 13:52:35 -0500
+Received: from mail-oa1-x35.google.com (mail-oa1-x35.google.com [IPv6:2001:4860:4864:20::35])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 184A7E98
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2023 10:47:33 -0800 (PST)
+Received: by mail-oa1-x35.google.com with SMTP id 586e51a60fabf-150b06cb1aeso13055563fac.11
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jan 2023 10:47:33 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=gmail.com; s=20210112;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=DxCLd5eKTaBauVbpS1dHjWWTZQ+FKdga7/8xoNKcAGU=;
-        b=P/vF4FTTr3/WvPABBq7MV2Hqs08U7w+zE6E4jdHMGvkJM2wRq+XsqP5hsvSOB6HZ8n
-         6IYREVH/j5dtM0Mn/080bQrT2rfTZj0QPffwFMdDpMdLhspypdg00mA0dJrjOl7a8fNy
-         kHLoE5x3QBORsHzzSHPabDyTh1K+KP6M00fkgYpIoPEwQkfgEGK9aZdQbDJF3FHi4vDw
-         L1QlM1kv8vYaKZef8wJ2xWflZtRsIvNQ0WZ/cda6V7rQJ6L2+te04hm0Vm4Qx4rQe0LB
-         DzTgR35inD7PRwgDlRNWDq6Yz2LgD03+uyRsa+wLkO/6BUUWPFgPC0BmFaPImoPdts+U
-         zssQ==
+        bh=xDj1tRIYypE2pPjCV5CMdaYn7oma6cXmkgdATiHjTxA=;
+        b=PwqG2e9SqTI6yL61bw5m1vkoKQg/6V56M2jxRtdNJyoEL7G6YQv4IlY2gnJm5aca+I
+         wG9WzO/gw7tat9n4Sv+xcArkTlW26XOw2mece1rsuHTMV4OK8uhHB6p7YbqUDUGUe0q1
+         U/Py48RIqMGoOB/nRwiLPWTRQeE1WxKMTFiTRkL6qnXeNj/reXl4KIYJPwD+iPFeIGx1
+         o/2rWUg/Dj/9lfP1Pjfqo8IIhs9rKF645uDL9xCHPbsynzF/NOqxaJte+yulvB1mOcf4
+         kJmkIUjUrGMLV1Ou0PcUXOPJuHIs8Sqa/q40sf28BRW5MV7Yw/cCItcjexREWhEniT83
+         V40w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20210112;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=DxCLd5eKTaBauVbpS1dHjWWTZQ+FKdga7/8xoNKcAGU=;
-        b=nvQWdf03svBhXFU6MTr4vo8+COiwGyAXQju3WfOGGwzFZBImyoCQZfbVRAdVNecq1r
-         E15MoV2fPS7FVhqInFkl7KZU/JBBBvgpFyWojwyEItMTHt6iis9Px3yuEJTdmjBfwtaV
-         lJlGXgaJhGVlxZoKE87N4ZMvqu5bXgpVFy+FNPN4gl3PHdhpjF2+BUGCx7or8ZviVB7N
-         dBSsd2eX+WX/CZiPCftgmSvSvn3DT0bacZl0NoqOBmEZyu3hXGyQ5afz2B1Z0RYHRVuS
-         /cFVCIzCTdNkcOUp/orH7456gOOT0yteM/D0vrY+clOkLekI2ZGe+9Ej9YidPLlApfFd
-         1qaQ==
-X-Gm-Message-State: AFqh2kqRQ/AB02BKLhbGcR1axtafRABN0vNGQEvQ/ARfcvDke8WgNzc/
-        L53dnu6koA9QmKRg3YWrA0glxOiEY0E=
-X-Google-Smtp-Source: AMrXdXssi0B8lXqOkCVy8sYOQBgDxoDFPwxy8p8AayKgFhrJzWwcNil8NSYmCO1cJLt9UWXAee7fbQ==
-X-Received: by 2002:a9d:7341:0:b0:66d:c9f6:5528 with SMTP id l1-20020a9d7341000000b0066dc9f65528mr34238992otk.24.1673376404399;
-        Tue, 10 Jan 2023 10:46:44 -0800 (PST)
+        bh=xDj1tRIYypE2pPjCV5CMdaYn7oma6cXmkgdATiHjTxA=;
+        b=UfTrLqsUVqXyJcoaCXH+WbnNwaxY4IvFBQUj1bS/exOheFqhbKj7mSOiByuJQ3oWd/
+         VVhdE7QWCoik5vzvQb9bKqM0AKQZbxhv5knFXyR3oje+1wcJ7tXg7ajP6rbHXMRaOAvo
+         FGobKBd3BdS2zQlrm5cCRVIFMBX+03qf9Xj2CPuNv7O3EPy9oj5gSBgaYcV2b+xVhEmm
+         AwJsG32o9EnAKixxxvLHBrgaCluKxJLlkYCfZBr1olrt4p3LI29UPHPc99y2NiJRmxQs
+         Ab99icL4CyACVJRc/YgB9kvFr4ZjXQgEQNUDHrC4t0akjLrnl9cBi0yI9JFPBkIYPvHQ
+         uSGQ==
+X-Gm-Message-State: AFqh2kr2zg6V6UHJJz/Hr0KssvlY+TRRkH0DNNKXEraO3BhCloJyXXgg
+        x1GCxauiK0WEyaYtj8KQp4pmLpcFW4I=
+X-Google-Smtp-Source: AMrXdXs/reVKdMg3HtSzi/0VRDGDsUv89dB/CkPysisJXn19FPFzqe5himE2GmPZEyFwtqT7tRhjDA==
+X-Received: by 2002:a05:6870:4b4f:b0:14b:b6e2:c203 with SMTP id ls15-20020a0568704b4f00b0014bb6e2c203mr36804672oab.15.1673376451325;
+        Tue, 10 Jan 2023 10:47:31 -0800 (PST)
 Received: from localhost.localdomain (cpe-24-28-172-218.elp.res.rr.com. [24.28.172.218])
-        by smtp.gmail.com with ESMTPSA id t11-20020a9d590b000000b00677714a440fsm6438775oth.81.2023.01.10.10.46.42
+        by smtp.gmail.com with ESMTPSA id c6-20020a056870c08600b0014be94a12d0sm6168848oad.44.2023.01.10.10.47.30
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 10 Jan 2023 10:46:43 -0800 (PST)
+        Tue, 10 Jan 2023 10:47:30 -0800 (PST)
 From:   Jorge Mora <jmora1300@gmail.com>
 X-Google-Original-From: Jorge Mora <mora@netapp.com>
 To:     linux-nfs@vger.kernel.org
-Cc:     trond.myklebust@hammerspace.com, Anna.Schumaker@netapp.com
-Subject: [PATCH v1 0/2] add support for IO_ADVISE
-Date:   Tue, 10 Jan 2023 11:46:39 -0700
-Message-Id: <20230110184641.13334-1-mora@netapp.com>
+Cc:     chuck.lever@oracle.com, jlayton@redhat.com
+Subject: [PATCH v1] NFSD: add IO_ADVISE operation
+Date:   Tue, 10 Jan 2023 11:47:26 -0700
+Message-Id: <20230110184726.13380-1-mora@netapp.com>
 X-Mailer: git-send-email 2.37.1 (Apple Git-137.1)
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
@@ -62,41 +62,201 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Adds support for using the NFS v4.2 operation IO_ADVISE to
-send client I/O access pattern hints to the server.
+If multiple bits are set, select just one using a predetermined
+order of precedence. If there are no bits which correspond to
+any of the advice values (POSIX_FADV_*), the server simply
+replies with NFS4ERR_UNION_NOTSUPP.
 
-There is a one-to-one correspondence between the advice
-(POSIX_FADV_*) given in fadvise64() and the bitmap mask sent
-to the server. Any other advice given, results in just
-calling generic_fadvise().
+If a client sends a bitmap mask with multiple words, ignore all
+but the first word in the bitmap. The response is always the
+same first word of the bitmap mask given in the request.
 
-The bitmap mask given by the server reply is just ignored
-since the fadvise64() returns 0 on success. If server
-replies with more than one bitmap word, only the first word
-is stored on the nfs42_io_advise_res struct and all other
-words are ignored.
+Signed-off-by: Jorge Mora <mora@netapp.com>
+---
+ fs/nfsd/nfs4proc.c | 59 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c  | 27 +++++++++++++++++++--
+ fs/nfsd/xdr4.h     | 11 +++++++++
+ 3 files changed, 95 insertions(+), 2 deletions(-)
 
-Added trace point (nfs4_io_advise) for this operation:
-nfs4_io_advise: error=0 (OK) fileid=00:32:4217220 \
-  fhandle=0x4a271991 stateid=0:0x30b83748 offset=0 \
-  count=200 arg_hints=SEQUENTIAL res_hints=SEQUENTIAL
-
-Jorge Mora (2):
-  NFS: add IO_ADVISE operation
-  NFSv4.2 add tracepoint to IO_ADVISE
-
- fs/nfs/nfs42.h            |  1 +
- fs/nfs/nfs42proc.c        | 68 +++++++++++++++++++++++++++++++
- fs/nfs/nfs42xdr.c         | 84 +++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4file.c         | 37 +++++++++++++++++
- fs/nfs/nfs4proc.c         |  1 +
- fs/nfs/nfs4trace.h        | 75 ++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4xdr.c          |  1 +
- include/linux/nfs4.h      |  1 +
- include/linux/nfs_fs_sb.h |  1 +
- include/linux/nfs_xdr.h   | 28 +++++++++++++
- 10 files changed, 297 insertions(+)
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 8beb2bc4c328..65179a3946f5 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -35,6 +35,7 @@
+ #include <linux/fs_struct.h>
+ #include <linux/file.h>
+ #include <linux/falloc.h>
++#include <linux/fadvise.h>
+ #include <linux/slab.h>
+ #include <linux/kthread.h>
+ #include <linux/namei.h>
+@@ -1995,6 +1996,53 @@ nfsd4_deallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			       FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE);
+ }
+ 
++static __be32
++nfsd4_io_advise(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		union nfsd4_op_u *u)
++{
++	struct nfsd4_io_advise *io_advise = &u->io_advise;
++	struct nfsd_file *nf;
++	__be32 status;
++	int advice;
++	int ret;
++
++	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
++					    &io_advise->stateid,
++					    RD_STATE, &nf, NULL);
++	if (status) {
++		dprintk("NFSD: %s: couldn't process stateid!\n", __func__);
++		return status;
++	}
++
++	/*
++	 * If multiple bits are set, select just one using the following
++	 * order of precedence
++	 */
++	if (io_advise->hints & NFS_IO_ADVISE4_NORMAL)
++		advice = POSIX_FADV_NORMAL;
++	else if (io_advise->hints & NFS_IO_ADVISE4_RANDOM)
++		advice = POSIX_FADV_RANDOM;
++	else if (io_advise->hints & NFS_IO_ADVISE4_SEQUENTIAL)
++		advice = POSIX_FADV_SEQUENTIAL;
++	else if (io_advise->hints & NFS_IO_ADVISE4_WILLNEED)
++		advice = POSIX_FADV_WILLNEED;
++	else if (io_advise->hints & NFS_IO_ADVISE4_DONTNEED)
++		advice = POSIX_FADV_DONTNEED;
++	else if (io_advise->hints & NFS_IO_ADVISE4_NOREUSE)
++		advice = POSIX_FADV_NOREUSE;
++	else {
++		status = nfserr_union_notsupp;
++		goto out;
++	}
++
++	ret = vfs_fadvise(nf->nf_file, io_advise->offset, io_advise->count, advice);
++	if (ret < 0)
++		status = nfserrno(ret);
++out:
++	nfsd_file_put(nf);
++	return status;
++}
++
+ static __be32
+ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	   union nfsd4_op_u *u)
+@@ -3096,6 +3144,12 @@ static u32 nfsd4_layoutreturn_rsize(const struct svc_rqst *rqstp,
+ #endif /* CONFIG_NFSD_PNFS */
+ 
+ 
++static u32 nfsd4_io_advise_rsize(const struct svc_rqst *rqstp,
++				 const struct nfsd4_op *op)
++{
++	return (op_encode_hdr_size + 2) * sizeof(__be32);
++}
++
+ static u32 nfsd4_seek_rsize(const struct svc_rqst *rqstp,
+ 			    const struct nfsd4_op *op)
+ {
+@@ -3479,6 +3533,11 @@ static const struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_name = "OP_DEALLOCATE",
+ 		.op_rsize_bop = nfsd4_only_status_rsize,
+ 	},
++	[OP_IO_ADVISE] = {
++		.op_func = nfsd4_io_advise,
++		.op_name = "OP_IO_ADVISE",
++		.op_rsize_bop = nfsd4_io_advise_rsize,
++	},
+ 	[OP_CLONE] = {
+ 		.op_func = nfsd4_clone,
+ 		.op_flags = OP_MODIFIES_SOMETHING,
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index bcfeb1a922c0..8814c24047ff 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1882,6 +1882,22 @@ nfsd4_decode_fallocate(struct nfsd4_compoundargs *argp,
+ 	return nfs_ok;
+ }
+ 
++static __be32
++nfsd4_decode_io_advise(struct nfsd4_compoundargs *argp,
++		       struct nfsd4_io_advise *io_advise)
++{
++	__be32 status;
++
++	status = nfsd4_decode_stateid4(argp, &io_advise->stateid);
++	if (status)
++		return status;
++	if (xdr_stream_decode_u64(argp->xdr, &io_advise->offset) < 0)
++		return nfserr_bad_xdr;
++	if (xdr_stream_decode_u64(argp->xdr, &io_advise->count) < 0)
++		return nfserr_bad_xdr;
++	return nfsd4_decode_bitmap4(argp, &io_advise->hints, 1);
++}
++
+ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
+ 				      struct nl4_server *ns)
+ {
+@@ -2338,7 +2354,7 @@ static const nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_copy,
+ 	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_copy_notify,
+ 	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
+-	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_io_advise,
+ 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_offload_status,
+@@ -4948,6 +4964,13 @@ nfsd4_encode_copy_notify(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	return nfserr;
+ }
+ 
++static __be32
++nfsd4_encode_io_advise(struct nfsd4_compoundres *resp, __be32 nfserr,
++		       struct nfsd4_io_advise *io_advise)
++{
++	return nfsd4_encode_bitmap(resp->xdr, io_advise->hints, 0, 0);
++}
++
+ static __be32
+ nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		  struct nfsd4_seek *seek)
+@@ -5282,7 +5305,7 @@ static const nfsd4_enc nfsd4_enc_ops[] = {
+ 	[OP_COPY]		= (nfsd4_enc)nfsd4_encode_copy,
+ 	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_copy_notify,
+ 	[OP_DEALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
+-	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_io_advise,
+ 	[OP_LAYOUTERROR]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 0eb00105d845..9b8ba4d6e3ab 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -518,6 +518,16 @@ struct nfsd4_fallocate {
+ 	u64		falloc_length;
+ };
+ 
++struct nfsd4_io_advise {
++	/* request */
++	stateid_t	stateid;
++	loff_t		offset;
++	u64		count;
++
++	/* both */
++	u32		hints;
++};
++
+ struct nfsd4_clone {
+ 	/* request */
+ 	stateid_t	cl_src_stateid;
+@@ -688,6 +698,7 @@ struct nfsd4_op {
+ 		/* NFSv4.2 */
+ 		struct nfsd4_fallocate		allocate;
+ 		struct nfsd4_fallocate		deallocate;
++		struct nfsd4_io_advise		io_advise;
+ 		struct nfsd4_clone		clone;
+ 		struct nfsd4_copy		copy;
+ 		struct nfsd4_offload_status	offload_status;
 -- 
 2.31.1
 
