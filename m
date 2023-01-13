@@ -2,41 +2,42 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F2EAC678D4
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Jan 2023 15:28:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 488C0C678DA
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Jan 2023 15:28:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229748AbjAMP2e (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Jan 2023 10:28:34 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46744 "EHLO
+        id S229937AbjAMP2g (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Jan 2023 10:28:36 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46818 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230181AbjAMP2R (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2023 10:28:17 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1E2087EC86
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Jan 2023 07:21:36 -0800 (PST)
+        with ESMTP id S230182AbjAMP2S (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2023 10:28:18 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CBBEF8143B
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Jan 2023 07:21:48 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id AEA2362171
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Jan 2023 15:21:35 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DAAEFC433EF;
-        Fri, 13 Jan 2023 15:21:34 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 6693B6217B
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Jan 2023 15:21:48 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 95AF9C433F0;
+        Fri, 13 Jan 2023 15:21:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1673623295;
-        bh=BafomN1WImkk2tnPEHLusmFBeE7srAMZgK56SVJzrng=;
+        s=k20201202; t=1673623307;
+        bh=KldhuGSYRC2SS9/MNT62J+Rs6IstRysPw1wIfoosjFA=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=SJ61s10MmDxvvQ6gMlCr/3vGD6btzdIuXh9GmKervwJqP5g3WfqHwdSvDnCHvHHny
-         SzizGMFe5gZpjKsm5C4fy/ufo0VVBRBWsX1ybenJaqvb5uNllsQ8KtTfRjtsHszIY+
-         XcS9yYOXllK05DMnpYSRE6vu/RGym/Dc7YIoFrLuXo9iSNkcjV8sJzQibqFKFC5Z5M
-         XQkw13p4fdzFdyoRWWYyd5UqAzlk+CVeZxcRwJNFVAPGx/Wv7ia2LqqAVro15PpURf
-         Hg137mg5XAhV9UhRyidwFAGU7sV87aWTx6tSU8eUn4cG2ACYUl1y0zBw+k9FMv5y/W
-         ynbnX1XJG9n9g==
-Subject: [PATCH v1 01/41] SUNRPC: Add header ifdefs to linux/sunrpc/gss_krb5.h
+        b=lpbDi1JnPG91iJOIbrp/44d2JKtdF2JfFuR9hfoPkvc8Nn2gEQfRTetJDjkzTb5DS
+         c/32ON5XmFITDOWBKn9f+2h+DMU8t5Xum8Qd47YH8YFtFkES2DWqJYuFeTBGomlNEl
+         uYAaECJfQr4KYbml1NJKb5xzdS1dorMgQVpX3s7VnrdAEEk7LyDvOjb0GegLeaAxwF
+         vytimGQHxBQ0heS1+3qjSt4neWTEUAJvL65sKAnMucGk1oW6vxSsYXaQA+OiBQil95
+         RmBZLG6odmN6W41TtCGUBJmGDBOBjFsr7fw/WxeSiJK5o4i7d3mbzlt96ZbKcegPGf
+         kGIkpRkHSXCNQ==
+Subject: [PATCH v1 03/41] SUNRPC: Remove .conflen field from struct
+ gss_krb5_enctype
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     dhowells@redhat.com, simo@redhat.com
-Date:   Fri, 13 Jan 2023 10:21:33 -0500
-Message-ID: <167362329391.8960.2728300899554595366.stgit@bazille.1015granger.net>
+Date:   Fri, 13 Jan 2023 10:21:46 -0500
+Message-ID: <167362330668.8960.18353493146040000804.stgit@bazille.1015granger.net>
 In-Reply-To: <167362164696.8960.16701168753472560115.stgit@bazille.1015granger.net>
 References: <167362164696.8960.16701168753472560115.stgit@bazille.1015granger.net>
 User-Agent: StGit/1.5
@@ -49,41 +50,135 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Standard convention: Ensure the contents of the header are included
-only once per source file.
+Now that arcfour-hmac is gone, the confounder length is again the
+same as the cipher blocksize for every implemented enctype. The
+gss_krb5_enctype::conflen field is no longer necessary.
 
 Tested-by: Scott Mayhew <smayhew@redhat.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/gss_krb5.h |    7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/gss_krb5.h       |    3 ---
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |    9 +++++----
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    4 ----
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   |    4 ++--
+ 4 files changed, 7 insertions(+), 13 deletions(-)
 
 diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index 91f43d86879d..0135139ddf20 100644
+index 9a833825b55b..51860e3a0216 100644
 --- a/include/linux/sunrpc/gss_krb5.h
 +++ b/include/linux/sunrpc/gss_krb5.h
-@@ -1,6 +1,4 @@
- /*
-- *  linux/include/linux/sunrpc/gss_krb5_types.h
-- *
-  *  Adapted from MIT Kerberos 5-1.2.1 lib/include/krb5.h,
-  *  lib/gssapi/krb5/gssapiP_krb5.h, and others
-  *
-@@ -36,6 +34,9 @@
-  *
-  */
+@@ -64,9 +64,6 @@ struct gss_krb5_enctype {
+ 	const char		*cksum_name;	/* crypto checksum name */
+ 	const u16		signalg;	/* signing algorithm */
+ 	const u16		sealalg;	/* sealing algorithm */
+-	const u32		conflen;	/* confounder length
+-						   (normally the same as
+-						   the blocksize) */
+ 	const u32		cksumlength;	/* checksum length */
+ 	const u32		keyed_cksum;	/* is it a keyed cksum? */
+ 	const u32		keybytes;	/* raw key len, in bytes */
+diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+index 3ea58175e159..8aa5610ef660 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
++++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+@@ -610,6 +610,7 @@ gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
+ 	struct encryptor_desc desc;
+ 	u32 cbcbytes;
+ 	unsigned int usage;
++	unsigned int conflen;
  
-+#ifndef _LINUX_SUNRPC_GSS_KRB5_H
-+#define _LINUX_SUNRPC_GSS_KRB5_H
-+
- #include <crypto/skcipher.h>
- #include <linux/sunrpc/auth_gss.h>
- #include <linux/sunrpc/gss_err.h>
-@@ -316,3 +317,5 @@ gss_krb5_aes_decrypt(struct krb5_ctx *kctx, u32 offset, u32 len,
+ 	if (kctx->initiate) {
+ 		cipher = kctx->initiator_enc;
+@@ -623,12 +624,13 @@ gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
+ 		usage = KG_USAGE_ACCEPTOR_SEAL;
+ 	}
+ 	blocksize = crypto_sync_skcipher_blocksize(cipher);
++	conflen = crypto_sync_skcipher_blocksize(cipher);
  
- void
- gss_krb5_make_confounder(char *p, u32 conflen);
-+
-+#endif /* _LINUX_SUNRPC_GSS_KRB5_H */
+ 	/* hide the gss token header and insert the confounder */
+ 	offset += GSS_KRB5_TOK_HDR_LEN;
+-	if (xdr_extend_head(buf, offset, kctx->gk5e->conflen))
++	if (xdr_extend_head(buf, offset, conflen))
+ 		return GSS_S_FAILURE;
+-	gss_krb5_make_confounder(buf->head[0].iov_base + offset, kctx->gk5e->conflen);
++	gss_krb5_make_confounder(buf->head[0].iov_base + offset, conflen);
+ 	offset -= GSS_KRB5_TOK_HDR_LEN;
+ 
+ 	if (buf->tail[0].iov_base != NULL) {
+@@ -744,7 +746,6 @@ gss_krb5_aes_decrypt(struct krb5_ctx *kctx, u32 offset, u32 len,
+ 	}
+ 	blocksize = crypto_sync_skcipher_blocksize(cipher);
+ 
+-
+ 	/* create a segment skipping the header and leaving out the checksum */
+ 	xdr_buf_subsegment(buf, &subbuf, offset + GSS_KRB5_TOK_HDR_LEN,
+ 				    (len - offset - GSS_KRB5_TOK_HDR_LEN -
+@@ -801,7 +802,7 @@ gss_krb5_aes_decrypt(struct krb5_ctx *kctx, u32 offset, u32 len,
+ 		ret = GSS_S_BAD_SIG;
+ 		goto out_err;
+ 	}
+-	*headskip = kctx->gk5e->conflen;
++	*headskip = blocksize;
+ 	*tailskip = kctx->gk5e->cksumlength;
+ out_err:
+ 	if (ret && ret != GSS_S_BAD_SIG)
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index dd85fc9ca80b..08a86ece665e 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -47,7 +47,6 @@ static const struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
+ 	  .sealalg = SEAL_ALG_DES,
+ 	  .keybytes = 7,
+ 	  .keylength = 8,
+-	  .conflen = 8,
+ 	  .cksumlength = 8,
+ 	  .keyed_cksum = 0,
+ 	},
+@@ -68,7 +67,6 @@ static const struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
+ 	  .sealalg = SEAL_ALG_DES3KD,
+ 	  .keybytes = 21,
+ 	  .keylength = 24,
+-	  .conflen = 8,
+ 	  .cksumlength = 20,
+ 	  .keyed_cksum = 1,
+ 	},
+@@ -90,7 +88,6 @@ static const struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
+ 	  .sealalg = -1,
+ 	  .keybytes = 16,
+ 	  .keylength = 16,
+-	  .conflen = 16,
+ 	  .cksumlength = 12,
+ 	  .keyed_cksum = 1,
+ 	},
+@@ -112,7 +109,6 @@ static const struct gss_krb5_enctype supported_gss_krb5_enctypes[] = {
+ 	  .sealalg = -1,
+ 	  .keybytes = 32,
+ 	  .keylength = 32,
+-	  .conflen = 16,
+ 	  .cksumlength = 12,
+ 	  .keyed_cksum = 1,
+ 	},
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index 48337687848c..bd068e936947 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -168,7 +168,7 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
+ 	struct page		**tmp_pages;
+ 	u32			seq_send;
+ 	u8			*cksumkey;
+-	u32			conflen = kctx->gk5e->conflen;
++	u32			conflen = crypto_sync_skcipher_blocksize(kctx->enc);
+ 
+ 	dprintk("RPC:       %s\n", __func__);
+ 
+@@ -261,7 +261,7 @@ gss_unwrap_kerberos_v1(struct krb5_ctx *kctx, int offset, int len,
+ 	void			*data_start, *orig_start;
+ 	int			data_len;
+ 	int			blocksize;
+-	u32			conflen = kctx->gk5e->conflen;
++	u32			conflen = crypto_sync_skcipher_blocksize(kctx->enc);
+ 	int			crypt_offset;
+ 	u8			*cksumkey;
+ 	unsigned int		saved_len = buf->len;
 
 
