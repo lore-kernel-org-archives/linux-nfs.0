@@ -2,42 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4783DC54EBD
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Jan 2023 15:32:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 214BAC61DB3
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Jan 2023 15:32:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229698AbjAMPcT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Jan 2023 10:32:19 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51514 "EHLO
+        id S230246AbjAMPcb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Jan 2023 10:32:31 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52842 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230255AbjAMPbu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2023 10:31:50 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3235C63D1
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Jan 2023 07:25:13 -0800 (PST)
+        with ESMTP id S230235AbjAMPbz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jan 2023 10:31:55 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5E7CF68C84
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Jan 2023 07:25:30 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id D36A3B8216D
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Jan 2023 15:25:11 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 319F7C433EF;
-        Fri, 13 Jan 2023 15:25:10 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id EDBBC621E3
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Jan 2023 15:25:29 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2BBB1C433F2;
+        Fri, 13 Jan 2023 15:25:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1673623510;
-        bh=H89GNPbBgVD2Kdw9S2vRAbQpCE7nUW0D6NftAWIV6+s=;
+        s=k20201202; t=1673623529;
+        bh=Ji+xFET7VBoHvSkc5p2kDI9yqVAW6IUXD5IEaE75c6Y=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=KY+Y1uqYFGg6ayMH/ajnAy1Aeq0080g6j2xSC2ZwXCZadnCV1OAZGbDjhylAhkvXT
-         SMIEOdeoj/Pc7Xz8gX8Vq8Uvt29K+AJnP7mcMmzLPyRq1UI/EBUGbdqrb62D6yThyv
-         P3Ns5XvlZTIYqCXpTuhUC/ox9WvgxjSXLv/eWns+QogEcHhPhUMJnstlm9MJgUA42O
-         Tg3sDbaX2EUS6GWEPuvYpgnwhTn1Xg/J53RfLtB26zks4PordukU+wIdIGeXnGzJSK
-         joXHs9Oke2Xz5R1k2TAhYn87A7Sdldh80YL/3eimOAGx/094zc6SqvjSQ2wtFNJU3a
-         NwD3jwieP/dfw==
-Subject: [PATCH v1 35/41] SUNRPC: Add KDF KUnit tests for the RFC 6803
- encryption types
+        b=SXa96z7NlsoYBDMIxS1QVDEA2jhesUVrTg11fJ9LOxV8YDpko1vUgqaXlGi2g9ogr
+         toi/TwOwhGd+TURedWrbHJl1lgP1fDjavuModUAhggxdXXG1Tc/dDA557NHPXgkvi9
+         d7sT3JZvEP7axGwcLH3cGdGmBfPszifnJFsGHjcl0gzHf2sHuIs9KA7NvFd8+C8BEd
+         RoMjg8bIN3W4QzHd3xer/kQIhE1xhoLK3PY3MI1fbmP6egTf6zfaZPtE8RY9QFUE5X
+         nbICYpf4xf4ELNKDR6gpKqegqTMxOEyIk7DLxGZ5B2y8+gWDBZn82/96JABw89eEBa
+         bRH50jDNAxEnA==
+Subject: [PATCH v1 38/41] SUNRPC: Add KDF-HMAC-SHA2 Kunit tests
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     dhowells@redhat.com, simo@redhat.com
-Date:   Fri, 13 Jan 2023 10:25:09 -0500
-Message-ID: <167362350931.8960.15055012746732398275.stgit@bazille.1015granger.net>
+Date:   Fri, 13 Jan 2023 10:25:28 -0500
+Message-ID: <167362352830.8960.2255925977517994313.stgit@bazille.1015granger.net>
 In-Reply-To: <167362164696.8960.16701168753472560115.stgit@bazille.1015granger.net>
 References: <167362164696.8960.16701168753472560115.stgit@bazille.1015granger.net>
 User-Agent: StGit/1.5
@@ -50,172 +49,159 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-The Camellia enctypes use a new KDF, so add some tests to ensure it
-is working properly.
+RFC 8009 provides sample key derivation results, so Kunit tests are
+added to ensure our implementation derives the expected keys for the
+provided sample input.
 
 Tested-by: Scott Mayhew <smayhew@redhat.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
  net/sunrpc/.kunitconfig             |    3 +
- net/sunrpc/auth_gss/gss_krb5_test.c |  125 +++++++++++++++++++++++++++++++++++
- 2 files changed, 127 insertions(+), 1 deletion(-)
+ net/sunrpc/auth_gss/gss_krb5_test.c |  113 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 115 insertions(+), 1 deletion(-)
 
 diff --git a/net/sunrpc/.kunitconfig b/net/sunrpc/.kunitconfig
-index 01e12729f465..90d0ad430e7e 100644
+index 90d0ad430e7e..a55a00fa649b 100644
 --- a/net/sunrpc/.kunitconfig
 +++ b/net/sunrpc/.kunitconfig
-@@ -11,14 +11,17 @@ CONFIG_CRYPTO_CBC=y
- CONFIG_CRYPTO_CTS=y
- CONFIG_CRYPTO_ECB=y
- CONFIG_CRYPTO_HMAC=y
-+CONFIG_CRYPTO_CMAC=y
+@@ -14,6 +14,8 @@ CONFIG_CRYPTO_HMAC=y
+ CONFIG_CRYPTO_CMAC=y
  CONFIG_CRYPTO_MD5=y
  CONFIG_CRYPTO_SHA1=y
++CONFIG_CRYPTO_SHA256=y
++CONFIG_CRYPTO_SHA512=y
  CONFIG_CRYPTO_DES=y
  CONFIG_CRYPTO_AES=y
-+CONFIG_CRYPTO_CAMELLIA=y
- CONFIG_NFS_FS=y
- CONFIG_SUNRPC=y
- CONFIG_SUNRPC_GSS=y
- CONFIG_RPCSEC_GSS_KRB5=y
+ CONFIG_CRYPTO_CAMELLIA=y
+@@ -24,4 +26,5 @@ CONFIG_RPCSEC_GSS_KRB5=y
  CONFIG_RPCSEC_GSS_KRB5_ENCTYPES_DES=y
  CONFIG_RPCSEC_GSS_KRB5_ENCTYPES_AES_SHA1=y
-+CONFIG_RPCSEC_GSS_KRB5_ENCTYPES_CAMELLIA=y
+ CONFIG_RPCSEC_GSS_KRB5_ENCTYPES_CAMELLIA=y
++CONFIG_RPCSEC_GSS_KRB5_ENCTYPES_AES_SHA2=y
  CONFIG_RPCSEC_GSS_KRB5_KUNIT_TEST=y
 diff --git a/net/sunrpc/auth_gss/gss_krb5_test.c b/net/sunrpc/auth_gss/gss_krb5_test.c
-index 2f7e31b8004e..c80a8f6588c0 100644
+index 3d8d41aab5fe..ad4737b60b56 100644
 --- a/net/sunrpc/auth_gss/gss_krb5_test.c
 +++ b/net/sunrpc/auth_gss/gss_krb5_test.c
-@@ -727,8 +727,131 @@ static struct kunit_suite rfc3962_suite = {
- 	.test_cases		= rfc3962_test_cases,
+@@ -1417,9 +1417,120 @@ static struct kunit_suite rfc6803_suite = {
+ 	.test_cases		= rfc6803_test_cases,
  };
  
 +/*
-+ * From RFC 6803 Section 10.  Test vectors
++ * From RFC 8009 Appendix A.  Test Vectors
 + *
-+ * Sample results for key derivation
++ * Sample results for SHA-2 enctype key derivation
 + *
-+ * Copyright (c) 2012 IETF Trust and the persons identified as the
-+ * document authors.  All rights reserved.
++ * This test material is copyright (c) 2016 IETF Trust and the
++ * persons identified as the document authors.  All rights reserved.
 + */
 +
-+DEFINE_HEX_XDR_NETOBJ(camellia128_cts_cmac_basekey,
-+		      0x57, 0xd0, 0x29, 0x72, 0x98, 0xff, 0xd9, 0xd3,
-+		      0x5d, 0xe5, 0xa4, 0x7f, 0xb4, 0xbd, 0xe2, 0x4b
++DEFINE_HEX_XDR_NETOBJ(aes128_cts_hmac_sha256_128_basekey,
++		      0x37, 0x05, 0xd9, 0x60, 0x80, 0xc1, 0x77, 0x28,
++		      0xa0, 0xe8, 0x00, 0xea, 0xb6, 0xe0, 0xd2, 0x3c
 +);
-+DEFINE_HEX_XDR_NETOBJ(camellia128_cts_cmac_Kc,
-+		      0xd1, 0x55, 0x77, 0x5a, 0x20, 0x9d, 0x05, 0xf0,
-+		      0x2b, 0x38, 0xd4, 0x2a, 0x38, 0x9e, 0x5a, 0x56
++DEFINE_HEX_XDR_NETOBJ(aes128_cts_hmac_sha256_128_Kc,
++		      0xb3, 0x1a, 0x01, 0x8a, 0x48, 0xf5, 0x47, 0x76,
++		      0xf4, 0x03, 0xe9, 0xa3, 0x96, 0x32, 0x5d, 0xc3
 +);
-+DEFINE_HEX_XDR_NETOBJ(camellia128_cts_cmac_Ke,
-+		      0x64, 0xdf, 0x83, 0xf8, 0x5a, 0x53, 0x2f, 0x17,
-+		      0x57, 0x7d, 0x8c, 0x37, 0x03, 0x57, 0x96, 0xab
++DEFINE_HEX_XDR_NETOBJ(aes128_cts_hmac_sha256_128_Ke,
++		      0x9b, 0x19, 0x7d, 0xd1, 0xe8, 0xc5, 0x60, 0x9d,
++		      0x6e, 0x67, 0xc3, 0xe3, 0x7c, 0x62, 0xc7, 0x2e
 +);
-+DEFINE_HEX_XDR_NETOBJ(camellia128_cts_cmac_Ki,
-+		      0x3e, 0x4f, 0xbd, 0xf3, 0x0f, 0xb8, 0x25, 0x9c,
-+		      0x42, 0x5c, 0xb6, 0xc9, 0x6f, 0x1f, 0x46, 0x35
-+);
-+
-+DEFINE_HEX_XDR_NETOBJ(camellia256_cts_cmac_basekey,
-+		      0xb9, 0xd6, 0x82, 0x8b, 0x20, 0x56, 0xb7, 0xbe,
-+		      0x65, 0x6d, 0x88, 0xa1, 0x23, 0xb1, 0xfa, 0xc6,
-+		      0x82, 0x14, 0xac, 0x2b, 0x72, 0x7e, 0xcf, 0x5f,
-+		      0x69, 0xaf, 0xe0, 0xc4, 0xdf, 0x2a, 0x6d, 0x2c
-+);
-+DEFINE_HEX_XDR_NETOBJ(camellia256_cts_cmac_Kc,
-+		      0xe4, 0x67, 0xf9, 0xa9, 0x55, 0x2b, 0xc7, 0xd3,
-+		      0x15, 0x5a, 0x62, 0x20, 0xaf, 0x9c, 0x19, 0x22,
-+		      0x0e, 0xee, 0xd4, 0xff, 0x78, 0xb0, 0xd1, 0xe6,
-+		      0xa1, 0x54, 0x49, 0x91, 0x46, 0x1a, 0x9e, 0x50
-+);
-+DEFINE_HEX_XDR_NETOBJ(camellia256_cts_cmac_Ke,
-+		      0x41, 0x2a, 0xef, 0xc3, 0x62, 0xa7, 0x28, 0x5f,
-+		      0xc3, 0x96, 0x6c, 0x6a, 0x51, 0x81, 0xe7, 0x60,
-+		      0x5a, 0xe6, 0x75, 0x23, 0x5b, 0x6d, 0x54, 0x9f,
-+		      0xbf, 0xc9, 0xab, 0x66, 0x30, 0xa4, 0xc6, 0x04
-+);
-+DEFINE_HEX_XDR_NETOBJ(camellia256_cts_cmac_Ki,
-+		      0xfa, 0x62, 0x4f, 0xa0, 0xe5, 0x23, 0x99, 0x3f,
-+		      0xa3, 0x88, 0xae, 0xfd, 0xc6, 0x7e, 0x67, 0xeb,
-+		      0xcd, 0x8c, 0x08, 0xe8, 0xa0, 0x24, 0x6b, 0x1d,
-+		      0x73, 0xb0, 0xd1, 0xdd, 0x9f, 0xc5, 0x82, 0xb0
++DEFINE_HEX_XDR_NETOBJ(aes128_cts_hmac_sha256_128_Ki,
++		      0x9f, 0xda, 0x0e, 0x56, 0xab, 0x2d, 0x85, 0xe1,
++		      0x56, 0x9a, 0x68, 0x86, 0x96, 0xc2, 0x6a, 0x6c
 +);
 +
-+DEFINE_HEX_XDR_NETOBJ(usage_checksum,
-+		      0x00, 0x00, 0x00, 0x02, KEY_USAGE_SEED_CHECKSUM
++DEFINE_HEX_XDR_NETOBJ(aes256_cts_hmac_sha384_192_basekey,
++		      0x6d, 0x40, 0x4d, 0x37, 0xfa, 0xf7, 0x9f, 0x9d,
++		      0xf0, 0xd3, 0x35, 0x68, 0xd3, 0x20, 0x66, 0x98,
++		      0x00, 0xeb, 0x48, 0x36, 0x47, 0x2e, 0xa8, 0xa0,
++		      0x26, 0xd1, 0x6b, 0x71, 0x82, 0x46, 0x0c, 0x52
 +);
-+DEFINE_HEX_XDR_NETOBJ(usage_encryption,
-+		      0x00, 0x00, 0x00, 0x02, KEY_USAGE_SEED_ENCRYPTION
++DEFINE_HEX_XDR_NETOBJ(aes256_cts_hmac_sha384_192_Kc,
++		      0xef, 0x57, 0x18, 0xbe, 0x86, 0xcc, 0x84, 0x96,
++		      0x3d, 0x8b, 0xbb, 0x50, 0x31, 0xe9, 0xf5, 0xc4,
++		      0xba, 0x41, 0xf2, 0x8f, 0xaf, 0x69, 0xe7, 0x3d
 +);
-+DEFINE_HEX_XDR_NETOBJ(usage_integrity,
-+		      0x00, 0x00, 0x00, 0x02, KEY_USAGE_SEED_INTEGRITY
++DEFINE_HEX_XDR_NETOBJ(aes256_cts_hmac_sha384_192_Ke,
++		      0x56, 0xab, 0x22, 0xbe, 0xe6, 0x3d, 0x82, 0xd7,
++		      0xbc, 0x52, 0x27, 0xf6, 0x77, 0x3f, 0x8e, 0xa7,
++		      0xa5, 0xeb, 0x1c, 0x82, 0x51, 0x60, 0xc3, 0x83,
++		      0x12, 0x98, 0x0c, 0x44, 0x2e, 0x5c, 0x7e, 0x49
++);
++DEFINE_HEX_XDR_NETOBJ(aes256_cts_hmac_sha384_192_Ki,
++		      0x69, 0xb1, 0x65, 0x14, 0xe3, 0xcd, 0x8e, 0x56,
++		      0xb8, 0x20, 0x10, 0xd5, 0xc7, 0x30, 0x12, 0xb6,
++		      0x22, 0xc4, 0xd0, 0x0f, 0xfc, 0x23, 0xed, 0x1f
 +);
 +
-+static const struct gss_krb5_test_param rfc6803_kdf_test_params[] = {
++static const struct gss_krb5_test_param rfc8009_kdf_test_params[] = {
 +	{
-+		.desc			= "Derive Kc subkey for camellia128-cts-cmac",
-+		.enctype		= ENCTYPE_CAMELLIA128_CTS_CMAC,
-+		.base_key		= &camellia128_cts_cmac_basekey,
++		.desc			= "Derive Kc subkey for aes128-cts-hmac-sha256-128",
++		.enctype		= ENCTYPE_AES128_CTS_HMAC_SHA256_128,
++		.base_key		= &aes128_cts_hmac_sha256_128_basekey,
 +		.usage			= &usage_checksum,
-+		.expected_result	= &camellia128_cts_cmac_Kc,
++		.expected_result	= &aes128_cts_hmac_sha256_128_Kc,
 +	},
 +	{
-+		.desc			= "Derive Ke subkey for camellia128-cts-cmac",
-+		.enctype		= ENCTYPE_CAMELLIA128_CTS_CMAC,
-+		.base_key		= &camellia128_cts_cmac_basekey,
++		.desc			= "Derive Ke subkey for aes128-cts-hmac-sha256-128",
++		.enctype		= ENCTYPE_AES128_CTS_HMAC_SHA256_128,
++		.base_key		= &aes128_cts_hmac_sha256_128_basekey,
 +		.usage			= &usage_encryption,
-+		.expected_result	= &camellia128_cts_cmac_Ke,
++		.expected_result	= &aes128_cts_hmac_sha256_128_Ke,
 +	},
 +	{
-+		.desc			= "Derive Ki subkey for camellia128-cts-cmac",
-+		.enctype		= ENCTYPE_CAMELLIA128_CTS_CMAC,
-+		.base_key		= &camellia128_cts_cmac_basekey,
++		.desc			= "Derive Ki subkey for aes128-cts-hmac-sha256-128",
++		.enctype		= ENCTYPE_AES128_CTS_HMAC_SHA256_128,
++		.base_key		= &aes128_cts_hmac_sha256_128_basekey,
 +		.usage			= &usage_integrity,
-+		.expected_result	= &camellia128_cts_cmac_Ki,
++		.expected_result	= &aes128_cts_hmac_sha256_128_Ki,
 +	},
 +	{
-+		.desc			= "Derive Kc subkey for camellia256-cts-cmac",
-+		.enctype		= ENCTYPE_CAMELLIA256_CTS_CMAC,
-+		.base_key		= &camellia256_cts_cmac_basekey,
++		.desc			= "Derive Kc subkey for aes256-cts-hmac-sha384-192",
++		.enctype		= ENCTYPE_AES256_CTS_HMAC_SHA384_192,
++		.base_key		= &aes256_cts_hmac_sha384_192_basekey,
 +		.usage			= &usage_checksum,
-+		.expected_result	= &camellia256_cts_cmac_Kc,
++		.expected_result	= &aes256_cts_hmac_sha384_192_Kc,
 +	},
 +	{
-+		.desc			= "Derive Ke subkey for camellia256-cts-cmac",
-+		.enctype		= ENCTYPE_CAMELLIA256_CTS_CMAC,
-+		.base_key		= &camellia256_cts_cmac_basekey,
++		.desc			= "Derive Ke subkey for aes256-cts-hmac-sha384-192",
++		.enctype		= ENCTYPE_AES256_CTS_HMAC_SHA384_192,
++		.base_key		= &aes256_cts_hmac_sha384_192_basekey,
 +		.usage			= &usage_encryption,
-+		.expected_result	= &camellia256_cts_cmac_Ke,
++		.expected_result	= &aes256_cts_hmac_sha384_192_Ke,
 +	},
 +	{
-+		.desc			= "Derive Ki subkey for camellia256-cts-cmac",
-+		.enctype		= ENCTYPE_CAMELLIA256_CTS_CMAC,
-+		.base_key		= &camellia256_cts_cmac_basekey,
++		.desc			= "Derive Ki subkey for aes256-cts-hmac-sha384-192",
++		.enctype		= ENCTYPE_AES256_CTS_HMAC_SHA384_192,
++		.base_key		= &aes256_cts_hmac_sha384_192_basekey,
 +		.usage			= &usage_integrity,
-+		.expected_result	= &camellia256_cts_cmac_Ki,
++		.expected_result	= &aes256_cts_hmac_sha384_192_Ki,
 +	},
 +};
 +
-+/* Creates the function rfc6803_kdf_gen_params */
-+KUNIT_ARRAY_PARAM(rfc6803_kdf, rfc6803_kdf_test_params, gss_krb5_get_desc);
++/* Creates the function rfc8009_kdf_gen_params */
++KUNIT_ARRAY_PARAM(rfc8009_kdf, rfc8009_kdf_test_params, gss_krb5_get_desc);
 +
-+static struct kunit_case rfc6803_test_cases[] = {
++static struct kunit_case rfc8009_test_cases[] = {
 +	{
-+		.name			= "RFC 6803 key derivation",
++		.name			= "RFC 8009 key derivation",
 +		.run_case		= kdf_case,
-+		.generate_params	= rfc6803_kdf_gen_params,
++		.generate_params	= rfc8009_kdf_gen_params,
 +	},
 +};
 +
-+static struct kunit_suite rfc6803_suite = {
-+	.name			= "RFC 6803 suite",
-+	.test_cases		= rfc6803_test_cases,
++static struct kunit_suite rfc8009_suite = {
++	.name			= "RFC 8009 suite",
++	.test_cases		= rfc8009_test_cases,
 +};
 +
  kunit_test_suites(&rfc3961_suite,
--		  &rfc3962_suite);
-+		  &rfc3962_suite,
-+		  &rfc6803_suite);
+ 		  &rfc3962_suite,
+-		  &rfc6803_suite);
++		  &rfc6803_suite,
++		  &rfc8009_suite);
  
  MODULE_DESCRIPTION("Test RPCSEC GSS Kerberos 5 functions");
  MODULE_LICENSE("GPL");
