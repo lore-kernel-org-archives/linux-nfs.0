@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D03C6C38159
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Jan 2023 17:32:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 66704C32793
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Jan 2023 17:32:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230430AbjARRc1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S230212AbjARRc1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 18 Jan 2023 12:32:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58052 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57756 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230212AbjARRcH (ORCPT
+        with ESMTP id S230400AbjARRcH (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jan 2023 12:32:07 -0500
 Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BA2B456EFD
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 09:31:44 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DAE413801D
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 09:31:46 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id D043EB81E10
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 17:31:42 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2FC61C433F0;
-        Wed, 18 Jan 2023 17:31:41 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 79D3AB81E14
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 17:31:45 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DB6E2C433EF;
+        Wed, 18 Jan 2023 17:31:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674063101;
-        bh=tHUoDe+UiNuLd1wUzBbJUcrJ//0mAOo7aXIr5Vwu1o8=;
+        s=k20201202; t=1674063104;
+        bh=3kNURuXV5VsUjoqAAWDksFKLe/DfV9UoeeIFj3Rmj8M=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=AN20NHHQ2/KV8s8G6VVF2DmlSSIjcxUunPHfeeGEd92MaGjp+KGrgnqMrt0qRtfgL
-         6vptc0cITLOLL5gulfXLnar9YcWTd0AYRyhDGdpLCCqw5oUcp1w5FNL4pE0odo5bWl
-         p7N55ZxxEdNIvoNFRpQtVt9Dh7WxhwIutP+k0K+43R91PGU1RWj9W+Sjd9XKLQB6l+
-         yZpSusw2jcJrO1Bp3MKPszOR6i8+Hfnpv5XArBLeeouXCp4LNE4jE4mb5zWlYTmm5S
-         dl14QHNF4xIM8AZHHjdSl7MFrdl8DfIgKnFrENsZ1pfCkR0QSstAmKmFmdPXs3hRx5
-         RzoUr2NNHAzSw==
+        b=Xj9NFwb3KmwaLoKkhDcLeLqcbqqKspcZ1CcwGytjWjYDK2LQmPRWlsCuM0QhikYA6
+         yYYGUdFvA7ItKrXmkMNqzwZbAs71x8vo1V36EPPDsM24/B4JjUY5uFzERVTtNoSUxD
+         5r8Kaud+/6ueT7lwK4OZ7CsJ7zV5gyup1hnD1MRu5TIVkYHIwB2g8pg5pj4Vj0BojU
+         KK8TzlGJ8o/WSvNTa/N2GgDkNM67eTB2F2gBKB3LPh6pfGEhxKc1/DAU7mqi5RT+Z1
+         Y6lbl047TmXagPHPluBHvAJjbt6b/0CXJ6R2zbz4sOFVajdGd4GP1+wyx/ZzSckYJu
+         SIRm6y5059WNQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     chuck.lever@oracle.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/6] nfsd: don't take nfsd4_copy ref for OP_OFFLOAD_STATUS
-Date:   Wed, 18 Jan 2023 12:31:34 -0500
-Message-Id: <20230118173139.71846-2-jlayton@kernel.org>
+Subject: [PATCH 6/6] nfsd: eliminate __nfs4_get_fd
+Date:   Wed, 18 Jan 2023 12:31:39 -0500
+Message-Id: <20230118173139.71846-7-jlayton@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230118173139.71846-1-jlayton@kernel.org>
 References: <20230118173139.71846-1-jlayton@kernel.org>
@@ -46,106 +46,69 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-We're not doing any blocking operations for OP_OFFLOAD_STATUS, so taking
-and putting a reference is a waste of effort. Take the client lock,
-search for the copy and fetch the wr_bytes_written field and return.
-
-Also, make find_async_copy a static function.
+This is wrapper is pointless, and just obscures what's going on.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4proc.c | 35 ++++++++++++++++++++++++-----------
- fs/nfsd/state.h    |  2 --
- 2 files changed, 24 insertions(+), 13 deletions(-)
+ fs/nfsd/nfs4state.c | 20 +++++++-------------
+ 1 file changed, 7 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 62b9d6c1b18b..731c2b22f163 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1823,23 +1823,34 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	goto out;
- }
- 
--struct nfsd4_copy *
--find_async_copy(struct nfs4_client *clp, stateid_t *stateid)
-+static struct nfsd4_copy *
-+find_async_copy_locked(struct nfs4_client *clp, stateid_t *stateid)
- {
- 	struct nfsd4_copy *copy;
- 
--	spin_lock(&clp->async_lock);
-+	lockdep_assert_held(&clp->async_lock);
-+
- 	list_for_each_entry(copy, &clp->async_copies, copies) {
- 		if (memcmp(&copy->cp_stateid.cs_stid, stateid, NFS4_STATEID_SIZE))
- 			continue;
--		refcount_inc(&copy->refcount);
--		spin_unlock(&clp->async_lock);
- 		return copy;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 06a95f25c522..e61b878a4b45 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -599,12 +599,6 @@ put_nfs4_file(struct nfs4_file *fi)
  	}
--	spin_unlock(&clp->async_lock);
- 	return NULL;
  }
  
-+static struct nfsd4_copy *
-+find_async_copy(struct nfs4_client *clp, stateid_t *stateid)
-+{
-+	struct nfsd4_copy *copy;
-+
-+	spin_lock(&clp->async_lock);
-+	copy = find_async_copy_locked(clp, stateid);
-+	if (copy)
-+		refcount_inc(&copy->refcount);
-+	spin_unlock(&clp->async_lock);
-+	return copy;
-+}
-+
- static __be32
- nfsd4_offload_cancel(struct svc_rqst *rqstp,
- 		     struct nfsd4_compound_state *cstate,
-@@ -1924,22 +1935,24 @@ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd_file_put(nf);
- 	return status;
- }
-+
- static __be32
- nfsd4_offload_status(struct svc_rqst *rqstp,
- 		     struct nfsd4_compound_state *cstate,
- 		     union nfsd4_op_u *u)
+-static struct nfsd_file *
+-__nfs4_get_fd(struct nfs4_file *f, int oflag)
+-{
+-	return nfsd_file_get(f->fi_fds[oflag]);
+-}
+-
+ static struct nfsd_file *
+ find_writeable_file_locked(struct nfs4_file *f)
  {
- 	struct nfsd4_offload_status *os = &u->offload_status;
--	__be32 status = 0;
-+	__be32 status = nfs_ok;
- 	struct nfsd4_copy *copy;
- 	struct nfs4_client *clp = cstate->clp;
+@@ -612,9 +606,9 @@ find_writeable_file_locked(struct nfs4_file *f)
  
--	copy = find_async_copy(clp, &os->stateid);
--	if (copy) {
-+	spin_lock(&clp->async_lock);
-+	copy = find_async_copy_locked(clp, &os->stateid);
-+	if (copy)
- 		os->count = copy->cp_res.wr_bytes_written;
--		nfs4_put_copy(copy);
--	} else
-+	else
- 		status = nfserr_bad_stateid;
-+	spin_unlock(&clp->async_lock);
+ 	lockdep_assert_held(&f->fi_lock);
  
- 	return status;
+-	ret = __nfs4_get_fd(f, O_WRONLY);
++	ret = nfsd_file_get(f->fi_fds[O_WRONLY]);
+ 	if (!ret)
+-		ret = __nfs4_get_fd(f, O_RDWR);
++		ret = nfsd_file_get(f->fi_fds[O_RDWR]);
+ 	return ret;
  }
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e94634d30591..d49d3060ed4f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -705,8 +705,6 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(struct xdr_netobj name
- extern bool nfs4_has_reclaimed_state(struct xdr_netobj name, struct nfsd_net *nn);
  
- void put_nfs4_file(struct nfs4_file *fi);
--extern struct nfsd4_copy *
--find_async_copy(struct nfs4_client *clp, stateid_t *staetid);
- extern void nfs4_put_cpntf_state(struct nfsd_net *nn,
- 				 struct nfs4_cpntf_state *cps);
- extern __be32 manage_cpntf_state(struct nfsd_net *nn, stateid_t *st,
+@@ -637,9 +631,9 @@ find_readable_file_locked(struct nfs4_file *f)
+ 
+ 	lockdep_assert_held(&f->fi_lock);
+ 
+-	ret = __nfs4_get_fd(f, O_RDONLY);
++	ret = nfsd_file_get(f->fi_fds[O_RDONLY]);
+ 	if (!ret)
+-		ret = __nfs4_get_fd(f, O_RDWR);
++		ret = nfsd_file_get(f->fi_fds[O_RDWR]);
+ 	return ret;
+ }
+ 
+@@ -663,11 +657,11 @@ find_any_file(struct nfs4_file *f)
+ 	if (!f)
+ 		return NULL;
+ 	spin_lock(&f->fi_lock);
+-	ret = __nfs4_get_fd(f, O_RDWR);
++	ret = nfsd_file_get(f->fi_fds[O_RDWR]);
+ 	if (!ret) {
+-		ret = __nfs4_get_fd(f, O_WRONLY);
++		ret = nfsd_file_get(f->fi_fds[O_WRONLY]);
+ 		if (!ret)
+-			ret = __nfs4_get_fd(f, O_RDONLY);
++			ret = nfsd_file_get(f->fi_fds[O_RDONLY]);
+ 	}
+ 	spin_unlock(&f->fi_lock);
+ 	return ret;
 -- 
 2.39.0
 
