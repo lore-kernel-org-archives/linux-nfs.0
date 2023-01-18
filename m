@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B2B87C38147
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Jan 2023 17:32:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D03C6C38159
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Jan 2023 17:32:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229618AbjARRcZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Jan 2023 12:32:25 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57198 "EHLO
+        id S230430AbjARRc1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 Jan 2023 12:32:27 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58052 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230457AbjARRcG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jan 2023 12:32:06 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BA14B4A1CA
+        with ESMTP id S230212AbjARRcH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jan 2023 12:32:07 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BA2B456EFD
         for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 09:31:44 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 3D2506193C
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 17:31:44 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 56DD4C433F0;
-        Wed, 18 Jan 2023 17:31:43 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id D043EB81E10
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 17:31:42 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2FC61C433F0;
+        Wed, 18 Jan 2023 17:31:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674063103;
-        bh=qXd7UofDAndibDp5dcB6hRuW3pUs9PniI5D9/6geaVc=;
+        s=k20201202; t=1674063101;
+        bh=tHUoDe+UiNuLd1wUzBbJUcrJ//0mAOo7aXIr5Vwu1o8=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=gdBFDZaO7yW/4uXTgWXUO0usuu/vK3cD6mY6xwHac+O8qki9wvmuGAPbcu/6ChQvh
-         sPLpmud9SdYrTY3K5pfOUlo+a3umYgG87o/+5VqMEju/yzwckOU1P6DoBa+pQ2H2ZH
-         H2HwdCbuTNN+Qi1QKdqOoonaXUo6B2NS93F6w0d6c5pkJpg3oSf857E1SBvG8JqdtZ
-         vgFgmMTOA9ZF6ApXSD4Nv1QvasrySe4xytofpd1b6u/pVSWfdtapvCj/yrCGCLQQIl
-         0jx53nwrSYTcQueOeoArgktnY7+XMuvOxQy6+hkuEe6hTdSDU4htpLd2OQfzftDrD6
-         RBW7hbf4OgmTA==
+        b=AN20NHHQ2/KV8s8G6VVF2DmlSSIjcxUunPHfeeGEd92MaGjp+KGrgnqMrt0qRtfgL
+         6vptc0cITLOLL5gulfXLnar9YcWTd0AYRyhDGdpLCCqw5oUcp1w5FNL4pE0odo5bWl
+         p7N55ZxxEdNIvoNFRpQtVt9Dh7WxhwIutP+k0K+43R91PGU1RWj9W+Sjd9XKLQB6l+
+         yZpSusw2jcJrO1Bp3MKPszOR6i8+Hfnpv5XArBLeeouXCp4LNE4jE4mb5zWlYTmm5S
+         dl14QHNF4xIM8AZHHjdSl7MFrdl8DfIgKnFrENsZ1pfCkR0QSstAmKmFmdPXs3hRx5
+         RzoUr2NNHAzSw==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     chuck.lever@oracle.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 5/6] nfsd: add some kerneldoc comments for stateid preprocessing functions
-Date:   Wed, 18 Jan 2023 12:31:38 -0500
-Message-Id: <20230118173139.71846-6-jlayton@kernel.org>
+Subject: [PATCH 1/6] nfsd: don't take nfsd4_copy ref for OP_OFFLOAD_STATUS
+Date:   Wed, 18 Jan 2023 12:31:34 -0500
+Message-Id: <20230118173139.71846-2-jlayton@kernel.org>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230118173139.71846-1-jlayton@kernel.org>
 References: <20230118173139.71846-1-jlayton@kernel.org>
@@ -46,58 +46,106 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+We're not doing any blocking operations for OP_OFFLOAD_STATUS, so taking
+and putting a reference is a waste of effort. Take the client lock,
+search for the copy and fetch the wr_bytes_written field and return.
+
+Also, make find_async_copy a static function.
+
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 29 +++++++++++++++++++++++++----
- 1 file changed, 25 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4proc.c | 35 ++++++++++++++++++++++++-----------
+ fs/nfsd/state.h    |  2 --
+ 2 files changed, 24 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 57f24e3e46a0..06a95f25c522 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -6539,8 +6539,19 @@ void nfs4_put_cpntf_state(struct nfsd_net *nn, struct nfs4_cpntf_state *cps)
- 	spin_unlock(&nn->s2s_cp_lock);
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 62b9d6c1b18b..731c2b22f163 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1823,23 +1823,34 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	goto out;
  }
  
--/*
-- * Checks for stateid operations
-+/**
-+ * nfs4_preprocess_stateid_op - find and prep stateid for an operation
-+ * @rqstp: incoming request from client
-+ * @cstate: current compound state
-+ * @fhp: filehandle associated with requested stateid
-+ * @stateid: stateid (provided by client)
-+ * @flags: flags describing type of operation to be done
-+ * @nfp: optional nfsd_file return pointer (may be NULL)
-+ * @cstid: optional returned nfs4_stid pointer (may be NULL)
-+ *
-+ * Given info from the client, look up a nfs4_stid for the operation. On
-+ * success, it returns a reference to the nfs4_stid and/or the nfsd_file
-+ * associated with it.
-  */
- __be32
- nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
-@@ -6729,8 +6740,18 @@ static __be32 nfs4_seqid_op_checks(struct nfsd4_compound_state *cstate, stateid_
+-struct nfsd4_copy *
+-find_async_copy(struct nfs4_client *clp, stateid_t *stateid)
++static struct nfsd4_copy *
++find_async_copy_locked(struct nfs4_client *clp, stateid_t *stateid)
+ {
+ 	struct nfsd4_copy *copy;
+ 
+-	spin_lock(&clp->async_lock);
++	lockdep_assert_held(&clp->async_lock);
++
+ 	list_for_each_entry(copy, &clp->async_copies, copies) {
+ 		if (memcmp(&copy->cp_stateid.cs_stid, stateid, NFS4_STATEID_SIZE))
+ 			continue;
+-		refcount_inc(&copy->refcount);
+-		spin_unlock(&clp->async_lock);
+ 		return copy;
+ 	}
+-	spin_unlock(&clp->async_lock);
+ 	return NULL;
+ }
+ 
++static struct nfsd4_copy *
++find_async_copy(struct nfs4_client *clp, stateid_t *stateid)
++{
++	struct nfsd4_copy *copy;
++
++	spin_lock(&clp->async_lock);
++	copy = find_async_copy_locked(clp, stateid);
++	if (copy)
++		refcount_inc(&copy->refcount);
++	spin_unlock(&clp->async_lock);
++	return copy;
++}
++
+ static __be32
+ nfsd4_offload_cancel(struct svc_rqst *rqstp,
+ 		     struct nfsd4_compound_state *cstate,
+@@ -1924,22 +1935,24 @@ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfsd_file_put(nf);
  	return status;
  }
- 
--/* 
-- * Checks for sequence id mutating operations. 
-+/**
-+ * nfs4_preprocess_seqid_op - find and prep an ol_stateid for a seqid-morphing op
-+ * @cstate: compund state
-+ * @seqid: seqid (provided by client)
-+ * @stateid: stateid (provided by client)
-+ * @typemask: mask of allowable types for this operation
-+ * @stpp: return pointer for the stateid found
-+ * @nn: net namespace for request
-+ *
-+ * Given a stateid+seqid from a client, look up an nfs4_ol_stateid and
-+ * return it in @stpp. On a nfs_ok return, the returned stateid will
-+ * have its st_mutex locked.
-  */
++
  static __be32
- nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ nfsd4_offload_status(struct svc_rqst *rqstp,
+ 		     struct nfsd4_compound_state *cstate,
+ 		     union nfsd4_op_u *u)
+ {
+ 	struct nfsd4_offload_status *os = &u->offload_status;
+-	__be32 status = 0;
++	__be32 status = nfs_ok;
+ 	struct nfsd4_copy *copy;
+ 	struct nfs4_client *clp = cstate->clp;
+ 
+-	copy = find_async_copy(clp, &os->stateid);
+-	if (copy) {
++	spin_lock(&clp->async_lock);
++	copy = find_async_copy_locked(clp, &os->stateid);
++	if (copy)
+ 		os->count = copy->cp_res.wr_bytes_written;
+-		nfs4_put_copy(copy);
+-	} else
++	else
+ 		status = nfserr_bad_stateid;
++	spin_unlock(&clp->async_lock);
+ 
+ 	return status;
+ }
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e94634d30591..d49d3060ed4f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -705,8 +705,6 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(struct xdr_netobj name
+ extern bool nfs4_has_reclaimed_state(struct xdr_netobj name, struct nfsd_net *nn);
+ 
+ void put_nfs4_file(struct nfs4_file *fi);
+-extern struct nfsd4_copy *
+-find_async_copy(struct nfs4_client *clp, stateid_t *staetid);
+ extern void nfs4_put_cpntf_state(struct nfsd_net *nn,
+ 				 struct nfs4_cpntf_state *cps);
+ extern __be32 manage_cpntf_state(struct nfsd_net *nn, stateid_t *st,
 -- 
 2.39.0
 
