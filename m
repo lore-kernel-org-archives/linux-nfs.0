@@ -2,154 +2,68 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 701D6C46467
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Jan 2023 17:32:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 474D5C38147
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Jan 2023 17:32:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230032AbjARRcW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S230360AbjARRcW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 18 Jan 2023 12:32:22 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58030 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58566 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230434AbjARRcF (ORCPT
+        with ESMTP id S230448AbjARRcF (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jan 2023 12:32:05 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 313E359B4B
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 09:31:43 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E6A6D47092
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 09:31:41 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id BFB246194A
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 17:31:42 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 42B3CC433F2;
-        Wed, 18 Jan 2023 17:31:42 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 816406193C
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 17:31:41 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9F3BAC433D2;
+        Wed, 18 Jan 2023 17:31:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674063102;
-        bh=vxQxIGJj2mtOgx+ZLWjaxruc0XAFN+T/yKwcGmDuHgE=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Pm7wiUEhs0mq5G5aqHdHEsgnLdA1bXq3qCfJ8cE8tYLaV9p6vLWS9yJOcxn6cZbsO
-         873GClIqpk8HDhlKk4Yi5/wbrthd/JOnZMq9HLhSpQkb4EFSSyv++IW+RDC55pY0lF
-         a7DMILXHFgtjEXvuhe1cBZ+sh4mnkbxtNmEh/6O9yUWT5sm+nNmbNmy1h5kV3H2Ct9
-         hAPMT/Jwyh5Kr03AXCbIuRD7jA33sn+xiQW8N8eoSFIceaIDEqyA+IxMYXliXZUJQP
-         TcXZu7iwObKdQ00N+cZcaxjtHt4Fj9MzggnOTlFHu/r+d8WZ/egthclC7Cs4HOPRsd
-         YrGyDvyZxyJdw==
+        s=k20201202; t=1674063100;
+        bh=Xd8ou09l3DDVjyZDTjIKKeN5vyLL0rnhNehxGW0qIrY=;
+        h=From:To:Cc:Subject:Date:From;
+        b=LjxY9GhmxXIO/zymfEyhHwd+EcBE85J7V10q0cOoSQBk0hxNXDkOegj+1y95HGV1C
+         TfeC25Gm8wQhMM5YLbnpvix2mAVcJ56q/PheNiSKob4NElUuVxhBEoiFEIZOFFwfW7
+         cfYrbqn4H4x2opYO+lH1pdT7iEOjI2wWoAZKbou+zVltLWjgTS7xzVxA7Cq7XpiVRe
+         utXcj73r5hzOAsIOMkm8bA+DINrUq+GGOlICa0hukB1J49YYT+UskYAQiVYtacNNWA
+         IniFAnnlZ1NWBbEhBXTP9etxOkqM4La5wWRTUnY+OxbwSOn6+K6WuOGdLRdHbQvjEC
+         6E7givayZpZfQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     chuck.lever@oracle.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/6] nfsd: simplify the delayed disposal list code
-Date:   Wed, 18 Jan 2023 12:31:36 -0500
-Message-Id: <20230118173139.71846-4-jlayton@kernel.org>
+Subject: [PATCH 0/6] nfsd: random cleanup and doc work
+Date:   Wed, 18 Jan 2023 12:31:33 -0500
+Message-Id: <20230118173139.71846-1-jlayton@kernel.org>
 X-Mailer: git-send-email 2.39.0
-In-Reply-To: <20230118173139.71846-1-jlayton@kernel.org>
-References: <20230118173139.71846-1-jlayton@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-When queueing a dispose list to the appropriate "freeme" lists, it
-pointlessly queues the objects one at a time to an intermediate list.
+Just a pile of cleanup and doc patches. None of these fix noticeable
+bugs, but a couple of them should make things slightly more efficient
+and (hopefully) more clear for developers.
 
-Remove a few helpers and just open code a list_move to make it more
-clear and efficient. Better document the resulting functions with
-kerneldoc comments.
+These are probably v6.3 material.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfsd/filecache.c | 63 +++++++++++++++------------------------------
- 1 file changed, 21 insertions(+), 42 deletions(-)
+Jeff Layton (6):
+  nfsd: don't take nfsd4_copy ref for OP_OFFLOAD_STATUS
+  nfsd: eliminate find_deleg_file_locked
+  nfsd: simplify the delayed disposal list code
+  nfsd: don't take/put an extra reference when putting a file
+  nfsd: add some kerneldoc comments for stateid preprocessing functions
+  nfsd: eliminate __nfs4_get_fd
 
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index 58ac93e7e680..a2bc4bd90b9a 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -513,49 +513,25 @@ nfsd_file_dispose_list(struct list_head *dispose)
- 	}
- }
- 
--static void
--nfsd_file_list_remove_disposal(struct list_head *dst,
--		struct nfsd_fcache_disposal *l)
--{
--	spin_lock(&l->lock);
--	list_splice_init(&l->freeme, dst);
--	spin_unlock(&l->lock);
--}
--
--static void
--nfsd_file_list_add_disposal(struct list_head *files, struct net *net)
--{
--	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
--	struct nfsd_fcache_disposal *l = nn->fcache_disposal;
--
--	spin_lock(&l->lock);
--	list_splice_tail_init(files, &l->freeme);
--	spin_unlock(&l->lock);
--	queue_work(nfsd_filecache_wq, &l->work);
--}
--
--static void
--nfsd_file_list_add_pernet(struct list_head *dst, struct list_head *src,
--		struct net *net)
--{
--	struct nfsd_file *nf, *tmp;
--
--	list_for_each_entry_safe(nf, tmp, src, nf_lru) {
--		if (nf->nf_net == net)
--			list_move_tail(&nf->nf_lru, dst);
--	}
--}
--
-+/**
-+ * nfsd_file_dispose_list_delayed - move list of dead files to net's freeme list
-+ * @dispose: list of nfsd_files to be disposed
-+ *
-+ * Transfers each file to the "freeme" list for its nfsd_net, to eventually
-+ * be disposed of by the per-net garbage collector.
-+ */
- static void
- nfsd_file_dispose_list_delayed(struct list_head *dispose)
- {
--	LIST_HEAD(list);
--	struct nfsd_file *nf;
--
- 	while(!list_empty(dispose)) {
--		nf = list_first_entry(dispose, struct nfsd_file, nf_lru);
--		nfsd_file_list_add_pernet(&list, dispose, nf->nf_net);
--		nfsd_file_list_add_disposal(&list, nf->nf_net);
-+		struct nfsd_file *nf = list_first_entry(dispose,
-+						struct nfsd_file, nf_lru);
-+		struct nfsd_net *nn = net_generic(nf->nf_net, nfsd_net_id);
-+		struct nfsd_fcache_disposal *l = nn->fcache_disposal;
-+
-+		spin_lock(&l->lock);
-+		list_move_tail(&nf->nf_lru, &l->freeme);
-+		spin_unlock(&l->lock);
- 	}
- }
- 
-@@ -765,8 +741,8 @@ nfsd_file_close_inode_sync(struct inode *inode)
-  * nfsd_file_delayed_close - close unused nfsd_files
-  * @work: dummy
-  *
-- * Walk the LRU list and destroy any entries that have not been used since
-- * the last scan.
-+ * Scrape the freeme list for this nfsd_net, and then dispose of them
-+ * all.
-  */
- static void
- nfsd_file_delayed_close(struct work_struct *work)
-@@ -775,7 +751,10 @@ nfsd_file_delayed_close(struct work_struct *work)
- 	struct nfsd_fcache_disposal *l = container_of(work,
- 			struct nfsd_fcache_disposal, work);
- 
--	nfsd_file_list_remove_disposal(&head, l);
-+	spin_lock(&l->lock);
-+	list_splice_init(&l->freeme, &head);
-+	spin_unlock(&l->lock);
-+
- 	nfsd_file_dispose_list(&head);
- }
- 
+ fs/nfsd/filecache.c | 68 +++++++++++++++------------------------------
+ fs/nfsd/nfs4proc.c  | 35 +++++++++++++++--------
+ fs/nfsd/nfs4state.c | 60 +++++++++++++++++++++------------------
+ fs/nfsd/state.h     |  2 --
+ 4 files changed, 79 insertions(+), 86 deletions(-)
+
 -- 
 2.39.0
 
