@@ -2,43 +2,43 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D9ED7C6379F
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Jan 2023 22:03:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 83A55C004D4
+	for <linux-nfs@archiver.kernel.org>; Thu, 19 Jan 2023 22:03:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229906AbjASWDR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 19 Jan 2023 17:03:17 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44494 "EHLO
+        id S229686AbjASWDU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 19 Jan 2023 17:03:20 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42512 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229686AbjASWCo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2023 17:02:44 -0500
+        with ESMTP id S229973AbjASWCs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2023 17:02:48 -0500
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 101E64DBE8
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F70159565
         for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 13:40:55 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 6501F6193C
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 21:40:25 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DBBDFC433F1;
-        Thu, 19 Jan 2023 21:40:24 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 73D2461D91
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 21:40:28 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9AF2C433F2;
+        Thu, 19 Jan 2023 21:40:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674164425;
-        bh=0l09Fd1zFOzhv8piBsO7/wH5PjzQzWg2raNMR5vpOA4=;
+        s=k20201202; t=1674164428;
+        bh=cTUelAc/uEnB+p0V7+95YgbegMhVccETAc/DBIf3sS0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=BRuadzjnJtqf2QSabZACgpHO6gpRWv0ef/9yXcE6NRWPWw69d4wS6TIDZnoma3/Bz
-         7/aMqwzGD8ZI/ZD+yjU5W6/+NauQ8eJKzE2KqVqCO6nLJRmIMwpc8zJP/1fdHJ4W4h
-         f7VnY3CsTpDb1mG5ejlP99Z2idsKLXvt+aQA3aPvkrhA0k106C7c+/4vVjIX954k1j
-         t/uOHg+ac4ztK+RAe1zYQnjqveklWZG8Gc4bViF8rqBdHBnCXZ8X2yUYzMv5lHbXFh
-         j0/wCT+3cvXvPSQbLpaIqe/fTQa16ZTRUCjcuXvgkDcaOWqSBuKtQAmtLlnALu2SdY
-         rsa5+or5GGUdA==
+        b=Uz8qQwcqt1Cbmvrz+oWzpYodP34XtK8KMSfFhzMfXtG9XcDknULAilFRU3iiuVpDg
+         pTo0fUxvrSdMv2lmIhncAh02sNBRMVjlrDrhWttw6uXtQObJsdgv5N4AZenbgyweA8
+         cFmuu6/j9Mi7LkTmKCaqYemHVPfNx7lXnaeRHAEXRsc5UBXCMRV3qtuAExajdLYzg3
+         8IkFnuFijnH6OseNjRY5wiY/ukyNvBC2Vg6JrVSW4+ZdWg621rnpDiQ0lqn5zF9ErT
+         dO+/138W1FIgSS0KFe110SGNVIoVlqXvlE6uBmVKkI1XWWhNgnfe4lud0V3nGRoWL4
+         PF6z6bFGhS/fA==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 13/18] NFS: Fix up nfs_vm_page_mkwrite() for folios
-Date:   Thu, 19 Jan 2023 16:33:46 -0500
-Message-Id: <20230119213351.443388-14-trondmy@kernel.org>
+Subject: [PATCH v2 18/18] NFS: Remove unnecessary check in nfs_read_folio()
+Date:   Thu, 19 Jan 2023 16:33:51 -0500
+Message-Id: <20230119213351.443388-19-trondmy@kernel.org>
 X-Mailer: git-send-email 2.39.0
-In-Reply-To: <20230119213351.443388-13-trondmy@kernel.org>
+In-Reply-To: <20230119213351.443388-18-trondmy@kernel.org>
 References: <20230119213351.443388-1-trondmy@kernel.org>
  <20230119213351.443388-2-trondmy@kernel.org>
  <20230119213351.443388-3-trondmy@kernel.org>
@@ -52,6 +52,11 @@ References: <20230119213351.443388-1-trondmy@kernel.org>
  <20230119213351.443388-11-trondmy@kernel.org>
  <20230119213351.443388-12-trondmy@kernel.org>
  <20230119213351.443388-13-trondmy@kernel.org>
+ <20230119213351.443388-14-trondmy@kernel.org>
+ <20230119213351.443388-15-trondmy@kernel.org>
+ <20230119213351.443388-16-trondmy@kernel.org>
+ <20230119213351.443388-17-trondmy@kernel.org>
+ <20230119213351.443388-18-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -60,75 +65,35 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Mechanical conversion of struct page and functions into the folio
-equivalents.
+All the callers are expected to supply a valid struct file argument, so
+there is no need for the NULL check.
 
+Reported-by: kernel test robot <lkp@intel.com>
+Reported-by: Dan Carpenter <error27@gmail.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/file.c | 21 ++++++++++-----------
- 1 file changed, 10 insertions(+), 11 deletions(-)
+ fs/nfs/read.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 39ee7fb3f79f..563c5e0c55e8 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -556,23 +556,22 @@ const struct address_space_operations nfs_file_aops = {
-  */
- static vm_fault_t nfs_vm_page_mkwrite(struct vm_fault *vmf)
- {
--	struct page *page = vmf->page;
- 	struct file *filp = vmf->vma->vm_file;
- 	struct inode *inode = file_inode(filp);
- 	unsigned pagelen;
- 	vm_fault_t ret = VM_FAULT_NOPAGE;
- 	struct address_space *mapping;
--	struct folio *folio = page_folio(page);
-+	struct folio *folio = page_folio(vmf->page);
- 
- 	dfprintk(PAGECACHE, "NFS: vm_page_mkwrite(%pD2(%lu), offset %lld)\n",
--		filp, filp->f_mapping->host->i_ino,
--		(long long)page_offset(page));
-+		 filp, filp->f_mapping->host->i_ino,
-+		 (long long)folio_file_pos(folio));
- 
- 	sb_start_pagefault(inode->i_sb);
- 
- 	/* make sure the cache has finished storing the page */
--	if (PageFsCache(page) &&
--	    wait_on_page_fscache_killable(vmf->page) < 0) {
-+	if (folio_test_fscache(folio) &&
-+	    folio_wait_fscache_killable(folio) < 0) {
- 		ret = VM_FAULT_RETRY;
- 		goto out;
- 	}
-@@ -581,14 +580,14 @@ static vm_fault_t nfs_vm_page_mkwrite(struct vm_fault *vmf)
- 			   nfs_wait_bit_killable,
- 			   TASK_KILLABLE|TASK_FREEZABLE_UNSAFE);
- 
--	lock_page(page);
--	mapping = page_file_mapping(page);
-+	folio_lock(folio);
-+	mapping = folio_file_mapping(folio);
- 	if (mapping != inode->i_mapping)
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index bf4154f9b48c..c380cff4108e 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -355,13 +355,7 @@ int nfs_read_folio(struct file *file, struct folio *folio)
+ 	if (NFS_STALE(inode))
  		goto out_unlock;
  
--	wait_on_page_writeback(page);
-+	folio_wait_writeback(folio);
+-	if (file == NULL) {
+-		ret = -EBADF;
+-		desc.ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
+-		if (desc.ctx == NULL)
+-			goto out_unlock;
+-	} else
+-		desc.ctx = get_nfs_open_context(nfs_file_open_context(file));
++	desc.ctx = get_nfs_open_context(nfs_file_open_context(file));
  
--	pagelen = nfs_page_length(page);
-+	pagelen = nfs_folio_length(folio);
- 	if (pagelen == 0)
- 		goto out_unlock;
- 
-@@ -599,7 +598,7 @@ static vm_fault_t nfs_vm_page_mkwrite(struct vm_fault *vmf)
- 
- 	ret = VM_FAULT_SIGBUS;
- out_unlock:
--	unlock_page(page);
-+	folio_unlock(folio);
- out:
- 	sb_end_pagefault(inode->i_sb);
- 	return ret;
+ 	xchg(&desc.ctx->error, 0);
+ 	nfs_pageio_init_read(&desc.pgio, inode, false,
 -- 
 2.39.0
 
