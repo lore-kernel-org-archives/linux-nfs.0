@@ -2,49 +2,55 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1D0DC004D4
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Jan 2023 22:03:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E6BAC6379F
+	for <linux-nfs@archiver.kernel.org>; Thu, 19 Jan 2023 22:03:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229699AbjASWDO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 19 Jan 2023 17:03:14 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42198 "EHLO
+        id S230070AbjASWDQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 19 Jan 2023 17:03:16 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43138 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229814AbjASWCf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2023 17:02:35 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 57097C41EB
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 13:40:26 -0800 (PST)
+        with ESMTP id S230076AbjASWCk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2023 17:02:40 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4A18AC41F7
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 13:40:50 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 832E561D68
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 21:40:21 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9B364C433F0;
-        Thu, 19 Jan 2023 21:40:20 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 3112761D85
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 21:40:25 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 45298C433F0;
+        Thu, 19 Jan 2023 21:40:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674164421;
-        bh=RNZMIVOi/tSWqhdzNoGX+yIszDCN3Rf0OfoUuHCMd3E=;
+        s=k20201202; t=1674164424;
+        bh=8vvoiK4+OysFOOrbMNDAZu/Frmi8+/KPQON5VzhYpB0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=q35r5hw03porRPMbBr1NdYDggBp4x8xDf5nxdRMQUzMJw8jzhZrwTXhi4izr0ES68
-         Xldr65biJWE+Dx3t5N8mPCPKvAZRuEUFTC86MEBpaM+9DLAVgKw2uy0K1K0+a5YOGh
-         yYCw+yj3bM9e0TRjrocH0BwDwJsWTPmfwtv9j9PpsLTBjgNmqnej9+9UKrsAi1360X
-         t98lAoY4IWGz7Ol716xiqGPQN6Ck97fIl9GamGFp30qCwEyGh9PbbjC4c50XxEXKcq
-         FRntx+d/v2ORjU/GaoHJBjGCt5KppNOnj3rndk7NBCJZfuhcPYApwL56rD1YwhCsIz
-         pez+f+7c3W2MA==
+        b=DUDeXub6fgCzHbapA4IbgL6aQj9XYWVnaKGdtqQwrpwa3S/clGYwXg6PegYLotUOF
+         Yz7DyJEQzjCF0vZiCL/BZ3CUy5eqgnPH45rJAgpJ698g7G6T8Mg2evrhZ2UCY7thSS
+         52fSHYwQv3dY1O0PBtkFSA0Dg1XDZaEdUw8xz/LtbhhiOyOAymqV77P4f/KO1UhaWA
+         guQba6UrUH/d1s4CTUJCpH0cGR5I1fftguaHtEEd0kUD3iimb8ocWHkqrax1KwIggb
+         DirP6yaO3W5YQ3TtnBPdEJtwKvGFvN1ag+Ul/QYx5xKa+k4KUViCsMFDtBIZ/BD8Vh
+         +7m8FmkRlMRqQ==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 06/18] NFS: Convert the remaining pagelist helper functions to support folios
-Date:   Thu, 19 Jan 2023 16:33:39 -0500
-Message-Id: <20230119213351.443388-7-trondmy@kernel.org>
+Subject: [PATCH v2 12/18] NFS: Convert nfs_write_begin/end to use folios
+Date:   Thu, 19 Jan 2023 16:33:45 -0500
+Message-Id: <20230119213351.443388-13-trondmy@kernel.org>
 X-Mailer: git-send-email 2.39.0
-In-Reply-To: <20230119213351.443388-6-trondmy@kernel.org>
+In-Reply-To: <20230119213351.443388-12-trondmy@kernel.org>
 References: <20230119213351.443388-1-trondmy@kernel.org>
  <20230119213351.443388-2-trondmy@kernel.org>
  <20230119213351.443388-3-trondmy@kernel.org>
  <20230119213351.443388-4-trondmy@kernel.org>
  <20230119213351.443388-5-trondmy@kernel.org>
  <20230119213351.443388-6-trondmy@kernel.org>
+ <20230119213351.443388-7-trondmy@kernel.org>
+ <20230119213351.443388-8-trondmy@kernel.org>
+ <20230119213351.443388-9-trondmy@kernel.org>
+ <20230119213351.443388-10-trondmy@kernel.org>
+ <20230119213351.443388-11-trondmy@kernel.org>
+ <20230119213351.443388-12-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -53,158 +59,172 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Allow creation of subrequests from a request that is carrying a folio.
-Add helpers to set up and tear down requests carrying folios.
+Add a helper nfs_folio_grab_cache_write_begin() that can call
+__filemap_get_folio() directly with the appropriate parameters.
+
+Since write_begin()/write_end() take struct page arguments, just pass
+the folio->page back for now.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/pagelist.c | 72 ++++++++++++++++++++++++++++++++---------------
- 1 file changed, 50 insertions(+), 22 deletions(-)
+ fs/nfs/file.c | 75 ++++++++++++++++++++++++++++-----------------------
+ 1 file changed, 41 insertions(+), 34 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 4bdb570184f7..dd99a5d381b3 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -466,10 +466,9 @@ nfs_page_group_destroy(struct kref *kref)
- 		nfs_release_request(head);
- }
- 
--static struct nfs_page *
--__nfs_create_request(struct nfs_lock_context *l_ctx, struct page *page,
--		   unsigned int pgbase, unsigned int offset,
--		   unsigned int count)
-+static struct nfs_page *nfs_page_create(struct nfs_lock_context *l_ctx,
-+					unsigned int pgbase, pgoff_t index,
-+					unsigned int offset, unsigned int count)
- {
- 	struct nfs_page		*req;
- 	struct nfs_open_context *ctx = l_ctx->open_context;
-@@ -488,19 +487,32 @@ __nfs_create_request(struct nfs_lock_context *l_ctx, struct page *page,
- 	/* Initialize the request struct. Initially, we assume a
- 	 * long write-back delay. This will be adjusted in
- 	 * update_nfs_request below if the region is not locked. */
--	req->wb_page    = page;
--	if (page) {
--		req->wb_index = page_index(page);
--		get_page(page);
--	}
--	req->wb_offset  = offset;
--	req->wb_pgbase	= pgbase;
--	req->wb_bytes   = count;
-+	req->wb_pgbase = pgbase;
-+	req->wb_index = index;
-+	req->wb_offset = offset;
-+	req->wb_bytes = count;
- 	kref_init(&req->wb_kref);
- 	req->wb_nio = 0;
- 	return req;
- }
- 
-+static void nfs_page_assign_folio(struct nfs_page *req, struct folio *folio)
-+{
-+	if (folio != NULL) {
-+		req->wb_folio = folio;
-+		folio_get(folio);
-+		set_bit(PG_FOLIO, &req->wb_flags);
-+	}
-+}
-+
-+static void nfs_page_assign_page(struct nfs_page *req, struct page *page)
-+{
-+	if (page != NULL) {
-+		req->wb_page = page;
-+		get_page(page);
-+	}
-+}
-+
- /**
-  * nfs_create_request - Create an NFS read/write request.
-  * @ctx: open context to use
-@@ -521,9 +533,11 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
- 
- 	if (IS_ERR(l_ctx))
- 		return ERR_CAST(l_ctx);
--	ret = __nfs_create_request(l_ctx, page, offset, offset, count);
--	if (!IS_ERR(ret))
-+	ret = nfs_page_create(l_ctx, offset, page_index(page), offset, count);
-+	if (!IS_ERR(ret)) {
-+		nfs_page_assign_page(ret, page);
- 		nfs_page_group_init(ret, NULL);
-+	}
- 	nfs_put_lock_context(l_ctx);
- 	return ret;
- }
-@@ -536,11 +550,16 @@ nfs_create_subreq(struct nfs_page *req,
- {
- 	struct nfs_page *last;
- 	struct nfs_page *ret;
-+	struct folio *folio = nfs_page_to_folio(req);
- 	struct page *page = nfs_page_to_page(req, pgbase);
- 
--	ret = __nfs_create_request(req->wb_lock_context, page, pgbase, offset,
--				   count);
-+	ret = nfs_page_create(req->wb_lock_context, pgbase, req->wb_index,
-+			      offset, count);
- 	if (!IS_ERR(ret)) {
-+		if (folio)
-+			nfs_page_assign_folio(ret, folio);
-+		else
-+			nfs_page_assign_page(ret, page);
- 		/* find the last request */
- 		for (last = req->wb_head;
- 		     last->wb_this_page != req->wb_head;
-@@ -548,7 +567,6 @@ nfs_create_subreq(struct nfs_page *req,
- 			;
- 
- 		nfs_lock_request(ret);
--		ret->wb_index = req->wb_index;
- 		nfs_page_group_init(ret, last);
- 		ret->wb_nio = req->wb_nio;
- 	}
-@@ -587,11 +605,16 @@ void nfs_unlock_and_release_request(struct nfs_page *req)
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 9fbe27214da0..39ee7fb3f79f 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -276,27 +276,28 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
+  * and that the new data won't completely replace the old data in
+  * that range of the file.
   */
- static void nfs_clear_request(struct nfs_page *req)
+-static bool nfs_full_page_write(struct page *page, loff_t pos, unsigned int len)
++static bool nfs_folio_is_full_write(struct folio *folio, loff_t pos,
++				    unsigned int len)
  {
-+	struct folio *folio = nfs_page_to_folio(req);
- 	struct page *page = req->wb_page;
- 	struct nfs_lock_context *l_ctx = req->wb_lock_context;
- 	struct nfs_open_context *ctx;
+-	unsigned int pglen = nfs_page_length(page);
+-	unsigned int offset = pos & (PAGE_SIZE - 1);
++	unsigned int pglen = nfs_folio_length(folio);
++	unsigned int offset = offset_in_folio(folio, pos);
+ 	unsigned int end = offset + len;
  
--	if (page != NULL) {
-+	if (folio != NULL) {
-+		folio_put(folio);
-+		req->wb_folio = NULL;
-+		clear_bit(PG_FOLIO, &req->wb_flags);
-+	} else if (page != NULL) {
- 		put_page(page);
- 		req->wb_page = NULL;
- 	}
-@@ -1471,16 +1494,21 @@ void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *desc, pgoff_t index)
- {
- 	struct nfs_pgio_mirror *mirror;
- 	struct nfs_page *prev;
-+	struct folio *folio;
- 	u32 midx;
- 
- 	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
- 		mirror = nfs_pgio_get_mirror(desc, midx);
- 		if (!list_empty(&mirror->pg_list)) {
- 			prev = nfs_list_entry(mirror->pg_list.prev);
--			if (index != prev->wb_index + 1) {
--				nfs_pageio_complete(desc);
--				break;
--			}
-+			folio = nfs_page_to_folio(prev);
-+			if (folio) {
-+				if (index == folio_next_index(folio))
-+					continue;
-+			} else if (index == prev->wb_index + 1)
-+				continue;
-+			nfs_pageio_complete(desc);
-+			break;
- 		}
- 	}
+ 	return !pglen || (end >= pglen && !offset);
  }
+ 
+-static bool nfs_want_read_modify_write(struct file *file, struct page *page,
+-			loff_t pos, unsigned int len)
++static bool nfs_want_read_modify_write(struct file *file, struct folio *folio,
++				       loff_t pos, unsigned int len)
+ {
+ 	/*
+ 	 * Up-to-date pages, those with ongoing or full-page write
+ 	 * don't need read/modify/write
+ 	 */
+-	if (PageUptodate(page) || PagePrivate(page) ||
+-	    nfs_full_page_write(page, pos, len))
++	if (folio_test_uptodate(folio) || folio_test_private(folio) ||
++	    nfs_folio_is_full_write(folio, pos, len))
+ 		return false;
+ 
+-	if (pnfs_ld_read_whole_page(file->f_mapping->host))
++	if (pnfs_ld_read_whole_page(file_inode(file)))
+ 		return true;
+ 	/* Open for reading too? */
+ 	if (file->f_mode & FMODE_READ)
+@@ -304,6 +305,15 @@ static bool nfs_want_read_modify_write(struct file *file, struct page *page,
+ 	return false;
+ }
+ 
++static struct folio *
++nfs_folio_grab_cache_write_begin(struct address_space *mapping, pgoff_t index)
++{
++	unsigned fgp_flags = FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE;
++
++	return __filemap_get_folio(mapping, index, fgp_flags,
++				   mapping_gfp_mask(mapping));
++}
++
+ /*
+  * This does the "real" work of the write. We must allocate and lock the
+  * page to be sent back to the generic routine, which then copies the
+@@ -313,34 +323,31 @@ static bool nfs_want_read_modify_write(struct file *file, struct page *page,
+  * increment the page use counts until he is done with the page.
+  */
+ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+-			loff_t pos, unsigned len,
+-			struct page **pagep, void **fsdata)
++			   loff_t pos, unsigned len, struct page **pagep,
++			   void **fsdata)
+ {
+-	int ret;
+-	pgoff_t index = pos >> PAGE_SHIFT;
+-	struct page *page;
+ 	struct folio *folio;
+ 	int once_thru = 0;
++	int ret;
+ 
+ 	dfprintk(PAGECACHE, "NFS: write_begin(%pD2(%lu), %u@%lld)\n",
+ 		file, mapping->host->i_ino, len, (long long) pos);
+ 
+ start:
+-	page = grab_cache_page_write_begin(mapping, index);
+-	if (!page)
++	folio = nfs_folio_grab_cache_write_begin(mapping, pos >> PAGE_SHIFT);
++	if (!folio)
+ 		return -ENOMEM;
+-	*pagep = page;
+-	folio = page_folio(page);
++	*pagep = &folio->page;
+ 
+ 	ret = nfs_flush_incompatible(file, folio);
+ 	if (ret) {
+-		unlock_page(page);
+-		put_page(page);
++		folio_unlock(folio);
++		folio_put(folio);
+ 	} else if (!once_thru &&
+-		   nfs_want_read_modify_write(file, page, pos, len)) {
++		   nfs_want_read_modify_write(file, folio, pos, len)) {
+ 		once_thru = 1;
+ 		ret = nfs_read_folio(file, folio);
+-		put_page(page);
++		folio_put(folio);
+ 		if (!ret)
+ 			goto start;
+ 	}
+@@ -348,12 +355,12 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+ }
+ 
+ static int nfs_write_end(struct file *file, struct address_space *mapping,
+-			loff_t pos, unsigned len, unsigned copied,
+-			struct page *page, void *fsdata)
++			 loff_t pos, unsigned len, unsigned copied,
++			 struct page *page, void *fsdata)
+ {
+-	unsigned offset = pos & (PAGE_SIZE - 1);
+ 	struct nfs_open_context *ctx = nfs_file_open_context(file);
+ 	struct folio *folio = page_folio(page);
++	unsigned offset = offset_in_folio(folio, pos);
+ 	int status;
+ 
+ 	dfprintk(PAGECACHE, "NFS: write_end(%pD2(%lu), %u@%lld)\n",
+@@ -363,26 +370,26 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ 	 * Zero any uninitialised parts of the page, and then mark the page
+ 	 * as up to date if it turns out that we're extending the file.
+ 	 */
+-	if (!PageUptodate(page)) {
+-		unsigned pglen = nfs_page_length(page);
++	if (!folio_test_uptodate(folio)) {
++		size_t fsize = folio_size(folio);
++		unsigned pglen = nfs_folio_length(folio);
+ 		unsigned end = offset + copied;
+ 
+ 		if (pglen == 0) {
+-			zero_user_segments(page, 0, offset,
+-					end, PAGE_SIZE);
+-			SetPageUptodate(page);
++			folio_zero_segments(folio, 0, offset, end, fsize);
++			folio_mark_uptodate(folio);
+ 		} else if (end >= pglen) {
+-			zero_user_segment(page, end, PAGE_SIZE);
++			folio_zero_segment(folio, end, fsize);
+ 			if (offset == 0)
+-				SetPageUptodate(page);
++				folio_mark_uptodate(folio);
+ 		} else
+-			zero_user_segment(page, pglen, PAGE_SIZE);
++			folio_zero_segment(folio, pglen, fsize);
+ 	}
+ 
+ 	status = nfs_update_folio(file, folio, offset, copied);
+ 
+-	unlock_page(page);
+-	put_page(page);
++	folio_unlock(folio);
++	folio_put(folio);
+ 
+ 	if (status < 0)
+ 		return status;
 -- 
 2.39.0
 
