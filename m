@@ -2,207 +2,207 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E6ADC32793
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Jan 2023 20:44:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60E00C677F1
+	for <linux-nfs@archiver.kernel.org>; Thu, 19 Jan 2023 01:50:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229705AbjARUoq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Jan 2023 15:44:46 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50434 "EHLO
+        id S229674AbjASBtp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 Jan 2023 20:49:45 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50598 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230007AbjARUoo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jan 2023 15:44:44 -0500
-Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A56735FD71
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 12:44:41 -0800 (PST)
-Received: from pps.filterd (m0246629.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 30II4b5v004668;
-        Wed, 18 Jan 2023 20:44:39 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2022-7-12;
- bh=XlsYnEH5MsSQSAdXHaXQBnD7C/+mc59AWvcu8RaarPo=;
- b=iQNrQcdlOZ1zVpGFRNsBA+b6e3Iz8Cld8iDnVfG+aUfQZmOmOxApat6w1tTYMqrxWqzB
- 7nYfzNINX4108CmiKyv5RBmiqJmT2YGZeOnxufnvuF903TVqZnih3uIALBXkdfxBXmWN
- dqqTquxFYocfwIr/KI45k6Us3+9WDCsUaapL+yyvHytsp2byKqClHRoF+rKmTAwdeg6z
- Mi3i9paNS4UcST6MJy/V1Rb5TMlFaRVhysQeIrMgM8LcGxtuA2BrHYWtoyxR1k8y1slA
- 5DQhrajnJY9Bn0MmgFkUNs7Hgs068GGHvx7+MpB8FTcfkyKVyLpiTT9dt40dIOnU9pb6 jA== 
-Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3n40mdg2ph-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 18 Jan 2023 20:44:38 +0000
-Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.5/8.17.1.5) with ESMTP id 30IKSvVd028748;
-        Wed, 18 Jan 2023 20:44:37 GMT
-Received: from nam02-bn1-obe.outbound.protection.outlook.com (mail-bn1nam02lp2044.outbound.protection.outlook.com [104.47.51.44])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3n6qufrkxf-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 18 Jan 2023 20:44:37 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=Y8iSA78Ehn5pMUFWP6B6EYRLUoqc4CP6IYIUT+yTn4YfAPxjQL43v7lYicscTPtbepP5c9dSHdCWlhVyynenEwvbY5+xM8I7PVzjIIB6nKe7ThzOb1eKinQJcP9Dhr1kLiTYfRFvPidNPivO7fm0S/D5PIRmO5Cd1W5BpJjJjpFSV23299fNkt0XbU2pX9VaIlR5TSIHRwWL1BJcq3NFXVkctEldqFrcgXxAGeXbOs7Cdu9E7r0+dbPkSDtyDAft8k3jBD8SlT74mba3vNgUx+O+EZGq61yBb6hEkTj27AJc00BlxSzVo1f+Otf9+0VAzrFUyUrMUZraQH20xdOEPw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=XlsYnEH5MsSQSAdXHaXQBnD7C/+mc59AWvcu8RaarPo=;
- b=GPcPPZDjrDRVNyAk6zCoD5ea6oPFHWqs+KBpTVc+v+fBJKyaRQCXTEK+sOYdbCfdowjVT7rAzVte1kuh8BjBdHYPwx6wMkxi3id/Onpck2/qu9bE2YByabtrpH/kZDjDbOHlPXm5+0wBMDA6tEPshhCi+qW2wHm179C0z6bYc+bcZXKEp7BcGVGG6jpMT/XnAqwGv3hIftJ6NZpAN73ODPwZ7qvXFpADtGGVeL6MW9dodc9O20hnGTZeRNuqrUnDpn0KlyxRah5MG3DX9/lEjmXl6QBtwXn70p5WmFlTrh7XDin0uoeZ5yR2vNyiw1Dkqb0K4F4uoBmD2V2S8MENnw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
+        with ESMTP id S229750AbjASBrl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jan 2023 20:47:41 -0500
+Received: from mail-pl1-x632.google.com (mail-pl1-x632.google.com [IPv6:2607:f8b0:4864:20::632])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C014C5DC07
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 17:46:43 -0800 (PST)
+Received: by mail-pl1-x632.google.com with SMTP id k18so920003pll.5
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Jan 2023 17:46:43 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=XlsYnEH5MsSQSAdXHaXQBnD7C/+mc59AWvcu8RaarPo=;
- b=DO4cTGs2GycU8f4QoICNxWWaWNR/gKwua50d5iyMGdnEO30mWV4noUls9MGpZrPm/NceasIemhsDNbNP6CITStQp3/p0VeoYJczfUKPkf4hK+eT3VBPuaSIX2NLaNkFVMlwnT2BVFUBpeN2VFAkOdOmbVVnKEsXVcXoSOSvdr1E=
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
- by DM4PR10MB6112.namprd10.prod.outlook.com (2603:10b6:8:b7::9) with Microsoft
- SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.6002.12; Wed, 18 Jan 2023 20:44:34 +0000
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::d8a4:336a:21e:40d9]) by BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::d8a4:336a:21e:40d9%5]) with mapi id 15.20.6002.013; Wed, 18 Jan 2023
- 20:44:34 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Jeff Layton <jlayton@kernel.org>
-CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/6] nfsd: simplify the delayed disposal list code
-Thread-Topic: [PATCH 3/6] nfsd: simplify the delayed disposal list code
-Thread-Index: AQHZK2K9iQAA9AGCR0S9mUeEchObFK6kiaSAgAAJkYCAABFcgA==
-Date:   Wed, 18 Jan 2023 20:44:34 +0000
-Message-ID: <B3C099E6-D684-40E4-ABE8-9514C40F28B9@oracle.com>
-References: <20230118173139.71846-1-jlayton@kernel.org>
- <20230118173139.71846-4-jlayton@kernel.org>
- <0BDD4ABB-2470-483A-A2F7-C65B84546FB5@oracle.com>
- <7c2f30279da9f1c927ee3141fa14a7c14ca50297.camel@kernel.org>
-In-Reply-To: <7c2f30279da9f1c927ee3141fa14a7c14ca50297.camel@kernel.org>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-mailer: Apple Mail (2.3696.120.41.1.1)
-x-ms-publictraffictype: Email
-x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|DM4PR10MB6112:EE_
-x-ms-office365-filtering-correlation-id: 87ac346c-d967-4cbd-9edc-08daf994ce92
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: QerHCX9saH3r7BiGxL9wnpPRqjBth/9Px/TgPPdNM8GnXqmLDaOj/qUqIpzzsozrjMxJ7WF2dsaflX5HOIZ15BD4nlna4z5pFxm0D5aX0+dDZO2Z+ch2xIZvNDBFzEMH7+UuUcl59GS5fryp7lS2gWPUAHGrHfYY1sVC2ZkhJEx9nteuL7IM+1e2kL/Dr7lxsjD957JrXfPY9SKTD2wTuHJ5ezqDi0VpCjEhEQ5TZ1MO8DAVp8Fdlrt0DJ7ca7tTnbymH3oL/A4XomjfAKAqhelCAWO6gM2gC/bzWW0Re7WFXR+oYWmUGjl02fHbMQN3ycSW820vCbs9kCRgPhqqRUjLL0QO/ZRn4O1XKieXqaGuhyyrts7oTpPZBHOU/UTVAJAcEbrWRG5rwglamOkFHL/ltMPH3XJ5mE0+Huv7g7vi7gJt1+04uDqtBZqKdh55GEsjueLKnXFJ8c+KREXaAOtO+MiDCBiErbGoxMlpWhyFhtikU1r8WNagVxZnIyCnOS5SALI0Wn8UbWos8E8ARVNu+ZMjyAQLV44fxvMPzol0Lp631c8WunJjqwVmPLkTrb4zaOFKUIOzD52HA8ZnhMTX5psshWeRx7AJSLw4wyiK/WC6s5r1vgg+lhWvVBZQ9sE8pNcbaEXlxCNhqMxwvHwUHqHWBKfktWSOCVIEnlXiK0i4YqmaAcOyY+D6fp/D7s6eMKZGBThj8KmxE631sLkH6Eegc8WtGufm85cK2Rs=
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230022)(136003)(39860400002)(346002)(376002)(396003)(366004)(451199015)(91956017)(76116006)(66946007)(4326008)(6916009)(66556008)(66476007)(64756008)(8676002)(66446008)(41300700001)(36756003)(86362001)(2616005)(316002)(2906002)(122000001)(33656002)(38100700002)(8936002)(5660300002)(38070700005)(71200400001)(6486002)(26005)(186003)(6512007)(478600001)(53546011)(6506007)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?BGuiCdpB7JIvMw/aSJhm/SmxRYnV/omCF/NZoKuES1ta6chr7iqxunPXtyUp?=
- =?us-ascii?Q?LWu00YPa7lDJBme8BDT1Cmmw+oHNpy22H3SNNIajuvaZ5ipcM6eBwxbGBEuN?=
- =?us-ascii?Q?TUe+Tm9MHC3fTj72zcu7iAE+P2GKN0Wc5jIrvpjunnDbl4zi4Hy4HVrSRBgo?=
- =?us-ascii?Q?ZY9RQCXvnnoHGQVRiWdq1loziPCS4+qKjNJhuPYihh6gKzXft0d7Gw+yiQbY?=
- =?us-ascii?Q?Ae20U3N+0CZY6Z6D3dgFyriLijfcyxp/QrsvKEviTlS7OriNdsK0O4LQG/2R?=
- =?us-ascii?Q?fZDeQIAe9tDMEu5IfGDmC3HceO0VtloKDSmjtB9nMWuluKkdX9pzSZDlftr2?=
- =?us-ascii?Q?i21y5KyIHEiGGiju62emnRKjmyDpU2b/T5YH39L62X2xL71Dp5ZhGVkn/XPX?=
- =?us-ascii?Q?4OtTtxQHZwfBxy05nvGD8colb7Wg6+DzEftbDmqYd1QErrfFIYJwGgLY0lTT?=
- =?us-ascii?Q?UIJFIDFC/ruNCiho0Q0pzFdrtopCnvOymsrsAGxE6SgZ/aNfOq3NrDxw1Olo?=
- =?us-ascii?Q?O5CfPUz5Y6a33X7mcvZEnHotC2TXBfsXx8Oa8RelO0eTNmjMEVPmTGlv60+r?=
- =?us-ascii?Q?xYByS/3r3OzFOCnuJKSqxGxboopaPei8SfZc9LRXdEYJ6gwiaMPUva+4I9aY?=
- =?us-ascii?Q?Ex82lItpmoOBRG9rNx0Vo8S5yFPZO1Mof9oh/HtCV4qepGd8SxDaHg9JThCl?=
- =?us-ascii?Q?HU2ZvU9T92VzhEGyQqAbbLSmnajICy3mKzP/PptpcvDz0h1nHOLPwsVJvPYp?=
- =?us-ascii?Q?dD4I+ti1moQJKaeYpFyRk56WoKFUMZ5pq41U/GFgUqNGJf64GpnQqDUQnCKC?=
- =?us-ascii?Q?XcO8yeoN1jbqG6T71DJMU6fk33CuTk3D/94GslHrmqwukIWGb1jahWcHl5+H?=
- =?us-ascii?Q?jmE7IGvOsvsTduD/dC6fXyUP/yCBXGpBCpcN1O1K796phdhbZLKwrEjZKkcy?=
- =?us-ascii?Q?2FVw/u8gZRJjgS8a31cd+DtV0JdMFyGy6zFPyI7cRJDti/kixnnk19NGZ/gr?=
- =?us-ascii?Q?5fl8j3crUTcma8voZiSSfro82nI7Q1dRvJZ9PH1P2hS7zbw8nO9e1hstp++B?=
- =?us-ascii?Q?ffCcrMWhy42TZRRuZcUnJcTMLwRhu3FBHSGcm58N/WvqYnf4mkMnX5FrkKOB?=
- =?us-ascii?Q?h98XepTMz/VZPsfs96UpGHSczwumPxeVybbOn8NPUa9LCn25NrdMzGUn9iPq?=
- =?us-ascii?Q?U1jQ/u9YrXqPlhzJ5K3ymVhkpt10wNLhAl/FfgKHecWMywnxUzqd2yektiZy?=
- =?us-ascii?Q?d8o5TqhfNZCJQWdzY6BYbULXocItI1SuVaz+ENo5UKdSgfjrvsOt50rAziYc?=
- =?us-ascii?Q?/ierBEGttePgteOWc+4dbqzVHdm+3KlPNkJwf3v7kIoOWI0rFNjaHeFdcS4E?=
- =?us-ascii?Q?A6JYjqlK5pF1gWvCSC+XkMivCrthNdJlG/GnmRHRKMttgA2Nmrvg6gmz/2BG?=
- =?us-ascii?Q?/kJKg1Yoq0r0vBfEadmE/tSVXcLFR00qjovEMlqMULqh/888wgaG7i+xZ8OE?=
- =?us-ascii?Q?ATl2T4I8L2Eb6HJD6mzuBNb14keszvmG2MflViECcE6dzDOBSQABrBqLzE/f?=
- =?us-ascii?Q?A/CaBNFklJTB2Y+f2PZi/G1s7tRiZvCjcayKeUOo40vqCV2+KwfsX8O7BKbc?=
- =?us-ascii?Q?xw=3D=3D?=
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <21052CAAE067A94E974D14CEBBDC80D8@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+        d=umich.edu; s=google-2016-06-03;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=3iETN8XN/kKLFT5uEduv6jjNllqg2AbOuogPIJ7Pnww=;
+        b=YKmHU1tw+ORoa2I9LDpakE2ka9BGr4KPwRUfQEIqIkU+L9t59S4FUYIhc+LVXx8dtR
+         q6uxDU55QjoYuJyHG2cfpJY0F+z8MmGndjfnyyCx2k5L9il0z2qnpsHtbNLZ8UHH1llA
+         FO8kvdZ5O/vj7bGbM+VSnKJXHKLYvmZKfKLMq0qJZIQ6aS77otIq2hTwcHhLJIjnEO+i
+         NgHy3612HIXgfW9GKx9ElaIFLosk27gUn32rZYONmQbrVt37bXc8kmJZzUnwFrIsU+ER
+         G0WUA6lLFHEIuokKM+lCXjxSEn4rkdReYqYGAGnDa7c9WRe6JkY56yVF3wytptnWOpcS
+         NgFA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=3iETN8XN/kKLFT5uEduv6jjNllqg2AbOuogPIJ7Pnww=;
+        b=i5Zj4yp++3VpmYIFm1bTPStPZDTxQBw441I8ZOdb0BRlhCJ4Eez/2WVVawGpM+RlGN
+         RXU7aqn2SYhINNxhhJENv+fhFDzcoNT1SC0ULRqo9NROCvZtVgqUSYdsrHXqbAcuXhGV
+         XRZuiECXntHjc2/zdC+JQdvtv82SBCrOEPDv4VHjYSGc4KsNEabgLVrljCHMVfbWWcEC
+         eL4/GWtfVXA1eqTvZiU03WXR5wblAbcc7PeaL8xVFKaqKGfPyRoqST7xsruHc8ee5gMH
+         cBNRc+6OnNQLap3q42AGE8YPD2cLMKv2IfwrG8VTLgSFsax5ydtfCAup7LvdBud78Pk+
+         MFcA==
+X-Gm-Message-State: AFqh2kp+/iNzU5SVDaIrAmimxHBKno5iPZdQ3d1ubrA137Vj0dAAvDTI
+        ++QaaWR2nnHKnq2oPU1o1jWTkzWf2TvQykt60ew=
+X-Google-Smtp-Source: AMrXdXtX47aOZ8IAIWdkwvzjKMidG3WXd/JComx0ncdaRSkaCEqm9HsDjSFEx65vyXMmMsRLMu8l6Ueo2H40rCne4bs=
+X-Received: by 2002:a17:90a:2fce:b0:229:a29:dc2 with SMTP id
+ n14-20020a17090a2fce00b002290a290dc2mr868266pjm.104.1674092802921; Wed, 18
+ Jan 2023 17:46:42 -0800 (PST)
 MIME-Version: 1.0
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0: Lcp7C4/VhBRtqZstAg7mkuoRFh6epsgK6XrClY+TQT0MPALM9kULPjvzUQCPDZfr6NXfzef4u5E1GOOPVAncfxlA+Db9dVYDWmP16WH3LQdSbniltb4z8jrlvIvOjvdC+8VU8ZfaIPcr/tGM6PIn1OkT5YKsrGSJndY8n/poOrUuCUmp8XrbJRVpxqjjR/jXKKm9nrSKsYHLMjMANpj0Xic/9dzc9qyy6eqaoTks269RrzOFlSILOwCmICkoM6c/C1v+MNvl/5mvvXlvPSyUOF0acwpEhoe5EQjx5lHudzNZ245Zb4Aq76aaQpVwhj9FLl7Le6yItXtmu6hO4gRe5ByDrn5FOrwx57l4v7DkwiPJaLfmWSK24MiB585bzJ+TzkmrSnAXIXcSiyQBe5CoralGcPd1XMVo2FhbS2Zo1MlMZFKIpja51pe4rI4SLQOslIRL3G5/M20vE+6P2D3L1eI2RcLH1yAVgvEyd9FaFjKWj/VOU/8rE52fnuD4ypLCEfvn2Yh8dtyo0aHTxMu1Gb71t4wYima4a6DrDVWXq5cDQFcMSCy4f/61R7IhGOQXazPczlHer7tE7iOgS3FcFOeuM7wTVDCtacM9DQjeTWnoHgY5YfO5Y+DBbhsKCaJUBqggcHryr1ONai1y9eotCmZYJ5UlrrT1HUQ0pSolb8XFM2u470Ijxas9UiA3CBzK3LO5mDII3Ra8lbxvp17pxr7T/np6d2b5BzWBkQN/9kzFnpJzCZj0PJLR8trvYYnIvLPKm7EOhniF7NM93j+vWDRPb8vOZ10EBW+9Jsnu+lQ=
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 87ac346c-d967-4cbd-9edc-08daf994ce92
-X-MS-Exchange-CrossTenant-originalarrivaltime: 18 Jan 2023 20:44:34.1899
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: TIVix/eXzSDViYJihBC9rYPmgGdwwnEbfpkI0K6jMbdb4ImU/sEwwCFfvfrkdurm6vUjl7sPVcE7F09z6ETmzw==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM4PR10MB6112
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.219,Aquarius:18.0.923,Hydra:6.0.562,FMLib:17.11.122.1
- definitions=2023-01-18_05,2023-01-18_01,2022-06-22_01
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 suspectscore=0 phishscore=0
- malwarescore=0 spamscore=0 mlxlogscore=999 mlxscore=0 adultscore=0
- bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2212070000 definitions=main-2301180175
-X-Proofpoint-ORIG-GUID: WgM8Guw89UYkVt7CkE7gSrDX16GOyEHs
-X-Proofpoint-GUID: WgM8Guw89UYkVt7CkE7gSrDX16GOyEHs
+References: <20230118173139.71846-1-jlayton@kernel.org> <20230118173139.71846-2-jlayton@kernel.org>
+ <CAN-5tyHgYpGBaJYB932VAqyMGSMikexA=0uKTzROtP9nw=Nu-w@mail.gmail.com>
+ <944bf7f3e6956989933d07aabd4a632de2ec4667.camel@kernel.org>
+ <CAN-5tyHnhk9sV-jfnDvQ66brYtqY7NPvsq3D1-hWe7vYUxjgUQ@mail.gmail.com> <51D89D69-F23D-44CA-81B1-B7ECE34F9D34@oracle.com>
+In-Reply-To: <51D89D69-F23D-44CA-81B1-B7ECE34F9D34@oracle.com>
+From:   Olga Kornievskaia <aglo@umich.edu>
+Date:   Wed, 18 Jan 2023 20:46:31 -0500
+Message-ID: <CAN-5tyFOy-Qhu3JYF0KRm=QK7qv0KbWEFeyOQpGLbzx9=BD1Uw@mail.gmail.com>
+Subject: Re: [PATCH 1/6] nfsd: don't take nfsd4_copy ref for OP_OFFLOAD_STATUS
+To:     Chuck Lever III <chuck.lever@oracle.com>
+Cc:     Jeff Layton <jlayton@kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Wed, Jan 18, 2023 at 1:53 PM Chuck Lever III <chuck.lever@oracle.com> wrote:
+>
+>
+>
+> > On Jan 18, 2023, at 1:08 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> >
+> > On Wed, Jan 18, 2023 at 12:49 PM Jeff Layton <jlayton@kernel.org> wrote:
+> >>
+> >> On Wed, 2023-01-18 at 12:43 -0500, Olga Kornievskaia wrote:
+> >>> On Wed, Jan 18, 2023 at 12:35 PM Jeff Layton <jlayton@kernel.org> wrote:
+> >>>>
+> >>>> We're not doing any blocking operations for OP_OFFLOAD_STATUS, so taking
+> >>>> and putting a reference is a waste of effort. Take the client lock,
+> >>>> search for the copy and fetch the wr_bytes_written field and return.
+> >>>>
+> >>>> Also, make find_async_copy a static function.
+> >>>>
+> >>>> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> >>>> ---
+> >>>> fs/nfsd/nfs4proc.c | 35 ++++++++++++++++++++++++-----------
+> >>>> fs/nfsd/state.h    |  2 --
+> >>>> 2 files changed, 24 insertions(+), 13 deletions(-)
+> >>>>
+> >>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> >>>> index 62b9d6c1b18b..731c2b22f163 100644
+> >>>> --- a/fs/nfsd/nfs4proc.c
+> >>>> +++ b/fs/nfsd/nfs4proc.c
+> >>>> @@ -1823,23 +1823,34 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >>>>        goto out;
+> >>>> }
+> >>>>
+> >>>> -struct nfsd4_copy *
+> >>>> -find_async_copy(struct nfs4_client *clp, stateid_t *stateid)
+> >>>> +static struct nfsd4_copy *
+> >>>> +find_async_copy_locked(struct nfs4_client *clp, stateid_t *stateid)
+> >>>> {
+> >>>>        struct nfsd4_copy *copy;
+> >>>>
+> >>>> -       spin_lock(&clp->async_lock);
+> >>>> +       lockdep_assert_held(&clp->async_lock);
+> >>>> +
+> >>>>        list_for_each_entry(copy, &clp->async_copies, copies) {
+> >>>>                if (memcmp(&copy->cp_stateid.cs_stid, stateid, NFS4_STATEID_SIZE))
+> >>>>                        continue;
+> >>>> -               refcount_inc(&copy->refcount);
+> >>>
+> >>> If we don't take a refcount on the copy, this copy could be removed
+> >>> between the time we found it in the list of copies and when we then
+> >>> look inside to check the amount written so far. This would lead to a
+> >>> null (or bad) pointer dereference?
+> >>>
+> >>
+> >> No. The existing code finds this object, takes a reference to it,
+> >> fetches a single integer out of it and then puts the reference. This
+> >> patch just has it avoid the reference altogether and fetch the value
+> >> while we still hold the spinlock. This should be completely safe
+> >> (assuming the locking around the existing list handling is correct,
+> >> which it does seem to be).
+> >
+> > Thank you for the explanation. I see it now.
+>
+> May I add Reviewed-by: Olga Kornievskaia <kolga@netapp.com> ?
 
+Of course.
 
-> On Jan 18, 2023, at 2:42 PM, Jeff Layton <jlayton@kernel.org> wrote:
->=20
-> On Wed, 2023-01-18 at 19:08 +0000, Chuck Lever III wrote:
->>=20
->>> On Jan 18, 2023, at 12:31 PM, Jeff Layton <jlayton@kernel.org> wrote:
->>>=20
->>> When queueing a dispose list to the appropriate "freeme" lists, it
->>> pointlessly queues the objects one at a time to an intermediate list.
->>>=20
->>> Remove a few helpers and just open code a list_move to make it more
->>> clear and efficient. Better document the resulting functions with
->>> kerneldoc comments.
->>=20
->> I'd like to freeze the filecache code until we've sorted out the
->> destroy_deleg_unhashed crashes. Shall I simply maintain 3/6 and
->> 4/6 and any subsequent filecache changes (like my rhltable
->> rewrite) on a topic branch?
->>=20
->> One good reason to do that is to enable an eventual fix to be
->> backported to stable kernels without also needing to pull in
->> intervening clean-up patches.
->>=20
->> I've already applied a couple small changes that I would rather
->> wait on for this reason. I might move those over to the topic
->> branch as well... I promise to keep it based on nfsd-next so it
->> makes sense to continue developing filecache work on top of the
->> topic branch.
->>=20
->> The other patches in this series are sensible clean-ups that I
->> plan to apply for v6.3 if there are no other objections.
->>=20
->=20
-> So that means you won't take patches 3 and 4, but the rest are ok?
-
-They all look fine to me. I've applied 1, 2, 5, and 6 to nfsd-next,
-and 3 and 4 along with several others have been applied to a
-branch called topic-filecache-cleanups, which is published now so
-you can continue developing against that and so it will get pulled
-into the 0-day test harness.
-
-I will merge the stuff in that topic branch at some point, I'm just
-not committing yet to applying it specifically to v6.3.
-
-Yes, you can call me "too conservative." :-) But I am sensitive to
-addressing the destroy_unhashed_deleg crashers in v6.1, which is
-to become an LTS if I understand correctly. That's the main reason
-for adding this extra step for filecache-related clean-ups. Narrow
-bug fixes still go right into nfsd-next or nfsd-fixes, as usual.
-
-If this arrangement becomes onerous, I will mix those commits back
-into the general nfsd-next population and we will never speak of it
-again.
-
-
---
-Chuck Lever
-
-
-
+> >>>> -               spin_unlock(&clp->async_lock);
+> >>>>                return copy;
+> >>>>        }
+> >>>> -       spin_unlock(&clp->async_lock);
+> >>>>        return NULL;
+> >>>> }
+> >>>>
+> >>>> +static struct nfsd4_copy *
+> >>>> +find_async_copy(struct nfs4_client *clp, stateid_t *stateid)
+> >>>> +{
+> >>>> +       struct nfsd4_copy *copy;
+> >>>> +
+> >>>> +       spin_lock(&clp->async_lock);
+> >>>> +       copy = find_async_copy_locked(clp, stateid);
+> >>>> +       if (copy)
+> >>>> +               refcount_inc(&copy->refcount);
+> >>>> +       spin_unlock(&clp->async_lock);
+> >>>> +       return copy;
+> >>>> +}
+> >>>> +
+> >>>> static __be32
+> >>>> nfsd4_offload_cancel(struct svc_rqst *rqstp,
+> >>>>                     struct nfsd4_compound_state *cstate,
+> >>>> @@ -1924,22 +1935,24 @@ nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >>>>        nfsd_file_put(nf);
+> >>>>        return status;
+> >>>> }
+> >>>> +
+> >>>> static __be32
+> >>>> nfsd4_offload_status(struct svc_rqst *rqstp,
+> >>>>                     struct nfsd4_compound_state *cstate,
+> >>>>                     union nfsd4_op_u *u)
+> >>>> {
+> >>>>        struct nfsd4_offload_status *os = &u->offload_status;
+> >>>> -       __be32 status = 0;
+> >>>> +       __be32 status = nfs_ok;
+> >>>>        struct nfsd4_copy *copy;
+> >>>>        struct nfs4_client *clp = cstate->clp;
+> >>>>
+> >>>> -       copy = find_async_copy(clp, &os->stateid);
+> >>>> -       if (copy) {
+> >>>> +       spin_lock(&clp->async_lock);
+> >>>> +       copy = find_async_copy_locked(clp, &os->stateid);
+> >>>> +       if (copy)
+> >>>>                os->count = copy->cp_res.wr_bytes_written;
+> >>>> -               nfs4_put_copy(copy);
+> >>>> -       } else
+> >>>> +       else
+> >>>>                status = nfserr_bad_stateid;
+> >>>> +       spin_unlock(&clp->async_lock);
+> >>>>
+> >>>>        return status;
+> >>>> }
+> >>>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> >>>> index e94634d30591..d49d3060ed4f 100644
+> >>>> --- a/fs/nfsd/state.h
+> >>>> +++ b/fs/nfsd/state.h
+> >>>> @@ -705,8 +705,6 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(struct xdr_netobj name
+> >>>> extern bool nfs4_has_reclaimed_state(struct xdr_netobj name, struct nfsd_net *nn);
+> >>>>
+> >>>> void put_nfs4_file(struct nfs4_file *fi);
+> >>>> -extern struct nfsd4_copy *
+> >>>> -find_async_copy(struct nfs4_client *clp, stateid_t *staetid);
+> >>>> extern void nfs4_put_cpntf_state(struct nfsd_net *nn,
+> >>>>                                 struct nfs4_cpntf_state *cps);
+> >>>> extern __be32 manage_cpntf_state(struct nfsd_net *nn, stateid_t *st,
+> >>>> --
+> >>>> 2.39.0
+> >>>>
+> >>
+> >> --
+> >> Jeff Layton <jlayton@kernel.org>
+>
+> --
+> Chuck Lever
+>
+>
+>
