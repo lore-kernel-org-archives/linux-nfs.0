@@ -2,43 +2,43 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E6BAC6379F
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Jan 2023 22:03:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD50FC004D4
+	for <linux-nfs@archiver.kernel.org>; Thu, 19 Jan 2023 22:03:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230070AbjASWDQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 19 Jan 2023 17:03:16 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43138 "EHLO
+        id S229540AbjASWDR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 19 Jan 2023 17:03:17 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42400 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230076AbjASWCk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2023 17:02:40 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4A18AC41F7
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 13:40:50 -0800 (PST)
+        with ESMTP id S230092AbjASWCo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2023 17:02:44 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0EC1E59FF
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 13:40:55 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 3112761D85
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 21:40:25 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 45298C433F0;
-        Thu, 19 Jan 2023 21:40:24 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 40D1561D82
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 21:40:28 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 53870C433F1;
+        Thu, 19 Jan 2023 21:40:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674164424;
-        bh=8vvoiK4+OysFOOrbMNDAZu/Frmi8+/KPQON5VzhYpB0=;
+        s=k20201202; t=1674164427;
+        bh=3cjd6viynUsFkHy+3/0wpZu3G6DvhCBXaVk2A/zgJCI=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=DUDeXub6fgCzHbapA4IbgL6aQj9XYWVnaKGdtqQwrpwa3S/clGYwXg6PegYLotUOF
-         Yz7DyJEQzjCF0vZiCL/BZ3CUy5eqgnPH45rJAgpJ698g7G6T8Mg2evrhZ2UCY7thSS
-         52fSHYwQv3dY1O0PBtkFSA0Dg1XDZaEdUw8xz/LtbhhiOyOAymqV77P4f/KO1UhaWA
-         guQba6UrUH/d1s4CTUJCpH0cGR5I1fftguaHtEEd0kUD3iimb8ocWHkqrax1KwIggb
-         DirP6yaO3W5YQ3TtnBPdEJtwKvGFvN1ag+Ul/QYx5xKa+k4KUViCsMFDtBIZ/BD8Vh
-         +7m8FmkRlMRqQ==
+        b=teA+IqDUxI1rD0Gurp6CcrzHiBNjP9pR5LyDSeh2HWw9/IRUUcXTz2PKgQulssIvz
+         lcaXqaK4hhlu0fhmWIZFY8jUur9ZjcimV8i3SGNFhgN6/YJUNYTGCAGBvQ7uBsBMzj
+         rBCeE+PeEle1qBbZyrpV3jfMkvJkJnqXuS6irkneNRW3+wieQQelv9jNGLnbAc3stH
+         Kkl1bGBAv4+i6FTPpzbL659ixALZc7r6WDTVhCgUW9QsVe23oDSvOPtRr9ehlfx7WO
+         0X4LYwTEcyrRx6gnj/3oVCFwp931ruhMGoqf0nSlhVb+HlMGggdg2U7165fuiSYpSW
+         DdtsZBLvgkLEQ==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 12/18] NFS: Convert nfs_write_begin/end to use folios
-Date:   Thu, 19 Jan 2023 16:33:45 -0500
-Message-Id: <20230119213351.443388-13-trondmy@kernel.org>
+Subject: [PATCH v2 17/18] NFS: Improve tracing of nfs_wb_folio()
+Date:   Thu, 19 Jan 2023 16:33:50 -0500
+Message-Id: <20230119213351.443388-18-trondmy@kernel.org>
 X-Mailer: git-send-email 2.39.0
-In-Reply-To: <20230119213351.443388-12-trondmy@kernel.org>
+In-Reply-To: <20230119213351.443388-17-trondmy@kernel.org>
 References: <20230119213351.443388-1-trondmy@kernel.org>
  <20230119213351.443388-2-trondmy@kernel.org>
  <20230119213351.443388-3-trondmy@kernel.org>
@@ -51,6 +51,11 @@ References: <20230119213351.443388-1-trondmy@kernel.org>
  <20230119213351.443388-10-trondmy@kernel.org>
  <20230119213351.443388-11-trondmy@kernel.org>
  <20230119213351.443388-12-trondmy@kernel.org>
+ <20230119213351.443388-13-trondmy@kernel.org>
+ <20230119213351.443388-14-trondmy@kernel.org>
+ <20230119213351.443388-15-trondmy@kernel.org>
+ <20230119213351.443388-16-trondmy@kernel.org>
+ <20230119213351.443388-17-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -59,172 +64,59 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Add a helper nfs_folio_grab_cache_write_begin() that can call
-__filemap_get_folio() directly with the appropriate parameters.
-
-Since write_begin()/write_end() take struct page arguments, just pass
-the folio->page back for now.
+Include info about which folio is being traced.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/file.c | 75 ++++++++++++++++++++++++++++-----------------------
- 1 file changed, 41 insertions(+), 34 deletions(-)
+ fs/nfs/nfstrace.h | 5 +++--
+ fs/nfs/write.c    | 4 ++--
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 9fbe27214da0..39ee7fb3f79f 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -276,27 +276,28 @@ EXPORT_SYMBOL_GPL(nfs_file_fsync);
-  * and that the new data won't completely replace the old data in
-  * that range of the file.
-  */
--static bool nfs_full_page_write(struct page *page, loff_t pos, unsigned int len)
-+static bool nfs_folio_is_full_write(struct folio *folio, loff_t pos,
-+				    unsigned int len)
- {
--	unsigned int pglen = nfs_page_length(page);
--	unsigned int offset = pos & (PAGE_SIZE - 1);
-+	unsigned int pglen = nfs_folio_length(folio);
-+	unsigned int offset = offset_in_folio(folio, pos);
- 	unsigned int end = offset + len;
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index d3aa330fef36..a778713343df 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -152,8 +152,6 @@ DEFINE_NFS_INODE_EVENT(nfs_getattr_enter);
+ DEFINE_NFS_INODE_EVENT_DONE(nfs_getattr_exit);
+ DEFINE_NFS_INODE_EVENT(nfs_setattr_enter);
+ DEFINE_NFS_INODE_EVENT_DONE(nfs_setattr_exit);
+-DEFINE_NFS_INODE_EVENT(nfs_writeback_page_enter);
+-DEFINE_NFS_INODE_EVENT_DONE(nfs_writeback_page_exit);
+ DEFINE_NFS_INODE_EVENT(nfs_writeback_inode_enter);
+ DEFINE_NFS_INODE_EVENT_DONE(nfs_writeback_inode_exit);
+ DEFINE_NFS_INODE_EVENT(nfs_fsync_enter);
+@@ -1032,6 +1030,9 @@ DECLARE_EVENT_CLASS(nfs_folio_event_done,
+ DEFINE_NFS_FOLIO_EVENT(nfs_aop_readpage);
+ DEFINE_NFS_FOLIO_EVENT_DONE(nfs_aop_readpage_done);
  
- 	return !pglen || (end >= pglen && !offset);
- }
- 
--static bool nfs_want_read_modify_write(struct file *file, struct page *page,
--			loff_t pos, unsigned int len)
-+static bool nfs_want_read_modify_write(struct file *file, struct folio *folio,
-+				       loff_t pos, unsigned int len)
- {
- 	/*
- 	 * Up-to-date pages, those with ongoing or full-page write
- 	 * don't need read/modify/write
- 	 */
--	if (PageUptodate(page) || PagePrivate(page) ||
--	    nfs_full_page_write(page, pos, len))
-+	if (folio_test_uptodate(folio) || folio_test_private(folio) ||
-+	    nfs_folio_is_full_write(folio, pos, len))
- 		return false;
- 
--	if (pnfs_ld_read_whole_page(file->f_mapping->host))
-+	if (pnfs_ld_read_whole_page(file_inode(file)))
- 		return true;
- 	/* Open for reading too? */
- 	if (file->f_mode & FMODE_READ)
-@@ -304,6 +305,15 @@ static bool nfs_want_read_modify_write(struct file *file, struct page *page,
- 	return false;
- }
- 
-+static struct folio *
-+nfs_folio_grab_cache_write_begin(struct address_space *mapping, pgoff_t index)
-+{
-+	unsigned fgp_flags = FGP_LOCK | FGP_WRITE | FGP_CREAT | FGP_STABLE;
++DEFINE_NFS_FOLIO_EVENT(nfs_writeback_folio);
++DEFINE_NFS_FOLIO_EVENT_DONE(nfs_writeback_folio_done);
 +
-+	return __filemap_get_folio(mapping, index, fgp_flags,
-+				   mapping_gfp_mask(mapping));
-+}
-+
- /*
-  * This does the "real" work of the write. We must allocate and lock the
-  * page to be sent back to the generic routine, which then copies the
-@@ -313,34 +323,31 @@ static bool nfs_want_read_modify_write(struct file *file, struct page *page,
-  * increment the page use counts until he is done with the page.
-  */
- static int nfs_write_begin(struct file *file, struct address_space *mapping,
--			loff_t pos, unsigned len,
--			struct page **pagep, void **fsdata)
-+			   loff_t pos, unsigned len, struct page **pagep,
-+			   void **fsdata)
- {
--	int ret;
--	pgoff_t index = pos >> PAGE_SHIFT;
--	struct page *page;
- 	struct folio *folio;
- 	int once_thru = 0;
-+	int ret;
+ DEFINE_NFS_FOLIO_EVENT(nfs_invalidate_folio);
+ DEFINE_NFS_FOLIO_EVENT_DONE(nfs_launder_folio_done);
  
- 	dfprintk(PAGECACHE, "NFS: write_begin(%pD2(%lu), %u@%lld)\n",
- 		file, mapping->host->i_ino, len, (long long) pos);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 77e6c033ca95..78cacaaded64 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -2093,7 +2093,7 @@ int nfs_wb_folio(struct inode *inode, struct folio *folio)
+ 	};
+ 	int ret;
  
- start:
--	page = grab_cache_page_write_begin(mapping, index);
--	if (!page)
-+	folio = nfs_folio_grab_cache_write_begin(mapping, pos >> PAGE_SHIFT);
-+	if (!folio)
- 		return -ENOMEM;
--	*pagep = page;
--	folio = page_folio(page);
-+	*pagep = &folio->page;
+-	trace_nfs_writeback_page_enter(inode);
++	trace_nfs_writeback_folio(inode, folio);
  
- 	ret = nfs_flush_incompatible(file, folio);
- 	if (ret) {
--		unlock_page(page);
--		put_page(page);
-+		folio_unlock(folio);
-+		folio_put(folio);
- 	} else if (!once_thru &&
--		   nfs_want_read_modify_write(file, page, pos, len)) {
-+		   nfs_want_read_modify_write(file, folio, pos, len)) {
- 		once_thru = 1;
- 		ret = nfs_read_folio(file, folio);
--		put_page(page);
-+		folio_put(folio);
- 		if (!ret)
- 			goto start;
+ 	for (;;) {
+ 		folio_wait_writeback(folio);
+@@ -2111,7 +2111,7 @@ int nfs_wb_folio(struct inode *inode, struct folio *folio)
+ 			goto out_error;
  	}
-@@ -348,12 +355,12 @@ static int nfs_write_begin(struct file *file, struct address_space *mapping,
+ out_error:
+-	trace_nfs_writeback_page_exit(inode, ret);
++	trace_nfs_writeback_folio_done(inode, folio, ret);
+ 	return ret;
  }
  
- static int nfs_write_end(struct file *file, struct address_space *mapping,
--			loff_t pos, unsigned len, unsigned copied,
--			struct page *page, void *fsdata)
-+			 loff_t pos, unsigned len, unsigned copied,
-+			 struct page *page, void *fsdata)
- {
--	unsigned offset = pos & (PAGE_SIZE - 1);
- 	struct nfs_open_context *ctx = nfs_file_open_context(file);
- 	struct folio *folio = page_folio(page);
-+	unsigned offset = offset_in_folio(folio, pos);
- 	int status;
- 
- 	dfprintk(PAGECACHE, "NFS: write_end(%pD2(%lu), %u@%lld)\n",
-@@ -363,26 +370,26 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
- 	 * Zero any uninitialised parts of the page, and then mark the page
- 	 * as up to date if it turns out that we're extending the file.
- 	 */
--	if (!PageUptodate(page)) {
--		unsigned pglen = nfs_page_length(page);
-+	if (!folio_test_uptodate(folio)) {
-+		size_t fsize = folio_size(folio);
-+		unsigned pglen = nfs_folio_length(folio);
- 		unsigned end = offset + copied;
- 
- 		if (pglen == 0) {
--			zero_user_segments(page, 0, offset,
--					end, PAGE_SIZE);
--			SetPageUptodate(page);
-+			folio_zero_segments(folio, 0, offset, end, fsize);
-+			folio_mark_uptodate(folio);
- 		} else if (end >= pglen) {
--			zero_user_segment(page, end, PAGE_SIZE);
-+			folio_zero_segment(folio, end, fsize);
- 			if (offset == 0)
--				SetPageUptodate(page);
-+				folio_mark_uptodate(folio);
- 		} else
--			zero_user_segment(page, pglen, PAGE_SIZE);
-+			folio_zero_segment(folio, pglen, fsize);
- 	}
- 
- 	status = nfs_update_folio(file, folio, offset, copied);
- 
--	unlock_page(page);
--	put_page(page);
-+	folio_unlock(folio);
-+	folio_put(folio);
- 
- 	if (status < 0)
- 		return status;
 -- 
 2.39.0
 
