@@ -2,50 +2,47 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 58C5EC004D4
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Jan 2023 22:03:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3544EC004D4
+	for <linux-nfs@archiver.kernel.org>; Thu, 19 Jan 2023 22:03:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229564AbjASWDE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 19 Jan 2023 17:03:04 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42494 "EHLO
+        id S229782AbjASWDK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 19 Jan 2023 17:03:10 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42194 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230050AbjASWC3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2023 17:02:29 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1FDA3C41E5
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 13:40:23 -0800 (PST)
+        with ESMTP id S229734AbjASWCd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jan 2023 17:02:33 -0500
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 23171C41E9
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 13:40:26 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 25E4761D80
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 21:40:22 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3A440C433F2;
-        Thu, 19 Jan 2023 21:40:21 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id E66D961D66
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jan 2023 21:40:19 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 64941C433D2;
+        Thu, 19 Jan 2023 21:40:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1674164421;
-        bh=0IgwdTTmRPFFEbjprVyuAAtakkjRHW3c4BaLYXpVpwo=;
+        s=k20201202; t=1674164419;
+        bh=GAp/AQBiIe4Q9kAQsb+g9Hews7VOhEWHxq6f5MjkLgU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=KPcFZAM/+6dw7mZVbrLzcHQ4vGJfigeziAZzIvWZPgRlQ9cXEKcXxJbb+RdDAenYE
-         J27pKCwVstXf1Rpd7RTaION8MjSc1CUF03EfcpCkHPKqKoAs0ny7quR4mplQnDYyYI
-         R8xr3PeagkArVGZJ4XciictacMZ6sfaffbMn6tjiFmSbCow8i7rha3S3sy3ZrxsEcD
-         FiF8NW7zILE53O1tevPEqeSiTVjj9vzcDlNly0ADlvo2RMzXx7tPsvW8zN/nZ7qvxY
-         8lUYx1FVOkPiSX9GmI1YYiVfzJwqUVQJg9Y+Ir/VUCs2hHA00Rlh5G3spd/YCB6uzO
-         dWsK2CMK1K35w==
+        b=p2m6D9aF4UH/xFXfH0oWiKoFQeCIKWi2iA09ZwP5qx3Y/khJgshYfAjYo2EI9NjsK
+         bcrL6q/G3YvqdrrA8syO48samXRbMecx1cWkvbZAcIJ4I7VS+HvORQVCQiRco+6q6l
+         4YLUFrK7DnNQhQ7x4k/QiYbsXJ7MIx+Gz/oxG3C1UN5qoVo4q8Wo5Ts9kCgoRRCb29
+         1lioDe/jrnk+h+C9GrzvZ3MkljmtcuOMF2m6koIj1OE7sude65fHjjWaXZkKlRIiDG
+         fUV4j0jNk9JCBGjFzpyT5hYQCRDhFtS30Tny2WOdHgDAG8VS69rNRBl+V75etUb3je
+         X8KgkMqr2CC1Q==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 07/18] NFS: Add a helper nfs_wb_folio()
-Date:   Thu, 19 Jan 2023 16:33:40 -0500
-Message-Id: <20230119213351.443388-8-trondmy@kernel.org>
+Subject: [PATCH v2 04/18] NFS: Fix nfs_coalesce_size() to work with folios
+Date:   Thu, 19 Jan 2023 16:33:37 -0500
+Message-Id: <20230119213351.443388-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.39.0
-In-Reply-To: <20230119213351.443388-7-trondmy@kernel.org>
+In-Reply-To: <20230119213351.443388-4-trondmy@kernel.org>
 References: <20230119213351.443388-1-trondmy@kernel.org>
  <20230119213351.443388-2-trondmy@kernel.org>
  <20230119213351.443388-3-trondmy@kernel.org>
  <20230119213351.443388-4-trondmy@kernel.org>
- <20230119213351.443388-5-trondmy@kernel.org>
- <20230119213351.443388-6-trondmy@kernel.org>
- <20230119213351.443388-7-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -54,64 +51,87 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-...and use it in nfs_launder_folio().
+Use the helper folio_size() where appropriate.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/file.c          |  2 +-
- fs/nfs/write.c         | 13 +++++++++++++
- include/linux/nfs_fs.h |  1 +
- 3 files changed, 15 insertions(+), 1 deletion(-)
+ fs/nfs/pagelist.c        | 28 +++++++++++++++++++---------
+ include/linux/nfs_page.h | 15 +++++++++++++++
+ 2 files changed, 34 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index d8ec889a4b3f..8704bd071d3a 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -469,7 +469,7 @@ static int nfs_launder_folio(struct folio *folio)
- 		inode->i_ino, folio_pos(folio));
- 
- 	folio_wait_fscache(folio);
--	return nfs_wb_page(inode, &folio->page);
-+	return nfs_wb_folio(inode, folio);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 174462722266..16c146ca7ffc 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -1084,6 +1084,24 @@ static bool nfs_match_lock_context(const struct nfs_lock_context *l1,
+ 	return l1->lockowner == l2->lockowner;
  }
  
- static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 1cbb92824791..c80a57801b2e 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -2106,6 +2106,19 @@ int nfs_wb_page(struct inode *inode, struct page *page)
- 	return ret;
++static bool nfs_page_is_contiguous(const struct nfs_page *prev,
++				   const struct nfs_page *req)
++{
++	size_t prev_end = prev->wb_pgbase + prev->wb_bytes;
++
++	if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
++		return false;
++	if (req->wb_pgbase == 0)
++		return prev_end == nfs_page_max_length(prev);
++	if (req->wb_pgbase == prev_end) {
++		struct folio *folio = nfs_page_to_folio(req);
++		if (folio)
++			return folio == nfs_page_to_folio(prev);
++		return req->wb_page == prev->wb_page;
++	}
++	return false;
++}
++
+ /**
+  * nfs_coalesce_size - test two requests for compatibility
+  * @prev: pointer to nfs_page
+@@ -1112,16 +1130,8 @@ static unsigned int nfs_coalesce_size(struct nfs_page *prev,
+ 		    !nfs_match_lock_context(req->wb_lock_context,
+ 					    prev->wb_lock_context))
+ 			return 0;
+-		if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
++		if (!nfs_page_is_contiguous(prev, req))
+ 			return 0;
+-		if (req->wb_page == prev->wb_page) {
+-			if (req->wb_pgbase != prev->wb_pgbase + prev->wb_bytes)
+-				return 0;
+-		} else {
+-			if (req->wb_pgbase != 0 ||
+-			    prev->wb_pgbase + prev->wb_bytes != PAGE_SIZE)
+-				return 0;
+-		}
+ 	}
+ 	return pgio->pg_ops->pg_test(pgio, prev, req);
+ }
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index d2ddc9a594c5..192071a6e5f6 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -189,6 +189,21 @@ static inline struct page *nfs_page_to_page(const struct nfs_page *req,
+ 	return folio_page(folio, pgbase >> PAGE_SHIFT);
  }
  
 +/**
-+ * nfs_wb_folio - Write back all requests on one page
-+ * @inode: pointer to page
-+ * @folio: pointer to folio
++ * nfs_page_max_length - Retrieve the maximum possible length for a request
++ * @req: pointer to a struct nfs_page
 + *
-+ * Assumes that the folio has been locked by the caller, and will
-+ * not unlock it.
++ * Returns the maximum possible length of a request
 + */
-+int nfs_wb_folio(struct inode *inode, struct folio *folio)
++static inline size_t nfs_page_max_length(const struct nfs_page *req)
 +{
-+	return nfs_wb_page(inode, &folio->page);
++	struct folio *folio = nfs_page_to_folio(req);
++
++	if (folio == NULL)
++		return PAGE_SIZE;
++	return folio_size(folio);
 +}
 +
- #ifdef CONFIG_MIGRATION
- int nfs_migrate_folio(struct address_space *mapping, struct folio *dst,
- 		struct folio *src, enum migrate_mode mode)
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index d92fdfd2444c..66b5de42f6b8 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -578,6 +578,7 @@ extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned
+ /*
+  * Lock the page of an asynchronous request
   */
- extern int nfs_sync_inode(struct inode *inode);
- extern int nfs_wb_all(struct inode *inode);
-+extern int nfs_wb_folio(struct inode *inode, struct folio *folio);
- extern int nfs_wb_page(struct inode *inode, struct page *page);
- int nfs_wb_folio_cancel(struct inode *inode, struct folio *folio);
- extern int  nfs_commit_inode(struct inode *, int);
 -- 
 2.39.0
 
