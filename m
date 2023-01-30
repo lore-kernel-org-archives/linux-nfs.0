@@ -2,50 +2,60 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 61752C54EED
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Jan 2023 16:00:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FA34C636D4
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Jan 2023 16:04:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236079AbjA3QAZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Jan 2023 11:00:25 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38264 "EHLO
+        id S236123AbjA3QET (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Jan 2023 11:04:19 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42838 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236037AbjA3QAY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2023 11:00:24 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F8E916ACC
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jan 2023 07:59:27 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1675094367;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=fl/jnHLwbhnLse2jT7+4Lzwh9labRex05wjKl7Xvb60=;
-        b=gUxjsG1G1D7HfolJB+eshOMQ1MvubymiPheM9BvW5imzV6qudFS3pgub5cgZBDbO1fdNCm
-        oIqu1YgBP80LZ7Mc/B2jiA4OpioYnDCObAaBmiWWahKZxQrUKi9QrjSXfoMfTcsnM8yYaU
-        dAl8uvyQlRESNySblXX6q8ljwgLpPEA=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-441-0OMBsTb3NwqemUKDMrnO3w-1; Mon, 30 Jan 2023 10:59:24 -0500
-X-MC-Unique: 0OMBsTb3NwqemUKDMrnO3w-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        with ESMTP id S230365AbjA3QES (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2023 11:04:18 -0500
+X-Greylist: delayed 470 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Mon, 30 Jan 2023 08:04:16 PST
+Received: from mx.cjr.nz (mx.cjr.nz [51.158.111.142])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 716E311156;
+        Mon, 30 Jan 2023 08:04:16 -0800 (PST)
+Received: from authenticated-user (mx.cjr.nz [51.158.111.142])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange ECDHE (P-384) server-signature RSA-PSS (4096 bits) server-digest SHA256)
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 2E1F5858F09;
-        Mon, 30 Jan 2023 15:59:22 +0000 (UTC)
-Received: from warthog.procyon.org.uk (unknown [10.33.36.97])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 310581121314;
-        Mon, 30 Jan 2023 15:59:20 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-From:   David Howells <dhowells@redhat.com>
-In-Reply-To: <20230130092157.1759539-12-hch@lst.de>
-References: <20230130092157.1759539-12-hch@lst.de> <20230130092157.1759539-1-hch@lst.de>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     dhowells@redhat.com
-Cc:     Marc Dionne <marc.dionne@auristor.com>,
+        (Authenticated sender: pc)
+        by mx.cjr.nz (Postfix) with ESMTPSA id AF6077FC21;
+        Mon, 30 Jan 2023 15:56:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=cjr.nz; s=dkim;
+        t=1675094184;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=9mWu6waa/eExAxYRUAnoTwItAGCpuazH4rLKqgG96C8=;
+        b=IUWRXB4ZfZFvP08TAcu46IaSIPcqcOXTl56O8WHSQOaAhhkIQ9u88zYSEpIN2pbiC4jpac
+        jwGLtOnkbS+BV6uGbYvUTH2ghLzufe3qfEFRbAHRz9p2wIlhENt9DpUj0oE60tlK+yywCT
+        paOb0uNIIGHUk9S0XG3mYKsUFRPaYkoUgAjTvyhLEVU5Z9Cvmu7NO+rjrH2opN+EgEjgFa
+        fnzP4VIRAyAwr2ru+CZp9aX3dvfrMSXIvEWmaEh/hC29vO//ntKkMtDT6T0I20V2zRFjSn
+        4AWbxuRM00n7wzPS9dmDdPu7fsBiZbJIvRcLAZa39v75gFyA93kfj3o+j2QjPg==
+From:   Paulo Alcantara <pc@cjr.nz>
+To:     Christoph Hellwig <hch@lst.de>, Jens Axboe <axboe@kernel.dk>
+Cc:     Ilya Dryomov <idryomov@gmail.com>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Jason Wang <jasowang@redhat.com>,
+        Minchan Kim <minchan@kernel.org>,
+        Sergey Senozhatsky <senozhatsky@chromium.org>,
+        Keith Busch <kbusch@kernel.org>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Chaitanya Kulkarni <kch@nvidia.com>,
+        "Martin K. Petersen" <martin.petersen@oracle.com>,
+        David Howells <dhowells@redhat.com>,
+        Marc Dionne <marc.dionne@auristor.com>,
+        Xiubo Li <xiubli@redhat.com>, Steve French <sfrench@samba.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>,
+        Mike Marshall <hubcap@omnibond.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>,
+        Jakub Kicinski <kuba@kernel.org>,
+        Paolo Abeni <pabeni@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
         linux-block@vger.kernel.org, ceph-devel@vger.kernel.org,
         virtualization@lists.linux-foundation.org,
         linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
@@ -55,22 +65,28 @@ Cc:     Marc Dionne <marc.dionne@auristor.com>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         devel@lists.orangefs.org, io-uring@vger.kernel.org,
         linux-mm@kvack.org
-Subject: Re: [PATCH 11/23] afs: use bvec_set_folio to initialize a bvec
+Subject: Re: [PATCH 13/23] cifs: use bvec_set_page to initialize bvecs
+In-Reply-To: <20230130092157.1759539-14-hch@lst.de>
+References: <20230130092157.1759539-1-hch@lst.de>
+ <20230130092157.1759539-14-hch@lst.de>
+Date:   Mon, 30 Jan 2023 12:56:16 -0300
+Message-ID: <87357shv8f.fsf@cjr.nz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <3499903.1675094359.1@warthog.procyon.org.uk>
-Date:   Mon, 30 Jan 2023 15:59:19 +0000
-Message-ID: <3499904.1675094359@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.3
+Content-Type: text/plain
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Christoph Hellwig <hch@lst.de> wrote:
+Christoph Hellwig <hch@lst.de> writes:
 
-> Use the bvec_set_folio helper to initialize a bvec.
-> 
+> Use the bvec_set_page helper to initialize bvecs.
+>
 > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/cifs/connect.c |  5 +++--
+>  fs/cifs/fscache.c | 16 ++++++----------
+>  fs/cifs/misc.c    |  5 ++---
+>  fs/cifs/smb2ops.c |  6 +++---
+>  4 files changed, 14 insertions(+), 18 deletions(-)
 
-Acked-by: David Howells <dhowells@redhat.com>
-
+Acked-by: Paulo Alcantara (SUSE) <pc@cjr.nz>
