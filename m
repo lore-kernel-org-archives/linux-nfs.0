@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 635C7C636D0
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Jan 2023 09:24:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E2F7C63797
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Jan 2023 09:24:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236366AbjA3JY1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Jan 2023 04:24:27 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55200 "EHLO
+        id S236397AbjA3JYb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Jan 2023 04:24:31 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55160 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236272AbjA3JXx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2023 04:23:53 -0500
+        with ESMTP id S235715AbjA3JYI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2023 04:24:08 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D5602E0F8;
-        Mon, 30 Jan 2023 01:23:42 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B80142ED4D;
+        Mon, 30 Jan 2023 01:23:46 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=XDfcoA74qOtLlz6Ut59rzJtve2ldu9xHyLCMcbUY/Oo=; b=OgkjW81TDHvAcnBp1OyM32+W/S
-        3oA+IGAhTs4+vZdR/o48Ij+SB0Mx1Y/QS9FiMH5r84BRBLpL/54HGso+aZEzF/84bkUbwuofGhP7Z
-        nvFOcSmHAH/LO0aV6yY2v7BtwuRJLG2rvOazlNbKJzjMoUmEfeQYI/KlAPPTEi4RauZOurW6Z894Z
-        vUKafSeqW4KYNjJqh0g7kW6030Q/kKV4JDyv9GqmHEnrdZ5A9nelGsxZrulz41/x4viDOTYLmTnqb
-        4YEgYRA6fqcF5fWbjr/HLjzA4an+c08QAu/9E2twuy65Arpumtz7RfapltAv927tfRdBiz0p0pZCH
-        jyUloR7g==;
+        bh=waVJAjm2FM0jvuh0ozqoP97gMNRNVBgPKhaSSg5Yxhg=; b=QTYv8MI6OQAM8sT2MzrC8lgZb2
+        L7Ft8VBeI/rYi4wvdhNRIkk+89gbjy9aIv1X4usSq3UcRbM2VqLo2MpOUC+5qfxyguvoWKr5GHx64
+        tYSYgh1k523R3StIKwtgPkxLbHoU0OskEf2l+H4ySafLO43GnmfafqNMYzVkxE+/8/4poWzaTQ/lp
+        lqbYjeu9vuT/c1tSwraqQ+I68EOddD4ZaKS3cKZcGo/Z7QETCvghPhHpksAPizeLr7o5lXtEdKHIo
+        O5+0BsnFwGf+zWUiSaEhgD41XRRwmBfnaknYFcKCzkYl5E0zbVQ6v339RIqSGz2riXL0D2RB56RfS
+        qRVU0BNA==;
 Received: from [2001:4bb8:19a:272a:732e:e417:47d7:2f4a] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pMQMq-002o52-VT; Mon, 30 Jan 2023 09:22:25 +0000
+        id 1pMQN4-002oBB-0G; Mon, 30 Jan 2023 09:22:38 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Ilya Dryomov <idryomov@gmail.com>,
@@ -59,9 +59,9 @@ Cc:     Ilya Dryomov <idryomov@gmail.com>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         devel@lists.orangefs.org, io-uring@vger.kernel.org,
         linux-mm@kvack.org
-Subject: [PATCH 06/23] nvmet: use bvec_set_page to initialize bvecs
-Date:   Mon, 30 Jan 2023 10:21:40 +0100
-Message-Id: <20230130092157.1759539-7-hch@lst.de>
+Subject: [PATCH 11/23] afs: use bvec_set_folio to initialize a bvec
+Date:   Mon, 30 Jan 2023 10:21:45 +0100
+Message-Id: <20230130092157.1759539-12-hch@lst.de>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230130092157.1759539-1-hch@lst.de>
 References: <20230130092157.1759539-1-hch@lst.de>
@@ -72,58 +72,39 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use the bvec_set_page helper to initialize bvecs.
+Use the bvec_set_folio helper to initialize a bvec.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/nvme/target/io-cmd-file.c | 10 ++--------
- drivers/nvme/target/tcp.c         |  5 ++---
- 2 files changed, 4 insertions(+), 11 deletions(-)
+ fs/afs/write.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/drivers/nvme/target/io-cmd-file.c b/drivers/nvme/target/io-cmd-file.c
-index 871c4f32f443f5..2d068439b129c5 100644
---- a/drivers/nvme/target/io-cmd-file.c
-+++ b/drivers/nvme/target/io-cmd-file.c
-@@ -73,13 +73,6 @@ int nvmet_file_ns_enable(struct nvmet_ns *ns)
- 	return ret;
- }
- 
--static void nvmet_file_init_bvec(struct bio_vec *bv, struct scatterlist *sg)
--{
--	bv->bv_page = sg_page(sg);
--	bv->bv_offset = sg->offset;
--	bv->bv_len = sg->length;
--}
--
- static ssize_t nvmet_file_submit_bvec(struct nvmet_req *req, loff_t pos,
- 		unsigned long nr_segs, size_t count, int ki_flags)
+diff --git a/fs/afs/write.c b/fs/afs/write.c
+index 19df10d63323d8..2d17891b618e6e 100644
+--- a/fs/afs/write.c
++++ b/fs/afs/write.c
+@@ -992,7 +992,7 @@ int afs_launder_folio(struct folio *folio)
  {
-@@ -146,7 +139,8 @@ static bool nvmet_file_execute_io(struct nvmet_req *req, int ki_flags)
+ 	struct afs_vnode *vnode = AFS_FS_I(folio_inode(folio));
+ 	struct iov_iter iter;
+-	struct bio_vec bv[1];
++	struct bio_vec bv;
+ 	unsigned long priv;
+ 	unsigned int f, t;
+ 	int ret = 0;
+@@ -1008,10 +1008,8 @@ int afs_launder_folio(struct folio *folio)
+ 			t = afs_folio_dirty_to(folio, priv);
+ 		}
  
- 	memset(&req->f.iocb, 0, sizeof(struct kiocb));
- 	for_each_sg(req->sg, sg, req->sg_cnt, i) {
--		nvmet_file_init_bvec(&req->f.bvec[bv_cnt], sg);
-+		bvec_set_page(&req->f.bvec[bv_cnt], sg_page(sg), sg->length,
-+			      sg->offset);
- 		len += req->f.bvec[bv_cnt].bv_len;
- 		total_len += req->f.bvec[bv_cnt].bv_len;
- 		bv_cnt++;
-diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
-index cc05c094de221d..c5759eb503d004 100644
---- a/drivers/nvme/target/tcp.c
-+++ b/drivers/nvme/target/tcp.c
-@@ -321,9 +321,8 @@ static void nvmet_tcp_build_pdu_iovec(struct nvmet_tcp_cmd *cmd)
- 	while (length) {
- 		u32 iov_len = min_t(u32, length, sg->length - sg_offset);
+-		bv[0].bv_page = &folio->page;
+-		bv[0].bv_offset = f;
+-		bv[0].bv_len = t - f;
+-		iov_iter_bvec(&iter, ITER_SOURCE, bv, 1, bv[0].bv_len);
++		bvec_set_folio(&bv, folio, t - f, f);
++		iov_iter_bvec(&iter, ITER_SOURCE, &bv, 1, bv.bv_len);
  
--		iov->bv_page = sg_page(sg);
--		iov->bv_len = sg->length;
--		iov->bv_offset = sg->offset + sg_offset;
-+		bvec_set_page(iov, sg_page(sg), sg->length,
-+				sg->offset + sg_offset);
- 
- 		length -= iov_len;
- 		sg = sg_next(sg);
+ 		trace_afs_folio_dirty(vnode, tracepoint_string("launder"), folio);
+ 		ret = afs_store_data(vnode, &iter, folio_pos(folio) + f, true);
 -- 
 2.39.0
 
