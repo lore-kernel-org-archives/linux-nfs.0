@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DA3BBC61DA4
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Jan 2023 09:24:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 98A05C64EC3
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Jan 2023 09:24:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236309AbjA3JYC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Jan 2023 04:24:02 -0500
+        id S236341AbjA3JY0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Jan 2023 04:24:26 -0500
 Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55158 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236216AbjA3JXn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2023 04:23:43 -0500
+        with ESMTP id S236277AbjA3JXx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2023 04:23:53 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A74822BF3F;
-        Mon, 30 Jan 2023 01:23:37 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0DFB62DE79;
+        Mon, 30 Jan 2023 01:23:43 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=mraJ0dlvK0XwWYXGT0DcPLxhMI+ORe9CMkm05FoHT2s=; b=xOHsjob9PMRyKJ4ILlqtTtT2a1
-        BSDOhN5jc440njcpUba2nJJn4oWzHKlh5DYh9s2DBTQtSytoXVfg4egryfmJiUwA01qRqHZMyDpJp
-        k41/6F52tAyqKs8+FJOHLgI6idVUYxVWw63f6ikxbMTvsonHwp2rvU8xER17XbkQQKwuPuEorYONu
-        lBoFR+e+It6xCOx7b04q0jrJemUo+IGk3r0FJ+y3wfCceEClP5rP1JfvxWkw6DvlJRuxLS8JZSWNH
-        vd36DpSVg9AJW+qEayHR4sasRkMheP1AdnGvgFgKp2vugbGtPTxQCn4k0/VQoq9AZDuR9Q9Nfmonk
-        fGtYvRqg==;
+        bh=PasJ3iDfX2TllVLQ6e7N8/T+ZQHWRBi9Mi0fIgNsQxA=; b=SyOpTX9CZKgu/mdg93Px99ohqU
+        lpY5+Plpyd7Zy3mO80AFoiDBWvs4Fx74nS7dp1CeTeZRYGYVgZlN3xShKOlsqOHMR8YDIfD97TAOl
+        i6DuUXOwtd+Qsu7XWKS9q2lROG9nFii2MJjf2cIawTQo8pmmmRvWWh3yI3j64SspCOd4hOaDYQT59
+        IxVhU3Tj/X05Ke06JXfdsywRjVOFjJJT2OqUrGdoAw1YlbWzSVrtgtw54YyS4zmtMPEU8NVcbK/29
+        hwDgey6wC2KTsvdLDoGO0KUy407IzJh0Nss1p0gnq5DmSbrdtNR41EirSVoNLrufaOEJ9Q1DMff9S
+        /WQX3d/Q==;
 Received: from [2001:4bb8:19a:272a:732e:e417:47d7:2f4a] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pMQMo-002o3h-6D; Mon, 30 Jan 2023 09:22:22 +0000
+        id 1pMQMw-002o87-6w; Mon, 30 Jan 2023 09:22:30 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Ilya Dryomov <idryomov@gmail.com>,
@@ -59,9 +59,9 @@ Cc:     Ilya Dryomov <idryomov@gmail.com>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         devel@lists.orangefs.org, io-uring@vger.kernel.org,
         linux-mm@kvack.org
-Subject: [PATCH 05/23] target: use bvec_set_page to initialize bvecs
-Date:   Mon, 30 Jan 2023 10:21:39 +0100
-Message-Id: <20230130092157.1759539-6-hch@lst.de>
+Subject: [PATCH 08/23] rbd: use bvec_set_page to initialize the copy up bvec
+Date:   Mon, 30 Jan 2023 10:21:42 +0100
+Message-Id: <20230130092157.1759539-9-hch@lst.de>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230130092157.1759539-1-hch@lst.de>
 References: <20230130092157.1759539-1-hch@lst.de>
@@ -72,54 +72,32 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use the bvec_set_page helper to initialize bvecs.
+Use the bvec_set_page helper to initialize the copy up bvec.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- drivers/target/target_core_file.c | 18 ++++++------------
- 1 file changed, 6 insertions(+), 12 deletions(-)
+ drivers/block/rbd.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/target/target_core_file.c b/drivers/target/target_core_file.c
-index fd584111da45c0..ce0e000b74fc39 100644
---- a/drivers/target/target_core_file.c
-+++ b/drivers/target/target_core_file.c
-@@ -281,10 +281,8 @@ fd_execute_rw_aio(struct se_cmd *cmd, struct scatterlist *sgl, u32 sgl_nents,
- 		return TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
+diff --git a/drivers/block/rbd.c b/drivers/block/rbd.c
+index 04453f4a319cb4..1faca7e07a4d52 100644
+--- a/drivers/block/rbd.c
++++ b/drivers/block/rbd.c
+@@ -3068,13 +3068,12 @@ static int setup_copyup_bvecs(struct rbd_obj_request *obj_req, u64 obj_overlap)
  
- 	for_each_sg(sgl, sg, sgl_nents, i) {
--		aio_cmd->bvecs[i].bv_page = sg_page(sg);
--		aio_cmd->bvecs[i].bv_len = sg->length;
--		aio_cmd->bvecs[i].bv_offset = sg->offset;
--
-+		bvec_set_page(&aio_cmd->bvecs[i], sg_page(sg), sg->length,
-+			      sg->offset);
- 		len += sg->length;
- 	}
+ 	for (i = 0; i < obj_req->copyup_bvec_count; i++) {
+ 		unsigned int len = min(obj_overlap, (u64)PAGE_SIZE);
++		struct page *page = alloc_page(GFP_NOIO);
  
-@@ -329,10 +327,7 @@ static int fd_do_rw(struct se_cmd *cmd, struct file *fd,
- 	}
+-		obj_req->copyup_bvecs[i].bv_page = alloc_page(GFP_NOIO);
+-		if (!obj_req->copyup_bvecs[i].bv_page)
++		if (!page)
+ 			return -ENOMEM;
  
- 	for_each_sg(sgl, sg, sgl_nents, i) {
--		bvec[i].bv_page = sg_page(sg);
--		bvec[i].bv_len = sg->length;
--		bvec[i].bv_offset = sg->offset;
--
-+		bvec_set_page(&bvec[i], sg_page(sg), sg->length, sg->offset);
- 		len += sg->length;
- 	}
- 
-@@ -465,10 +460,9 @@ fd_execute_write_same(struct se_cmd *cmd)
- 		return TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
- 
- 	for (i = 0; i < nolb; i++) {
--		bvec[i].bv_page = sg_page(&cmd->t_data_sg[0]);
--		bvec[i].bv_len = cmd->t_data_sg[0].length;
--		bvec[i].bv_offset = cmd->t_data_sg[0].offset;
--
-+		bvec_set_page(&bvec[i], sg_page(&cmd->t_data_sg[0]),
-+			      cmd->t_data_sg[0].length,
-+			      cmd->t_data_sg[0].offset);
- 		len += se_dev->dev_attrib.block_size;
+-		obj_req->copyup_bvecs[i].bv_offset = 0;
+-		obj_req->copyup_bvecs[i].bv_len = len;
++		bvec_set_page(&obj_req->copyup_bvecs[i], page, len, 0);
+ 		obj_overlap -= len;
  	}
  
 -- 
