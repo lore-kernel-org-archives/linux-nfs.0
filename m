@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3439CC6379F
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Jan 2023 09:27:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D3FBC64EC3
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Jan 2023 09:26:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236416AbjA3J07 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Jan 2023 04:26:59 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56470 "EHLO
+        id S236407AbjA3J06 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Jan 2023 04:26:58 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56466 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235799AbjA3J0E (ORCPT
+        with ESMTP id S235715AbjA3J0E (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2023 04:26:04 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 995582ED56;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB66D2ED6B;
         Mon, 30 Jan 2023 01:24:35 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=h+lHe/qj9+NLcJnalyqirfAInpcSjbUKRj83r5gu0OY=; b=iooTsOLVmKIL/ixriJ6M6N2zLV
-        p0LtPYaHnApKmXktbqYtS1iBIChQE//OrkhC9BejFL6iJyQ/YmCmQDM8IAHebGZsoPcKwlLZFMT6R
-        rmqaY+v+wb+eMH9qR7ttcCPmX0HX3khYu/Xo5mViFs4Pott9I6Qn4V7/eQhFdGYEfQf3kZxzqLfY/
-        ev81DRGCJKNL78EcC5Kfpr1hFkfI1lCJxwKAWUZqu6xN1RHdEsT32y8265Um+OWOJ7Io++V+ve2Ny
-        seVOYj7SyoEnFycVFd1I/7fULPH30U/wlBRK5hBih4Dqubnzz1z+BiP1/3J2Sqawgs4/K9IzZt99x
-        qcn9+TEQ==;
+        bh=dTKHKRVOiZxguFuEK9aGNi2iPJtbueeyhuxlyEfvmCc=; b=wzIp3onDl/KPC46x1A0YIq1Xgv
+        pLhGrvY44JnhOswmbbuq0C74GTtpD3NrGPGojelKqVhVrEtEHiT0r+0GqLI674H8NYmqrsjLFirf7
+        hxfIK2wy6mGDx+vW+7kxehEbXYx61tyh5ddfQ2sDWTZ8P+aqq3sAxKLx5dO+abQ5AgZ3wH3ypXvXn
+        W4rogyKTenvu0Hx+os5CHbAny1dwMRc5siT1LGqrIQjUGlLIS2K4Qdrxxms4i7Hay4qAxuoHIcFaQ
+        cV5dj8wvsDa40CtrThXkbt/1gf+lggW0MJrJVur/nmMxpKsYC04bclV31iCc4pQafNHFKt3te144P
+        gGQ8S6RA==;
 Received: from [2001:4bb8:19a:272a:732e:e417:47d7:2f4a] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pMQNa-002oMU-Kp; Mon, 30 Jan 2023 09:23:11 +0000
+        id 1pMQNT-002oJi-4d; Mon, 30 Jan 2023 09:23:03 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Ilya Dryomov <idryomov@gmail.com>,
@@ -59,9 +59,9 @@ Cc:     Ilya Dryomov <idryomov@gmail.com>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         devel@lists.orangefs.org, io-uring@vger.kernel.org,
         linux-mm@kvack.org
-Subject: [PATCH 19/23] swap: use bvec_set_page to initialize bvecs
-Date:   Mon, 30 Jan 2023 10:21:53 +0100
-Message-Id: <20230130092157.1759539-20-hch@lst.de>
+Subject: [PATCH 17/23] splice: use bvec_set_page to initialize a bvec
+Date:   Mon, 30 Jan 2023 10:21:51 +0100
+Message-Id: <20230130092157.1759539-18-hch@lst.de>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230130092157.1759539-1-hch@lst.de>
 References: <20230130092157.1759539-1-hch@lst.de>
@@ -72,39 +72,29 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use the bvec_set_page helper to initialize bvecs.
+Use the bvec_set_page helper to initialize a bvec.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- mm/page_io.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ fs/splice.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/mm/page_io.c b/mm/page_io.c
-index 3a5f921b932e82..233f6e6eb1c508 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -318,9 +318,7 @@ static int swap_writepage_fs(struct page *page, struct writeback_control *wbc)
- 		sio->pages = 0;
- 		sio->len = 0;
- 	}
--	sio->bvec[sio->pages].bv_page = page;
--	sio->bvec[sio->pages].bv_len = thp_size(page);
--	sio->bvec[sio->pages].bv_offset = 0;
-+	bvec_set_page(&sio->bvec[sio->pages], page, thp_size(page), 0);
- 	sio->len += thp_size(page);
- 	sio->pages += 1;
- 	if (sio->pages == ARRAY_SIZE(sio->bvec) || !wbc->swap_plug) {
-@@ -432,9 +430,7 @@ static void swap_readpage_fs(struct page *page,
- 		sio->pages = 0;
- 		sio->len = 0;
- 	}
--	sio->bvec[sio->pages].bv_page = page;
--	sio->bvec[sio->pages].bv_len = thp_size(page);
--	sio->bvec[sio->pages].bv_offset = 0;
-+	bvec_set_page(&sio->bvec[sio->pages], page, thp_size(page), 0);
- 	sio->len += thp_size(page);
- 	sio->pages += 1;
- 	if (sio->pages == ARRAY_SIZE(sio->bvec) || !plug) {
+diff --git a/fs/splice.c b/fs/splice.c
+index 5969b7a1d353a8..87d9b19349de63 100644
+--- a/fs/splice.c
++++ b/fs/splice.c
+@@ -675,9 +675,8 @@ iter_file_splice_write(struct pipe_inode_info *pipe, struct file *out,
+ 				goto done;
+ 			}
+ 
+-			array[n].bv_page = buf->page;
+-			array[n].bv_len = this_len;
+-			array[n].bv_offset = buf->offset;
++			bvec_set_page(&array[n], buf->page, this_len,
++				      buf->offset);
+ 			left -= this_len;
+ 			n++;
+ 		}
 -- 
 2.39.0
 
