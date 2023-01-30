@@ -2,50 +2,25 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E680C54EAA
-	for <linux-nfs@archiver.kernel.org>; Mon, 30 Jan 2023 10:32:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 59723C63797
+	for <linux-nfs@archiver.kernel.org>; Mon, 30 Jan 2023 10:33:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235666AbjA3Kc2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 30 Jan 2023 05:32:28 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57856 "EHLO
+        id S236275AbjA3Kdv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 30 Jan 2023 05:33:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59614 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235365AbjA3Kc1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2023 05:32:27 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C9B8030EB4
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jan 2023 02:31:38 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1675074697;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=CICRFAbCzChYD1znyWS61qGZqh3HfSsIj8zLg6AqEXc=;
-        b=HhMBL2OVIWGdUBBpUd586RlByU8Y+uJ1CR0XnAO1af47tA8iBbs76FX0qcgdMQIXXk3FSG
-        7LDZ2A4xnvGxRvbjK6OWuHTSz+YZdgw5lD+7ah4/kyThNT5Ot+GJwSKpohj4h/ISiPmVLn
-        w2TaG4mbrDhP1yfG7Ni3HNZWHBU07yw=
-Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
- [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-107-m7rZ0bd0PKa4hu7tOJYsfA-1; Mon, 30 Jan 2023 05:31:27 -0500
-X-MC-Unique: m7rZ0bd0PKa4hu7tOJYsfA-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 408462999B26;
-        Mon, 30 Jan 2023 10:31:26 +0000 (UTC)
-Received: from warthog.procyon.org.uk (unknown [10.33.36.97])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 4AA28C15BAD;
-        Mon, 30 Jan 2023 10:31:24 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-From:   David Howells <dhowells@redhat.com>
-In-Reply-To: <20230130092157.1759539-21-hch@lst.de>
-References: <20230130092157.1759539-21-hch@lst.de> <20230130092157.1759539-1-hch@lst.de>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     dhowells@redhat.com
-Cc:     linux-block@vger.kernel.org, ceph-devel@vger.kernel.org,
+        with ESMTP id S235321AbjA3Kdt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jan 2023 05:33:49 -0500
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7CB429B;
+        Mon, 30 Jan 2023 02:33:47 -0800 (PST)
+Received: by verein.lst.de (Postfix, from userid 2407)
+        id A6F2268D06; Mon, 30 Jan 2023 11:33:43 +0100 (CET)
+Date:   Mon, 30 Jan 2023 11:33:43 +0100
+From:   Christoph Hellwig <hch@lst.de>
+To:     David Howells <dhowells@redhat.com>
+Cc:     Christoph Hellwig <hch@lst.de>, linux-block@vger.kernel.org,
+        ceph-devel@vger.kernel.org,
         virtualization@lists.linux-foundation.org,
         linux-nvme@lists.infradead.org, linux-scsi@vger.kernel.org,
         target-devel@vger.kernel.org, kvm@vger.kernel.org,
@@ -55,21 +30,22 @@ Cc:     linux-block@vger.kernel.org, ceph-devel@vger.kernel.org,
         devel@lists.orangefs.org, io-uring@vger.kernel.org,
         linux-mm@kvack.org
 Subject: Re: [PATCH 20/23] rxrpc: use bvec_set_page to initialize a bvec
+Message-ID: <20230130103343.GA11663@lst.de>
+References: <20230130092157.1759539-21-hch@lst.de> <20230130092157.1759539-1-hch@lst.de> <3347459.1675074683@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <3347458.1675074683.1@warthog.procyon.org.uk>
-Date:   Mon, 30 Jan 2023 10:31:23 +0000
-Message-ID: <3347459.1675074683@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.8
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <3347459.1675074683@warthog.procyon.org.uk>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Christoph Hellwig <hch@lst.de> wrote:
+On Mon, Jan 30, 2023 at 10:31:23AM +0000, David Howells wrote:
+> Christoph Hellwig <hch@lst.de> wrote:
+> 
+> > +		bvec_set_page(&bv, ZERO_PAGE(0), len, 0);
+> 
+> Maybe bvec_set_zero_page()?
 
-> +		bvec_set_page(&bv, ZERO_PAGE(0), len, 0);
-
-Maybe bvec_set_zero_page()?
-
-David
-
+Why?
