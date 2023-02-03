@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1A4F4C64ED6
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Feb 2023 15:07:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C2A72C64EC3
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Feb 2023 15:07:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233855AbjBCPHl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Feb 2023 10:07:41 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47894 "EHLO
+        id S233867AbjBCPHm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 3 Feb 2023 10:07:42 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47896 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233752AbjBCPHc (ORCPT
+        with ESMTP id S233749AbjBCPHc (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2023 10:07:32 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 090CDA0EA5;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 27E3BA2A4B;
         Fri,  3 Feb 2023 07:07:31 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
-        Content-ID:Content-Description:In-Reply-To:References;
-        bh=xaXfHvtmirT//H/Mo9JZTCfopwE0ARO2STlU1q4PXIU=; b=LwFg4o7FNRjNvzeL1UIeY+PB30
-        pigk8LO6ghAV/PW8A2diZklP7ONPkf/QuZ1j8F2QHoj76RmFvj/Q8pZxLQNZCU995h2ds4C/fgoU6
-        vJrgHAy3JyTeMQU3sBiEJ2k75Q4WOqSb0agWbK9kpPxrkSUpCMcMfqkAl8xQSVnMiGJsWds5MEA0/
-        ttVela2LE/82AgMzn2QpTZPgzNm+u+iJUJj6KJXJcu0gz4sOsbBmYQNi3tJoXH33FBOPEsxVAF/p5
-        5brK/jfAn9M2GdavX3Sg69iNnol9jENDgRqr7idObKYZRPtBjJSz+TRjAv8KvwNM3XfV2T+AE+LX+
-        QYoCj3mg==;
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=i8uz5/Cr3yI4AKad2Qe+HNOvXzb51PMMHxDJaU9rAgw=; b=s4yrPDzVMBpi6l0+EETwcbHIFv
+        2xwcbaenQAG3iI5OovZK8STydd1dXIrGWK8akwiQeQc2RIPwmHAQ3tB2YwFvPQAvHmMaIfIucx7Zp
+        ajCj3SDxghdOlCv370eNnsuOoiH8YZgL2rB/Cifv8UVmXFYQH6UlD0uleebs0+/Lp4g3yoat0NQTP
+        3i4Ky2rvVCEbWtE/DFAD0kzDmDDcPhmnQe69wiJFwjPi1Kk71QZJfJKGcGt7gJuRlLjYYYrRMvnfN
+        FFYd2dyKm+M7lYhIqCJrAgzbIeZRKknEymVkn8XFqgs4xeMmPgxEo3i4PzL6eEbspvJoriHHKn7qw
+        v2H1dBXw==;
 Received: from [2001:4bb8:19a:272a:910:bb67:7287:f956] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pNxe8-002abR-B0; Fri, 03 Feb 2023 15:06:36 +0000
+        id 1pNxeH-002aen-LR; Fri, 03 Feb 2023 15:06:46 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Ilya Dryomov <idryomov@gmail.com>,
@@ -58,11 +58,13 @@ Cc:     Ilya Dryomov <idryomov@gmail.com>,
         linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         devel@lists.orangefs.org, io-uring@vger.kernel.org,
-        linux-mm@kvack.org
-Subject: add bvec initialization helpers v2
-Date:   Fri,  3 Feb 2023 16:06:11 +0100
-Message-Id: <20230203150634.3199647-1-hch@lst.de>
+        linux-mm@kvack.org, Johannes Thumshirn <johannes.thumshirn@wdc.com>
+Subject: [PATCH 03/23] block: add a bvec_set_virt helper
+Date:   Fri,  3 Feb 2023 16:06:14 +0100
+Message-Id: <20230203150634.3199647-4-hch@lst.de>
 X-Mailer: git-send-email 2.39.0
+In-Reply-To: <20230203150634.3199647-1-hch@lst.de>
+References: <20230203150634.3199647-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
@@ -70,45 +72,39 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi all,
+A small wrapper around bvec_set_page for callers that have a virtual
+address.
 
-this series adds the helpers to initalize a bvec.  These remove open coding of
-bvec internals and help with experimenting with other representations like
-a phys_addr_t instead of page + offset.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Chaitanya Kulkarni <kch@nvidia.com>
+Reviewed-by: Johannes Thumshirn <johannes.thumshirn@wdc.com>
+---
+ include/linux/bvec.h | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
-Changes since v1:
- - fix a typo
- - simplify the code in ceph's __iter_get_bvecs a little bit further
- - fix two subject prefixes
+diff --git a/include/linux/bvec.h b/include/linux/bvec.h
+index 2bae1134499e7f..f2d22931f3030a 100644
+--- a/include/linux/bvec.h
++++ b/include/linux/bvec.h
+@@ -63,6 +63,18 @@ static inline void bvec_set_folio(struct bio_vec *bv, struct folio *folio,
+ 	bvec_set_page(bv, &folio->page, len, offset);
+ }
+ 
++/**
++ * bvec_set_virt - initialize a bvec based on a virtual address
++ * @bv:		bvec to initialize
++ * @vaddr:	virtual address to set the bvec to
++ * @len:	length of the bvec
++ */
++static inline void bvec_set_virt(struct bio_vec *bv, void *vaddr,
++		unsigned int len)
++{
++	bvec_set_page(bv, virt_to_page(vaddr), len, offset_in_page(vaddr));
++}
++
+ struct bvec_iter {
+ 	sector_t		bi_sector;	/* device address in 512 byte
+ 						   sectors */
+-- 
+2.39.0
 
-Diffstat:
- block/bio-integrity.c             |    7 ------
- block/bio.c                       |   12 +----------
- drivers/block/rbd.c               |    7 ++----
- drivers/block/virtio_blk.c        |    4 ---
- drivers/block/zram/zram_drv.c     |   15 +++-----------
- drivers/nvme/host/core.c          |    4 ---
- drivers/nvme/target/io-cmd-file.c |   10 +--------
- drivers/nvme/target/tcp.c         |    5 +---
- drivers/scsi/sd.c                 |   36 ++++++++++++++++------------------
- drivers/target/target_core_file.c |   18 +++++------------
- drivers/vhost/vringh.c            |    5 +---
- fs/afs/write.c                    |    8 ++-----
- fs/ceph/file.c                    |   12 +++--------
- fs/cifs/connect.c                 |    5 ++--
- fs/cifs/fscache.c                 |   16 +++++----------
- fs/cifs/misc.c                    |    5 +---
- fs/cifs/smb2ops.c                 |    6 ++---
- fs/coredump.c                     |    7 +-----
- fs/nfs/fscache.c                  |   16 +++++----------
- fs/orangefs/inode.c               |   22 ++++++--------------
- fs/splice.c                       |    5 +---
- include/linux/bvec.h              |   40 ++++++++++++++++++++++++++++++++++++++
- io_uring/rsrc.c                   |    4 ---
- mm/page_io.c                      |    8 +------
- net/ceph/messenger_v1.c           |    7 +-----
- net/ceph/messenger_v2.c           |   28 ++++++++++----------------
- net/rxrpc/rxperf.c                |    8 ++-----
- net/sunrpc/svcsock.c              |    7 +-----
- net/sunrpc/xdr.c                  |    5 +---
- 29 files changed, 142 insertions(+), 190 deletions(-)
