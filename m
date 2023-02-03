@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D846EC6FA95
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Feb 2023 15:08:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A91FC05027
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Feb 2023 15:09:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234114AbjBCPId (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Feb 2023 10:08:33 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48764 "EHLO
+        id S234182AbjBCPJD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 3 Feb 2023 10:09:03 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48894 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234008AbjBCPIL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2023 10:08:11 -0500
+        with ESMTP id S234044AbjBCPIQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2023 10:08:16 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E14471EFF9;
-        Fri,  3 Feb 2023 07:08:08 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 973472B288;
+        Fri,  3 Feb 2023 07:08:13 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=dnA485lnPdqu9fRBS2qkCU3tICV+bOtSo2Jj04+TH0Y=; b=Fr2nVID34QDUltwq0bImkCeDcO
-        /+q6hVRTezRnWD5cp1Mt8wSzR/8lRaNN26QLIzpNwWbueekXAbFKEYoVgwcbDX2xmbETrpybVdFvq
-        qckHbNtD9VLXkwDO8SNcKq8lvYBhiXJr2ALEUy5RbTaChn5QTA/Z6DCFTv4Zkq6K9v7KJu1VCB6Re
-        CVRtkwXX337WesOCBDtZMPzjTxDB7Z/AObQg8qfemm5wGp90YF61h2quDouspw0vBMUrHG46AIt9u
-        jHsBTrclwFPo+jFVAuFu3TRmQnJP2IFco6pruc0D1NUcJz8lug0gER+d9PHihFfSuj858y9ENZCW3
-        YwwUYTxg==;
+        bh=uz6cImhGgWSk/8TF7+WqwepdT+RhrZkOFTZ89jD8wXQ=; b=dqg23m12BEZIc+VFHWEdK49td8
+        EzPqHiaHBxtaecy8a4y8X9KmXahOdKp7jg+9tm4y17ceS5EUXi5Y0rhCFXCtwp5Y4fT6iz3WzLfXa
+        8PMeu0NJ+HoX4bd9cUb3vyguqPBAoG2V965H7JO5JZzulxx7QDX6LV1oL9vux38/jBcuxW/wn81F8
+        gblVm9QyYHoW0PQgRVWTrZyfQv2cWAnrvyZDrY5Y6XUcuq5wTO1C6nBYkE7G/Mnop4FcH7hL6puPI
+        5A7ewzCc4B45vJ7Vm0+43q0skGlxyWrXRnZrnfWC6wrYcc/Irn3LYyGNLzN48X/EmQ8CB1bkD2V1Q
+        Emla/aRA==;
 Received: from [2001:4bb8:19a:272a:910:bb67:7287:f956] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pNxex-002b3m-Rl; Fri, 03 Feb 2023 15:07:28 +0000
+        id 1pNxf7-002bBR-Ve; Fri, 03 Feb 2023 15:07:38 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Ilya Dryomov <idryomov@gmail.com>,
@@ -59,9 +59,9 @@ Cc:     Ilya Dryomov <idryomov@gmail.com>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         devel@lists.orangefs.org, io-uring@vger.kernel.org,
         linux-mm@kvack.org
-Subject: [PATCH 15/23] nfs: use bvec_set_page to initialize bvecs
-Date:   Fri,  3 Feb 2023 16:06:26 +0100
-Message-Id: <20230203150634.3199647-16-hch@lst.de>
+Subject: [PATCH 18/23] io_uring: use bvec_set_page to initialize a bvec
+Date:   Fri,  3 Feb 2023 16:06:29 +0100
+Message-Id: <20230203150634.3199647-19-hch@lst.de>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230203150634.3199647-1-hch@lst.de>
 References: <20230203150634.3199647-1-hch@lst.de>
@@ -72,56 +72,29 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use the bvec_set_page helper to initialize bvecs.
+Use the bvec_set_page helper to initialize a bvec.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Acked-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Reviewed-by: Chaitanya Kulkarni <kch@nvidia.com>
 ---
- fs/nfs/fscache.c | 16 ++++++----------
- 1 file changed, 6 insertions(+), 10 deletions(-)
+ io_uring/rsrc.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index e731c00a9fcbc3..ea5f2976dfaba4 100644
---- a/fs/nfs/fscache.c
-+++ b/fs/nfs/fscache.c
-@@ -245,14 +245,12 @@ static int fscache_fallback_read_page(struct inode *inode, struct page *page)
- 	struct netfs_cache_resources cres;
- 	struct fscache_cookie *cookie = nfs_i_fscache(inode);
- 	struct iov_iter iter;
--	struct bio_vec bvec[1];
-+	struct bio_vec bvec;
- 	int ret;
+diff --git a/io_uring/rsrc.c b/io_uring/rsrc.c
+index 18de10c68a151b..a59fc02de5983c 100644
+--- a/io_uring/rsrc.c
++++ b/io_uring/rsrc.c
+@@ -1237,9 +1237,7 @@ static int io_sqe_buffer_register(struct io_ring_ctx *ctx, struct iovec *iov,
+ 		size_t vec_len;
  
- 	memset(&cres, 0, sizeof(cres));
--	bvec[0].bv_page		= page;
--	bvec[0].bv_offset	= 0;
--	bvec[0].bv_len		= PAGE_SIZE;
--	iov_iter_bvec(&iter, ITER_DEST, bvec, ARRAY_SIZE(bvec), PAGE_SIZE);
-+	bvec_set_page(&bvec, page, PAGE_SIZE, 0);
-+	iov_iter_bvec(&iter, ITER_DEST, &bvec, 1, PAGE_SIZE);
- 
- 	ret = fscache_begin_read_operation(&cres, cookie);
- 	if (ret < 0)
-@@ -273,16 +271,14 @@ static int fscache_fallback_write_page(struct inode *inode, struct page *page,
- 	struct netfs_cache_resources cres;
- 	struct fscache_cookie *cookie = nfs_i_fscache(inode);
- 	struct iov_iter iter;
--	struct bio_vec bvec[1];
-+	struct bio_vec bvec;
- 	loff_t start = page_offset(page);
- 	size_t len = PAGE_SIZE;
- 	int ret;
- 
- 	memset(&cres, 0, sizeof(cres));
--	bvec[0].bv_page		= page;
--	bvec[0].bv_offset	= 0;
--	bvec[0].bv_len		= PAGE_SIZE;
--	iov_iter_bvec(&iter, ITER_SOURCE, bvec, ARRAY_SIZE(bvec), PAGE_SIZE);
-+	bvec_set_page(&bvec, page, PAGE_SIZE, 0);
-+	iov_iter_bvec(&iter, ITER_SOURCE, &bvec, 1, PAGE_SIZE);
- 
- 	ret = fscache_begin_write_operation(&cres, cookie);
- 	if (ret < 0)
+ 		vec_len = min_t(size_t, size, PAGE_SIZE - off);
+-		imu->bvec[i].bv_page = pages[i];
+-		imu->bvec[i].bv_len = vec_len;
+-		imu->bvec[i].bv_offset = off;
++		bvec_set_page(&imu->bvec[i], pages[i], vec_len, off);
+ 		off = 0;
+ 		size -= vec_len;
+ 	}
 -- 
 2.39.0
 
