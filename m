@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2CC57C64EC7
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Feb 2023 15:08:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D846EC6FA95
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Feb 2023 15:08:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234109AbjBCPId (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S234114AbjBCPId (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 3 Feb 2023 10:08:33 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48128 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48764 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233915AbjBCPHx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2023 10:07:53 -0500
+        with ESMTP id S234008AbjBCPIL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2023 10:08:11 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A0D738D62A;
-        Fri,  3 Feb 2023 07:07:51 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E14471EFF9;
+        Fri,  3 Feb 2023 07:08:08 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=2ivuZdJU66fGeGNrDCSX2XtHVJq8+h1pLMvYDbA6wQ8=; b=QSfgGBAh+EXZxzz/Xx6bibyovx
-        8Nrgb07oWFXF7SI+3wqJ/enmvP8hFHc6hUi3sA6GWv5A6dP7fcYPg732hEG/Jv2/jgoMcNgX6QddE
-        Klux6y3fIgLzUgx2tQwUDLRbjwR42AzjGvRy3d+zXy8gseAM9WJfDA8waCftfZvGrqDwKbb421JO+
-        A7KmM+t82WMvPJd60uQmgjS17we9cGNrkQfjYtCxBhWbUJkld5d206L4xTBajgBh6O8m/iXqiwdQ5
-        Cvd+cDQIEMDIlKCNI2qXlOITbs0hvvqOAEaly0PMreLcEnepGH9pQ2ba/Ud+fBJ4c0tY614+rY/Gv
-        8MQKv9iw==;
+        bh=dnA485lnPdqu9fRBS2qkCU3tICV+bOtSo2Jj04+TH0Y=; b=Fr2nVID34QDUltwq0bImkCeDcO
+        /+q6hVRTezRnWD5cp1Mt8wSzR/8lRaNN26QLIzpNwWbueekXAbFKEYoVgwcbDX2xmbETrpybVdFvq
+        qckHbNtD9VLXkwDO8SNcKq8lvYBhiXJr2ALEUy5RbTaChn5QTA/Z6DCFTv4Zkq6K9v7KJu1VCB6Re
+        CVRtkwXX337WesOCBDtZMPzjTxDB7Z/AObQg8qfemm5wGp90YF61h2quDouspw0vBMUrHG46AIt9u
+        jHsBTrclwFPo+jFVAuFu3TRmQnJP2IFco6pruc0D1NUcJz8lug0gER+d9PHihFfSuj858y9ENZCW3
+        YwwUYTxg==;
 Received: from [2001:4bb8:19a:272a:910:bb67:7287:f956] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pNxef-002ar9-Df; Fri, 03 Feb 2023 15:07:10 +0000
+        id 1pNxex-002b3m-Rl; Fri, 03 Feb 2023 15:07:28 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Ilya Dryomov <idryomov@gmail.com>,
@@ -58,10 +58,10 @@ Cc:     Ilya Dryomov <idryomov@gmail.com>,
         linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         devel@lists.orangefs.org, io-uring@vger.kernel.org,
-        linux-mm@kvack.org, Johannes Thumshirn <johannes.thumshirn@wdc.com>
-Subject: [PATCH 10/23] zram: use bvec_set_page to initialize bvecs
-Date:   Fri,  3 Feb 2023 16:06:21 +0100
-Message-Id: <20230203150634.3199647-11-hch@lst.de>
+        linux-mm@kvack.org
+Subject: [PATCH 15/23] nfs: use bvec_set_page to initialize bvecs
+Date:   Fri,  3 Feb 2023 16:06:26 +0100
+Message-Id: <20230203150634.3199647-16-hch@lst.de>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230203150634.3199647-1-hch@lst.de>
 References: <20230203150634.3199647-1-hch@lst.de>
@@ -75,53 +75,53 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 Use the bvec_set_page helper to initialize bvecs.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Sergey Senozhatsky <senozhatsky@chromium.org>
-Reviewed-by: Johannes Thumshirn <johannes.thumshirn@wdc.com>
+Acked-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- drivers/block/zram/zram_drv.c | 15 ++++-----------
- 1 file changed, 4 insertions(+), 11 deletions(-)
+ fs/nfs/fscache.c | 16 ++++++----------
+ 1 file changed, 6 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/block/zram/zram_drv.c b/drivers/block/zram/zram_drv.c
-index e290d6d970474e..bd8ae4822dc3ef 100644
---- a/drivers/block/zram/zram_drv.c
-+++ b/drivers/block/zram/zram_drv.c
-@@ -703,9 +703,7 @@ static ssize_t writeback_store(struct device *dev,
- 	for (; nr_pages != 0; index++, nr_pages--) {
- 		struct bio_vec bvec;
- 
--		bvec.bv_page = page;
--		bvec.bv_len = PAGE_SIZE;
--		bvec.bv_offset = 0;
-+		bvec_set_page(&bvec, page, PAGE_SIZE, 0);
- 
- 		spin_lock(&zram->wb_limit_lock);
- 		if (zram->wb_limit_enable && !zram->bd_wb_limit) {
-@@ -1380,12 +1378,9 @@ static void zram_free_page(struct zram *zram, size_t index)
- static int zram_bvec_read_from_bdev(struct zram *zram, struct page *page,
- 				    u32 index, struct bio *bio, bool partial_io)
- {
--	struct bio_vec bvec = {
--		.bv_page = page,
--		.bv_len = PAGE_SIZE,
--		.bv_offset = 0,
--	};
+diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
+index e731c00a9fcbc3..ea5f2976dfaba4 100644
+--- a/fs/nfs/fscache.c
++++ b/fs/nfs/fscache.c
+@@ -245,14 +245,12 @@ static int fscache_fallback_read_page(struct inode *inode, struct page *page)
+ 	struct netfs_cache_resources cres;
+ 	struct fscache_cookie *cookie = nfs_i_fscache(inode);
+ 	struct iov_iter iter;
+-	struct bio_vec bvec[1];
 +	struct bio_vec bvec;
+ 	int ret;
  
+ 	memset(&cres, 0, sizeof(cres));
+-	bvec[0].bv_page		= page;
+-	bvec[0].bv_offset	= 0;
+-	bvec[0].bv_len		= PAGE_SIZE;
+-	iov_iter_bvec(&iter, ITER_DEST, bvec, ARRAY_SIZE(bvec), PAGE_SIZE);
 +	bvec_set_page(&bvec, page, PAGE_SIZE, 0);
- 	return read_from_bdev(zram, &bvec, zram_get_element(zram, index), bio,
- 			      partial_io);
- }
-@@ -1652,9 +1647,7 @@ static int zram_bvec_write(struct zram *zram, struct bio_vec *bvec,
- 		memcpy_from_bvec(dst + offset, bvec);
- 		kunmap_atomic(dst);
++	iov_iter_bvec(&iter, ITER_DEST, &bvec, 1, PAGE_SIZE);
  
--		vec.bv_page = page;
--		vec.bv_len = PAGE_SIZE;
--		vec.bv_offset = 0;
-+		bvec_set_page(&vec, page, PAGE_SIZE, 0);
- 	}
+ 	ret = fscache_begin_read_operation(&cres, cookie);
+ 	if (ret < 0)
+@@ -273,16 +271,14 @@ static int fscache_fallback_write_page(struct inode *inode, struct page *page,
+ 	struct netfs_cache_resources cres;
+ 	struct fscache_cookie *cookie = nfs_i_fscache(inode);
+ 	struct iov_iter iter;
+-	struct bio_vec bvec[1];
++	struct bio_vec bvec;
+ 	loff_t start = page_offset(page);
+ 	size_t len = PAGE_SIZE;
+ 	int ret;
  
- 	ret = __zram_bvec_write(zram, &vec, index, bio);
+ 	memset(&cres, 0, sizeof(cres));
+-	bvec[0].bv_page		= page;
+-	bvec[0].bv_offset	= 0;
+-	bvec[0].bv_len		= PAGE_SIZE;
+-	iov_iter_bvec(&iter, ITER_SOURCE, bvec, ARRAY_SIZE(bvec), PAGE_SIZE);
++	bvec_set_page(&bvec, page, PAGE_SIZE, 0);
++	iov_iter_bvec(&iter, ITER_SOURCE, &bvec, 1, PAGE_SIZE);
+ 
+ 	ret = fscache_begin_write_operation(&cres, cookie);
+ 	if (ret < 0)
 -- 
 2.39.0
 
