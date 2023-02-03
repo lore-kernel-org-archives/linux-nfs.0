@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5483CC6FA95
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Feb 2023 15:07:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 29113C6FD1F
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Feb 2023 15:07:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233872AbjBCPHn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Feb 2023 10:07:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47900 "EHLO
+        id S233903AbjBCPHu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 3 Feb 2023 10:07:50 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47916 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233776AbjBCPHc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2023 10:07:32 -0500
+        with ESMTP id S233857AbjBCPHl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2023 10:07:41 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2BF36A2A51;
-        Fri,  3 Feb 2023 07:07:31 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2FBCAA2A51;
+        Fri,  3 Feb 2023 07:07:37 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=0dnvJ4/YC2qBSRJoUXjkVbZEbeJtTI76nFk14xqdiQw=; b=jThz1+8n2gvxR38Zi9f42VmE45
-        A0CQMmeY4zEOFyZVpnGrj7P3ElL65WJv08LoA8qb4oLRV9x/A+fETre1KW3oI0WTHrjKsgFn+udP9
-        s8a7hrQusDgbFYCjIl78yvwptpj2jEEGnKDDzqCGq/bYeCWCTdbYIGBEdQ6rFkqzFD5JMgegY/DME
-        2+tmqE2azh6NMd1kOiaut0xU3w249YI9lKsJhI7VvYjZLGRpGu26md2fN2faz+WSsNcmtIb3zqiwu
-        pTf6YtHpE9SOvDbM4uz3U03Q9zSNtoPuZYSLX0u2MBqlOX+a5b/Mm5OP0GBEkpqNc/X1qmsSVgNln
-        AYxdeXlw==;
+        bh=qOELs8Cf+3DRHH4YZ5i8Y7BY08du3RSg74OTiYB5sHQ=; b=aF5Qbqrg1yclOtyaI4gTKBWydF
+        RggQAyGRBco620c8Fi869LlPO2pe8evEIqDoV1ozOXdNfytn1MRinE/6QYY5k2oPlPJhB01no6VtD
+        eldvco5iwWgUqJuF6Ln9UEwZNa6v1GVbT/6Kwoxq6v6E47EA3+X0x/5UWmfkwWrsPlCary6PtwIur
+        8CI+Wl9GP1YyGgxKum6MPQS4lap8xnIx1Ov95K0LpqVrUkLoMLragJkM0cWq7Yw5U2U5JFh4+zQgw
+        adzFS91VzTwjl1q4AJys+nyWOqDq0dqD/Ug/qOVE9Xw8ZapK+WSEj6v0Tc7w/kwwgNzmawXYW/9S4
+        JiaBbcyQ==;
 Received: from [2001:4bb8:19a:272a:910:bb67:7287:f956] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pNxeB-002ac4-UN; Fri, 03 Feb 2023 15:06:40 +0000
+        id 1pNxeR-002aju-IY; Fri, 03 Feb 2023 15:06:56 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Ilya Dryomov <idryomov@gmail.com>,
@@ -59,9 +59,9 @@ Cc:     Ilya Dryomov <idryomov@gmail.com>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         devel@lists.orangefs.org, io-uring@vger.kernel.org,
         linux-mm@kvack.org, Johannes Thumshirn <johannes.thumshirn@wdc.com>
-Subject: [PATCH 01/23] block: factor out a bvec_set_page helper
-Date:   Fri,  3 Feb 2023 16:06:12 +0100
-Message-Id: <20230203150634.3199647-2-hch@lst.de>
+Subject: [PATCH 06/23] nvmet: use bvec_set_page to initialize bvecs
+Date:   Fri,  3 Feb 2023 16:06:17 +0100
+Message-Id: <20230203150634.3199647-7-hch@lst.de>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230203150634.3199647-1-hch@lst.de>
 References: <20230203150634.3199647-1-hch@lst.de>
@@ -72,106 +72,60 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a helper to initialize a bvec based of a page pointer.  This will help
-removing various open code bvec initializations.
+Use the bvec_set_page helper to initialize bvecs.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Chaitanya Kulkarni <kch@nvidia.com>
 Reviewed-by: Johannes Thumshirn <johannes.thumshirn@wdc.com>
 ---
- block/bio-integrity.c |  7 +------
- block/bio.c           | 12 ++----------
- include/linux/bvec.h  | 15 +++++++++++++++
- 3 files changed, 18 insertions(+), 16 deletions(-)
+ drivers/nvme/target/io-cmd-file.c | 10 ++--------
+ drivers/nvme/target/tcp.c         |  5 ++---
+ 2 files changed, 4 insertions(+), 11 deletions(-)
 
-diff --git a/block/bio-integrity.c b/block/bio-integrity.c
-index 3f5685c00e360b..a3776064c52a16 100644
---- a/block/bio-integrity.c
-+++ b/block/bio-integrity.c
-@@ -124,23 +124,18 @@ int bio_integrity_add_page(struct bio *bio, struct page *page,
- 			   unsigned int len, unsigned int offset)
- {
- 	struct bio_integrity_payload *bip = bio_integrity(bio);
--	struct bio_vec *iv;
- 
- 	if (bip->bip_vcnt >= bip->bip_max_vcnt) {
- 		printk(KERN_ERR "%s: bip_vec full\n", __func__);
- 		return 0;
- 	}
- 
--	iv = bip->bip_vec + bip->bip_vcnt;
--
- 	if (bip->bip_vcnt &&
- 	    bvec_gap_to_prev(&bdev_get_queue(bio->bi_bdev)->limits,
- 			     &bip->bip_vec[bip->bip_vcnt - 1], offset))
- 		return 0;
- 
--	iv->bv_page = page;
--	iv->bv_len = len;
--	iv->bv_offset = offset;
-+	bvec_set_page(&bip->bip_vec[bip->bip_vcnt], page, len, offset);
- 	bip->bip_vcnt++;
- 
- 	return len;
-diff --git a/block/bio.c b/block/bio.c
-index d7fbc7adfc50aa..71e411a0c12950 100644
---- a/block/bio.c
-+++ b/block/bio.c
-@@ -1029,10 +1029,7 @@ int bio_add_hw_page(struct request_queue *q, struct bio *bio,
- 	if (bio->bi_vcnt >= queue_max_segments(q))
- 		return 0;
- 
--	bvec = &bio->bi_io_vec[bio->bi_vcnt];
--	bvec->bv_page = page;
--	bvec->bv_len = len;
--	bvec->bv_offset = offset;
-+	bvec_set_page(&bio->bi_io_vec[bio->bi_vcnt], page, len, offset);
- 	bio->bi_vcnt++;
- 	bio->bi_iter.bi_size += len;
- 	return len;
-@@ -1108,15 +1105,10 @@ EXPORT_SYMBOL_GPL(bio_add_zone_append_page);
- void __bio_add_page(struct bio *bio, struct page *page,
- 		unsigned int len, unsigned int off)
- {
--	struct bio_vec *bv = &bio->bi_io_vec[bio->bi_vcnt];
--
- 	WARN_ON_ONCE(bio_flagged(bio, BIO_CLONED));
- 	WARN_ON_ONCE(bio_full(bio, len));
- 
--	bv->bv_page = page;
--	bv->bv_offset = off;
--	bv->bv_len = len;
--
-+	bvec_set_page(&bio->bi_io_vec[bio->bi_vcnt], page, len, off);
- 	bio->bi_iter.bi_size += len;
- 	bio->bi_vcnt++;
+diff --git a/drivers/nvme/target/io-cmd-file.c b/drivers/nvme/target/io-cmd-file.c
+index 871c4f32f443f5..2d068439b129c5 100644
+--- a/drivers/nvme/target/io-cmd-file.c
++++ b/drivers/nvme/target/io-cmd-file.c
+@@ -73,13 +73,6 @@ int nvmet_file_ns_enable(struct nvmet_ns *ns)
+ 	return ret;
  }
-diff --git a/include/linux/bvec.h b/include/linux/bvec.h
-index 35c25dff651a5e..9e3dac51eb26b6 100644
---- a/include/linux/bvec.h
-+++ b/include/linux/bvec.h
-@@ -35,6 +35,21 @@ struct bio_vec {
- 	unsigned int	bv_offset;
- };
  
-+/**
-+ * bvec_set_page - initialize a bvec based off a struct page
-+ * @bv:		bvec to initialize
-+ * @page:	page the bvec should point to
-+ * @len:	length of the bvec
-+ * @offset:	offset into the page
-+ */
-+static inline void bvec_set_page(struct bio_vec *bv, struct page *page,
-+		unsigned int len, unsigned int offset)
-+{
-+	bv->bv_page = page;
-+	bv->bv_len = len;
-+	bv->bv_offset = offset;
-+}
-+
- struct bvec_iter {
- 	sector_t		bi_sector;	/* device address in 512 byte
- 						   sectors */
+-static void nvmet_file_init_bvec(struct bio_vec *bv, struct scatterlist *sg)
+-{
+-	bv->bv_page = sg_page(sg);
+-	bv->bv_offset = sg->offset;
+-	bv->bv_len = sg->length;
+-}
+-
+ static ssize_t nvmet_file_submit_bvec(struct nvmet_req *req, loff_t pos,
+ 		unsigned long nr_segs, size_t count, int ki_flags)
+ {
+@@ -146,7 +139,8 @@ static bool nvmet_file_execute_io(struct nvmet_req *req, int ki_flags)
+ 
+ 	memset(&req->f.iocb, 0, sizeof(struct kiocb));
+ 	for_each_sg(req->sg, sg, req->sg_cnt, i) {
+-		nvmet_file_init_bvec(&req->f.bvec[bv_cnt], sg);
++		bvec_set_page(&req->f.bvec[bv_cnt], sg_page(sg), sg->length,
++			      sg->offset);
+ 		len += req->f.bvec[bv_cnt].bv_len;
+ 		total_len += req->f.bvec[bv_cnt].bv_len;
+ 		bv_cnt++;
+diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
+index cc05c094de221d..c5759eb503d004 100644
+--- a/drivers/nvme/target/tcp.c
++++ b/drivers/nvme/target/tcp.c
+@@ -321,9 +321,8 @@ static void nvmet_tcp_build_pdu_iovec(struct nvmet_tcp_cmd *cmd)
+ 	while (length) {
+ 		u32 iov_len = min_t(u32, length, sg->length - sg_offset);
+ 
+-		iov->bv_page = sg_page(sg);
+-		iov->bv_len = sg->length;
+-		iov->bv_offset = sg->offset + sg_offset;
++		bvec_set_page(iov, sg_page(sg), sg->length,
++				sg->offset + sg_offset);
+ 
+ 		length -= iov_len;
+ 		sg = sg_next(sg);
 -- 
 2.39.0
 
