@@ -2,31 +2,31 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B873AC6FD1E
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Feb 2023 15:07:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C24D5C64EC5
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Feb 2023 15:08:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233942AbjBCPH4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Feb 2023 10:07:56 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47934 "EHLO
+        id S233914AbjBCPIM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 3 Feb 2023 10:08:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48064 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233803AbjBCPHf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2023 10:07:35 -0500
+        with ESMTP id S233902AbjBCPHu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Feb 2023 10:07:50 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EBEA2A2A70;
-        Fri,  3 Feb 2023 07:07:33 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6A24E8D403;
+        Fri,  3 Feb 2023 07:07:49 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=yYE/od14GoUSfS3SrqxEgI5AwVsNpiRxxWihLgbj1lM=; b=U7gHGI4+jFww+bLgY2qB+UJ4Eb
-        YA2OMvfnZAc5GIuqbs0dC0b5/ypXraaHVc3zXOzYoz92nlDl6cc9tfrbD8QiR5RuddFZ/24vxgEs3
-        tAQvsBOWvRR4DnM/Ts7iPycHDqB8SLxXBlwRo2qrTh3FfGjdSgSWlLXk/MAT7/txciVBFyq66zTF6
-        7jbBNwJc5NB1VF8aIBvk7ciGc/6w/kjvXfgX7GT/MIdD5VzKXBo9WHkJeCcWHzlVRUL3orKCIcveH
-        k3IsETytcOcYa4M7MebhZowmCK48eVnfXowJXtyuxT4UQQZueio9wZREhVWDQtXDqeIGzpsaH3iWh
-        VhCYEFnw==;
+        bh=81B+gzWiKP3dSyMHoEpejaF7sEqhUPFohDfKzzK3URY=; b=SHYAKMQ+SwVUyLVeypwgrT8ITx
+        8OWSemfR3V1d5j1KVncg4YVuObwfg9Pbi32h+XryiQ6gJs4IZtST1Vv4iZ2hrbDVmjo3gmEVm7+ex
+        RoPBp7jp/JuF4fa7BxH5vi1oAhRP7/Aw3jj0MJzqlpyt6AFJ90fRZah2qP7iO5Fa4hS+QXNBJM5G2
+        2fhU4cv9RjOoRb6A67sOeOJMRUWrq9yBLqOOwdzXIP7dYjqfyd7J8G4jWqM9LgJLyWvy41xt0Qfgo
+        kGvvzQfyRIhnon9F7XkqbVma6W8zGAQfkAjRNuTkqVxLf+emMmW/6xjo5W4e00BEBjjlcCfn2iZAf
+        UBeI/ApA==;
 Received: from [2001:4bb8:19a:272a:910:bb67:7287:f956] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pNxeO-002aht-77; Fri, 03 Feb 2023 15:06:52 +0000
+        id 1pNxeb-002apl-U8; Fri, 03 Feb 2023 15:07:06 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Ilya Dryomov <idryomov@gmail.com>,
@@ -59,9 +59,9 @@ Cc:     Ilya Dryomov <idryomov@gmail.com>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         devel@lists.orangefs.org, io-uring@vger.kernel.org,
         linux-mm@kvack.org
-Subject: [PATCH 05/23] target: use bvec_set_page to initialize bvecs
-Date:   Fri,  3 Feb 2023 16:06:16 +0100
-Message-Id: <20230203150634.3199647-6-hch@lst.de>
+Subject: [PATCH 09/23] virtio_blk: use bvec_set_virt to initialize special_vec
+Date:   Fri,  3 Feb 2023 16:06:20 +0100
+Message-Id: <20230203150634.3199647-10-hch@lst.de>
 X-Mailer: git-send-email 2.39.0
 In-Reply-To: <20230203150634.3199647-1-hch@lst.de>
 References: <20230203150634.3199647-1-hch@lst.de>
@@ -72,57 +72,31 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use the bvec_set_page helper to initialize bvecs.
+Use the bvec_set_virt helper to initialize the special_vec.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Chaitanya Kulkarni <kch@nvidia.com>
+Acked-by: Michael S. Tsirkin <mst@redhat.com>
+Acked-by: Jason Wang <jasowang@redhat.com>
 ---
- drivers/target/target_core_file.c | 18 ++++++------------
- 1 file changed, 6 insertions(+), 12 deletions(-)
+ drivers/block/virtio_blk.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/drivers/target/target_core_file.c b/drivers/target/target_core_file.c
-index fd584111da45c0..ce0e000b74fc39 100644
---- a/drivers/target/target_core_file.c
-+++ b/drivers/target/target_core_file.c
-@@ -281,10 +281,8 @@ fd_execute_rw_aio(struct se_cmd *cmd, struct scatterlist *sgl, u32 sgl_nents,
- 		return TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
+diff --git a/drivers/block/virtio_blk.c b/drivers/block/virtio_blk.c
+index 6a77fa91742880..dc6e9b989910b0 100644
+--- a/drivers/block/virtio_blk.c
++++ b/drivers/block/virtio_blk.c
+@@ -170,9 +170,7 @@ static int virtblk_setup_discard_write_zeroes_erase(struct request *req, bool un
  
- 	for_each_sg(sgl, sg, sgl_nents, i) {
--		aio_cmd->bvecs[i].bv_page = sg_page(sg);
--		aio_cmd->bvecs[i].bv_len = sg->length;
--		aio_cmd->bvecs[i].bv_offset = sg->offset;
--
-+		bvec_set_page(&aio_cmd->bvecs[i], sg_page(sg), sg->length,
-+			      sg->offset);
- 		len += sg->length;
- 	}
+ 	WARN_ON_ONCE(n != segments);
  
-@@ -329,10 +327,7 @@ static int fd_do_rw(struct se_cmd *cmd, struct file *fd,
- 	}
+-	req->special_vec.bv_page = virt_to_page(range);
+-	req->special_vec.bv_offset = offset_in_page(range);
+-	req->special_vec.bv_len = sizeof(*range) * segments;
++	bvec_set_virt(&req->special_vec, range, sizeof(*range) * segments);
+ 	req->rq_flags |= RQF_SPECIAL_PAYLOAD;
  
- 	for_each_sg(sgl, sg, sgl_nents, i) {
--		bvec[i].bv_page = sg_page(sg);
--		bvec[i].bv_len = sg->length;
--		bvec[i].bv_offset = sg->offset;
--
-+		bvec_set_page(&bvec[i], sg_page(sg), sg->length, sg->offset);
- 		len += sg->length;
- 	}
- 
-@@ -465,10 +460,9 @@ fd_execute_write_same(struct se_cmd *cmd)
- 		return TCM_LOGICAL_UNIT_COMMUNICATION_FAILURE;
- 
- 	for (i = 0; i < nolb; i++) {
--		bvec[i].bv_page = sg_page(&cmd->t_data_sg[0]);
--		bvec[i].bv_len = cmd->t_data_sg[0].length;
--		bvec[i].bv_offset = cmd->t_data_sg[0].offset;
--
-+		bvec_set_page(&bvec[i], sg_page(&cmd->t_data_sg[0]),
-+			      cmd->t_data_sg[0].length,
-+			      cmd->t_data_sg[0].offset);
- 		len += se_dev->dev_attrib.block_size;
- 	}
- 
+ 	return 0;
 -- 
 2.39.0
 
