@@ -2,35 +2,34 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E33FEC64ED8
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 40220C6379F
 	for <linux-nfs@archiver.kernel.org>; Sat, 11 Feb 2023 03:32:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229481AbjBKDcn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229689AbjBKDcn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 10 Feb 2023 22:32:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46362 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46352 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229597AbjBKDcm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2023 22:32:42 -0500
+        with ESMTP id S229455AbjBKDcl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2023 22:32:41 -0500
 Received: from todd.t-8ch.de (todd.t-8ch.de [159.69.126.157])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AC7363A088;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 107E83A080;
         Fri, 10 Feb 2023 19:32:41 -0800 (PST)
 From:   =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=weissschuh.net;
         s=mail; t=1676086359;
-        bh=gzBuoXGq9tQc5AaxNhk1VWOvumRFnGBblnycbvJWyFk=;
-        h=From:Subject:Date:To:Cc:From;
-        b=WYNsqOfKHKuu4lC79pCVMNesQpvp0pK1J+qFFrhoCXy/5YctOa2IJE/MM5Dn36nbj
-         WItVOR/PAHwH+rBqNbIv7GJbzfVyo74LLYMgyfp/ifN5JF2DVayKM4kPEdcwSmiQeL
-         nJ2AeK2q0WmLSPwp5EROdwaDKoyTmd5XN/2L/kyg=
-Subject: [PATCH 0/3] net: make kobj_type structures constant
-Date:   Sat, 11 Feb 2023 03:32:28 +0000
-Message-Id: <20230211-kobj_type-net-v1-0-e3bdaa5d8a78@weissschuh.net>
+        bh=Dnmm9EisyiwPWuqnhssGEUllu7crqwubee2hNSJAG8M=;
+        h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
+        b=UjNXQ4sAm7gTMcAakOeheIUjKxttHPo9C+4JiCsux7rS5UwNSceKBz3Shzghl6KKu
+         OQhOEHOSPTivXqHhxF63huaf28WpWD1y3OvnSm304qTiT/OrfydCE8paw+1zS9BtBi
+         tlcoz9c31vKJr0p+viUNWg9mSuXcmilCnhgVNVDo=
+Date:   Sat, 11 Feb 2023 03:32:31 +0000
+Subject: [PATCH 3/3] SUNRPC: make kobj_type structures constant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-X-B4-Tracking: v=1; b=H4sIAE0M52MC/x2N4QqCQBAGX0X2dwveGYa9SoTc6WduySp3FoX47
- i3+nIFhNspIgkzXYqOEj2SZ1cCdCurGoA+w9MbkS1+V3jl+zfHZrr8FrFi5aYaLq851QO/Jmhg
- yOKag3WiVvqfJ5JIwyPeY3O77/ge63oVYdAAAAA==
+Message-Id: <20230211-kobj_type-net-v1-3-e3bdaa5d8a78@weissschuh.net>
+References: <20230211-kobj_type-net-v1-0-e3bdaa5d8a78@weissschuh.net>
+In-Reply-To: <20230211-kobj_type-net-v1-0-e3bdaa5d8a78@weissschuh.net>
 To:     Roopa Prabhu <roopa@nvidia.com>,
         Nikolay Aleksandrov <razor@blackwall.org>,
         "David S. Miller" <davem@davemloft.net>,
@@ -45,11 +44,11 @@ Cc:     bridge@lists.linux-foundation.org, netdev@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1676086354; l=856;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1676086354; l=1793;
  i=linux@weissschuh.net; s=20221212; h=from:subject:message-id;
- bh=gzBuoXGq9tQc5AaxNhk1VWOvumRFnGBblnycbvJWyFk=;
- b=xX0CkdDijrUBiNzg6vc3DnLgreltHIv4mngEpLKCXrKvVPpiEB3hy5yPX9JXK4wAPbYk7/OAk
- BcBpw3erVeFCvso6U5P8RezqihnY7RLGCCUIXL2/gM8Y3gAWHyvI3JH
+ bh=Dnmm9EisyiwPWuqnhssGEUllu7crqwubee2hNSJAG8M=;
+ b=onqdqhxHmXHKN3enPa0T1Gz+7MRmxgAzhxlzCohHIJ/hJg/Czxo1RYAbabMEPlV0N+RLZ5GqH
+ xsbzqvl8cG2Bd5xlzMTSFa68hl+5U9j2Z1xgWzALMttXy92f2Ixd6zp
 X-Developer-Key: i=linux@weissschuh.net; a=ed25519;
  pk=KcycQgFPX2wGR5azS7RhpBqedglOZVgRPfdFSPB1LNw=
 Precedence: bulk
@@ -63,22 +62,48 @@ Take advantage of this to constify the structure definitions to prevent
 modification at runtime.
 
 Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
-Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
 ---
-Thomas Weißschuh (3):
-      net: bridge: make kobj_type structure constant
-      net-sysfs: make kobj_type structures constant
-      SUNRPC: make kobj_type structures constant
+ net/sunrpc/sysfs.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
- net/bridge/br_if.c   | 2 +-
- net/core/net-sysfs.c | 4 ++--
- net/sunrpc/sysfs.c   | 8 ++++----
- 3 files changed, 7 insertions(+), 7 deletions(-)
----
-base-commit: 420b2d431d18a2572c8e86579e78105cb5ed45b0
-change-id: 20230211-kobj_type-net-99f71346aed2
+diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
+index 1e05a2d723f4..0d0db4e1064e 100644
+--- a/net/sunrpc/sysfs.c
++++ b/net/sunrpc/sysfs.c
+@@ -36,7 +36,7 @@ rpc_sysfs_object_child_ns_type(const struct kobject *kobj)
+ 	return &net_ns_type_operations;
+ }
+ 
+-static struct kobj_type rpc_sysfs_object_type = {
++static const struct kobj_type rpc_sysfs_object_type = {
+ 	.release = rpc_sysfs_object_release,
+ 	.sysfs_ops = &kobj_sysfs_ops,
+ 	.child_ns_type = rpc_sysfs_object_child_ns_type,
+@@ -427,20 +427,20 @@ static struct attribute *rpc_sysfs_xprt_switch_attrs[] = {
+ };
+ ATTRIBUTE_GROUPS(rpc_sysfs_xprt_switch);
+ 
+-static struct kobj_type rpc_sysfs_client_type = {
++static const struct kobj_type rpc_sysfs_client_type = {
+ 	.release = rpc_sysfs_client_release,
+ 	.sysfs_ops = &kobj_sysfs_ops,
+ 	.namespace = rpc_sysfs_client_namespace,
+ };
+ 
+-static struct kobj_type rpc_sysfs_xprt_switch_type = {
++static const struct kobj_type rpc_sysfs_xprt_switch_type = {
+ 	.release = rpc_sysfs_xprt_switch_release,
+ 	.default_groups = rpc_sysfs_xprt_switch_groups,
+ 	.sysfs_ops = &kobj_sysfs_ops,
+ 	.namespace = rpc_sysfs_xprt_switch_namespace,
+ };
+ 
+-static struct kobj_type rpc_sysfs_xprt_type = {
++static const struct kobj_type rpc_sysfs_xprt_type = {
+ 	.release = rpc_sysfs_xprt_release,
+ 	.default_groups = rpc_sysfs_xprt_groups,
+ 	.sysfs_ops = &kobj_sysfs_ops,
 
-Best regards,
 -- 
-Thomas Weißschuh <linux@weissschuh.net>
+2.39.1
 
