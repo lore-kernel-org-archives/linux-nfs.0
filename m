@@ -2,34 +2,35 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E392AC636D4
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 Feb 2023 03:32:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E33FEC64ED8
+	for <linux-nfs@archiver.kernel.org>; Sat, 11 Feb 2023 03:32:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229598AbjBKDcm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Feb 2023 22:32:42 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46358 "EHLO
+        id S229481AbjBKDcn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 10 Feb 2023 22:32:43 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46362 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229564AbjBKDcm (ORCPT
+        with ESMTP id S229597AbjBKDcm (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2023 22:32:42 -0500
 Received: from todd.t-8ch.de (todd.t-8ch.de [159.69.126.157])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4CE943A082;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AC7363A088;
         Fri, 10 Feb 2023 19:32:41 -0800 (PST)
 From:   =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=weissschuh.net;
         s=mail; t=1676086359;
-        bh=XNGLB3UhxdSqVyS81dpprAvvvxiF/US4JFBcP36WqyI=;
-        h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-        b=TsVKORG2ywrtpfm4DmD/RciB0Q70iniNRqU3YZMfhUrPo8BlVGnjvQD1j18vz6f7C
-         rg4yrkc2aBUmwmp7A+n52xbKwFTa+KYi05N8ajOAY7plh8T/UkEMHwKv0N+hMjoEPc
-         AeRp6bR0fFjXBBtDCga1AjeMqkBWSRiG7AtnZP54=
-Date:   Sat, 11 Feb 2023 03:32:30 +0000
-Subject: [PATCH 2/3] net-sysfs: make kobj_type structures constant
+        bh=gzBuoXGq9tQc5AaxNhk1VWOvumRFnGBblnycbvJWyFk=;
+        h=From:Subject:Date:To:Cc:From;
+        b=WYNsqOfKHKuu4lC79pCVMNesQpvp0pK1J+qFFrhoCXy/5YctOa2IJE/MM5Dn36nbj
+         WItVOR/PAHwH+rBqNbIv7GJbzfVyo74LLYMgyfp/ifN5JF2DVayKM4kPEdcwSmiQeL
+         nJ2AeK2q0WmLSPwp5EROdwaDKoyTmd5XN/2L/kyg=
+Subject: [PATCH 0/3] net: make kobj_type structures constant
+Date:   Sat, 11 Feb 2023 03:32:28 +0000
+Message-Id: <20230211-kobj_type-net-v1-0-e3bdaa5d8a78@weissschuh.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20230211-kobj_type-net-v1-2-e3bdaa5d8a78@weissschuh.net>
-References: <20230211-kobj_type-net-v1-0-e3bdaa5d8a78@weissschuh.net>
-In-Reply-To: <20230211-kobj_type-net-v1-0-e3bdaa5d8a78@weissschuh.net>
+X-B4-Tracking: v=1; b=H4sIAE0M52MC/x2N4QqCQBAGX0X2dwveGYa9SoTc6WduySp3FoX47
+ i3+nIFhNspIgkzXYqOEj2SZ1cCdCurGoA+w9MbkS1+V3jl+zfHZrr8FrFi5aYaLq851QO/Jmhg
+ yOKag3WiVvqfJ5JIwyPeY3O77/ge63oVYdAAAAA==
 To:     Roopa Prabhu <roopa@nvidia.com>,
         Nikolay Aleksandrov <razor@blackwall.org>,
         "David S. Miller" <davem@davemloft.net>,
@@ -44,11 +45,11 @@ Cc:     bridge@lists.linux-foundation.org, netdev@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1676086354; l=1293;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1676086354; l=856;
  i=linux@weissschuh.net; s=20221212; h=from:subject:message-id;
- bh=XNGLB3UhxdSqVyS81dpprAvvvxiF/US4JFBcP36WqyI=;
- b=O08tGpao+GixD5fwjmhZwJyZf4Ds2If3+D7Hs7g4BjKYhk9/FQE3HQxNJOzX6oHM6tg8tw42N
- gmlshEAXEk0DH6Ktt7IXEHJMNgtZwGFS6e0EpBp1Pa9JQLrpmu5a3Pf
+ bh=gzBuoXGq9tQc5AaxNhk1VWOvumRFnGBblnycbvJWyFk=;
+ b=xX0CkdDijrUBiNzg6vc3DnLgreltHIv4mngEpLKCXrKvVPpiEB3hy5yPX9JXK4wAPbYk7/OAk
+ BcBpw3erVeFCvso6U5P8RezqihnY7RLGCCUIXL2/gM8Y3gAWHyvI3JH
 X-Developer-Key: i=linux@weissschuh.net; a=ed25519;
  pk=KcycQgFPX2wGR5azS7RhpBqedglOZVgRPfdFSPB1LNw=
 Precedence: bulk
@@ -62,33 +63,22 @@ Take advantage of this to constify the structure definitions to prevent
 modification at runtime.
 
 Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
+Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
 ---
+Thomas Weißschuh (3):
+      net: bridge: make kobj_type structure constant
+      net-sysfs: make kobj_type structures constant
+      SUNRPC: make kobj_type structures constant
+
+ net/bridge/br_if.c   | 2 +-
  net/core/net-sysfs.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/sysfs.c   | 8 ++++----
+ 3 files changed, 7 insertions(+), 7 deletions(-)
+---
+base-commit: 420b2d431d18a2572c8e86579e78105cb5ed45b0
+change-id: 20230211-kobj_type-net-99f71346aed2
 
-diff --git a/net/core/net-sysfs.c b/net/core/net-sysfs.c
-index ca55dd747d6c..a3771bba841a 100644
---- a/net/core/net-sysfs.c
-+++ b/net/core/net-sysfs.c
-@@ -1040,7 +1040,7 @@ static void rx_queue_get_ownership(const struct kobject *kobj,
- 	net_ns_get_ownership(net, uid, gid);
- }
- 
--static struct kobj_type rx_queue_ktype __ro_after_init = {
-+static const struct kobj_type rx_queue_ktype = {
- 	.sysfs_ops = &rx_queue_sysfs_ops,
- 	.release = rx_queue_release,
- 	.default_groups = rx_queue_default_groups,
-@@ -1643,7 +1643,7 @@ static void netdev_queue_get_ownership(const struct kobject *kobj,
- 	net_ns_get_ownership(net, uid, gid);
- }
- 
--static struct kobj_type netdev_queue_ktype __ro_after_init = {
-+static const struct kobj_type netdev_queue_ktype = {
- 	.sysfs_ops = &netdev_queue_sysfs_ops,
- 	.release = netdev_queue_release,
- 	.default_groups = netdev_queue_default_groups,
-
+Best regards,
 -- 
-2.39.1
+Thomas Weißschuh <linux@weissschuh.net>
 
