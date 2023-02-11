@@ -2,32 +2,32 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 40220C6379F
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 Feb 2023 03:32:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0BDE5C677F1
+	for <linux-nfs@archiver.kernel.org>; Sat, 11 Feb 2023 03:32:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229689AbjBKDcn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Feb 2023 22:32:43 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46352 "EHLO
+        id S229727AbjBKDcp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 10 Feb 2023 22:32:45 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46364 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229455AbjBKDcl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2023 22:32:41 -0500
-Received: from todd.t-8ch.de (todd.t-8ch.de [159.69.126.157])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 107E83A080;
+        with ESMTP id S229675AbjBKDcn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Feb 2023 22:32:43 -0500
+Received: from todd.t-8ch.de (todd.t-8ch.de [IPv6:2a01:4f8:c010:41de::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A00BD3A084;
         Fri, 10 Feb 2023 19:32:41 -0800 (PST)
 From:   =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>
 DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=weissschuh.net;
         s=mail; t=1676086359;
-        bh=Dnmm9EisyiwPWuqnhssGEUllu7crqwubee2hNSJAG8M=;
+        bh=xCR+Ptx6qu9QePzl0md5Tsxq8IclLdgajMp2skUDWSc=;
         h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-        b=UjNXQ4sAm7gTMcAakOeheIUjKxttHPo9C+4JiCsux7rS5UwNSceKBz3Shzghl6KKu
-         OQhOEHOSPTivXqHhxF63huaf28WpWD1y3OvnSm304qTiT/OrfydCE8paw+1zS9BtBi
-         tlcoz9c31vKJr0p+viUNWg9mSuXcmilCnhgVNVDo=
-Date:   Sat, 11 Feb 2023 03:32:31 +0000
-Subject: [PATCH 3/3] SUNRPC: make kobj_type structures constant
+        b=tjJ371sCoO1zJbo7cmqZNdMb2QRhvV5t2iWk3im7znsFjqLfTX/pxHH+uAaL8a9T3
+         //NN5GCYPGBaQNtuHZl/sOPwyAbUxmGvYLUk2mOQqZiNNXsxDLa9gwihMyiRwev3bM
+         lsI/Jq58r6WgjI+MSMGDizgdXvwVN9El+6D6fZl4=
+Date:   Sat, 11 Feb 2023 03:32:29 +0000
+Subject: [PATCH 1/3] net: bridge: make kobj_type structure constant
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20230211-kobj_type-net-v1-3-e3bdaa5d8a78@weissschuh.net>
+Message-Id: <20230211-kobj_type-net-v1-1-e3bdaa5d8a78@weissschuh.net>
 References: <20230211-kobj_type-net-v1-0-e3bdaa5d8a78@weissschuh.net>
 In-Reply-To: <20230211-kobj_type-net-v1-0-e3bdaa5d8a78@weissschuh.net>
 To:     Roopa Prabhu <roopa@nvidia.com>,
@@ -44,11 +44,11 @@ Cc:     bridge@lists.linux-foundation.org, netdev@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>
 X-Mailer: b4 0.12.1
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1676086354; l=1793;
+X-Developer-Signature: v=1; a=ed25519-sha256; t=1676086354; l=853;
  i=linux@weissschuh.net; s=20221212; h=from:subject:message-id;
- bh=Dnmm9EisyiwPWuqnhssGEUllu7crqwubee2hNSJAG8M=;
- b=onqdqhxHmXHKN3enPa0T1Gz+7MRmxgAzhxlzCohHIJ/hJg/Czxo1RYAbabMEPlV0N+RLZ5GqH
- xsbzqvl8cG2Bd5xlzMTSFa68hl+5U9j2Z1xgWzALMttXy92f2Ixd6zp
+ bh=xCR+Ptx6qu9QePzl0md5Tsxq8IclLdgajMp2skUDWSc=;
+ b=3aDYol7gtnPLDHJSwXBlVN4BDObAVRLqF9OMQ5NSZZNm/Q0NK+m80glqETx4nA62qGsG3Sn2R
+ BipVF0Z8vquDqfEi5RLD7lwkMmJIy5wI/KI1M5EXd10qNp9hM5WxpaY
 X-Developer-Key: i=linux@weissschuh.net; a=ed25519;
  pk=KcycQgFPX2wGR5azS7RhpBqedglOZVgRPfdFSPB1LNw=
 Precedence: bulk
@@ -58,51 +58,27 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 Since commit ee6d3dd4ed48 ("driver core: make kobj_type constant.")
 the driver core allows the usage of const struct kobj_type.
 
-Take advantage of this to constify the structure definitions to prevent
+Take advantage of this to constify the structure definition to prevent
 modification at runtime.
 
 Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
 ---
- net/sunrpc/sysfs.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ net/bridge/br_if.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-index 1e05a2d723f4..0d0db4e1064e 100644
---- a/net/sunrpc/sysfs.c
-+++ b/net/sunrpc/sysfs.c
-@@ -36,7 +36,7 @@ rpc_sysfs_object_child_ns_type(const struct kobject *kobj)
- 	return &net_ns_type_operations;
+diff --git a/net/bridge/br_if.c b/net/bridge/br_if.c
+index ad13b48e3e08..24f01ff113f0 100644
+--- a/net/bridge/br_if.c
++++ b/net/bridge/br_if.c
+@@ -269,7 +269,7 @@ static void brport_get_ownership(const struct kobject *kobj, kuid_t *uid, kgid_t
+ 	net_ns_get_ownership(dev_net(p->dev), uid, gid);
  }
  
--static struct kobj_type rpc_sysfs_object_type = {
-+static const struct kobj_type rpc_sysfs_object_type = {
- 	.release = rpc_sysfs_object_release,
- 	.sysfs_ops = &kobj_sysfs_ops,
- 	.child_ns_type = rpc_sysfs_object_child_ns_type,
-@@ -427,20 +427,20 @@ static struct attribute *rpc_sysfs_xprt_switch_attrs[] = {
- };
- ATTRIBUTE_GROUPS(rpc_sysfs_xprt_switch);
- 
--static struct kobj_type rpc_sysfs_client_type = {
-+static const struct kobj_type rpc_sysfs_client_type = {
- 	.release = rpc_sysfs_client_release,
- 	.sysfs_ops = &kobj_sysfs_ops,
- 	.namespace = rpc_sysfs_client_namespace,
- };
- 
--static struct kobj_type rpc_sysfs_xprt_switch_type = {
-+static const struct kobj_type rpc_sysfs_xprt_switch_type = {
- 	.release = rpc_sysfs_xprt_switch_release,
- 	.default_groups = rpc_sysfs_xprt_switch_groups,
- 	.sysfs_ops = &kobj_sysfs_ops,
- 	.namespace = rpc_sysfs_xprt_switch_namespace,
- };
- 
--static struct kobj_type rpc_sysfs_xprt_type = {
-+static const struct kobj_type rpc_sysfs_xprt_type = {
- 	.release = rpc_sysfs_xprt_release,
- 	.default_groups = rpc_sysfs_xprt_groups,
- 	.sysfs_ops = &kobj_sysfs_ops,
+-static struct kobj_type brport_ktype = {
++static const struct kobj_type brport_ktype = {
+ #ifdef CONFIG_SYSFS
+ 	.sysfs_ops = &brport_sysfs_ops,
+ #endif
 
 -- 
 2.39.1
