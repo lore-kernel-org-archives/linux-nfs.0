@@ -2,340 +2,142 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 236ACC64ED8
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Feb 2023 15:08:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C97C8C61DA4
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Feb 2023 17:40:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230090AbjBPPIp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Feb 2023 10:08:45 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43126 "EHLO
+        id S229512AbjBPRka (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Feb 2023 12:40:30 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54506 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229672AbjBPPIo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2023 10:08:44 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 734673B214
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Feb 2023 07:07:17 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1676560036;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=TMTMNPHQNijU8uUEBNxhNrrsQnlnvW6SaQn8r5zH6Oo=;
-        b=aL+j4/F8mbZUOofpN6JHXOL0k1cYjnZaGwIO74O3IqR2jwUkRW3HalAkpKtXK2qlXw9cyo
-        Ff/kZyo1KdpOBZMvae4pUmdo7HcvzQ7sLE6Hwss77aJkLYl+2MpqKrxyDqHBj6B1jmgi0Z
-        aiPzZfhRnEMXxYvXl5hLYwBrNQOG26w=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-177-VDIE36s1OfyspGOi3TOcRw-1; Thu, 16 Feb 2023 10:07:12 -0500
-X-MC-Unique: VDIE36s1OfyspGOi3TOcRw-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 98DF485D06A;
-        Thu, 16 Feb 2023 15:07:10 +0000 (UTC)
-Received: from warthog.procyon.org.uk (unknown [10.33.36.24])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BAD9E2166B30;
-        Thu, 16 Feb 2023 15:07:07 +0000 (UTC)
-From:   David Howells <dhowells@redhat.com>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     David Howells <dhowells@redhat.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net, linux-erofs@lists.ozlabs.org,
-        linux-ext4@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Rohith Surabattula <rohiths.msft@gmail.com>,
-        Steve French <sfrench@samba.org>,
-        Shyam Prasad N <nspmangalore@gmail.com>,
-        Dave Wysochanski <dwysocha@redhat.com>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>, linux-mm@kvack.org
-Subject: [PATCH v6 1/2] mm: Merge folio_has_private()/filemap_release_folio() call pairs
-Date:   Thu, 16 Feb 2023 15:07:00 +0000
-Message-Id: <20230216150701.3654894-2-dhowells@redhat.com>
-In-Reply-To: <20230216150701.3654894-1-dhowells@redhat.com>
-References: <20230216150701.3654894-1-dhowells@redhat.com>
+        with ESMTP id S229506AbjBPRk3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Feb 2023 12:40:29 -0500
+Received: from mail-pj1-x1034.google.com (mail-pj1-x1034.google.com [IPv6:2607:f8b0:4864:20::1034])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 674FE3B855;
+        Thu, 16 Feb 2023 09:40:28 -0800 (PST)
+Received: by mail-pj1-x1034.google.com with SMTP id v6-20020a17090ad58600b00229eec90a7fso6652557pju.0;
+        Thu, 16 Feb 2023 09:40:28 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=umich.edu; s=google-2016-06-03;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=V+KTxKIHjRmWBf0QETpjuOdM8DYig3OAwkvnEuzaxSU=;
+        b=K09IVJNC7CR6Vj9s+Sa4FSd5pt3rF8aeDkMbwTg0mXZfk8aJ8m+ZEFc/4sH8acTAcF
+         JrsEgtMgVVTwR9xiuoDm2UndcobmlgfCa0UkuviWbd7NsLFCKMkU7rLl3hWzJB2cfhcA
+         AnsM3VaqEybR+ccR9p3UjHOUNmaRYBqIr0RYtDIRK+/FpBFWl02Sp+azJVv9Hql0PXS8
+         3n1IKSLP/+V/AL+rKUgUK/NU5cDjhjGqAdpvebYjh7BLgzQkwMQ/Z2by7pzYuA3Wn5B4
+         YBvZZ8q4QDdtD41fF123Bc0ItfG0a3Lz6Vvld1BIGUveu3jN/frShp/F6+j/c/weTi5W
+         w4cg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=V+KTxKIHjRmWBf0QETpjuOdM8DYig3OAwkvnEuzaxSU=;
+        b=Povemtm//zcReHKAXDos0QsO1c2AJZGHpRil7Xnx2rPZfGv0fKxfyTuE5+LNF6E1kM
+         El/ok6n8W/G2n4+Fmg+M/4w2Xh2o8h/P9i3OCdOquYeKUUSaN1n+dvCuaVS14KQYA6Ho
+         i1kHuAe6Q8Riu2oSJj3pXt8PAtHSwRyMd8v9sSXxZuuICiL3OeHNnF2dBXfGrvNLN4Vg
+         ea+tES7uitBlwrhfL7MvR8vX/lL6BOdCrgp0aPGadX7GNt1Buo5IrjIicrKV8Lq/tIjB
+         Op0zXOc12KgS79v9uEcrPYHVoQ7KfyJPAz6thq2QpuN1A4ePYoGiLFwpe/jaIa4V8TWi
+         Q8xA==
+X-Gm-Message-State: AO0yUKUvpnsVBNo5eop0VavmCN2xwTEKzgFZyq1kDtyt5OthKCl0+9Wo
+        +rO1Am2crdNxOW6R7P5I+GfvSNw0RpDFDSwnqzc=
+X-Google-Smtp-Source: AK7set/vWx1/1G+jCPRA4Yilt8YKORdc3vNIfM+JZrKCrXM/T3QMA7eVNW1h0Ylwq1MI1m/Ngdkg1zKNCq8ayGJdDTA=
+X-Received: by 2002:a17:90b:390b:b0:233:e236:d54e with SMTP id
+ ob11-20020a17090b390b00b00233e236d54emr751381pjb.123.1676569227665; Thu, 16
+ Feb 2023 09:40:27 -0800 (PST)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.6
+References: <f591b13c-4600-e2a4-8efa-aac6ad828dd1@linaro.org>
+ <82526863-d07a-0a5d-2990-1555b1387f26@linaro.org> <2C5E9725-F152-4D2E-882E-CF92A35481BF@hammerspace.com>
+ <7ba38377-7992-7f0f-d905-cceb42510f39@linaro.org> <51430925-8046-7066-84ed-2ff0db835347@linaro.org>
+ <CAFX2Jf=5X3zyZEWQmD6Rg9jQAD7ccDbae5LQCwrAyPCVVoFumg@mail.gmail.com>
+ <2add1769-1458-b185-bc78-6d573f61b6fc@linaro.org> <CAFX2JfnKy7juGQaDTzqosN9SF-zd+XrhSL9uh_Xg0GpJGDux-A@mail.gmail.com>
+ <32530c36-91d0-d351-0689-aed6a0975a4b@linaro.org> <2f285607-cbf9-6abc-f436-edb6e9a3938b@linaro.org>
+ <CAFX2Jfmz7QqZBEdzbPUhPs0yctnXVaVF68tX1c57YX=6ki=0TA@mail.gmail.com>
+ <4fe39d77-eb7c-a578-aefa-45b76e2247c2@linaro.org> <CAFX2JfmdRMsHPTySiw4vm7BwJfRZj3s0V3_v7NJ+XwMxBBSo9A@mail.gmail.com>
+ <a3683dd3-3f30-bb4c-539d-d1519de6e5bf@linaro.org>
+In-Reply-To: <a3683dd3-3f30-bb4c-539d-d1519de6e5bf@linaro.org>
+From:   Olga Kornievskaia <aglo@umich.edu>
+Date:   Thu, 16 Feb 2023 12:40:16 -0500
+Message-ID: <CAN-5tyEPP-mcDv7f-=BTZdGWMuFh16R9QnsU6THdp3U0QgbeVA@mail.gmail.com>
+Subject: Re: Regression: NULL pointer dereference after NFS_V4_2_READ_PLUS
+ (commit 7fd461c47)
+To:     Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Cc:     Anna Schumaker <schumaker.anna@gmail.com>,
+        Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "regressions@lists.linux.dev" <regressions@lists.linux.dev>
+Content-Type: text/plain; charset="UTF-8"
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Make filemap_release_folio() check folio_has_private().  Then, in most
-cases, where a call to folio_has_private() is immediately followed by a
-call to filemap_release_folio(), we can get rid of the test in the pair.
+On Tue, Feb 14, 2023 at 6:08 AM Krzysztof Kozlowski
+<krzysztof.kozlowski@linaro.org> wrote:
+>
+> On 12/02/2023 15:05, Anna Schumaker wrote:
+> >>> From ac2d6c501dbcdb306480edaee625b5496f1fb4f5 Mon Sep 17 00:00:00 2001
+> >>> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> >>> Date: Fri, 10 Feb 2023 15:50:22 -0500
+> >>> Subject: [PATCH] NFSv4.2: Rework scratch handling for READ_PLUS
+> >>>
+> >>
+> >> Patch is corrupted - maybe mail program reformatted it when sending:
+> >>
+> >> Applying: NFSv4.2: Rework scratch handling for READ_PLUS
+> >> error: corrupt patch at line 12
+> >> Patch failed at 0001 NFSv4.2: Rework scratch handling for READ_PLUS
+> >
+> > That's weird. I wasn't expecting gmail to reformat the patch but I
+> > guess it did. I've added it as an attachment so that shouldn't happen
+> > again.
+>
+> Still null ptr (built on 420b2d4 with your patch):
+>
+> [  144.690844] mmiocpy from xdr_inline_decode (net/sunrpc/xdr.c:1419 net/sunrpc/xdr.c:1454)
+> [  144.695950] xdr_inline_decode from nfs4_xdr_dec_read_plus (fs/nfs/nfs42xdr.c:1063 fs/nfs/nfs42xdr.c:1147 fs/nfs/nfs42xdr.c:1360 fs/nfs/nfs42xdr.c:1341)
+> [  144.702452] nfs4_xdr_dec_read_plus from call_decode (net/sunrpc/clnt.c:2595)
+> [  144.708429] call_decode from __rpc_execute (include/asm-generic/bitops/generic-non-atomic.h:128 net/sunrpc/sched.c:954)
+> [  144.713538] __rpc_execute from rpc_async_schedule (include/linux/sched/mm.h:336 net/sunrpc/sched.c:1035)
+> [  144.719170] rpc_async_schedule from process_one_work (include/linux/jump_label.h:260 include/linux/jump_label.h:270 include/trace/events/workqueue.h:108 kernel/workqueue.c:2294)
+> [  144.725238] process_one_work from worker_thread (include/linux/list.h:292 kernel/workqueue.c:2437)
+> [  144.730782] worker_thread from kthread (kernel/kthread.c:378)
+> [  144.735547] kthread from ret_from_fork (arch/arm/kernel/entry-common.S:149)
 
-There are a couple of sites in mm/vscan.c that this can't so easily be
-done.  In shrink_folio_list(), there are actually three cases (something
-different is done for incompletely invalidated buffers), but
-filemap_release_folio() elides two of them.
+My 2cents...
 
-In shrink_active_list(), we don't have have the folio lock yet, so the
-check allows us to avoid locking the page unnecessarily.
+From what I can tell read_plus only calls xdr_inline_decode() for
+"numbers" (eof, #segs, type, offset, length) and we always expect that
+__xdr_inline_decode() would return a a non-null "p". But if
+__xdr_inline_decode() returned null, the code would call
+xdr_copy_to_scratch() which would ultimately call the memcpy().
+xdr_copy_to_scrach() expects the scratch buffer to be setup. However,
+as I said, for the decode of numbers we don't set up the scratch
+space. Which then leads to this oops. How, the reason the
+__xdr_inline_decode() would return a null pointer if it ran out it's
+provided xdr space which was provided #decode_read_plus_maxsz.
 
-A wrapper function to check if a folio needs release is provided for those
-places that still need to do it in the mm/ directory.  This will acquire
-additional parts to the condition in a future patch.
+#define NFS42_READ_PLUS_DATA_SEGMENT_SIZE \
+                                        (1 /* data_content4 */ + \
+                                         2 /* data_info4.di_offset */ + \
+                                         1 /* data_info4.di_length */)
+#define decode_read_plus_maxsz          (op_decode_hdr_maxsz + \
+                                         1 /* rpr_eof */ + \
+                                         1 /* rpr_contents count */ + \
+                                         NFS42_READ_PLUS_DATA_SEGMENT_SIZE)
 
-After this, the only remaining caller of folio_has_private() outside of mm/
-is a check in fuse.
+while a data segment needs (2) + (1), a hole segment needs to be (2) +
+(2) (as both offset and lengths are longs.
 
-Reported-by: Rohith Surabattula <rohiths.msft@gmail.com>
-Suggested-by: Matthew Wilcox <willy@infradead.org>
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Matthew Wilcox <willy@infradead.org>
-cc: Linus Torvalds <torvalds@linux-foundation.org>
-cc: Steve French <sfrench@samba.org>
-cc: Shyam Prasad N <nspmangalore@gmail.com>
-cc: Rohith Surabattula <rohiths.msft@gmail.com>
-cc: Dave Wysochanski <dwysocha@redhat.com>
-cc: Dominique Martinet <asmadeus@codewreck.org>
-cc: Ilya Dryomov <idryomov@gmail.com>
-cc: "Theodore Ts'o" <tytso@mit.edu>
-cc: Andreas Dilger <adilger.kernel@dilger.ca>
-cc: linux-cachefs@redhat.com
-cc: linux-cifs@vger.kernel.org
-cc: linux-afs@lists.infradead.org
-cc: v9fs-developer@lists.sourceforge.net
-cc: ceph-devel@vger.kernel.org
-cc: linux-nfs@vger.kernel.org
-cc: linux-ext4@vger.kernel.org
-cc: linux-fsdevel@vger.kernel.org
-cc: linux-mm@kvack.org
----
+while a "correct" maxsz is important for page alignment for reads, it
+might means we are not providing enough space for when there are hole
+segments? It seems weird that for the spec we have hole length and
+data length of different types (long and int).
 
-Notes:
-    ver #5)
-     - Rebased on linus/master.  try_to_release_page() has now been entirely
-       replaced by filemap_release_folio(), barring one comment.
-     - Cleaned up some pairs in ext4.
-    
-    ver #4)
-     - Split from fscache fix.
-     - Moved folio_needs_release() to mm/internal.h and removed open-coded
-       version from filemap_release_folio().
-    
-    ver #3)
-     - Fixed mapping_clear_release_always() to use clear_bit() not set_bit().
-     - Moved a '&&' to the correct line.
-    
-    ver #2)
-     - Rewrote entirely according to Willy's suggestion[1].
-
- fs/ext4/move_extent.c | 12 ++++--------
- fs/splice.c           |  3 +--
- mm/filemap.c          |  2 ++
- mm/huge_memory.c      |  3 +--
- mm/internal.h         |  8 ++++++++
- mm/khugepaged.c       |  3 +--
- mm/memory-failure.c   |  8 +++-----
- mm/migrate.c          |  3 +--
- mm/truncate.c         |  6 ++----
- mm/vmscan.c           |  8 ++++----
- 10 files changed, 27 insertions(+), 29 deletions(-)
-
-diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
-index 8dbb87edf24c..dedc9d445f24 100644
---- a/fs/ext4/move_extent.c
-+++ b/fs/ext4/move_extent.c
-@@ -339,10 +339,8 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 			ext4_double_up_write_data_sem(orig_inode, donor_inode);
- 			goto data_copy;
- 		}
--		if ((folio_has_private(folio[0]) &&
--		     !filemap_release_folio(folio[0], 0)) ||
--		    (folio_has_private(folio[1]) &&
--		     !filemap_release_folio(folio[1], 0))) {
-+		if (!filemap_release_folio(folio[0], 0) ||
-+		    !filemap_release_folio(folio[1], 0)) {
- 			*err = -EBUSY;
- 			goto drop_data_sem;
- 		}
-@@ -361,10 +359,8 @@ move_extent_per_page(struct file *o_filp, struct inode *donor_inode,
- 
- 	/* At this point all buffers in range are uptodate, old mapping layout
- 	 * is no longer required, try to drop it now. */
--	if ((folio_has_private(folio[0]) &&
--		!filemap_release_folio(folio[0], 0)) ||
--	    (folio_has_private(folio[1]) &&
--		!filemap_release_folio(folio[1], 0))) {
-+	if (!filemap_release_folio(folio[0], 0) ||
-+	    !filemap_release_folio(folio[1], 0)) {
- 		*err = -EBUSY;
- 		goto unlock_folios;
- 	}
-diff --git a/fs/splice.c b/fs/splice.c
-index 5969b7a1d353..e69eddaf9d7c 100644
---- a/fs/splice.c
-+++ b/fs/splice.c
-@@ -65,8 +65,7 @@ static bool page_cache_pipe_buf_try_steal(struct pipe_inode_info *pipe,
- 		 */
- 		folio_wait_writeback(folio);
- 
--		if (folio_has_private(folio) &&
--		    !filemap_release_folio(folio, GFP_KERNEL))
-+		if (!filemap_release_folio(folio, GFP_KERNEL))
- 			goto out_unlock;
- 
- 		/*
-diff --git a/mm/filemap.c b/mm/filemap.c
-index c4d4ace9cc70..344146c170b0 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -3960,6 +3960,8 @@ bool filemap_release_folio(struct folio *folio, gfp_t gfp)
- 	struct address_space * const mapping = folio->mapping;
- 
- 	BUG_ON(!folio_test_locked(folio));
-+	if (!folio_needs_release(folio))
-+		return true;
- 	if (folio_test_writeback(folio))
- 		return false;
- 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index abe6cfd92ffa..8490c42dedb3 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -2702,8 +2702,7 @@ int split_huge_page_to_list(struct page *page, struct list_head *list)
- 		gfp = current_gfp_context(mapping_gfp_mask(mapping) &
- 							GFP_RECLAIM_MASK);
- 
--		if (folio_test_private(folio) &&
--				!filemap_release_folio(folio, gfp)) {
-+		if (!filemap_release_folio(folio, gfp)) {
- 			ret = -EBUSY;
- 			goto out;
- 		}
-diff --git a/mm/internal.h b/mm/internal.h
-index bcf75a8b032d..c4c8e58e1d12 100644
---- a/mm/internal.h
-+++ b/mm/internal.h
-@@ -163,6 +163,14 @@ static inline void set_page_refcounted(struct page *page)
- 	set_page_count(page, 1);
- }
- 
-+/*
-+ * Return true if a folio needs ->release_folio() calling upon it.
-+ */
-+static inline bool folio_needs_release(struct folio *folio)
-+{
-+	return folio_has_private(folio);
-+}
-+
- extern unsigned long highest_memmap_pfn;
- 
- /*
-diff --git a/mm/khugepaged.c b/mm/khugepaged.c
-index 90acfea40c13..e257e0a13ad1 100644
---- a/mm/khugepaged.c
-+++ b/mm/khugepaged.c
-@@ -1944,8 +1944,7 @@ static int collapse_file(struct mm_struct *mm, unsigned long addr,
- 			goto out_unlock;
- 		}
- 
--		if (folio_has_private(folio) &&
--		    !filemap_release_folio(folio, GFP_KERNEL)) {
-+		if (!filemap_release_folio(folio, GFP_KERNEL)) {
- 			result = SCAN_PAGE_HAS_PRIVATE;
- 			folio_putback_lru(folio);
- 			goto out_unlock;
-diff --git a/mm/memory-failure.c b/mm/memory-failure.c
-index c77a9e37e27e..a4f809c11ae9 100644
---- a/mm/memory-failure.c
-+++ b/mm/memory-failure.c
-@@ -843,14 +843,12 @@ static int truncate_error_page(struct page *p, unsigned long pfn,
- 		struct folio *folio = page_folio(p);
- 		int err = mapping->a_ops->error_remove_page(mapping, p);
- 
--		if (err != 0) {
-+		if (err != 0)
- 			pr_info("%#lx: Failed to punch page: %d\n", pfn, err);
--		} else if (folio_has_private(folio) &&
--			   !filemap_release_folio(folio, GFP_NOIO)) {
-+		else if (!filemap_release_folio(folio, GFP_NOIO))
- 			pr_info("%#lx: failed to release buffers\n", pfn);
--		} else {
-+		else
- 			ret = MF_RECOVERED;
--		}
- 	} else {
- 		/*
- 		 * If the file system doesn't support it just invalidate
-diff --git a/mm/migrate.c b/mm/migrate.c
-index a4d3fc65085f..db867bb80128 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -915,8 +915,7 @@ static int fallback_migrate_folio(struct address_space *mapping,
- 	 * Buffers may be managed in a filesystem specific way.
- 	 * We must have no buffers or drop them.
- 	 */
--	if (folio_test_private(src) &&
--	    !filemap_release_folio(src, GFP_KERNEL))
-+	if (!filemap_release_folio(src, GFP_KERNEL))
- 		return mode == MIGRATE_SYNC ? -EAGAIN : -EBUSY;
- 
- 	return migrate_folio(mapping, dst, src, mode);
-diff --git a/mm/truncate.c b/mm/truncate.c
-index 7b4ea4c4a46b..8378aabb5294 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -19,7 +19,6 @@
- #include <linux/highmem.h>
- #include <linux/pagevec.h>
- #include <linux/task_io_accounting_ops.h>
--#include <linux/buffer_head.h>	/* grr. try_to_release_page */
- #include <linux/shmem_fs.h>
- #include <linux/rmap.h>
- #include "internal.h"
-@@ -276,7 +275,7 @@ static long mapping_evict_folio(struct address_space *mapping,
- 	if (folio_ref_count(folio) >
- 			folio_nr_pages(folio) + folio_has_private(folio) + 1)
- 		return 0;
--	if (folio_has_private(folio) && !filemap_release_folio(folio, 0))
-+	if (!filemap_release_folio(folio, 0))
- 		return 0;
- 
- 	return remove_mapping(mapping, folio);
-@@ -573,8 +572,7 @@ static int invalidate_complete_folio2(struct address_space *mapping,
- 	if (folio->mapping != mapping)
- 		return 0;
- 
--	if (folio_has_private(folio) &&
--	    !filemap_release_folio(folio, GFP_KERNEL))
-+	if (!filemap_release_folio(folio, GFP_KERNEL))
- 		return 0;
- 
- 	spin_lock(&mapping->host->i_lock);
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index bf3eedf0209c..0fd6623adccb 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -1996,7 +1996,7 @@ static unsigned int shrink_folio_list(struct list_head *folio_list,
- 		 * (refcount == 1) it can be freed.  Otherwise, leave
- 		 * the folio on the LRU so it is swappable.
- 		 */
--		if (folio_has_private(folio)) {
-+		if (folio_needs_release(folio)) {
- 			if (!filemap_release_folio(folio, sc->gfp_mask))
- 				goto activate_locked;
- 			if (!mapping && folio_ref_count(folio) == 1) {
-@@ -2641,9 +2641,9 @@ static void shrink_active_list(unsigned long nr_to_scan,
- 		}
- 
- 		if (unlikely(buffer_heads_over_limit)) {
--			if (folio_test_private(folio) && folio_trylock(folio)) {
--				if (folio_test_private(folio))
--					filemap_release_folio(folio, 0);
-+			if (folio_needs_release(folio) &&
-+			    folio_trylock(folio)) {
-+				filemap_release_folio(folio, 0);
- 				folio_unlock(folio);
- 			}
- 		}
-
+>
+>
+>
+> Best regards,
+> Krzysztof
+>
