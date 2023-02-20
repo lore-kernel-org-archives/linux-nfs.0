@@ -2,41 +2,40 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 51354C64EC7
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DC91CC64EC4
 	for <linux-nfs@archiver.kernel.org>; Mon, 20 Feb 2023 13:44:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232243AbjBTNoL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S231826AbjBTNoL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 20 Feb 2023 08:44:11 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53960 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53984 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232235AbjBTNoH (ORCPT
+        with ESMTP id S232237AbjBTNoH (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Feb 2023 08:44:07 -0500
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9B5BC1ADE8
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0551E868D
         for <linux-nfs@vger.kernel.org>; Mon, 20 Feb 2023 05:43:13 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1676900592;
+        s=mimecast20190719; t=1676900593;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=RBugVf10c9MjPQYLpdSEXbCGaHl2WL0p/2X6fdbtjXM=;
-        b=IvY32adMeetdTEkaYshyHr0YntKjCCj4lKT1mPug/Ox0b5HcCgY3F2yqAuQYwGvYUzeHQa
-        vOI7jasiY6s8Kzii+e2O8mCzrsof2shUT408wZmq96wdEiCCHS+8vQzQ5RYGFIvEEAwRhG
-        wBZX7I4NGlQsp+i+GXQN5FjMGeJHEkA=
-Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
- [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
+         content-transfer-encoding:content-transfer-encoding;
+        bh=G9jBEacaBVlZAs6ncI+7oeFM0+M4J6km3feMGyJvNAU=;
+        b=Jw/6cJghoR4FWOabk1wocVDu9KLAL0fsF5wfBAg1c1JSJP61IiG+zu+ffzXqzGf1LxHuSP
+        kArySIqk7AdGz3faiSvNuK1qkQ0FUSMcbg+HjBQbid33p7bHG8GDJbBKH7oQjgQSzijkUN
+        P7x7xQvbPNpuT3iNPxJyWa9Yd5WtC+g=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-606-QywOI7FsOTu-yje4y7iT0Q-1; Mon, 20 Feb 2023 08:43:11 -0500
-X-MC-Unique: QywOI7FsOTu-yje4y7iT0Q-1
+ us-mta-596-M5-7tauNNj-T8YQtzB5DHA-1; Mon, 20 Feb 2023 08:43:10 -0500
+X-MC-Unique: M5-7tauNNj-T8YQtzB5DHA-1
 Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 4B1463815EE5;
-        Mon, 20 Feb 2023 13:43:11 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id AE7BB800B23;
+        Mon, 20 Feb 2023 13:43:09 +0000 (UTC)
 Received: from dwysocha.rdu.csb (unknown [10.22.8.11])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 06067404CD84;
-        Mon, 20 Feb 2023 13:43:10 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 4F56A404CD84;
+        Mon, 20 Feb 2023 13:43:09 +0000 (UTC)
 From:   Dave Wysochanski <dwysocha@redhat.com>
 To:     Anna Schumaker <anna.schumaker@netapp.com>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
@@ -44,11 +43,9 @@ To:     Anna Schumaker <anna.schumaker@netapp.com>,
         Benjamin Maynard <benmaynard@google.com>,
         Daire Byrne <daire.byrne@gmail.com>
 Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com
-Subject: [PATCH v11 5/5] NFS: Remove fscache specific trace points and NFS_INO_FSCACHE bit
-Date:   Mon, 20 Feb 2023 08:43:08 -0500
-Message-Id: <20230220134308.1193219-6-dwysocha@redhat.com>
-In-Reply-To: <20230220134308.1193219-1-dwysocha@redhat.com>
-References: <20230220134308.1193219-1-dwysocha@redhat.com>
+Subject: [PATCH v11 0/5] Convert NFS with fscache to the netfs API
+Date:   Mon, 20 Feb 2023 08:43:03 -0500
+Message-Id: <20230220134308.1193219-1-dwysocha@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.1 on 10.11.54.2
@@ -56,137 +53,107 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The NFS specific trace points are no longer needed as tracing is well
-covered by netfs and fscache.
+Trond, this v11 patchset addresses your latest feedback on patch #2,
+and I did a little bit of cleanup to patch 3 (see Changes notes below).
+I'm not sure of further changes to patch #3 without a more in-depth
+review with specifics, if you feel the current approach is unacceptable [1].
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfs/nfstrace.h      | 91 ------------------------------------------
- include/linux/nfs_fs.h |  1 -
- 2 files changed, 92 deletions(-)
+Ben and Daire, if you could test this set and provide you feedback
+and a Tested-By: that would be appreciated.  This set addresses
+the existing NFS + fscache performance concerns seen by a few
+users [5], which is due to utilization use of the deprecated
+single-page function, fscache_fallback_read_page().  However,
+until "known issue #1" below is also resolved, even with these
+patches, performance of NFS+fscache will still be a problem
+in some scenarios.
 
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index a778713343df..4e90ca531176 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -39,7 +39,6 @@
- 			{ BIT(NFS_INO_STALE), "STALE" }, \
- 			{ BIT(NFS_INO_ACL_LRU_SET), "ACL_LRU_SET" }, \
- 			{ BIT(NFS_INO_INVALIDATING), "INVALIDATING" }, \
--			{ BIT(NFS_INO_FSCACHE), "FSCACHE" }, \
- 			{ BIT(NFS_INO_LAYOUTCOMMIT), "NEED_LAYOUTCOMMIT" }, \
- 			{ BIT(NFS_INO_LAYOUTCOMMITTING), "LAYOUTCOMMIT" }, \
- 			{ BIT(NFS_INO_LAYOUTSTATS), "LAYOUTSTATS" }, \
-@@ -1243,96 +1242,6 @@ TRACE_EVENT(nfs_readpage_short,
- 		)
- );
- 
--DECLARE_EVENT_CLASS(nfs_fscache_page_event,
--		TP_PROTO(
--			const struct inode *inode,
--			struct page *page
--		),
--
--		TP_ARGS(inode, page),
--
--		TP_STRUCT__entry(
--			__field(dev_t, dev)
--			__field(u32, fhandle)
--			__field(u64, fileid)
--			__field(loff_t, offset)
--		),
--
--		TP_fast_assign(
--			const struct nfs_inode *nfsi = NFS_I(inode);
--			const struct nfs_fh *fh = &nfsi->fh;
--
--			__entry->offset = page_index(page) << PAGE_SHIFT;
--			__entry->dev = inode->i_sb->s_dev;
--			__entry->fileid = nfsi->fileid;
--			__entry->fhandle = nfs_fhandle_hash(fh);
--		),
--
--		TP_printk(
--			"fileid=%02x:%02x:%llu fhandle=0x%08x "
--			"offset=%lld",
--			MAJOR(__entry->dev), MINOR(__entry->dev),
--			(unsigned long long)__entry->fileid,
--			__entry->fhandle,
--			(long long)__entry->offset
--		)
--);
--DECLARE_EVENT_CLASS(nfs_fscache_page_event_done,
--		TP_PROTO(
--			const struct inode *inode,
--			struct page *page,
--			int error
--		),
--
--		TP_ARGS(inode, page, error),
--
--		TP_STRUCT__entry(
--			__field(int, error)
--			__field(dev_t, dev)
--			__field(u32, fhandle)
--			__field(u64, fileid)
--			__field(loff_t, offset)
--		),
--
--		TP_fast_assign(
--			const struct nfs_inode *nfsi = NFS_I(inode);
--			const struct nfs_fh *fh = &nfsi->fh;
--
--			__entry->offset = page_index(page) << PAGE_SHIFT;
--			__entry->dev = inode->i_sb->s_dev;
--			__entry->fileid = nfsi->fileid;
--			__entry->fhandle = nfs_fhandle_hash(fh);
--			__entry->error = error;
--		),
--
--		TP_printk(
--			"fileid=%02x:%02x:%llu fhandle=0x%08x "
--			"offset=%lld error=%d",
--			MAJOR(__entry->dev), MINOR(__entry->dev),
--			(unsigned long long)__entry->fileid,
--			__entry->fhandle,
--			(long long)__entry->offset, __entry->error
--		)
--);
--#define DEFINE_NFS_FSCACHE_PAGE_EVENT(name) \
--	DEFINE_EVENT(nfs_fscache_page_event, name, \
--			TP_PROTO( \
--				const struct inode *inode, \
--				struct page *page \
--			), \
--			TP_ARGS(inode, page))
--#define DEFINE_NFS_FSCACHE_PAGE_EVENT_DONE(name) \
--	DEFINE_EVENT(nfs_fscache_page_event_done, name, \
--			TP_PROTO( \
--				const struct inode *inode, \
--				struct page *page, \
--				int error \
--			), \
--			TP_ARGS(inode, page, error))
--DEFINE_NFS_FSCACHE_PAGE_EVENT(nfs_fscache_read_page);
--DEFINE_NFS_FSCACHE_PAGE_EVENT_DONE(nfs_fscache_read_page_exit);
--DEFINE_NFS_FSCACHE_PAGE_EVENT(nfs_fscache_write_page);
--DEFINE_NFS_FSCACHE_PAGE_EVENT_DONE(nfs_fscache_write_page_exit);
- 
- TRACE_EVENT(nfs_pgio_error,
- 	TP_PROTO(
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 580847c70fec..137d296e6002 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -281,7 +281,6 @@ struct nfs4_copy_state {
- #define NFS_INO_ACL_LRU_SET	(2)		/* Inode is on the LRU list */
- #define NFS_INO_INVALIDATING	(3)		/* inode is being invalidated */
- #define NFS_INO_PRESERVE_UNLINKED (4)		/* preserve file if removed while open */
--#define NFS_INO_FSCACHE		(5)		/* inode can be cached by FS-Cache */
- #define NFS_INO_LAYOUTCOMMIT	(9)		/* layoutcommit required */
- #define NFS_INO_LAYOUTCOMMITTING (10)		/* layoutcommit inflight */
- #define NFS_INO_LAYOUTSTATS	(11)		/* layoutstats inflight */
+This patchset converts NFS with fscache buffered read IO paths to
+use the netfs API with a non-invasive approach.  The existing NFS pgio
+layer does not need extensive changes, and is the best way so far I've
+found to address Trond's previous concerns about modifying the IO
+path [2] as well as only enabling netfs when fscache is configured
+and enabled [3].  I have not attempted performance comparisions to
+address Chuck Lever's concern [4] because we are not converting the
+non-fscache enabled NFS IO paths to netfs. 
+
+The patchset is based on Trond's latest 'testing' branch which includes
+his folio patchset, and is based on 6.2-rc5.  It has been pushed to
+github at:
+https://github.com/DaveWysochanskiRH/kernel/commits/nfs-fscache-netfs
+https://github.com/DaveWysochanskiRH/kernel/commit/6424e4f139652b7552eff26eb5da1f2282d35616
+
+Changes since v10 [6]
+=====================
+PATCH6: Dropped
+PATCH1: Rename nfs_pageio_add_page to nfs_read_add_folio
+PATCH2: Use anonymous union to add struct netfs_inode to nfs_inode (Trond) [7]
+PATCH3: Change nfs_netfs_readpage_release() to nfs_netfs_folio_unlock()
+
+Testing
+=======
+I did a full round of testing on this because it was rebased on top of
+Trond's testing branch which included his folio series.
+All of my unit tests pass except the one with the known issue #1 below.
+Multiple runs of xfstests generic tests (applicable to NFS) were run with
+with various servers, both with and without fscache enabled, and
+compared to baseline (Trond's testing branch).  No new failures were
+observed with these patches, and in some xfstest instances, this
+patchset improves the results (some tests that were failing now pass).
+- hammerspace(pNFS flexfiles): NFS4.1, NFS4.2
+- NetApp(pNFS filelayout): NFS4.1, NFS4.0, NFS3
+- RHEL9: NFS4.2, NFS4.1, NFS4.0, NFS3
+
+Known issues
+============
+1. Unit test setting rsize < readahead does not properly read from
+fscache but re-reads data from the NFS server
+* This will be fixed with another dhowells patch [8]:
+  "[PATCH v6 2/2] mm, netfs, fscache: Stop read optimisation when folio removed from pagecache"
+* Daire Byrne verified the patch fixes his issue as well
+
+2. "Cache volume key already in use" after xfstest runs involving multiple mounts
+* Simple reproducer requires just two mounts as follows:
+ mount -overs=4.1,fsc,nosharecache -o context=system_u:object_r:root_t:s0  nfs-server:/exp1 /mnt1
+ mount -overs=4.1,fsc,nosharecache -o context=system_u:object_r:root_t:s0  nfs-server:/exp2 /mnt2
+* This should be fixed with dhowells patch [9]:
+  "[PATCH v5] vfs, security: Fix automount superblock LSM init problem, preventing NFS sb sharing"
+
+
+References
+==========
+[1] https://lore.kernel.org/linux-nfs/0676ecb2bb708e6fc29dbbe6b44551d6a0d021dc.camel@kernel.org/
+[2] https://lore.kernel.org/linux-nfs/9cfd5bc3cfc6abc2d3316b0387222e708d67f595.camel@hammerspace.com/
+[3] https://lore.kernel.org/linux-nfs/da9200f1bded9b8b078a7aef227fd6b92eb028fb.camel@hammerspace.com/
+[4] https://lore.kernel.org/linux-nfs/0A640C47-5F51-47E8-864D-E0E980F8B310@oracle.com/
+[5] https://lore.kernel.org/linux-nfs/CA+QRt4tPqH87NVkoETLjxieGjZ_f7XxRj+xS3NVxcJ+b8AAKQg@mail.gmail.com/
+[6] https://lore.kernel.org/linux-nfs/20221103161637.1725471-1-dwysocha@redhat.com/
+[7] https://lore.kernel.org/linux-nfs/4d60636f62df4f5c200666ed2d1a5f2414c18e1f.camel@kernel.org/
+[8] https://lore.kernel.org/linux-nfs/20230216150701.3654894-1-dhowells@redhat.com/T/#mf3807fa68fb6d495b87dde0d76b5237833a0cc81
+[9] https://lore.kernel.org/linux-kernel/217595.1662033775@warthog.procyon.org.uk/
+
+Dave Wysochanski (5):
+  NFS: Rename readpage_async_filler to nfs_read_add_folio
+  NFS: Configure support for netfs when NFS fscache is configured
+  NFS: Convert buffered read paths to use netfs when fscache is enabled
+  NFS: Remove all NFSIOS_FSCACHE counters due to conversion to netfs API
+  NFS: Remove fscache specific trace points and NFS_INO_FSCACHE bit
+
+ fs/nfs/Kconfig             |   1 +
+ fs/nfs/fscache.c           | 242 ++++++++++++++++++++++---------------
+ fs/nfs/fscache.h           | 131 ++++++++++++++------
+ fs/nfs/inode.c             |   2 +
+ fs/nfs/internal.h          |   9 ++
+ fs/nfs/iostat.h            |  17 ---
+ fs/nfs/nfstrace.h          |  91 --------------
+ fs/nfs/pagelist.c          |   4 +
+ fs/nfs/read.c              | 105 ++++++++--------
+ fs/nfs/super.c             |  11 --
+ include/linux/nfs_fs.h     |  25 ++--
+ include/linux/nfs_iostat.h |  12 --
+ include/linux/nfs_page.h   |   3 +
+ include/linux/nfs_xdr.h    |   3 +
+ 14 files changed, 317 insertions(+), 339 deletions(-)
+
 -- 
 2.31.1
 
