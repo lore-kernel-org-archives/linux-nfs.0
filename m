@@ -2,827 +2,550 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 34B62C05027
-	for <linux-nfs@archiver.kernel.org>; Mon, 20 Feb 2023 13:44:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 96A91C6379F
+	for <linux-nfs@archiver.kernel.org>; Tue, 21 Feb 2023 13:34:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231865AbjBTNoP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 20 Feb 2023 08:44:15 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54060 "EHLO
+        id S232992AbjBUNeN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 21 Feb 2023 08:34:13 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52232 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232249AbjBTNoL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Feb 2023 08:44:11 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F16184C1E
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Feb 2023 05:43:14 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1676900594;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=+7dbP7vUo3IC4HUGwaYqQjeBgBTP6K7gEUPfLtLdGsI=;
-        b=QlIEzd5R+ldmlLNyec3Q9nQPCzZ3qwgYcD11JZKGyahr1lC5yfq7tDfkt0/Xyfg7s9bmxU
-        ab78IYQ1jzBTni51Kwpmp7iww6pfEMqk5KNaSMYezVv7kr0GgDm26n+gwB6V6sKbXioTfc
-        d3rINV2fT4E5CtTXST1Hi1uIc8+o1Qk=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-1-L-VJ-BMHMhabWvdCReSGXA-1; Mon, 20 Feb 2023 08:43:11 -0500
-X-MC-Unique: L-VJ-BMHMhabWvdCReSGXA-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id A642218A6465;
-        Mon, 20 Feb 2023 13:43:10 +0000 (UTC)
-Received: from dwysocha.rdu.csb (unknown [10.22.8.11])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 5AB48404CD84;
-        Mon, 20 Feb 2023 13:43:10 +0000 (UTC)
-From:   Dave Wysochanski <dwysocha@redhat.com>
-To:     Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        David Howells <dhowells@redhat.com>,
-        Benjamin Maynard <benmaynard@google.com>,
-        Daire Byrne <daire.byrne@gmail.com>
-Cc:     linux-nfs@vger.kernel.org, linux-cachefs@redhat.com
-Subject: [PATCH v11 3/5] NFS: Convert buffered read paths to use netfs when fscache is enabled
-Date:   Mon, 20 Feb 2023 08:43:06 -0500
-Message-Id: <20230220134308.1193219-4-dwysocha@redhat.com>
-In-Reply-To: <20230220134308.1193219-1-dwysocha@redhat.com>
-References: <20230220134308.1193219-1-dwysocha@redhat.com>
+        with ESMTP id S233206AbjBUNeM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Feb 2023 08:34:12 -0500
+Received: from mailrelay.rz.uni-wuerzburg.de (wrz3035.rz.uni-wuerzburg.de [132.187.3.35])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E2F424482
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Feb 2023 05:33:41 -0800 (PST)
+Received: from virusscan-slb.rz.uni-wuerzburg.de (localhost [127.0.0.1])
+        by mailrelay-slb.rz.uni-wuerzburg.de (Postfix) with ESMTP id 34EE1EF6B;
+        Tue, 21 Feb 2023 14:33:33 +0100 (CET)
+Received: from localhost (localhost [127.0.0.1])
+        by virusscan-slb.rz.uni-wuerzburg.de (Postfix) with ESMTP id 335FFEDE2;
+        Tue, 21 Feb 2023 14:33:33 +0100 (CET)
+X-Virus-Scanned: amavisd-new at uni-wuerzburg.de
+Received: from mailmaster.uni-wuerzburg.de ([127.0.0.1])
+        by localhost (vmail001.slb.uni-wuerzburg.de [127.0.0.1]) (amavisd-new, port 10225)
+        with ESMTP id JF0yqZnuVniK; Tue, 21 Feb 2023 14:33:33 +0100 (CET)
+Received: from [132.187.207.113] (wma7113.mathematik.uni-wuerzburg.de [132.187.207.113])
+        by mailmaster.uni-wuerzburg.de (Postfix) with ESMTPSA id D03A5EB73;
+        Tue, 21 Feb 2023 14:33:32 +0100 (CET)
+Content-Type: multipart/mixed; boundary="------------nJWtO5qC2pACou522eEA0Pzh"
+Message-ID: <3b6c9b8e-2795-74e8-aefa-d4f1ac007c3c@mathematik.uni-wuerzburg.de>
+Date:   Tue, 21 Feb 2023 14:33:32 +0100
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.2
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.8.0
+Subject: Re: Reoccurring 5 second delays during NFS calls
+Content-Language: en-US-large
+To:     Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Cc:     Andreas Seeg <andreas.seeg@mathematik.uni-wuerzburg.de>
+References: <59682160-a246-395a-9486-9bbf11686740@mathematik.uni-wuerzburg.de>
+ <8a02c86882bc47c1c1387dba8c7d756237cb3f3f.camel@kernel.org>
+From:   =?UTF-8?Q?Florian_M=c3=b6ller?= 
+        <fmoeller@mathematik.uni-wuerzburg.de>
+In-Reply-To: <8a02c86882bc47c1c1387dba8c7d756237cb3f3f.camel@kernel.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Convert the NFS buffered read code paths to corresponding netfs APIs,
-but only when fscache is configured and enabled.
+This is a multi-part message in MIME format.
+--------------nJWtO5qC2pACou522eEA0Pzh
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
 
-The netfs API defines struct netfs_request_ops which must be filled
-in by the network filesystem.  For NFS, we only need to define 5 of
-the functions, the main one being the issue_read() function.
-The issue_read() function is called by the netfs layer when a read
-cannot be fulfilled locally, and must be sent to the server (either
-the cache is not active, or it is active but the data is not available).
-Once the read from the server is complete, netfs requires a call to
-netfs_subreq_terminated() which conveys either how many bytes were read
-successfully, or an error.  Note that issue_read() is called with a
-structure, netfs_io_subrequest, which defines the IO requested, and
-contains a start and a length (both in bytes), and assumes the underlying
-netfs will return a either an error on the whole region, or the number
-of bytes successfully read.
+Hi all,
 
-The NFS IO path is page based and the main APIs are the pgio APIs defined
-in pagelist.c.  For the pgio APIs, there is no way for the caller to
-know how many RPCs will be sent and how the pages will be broken up
-into underlying RPCs, each of which will have their own completion and
-return code.  In contrast, netfs is subrequest based, a single
-subrequest may contain multiple pages, and a single subrequest is
-initiated with issue_read() and terminated with netfs_subreq_terminated().
-Thus, to utilze the netfs APIs, NFS needs some way to accommodate
-the netfs API requirement on the single response to the whole
-subrequest, while also minimizing disruptive changes to the NFS
-pgio layer.
+unfortunately the patch did not help, neither using -o async nor using -o sync. 
+We did some more tests (which is the reason for the delay of this reply):
 
-The approach taken with this patch is to allocate a small structure
-for each nfs_netfs_issue_read() call, store the final error and number
-of bytes successfully transferred in the structure, and update these values
-as each RPC completes.  The refcount on the structure is used as a marker
-for the last RPC completion, is incremented in nfs_netfs_read_initiate(),
-and decremented inside nfs_netfs_read_completion(), when a nfs_pgio_header
-contains a valid pointer to the data.  On the final put (which signals
-the final outstanding RPC is complete) in nfs_netfs_read_completion(),
-call netfs_subreq_terminated() with either the final error value (if
-one or more READs complete with an error) or the number of bytes
-successfully transferred (if all RPCs complete successfully).  Note
-that when all RPCs complete successfully, the number of bytes transferred
-is capped to the length of the subrequest.  Capping the transferred length
-to the subrequest length prevents "Subreq overread" warnings from netfs.
-This is due to the "aligned_len" in nfs_pageio_add_page(), and the
-corner case where NFS requests a full page at the end of the file,
-even when i_size reflects only a partial page (NFS overread).
+We used a qemu image housing both the NFS server and the client and did some 
+kernel debugging.
+OS: Ubuntu 22.04.1
+Kernel: 5.15.78
+Mount line: rw,relatime,vers=4.2,rsize=1048576,wsize=1048576,
+	namlen=255,hard,proto=tcp,timeo=600,retrans=2,
+	sec=krb5p,clientaddr=10.0.0.1,
+	local_lock=none,addr=10.0.0.1
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
----
- fs/nfs/fscache.c         | 226 +++++++++++++++++++++++----------------
- fs/nfs/fscache.h         | 122 +++++++++++++++------
- fs/nfs/inode.c           |   2 +
- fs/nfs/internal.h        |   9 ++
- fs/nfs/pagelist.c        |   4 +
- fs/nfs/read.c            |  61 +++++------
- include/linux/nfs_page.h |   3 +
- include/linux/nfs_xdr.h  |   3 +
- 8 files changed, 274 insertions(+), 156 deletions(-)
+We touched a file and then touched the file again. This triggers the delay reliably.
 
-diff --git a/fs/nfs/fscache.c b/fs/nfs/fscache.c
-index 313c1519510c..95c2b3056e2b 100644
---- a/fs/nfs/fscache.c
-+++ b/fs/nfs/fscache.c
-@@ -15,6 +15,9 @@
- #include <linux/seq_file.h>
- #include <linux/slab.h>
- #include <linux/iversion.h>
-+#include <linux/xarray.h>
-+#include <linux/fscache.h>
-+#include <linux/netfs.h>
- 
- #include "internal.h"
- #include "iostat.h"
-@@ -235,112 +238,153 @@ void nfs_fscache_release_file(struct inode *inode, struct file *filp)
- 	fscache_unuse_cookie(cookie, &auxdata, &i_size);
- }
- 
--/*
-- * Fallback page reading interface.
-- */
--static int fscache_fallback_read_page(struct inode *inode, struct page *page)
-+int nfs_netfs_read_folio(struct file *file, struct folio *folio)
- {
--	struct netfs_cache_resources cres;
--	struct fscache_cookie *cookie = netfs_i_cookie(&NFS_I(inode)->netfs);
--	struct iov_iter iter;
--	struct bio_vec bvec[1];
--	int ret;
--
--	memset(&cres, 0, sizeof(cres));
--	bvec[0].bv_page		= page;
--	bvec[0].bv_offset	= 0;
--	bvec[0].bv_len		= PAGE_SIZE;
--	iov_iter_bvec(&iter, ITER_DEST, bvec, ARRAY_SIZE(bvec), PAGE_SIZE);
--
--	ret = fscache_begin_read_operation(&cres, cookie);
--	if (ret < 0)
--		return ret;
--
--	ret = fscache_read(&cres, page_offset(page), &iter, NETFS_READ_HOLE_FAIL,
--			   NULL, NULL);
--	fscache_end_operation(&cres);
--	return ret;
-+	if (!netfs_inode(folio_inode(folio))->cache)
-+		return -ENOBUFS;
-+
-+	return netfs_read_folio(file, folio);
- }
- 
--/*
-- * Fallback page writing interface.
-- */
--static int fscache_fallback_write_page(struct inode *inode, struct page *page,
--				       bool no_space_allocated_yet)
-+int nfs_netfs_readahead(struct readahead_control *ractl)
- {
--	struct netfs_cache_resources cres;
--	struct fscache_cookie *cookie = netfs_i_cookie(&NFS_I(inode)->netfs);
--	struct iov_iter iter;
--	struct bio_vec bvec[1];
--	loff_t start = page_offset(page);
--	size_t len = PAGE_SIZE;
--	int ret;
--
--	memset(&cres, 0, sizeof(cres));
--	bvec[0].bv_page		= page;
--	bvec[0].bv_offset	= 0;
--	bvec[0].bv_len		= PAGE_SIZE;
--	iov_iter_bvec(&iter, ITER_SOURCE, bvec, ARRAY_SIZE(bvec), PAGE_SIZE);
--
--	ret = fscache_begin_write_operation(&cres, cookie);
--	if (ret < 0)
--		return ret;
--
--	ret = cres.ops->prepare_write(&cres, &start, &len, i_size_read(inode),
--				      no_space_allocated_yet);
--	if (ret == 0)
--		ret = fscache_write(&cres, page_offset(page), &iter, NULL, NULL);
--	fscache_end_operation(&cres);
--	return ret;
-+	struct inode *inode = ractl->mapping->host;
-+
-+	if (!netfs_inode(inode)->cache)
-+		return -ENOBUFS;
-+
-+	netfs_readahead(ractl);
-+	return 0;
- }
- 
--/*
-- * Retrieve a page from fscache
-- */
--int __nfs_fscache_read_page(struct inode *inode, struct page *page)
-+atomic_t nfs_netfs_debug_id;
-+static int nfs_netfs_init_request(struct netfs_io_request *rreq, struct file *file)
- {
--	int ret;
-+	rreq->netfs_priv = get_nfs_open_context(nfs_file_open_context(file));
-+	rreq->debug_id = atomic_inc_return(&nfs_netfs_debug_id);
- 
--	trace_nfs_fscache_read_page(inode, page);
--	if (PageChecked(page)) {
--		ClearPageChecked(page);
--		ret = 1;
--		goto out;
--	}
-+	return 0;
-+}
- 
--	ret = fscache_fallback_read_page(inode, page);
--	if (ret < 0) {
--		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_READ_FAIL);
--		SetPageChecked(page);
--		goto out;
--	}
-+static void nfs_netfs_free_request(struct netfs_io_request *rreq)
-+{
-+	put_nfs_open_context(rreq->netfs_priv);
-+}
- 
--	/* Read completed synchronously */
--	nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_READ_OK);
--	SetPageUptodate(page);
--	ret = 0;
--out:
--	trace_nfs_fscache_read_page_exit(inode, page, ret);
--	return ret;
-+static inline int nfs_netfs_begin_cache_operation(struct netfs_io_request *rreq)
-+{
-+	return fscache_begin_read_operation(&rreq->cache_resources,
-+					    netfs_i_cookie(netfs_inode(rreq->inode)));
- }
- 
--/*
-- * Store a newly fetched page in fscache.  We can be certain there's no page
-- * stored in the cache as yet otherwise we would've read it from there.
-- */
--void __nfs_fscache_write_page(struct inode *inode, struct page *page)
-+static struct nfs_netfs_io_data *nfs_netfs_alloc(struct netfs_io_subrequest *sreq)
- {
--	int ret;
-+	struct nfs_netfs_io_data *netfs;
-+
-+	netfs = kzalloc(sizeof(*netfs), GFP_KERNEL_ACCOUNT);
-+	if (!netfs)
-+		return NULL;
-+	netfs->sreq = sreq;
-+	refcount_set(&netfs->refcount, 1);
-+	return netfs;
-+}
- 
--	trace_nfs_fscache_write_page(inode, page);
-+static bool nfs_netfs_clamp_length(struct netfs_io_subrequest *sreq)
-+{
-+	size_t	rsize = NFS_SB(sreq->rreq->inode->i_sb)->rsize;
- 
--	ret = fscache_fallback_write_page(inode, page, true);
-+	sreq->len = min(sreq->len, rsize);
-+	return true;
-+}
- 
--	if (ret != 0) {
--		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_WRITTEN_FAIL);
--		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_UNCACHED);
--	} else {
--		nfs_inc_fscache_stats(inode, NFSIOS_FSCACHE_PAGES_WRITTEN_OK);
-+static void nfs_netfs_issue_read(struct netfs_io_subrequest *sreq)
-+{
-+	struct nfs_netfs_io_data	*netfs;
-+	struct nfs_pageio_descriptor	pgio;
-+	struct inode *inode = sreq->rreq->inode;
-+	struct nfs_open_context *ctx = sreq->rreq->netfs_priv;
-+	struct page *page;
-+	int err;
-+	pgoff_t start = (sreq->start + sreq->transferred) >> PAGE_SHIFT;
-+	pgoff_t last = ((sreq->start + sreq->len -
-+			 sreq->transferred - 1) >> PAGE_SHIFT);
-+	XA_STATE(xas, &sreq->rreq->mapping->i_pages, start);
-+
-+	nfs_pageio_init_read(&pgio, inode, false,
-+			     &nfs_async_read_completion_ops);
-+
-+	netfs = nfs_netfs_alloc(sreq);
-+	if (!netfs)
-+		return netfs_subreq_terminated(sreq, -ENOMEM, false);
-+
-+	pgio.pg_netfs = netfs; /* used in completion */
-+
-+	xas_lock(&xas);
-+	xas_for_each(&xas, page, last) {
-+		/* nfs_read_add_folio() may schedule() due to pNFS layout and other RPCs  */
-+		xas_pause(&xas);
-+		xas_unlock(&xas);
-+		err = nfs_read_add_folio(&pgio, ctx, page_folio(page));
-+		if (err < 0) {
-+			netfs->error = err;
-+			goto out;
-+		}
-+		xas_lock(&xas);
- 	}
--	trace_nfs_fscache_write_page_exit(inode, page, ret);
-+	xas_unlock(&xas);
-+out:
-+	nfs_pageio_complete_read(&pgio);
-+	nfs_netfs_put(netfs);
- }
-+
-+void nfs_netfs_initiate_read(struct nfs_pgio_header *hdr)
-+{
-+	struct nfs_netfs_io_data        *netfs = hdr->netfs;
-+
-+	if (!netfs)
-+		return;
-+
-+	nfs_netfs_get(netfs);
-+}
-+
-+int nfs_netfs_folio_unlock(struct folio *folio)
-+{
-+	struct inode *inode = folio_file_mapping(folio)->host;
-+
-+	/*
-+	 * If fscache is enabled, netfs will unlock pages.
-+	 */
-+	if (netfs_inode(inode)->cache)
-+		return 0;
-+
-+	return 1;
-+}
-+
-+void nfs_netfs_read_completion(struct nfs_pgio_header *hdr)
-+{
-+	struct nfs_netfs_io_data        *netfs = hdr->netfs;
-+	struct netfs_io_subrequest      *sreq;
-+
-+	if (!netfs)
-+		return;
-+
-+	sreq = netfs->sreq;
-+	if (test_bit(NFS_IOHDR_EOF, &hdr->flags))
-+		__set_bit(NETFS_SREQ_CLEAR_TAIL, &sreq->flags);
-+
-+	if (hdr->error)
-+		netfs->error = hdr->error;
-+	else
-+		atomic64_add(hdr->res.count, &netfs->transferred);
-+
-+	nfs_netfs_put(netfs);
-+	hdr->netfs = NULL;
-+}
-+
-+const struct netfs_request_ops nfs_netfs_ops = {
-+	.init_request		= nfs_netfs_init_request,
-+	.free_request		= nfs_netfs_free_request,
-+	.begin_cache_operation	= nfs_netfs_begin_cache_operation,
-+	.issue_read		= nfs_netfs_issue_read,
-+	.clamp_length		= nfs_netfs_clamp_length
-+};
-diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
-index 38614ed8f951..e1706e736c64 100644
---- a/fs/nfs/fscache.h
-+++ b/fs/nfs/fscache.h
-@@ -34,6 +34,58 @@ struct nfs_fscache_inode_auxdata {
- 	u64	change_attr;
- };
- 
-+struct nfs_netfs_io_data {
-+	/*
-+	 * NFS may split a netfs_io_subrequest into multiple RPCs, each
-+	 * with their own read completion.  In netfs, we can only call
-+	 * netfs_subreq_terminated() once for each subrequest.  Use the
-+	 * refcount here to double as a marker of the last RPC completion,
-+	 * and only call netfs via netfs_subreq_terminated() once.
-+	 */
-+	refcount_t			refcount;
-+	struct netfs_io_subrequest	*sreq;
-+
-+	/*
-+	 * Final disposition of the netfs_io_subrequest, sent in
-+	 * netfs_subreq_terminated()
-+	 */
-+	atomic64_t	transferred;
-+	int		error;
-+};
-+
-+static inline void nfs_netfs_get(struct nfs_netfs_io_data *netfs)
-+{
-+	refcount_inc(&netfs->refcount);
-+}
-+
-+static inline void nfs_netfs_put(struct nfs_netfs_io_data *netfs)
-+{
-+	ssize_t final_len;
-+
-+	/* Only the last RPC completion should call netfs_subreq_terminated() */
-+	if (!refcount_dec_and_test(&netfs->refcount))
-+		return;
-+
-+	/*
-+	 * The NFS pageio interface may read a complete page, even when netfs
-+	 * only asked for a partial page.  Specifically, this may be seen when
-+	 * one thread is truncating a file while another one is reading the last
-+	 * page of the file.
-+	 * Correct the final length here to be no larger than the netfs subrequest
-+	 * length, and thus avoid netfs's "Subreq overread" warning message.
-+	 */
-+	final_len = min_t(s64, netfs->sreq->len, atomic64_read(&netfs->transferred));
-+	netfs_subreq_terminated(netfs->sreq, netfs->error ?: final_len, false);
-+	kfree(netfs);
-+}
-+static inline void nfs_netfs_inode_init(struct nfs_inode *nfsi)
-+{
-+	netfs_inode_init(&nfsi->netfs, &nfs_netfs_ops);
-+}
-+extern void nfs_netfs_initiate_read(struct nfs_pgio_header *hdr);
-+extern void nfs_netfs_read_completion(struct nfs_pgio_header *hdr);
-+extern int nfs_netfs_folio_unlock(struct folio *folio);
-+
- /*
-  * fscache.c
-  */
-@@ -44,9 +96,8 @@ extern void nfs_fscache_init_inode(struct inode *);
- extern void nfs_fscache_clear_inode(struct inode *);
- extern void nfs_fscache_open_file(struct inode *, struct file *);
- extern void nfs_fscache_release_file(struct inode *, struct file *);
--
--extern int __nfs_fscache_read_page(struct inode *, struct page *);
--extern void __nfs_fscache_write_page(struct inode *, struct page *);
-+extern int nfs_netfs_readahead(struct readahead_control *ractl);
-+extern int nfs_netfs_read_folio(struct file *file, struct folio *folio);
- 
- static inline bool nfs_fscache_release_folio(struct folio *folio, gfp_t gfp)
- {
-@@ -54,34 +105,11 @@ static inline bool nfs_fscache_release_folio(struct folio *folio, gfp_t gfp)
- 		if (current_is_kswapd() || !(gfp & __GFP_FS))
- 			return false;
- 		folio_wait_fscache(folio);
--		fscache_note_page_release(netfs_i_cookie(&NFS_I(folio->mapping->host)->netfs));
--		nfs_inc_fscache_stats(folio->mapping->host,
--				      NFSIOS_FSCACHE_PAGES_UNCACHED);
- 	}
-+	fscache_note_page_release(netfs_i_cookie(netfs_inode(folio->mapping->host)));
- 	return true;
- }
- 
--/*
-- * Retrieve a page from an inode data storage object.
-- */
--static inline int nfs_fscache_read_page(struct inode *inode, struct page *page)
--{
--	if (netfs_inode(inode)->cache)
--		return __nfs_fscache_read_page(inode, page);
--	return -ENOBUFS;
--}
--
--/*
-- * Store a page newly fetched from the server in an inode data storage object
-- * in the cache.
-- */
--static inline void nfs_fscache_write_page(struct inode *inode,
--					   struct page *page)
--{
--	if (netfs_inode(inode)->cache)
--		__nfs_fscache_write_page(inode, page);
--}
--
- static inline void nfs_fscache_update_auxdata(struct nfs_fscache_inode_auxdata *auxdata,
- 					      struct inode *inode)
- {
-@@ -117,7 +145,28 @@ static inline const char *nfs_server_fscache_state(struct nfs_server *server)
- 	return "no ";
- }
- 
-+static inline void nfs_netfs_set_pgio_header(struct nfs_pgio_header *hdr,
-+					     struct nfs_pageio_descriptor *desc)
-+{
-+	hdr->netfs = desc->pg_netfs;
-+}
-+static inline void nfs_netfs_set_pageio_descriptor(struct nfs_pageio_descriptor *desc,
-+						   struct nfs_pgio_header *hdr)
-+{
-+	desc->pg_netfs = hdr->netfs;
-+}
-+static inline void nfs_netfs_reset_pageio_descriptor(struct nfs_pageio_descriptor *desc)
-+{
-+	desc->pg_netfs = NULL;
-+}
- #else /* CONFIG_NFS_FSCACHE */
-+static inline void nfs_netfs_inode_init(struct nfs_inode *nfsi) {}
-+static inline void nfs_netfs_initiate_read(struct nfs_pgio_header *hdr) {}
-+static inline void nfs_netfs_read_completion(struct nfs_pgio_header *hdr) {}
-+static inline int nfs_netfs_folio_unlock(struct folio *folio)
-+{
-+	return 1;
-+}
- static inline void nfs_fscache_release_super_cookie(struct super_block *sb) {}
- 
- static inline void nfs_fscache_init_inode(struct inode *inode) {}
-@@ -125,22 +174,29 @@ static inline void nfs_fscache_clear_inode(struct inode *inode) {}
- static inline void nfs_fscache_open_file(struct inode *inode,
- 					 struct file *filp) {}
- static inline void nfs_fscache_release_file(struct inode *inode, struct file *file) {}
--
--static inline bool nfs_fscache_release_folio(struct folio *folio, gfp_t gfp)
-+static inline int nfs_netfs_readahead(struct readahead_control *ractl)
- {
--	return true; /* may release folio */
-+	return -ENOBUFS;
- }
--static inline int nfs_fscache_read_page(struct inode *inode, struct page *page)
-+static inline int nfs_netfs_read_folio(struct file *file, struct folio *folio)
- {
- 	return -ENOBUFS;
- }
--static inline void nfs_fscache_write_page(struct inode *inode, struct page *page) {}
-+
-+static inline bool nfs_fscache_release_folio(struct folio *folio, gfp_t gfp)
-+{
-+	return true; /* may release folio */
-+}
- static inline void nfs_fscache_invalidate(struct inode *inode, int flags) {}
- 
- static inline const char *nfs_server_fscache_state(struct nfs_server *server)
- {
- 	return "no ";
- }
--
-+static inline void nfs_netfs_set_pgio_header(struct nfs_pgio_header *hdr,
-+					     struct nfs_pageio_descriptor *desc) {}
-+static inline void nfs_netfs_set_pageio_descriptor(struct nfs_pageio_descriptor *desc,
-+						   struct nfs_pgio_header *hdr) {}
-+static inline void nfs_netfs_reset_pageio_descriptor(struct nfs_pageio_descriptor *desc) {}
- #endif /* CONFIG_NFS_FSCACHE */
- #endif /* _NFS_FSCACHE_H */
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e98ee7599eeb..68503a7e5b8d 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -2246,6 +2246,8 @@ struct inode *nfs_alloc_inode(struct super_block *sb)
- #ifdef CONFIG_NFS_V4_2
- 	nfsi->xattr_cache = NULL;
- #endif
-+	nfs_netfs_inode_init(nfsi);
-+
- 	return &nfsi->vfs_inode;
- }
- EXPORT_SYMBOL_GPL(nfs_alloc_inode);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 239ae5084774..53e7257feb14 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -452,6 +452,10 @@ extern void nfs_sb_deactive(struct super_block *sb);
- extern int nfs_client_for_each_server(struct nfs_client *clp,
- 				      int (*fn)(struct nfs_server *, void *),
- 				      void *data);
-+#ifdef CONFIG_NFS_FSCACHE
-+extern const struct netfs_request_ops nfs_netfs_ops;
-+#endif
-+
- /* io.c */
- extern void nfs_start_io_read(struct inode *inode);
- extern void nfs_end_io_read(struct inode *inode);
-@@ -481,9 +485,14 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
- 
- struct nfs_pgio_completion_ops;
- /* read.c */
-+extern const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
-+extern int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
-+			       struct nfs_open_context *ctx,
-+			       struct folio *folio);
-+extern void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 0b4c07c93a52..43582dcba66c 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -25,6 +25,7 @@
- #include "internal.h"
- #include "pnfs.h"
- #include "nfstrace.h"
-+#include "fscache.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
-@@ -104,6 +105,7 @@ void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
- 	hdr->good_bytes = mirror->pg_count;
- 	hdr->io_completion = desc->pg_io_completion;
- 	hdr->dreq = desc->pg_dreq;
-+	nfs_netfs_set_pgio_header(hdr, desc);
- 	hdr->release = release;
- 	hdr->completion_ops = desc->pg_completion_ops;
- 	if (hdr->completion_ops->init_hdr)
-@@ -940,6 +942,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 	desc->pg_lseg = NULL;
- 	desc->pg_io_completion = NULL;
- 	desc->pg_dreq = NULL;
-+	nfs_netfs_reset_pageio_descriptor(desc);
- 	desc->pg_bsize = bsize;
- 
- 	desc->pg_mirror_count = 1;
-@@ -1476,6 +1479,7 @@ int nfs_pageio_resend(struct nfs_pageio_descriptor *desc,
- 
- 	desc->pg_io_completion = hdr->io_completion;
- 	desc->pg_dreq = hdr->dreq;
-+	nfs_netfs_set_pageio_descriptor(desc, hdr);
- 	list_splice_init(&hdr->pages, &pages);
- 	while (!list_empty(&pages)) {
- 		struct nfs_page *req = nfs_list_entry(pages.next);
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 4cb3991c4735..e3a630f4764b 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -30,7 +30,7 @@
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
--static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
-+const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- static const struct nfs_rw_ops nfs_rw_read_ops;
- 
- static struct kmem_cache *nfs_rdata_cachep;
-@@ -73,7 +73,7 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
- 
--static void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio)
-+void nfs_pageio_complete_read(struct nfs_pageio_descriptor *pgio)
- {
- 	struct nfs_pgio_mirror *pgm;
- 	unsigned long npages;
-@@ -109,20 +109,14 @@ EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
- 
- static void nfs_readpage_release(struct nfs_page *req, int error)
- {
--	struct inode *inode = d_inode(nfs_req_openctx(req)->dentry);
- 	struct folio *folio = nfs_page_to_folio(req);
- 
--	dprintk("NFS: read done (%s/%llu %d@%lld)\n", inode->i_sb->s_id,
--		(unsigned long long)NFS_FILEID(inode), req->wb_bytes,
--		(long long)req_offset(req));
--
- 	if (nfs_error_is_fatal_on_server(error) && error != -ETIMEDOUT)
- 		folio_set_error(folio);
--	if (nfs_page_group_sync_on_bit(req, PG_UNLOCKPAGE)) {
--		if (folio_test_uptodate(folio))
--			nfs_fscache_write_page(inode, &folio->page);
--		folio_unlock(folio);
--	}
-+	if (nfs_page_group_sync_on_bit(req, PG_UNLOCKPAGE))
-+		if (nfs_netfs_folio_unlock(folio))
-+			folio_unlock(folio);
-+
- 	nfs_release_request(req);
- }
- 
-@@ -176,6 +170,8 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
- 		nfs_list_remove_request(req);
- 		nfs_readpage_release(req, error);
- 	}
-+	nfs_netfs_read_completion(hdr);
-+
- out:
- 	hdr->release(hdr);
- }
-@@ -186,6 +182,7 @@ static void nfs_initiate_read(struct nfs_pgio_header *hdr,
- 			      struct rpc_task_setup *task_setup_data, int how)
- {
- 	rpc_ops->read_setup(hdr, msg);
-+	nfs_netfs_initiate_read(hdr);
- 	trace_nfs_initiate_read(hdr);
- }
- 
-@@ -201,7 +198,7 @@ nfs_async_read_error(struct list_head *head, int error)
- 	}
- }
- 
--static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
-+const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
- 	.error_cleanup = nfs_async_read_error,
- 	.completion = nfs_read_completion,
- };
-@@ -276,9 +273,9 @@ static void nfs_readpage_result(struct rpc_task *task,
- 		nfs_readpage_retry(task, hdr);
- }
- 
--static int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
--			      struct nfs_open_context *ctx,
--			      struct folio *folio)
-+int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
-+		       struct nfs_open_context *ctx,
-+		       struct folio *folio)
- {
- 	struct inode *inode = folio_file_mapping(folio)->host;
- 	struct nfs_server *server = NFS_SERVER(inode);
-@@ -294,15 +291,11 @@ static int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
- 
- 	aligned_len = min_t(unsigned int, ALIGN(len, rsize), fsize);
- 
--	if (!IS_SYNC(inode)) {
--		error = nfs_fscache_read_page(inode, &folio->page);
--		if (error == 0)
--			goto out_unlock;
--	}
--
- 	new = nfs_page_create_from_folio(ctx, folio, 0, aligned_len);
--	if (IS_ERR(new))
--		goto out_error;
-+	if (IS_ERR(new)) {
-+		error = PTR_ERR(new);
-+		goto out;
-+	}
- 
- 	if (len < fsize)
- 		folio_zero_segment(folio, len, fsize);
-@@ -313,10 +306,6 @@ static int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
- 		goto out;
- 	}
- 	return 0;
--out_error:
--	error = PTR_ERR(new);
--out_unlock:
--	folio_unlock(folio);
- out:
- 	return error;
- }
-@@ -354,6 +343,10 @@ int nfs_read_folio(struct file *file, struct folio *folio)
- 	if (NFS_STALE(inode))
- 		goto out_unlock;
- 
-+	ret = nfs_netfs_read_folio(file, folio);
-+	if (!ret)
-+		goto out;
-+
- 	ctx = get_nfs_open_context(nfs_file_open_context(file));
- 
- 	xchg(&ctx->error, 0);
-@@ -362,7 +355,7 @@ int nfs_read_folio(struct file *file, struct folio *folio)
- 
- 	ret = nfs_read_add_folio(&pgio, ctx, folio);
- 	if (ret)
--		goto out;
-+		goto out_put;
- 
- 	nfs_pageio_complete_read(&pgio);
- 	ret = pgio.pg_error < 0 ? pgio.pg_error : 0;
-@@ -371,14 +364,14 @@ int nfs_read_folio(struct file *file, struct folio *folio)
- 		if (!folio_test_uptodate(folio) && !ret)
- 			ret = xchg(&ctx->error, 0);
- 	}
--out:
-+out_put:
- 	put_nfs_open_context(ctx);
-+out:
- 	trace_nfs_aop_readpage_done(inode, folio, ret);
- 	return ret;
- out_unlock:
- 	folio_unlock(folio);
--	trace_nfs_aop_readpage_done(inode, folio, ret);
--	return ret;
-+	goto out;
- }
- 
- void nfs_readahead(struct readahead_control *ractl)
-@@ -398,6 +391,10 @@ void nfs_readahead(struct readahead_control *ractl)
- 	if (NFS_STALE(inode))
- 		goto out;
- 
-+	ret = nfs_netfs_readahead(ractl);
-+	if (!ret)
-+		goto out;
-+
- 	if (file == NULL) {
- 		ret = -EBADF;
- 		ctx = nfs_find_open_context(inode, NULL, FMODE_READ);
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index a2f1ca657623..aa9f4c6ebe26 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -105,6 +105,9 @@ struct nfs_pageio_descriptor {
- 	struct pnfs_layout_segment *pg_lseg;
- 	struct nfs_io_completion *pg_io_completion;
- 	struct nfs_direct_req	*pg_dreq;
-+#ifdef CONFIG_NFS_FSCACHE
-+	void			*pg_netfs;
-+#endif
- 	unsigned int		pg_bsize;	/* default bsize for mirrors */
- 
- 	u32			pg_mirror_count;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index e86cf6642d21..e196ef595908 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1619,6 +1619,9 @@ struct nfs_pgio_header {
- 	const struct nfs_rw_ops	*rw_ops;
- 	struct nfs_io_completion *io_completion;
- 	struct nfs_direct_req	*dreq;
-+#ifdef CONFIG_NFS_FSCACHE
-+	void			*netfs;
-+#endif
- 
- 	int			pnfs_error;
- 	int			error;		/* merge with pnfs_error */
+We set breakpoints on all functions starting with nfs4 and on 
+"update_open_stateid". The attached file "1sttouch.log" contains a gdb log of 
+the first touch.
+"2ndtouch.log" shows the gdb output of the second touch. The delay occurs in 
+line 116 in update_open_stateid.
+
+We then deleted all breakpoints and set a sole breakpoint on 
+update_open_stateid. We touched the file again and used only the "next" command 
+of gdb. The gdb output is in "2ndtouch-next.log", the delay occurs in line 8.
+
+Please let us know if you need more information or if you want us to perform 
+further tests.
+
+Best regards,
+Florian Möller
+
+Am 07.02.23 um 16:21 schrieb Jeff Layton:
+> On Tue, 2023-02-07 at 11:58 +0100, Florian Möller wrote:
+>> Hi all,
+>>
+>> we are currently in the process of migrating our file server infrastructure to
+>> NFS. In our test environments, the following problem has now occurred several
+>> times in certain situations:
+>>
+>> A previously very fast NFS file operation suddenly takes 5 seconds longer - per
+>> file. This leads to applications running very slowly and severely delayed file
+>> operations.
+>>
+>> Here are the details:
+>>
+>> NFS server:
+>> OS: Ubuntu 22.04.1, all patches installed
+>> Kernel: Ubuntu Mainline, Versions
+>> 	6.1.7-060107-generic_6.1.7-060107.202301181200
+>>           6.1.8-060108_6.1.8-060108.202301240742
+>>           6.1.9-060109_6.1.9-060109.202302010835
+>> Security options: all Kerberos security options are affected
+>>    (The bug does not seem to occur without Kerberos security.)
+>> Output of exportfs -v:
+>> /export
+>> gss/krb5p(async,wdelay,hide,crossmnt,no_subtree_check,fsid=0,sec=sys,rw,secure,root_squash,no_all_squash)
+>> /export
+>> gss/krb5(async,wdelay,hide,crossmnt,no_subtree_check,fsid=0,sec=sys,rw,secure,root_squash,no_all_squash)
+>>
+> 
+> 
+> I see you're using the -o async export option. Note that you may end up
+> with corrupt data on a server reboot (see exports(5) manpage).
+> 
+> Assuming you're aware of this and want to keep that anyway, then the
+> patch I just posted to the mailing list may help you, if the stalls are
+> coming during CLOSE operations:
+> 
+> https://lore.kernel.org/linux-nfs/9137413986ba9c2e83c030513fa9ae3358f30a85.camel@kernel.org/T/#mcb88f091263d07d8b9c13e6cc5ce0a0413d3f761
+> 
+>>
+>> Client 1:
+>> OS: Arch Linux, all patches installed
+>> Kernel: 6.1.9-arch1-2, 6.1.9-arch1-1
+>> Mount-Line: servername:/ on /nfs type nfs4
+>> (rw,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5p,clientaddr=XX.XX.XX.XX,local_lock=none,addr=YY.YY.YY.YY,_netdev)
+>> krb5: 1.20.1-1
+>> libevent: 2.1.12-4
+>> nfs-utils: 2.6.2-1
+>> util-linux: 2.38.1-1
+>>
+>>
+>> Client 2:
+>> OS: openSuSE 15.4, all patches installed
+>> Kernel: 5.14.21-150400.24.41-default
+>> Mount-Line: servername:/ on /nfs type nfs4
+>> (rw,relatime,sync,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,softerr,softreval,noac,noresvport,proto=tcp,timeo=1,retrans=2,sec=krb5,clientaddr=XX.XX.XX.XX,lookupcache=none,local_lock=none,addr=YY.YY.YY.YY)
+>>
+>> libgssapi3: 7.8.0-bp154.2.4.1
+>> libevent: 2.1.8-2.23
+>> nfs-client: 2.1.1-150100.10.27.1
+>> util-linux: 2.37.2-140400.8.14.1
+>>
+>>
+>> The error occurs for example if a file is touched twice:
+>>
+>> touch testfile && echo "done" && touch testfile && echo "and again"
+>>
+>> However, touching a large number of files (about 10000) with (pairwise)
+>> different filenames works fast.
+>>
+>>
+>> Here is another example that triggers the error:
+>>
+>> 1st step: create many files (shell code in Z-shell syntax):
+>>
+>> for i in {1..10000}; do
+>> echo "test" > $i.txt
+>> done
+>>
+>> This is fast.
+>>
+>> 2nd step:
+>>
+>> for i in {1..10000}; do
+>> echo $i
+>> cat $i.txt
+>> done
+>>
+>> This takes 5 seconds per cat(1) call.
+>> After unmounting and mounting, the 2nd step also runs quickly at first. But
+>> after executing the 2nd step several times in a row, the error occurs again
+>> (quite soon, after the 2nd or 3rd execution).
+>>
+>> We were not able to reproduce the error without a Kerberos security type set.
+>>
+>>
+>> Attached are a log from the server and from the client. In both cases
+>>
+>> rpcdebug -m nfs -s all
+>> rpcdebug -m nfsd -s all
+>> rpcdebug -m rpc -s all
+>>
+>> was set.
+>>
+>>
+>> Best regards,
+>> Florian Möller
+>>
+>>
+>>
+> 
+
 -- 
-2.31.1
+Dr. Florian Möller
+Universität Würzburg
+Institut für Mathematik
+Emil-Fischer-Straße 30
+97074 Würzburg, Germany
+Tel. +49 931 3185596
 
+--------------nJWtO5qC2pACou522eEA0Pzh
+Content-Type: text/x-log; charset=UTF-8; name="1sttouch.log"
+Content-Disposition: attachment; filename="1sttouch.log"
+Content-Transfer-Encoding: base64
+
+QnJlYWtwb2ludCAxODEsIDB4ZmZmZmZmZmZjMDk3OTk3MCBpbiBuZnM0X2F0b21pY19vcGVu
+ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDE4MCwgMHhmZmZmZmZmZmMwOTc4YzgwIGlu
+IG5mczRfZG9fb3BlbiAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAzNzEsIDB4ZmZmZmZm
+ZmZjMDk4Yzk5MCBpbiBuZnM0X2dldF9zdGF0ZV9vd25lciAoKQpDb250aW51aW5nLgoKQnJl
+YWtwb2ludCAzOTYsIDB4ZmZmZmZmZmZjMDk4ZjU2MCBpbiBuZnM0X2NsaWVudF9yZWNvdmVy
+X2V4cGlyZWRfbGVhc2UgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMzk1LCAweGZmZmZm
+ZmZmYzA5OGY0YjAgaW4gbmZzNF93YWl0X2NsbnRfcmVjb3ZlciAoKQpDb250aW51aW5nLgoK
+QnJlYWtwb2ludCA2MiwgMHhmZmZmZmZmZmMwOTZkMzAwIGluIG5mczRfb3BlbmRhdGFfYWxs
+b2MgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNjc1LCAweGZmZmZmZmZmYzA5MTMwZjAg
+aW4gbmZzNF9sYWJlbF9hbGxvYyAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA2NzUsIDB4
+ZmZmZmZmZmZjMDkxMzBmMCBpbiBuZnM0X2xhYmVsX2FsbG9jICgpCkNvbnRpbnVpbmcuCgpC
+cmVha3BvaW50IDY4LCAweGZmZmZmZmZmYzA5NmUyZjAgaW4gbmZzNF9ydW5fb3Blbl90YXNr
+ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDEyMCwgMHhmZmZmZmZmZmMwOTcyYTQwIGlu
+IG5mczRfb3Blbl9wcmVwYXJlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDEwNCwgMHhm
+ZmZmZmZmZmMwOTcyNGEwIGluIG5mczRfc2V0dXBfc2VxdWVuY2UgKCkKQ29udGludWluZy4K
+CkJyZWFrcG9pbnQgNDgwLCAweGZmZmZmZmZmYzA5OWE0MzAgaW4gbmZzNF9hbGxvY19zbG90
+ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ3MSwgMHhmZmZmZmZmZmMwOTk5ZTYwIGlu
+IG5mczRfZmluZF9vcl9jcmVhdGVfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAz
+MjUsIDB4ZmZmZmZmZmZjMDk4OGU5MCBpbiBuZnM0X3hkcl9lbmNfb3BlbiAoKQpDb250aW51
+aW5nLgoKQnJlYWtwb2ludCA2NzgsIDB4ZmZmZmZmZmZjMDU4MGVkMCBpbiBuZnM0c3ZjX2Rl
+Y29kZV9jb21wb3VuZGFyZ3MgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNjk0LCAweGZm
+ZmZmZmZmYzA1ODU3NzAgaW4gbmZzNF9hbGxvY19zdGlkICgpCkNvbnRpbnVpbmcuCgpCcmVh
+a3BvaW50IDY5MiwgMHhmZmZmZmZmZmMwNTg0YWQwIGluIG5mczRfZ2V0X3Zmc19maWxlICgp
+CkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDY5OSwgMHhmZmZmZmZmZmMwNTg2MzcwIGluIG5m
+czRfaW5jX2FuZF9jb3B5X3N0YXRlaWQgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNjk4
+LCAweGZmZmZmZmZmYzA1ODU5YzAgaW4gbmZzNF9wdXRfc3RpZCAoKQpDb250aW51aW5nLgoK
+QnJlYWtwb2ludCA2ODgsIDB4ZmZmZmZmZmZjMDU4MzVhMCBpbiBuZnM0X3B1dF9zdGF0ZW93
+bmVyICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDY3OSwgMHhmZmZmZmZmZmMwNTgxMzEw
+IGluIG5mczRzdmNfZW5jb2RlX2NvbXBvdW5kcmVzICgpCkNvbnRpbnVpbmcuCgpCcmVha3Bv
+aW50IDMzOCwgMHhmZmZmZmZmZmMwOThhZTUwIGluIG5mczRfeGRyX2RlY19vcGVuICgpCkNv
+bnRpbnVpbmcuCgpCcmVha3BvaW50IDEwMCwgMHhmZmZmZmZmZmMwOTcxMmYwIGluIG5mczRf
+b3Blbl9kb25lICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDc2LCAweGZmZmZmZmZmYzA5
+NmYzNDAgaW4gbmZzNDFfc2VxdWVuY2VfcHJvY2VzcyAoKQpDb250aW51aW5nLgoKQnJlYWtw
+b2ludCA0MDAsIDB4ZmZmZmZmZmZjMDk4ZmFmMCBpbiBuZnM0MV9oYW5kbGVfc2VxdWVuY2Vf
+ZmxhZ19lcnJvcnMgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDg2LCAweGZmZmZmZmZm
+YzA5OWE3NDAgaW4gbmZzNDFfdXBkYXRlX3RhcmdldF9zbG90aWQgKCkKQ29udGludWluZy4K
+CkJyZWFrcG9pbnQgNDgwLCAweGZmZmZmZmZmYzA5OWE0MzAgaW4gbmZzNF9hbGxvY19zbG90
+ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ3MSwgMHhmZmZmZmZmZmMwOTk5ZTYwIGlu
+IG5mczRfZmluZF9vcl9jcmVhdGVfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0
+NzYsIDB4ZmZmZmZmZmZjMDk5YTIwMCBpbiBuZnM0X2ZyZWVfc2xvdCAoKQpDb250aW51aW5n
+LgoKQnJlYWtwb2ludCAxNzgsIDB4ZmZmZmZmZmZjMDk3OGIyMCBpbiBuZnM0X29wZW5fcmVs
+ZWFzZSAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAyNCwgMHhmZmZmZmZmZmMwOTY5MWMw
+IGluIG5mczRfdXBkYXRlX2NoYW5nZWF0dHJfbG9ja2VkICgpCkNvbnRpbnVpbmcuCgpCcmVh
+a3BvaW50IDM3NiwgMHhmZmZmZmZmZmMwOThkMGIwIGluIG5mczRfZ2V0X29wZW5fc3RhdGUg
+KCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNzM3LCAweGZmZmZmZmZmYzA5NzcyODAgaW4g
+dXBkYXRlX29wZW5fc3RhdGVpZCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0MTgsIDB4
+ZmZmZmZmZmZjMDk5MWQyMCBpbiBuZnM0X2dldF92YWxpZF9kZWxlZ2F0aW9uICgpCkNvbnRp
+bnVpbmcuCgpCcmVha3BvaW50IDM3NSwgMHhmZmZmZmZmZmMwOThkMDQwIGluIG5mczRfc3Rh
+dGVfc2V0X21vZGVfbG9ja2VkICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDg3LCAweGZm
+ZmZmZmZmYzA5NzAyMzAgaW4gbmZzNF9zZXF1ZW5jZV9mcmVlX3Nsb3QgKCkKQ29udGludWlu
+Zy4KCkJyZWFrcG9pbnQgNzMsIDB4ZmZmZmZmZmZjMDk2ZWZlMCBpbiBuZnM0MV9yZWxlYXNl
+X3Nsb3QgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDgzLCAweGZmZmZmZmZmYzA5OWE1
+ZTAgaW4gbmZzNDFfd2FrZV9hbmRfYXNzaWduX3Nsb3QgKCkKQ29udGludWluZy4KCkJyZWFr
+cG9pbnQgNDc2LCAweGZmZmZmZmZmYzA5OWEyMDAgaW4gbmZzNF9mcmVlX3Nsb3QgKCkKQ29u
+dGludWluZy4KCkJyZWFrcG9pbnQgOTMsIDB4ZmZmZmZmZmZjMDk3MDZkMCBpbiBuZnM0X29w
+ZW5kYXRhX2ZyZWUgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDkzLCAweGZmZmZmZmZm
+YzA5YTk4MDAgaW4gbmZzNF9sZ29wZW5fcmVsZWFzZSAoKQpDb250aW51aW5nLgoKQnJlYWtw
+b2ludCAzNzIsIDB4ZmZmZmZmZmZjMDk4Y2U1MCBpbiBuZnM0X3B1dF9zdGF0ZV9vd25lciAo
+KQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAzNzIsIDB4ZmZmZmZmZmZjMDk4Y2U1MCBpbiBu
+ZnM0X3B1dF9zdGF0ZV9vd25lciAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0MTIsIDB4
+ZmZmZmZmZmZjMDk5MDg0MCBpbiBuZnM0X2ZpbGVfZmx1c2ggKCkKQ29udGludWluZy4KCkJy
+ZWFrcG9pbnQgNDI2LCAweGZmZmZmZmZmYzA5OTJmYzAgaW4gbmZzNF9kZWxlZ2F0aW9uX2Zs
+dXNoX29uX2Nsb3NlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDE0MCwgMHhmZmZmZmZm
+ZmMwOTc0YjkwIGluIG5mczRfcHJvY19zZXRhdHRyICgpCkNvbnRpbnVpbmcuCgpCcmVha3Bv
+aW50IDY3NSwgMHhmZmZmZmZmZmMwOTEzMGYwIGluIG5mczRfbGFiZWxfYWxsb2MgKCkKQ29u
+dGludWluZy4KCkJyZWFrcG9pbnQgMTM5LCAweGZmZmZmZmZmYzA5NzQ2YzAgaW4gbmZzNF9k
+b19zZXRhdHRyICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDI3LCAweGZmZmZmZmZmYzA5
+Njk1MjAgaW4gbmZzNF9iaXRtYXBfY29weV9hZGp1c3QgKCkKQ29udGludWluZy4KCkJyZWFr
+cG9pbnQgNDIzLCAweGZmZmZmZmZmYzA5OTI2MTAgaW4gbmZzNF9pbm9kZV9tYWtlX3dyaXRl
+YWJsZSAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA1MywgMHhmZmZmZmZmZmMwOTZiMDYw
+IGluIG5mczRfY2FsbF9zeW5jX3NlcXVlbmNlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50
+IDExMSwgMHhmZmZmZmZmZmMwOTcyN2MwIGluIG5mczQxX2NhbGxfc3luY19wcmVwYXJlICgp
+CkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDEwNCwgMHhmZmZmZmZmZmMwOTcyNGEwIGluIG5m
+czRfc2V0dXBfc2VxdWVuY2UgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDgwLCAweGZm
+ZmZmZmZmYzA5OWE0MzAgaW4gbmZzNF9hbGxvY19zbG90ICgpCkNvbnRpbnVpbmcuCgpCcmVh
+a3BvaW50IDQ3MSwgMHhmZmZmZmZmZmMwOTk5ZTYwIGluIG5mczRfZmluZF9vcl9jcmVhdGVf
+c2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAyOTYsIDB4ZmZmZmZmZmZjMDk4NGI1
+MCBpbiBuZnM0X3hkcl9lbmNfc2V0YXR0ciAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA2
+NzgsIDB4ZmZmZmZmZmZjMDU4MGVkMCBpbiBuZnM0c3ZjX2RlY29kZV9jb21wb3VuZGFyZ3Mg
+KCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNjc5LCAweGZmZmZmZmZmYzA1ODEzMTAgaW4g
+bmZzNHN2Y19lbmNvZGVfY29tcG91bmRyZXMgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQg
+MzMwLCAweGZmZmZmZmZmYzA5OGE3NDAgaW4gbmZzNF94ZHJfZGVjX3NldGF0dHIgKCkKQ29u
+dGludWluZy4KCkJyZWFrcG9pbnQgNzksIDB4ZmZmZmZmZmZjMDk2ZjcwMCBpbiBuZnM0MV9j
+YWxsX3N5bmNfZG9uZSAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA3NiwgMHhmZmZmZmZm
+ZmMwOTZmMzQwIGluIG5mczQxX3NlcXVlbmNlX3Byb2Nlc3MgKCkKQ29udGludWluZy4KCkJy
+ZWFrcG9pbnQgNDAwLCAweGZmZmZmZmZmYzA5OGZhZjAgaW4gbmZzNDFfaGFuZGxlX3NlcXVl
+bmNlX2ZsYWdfZXJyb3JzICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ4NiwgMHhmZmZm
+ZmZmZmMwOTlhNzQwIGluIG5mczQxX3VwZGF0ZV90YXJnZXRfc2xvdGlkICgpCkNvbnRpbnVp
+bmcuCgpCcmVha3BvaW50IDQ4MCwgMHhmZmZmZmZmZmMwOTlhNDMwIGluIG5mczRfYWxsb2Nf
+c2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0NzEsIDB4ZmZmZmZmZmZjMDk5OWU2
+MCBpbiBuZnM0X2ZpbmRfb3JfY3JlYXRlX3Nsb3QgKCkKQ29udGludWluZy4KCkJyZWFrcG9p
+bnQgNDc2LCAweGZmZmZmZmZmYzA5OWEyMDAgaW4gbmZzNF9mcmVlX3Nsb3QgKCkKQ29udGlu
+dWluZy4KCkJyZWFrcG9pbnQgNzMsIDB4ZmZmZmZmZmZjMDk2ZWZlMCBpbiBuZnM0MV9yZWxl
+YXNlX3Nsb3QgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDgzLCAweGZmZmZmZmZmYzA5
+OWE1ZTAgaW4gbmZzNDFfd2FrZV9hbmRfYXNzaWduX3Nsb3QgKCkKQ29udGludWluZy4KCkJy
+ZWFrcG9pbnQgNDc2LCAweGZmZmZmZmZmYzA5OWEyMDAgaW4gbmZzNF9mcmVlX3Nsb3QgKCkK
+Q29udGludWluZy4KCkJyZWFrcG9pbnQgMTI2LCAweGZmZmZmZmZmYzA5NzM5NTAgaW4gbmZz
+NF9oYW5kbGVfZXhjZXB0aW9uICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ0LCAweGZm
+ZmZmZmZmYzA5NmEwNjAgaW4gbmZzNF9kb19oYW5kbGVfZXhjZXB0aW9uICgpCkNvbnRpbnVp
+bmcuCgpCcmVha3BvaW50IDQxMiwgMHhmZmZmZmZmZmMwOTkwODQwIGluIG5mczRfZmlsZV9m
+bHVzaCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0MjYsIDB4ZmZmZmZmZmZjMDk5MmZj
+MCBpbiBuZnM0X2RlbGVnYXRpb25fZmx1c2hfb25fY2xvc2UgKCkKQ29udGludWluZy4KCkJy
+ZWFrcG9pbnQgMzYsIDB4ZmZmZmZmZmZjMDk2OTk4MCBpbiBuZnM0X2Nsb3NlX2NvbnRleHQg
+KCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMzgxLCAweGZmZmZmZmZmYzA5OGU3OTAgaW4g
+bmZzNF9jbG9zZV9zeW5jICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDM3NSwgMHhmZmZm
+ZmZmZmMwOThkMDQwIGluIG5mczRfc3RhdGVfc2V0X21vZGVfbG9ja2VkICgpCkNvbnRpbnVp
+bmcuCgpCcmVha3BvaW50IDE4NCwgMHhmZmZmZmZmZmMwOTc5ZGQwIGluIG5mczRfZG9fY2xv
+c2UgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMzg1LCAweGZmZmZmZmZmYzA5OGVhNzAg
+aW4gbmZzNF9jb3B5X29wZW5fc3RhdGVpZCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAx
+MjEsIDB4ZmZmZmZmZmZjMDk3MmM0MCBpbiBuZnM0X2Nsb3NlX3ByZXBhcmUgKCkKQ29udGlu
+dWluZy4KCkJyZWFrcG9pbnQgNDUsIDB4ZmZmZmZmZmZjMDk2YTY1MCBpbiBuZnM0X2JpdG1h
+c2tfc2V0LmNvbnN0cHJvcCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAxMDQsIDB4ZmZm
+ZmZmZmZjMDk3MjRhMCBpbiBuZnM0X3NldHVwX3NlcXVlbmNlICgpCkNvbnRpbnVpbmcuCgpC
+cmVha3BvaW50IDQ4MCwgMHhmZmZmZmZmZmMwOTlhNDMwIGluIG5mczRfYWxsb2Nfc2xvdCAo
+KQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0NzEsIDB4ZmZmZmZmZmZjMDk5OWU2MCBpbiBu
+ZnM0X2ZpbmRfb3JfY3JlYXRlX3Nsb3QgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMzE2
+LCAweGZmZmZmZmZmYzA5ODZmNzAgaW4gbmZzNF94ZHJfZW5jX2Nsb3NlICgpCkNvbnRpbnVp
+bmcuCgpCcmVha3BvaW50IDY3OCwgMHhmZmZmZmZmZmMwNTgwZWQwIGluIG5mczRzdmNfZGVj
+b2RlX2NvbXBvdW5kYXJncyAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA2NzksIDB4ZmZm
+ZmZmZmZjMDU4MTMxMCBpbiBuZnM0c3ZjX2VuY29kZV9jb21wb3VuZHJlcyAoKQpDb250aW51
+aW5nLgoKQnJlYWtwb2ludCAzMjcsIDB4ZmZmZmZmZmZjMDk4YTQ5MCBpbiBuZnM0X3hkcl9k
+ZWNfY2xvc2UgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMzI2LCAweGZmZmZmZmZmYzA5
+OGEzNzAgaW4gbmZzNF94ZHJfZGVjX2Nsb3NlLnBhcnQgKCkKQ29udGludWluZy4KCkJyZWFr
+cG9pbnQgMTI1LCAweGZmZmZmZmZmYzA5NzMyYTAgaW4gbmZzNF9jbG9zZV9kb25lICgpCkNv
+bnRpbnVpbmcuCgpCcmVha3BvaW50IDg5LCAweGZmZmZmZmZmYzA5NzA1MTAgaW4gbmZzNF9z
+ZXF1ZW5jZV9kb25lICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDc2LCAweGZmZmZmZmZm
+YzA5NmYzNDAgaW4gbmZzNDFfc2VxdWVuY2VfcHJvY2VzcyAoKQpDb250aW51aW5nLgoKQnJl
+YWtwb2ludCA0MDAsIDB4ZmZmZmZmZmZjMDk4ZmFmMCBpbiBuZnM0MV9oYW5kbGVfc2VxdWVu
+Y2VfZmxhZ19lcnJvcnMgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDg2LCAweGZmZmZm
+ZmZmYzA5OWE3NDAgaW4gbmZzNDFfdXBkYXRlX3RhcmdldF9zbG90aWQgKCkKQ29udGludWlu
+Zy4KCkJyZWFrcG9pbnQgNDgwLCAweGZmZmZmZmZmYzA5OWE0MzAgaW4gbmZzNF9hbGxvY19z
+bG90ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ3MSwgMHhmZmZmZmZmZmMwOTk5ZTYw
+IGluIG5mczRfZmluZF9vcl9jcmVhdGVfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2lu
+dCA0NzYsIDB4ZmZmZmZmZmZjMDk5YTIwMCBpbiBuZnM0X2ZyZWVfc2xvdCAoKQpDb250aW51
+aW5nLgoKQnJlYWtwb2ludCA3MywgMHhmZmZmZmZmZmMwOTZlZmUwIGluIG5mczQxX3JlbGVh
+c2Vfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0ODMsIDB4ZmZmZmZmZmZjMDk5
+YTVlMCBpbiBuZnM0MV93YWtlX2FuZF9hc3NpZ25fc2xvdCAoKQpDb250aW51aW5nLgoKQnJl
+YWtwb2ludCA0NzYsIDB4ZmZmZmZmZmZjMDk5YTIwMCBpbiBuZnM0X2ZyZWVfc2xvdCAoKQpD
+b250aW51aW5nLgoKQnJlYWtwb2ludCA1MCwgMHhmZmZmZmZmZmMwOTZhYTMwIGluIG5mczRf
+YXN5bmNfaGFuZGxlX2V4Y2VwdGlvbiAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0NCwg
+MHhmZmZmZmZmZmMwOTZhMDYwIGluIG5mczRfZG9faGFuZGxlX2V4Y2VwdGlvbiAoKQpDb250
+aW51aW5nLgoKQnJlYWtwb2ludCA0MCwgMHhmZmZmZmZmZmMwOTY5YzgwIGluIG5mczRfZnJl
+ZV9jbG9zZWRhdGEgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMzc3LCAweGZmZmZmZmZm
+YzA5OGQyNTAgaW4gbmZzNF9wdXRfb3Blbl9zdGF0ZSAoKQpDb250aW51aW5nLgoKQnJlYWtw
+b2ludCA0MjIsIDB4ZmZmZmZmZmZjMDk5MjUxMCBpbiBuZnM0X2lub2RlX3JldHVybl9kZWxl
+Z2F0aW9uX29uX2Nsb3NlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDM3MiwgMHhmZmZm
+ZmZmZmMwOThjZTUwIGluIG5mczRfcHV0X3N0YXRlX293bmVyICgpCkNvbnRpbnVpbmcuCg==
+
+--------------nJWtO5qC2pACou522eEA0Pzh
+Content-Type: text/x-log; charset=UTF-8; name="2ndtouch.log"
+Content-Disposition: attachment; filename="2ndtouch.log"
+Content-Transfer-Encoding: base64
+
+QnJlYWtwb2ludCA2NzMsIDB4ZmZmZmZmZmZjMDkxMDIwMCBpbiBuZnM0X2xvb2t1cF9yZXZh
+bGlkYXRlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDY3MiwgMHhmZmZmZmZmZmMwOTEw
+MTMwIGluIG5mczRfZG9fbG9va3VwX3JldmFsaWRhdGUgKCkKQ29udGludWluZy4KCkJyZWFr
+cG9pbnQgNDE0LCAweGZmZmZmZmZmYzA5OTBiYjAgaW4gbmZzNF9maWxlX29wZW4gKCkKQ29u
+dGludWluZy4KCkJyZWFrcG9pbnQgMTgxLCAweGZmZmZmZmZmYzA5Nzk5NzAgaW4gbmZzNF9h
+dG9taWNfb3BlbiAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAxODAsIDB4ZmZmZmZmZmZj
+MDk3OGM4MCBpbiBuZnM0X2RvX29wZW4gKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMzcx
+LCAweGZmZmZmZmZmYzA5OGM5OTAgaW4gbmZzNF9nZXRfc3RhdGVfb3duZXIgKCkKQ29udGlu
+dWluZy4KCkJyZWFrcG9pbnQgMzk2LCAweGZmZmZmZmZmYzA5OGY1NjAgaW4gbmZzNF9jbGll
+bnRfcmVjb3Zlcl9leHBpcmVkX2xlYXNlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDM5
+NSwgMHhmZmZmZmZmZmMwOThmNGIwIGluIG5mczRfd2FpdF9jbG50X3JlY292ZXIgKCkKQ29u
+dGludWluZy4KCkJyZWFrcG9pbnQgNDE4LCAweGZmZmZmZmZmYzA5OTFkMjAgaW4gbmZzNF9n
+ZXRfdmFsaWRfZGVsZWdhdGlvbiAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA2MiwgMHhm
+ZmZmZmZmZmMwOTZkMzAwIGluIG5mczRfb3BlbmRhdGFfYWxsb2MgKCkKQ29udGludWluZy4K
+CkJyZWFrcG9pbnQgNjc1LCAweGZmZmZmZmZmYzA5MTMwZjAgaW4gbmZzNF9sYWJlbF9hbGxv
+YyAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA2NzUsIDB4ZmZmZmZmZmZjMDkxMzBmMCBp
+biBuZnM0X2xhYmVsX2FsbG9jICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDM3NiwgMHhm
+ZmZmZmZmZmMwOThkMGIwIGluIG5mczRfZ2V0X29wZW5fc3RhdGUgKCkKQ29udGludWluZy4K
+CkJyZWFrcG9pbnQgNjgsIDB4ZmZmZmZmZmZjMDk2ZTJmMCBpbiBuZnM0X3J1bl9vcGVuX3Rh
+c2sgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMTIwLCAweGZmZmZmZmZmYzA5NzJhNDAg
+aW4gbmZzNF9vcGVuX3ByZXBhcmUgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDE4LCAw
+eGZmZmZmZmZmYzA5OTFkMjAgaW4gbmZzNF9nZXRfdmFsaWRfZGVsZWdhdGlvbiAoKQpDb250
+aW51aW5nLgoKQnJlYWtwb2ludCAxMDQsIDB4ZmZmZmZmZmZjMDk3MjRhMCBpbiBuZnM0X3Nl
+dHVwX3NlcXVlbmNlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ4MCwgMHhmZmZmZmZm
+ZmMwOTlhNDMwIGluIG5mczRfYWxsb2Nfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2lu
+dCA0NzEsIDB4ZmZmZmZmZmZjMDk5OWU2MCBpbiBuZnM0X2ZpbmRfb3JfY3JlYXRlX3Nsb3Qg
+KCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMzI0LCAweGZmZmZmZmZmYzA5ODhkMDAgaW4g
+bmZzNF94ZHJfZW5jX29wZW5fbm9hdHRyICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDY3
+OCwgMHhmZmZmZmZmZmMwNTgwZWQwIGluIG5mczRzdmNfZGVjb2RlX2NvbXBvdW5kYXJncyAo
+KQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA2OTQsIDB4ZmZmZmZmZmZjMDU4NTc3MCBpbiBu
+ZnM0X2FsbG9jX3N0aWQgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNjk5LCAweGZmZmZm
+ZmZmYzA1ODYzNzAgaW4gbmZzNF9pbmNfYW5kX2NvcHlfc3RhdGVpZCAoKQpDb250aW51aW5n
+LgoKQnJlYWtwb2ludCA2OTgsIDB4ZmZmZmZmZmZjMDU4NTljMCBpbiBuZnM0X3B1dF9zdGlk
+ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDY4OCwgMHhmZmZmZmZmZmMwNTgzNWEwIGlu
+IG5mczRfcHV0X3N0YXRlb3duZXIgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNjk4LCAw
+eGZmZmZmZmZmYzA1ODU5YzAgaW4gbmZzNF9wdXRfc3RpZCAoKQpDb250aW51aW5nLgoKQnJl
+YWtwb2ludCA2ODYsIDB4ZmZmZmZmZmZjMDU4MmQ1MCBpbiBuZnM0X2ZyZWVfY3BudGZfc3Rh
+dGVsaXN0ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDY5MSwgMHhmZmZmZmZmZmMwNTg0
+YTYwIGluIG5mczRfZnJlZV9vbF9zdGF0ZWlkICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50
+IDY3OSwgMHhmZmZmZmZmZmMwNTgxMzEwIGluIG5mczRzdmNfZW5jb2RlX2NvbXBvdW5kcmVz
+ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDM0MCwgMHhmZmZmZmZmZmMwOThiMGQwIGlu
+IG5mczRfeGRyX2RlY19vcGVuX25vYXR0ciAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAx
+MDAsIDB4ZmZmZmZmZmZjMDk3MTJmMCBpbiBuZnM0X29wZW5fZG9uZSAoKQpDb250aW51aW5n
+LgoKQnJlYWtwb2ludCA3NiwgMHhmZmZmZmZmZmMwOTZmMzQwIGluIG5mczQxX3NlcXVlbmNl
+X3Byb2Nlc3MgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDAwLCAweGZmZmZmZmZmYzA5
+OGZhZjAgaW4gbmZzNDFfaGFuZGxlX3NlcXVlbmNlX2ZsYWdfZXJyb3JzICgpCkNvbnRpbnVp
+bmcuCgpCcmVha3BvaW50IDQ4NiwgMHhmZmZmZmZmZmMwOTlhNzQwIGluIG5mczQxX3VwZGF0
+ZV90YXJnZXRfc2xvdGlkICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ4MCwgMHhmZmZm
+ZmZmZmMwOTlhNDMwIGluIG5mczRfYWxsb2Nfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtw
+b2ludCA0NzEsIDB4ZmZmZmZmZmZjMDk5OWU2MCBpbiBuZnM0X2ZpbmRfb3JfY3JlYXRlX3Ns
+b3QgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDc2LCAweGZmZmZmZmZmYzA5OWEyMDAg
+aW4gbmZzNF9mcmVlX3Nsb3QgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMTc4LCAweGZm
+ZmZmZmZmYzA5NzhiMjAgaW4gbmZzNF9vcGVuX3JlbGVhc2UgKCkKQ29udGludWluZy4KCkJy
+ZWFrcG9pbnQgNzM3LCAweGZmZmZmZmZmYzA5NzcyODAgaW4gdXBkYXRlX29wZW5fc3RhdGVp
+ZCAoKQpDb250aW51aW5nLiA8LS0gZGVsYXkgb2NjdXJzIGhlcmUKCkJyZWFrcG9pbnQgNDE4
+LCAweGZmZmZmZmZmYzA5OTFkMjAgaW4gbmZzNF9nZXRfdmFsaWRfZGVsZWdhdGlvbiAoKQpD
+b250aW51aW5nLgoKQnJlYWtwb2ludCAzNzUsIDB4ZmZmZmZmZmZjMDk4ZDA0MCBpbiBuZnM0
+X3N0YXRlX3NldF9tb2RlX2xvY2tlZCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA4Nywg
+MHhmZmZmZmZmZmMwOTcwMjMwIGluIG5mczRfc2VxdWVuY2VfZnJlZV9zbG90ICgpCkNvbnRp
+bnVpbmcuCgpCcmVha3BvaW50IDczLCAweGZmZmZmZmZmYzA5NmVmZTAgaW4gbmZzNDFfcmVs
+ZWFzZV9zbG90ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ4MywgMHhmZmZmZmZmZmMw
+OTlhNWUwIGluIG5mczQxX3dha2VfYW5kX2Fzc2lnbl9zbG90ICgpCkNvbnRpbnVpbmcuCgpC
+cmVha3BvaW50IDQ3NiwgMHhmZmZmZmZmZmMwOTlhMjAwIGluIG5mczRfZnJlZV9zbG90ICgp
+CkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDkzLCAweGZmZmZmZmZmYzA5NzA2ZDAgaW4gbmZz
+NF9vcGVuZGF0YV9mcmVlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ5MywgMHhmZmZm
+ZmZmZmMwOWE5ODAwIGluIG5mczRfbGdvcGVuX3JlbGVhc2UgKCkKQ29udGludWluZy4KCkJy
+ZWFrcG9pbnQgMzc3LCAweGZmZmZmZmZmYzA5OGQyNTAgaW4gbmZzNF9wdXRfb3Blbl9zdGF0
+ZSAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAzNzIsIDB4ZmZmZmZmZmZjMDk4Y2U1MCBp
+biBuZnM0X3B1dF9zdGF0ZV9vd25lciAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAzNzIs
+IDB4ZmZmZmZmZmZjMDk4Y2U1MCBpbiBuZnM0X3B1dF9zdGF0ZV9vd25lciAoKQpDb250aW51
+aW5nLgoKQnJlYWtwb2ludCA0MTIsIDB4ZmZmZmZmZmZjMDk5MDg0MCBpbiBuZnM0X2ZpbGVf
+Zmx1c2ggKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDI2LCAweGZmZmZmZmZmYzA5OTJm
+YzAgaW4gbmZzNF9kZWxlZ2F0aW9uX2ZsdXNoX29uX2Nsb3NlICgpCkNvbnRpbnVpbmcuCgpC
+cmVha3BvaW50IDE0MCwgMHhmZmZmZmZmZmMwOTc0YjkwIGluIG5mczRfcHJvY19zZXRhdHRy
+ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDY3NSwgMHhmZmZmZmZmZmMwOTEzMGYwIGlu
+IG5mczRfbGFiZWxfYWxsb2MgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMTM5LCAweGZm
+ZmZmZmZmYzA5NzQ2YzAgaW4gbmZzNF9kb19zZXRhdHRyICgpCkNvbnRpbnVpbmcuCgpCcmVh
+a3BvaW50IDI3LCAweGZmZmZmZmZmYzA5Njk1MjAgaW4gbmZzNF9iaXRtYXBfY29weV9hZGp1
+c3QgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDIzLCAweGZmZmZmZmZmYzA5OTI2MTAg
+aW4gbmZzNF9pbm9kZV9tYWtlX3dyaXRlYWJsZSAoKQpDb250aW51aW5nLgoKQnJlYWtwb2lu
+dCA1MywgMHhmZmZmZmZmZmMwOTZiMDYwIGluIG5mczRfY2FsbF9zeW5jX3NlcXVlbmNlICgp
+CkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDExMSwgMHhmZmZmZmZmZmMwOTcyN2MwIGluIG5m
+czQxX2NhbGxfc3luY19wcmVwYXJlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDEwNCwg
+MHhmZmZmZmZmZmMwOTcyNGEwIGluIG5mczRfc2V0dXBfc2VxdWVuY2UgKCkKQ29udGludWlu
+Zy4KCkJyZWFrcG9pbnQgNDgwLCAweGZmZmZmZmZmYzA5OWE0MzAgaW4gbmZzNF9hbGxvY19z
+bG90ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ3MSwgMHhmZmZmZmZmZmMwOTk5ZTYw
+IGluIG5mczRfZmluZF9vcl9jcmVhdGVfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2lu
+dCAyOTYsIDB4ZmZmZmZmZmZjMDk4NGI1MCBpbiBuZnM0X3hkcl9lbmNfc2V0YXR0ciAoKQpD
+b250aW51aW5nLgoKQnJlYWtwb2ludCA2NzgsIDB4ZmZmZmZmZmZjMDU4MGVkMCBpbiBuZnM0
+c3ZjX2RlY29kZV9jb21wb3VuZGFyZ3MgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNjc5
+LCAweGZmZmZmZmZmYzA1ODEzMTAgaW4gbmZzNHN2Y19lbmNvZGVfY29tcG91bmRyZXMgKCkK
+Q29udGludWluZy4KCkJyZWFrcG9pbnQgMzMwLCAweGZmZmZmZmZmYzA5OGE3NDAgaW4gbmZz
+NF94ZHJfZGVjX3NldGF0dHIgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNzksIDB4ZmZm
+ZmZmZmZjMDk2ZjcwMCBpbiBuZnM0MV9jYWxsX3N5bmNfZG9uZSAoKQpDb250aW51aW5nLgoK
+QnJlYWtwb2ludCA3NiwgMHhmZmZmZmZmZmMwOTZmMzQwIGluIG5mczQxX3NlcXVlbmNlX3By
+b2Nlc3MgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDAwLCAweGZmZmZmZmZmYzA5OGZh
+ZjAgaW4gbmZzNDFfaGFuZGxlX3NlcXVlbmNlX2ZsYWdfZXJyb3JzICgpCkNvbnRpbnVpbmcu
+CgpCcmVha3BvaW50IDQ4NiwgMHhmZmZmZmZmZmMwOTlhNzQwIGluIG5mczQxX3VwZGF0ZV90
+YXJnZXRfc2xvdGlkICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ4MCwgMHhmZmZmZmZm
+ZmMwOTlhNDMwIGluIG5mczRfYWxsb2Nfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2lu
+dCA0NzEsIDB4ZmZmZmZmZmZjMDk5OWU2MCBpbiBuZnM0X2ZpbmRfb3JfY3JlYXRlX3Nsb3Qg
+KCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDc2LCAweGZmZmZmZmZmYzA5OWEyMDAgaW4g
+bmZzNF9mcmVlX3Nsb3QgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNzMsIDB4ZmZmZmZm
+ZmZjMDk2ZWZlMCBpbiBuZnM0MV9yZWxlYXNlX3Nsb3QgKCkKQ29udGludWluZy4KCkJyZWFr
+cG9pbnQgNDgzLCAweGZmZmZmZmZmYzA5OWE1ZTAgaW4gbmZzNDFfd2FrZV9hbmRfYXNzaWdu
+X3Nsb3QgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDc2LCAweGZmZmZmZmZmYzA5OWEy
+MDAgaW4gbmZzNF9mcmVlX3Nsb3QgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMTI2LCAw
+eGZmZmZmZmZmYzA5NzM5NTAgaW4gbmZzNF9oYW5kbGVfZXhjZXB0aW9uICgpCkNvbnRpbnVp
+bmcuCgpCcmVha3BvaW50IDQ0LCAweGZmZmZmZmZmYzA5NmEwNjAgaW4gbmZzNF9kb19oYW5k
+bGVfZXhjZXB0aW9uICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQxMiwgMHhmZmZmZmZm
+ZmMwOTkwODQwIGluIG5mczRfZmlsZV9mbHVzaCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2lu
+dCA0MjYsIDB4ZmZmZmZmZmZjMDk5MmZjMCBpbiBuZnM0X2RlbGVnYXRpb25fZmx1c2hfb25f
+Y2xvc2UgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMzYsIDB4ZmZmZmZmZmZjMDk2OTk4
+MCBpbiBuZnM0X2Nsb3NlX2NvbnRleHQgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMzgx
+LCAweGZmZmZmZmZmYzA5OGU3OTAgaW4gbmZzNF9jbG9zZV9zeW5jICgpCkNvbnRpbnVpbmcu
+CgpCcmVha3BvaW50IDM3NSwgMHhmZmZmZmZmZmMwOThkMDQwIGluIG5mczRfc3RhdGVfc2V0
+X21vZGVfbG9ja2VkICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDE4NCwgMHhmZmZmZmZm
+ZmMwOTc5ZGQwIGluIG5mczRfZG9fY2xvc2UgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQg
+Mzg1LCAweGZmZmZmZmZmYzA5OGVhNzAgaW4gbmZzNF9jb3B5X29wZW5fc3RhdGVpZCAoKQpD
+b250aW51aW5nLgoKQnJlYWtwb2ludCAxMjEsIDB4ZmZmZmZmZmZjMDk3MmM0MCBpbiBuZnM0
+X2Nsb3NlX3ByZXBhcmUgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDUsIDB4ZmZmZmZm
+ZmZjMDk2YTY1MCBpbiBuZnM0X2JpdG1hc2tfc2V0LmNvbnN0cHJvcCAoKQpDb250aW51aW5n
+LgoKQnJlYWtwb2ludCAxMDQsIDB4ZmZmZmZmZmZjMDk3MjRhMCBpbiBuZnM0X3NldHVwX3Nl
+cXVlbmNlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDQ4MCwgMHhmZmZmZmZmZmMwOTlh
+NDMwIGluIG5mczRfYWxsb2Nfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0NzEs
+IDB4ZmZmZmZmZmZjMDk5OWU2MCBpbiBuZnM0X2ZpbmRfb3JfY3JlYXRlX3Nsb3QgKCkKQ29u
+dGludWluZy4KCkJyZWFrcG9pbnQgMzE2LCAweGZmZmZmZmZmYzA5ODZmNzAgaW4gbmZzNF94
+ZHJfZW5jX2Nsb3NlICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDY3OCwgMHhmZmZmZmZm
+ZmMwNTgwZWQwIGluIG5mczRzdmNfZGVjb2RlX2NvbXBvdW5kYXJncyAoKQpDb250aW51aW5n
+LgoKQnJlYWtwb2ludCA2NzksIDB4ZmZmZmZmZmZjMDU4MTMxMCBpbiBuZnM0c3ZjX2VuY29k
+ZV9jb21wb3VuZHJlcyAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCAzMjcsIDB4ZmZmZmZm
+ZmZjMDk4YTQ5MCBpbiBuZnM0X3hkcl9kZWNfY2xvc2UgKCkKQ29udGludWluZy4KCkJyZWFr
+cG9pbnQgMzI2LCAweGZmZmZmZmZmYzA5OGEzNzAgaW4gbmZzNF94ZHJfZGVjX2Nsb3NlLnBh
+cnQgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgMTI1LCAweGZmZmZmZmZmYzA5NzMyYTAg
+aW4gbmZzNF9jbG9zZV9kb25lICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50IDg5LCAweGZm
+ZmZmZmZmYzA5NzA1MTAgaW4gbmZzNF9zZXF1ZW5jZV9kb25lICgpCkNvbnRpbnVpbmcuCgpC
+cmVha3BvaW50IDc2LCAweGZmZmZmZmZmYzA5NmYzNDAgaW4gbmZzNDFfc2VxdWVuY2VfcHJv
+Y2VzcyAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0MDAsIDB4ZmZmZmZmZmZjMDk4ZmFm
+MCBpbiBuZnM0MV9oYW5kbGVfc2VxdWVuY2VfZmxhZ19lcnJvcnMgKCkKQ29udGludWluZy4K
+CkJyZWFrcG9pbnQgNDg2LCAweGZmZmZmZmZmYzA5OWE3NDAgaW4gbmZzNDFfdXBkYXRlX3Rh
+cmdldF9zbG90aWQgKCkKQ29udGludWluZy4KCkJyZWFrcG9pbnQgNDgwLCAweGZmZmZmZmZm
+YzA5OWE0MzAgaW4gbmZzNF9hbGxvY19zbG90ICgpCkNvbnRpbnVpbmcuCgpCcmVha3BvaW50
+IDQ3MSwgMHhmZmZmZmZmZmMwOTk5ZTYwIGluIG5mczRfZmluZF9vcl9jcmVhdGVfc2xvdCAo
+KQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0NzYsIDB4ZmZmZmZmZmZjMDk5YTIwMCBpbiBu
+ZnM0X2ZyZWVfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA3MywgMHhmZmZmZmZm
+ZmMwOTZlZmUwIGluIG5mczQxX3JlbGVhc2Vfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtw
+b2ludCA0ODMsIDB4ZmZmZmZmZmZjMDk5YTVlMCBpbiBuZnM0MV93YWtlX2FuZF9hc3NpZ25f
+c2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0NzYsIDB4ZmZmZmZmZmZjMDk5YTIw
+MCBpbiBuZnM0X2ZyZWVfc2xvdCAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA1MCwgMHhm
+ZmZmZmZmZmMwOTZhYTMwIGluIG5mczRfYXN5bmNfaGFuZGxlX2V4Y2VwdGlvbiAoKQpDb250
+aW51aW5nLgoKQnJlYWtwb2ludCA0NCwgMHhmZmZmZmZmZmMwOTZhMDYwIGluIG5mczRfZG9f
+aGFuZGxlX2V4Y2VwdGlvbiAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0MCwgMHhmZmZm
+ZmZmZmMwOTY5YzgwIGluIG5mczRfZnJlZV9jbG9zZWRhdGEgKCkKQ29udGludWluZy4KCkJy
+ZWFrcG9pbnQgMzc3LCAweGZmZmZmZmZmYzA5OGQyNTAgaW4gbmZzNF9wdXRfb3Blbl9zdGF0
+ZSAoKQpDb250aW51aW5nLgoKQnJlYWtwb2ludCA0MjIsIDB4ZmZmZmZmZmZjMDk5MjUxMCBp
+biBuZnM0X2lub2RlX3JldHVybl9kZWxlZ2F0aW9uX29uX2Nsb3NlICgpCkNvbnRpbnVpbmcu
+CgpCcmVha3BvaW50IDM3MiwgMHhmZmZmZmZmZmMwOThjZTUwIGluIG5mczRfcHV0X3N0YXRl
+X293bmVyICgpCkNvbnRpbnVpbmcuCg==
+--------------nJWtO5qC2pACou522eEA0Pzh
+Content-Type: text/x-log; charset=UTF-8; name="2ndtouch-next.log"
+Content-Disposition: attachment; filename="2ndtouch-next.log"
+Content-Transfer-Encoding: base64
+
+QnJlYWtwb2ludCAxLCAweGZmZmZmZmZmYzA5ODcyODAgaW4gdXBkYXRlX29wZW5fc3RhdGVp
+ZCAoKQpTaW5nbGUgc3RlcHBpbmcgdW50aWwgZXhpdCBmcm9tIGZ1bmN0aW9uIHVwZGF0ZV9v
+cGVuX3N0YXRlaWQsCndoaWNoIGhhcyBubyBsaW5lIG51bWJlciBpbmZvcm1hdGlvbi4KX3Jh
+d19zcGluX2xvY2sgKGxvY2s9MHhmZmZmODg4MTE3YWIxNDQwKSBhdCBrZXJuZWwvbG9ja2lu
+Zy9zcGlubG9jay5jOjE1MwoxNTMJewoxNTQJCV9fcmF3X3NwaW5fbG9jayhsb2NrKTsKMHhm
+ZmZmZmZmZmMwOTg3MmZiIGluIHVwZGF0ZV9vcGVuX3N0YXRlaWQgKCkKU2luZ2xlIHN0ZXBw
+aW5nIHVudGlsIGV4aXQgZnJvbSBmdW5jdGlvbiB1cGRhdGVfb3Blbl9zdGF0ZWlkLCAgPC0t
+LSBkZWxheSBvY2N1cnMgaGVyZQp3aGljaCBoYXMgbm8gbGluZSBudW1iZXIgaW5mb3JtYXRp
+b24uCjB4ZmZmZmZmZmZjMDk4NzkzNiBpbiBfbmZzNF9vcGVuZGF0YV90b19uZnM0X3N0YXRl
+ICgpClNpbmdsZSBzdGVwcGluZyB1bnRpbCBleGl0IGZyb20gZnVuY3Rpb24gX25mczRfb3Bl
+bmRhdGFfdG9fbmZzNF9zdGF0ZSwKd2hpY2ggaGFzIG5vIGxpbmUgbnVtYmVyIGluZm9ybWF0
+aW9uLgoweGZmZmZmZmZmYzA5ODkyNjIgaW4gbmZzNF9kb19vcGVuICgpClNpbmdsZSBzdGVw
+cGluZyB1bnRpbCBleGl0IGZyb20gZnVuY3Rpb24gbmZzNF9kb19vcGVuLAp3aGljaCBoYXMg
+bm8gbGluZSBudW1iZXIgaW5mb3JtYXRpb24uCjB4ZmZmZmZmZmZjMDk4OWE3MSBpbiBuZnM0
+X2F0b21pY19vcGVuICgpClNpbmdsZSBzdGVwcGluZyB1bnRpbCBleGl0IGZyb20gZnVuY3Rp
+b24gbmZzNF9hdG9taWNfb3BlbiwKd2hpY2ggaGFzIG5vIGxpbmUgbnVtYmVyIGluZm9ybWF0
+aW9uLgoweGZmZmZmZmZmYzA5YTBjYzEgaW4gbmZzNF9maWxlX29wZW4gKCkKU2luZ2xlIHN0
+ZXBwaW5nIHVudGlsIGV4aXQgZnJvbSBmdW5jdGlvbiBuZnM0X2ZpbGVfb3BlbiwKd2hpY2gg
+aGFzIG5vIGxpbmUgbnVtYmVyIGluZm9ybWF0aW9uLgpkb19kZW50cnlfb3BlbiAoZj1mQGVu
+dHJ5PTB4ZmZmZjg4ODEwMzA1YjYwMCwgaW5vZGU9MHhmZmZmODg4MTA1MTM2MzcwLCBvcGVu
+PTB4ZmZmZmZmZmZjMDlhMGJiMCA8bmZzNF9maWxlX29wZW4+LCBvcGVuQGVudHJ5PTB4MCA8
+Zml4ZWRfcGVyY3B1X2RhdGE+KSBhdCBmcy9vcGVuLmM6ODI4CjgyOAkJCWlmIChlcnJvcikK
+Q29udGludWluZy4K
+
+--------------nJWtO5qC2pACou522eEA0Pzh--
