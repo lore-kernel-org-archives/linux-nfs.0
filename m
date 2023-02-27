@@ -2,216 +2,154 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E7B13C64ED6
-	for <linux-nfs@archiver.kernel.org>; Sun, 26 Feb 2023 19:25:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0033C64ED6
+	for <linux-nfs@archiver.kernel.org>; Mon, 27 Feb 2023 02:07:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229545AbjBZTZx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 26 Feb 2023 14:25:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32942 "EHLO
+        id S229724AbjB0CHE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 26 Feb 2023 21:07:04 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59456 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229470AbjBZTZw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Feb 2023 14:25:52 -0500
-Received: from smtp-o-3.desy.de (smtp-o-3.desy.de [IPv6:2001:638:700:1038::1:9c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B11A6CA03
-        for <linux-nfs@vger.kernel.org>; Sun, 26 Feb 2023 11:25:49 -0800 (PST)
-Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [131.169.56.166])
-        by smtp-o-3.desy.de (Postfix) with ESMTP id ED3F96080F
-        for <linux-nfs@vger.kernel.org>; Sun, 26 Feb 2023 20:25:46 +0100 (CET)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-3.desy.de ED3F96080F
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-        t=1677439547; bh=FeVx7lBMRSkbudJpGx94V9W69J8E/OFPz83H5Cz6e4c=;
-        h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-        b=imxO8v1obuQ99FTzXkLmXdiDj5XdhCCpy57veaRAhL5dnfXmUTS1T+GJMdew50jer
-         HTrFoch1kqgg5EcI57D6ofpsaYJc0a1DugA5pkJ8YA6NcGTvHIBo6/oPRoacOlLNKO
-         dDf5W9g/EVXauXB7Bz7129hc4VG1n4ouozP8biZo=
-Received: from smtp-m-3.desy.de (smtp-m-3.desy.de [IPv6:2001:638:700:1038::1:83])
-        by smtp-buf-3.desy.de (Postfix) with ESMTP id D64EDA00B3;
-        Sun, 26 Feb 2023 20:25:46 +0100 (CET)
-Received: from smtp-intra-3.desy.de (smtp-intra-3.desy.de [IPv6:2001:638:700:1038::1:45])
-        by smtp-m-3.desy.de (Postfix) with ESMTP id CB31260052;
-        Sun, 26 Feb 2023 20:25:46 +0100 (CET)
-Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
-        by smtp-intra-3.desy.de (Postfix) with ESMTP id C213580067;
-        Sun, 26 Feb 2023 20:25:46 +0100 (CET)
-Date:   Sun, 26 Feb 2023 20:25:46 +0100 (CET)
-From:   "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To:     Calum Mackay <calum.mackay@oracle.com>
-Cc:     "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>, Dai Ngo <dai.ngo@oracle.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Frank Filz <ffilzlnx@mindspring.com>
-Message-ID: <1098197133.42034815.1677439546609.JavaMail.zimbra@desy.de>
-In-Reply-To: <f7c1e360-9d93-c522-b24a-5aeecf9a17f0@oracle.com>
-References: <20230222134952.32851-1-jlayton@kernel.org> <20230223151132.GA10456@fieldses.org> <436117750.41744935.1677325526601.JavaMail.zimbra@desy.de> <f7c1e360-9d93-c522-b24a-5aeecf9a17f0@oracle.com>
-Subject: Re: [pynfs RFC PATCH] nfs4.0/testserver.py: don't return an error
- when tests fail
+        with ESMTP id S230024AbjB0CGq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Feb 2023 21:06:46 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 45F2A1B2DC;
+        Sun, 26 Feb 2023 18:06:09 -0800 (PST)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 55F4FB80CBA;
+        Mon, 27 Feb 2023 02:04:54 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6CF25C4339C;
+        Mon, 27 Feb 2023 02:04:52 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1677463493;
+        bh=QT/obBQ6iSKOozbjpTe4syeI1Ml5nRKZzzd/T9mCMXU=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=PxUhiyNVFVrQwlh2hA7IRNY3ey1W6IwXp4e992CYU18KDw6FBHs8uprnLA0llMLX1
+         MATUKEXQHJXujEeqeSiRLV+NbjQ1XnbKAkjWKer5mSHd3pWhOcRXglO7DqKVEbNtaS
+         5qlQC8szJRsW95qFh6NHib9hHTROzFrLO1i+EraqJFuzcVqVifm4TVOIF1OEs7J//l
+         fMNxPmrDIOdd4Z247mDbnoT9pO78ZezdzQT9Vy9NNju5qGBxNNIolvOjO8XH8sSX2r
+         wEuFVqxc4bMXX1G7dAyFSmlpFWPQsmcUU8OvJb+6Z7ULeHhxRAVpth7fAzHqi2uysi
+         Pa/jHkMgkrVQA==
+From:   Sasha Levin <sashal@kernel.org>
+To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
+Cc:     Jeff Layton <jlayton@kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 6.2 58/60] nfsd: clean up potential nfsd_file refcount leaks in COPY codepath
+Date:   Sun, 26 Feb 2023 21:00:43 -0500
+Message-Id: <20230227020045.1045105-58-sashal@kernel.org>
+X-Mailer: git-send-email 2.39.0
+In-Reply-To: <20230227020045.1045105-1-sashal@kernel.org>
+References: <20230227020045.1045105-1-sashal@kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256; 
-        boundary="----=_Part_42034816_845033863.1677439546728"
-X-Mailer: Zimbra 9.0.0_GA_4485 (ZimbraWebClient - FF110 (Linux)/9.0.0_GA_4478)
-Thread-Topic: nfs4.0/testserver.py: don't return an error when tests fail
-Thread-Index: ZcIqUyHs6N+/r1kthS4IuNUFJl8hiw==
+X-stable: review
+X-Patchwork-Hint: Ignore
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-------=_Part_42034816_845033863.1677439546728
-Date: Sun, 26 Feb 2023 20:25:46 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Calum Mackay <calum.mackay@oracle.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, Jeff Layton <jlayton@kernel.org>, 
-	Dai Ngo <dai.ngo@oracle.com>, linux-nfs <linux-nfs@vger.kernel.org>, 
-	Frank Filz <ffilzlnx@mindspring.com>
-Message-ID: <1098197133.42034815.1677439546609.JavaMail.zimbra@desy.de>
-In-Reply-To: <f7c1e360-9d93-c522-b24a-5aeecf9a17f0@oracle.com>
-References: <20230222134952.32851-1-jlayton@kernel.org> <20230223151132.GA10456@fieldses.org> <436117750.41744935.1677325526601.JavaMail.zimbra@desy.de> <f7c1e360-9d93-c522-b24a-5aeecf9a17f0@oracle.com>
-Subject: Re: [pynfs RFC PATCH] nfs4.0/testserver.py: don't return an error
- when tests fail
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-Mailer: Zimbra 9.0.0_GA_4485 (ZimbraWebClient - FF110 (Linux)/9.0.0_GA_4478)
-Thread-Topic: nfs4.0/testserver.py: don't return an error when tests fail
-Thread-Index: ZcIqUyHs6N+/r1kthS4IuNUFJl8hiw==
+From: Jeff Layton <jlayton@kernel.org>
 
+[ Upstream commit 6ba434cb1a8d403ea9aad1b667c3ea3ad8b3191f ]
 
+There are two different flavors of the nfsd4_copy struct. One is
+embedded in the compound and is used directly in synchronous copies. The
+other is dynamically allocated, refcounted and tracked in the client
+struture. For the embedded one, the cleanup just involves releasing any
+nfsd_files held on its behalf. For the async one, the cleanup is a bit
+more involved, and we need to dequeue it from lists, unhash it, etc.
 
------ Original Message -----
-> From: "Calum Mackay" <calum.mackay@oracle.com>
-> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>, "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: "Calum Mackay" <calum.mackay@oracle.com>, "Jeff Layton" <jlayton@kernel.org>, "Dai Ngo" <dai.ngo@oracle.com>,
-> "linux-nfs" <linux-nfs@vger.kernel.org>, "Frank Filz" <ffilzlnx@mindspring.com>
-> Sent: Saturday, 25 February, 2023 16:57:12
-> Subject: Re: [pynfs RFC PATCH] nfs4.0/testserver.py: don't return an error when tests fail
+There is at least one potential refcount leak in this code now. If the
+kthread_create call fails, then both the src and dst nfsd_files in the
+original nfsd4_copy object are leaked.
 
-> On 25/02/2023 11:45 am, Mkrtchyan, Tigran wrote:
->> 
->> ----- Original Message -----
->>> From: "J. Bruce Fields" <bfields@fieldses.org>
->>> To: "Jeff Layton" <jlayton@kernel.org>
->>> Cc: "Dai Ngo" <dai.ngo@oracle.com>, "linux-nfs" <linux-nfs@vger.kernel.org>,
->>> "Frank Filz" <ffilzlnx@mindspring.com>
->>> Sent: Thursday, 23 February, 2023 16:11:32
->>> Subject: Re: [pynfs RFC PATCH] nfs4.0/testserver.py: don't return an error when
->>> tests fail
->> 
->>> I orginally thought I'd continue maintaining pynfs on a volunteer basis,
->>> but I haven't been.  These all look like reasonable changes, but someone
->>> else probably needs to step in to make sure they're handled in a
->>> reasonable amount of time.
->>>
->> 
->> Well, I already have a fork in github that is used by others. Thus I can try to
->> pick the patches from the mailing list and try to keep the tree up-to-date.
-> 
-> hi Tigran, I was going to take it over from Bruce, unless you'd prefer
-> to, which is fine?
+The cleanup in this codepath is also sort of weird. In the async copy
+case, we'll have up to four nfsd_file references (src and dst for both
+flavors of copy structure). They are both put at the end of
+nfsd4_do_async_copy, even though the ones held on behalf of the embedded
+one outlive that structure.
 
-Hi Calum,
+Change it so that we always clean up the nfsd_file refs held by the
+embedded copy structure before nfsd4_copy returns. Rework
+cleanup_async_copy to handle both inter and intra copies. Eliminate
+nfsd4_cleanup_intra_ssc since it now becomes a no-op.
 
-just go ahead!
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ fs/nfsd/nfs4proc.c | 23 ++++++++++-------------
+ 1 file changed, 10 insertions(+), 13 deletions(-)
 
-Thanks for the effort,
-   Tigran.
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 451403758ea17..0a01e7fb2cf85 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1517,7 +1517,6 @@ nfsd4_cleanup_inter_ssc(struct vfsmount *ss_mnt, struct file *filp,
+ 	struct nfsd_net *nn = net_generic(dst->nf_net, nfsd_net_id);
+ 
+ 	nfs42_ssc_close(filp);
+-	nfsd_file_put(dst);
+ 	fput(filp);
+ 
+ 	if (!nn) {
+@@ -1584,13 +1583,6 @@ nfsd4_setup_intra_ssc(struct svc_rqst *rqstp,
+ 				 &copy->nf_dst);
+ }
+ 
+-static void
+-nfsd4_cleanup_intra_ssc(struct nfsd_file *src, struct nfsd_file *dst)
+-{
+-	nfsd_file_put(src);
+-	nfsd_file_put(dst);
+-}
+-
+ static void nfsd4_cb_offload_release(struct nfsd4_callback *cb)
+ {
+ 	struct nfsd4_cb_offload *cbo =
+@@ -1705,12 +1697,18 @@ static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
+ 	dst->ss_mnt = src->ss_mnt;
+ }
+ 
++static void release_copy_files(struct nfsd4_copy *copy)
++{
++	if (copy->nf_src)
++		nfsd_file_put(copy->nf_src);
++	if (copy->nf_dst)
++		nfsd_file_put(copy->nf_dst);
++}
++
+ static void cleanup_async_copy(struct nfsd4_copy *copy)
+ {
+ 	nfs4_free_copy_state(copy);
+-	nfsd_file_put(copy->nf_dst);
+-	if (!nfsd4_ssc_is_inter(copy))
+-		nfsd_file_put(copy->nf_src);
++	release_copy_files(copy);
+ 	spin_lock(&copy->cp_clp->async_lock);
+ 	list_del(&copy->copies);
+ 	spin_unlock(&copy->cp_clp->async_lock);
+@@ -1770,7 +1768,6 @@ static int nfsd4_do_async_copy(void *data)
+ 	} else {
+ 		nfserr = nfsd4_do_copy(copy, copy->nf_src->nf_file,
+ 				       copy->nf_dst->nf_file, false);
+-		nfsd4_cleanup_intra_ssc(copy->nf_src, copy->nf_dst);
+ 	}
+ 
+ do_callback:
+@@ -1834,9 +1831,9 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	} else {
+ 		status = nfsd4_do_copy(copy, copy->nf_src->nf_file,
+ 				       copy->nf_dst->nf_file, true);
+-		nfsd4_cleanup_intra_ssc(copy->nf_src, copy->nf_dst);
+ 	}
+ out:
++	release_copy_files(copy);
+ 	return status;
+ out_err:
+ 	if (async_copy)
+-- 
+2.39.0
 
-> 
-> cheers,
-> calum.
-> 
->> 
->> Tigran.
->>> --b.
->>>
->>> On Wed, Feb 22, 2023 at 08:49:52AM -0500, Jeff Layton wrote:
->>>> This script was originally changed in eb3ba0b60055 ("Have testserver.py
->>>> have non-zero exit code if any tests fail"), but the same change wasn't
->>>> made to the 4.1 testserver.py script.
->>>>
->>>> There also wasn't much explanation for it, and it makes it difficult to
->>>> tell whether the test harness itself failed, or whether there was a
->>>> failure in a requested test.
->>>>
->>>> Stop the 4.0 testserver.py from exiting with an error code when a test
->>>> fails, so that a successful return means only that the test harness
->>>> itself worked, not that every requested test passed.
->>>>
->>>> Cc: Frank Filz <ffilzlnx@mindspring.com>
->>>> Signed-off-by: Jeff Layton <jlayton@kernel.org>
->>>> ---
->>>>   nfs4.0/testserver.py | 2 --
->>>>   1 file changed, 2 deletions(-)
->>>>
->>>> I'm not sure about this one. I've worked around this in kdevops for now,
->>>> but it would really be preferable if it worked this way, imo. If this
->>>> isn't acceptable, maybe we can add a new option that enables this
->>>> behavior?
->>>>
->>>> Frank, what was the original rationale for eb3ba0b60055 ?
->>>>
->>>> diff --git a/nfs4.0/testserver.py b/nfs4.0/testserver.py
->>>> index f2c41568e5c7..4f4286daa657 100755
->>>> --- a/nfs4.0/testserver.py
->>>> +++ b/nfs4.0/testserver.py
->>>> @@ -387,8 +387,6 @@ def main():
->>>>   
->>>>       if nfail < 0:
->>>>           sys.exit(3)
->>>> -    if nfail > 0:
->>>> -        sys.exit(2)
->>>>   
->>>>   if __name__ == "__main__":
->>>>       main()
->>>> --
->>>> 2.39.2
-> 
-> --
-> Calum Mackay
-> Linux Kernel Engineering
-> Oracle Linux and Virtualisation
-
-------=_Part_42034816_845033863.1677439546728
-Content-Type: application/pkcs7-signature; name=smime.p7s; smime-type=signed-data
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgEFADCABgkqhkiG9w0BBwEAAKCAMIIF
-vzCCBKegAwIBAgIMJENPm+MXSsxZAQzUMA0GCSqGSIb3DQEBCwUAMIGNMQswCQYDVQQGEwJERTFF
-MEMGA1UECgw8VmVyZWluIHp1ciBGb2VyZGVydW5nIGVpbmVzIERldXRzY2hlbiBGb3JzY2h1bmdz
-bmV0emVzIGUuIFYuMRAwDgYDVQQLDAdERk4tUEtJMSUwIwYDVQQDDBxERk4tVmVyZWluIEdsb2Jh
-bCBJc3N1aW5nIENBMB4XDTIxMDIxMDEyMzEwOVoXDTI0MDIxMDEyMzEwOVowWDELMAkGA1UEBhMC
-REUxLjAsBgNVBAoMJURldXRzY2hlcyBFbGVrdHJvbmVuLVN5bmNocm90cm9uIERFU1kxGTAXBgNV
-BAMMEFRpZ3JhbiBNa3J0Y2h5YW4wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQClVKHU
-er1OiIaoo2MFDgCSzcqRCB8qVjjLJyJwzHWkhKniE6dwY8xHciG0HZFpSQqiRsoakD+BzqINXsqI
-CkVck5n7cUJ6cHBOM1r4pzEBcuuozPrT2tAfnHkFFGTZffOXgjmEITfSh6SD+DYeZH4Dt8kPZmnD
-mzWMDFDyB67WWcWApVC1nPh29yGgJk18UZ+Ut9a+woaovMZlutMbuvLVt/x5rpycMw0z+J1qeK7J
-8F3bKb0o2gg+Mnz9LzpLtJp7E9qJUKOTkZGDua9w9xrlo4XGX9Vn72K5wodu6woahdgNG+sXRcJM
-RH3aWgfdznoi1ORLJCfTbdfjSBpclvt/AgMBAAGjggJRMIICTTA+BgNVHSAENzA1MA8GDSsGAQQB
-ga0hgiwBAQQwEAYOKwYBBAGBrSGCLAEBBAgwEAYOKwYBBAGBrSGCLAIBBAgwCQYDVR0TBAIwADAO
-BgNVHQ8BAf8EBAMCBeAwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMEMB0GA1UdDgQWBBQG
-1+t/IHSjHSbbu11uU5Iw7JW92zAfBgNVHSMEGDAWgBRrOpiL+fJTidrgrbIyHgkf6Ko7dDAjBgNV
-HREEHDAagRh0aWdyYW4ubWtydGNoeWFuQGRlc3kuZGUwgY0GA1UdHwSBhTCBgjA/oD2gO4Y5aHR0
-cDovL2NkcDEucGNhLmRmbi5kZS9kZm4tY2EtZ2xvYmFsLWcyL3B1Yi9jcmwvY2FjcmwuY3JsMD+g
-PaA7hjlodHRwOi8vY2RwMi5wY2EuZGZuLmRlL2Rmbi1jYS1nbG9iYWwtZzIvcHViL2NybC9jYWNy
-bC5jcmwwgdsGCCsGAQUFBwEBBIHOMIHLMDMGCCsGAQUFBzABhidodHRwOi8vb2NzcC5wY2EuZGZu
-LmRlL09DU1AtU2VydmVyL09DU1AwSQYIKwYBBQUHMAKGPWh0dHA6Ly9jZHAxLnBjYS5kZm4uZGUv
-ZGZuLWNhLWdsb2JhbC1nMi9wdWIvY2FjZXJ0L2NhY2VydC5jcnQwSQYIKwYBBQUHMAKGPWh0dHA6
-Ly9jZHAyLnBjYS5kZm4uZGUvZGZuLWNhLWdsb2JhbC1nMi9wdWIvY2FjZXJ0L2NhY2VydC5jcnQw
-DQYJKoZIhvcNAQELBQADggEBADaFbcKsjBPbw6aRf5vxlJdehkafMy4JIdduMEGB+IjpBRZGmu0Z
-R2FRWNyq0lNRz03holZ8Rew0Ldx58REJmvAEzbwox4LT1wG8gRLEehyasSROajZBFrIHadDja0y4
-1JrfqP2umZFE2XWap8pDFpQk4sZOXW1mEamLzFtlgXtCfalmYmbnrq5DnSVKX8LOt5BZvDWin3r4
-m5v313d5/l0Qz2IrN6v7qNIyqT4peW90DUJHB1MGN60W2qe+VimWIuLJkQXMOpaUQJUlhkHOnhw8
-82g+jWG6kpKBMzIQMMGP0urFlPAia2Iuu2VtCkT7Wr43xyhiVzkZcT6uzR23PLsAADGCApswggKX
-AgEBMIGeMIGNMQswCQYDVQQGEwJERTFFMEMGA1UECgw8VmVyZWluIHp1ciBGb2VyZGVydW5nIGVp
-bmVzIERldXRzY2hlbiBGb3JzY2h1bmdzbmV0emVzIGUuIFYuMRAwDgYDVQQLDAdERk4tUEtJMSUw
-IwYDVQQDDBxERk4tVmVyZWluIEdsb2JhbCBJc3N1aW5nIENBAgwkQ0+b4xdKzFkBDNQwDQYJYIZI
-AWUDBAIBBQCggc4wGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjMw
-MjI2MTkyNTQ2WjAtBgkqhkiG9w0BCTQxIDAeMA0GCWCGSAFlAwQCAQUAoQ0GCSqGSIb3DQEBCwUA
-MC8GCSqGSIb3DQEJBDEiBCD3FWPOQz3avss+n096+wrJOVM2YVbxZVzspO7Kkcbp4TA0BgkqhkiG
-9w0BCQ8xJzAlMAoGCCqGSIb3DQMHMA4GCCqGSIb3DQMCAgIAgDAHBgUrDgMCBzANBgkqhkiG9w0B
-AQsFAASCAQA+W9tXACtmxDMmFfAour3COIhAM6kMgjxeHBUhIncK0nEF46VI1lh1yXveaovZkKj2
-BEE61XnRjQY7LQgmuKSQIHCIqfJq/MkPfz77fLfZcip7irdMDVjZcjivWZ/txtCODcaA+6fO4kz8
-DYZ3W8i7kleVryF5tHuxC7nCRVUUTbu7UprjEDJOOm2+K2gaE8lT42ACDGWzHt1ByLWoRjcVHbPS
-uUw9AYvQt0pefo6kN5oYtA1TS/kCdFnchNy+5/s6BYieUwSjBfTCjLYZ+w86Hk/RTURiqr+OWVWx
-UFYCWe6i5L9QNS9FaWQHvTgUI6oPI2Bh+FBbz6s/BcWTn+0JAAAAAAAA
-------=_Part_42034816_845033863.1677439546728--
