@@ -2,141 +2,206 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A218FC7EE2F
-	for <linux-nfs@archiver.kernel.org>; Mon, 27 Feb 2023 02:35:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BC0A9C7EE23
+	for <linux-nfs@archiver.kernel.org>; Mon, 27 Feb 2023 02:58:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231508AbjB0CfB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 26 Feb 2023 21:35:01 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49564 "EHLO
+        id S230148AbjB0C6X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sun, 26 Feb 2023 21:58:23 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37254 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231681AbjB0Cep (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Feb 2023 21:34:45 -0500
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7772A1717;
-        Sun, 26 Feb 2023 18:34:00 -0800 (PST)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id EEED460DC4;
-        Mon, 27 Feb 2023 02:08:46 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B317EC4339C;
-        Mon, 27 Feb 2023 02:08:45 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1677463726;
-        bh=QoI2PXhqmogKXG3961AQtVobVI5PmRj5LpILM6/Fihg=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ufnj2gsfLNlg00BBmFKFQCQnKURc+7iI14NhywfcSg4drKujoOg7YpasoxIlFyC+p
-         PvpE2MKQbV0a153YF0xLqOqbGwO9w8ifdSlQZhTeIqgrH0jRgu9StO42SGW7Pm3yso
-         PRClgqe5O/Y8n6ob691IA0cWhAPsivmkTAxx7kXz+oEy/i0Q9vv/1nTfkxF/khfiOq
-         j3EIyPzCcE0viU+uq+MNLIbKt7Des4Oh2FlFtfq8eXaLUKrCrVp5lYYhuNrGJ1u6Ue
-         uWmqLoOYLktkGcTPRBCLNs5dwDpY9hicE5I+cYkuEL7yTGTDtRIhEue+0qOj83iCau
-         ix8dGXKQ0D0dw==
-From:   Sasha Levin <sashal@kernel.org>
-To:     linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Cc:     Jeff Layton <jlayton@kernel.org>, Boyang Xue <bxue@redhat.com>,
+        with ESMTP id S229772AbjB0C6X (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Feb 2023 21:58:23 -0500
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 99DA87A96;
+        Sun, 26 Feb 2023 18:58:21 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
+        Content-ID:Content-Description:In-Reply-To:References;
+        bh=nk7Pr1obO0KzFpH/1rdv7+SUyAIN0BhF0eRcIL8vnR4=; b=4Nwn5v+X79NKJEsKF+Vd4+Rveq
+        caJOLBqnQZxIEDT3U0y41MLkQc0r8B3O0wAJ4bXkSENTHbKnKdtrf5qIzQLCI8gzHJVZPVNScUIEn
+        dKvbxFdKO5V6aUxZ5szLnQn2qqctQOvPag4WgJQbj/fNNI8pAB7/0Wvl1rq09sSahfyGJuycDe8DR
+        LOPi3UmwrQfuplC/ybH8Ohayrs4hslJ8YcRGhDpDJYEA1PgPi+94KvEp62ol4JcEAvQl0dIdC+oA8
+        JdNE9M/HYBCPM4G6/ObV9pnf06ai+3cek5sAkwp1Gzx/kE6PfPsBhlM9G0p2IEC/b/G7K8ou2JN2p
+        prKlftcw==;
+Received: from [2601:1c2:980:9ec0::df2f] (helo=bombadil.infradead.org)
+        by bombadil.infradead.org with esmtpsa (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1pWTiT-008JyX-8P; Mon, 27 Feb 2023 02:58:17 +0000
+From:   Randy Dunlap <rdunlap@infradead.org>
+To:     linux-kernel@vger.kernel.org
+Cc:     Randy Dunlap <rdunlap@infradead.org>,
+        Jonathan Corbet <corbet@lwn.net>, linux-doc@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>,
         Chuck Lever <chuck.lever@oracle.com>,
-        Sasha Levin <sashal@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.1 57/58] nfsd: don't hand out delegation on setuid files being opened for write
-Date:   Sun, 26 Feb 2023 21:04:55 -0500
-Message-Id: <20230227020457.1048737-57-sashal@kernel.org>
-X-Mailer: git-send-email 2.39.0
-In-Reply-To: <20230227020457.1048737-1-sashal@kernel.org>
-References: <20230227020457.1048737-1-sashal@kernel.org>
+        Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH] Documentation: kernel-parameters: sort NFS parameters
+Date:   Sun, 26 Feb 2023 18:58:16 -0800
+Message-Id: <20230227025816.1083-1-rdunlap@infradead.org>
+X-Mailer: git-send-email 2.39.2
 MIME-Version: 1.0
-X-stable: review
-X-Patchwork-Hint: Ignore
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Jeff Layton <jlayton@kernel.org>
+Sort the NFS kernel command line parameters. This is done in 4 groups
+so as to not have them intermingled: 'nfs' module parameters, 'nfs4'
+module parameters, 'nfsd' module parameters, and nfs "global" (__setup,
+no module) parameters.
 
-[ Upstream commit 826b67e6376c2a788e3a62c4860dcd79500a27d5 ]
+There were 5 parameters which were listed with a space between the
+parameter name and the following '=' sign. The space has been
+removed since module parameters expect 'parameter=' with no intervening
+space.
 
-We had a bug report that xfstest generic/355 was failing on NFSv4.0.
-This test sets various combinations of setuid/setgid modes and tests
-whether DIO writes will cause them to be stripped.
-
-What I found was that the server did properly strip those bits, but
-the client didn't notice because it held a delegation that was not
-recalled. The recall didn't occur because the client itself was the
-one generating the activity and we avoid recalls in that case.
-
-Clearing setuid bits is an "implicit" activity. The client didn't
-specifically request that we do that, so we need the server to issue a
-CB_RECALL, or avoid the situation entirely by not issuing a delegation.
-
-The easiest fix here is to simply not give out a delegation if the file
-is being opened for write, and the mode has the setuid and/or setgid bit
-set. Note that there is a potential race between the mode and lease
-being set, so we test for this condition both before and after setting
-the lease.
-
-This patch fixes generic/355, generic/683 and generic/684 for me. (Note
-that 355 fails only on v4.0, and 683 and 684 require NFSv4.2 to run and
-fail).
-
-Reported-by: Boyang Xue <bxue@redhat.com>
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
+Signed-off-by: Randy Dunlap <rdunlap@infradead.org>
+Cc: Jonathan Corbet <corbet@lwn.net>
+Cc: linux-doc@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
+Cc: Anna Schumaker <anna@kernel.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@kernel.org>
+Cc: linux-nfs@vger.kernel.org
 ---
- fs/nfsd/nfs4state.c | 27 +++++++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+ Documentation/admin-guide/kernel-parameters.txt |   74 +++++++-------
+ 1 file changed, 37 insertions(+), 37 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2247d107da90b..925a963aea00f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5397,6 +5397,23 @@ nfsd4_verify_deleg_dentry(struct nfsd4_open *open, struct nfs4_file *fp,
- 	return 0;
- }
+diff -- a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -3428,14 +3428,13 @@
+ 			1 to enable accounting
+ 			Default value is 0.
  
-+/*
-+ * We avoid breaking delegations held by a client due to its own activity, but
-+ * clearing setuid/setgid bits on a write is an implicit activity and the client
-+ * may not notice and continue using the old mode. Avoid giving out a delegation
-+ * on setuid/setgid files when the client is requesting an open for write.
-+ */
-+static int
-+nfsd4_verify_setuid_write(struct nfsd4_open *open, struct nfsd_file *nf)
-+{
-+	struct inode *inode = file_inode(nf->nf_file);
-+
-+	if ((open->op_share_access & NFS4_SHARE_ACCESS_WRITE) &&
-+	    (inode->i_mode & (S_ISUID|S_ISGID)))
-+		return -EAGAIN;
-+	return 0;
-+}
-+
- static struct nfs4_delegation *
- nfs4_set_delegation(struct nfsd4_open *open, struct nfs4_ol_stateid *stp,
- 		    struct svc_fh *parent)
-@@ -5430,6 +5447,8 @@ nfs4_set_delegation(struct nfsd4_open *open, struct nfs4_ol_stateid *stp,
- 	spin_lock(&fp->fi_lock);
- 	if (nfs4_delegation_exists(clp, fp))
- 		status = -EAGAIN;
-+	else if (nfsd4_verify_setuid_write(open, nf))
-+		status = -EAGAIN;
- 	else if (!fp->fi_deleg_file) {
- 		fp->fi_deleg_file = nf;
- 		/* increment early to prevent fi_deleg_file from being
-@@ -5470,6 +5489,14 @@ nfs4_set_delegation(struct nfsd4_open *open, struct nfs4_ol_stateid *stp,
- 	if (status)
- 		goto out_unlock;
+-	nfsaddrs=	[NFS] Deprecated.  Use ip= instead.
+-			See Documentation/admin-guide/nfs/nfsroot.rst.
+-
+-	nfsroot=	[NFS] nfs root filesystem for disk-less boxes.
+-			See Documentation/admin-guide/nfs/nfsroot.rst.
++	nfs.cache_getent=
++			[NFS] sets the pathname to the program which is used
++			to update the NFS client cache entries.
  
-+	/*
-+	 * Now that the deleg is set, check again to ensure that nothing
-+	 * raced in and changed the mode while we weren't lookng.
-+	 */
-+	status = nfsd4_verify_setuid_write(open, fp->fi_deleg_file);
-+	if (status)
-+		goto out_unlock;
+-	nfsrootdebug	[NFS] enable nfsroot debugging messages.
+-			See Documentation/admin-guide/nfs/nfsroot.rst.
++	nfs.cache_getent_timeout=
++			[NFS] sets the timeout after which an attempt to
++			update a cache entry is deemed to have failed.
+ 
+ 	nfs.callback_nr_threads=
+ 			[NFSv4] set the total number of threads that the
+@@ -3446,18 +3445,6 @@
+ 			[NFS] set the TCP port on which the NFSv4 callback
+ 			channel should listen.
+ 
+-	nfs.cache_getent=
+-			[NFS] sets the pathname to the program which is used
+-			to update the NFS client cache entries.
+-
+-	nfs.cache_getent_timeout=
+-			[NFS] sets the timeout after which an attempt to
+-			update a cache entry is deemed to have failed.
+-
+-	nfs.idmap_cache_timeout=
+-			[NFS] set the maximum lifetime for idmapper cache
+-			entries.
+-
+ 	nfs.enable_ino64=
+ 			[NFS] enable 64-bit inode numbers.
+ 			If zero, the NFS client will fake up a 32-bit inode
+@@ -3465,6 +3452,10 @@
+ 			of returning the full 64-bit number.
+ 			The default is to return 64-bit inode numbers.
+ 
++	nfs.idmap_cache_timeout=
++			[NFS] set the maximum lifetime for idmapper cache
++			entries.
 +
- 	spin_lock(&state_lock);
- 	spin_lock(&fp->fi_lock);
- 	if (fp->fi_had_conflict)
--- 
-2.39.0
-
+ 	nfs.max_session_cb_slots=
+ 			[NFSv4.1] Sets the maximum number of session
+ 			slots the client will assign to the callback
+@@ -3492,21 +3483,14 @@
+ 			will be autodetected by the client, and it will fall
+ 			back to using the idmapper.
+ 			To turn off this behaviour, set the value to '0'.
++
+ 	nfs.nfs4_unique_id=
+ 			[NFS4] Specify an additional fixed unique ident-
+ 			ification string that NFSv4 clients can insert into
+ 			their nfs_client_id4 string.  This is typically a
+ 			UUID that is generated at system install time.
+ 
+-	nfs.send_implementation_id =
+-			[NFSv4.1] Send client implementation identification
+-			information in exchange_id requests.
+-			If zero, no implementation identification information
+-			will be sent.
+-			The default is to send the implementation identification
+-			information.
+-
+-	nfs.recover_lost_locks =
++	nfs.recover_lost_locks=
+ 			[NFSv4] Attempt to recover locks that were lost due
+ 			to a lease timeout on the server. Please note that
+ 			doing this risks data corruption, since there are
+@@ -3518,7 +3502,15 @@
+ 			The default parameter value of '0' causes the kernel
+ 			not to attempt recovery of lost locks.
+ 
+-	nfs4.layoutstats_timer =
++	nfs.send_implementation_id=
++			[NFSv4.1] Send client implementation identification
++			information in exchange_id requests.
++			If zero, no implementation identification information
++			will be sent.
++			The default is to send the implementation identification
++			information.
++
++	nfs4.layoutstats_timer=
+ 			[NFSv4.2] Change the rate at which the kernel sends
+ 			layoutstats to the pNFS metadata server.
+ 
+@@ -3527,12 +3519,19 @@
+ 			driver. A non-zero value sets the minimum interval
+ 			in seconds between layoutstats transmissions.
+ 
+-	nfsd.inter_copy_offload_enable =
++	nfsd.inter_copy_offload_enable=
+ 			[NFSv4.2] When set to 1, the server will support
+ 			server-to-server copies for which this server is
+ 			the destination of the copy.
+ 
+-	nfsd.nfsd4_ssc_umount_timeout =
++	nfsd.nfs4_disable_idmapping=
++			[NFSv4] When set to the default of '1', the NFSv4
++			server will return only numeric uids and gids to
++			clients using auth_sys, and will accept numeric uids
++			and gids from such clients.  This is intended to ease
++			migration from NFSv2/v3.
++
++	nfsd.nfsd4_ssc_umount_timeout=
+ 			[NFSv4.2] When used as the destination of a
+ 			server-to-server copy, knfsd temporarily mounts
+ 			the source server.  It caches the mount in case
+@@ -3540,13 +3539,14 @@
+ 			used for the number of milliseconds specified by
+ 			this parameter.
+ 
+-	nfsd.nfs4_disable_idmapping=
+-			[NFSv4] When set to the default of '1', the NFSv4
+-			server will return only numeric uids and gids to
+-			clients using auth_sys, and will accept numeric uids
+-			and gids from such clients.  This is intended to ease
+-			migration from NFSv2/v3.
++	nfsaddrs=	[NFS] Deprecated.  Use ip= instead.
++			See Documentation/admin-guide/nfs/nfsroot.rst.
++
++	nfsroot=	[NFS] nfs root filesystem for disk-less boxes.
++			See Documentation/admin-guide/nfs/nfsroot.rst.
+ 
++	nfsrootdebug	[NFS] enable nfsroot debugging messages.
++			See Documentation/admin-guide/nfs/nfsroot.rst.
+ 
+ 	nmi_backtrace.backtrace_idle [KNL]
+ 			Dump stacks even of idle CPUs in response to an
