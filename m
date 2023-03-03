@@ -2,83 +2,104 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33B73C678D4
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Mar 2023 12:16:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D78BC7EE2F
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Mar 2023 12:16:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229926AbjCCMQK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Mar 2023 07:16:10 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34434 "EHLO
+        id S230101AbjCCMQL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 3 Mar 2023 07:16:11 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34482 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229923AbjCCMQI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2023 07:16:08 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CAEFF5F530
-        for <linux-nfs@vger.kernel.org>; Fri,  3 Mar 2023 04:16:07 -0800 (PST)
+        with ESMTP id S229923AbjCCMQL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2023 07:16:11 -0500
+Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F36495F538
+        for <linux-nfs@vger.kernel.org>; Fri,  3 Mar 2023 04:16:09 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 8B142B816C6
-        for <linux-nfs@vger.kernel.org>; Fri,  3 Mar 2023 12:16:06 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 824EBC433D2;
-        Fri,  3 Mar 2023 12:16:04 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id B2F30B8169D
+        for <linux-nfs@vger.kernel.org>; Fri,  3 Mar 2023 12:16:08 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9806C433D2;
+        Fri,  3 Mar 2023 12:16:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1677845765;
-        bh=d+vS7aLD32ApGNEGIONAfRIL2nmxiThftv2ypu9ZU/I=;
-        h=From:To:Cc:Subject:Date:From;
-        b=vCH11S3e2+HS5HFrIWXeoYi38yn2DYed4gBIzzELVQjpNOcPP3u/O4DgMlhLA/Kpv
-         cpPttrwU7QXsfNeLn1nHKyP3aZ5/ZKT9346ma1xOo09TltQ45foRoHNrS5TVwKQtJX
-         p9amNOoMIMQiWcyA+RXdJ6SJmDoVydycRhSIF2/l1htYDsaWc1B5dn84NsQ4JTk3kX
-         ZJXzSv8b6IkI2AjcqDVohr8IxJNkL5ARyikHnR7T3ny3qtRIWErIwuQQEjuHucylDj
-         n2HsGaeLumcq9L1n8pZ18aMUDeLEW2EtiadnRaorjVKJblnwTq7ugAFkJJvtjjw9HG
-         ws8Mu9HIk8sFA==
+        s=k20201202; t=1677845767;
+        bh=MMLePmlYh4JxBRFilffhWlmx/o7CitlmkzbfIDVauk0=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=lihkOPkuXq3oO6HXlw3tkKESMZRwGg5fumfVfGfFeqzRf9d7o8gvGkV+ZZz7lR19K
+         puO0eMULy0ErmFnJipw69WEHBfqAmQCIGzvvG0kUoc6oGt6lIfTDCID1JT/gpbtRoF
+         Tnia0QDXjKD5SQ8B1+cZ5KudL6u+HTB5gdwyqHicr4gHy88DYzW1WS1H07T/61S4Qv
+         vpNpPdOUDHDOj+DwLIetiECdEU02Zm4dVhs0f0ScSNHigP/2exr2J1iKLn4uL8NxCD
+         oZhvzJCgqFvb+tDRNF+7cfRXlrwgLpHuWX0XkUuWOcFf3p2PQJyQf4AkJA5t7wLTJ1
+         OMs0CFHV7LfrQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     trond.myklebust@hammerspace.com, anna@kernel.org,
         chuck.lever@oracle.com
 Cc:     linux-nfs@vger.kernel.org, yoyang@redhat.com
-Subject: [PATCH 0/7] lockd: fix races that can result in stuck filelocks
-Date:   Fri,  3 Mar 2023 07:15:56 -0500
-Message-Id: <20230303121603.132103-1-jlayton@kernel.org>
+Subject: [PATCH 3/7] lockd: move struct nlm_wait to lockd.h
+Date:   Fri,  3 Mar 2023 07:15:59 -0500
+Message-Id: <20230303121603.132103-4-jlayton@kernel.org>
 X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20230303121603.132103-1-jlayton@kernel.org>
+References: <20230303121603.132103-1-jlayton@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-I sent the first patch in this series the other day, but didn't get any
-responses. Since then I've had time to follow up on the client-side part
-of this problem, which eventually also pointed out yet another bug on
-the server side. There are also a couple of cleanup patches in here too,
-and a patch to add some tracepoints that I found useful while diagnosing
-this.
+...and drop the unused b_reclaim field.
 
-With this set on both client and server, I'm now able to run Yongcheng's
-test for an hour straight with no stuck locks.
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/lockd/clntlock.c         | 12 ------------
+ include/linux/lockd/lockd.h | 11 ++++++++++-
+ 2 files changed, 10 insertions(+), 13 deletions(-)
 
-Jeff Layton (7):
-  lockd: purge resources held on behalf of nlm clients when shutting
-    down
-  lockd: remove 2 unused helper functions
-  lockd: move struct nlm_wait to lockd.h
-  lockd: fix races in client GRANTED_MSG wait logic
-  lockd: server should unlock lock if client rejects the grant
-  nfs: move nfs_fhandle_hash to common include file
-  lockd: add some client-side tracepoints
-
- fs/lockd/Makefile           |  6 ++-
- fs/lockd/clntlock.c         | 58 +++++++++++---------------
- fs/lockd/clntproc.c         | 42 ++++++++++++++-----
- fs/lockd/host.c             |  1 +
- fs/lockd/svclock.c          | 21 ++++++++--
- fs/lockd/trace.c            |  3 ++
- fs/lockd/trace.h            | 83 +++++++++++++++++++++++++++++++++++++
- fs/nfs/internal.h           | 15 -------
- include/linux/lockd/lockd.h | 29 ++++++-------
- include/linux/nfs.h         | 20 +++++++++
- 10 files changed, 200 insertions(+), 78 deletions(-)
- create mode 100644 fs/lockd/trace.c
- create mode 100644 fs/lockd/trace.h
-
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 82b19a30e0f0..464cb15c1a06 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -29,18 +29,6 @@ static int			reclaimer(void *ptr);
+  * client perspective.
+  */
+ 
+-/*
+- * This is the representation of a blocked client lock.
+- */
+-struct nlm_wait {
+-	struct list_head	b_list;		/* linked list */
+-	wait_queue_head_t	b_wait;		/* where to wait on */
+-	struct nlm_host *	b_host;
+-	struct file_lock *	b_lock;		/* local file lock */
+-	unsigned short		b_reclaim;	/* got to reclaim lock */
+-	__be32			b_status;	/* grant callback status */
+-};
+-
+ static LIST_HEAD(nlm_blocked);
+ static DEFINE_SPINLOCK(nlm_blocked_lock);
+ 
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 26c2aed31a0c..0eec760fcc05 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -121,7 +121,16 @@ struct nlm_lockowner {
+ 	uint32_t pid;
+ };
+ 
+-struct nlm_wait;
++/*
++ * This is the representation of a blocked client lock.
++ */
++struct nlm_wait {
++	struct list_head	b_list;		/* linked list */
++	wait_queue_head_t	b_wait;		/* where to wait on */
++	struct nlm_host *	b_host;
++	struct file_lock *	b_lock;		/* local file lock */
++	__be32			b_status;	/* grant callback status */
++};
+ 
+ /*
+  * Memory chunk for NLM client RPC request.
 -- 
 2.39.2
 
