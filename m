@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9D78BC7EE2F
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Mar 2023 12:16:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6D0F3C678D4
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Mar 2023 12:16:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230101AbjCCMQL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Mar 2023 07:16:11 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34482 "EHLO
+        id S230217AbjCCMQM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 3 Mar 2023 07:16:12 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34496 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229923AbjCCMQL (ORCPT
+        with ESMTP id S230005AbjCCMQL (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2023 07:16:11 -0500
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F36495F538
-        for <linux-nfs@vger.kernel.org>; Fri,  3 Mar 2023 04:16:09 -0800 (PST)
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1E0F95F53A
+        for <linux-nfs@vger.kernel.org>; Fri,  3 Mar 2023 04:16:10 -0800 (PST)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id B2F30B8169D
-        for <linux-nfs@vger.kernel.org>; Fri,  3 Mar 2023 12:16:08 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9806C433D2;
-        Fri,  3 Mar 2023 12:16:06 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id AC5F1617FB
+        for <linux-nfs@vger.kernel.org>; Fri,  3 Mar 2023 12:16:09 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8B45BC4339C;
+        Fri,  3 Mar 2023 12:16:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1677845767;
-        bh=MMLePmlYh4JxBRFilffhWlmx/o7CitlmkzbfIDVauk0=;
+        s=k20201202; t=1677845769;
+        bh=NDJF/TFU4uRBVwWzlv6UNRp72n5x20LYx6vr92kzbck=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=lihkOPkuXq3oO6HXlw3tkKESMZRwGg5fumfVfGfFeqzRf9d7o8gvGkV+ZZz7lR19K
-         puO0eMULy0ErmFnJipw69WEHBfqAmQCIGzvvG0kUoc6oGt6lIfTDCID1JT/gpbtRoF
-         Tnia0QDXjKD5SQ8B1+cZ5KudL6u+HTB5gdwyqHicr4gHy88DYzW1WS1H07T/61S4Qv
-         vpNpPdOUDHDOj+DwLIetiECdEU02Zm4dVhs0f0ScSNHigP/2exr2J1iKLn4uL8NxCD
-         oZhvzJCgqFvb+tDRNF+7cfRXlrwgLpHuWX0XkUuWOcFf3p2PQJyQf4AkJA5t7wLTJ1
-         OMs0CFHV7LfrQ==
+        b=qTWbyOIJesIDKlSIFv/CmqT/EllRZ6I39fXD+oyEk7aybr+hrht/CAo6ktO7pXH8q
+         35ym8uQ6Y84m8HT/t5N82hiuiRGAE1FQt8tvOT8LMpk7rCqGCdLKVdzZFp3VUlpDKW
+         yzQME7zggLSsz7HJTlAcCKzAltjemJ7Yrnm26xa3czxiXLqFb0VoIbX2qKlHRYtgh7
+         30Hde77K2wuRd29osPNJnSTUcruS5KnTWGFkEKIkmsTXsO61zYaKYtRRnyuFo4wIW4
+         wo9HtvIrwCDT0Udwg6ielNVufG+/rIt9GO05nx0dMWkTh4x9uxE4/qDlypwJhqel3a
+         sJHpYNNnapUBQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     trond.myklebust@hammerspace.com, anna@kernel.org,
         chuck.lever@oracle.com
 Cc:     linux-nfs@vger.kernel.org, yoyang@redhat.com
-Subject: [PATCH 3/7] lockd: move struct nlm_wait to lockd.h
-Date:   Fri,  3 Mar 2023 07:15:59 -0500
-Message-Id: <20230303121603.132103-4-jlayton@kernel.org>
+Subject: [PATCH 5/7] lockd: server should unlock lock if client rejects the grant
+Date:   Fri,  3 Mar 2023 07:16:01 -0500
+Message-Id: <20230303121603.132103-6-jlayton@kernel.org>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230303121603.132103-1-jlayton@kernel.org>
 References: <20230303121603.132103-1-jlayton@kernel.org>
@@ -47,59 +47,59 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-...and drop the unused b_reclaim field.
+Currently lockd just dequeues the block and ignores it if the client
+sends a GRANT_RES with a status of nlm_lck_denied. That status is an
+indicator that the client has rejected the lock, so the right thing to
+do is to unlock the lock we were trying to grant.
 
+Link: https://bugzilla.redhat.com/show_bug.cgi?id=2063818
+Reported-by: Yongcheng Yang <yoyang@redhat.com>
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/lockd/clntlock.c         | 12 ------------
- include/linux/lockd/lockd.h | 11 ++++++++++-
- 2 files changed, 10 insertions(+), 13 deletions(-)
+ fs/lockd/svclock.c | 21 +++++++++++++++++----
+ 1 file changed, 17 insertions(+), 4 deletions(-)
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index 82b19a30e0f0..464cb15c1a06 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -29,18 +29,6 @@ static int			reclaimer(void *ptr);
-  * client perspective.
-  */
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 4e30f3c50970..c43ccdf28ed9 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -954,19 +954,32 @@ void
+ nlmsvc_grant_reply(struct nlm_cookie *cookie, __be32 status)
+ {
+ 	struct nlm_block	*block;
++	struct file_lock	*fl;
++	int			error;
  
--/*
-- * This is the representation of a blocked client lock.
-- */
--struct nlm_wait {
--	struct list_head	b_list;		/* linked list */
--	wait_queue_head_t	b_wait;		/* where to wait on */
--	struct nlm_host *	b_host;
--	struct file_lock *	b_lock;		/* local file lock */
--	unsigned short		b_reclaim;	/* got to reclaim lock */
--	__be32			b_status;	/* grant callback status */
--};
--
- static LIST_HEAD(nlm_blocked);
- static DEFINE_SPINLOCK(nlm_blocked_lock);
+ 	dprintk("grant_reply: looking for cookie %x, s=%d \n",
+ 		*(unsigned int *)(cookie->data), status);
+ 	if (!(block = nlmsvc_find_block(cookie)))
+ 		return;
  
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index 26c2aed31a0c..0eec760fcc05 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -121,7 +121,16 @@ struct nlm_lockowner {
- 	uint32_t pid;
- };
- 
--struct nlm_wait;
-+/*
-+ * This is the representation of a blocked client lock.
-+ */
-+struct nlm_wait {
-+	struct list_head	b_list;		/* linked list */
-+	wait_queue_head_t	b_wait;		/* where to wait on */
-+	struct nlm_host *	b_host;
-+	struct file_lock *	b_lock;		/* local file lock */
-+	__be32			b_status;	/* grant callback status */
-+};
- 
- /*
-  * Memory chunk for NLM client RPC request.
+-	if (status == nlm_lck_denied_grace_period) {
++	switch (status) {
++	case nlm_lck_denied_grace_period:
+ 		/* Try again in a couple of seconds */
+ 		nlmsvc_insert_block(block, 10 * HZ);
+-	} else {
++		break;
++	case nlm_lck_denied:
++		/* Client doesn't want it, just unlock it */
++		nlmsvc_unlink_block(block);
++		fl = &block->b_call->a_args.lock.fl;
++		fl->fl_type = F_UNLCK;
++		error = vfs_lock_file(fl->fl_file, F_SETLK, fl, NULL);
++		if (error)
++			pr_warn("lockd: unable to unlock lock rejected by client!\n");
++		break;
++	default:
+ 		/*
+-		 * Lock is now held by client, or has been rejected.
+-		 * In both cases, the block should be removed.
++		 * Either it was accepted or the status makes no sense
++		 * just unlink it either way.
+ 		 */
+ 		nlmsvc_unlink_block(block);
+ 	}
 -- 
 2.39.2
 
