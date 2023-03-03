@@ -2,24 +2,24 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A6B8AC7EE32
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Mar 2023 18:37:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4959FC7EE37
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Mar 2023 18:37:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231811AbjCCShe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Mar 2023 13:37:34 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36932 "EHLO
+        id S231841AbjCCShk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 3 Mar 2023 13:37:40 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37198 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231675AbjCCShc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2023 13:37:32 -0500
+        with ESMTP id S231562AbjCCShh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2023 13:37:37 -0500
 Received: from frasgout13.his.huawei.com (frasgout13.his.huawei.com [14.137.139.46])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D20BB60D40;
-        Fri,  3 Mar 2023 10:37:25 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.18.147.228])
-        by frasgout13.his.huawei.com (SkyGuard) with ESMTP id 4PSwyl6Sccz9xyMq;
-        Sat,  4 Mar 2023 02:11:27 +0800 (CST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D1A7560D58;
+        Fri,  3 Mar 2023 10:37:26 -0800 (PST)
+Received: from mail02.huawei.com (unknown [172.18.147.229])
+        by frasgout13.his.huawei.com (SkyGuard) with ESMTP id 4PSwzz3Kzlz9xyMy;
+        Sat,  4 Mar 2023 02:12:31 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.204.63.22])
-        by APP2 (Coremail) with SMTP id GxC2BwBnMVgKOgJk5iFpAQ--.12605S6;
-        Fri, 03 Mar 2023 19:19:45 +0100 (CET)
+        by APP2 (Coremail) with SMTP id GxC2BwBnMVgKOgJk5iFpAQ--.12605S12;
+        Fri, 03 Mar 2023 19:20:48 +0100 (CET)
 From:   Roberto Sassu <roberto.sassu@huaweicloud.com>
 To:     viro@zeniv.linux.org.uk, chuck.lever@oracle.com,
         jlayton@kernel.org, zohar@linux.ibm.com, dmitry.kasatkin@gmail.com,
@@ -32,18 +32,18 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-security-module@vger.kernel.org, keyrings@vger.kernel.org,
         selinux@vger.kernel.org, linux-kernel@vger.kernel.org,
         stefanb@linux.ibm.com, Roberto Sassu <roberto.sassu@huawei.com>
-Subject: [PATCH 04/28] ima: Align ima_file_mprotect() definition with LSM infrastructure
-Date:   Fri,  3 Mar 2023 19:18:18 +0100
-Message-Id: <20230303181842.1087717-5-roberto.sassu@huaweicloud.com>
+Subject: [PATCH 10/28] evm: Align evm_inode_post_setxattr() definition with LSM infrastructure
+Date:   Fri,  3 Mar 2023 19:18:24 +0100
+Message-Id: <20230303181842.1087717-11-roberto.sassu@huaweicloud.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20230303181842.1087717-1-roberto.sassu@huaweicloud.com>
 References: <20230303181842.1087717-1-roberto.sassu@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: GxC2BwBnMVgKOgJk5iFpAQ--.12605S6
-X-Coremail-Antispam: 1UD129KBjvJXoWxAry3tF1kXF4rtw1kJFyfCrg_yoW5CrW7pa
-        n8KasrGrWxJFy09r97XFW7ua43G3yIgw1UXa9ag340yFn0qF1vqr13AF18ur1rAr9YyFn2
-        y3y7trW5Aw1DtrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+X-CM-TRANSID: GxC2BwBnMVgKOgJk5iFpAQ--.12605S12
+X-Coremail-Antispam: 1UD129KBjvJXoWxJF1fArWUWF17tryrZF13urg_yoW5ZFW8pF
+        s8K3WDCw1FyFyUWryvyF47u34v9ayrWryjy3yDKw1IyFn3tr92qrW8Ar1j9ry5Xr48WrnY
+        qa1avrs5t343X3DanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
         9KBjDU0xBIdaVrnRJUUUPqb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
         6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
         Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
@@ -58,7 +58,7 @@ X-Coremail-Antispam: 1UD129KBjvJXoWxAry3tF1kXF4rtw1kJFyfCrg_yoW5CrW7pa
         1x0267AKxVWxJr0_GcWlIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14
         v26r4j6F4UMIIF0xvEx4A2jsIEc7CjxVAFwI0_Cr1j6rxdYxBIdaVFxhVjvjDU0xZFpf9x
         07j7GYLUUUUU=
-X-CM-SenderInfo: purev21wro2thvvxqx5xdzvxpfor3voofrz/1tbiAQAFBF1jj4otVAABsD
+X-CM-SenderInfo: purev21wro2thvvxqx5xdzvxpfor3voofrz/1tbiAgAFBF1jj4YvdgAAst
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -66,73 +66,81 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Roberto Sassu <roberto.sassu@huawei.com>
 
-Change ima_file_mprotect() definition, so that it can be registered
-as implementation of the file_mprotect hook.
+Change evm_inode_post_setxattr() definition, so that it can be registered
+as implementation of the inode_post_setxattr hook.
 
 Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
 ---
- include/linux/ima.h               | 5 +++--
- security/integrity/ima/ima_main.c | 6 ++++--
+ include/linux/evm.h               | 8 +++++---
+ security/integrity/evm/evm_main.c | 4 +++-
  security/security.c               | 2 +-
- 3 files changed, 8 insertions(+), 5 deletions(-)
+ 3 files changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/ima.h b/include/linux/ima.h
-index 7535686a403..dd216afab6c 100644
---- a/include/linux/ima.h
-+++ b/include/linux/ima.h
-@@ -24,7 +24,8 @@ extern void ima_post_create_tmpfile(struct mnt_idmap *idmap,
- extern void ima_file_free(struct file *file);
- extern int ima_file_mmap(struct file *file, unsigned long reqprot,
- 			 unsigned long prot, unsigned long flags);
--extern int ima_file_mprotect(struct vm_area_struct *vma, unsigned long prot);
-+extern int ima_file_mprotect(struct vm_area_struct *vma, unsigned long reqprot,
-+			     unsigned long prot);
- extern int ima_load_data(enum kernel_load_data_id id, bool contents);
- extern int ima_post_load_data(char *buf, loff_t size,
- 			      enum kernel_load_data_id id, char *description);
-@@ -88,7 +89,7 @@ static inline int ima_file_mmap(struct file *file, unsigned long reqprot,
- }
- 
- static inline int ima_file_mprotect(struct vm_area_struct *vma,
--				    unsigned long prot)
-+				    unsigned long reqprot, unsigned long prot)
+diff --git a/include/linux/evm.h b/include/linux/evm.h
+index 2f8c5a3983f..8c043273552 100644
+--- a/include/linux/evm.h
++++ b/include/linux/evm.h
+@@ -31,7 +31,8 @@ extern int evm_inode_setxattr(struct mnt_idmap *idmap,
+ extern void evm_inode_post_setxattr(struct dentry *dentry,
+ 				    const char *xattr_name,
+ 				    const void *xattr_value,
+-				    size_t xattr_value_len);
++				    size_t xattr_value_len,
++				    int flags);
+ extern int evm_inode_removexattr(struct mnt_idmap *idmap,
+ 				 struct dentry *dentry, const char *xattr_name);
+ extern void evm_inode_post_removexattr(struct dentry *dentry,
+@@ -55,7 +56,7 @@ static inline void evm_inode_post_set_acl(struct dentry *dentry,
+ 					  const char *acl_name,
+ 					  struct posix_acl *kacl)
  {
- 	return 0;
+-	return evm_inode_post_setxattr(dentry, acl_name, NULL, 0);
++	return evm_inode_post_setxattr(dentry, acl_name, NULL, 0, 0);
  }
-diff --git a/security/integrity/ima/ima_main.c b/security/integrity/ima/ima_main.c
-index 4a3d0c8bcba..4e26fd49ae7 100644
---- a/security/integrity/ima/ima_main.c
-+++ b/security/integrity/ima/ima_main.c
-@@ -437,7 +437,8 @@ int ima_file_mmap(struct file *file, unsigned long reqprot,
- /**
-  * ima_file_mprotect - based on policy, limit mprotect change
-  * @vma: vm_area_struct protection is set to
-- * @prot: contains the protection that will be applied by the kernel.
-+ * @reqprot: protection requested by the application
-+ * @prot: protection that will be applied by the kernel
+ extern int evm_inode_init_security(struct inode *inode, struct inode *dir,
+ 				   const struct qstr *qstr,
+@@ -113,7 +114,8 @@ static inline int evm_inode_setxattr(struct mnt_idmap *idmap,
+ static inline void evm_inode_post_setxattr(struct dentry *dentry,
+ 					   const char *xattr_name,
+ 					   const void *xattr_value,
+-					   size_t xattr_value_len)
++					   size_t xattr_value_len,
++					   int flags)
+ {
+ 	return;
+ }
+diff --git a/security/integrity/evm/evm_main.c b/security/integrity/evm/evm_main.c
+index c884534f3b7..1155a58ae87 100644
+--- a/security/integrity/evm/evm_main.c
++++ b/security/integrity/evm/evm_main.c
+@@ -730,6 +730,7 @@ bool evm_revalidate_status(const char *xattr_name)
+  * @xattr_name: pointer to the affected extended attribute name
+  * @xattr_value: pointer to the new extended attribute value
+  * @xattr_value_len: pointer to the new extended attribute value length
++ * @flags: flags to pass into filesystem operations
   *
-  * Files can be mmap'ed read/write and later changed to execute to circumvent
-  * IMA's mmap appraisal policy rules.  Due to locking issues (mmap semaphore
-@@ -447,7 +448,8 @@ int ima_file_mmap(struct file *file, unsigned long reqprot,
+  * Update the HMAC stored in 'security.evm' to reflect the change.
   *
-  * On mprotect change success, return 0.  On failure, return -EACESS.
+@@ -738,7 +739,8 @@ bool evm_revalidate_status(const char *xattr_name)
+  * i_mutex lock.
   */
--int ima_file_mprotect(struct vm_area_struct *vma, unsigned long prot)
-+int ima_file_mprotect(struct vm_area_struct *vma, unsigned long reqprot,
-+		      unsigned long prot)
+ void evm_inode_post_setxattr(struct dentry *dentry, const char *xattr_name,
+-			     const void *xattr_value, size_t xattr_value_len)
++			     const void *xattr_value, size_t xattr_value_len,
++			     int flags)
  {
- 	struct ima_template_desc *template = NULL;
- 	struct file *file;
+ 	if (!evm_revalidate_status(xattr_name))
+ 		return;
 diff --git a/security/security.c b/security/security.c
-index a8abc11dd26..8d31b739879 100644
+index dcb98901eb9..df6714aa19d 100644
 --- a/security/security.c
 +++ b/security/security.c
-@@ -2771,7 +2771,7 @@ int security_file_mprotect(struct vm_area_struct *vma, unsigned long reqprot,
- 	ret = call_int_hook(file_mprotect, 0, vma, reqprot, prot);
- 	if (ret)
- 		return ret;
--	return ima_file_mprotect(vma, prot);
-+	return ima_file_mprotect(vma, reqprot, prot);
+@@ -2319,7 +2319,7 @@ void security_inode_post_setxattr(struct dentry *dentry, const char *name,
+ 	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
+ 		return;
+ 	call_void_hook(inode_post_setxattr, dentry, name, value, size, flags);
+-	evm_inode_post_setxattr(dentry, name, value, size);
++	evm_inode_post_setxattr(dentry, name, value, size, flags);
  }
  
  /**
