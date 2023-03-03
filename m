@@ -2,24 +2,24 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 45E20C7EE2F
-	for <linux-nfs@archiver.kernel.org>; Fri,  3 Mar 2023 18:28:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4E8D8C64EC4
+	for <linux-nfs@archiver.kernel.org>; Fri,  3 Mar 2023 18:29:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231775AbjCCS2r (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Mar 2023 13:28:47 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52238 "EHLO
+        id S231753AbjCCS3N (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 3 Mar 2023 13:29:13 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53246 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231743AbjCCS2o (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2023 13:28:44 -0500
-Received: from frasgout13.his.huawei.com (frasgout13.his.huawei.com [14.137.139.46])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6E72C193F7;
-        Fri,  3 Mar 2023 10:28:33 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.18.147.228])
-        by frasgout13.his.huawei.com (SkyGuard) with ESMTP id 4PSx8S6yMrz9v7Ys;
-        Sat,  4 Mar 2023 02:19:52 +0800 (CST)
+        with ESMTP id S231715AbjCCS3M (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Mar 2023 13:29:12 -0500
+Received: from frasgout12.his.huawei.com (frasgout12.his.huawei.com [14.137.139.154])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 66C802E819;
+        Fri,  3 Mar 2023 10:28:54 -0800 (PST)
+Received: from mail02.huawei.com (unknown [172.18.147.227])
+        by frasgout12.his.huawei.com (SkyGuard) with ESMTP id 4PSx8J1Wh2z9xtRp;
+        Sat,  4 Mar 2023 02:19:44 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.204.63.22])
-        by APP1 (Coremail) with SMTP id LxC2BwCHCAQOPAJkKY9rAQ--.12963S5;
-        Fri, 03 Mar 2023 19:28:10 +0100 (CET)
+        by APP1 (Coremail) with SMTP id LxC2BwCHCAQOPAJkKY9rAQ--.12963S7;
+        Fri, 03 Mar 2023 19:28:31 +0100 (CET)
 From:   Roberto Sassu <roberto.sassu@huaweicloud.com>
 To:     viro@zeniv.linux.org.uk, chuck.lever@oracle.com,
         jlayton@kernel.org, zohar@linux.ibm.com, dmitry.kasatkin@gmail.com,
@@ -32,33 +32,33 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-security-module@vger.kernel.org, keyrings@vger.kernel.org,
         selinux@vger.kernel.org, linux-kernel@vger.kernel.org,
         stefanb@linux.ibm.com, Roberto Sassu <roberto.sassu@huawei.com>
-Subject: [PATCH 26/28] evm: Move to LSM infrastructure
-Date:   Fri,  3 Mar 2023 19:26:00 +0100
-Message-Id: <20230303182602.1088032-4-roberto.sassu@huaweicloud.com>
+Subject: [PATCH 28/28] integrity: Switch from rbtree to LSM-managed blob for integrity_iint_cache
+Date:   Fri,  3 Mar 2023 19:26:02 +0100
+Message-Id: <20230303182602.1088032-6-roberto.sassu@huaweicloud.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20230303181842.1087717-1-roberto.sassu@huaweicloud.com>
 References: <20230303181842.1087717-1-roberto.sassu@huaweicloud.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: LxC2BwCHCAQOPAJkKY9rAQ--.12963S5
-X-Coremail-Antispam: 1UD129KBjvAXoWfuF48GryDKF48GFWUAF45Awb_yoW8ZFy8Zo
-        WIvwsrtFWkWr13JrW5G3WxKFWvgay3G3y5JF95C3yqk3W2yw1UC34SkF13J3W5Xr1rGrW2
-        q34Iv340gF4UXr1kn29KB7ZKAUJUUUU8529EdanIXcx71UUUUU7v73VFW2AGmfu7bjvjm3
-        AaLaJ3UjIYCTnIWjp_UUUO87kC6x804xWl14x267AKxVWrJVCq3wAFc2x0x2IEx4CE42xK
-        8VAvwI8IcIk0rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2048vs2IY020E87I2jVAFwI0_Jr
-        Wl82xGYIkIc2x26xkF7I0E14v26ryj6s0DM28lY4IEw2IIxxk0rwA2F7IY1VAKz4vEj48v
-        e4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7CjxVAFwI
-        0_Cr1j6rxdM28EF7xvwVC2z280aVAFwI0_Cr0_Gr1UM28EF7xvwVC2z280aVCY1x0267AK
-        xVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG6I80ew
-        Av7VC0I7IYx2IY67AKxVWUGVWUXwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFVCjc4AY
-        6r1j6r4UM4x0Y48IcxkI7VAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxkF7I0En4kS14
-        v26r4a6rW5MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8C
-        rVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWrXw
-        CIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26ryj6F1UMIIF0xvE2Ix0cI8IcVCY1x02
-        67AKxVWxJr0_GcWlIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26F
-        4j6r4UJwCI42IY6I8E87Iv6xkF7I0E14v26rxl6s0DYxBIdaVFxhVjvjDU0xZFpf9x07jz
-        E__UUUUU=
-X-CM-SenderInfo: purev21wro2thvvxqx5xdzvxpfor3voofrz/1tbiAQAFBF1jj4otXQABsK
+X-CM-TRANSID: LxC2BwCHCAQOPAJkKY9rAQ--.12963S7
+X-Coremail-Antispam: 1UD129KBjvJXoWxKryfGFy8XFyDtr1UAFWDurg_yoWxGF1xpF
+        42gay8Jws8ZFWj9F4vyFZ8ur4fKFyqgFZ7W34Ykw1kAFyvvr1jqFs8AryUZFy5GrW5Kw1I
+        qrn8Kr4UuF1qyrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUPSb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
+        Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
+        rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
+        AKxVWxJr0_GcWl84ACjcxK6I8E87Iv67AKxVWxJVW8Jr1l84ACjcxK6I8E87Iv6xkF7I0E
+        14v26rxl6s0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
+        xfMcIj6xIIjxv20xvE14v26r106r15McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
+        z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAaw2
+        AFwI0_GFv_Wryl42xK82IYc2Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAq
+        x4xG67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r4a6r
+        W5MIIYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Xr0_Ar1lIxAIcVC0I7IYx2IY6xkF
+        7I0E14v26F4UJVW0owCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI
+        0_Cr0_Gr1UMIIF0xvEx4A2jsIEc7CjxVAFwI0_GcCE3sUvcSsGvfC2KfnxnUUI43ZEXa7I
+        U0189tUUUUU==
+X-CM-SenderInfo: purev21wro2thvvxqx5xdzvxpfor3voofrz/1tbiAQAFBF1jj4otXQADsI
 X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
@@ -66,601 +66,204 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Roberto Sassu <roberto.sassu@huawei.com>
 
-As for IMA, remove hardcoded EVM function calls from the LSM infrastructure
-and the VFS. Make EVM functions as static (except for
-evm_inode_init_security(), which is exported), and register them as hook
-implementations in init_evm_lsm(), called from integrity_lsm_init().
+Before the security field of kernel objects could be shared among LSMs with
+the LSM stacking feature, IMA and EVM had to rely on an alternative storage
+of inode metadata. The association between inode metadata and inode is
+maintained through an rbtree.
 
-Finally, switch to the LSM reservation mechanism for the EVM xattr, by
-setting the lbs_xattr field of the lsm_blob_sizes structure, and
-consequently decrement the number of xattrs to allocate in
-security_inode_init_security().
+With the reservation mechanism offered by the LSM infrastructure, the
+rbtree is no longer necessary, as each LSM could reserve a space in the
+security blob for each inode. Thus, request from the 'integrity' LSM a
+space in the security blob for the pointer of inode metadata
+(integrity_iint_cache structure).
+
+Prefer this to allocating the integrity_iint_cache structure directly, as
+IMA would require it only for a subset of inodes. Always allocating it
+would cause a waste of memory.
+
+Introduce two primitives for getting and setting the pointer of
+integrity_iint_cache in the security blob, respectively
+integrity_inode_get_iint() and integrity_inode_set_iint(). This would make
+the code more understandable, as they directly replace rbtree operations.
+
+Locking is not needed, as access to inode metadata is not shared, it is per
+inode.
 
 Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
 ---
- fs/attr.c                         |   2 -
- fs/posix_acl.c                    |   3 -
- fs/xattr.c                        |   2 -
- include/linux/evm.h               | 116 ------------------------------
- security/integrity/evm/evm_main.c | 106 ++++++++++++++++++++++-----
- security/integrity/iint.c         |   7 ++
- security/integrity/integrity.h    |   9 +++
- security/security.c               |  41 +++--------
- 8 files changed, 115 insertions(+), 171 deletions(-)
+ security/integrity/iint.c      | 64 ++++------------------------------
+ security/integrity/integrity.h | 20 ++++++++++-
+ 2 files changed, 25 insertions(+), 59 deletions(-)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 406d782dfab..1b911a627fe 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -16,7 +16,6 @@
- #include <linux/fcntl.h>
- #include <linux/filelock.h>
- #include <linux/security.h>
--#include <linux/evm.h>
- 
- #include "internal.h"
- 
-@@ -485,7 +484,6 @@ int notify_change(struct mnt_idmap *idmap, struct dentry *dentry,
- 	if (!error) {
- 		fsnotify_change(dentry, ia_valid);
- 		security_inode_post_setattr(idmap, dentry, ia_valid);
--		evm_inode_post_setattr(idmap, dentry, ia_valid);
- 	}
- 
- 	return error;
-diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-index 5b8c92fce0c..608cb0a9f84 100644
---- a/fs/posix_acl.c
-+++ b/fs/posix_acl.c
-@@ -26,7 +26,6 @@
- #include <linux/mnt_idmapping.h>
- #include <linux/iversion.h>
- #include <linux/security.h>
--#include <linux/evm.h>
- #include <linux/fsnotify.h>
- #include <linux/filelock.h>
- 
-@@ -1103,7 +1102,6 @@ int vfs_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
- 	if (!error) {
- 		fsnotify_xattr(dentry);
- 		security_inode_post_set_acl(dentry, acl_name, kacl);
--		evm_inode_post_set_acl(dentry, acl_name, kacl);
- 	}
- 
- out_inode_unlock:
-@@ -1214,7 +1212,6 @@ int vfs_remove_acl(struct mnt_idmap *idmap, struct dentry *dentry,
- 	if (!error) {
- 		fsnotify_xattr(dentry);
- 		security_inode_post_remove_acl(idmap, dentry, acl_name);
--		evm_inode_post_remove_acl(idmap, dentry, acl_name);
- 	}
- 
- out_inode_unlock:
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 10c959d9fc6..7708ffdacca 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -16,7 +16,6 @@
- #include <linux/mount.h>
- #include <linux/namei.h>
- #include <linux/security.h>
--#include <linux/evm.h>
- #include <linux/syscalls.h>
- #include <linux/export.h>
- #include <linux/fsnotify.h>
-@@ -535,7 +534,6 @@ __vfs_removexattr_locked(struct mnt_idmap *idmap,
- 	if (!error) {
- 		fsnotify_xattr(dentry);
- 		security_inode_post_removexattr(dentry, name);
--		evm_inode_post_removexattr(dentry, name);
- 	}
- 
- out:
-diff --git a/include/linux/evm.h b/include/linux/evm.h
-index 8c043273552..61794299f09 100644
---- a/include/linux/evm.h
-+++ b/include/linux/evm.h
-@@ -21,46 +21,6 @@ extern enum integrity_status evm_verifyxattr(struct dentry *dentry,
- 					     void *xattr_value,
- 					     size_t xattr_value_len,
- 					     struct integrity_iint_cache *iint);
--extern int evm_inode_setattr(struct mnt_idmap *idmap,
--			     struct dentry *dentry, struct iattr *attr);
--extern void evm_inode_post_setattr(struct mnt_idmap *idmap,
--				   struct dentry *dentry, int ia_valid);
--extern int evm_inode_setxattr(struct mnt_idmap *idmap,
--			      struct dentry *dentry, const char *name,
--			      const void *value, size_t size, int flags);
--extern void evm_inode_post_setxattr(struct dentry *dentry,
--				    const char *xattr_name,
--				    const void *xattr_value,
--				    size_t xattr_value_len,
--				    int flags);
--extern int evm_inode_removexattr(struct mnt_idmap *idmap,
--				 struct dentry *dentry, const char *xattr_name);
--extern void evm_inode_post_removexattr(struct dentry *dentry,
--				       const char *xattr_name);
--static inline void evm_inode_post_remove_acl(struct mnt_idmap *idmap,
--					     struct dentry *dentry,
--					     const char *acl_name)
--{
--	evm_inode_post_removexattr(dentry, acl_name);
--}
--extern int evm_inode_set_acl(struct mnt_idmap *idmap,
--			     struct dentry *dentry, const char *acl_name,
--			     struct posix_acl *kacl);
--static inline int evm_inode_remove_acl(struct mnt_idmap *idmap,
--				       struct dentry *dentry,
--				       const char *acl_name)
--{
--	return evm_inode_set_acl(idmap, dentry, acl_name, NULL);
--}
--static inline void evm_inode_post_set_acl(struct dentry *dentry,
--					  const char *acl_name,
--					  struct posix_acl *kacl)
--{
--	return evm_inode_post_setxattr(dentry, acl_name, NULL, 0, 0);
--}
--extern int evm_inode_init_security(struct inode *inode, struct inode *dir,
--				   const struct qstr *qstr,
--				   struct xattr *xattrs);
- extern bool evm_revalidate_status(const char *xattr_name);
- extern int evm_protected_xattr_if_enabled(const char *req_xattr_name);
- extern int evm_read_protected_xattrs(struct dentry *dentry, u8 *buffer,
-@@ -92,82 +52,6 @@ static inline enum integrity_status evm_verifyxattr(struct dentry *dentry,
- }
- #endif
- 
--static inline int evm_inode_setattr(struct mnt_idmap *idmap,
--				    struct dentry *dentry, struct iattr *attr)
--{
--	return 0;
--}
--
--static inline void evm_inode_post_setattr(struct mnt_idmap *idmap,
--					  struct dentry *dentry, int ia_valid)
--{
--	return;
--}
--
--static inline int evm_inode_setxattr(struct mnt_idmap *idmap,
--				     struct dentry *dentry, const char *name,
--				     const void *value, size_t size, int flags)
--{
--	return 0;
--}
--
--static inline void evm_inode_post_setxattr(struct dentry *dentry,
--					   const char *xattr_name,
--					   const void *xattr_value,
--					   size_t xattr_value_len,
--					   int flags)
--{
--	return;
--}
--
--static inline int evm_inode_removexattr(struct mnt_idmap *idmap,
--					struct dentry *dentry,
--					const char *xattr_name)
--{
--	return 0;
--}
--
--static inline void evm_inode_post_removexattr(struct dentry *dentry,
--					      const char *xattr_name)
--{
--	return;
--}
--
--static inline void evm_inode_post_remove_acl(struct mnt_idmap *idmap,
--					     struct dentry *dentry,
--					     const char *acl_name)
--{
--	return;
--}
--
--static inline int evm_inode_set_acl(struct mnt_idmap *idmap,
--				    struct dentry *dentry, const char *acl_name,
--				    struct posix_acl *kacl)
--{
--	return 0;
--}
--
--static inline int evm_inode_remove_acl(struct mnt_idmap *idmap,
--				       struct dentry *dentry,
--				       const char *acl_name)
--{
--	return 0;
--}
--
--static inline void evm_inode_post_set_acl(struct dentry *dentry,
--					  const char *acl_name,
--					  struct posix_acl *kacl)
--{
--	return;
--}
--
--static inline int evm_inode_init_security(struct inode *inode, struct inode *dir,
--					  const struct qstr *qstr,
--					  struct xattr *xattrs)
--{
--	return 0;
--}
--
- static inline bool evm_revalidate_status(const char *xattr_name)
- {
- 	return false;
-diff --git a/security/integrity/evm/evm_main.c b/security/integrity/evm/evm_main.c
-index 8b5c472f78b..c45bc97277c 100644
---- a/security/integrity/evm/evm_main.c
-+++ b/security/integrity/evm/evm_main.c
-@@ -19,6 +19,7 @@
- #include <linux/xattr.h>
- #include <linux/integrity.h>
- #include <linux/evm.h>
-+#include <linux/lsm_hooks.h>
- #include <linux/magic.h>
- #include <linux/posix_acl_xattr.h>
- 
-@@ -566,9 +567,9 @@ static int evm_protect_xattr(struct mnt_idmap *idmap,
-  * userspace from writing HMAC value.  Writing 'security.evm' requires
-  * requires CAP_SYS_ADMIN privileges.
-  */
--int evm_inode_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
--		       const char *xattr_name, const void *xattr_value,
--		       size_t xattr_value_len, int flags)
-+static int evm_inode_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
-+			      const char *xattr_name, const void *xattr_value,
-+			      size_t xattr_value_len, int flags)
- {
- 	const struct evm_ima_xattr_data *xattr_data = xattr_value;
- 
-@@ -598,8 +599,8 @@ int evm_inode_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
-  * Removing 'security.evm' requires CAP_SYS_ADMIN privileges and that
-  * the current value is valid.
-  */
--int evm_inode_removexattr(struct mnt_idmap *idmap,
--			  struct dentry *dentry, const char *xattr_name)
-+static int evm_inode_removexattr(struct mnt_idmap *idmap, struct dentry *dentry,
-+				 const char *xattr_name)
- {
- 	/* Policy permits modification of the protected xattrs even though
- 	 * there's no HMAC key loaded
-@@ -649,9 +650,11 @@ static inline int evm_inode_set_acl_change(struct mnt_idmap *idmap,
-  * Prevent modifying posix acls causing the EVM HMAC to be re-calculated
-  * and 'security.evm' xattr updated, unless the existing 'security.evm' is
-  * valid.
-+ *
-+ * Return: zero on success, -EPERM on failure.
-  */
--int evm_inode_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
--		      const char *acl_name, struct posix_acl *kacl)
-+static int evm_inode_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
-+			     const char *acl_name, struct posix_acl *kacl)
- {
- 	enum integrity_status evm_status;
- 
-@@ -690,6 +693,24 @@ int evm_inode_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
- 	return -EPERM;
- }
- 
-+/**
-+ * evm_inode_remove_acl - Protect the EVM extended attribute from posix acls
-+ * @idmap: idmap of the mount
-+ * @dentry: pointer to the affected dentry
-+ * @acl_name: name of the posix acl
-+ *
-+ * Prevent removing posix acls causing the EVM HMAC to be re-calculated
-+ * and 'security.evm' xattr updated, unless the existing 'security.evm' is
-+ * valid.
-+ *
-+ * Return: zero on success, -EPERM on failure.
-+ */
-+static int evm_inode_remove_acl(struct mnt_idmap *idmap, struct dentry *dentry,
-+				const char *acl_name)
-+{
-+	return evm_inode_set_acl(idmap, dentry, acl_name, NULL);
-+}
-+
- static void evm_reset_status(struct inode *inode)
- {
- 	struct integrity_iint_cache *iint;
-@@ -738,9 +759,11 @@ bool evm_revalidate_status(const char *xattr_name)
-  * __vfs_setxattr_noperm().  The caller of which has taken the inode's
-  * i_mutex lock.
-  */
--void evm_inode_post_setxattr(struct dentry *dentry, const char *xattr_name,
--			     const void *xattr_value, size_t xattr_value_len,
--			     int flags)
-+static void evm_inode_post_setxattr(struct dentry *dentry,
-+				    const char *xattr_name,
-+				    const void *xattr_value,
-+				    size_t xattr_value_len,
-+				    int flags)
- {
- 	if (!evm_revalidate_status(xattr_name))
- 		return;
-@@ -756,6 +779,21 @@ void evm_inode_post_setxattr(struct dentry *dentry, const char *xattr_name,
- 	evm_update_evmxattr(dentry, xattr_name, xattr_value, xattr_value_len);
- }
- 
-+/**
-+ * evm_inode_post_set_acl - Update the EVM extended attribute from posix acls
-+ * @dentry: pointer to the affected dentry
-+ * @acl_name: name of the posix acl
-+ * @kacl: pointer to the posix acls
-+ *
-+ * Update the 'security.evm' xattr with the EVM HMAC re-calculated after setting
-+ * posix acls.
-+ */
-+static void evm_inode_post_set_acl(struct dentry *dentry, const char *acl_name,
-+				   struct posix_acl *kacl)
-+{
-+	return evm_inode_post_setxattr(dentry, acl_name, NULL, 0, 0);
-+}
-+
- /**
-  * evm_inode_post_removexattr - update 'security.evm' after removing the xattr
-  * @dentry: pointer to the affected dentry
-@@ -766,7 +804,8 @@ void evm_inode_post_setxattr(struct dentry *dentry, const char *xattr_name,
-  * No need to take the i_mutex lock here, as this function is called from
-  * vfs_removexattr() which takes the i_mutex.
-  */
--void evm_inode_post_removexattr(struct dentry *dentry, const char *xattr_name)
-+static void evm_inode_post_removexattr(struct dentry *dentry,
-+				       const char *xattr_name)
- {
- 	if (!evm_revalidate_status(xattr_name))
- 		return;
-@@ -782,6 +821,22 @@ void evm_inode_post_removexattr(struct dentry *dentry, const char *xattr_name)
- 	evm_update_evmxattr(dentry, xattr_name, NULL, 0);
- }
- 
-+/**
-+ * evm_inode_post_remove_acl - Update the EVM extended attribute from posix acls
-+ * @idmap: idmap of the mount
-+ * @dentry: pointer to the affected dentry
-+ * @acl_name: name of the posix acl
-+ *
-+ * Update the 'security.evm' xattr with the EVM HMAC re-calculated after
-+ * removing posix acls.
-+ */
-+static inline void evm_inode_post_remove_acl(struct mnt_idmap *idmap,
-+					     struct dentry *dentry,
-+					     const char *acl_name)
-+{
-+	evm_inode_post_removexattr(dentry, acl_name);
-+}
-+
- static int evm_attr_change(struct mnt_idmap *idmap,
- 			   struct dentry *dentry, struct iattr *attr)
- {
-@@ -805,8 +860,8 @@ static int evm_attr_change(struct mnt_idmap *idmap,
-  * Permit update of file attributes when files have a valid EVM signature,
-  * except in the case of them having an immutable portable signature.
-  */
--int evm_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
--		      struct iattr *attr)
-+static int evm_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
-+			     struct iattr *attr)
- {
- 	unsigned int ia_valid = attr->ia_valid;
- 	enum integrity_status evm_status;
-@@ -853,8 +908,8 @@ int evm_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
-  * This function is called from notify_change(), which expects the caller
-  * to lock the inode's i_mutex.
-  */
--void evm_inode_post_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
--			    int ia_valid)
-+static void evm_inode_post_setattr(struct mnt_idmap *idmap,
-+				   struct dentry *dentry, int ia_valid)
- {
- 	if (!evm_revalidate_status(NULL))
- 		return;
-@@ -892,7 +947,7 @@ int evm_inode_init_security(struct inode *inode, struct inode *dir,
- 	if (!evm_protected_xattrs)
- 		return -EOPNOTSUPP;
- 
--	evm_xattr = xattr;
-+	evm_xattr = xattrs + integrity_blob_sizes.lbs_xattr;
- 
- 	xattr_data = kzalloc(sizeof(*xattr_data), GFP_NOFS);
- 	if (!xattr_data)
-@@ -952,4 +1007,23 @@ static int __init init_evm(void)
- 	return error;
- }
- 
-+static struct security_hook_list evm_hooks[] __lsm_ro_after_init = {
-+	LSM_HOOK_INIT(inode_setattr, evm_inode_setattr),
-+	LSM_HOOK_INIT(inode_post_setattr, evm_inode_post_setattr),
-+	LSM_HOOK_INIT(inode_setxattr, evm_inode_setxattr),
-+	LSM_HOOK_INIT(inode_set_acl, evm_inode_set_acl),
-+	LSM_HOOK_INIT(inode_post_set_acl, evm_inode_post_set_acl),
-+	LSM_HOOK_INIT(inode_remove_acl, evm_inode_remove_acl),
-+	LSM_HOOK_INIT(inode_post_remove_acl, evm_inode_post_remove_acl),
-+	LSM_HOOK_INIT(inode_post_setxattr, evm_inode_post_setxattr),
-+	LSM_HOOK_INIT(inode_removexattr, evm_inode_removexattr),
-+	LSM_HOOK_INIT(inode_post_removexattr, evm_inode_post_removexattr),
-+	LSM_HOOK_INIT(inode_init_security, evm_inode_init_security),
-+};
-+
-+void __init init_evm_lsm(void)
-+{
-+	security_add_hooks(evm_hooks, ARRAY_SIZE(evm_hooks), "integrity");
-+}
-+
- late_initcall(init_evm);
 diff --git a/security/integrity/iint.c b/security/integrity/iint.c
-index bbadf974b31..952d5ea4e18 100644
+index b12215d8b13..1610380de2f 100644
 --- a/security/integrity/iint.c
 +++ b/security/integrity/iint.c
-@@ -179,12 +179,19 @@ static int __init integrity_lsm_init(void)
- 			      0, SLAB_PANIC, init_once);
+@@ -14,58 +14,25 @@
+ #include <linux/slab.h>
+ #include <linux/init.h>
+ #include <linux/spinlock.h>
+-#include <linux/rbtree.h>
+ #include <linux/file.h>
+ #include <linux/uaccess.h>
+ #include <linux/security.h>
+ #include <linux/lsm_hooks.h>
+ #include "integrity.h"
  
- 	init_ima_lsm();
-+	init_evm_lsm();
- 	return 0;
+-static struct rb_root integrity_iint_tree = RB_ROOT;
+-static DEFINE_RWLOCK(integrity_iint_lock);
+ static struct kmem_cache *iint_cache __read_mostly;
+ 
+ struct dentry *integrity_dir;
+ 
+-/*
+- * __integrity_iint_find - return the iint associated with an inode
+- */
+-static struct integrity_iint_cache *__integrity_iint_find(struct inode *inode)
+-{
+-	struct integrity_iint_cache *iint;
+-	struct rb_node *n = integrity_iint_tree.rb_node;
+-
+-	while (n) {
+-		iint = rb_entry(n, struct integrity_iint_cache, rb_node);
+-
+-		if (inode < iint->inode)
+-			n = n->rb_left;
+-		else if (inode > iint->inode)
+-			n = n->rb_right;
+-		else
+-			break;
+-	}
+-	if (!n)
+-		return NULL;
+-
+-	return iint;
+-}
+-
+ /*
+  * integrity_iint_find - return the iint associated with an inode
+  */
+ struct integrity_iint_cache *integrity_iint_find(struct inode *inode)
+ {
+-	struct integrity_iint_cache *iint;
+-
+ 	if (!IS_IMA(inode))
+ 		return NULL;
+ 
+-	read_lock(&integrity_iint_lock);
+-	iint = __integrity_iint_find(inode);
+-	read_unlock(&integrity_iint_lock);
+-
+-	return iint;
++	return integrity_inode_get_iint(inode);
  }
-+
-+struct lsm_blob_sizes integrity_blob_sizes __lsm_ro_after_init = {
-+	.lbs_xattr = 1,
-+};
-+
- DEFINE_LSM(integrity) = {
- 	.name = "integrity",
- 	.init = integrity_lsm_init,
- 	.order = LSM_ORDER_LAST,
-+	.blobs = &integrity_blob_sizes,
+ 
+ static void iint_free(struct integrity_iint_cache *iint)
+@@ -94,9 +61,7 @@ static void iint_free(struct integrity_iint_cache *iint)
+  */
+ struct integrity_iint_cache *integrity_inode_get(struct inode *inode)
+ {
+-	struct rb_node **p;
+-	struct rb_node *node, *parent = NULL;
+-	struct integrity_iint_cache *iint, *test_iint;
++	struct integrity_iint_cache *iint;
+ 
+ 	/*
+ 	 * The integrity's "iint_cache" is initialized at security_init(),
+@@ -114,26 +79,10 @@ struct integrity_iint_cache *integrity_inode_get(struct inode *inode)
+ 	if (!iint)
+ 		return NULL;
+ 
+-	write_lock(&integrity_iint_lock);
+-
+-	p = &integrity_iint_tree.rb_node;
+-	while (*p) {
+-		parent = *p;
+-		test_iint = rb_entry(parent, struct integrity_iint_cache,
+-				     rb_node);
+-		if (inode < test_iint->inode)
+-			p = &(*p)->rb_left;
+-		else
+-			p = &(*p)->rb_right;
+-	}
+-
+ 	iint->inode = inode;
+-	node = &iint->rb_node;
+ 	inode->i_flags |= S_IMA;
+-	rb_link_node(node, parent, p);
+-	rb_insert_color(node, &integrity_iint_tree);
++	integrity_inode_set_iint(inode, iint);
+ 
+-	write_unlock(&integrity_iint_lock);
+ 	return iint;
+ }
+ 
+@@ -150,10 +99,8 @@ static void integrity_inode_free(struct inode *inode)
+ 	if (!IS_IMA(inode))
+ 		return;
+ 
+-	write_lock(&integrity_iint_lock);
+-	iint = __integrity_iint_find(inode);
+-	rb_erase(&iint->rb_node, &integrity_iint_tree);
+-	write_unlock(&integrity_iint_lock);
++	iint = integrity_iint_find(inode);
++	integrity_inode_set_iint(inode, NULL);
+ 
+ 	iint_free(iint);
+ }
+@@ -193,6 +140,7 @@ static int __init integrity_lsm_init(void)
+ }
+ 
+ struct lsm_blob_sizes integrity_blob_sizes __lsm_ro_after_init = {
++	.lbs_inode = sizeof(struct integrity_iint_cache *),
+ 	.lbs_xattr = 1,
  };
  
- /*
 diff --git a/security/integrity/integrity.h b/security/integrity/integrity.h
-index c72d375a356..76e7eda6651 100644
+index a3cbc65f9c6..720c2f183e4 100644
 --- a/security/integrity/integrity.h
 +++ b/security/integrity/integrity.h
-@@ -188,6 +188,7 @@ int integrity_kernel_read(struct file *file, loff_t offset,
- #define INTEGRITY_KEYRING_MAX		4
+@@ -18,6 +18,7 @@
+ #include <crypto/hash.h>
+ #include <linux/key.h>
+ #include <linux/audit.h>
++#include <linux/lsm_hooks.h>
  
+ /* iint action cache flags */
+ #define IMA_MEASURE		0x00000001
+@@ -157,7 +158,6 @@ struct ima_file_id {
+ 
+ /* integrity data associated with an inode */
+ struct integrity_iint_cache {
+-	struct rb_node rb_node;	/* rooted in integrity_iint_tree */
+ 	struct mutex mutex;	/* protects: version, flags, digest */
+ 	struct inode *inode;	/* back pointer to inode in question */
+ 	u64 version;		/* track inode changes */
+@@ -191,6 +191,24 @@ int integrity_kernel_read(struct file *file, loff_t offset,
  extern struct dentry *integrity_dir;
-+extern struct lsm_blob_sizes integrity_blob_sizes;
+ extern struct lsm_blob_sizes integrity_blob_sizes;
  
++static inline struct integrity_iint_cache *
++integrity_inode_get_iint(const struct inode *inode)
++{
++	struct integrity_iint_cache **iint_sec;
++
++	iint_sec = inode->i_security + integrity_blob_sizes.lbs_inode;
++	return *iint_sec;
++}
++
++static inline void integrity_inode_set_iint(const struct inode *inode,
++					    struct integrity_iint_cache *iint)
++{
++	struct integrity_iint_cache **iint_sec;
++
++	iint_sec = inode->i_security + integrity_blob_sizes.lbs_inode;
++	*iint_sec = iint;
++}
++
  struct modsig;
  
-@@ -199,6 +200,14 @@ static inline void __init init_ima_lsm(void)
- }
- #endif
- 
-+#ifdef CONFIG_EVM
-+void __init init_evm_lsm(void);
-+#else
-+static inline void __init init_evm_lsm(void)
-+{
-+}
-+#endif
-+
- #ifdef CONFIG_INTEGRITY_SIGNATURE
- 
- int integrity_digsig_verify(const unsigned int id, const char *sig, int siglen,
-diff --git a/security/security.c b/security/security.c
-index 9bc6a4ef758..74abf04feef 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -20,13 +20,13 @@
- #include <linux/kernel_read_file.h>
- #include <linux/lsm_hooks.h>
- #include <linux/integrity.h>
--#include <linux/evm.h>
- #include <linux/fsnotify.h>
- #include <linux/mman.h>
- #include <linux/mount.h>
- #include <linux/personality.h>
- #include <linux/backing-dev.h>
- #include <linux/string.h>
-+#include <linux/xattr.h>
- #include <linux/msg.h>
- #include <net/flow.h>
- 
-@@ -1662,8 +1662,8 @@ int security_inode_init_security(struct inode *inode, struct inode *dir,
- 	if (!initxattrs)
- 		return call_int_hook(inode_init_security, -EOPNOTSUPP, inode,
- 				    dir, qstr, NULL);
--	/* Allocate +1 for EVM and +1 as terminator. */
--	new_xattrs = kcalloc(blob_sizes.lbs_xattr + 2, sizeof(*new_xattrs),
-+	/* Allocate +1 for terminator. */
-+	new_xattrs = kcalloc(blob_sizes.lbs_xattr + 1, sizeof(*new_xattrs),
- 			     GFP_NOFS);
- 	if (!new_xattrs)
- 		return -ENOMEM;
-@@ -1699,9 +1699,6 @@ int security_inode_init_security(struct inode *inode, struct inode *dir,
- 	if (!num_filled_xattrs)
- 		goto out;
- 
--	ret = evm_inode_init_security(inode, dir, qstr, new_xattrs);
--	if (ret && ret != -EOPNOTSUPP)
--		goto out;
- 	ret = initxattrs(inode, new_xattrs, fs_data);
- out:
- 	for (xattr = new_xattrs; xattr->value != NULL; xattr++)
-@@ -2201,14 +2198,9 @@ int security_inode_permission(struct inode *inode, int mask)
- int security_inode_setattr(struct mnt_idmap *idmap,
- 			   struct dentry *dentry, struct iattr *attr)
- {
--	int ret;
--
- 	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
- 		return 0;
--	ret = call_int_hook(inode_setattr, 0, idmap, dentry, attr);
--	if (ret)
--		return ret;
--	return evm_inode_setattr(idmap, dentry, attr);
-+	return call_int_hook(inode_setattr, 0, idmap, dentry, attr);
- }
- EXPORT_SYMBOL_GPL(security_inode_setattr);
- 
-@@ -2272,9 +2264,7 @@ int security_inode_setxattr(struct mnt_idmap *idmap,
- 
- 	if (ret == 1)
- 		ret = cap_inode_setxattr(dentry, name, value, size, flags);
--	if (ret)
--		return ret;
--	return evm_inode_setxattr(idmap, dentry, name, value, size, flags);
-+	return ret;
- }
- 
- /**
-@@ -2293,15 +2283,10 @@ int security_inode_set_acl(struct mnt_idmap *idmap,
- 			   struct dentry *dentry, const char *acl_name,
- 			   struct posix_acl *kacl)
- {
--	int ret;
--
- 	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
- 		return 0;
--	ret = call_int_hook(inode_set_acl, 0, idmap, dentry, acl_name,
--			    kacl);
--	if (ret)
--		return ret;
--	return evm_inode_set_acl(idmap, dentry, acl_name, kacl);
-+	return call_int_hook(inode_set_acl, 0, idmap, dentry, acl_name,
-+			     kacl);
- }
- 
- /**
-@@ -2354,14 +2339,9 @@ int security_inode_get_acl(struct mnt_idmap *idmap,
- int security_inode_remove_acl(struct mnt_idmap *idmap,
- 			      struct dentry *dentry, const char *acl_name)
- {
--	int ret;
--
- 	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
- 		return 0;
--	ret = call_int_hook(inode_remove_acl, 0, idmap, dentry, acl_name);
--	if (ret)
--		return ret;
--	return evm_inode_remove_acl(idmap, dentry, acl_name);
-+	return call_int_hook(inode_remove_acl, 0, idmap, dentry, acl_name);
- }
- 
- /**
-@@ -2397,7 +2377,6 @@ void security_inode_post_setxattr(struct dentry *dentry, const char *name,
- 	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
- 		return;
- 	call_void_hook(inode_post_setxattr, dentry, name, value, size, flags);
--	evm_inode_post_setxattr(dentry, name, value, size, flags);
- }
- 
- /**
-@@ -2458,9 +2437,7 @@ int security_inode_removexattr(struct mnt_idmap *idmap,
- 	ret = call_int_hook(inode_removexattr, 1, idmap, dentry, name);
- 	if (ret == 1)
- 		ret = cap_inode_removexattr(idmap, dentry, name);
--	if (ret)
--		return ret;
--	return evm_inode_removexattr(idmap, dentry, name);
-+	return ret;
- }
- 
- /**
+ #ifdef CONFIG_IMA
 -- 
 2.25.1
 
