@@ -2,68 +2,67 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F61FC6FD1F
-	for <linux-nfs@archiver.kernel.org>; Mon,  6 Mar 2023 18:29:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 535BCC6FD1C
+	for <linux-nfs@archiver.kernel.org>; Mon,  6 Mar 2023 19:18:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230052AbjCFS27 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 6 Mar 2023 13:28:59 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52398 "EHLO
+        id S230028AbjCFTSX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 6 Mar 2023 14:18:23 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42092 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229718AbjCFS26 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2023 13:28:58 -0500
-Received: from mx0a-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E8B9B34317;
-        Mon,  6 Mar 2023 10:28:37 -0800 (PST)
-Received: from pps.filterd (m0098416.ppops.net [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 326F229r032225;
-        Mon, 6 Mar 2023 16:52:16 GMT
+        with ESMTP id S229872AbjCFTSP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2023 14:18:15 -0500
+Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 00377421C;
+        Mon,  6 Mar 2023 11:18:03 -0800 (PST)
+Received: from pps.filterd (m0098396.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 326JD5dg028623;
+        Mon, 6 Mar 2023 19:17:41 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=message-id : date :
  mime-version : subject : to : cc : references : from : in-reply-to :
  content-type : content-transfer-encoding; s=pp1;
- bh=Qmb+wAuWZ++BAHNyIHrpxJlNwrEdwiaNpMW6hsm+jrw=;
- b=sOAHNLdpoGmHSyZ2ajlW8OMzQL1sJcQo7ANDzBbtQd0g7G96kNVjczG7NCCQESssGZre
- QTfAzkE/dCo2xP5PpLYADBej8T2wQm9FStizxJeKWUCPB/YbeluWzj96++LVjabxvtGt
- nhJ7FL3G5CcXud70UFbxzjmEnqIZTHAVOU9no82QzjVqPACCB2ITpbU7NfyV++BaDbze
- NurjUilf7GPeOx5/JRwvhmCP6O9IzLBy1AQBF7kCEsAscReZDrnNrsEuYd3v1/Jisszj
- nN6vdhVKeb2wgPkv3IhbpEW9DZk1wT7UHs3VtLDh9FNh08bTh2uyM7Vv7QP/PK+B0MwD bA== 
+ bh=o6xkr4nzKTBS3fMWrupc5UKolZaC3WVJzFolcWMp0P4=;
+ b=aJy7Zbp+SuSfc9qqXnp1zPRs3eWIsMK61m61quulzMm98zxTRmDXjd+hhbTC2UrAH6Dk
+ u/RqKSLAbc43M/Vdr9mW08hfgQr26MpgZlxWbbgF5kbevMYq+Tc9slbeZi34X/lPdha9
+ fU0mx999KfJnyKXRCH9yYSFgmQB+mE9oxcOlAuD/Gvu83SUemQ/mhZctuFZP7WkslywN
+ 0LrjwxJxc8y56b5WSse9Nx9MbYZoWbVvhPvBEhVSzdFd3KOyMh99eOncAE2SQJh5s4bT
+ S6w3sMDTJbOtRzUPvg1GJ6gOgtvINEBPj2LF4at75LU3xZLCgViGT+EO0Qa6MgPg8xai fg== 
 Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0b-001b2d01.pphosted.com (PPS) with ESMTPS id 3p4x1humsk-1
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3p5p4wg4b0-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 06 Mar 2023 16:52:16 +0000
-Received: from m0098416.ppops.net (m0098416.ppops.net [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 326GfkIZ023728;
-        Mon, 6 Mar 2023 16:52:15 GMT
-Received: from ppma04dal.us.ibm.com (7a.29.35a9.ip4.static.sl-reverse.com [169.53.41.122])
-        by mx0b-001b2d01.pphosted.com (PPS) with ESMTPS id 3p4x1hums0-1
+        Mon, 06 Mar 2023 19:17:41 +0000
+Received: from m0098396.ppops.net (m0098396.ppops.net [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 326JGxRW030802;
+        Mon, 6 Mar 2023 19:17:40 GMT
+Received: from ppma01dal.us.ibm.com (83.d6.3fa9.ip4.static.sl-reverse.com [169.63.214.131])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3p5p4wg4af-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 06 Mar 2023 16:52:15 +0000
-Received: from pps.filterd (ppma04dal.us.ibm.com [127.0.0.1])
-        by ppma04dal.us.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 326Fwjux017270;
-        Mon, 6 Mar 2023 16:52:14 GMT
-Received: from smtprelay05.wdc07v.mail.ibm.com ([9.208.129.117])
-        by ppma04dal.us.ibm.com (PPS) with ESMTPS id 3p41ak9s46-1
+        Mon, 06 Mar 2023 19:17:40 +0000
+Received: from pps.filterd (ppma01dal.us.ibm.com [127.0.0.1])
+        by ppma01dal.us.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 326JDqoV005417;
+        Mon, 6 Mar 2023 19:17:39 GMT
+Received: from smtprelay06.wdc07v.mail.ibm.com ([9.208.129.118])
+        by ppma01dal.us.ibm.com (PPS) with ESMTPS id 3p4184tkpg-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 06 Mar 2023 16:52:14 +0000
-Received: from smtpav02.wdc07v.mail.ibm.com (smtpav02.wdc07v.mail.ibm.com [10.39.53.229])
-        by smtprelay05.wdc07v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 326GqDSw64487822
+        Mon, 06 Mar 2023 19:17:39 +0000
+Received: from smtpav03.dal12v.mail.ibm.com (smtpav03.dal12v.mail.ibm.com [10.241.53.102])
+        by smtprelay06.wdc07v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 326JHba047579438
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 6 Mar 2023 16:52:13 GMT
-Received: from smtpav02.wdc07v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 4E32D5805C;
-        Mon,  6 Mar 2023 16:52:13 +0000 (GMT)
-Received: from smtpav02.wdc07v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 6542B5805E;
-        Mon,  6 Mar 2023 16:52:09 +0000 (GMT)
+        Mon, 6 Mar 2023 19:17:38 GMT
+Received: from smtpav03.dal12v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id A2B535803F;
+        Mon,  6 Mar 2023 19:17:37 +0000 (GMT)
+Received: from smtpav03.dal12v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 6583158064;
+        Mon,  6 Mar 2023 19:17:36 +0000 (GMT)
 Received: from [9.47.158.152] (unknown [9.47.158.152])
-        by smtpav02.wdc07v.mail.ibm.com (Postfix) with ESMTP;
-        Mon,  6 Mar 2023 16:52:09 +0000 (GMT)
-Message-ID: <297a6bd8-fd91-bdf1-1c45-ebbc0a424711@linux.ibm.com>
-Date:   Mon, 6 Mar 2023 11:52:08 -0500
+        by smtpav03.dal12v.mail.ibm.com (Postfix) with ESMTP;
+        Mon,  6 Mar 2023 19:17:36 +0000 (GMT)
+Message-ID: <ee26e82d-ba69-2234-cf3e-930fa5a958c3@linux.ibm.com>
+Date:   Mon, 6 Mar 2023 14:17:36 -0500
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
  Thunderbird/102.7.1
-Subject: Re: [PATCH 02/28] ima: Align ima_post_path_mknod() definition with
- LSM infrastructure
+Subject: Re: [PATCH 15/28] security: Introduce inode_post_removexattr hook
 Content-Language: en-US
 To:     Roberto Sassu <roberto.sassu@huaweicloud.com>,
         viro@zeniv.linux.org.uk, chuck.lever@oracle.com,
@@ -78,22 +77,22 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         selinux@vger.kernel.org, linux-kernel@vger.kernel.org,
         Roberto Sassu <roberto.sassu@huawei.com>
 References: <20230303181842.1087717-1-roberto.sassu@huaweicloud.com>
- <20230303181842.1087717-3-roberto.sassu@huaweicloud.com>
+ <20230303181842.1087717-16-roberto.sassu@huaweicloud.com>
 From:   Stefan Berger <stefanb@linux.ibm.com>
-In-Reply-To: <20230303181842.1087717-3-roberto.sassu@huaweicloud.com>
+In-Reply-To: <20230303181842.1087717-16-roberto.sassu@huaweicloud.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: ch7eh3n3M6hNzFx4iV-VKLQYvZxCHWC-
-X-Proofpoint-ORIG-GUID: nBfLHMSSXtcL4sth2LFlHrHwraCz-G7O
+X-Proofpoint-ORIG-GUID: vKs_Z_5RXZAfcawrO2Wy1RQCSZNFnWJe
+X-Proofpoint-GUID: YNQ3JgBTL9Aby-E6XF-4Xdvl0d0HMsCG
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.219,Aquarius:18.0.942,Hydra:6.0.573,FMLib:17.11.170.22
- definitions=2023-03-06_09,2023-03-06_01,2023-02-09_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 malwarescore=0
- mlxlogscore=968 spamscore=0 lowpriorityscore=0 suspectscore=0
- clxscore=1015 adultscore=0 phishscore=0 mlxscore=0 bulkscore=0
- impostorscore=0 priorityscore=1501 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.12.0-2212070000 definitions=main-2303060142
+ definitions=2023-03-06_12,2023-03-06_01,2023-02-09_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 bulkscore=0 suspectscore=0
+ lowpriorityscore=0 mlxscore=0 clxscore=1015 impostorscore=0 phishscore=0
+ spamscore=0 malwarescore=0 mlxlogscore=999 priorityscore=1501 adultscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2212070000
+ definitions=main-2303060168
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -103,24 +102,8 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 On 3/3/23 13:18, Roberto Sassu wrote:
 > From: Roberto Sassu <roberto.sassu@huawei.com>
 > 
-> Change ima_post_path_mknod() definition, so that it can be registered as
-> implementation of the path_post_mknod hook.
-> 
-> Also, make sure that ima_post_path_mknod() is executed only if
-> (mode & S_IFMT) is equal to zero or S_IFREG.
-> 
-> Add this check to take into account the different placement of the
-> path_post_mknod hook (to be introduced) in do_mknodat(). Since the new hook
-> will be placed after the switch(), the check ensures that
-> ima_post_path_mknod() is invoked as originally intended when it is
-> registered as implementation of path_post_mknod.
-
-                 case 0: case S_IFREG:    <---- this here
-                         error = vfs_create(mnt_userns, path.dentry->d_inode,
-                                            dentry, mode, true);
-                         if (!error)
-                                 ima_post_path_mknod(mnt_userns, dentry);
-
+> In preparation for moving IMA and EVM to the LSM infrastructure, introduce
+> the inode_post_removexattr hook.
 > 
 > Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
 
