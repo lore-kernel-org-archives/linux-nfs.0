@@ -2,67 +2,68 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 87B52C6FA99
-	for <linux-nfs@archiver.kernel.org>; Mon,  6 Mar 2023 18:16:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5F61FC6FD1F
+	for <linux-nfs@archiver.kernel.org>; Mon,  6 Mar 2023 18:29:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230070AbjCFSQR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 6 Mar 2023 13:16:17 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57622 "EHLO
+        id S230052AbjCFS27 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 6 Mar 2023 13:28:59 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52398 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229901AbjCFSQG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2023 13:16:06 -0500
-Received: from mx0a-001b2d01.pphosted.com (mx0a-001b2d01.pphosted.com [148.163.156.1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 42FBB6F63F;
-        Mon,  6 Mar 2023 10:15:34 -0800 (PST)
-Received: from pps.filterd (m0098409.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 326EUeor007186;
-        Mon, 6 Mar 2023 16:16:49 GMT
+        with ESMTP id S229718AbjCFS26 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Mar 2023 13:28:58 -0500
+Received: from mx0a-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E8B9B34317;
+        Mon,  6 Mar 2023 10:28:37 -0800 (PST)
+Received: from pps.filterd (m0098416.ppops.net [127.0.0.1])
+        by mx0b-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 326F229r032225;
+        Mon, 6 Mar 2023 16:52:16 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=message-id : date :
  mime-version : subject : to : cc : references : from : in-reply-to :
  content-type : content-transfer-encoding; s=pp1;
- bh=bqD1fQf93A6+PaLYS1ZatZURmW6WTInu6NJMIouFU7U=;
- b=s0BkIkhtcb1oglvI6BqMSVe0Bpi6YaPQ2uU4pH0EOVstHKuJcHwYXsGRK1REFdeSh4/Q
- oiGS7TtjJP8WrermVftdH4oU40JA7cH2WEkXwJLKX5rR7Xy7Omk17aPN4RQTRloogO7U
- c1uirCEEWyrI4EnUTxyCNp76S6Lb8gNSeA7v/wDTbiVCdfEZTs+anoq+U450kGxmvqMt
- RCGqUNserq4U0VxGn2v671W9H9TDgS7RqkYQ2FQiH2ja4YrHorky8ybZuQSeXv1hc+/s
- CHEMs3AK59+DhwaZ5h6HaM4Q7HaHsCPpu/A538m8ouQubCGZ9olG69kj8GtAfdNt7FvR 4g== 
+ bh=Qmb+wAuWZ++BAHNyIHrpxJlNwrEdwiaNpMW6hsm+jrw=;
+ b=sOAHNLdpoGmHSyZ2ajlW8OMzQL1sJcQo7ANDzBbtQd0g7G96kNVjczG7NCCQESssGZre
+ QTfAzkE/dCo2xP5PpLYADBej8T2wQm9FStizxJeKWUCPB/YbeluWzj96++LVjabxvtGt
+ nhJ7FL3G5CcXud70UFbxzjmEnqIZTHAVOU9no82QzjVqPACCB2ITpbU7NfyV++BaDbze
+ NurjUilf7GPeOx5/JRwvhmCP6O9IzLBy1AQBF7kCEsAscReZDrnNrsEuYd3v1/Jisszj
+ nN6vdhVKeb2wgPkv3IhbpEW9DZk1wT7UHs3VtLDh9FNh08bTh2uyM7Vv7QP/PK+B0MwD bA== 
 Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3p4ysdshg5-1
+        by mx0b-001b2d01.pphosted.com (PPS) with ESMTPS id 3p4x1humsk-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 06 Mar 2023 16:16:49 +0000
-Received: from m0098409.ppops.net (m0098409.ppops.net [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 326EbGbm005496;
-        Mon, 6 Mar 2023 16:16:48 GMT
+        Mon, 06 Mar 2023 16:52:16 +0000
+Received: from m0098416.ppops.net (m0098416.ppops.net [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 326GfkIZ023728;
+        Mon, 6 Mar 2023 16:52:15 GMT
 Received: from ppma04dal.us.ibm.com (7a.29.35a9.ip4.static.sl-reverse.com [169.53.41.122])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3p4ysdshfp-1
+        by mx0b-001b2d01.pphosted.com (PPS) with ESMTPS id 3p4x1hums0-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 06 Mar 2023 16:16:48 +0000
+        Mon, 06 Mar 2023 16:52:15 +0000
 Received: from pps.filterd (ppma04dal.us.ibm.com [127.0.0.1])
-        by ppma04dal.us.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 326DoL6X017299;
-        Mon, 6 Mar 2023 16:16:47 GMT
-Received: from smtprelay06.wdc07v.mail.ibm.com ([9.208.129.118])
-        by ppma04dal.us.ibm.com (PPS) with ESMTPS id 3p41ak9kf7-1
+        by ppma04dal.us.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 326Fwjux017270;
+        Mon, 6 Mar 2023 16:52:14 GMT
+Received: from smtprelay05.wdc07v.mail.ibm.com ([9.208.129.117])
+        by ppma04dal.us.ibm.com (PPS) with ESMTPS id 3p41ak9s46-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Mon, 06 Mar 2023 16:16:47 +0000
-Received: from smtpav01.wdc07v.mail.ibm.com (smtpav01.wdc07v.mail.ibm.com [10.39.53.228])
-        by smtprelay06.wdc07v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 326GGkAF58982828
+        Mon, 06 Mar 2023 16:52:14 +0000
+Received: from smtpav02.wdc07v.mail.ibm.com (smtpav02.wdc07v.mail.ibm.com [10.39.53.229])
+        by smtprelay05.wdc07v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 326GqDSw64487822
         (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 6 Mar 2023 16:16:46 GMT
-Received: from smtpav01.wdc07v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 37C3058067;
-        Mon,  6 Mar 2023 16:16:46 +0000 (GMT)
-Received: from smtpav01.wdc07v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 2F34B58065;
-        Mon,  6 Mar 2023 16:16:44 +0000 (GMT)
+        Mon, 6 Mar 2023 16:52:13 GMT
+Received: from smtpav02.wdc07v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 4E32D5805C;
+        Mon,  6 Mar 2023 16:52:13 +0000 (GMT)
+Received: from smtpav02.wdc07v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 6542B5805E;
+        Mon,  6 Mar 2023 16:52:09 +0000 (GMT)
 Received: from [9.47.158.152] (unknown [9.47.158.152])
-        by smtpav01.wdc07v.mail.ibm.com (Postfix) with ESMTP;
-        Mon,  6 Mar 2023 16:16:44 +0000 (GMT)
-Message-ID: <2dcc460c-73ff-d468-0c43-63ccbe0c4f9e@linux.ibm.com>
-Date:   Mon, 6 Mar 2023 11:16:43 -0500
+        by smtpav02.wdc07v.mail.ibm.com (Postfix) with ESMTP;
+        Mon,  6 Mar 2023 16:52:09 +0000 (GMT)
+Message-ID: <297a6bd8-fd91-bdf1-1c45-ebbc0a424711@linux.ibm.com>
+Date:   Mon, 6 Mar 2023 11:52:08 -0500
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
  Thunderbird/102.7.1
-Subject: Re: [PATCH 21/28] security: Introduce inode_post_remove_acl hook
+Subject: Re: [PATCH 02/28] ima: Align ima_post_path_mknod() definition with
+ LSM infrastructure
 Content-Language: en-US
 To:     Roberto Sassu <roberto.sassu@huaweicloud.com>,
         viro@zeniv.linux.org.uk, chuck.lever@oracle.com,
@@ -77,68 +78,50 @@ Cc:     linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         selinux@vger.kernel.org, linux-kernel@vger.kernel.org,
         Roberto Sassu <roberto.sassu@huawei.com>
 References: <20230303181842.1087717-1-roberto.sassu@huaweicloud.com>
- <20230303181842.1087717-22-roberto.sassu@huaweicloud.com>
- <6393eb31-5eb3-cb1c-feb7-2ab347703042@linux.ibm.com>
- <7bde74e6e5ccf24b2a2bd9dc2bbfcae5c424eac7.camel@huaweicloud.com>
+ <20230303181842.1087717-3-roberto.sassu@huaweicloud.com>
 From:   Stefan Berger <stefanb@linux.ibm.com>
-In-Reply-To: <7bde74e6e5ccf24b2a2bd9dc2bbfcae5c424eac7.camel@huaweicloud.com>
+In-Reply-To: <20230303181842.1087717-3-roberto.sassu@huaweicloud.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 X-TM-AS-GCONF: 00
-X-Proofpoint-ORIG-GUID: MWaLbIaI9NdMBOq3S9HXS4e_XU0QxD-l
-X-Proofpoint-GUID: nqChop_acBrGbOPxx8sFOam96JFy-FH-
+X-Proofpoint-GUID: ch7eh3n3M6hNzFx4iV-VKLQYvZxCHWC-
+X-Proofpoint-ORIG-GUID: nBfLHMSSXtcL4sth2LFlHrHwraCz-G7O
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.219,Aquarius:18.0.942,Hydra:6.0.573,FMLib:17.11.170.22
- definitions=2023-03-06_08,2023-03-06_01,2023-02-09_01
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 clxscore=1015
- malwarescore=0 adultscore=0 spamscore=0 impostorscore=0 lowpriorityscore=0
- mlxlogscore=999 suspectscore=0 bulkscore=0 priorityscore=1501 mlxscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2212070000
- definitions=main-2303060142
+ definitions=2023-03-06_09,2023-03-06_01,2023-02-09_01
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 malwarescore=0
+ mlxlogscore=968 spamscore=0 lowpriorityscore=0 suspectscore=0
+ clxscore=1015 adultscore=0 phishscore=0 mlxscore=0 bulkscore=0
+ impostorscore=0 priorityscore=1501 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.12.0-2212070000 definitions=main-2303060142
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 
 
-On 3/6/23 10:34, Roberto Sassu wrote:
-> On Mon, 2023-03-06 at 10:22 -0500, Stefan Berger wrote:
->>
->> On 3/3/23 13:18, Roberto Sassu wrote:
->>> From: Roberto Sassu <roberto.sassu@huawei.com>
->>>
->>> In preparation for moving IMA and EVM to the LSM infrastructure, introduce
->>> the inode_post_remove_acl hook.
->>>
->>> Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
->>> ---
->>>    
->>> +/**
->>> + * security_inode_post_remove_acl() - Update inode sec after remove_acl op
->>> + * @idmap: idmap of the mount
->>> + * @dentry: file
->>> + * @acl_name: acl name
->>> + *
->>> + * Update inode security field after successful remove_acl operation on @dentry
->>> + * in @idmap. The posix acls are identified by @acl_name.
->>> + */
->>> +void security_inode_post_remove_acl(struct mnt_idmap *idmap,
->>> +				    struct dentry *dentry, const char *acl_name)
->>> +{
->>> +	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
->>> +		return;
->>
->> Was that a mistake before that EVM and IMA functions did not filtered out private inodes?
+On 3/3/23 13:18, Roberto Sassu wrote:
+> From: Roberto Sassu <roberto.sassu@huawei.com>
 > 
-> Looks like that. At least for hooks that are not called from
-> security.c.
+> Change ima_post_path_mknod() definition, so that it can be registered as
+> implementation of the path_post_mknod hook.
+> 
+> Also, make sure that ima_post_path_mknod() is executed only if
+> (mode & S_IFMT) is equal to zero or S_IFREG.
+> 
+> Add this check to take into account the different placement of the
+> path_post_mknod hook (to be introduced) in do_mknodat(). Since the new hook
+> will be placed after the switch(), the check ensures that
+> ima_post_path_mknod() is invoked as originally intended when it is
+> registered as implementation of path_post_mknod.
 
-It seems like that all security_* functions are filtering on private inodes. Anonymous inodes have them and some filesystem set the S_PRIVATE flag. So it may not make a difference fro IMA and EVM then.
-
-     Stefan
+                 case 0: case S_IFREG:    <---- this here
+                         error = vfs_create(mnt_userns, path.dentry->d_inode,
+                                            dentry, mode, true);
+                         if (!error)
+                                 ima_post_path_mknod(mnt_userns, dentry);
 
 > 
-> Thanks
-> 
-> Roberto
-> 
+> Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
+
+Reviewed-by: Stefan Berger <stefanb@linux.ibm.com>
