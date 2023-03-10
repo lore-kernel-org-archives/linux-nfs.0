@@ -2,45 +2,44 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 265A8C76186
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Mar 2023 22:53:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F002CC6FA99
+	for <linux-nfs@archiver.kernel.org>; Fri, 10 Mar 2023 22:58:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231931AbjCJWw6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Mar 2023 17:52:58 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60192 "EHLO
+        id S231241AbjCJW6u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 10 Mar 2023 17:58:50 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44830 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231784AbjCJWww (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2023 17:52:52 -0500
+        with ESMTP id S229890AbjCJW6t (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2023 17:58:49 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 875E510D320;
-        Fri, 10 Mar 2023 14:52:51 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 34A2B10EAA8;
+        Fri, 10 Mar 2023 14:58:48 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Sender:Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:
         Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=XIoPX8KdCwgXnvpcDRNW0+6992U8KOWdKG/zQLzC1bo=; b=SsN48bT2cXvGjE0yyPI8ZTaGV9
-        Iq5HukBW7bOWhpe7XU9/Bm7DfvT6eGT3qOF1N9p5AFoVks2fzjW2MJlqecVVt1Jiamjxz+KW/CXD5
-        v1WLalm7vTLn7wnlrMd+zwJAlVRB0d9cEy13dkNsA55pZ8Tfanssuuzxk/bEARVrADse07AirAKwX
-        qBSyPUPQo4Dss2dgonTJ9n3XMemigXQ6qPpjddfyI07UaynXBAtSp9QDm2bc0TgvEjcrWYBIAMbZ/
-        XQyto/igbwnSCE63KS8nC+9Tz/vdrLGQmGDFxzPlMTPp11lIRqiuviYnswua2QrFadfbHCmiV4M6u
-        8wuChM3g==;
+        bh=IhZZbKD1WKnq6M386c99sK7smpr0/fPnG05q4GVFpm8=; b=bLVTVRbRNqMlWICtQ+JBfb3zge
+        UyUY7WJRD6BRaa4ns/utecRHd7Ssm/+VA/CVmAqtN+k2ndIx8YaDV/M73Vj64SWE3i1TU2CkEsarK
+        woVn9zjciNL1TN8NAkaoRmTzxhC/vOYmAKEYswupLSFNksk1iJZX05MN8cB2IpSQuB0AYlL5Q6QYY
+        epch0/yi6YgA1wS7M/+bYD8ZHpgNXFl3LaqvLiA6HgCzI9PlEhnlg8To/YDdpJGN8GHqInLGwyJ3P
+        CL2HpL07q0ZKFxbaQe1LxATGZU96atFeBweJa7pPRVPcrQ2T90Xw5mV7FXPn2gOBBcivsof3kzdTL
+        T28og8Sw==;
 Received: from mcgrof by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1palbL-00GWqe-Ju; Fri, 10 Mar 2023 22:52:39 +0000
+        id 1palhD-00GYlV-5F; Fri, 10 Mar 2023 22:58:43 +0000
 From:   Luis Chamberlain <mcgrof@kernel.org>
 To:     chuck.lever@oracle.com, jlayton@kernel.org,
         trond.myklebust@hammerspace.com, anna@kernel.org,
-        davem@davemloft.net, edumazet@google.com, pabeni@redhat.com,
-        kuba@kernel.org, linux-nfs@vger.kernel.org
+        linux-nfs@vger.kernel.org
 Cc:     ebiederm@xmission.com, keescook@chromium.org, yzaikin@google.com,
         j.granados@samsung.com, patches@lists.linux.dev,
-        linux-fsdevel@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Luis Chamberlain <mcgrof@kernel.org>
-Subject: [PATCH 1/5] sunrpc: simplify two-level sysctl registration for tsvcrdma_parm_table
-Date:   Fri, 10 Mar 2023 14:52:32 -0800
-Message-Id: <20230310225236.3939443-2-mcgrof@kernel.org>
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Luis Chamberlain <mcgrof@kernel.org>
+Subject: [PATCH 2/3] nfs: simplify two-level sysctl registration for nfs4_cb_sysctls
+Date:   Fri, 10 Mar 2023 14:58:41 -0800
+Message-Id: <20230310225842.3946871-3-mcgrof@kernel.org>
 X-Mailer: git-send-email 2.37.1
-In-Reply-To: <20230310225236.3939443-1-mcgrof@kernel.org>
-References: <20230310225236.3939443-1-mcgrof@kernel.org>
+In-Reply-To: <20230310225842.3946871-1-mcgrof@kernel.org>
+References: <20230310225842.3946871-1-mcgrof@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Luis Chamberlain <mcgrof@infradead.org>
@@ -55,48 +54,43 @@ Simplify this registration.
 
 Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
 ---
- net/sunrpc/xprtrdma/svc_rdma.c | 21 ++-------------------
+ fs/nfs/nfs4sysctl.c | 21 ++-------------------
  1 file changed, 2 insertions(+), 19 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
-index 5bc20e9d09cd..f0d5eeed4c88 100644
---- a/net/sunrpc/xprtrdma/svc_rdma.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma.c
-@@ -212,24 +212,6 @@ static struct ctl_table svcrdma_parm_table[] = {
- 	{ },
+diff --git a/fs/nfs/nfs4sysctl.c b/fs/nfs/nfs4sysctl.c
+index c394e4447100..e776200e9a11 100644
+--- a/fs/nfs/nfs4sysctl.c
++++ b/fs/nfs/nfs4sysctl.c
+@@ -37,27 +37,10 @@ static struct ctl_table nfs4_cb_sysctls[] = {
+ 	{ }
  };
  
--static struct ctl_table svcrdma_table[] = {
+-static struct ctl_table nfs4_cb_sysctl_dir[] = {
 -	{
--		.procname	= "svc_rdma",
--		.mode		= 0555,
--		.child		= svcrdma_parm_table
+-		.procname = "nfs",
+-		.mode = 0555,
+-		.child = nfs4_cb_sysctls,
 -	},
--	{ },
+-	{ }
 -};
 -
--static struct ctl_table svcrdma_root_table[] = {
+-static struct ctl_table nfs4_cb_sysctl_root[] = {
 -	{
--		.procname	= "sunrpc",
--		.mode		= 0555,
--		.child		= svcrdma_table
+-		.procname = "fs",
+-		.mode = 0555,
+-		.child = nfs4_cb_sysctl_dir,
 -	},
--	{ },
+-	{ }
 -};
 -
- static void svc_rdma_proc_cleanup(void)
+ int nfs4_register_sysctl(void)
  {
- 	if (!svcrdma_table_header)
-@@ -263,7 +245,8 @@ static int svc_rdma_proc_init(void)
- 	if (rc)
- 		goto out_err;
- 
--	svcrdma_table_header = register_sysctl_table(svcrdma_root_table);
-+	svcrdma_table_header = register_sysctl("sunrpc/svc_rdma",
-+					       svcrdma_parm_table);
+-	nfs4_callback_sysctl_table = register_sysctl_table(nfs4_cb_sysctl_root);
++	nfs4_callback_sysctl_table = register_sysctl("fs/nfs",
++						     nfs4_cb_sysctls);
+ 	if (nfs4_callback_sysctl_table == NULL)
+ 		return -ENOMEM;
  	return 0;
- 
- out_err:
 -- 
 2.39.1
 
