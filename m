@@ -2,30 +2,30 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 211BAC74A4B
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Mar 2023 22:58:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F7D0C7618B
+	for <linux-nfs@archiver.kernel.org>; Fri, 10 Mar 2023 22:58:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231328AbjCJW6v (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Mar 2023 17:58:51 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44844 "EHLO
+        id S229890AbjCJW6x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 10 Mar 2023 17:58:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44860 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230246AbjCJW6t (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2023 17:58:49 -0500
+        with ESMTP id S230427AbjCJW6u (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2023 17:58:50 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4487F11ABAC;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E1E711AC81;
         Fri, 10 Mar 2023 14:58:48 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Sender:Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:
         Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=PETkYU+yLAOC06k0Jk3717NirimTBUEacXQYVPLCx+k=; b=VuJ8QGzTljjnxQAGTBwmlAEbe4
-        bxAsS6bspO0fL4OaZie/KXBnbWapTbnJXc6LV/+7yTRzHhmUKQovBJZsp+VYqSV/PayedCRTgfzwf
-        WjDC1d0tO1XIm1nlU0ENvlWetX6rGWXRfQHvAOT4Rn0ssnfQvK7V8nO5klGVRAXpwYtvSECLLkhai
-        ipA2YmL0x0DIUrgga0kgVI8DwfyjYJxHX2k8ZMF3VU/7H28uw9+80U98Rpt5r8snEIoVto6oo2xKc
-        AniA2x7rixepUZv2B6NdYhcZtkZ7ZRYKVI9eJs0JI776K30jtZz7gaLnp63QBJ2VAruHaQDKA+fyC
-        GRvYYNhA==;
+        bh=CI7wUFe4HoAyZSn/G8BSxZXCldpIdIVkdFkiT2hi/YU=; b=oK2etHUPnlp7nBlLvwy1fUlUbE
+        RfZnxL7Hi7ugHjVsrcBw1aSuS47Oascs0KpARm4hgfQxeUZVE+HcH8VVjNGNeY/TjH5zt6yu0tHaw
+        8QvI2iwH+Q3C2JLyxFjDdpJTLpM2OJqOimtPjgmGZ+Yaz+KFickUNLcK4ba4k/o8jfja1TZap1RyJ
+        qVP1HJpnN4aoMCdC9IBD+AlJP6uVPzpz37E4T8W62Bm1nwmH8GHbatJMXeCPY8wNgE2XVs0MnBZPP
+        fc8rrbo0lH3hnZk5rfrM1JqJj0g1EI2283iB7qxRkQEyBYOXpmPiDjnzTOqtNEzXlb2i9/976dKpY
+        JHGUih8Q==;
 Received: from mcgrof by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1palhD-00GYlX-6T; Fri, 10 Mar 2023 22:58:43 +0000
+        id 1palhD-00GYlT-3q; Fri, 10 Mar 2023 22:58:43 +0000
 From:   Luis Chamberlain <mcgrof@kernel.org>
 To:     chuck.lever@oracle.com, jlayton@kernel.org,
         trond.myklebust@hammerspace.com, anna@kernel.org,
@@ -34,9 +34,9 @@ Cc:     ebiederm@xmission.com, keescook@chromium.org, yzaikin@google.com,
         j.granados@samsung.com, patches@lists.linux.dev,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         Luis Chamberlain <mcgrof@kernel.org>
-Subject: [PATCH 3/3] nfs: simplify two-level sysctl registration for nfs_cb_sysctls
-Date:   Fri, 10 Mar 2023 14:58:42 -0800
-Message-Id: <20230310225842.3946871-4-mcgrof@kernel.org>
+Subject: [PATCH 1/3] lockd: simplify two-level sysctl registration for nlm_sysctls
+Date:   Fri, 10 Mar 2023 14:58:40 -0800
+Message-Id: <20230310225842.3946871-2-mcgrof@kernel.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230310225842.3946871-1-mcgrof@kernel.org>
 References: <20230310225842.3946871-1-mcgrof@kernel.org>
@@ -54,42 +54,47 @@ Simplify this registration.
 
 Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
 ---
- fs/nfs/sysctl.c | 20 +-------------------
+ fs/lockd/svc.c | 20 +-------------------
  1 file changed, 1 insertion(+), 19 deletions(-)
 
-diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
-index 7aea195ddb35..f39e2089bc4c 100644
---- a/fs/nfs/sysctl.c
-+++ b/fs/nfs/sysctl.c
-@@ -32,27 +32,9 @@ static struct ctl_table nfs_cb_sysctls[] = {
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 914ea1c3537d..5bca33758bc8 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -510,24 +510,6 @@ static struct ctl_table nlm_sysctls[] = {
  	{ }
  };
  
--static struct ctl_table nfs_cb_sysctl_dir[] = {
+-static struct ctl_table nlm_sysctl_dir[] = {
 -	{
--		.procname = "nfs",
--		.mode = 0555,
--		.child = nfs_cb_sysctls,
+-		.procname	= "nfs",
+-		.mode		= 0555,
+-		.child		= nlm_sysctls,
 -	},
 -	{ }
 -};
 -
--static struct ctl_table nfs_cb_sysctl_root[] = {
+-static struct ctl_table nlm_sysctl_root[] = {
 -	{
--		.procname = "fs",
--		.mode = 0555,
--		.child = nfs_cb_sysctl_dir,
+-		.procname	= "fs",
+-		.mode		= 0555,
+-		.child		= nlm_sysctl_dir,
 -	},
 -	{ }
 -};
 -
- int nfs_register_sysctl(void)
- {
--	nfs_callback_sysctl_table = register_sysctl_table(nfs_cb_sysctl_root);
-+	nfs_callback_sysctl_table = register_sysctl("fs/nfs", nfs_cb_sysctls);
- 	if (nfs_callback_sysctl_table == NULL)
- 		return -ENOMEM;
- 	return 0;
+ #endif	/* CONFIG_SYSCTL */
+ 
+ /*
+@@ -644,7 +626,7 @@ static int __init init_nlm(void)
+ 
+ #ifdef CONFIG_SYSCTL
+ 	err = -ENOMEM;
+-	nlm_sysctl_table = register_sysctl_table(nlm_sysctl_root);
++	nlm_sysctl_table = register_sysctl("fs/nfs", nlm_sysctls);
+ 	if (nlm_sysctl_table == NULL)
+ 		goto err_sysctl;
+ #endif
 -- 
 2.39.1
 
