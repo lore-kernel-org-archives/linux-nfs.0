@@ -2,67 +2,91 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 91631C61DA4
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 Mar 2023 16:52:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 68CD5C61DA4
+	for <linux-nfs@archiver.kernel.org>; Sat, 11 Mar 2023 20:52:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229455AbjCKQwv convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 11 Mar 2023 11:52:51 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47524 "EHLO
+        id S229981AbjCKUwF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 11 Mar 2023 15:52:05 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56594 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229502AbjCKQwu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Mar 2023 11:52:50 -0500
-Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C438519C40
-        for <linux-nfs@vger.kernel.org>; Sat, 11 Mar 2023 08:52:47 -0800 (PST)
-Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id A555B6431C24;
-        Sat, 11 Mar 2023 17:52:45 +0100 (CET)
-Received: from lithops.sigma-star.at ([127.0.0.1])
-        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
-        with ESMTP id Cnu9RbTIOogw; Sat, 11 Mar 2023 17:52:45 +0100 (CET)
-Received: from localhost (localhost [127.0.0.1])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 5D11D6431C2B;
-        Sat, 11 Mar 2023 17:52:45 +0100 (CET)
-Received: from lithops.sigma-star.at ([127.0.0.1])
-        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
-        with ESMTP id ZnxhikSFyl33; Sat, 11 Mar 2023 17:52:45 +0100 (CET)
-Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
-        by lithops.sigma-star.at (Postfix) with ESMTP id 2969F6431C24;
-        Sat, 11 Mar 2023 17:52:45 +0100 (CET)
-Date:   Sat, 11 Mar 2023 17:52:45 +0100 (CET)
-From:   Richard Weinberger <richard@nod.at>
-To:     Steve Dickson <steved@redhat.com>
-Cc:     linux-nfs <linux-nfs@vger.kernel.org>,
-        trond myklebust <trond.myklebust@hammerspace.com>,
-        chris chilvers <chris.chilvers@appsbroker.com>
-Message-ID: <156604342.233758.1678553565027.JavaMail.zimbra@nod.at>
-In-Reply-To: <655a8ee6-dd94-effd-738a-9ce8db8ebed7@redhat.com>
-References: <1497292229.221220.1678287959937.JavaMail.zimbra@nod.at> <655a8ee6-dd94-effd-738a-9ce8db8ebed7@redhat.com>
-Subject: Re: mountd: Possible bug in next_mnt()
+        with ESMTP id S229666AbjCKUwE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Mar 2023 15:52:04 -0500
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E1F026B319;
+        Sat, 11 Mar 2023 12:52:00 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=Sender:Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:
+        Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=NH4tVoLA/Ab9gFvMSSGVxXB8I+Y2VZfuJjnFdVe1WZI=; b=MBOHa5bX+EABvDhkdB/7qv7vSl
+        GVUSDgKxgX7yefTJIVBJBdmNe1Ts3Tkl/3O2a3Jd+vRuUJixDZ35Hj11Xdg5ekyjrSJRsEmFMZtcb
+        3ZbuZ74QnM8A+ubsMl9KSBJDvfb+XXrHCa/6b3mSEzG+vhBQgn/bSpoYQkL+4INVlyjzjpxhq8xTd
+        xOTsAfp0PA1UzHpg1bhRa6X5URlkg7TUmFl8AMZlKgrJH4aNvMpm2K94wq/NxeWqV6WdwIUFX0uo7
+        u+yXxcHlVMNKxWlxj7rvqCflb/ElYQtU16FzhZG3oEIuB9kT49OjfLZK5hEJU9z9PNKmb3zvyi3Dc
+        8X1e0YSQ==;
+Received: from mcgrof by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1pb6Bz-001EKC-S4; Sat, 11 Mar 2023 20:51:51 +0000
+From:   Luis Chamberlain <mcgrof@kernel.org>
+To:     chuck.lever@oracle.com, jlayton@kernel.org,
+        trond.myklebust@hammerspace.com, anna@kernel.org,
+        davem@davemloft.net, edumazet@google.com, pabeni@redhat.com,
+        kuba@kernel.org, linux-nfs@vger.kernel.org
+Cc:     ebiederm@xmission.com, keescook@chromium.org, yzaikin@google.com,
+        j.granados@samsung.com, patches@lists.linux.dev,
+        linux-fsdevel@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Luis Chamberlain <mcgrof@kernel.org>
+Subject: [PATCH v2 2/5] sunrpc: simplify one-level sysctl registration for xr_tunables_table
+Date:   Sat, 11 Mar 2023 12:51:45 -0800
+Message-Id: <20230311205148.293375-3-mcgrof@kernel.org>
+X-Mailer: git-send-email 2.37.1
+In-Reply-To: <20230311205148.293375-1-mcgrof@kernel.org>
+References: <20230311205148.293375-1-mcgrof@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8BIT
-X-Originating-IP: [195.201.40.130]
-X-Mailer: Zimbra 8.8.12_GA_3807 (ZimbraWebClient - FF97 (Linux)/8.8.12_GA_3809)
-Thread-Topic: mountd: Possible bug in next_mnt()
-Thread-Index: Adtc9++VxBBf3ZIymqYqL+RCZVMwTw==
+Content-Transfer-Encoding: 8bit
+Sender: Luis Chamberlain <mcgrof@infradead.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
------ Ursprüngliche Mail -----
->> next_mnt() finds submounts below a given path p.
->> While investigating into an issue in my crossmount patches for nfs-utils I
->> noticed
->> that it does not work when fsid=root, rootdir=/some/path/ and then "/" is being
->> exported.
->> In this case next_mnt() is asked to find submounts of "/" but returns none.
-> I'm not clear as what you are saying... "rootdir=/some/path/" is not an
-> export option.
+There is no need to declare an extra tables to just create directory,
+this can be easily be done with a prefix path with register_sysctl().
 
-Sorry for being imprecise.
-rootdir= is an nfs.conf exports option.
+Simplify this registration.
+
+Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
+---
+ net/sunrpc/xprtrdma/transport.c | 11 +----------
+ 1 file changed, 1 insertion(+), 10 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 10bb2b929c6d..29b0562d62e7 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -140,15 +140,6 @@ static struct ctl_table xr_tunables_table[] = {
+ 	{ },
+ };
  
-Thanks,
-//richard
+-static struct ctl_table sunrpc_table[] = {
+-	{
+-		.procname	= "sunrpc",
+-		.mode		= 0555,
+-		.child		= xr_tunables_table
+-	},
+-	{ },
+-};
+-
+ #endif
+ 
+ static const struct rpc_xprt_ops xprt_rdma_procs;
+@@ -799,7 +790,7 @@ int xprt_rdma_init(void)
+ 
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	if (!sunrpc_table_header)
+-		sunrpc_table_header = register_sysctl_table(sunrpc_table);
++		sunrpc_table_header = register_sysctl("sunrpc", xr_tunables_table);
+ #endif
+ 	return 0;
+ }
+-- 
+2.39.1
+
