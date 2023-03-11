@@ -2,99 +2,127 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8F7D0C7618B
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Mar 2023 22:58:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B5092C61DA4
+	for <linux-nfs@archiver.kernel.org>; Sat, 11 Mar 2023 16:20:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229890AbjCJW6x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Mar 2023 17:58:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44860 "EHLO
+        id S230142AbjCKQUN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 11 Mar 2023 11:20:13 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33162 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230427AbjCJW6u (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Mar 2023 17:58:50 -0500
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E1E711AC81;
-        Fri, 10 Mar 2023 14:58:48 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=Sender:Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:
-        Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=CI7wUFe4HoAyZSn/G8BSxZXCldpIdIVkdFkiT2hi/YU=; b=oK2etHUPnlp7nBlLvwy1fUlUbE
-        RfZnxL7Hi7ugHjVsrcBw1aSuS47Oascs0KpARm4hgfQxeUZVE+HcH8VVjNGNeY/TjH5zt6yu0tHaw
-        8QvI2iwH+Q3C2JLyxFjDdpJTLpM2OJqOimtPjgmGZ+Yaz+KFickUNLcK4ba4k/o8jfja1TZap1RyJ
-        qVP1HJpnN4aoMCdC9IBD+AlJP6uVPzpz37E4T8W62Bm1nwmH8GHbatJMXeCPY8wNgE2XVs0MnBZPP
-        fc8rrbo0lH3hnZk5rfrM1JqJj0g1EI2283iB7qxRkQEyBYOXpmPiDjnzTOqtNEzXlb2i9/976dKpY
-        JHGUih8Q==;
-Received: from mcgrof by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1palhD-00GYlT-3q; Fri, 10 Mar 2023 22:58:43 +0000
-From:   Luis Chamberlain <mcgrof@kernel.org>
-To:     chuck.lever@oracle.com, jlayton@kernel.org,
-        trond.myklebust@hammerspace.com, anna@kernel.org,
-        linux-nfs@vger.kernel.org
-Cc:     ebiederm@xmission.com, keescook@chromium.org, yzaikin@google.com,
-        j.granados@samsung.com, patches@lists.linux.dev,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Luis Chamberlain <mcgrof@kernel.org>
-Subject: [PATCH 1/3] lockd: simplify two-level sysctl registration for nlm_sysctls
-Date:   Fri, 10 Mar 2023 14:58:40 -0800
-Message-Id: <20230310225842.3946871-2-mcgrof@kernel.org>
-X-Mailer: git-send-email 2.37.1
-In-Reply-To: <20230310225842.3946871-1-mcgrof@kernel.org>
-References: <20230310225842.3946871-1-mcgrof@kernel.org>
+        with ESMTP id S230140AbjCKQUM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Mar 2023 11:20:12 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 86A015C9C7
+        for <linux-nfs@vger.kernel.org>; Sat, 11 Mar 2023 08:19:24 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1678551563;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=u4E4cd19wg1UowOC95StuMC+v1vhaZ/NAdWYkX5Vb3Y=;
+        b=dgpekQPP2od0B/yRwnRxwrs3xie6nMF2i91IbVzqobhd/7HQjbjMiDRGwVID1fchRePbRg
+        DF3CdlbpEecNW3k/mm7mS9FSM5Y7t0nf5rQMYi02heQ6Bz3BioauodXt9DCxo9WhIe++m2
+        R73yWy4L8lq4mTjIGF1Whvu/6BTgU+0=
+Received: from mail-qv1-f71.google.com (mail-qv1-f71.google.com
+ [209.85.219.71]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-650-SOAQoVTCNEykMDnOm1JglQ-1; Sat, 11 Mar 2023 11:19:22 -0500
+X-MC-Unique: SOAQoVTCNEykMDnOm1JglQ-1
+Received: by mail-qv1-f71.google.com with SMTP id y3-20020a0cec03000000b0056ee5b123bbso4617450qvo.7
+        for <linux-nfs@vger.kernel.org>; Sat, 11 Mar 2023 08:19:22 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112; t=1678551561;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=u4E4cd19wg1UowOC95StuMC+v1vhaZ/NAdWYkX5Vb3Y=;
+        b=8BezayCa2N4vTKb/DWLJf3sPP7R8w1o/wzOTJdsy/nHcXS5crsiCj3T787TfU7H7pS
+         irBBxUKeJcyb+BgFVSD5WGqBazkYNgrUJLa59NBArIM+M4NWsQ4PtycMGAI4dyTRilKW
+         7vfgTdt9L2hXQFfJKdEPLlaDJnqH+jjqjP1G1MTLYZQUftL1+vzOx4O5OTLjO6VfNFtb
+         AfQ51WNcbn7/SoYwJUXugRpAyI38dhzgw/Sst6dtvfFDdc/gduGUKcHXWaFWxgvoNhFh
+         LyN9Ny33PP2cihXpnzo0FsKVFkHPM82oeZZubcZouSbR8PgoFo5YipWSGiD1QJuE8E7y
+         0sEg==
+X-Gm-Message-State: AO0yUKW5nb/y4372ofhgYovkDyvQI1J1Cg2Fe1bKAZTnJzQB3CnVJM66
+        ctnevwkwrrTX38s10idnqyQKpPN1x9hya0MyfGeW5XzQTOSq6+UHS7cWNv52HlDV4SFDYlgjPWv
+        X1FMgY3aEM/ie30Ao+4aRVeuk4pqH
+X-Received: by 2002:a05:622a:180f:b0:3bd:d8f:2da9 with SMTP id t15-20020a05622a180f00b003bd0d8f2da9mr11102089qtc.2.1678551561486;
+        Sat, 11 Mar 2023 08:19:21 -0800 (PST)
+X-Google-Smtp-Source: AK7set+7liJmS9Tl92Nn1a7oQejXghcxv6JWEokoTC5amzXW0y+eCuueBHwS1uNd0yiWMZGjjeVV8w==
+X-Received: by 2002:a05:622a:180f:b0:3bd:d8f:2da9 with SMTP id t15-20020a05622a180f00b003bd0d8f2da9mr11102068qtc.2.1678551561145;
+        Sat, 11 Mar 2023 08:19:21 -0800 (PST)
+Received: from [172.31.1.6] ([70.109.165.181])
+        by smtp.gmail.com with ESMTPSA id h14-20020a05622a170e00b003b6382f66b1sm2152363qtk.29.2023.03.11.08.19.20
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 11 Mar 2023 08:19:20 -0800 (PST)
+Message-ID: <655a8ee6-dd94-effd-738a-9ce8db8ebed7@redhat.com>
+Date:   Sat, 11 Mar 2023 11:19:19 -0500
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Sender: Luis Chamberlain <mcgrof@infradead.org>
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.8.0
+Subject: Re: mountd: Possible bug in next_mnt()
+Content-Language: en-US
+To:     Richard Weinberger <richard@nod.at>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Cc:     trond.myklebust@hammerspace.com,
+        chris chilvers <chris.chilvers@appsbroker.com>
+References: <1497292229.221220.1678287959937.JavaMail.zimbra@nod.at>
+From:   Steve Dickson <steved@redhat.com>
+In-Reply-To: <1497292229.221220.1678287959937.JavaMail.zimbra@nod.at>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-There is no need to declare two tables to just create directories,
-this can be easily be done with a prefix path with register_sysctl().
+Hello,
 
-Simplify this registration.
+My apologies... Eating some PTO...
 
-Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
----
- fs/lockd/svc.c | 20 +-------------------
- 1 file changed, 1 insertion(+), 19 deletions(-)
+On 3/8/23 10:05 AM, Richard Weinberger wrote:
+> Hi!
+> 
+> next_mnt() finds submounts below a given path p.
+> While investigating into an issue in my crossmount patches for nfs-utils I noticed
+> that it does not work when fsid=root, rootdir=/some/path/ and then "/" is being exported.
+> In this case next_mnt() is asked to find submounts of "/" but returns none.
+I'm not clear as what you are saying... "rootdir=/some/path/" is not an
+export option.
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 914ea1c3537d..5bca33758bc8 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -510,24 +510,6 @@ static struct ctl_table nlm_sysctls[] = {
- 	{ }
- };
- 
--static struct ctl_table nlm_sysctl_dir[] = {
--	{
--		.procname	= "nfs",
--		.mode		= 0555,
--		.child		= nlm_sysctls,
--	},
--	{ }
--};
--
--static struct ctl_table nlm_sysctl_root[] = {
--	{
--		.procname	= "fs",
--		.mode		= 0555,
--		.child		= nlm_sysctl_dir,
--	},
--	{ }
--};
--
- #endif	/* CONFIG_SYSCTL */
- 
- /*
-@@ -644,7 +626,7 @@ static int __init init_nlm(void)
- 
- #ifdef CONFIG_SYSCTL
- 	err = -ENOMEM;
--	nlm_sysctl_table = register_sysctl_table(nlm_sysctl_root);
-+	nlm_sysctl_table = register_sysctl("fs/nfs", nlm_sysctls);
- 	if (nlm_sysctl_table == NULL)
- 		goto err_sysctl;
- #endif
--- 
-2.39.1
+> 
+> In my opinion this wrong because every mount is a submount of "/".
+> 
+> The following change fixes the problem on my side but I'm not sure whether
+> "/" is a special case in mountd where next_mnt() has to bail out.
+> 
+> diff --git a/support/export/cache.c b/support/export/cache.c
+> index 2497d4f48df3..be20cb34adcb 100644
+> --- a/support/export/cache.c
+> +++ b/support/export/cache.c
+> @@ -410,13 +410,13 @@ static char *next_mnt(void **v, char *p)
+>                  *v = f;
+>          } else
+>                  f = *v;
+> -       while ((me = getmntent(f)) != NULL && l > 1) {
+> +       while ((me = getmntent(f)) != NULL && l >= 1) {
+>                  char *mnt_dir = nfsd_path_strip_root(me->mnt_dir);
+>   
+>                  if (!mnt_dir)
+>                          continue;
+>   
+> -               if (strncmp(mnt_dir, p, l) == 0 && mnt_dir[l] == '/')
+> +               if (strncmp(mnt_dir, p, l) == 0 && (l == 1 || mnt_dir[l] == '/'))
+>                          return mnt_dir;
+>          }
+>          endmntent(f);
+> 
+> Comments? :-)
+Putting this is the correct patch format including a Signed-off-by
+signature... would help.
+
+steved.
+> 
+> Thanks,
+> //richard
+> 
 
