@@ -2,30 +2,30 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 34823C7618A
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 Mar 2023 20:52:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E85C1C76195
+	for <linux-nfs@archiver.kernel.org>; Sat, 11 Mar 2023 20:52:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229995AbjCKUwG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 11 Mar 2023 15:52:06 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56592 "EHLO
+        id S230016AbjCKUwI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 11 Mar 2023 15:52:08 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56598 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229514AbjCKUwE (ORCPT
+        with ESMTP id S229843AbjCKUwE (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Mar 2023 15:52:04 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E1E046B30E;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E54916B323;
         Sat, 11 Mar 2023 12:52:00 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Sender:Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:
         Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=XIoPX8KdCwgXnvpcDRNW0+6992U8KOWdKG/zQLzC1bo=; b=NWdEVYNyVND64gD2By+ArxWn9i
-        GvIMY2HatnEvgFY4p2eqCVZJUQlsVpbQdbGdOj1J5Dcbgj8ZFTg/Gw/9fM4sY/PrT6GVx/BNCMr5a
-        ITVp7nxGYvJSYj/okyh/Zw0r5jUxu7iOtwKkWBAu0v1HKQDUcqNK8MF1e/2zkzD3Q7ImqZgXXij67
-        x10IZd+p2vuDOiIII9LFdwA+77fZOMfpmU5yE1QE8yFC0xwNMmofXvYQx2COX7eQVH0rS3HS6/oPa
-        1f+Jq/it/8POhExEYsnJq1BLbxVr3TSew4CTACPEO4hsSK5u8cBKs1sZ1DZOldqoPrzhzfZbvr5y/
-        oqFvrMLg==;
+        bh=8qaxjUIDzCVtggcE5OBgXoP+RAqWhUksXRNkmAxrrvc=; b=RJpECNtNMygd1mX/HW48Hp2Sc8
+        96MkInTnHGiS7wHGe+kg6aViDijV9GH4e6tyj7gpJcNHi5z8KBWYfaB1QfARuF+cgyUIsDZvPnRVC
+        kYayuq20aBM3SCpqCOfUYHBLegcGQ8cQX0ufRpxbJAVXO76kWkp9dy2caL005KKTHxsZQB6CF87RS
+        qgMowMVFIbJbIYwCuRTO+2Q0H2pxbCdL0DbCyOw/8D6y6BMNYVGZ9ai0ynCq4TdHuZJUG9jM0x3Dw
+        Mu0JYogYvy3kBr8dQCsyVoa7LEraz5UJG8FuBFSy8PUBkcaF/y7CNBlH8qtHqDJbH87BjYWFGfIMy
+        3EafRBgg==;
 Received: from mcgrof by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pb6Bz-001EKA-Qm; Sat, 11 Mar 2023 20:51:51 +0000
+        id 1pb6Bz-001EKI-WB; Sat, 11 Mar 2023 20:51:52 +0000
 From:   Luis Chamberlain <mcgrof@kernel.org>
 To:     chuck.lever@oracle.com, jlayton@kernel.org,
         trond.myklebust@hammerspace.com, anna@kernel.org,
@@ -35,9 +35,9 @@ Cc:     ebiederm@xmission.com, keescook@chromium.org, yzaikin@google.com,
         j.granados@samsung.com, patches@lists.linux.dev,
         linux-fsdevel@vger.kernel.org, netdev@vger.kernel.org,
         linux-kernel@vger.kernel.org, Luis Chamberlain <mcgrof@kernel.org>
-Subject: [PATCH v2 1/5] sunrpc: simplify two-level sysctl registration for tsvcrdma_parm_table
-Date:   Sat, 11 Mar 2023 12:51:44 -0800
-Message-Id: <20230311205148.293375-2-mcgrof@kernel.org>
+Subject: [PATCH v2 5/5] sunrpc: simplify one-level sysctl registration for debug_table
+Date:   Sat, 11 Mar 2023 12:51:48 -0800
+Message-Id: <20230311205148.293375-6-mcgrof@kernel.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230311205148.293375-1-mcgrof@kernel.org>
 References: <20230311205148.293375-1-mcgrof@kernel.org>
@@ -48,55 +48,43 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-There is no need to declare two tables to just create directories,
+There is no need to declare an extra tables to just create directory,
 this can be easily be done with a prefix path with register_sysctl().
 
 Simplify this registration.
 
 Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
 ---
- net/sunrpc/xprtrdma/svc_rdma.c | 21 ++-------------------
- 1 file changed, 2 insertions(+), 19 deletions(-)
+ net/sunrpc/sysctl.c | 12 +-----------
+ 1 file changed, 1 insertion(+), 11 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
-index 5bc20e9d09cd..f0d5eeed4c88 100644
---- a/net/sunrpc/xprtrdma/svc_rdma.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma.c
-@@ -212,24 +212,6 @@ static struct ctl_table svcrdma_parm_table[] = {
- 	{ },
+diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+index a54438d68d1b..d51e6d9a2467 100644
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -164,21 +164,11 @@ static struct ctl_table debug_table[] = {
+ 	{ }
  };
  
--static struct ctl_table svcrdma_table[] = {
--	{
--		.procname	= "svc_rdma",
--		.mode		= 0555,
--		.child		= svcrdma_parm_table
--	},
--	{ },
--};
--
--static struct ctl_table svcrdma_root_table[] = {
+-static struct ctl_table sunrpc_table[] = {
 -	{
 -		.procname	= "sunrpc",
 -		.mode		= 0555,
--		.child		= svcrdma_table
+-		.child		= debug_table
 -	},
--	{ },
+-	{ }
 -};
 -
- static void svc_rdma_proc_cleanup(void)
+-
+ void
+ rpc_register_sysctl(void)
  {
- 	if (!svcrdma_table_header)
-@@ -263,7 +245,8 @@ static int svc_rdma_proc_init(void)
- 	if (rc)
- 		goto out_err;
+ 	if (!sunrpc_table_header)
+-		sunrpc_table_header = register_sysctl_table(sunrpc_table);
++		sunrpc_table_header = register_sysctl("sunrpc", debug_table);
+ }
  
--	svcrdma_table_header = register_sysctl_table(svcrdma_root_table);
-+	svcrdma_table_header = register_sysctl("sunrpc/svc_rdma",
-+					       svcrdma_parm_table);
- 	return 0;
- 
- out_err:
+ void
 -- 
 2.39.1
 
