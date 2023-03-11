@@ -2,30 +2,30 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9764C74A44
-	for <linux-nfs@archiver.kernel.org>; Sat, 11 Mar 2023 20:52:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 05B3FC61DA4
+	for <linux-nfs@archiver.kernel.org>; Sat, 11 Mar 2023 23:39:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230037AbjCKUwK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 11 Mar 2023 15:52:10 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56604 "EHLO
+        id S229766AbjCKXjx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 11 Mar 2023 18:39:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40614 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229960AbjCKUwF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Mar 2023 15:52:05 -0500
+        with ESMTP id S229712AbjCKXjw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Mar 2023 18:39:52 -0500
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F0DE16B5C9;
-        Sat, 11 Mar 2023 12:52:01 -0800 (PST)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 50D4AE048;
+        Sat, 11 Mar 2023 15:39:52 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Sender:Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:
         Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=JMrOLqBblBfuXk+q4S5+9mk7xuUL4OAY5iCRONC3a9s=; b=EHg9BXEfB4ZQjbQwkxiHKpoYGU
-        A2q6+FFpnWew4fEu9zKjwDtCirVGQ7SDtYMSRqCv4scOBBPrxMd3RAOvw7lk1WPwCph8OT3OeR5a2
-        3F5CUhgg6sR2221WCfmeAwKk5wRUau0DA8FZF5EGCpNCELYa24Li5V2euz7KwrputgT/8qfjSiJ/1
-        02bOVg4eWwbybR4AW1Yfq16JG94S5YZIpyQtG1tZorCiKgsnEvTNQCoZfmXMQfhbUl/8pauraN/oA
-        DnvnZJU0642c63HqIWEwqTorr5fKDaGoKhBFLwzGZAf1n2zf7VjCl6N4qG5iOYZndzLyr7F2cQP27
-        4qO3nLFg==;
+        bh=IPxttaF0efk5Fm54pzICCIxRrnPQujbmO8MrMUftOtM=; b=YuJsW9/zRa8hZXyM21I5mH50Ub
+        xBMeiQI3pzkHEWi287B62QvE7AXSbwDWbniplfymgC1LTJ3HBQ690LkxbBfuSltwc6lWJp+aSksaR
+        Jlq6G9vM/D+4vMc2wJvoeaxWb/7Tsxp4sEhMDVzjZBCbCZBIhqjv2QRxTLQrzVhM+MzdVloQngRUZ
+        zTJwshebpto3XfbUAI4jvncngl/OgVlypXKFlT7pupGjpSIf/OYIFR8+VwpQwx2KoAeQL4J3Q7RZi
+        IxZRuEfFFm6rC4hF/YleaQXypNIDLBQYXuymWqmva7r/qsjM58Du6uFdWBFU1ZfGHoV2MQOLFGe5f
+        CSzOk6ag==;
 Received: from mcgrof by bombadil.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pb6Bz-001EKE-TS; Sat, 11 Mar 2023 20:51:51 +0000
+        id 1pb8oT-001UJq-51; Sat, 11 Mar 2023 23:39:45 +0000
 From:   Luis Chamberlain <mcgrof@kernel.org>
 To:     chuck.lever@oracle.com, jlayton@kernel.org,
         trond.myklebust@hammerspace.com, anna@kernel.org,
@@ -35,12 +35,12 @@ Cc:     ebiederm@xmission.com, keescook@chromium.org, yzaikin@google.com,
         j.granados@samsung.com, patches@lists.linux.dev,
         linux-fsdevel@vger.kernel.org, netdev@vger.kernel.org,
         linux-kernel@vger.kernel.org, Luis Chamberlain <mcgrof@kernel.org>
-Subject: [PATCH v2 3/5] sunrpc: simplify one-level sysctl registration for xs_tunables_table
-Date:   Sat, 11 Mar 2023 12:51:46 -0800
-Message-Id: <20230311205148.293375-4-mcgrof@kernel.org>
+Subject: [PATCH v3 5/5] sunrpc: simplify one-level sysctl registration for debug_table
+Date:   Sat, 11 Mar 2023 15:39:44 -0800
+Message-Id: <20230311233944.354858-6-mcgrof@kernel.org>
 X-Mailer: git-send-email 2.37.1
-In-Reply-To: <20230311205148.293375-1-mcgrof@kernel.org>
-References: <20230311205148.293375-1-mcgrof@kernel.org>
+In-Reply-To: <20230311233944.354858-1-mcgrof@kernel.org>
+References: <20230311233944.354858-1-mcgrof@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Luis Chamberlain <mcgrof@infradead.org>
@@ -55,47 +55,35 @@ Simplify this registration.
 
 Signed-off-by: Luis Chamberlain <mcgrof@kernel.org>
 ---
- net/sunrpc/xprtsock.c | 13 ++-----------
- 1 file changed, 2 insertions(+), 11 deletions(-)
+ net/sunrpc/sysctl.c | 11 +----------
+ 1 file changed, 1 insertion(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index aaa5b2741b79..46bbd6230650 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -77,7 +77,7 @@ static unsigned int xs_tcp_fin_timeout __read_mostly = XS_TCP_LINGER_TO;
- 
- /*
-  * We can register our own files under /proc/sys/sunrpc by
-- * calling register_sysctl_table() again.  The files in that
-+ * calling register_sysctl() again.  The files in that
-  * directory become the union of all files registered there.
-  *
-  * We simply need to make sure that we don't collide with
-@@ -157,15 +157,6 @@ static struct ctl_table xs_tunables_table[] = {
- 	{ },
+diff --git a/net/sunrpc/sysctl.c b/net/sunrpc/sysctl.c
+index afdfcc5403af..93941ab12549 100644
+--- a/net/sunrpc/sysctl.c
++++ b/net/sunrpc/sysctl.c
+@@ -163,20 +163,11 @@ static struct ctl_table debug_table[] = {
+ 	{ }
  };
  
 -static struct ctl_table sunrpc_table[] = {
 -	{
 -		.procname	= "sunrpc",
 -		.mode		= 0555,
--		.child		= xs_tunables_table
+-		.child		= debug_table
 -	},
--	{ },
+-	{ }
 -};
 -
- /*
-  * Wait duration for a reply from the RPC portmapper.
-  */
-@@ -3174,7 +3165,7 @@ static struct xprt_class	xs_bc_tcp_transport = {
- int init_socket_xprt(void)
+ void
+ rpc_register_sysctl(void)
  {
  	if (!sunrpc_table_header)
 -		sunrpc_table_header = register_sysctl_table(sunrpc_table);
-+		sunrpc_table_header = register_sysctl("sunrpc", xs_tunables_table);
++		sunrpc_table_header = register_sysctl("sunrpc", debug_table);
+ }
  
- 	xprt_register_transport(&xs_local_transport);
- 	xprt_register_transport(&xs_udp_transport);
+ void
 -- 
 2.39.1
 
