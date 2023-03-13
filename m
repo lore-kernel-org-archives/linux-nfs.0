@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 73579C74A4B
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Mar 2023 11:24:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ED7D9C7618B
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Mar 2023 11:24:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229828AbjCMLYI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 13 Mar 2023 07:24:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47238 "EHLO
+        id S229994AbjCMLYL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 Mar 2023 07:24:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47262 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229504AbjCMLYH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Mar 2023 07:24:07 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EEB3629435
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2023 04:24:05 -0700 (PDT)
+        with ESMTP id S229914AbjCMLYJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Mar 2023 07:24:09 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D00072A6ED
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2023 04:24:08 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 8508A61070
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2023 11:24:05 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 76D85C4339C;
-        Mon, 13 Mar 2023 11:24:04 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 90B6EB81042
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2023 11:24:07 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DFCB0C433EF;
+        Mon, 13 Mar 2023 11:24:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1678706644;
-        bh=9Bn16TkRKwuNZyh/QyhM6dH7sZeD7Yv8zo7pheE5v5U=;
+        s=k20201202; t=1678706646;
+        bh=21HKYplHOtIJxCbbTx9Pk5u21FJZ+Ji0N0co6VDdKlc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=gTpnMmTltbMyneeBZY5/VoBMas/jl3cVh5WiD7hp6tUGBLd+bl4KkV1mQLzDbnc6M
-         AcZPMiq65TkYMRmX4w4OTH1pTB8FF3EB5RCYRZWJsXdjlFVRgiiNB69iICszPBvvkM
-         A4E4+HMtHmTWf/ZT/NN+cviI6lK2mGGGNbSn/viWe83jJlcwz8WX4A+62krjfce/D+
-         jjDBUzXxG5A6XbQHqxaSRMEVBmqL662jhDE4d7spIvmNVbvUdW3AJCJjZQdBU2R2Aw
-         bCWAo6j42qPd3ebj0+bGsd429v5VuGF4kTqUugtN6uQOElU4JT7xu2VhcSGh/v05Op
-         ncP6d/YNRRWHQ==
+        b=FGwgITaKnzC6qHgp1xND/vl3mckH2cD7mpbB7FQXZ3bbRmVoGrKB3aNrz8VlgS/lt
+         MQbCg8G29dFBGEW85RvydVkRjC2CH18X+gAz23JSPIBD47KS5/+F5bEYfKlUWLTgyO
+         qwZ2zUNppdRq+cBbeN3l7wHUvsoqTqkIJeuOLcbUJVCL71ggyq+JeN423HchrmJzj7
+         MY7MYN6naHP7PQfQgwrPURLcLUaPWPJXOxu4Ier+g8QzhxG1pNEgxxiKSadZu7Ke17
+         MyosgMYE3v+M2SyCs2zh8SPPh9vmLzID1uyoJYBPq+lEwq9E+O76gKNXQa1epndi9B
+         loklht7ZIESeQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     calum.mackay@oracle.com
 Cc:     bfields@fieldses.org, ffilzlnx@mindspring.com,
         linux-nfs@vger.kernel.org
-Subject: [pynfs PATCH v2 2/5] examples: add a new example localhost_helper.sh script
-Date:   Mon, 13 Mar 2023 07:23:58 -0400
-Message-Id: <20230313112401.20488-3-jlayton@kernel.org>
+Subject: [pynfs PATCH v2 4/5] testserver.py: add a new (special) "everything" flag
+Date:   Mon, 13 Mar 2023 07:24:00 -0400
+Message-Id: <20230313112401.20488-5-jlayton@kernel.org>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230313112401.20488-1-jlayton@kernel.org>
 References: <20230313112401.20488-1-jlayton@kernel.org>
@@ -47,51 +47,32 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-It's possible (and pretty common) to run pynfs against the server
-running on the same host. Add a new serverhelper script for that
-purpose.
+The READMEs for v4.0 and v4.1 are inconsistent here. For v4.0, the "all"
+flag is supposed to run all of the "standard" tests. For v4.1 "all" is
+documented to run all of the tests, but it actually doesn't since not
+every tests has "all" in its FLAGS: field.
+
+I really want to be able to run _all_ the tests sometimes. Add a special
+case new "everything" flag that is automatically added to every test.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- examples/localhost_helper.sh | 29 +++++++++++++++++++++++++++++
- 1 file changed, 29 insertions(+)
- create mode 100755 examples/localhost_helper.sh
+ nfs4.1/testmod.py | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/examples/localhost_helper.sh b/examples/localhost_helper.sh
-new file mode 100755
-index 000000000000..6db123311e7a
---- /dev/null
-+++ b/examples/localhost_helper.sh
-@@ -0,0 +1,29 @@
-+#!/bin/bash
-+#
-+# serverhelper script for running tests against knfsd running on localhost.
-+# Note that this requires that the running user can use sudo to restart nfsd
-+# without a password.
-+#
-+
-+# server argument is ignored here
-+server=$1
-+command=$2
-+shift; shift
-+
-+case $command in
-+reboot )
-+	sudo systemctl restart nfs-server.service
-+	;;
-+unlink )
-+	rm $1
-+	;;
-+rename )
-+	mv $1 $2
-+	;;
-+link )
-+	ln $1 $2
-+	;;
-+chmod )
-+	chmod $1 $2
-+	;;
-+esac
+diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
+index 11e759d673fd..b3174006a0a3 100644
+--- a/nfs4.1/testmod.py
++++ b/nfs4.1/testmod.py
+@@ -386,6 +386,8 @@ def createtests(testdir):
+     for t in tests:
+ ##         if not t.flags_list:
+ ##             raise RuntimeError("%s has no flags" % t.fullname)
++        if "everything" not in t.flags_list:
++            t.flags_list.append("everything")
+         for f in t.flags_list:
+             if f not in flag_dict:
+                 flag_dict[f] = bit
 -- 
 2.39.2
 
