@@ -2,74 +2,82 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3569BC61DA4
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Mar 2023 11:24:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 819A7C6FD1C
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Mar 2023 11:24:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229795AbjCMLYI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229504AbjCMLYI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 13 Mar 2023 07:24:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47240 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47244 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229828AbjCMLYH (ORCPT
+        with ESMTP id S229914AbjCMLYH (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Mar 2023 07:24:07 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 00AB12A6ED
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2023 04:24:05 -0700 (PDT)
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A0EE9303DD
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2023 04:24:06 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id B79AFB80FF1
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2023 11:24:04 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id ED421C433EF;
-        Mon, 13 Mar 2023 11:24:02 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 3BA4D611DB
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2023 11:24:06 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3152FC4339B;
+        Mon, 13 Mar 2023 11:24:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1678706643;
-        bh=SmjOGWctYeVbnfdsC/hN52ZsPmMxP83sml6hFEurJPY=;
-        h=From:To:Cc:Subject:Date:From;
-        b=bJrkx3O0pNLA9njDYiZX50+DLsMVTjur2y/lX5iRUYQ6ROd5mLl6CYL56m4ROZFp3
-         8zh2ggi/qKsX13CpbknGXmKCc64FM+AHREV3/xOghb3co0k/SR72b/LbnhuMQSWV27
-         qKTua8SH45juYp/GVU/+4PFTIPBTR8eHWUdTPSr6iN7HTiOyT25IHMwFzymlrZAhBq
-         MEn6MF9MgE4ZRBjUm4gE10XQyt+cnuj5wKevpiC+dZYhplfEKMpC7XdpcGIGHneBpU
-         8gStN1RnKmq9l8fAcGmQbujgfepbIOdCSp8BTjfnuiKbayC4TP19TZqJXf6LdBHiGj
-         aLc0D7qK8SqGQ==
+        s=k20201202; t=1678706645;
+        bh=sVjkQfpECKeMo7VdASMNcHX5iOiyZBe9KE2j7AMXZcg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=vLYb8u55jmPW4rUYgPcAvk2+eN0unMrn6mDzGF3RyiGq98NSsYhVbC9QkISyDuFA8
+         bFaiExW7sEecokcwEySGB6iYinEHih0IMB+tvDs7EJqI6RPLeTDGmQ2NbxjclHsROS
+         torNRns1rcrU/xvdngOjp2yekA3OwYn79NMiVCkb8CE2HJXZa9J0KLV2pF7fl+C1WX
+         O8TcoxsU6dHgW+E0ac6QSdF7gJWlMZU8QtHJZnpXVR5bKchXPfGRKuh7VdLPbR4mUl
+         Po0xWpJH3mcbdRSR8MhpWMcxT4Bc5XS6ZFcFxh7Qqz5bi2DphKtOiprf+Mw8YuFnLi
+         oxmE3Y38CGcSA==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     calum.mackay@oracle.com
 Cc:     bfields@fieldses.org, ffilzlnx@mindspring.com,
         linux-nfs@vger.kernel.org
-Subject: [pynfs PATCH v2 0/5] An assortment of pynfs patches
-Date:   Mon, 13 Mar 2023 07:23:56 -0400
-Message-Id: <20230313112401.20488-1-jlayton@kernel.org>
+Subject: [pynfs PATCH v2 3/5] nfs4.0/testserver.py: don't return an error when tests fail
+Date:   Mon, 13 Mar 2023 07:23:59 -0400
+Message-Id: <20230313112401.20488-4-jlayton@kernel.org>
 X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20230313112401.20488-1-jlayton@kernel.org>
+References: <20230313112401.20488-1-jlayton@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-v2:
-- instead of changing the meaning of the "all" flag, add a new
-  "everything" flag.
-- add patch to fix LOCK24
+This script was originally changed in eb3ba0b60055 ("Have testserver.py
+have non-zero exit code if any tests fail"), but the same change wasn't
+made to the 4.1 testserver.py script.
 
-I sent some of these a couple of weeks ago, but didn't Cc Calum (the new
-maintainer) and a couple of them needed some changes. This set should
-address the concerns about changing the meaning of "all" and adds a
-new patch that fixes LOCK24 on knfsd.
+There also wasn't much explanation for it, and it makes it difficult to
+tell whether the test harness itself failed, or whether there was a
+failure in a requested test.
 
-Jeff Layton (5):
-  nfs4.0: add a retry loop on NFS4ERR_DELAY to compound function
-  examples: add a new example localhost_helper.sh script
-  nfs4.0/testserver.py: don't return an error when tests fail
-  testserver.py: add a new (special) "everything" flag
-  LOCK24: fix the lock_seqid in second lock request
+Stop the 4.0 testserver.py from exiting with an error code when a test
+fails, so that a successful return means only that the test harness
+itself worked, not that every requested test passed.
 
- examples/localhost_helper.sh  | 29 +++++++++++++++++++++++++++++
- nfs4.0/nfs4lib.py             | 21 +++++++++++++++------
- nfs4.0/servertests/st_lock.py |  6 +++++-
- nfs4.0/testserver.py          |  2 --
- nfs4.1/testmod.py             |  2 ++
- 5 files changed, 51 insertions(+), 9 deletions(-)
- create mode 100755 examples/localhost_helper.sh
+Cc: Frank Filz <ffilzlnx@mindspring.com>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ nfs4.0/testserver.py | 2 --
+ 1 file changed, 2 deletions(-)
 
+diff --git a/nfs4.0/testserver.py b/nfs4.0/testserver.py
+index f2c41568e5c7..4f4286daa657 100755
+--- a/nfs4.0/testserver.py
++++ b/nfs4.0/testserver.py
+@@ -387,8 +387,6 @@ def main():
+ 
+     if nfail < 0:
+         sys.exit(3)
+-    if nfail > 0:
+-        sys.exit(2)
+ 
+ if __name__ == "__main__":
+     main()
 -- 
 2.39.2
 
