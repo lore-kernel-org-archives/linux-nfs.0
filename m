@@ -2,76 +2,99 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8651EC61DA4
-	for <linux-nfs@archiver.kernel.org>; Mon, 13 Mar 2023 10:49:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 989F6C6FD19
+	for <linux-nfs@archiver.kernel.org>; Mon, 13 Mar 2023 11:24:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229891AbjCMKtz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 13 Mar 2023 06:49:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40512 "EHLO
+        id S229877AbjCMLYH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 13 Mar 2023 07:24:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47228 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230263AbjCMKty (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Mar 2023 06:49:54 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [145.40.68.75])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B79361C599;
-        Mon, 13 Mar 2023 03:49:53 -0700 (PDT)
+        with ESMTP id S229795AbjCMLYG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Mar 2023 07:24:06 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3E94A23C51
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2023 04:24:05 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id 6889EB80FF2;
-        Mon, 13 Mar 2023 10:49:52 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F278FC433EF;
-        Mon, 13 Mar 2023 10:49:49 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id CF39261044
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Mar 2023 11:24:04 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A7FB2C433D2;
+        Mon, 13 Mar 2023 11:24:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1678704591;
-        bh=9U/kjd7zTlI0yizAc0Bt8URDZmzyKq6pw8WWfsEWtG0=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=fsq1h7AdwwyBfjr+IR9/PTZvY3GiBKh6u/mFNrzOHiYoVtB9ivND1hJK+ao8S0btK
-         +CZkIyh0Xq2OxWCz35BDpkpDg98F4YIj7vKJBelt5nYyQMwnhlsZnZjtL6af9mFD7v
-         6V+MyYHo1Ps9S/l2TsRLy2Sy6SSIdegaGaU9twGaUu5MOmhczA8dceCdqzOmc92Mg1
-         sPbCczrT/ZCw0BsilSgzEhUAtPJR2068xRsq7U3cZHQIqUv60lFvAZlN0UqcGpK3X0
-         8oO8fjS0gENgXa+9/OMJFKcwpmHg8tN4z3kYdQvnnC+8mCihdJoEk9mFIrXDUqyUKC
-         E+nxW28qFYNdg==
-Message-ID: <a8eddd8bd56e4ff07ece72fe736e155b3e34cbae.camel@kernel.org>
-Subject: Re: nfs/lockd: simplify sysctl registration
+        s=k20201202; t=1678706644;
+        bh=UalLtbEUXRlAxkm63nC35oHQ+IYrk9ag7KeY+8BixDg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=QmlnyXyLE2IYbcu6IUv+gltldLYlWy0k+MFbCPDUdPyEENMOipbZBTJz2lOZDSA+T
+         +iKrybNu1xVb8m+uxoSlCBLeKksEwa3l4HHsAcPX+7UikG632MEm69S2668gse/cAY
+         QwLYSDO+vfUV8OX6J1wo9VgoCZO1r05C4Jhwmh5U69K5Y4HCYN4lDEBPRtNPLGmtRi
+         RVC+EZu+srxAgsXSEhmTIlHKepoGeL/x9xP8sZetjdjZ2jh1xGJIbChunmSKK/7wNZ
+         Cs1zvcUHa3baRe+lAK+us59LfqmYM8geelUMpKKaXDlpUwa/VFpk+oMn4GYLj97xNd
+         hRZ2U1+XXXkZQ==
 From:   Jeff Layton <jlayton@kernel.org>
-To:     Luis Chamberlain <mcgrof@kernel.org>, chuck.lever@oracle.com,
-        trond.myklebust@hammerspace.com, anna@kernel.org,
-        linux-nfs@vger.kernel.org
-Cc:     ebiederm@xmission.com, keescook@chromium.org, yzaikin@google.com,
-        j.granados@samsung.com, patches@lists.linux.dev,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Date:   Mon, 13 Mar 2023 06:49:48 -0400
-In-Reply-To: <20230310225842.3946871-1-mcgrof@kernel.org>
-References: <20230310225842.3946871-1-mcgrof@kernel.org>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.46.4 (3.46.4-1.fc37) 
+To:     calum.mackay@oracle.com
+Cc:     bfields@fieldses.org, ffilzlnx@mindspring.com,
+        linux-nfs@vger.kernel.org, Dai Ngo <dai.ngo@oracle.com>
+Subject: [pynfs PATCH v2 1/5] nfs4.0: add a retry loop on NFS4ERR_DELAY to compound function
+Date:   Mon, 13 Mar 2023 07:23:57 -0400
+Message-Id: <20230313112401.20488-2-jlayton@kernel.org>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20230313112401.20488-1-jlayton@kernel.org>
+References: <20230313112401.20488-1-jlayton@kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2023-03-10 at 14:58 -0800, Luis Chamberlain wrote:
-> This is just following the work of the same sysctl registration [0] I
-> just emailed you patches for sunprc but for nfs and lockd.
->=20
-> Feel free to pick up or let me know if you want me to take them through
-> my tree. I haven't even finished compile testing all these yet, but they
-> are pretty trivial.
->=20
-> I'm just dropping netdev on this series as its purely nfs/lockd stuff.
->=20
-> [0] https://lkml.kernel.org/r/20230310225236.3939443-1-mcgrof@kernel.org
->=20
-> Luis Chamberlain (3):
->   lockd: simplify two-level sysctl registration for nlm_sysctls
->   nfs: simplify two-level sysctl registration for nfs4_cb_sysctls
->   nfs: simplify two-level sysctl registration for nfs_cb_sysctls
->=20
->  fs/lockd/svc.c      | 20 +-------------------
->  fs/nfs/nfs4sysctl.c | 21 ++-------------------
->  fs/nfs/sysctl.c     | 20 +-------------------
->  3 files changed, 4 insertions(+), 57 deletions(-)
->=20
+The latest knfsd server is "courteous" in that it will not revoke a
+lease held by an expired client until there is competing access for it.
+When there is competing access, it can now return NFS4ERR_DELAY until
+the old client is expired. I've seen this happen when running pynfs in
+a loop against a server with only 4g of memory.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+The v4.0 compound handler doesn't retry automatically on NFS4ERR_DELAY
+like the v4.1 version does. Add support for it using the same timeouts
+as the v4.1 compound handler.
+
+Cc: Dai Ngo <dai.ngo@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ nfs4.0/nfs4lib.py | 21 +++++++++++++++------
+ 1 file changed, 15 insertions(+), 6 deletions(-)
+
+diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
+index 9b074f02b91f..eddcd862bc2f 100644
+--- a/nfs4.0/nfs4lib.py
++++ b/nfs4.0/nfs4lib.py
+@@ -338,12 +338,21 @@ class NFS4Client(rpc.RPCClient):
+         un_p = self.nfs4unpacker
+         p.reset()
+         p.pack_COMPOUND4args(compoundargs)
+-        res = self.call(NFSPROC4_COMPOUND, p.get_buffer())
+-        un_p.reset(res)
+-        res = un_p.unpack_COMPOUND4res()
+-        if SHOW_TRAFFIC:
+-            print(res)
+-        un_p.done()
++        res = None
++
++        # NFS servers can return NFS4ERR_DELAY at any time for any reason.
++        # Just delay a second and retry the call again in that event. If
++        # it fails after 10 retries then just give up.
++        for i in range(1, 10):
++            res = self.call(NFSPROC4_COMPOUND, p.get_buffer())
++            un_p.reset(res)
++            res = un_p.unpack_COMPOUND4res()
++            if SHOW_TRAFFIC:
++                print(res)
++            un_p.done()
++            if res.status != NFS4ERR_DELAY:
++                break
++            time.sleep(1)
+ 
+         # Do some error checking
+ 
+-- 
+2.39.2
+
