@@ -2,58 +2,77 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DAE14C6FD1C
-	for <linux-nfs@archiver.kernel.org>; Tue, 14 Mar 2023 13:25:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4ED17C7618A
+	for <linux-nfs@archiver.kernel.org>; Tue, 14 Mar 2023 14:51:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230496AbjCNNZq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 14 Mar 2023 09:25:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42276 "EHLO
+        id S229757AbjCNOvO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 14 Mar 2023 10:51:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48784 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230505AbjCNNZ1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Mar 2023 09:25:27 -0400
+        with ESMTP id S230498AbjCNOvM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Mar 2023 10:51:12 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4EA0195BE3;
-        Tue, 14 Mar 2023 06:22:35 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B19F2A2F1E;
+        Tue, 14 Mar 2023 07:51:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=NNdt8Wz1epDx/x0kbbQr5KnKKMW58gz7CK+aWbaWSh4=; b=S979cjgEbJ5GffG9UeBjKhdSRp
-        yG/tWxypcKHOTqZJEabpN98fshMNe2yIo7+534iezark2gCWIxJpDWdBarAepP9VGUtvBARd7Fefw
-        6QT2ZYuPntW5DD0U+pc6npTzGoioGH9ITKg1T/OiGriQIFpSbhsPAL3xTELDB4J65OKE515zaVqpo
-        or21VZYRmDZhvA7vwDDmTC1XZ6yqlfO3TIeU9bgjqjyxEpaCC/60wDDn2cwm5B40nFUjWugfTFHil
-        jM19nN9tLSneq+gLdzkA90SMwYtFS3SWE3n+dNWiK4I4tgZzIMPVj8dgrch20jilxb3vrqXO7KmDU
-        24xvxBGA==;
+        d=infradead.org; s=casper.20170209; h=Content-Type:MIME-Version:Message-ID:
+        Subject:Cc:To:From:Date:Sender:Reply-To:Content-Transfer-Encoding:Content-ID:
+        Content-Description:In-Reply-To:References;
+        bh=H1QGXFGueBuHBkdVnY1gVNgWxdg/uqRKaISs/k4X5k8=; b=S7EeSUpGaZlBdHu4WUHAIdr25V
+        ixFY7YsdAbe5O4aABq5JSzhjm6AQQEt3eXVPOFTCWjSNtDCgQFZErMmKupnpF9Y/4skbRxraN6HkX
+        TqmDE1TcO5R6zBSPSKRc5doATbZgmLE4SGmmnROLttR98UmmdtbKjQjHzeTUwv1E1p/bjEoFFy+iH
+        nyqmOOJUi5ry9SunSrF7pQBYspmk5uLVQJF6SmWk5LWJAeaLgy3Zr7wr5xxwd+hQMMwpvWD+yVxuy
+        /CaVhXopsc+90LrYwApR0yOX/0l4LaCriYpzBh1LHFmzupT2UryDjtJai0v3ndjSU6zPsYceoZ+bh
+        bp/MSRHg==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1pc3tn-00Cu0B-LU; Tue, 14 Mar 2023 12:37:03 +0000
-Date:   Tue, 14 Mar 2023 12:37:03 +0000
+        id 1pc5zT-00CzPv-OB; Tue, 14 Mar 2023 14:51:03 +0000
+Date:   Tue, 14 Mar 2023 14:51:03 +0000
 From:   Matthew Wilcox <willy@infradead.org>
-To:     Christian Brauner <brauner@kernel.org>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfs: use vfs setgid helper
-Message-ID: <ZBBqbz7LeSZLr7s/@casper.infradead.org>
-References: <20230313-fs-nfs-setgid-v2-1-9a59f436cfc0@kernel.org>
+To:     linux-fsdevel@vger.kernel.org
+Cc:     linux-mm@kvack.org, linux-afs@lists.infradead.org,
+        ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, ntfs3@lists.linux.dev,
+        ocfs2-devel@oss.oracle.com, devel@lists.orangefs.org,
+        reiserfs-devel@vger.kernel.org,
+        Evgeniy Dushistov <dushistov@mail.ru>
+Subject: RFC: Filesystem metadata in HIGHMEM
+Message-ID: <ZBCJ11qT8AWGA9y8@casper.infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20230313-fs-nfs-setgid-v2-1-9a59f436cfc0@kernel.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Mar 14, 2023 at 12:51:10PM +0100, Christian Brauner wrote:
-> +++ b/include/linux/fs.h
-> @@ -2675,6 +2675,8 @@ extern struct inode *new_inode(struct super_block *sb);
->  extern void free_inode_nonrcu(struct inode *inode);
->  extern int setattr_should_drop_suidgid(struct mnt_idmap *, struct inode *);
->  extern int file_remove_privs(struct file *);
-> +int setattr_should_drop_sgid(struct mnt_idmap *idmap,
-> +			     const struct inode *inode);
+TLDR: I think we should rip out support for fs metadata in highmem
 
-Is there a reason that setattr_should_drop_sgid() doesn't take a
-const struct mnt_idmap pointer?
+We want to support filesystems on devices with LBA size > PAGE_SIZE.
+That's subtly different and slightly harder than fsblk size > PAGE_SIZE.
+We can use large folios to read the blocks into, but reading/writing
+the data in those folios is harder if it's in highmem.  The kmap family
+of functions can only map a single page at a time (and changing that
+is hard).  We could vmap, but that's slow and can't be used from atomic
+context.  Working a single page at a time can be tricky (eg consider an
+ext2 directory entry that spans a page boundary).
+
+Many filesystems do not support having their metadata in highmem.
+ext4 doesn't.  xfs doesn't.  f2fs doesn't.  afs, ceph, ext2, hfs,
+minix, nfs, nilfs2, ntfs, ntfs3, ocfs2, orangefs, qnx6, reiserfs, sysv
+and ufs do.
+
+Originally, ext2 directories in the page cache were done by Al Viro
+in 2001.  At that time, the important use-case was machines with tens of
+gigabytes of highmem and ~800MB of lowmem.  Since then, the x86 systems
+have gone to 64-bit and the only real uses for highmem are cheap systems
+with ~8GB of memory total and 2-4GB of lowmem.  These systems really
+don't need to keep directories in highmem; using highmem for file &
+anon memory is enough to keep the system in balance.
+
+So let's just rip out the ability to keep directories (and other fs
+metadata) in highmem.  Many filesystems already don't support this,
+and it makes supporting LBA size > PAGE_SIZE hard.
+
+I'll turn this into an LSFMM topic if we don't reach resolution on the
+mailing list, but I'm optimistic that everybody will just agree with
+me ;-)
