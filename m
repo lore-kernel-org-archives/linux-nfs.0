@@ -2,57 +2,142 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1396DC7618A
-	for <linux-nfs@archiver.kernel.org>; Thu, 16 Mar 2023 08:58:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37BC6C6FD1F
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Mar 2023 13:08:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229912AbjCPI6b (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 16 Mar 2023 04:58:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54466 "EHLO
+        id S229453AbjCPNIn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 16 Mar 2023 09:08:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44492 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230298AbjCPI6N (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Mar 2023 04:58:13 -0400
-Received: from mail.corrib.pl (mail.corrib.pl [185.58.226.145])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 58558B5B5B
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Mar 2023 01:57:06 -0700 (PDT)
-Received: by mail.corrib.pl (Postfix, from userid 1001)
-        id 7A3DFA359A; Thu, 16 Mar 2023 08:56:23 +0000 (GMT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=corrib.pl; s=mail;
-        t=1678957004; bh=X6IEpSISwJiYlJ3uA866lskXve3r+4o2hf4z7VM6m5o=;
-        h=Date:From:To:Subject:From;
-        b=ALbjg6E5Hd/zBdmySze/Z4J3tzf4J8zootEHXvY3FGXQdO74McjvI48DLZ2mHWPKn
-         BVfM1q428MOG6jLx4cSw+209X93YJwV4CueVMg/IkJKnlNRlFMDYFe4yAxT+e+5f+K
-         GDThVdCPB9blvPRo3C4ZQcxIrA7tCU6RPPrJjFXp7ize5MBy9fY6bfjzV29oFpXFlr
-         f8pgTFo3q2kVpR75CHpYbLRebIvkcb0QV+HnxlzYVDa6jtbUkjpaH25/9e4H/IByKH
-         Y9QucUGR6pcQEiMtcEwV7jWaMhq9gg/oAawRZmnuEYsD7s2Hej4qUbnbfrs4PjOtjm
-         Ywrcb0gfjzsRA==
-Received: by mail.corrib.pl for <linux-nfs@vger.kernel.org>; Thu, 16 Mar 2023 08:56:02 GMT
-Message-ID: <20230316074501-0.1.63.j0d5.0.xlbojr5n5l@corrib.pl>
-Date:   Thu, 16 Mar 2023 08:56:02 GMT
-From:   =?UTF-8?Q? "Szczepan_Kie=C5=82basa" ?= 
-        <szczepan.kielbasa@corrib.pl>
-To:     <linux-nfs@vger.kernel.org>
-Subject: Faktoring
-X-Mailer: mail.corrib.pl
+        with ESMTP id S229726AbjCPNIm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Mar 2023 09:08:42 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 73FC555AA
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Mar 2023 06:07:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1678972076;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding;
+        bh=I4vj27Hz37BxjdFryH4DTKt4lnMon3Rk+vYNnIOGHac=;
+        b=A9cMXiVCCmtL+nIMi157m14LR0uE6WcGBBZ3XFgHwdlvWRMpvKP47ugltBLlpRyWk7THOq
+        0+YzXzGwcx2/FTaQoJVMq4tMd+lQgHFcH9qMLIqPpSmdVHxMUTCo6yM0gNFTVJMyzZzujE
+        TzhSwvWk08O1dfRzAM4QJxXrlvWrFeQ=
+Received: from mail-wm1-f71.google.com (mail-wm1-f71.google.com
+ [209.85.128.71]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-13-5116QZdxPGCrzqS-ESWkjg-1; Thu, 16 Mar 2023 09:07:55 -0400
+X-MC-Unique: 5116QZdxPGCrzqS-ESWkjg-1
+Received: by mail-wm1-f71.google.com with SMTP id k18-20020a05600c1c9200b003ed2a3f101fso2594222wms.9
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Mar 2023 06:07:55 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20210112; t=1678972073;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=I4vj27Hz37BxjdFryH4DTKt4lnMon3Rk+vYNnIOGHac=;
+        b=PnrogkVBzhD0kQwHgmC0FHJxjAeohVhkkZCAO3fnMKC3pvofaVZHeJY3Yf6BUDG51D
+         uBDS3eTNbCUXB2hioXzg3qczaRfhc7XzX9pbnnfkR0jg6WlfSb9ZhNl3jCcK6WigUciE
+         2vX/up18IsAXacBnricvaK4hIJdfAC49j3l+vRyenkkay2nLUCZra2/ujx/JHLKrlpG0
+         DuMcW2t4mIpJtkZ+H+20siEoAe6HOx347vSipjhxlBEq6E2Bq1K8ZXjKgMl5ccnmjCbP
+         AjTPnoqmG1HSUYBySkojeFDA/tFNXhfm5FzgWFrolE+lSYcWAynpmph9xdqRp9CeVcsG
+         +hqw==
+X-Gm-Message-State: AO0yUKVcJkGG93gf+iZ0vwrpKNmwWpEr87on69kUBa8zsnJWJ+N8XIJy
+        zMD20ahgzXFJtC26lbUy33SUv6wZ7dF8ieNIe006QLLpJCOixbkEEUQiUD3Zjphf2udYu/sIy8g
+        pNclxWscvCSajO11eVEhZt+2IOI69OE4=
+X-Received: by 2002:adf:e8cd:0:b0:2ca:175b:d850 with SMTP id k13-20020adfe8cd000000b002ca175bd850mr4240831wrn.11.1678972073783;
+        Thu, 16 Mar 2023 06:07:53 -0700 (PDT)
+X-Google-Smtp-Source: AK7set9LHvhEZrQSzipUnLqiW/wptvdsDgTL4g6HkRzIVhGziWAGhpLTd6aBZEyk2PFeQSTNEnBmJA==
+X-Received: by 2002:adf:e8cd:0:b0:2ca:175b:d850 with SMTP id k13-20020adfe8cd000000b002ca175bd850mr4240814wrn.11.1678972073510;
+        Thu, 16 Mar 2023 06:07:53 -0700 (PDT)
+Received: from localhost.localdomain (nat-pool-brq-t.redhat.com. [213.175.37.10])
+        by smtp.gmail.com with ESMTPSA id g8-20020a5d4888000000b002d1959d2cf7sm2451012wrq.111.2023.03.16.06.07.52
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 16 Mar 2023 06:07:52 -0700 (PDT)
+From:   Ondrej Mosnacek <omosnace@redhat.com>
+To:     linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+        Christian Brauner <brauner@kernel.org>
+Cc:     linux-security-module@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCH RESEND] fs_context: drop the unused lsm_flags member
+Date:   Thu, 16 Mar 2023 14:07:51 +0100
+Message-Id: <20230316130751.334227-1-omosnace@redhat.com>
+X-Mailer: git-send-email 2.39.2
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Dzie=C5=84 dobry,
+This isn't ever used by VFS now, and it couldn't even work. Any FS that
+uses the SECURITY_LSM_NATIVE_LABELS flag needs to also process the
+value returned back from the LSM, so it needs to do its
+security_sb_set_mnt_opts() call on its own anyway.
 
-rozwa=C5=BCali Pa=C5=84stwo wyb=C3=B3r finansowania, kt=C3=B3re spe=C5=82=
-ni potrzeby firmy, zapewniaj=C4=85c natychmiastowy dost=C4=99p do got=C3=B3=
-wki, bez zb=C4=99dnych przestoj=C3=B3w?=20
+Signed-off-by: Ondrej Mosnacek <omosnace@redhat.com>
+---
 
-Przygotowali=C5=9Bmy rozwi=C4=85zania faktoringowe dopasowane do Pa=C5=84=
-stwa bran=C5=BCy i wielko=C5=9Bci firmy, dzi=C4=99ki kt=C3=B3rym, nie mus=
-z=C4=85 Pa=C5=84stwo martwi=C4=87 si=C4=99 o niewyp=C5=82acalno=C5=9B=C4=87=
- kontrahent=C3=B3w, poniewa=C5=BC transakcje s=C4=85 zabezpieczone i posi=
-adaj=C4=85 gwarancj=C4=99 sp=C5=82aty.=20
-Chc=C4=85 Pa=C5=84stwo przeanalizowa=C4=87 dost=C4=99pne opcje?
+Resending because of no response for almost 2 years...
 
+Previous submission:
+https://lore.kernel.org/linux-fsdevel/20210409111234.271707-1-omosnace@redhat.com/
 
-Pozdrawiam
-Szczepan Kie=C5=82basa
+ Documentation/filesystems/mount_api.rst | 1 -
+ fs/nfs/super.c                          | 3 ---
+ include/linux/fs_context.h              | 1 -
+ include/linux/security.h                | 2 +-
+ 4 files changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/Documentation/filesystems/mount_api.rst b/Documentation/filesystems/mount_api.rst
+index 63204d2094fdf..9aaf6ef75eb53 100644
+--- a/Documentation/filesystems/mount_api.rst
++++ b/Documentation/filesystems/mount_api.rst
+@@ -79,7 +79,6 @@ context.  This is represented by the fs_context structure::
+ 		unsigned int		sb_flags;
+ 		unsigned int		sb_flags_mask;
+ 		unsigned int		s_iflags;
+-		unsigned int		lsm_flags;
+ 		enum fs_context_purpose	purpose:8;
+ 		...
+ 	};
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 05ae23657527d..397c096d874eb 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1274,9 +1274,6 @@ int nfs_get_tree_common(struct fs_context *fc)
+ 		if (ctx->clone_data.sb->s_flags & SB_SYNCHRONOUS)
+ 			fc->sb_flags |= SB_SYNCHRONOUS;
+ 
+-	if (server->caps & NFS_CAP_SECURITY_LABEL)
+-		fc->lsm_flags |= SECURITY_LSM_NATIVE_LABELS;
+-
+ 	/* Get a superblock - note that we may end up sharing one that already exists */
+ 	fc->s_fs_info = server;
+ 	s = sget_fc(fc, compare_super, nfs_set_super);
+diff --git a/include/linux/fs_context.h b/include/linux/fs_context.h
+index 5469ffee21c73..ff6341e09925b 100644
+--- a/include/linux/fs_context.h
++++ b/include/linux/fs_context.h
+@@ -104,7 +104,6 @@ struct fs_context {
+ 	unsigned int		sb_flags;	/* Proposed superblock flags (SB_*) */
+ 	unsigned int		sb_flags_mask;	/* Superblock flags that were changed */
+ 	unsigned int		s_iflags;	/* OR'd with sb->s_iflags */
+-	unsigned int		lsm_flags;	/* Information flags from the fs to the LSM */
+ 	enum fs_context_purpose	purpose:8;
+ 	enum fs_context_phase	phase:8;	/* The phase the context is in */
+ 	bool			need_free:1;	/* Need to call ops->free() */
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 5984d0d550b41..db9b659b02b91 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -68,7 +68,7 @@ struct watch_notification;
+ /* If capable is being called by a setid function */
+ #define CAP_OPT_INSETID BIT(2)
+ 
+-/* LSM Agnostic defines for fs_context::lsm_flags */
++/* LSM Agnostic defines for security_sb_set_mnt_opts() flags */
+ #define SECURITY_LSM_NATIVE_LABELS	1
+ 
+ struct ctl_table;
+-- 
+2.39.2
+
