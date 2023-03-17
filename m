@@ -2,128 +2,104 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B034FC6FD1D
-	for <linux-nfs@archiver.kernel.org>; Fri, 17 Mar 2023 22:10:24 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2BE8CC7618E
+	for <linux-nfs@archiver.kernel.org>; Fri, 17 Mar 2023 23:02:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229872AbjCQWKX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 17 Mar 2023 18:10:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55976 "EHLO
+        id S229934AbjCQXCW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 17 Mar 2023 19:02:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34894 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229735AbjCQWKW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Mar 2023 18:10:22 -0400
-Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 555E73BDAA
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Mar 2023 15:10:20 -0700 (PDT)
+        with ESMTP id S229516AbjCQXCV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Mar 2023 19:02:21 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D3BB4FF13
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Mar 2023 16:01:59 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by ams.source.kernel.org (Postfix) with ESMTPS id F2E65B826E6
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Mar 2023 22:10:18 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0D246C433D2;
-        Fri, 17 Mar 2023 22:10:16 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 2A33A60BC5
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Mar 2023 23:01:27 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 34A28C433EF;
+        Fri, 17 Mar 2023 23:01:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1679091017;
-        bh=gDtpS7rOJFldYF17/5I64E+fM9RjEFyybgme9EhvJT4=;
+        s=k20201202; t=1679094086;
+        bh=1hDX9JSkvaA2c2aqNndSO+fLzP94W74efh2KnHoeg9w=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=Y434WSpW+6BP/TKUwFHU059tGMmuyK+yvDcKJ+dgYcq3ToIfRrVDvljDaIiZAqBPF
-         VZXFGFmTEiClHsTZfwCUatjJCHUl6ZoQS1xJccXxowNbdYA776vAKLuaOK6VhlwMid
-         gJdiHXHAcQLGI33KAsi2yeBg7HR05iR9Q7VuTcxhrn0A2YzfAlu0tO5L3YvaCb5apQ
-         21koXKrJrkv1Cm66CqhY0PkK8Cvz6f2lX3w8ocUisXv8y8N8DOzLFZcadSV+JBUYW0
-         lrutwTOp2qyk0uX9/yuSZ6r07jHP40K4UUEnKbaqwyIM6JadU8FdGe30KXWfLgJSYY
-         Pz1aqFnLztnow==
-Message-ID: <b6d8a8b96581d4f468d9277237113cb7b9e7fb10.camel@kernel.org>
-Subject: Re: [PATCH v2 2/2] sunrpc: add bounds checking to
- svc_rqst_replace_page
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "dcritch@redhat.com" <dcritch@redhat.com>,
-        "d.lesca@solinos.it" <d.lesca@solinos.it>,
-        Al Viro <viro@zeniv.linux.org.uk>
-Date:   Fri, 17 Mar 2023 18:10:15 -0400
-In-Reply-To: <27346F71-367D-42DF-85AB-D168012F5C41@oracle.com>
-References: <20230317171309.73607-1-jlayton@kernel.org>
-         <20230317171309.73607-2-jlayton@kernel.org>
-         <6F8F3C24-A043-443A-BBB7-E4788FBE29C9@oracle.com>
-         <827d46876b57bec309164d4c9513bac523ad5843.camel@kernel.org>
-         <F6CE9F70-628B-44D3-A8B1-D4EEBBA28B87@oracle.com>
-         <c78fff223129f289214ceada0d82f6952e0d3a82.camel@kernel.org>
-         <27346F71-367D-42DF-85AB-D168012F5C41@oracle.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.46.4 (3.46.4-1.fc37) 
+        b=Qtbx+f6+q/Yu4YpUjnU6Dr9dM4F86BtfJpFDciFsIR6baqv+oSFdYfdDEwbpVBarz
+         FAlNL9XCmivlYWgWeEgbpVbQkxRKokJ2QQqOhCoAMa3gJgFJa16xiin9FvDKdXWrvY
+         fxKlTc3G3xRINDJnZ34Hal78YcYFOFCQRKWXq+2knKPQ1Q5u7EZ4uftFoqD+lUPnCf
+         JP6p04mFd/dF/BghcTp4tbGctWKpv6YvGyvP3ga7dheSXNYoUNrQRH6t7OevmxYaa0
+         Pgs4UF416G9CXZHpk3uQ4YYHrimtB6ToS4fF0FhkbHTEmUxNHlUy9/FBw0559vvtyX
+         iWdH1r7V20qdw==
+Subject: [PATCH v1 1/3] nfsd: don't replace page in rq_pages if it's a
+ continuation of last page
+From:   Chuck Lever <cel@kernel.org>
+To:     linux-nfs@vger.kernel.org
+Cc:     viro@zeniv.linux.org.uk, dcritch@redhat.com, d.lesca@solinos.it
+Date:   Fri, 17 Mar 2023 19:01:25 -0400
+Message-ID: <167909408510.1672.11351348839166110078.stgit@klimt.1015granger.net>
+In-Reply-To: <167909365790.1672.13118429954916842449.stgit@klimt.1015granger.net>
+References: <167909365790.1672.13118429954916842449.stgit@klimt.1015granger.net>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2023-03-17 at 20:55 +0000, Chuck Lever III wrote:
->=20
-> > On Mar 17, 2023, at 2:59 PM, Jeff Layton <jlayton@kernel.org> wrote:
-> >=20
-> > On Fri, 2023-03-17 at 18:08 +0000, Chuck Lever III wrote:
-> > >=20
-> > > > On Mar 17, 2023, at 2:04 PM, Jeff Layton <jlayton@kernel.org> wrote=
-:
-> > > >=20
-> > > > On Fri, 2023-03-17 at 17:51 +0000, Chuck Lever III wrote:
-> > > > > > On Mar 17, 2023, at 1:13 PM, Jeff Layton <jlayton@kernel.org> w=
-rote:
-> > > > > >=20
-> > > > > > If rq_next_page ends up pointing outside the array, then we can
-> > > > > > corrupt
-> > > > > > memory when we go to change its value. Ensure that it hasn't st=
-rayed
-> > > > > > outside the array, and have svc_rqst_replace_page return -EIO
-> > > > > > without
-> > > > > > changing anything if it has.
-> > > > > >=20
-> > > > > > Fix up nfsd_splice_actor (the only caller) to handle this case =
-by
-> > > > > > either
-> > > > > > returning an error or a short splice when this happens.
-> > > > >=20
-> > > > > IMO it's not worth the extra complexity to return a short splice.
-> > > > > This is a "should never happen" scenario in a hot I/O path. Let's
-> > > > > keep this code as simple as possible, and use unlikely() for the
-> > > > > error cases in both nfsd_splice_actor and svc_rqst_replace_page()=
-.
-> > > > >=20
-> > > >=20
-> > > > Are there any issues with just returning an error even though we ha=
-ve
-> > > > successfully spliced some of the data into the buffer? I guess the
-> > > > caller will just see an EIO or whatever instead of the short read i=
-n
-> > > > that case?
-> > >=20
-> > > NFSv4 READ is probably going to truncate the XDR buffer. I'm not
-> > > sure NFSv3 is so clever, so you should test it.
-> >=20
-> > Honestly, I don't have the cycles to do that sort of fault injection
-> > testing for this.
->=20
-> nfsd_splice_actor() has never returned an error, so IMO it is
-> necessary to confirm that when svc_rqst_replace_page() returns
-> an error, it doesn't create further problems. I don't see how
-> we can avoid some kind of simple fault injection while developing
-> the fix.
->=20
-> Tell you what, I can take it from here if you'd like.
->=20
+From: Jeff Layton <jlayton@kernel.org>
 
-Sure! All yours!
+The splice read calls nfsd_splice_actor to put the pages containing file
+data into the svc_rqst->rq_pages array. It's possible however to get a
+splice result that only has a partial page at the end, if (e.g.) the
+filesystem hands back a short read that doesn't cover the whole page.
 
->=20
-> > If you think handling it as a short read is overblown,
-> > then tell me what you would like see here.
->=20
-> It's not the short reads that bugs me, it's the additional
-> code in a hot path that is worrisome.
->=20
+nfsd_splice_actor will plop the partial page into its rq_pages array and
+return. Then later, when nfsd_splice_actor is called again, the
+remainder of the page may end up being filled out. At this point,
+nfsd_splice_actor will put the page into the array _again_ corrupting
+the reply. If this is done enough times, rq_next_page will overrun the
+array and corrupt the trailing fields -- the rq_respages and
+rq_next_page pointers themselves.
 
-I wouldn't think tracking some extra stuff on the stack would show up
-much in profiles, but it's your call.
+If we've already added the page to the array in the last pass, don't add
+it to the array a second time when dealing with a splice continuation.
+This was originally handled properly in nfsd_splice_actor, but commit
+91e23b1c3982 ("NFSD: Clean up nfsd_splice_actor()") removed the check
+for it.
 
---=20
-Jeff Layton <jlayton@kernel.org>
+Fixes: 91e23b1c3982 ("NFSD: Clean up nfsd_splice_actor()")
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Reported-by: Dario Lesca <d.lesca@solinos.it>
+Tested-by: David Critch <dcritch@redhat.com>
+Link: https://bugzilla.redhat.com/show_bug.cgi?id=2150630
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfsd/vfs.c |    9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 502e1b7742db..5783209f17fc 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -941,8 +941,15 @@ nfsd_splice_actor(struct pipe_inode_info *pipe, struct pipe_buffer *buf,
+ 	struct page *last_page;
+ 
+ 	last_page = page + (offset + sd->len - 1) / PAGE_SIZE;
+-	for (page += offset / PAGE_SIZE; page <= last_page; page++)
++	for (page += offset / PAGE_SIZE; page <= last_page; page++) {
++		/*
++		 * Skip page replacement when extending the contents
++		 * of the current page.
++		 */
++		if (page == *(rqstp->rq_next_page - 1))
++			continue;
+ 		svc_rqst_replace_page(rqstp, page);
++	}
+ 	if (rqstp->rq_res.page_len == 0)	// first call
+ 		rqstp->rq_res.page_base = offset % PAGE_SIZE;
+ 	rqstp->rq_res.page_len += sd->len;
+
+
