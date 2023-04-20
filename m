@@ -2,116 +2,63 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E5C3CC77B7F
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Apr 2023 20:21:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E1473C77B73
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Apr 2023 21:35:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232311AbjDTUVs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 Apr 2023 16:21:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42048 "EHLO
+        id S232465AbjDTVfl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 Apr 2023 17:35:41 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52612 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232316AbjDTUVl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Apr 2023 16:21:41 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 83B9140CD
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Apr 2023 13:20:09 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1682022008;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=KwkENu1/w9CSbhYifjW/+CifPchvjicIQbIAA0wBC68=;
-        b=a9E5Cu66vSfKFCBR3Kb4xhS17XpqfaK0zmLHFAVyOAXHxteRrAlk3YgJxHU2MXzT70LRIZ
-        ovdLZYbi6uqK1KeRmRIyC0wZvGFs73axcO3ZQ6JQVmO3LAVytGhnk1Kt78CtrnlwAxBLgj
-        pk2fsM54DmLWVB5+1gFUHiNZ0FIop04=
-Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
- [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-628-liYMcpHcOqeIcQOtz5SSUw-1; Thu, 20 Apr 2023 16:20:05 -0400
-X-MC-Unique: liYMcpHcOqeIcQOtz5SSUw-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 15877380607A;
-        Thu, 20 Apr 2023 20:20:05 +0000 (UTC)
-Received: from aion.usersys.redhat.com (unknown [10.22.16.241])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 0A686C16024;
-        Thu, 20 Apr 2023 20:20:05 +0000 (UTC)
-Received: by aion.usersys.redhat.com (Postfix, from userid 1000)
-        id A1B121A27F8; Thu, 20 Apr 2023 16:20:04 -0400 (EDT)
-From:   Scott Mayhew <smayhew@redhat.com>
-To:     linux-nfs@vger.kernel.org, keyrings@vger.kernel.org
-Subject: [RFC PATCH 3/5] keys: add dest_keyring parameter to request_key_with_auxdata()
-Date:   Thu, 20 Apr 2023 16:20:02 -0400
-Message-Id: <20230420202004.239116-4-smayhew@redhat.com>
-In-Reply-To: <20230420202004.239116-1-smayhew@redhat.com>
-References: <20230420202004.239116-1-smayhew@redhat.com>
+        with ESMTP id S231376AbjDTVfk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Apr 2023 17:35:40 -0400
+Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [IPv6:2a03:a000:7:0:5054:ff:fe1c:15ff])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DDB9959F8;
+        Thu, 20 Apr 2023 14:35:35 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
+        MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=XdPzgZMga4nxCngAf5Uk4oKS+beDjYzCM1eCd0jiQBA=; b=Izx7MYewJXzDPQyTvwJddCGkk2
+        J4g7k/NJcTTr6noFbMY8sEkbMSb5wGamu45DmAVAXmPVwUazWDXuduj1qJr4tdwMtR95s3zttJPoJ
+        zu98Ixjbug4mWHQPTTivKHw6b96+YzIK6ejpVJh55L0un51eZvjpeLrAiVRKRWte5+7BTpwmPUhE3
+        gVPL5noyX99klWH1GQZTNIZ/8XcDiMMIhvM/KeP+ruLDEu416Wg6xKS9qCyF7w3DmuK54B93ntI2R
+        73sVv84JMfFN1QsCAh+1StpTbnZV8lRC7fdNkZuASIo5SUUx6D20HX3QklDI1mq2G8bjUd4EBExa4
+        QYwtO41Q==;
+Received: from viro by zeniv.linux.org.uk with local (Exim 4.96 #2 (Red Hat Linux))
+        id 1ppbw9-00AxwI-2n;
+        Thu, 20 Apr 2023 21:35:30 +0000
+Date:   Thu, 20 Apr 2023 22:35:29 +0100
+From:   Al Viro <viro@zeniv.linux.org.uk>
+To:     NeilBrown <neilb@suse.de>
+Cc:     Christian Brauner <brauner@kernel.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Dave Wysochanski <dwysocha@redhat.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        David Howells <dhowells@redhat.com>,
+        Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH/RFC] VFS: LOOKUP_MOUNTPOINT should used cached info
+ whenever possible.
+Message-ID: <20230420213529.GS3390869@ZenIV>
+References: <95ee689c76bf034fa2fe9fade0bccdb311f3a04f.camel@kernel.org>
+ <168168683217.24821.6260957092725278201@noble.neil.brown.name>
+ <20230417-beisein-investieren-360fa20fb68a@brauner>
+ <168176679417.24821.211742267573907874@noble.neil.brown.name>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.8
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <168176679417.24821.211742267573907874@noble.neil.brown.name>
+Sender: Al Viro <viro@ftp.linux.org.uk>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-We want to store GSS creds in user keyrings.  Add a dest_keyring
-parameter to request_key_with_auxdata() so we can do that.
+On Tue, Apr 18, 2023 at 07:26:34AM +1000, NeilBrown wrote:
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- fs/nfs/nfs4idmap.c          | 2 +-
- include/linux/key.h         | 3 ++-
- security/keys/request_key.c | 5 +++--
- 3 files changed, 6 insertions(+), 4 deletions(-)
+> MNT_FORCE is, I think, a good idea and a needed functionality that has
+> never been implemented well.
+> MNT_FORCE causes nfs_umount_begin to be called as you noted, which
+> aborts all pending RPCs on that filesystem.
 
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index 25a7c771cfd8..15d4fc30bf50 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -292,7 +292,7 @@ static struct key *nfs_idmap_request_key(const char *name, size_t namelen,
- 	if (IS_ERR(rkey)) {
- 		mutex_lock(&idmap->idmap_mutex);
- 		rkey = request_key_with_auxdata(&key_type_id_resolver_legacy,
--						desc, NULL, "", 0, idmap);
-+						desc, NULL, "", 0, idmap, NULL);
- 		mutex_unlock(&idmap->idmap_mutex);
- 	}
- 	if (!IS_ERR(rkey))
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 6cfc60aca505..009dfd3d27b0 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -333,7 +333,8 @@ extern struct key *request_key_with_auxdata(struct key_type *type,
- 					    struct key_tag *domain_tag,
- 					    const void *callout_info,
- 					    size_t callout_len,
--					    void *aux);
-+					    void *aux,
-+					    struct key *dest_keyring);
- 
- /**
-  * request_key - Request a key and wait for construction
-diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index 07a0ef2baacd..1424a6fa4c9d 100644
---- a/security/keys/request_key.c
-+++ b/security/keys/request_key.c
-@@ -735,14 +735,15 @@ struct key *request_key_with_auxdata(struct key_type *type,
- 				     struct key_tag *domain_tag,
- 				     const void *callout_info,
- 				     size_t callout_len,
--				     void *aux)
-+				     void *aux,
-+				     struct key *dest_keyring)
- {
- 	struct key *key;
- 	int ret;
- 
- 	key = request_key_and_link(type, description, domain_tag,
- 				   callout_info, callout_len,
--				   aux, NULL, KEY_ALLOC_IN_QUOTA);
-+				   aux, dest_keyring, KEY_ALLOC_IN_QUOTA);
- 	if (!IS_ERR(key)) {
- 		ret = wait_for_key_construction(key, false);
- 		if (ret < 0) {
--- 
-2.39.2
-
+Suppose it happens to be mounted in another namespace as well.  Or bound
+at different mountpoint, for that matter.  What should MNT_FORCE do?
