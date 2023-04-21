@@ -2,46 +2,46 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D2C8C77B7F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AFF43C77B61
 	for <linux-nfs@archiver.kernel.org>; Fri, 21 Apr 2023 17:09:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233353AbjDURJb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S233236AbjDURJb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Fri, 21 Apr 2023 13:09:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51824 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51888 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229641AbjDURJ3 (ORCPT
+        with ESMTP id S233247AbjDURJ3 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2023 13:09:29 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 674D97ECB
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:08:19 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BC03DC172
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:08:18 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1682096898;
+        s=mimecast20190719; t=1682096897;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=mDT2xZslmwC5RymDr+i2C+SpKbLu+XFfhz6wrT81Es4=;
-        b=fsrDbs1yx7DZOJ6fuUZgjitry7dLs7A5Y7E/iqvpVYl4jBTon1qxhFQuW/Lc3xbS6XfI5e
-        2FnznX/X6H8xuUwhLXcp/x5N8XIA//avXB1qJIPWQcpEnxU1Denq+ALAj8AI9WX3Hbi0OB
-        Ef+AMIyYP3dbv4qxnb2Crr6xpXXIGXg=
+        bh=RjShONusOdEpIJwGrDOuO3fRc0vE5MoNwmON3dpd1WA=;
+        b=MoCrqEEtB29Csn7yPgMTrAsLmrXuKuiYSEE5080TNbwu8O4VECPBoht9IpSkhYqQG1VBrF
+        qbewT9N35Te5ff6pD/2nwNLc5W7ck4ZSP+as9lKx+2HRTmQi8eJWvuiAMyGu+bE1QQmEoZ
+        OHEzZ0ovGOzGtBnbd62PZungNnHDjdc=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-261-BbeuFrPZM0myRC4tAdZ_lQ-1; Fri, 21 Apr 2023 13:08:17 -0400
-X-MC-Unique: BbeuFrPZM0myRC4tAdZ_lQ-1
+ us-mta-633-3Zw7Wv_BO-O6jN8j5hgpAA-1; Fri, 21 Apr 2023 13:08:15 -0400
+X-MC-Unique: 3Zw7Wv_BO-O6jN8j5hgpAA-1
 Received: from smtp.corp.redhat.com (int-mx09.intmail.prod.int.rdu2.redhat.com [10.11.54.9])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id DBE8D800047
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:16 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id EB0A4800B35
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:14 +0000 (UTC)
 Received: from bcodding.csb.redhat.com (ovpn-0-3.rdu2.redhat.com [10.22.0.3])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 858E8492C13
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:16 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 94421492C13
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:14 +0000 (UTC)
 From:   Benjamin Coddington <bcodding@redhat.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 5/9] NFS: add a sysfs link to the lockd rpc_client
-Date:   Fri, 21 Apr 2023 13:08:08 -0400
-Message-Id: <e2d9155b4bbf300805ab4927cd66b87e7f8c77c9.1682096307.git.bcodding@redhat.com>
+Subject: [PATCH 2/9] NFS: rename nfs_client_kobj to nfs_net_kobj
+Date:   Fri, 21 Apr 2023 13:08:05 -0400
+Message-Id: <af2abf7f9623ca23968f442626dc2cc421964918.1682096307.git.bcodding@redhat.com>
 In-Reply-To: <cover.1682096307.git.bcodding@redhat.com>
 References: <cover.1682096307.git.bcodding@redhat.com>
 MIME-Version: 1.0
@@ -51,65 +51,69 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-After lockd is started, add a symlink for lockd's rpc_client under
-NFS' superblock sysfs.
+Match the variable names to the sysfs structure.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/lockd/clntlock.c        | 6 ++++++
- fs/nfs/client.c            | 1 +
- include/linux/lockd/bind.h | 2 ++
- 3 files changed, 9 insertions(+)
+ fs/nfs/sysfs.c | 10 +++++-----
+ fs/nfs/sysfs.h |  2 +-
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index a5bb3f721a9d..0340e10b5715 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -94,6 +94,12 @@ void nlmclnt_done(struct nlm_host *host)
+diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
+index 81d98727b79f..a496e26fcfb7 100644
+--- a/fs/nfs/sysfs.c
++++ b/fs/nfs/sysfs.c
+@@ -17,7 +17,7 @@
+ #include "netns.h"
+ #include "sysfs.h"
+ 
+-struct kobject *nfs_client_kobj;
++struct kobject *nfs_net_kobj;
+ static struct kset *nfs_kset;
+ 
+ static void nfs_netns_object_release(struct kobject *kobj)
+@@ -58,8 +58,8 @@ int nfs_sysfs_init(void)
+ 	nfs_kset = kset_create_and_add("nfs", NULL, fs_kobj);
+ 	if (!nfs_kset)
+ 		return -ENOMEM;
+-	nfs_client_kobj = nfs_netns_object_alloc("net", nfs_kset, NULL);
+-	if  (!nfs_client_kobj) {
++	nfs_net_kobj = nfs_netns_object_alloc("net", nfs_kset, NULL);
++	if  (!nfs_net_kobj) {
+ 		kset_unregister(nfs_kset);
+ 		nfs_kset = NULL;
+ 		return -ENOMEM;
+@@ -69,7 +69,7 @@ int nfs_sysfs_init(void)
+ 
+ void nfs_sysfs_exit(void)
+ {
+-	kobject_put(nfs_client_kobj);
++	kobject_put(nfs_net_kobj);
+ 	kset_unregister(nfs_kset);
  }
- EXPORT_SYMBOL_GPL(nlmclnt_done);
  
-+struct rpc_clnt *nlmclnt_rpc_clnt(struct nlm_host *host)
-+{
-+	return host->h_rpcclnt;
-+}
-+EXPORT_SYMBOL_GPL(nlmclnt_rpc_clnt);
-+
- /*
-  * Queue up a lock for blocking so that the GRANTED request can see it
-  */
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index de275f1fde92..eede8c28a56b 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -592,6 +592,7 @@ static int nfs_start_lockd(struct nfs_server *server)
+@@ -172,7 +172,7 @@ void nfs_netns_sysfs_setup(struct nfs_net *netns, struct net *net)
+ {
+ 	struct nfs_netns_client *clp;
  
- 	server->nlm_host = host;
- 	server->destroy = nfs_destroy_server;
-+	nfs_sysfs_link_rpc_client(server, nlmclnt_rpc_clnt(host), NULL);
- 	return 0;
- }
+-	clp = nfs_netns_client_alloc(nfs_client_kobj, net);
++	clp = nfs_netns_client_alloc(nfs_net_kobj, net);
+ 	if (clp) {
+ 		netns->nfs_client = clp;
+ 		kobject_uevent(&clp->kobject, KOBJ_ADD);
+diff --git a/fs/nfs/sysfs.h b/fs/nfs/sysfs.h
+index 5501ef573c32..0423aaf388c9 100644
+--- a/fs/nfs/sysfs.h
++++ b/fs/nfs/sysfs.h
+@@ -14,7 +14,7 @@ struct nfs_netns_client {
+ 	const char __rcu *identifier;
+ };
  
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index 3bc9f7410e21..c53c81242e72 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -20,6 +20,7 @@
- /* Dummy declarations */
- struct svc_rqst;
- struct rpc_task;
-+struct rpc_clnt;
+-extern struct kobject *nfs_client_kobj;
++extern struct kobject *nfs_net_kobj;
  
- /*
-  * This is the set of functions for lockd->nfsd communication
-@@ -56,6 +57,7 @@ struct nlmclnt_initdata {
- 
- extern struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init);
- extern void	nlmclnt_done(struct nlm_host *host);
-+extern struct rpc_clnt *nlmclnt_rpc_clnt(struct nlm_host *host);
- 
- /*
-  * NLM client operations provide a means to modify RPC processing of NLM
+ extern int nfs_sysfs_init(void);
+ extern void nfs_sysfs_exit(void);
 -- 
 2.39.2
 
