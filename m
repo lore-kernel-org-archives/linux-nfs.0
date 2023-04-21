@@ -2,46 +2,46 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1CC56C77B76
-	for <linux-nfs@archiver.kernel.org>; Fri, 21 Apr 2023 17:09:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F2BFEC77B7C
+	for <linux-nfs@archiver.kernel.org>; Fri, 21 Apr 2023 17:09:30 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233301AbjDURJa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 21 Apr 2023 13:09:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51652 "EHLO
+        id S233331AbjDURJ3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 21 Apr 2023 13:09:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51604 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233265AbjDURJ2 (ORCPT
+        with ESMTP id S233277AbjDURJ2 (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2023 13:09:28 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6542F40EF
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:08:17 -0700 (PDT)
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 371E116B07
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:08:22 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1682096895;
+        s=mimecast20190719; t=1682096901;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=mUqPpBsJy9yXuVdRMY7+DV0E3whm/8u/LqgfTtzlFHI=;
-        b=aXw+cEOc1dgldhqiWAh3++sehLB39b01DcPKwGHs+QX43CbmqqiFoWlCHy7aML9+LVTXcT
-        LzQGsg2hqsBNl3bJBdN5R24i76CYtk+DUHtM7Z/cgaPIdGpc7uY0VKRHK2dwSUKyLGxOon
-        azrjyMiAB/6NyMIfUlSg6jrJcwsQ5kk=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+        bh=ethrqsNDJbce/pd6mDiBUVo/gEjhteyCZz5HB+vKCh4=;
+        b=WyrcAvnQZoaF8pySN9oTVjHn0mt1jGst21bYSi12/QaCE+VYFvJAXRIy51smEwa1ru3o+B
+        zY6hZP7AjkWi9PHOEPdpbZtmHRTiKnnF6veSazyzTOTXjd5pRNbIAykuzZDwUo+oIk023B
+        grHH886VUQRuInQVk7Rt1GoHpbih3kc=
+Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
+ [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-300-9TTIVe26P5qM6KT-5XvqZg-1; Fri, 21 Apr 2023 13:08:14 -0400
-X-MC-Unique: 9TTIVe26P5qM6KT-5XvqZg-1
+ us-mta-191-wiOtJi6YM1OFOu5GtY5Yyg-1; Fri, 21 Apr 2023 13:08:19 -0400
+X-MC-Unique: wiOtJi6YM1OFOu5GtY5Yyg-1
 Received: from smtp.corp.redhat.com (int-mx09.intmail.prod.int.rdu2.redhat.com [10.11.54.9])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 4CCE0185A78B
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:14 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 765913C0F689
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:19 +0000 (UTC)
 Received: from bcodding.csb.redhat.com (ovpn-0-3.rdu2.redhat.com [10.22.0.3])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id E939D492C13
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:13 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 1FEE2492C14
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:18 +0000 (UTC)
 From:   Benjamin Coddington <bcodding@redhat.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/9] NFS: rename nfs_client_kset to nfs_kset
-Date:   Fri, 21 Apr 2023 13:08:04 -0400
-Message-Id: <698994379a2d17dded9f853bbdf3649345808126.1682096307.git.bcodding@redhat.com>
+Subject: [PATCH 9/9] NFSv4: Clean up some shutdown loops
+Date:   Fri, 21 Apr 2023 13:08:12 -0400
+Message-Id: <84e78ef0afd919a5fbebbbc2b670f447c264b436.1682096307.git.bcodding@redhat.com>
 In-Reply-To: <cover.1682096307.git.bcodding@redhat.com>
 References: <cover.1682096307.git.bcodding@redhat.com>
 MIME-Version: 1.0
@@ -51,64 +51,45 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Be brief and match the subsystem name.  There's no need to distinguish this
-kset variable from the server.
+If a SEQUENCE call receives -EIO for a shutdown client, it will retry the
+RPC call.  Instead of doing that for a shutdown client, just bail out.
+
+Likewise, if the state manager decides to perform recovery for a shutdown
+client, it will continuously retry.  As above, just bail out.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/nfs/sysfs.c | 16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+ fs/nfs/nfs4proc.c  | 2 +-
+ fs/nfs/nfs4state.c | 3 +++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
-index 0cbcd2dfa732..81d98727b79f 100644
---- a/fs/nfs/sysfs.c
-+++ b/fs/nfs/sysfs.c
-@@ -18,7 +18,7 @@
- #include "sysfs.h"
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 40d749f29ed3..a36e35d885c3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -9357,7 +9357,7 @@ static void nfs41_sequence_call_done(struct rpc_task *task, void *data)
+ 		return;
  
- struct kobject *nfs_client_kobj;
--static struct kset *nfs_client_kset;
-+static struct kset *nfs_kset;
+ 	trace_nfs4_sequence(clp, task->tk_status);
+-	if (task->tk_status < 0) {
++	if (task->tk_status < 0 && !task->tk_client->cl_shutdown) {
+ 		dprintk("%s ERROR %d\n", __func__, task->tk_status);
+ 		if (refcount_read(&clp->cl_count) == 1)
+ 			return;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f8afd75e520d..039a3b4ae565 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1206,6 +1206,9 @@ void nfs4_schedule_state_manager(struct nfs_client *clp)
+ 	struct task_struct *task;
+ 	char buf[INET6_ADDRSTRLEN + sizeof("-manager") + 1];
  
- static void nfs_netns_object_release(struct kobject *kobj)
- {
-@@ -55,13 +55,13 @@ static struct kobject *nfs_netns_object_alloc(const char *name,
- 
- int nfs_sysfs_init(void)
- {
--	nfs_client_kset = kset_create_and_add("nfs", NULL, fs_kobj);
--	if (!nfs_client_kset)
-+	nfs_kset = kset_create_and_add("nfs", NULL, fs_kobj);
-+	if (!nfs_kset)
- 		return -ENOMEM;
--	nfs_client_kobj = nfs_netns_object_alloc("net", nfs_client_kset, NULL);
-+	nfs_client_kobj = nfs_netns_object_alloc("net", nfs_kset, NULL);
- 	if  (!nfs_client_kobj) {
--		kset_unregister(nfs_client_kset);
--		nfs_client_kset = NULL;
-+		kset_unregister(nfs_kset);
-+		nfs_kset = NULL;
- 		return -ENOMEM;
- 	}
- 	return 0;
-@@ -70,7 +70,7 @@ int nfs_sysfs_init(void)
- void nfs_sysfs_exit(void)
- {
- 	kobject_put(nfs_client_kobj);
--	kset_unregister(nfs_client_kset);
-+	kset_unregister(nfs_kset);
- }
- 
- static ssize_t nfs_netns_identifier_show(struct kobject *kobj,
-@@ -159,7 +159,7 @@ static struct nfs_netns_client *nfs_netns_client_alloc(struct kobject *parent,
- 	p = kzalloc(sizeof(*p), GFP_KERNEL);
- 	if (p) {
- 		p->net = net;
--		p->kobject.kset = nfs_client_kset;
-+		p->kobject.kset = nfs_kset;
- 		if (kobject_init_and_add(&p->kobject, &nfs_netns_client_type,
- 					parent, "nfs_client") == 0)
- 			return p;
++	if (clp->cl_rpcclient->cl_shutdown)
++		return;
++
+ 	set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
+ 	if (test_and_set_bit(NFS4CLNT_MANAGER_AVAILABLE, &clp->cl_state) != 0) {
+ 		wake_up_var(&clp->cl_state);
 -- 
 2.39.2
 
