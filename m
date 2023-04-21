@@ -2,46 +2,46 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AFF43C77B61
-	for <linux-nfs@archiver.kernel.org>; Fri, 21 Apr 2023 17:09:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E67F8C77B61
+	for <linux-nfs@archiver.kernel.org>; Fri, 21 Apr 2023 17:10:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233236AbjDURJb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 21 Apr 2023 13:09:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51888 "EHLO
+        id S232921AbjDURJm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 21 Apr 2023 13:09:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52122 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233247AbjDURJ3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2023 13:09:29 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BC03DC172
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:08:18 -0700 (PDT)
+        with ESMTP id S233368AbjDURJd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2023 13:09:33 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7929F167FA
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:08:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1682096897;
+        s=mimecast20190719; t=1682096900;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=RjShONusOdEpIJwGrDOuO3fRc0vE5MoNwmON3dpd1WA=;
-        b=MoCrqEEtB29Csn7yPgMTrAsLmrXuKuiYSEE5080TNbwu8O4VECPBoht9IpSkhYqQG1VBrF
-        qbewT9N35Te5ff6pD/2nwNLc5W7ck4ZSP+as9lKx+2HRTmQi8eJWvuiAMyGu+bE1QQmEoZ
-        OHEzZ0ovGOzGtBnbd62PZungNnHDjdc=
+        bh=WIOeVYmsgdb/B86+ukVBj/ov84WzL1MRxSVIp0Qg25U=;
+        b=OT+XzB95C3B/9VKEItnE6m7pvhIxfDjfpvXpf5xbjUvK49BLNAZeaWQQIv7mXrnd0XvAI8
+        8/GNMGCbm+VP4gu82h7+LY6XZhOGhMGGBueKFzMy3g3wX6323WBswzP6rcKe92myExUnQ/
+        UW3arrpQIVYGs+mv/GQuDWR5OoDUoDU=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-633-3Zw7Wv_BO-O6jN8j5hgpAA-1; Fri, 21 Apr 2023 13:08:15 -0400
-X-MC-Unique: 3Zw7Wv_BO-O6jN8j5hgpAA-1
+ us-mta-296-6zcwVfALPaqZJwFnumjEYg-1; Fri, 21 Apr 2023 13:08:19 -0400
+X-MC-Unique: 6zcwVfALPaqZJwFnumjEYg-1
 Received: from smtp.corp.redhat.com (int-mx09.intmail.prod.int.rdu2.redhat.com [10.11.54.9])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id EB0A4800B35
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:14 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id CCB74811E7D
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:18 +0000 (UTC)
 Received: from bcodding.csb.redhat.com (ovpn-0-3.rdu2.redhat.com [10.22.0.3])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 94421492C13
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:14 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 771F9492C13
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:08:18 +0000 (UTC)
 From:   Benjamin Coddington <bcodding@redhat.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/9] NFS: rename nfs_client_kobj to nfs_net_kobj
-Date:   Fri, 21 Apr 2023 13:08:05 -0400
-Message-Id: <af2abf7f9623ca23968f442626dc2cc421964918.1682096307.git.bcodding@redhat.com>
+Subject: [PATCH 8/9] NFS: Cleanup unused rpc_clnt variable
+Date:   Fri, 21 Apr 2023 13:08:11 -0400
+Message-Id: <7b299fff0277489fd6f8a12d377fb3edc5fb3a80.1682096307.git.bcodding@redhat.com>
 In-Reply-To: <cover.1682096307.git.bcodding@redhat.com>
 References: <cover.1682096307.git.bcodding@redhat.com>
 MIME-Version: 1.0
@@ -51,69 +51,29 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Match the variable names to the sysfs structure.
+The root rpc_clnt is not used here, clean it up.
 
+Fixes: 4dc73c679114 ("NFSv4: keep state manager thread active if swap is enabled")
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/nfs/sysfs.c | 10 +++++-----
- fs/nfs/sysfs.h |  2 +-
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4state.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
-index 81d98727b79f..a496e26fcfb7 100644
---- a/fs/nfs/sysfs.c
-+++ b/fs/nfs/sysfs.c
-@@ -17,7 +17,7 @@
- #include "netns.h"
- #include "sysfs.h"
- 
--struct kobject *nfs_client_kobj;
-+struct kobject *nfs_net_kobj;
- static struct kset *nfs_kset;
- 
- static void nfs_netns_object_release(struct kobject *kobj)
-@@ -58,8 +58,8 @@ int nfs_sysfs_init(void)
- 	nfs_kset = kset_create_and_add("nfs", NULL, fs_kobj);
- 	if (!nfs_kset)
- 		return -ENOMEM;
--	nfs_client_kobj = nfs_netns_object_alloc("net", nfs_kset, NULL);
--	if  (!nfs_client_kobj) {
-+	nfs_net_kobj = nfs_netns_object_alloc("net", nfs_kset, NULL);
-+	if  (!nfs_net_kobj) {
- 		kset_unregister(nfs_kset);
- 		nfs_kset = NULL;
- 		return -ENOMEM;
-@@ -69,7 +69,7 @@ int nfs_sysfs_init(void)
- 
- void nfs_sysfs_exit(void)
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 2a0ca5c7f082..f8afd75e520d 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1205,10 +1205,6 @@ void nfs4_schedule_state_manager(struct nfs_client *clp)
  {
--	kobject_put(nfs_client_kobj);
-+	kobject_put(nfs_net_kobj);
- 	kset_unregister(nfs_kset);
- }
+ 	struct task_struct *task;
+ 	char buf[INET6_ADDRSTRLEN + sizeof("-manager") + 1];
+-	struct rpc_clnt *cl = clp->cl_rpcclient;
+-
+-	while (cl != cl->cl_parent)
+-		cl = cl->cl_parent;
  
-@@ -172,7 +172,7 @@ void nfs_netns_sysfs_setup(struct nfs_net *netns, struct net *net)
- {
- 	struct nfs_netns_client *clp;
- 
--	clp = nfs_netns_client_alloc(nfs_client_kobj, net);
-+	clp = nfs_netns_client_alloc(nfs_net_kobj, net);
- 	if (clp) {
- 		netns->nfs_client = clp;
- 		kobject_uevent(&clp->kobject, KOBJ_ADD);
-diff --git a/fs/nfs/sysfs.h b/fs/nfs/sysfs.h
-index 5501ef573c32..0423aaf388c9 100644
---- a/fs/nfs/sysfs.h
-+++ b/fs/nfs/sysfs.h
-@@ -14,7 +14,7 @@ struct nfs_netns_client {
- 	const char __rcu *identifier;
- };
- 
--extern struct kobject *nfs_client_kobj;
-+extern struct kobject *nfs_net_kobj;
- 
- extern int nfs_sysfs_init(void);
- extern void nfs_sysfs_exit(void);
+ 	set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
+ 	if (test_and_set_bit(NFS4CLNT_MANAGER_AVAILABLE, &clp->cl_state) != 0) {
 -- 
 2.39.2
 
