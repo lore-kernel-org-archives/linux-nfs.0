@@ -2,46 +2,46 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7611CC7618E
-	for <linux-nfs@archiver.kernel.org>; Fri, 21 Apr 2023 17:19:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4FBE6C7618E
+	for <linux-nfs@archiver.kernel.org>; Fri, 21 Apr 2023 17:20:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233014AbjDURTc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 21 Apr 2023 13:19:32 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60322 "EHLO
+        id S232286AbjDURUJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 21 Apr 2023 13:20:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60390 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231521AbjDURT3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2023 13:19:29 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 64ED293F4
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:18:44 -0700 (PDT)
+        with ESMTP id S231521AbjDURUI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2023 13:20:08 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 611FFD32A
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:18:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1682097523;
+        s=mimecast20190719; t=1682097526;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=1bbLgTZ/Mv4sjWOIeGcgHLoRnvtOulgkxycOaZHm+1s=;
-        b=bv1Y0wMoX++A8zfL+hWo0lvILsFpK8Ga1ArI4LOByLQc1jbFOOtV6xnZhjdLD97XmL9zGM
-        vTMextYnOZt/hkrqscZgS/+K26Qc5BNSz/2NEYZ+bzFeBskiyBwVxVSEX6/TTwyIKD69hK
-        FGCOl4EX8ef7jkv/252ZVA3oBj7yeHI=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+        bh=9S3EJJd783yVw0y/enXpAp/TWSHq6vt71X8pLPKuEJo=;
+        b=TN5opxIBkkYxHdhhOWrfmFsz5512Zq8Vj1gPqpH0u3DmKkl9o+zLRmBDf02BX2rEY9PgRS
+        fZ7hZcicPEpkN8s7OX6uEJYLH7Uq0Z8vt+XbIA6X/VU/iwTI3+nzuoVcMhfsvP4ln6sxfV
+        QfLypCIrSLJKXc4cl0mtMhx5Satxoyw=
+Received: from mimecast-mx02.redhat.com (mx3-rdu2.redhat.com
+ [66.187.233.73]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-154-zHrcWJ_sPbKWikHSng3Zmw-1; Fri, 21 Apr 2023 13:18:42 -0400
-X-MC-Unique: zHrcWJ_sPbKWikHSng3Zmw-1
+ us-mta-395-FaUiZBQ9OXekfdTAJpnh6A-1; Fri, 21 Apr 2023 13:18:45 -0400
+X-MC-Unique: FaUiZBQ9OXekfdTAJpnh6A-1
 Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 3F4538996E3
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:18:42 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id A8231382C969
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:18:44 +0000 (UTC)
 Received: from bcodding.csb.redhat.com (ovpn-0-3.rdu2.redhat.com [10.22.0.3])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id EDFF740C2064
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:18:41 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 531F440C2064
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:18:44 +0000 (UTC)
 From:   Benjamin Coddington <bcodding@redhat.com>
 To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/9] NFS: add superblock sysfs entries
-Date:   Fri, 21 Apr 2023 13:18:33 -0400
-Message-Id: <3d82b26e0f13d32e26f455e639fa989699020b21.1682097420.git.bcodding@redhat.com>
+Subject: [PATCH 7/9] NFS: add sysfs shutdown knob
+Date:   Fri, 21 Apr 2023 13:18:37 -0400
+Message-Id: <2493a957a1c842d5cf32a4c2347dd17e6cb3370d.1682097420.git.bcodding@redhat.com>
 In-Reply-To: <cover.1682097420.git.bcodding@redhat.com>
 References: <cover.1682097420.git.bcodding@redhat.com>
 MIME-Version: 1.0
@@ -51,214 +51,132 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Create a sysfs directory for each mount that corresponds to the mount's
-nfs_server struct.  As the mount is being constructed, use the name
-"server-n", but rename it to the "MAJOR:MINOR" of the mount after assigning
-a device_id. The rename approach allows us to populate the mount's directory
-with links to the various rpc_client objects during the mount's
-construction.  The naming convention (MAJOR:MINOR) can be used to reference
-a particular NFS mount's sysfs tree.
+Within each nfs_server sysfs tree, add an entry named "shutdown".  Writing
+1 to this file will set the cl_shutdown bit on the rpc_clnt structs
+associated with that mount.  If cl_shutdown is set, the task scheduler
+immediately returns -EIO for new tasks.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/nfs/client.c           | 15 ++++++++++
- fs/nfs/super.c            |  6 +++-
- fs/nfs/sysfs.c            | 58 +++++++++++++++++++++++++++++++++++++++
- fs/nfs/sysfs.h            |  5 ++++
- include/linux/nfs_fs_sb.h |  2 ++
- 5 files changed, 85 insertions(+), 1 deletion(-)
+ fs/nfs/sysfs.c              | 46 +++++++++++++++++++++++++++++++++++++
+ include/linux/nfs_fs_sb.h   |  1 +
+ include/linux/sunrpc/clnt.h |  3 ++-
+ net/sunrpc/clnt.c           |  5 ++++
+ 4 files changed, 54 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index f50e025ae406..72da715fc617 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -944,6 +944,8 @@ void nfs_server_remove_lists(struct nfs_server *server)
- }
- EXPORT_SYMBOL_GPL(nfs_server_remove_lists);
- 
-+static DEFINE_IDA(s_sysfs_ids);
-+
- /*
-  * Allocate and initialise a server record
-  */
-@@ -955,6 +957,13 @@ struct nfs_server *nfs_alloc_server(void)
- 	if (!server)
- 		return NULL;
- 
-+	server->s_sysfs_id = ida_simple_get(
-+		&s_sysfs_ids, 0, 0, GFP_KERNEL);
-+	if (server->s_sysfs_id < 0) {
-+		kfree(server);
-+		return NULL;
-+	}
-+
- 	server->client = server->client_acl = ERR_PTR(-EINVAL);
- 
- 	/* Zero out the NFS state stuff */
-@@ -979,6 +988,7 @@ struct nfs_server *nfs_alloc_server(void)
- 	ida_init(&server->lockowner_id);
- 	pnfs_init_server(server);
- 	rpc_init_wait_queue(&server->uoc_rpcwaitq, "NFS UOC");
-+	nfs_sysfs_add_server(server);
- 
- 	return server;
- }
-@@ -1001,6 +1011,10 @@ void nfs_free_server(struct nfs_server *server)
- 
- 	nfs_put_client(server->nfs_client);
- 
-+	nfs_sysfs_remove_server(server);
-+	kobject_put(&server->kobj);
-+	ida_simple_remove(&s_sysfs_ids, server->s_sysfs_id);
-+
- 	ida_destroy(&server->lockowner_id);
- 	ida_destroy(&server->openowner_id);
- 	nfs_free_iostats(server->io_stats);
-@@ -1385,6 +1399,7 @@ int __init nfs_fs_proc_init(void)
- void nfs_fs_proc_exit(void)
- {
- 	remove_proc_subtree("fs/nfsfs", NULL);
-+	ida_destroy(&s_sysfs_ids);
- }
- 
- #endif /* CONFIG_PROC_FS */
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 05ae23657527..40a866db7965 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -68,6 +68,8 @@
- #include "nfs4session.h"
- #include "pnfs.h"
- #include "nfs.h"
-+#include "netns.h"
-+#include "sysfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_VFS
- 
-@@ -1088,6 +1090,7 @@ static void nfs_fill_super(struct super_block *sb, struct nfs_fs_context *ctx)
- 						 &sb->s_blocksize_bits);
- 
- 	nfs_super_set_maxbytes(sb, server->maxfilesize);
-+	nfs_sysfs_move_server_to_sb(sb);
- 	server->has_sec_mnt_opts = ctx->has_sec_mnt_opts;
- }
- 
-@@ -1333,13 +1336,14 @@ int nfs_get_tree_common(struct fs_context *fc)
- }
- 
- /*
-- * Destroy an NFS2/3 superblock
-+ * Destroy an NFS superblock
-  */
- void nfs_kill_super(struct super_block *s)
- {
- 	struct nfs_server *server = NFS_SB(s);
- 	dev_t dev = s->s_dev;
- 
-+	nfs_sysfs_move_sb_to_server(server);
- 	generic_shutdown_super(s);
- 
- 	nfs_fscache_release_super_cookie(s);
 diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
-index a496e26fcfb7..534e2293a698 100644
+index e1b5df7a3df5..09fde2719495 100644
 --- a/fs/nfs/sysfs.c
 +++ b/fs/nfs/sysfs.c
-@@ -190,3 +190,61 @@ void nfs_netns_sysfs_destroy(struct nfs_net *netns)
- 		netns->nfs_client = NULL;
+@@ -12,6 +12,7 @@
+ #include <linux/string.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/rcupdate.h>
++#include <linux/lockd/lockd.h>
+ 
+ #include "nfs4_fs.h"
+ #include "netns.h"
+@@ -191,6 +192,50 @@ void nfs_netns_sysfs_destroy(struct nfs_net *netns)
  	}
  }
-+
-+static void nfs_sysfs_sb_release(struct kobject *kobj)
-+{
-+	/* no-op: why? see lib/kobject.c kobject_cleanup() */
-+}
-+
-+static struct attribute *nfs_mp_attrs[] = {
-+        NULL,
-+};
-+
-+ATTRIBUTE_GROUPS(nfs_mp);
-+
-+static struct kobj_type nfs_sb_ktype = {
-+	.release = nfs_sysfs_sb_release,
-+	.sysfs_ops = &kobj_sysfs_ops,
-+	.default_groups = nfs_mp_groups,
-+};
-+
-+void nfs_sysfs_add_server(struct nfs_server *server)
-+{
-+	int ret;
-+
-+	ret = kobject_init_and_add(&server->kobj, &nfs_sb_ktype,
-+				&nfs_kset->kobj, "server-%d", server->s_sysfs_id);
-+	if (ret < 0)
-+		pr_warn("NFS: nfs sysfs add server-%d failed (%d)\n",
-+					server->s_sysfs_id, ret);
-+}
-+
-+void nfs_sysfs_move_server_to_sb(struct super_block *s)
-+{
-+	struct nfs_server *server = s->s_fs_info;
-+	int ret;
-+
-+	ret = kobject_rename(&server->kobj, s->s_id);
-+	if (ret < 0)
-+		pr_warn("NFS: rename sysfs %s failed (%d)\n",
-+					server->kobj.name, ret);
-+}
-+
-+void nfs_sysfs_move_sb_to_server(struct nfs_server *server)
-+{
-+	const char *s;
-+	int ret = -ENOMEM;
-+
-+	s = kasprintf(GFP_KERNEL, "server-%d", server->s_sysfs_id);
-+	if (s)
-+		ret = kobject_rename(&server->kobj, s);
-+	if (ret < 0)
-+		pr_warn("NFS: rename sysfs %s failed (%d)\n",
-+					server->kobj.name, ret);
-+}
-+
-+/* unlink, not dec-ref */
-+void nfs_sysfs_remove_server(struct nfs_server *server)
-+{
-+	kobject_del(&server->kobj);
-+}
-diff --git a/fs/nfs/sysfs.h b/fs/nfs/sysfs.h
-index 0423aaf388c9..0fc80fb55b3e 100644
---- a/fs/nfs/sysfs.h
-+++ b/fs/nfs/sysfs.h
-@@ -22,4 +22,9 @@ extern void nfs_sysfs_exit(void);
- void nfs_netns_sysfs_setup(struct nfs_net *netns, struct net *net);
- void nfs_netns_sysfs_destroy(struct nfs_net *netns);
  
-+void nfs_sysfs_add_server(struct nfs_server *s);
-+void nfs_sysfs_move_server_to_sb(struct super_block *s);
-+void nfs_sysfs_move_sb_to_server(struct nfs_server *s);
-+void nfs_sysfs_remove_server(struct nfs_server *s);
++static ssize_t
++shutdown_show(struct kobject *kobj, struct kobj_attribute *attr,
++				char *buf)
++{
++	struct nfs_server *server = container_of(kobj, struct nfs_server, kobj);
++	bool shutdown = server->flags & NFS_MOUNT_SHUTDOWN;
++	return sysfs_emit(buf, "%d\n", shutdown);
++}
 +
- #endif
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index ea2f7e6b1b0b..dee1664abca8 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -183,6 +183,7 @@ struct nfs_server {
- 				change_attr_type;/* Description of change attribute */
++static ssize_t
++shutdown_store(struct kobject *kobj, struct kobj_attribute *attr,
++				const char *buf, size_t count)
++{
++	struct nfs_server *server;
++	int ret, val;
++
++	server = container_of(kobj, struct nfs_server, kobj);
++
++	ret = kstrtoint(buf, 0, &val);
++	if (ret)
++		return ret;
++
++	if (val != 1)
++		return -EINVAL;
++
++	/* already shut down? */
++	if (server->flags & NFS_MOUNT_SHUTDOWN)
++		goto out;
++
++	server->flags |= NFS_MOUNT_SHUTDOWN;
++	server->client->cl_shutdown = 1;
++	server->nfs_client->cl_rpcclient->cl_shutdown = 1;
++
++	if (!IS_ERR(server->client_acl))
++		server->client_acl->cl_shutdown = 1;
++
++	if (server->nlm_host)
++		server->nlm_host->h_rpcclnt->cl_shutdown = 1;
++out:
++	return count;
++}
++
++static struct kobj_attribute nfs_sysfs_attr_shutdown = __ATTR_RW(shutdown);
++
+ #define RPC_CLIENT_NAME_SIZE 64
  
- 	struct nfs_fsid		fsid;
-+	int			s_sysfs_id;	/* sysfs dentry index */
- 	__u64			maxfilesize;	/* maximum file size */
- 	struct timespec64	time_delta;	/* smallest time granularity */
- 	unsigned long		mount_time;	/* when this fs was mounted */
-@@ -259,6 +260,7 @@ struct nfs_server {
- 	/* User namespace info */
- 	const struct cred	*cred;
- 	bool			has_sec_mnt_opts;
-+	struct kobject	kobj;
+ void nfs_sysfs_link_rpc_client(struct nfs_server *server,
+@@ -217,6 +262,7 @@ static void nfs_sysfs_sb_release(struct kobject *kobj)
+ }
+ 
+ static struct attribute *nfs_mp_attrs[] = {
++		&nfs_sysfs_attr_shutdown.attr,
+         NULL,
  };
  
- /* Server capabilities */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index dee1664abca8..bc89496384ff 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -153,6 +153,7 @@ struct nfs_server {
+ #define NFS_MOUNT_WRITE_EAGER		0x01000000
+ #define NFS_MOUNT_WRITE_WAIT		0x02000000
+ #define NFS_MOUNT_TRUNK_DISCOVERY	0x04000000
++#define NFS_MOUNT_SHUTDOWN			0x08000000
+ 
+ 	unsigned int		fattr_valid;	/* Valid attributes */
+ 	unsigned int		caps;		/* server capabilities */
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 4ec718aa91f5..9f72c75a2056 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -63,7 +63,8 @@ struct rpc_clnt {
+ 				cl_discrtry : 1,/* disconnect before retry */
+ 				cl_noretranstimeo: 1,/* No retransmit timeouts */
+ 				cl_autobind : 1,/* use getport() */
+-				cl_chatty   : 1;/* be verbose */
++				cl_chatty   : 1,/* be verbose */
++				cl_shutdown : 1;/* rpc immediate -EIO */
+ 
+ 	struct rpc_rtt *	cl_rtt;		/* RTO estimator data */
+ 	const struct rpc_timeout *cl_timeout;	/* Timeout strategy */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 0b0b9f1eed46..3c5dca88a918 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1717,6 +1717,11 @@ call_start(struct rpc_task *task)
+ 
+ 	trace_rpc_request(task);
+ 
++	if (task->tk_client->cl_shutdown) {
++		rpc_call_rpcerror(task, -EIO);
++		return;
++	}
++
+ 	/* Increment call count (version might not be valid for ping) */
+ 	if (clnt->cl_program->version[clnt->cl_vers])
+ 		clnt->cl_program->version[clnt->cl_vers]->counts[idx]++;
 -- 
 2.39.2
 
