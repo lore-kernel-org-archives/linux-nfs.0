@@ -2,104 +2,118 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id ACD19C7618E
-	for <linux-nfs@archiver.kernel.org>; Fri, 21 Apr 2023 17:20:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 072CFC7618E
+	for <linux-nfs@archiver.kernel.org>; Fri, 21 Apr 2023 17:38:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232591AbjDURUR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 21 Apr 2023 13:20:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60392 "EHLO
+        id S230076AbjDURiE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 21 Apr 2023 13:38:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39252 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229821AbjDURUQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2023 13:20:16 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D64731024E
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:18:47 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1682097527;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=b4+F4u3i25b+jqtXug/7kYRG3NEDgvJ+bE5/YIlCl7g=;
-        b=L/6cc6DHKqR1wInHgW5nG2BJJgDUg/ASzGzWj3+XxOufiE4Jw5kLOyjNssuwBsOuZnwG8W
-        h6eHqFrd//aOq/rNu5jqZ6WBkEixQ+x+euHmQMtYu2GLpWpuGFeGuG9jbVzPuyJ7/KokVD
-        qaDkckL2JWkiQXnBCLV4/XLo9EqAmtA=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-19-S7HqvddnPL-QDjsDNCxL3Q-1; Fri, 21 Apr 2023 13:18:45 -0400
-X-MC-Unique: S7HqvddnPL-QDjsDNCxL3Q-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 5188E886063
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:18:45 +0000 (UTC)
-Received: from bcodding.csb.redhat.com (ovpn-0-3.rdu2.redhat.com [10.22.0.3])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id EF7EE40C2064
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 17:18:44 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 8/9] NFS: Cancel all existing RPC tasks when shutdown
-Date:   Fri, 21 Apr 2023 13:18:38 -0400
-Message-Id: <8a519c1620702ae155885b924d8d4e2fe932b390.1682097420.git.bcodding@redhat.com>
-In-Reply-To: <cover.1682097420.git.bcodding@redhat.com>
-References: <cover.1682097420.git.bcodding@redhat.com>
+        with ESMTP id S230472AbjDURiE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2023 13:38:04 -0400
+Received: from mail-qt1-x832.google.com (mail-qt1-x832.google.com [IPv6:2607:f8b0:4864:20::832])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3314112588
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:38:02 -0700 (PDT)
+Received: by mail-qt1-x832.google.com with SMTP id d75a77b69052e-3ef38bea86aso11454211cf.3
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Apr 2023 10:38:02 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1682098681; x=1684690681;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=XArwqo9xByKk+E1r98ALtxRloTa5ZsuFnsr/PGszOh8=;
+        b=BpaOf/tlKrnfZa7nGjzi5SOEUtjnwwCS5CroqZ8X03NbDsYJqDkO4McJd4Mh828u6E
+         9G/GRwUPKwzjl5Qe4uAt+j26gaYh09hf5x2L+O4YOowzVJ2tbr63VOKhzyKVNzbmwskL
+         23a7swZl6i0jHXNJrpCgiH9C47vLFkpRiL1kpFhiwdjK0TuseXyONcRNbdzUUkxjuHXy
+         oaQzxYpGsDPNSQ0SdSApxXPD62GVSb7tfYq6FovymD1y0SJ9MO5TbAaFCn8kscB7UfUu
+         CAMdD7rMacr9DMQDwBCG9obgtBYK0VHmVKD7Ev6u1vtzYuX/jhpXg4I5dnvUQUj9JUsq
+         G+YA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1682098681; x=1684690681;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=XArwqo9xByKk+E1r98ALtxRloTa5ZsuFnsr/PGszOh8=;
+        b=Uspdjo2hjz0s0HUmY5yFCOCgH0rWA9eMAWXNE7L9jlDiVlzuSvm+Xz5R5m36UeXzod
+         5AAX82IrTAC2woT0TiwDhjYHkggex2FkS06Gc5ZP1fwiHzbYF1e8cuqrNN3pkOF3/em7
+         fBmbd3GVR7VqJixdfgJCwEqdzr9CUCnP1SfyF5NqvCQIETjpvJTByofT97dL9abb2Jnz
+         0xwYh5ubzgJQqGffaC1QD47DF8AXS6d0CmWCxbjB4dUoQNvwv4IofdaD7EudDKZgFolQ
+         WbwDtuyr2M3kLTRta+fT6Myf9Uc8DNW7sseHDXJdyOO7kKLEhgUOd7RIWIsvC6RdV2wH
+         sMXg==
+X-Gm-Message-State: AAQBX9d1FXLvEejNm2mjHjZ6azcUEiaCeEPhmZTWJ9qs+fylqxyxayS8
+        4GfIfat7X0VYGLM6WUuP+8gG+cBdWRgvJW0c6EULXi0X
+X-Google-Smtp-Source: AKy350ZuodJM16XeYbSBkU4NEJTn/0kjulHO+PLAYTAjhYWp+m5HObXPAFXU6KknXTw56+DszIYzN4QOsrxeo7iJa74=
+X-Received: by 2002:ac8:4e45:0:b0:3a8:a84:7ffa with SMTP id
+ e5-20020ac84e45000000b003a80a847ffamr8840143qtw.57.1682098681000; Fri, 21 Apr
+ 2023 10:38:01 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.1
+References: <cover.1682096307.git.bcodding@redhat.com>
+In-Reply-To: <cover.1682096307.git.bcodding@redhat.com>
+From:   Anna Schumaker <schumaker.anna@gmail.com>
+Date:   Fri, 21 Apr 2023 13:37:45 -0400
+Message-ID: <CAFX2JfnhRv53kSFs5s+QqwVmU2pQShWL_jQSTztMMFvv79=04A@mail.gmail.com>
+Subject: Re: [PATCH 0/9 RFC v2] NFS sysfs scaffolding
+To:     Benjamin Coddington <bcodding@redhat.com>
+Cc:     linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Walk existing RPC tasks and cancel them with -EIO when the client is
-shutdown.
+Hi Ben,
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/sysfs.c | 19 +++++++++++++++----
- 1 file changed, 15 insertions(+), 4 deletions(-)
+On Fri, Apr 21, 2023 at 1:10=E2=80=AFPM Benjamin Coddington <bcodding@redha=
+t.com> wrote:
+>
+> Here's another round of sysfs entries for each nfs_server, this time with=
+ a
+> single use-case: a "shutdown" toggle that causes the basic rpc_clnt(s) to
+> immediately fail tasks with -EIO.  It works well for the non pNFS cases t=
+o
+> allow an unmount of a filesystem when the NFS server has gone away.
+>
+> I'm posting to gain potential NACKing, or to be redirected, or to serve a=
+s
+> fodder for discussion at LSF.
+>
+> I'm thinking I'd like to toggle v4.2 things like READ_PLUS in here next, =
+or
+> other module-level options that maybe would be useful per-mount.
 
-diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
-index 09fde2719495..70cd211d870c 100644
---- a/fs/nfs/sysfs.c
-+++ b/fs/nfs/sysfs.c
-@@ -192,6 +192,17 @@ void nfs_netns_sysfs_destroy(struct nfs_net *netns)
- 	}
- }
- 
-+static bool shutdown_match_client(const struct rpc_task *task, const void *data)
-+{
-+	return true;
-+}
-+
-+static void shutdown_client(struct rpc_clnt *clnt)
-+{
-+	clnt->cl_shutdown = 1;
-+	rpc_cancel_tasks(clnt, -EIO, shutdown_match_client, NULL);
-+}
-+
- static ssize_t
- shutdown_show(struct kobject *kobj, struct kobj_attribute *attr,
- 				char *buf)
-@@ -222,14 +233,14 @@ shutdown_store(struct kobject *kobj, struct kobj_attribute *attr,
- 		goto out;
- 
- 	server->flags |= NFS_MOUNT_SHUTDOWN;
--	server->client->cl_shutdown = 1;
--	server->nfs_client->cl_rpcclient->cl_shutdown = 1;
-+	shutdown_client(server->client);
-+	shutdown_client(server->nfs_client->cl_rpcclient);
- 
- 	if (!IS_ERR(server->client_acl))
--		server->client_acl->cl_shutdown = 1;
-+		shutdown_client(server->client_acl);
- 
- 	if (server->nlm_host)
--		server->nlm_host->h_rpcclnt->cl_shutdown = 1;
-+		shutdown_client(server->nlm_host->h_rpcclnt);
- out:
- 	return count;
- }
--- 
-2.39.2
+I have a patch built on your v1 posting that implements this. I can
+rebase on v2 (well, I guess it'll be v3 now) if you want to see it!
 
+Anna
+
+>
+> Benjamin Coddington (9):
+>   NFS: rename nfs_client_kset to nfs_kset
+>   NFS: rename nfs_client_kobj to nfs_net_kobj
+>   NFS: add superblock sysfs entries
+>   NFS: Add sysfs links to sunrpc clients for nfs_clients
+>   NFS: add a sysfs link to the lockd rpc_client
+>   NFS: add a sysfs link to the acl rpc_client
+>   NFS: add sysfs shutdown knob
+>   NFS: Cleanup unused rpc_clnt variable
+>   NFSv4: Clean up some shutdown loops
+>
+>  fs/lockd/clntlock.c         |   6 ++
+>  fs/nfs/client.c             |  21 +++++
+>  fs/nfs/nfs3client.c         |   4 +
+>  fs/nfs/nfs4client.c         |   2 +
+>  fs/nfs/nfs4proc.c           |   2 +-
+>  fs/nfs/nfs4state.c          |   5 +-
+>  fs/nfs/super.c              |   6 +-
+>  fs/nfs/sysfs.c              | 148 +++++++++++++++++++++++++++++++++---
+>  fs/nfs/sysfs.h              |   9 ++-
+>  include/linux/lockd/bind.h  |   2 +
+>  include/linux/nfs_fs_sb.h   |   3 +
+>  include/linux/sunrpc/clnt.h |  11 ++-
+>  net/sunrpc/clnt.c           |   5 ++
+>  net/sunrpc/sysfs.h          |   7 --
+>  14 files changed, 204 insertions(+), 27 deletions(-)
+>
+> --
+> 2.39.2
+>
