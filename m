@@ -2,48 +2,52 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 91D7BC7618E
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Apr 2023 21:08:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 540EEC77B76
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Apr 2023 21:08:18 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231351AbjDXVIQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S232106AbjDXVIQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 24 Apr 2023 17:08:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59002 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59018 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232106AbjDXVIO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Apr 2023 17:08:14 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2E9786184
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Apr 2023 14:08:13 -0700 (PDT)
+        with ESMTP id S232258AbjDXVIP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Apr 2023 17:08:15 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4CEAD61A4
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Apr 2023 14:08:14 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 9E6181F88F;
-        Mon, 24 Apr 2023 21:08:11 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id CD4471FD94;
+        Mon, 24 Apr 2023 21:08:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1682370491; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=qNqF9lt1VGiwkNxgKI1S7fxgWB8ln4b7o0cffADwrWo=;
-        b=FijMpOO6XZChui0YLqm0TR9EcmAtpaDYTrDxRL/9aQAnNydXx5vE6gCFlLybDVH2Y6T/PC
-        aiPgizfq33h69qTQ0TlYpwOhXPG7UdIUEq0ubH+jzXc0ou5kaO64fb5Pk010JGaUZ0f4KK
-        Wrd6PrexH6RurebNjHMLxd6EfMobBTc=
+        t=1682370492; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=/iyzeLzCsMCdsmJwHyVbIHUwIBHNpy11fYoEtMxyvpk=;
+        b=U4rmdr9cQT6ujltj2tGLrrVOw4jfXby9gVqC3Y/2kt2QWKiZyS7aSE3YO7ugrgT7sNrTHE
+        AJHDhorMu0bFVoH7Qp5Y7PVKJAC8TTpjtv4JinVAPJpG8V3h42wNqrtUAiyjikjuaJm4O8
+        jjgZTpK2tjAt8CVXjkKf4Qw2RbWahIY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1682370491;
+        s=susede2_ed25519; t=1682370492;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=qNqF9lt1VGiwkNxgKI1S7fxgWB8ln4b7o0cffADwrWo=;
-        b=i+qty8lDkKPbeJs73oFfCFItLXHgfL9qMJ4T4wa2CG7T5F0gnhrdAMFsbflxn300gcjhaf
-        3gH6EV3XLkf8yoAQ==
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=/iyzeLzCsMCdsmJwHyVbIHUwIBHNpy11fYoEtMxyvpk=;
+        b=1N8e7Zb00xKsGhfSvd7jIk0ZAjyMLFWhAKO8aDc7cXMQy76YH1AFXNkSK6W4z/O55LLTO5
+        qcaJpgR6QzuyGjAg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 292F61390E;
-        Mon, 24 Apr 2023 21:08:11 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4D0A61390E;
+        Mon, 24 Apr 2023 21:08:12 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id /tsjCLvvRmSzIAAAMHmgww
-        (envelope-from <pvorel@suse.cz>); Mon, 24 Apr 2023 21:08:11 +0000
+        id iMLlELzvRmSzIAAAMHmgww
+        (envelope-from <pvorel@suse.cz>); Mon, 24 Apr 2023 21:08:12 +0000
 From:   Petr Vorel <pvorel@suse.cz>
 To:     ltp@lists.linux.it
 Cc:     Petr Vorel <pvorel@suse.cz>, NeilBrown <neilb@suse.de>,
@@ -51,39 +55,55 @@ Cc:     Petr Vorel <pvorel@suse.cz>, NeilBrown <neilb@suse.de>,
         Steve Dickson <steved@redhat.com>,
         Jeff Layton <jlayton@kernel.org>,
         Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>
-Subject: [PATCH v3 0/3] NFS: test on all filesystems
-Date:   Mon, 24 Apr 2023 23:08:15 +0200
-Message-Id: <20230424210818.2885479-1-pvorel@suse.cz>
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Nikita Yushchenko <nikita.yushchenko@virtuozzo.com>
+Subject: [PATCH v3 2/3] nfs_lib.sh: Unexport on proper side on netns
+Date:   Mon, 24 Apr 2023 23:08:17 +0200
+Message-Id: <20230424210818.2885479-3-pvorel@suse.cz>
 X-Mailer: git-send-email 2.40.0
+In-Reply-To: <20230424210818.2885479-1-pvorel@suse.cz>
+References: <20230424210818.2885479-1-pvorel@suse.cz>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi all,
+f6b267055 changed exportfs run locally on netns, therefore unexporting
+should be also run at the same namespace. This is not problematic now,
+but will be a problem with TST_ALL_FILESYSTEMS=1, which is sensitive for
+timing.
 
-finally I managed to finish the support for LTP NFS tests to be running
-on all available testing filesystems via TST_ALL_FILESYSTEMS=1.
+Fixes: f6b267055 ("nfs_lib.sh: run exportfs at "server side" in LTP_NETNS case")
 
-I believe this will help to cover more bugs than testing on single
-underlying filesystem.
+Signed-off-by: Petr Vorel <pvorel@suse.cz>
+---
+ testcases/network/nfs/nfs_stress/nfs_lib.sh | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-Thank you to Neil Brown to help with the debugging of umounting loop
-device, which was the problem in the past.
-
-Kind regards,
-Petr
-
-Petr Vorel (3):
-  nfs_lib.sh: Cleanup local and remote directories setup
-  nfs_lib.sh: Unexport on proper side on netns
-  nfs: Run on all filesystems
-
- testcases/network/nfs/nfs_stress/nfs_lib.sh | 82 +++++++++++++++------
- 1 file changed, 61 insertions(+), 21 deletions(-)
-
+diff --git a/testcases/network/nfs/nfs_stress/nfs_lib.sh b/testcases/network/nfs/nfs_stress/nfs_lib.sh
+index 1b5604ab5..042fea5e4 100644
+--- a/testcases/network/nfs/nfs_stress/nfs_lib.sh
++++ b/testcases/network/nfs/nfs_stress/nfs_lib.sh
+@@ -215,8 +215,16 @@ nfs_cleanup()
+ 	for i in $VERSION; do
+ 		type=$(get_socket_type $n)
+ 		remote_dir="$(get_remote_dir $i $type)"
+-		tst_rhost_run -c "test -d $remote_dir && exportfs -u *:$remote_dir"
+-		tst_rhost_run -c "test -d $remote_dir && rm -rf $remote_dir"
++
++		if tst_net_use_netns; then
++			if test -d $remote_dir; then
++				exportfs -u *:$remote_dir
++				rm -rf $remote_dir
++			fi
++		else
++			tst_rhost_run -c "test -d $remote_dir && exportfs -u *:$remote_dir"
++			tst_rhost_run -c "test -d $remote_dir && rm -rf $remote_dir"
++		fi
+ 		n=$(( n + 1 ))
+ 	done
+ }
 -- 
 2.40.0
 
