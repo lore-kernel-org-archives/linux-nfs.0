@@ -2,32 +2,32 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E25CBC7EE23
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Apr 2023 05:49:50 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E37AFC77B78
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Apr 2023 05:49:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230471AbjDXFtt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Apr 2023 01:49:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46996 "EHLO
+        id S231134AbjDXFtv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Apr 2023 01:49:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47028 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230432AbjDXFtn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Apr 2023 01:49:43 -0400
+        with ESMTP id S230482AbjDXFtq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Apr 2023 01:49:46 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4B6231726;
-        Sun, 23 Apr 2023 22:49:42 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 58FE919B3;
+        Sun, 23 Apr 2023 22:49:45 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=V5nklQoA9f4p457fAmSLCbWYVHcQ95Tr9Yi93vZ1hXQ=; b=BVLdIyeC9XyB883rbVnHnnshYb
-        v9MBAr9Kui06l3iqsHsxD6wr7hDLJughW5sYL6bLE4MMi2NT4MojE/Kqi+QP5twRZ+EZc4+pHQm3S
-        kcN/fEcPtZ2XKOf2kEcveCPw4THCw9R3Vp3FTaYaHC5Q6XyN/KDa1LZrslZMBHL8ouAUMCh+sbtnt
-        jGhkPdK1bf1+RRVNAAo7uctMzy3iud0d3e4hNElvjoV0xaEA7vu/iU7cwGxhgjr4qByRCVU5CGTNI
-        M7ydlMTMwaIbWoe21seFAlCC/o0TZc5ZPNp4ELlK9gRxqfYBpHM10qTh06+1CPkGzgFFFvJGUiBet
-        OQvgwjkg==;
+        bh=bS05QMoD6j6YpGz1rHCHZCzEMuRJxwEBMPELLNqMvVM=; b=QAuUTMs9c0fPPuxtegrv+eZFd7
+        m1Lb/Zn2oEdFxGNTL6MyQ1wn8x4GTSTmoDmXSEpvoQtz2+8sgXF6o1xdmIGxAfsSLMFUF2Rdb/QCw
+        QELH8/3nG4bNASqOdAHA35mLeydY1xzz4dUPnNEsh0dTA/um5YWXh/LZcV75W2WYGokrA0cEhf1qA
+        KKw6r1pxS24iVwx30XkH6ewxhXLH1nN6hYHJDiHEFB82PfR4sJADmcttvzNs0seHtisbFo0Bbqa9V
+        n3yxCEfgi9duwfR5Ke4/YsTw+fVVP3Ub8FBS1iXniGGQbGngJEVnnvGoIEv6ORCKaN3u1LbDCqCFv
+        PHlgzFNw==;
 Received: from [2001:4bb8:189:a74f:e8a5:5f73:6d2:23b8] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1pqp4y-00FOuS-1q;
-        Mon, 24 Apr 2023 05:49:37 +0000
+        id 1pqp54-00FOuy-17;
+        Mon, 24 Apr 2023 05:49:42 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Miklos Szeredi <miklos@szeredi.hu>,
@@ -40,9 +40,9 @@ Cc:     Miklos Szeredi <miklos@szeredi.hu>,
         linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
         linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 02/17] fs: remove the special !CONFIG_BLOCK def_blk_fops
-Date:   Mon, 24 Apr 2023 07:49:11 +0200
-Message-Id: <20230424054926.26927-3-hch@lst.de>
+Subject: [PATCH 04/17] fs: remove emergency_thaw_bdev
+Date:   Mon, 24 Apr 2023 07:49:13 +0200
+Message-Id: <20230424054926.26927-5-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230424054926.26927-1-hch@lst.de>
 References: <20230424054926.26927-1-hch@lst.de>
@@ -53,79 +53,69 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-def_blk_fops always returns -ENODEV, which dosn't match the return value
-of a non-existing block device with CONFIG_BLOCK, which is -ENXIO.
-Just remove the extra implementation and fall back to the default
-no_open_fops that always returns -ENXIO.
+Fold emergency_thaw_bdev into it's only caller, to prepare for buffer.c
+to be built only when buffer_head support is enabled.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/Makefile   | 10 ++--------
- fs/inode.c    |  3 ++-
- fs/no-block.c | 19 -------------------
- 3 files changed, 4 insertions(+), 28 deletions(-)
- delete mode 100644 fs/no-block.c
+ fs/buffer.c   | 6 ------
+ fs/internal.h | 6 ------
+ fs/super.c    | 4 +++-
+ 3 files changed, 3 insertions(+), 13 deletions(-)
 
-diff --git a/fs/Makefile b/fs/Makefile
-index 05f89b5c962f88..da21e7d0a1cf37 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -18,14 +18,8 @@ obj-y :=	open.o read_write.o file_table.o super.o \
- 		fs_types.o fs_context.o fs_parser.o fsopen.o init.o \
- 		kernel_read_file.o mnt_idmapping.o remap_range.o
+diff --git a/fs/buffer.c b/fs/buffer.c
+index eb14fbaa7d35f7..58e0007892b1c7 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -563,12 +563,6 @@ static int osync_buffers_list(spinlock_t *lock, struct list_head *list)
+ 	return err;
+ }
  
--ifeq ($(CONFIG_BLOCK),y)
--obj-y +=	buffer.o mpage.o
--else
--obj-y +=	no-block.o
--endif
--
--obj-$(CONFIG_PROC_FS) += proc_namespace.o
--
-+obj-$(CONFIG_BLOCK)		+= buffer.o mpage.o
-+obj-$(CONFIG_PROC_FS)		+= proc_namespace.o
- obj-$(CONFIG_LEGACY_DIRECT_IO)	+= direct-io.o
- obj-y				+= notify/
- obj-$(CONFIG_EPOLL)		+= eventpoll.o
-diff --git a/fs/inode.c b/fs/inode.c
-index 4558dc2f135573..d43f07f146eb73 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -2265,7 +2265,8 @@ void init_special_inode(struct inode *inode, umode_t mode, dev_t rdev)
- 		inode->i_fop = &def_chr_fops;
- 		inode->i_rdev = rdev;
- 	} else if (S_ISBLK(mode)) {
--		inode->i_fop = &def_blk_fops;
-+		if (IS_ENABLED(CONFIG_BLOCK))
-+			inode->i_fop = &def_blk_fops;
- 		inode->i_rdev = rdev;
- 	} else if (S_ISFIFO(mode))
- 		inode->i_fop = &pipefifo_fops;
-diff --git a/fs/no-block.c b/fs/no-block.c
-deleted file mode 100644
-index 481c0f0ab4bd2c..00000000000000
---- a/fs/no-block.c
-+++ /dev/null
-@@ -1,19 +0,0 @@
--// SPDX-License-Identifier: GPL-2.0-or-later
--/* no-block.c: implementation of routines required for non-BLOCK configuration
-- *
-- * Copyright (C) 2006 Red Hat, Inc. All Rights Reserved.
-- * Written by David Howells (dhowells@redhat.com)
-- */
--
--#include <linux/kernel.h>
--#include <linux/fs.h>
--
--static int no_blkdev_open(struct inode * inode, struct file * filp)
+-void emergency_thaw_bdev(struct super_block *sb)
 -{
--	return -ENODEV;
+-	while (sb->s_bdev && !thaw_bdev(sb->s_bdev))
+-		printk(KERN_WARNING "Emergency Thaw on %pg\n", sb->s_bdev);
 -}
 -
--const struct file_operations def_blk_fops = {
--	.open		= no_blkdev_open,
--	.llseek		= noop_llseek,
--};
+ /**
+  * sync_mapping_buffers - write out & wait upon a mapping's "associated" buffers
+  * @mapping: the mapping which wants those buffers written
+diff --git a/fs/internal.h b/fs/internal.h
+index dc4eb91a577a80..cad87784eb5e0f 100644
+--- a/fs/internal.h
++++ b/fs/internal.h
+@@ -23,16 +23,10 @@ struct mnt_idmap;
+  */
+ #ifdef CONFIG_BLOCK
+ extern void __init bdev_cache_init(void);
+-
+-void emergency_thaw_bdev(struct super_block *sb);
+ #else
+ static inline void bdev_cache_init(void)
+ {
+ }
+-static inline int emergency_thaw_bdev(struct super_block *sb)
+-{
+-	return 0;
+-}
+ #endif /* CONFIG_BLOCK */
+ 
+ /*
+diff --git a/fs/super.c b/fs/super.c
+index 04bc62ab7dfea9..d8f0a28d1850b1 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -1026,7 +1026,9 @@ static void do_thaw_all_callback(struct super_block *sb)
+ {
+ 	down_write(&sb->s_umount);
+ 	if (sb->s_root && sb->s_flags & SB_BORN) {
+-		emergency_thaw_bdev(sb);
++		if (IS_ENABLED(CONFIG_BLOCK))
++			while (sb->s_bdev && !thaw_bdev(sb->s_bdev))
++				pr_warn("Emergency Thaw on %pg\n", sb->s_bdev);
+ 		thaw_super_locked(sb);
+ 	} else {
+ 		up_write(&sb->s_umount);
 -- 
 2.39.2
 
