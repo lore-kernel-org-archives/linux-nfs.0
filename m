@@ -2,32 +2,32 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D9485C77B78
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Apr 2023 05:50:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 77624C7EE2A
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Apr 2023 05:50:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230512AbjDXFtt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Apr 2023 01:49:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46998 "EHLO
+        id S231245AbjDXFuR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Apr 2023 01:50:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47076 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230430AbjDXFtn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Apr 2023 01:49:43 -0400
+        with ESMTP id S230511AbjDXFtt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Apr 2023 01:49:49 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 92D5119B3;
-        Sun, 23 Apr 2023 22:49:42 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A40193588;
+        Sun, 23 Apr 2023 22:49:48 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:
-        Content-ID:Content-Description:In-Reply-To:References;
-        bh=rxuwauPRwLemTJXwY3VrKMRJhs+GgwhnyBD4s7nm7AY=; b=3MpQEmnJ4id5J1jZ4YFohK5H8q
-        bs7ciFKUIE9sA5F//wk8TThxaPzhLwI6FsUH1vKzNkmpHyq88uhXgF7wTEHMLlqIzGShUjm1tpoQ/
-        V9Tji0dQSyZQM/K5ekDNoH5faw93KpoQQtAuWkTbvGbcl7apn0KwIYdsbsU9S2n8QH5hFEZJO4yZ5
-        yp8GdzGRgc1AHk7t7DD60UmLFSqOCfsXJza1GpGtauNVHkVJvJiQUeDviaHbb72Zouz31uRXC/4XE
-        B+bfmZC/bCU0vqPNw8dnGTB4G0skWpel5LUkS6Ua52Z/N1nKMNRb49n9vt5etsldL20AA2wC69Vmq
-        TVA2auLw==;
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=3c56lCE/WpWmApGzGmNY2gwMFr2O/06RZiXwIkvRQAA=; b=cM1FMSAwc/AcWY9+ks8bZeTOQS
+        HSRE1wj1RmlIHQ8bv8JqINzDuFQyl7YsoQO9Evk1tQKaU3yYt2c2UI9Wkit37h631rokvkd0z9B2l
+        VVR+BaKxya/38EoJ2UI+TEap1+Ose9SVw/y8UrqGFhmlrsWIquEeWKjrX32vtILQS5aSgVf0A0uaL
+        Ujm1de5SPOrTuaN6+/YdmMaLU7F/3TLvzgdhR5BVXO6OzWn5yVlHyHDIyq0elCmeLixuuC8FOmM6S
+        Qn7nRM49zrqQDcjoKZ3gEI5dasf5T027NjT8LyJlv76Nt62r/CuI41r9aJ9HgIGXVKNKJ2N8Fjal6
+        Pdgu78vg==;
 Received: from [2001:4bb8:189:a74f:e8a5:5f73:6d2:23b8] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1pqp4s-00FOtV-2G;
-        Mon, 24 Apr 2023 05:49:31 +0000
+        id 1pqp57-00FOvQ-0r;
+        Mon, 24 Apr 2023 05:49:45 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Jens Axboe <axboe@kernel.dk>
 Cc:     Miklos Szeredi <miklos@szeredi.hu>,
@@ -40,10 +40,12 @@ Cc:     Miklos Szeredi <miklos@szeredi.hu>,
         linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
         linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org, linux-kernel@vger.kernel.org
-Subject: RFC: allow building a kernel without buffer_heads
-Date:   Mon, 24 Apr 2023 07:49:09 +0200
-Message-Id: <20230424054926.26927-1-hch@lst.de>
+Subject: [PATCH 05/17] filemap: update ki_pos in generic_perform_write
+Date:   Mon, 24 Apr 2023 07:49:14 +0200
+Message-Id: <20230424054926.26927-6-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20230424054926.26927-1-hch@lst.de>
+References: <20230424054926.26927-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
@@ -51,31 +53,108 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi all,
+All callers of generic_perform_write need to updated ki_pos, move it into
+common code.
 
-after all the talk about removing buffer_heads, here is a series that
-shows how to build a kernel without buffer_heads.  And how unrealistic
-it is to remove the entirely.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/ceph/file.c | 2 --
+ fs/ext4/file.c | 9 +++------
+ fs/f2fs/file.c | 1 -
+ fs/nfs/file.c  | 1 -
+ mm/filemap.c   | 8 ++++----
+ 5 files changed, 7 insertions(+), 14 deletions(-)
 
-Most of the series refactors some common code to make implementing direct
-I/O easier without use of the ->direct_IO method and the helpers based
-around it.  It then switches buffered writes (but not writeback) for
-block devices to use iomap unconditionally, but still using buffer_heads.
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index f4d8bf7dec88a8..feeb9882ef635a 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -1894,8 +1894,6 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		 * can not run at the same time
+ 		 */
+ 		written = generic_perform_write(iocb, from);
+-		if (likely(written >= 0))
+-			iocb->ki_pos = pos + written;
+ 		ceph_end_io_write(inode);
+ 	}
+ 
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 0b8b4499e5ca18..1026acaf1235a0 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -291,12 +291,9 @@ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
+ 
+ out:
+ 	inode_unlock(inode);
+-	if (likely(ret > 0)) {
+-		iocb->ki_pos += ret;
+-		ret = generic_write_sync(iocb, ret);
+-	}
+-
+-	return ret;
++	if (unlikely(ret <= 0))
++		return ret;
++	return generic_write_sync(iocb, ret);
+ }
+ 
+ static ssize_t ext4_handle_inode_extension(struct inode *inode, loff_t offset,
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index f4ab23efcf85f8..5a9ae054b6da7d 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -4511,7 +4511,6 @@ static ssize_t f2fs_buffered_write_iter(struct kiocb *iocb,
+ 	current->backing_dev_info = NULL;
+ 
+ 	if (ret > 0) {
+-		iocb->ki_pos += ret;
+ 		f2fs_update_iostat(F2FS_I_SB(inode), inode,
+ 						APP_BUFFERED_IO, ret);
+ 	}
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 893625eacab9fa..abdae2b29369be 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -666,7 +666,6 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 		goto out;
+ 
+ 	written = result;
+-	iocb->ki_pos += written;
+ 	nfs_add_stats(inode, NFSIOS_NORMALWRITTENBYTES, written);
+ 
+ 	if (mntflags & NFS_MOUNT_WRITE_EAGER) {
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 2723104cc06a12..0110bde3708b3f 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -3960,7 +3960,10 @@ ssize_t generic_perform_write(struct kiocb *iocb, struct iov_iter *i)
+ 		balance_dirty_pages_ratelimited(mapping);
+ 	} while (iov_iter_count(i));
+ 
+-	return written ? written : status;
++	if (!written)
++		return status;
++	iocb->ki_pos += written;
++	return written;
+ }
+ EXPORT_SYMBOL(generic_perform_write);
+ 
+@@ -4039,7 +4042,6 @@ ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		endbyte = pos + status - 1;
+ 		err = filemap_write_and_wait_range(mapping, pos, endbyte);
+ 		if (err == 0) {
+-			iocb->ki_pos = endbyte + 1;
+ 			written += status;
+ 			invalidate_mapping_pages(mapping,
+ 						 pos >> PAGE_SHIFT,
+@@ -4052,8 +4054,6 @@ ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		}
+ 	} else {
+ 		written = generic_perform_write(iocb, from);
+-		if (likely(written > 0))
+-			iocb->ki_pos += written;
+ 	}
+ out:
+ 	current->backing_dev_info = NULL;
+-- 
+2.39.2
 
-The final patch then adds a CONFIG_BUFFER_HEAD selected by all file
-systems that need it (which is most block based file systems), makes the
-buffer_head support in iomap optional, and adds an alternative
-implementation of the block device address_operations using iomap.
-
-With this you can build a kernel with block device support, but without
-buffer_heads.  This kernel supports xfs and btrfs as full blown block
-based filesystems, and a bunch of read-only ones like cramfs, erofs and
-squashfs.  Note that the md software raid drivers is also disabled as it
-has some (rather questionable) buffer_head usage in the unconditionally
-built bitmap code.
-
-The series is based on Linux 6.3 and will need some rebasing before it
-can be fed to the maintainers incrementally.  All but the last patch
-definitively seem useful for me.  The last one I think is just to avoid
-introducing new buffer_head dependencies, even if I suspect the real
-life usefulness of a !CONFIG_BUFFER_HEAD kernel might be rather limited.
