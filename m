@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7075CC77B7E
-	for <linux-nfs@archiver.kernel.org>; Fri, 28 Apr 2023 16:00:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E679BC77B60
+	for <linux-nfs@archiver.kernel.org>; Fri, 28 Apr 2023 16:00:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1346039AbjD1QAf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 28 Apr 2023 12:00:35 -0400
+        id S1346063AbjD1QAg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 28 Apr 2023 12:00:36 -0400
 Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34714 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229615AbjD1QAd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Apr 2023 12:00:33 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 09C184203
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Apr 2023 09:00:33 -0700 (PDT)
+        with ESMTP id S229615AbjD1QAf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Apr 2023 12:00:35 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 835B32D67
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Apr 2023 09:00:31 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id A9E9B21F11;
-        Fri, 28 Apr 2023 16:00:31 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 3783121EE6;
+        Fri, 28 Apr 2023 16:00:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1682697631; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1682697630; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=eArH7PdFvvavwtKQoM+rHGjXGGAWvEMO23tgmGyhmN8=;
-        b=0SSh89UZfBnFaCZlsPGJfoAa4DMoNJhsev+5m0QFtetch73UtANxC5NMtir/ZY5Z4sKAos
-        pgueAr02KfocnNOTry4AyX/RWUxVXcmYPcekr+39d8Xxytz2GVnpJ5Jtb/dzPSwi0OrMNa
-        kdXVQVYzqrGglbNxyUIvklNAZEPnOY4=
+        bh=N8owDjlaj9rMqZvzHKtIqAfiPFCaR46SvpKpIm6sW/E=;
+        b=K4jEYBHHeV6aU+hotmEAiRwBBMH38Es9QMwMi/Hyzkz37yHfhkqyFCCsawlf5pgYNvK5L8
+        +deyoJjlz+hWYYxdhBeVCJEB/kM7DCq3Z8+9Nkql5LPVApxrttzblEN77YAHNMtfVqvPJp
+        bFe0cdxV/svAkkF4Ap5ySafJJdkyT2I=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1682697631;
+        s=susede2_ed25519; t=1682697630;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=eArH7PdFvvavwtKQoM+rHGjXGGAWvEMO23tgmGyhmN8=;
-        b=EqgGemjePAD9ryz0Td69lnUqCAFoBWJ9H2ZLYh0MTkOmNDYqXdFuvPop1lWk7+zdP9g+BM
-        h+3s3CYaLTRR8jCg==
+        bh=N8owDjlaj9rMqZvzHKtIqAfiPFCaR46SvpKpIm6sW/E=;
+        b=hnB+2hVJSOiy8ab3MYfdIDXdrV0hw1fAT3yQBuX1k7EKxbwsTgUnatXclr2YLFQHa9K+0A
+        XlCHw4zudkkKMLDw==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 68AEF138FA;
-        Fri, 28 Apr 2023 16:00:31 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id DDA75138FA;
+        Fri, 28 Apr 2023 16:00:29 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id WGu2F5/tS2SRbQAAMHmgww
-        (envelope-from <pvorel@suse.cz>); Fri, 28 Apr 2023 16:00:31 +0000
+        id CLZYNJ3tS2SRbQAAMHmgww
+        (envelope-from <pvorel@suse.cz>); Fri, 28 Apr 2023 16:00:29 +0000
 From:   Petr Vorel <pvorel@suse.cz>
 To:     ltp@lists.linux.it
 Cc:     Petr Vorel <pvorel@suse.cz>, NeilBrown <neilb@suse.de>,
         Cyril Hrubis <chrubis@suse.cz>, linux-nfs@vger.kernel.org
-Subject: [PATCH v4 3/4] nfs05.sh: Lower down the default values
-Date:   Fri, 28 Apr 2023 18:00:37 +0200
-Message-Id: <20230428160038.3534905-4-pvorel@suse.cz>
+Subject: [PATCH v4 1/4] nfs_lib.sh: Cleanup local and remote directories setup
+Date:   Fri, 28 Apr 2023 18:00:35 +0200
+Message-Id: <20230428160038.3534905-2-pvorel@suse.cz>
 X-Mailer: git-send-email 2.40.0
 In-Reply-To: <20230428160038.3534905-1-pvorel@suse.cz>
 References: <20230428160038.3534905-1-pvorel@suse.cz>
@@ -64,41 +64,155 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-nfs05_make_tree.c runs make which needs on Btrfs quite a lot of
-temporary space. This is a preparation for the next commit which
-start using all filesystems via TST_ALL_FILESYSTEMS=1. Currently we use
-300 MB, which was not enough for Btrfs:
+Logic for creating local and remote directories was on more places.
+Create get_local_dir() and get_remote_dir() functions to keep it on
+single place.
 
-Filesystem     Type      Size  Used Avail Use% Mounted on
-/dev/loop0     btrfs     300M   62M   20K 100% /tmp/LTP_nfs05.Vau10kcszO/mntpoint
+local dir is needed in nfs_mount(), but was defined in nfs_setup()
+and reused local variable with shell inheritance (ugly!), because there
+were all parameters from loop.  Similarly, remote dir is needed in
+both nfs_mount() and nfs_setup_server(), but created with shell
+inheritance in nfs_setup().  Pass these params to nfs_mount() and
+nfs_setup_server() and define variables with new functions
+get_local_dir() and get_remote_dir().
 
-After lowering the default values 96% (58M) is being used.
+Use get_remote_dir() in nfs_get_remote_path().
 
-Proper solution would be to detect available size in nfs05_make_tree.c
-and lower down values based on free space.
+Move cd to local directory to the end of nfs_mount() (it used to cd
+after nfs_mount(), but only if -v parameter contained single version,
+but it does not harm to always cd).
 
 Signed-off-by: Petr Vorel <pvorel@suse.cz>
 ---
-New in v4.
+The same as in v3.
 
- testcases/network/nfs/nfs_stress/nfs05.sh | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ testcases/network/nfs/nfs_stress/nfs_lib.sh | 52 ++++++++++++++-------
+ 1 file changed, 34 insertions(+), 18 deletions(-)
 
-diff --git a/testcases/network/nfs/nfs_stress/nfs05.sh b/testcases/network/nfs/nfs_stress/nfs05.sh
-index c18ef1ab4..34151b67a 100755
---- a/testcases/network/nfs/nfs_stress/nfs05.sh
-+++ b/testcases/network/nfs/nfs_stress/nfs05.sh
-@@ -8,8 +8,8 @@
- #
- # Created by: Robbie Williamson (robbiew@us.ibm.com)
+diff --git a/testcases/network/nfs/nfs_stress/nfs_lib.sh b/testcases/network/nfs/nfs_stress/nfs_lib.sh
+index af7d46a21..1b5604ab5 100644
+--- a/testcases/network/nfs/nfs_stress/nfs_lib.sh
++++ b/testcases/network/nfs/nfs_stress/nfs_lib.sh
+@@ -1,6 +1,6 @@
+ #!/bin/sh
+ # SPDX-License-Identifier: GPL-2.0-or-later
+-# Copyright (c) Linux Test Project, 2016-2022
++# Copyright (c) Linux Test Project, 2016-2023
+ # Copyright (c) 2015-2018 Oracle and/or its affiliates. All Rights Reserved.
+ # Copyright (c) International Business Machines  Corp., 2001
  
--DIR_NUM=${DIR_NUM:-"10"}
--FILE_NUM=${FILE_NUM:-"30"}
-+DIR_NUM=${DIR_NUM:-"8"}
-+FILE_NUM=${FILE_NUM:-"28"}
- THREAD_NUM=${THREAD_NUM:-"8"}
- TST_NEEDS_CMDS="make gcc"
- TST_TESTFUNC="do_test"
+@@ -53,6 +53,24 @@ get_socket_type()
+ 	done
+ }
+ 
++# directory mounted by NFS client
++get_local_dir()
++{
++	local v="$1"
++	local n="$2"
++
++	echo "$TST_TMPDIR/$v/$n"
++}
++
++# directory on NFS server
++get_remote_dir()
++{
++	local v="$1"
++	local n="$2"
++
++	echo "$TST_TMPDIR/$v/$n"
++}
++
+ nfs_get_remote_path()
+ {
+ 	local v
+@@ -63,7 +81,7 @@ nfs_get_remote_path()
+ 	done
+ 
+ 	v=${1:-$v}
+-	echo "$TST_TMPDIR/$v/$type"
++	echo "$(get_remote_dir $v $type)"
+ }
+ 
+ nfs_server_udp_enabled()
+@@ -78,8 +96,8 @@ nfs_server_udp_enabled()
+ 
+ nfs_setup_server()
+ {
+-
+-	local fsid="$1"
++	local remote_dir="$1"
++	local fsid="$2"
+ 	local export_cmd="exportfs -i -o fsid=$fsid,no_root_squash,rw *:$remote_dir"
+ 
+ 	[ -z "$fsid" ] && tst_brk TBROK "empty fsid"
+@@ -97,10 +115,14 @@ nfs_setup_server()
+ 
+ nfs_mount()
+ {
+-	local opts="$1"
++	local local_dir="$1"
++	local remote_dir="$2"
++	local opts="$3"
+ 	local host_type=rhost
+ 	local mount_dir
+ 
++	mkdir -p "$local_dir"
++
+ 	tst_net_use_netns && host_type=
+ 
+ 	if [ $TST_IPV6 ]; then
+@@ -131,6 +153,8 @@ nfs_mount()
+ 
+ 		tst_brk TBROK "mount command failed"
+ 	fi
++
++	cd "$local_dir"
+ }
+ 
+ nfs_setup()
+@@ -162,20 +186,12 @@ nfs_setup()
+ 			tst_brk TCONF "UDP support disabled on NFS server"
+ 		fi
+ 
+-		local_dir="$TST_TMPDIR/$i/$n"
+-		remote_dir="$TST_TMPDIR/$i/$type"
+-		mkdir -p $local_dir
+-
+-		nfs_setup_server $(($$ + n))
+-
+-		nfs_mount "-o proto=$type,vers=$i"
++		remote_dir="$(get_remote_dir $i $type)"
++		nfs_setup_server "$remote_dir" "$(($$ + n))"
++		nfs_mount "$(get_local_dir $i $n)" "$remote_dir" "-o proto=$type,vers=$i"
+ 
+ 		n=$(( n + 1 ))
+ 	done
+-
+-	if [ "$n" -eq 1 ]; then
+-		cd ${VERSION}/0
+-	fi
+ }
+ 
+ nfs_cleanup()
+@@ -190,7 +206,7 @@ nfs_cleanup()
+ 
+ 	local n=0
+ 	for i in $VERSION; do
+-		local_dir="$TST_TMPDIR/$i/$n"
++		local_dir="$(get_local_dir $i $n)"
+ 		grep -q "$local_dir" /proc/mounts && umount $local_dir
+ 		n=$(( n + 1 ))
+ 	done
+@@ -198,7 +214,7 @@ nfs_cleanup()
+ 	n=0
+ 	for i in $VERSION; do
+ 		type=$(get_socket_type $n)
+-		remote_dir="$TST_TMPDIR/$i/$type"
++		remote_dir="$(get_remote_dir $i $type)"
+ 		tst_rhost_run -c "test -d $remote_dir && exportfs -u *:$remote_dir"
+ 		tst_rhost_run -c "test -d $remote_dir && rm -rf $remote_dir"
+ 		n=$(( n + 1 ))
 -- 
 2.40.0
 
