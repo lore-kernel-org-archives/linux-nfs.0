@@ -2,66 +2,64 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 96AA9C77B60
-	for <linux-nfs@archiver.kernel.org>; Sat, 29 Apr 2023 18:19:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 14BE3C77B7C
+	for <linux-nfs@archiver.kernel.org>; Sat, 29 Apr 2023 18:19:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230159AbjD2STv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S230166AbjD2STv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 29 Apr 2023 14:19:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47460 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47474 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230149AbjD2STu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Apr 2023 14:19:50 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DA5F51BF4;
-        Sat, 29 Apr 2023 11:19:47 -0700 (PDT)
+        with ESMTP id S230165AbjD2STv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Apr 2023 14:19:51 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3FA341BFB
+        for <linux-nfs@vger.kernel.org>; Sat, 29 Apr 2023 11:19:48 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 710C760ADA;
+        by dfw.source.kernel.org (Postfix) with ESMTPS id C7367615C4
+        for <linux-nfs@vger.kernel.org>; Sat, 29 Apr 2023 18:19:47 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 2AD46C4339B;
         Sat, 29 Apr 2023 18:19:47 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id D48E2C433D2;
-        Sat, 29 Apr 2023 18:19:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1682792386;
-        bh=LMNk9uciWZtFfdEkJIhEbCeaYbO3nx4qLLMcxWUYYN8=;
+        s=k20201202; t=1682792387;
+        bh=+uwRh35V2NAEdvvOi4k+F1jeXesbNoCkmq1oOmEM8i0=;
         h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
-        b=ckQLI/sSLDBsFp7bEZqvii8A845R3dEMnuswaM9+lTl+ybjK/AgXvDuIRgdlnL19R
-         JAVP7IDQEUSkqfFHq55iugCbcff2BTRyAeumLOEQW2UjUs0MYzUrxNFhklwT+xiW9+
-         Io1PvGmFJgnJ/GJMWAUE+I8uw2c3u89SgmS48DrFvuA8OFHV3Mtb3QwoVJ4A046bQD
-         YTuBm6d8N+xRMCNsUXqJSavOQiJkO/wbxoRd73oCJjnJkaoDyOvDf10qE3zWp8EeSR
-         OKRCoBkNb1XgYMeo5oxPDuSon4BMs0BSXQrIGWH2sWoSWo+KhIz4WJdI/bAtk3/C4V
-         WwAfLXxXkjESg==
+        b=lZcayjR+a5bwbnAmptLouTvscT+kVS1zH28RAxInDu0FRiLPqk9GUoty2gSIkAJpk
+         Yinv8ainQzbxmYBlJi0846N7PacB9qR8b6iV3iG5OR/unsLb9EBvn82ivB1o3sSzsg
+         eH/dCNqcp0fzzP3qyiWsvE9GERe8dGEjUjmj3jkb9sYHuKCWPYmfCKFc4cDE1NOaA1
+         JOlzOPzLfUapvi0AzueADi1Px6CFMZWq9z9vPPtSh9QMledEI7ZA01EfNXx9n0VGKC
+         /sc8/435NW9i6jAzOxfRp+lbowbAXapSXDWrT6WgMOxClVt1Ko0Ze6NodWJ+W/z2Ap
+         IrBZf8rsnvwxA==
 Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id B4173C43158;
-        Sat, 29 Apr 2023 18:19:46 +0000 (UTC)
-Subject: Re: [GIT PULL] nfsd changes for v6.4
+        by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id 16967E5FFC8;
+        Sat, 29 Apr 2023 18:19:47 +0000 (UTC)
+Subject: Re: [GIT PULL] Please Pull NFS Client Updates for Linux 6.4
 From:   pr-tracker-bot@kernel.org
-In-Reply-To: <E0771535-05EF-4EAE-9BFF-E070C4D32F3C@oracle.com>
-References: <E0771535-05EF-4EAE-9BFF-E070C4D32F3C@oracle.com>
+In-Reply-To: <20230428195257.234346-1-anna@kernel.org>
+References: <20230428195257.234346-1-anna@kernel.org>
 X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
-X-PR-Tracked-Message-Id: <E0771535-05EF-4EAE-9BFF-E070C4D32F3C@oracle.com>
-X-PR-Tracked-Remote: https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-6.4
-X-PR-Tracked-Commit-Id: 9280c577431401544e63dfb489a830a42bee25eb
+X-PR-Tracked-Message-Id: <20230428195257.234346-1-anna@kernel.org>
+X-PR-Tracked-Remote: git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-6.4-1
+X-PR-Tracked-Commit-Id: fbd2a05f29a95d5b42b294bf47e55a711424965b
 X-PR-Merge-Tree: torvalds/linux.git
 X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 4e1c80ae5cf458792bec9815ee77bc3851046fb8
-Message-Id: <168279238673.22076.15540579577427431470.pr-tracker-bot@kernel.org>
-Date:   Sat, 29 Apr 2023 18:19:46 +0000
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jlayton@kernel.org>
+X-PR-Merge-Commit-Id: 0127f25b5dfcc3d0349eb29d692178183e101652
+Message-Id: <168279238708.22076.6512443179816431361.pr-tracker-bot@kernel.org>
+Date:   Sat, 29 Apr 2023 18:19:47 +0000
+To:     Anna Schumaker <anna@kernel.org>
+Cc:     linux-nfs@vger.kernel.org, torvalds@linux-foundation.org,
+        anna@kernel.org
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The pull request you sent on Fri, 28 Apr 2023 13:29:49 +0000:
+The pull request you sent on Fri, 28 Apr 2023 15:52:57 -0400:
 
-> https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-6.4
+> git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-6.4-1
 
 has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/4e1c80ae5cf458792bec9815ee77bc3851046fb8
+https://git.kernel.org/torvalds/c/0127f25b5dfcc3d0349eb29d692178183e101652
 
 Thank you!
 
