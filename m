@@ -2,35 +2,35 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6B597C7EE29
-	for <linux-nfs@archiver.kernel.org>; Wed,  3 May 2023 14:20:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 05D9AC7EE2C
+	for <linux-nfs@archiver.kernel.org>; Wed,  3 May 2023 14:21:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230200AbjECOU4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 3 May 2023 10:20:56 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42680 "EHLO
+        id S229732AbjECOU6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 3 May 2023 10:20:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42826 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230095AbjECOUr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 May 2023 10:20:47 -0400
+        with ESMTP id S230264AbjECOUw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 May 2023 10:20:52 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1C15761A7;
-        Wed,  3 May 2023 07:20:46 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2C7206A4E;
+        Wed,  3 May 2023 07:20:50 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id B004862DE4;
-        Wed,  3 May 2023 14:20:45 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 17FBCC433D2;
-        Wed,  3 May 2023 14:20:43 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 5468062DE2;
+        Wed,  3 May 2023 14:20:50 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B0121C4339E;
+        Wed,  3 May 2023 14:20:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1683123645;
-        bh=+ZM+liB0nOC40xQZQZ86xt6fi25JWXDh676GI1IVOtU=;
+        s=k20201202; t=1683123649;
+        bh=C94uikGnRmREVRqdFg93IJBOCnOyg04cXTwa8d6XodU=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=OzK0qj3iyjj33ep8v0XmPObTk1v223SVrzA0av9ES+PbH+yxPsHca4yVlAiP/nZ5J
-         s7ypPpbr+N586IurGZDou4HezY4YGv2LQiX7qFp8MH28smBMh/Nv1lmLgRtTubzXQc
-         c6vf2NMtFc+hB39X4k4fFPtchaoyoUec4XW7/1MwS03OIfxS+48lpd0q4gb3cMmD85
-         aldOFPYV57sA32GQ5RXkMdpoS66lInKvESkrVa1DzNeaVO1NpsV/fx+F8jE+uie0bm
-         ElHEAdXHpk1hsrNVH/AHKt1QiMneeeXKLv9BU1SbklBImpppDJD4RmdfrTExd5ub23
-         LS/h5b5LKx40g==
+        b=OGf/0QEqpDQZXTu068wUFLNOWy8Vw2aFrmUS39Sk+aS9M1h+fmSuhqkfeMURIG4yw
+         g79R4PVRxITnfMa/zkhMXp5ythzx5gBA/0BRSYUuClaLmAm9cN/nKGhQPaplj7KnFg
+         LElnkLRm8+5f/u3dVMWvAcFq72UEYQVA1BZ3YsimYJO2tL/8qfIQa9hK0wiS+kZ7df
+         ikAJp72Luz2gcgOD8gw24cGJOOTD1aRbEdaql7/ErG9Fatd7zZUh9nOyzfMK5iFRGg
+         ntUj12LtHZr0E2DPSc6+h0GwppCRxw1uvtT0XbIlmNKQI7e+BfWMh7ijWOXWFvfB4d
+         970UyWItdJc/w==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christian Brauner <brauner@kernel.org>,
@@ -50,9 +50,9 @@ Cc:     Jan Kara <jack@suse.cz>, Amir Goldstein <amir73il@gmail.com>,
         linux-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-mm@kvack.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v3 2/6] overlayfs: allow it handle multigrain timestamps
-Date:   Wed,  3 May 2023 10:20:33 -0400
-Message-Id: <20230503142037.153531-3-jlayton@kernel.org>
+Subject: [PATCH v3 4/6] xfs: convert to multigrain timestamps
+Date:   Wed,  3 May 2023 10:20:35 -0400
+Message-Id: <20230503142037.153531-5-jlayton@kernel.org>
 X-Mailer: git-send-email 2.40.1
 In-Reply-To: <20230503142037.153531-1-jlayton@kernel.org>
 References: <20230503142037.153531-1-jlayton@kernel.org>
@@ -62,53 +62,145 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Ensure that we strip off the I_CTIME_QUERIED bit when copying up.
+With this change, also have XFS stop reporting a STATX_CHANGE_COOKIE, so
+that nfsd will use the ctime instead.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/overlayfs/file.c | 7 +++++--
- fs/overlayfs/util.c | 2 +-
- 2 files changed, 6 insertions(+), 3 deletions(-)
+ fs/xfs/libxfs/xfs_inode_buf.c   |  2 +-
+ fs/xfs/libxfs/xfs_trans_inode.c |  2 +-
+ fs/xfs/xfs_acl.c                |  2 +-
+ fs/xfs/xfs_bmap_util.c          |  2 +-
+ fs/xfs/xfs_inode.c              |  2 +-
+ fs/xfs/xfs_inode_item.c         |  2 +-
+ fs/xfs/xfs_iops.c               | 15 ++++++++++++---
+ fs/xfs/xfs_super.c              |  2 +-
+ 8 files changed, 19 insertions(+), 10 deletions(-)
 
-diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-index 7c04f033aadd..cad715df8c4e 100644
---- a/fs/overlayfs/file.c
-+++ b/fs/overlayfs/file.c
-@@ -222,6 +222,7 @@ static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)
- static void ovl_file_accessed(struct file *file)
- {
- 	struct inode *inode, *upperinode;
-+	struct timespec64 ctime, uctime;
+diff --git a/fs/xfs/libxfs/xfs_inode_buf.c b/fs/xfs/libxfs/xfs_inode_buf.c
+index 758aacd8166b..c29e961fac34 100644
+--- a/fs/xfs/libxfs/xfs_inode_buf.c
++++ b/fs/xfs/libxfs/xfs_inode_buf.c
+@@ -316,7 +316,7 @@ xfs_inode_to_disk(
  
- 	if (file->f_flags & O_NOATIME)
- 		return;
-@@ -232,10 +233,12 @@ static void ovl_file_accessed(struct file *file)
- 	if (!upperinode)
- 		return;
+ 	to->di_atime = xfs_inode_to_disk_ts(ip, inode->i_atime);
+ 	to->di_mtime = xfs_inode_to_disk_ts(ip, inode->i_mtime);
+-	to->di_ctime = xfs_inode_to_disk_ts(ip, inode->i_ctime);
++	to->di_ctime = xfs_inode_to_disk_ts(ip, ctime_peek(inode));
+ 	to->di_nlink = cpu_to_be32(inode->i_nlink);
+ 	to->di_gen = cpu_to_be32(inode->i_generation);
+ 	to->di_mode = cpu_to_be16(inode->i_mode);
+diff --git a/fs/xfs/libxfs/xfs_trans_inode.c b/fs/xfs/libxfs/xfs_trans_inode.c
+index 8b5547073379..c08be3aa3339 100644
+--- a/fs/xfs/libxfs/xfs_trans_inode.c
++++ b/fs/xfs/libxfs/xfs_trans_inode.c
+@@ -63,7 +63,7 @@ xfs_trans_ichgtime(
+ 	ASSERT(tp);
+ 	ASSERT(xfs_isilocked(ip, XFS_ILOCK_EXCL));
  
-+	ctime = ctime_peek(inode);
-+	uctime = ctime_peek(upperinode);
- 	if ((!timespec64_equal(&inode->i_mtime, &upperinode->i_mtime) ||
--	     !timespec64_equal(&inode->i_ctime, &upperinode->i_ctime))) {
-+	     !timespec64_equal(&ctime, &uctime))) {
- 		inode->i_mtime = upperinode->i_mtime;
--		inode->i_ctime = upperinode->i_ctime;
-+		inode->i_ctime = uctime;
+-	tv = current_time(inode);
++	tv = current_ctime(inode);
+ 
+ 	if (flags & XFS_ICHGTIME_MOD)
+ 		inode->i_mtime = tv;
+diff --git a/fs/xfs/xfs_acl.c b/fs/xfs/xfs_acl.c
+index 791db7d9c849..85353e6e9004 100644
+--- a/fs/xfs/xfs_acl.c
++++ b/fs/xfs/xfs_acl.c
+@@ -233,7 +233,7 @@ xfs_acl_set_mode(
+ 	xfs_ilock(ip, XFS_ILOCK_EXCL);
+ 	xfs_trans_ijoin(tp, ip, XFS_ILOCK_EXCL);
+ 	inode->i_mode = mode;
+-	inode->i_ctime = current_time(inode);
++	inode->i_ctime = current_ctime(inode);
+ 	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
+ 
+ 	if (xfs_has_wsync(mp))
+diff --git a/fs/xfs/xfs_bmap_util.c b/fs/xfs/xfs_bmap_util.c
+index a09dd2606479..e9cb1bfb9574 100644
+--- a/fs/xfs/xfs_bmap_util.c
++++ b/fs/xfs/xfs_bmap_util.c
+@@ -1757,7 +1757,7 @@ xfs_swap_extents(
+ 	 * under it.
+ 	 */
+ 	if ((sbp->bs_ctime.tv_sec != VFS_I(ip)->i_ctime.tv_sec) ||
+-	    (sbp->bs_ctime.tv_nsec != VFS_I(ip)->i_ctime.tv_nsec) ||
++	    (sbp->bs_ctime.tv_nsec != ctime_nsec_peek(VFS_I(ip))) ||
+ 	    (sbp->bs_mtime.tv_sec != VFS_I(ip)->i_mtime.tv_sec) ||
+ 	    (sbp->bs_mtime.tv_nsec != VFS_I(ip)->i_mtime.tv_nsec)) {
+ 		error = -EBUSY;
+diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
+index 5808abab786c..ac299c1a9838 100644
+--- a/fs/xfs/xfs_inode.c
++++ b/fs/xfs/xfs_inode.c
+@@ -843,7 +843,7 @@ xfs_init_new_inode(
+ 	ip->i_df.if_nextents = 0;
+ 	ASSERT(ip->i_nblocks == 0);
+ 
+-	tv = current_time(inode);
++	tv = current_ctime(inode);
+ 	inode->i_mtime = tv;
+ 	inode->i_atime = tv;
+ 	inode->i_ctime = tv;
+diff --git a/fs/xfs/xfs_inode_item.c b/fs/xfs/xfs_inode_item.c
+index ca2941ab6cbc..018f187387f0 100644
+--- a/fs/xfs/xfs_inode_item.c
++++ b/fs/xfs/xfs_inode_item.c
+@@ -381,7 +381,7 @@ xfs_inode_to_log_dinode(
+ 	memset(to->di_pad3, 0, sizeof(to->di_pad3));
+ 	to->di_atime = xfs_inode_to_log_dinode_ts(ip, inode->i_atime);
+ 	to->di_mtime = xfs_inode_to_log_dinode_ts(ip, inode->i_mtime);
+-	to->di_ctime = xfs_inode_to_log_dinode_ts(ip, inode->i_ctime);
++	to->di_ctime = xfs_inode_to_log_dinode_ts(ip, ctime_peek(inode));
+ 	to->di_nlink = inode->i_nlink;
+ 	to->di_gen = inode->i_generation;
+ 	to->di_mode = inode->i_mode;
+diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+index 24718adb3c16..f41155cfbbe2 100644
+--- a/fs/xfs/xfs_iops.c
++++ b/fs/xfs/xfs_iops.c
+@@ -573,8 +573,17 @@ xfs_vn_getattr(
+ 	stat->gid = vfsgid_into_kgid(vfsgid);
+ 	stat->ino = ip->i_ino;
+ 	stat->atime = inode->i_atime;
+-	stat->mtime = inode->i_mtime;
+-	stat->ctime = inode->i_ctime;
++	generic_fill_multigrain_cmtime(request_mask, inode, stat);
++
++	/*
++	 * XFS's i_version counter doesn't conform to the rules that other
++	 * filesystems live by. In particular, it changes the version on atime
++	 * updates which leads to excess cache invalidations on NFS. Just clear
++	 * the STATX_CHANGE_COOKIE flag so that nfsd (and others) use the
++	 * (multigrain) ctime instead.
++	 */
++	stat->result_mask &= ~STATX_CHANGE_COOKIE;
++
+ 	stat->blocks = XFS_FSB_TO_BB(mp, ip->i_nblocks + ip->i_delayed_blks);
+ 
+ 	if (xfs_has_v3inodes(mp)) {
+@@ -917,7 +926,7 @@ xfs_setattr_size(
+ 	if (newsize != oldsize &&
+ 	    !(iattr->ia_valid & (ATTR_CTIME | ATTR_MTIME))) {
+ 		iattr->ia_ctime = iattr->ia_mtime =
+-			current_time(inode);
++			current_ctime(inode);
+ 		iattr->ia_valid |= ATTR_CTIME | ATTR_MTIME;
  	}
  
- 	touch_atime(&file->f_path);
-diff --git a/fs/overlayfs/util.c b/fs/overlayfs/util.c
-index 923d66d131c1..f4f9d7e189ef 100644
---- a/fs/overlayfs/util.c
-+++ b/fs/overlayfs/util.c
-@@ -1117,6 +1117,6 @@ void ovl_copyattr(struct inode *inode)
- 	inode->i_mode = realinode->i_mode;
- 	inode->i_atime = realinode->i_atime;
- 	inode->i_mtime = realinode->i_mtime;
--	inode->i_ctime = realinode->i_ctime;
-+	inode->i_ctime = ctime_peek(realinode);
- 	i_size_write(inode, i_size_read(realinode));
- }
+diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+index 4f814f9e12ab..db3943d09532 100644
+--- a/fs/xfs/xfs_super.c
++++ b/fs/xfs/xfs_super.c
+@@ -1976,7 +1976,7 @@ static struct file_system_type xfs_fs_type = {
+ 	.init_fs_context	= xfs_init_fs_context,
+ 	.parameters		= xfs_fs_parameters,
+ 	.kill_sb		= kill_block_super,
+-	.fs_flags		= FS_REQUIRES_DEV | FS_ALLOW_IDMAP,
++	.fs_flags		= FS_REQUIRES_DEV | FS_ALLOW_IDMAP | FS_MULTIGRAIN_TS,
+ };
+ MODULE_ALIAS_FS("xfs");
+ 
 -- 
 2.40.1
 
