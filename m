@@ -2,202 +2,114 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0112DC77B73
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 May 2023 20:50:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 01822C7EE22
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 May 2023 20:50:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229758AbjEDUuM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 4 May 2023 16:50:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41696 "EHLO
+        id S229845AbjEDUuW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 4 May 2023 16:50:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42184 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231316AbjEDUuB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2023 16:50:01 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CF8FC11D80
-        for <linux-nfs@vger.kernel.org>; Thu,  4 May 2023 13:49:34 -0700 (PDT)
+        with ESMTP id S229649AbjEDUuV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2023 16:50:21 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5CECBFE;
+        Thu,  4 May 2023 13:49:55 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 25E3D639C5
-        for <linux-nfs@vger.kernel.org>; Thu,  4 May 2023 20:47:17 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3F119C433D2;
-        Thu,  4 May 2023 20:47:16 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id EAC34639E7;
+        Thu,  4 May 2023 20:48:49 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0FB8FC433D2;
+        Thu,  4 May 2023 20:48:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1683233236;
-        bh=myqIA0BbvrYLcP6QStGiaNN5xaenVGZ7FwTcgCHdxh4=;
-        h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-        b=FV3LrDJilAvDIxnPHKpm00WaRUVVDsyNhfA9h+uFKPXiSpV46e77sJYC/u2YlY5Q/
-         RH7b0NMWOeN2xI1eIHCT5Q2DHl9AG8pARC4vmLvFBZdT99q0B9AzTdEdbdSWygCGPf
-         T1jr+S1wpD3f8WJwxZ9QxOcniHQw82oHT9SjRygcL0n2PJe+9mtrePKWxFdgk62nEo
-         KXIkBrt4+ZrZhKgw/WP/8+1ZQEmKWDC/kZzLphIVBV1k6PGsFHfidLKLdOvFgE2YHq
-         frrZiMwdZlAbDxCAnSZHjmETQ6f9M7ILFCdyKJPcbHBpIQEwifQqNhj5drzxQb0yFf
-         Kh9bh0WvvLN5A==
+        s=k20201202; t=1683233329;
+        bh=zhP5Gy+eyJTrENWLVRX4a338jk51BmZoBKLGF3oLTDQ=;
+        h=From:To:Cc:Subject:Date:From;
+        b=kSBgvcJ7rTNcodhqocxZAc8zW0mEFhfKkU5+O6EVPrZbx0zNW2hLbBG+lGQHv3jKQ
+         XY4g4XnG4f+ibxgdmn5ZaDovZ+LU+Z/CK6UaN280pNXlfUGiBUdaJYw3QKajt9uh9H
+         wd1QS9ZK1T9Vnkd0cfoeDJOmxO5QtIP7tPJp8bzZkAYlg2m20BRKzFVx7+XnNmUFeG
+         5dgpRHTIK1ET6cCohuT7gGxQsEcVrnhrMEfkr6VlOMAlsgWi4dVs34Wj3cPgdtbBJv
+         DWxh1ahK5E40X1wXv66xq0v3MIiH86AJ5lW1yWhZ+GUvkdQMf+vyjkLy2G0Oir9rPK
+         k4vQTb9oMmETA==
 From:   Anna Schumaker <anna@kernel.org>
-Date:   Thu, 04 May 2023 16:47:15 -0400
-Subject: [PATCH 5/6] NFSv4.2: Clean up xattr size macros
+To:     linux-nfs@vger.kernel.org, fstests@vger.kernel.org
+Cc:     anna@kernel.org
+Subject: [PATCH] nfs/002: Add a test for xattr ctime updates
+Date:   Thu,  4 May 2023 16:48:47 -0400
+Message-Id: <20230504204847.405037-1-anna@kernel.org>
+X-Mailer: git-send-email 2.40.1
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20230504-xattr-ctime-v1-5-ac3fc5a00942@Netapp.com>
-References: <20230504-xattr-ctime-v1-0-ac3fc5a00942@Netapp.com>
-In-Reply-To: <20230504-xattr-ctime-v1-0-ac3fc5a00942@Netapp.com>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>
-Cc:     linux-nfs@vger.kernel.org,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>
-X-Mailer: b4 0.12.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5187;
- i=Anna.Schumaker@Netapp.com; h=from:subject:message-id;
- bh=x0I57N3cKS5WzOUXTzceP0S6UCKe81kc1ZVKdNqosZ0=;
- b=owEBbQKS/ZANAwAIAdfLVL+wpUDrAcsmYgBkVBnRntTWGJnIsaQRFbAwKH48ppWJ/pi7Dy9wt
- 3U0YbdJ4vuJAjMEAAEIAB0WIQSdnkxBOlHtwtTsoSnXy1S/sKVA6wUCZFQZ0QAKCRDXy1S/sKVA
- 68PTEADc/qTTfkOpOeIP1Ry51B/1+8V74EyRQHMItTW5awpoRorz0AIAXgawrmagH0yMM5kvIQh
- yr41Rmtsm9iEyyz372GKEcQlEi7gZ+69ED8LN2QCix90i2iEFoN/qeE6glDUfFr1Jpf+TW/eJJT
- SPqRVeoKQdSCg7eMetaRiQmFtj0UexS0kUbdURxDTdu7pMkYeiaSzXvy8vtpt3Et0/7sTV4Ffji
- Nd/pOwkgF0BhbB6qr+icSNIhRYcTBZdFEhwt4Tsr9ISZwdqFxowOMCQS3LHBR5zCtD60UJmmyuf
- DMSsco1PJupw9Y+ZrMu9yniUrI/4/gTxLLPBJ5/lT11WGbzMKnf1mvUq+nSph/3t62Jc/zWzkWx
- rQMInNTLHB7hCBhupb7ECFpfVx9sgAeUdCZDeqdq3c7OCF3t6Jw/7xf2/Pwt5D5CLs3Tn0UMooW
- QFiuSheE6Gg3oA/gApHy5fIE6Q8oqQIUoZ81/WFoHvMAqbYLsnxWBr4KPuLKV8wYWdrqbyozC7Y
- CxdSzWUVgqZCFcFHmt3kp/jgWqz69Wx56BCEauoHyETtNJMzYYSQuyC/3E9kKKioVF53tLX/FmG
- 8JJ/nJtMLZ24gN2Hud0GNwq/zKzm9Ta2Zfeg+qcD4ywwOrPjWNLiiUejQsfeEwdjbgilbqPWALH
- J9BJniHTl7iFqzw==
-X-Developer-Key: i=Anna.Schumaker@Netapp.com; a=openpgp;
- fpr=9D9E4C413A51EDC2D4ECA129D7CB54BFB0A540EB
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Fold them into the other NFS v4.2 operations in the right spots and
-adjust spacing to keep the same style.
+The NFS client wasn't updating ctime after a setxattr request. This is a
+test written while fixing the bug.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs42xdr.c | 96 +++++++++++++++++++++++++++----------------------------
- 1 file changed, 47 insertions(+), 49 deletions(-)
+ tests/nfs/002     | 39 +++++++++++++++++++++++++++++++++++++++
+ tests/nfs/002.out |  2 ++
+ 2 files changed, 41 insertions(+)
+ create mode 100755 tests/nfs/002
+ create mode 100644 tests/nfs/002.out
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 1d74135715c5..215b8700e504 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -7,6 +7,9 @@
- 
- #include "nfs42.h"
- 
-+/* Not limited by NFS itself, limited by the generic xattr code */
-+#define nfs4_xattr_name_maxsz   XDR_QUADLEN(XATTR_NAME_MAX)
+diff --git a/tests/nfs/002 b/tests/nfs/002
+new file mode 100755
+index 000000000000..5bfedef6c57d
+--- /dev/null
++++ b/tests/nfs/002
+@@ -0,0 +1,39 @@
++#! /bin/bash
++# SPDX-License-Identifier: GPL-2.0
++# Copyright (c) 2023 Netapp Inc., All Rights Reserved.
++#
++# FS QA Test 002
++#
++# Test a bug whene the NFS client wasn't sending a post-op GETATTR to the
++# server after setting an xattr, resulting in `stat` reporting a stale ctime.
++#
++. ./common/preamble
++_begin_fstest auto quick attr
 +
- #define encode_fallocate_maxsz		(encode_stateid_maxsz + \
- 					 2 /* offset */ + \
- 					 2 /* length */)
-@@ -89,6 +92,18 @@
- 					2 /* dst offset */ + \
- 					2 /* count */)
- #define decode_clone_maxsz		(op_decode_hdr_maxsz)
-+#define encode_getxattr_maxsz		(op_encode_hdr_maxsz + 1 + \
-+					 nfs4_xattr_name_maxsz)
-+#define decode_getxattr_maxsz		(op_decode_hdr_maxsz + 1 + pagepad_maxsz)
-+#define encode_setxattr_maxsz		(op_encode_hdr_maxsz + \
-+					 1 + nfs4_xattr_name_maxsz + 1)
-+#define decode_setxattr_maxsz		(op_decode_hdr_maxsz + decode_change_info_maxsz)
-+#define encode_listxattrs_maxsz		(op_encode_hdr_maxsz + 2 + 1)
-+#define decode_listxattrs_maxsz		(op_decode_hdr_maxsz + 2 + 1 + 1 + 1)
-+#define encode_removexattr_maxsz	(op_encode_hdr_maxsz + 1 + \
-+					 nfs4_xattr_name_maxsz)
-+#define decode_removexattr_maxsz	(op_decode_hdr_maxsz + \
-+					 decode_change_info_maxsz)
- 
- #define NFS4_enc_allocate_sz		(compound_encode_hdr_maxsz + \
- 					 encode_sequence_maxsz + \
-@@ -186,55 +201,38 @@
- 					 decode_putfh_maxsz + \
- 					 decode_clone_maxsz + \
- 					 decode_getattr_maxsz)
--
--/* Not limited by NFS itself, limited by the generic xattr code */
--#define nfs4_xattr_name_maxsz   XDR_QUADLEN(XATTR_NAME_MAX)
--
--#define encode_getxattr_maxsz   (op_encode_hdr_maxsz + 1 + \
--				 nfs4_xattr_name_maxsz)
--#define decode_getxattr_maxsz   (op_decode_hdr_maxsz + 1 + pagepad_maxsz)
--#define encode_setxattr_maxsz   (op_encode_hdr_maxsz + \
--				 1 + nfs4_xattr_name_maxsz + 1)
--#define decode_setxattr_maxsz   (op_decode_hdr_maxsz + decode_change_info_maxsz)
--#define encode_listxattrs_maxsz  (op_encode_hdr_maxsz + 2 + 1)
--#define decode_listxattrs_maxsz  (op_decode_hdr_maxsz + 2 + 1 + 1 + 1)
--#define encode_removexattr_maxsz (op_encode_hdr_maxsz + 1 + \
--				  nfs4_xattr_name_maxsz)
--#define decode_removexattr_maxsz (op_decode_hdr_maxsz + \
--				  decode_change_info_maxsz)
--
--#define NFS4_enc_getxattr_sz	(compound_encode_hdr_maxsz + \
--				encode_sequence_maxsz + \
--				encode_putfh_maxsz + \
--				encode_getxattr_maxsz)
--#define NFS4_dec_getxattr_sz	(compound_decode_hdr_maxsz + \
--				decode_sequence_maxsz + \
--				decode_putfh_maxsz + \
--				decode_getxattr_maxsz)
--#define NFS4_enc_setxattr_sz	(compound_encode_hdr_maxsz + \
--				encode_sequence_maxsz + \
--				encode_putfh_maxsz + \
--				encode_setxattr_maxsz)
--#define NFS4_dec_setxattr_sz	(compound_decode_hdr_maxsz + \
--				decode_sequence_maxsz + \
--				decode_putfh_maxsz + \
--				decode_setxattr_maxsz)
--#define NFS4_enc_listxattrs_sz	(compound_encode_hdr_maxsz + \
--				encode_sequence_maxsz + \
--				encode_putfh_maxsz + \
--				encode_listxattrs_maxsz)
--#define NFS4_dec_listxattrs_sz	(compound_decode_hdr_maxsz + \
--				decode_sequence_maxsz + \
--				decode_putfh_maxsz + \
--				decode_listxattrs_maxsz)
--#define NFS4_enc_removexattr_sz	(compound_encode_hdr_maxsz + \
--				encode_sequence_maxsz + \
--				encode_putfh_maxsz + \
--				encode_removexattr_maxsz)
--#define NFS4_dec_removexattr_sz	(compound_decode_hdr_maxsz + \
--				decode_sequence_maxsz + \
--				decode_putfh_maxsz + \
--				decode_removexattr_maxsz)
-+#define NFS4_enc_getxattr_sz		(compound_encode_hdr_maxsz + \
-+					 encode_sequence_maxsz + \
-+					 encode_putfh_maxsz + \
-+					 encode_getxattr_maxsz)
-+#define NFS4_dec_getxattr_sz		(compound_decode_hdr_maxsz + \
-+					 decode_sequence_maxsz + \
-+					 decode_putfh_maxsz + \
-+					 decode_getxattr_maxsz)
-+#define NFS4_enc_setxattr_sz		(compound_encode_hdr_maxsz + \
-+					 encode_sequence_maxsz + \
-+					 encode_putfh_maxsz + \
-+					 encode_setxattr_maxsz)
-+#define NFS4_dec_setxattr_sz		(compound_decode_hdr_maxsz + \
-+					 decode_sequence_maxsz + \
-+					 decode_putfh_maxsz + \
-+					 decode_setxattr_maxsz)
-+#define NFS4_enc_listxattrs_sz		(compound_encode_hdr_maxsz + \
-+					 encode_sequence_maxsz + \
-+					 encode_putfh_maxsz + \
-+					 encode_listxattrs_maxsz)
-+#define NFS4_dec_listxattrs_sz		(compound_decode_hdr_maxsz + \
-+					 decode_sequence_maxsz + \
-+					 decode_putfh_maxsz + \
-+					 decode_listxattrs_maxsz)
-+#define NFS4_enc_removexattr_sz		(compound_encode_hdr_maxsz + \
-+					 encode_sequence_maxsz + \
-+					 encode_putfh_maxsz + \
-+					 encode_removexattr_maxsz)
-+#define NFS4_dec_removexattr_sz		(compound_decode_hdr_maxsz + \
-+					 decode_sequence_maxsz + \
-+					 decode_putfh_maxsz + \
-+					 decode_removexattr_maxsz)
- 
- /*
-  * These values specify the maximum amount of data that is not
-
++# Import common functions
++. ./common/filter
++. ./common/attr
++
++# real QA test starts here
++_supported_fs nfs
++_require_test_nfs_version 4.2
++_require_attrs
++
++touch $TEST_DIR/testfile
++
++before_ctime=$(stat -c %z $TEST_DIR/testfile)
++$SETFATTR_PROG -n user.foobar -v 123 $TEST_DIR/testfile
++after_ctime=$(stat -c %z $TEST_DIR/testfile)
++
++test "$before_ctime" != "$after_ctime" || echo "Expected ctime to change."
++
++
++before_ctime=$after_ctime
++$SETFATTR_PROG -x user.foobar $TEST_DIR/testfile
++after_ctime=$(stat -c %z $TEST_DIR/testfile)
++
++test "$before_ctime" != "$after_ctime" || echo "Expected ctime to change."
++
++echo "Silence is golden"
++status=0
++exit
+diff --git a/tests/nfs/002.out b/tests/nfs/002.out
+new file mode 100644
+index 000000000000..61705c7cc203
+--- /dev/null
++++ b/tests/nfs/002.out
+@@ -0,0 +1,2 @@
++QA output created by 002
++Silence is golden
 -- 
 2.40.1
 
