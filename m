@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CA39CC7EE21
-	for <linux-nfs@archiver.kernel.org>; Thu,  4 May 2023 20:49:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 764E9C7EE22
+	for <linux-nfs@archiver.kernel.org>; Thu,  4 May 2023 20:50:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230123AbjEDUtJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 4 May 2023 16:49:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40320 "EHLO
+        id S229459AbjEDUuL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 4 May 2023 16:50:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37146 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230063AbjEDUsj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2023 16:48:39 -0400
+        with ESMTP id S230491AbjEDUtu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2023 16:49:50 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 96B2A9EEE
-        for <linux-nfs@vger.kernel.org>; Thu,  4 May 2023 13:48:14 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8B2A8423C
+        for <linux-nfs@vger.kernel.org>; Thu,  4 May 2023 13:49:26 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 355C3639FA
-        for <linux-nfs@vger.kernel.org>; Thu,  4 May 2023 20:47:16 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B097EC4339B;
-        Thu,  4 May 2023 20:47:15 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id AD01E639FB
+        for <linux-nfs@vger.kernel.org>; Thu,  4 May 2023 20:47:17 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C1E75C433EF;
+        Thu,  4 May 2023 20:47:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1683233236;
-        bh=rGnQAPW0hli7YcR9MsR+dC1QlJ2Z2SQwhGPkYv86Ef4=;
+        s=k20201202; t=1683233237;
+        bh=BOg+RXnaM1HWtT4oc7eRXJdklZqYq0mCXJAgXZOH+Zw=;
         h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-        b=cDlMs4VBPhWf2n81c7BLRDZOUFS0n+lMjROZtsO2fpa5Se5HMjUndlgno5j0uLCJ7
-         Y8v+LOPciJFGQl9RqkEjycvv1eDf1LxaUdieUcEnYOPp0xlkr6OEs3QdLfENjOnq1V
-         Gn3BLHR/Uitz24zU/QTZmAqFV2ZU0iCgrxctN3UnE+3+oTpYiTSb1Ja5mD0yhZmfa5
-         7HxIgmHazdkkXHZFUX+MVC1FimEIFhavyOIYlrrsdR6d8OrCLqRqpvrXqZ7XhKIcEi
-         LDwE5M9PJmT6ncHEQRdqJY54MQA37kA/R2wkq5l0f5hKZPO6SyYSpqkmp9XpYjMxHO
-         /TNodq/RYs/pw==
+        b=Pa67KEfuaPBd5Mburdu6YtQ+VUO771Rp+upQ7ahYp8FWhD5+BVmuer35lLR+dEU/5
+         KpLQiDWF0NoxVsZVJ+ObM098kWqqIVromsXW6WTpWg3g1jVMFvYaa1lJzIEhY9JmVQ
+         0tEZRKUy0xPik5VaQ9I4v0P2VJRG5teRJJb0NDy6AeX4QBt6mgLmLmPMhKCJ5nDde6
+         qj3yqHuLeMM4Lbq5xaaNjDOxZYtuLoopgvqYSC74eredCfBzS80xvDefg2gjkkYLWS
+         RaJZFuW2Beck79AaXDwH2NPI4N51Lqp6SpUHhmxBvnQbNFqFZEWZ1ubDm7/VKaFb+W
+         Y8SeKwyzGWpBQ==
 From:   Anna Schumaker <anna@kernel.org>
-Date:   Thu, 04 May 2023 16:47:14 -0400
-Subject: [PATCH 4/6] NFSv4.2: Clean up nfs4_xdr_dec_*xattr() functions
+Date:   Thu, 04 May 2023 16:47:16 -0400
+Subject: [PATCH 6/6] NFSv4.2: SETXATTR should update ctime
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230504-xattr-ctime-v1-4-ac3fc5a00942@Netapp.com>
+Message-Id: <20230504-xattr-ctime-v1-6-ac3fc5a00942@Netapp.com>
 References: <20230504-xattr-ctime-v1-0-ac3fc5a00942@Netapp.com>
 In-Reply-To: <20230504-xattr-ctime-v1-0-ac3fc5a00942@Netapp.com>
 To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
@@ -45,21 +45,21 @@ To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
 Cc:     linux-nfs@vger.kernel.org,
         Anna Schumaker <Anna.Schumaker@Netapp.com>
 X-Mailer: b4 0.12.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1771;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4203;
  i=Anna.Schumaker@Netapp.com; h=from:subject:message-id;
- bh=tg/4V4l4h13B2lvBoryqNit4MB6JNorpHtTPJFUz8q8=;
- b=owEBbQKS/ZANAwAIAdfLVL+wpUDrAcsmYgBkVBnRLbmwD8Kfp9VYg0TkbluV7cdi0Js2t3DXf
- zsCE2vXxBKJAjMEAAEIAB0WIQSdnkxBOlHtwtTsoSnXy1S/sKVA6wUCZFQZ0QAKCRDXy1S/sKVA
- 6/XsD/4zLFIjGupT4jogMmnSt4jzZVf0n3NM01pKwDkvmFiEjo8wptwdyKDdfAzd0PC6alIlNru
- I9tBxk5iYoZzOKBVtNYo2JJ7ekaeNltLMaEgnxwOohVC2XWJvmXE74aAJGTrcxBZVdNbWHQkzfq
- U2PBDo22c6Aq33438Dzoy94fD50Kj85nGtJWlH9wobip9i+VVAc77pmGCkYWt45RZim+fnPgw4m
- G9sRPqr5VkBJYfhdm9ibaOBSEALhnhvTStPFl8GyDls8AFts8TMRYEV0QNWlY19H74MIVLowbJ/
- S/jnyAJluZaaHmXhHPyI5Smfyc39HqpBI1sQ9wq00y17nbdRbfOQjpsEo3ccX/mDW7dQ4cB/0BO
- m6uBJTmoCO7oPIdkEXoPqSRCJHW/NA46j2DPYWFHTfi27keJr81NdA+deWm/GJ06YGdVSLLtwvL
- 2kwONfTKOBj0L/HRDa0ggVirhdhbAHnCZMJEB4zyZwGiMokOPaojMnC4NLve4z0MToA7uE45jac
- N6kZfgW1TY1WjvlMQxJy62YJ5IyFyjb+h24LaLvUFk4/0xRvJDIh6ERYLvc6kJ+ptZ+AkkVaGEW
- l498hNypk/cVosg5r78oz4g8lIc994t3cNNapz1LjW9JqKaOcbSHDah3FsPr/mXV8dyH14G3TGl
- dd10PN2XIg9QSPA==
+ bh=hDPbfC3g0DZCj0YbYegv/OqwOUIzuY7OyvJ7CaEibFk=;
+ b=owEBbQKS/ZANAwAIAdfLVL+wpUDrAcsmYgBkVBnRafqQeexkOm6LSpuf/3gu1wQXmyznIQxk3
+ O38Wus0PzCJAjMEAAEIAB0WIQSdnkxBOlHtwtTsoSnXy1S/sKVA6wUCZFQZ0QAKCRDXy1S/sKVA
+ 600ND/93sHXqgCB7IEA0yU+nR1ezoRcHCj0Wy8WFcDMr3LkSYg8t+Kbt+KJfr3jnh9EpB8nA8E3
+ ls6OBG9sRlIg38YmD4+WJtQ89j4IJsESuMQm7kN+3WA/62PBzgwa9TmDuFhe/KmFBm46BvxKwkR
+ jlKdQi6DtbUNjPy0Q9PxCRijhLa1DzAPBzOGCdc2+wdG36ua3kyX94NonLp6yugr1wjIFlFNQgn
+ a/2AxIiyJ2swBHVjMrmQbeclKMPNwMV5JKOV5uijFDjlbe7F23cFTTCMGBu671pVqiPzs7FdOeh
+ /p3ZZ5f+AoMX8UJphrg/gyRINcamAMisdJuNWf9DdfDUprQ2weUlgiyLeLmdvtbw+Vc0FbYM0xc
+ n8dXOJUxbeYMlD7XKyyf74+cReyzf+M2ys43UYmOqMJCETkzTS4Dv5bv6NMETLKDafQp6iA9nmD
+ QmFZ3dRvXWuMQp2fNdF2jpGFLIJy+Kl/czom4l9l1pi0TMP8S6K2s/zLHtcIrTD3NAhiKP+aZ4/
+ VuDL8Plu3ZZiZVOHP14+u729bc3q9rHgyZMskwbK1kr45kgFyj2cLS1DYwyededABb4DZu48gSZ
+ zZ+itE1MnDnU7hjMUCmepTMJAylVqfSQyxu473V+140TFDd/d0lLwvfdRwROdU1XGGpyQn9mAoY
+ 8iVWD4AaxGiRLdg==
 X-Developer-Key: i=Anna.Schumaker@Netapp.com; a=openpgp;
  fpr=9D9E4C413A51EDC2D4ECA129D7CB54BFB0A540EB
 Precedence: bulk
@@ -68,67 +68,141 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-I add commends above each function to match the style of the other
-nfs4_xdr_dec_*() functions. I also remove the unnecessary #ifdef
-CONFIG_NFS_V4_2 that was added around this code, since we are already in
-a v4.2-only file.
+Otherwise, `stat` will report a stale value to users.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs42xdr.c | 14 ++++++++++++--
- 1 file changed, 12 insertions(+), 2 deletions(-)
+ fs/nfs/nfs42proc.c      | 25 +++++++++++++++++++++----
+ fs/nfs/nfs42xdr.c       | 11 ++++++++---
+ include/linux/nfs_xdr.h |  3 +++
+ 3 files changed, 32 insertions(+), 7 deletions(-)
 
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 93e306bf4430..63802d195556 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -1190,15 +1190,19 @@ static int _nfs42_proc_setxattr(struct inode *inode, const char *name,
+ 				const void *buf, size_t buflen, int flags)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
++	__u32 bitmask[NFS_BITMASK_SZ];
+ 	struct page *pages[NFS4XATTR_MAXPAGES];
+ 	struct nfs42_setxattrargs arg = {
+ 		.fh		= NFS_FH(inode),
++		.bitmask	= bitmask,
+ 		.xattr_pages	= pages,
+ 		.xattr_len	= buflen,
+ 		.xattr_name	= name,
+ 		.xattr_flags	= flags,
+ 	};
+-	struct nfs42_setxattrres res;
++	struct nfs42_setxattrres res = {
++		.server		= server,
++	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc	= &nfs4_procedures[NFSPROC4_CLNT_SETXATTR],
+ 		.rpc_argp	= &arg,
+@@ -1210,13 +1214,22 @@ static int _nfs42_proc_setxattr(struct inode *inode, const char *name,
+ 	if (buflen > server->sxasize)
+ 		return -ERANGE;
+ 
++	res.fattr = nfs_alloc_fattr();
++	if (!res.fattr)
++		return -ENOMEM;
++
+ 	if (buflen > 0) {
+ 		np = nfs4_buf_to_pages_noslab(buf, buflen, arg.xattr_pages);
+-		if (np < 0)
+-			return np;
++		if (np < 0) {
++			ret = np;
++			goto out;
++		}
+ 	} else
+ 		np = 0;
+ 
++	nfs4_bitmask_set(bitmask, server->cache_consistency_bitmask,
++			 inode, NFS_INO_INVALID_CHANGE);
++
+ 	ret = nfs4_call_sync(server->client, server, &msg, &arg.seq_args,
+ 	    &res.seq_res, 1);
+ 	trace_nfs4_setxattr(inode, name, ret);
+@@ -1224,9 +1237,13 @@ static int _nfs42_proc_setxattr(struct inode *inode, const char *name,
+ 	for (; np > 0; np--)
+ 		put_page(pages[np - 1]);
+ 
+-	if (!ret)
++	if (!ret) {
+ 		nfs4_update_changeattr(inode, &res.cinfo, timestamp, 0);
++		ret = nfs_post_op_update_inode(inode, res.fattr);
++	}
+ 
++out:
++	kfree(res.fattr);
+ 	return ret;
+ }
+ 
 diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 51560c7d468d..1d74135715c5 100644
+index 215b8700e504..95234208dc9e 100644
 --- a/fs/nfs/nfs42xdr.c
 +++ b/fs/nfs/nfs42xdr.c
-@@ -1562,7 +1562,9 @@ static int nfs4_xdr_dec_layouterror(struct rpc_rqst *rqstp,
- 	return status;
+@@ -212,11 +212,13 @@
+ #define NFS4_enc_setxattr_sz		(compound_encode_hdr_maxsz + \
+ 					 encode_sequence_maxsz + \
+ 					 encode_putfh_maxsz + \
+-					 encode_setxattr_maxsz)
++					 encode_setxattr_maxsz + \
++					 encode_getattr_maxsz)
+ #define NFS4_dec_setxattr_sz		(compound_decode_hdr_maxsz + \
+ 					 decode_sequence_maxsz + \
+ 					 decode_putfh_maxsz + \
+-					 decode_setxattr_maxsz)
++					 decode_setxattr_maxsz + \
++					 decode_getattr_maxsz)
+ #define NFS4_enc_listxattrs_sz		(compound_encode_hdr_maxsz + \
+ 					 encode_sequence_maxsz + \
+ 					 encode_putfh_maxsz + \
+@@ -720,6 +722,7 @@ static void nfs4_xdr_enc_setxattr(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->fh, &hdr);
+ 	encode_setxattr(xdr, args, &hdr);
++	encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
  }
  
--#ifdef CONFIG_NFS_V4_2
-+/*
-+ * Decode SETXATTR request
-+ */
- static int nfs4_xdr_dec_setxattr(struct rpc_rqst *req, struct xdr_stream *xdr,
- 				 void *data)
- {
-@@ -1585,6 +1587,9 @@ static int nfs4_xdr_dec_setxattr(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	return status;
- }
- 
-+/*
-+ * Decode GETXATTR request
-+ */
- static int nfs4_xdr_dec_getxattr(struct rpc_rqst *rqstp,
- 				 struct xdr_stream *xdr, void *data)
- {
-@@ -1606,6 +1611,9 @@ static int nfs4_xdr_dec_getxattr(struct rpc_rqst *rqstp,
- 	return status;
- }
- 
-+/*
-+ * Decode LISTXATTR request
-+ */
- static int nfs4_xdr_dec_listxattrs(struct rpc_rqst *rqstp,
- 				   struct xdr_stream *xdr, void *data)
- {
-@@ -1629,6 +1637,9 @@ static int nfs4_xdr_dec_listxattrs(struct rpc_rqst *rqstp,
- 	return status;
- }
- 
-+/*
-+ * Decode REMOVEXATTR request
-+ */
- static int nfs4_xdr_dec_removexattr(struct rpc_rqst *req,
- 				    struct xdr_stream *xdr, void *data)
- {
-@@ -1650,5 +1661,4 @@ static int nfs4_xdr_dec_removexattr(struct rpc_rqst *req,
+@@ -1579,8 +1582,10 @@ static int nfs4_xdr_dec_setxattr(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	status = decode_putfh(xdr);
+ 	if (status)
+ 		goto out;
+-
+ 	status = decode_setxattr(xdr, &res->cinfo);
++	if (status)
++		goto out;
++	status = decode_getfattr(xdr, res->fattr, res->server);
  out:
  	return status;
  }
--#endif
- #endif /* __LINUX_FS_NFS_NFS4_2XDR_H */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 29a1b39794bf..12bbb5c63664 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1528,6 +1528,7 @@ struct nfs42_seek_res {
+ struct nfs42_setxattrargs {
+ 	struct nfs4_sequence_args	seq_args;
+ 	struct nfs_fh			*fh;
++	const u32			*bitmask;
+ 	const char			*xattr_name;
+ 	u32				xattr_flags;
+ 	size_t				xattr_len;
+@@ -1537,6 +1538,8 @@ struct nfs42_setxattrargs {
+ struct nfs42_setxattrres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs4_change_info		cinfo;
++	struct nfs_fattr		*fattr;
++	const struct nfs_server		*server;
+ };
+ 
+ struct nfs42_getxattrargs {
 
 -- 
 2.40.1
