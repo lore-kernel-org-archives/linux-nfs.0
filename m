@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 99C54C77B7F
-	for <linux-nfs@archiver.kernel.org>; Mon,  8 May 2023 06:20:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F19BC77B75
+	for <linux-nfs@archiver.kernel.org>; Mon,  8 May 2023 06:20:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232564AbjEHGU1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 8 May 2023 02:20:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45006 "EHLO
+        id S232546AbjEHGUb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 8 May 2023 02:20:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45068 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232546AbjEHGU0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 May 2023 02:20:26 -0400
+        with ESMTP id S232637AbjEHGUa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 May 2023 02:20:30 -0400
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3170815EFD
-        for <linux-nfs@vger.kernel.org>; Sun,  7 May 2023 23:20:24 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E63EB30FB
+        for <linux-nfs@vger.kernel.org>; Sun,  7 May 2023 23:20:28 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id B9A5E1FDA6;
-        Mon,  8 May 2023 06:20:22 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 887331FD9F;
+        Mon,  8 May 2023 06:20:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1683526822; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1683526827; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=v18pCjdlrePj2yQA6KUIcyTp5honaPyFMEvQMkCfy+Y=;
-        b=RDzeu6Nn729bmhDXryMF8FkkxsDBpUKdr4waHQGfXAb2/Sd1q51V8YehSudJ+yBGYyQ+Pz
-        FLYe/L4lA4JDKAHpu+IwOtvXQoCw/IP+Fhphl/8lullcSqKBqH0Fh1zjDRV3Sf0xk+GypR
-        VPoN+uHb7njJN2bMQPX0U2yGQaeIkKI=
+        bh=1bwegpWKqZGmA9wD3M8D0Kqjkw11Xvs3rGP/ihfzxMQ=;
+        b=jFwMAzNQqOhc6dCgqqU/vCLXtLKn0J08onGUHzA1IMfsEYPytm57KAyj555Jnd1mQes8Ev
+        4jaf/LRkSPv4+miHMfra+D8k8P5COewJpnLApCvFXxdPrHrmfLWjyujlIpVZr27PPqPXk9
+        C3DoVrKWuZMyq616KbzXbtsQlaEcyxI=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1683526822;
+        s=susede2_ed25519; t=1683526827;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=v18pCjdlrePj2yQA6KUIcyTp5honaPyFMEvQMkCfy+Y=;
-        b=ojE9NfXIqiaiGcHGjLYDqEyk4ozQjXmi9VL6YJYIv74jxWzjepw50QR4+ygss7UKjwpwRg
-        JHGr+ltjHE77SBBg==
+        bh=1bwegpWKqZGmA9wD3M8D0Kqjkw11Xvs3rGP/ihfzxMQ=;
+        b=YXnpo4CcRz4cMPkBVnvPzavx+/tQcOioxoTIsdDE9zDJ8YDqxxYLWpSkKbMWc6nBvixS0q
+        DqgSLCprXMPDh5AA==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 9321513499;
-        Mon,  8 May 2023 06:20:21 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4EF6E13499;
+        Mon,  8 May 2023 06:20:26 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id WOgwE6WUWGRVGAAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 08 May 2023 06:20:21 +0000
-Subject: [PATCH 1/2] fsidd: don't use assert() on expr with side-effect.
+        id HI5wAaqUWGRmGAAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 08 May 2023 06:20:26 +0000
+Subject: [PATCH 2/2] fsidd: provide better default socket name.
 From:   NeilBrown <neilb@suse.de>
 To:     Steve Dickson <steved@redhat.com>,
         Richard Weinberger <richard@nod.at>
 Cc:     linux-nfs@vger.kernel.org
 Date:   Mon, 08 May 2023 16:19:11 +1000
-Message-ID: <168352675193.17279.3466985331128410653.stgit@noble.brown>
+Message-ID: <168352675194.17279.12797722278244839616.stgit@noble.brown>
 In-Reply-To: <168352657591.17279.393573102599959056.stgit@noble.brown>
 References: <168352657591.17279.393573102599959056.stgit@noble.brown>
 User-Agent: StGit/1.5
@@ -65,95 +65,90 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-assert() is not guaranteed to evaluate its arg.  When compiled with
--DNDEBUG, the evaluation is skipped.  We don't currently compile with
--DNDEBUG, but relying on that is poor form, particularly as this is
-described as "sample code" in the git log.
+Having the default socket name be in the current directory is a poor
+choice for a daemon that is expected to run as root.
 
-So introduce assert_safe() and use that when there are side-effects.
+It is also likely better to use an "abstract" socket name.  abstract
+names do not exist in the filesystem namespace and are local to a
+network namespace.  Using an abstract name ensures that the nfsd,
+mountd, and fsidd are all in the same network namespace.
+
+This patch:
+ - uses a single #define for the default socket name, rather than 2;
+ - allows the socket name to start with '@' which is interpreted to
+   be a request to use the abstract name space (systemd uses the same
+   convention).
+ - changes the default to "@/run/fsid.sock".  I don't know of a formal
+   standard for choosing names in the abstract name space, the defacto
+   standard (seen in "ss -xa|grep @") is to use a name similar to what
+   might be used in the filesystem.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- support/reexport/fsidd.c |   28 ++++++++++++++++------------
- 1 file changed, 16 insertions(+), 12 deletions(-)
+ support/reexport/fsidd.c    |   10 ++++++----
+ support/reexport/reexport.c |    3 +++
+ support/reexport/reexport.h |    2 +-
+ 3 files changed, 10 insertions(+), 5 deletions(-)
 
 diff --git a/support/reexport/fsidd.c b/support/reexport/fsidd.c
-index 410b3a370d6d..3fef1ef3512b 100644
+index 3fef1ef3512b..37649d065ce6 100644
 --- a/support/reexport/fsidd.c
 +++ b/support/reexport/fsidd.c
-@@ -26,6 +26,11 @@
+@@ -18,11 +18,10 @@
+ 
+ #include "conffile.h"
+ #include "reexport_backend.h"
++#include "reexport.h"
+ #include "xcommon.h"
+ #include "xlog.h"
+ 
+-#define FSID_SOCKET_NAME "fsid.sock"
+-
  static struct event_base *evbase;
  static struct reexpdb_backend_plugin *dbbackend = &sqlite_plug_ops;
  
-+/* assert_safe() always evalutes it argument, as it might have
-+ * a side-effect.  assert() won't if compiled with NDEBUG
-+ */
-+#define assert_safe(__sideeffect) (__sideeffect ? 0 : ({assert(0) ; 0;}))
-+
- static void client_cb(evutil_socket_t cl, short ev, void *d)
- {
- 	struct event *me = d;
-@@ -56,12 +61,11 @@ static void client_cb(evutil_socket_t cl, short ev, void *d)
+@@ -167,11 +166,14 @@ int main(void)
  
- 		if (dbbackend->fsidnum_by_path(req_path, &fsidnum, false, &found)) {
- 			if (found)
--				assert(asprintf(&answer, "+ %u", fsidnum) != -1);
-+				assert_safe(asprintf(&answer, "+ %u", fsidnum) != -1);
- 			else
--				assert(asprintf(&answer, "+ ") != -1);
--		
-+				assert_safe(asprintf(&answer, "+ ") != -1);
- 		} else {
--			assert(asprintf(&answer, "- %s", "Command failed") != -1);
-+			assert_safe(asprintf(&answer, "- %s", "Command failed") != -1);
- 		}
+ 	sock_file = conf_get_str_with_def("reexport", "fsidd_socket", FSID_SOCKET_NAME);
  
- 		(void)send(cl, answer, strlen(answer), 0);
-@@ -78,13 +82,13 @@ static void client_cb(evutil_socket_t cl, short ev, void *d)
+-	unlink(sock_file);
+-
+ 	memset(&addr, 0, sizeof(struct sockaddr_un));
+ 	addr.sun_family = AF_UNIX;
+ 	strncpy(addr.sun_path, sock_file, sizeof(addr.sun_path) - 1);
++	if (addr.sun_path[0] == '@')
++		/* "abstract" socket namespace */
++		addr.sun_path[0] = 0;
++	else
++		unlink(sock_file);
  
- 		if (dbbackend->fsidnum_by_path(req_path, &fsidnum, true, &found)) {
- 			if (found) {
--				assert(asprintf(&answer, "+ %u", fsidnum) != -1);
-+				assert_safe(asprintf(&answer, "+ %u", fsidnum) != -1);
- 			} else {
--				assert(asprintf(&answer, "+ ") != -1);
-+				assert_safe(asprintf(&answer, "+ ") != -1);
- 			}
- 		
- 		} else {
--			assert(asprintf(&answer, "- %s", "Command failed") != -1);
-+			assert_safe(asprintf(&answer, "- %s", "Command failed") != -1);
- 		}
+ 	srv = socket(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK, 0);
+ 	if (srv == -1) {
+diff --git a/support/reexport/reexport.c b/support/reexport/reexport.c
+index eddc9bf413f6..d597a2f73c93 100644
+--- a/support/reexport/reexport.c
++++ b/support/reexport/reexport.c
+@@ -38,6 +38,9 @@ static bool connect_fsid_service(void)
+ 	memset(&addr, 0, sizeof(struct sockaddr_un));
+ 	addr.sun_family = AF_UNIX;
+ 	strncpy(addr.sun_path, sock_file, sizeof(addr.sun_path) - 1);
++	if (addr.sun_path[0] == '@')
++		/* "abstract" socket namespace */
++		addr.sun_path[0] = 0;
  
- 		(void)send(cl, answer, strlen(answer), 0);
-@@ -106,15 +110,15 @@ static void client_cb(evutil_socket_t cl, short ev, void *d)
- 		}
+ 	s = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+ 	if (s == -1) {
+diff --git a/support/reexport/reexport.h b/support/reexport/reexport.h
+index 3bed03a9a0bb..856c3085a1dd 100644
+--- a/support/reexport/reexport.h
++++ b/support/reexport/reexport.h
+@@ -13,6 +13,6 @@ int reexpdb_fsidnum_by_path(char *path, uint32_t *fsidnum, int may_create);
+ int reexpdb_apply_reexport_settings(struct exportent *ep, char *flname, int flline);
+ void reexpdb_uncover_subvolume(uint32_t fsidnum);
  
- 		if (bad_input) {
--			assert(asprintf(&answer, "- %s", "Command failed: Bad input") != -1);
-+			assert_safe(asprintf(&answer, "- %s", "Command failed: Bad input") != -1);
- 		} else {
- 			if (dbbackend->path_by_fsidnum(fsidnum, &path, &found)) {
- 				if (found)
--					assert(asprintf(&answer, "+ %s", path) != -1);
-+					assert_safe(asprintf(&answer, "+ %s", path) != -1);
- 				else
--					assert(asprintf(&answer, "+ ") != -1);
-+					assert_safe(asprintf(&answer, "+ ") != -1);
- 			} else {
--				assert(asprintf(&answer, "+ ") != -1);
-+				assert_safe(asprintf(&answer, "+ ") != -1);
- 			}
- 		}
+-#define FSID_SOCKET_NAME "fsid.sock"
++#define FSID_SOCKET_NAME "@/run/fsid.sock"
  
-@@ -129,7 +133,7 @@ static void client_cb(evutil_socket_t cl, short ev, void *d)
- 	} else {
- 		char *answer = NULL;
- 
--		assert(asprintf(&answer, "- bad command") != -1);
-+		assert_safe(asprintf(&answer, "- bad command") != -1);
- 		(void)send(cl, answer, strlen(answer), 0);
- 
- 		free(answer);
+ #endif /* REEXPORT_H */
 
 
