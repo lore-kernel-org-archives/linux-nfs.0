@@ -2,51 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E4D68C7EE25
-	for <linux-nfs@archiver.kernel.org>; Wed, 10 May 2023 22:08:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5B577C7EE22
+	for <linux-nfs@archiver.kernel.org>; Wed, 10 May 2023 22:08:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236396AbjEJWII (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 10 May 2023 18:08:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57602 "EHLO
+        id S236361AbjEJWIM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 10 May 2023 18:08:12 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57744 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236339AbjEJWID (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 May 2023 18:08:03 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6289E3A92
-        for <linux-nfs@vger.kernel.org>; Wed, 10 May 2023 15:07:59 -0700 (PDT)
+        with ESMTP id S236375AbjEJWIH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 May 2023 18:08:07 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 11E206189
+        for <linux-nfs@vger.kernel.org>; Wed, 10 May 2023 15:08:05 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 13F3121923;
-        Wed, 10 May 2023 22:07:58 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id C04A71FD6B;
+        Wed, 10 May 2023 22:08:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1683756478; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1683756483; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=Fgj92GNXnWn6vyGg4Se7Z7jElWjro1mKUqstrauxKp8=;
-        b=uKJy+zl8UBVaXKE8RQaakKdOrLZRcUzi3Z4gfLFHn/0vrKpVNs5+lC2R5wrjXM8Ch3KX0u
-        riwkvyr6jz+7bV14Wyr/HN7NELF7Xby7qXpU4QKElEQEnVBx7qgqlagzqTYEwRwtEoAiQB
-        gSrTEhecDe/6Q6gHmVDewD5u5ZwWtt4=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=J/e3rIshzrYg4pAK0dSAEbWV4SJAQMPKkivuMAu6Qxw=;
+        b=qd7DU+NkPZ7J0U5viyzukzL2hC95usTnLeAG0+ETe3b5oufZitnUYY+MYciEnjDm7YxoRV
+        04wjmuoi6hN6Nn5s4WDV2obJoCxj71tRXV8qOnnRSKAIYbQ9QHK4mWpLhv9pSeDV8hiKfd
+        UdJ2tIeBWnMhRaPQqnaa6dj9kx7RHoc=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1683756478;
+        s=susede2_ed25519; t=1683756483;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=Fgj92GNXnWn6vyGg4Se7Z7jElWjro1mKUqstrauxKp8=;
-        b=gF7YW/xPMst0h1hMqZoX7IYuQYx73e23V8wqgHuGSWTrYz7KEUqx7z/6cYfBPbK/j+AF5v
-        P8bumXRTjky3RyDg==
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=J/e3rIshzrYg4pAK0dSAEbWV4SJAQMPKkivuMAu6Qxw=;
+        b=Zo8Xls5LwZs+tjJ5IJgBndJArwcLDBJxE1kLvc/biBV0k7XTyXHGM3hJ5t5YvauAVjQl/Q
+        nzCRJH4UndQ9l3Ag==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id EAA6413519;
-        Wed, 10 May 2023 22:07:55 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id A51C213519;
+        Wed, 10 May 2023 22:08:01 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id h69QJ7sVXGTcBAAAMHmgww
-        (envelope-from <neilb@suse.de>); Wed, 10 May 2023 22:07:55 +0000
-Subject: [PATCH 0/2] Support abstract address for rpcbind in kernel
+        id aG6TFsEVXGTqBAAAMHmgww
+        (envelope-from <neilb@suse.de>); Wed, 10 May 2023 22:08:01 +0000
+Subject: [PATCH 1/2] SUNRPC: support abstract unix socket addresses
 From:   NeilBrown <neilb@suse.de>
 To:     Jeff Layton <jlayton@kernel.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>
@@ -54,7 +56,9 @@ Cc:     linux-nfs@vger.kernel.org, Petr Vorel <pvorel@suse.cz>,
         Nikita Yushchenko <nikita.yoush@cogentembedded.com>,
         Steve Dickson <steved@redhat.com>
 Date:   Thu, 11 May 2023 08:06:24 +1000
-Message-ID: <168375610447.26246.3237443941479930060.stgit@noble.brown>
+Message-ID: <168375638439.26246.18054236712842151913.stgit@noble.brown>
+In-Reply-To: <168375610447.26246.3237443941479930060.stgit@noble.brown>
+References: <168375610447.26246.3237443941479930060.stgit@noble.brown>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -63,38 +67,66 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-These two patches cause the SUNRPC layer in Linux to attempt to contact
-rpcbind using an AF_UNIX socket with an abstract address before
-the existing attempts of AF_UNIX to a socket in the filesystem, and IP
-to a well known port.
+An "abtract" address for an AF_UNIX socket start with a nul and can
+contain any bytes for the given length, but traditionally doesn't
+contain other nuls.  When reported, the leading nul is replaced by '@'.
 
-This allows the benefits of an AF_UNIX connection combined with the
-benefits of honouring the network namespace when connection rpcbind.
+sunrpc currently rejects connections to these addresses and reports them
+as an empty string.  To provide support for future use of these
+addresses, allow them for outgoing connections and report them more
+usefully.
 
-For this to be useful, rpcbind must listed on that name, and user-space
-tools must also connect to the same address.  This requires changes to
-rpcbind and too libtirpc.  libtirpc currently has a bug which causes
-sockets bountd to abstract addresses to appear to be unbound, so asking
-systemd to pass rpcbind an abstract socket doesn't work - rpcbind
-rejects it.
-
-Patches for rpcbind and libtirpc will follow.
-
-NeilBrown
-
-
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
+ net/sunrpc/clnt.c     |    8 ++++++--
+ net/sunrpc/xprtsock.c |    9 +++++++--
+ 2 files changed, 13 insertions(+), 4 deletions(-)
 
-NeilBrown (2):
-      SUNRPC: support abstract unix socket addresses
-      SUNRPC: attempt to reach rpcbind with an abstract socket name
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index d2ee56634308..18f70854f528 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -565,8 +565,12 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 		servername[0] = '\0';
+ 		switch (args->address->sa_family) {
+ 		case AF_LOCAL:
+-			snprintf(servername, sizeof(servername), "%s",
+-				 sun->sun_path);
++			if (sun->sun_path[0])
++				snprintf(servername, sizeof(servername), "%s",
++					 sun->sun_path);
++			else
++				snprintf(servername, sizeof(servername), "@%s",
++					 sun->sun_path+1);
+ 			break;
+ 		case AF_INET:
+ 			snprintf(servername, sizeof(servername), "%pI4",
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 5f9030b81c9e..515328a8dafe 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -253,7 +253,12 @@ static void xs_format_common_peer_addresses(struct rpc_xprt *xprt)
+ 	switch (sap->sa_family) {
+ 	case AF_LOCAL:
+ 		sun = xs_addr_un(xprt);
+-		strscpy(buf, sun->sun_path, sizeof(buf));
++		if (sun->sun_path[0]) {
++			strscpy(buf, sun->sun_path, sizeof(buf));
++		} else {
++			buf[0] = '@';
++			strscpy(buf+1, sun->sun_path+1, sizeof(buf)-1);
++		}
+ 		xprt->address_strings[RPC_DISPLAY_ADDR] =
+ 						kstrdup(buf, GFP_KERNEL);
+ 		break;
+@@ -2858,7 +2863,7 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 
+ 	switch (sun->sun_family) {
+ 	case AF_LOCAL:
+-		if (sun->sun_path[0] != '/') {
++		if (sun->sun_path[0] != '/' && sun->sun_path[0] != '\0') {
+ 			dprintk("RPC:       bad AF_LOCAL address: %s\n",
+ 					sun->sun_path);
+ 			ret = ERR_PTR(-EINVAL);
 
-
- net/sunrpc/clnt.c      |  8 ++++++--
- net/sunrpc/rpcb_clnt.c | 39 +++++++++++++++++++++++++++++++--------
- net/sunrpc/xprtsock.c  |  9 +++++++--
- 3 files changed, 44 insertions(+), 12 deletions(-)
-
---
-Signature
 
