@@ -2,35 +2,35 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 274DCC77B7A
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 May 2023 11:48:21 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2C6A5C7EE22
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 May 2023 11:48:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231537AbjERLsR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 18 May 2023 07:48:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41854 "EHLO
+        id S231618AbjERLs2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 18 May 2023 07:48:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42210 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231345AbjERLr4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2023 07:47:56 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 96E98B9;
-        Thu, 18 May 2023 04:47:55 -0700 (PDT)
+        with ESMTP id S231538AbjERLsR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2023 07:48:17 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DECB6173D;
+        Thu, 18 May 2023 04:48:00 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 2DC6A64ED2;
-        Thu, 18 May 2023 11:47:55 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3F80EC433AA;
-        Thu, 18 May 2023 11:47:52 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 6396B64ED5;
+        Thu, 18 May 2023 11:48:00 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 77283C433A1;
+        Thu, 18 May 2023 11:47:57 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1684410474;
-        bh=+ZM+liB0nOC40xQZQZ86xt6fi25JWXDh676GI1IVOtU=;
+        s=k20201202; t=1684410479;
+        bh=wTAnemCjoVMdBCyfBm7Caga87wrGLLdiUMBAcBipLM4=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=NQnkqGwCCO7vGJ/Yl4qfYfKxifiKbMPWX2nYexu/UCvc1oIUUfQVuW6udPdzJ1m4k
-         rWMY0fCaeAJOQI+qqhPBhxIV7gfUu9Ylg2eSEobnGKZW88ySXBwsucmW1y8Y+nFlfR
-         6tVEWNilLHOCnTpp/KdfqHoVSXvdllBWDnVe9kNrF2FvgYteYmwPND+Z+1pY9ZmQ2e
-         iyCImFsXgFxeUDph74sSt9m0qYQnTUhLuWqAY/TFIwQnnTp/OT8BBkqPnjwa96LF+q
-         MqMJYD6fBTddkIFRXAdvcgr6RmUENlMzwsFZYCbPjxDR9haBrGDkiCc3Hs4jGSiG4s
-         1NqFQlisf4yPQ==
+        b=pv9NSU1eFgIMWnOukE0vFtlSJhvEzj0TZb3+gBxSbV4qnUliBKBhdy87cs9IAXHTQ
+         1dMxyJ0MCSwcxOHa0adG7hzskt16qlLg6oamqDb76RXfskYjsZM5o0JxuTo/WFc897
+         VcFtzIuIMOGA47SH7EdySeITog2TKUoLRdLffRTpA7WrjOcjjvIVsAT/189C9RgPwh
+         YJ2blX4n6Pm7QyDIP3ewgeAI6b3YJEbz4lUXoiFKczZaUeQvD+QwwzqUFJd6f3EYkC
+         +6ZEtMgGqziZq7hwGRaYwIsAUtBQD/dTP/9CtCnpQcrkIjmmiHoBVgsfu4UY3Vycc5
+         mjFdNmAgburFQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christian Brauner <brauner@kernel.org>,
@@ -55,9 +55,9 @@ Cc:     Jan Kara <jack@suse.cz>, Amir Goldstein <amir73il@gmail.com>,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-mm@kvack.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Subject: [PATCH v4 3/9] overlayfs: allow it to handle multigrain timestamps
-Date:   Thu, 18 May 2023 07:47:36 -0400
-Message-Id: <20230518114742.128950-4-jlayton@kernel.org>
+Subject: [PATCH v4 5/9] ksmbd: use ctime_peek to grab the ctime out of the inode
+Date:   Thu, 18 May 2023 07:47:38 -0400
+Message-Id: <20230518114742.128950-6-jlayton@kernel.org>
 X-Mailer: git-send-email 2.40.1
 In-Reply-To: <20230518114742.128950-1-jlayton@kernel.org>
 References: <20230518114742.128950-1-jlayton@kernel.org>
@@ -67,53 +67,44 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Ensure that we strip off the I_CTIME_QUERIED bit when copying up.
+This ensures that the flag is masked off in the result.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/overlayfs/file.c | 7 +++++--
- fs/overlayfs/util.c | 2 +-
- 2 files changed, 6 insertions(+), 3 deletions(-)
+ fs/ksmbd/smb2pdu.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
-index 7c04f033aadd..cad715df8c4e 100644
---- a/fs/overlayfs/file.c
-+++ b/fs/overlayfs/file.c
-@@ -222,6 +222,7 @@ static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)
- static void ovl_file_accessed(struct file *file)
- {
- 	struct inode *inode, *upperinode;
-+	struct timespec64 ctime, uctime;
+diff --git a/fs/ksmbd/smb2pdu.c b/fs/ksmbd/smb2pdu.c
+index d39ddb344417..c33128570448 100644
+--- a/fs/ksmbd/smb2pdu.c
++++ b/fs/ksmbd/smb2pdu.c
+@@ -4745,7 +4745,7 @@ static int find_file_posix_info(struct smb2_query_info_rsp *rsp,
+ 	file_info->LastAccessTime = cpu_to_le64(time);
+ 	time = ksmbd_UnixTimeToNT(inode->i_mtime);
+ 	file_info->LastWriteTime = cpu_to_le64(time);
+-	time = ksmbd_UnixTimeToNT(inode->i_ctime);
++	time = ksmbd_UnixTimeToNT(ctime_peek(inode));
+ 	file_info->ChangeTime = cpu_to_le64(time);
+ 	file_info->DosAttributes = fp->f_ci->m_fattr;
+ 	file_info->Inode = cpu_to_le64(inode->i_ino);
+@@ -5386,7 +5386,7 @@ int smb2_close(struct ksmbd_work *work)
+ 		rsp->LastAccessTime = cpu_to_le64(time);
+ 		time = ksmbd_UnixTimeToNT(inode->i_mtime);
+ 		rsp->LastWriteTime = cpu_to_le64(time);
+-		time = ksmbd_UnixTimeToNT(inode->i_ctime);
++		time = ksmbd_UnixTimeToNT(ctime_peek(inode));
+ 		rsp->ChangeTime = cpu_to_le64(time);
+ 		ksmbd_fd_put(work, fp);
+ 	} else {
+@@ -5605,7 +5605,7 @@ static int set_file_basic_info(struct ksmbd_file *fp,
+ 	if (file_info->ChangeTime)
+ 		attrs.ia_ctime = ksmbd_NTtimeToUnix(file_info->ChangeTime);
+ 	else
+-		attrs.ia_ctime = inode->i_ctime;
++		attrs.ia_ctime = ctime_peek(inode);
  
- 	if (file->f_flags & O_NOATIME)
- 		return;
-@@ -232,10 +233,12 @@ static void ovl_file_accessed(struct file *file)
- 	if (!upperinode)
- 		return;
- 
-+	ctime = ctime_peek(inode);
-+	uctime = ctime_peek(upperinode);
- 	if ((!timespec64_equal(&inode->i_mtime, &upperinode->i_mtime) ||
--	     !timespec64_equal(&inode->i_ctime, &upperinode->i_ctime))) {
-+	     !timespec64_equal(&ctime, &uctime))) {
- 		inode->i_mtime = upperinode->i_mtime;
--		inode->i_ctime = upperinode->i_ctime;
-+		inode->i_ctime = uctime;
- 	}
- 
- 	touch_atime(&file->f_path);
-diff --git a/fs/overlayfs/util.c b/fs/overlayfs/util.c
-index 923d66d131c1..f4f9d7e189ef 100644
---- a/fs/overlayfs/util.c
-+++ b/fs/overlayfs/util.c
-@@ -1117,6 +1117,6 @@ void ovl_copyattr(struct inode *inode)
- 	inode->i_mode = realinode->i_mode;
- 	inode->i_atime = realinode->i_atime;
- 	inode->i_mtime = realinode->i_mtime;
--	inode->i_ctime = realinode->i_ctime;
-+	inode->i_ctime = ctime_peek(realinode);
- 	i_size_write(inode, i_size_read(realinode));
- }
+ 	if (file_info->LastWriteTime) {
+ 		attrs.ia_mtime = ksmbd_NTtimeToUnix(file_info->LastWriteTime);
 -- 
 2.40.1
 
