@@ -2,35 +2,35 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F31BC7EE24
-	for <linux-nfs@archiver.kernel.org>; Thu, 18 May 2023 11:48:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E0B4DC7EE23
+	for <linux-nfs@archiver.kernel.org>; Thu, 18 May 2023 11:49:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231493AbjERLsa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 18 May 2023 07:48:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42198 "EHLO
+        id S231641AbjERLtJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 18 May 2023 07:49:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42242 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231466AbjERLsQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2023 07:48:16 -0400
+        with ESMTP id S231574AbjERLsT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2023 07:48:19 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 500E419A;
-        Thu, 18 May 2023 04:47:58 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AD3491BE6;
+        Thu, 18 May 2023 04:48:03 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id C8C9664ED4;
-        Thu, 18 May 2023 11:47:57 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D0DD8C433A0;
-        Thu, 18 May 2023 11:47:54 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0147064ED5;
+        Thu, 18 May 2023 11:48:03 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 13E0DC433A8;
+        Thu, 18 May 2023 11:48:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1684410477;
-        bh=en20+kwYIb+rQx+Bs8McKeHFRgrQ8XEHcOk9MVmU7iY=;
+        s=k20201202; t=1684410482;
+        bh=8+fZEJKQ9cO5SVgMB2qO1XAAD7U35g4jCUBGVnN6KkQ=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=E4LAb0nIr9avuLF6bnhNgC2cRv8n+Y1r1x0zPOZeGu+bmo0SCl5MMh4ksQB9eom5S
-         CEPIxNX0JYB+XiFpj7TAYcNwACJZ0aG2sE7DrRd8kZiFZMB+MkW7P2Gk7W1du57+Tx
-         BMsp9pM/wLI2kWZmup7SdZvctIT91uMob/wvifDVVh88XCAtTac7bHJkRuxHrr8ZN2
-         jrlGYU74z7oZ6tQP5ksyrgyn3awO7cIF7AtozH7MMlARxYEikZaguKB2DTP6z6xi6M
-         Wm8fgVO2JxxmGPrUz5pDiYBZcTOycshUgvJF3oY9yDGZ5hzJhsgwGrWv6Kl3g/82aL
-         D7C397+DhZIWQ==
+        b=RkTLJNDNnDv/jhHbXE2CP7WNHaiIixKzHFGzRqROTOa7iwgnTbvZWcLXdq3poORnn
+         n50CgeB7/YwrwJUEkbCk8zVTU6JrO23Skvl7vBQUU2AFFm5HVvnXyXmho4MVsJyUL1
+         zWUSudVSr+81Xd7URP6fUQdeaGhd5Rmo2fkitrKbKPLuHcGPMCedmpejICiuN2jJNh
+         WvLJupsKyQTDsjHfhlZeHpV4uwY1nBiaRaKYhtAatsab0HiBd3H3hIzA8H3v9rrWK9
+         3h2/VjlzDkEWTsiuE9zwNF9BrKCBW1wFNuYsi0NQhb4vckXzyLfJSTAhxoQSRNQEZd
+         OZtbDt/5GXBgQ==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christian Brauner <brauner@kernel.org>,
@@ -55,9 +55,9 @@ Cc:     Jan Kara <jack@suse.cz>, Amir Goldstein <amir73il@gmail.com>,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-mm@kvack.org, linux-nfs@vger.kernel.org,
         linux-cifs@vger.kernel.org
-Subject: [PATCH v4 4/9] nfsd: ensure we use ctime_peek to grab the inode->i_ctime
-Date:   Thu, 18 May 2023 07:47:37 -0400
-Message-Id: <20230518114742.128950-5-jlayton@kernel.org>
+Subject: [PATCH v4 6/9] tmpfs: add support for multigrain timestamps
+Date:   Thu, 18 May 2023 07:47:39 -0400
+Message-Id: <20230518114742.128950-7-jlayton@kernel.org>
 X-Mailer: git-send-email 2.40.1
 In-Reply-To: <20230518114742.128950-1-jlayton@kernel.org>
 References: <20230518114742.128950-1-jlayton@kernel.org>
@@ -67,46 +67,24 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-If getattr fails, then nfsd can end up scraping the time values directly
-out of the inode for pre and post-op attrs. This may or may not be the
-right thing to do, but for now make it at least use ctime_peek in this
-situation to ensure that the QUERIED flag is masked.
-
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfsfh.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ mm/shmem.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index ccd8485fee04..f053cf20dd8a 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -624,9 +624,14 @@ void fh_fill_pre_attrs(struct svc_fh *fhp)
- 	inode = d_inode(fhp->fh_dentry);
- 	err = fh_getattr(fhp, &stat);
- 	if (err) {
--		/* Grab the times from inode anyway */
-+		/*
-+		 * Grab the times from inode anyway.
-+		 *
-+		 * FIXME: is this the right thing to do? Or should we just
-+		 * 	  not send pre and post-op attrs in this case?
-+		 */
- 		stat.mtime = inode->i_mtime;
--		stat.ctime = inode->i_ctime;
-+		stat.ctime = ctime_peek(inode);
- 		stat.size  = inode->i_size;
- 		if (v4 && IS_I_VERSION(inode)) {
- 			stat.change_cookie = inode_query_iversion(inode);
-@@ -662,7 +667,7 @@ void fh_fill_post_attrs(struct svc_fh *fhp)
- 	err = fh_getattr(fhp, &fhp->fh_post_attr);
- 	if (err) {
- 		fhp->fh_post_saved = false;
--		fhp->fh_post_attr.ctime = inode->i_ctime;
-+		fhp->fh_post_attr.ctime = ctime_peek(inode);
- 		if (v4 && IS_I_VERSION(inode)) {
- 			fhp->fh_post_attr.change_cookie = inode_query_iversion(inode);
- 			fhp->fh_post_attr.result_mask |= STATX_CHANGE_COOKIE;
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 8208d4f85dff..94ea3086eacc 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -4085,7 +4085,7 @@ static struct file_system_type shmem_fs_type = {
+ #endif
+ 	.kill_sb	= kill_litter_super,
+ #ifdef CONFIG_SHMEM
+-	.fs_flags	= FS_USERNS_MOUNT | FS_ALLOW_IDMAP,
++	.fs_flags	= FS_USERNS_MOUNT | FS_ALLOW_IDMAP | FS_MULTIGRAIN_TS,
+ #else
+ 	.fs_flags	= FS_USERNS_MOUNT,
+ #endif
 -- 
 2.40.1
 
