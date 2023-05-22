@@ -2,146 +2,96 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92929C77B73
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 May 2023 23:08:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6D28C7EE2A
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 May 2023 00:24:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231796AbjEVXIO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 May 2023 19:08:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58232 "EHLO
+        id S229615AbjEWAYp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 22 May 2023 20:24:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37322 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231825AbjEVXIN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 May 2023 19:08:13 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C791AC6
-        for <linux-nfs@vger.kernel.org>; Mon, 22 May 2023 16:08:04 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 3DA782228C;
-        Mon, 22 May 2023 23:08:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1684796883; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=nlYhxk0OlLkO1UuRsIIq1aBUsVFZhUn/EAPB6alB3hc=;
-        b=j5Fe/Y01GlVivzD4+OH5ydxOMYdvtZLMSKS8ABoZEem8s33ziBP9RvcY09hAoGv/fT5+WL
-        XB4TEPneIk3HMHMhFU1c8lFmH1P4561fCIlduep3tpV78VH2eUaOv+knIssOAFcONMxO+Q
-        p3C3KJWZqzWIerQypDbzvyl1euBVBRc=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1684796883;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=nlYhxk0OlLkO1UuRsIIq1aBUsVFZhUn/EAPB6alB3hc=;
-        b=X6u2FX35weTs0WBZq/tLNhprIwBeBzCDype6T2cP6crXHbVff3G3L4n2hUjNr5P/Jp5GUA
-        QHEHYqEATLG53NCw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 0535C13336;
-        Mon, 22 May 2023 23:08:01 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id T6AAK9H1a2T7CAAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 22 May 2023 23:08:01 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Jeff Layton" <jlayton@kernel.org>
-Cc:     chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: don't provide pre/post-op attrs if fh_getattr fails
-In-reply-to: <20230519111723.20612-1-jlayton@kernel.org>
-References: <20230519111723.20612-1-jlayton@kernel.org>
-Date:   Mon, 22 May 2023 11:24:22 +1000
-Message-id: <168471866230.5298.3283829268036917998@noble.neil.brown.name>
+        with ESMTP id S234472AbjEVX4t (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 May 2023 19:56:49 -0400
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 761692128;
+        Mon, 22 May 2023 16:52:59 -0700 (PDT)
+Received: from pps.filterd (m0333520.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 34MKNuIB019632;
+        Mon, 22 May 2023 23:52:56 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : in-reply-to : references; s=corp-2023-03-30;
+ bh=/N2LpwZMHf8t9rQO6kZ7l4/DJAl3DnwMVCbSh1H47sk=;
+ b=1IEseT7IyF+uW70NfXFKjWbwz6zKuWfL4Iuc4iCrhD3thRwlP7CeN9PJChjcTwbMJ4xO
+ x6HOgWtGymG7IHxwPprc3FBhzhyI3R14BFblqiBsV0co4pc0H4UHnjToA6vbb9MHV+Wt
+ dJieTk81ELtH2JXypoq4irLKI58jMFhhNQp7t9HpRxo0W5D9UvagpjuklwLglDwQuekP
+ sOIJIbv1LW4oEbwWn9CyBz7Q3iZ+g/RSHiIOHF4FZ14c/A4FjzEI7pzOH3Qb2QytG09g
+ tpPJfkLfoJ3NShIDZkUENuiNcLTRoitq2jmxvmPj2iz/RLXU+TGMYcpzBi7STK2M0s/i hw== 
+Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3qpp8cbxqa-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 22 May 2023 23:52:55 +0000
+Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 34MLagYP013996;
+        Mon, 22 May 2023 23:52:55 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3qqk7e43wb-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 22 May 2023 23:52:55 +0000
+Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 34MNqqh3018982;
+        Mon, 22 May 2023 23:52:54 GMT
+Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 3qqk7e43vc-4;
+        Mon, 22 May 2023 23:52:54 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     chuck.lever@oracle.com, jlayton@kernel.org
+Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH v5 3/3] locks: allow support for write delegation
+Date:   Mon, 22 May 2023 16:52:40 -0700
+Message-Id: <1684799560-31663-4-git-send-email-dai.ngo@oracle.com>
+X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1684799560-31663-1-git-send-email-dai.ngo@oracle.com>
+References: <1684799560-31663-1-git-send-email-dai.ngo@oracle.com>
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.254,Aquarius:18.0.957,Hydra:6.0.573,FMLib:17.11.176.26
+ definitions=2023-05-22_17,2023-05-22_03,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 suspectscore=0
+ mlxscore=0 spamscore=0 mlxlogscore=999 adultscore=0 phishscore=0
+ bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2304280000 definitions=main-2305220201
+X-Proofpoint-ORIG-GUID: bZUU06QhhgBAJ5HlQcp5qEoPkWi9On9u
+X-Proofpoint-GUID: bZUU06QhhgBAJ5HlQcp5qEoPkWi9On9u
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 19 May 2023, Jeff Layton wrote:
-> nfsd calls fh_getattr to get the latest inode attrs for pre/post-op
-> info. In the event that fh_getattr fails, it resorts to scraping cached
-> values out of the inode directly.
-> 
-> Since these attributes are optional, we can just skip providing them
-> altogether when this happens.
-> 
-> Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> ---
->  fs/nfsd/nfsfh.c | 26 +++++++-------------------
->  1 file changed, 7 insertions(+), 19 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-> index ccd8485fee04..e8e13ae72e3c 100644
-> --- a/fs/nfsd/nfsfh.c
-> +++ b/fs/nfsd/nfsfh.c
-> @@ -623,16 +623,9 @@ void fh_fill_pre_attrs(struct svc_fh *fhp)
->  
->  	inode = d_inode(fhp->fh_dentry);
->  	err = fh_getattr(fhp, &stat);
-> -	if (err) {
-> -		/* Grab the times from inode anyway */
-> -		stat.mtime = inode->i_mtime;
-> -		stat.ctime = inode->i_ctime;
-> -		stat.size  = inode->i_size;
-> -		if (v4 && IS_I_VERSION(inode)) {
-> -			stat.change_cookie = inode_query_iversion(inode);
-> -			stat.result_mask |= STATX_CHANGE_COOKIE;
-> -		}
-> -	}
-> +	if (err)
-> +		return;
-> +
+Remove the check for F_WRLCK in generic_add_lease to allow file_lock
+to be used for write delegation.
 
-I wondered if this might exercise error paths which had not previously
-been tested.  Before this change fh_pre_saved is always set, now it is
-not.
+First consumer is NFSD.
 
-The code looks OK, but I was amused by xdr_stream_encode_item_absent().
-Various places in the code test for "< 0" or "> 0" which seems to
-suggest that "0" is not being handled consistently.
-But of course xdr_stream_encode_item_absent() can never return 0.  It
-returns either XDR_UNIT or -EMSGSIZE.
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/locks.c | 7 -------
+ 1 file changed, 7 deletions(-)
 
-I wonder if we should be consistent in how we test for an error ....  or
-if it it really matters.
-
-Patch itself looks good.
-
-Thanks,
-NeilBrown
-
-
->  	if (v4)
->  		fhp->fh_pre_change = nfsd4_change_attribute(&stat, inode);
->  
-> @@ -660,15 +653,10 @@ void fh_fill_post_attrs(struct svc_fh *fhp)
->  		printk("nfsd: inode locked twice during operation.\n");
->  
->  	err = fh_getattr(fhp, &fhp->fh_post_attr);
-> -	if (err) {
-> -		fhp->fh_post_saved = false;
-> -		fhp->fh_post_attr.ctime = inode->i_ctime;
-> -		if (v4 && IS_I_VERSION(inode)) {
-> -			fhp->fh_post_attr.change_cookie = inode_query_iversion(inode);
-> -			fhp->fh_post_attr.result_mask |= STATX_CHANGE_COOKIE;
-> -		}
-> -	} else
-> -		fhp->fh_post_saved = true;
-> +	if (err)
-> +		return;
-> +
-> +	fhp->fh_post_saved = true;
->  	if (v4)
->  		fhp->fh_post_change =
->  			nfsd4_change_attribute(&fhp->fh_post_attr, inode);
-> -- 
-> 2.40.1
-> 
-> 
+diff --git a/fs/locks.c b/fs/locks.c
+index df8b26a42524..08fb0b4fd4f8 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1729,13 +1729,6 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **pr
+ 	if (is_deleg && !inode_trylock(inode))
+ 		return -EAGAIN;
+ 
+-	if (is_deleg && arg == F_WRLCK) {
+-		/* Write delegations are not currently supported: */
+-		inode_unlock(inode);
+-		WARN_ON_ONCE(1);
+-		return -EINVAL;
+-	}
+-
+ 	percpu_down_read(&file_rwsem);
+ 	spin_lock(&ctx->flc_lock);
+ 	time_out_leases(inode, &dispose);
+-- 
+2.9.5
 
