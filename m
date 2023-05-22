@@ -2,96 +2,110 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5AB6C7EE29
-	for <linux-nfs@archiver.kernel.org>; Mon, 22 May 2023 21:21:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E7FFC77B73
+	for <linux-nfs@archiver.kernel.org>; Mon, 22 May 2023 23:07:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232946AbjEVVVh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 May 2023 17:21:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40324 "EHLO
+        id S229559AbjEVXHt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 22 May 2023 19:07:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57880 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233410AbjEVVVg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 May 2023 17:21:36 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4B02C9D
-        for <linux-nfs@vger.kernel.org>; Mon, 22 May 2023 14:21:35 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        with ESMTP id S231796AbjEVXHr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 May 2023 19:07:47 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A951F11A;
+        Mon, 22 May 2023 16:07:40 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id D39F462A64
-        for <linux-nfs@vger.kernel.org>; Mon, 22 May 2023 21:21:34 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D54B5C433EF;
-        Mon, 22 May 2023 21:21:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1684790494;
-        bh=cU/cZNMsFMyqfwDbHQg8m0wbz+Ft1Vg0I4KIdWqH9pk=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=eP/teyeLGi+relO33sVhKW2VK7L6slcNKkDx5GSbedKu1GozdUqA0S7+YO+XKTdw1
-         RwJ+Fqk05og6SexKwW08b/yKDN5epRh0ZmQ/e/sM9marMeO/joPwOwEPkV0FlFS4Lh
-         1F7V3k0Tey3SrKsdwQ8EdGAhWZwdPQp2KQQSaeoobYF6OtQU90G01ot1HVTSt3Q6uv
-         kA1XVLSmedXB+QtK7dwcF09yek4EvFH1xuHhNsw8+ghf4qgRMFoainIvJn4JAw5YqH
-         bPLjCZVtGSmkS9WoUCY3Tyh6sV+wWR+vK8a79tpSvUF2XjLMncNLGwaZRHruiDXV+J
-         7qYz4Sqvi+9ww==
-Subject: [PATCH] SUNRPC: @clnt specifies auth flavor of RPC ping
-From:   Chuck Lever <cel@kernel.org>
-To:     anna.schumaker@netapp.com
-Cc:     Chuck Lever <chuck.lever@oracle.com>, jlayton@redhat.com,
-        linux-nfs@vger.kernel.org, kernel-tls-handshake@lists.linux.dev
-Date:   Mon, 22 May 2023 17:21:22 -0400
-Message-ID: <168479039188.9346.7280595186663128472.stgit@oracle-102.nfsv4bat.org>
-In-Reply-To: <CAFX2Jfk9up-eyLhe7s65E6+vBTjXrATREFoYJVkCBLAT_56o2g@mail.gmail.com>
-References: <CAFX2Jfk9up-eyLhe7s65E6+vBTjXrATREFoYJVkCBLAT_56o2g@mail.gmail.com>
-User-Agent: StGit/1.5
-MIME-Version: 1.0
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 4EE5C2007D;
+        Mon, 22 May 2023 23:07:39 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1684796859; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=j7hz+VLyYLZiSKJ1OVKSFd8L2NCNioFTMNx7Kd6MvZ0=;
+        b=SOCCvWBrbhcKQrpvjcrirLCuRk1L57b63gO2/pADOXCnVPUDZrxX0yOvo9gRa93pMUMCbE
+        jg45dyvX0DLMIYHQOjMdDVwd0lVDuO/JU1JBBtGm3L2ZbsMKK02BvpZAnl7iJJ1rM55uww
+        J3ZApARkbp4mT268b4Q42e5oiDk4JBA=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1684796859;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=j7hz+VLyYLZiSKJ1OVKSFd8L2NCNioFTMNx7Kd6MvZ0=;
+        b=2r9piMn4xDTko8q0I1m/hnVg4C4nLw19R4kU2TQhQ+T9+aRU4xIWS8NryYZ9TxKQsIlIU8
+        iKlrDp8+4dNRxGDg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 8FD2213336;
+        Mon, 22 May 2023 23:07:37 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id EmM6Ern1a2TmCAAAMHmgww
+        (envelope-from <neilb@suse.de>); Mon, 22 May 2023 23:07:37 +0000
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Jeff Layton" <jlayton@kernel.org>
+Cc:     "Chuck Lever" <chuck.lever@oracle.com>,
+        "Zhi Li" <yieli@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: make a copy of struct iattr before calling notify_change
+In-reply-to: <20230517162645.254512-1-jlayton@kernel.org>
+References: <20230517162645.254512-1-jlayton@kernel.org>
+Date:   Mon, 22 May 2023 12:45:37 +1000
+Message-id: <168472353748.5298.2381558773846767023@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Chuck Lever <chuck.lever@oracle.com>
+On Thu, 18 May 2023, Jeff Layton wrote:
+> notify_change can modify the iattr structure. In particular it can can
+> end up setting ATTR_MODE when ATTR_KILL_SUID is already set, causing a
+> BUG() if the same iattr is passed to notify_change more than once.
+>=20
+> Make a copy of the struct iattr before calling notify_change.
+>=20
+> Fixes: 34b91dda7124 NFSD: Make nfsd4_setattr() wait before returning NFS4ER=
+R_DELAY
+> Link: https://bugzilla.redhat.com/show_bug.cgi?id=3D2207969
+> Reported-by: Zhi Li <yieli@redhat.com>
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+>  fs/nfsd/vfs.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+>=20
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index c4ef24c5ffd0..ad0c5cd900b1 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -538,7 +538,9 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> =20
+>  	inode_lock(inode);
+>  	for (retries =3D 1;;) {
+> -		host_err =3D __nfsd_setattr(dentry, iap);
+> +		struct iattr attrs =3D *iap;
+> +
+> +		host_err =3D __nfsd_setattr(dentry, &attrs);
 
-When connecting, we don't want to send both a NULL ping and an
-RPC_AUTH_TLS probe, because, except for the detection of RPC-with-
-TLS support, both serve effectively the same purpose.
+I think this needs something to ensure a well meaning by-passer doesn't
+try to "optimise" it back to the way it was.
+Maybe make "iap" const?  Or add a comment?  Or both?
 
-Modify rpc_ping() so it can send a TLS probe when @clnt's flavor
-is RPC_AUTH_TLS. All other callers continue to use AUTH_NONE.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/clnt.c |   14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
-
-Does it help to replace 4/12 with this?  Compile-tested only.
+NeilBrown
 
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 4cdb539b5854..274ad74cb2bd 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2826,10 +2826,22 @@ EXPORT_SYMBOL_GPL(rpc_call_null);
- 
- static int rpc_ping(struct rpc_clnt *clnt)
- {
-+	struct rpc_message msg = {
-+		.rpc_proc = &rpcproc_null,
-+	};
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = clnt,
-+		.rpc_message = &msg,
-+		.callback_ops = &rpc_null_ops,
-+		.flags = RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
-+	};
- 	struct rpc_task	*task;
- 	int status;
- 
--	task = rpc_call_null_helper(clnt, NULL, NULL, 0, NULL, NULL);
-+	if (clnt->cl_auth->au_flavor != RPC_AUTH_TLS)
-+		flags |= RPC_TASK_NULLCREDS;
-+
-+	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
- 	status = task->tk_status;
-
+>  		if (host_err !=3D -EAGAIN || !retries--)
+>  			break;
+>  		if (!nfsd_wait_for_delegreturn(rqstp, inode))
+> --=20
+> 2.40.1
+>=20
+>=20
 
