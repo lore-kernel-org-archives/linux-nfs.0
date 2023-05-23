@@ -2,123 +2,196 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DF951C7EE2D
-	for <linux-nfs@archiver.kernel.org>; Tue, 23 May 2023 00:24:54 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F288DC7EE2D
+	for <linux-nfs@archiver.kernel.org>; Tue, 23 May 2023 01:06:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232606AbjEWAYu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 22 May 2023 20:24:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37316 "EHLO
+        id S229585AbjEWBGm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 22 May 2023 21:06:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35148 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234451AbjEVX4t (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 May 2023 19:56:49 -0400
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C650E2125;
-        Mon, 22 May 2023 16:52:56 -0700 (PDT)
-Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 34MKNsVe001958;
-        Mon, 22 May 2023 23:52:53 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id; s=corp-2023-03-30;
- bh=IKJkCOccVzLu6kohxV9I79caIQhey6LTKOR4b88i/IU=;
- b=3UJqX2XZ6j0UBhzLIZNQ9lmrVhrAYUAVXnHMxqkynXI9OasWnBEcNIjIC2/LbJXJqrt/
- FIR6hZIOA6KKiJQpdjI3LrSgoepG+7/eZ0L+iWy68LiP2J9J6h/4roh0c3KnZfJvi/T+
- H/v1dIluN2YehVetJU54XDaczryUpq8wNkWTgJkkUEn3uCgDlZyF38YvdOtfj0tFrz5i
- sfCykymZr0m98jM9b1u6u9wRG0ETKPaTPpCEqVC7sxvE2kqoEws4cHEEoAuYCOkpW7+e
- 9hsYfh/z8rtRiw2LoDLmWWxOi3MbXHavtpKQbq2zDeqbYOY0+KTjYKf2dmcKEtJP8B/Z LQ== 
-Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3qpp44kumq-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 22 May 2023 23:52:53 +0000
-Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 34MLouQa013218;
-        Mon, 22 May 2023 23:52:52 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3qqk7e43vn-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 22 May 2023 23:52:52 +0000
-Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 34MNqqgv018982;
-        Mon, 22 May 2023 23:52:52 GMT
-Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 3qqk7e43vc-1;
-        Mon, 22 May 2023 23:52:52 +0000
-From:   Dai Ngo <dai.ngo@oracle.com>
-To:     chuck.lever@oracle.com, jlayton@kernel.org
-Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v5 0/3] NFSD: add support for NFSv4 write delegation
-Date:   Mon, 22 May 2023 16:52:37 -0700
-Message-Id: <1684799560-31663-1-git-send-email-dai.ngo@oracle.com>
-X-Mailer: git-send-email 1.8.3.1
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.254,Aquarius:18.0.957,Hydra:6.0.573,FMLib:17.11.176.26
- definitions=2023-05-22_17,2023-05-22_03,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 suspectscore=0
- mlxscore=0 spamscore=0 mlxlogscore=800 adultscore=0 phishscore=0
- bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
- engine=8.12.0-2304280000 definitions=main-2305220201
-X-Proofpoint-GUID: mG3qQPbzzKhwgvq5ftf9mpVDGfzqfCEM
-X-Proofpoint-ORIG-GUID: mG3qQPbzzKhwgvq5ftf9mpVDGfzqfCEM
+        with ESMTP id S235317AbjEWBGa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 May 2023 21:06:30 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1A0EF97;
+        Mon, 22 May 2023 18:06:29 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 9AF6862D60;
+        Tue, 23 May 2023 01:06:28 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E5A8CC433EF;
+        Tue, 23 May 2023 01:06:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1684803988;
+        bh=h4E1J1AKDKMVuSfgh/Fow3jhm+kdCps73if0IpfmP5M=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=B7HpXX0w8KazRHI9JNKr78xlTtBd/1Nh3mIbBpnJMweSFzrOqUOt7vzqrdBkuR6da
+         VpRkQ0B9OD3Lv3dmDJT2f5qM2ZiJ/Kyn1Lq2WhZw69nlhNmf+f3buLVFiU8DbZvv7F
+         UZtgkITdSnN+xy5B/gLJIpuTpnarir62FwLnGDW1sBWKc+tVEtQAX97dY0y9SoCq5l
+         zRaQqJlwCLVdQFoTj4OZUDBxuXLoYm1YXms74/n+fosCJ8AqmV5X1QCSlaFFWigY5U
+         89PsbK7iFzdJ2y1/246qlBtpGb/jm+WXxujyUQIlwqewLNfDNz7C/tJF/7+ceO+zUq
+         U9+tx48Oj/N1Q==
+Date:   Mon, 22 May 2023 18:06:27 -0700
+From:   "Darrick J. Wong" <djwong@kernel.org>
+To:     Christoph Hellwig <hch@lst.de>
+Cc:     Matthew Wilcox <willy@infradead.org>, Jens Axboe <axboe@kernel.dk>,
+        Xiubo Li <xiubli@redhat.com>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christian Brauner <brauner@kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>,
+        Damien Le Moal <dlemoal@kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-block@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        "open list:F2FS FILE SYSTEM" <linux-f2fs-devel@lists.sourceforge.net>,
+        cluster-devel@redhat.com, linux-xfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [PATCH 08/13] iomap: assign current->backing_dev_info in
+ iomap_file_buffered_write
+Message-ID: <20230523010627.GD11598@frogsfrogsfrogs>
+References: <20230519093521.133226-1-hch@lst.de>
+ <20230519093521.133226-9-hch@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230519093521.133226-9-hch@lst.de>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-NFSD: add support for NFSv4 write delegation
+On Fri, May 19, 2023 at 11:35:16AM +0200, Christoph Hellwig wrote:
+> Move the assignment to current->backing_dev_info from the callers into
+> iomap_file_buffered_write to reduce boiler plate code and reduce the
+> scope to just around the page dirtying loop.
+> 
+> Note that zonefs was missing this assignment before.
 
-The NFSv4 server currently supports read delegation using VFS lease
-which is implemented using file_lock. 
+I'm still wondering (a) what the hell current->backing_dev_info is for,
+and (b) if we need it around the iomap_unshare operation.
 
-This patch series add write delegation support for NFSv4 server by:
+$ git grep current..backing_dev_info
+fs/btrfs/file.c:1148:   current->backing_dev_info = inode_to_bdi(inode);
+fs/btrfs/file.c:1169:                   current->backing_dev_info = NULL;
+fs/btrfs/file.c:1692:   current->backing_dev_info = NULL;
+fs/ceph/file.c:1795:    current->backing_dev_info = inode_to_bdi(inode);
+fs/ceph/file.c:1943:    current->backing_dev_info = NULL;
+fs/ext4/file.c:288:     current->backing_dev_info = inode_to_bdi(inode);
+fs/ext4/file.c:290:     current->backing_dev_info = NULL;
+fs/f2fs/file.c:4520:    current->backing_dev_info = inode_to_bdi(inode);
+fs/f2fs/file.c:4522:    current->backing_dev_info = NULL;
+fs/fuse/file.c:1366:    current->backing_dev_info = inode_to_bdi(inode);
+fs/fuse/file.c:1412:    current->backing_dev_info = NULL;
+fs/gfs2/file.c:1044:    current->backing_dev_info = inode_to_bdi(inode);
+fs/gfs2/file.c:1048:    current->backing_dev_info = NULL;
+fs/nfs/file.c:652:              current->backing_dev_info = inode_to_bdi(inode);
+fs/nfs/file.c:654:              current->backing_dev_info = NULL;
+fs/ntfs/file.c:1914:    current->backing_dev_info = inode_to_bdi(vi);
+fs/ntfs/file.c:1918:    current->backing_dev_info = NULL;
+fs/ntfs3/file.c:823:    current->backing_dev_info = inode_to_bdi(inode);
+fs/ntfs3/file.c:996:    current->backing_dev_info = NULL;
+fs/xfs/xfs_file.c:721:  current->backing_dev_info = inode_to_bdi(inode);
+fs/xfs/xfs_file.c:756:  current->backing_dev_info = NULL;
+mm/filemap.c:3995:      current->backing_dev_info = inode_to_bdi(inode);
+mm/filemap.c:4056:      current->backing_dev_info = NULL;
 
-    . remove the check for F_WRLCK in generic_add_lease to allow
-      file_lock to be used for write delegation.  
+AFAICT nobody uses it at all?  Unless there's some bizarre user that
+isn't extracting it from @current?
 
-    . grant write delegation for OPEN with NFS4_SHARE_ACCESS_WRITE
-      if there is no conflict with other OPENs.
+Oh, hey, new question (c) isn't this set incorrectly for xfs realtime
+files?
 
-Write delegation conflict with another OPEN, REMOVE, RENAME and SETATTR
-are handled the same as read delegation using notify_change, try_break_deleg.
+--D
 
-Changes since v1:
-
-[PATCH 3/4] NFSD: add supports for CB_GETATTR callback
-- remove WARN_ON_ONCE from encode_bitmap4
-- replace decode_bitmap4 with xdr_stream_decode_uint32_array
-- replace xdr_inline_decode and xdr_decode_hyper in decode_cb_getattr
-   with xdr_stream_decode_u64. Also remove the un-needed likely().
-- modify signature of encode_cb_getattr4args to take pointer to
-   nfs4_cb_fattr
-- replace decode_attr_length with xdr_stream_decode_u32
-- rename decode_cb_getattr to decode_cb_fattr4
-- fold the initialization of cb_cinfo and cb_fsize into decode_cb_fattr4
-- rename ncf_cb_cinfo to ncf_cb_change to avoid confusion of cindo usage
-  in fs/nfsd/nfs4xdr.c
-- correct NFS4_dec_cb_getattr_sz and update size description
-
-[PATCH 4/4] NFSD: handle GETATTR conflict with write delegation
-- change nfs4_handle_wrdeleg_conflict returns __be32 to fix test robot
-- change ncf_cb_cinfo to ncf_cb_change to avoid confusion of cindo usage
-  in fs/nfsd/nfs4xdr.c
-
-Changes since v2:
-
-[PATCH 2/4] NFSD: enable support for write delegation
-- rename 'deleg' to 'dl_type' in nfs4_set_delegation
-- remove 'wdeleg' in nfs4_open_delegation
-
-- drop [PATCH 3/4] NFSD: add supports for CB_GETATTR callback
-  and [PATCH 4/4] NFSD: handle GETATTR conflict with write delegation
-  for futher clarification of the benefits of these patches
-
-Changes since v3:
-
-- recall write delegation when there is GETATTR from 2nd client
-- add trace point to track when write delegation is granted 
-
-Changes since v4:
-- squash 4/4 into 2/4
-- apply 1/4 last instead of first
-- combine nfs4_wrdeleg_filelock and nfs4_handle_wrdeleg_conflict to
-  nfsd4_deleg_getattr_conflict and move it to fs/nfsd/nfs4state.c
-- check for lock belongs to delegation before proceed and do it
-  under the fl_lock
-- check and skip FL_LAYOUT file_locks
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/gfs2/file.c         | 3 ---
+>  fs/iomap/buffered-io.c | 3 +++
+>  fs/xfs/xfs_file.c      | 5 -----
+>  3 files changed, 3 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
+> index 499ef174dec138..261897fcfbc495 100644
+> --- a/fs/gfs2/file.c
+> +++ b/fs/gfs2/file.c
+> @@ -25,7 +25,6 @@
+>  #include <linux/dlm.h>
+>  #include <linux/dlm_plock.h>
+>  #include <linux/delay.h>
+> -#include <linux/backing-dev.h>
+>  #include <linux/fileattr.h>
+>  
+>  #include "gfs2.h"
+> @@ -1041,11 +1040,9 @@ static ssize_t gfs2_file_buffered_write(struct kiocb *iocb,
+>  			goto out_unlock;
+>  	}
+>  
+> -	current->backing_dev_info = inode_to_bdi(inode);
+>  	pagefault_disable();
+>  	ret = iomap_file_buffered_write(iocb, from, &gfs2_iomap_ops);
+>  	pagefault_enable();
+> -	current->backing_dev_info = NULL;
+>  	if (ret > 0)
+>  		written += ret;
+>  
+> diff --git a/fs/iomap/buffered-io.c b/fs/iomap/buffered-io.c
+> index 550525a525c45c..b2779bd1f10611 100644
+> --- a/fs/iomap/buffered-io.c
+> +++ b/fs/iomap/buffered-io.c
+> @@ -3,6 +3,7 @@
+>   * Copyright (C) 2010 Red Hat, Inc.
+>   * Copyright (C) 2016-2019 Christoph Hellwig.
+>   */
+> +#include <linux/backing-dev.h>
+>  #include <linux/module.h>
+>  #include <linux/compiler.h>
+>  #include <linux/fs.h>
+> @@ -869,8 +870,10 @@ iomap_file_buffered_write(struct kiocb *iocb, struct iov_iter *i,
+>  	if (iocb->ki_flags & IOCB_NOWAIT)
+>  		iter.flags |= IOMAP_NOWAIT;
+>  
+> +	current->backing_dev_info = inode_to_bdi(iter.inode);
+>  	while ((ret = iomap_iter(&iter, ops)) > 0)
+>  		iter.processed = iomap_write_iter(&iter, i);
+> +	current->backing_dev_info = NULL;
+>  
+>  	if (unlikely(ret < 0))
+>  		return ret;
+> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> index bfba10e0b0f3c2..98d763cc3b114c 100644
+> --- a/fs/xfs/xfs_file.c
+> +++ b/fs/xfs/xfs_file.c
+> @@ -27,7 +27,6 @@
+>  
+>  #include <linux/dax.h>
+>  #include <linux/falloc.h>
+> -#include <linux/backing-dev.h>
+>  #include <linux/mman.h>
+>  #include <linux/fadvise.h>
+>  #include <linux/mount.h>
+> @@ -717,9 +716,6 @@ xfs_file_buffered_write(
+>  	if (ret)
+>  		goto out;
+>  
+> -	/* We can write back this queue in page reclaim */
+> -	current->backing_dev_info = inode_to_bdi(inode);
+> -
+>  	trace_xfs_file_buffered_write(iocb, from);
+>  	ret = iomap_file_buffered_write(iocb, from,
+>  			&xfs_buffered_write_iomap_ops);
+> @@ -751,7 +747,6 @@ xfs_file_buffered_write(
+>  		goto write_retry;
+>  	}
+>  
+> -	current->backing_dev_info = NULL;
+>  out:
+>  	if (iolock)
+>  		xfs_iunlock(ip, iolock);
+> -- 
+> 2.39.2
+> 
