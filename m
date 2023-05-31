@@ -2,77 +2,126 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6BB5DC77B73
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 May 2023 02:35:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B6226C7EE33
+	for <linux-nfs@archiver.kernel.org>; Wed, 31 May 2023 02:35:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233557AbjEaCfb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 30 May 2023 22:35:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57978 "EHLO
+        id S233946AbjEaCfc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 30 May 2023 22:35:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58036 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231336AbjEaCfZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2023 22:35:25 -0400
+        with ESMTP id S231842AbjEaCf0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2023 22:35:26 -0400
 Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A90C2118;
-        Tue, 30 May 2023 19:35:24 -0700 (PDT)
-Received: from pps.filterd (m0246632.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 34UNO6gc022134;
-        Wed, 31 May 2023 02:35:20 GMT
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 74A80123;
+        Tue, 30 May 2023 19:35:25 -0700 (PDT)
+Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 34UNOgXq015320;
+        Wed, 31 May 2023 02:35:22 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id; s=corp-2023-03-30;
- bh=IhT8Lesv/W588Q8nZKDS144F7/nmgSAZTLEf8tiNpYI=;
- b=Qumgq6GRE+fHmhSjj48R/rk7/RLMxwqXL0sxK6h8exhY6CN0JLPKipxLUmqOJdoBKcus
- 4+KGj95XQyzICagSGsYeNcV4dhAGbt60RIqZg8nDlPAC4lr+ClCfPfeP61H1H4nagmkZ
- 8ntW6DG6OG/sa9sQvb7ENTIixyan3gM1FGKOEwBDJZryomADkY52I24BhdoT5W1r3KvW
- nJuvZLU2+ecSp9OeW7Y6mjLXn+TaSezkOeiUr5T39aVuyNUH2D2XK1GOZykR/9VWR5p6
- hyrfjW00gJWEM1VGSjN6px9KX+hRU2O+43Gouzefp/bQPJcZ4PCG86Yjph2nRuYFMcC9 xw== 
+ subject : date : message-id : in-reply-to : references; s=corp-2023-03-30;
+ bh=J/dLiyzOlqOVO3IWRV52xWq8Kl3J1LMJAHb4zxE2SxI=;
+ b=b/udPmEb8Mr4B1l3J5Ar4A01XFauaIdAmBvsnqz5oarMcPuw2nIe6bAuGzZzpOstsZJ/
+ 98LVX2bEak0hRh75i1YgCVFf9302dkQht6vdIJK5sb6zV6HOLEmXa8FjdOp8cs6qt+Gr
+ E25U1awf0ffGH8mOJCd+ur+9beL9KkEEbmpKRcCmCU3nWOF8FGNa7ZLF3zj+y7rRZMEk
+ gZGQcmBJl5W58Sr0kriTXqcSPPqHOvTK1eMDiBp3eG7qSB9X/JthS6d+uUNjdgmYeaJp
+ VSclxYOZIE45pbOh8oBQe/3s4rgPvIvVq6KGvLQmod3GUXviUWpy/hGm36cqa2wJSUss OQ== 
 Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3qvhmemfnw-1
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3qvhj4vfr3-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 31 May 2023 02:35:20 +0000
+        Wed, 31 May 2023 02:35:22 +0000
 Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 34V0UZQc000447;
-        Wed, 31 May 2023 02:35:19 GMT
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 34V07Cc8000380;
+        Wed, 31 May 2023 02:35:21 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3qu8q99hta-1
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3qu8q99hu4-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Wed, 31 May 2023 02:35:19 +0000
+        Wed, 31 May 2023 02:35:21 +0000
 Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 34V2TtqV012906;
-        Wed, 31 May 2023 02:35:19 GMT
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 34V2TtqZ012906;
+        Wed, 31 May 2023 02:35:21 GMT
 Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 3qu8q99hsx-1;
-        Wed, 31 May 2023 02:35:19 +0000
+        by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 3qu8q99hsx-3;
+        Wed, 31 May 2023 02:35:21 +0000
 From:   Dai Ngo <dai.ngo@oracle.com>
 To:     chuck.lever@oracle.com, jlayton@kernel.org
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v3 0/2] NFSD: recall write delegation on GETATTR conflict
-Date:   Tue, 30 May 2023 19:35:05 -0700
-Message-Id: <1685500507-23598-1-git-send-email-dai.ngo@oracle.com>
+Subject: [PATCH v3 2/2] NFSD: add counter for write delegation recall due to conflict with GETATTR
+Date:   Tue, 30 May 2023 19:35:07 -0700
+Message-Id: <1685500507-23598-3-git-send-email-dai.ngo@oracle.com>
 X-Mailer: git-send-email 1.8.3.1
+In-Reply-To: <1685500507-23598-1-git-send-email-dai.ngo@oracle.com>
+References: <1685500507-23598-1-git-send-email-dai.ngo@oracle.com>
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.254,Aquarius:18.0.957,Hydra:6.0.573,FMLib:17.11.176.26
  definitions=2023-05-30_18,2023-05-30_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 mlxscore=0 mlxlogscore=823
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 mlxscore=0 mlxlogscore=999
  suspectscore=0 malwarescore=0 adultscore=0 phishscore=0 spamscore=0
  classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2304280000
  definitions=main-2305310019
-X-Proofpoint-ORIG-GUID: tyrfoEM9hhZuigIy2qPNBhZygtQuJlOR
-X-Proofpoint-GUID: tyrfoEM9hhZuigIy2qPNBhZygtQuJlOR
+X-Proofpoint-GUID: xMXQOQwd2makauZuOtD8QRpHd-A_1eBz
+X-Proofpoint-ORIG-GUID: xMXQOQwd2makauZuOtD8QRpHd-A_1eBz
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch series adds the recall of write delegation when there is
-conflict with a GETATTR and a counter in /proc/net/rpc/nfsd to keep
-count of this recall.
+Add counter to keep track of how many times write delegations are
+recalled due to conflict with GETATTR.
 
-Changes from v1:
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/nfsd/nfs4state.c | 1 +
+ fs/nfsd/stats.c     | 2 ++
+ fs/nfsd/stats.h     | 7 +++++++
+ 3 files changed, 10 insertions(+)
 
-- add comment for nfsd4_deleg_getattr_conflict
-- only wait 30ms for delegation to be returned before returing
-  NFS4ERR_DELAY
-- fix test robot undeclared NFSD_STATS_WDELEG_GETATTR error
-
-Changes from v2:
-- call nfsd_open_break_lease for non-nfs lease with F_WRLCK
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 29ed2e72b665..cba27dfa39e8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -8402,6 +8402,7 @@ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct inode *inode)
+ 			}
+ break_lease:
+ 			spin_unlock(&ctx->flc_lock);
++			nfsd_stats_wdeleg_getattr_inc();
+ 			status = nfserrno(nfsd_open_break_lease(inode, NFSD_MAY_READ));
+ 			if (status != nfserr_jukebox ||
+ 					!nfsd_wait_for_delegreturn(rqstp, inode))
+diff --git a/fs/nfsd/stats.c b/fs/nfsd/stats.c
+index 777e24e5da33..63797635e1c3 100644
+--- a/fs/nfsd/stats.c
++++ b/fs/nfsd/stats.c
+@@ -65,6 +65,8 @@ static int nfsd_show(struct seq_file *seq, void *v)
+ 		seq_printf(seq, " %lld",
+ 			   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_NFS4_OP(i)]));
+ 	}
++	seq_printf(seq, "\nwdeleg_getattr %lld",
++		percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_WDELEG_GETATTR]));
+ 
+ 	seq_putc(seq, '\n');
+ #endif
+diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
+index 9b43dc3d9991..cf5524e7ca06 100644
+--- a/fs/nfsd/stats.h
++++ b/fs/nfsd/stats.h
+@@ -22,6 +22,7 @@ enum {
+ 	NFSD_STATS_FIRST_NFS4_OP,	/* count of individual nfsv4 operations */
+ 	NFSD_STATS_LAST_NFS4_OP = NFSD_STATS_FIRST_NFS4_OP + LAST_NFS4_OP,
+ #define NFSD_STATS_NFS4_OP(op)	(NFSD_STATS_FIRST_NFS4_OP + (op))
++	NFSD_STATS_WDELEG_GETATTR,	/* count of getattr conflict with wdeleg */
+ #endif
+ 	NFSD_STATS_COUNTERS_NUM
+ };
+@@ -93,4 +94,10 @@ static inline void nfsd_stats_drc_mem_usage_sub(struct nfsd_net *nn, s64 amount)
+ 	percpu_counter_sub(&nn->counter[NFSD_NET_DRC_MEM_USAGE], amount);
+ }
+ 
++#ifdef CONFIG_NFSD_V4
++static inline void nfsd_stats_wdeleg_getattr_inc(void)
++{
++	percpu_counter_inc(&nfsdstats.counter[NFSD_STATS_WDELEG_GETATTR]);
++}
++#endif
+ #endif /* _NFSD_STATS_H */
+-- 
+2.9.5
 
