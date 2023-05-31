@@ -2,32 +2,32 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D5523C7EE24
-	for <linux-nfs@archiver.kernel.org>; Wed, 31 May 2023 07:20:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E1D69C7EE32
+	for <linux-nfs@archiver.kernel.org>; Wed, 31 May 2023 07:20:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234601AbjEaHUj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 31 May 2023 03:20:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33294 "EHLO
+        id S234637AbjEaHU4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 31 May 2023 03:20:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33320 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234595AbjEaHU2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 May 2023 03:20:28 -0400
+        with ESMTP id S234594AbjEaHUd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 May 2023 03:20:33 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4487FEE;
-        Wed, 31 May 2023 00:20:27 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 664B4125;
+        Wed, 31 May 2023 00:20:32 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=zBZfLo79n2onda8TMRoaSImQJ1x4yClUpeA3xrekMTk=; b=WIvJCu2WcZCPxyyElumOzaF+3c
-        /RvEl7Rd3lQdRO0Twp9TVret57OwjxhPz2wC4zzHR9NJ2222yBJnOaOpx+0Kw5lvEwSA8dKaL3vWX
-        mI+t/R/Z5f8hm++0kU6KUHfULeRm8WoThwXgVOgmdYePJYzaXGiGOzdJaJBR5bsYUTmXW990744su
-        +5OM2lso0jyefF2GTzsaJGS5INdouHWmZpaAEh6NceGkwXox+v1NXwvj8UpFQCWcZ4zvAS0tKBu3X
-        pXSuBa7GfyBqpWj1/Wfh248oclvoi6NKSkGEzi4PjB4d0yeGNgQaw31c5eU17cE8JTvWdyvAbZWmW
-        WoLOfN0A==;
+        bh=oeUDNAIuBGOOZ56XkyqMnjDXKnQawdRHpRl2i305rtg=; b=ncreG/QhyaELQ2k8D8sdUXciwt
+        gOfrMClk0xHmq6y5/Blma4l71TEq2fD6Lp+5u5zNS2rJGAbP27wqZyUwUgR6lANp8/zka/so3nRuX
+        /fLhumNBrJ/CcYaaR6iisG+ECwkwOhnKIo0dR71ulzPLy2vURp1/XGDQhY6+mMUo4zS+oqnpfLfAi
+        pwexPwws3xiWx9JiWDwRitL7J4US4DAjIajF/QRqgYJ9Df6Tap6WkV3jyxiTkhoNsltUay9LhYGuy
+        J/V+hmhM4e/nPbg8iDcjx6APJR+mNcUe4ny+f4cwPKEl3SY5D0ymMPR4r/5+Zrqoi9qLmqLIrwtYd
+        pGMn73zg==;
 Received: from [2001:4bb8:182:6d06:f5c3:53d7:b5aa:b6a7] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1q4G81-00GPiD-0U;
-        Wed, 31 May 2023 07:20:17 +0000
+        id 1q4G86-00GPis-28;
+        Wed, 31 May 2023 07:20:23 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Matthew Wilcox <willy@infradead.org>
 Cc:     Jens Axboe <axboe@kernel.dk>, Xiubo Li <xiubli@redhat.com>,
@@ -47,9 +47,9 @@ Cc:     Jens Axboe <axboe@kernel.dk>, Xiubo Li <xiubli@redhat.com>,
         linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
         linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org, Hannes Reinecke <hare@suse.de>
-Subject: [PATCH 3/8] filemap: update ki_pos in generic_perform_write
-Date:   Wed, 31 May 2023 09:20:01 +0200
-Message-Id: <20230531072006.476386-4-hch@lst.de>
+Subject: [PATCH 5/8] filemap: add a kiocb_invalidate_pages helper
+Date:   Wed, 31 May 2023 09:20:03 +0200
+Message-Id: <20230531072006.476386-6-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230531072006.476386-1-hch@lst.de>
 References: <20230531072006.476386-1-hch@lst.de>
@@ -60,112 +60,102 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-All callers of generic_perform_write need to updated ki_pos, move it into
-common code.
+Factor out a helper that calls filemap_write_and_wait_range and
+invalidate_inode_pages2_range for the range covered by a write kiocb or
+returns -EAGAIN if the kiocb is marked as nowait and there would be pages
+to write or invalidate.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Xiubo Li <xiubli@redhat.com>
 Reviewed-by: Damien Le Moal <dlemoal@kernel.org>
 Reviewed-by: Hannes Reinecke <hare@suse.de>
 Acked-by: Darrick J. Wong <djwong@kernel.org>
 ---
- fs/ceph/file.c | 2 --
- fs/ext4/file.c | 9 +++------
- fs/f2fs/file.c | 1 -
- fs/nfs/file.c  | 1 -
- mm/filemap.c   | 8 ++++----
- 5 files changed, 7 insertions(+), 14 deletions(-)
+ include/linux/pagemap.h |  1 +
+ mm/filemap.c            | 48 ++++++++++++++++++++++++-----------------
+ 2 files changed, 29 insertions(+), 20 deletions(-)
 
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index c8ef72f723badd..767f4dfe7def64 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -1891,8 +1891,6 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		 * can not run at the same time
- 		 */
- 		written = generic_perform_write(iocb, from);
--		if (likely(written >= 0))
--			iocb->ki_pos = pos + written;
- 		ceph_end_io_write(inode);
- 	}
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 36fc2cea13ce20..6e4c9ee40baa99 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -30,6 +30,7 @@ static inline void invalidate_remote_inode(struct inode *inode)
+ int invalidate_inode_pages2(struct address_space *mapping);
+ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 		pgoff_t start, pgoff_t end);
++int kiocb_invalidate_pages(struct kiocb *iocb, size_t count);
  
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index bc430270c23c19..ea0ada3985cba2 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -289,12 +289,9 @@ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
- 
- out:
- 	inode_unlock(inode);
--	if (likely(ret > 0)) {
--		iocb->ki_pos += ret;
--		ret = generic_write_sync(iocb, ret);
--	}
--
--	return ret;
-+	if (unlikely(ret <= 0))
-+		return ret;
-+	return generic_write_sync(iocb, ret);
- }
- 
- static ssize_t ext4_handle_inode_extension(struct inode *inode, loff_t offset,
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 4f423d367a44b9..7134fe8bd008cb 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -4520,7 +4520,6 @@ static ssize_t f2fs_buffered_write_iter(struct kiocb *iocb,
- 	ret = generic_perform_write(iocb, from);
- 
- 	if (ret > 0) {
--		iocb->ki_pos += ret;
- 		f2fs_update_iostat(F2FS_I_SB(inode), inode,
- 						APP_BUFFERED_IO, ret);
- 	}
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 665ce3fc62eaf4..e8bb4c48a3210a 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -655,7 +655,6 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
- 		goto out;
- 
- 	written = result;
--	iocb->ki_pos += written;
- 	nfs_add_stats(inode, NFSIOS_NORMALWRITTENBYTES, written);
- 
- 	if (mntflags & NFS_MOUNT_WRITE_EAGER) {
+ int write_inode_now(struct inode *, int sync);
+ int filemap_fdatawrite(struct address_space *);
 diff --git a/mm/filemap.c b/mm/filemap.c
-index 33b54660ad2b39..15907af4a57ff5 100644
+index 5fcd5227f9cae2..a1cb01a4b8046a 100644
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
-@@ -3957,7 +3957,10 @@ ssize_t generic_perform_write(struct kiocb *iocb, struct iov_iter *i)
- 		balance_dirty_pages_ratelimited(mapping);
- 	} while (iov_iter_count(i));
- 
--	return written ? written : status;
-+	if (!written)
-+		return status;
-+	iocb->ki_pos += written;
-+	return written;
+@@ -2777,6 +2777,33 @@ int kiocb_write_and_wait(struct kiocb *iocb, size_t count)
+ 	return filemap_write_and_wait_range(mapping, pos, end);
  }
- EXPORT_SYMBOL(generic_perform_write);
  
-@@ -4034,7 +4037,6 @@ ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		endbyte = pos + status - 1;
- 		err = filemap_write_and_wait_range(mapping, pos, endbyte);
- 		if (err == 0) {
--			iocb->ki_pos = endbyte + 1;
- 			written += status;
- 			invalidate_mapping_pages(mapping,
- 						 pos >> PAGE_SHIFT,
-@@ -4047,8 +4049,6 @@ ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		}
- 	} else {
- 		written = generic_perform_write(iocb, from);
--		if (likely(written > 0))
--			iocb->ki_pos += written;
- 	}
- out:
- 	return written ? written : err;
++int kiocb_invalidate_pages(struct kiocb *iocb, size_t count)
++{
++	struct address_space *mapping = iocb->ki_filp->f_mapping;
++	loff_t pos = iocb->ki_pos;
++	loff_t end = pos + count - 1;
++	int ret;
++
++	if (iocb->ki_flags & IOCB_NOWAIT) {
++		/* we could block if there are any pages in the range */
++		if (filemap_range_has_page(mapping, pos, end))
++			return -EAGAIN;
++	} else {
++		ret = filemap_write_and_wait_range(mapping, pos, end);
++		if (ret)
++			return ret;
++	}
++
++	/*
++	 * After a write we want buffered reads to be sure to go to disk to get
++	 * the new data.  We invalidate clean cached page from the region we're
++	 * about to write.  We do this *before* the write so that we can return
++	 * without clobbering -EIOCBQUEUED from ->direct_IO().
++	 */
++	return invalidate_inode_pages2_range(mapping, pos >> PAGE_SHIFT,
++					     end >> PAGE_SHIFT);
++}
++
+ /**
+  * generic_file_read_iter - generic filesystem read routine
+  * @iocb:	kernel I/O control block
+@@ -3820,30 +3847,11 @@ generic_file_direct_write(struct kiocb *iocb, struct iov_iter *from)
+ 	write_len = iov_iter_count(from);
+ 	end = (pos + write_len - 1) >> PAGE_SHIFT;
+ 
+-	if (iocb->ki_flags & IOCB_NOWAIT) {
+-		/* If there are pages to writeback, return */
+-		if (filemap_range_has_page(file->f_mapping, pos,
+-					   pos + write_len - 1))
+-			return -EAGAIN;
+-	} else {
+-		written = filemap_write_and_wait_range(mapping, pos,
+-							pos + write_len - 1);
+-		if (written)
+-			goto out;
+-	}
+-
+-	/*
+-	 * After a write we want buffered reads to be sure to go to disk to get
+-	 * the new data.  We invalidate clean cached page from the region we're
+-	 * about to write.  We do this *before* the write so that we can return
+-	 * without clobbering -EIOCBQUEUED from ->direct_IO().
+-	 */
+-	written = invalidate_inode_pages2_range(mapping,
+-					pos >> PAGE_SHIFT, end);
+ 	/*
+ 	 * If a page can not be invalidated, return 0 to fall back
+ 	 * to buffered write.
+ 	 */
++	written = kiocb_invalidate_pages(iocb, write_len);
+ 	if (written) {
+ 		if (written == -EBUSY)
+ 			return 0;
 -- 
 2.39.2
 
