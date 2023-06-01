@@ -2,32 +2,32 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A288DC7EE2E
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Jun 2023 15:00:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C4C6DC7EE37
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Jun 2023 15:00:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234337AbjFAPAK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Jun 2023 11:00:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41802 "EHLO
+        id S234704AbjFAPAL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Jun 2023 11:00:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41316 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234777AbjFAO7u (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jun 2023 10:59:50 -0400
+        with ESMTP id S234814AbjFAO7z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jun 2023 10:59:55 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DBB0410E0;
-        Thu,  1 Jun 2023 07:59:28 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5E576E44;
+        Thu,  1 Jun 2023 07:59:34 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=qFF6fLdGcSdKlOPYnxGb89x929heU6NqNup9f91209k=; b=wmq67X7kYyI1B5F1ECXLwrMY0T
-        7Y6PvoIwnb70q0Ip3NqZe+9BvsMOK/ZfabselOaqQF4hgbwCaALq7GWsBLMlmlw3aGlQfEhiSDGZE
-        qgCCLr/RcUkDH31Unwf4PALPHIR/628eDsUXOsJEzwWpC03Jq4mmTe4EYmYthsBJ97pKfm3AxoFS2
-        vK+qpxXWzdn0AWxaTUZ9j+AaJFhtMPX1W2V2+DH28Xro9DDo9ZVJAaJfM7i//CET9jJbCeHdJORmX
-        MyyBuMtvMazpByyotke4mF8RVMvKciUfblvRr5u7+igwHsf1p7VQJ+JtOW6PNkcsfe5y/rzoWYG4i
-        1NVtLVgQ==;
+        bh=nJKP2lo8qunKNZgc/SdmDxY20EOraczIBDBFCWeBRL0=; b=j7qBPMw5QnMmc/IBpbrFo2Vebr
+        n5b2MoJL/8LTtw+yiF6CKRniMjv3E4rxI1OI/AduZbn71iH8iRwvH3GIZyPKWxwv8CoxsIrqUVyMC
+        hzYBDV2BQX3Ujey6+H8oG85fHIWL3C+TQ4Vmzodld6K8RXuclv6ZwxdmhHCD6xGlGcVB9U/ZQN3iQ
+        TtT4rUoOjlaDjHuyjRs+Oi1NM2eS5NnfqPs10RQTKakERDdn5rS84D1rxTVMl/3qjZrpOATWPLi4Y
+        Z3NYil8BeImexTQyPryHqrYZHZROaFKrt8X8sDbfr2Y02+JxklbQoWjb6bOhYCrFbW6z+iRBG+cc5
+        gosghO6w==;
 Received: from [2001:4bb8:182:6d06:eacb:c751:971:73eb] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1q4jld-003w2V-0F;
-        Thu, 01 Jun 2023 14:59:09 +0000
+        id 1q4jlp-003w6o-35;
+        Thu, 01 Jun 2023 14:59:22 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Matthew Wilcox <willy@infradead.org>
 Cc:     Jens Axboe <axboe@kernel.dk>, Xiubo Li <xiubli@redhat.com>,
@@ -46,11 +46,10 @@ Cc:     Jens Axboe <axboe@kernel.dk>, Xiubo Li <xiubli@redhat.com>,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
         linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, Hannes Reinecke <hare@suse.de>,
-        Johannes Thumshirn <johannes.thumshirn@wdc.com>
-Subject: [PATCH 01/12] backing_dev: remove current->backing_dev_info
-Date:   Thu,  1 Jun 2023 16:58:53 +0200
-Message-Id: <20230601145904.1385409-2-hch@lst.de>
+        linux-mm@kvack.org, Hannes Reinecke <hare@suse.de>
+Subject: [PATCH 06/12] filemap: add a kiocb_invalidate_post_direct_write helper
+Date:   Thu,  1 Jun 2023 16:58:58 +0200
+Message-Id: <20230601145904.1385409-7-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230601145904.1385409-1-hch@lst.de>
 References: <20230601145904.1385409-1-hch@lst.de>
@@ -61,270 +60,179 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-The last user of current->backing_dev_info disappeared in commit
-b9b1335e6403 ("remove bdi_congested() and wb_congested() and related
-functions").  Remove the field and all assignments to it.
+Add a helper to invalidate page cache after a dio write.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Christian Brauner <brauner@kernel.org>
 Reviewed-by: Damien Le Moal <dlemoal@kernel.org>
 Reviewed-by: Hannes Reinecke <hare@suse.de>
-Reviewed-by: Johannes Thumshirn <johannes.thumshirn@wdc.com>
-Reviewed-by: Darrick J. Wong <djwong@kernel.org>
-Acked-by: Theodore Ts'o <tytso@mit.edu>
+Acked-by: Darrick J. Wong <djwong@kernel.org>
 ---
- fs/btrfs/file.c       | 6 +-----
- fs/ceph/file.c        | 4 ----
- fs/ext4/file.c        | 2 --
- fs/f2fs/file.c        | 2 --
- fs/fuse/file.c        | 4 ----
- fs/gfs2/file.c        | 2 --
- fs/nfs/file.c         | 5 +----
- fs/ntfs/file.c        | 2 --
- fs/ntfs3/file.c       | 3 ---
- fs/xfs/xfs_file.c     | 4 ----
- include/linux/sched.h | 3 ---
- mm/filemap.c          | 3 ---
- 12 files changed, 2 insertions(+), 38 deletions(-)
+ fs/direct-io.c          | 10 ++--------
+ fs/iomap/direct-io.c    | 12 ++----------
+ include/linux/fs.h      |  5 -----
+ include/linux/pagemap.h |  1 +
+ mm/filemap.c            | 37 ++++++++++++++++++++-----------------
+ 5 files changed, 25 insertions(+), 40 deletions(-)
 
-diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
-index f649647392e0e4..ecd43ab66fa6c7 100644
---- a/fs/btrfs/file.c
-+++ b/fs/btrfs/file.c
-@@ -1145,7 +1145,6 @@ static int btrfs_write_check(struct kiocb *iocb, struct iov_iter *from,
- 	    !(BTRFS_I(inode)->flags & (BTRFS_INODE_NODATACOW | BTRFS_INODE_PREALLOC)))
- 		return -EAGAIN;
- 
--	current->backing_dev_info = inode_to_bdi(inode);
- 	ret = file_remove_privs(file);
- 	if (ret)
- 		return ret;
-@@ -1165,10 +1164,8 @@ static int btrfs_write_check(struct kiocb *iocb, struct iov_iter *from,
- 		loff_t end_pos = round_up(pos + count, fs_info->sectorsize);
- 
- 		ret = btrfs_cont_expand(BTRFS_I(inode), oldsize, end_pos);
--		if (ret) {
--			current->backing_dev_info = NULL;
-+		if (ret)
- 			return ret;
--		}
- 	}
- 
- 	return 0;
-@@ -1689,7 +1686,6 @@ ssize_t btrfs_do_write_iter(struct kiocb *iocb, struct iov_iter *from,
- 	if (sync)
- 		atomic_dec(&inode->sync_writers);
- 
--	current->backing_dev_info = NULL;
- 	return num_written;
- }
- 
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index f4d8bf7dec88a8..c8ef72f723badd 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -1791,9 +1791,6 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	else
- 		ceph_start_io_write(inode);
- 
--	/* We can write back this queue in page reclaim */
--	current->backing_dev_info = inode_to_bdi(inode);
--
- 	if (iocb->ki_flags & IOCB_APPEND) {
- 		err = ceph_do_getattr(inode, CEPH_STAT_CAP_SIZE, false);
- 		if (err < 0)
-@@ -1940,7 +1937,6 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		ceph_end_io_write(inode);
- out_unlocked:
- 	ceph_free_cap_flush(prealloc_cf);
--	current->backing_dev_info = NULL;
- 	return written ? written : err;
- }
- 
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index d101b3b0c7dad8..bc430270c23c19 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -285,9 +285,7 @@ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
- 	if (ret <= 0)
- 		goto out;
- 
--	current->backing_dev_info = inode_to_bdi(inode);
- 	ret = generic_perform_write(iocb, from);
--	current->backing_dev_info = NULL;
- 
- out:
- 	inode_unlock(inode);
-diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-index 5ac53d2627d20d..4f423d367a44b9 100644
---- a/fs/f2fs/file.c
-+++ b/fs/f2fs/file.c
-@@ -4517,9 +4517,7 @@ static ssize_t f2fs_buffered_write_iter(struct kiocb *iocb,
- 	if (iocb->ki_flags & IOCB_NOWAIT)
- 		return -EOPNOTSUPP;
- 
--	current->backing_dev_info = inode_to_bdi(inode);
- 	ret = generic_perform_write(iocb, from);
--	current->backing_dev_info = NULL;
- 
- 	if (ret > 0) {
- 		iocb->ki_pos += ret;
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index 89d97f6188e05e..97d435874b14aa 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -1362,9 +1362,6 @@ static ssize_t fuse_cache_write_iter(struct kiocb *iocb, struct iov_iter *from)
- writethrough:
- 	inode_lock(inode);
- 
--	/* We can write back this queue in page reclaim */
--	current->backing_dev_info = inode_to_bdi(inode);
--
- 	err = generic_write_checks(iocb, from);
- 	if (err <= 0)
- 		goto out;
-@@ -1409,7 +1406,6 @@ static ssize_t fuse_cache_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 			iocb->ki_pos += written;
- 	}
- out:
--	current->backing_dev_info = NULL;
- 	inode_unlock(inode);
- 	if (written > 0)
- 		written = generic_write_sync(iocb, written);
-diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
-index 300844f50dcd28..904a0d6ac1a1a9 100644
---- a/fs/gfs2/file.c
-+++ b/fs/gfs2/file.c
-@@ -1041,11 +1041,9 @@ static ssize_t gfs2_file_buffered_write(struct kiocb *iocb,
- 			goto out_unlock;
- 	}
- 
--	current->backing_dev_info = inode_to_bdi(inode);
- 	pagefault_disable();
- 	ret = iomap_file_buffered_write(iocb, from, &gfs2_iomap_ops);
- 	pagefault_enable();
--	current->backing_dev_info = NULL;
- 	if (ret > 0) {
- 		iocb->ki_pos += ret;
- 		written += ret;
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index f0edf5a36237d1..665ce3fc62eaf4 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -648,11 +648,8 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
- 	since = filemap_sample_wb_err(file->f_mapping);
- 	nfs_start_io_write(inode);
- 	result = generic_write_checks(iocb, from);
--	if (result > 0) {
--		current->backing_dev_info = inode_to_bdi(inode);
-+	if (result > 0)
- 		result = generic_perform_write(iocb, from);
--		current->backing_dev_info = NULL;
+diff --git a/fs/direct-io.c b/fs/direct-io.c
+index 0b380bb8a81e11..4f9069aee0fe19 100644
+--- a/fs/direct-io.c
++++ b/fs/direct-io.c
+@@ -285,14 +285,8 @@ static ssize_t dio_complete(struct dio *dio, ssize_t ret, unsigned int flags)
+ 	 * zeros from unwritten extents.
+ 	 */
+ 	if (flags & DIO_COMPLETE_INVALIDATE &&
+-	    ret > 0 && dio_op == REQ_OP_WRITE &&
+-	    dio->inode->i_mapping->nrpages) {
+-		err = invalidate_inode_pages2_range(dio->inode->i_mapping,
+-					offset >> PAGE_SHIFT,
+-					(offset + ret - 1) >> PAGE_SHIFT);
+-		if (err)
+-			dio_warn_stale_pagecache(dio->iocb->ki_filp);
 -	}
- 	nfs_end_io_write(inode);
- 	if (result <= 0)
- 		goto out;
-diff --git a/fs/ntfs/file.c b/fs/ntfs/file.c
-index c481b14e4fd989..e296f804a9c442 100644
---- a/fs/ntfs/file.c
-+++ b/fs/ntfs/file.c
-@@ -1911,11 +1911,9 @@ static ssize_t ntfs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
++	    ret > 0 && dio_op == REQ_OP_WRITE)
++		kiocb_invalidate_post_direct_write(dio->iocb, ret);
  
- 	inode_lock(vi);
- 	/* We can write back this queue in page reclaim. */
--	current->backing_dev_info = inode_to_bdi(vi);
- 	err = ntfs_prepare_file_for_write(iocb, from);
- 	if (iov_iter_count(from) && !err)
- 		written = ntfs_perform_write(file, from, iocb->ki_pos);
--	current->backing_dev_info = NULL;
- 	inode_unlock(vi);
- 	iocb->ki_pos += written;
- 	if (likely(written > 0))
-diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
-index 9a3d55c367d920..86d16a2c8339ca 100644
---- a/fs/ntfs3/file.c
-+++ b/fs/ntfs3/file.c
-@@ -820,7 +820,6 @@ static ssize_t ntfs_compress_write(struct kiocb *iocb, struct iov_iter *from)
- 	if (!pages)
- 		return -ENOMEM;
+ 	inode_dio_end(dio->inode);
  
--	current->backing_dev_info = inode_to_bdi(inode);
- 	err = file_remove_privs(file);
- 	if (err)
- 		goto out;
-@@ -993,8 +992,6 @@ static ssize_t ntfs_compress_write(struct kiocb *iocb, struct iov_iter *from)
- out:
- 	kfree(pages);
+diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
+index 6207a59d2162e1..0795c54a745bca 100644
+--- a/fs/iomap/direct-io.c
++++ b/fs/iomap/direct-io.c
+@@ -81,7 +81,6 @@ ssize_t iomap_dio_complete(struct iomap_dio *dio)
+ {
+ 	const struct iomap_dio_ops *dops = dio->dops;
+ 	struct kiocb *iocb = dio->iocb;
+-	struct inode *inode = file_inode(iocb->ki_filp);
+ 	loff_t offset = iocb->ki_pos;
+ 	ssize_t ret = dio->error;
  
--	current->backing_dev_info = NULL;
+@@ -108,15 +107,8 @@ ssize_t iomap_dio_complete(struct iomap_dio *dio)
+ 	 * ->end_io() when necessary, otherwise a racing buffer read would cache
+ 	 * zeros from unwritten extents.
+ 	 */
+-	if (!dio->error && dio->size &&
+-	    (dio->flags & IOMAP_DIO_WRITE) && inode->i_mapping->nrpages) {
+-		int err;
+-		err = invalidate_inode_pages2_range(inode->i_mapping,
+-				offset >> PAGE_SHIFT,
+-				(offset + dio->size - 1) >> PAGE_SHIFT);
+-		if (err)
+-			dio_warn_stale_pagecache(iocb->ki_filp);
+-	}
++	if (!dio->error && dio->size && (dio->flags & IOMAP_DIO_WRITE))
++		kiocb_invalidate_post_direct_write(iocb, dio->size);
+ 
+ 	inode_dio_end(file_inode(iocb->ki_filp));
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 133f0640fb2411..91021b4e1f6f48 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2837,11 +2837,6 @@ static inline void inode_dio_end(struct inode *inode)
+ 		wake_up_bit(&inode->i_state, __I_DIO_WAKEUP);
+ }
+ 
+-/*
+- * Warn about a page cache invalidation failure diring a direct I/O write.
+- */
+-void dio_warn_stale_pagecache(struct file *filp);
 -
- 	if (err < 0)
- 		return err;
+ extern void inode_set_flags(struct inode *inode, unsigned int flags,
+ 			    unsigned int mask);
  
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index aede746541f8ae..431c3fd0e2b598 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -717,9 +717,6 @@ xfs_file_buffered_write(
- 	if (ret)
- 		goto out;
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 6e4c9ee40baa99..6ecc4aaf5e3d51 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -31,6 +31,7 @@ int invalidate_inode_pages2(struct address_space *mapping);
+ int invalidate_inode_pages2_range(struct address_space *mapping,
+ 		pgoff_t start, pgoff_t end);
+ int kiocb_invalidate_pages(struct kiocb *iocb, size_t count);
++void kiocb_invalidate_post_direct_write(struct kiocb *iocb, size_t count);
  
--	/* We can write back this queue in page reclaim */
--	current->backing_dev_info = inode_to_bdi(inode);
--
- 	trace_xfs_file_buffered_write(iocb, from);
- 	ret = iomap_file_buffered_write(iocb, from,
- 			&xfs_buffered_write_iomap_ops);
-@@ -753,7 +750,6 @@ xfs_file_buffered_write(
- 		goto write_retry;
- 	}
- 
--	current->backing_dev_info = NULL;
- out:
- 	if (iolock)
- 		xfs_iunlock(ip, iolock);
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index eed5d65b8d1f4d..54780571fe9a07 100644
---- a/include/linux/sched.h
-+++ b/include/linux/sched.h
-@@ -41,7 +41,6 @@
- 
- /* task_struct member predeclarations (sorted alphabetically): */
- struct audit_context;
--struct backing_dev_info;
- struct bio_list;
- struct blk_plug;
- struct bpf_local_storage;
-@@ -1186,8 +1185,6 @@ struct task_struct {
- 	/* VM state: */
- 	struct reclaim_state		*reclaim_state;
- 
--	struct backing_dev_info		*backing_dev_info;
--
- 	struct io_context		*io_context;
- 
- #ifdef CONFIG_COMPACTION
+ int write_inode_now(struct inode *, int sync);
+ int filemap_fdatawrite(struct address_space *);
 diff --git a/mm/filemap.c b/mm/filemap.c
-index b4c9bd368b7e58..33b54660ad2b39 100644
+index a1cb01a4b8046a..ddb6f8aa86d6ca 100644
 --- a/mm/filemap.c
 +++ b/mm/filemap.c
-@@ -3991,8 +3991,6 @@ ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 	ssize_t		err;
- 	ssize_t		status;
- 
--	/* We can write back this queue in page reclaim */
--	current->backing_dev_info = inode_to_bdi(inode);
- 	err = file_remove_privs(file);
- 	if (err)
- 		goto out;
-@@ -4053,7 +4051,6 @@ ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 			iocb->ki_pos += written;
+@@ -3816,7 +3816,7 @@ EXPORT_SYMBOL(read_cache_page_gfp);
+ /*
+  * Warn about a page cache invalidation failure during a direct I/O write.
+  */
+-void dio_warn_stale_pagecache(struct file *filp)
++static void dio_warn_stale_pagecache(struct file *filp)
+ {
+ 	static DEFINE_RATELIMIT_STATE(_rs, 86400 * HZ, DEFAULT_RATELIMIT_BURST);
+ 	char pathname[128];
+@@ -3833,19 +3833,23 @@ void dio_warn_stale_pagecache(struct file *filp)
  	}
- out:
--	current->backing_dev_info = NULL;
- 	return written ? written : err;
  }
- EXPORT_SYMBOL(__generic_file_write_iter);
+ 
++void kiocb_invalidate_post_direct_write(struct kiocb *iocb, size_t count)
++{
++	struct address_space *mapping = iocb->ki_filp->f_mapping;
++
++	if (mapping->nrpages &&
++	    invalidate_inode_pages2_range(mapping,
++			iocb->ki_pos >> PAGE_SHIFT,
++			(iocb->ki_pos + count - 1) >> PAGE_SHIFT))
++		dio_warn_stale_pagecache(iocb->ki_filp);
++}
++
+ ssize_t
+ generic_file_direct_write(struct kiocb *iocb, struct iov_iter *from)
+ {
+-	struct file	*file = iocb->ki_filp;
+-	struct address_space *mapping = file->f_mapping;
+-	struct inode	*inode = mapping->host;
+-	loff_t		pos = iocb->ki_pos;
+-	ssize_t		written;
+-	size_t		write_len;
+-	pgoff_t		end;
+-
+-	write_len = iov_iter_count(from);
+-	end = (pos + write_len - 1) >> PAGE_SHIFT;
++	struct address_space *mapping = iocb->ki_filp->f_mapping;
++	size_t write_len = iov_iter_count(from);
++	ssize_t written;
+ 
+ 	/*
+ 	 * If a page can not be invalidated, return 0 to fall back
+@@ -3855,7 +3859,7 @@ generic_file_direct_write(struct kiocb *iocb, struct iov_iter *from)
+ 	if (written) {
+ 		if (written == -EBUSY)
+ 			return 0;
+-		goto out;
++		return written;
+ 	}
+ 
+ 	written = mapping->a_ops->direct_IO(iocb, from);
+@@ -3877,11 +3881,11 @@ generic_file_direct_write(struct kiocb *iocb, struct iov_iter *from)
+ 	 *
+ 	 * Skip invalidation for async writes or if mapping has no pages.
+ 	 */
+-	if (written > 0 && mapping->nrpages &&
+-	    invalidate_inode_pages2_range(mapping, pos >> PAGE_SHIFT, end))
+-		dio_warn_stale_pagecache(file);
+-
+ 	if (written > 0) {
++		struct inode *inode = mapping->host;
++		loff_t pos = iocb->ki_pos;
++
++		kiocb_invalidate_post_direct_write(iocb, written);
+ 		pos += written;
+ 		write_len -= written;
+ 		if (pos > i_size_read(inode) && !S_ISBLK(inode->i_mode)) {
+@@ -3892,7 +3896,6 @@ generic_file_direct_write(struct kiocb *iocb, struct iov_iter *from)
+ 	}
+ 	if (written != -EIOCBQUEUED)
+ 		iov_iter_revert(from, write_len - iov_iter_count(from));
+-out:
+ 	return written;
+ }
+ EXPORT_SYMBOL(generic_file_direct_write);
 -- 
 2.39.2
 
