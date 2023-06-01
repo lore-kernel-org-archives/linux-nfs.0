@@ -2,77 +2,171 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9F762C7EE2F
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Jun 2023 14:41:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5078DC77B7E
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Jun 2023 15:00:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234314AbjFAOli (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Jun 2023 10:41:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55818 "EHLO
+        id S233686AbjFAPAJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Jun 2023 11:00:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41832 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234310AbjFAOlg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jun 2023 10:41:36 -0400
-X-Greylist: delayed 465 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Thu, 01 Jun 2023 07:41:34 PDT
-Received: from forward206c.mail.yandex.net (forward206c.mail.yandex.net [178.154.239.215])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7878C123
-        for <linux-nfs@vger.kernel.org>; Thu,  1 Jun 2023 07:41:34 -0700 (PDT)
-Received: from forward100b.mail.yandex.net (forward100b.mail.yandex.net [IPv6:2a02:6b8:c02:900:1:45:d181:d100])
-        by forward206c.mail.yandex.net (Yandex) with ESMTP id AA4FB65E70
-        for <linux-nfs@vger.kernel.org>; Thu,  1 Jun 2023 17:33:51 +0300 (MSK)
-Received: from mail-nwsmtp-smtp-production-main-60.sas.yp-c.yandex.net (mail-nwsmtp-smtp-production-main-60.sas.yp-c.yandex.net [IPv6:2a02:6b8:c14:150a:0:640:1aa5:0])
-        by forward100b.mail.yandex.net (Yandex) with ESMTP id 7929A60035;
-        Thu,  1 Jun 2023 17:33:48 +0300 (MSK)
-Received: by mail-nwsmtp-smtp-production-main-60.sas.yp-c.yandex.net (smtp/Yandex) with ESMTPSA id YXP9cr0W0Cg0-9LddrIEN;
-        Thu, 01 Jun 2023 17:33:47 +0300
-X-Yandex-Fwd: 1
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yandex.ru; s=mail; t=1685630027;
-        bh=lrfZr4UKdiidvGcPmdvA1sg4WPoQXxdAbPSIlfqPtEs=;
-        h=Message-Id:Date:Cc:Subject:To:From;
-        b=KJ81WJ5DhzxFpc2/PRG0jvo94Edvrb4Lb85lVcqYDZj54eUI8C5dWgEATVM59kJil
-         fVLtpbXaElLHDZxTyl+bKDC8JtKsh9vi+Xw2MX28hrTOrQRbnPiyOUotZxdNpZS+YN
-         4JLAhQVzAjBIo7WGJy+rak2BoL7yUqPThGYJ15yU=
-Authentication-Results: mail-nwsmtp-smtp-production-main-60.sas.yp-c.yandex.net; dkim=pass header.i=@yandex.ru
-From:   Dmitry Antipov <dmantipov@yandex.ru>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     Jeff Layton <jlayton@kernel.org>, Tom Rix <trix@redhat.com>,
-        linux-nfs@vger.kernel.org, Dmitry Antipov <dmantipov@yandex.ru>
-Subject: [PATCH] sunrpc: fix clang-17 warning
-Date:   Thu,  1 Jun 2023 17:33:32 +0300
-Message-Id: <20230601143332.255312-1-dmantipov@yandex.ru>
-X-Mailer: git-send-email 2.40.1
+        with ESMTP id S234787AbjFAO7v (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jun 2023 10:59:51 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8EB3F10EA;
+        Thu,  1 Jun 2023 07:59:30 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
+        :Reply-To:Content-Type:Content-ID:Content-Description;
+        bh=ZRItUXupBovRcfIWu1PXzjUpMlDPoKckJxwBPLvHxXM=; b=Z6B8hLcNPVcsBtiLOfzTdbtOYY
+        4XVDWAeP1eEjxL4gUbMlPNbmgOx92mWMGqts7P/pveyWOoXvbc6AhLZL7g6hTImUtvN6wOWF2JPwH
+        p3/Vr1oVZkfmk4tfvN1f8on8FQpO+NmczbptGOiOjqs+k1VmC1JD2xYrkcf2KX2AWIbuuXf8fYdAy
+        ErX/ByalZ+bAyNhpXOUVN20nKHHVTBC5Z9h1cfSEj0rdMuEKRiRX/bSaIG/BDEGGwLhdlJ3hcR09H
+        byveVHiEIxaWh+ys4GrgIYic/xGf5lARNyPFzud2LxJGQfIjCmbBAy52q0lk5Mci8WQS+G+8sxOZe
+        Ndb2yNKw==;
+Received: from [2001:4bb8:182:6d06:eacb:c751:971:73eb] (helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
+        id 1q4jli-003w4C-0i;
+        Thu, 01 Jun 2023 14:59:14 +0000
+From:   Christoph Hellwig <hch@lst.de>
+To:     Matthew Wilcox <willy@infradead.org>
+Cc:     Jens Axboe <axboe@kernel.dk>, Xiubo Li <xiubli@redhat.com>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christian Brauner <brauner@kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>,
+        Chao Yu <chao@kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>,
+        Damien Le Moal <dlemoal@kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-block@vger.kernel.org, ceph-devel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, Hannes Reinecke <hare@suse.de>
+Subject: [PATCH 03/12] filemap: update ki_pos in generic_perform_write
+Date:   Thu,  1 Jun 2023 16:58:55 +0200
+Message-Id: <20230601145904.1385409-4-hch@lst.de>
+X-Mailer: git-send-email 2.39.2
+In-Reply-To: <20230601145904.1385409-1-hch@lst.de>
+References: <20230601145904.1385409-1-hch@lst.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Fix the following warning observed when building 64-bit (actually arm64)
-kernel with clang-17 (make LLVM=1 W=1):
+All callers of generic_perform_write need to updated ki_pos, move it into
+common code.
 
-include/linux/sunrpc/xdr.h:779:10: warning: result of comparison of constant
-4611686018427387903 with expression of type '__u32' (aka 'unsigned int') is
-always false [-Wtautological-constant-out-of-range-compare]
-  779 |         if (len > SIZE_MAX / sizeof(*p))
-
-That is, an overflow check makes sense for 32-bit kernel only.
-
-Signed-off-by: Dmitry Antipov <dmantipov@yandex.ru>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Xiubo Li <xiubli@redhat.com>
+Reviewed-by: Damien Le Moal <dlemoal@kernel.org>
+Reviewed-by: Hannes Reinecke <hare@suse.de>
+Acked-by: Theodore Ts'o <tytso@mit.edu>
+Acked-by: Darrick J. Wong <djwong@kernel.org>
 ---
- include/linux/sunrpc/xdr.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ceph/file.c | 2 --
+ fs/ext4/file.c | 9 +++------
+ fs/f2fs/file.c | 1 -
+ fs/nfs/file.c  | 1 -
+ mm/filemap.c   | 8 ++++----
+ 5 files changed, 7 insertions(+), 14 deletions(-)
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 72014c9216fc..b2d5dc89cf7b 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -776,7 +776,7 @@ xdr_stream_decode_uint32_array(struct xdr_stream *xdr,
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index c8ef72f723badd..767f4dfe7def64 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -1891,8 +1891,6 @@ static ssize_t ceph_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		 * can not run at the same time
+ 		 */
+ 		written = generic_perform_write(iocb, from);
+-		if (likely(written >= 0))
+-			iocb->ki_pos = pos + written;
+ 		ceph_end_io_write(inode);
+ 	}
  
- 	if (unlikely(xdr_stream_decode_u32(xdr, &len) < 0))
- 		return -EBADMSG;
--	if (len > SIZE_MAX / sizeof(*p))
-+	if (unlikely(SIZE_MAX == U32_MAX ? (len > U32_MAX / sizeof(*p)) : 0))
- 		return -EBADMSG;
- 	p = xdr_inline_decode(xdr, len * sizeof(*p));
- 	if (unlikely(!p))
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index bc430270c23c19..ea0ada3985cba2 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -289,12 +289,9 @@ static ssize_t ext4_buffered_write_iter(struct kiocb *iocb,
+ 
+ out:
+ 	inode_unlock(inode);
+-	if (likely(ret > 0)) {
+-		iocb->ki_pos += ret;
+-		ret = generic_write_sync(iocb, ret);
+-	}
+-
+-	return ret;
++	if (unlikely(ret <= 0))
++		return ret;
++	return generic_write_sync(iocb, ret);
+ }
+ 
+ static ssize_t ext4_handle_inode_extension(struct inode *inode, loff_t offset,
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 4f423d367a44b9..7134fe8bd008cb 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -4520,7 +4520,6 @@ static ssize_t f2fs_buffered_write_iter(struct kiocb *iocb,
+ 	ret = generic_perform_write(iocb, from);
+ 
+ 	if (ret > 0) {
+-		iocb->ki_pos += ret;
+ 		f2fs_update_iostat(F2FS_I_SB(inode), inode,
+ 						APP_BUFFERED_IO, ret);
+ 	}
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 665ce3fc62eaf4..e8bb4c48a3210a 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -655,7 +655,6 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 		goto out;
+ 
+ 	written = result;
+-	iocb->ki_pos += written;
+ 	nfs_add_stats(inode, NFSIOS_NORMALWRITTENBYTES, written);
+ 
+ 	if (mntflags & NFS_MOUNT_WRITE_EAGER) {
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 33b54660ad2b39..15907af4a57ff5 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -3957,7 +3957,10 @@ ssize_t generic_perform_write(struct kiocb *iocb, struct iov_iter *i)
+ 		balance_dirty_pages_ratelimited(mapping);
+ 	} while (iov_iter_count(i));
+ 
+-	return written ? written : status;
++	if (!written)
++		return status;
++	iocb->ki_pos += written;
++	return written;
+ }
+ EXPORT_SYMBOL(generic_perform_write);
+ 
+@@ -4034,7 +4037,6 @@ ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		endbyte = pos + status - 1;
+ 		err = filemap_write_and_wait_range(mapping, pos, endbyte);
+ 		if (err == 0) {
+-			iocb->ki_pos = endbyte + 1;
+ 			written += status;
+ 			invalidate_mapping_pages(mapping,
+ 						 pos >> PAGE_SHIFT,
+@@ -4047,8 +4049,6 @@ ssize_t __generic_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		}
+ 	} else {
+ 		written = generic_perform_write(iocb, from);
+-		if (likely(written > 0))
+-			iocb->ki_pos += written;
+ 	}
+ out:
+ 	return written ? written : err;
 -- 
-2.40.1
+2.39.2
 
