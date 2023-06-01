@@ -2,184 +2,114 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5601C7EE2F
-	for <linux-nfs@archiver.kernel.org>; Thu,  1 Jun 2023 15:00:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6C763C77B7A
+	for <linux-nfs@archiver.kernel.org>; Thu,  1 Jun 2023 15:35:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234824AbjFAPAn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 1 Jun 2023 11:00:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41794 "EHLO
+        id S233546AbjFAPfF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 1 Jun 2023 11:35:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43720 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234712AbjFAPAM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jun 2023 11:00:12 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D789DE6E;
-        Thu,  1 Jun 2023 07:59:42 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
-        :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=+TlwHQVmCcfSC9sL9si103D1qv7dfudCnmtDuQc976U=; b=yIATEWuIAieoRWEpSxfntSFM82
-        D+6jfMT4RQR3K25Sc8qxUL3xmhBQEZes7Zhlyb8ubufcv1k8qbQva3Oe6nISgXoPjgL30hb7xLxJ+
-        uZqMsD5J2azG/uOjx0fdrb6/BRFzfBzZ76dbKDHHLdWrosxPBlXV2r5DQ+ViMhKg9IHFswYO4OFpX
-        3cL38j2lR+fVSkaafjR6sb/+/aMQTfObjF1aCBNYyxDUyYbKpXHNbprk22T+YX9mpEUebqgGMIj19
-        2DV9Ornvu0Ao7dkRQ5oR4MaV/TVC/AaODDqXImZSmmjuQAmvJ8FcuvW6KrYWbIE7yi7iNO/XLAoiu
-        GJYCm/Xg==;
-Received: from [2001:4bb8:182:6d06:eacb:c751:971:73eb] (helo=localhost)
-        by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1q4jlv-003w8I-0Z;
-        Thu, 01 Jun 2023 14:59:27 +0000
-From:   Christoph Hellwig <hch@lst.de>
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     Jens Axboe <axboe@kernel.dk>, Xiubo Li <xiubli@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>,
-        "Theodore Ts'o" <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>,
-        Chao Yu <chao@kernel.org>, Miklos Szeredi <miklos@szeredi.hu>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        Damien Le Moal <dlemoal@kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-block@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, Hannes Reinecke <hare@suse.de>
-Subject: [PATCH 08/12] iomap: use kiocb_write_and_wait and kiocb_invalidate_pages
-Date:   Thu,  1 Jun 2023 16:59:00 +0200
-Message-Id: <20230601145904.1385409-9-hch@lst.de>
-X-Mailer: git-send-email 2.39.2
-In-Reply-To: <20230601145904.1385409-1-hch@lst.de>
-References: <20230601145904.1385409-1-hch@lst.de>
+        with ESMTP id S235180AbjFAPfB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jun 2023 11:35:01 -0400
+Received: from mail-wr1-x436.google.com (mail-wr1-x436.google.com [IPv6:2a00:1450:4864:20::436])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F286B3
+        for <linux-nfs@vger.kernel.org>; Thu,  1 Jun 2023 08:35:00 -0700 (PDT)
+Received: by mail-wr1-x436.google.com with SMTP id ffacd0b85a97d-30aef0b8837so937864f8f.1
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Jun 2023 08:35:00 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=linaro.org; s=google; t=1685633698; x=1688225698;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
+        bh=+7vgYVinn8HmukmdJAr7+JQOGyYSPsJ6nrQffS/GhDg=;
+        b=E1I4V7xJUAmIBxEneYl8aDXqGyO489UASu5AcIIY409Hlg1/mEEJJnV0kN+cjOlWwR
+         dE71iIH6GPtWyhZ8gzbwdrnnwLkEGcs+8IfsfZZC6VxhyJarSpxUtYobM6vW+k+bbvor
+         wdd118s4r866PACYykjLMtogEcuFFDCmsceSz8XVEda6zfzPOED3O3uW/Yp3YsivaYg6
+         M1ReNkwcwxUufR+tyGPXTQaSOlWfvaFvcoLk90vxKf+2A5qRvnez99ld4XplxqXVEgvf
+         4Ce9tcLU4bx/zTcU23Rf4t18nFD8xlutEnivdQvMGR67JNJIJor3fsqIoPJwQwNAlJxP
+         jM/g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1685633698; x=1688225698;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=+7vgYVinn8HmukmdJAr7+JQOGyYSPsJ6nrQffS/GhDg=;
+        b=CWooEdzZrck/vmmHrOFN/JcYYt5dRitF3Y7MJlQ/YugOq1+MMgDhXbgZHRhiteAQL/
+         6SE27ozdtBuj4kqJsC9IeH6yxKxvvglxXlkMnZSMLIC+MRJdKr/3Db+rb22Os/5GugR4
+         ZaE0SJQonWEpu4NWYMLJWYErmCLxvgIzB5qLBCcbks0YFy9Zf2t56QmCxWB75nDsJLdC
+         OH8wDfWDJ/EFTeKNav6IbMnqf+70hb45VKDcLGRV4FYNDGriDWTP50+5aQk6U5vygzfW
+         1o0dvYGNqZvIPPgEGxsisVHMXznFpsJoOxyV16vv2VP6+YQiak+zosyMozJA75nyBXfk
+         XW0w==
+X-Gm-Message-State: AC+VfDwI7pk9T4hKPzzpHNbFatN/2EaaZiMBvthhwvaesXRV96qxDjFM
+        XC7DQl9kBOP4J+y774X+/EsR5A==
+X-Google-Smtp-Source: ACHHUZ4fKAqFpi3u3X2LFUV8EZj0m8Ap/lhPEYmJXfrTyoHo7a8xNle/XK+kfKrDImZexZL4/08x3w==
+X-Received: by 2002:adf:eec9:0:b0:307:8555:35e1 with SMTP id a9-20020adfeec9000000b00307855535e1mr2380684wrp.19.1685633698604;
+        Thu, 01 Jun 2023 08:34:58 -0700 (PDT)
+Received: from localhost ([102.36.222.112])
+        by smtp.gmail.com with ESMTPSA id c18-20020a5d4f12000000b0030c4d8930b1sm1026022wru.91.2023.06.01.08.34.55
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 01 Jun 2023 08:34:57 -0700 (PDT)
+Date:   Thu, 1 Jun 2023 18:34:53 +0300
+From:   Dan Carpenter <dan.carpenter@linaro.org>
+To:     Chuck Lever III <chuck.lever@oracle.com>
+Cc:     Dmitry Antipov <dmantipov@yandex.ru>,
+        Jeff Layton <jlayton@kernel.org>, Tom Rix <trix@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: fix clang-17 warning
+Message-ID: <8ed6eb2b-fdfa-4fde-81f3-92e6b34bc509@kadam.mountain>
+References: <20230601143332.255312-1-dmantipov@yandex.ru>
+ <2D3D2D8E-4E7A-4B50-A1FF-486D7F6C26D4@oracle.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <2D3D2D8E-4E7A-4B50-A1FF-486D7F6C26D4@oracle.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use the common helpers for direct I/O page invalidation instead of
-open coding the logic.  This leads to a slight reordering of checks
-in __iomap_dio_rw to keep the logic straight.
+On Thu, Jun 01, 2023 at 02:38:58PM +0000, Chuck Lever III wrote:
+> > - if (len > SIZE_MAX / sizeof(*p))
+> > + if (unlikely(SIZE_MAX == U32_MAX ? (len > U32_MAX / sizeof(*p)) : 0))
+>
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Damien Le Moal <dlemoal@kernel.org>
-Reviewed-by: Hannes Reinecke <hare@suse.de>
-Reviewed-by: Darrick J. Wong <djwong@kernel.org>
----
- fs/iomap/direct-io.c | 55 ++++++++++++++++----------------------------
- 1 file changed, 20 insertions(+), 35 deletions(-)
+This is a bug in Clang.
 
-diff --git a/fs/iomap/direct-io.c b/fs/iomap/direct-io.c
-index 0795c54a745bca..6bd14691f96e07 100644
---- a/fs/iomap/direct-io.c
-+++ b/fs/iomap/direct-io.c
-@@ -472,7 +472,6 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		const struct iomap_ops *ops, const struct iomap_dio_ops *dops,
- 		unsigned int dio_flags, void *private, size_t done_before)
- {
--	struct address_space *mapping = iocb->ki_filp->f_mapping;
- 	struct inode *inode = file_inode(iocb->ki_filp);
- 	struct iomap_iter iomi = {
- 		.inode		= inode,
-@@ -481,11 +480,11 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		.flags		= IOMAP_DIRECT,
- 		.private	= private,
- 	};
--	loff_t end = iomi.pos + iomi.len - 1, ret = 0;
- 	bool wait_for_completion =
- 		is_sync_kiocb(iocb) || (dio_flags & IOMAP_DIO_FORCE_WAIT);
- 	struct blk_plug plug;
- 	struct iomap_dio *dio;
-+	loff_t ret = 0;
+Generally the rule, is that if there is a bug in the static checker then
+you should fix the checker instead of the code.  Smatch used to have
+this same bug but I fixed it.  So it's not something which is
+unfixable.  This doesn't cause a problem for normal Clang builds, only
+for W=1, right?
+
+But, here is a nicer way to fix it.  You can send this, or I can send
+it tomorrow with your Reported-by?
+
+regards,
+dan carpenter
+
+Fix the following warning observed when building 64-bit (actually arm64)
+kernel with clang-17 (make LLVM=1 W=1):
+
+include/linux/sunrpc/xdr.h:779:10: warning: result of comparison of constant
+4611686018427387903 with expression of type '__u32' (aka 'unsigned int') is
+always false [-Wtautological-constant-out-of-range-compare]
+ 779 |         if (len > SIZE_MAX / sizeof(*p))
+
+That is, an overflow check makes sense for 32-bit kernel only.  Silence
+the Clang warning and make the code nicer by using the size_mul()
+function to prevent integer overflows.
+
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index f89ec4b5ea16..dbf7620a2853 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -775,9 +775,7 @@ xdr_stream_decode_uint32_array(struct xdr_stream *xdr,
  
- 	trace_iomap_dio_rw_begin(iocb, iter, dio_flags, done_before);
- 
-@@ -509,31 +508,29 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	dio->submit.waiter = current;
- 	dio->submit.poll_bio = NULL;
- 
-+	if (iocb->ki_flags & IOCB_NOWAIT)
-+		iomi.flags |= IOMAP_NOWAIT;
-+
- 	if (iov_iter_rw(iter) == READ) {
- 		if (iomi.pos >= dio->i_size)
- 			goto out_free_dio;
- 
--		if (iocb->ki_flags & IOCB_NOWAIT) {
--			if (filemap_range_needs_writeback(mapping, iomi.pos,
--					end)) {
--				ret = -EAGAIN;
--				goto out_free_dio;
--			}
--			iomi.flags |= IOMAP_NOWAIT;
--		}
--
- 		if (user_backed_iter(iter))
- 			dio->flags |= IOMAP_DIO_DIRTY;
-+
-+		ret = kiocb_write_and_wait(iocb, iomi.len);
-+		if (ret)
-+			goto out_free_dio;
- 	} else {
- 		iomi.flags |= IOMAP_WRITE;
- 		dio->flags |= IOMAP_DIO_WRITE;
- 
--		if (iocb->ki_flags & IOCB_NOWAIT) {
--			if (filemap_range_has_page(mapping, iomi.pos, end)) {
--				ret = -EAGAIN;
-+		if (dio_flags & IOMAP_DIO_OVERWRITE_ONLY) {
-+			ret = -EAGAIN;
-+			if (iomi.pos >= dio->i_size ||
-+			    iomi.pos + iomi.len > dio->i_size)
- 				goto out_free_dio;
--			}
--			iomi.flags |= IOMAP_NOWAIT;
-+			iomi.flags |= IOMAP_OVERWRITE_ONLY;
- 		}
- 
- 		/* for data sync or sync, we need sync completion processing */
-@@ -549,31 +546,19 @@ __iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 			if (!(iocb->ki_flags & IOCB_SYNC))
- 				dio->flags |= IOMAP_DIO_WRITE_FUA;
- 		}
--	}
--
--	if (dio_flags & IOMAP_DIO_OVERWRITE_ONLY) {
--		ret = -EAGAIN;
--		if (iomi.pos >= dio->i_size ||
--		    iomi.pos + iomi.len > dio->i_size)
--			goto out_free_dio;
--		iomi.flags |= IOMAP_OVERWRITE_ONLY;
--	}
- 
--	ret = filemap_write_and_wait_range(mapping, iomi.pos, end);
--	if (ret)
--		goto out_free_dio;
--
--	if (iov_iter_rw(iter) == WRITE) {
- 		/*
- 		 * Try to invalidate cache pages for the range we are writing.
- 		 * If this invalidation fails, let the caller fall back to
- 		 * buffered I/O.
- 		 */
--		if (invalidate_inode_pages2_range(mapping,
--				iomi.pos >> PAGE_SHIFT, end >> PAGE_SHIFT)) {
--			trace_iomap_dio_invalidate_fail(inode, iomi.pos,
--							iomi.len);
--			ret = -ENOTBLK;
-+		ret = kiocb_invalidate_pages(iocb, iomi.len);
-+		if (ret) {
-+			if (ret != -EAGAIN) {
-+				trace_iomap_dio_invalidate_fail(inode, iomi.pos,
-+								iomi.len);
-+				ret = -ENOTBLK;
-+			}
- 			goto out_free_dio;
- 		}
- 
--- 
-2.39.2
+ 	if (unlikely(xdr_stream_decode_u32(xdr, &len) < 0))
+ 		return -EBADMSG;
+-	if (len > SIZE_MAX / sizeof(*p))
+-		return -EBADMSG;
+-	p = xdr_inline_decode(xdr, len * sizeof(*p));
++	p = xdr_inline_decode(xdr, size_mul(len, sizeof(*p)));
+ 	if (unlikely(!p))
+ 		return -EBADMSG;
+ 	if (array == NULL)
 
