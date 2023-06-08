@@ -2,72 +2,84 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 97927C7EE23
-	for <linux-nfs@archiver.kernel.org>; Wed,  7 Jun 2023 18:27:18 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 60BFBC7EE25
+	for <linux-nfs@archiver.kernel.org>; Thu,  8 Jun 2023 14:58:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231259AbjFGS1Q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 7 Jun 2023 14:27:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43780 "EHLO
+        id S236157AbjFHO6G (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 8 Jun 2023 10:58:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42934 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231341AbjFGS1N (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jun 2023 14:27:13 -0400
-Received: from mail-ej1-x62c.google.com (mail-ej1-x62c.google.com [IPv6:2a00:1450:4864:20::62c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E2412689;
-        Wed,  7 Jun 2023 11:26:38 -0700 (PDT)
-Received: by mail-ej1-x62c.google.com with SMTP id a640c23a62f3a-9788faaca2dso51915966b.0;
-        Wed, 07 Jun 2023 11:26:38 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1686162395; x=1688754395;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=wODPx4uHZJHUTcdDegTDGQs4CeriK253kkjDqRsBvLs=;
-        b=PgvSlIT79OUd63jjASsNr92npBtidqBIIcr0/yPjJPwrQ/113jrShII9sGfjwbYNb3
-         bf1Erx4stn1BnaSvp0QRn3qhoAelcgpWg10/cZdcHU39eWCQ1zmmvFhsHckWl6Mpelo8
-         UrQi0n95qJH0NgcaprsRqK9EsuGGixeScoDOcZNRWhXrxGCKSJJrifQbQDpJ/NbpAVeB
-         jnMpK7MSMrzR6/c7dXnHLdH4Ep23xmPbYZOWN/75YGet+B2gqilLbPZb2Wn5na98SVuI
-         dVofyri9mYj/d28wmhB/SlSfcRQFKI3N6FrMTeZxK3M2g2XCX1xe1Rxen17YsRLYapOG
-         aV7g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1686162395; x=1688754395;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=wODPx4uHZJHUTcdDegTDGQs4CeriK253kkjDqRsBvLs=;
-        b=evbCRQMJycX8FynDaH3KXyLrxisnPmIji7KFkTBnHmIEZTxPqKnEcWCV3pS43qBLkX
-         dSIlglmkYco9TtVl/VFPJ4bSMFFrmI9N5p3ExG1B2CgYm4j/9V5lZ1YuQmEuVzmggcCB
-         g84bRRhfv14k7wdReT1nenavAbmVwyPXl6pU8yi34ar5pUmm+Dn2YOSVK1Yho+QFp+OJ
-         JYflemTWZESyDUOCchdJUe+78VBY1wPEQ7+v8zxAUfJK9vngxfBgqq8bhy9uujz5SjB7
-         StMYy3mSYLM0uJzlKbdH21g8F5zHxoX5oZwopo83vuyFPmZPqUr5uF5IU+9W9od+xmWu
-         fSSg==
-X-Gm-Message-State: AC+VfDwjS50lfhjqlv1VINVtq+8v6+PtGAfQ8jVkxH19y79q0gBvt/43
-        jY4QkUYzKCmm/h+QXVZCg/oAG9iYuX8XOgxGWj0=
-X-Google-Smtp-Source: ACHHUZ4gkb4uXmtBfRalz/8gTBT4f6/AWlotdJNjgnU0y7BmJ/z28Vm/frajygWJFDgVS+dJ1qAf3w6FaHOtUUKNuBY=
-X-Received: by 2002:a17:907:2d2c:b0:977:c8a7:bed5 with SMTP id
- gs44-20020a1709072d2c00b00977c8a7bed5mr7336385ejc.47.1686162395234; Wed, 07
- Jun 2023 11:26:35 -0700 (PDT)
+        with ESMTP id S235799AbjFHO6F (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2023 10:58:05 -0400
+X-Greylist: delayed 483 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Thu, 08 Jun 2023 07:58:03 PDT
+Received: from smtp-o-3.desy.de (smtp-o-3.desy.de [IPv6:2001:638:700:1038::1:9c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4F6DD1FFE
+        for <linux-nfs@vger.kernel.org>; Thu,  8 Jun 2023 07:58:03 -0700 (PDT)
+Received: from smtp-buf-3.desy.de (smtp-buf-3.desy.de [131.169.56.166])
+        by smtp-o-3.desy.de (Postfix) with ESMTP id 03D2F6080E
+        for <linux-nfs@vger.kernel.org>; Thu,  8 Jun 2023 16:49:56 +0200 (CEST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-3.desy.de 03D2F6080E
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
+        t=1686235797; bh=EoygC3UwgPv0k+4St30V54OcFcr1iVnkdlE4VkvPQ5I=;
+        h=From:To:Cc:Subject:Date:From;
+        b=IpAWSdzFKSkAQsOTYVqA9bDewEtX0tNPB0X9iL1d6TqKjQCsywj5ATzlDwIXkeCR6
+         jAJt8xVjQkIfZomr+kBJZ3XC5DGvyrrFNi/iub6wPe7q9trsh9sZ1YApL9BS+SJXD+
+         XNeSjq24xmz9mUSm6h/+SLr4isjXaiRdYYI2m4mE=
+Received: from smtp-m-3.desy.de (smtp-m-3.desy.de [131.169.56.131])
+        by smtp-buf-3.desy.de (Postfix) with ESMTP id EE8DEA00B3;
+        Thu,  8 Jun 2023 16:49:56 +0200 (CEST)
+Received: from a1722.mx.srv.dfn.de (a1722.mx.srv.dfn.de [IPv6:2001:638:d:c301:acdc:1979:2:e7])
+        by smtp-m-3.desy.de (Postfix) with ESMTP id E57B260211;
+        Thu,  8 Jun 2023 16:49:56 +0200 (CEST)
+Received-SPF: Neutral (mailfrom) identity=mailfrom; client-ip=131.169.56.83; helo=smtp-intra-2.desy.de; envelope-from=tigran.mkrtchyan@desy.de; receiver=<UNKNOWN> 
+Received: from smtp-intra-2.desy.de (smtp-intra-2.desy.de [131.169.56.83])
+        by a1722.mx.srv.dfn.de (Postfix) with ESMTP id 2C3A1220043;
+        Thu,  8 Jun 2023 16:49:56 +0200 (CEST)
+Received: from ani.desy.de (zitpcx21033.desy.de [131.169.185.213])
+        by smtp-intra-2.desy.de (Postfix) with ESMTP id 142B0100077;
+        Thu,  8 Jun 2023 16:49:56 +0200 (CEST)
+From:   Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To:     trond.myklebust@hammerspace.com, anna@kernel.org
+Cc:     linux-nfs@vger.kernel.org,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] nfs4: don't map EACCESS and EPERM to EIO
+Date:   Thu,  8 Jun 2023 16:49:33 +0200
+Message-Id: <20230608144933.412664-1-tigran.mkrtchyan@desy.de>
+X-Mailer: git-send-email 2.40.1
 MIME-Version: 1.0
-References: <20230216150701.3654894-1-dhowells@redhat.com> <CALF+zO=w2Gyz6JtzEoFgTVjH67-_CuTaK7e+2yoHEwXZ8bPx_A@mail.gmail.com>
- <CALF+zO=Y8dMsJ79RYp1e7n9B5_0=segpqW9_tetBqPhFiQcZxA@mail.gmail.com>
-In-Reply-To: <CALF+zO=Y8dMsJ79RYp1e7n9B5_0=segpqW9_tetBqPhFiQcZxA@mail.gmail.com>
-From:   Chris Chilvers <chilversc@gmail.com>
-Date:   Wed, 7 Jun 2023 19:26:23 +0100
-Message-ID: <CAAmbk-cBJprmRsW5uktAm49NtVw9WTLA=LPS7uLkwAknjs_1qA@mail.gmail.com>
-Subject: Re: [Linux-cachefs] [PATCH v6 0/2] mm, netfs, fscache: Stop read
- optimisation when folio removed from pagecache
-To:     David Howells <dhowells@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>
-Cc:     David Wysochanski <dwysocha@redhat.com>,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Jeff Layton <jlayton@kernel.org>, linux-kernel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-cachefs@redhat.com, linux-fsdevel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net, ceph-devel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-erofs@lists.ozlabs.org,
-        linux-afs@lists.infradead.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Any update on this? I assume it's too late for these patches to make 6.4.0.
+the nfs4_map_errors function converts NFS specific errors to userland
+errors. However, it ignores NFS4ERR_PERM and EPERM, which then get
+mapped to EIO.
+
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ fs/nfs/nfs4proc.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d3665390c4cb..795205fe4f30 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -171,12 +171,14 @@ static int nfs4_map_errors(int err)
+ 	case -NFS4ERR_LAYOUTTRYLATER:
+ 	case -NFS4ERR_RECALLCONFLICT:
+ 		return -EREMOTEIO;
++	case -NFS4ERR_PERM:
+ 	case -NFS4ERR_WRONGSEC:
+ 	case -NFS4ERR_WRONG_CRED:
+ 		return -EPERM;
+ 	case -NFS4ERR_BADOWNER:
+ 	case -NFS4ERR_BADNAME:
+ 		return -EINVAL;
++	case -NFS4ERR_ACCESS:
+ 	case -NFS4ERR_SHARE_DENIED:
+ 		return -EACCES;
+ 	case -NFS4ERR_MINOR_VERS_MISMATCH:
+-- 
+2.40.1
+
