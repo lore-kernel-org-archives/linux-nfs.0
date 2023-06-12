@@ -2,42 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 87A4AC88CB4
-	for <linux-nfs@archiver.kernel.org>; Mon, 12 Jun 2023 14:10:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 84632C88CB2
+	for <linux-nfs@archiver.kernel.org>; Mon, 12 Jun 2023 14:13:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236176AbjFLOKr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 12 Jun 2023 10:10:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51868 "EHLO
+        id S236889AbjFLONa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 12 Jun 2023 10:13:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54560 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237076AbjFLOJ5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jun 2023 10:09:57 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1F87010C4;
-        Mon, 12 Jun 2023 07:09:57 -0700 (PDT)
+        with ESMTP id S235611AbjFLON3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jun 2023 10:13:29 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E02B1F0
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Jun 2023 07:13:28 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id B032D629A1;
-        Mon, 12 Jun 2023 14:09:56 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C1CB7C433D2;
-        Mon, 12 Jun 2023 14:09:55 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 757A961D80
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Jun 2023 14:13:28 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id ACB7EC433EF;
+        Mon, 12 Jun 2023 14:13:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1686578996;
-        bh=CW40ED4XwcFWcPaA1yS0qaj3Lz08j3Jn8xbFhhIZxJY=;
+        s=k20201202; t=1686579207;
+        bh=9eecKELwBaYftnl/t+fUPs0zTSNUZrdQht8+fQwEjWY=;
         h=Subject:From:To:Cc:Date:From;
-        b=WwooHS8MJVSqdMY9iAqm82lQp0iRtFo5jtIdKpHqHgkkB6HcMa4ZRz2MVB0HYoFhL
-         xi/NRebyn+/R38FnuKrYWKoQynYnvhuvt6hA6ru7w/YzHVz8TYlRB1wIY+Kp563QDJ
-         GVe59zEO/c+1kTrP0ntN8K6VBPvzAkGkXhH9LSZuy6FG6505SN12s3XAzSDYhitebR
-         vozq4dRh6vzB/JnahdiiZwTqSfAnXkHqoVZIadVu00GVAwgZVXPBM/fYnRPtsGVLZs
-         k40skjWOvjXJ2/khDlGjVys6jn2c6agC3TJY6no6FDpMpww2y275pnG8h6kgnCGyX0
-         TQqp4lHQTdZaA==
-Subject: [PATCH v2 0/5] svcrdma: Go back to releasing pages-under-I/O
+        b=HnnlKDSm4tRvjXFon8DCcATn/5Fyxa98hVYLJRteVTiSkuFxMe1b4IMnmGw9UQqgd
+         9Hd2HxhrlncUO4/4pL3GNgsBMW6gyWzQVfw3SxmtV4JIWzUItHmMBwZaDrw58va7NS
+         tu9/FVYg2xwm0oaRoTT5OpGu/EfsDkdmpWMjoSiCjVBsVc3sjEIM3O/svsv0zQSD+I
+         faCvBsdtPGWQWQqd4PRsb/ymYsPYP6xMP61M5HxnF3N5z4CRpPWy1XXVkZKLlr+U1q
+         fBwq/Wlm2I3beBfmysss2GPCge9DIlOFTSb3vfG9QWmAVJVcFkPdWME7FLVm7qykbh
+         +BSnIvM9kSpHQ==
+Subject: [PATCH v1 0/7] Several minor NFSD clean-ups
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
-Cc:     Tom Talpey <tom@talpey.com>, Chuck Lever <chuck.lever@oracle.com>,
-        linux-rdma@vger.kernel.org, tom@talpey.com
-Date:   Mon, 12 Jun 2023 10:09:54 -0400
-Message-ID: <168657879115.5619.5573632864481586166.stgit@manet.1015granger.net>
+Cc:     Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon, 12 Jun 2023 10:13:26 -0400
+Message-ID: <168657912781.5674.12501431304770900992.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -46,31 +45,27 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Return to the behavior of releasing reply buffer pages as part of
-sending an RPC Reply over RDMA. I measured a performance improvement
-(which is documented in 4/4). Matching the page release behavior of
-socket transports also means we should be able to share a little
-more code between transports as MSG_SPLICE_PAGES rolls out.
-
-Changes since v1:
-- Add a related fix
-- Clarify some of the patch descriptions
+These are not strongly related to each other, but there was a whole
+collection such that I didn't feel like posting each individually.
 
 ---
 
-Chuck Lever (5):
-      SUNRPC: Revert cc93ce9529a6 ("svcrdma: Retain the page backing rq_res.head[0].iov_base")
-      SUNRPC: Revert 579900670ac7 ("svcrdma: Remove unused sc_pages field")
-      svcrdma: Revert 2a1e4f21d841 ("svcrdma: Normalize Send page handling")
-      svcrdma: Prevent page release when nothing was received
-      SUNRPC: Optimize page release in svc_rdma_sendto()
+Chuck Lever (7):
+      SUNRPC: Move initialization of rq_stime
+      NFSD: Add an nfsd4_encode_nfstime4() helper
+      svcrdma: Convert "might sleep" comment into a code annotation
+      svcrdma: trace cc_release calls
+      svcrdma: Remove an unused argument from __svc_rdma_put_rw_ctxt()
+      SUNRPC: Fix comments for transport class registration
+      SUNRPC: Remove transport class dprintk call sites
 
 
- include/linux/sunrpc/svc_rdma.h            |  4 +-
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  8 +---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    | 12 ++---
- net/sunrpc/xprtrdma/svc_rdma_sendto.c      | 53 ++++++++++++++--------
- 4 files changed, 44 insertions(+), 33 deletions(-)
+ fs/nfsd/nfs4xdr.c                     | 46 +++++++++++++++------------
+ include/trace/events/rpcrdma.h        |  8 +++++
+ net/sunrpc/svc_xprt.c                 | 18 ++++++++---
+ net/sunrpc/xprtrdma/svc_rdma_rw.c     | 14 ++++----
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |  2 ++
+ 5 files changed, 58 insertions(+), 30 deletions(-)
 
 --
 Chuck Lever
