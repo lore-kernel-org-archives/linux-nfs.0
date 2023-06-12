@@ -2,93 +2,78 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2423ECA9EAB
-	for <linux-nfs@archiver.kernel.org>; Mon, 12 Jun 2023 13:39:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 38423C88CB2
+	for <linux-nfs@archiver.kernel.org>; Mon, 12 Jun 2023 14:10:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232004AbjFLNjd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 12 Jun 2023 09:39:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34158 "EHLO
+        id S237342AbjFLOKR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 12 Jun 2023 10:10:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51918 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230526AbjFLNjd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jun 2023 09:39:33 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3D8F5E9;
-        Mon, 12 Jun 2023 06:39:32 -0700 (PDT)
+        with ESMTP id S237154AbjFLOKE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Jun 2023 10:10:04 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9375010C4;
+        Mon, 12 Jun 2023 07:10:03 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id BC37A61EBE;
-        Mon, 12 Jun 2023 13:39:31 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 76DD3C433D2;
-        Mon, 12 Jun 2023 13:39:30 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 2EBFE629A1;
+        Mon, 12 Jun 2023 14:10:03 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 48BC2C4339B;
+        Mon, 12 Jun 2023 14:10:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1686577171;
-        bh=wEoJQ3A+BRKgwTVRAcz29FSzdwNTmkYdgc6OOibuFIo=;
+        s=k20201202; t=1686579002;
+        bh=MiP1czKYRYivAwfgCIWihLzXQRc2PLrqklSil8z8u5E=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=hNAMNIRWAtXV7FbehAhFmf2nIiBM9pGzCsUrAK2pYe2N3xSHZfp7Sf4OagNOKYBz+
-         NRV2jU50l1MVQr/Lj7P/MotUTzl9Exo24X+xn0a090EQ3tuO60kKgCoZdPME9YReB4
-         N8snrmeLmKogHqFrhjINaP3TMxwGsjMpvibfpVkRvBye437M7Zc7rYwDHumvIaEnU8
-         4XJWu+9vDi+JfZ//FtLKCbPevJt22j1p/u9x+N4rWLKkGIdeW/7t6SGO7e4M37qXG3
-         cqRoWtKFOgy4fHYswDO49CcXMPeqkH0UxQJJfv6DR6+ePtH06IgvJmY5RHRnio7vHp
-         nrQy+1YmbHilA==
-Message-ID: <5cc527156b186ec0f57ebd82874cc6eda2866c92.camel@kernel.org>
-Subject: Re: [PATCH] nfs: don't report STATX_BTIME in ->getattr
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>, NeilBrown <neilb@suse.de>
-Cc:     stable@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Boyang Xue <bxue@redhat.com>
-Date:   Mon, 12 Jun 2023 09:39:29 -0400
-In-Reply-To: <20230612133404.181166-1-jlayton@kernel.org>
-References: <20230612133404.181166-1-jlayton@kernel.org>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.48.3 (3.48.3-1.fc38) 
+        b=puFId1sMd+4LMQ6PVCtR0+9WWZfLNlx0Hx89KKYiC4H4REQp/oggAbog7ko0wvG2m
+         3IjR736zedRiZGG2OUo+Du/jh4rUbEFzcaf0uOxXt6zL+xpF5lYQh6QsUPKUuc4LBh
+         S3pKid1WYR6ht1XvmDHnXTY6ZEc7ofKE+bdACmHc3FmWqmnjZQa8vLP6yTGm3uRJbd
+         PzqoHDlt4tVt7MIS5f6HIYPu8fN8i9565OeUs+7jNBgGLpA08F/MGVehAB4UuZQVGs
+         SXYaKPfJHShpAKC3jcVonvpTeXOKQAdqGOPQSiC2ZLQPF8gSL+1gryx4cdixgW0jFT
+         T61qsVl8YnO5A==
+Subject: [PATCH v2 1/5] SUNRPC: Revert cc93ce9529a6 ("svcrdma: Retain the page
+ backing rq_res.head[0].iov_base")
+From:   Chuck Lever <cel@kernel.org>
+To:     linux-nfs@vger.kernel.org
+Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        tom@talpey.com
+Date:   Mon, 12 Jun 2023 10:10:01 -0400
+Message-ID: <168657900128.5619.7769165526407423007.stgit@manet.1015granger.net>
+In-Reply-To: <168657879115.5619.5573632864481586166.stgit@manet.1015granger.net>
+References: <168657879115.5619.5573632864481586166.stgit@manet.1015granger.net>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, 2023-06-12 at 09:34 -0400, Jeff Layton wrote:
-> NFS doesn't properly support reporting the btime in getattr (yet), but
-> 61a968b4f05e mistakenly added it to the request_mask. This causes statx
-> for STATX_BTIME to report a zeroed out btime instead of properly
-> clearing the flag.
->=20
-> Cc: stable@vger.kernel.org # v6.3+
-> Fixes: 61a968b4f05e ("nfs: report the inode version in getattr if request=
-ed")
-> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+
+Pre-requisite for releasing pages in the send completion handler.
+Reverted by hand: patch -R would not apply cleanly.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |    5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index a35d1e055b1a..8e7ccef74207 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -975,11 +975,6 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ 	ret = svc_rdma_send_reply_msg(rdma, sctxt, rctxt, rqstp);
+ 	if (ret < 0)
+ 		goto put_ctxt;
+-
+-	/* Prevent svc_xprt_release() from releasing the page backing
+-	 * rq_res.head[0].iov_base. It's no longer being accessed by
+-	 * the I/O device. */
+-	rqstp->rq_respages++;
+ 	return 0;
+ 
+ reply_chunk:
 
 
-Trond/Anna,
-
-If this patch looks OK, could you also add these tags to the commit log?
-
-    Link: https://bugzilla.redhat.com/show_bug.cgi?id=3D2214134
-    Reported-by: Boyang Xue <bxue@redhat.com>
-
-I forgot to tack them on before sending.
-
-Thanks!
-
-> ---
->  fs/nfs/inode.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index bc4cac08bb24..9b51ffd7281d 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -846,7 +846,7 @@ int nfs_getattr(struct mnt_idmap *idmap, const struct=
- path *path,
-> =20
->  	request_mask &=3D STATX_TYPE | STATX_MODE | STATX_NLINK | STATX_UID |
->  			STATX_GID | STATX_ATIME | STATX_MTIME | STATX_CTIME |
-> -			STATX_INO | STATX_SIZE | STATX_BLOCKS | STATX_BTIME |
-> +			STATX_INO | STATX_SIZE | STATX_BLOCKS |
->  			STATX_CHANGE_COOKIE;
-> =20
->  	if ((query_flags & AT_STATX_DONT_SYNC) && !force_sync) {
---=20
-Jeff Layton <jlayton@kernel.org>
