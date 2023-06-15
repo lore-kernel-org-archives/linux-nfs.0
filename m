@@ -2,205 +2,112 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 65668EB64D9
-	for <linux-nfs@archiver.kernel.org>; Thu, 15 Jun 2023 11:20:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 89CD4EB64D9
+	for <linux-nfs@archiver.kernel.org>; Thu, 15 Jun 2023 13:01:28 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244783AbjFOLUZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 15 Jun 2023 07:20:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43950 "EHLO
+        id S237810AbjFONB1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 15 Jun 2023 09:01:27 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55076 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237768AbjFOLUY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Jun 2023 07:20:24 -0400
-Received: from out-35.mta0.migadu.com (out-35.mta0.migadu.com [IPv6:2001:41d0:1004:224b::23])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2531E2705
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Jun 2023 04:20:23 -0700 (PDT)
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1686828021;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=nIxdhPGdAgLyMLxuVgcyuLg/UnjLIh4DAJ6AXRw1tR4=;
-        b=AAr4/F3Nn3QI2UKEhNZ4fz50qOboCA054aB1Zc3zs166eJpYzUls65WVhLwG28nrTMbfnF
-        WaD4WQ9EaswJeoKuYKn7aqc4LL4nJskEbfPSFNGJFuxDTw5+/yeQ215D9lrRjKsaavJtqA
-        Uxy24aRqOdo2ls08qpPqkzaJGzN+q0o=
-From:   Qi Zheng <qi.zheng@linux.dev>
-To:     trond.myklebust@hammerspace.com, anna@kernel.org,
-        fllinden@amazon.com
-Cc:     linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v2] NFSv4.2: fix wrong shrinker_id
-Date:   Thu, 15 Jun 2023 11:19:46 +0000
-Message-Id: <20230615111946.3376012-1-qi.zheng@linux.dev>
+        with ESMTP id S1343632AbjFONB0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Jun 2023 09:01:26 -0400
+Received: from mail-qt1-x832.google.com (mail-qt1-x832.google.com [IPv6:2607:f8b0:4864:20::832])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0CFD02704;
+        Thu, 15 Jun 2023 06:01:22 -0700 (PDT)
+Received: by mail-qt1-x832.google.com with SMTP id d75a77b69052e-3f86a7f3a65so29435351cf.0;
+        Thu, 15 Jun 2023 06:01:22 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1686834082; x=1689426082;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=LzzubgBVt/J0nhYq2hKWgLyD/ISUfZBJNfYWWUP1FQE=;
+        b=NVkPW3sSJz8Ti0OLHUwsQMACcGifVQZarMa9af3J9v7HIiAdbCMuVVow5wmCtXlltO
+         MW9V93ISS7DGuX0zeRDHvXLB+RrMDvnq1nIBIGKEA3CR8vDqwE4m9UFzGOMb25HnmLWF
+         xHXjGUqFgfzH6OKyyNbsMduwcpodYZJse5Bon6Ypg6UB2rZLWlOkB6j+MLevlZFD/67K
+         PmK0k6Lh1NCThLxwsg93FCoju/8JN3DPGWLjzfnvSCag9q1tMxzgDI2V98RTME/KI+rG
+         K6WEUD1A9z4YdgkIqntvhwx7E9LCOp/tDgTROuBi/jZegsbsXBO0GO7clHuIrLsrNEHd
+         NLCQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1686834082; x=1689426082;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=LzzubgBVt/J0nhYq2hKWgLyD/ISUfZBJNfYWWUP1FQE=;
+        b=k7iEuG9q0KqBBkRwkaB0a0EOQhlTuxN26/q4pS+CpTrFbuI0JLTybSLJvGOBdOaMDr
+         uWhH+19UTigT/gOmYGvOYNB0fG5W1+llILLPjym4sFNwbkeTb+rWDn6f3ncE+wl+17BY
+         eW05qzFZhcL2pqdO8HE2GtpURPGRWktDMCPGAh6PuSPByH+FCYO3y/Uu4g6ik3fFk+xB
+         PCnzKcLixGIMSsypZcfCEoYtPLT+IrDeztXpQSC72hPjrhhaYJmlogdJ9sbaSwsJ0sYN
+         5vZWvDi/hFchdd2DMUd/y7aBNcNBWQqCrg1ewkLMtMki2Duy4PEZVWIHPN+j/go6Bbqc
+         4RSw==
+X-Gm-Message-State: AC+VfDzXOAI9iYWq4w83+WJyEhVeeTDDKI+Av4nUz7z/RDQ7xa51sAGg
+        9jcURn7go7PZyyq26dYXcBSZGt8/2D6ood5J/aY=
+X-Google-Smtp-Source: ACHHUZ6ylbf4BRxvTAx0QGSZ0SFgescSs+d4NQ+GPGVU5MPdz5hjOXzBWLTzX6pUzQ995la95FLpjPN00bR8sR+CfdM=
+X-Received: by 2002:a05:622a:54b:b0:3ed:86f6:6ecf with SMTP id
+ m11-20020a05622a054b00b003ed86f66ecfmr6189795qtx.46.1686834081704; Thu, 15
+ Jun 2023 06:01:21 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Migadu-Flow: FLOW_OUT
+References: <f591b13c-4600-e2a4-8efa-aac6ad828dd1@linaro.org>
+ <2C5E9725-F152-4D2E-882E-CF92A35481BF@hammerspace.com> <7ba38377-7992-7f0f-d905-cceb42510f39@linaro.org>
+ <51430925-8046-7066-84ed-2ff0db835347@linaro.org> <CAFX2Jf=5X3zyZEWQmD6Rg9jQAD7ccDbae5LQCwrAyPCVVoFumg@mail.gmail.com>
+ <2add1769-1458-b185-bc78-6d573f61b6fc@linaro.org> <CAFX2JfnKy7juGQaDTzqosN9SF-zd+XrhSL9uh_Xg0GpJGDux-A@mail.gmail.com>
+ <32530c36-91d0-d351-0689-aed6a0975a4b@linaro.org> <2f285607-cbf9-6abc-f436-edb6e9a3938b@linaro.org>
+ <CAFX2Jfmz7QqZBEdzbPUhPs0yctnXVaVF68tX1c57YX=6ki=0TA@mail.gmail.com>
+ <4fe39d77-eb7c-a578-aefa-45b76e2247c2@linaro.org> <CAFX2JfmdRMsHPTySiw4vm7BwJfRZj3s0V3_v7NJ+XwMxBBSo9A@mail.gmail.com>
+ <a3683dd3-3f30-bb4c-539d-d1519de6e5bf@linaro.org> <CAFX2JfnS9GVc4NaxKhr9E4y10NNv6SPgcv1yoeHTfEw5NvZgMg@mail.gmail.com>
+ <86d8e252-975f-5d48-4567-0911d5ef9a44@linaro.org> <CAFX2Jfn_DSs38WQYsRs2ifLi5w+T3BhZfSU2W80T6dK48_Bb5g@mail.gmail.com>
+ <e8d31e48-df6a-fde4-4c6b-c4ccf1664ded@linaro.org> <c8d454b0-d355-f599-f720-b7e64374fb56@linaro.org>
+In-Reply-To: <c8d454b0-d355-f599-f720-b7e64374fb56@linaro.org>
+From:   Anna Schumaker <schumaker.anna@gmail.com>
+Date:   Thu, 15 Jun 2023 09:01:05 -0400
+Message-ID: <CAFX2JfmvMZ7DzD9znWeOHXywgPbUKDS1irMjUerEuborjRBpcg@mail.gmail.com>
+Subject: Re: Regression: NULL pointer dereference after NFS_V4_2_READ_PLUS
+ (commit 7fd461c47)
+To:     Krzysztof Kozlowski <krzysztof.kozlowski@linaro.org>
+Cc:     Trond Myklebust <trondmy@hammerspace.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "regressions@lists.linux.dev" <regressions@lists.linux.dev>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Qi Zheng <zhengqi.arch@bytedance.com>
+On Thu, Jun 15, 2023 at 4:55=E2=80=AFAM Krzysztof Kozlowski
+<krzysztof.kozlowski@linaro.org> wrote:
+>
+> On 15/06/2023 10:52, Krzysztof Kozlowski wrote:
+> > On 14/06/2023 22:55, Anna Schumaker wrote:
+> >>>>> Still null ptr (built on 420b2d4 with your patch):
+> >>>>
+> >>>> We're through the merge window and at rc1 now, so I can spend more
+> >>>> time scratching my head over your bug again. We've come up with a
+> >>>> patch (attached) that adds a bunch of printks to show us what the
+> >>>> kernel thinks is going on. Do you mind trying it out and letting us
+> >>>> know what gets printed out? You'll need to make sure
+> >>>> CONFIG_NFS_V4_2_READ_PLUS is enabled when compiling the kernel.
+> >>>
+> >>> The patch does not apply. I tried: v6.4-rc1, v6.4-rc5, next-20230609.
+> >>
+> >> Can you try the attached patch on top of my 3-patch series from the
+> >> other day, and let me know what gets printed out? It adds a bunch of
+> >> printk()s at strategic points to print out what is going on with the
+> >> xdr scratch buffer since it's suddenly a bad memory address after
+> >> working for a bit on your machine.
+> >>
+> >
+> > Here you have entire log - attached (113 kB, I hope goes past mailing
+> > lists/spam filters).
+>
+> As expected this bounced from the mailing lists, but I hope you got it.
+> If not, let me know.
 
-Currently, the list_lru::shrinker_id corresponding to the nfs4_xattr
-shrinkers is wrong:
+I did still receive it. Thanks!
 
->>> prog["nfs4_xattr_cache_lru"].shrinker_id
-(int)0
->>> prog["nfs4_xattr_entry_lru"].shrinker_id
-(int)0
->>> prog["nfs4_xattr_large_entry_lru"].shrinker_id
-(int)0
->>> prog["nfs4_xattr_cache_shrinker"].id
-(int)18
->>> prog["nfs4_xattr_entry_shrinker"].id
-(int)19
->>> prog["nfs4_xattr_large_entry_shrinker"].id
-(int)20
-
-This is not what we expect, which will cause these shrinkers
-not to be found in shrink_slab_memcg().
-
-We should assign shrinker::id before calling list_lru_init_memcg(),
-so that the corresponding list_lru::shrinker_id will be assigned
-the correct value like below:
-
->>> prog["nfs4_xattr_cache_lru"].shrinker_id
-(int)16
->>> prog["nfs4_xattr_entry_lru"].shrinker_id
-(int)17
->>> prog["nfs4_xattr_large_entry_lru"].shrinker_id
-(int)18
->>> prog["nfs4_xattr_cache_shrinker"].id
-(int)16
->>> prog["nfs4_xattr_entry_shrinker"].id
-(int)17
->>> prog["nfs4_xattr_large_entry_shrinker"].id
-(int)18
-
-So just do it.
-
-Fixes: 95ad37f90c33 ("NFSv4.2: add client side xattr caching.")
-Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
----
-Changlog in v1 -> v2:
- - To avoid exporting more symblos, use register_shrinker() instead of
-   prealloc_shrinker() and register_shrinker_prepared().
-
- fs/nfs/nfs42xattr.c | 79 +++++++++++++++++++++++++--------------------
- 1 file changed, 44 insertions(+), 35 deletions(-)
-
-diff --git a/fs/nfs/nfs42xattr.c b/fs/nfs/nfs42xattr.c
-index 76ae11834206..911f634ba3da 100644
---- a/fs/nfs/nfs42xattr.c
-+++ b/fs/nfs/nfs42xattr.c
-@@ -991,6 +991,29 @@ static void nfs4_xattr_cache_init_once(void *p)
- 	INIT_LIST_HEAD(&cache->dispose);
- }
- 
-+static int nfs4_xattr_shrinker_init(struct shrinker *shrinker,
-+				    struct list_lru *lru, const char *name)
-+{
-+	int ret = 0;
-+
-+	ret = register_shrinker(shrinker, name);
-+	if (ret)
-+		return ret;
-+
-+	ret = list_lru_init_memcg(lru, shrinker);
-+	if (ret)
-+		unregister_shrinker(shrinker);
-+
-+	return ret;
-+}
-+
-+static void nfs4_xattr_shrinker_destroy(struct shrinker *shrinker,
-+					struct list_lru *lru)
-+{
-+	unregister_shrinker(shrinker);
-+	list_lru_destroy(lru);
-+}
-+
- int __init nfs4_xattr_cache_init(void)
- {
- 	int ret = 0;
-@@ -1002,44 +1025,30 @@ int __init nfs4_xattr_cache_init(void)
- 	if (nfs4_xattr_cache_cachep == NULL)
- 		return -ENOMEM;
- 
--	ret = list_lru_init_memcg(&nfs4_xattr_large_entry_lru,
--	    &nfs4_xattr_large_entry_shrinker);
--	if (ret)
--		goto out4;
--
--	ret = list_lru_init_memcg(&nfs4_xattr_entry_lru,
--	    &nfs4_xattr_entry_shrinker);
--	if (ret)
--		goto out3;
--
--	ret = list_lru_init_memcg(&nfs4_xattr_cache_lru,
--	    &nfs4_xattr_cache_shrinker);
--	if (ret)
--		goto out2;
--
--	ret = register_shrinker(&nfs4_xattr_cache_shrinker, "nfs-xattr_cache");
-+	ret = nfs4_xattr_shrinker_init(&nfs4_xattr_cache_shrinker,
-+				       &nfs4_xattr_cache_lru,
-+				       "nfs-xattr_cache");
- 	if (ret)
- 		goto out1;
- 
--	ret = register_shrinker(&nfs4_xattr_entry_shrinker, "nfs-xattr_entry");
-+	ret = nfs4_xattr_shrinker_init(&nfs4_xattr_entry_shrinker,
-+				       &nfs4_xattr_entry_lru,
-+				       "nfs-xattr_entry");
- 	if (ret)
--		goto out;
-+		goto out2;
- 
--	ret = register_shrinker(&nfs4_xattr_large_entry_shrinker,
--				"nfs-xattr_large_entry");
-+	ret = nfs4_xattr_shrinker_init(&nfs4_xattr_large_entry_shrinker,
-+				       &nfs4_xattr_large_entry_lru,
-+				       "nfs-xattr_large_entry");
- 	if (!ret)
- 		return 0;
- 
--	unregister_shrinker(&nfs4_xattr_entry_shrinker);
--out:
--	unregister_shrinker(&nfs4_xattr_cache_shrinker);
--out1:
--	list_lru_destroy(&nfs4_xattr_cache_lru);
-+	nfs4_xattr_shrinker_destroy(&nfs4_xattr_entry_shrinker,
-+				    &nfs4_xattr_entry_lru);
- out2:
--	list_lru_destroy(&nfs4_xattr_entry_lru);
--out3:
--	list_lru_destroy(&nfs4_xattr_large_entry_lru);
--out4:
-+	nfs4_xattr_shrinker_destroy(&nfs4_xattr_cache_shrinker,
-+				    &nfs4_xattr_cache_lru);
-+out1:
- 	kmem_cache_destroy(nfs4_xattr_cache_cachep);
- 
- 	return ret;
-@@ -1047,11 +1056,11 @@ int __init nfs4_xattr_cache_init(void)
- 
- void nfs4_xattr_cache_exit(void)
- {
--	unregister_shrinker(&nfs4_xattr_large_entry_shrinker);
--	unregister_shrinker(&nfs4_xattr_entry_shrinker);
--	unregister_shrinker(&nfs4_xattr_cache_shrinker);
--	list_lru_destroy(&nfs4_xattr_large_entry_lru);
--	list_lru_destroy(&nfs4_xattr_entry_lru);
--	list_lru_destroy(&nfs4_xattr_cache_lru);
-+	nfs4_xattr_shrinker_destroy(&nfs4_xattr_large_entry_shrinker,
-+				    &nfs4_xattr_large_entry_lru);
-+	nfs4_xattr_shrinker_destroy(&nfs4_xattr_entry_shrinker,
-+				    &nfs4_xattr_entry_lru);
-+	nfs4_xattr_shrinker_destroy(&nfs4_xattr_cache_shrinker,
-+				    &nfs4_xattr_cache_lru);
- 	kmem_cache_destroy(nfs4_xattr_cache_cachep);
- }
--- 
-2.30.2
-
+Anna
+>
+> Best regards,
+> Krzysztof
+>
