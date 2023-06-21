@@ -2,182 +2,100 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE6DDC001DB
-	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jun 2023 16:46:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DC010EB64D7
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jun 2023 17:37:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230168AbjFUQqj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 21 Jun 2023 12:46:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37936 "EHLO
+        id S229652AbjFURhO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 21 Jun 2023 13:37:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40282 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229853AbjFUQq0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jun 2023 12:46:26 -0400
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 33CEE129;
-        Wed, 21 Jun 2023 09:46:18 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
-        Content-Type:Content-ID:Content-Description;
-        bh=eONAo72om3NJJPfeQU98nnaiEyx1girYaBRrJpkgqkU=; b=JXUQqB4dBUOu93/qitkyE97f3Z
-        vicwKtf2V+aPt3Dbg9/7v8WVwzM1uW09KbzEgrV7HoZavbGv57iMq0P8yKRiVHqblH2VN4jJwQ51P
-        3UBOa8B2hu7+kv08AyN/nJEB47YJdT5WmFl8qEnhdI5jyaHNGAsAFAZ1nL/q35cRWiLbB1YToy/e8
-        42a1+W41mg0rHN6jVqxvTZByBSAn9Z9fMtkxjLN56svcogUEoy8anGD/EDPT8G5k/Bd4memePz7s9
-        CrQmO7YpoNGtdgXoNsSSDZ7tXeMZyLnRddcjDjPExN2w8ZnbHBneVjox+kOnqzeVCqXZWHclrs02X
-        NKuWOUMg==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qC0y1-00EjDm-IE; Wed, 21 Jun 2023 16:46:01 +0000
-From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
-To:     linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>
-Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
-        dri-devel@lists.freedesktop.org, linux-kernel@vger.kernel.org,
-        intel-gfx@lists.freedesktop.org, linux-afs@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: [PATCH 04/13] i915: Convert shmem_sg_free_table() to use a folio_batch
-Date:   Wed, 21 Jun 2023 17:45:48 +0100
-Message-Id: <20230621164557.3510324-5-willy@infradead.org>
-X-Mailer: git-send-email 2.37.1
-In-Reply-To: <20230621164557.3510324-1-willy@infradead.org>
-References: <20230621164557.3510324-1-willy@infradead.org>
+        with ESMTP id S229866AbjFURhN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jun 2023 13:37:13 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 461D91BF6;
+        Wed, 21 Jun 2023 10:36:52 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id B0716615FF;
+        Wed, 21 Jun 2023 17:36:51 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4486CC433C0;
+        Wed, 21 Jun 2023 17:36:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1687369011;
+        bh=J7nyvmMOq5uGyJhdkzpbJfnd/X7LLGSq3eghpnukqY0=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=UF9JYUB8TU5UIwVfMIKNMlrZb7nBhZmXF9AteRSiZ1G4cHOTWVzCbdFqTs4PV2UCC
+         NdMYXoA84Mm25AQWrOC/Fthcns+rTX+j92yXk9OX84xYWTqkCE/dArFdVCB2EhRn16
+         O8cD15Kr6KsD9GG6YvG01cVBjXwKtFt/5hVIr3cLDURBx7SsqnURKgGhtBjuH9qABn
+         cv/lUGWgm4h/EDY6VPzdciICe8Xd6JetOXngEYWQx6lwC3AdcZH5fFOAZDJm6/ob+m
+         x7frq8wXN38aKEHA9XnUv+Bs9Nx7bQv4VA5Pj1tocNWcje5nLGVJH408vhKZ8/s9ou
+         AsN1d9XpK6g3Q==
+Date:   Wed, 21 Jun 2023 13:36:48 -0400
+From:   Chuck Lever <cel@kernel.org>
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     Christian Brauner <brauner@kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Neil Brown <neilb@suse.de>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+        Al Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 46/79] nfsd: switch to new ctime accessors
+Message-ID: <ZJM1MAEmxpIOE/rC@manet.1015granger.net>
+References: <20230621144507.55591-1-jlayton@kernel.org>
+ <20230621144735.55953-1-jlayton@kernel.org>
+ <20230621144735.55953-45-jlayton@kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230621144735.55953-45-jlayton@kernel.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Remove a few hidden compound_head() calls by converting the returned
-page to a folio once and using the folio APIs.  We also only increment
-the refcount on the folio once instead of once for each page.  Ideally,
-we would have a for_each_sgt_folio macro, but until then this will do.
+On Wed, Jun 21, 2023 at 10:45:59AM -0400, Jeff Layton wrote:
+> In later patches, we're going to change how the ctime.tv_nsec field is
+> utilized. Switch to using accessor functions instead of raw accesses of
+> inode->i_ctime.
+> 
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
----
- drivers/gpu/drm/i915/gem/i915_gem_shmem.c | 55 +++++++++++++----------
- 1 file changed, 31 insertions(+), 24 deletions(-)
+Acked-by: Chuck Lever <chuck.lever@oracle.com>
 
-diff --git a/drivers/gpu/drm/i915/gem/i915_gem_shmem.c b/drivers/gpu/drm/i915/gem/i915_gem_shmem.c
-index 33d5d5178103..8f1633c3fb93 100644
---- a/drivers/gpu/drm/i915/gem/i915_gem_shmem.c
-+++ b/drivers/gpu/drm/i915/gem/i915_gem_shmem.c
-@@ -19,13 +19,13 @@
- #include "i915_trace.h"
- 
- /*
-- * Move pages to appropriate lru and release the pagevec, decrementing the
-- * ref count of those pages.
-+ * Move folios to appropriate lru and release the batch, decrementing the
-+ * ref count of those folios.
-  */
--static void check_release_pagevec(struct pagevec *pvec)
-+static void check_release_folio_batch(struct folio_batch *fbatch)
- {
--	check_move_unevictable_pages(pvec);
--	__pagevec_release(pvec);
-+	check_move_unevictable_folios(fbatch);
-+	__folio_batch_release(fbatch);
- 	cond_resched();
- }
- 
-@@ -33,24 +33,29 @@ void shmem_sg_free_table(struct sg_table *st, struct address_space *mapping,
- 			 bool dirty, bool backup)
- {
- 	struct sgt_iter sgt_iter;
--	struct pagevec pvec;
-+	struct folio_batch fbatch;
-+	struct folio *last = NULL;
- 	struct page *page;
- 
- 	mapping_clear_unevictable(mapping);
- 
--	pagevec_init(&pvec);
-+	folio_batch_init(&fbatch);
- 	for_each_sgt_page(page, sgt_iter, st) {
--		if (dirty)
--			set_page_dirty(page);
-+		struct folio *folio = page_folio(page);
- 
-+		if (folio == last)
-+			continue;
-+		last = folio;
-+		if (dirty)
-+			folio_mark_dirty(folio);
- 		if (backup)
--			mark_page_accessed(page);
-+			folio_mark_accessed(folio);
- 
--		if (!pagevec_add(&pvec, page))
--			check_release_pagevec(&pvec);
-+		if (!folio_batch_add(&fbatch, folio))
-+			check_release_folio_batch(&fbatch);
- 	}
--	if (pagevec_count(&pvec))
--		check_release_pagevec(&pvec);
-+	if (fbatch.nr)
-+		check_release_folio_batch(&fbatch);
- 
- 	sg_free_table(st);
- }
-@@ -63,8 +68,7 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
- 	unsigned int page_count; /* restricted by sg_alloc_table */
- 	unsigned long i;
- 	struct scatterlist *sg;
--	struct page *page;
--	unsigned long last_pfn = 0;	/* suppress gcc warning */
-+	unsigned long next_pfn = 0;	/* suppress gcc warning */
- 	gfp_t noreclaim;
- 	int ret;
- 
-@@ -95,6 +99,7 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
- 	sg = st->sgl;
- 	st->nents = 0;
- 	for (i = 0; i < page_count; i++) {
-+		struct folio *folio;
- 		const unsigned int shrink[] = {
- 			I915_SHRINK_BOUND | I915_SHRINK_UNBOUND,
- 			0,
-@@ -103,12 +108,12 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
- 
- 		do {
- 			cond_resched();
--			page = shmem_read_mapping_page_gfp(mapping, i, gfp);
--			if (!IS_ERR(page))
-+			folio = shmem_read_folio_gfp(mapping, i, gfp);
-+			if (!IS_ERR(folio))
- 				break;
- 
- 			if (!*s) {
--				ret = PTR_ERR(page);
-+				ret = PTR_ERR(folio);
- 				goto err_sg;
- 			}
- 
-@@ -147,19 +152,21 @@ int shmem_sg_alloc_table(struct drm_i915_private *i915, struct sg_table *st,
- 
- 		if (!i ||
- 		    sg->length >= max_segment ||
--		    page_to_pfn(page) != last_pfn + 1) {
-+		    folio_pfn(folio) != next_pfn) {
- 			if (i)
- 				sg = sg_next(sg);
- 
- 			st->nents++;
--			sg_set_page(sg, page, PAGE_SIZE, 0);
-+			sg_set_folio(sg, folio, folio_size(folio), 0);
- 		} else {
--			sg->length += PAGE_SIZE;
-+			/* XXX: could overflow? */
-+			sg->length += folio_size(folio);
- 		}
--		last_pfn = page_to_pfn(page);
-+		next_pfn = folio_pfn(folio) + folio_nr_pages(folio);
-+		i += folio_nr_pages(folio) - 1;
- 
- 		/* Check that the i965g/gm workaround works. */
--		GEM_BUG_ON(gfp & __GFP_DMA32 && last_pfn >= 0x00100000UL);
-+		GEM_BUG_ON(gfp & __GFP_DMA32 && next_pfn >= 0x00100000UL);
- 	}
- 	if (sg) /* loop terminated early; short sg table */
- 		sg_mark_end(sg);
--- 
-2.39.2
 
+> ---
+>  fs/nfsd/nfsctl.c | 2 +-
+>  fs/nfsd/vfs.c    | 2 +-
+>  2 files changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 1b8b1aab9a15..bebb65d3ad6b 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -1131,7 +1131,7 @@ static struct inode *nfsd_get_inode(struct super_block *sb, umode_t mode)
+>  	/* Following advice from simple_fill_super documentation: */
+>  	inode->i_ino = iunique(sb, NFSD_MaxReserved);
+>  	inode->i_mode = mode;
+> -	inode->i_atime = inode->i_mtime = inode->i_ctime = current_time(inode);
+> +	inode->i_atime = inode->i_mtime = inode_ctime_set_current(inode);
+>  	switch (mode & S_IFMT) {
+>  	case S_IFDIR:
+>  		inode->i_fop = &simple_dir_operations;
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 59b7d60ae33e..febdfdf16ec1 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -520,7 +520,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  
+>  	nfsd_sanitize_attrs(inode, iap);
+>  
+> -	if (check_guard && guardtime != inode->i_ctime.tv_sec)
+> +	if (check_guard && guardtime != inode_ctime_peek(inode).tv_sec)
+>  		return nfserr_notsync;
+>  
+>  	/*
+> -- 
+> 2.41.0
+> 
