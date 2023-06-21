@@ -2,30 +2,30 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9741EEB64DC
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 459CDC001DE
 	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jun 2023 16:46:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230051AbjFUQqd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 21 Jun 2023 12:46:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39848 "EHLO
+        id S230022AbjFUQqc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 21 Jun 2023 12:46:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39132 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229748AbjFUQqW (ORCPT
+        with ESMTP id S229707AbjFUQqW (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jun 2023 12:46:22 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5BF5819B7;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5BEE810DB;
         Wed, 21 Jun 2023 09:46:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=AQBN8EOVNpFsbWS+GiPKIXRePvvUD9BdImp+Rjg78p8=; b=b7ub/H7BmTbgUPuQXUwrP95FRP
-        0IEUGdTz1HyQpbYbP/rbXcBqz+W7V+5ZyOjKUhJSJl1n0gWxNajfSW0gpLlDNGLr+5x3X7lQR0rGc
-        sJWHL9uXmDvqiZXMwcdWkmeIwBlxZ0p2TGny4RZf+u9Oy/cwjqb38MgaLGQbLvGbHq+8CEI/DGZKo
-        gUMOu3TMpZs3AvjXPtNNn7A40mwTZlRy5EJveUHHXZJ+ekg0kRdv2vQGboivcW/SubBxp2z4OSPtU
-        9wVf5kjxK4hgOVoj68acJOECaVXYQcN43ZnqYfbigs2K4HQL3lMwUjSgTAavCrqxUYqENlRUp9rhI
-        tkXqYsRw==;
+        bh=7niWMu6g/Ga9ZksmA0zYh6a0pI2cBG5yqVDcIc9jMKw=; b=mY+uBPiycIfHNeNVplxKugqw8y
+        ja2K6C7MvJK6a5FI2+yURLUgfwFYXZEiQLFhJKZKFoH26P6b8EqoKQNl4q/RV/1sfv1WL7OKRLXrA
+        INno6Z7BtR+COXHsKd7SXQ6k1Df/kRG5SHduBcfxktVSs0GP9cCVaLt+gjY79DWa5MOXGMXWbYAT6
+        etNCZZSKWiK1mHVDNJ+WCmubynjm50iSWFRDEX+P84WWha4AngPA+I2KS8lh3AQ0Lhy0SKsmaFCKv
+        oy8NE0qqvtkZw7y0DBgRqj6k2mTOcmX89ClyhVMXPPrdLQC/DiqTeH0jAYyZs7bulU0tpckAefW40
+        zJ4u14gw==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qC0y2-00EjER-5C; Wed, 21 Jun 2023 16:46:02 +0000
+        id 1qC0y1-00EjDy-P0; Wed, 21 Jun 2023 16:46:01 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -33,9 +33,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         intel-gfx@lists.freedesktop.org, linux-afs@lists.infradead.org,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH 09/13] net: Convert sunrpc from pagevec to folio_batch
-Date:   Wed, 21 Jun 2023 17:45:53 +0100
-Message-Id: <20230621164557.3510324-10-willy@infradead.org>
+Subject: [PATCH 06/13] mm: Remove check_move_unevictable_pages()
+Date:   Wed, 21 Jun 2023 17:45:50 +0100
+Message-Id: <20230621164557.3510324-7-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230621164557.3510324-1-willy@infradead.org>
 References: <20230621164557.3510324-1-willy@infradead.org>
@@ -45,65 +45,54 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Remove the last usage of pagevecs.  There is a slight change here; we
-now free the folio_batch as soon as it fills up instead of freeing the
-folio_batch when we try to add a page to a full batch.  This should have
-no effect in practice.
+All callers have now been converted to call check_move_unevictable_folios().
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- include/linux/sunrpc/svc.h |  2 +-
- net/sunrpc/svc.c           | 10 +++++-----
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ include/linux/swap.h |  1 -
+ mm/vmscan.c          | 17 -----------------
+ 2 files changed, 18 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index c2807e301790..f8751118c122 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -222,7 +222,7 @@ struct svc_rqst {
- 	struct page *		*rq_next_page; /* next reply page to use */
- 	struct page *		*rq_page_end;  /* one past the last page */
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index ce7e82cf787f..456546443f1f 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -439,7 +439,6 @@ static inline bool node_reclaim_enabled(void)
+ }
  
--	struct pagevec		rq_pvec;
-+	struct folio_batch	rq_fbatch;
- 	struct kvec		rq_vec[RPCSVC_MAXPAGES]; /* generally useful.. */
- 	struct bio_vec		rq_bvec[RPCSVC_MAXPAGES];
+ void check_move_unevictable_folios(struct folio_batch *fbatch);
+-void check_move_unevictable_pages(struct pagevec *pvec);
  
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index e7c101290425..587811a002c9 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -640,7 +640,7 @@ svc_rqst_alloc(struct svc_serv *serv, struct svc_pool *pool, int node)
- 	if (!rqstp)
- 		return rqstp;
+ extern void __meminit kswapd_run(int nid);
+ extern void __meminit kswapd_stop(int nid);
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 45d17c7cc555..f8dd1db15897 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -8074,23 +8074,6 @@ int node_reclaim(struct pglist_data *pgdat, gfp_t gfp_mask, unsigned int order)
+ }
+ #endif
  
--	pagevec_init(&rqstp->rq_pvec);
-+	folio_batch_init(&rqstp->rq_fbatch);
- 
- 	__set_bit(RQ_BUSY, &rqstp->rq_flags);
- 	rqstp->rq_server = serv;
-@@ -851,9 +851,9 @@ bool svc_rqst_replace_page(struct svc_rqst *rqstp, struct page *page)
- 	}
- 
- 	if (*rqstp->rq_next_page) {
--		if (!pagevec_space(&rqstp->rq_pvec))
--			__pagevec_release(&rqstp->rq_pvec);
--		pagevec_add(&rqstp->rq_pvec, *rqstp->rq_next_page);
-+		if (!folio_batch_add(&rqstp->rq_fbatch,
-+				page_folio(*rqstp->rq_next_page)))
-+			__folio_batch_release(&rqstp->rq_fbatch);
- 	}
- 
- 	get_page(page);
-@@ -887,7 +887,7 @@ void svc_rqst_release_pages(struct svc_rqst *rqstp)
- void
- svc_rqst_free(struct svc_rqst *rqstp)
- {
--	pagevec_release(&rqstp->rq_pvec);
-+	folio_batch_release(&rqstp->rq_fbatch);
- 	svc_release_buffer(rqstp);
- 	if (rqstp->rq_scratch_page)
- 		put_page(rqstp->rq_scratch_page);
+-void check_move_unevictable_pages(struct pagevec *pvec)
+-{
+-	struct folio_batch fbatch;
+-	unsigned i;
+-
+-	folio_batch_init(&fbatch);
+-	for (i = 0; i < pvec->nr; i++) {
+-		struct page *page = pvec->pages[i];
+-
+-		if (PageTransTail(page))
+-			continue;
+-		folio_batch_add(&fbatch, page_folio(page));
+-	}
+-	check_move_unevictable_folios(&fbatch);
+-}
+-EXPORT_SYMBOL_GPL(check_move_unevictable_pages);
+-
+ /**
+  * check_move_unevictable_folios - Move evictable folios to appropriate zone
+  * lru list
 -- 
 2.39.2
 
