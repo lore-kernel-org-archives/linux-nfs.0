@@ -2,30 +2,30 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24FACC0015E
-	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jun 2023 16:46:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3CBBBEB64DD
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jun 2023 16:46:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229951AbjFUQqa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229954AbjFUQqa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 21 Jun 2023 12:46:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39066 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39064 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229682AbjFUQqV (ORCPT
+        with ESMTP id S229710AbjFUQqV (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jun 2023 12:46:21 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1EEEF1BCB;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 072D01BC1;
         Wed, 21 Jun 2023 09:46:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=S9L58IPbLSJMGWxFtvlnrG4TzIQ7IOqSwhUMe45kT8U=; b=PW4Dwh4Gf1suM6iF8qmdwxhedV
-        dGBA+OGAVi6nz1TzXhqQwejLNG6p8I/gHBdyJdF+v9Gwlfc+qXUjfsQRhEupLyGODb3oBlcxjqeZg
-        MjDYrwlGzkp9KSAXfQWGPMLoY7z8XE2Ha7+Drv6kVcDGv88l6mKIj3vMNnmJc0wPJLF/1/j23opEa
-        eo5D3L64k7UfoSUT0lpwRO6h7SIv4cOQ8G08UCt/pjyMlmUKsodXKsDFTzzN9xwAVenix5X7iC12y
-        ymJp18fQp4MbBy2x2WRcwk0mKw0eF20AfD6Cvpc56WVKj7Wa6gjeZD91h/NOb3XGNU2NojtTr6joC
-        HO//Edeg==;
+        bh=yzS6LjqchbTZ4R7rHRoGuy4VZGAEBFE5nqlz2+V2o7A=; b=WBpyN9BXXz0sujrWmftgID2xoV
+        kdlIrjAuPrDvE02NGbEGcLyBZ4Gh5juLzLRwS1aTs/iFXq/1LzJmB5OnGfnoB/gk9TrEijhUjAXEa
+        zfpHDMGrt3LnGpZtYE4JE6eWPWyYdp2X2QggxQXZSI//nfSqIYLKPmLQneg7ai1fOJgcdgv30e8MD
+        nMvTO7EwuTOqP49d04wRvN5Qg/gyTbkAb6jsLtg9q8C+RRUI0bD+XBrJIyUyiEfPwvF9jfze9zMT6
+        j21Ep+8UpwfWW4NGk2mJombjhn0YtTQ396FgivudfclsdbCqddsGj33hwbEIDLfpb4JolRAADXAQL
+        nT3lFN0g==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qC0y2-00EjEL-0r; Wed, 21 Jun 2023 16:46:02 +0000
+        id 1qC0y1-00EjDo-LH; Wed, 21 Jun 2023 16:46:01 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -33,9 +33,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         intel-gfx@lists.freedesktop.org, linux-afs@lists.infradead.org,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH 08/13] i915: Convert i915_gpu_error to use a folio_batch
-Date:   Wed, 21 Jun 2023 17:45:52 +0100
-Message-Id: <20230621164557.3510324-9-willy@infradead.org>
+Subject: [PATCH 05/13] drm: Convert drm_gem_put_pages() to use a folio_batch
+Date:   Wed, 21 Jun 2023 17:45:49 +0100
+Message-Id: <20230621164557.3510324-6-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230621164557.3510324-1-willy@infradead.org>
 References: <20230621164557.3510324-1-willy@infradead.org>
@@ -45,115 +45,150 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Remove one of the last remaining users of pagevec.
+Remove a few hidden compound_head() calls by converting the returned
+page to a folio once and using the folio APIs.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- drivers/gpu/drm/i915/i915_gpu_error.c | 50 +++++++++++++--------------
- 1 file changed, 25 insertions(+), 25 deletions(-)
+ drivers/gpu/drm/drm_gem.c | 68 ++++++++++++++++++++++-----------------
+ 1 file changed, 39 insertions(+), 29 deletions(-)
 
-diff --git a/drivers/gpu/drm/i915/i915_gpu_error.c b/drivers/gpu/drm/i915/i915_gpu_error.c
-index ec368e700235..0c38bfb60c9a 100644
---- a/drivers/gpu/drm/i915/i915_gpu_error.c
-+++ b/drivers/gpu/drm/i915/i915_gpu_error.c
-@@ -187,64 +187,64 @@ i915_error_printer(struct drm_i915_error_state_buf *e)
+diff --git a/drivers/gpu/drm/drm_gem.c b/drivers/gpu/drm/drm_gem.c
+index 1a5a2cd0d4ec..78dcae201cc6 100644
+--- a/drivers/gpu/drm/drm_gem.c
++++ b/drivers/gpu/drm/drm_gem.c
+@@ -496,13 +496,13 @@ int drm_gem_create_mmap_offset(struct drm_gem_object *obj)
+ EXPORT_SYMBOL(drm_gem_create_mmap_offset);
+ 
+ /*
+- * Move pages to appropriate lru and release the pagevec, decrementing the
+- * ref count of those pages.
++ * Move folios to appropriate lru and release the folios, decrementing the
++ * ref count of those folios.
+  */
+-static void drm_gem_check_release_pagevec(struct pagevec *pvec)
++static void drm_gem_check_release_batch(struct folio_batch *fbatch)
+ {
+-	check_move_unevictable_pages(pvec);
+-	__pagevec_release(pvec);
++	check_move_unevictable_folios(fbatch);
++	__folio_batch_release(fbatch);
+ 	cond_resched();
  }
  
- /* single threaded page allocator with a reserved stash for emergencies */
--static void pool_fini(struct pagevec *pv)
-+static void pool_fini(struct folio_batch *fbatch)
+@@ -534,10 +534,10 @@ static void drm_gem_check_release_pagevec(struct pagevec *pvec)
+ struct page **drm_gem_get_pages(struct drm_gem_object *obj)
  {
--	pagevec_release(pv);
-+	folio_batch_release(fbatch);
- }
+ 	struct address_space *mapping;
+-	struct page *p, **pages;
+-	struct pagevec pvec;
+-	int i, npages;
+-
++	struct page **pages;
++	struct folio *folio;
++	struct folio_batch fbatch;
++	int i, j, npages;
  
--static int pool_refill(struct pagevec *pv, gfp_t gfp)
-+static int pool_refill(struct folio_batch *fbatch, gfp_t gfp)
- {
--	while (pagevec_space(pv)) {
--		struct page *p;
-+	while (folio_batch_space(fbatch)) {
-+		struct folio *folio;
+ 	if (WARN_ON(!obj->filp))
+ 		return ERR_PTR(-EINVAL);
+@@ -559,11 +559,14 @@ struct page **drm_gem_get_pages(struct drm_gem_object *obj)
  
--		p = alloc_page(gfp);
--		if (!p)
-+		folio = folio_alloc(gfp, 0);
-+		if (!folio)
- 			return -ENOMEM;
+ 	mapping_set_unevictable(mapping);
  
--		pagevec_add(pv, p);
-+		folio_batch_add(fbatch, folio);
+-	for (i = 0; i < npages; i++) {
+-		p = shmem_read_mapping_page(mapping, i);
+-		if (IS_ERR(p))
++	i = 0;
++	while (i < npages) {
++		folio = shmem_read_folio_gfp(mapping, i,
++				mapping_gfp_mask(mapping));
++		if (IS_ERR(folio))
+ 			goto fail;
+-		pages[i] = p;
++		for (j = 0; j < folio_nr_pages(folio); j++, i++)
++			pages[i] = folio_file_page(folio, i);
+ 
+ 		/* Make sure shmem keeps __GFP_DMA32 allocated pages in the
+ 		 * correct region during swapin. Note that this requires
+@@ -571,23 +574,26 @@ struct page **drm_gem_get_pages(struct drm_gem_object *obj)
+ 		 * so shmem can relocate pages during swapin if required.
+ 		 */
+ 		BUG_ON(mapping_gfp_constraint(mapping, __GFP_DMA32) &&
+-				(page_to_pfn(p) >= 0x00100000UL));
++				(folio_pfn(folio) >= 0x00100000UL));
  	}
  
- 	return 0;
- }
+ 	return pages;
  
--static int pool_init(struct pagevec *pv, gfp_t gfp)
-+static int pool_init(struct folio_batch *fbatch, gfp_t gfp)
+ fail:
+ 	mapping_clear_unevictable(mapping);
+-	pagevec_init(&pvec);
+-	while (i--) {
+-		if (!pagevec_add(&pvec, pages[i]))
+-			drm_gem_check_release_pagevec(&pvec);
++	folio_batch_init(&fbatch);
++	j = 0;
++	while (j < i) {
++		struct folio *f = page_folio(pages[j]);
++		if (!folio_batch_add(&fbatch, f))
++			drm_gem_check_release_batch(&fbatch);
++		j += folio_nr_pages(f);
+ 	}
+-	if (pagevec_count(&pvec))
+-		drm_gem_check_release_pagevec(&pvec);
++	if (fbatch.nr)
++		drm_gem_check_release_batch(&fbatch);
+ 
+ 	kvfree(pages);
+-	return ERR_CAST(p);
++	return ERR_CAST(folio);
+ }
+ EXPORT_SYMBOL(drm_gem_get_pages);
+ 
+@@ -603,7 +609,7 @@ void drm_gem_put_pages(struct drm_gem_object *obj, struct page **pages,
  {
- 	int err;
+ 	int i, npages;
+ 	struct address_space *mapping;
+-	struct pagevec pvec;
++	struct folio_batch fbatch;
  
--	pagevec_init(pv);
-+	folio_batch_init(fbatch);
+ 	mapping = file_inode(obj->filp)->i_mapping;
+ 	mapping_clear_unevictable(mapping);
+@@ -616,23 +622,27 @@ void drm_gem_put_pages(struct drm_gem_object *obj, struct page **pages,
  
--	err = pool_refill(pv, gfp);
-+	err = pool_refill(fbatch, gfp);
- 	if (err)
--		pool_fini(pv);
-+		pool_fini(fbatch);
+ 	npages = obj->size >> PAGE_SHIFT;
  
- 	return err;
+-	pagevec_init(&pvec);
++	folio_batch_init(&fbatch);
+ 	for (i = 0; i < npages; i++) {
++		struct folio *folio;
++
+ 		if (!pages[i])
+ 			continue;
++		folio = page_folio(pages[i]);
+ 
+ 		if (dirty)
+-			set_page_dirty(pages[i]);
++			folio_mark_dirty(folio);
+ 
+ 		if (accessed)
+-			mark_page_accessed(pages[i]);
++			folio_mark_accessed(folio);
+ 
+ 		/* Undo the reference we took when populating the table */
+-		if (!pagevec_add(&pvec, pages[i]))
+-			drm_gem_check_release_pagevec(&pvec);
++		if (!folio_batch_add(&fbatch, folio))
++			drm_gem_check_release_batch(&fbatch);
++		i += folio_nr_pages(folio) - 1;
+ 	}
+-	if (pagevec_count(&pvec))
+-		drm_gem_check_release_pagevec(&pvec);
++	if (folio_batch_count(&fbatch))
++		drm_gem_check_release_batch(&fbatch);
+ 
+ 	kvfree(pages);
  }
- 
--static void *pool_alloc(struct pagevec *pv, gfp_t gfp)
-+static void *pool_alloc(struct folio_batch *fbatch, gfp_t gfp)
- {
--	struct page *p;
-+	struct folio *folio;
- 
--	p = alloc_page(gfp);
--	if (!p && pagevec_count(pv))
--		p = pv->pages[--pv->nr];
-+	folio = folio_alloc(gfp, 0);
-+	if (!folio && folio_batch_count(fbatch))
-+		folio = fbatch->folios[--fbatch->nr];
- 
--	return p ? page_address(p) : NULL;
-+	return folio ? folio_address(folio) : NULL;
- }
- 
--static void pool_free(struct pagevec *pv, void *addr)
-+static void pool_free(struct folio_batch *fbatch, void *addr)
- {
--	struct page *p = virt_to_page(addr);
-+	struct folio *folio = virt_to_folio(addr);
- 
--	if (pagevec_space(pv))
--		pagevec_add(pv, p);
-+	if (folio_batch_space(fbatch))
-+		folio_batch_add(fbatch, folio);
- 	else
--		__free_page(p);
-+		folio_put(folio);
- }
- 
- #ifdef CONFIG_DRM_I915_COMPRESS_ERROR
- 
- struct i915_vma_compress {
--	struct pagevec pool;
-+	struct folio_batch pool;
- 	struct z_stream_s zstream;
- 	void *tmp;
- };
-@@ -381,7 +381,7 @@ static void err_compression_marker(struct drm_i915_error_state_buf *m)
- #else
- 
- struct i915_vma_compress {
--	struct pagevec pool;
-+	struct folio_batch pool;
- };
- 
- static bool compress_init(struct i915_vma_compress *c)
 -- 
 2.39.2
 
