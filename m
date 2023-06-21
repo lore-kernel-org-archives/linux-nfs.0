@@ -2,30 +2,30 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3CBBBEB64DD
-	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jun 2023 16:46:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5551BC001DB
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jun 2023 16:46:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229954AbjFUQqa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 21 Jun 2023 12:46:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39064 "EHLO
+        id S230005AbjFUQqb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 21 Jun 2023 12:46:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39086 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229710AbjFUQqV (ORCPT
+        with ESMTP id S229690AbjFUQqV (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jun 2023 12:46:21 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 072D01BC1;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5F5021BD1;
         Wed, 21 Jun 2023 09:46:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
         References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
         Content-Type:Content-ID:Content-Description;
-        bh=yzS6LjqchbTZ4R7rHRoGuy4VZGAEBFE5nqlz2+V2o7A=; b=WBpyN9BXXz0sujrWmftgID2xoV
-        kdlIrjAuPrDvE02NGbEGcLyBZ4Gh5juLzLRwS1aTs/iFXq/1LzJmB5OnGfnoB/gk9TrEijhUjAXEa
-        zfpHDMGrt3LnGpZtYE4JE6eWPWyYdp2X2QggxQXZSI//nfSqIYLKPmLQneg7ai1fOJgcdgv30e8MD
-        nMvTO7EwuTOqP49d04wRvN5Qg/gyTbkAb6jsLtg9q8C+RRUI0bD+XBrJIyUyiEfPwvF9jfze9zMT6
-        j21Ep+8UpwfWW4NGk2mJombjhn0YtTQ396FgivudfclsdbCqddsGj33hwbEIDLfpb4JolRAADXAQL
-        nT3lFN0g==;
+        bh=8TiSCbnL9mJc/af1uk/cttNt5G00aLFokvOncuurQEU=; b=ROBkxSuxyK2GHbWwt0qLgFJiv8
+        zmj9C6CSHPQM7LyW41/OjbHPRndJOpiS6l5UG+bFw4bxt2G+Ca7A4O02XW/hXrAyAyyAbJMtRBI8r
+        utehe7BbwNc6CVtpJO37VKw3d8j5SlrD8p0NYvoc8pLtWcqyqllAEQ9zMkh80iRJ0C6+pqSF/oH6C
+        84eZ0XPv0VUhnwCY5IUj6PaAMQvlFyUmc2KJEaEsXJxuERpYSwSOxsIiY96AQnV53rDs25P4xDSor
+        f26+lGIPExHjRgT8ClXur7P2d8b4h7khDh7JQZha7/A8GMB16vux2F4j1+4MR3dBM2Nyij9QAVuoG
+        PqM1b+Jw==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qC0y1-00EjDo-LH; Wed, 21 Jun 2023 16:46:01 +0000
+        id 1qC0y2-00EjEp-LV; Wed, 21 Jun 2023 16:46:02 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -33,9 +33,9 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         intel-gfx@lists.freedesktop.org, linux-afs@lists.infradead.org,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH 05/13] drm: Convert drm_gem_put_pages() to use a folio_batch
-Date:   Wed, 21 Jun 2023 17:45:49 +0100
-Message-Id: <20230621164557.3510324-6-willy@infradead.org>
+Subject: [PATCH 13/13] mm: Remove unnecessary pagevec includes
+Date:   Wed, 21 Jun 2023 17:45:57 +0100
+Message-Id: <20230621164557.3510324-14-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
 In-Reply-To: <20230621164557.3510324-1-willy@infradead.org>
 References: <20230621164557.3510324-1-willy@infradead.org>
@@ -45,150 +45,78 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Remove a few hidden compound_head() calls by converting the returned
-page to a folio once and using the folio APIs.
+These files no longer need pagevec.h, mostly due to function declarations
+being moved out of it.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- drivers/gpu/drm/drm_gem.c | 68 ++++++++++++++++++++++-----------------
- 1 file changed, 39 insertions(+), 29 deletions(-)
+ mm/fadvise.c        | 1 -
+ mm/memory_hotplug.c | 1 -
+ mm/migrate.c        | 1 -
+ mm/readahead.c      | 1 -
+ mm/swap_state.c     | 1 -
+ 5 files changed, 5 deletions(-)
 
-diff --git a/drivers/gpu/drm/drm_gem.c b/drivers/gpu/drm/drm_gem.c
-index 1a5a2cd0d4ec..78dcae201cc6 100644
---- a/drivers/gpu/drm/drm_gem.c
-+++ b/drivers/gpu/drm/drm_gem.c
-@@ -496,13 +496,13 @@ int drm_gem_create_mmap_offset(struct drm_gem_object *obj)
- EXPORT_SYMBOL(drm_gem_create_mmap_offset);
- 
- /*
-- * Move pages to appropriate lru and release the pagevec, decrementing the
-- * ref count of those pages.
-+ * Move folios to appropriate lru and release the folios, decrementing the
-+ * ref count of those folios.
-  */
--static void drm_gem_check_release_pagevec(struct pagevec *pvec)
-+static void drm_gem_check_release_batch(struct folio_batch *fbatch)
- {
--	check_move_unevictable_pages(pvec);
--	__pagevec_release(pvec);
-+	check_move_unevictable_folios(fbatch);
-+	__folio_batch_release(fbatch);
- 	cond_resched();
- }
- 
-@@ -534,10 +534,10 @@ static void drm_gem_check_release_pagevec(struct pagevec *pvec)
- struct page **drm_gem_get_pages(struct drm_gem_object *obj)
- {
- 	struct address_space *mapping;
--	struct page *p, **pages;
--	struct pagevec pvec;
--	int i, npages;
--
-+	struct page **pages;
-+	struct folio *folio;
-+	struct folio_batch fbatch;
-+	int i, j, npages;
- 
- 	if (WARN_ON(!obj->filp))
- 		return ERR_PTR(-EINVAL);
-@@ -559,11 +559,14 @@ struct page **drm_gem_get_pages(struct drm_gem_object *obj)
- 
- 	mapping_set_unevictable(mapping);
- 
--	for (i = 0; i < npages; i++) {
--		p = shmem_read_mapping_page(mapping, i);
--		if (IS_ERR(p))
-+	i = 0;
-+	while (i < npages) {
-+		folio = shmem_read_folio_gfp(mapping, i,
-+				mapping_gfp_mask(mapping));
-+		if (IS_ERR(folio))
- 			goto fail;
--		pages[i] = p;
-+		for (j = 0; j < folio_nr_pages(folio); j++, i++)
-+			pages[i] = folio_file_page(folio, i);
- 
- 		/* Make sure shmem keeps __GFP_DMA32 allocated pages in the
- 		 * correct region during swapin. Note that this requires
-@@ -571,23 +574,26 @@ struct page **drm_gem_get_pages(struct drm_gem_object *obj)
- 		 * so shmem can relocate pages during swapin if required.
- 		 */
- 		BUG_ON(mapping_gfp_constraint(mapping, __GFP_DMA32) &&
--				(page_to_pfn(p) >= 0x00100000UL));
-+				(folio_pfn(folio) >= 0x00100000UL));
- 	}
- 
- 	return pages;
- 
- fail:
- 	mapping_clear_unevictable(mapping);
--	pagevec_init(&pvec);
--	while (i--) {
--		if (!pagevec_add(&pvec, pages[i]))
--			drm_gem_check_release_pagevec(&pvec);
-+	folio_batch_init(&fbatch);
-+	j = 0;
-+	while (j < i) {
-+		struct folio *f = page_folio(pages[j]);
-+		if (!folio_batch_add(&fbatch, f))
-+			drm_gem_check_release_batch(&fbatch);
-+		j += folio_nr_pages(f);
- 	}
--	if (pagevec_count(&pvec))
--		drm_gem_check_release_pagevec(&pvec);
-+	if (fbatch.nr)
-+		drm_gem_check_release_batch(&fbatch);
- 
- 	kvfree(pages);
--	return ERR_CAST(p);
-+	return ERR_CAST(folio);
- }
- EXPORT_SYMBOL(drm_gem_get_pages);
- 
-@@ -603,7 +609,7 @@ void drm_gem_put_pages(struct drm_gem_object *obj, struct page **pages,
- {
- 	int i, npages;
- 	struct address_space *mapping;
--	struct pagevec pvec;
-+	struct folio_batch fbatch;
- 
- 	mapping = file_inode(obj->filp)->i_mapping;
- 	mapping_clear_unevictable(mapping);
-@@ -616,23 +622,27 @@ void drm_gem_put_pages(struct drm_gem_object *obj, struct page **pages,
- 
- 	npages = obj->size >> PAGE_SHIFT;
- 
--	pagevec_init(&pvec);
-+	folio_batch_init(&fbatch);
- 	for (i = 0; i < npages; i++) {
-+		struct folio *folio;
-+
- 		if (!pages[i])
- 			continue;
-+		folio = page_folio(pages[i]);
- 
- 		if (dirty)
--			set_page_dirty(pages[i]);
-+			folio_mark_dirty(folio);
- 
- 		if (accessed)
--			mark_page_accessed(pages[i]);
-+			folio_mark_accessed(folio);
- 
- 		/* Undo the reference we took when populating the table */
--		if (!pagevec_add(&pvec, pages[i]))
--			drm_gem_check_release_pagevec(&pvec);
-+		if (!folio_batch_add(&fbatch, folio))
-+			drm_gem_check_release_batch(&fbatch);
-+		i += folio_nr_pages(folio) - 1;
- 	}
--	if (pagevec_count(&pvec))
--		drm_gem_check_release_pagevec(&pvec);
-+	if (folio_batch_count(&fbatch))
-+		drm_gem_check_release_batch(&fbatch);
- 
- 	kvfree(pages);
- }
+diff --git a/mm/fadvise.c b/mm/fadvise.c
+index f684ffd7f9c9..6c39d42f16dc 100644
+--- a/mm/fadvise.c
++++ b/mm/fadvise.c
+@@ -14,7 +14,6 @@
+ #include <linux/mm.h>
+ #include <linux/pagemap.h>
+ #include <linux/backing-dev.h>
+-#include <linux/pagevec.h>
+ #include <linux/fadvise.h>
+ #include <linux/writeback.h>
+ #include <linux/syscalls.h>
+diff --git a/mm/memory_hotplug.c b/mm/memory_hotplug.c
+index 35db4108bb15..3f231cf1b410 100644
+--- a/mm/memory_hotplug.c
++++ b/mm/memory_hotplug.c
+@@ -13,7 +13,6 @@
+ #include <linux/pagemap.h>
+ #include <linux/compiler.h>
+ #include <linux/export.h>
+-#include <linux/pagevec.h>
+ #include <linux/writeback.h>
+ #include <linux/slab.h>
+ #include <linux/sysctl.h>
+diff --git a/mm/migrate.c b/mm/migrate.c
+index ce35afdbc1e3..ee26f4a962ef 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -21,7 +21,6 @@
+ #include <linux/buffer_head.h>
+ #include <linux/mm_inline.h>
+ #include <linux/nsproxy.h>
+-#include <linux/pagevec.h>
+ #include <linux/ksm.h>
+ #include <linux/rmap.h>
+ #include <linux/topology.h>
+diff --git a/mm/readahead.c b/mm/readahead.c
+index 47afbca1d122..a9c999aa19af 100644
+--- a/mm/readahead.c
++++ b/mm/readahead.c
+@@ -120,7 +120,6 @@
+ #include <linux/export.h>
+ #include <linux/backing-dev.h>
+ #include <linux/task_io_accounting_ops.h>
+-#include <linux/pagevec.h>
+ #include <linux/pagemap.h>
+ #include <linux/psi.h>
+ #include <linux/syscalls.h>
+diff --git a/mm/swap_state.c b/mm/swap_state.c
+index 4a5c7b748051..f8ea7015bad4 100644
+--- a/mm/swap_state.c
++++ b/mm/swap_state.c
+@@ -16,7 +16,6 @@
+ #include <linux/pagemap.h>
+ #include <linux/backing-dev.h>
+ #include <linux/blkdev.h>
+-#include <linux/pagevec.h>
+ #include <linux/migrate.h>
+ #include <linux/vmalloc.h>
+ #include <linux/swap_slots.h>
 -- 
 2.39.2
 
