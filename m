@@ -2,30 +2,30 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AE32CEB64D8
-	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jun 2023 16:46:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 24FACC0015E
+	for <linux-nfs@archiver.kernel.org>; Wed, 21 Jun 2023 16:46:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229758AbjFUQq3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 21 Jun 2023 12:46:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39058 "EHLO
+        id S229951AbjFUQqa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 21 Jun 2023 12:46:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39066 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229513AbjFUQqU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jun 2023 12:46:20 -0400
+        with ESMTP id S229682AbjFUQqV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jun 2023 12:46:21 -0400
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 02AE419AF;
-        Wed, 21 Jun 2023 09:46:06 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1EEEF1BCB;
+        Wed, 21 Jun 2023 09:46:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-        Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:
-        Content-Description:In-Reply-To:References;
-        bh=gPF8zQQSIHiKU2e2Ly4ej0SDtpoejzkFWwWEYtBtv+s=; b=R6XCM2zV5SdOXGzdC4zN24TUJT
-        M4veWjCAPq0VNUMCOXwK50bgiMz71O8YN/hsbWICKjaGBn0L/hOi6O3vzf8WibWLHu9fl3oQnQsny
-        VGKEA7Ik15shC5pM7bj5sOsWEZqfwMVm1w/UApf/gyrXm2EOIwgAe4VVVX5iq6/R6BNzAkxe/vJHh
-        XJoF4JmL38Rj6+7jZjgWTJ1XxMEElaDGBPXE4ET31k0NcLCnoFJ3RJwwdIo3TnQpnX9h+isSLIe6j
-        JkTmNrRbvZfY6wvO0Tfw3qOS6OftxBxHLANWzL3TPle2V4DyHE+CsN5B7LgFifpOLmUjM6a7p9apc
-        NtFA7iFA==;
+        References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender:Reply-To:
+        Content-Type:Content-ID:Content-Description;
+        bh=S9L58IPbLSJMGWxFtvlnrG4TzIQ7IOqSwhUMe45kT8U=; b=PW4Dwh4Gf1suM6iF8qmdwxhedV
+        dGBA+OGAVi6nz1TzXhqQwejLNG6p8I/gHBdyJdF+v9Gwlfc+qXUjfsQRhEupLyGODb3oBlcxjqeZg
+        MjDYrwlGzkp9KSAXfQWGPMLoY7z8XE2Ha7+Drv6kVcDGv88l6mKIj3vMNnmJc0wPJLF/1/j23opEa
+        eo5D3L64k7UfoSUT0lpwRO6h7SIv4cOQ8G08UCt/pjyMlmUKsodXKsDFTzzN9xwAVenix5X7iC12y
+        ymJp18fQp4MbBy2x2WRcwk0mKw0eF20AfD6Cvpc56WVKj7Wa6gjeZD91h/NOb3XGNU2NojtTr6joC
+        HO//Edeg==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-        id 1qC0y1-00EjDe-6y; Wed, 21 Jun 2023 16:46:01 +0000
+        id 1qC0y2-00EjEL-0r; Wed, 21 Jun 2023 16:46:02 +0000
 From:   "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To:     linux-mm@kvack.org, Andrew Morton <akpm@linux-foundation.org>
 Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -33,59 +33,127 @@ Cc:     "Matthew Wilcox (Oracle)" <willy@infradead.org>,
         intel-gfx@lists.freedesktop.org, linux-afs@lists.infradead.org,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         netdev@vger.kernel.org
-Subject: [PATCH 00/13] Remove pagevecs
-Date:   Wed, 21 Jun 2023 17:45:44 +0100
-Message-Id: <20230621164557.3510324-1-willy@infradead.org>
+Subject: [PATCH 08/13] i915: Convert i915_gpu_error to use a folio_batch
+Date:   Wed, 21 Jun 2023 17:45:52 +0100
+Message-Id: <20230621164557.3510324-9-willy@infradead.org>
 X-Mailer: git-send-email 2.37.1
+In-Reply-To: <20230621164557.3510324-1-willy@infradead.org>
+References: <20230621164557.3510324-1-willy@infradead.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-We're almost done with the pagevec -> folio_batch conversion.  Finish
-the job.
+Remove one of the last remaining users of pagevec.
 
-Matthew Wilcox (Oracle) (13):
-  afs: Convert pagevec to folio_batch in afs_extend_writeback()
-  mm: Add __folio_batch_release()
-  scatterlist: Add sg_set_folio()
-  i915: Convert shmem_sg_free_table() to use a folio_batch
-  drm: Convert drm_gem_put_pages() to use a folio_batch
-  mm: Remove check_move_unevictable_pages()
-  pagevec: Rename fbatch_count()
-  i915: Convert i915_gpu_error to use a folio_batch
-  net: Convert sunrpc from pagevec to folio_batch
-  mm: Remove struct pagevec
-  mm: Rename invalidate_mapping_pagevec to mapping_try_invalidate
-  mm: Remove references to pagevec
-  mm: Remove unnecessary pagevec includes
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+---
+ drivers/gpu/drm/i915/i915_gpu_error.c | 50 +++++++++++++--------------
+ 1 file changed, 25 insertions(+), 25 deletions(-)
 
- drivers/gpu/drm/drm_gem.c                 | 68 +++++++++++++----------
- drivers/gpu/drm/i915/gem/i915_gem_shmem.c | 55 ++++++++++--------
- drivers/gpu/drm/i915/i915_gpu_error.c     | 50 ++++++++---------
- fs/afs/write.c                            | 16 +++---
- include/linux/pagevec.h                   | 67 +++-------------------
- include/linux/scatterlist.h               | 24 ++++++++
- include/linux/sunrpc/svc.h                |  2 +-
- include/linux/swap.h                      |  1 -
- mm/fadvise.c                              | 17 +++---
- mm/huge_memory.c                          |  2 +-
- mm/internal.h                             |  4 +-
- mm/khugepaged.c                           |  6 +-
- mm/ksm.c                                  |  6 +-
- mm/memory.c                               |  6 +-
- mm/memory_hotplug.c                       |  1 -
- mm/migrate.c                              |  1 -
- mm/migrate_device.c                       |  2 +-
- mm/readahead.c                            |  1 -
- mm/swap.c                                 | 20 +++----
- mm/swap_state.c                           |  1 -
- mm/truncate.c                             | 27 +++++----
- mm/vmscan.c                               | 17 ------
- net/sunrpc/svc.c                          | 10 ++--
- 23 files changed, 185 insertions(+), 219 deletions(-)
-
+diff --git a/drivers/gpu/drm/i915/i915_gpu_error.c b/drivers/gpu/drm/i915/i915_gpu_error.c
+index ec368e700235..0c38bfb60c9a 100644
+--- a/drivers/gpu/drm/i915/i915_gpu_error.c
++++ b/drivers/gpu/drm/i915/i915_gpu_error.c
+@@ -187,64 +187,64 @@ i915_error_printer(struct drm_i915_error_state_buf *e)
+ }
+ 
+ /* single threaded page allocator with a reserved stash for emergencies */
+-static void pool_fini(struct pagevec *pv)
++static void pool_fini(struct folio_batch *fbatch)
+ {
+-	pagevec_release(pv);
++	folio_batch_release(fbatch);
+ }
+ 
+-static int pool_refill(struct pagevec *pv, gfp_t gfp)
++static int pool_refill(struct folio_batch *fbatch, gfp_t gfp)
+ {
+-	while (pagevec_space(pv)) {
+-		struct page *p;
++	while (folio_batch_space(fbatch)) {
++		struct folio *folio;
+ 
+-		p = alloc_page(gfp);
+-		if (!p)
++		folio = folio_alloc(gfp, 0);
++		if (!folio)
+ 			return -ENOMEM;
+ 
+-		pagevec_add(pv, p);
++		folio_batch_add(fbatch, folio);
+ 	}
+ 
+ 	return 0;
+ }
+ 
+-static int pool_init(struct pagevec *pv, gfp_t gfp)
++static int pool_init(struct folio_batch *fbatch, gfp_t gfp)
+ {
+ 	int err;
+ 
+-	pagevec_init(pv);
++	folio_batch_init(fbatch);
+ 
+-	err = pool_refill(pv, gfp);
++	err = pool_refill(fbatch, gfp);
+ 	if (err)
+-		pool_fini(pv);
++		pool_fini(fbatch);
+ 
+ 	return err;
+ }
+ 
+-static void *pool_alloc(struct pagevec *pv, gfp_t gfp)
++static void *pool_alloc(struct folio_batch *fbatch, gfp_t gfp)
+ {
+-	struct page *p;
++	struct folio *folio;
+ 
+-	p = alloc_page(gfp);
+-	if (!p && pagevec_count(pv))
+-		p = pv->pages[--pv->nr];
++	folio = folio_alloc(gfp, 0);
++	if (!folio && folio_batch_count(fbatch))
++		folio = fbatch->folios[--fbatch->nr];
+ 
+-	return p ? page_address(p) : NULL;
++	return folio ? folio_address(folio) : NULL;
+ }
+ 
+-static void pool_free(struct pagevec *pv, void *addr)
++static void pool_free(struct folio_batch *fbatch, void *addr)
+ {
+-	struct page *p = virt_to_page(addr);
++	struct folio *folio = virt_to_folio(addr);
+ 
+-	if (pagevec_space(pv))
+-		pagevec_add(pv, p);
++	if (folio_batch_space(fbatch))
++		folio_batch_add(fbatch, folio);
+ 	else
+-		__free_page(p);
++		folio_put(folio);
+ }
+ 
+ #ifdef CONFIG_DRM_I915_COMPRESS_ERROR
+ 
+ struct i915_vma_compress {
+-	struct pagevec pool;
++	struct folio_batch pool;
+ 	struct z_stream_s zstream;
+ 	void *tmp;
+ };
+@@ -381,7 +381,7 @@ static void err_compression_marker(struct drm_i915_error_state_buf *m)
+ #else
+ 
+ struct i915_vma_compress {
+-	struct pagevec pool;
++	struct folio_batch pool;
+ };
+ 
+ static bool compress_init(struct i915_vma_compress *c)
 -- 
 2.39.2
 
