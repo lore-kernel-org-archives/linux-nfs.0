@@ -2,29 +2,29 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F99AEB64DD
-	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jun 2023 08:50:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E54B1EB64DC
+	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jun 2023 08:50:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230323AbjFVIuZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 22 Jun 2023 04:50:25 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35892 "EHLO
+        id S230312AbjFVIu3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 22 Jun 2023 04:50:29 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35958 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230007AbjFVIuY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jun 2023 04:50:24 -0400
-Received: from out-11.mta1.migadu.com (out-11.mta1.migadu.com [95.215.58.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9C002FE
+        with ESMTP id S229865AbjFVIu1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jun 2023 04:50:27 -0400
+Received: from out-18.mta1.migadu.com (out-18.mta1.migadu.com [95.215.58.18])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 12032193
         for <linux-nfs@vger.kernel.org>; Thu, 22 Jun 2023 01:50:23 -0700 (PDT)
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1687423250;
+        t=1687423212;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=+vImA33fZeTM1PYF4pdKNYjlIIB9YvJgFHxY2Yd6EgU=;
-        b=XJ2b/f93BCyHxcWaDsebGy2CDaVAa7CPWBXx4c1QEI5VZTDPyp/zp8+Tr/BVaJTW4wXOtq
-        IIZBnQdZZsns0g8Xv0V8GQsEaQgo1jYe7j36H8wsShDt9m5MKBHRcZes1lLxnY0D/KqSYq
-        hjrF1/l+OEZW9z9MquhsKQ9biy+7Xxo=
+        bh=oQpOCkSVz0jjdFm4oEP2NJJ+zKFOVCxqbVN/b6qKeiM=;
+        b=tMuOJ7tqKqRjBtP6rCX6dHgXMvUPla8/fh86ZTdJ8ioxIJNhWLtWE2XQneYSwy0aJnC1ss
+        Ctc4pKKJIiQUSzscndToOCLVf8LWmRwZZbYvjVdCG6D1dQMZR1dzVK4v6YBfk82aTJO0UT
+        9p//2RwNkkyklDbHvlR7q6dPTNIpG/U=
 From:   Qi Zheng <qi.zheng@linux.dev>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -38,9 +38,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-btrfs@vger.kernel.org, Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH 07/29] dm zoned: dynamically allocate the dm-zoned-meta shrinker
-Date:   Thu, 22 Jun 2023 08:39:10 +0000
-Message-Id: <20230622083932.4090339-8-qi.zheng@linux.dev>
+Subject: [PATCH 02/29] mm: vmscan: introduce some helpers for dynamically allocating shrinker
+Date:   Thu, 22 Jun 2023 08:39:05 +0000
+Message-Id: <20230622083932.4090339-3-qi.zheng@linux.dev>
 In-Reply-To: <20230622083932.4090339-1-qi.zheng@linux.dev>
 References: <20230622083932.4090339-1-qi.zheng@linux.dev>
 MIME-Version: 1.0
@@ -52,94 +52,100 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Qi Zheng <zhengqi.arch@bytedance.com>
 
-In preparation for implementing lockless slab shrink,
-we need to dynamically allocate the dm-zoned-meta shrinker,
-so that it can be freed asynchronously using kfree_rcu().
-Then it doesn't need to wait for RCU read-side critical
-section when releasing the struct dmz_metadata.
+Introduce some helpers for dynamically allocating shrinker instance,
+and their uses are as follows:
+
+1. shrinker_alloc_and_init()
+
+Used to allocate and initialize a shrinker instance, the priv_data
+parameter is used to pass the pointer of the previously embedded
+structure of the shrinker instance.
+
+2. shrinker_free()
+
+Used to free the shrinker instance when the registration of shrinker
+fails.
+
+3. unregister_and_free_shrinker()
+
+Used to unregister and free the shrinker instance, and the kfree()
+will be changed to kfree_rcu() later.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- drivers/md/dm-zoned-metadata.c | 25 ++++++++++++++++---------
- 1 file changed, 16 insertions(+), 9 deletions(-)
+ include/linux/shrinker.h | 12 ++++++++++++
+ mm/vmscan.c              | 35 +++++++++++++++++++++++++++++++++++
+ 2 files changed, 47 insertions(+)
 
-diff --git a/drivers/md/dm-zoned-metadata.c b/drivers/md/dm-zoned-metadata.c
-index 9d3cca8e3dc9..41b10ffb968a 100644
---- a/drivers/md/dm-zoned-metadata.c
-+++ b/drivers/md/dm-zoned-metadata.c
-@@ -187,7 +187,7 @@ struct dmz_metadata {
- 	struct rb_root		mblk_rbtree;
- 	struct list_head	mblk_lru_list;
- 	struct list_head	mblk_dirty_list;
--	struct shrinker		mblk_shrinker;
-+	struct shrinker		*mblk_shrinker;
+diff --git a/include/linux/shrinker.h b/include/linux/shrinker.h
+index 43e6fcabbf51..8e9ba6fa3fcc 100644
+--- a/include/linux/shrinker.h
++++ b/include/linux/shrinker.h
+@@ -107,6 +107,18 @@ extern void unregister_shrinker(struct shrinker *shrinker);
+ extern void free_prealloced_shrinker(struct shrinker *shrinker);
+ extern void synchronize_shrinkers(void);
  
- 	/* Zone allocation management */
- 	struct mutex		map_lock;
-@@ -615,7 +615,7 @@ static unsigned long dmz_shrink_mblock_cache(struct dmz_metadata *zmd,
- static unsigned long dmz_mblock_shrinker_count(struct shrinker *shrink,
- 					       struct shrink_control *sc)
- {
--	struct dmz_metadata *zmd = container_of(shrink, struct dmz_metadata, mblk_shrinker);
-+	struct dmz_metadata *zmd = shrink->private_data;
- 
- 	return atomic_read(&zmd->nr_mblks);
- }
-@@ -626,7 +626,7 @@ static unsigned long dmz_mblock_shrinker_count(struct shrinker *shrink,
- static unsigned long dmz_mblock_shrinker_scan(struct shrinker *shrink,
- 					      struct shrink_control *sc)
- {
--	struct dmz_metadata *zmd = container_of(shrink, struct dmz_metadata, mblk_shrinker);
-+	struct dmz_metadata *zmd = shrink->private_data;
- 	unsigned long count;
- 
- 	spin_lock(&zmd->mblk_lock);
-@@ -2936,17 +2936,22 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
- 	 */
- 	zmd->min_nr_mblks = 2 + zmd->nr_map_blocks + zmd->zone_nr_bitmap_blocks * 16;
- 	zmd->max_nr_mblks = zmd->min_nr_mblks + 512;
--	zmd->mblk_shrinker.count_objects = dmz_mblock_shrinker_count;
--	zmd->mblk_shrinker.scan_objects = dmz_mblock_shrinker_scan;
--	zmd->mblk_shrinker.seeks = DEFAULT_SEEKS;
++typedef unsigned long (*count_objects_cb)(struct shrinker *s,
++					  struct shrink_control *sc);
++typedef unsigned long (*scan_objects_cb)(struct shrinker *s,
++					 struct shrink_control *sc);
 +
-+	zmd->mblk_shrinker = shrinker_alloc_and_init(dmz_mblock_shrinker_count,
-+						     dmz_mblock_shrinker_scan,
-+						     0, DEFAULT_SEEKS, 0, zmd);
-+	if (!zmd->mblk_shrinker) {
-+		dmz_zmd_err(zmd, "allocate metadata cache shrinker failed");
-+		goto err;
-+	}
- 
- 	/* Metadata cache shrinker */
--	ret = register_shrinker(&zmd->mblk_shrinker, "dm-zoned-meta:(%u:%u)",
-+	ret = register_shrinker(zmd->mblk_shrinker, "dm-zoned-meta:(%u:%u)",
- 				MAJOR(dev->bdev->bd_dev),
- 				MINOR(dev->bdev->bd_dev));
- 	if (ret) {
- 		dmz_zmd_err(zmd, "Register metadata cache shrinker failed");
--		goto err;
-+		goto err_shrinker;
- 	}
- 
- 	dmz_zmd_info(zmd, "DM-Zoned metadata version %d", zmd->sb_version);
-@@ -2982,6 +2987,8 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
- 	*metadata = zmd;
- 
- 	return 0;
-+err_shrinker:
-+	shrinker_free(zmd->mblk_shrinker);
- err:
- 	dmz_cleanup_metadata(zmd);
- 	kfree(zmd);
-@@ -2995,7 +3002,7 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
-  */
- void dmz_dtr_metadata(struct dmz_metadata *zmd)
- {
--	unregister_shrinker(&zmd->mblk_shrinker);
-+	unregister_and_free_shrinker(zmd->mblk_shrinker);
- 	dmz_cleanup_metadata(zmd);
- 	kfree(zmd);
++struct shrinker *shrinker_alloc_and_init(count_objects_cb count,
++					 scan_objects_cb scan, long batch,
++					 int seeks, unsigned flags,
++					 void *priv_data);
++void shrinker_free(struct shrinker *shrinker);
++void unregister_and_free_shrinker(struct shrinker *shrinker);
++
+ #ifdef CONFIG_SHRINKER_DEBUG
+ extern int shrinker_debugfs_add(struct shrinker *shrinker);
+ extern struct dentry *shrinker_debugfs_detach(struct shrinker *shrinker,
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 45d17c7cc555..64ff598fbad9 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -809,6 +809,41 @@ void unregister_shrinker(struct shrinker *shrinker)
  }
+ EXPORT_SYMBOL(unregister_shrinker);
+ 
++struct shrinker *shrinker_alloc_and_init(count_objects_cb count,
++					 scan_objects_cb scan, long batch,
++					 int seeks, unsigned flags,
++					 void *priv_data)
++{
++	struct shrinker *shrinker;
++
++	shrinker = kzalloc(sizeof(struct shrinker), GFP_KERNEL);
++	if (!shrinker)
++		return NULL;
++
++	shrinker->count_objects = count;
++	shrinker->scan_objects = scan;
++	shrinker->batch = batch;
++	shrinker->seeks = seeks;
++	shrinker->flags = flags;
++	shrinker->private_data = priv_data;
++
++	return shrinker;
++}
++EXPORT_SYMBOL(shrinker_alloc_and_init);
++
++void shrinker_free(struct shrinker *shrinker)
++{
++	kfree(shrinker);
++}
++EXPORT_SYMBOL(shrinker_free);
++
++void unregister_and_free_shrinker(struct shrinker *shrinker)
++{
++	unregister_shrinker(shrinker);
++	kfree(shrinker);
++}
++EXPORT_SYMBOL(unregister_and_free_shrinker);
++
+ /**
+  * synchronize_shrinkers - Wait for all running shrinkers to complete.
+  *
 -- 
 2.30.2
 
