@@ -2,94 +2,144 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D718EB64D8
-	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jun 2023 08:47:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7F99AEB64DD
+	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jun 2023 08:50:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229891AbjFVIr0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 22 Jun 2023 04:47:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33704 "EHLO
+        id S230323AbjFVIuZ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 22 Jun 2023 04:50:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35892 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230463AbjFVIrO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jun 2023 04:47:14 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 782B0269F
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jun 2023 01:46:55 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id ACB732278B;
-        Thu, 22 Jun 2023 08:46:53 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1687423613; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=J1TXXkFnQOTXBWHWQr71pNqDt+gA23LnV7lfAUEwHKQ=;
-        b=1+af6DkFHTQ9tLkpZWaaRKdt29Jo9BIEJjom7OJXCRIQKg4TIiw9FZxSHvIG/L1UypxY/4
-        pJJuqpJDa4QGRr4e8xoVTPDtZjPbEXULxzcz2M0S1uF5EnSxHdMY9NNJniWToJ5NMaYZxZ
-        DXtpE6OkhM1yMfJZGHSdmkXcmMk9MsQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1687423613;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-        bh=J1TXXkFnQOTXBWHWQr71pNqDt+gA23LnV7lfAUEwHKQ=;
-        b=ewtV+aKUVyoMHKaIQGw7+KerxBTVOxNCtwryYFDnHzMhJuttFjX1FUCPqCxgEuQuz11FmK
-        FUNmwDZXJWdMGcDg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4A251132BE;
-        Thu, 22 Jun 2023 08:46:53 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id yRTdCH0KlGTBBwAAMHmgww
-        (envelope-from <pvorel@suse.cz>); Thu, 22 Jun 2023 08:46:53 +0000
-From:   Petr Vorel <pvorel@suse.cz>
-To:     ltp@lists.linux.it
-Cc:     Petr Vorel <pvorel@suse.cz>,
-        Olga Kornievskaia <olga.kornievskaia@gmail.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] runtest/net.nfs: Run nfs02_06 on TCP only
-Date:   Thu, 22 Jun 2023 10:46:48 +0200
-Message-Id: <20230622084648.490498-1-pvorel@suse.cz>
-X-Mailer: git-send-email 2.40.1
+        with ESMTP id S230007AbjFVIuY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jun 2023 04:50:24 -0400
+Received: from out-11.mta1.migadu.com (out-11.mta1.migadu.com [95.215.58.11])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9C002FE
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Jun 2023 01:50:23 -0700 (PDT)
+X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
+        t=1687423250;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=+vImA33fZeTM1PYF4pdKNYjlIIB9YvJgFHxY2Yd6EgU=;
+        b=XJ2b/f93BCyHxcWaDsebGy2CDaVAa7CPWBXx4c1QEI5VZTDPyp/zp8+Tr/BVaJTW4wXOtq
+        IIZBnQdZZsns0g8Xv0V8GQsEaQgo1jYe7j36H8wsShDt9m5MKBHRcZes1lLxnY0D/KqSYq
+        hjrF1/l+OEZW9z9MquhsKQ9biy+7Xxo=
+From:   Qi Zheng <qi.zheng@linux.dev>
+To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
+        vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
+        brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu
+Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        intel-gfx@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+        freedreno@lists.freedesktop.org, linux-arm-msm@vger.kernel.org,
+        dm-devel@redhat.com, linux-raid@vger.kernel.org,
+        linux-bcache@vger.kernel.org,
+        virtualization@lists.linux-foundation.org,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, Qi Zheng <zhengqi.arch@bytedance.com>
+Subject: [PATCH 07/29] dm zoned: dynamically allocate the dm-zoned-meta shrinker
+Date:   Thu, 22 Jun 2023 08:39:10 +0000
+Message-Id: <20230622083932.4090339-8-qi.zheng@linux.dev>
+In-Reply-To: <20230622083932.4090339-1-qi.zheng@linux.dev>
+References: <20230622083932.4090339-1-qi.zheng@linux.dev>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-Migadu-Flow: FLOW_OUT
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-UDP support disabled was on NFS server in kernel 5.6.
-Due that 2 of 3 nfs06.sh tests runs are being skipped on newer kernels.
+From: Qi Zheng <zhengqi.arch@bytedance.com>
 
-Therefore NFSv3 job in nfs02_06 test as TCP. This way all jobs in the
-test are TCP, thus test will not be skipped. This also bring NFSv3
-testing also under TCP (previously it was tested only on UDP).
+In preparation for implementing lockless slab shrink,
+we need to dynamically allocate the dm-zoned-meta shrinker,
+so that it can be freed asynchronously using kfree_rcu().
+Then it doesn't need to wait for RCU read-side critical
+section when releasing the struct dmz_metadata.
 
-Keep UDP in nfs01_06 jobs, so that NFSv3 on UDP is still covered for
-older kernels.
-
-Signed-off-by: Petr Vorel <pvorel@suse.cz>
+Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- runtest/net.nfs | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ drivers/md/dm-zoned-metadata.c | 25 ++++++++++++++++---------
+ 1 file changed, 16 insertions(+), 9 deletions(-)
 
-diff --git a/runtest/net.nfs b/runtest/net.nfs
-index 72cf4b307..15a960017 100644
---- a/runtest/net.nfs
-+++ b/runtest/net.nfs
-@@ -58,7 +58,7 @@ nfs41_ipv6_05 nfs05.sh -6 -v 4.1 -t tcp
- nfs42_ipv6_05 nfs05.sh -6 -v 4.2 -t tcp
+diff --git a/drivers/md/dm-zoned-metadata.c b/drivers/md/dm-zoned-metadata.c
+index 9d3cca8e3dc9..41b10ffb968a 100644
+--- a/drivers/md/dm-zoned-metadata.c
++++ b/drivers/md/dm-zoned-metadata.c
+@@ -187,7 +187,7 @@ struct dmz_metadata {
+ 	struct rb_root		mblk_rbtree;
+ 	struct list_head	mblk_lru_list;
+ 	struct list_head	mblk_dirty_list;
+-	struct shrinker		mblk_shrinker;
++	struct shrinker		*mblk_shrinker;
  
- nfs01_06  nfs06.sh -v "3,3,3,4,4,4" -t "udp,udp,tcp,tcp,tcp,tcp"
--nfs02_06 nfs06.sh -v "3,4,4.1,4.2,4.2,4.2" -t "udp,tcp,tcp,tcp,tcp,tcp"
-+nfs02_06 nfs06.sh -v "3,4,4.1,4.2,4.2,4.2" -t "tcp,tcp,tcp,tcp,tcp,tcp"
- nfs03_ipv6_06 nfs06.sh -6 -v "4,4.1,4.1,4.2,4.2,4.2" -t "tcp,tcp,tcp,tcp,tcp,tcp"
+ 	/* Zone allocation management */
+ 	struct mutex		map_lock;
+@@ -615,7 +615,7 @@ static unsigned long dmz_shrink_mblock_cache(struct dmz_metadata *zmd,
+ static unsigned long dmz_mblock_shrinker_count(struct shrinker *shrink,
+ 					       struct shrink_control *sc)
+ {
+-	struct dmz_metadata *zmd = container_of(shrink, struct dmz_metadata, mblk_shrinker);
++	struct dmz_metadata *zmd = shrink->private_data;
  
- nfs3_07 nfs07.sh -v 3 -t udp
+ 	return atomic_read(&zmd->nr_mblks);
+ }
+@@ -626,7 +626,7 @@ static unsigned long dmz_mblock_shrinker_count(struct shrinker *shrink,
+ static unsigned long dmz_mblock_shrinker_scan(struct shrinker *shrink,
+ 					      struct shrink_control *sc)
+ {
+-	struct dmz_metadata *zmd = container_of(shrink, struct dmz_metadata, mblk_shrinker);
++	struct dmz_metadata *zmd = shrink->private_data;
+ 	unsigned long count;
+ 
+ 	spin_lock(&zmd->mblk_lock);
+@@ -2936,17 +2936,22 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
+ 	 */
+ 	zmd->min_nr_mblks = 2 + zmd->nr_map_blocks + zmd->zone_nr_bitmap_blocks * 16;
+ 	zmd->max_nr_mblks = zmd->min_nr_mblks + 512;
+-	zmd->mblk_shrinker.count_objects = dmz_mblock_shrinker_count;
+-	zmd->mblk_shrinker.scan_objects = dmz_mblock_shrinker_scan;
+-	zmd->mblk_shrinker.seeks = DEFAULT_SEEKS;
++
++	zmd->mblk_shrinker = shrinker_alloc_and_init(dmz_mblock_shrinker_count,
++						     dmz_mblock_shrinker_scan,
++						     0, DEFAULT_SEEKS, 0, zmd);
++	if (!zmd->mblk_shrinker) {
++		dmz_zmd_err(zmd, "allocate metadata cache shrinker failed");
++		goto err;
++	}
+ 
+ 	/* Metadata cache shrinker */
+-	ret = register_shrinker(&zmd->mblk_shrinker, "dm-zoned-meta:(%u:%u)",
++	ret = register_shrinker(zmd->mblk_shrinker, "dm-zoned-meta:(%u:%u)",
+ 				MAJOR(dev->bdev->bd_dev),
+ 				MINOR(dev->bdev->bd_dev));
+ 	if (ret) {
+ 		dmz_zmd_err(zmd, "Register metadata cache shrinker failed");
+-		goto err;
++		goto err_shrinker;
+ 	}
+ 
+ 	dmz_zmd_info(zmd, "DM-Zoned metadata version %d", zmd->sb_version);
+@@ -2982,6 +2987,8 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
+ 	*metadata = zmd;
+ 
+ 	return 0;
++err_shrinker:
++	shrinker_free(zmd->mblk_shrinker);
+ err:
+ 	dmz_cleanup_metadata(zmd);
+ 	kfree(zmd);
+@@ -2995,7 +3002,7 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
+  */
+ void dmz_dtr_metadata(struct dmz_metadata *zmd)
+ {
+-	unregister_shrinker(&zmd->mblk_shrinker);
++	unregister_and_free_shrinker(zmd->mblk_shrinker);
+ 	dmz_cleanup_metadata(zmd);
+ 	kfree(zmd);
+ }
 -- 
-2.40.1
+2.30.2
 
