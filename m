@@ -2,29 +2,29 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C8D4AEB64DA
-	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jun 2023 08:50:38 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D85D5EB64DD
+	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jun 2023 08:50:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231256AbjFVIuh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 22 Jun 2023 04:50:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36010 "EHLO
+        id S231322AbjFVIur (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 22 Jun 2023 04:50:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35902 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231181AbjFVIu2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jun 2023 04:50:28 -0400
-Received: from out-29.mta1.migadu.com (out-29.mta1.migadu.com [IPv6:2001:41d0:203:375::1d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CE9031981
+        with ESMTP id S230108AbjFVIub (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jun 2023 04:50:31 -0400
+Received: from out-28.mta1.migadu.com (out-28.mta1.migadu.com [95.215.58.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D0F5F1BE2
         for <linux-nfs@vger.kernel.org>; Thu, 22 Jun 2023 01:50:23 -0700 (PDT)
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1687423205;
+        t=1687423219;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=w53NcBmn/IPVgjrXh3hKsvtsk7tDad26SsdH585QToY=;
-        b=uZy8afIIaTcmGAVwL6Pco/ne9cw31HmEUrdetQu4BJTqJA7zlS9UK3eZ5SfX6giO4SjLQy
-        PxnX2CgCeGRGVX7K17r1GkyPshe6W0lM18UnLTU7dFXZJdYjJyuXXudi6+jiw8yCyJhgh6
-        L8fjpIGb1fLrLDxLVbx48z8ApZZu3BE=
+        bh=YBVLZ8T0AUSalQOZ4Fae/Pcqr0gB1hnArD6YsGE5SYs=;
+        b=thZHi/QoTVPq1csTgIMqpUQ20OvMjdsBsXeaUpPeKH85EW7BiRYD9ttr4T9v65hxCRywKP
+        T9HVLydQbpkQmLM6vybmydCQ1LElnGP36fjdA5gXjDxbPqwbWcRer+Apq8kcm7jlkNu6Y4
+        ZwS+4SOpSOeGyGFeH5pFLiR5QGJm6Oo=
 From:   Qi Zheng <qi.zheng@linux.dev>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -38,9 +38,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-btrfs@vger.kernel.org, Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH 01/29] mm: shrinker: add shrinker::private_data field
-Date:   Thu, 22 Jun 2023 08:39:04 +0000
-Message-Id: <20230622083932.4090339-2-qi.zheng@linux.dev>
+Subject: [PATCH 03/29] drm/i915: dynamically allocate the i915_gem_mm shrinker
+Date:   Thu, 22 Jun 2023 08:39:06 +0000
+Message-Id: <20230622083932.4090339-4-qi.zheng@linux.dev>
 In-Reply-To: <20230622083932.4090339-1-qi.zheng@linux.dev>
 References: <20230622083932.4090339-1-qi.zheng@linux.dev>
 MIME-Version: 1.0
@@ -52,29 +52,98 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Qi Zheng <zhengqi.arch@bytedance.com>
 
-To prepare for the dynamic allocation of shrinker instances
-embedded in other structures, add a private_data field to
-struct shrinker, so that we can use shrinker::private_data
-to record and get the original embedded structure.
+In preparation for implementing lockless slab shrink,
+we need to dynamically allocate the i915_gem_mm shrinker,
+so that it can be freed asynchronously by using kfree_rcu().
+Then it doesn't need to wait for RCU read-side critical
+section when releasing the struct drm_i915_private.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- include/linux/shrinker.h | 2 ++
- 1 file changed, 2 insertions(+)
+ drivers/gpu/drm/i915/gem/i915_gem_shrinker.c | 27 ++++++++++----------
+ drivers/gpu/drm/i915/i915_drv.h              |  3 ++-
+ 2 files changed, 16 insertions(+), 14 deletions(-)
 
-diff --git a/include/linux/shrinker.h b/include/linux/shrinker.h
-index 224293b2dd06..43e6fcabbf51 100644
---- a/include/linux/shrinker.h
-+++ b/include/linux/shrinker.h
-@@ -70,6 +70,8 @@ struct shrinker {
- 	int seeks;	/* seeks to recreate an obj */
- 	unsigned flags;
+diff --git a/drivers/gpu/drm/i915/gem/i915_gem_shrinker.c b/drivers/gpu/drm/i915/gem/i915_gem_shrinker.c
+index 214763942aa2..4dcdace26a08 100644
+--- a/drivers/gpu/drm/i915/gem/i915_gem_shrinker.c
++++ b/drivers/gpu/drm/i915/gem/i915_gem_shrinker.c
+@@ -284,8 +284,7 @@ unsigned long i915_gem_shrink_all(struct drm_i915_private *i915)
+ static unsigned long
+ i915_gem_shrinker_count(struct shrinker *shrinker, struct shrink_control *sc)
+ {
+-	struct drm_i915_private *i915 =
+-		container_of(shrinker, struct drm_i915_private, mm.shrinker);
++	struct drm_i915_private *i915 = shrinker->private_data;
+ 	unsigned long num_objects;
+ 	unsigned long count;
  
-+	void *private_data;
+@@ -302,8 +301,8 @@ i915_gem_shrinker_count(struct shrinker *shrinker, struct shrink_control *sc)
+ 	if (num_objects) {
+ 		unsigned long avg = 2 * count / num_objects;
+ 
+-		i915->mm.shrinker.batch =
+-			max((i915->mm.shrinker.batch + avg) >> 1,
++		i915->mm.shrinker->batch =
++			max((i915->mm.shrinker->batch + avg) >> 1,
+ 			    128ul /* default SHRINK_BATCH */);
+ 	}
+ 
+@@ -313,8 +312,7 @@ i915_gem_shrinker_count(struct shrinker *shrinker, struct shrink_control *sc)
+ static unsigned long
+ i915_gem_shrinker_scan(struct shrinker *shrinker, struct shrink_control *sc)
+ {
+-	struct drm_i915_private *i915 =
+-		container_of(shrinker, struct drm_i915_private, mm.shrinker);
++	struct drm_i915_private *i915 = shrinker->private_data;
+ 	unsigned long freed;
+ 
+ 	sc->nr_scanned = 0;
+@@ -422,12 +420,15 @@ i915_gem_shrinker_vmap(struct notifier_block *nb, unsigned long event, void *ptr
+ 
+ void i915_gem_driver_register__shrinker(struct drm_i915_private *i915)
+ {
+-	i915->mm.shrinker.scan_objects = i915_gem_shrinker_scan;
+-	i915->mm.shrinker.count_objects = i915_gem_shrinker_count;
+-	i915->mm.shrinker.seeks = DEFAULT_SEEKS;
+-	i915->mm.shrinker.batch = 4096;
+-	drm_WARN_ON(&i915->drm, register_shrinker(&i915->mm.shrinker,
+-						  "drm-i915_gem"));
++	i915->mm.shrinker = shrinker_alloc_and_init(i915_gem_shrinker_count,
++						    i915_gem_shrinker_scan,
++						    4096, DEFAULT_SEEKS, 0,
++						    i915);
++	if (i915->mm.shrinker &&
++	    register_shrinker(i915->mm.shrinker, "drm-i915_gem")) {
++		shrinker_free(i915->mm.shrinker);
++		drm_WARN_ON(&i915->drm, 1);
++	}
+ 
+ 	i915->mm.oom_notifier.notifier_call = i915_gem_shrinker_oom;
+ 	drm_WARN_ON(&i915->drm, register_oom_notifier(&i915->mm.oom_notifier));
+@@ -443,7 +444,7 @@ void i915_gem_driver_unregister__shrinker(struct drm_i915_private *i915)
+ 		    unregister_vmap_purge_notifier(&i915->mm.vmap_notifier));
+ 	drm_WARN_ON(&i915->drm,
+ 		    unregister_oom_notifier(&i915->mm.oom_notifier));
+-	unregister_shrinker(&i915->mm.shrinker);
++	unregister_and_free_shrinker(i915->mm.shrinker);
+ }
+ 
+ void i915_gem_shrinker_taints_mutex(struct drm_i915_private *i915,
+diff --git a/drivers/gpu/drm/i915/i915_drv.h b/drivers/gpu/drm/i915/i915_drv.h
+index b4cf6f0f636d..06b04428596d 100644
+--- a/drivers/gpu/drm/i915/i915_drv.h
++++ b/drivers/gpu/drm/i915/i915_drv.h
+@@ -163,7 +163,8 @@ struct i915_gem_mm {
+ 
+ 	struct notifier_block oom_notifier;
+ 	struct notifier_block vmap_notifier;
+-	struct shrinker shrinker;
 +
- 	/* These are for internal use */
- 	struct list_head list;
- #ifdef CONFIG_MEMCG
++	struct shrinker *shrinker;
+ 
+ #ifdef CONFIG_MMU_NOTIFIER
+ 	/**
 -- 
 2.30.2
 
