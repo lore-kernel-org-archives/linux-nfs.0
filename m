@@ -2,29 +2,29 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 12BEBEB64DB
-	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jun 2023 08:51:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F68EEB64D8
+	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jun 2023 08:51:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231143AbjFVIvJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 22 Jun 2023 04:51:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36010 "EHLO
+        id S231530AbjFVIvu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 22 Jun 2023 04:51:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36068 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229903AbjFVIug (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jun 2023 04:50:36 -0400
-Received: from out-11.mta1.migadu.com (out-11.mta1.migadu.com [95.215.58.11])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D0CC91BD9
+        with ESMTP id S229957AbjFVIuq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jun 2023 04:50:46 -0400
+Received: from out-49.mta1.migadu.com (out-49.mta1.migadu.com [95.215.58.49])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D151B1BF4
         for <linux-nfs@vger.kernel.org>; Thu, 22 Jun 2023 01:50:23 -0700 (PDT)
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1687423243;
+        t=1687423235;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=y3F0rUfKL2Xn8vIcW/xqhQA76/McTb+Ba5wKVW4y6Eg=;
-        b=SZzQmrgVrr0a7kU9rsMmAszGVDK8bckX7bBVvxfPSHWQYejPEvXLZ2HPRkk+tKQrS23erf
-        SuGqFnRsYjeusCXlNlT1ZT5Owe6S80DA/2VI0ueZ+krAGTceisdq13YNha7j9xlWXYO5kC
-        5nufnpLwSbmgxVLa1H9hFaeIYeAfjGs=
+        bh=IxIKmzzZi67lG9XSJDebD80o50peuZjA/0wHZiu4cuU=;
+        b=H8s1pQs4VGCf5n+ceh0zwRdlcTNNqN2Py3KDQXuVt1RkndP77diVR1uYW4KzkPkjEIKsys
+        H7QDJljwElq7g1TzIAkvNua8zzlhkxB0H11gFgOBfIt7JJ6zRRMu3JZw1CdR8an7OABUut
+        k6NXXYI9vzZtztWWnS9SmS/quoFvciQ=
 From:   Qi Zheng <qi.zheng@linux.dev>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -38,9 +38,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-btrfs@vger.kernel.org, Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH 06/29] dm: dynamically allocate the dm-bufio shrinker
-Date:   Thu, 22 Jun 2023 08:39:09 +0000
-Message-Id: <20230622083932.4090339-7-qi.zheng@linux.dev>
+Subject: [PATCH 05/29] drm/panfrost: dynamically allocate the drm-panfrost shrinker
+Date:   Thu, 22 Jun 2023 08:39:08 +0000
+Message-Id: <20230622083932.4090339-6-qi.zheng@linux.dev>
 In-Reply-To: <20230622083932.4090339-1-qi.zheng@linux.dev>
 References: <20230622083932.4090339-1-qi.zheng@linux.dev>
 MIME-Version: 1.0
@@ -53,87 +53,84 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 From: Qi Zheng <zhengqi.arch@bytedance.com>
 
 In preparation for implementing lockless slab shrink,
-we need to dynamically allocate the dm-bufio shrinker,
+we need to dynamically allocate the drm-panfrost shrinker,
 so that it can be freed asynchronously using kfree_rcu().
 Then it doesn't need to wait for RCU read-side critical
-section when releasing the struct dm_bufio_client.
+section when releasing the struct panfrost_device.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- drivers/md/dm-bufio.c | 23 +++++++++++++----------
- 1 file changed, 13 insertions(+), 10 deletions(-)
+ drivers/gpu/drm/panfrost/panfrost_device.h    |  2 +-
+ .../gpu/drm/panfrost/panfrost_gem_shrinker.c  | 24 ++++++++++---------
+ 2 files changed, 14 insertions(+), 12 deletions(-)
 
-diff --git a/drivers/md/dm-bufio.c b/drivers/md/dm-bufio.c
-index eea977662e81..9472470d456d 100644
---- a/drivers/md/dm-bufio.c
-+++ b/drivers/md/dm-bufio.c
-@@ -963,7 +963,7 @@ struct dm_bufio_client {
+diff --git a/drivers/gpu/drm/panfrost/panfrost_device.h b/drivers/gpu/drm/panfrost/panfrost_device.h
+index b0126b9fbadc..e667e5689353 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_device.h
++++ b/drivers/gpu/drm/panfrost/panfrost_device.h
+@@ -118,7 +118,7 @@ struct panfrost_device {
  
- 	sector_t start;
- 
+ 	struct mutex shrinker_lock;
+ 	struct list_head shrinker_list;
 -	struct shrinker shrinker;
 +	struct shrinker *shrinker;
- 	struct work_struct shrink_work;
- 	atomic_long_t need_shrink;
  
-@@ -2385,7 +2385,7 @@ static unsigned long dm_bufio_shrink_scan(struct shrinker *shrink, struct shrink
+ 	struct panfrost_devfreq pfdevfreq;
+ };
+diff --git a/drivers/gpu/drm/panfrost/panfrost_gem_shrinker.c b/drivers/gpu/drm/panfrost/panfrost_gem_shrinker.c
+index bf0170782f25..2a5513eb9e1f 100644
+--- a/drivers/gpu/drm/panfrost/panfrost_gem_shrinker.c
++++ b/drivers/gpu/drm/panfrost/panfrost_gem_shrinker.c
+@@ -18,8 +18,7 @@
+ static unsigned long
+ panfrost_gem_shrinker_count(struct shrinker *shrinker, struct shrink_control *sc)
  {
- 	struct dm_bufio_client *c;
+-	struct panfrost_device *pfdev =
+-		container_of(shrinker, struct panfrost_device, shrinker);
++	struct panfrost_device *pfdev = shrinker->private_data;
+ 	struct drm_gem_shmem_object *shmem;
+ 	unsigned long count = 0;
  
--	c = container_of(shrink, struct dm_bufio_client, shrinker);
-+	c = shrink->private_data;
- 	atomic_long_add(sc->nr_to_scan, &c->need_shrink);
- 	queue_work(dm_bufio_wq, &c->shrink_work);
- 
-@@ -2394,7 +2394,7 @@ static unsigned long dm_bufio_shrink_scan(struct shrinker *shrink, struct shrink
- 
- static unsigned long dm_bufio_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
+@@ -65,8 +64,7 @@ static bool panfrost_gem_purge(struct drm_gem_object *obj)
+ static unsigned long
+ panfrost_gem_shrinker_scan(struct shrinker *shrinker, struct shrink_control *sc)
  {
--	struct dm_bufio_client *c = container_of(shrink, struct dm_bufio_client, shrinker);
-+	struct dm_bufio_client *c = shrink->private_data;
- 	unsigned long count = cache_total(&c->cache);
- 	unsigned long retain_target = get_retain_buffers(c);
- 	unsigned long queued_for_cleanup = atomic_long_read(&c->need_shrink);
-@@ -2507,14 +2507,15 @@ struct dm_bufio_client *dm_bufio_client_create(struct block_device *bdev, unsign
- 	INIT_WORK(&c->shrink_work, shrink_work);
- 	atomic_long_set(&c->need_shrink, 0);
+-	struct panfrost_device *pfdev =
+-		container_of(shrinker, struct panfrost_device, shrinker);
++	struct panfrost_device *pfdev = shrinker->private_data;
+ 	struct drm_gem_shmem_object *shmem, *tmp;
+ 	unsigned long freed = 0;
  
--	c->shrinker.count_objects = dm_bufio_shrink_count;
--	c->shrinker.scan_objects = dm_bufio_shrink_scan;
--	c->shrinker.seeks = 1;
--	c->shrinker.batch = 0;
--	r = register_shrinker(&c->shrinker, "dm-bufio:(%u:%u)",
-+	c->shrinker = shrinker_alloc_and_init(dm_bufio_shrink_count,
-+					      dm_bufio_shrink_scan, 0, 1, 0, c);
-+	if (!c->shrinker)
-+		goto bad;
+@@ -100,10 +98,15 @@ panfrost_gem_shrinker_scan(struct shrinker *shrinker, struct shrink_control *sc)
+ void panfrost_gem_shrinker_init(struct drm_device *dev)
+ {
+ 	struct panfrost_device *pfdev = dev->dev_private;
+-	pfdev->shrinker.count_objects = panfrost_gem_shrinker_count;
+-	pfdev->shrinker.scan_objects = panfrost_gem_shrinker_scan;
+-	pfdev->shrinker.seeks = DEFAULT_SEEKS;
+-	WARN_ON(register_shrinker(&pfdev->shrinker, "drm-panfrost"));
 +
-+	r = register_shrinker(c->shrinker, "dm-bufio:(%u:%u)",
- 			      MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev));
- 	if (r)
--		goto bad;
-+		goto bad_shrinker;
++	pfdev->shrinker = shrinker_alloc_and_init(panfrost_gem_shrinker_count,
++						  panfrost_gem_shrinker_scan, 0,
++						  DEFAULT_SEEKS, 0, pfdev);
++	if (pfdev->shrinker &&
++	    register_shrinker(pfdev->shrinker, "drm-panfrost")) {
++		shrinker_free(pfdev->shrinker);
++		WARN_ON(1);
++	}
+ }
  
- 	mutex_lock(&dm_bufio_clients_lock);
- 	dm_bufio_client_count++;
-@@ -2524,6 +2525,8 @@ struct dm_bufio_client *dm_bufio_client_create(struct block_device *bdev, unsign
+ /**
+@@ -116,7 +119,6 @@ void panfrost_gem_shrinker_cleanup(struct drm_device *dev)
+ {
+ 	struct panfrost_device *pfdev = dev->dev_private;
  
- 	return c;
- 
-+bad_shrinker:
-+	shrinker_free(c->shrinker);
- bad:
- 	while (!list_empty(&c->reserved_buffers)) {
- 		struct dm_buffer *b = list_to_buffer(c->reserved_buffers.next);
-@@ -2554,7 +2557,7 @@ void dm_bufio_client_destroy(struct dm_bufio_client *c)
- 
- 	drop_buffers(c);
- 
--	unregister_shrinker(&c->shrinker);
-+	unregister_and_free_shrinker(c->shrinker);
- 	flush_work(&c->shrink_work);
- 
- 	mutex_lock(&dm_bufio_clients_lock);
+-	if (pfdev->shrinker.nr_deferred) {
+-		unregister_shrinker(&pfdev->shrinker);
+-	}
++	if (pfdev->shrinker->nr_deferred)
++		unregister_and_free_shrinker(pfdev->shrinker);
+ }
 -- 
 2.30.2
 
