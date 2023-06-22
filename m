@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E57BEEB64DD
-	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jun 2023 08:58:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 62E9AEB64DA
+	for <linux-nfs@archiver.kernel.org>; Thu, 22 Jun 2023 08:59:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231716AbjFVI6v (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 22 Jun 2023 04:58:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37840 "EHLO
+        id S231758AbjFVI7c (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 22 Jun 2023 04:59:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42292 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231622AbjFVI6D (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jun 2023 04:58:03 -0400
-Received: from mail-pg1-x52c.google.com (mail-pg1-x52c.google.com [IPv6:2607:f8b0:4864:20::52c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2EDAA26BF
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jun 2023 01:55:32 -0700 (PDT)
-Received: by mail-pg1-x52c.google.com with SMTP id 41be03b00d2f7-54f73ef19e5so678839a12.0
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Jun 2023 01:55:32 -0700 (PDT)
+        with ESMTP id S231611AbjFVI6q (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Jun 2023 04:58:46 -0400
+Received: from mail-pg1-x535.google.com (mail-pg1-x535.google.com [IPv6:2607:f8b0:4864:20::535])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3DDAC2941
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Jun 2023 01:55:49 -0700 (PDT)
+Received: by mail-pg1-x535.google.com with SMTP id 41be03b00d2f7-54f73ef19e5so678878a12.0
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Jun 2023 01:55:49 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1687424131; x=1690016131;
+        d=bytedance.com; s=google; t=1687424148; x=1690016148;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=Rw+THIB7nYtdEoKFrcRpf+DtRSemfk8nQmXyWQCWLOU=;
-        b=DMwdTIl9g+okPZHJv8qTrb+gYAPEj9v1sxcSDlzK5ch7N+TuIC/BcFHKohEZo55ND8
-         XU29tOhBmT8qLwPtzV/wEHQ6iOqaUqSy8YTL9GNxgMKyLojaih+JCKFRV8sA50VDaMhL
-         4ENhUxcmuP8buO31FrzpXihlkiHbj7xjQ5jQCZ/XAAfjoNJ005ZfE8KQlMXJnunKzCcO
-         Fe2zvwkJ/uki5/MCqM+WcH9ckA1bFEYVaXIUmwP+4s7h2vpQxpmZaq/OfODYIqbWYJLH
-         gNO1EGlemqhIu8SDpgbpJo6kXONx1A4ErgZXcMZMC3KoLi5/PQ7Kas2P+1tIIIXAXu47
-         3GiA==
+        bh=eFTuD75yazkbkprx1nDK+J2a+gsKcpdTH5uLLFxlsCE=;
+        b=YL01pLqxeJdJ3yx7vlwGwrScHLp900A8hEE3Wf+RWJNlhx4L8kHsp9yLDKLvMKBCnC
+         3rsy/Bt3MovGZd9xDykjB2GgcKTKrjV0UKR/p/LUcqeAgCcK1oeyqL4lKiu0nVi2NGBN
+         TaYF2c0QLLlLRjtauaahzpKEMrC5bmEQ14igH5gpZVZzZ5PZmJEXxyLsPSab+WZLJtP7
+         soRQ7v+HKrW5nh3UOzeGEOAr+30lPAAddvMLxo2KnZ7MK/KtFrltdlmvaznhvWw7dzRl
+         oronsxPEPE0DLPq3etiyjPQ96cDhygWHhtXaurPBhnnq3MU+faq6ga287Qti+jNFsnPy
+         uaEQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1687424131; x=1690016131;
+        d=1e100.net; s=20221208; t=1687424148; x=1690016148;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=Rw+THIB7nYtdEoKFrcRpf+DtRSemfk8nQmXyWQCWLOU=;
-        b=jR+Z6OKsQnuoZmY+4KnTnklqa6VZMcHliWLPSu/GKFuCFJYkhGjhbRNOmvVyUt5HmJ
-         HHkD947+ePgenTUzb7fYupD0cx7C6XHflhBdU5lzR2eq76Mtku6L5iICG88w9IdtYlOC
-         2dSwItHB9O10UZ/fBYtP9UbhOiDpV+SkUTNyy9UNbhOM9RUUE3M1633cW/MWHdx+iFgb
-         wHiimr1ZLWHqDvS8IdSiWoVSavVtkKemw7Tg4VYke0SDtGkKWG2qGgOjZwN16R/rIH/F
-         kfvPbQwwhK5NM53zD4XsUFw8vxlJAKl5Rt3lfuUsldGa6wHKuGquiQbR6vZv3Rcao7B7
-         c2ag==
-X-Gm-Message-State: AC+VfDxUyi4fwC/zFwJ32szhoX3RbbOba6MwzdQdVOnGgRM9GNrPlgwd
-        Jo1XNZy8gZJlOxSKp4vknShj8d5DLyPbI0E3hIY=
-X-Google-Smtp-Source: ACHHUZ74w6zUyxxONmkdhWFpbjqcQv1Ri8s1BW02LunWtr1K9sXtmODVbQHvvX6jLBNiniDuaX5mmA==
-X-Received: by 2002:a17:902:d489:b0:1b4:ddef:841e with SMTP id c9-20020a170902d48900b001b4ddef841emr21417877plg.4.1687424131373;
-        Thu, 22 Jun 2023 01:55:31 -0700 (PDT)
+        bh=eFTuD75yazkbkprx1nDK+J2a+gsKcpdTH5uLLFxlsCE=;
+        b=O9e17kXVYepe6el8xyt3SIRevdTAQRRHB7NLGqghH5lT2WgPLF8wG3rI7nT2DB+W+Q
+         k1mhflUw+HF0DSZ2gdpOn0oQ7V4SxfsP/9gLyOzlD2YgwmZcH4NmOz4nbL6gMgvgzdsH
+         Glaqh3cpu6mC3Vgwpmla43MqtLzEjSG3msQd8I87n7RL76RIXRDjs8VByjhOeYRSCg7X
+         YpT8+gC27hCXt6tzbX9bM6H2tVnFnRjxTgGBkUKCqnC4O26YWLeFKASFK5+2BJllag5E
+         DsvRhrhQwrmvQFrWXh2MVmXprAgdE7vd/bp3RZR2BRomezfVI/1okUdxoSO3aWy7U2E0
+         RiRQ==
+X-Gm-Message-State: AC+VfDyfXwGNo/n6v379uw6OImG9o3saW9GqX8NtbXCBgF8GxHA0pjYT
+        hMv5zV/SFXhVpMMD4HtKBPF83A==
+X-Google-Smtp-Source: ACHHUZ6jVuCzKKZsdSS1vKWkjhi+wc7lz2Kfe1cJ6l4zUout3MX707Lbn9nWcxBb7Ur8w7srUJ3z+g==
+X-Received: by 2002:a17:903:2451:b0:1b0:34c6:3bf2 with SMTP id l17-20020a170903245100b001b034c63bf2mr21540496pls.5.1687424148210;
+        Thu, 22 Jun 2023 01:55:48 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([139.177.225.254])
-        by smtp.gmail.com with ESMTPSA id h2-20020a170902f7c200b001b549fce345sm4806971plw.230.2023.06.22.01.55.23
+        by smtp.gmail.com with ESMTPSA id h2-20020a170902f7c200b001b549fce345sm4806971plw.230.2023.06.22.01.55.40
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 22 Jun 2023 01:55:31 -0700 (PDT)
+        Thu, 22 Jun 2023 01:55:47 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -61,9 +61,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
         linux-btrfs@vger.kernel.org, Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH 11/29] virtio_balloon: dynamically allocate the virtio-balloon shrinker
-Date:   Thu, 22 Jun 2023 16:53:17 +0800
-Message-Id: <20230622085335.77010-12-zhengqi.arch@bytedance.com>
+Subject: [PATCH 13/29] ext4: dynamically allocate the ext4-es shrinker
+Date:   Thu, 22 Jun 2023 16:53:19 +0800
+Message-Id: <20230622085335.77010-14-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230622085335.77010-1-zhengqi.arch@bytedance.com>
 References: <20230622085335.77010-1-zhengqi.arch@bytedance.com>
@@ -74,79 +74,87 @@ List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 In preparation for implementing lockless slab shrink,
-we need to dynamically allocate the virtio-balloon shrinker,
+we need to dynamically allocate the ext4-es shrinker,
 so that it can be freed asynchronously using kfree_rcu().
 Then it doesn't need to wait for RCU read-side critical
-section when releasing the struct virtio_balloon.
+section when releasing the struct ext4_sb_info.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- drivers/virtio/virtio_balloon.c | 26 ++++++++++++++++----------
- 1 file changed, 16 insertions(+), 10 deletions(-)
+ fs/ext4/ext4.h           |  2 +-
+ fs/ext4/extents_status.c | 21 ++++++++++++---------
+ 2 files changed, 13 insertions(+), 10 deletions(-)
 
-diff --git a/drivers/virtio/virtio_balloon.c b/drivers/virtio/virtio_balloon.c
-index 5b15936a5214..fa051bff8d90 100644
---- a/drivers/virtio/virtio_balloon.c
-+++ b/drivers/virtio/virtio_balloon.c
-@@ -111,7 +111,7 @@ struct virtio_balloon {
- 	struct virtio_balloon_stat stats[VIRTIO_BALLOON_S_NR];
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0a2d55faa095..1bd150d454f5 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1651,7 +1651,7 @@ struct ext4_sb_info {
+ 	__u32 s_csum_seed;
  
- 	/* Shrinker to return free pages - VIRTIO_BALLOON_F_FREE_PAGE_HINT */
--	struct shrinker shrinker;
-+	struct shrinker *shrinker;
+ 	/* Reclaim extents from extent status tree */
+-	struct shrinker s_es_shrinker;
++	struct shrinker *s_es_shrinker;
+ 	struct list_head s_es_list;	/* List of inodes with reclaimable extents */
+ 	long s_es_nr_inode;
+ 	struct ext4_es_stats s_es_stats;
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 9b5b8951afb4..fea82339f4b4 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1596,7 +1596,7 @@ static unsigned long ext4_es_count(struct shrinker *shrink,
+ 	unsigned long nr;
+ 	struct ext4_sb_info *sbi;
  
- 	/* OOM notifier to deflate on OOM - VIRTIO_BALLOON_F_DEFLATE_ON_OOM */
- 	struct notifier_block oom_nb;
-@@ -816,8 +816,7 @@ static unsigned long shrink_free_pages(struct virtio_balloon *vb,
- static unsigned long virtio_balloon_shrinker_scan(struct shrinker *shrinker,
- 						  struct shrink_control *sc)
+-	sbi = container_of(shrink, struct ext4_sb_info, s_es_shrinker);
++	sbi = shrink->private_data;
+ 	nr = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_shk_cnt);
+ 	trace_ext4_es_shrink_count(sbi->s_sb, sc->nr_to_scan, nr);
+ 	return nr;
+@@ -1605,8 +1605,7 @@ static unsigned long ext4_es_count(struct shrinker *shrink,
+ static unsigned long ext4_es_scan(struct shrinker *shrink,
+ 				  struct shrink_control *sc)
  {
--	struct virtio_balloon *vb = container_of(shrinker,
--					struct virtio_balloon, shrinker);
-+	struct virtio_balloon *vb = shrinker->private_data;
+-	struct ext4_sb_info *sbi = container_of(shrink,
+-					struct ext4_sb_info, s_es_shrinker);
++	struct ext4_sb_info *sbi = shrink->private_data;
+ 	int nr_to_scan = sc->nr_to_scan;
+ 	int ret, nr_shrunk;
  
- 	return shrink_free_pages(vb, sc->nr_to_scan);
- }
-@@ -825,8 +824,7 @@ static unsigned long virtio_balloon_shrinker_scan(struct shrinker *shrinker,
- static unsigned long virtio_balloon_shrinker_count(struct shrinker *shrinker,
- 						   struct shrink_control *sc)
- {
--	struct virtio_balloon *vb = container_of(shrinker,
--					struct virtio_balloon, shrinker);
-+	struct virtio_balloon *vb = shrinker->private_data;
+@@ -1690,15 +1689,19 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
+ 	if (err)
+ 		goto err3;
  
- 	return vb->num_free_page_blocks * VIRTIO_BALLOON_HINT_BLOCK_PAGES;
- }
-@@ -847,16 +845,24 @@ static int virtio_balloon_oom_notify(struct notifier_block *nb,
- 
- static void virtio_balloon_unregister_shrinker(struct virtio_balloon *vb)
- {
--	unregister_shrinker(&vb->shrinker);
-+	unregister_and_free_shrinker(vb->shrinker);
- }
- 
- static int virtio_balloon_register_shrinker(struct virtio_balloon *vb)
- {
--	vb->shrinker.scan_objects = virtio_balloon_shrinker_scan;
--	vb->shrinker.count_objects = virtio_balloon_shrinker_count;
--	vb->shrinker.seeks = DEFAULT_SEEKS;
-+	int ret;
+-	sbi->s_es_shrinker.scan_objects = ext4_es_scan;
+-	sbi->s_es_shrinker.count_objects = ext4_es_count;
+-	sbi->s_es_shrinker.seeks = DEFAULT_SEEKS;
+-	err = register_shrinker(&sbi->s_es_shrinker, "ext4-es:%s",
++	sbi->s_es_shrinker = shrinker_alloc_and_init(ext4_es_count, ext4_es_scan,
++						     0, DEFAULT_SEEKS, 0, sbi);
++	if (!sbi->s_es_shrinker)
++		goto err4;
 +
-+	vb->shrinker = shrinker_alloc_and_init(virtio_balloon_shrinker_count,
-+					       virtio_balloon_shrinker_scan,
-+					       0, DEFAULT_SEEKS, 0, vb);
-+	if (!vb->shrinker)
-+		return -ENOMEM;
-+
-+	ret = register_shrinker(vb->shrinker, "virtio-balloon");
-+	if (ret)
-+		shrinker_free(vb->shrinker);
++	err = register_shrinker(sbi->s_es_shrinker, "ext4-es:%s",
+ 				sbi->s_sb->s_id);
+ 	if (err)
+-		goto err4;
++		goto err5;
  
--	return register_shrinker(&vb->shrinker, "virtio-balloon");
-+	return ret;
+ 	return 0;
++err5:
++	shrinker_free(sbi->s_es_shrinker);
+ err4:
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
+ err3:
+@@ -1716,7 +1719,7 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_misses);
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_all_cnt);
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
+-	unregister_shrinker(&sbi->s_es_shrinker);
++	unregister_and_free_shrinker(sbi->s_es_shrinker);
  }
  
- static int virtballoon_probe(struct virtio_device *vdev)
+ /*
 -- 
 2.30.2
 
