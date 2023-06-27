@@ -2,113 +2,109 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 24A7CEB64D9
-	for <linux-nfs@archiver.kernel.org>; Tue, 27 Jun 2023 16:09:36 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3B5E2EB64D9
+	for <linux-nfs@archiver.kernel.org>; Tue, 27 Jun 2023 18:34:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230376AbjF0QJe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 27 Jun 2023 12:09:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37256 "EHLO
+        id S230364AbjF0SeF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 27 Jun 2023 14:34:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56000 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231452AbjF0QJa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jun 2023 12:09:30 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 163A330FF;
-        Tue, 27 Jun 2023 09:09:23 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        with ESMTP id S230063AbjF0Sdx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jun 2023 14:33:53 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2045C358B
+        for <linux-nfs@vger.kernel.org>; Tue, 27 Jun 2023 11:32:30 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1687890715;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=3ZIwHKoZ2Q0MBCw+53Zg48a81zOE65M97HqJdLz39Sg=;
+        b=UuAaIf33IEKxW0nrK09p/Yfv7Fap2+FmhkpxG5O2axX5YdjXqJchPrFx9DpoMA09HCE6hY
+        yfRf3IzxNVXYghxMcnxz+qveWCuMxJtbMB7newFHT60kJWIbWT5NEFXMNG93SbBsYYv89J
+        e3f5rRmTBvbwJ9x4wOLdsT0UgriUEmw=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-156-G5UIng78OFWZawy30wS5Yg-1; Tue, 27 Jun 2023 14:31:53 -0400
+X-MC-Unique: G5UIng78OFWZawy30wS5Yg-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 9ED9F611DB;
-        Tue, 27 Jun 2023 16:09:22 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 80A45C433C9;
-        Tue, 27 Jun 2023 16:09:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1687882162;
-        bh=Um+DixtcgknExk4fdb8G9FQbeYY8JUWWPfgk6fKF9l0=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=cOYMBjBpm7gUvHE2Pbq4Kuz7r8aYq+lg35XxwCdxypDT/OaWWh6qLqMQ2xAZiX140
-         At+0qagxeACIV29B11Q2Od2ee4mySvlUEZ9PRu3nAN7RRRhj4LFl991ib5Jm/dwNHJ
-         Tf4kBNaR6ktGacrUM3gjFvaXlI6mN+h7VwgdC/NO6HCmSswqEtz5Fykp3J6KADxBja
-         QjHJ0t7I7k3BA57hxz09ZI6gqRpiiCu1Y8h3hoTSvwy4t5gKppk22DliiNfzTvDiCa
-         jh4JMDVrOrEa5fYZS3ElIqHq52Vol8TfAt3QT783iNoVGYD8DawLZfhFHRYlHwPyO0
-         YgtepU4+bfYiQ==
-Message-ID: <a640835f172acabfc24b10f526d5186b3f98621f.camel@kernel.org>
-Subject: Re: [PATCH] fs/nfsd: Fix creation time serialization order
-From:   Jeff Layton <jlayton@kernel.org>
-To:     tavianator@tavianator.com, linux-nfs@vger.kernel.org
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Ondrej Valousek <ondrej.valousek.xm@renesas.com>,
-        linux-kernel@vger.kernel.org
-Date:   Tue, 27 Jun 2023 12:09:20 -0400
-In-Reply-To: <4154eb6503988c2096f5d30af26d06863fb5d973.1687554467.git.tavianator@tavianator.com>
-References: <4154eb6503988c2096f5d30af26d06863fb5d973.1687554467.git.tavianator@tavianator.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.48.3 (3.48.3-1.fc38) 
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id ACF458631DB;
+        Tue, 27 Jun 2023 18:31:52 +0000 (UTC)
+Received: from bcodding.csb.redhat.com (unknown [10.22.50.7])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 2914F200BA86;
+        Tue, 27 Jun 2023 18:31:52 +0000 (UTC)
+From:   Benjamin Coddington <bcodding@redhat.com>
+To:     trond.myklebust@hammerspace.com, anna@kernel.org
+Cc:     Olga.Kornievskaia@netapp.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] NFSv4: Fix dropped lock for racing OPEN and delegation return
+Date:   Tue, 27 Jun 2023 14:31:50 -0400
+Message-Id: <01047e4baa85ca541a5a43f88f588b15163292dc.1687890438.git.bcodding@redhat.com>
+In-Reply-To: <5577791deaa898578c8e8f86336eaca053d9efdd.1687890438.git.bcodding@redhat.com>
+References: <5577791deaa898578c8e8f86336eaca053d9efdd.1687890438.git.bcodding@redhat.com>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.1 on 10.11.54.4
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Fri, 2023-06-23 at 17:09 -0400, tavianator@tavianator.com wrote:
-> From: Tavian Barnes <tavianator@tavianator.com>
->=20
-> In nfsd4_encode_fattr(), TIME_CREATE was being written out after all
-> other times.  However, they should be written out in an order that
-> matches the bit flags in bmval1, which in this case are
->=20
->     #define FATTR4_WORD1_TIME_ACCESS        (1UL << 15)
->     #define FATTR4_WORD1_TIME_CREATE        (1UL << 18)
->     #define FATTR4_WORD1_TIME_DELTA         (1UL << 19)
->     #define FATTR4_WORD1_TIME_METADATA      (1UL << 20)
->     #define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
->=20
-> so TIME_CREATE should come second.
->=20
-> I noticed this on a FreeBSD NFSv4.2 client, which supports creation
-> times.  On this client, file times were weirdly permuted.  With this
-> patch applied on the server, times looked normal on the client.
->=20
-> Fixes: e377a3e698fb ("nfsd: Add support for the birth time attribute")
-> Link: https://unix.stackexchange.com/q/749605/56202
-> Signed-off-by: Tavian Barnes <tavianator@tavianator.com>
-> ---
->  fs/nfsd/nfs4xdr.c | 14 +++++++-------
->  1 file changed, 7 insertions(+), 7 deletions(-)
->=20
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 76db2fe29624..3037c5b0623e 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3354,6 +3354,13 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct =
-svc_fh *fhp,
->  		p =3D xdr_encode_hyper(p, (s64)stat.atime.tv_sec);
->  		*p++ =3D cpu_to_be32(stat.atime.tv_nsec);
->  	}
-> +	if (bmval1 & FATTR4_WORD1_TIME_CREATE) {
-> +		p =3D xdr_reserve_space(xdr, 12);
-> +		if (!p)
-> +			goto out_resource;
-> +		p =3D xdr_encode_hyper(p, (s64)stat.btime.tv_sec);
-> +		*p++ =3D cpu_to_be32(stat.btime.tv_nsec);
-> +	}
->  	if (bmval1 & FATTR4_WORD1_TIME_DELTA) {
->  		p =3D xdr_reserve_space(xdr, 12);
->  		if (!p)
-> @@ -3374,13 +3381,6 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct =
-svc_fh *fhp,
->  		p =3D xdr_encode_hyper(p, (s64)stat.mtime.tv_sec);
->  		*p++ =3D cpu_to_be32(stat.mtime.tv_nsec);
->  	}
-> -	if (bmval1 & FATTR4_WORD1_TIME_CREATE) {
-> -		p =3D xdr_reserve_space(xdr, 12);
-> -		if (!p)
-> -			goto out_resource;
-> -		p =3D xdr_encode_hyper(p, (s64)stat.btime.tv_sec);
-> -		*p++ =3D cpu_to_be32(stat.btime.tv_nsec);
-> -	}
->  	if (bmval1 & FATTR4_WORD1_MOUNTED_ON_FILEID) {
->  		u64 ino =3D stat.ino;
-> =20
+Commmit f5ea16137a3f ("NFSv4: Retry LOCK on OLD_STATEID during delegation
+return") attempted to solve this problem by using nfs4's generic async error
+handling, but introduced a regression where v4.0 lock recovery would hang.
+The additional complexity introduced by overloading that error handling is
+not necessary for this case.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+The problem as originally explained in the above commit is:
+
+    There's a small window where a LOCK sent during a delegation return can
+    race with another OPEN on client, but the open stateid has not yet been
+    updated.  In this case, the client doesn't handle the OLD_STATEID error
+    from the server and will lose this lock, emitting:
+    "NFS: nfs4_handle_delegation_recall_error: unhandled error -10024".
+
+We want a fix that is much more focused to the original problem.  Fix this
+issue by returning -EAGAIN from the nfs4_handle_delegation_recall_error() on
+OLD_STATEID, and use that as a signal for the delegation return code to
+retry the LOCK operation.  We should at this point be able to send along
+the updated stateid.
+
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/delegation.c | 4 +++-
+ fs/nfs/nfs4proc.c   | 1 +
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index cf7365581031..23aeb02319a5 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -160,7 +160,9 @@ static int nfs_delegation_claim_locks(struct nfs4_state *state, const nfs4_state
+ 		if (nfs_file_open_context(fl->fl_file)->state != state)
+ 			continue;
+ 		spin_unlock(&flctx->flc_lock);
+-		status = nfs4_lock_delegation_recall(fl, state, stateid);
++		do {
++			status = nfs4_lock_delegation_recall(fl, state, stateid);
++		} while (status == -EAGAIN);
+ 		if (status < 0)
+ 			goto out;
+ 		spin_lock(&flctx->flc_lock);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6bb14f6cfbc0..399db73a57f4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2262,6 +2262,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+ 		case -NFS4ERR_BAD_HIGH_SLOT:
+ 		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
+ 		case -NFS4ERR_DEADSESSION:
++		case -NFS4ERR_OLD_STATEID:
+ 			return -EAGAIN;
+ 		case -NFS4ERR_STALE_CLIENTID:
+ 		case -NFS4ERR_STALE_STATEID:
+-- 
+2.40.1
+
