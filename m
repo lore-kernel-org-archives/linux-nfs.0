@@ -2,331 +2,172 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B60AEB64D7
-	for <linux-nfs@archiver.kernel.org>; Fri, 30 Jun 2023 15:40:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 61B61EB64DC
+	for <linux-nfs@archiver.kernel.org>; Fri, 30 Jun 2023 17:47:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232504AbjF3Pkl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 30 Jun 2023 11:40:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53296 "EHLO
+        id S232281AbjF3RrD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 30 Jun 2023 13:47:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54538 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232200AbjF3Pkk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jun 2023 11:40:40 -0400
+        with ESMTP id S229537AbjF3RrC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jun 2023 13:47:02 -0400
 Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0D6AEB4
-        for <linux-nfs@vger.kernel.org>; Fri, 30 Jun 2023 08:40:38 -0700 (PDT)
-Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 35UEmo87011013;
-        Fri, 30 Jun 2023 15:40:35 GMT
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C6B04273B;
+        Fri, 30 Jun 2023 10:46:59 -0700 (PDT)
+Received: from pps.filterd (m0333520.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 35UGhlh9030282;
+        Fri, 30 Jun 2023 17:46:54 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2023-03-30;
- bh=SqVeX712zGATIHhuFkr1r98n87FoxwYYm7NrRL+kJDE=;
- b=JvEKeLa79yJmMnZ8RtPSh4oEut9xoX3HXaHDdg+bedYu9UZx8I3Ggqn81+8Vn9XctDjh
- 0r7HdBI1TOoJt9nBy95f9EBMS+MzBQb9RaPK7T01H+8ZdZ1h6b6CbQwRMTmtvwfllqug
- p55QCQf2vEGWAAMt+9tLD1IhmVOJFo0YGm7OlpbkUwX+huZRh8LxeD2kyoHRpk++A5Ch
- PFtzUxOLzIvzttXzwFptXdjEfTL2cYSZJw/LP5pgxaCF2ijfQTqMolfTGKPNEp9/zh4H
- XKDnBhrPU6BEmFt6wN8SDG+R+PbCKSAlGrNi4mjlSjk9u4+L56sDiB+pD8HkdTswzdVn nA== 
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.appoci.oracle.com [138.1.37.129])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3rdq93h5f0-1
+ subject : date : message-id : content-type : content-id :
+ content-transfer-encoding : mime-version; s=corp-2023-03-30;
+ bh=2YIFE5T5tMOSXoPqZvq1kL5VcDkUJgolDF+kXwS851k=;
+ b=NtEbl/OZZa/8MRe2o+sYopdyg7u/fXqwqIw2E0+0Sozogal872WZVteNfe88X5BCtnPI
+ Qg/Ni+DaME97N8h+IBAA2sF0sJug7z58W5IkY7ezse5M+9LYyB2b7j4oQku49gKs1v8b
+ BNj8OsRV6Qc1+IBSR7kvRQGzPmy3/cMnbbHbybjn3P9V9WyI50zNff4BMV+H3w5yhp+E
+ NNGLH9yHOhUPmlDm8eTJezmri5Bp3Sbw4+1SyBc98MmuOvYwgQ9NZQH1mUYaWUAMI3Rs
+ B3w5QqRLUoQiOqphY0p5n0akGCLB6RV9hgPQOpFF+9IJ+kgtK9izMRXuGf6RsWl/3fo+ Bg== 
+Received: from phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta02.appoci.oracle.com [147.154.114.232])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3rdrhd1r2a-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 30 Jun 2023 15:40:34 +0000
-Received: from pps.filterd (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 35UFWY3b013125;
-        Fri, 30 Jun 2023 15:40:34 GMT
-Received: from nam12-bn8-obe.outbound.protection.outlook.com (mail-bn8nam12lp2177.outbound.protection.outlook.com [104.47.55.177])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3rdpx98630-1
+        Fri, 30 Jun 2023 17:46:54 +0000
+Received: from pps.filterd (phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 35UHUab2029816;
+        Fri, 30 Jun 2023 17:46:53 GMT
+Received: from nam02-bn1-obe.outbound.protection.outlook.com (mail-bn1nam02lp2042.outbound.protection.outlook.com [104.47.51.42])
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3rdpx955sx-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Fri, 30 Jun 2023 15:40:33 +0000
+        Fri, 30 Jun 2023 17:46:53 +0000
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=JUiS02G51tRnFPvVFdtjiBAyptUO6wvdw5de4+SUAnXw8/ijTq6NXnoFGlTH9ThM7MGMSAdzmF3bNEOZ4rshjEp/jpzIJWH4O7jVoZG/3mvIzO+rdcj4XUUI70fDC8w0tKNqfYbCyY2VrXwP7nD2TiYzN01IM2442KQ3T018i5PNVL1Zzf278EF4sMeGEd6XLuT/AvmV9AzlgipKDVUr2pLVxQb02ZTz+dbfADWqSoCLTXWcslKigvx1twCk+nKnt3kggXowsdPnmDO4Rn3BLrrilsuEcyv4mGWBDa3nu9RiIVCaR1rHdQi6cV5CM+fHLd22o9I4NMKW3CP9DidotQ==
+ b=ea+OX0798/EcAJA82m6HNh+U98yq4ctrGsAwO8sBS2CLn8cOJmz3OlUpvY4kHUwVOU3BaODV8v5WR/rw1xMpb0eF33ccvinjwLQAI86mjcxNTLk+PRhSJUI/mffq4EInAPHQCLw/SmT+lPcIUgkDFNLlSoHtJ1PDdjMS30ePd7dkBRInToc5lctHhJJAkvYv+NDImFBZK+GxSx1w30YyhyRQRmxc4i2t8Zc5UNTObLZJGk6Z5NkLIu0r4rUsy8oM5SAaM2gnbMHcwhVA0LPZtSG3RFxwF1nRXi9/CvJoDjF5/1RqSc5FeNmaEjnKp0o2sUFOdGEcXAXsYdg+uSOksQ==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=SqVeX712zGATIHhuFkr1r98n87FoxwYYm7NrRL+kJDE=;
- b=CHynzqaWRpidV9jZgADAaa2LZUmg9e3tvo5n0CAv50ET3dVoormeMI6Dp2kMNsOljwXW+3Krj/bQ6+RFb7JhV4LfVeOnP4yITEuwlE+SFvz02fYKNNRjzE+Bjo5nu4o5lXegITc3/Ks4/KNuui5hEQENO5JtGjvEjm6WEQlY+vwBfkOUwaXqBuWLsQC15+OirNLaDGiQsX/GeAOoFwVPf8aoxycPWr+cFWaQ8YbGfTyRCanhUigu94EU1oCFz6AsotzGSPQHCZtGBdDJ6CgcDfQv8PqSzLM/LU+VSOnvoYRtRUENcIMyJzhIjxJO9EBAGiS0ePXgO9RgDe1TBuTLQQ==
+ bh=2YIFE5T5tMOSXoPqZvq1kL5VcDkUJgolDF+kXwS851k=;
+ b=cSuFr49DSE73J4EBg8JVFyiRiWoXFmgyqrAffMe5URuUgLXIPloK4INOEwpPIYm+XlCmyXyuudzjCQ7YJ1iKCHC6nspgDXwXTGnEXJ0+lr54k17VoWhn8/6qrFcF4POyk9Ee6CPMvZeTRLHr2DjyBvmLRu0/m/4/A+QizLLU3VafgQgiSUgG3a01fHsn+w9RXE0f+LKdXl9v47ljXoi23nAn8cjg4egI+sp+PQdQ1ZYBNycBo5UIrpzf6KmVOHLZOmFZy2rGQiCNXng8iGAgONdikxVr0ITYP4E9JYjbIwr9S6ZsHg13xNvOcoOMrc0gAL5Id4fKBp0xf7I6q65Xnw==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
  dkim=pass header.d=oracle.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
  d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=SqVeX712zGATIHhuFkr1r98n87FoxwYYm7NrRL+kJDE=;
- b=mw9upA3ZwskbuGis+ovtHmISAnMAEzyWx7DF3aNt5GNJ9UHJMV4sJUnP+k/aUbyqV4xV6YGp0IBfivOdo8lFmE2ZKWu23eAYp5z79AHPCwcQqfCv68rEnUBhMLbocKGH+MKiYG1mItBgLUu9JzcW/CssO40RIT4Om7lYSc6C4D4=
+ bh=2YIFE5T5tMOSXoPqZvq1kL5VcDkUJgolDF+kXwS851k=;
+ b=AsYGchoC5RMDNxVowXqNKH+NtTvtLlq+YOTRjH52U0Yg+Oiu4WHeUNDOe8mCkIYVBYBIQ9OaOaBjPC05ho/kbZX5A+gEqrBqGEFsq/GK3RWmMQR9N0WekzS3dfLoWvgLQgOZh+FnYvKi1AecvNCknycVv3zijG8y4pfW71AIjP4=
 Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
- by DM4PR10MB6693.namprd10.prod.outlook.com (2603:10b6:8:113::12) with
+ by CY5PR10MB6046.namprd10.prod.outlook.com (2603:10b6:930:3d::15) with
  Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.6544.19; Fri, 30 Jun
- 2023 15:40:31 +0000
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.6521.23; Fri, 30 Jun
+ 2023 17:46:51 +0000
 Received: from BN0PR10MB5128.namprd10.prod.outlook.com
  ([fe80::ae00:3b69:f703:7be3]) by BN0PR10MB5128.namprd10.prod.outlook.com
  ([fe80::ae00:3b69:f703:7be3%4]) with mapi id 15.20.6544.012; Fri, 30 Jun 2023
- 15:40:31 +0000
+ 17:46:51 +0000
 From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Dai Ngo <dai.ngo@oracle.com>
-CC:     Jeff Layton <jlayton@kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v7 4/4] NFSD: Enable write delegation support for NFSv4.1+
- client
-Thread-Topic: [PATCH v7 4/4] NFSD: Enable write delegation support for
- NFSv4.1+ client
-Thread-Index: AQHZqvWX2/XR2HMAyEi1yPanmngxjq+jfG4A
-Date:   Fri, 30 Jun 2023 15:40:31 +0000
-Message-ID: <153C6CF8-699C-4457-9116-0E22498136C7@oracle.com>
-References: <1688089960-24568-1-git-send-email-dai.ngo@oracle.com>
- <1688089960-24568-5-git-send-email-dai.ngo@oracle.com>
-In-Reply-To: <1688089960-24568-5-git-send-email-dai.ngo@oracle.com>
+To:     Linus Torvalds <torvalds@linux-foundation.org>
+CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        open list <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jlayton@kernel.org>
+Subject: [GIT PULL] nfsd fixes for v6.5
+Thread-Topic: [GIT PULL] nfsd fixes for v6.5
+Thread-Index: AQHZq3rZ54+vVuXhb0GtMypv8Bh5rg==
+Date:   Fri, 30 Jun 2023 17:46:51 +0000
+Message-ID: <FFAD650F-18C4-4C2A-9BEB-2C18A8FE94C6@oracle.com>
 Accept-Language: en-US
 Content-Language: en-US
 X-MS-Has-Attach: 
 X-MS-TNEF-Correlator: 
 x-mailer: Apple Mail (2.3731.600.7)
 x-ms-publictraffictype: Email
-x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|DM4PR10MB6693:EE_
-x-ms-office365-filtering-correlation-id: 402bac6b-3b8f-4c05-a7ea-08db7980563e
+x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|CY5PR10MB6046:EE_
+x-ms-office365-filtering-correlation-id: 02e4b3ff-338f-43c3-5a78-08db7991fc42
 x-ms-exchange-senderadcheck: 1
 x-ms-exchange-antispam-relay: 0
 x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: XWP+RvLN0F6XGtNogEbQueuRRjfG6KymVEVcDWVaocJxYmQwZw5NrYoiJw5gWPt6fB2fOItS60Hfc+wnMA+W0un0egLYkZdp2MlIraq7MSY4iBtWbrodLlpo9FN6Drk44kKOYhxt3PkBtYWTixnZXx0Bzu+PHPbSMCJMt9ZwcRLiDJCI3sLNlYSwDXCRCq8a/vO1GTgLTmG/S1q3KJYvO2IZj9Xkoharf1Q/6MhYp9fx0nzkCAbAcHi0Wjckf+ZQR5CTBuNF2ypzejjtrLgkKp59EqmP9iC47Pld5PHi4NzYnHe3iaK4blfGIc2Kxn81Ly+V4UE+w1tpNZ6pw0aGIcl7f9jgEsCHKBjgV9gDXFt+eqiKmMy6Ezq8o6CXC1Mt7A7bdAsYRSNghqTnTRbgoaTZKlbvwqC6Tfz7vWGjFkVM0KyGVNafLk6cGuFAOybynbkZjr/zLZ83ZqwlhaRFiOdGkZQok63LMVS4j4jpHGlFnsBHa5EBnYAAD9IhkZUZX28MKd+/1ygN2yvFhxHt5P7BD8cGfXJPtv7yk3lkXq/cN7gpYIJxJqTN9q7xomhxYopDEZeOaJr9dvJ2aP/ik7DAj9NN9OZ3NcZ6SuA5g9NLW7CTPm92wsIUCOmUSynnXynWFIbSxIFsYT6QeeNMQw==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230028)(396003)(376002)(346002)(366004)(136003)(39860400002)(451199021)(86362001)(54906003)(37006003)(71200400001)(8936002)(8676002)(6862004)(5660300002)(26005)(6506007)(53546011)(33656002)(6486002)(478600001)(66946007)(66556008)(66476007)(66446008)(64756008)(6636002)(4326008)(6512007)(41300700001)(76116006)(316002)(91956017)(186003)(38070700005)(2616005)(2906002)(83380400001)(36756003)(122000001)(38100700002)(45980500001);DIR:OUT;SFP:1101;
+x-microsoft-antispam-message-info: lBChIIpMJaBy94htBCyL1b61cxhelarHkFuE0EbnDemNtx8BtpEdrH+rGXHBE0FszVOkwU9tUgg+0hJ9FjoGQAnoZ3vNMf+DqzPbScO1LLxkCETnrBKZah0q+PVtdBDRKc2re1fVd4jAYVidrzfjoXpaEZPIe4qwmtVpOyHtCjW+9lGZ2LV4lQZPkiyHE8rb9CFmkpREz6IzAxHAUiMOiVFp/Yr9p0jMtOGMwgahuEpevOmf/0s3BAWW4O6scz2tcwC8OtAlqOkQcLhlDHfOk3YGGpV5bVHJlVtmbYCZLNSXw0o0GJYFob8IX6Uc9/rOkyTDFMCyitjf7MHSn9cQdAINcTYvbnzr6i5T4yGZ4z0VmgauC/PczBzr9OlOHto0wwVyNtiBhyGU7Ezbi16zLynOACL+Jo6OZ1WVB6TZMazPHxhNe8UuloJynlJh6a5QcvozVposcDxT8P7oBbKPhsDbTRZ/QSvP8+5HST4OsifCBvAGGjDZRkA3DOCzJE81O6kB6Z+JS9mzN0rmDgs43Cl6oUjxksQhCD4Gwt5Soxf/owEuDJNBFdo/DYILTXdfyBFsTJmOkJ+df6ixMITjECgqcA/N8e/rjNYg8LL8grGskjLJT9d5+X0ayXIsFiizEj/hSlkfgnC58JModaRF/Q==
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230028)(136003)(366004)(39860400002)(376002)(346002)(396003)(451199021)(8676002)(66946007)(316002)(66556008)(91956017)(8936002)(64756008)(4744005)(186003)(66476007)(66446008)(41300700001)(6506007)(6512007)(4326008)(6916009)(26005)(76116006)(6486002)(54906003)(2616005)(966005)(71200400001)(5660300002)(2906002)(38070700005)(122000001)(478600001)(38100700002)(36756003)(86362001)(33656002)(83380400001)(45980500001);DIR:OUT;SFP:1101;
 x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?O1DKM9We5HeQQSL07wKiS3JtXXCSDo+cKuEylRz7qC9BqVfHwZNGCnmcfBlY?=
- =?us-ascii?Q?4tJWqP7O+8EUk9vLI7p/QAOcu7qAS0b/htWtDCZY92h8dWqaVgsEP64IZW1u?=
- =?us-ascii?Q?wvJmmpf+ox6vLOuUPAxtLpogIwmMoYtHP4O6c1A2C7rZVlnhTFxYbJL4wdS4?=
- =?us-ascii?Q?TxherEqlR6U05BngplNev4qlBzGGca+udo1I3pkIcAoWq8DO83eC8spuqtGv?=
- =?us-ascii?Q?GztWrax4iPKVUhdc7Ld8OVPumkVDP8iznFiNDewnzBgzwHSuxdy9iyrgbeuK?=
- =?us-ascii?Q?yPvvOAf4rPSBwOIGP6WVnzTZfd1P0WrrjZiH/xvjgLnxU0MIc5mWf1AAF5zR?=
- =?us-ascii?Q?6yF9Y1WBNx57xRrqig9Y/fXhVGC2f/VFM+leM0YWED9Qs9JhWnatWNt5YCkd?=
- =?us-ascii?Q?svnJOoyZNotQPrCDBFm+OUxQG+fvsmI9aw077ZKaYy10cdfFDBoaknoVQE+O?=
- =?us-ascii?Q?IwIi+RXXHWOKHNbok8CePS4VA0CoiRlDcO2BvNIMclMxxvzPIbKTmSoruvtX?=
- =?us-ascii?Q?vBC1COHoYqiXb53lNstaRroP+DQYHcdMLUWG8oe1yDpn99uwOPajGYjnpSml?=
- =?us-ascii?Q?OerGeMRI/0A706pg5csz7IsYnokB8FcTcahJ6YL78evW6OLsXFILVe0P2UYi?=
- =?us-ascii?Q?YhYTZ37rubMfJduF6B5pnjnvrcRxe7UazZKXIZJ8/YDdRIjsvi2Sv2znSGel?=
- =?us-ascii?Q?2lFOZn7RCtKpSM5jOwlQs0U0JIXZCQArPWM9gRB4E5wrKDldcod+GY8Rmir9?=
- =?us-ascii?Q?VdGIs5jjgukPMV/VUw+/muIqjUrIYtUlAsFBlWeUaIF2oF3gz0CLbdwTUeX4?=
- =?us-ascii?Q?kiQNEuuLBVzUrXRNpvr6qXBFHteTICmzEsKZmzrNoZwLqttOaaY3kZu/vJba?=
- =?us-ascii?Q?HDbW+r+eHucnbECvE2kgs+aSHOSruAxLeqQW0bWVsLk5WtBaLmCoMihjbJjp?=
- =?us-ascii?Q?s1Ukj9wzaexQ5AVoIQYlgxOdOzSDqhesJrLpPOpce9aeW2hAvxBKOmUvYhL6?=
- =?us-ascii?Q?/EOW/8ALsYRUlsPFlpNgmSJQOXzYyB9b+UdUzHI+43WpSmMWESUSBDa/nqAN?=
- =?us-ascii?Q?rn4izVQTYWru3sJF/jIJmg3S0iot9RVAD1c11KNm0uS55Ek+BbZ0e1Af5bZ4?=
- =?us-ascii?Q?DxJ4vhfVGE5rBiUIjIINWNSkVLDd5STXVapv8T/b8feoshwAycimw8qtaMCJ?=
- =?us-ascii?Q?BWE0dA3kaFE9pUbGkZUhZGmRzrPeG85b4iuaWzuYGjudmZ1sQ/B+BtroQLOt?=
- =?us-ascii?Q?8+mDdox4SUX4gN33akKCy6NDZXKRu0s9IUctWHSTZyvDsywIM4ygu8KftEfO?=
- =?us-ascii?Q?lnRkDbjNrHzgROknlTkndWKN+ZdYbRosJ75GWMUPKu9JJbSZQhTmMBOk0ps6?=
- =?us-ascii?Q?YL0N5fCCX5QKoN24noyEvVsJJw2dkGl/oHyEJp/rkP6v80wQ3FD0sUFoM9NX?=
- =?us-ascii?Q?/8qfEcD9sU0D42pniVl1rDngCxPWbkcn1lH0HmkWGbX4tpUzMoaLU6w/q9Xs?=
- =?us-ascii?Q?DzH2JqrWDuoODsgcrl+H6N5d2N9aPKT6zx4vusyHKHcoZljA0/jGm01IT7Ek?=
- =?us-ascii?Q?F/OQT4aZB3ah714tyS1qJ7Cj21HLeQ/tBSbVBRSqmiSQvhN4colNEPJCC+IO?=
- =?us-ascii?Q?Jw=3D=3D?=
+x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?+/4ru08VFrZVQY6v0KS2qPTQOxw1kWQyeWr3nizH9+TsEVLPDtovvWR2XzG4?=
+ =?us-ascii?Q?eBC4gJs/ZgTZc2ubll2pUoXQ2noiBKZfwlNOWj2wYWjsdVEW7a8u+tk3jCbx?=
+ =?us-ascii?Q?2138GkYyWugdNEuUzZMepn5CZH1K2aesj8vjlKpxL+0C84Kub/dMw8pWBBm5?=
+ =?us-ascii?Q?Pja0N3cZVRnHk2Iy2jZm+vRwbQDgrD+jlb3zIh67dGtWrUgiVCz0SdRQH9iX?=
+ =?us-ascii?Q?f0Jhd43ssc7Q5PEzclXqYwBWEN8phat1ITaqBBWvAkzfkBWnCUuqXWhdbfJf?=
+ =?us-ascii?Q?lwO7cz9K6C23K6z+R/T04txl5s167eC5Hyp8i2I29sMdvzkxIZ5/+lRTo7EC?=
+ =?us-ascii?Q?hGOWSswZ3EbhBBLCJxB5GKJ7UNPn8VI4Y8WFqwHnSBYoBHaEjhbgLG7nxhNp?=
+ =?us-ascii?Q?F/uvkzBa6GMByuNwQQBmqTMdJFMVcdkegDZnUZOxKhWQNBhnz9Us+5DHZw2I?=
+ =?us-ascii?Q?pEuVopJrinmIO91qnZmPlv/hkxm2oy+9E66lTWSOVy1vDZpfKX6ZvMuk1VXY?=
+ =?us-ascii?Q?KDnn3mghGpE7USQPfhQ+qQFPGBUHLoUWGfzQ5hEwz0G5TRoJFbqUgVVLMXRj?=
+ =?us-ascii?Q?9lxWk6FMBFFL8mqY1YQfjvV4WzcyjnwphEdaL8oRpZAo65MW9fgko/urPcnq?=
+ =?us-ascii?Q?Zr65UwNiVEtLC7T3YpHOEcxuovDVfIG/DYVZaQqCf3ZHtpAwdCs7sN1yM2+Y?=
+ =?us-ascii?Q?MCpuHuA+ZEY6tgdjohAo57+NzOh8EWL9o6IOLDBduZSib5N7hCFRDD6Q9CAw?=
+ =?us-ascii?Q?jpK6btyg2qcHeDDXrIfEYbaEoh1xzFZM3kVvQ1MXj0khXYtgoZ//9GN4x7HM?=
+ =?us-ascii?Q?IsE4IhT1jbuyz614y3mL5VJzM3/iVwJlw22pVEZRxwEhKDFDR4TTCj6QN+wm?=
+ =?us-ascii?Q?8tdx0N1fpS0B7vIukhCEzYMusZYGHLblqAhTIr+lkzq8pH+KF6j+vNkOO3ua?=
+ =?us-ascii?Q?eLwKkqze2fEbV9TNGeQCkMSiksgd2TcHZxHtRvPRDJcE/0pAO/+lTPMg8hVN?=
+ =?us-ascii?Q?nStZmvU0La65iV/ZrRrtdBwf5r7d3GrhBFyYe58Yla+oBFcqGo+JWk9LysPd?=
+ =?us-ascii?Q?oONC5ZGWZHBZ0O6cRyWulQc96HXwXlctRGnZaClKeCBctDJ8GrY1k4QjHKSG?=
+ =?us-ascii?Q?HPSnQ5I8ry8Kx1dITzEtegRZdXIbiwsLOmjw2i1yZ5H4BVqtJXysXjfSdmXK?=
+ =?us-ascii?Q?eDVEoXUJI1psh6f0O4p68F0vWJkVsyBZDTdiFrcEDeabSJz8gEaXDBPwmTW8?=
+ =?us-ascii?Q?paBbj12xk5CMUMc+ADVOnAvGgWUnC0kO6BRTbDmt4CiSN28Z+6BbyLQaFxwG?=
+ =?us-ascii?Q?oudPbuY1C5UrDVhSU4WQf3uDWCA6ileI04ZqeD7TzDpN8pV3EaLzpjV0RxeH?=
+ =?us-ascii?Q?UY6ZCpl0/4NsjZZ2vruK3qoh6aBzRpQ/DxytQiLdiZqSF+6zvpqPmBlEFbSz?=
+ =?us-ascii?Q?1KpLE2zcACbq0/0rSG6M3mjO+0AmCVU10E+RKdnAv5Sugq1fRwxWfzLP6dTv?=
+ =?us-ascii?Q?52IQRhDa5VLt2Wa6+INjt62Yfz+uIy3hV2BoYMbc5FGVdJXNQIm/bJxidytC?=
+ =?us-ascii?Q?bQxDgDSS5ui81BKIHYDNWUYzzLykTkv3AVEk2rjMZwgEKB+SMq+MaF/o2GEs?=
+ =?us-ascii?Q?wg=3D=3D?=
 Content-Type: text/plain; charset="us-ascii"
-Content-ID: <1575431E032B84408957A804C6A26094@namprd10.prod.outlook.com>
+Content-ID: <22DB7D430A4A194AA45B5798D35B53A0@namprd10.prod.outlook.com>
 Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
 X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0: Bn9hdsu3XH4fmwvUobtt/yKyZVvjOwCV7Zdb8vx/hDoKRW1hJtWXecYqgRqC+cRjK7/KI/2zUz/pewV+2VQd75pizhkvKF+gXq0Fda+/B+t2iE13TloHVCW5ikC+vu79GkCL3fKgvspvWbxcU6OqCsebOJ0EYXFD6BS8y8t98eQcxFybttB7dv7YYvmp9mc6dPwDsnR7ZTvFm7lcJyf3Gd7O4uKooXfgMb+smYA/R9aEaUixFKWmp6kYIsu/E8rmBWTfutiHlRX05VWBBm5fVWDyyYJeTWmrZBlvfOB8JRllZSIIkuIdFG2nwXe0ULJJBKR8Z2RF34CGq6x668NwtnGap19PVuwbscGwNYq2ERhJ6k1fh7+ZPsjsjbg5XZT5JeyfndkeevIjBqy67Gu39mWbLWXXbwc5fi5VdyF/osM6XWm2itAnxCH9elIbkjNwTGl9d6bQZmhP+jaayzAr9aWGRjkP9jB8vSfrCrbHXge6MYVBGymY1Cd3IQxkti9961WepNyxBokBkDlFxUC5Ir6htULXF9iEr6XzfZWZb0mJe6Iy4tw7WA43vax4/CcT0B4UTZg14Gwu+ygCp86rk2ew9DbuspoaATtlYp6VgnkswxGquFneQGWO0JBoCazmUSNS9fW0BR/J4tWld6xqe6rsG+QhbKC7H7ZiWs0MsJRYL7GqDL1f2yhpJhzP+xguHtjSoUYZk36UOa+NxqRnCev5QXv4Bm/zZXGPy5tLVPVlilrre6obkogWCCg04v/CuSyGP3MFbcTTsMV0FsZvWtcXquw0MLlCcewCzfRqbx8=
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0: 88jEbJS8X2d6Eo3rQwmoXJh9dfO3twdIU45bt6YBpRwf04fCWBdgNd+iKY2zbiW6Mr4X6a6IMl5z8CAkHweaQMxn6tWjfUKzD+MLOfOpirvptYS+7owgDp6pbNb+T8hph5SfyEkAmXOyk4hRP4FVfoVN1aWvQ/e+fkIDusK3ZDrEJQk+8ATpF4PsK/tEl07jnBwKnKcmr7rq14ekTLRCq/sal9Gl4nAeI9W3+mPTAeSuGyvLJ2DfzyBOoiJj6Ay+EDJMkDW6d7u+Yu7CFsJR8gWVaCqV/JQaMOlRRUxS3tBjftQRxtcgBvew+Z3OqEx5lGhZdykNgFX5ZUbAkUfopi8/7O+m6FY3YNgBdyCB/4eO488epvgwXnSEk3sYY4miiM9sby1QXuRbkAEiJzPJwNo6qIr4mUVqe8KbCKsH50W42MEueEvaOB+jIotzHdiF3HSyHpSgQF43tRGBUA2DChuf6uF2TAOQ6HIyS/GHS97tU6pnyFlhiwaLt9gRMJaxNIOKa9VY7qMLvVN39GtZE9UpIcRFyAHC4FwqfFjTXh+UHfuyRCwH9W3aRT64vbzP6M5UdC1k9UNk74409NpJO2wLwLQ21hB2WTcAoKUmE8ELP6dUHqGcJaUECVMTmEnrYY28f2r4EksmszpoCOT6RXvLF7gTsciMvvoGyttoG+nYwRwzDL4ue9RV6/41LyKoDh5/lktkWAhmJdel4T4aLP8LgmSqp8nNXG3qBEcMNUp1fucq+dze2kIQQ81tu+ddt6DVeuNYteDOMmCwDTiOXKB7omR3dg0dcpGSFm+Hhxw2C4j0Rbw15CvsOqPktThUDJ4VdHKN0r2Uyb3lRD43Xc4EKOGVKDKHWHJuw9VbhGI=
 X-OriginatorOrg: oracle.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
 X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 402bac6b-3b8f-4c05-a7ea-08db7980563e
-X-MS-Exchange-CrossTenant-originalarrivaltime: 30 Jun 2023 15:40:31.2747
+X-MS-Exchange-CrossTenant-Network-Message-Id: 02e4b3ff-338f-43c3-5a78-08db7991fc42
+X-MS-Exchange-CrossTenant-originalarrivaltime: 30 Jun 2023 17:46:51.1955
  (UTC)
 X-MS-Exchange-CrossTenant-fromentityheader: Hosted
 X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
 X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: qo+JbaEaa+NEAStVNbQFj8sCD4E7SFvJEtKDtjmTL0hDCDnnNlBxFKTvUOOav2ZhRnDk++14WTApV0aY4ALU2Q==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DM4PR10MB6693
+X-MS-Exchange-CrossTenant-userprincipalname: l+MYVS6KCWxeiEFHKOKAj0gr2aom+sxRjriX6ehG3TjwiDsQTEwWeDlDVJSJH4Lb6jB3kJBuXrEjJKh+7FfA/A==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CY5PR10MB6046
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.254,Aquarius:18.0.957,Hydra:6.0.591,FMLib:17.11.176.26
- definitions=2023-06-30_08,2023-06-30_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 adultscore=0 bulkscore=0
- suspectscore=0 mlxscore=0 phishscore=0 malwarescore=0 mlxlogscore=999
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2305260000
- definitions=main-2306300133
-X-Proofpoint-ORIG-GUID: VawYE2IQflKieo5UsYrFsNI8qSLOtPuh
-X-Proofpoint-GUID: VawYE2IQflKieo5UsYrFsNI8qSLOtPuh
+ definitions=2023-06-30_10,2023-06-30_01,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 suspectscore=0
+ malwarescore=0 adultscore=0 mlxlogscore=996 phishscore=0 bulkscore=0
+ mlxscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2305260000 definitions=main-2306300153
+X-Proofpoint-GUID: PL2BgaWytNJsXewFX5ziy-HJFk7x1gxb
+X-Proofpoint-ORIG-GUID: PL2BgaWytNJsXewFX5ziy-HJFk7x1gxb
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+The following changes since commit 75bfb70457a4c4c9f0095e39885382fc5049c5ce=
+:
 
+  nfsd: remove redundant assignments to variable len (2023-06-21 15:05:32 -=
+0400)
 
-> On Jun 29, 2023, at 9:52 PM, Dai Ngo <dai.ngo@oracle.com> wrote:
->=20
-> This patch grants write delegations for OPEN with NFS4_SHARE_ACCESS_WRITE
-> if there is no conflict with other OPENs.
->=20
-> Write delegation conflicts with another OPEN, REMOVE, RENAME and SETATTR
-> are handled the same as read delegation using notify_change,
-> try_break_deleg.
->=20
-> The NFSv4.0 protocol does not enable a server to determine that a
-> conflicting GETATTR originated from the client holding the
-> delegation versus coming from some other client. With NFSv4.1 and
-> later, the SEQUENCE operation that begins each COMPOUND contains a
-> client ID, so delegation recall can be safely squelched in this case.
->=20
-> With NFSv4.0, therefore, the server must recall or send a CB_GETATTR
-> (per RFC 7530 Section 16.7.5) even when the GETATTR originates from
-> the client holding that delegation.
->=20
-> An NFSv4.0 client can trigger a pathological situation if it always
-> sends a DELEGRETURN preceded by a conflicting GETATTR in the same
-> COMPOUND. COMPOUND execution will always stop at the GETATTR and the
-> DELEGRETURN will never get executed. The server eventually revokes
-> the delegation, which can result in loss of open or lock state.
->=20
-> Tracepoint added to track whether read or write delegation is granted.
->=20
-> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
-> ---
-> fs/nfsd/nfs4state.c | 40 +++++++++++++++++++++++++++++-----------
-> fs/nfsd/trace.h     |  1 +
-> 2 files changed, 30 insertions(+), 11 deletions(-)
->=20
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 4c96cfe19531..15b5043eeca5 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1144,7 +1144,7 @@ static void block_delegations(struct knfsd_fh *fh)
->=20
-> static struct nfs4_delegation *
-> alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
-> - struct nfs4_clnt_odstate *odstate)
-> + struct nfs4_clnt_odstate *odstate, u32 dl_type)
-> {
-> struct nfs4_delegation *dp;
-> long n;
-> @@ -1170,7 +1170,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nf=
-s4_file *fp,
-> INIT_LIST_HEAD(&dp->dl_recall_lru);
-> dp->dl_clnt_odstate =3D odstate;
-> get_clnt_odstate(odstate);
-> - dp->dl_type =3D NFS4_OPEN_DELEGATE_READ;
-> + dp->dl_type =3D dl_type;
-> dp->dl_retries =3D 1;
-> dp->dl_recalled =3D false;
-> nfsd4_init_cb(&dp->dl_recall, dp->dl_stid.sc_client,
-> @@ -5451,6 +5451,7 @@ nfs4_set_delegation(struct nfsd4_open *open, struct=
- nfs4_ol_stateid *stp,
-> struct nfs4_delegation *dp;
-> struct nfsd_file *nf;
-> struct file_lock *fl;
-> + u32 dl_type;
->=20
-> /*
-> * The fi_had_conflict and nfs_get_existing_delegation checks
-> @@ -5460,7 +5461,13 @@ nfs4_set_delegation(struct nfsd4_open *open, struc=
-t nfs4_ol_stateid *stp,
-> if (fp->fi_had_conflict)
-> return ERR_PTR(-EAGAIN);
->=20
-> - nf =3D find_readable_file(fp);
-> + if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE) {
-> + nf =3D find_writeable_file(fp);
-> + dl_type =3D NFS4_OPEN_DELEGATE_WRITE;
-> + } else {
-> + nf =3D find_readable_file(fp);
-> + dl_type =3D NFS4_OPEN_DELEGATE_READ;
-> + }
-> if (!nf) {
-> /*
-> * We probably could attempt another open and get a read
-> @@ -5491,11 +5498,11 @@ nfs4_set_delegation(struct nfsd4_open *open, stru=
-ct nfs4_ol_stateid *stp,
-> return ERR_PTR(status);
->=20
-> status =3D -ENOMEM;
-> - dp =3D alloc_init_deleg(clp, fp, odstate);
-> + dp =3D alloc_init_deleg(clp, fp, odstate, dl_type);
-> if (!dp)
-> goto out_delegees;
->=20
-> - fl =3D nfs4_alloc_init_lease(dp, NFS4_OPEN_DELEGATE_READ);
-> + fl =3D nfs4_alloc_init_lease(dp, dl_type);
-> if (!fl)
-> goto out_clnt_odstate;
->=20
-> @@ -5570,8 +5577,13 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4=
-_open *open, int status)
-> /*
->  * Attempt to hand out a delegation.
->  *
-> - * Note we don't support write delegations, and won't until the vfs has
-> - * proper support for them.
-> + * Note we don't support write delegations for NFSv4.0 client since the =
-Linux
-> + * client behavior is not compliant with RFC 7530 Section 16.7.5 with re=
-gard
-> + * to handle the conflict GETATTR. It expects the server to look ahead i=
-n the
-> + * compound (PUTFH, GETATTR, DELEGRETURN) to find a stateid in order to
-> + * determine whether the client that sends the GETATTR is the same with =
-the
-> + * client that holds the write delegation. RFC 7530 spec does not call f=
-or
-> + * the server to look ahead in order to service the conflict GETATTR op.
+are available in the Git repository at:
 
-I'll take these 4 for v6.6, and update this comment to match the patch
-description as I apply the patches.
+  https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-6=
+.5-1
 
+for you to fetch changes up to d7dbed457c2ef83709a2a2723a2d58de43623449:
 
->  */
-> static void
-> nfs4_open_delegation(struct nfsd4_open *open, struct nfs4_ol_stateid *stp=
-,
-> @@ -5590,8 +5602,6 @@ nfs4_open_delegation(struct nfsd4_open *open, struc=
-t nfs4_ol_stateid *stp,
-> case NFS4_OPEN_CLAIM_PREVIOUS:
-> if (!cb_up)
-> open->op_recall =3D 1;
-> - if (open->op_delegate_type !=3D NFS4_OPEN_DELEGATE_READ)
-> - goto out_no_deleg;
-> break;
-> case NFS4_OPEN_CLAIM_NULL:
-> parent =3D currentfh;
-> @@ -5606,6 +5616,9 @@ nfs4_open_delegation(struct nfsd4_open *open, struc=
-t nfs4_ol_stateid *stp,
-> goto out_no_deleg;
-> if (!cb_up || !(oo->oo_flags & NFS4_OO_CONFIRMED))
-> goto out_no_deleg;
-> + if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE &&
-> + !clp->cl_minorversion)
-> + goto out_no_deleg;
-> break;
-> default:
-> goto out_no_deleg;
-> @@ -5616,8 +5629,13 @@ nfs4_open_delegation(struct nfsd4_open *open, stru=
-ct nfs4_ol_stateid *stp,
->=20
-> memcpy(&open->op_delegate_stateid, &dp->dl_stid.sc_stateid, sizeof(dp->dl=
-_stid.sc_stateid));
->=20
-> - trace_nfsd_deleg_read(&dp->dl_stid.sc_stateid);
-> - open->op_delegate_type =3D NFS4_OPEN_DELEGATE_READ;
-> + if (open->op_share_access & NFS4_SHARE_ACCESS_WRITE) {
-> + open->op_delegate_type =3D NFS4_OPEN_DELEGATE_WRITE;
-> + trace_nfsd_deleg_write(&dp->dl_stid.sc_stateid);
-> + } else {
-> + open->op_delegate_type =3D NFS4_OPEN_DELEGATE_READ;
-> + trace_nfsd_deleg_read(&dp->dl_stid.sc_stateid);
-> + }
-> nfs4_put_stid(&dp->dl_stid);
-> return;
-> out_no_deleg:
-> diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-> index 72a906a053dc..56f28364cc6b 100644
-> --- a/fs/nfsd/trace.h
-> +++ b/fs/nfsd/trace.h
-> @@ -607,6 +607,7 @@ DEFINE_STATEID_EVENT(layout_recall_release);
->=20
-> DEFINE_STATEID_EVENT(open);
-> DEFINE_STATEID_EVENT(deleg_read);
-> +DEFINE_STATEID_EVENT(deleg_write);
-> DEFINE_STATEID_EVENT(deleg_return);
-> DEFINE_STATEID_EVENT(deleg_recall);
->=20
-> --=20
-> 2.39.3
->=20
+  nfsd: Fix creation time serialization order (2023-06-27 12:10:47 -0400)
+
+----------------------------------------------------------------
+nfsd-6.5 fixes:
+- Fix ordering of attributes in NFSv4 GETATTR replies
+
+----------------------------------------------------------------
+Tavian Barnes (1):
+      nfsd: Fix creation time serialization order
+
+ fs/nfsd/nfs4xdr.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
 --
 Chuck Lever
