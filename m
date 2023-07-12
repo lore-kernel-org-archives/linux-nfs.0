@@ -2,121 +2,126 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D59D5EB64D9
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 Jul 2023 14:01:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2B41EC001DC
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 Jul 2023 16:06:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232026AbjGLOBg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 Jul 2023 10:01:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40952 "EHLO
+        id S232357AbjGLQGv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 12 Jul 2023 12:06:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43560 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232515AbjGLOB3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jul 2023 10:01:29 -0400
-Received: from out5-smtp.messagingengine.com (out5-smtp.messagingengine.com [66.111.4.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2E26B1FC0;
-        Wed, 12 Jul 2023 07:01:15 -0700 (PDT)
-Received: from compute4.internal (compute4.nyi.internal [10.202.2.44])
-        by mailout.nyi.internal (Postfix) with ESMTP id 9981D5C00CC;
-        Wed, 12 Jul 2023 10:01:12 -0400 (EDT)
-Received: from mailfrontend1 ([10.202.2.162])
-  by compute4.internal (MEProxy); Wed, 12 Jul 2023 10:01:12 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-        messagingengine.com; h=cc:cc:content-type:content-type:date:date
-        :feedback-id:feedback-id:from:from:in-reply-to:in-reply-to
-        :message-id:mime-version:references:reply-to:sender:subject
-        :subject:to:to:x-me-proxy:x-me-proxy:x-me-sender:x-me-sender
-        :x-sasl-enc; s=fm2; t=1689170472; x=1689256872; bh=pijrPuuLOBTkT
-        DRF45Xzk2tpR/dfYgIqP4aKL7wG5i4=; b=B29H8pAiq8a97xvx1/lC2W9LSIuf7
-        k/XhDgqZER5cGPHRnGB0iucs6Bl8MxTjLN2gW7ixpIrPaxlilhBYsPHFA0O9QIij
-        dGDvkc0sKbYCqHQ3/7ldaNOkg5PNyKC6rsON5/7Y9ojihkkM57DskkTHkwyau0Fy
-        A4i3jwhl5LlZcX6hBs5Hha5wtV2ty/66Sjne2iN/PLW79oHAfD/jjQM03ndkF8eS
-        3lAFneZ4Bho6yz4lMAoq6HPYeAJ6VQMIhmj28wMItZE5iRWx/0NTiX9AYshFI2dP
-        fEsNxuQ60SuRgu1TVkdREos3lJ/E4lyPV2dhNLFu5MWkYHGHmkQOXVocQ==
-X-ME-Sender: <xms:J7KuZGaCS3BzZhMmTdC6TIIJ1LAsR9Qx1YniX3BZ35Sv3aFGkuBVlA>
-    <xme:J7KuZJZFTJkqvgtyRFieub_QVuwfMlzgzCYTyx9d19FDAAq79mrl4CgIz2qOO8Pq5
-    ygMTyLJYYw4J_s>
-X-ME-Received: <xmr:J7KuZA-9pv0U85TpDz8OfBlxRsabUp3ci8_4kh3fWoX9lfdR3MQvh6eZrqc0Sffl4Y805eL3In-rwV5C5a4w0lwmDF8>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgedviedrfedvgdejvdcutefuodetggdotefrodftvf
-    curfhrohhfihhlvgemucfhrghsthforghilhdpqfgfvfdpuffrtefokffrpgfnqfghnecu
-    uegrihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenuc
-    fjughrpeffhffvvefukfhfgggtuggjsehttdertddttddvnecuhfhrohhmpefkughoucfu
-    tghhihhmmhgvlhcuoehiughoshgthhesihguohhstghhrdhorhhgqeenucggtffrrghtth
-    gvrhhnpeehhfdtjedviefffeduuddvffegteeiieeguefgudffvdfftdefheeijedthfej
-    keenucffohhmrghinhepkhgvrhhnvghlrdhorhhgnecuvehluhhsthgvrhfuihiivgeptd
-    enucfrrghrrghmpehmrghilhhfrhhomhepihguohhstghhsehiughoshgthhdrohhrgh
-X-ME-Proxy: <xmx:J7KuZIplkV5mY6R0ceYvXN6Cib-T_VPEhYrApXYD_si5ZkLDq_KIvw>
-    <xmx:J7KuZBr8nWguMwjwi8e70jjyXFXJ8Ei886KJs-gfC7s3jUJQ4SOYKg>
-    <xmx:J7KuZGRPovAh04AXQf3p4Fcl8pN0U1leimO8nxIzbEubQvi7o4GiiQ>
-    <xmx:KLKuZIW9V08DcHJvKM8DgGDOp6en5HW9sLbp_qaNgzDtXuTxEGyteA>
-Feedback-ID: i494840e7:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 12 Jul 2023 10:01:10 -0400 (EDT)
-Date:   Wed, 12 Jul 2023 17:01:07 +0300
-From:   Ido Schimmel <idosch@idosch.org>
-To:     Wenchao Hao <haowenchao22@gmail.com>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Wenchao Hao <haowenchao2@huawei.com>
-Subject: Re: [PATCH] NFS: Fix memleak in nfs_sysfs_move_sb_to_server
-Message-ID: <ZK6yI4BO+csaxGkZ@shredder>
-References: <20230712134853.1044134-1-haowenchao2@huawei.com>
+        with ESMTP id S232606AbjGLQGu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jul 2023 12:06:50 -0400
+Received: from mail-lf1-x136.google.com (mail-lf1-x136.google.com [IPv6:2a00:1450:4864:20::136])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E9E8119A6
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Jul 2023 09:06:47 -0700 (PDT)
+Received: by mail-lf1-x136.google.com with SMTP id 2adb3069b0e04-4f4b2bc1565so11508992e87.2
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Jul 2023 09:06:47 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=ionos.com; s=google; t=1689178006; x=1691770006;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=8X6ArMXh62A5UxRR3ZN+q1CvObhoeb8ltfmXU1xj+zw=;
+        b=V0Mwyzpfv5NHo344FebMkemb4OkDhqesSJzk3oLJrC1sXingJzi/DqoHJPX3cM7/kU
+         /daZbGumusx7p3ETz9bL+dV7+a249DzrdJ5ucaxUqFs1cH4q4UNK1aBbCP0kRMVezgvK
+         Gb0u18D1omT5qk875/bvJSIuyWWXlLKu5WnA0OT929rTcOY7rHqZVsWOvIcdQTq+Q4TI
+         Xty8IQiQ2uEFjkBqRHhjaYUeIIjdk3TlKuW6ZBNL29/kZI8LKdOXvAAi+FiRNxSMUXsG
+         92h/diWQ5jGfG/Pc/9JTOLcLZ2bS8Hyd3sIfxIs/rFITeR6YjIQmonhcUevYE5m/zN7s
+         SmPw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1689178006; x=1691770006;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=8X6ArMXh62A5UxRR3ZN+q1CvObhoeb8ltfmXU1xj+zw=;
+        b=UT6UaDAhxB+Q9npuiAXPjUJrlCUNX7dw+jDtAVRAAZF/p39txOwkx6CGXIYyRPao/V
+         IZFIlueAXQuLOZxPwLFmSof6gCUKvVik9woGAZ3s4Vwo8UU3/GcHMQGaM1whMkW3G6S/
+         GHgJRMkX24wwVTXJsSddmHJmzUEYRApz79KDU4mzuDlT2ghgOgM/WzKXDYaDl4Z7HU8f
+         0IoUu70XF9X+ufiYHo0BzIWKGhR3Shxyw93DVovleAoJbMOcQDsmx0m4LTC0C6Ji4ALS
+         BJtgr2vYrbojKv05WgA4ermhjQdBqHm7esYIEU61dQr0sZdnx8CDRJJJd8O8QURifvnO
+         hFNQ==
+X-Gm-Message-State: ABy/qLaP5hcGvys77SQrr6GSzM/X5qDfsoGVe/kmetc0o8JLTA2lVKJ5
+        Fu2xvXdoS6WvXEfmHxnyzIWR4RsLu6tQlTWqUPr9mw==
+X-Google-Smtp-Source: APBJJlHjPtNIqZNhhKZT3JSG1orBAozCwd3+TwwvFjulJuToD7D5iIrA7grwKZQU8Z67qc0UJ0oDxWof6WbkdfMRi3A=
+X-Received: by 2002:ac2:5b1d:0:b0:4fb:7a90:1abe with SMTP id
+ v29-20020ac25b1d000000b004fb7a901abemr15797051lfn.49.1689178006211; Wed, 12
+ Jul 2023 09:06:46 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230712134853.1044134-1-haowenchao2@huawei.com>
+References: <20230629165206.383-1-jack@suse.cz> <20230704122224.16257-1-jack@suse.cz>
+ <ZKbgAG5OoHVyUKOG@infradead.org>
+In-Reply-To: <ZKbgAG5OoHVyUKOG@infradead.org>
+From:   Haris Iqbal <haris.iqbal@ionos.com>
+Date:   Wed, 12 Jul 2023 18:06:35 +0200
+Message-ID: <CAJpMwyiUcw+mH0sZa8f8UJsaSZ7NSE65s2gZDEia+pASyP_gJQ@mail.gmail.com>
+Subject: Re: [PATCH 01/32] block: Provide blkdev_get_handle_* functions
+To:     Christoph Hellwig <hch@infradead.org>
+Cc:     Jan Kara <jack@suse.cz>, linux-block@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
+        Alasdair Kergon <agk@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Anna Schumaker <anna@kernel.org>, Chao Yu <chao@kernel.org>,
+        Christian Borntraeger <borntraeger@linux.ibm.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        David Sterba <dsterba@suse.com>, dm-devel@redhat.com,
+        drbd-dev@lists.linbit.com, Gao Xiang <xiang@kernel.org>,
+        Jack Wang <jinpu.wang@ionos.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        jfs-discussion@lists.sourceforge.net,
+        Joern Engel <joern@lazybastard.org>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        linux-bcache@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mm@kvack.org,
+        linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-nvme@lists.infradead.org,
+        linux-pm@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
+        linux-xfs@vger.kernel.org, Mike Snitzer <snitzer@kernel.org>,
+        Minchan Kim <minchan@kernel.org>, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org,
+        Sergey Senozhatsky <senozhatsky@chromium.org>,
+        Song Liu <song@kernel.org>,
+        Sven Schnelle <svens@linux.ibm.com>,
+        target-devel@vger.kernel.org, Ted Tso <tytso@mit.edu>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        xen-devel@lists.xenproject.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Jul 12, 2023 at 09:48:53PM +0800, Wenchao Hao wrote:
-> call kfree() to free memory allocated in kasprintf() to fix
-> memleak. It's easy to recurrent this memleak, just mount and
-> remount nfs at NFS client.
-> 
-> The bug is detected by kmemleak with following stack:
-> unreferenced object 0xffffa31a91fdf2c0 (size 16):
->   comm "mount.nfs", pid 960, jiffies 4294724478 (age 111892.067s)
->   hex dump (first 16 bytes):
->     73 65 72 76 65 72 2d 30 00 f2 fd 91 1a a3 ff ff  server-0........
->   backtrace:
->     [<00000000de9b21a9>] create_object+0x11/0x17
->     [<00000000ed17aa96>] kmemleak_alloc+0x6c/0x7a
->     [<000000009f4acc69>] slab_post_alloc_hook.constprop.0+0x81/0x99
->     [<00000000d2446455>] __kmem_cache_alloc_node+0x10c/0x13a
->     [<00000000eca4a704>] __kmalloc_node_track_caller+0x83/0xb7
->     [<0000000076cdb22f>] kvasprintf+0x65/0xc3
->     [<00000000f6f2e879>] kasprintf+0x4e/0x69
->     [<00000000e49d03be>] nfs_sysfs_move_sb_to_server+0x24/0x5f
->     [<0000000039127597>] nfs_kill_super+0x25/0x49
->     [<00000000e6ecf809>] deactivate_locked_super+0x35/0x74
->     [<000000003b9c3350>] deactivate_super+0x3c/0x44
->     [<00000000777c86be>] cleanup_mnt+0x6c/0xe7
->     [<000000009f181749>] __cleanup_mnt+0x12/0x18
->     [<00000000a709602e>] task_work_run+0x75/0x8c
->     [<0000000075da06ba>] exit_to_user_mode_prepare+0x79/0x102
->     [<0000000093a53d48>] syscall_exit_to_user_mode+0x1c/0x30
-> 
-> Signed-off-by: Wenchao Hao <haowenchao2@huawei.com>
-> ---
->  fs/nfs/sysfs.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
-> index acda8f033d30..bf378ecd5d9f 100644
-> --- a/fs/nfs/sysfs.c
-> +++ b/fs/nfs/sysfs.c
-> @@ -345,8 +345,10 @@ void nfs_sysfs_move_sb_to_server(struct nfs_server *server)
->  	int ret = -ENOMEM;
->  
->  	s = kasprintf(GFP_KERNEL, "server-%d", server->s_sysfs_id);
-> -	if (s)
-> +	if (s) {
->  		ret = kobject_rename(&server->kobj, s);
-> +		kfree(s);
-> +	}
->  	if (ret < 0)
->  		pr_warn("NFS: rename sysfs %s failed (%d)\n",
->  					server->kobj.name, ret);
+On Thu, Jul 6, 2023 at 5:38=E2=80=AFPM Christoph Hellwig <hch@infradead.org=
+> wrote:
+>
+> On Tue, Jul 04, 2023 at 02:21:28PM +0200, Jan Kara wrote:
+> > Create struct bdev_handle that contains all parameters that need to be
+> > passed to blkdev_put() and provide blkdev_get_handle_* functions that
+> > return this structure instead of plain bdev pointer. This will
+> > eventually allow us to pass one more argument to blkdev_put() without
+> > too much hassle.
+>
+> Can we use the opportunity to come up with better names?  blkdev_get_*
+> was always a rather horrible naming convention for something that
+> ends up calling into ->open.
+>
+> What about:
+>
+> struct bdev_handle *bdev_open_by_dev(dev_t dev, blk_mode_t mode, void *ho=
+lder,
+>                 const struct blk_holder_ops *hops);
+> struct bdev_handle *bdev_open_by_path(dev_t dev, blk_mode_t mode,
+>                 void *holder, const struct blk_holder_ops *hops);
+> void bdev_release(struct bdev_handle *handle);
 
-A fix was already posted:
++1 to this.
+Also, if we are removing "handle" from the function, should the name
+of the structure it returns also change? Would something like bdev_ctx
+be better?
 
-https://lore.kernel.org/linux-nfs/6702796fee0365bf399800326bbe6c88e5f73f68.1689014440.git.bcodding@redhat.com/
+(Apologies for the previous non-plaintext email)
+
+>
+> ?
