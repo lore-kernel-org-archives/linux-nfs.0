@@ -2,270 +2,62 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 17127C001B0
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Jul 2023 16:45:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 854F9EB64DA
+	for <linux-nfs@archiver.kernel.org>; Wed, 12 Jul 2023 15:33:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230324AbjGQQpl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Jul 2023 12:45:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49958 "EHLO
+        id S233659AbjGLPdB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 12 Jul 2023 11:33:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48898 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230086AbjGQQpk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jul 2023 12:45:40 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A684A10D1
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 09:45:38 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 35DD061159
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 16:45:38 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 274EFC433C7;
-        Mon, 17 Jul 2023 16:45:37 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1689612337;
-        bh=ag4GjKdS4J44tXAysSZlDRkLXt3VBdnh9SNBOdtBbhQ=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=QcUW3xir+8rXOmg+9JTm7ueFHSQov+pDjjCoFXVnwIFfwM88PnXVP0ICWnE5BxQ3u
-         U1+PdHnWzSk02h+aaWVtWvC+CmkXgCZSgxRa2sp2jZ8JGLFQhj6h0bZ4DrlfAtw/gi
-         86xyK3Hon6IssRuYNl05ecc/JIKLrVAnMGMIvmW0wcXblJgwSkENWfeM9bEiyUC4sy
-         mquf/rUxtmn0gCd5eRnQT7lo9NN+bropwOLwd9S2sJOwW7slj1/oOMCoDK836Gj8tE
-         me7uZ79QPm1xrXEp7K5Nao4oSu7rB8c+Arkci3kq9Bsu8/99sKtmJea4fk4qAhRlju
-         Wo9OoMVkfLX+A==
-Message-ID: <f308686aef0fee3e20da2f82db292ad6a0843918.camel@kernel.org>
-Subject: Re: [PATCH v3] NFSD: add rpc_status entry in nfsd debug filesystem
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Lorenzo Bianconi <lorenzo@kernel.org>, linux-nfs@vger.kernel.org
-Cc:     lorenzo.bianconi@redhat.com, chuck.lever@oracle.com
-Date:   Mon, 17 Jul 2023 12:45:35 -0400
-In-Reply-To: <4aa3c87872031ca42d411ed60169c6daa951620b.1689610081.git.lorenzo@kernel.org>
-References: <4aa3c87872031ca42d411ed60169c6daa951620b.1689610081.git.lorenzo@kernel.org>
-Content-Type: text/plain; charset="ISO-8859-15"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
+        with ESMTP id S232884AbjGLPc6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jul 2023 11:32:58 -0400
+Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 70720C2;
+        Wed, 12 Jul 2023 08:32:56 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+        Content-Type:In-Reply-To:From:References:To:Subject:MIME-Version:Date:
+        Message-ID:Sender:Reply-To:Cc:Content-ID:Content-Description;
+        bh=689SEK0ciFY8KgDlRHFBreHHAC2z+cvH0wQ011Q2aMI=; b=df/VKiT91ZqRa0x7ofoJaXGlph
+        PM7CRP4KkwoXZKNJlvYdkig+/LLrQ9LVGVf40H6Qaywx20JwTqHlizlUxF15FF/hdi7QMcfJ88rOM
+        Tk9o3z44pMTcermnTCrLWAF39fzqRsD0ms+1lMmZtzToJzTD0SUcPG6eXBFgIigvbDeEBrSIYXiW/
+        GnykGmmqxl8DWPpBQb6tfrtLGgdO7lnddHDuy7SXW0bC9E1PhpCLadB/V3QSWJPX+bNFvOifeRdsy
+        3Vg5gSGOgGr74Cyg+9z9dxsezgnvq5bViTggfgF6K6g7cj7jT1ssxpJXUEt4gBcr4IJbEN74vqTce
+        EZsIkLBg==;
+Received: from [2601:1c2:980:9ec0::2764]
+        by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
+        id 1qJboy-000MRl-20;
+        Wed, 12 Jul 2023 15:32:04 +0000
+Message-ID: <03e153ce-328b-f279-2a40-4074bea2bc8f@infradead.org>
+Date:   Wed, 12 Jul 2023 08:31:55 -0700
 MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.12.0
+Subject: Re: [PATCH 01/79] fs: add ctime accessors infrastructure
+Content-Language: en-US
+To:     Jeff Layton <jlayton@kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        linux-um <linux-um@lists.infradead.org>
+References: <20230621144507.55591-1-jlayton@kernel.org>
+ <20230621144507.55591-2-jlayton@kernel.org>
+From:   Randy Dunlap <rdunlap@infradead.org>
+In-Reply-To: <20230621144507.55591-2-jlayton@kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, 2023-07-17 at 18:10 +0200, Lorenzo Bianconi wrote:
-> Introduce rpc_status entry in nfsd debug filesystem in order to dump
-> pending RPC requests debugging information.
->=20
-> Link: https://bugzilla.linux-nfs.org/show_bug.cgi?id=3D366
-> Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-> ---
-> Changes since v2:
-> - minor changes in nfsd_rpc_status_show output
->=20
-> Changes since v1:
-> - rework nfsd_rpc_status_show output
->=20
-> Changes since RFCv1:
-> - riduce time holding nfsd_mutex bumping svc_serv refcoung in
->   nfsd_rpc_status_open()
-> - dump rqstp->rq_stime
-> - add missing kdoc for nfsd_rpc_status_open()
-> ---
->  fs/nfsd/nfs4proc.c |  4 +--
->  fs/nfsd/nfsctl.c   | 10 ++++++
->  fs/nfsd/nfsd.h     |  2 ++
->  fs/nfsd/nfssvc.c   | 83 ++++++++++++++++++++++++++++++++++++++++++++++
->  net/sunrpc/svc.c   |  2 +-
->  5 files changed, 97 insertions(+), 4 deletions(-)
->=20
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index d8e7a533f9d2..a7f522390a66 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -2463,8 +2463,6 @@ static inline void nfsd4_increment_op_stats(u32 opn=
-um)
-> =20
->  static const struct nfsd4_operation nfsd4_ops[];
-> =20
-> -static const char *nfsd4_op_name(unsigned opnum);
-> -
->  /*
->   * Enforce NFSv4.1 COMPOUND ordering rules:
->   *
-> @@ -3594,7 +3592,7 @@ void warn_on_nonidempotent_op(struct nfsd4_op *op)
->  	}
->  }
-> =20
-> -static const char *nfsd4_op_name(unsigned opnum)
-> +const char *nfsd4_op_name(unsigned opnum)
->  {
->  	if (opnum < ARRAY_SIZE(nfsd4_ops))
->  		return nfsd4_ops[opnum].op_name;
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 1b8b1aab9a15..629b4296e7c6 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -57,6 +57,8 @@ enum {
->  	NFSD_RecoveryDir,
->  	NFSD_V4EndGrace,
->  #endif
-> +	NFSD_Rpc_Status,
-> +
->  	NFSD_MaxReserved
->  };
-> =20
-> @@ -195,6 +197,13 @@ static inline struct net *netns(struct file *file)
->  	return file_inode(file)->i_sb->s_fs_info;
->  }
-> =20
-> +static const struct file_operations nfsd_rpc_status_operations =3D {
-> +	.open		=3D nfsd_rpc_status_open,
-> +	.read		=3D seq_read,
-> +	.llseek		=3D seq_lseek,
-> +	.release	=3D nfsd_pool_stats_release,
-> +};
-> +
->  /*
->   * write_unlock_ip - Release all locks used by a client
->   *
-> @@ -1400,6 +1409,7 @@ static int nfsd_fill_super(struct super_block *sb, =
-struct fs_context *fc)
->  		[NFSD_RecoveryDir] =3D {"nfsv4recoverydir", &transaction_ops, S_IWUSR|=
-S_IRUSR},
->  		[NFSD_V4EndGrace] =3D {"v4_end_grace", &transaction_ops, S_IWUSR|S_IRU=
-GO},
->  #endif
-> +		[NFSD_Rpc_Status] =3D {"rpc_status", &nfsd_rpc_status_operations, S_IR=
-UGO},
->  		/* last one */ {""}
->  	};
-> =20
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index d88498f8b275..75a3e1d55bc8 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -94,6 +94,7 @@ int		nfsd_get_nrthreads(int n, int *, struct net *);
->  int		nfsd_set_nrthreads(int n, int *, struct net *);
->  int		nfsd_pool_stats_open(struct inode *, struct file *);
->  int		nfsd_pool_stats_release(struct inode *, struct file *);
-> +int		nfsd_rpc_status_open(struct inode *inode, struct file *file);
->  void		nfsd_shutdown_threads(struct net *net);
-> =20
->  void		nfsd_put(struct net *net);
-> @@ -506,6 +507,7 @@ extern void nfsd4_ssc_init_umount_work(struct nfsd_ne=
-t *nn);
-> =20
->  extern void nfsd4_init_leases_net(struct nfsd_net *nn);
-> =20
-> +const char *nfsd4_op_name(unsigned opnum);
->  #else /* CONFIG_NFSD_V4 */
->  static inline int nfsd4_is_junction(struct dentry *dentry)
->  {
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 97830e28c140..3f6d53e5f579 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -1149,3 +1149,86 @@ int nfsd_pool_stats_release(struct inode *inode, s=
-truct file *file)
->  	mutex_unlock(&nfsd_mutex);
->  	return ret;
->  }
-> +
-> +static int nfsd_rpc_status_show(struct seq_file *m, void *v)
-> +{
-> +	struct inode *inode =3D file_inode(m->file);
-> +	struct nfsd_net *nn =3D net_generic(inode->i_sb->s_fs_info, nfsd_net_id=
-);
-> +	int i;
-> +
-> +	rcu_read_lock();
-> +
-> +	for (i =3D 0; i < nn->nfsd_serv->sv_nrpools; i++) {
-> +		struct svc_rqst *rqstp;
-> +
-> +		list_for_each_entry_rcu(rqstp,
-> +				&nn->nfsd_serv->sv_pools[i].sp_all_threads,
-> +				rq_all) {
-> +			if (!test_bit(RQ_BUSY, &rqstp->rq_flags))
-> +				continue;
-> +
-> +			seq_printf(m,
-> +				   "0x%08x 0x%08lx 0x%08x NFSv%d %s %016lld",
-> +				   be32_to_cpu(rqstp->rq_xid), rqstp->rq_flags,
-> +				   rqstp->rq_prog, rqstp->rq_vers,
-> +				   svc_proc_name(rqstp),
-> +				   ktime_to_us(rqstp->rq_stime));
-> +
-> +			if (rqstp->rq_addr.ss_family =3D=3D AF_INET)
-> +				seq_printf(m, " %pI4 %pI4",
-> +					   &((struct sockaddr_in *)&rqstp->rq_addr)->sin_addr,
-> +					   &((struct sockaddr_in *)&rqstp->rq_daddr)->sin_addr);
-> +			else if (rqstp->rq_addr.ss_family =3D=3D AF_INET6)
-> +				seq_printf(m, " %pI6 %pI6",
-> +					   &((struct sockaddr_in6 *)&rqstp->rq_addr)->sin6_addr,
-> +					   &((struct sockaddr_in6 *)&rqstp->rq_daddr)->sin6_addr);
-> +			else
-> +				seq_printf(m, " unknown:%hu unknown:%hu",
-> +					   rqstp->rq_addr.ss_family,
-> +					   rqstp->rq_daddr.ss_family);
-> +#ifdef CONFIG_NFSD_V4
-> +			if (rqstp->rq_vers =3D=3D NFS4_VERSION &&
-> +			    rqstp->rq_proc =3D=3D NFSPROC4_COMPOUND) {
-> +				/* NFSv4 compund */
-> +				struct nfsd4_compoundargs *args =3D rqstp->rq_argp;
-> +				struct nfsd4_compoundres *resp =3D rqstp->rq_resp;
-> +
-> +				while (resp->opcnt < args->opcnt) {
-> +					struct nfsd4_op *op =3D &args->ops[resp->opcnt++];
-> +
-> +					seq_printf(m, " %s%s", nfsd4_op_name(op->opnum),
-> +						   resp->opcnt < args->opcnt ? ":" : "");
-> +				}
-> +			}
-> +#endif /* CONFIG_NFSD_V4 */
-> +			seq_puts(m, "\n");
-> +		}
-> +	}
-> +
-> +	rcu_read_unlock();
-> +
-> +	return 0;
-> +}
-> +
-> +/**
-> + * nfsd_rpc_status_open - Atomically copy a write verifier
-> + * @inode: entry inode pointer.
-> + * @file: entry file pointer.
-> + *
-> + * This routine dumps pending RPC requests info queued into nfs server.
-> + */
-> +int nfsd_rpc_status_open(struct inode *inode, struct file *file)
-> +{
-> +	struct nfsd_net *nn =3D net_generic(inode->i_sb->s_fs_info, nfsd_net_id=
-);
-> +
-> +	mutex_lock(&nfsd_mutex);
-> +	if (!nn->nfsd_serv) {
-> +		mutex_unlock(&nfsd_mutex);
-> +		return -ENODEV;
-> +	}
-> +
-> +	svc_get(nn->nfsd_serv);
-> +	mutex_unlock(&nfsd_mutex);
-> +
-> +	return single_open(file, nfsd_rpc_status_show, inode->i_private);
-> +}
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 587811a002c9..44eac83b35a1 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -1629,7 +1629,7 @@ const char *svc_proc_name(const struct svc_rqst *rq=
-stp)
->  		return rqstp->rq_procinfo->pc_name;
->  	return "unknown";
->  }
-> -
-> +EXPORT_SYMBOL_GPL(svc_proc_name);
-> =20
->  /**
->   * svc_encode_result_payload - mark a range of bytes as a result payload
+Hi Jeff,
 
-Nice work, Lorenzo!
+On arch/um/, (subarch i386 or x86_64), hostfs build fails with:
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+../fs/hostfs/hostfs_kern.c:520:36: error: incompatible type for arg
+ument 2 of 'inode_set_ctime_to_ts'
+../include/linux/fs.h:1499:73: note: expected 'struct timespec64' b
+ut argument is of type 'const struct hostfs_timespec *'
+
+
+-- 
+~Randy
