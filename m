@@ -2,44 +2,43 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A9002C001B0
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Jul 2023 18:11:56 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0202BEB64DC
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Jul 2023 18:12:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236523AbjGNSLy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Jul 2023 14:11:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58916 "EHLO
+        id S236514AbjGNSMR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Jul 2023 14:12:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59436 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236369AbjGNSLv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jul 2023 14:11:51 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B1CC03C33
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Jul 2023 11:11:24 -0700 (PDT)
+        with ESMTP id S236516AbjGNSMP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jul 2023 14:12:15 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6AE72121
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Jul 2023 11:11:53 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id EA78561D96
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Jul 2023 18:10:58 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1272CC433C7;
-        Fri, 14 Jul 2023 18:10:58 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0272461DB9
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Jul 2023 18:10:33 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1EEB3C433C8;
+        Fri, 14 Jul 2023 18:10:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1689358258;
-        bh=bxTAZ0rCFm1dsqjLX5lA1j5rbtFHpQAZvI1adKlXSo0=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=ozgRLv466jxGoGME6dN6gOohalvCaZCxpcqp4/qBQfhgKuBUEM5zcgjdfbq1XQg5e
-         NmsVM+37aQwGegDpvxIZWyMQbL7Djz6REMqNZcxi3XDPx1gVBYyVjzHi9VK91lugx0
-         iDzhmg/M/pm2Q1XfIz2PTGcvrbktwtbsFcicZAIx8L2wneqOgmbcPOWNBGOUuW+/KX
-         x7++FCib52tddkhe2iRa0ZU0MFL7ITLoIpEYOiStb69B/6Vrs9jb0nawn5iCPhY3RV
-         pe0p5iKLCTdtkbI3OeP7SwgQ8N3ZpqpJnyn1G4rIHdqmm3q3X3MpaTn8+Q3Lj0IXYn
-         5C4d7WZSOU+tg==
-Subject: [PATCH v2 4/4] SUNRPC: Use a per-transport receive bio_vec array
+        s=k20201202; t=1689358232;
+        bh=tCSyUkciooppcZwDR0Q7o35bPDL9xjwwyAUn+D0Uoi4=;
+        h=Subject:From:To:Cc:Date:From;
+        b=p0ugFphLvI45UrVhJZWH9bZaavDTyRYwIznSY3XFJ6RTTQ9rlgNq7lasm26oSt/pk
+         vmJXmoDiOoDhrwNeBwJ9EXmo5+YujPri169UoqCdazjF4/4wZG0gn9q7ggoXPzgf9T
+         mnbkNfi2zpVPy82Pn9WartxtMi1BDblHAVqXUT1Je6QJ5HanOlW4JECvCBVHeZz4RB
+         aulsAJrA/Nq/aBdZSQmiaoppC/EYnOL4R6J588qOtugaQIA15hBLLejNkONLjfCNwi
+         dtGas1JZTKJ3On2v3R89C5lMeD3WfSwsBEr3pCQm5nkEdss8d2SqCV1o66gIGKNHuo
+         lA1M3sknRWuEA==
+Subject: [PATCH v2 0/4] Send RPC-on-TCP with one sock_sendmsg() call
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Cc:     Chuck Lever <chuck.lever@oracle.com>, dhowells@redhat.com
-Date:   Fri, 14 Jul 2023 14:10:57 -0400
-Message-ID: <168935825709.1984.4898358403212846149.stgit@manet.1015granger.net>
-In-Reply-To: <168935791041.1984.13295336680505732841.stgit@manet.1015granger.net>
-References: <168935791041.1984.13295336680505732841.stgit@manet.1015granger.net>
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        David Howells <dhowells@redhat.com>, dhowells@redhat.com
+Date:   Fri, 14 Jul 2023 14:10:31 -0400
+Message-ID: <168935791041.1984.13295336680505732841.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -48,56 +47,39 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Chuck Lever <chuck.lever@oracle.com>
+After some discussion with David Howells at LSF/MM 2023, we arrived
+at a plan to use a single sock_sendmsg() call for transmitting an
+RPC message on socket-based transports. This is an initial part of
+the transition to support handling folios with file content, but it
+has scalability benefits as well.
 
-TCP receives are serialized, so we need only one bio_vec array per
-socket. This shrinks the size of struct svc_rqst by 4144 bytes on
-x86_64.
+This series passes the usual set of NFS-based tests. I've found no
+behavior regressions so far. From the netdev folks, I'm interested
+to know if this approach is sensible. The next step is performance
+benchmarking.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+
+Changes since RFC:
+* Moved xdr_buf-to-bio_vec array helper to generic XDR code
+* Added bio_vec array bounds-checking
+* Re-ordered patches
+
 ---
- include/linux/sunrpc/svc.h     |    1 -
- include/linux/sunrpc/svcsock.h |    2 ++
- net/sunrpc/svcsock.c           |    2 +-
- 3 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index f8751118c122..36052188222d 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -224,7 +224,6 @@ struct svc_rqst {
- 
- 	struct folio_batch	rq_fbatch;
- 	struct kvec		rq_vec[RPCSVC_MAXPAGES]; /* generally useful.. */
--	struct bio_vec		rq_bvec[RPCSVC_MAXPAGES];
- 
- 	__be32			rq_xid;		/* transmission id */
- 	u32			rq_prog;	/* program number */
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index baea012e3b04..55446136499f 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -42,6 +42,8 @@ struct svc_sock {
- 
- 	struct completion	sk_handshake_done;
- 
-+	struct bio_vec		sk_recv_bvec[RPCSVC_MAXPAGES]
-+						____cacheline_aligned;
- 	struct bio_vec		sk_send_bvec[RPCSVC_MAXPAGES]
- 						____cacheline_aligned;
- 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index e164ea4d0e0a..5cbc35e23e4f 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -299,7 +299,7 @@ static ssize_t svc_tcp_read_msg(struct svc_rqst *rqstp, size_t buflen,
- {
- 	struct svc_sock *svsk =
- 		container_of(rqstp->rq_xprt, struct svc_sock, sk_xprt);
--	struct bio_vec *bvec = rqstp->rq_bvec;
-+	struct bio_vec *bvec = svsk->sk_recv_bvec;
- 	struct msghdr msg = { NULL };
- 	unsigned int i;
- 	ssize_t len;
+Chuck Lever (4):
+      SUNRPC: Convert svc_tcp_sendmsg to use bio_vecs directly
+      SUNRPC: Send RPC message on TCP with a single sock_sendmsg() call
+      SUNRPC: Convert svc_udp_sendto() to use the per-socket bio_vec array
+      SUNRPC: Use a per-transport receive bio_vec array
 
+
+ include/linux/sunrpc/svc.h     |   1 -
+ include/linux/sunrpc/svcsock.h |   7 +++
+ include/linux/sunrpc/xdr.h     |   2 +
+ net/sunrpc/svcsock.c           | 111 ++++++++++++++-------------------
+ net/sunrpc/xdr.c               |  50 +++++++++++++++
+ 5 files changed, 107 insertions(+), 64 deletions(-)
+
+--
+Chuck Lever
 
