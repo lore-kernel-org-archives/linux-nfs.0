@@ -2,43 +2,43 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0202BEB64DC
-	for <linux-nfs@archiver.kernel.org>; Fri, 14 Jul 2023 18:12:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F544EB64DC
+	for <linux-nfs@archiver.kernel.org>; Fri, 14 Jul 2023 18:36:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S236514AbjGNSMR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 14 Jul 2023 14:12:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59436 "EHLO
+        id S235895AbjGNSgY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 14 Jul 2023 14:36:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47674 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236516AbjGNSMP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jul 2023 14:12:15 -0400
+        with ESMTP id S236359AbjGNSgW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jul 2023 14:36:22 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6AE72121
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Jul 2023 11:11:53 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E9CEA26B6
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Jul 2023 11:36:20 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 0272461DB9
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Jul 2023 18:10:33 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1EEB3C433C8;
-        Fri, 14 Jul 2023 18:10:32 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 87DBE61DC2
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Jul 2023 18:36:20 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A0933C433C8;
+        Fri, 14 Jul 2023 18:36:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1689358232;
-        bh=tCSyUkciooppcZwDR0Q7o35bPDL9xjwwyAUn+D0Uoi4=;
+        s=k20201202; t=1689359779;
+        bh=Dv12fPbn55bYujD9Y8vvYBg+PDh+dMBt+YEUEyQgtrU=;
         h=Subject:From:To:Cc:Date:From;
-        b=p0ugFphLvI45UrVhJZWH9bZaavDTyRYwIznSY3XFJ6RTTQ9rlgNq7lasm26oSt/pk
-         vmJXmoDiOoDhrwNeBwJ9EXmo5+YujPri169UoqCdazjF4/4wZG0gn9q7ggoXPzgf9T
-         mnbkNfi2zpVPy82Pn9WartxtMi1BDblHAVqXUT1Je6QJ5HanOlW4JECvCBVHeZz4RB
-         aulsAJrA/Nq/aBdZSQmiaoppC/EYnOL4R6J588qOtugaQIA15hBLLejNkONLjfCNwi
-         dtGas1JZTKJ3On2v3R89C5lMeD3WfSwsBEr3pCQm5nkEdss8d2SqCV1o66gIGKNHuo
-         lA1M3sknRWuEA==
-Subject: [PATCH v2 0/4] Send RPC-on-TCP with one sock_sendmsg() call
+        b=fuak3dJeVNJOJcnZ6qxBHC+na72LPWu5oQ/wdSm1lno58CGAxPOXm7p5iFf1lTInv
+         lbxcWk7lI39yWZEF7i6f1u9l0eb6BOZTQ96ujPUhDTZtTAOekU9WmWw3FASYNQADJf
+         gZ9dFde0Qy7Olej4ZVFsTVCCbQ5x2u0ZMUKujkmjvNoc44AyRoTJWbQyxGU7nkvvPs
+         Y5a7ijqHlmll+rlWheGly5FiyDdkFBI91YY+/YLOyD0g8OC89ktBIziFRTJ7hrwzYB
+         J4ZAQQF2DvlqumplTrlzkTFd/wq7kzr+FOyaXicyR7eAKda68bjnEG3B3OrlMvHflt
+         8w1bq3+RkPSjw==
+Subject: [PATCH v1] nfs(5): Document the new "xprtsec=" mount option
 From:   Chuck Lever <cel@kernel.org>
-To:     linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        David Howells <dhowells@redhat.com>, dhowells@redhat.com
-Date:   Fri, 14 Jul 2023 14:10:31 -0400
-Message-ID: <168935791041.1984.13295336680505732841.stgit@manet.1015granger.net>
+To:     SteveD@redhat.com
+Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        kernel-tls-handshake@lists.linux.dev
+Date:   Fri, 14 Jul 2023 14:36:18 -0400
+Message-ID: <168935977873.1850.8214830433103692090.stgit@bazille.1015granger.net>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -47,39 +47,64 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-After some discussion with David Howells at LSF/MM 2023, we arrived
-at a plan to use a single sock_sendmsg() call for transmitting an
-RPC message on socket-based transports. This is an initial part of
-the transition to support handling folios with file content, but it
-has scalability benefits as well.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-This series passes the usual set of NFS-based tests. I've found no
-behavior regressions so far. From the netdev folks, I'm interested
-to know if this approach is sensible. The next step is performance
-benchmarking.
+More information about RPC-with-TLS and some brief set-up guidance
+are to be provided in a separate man page in Section 7.
 
-
-Changes since RFC:
-* Moved xdr_buf-to-bio_vec array helper to generic XDR code
-* Added bio_vec array bounds-checking
-* Re-ordered patches
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ utils/mount/nfs.man |   38 +++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 37 insertions(+), 1 deletion(-)
 
-Chuck Lever (4):
-      SUNRPC: Convert svc_tcp_sendmsg to use bio_vecs directly
-      SUNRPC: Send RPC message on TCP with a single sock_sendmsg() call
-      SUNRPC: Convert svc_udp_sendto() to use the per-socket bio_vec array
-      SUNRPC: Use a per-transport receive bio_vec array
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index d9f34df36b42..dfc31a5dad26 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -574,7 +574,43 @@ The
+ .B sloppy
+ option is an alternative to specifying
+ .BR mount.nfs " -s " option.
+-
++.TP 1.5i
++.BI xprtsec= policy
++Specifies the use of transport layer security to protect NFS network
++traffic on behalf of this mount point.
++.I policy
++can be one of
++.BR none ,
++.BR tls ,
++or
++.BR mtls .
++.IP
++If
++.B none
++is specified,
++transport layer security is forced off, even if the NFS server supports
++transport layer security.
++If
++.B tls
++is specified, the client uses RPC-with-TLS to provide in-transit
++confidentiality.
++If
++.B mtls
++is specified, the client uses RPC-with-TLS to authenticate itself and
++to provide in-transit confidentiality.
++If either
++.B tls
++or
++.B mtls
++is specified and the server does not support RPC-with-TLS or peer
++authentication fails, the mount attempt fails.
++.IP
++If the
++.B xprtsec=
++option is not specified,
++the default behavior depends on the kernel version,
++but is usually equivalent to
++.BR "xprtsec=none" .
+ .SS "Options for NFS versions 2 and 3 only"
+ Use these options, along with the options in the above subsection,
+ for NFS versions 2 and 3 only.
 
-
- include/linux/sunrpc/svc.h     |   1 -
- include/linux/sunrpc/svcsock.h |   7 +++
- include/linux/sunrpc/xdr.h     |   2 +
- net/sunrpc/svcsock.c           | 111 ++++++++++++++-------------------
- net/sunrpc/xdr.c               |  50 +++++++++++++++
- 5 files changed, 107 insertions(+), 64 deletions(-)
-
---
-Chuck Lever
 
