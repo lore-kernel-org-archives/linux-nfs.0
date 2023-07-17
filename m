@@ -2,71 +2,72 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 66D7DEB64DC
-	for <linux-nfs@archiver.kernel.org>; Mon, 17 Jul 2023 21:50:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 45FF8EB64DC
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Jul 2023 21:50:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229579AbjGQVuF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Jul 2023 17:50:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59648 "EHLO
+        id S229790AbjGQVur (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Jul 2023 17:50:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59938 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229458AbjGQVuE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jul 2023 17:50:04 -0400
+        with ESMTP id S229458AbjGQVuq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jul 2023 17:50:46 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7F57318C
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 14:49:17 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 926EB18D
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 14:50:00 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1689630556;
+        s=mimecast20190719; t=1689630599;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=SUsbOV58nTmrf8yVoHZfbYogGzZNZw+5WJGeG44s1AM=;
-        b=VMUHfrGK3VeABXl6wi8LZuSvARRSalxR/ConhlWPBdNnUj85UAsIbRtKMbnY99sGH5Nb5C
-        qKmIxSLr6Qyq/mLFdbzXgfeXPFSJgBUhgRZg9Cc8zdpwh8+YE23+Kxl0T3gCj1XM7Rth8N
-        mOLHKeaIlnTcw5WvWRydy5H3N5ZXOVo=
-Received: from mail-qt1-f197.google.com (mail-qt1-f197.google.com
- [209.85.160.197]) by relay.mimecast.com with ESMTP with STARTTLS
+        bh=ccmrDravX+l8BnwK6ZugjyBUfbAn5Q5vDrg1z9gSlUo=;
+        b=HOVt5Z5BI+nqwtRi53ogEPR8QHqqWc2cRWbOQaLhE7uw+zw8MJilcNeBjgtc1z5YzXzL16
+        81bidKOXoPQd6/vPnxdPU8vKvQZ9hZGjSOyjbczBLt0E2HYvjwxSnsG5o75TcFGUkreDZ7
+        T1MRL5V6ID8igz2PdxgUft6q02Bqm4s=
+Received: from mail-qk1-f197.google.com (mail-qk1-f197.google.com
+ [209.85.222.197]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-509-vSNtojDyNZKmYRRIwqsA1Q-1; Mon, 17 Jul 2023 17:49:14 -0400
-X-MC-Unique: vSNtojDyNZKmYRRIwqsA1Q-1
-Received: by mail-qt1-f197.google.com with SMTP id d75a77b69052e-401e1fc831fso9031101cf.1
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 14:49:14 -0700 (PDT)
+ us-mta-557--HwMt-PpPRax11NOywiPmg-1; Mon, 17 Jul 2023 17:49:58 -0400
+X-MC-Unique: -HwMt-PpPRax11NOywiPmg-1
+Received: by mail-qk1-f197.google.com with SMTP id af79cd13be357-765ad67e690so120404685a.1
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 14:49:58 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1689630554; x=1692222554;
+        d=1e100.net; s=20221208; t=1689630598; x=1690235398;
         h=content-transfer-encoding:in-reply-to:from:references:cc:to
          :content-language:subject:user-agent:mime-version:date:message-id
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=SUsbOV58nTmrf8yVoHZfbYogGzZNZw+5WJGeG44s1AM=;
-        b=Ve0yQGF1fxe8yapTnJYHzt9vaWE5Eggl8j2J6nbLqKYzzUIk0y5Z5emmZmDE4O5IEl
-         wCS+xnlLe7U8nPYBJKSBGNlgR0OGBIQqZzGU5nicWtA0jtmPoii0lo9s9tKFVzz/eI2i
-         J2WfAOI50FDJ/U7denVjPAnblLGDpInW/nsdfYb9X8Nt1VPNcc1Mc+8pCYm5+MRE6cXM
-         MZvdXQX2gNnL/vm2d3IE5nlrzEkhD6ooYb7wuoxzpmsFv3w68fV0jAtfLdcgVMSyxO/Z
-         wnHl+sC3Xo2Oyj/mteTpKg2wJHUYAWTpnO4OVpKH8B0UlA/7P8pj5upEjrHApKH1augK
-         Z82g==
-X-Gm-Message-State: ABy/qLYXPoaBqpnbYKZbCkKKMz7gR6gw17ihC8n819PZzC4ha+/wSZ2t
-        EO7K5uEXgrk2vNPMnVG4C0/6ZfnqniB3bDAABCUbGyy6zk+q5EL+bDtb+HZ09Cw5iK99O0yoRYG
-        6BTsMY4/TcufPeA24N5UA
-X-Received: by 2002:a05:6214:2aa8:b0:625:86ed:8ab4 with SMTP id js8-20020a0562142aa800b0062586ed8ab4mr9935683qvb.3.1689630553867;
-        Mon, 17 Jul 2023 14:49:13 -0700 (PDT)
-X-Google-Smtp-Source: APBJJlFalgQZ4qvKzPaXLVGInV8DQnwXdKZtgu+9cFviEGWrApTb5CQt2cXQ9MyF/Dc4LUkLur+pzg==
-X-Received: by 2002:a05:6214:2aa8:b0:625:86ed:8ab4 with SMTP id js8-20020a0562142aa800b0062586ed8ab4mr9935668qvb.3.1689630553530;
-        Mon, 17 Jul 2023 14:49:13 -0700 (PDT)
+        bh=ccmrDravX+l8BnwK6ZugjyBUfbAn5Q5vDrg1z9gSlUo=;
+        b=fimqStRLV15GSyfI9buGt4mfE+VWUVS2mTuPSU/Fnmp9dsp9CAFA1qinLqJmIY5X35
+         mTxq3nwb0XH/DKGq1RH06G3k3aKkQJ882u/m0dQT1TsAH+oRb8RHoIIcOOonY/paVWiv
+         iH9DAv5KbqjJRi7gClgkU+PZlzbrzJoigwIgBWgNroYwC9KZL+A1QXoRikrls7YRAZMf
+         rInjzq1/MG/cKdUFhvJh13bJ3OIYmdTuv8o+NfzV40WxHNOjliwmMzq2nq8QAn+Pkhml
+         F/Kl0v87NRmBZv+7F3qMhb3kQhs0mY74jz9Ir3Yv8i5xxjh9XJf3NhYcWSGu3tzWwQqA
+         JQVA==
+X-Gm-Message-State: ABy/qLZAX80ILqJECWf0kUk76B2f9+mLnm+ASEGxiq30HV1dVr7eQr0Q
+        zrrVZlvKU1l+85Q21VolXBBxq+SfL4cU4pSEVBngKte5zk3wTjvBI2t1vV0nPwCNtoqM1frFfTj
+        t6LOTXCguBnDgtOZT1Al7
+X-Received: by 2002:ad4:5de2:0:b0:636:e4f:6b88 with SMTP id jn2-20020ad45de2000000b006360e4f6b88mr14551172qvb.1.1689630598155;
+        Mon, 17 Jul 2023 14:49:58 -0700 (PDT)
+X-Google-Smtp-Source: APBJJlFcxdZMpFQNuKsb/uCBhcCKRYz1VF08xdYyYv43Aj4LGTL2/w8t9NpTP9YR5UZQHmOSEjxBQg==
+X-Received: by 2002:ad4:5de2:0:b0:636:e4f:6b88 with SMTP id jn2-20020ad45de2000000b006360e4f6b88mr14551163qvb.1.1689630597887;
+        Mon, 17 Jul 2023 14:49:57 -0700 (PDT)
 Received: from [172.31.1.12] ([70.105.251.231])
-        by smtp.gmail.com with ESMTPSA id g15-20020a0caacf000000b006263c531f61sm222521qvb.24.2023.07.17.14.49.12
+        by smtp.gmail.com with ESMTPSA id u12-20020a0cf1cc000000b006360778f314sm177712qvl.105.2023.07.17.14.49.56
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 17 Jul 2023 14:49:13 -0700 (PDT)
-Message-ID: <b2663a92-7947-d528-b852-fab3552ea867@redhat.com>
-Date:   Mon, 17 Jul 2023 17:49:12 -0400
+        Mon, 17 Jul 2023 14:49:57 -0700 (PDT)
+Message-ID: <31b09cc8-e34c-00b1-dfff-38c806f2c35e@redhat.com>
+Date:   Mon, 17 Jul 2023 17:49:56 -0400
 MIME-Version: 1.0
 User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
  Thunderbird/102.12.0
-Subject: Re: [PATCH nfs-utils] start-statd: Fix shellcheck warnings
+Subject: Re: [PATCH v1] nfs(5): Document the new "xprtsec=" mount option
 Content-Language: en-US
-To:     Salvatore Bonaccorso <carnil@debian.org>, NeilBrown <neilb@suse.de>
-Cc:     linux-nfs@vger.kernel.org, Ben Hutchings <benh@debian.org>
-References: <20230709072028.829990-1-carnil@debian.org>
+To:     Chuck Lever <cel@kernel.org>
+Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        kernel-tls-handshake@lists.linux.dev
+References: <168935977873.1850.8214830433103692090.stgit@bazille.1015granger.net>
 From:   Steve Dickson <steved@redhat.com>
-In-Reply-To: <20230709072028.829990-1-carnil@debian.org>
+In-Reply-To: <168935977873.1850.8214830433103692090.stgit@bazille.1015granger.net>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 Precedence: bulk
@@ -75,51 +76,69 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 
 
-On 7/9/23 3:20 AM, Salvatore Bonaccorso wrote:
-> From: Ben Hutchings <benh@debian.org>
+On 7/14/23 2:36 PM, Chuck Lever wrote:
+> From: Chuck Lever <chuck.lever@oracle.com>
 > 
-> shellcheck currently complains:
+> More information about RPC-with-TLS and some brief set-up guidance
+> are to be provided in a separate man page in Section 7.
 > 
-> In utils/statd/start-statd line 14:
->         [ 1`cat /run/rpc.statd.pid` -gt 1 ] &&
->            ^----------------------^ SC2046 (warning): Quote this to prevent word splitting.
->            ^----------------------^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
-> 
-> Did you mean:
->         [ 1$(cat /run/rpc.statd.pid) -gt 1 ] &&
-> 
-> In utils/statd/start-statd line 15:
->         kill -0 `cat /run/rpc.statd.pid` > /dev/null 2>&1
->                 ^----------------------^ SC2046 (warning): Quote this to prevent word splitting.
->                 ^----------------------^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
-> 
-> Did you mean:
->         kill -0 $(cat /run/rpc.statd.pid) > /dev/null 2>&1
-> 
-> Use quotes and $() as recommended.
-> 
-> Signed-off-by: Ben Hutchings <benh@debian.org>
-> Signed-off-by: Salvatore Bonaccorso <carnil@debian.org>
-Committed (tag: nfs-utils-2-6-4-rc3)
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Committed... (tag: nfs-utils-2-6-4-rc3)
 
 steved.
 > ---
->   utils/statd/start-statd | 4 ++--
->   1 file changed, 2 insertions(+), 2 deletions(-)
+>   utils/mount/nfs.man |   38 +++++++++++++++++++++++++++++++++++++-
+>   1 file changed, 37 insertions(+), 1 deletion(-)
 > 
-> diff --git a/utils/statd/start-statd b/utils/statd/start-statd
-> index 2baf73c385cf..b11a7d91a7f6 100755
-> --- a/utils/statd/start-statd
-> +++ b/utils/statd/start-statd
-> @@ -11,8 +11,8 @@ exec 9> /run/rpc.statd.lock
->   flock -e 9
->   
->   if [ -s /run/rpc.statd.pid ] &&
-> -       [ 1`cat /run/rpc.statd.pid` -gt 1 ] &&
-> -       kill -0 `cat /run/rpc.statd.pid` > /dev/null 2>&1
-> +       [ "1$(cat /run/rpc.statd.pid)" -gt 1 ] &&
-> +       kill -0 "$(cat /run/rpc.statd.pid)" > /dev/null 2>&1
->   then
->       # statd already running - must have been slow to respond.
->       exit 0
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index d9f34df36b42..dfc31a5dad26 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -574,7 +574,43 @@ The
+>   .B sloppy
+>   option is an alternative to specifying
+>   .BR mount.nfs " -s " option.
+> -
+> +.TP 1.5i
+> +.BI xprtsec= policy
+> +Specifies the use of transport layer security to protect NFS network
+> +traffic on behalf of this mount point.
+> +.I policy
+> +can be one of
+> +.BR none ,
+> +.BR tls ,
+> +or
+> +.BR mtls .
+> +.IP
+> +If
+> +.B none
+> +is specified,
+> +transport layer security is forced off, even if the NFS server supports
+> +transport layer security.
+> +If
+> +.B tls
+> +is specified, the client uses RPC-with-TLS to provide in-transit
+> +confidentiality.
+> +If
+> +.B mtls
+> +is specified, the client uses RPC-with-TLS to authenticate itself and
+> +to provide in-transit confidentiality.
+> +If either
+> +.B tls
+> +or
+> +.B mtls
+> +is specified and the server does not support RPC-with-TLS or peer
+> +authentication fails, the mount attempt fails.
+> +.IP
+> +If the
+> +.B xprtsec=
+> +option is not specified,
+> +the default behavior depends on the kernel version,
+> +but is usually equivalent to
+> +.BR "xprtsec=none" .
+>   .SS "Options for NFS versions 2 and 3 only"
+>   Use these options, along with the options in the above subsection,
+>   for NFS versions 2 and 3 only.
+> 
+> 
 
