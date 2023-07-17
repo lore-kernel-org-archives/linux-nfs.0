@@ -2,43 +2,45 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A3A3EB64DC
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 037AFC001B0
 	for <linux-nfs@archiver.kernel.org>; Mon, 17 Jul 2023 20:53:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231327AbjGQUxW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 17 Jul 2023 16:53:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43592 "EHLO
+        id S229690AbjGQUxX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Jul 2023 16:53:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43614 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229690AbjGQUxR (ORCPT
+        with ESMTP id S231288AbjGQUxR (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jul 2023 16:53:17 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C70FB10C8
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 13:52:41 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 04E741702
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 13:52:43 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 511E6611EA
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 20:52:41 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4CBFDC433C8;
-        Mon, 17 Jul 2023 20:52:40 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 8193F61265
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 20:52:42 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 89033C433C7;
+        Mon, 17 Jul 2023 20:52:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1689627160;
-        bh=h59xsKMFcnYKuOjWPjmlOPTlgmo5NrealDwNq1F03/k=;
-        h=From:To:Cc:Subject:Date:From;
-        b=gAbL96hh0S5nC/KOVH6N6w2sHFxvwaaRFjQTiCG40DPvU/33q8MpkDzDalsQnKz/I
-         lkfjFO5gwZmJUFoZHzxkl7vQt7iNL9pHYTTfvOz6x10wzu33njYAMlwCYCFIpb2S+r
-         lzXXA8UsthjcExDC/s7nnEZZPj8rXL8LweEsBnqCiS0v2lbUf4T2oojs9vKNRXbKn6
-         eZKrR9BFJV7DJFB1by4tp0/XlNMng/Hz+0xaam3fRcS20ykdefCsPTThy+uEOpOSS+
-         LM/awsparR07amXbQVyKnTJbmr2Nd2EsDhNhuIOK33irf93uakjWh7naI67A0s2xdc
-         dFlgXOut+1XOQ==
+        s=k20201202; t=1689627161;
+        bh=fR3gJSpm32obogOfvijfq+oe3qtayu6qbsZyOoujcHg=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=tmHgmvOiV0TH4nT2gfYVEbNv+wKdyI2/vl4pIPmR4UgIahagfJvGWTJ2crMuwIq4j
+         OBiDtTwMwodxIi9sUFbioL92p4DSay/9yshfZ7dBX4Q3S5zkuSyU3eTLuXcr/saUhE
+         UdE4RpSKLmsoLhX9fMcpgpz4h80ye+rMQ3+BzaBxkV/toy5HElvEN3IBvcNvHBGUcB
+         AU3e1QqySwv+9/OoD3/nvfPo2dcr7ZMtewkKnKQlEG2GJPE409pieBnOZiJBjRN4D9
+         66IsN5X5l3glLspTtnTS9cbjDfUqrucgw++hNsrQ2dZFubbor4N45QbBQGu5eqIsO/
+         XGO10B9WG1vdQ==
 From:   Anna Schumaker <anna@kernel.org>
 To:     linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com
 Cc:     anna@kernel.org, krzysztof.kozlowski@linaro.org
-Subject: [PATCH v5 0/5] NFSv4.2: Various READ_PLUS fixes
-Date:   Mon, 17 Jul 2023 16:52:34 -0400
-Message-ID: <20230717205239.921002-1-anna@kernel.org>
+Subject: [PATCH v5 2/5] NFSv4.2: Fix READ_PLUS size calculations
+Date:   Mon, 17 Jul 2023 16:52:36 -0400
+Message-ID: <20230717205239.921002-3-anna@kernel.org>
 X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230717205239.921002-1-anna@kernel.org>
+References: <20230717205239.921002-1-anna@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -47,41 +49,52 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-These patches are a handul of fixes I've done recently to the READ_PLUS
-code. This includes fixing some smatch warnings, fixing the XDR reply
-length calculation, improving scratch buffer handling, and having
-xdr_inline_decode() kmap pages if we detect that they're HIGHMEM so we
-don't oops during READ_PLUS xdr decoding.
+I bump the decode_read_plus_maxsz to account for hole segments, but I
+need to subtract out this increase when calling
+rpc_prepare_reply_pages() so the common case of single data segment
+replies can be directly placed into the xdr pages without needing to be
+shifted around.
 
-I also (optimistically) have a patch at the end to enable
-CONFIG_READ_PLUS by default. My hope right now is that we can enable
-READ_PLUS for Linux 6.6, and remove it entirely in 6.7 if all goes well.
+Reported-by: Chuck Lever <chuck.lever@oracle.com>
+Fixes: d3b00a802c845 ("NFS: Replace the READ_PLUS decoding code")
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/nfs42xdr.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-Thoughts? Patch #4 probably needs the most review, and I'm open to other
-approaches if something else makes more sense!
-
-Thanks,
-Anna
-
-Anna Schumaker (5):
-  NFSv4.2: Fix READ_PLUS smatch warnings
-  NFSv4.2: Fix READ_PLUS size calculations
-  NFSv4.2: Rework scratch handling for READ_PLUS (again)
-  SUNRPC: kmap() the xdr pages during decode
-  NFS: Enable the READ_PLUS operation by default
-
- fs/nfs/Kconfig             |  6 ++----
- fs/nfs/internal.h          |  1 +
- fs/nfs/nfs42.h             |  1 +
- fs/nfs/nfs42xdr.c          | 17 +++++++++++------
- fs/nfs/nfs4proc.c          | 13 +------------
- fs/nfs/read.c              | 10 ++++++++++
- include/linux/sunrpc/xdr.h |  2 ++
- net/sunrpc/clnt.c          |  1 +
- net/sunrpc/svc.c           |  2 ++
- net/sunrpc/xdr.c           | 17 ++++++++++++++++-
- 10 files changed, 47 insertions(+), 23 deletions(-)
-
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index d0919c5bf61c..78193f04d892 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -54,10 +54,16 @@
+ 					(1 /* data_content4 */ + \
+ 					 2 /* data_info4.di_offset */ + \
+ 					 1 /* data_info4.di_length */)
++#define NFS42_READ_PLUS_HOLE_SEGMENT_SIZE \
++					(1 /* data_content4 */ + \
++					 2 /* data_info4.di_offset */ + \
++					 2 /* data_info4.di_length */)
++#define READ_PLUS_SEGMENT_SIZE_DIFF	(NFS42_READ_PLUS_HOLE_SEGMENT_SIZE - \
++					 NFS42_READ_PLUS_DATA_SEGMENT_SIZE)
+ #define decode_read_plus_maxsz		(op_decode_hdr_maxsz + \
+ 					 1 /* rpr_eof */ + \
+ 					 1 /* rpr_contents count */ + \
+-					 NFS42_READ_PLUS_DATA_SEGMENT_SIZE)
++					 NFS42_READ_PLUS_HOLE_SEGMENT_SIZE)
+ #define encode_seek_maxsz		(op_encode_hdr_maxsz + \
+ 					 encode_stateid_maxsz + \
+ 					 2 /* offset */ + \
+@@ -617,8 +623,8 @@ static void nfs4_xdr_enc_read_plus(struct rpc_rqst *req,
+ 	encode_putfh(xdr, args->fh, &hdr);
+ 	encode_read_plus(xdr, args, &hdr);
+ 
+-	rpc_prepare_reply_pages(req, args->pages, args->pgbase,
+-				args->count, hdr.replen);
++	rpc_prepare_reply_pages(req, args->pages, args->pgbase, args->count,
++				hdr.replen - READ_PLUS_SEGMENT_SIZE_DIFF);
+ 	encode_nops(&hdr);
+ }
+ 
 -- 
 2.41.0
 
