@@ -2,62 +2,86 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 854F9EB64DA
-	for <linux-nfs@archiver.kernel.org>; Wed, 12 Jul 2023 15:33:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0A3A3EB64DC
+	for <linux-nfs@archiver.kernel.org>; Mon, 17 Jul 2023 20:53:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233659AbjGLPdB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 12 Jul 2023 11:33:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48898 "EHLO
+        id S231327AbjGQUxW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 17 Jul 2023 16:53:22 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43592 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232884AbjGLPc6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jul 2023 11:32:58 -0400
-Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 70720C2;
-        Wed, 12 Jul 2023 08:32:56 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-        Content-Type:In-Reply-To:From:References:To:Subject:MIME-Version:Date:
-        Message-ID:Sender:Reply-To:Cc:Content-ID:Content-Description;
-        bh=689SEK0ciFY8KgDlRHFBreHHAC2z+cvH0wQ011Q2aMI=; b=df/VKiT91ZqRa0x7ofoJaXGlph
-        PM7CRP4KkwoXZKNJlvYdkig+/LLrQ9LVGVf40H6Qaywx20JwTqHlizlUxF15FF/hdi7QMcfJ88rOM
-        Tk9o3z44pMTcermnTCrLWAF39fzqRsD0ms+1lMmZtzToJzTD0SUcPG6eXBFgIigvbDeEBrSIYXiW/
-        GnykGmmqxl8DWPpBQb6tfrtLGgdO7lnddHDuy7SXW0bC9E1PhpCLadB/V3QSWJPX+bNFvOifeRdsy
-        3Vg5gSGOgGr74Cyg+9z9dxsezgnvq5bViTggfgF6K6g7cj7jT1ssxpJXUEt4gBcr4IJbEN74vqTce
-        EZsIkLBg==;
-Received: from [2601:1c2:980:9ec0::2764]
-        by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1qJboy-000MRl-20;
-        Wed, 12 Jul 2023 15:32:04 +0000
-Message-ID: <03e153ce-328b-f279-2a40-4074bea2bc8f@infradead.org>
-Date:   Wed, 12 Jul 2023 08:31:55 -0700
+        with ESMTP id S229690AbjGQUxR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jul 2023 16:53:17 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C70FB10C8
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 13:52:41 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 511E6611EA
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 20:52:41 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4CBFDC433C8;
+        Mon, 17 Jul 2023 20:52:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1689627160;
+        bh=h59xsKMFcnYKuOjWPjmlOPTlgmo5NrealDwNq1F03/k=;
+        h=From:To:Cc:Subject:Date:From;
+        b=gAbL96hh0S5nC/KOVH6N6w2sHFxvwaaRFjQTiCG40DPvU/33q8MpkDzDalsQnKz/I
+         lkfjFO5gwZmJUFoZHzxkl7vQt7iNL9pHYTTfvOz6x10wzu33njYAMlwCYCFIpb2S+r
+         lzXXA8UsthjcExDC/s7nnEZZPj8rXL8LweEsBnqCiS0v2lbUf4T2oojs9vKNRXbKn6
+         eZKrR9BFJV7DJFB1by4tp0/XlNMng/Hz+0xaam3fRcS20ykdefCsPTThy+uEOpOSS+
+         LM/awsparR07amXbQVyKnTJbmr2Nd2EsDhNhuIOK33irf93uakjWh7naI67A0s2xdc
+         dFlgXOut+1XOQ==
+From:   Anna Schumaker <anna@kernel.org>
+To:     linux-nfs@vger.kernel.org, trond.myklebust@hammerspace.com
+Cc:     anna@kernel.org, krzysztof.kozlowski@linaro.org
+Subject: [PATCH v5 0/5] NFSv4.2: Various READ_PLUS fixes
+Date:   Mon, 17 Jul 2023 16:52:34 -0400
+Message-ID: <20230717205239.921002-1-anna@kernel.org>
+X-Mailer: git-send-email 2.41.0
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
- Thunderbird/102.12.0
-Subject: Re: [PATCH 01/79] fs: add ctime accessors infrastructure
-Content-Language: en-US
-To:     Jeff Layton <jlayton@kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
-        linux-um <linux-um@lists.infradead.org>
-References: <20230621144507.55591-1-jlayton@kernel.org>
- <20230621144507.55591-2-jlayton@kernel.org>
-From:   Randy Dunlap <rdunlap@infradead.org>
-In-Reply-To: <20230621144507.55591-2-jlayton@kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Jeff,
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-On arch/um/, (subarch i386 or x86_64), hostfs build fails with:
+These patches are a handul of fixes I've done recently to the READ_PLUS
+code. This includes fixing some smatch warnings, fixing the XDR reply
+length calculation, improving scratch buffer handling, and having
+xdr_inline_decode() kmap pages if we detect that they're HIGHMEM so we
+don't oops during READ_PLUS xdr decoding.
 
-../fs/hostfs/hostfs_kern.c:520:36: error: incompatible type for arg
-ument 2 of 'inode_set_ctime_to_ts'
-../include/linux/fs.h:1499:73: note: expected 'struct timespec64' b
-ut argument is of type 'const struct hostfs_timespec *'
+I also (optimistically) have a patch at the end to enable
+CONFIG_READ_PLUS by default. My hope right now is that we can enable
+READ_PLUS for Linux 6.6, and remove it entirely in 6.7 if all goes well.
 
+Thoughts? Patch #4 probably needs the most review, and I'm open to other
+approaches if something else makes more sense!
+
+Thanks,
+Anna
+
+Anna Schumaker (5):
+  NFSv4.2: Fix READ_PLUS smatch warnings
+  NFSv4.2: Fix READ_PLUS size calculations
+  NFSv4.2: Rework scratch handling for READ_PLUS (again)
+  SUNRPC: kmap() the xdr pages during decode
+  NFS: Enable the READ_PLUS operation by default
+
+ fs/nfs/Kconfig             |  6 ++----
+ fs/nfs/internal.h          |  1 +
+ fs/nfs/nfs42.h             |  1 +
+ fs/nfs/nfs42xdr.c          | 17 +++++++++++------
+ fs/nfs/nfs4proc.c          | 13 +------------
+ fs/nfs/read.c              | 10 ++++++++++
+ include/linux/sunrpc/xdr.h |  2 ++
+ net/sunrpc/clnt.c          |  1 +
+ net/sunrpc/svc.c           |  2 ++
+ net/sunrpc/xdr.c           | 17 ++++++++++++++++-
+ 10 files changed, 47 insertions(+), 23 deletions(-)
 
 -- 
-~Randy
+2.41.0
+
