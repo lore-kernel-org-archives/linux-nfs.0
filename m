@@ -2,57 +2,61 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 77A55EB64DA
-	for <linux-nfs@archiver.kernel.org>; Tue, 18 Jul 2023 06:39:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C5282EB64DD
+	for <linux-nfs@archiver.kernel.org>; Tue, 18 Jul 2023 06:39:11 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230302AbjGRGjI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 18 Jul 2023 02:39:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44430 "EHLO
+        id S231140AbjGRGjK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 18 Jul 2023 02:39:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44468 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230193AbjGRGjH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jul 2023 02:39:07 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA10813E
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 23:39:01 -0700 (PDT)
+        with ESMTP id S229923AbjGRGjI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jul 2023 02:39:08 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A2541B1
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2023 23:39:06 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 5BA862193C;
-        Tue, 18 Jul 2023 06:39:00 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 4ACBD1FDBC;
+        Tue, 18 Jul 2023 06:39:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1689662340; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1689662345; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=8aKr8hgNV53KfPAWTBs1EGAfa9oI5wKwQm+OjfP5qdE=;
-        b=m2ApP84JDWn9cnz1eg/XdtA8WPHmxouOTwJOOK/MhIRDxzV33ltTdx7WkxxutFfekFN3IH
-        kZRTNxVQKDxMYKcb13GUA9kLBoYsNn2drMrKxn9pC7wKn38hjHJX2r2ltM1/TD6GAwTSmz
-        ZXapi68dfiWoy9lUuUXcviXReewEIwQ=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=rWCEP/Mc5gojphRKRm4FHtda4qY/sWmT7/WQI2pi3JY=;
+        b=yodBiJR5ZbNz6eoem7bgtu/6k5onBxhKs5GtU+TT80pCROHvgqAY+Jv7JDb9Gz/jPzWA7l
+        8kYGVFCJ0lLzt1znojtoh2lo2YdxuQ21ty9Vk/1vQHmk1RuCNiEsBJ68uxBz0qOzNMENX0
+        d+lJotJxjNTgq4fgXrfsNB0GI94M7WQ=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1689662340;
+        s=susede2_ed25519; t=1689662345;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=8aKr8hgNV53KfPAWTBs1EGAfa9oI5wKwQm+OjfP5qdE=;
-        b=lucg8kQlA2utsWot94Zo6f40SX8MoumFwXKMevfKPWm+1SIiIcXMShGjtlCM4b0R/6XkOw
-        h51y6Nj+NLtspIAg==
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=rWCEP/Mc5gojphRKRm4FHtda4qY/sWmT7/WQI2pi3JY=;
+        b=Ei+rBEUoH+g0Nd9NYEg5hWWe8BpZ7KlEts0SDVZA6whZdnt709cHQPr1btOJBV9Xek98iX
+        aErOze4ktU55J+CQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 178F113494;
-        Tue, 18 Jul 2023 06:38:58 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 093DF13494;
+        Tue, 18 Jul 2023 06:39:03 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id swViLoIztmQRDAAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 18 Jul 2023 06:38:58 +0000
-Subject: [PATCH 00/14] Refactor SUNRPC svc thread code, and use llist
+        id SIBiK4cztmQjDAAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 18 Jul 2023 06:39:03 +0000
+Subject: [PATCH 01/14] lockd: remove SIGKILL handling.
 From:   NeilBrown <neilb@suse.de>
 To:     Chuck Lever <chuck.lever@oracle.com>,
         Jeff Layton <jlayton@kernel.org>
 Cc:     linux-nfs@vger.kernel.org
 Date:   Tue, 18 Jul 2023 16:38:08 +1000
-Message-ID: <168966227838.11075.2974227708495338626.stgit@noble.brown>
+Message-ID: <168966228859.11075.13570585046156408745.stgit@noble.brown>
+In-Reply-To: <168966227838.11075.2974227708495338626.stgit@noble.brown>
+References: <168966227838.11075.2974227708495338626.stgit@noble.brown>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -61,61 +65,84 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This code .... grew a bit since my previous pencil-sketch code.
+lockd allows SIGKILL and responds by dropping all locks and restarting
+the grace period.  This functionality has been present since 2.1.32 when
+lockd was added to Linux.
 
-The goal is really the final patch: using a llist without spinlocks to
-handle dispatch of idle threads.  To get there I found it necessary - or
-at least helpful - to do a lot of refactoring.
+This functionality is undocumented and most liked added as a useful
+debug aid.  When there is a need to drop locks, the best approach is
+using /proc/fs/nfsd/unlock_*.
 
-This code passes some basic tests, but I haven't push it hard yet.
+This patch removes the handling of SIGKILL as part of preparation for
+removing all signal handling from sunrpc service threads.
 
-Even if other aren't convinced that llists are the best solution, I
-think a lot of the refactoring is this valuable.
-
-Comments welcome,
-Thanks,
-NeilBrown
-
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
+ fs/lockd/svc.c |   24 ------------------------
+ 1 file changed, 24 deletions(-)
 
-NeilBr own (14):
-      lockd: remove SIGKILL handling.
-      nfsd: don't allow nfsd threads to be signalled.
-      SUNRPC: call svc_process() from svc_recv().
-      SUNRPC: change svc_recv() to return void.
-      SUNRPC: remove timeout arg from svc_recv()
-      SUNRPC: change various server-side #defines to enum
-      SUNRPC: refactor svc_recv()
-      SUNRPC: integrate back-channel processing with svc_recv() and svc_process()
-      SUNRPC: change how svc threads are asked to exit.
-      SUNRPC: change svc_pool_wake_idle_thread() to return nothing.
-      SUNRPC: add list of idle threads
-      SUNRPC: discard SP_CONGESTED
-      SUNRPC: change service idle list to be an llist
-      SUNRPC: only have one thread waking up at a time
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 22d3ff3818f5..614faa5f69cd 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -45,7 +45,6 @@
+ 
+ #define NLMDBG_FACILITY		NLMDBG_SVC
+ #define LOCKD_BUFSIZE		(1024 + NLMSVC_XDRSIZE)
+-#define ALLOWED_SIGS		(sigmask(SIGKILL))
+ 
+ static struct svc_program	nlmsvc_program;
+ 
+@@ -111,19 +110,6 @@ static void set_grace_period(struct net *net)
+ 	schedule_delayed_work(&ln->grace_period_end, grace_period);
+ }
+ 
+-static void restart_grace(void)
+-{
+-	if (nlmsvc_ops) {
+-		struct net *net = &init_net;
+-		struct lockd_net *ln = net_generic(net, lockd_net_id);
+-
+-		cancel_delayed_work_sync(&ln->grace_period_end);
+-		locks_end_grace(&ln->lockd_manager);
+-		nlmsvc_invalidate_all();
+-		set_grace_period(net);
+-	}
+-}
+-
+ /*
+  * This is the lockd kernel thread
+  */
+@@ -138,9 +124,6 @@ lockd(void *vrqstp)
+ 	/* try_to_freeze() is called from svc_recv() */
+ 	set_freezable();
+ 
+-	/* Allow SIGKILL to tell lockd to drop all of its locks */
+-	allow_signal(SIGKILL);
+-
+ 	dprintk("NFS locking service started (ver " LOCKD_VERSION ").\n");
+ 
+ 	/*
+@@ -154,12 +137,6 @@ lockd(void *vrqstp)
+ 		/* update sv_maxconn if it has changed */
+ 		rqstp->rq_server->sv_maxconn = nlm_max_connections;
+ 
+-		if (signalled()) {
+-			flush_signals(current);
+-			restart_grace();
+-			continue;
+-		}
+-
+ 		timeout = nlmsvc_retry_blocked();
+ 
+ 		/*
+@@ -174,7 +151,6 @@ lockd(void *vrqstp)
+ 
+ 		svc_process(rqstp);
+ 	}
+-	flush_signals(current);
+ 	if (nlmsvc_ops)
+ 		nlmsvc_invalidate_all();
+ 	nlm_shutdown_hosts();
 
-
- fs/lockd/svc.c                    |  49 ++-----
- fs/lockd/svclock.c                |   9 +-
- fs/nfs/callback.c                 |  59 +-------
- fs/nfsd/nfs4proc.c                |  10 +-
- fs/nfsd/nfssvc.c                  |  22 +--
- include/linux/llist.h             |   2 +
- include/linux/lockd/lockd.h       |   4 +-
- include/linux/sunrpc/cache.h      |  11 +-
- include/linux/sunrpc/svc.h        |  87 +++++++++---
- include/linux/sunrpc/svc_xprt.h   |  39 +++---
- include/linux/sunrpc/svcauth.h    |  29 ++--
- include/linux/sunrpc/svcsock.h    |   2 +-
- include/linux/sunrpc/xprtsock.h   |  25 ++--
- include/trace/events/sunrpc.h     |   5 +-
- lib/llist.c                       |  27 ++++
- net/sunrpc/backchannel_rqst.c     |   8 +-
- net/sunrpc/svc.c                  |  71 ++++------
- net/sunrpc/svc_xprt.c             | 226 ++++++++++++++++--------------
- net/sunrpc/xprtrdma/backchannel.c |   2 +-
- 19 files changed, 347 insertions(+), 340 deletions(-)
-
---
-Signature
 
