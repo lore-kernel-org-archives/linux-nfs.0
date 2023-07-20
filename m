@@ -2,117 +2,239 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BC71EB64DC
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jul 2023 12:16:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DE586EB64DC
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jul 2023 12:59:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231531AbjGTMQv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 Jul 2023 08:16:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36548 "EHLO
+        id S229991AbjGTM7F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 Jul 2023 08:59:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56628 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229628AbjGTMQt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jul 2023 08:16:49 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 73FBB1BC6;
-        Thu, 20 Jul 2023 05:16:46 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 311FA22BEC;
-        Thu, 20 Jul 2023 12:16:45 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1689855405; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
+        with ESMTP id S229651AbjGTM7E (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jul 2023 08:59:04 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D23A269A
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Jul 2023 05:58:20 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1689857899;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=qJeevWCTbOxeUOBTAxfygV2zVKl4pRNiVV/Sn4Vc5g8=;
-        b=Y7xfme4rPrCF5hEC5pbUvdrHOtse6c2XE5dQH4ofisst0BxXhq5fzSvvvudIq0qb1fgAZ3
-        nvIjKrBX9SBniQArDMHq3Eo1F5gHSAGQmoz/tE4t4qxq6hUdsPyEUo9DVqT6M2kkkhHlFw
-        wusKJBAY7+a0/4rdZ8XEmsB7vqMiu20=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1689855405;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=qJeevWCTbOxeUOBTAxfygV2zVKl4pRNiVV/Sn4Vc5g8=;
-        b=FfN5Vi6mxKPEw3x2oCzsXOategHapN8ngq0O/mlx3Dt3iIlpkGc1UcEnhLUPz5UTPIunq7
-        Q/g7Z3f9m59q7UAQ==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        bh=UUy1M7UsNjb1vyE9f94nUBKR0l9EKezxR8VVlMF4DT4=;
+        b=dzGSmEUdyrfvEqQsYpn2/hOq9qhtXTMiYrSum/eagGGvQvn8DAddAiF0rX8rR3omZMtRB1
+        9FIFLvUJb5j9vDbnwNXOJ0Uo3IQvzZrUZ2ihS0emN3TqZsiVXILwJY0/My2nQDivHrmKba
+        DKgr6GnqrJA9QZB3xUo5cwH4M/de+sc=
+Received: from mimecast-mx02.redhat.com (66.187.233.73 [66.187.233.73]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-453-ob898gn3MCiI1d5_3HufPw-1; Thu, 20 Jul 2023 08:58:16 -0400
+X-MC-Unique: ob898gn3MCiI1d5_3HufPw-1
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 17569138EC;
-        Thu, 20 Jul 2023 12:16:45 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id V/cVBa0luWQKJgAAMHmgww
-        (envelope-from <hare@suse.de>); Thu, 20 Jul 2023 12:16:45 +0000
-Message-ID: <2fda17af-ed88-2332-27a1-61496f943e91@suse.de>
-Date:   Thu, 20 Jul 2023 14:16:44 +0200
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 04BA02999B2E;
+        Thu, 20 Jul 2023 12:58:15 +0000 (UTC)
+Received: from fs-i40c-03.fs.lab.eng.bos.redhat.com (fs-i40c-03.fs.lab.eng.bos.redhat.com [10.16.224.23])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A3C9F2166B25;
+        Thu, 20 Jul 2023 12:58:14 +0000 (UTC)
+From:   Alexander Aring <aahringo@redhat.com>
+To:     chuck.lever@oracle.com
+Cc:     jlayton@kernel.org, neilb@suse.de, kolga@netapp.com,
+        Dai.Ngo@oracle.com, tom@talpey.com,
+        trond.myklebust@hammerspace.com, anna@kernel.org,
+        linux-nfs@vger.kernel.org, teigland@redhat.com,
+        cluster-devel@redhat.com, aahringo@redhat.com, agruenba@redhat.com
+Subject: [RFC v6.5-rc2 2/3] fs: lockd: fix race in async lock request handling
+Date:   Thu, 20 Jul 2023 08:58:05 -0400
+Message-Id: <20230720125806.1385279-2-aahringo@redhat.com>
+In-Reply-To: <20230720125806.1385279-1-aahringo@redhat.com>
+References: <20230720125806.1385279-1-aahringo@redhat.com>
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
- Thunderbird/102.12.0
-Subject: Re: [PATCH 16/17] block: use iomap for writes to block devices
-Content-Language: en-US
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     Jens Axboe <axboe@kernel.dk>, Miklos Szeredi <miklos@szeredi.hu>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        David Howells <dhowells@redhat.com>,
-        Matthew Wilcox <willy@infradead.org>,
-        linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, linux-kernel@vger.kernel.org
-References: <20230424054926.26927-1-hch@lst.de>
- <20230424054926.26927-17-hch@lst.de>
- <b96b397e-2f5e-7910-3bb3-7405d0e293a7@suse.de>
- <20230720120650.GA13266@lst.de>
-From:   Hannes Reinecke <hare@suse.de>
-In-Reply-To: <20230720120650.GA13266@lst.de>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.1 on 10.11.54.6
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 7/20/23 14:06, Christoph Hellwig wrote:
-> On Fri, May 19, 2023 at 04:22:01PM +0200, Hannes Reinecke wrote:
->> I'm hitting this during booting:
->> [    5.016324]  <TASK>
->> [    5.030256]  iomap_iter+0x11a/0x350
->> [    5.030264]  iomap_readahead+0x1eb/0x2c0
->> [    5.030272]  read_pages+0x5d/0x220
->> [    5.030279]  page_cache_ra_unbounded+0x131/0x180
->> [    5.030284]  filemap_get_pages+0xff/0x5a0
->> [    5.030292]  filemap_read+0xca/0x320
->> [    5.030296]  ? aa_file_perm+0x126/0x500
->> [    5.040216]  ? touch_atime+0xc8/0x150
->> [    5.040224]  blkdev_read_iter+0xb0/0x150
->> [    5.040228]  vfs_read+0x226/0x2d0
->> [    5.040234]  ksys_read+0xa5/0xe0
->> [    5.040238]  do_syscall_64+0x5b/0x80
->>
->> Maybe we should consider this patch:
-> 
-> As willy said this should be taken care of by the i_size check.
-> Did you run with just this patch set or some of the large block
-> size experiments on top which might change the variables?
-> 
-> I'll repost the series today without any chances in the area, and
-> if you can reproduce it with just that series we need to root
-> cause it, so please send your kernel and VM config along for the
-> next report.
+This patch fixes a race in async lock request handling between adding
+the relevant struct nlm_block to nlm_blocked list after the request was
+sent by vfs_lock_file() and nlmsvc_grant_deferred() does a lookup of the
+nlm_block in the nlm_blocked list. It could be that the async request is
+completed before the nlm_block was added to the list. This would end
+in a -ENOENT and a kernel log message of "lockd: grant for unknown
+block".
 
-I _think_ it's been resolve now; I've rewritten my patchset (and the 
-patches where it's based upon) several times now, so it might be a stale 
-issue now.
+To solve this issue we add the nlm_block before the vfs_lock_file() call
+to be sure it has been added when a possible nlmsvc_grant_deferred() is
+called. If the vfs_lock_file() results in an case when it wouldn't be
+added to nlm_blocked list, the nlm_block struct will be removed from
+this list again.
 
-Eagerly awaiting your patchset.
+Signed-off-by: Alexander Aring <aahringo@redhat.com>
+---
+ fs/lockd/svclock.c          | 80 +++++++++++++++++++++++++++----------
+ include/linux/lockd/lockd.h |  1 +
+ 2 files changed, 60 insertions(+), 21 deletions(-)
 
-Cheers,
-
-Hannes
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 28abec5c451d..62ef27a69a9e 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -297,6 +297,8 @@ static void nlmsvc_free_block(struct kref *kref)
+ 
+ 	dprintk("lockd: freeing block %p...\n", block);
+ 
++	WARN_ON_ONCE(block->b_flags & B_PENDING_CALLBACK);
++
+ 	/* Remove block from file's list of blocks */
+ 	list_del_init(&block->b_flist);
+ 	mutex_unlock(&file->f_mutex);
+@@ -543,6 +545,12 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 		goto out;
+ 	}
+ 
++	if (block->b_flags & B_PENDING_CALLBACK)
++		goto pending_request;
++
++	/* Append to list of blocked */
++	nlmsvc_insert_block(block, NLM_NEVER);
++
+ 	if (!wait)
+ 		lock->fl.fl_flags &= ~FL_SLEEP;
+ 	mode = lock_to_openmode(&lock->fl);
+@@ -552,9 +560,13 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	dprintk("lockd: vfs_lock_file returned %d\n", error);
+ 	switch (error) {
+ 		case 0:
++			nlmsvc_remove_block(block);
+ 			ret = nlm_granted;
+ 			goto out;
+ 		case -EAGAIN:
++			if (!wait)
++				nlmsvc_remove_block(block);
++pending_request:
+ 			/*
+ 			 * If this is a blocking request for an
+ 			 * already pending lock request then we need
+@@ -565,6 +577,8 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 			ret = async_block ? nlm_lck_blocked : nlm_lck_denied;
+ 			goto out;
+ 		case FILE_LOCK_DEFERRED:
++			block->b_flags |= B_PENDING_CALLBACK;
++
+ 			if (wait)
+ 				break;
+ 			/* Filesystem lock operation is in progress
+@@ -572,17 +586,16 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 			ret = nlmsvc_defer_lock_rqst(rqstp, block);
+ 			goto out;
+ 		case -EDEADLK:
++			nlmsvc_remove_block(block);
+ 			ret = nlm_deadlock;
+ 			goto out;
+ 		default:			/* includes ENOLCK */
++			nlmsvc_remove_block(block);
+ 			ret = nlm_lck_denied_nolocks;
+ 			goto out;
+ 	}
+ 
+ 	ret = nlm_lck_blocked;
+-
+-	/* Append to list of blocked */
+-	nlmsvc_insert_block(block, NLM_NEVER);
+ out:
+ 	mutex_unlock(&file->f_mutex);
+ 	nlmsvc_release_block(block);
+@@ -739,34 +752,59 @@ nlmsvc_update_deferred_block(struct nlm_block *block, int result)
+ 		block->b_flags |= B_TIMED_OUT;
+ }
+ 
++static int __nlmsvc_grant_deferred(struct nlm_block *block,
++				   struct file_lock *fl,
++				   int result)
++{
++	int rc = 0;
++
++	dprintk("lockd: nlmsvc_notify_blocked block %p flags %d\n",
++					block, block->b_flags);
++	if (block->b_flags & B_QUEUED) {
++		if (block->b_flags & B_TIMED_OUT) {
++			rc = -ENOLCK;
++			goto out;
++		}
++		nlmsvc_update_deferred_block(block, result);
++	} else if (result == 0)
++		block->b_granted = 1;
++
++	nlmsvc_insert_block_locked(block, 0);
++	svc_wake_up(block->b_daemon);
++out:
++	return rc;
++}
++
+ static int nlmsvc_grant_deferred(struct file_lock *fl, int result)
+ {
+-	struct nlm_block *block;
+-	int rc = -ENOENT;
++	struct nlm_block *block = NULL;
++	int rc;
+ 
+ 	spin_lock(&nlm_blocked_lock);
+ 	list_for_each_entry(block, &nlm_blocked, b_list) {
+ 		if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)) {
+-			dprintk("lockd: nlmsvc_notify_blocked block %p flags %d\n",
+-							block, block->b_flags);
+-			if (block->b_flags & B_QUEUED) {
+-				if (block->b_flags & B_TIMED_OUT) {
+-					rc = -ENOLCK;
+-					break;
+-				}
+-				nlmsvc_update_deferred_block(block, result);
+-			} else if (result == 0)
+-				block->b_granted = 1;
+-
+-			nlmsvc_insert_block_locked(block, 0);
+-			svc_wake_up(block->b_daemon);
+-			rc = 0;
++			kref_get(&block->b_count);
+ 			break;
+ 		}
+ 	}
+ 	spin_unlock(&nlm_blocked_lock);
+-	if (rc == -ENOENT)
+-		printk(KERN_WARNING "lockd: grant for unknown block\n");
++
++	if (!block) {
++		pr_warn("lockd: grant for unknown pending block\n");
++		return -ENOENT;
++	}
++
++	/* don't interfere with nlmsvc_lock() */
++	mutex_lock(&block->b_file->f_mutex);
++	block->b_flags &= ~B_PENDING_CALLBACK;
++
++	spin_lock(&nlm_blocked_lock);
++	WARN_ON_ONCE(list_empty(&block->b_list));
++	rc = __nlmsvc_grant_deferred(block, fl, result);
++	spin_unlock(&nlm_blocked_lock);
++	mutex_unlock(&block->b_file->f_mutex);
++
++	nlmsvc_release_block(block);
+ 	return rc;
+ }
+ 
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index f42594a9efe0..a977be8bcc2c 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -189,6 +189,7 @@ struct nlm_block {
+ #define B_QUEUED		1	/* lock queued */
+ #define B_GOT_CALLBACK		2	/* got lock or conflicting lock */
+ #define B_TIMED_OUT		4	/* filesystem too slow to respond */
++#define B_PENDING_CALLBACK	8	/* pending callback for lock request */
+ };
+ 
+ /*
+-- 
+2.31.1
 
