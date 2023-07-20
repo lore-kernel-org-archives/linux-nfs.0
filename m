@@ -2,40 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3052AC0015E
-	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jul 2023 12:59:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5072BEB64DA
+	for <linux-nfs@archiver.kernel.org>; Thu, 20 Jul 2023 12:59:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229651AbjGTM7F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 20 Jul 2023 08:59:05 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56634 "EHLO
+        id S230018AbjGTM7h (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 20 Jul 2023 08:59:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56664 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229983AbjGTM7E (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jul 2023 08:59:04 -0400
+        with ESMTP id S229983AbjGTM7g (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jul 2023 08:59:36 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5058F269D
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Jul 2023 05:58:21 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5586B10D2
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Jul 2023 05:58:51 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1689857900;
+        s=mimecast20190719; t=1689857924;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=Sx/HzIS/UO4hgoN0aFqF4zaXoqar7pWy8ZsgfEG48iA=;
-        b=P1PDCAB/sDBYxkp5v4AdnokcbOiChZ5zzdKSaTosWSmn/8tZezudgiJ9MhE/D97YVaCPYc
-        dvL/S5TUKtIg6xo9SNjDsoX17MOPAaAnH7i4zKibtx+iPrRRqKRekbNytY4wqRBXPpXtLu
-        TL814ffj55ep2KdDDZKQWOBaPcGK5SE=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=Cs+3mPINUu7CIziTneRZX33fBd+VO6ZuLx7iYDNN/64=;
+        b=HqX+FKdGvBYW5J2U9k7IREgwgT9pJIwr5Ks00X7OxZkmp2TxV1WvrFwnsaYYJIZ2kzgn/+
+        +bejwhe+zlgAKlgop0MJZiz+dGx7gD0W+0T4MOySVuIl1PQFtT8vMNdSDRc+agdS0amLzL
+        COPdUiRUmR2JpugR0msYTefszyouC78=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-671-_CkjmfvGM4KSkvHYZOIa2g-1; Thu, 20 Jul 2023 08:58:15 -0400
-X-MC-Unique: _CkjmfvGM4KSkvHYZOIa2g-1
+ us-mta-591-ifrruSzjNQSZHZhEKdGyDw-1; Thu, 20 Jul 2023 08:58:22 -0400
+X-MC-Unique: ifrruSzjNQSZHZhEKdGyDw-1
 Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 9C091185A795;
-        Thu, 20 Jul 2023 12:58:14 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 5F19D1044596;
+        Thu, 20 Jul 2023 12:58:15 +0000 (UTC)
 Received: from fs-i40c-03.fs.lab.eng.bos.redhat.com (fs-i40c-03.fs.lab.eng.bos.redhat.com [10.16.224.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 22A4D2166B25;
-        Thu, 20 Jul 2023 12:58:14 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 0C3832166B25;
+        Thu, 20 Jul 2023 12:58:15 +0000 (UTC)
 From:   Alexander Aring <aahringo@redhat.com>
 To:     chuck.lever@oracle.com
 Cc:     jlayton@kernel.org, neilb@suse.de, kolga@netapp.com,
@@ -43,9 +44,11 @@ Cc:     jlayton@kernel.org, neilb@suse.de, kolga@netapp.com,
         trond.myklebust@hammerspace.com, anna@kernel.org,
         linux-nfs@vger.kernel.org, teigland@redhat.com,
         cluster-devel@redhat.com, aahringo@redhat.com, agruenba@redhat.com
-Subject: [RFC v6.5-rc2 1/3] fs: lockd: nlm_blocked list race fixes
-Date:   Thu, 20 Jul 2023 08:58:04 -0400
-Message-Id: <20230720125806.1385279-1-aahringo@redhat.com>
+Subject: [RFC v6.5-rc2 3/3] fs: lockd: introduce safe async lock op
+Date:   Thu, 20 Jul 2023 08:58:06 -0400
+Message-Id: <20230720125806.1385279-3-aahringo@redhat.com>
+In-Reply-To: <20230720125806.1385279-1-aahringo@redhat.com>
+References: <20230720125806.1385279-1-aahringo@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.1 on 10.11.54.6
@@ -53,99 +56,109 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch fixes races when lockd accessing the global nlm_blocked list.
-It was mostly safe to access the list because everything was accessed
-from the lockd kernel thread context but there exists cases like
-nlmsvc_grant_deferred() that could manipulate the nlm_blocked list and
-it can be called from any context.
+This patch reverts mostly commit 40595cdc93ed ("nfs: block notification
+on fs with its own ->lock") and introduces an EXPORT_OP_SAFE_ASYNC_LOCK
+export flag to signal that the "own ->lock" implementation supports
+async lock requests. The only main user is DLM that is used by GFS2 and
+OCFS2 filesystem. Those implement their own lock() implementation and
+return FILE_LOCK_DEFERRED as return value. Since commit 40595cdc93ed
+("nfs: block notification on fs with its own ->lock") the DLM
+implementation were never updated. This patch should prepare for DLM
+to set the EXPORT_OP_SAFE_ASYNC_LOCK export flag and update the DLM
+plock implementation regarding to it.
 
-Cc: stable@vger.kernel.org
 Signed-off-by: Alexander Aring <aahringo@redhat.com>
 ---
- fs/lockd/svclock.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+ fs/lockd/svclock.c       |  5 ++---
+ fs/nfsd/nfs4state.c      | 11 ++++++++---
+ include/linux/exportfs.h |  1 +
+ 3 files changed, 11 insertions(+), 6 deletions(-)
 
 diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index c43ccdf28ed9..28abec5c451d 100644
+index 62ef27a69a9e..54a67bd33843 100644
 --- a/fs/lockd/svclock.c
 +++ b/fs/lockd/svclock.c
-@@ -131,12 +131,14 @@ static void nlmsvc_insert_block(struct nlm_block *block, unsigned long when)
- static inline void
- nlmsvc_remove_block(struct nlm_block *block)
+@@ -483,9 +483,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	    struct nlm_host *host, struct nlm_lock *lock, int wait,
+ 	    struct nlm_cookie *cookie, int reclaim)
  {
-+	spin_lock(&nlm_blocked_lock);
- 	if (!list_empty(&block->b_list)) {
--		spin_lock(&nlm_blocked_lock);
- 		list_del_init(&block->b_list);
- 		spin_unlock(&nlm_blocked_lock);
- 		nlmsvc_release_block(block);
-+		return;
+-#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	struct inode		*inode = nlmsvc_file_inode(file);
+-#endif
+ 	struct nlm_block	*block = NULL;
+ 	int			error;
+ 	int			mode;
+@@ -499,7 +497,8 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 				(long long)lock->fl.fl_end,
+ 				wait);
+ 
+-	if (nlmsvc_file_file(file)->f_op->lock) {
++	if (!(inode->i_sb->s_export_op->flags & EXPORT_OP_SAFE_ASYNC_LOCK) &&
++	    nlmsvc_file_file(file)->f_op->lock) {
+ 		async_block = wait;
+ 		wait = 0;
  	}
-+	spin_unlock(&nlm_blocked_lock);
- }
- 
- /*
-@@ -152,6 +154,7 @@ nlmsvc_lookup_block(struct nlm_file *file, struct nlm_lock *lock)
- 				file, lock->fl.fl_pid,
- 				(long long)lock->fl.fl_start,
- 				(long long)lock->fl.fl_end, lock->fl.fl_type);
-+	spin_lock(&nlm_blocked_lock);
- 	list_for_each_entry(block, &nlm_blocked, b_list) {
- 		fl = &block->b_call->a_args.lock.fl;
- 		dprintk("lockd: check f=%p pd=%d %Ld-%Ld ty=%d cookie=%s\n",
-@@ -161,9 +164,11 @@ nlmsvc_lookup_block(struct nlm_file *file, struct nlm_lock *lock)
- 				nlmdbg_cookie2a(&block->b_call->a_args.cookie));
- 		if (block->b_file == file && nlm_compare_locks(fl, &lock->fl)) {
- 			kref_get(&block->b_count);
-+			spin_unlock(&nlm_blocked_lock);
- 			return block;
- 		}
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6e61fa3acaf1..efcea229d640 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -7432,6 +7432,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfsd4_blocked_lock *nbl = NULL;
+ 	struct file_lock *file_lock = NULL;
+ 	struct file_lock *conflock = NULL;
++	struct super_block *sb;
+ 	__be32 status = 0;
+ 	int lkflg;
+ 	int err;
+@@ -7453,6 +7454,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		dprintk("NFSD: nfsd4_lock: permission denied!\n");
+ 		return status;
  	}
-+	spin_unlock(&nlm_blocked_lock);
++	sb = cstate->current_fh.fh_dentry->d_sb;
  
- 	return NULL;
- }
-@@ -185,16 +190,19 @@ nlmsvc_find_block(struct nlm_cookie *cookie)
- {
- 	struct nlm_block *block;
+ 	if (lock->lk_is_new) {
+ 		if (nfsd4_has_session(cstate))
+@@ -7504,7 +7506,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	fp = lock_stp->st_stid.sc_file;
+ 	switch (lock->lk_type) {
+ 		case NFS4_READW_LT:
+-			if (nfsd4_has_session(cstate))
++			if (sb->s_export_op->flags & EXPORT_OP_SAFE_ASYNC_LOCK &&
++			    nfsd4_has_session(cstate))
+ 				fl_flags |= FL_SLEEP;
+ 			fallthrough;
+ 		case NFS4_READ_LT:
+@@ -7516,7 +7519,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			fl_type = F_RDLCK;
+ 			break;
+ 		case NFS4_WRITEW_LT:
+-			if (nfsd4_has_session(cstate))
++			if (sb->s_export_op->flags & EXPORT_OP_SAFE_ASYNC_LOCK &&
++			    nfsd4_has_session(cstate))
+ 				fl_flags |= FL_SLEEP;
+ 			fallthrough;
+ 		case NFS4_WRITE_LT:
+@@ -7544,7 +7548,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 * for file locks), so don't attempt blocking lock notifications
+ 	 * on those filesystems:
+ 	 */
+-	if (nf->nf_file->f_op->lock)
++	if (!(sb->s_export_op->flags & EXPORT_OP_SAFE_ASYNC_LOCK) &&
++	    nf->nf_file->f_op->lock)
+ 		fl_flags &= ~FL_SLEEP;
  
-+	spin_lock(&nlm_blocked_lock);
- 	list_for_each_entry(block, &nlm_blocked, b_list) {
- 		if (nlm_cookie_match(&block->b_call->a_args.cookie,cookie))
- 			goto found;
- 	}
-+	spin_unlock(&nlm_blocked_lock);
- 
- 	return NULL;
- 
- found:
- 	dprintk("nlmsvc_find_block(%s): block=%p\n", nlmdbg_cookie2a(cookie), block);
- 	kref_get(&block->b_count);
-+	spin_unlock(&nlm_blocked_lock);
- 	return block;
- }
- 
-@@ -317,6 +325,7 @@ void nlmsvc_traverse_blocks(struct nlm_host *host,
- 
- restart:
- 	mutex_lock(&file->f_mutex);
-+	spin_lock(&nlm_blocked_lock);
- 	list_for_each_entry_safe(block, next, &file->f_blocks, b_flist) {
- 		if (!match(block->b_host, host))
- 			continue;
-@@ -325,11 +334,13 @@ void nlmsvc_traverse_blocks(struct nlm_host *host,
- 		if (list_empty(&block->b_list))
- 			continue;
- 		kref_get(&block->b_count);
-+		spin_unlock(&nlm_blocked_lock);
- 		mutex_unlock(&file->f_mutex);
- 		nlmsvc_unlink_block(block);
- 		nlmsvc_release_block(block);
- 		goto restart;
- 	}
-+	spin_unlock(&nlm_blocked_lock);
- 	mutex_unlock(&file->f_mutex);
- }
+ 	nbl = find_or_allocate_block(lock_sop, &fp->fi_fhandle, nn);
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index 11fbd0ee1370..da742abbaf3e 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -224,6 +224,7 @@ struct export_operations {
+ 						  atomic attribute updates
+ 						*/
+ #define EXPORT_OP_FLUSH_ON_CLOSE	(0x20) /* fs flushes file data on close */
++#define EXPORT_OP_SAFE_ASYNC_LOCK	(0x40) /* fs can do async lock request */
+ 	unsigned long	flags;
+ };
  
 -- 
 2.31.1
