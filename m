@@ -2,103 +2,126 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1E3FAC001DE
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jul 2023 08:09:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 53B55C001B0
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jul 2023 09:12:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231363AbjGXIJC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Jul 2023 04:09:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45348 "EHLO
+        id S232109AbjGXJMe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Jul 2023 05:12:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34190 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231343AbjGXII6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 04:08:58 -0400
-Received: from mail-wr1-x429.google.com (mail-wr1-x429.google.com [IPv6:2a00:1450:4864:20::429])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 011ED115
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 01:08:50 -0700 (PDT)
-Received: by mail-wr1-x429.google.com with SMTP id ffacd0b85a97d-314172bac25so2802273f8f.3
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 01:08:50 -0700 (PDT)
+        with ESMTP id S229974AbjGXJMd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 05:12:33 -0400
+Received: from mail-ej1-x629.google.com (mail-ej1-x629.google.com [IPv6:2a00:1450:4864:20::629])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EB49211F
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 02:12:31 -0700 (PDT)
+Received: by mail-ej1-x629.google.com with SMTP id a640c23a62f3a-9936b3d0286so734813266b.0
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 02:12:31 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linaro.org; s=google; t=1690186129; x=1690790929;
-        h=content-disposition:mime-version:message-id:subject:cc:to:from:date
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=LpBqm+jOoJG0wfkhuGS0lLXKJysvSQDazVNFzfkOiJY=;
-        b=Ufz0zY6WkOuDS6QEqwHLOxV1T9LPiofO2WZsu/T5u57nyQeCg9eSnn3a6B8vagQDUq
-         c86AX0g07urNlx3AB+9QO8CcUQNLYomLJp8KZwC5ZEz456SImCFmNjw4u3Z1KIuM4DPK
-         fmr+uCKP1UoZg0pKyrooOAyDmszbWnXRnvHDdNtktKsQn+ncYUi364Fg7mL7ELG+aL0y
-         0EwOwqLrFQGLiQ2qzfYV+djadJbXe+aUHN3jIJ82yh8pahmW33mAGJDffNg20fcVfCzM
-         ZjBk++Z+cHJR+Svxm8kTcVXrVkEtZeLH6dTNZNNVmgIUjSNI8InJq0yj0Va3GZk6Y661
-         uKmA==
+        d=gmail.com; s=20221208; t=1690189950; x=1690794750;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:sender:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=mFfUUb64VwU5Bf2t0RGXoIL3zpxOQktE4vJEtGl+Hsk=;
+        b=jzBYnibjKwJZxeyNGCpt6tmmhp3VV6wsH1G+XLQyVrx17OO9IF2rvmZR566uZwZHpo
+         LeM331dc48nxF7Jf6EVIVAvO8j2VILnDsuUD1JJ61pIG2ygoR8G8qAcvAWqgOQ+c8l2W
+         3R6u3mZQ9cH2Q7oZZugreEXGtwadA0NTX8trGsxsTZCa7w2/dqC/gAO1XPmncxbDPaqv
+         lCijIzMTX3wvrsfxYGvWZLfKUjSP94JyZvYsuIiONwRWRDkp/aCWZLEFTALJgDpX5IWi
+         8Gdtidf1cLrKprSQLpNWd+V8bSINEZJ1qbAGRk66iSTbUli43M36lukjGDi7ScHIaVtp
+         9k+Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690186129; x=1690790929;
-        h=content-disposition:mime-version:message-id:subject:cc:to:from:date
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=LpBqm+jOoJG0wfkhuGS0lLXKJysvSQDazVNFzfkOiJY=;
-        b=Soa8yAp+lLwmDxUryDQmjjepVCW/nHVpPmCn+3Mqz0sPoQHRvs9+gWkd7ebmVFVZSo
-         BfcVX+4nSC6wTdHABV4QAXepDi/Ls2vZRQxMAqgiYH0hQZcTN76oYNoflgThFwILqnnU
-         1i5F1z1DQCLoUQCFlNCEg43nbkz44hX4KoNjS+J+Iuxd26O0UAUGESNLITbPSotH7f/0
-         R9arOwEZsnReRO7D28qzOOzQUo8dnFZFgMui2+NH6pW5SChrHpcuZVeqT21mADjY4auo
-         zIwvNF7OGrBdq0YhnopmjXJKJxioZqcyD6PY+fh0TtxDcrYofnshp45Jw5+lmKsZ6xdl
-         1JyA==
-X-Gm-Message-State: ABy/qLbQoBHfSg9pfzNOvxjtLIj1KM0pc+3hT+nZ5o6FtnRyo4SMIJZA
-        tfXKgdXLfpvM1BuM9gWfgM/vyQ==
-X-Google-Smtp-Source: APBJJlGny1xjzIq1T4tv/TtTFc/KImmPGcvaRYEJwG6Pejg8EHR/9Ino5n3agxUq4I+07tcGg8Saog==
-X-Received: by 2002:a5d:680c:0:b0:317:2574:c2b1 with SMTP id w12-20020a5d680c000000b003172574c2b1mr6594879wru.30.1690186129526;
-        Mon, 24 Jul 2023 01:08:49 -0700 (PDT)
-Received: from localhost ([102.36.222.112])
-        by smtp.gmail.com with ESMTPSA id m12-20020adff38c000000b003145559a691sm12079882wro.41.2023.07.24.01.08.48
+        d=1e100.net; s=20221208; t=1690189950; x=1690794750;
+        h=in-reply-to:content-disposition:mime-version:references:message-id
+         :subject:cc:to:from:date:sender:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=mFfUUb64VwU5Bf2t0RGXoIL3zpxOQktE4vJEtGl+Hsk=;
+        b=LqidF3CpS6dDlcA+HU1EKByYRIeGQZM5NzE2Zp12EjjpbJK5q5zIXEpY1u//yBfIhB
+         eE6TfMO+2CPT9DZShtW3QYap5veTAIaUIqbqBdW/AhOL1RvVXlzcAN1KViWFLnlMR0Mp
+         mt5EIuuspC2uoOtDMSOIpYaO6vX2CN8iXP0IsItvlqJmlxV/SsTHrFcf2O6+zCdKxikE
+         X0n21iqvDXJdQE5hMMfrPX4eW43k17WS2xRfVEjHIO8s7C4o26axak6+hIBbf8OV+cvA
+         0Aj+yqAH2SKzue1zsL8RzhCXJDjAPGpiqk34oL9kMwjUOsa6JOOF2yExaqcYCz9nl9Mh
+         LueA==
+X-Gm-Message-State: ABy/qLZHHtWx8aYQ5AvGoePfzauPiX52mgP65CwKKlvAGz8i+UcQAAIC
+        FBa/YL8u2UupUCvbwGW8lIs=
+X-Google-Smtp-Source: APBJJlFMEo9C7IOQSxBe4Pxpnxau9VZCabE1vyVukGa1CeArUgFnmYWCnhob1V0gfKQcJR8NuoW42Q==
+X-Received: by 2002:a17:906:10dd:b0:99b:48b9:8e45 with SMTP id v29-20020a17090610dd00b0099b48b98e45mr10257164ejv.76.1690189950349;
+        Mon, 24 Jul 2023 02:12:30 -0700 (PDT)
+Received: from eldamar.lan (host-95-249-180-187.retail.telecomitalia.it. [95.249.180.187])
+        by smtp.gmail.com with ESMTPSA id qk15-20020a170906d9cf00b009929d998ab6sm6367727ejb.131.2023.07.24.02.12.29
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 24 Jul 2023 01:08:49 -0700 (PDT)
-Date:   Mon, 24 Jul 2023 11:08:46 +0300
-From:   Dan Carpenter <dan.carpenter@linaro.org>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>, Jens Axboe <axboe@kernel.dk>,
-        Jack Wang <jinpu.wang@ionos.com>,
-        Dave Chinner <dchinner@redhat.com>,
-        Hannes Reinecke <hare@suse.de>,
-        Christian Brauner <brauner@kernel.org>,
-        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
-Subject: [PATCH v2] nfs/blocklayout: Use the passed in gfp flags
-Message-ID: <ZL4xjgy15cnLvG+U@kadam>
+        Mon, 24 Jul 2023 02:12:29 -0700 (PDT)
+Sender: Salvatore Bonaccorso <salvatore.bonaccorso@gmail.com>
+Received: by eldamar.lan (Postfix, from userid 1000)
+        id B8C81BE2DE0; Mon, 24 Jul 2023 11:12:28 +0200 (CEST)
+Date:   Mon, 24 Jul 2023 11:12:28 +0200
+From:   Salvatore Bonaccorso <carnil@debian.org>
+To:     Benjamin Coddington <bcodding@redhat.com>,
+        Andreas Hasenack <andreas@canonical.com>
+Cc:     Steve Dickson <steved@redhat.com>,
+        Scott Mayhew <smayhew@redhat.com>,
+        Ben Hutchings <benh@debian.org>, linux-nfs@vger.kernel.org
+Subject: Re: Always run rpc-pipefs-generator generator (was: Re: Why keep
+ var-lib-nfs-rpc_pipefs.mount around?)
+Message-ID: <ZL5AfARR1rrlPEdz@eldamar.lan>
+References: <CANYNYEFSdBua3Ay6jGk2cacossVJ8_CzDgDBnFCjXfk5XSoGEQ@mail.gmail.com>
+ <EE39279C-4E40-48C8-ABC9-707EB1AD6D79@redhat.com>
+ <7bfafe56-0c13-a32d-093b-4d3684c4f2c7@redhat.com>
+ <CANYNYEEA1CHwvZhrr2W0-BcGR1Rm50QSTdHwb0pygz4z0ZY=uQ@mail.gmail.com>
+ <ZKpkDG2kTWVFSNiZ@eldamar.lan>
+ <A172CCB3-973D-4A26-A8AF-3D654F4D444F@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
+In-Reply-To: <A172CCB3-973D-4A26-A8AF-3D654F4D444F@redhat.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This allocation should use the passed in GFP_ flags instead of
-GFP_KERNEL.  One places where this matters is in filelayout_pg_init_write()
-which uses GFP_NOFS as the allocation flags.
+Hi,
 
-Fixes: 5c83746a0cf2 ("pnfs/blocklayout: in-kernel GETDEVICEINFO XDR parsing")
-Signed-off-by: Dan Carpenter <dan.carpenter@linaro.org>
----
-v2: Update the commit message as pointed out by Christophe JAILLET.
+On Mon, Jul 10, 2023 at 10:39:43AM -0400, Benjamin Coddington wrote:
+> On 9 Jul 2023, at 3:38, Salvatore Bonaccorso wrote:
+> 
+> > Hi Steve,
+> 
+> ...
+> 
+> > FWIW, in Debian we have applied the respective change. The idea would
+> > be to only depend on a single mechanism for setting up the mounts
+> > rather than a combination of the two (the generator and the static
+> > mount unit). For this reason we have applied the attached patch, and
+> > are not installing the units that we will let the generator produce,
+> > that is var-lib-nfs-rpc_pipefs.mount and rpc_pipefs.target
+> >
+> > We in Debian for long have diverged too much from you upstream,
+> > causing that we lacked behind several new upstream version and stuck
+> > with old versions in stable releases. We want to avoid running into
+> > that again in future. So if this make sense to you, would you apply
+> > the same (or as you prefer similar) change to you upstream?
+> >
+> > On one side so you could apply Andreas Hasenack patch, secondly
+> > installing the var-lib-nfs-rpc_pipefs.mount and rpc_pipefs.target
+> > could be dropped (note no changes to the other units needed as the
+> > repsective needed dependencies are generated by the systemd
+> > generator).
+> >
+> > Ben, Andreas, please add what else is needed from your point of view
+> > please!
+> 
+> I don't think I've seen the PATCH land on the list addressed to nfs-utils
+> maintainer yet, but I could have missed it.
+> 
+> Otherwise it looks sane to me, but I could be missing some upstream case.
+> 
+> > Thanks a lot for considering this. If you have any suggestion further
+> > how we can unify the Debian downstream to you upstream, let us know
+> > please.
+> 
+> At Red Hat, we use "upstream first" as a leading principle.  If this change
+> makes sense for upstream, send Adreas' patch along and I am sure Steve D will
+> consider it or let us know why its not acceptible for upstream.
 
- fs/nfs/blocklayout/dev.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Andreas, could you sent a proper patchset please, so upstream can have
+a look at it for inclusion? 
 
-diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
-index 70f5563a8e81..65cbb5607a5f 100644
---- a/fs/nfs/blocklayout/dev.c
-+++ b/fs/nfs/blocklayout/dev.c
-@@ -404,7 +404,7 @@ bl_parse_concat(struct nfs_server *server, struct pnfs_block_dev *d,
- 	int ret, i;
- 
- 	d->children = kcalloc(v->concat.volumes_count,
--			sizeof(struct pnfs_block_dev), GFP_KERNEL);
-+			sizeof(struct pnfs_block_dev), gfp_mask);
- 	if (!d->children)
- 		return -ENOMEM;
- 
-@@ -433,7 +433,7 @@ bl_parse_stripe(struct nfs_server *server, struct pnfs_block_dev *d,
- 	int ret, i;
- 
- 	d->children = kcalloc(v->stripe.volumes_count,
--			sizeof(struct pnfs_block_dev), GFP_KERNEL);
-+			sizeof(struct pnfs_block_dev), gfp_mask);
- 	if (!d->children)
- 		return -ENOMEM;
- 
--- 
-2.39.2
+Regards,
+Salvatore
