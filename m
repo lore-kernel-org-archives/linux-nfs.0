@@ -2,54 +2,61 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EBF2AC001B0
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jul 2023 10:05:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 88489C001B0
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jul 2023 10:06:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233064AbjGXKFG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Jul 2023 06:05:06 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35524 "EHLO
+        id S233094AbjGXKGE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Jul 2023 06:06:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36140 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233089AbjGXKEd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 06:04:33 -0400
-Received: from mail-pg1-f173.google.com (mail-pg1-f173.google.com [209.85.215.173])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0BAD45BA9
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 02:57:03 -0700 (PDT)
-Received: by mail-pg1-f173.google.com with SMTP id 41be03b00d2f7-55b5a37acb6so326928a12.0
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 02:57:03 -0700 (PDT)
+        with ESMTP id S232927AbjGXKFl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 06:05:41 -0400
+Received: from mail-pf1-x42d.google.com (mail-pf1-x42d.google.com [IPv6:2607:f8b0:4864:20::42d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 117417EEA
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 02:57:47 -0700 (PDT)
+Received: by mail-pf1-x42d.google.com with SMTP id d2e1a72fcca58-682ae5d4184so1051748b3a.1
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 02:57:47 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690192266; x=1690797066;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=oVZBD26n61nILm1319d0FZlD/fP50Fwp7YtrZB2yUEw=;
-        b=iUPcJgUMyrTLwgrjrlC+a27y9vEWwy56+puOu64xedJv2ncHtSqDNqiSeynerud5CA
-         SLWVqH1nGCnKkpkX8dkzmoG0eMRym5h6Xzfw/4y3ynxDe9x5fP4GtDEbYlXCEU4KGmnh
-         J8JMlwHQENpmCB/IBQ5Kj/D3RaklR5mhQ3KWpjAIq5ncgA2kgZ+m8lyKEtRUg3xIXkRf
-         1Y+VworbTR0lkfVEfm55Dde1LFRd3k61KtabNyesWRzHMD8tamW6ciBekSSPn4dMEieQ
-         RK4Z2ABaXDMl+MwOvSJ5/Kn72pZwCqkmqC5YhlHMVnLFWPN8jgdPeYJAkwxf5yUyP5GW
-         rA2w==
+        d=bytedance.com; s=google; t=1690192601; x=1690797401;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=am2eIoStEhYj6reS+R983QZxh6h3W0xYr71gNNToCQ8=;
+        b=OlJHj1/yO42yQ42YyfDdqtfuDdXGGV/WQ0GpL38YIfO5RJZmkcdCx+PepLtkyGVzEN
+         bTK4LhGsJI+OJKO7VuvlEDj/aPd3bZAexndKWivptO/xeLBD7J/JCOubjicjaVNWXLQ5
+         H6fB+0YsEx63uc5TiCs20sSEjZ3JxRWkjZHG3LQbatv3J9k4pmh0VpqAg7R562nbzzly
+         s71ebLgHH+wdbZuHYfqIuXfOS4H3wCLtxZ6Rqc556hBiF9jLddR68NJcthdMi5JsNo9F
+         fUAZvFHEDsznNwsCMgykOwv5P0YMuteT/vvRsXd6nvRv9Clc/Ic3a7YeuRAtFe+vPCu7
+         EZug==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690192266; x=1690797066;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=oVZBD26n61nILm1319d0FZlD/fP50Fwp7YtrZB2yUEw=;
-        b=lQgW19Y+fxSm4lAglrbYTrTwRwEVqJY2RJ9wB6QC+AuhpSlO0xm/tDaokRq0/nEXzu
-         nwF7ouTxNbqpBPyVhJ1c7thGbvHThS/7IHf1KmRhh3ZiiYdqODD0mRw08/2FMmiLJ/c9
-         8/8zJBTeF8BaQZXjKXZDmBsrQawQ9EqvG29RLPZjb2GTwKrR6+2Z5fRKyWhNm02QMHuI
-         UfCfoFUNDPtaCYDN/pr7WYeH3QK91f1gnSHvzu4XhlZiJjjM9KUBsnEUue15B9sBphc2
-         k1vQhCH1OSSRe3x2Yoz+4UX/qd5eKMIVqx7GoI7XMJeNvmL/Z7pK3pcG1c6ZICjFvABp
-         461Q==
-X-Gm-Message-State: ABy/qLZRTUrrLzZmnak0uO0Os71cV+TUHJ87YZl13mrvYIB9kMfYa3fK
-        9DVleXOpFK2d+gJGPc7FJjYRKF3XS+hIIxEuMdc=
-X-Google-Smtp-Source: APBJJlFQ+sAFI6LIZ7PgU9puTnlNzbjLYXvmJ0kfMmGkS9XBnuUvcLZ7El1l1GYgUvVEvdh+XgkfrQ==
-X-Received: by 2002:a17:902:e74d:b0:1bb:ac37:384b with SMTP id p13-20020a170902e74d00b001bbac37384bmr1242952plf.6.1690192266338;
-        Mon, 24 Jul 2023 02:51:06 -0700 (PDT)
-Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.50.54
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 24 Jul 2023 02:51:06 -0700 (PDT)
-From:   Qi Zheng <zhengqi.arch@bytedance.com>
+        d=1e100.net; s=20221208; t=1690192601; x=1690797401;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=am2eIoStEhYj6reS+R983QZxh6h3W0xYr71gNNToCQ8=;
+        b=GkMtod64NP6erXk1qX56xNTxqPE1H1fs46xeuOXJYR0g/rgDACdU+IDfADrS/RTqZQ
+         WPhxu+eonynIVo5Gzeh6rKBE9q/MeTYiHq1TR7kfNtgB8mwMJUv/QVmOgcR0HFpK5xBZ
+         Qzl5aR9/pWojzvdiYf+7oZQY48QwtjqvsAQQ3sBRcHvY3Yj2uwp+OFdzE5jAQtMWtJGk
+         NM/F0Logd+IihugFrUTwz9uBrFldOuYcVMVy+EH6HhwrlWA0uRWj/TENWosxE/2ZD9de
+         NdBxpDz1whRxZUKGLf1VNP+CYGvZmXcz3IC95Ha0mVSPgrt94/NOrJPSa4Xvpl3607mJ
+         vmKQ==
+X-Gm-Message-State: ABy/qLbLH2kqCrhXP6zJdcUQJ1hx3tYmQxeGWaK8oAppCTWPbU3ThxA9
+        yU+W4XklngxigfsLxyFxe8zsHA==
+X-Google-Smtp-Source: APBJJlEtnCzvJ6I1rkWEELadVXHfZtUE/plpWIuGp/MFKpOvTS509ssN84iHDxA1POdeL3+D21rKQg==
+X-Received: by 2002:a05:6a20:8e04:b0:137:3941:17b3 with SMTP id y4-20020a056a208e0400b00137394117b3mr14532126pzj.6.1690192601020;
+        Mon, 24 Jul 2023 02:56:41 -0700 (PDT)
+Received: from [10.70.252.135] ([203.208.167.147])
+        by smtp.gmail.com with ESMTPSA id y1-20020aa78541000000b00682aac1e2b8sm7356787pfn.60.2023.07.24.02.56.29
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Mon, 24 Jul 2023 02:56:40 -0700 (PDT)
+Message-ID: <7b4eb3fa-1ebd-de07-1a16-9533b069a66e@bytedance.com>
+Date:   Mon, 24 Jul 2023 17:56:27 +0800
+MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
+ Gecko/20100101 Thunderbird/102.12.0
+Subject: Re: [PATCH v2 05/47] binder: dynamically allocate the android-binder
+ shrinker
+Content-Language: en-US
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
         brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
@@ -67,92 +74,18 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-bcache@vger.kernel.org,
         virtualization@lists.linux-foundation.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v2 30/47] virtio_balloon: dynamically allocate the virtio-balloon shrinker
-Date:   Mon, 24 Jul 2023 17:43:37 +0800
-Message-Id: <20230724094354.90817-31-zhengqi.arch@bytedance.com>
-X-Mailer: git-send-email 2.24.3 (Apple Git-128)
-In-Reply-To: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
+        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org
 References: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+ <20230724094354.90817-6-zhengqi.arch@bytedance.com>
+From:   Qi Zheng <zhengqi.arch@bytedance.com>
+In-Reply-To: <20230724094354.90817-6-zhengqi.arch@bytedance.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In preparation for implementing lockless slab shrink, use new APIs to
-dynamically allocate the virtio-balloon shrinker, so that it can be freed
-asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
-read-side critical section when releasing the struct virtio_balloon.
 
-Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
----
- drivers/virtio/virtio_balloon.c | 25 +++++++++++++++----------
- 1 file changed, 15 insertions(+), 10 deletions(-)
-
-diff --git a/drivers/virtio/virtio_balloon.c b/drivers/virtio/virtio_balloon.c
-index 5b15936a5214..d773860c3b18 100644
---- a/drivers/virtio/virtio_balloon.c
-+++ b/drivers/virtio/virtio_balloon.c
-@@ -111,7 +111,7 @@ struct virtio_balloon {
- 	struct virtio_balloon_stat stats[VIRTIO_BALLOON_S_NR];
- 
- 	/* Shrinker to return free pages - VIRTIO_BALLOON_F_FREE_PAGE_HINT */
--	struct shrinker shrinker;
-+	struct shrinker *shrinker;
- 
- 	/* OOM notifier to deflate on OOM - VIRTIO_BALLOON_F_DEFLATE_ON_OOM */
- 	struct notifier_block oom_nb;
-@@ -816,8 +816,7 @@ static unsigned long shrink_free_pages(struct virtio_balloon *vb,
- static unsigned long virtio_balloon_shrinker_scan(struct shrinker *shrinker,
- 						  struct shrink_control *sc)
- {
--	struct virtio_balloon *vb = container_of(shrinker,
--					struct virtio_balloon, shrinker);
-+	struct virtio_balloon *vb = shrinker->private_data;
- 
- 	return shrink_free_pages(vb, sc->nr_to_scan);
- }
-@@ -825,8 +824,7 @@ static unsigned long virtio_balloon_shrinker_scan(struct shrinker *shrinker,
- static unsigned long virtio_balloon_shrinker_count(struct shrinker *shrinker,
- 						   struct shrink_control *sc)
- {
--	struct virtio_balloon *vb = container_of(shrinker,
--					struct virtio_balloon, shrinker);
-+	struct virtio_balloon *vb = shrinker->private_data;
- 
- 	return vb->num_free_page_blocks * VIRTIO_BALLOON_HINT_BLOCK_PAGES;
- }
-@@ -847,16 +845,23 @@ static int virtio_balloon_oom_notify(struct notifier_block *nb,
- 
- static void virtio_balloon_unregister_shrinker(struct virtio_balloon *vb)
- {
--	unregister_shrinker(&vb->shrinker);
-+	shrinker_unregister(vb->shrinker);
- }
- 
- static int virtio_balloon_register_shrinker(struct virtio_balloon *vb)
- {
--	vb->shrinker.scan_objects = virtio_balloon_shrinker_scan;
--	vb->shrinker.count_objects = virtio_balloon_shrinker_count;
--	vb->shrinker.seeks = DEFAULT_SEEKS;
-+	vb->shrinker = shrinker_alloc(0, "virtio-balloon");
-+	if (!vb->shrinker)
-+		return -ENOMEM;
- 
--	return register_shrinker(&vb->shrinker, "virtio-balloon");
-+	vb->shrinker->scan_objects = virtio_balloon_shrinker_scan;
-+	vb->shrinker->count_objects = virtio_balloon_shrinker_count;
-+	vb->shrinker->seeks = DEFAULT_SEEKS;
-+	vb->shrinker->private_data = vb;
-+
-+	shrinker_register(vb->shrinker);
-+
-+	return 0;
- }
- 
- static int virtballoon_probe(struct virtio_device *vdev)
--- 
-2.30.2
+This patch depends on the patch: 
+https://lore.kernel.org/lkml/20230625154937.64316-1-qi.zheng@linux.dev/
 
