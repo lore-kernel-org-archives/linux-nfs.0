@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 35689C001DE
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jul 2023 10:12:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9112DC001B0
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jul 2023 10:13:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233156AbjGXKMm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Jul 2023 06:12:42 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41710 "EHLO
+        id S231343AbjGXKNn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Jul 2023 06:13:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46320 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233152AbjGXKMZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 06:12:25 -0400
-Received: from mail-oi1-x22b.google.com (mail-oi1-x22b.google.com [IPv6:2607:f8b0:4864:20::22b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 945335BAA
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 03:04:48 -0700 (PDT)
-Received: by mail-oi1-x22b.google.com with SMTP id 5614622812f47-3a3719334a2so460817b6e.1
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 03:04:48 -0700 (PDT)
+        with ESMTP id S232062AbjGXKMr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 06:12:47 -0400
+Received: from mail-yb1-xb36.google.com (mail-yb1-xb36.google.com [IPv6:2607:f8b0:4864:20::b36])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4B06D1737
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 03:05:29 -0700 (PDT)
+Received: by mail-yb1-xb36.google.com with SMTP id 3f1490d57ef6-cfbcbf657deso444433276.1
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 03:05:29 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690193069; x=1690797869;
+        d=bytedance.com; s=google; t=1690193110; x=1690797910;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=guTIXae/kI3JPez6Art55JYiwmImAmg2GBvF3i236eo=;
-        b=KLypSWdreDrzh/MjmZ6T/OH2VS9AxuNalGBp04liH26qM1LGFiIIWUqOoNcyJyVoXq
-         qY0ky36CSxGu1IkfsTx/xxPsWXyusq6xSlKtmZUKHtQGmHzwLNEqcxEoD2dnPIwIZOY1
-         wbDzcvKCrr5EnXh2eH1+9y9VUOO1Mg1Klts/+DVQbWnMTvZiPU8FRgIkVhdmZqgCrDk/
-         X7iD5zH0WQA11GQ7eQ19jXZw1tY5XpLQgjcRh8nFtzA4U9/BG8S3LA6tIJjOlIqKQGAs
-         Y4PaIvbtmnTzJCbkUhcsLtSxTaumhRH6WsFwqm0EErtB0HbKf0BBOcMc8PnBuX/yvImI
-         eoZg==
+        bh=oXR+qbQ7FZSOf8H8/XKWyl6GGcPr2+dTjVkbZb7uW4E=;
+        b=FC3Meg54vF7A+B657rO1cLparACTErSmgvavMXIZ/0bS/AFEdqi7U4QHSOpop/RR1e
+         c14kXoGEdkD1W/Xd1bDvHXllmBb8wwNpMwvZIY9yuzv5x8ti8NWqSJfzuPg8QMPVgLqO
+         pmBmBQR7va6GQtItFK8lcyno6V4bGOsPglKo7yYhOVCiLzJnHt3ygnwU6qrGTr3XNzQh
+         G7fInX2Vw0QHcaX8pNIzncLEmDLE5fZV5KhpDP7ie6wV94jIgG08DO1gkz4/dmbD7KV1
+         SQrgTcfVnde9HsaVw4jK2byZdeDmfXM98jlKc/iGZlTZxoXy9JXACzuSGljGs6jF0ToH
+         J0TQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690193069; x=1690797869;
+        d=1e100.net; s=20221208; t=1690193110; x=1690797910;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=guTIXae/kI3JPez6Art55JYiwmImAmg2GBvF3i236eo=;
-        b=eC1O+HWYpeRHbbos/teLypl8xP2OHV5Cdg91kH0juW/ImwuLQlG4L+XgmGc3Bk8Jvo
-         sIDR/mVQ+HE0uEiwsYdQ1Qxje5tThDHbtcNV2+D+r9DrqRuQWO61wK5eRB9b4jhPyJ4X
-         a5VBgnFseKZChgKbTouw4Zimb2BQRZqD/4Bxs8n9sFYkJZ0t2MzCNbtUO4eY1LRfnnOI
-         rL0T3KTIrPltOSHGZW22QbYtKdCuUDcsdvJOlBQZoxkLQRO9PvGE3Dwrec/8BAuoB+nC
-         ixJSZhvWPaNF/GKNkbNltZNy0OPQfYcoPRofy4DAJ0+bjQLlS5qeoUInsz2w+GPhokSJ
-         w++g==
-X-Gm-Message-State: ABy/qLYBkaeF5xeV6wjBc92KkNIeU1giGU5NzfPMedPzZ7DJDmZyeKBG
-        fIRjCLTbdPwqipyx3YpAW1gziaw9ZvRpnebH+nA=
-X-Google-Smtp-Source: APBJJlHJFdqX7YvzDE87sV65msd4BgjSJaSlmkLSDmv21X9cTIYDURxtd2XgOOda4P7o7DorEuOAJA==
-X-Received: by 2002:a17:903:41cd:b0:1bb:9e6e:a9f3 with SMTP id u13-20020a17090341cd00b001bb9e6ea9f3mr4119632ple.4.1690192350104;
-        Mon, 24 Jul 2023 02:52:30 -0700 (PDT)
+        bh=oXR+qbQ7FZSOf8H8/XKWyl6GGcPr2+dTjVkbZb7uW4E=;
+        b=L6eZZGM1vQFsmLzXe3FEyGobNSDxi6LqLa/Yt6OBxoAiQrzF2AyCrrsnC9hmr0wn2T
+         VDdMZbuvcpJqHGDQH22bs5IlSrD9IHt6F/hNXPAiDskrwQRMqvMN/tVUuclkxirpfkr6
+         wuDpVgD0lsl3QkGyWKENChprOZGwQ/1XqEfu1Gp7lMm2oRhbWS/OXp56svJQnqOJwGRn
+         L4Vi0q1QqDyoWbBJe34T72eQHO9EgEvWIUbKD6UM72Sp5G60mLvmuWWb7DAIvIjwBNqY
+         lgXovq9wsF7nCIlWDa4jvPnn2UfyBRf7zyerinsmpI0K8AJJFGYJvU3g+CQFwoeQWQaP
+         I9eQ==
+X-Gm-Message-State: ABy/qLYiLrssYqlnTzGibgbCUW9bgr8kKA1V2DEmyRzi9uVX7YHxlb2Q
+        0xlRgU4/pdtXYz4RK0OfhPfEsdZ53gFI9NZ7+Z0=
+X-Google-Smtp-Source: APBJJlFC05XpXuobjW4LsGQFjmg3Q9TZDeGvX5MkKK/m+2sDEjZkN7MidhVsDpGMtrBJxCeRn4k3XA==
+X-Received: by 2002:a17:903:22ce:b0:1b8:2ba0:c9a8 with SMTP id y14-20020a17090322ce00b001b82ba0c9a8mr12484346plg.2.1690192289977;
+        Mon, 24 Jul 2023 02:51:29 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.52.18
+        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.51.18
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 24 Jul 2023 02:52:29 -0700 (PDT)
+        Mon, 24 Jul 2023 02:51:29 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -69,9 +69,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v2 37/47] xfs: dynamically allocate the xfs-inodegc shrinker
-Date:   Mon, 24 Jul 2023 17:43:44 +0800
-Message-Id: <20230724094354.90817-38-zhengqi.arch@bytedance.com>
+Subject: [PATCH v2 32/47] ext4: dynamically allocate the ext4-es shrinker
+Date:   Mon, 24 Jul 2023 17:43:39 +0800
+Message-Id: <20230724094354.90817-33-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
 References: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
@@ -82,103 +82,85 @@ List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 In preparation for implementing lockless slab shrink, use new APIs to
-dynamically allocate the xfs-inodegc shrinker, so that it can be freed
+dynamically allocate the ext4-es shrinker, so that it can be freed
 asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
-read-side critical section when releasing the struct xfs_mount.
+read-side critical section when releasing the struct ext4_sb_info.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- fs/xfs/xfs_icache.c | 26 +++++++++++++++-----------
- fs/xfs/xfs_mount.c  |  4 ++--
- fs/xfs/xfs_mount.h  |  2 +-
- 3 files changed, 18 insertions(+), 14 deletions(-)
+ fs/ext4/ext4.h           |  2 +-
+ fs/ext4/extents_status.c | 22 ++++++++++++----------
+ 2 files changed, 13 insertions(+), 11 deletions(-)
 
-diff --git a/fs/xfs/xfs_icache.c b/fs/xfs/xfs_icache.c
-index 453890942d9f..751c380afd5a 100644
---- a/fs/xfs/xfs_icache.c
-+++ b/fs/xfs/xfs_icache.c
-@@ -2225,8 +2225,7 @@ xfs_inodegc_shrinker_count(
- 	struct shrinker		*shrink,
- 	struct shrink_control	*sc)
- {
--	struct xfs_mount	*mp = container_of(shrink, struct xfs_mount,
--						   m_inodegc_shrinker);
-+	struct xfs_mount	*mp = shrink->private_data;
- 	struct xfs_inodegc	*gc;
- 	int			cpu;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0a2d55faa095..1bd150d454f5 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1651,7 +1651,7 @@ struct ext4_sb_info {
+ 	__u32 s_csum_seed;
  
-@@ -2247,8 +2246,7 @@ xfs_inodegc_shrinker_scan(
- 	struct shrinker		*shrink,
- 	struct shrink_control	*sc)
+ 	/* Reclaim extents from extent status tree */
+-	struct shrinker s_es_shrinker;
++	struct shrinker *s_es_shrinker;
+ 	struct list_head s_es_list;	/* List of inodes with reclaimable extents */
+ 	long s_es_nr_inode;
+ 	struct ext4_es_stats s_es_stats;
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 9b5b8951afb4..8d4a959dd32f 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -1596,7 +1596,7 @@ static unsigned long ext4_es_count(struct shrinker *shrink,
+ 	unsigned long nr;
+ 	struct ext4_sb_info *sbi;
+ 
+-	sbi = container_of(shrink, struct ext4_sb_info, s_es_shrinker);
++	sbi = shrink->private_data;
+ 	nr = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_shk_cnt);
+ 	trace_ext4_es_shrink_count(sbi->s_sb, sc->nr_to_scan, nr);
+ 	return nr;
+@@ -1605,8 +1605,7 @@ static unsigned long ext4_es_count(struct shrinker *shrink,
+ static unsigned long ext4_es_scan(struct shrinker *shrink,
+ 				  struct shrink_control *sc)
  {
--	struct xfs_mount	*mp = container_of(shrink, struct xfs_mount,
--						   m_inodegc_shrinker);
-+	struct xfs_mount	*mp = shrink->private_data;
- 	struct xfs_inodegc	*gc;
- 	int			cpu;
- 	bool			no_items = true;
-@@ -2284,13 +2282,19 @@ int
- xfs_inodegc_register_shrinker(
- 	struct xfs_mount	*mp)
- {
--	struct shrinker		*shrink = &mp->m_inodegc_shrinker;
-+	mp->m_inodegc_shrinker = shrinker_alloc(SHRINKER_NONSLAB,
-+						"xfs-inodegc:%s",
-+						mp->m_super->s_id);
-+	if (!mp->m_inodegc_shrinker)
-+		return -ENOMEM;
+-	struct ext4_sb_info *sbi = container_of(shrink,
+-					struct ext4_sb_info, s_es_shrinker);
++	struct ext4_sb_info *sbi = shrink->private_data;
+ 	int nr_to_scan = sc->nr_to_scan;
+ 	int ret, nr_shrunk;
+ 
+@@ -1690,14 +1689,17 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
+ 	if (err)
+ 		goto err3;
+ 
+-	sbi->s_es_shrinker.scan_objects = ext4_es_scan;
+-	sbi->s_es_shrinker.count_objects = ext4_es_count;
+-	sbi->s_es_shrinker.seeks = DEFAULT_SEEKS;
+-	err = register_shrinker(&sbi->s_es_shrinker, "ext4-es:%s",
+-				sbi->s_sb->s_id);
+-	if (err)
++	sbi->s_es_shrinker = shrinker_alloc(0, "ext4-es:%s", sbi->s_sb->s_id);
++	if (!sbi->s_es_shrinker)
+ 		goto err4;
+ 
++	sbi->s_es_shrinker->scan_objects = ext4_es_scan;
++	sbi->s_es_shrinker->count_objects = ext4_es_count;
++	sbi->s_es_shrinker->seeks = DEFAULT_SEEKS;
++	sbi->s_es_shrinker->private_data = sbi;
 +
-+	mp->m_inodegc_shrinker->count_objects = xfs_inodegc_shrinker_count;
-+	mp->m_inodegc_shrinker->scan_objects = xfs_inodegc_shrinker_scan;
-+	mp->m_inodegc_shrinker->seeks = 0;
-+	mp->m_inodegc_shrinker->batch = XFS_INODEGC_SHRINKER_BATCH;
-+	mp->m_inodegc_shrinker->private_data = mp;
- 
--	shrink->count_objects = xfs_inodegc_shrinker_count;
--	shrink->scan_objects = xfs_inodegc_shrinker_scan;
--	shrink->seeks = 0;
--	shrink->flags = SHRINKER_NONSLAB;
--	shrink->batch = XFS_INODEGC_SHRINKER_BATCH;
-+	shrinker_register(mp->m_inodegc_shrinker);
- 
--	return register_shrinker(shrink, "xfs-inodegc:%s", mp->m_super->s_id);
-+	return 0;
++	shrinker_register(sbi->s_es_shrinker);
++
+ 	return 0;
+ err4:
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
+@@ -1716,7 +1718,7 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_misses);
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_all_cnt);
+ 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
+-	unregister_shrinker(&sbi->s_es_shrinker);
++	shrinker_unregister(sbi->s_es_shrinker);
  }
-diff --git a/fs/xfs/xfs_mount.c b/fs/xfs/xfs_mount.c
-index fb87ffb48f7f..27c2d24797c9 100644
---- a/fs/xfs/xfs_mount.c
-+++ b/fs/xfs/xfs_mount.c
-@@ -1018,7 +1018,7 @@ xfs_mountfs(
-  out_log_dealloc:
- 	xfs_log_mount_cancel(mp);
-  out_inodegc_shrinker:
--	unregister_shrinker(&mp->m_inodegc_shrinker);
-+	shrinker_unregister(mp->m_inodegc_shrinker);
-  out_fail_wait:
- 	if (mp->m_logdev_targp && mp->m_logdev_targp != mp->m_ddev_targp)
- 		xfs_buftarg_drain(mp->m_logdev_targp);
-@@ -1100,7 +1100,7 @@ xfs_unmountfs(
- #if defined(DEBUG)
- 	xfs_errortag_clearall(mp);
- #endif
--	unregister_shrinker(&mp->m_inodegc_shrinker);
-+	shrinker_unregister(mp->m_inodegc_shrinker);
- 	xfs_free_perag(mp);
  
- 	xfs_errortag_del(mp);
-diff --git a/fs/xfs/xfs_mount.h b/fs/xfs/xfs_mount.h
-index e2866e7fa60c..562c294ca08e 100644
---- a/fs/xfs/xfs_mount.h
-+++ b/fs/xfs/xfs_mount.h
-@@ -217,7 +217,7 @@ typedef struct xfs_mount {
- 	atomic_t		m_agirotor;	/* last ag dir inode alloced */
- 
- 	/* Memory shrinker to throttle and reprioritize inodegc */
--	struct shrinker		m_inodegc_shrinker;
-+	struct shrinker		*m_inodegc_shrinker;
- 	/*
- 	 * Workqueue item so that we can coalesce multiple inode flush attempts
- 	 * into a single flush.
+ /*
 -- 
 2.30.2
 
