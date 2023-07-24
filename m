@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9112DC001B0
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jul 2023 10:13:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 56D09C001B0
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jul 2023 10:14:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231343AbjGXKNn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Jul 2023 06:13:43 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46320 "EHLO
+        id S231636AbjGXKOr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Jul 2023 06:14:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42730 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232062AbjGXKMr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 06:12:47 -0400
-Received: from mail-yb1-xb36.google.com (mail-yb1-xb36.google.com [IPv6:2607:f8b0:4864:20::b36])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4B06D1737
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 03:05:29 -0700 (PDT)
-Received: by mail-yb1-xb36.google.com with SMTP id 3f1490d57ef6-cfbcbf657deso444433276.1
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 03:05:29 -0700 (PDT)
+        with ESMTP id S230403AbjGXKNn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 06:13:43 -0400
+Received: from mail-ot1-x32b.google.com (mail-ot1-x32b.google.com [IPv6:2607:f8b0:4864:20::32b])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0F0C6213E
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 03:06:14 -0700 (PDT)
+Received: by mail-ot1-x32b.google.com with SMTP id 46e09a7af769-6b9de4b0c1aso640653a34.1
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 03:06:14 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690193110; x=1690797910;
+        d=bytedance.com; s=google; t=1690193170; x=1690797970;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=oXR+qbQ7FZSOf8H8/XKWyl6GGcPr2+dTjVkbZb7uW4E=;
-        b=FC3Meg54vF7A+B657rO1cLparACTErSmgvavMXIZ/0bS/AFEdqi7U4QHSOpop/RR1e
-         c14kXoGEdkD1W/Xd1bDvHXllmBb8wwNpMwvZIY9yuzv5x8ti8NWqSJfzuPg8QMPVgLqO
-         pmBmBQR7va6GQtItFK8lcyno6V4bGOsPglKo7yYhOVCiLzJnHt3ygnwU6qrGTr3XNzQh
-         G7fInX2Vw0QHcaX8pNIzncLEmDLE5fZV5KhpDP7ie6wV94jIgG08DO1gkz4/dmbD7KV1
-         SQrgTcfVnde9HsaVw4jK2byZdeDmfXM98jlKc/iGZlTZxoXy9JXACzuSGljGs6jF0ToH
-         J0TQ==
+        bh=9IhUpcns1yxxzymDv5YqZr0WL/UQLCqdNy71sVoDGM4=;
+        b=gdvf7fZ3ya+LHVSKLa2M1SWSHdR7P0Xjnrx3o3bfLwiT+yLd2RlXvlHAxnSUM7BSoL
+         qVsa/R+k9HPuwAdYsx7JYKGB1nWCF+QZagFDeSc1a8ne9ebKXPmyU/FsYGa+kvQ18WvI
+         qwr8XzD5iJx2r7OXryGDRCDOoGRO0jaPkqYmwmn1Rzih2pAPjy9ESJIwvduS8iBkTTT2
+         3kF12FlXayf0aBnEY5i/UVu699Tg6GvFlsxDOP1/OiIBsREbdxHkCfaHki1iezMhHLz0
+         BaipbVxYwFtWdxVmWfuiubpSxWl63zIpiDSCo6oJMEGl5YBk+fXWpiZZVPvriJ4GNSht
+         RdGA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690193110; x=1690797910;
+        d=1e100.net; s=20221208; t=1690193170; x=1690797970;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=oXR+qbQ7FZSOf8H8/XKWyl6GGcPr2+dTjVkbZb7uW4E=;
-        b=L6eZZGM1vQFsmLzXe3FEyGobNSDxi6LqLa/Yt6OBxoAiQrzF2AyCrrsnC9hmr0wn2T
-         VDdMZbuvcpJqHGDQH22bs5IlSrD9IHt6F/hNXPAiDskrwQRMqvMN/tVUuclkxirpfkr6
-         wuDpVgD0lsl3QkGyWKENChprOZGwQ/1XqEfu1Gp7lMm2oRhbWS/OXp56svJQnqOJwGRn
-         L4Vi0q1QqDyoWbBJe34T72eQHO9EgEvWIUbKD6UM72Sp5G60mLvmuWWb7DAIvIjwBNqY
-         lgXovq9wsF7nCIlWDa4jvPnn2UfyBRf7zyerinsmpI0K8AJJFGYJvU3g+CQFwoeQWQaP
-         I9eQ==
-X-Gm-Message-State: ABy/qLYiLrssYqlnTzGibgbCUW9bgr8kKA1V2DEmyRzi9uVX7YHxlb2Q
-        0xlRgU4/pdtXYz4RK0OfhPfEsdZ53gFI9NZ7+Z0=
-X-Google-Smtp-Source: APBJJlFC05XpXuobjW4LsGQFjmg3Q9TZDeGvX5MkKK/m+2sDEjZkN7MidhVsDpGMtrBJxCeRn4k3XA==
-X-Received: by 2002:a17:903:22ce:b0:1b8:2ba0:c9a8 with SMTP id y14-20020a17090322ce00b001b82ba0c9a8mr12484346plg.2.1690192289977;
-        Mon, 24 Jul 2023 02:51:29 -0700 (PDT)
+        bh=9IhUpcns1yxxzymDv5YqZr0WL/UQLCqdNy71sVoDGM4=;
+        b=JZyjJUyIu0SOu08i7oxVRhon4Xpni8EfbcsXZiDC7NE1GaGXQ/OQGL6JPqiN9BAN0v
+         eBNj2Sp3W8yMd+K6dx5RV6j1jlIpFcE4y6ZY35euwqzkivlliq8VjU2Lw1klOUqxelXV
+         4j34HZdh+bKELuSZ2E7YJ+EcFt2rfaiShQC0E8uQde+AKuzn0I0G/b3UW1z3N9QqZR6x
+         Fh6FmSz9Fg1wSxpgBcjxfTcYSD1eSO6OP83/keyrtODpXZan3a4RDVXGel/OmfoiGlVZ
+         eHkxcazJDdRWKAelIK3OLEffrKDDhL3H7ER/Ct+dTYRwUTjFv1rb24jRORuxSkoLVPXt
+         E1iA==
+X-Gm-Message-State: ABy/qLbSWOR8LwYW3NpnuiBgbJ0df7cb7eZxorZVchEwBHM693bP6txe
+        EjlkNxKnv/2BXSM1cddt7n5/VlRWNnA7cx7StdA=
+X-Google-Smtp-Source: APBJJlHBx7nK5g3+kldzxnSt3u+r3r/G3QW+9x74hGsko9rk5z0xsgiAGVczPyEk+gpBI6IeMpdddg==
+X-Received: by 2002:a17:902:dad1:b0:1b8:aded:524c with SMTP id q17-20020a170902dad100b001b8aded524cmr12547787plx.1.1690192373829;
+        Mon, 24 Jul 2023 02:52:53 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.51.18
+        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.52.42
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 24 Jul 2023 02:51:29 -0700 (PDT)
+        Mon, 24 Jul 2023 02:52:53 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -69,9 +69,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v2 32/47] ext4: dynamically allocate the ext4-es shrinker
-Date:   Mon, 24 Jul 2023 17:43:39 +0800
-Message-Id: <20230724094354.90817-33-zhengqi.arch@bytedance.com>
+Subject: [PATCH v2 39/47] zsmalloc: dynamically allocate the mm-zspool shrinker
+Date:   Mon, 24 Jul 2023 17:43:46 +0800
+Message-Id: <20230724094354.90817-40-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
 References: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
@@ -82,85 +82,80 @@ List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 In preparation for implementing lockless slab shrink, use new APIs to
-dynamically allocate the ext4-es shrinker, so that it can be freed
+dynamically allocate the mm-zspool shrinker, so that it can be freed
 asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
-read-side critical section when releasing the struct ext4_sb_info.
+read-side critical section when releasing the struct zs_pool.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- fs/ext4/ext4.h           |  2 +-
- fs/ext4/extents_status.c | 22 ++++++++++++----------
- 2 files changed, 13 insertions(+), 11 deletions(-)
+ mm/zsmalloc.c | 28 ++++++++++++++++------------
+ 1 file changed, 16 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 0a2d55faa095..1bd150d454f5 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1651,7 +1651,7 @@ struct ext4_sb_info {
- 	__u32 s_csum_seed;
+diff --git a/mm/zsmalloc.c b/mm/zsmalloc.c
+index 32f5bc4074df..bbbffe313318 100644
+--- a/mm/zsmalloc.c
++++ b/mm/zsmalloc.c
+@@ -229,7 +229,7 @@ struct zs_pool {
+ 	struct zs_pool_stats stats;
  
- 	/* Reclaim extents from extent status tree */
--	struct shrinker s_es_shrinker;
-+	struct shrinker *s_es_shrinker;
- 	struct list_head s_es_list;	/* List of inodes with reclaimable extents */
- 	long s_es_nr_inode;
- 	struct ext4_es_stats s_es_stats;
-diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
-index 9b5b8951afb4..8d4a959dd32f 100644
---- a/fs/ext4/extents_status.c
-+++ b/fs/ext4/extents_status.c
-@@ -1596,7 +1596,7 @@ static unsigned long ext4_es_count(struct shrinker *shrink,
- 	unsigned long nr;
- 	struct ext4_sb_info *sbi;
+ 	/* Compact classes */
+-	struct shrinker shrinker;
++	struct shrinker *shrinker;
  
--	sbi = container_of(shrink, struct ext4_sb_info, s_es_shrinker);
-+	sbi = shrink->private_data;
- 	nr = percpu_counter_read_positive(&sbi->s_es_stats.es_stats_shk_cnt);
- 	trace_ext4_es_shrink_count(sbi->s_sb, sc->nr_to_scan, nr);
- 	return nr;
-@@ -1605,8 +1605,7 @@ static unsigned long ext4_es_count(struct shrinker *shrink,
- static unsigned long ext4_es_scan(struct shrinker *shrink,
- 				  struct shrink_control *sc)
+ #ifdef CONFIG_ZSMALLOC_STAT
+ 	struct dentry *stat_dentry;
+@@ -2082,8 +2082,7 @@ static unsigned long zs_shrinker_scan(struct shrinker *shrinker,
+ 		struct shrink_control *sc)
  {
--	struct ext4_sb_info *sbi = container_of(shrink,
--					struct ext4_sb_info, s_es_shrinker);
-+	struct ext4_sb_info *sbi = shrink->private_data;
- 	int nr_to_scan = sc->nr_to_scan;
- 	int ret, nr_shrunk;
+ 	unsigned long pages_freed;
+-	struct zs_pool *pool = container_of(shrinker, struct zs_pool,
+-			shrinker);
++	struct zs_pool *pool = shrinker->private_data;
  
-@@ -1690,14 +1689,17 @@ int ext4_es_register_shrinker(struct ext4_sb_info *sbi)
- 	if (err)
- 		goto err3;
+ 	/*
+ 	 * Compact classes and calculate compaction delta.
+@@ -2101,8 +2100,7 @@ static unsigned long zs_shrinker_count(struct shrinker *shrinker,
+ 	int i;
+ 	struct size_class *class;
+ 	unsigned long pages_to_free = 0;
+-	struct zs_pool *pool = container_of(shrinker, struct zs_pool,
+-			shrinker);
++	struct zs_pool *pool = shrinker->private_data;
  
--	sbi->s_es_shrinker.scan_objects = ext4_es_scan;
--	sbi->s_es_shrinker.count_objects = ext4_es_count;
--	sbi->s_es_shrinker.seeks = DEFAULT_SEEKS;
--	err = register_shrinker(&sbi->s_es_shrinker, "ext4-es:%s",
--				sbi->s_sb->s_id);
--	if (err)
-+	sbi->s_es_shrinker = shrinker_alloc(0, "ext4-es:%s", sbi->s_sb->s_id);
-+	if (!sbi->s_es_shrinker)
- 		goto err4;
+ 	for (i = ZS_SIZE_CLASSES - 1; i >= 0; i--) {
+ 		class = pool->size_class[i];
+@@ -2117,18 +2115,24 @@ static unsigned long zs_shrinker_count(struct shrinker *shrinker,
  
-+	sbi->s_es_shrinker->scan_objects = ext4_es_scan;
-+	sbi->s_es_shrinker->count_objects = ext4_es_count;
-+	sbi->s_es_shrinker->seeks = DEFAULT_SEEKS;
-+	sbi->s_es_shrinker->private_data = sbi;
-+
-+	shrinker_register(sbi->s_es_shrinker);
-+
- 	return 0;
- err4:
- 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
-@@ -1716,7 +1718,7 @@ void ext4_es_unregister_shrinker(struct ext4_sb_info *sbi)
- 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_cache_misses);
- 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_all_cnt);
- 	percpu_counter_destroy(&sbi->s_es_stats.es_stats_shk_cnt);
--	unregister_shrinker(&sbi->s_es_shrinker);
-+	shrinker_unregister(sbi->s_es_shrinker);
+ static void zs_unregister_shrinker(struct zs_pool *pool)
+ {
+-	unregister_shrinker(&pool->shrinker);
++	shrinker_unregister(pool->shrinker);
  }
  
- /*
+ static int zs_register_shrinker(struct zs_pool *pool)
+ {
+-	pool->shrinker.scan_objects = zs_shrinker_scan;
+-	pool->shrinker.count_objects = zs_shrinker_count;
+-	pool->shrinker.batch = 0;
+-	pool->shrinker.seeks = DEFAULT_SEEKS;
++	pool->shrinker = shrinker_alloc(0, "mm-zspool:%s", pool->name);
++	if (!pool->shrinker)
++		return -ENOMEM;
++
++	pool->shrinker->scan_objects = zs_shrinker_scan;
++	pool->shrinker->count_objects = zs_shrinker_count;
++	pool->shrinker->batch = 0;
++	pool->shrinker->seeks = DEFAULT_SEEKS;
++	pool->shrinker->private_data = pool;
+ 
+-	return register_shrinker(&pool->shrinker, "mm-zspool:%s",
+-				 pool->name);
++	shrinker_register(pool->shrinker);
++
++	return 0;
+ }
+ 
+ static int calculate_zspage_chain_size(int class_size)
 -- 
 2.30.2
 
