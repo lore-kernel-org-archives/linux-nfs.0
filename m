@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7AD17C001DE
-	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jul 2023 09:56:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6768DC001DE
+	for <linux-nfs@archiver.kernel.org>; Mon, 24 Jul 2023 09:57:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232376AbjGXJ41 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Jul 2023 05:56:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57628 "EHLO
+        id S232769AbjGXJ5F (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Jul 2023 05:57:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58934 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232803AbjGXJzv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 05:55:51 -0400
-Received: from mail-pl1-x634.google.com (mail-pl1-x634.google.com [IPv6:2607:f8b0:4864:20::634])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 164BA59D6
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 02:51:05 -0700 (PDT)
-Received: by mail-pl1-x634.google.com with SMTP id d9443c01a7336-1b8c364ad3bso8862115ad.1
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 02:51:05 -0700 (PDT)
+        with ESMTP id S232740AbjGXJ4n (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 05:56:43 -0400
+Received: from mail-pl1-x62f.google.com (mail-pl1-x62f.google.com [IPv6:2607:f8b0:4864:20::62f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9D98C5BB4
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 02:51:38 -0700 (PDT)
+Received: by mail-pl1-x62f.google.com with SMTP id d9443c01a7336-1bba9539a23so647675ad.1
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 02:51:38 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690192195; x=1690796995;
+        d=bytedance.com; s=google; t=1690192254; x=1690797054;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=9Za/Hz+nmH3G3JzZh25LzFiu0ZOWgA3znFTLEp4oxTw=;
-        b=gR2qnZxmoz280cmZWcXiSCLKKkR1JfAp12ElTfYwqMrNTp8JCp9ZKZRXrFwOkcY/Sb
-         CrbcisbKWYe3aY6B3pvGdH/dVnCF0vGzFeD5T1Yk3y+VfaQjIO+EZahaao1fjNd/BZoI
-         apuMNV19Cpy+f53Y3adNFJ3coCvNEOiZFJQcm8nd+dDkCN4T/1IxyvGyE+UJ4ZlCp1aB
-         v/6FaBWqZJevgDX1XD0OMGqFb23jKwI+/PxmuakBM9m0V+vk+xlBE1r0FaEXeTkyqUfe
-         vbAcs9nc+KNDOrB0YDxGRMugv4K0wSAyub+4ZaUHe2Bm2guChHPn7IXXTJaLQIHDrakU
-         MiWA==
+        bh=qE79rW9nQFdZueatbKkJSwG7PQvomLDBWPiy7CJ1pOw=;
+        b=M5PackbLD4uz3PJU8ZrV6Y6kpl/UkDSiJMWkyeKo1o/QqggjCRDFeggmumRocssEkO
+         U5pgVFb8eWXMORlIOr1ePtq+FK8kOLkQFNqmDuq4b+d33HgRHPfZYHAMUXUlROjpk8+o
+         J1M8uQcskFRR53Czt+aOUFg/PIJgAadgSulzfayHiil7eFnaN+rquA9rpl4WBOKlzYvu
+         UE9+Mze0Myg1eBjhHiRU9V6RNrQVMPxaTSp0Rfud/ExFs8cbE/oAjSNMW4v95hOWnnh1
+         IBtexczqggdcPw8iGrtFLB0PL+o6pwYWvLTFYmwk22wyiYE0MeWKeaT0SoMLZVVWr3fx
+         Grfg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690192195; x=1690796995;
+        d=1e100.net; s=20221208; t=1690192254; x=1690797054;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=9Za/Hz+nmH3G3JzZh25LzFiu0ZOWgA3znFTLEp4oxTw=;
-        b=L5t0fRC5WlK4IzvxPabu8jNdrXU/oAcoVK3b5BKSyDlpbZe/VlF+Xi7aQFpR7ERF1r
-         GkWqRAeFMdh1Cs1kKAjb2evIW6VgK7bp+uA0ElD4ZoQcGqRpWJO9YephwU2kqATQ96PB
-         iQSWHbFP0mP21i+kXft9MnBYteUo31+B+iUUSDfb3+y3pder7GCFpwpIo2vZTvsTUrVg
-         j7g0V8qF5B7/5AxJy6Tfj+6tFl62y3UKBdeNHyKQyFwtN/cpoQtruutXcGqwQ3BgaVS1
-         cBmL14WHs8zLCnJ0e5WrgxLPs2ry8giZYihf0gqVHgDDfN+mkNnLtRtbASf7Jss3CLE6
-         5F3w==
-X-Gm-Message-State: ABy/qLZH1xzyjxHPl9wyjSjpfzDFlOG8TxkNjvW4HTciPg3mYXBPa6q2
-        wBHizEP5BiHzhd+PnXUjDd5f5A==
-X-Google-Smtp-Source: APBJJlFYiQjYsesoLBIGYzIbaqvqBpGNnPrMVt+9gbe/8vvXchqG9OkxYsLP3NQiA5NgJtO6rGDrrQ==
-X-Received: by 2002:a17:902:e80a:b0:1b8:50a9:6874 with SMTP id u10-20020a170902e80a00b001b850a96874mr12325717plg.5.1690192194956;
-        Mon, 24 Jul 2023 02:49:54 -0700 (PDT)
+        bh=qE79rW9nQFdZueatbKkJSwG7PQvomLDBWPiy7CJ1pOw=;
+        b=dExgTK7Ngb6ITyzwdD4mcPHYLVsz+qsJlm4uPO6LB7vLB/rboMl9DPB74aZxM9yF0a
+         4Eghm8zRD58ZKCCKAT3ocfpEdds6RylQWsA5X4HdcHIx+2WDhSZFXFKd4t0+K5kAxJ1I
+         6eekbZopICn7+j0tOSfZLOLw5C1XKiOvAIja/qQexb5prwPRGOBZJBYQ5SUvWOJzc/e7
+         O8iLTjpzspVlGjpq4zCkbpvQf7/5cT0dnUMCbdufIO7vPkFMkej6fBufWAkeiz0adu38
+         GwobwFOjgtU1MEia1jL1u7VCWvHgB4fmy6Uv+OfzD+1cD6pVe/3lwlynlSHDsbVvBLRy
+         isfg==
+X-Gm-Message-State: ABy/qLaBgO9b31+Ibd5vlVHwwt/DYtfJ7ds7cmUKE9B4lmwFyiWxvuPR
+        bwNvd8H2DotFd8+/W7wEzr9hPw==
+X-Google-Smtp-Source: APBJJlFDDpJsPsXaM9K0eN3GbgFDnugc0MZ81V5AeEkSNRv9osxW0v212MSH0egY7R7+BB7SiCdLdQ==
+X-Received: by 2002:a17:902:e802:b0:1b3:d4bb:3515 with SMTP id u2-20020a170902e80200b001b3d4bb3515mr12388503plg.0.1690192254453;
+        Mon, 24 Jul 2023 02:50:54 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.49.42
+        by smtp.gmail.com with ESMTPSA id d5-20020a170902c18500b001bb20380bf2sm8467233pld.13.2023.07.24.02.50.42
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 24 Jul 2023 02:49:54 -0700 (PDT)
+        Mon, 24 Jul 2023 02:50:54 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -69,9 +69,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v2 24/47] drm/panfrost: dynamically allocate the drm-panfrost shrinker
-Date:   Mon, 24 Jul 2023 17:43:31 +0800
-Message-Id: <20230724094354.90817-25-zhengqi.arch@bytedance.com>
+Subject: [PATCH v2 29/47] vmw_balloon: dynamically allocate the vmw-balloon shrinker
+Date:   Mon, 24 Jul 2023 17:43:36 +0800
+Message-Id: <20230724094354.90817-30-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
 References: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
@@ -82,128 +82,99 @@ List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 In preparation for implementing lockless slab shrink, use new APIs to
-dynamically allocate the drm-panfrost shrinker, so that it can be freed
+dynamically allocate the vmw-balloon shrinker, so that it can be freed
 asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
-read-side critical section when releasing the struct panfrost_device.
+read-side critical section when releasing the struct vmballoon.
+
+And we can simply exit vmballoon_init() when registering the shrinker
+fails. So the shrinker_registered indication is redundant, just remove it.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- drivers/gpu/drm/panfrost/panfrost_device.h    |  2 +-
- drivers/gpu/drm/panfrost/panfrost_drv.c       |  6 +++-
- drivers/gpu/drm/panfrost/panfrost_gem.h       |  2 +-
- .../gpu/drm/panfrost/panfrost_gem_shrinker.c  | 32 ++++++++++++-------
- 4 files changed, 27 insertions(+), 15 deletions(-)
+ drivers/misc/vmw_balloon.c | 38 ++++++++++++--------------------------
+ 1 file changed, 12 insertions(+), 26 deletions(-)
 
-diff --git a/drivers/gpu/drm/panfrost/panfrost_device.h b/drivers/gpu/drm/panfrost/panfrost_device.h
-index b0126b9fbadc..e667e5689353 100644
---- a/drivers/gpu/drm/panfrost/panfrost_device.h
-+++ b/drivers/gpu/drm/panfrost/panfrost_device.h
-@@ -118,7 +118,7 @@ struct panfrost_device {
- 
- 	struct mutex shrinker_lock;
- 	struct list_head shrinker_list;
+diff --git a/drivers/misc/vmw_balloon.c b/drivers/misc/vmw_balloon.c
+index 9ce9b9e0e9b6..d216d4dc042e 100644
+--- a/drivers/misc/vmw_balloon.c
++++ b/drivers/misc/vmw_balloon.c
+@@ -380,16 +380,7 @@ struct vmballoon {
+ 	/**
+ 	 * @shrinker: shrinker interface that is used to avoid over-inflation.
+ 	 */
 -	struct shrinker shrinker;
+-
+-	/**
+-	 * @shrinker_registered: whether the shrinker was registered.
+-	 *
+-	 * The shrinker interface does not handle gracefully the removal of
+-	 * shrinker that was not registered before. This indication allows to
+-	 * simplify the unregistration process.
+-	 */
+-	bool shrinker_registered;
 +	struct shrinker *shrinker;
- 
- 	struct panfrost_devfreq pfdevfreq;
  };
-diff --git a/drivers/gpu/drm/panfrost/panfrost_drv.c b/drivers/gpu/drm/panfrost/panfrost_drv.c
-index bbada731bbbd..f705bbdea360 100644
---- a/drivers/gpu/drm/panfrost/panfrost_drv.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_drv.c
-@@ -598,10 +598,14 @@ static int panfrost_probe(struct platform_device *pdev)
- 	if (err < 0)
- 		goto err_out1;
  
--	panfrost_gem_shrinker_init(ddev);
-+	err = panfrost_gem_shrinker_init(ddev);
-+	if (err)
-+		goto err_out2;
+ static struct vmballoon balloon;
+@@ -1568,29 +1559,27 @@ static unsigned long vmballoon_shrinker_count(struct shrinker *shrinker,
  
- 	return 0;
- 
-+err_out2:
-+	drm_dev_unregister(ddev);
- err_out1:
- 	pm_runtime_disable(pfdev->dev);
- 	panfrost_device_fini(pfdev);
-diff --git a/drivers/gpu/drm/panfrost/panfrost_gem.h b/drivers/gpu/drm/panfrost/panfrost_gem.h
-index ad2877eeeccd..863d2ec8d4f0 100644
---- a/drivers/gpu/drm/panfrost/panfrost_gem.h
-+++ b/drivers/gpu/drm/panfrost/panfrost_gem.h
-@@ -81,7 +81,7 @@ panfrost_gem_mapping_get(struct panfrost_gem_object *bo,
- void panfrost_gem_mapping_put(struct panfrost_gem_mapping *mapping);
- void panfrost_gem_teardown_mappings_locked(struct panfrost_gem_object *bo);
- 
--void panfrost_gem_shrinker_init(struct drm_device *dev);
-+int panfrost_gem_shrinker_init(struct drm_device *dev);
- void panfrost_gem_shrinker_cleanup(struct drm_device *dev);
- 
- #endif /* __PANFROST_GEM_H__ */
-diff --git a/drivers/gpu/drm/panfrost/panfrost_gem_shrinker.c b/drivers/gpu/drm/panfrost/panfrost_gem_shrinker.c
-index bf0170782f25..9a90dfb5301f 100644
---- a/drivers/gpu/drm/panfrost/panfrost_gem_shrinker.c
-+++ b/drivers/gpu/drm/panfrost/panfrost_gem_shrinker.c
-@@ -18,8 +18,7 @@
- static unsigned long
- panfrost_gem_shrinker_count(struct shrinker *shrinker, struct shrink_control *sc)
+ static void vmballoon_unregister_shrinker(struct vmballoon *b)
  {
--	struct panfrost_device *pfdev =
--		container_of(shrinker, struct panfrost_device, shrinker);
-+	struct panfrost_device *pfdev = shrinker->private_data;
- 	struct drm_gem_shmem_object *shmem;
- 	unsigned long count = 0;
+-	if (b->shrinker_registered)
+-		unregister_shrinker(&b->shrinker);
+-	b->shrinker_registered = false;
++	shrinker_unregister(b->shrinker);
+ }
  
-@@ -65,8 +64,7 @@ static bool panfrost_gem_purge(struct drm_gem_object *obj)
- static unsigned long
- panfrost_gem_shrinker_scan(struct shrinker *shrinker, struct shrink_control *sc)
+ static int vmballoon_register_shrinker(struct vmballoon *b)
  {
--	struct panfrost_device *pfdev =
--		container_of(shrinker, struct panfrost_device, shrinker);
-+	struct panfrost_device *pfdev = shrinker->private_data;
- 	struct drm_gem_shmem_object *shmem, *tmp;
- 	unsigned long freed = 0;
+-	int r;
+-
+ 	/* Do nothing if the shrinker is not enabled */
+ 	if (!vmwballoon_shrinker_enable)
+ 		return 0;
  
-@@ -97,13 +95,24 @@ panfrost_gem_shrinker_scan(struct shrinker *shrinker, struct shrink_control *sc)
-  *
-  * This function registers and sets up the panfrost shrinker.
-  */
--void panfrost_gem_shrinker_init(struct drm_device *dev)
-+int panfrost_gem_shrinker_init(struct drm_device *dev)
- {
- 	struct panfrost_device *pfdev = dev->dev_private;
--	pfdev->shrinker.count_objects = panfrost_gem_shrinker_count;
--	pfdev->shrinker.scan_objects = panfrost_gem_shrinker_scan;
--	pfdev->shrinker.seeks = DEFAULT_SEEKS;
--	WARN_ON(register_shrinker(&pfdev->shrinker, "drm-panfrost"));
-+
-+	pfdev->shrinker = shrinker_alloc(0, "drm-panfrost");
-+	if (!pfdev->shrinker) {
-+		WARN_ON(1);
+-	b->shrinker.scan_objects = vmballoon_shrinker_scan;
+-	b->shrinker.count_objects = vmballoon_shrinker_count;
+-	b->shrinker.seeks = DEFAULT_SEEKS;
++	b->shrinker = shrinker_alloc(0, "vmw-balloon");
++	if (!b->shrinker)
 +		return -ENOMEM;
-+	}
-+
-+	pfdev->shrinker->count_objects = panfrost_gem_shrinker_count;
-+	pfdev->shrinker->scan_objects = panfrost_gem_shrinker_scan;
-+	pfdev->shrinker->seeks = DEFAULT_SEEKS;
-+	pfdev->shrinker->private_data = pfdev;
-+
-+	shrinker_register(pfdev->shrinker);
-+
+ 
+-	r = register_shrinker(&b->shrinker, "vmw-balloon");
++	b->shrinker->scan_objects = vmballoon_shrinker_scan;
++	b->shrinker->count_objects = vmballoon_shrinker_count;
++	b->shrinker->seeks = DEFAULT_SEEKS;
++	b->shrinker->private_data = b;
+ 
+-	if (r == 0)
+-		b->shrinker_registered = true;
++	shrinker_register(b->shrinker);
+ 
+-	return r;
 +	return 0;
  }
  
- /**
-@@ -116,7 +125,6 @@ void panfrost_gem_shrinker_cleanup(struct drm_device *dev)
- {
- 	struct panfrost_device *pfdev = dev->dev_private;
+ /*
+@@ -1883,7 +1872,7 @@ static int __init vmballoon_init(void)
  
--	if (pfdev->shrinker.nr_deferred) {
--		unregister_shrinker(&pfdev->shrinker);
--	}
-+	if (pfdev->shrinker)
-+		shrinker_unregister(pfdev->shrinker);
+ 	error = vmballoon_register_shrinker(&balloon);
+ 	if (error)
+-		goto fail;
++		return error;
+ 
+ 	/*
+ 	 * Initialization of compaction must be done after the call to
+@@ -1905,9 +1894,6 @@ static int __init vmballoon_init(void)
+ 	vmballoon_debugfs_init(&balloon);
+ 
+ 	return 0;
+-fail:
+-	vmballoon_unregister_shrinker(&balloon);
+-	return error;
  }
+ 
+ /*
 -- 
 2.30.2
 
