@@ -2,62 +2,38 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0BCDCEB64DD
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jul 2023 03:09:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BBE0FC04FDF
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jul 2023 03:25:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229545AbjGYDJ1 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 24 Jul 2023 23:09:27 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59590 "EHLO
+        id S231358AbjGYDY5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 24 Jul 2023 23:24:57 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34638 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229978AbjGYDJZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 23:09:25 -0400
-Received: from mail-pj1-x102f.google.com (mail-pj1-x102f.google.com [IPv6:2607:f8b0:4864:20::102f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 90493E78
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 20:09:22 -0700 (PDT)
-Received: by mail-pj1-x102f.google.com with SMTP id 98e67ed59e1d1-25e847bb482so707977a91.1
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 20:09:22 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690254562; x=1690859362;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=ZLkcXzJjvvDBLgu5DbJbwRAKtejO8FK7VlKqBEYpGhg=;
-        b=T37460khNMPot0VVWdDz4lB6VWzVdicUBxVfz7CttLqrgD8g0MkXpwdKxm81+5qM3E
-         yM+KFmnDFeQa0ZY5ZeNvvyumpxFJqPDg3oixgT5YKKGKOt9qmtbXs6vK0nUKy4kqsaDS
-         iJ3utK1jXEfJapBrHYjK+SRbiAPBWHkzR4mO0jKk+qC4Stl39POzbhCCP4MwAtpmSso5
-         ynGZ9erR4hLoA8pCdH+sRZpUbw1kMvKh2ycfFI2IzmOqd8Zq8Q0hlgUcK6mejCeashGS
-         UzcYSPHM74qvjYTTAriMRhyDbW62IR+NfEc7uD2qj/U2RIYLpDl8fGFG28yoLGatJrqh
-         GkTg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690254562; x=1690859362;
-        h=content-transfer-encoding:in-reply-to:from:references:cc:to
-         :content-language:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=ZLkcXzJjvvDBLgu5DbJbwRAKtejO8FK7VlKqBEYpGhg=;
-        b=G7XmwUHM65HM5Otf5ilEpZrpQov9lbk+VKBIHHiIp+V0JTUl1EXIxVEQ4aa79tJUOM
-         ZGh4eDbwRQa083rlSGFsiYlSdX6YYrLpqGZCUZCyClUdC9veQKGmFO0MDQ22sJ61DoUB
-         +WO38z4TEtvdlqatckSLKF6njILMg4KyO5XRViHbPYLyBSFheWccoNMVgvitd3eeAVhf
-         oJ4TvBifPtWnbe7yj8QoalCKcSs6qPNyZLD6IZ/WQ7BWasFn1JvcUrFCHDEM9x7+GA0K
-         81iMUjrIFqBA288bSAlhpaQD56+PaoUcIh5wYo6Iq21Zd+vXVNTsVlD59Edj9PiWgy/n
-         6zwg==
-X-Gm-Message-State: ABy/qLa5BrkAE/J2AGdiN4O14raqAYgW6fk8nHr5BNVowGrKQ8VggM01
-        MtX2KgbUNf/jG+JRz9Jnk8c0Ng==
-X-Google-Smtp-Source: APBJJlEruF0WFFXXZAOwcLJKfTF/P8Yek4Wx/bwgxp4VRr2IRHJr9OEk7izXq54CPTEEiNehAqKYyg==
-X-Received: by 2002:a17:90a:50f:b0:263:730b:f568 with SMTP id h15-20020a17090a050f00b00263730bf568mr10246975pjh.3.1690254562043;
-        Mon, 24 Jul 2023 20:09:22 -0700 (PDT)
-Received: from [10.70.252.135] ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id 21-20020a17090a199500b002633fa95ac2sm9540001pji.13.2023.07.24.20.09.10
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 24 Jul 2023 20:09:21 -0700 (PDT)
-Message-ID: <d2621ad0-8b99-9154-5ff5-509dec2f32a3@bytedance.com>
-Date:   Tue, 25 Jul 2023 11:09:07 +0800
+        with ESMTP id S231594AbjGYDYw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Jul 2023 23:24:52 -0400
+X-Greylist: delayed 389 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Mon, 24 Jul 2023 20:24:46 PDT
+Received: from out-7.mta0.migadu.com (out-7.mta0.migadu.com [IPv6:2001:41d0:1004:224b::7])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C6EA0199E
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2023 20:24:46 -0700 (PDT)
+Content-Type: text/plain;
+        charset=us-ascii
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
+        t=1690255481;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=6p0DFvIoLJzSIVM0qRIM/GXeN12xkckyA9Fji4TGEhI=;
+        b=r9D+tXFVa/N1RN+BLv5WgR5iQ4rwtyebnPM62Sh3w2AQ+19WlSlFOjsJl5wosr8TEtJchn
+        V877L2MD6oNieyuMlTG6JawmQ1ns/Fjh33pHsVXqhR6CCRTDc2499SUTwOS+JRsWVrdweW
+        vS3GyBw0+b28Uj9NeJVk00fqQ8IPfLM=
 MIME-Version: 1.0
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
- Gecko/20100101 Thunderbird/102.12.0
 Subject: Re: [PATCH v2 01/47] mm: vmscan: move shrinker-related code into a
  separate file
-Content-Language: en-US
-To:     Muchun Song <muchun.song@linux.dev>
+X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
+From:   Muchun Song <muchun.song@linux.dev>
+In-Reply-To: <d2621ad0-8b99-9154-5ff5-509dec2f32a3@bytedance.com>
+Date:   Tue, 25 Jul 2023 11:23:54 +0800
 Cc:     Andrew Morton <akpm@linux-foundation.org>, david@fromorbit.com,
         tkhai@ya.ru, Vlastimil Babka <vbabka@suse.cz>,
         Roman Gushchin <roman.gushchin@linux.dev>, djwong@kernel.org,
@@ -79,55 +55,65 @@ Cc:     Andrew Morton <akpm@linux-foundation.org>, david@fromorbit.com,
         virtualization@lists.linux-foundation.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org
+Content-Transfer-Encoding: quoted-printable
+Message-Id: <6FE62F56-1B4E-4E2A-BEA9-0DA6907A2FA9@linux.dev>
 References: <20230724094354.90817-1-zhengqi.arch@bytedance.com>
  <20230724094354.90817-2-zhengqi.arch@bytedance.com>
  <97E80C37-8872-4C5A-A027-A0B35F39152A@linux.dev>
-From:   Qi Zheng <zhengqi.arch@bytedance.com>
-In-Reply-To: <97E80C37-8872-4C5A-A027-A0B35F39152A@linux.dev>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+ <d2621ad0-8b99-9154-5ff5-509dec2f32a3@bytedance.com>
+To:     Qi Zheng <zhengqi.arch@bytedance.com>
+X-Migadu-Flow: FLOW_OUT
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 
 
-On 2023/7/25 10:35, Muchun Song wrote:
-> 
-> 
->> On Jul 24, 2023, at 17:43, Qi Zheng <zhengqi.arch@bytedance.com> wrote:
->>
->> The mm/vmscan.c file is too large, so separate the shrinker-related
->> code from it into a separate file. No functional changes.
->>
->> Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
->> ---
->> include/linux/shrinker.h |   3 +
->> mm/Makefile              |   4 +-
->> mm/shrinker.c            | 707 +++++++++++++++++++++++++++++++++++++++
->> mm/vmscan.c              | 701 --------------------------------------
->> 4 files changed, 712 insertions(+), 703 deletions(-)
->> create mode 100644 mm/shrinker.c
->>
->> diff --git a/include/linux/shrinker.h b/include/linux/shrinker.h
->> index 224293b2dd06..961cb84e51f5 100644
->> --- a/include/linux/shrinker.h
->> +++ b/include/linux/shrinker.h
->> @@ -96,6 +96,9 @@ struct shrinker {
->>   */
->> #define SHRINKER_NONSLAB (1 << 3)
->>
->> +unsigned long shrink_slab(gfp_t gfp_mask, int nid, struct mem_cgroup *memcg,
->> +			   int priority);
-> 
-> A good cleanup, vmscan.c is so huge.
-> 
-> I'd like to introduce a new header in mm/ directory and contains those
-> declarations of functions (like this and other debug function in
-> shrinker_debug.c) since they are used internally across mm.
+> On Jul 25, 2023, at 11:09, Qi Zheng <zhengqi.arch@bytedance.com> =
+wrote:
+>=20
+>=20
+>=20
+> On 2023/7/25 10:35, Muchun Song wrote:
+>>> On Jul 24, 2023, at 17:43, Qi Zheng <zhengqi.arch@bytedance.com> =
+wrote:
+>>>=20
+>>> The mm/vmscan.c file is too large, so separate the shrinker-related
+>>> code from it into a separate file. No functional changes.
+>>>=20
+>>> Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
+>>> ---
+>>> include/linux/shrinker.h |   3 +
+>>> mm/Makefile              |   4 +-
+>>> mm/shrinker.c            | 707 =
++++++++++++++++++++++++++++++++++++++++
+>>> mm/vmscan.c              | 701 =
+--------------------------------------
+>>> 4 files changed, 712 insertions(+), 703 deletions(-)
+>>> create mode 100644 mm/shrinker.c
+>>>=20
+>>> diff --git a/include/linux/shrinker.h b/include/linux/shrinker.h
+>>> index 224293b2dd06..961cb84e51f5 100644
+>>> --- a/include/linux/shrinker.h
+>>> +++ b/include/linux/shrinker.h
+>>> @@ -96,6 +96,9 @@ struct shrinker {
+>>>  */
+>>> #define SHRINKER_NONSLAB (1 << 3)
+>>>=20
+>>> +unsigned long shrink_slab(gfp_t gfp_mask, int nid, struct =
+mem_cgroup *memcg,
+>>> +    int priority);
+>> A good cleanup, vmscan.c is so huge.
+>> I'd like to introduce a new header in mm/ directory and contains =
+those
+>> declarations of functions (like this and other debug function in
+>> shrinker_debug.c) since they are used internally across mm.
+>=20
+> How about putting them in the mm/internal.h file?
 
-How about putting them in the mm/internal.h file?
+Either is fine to me.
 
-> 
-> Thanks.
-> 
+>=20
+>> Thanks.
+
+
