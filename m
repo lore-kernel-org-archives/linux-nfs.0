@@ -2,207 +2,91 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF55FC001DF
-	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jul 2023 15:01:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A8337C001DF
+	for <linux-nfs@archiver.kernel.org>; Tue, 25 Jul 2023 15:08:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232145AbjGYPBD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 25 Jul 2023 11:01:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60968 "EHLO
+        id S232183AbjGYPIy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 25 Jul 2023 11:08:54 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39238 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232248AbjGYPAG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jul 2023 11:00:06 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D9AF3199D;
-        Tue, 25 Jul 2023 07:59:37 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        with ESMTP id S232564AbjGYPIt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jul 2023 11:08:49 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C1DA1BDB
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Jul 2023 08:08:15 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1690297694;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=dJLvBknNMarmLDrQxoPD0sclub/8yQR/F2hhXB1vAZE=;
+        b=FUSGKRrHFFnNFy1OjB2AcdR7XoT7ISUypOrlnu7XKuLJipa+V1c2RgAru9DeSFAhnCaU1R
+        Nzp2tppmw7/vMWYpZaY9r3lWRZvf52ZNdRVSXQUGxxMQbKN2lX2FVXSR8AW438U0QUL3dU
+        J9FObiRnhpoig1nnn63jJxy1NEJMi3c=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-495-6KHNgpnkP4eR0JciBSAf-w-1; Tue, 25 Jul 2023 11:08:09 -0400
+X-MC-Unique: 6KHNgpnkP4eR0JciBSAf-w-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 77B1961797;
-        Tue, 25 Jul 2023 14:59:37 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A2936C433AD;
-        Tue, 25 Jul 2023 14:59:30 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1690297176;
-        bh=t187d4hlj7Hd2B853hoiIPlXJE4vBx7O1lkOZGTYDW8=;
-        h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-        b=SSmBXICMwwOT3suM7Wh9+/efKJhkY/qtCAceKg5JcawInGhDeAcad93pkmikV0o+6
-         4WemX3e9jmjVTbdAQRpQdyZIhz1g9e0iDBRjM7wITplVnNb0dKwcSeSRf8RXFJDlWS
-         05qhAWRZOBxveiT38itiEKwwzi2cwotnAfVwMeMGzQCXfg4aP/7QA/7BOeFl3k+q2W
-         k4L1Wuc6aR3dIYbSuqKgvU4mO6BXIuKAuk+5ULb3C0pXfvdRzoF0OIGIEUDaE/vzJU
-         9DjaVzezFk7HWbRa31mtwovPb4u6potKHgCKfEVNxB3PuDjxy8+/zOplOia8cZNwpQ
-         rRGJw4To0RgnQ==
-From:   Jeff Layton <jlayton@kernel.org>
-Date:   Tue, 25 Jul 2023 10:58:20 -0400
-Subject: [PATCH v6 7/7] btrfs: convert to multigrain timestamps
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 8F188835154;
+        Tue, 25 Jul 2023 15:08:08 +0000 (UTC)
+Received: from aion.redhat.com (unknown [10.22.8.81])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 7FE78200BA7C;
+        Tue, 25 Jul 2023 15:08:08 +0000 (UTC)
+Received: by aion.redhat.com (Postfix, from userid 1000)
+        id 05CD96272B; Tue, 25 Jul 2023 11:08:08 -0400 (EDT)
+From:   Scott Mayhew <smayhew@redhat.com>
+To:     trond.myklebust@hammerspace.com, anna@kernel.org
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] NFS: Fix potential oops in nfs_inode_remove_request()
+Date:   Tue, 25 Jul 2023 11:08:07 -0400
+Message-ID: <20230725150807.8770-2-smayhew@redhat.com>
+In-Reply-To: <20230725150807.8770-1-smayhew@redhat.com>
+References: <20230725150807.8770-1-smayhew@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20230725-mgctime-v6-7-a794c2b7abca@kernel.org>
-References: <20230725-mgctime-v6-0-a794c2b7abca@kernel.org>
-In-Reply-To: <20230725-mgctime-v6-0-a794c2b7abca@kernel.org>
-To:     Eric Van Hensbergen <ericvh@kernel.org>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Christian Schoenebeck <linux_oss@crudebyte.com>,
-        David Howells <dhowells@redhat.com>,
-        Marc Dionne <marc.dionne@auristor.com>,
-        Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>, Xiubo Li <xiubli@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu,
-        Tyler Hicks <code@tyhicks.com>, Gao Xiang <xiang@kernel.org>,
-        Chao Yu <chao@kernel.org>, Yue Hu <huyue2@coolpad.com>,
-        Jeffle Xu <jefflexu@linux.alibaba.com>,
-        Namjae Jeon <linkinjeon@kernel.org>,
-        Sungjong Seo <sj1557.seo@samsung.com>,
-        Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Tejun Heo <tj@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
-        Mark Fasheh <mark@fasheh.com>,
-        Joel Becker <jlbec@evilplan.org>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>,
-        Mike Marshall <hubcap@omnibond.com>,
-        Martin Brandenburg <martin@omnibond.com>,
-        Luis Chamberlain <mcgrof@kernel.org>,
-        Kees Cook <keescook@chromium.org>,
-        Iurii Zaikin <yzaikin@google.com>,
-        Steve French <sfrench@samba.org>,
-        Paulo Alcantara <pc@manguebit.com>,
-        Ronnie Sahlberg <lsahlber@redhat.com>,
-        Shyam Prasad N <sprasad@microsoft.com>,
-        Tom Talpey <tom@talpey.com>,
-        Sergey Senozhatsky <senozhatsky@chromium.org>,
-        Richard Weinberger <richard@nod.at>,
-        Hans de Goede <hdegoede@redhat.com>,
-        Hugh Dickins <hughd@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "Darrick J. Wong" <djwong@kernel.org>
-Cc:     Dave Chinner <david@fromorbit.com>,
-        Anthony Iliopoulos <ailiop@suse.com>, v9fs@lists.linux.dev,
-        linux-kernel@vger.kernel.org, linux-afs@lists.infradead.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        codalist@coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
-        linux-erofs@lists.ozlabs.org, linux-fsdevel@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        ntfs3@lists.linux.dev, ocfs2-devel@lists.linux.dev,
-        devel@lists.orangefs.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-mtd@lists.infradead.org,
-        linux-mm@kvack.org, linux-xfs@vger.kernel.org,
-        Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2706; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=t187d4hlj7Hd2B853hoiIPlXJE4vBx7O1lkOZGTYDW8=;
- b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBkv+MkzroP27sCWuNSIgl+Cd1orLkVgLYnAGcGo
- qEGnD3ITTiJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZL/jJAAKCRAADmhBGVaC
- FezWEACH2UPwfc8Rd5LxW2eGVPkB5meVxJPlOLQBj6pWDkW95diD7uXPQto9lmLQF4qdUED+5gy
- WLeo0BKULpIsDQGcmeJ0JkL/JiN2PbntEUg4RArSmU+rbZrR++dnF7ONr6ND9nWmLJNpuajyStV
- pcZilQXeumx55tirF1mt2vbGkXsKu/qHNXXLZ4CnD9fI2bIWLHaqsutS3k6iENOAKoEtdCWwoM9
- FVpdj3qFKKuML2HPLPiNiqSR4PQMpFrJZuJtwugTZ4dV2zGIpz2l4Fo+eJzLD8g3FKg1A3Mk34F
- Uziz080sql3EtQDp+oM7E0vxs8NLvt2bJsGtEl+GEq10Z1KQiGEE118baYC/FF3Y1JhZ8N3o/6n
- NTmLgKCSGgEaX90TUrhvCtvVULKCcbHbm/RkOiIu7CC5iVHPV6RW/oHBDJVwKYW+2MlAb+VY5re
- f+nknpCe54xwkAkjA93/0IhnnhD1PqlAiOzimKBVA2WsnYyUS0Q10BesJm3HaFKmBvca1rkAIvY
- 5RVnuhgAlq6eH4QItdabELeq+RMtIFijqWrAAvDc0GPhlIwBn3i4uHiLu5D086UgM+5Nt7DjCZf
- 3QmNVnOo1Lw9zpdhHxNYnhUO9mT6oJzmtiR5/Z3Ca5TZ+LV2ivQE3dGm4TXhbyY0GAZ/FvepgyX
- df3wfm4D0Ck2M5Q==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.1 on 10.11.54.4
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Enable multigrain timestamps, which should ensure that there is an
-apparent change to the timestamp whenever it has been written after
-being actively observed via getattr.
+Once a folio's private data has been cleared, it's possible for another
+process to clear the folio->mapping (e.g. via invalidate_complete_folio2
+or evict_mapping_folio), so it wouldn't be safe to call
+nfs_page_to_inode() after that.
 
-Beyond enabling the FS_MGTIME flag, this patch eliminates
-update_time_for_write, which goes to great pains to avoid in-memory
-stores. Just have it overwrite the timestamps unconditionally.
-
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
+Fixes: 0c493b5cf16e ("NFS: Convert buffered writes to use folios")
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- fs/btrfs/file.c  | 24 ++++--------------------
- fs/btrfs/super.c |  5 +++--
- 2 files changed, 7 insertions(+), 22 deletions(-)
+ fs/nfs/write.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
-index d7a9ece7a40b..b9e75c9f95ac 100644
---- a/fs/btrfs/file.c
-+++ b/fs/btrfs/file.c
-@@ -1106,25 +1106,6 @@ void btrfs_check_nocow_unlock(struct btrfs_inode *inode)
- 	btrfs_drew_write_unlock(&inode->root->snapshot_lock);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index f4cca8f00c0c..489c3f9dae23 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -785,6 +785,8 @@ static void nfs_inode_add_request(struct nfs_page *req)
+  */
+ static void nfs_inode_remove_request(struct nfs_page *req)
+ {
++	struct nfs_inode *nfsi = NFS_I(nfs_page_to_inode(req));
++
+ 	if (nfs_page_group_sync_on_bit(req, PG_REMOVE)) {
+ 		struct folio *folio = nfs_page_to_folio(req->wb_head);
+ 		struct address_space *mapping = folio_file_mapping(folio);
+@@ -800,7 +802,7 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 
+ 	if (test_and_clear_bit(PG_INODE_REF, &req->wb_flags)) {
+ 		nfs_release_request(req);
+-		atomic_long_dec(&NFS_I(nfs_page_to_inode(req))->nrequests);
++		atomic_long_dec(&nfsi->nrequests);
+ 	}
  }
  
--static void update_time_for_write(struct inode *inode)
--{
--	struct timespec64 now, ctime;
--
--	if (IS_NOCMTIME(inode))
--		return;
--
--	now = current_time(inode);
--	if (!timespec64_equal(&inode->i_mtime, &now))
--		inode->i_mtime = now;
--
--	ctime = inode_get_ctime(inode);
--	if (!timespec64_equal(&ctime, &now))
--		inode_set_ctime_to_ts(inode, now);
--
--	if (IS_I_VERSION(inode))
--		inode_inc_iversion(inode);
--}
--
- static int btrfs_write_check(struct kiocb *iocb, struct iov_iter *from,
- 			     size_t count)
- {
-@@ -1156,7 +1137,10 @@ static int btrfs_write_check(struct kiocb *iocb, struct iov_iter *from,
- 	 * need to start yet another transaction to update the inode as we will
- 	 * update the inode when we finish writing whatever data we write.
- 	 */
--	update_time_for_write(inode);
-+	if (!IS_NOCMTIME(inode)) {
-+		inode->i_mtime = inode_set_ctime_current(inode);
-+		inode_inc_iversion(inode);
-+	}
- 
- 	start_pos = round_down(pos, fs_info->sectorsize);
- 	oldsize = i_size_read(inode);
-diff --git a/fs/btrfs/super.c b/fs/btrfs/super.c
-index f1dd172d8d5b..8eda51b095c9 100644
---- a/fs/btrfs/super.c
-+++ b/fs/btrfs/super.c
-@@ -2144,7 +2144,7 @@ static struct file_system_type btrfs_fs_type = {
- 	.name		= "btrfs",
- 	.mount		= btrfs_mount,
- 	.kill_sb	= btrfs_kill_super,
--	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA,
-+	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA | FS_MGTIME,
- };
- 
- static struct file_system_type btrfs_root_fs_type = {
-@@ -2152,7 +2152,8 @@ static struct file_system_type btrfs_root_fs_type = {
- 	.name		= "btrfs",
- 	.mount		= btrfs_mount_root,
- 	.kill_sb	= btrfs_kill_super,
--	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA | FS_ALLOW_IDMAP,
-+	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA |
-+			  FS_ALLOW_IDMAP | FS_MGTIME,
- };
- 
- MODULE_ALIAS_FS("btrfs");
-
 -- 
 2.41.0
 
