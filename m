@@ -2,75 +2,62 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 42F3DC001B0
-	for <linux-nfs@archiver.kernel.org>; Wed, 26 Jul 2023 12:15:23 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AFA3FC001DC
+	for <linux-nfs@archiver.kernel.org>; Wed, 26 Jul 2023 12:16:25 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231824AbjGZMPW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 26 Jul 2023 08:15:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60222 "EHLO
+        id S231140AbjGZMQY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 26 Jul 2023 08:16:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60788 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231939AbjGZMPV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jul 2023 08:15:21 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 546D219A7
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Jul 2023 05:14:35 -0700 (PDT)
+        with ESMTP id S229715AbjGZMQX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jul 2023 08:16:23 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9F90619A7
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Jul 2023 05:15:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1690373674;
+        s=mimecast20190719; t=1690373737;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          in-reply-to:in-reply-to:references:references;
-        bh=9y3yg5KgefYDIN9bSf2g3F3ifzh5J50cmp3vp0NbN6I=;
-        b=U9Hho0QLpuLnYUHDQUMeHKiTBrlev/VSRxb5m4L8EPrIFLp3CDXMt+LV4hSHf1QSWpPN6E
-        4yYvMr5cjBy0P/olkLME5BOMexS+/m9NIFeK3kbykh68RaIhNIoCXiwAMnZzAUWCrJLU3u
-        zburqXOza8Ou1VM7BTRSfEpwuaT8pgc=
+        bh=84g7atOPu2tztvy36dveiFbDeLVcuT1Pc2w+WrFKbi8=;
+        b=XiyLzgp5CXuiEgJa0CJ7IxP7LEfqQy8ss9CYoyr8tMsar5DmvQlp6C3UQj1SW5NHvnB+t/
+        Pqlwv4+rwl3LG5vku/QzMkZ1b9rgJzOXWo2GM5WiEIS+tOfh7ibyii0nc7KBTPNEJX+wvs
+        nL6nRZfAhjPgAFYhI172J/NCCvY928U=
 Received: from mimecast-mx02.redhat.com (66.187.233.73 [66.187.233.73]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-246-VAR8qLzmMzq89RhDCSTq8g-1; Wed, 26 Jul 2023 08:14:32 -0400
-X-MC-Unique: VAR8qLzmMzq89RhDCSTq8g-1
-Received: from smtp.corp.redhat.com (int-mx09.intmail.prod.int.rdu2.redhat.com [10.11.54.9])
+ us-mta-249-zkogntADNbu_U0yKYHSGpw-1; Wed, 26 Jul 2023 08:15:32 -0400
+X-MC-Unique: zkogntADNbu_U0yKYHSGpw-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 520162815E2A;
-        Wed, 26 Jul 2023 12:14:32 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id ECFD538008AA;
+        Wed, 26 Jul 2023 12:15:31 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.42.28.131])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id AE5D0492CA6;
-        Wed, 26 Jul 2023 12:14:31 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 579B4F782E;
+        Wed, 26 Jul 2023 12:15:31 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
         Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
         Kingdom.
         Registered in England and Wales under Company Registration No. 3798903
 From:   David Howells <dhowells@redhat.com>
-In-Reply-To: <168979148257.1905271.8311839188162164611.stgit@morisot.1015granger.net>
-References: <168979148257.1905271.8311839188162164611.stgit@morisot.1015granger.net> <168979108540.1905271.9720708849149797793.stgit@morisot.1015granger.net>
+In-Reply-To: <168979147611.1905271.944494362977362823.stgit@morisot.1015granger.net>
+References: <168979147611.1905271.944494362977362823.stgit@morisot.1015granger.net> <168979108540.1905271.9720708849149797793.stgit@morisot.1015granger.net>
 To:     Chuck Lever <cel@kernel.org>
 Cc:     dhowells@redhat.com, linux-nfs@vger.kernel.org,
         netdev@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v3 4/5] SUNRPC: Revert e0a912e8ddba
+Subject: Re: [PATCH v3 3/5] SUNRPC: Convert svc_udp_sendto() to use the per-socket bio_vec array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-ID: <6617.1690373671.1@warthog.procyon.org.uk>
-Date:   Wed, 26 Jul 2023 13:14:31 +0100
-Message-ID: <6618.1690373671@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.9
+Content-ID: <6649.1690373730.1@warthog.procyon.org.uk>
+Date:   Wed, 26 Jul 2023 13:15:30 +0100
+Message-ID: <6650.1690373730@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 3.1 on 10.11.54.5
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Chuck Lever <cel@kernel.org> wrote:
+Should svc_udp_sendto() also be using MSG_SPLICE_PAGES now?
 
-> Flamegraph analysis showed that the cork/uncork calls consume
-> nearly a third of the CPU time spent in svc_tcp_sendto(). The
-> other two consumers are mutex lock/unlock and svc_tcp_sendmsg().
-> 
-> Now that svc_tcp_sendto() coalesces RPC messages properly, there
-> is no need to introduce artificial delays to prevent sending
-> partial messages.
-> 
-> After applying this change, I measured a 1.2K read IOPS increase
-> for 8KB random I/O (several percent) on 56Gb IP over IB.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-
-Reviewed-by: David Howells <dhowells@redhat.com>
+David
 
