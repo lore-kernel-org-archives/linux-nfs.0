@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B9651C0015E
-	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jul 2023 08:20:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C057C05052
+	for <linux-nfs@archiver.kernel.org>; Thu, 27 Jul 2023 08:20:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234012AbjG0IUb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 27 Jul 2023 04:20:31 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55322 "EHLO
+        id S232874AbjG0IUc (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 27 Jul 2023 04:20:32 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54902 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234462AbjG0ITT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jul 2023 04:19:19 -0400
-Received: from mail-pf1-x429.google.com (mail-pf1-x429.google.com [IPv6:2607:f8b0:4864:20::429])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C446A6EBD
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Jul 2023 01:11:24 -0700 (PDT)
-Received: by mail-pf1-x429.google.com with SMTP id d2e1a72fcca58-682eef7d752so204314b3a.0
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Jul 2023 01:11:24 -0700 (PDT)
+        with ESMTP id S234481AbjG0ITV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jul 2023 04:19:21 -0400
+Received: from mail-pf1-x431.google.com (mail-pf1-x431.google.com [IPv6:2607:f8b0:4864:20::431])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B2013768B
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jul 2023 01:11:49 -0700 (PDT)
+Received: by mail-pf1-x431.google.com with SMTP id d2e1a72fcca58-686f74a8992so78045b3a.1
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jul 2023 01:11:49 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1690445453; x=1691050253;
+        d=bytedance.com; s=google; t=1690445477; x=1691050277;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=Tu9w5C30y8MI/napZavPwFZ6nIJBEFlaB1CCEG9BfCw=;
-        b=SsnsAPan45QSmQpJqAj4mS8LLavDombkZ7lBafLri7RggDFTDcpBOPuNyPBGUpCtjr
-         o6WPy8R5HZiwm+Xan4YH//v4pvtUrfeXD65Yl1az+1fl+mR3tGlsBglM3Vyq8SiK2wyq
-         igQhG5qCvspbkK2WSeD0wTcUc/mVkzohC4cNnc0XbtmIoWLvLOUFPW/6keJGSZm27mRz
-         h/WfB+fRpcVUE83zuhvMF8jYZ5b4nmh/qAHVpz3lROeGSQfLjlNrgG+gcbPX1nT5Mc7l
-         SChQ2Lyx0ddDcRFnW8nA/XTZimbKDOI/X2WL7QqkejXsVeMe1ddjPlvbW0l5uaRLNo6A
-         kpeA==
+        bh=/uDURfJnJhgp6SdQN0dR835bsVpn4QFEXgmrOE/fnW4=;
+        b=XMYYvlyXrTmu7TBUMUrS0fAERGM3ULbRWCn4in2BRNinhRwId1ryL35VoKr2h4Rx+U
+         HjLlRWIKGbBKN0lkokdfiXe7DL4/cW8JhUixM/OhO46u6zDYby/ZSHvD4zMfuAy6v0wa
+         kMUIVYEZOCmoajTRWB9O5pPKf2KXDL1RA9QX/iWGDKdd+7AiEQpaXll5+7XF5hXMtboW
+         QGfdfOEZoiLr6B07ra4S8ESol/cU0lfuHqis0vxsY6ajpZNCyt33YYUETwhkXmLJyVVM
+         wWI0H3b2jkyty5FrIH3eGt0u2K+zpCq6JQc2FhUeW7es/kOOMNTlHxQiuG1Uqt5RUvfA
+         07oA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1690445453; x=1691050253;
+        d=1e100.net; s=20221208; t=1690445477; x=1691050277;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=Tu9w5C30y8MI/napZavPwFZ6nIJBEFlaB1CCEG9BfCw=;
-        b=RnojAVDqs2aQiVnGfaAWFl1RIxnV5JZ0WEWD9KVnWmDjJTWDeV9IGyHTPtwl7FAlIL
-         4wqwb4jUQzmggt76hwSVHIp2PTHus2JTux986VjtINxBLhb3HordIYJdpkJ/AjpL1PbR
-         seoM2md9WxffIw87bXtbvodqpQQ5oi6R8kaEObpL5UpfYAJHpGFJbv8OSh8TEnYgw5JL
-         Vh5kzA5k/ddk8xwG5nHQpg3231Ek6fSs8bhmVTfzGooHxE/AUsIBgUouY4XBub3UfFN/
-         bmxAFTjXQ93scC9EMQLOBD1GXqPvPK/1dDn7uDCB9GCvZ/IiwRw1CuQfz/gEDdZ6sJWM
-         tQ8A==
-X-Gm-Message-State: ABy/qLaUQShqFosjYAntx6swTbirHFwVOZo4YPd9P56YxNvzeZRSXujh
-        LVDLGj6nXe+UbPd9SbOa9/HitA==
-X-Google-Smtp-Source: APBJJlH8SkZovaBL43/tLWqoZ3fBR0XBkmVGy0uXARpdi3AER3WOYf3EsHJKszN8s65be9uhrbpx8A==
-X-Received: by 2002:a05:6a20:12d3:b0:125:6443:4eb8 with SMTP id v19-20020a056a2012d300b0012564434eb8mr5769272pzg.5.1690445453524;
-        Thu, 27 Jul 2023 01:10:53 -0700 (PDT)
+        bh=/uDURfJnJhgp6SdQN0dR835bsVpn4QFEXgmrOE/fnW4=;
+        b=BtyUKQ7Eg054i15IrP6iSjXpPyfmfZOAKRWUFPFiaBbcO/0OQ1P7QsgbLZDVOyaf9Y
+         8OwZZcCv9cHp+m4JfSUJYXHyrBOmbimTqE51UwAC/+KYXNb+vBj7l/l/lfaHivhkDnk5
+         7ty4SfRhFqBEvdIWkjUz2hU+499do7seyKHPhohYIDkwTZlMfou0+dal9QXKcxPW7UtS
+         RkX04IBlVBQkMYAJ9DskxFTvAQ01JCN8YPz469o6FgTg0yIatMX02bXPSFaFlgvUVVTq
+         IaCBKCpsE7zFpHCNUP5ecHEiNnih6aBOTYUs2WOEXFplxximQFPxIISWTDMr0YFm+vyD
+         pqJQ==
+X-Gm-Message-State: ABy/qLbmwLiGi4/6Seu6m3rDnm7XrfmiNX0TCmVrYa/IEvg8zHFCjgib
+        CqGahZIlVOK+oIQ8n/bfUb6sFg==
+X-Google-Smtp-Source: APBJJlG87NINI+/+i4SJ1KgSTM1EJ+JwVd/Dy5o7cICQ6coQ1cuBExOC2izM/xbO/Jy48XOYsOKRHA==
+X-Received: by 2002:a05:6a00:2b90:b0:67d:308b:97ef with SMTP id dv16-20020a056a002b9000b0067d308b97efmr4590349pfb.2.1690445477689;
+        Thu, 27 Jul 2023 01:11:17 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.147])
-        by smtp.gmail.com with ESMTPSA id j8-20020aa78d08000000b006828e49c04csm885872pfe.75.2023.07.27.01.10.41
+        by smtp.gmail.com with ESMTPSA id j8-20020aa78d08000000b006828e49c04csm885872pfe.75.2023.07.27.01.11.06
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 27 Jul 2023 01:10:53 -0700 (PDT)
+        Thu, 27 Jul 2023 01:11:17 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -70,9 +70,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v3 25/49] drm/msm: dynamically allocate the drm-msm_gem shrinker
-Date:   Thu, 27 Jul 2023 16:04:38 +0800
-Message-Id: <20230727080502.77895-26-zhengqi.arch@bytedance.com>
+Subject: [PATCH v3 27/49] dm: dynamically allocate the dm-bufio shrinker
+Date:   Thu, 27 Jul 2023 16:04:40 +0800
+Message-Id: <20230727080502.77895-28-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230727080502.77895-1-zhengqi.arch@bytedance.com>
 References: <20230727080502.77895-1-zhengqi.arch@bytedance.com>
@@ -83,135 +83,83 @@ List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 In preparation for implementing lockless slab shrink, use new APIs to
-dynamically allocate the drm-msm_gem shrinker, so that it can be freed
+dynamically allocate the dm-bufio shrinker, so that it can be freed
 asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
-read-side critical section when releasing the struct msm_drm_private.
+read-side critical section when releasing the struct dm_bufio_client.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 ---
- drivers/gpu/drm/msm/msm_drv.c          |  4 ++-
- drivers/gpu/drm/msm/msm_drv.h          |  4 +--
- drivers/gpu/drm/msm/msm_gem_shrinker.c | 34 ++++++++++++++++----------
- 3 files changed, 26 insertions(+), 16 deletions(-)
+ drivers/md/dm-bufio.c | 26 +++++++++++++++-----------
+ 1 file changed, 15 insertions(+), 11 deletions(-)
 
-diff --git a/drivers/gpu/drm/msm/msm_drv.c b/drivers/gpu/drm/msm/msm_drv.c
-index 4bd028fa7500..7f20249d6071 100644
---- a/drivers/gpu/drm/msm/msm_drv.c
-+++ b/drivers/gpu/drm/msm/msm_drv.c
-@@ -462,7 +462,9 @@ static int msm_drm_init(struct device *dev, const struct drm_driver *drv)
- 	if (ret)
- 		goto err_msm_uninit;
+diff --git a/drivers/md/dm-bufio.c b/drivers/md/dm-bufio.c
+index bc309e41d074..5a9124b83d53 100644
+--- a/drivers/md/dm-bufio.c
++++ b/drivers/md/dm-bufio.c
+@@ -963,7 +963,7 @@ struct dm_bufio_client {
  
--	msm_gem_shrinker_init(ddev);
-+	ret = msm_gem_shrinker_init(ddev);
-+	if (ret)
-+		goto err_msm_uninit;
+ 	sector_t start;
  
- 	if (priv->kms_init) {
- 		ret = priv->kms_init(ddev);
-diff --git a/drivers/gpu/drm/msm/msm_drv.h b/drivers/gpu/drm/msm/msm_drv.h
-index 02fd6c7d0bb7..e2fc56f161b5 100644
---- a/drivers/gpu/drm/msm/msm_drv.h
-+++ b/drivers/gpu/drm/msm/msm_drv.h
-@@ -221,7 +221,7 @@ struct msm_drm_private {
- 	} vram;
- 
- 	struct notifier_block vmap_notifier;
 -	struct shrinker shrinker;
 +	struct shrinker *shrinker;
+ 	struct work_struct shrink_work;
+ 	atomic_long_t need_shrink;
  
- 	struct drm_atomic_state *pm_state;
- 
-@@ -283,7 +283,7 @@ int msm_ioctl_gem_submit(struct drm_device *dev, void *data,
- unsigned long msm_gem_shrinker_shrink(struct drm_device *dev, unsigned long nr_to_scan);
- #endif
- 
--void msm_gem_shrinker_init(struct drm_device *dev);
-+int msm_gem_shrinker_init(struct drm_device *dev);
- void msm_gem_shrinker_cleanup(struct drm_device *dev);
- 
- struct sg_table *msm_gem_prime_get_sg_table(struct drm_gem_object *obj);
-diff --git a/drivers/gpu/drm/msm/msm_gem_shrinker.c b/drivers/gpu/drm/msm/msm_gem_shrinker.c
-index f38296ad8743..20699993e4f8 100644
---- a/drivers/gpu/drm/msm/msm_gem_shrinker.c
-+++ b/drivers/gpu/drm/msm/msm_gem_shrinker.c
-@@ -34,8 +34,7 @@ static bool can_block(struct shrink_control *sc)
- static unsigned long
- msm_gem_shrinker_count(struct shrinker *shrinker, struct shrink_control *sc)
+@@ -2368,7 +2368,7 @@ static unsigned long dm_bufio_shrink_scan(struct shrinker *shrink, struct shrink
  {
--	struct msm_drm_private *priv =
--		container_of(shrinker, struct msm_drm_private, shrinker);
-+	struct msm_drm_private *priv = shrinker->private_data;
- 	unsigned count = priv->lru.dontneed.count;
+ 	struct dm_bufio_client *c;
  
- 	if (can_swap())
-@@ -100,8 +99,7 @@ active_evict(struct drm_gem_object *obj)
- static unsigned long
- msm_gem_shrinker_scan(struct shrinker *shrinker, struct shrink_control *sc)
+-	c = container_of(shrink, struct dm_bufio_client, shrinker);
++	c = shrink->private_data;
+ 	atomic_long_add(sc->nr_to_scan, &c->need_shrink);
+ 	queue_work(dm_bufio_wq, &c->shrink_work);
+ 
+@@ -2377,7 +2377,7 @@ static unsigned long dm_bufio_shrink_scan(struct shrinker *shrink, struct shrink
+ 
+ static unsigned long dm_bufio_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
  {
--	struct msm_drm_private *priv =
--		container_of(shrinker, struct msm_drm_private, shrinker);
-+	struct msm_drm_private *priv = shrinker->private_data;
- 	struct {
- 		struct drm_gem_lru *lru;
- 		bool (*shrink)(struct drm_gem_object *obj);
-@@ -148,10 +146,11 @@ msm_gem_shrinker_shrink(struct drm_device *dev, unsigned long nr_to_scan)
- 	struct shrink_control sc = {
- 		.nr_to_scan = nr_to_scan,
- 	};
--	int ret;
-+	unsigned long ret = SHRINK_STOP;
+-	struct dm_bufio_client *c = container_of(shrink, struct dm_bufio_client, shrinker);
++	struct dm_bufio_client *c = shrink->private_data;
+ 	unsigned long count = cache_total(&c->cache);
+ 	unsigned long retain_target = get_retain_buffers(c);
+ 	unsigned long queued_for_cleanup = atomic_long_read(&c->need_shrink);
+@@ -2490,15 +2490,19 @@ struct dm_bufio_client *dm_bufio_client_create(struct block_device *bdev, unsign
+ 	INIT_WORK(&c->shrink_work, shrink_work);
+ 	atomic_long_set(&c->need_shrink, 0);
  
- 	fs_reclaim_acquire(GFP_KERNEL);
--	ret = msm_gem_shrinker_scan(&priv->shrinker, &sc);
-+	if (priv->shrinker)
-+		ret = msm_gem_shrinker_scan(priv->shrinker, &sc);
- 	fs_reclaim_release(GFP_KERNEL);
+-	c->shrinker.count_objects = dm_bufio_shrink_count;
+-	c->shrinker.scan_objects = dm_bufio_shrink_scan;
+-	c->shrinker.seeks = 1;
+-	c->shrinker.batch = 0;
+-	r = register_shrinker(&c->shrinker, "dm-bufio:(%u:%u)",
+-			      MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev));
+-	if (r)
++	c->shrinker = shrinker_alloc(0, "dm-bufio:(%u:%u)",
++				     MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev));
++	if (!c->shrinker)
+ 		goto bad;
  
- 	return ret;
-@@ -210,16 +209,25 @@ msm_gem_shrinker_vmap(struct notifier_block *nb, unsigned long event, void *ptr)
-  *
-  * This function registers and sets up the msm shrinker.
-  */
--void msm_gem_shrinker_init(struct drm_device *dev)
-+int msm_gem_shrinker_init(struct drm_device *dev)
- {
- 	struct msm_drm_private *priv = dev->dev_private;
--	priv->shrinker.count_objects = msm_gem_shrinker_count;
--	priv->shrinker.scan_objects = msm_gem_shrinker_scan;
--	priv->shrinker.seeks = DEFAULT_SEEKS;
--	WARN_ON(register_shrinker(&priv->shrinker, "drm-msm_gem"));
++	c->shrinker->count_objects = dm_bufio_shrink_count;
++	c->shrinker->scan_objects = dm_bufio_shrink_scan;
++	c->shrinker->seeks = 1;
++	c->shrinker->batch = 0;
++	c->shrinker->private_data = c;
 +
-+	priv->shrinker = shrinker_alloc(0, "drm-msm_gem");
-+	if (!priv->shrinker)
-+		return -ENOMEM;
++	shrinker_register(c->shrinker);
 +
-+	priv->shrinker->count_objects = msm_gem_shrinker_count;
-+	priv->shrinker->scan_objects = msm_gem_shrinker_scan;
-+	priv->shrinker->seeks = DEFAULT_SEEKS;
-+	priv->shrinker->private_data = priv;
-+
-+	shrinker_register(priv->shrinker);
+ 	mutex_lock(&dm_bufio_clients_lock);
+ 	dm_bufio_client_count++;
+ 	list_add(&c->client_list, &dm_bufio_all_clients);
+@@ -2537,7 +2541,7 @@ void dm_bufio_client_destroy(struct dm_bufio_client *c)
  
- 	priv->vmap_notifier.notifier_call = msm_gem_shrinker_vmap;
- 	WARN_ON(register_vmap_purge_notifier(&priv->vmap_notifier));
-+
-+	return 0;
- }
+ 	drop_buffers(c);
  
- /**
-@@ -232,8 +240,8 @@ void msm_gem_shrinker_cleanup(struct drm_device *dev)
- {
- 	struct msm_drm_private *priv = dev->dev_private;
+-	unregister_shrinker(&c->shrinker);
++	shrinker_free(c->shrinker);
+ 	flush_work(&c->shrink_work);
  
--	if (priv->shrinker.nr_deferred) {
-+	if (priv->shrinker) {
- 		WARN_ON(unregister_vmap_purge_notifier(&priv->vmap_notifier));
--		unregister_shrinker(&priv->shrinker);
-+		shrinker_free(priv->shrinker);
- 	}
- }
+ 	mutex_lock(&dm_bufio_clients_lock);
 -- 
 2.30.2
 
