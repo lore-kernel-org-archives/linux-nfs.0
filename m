@@ -2,100 +2,90 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 61BD7C001E0
-	for <linux-nfs@archiver.kernel.org>; Tue,  1 Aug 2023 14:43:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B7278C00528
+	for <linux-nfs@archiver.kernel.org>; Tue,  1 Aug 2023 17:01:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234815AbjHAOnQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 1 Aug 2023 10:43:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58532 "EHLO
+        id S230375AbjHARBX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 1 Aug 2023 13:01:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45474 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234961AbjHAOnC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2023 10:43:02 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 44F19E9
-        for <linux-nfs@vger.kernel.org>; Tue,  1 Aug 2023 07:42:16 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1690900935;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=7vwc9at70Qh8LhK9xeX1CaO0kd7ITAuS0LQnI9Pt6BI=;
-        b=gG8ZDGHZsiXJhLXIr6udD7/G5Tm1JJpIhzaab3tP3BK4lF+iytiVrgeEN76tmqkRROnCJP
-        HAFw5wzqc2HYkcvb6nzRbWsoahyz80KcuMo+N2+GKSt/ZtT+cgMXs7L9Wky5r4xvpKAu7C
-        y+MTCwowLf0WIe7QJKWYd8PaNj6nsQA=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-271-c11CCN0nPaS-RDzBr2ATtg-1; Tue, 01 Aug 2023 10:42:11 -0400
-X-MC-Unique: c11CCN0nPaS-RDzBr2ATtg-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        with ESMTP id S232699AbjHARBW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2023 13:01:22 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5C53A2114;
+        Tue,  1 Aug 2023 10:01:21 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 851B38030AC;
-        Tue,  1 Aug 2023 14:42:11 +0000 (UTC)
-Received: from dobby.home.dicksonnet.net (unknown [10.22.8.249])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 4D8F8F784B;
-        Tue,  1 Aug 2023 14:42:11 +0000 (UTC)
-From:   Steve Dickson <steved@redhat.com>
-To:     Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-Cc:     Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] rpcb_clnt.c: memory leak in destroy_addr
-Date:   Tue,  1 Aug 2023 10:42:08 -0400
-Message-ID: <20230801144209.557175-1-steved@redhat.com>
+        by dfw.source.kernel.org (Postfix) with ESMTPS id BCF0661467;
+        Tue,  1 Aug 2023 17:01:20 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DA76AC433C8;
+        Tue,  1 Aug 2023 17:01:19 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1690909280;
+        bh=V4wsRi7dF+gdHpYldqmIxmxjUn2UTVH56/cwwCtxOwE=;
+        h=Subject:From:To:Date:From;
+        b=VhbAGLKWUDY/Eq/kJgVvlUFbwbi/w16OZYtgNfo/liJXFuZn0fMf6a1CSYda25NGK
+         p/YKW0NQhIYdYVyZP0a+UHF5zMz9jNJy7s4owTv9PgcitWJ35ARxl01daoweFi7Iiy
+         FwtTGyvkD2j/NNVfQnh18EDV6Bv529XN2QoVC6i5yQ7eOFQIdpChoLwO1ETbXdWJ2s
+         HrSN7MXCf52uiXmpeQyM2FNv0KS1ZI9NSDFGqSVGeoAK83U1WOHgwkymGknBZMpwbA
+         ZlSyVR5Fw5J/Y+A/gIBWc/Ge1jLLX3x9F6vfsYJNSaIGnYTkwM3pki1nL1lyq4DUYH
+         WFLCw/OPiDGdw==
+Message-ID: <3aba8d909955253a4630f66d0f72ee35f103a948.camel@kernel.org>
+Subject: nfs remounting regression in v6.5-rc1
+From:   Jeff Layton <jlayton@kernel.org>
+To:     linux-nfs <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Date:   Tue, 01 Aug 2023 13:01:18 -0400
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.5
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Herb Wartens <wartens2@llnl.gov>
+I've hit a regression that crept in sometime after v6.5-rc1. If I have 2
+NFS mounts on a client that are mounting 2 directories of the same
+export, and then I remount one of them ro, the other will also flip to
+being ro as well. For instance:
 
-Null pointers so they are not used again
+[vagrant@kdevops-nfs-default ~]$ sudo mount kdevops-nfsd:/export/fstests/kd=
+evops-nfs-default/test /media/test
+[vagrant@kdevops-nfs-default ~]$ sudo mount kdevops-nfsd:/export/fstests/kd=
+evops-nfs-default/scratch /media/scratch
+[vagrant@kdevops-nfs-default ~]$ mount -v | grep nfs
+sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw,relatime)
+kdevops-nfsd:/export/fstests/kdevops-nfs-default/test on /media/test type n=
+fs4 (rw,relatime,vers=3D4.2,rsize=3D1048576,wsize=3D1048576,namlen=3D255,ha=
+rd,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=3Dsys,clientaddr=3D192.168.122.7=
+9,local_lock=3Dnone,addr=3D192.168.122.138)
+kdevops-nfsd:/export/fstests/kdevops-nfs-default/scratch on /media/scratch =
+type nfs4 (rw,relatime,vers=3D4.2,rsize=3D1048576,wsize=3D1048576,namlen=3D=
+255,hard,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=3Dsys,clientaddr=3D192.168=
+.122.79,local_lock=3Dnone,addr=3D192.168.122.138)
+[vagrant@kdevops-nfs-default ~]$ sudo mount kdevops-nfsd:/export/fstests/kd=
+evops-nfs-default/scratch /media/scratch -o remount,ro
+[vagrant@kdevops-nfs-default ~]$ mount -v | grep nfs
+sunrpc on /var/lib/nfs/rpc_pipefs type rpc_pipefs (rw,relatime)
+kdevops-nfsd:/export/fstests/kdevops-nfs-default/test on /media/test type n=
+fs4 (ro,relatime,vers=3D4.2,rsize=3D1048576,wsize=3D1048576,namlen=3D255,ha=
+rd,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=3Dsys,clientaddr=3D192.168.122.7=
+9,local_lock=3Dnone,addr=3D192.168.122.138)
+kdevops-nfsd:/export/fstests/kdevops-nfs-default/scratch on /media/scratch =
+type nfs4 (ro,relatime,vers=3D4.2,rsize=3D1048576,wsize=3D1048576,namlen=3D=
+255,hard,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=3Dsys,clientaddr=3D192.168=
+.122.79,local_lock=3Dnone,addr=3D192.168.122.138)
 
-Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=2225226
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/rpcb_clnt.c | 20 +++++++++++++++-----
- 1 file changed, 15 insertions(+), 5 deletions(-)
+=20
+In v6.4, /media/test stays rw. Mounting with -o nosharecache works
+around the problem (since that disables superblock sharing). This also
+manifests as a failure in fstest generic/306.
 
-diff --git a/src/rpcb_clnt.c b/src/rpcb_clnt.c
-index d178d86..c0a9e12 100644
---- a/src/rpcb_clnt.c
-+++ b/src/rpcb_clnt.c
-@@ -104,17 +104,27 @@ destroy_addr(addr)
- {
- 	if (addr == NULL)
- 		return;
--	if(addr->ac_host != NULL)
-+	if (addr->ac_host != NULL) {
- 		free(addr->ac_host);
--	if(addr->ac_netid != NULL)
-+		addr->ac_host = NULL;
-+	}
-+	if (addr->ac_netid != NULL) {
- 		free(addr->ac_netid);
--	if(addr->ac_uaddr != NULL)
-+		addr->ac_netid = NULL;
-+	}
-+	if (addr->ac_uaddr != NULL) {
- 		free(addr->ac_uaddr);
--	if(addr->ac_taddr != NULL) {
--		if(addr->ac_taddr->buf != NULL)
-+		addr->ac_uaddr = NULL;
-+	}
-+	if (addr->ac_taddr != NULL) {
-+		if(addr->ac_taddr->buf != NULL) {
- 			free(addr->ac_taddr->buf);
-+			addr->ac_taddr->buf = NULL;
-+		}
-+		addr->ac_taddr = NULL;
- 	}
- 	free(addr);
-+	addr = NULL;
- }
- 
- /*
--- 
-2.41.0
+I'm running a bisect now to try and track down the problem, but if
+anyone has thoughts on the cause, let me know.
 
+Cheers,
+--=20
+Jeff Layton <jlayton@kernel.org>
