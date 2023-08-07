@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5DCD1C04A6A
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Aug 2023 11:30:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 180DBC41513
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Aug 2023 11:31:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232802AbjHGLah (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Aug 2023 07:30:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39878 "EHLO
+        id S232754AbjHGLbQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Aug 2023 07:31:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37498 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232627AbjHGLa1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Aug 2023 07:30:27 -0400
-Received: from mail-oa1-f41.google.com (mail-oa1-f41.google.com [209.85.160.41])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8A8B65FF4
-        for <linux-nfs@vger.kernel.org>; Mon,  7 Aug 2023 04:27:48 -0700 (PDT)
-Received: by mail-oa1-f41.google.com with SMTP id 586e51a60fabf-1bb6334fec5so671788fac.1
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Aug 2023 04:27:48 -0700 (PDT)
+        with ESMTP id S232755AbjHGLa4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Aug 2023 07:30:56 -0400
+Received: from mail-io1-xd2e.google.com (mail-io1-xd2e.google.com [IPv6:2607:f8b0:4864:20::d2e])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E2BCF4ED8
+        for <linux-nfs@vger.kernel.org>; Mon,  7 Aug 2023 04:27:53 -0700 (PDT)
+Received: by mail-io1-xd2e.google.com with SMTP id ca18e2360f4ac-760dff4b701so48755439f.0
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Aug 2023 04:27:53 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1691407308; x=1692012108;
+        d=bytedance.com; s=google; t=1691407616; x=1692012416;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=iXZOOFmuwv6/pQ9jzhgVENlSQpZ5agnqrhquB4Bsoao=;
-        b=hzC4ROTiSBh5/tJ1Cqjvk25T6FQViCD1qhQ8SJP4bBkReeLafDKamHfbLK1J8qKFH/
-         JbI9JR39qfUpTernVJUy3LhlPlZiuoDfsN+8kJEzaB/WhUrmwIpOw1mgzj355jiXQZiw
-         9Xs914qu/g1Out8AgOdBktuonNzr7Qx9bCAYqSMcvnrwTsLC6zQXviP3JFxobhtoPjey
-         4Jnc+q/iOLAUWiNoqaRvxt18YFe1Lat32bcdq1ph+2g8zKv8vsdcvCuvpuRG70IuziaX
-         8u6je7pXUswLXer4P+9cpvv9WBVQ1L8bwO17un2/XYMqTc+u9Hkb/5XDH+ERZbrXi+Bx
-         3jVQ==
+        bh=8Rfav5Nxe+GtybemfHCRLQWJ1Wm1Jr8phC3oTaQ6f/s=;
+        b=D9VGZppL9mudSollmHKAMsoBw9FAh1b5mi2nEVflXBa/jyH8ZPG6ivzaKlb9239UkL
+         zmFCKi3kHcCsdvridotLGvoQA83bye2qRGaChzwV8ey/4P2OMN2fSLlJGEi+4mSgiYiv
+         QTdSAN14n3MDINX7P6lw7ehZTuSTYV2qYr6oA4ilkDK9FUB/sqSgXDEVZBQpd5iEMLCY
+         h5x1nKrl/PlEJ4QkIHerLKhzh2/bQ9MtTPw/6DJmA2S4woqMg6bRCDvNXJslsCNbyi3X
+         3D2XUY927SI6B1J7iFoV3+/6p/09E5MA2JR2EYPPHK/PVKOQuTaXfqwPBw5bZKH96cr4
+         kVTg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691407308; x=1692012108;
+        d=1e100.net; s=20221208; t=1691407616; x=1692012416;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=iXZOOFmuwv6/pQ9jzhgVENlSQpZ5agnqrhquB4Bsoao=;
-        b=LkKGYgV3FOaDLZi3InmdppRgltQ637g1fLaK2QxS5+oZV1UQUWiz8Pltpartfzsnna
-         rTbAfYglbF1UDR+jXAmXMqNKv2enjmh87wCpxOOzsxJmKRaeUURTBoDKC7IS0qdERBqk
-         ITcStDEaKrS8bUgdzLYxUakVFlEcTgExlstVKe0HizSNDfaQutsUzF7uxgmaEZ+T/GVX
-         iA6d3djQ6Up1SfAhkOU2QGHY4nAErKl9j++SUebpAzo19fpVuHu+NzLoWmDlnNQFfCB8
-         PWZh9ahfHI21C16k+27ajmmLNAM4GtbGkFwVnQpCY68FNsuMY4ZM66L4k3D43tDjVT4s
-         jWbg==
-X-Gm-Message-State: ABy/qLan2YKNJRhJFcqNCwYlJxVm/HK8PtXySRxK2LrN4MJ/8HZn1IpX
-        SM3qd8Vopq41TfBgtgtqw35/uN+17GRxIxrgAyo=
-X-Google-Smtp-Source: APBJJlFDSvCAq9gTdHkFF7Bzn2YL0W/qaEPzJ7AdGJ/zjCXgG1JFMDLiaFr2l43qqes0mOglkhZu9g==
-X-Received: by 2002:a17:902:f688:b0:1bb:d7d4:e2b with SMTP id l8-20020a170902f68800b001bbd7d40e2bmr33138766plg.0.1691406778592;
-        Mon, 07 Aug 2023 04:12:58 -0700 (PDT)
+        bh=8Rfav5Nxe+GtybemfHCRLQWJ1Wm1Jr8phC3oTaQ6f/s=;
+        b=eKQfjdTi8lAplI0HnXicBjw9HgFD1UVOSD1f9Owfsvs2lMUZjl8ltwZj/eauSuKxdB
+         X1v7U2k0jQeYDmeU2+9EnxeSeabx0ygU/pt5kF0X8avB0uOjnIX9afbOefFVg20zNGMF
+         WFrBVj8fiu9YbfjqgAYX6NZlSiiMRn9rEPIKFtU67OguIco6rgkELvjlbVnBsacuD9CK
+         dzenSFH9YonUaBZNQZtO8hIUxM7N1ysvaBhpIfMjJA0jxZOBNQyYyTxmnXqprBa7MSwG
+         Pn6JrlG35KTHZfiXfNj1rGE5I1QrKfLvkZlnyJE4uecDGFusHvPx8KbXWwR0Pp9okfGf
+         EB3A==
+X-Gm-Message-State: ABy/qLZ3/BVmch4Dp2MwIq95LRLpCYLYCkzKF1KieDJxyDu7HfVJAtYk
+        M0aQgGIHrV1lKH+XyRFBESYGFRqerIhDLu+9Oo4=
+X-Google-Smtp-Source: AGHT+IFWvaKty2qg3Zp4xukmaRzjC+XhBT002dXZP422OqSqCh0qrR2HTT2eLu1rJ18Y9R5+7t84vA==
+X-Received: by 2002:a92:6408:0:b0:349:5c87:e712 with SMTP id y8-20020a926408000000b003495c87e712mr5356429ilb.1.1691406930655;
+        Mon, 07 Aug 2023 04:15:30 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.12.45
+        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.15.18
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Aug 2023 04:12:58 -0700 (PDT)
+        Mon, 07 Aug 2023 04:15:30 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -71,9 +71,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v4 14/48] nfs: dynamically allocate the nfs-acl shrinker
-Date:   Mon,  7 Aug 2023 19:09:02 +0800
-Message-Id: <20230807110936.21819-15-zhengqi.arch@bytedance.com>
+Subject: [PATCH v4 26/48] dm: dynamically allocate the dm-bufio shrinker
+Date:   Mon,  7 Aug 2023 19:09:14 +0800
+Message-Id: <20230807110936.21819-27-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
 References: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
@@ -83,62 +83,85 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use new APIs to dynamically allocate the nfs-acl shrinker.
+In preparation for implementing lockless slab shrink, use new APIs to
+dynamically allocate the dm-bufio shrinker, so that it can be freed
+asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
+read-side critical section when releasing the struct dm_bufio_client.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 ---
- fs/nfs/super.c | 22 ++++++++++++++--------
- 1 file changed, 14 insertions(+), 8 deletions(-)
+ drivers/md/dm-bufio.c | 28 +++++++++++++++++-----------
+ 1 file changed, 17 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2284f749d892..1b5cd0444dda 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -129,11 +129,7 @@ static void nfs_ssc_unregister_ops(void)
- }
- #endif /* CONFIG_NFS_V4_2 */
+diff --git a/drivers/md/dm-bufio.c b/drivers/md/dm-bufio.c
+index bc309e41d074..62eb27639c9b 100644
+--- a/drivers/md/dm-bufio.c
++++ b/drivers/md/dm-bufio.c
+@@ -963,7 +963,7 @@ struct dm_bufio_client {
  
--static struct shrinker acl_shrinker = {
--	.count_objects	= nfs_access_cache_count,
--	.scan_objects	= nfs_access_cache_scan,
--	.seeks		= DEFAULT_SEEKS,
--};
-+static struct shrinker *acl_shrinker;
+ 	sector_t start;
  
- /*
-  * Register the NFS filesystems
-@@ -153,9 +149,19 @@ int __init register_nfs_fs(void)
- 	ret = nfs_register_sysctl();
- 	if (ret < 0)
- 		goto error_2;
--	ret = register_shrinker(&acl_shrinker, "nfs-acl");
--	if (ret < 0)
-+
-+	acl_shrinker = shrinker_alloc(0, "nfs-acl");
-+	if (!acl_shrinker) {
-+		ret = -ENOMEM;
- 		goto error_3;
+-	struct shrinker shrinker;
++	struct shrinker *shrinker;
+ 	struct work_struct shrink_work;
+ 	atomic_long_t need_shrink;
+ 
+@@ -2368,7 +2368,7 @@ static unsigned long dm_bufio_shrink_scan(struct shrinker *shrink, struct shrink
+ {
+ 	struct dm_bufio_client *c;
+ 
+-	c = container_of(shrink, struct dm_bufio_client, shrinker);
++	c = shrink->private_data;
+ 	atomic_long_add(sc->nr_to_scan, &c->need_shrink);
+ 	queue_work(dm_bufio_wq, &c->shrink_work);
+ 
+@@ -2377,7 +2377,7 @@ static unsigned long dm_bufio_shrink_scan(struct shrinker *shrink, struct shrink
+ 
+ static unsigned long dm_bufio_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
+ {
+-	struct dm_bufio_client *c = container_of(shrink, struct dm_bufio_client, shrinker);
++	struct dm_bufio_client *c = shrink->private_data;
+ 	unsigned long count = cache_total(&c->cache);
+ 	unsigned long retain_target = get_retain_buffers(c);
+ 	unsigned long queued_for_cleanup = atomic_long_read(&c->need_shrink);
+@@ -2490,14 +2490,20 @@ struct dm_bufio_client *dm_bufio_client_create(struct block_device *bdev, unsign
+ 	INIT_WORK(&c->shrink_work, shrink_work);
+ 	atomic_long_set(&c->need_shrink, 0);
+ 
+-	c->shrinker.count_objects = dm_bufio_shrink_count;
+-	c->shrinker.scan_objects = dm_bufio_shrink_scan;
+-	c->shrinker.seeks = 1;
+-	c->shrinker.batch = 0;
+-	r = register_shrinker(&c->shrinker, "dm-bufio:(%u:%u)",
+-			      MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev));
+-	if (r)
++	c->shrinker = shrinker_alloc(0, "dm-bufio:(%u:%u)",
++				     MAJOR(bdev->bd_dev), MINOR(bdev->bd_dev));
++	if (!c->shrinker) {
++		r = -ENOMEM;
+ 		goto bad;
 +	}
 +
-+	acl_shrinker->count_objects = nfs_access_cache_count;
-+	acl_shrinker->scan_objects = nfs_access_cache_scan;
-+	acl_shrinker->seeks = DEFAULT_SEEKS;
++	c->shrinker->count_objects = dm_bufio_shrink_count;
++	c->shrinker->scan_objects = dm_bufio_shrink_scan;
++	c->shrinker->seeks = 1;
++	c->shrinker->batch = 0;
++	c->shrinker->private_data = c;
 +
-+	shrinker_register(acl_shrinker);
-+
- #ifdef CONFIG_NFS_V4_2
- 	nfs_ssc_register_ops();
- #endif
-@@ -175,7 +181,7 @@ int __init register_nfs_fs(void)
-  */
- void __exit unregister_nfs_fs(void)
- {
--	unregister_shrinker(&acl_shrinker);
-+	shrinker_free(acl_shrinker);
- 	nfs_unregister_sysctl();
- 	unregister_nfs4_fs();
- #ifdef CONFIG_NFS_V4_2
++	shrinker_register(c->shrinker);
+ 
+ 	mutex_lock(&dm_bufio_clients_lock);
+ 	dm_bufio_client_count++;
+@@ -2537,7 +2543,7 @@ void dm_bufio_client_destroy(struct dm_bufio_client *c)
+ 
+ 	drop_buffers(c);
+ 
+-	unregister_shrinker(&c->shrinker);
++	shrinker_free(c->shrinker);
+ 	flush_work(&c->shrink_work);
+ 
+ 	mutex_lock(&dm_bufio_clients_lock);
 -- 
 2.30.2
 
