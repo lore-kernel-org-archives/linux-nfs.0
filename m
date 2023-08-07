@@ -2,170 +2,242 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DFE70C04E69
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Aug 2023 11:38:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F0AE4C04A94
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Aug 2023 12:57:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232809AbjHGLik (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Aug 2023 07:38:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47048 "EHLO
+        id S233617AbjHGM5J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Aug 2023 08:57:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51260 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233235AbjHGLiM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Aug 2023 07:38:12 -0400
-Received: from mail-ot1-x32f.google.com (mail-ot1-x32f.google.com [IPv6:2607:f8b0:4864:20::32f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6C6D527C
-        for <linux-nfs@vger.kernel.org>; Mon,  7 Aug 2023 04:34:33 -0700 (PDT)
-Received: by mail-ot1-x32f.google.com with SMTP id 46e09a7af769-6bca018afe8so760443a34.0
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Aug 2023 04:34:33 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1691408026; x=1692012826;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=jaqVlo27zysQOw4inLaa7RWYi61naAqQm5GJ5upJpN4=;
-        b=WQgah7uCOGdm34qkx9beYoIq7zsH/DoH2ZtVcXWxVOz5sBv/qhuUZz5AA5RkWf5847
-         MqNbAaPX1w/EXypig8zNJu4gvtPr5s36qQd87+wrotrGtqFGNw0PG/aCoA51n2v1Z7G3
-         UTy87ExlxpUCGpAtQ8Qk9vbMIPqnIGWVpQ4bFcZlLxJdYH2AAc21JQ9PJEXsDh46QqMg
-         szDPEoSWIOlVesLmMA7JU+Yhrw3Sx81egujNjNdT/S9vXSC3I37U655GL0qzsqnRo9AX
-         r2kZM3+vlPBv4rK2CqHeOf/60QmMCoS6dfTef9KwodFyFWiD357v+QBLfdYMV60CAz2V
-         a2aw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691408026; x=1692012826;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=jaqVlo27zysQOw4inLaa7RWYi61naAqQm5GJ5upJpN4=;
-        b=Ms8tqs/7vIjkuvzefuzEE1v0WQv9bLPPl/x7xfLxUORyMA3KbUdH9omgcLZpVzjbgh
-         p4Iw8/zr4SfQO8WT8dUR6fhAtkCf8pn2EPfb3tiAq7gikwECWXyruTCS2c54y/tKRRqk
-         kvDkDyFJIIEc/RtFeSMPNh3tXJnb9oYa/6FNKDvdNaHH7maVuMyCnQ/dk4CvLdHImii5
-         YKnt4OXf7EN7D7lK56VizoxEFT5N38TsnzUc16V2suNsF8+Xe5VhabDH9r5MNGNtrdyX
-         2iMl1jOrbhRi9oO3r58vbeRFVwRzRE/9Co6PAYHIIv57h3Jl7mXsfIzqnhi9Jrk2Hj2i
-         ME+w==
-X-Gm-Message-State: ABy/qLYPtmNyd6f53p8Eqf+Z9Fj4WwuZPoD0P+zDwttf1LtKcuOAkgwj
-        sDU269H5qubpCS4tUMI+4OGbqD1y8MO4Cz2PBBA=
-X-Google-Smtp-Source: AGHT+IHBSjfm4qMxfKY1o30DsQrf62j+YLyyzQgOSjZX7MvZKQZkongUtrzUOFN5xrnWaoCKIehpOA==
-X-Received: by 2002:a17:90a:9c3:b0:269:41cf:7212 with SMTP id 61-20020a17090a09c300b0026941cf7212mr4969668pjo.4.1691407071669;
-        Mon, 07 Aug 2023 04:17:51 -0700 (PDT)
-Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.17.39
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Aug 2023 04:17:51 -0700 (PDT)
-From:   Qi Zheng <zhengqi.arch@bytedance.com>
-To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
-        vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
-        brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
-        steven.price@arm.com, cel@kernel.org, senozhatsky@chromium.org,
-        yujie.liu@intel.com, gregkh@linuxfoundation.org,
-        muchun.song@linux.dev, simon.horman@corigine.com,
-        dlemoal@kernel.org
-Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
-        kvm@vger.kernel.org, xen-devel@lists.xenproject.org,
-        linux-erofs@lists.ozlabs.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, linux-mtd@lists.infradead.org,
-        rcu@vger.kernel.org, netdev@vger.kernel.org,
-        dri-devel@lists.freedesktop.org, linux-arm-msm@vger.kernel.org,
-        dm-devel@redhat.com, linux-raid@vger.kernel.org,
-        linux-bcache@vger.kernel.org,
-        virtualization@lists.linux-foundation.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        Qi Zheng <zhengqi.arch@bytedance.com>,
-        Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v4 37/48] xfs: dynamically allocate the xfs-buf shrinker
-Date:   Mon,  7 Aug 2023 19:09:25 +0800
-Message-Id: <20230807110936.21819-38-zhengqi.arch@bytedance.com>
-X-Mailer: git-send-email 2.24.3 (Apple Git-128)
-In-Reply-To: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
-References: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
+        with ESMTP id S232548AbjHGM5J (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Aug 2023 08:57:09 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7B1DE10FD;
+        Mon,  7 Aug 2023 05:57:07 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 93BF5619EC;
+        Mon,  7 Aug 2023 12:57:06 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69D66C433C9;
+        Mon,  7 Aug 2023 12:57:04 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1691413026;
+        bh=mt1uuFOc8AlyTQ1K8cBuzB7Csp9E0a8Jlb1PTdNlCp0=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=jAy5x1jASO3bVRPC78HEg0wHowcZoXtyllawrTdBEwQgceCCOovenUYMXV4Ph/dRD
+         RBukby2R3Ud+sLX3uZv7UGsK1zfOSPF9+Bu/RBqOnc3jYbCDWk/BoGxPgA/2r3r6zw
+         zgFILbbA7pRWxUNxWgrHvykIc4rpB74nklYVAefu15qE1grPgMC9I1dNFH1O3azBJL
+         B0EMkt/MfnUWT/Vnd7j37m2uoiMZBR13TPOCn7veRdC7bU/OWsOPxK9GlD6nWfkcGl
+         b2HU9SxG+xncyjJxEhNeQi+7jFjsg2u7frLL+YMTW2c3t6s5fPgfdKU6A2xhd8GrGi
+         M4dW1B0/4b1ig==
+Message-ID: <650f7b6ea6b55de4c9cbc791af0da4f800907c21.camel@kernel.org>
+Subject: Re: [PATCH v7] vfs, security: Fix automount superblock LSM init
+ problem, preventing NFS sb sharing
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Christian Brauner <brauner@kernel.org>
+Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>,
+        Paul Moore <paul@paul-moore.com>,
+        James Morris <jmorris@namei.org>,
+        "Serge E. Hallyn" <serge@hallyn.com>,
+        Stephen Smalley <stephen.smalley.work@gmail.com>,
+        Eric Paris <eparis@parisplace.org>,
+        Casey Schaufler <casey@schaufler-ca.com>,
+        David Howells <dhowells@redhat.com>,
+        Scott Mayhew <smayhew@redhat.com>,
+        Stephen Smalley <sds@tycho.nsa.gov>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        selinux@vger.kernel.org
+Date:   Mon, 07 Aug 2023 08:57:03 -0400
+In-Reply-To: <20230805-anrechnen-medien-c639c85ebd42@brauner>
+References: <20230804-master-v7-1-5d4e48407298@kernel.org>
+         <20230805-anrechnen-medien-c639c85ebd42@brauner>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In preparation for implementing lockless slab shrink, use new APIs to
-dynamically allocate the xfs-buf shrinker, so that it can be freed
-asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
-read-side critical section when releasing the struct xfs_buftarg.
+On Sat, 2023-08-05 at 14:43 +0200, Christian Brauner wrote:
+> On Fri, Aug 04, 2023 at 12:09:34PM -0400, Jeff Layton wrote:
+> > From: David Howells <dhowells@redhat.com>
+> >=20
+> > When NFS superblocks are created by automounting, their LSM parameters
+> > aren't set in the fs_context struct prior to sget_fc() being called,
+> > leading to failure to match existing superblocks.
+> >=20
+> > This bug leads to messages like the following appearing in dmesg when
+> > fscache is enabled:
+> >=20
+> >     NFS: Cache volume key already in use (nfs,4.2,2,108,106a8c0,1,,,,10=
+0000,100000,2ee,3a98,1d4c,3a98,1)
+> >=20
+> > Fix this by adding a new LSM hook to load fc->security for submount
+> > creation when alloc_fs_context() is creating the fs_context for it.
+> >=20
+> > Signed-off-by: David Howells <dhowells@redhat.com>
+> > Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> > Fixes: 9bc61ab18b1d ("vfs: Introduce fs_context, switch vfs_kern_mount(=
+) to it.")
+> > Fixes: 779df6a5480f ("NFS: Ensure security label is set for root inode)
+> > Tested-by: Jeff Layton <jlayton@kernel.org>
+> > Reviewed-by: Jeff Layton <jlayton@kernel.org>
+> > Acked-by: Casey Schaufler <casey@schaufler-ca.com>
+> > Acked-by: "Christian Brauner (Microsoft)" <brauner@kernel.org>
+> > Link: https://lore.kernel.org/r/165962680944.3334508.661002390034914203=
+4.stgit@warthog.procyon.org.uk/ # v1
+> > Link: https://lore.kernel.org/r/165962729225.3357250.143507288464715271=
+37.stgit@warthog.procyon.org.uk/ # v2
+> > Link: https://lore.kernel.org/r/165970659095.2812394.686889417110231879=
+6.stgit@warthog.procyon.org.uk/ # v3
+> > Link: https://lore.kernel.org/r/166133579016.3678898.628319501948056727=
+5.stgit@warthog.procyon.org.uk/ # v4
+> > Link: https://lore.kernel.org/r/217595.1662033775@warthog.procyon.org.u=
+k/ # v5
+> > ---
+> > ver #7)
+> >  - Drop lsm_set boolean
+> >  - Link to v6: https://lore.kernel.org/r/20230802-master-v6-1-45d482991=
+68b@kernel.org
+> >=20
+> > ver #6)
+> >  - Rebase onto v6.5.0-rc4
+> >=20
+> > ver #5)
+> >  - Removed unused variable.
+> >  - Only allocate smack_mnt_opts if we're dealing with a submount.
+> >=20
+> > ver #4)
+> >  - When doing a FOR_SUBMOUNT mount, don't set the root label in SELinux=
+ or
+> >    Smack.
+> >=20
+> > ver #3)
+> >  - Made LSM parameter extraction dependent on fc->purpose =3D=3D
+> >    FS_CONTEXT_FOR_SUBMOUNT.  Shouldn't happen on FOR_RECONFIGURE.
+> >=20
+> > ver #2)
+> >  - Added Smack support
+> >  - Made LSM parameter extraction dependent on reference !=3D NULL.
+> > ---
+> >  fs/fs_context.c               |  4 ++++
+> >  include/linux/lsm_hook_defs.h |  1 +
+> >  include/linux/security.h      |  6 +++++
+> >  security/security.c           | 14 +++++++++++
+> >  security/selinux/hooks.c      | 25 ++++++++++++++++++++
+> >  security/smack/smack_lsm.c    | 54 +++++++++++++++++++++++++++++++++++=
+++++++++
+> >  6 files changed, 104 insertions(+)
+> >=20
+> > diff --git a/fs/fs_context.c b/fs/fs_context.c
+> > index 851214d1d013..a523aea956c4 100644
+> > --- a/fs/fs_context.c
+> > +++ b/fs/fs_context.c
+> > @@ -282,6 +282,10 @@ static struct fs_context *alloc_fs_context(struct =
+file_system_type *fs_type,
+> >  		break;
+> >  	}
+> > =20
+> > +	ret =3D security_fs_context_init(fc, reference);
+> > +	if (ret < 0)
+> > +		goto err_fc;
+> > +
+> >  	/* TODO: Make all filesystems support this unconditionally */
+> >  	init_fs_context =3D fc->fs_type->init_fs_context;
+> >  	if (!init_fs_context)
+> > diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_def=
+s.h
+> > index 7308a1a7599b..7ce3550154b1 100644
+> > --- a/include/linux/lsm_hook_defs.h
+> > +++ b/include/linux/lsm_hook_defs.h
+> > @@ -54,6 +54,7 @@ LSM_HOOK(int, 0, bprm_creds_from_file, struct linux_b=
+inprm *bprm, struct file *f
+> >  LSM_HOOK(int, 0, bprm_check_security, struct linux_binprm *bprm)
+> >  LSM_HOOK(void, LSM_RET_VOID, bprm_committing_creds, struct linux_binpr=
+m *bprm)
+> >  LSM_HOOK(void, LSM_RET_VOID, bprm_committed_creds, struct linux_binprm=
+ *bprm)
+> > +LSM_HOOK(int, 0, fs_context_init, struct fs_context *fc, struct dentry=
+ *reference)
+> >  LSM_HOOK(int, 0, fs_context_dup, struct fs_context *fc,
+> >  	 struct fs_context *src_sc)
+> >  LSM_HOOK(int, -ENOPARAM, fs_context_parse_param, struct fs_context *fc=
+,
+> > diff --git a/include/linux/security.h b/include/linux/security.h
+> > index 32828502f09e..61fda06fac9d 100644
+> > --- a/include/linux/security.h
+> > +++ b/include/linux/security.h
+> > @@ -293,6 +293,7 @@ int security_bprm_creds_from_file(struct linux_binp=
+rm *bprm, struct file *file);
+> >  int security_bprm_check(struct linux_binprm *bprm);
+> >  void security_bprm_committing_creds(struct linux_binprm *bprm);
+> >  void security_bprm_committed_creds(struct linux_binprm *bprm);
+> > +int security_fs_context_init(struct fs_context *fc, struct dentry *ref=
+erence);
+> >  int security_fs_context_dup(struct fs_context *fc, struct fs_context *=
+src_fc);
+> >  int security_fs_context_parse_param(struct fs_context *fc, struct fs_p=
+arameter *param);
+> >  int security_sb_alloc(struct super_block *sb);
+> > @@ -629,6 +630,11 @@ static inline void security_bprm_committed_creds(s=
+truct linux_binprm *bprm)
+> >  {
+> >  }
+> > =20
+> > +static inline int security_fs_context_init(struct fs_context *fc,
+> > +					   struct dentry *reference)
+>=20
+> I think that's the wrong way of doing this hook. The security hook
+> really doesn't belong into alloc_fs_context().
+>=20
+> I think what we want is a dedicated helper similar to vfs_dup_context():
+>=20
+> // Only pass the superblock. There's no need for the dentry. I would
+> // avoid even passing fs_context but if that's preferred then sure.
+> security_fs_context_submount(struct fs_context *fc, const struct super_bl=
+ock *sb)
+>=20
+> vfs_submount_fs_context(struct file_system_type *fs_type, struct dentry *=
+reference)
+> {
+>         fc =3D fs_context_for_submount(fs_type, reference);
+>=20
+>         security_fs_context_for_submount(fc, reference->d_sb);
+> }
+>=20
+> This automatically ensures it's only called for submounts, the LSM
+> doesn't need to care about fc->purpose and this isn't called
+> in a pure allocation function for all allocation calls.
+>=20
+> The we should switch all callers over to that new helper and unexport
+> that fs_context_for_submount() thing completely. Yes, that's more work
+> but that's the correct thing to do. And we need to audit fuse, cifs,
+> afs, and nfs anyway that they work fine with the new security hook.*
+>=20
 
-Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
-Reviewed-by: Muchun Song <songmuchun@bytedance.com>
----
- fs/xfs/xfs_buf.c | 25 ++++++++++++++-----------
- fs/xfs/xfs_buf.h |  2 +-
- 2 files changed, 15 insertions(+), 12 deletions(-)
+It's the same prototype. We could just move the hook call to the end of
+fs_context_for_submount, and that would be less churn for its callers.
+Or were you wanting to do that to make this a more gradual changeover
+for some reason?
 
-diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-index 15d1e5a7c2d3..715730fc91cb 100644
---- a/fs/xfs/xfs_buf.c
-+++ b/fs/xfs/xfs_buf.c
-@@ -1906,8 +1906,7 @@ xfs_buftarg_shrink_scan(
- 	struct shrinker		*shrink,
- 	struct shrink_control	*sc)
- {
--	struct xfs_buftarg	*btp = container_of(shrink,
--					struct xfs_buftarg, bt_shrinker);
-+	struct xfs_buftarg	*btp = shrink->private_data;
- 	LIST_HEAD(dispose);
- 	unsigned long		freed;
- 
-@@ -1929,8 +1928,7 @@ xfs_buftarg_shrink_count(
- 	struct shrinker		*shrink,
- 	struct shrink_control	*sc)
- {
--	struct xfs_buftarg	*btp = container_of(shrink,
--					struct xfs_buftarg, bt_shrinker);
-+	struct xfs_buftarg	*btp = shrink->private_data;
- 	return list_lru_shrink_count(&btp->bt_lru, sc);
- }
- 
-@@ -1938,7 +1936,7 @@ void
- xfs_free_buftarg(
- 	struct xfs_buftarg	*btp)
- {
--	unregister_shrinker(&btp->bt_shrinker);
-+	shrinker_free(btp->bt_shrinker);
- 	ASSERT(percpu_counter_sum(&btp->bt_io_count) == 0);
- 	percpu_counter_destroy(&btp->bt_io_count);
- 	list_lru_destroy(&btp->bt_lru);
-@@ -2021,13 +2019,18 @@ xfs_alloc_buftarg(
- 	if (percpu_counter_init(&btp->bt_io_count, 0, GFP_KERNEL))
- 		goto error_lru;
- 
--	btp->bt_shrinker.count_objects = xfs_buftarg_shrink_count;
--	btp->bt_shrinker.scan_objects = xfs_buftarg_shrink_scan;
--	btp->bt_shrinker.seeks = DEFAULT_SEEKS;
--	btp->bt_shrinker.flags = SHRINKER_NUMA_AWARE;
--	if (register_shrinker(&btp->bt_shrinker, "xfs-buf:%s",
--			      mp->m_super->s_id))
-+	btp->bt_shrinker = shrinker_alloc(SHRINKER_NUMA_AWARE, "xfs-buf:%s",
-+					  mp->m_super->s_id);
-+	if (!btp->bt_shrinker)
- 		goto error_pcpu;
-+
-+	btp->bt_shrinker->count_objects = xfs_buftarg_shrink_count;
-+	btp->bt_shrinker->scan_objects = xfs_buftarg_shrink_scan;
-+	btp->bt_shrinker->seeks = DEFAULT_SEEKS;
-+	btp->bt_shrinker->private_data = btp;
-+
-+	shrinker_register(btp->bt_shrinker);
-+
- 	return btp;
- 
- error_pcpu:
-diff --git a/fs/xfs/xfs_buf.h b/fs/xfs/xfs_buf.h
-index 549c60942208..4e6969a675f7 100644
---- a/fs/xfs/xfs_buf.h
-+++ b/fs/xfs/xfs_buf.h
-@@ -102,7 +102,7 @@ typedef struct xfs_buftarg {
- 	size_t			bt_logical_sectormask;
- 
- 	/* LRU control structures */
--	struct shrinker		bt_shrinker;
-+	struct shrinker		*bt_shrinker;
- 	struct list_lru		bt_lru;
- 
- 	struct percpu_counter	bt_io_count;
--- 
-2.30.2
+I will rework the security hook to take a sb pointer instead though.
 
+>=20
+> [1]: If really needed, then any additional fs specific work that needs
+>      to be done during submount allocation should probably probably be
+>      done in a new callback.
+>=20
+>      struct fs_context_operations {
+>             void (*free)(struct fs_context *fc);
+>             int (*dup)(struct fs_context *fc, struct fs_context *src_fc);
+>     +       int (*submount)(struct fs_context *fc, const struct super_blo=
+ck *sb);
+
+--=20
+Jeff Layton <jlayton@kernel.org>
