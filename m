@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9BB7DC001DF
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Aug 2023 11:35:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E01FEB64DD
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Aug 2023 11:36:14 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232846AbjHGLfw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Aug 2023 07:35:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40760 "EHLO
+        id S232889AbjHGLgL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Aug 2023 07:36:11 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44912 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232291AbjHGLfX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Aug 2023 07:35:23 -0400
-Received: from mail-oa1-x32.google.com (mail-oa1-x32.google.com [IPv6:2001:4860:4864:20::32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AF4D849D8
-        for <linux-nfs@vger.kernel.org>; Mon,  7 Aug 2023 04:32:05 -0700 (PDT)
-Received: by mail-oa1-x32.google.com with SMTP id 586e51a60fabf-1a2dd615ddcso989303fac.0
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Aug 2023 04:32:05 -0700 (PDT)
+        with ESMTP id S232939AbjHGLft (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Aug 2023 07:35:49 -0400
+Received: from mail-il1-x130.google.com (mail-il1-x130.google.com [IPv6:2607:f8b0:4864:20::130])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 974A2269F
+        for <linux-nfs@vger.kernel.org>; Mon,  7 Aug 2023 04:32:37 -0700 (PDT)
+Received: by mail-il1-x130.google.com with SMTP id e9e14a558f8ab-346434c7793so4009245ab.0
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Aug 2023 04:32:37 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1691407872; x=1692012672;
+        d=bytedance.com; s=google; t=1691407902; x=1692012702;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=GSWsN00ewH1CUxuL2on0amogNZtYjpfZMPk3tXk1MLc=;
-        b=S+o04H8DTlaeGMcQdfdIRUUDlfSvAqShQjSyp6ImbhOADvWNnn1CdEvOMzA/n6yLqM
-         mI/GojlUy3JTE9Nmonxny19jTkKeg1IflFoN5wiXdOu1rOJyvhoYJyRMI/+qflHw3LmW
-         1aMbkFcukkbe/i9KQX3Rcea5EAv5RqmyKHq2ceCECZtwEaP6UD7zJBl66Xs1MFUoup9g
-         ujBk65g5flg1eAvz4HJXlbYhlK23JE+98LsaEik9ifT53eUPB0WeD9JSDFvqg9+Yo8MH
-         PTWb79/MEIFHDW3DHtQ8uNExPvXEJTES9shXvfI6m4bxBexRlInif6IRbHg6rnz15EFB
-         pv4w==
+        bh=v2xQZfHf5bNVsT7uWSGQWuu07PHxrGT3T56hFvtqSrg=;
+        b=N5LgiuNzrjaSFLE1ygm86H4bzagTcjkxQ//m+r+BSBD8DkazkH18HpwrgVraLPCpSh
+         xiAxRPqoFcw8TlxzFCw7VVV8ueisQcThqU6viwe/a+8AqppEP60T1RkGSpwGaOZVgFk1
+         tC+pvtJUO3leTvtt2H1OZMkM34M/quYAp9UrHugGeFj8BeF6CCi59crt3QbaHrw1Fl8H
+         UDCAew+KGw/bdZG6jBmPWVIVgp1o8D0mK+abU/mTF0W5MK3Ks1UAjhVeG1V6XjqPTR1+
+         98b5takrq0ml1aKDb9m58/SKMb5HOY5waSlwqSklHstoQeHRl1Sf/RuFl44wwhJDDOfq
+         CmhA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691407872; x=1692012672;
+        d=1e100.net; s=20221208; t=1691407902; x=1692012702;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=GSWsN00ewH1CUxuL2on0amogNZtYjpfZMPk3tXk1MLc=;
-        b=VRvxV0AvjcQQSMS3Qem/JzkA+aKQcRpmphSCU62dKi7ARbZYsnvjZExnZnnnCxaQSe
-         lHgJ1UKk3ZIgW6C36AJw+u5cF6O4wB3Yak5kOy65mjRoLDWbXphzNOxW5T9DlpyC8elD
-         8k7mk364jpbVY4icW/O9ccccrGg3YIyhw0XU6gXb9H8H0fw9a5+dnTmAxV9FUImK4zEu
-         maK9YjFSaHQAS+T/Xx0H/oScmdmEKdoThrdHQcfkRpgSC1CE/6mN+L6rXlg0rG4nzxUN
-         kPWAB6pcp8u+9Mx3tKydh91WDD7wqbcV92zDF2+iEQYGHdZ48f2zHTALGJ36E0JBi0P1
-         OtrQ==
-X-Gm-Message-State: ABy/qLZ3EZGvAaj27QXCEjjTJUa3JDlaNTcvZZ0/v2MdBvpxfZZbAuhg
-        uIfEIRvCdg9gwl23CjyUVkVLhKwI40gAnT63sRM=
-X-Google-Smtp-Source: APBJJlEEwhe0wjgrc7nxC5j9G5K3ZI0sWgwDykpBRAx7nLtKV2LZNd6jgA89VvGSaryf9LAeIFxakg==
-X-Received: by 2002:a17:90a:901:b0:268:3a31:3e4d with SMTP id n1-20020a17090a090100b002683a313e4dmr23070871pjn.2.1691406828996;
-        Mon, 07 Aug 2023 04:13:48 -0700 (PDT)
+        bh=v2xQZfHf5bNVsT7uWSGQWuu07PHxrGT3T56hFvtqSrg=;
+        b=h7TU6j6JObu42k8ePwQCyDEOz4LJGNEsLPe7tDJqCnGf8Zdew7xwpBGEUUVyxOuPob
+         5avsR1u5yQ0q9L1Vt6dkwPaEE0DpOOpbTcLuJNZtG21giA3hQSNmsFJMEuzsUyiiY5Yk
+         Kvs2s3QlUo8sxyW15CaGxCoZ8vnvur8AC1TZVhA0qsro4wAUT8E7rfDjbDabV6XKA00t
+         xoRk74OzWbWLJNuduAvO29mTuB5yAu6M3iteRzdK7AL/COKbfBkPoH0ns0U+vO23RzMq
+         x8yxQyUs5dxAtodRT0mIAnJcz3c08AD40ShRJ4FFD+SK6+54xmmJ3k3EQu/cHxAzstrh
+         zXlg==
+X-Gm-Message-State: AOJu0YyxcJTJPNer7z4xcreEfvvbUj+14L/oAdOXgCVZzwMqix9Fr1No
+        WeKppf/DyAtIeLrX1Z1nFIDvYpYgClrK1AYfUEU=
+X-Google-Smtp-Source: AGHT+IFlvQWL2g4YOY+ZhMNeAWWdQSS9yshpdy35E0gAyloBC4LB48Br4CdI402F04hX0eeuRkMt6Q==
+X-Received: by 2002:a17:90a:c8d:b0:268:196f:9656 with SMTP id v13-20020a17090a0c8d00b00268196f9656mr12999255pja.1.1691406969055;
+        Mon, 07 Aug 2023 04:16:09 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.13.37
+        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.15.56
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Aug 2023 04:13:48 -0700 (PDT)
+        Mon, 07 Aug 2023 04:16:08 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -70,9 +70,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>
-Subject: [PATCH v4 18/48] rcu: dynamically allocate the rcu-lazy shrinker
-Date:   Mon,  7 Aug 2023 19:09:06 +0800
-Message-Id: <20230807110936.21819-19-zhengqi.arch@bytedance.com>
+Subject: [PATCH v4 29/48] bcache: dynamically allocate the md-bcache shrinker
+Date:   Mon,  7 Aug 2023 19:09:17 +0800
+Message-Id: <20230807110936.21819-30-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
 References: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
@@ -82,58 +82,105 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use new APIs to dynamically allocate the rcu-lazy shrinker.
+In preparation for implementing lockless slab shrink, use new APIs to
+dynamically allocate the md-bcache shrinker, so that it can be freed
+asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
+read-side critical section when releasing the struct cache_set.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 ---
- kernel/rcu/tree_nocb.h | 20 +++++++++++---------
- 1 file changed, 11 insertions(+), 9 deletions(-)
+ drivers/md/bcache/bcache.h |  2 +-
+ drivers/md/bcache/btree.c  | 27 ++++++++++++++++-----------
+ drivers/md/bcache/sysfs.c  |  3 ++-
+ 3 files changed, 19 insertions(+), 13 deletions(-)
 
-diff --git a/kernel/rcu/tree_nocb.h b/kernel/rcu/tree_nocb.h
-index 5598212d1f27..e1c59c33738a 100644
---- a/kernel/rcu/tree_nocb.h
-+++ b/kernel/rcu/tree_nocb.h
-@@ -1396,13 +1396,6 @@ lazy_rcu_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+diff --git a/drivers/md/bcache/bcache.h b/drivers/md/bcache/bcache.h
+index 5a79bb3c272f..c622bc50f81b 100644
+--- a/drivers/md/bcache/bcache.h
++++ b/drivers/md/bcache/bcache.h
+@@ -541,7 +541,7 @@ struct cache_set {
+ 	struct bio_set		bio_split;
  
- 	return count ? count : SHRINK_STOP;
- }
--
--static struct shrinker lazy_rcu_shrinker = {
--	.count_objects = lazy_rcu_shrink_count,
--	.scan_objects = lazy_rcu_shrink_scan,
--	.batch = 0,
--	.seeks = DEFAULT_SEEKS,
--};
- #endif // #ifdef CONFIG_RCU_LAZY
+ 	/* For the btree cache */
+-	struct shrinker		shrink;
++	struct shrinker		*shrink;
  
- void __init rcu_init_nohz(void)
-@@ -1410,6 +1403,7 @@ void __init rcu_init_nohz(void)
- 	int cpu;
- 	struct rcu_data *rdp;
- 	const struct cpumask *cpumask = NULL;
-+	struct shrinker * __maybe_unused lazy_rcu_shrinker;
+ 	/* For the btree cache and anything allocation related */
+ 	struct mutex		bucket_lock;
+diff --git a/drivers/md/bcache/btree.c b/drivers/md/bcache/btree.c
+index fd121a61f17c..ae5cbb55861f 100644
+--- a/drivers/md/bcache/btree.c
++++ b/drivers/md/bcache/btree.c
+@@ -667,7 +667,7 @@ static int mca_reap(struct btree *b, unsigned int min_order, bool flush)
+ static unsigned long bch_mca_scan(struct shrinker *shrink,
+ 				  struct shrink_control *sc)
+ {
+-	struct cache_set *c = container_of(shrink, struct cache_set, shrink);
++	struct cache_set *c = shrink->private_data;
+ 	struct btree *b, *t;
+ 	unsigned long i, nr = sc->nr_to_scan;
+ 	unsigned long freed = 0;
+@@ -734,7 +734,7 @@ static unsigned long bch_mca_scan(struct shrinker *shrink,
+ static unsigned long bch_mca_count(struct shrinker *shrink,
+ 				   struct shrink_control *sc)
+ {
+-	struct cache_set *c = container_of(shrink, struct cache_set, shrink);
++	struct cache_set *c = shrink->private_data;
  
- #if defined(CONFIG_NO_HZ_FULL)
- 	if (tick_nohz_full_running && !cpumask_empty(tick_nohz_full_mask))
-@@ -1436,8 +1430,16 @@ void __init rcu_init_nohz(void)
- 		return;
+ 	if (c->shrinker_disabled)
+ 		return 0;
+@@ -752,8 +752,8 @@ void bch_btree_cache_free(struct cache_set *c)
  
- #ifdef CONFIG_RCU_LAZY
--	if (register_shrinker(&lazy_rcu_shrinker, "rcu-lazy"))
--		pr_err("Failed to register lazy_rcu shrinker!\n");
-+	lazy_rcu_shrinker = shrinker_alloc(0, "rcu-lazy");
-+	if (!lazy_rcu_shrinker) {
-+		pr_err("Failed to allocate lazy_rcu shrinker!\n");
-+	} else {
-+		lazy_rcu_shrinker->count_objects = lazy_rcu_shrink_count;
-+		lazy_rcu_shrinker->scan_objects = lazy_rcu_shrink_scan;
-+		lazy_rcu_shrinker->seeks = DEFAULT_SEEKS;
-+
-+		shrinker_register(lazy_rcu_shrinker);
+ 	closure_init_stack(&cl);
+ 
+-	if (c->shrink.list.next)
+-		unregister_shrinker(&c->shrink);
++	if (c->shrink)
++		shrinker_free(c->shrink);
+ 
+ 	mutex_lock(&c->bucket_lock);
+ 
+@@ -828,14 +828,19 @@ int bch_btree_cache_alloc(struct cache_set *c)
+ 		c->verify_data = NULL;
+ #endif
+ 
+-	c->shrink.count_objects = bch_mca_count;
+-	c->shrink.scan_objects = bch_mca_scan;
+-	c->shrink.seeks = 4;
+-	c->shrink.batch = c->btree_pages * 2;
++	c->shrink = shrinker_alloc(0, "md-bcache:%pU", c->set_uuid);
++	if (!c->shrink) {
++		pr_warn("bcache: %s: could not allocate shrinker\n", __func__);
++		return 0;
 +	}
- #endif // #ifdef CONFIG_RCU_LAZY
++
++	c->shrink->count_objects = bch_mca_count;
++	c->shrink->scan_objects = bch_mca_scan;
++	c->shrink->seeks = 4;
++	c->shrink->batch = c->btree_pages * 2;
++	c->shrink->private_data = c;
  
- 	if (!cpumask_subset(rcu_nocb_mask, cpu_possible_mask)) {
+-	if (register_shrinker(&c->shrink, "md-bcache:%pU", c->set_uuid))
+-		pr_warn("bcache: %s: could not register shrinker\n",
+-				__func__);
++	shrinker_register(c->shrink);
+ 
+ 	return 0;
+ }
+diff --git a/drivers/md/bcache/sysfs.c b/drivers/md/bcache/sysfs.c
+index 0e2c1880f60b..45d8af755de6 100644
+--- a/drivers/md/bcache/sysfs.c
++++ b/drivers/md/bcache/sysfs.c
+@@ -866,7 +866,8 @@ STORE(__bch_cache_set)
+ 
+ 		sc.gfp_mask = GFP_KERNEL;
+ 		sc.nr_to_scan = strtoul_or_return(buf);
+-		c->shrink.scan_objects(&c->shrink, &sc);
++		if (c->shrink)
++			c->shrink->scan_objects(c->shrink, &sc);
+ 	}
+ 
+ 	sysfs_strtoul_clamp(congested_read_threshold_us,
 -- 
 2.30.2
 
