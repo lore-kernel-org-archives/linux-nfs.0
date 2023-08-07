@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5B2FC001DB
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Aug 2023 11:22:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DF4C3C04A94
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Aug 2023 11:23:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232457AbjHGLWV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Aug 2023 07:22:21 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59160 "EHLO
+        id S232301AbjHGLXx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Aug 2023 07:23:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59116 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232390AbjHGLVv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Aug 2023 07:21:51 -0400
-Received: from mail-pj1-x1033.google.com (mail-pj1-x1033.google.com [IPv6:2607:f8b0:4864:20::1033])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8593C4681
-        for <linux-nfs@vger.kernel.org>; Mon,  7 Aug 2023 04:19:39 -0700 (PDT)
-Received: by mail-pj1-x1033.google.com with SMTP id 98e67ed59e1d1-268663fb09cso631968a91.0
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Aug 2023 04:19:39 -0700 (PDT)
+        with ESMTP id S232646AbjHGLXN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Aug 2023 07:23:13 -0400
+Received: from mail-pg1-f179.google.com (mail-pg1-f179.google.com [209.85.215.179])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4EF2D358B
+        for <linux-nfs@vger.kernel.org>; Mon,  7 Aug 2023 04:20:40 -0700 (PDT)
+Received: by mail-pg1-f179.google.com with SMTP id 41be03b00d2f7-55badd6d6feso571792a12.1
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Aug 2023 04:20:40 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1691407110; x=1692011910;
+        d=bytedance.com; s=google; t=1691406867; x=1692011667;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=WPvD0YF4yF0E/V3NMttF7YVdRMfLZcl9Qmy2whUD9jE=;
-        b=Zyx6A0EStcsVwcUtmlmHBj8SZuYfnooxelT8QMOYXSAyp4FCbwtu0BbNt7l+P/wBJj
-         3uKMQnjNsG7kojYgy7WxPCZCDaFjHA3Lkyvej9QWnqL7VojGrNrN9hCPJG63fZ7FoTcQ
-         O0E54wIoRR4I2PoVCGsys6mtB59u+SgFkM0Y7fE6r6JpnE869MmShYbt1p4JfBRV0wIx
-         7GkvLsY4v9shjjU3+1o+arkgzF82WBo8NnslYR1Cfid19C5zIsiC0KJHBzW/oF+sMC5M
-         xApENfMLb6T9Hu0suHBowRs4nuIaRY0OBNI6a9JHKGzdE5XR+fVrCSwS1eOLCHlN+w0k
-         LsQg==
+        bh=igblsYgdIrcTAL0swCZj529c9jjsKo5CwfFS1Qcng2s=;
+        b=E/hLPt4J9XwFdy6Q/ScFkKAboS35nT/aVetijUs1uOyzpCdXJrzvux0WuTkbJahYDU
+         HJ4RnOFgFoSV4vIvUSABYCFS8MT8O5BBdFRn/e0d22QvpkBHCvD7k0jL91l8VKqh/AnF
+         pNO49bmGYrjFLlyM+it2E7+BjcoRQ4qvC4Z3zAnwRx4Mtu2gDzO6KjINZG5u37W7YPwR
+         rd9mA5oeLZ1tw0ARUeeWuqEeVLZXyyZpLkD+mkbNh9jB2r9y+xHrPRtEaxpg/6wzvL2p
+         pP/svPPe0egiR6EyNxAsA97H1SimGEidDNnScRjB0NSGHk7qAYW8vH7pvvrUaRXF4mmo
+         0r3w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691407110; x=1692011910;
+        d=1e100.net; s=20221208; t=1691406867; x=1692011667;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=WPvD0YF4yF0E/V3NMttF7YVdRMfLZcl9Qmy2whUD9jE=;
-        b=NR6d8/2DRD3kyZLieFTO/TlD3vvvHawl0ybTWZ6eNQlTip80FWTC8noDUYArp4yjc7
-         Gp56kEO3ZOUjjE7eaSycbnfS8DwZN7teLoooBijQV/TE/lDJ2coBHLmwZPBrh7+WOHl+
-         tYx5Iqp7Lr7Imllc4lB2+QLOEAIpcnkivfDBGEfHas+iqMqGtRsvfRuFXZEKfzFCqce0
-         IRkWvvZb8juEr7DEJOlytWAfi2YvV/yRIMkqnKATziifqtPWqqcbADxFwiKNGOBTzeYZ
-         XTu7MeYBm7RDcGvVene2h+F3mpBMU6xV+bLVkrNRlwSImNDQmOpjatQnY0f/8HfQsCC8
-         A5gg==
-X-Gm-Message-State: ABy/qLbZS9LGRwVFDuKUCRGTUwbCIW1Iop4PAgnouBQCt7KfsgkVOgLd
-        6MDSoINjhn8Dt3OrRsB106KfgA==
-X-Google-Smtp-Source: APBJJlFnoOazdp9TvNa1Sdutczsv0h+KjLn+q+TQByEK163E+9f/k1cC7rmChP+7R75WsTDRsF4HxQ==
-X-Received: by 2002:a17:90a:901:b0:268:3a31:3e4d with SMTP id n1-20020a17090a090100b002683a313e4dmr23078917pjn.2.1691407109946;
-        Mon, 07 Aug 2023 04:18:29 -0700 (PDT)
+        bh=igblsYgdIrcTAL0swCZj529c9jjsKo5CwfFS1Qcng2s=;
+        b=gTMZMuBVriEk/0ICOsDWCgst0322cyfB3BNrkroFl0NyIT3F8mhkmydPWtHPGe/c3+
+         QQz3Zk2BW+4HqXAIEr6R/+GJZV76wa5TBxpm4XQZyxcsHBmrxheTwHz7V22cu3UNhRiH
+         c2M6jlbH/L8PFn5350lmXIbMeHtEcr2cPHJdmJVq2IH0PXQRFDnmGxeW7AFIvxe3m+1v
+         iZ9TpQ6825YDhiStm62FFngQ7QhnbzGO7AnmkADnCVd2x5L/TAjmquQx5Qrdl0zRRScO
+         7yBLPjxxGeIsjSV1RK4Ivdb7NK+QqCo26AaQMENO9Wo6GpLmolcjbUxAJmdy14fO/8RP
+         hBoQ==
+X-Gm-Message-State: ABy/qLaZfIZbJ5VMWf8v/bP5lc9Xe0TdzBZ1Z6AqxO47LZg6gifCx+y0
+        ZWxkJUoa7o2hTUbhxRqTed6/vA==
+X-Google-Smtp-Source: APBJJlGEDKqK4nyUWs8xE2EOJL+ODt25deDnA1/u8sHRAURqC7uD6bjxMDwwed+SXn6y84Un7sE7wA==
+X-Received: by 2002:a17:90a:1090:b0:268:126c:8a8b with SMTP id c16-20020a17090a109000b00268126c8a8bmr24570134pja.3.1691406867003;
+        Mon, 07 Aug 2023 04:14:27 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.18.17
+        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.14.14
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Aug 2023 04:18:29 -0700 (PDT)
+        Mon, 07 Aug 2023 04:14:26 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -71,9 +71,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v4 40/48] zsmalloc: dynamically allocate the mm-zspool shrinker
-Date:   Mon,  7 Aug 2023 19:09:28 +0800
-Message-Id: <20230807110936.21819-41-zhengqi.arch@bytedance.com>
+Subject: [PATCH v4 21/48] sunrpc: dynamically allocate the sunrpc_cred shrinker
+Date:   Mon,  7 Aug 2023 19:09:09 +0800
+Message-Id: <20230807110936.21819-22-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
 References: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
@@ -83,82 +83,59 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In preparation for implementing lockless slab shrink, use new APIs to
-dynamically allocate the mm-zspool shrinker, so that it can be freed
-asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
-read-side critical section when releasing the struct zs_pool.
+Use new APIs to dynamically allocate the sunrpc_cred shrinker.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 ---
- mm/zsmalloc.c | 28 ++++++++++++++++------------
- 1 file changed, 16 insertions(+), 12 deletions(-)
+ net/sunrpc/auth.c | 21 +++++++++++++--------
+ 1 file changed, 13 insertions(+), 8 deletions(-)
 
-diff --git a/mm/zsmalloc.c b/mm/zsmalloc.c
-index b58f957429f0..1909234bb345 100644
---- a/mm/zsmalloc.c
-+++ b/mm/zsmalloc.c
-@@ -229,7 +229,7 @@ struct zs_pool {
- 	struct zs_pool_stats stats;
- 
- 	/* Compact classes */
--	struct shrinker shrinker;
-+	struct shrinker *shrinker;
- 
- #ifdef CONFIG_ZSMALLOC_STAT
- 	struct dentry *stat_dentry;
-@@ -2086,8 +2086,7 @@ static unsigned long zs_shrinker_scan(struct shrinker *shrinker,
- 		struct shrink_control *sc)
- {
- 	unsigned long pages_freed;
--	struct zs_pool *pool = container_of(shrinker, struct zs_pool,
--			shrinker);
-+	struct zs_pool *pool = shrinker->private_data;
- 
- 	/*
- 	 * Compact classes and calculate compaction delta.
-@@ -2105,8 +2104,7 @@ static unsigned long zs_shrinker_count(struct shrinker *shrinker,
- 	int i;
- 	struct size_class *class;
- 	unsigned long pages_to_free = 0;
--	struct zs_pool *pool = container_of(shrinker, struct zs_pool,
--			shrinker);
-+	struct zs_pool *pool = shrinker->private_data;
- 
- 	for (i = ZS_SIZE_CLASSES - 1; i >= 0; i--) {
- 		class = pool->size_class[i];
-@@ -2121,18 +2119,24 @@ static unsigned long zs_shrinker_count(struct shrinker *shrinker,
- 
- static void zs_unregister_shrinker(struct zs_pool *pool)
- {
--	unregister_shrinker(&pool->shrinker);
-+	shrinker_free(pool->shrinker);
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 2f16f9d17966..0cc52e39f859 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -861,11 +861,7 @@ rpcauth_uptodatecred(struct rpc_task *task)
+ 		test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) != 0;
  }
  
- static int zs_register_shrinker(struct zs_pool *pool)
+-static struct shrinker rpc_cred_shrinker = {
+-	.count_objects = rpcauth_cache_shrink_count,
+-	.scan_objects = rpcauth_cache_shrink_scan,
+-	.seeks = DEFAULT_SEEKS,
+-};
++static struct shrinker *rpc_cred_shrinker;
+ 
+ int __init rpcauth_init_module(void)
  {
--	pool->shrinker.scan_objects = zs_shrinker_scan;
--	pool->shrinker.count_objects = zs_shrinker_count;
--	pool->shrinker.batch = 0;
--	pool->shrinker.seeks = DEFAULT_SEEKS;
-+	pool->shrinker = shrinker_alloc(0, "mm-zspool:%s", pool->name);
-+	if (!pool->shrinker)
-+		return -ENOMEM;
+@@ -874,9 +870,18 @@ int __init rpcauth_init_module(void)
+ 	err = rpc_init_authunix();
+ 	if (err < 0)
+ 		goto out1;
+-	err = register_shrinker(&rpc_cred_shrinker, "sunrpc_cred");
+-	if (err < 0)
++	rpc_cred_shrinker = shrinker_alloc(0, "sunrpc_cred");
++	if (!rpc_cred_shrinker) {
++		err = -ENOMEM;
+ 		goto out2;
++	}
 +
-+	pool->shrinker->scan_objects = zs_shrinker_scan;
-+	pool->shrinker->count_objects = zs_shrinker_count;
-+	pool->shrinker->batch = 0;
-+	pool->shrinker->seeks = DEFAULT_SEEKS;
-+	pool->shrinker->private_data = pool;
- 
--	return register_shrinker(&pool->shrinker, "mm-zspool:%s",
--				 pool->name);
-+	shrinker_register(pool->shrinker);
++	rpc_cred_shrinker->count_objects = rpcauth_cache_shrink_count;
++	rpc_cred_shrinker->scan_objects = rpcauth_cache_shrink_scan;
++	rpc_cred_shrinker->seeks = DEFAULT_SEEKS;
 +
-+	return 0;
++	shrinker_register(rpc_cred_shrinker);
++
+ 	return 0;
+ out2:
+ 	rpc_destroy_authunix();
+@@ -887,5 +892,5 @@ int __init rpcauth_init_module(void)
+ void rpcauth_remove_module(void)
+ {
+ 	rpc_destroy_authunix();
+-	unregister_shrinker(&rpc_cred_shrinker);
++	shrinker_free(rpc_cred_shrinker);
  }
- 
- static int calculate_zspage_chain_size(int class_size)
 -- 
 2.30.2
 
