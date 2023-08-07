@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2CCDCC001B0
-	for <linux-nfs@archiver.kernel.org>; Mon,  7 Aug 2023 11:33:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3F584C04E69
+	for <linux-nfs@archiver.kernel.org>; Mon,  7 Aug 2023 11:33:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232896AbjHGLcs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 7 Aug 2023 07:32:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37122 "EHLO
+        id S232500AbjHGLdj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 7 Aug 2023 07:33:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41630 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232846AbjHGLca (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Aug 2023 07:32:30 -0400
-Received: from mail-qv1-xf34.google.com (mail-qv1-xf34.google.com [IPv6:2607:f8b0:4864:20::f34])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DD33F5BB4
-        for <linux-nfs@vger.kernel.org>; Mon,  7 Aug 2023 04:29:28 -0700 (PDT)
-Received: by mail-qv1-xf34.google.com with SMTP id 6a1803df08f44-63cf6f49a9fso12445356d6.1
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Aug 2023 04:29:28 -0700 (PDT)
+        with ESMTP id S232991AbjHGLdA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Aug 2023 07:33:00 -0400
+Received: from mail-oa1-x2c.google.com (mail-oa1-x2c.google.com [IPv6:2001:4860:4864:20::2c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C1DF630DB
+        for <linux-nfs@vger.kernel.org>; Mon,  7 Aug 2023 04:30:19 -0700 (PDT)
+Received: by mail-oa1-x2c.google.com with SMTP id 586e51a60fabf-1bf162511e9so987235fac.1
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Aug 2023 04:30:19 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1691407732; x=1692012532;
+        d=bytedance.com; s=google; t=1691407765; x=1692012565;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=XXAG7UeexodYStcT1Y2gz+/6q+0E2xrK+D1h2eKApUE=;
-        b=ToUPb4hYPdUvlV8LiI03r8r0mIzFHj3JsuAuR/4a+U9PBH/PlgDdN0puj1MVrQkMQd
-         0mjSR1LqgrhYYv3Lz3JlpKPIGLZhDaD+F30WvDxC5+44VEBeqybPZloTgHMxFFUG1/hF
-         BkRdbgwDYGfuR2Js4an2NpCig8aJ4Tk0nNcJwn3yUWcbvi3yd16xJwon3AbpuNYzRfQm
-         B54TXXLE/QZphz3FwR7WHBH03XJDLxECXFtkVAn0Oz2dEdXlMXOkzQDea7JsWFSdaYq9
-         fNBvjbpeCO1ZzYJN2ziefdHzWb+9ybs+/ByKHDICWqtJMKAPSaLT3lhCdJqpskZlgv+S
-         dpLA==
+        bh=qDCHIUUJzhdUAQEb2C7RW/Dwv8wB1L4nNlzD+13VK1U=;
+        b=ey6cTRduwuBoQDG/auIqWVnxLMrQHIQvhejH7US0buqpWOteZBatBT6zl3jHwb6z1z
+         yYZ4uAo0qW+lH3jnHKJmLyr5OcW1y+OyQcldkS7mNp3XKeCaJZGPx2beUbcxZRQhToGe
+         RbnxBt+xwad9w8QgumT6z1OJIMnloZwjNEuF+2vYgA6JShQ6aPQU3r5ckLSkc+wmmD4B
+         eaOReWvGYnP8WITRK8FojxdaQWGLmKerRkaOGG7XfXU6sA/qmSwm6Yh97y/EeFK2ggkd
+         vA13ajNLMiWzoOGvbiPV/IyHMhC53Vvu2j9APGBHHZfU0h4erE0DdHL2OZToPPb8XTnX
+         r1tw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691407732; x=1692012532;
+        d=1e100.net; s=20221208; t=1691407765; x=1692012565;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=XXAG7UeexodYStcT1Y2gz+/6q+0E2xrK+D1h2eKApUE=;
-        b=GPoZXdNMKu3TuG5WuaEJliIclUYp8zw3dzDdtjKF9I+03qEWfQc9OcO1ZoGogX3bSL
-         2UmHUJcRZBDGBfWv/vvakPfGJeIbz73GJQEH09aSLwimmXrWaXX7FNyWueI07Id/Koak
-         QKa9QOe5mboU2WRFIi53/uDFMg2sT3to/SjorlXKhiCXnJWncSS88/2JeSKK6LhLkxXN
-         3D5Uhfi7HNmVtm+pStBSuW6acONZGtdTcUCr7eIsMA+DBKmGv3AslDByCoGStF6uYXL8
-         DljzUSwfqFxiO+4Qm25+06ZU+i+N7vgreA5hteS0KpFd1RZ8MkfhteYl4gduMY4bIhza
-         GEHQ==
-X-Gm-Message-State: ABy/qLYfPoGEt4RavCVgdwifxk+/vCHs9MPF4ycGQiG/P6rD19H1iHpf
-        wpjzktEr0KYhCoFmW+cU1CD+pg==
-X-Google-Smtp-Source: AGHT+IE0EldDhRUbVC2QQ5qQQy0UrFFq3L83zUgt+LShkd8AG+beTExy84fPX5FeRRz/rZ+raVP35g==
-X-Received: by 2002:a17:90a:9c3:b0:269:41cf:7212 with SMTP id 61-20020a17090a09c300b0026941cf7212mr4959141pjo.4.1691406764622;
-        Mon, 07 Aug 2023 04:12:44 -0700 (PDT)
+        bh=qDCHIUUJzhdUAQEb2C7RW/Dwv8wB1L4nNlzD+13VK1U=;
+        b=Fxk570TCt1e1a6RpHiobwc4Bf0yLWYJXT/AZeaUoRHMGKkuPuiHMSrqyUB8y1bqIZO
+         2+jb3seHeV1kOAtrHbk4YR9L2jqmd+WSrNElEBVOMDRBGoWlM87VqRKHCJyWMuWJXZIS
+         qG0wB8YeG0X8zZg+1wWeD7vryjPcWOyebDcbzO6xuVmMcShSBud8iVgOTtvng51HDb54
+         NQZvCRks+emho+88Dv9BmZipvpt6UalTHmQoMnvGuIQWrRA7YQNhk497untBhRNYj/tM
+         ZDO+bpINiBnXwzEJhRbFQlNCjtXhCU1f7F7/5LNVejAptxztHdycRI9Frw7LxGNuv+9Z
+         0fmw==
+X-Gm-Message-State: ABy/qLbMnOwZrqPZ074vDlF5abWf3KXn0VV1LUaulm2HBUj+v5QSWEiy
+        2nZSy7HmIihoMaiZcZP3PTb/Dpz04igqmuaNQuw=
+X-Google-Smtp-Source: APBJJlEUCHWWWNXSTNLHQrmZRIrp+biqETFoyppqOsbwjUrAqcyZvOjgkWFuVkSEp/5UbdP5i9KhZA==
+X-Received: by 2002:a17:90a:6c97:b0:263:730b:f568 with SMTP id y23-20020a17090a6c9700b00263730bf568mr23067993pjj.3.1691406943426;
+        Mon, 07 Aug 2023 04:15:43 -0700 (PDT)
 Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.12.31
+        by smtp.gmail.com with ESMTPSA id y13-20020a17090aca8d00b0025be7b69d73sm5861191pjt.12.2023.08.07.04.15.31
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 07 Aug 2023 04:12:44 -0700 (PDT)
+        Mon, 07 Aug 2023 04:15:43 -0700 (PDT)
 From:   Qi Zheng <zhengqi.arch@bytedance.com>
 To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
         vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
@@ -71,9 +71,9 @@ Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org, x86@kernel.org,
         linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
         Qi Zheng <zhengqi.arch@bytedance.com>,
         Muchun Song <songmuchun@bytedance.com>
-Subject: [PATCH v4 13/48] NFSv4.2: dynamically allocate the nfs-xattr shrinkers
-Date:   Mon,  7 Aug 2023 19:09:01 +0800
-Message-Id: <20230807110936.21819-14-zhengqi.arch@bytedance.com>
+Subject: [PATCH v4 27/48] dm zoned: dynamically allocate the dm-zoned-meta shrinker
+Date:   Mon,  7 Aug 2023 19:09:15 +0800
+Message-Id: <20230807110936.21819-28-zhengqi.arch@bytedance.com>
 X-Mailer: git-send-email 2.24.3 (Apple Git-128)
 In-Reply-To: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
 References: <20230807110936.21819-1-zhengqi.arch@bytedance.com>
@@ -83,173 +83,89 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use new APIs to dynamically allocate the nfs-xattr shrinkers.
+In preparation for implementing lockless slab shrink, use new APIs to
+dynamically allocate the dm-zoned-meta shrinker, so that it can be freed
+asynchronously using kfree_rcu(). Then it doesn't need to wait for RCU
+read-side critical section when releasing the struct dmz_metadata.
 
 Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
 Reviewed-by: Muchun Song <songmuchun@bytedance.com>
 ---
- fs/nfs/nfs42xattr.c | 87 +++++++++++++++++++++++----------------------
- 1 file changed, 44 insertions(+), 43 deletions(-)
+ drivers/md/dm-zoned-metadata.c | 29 +++++++++++++++++------------
+ 1 file changed, 17 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/nfs42xattr.c b/fs/nfs/nfs42xattr.c
-index 911f634ba3da..2ad66a8922f4 100644
---- a/fs/nfs/nfs42xattr.c
-+++ b/fs/nfs/nfs42xattr.c
-@@ -796,28 +796,9 @@ static unsigned long nfs4_xattr_cache_scan(struct shrinker *shrink,
- static unsigned long nfs4_xattr_entry_scan(struct shrinker *shrink,
- 					   struct shrink_control *sc);
+diff --git a/drivers/md/dm-zoned-metadata.c b/drivers/md/dm-zoned-metadata.c
+index 9d3cca8e3dc9..bbb0e69a7908 100644
+--- a/drivers/md/dm-zoned-metadata.c
++++ b/drivers/md/dm-zoned-metadata.c
+@@ -187,7 +187,7 @@ struct dmz_metadata {
+ 	struct rb_root		mblk_rbtree;
+ 	struct list_head	mblk_lru_list;
+ 	struct list_head	mblk_dirty_list;
+-	struct shrinker		mblk_shrinker;
++	struct shrinker		*mblk_shrinker;
  
--static struct shrinker nfs4_xattr_cache_shrinker = {
--	.count_objects	= nfs4_xattr_cache_count,
--	.scan_objects	= nfs4_xattr_cache_scan,
--	.seeks		= DEFAULT_SEEKS,
--	.flags		= SHRINKER_MEMCG_AWARE,
--};
--
--static struct shrinker nfs4_xattr_entry_shrinker = {
--	.count_objects	= nfs4_xattr_entry_count,
--	.scan_objects	= nfs4_xattr_entry_scan,
--	.seeks		= DEFAULT_SEEKS,
--	.batch		= 512,
--	.flags		= SHRINKER_MEMCG_AWARE,
--};
--
--static struct shrinker nfs4_xattr_large_entry_shrinker = {
--	.count_objects	= nfs4_xattr_entry_count,
--	.scan_objects	= nfs4_xattr_entry_scan,
--	.seeks		= 1,
--	.batch		= 512,
--	.flags		= SHRINKER_MEMCG_AWARE,
--};
-+static struct shrinker *nfs4_xattr_cache_shrinker;
-+static struct shrinker *nfs4_xattr_entry_shrinker;
-+static struct shrinker *nfs4_xattr_large_entry_shrinker;
+ 	/* Zone allocation management */
+ 	struct mutex		map_lock;
+@@ -615,7 +615,7 @@ static unsigned long dmz_shrink_mblock_cache(struct dmz_metadata *zmd,
+ static unsigned long dmz_mblock_shrinker_count(struct shrinker *shrink,
+ 					       struct shrink_control *sc)
+ {
+-	struct dmz_metadata *zmd = container_of(shrink, struct dmz_metadata, mblk_shrinker);
++	struct dmz_metadata *zmd = shrink->private_data;
  
- static enum lru_status
- cache_lru_isolate(struct list_head *item,
-@@ -943,7 +924,7 @@ nfs4_xattr_entry_scan(struct shrinker *shrink, struct shrink_control *sc)
- 	struct nfs4_xattr_entry *entry;
- 	struct list_lru *lru;
- 
--	lru = (shrink == &nfs4_xattr_large_entry_shrinker) ?
-+	lru = (shrink == nfs4_xattr_large_entry_shrinker) ?
- 	    &nfs4_xattr_large_entry_lru : &nfs4_xattr_entry_lru;
- 
- 	freed = list_lru_shrink_walk(lru, sc, entry_lru_isolate, &dispose);
-@@ -971,7 +952,7 @@ nfs4_xattr_entry_count(struct shrinker *shrink, struct shrink_control *sc)
+ 	return atomic_read(&zmd->nr_mblks);
+ }
+@@ -626,7 +626,7 @@ static unsigned long dmz_mblock_shrinker_count(struct shrinker *shrink,
+ static unsigned long dmz_mblock_shrinker_scan(struct shrinker *shrink,
+ 					      struct shrink_control *sc)
+ {
+-	struct dmz_metadata *zmd = container_of(shrink, struct dmz_metadata, mblk_shrinker);
++	struct dmz_metadata *zmd = shrink->private_data;
  	unsigned long count;
- 	struct list_lru *lru;
  
--	lru = (shrink == &nfs4_xattr_large_entry_shrinker) ?
-+	lru = (shrink == nfs4_xattr_large_entry_shrinker) ?
- 	    &nfs4_xattr_large_entry_lru : &nfs4_xattr_entry_lru;
+ 	spin_lock(&zmd->mblk_lock);
+@@ -2936,19 +2936,24 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
+ 	 */
+ 	zmd->min_nr_mblks = 2 + zmd->nr_map_blocks + zmd->zone_nr_bitmap_blocks * 16;
+ 	zmd->max_nr_mblks = zmd->min_nr_mblks + 512;
+-	zmd->mblk_shrinker.count_objects = dmz_mblock_shrinker_count;
+-	zmd->mblk_shrinker.scan_objects = dmz_mblock_shrinker_scan;
+-	zmd->mblk_shrinker.seeks = DEFAULT_SEEKS;
  
- 	count = list_lru_shrink_count(lru, sc);
-@@ -991,18 +972,34 @@ static void nfs4_xattr_cache_init_once(void *p)
- 	INIT_LIST_HEAD(&cache->dispose);
- }
+ 	/* Metadata cache shrinker */
+-	ret = register_shrinker(&zmd->mblk_shrinker, "dm-zoned-meta:(%u:%u)",
+-				MAJOR(dev->bdev->bd_dev),
+-				MINOR(dev->bdev->bd_dev));
+-	if (ret) {
+-		dmz_zmd_err(zmd, "Register metadata cache shrinker failed");
++	zmd->mblk_shrinker = shrinker_alloc(0,  "dm-zoned-meta:(%u:%u)",
++					    MAJOR(dev->bdev->bd_dev),
++					    MINOR(dev->bdev->bd_dev));
++	if (!zmd->mblk_shrinker) {
++		ret = -ENOMEM;
++		dmz_zmd_err(zmd, "Allocate metadata cache shrinker failed");
+ 		goto err;
+ 	}
  
--static int nfs4_xattr_shrinker_init(struct shrinker *shrinker,
--				    struct list_lru *lru, const char *name)
-+typedef unsigned long (*count_objects_cb)(struct shrinker *s,
-+					  struct shrink_control *sc);
-+typedef unsigned long (*scan_objects_cb)(struct shrinker *s,
-+					 struct shrink_control *sc);
++	zmd->mblk_shrinker->count_objects = dmz_mblock_shrinker_count;
++	zmd->mblk_shrinker->scan_objects = dmz_mblock_shrinker_scan;
++	zmd->mblk_shrinker->seeks = DEFAULT_SEEKS;
++	zmd->mblk_shrinker->private_data = zmd;
 +
-+static int __init nfs4_xattr_shrinker_init(struct shrinker **shrinker,
-+					   struct list_lru *lru, const char *name,
-+					   count_objects_cb count,
-+					   scan_objects_cb scan, long batch, int seeks)
- {
--	int ret = 0;
-+	int ret;
- 
--	ret = register_shrinker(shrinker, name);
--	if (ret)
-+	*shrinker = shrinker_alloc(SHRINKER_MEMCG_AWARE, name);
-+	if (!*shrinker)
-+		return -ENOMEM;
++	shrinker_register(zmd->mblk_shrinker);
 +
-+	ret = list_lru_init_memcg(lru, *shrinker);
-+	if (ret) {
-+		shrinker_free(*shrinker);
- 		return ret;
-+	}
- 
--	ret = list_lru_init_memcg(lru, shrinker);
--	if (ret)
--		unregister_shrinker(shrinker);
-+	(*shrinker)->count_objects = count;
-+	(*shrinker)->scan_objects = scan;
-+	(*shrinker)->batch = batch;
-+	(*shrinker)->seeks = seeks;
-+
-+	shrinker_register(*shrinker);
- 
- 	return ret;
- }
-@@ -1010,7 +1007,7 @@ static int nfs4_xattr_shrinker_init(struct shrinker *shrinker,
- static void nfs4_xattr_shrinker_destroy(struct shrinker *shrinker,
- 					struct list_lru *lru)
+ 	dmz_zmd_info(zmd, "DM-Zoned metadata version %d", zmd->sb_version);
+ 	for (i = 0; i < zmd->nr_devs; i++)
+ 		dmz_print_dev(zmd, i);
+@@ -2995,7 +3000,7 @@ int dmz_ctr_metadata(struct dmz_dev *dev, int num_dev,
+  */
+ void dmz_dtr_metadata(struct dmz_metadata *zmd)
  {
--	unregister_shrinker(shrinker);
-+	shrinker_free(shrinker);
- 	list_lru_destroy(lru);
- }
- 
-@@ -1026,27 +1023,31 @@ int __init nfs4_xattr_cache_init(void)
- 		return -ENOMEM;
- 
- 	ret = nfs4_xattr_shrinker_init(&nfs4_xattr_cache_shrinker,
--				       &nfs4_xattr_cache_lru,
--				       "nfs-xattr_cache");
-+				       &nfs4_xattr_cache_lru, "nfs-xattr_cache",
-+				       nfs4_xattr_cache_count,
-+				       nfs4_xattr_cache_scan, 0, DEFAULT_SEEKS);
- 	if (ret)
- 		goto out1;
- 
- 	ret = nfs4_xattr_shrinker_init(&nfs4_xattr_entry_shrinker,
--				       &nfs4_xattr_entry_lru,
--				       "nfs-xattr_entry");
-+				       &nfs4_xattr_entry_lru, "nfs-xattr_entry",
-+				       nfs4_xattr_entry_count,
-+				       nfs4_xattr_entry_scan, 512, DEFAULT_SEEKS);
- 	if (ret)
- 		goto out2;
- 
- 	ret = nfs4_xattr_shrinker_init(&nfs4_xattr_large_entry_shrinker,
- 				       &nfs4_xattr_large_entry_lru,
--				       "nfs-xattr_large_entry");
-+				       "nfs-xattr_large_entry",
-+				       nfs4_xattr_entry_count,
-+				       nfs4_xattr_entry_scan, 512, 1);
- 	if (!ret)
- 		return 0;
- 
--	nfs4_xattr_shrinker_destroy(&nfs4_xattr_entry_shrinker,
-+	nfs4_xattr_shrinker_destroy(nfs4_xattr_entry_shrinker,
- 				    &nfs4_xattr_entry_lru);
- out2:
--	nfs4_xattr_shrinker_destroy(&nfs4_xattr_cache_shrinker,
-+	nfs4_xattr_shrinker_destroy(nfs4_xattr_cache_shrinker,
- 				    &nfs4_xattr_cache_lru);
- out1:
- 	kmem_cache_destroy(nfs4_xattr_cache_cachep);
-@@ -1056,11 +1057,11 @@ int __init nfs4_xattr_cache_init(void)
- 
- void nfs4_xattr_cache_exit(void)
- {
--	nfs4_xattr_shrinker_destroy(&nfs4_xattr_large_entry_shrinker,
-+	nfs4_xattr_shrinker_destroy(nfs4_xattr_large_entry_shrinker,
- 				    &nfs4_xattr_large_entry_lru);
--	nfs4_xattr_shrinker_destroy(&nfs4_xattr_entry_shrinker,
-+	nfs4_xattr_shrinker_destroy(nfs4_xattr_entry_shrinker,
- 				    &nfs4_xattr_entry_lru);
--	nfs4_xattr_shrinker_destroy(&nfs4_xattr_cache_shrinker,
-+	nfs4_xattr_shrinker_destroy(nfs4_xattr_cache_shrinker,
- 				    &nfs4_xattr_cache_lru);
- 	kmem_cache_destroy(nfs4_xattr_cache_cachep);
+-	unregister_shrinker(&zmd->mblk_shrinker);
++	shrinker_free(zmd->mblk_shrinker);
+ 	dmz_cleanup_metadata(zmd);
+ 	kfree(zmd);
  }
 -- 
 2.30.2
