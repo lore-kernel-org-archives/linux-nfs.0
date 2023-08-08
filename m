@@ -2,456 +2,435 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 298AFC04FDF
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 17:13:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6E526C04FE0
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 17:18:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232555AbjHHRNO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Aug 2023 13:13:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33320 "EHLO
+        id S234402AbjHHRS6 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Aug 2023 13:18:58 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49736 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232608AbjHHRMh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 13:12:37 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 574F41BAFA;
-        Tue,  8 Aug 2023 09:05:15 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        with ESMTP id S229885AbjHHRS3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 13:18:29 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8E9BF1E320;
+        Tue,  8 Aug 2023 09:07:33 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 2CC1962431;
-        Tue,  8 Aug 2023 08:54:04 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F236AC433C8;
-        Tue,  8 Aug 2023 08:53:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1691484843;
-        bh=y+Bd+pxAoRudwhN/rOHkt3g9IIHlJ6bFdeqPc3lHqxY=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=ojbq4tbWJvvZTMd2qW1OvVzVcAiuQiFtA88L1xJVJDCKYuAFbCEp1JAdFIoAKm5tj
-         akbmaeCdBd92hM+2NxwBxSGvOL/7m5vg747b/yfNxxxYMxvi05g2QjC4a1Ub9cwHl9
-         iOdF1/PQSb8eX/SGMBpEKfSQRoziKi2Nq1qU1tvT1J+ffJV3gPVBtsM0a7W02S8msj
-         64hJCTDVGFEBL32ie5/qLdPFGKtEjD68sjzDLdcuE/qZoFopPJlfpMRKjXSFFd7Ugi
-         0vK6X5LTezIXI48rLR/7y/JltKBqACu5oEIFv+WG8tNbJnhTq4Wiu0jIZu3s5B5nFd
-         KZZLtjCFH4ORg==
-Date:   Tue, 8 Aug 2023 10:53:57 +0200
-From:   Christian Brauner <brauner@kernel.org>
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 948FE21E30;
+        Tue,  8 Aug 2023 10:02:40 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1691488960; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=0HEDf4nPJ+iNrPUKPUVl/LvlxLOjZZAZpje52YEl2Wk=;
+        b=zp34KHdnygGkkUw1WrZLx6L90aMGe3p6SyU1Z4XKZwbj71OiVbCKm8NqgCli3bghyh6WfA
+        kiTTAKf9pEw3smNkjBO7G3rlfxkekHA4d98sI0t2U27Anh0bF0iD+NHAfSoh7Y37qh6dQg
+        RCS5eKpej8PWZuiN3BYxnBeRoQu71m4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1691488960;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=0HEDf4nPJ+iNrPUKPUVl/LvlxLOjZZAZpje52YEl2Wk=;
+        b=xIFFbdmF7c2Azz53cFDw3fHZsQRn1OIeCwdCvV5z4TTksaSLfy8IXpgapBsxV1A+7h/AWc
+        9+CTFjcCsgbFFuCw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 7A0F613451;
+        Tue,  8 Aug 2023 10:02:40 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 9CbJHcAS0mQYKgAAMHmgww
+        (envelope-from <jack@suse.cz>); Tue, 08 Aug 2023 10:02:40 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 055A7A0769; Tue,  8 Aug 2023 12:02:40 +0200 (CEST)
+Date:   Tue, 8 Aug 2023 12:02:39 +0200
+From:   Jan Kara <jack@suse.cz>
 To:     Jeff Layton <jlayton@kernel.org>
 Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christian Brauner <brauner@kernel.org>,
+        Eric Van Hensbergen <ericvh@kernel.org>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Christian Schoenebeck <linux_oss@crudebyte.com>,
+        David Howells <dhowells@redhat.com>,
+        Marc Dionne <marc.dionne@auristor.com>,
+        Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>, Xiubo Li <xiubli@redhat.com>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu,
+        Tyler Hicks <code@tyhicks.com>, Gao Xiang <xiang@kernel.org>,
+        Chao Yu <chao@kernel.org>, Yue Hu <huyue2@coolpad.com>,
+        Jeffle Xu <jefflexu@linux.alibaba.com>,
+        Namjae Jeon <linkinjeon@kernel.org>,
+        Sungjong Seo <sj1557.seo@samsung.com>,
+        Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Tejun Heo <tj@kernel.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna@kernel.org>,
-        Paul Moore <paul@paul-moore.com>,
-        James Morris <jmorris@namei.org>,
-        "Serge E. Hallyn" <serge@hallyn.com>,
-        Stephen Smalley <stephen.smalley.work@gmail.com>,
-        Eric Paris <eparis@parisplace.org>,
-        Casey Schaufler <casey@schaufler-ca.com>,
-        David Howells <dhowells@redhat.com>,
-        Scott Mayhew <smayhew@redhat.com>,
-        Stephen Smalley <sds@tycho.nsa.gov>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        Mark Fasheh <mark@fasheh.com>,
+        Joel Becker <jlbec@evilplan.org>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        Mike Marshall <hubcap@omnibond.com>,
+        Martin Brandenburg <martin@omnibond.com>,
+        Luis Chamberlain <mcgrof@kernel.org>,
+        Kees Cook <keescook@chromium.org>,
+        Iurii Zaikin <yzaikin@google.com>,
+        Steve French <sfrench@samba.org>,
+        Paulo Alcantara <pc@manguebit.com>,
+        Ronnie Sahlberg <ronniesahlberg@gmail.com>,
+        Shyam Prasad N <sprasad@microsoft.com>,
+        Tom Talpey <tom@talpey.com>,
+        Sergey Senozhatsky <senozhatsky@chromium.org>,
+        Richard Weinberger <richard@nod.at>,
+        Hans de Goede <hdegoede@redhat.com>,
+        Hugh Dickins <hughd@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Amir Goldstein <amir73il@gmail.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Benjamin Coddington <bcodding@redhat.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        selinux@vger.kernel.org
-Subject: Re: [PATCH v8] vfs, security: Fix automount superblock LSM init
- problem, preventing NFS sb sharing
-Message-ID: <20230808-zuckt-nachahmen-f51625f111f3@brauner>
-References: <20230807-master-v8-1-54e249595f10@kernel.org>
- <20230807-ohrfeigen-misswirtschaft-29303ebbc83b@brauner>
- <5e32555a701602603681d0e08df86e398f7f025d.camel@kernel.org>
+        v9fs@lists.linux.dev, linux-afs@lists.infradead.org,
+        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        codalist@coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, ntfs3@lists.linux.dev,
+        ocfs2-devel@lists.linux.dev, devel@lists.orangefs.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-mtd@lists.infradead.org, linux-mm@kvack.org,
+        linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [PATCH v7 09/13] fs: add infrastructure for multigrain timestamps
+Message-ID: <20230808100239.v7c6lh5yqszercvv@quack3>
+References: <20230807-mgctime-v7-0-d1dec143a704@kernel.org>
+ <20230807-mgctime-v7-9-d1dec143a704@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <5e32555a701602603681d0e08df86e398f7f025d.camel@kernel.org>
+In-Reply-To: <20230807-mgctime-v7-9-d1dec143a704@kernel.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, Aug 07, 2023 at 10:09:21AM -0400, Jeff Layton wrote:
-> On Mon, 2023-08-07 at 15:38 +0200, Christian Brauner wrote:
-> > On Mon, Aug 07, 2023 at 09:18:01AM -0400, Jeff Layton wrote:
-> > > From: David Howells <dhowells@redhat.com>
-> > > 
-> > > When NFS superblocks are created by automounting, their LSM parameters
-> > > aren't set in the fs_context struct prior to sget_fc() being called,
-> > > leading to failure to match existing superblocks.
-> > > 
-> > > This bug leads to messages like the following appearing in dmesg when
-> > > fscache is enabled:
-> > > 
-> > >     NFS: Cache volume key already in use (nfs,4.2,2,108,106a8c0,1,,,,100000,100000,2ee,3a98,1d4c,3a98,1)
-> > > 
-> > > Fix this by adding a new LSM hook to load fc->security for submount
-> > > creation.
-> > > 
-> > > Signed-off-by: David Howells <dhowells@redhat.com>
-> > > Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> > > Fixes: 9bc61ab18b1d ("vfs: Introduce fs_context, switch vfs_kern_mount() to it.")
-> > > Fixes: 779df6a5480f ("NFS: Ensure security label is set for root inode)
-> > > Tested-by: Jeff Layton <jlayton@kernel.org>
-> > > Reviewed-by: Jeff Layton <jlayton@kernel.org>
-> > > Acked-by: Casey Schaufler <casey@schaufler-ca.com>
-> > > Acked-by: "Christian Brauner (Microsoft)" <brauner@kernel.org>
-> > > Link: https://lore.kernel.org/r/165962680944.3334508.6610023900349142034.stgit@warthog.procyon.org.uk/ # v1
-> > > Link: https://lore.kernel.org/r/165962729225.3357250.14350728846471527137.stgit@warthog.procyon.org.uk/ # v2
-> > > Link: https://lore.kernel.org/r/165970659095.2812394.6868894171102318796.stgit@warthog.procyon.org.uk/ # v3
-> > > Link: https://lore.kernel.org/r/166133579016.3678898.6283195019480567275.stgit@warthog.procyon.org.uk/ # v4
-> > > Link: https://lore.kernel.org/r/217595.1662033775@warthog.procyon.org.uk/ # v5
-> > > ---
-> > > ver #2)
-> > > - Added Smack support
-> > > - Made LSM parameter extraction dependent on reference != NULL.
-> > > 
-> > > ver #3)
-> > > - Made LSM parameter extraction dependent on fc->purpose ==
-> > >    FS_CONTEXT_FOR_SUBMOUNT.  Shouldn't happen on FOR_RECONFIGURE.
-> > > 
-> > > ver #4)
-> > > - When doing a FOR_SUBMOUNT mount, don't set the root label in SELinux or Smack.
-> > > 
-> > > ver #5)
-> > > - Removed unused variable.
-> > > - Only allocate smack_mnt_opts if we're dealing with a submount.
-> > > 
-> > > ver #6)
-> > > - Rebase onto v6.5.0-rc4
-> > > - Link to v6: https://lore.kernel.org/r/20230802-master-v6-1-45d48299168b@kernel.org
-> > > 
-> > > ver #7)
-> > > - Drop lsm_set boolean
-> > > - Link to v7: https://lore.kernel.org/r/20230804-master-v7-1-5d4e48407298@kernel.org
-> > > 
-> > > ver #8)
-> > > - Remove spurious semicolon in smack_fs_context_init
-> > > - Make fs_context_init take a superblock as reference instead of dentry
-> > > - WARN_ON_ONCE's when fc->purpose != FS_CONTEXT_FOR_SUBMOUNT
-> > > - Call the security hook from fs_context_for_submount instead of alloc_fs_context
-> > > ---
-> > >  fs/fs_context.c               | 23 +++++++++++++++++-
-> > >  include/linux/lsm_hook_defs.h |  1 +
-> > >  include/linux/security.h      |  6 +++++
-> > >  security/security.c           | 14 +++++++++++
-> > >  security/selinux/hooks.c      | 25 ++++++++++++++++++++
-> > >  security/smack/smack_lsm.c    | 54 +++++++++++++++++++++++++++++++++++++++++++
-> > >  6 files changed, 122 insertions(+), 1 deletion(-)
-> > > 
-> > > diff --git a/fs/fs_context.c b/fs/fs_context.c
-> > > index 851214d1d013..a76d7c82e091 100644
-> > > --- a/fs/fs_context.c
-> > > +++ b/fs/fs_context.c
-> > > @@ -315,10 +315,31 @@ struct fs_context *fs_context_for_reconfigure(struct dentry *dentry,
-> > >  }
-> > >  EXPORT_SYMBOL(fs_context_for_reconfigure);
-> > >  
-> > > +/**
-> > > + * fs_context_for_submount: allocate a new fs_context for a submount
-> > > + * @type: file_system_type of the new context
-> > > + * @reference: reference dentry from which to copy relevant info
-> > > + *
-> > > + * Allocate a new fs_context suitable for a submount. This also ensures that
-> > > + * the fc->security object is inherited from @reference (if needed).
-> > > + */
-> > >  struct fs_context *fs_context_for_submount(struct file_system_type *type,
-> > >  					   struct dentry *reference)
-> > >  {
-> > > -	return alloc_fs_context(type, reference, 0, 0, FS_CONTEXT_FOR_SUBMOUNT);
-> > > +	struct fs_context *fc;
-> > > +	int ret;
-> > > +
-> > > +	fc = alloc_fs_context(type, reference, 0, 0, FS_CONTEXT_FOR_SUBMOUNT);
-> > > +	if (IS_ERR(fc))
-> > > +		return fc;
-> > > +
-> > > +	ret = security_fs_context_init(fc, reference->d_sb);
-> > > +	if (ret) {
-> > > +		put_fs_context(fc);
-> > > +		return ERR_PTR(ret);
-> > > +	}
-> > > +
-> > > +	return fc;
-> > >  }
-> > >  EXPORT_SYMBOL(fs_context_for_submount);
-> > >  
-> > > diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
-> > > index 7308a1a7599b..2876dd6114c0 100644
-> > > --- a/include/linux/lsm_hook_defs.h
-> > > +++ b/include/linux/lsm_hook_defs.h
-> > > @@ -54,6 +54,7 @@ LSM_HOOK(int, 0, bprm_creds_from_file, struct linux_binprm *bprm, struct file *f
-> > >  LSM_HOOK(int, 0, bprm_check_security, struct linux_binprm *bprm)
-> > >  LSM_HOOK(void, LSM_RET_VOID, bprm_committing_creds, struct linux_binprm *bprm)
-> > >  LSM_HOOK(void, LSM_RET_VOID, bprm_committed_creds, struct linux_binprm *bprm)
-> > > +LSM_HOOK(int, 0, fs_context_init, struct fs_context *fc, struct super_block *reference)
-> > >  LSM_HOOK(int, 0, fs_context_dup, struct fs_context *fc,
-> > >  	 struct fs_context *src_sc)
-> > >  LSM_HOOK(int, -ENOPARAM, fs_context_parse_param, struct fs_context *fc,
-> > > diff --git a/include/linux/security.h b/include/linux/security.h
-> > > index 32828502f09e..fe9bf5e805ee 100644
-> > > --- a/include/linux/security.h
-> > > +++ b/include/linux/security.h
-> > > @@ -293,6 +293,7 @@ int security_bprm_creds_from_file(struct linux_binprm *bprm, struct file *file);
-> > >  int security_bprm_check(struct linux_binprm *bprm);
-> > >  void security_bprm_committing_creds(struct linux_binprm *bprm);
-> > >  void security_bprm_committed_creds(struct linux_binprm *bprm);
-> > > +int security_fs_context_init(struct fs_context *fc, struct super_block *reference);
-> > >  int security_fs_context_dup(struct fs_context *fc, struct fs_context *src_fc);
-> > >  int security_fs_context_parse_param(struct fs_context *fc, struct fs_parameter *param);
-> > >  int security_sb_alloc(struct super_block *sb);
-> > > @@ -629,6 +630,11 @@ static inline void security_bprm_committed_creds(struct linux_binprm *bprm)
-> > >  {
-> > >  }
-> > >  
-> > > +static inline int security_fs_context_init(struct fs_context *fc,
-> > > +					   struct super_block *reference)
-> > > +{
-> > > +	return 0;
-> > > +}
-> > 
-> > Sorry, my point is we shouldn't be adding a generic
-> > security_fs_context_init() hook at all. Pre superblock creation we have
-> > a hook during parameter parsing for LSMs and another one during actual
-> > superblock creation in vfs_get_tree() and yet another one for fs_context
-> > duplicaton. We don't need another generic one during fs_context
-> > allocation.
-> > 
-> > Yes, we may need a hook for submount allocation but then we'll add one
-> > exactly for that. And then for fs_context_for_submount @sb can't be
-> > empty so there's also no point in checking whether it is empty because
-> > you've already crashed in fs_context_for_submount(). All the checks
-> > below for !reference and fc->purpose != FS_CONTEXT_FOR_SUBMOUNT can go
-> > away then as well.
-> > 
-> > So we end up with something easier and stricter.
-> > 
+On Mon 07-08-23 15:38:40, Jeff Layton wrote:
+> The VFS always uses coarse-grained timestamps when updating the ctime
+> and mtime after a change. This has the benefit of allowing filesystems
+> to optimize away a lot metadata updates, down to around 1 per jiffy,
+> even when a file is under heavy writes.
 > 
-> I'm not sure I understand what you're asking for here. fc->security
-> field initialization is dependent on the LSM in use. Where will we do
-> this initialization if we don't add this new hook? Are you suggesting
-> that we fold this into an existing LSM hook? If so, which one?
+> Unfortunately, this has always been an issue when we're exporting via
+> NFSv3, which relies on timestamps to validate caches. A lot of changes
+> can happen in a jiffy, so timestamps aren't sufficient to help the
+> client decide to invalidate the cache. Even with NFSv4, a lot of
+> exported filesystems don't properly support a change attribute and are
+> subject to the same problems with timestamp granularity. Other
+> applications have similar issues with timestamps (e.g backup
+> applications).
+> 
+> If we were to always use fine-grained timestamps, that would improve the
+> situation, but that becomes rather expensive, as the underlying
+> filesystem would have to log a lot more metadata updates.
+> 
+> What we need is a way to only use fine-grained timestamps when they are
+> being actively queried.
+> 
+> POSIX generally mandates that when the the mtime changes, the ctime must
+> also change. The kernel always stores normalized ctime values, so only
+> the first 30 bits of the tv_nsec field are ever used.
+> 
+> Use the 31st bit of the ctime tv_nsec field to indicate that something
+> has queried the inode for the mtime or ctime. When this flag is set,
+> on the next mtime or ctime update, the kernel will fetch a fine-grained
+> timestamp instead of the usual coarse-grained one.
+> 
+> Filesytems can opt into this behavior by setting the FS_MGTIME flag in
+> the fstype. Filesystems that don't set this flag will continue to use
+> coarse-grained timestamps.
+> 
+> Later patches will convert individual filesystems to use the new
+> infrastructure.
+> 
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
 
-I'm sorry, I didn't mean to confuse. I just mean the following:
-* renaming security_fs_context_init() to security_fs_context_submount()
-  to reflect that it is only called during submount allocation now
-* Now that security_fs_context_submount() is called in
-  fs_context_for_submount() you can remove all the checks for @reference
-  and fc->purpose == FS_CONTEXT_FOR_SUBMOUNT checks because they can't
-  be unset otherwise you would've a bug in fs_context_for_submount().
+Looks good to me. Feel free to add:
 
-These two things were missing after you did move the LSM call into
-fs_context_for_submount(). That's basically it. So folded into what you
-sent out this amounts to:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
- fs/fs_context.c               | 23 +++++++++++++++-
- include/linux/lsm_hook_defs.h |  1 +
- include/linux/security.h      |  6 +++++
- security/security.c           | 14 ++++++++++
- security/selinux/hooks.c      | 22 +++++++++++++++
- security/smack/smack_lsm.c    | 51 +++++++++++++++++++++++++++++++++++
- 6 files changed, 116 insertions(+), 1 deletion(-)
+								Honza
 
-diff --git a/fs/fs_context.c b/fs/fs_context.c
-index 851214d1d013..375023e40161 100644
---- a/fs/fs_context.c
-+++ b/fs/fs_context.c
-@@ -315,10 +315,31 @@ struct fs_context *fs_context_for_reconfigure(struct dentry *dentry,
- }
- EXPORT_SYMBOL(fs_context_for_reconfigure);
- 
-+/**
-+ * fs_context_for_submount: allocate a new fs_context for a submount
-+ * @type: file_system_type of the new context
-+ * @reference: reference dentry from which to copy relevant info
-+ *
-+ * Allocate a new fs_context suitable for a submount. This also ensures that
-+ * the fc->security object is inherited from @reference (if needed).
-+ */
- struct fs_context *fs_context_for_submount(struct file_system_type *type,
- 					   struct dentry *reference)
- {
--	return alloc_fs_context(type, reference, 0, 0, FS_CONTEXT_FOR_SUBMOUNT);
-+	struct fs_context *fc;
-+	int ret;
-+
-+	fc = alloc_fs_context(type, reference, 0, 0, FS_CONTEXT_FOR_SUBMOUNT);
-+	if (IS_ERR(fc))
-+		return fc;
-+
-+	ret = security_fs_context_submount(fc, reference->d_sb);
-+	if (ret) {
-+		put_fs_context(fc);
-+		return ERR_PTR(ret);
-+	}
-+
-+	return fc;
- }
- EXPORT_SYMBOL(fs_context_for_submount);
- 
-diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
-index 7308a1a7599b..2876dd6114c0 100644
---- a/include/linux/lsm_hook_defs.h
-+++ b/include/linux/lsm_hook_defs.h
-@@ -54,6 +54,7 @@ LSM_HOOK(int, 0, bprm_creds_from_file, struct linux_binprm *bprm, struct file *f
- LSM_HOOK(int, 0, bprm_check_security, struct linux_binprm *bprm)
- LSM_HOOK(void, LSM_RET_VOID, bprm_committing_creds, struct linux_binprm *bprm)
- LSM_HOOK(void, LSM_RET_VOID, bprm_committed_creds, struct linux_binprm *bprm)
-+LSM_HOOK(int, 0, fs_context_init, struct fs_context *fc, struct super_block *reference)
- LSM_HOOK(int, 0, fs_context_dup, struct fs_context *fc,
- 	 struct fs_context *src_sc)
- LSM_HOOK(int, -ENOPARAM, fs_context_parse_param, struct fs_context *fc,
-diff --git a/include/linux/security.h b/include/linux/security.h
-index 32828502f09e..02b41f4d05d1 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -293,6 +293,7 @@ int security_bprm_creds_from_file(struct linux_binprm *bprm, struct file *file);
- int security_bprm_check(struct linux_binprm *bprm);
- void security_bprm_committing_creds(struct linux_binprm *bprm);
- void security_bprm_committed_creds(struct linux_binprm *bprm);
-+int security_fs_context_submount(struct fs_context *fc, struct super_block *reference);
- int security_fs_context_dup(struct fs_context *fc, struct fs_context *src_fc);
- int security_fs_context_parse_param(struct fs_context *fc, struct fs_parameter *param);
- int security_sb_alloc(struct super_block *sb);
-@@ -629,6 +630,11 @@ static inline void security_bprm_committed_creds(struct linux_binprm *bprm)
- {
- }
- 
-+static inline int security_fs_context_submount(struct fs_context *fc,
-+					       struct super_block *reference)
-+{
-+	return 0;
-+}
- static inline int security_fs_context_dup(struct fs_context *fc,
- 					  struct fs_context *src_fc)
- {
-diff --git a/security/security.c b/security/security.c
-index b720424ca37d..3611ebdf31d9 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -1138,6 +1138,20 @@ void security_bprm_committed_creds(struct linux_binprm *bprm)
- 	call_void_hook(bprm_committed_creds, bprm);
- }
- 
-+/**
-+ * security_fs_context_submount() - Initialise fc->security
-+ * @fc: new filesystem context
-+ * @reference: dentry reference for submount/remount
-+ *
-+ * Fill out the ->security field for a new fs_context.
-+ *
-+ * Return: Returns 0 on success or negative error code on failure.
-+ */
-+int security_fs_context_submount(struct fs_context *fc, struct super_block *reference)
-+{
-+	return call_int_hook(fs_context_init, 0, fc, reference);
-+}
-+
- /**
-  * security_fs_context_dup() - Duplicate a fs_context LSM blob
-  * @fc: destination filesystem context
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index d06e350fedee..8b950274138b 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -2745,6 +2745,27 @@ static int selinux_umount(struct vfsmount *mnt, int flags)
- 				   FILESYSTEM__UNMOUNT, NULL);
- }
- 
-+static int selinux_fs_context_submount(struct fs_context *fc,
-+				       struct super_block *reference)
-+{
-+	const struct superblock_security_struct *sbsec;
-+	struct selinux_mnt_opts *opts;
-+
-+	opts = kzalloc(sizeof(*opts), GFP_KERNEL);
-+	if (!opts)
-+		return -ENOMEM;
-+
-+	sbsec = selinux_superblock(reference);
-+	if (sbsec->flags & FSCONTEXT_MNT)
-+		opts->fscontext_sid = sbsec->sid;
-+	if (sbsec->flags & CONTEXT_MNT)
-+		opts->context_sid = sbsec->mntpoint_sid;
-+	if (sbsec->flags & DEFCONTEXT_MNT)
-+		opts->defcontext_sid = sbsec->def_sid;
-+	fc->security = opts;
-+	return 0;
-+}
-+
- static int selinux_fs_context_dup(struct fs_context *fc,
- 				  struct fs_context *src_fc)
- {
-@@ -7182,6 +7203,7 @@ static struct security_hook_list selinux_hooks[] __ro_after_init = {
- 	/*
- 	 * PUT "CLONING" (ACCESSING + ALLOCATING) HOOKS HERE
- 	 */
-+	LSM_HOOK_INIT(fs_context_submount, selinux_fs_context_submount),
- 	LSM_HOOK_INIT(fs_context_dup, selinux_fs_context_dup),
- 	LSM_HOOK_INIT(fs_context_parse_param, selinux_fs_context_parse_param),
- 	LSM_HOOK_INIT(sb_eat_lsm_opts, selinux_sb_eat_lsm_opts),
-diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index 6e270cf3fd30..87f7e0506f4d 100644
---- a/security/smack/smack_lsm.c
-+++ b/security/smack/smack_lsm.c
-@@ -614,6 +614,56 @@ static int smack_add_opt(int token, const char *s, void **mnt_opts)
- 	return -EINVAL;
- }
- 
-+/**
-+ * smack_fs_context_submount - Initialise security data for a filesystem context
-+ * @fc: The filesystem context.
-+ * @reference: Reference superblock (automount/reconfigure) or NULL
-+ *
-+ * Returns 0 on success or -ENOMEM on error.
-+ */
-+static int smack_fs_context_submount(struct fs_context *fc,
-+				     struct dentry *reference)
-+{
-+	struct superblock_smack *sbsp;
-+	struct smack_mnt_opts *ctx;
-+	struct inode_smack *isp;
-+
-+	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
-+	if (!ctx)
-+		return -ENOMEM;
-+	fc->security = ctx;
-+
-+	sbsp = smack_superblock(reference);
-+	isp = smack_inode(reference->s_root->d_inode);
-+
-+	if (sbsp->smk_default) {
-+		ctx->fsdefault = kstrdup(sbsp->smk_default->smk_known, GFP_KERNEL);
-+		if (!ctx->fsdefault)
-+			return -ENOMEM;
-+	}
-+
-+	if (sbsp->smk_floor) {
-+		ctx->fsfloor = kstrdup(sbsp->smk_floor->smk_known, GFP_KERNEL);
-+		if (!ctx->fsfloor)
-+			return -ENOMEM;
-+	}
-+
-+	if (sbsp->smk_hat) {
-+		ctx->fshat = kstrdup(sbsp->smk_hat->smk_known, GFP_KERNEL);
-+		if (!ctx->fshat)
-+			return -ENOMEM;
-+	}
-+
-+	if (isp->smk_flags & SMK_INODE_TRANSMUTE) {
-+		if (sbsp->smk_root) {
-+			ctx->fstransmute = kstrdup(sbsp->smk_root->smk_known, GFP_KERNEL);
-+			if (!ctx->fstransmute)
-+				return -ENOMEM;
-+		}
-+	}
-+	return 0;
-+}
-+
- /**
-  * smack_fs_context_dup - Duplicate the security data on fs_context duplication
-  * @fc: The new filesystem context.
-@@ -4876,6 +4926,7 @@ static struct security_hook_list smack_hooks[] __ro_after_init = {
- 	LSM_HOOK_INIT(ptrace_traceme, smack_ptrace_traceme),
- 	LSM_HOOK_INIT(syslog, smack_syslog),
- 
-+	LSM_HOOK_INIT(fs_context_submount, smack_fs_context_submount),
- 	LSM_HOOK_INIT(fs_context_dup, smack_fs_context_dup),
- 	LSM_HOOK_INIT(fs_context_parse_param, smack_fs_context_parse_param),
- 
+> ---
+>  fs/inode.c         | 82 ++++++++++++++++++++++++++++++++++++++++++++++++++++--
+>  fs/stat.c          | 41 +++++++++++++++++++++++++--
+>  include/linux/fs.h | 46 ++++++++++++++++++++++++++++--
+>  3 files changed, 162 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/inode.c b/fs/inode.c
+> index e50d94a136fe..f55957ac80e6 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -2118,10 +2118,52 @@ int file_remove_privs(struct file *file)
+>  }
+>  EXPORT_SYMBOL(file_remove_privs);
+>  
+> +/**
+> + * current_mgtime - Return FS time (possibly fine-grained)
+> + * @inode: inode.
+> + *
+> + * Return the current time truncated to the time granularity supported by
+> + * the fs, as suitable for a ctime/mtime change. If the ctime is flagged
+> + * as having been QUERIED, get a fine-grained timestamp.
+> + */
+> +struct timespec64 current_mgtime(struct inode *inode)
+> +{
+> +	struct timespec64 now, ctime;
+> +	atomic_long_t *pnsec = (atomic_long_t *)&inode->__i_ctime.tv_nsec;
+> +	long nsec = atomic_long_read(pnsec);
+> +
+> +	if (nsec & I_CTIME_QUERIED) {
+> +		ktime_get_real_ts64(&now);
+> +		return timestamp_truncate(now, inode);
+> +	}
+> +
+> +	ktime_get_coarse_real_ts64(&now);
+> +	now = timestamp_truncate(now, inode);
+> +
+> +	/*
+> +	 * If we've recently fetched a fine-grained timestamp
+> +	 * then the coarse-grained one may still be earlier than the
+> +	 * existing ctime. Just keep the existing value if so.
+> +	 */
+> +	ctime = inode_get_ctime(inode);
+> +	if (timespec64_compare(&ctime, &now) > 0)
+> +		now = ctime;
+> +
+> +	return now;
+> +}
+> +EXPORT_SYMBOL(current_mgtime);
+> +
+> +static struct timespec64 current_ctime(struct inode *inode)
+> +{
+> +	if (is_mgtime(inode))
+> +		return current_mgtime(inode);
+> +	return current_time(inode);
+> +}
+> +
+>  static int inode_needs_update_time(struct inode *inode)
+>  {
+>  	int sync_it = 0;
+> -	struct timespec64 now = current_time(inode);
+> +	struct timespec64 now = current_ctime(inode);
+>  	struct timespec64 ctime;
+>  
+>  	/* First try to exhaust all avenues to not sync */
+> @@ -2552,9 +2594,43 @@ EXPORT_SYMBOL(current_time);
+>   */
+>  struct timespec64 inode_set_ctime_current(struct inode *inode)
+>  {
+> -	struct timespec64 now = current_time(inode);
+> +	struct timespec64 now;
+> +	struct timespec64 ctime;
+> +
+> +	ctime.tv_nsec = READ_ONCE(inode->__i_ctime.tv_nsec);
+> +	if (!(ctime.tv_nsec & I_CTIME_QUERIED)) {
+> +		now = current_time(inode);
+>  
+> -	inode_set_ctime(inode, now.tv_sec, now.tv_nsec);
+> +		/* Just copy it into place if it's not multigrain */
+> +		if (!is_mgtime(inode)) {
+> +			inode_set_ctime_to_ts(inode, now);
+> +			return now;
+> +		}
+> +
+> +		/*
+> +		 * If we've recently updated with a fine-grained timestamp,
+> +		 * then the coarse-grained one may still be earlier than the
+> +		 * existing ctime. Just keep the existing value if so.
+> +		 */
+> +		ctime.tv_sec = inode->__i_ctime.tv_sec;
+> +		if (timespec64_compare(&ctime, &now) > 0)
+> +			return ctime;
+> +
+> +		/*
+> +		 * Ctime updates are usually protected by the inode_lock, but
+> +		 * we can still race with someone setting the QUERIED flag.
+> +		 * Try to swap the new nsec value into place. If it's changed
+> +		 * in the interim, then just go with a fine-grained timestamp.
+> +		 */
+> +		if (cmpxchg(&inode->__i_ctime.tv_nsec, ctime.tv_nsec,
+> +			    now.tv_nsec) != ctime.tv_nsec)
+> +			goto fine_grained;
+> +		inode->__i_ctime.tv_sec = now.tv_sec;
+> +		return now;
+> +	}
+> +fine_grained:
+> +	ktime_get_real_ts64(&now);
+> +	inode_set_ctime_to_ts(inode, timestamp_truncate(now, inode));
+>  	return now;
+>  }
+>  EXPORT_SYMBOL(inode_set_ctime_current);
+> diff --git a/fs/stat.c b/fs/stat.c
+> index 7644e5997035..136711ae72fb 100644
+> --- a/fs/stat.c
+> +++ b/fs/stat.c
+> @@ -26,6 +26,37 @@
+>  #include "internal.h"
+>  #include "mount.h"
+>  
+> +/**
+> + * fill_mg_cmtime - Fill in the mtime and ctime and flag ctime as QUERIED
+> + * @stat: where to store the resulting values
+> + * @request_mask: STATX_* values requested
+> + * @inode: inode from which to grab the c/mtime
+> + *
+> + * Given @inode, grab the ctime and mtime out if it and store the result
+> + * in @stat. When fetching the value, flag it as queried so the next write
+> + * will use a fine-grained timestamp.
+> + */
+> +void fill_mg_cmtime(struct kstat *stat, u32 request_mask, struct inode *inode)
+> +{
+> +	atomic_long_t *pnsec = (atomic_long_t *)&inode->__i_ctime.tv_nsec;
+> +
+> +	/* If neither time was requested, then don't report them */
+> +	if (!(request_mask & (STATX_CTIME|STATX_MTIME))) {
+> +		stat->result_mask &= ~(STATX_CTIME|STATX_MTIME);
+> +		return;
+> +	}
+> +
+> +	stat->mtime = inode->i_mtime;
+> +	stat->ctime.tv_sec = inode->__i_ctime.tv_sec;
+> +	/*
+> +	 * Atomically set the QUERIED flag and fetch the new value with
+> +	 * the flag masked off.
+> +	 */
+> +	stat->ctime.tv_nsec = atomic_long_fetch_or(I_CTIME_QUERIED, pnsec) &
+> +					~I_CTIME_QUERIED;
+> +}
+> +EXPORT_SYMBOL(fill_mg_cmtime);
+> +
+>  /**
+>   * generic_fillattr - Fill in the basic attributes from the inode struct
+>   * @idmap:		idmap of the mount the inode was found from
+> @@ -58,8 +89,14 @@ void generic_fillattr(struct mnt_idmap *idmap, u32 request_mask,
+>  	stat->rdev = inode->i_rdev;
+>  	stat->size = i_size_read(inode);
+>  	stat->atime = inode->i_atime;
+> -	stat->mtime = inode->i_mtime;
+> -	stat->ctime = inode_get_ctime(inode);
+> +
+> +	if (is_mgtime(inode)) {
+> +		fill_mg_cmtime(stat, request_mask, inode);
+> +	} else {
+> +		stat->mtime = inode->i_mtime;
+> +		stat->ctime = inode_get_ctime(inode);
+> +	}
+> +
+>  	stat->blksize = i_blocksize(inode);
+>  	stat->blocks = inode->i_blocks;
+>  
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index a83313f90fe3..455835d0e963 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1474,18 +1474,47 @@ static inline bool fsuidgid_has_mapping(struct super_block *sb,
+>  	       kgid_has_mapping(fs_userns, kgid);
+>  }
+>  
+> +struct timespec64 current_mgtime(struct inode *inode);
+>  struct timespec64 current_time(struct inode *inode);
+>  struct timespec64 inode_set_ctime_current(struct inode *inode);
+>  
+> +/*
+> + * Multigrain timestamps
+> + *
+> + * Conditionally use fine-grained ctime and mtime timestamps when there
+> + * are users actively observing them via getattr. The primary use-case
+> + * for this is NFS clients that use the ctime to distinguish between
+> + * different states of the file, and that are often fooled by multiple
+> + * operations that occur in the same coarse-grained timer tick.
+> + *
+> + * The kernel always keeps normalized struct timespec64 values in the ctime,
+> + * which means that only the first 30 bits of the value are used. Use the
+> + * 31st bit of the ctime's tv_nsec field as a flag to indicate that the value
+> + * has been queried since it was last updated.
+> + */
+> +#define I_CTIME_QUERIED		(1L<<30)
+> +
+>  /**
+>   * inode_get_ctime - fetch the current ctime from the inode
+>   * @inode: inode from which to fetch ctime
+>   *
+> - * Grab the current ctime from the inode and return it.
+> + * Grab the current ctime tv_nsec field from the inode, mask off the
+> + * I_CTIME_QUERIED flag and return it. This is mostly intended for use by
+> + * internal consumers of the ctime that aren't concerned with ensuring a
+> + * fine-grained update on the next change (e.g. when preparing to store
+> + * the value in the backing store for later retrieval).
+> + *
+> + * This is safe to call regardless of whether the underlying filesystem
+> + * is using multigrain timestamps.
+>   */
+>  static inline struct timespec64 inode_get_ctime(const struct inode *inode)
+>  {
+> -	return inode->__i_ctime;
+> +	struct timespec64 ctime;
+> +
+> +	ctime.tv_sec = inode->__i_ctime.tv_sec;
+> +	ctime.tv_nsec = inode->__i_ctime.tv_nsec & ~I_CTIME_QUERIED;
+> +
+> +	return ctime;
+>  }
+>  
+>  /**
+> @@ -2259,6 +2288,7 @@ struct file_system_type {
+>  #define FS_USERNS_MOUNT		8	/* Can be mounted by userns root */
+>  #define FS_DISALLOW_NOTIFY_PERM	16	/* Disable fanotify permission events */
+>  #define FS_ALLOW_IDMAP         32      /* FS has been updated to handle vfs idmappings. */
+> +#define FS_MGTIME		64	/* FS uses multigrain timestamps */
+>  #define FS_RENAME_DOES_D_MOVE	32768	/* FS will handle d_move() during rename() internally. */
+>  	int (*init_fs_context)(struct fs_context *);
+>  	const struct fs_parameter_spec *parameters;
+> @@ -2282,6 +2312,17 @@ struct file_system_type {
+>  
+>  #define MODULE_ALIAS_FS(NAME) MODULE_ALIAS("fs-" NAME)
+>  
+> +/**
+> + * is_mgtime: is this inode using multigrain timestamps
+> + * @inode: inode to test for multigrain timestamps
+> + *
+> + * Return true if the inode uses multigrain timestamps, false otherwise.
+> + */
+> +static inline bool is_mgtime(const struct inode *inode)
+> +{
+> +	return inode->i_sb->s_type->fs_flags & FS_MGTIME;
+> +}
+> +
+>  extern struct dentry *mount_bdev(struct file_system_type *fs_type,
+>  	int flags, const char *dev_name, void *data,
+>  	int (*fill_super)(struct super_block *, void *, int));
+> @@ -2918,6 +2959,7 @@ extern void page_put_link(void *);
+>  extern int page_symlink(struct inode *inode, const char *symname, int len);
+>  extern const struct inode_operations page_symlink_inode_operations;
+>  extern void kfree_link(void *);
+> +void fill_mg_cmtime(struct kstat *stat, u32 request_mask, struct inode *inode);
+>  void generic_fillattr(struct mnt_idmap *, u32, struct inode *, struct kstat *);
+>  void generic_fill_statx_attr(struct inode *inode, struct kstat *stat);
+>  extern int vfs_getattr_nosec(const struct path *, struct kstat *, u32, unsigned int);
+> 
+> -- 
+> 2.41.0
+> 
 -- 
-2.34.1
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
