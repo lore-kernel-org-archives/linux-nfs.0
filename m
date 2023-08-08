@@ -2,115 +2,81 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BB17AC001B0
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 21:45:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 499ABC001DB
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 21:58:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229568AbjHHVpO (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Aug 2023 17:45:14 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58628 "EHLO
+        id S231354AbjHHV6O (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Aug 2023 17:58:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32878 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229512AbjHHVpN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 17:45:13 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0C03B196
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Aug 2023 14:45:12 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        with ESMTP id S231559AbjHHV6F (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 17:58:05 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A320AFAEF3
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Aug 2023 09:40:11 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id A2D9C1F45E;
-        Tue,  8 Aug 2023 21:45:11 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1691531111; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=xKjhLOxoWxXOMMJACQ64J1EucwRhDwcUHmIYM1hZnNA=;
-        b=y2vRLC84OPonpgiuJkUPDCUiFs/MKqAiIpJB5+j/oCgfb4SQKbcVCjQszVHOl/V9c2SqN/
-        3xWNcpOkrNKxw2Yk5Rz6LoRgSqVidY3esVFyI1qNGZEc34XuHECGKIexZjZC5eXJQivNV1
-        b1tl/C78j9g0+sqb0+tvDRXbtzC6kQM=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1691531111;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=xKjhLOxoWxXOMMJACQ64J1EucwRhDwcUHmIYM1hZnNA=;
-        b=Akx+PTDuFp+t56BN636RYtQj0BHL6HQ28/0y1xYRZ8kodZIZF88yhz+ZIq5Z+NewD4p81w
-        qpsL8NpEMLhP8qAg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id BD059139D1;
-        Tue,  8 Aug 2023 21:45:09 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id EDvfG2W30mQOcwAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 08 Aug 2023 21:45:09 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 9441B62436
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Aug 2023 08:22:00 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 704EEC433C7;
+        Tue,  8 Aug 2023 08:21:59 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1691482920;
+        bh=u4Iv7m3wbA6teKV4zQtZKUsleKxV917J51JwCepSy1E=;
+        h=From:To:Cc:Subject:Date:From;
+        b=L1+92ler0zTFElLgXSuKyPy3zmRIw82IH76lMR3h/+sR6vCaQLNR5WH0fpllZ+Grf
+         14hAxO+6tvq3FtNTlWK8cmJycTZmO93A3uHAWasA6Vl1LvX4uQRAFd04+sk0t6JggC
+         1dcdHVAiEOrujB2Z4MGL+TfRZulzb1TzKLDCg/JXXwLBTEGHdzXtgMH0Z9L9UsQfme
+         Ygp22qAEG69q43hc2tZ1P60Xk56IunDUfZrKtwGN8+AuEz84OG+Z92xFUwgYFPRGwM
+         /DJycovDHC5/hciEDiMU+4sT2s6uWJJutiYOEW3OG4njsTxZTCLAOvff0Qhs+DBv6c
+         N7Wwf4+P+I68A==
+From:   Lorenzo Bianconi <lorenzo@kernel.org>
+To:     linux-nfs@vger.kernel.org
+Cc:     lorenzo.bianconi@redhat.com, chuck.lever@oracle.com,
+        jlayton@kernel.org, neilb@suse.de
+Subject: [PATCH] NFSD: add version field to nfsd_rpc_status_show handler
+Date:   Tue,  8 Aug 2023 10:21:32 +0200
+Message-ID: <6431d0ea2295a1e128f83cd76a419dee161e4c44.1691482815.git.lorenzo@kernel.org>
+X-Mailer: git-send-email 2.41.0
 MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Chuck Lever" <chuck.lever@oracle.com>
-Cc:     "Jeff Layton" <jlayton@kernel.org>,
-        "Lorenzo Bianconi" <lorenzo@kernel.org>, linux-nfs@vger.kernel.org,
-        lorenzo.bianconi@redhat.com
-Subject: Re: [PATCH] NFSD: add version field to nfsd_rpc_status_show handler
-In-reply-to: <ZNJctyaMBVuoT6yz@tissot.1015granger.net>
-References: <6431d0ea2295a1e128f83cd76a419dee161e4c44.1691482815.git.lorenzo@kernel.org>,
- <169149440399.32308.1010201101079709026@noble.neil.brown.name>,
- <ZNJCIRjI64YIY+I0@tissot.1015granger.net>,
- <ea598236b2da9f1aa9b587ca797afaa9de5545c7.camel@kernel.org>,
- <ZNJLQIxweTaEsu16@tissot.1015granger.net>,
- <ed02b06f96eeeca4d499583f2bdf31a433921aa1.camel@kernel.org>,
- <ZNJctyaMBVuoT6yz@tissot.1015granger.net>
-Date:   Wed, 09 Aug 2023 07:45:06 +1000
-Message-id: <169153110624.32308.3596310364486971122@noble.neil.brown.name>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 09 Aug 2023, Chuck Lever wrote:
-> On Tue, Aug 08, 2023 at 10:20:44AM -0400, Jeff Layton wrote:
-> > 
-> > It would probably be fairly simple to output well-formed yaml instead.
-> > JSON and XML are a bit more of a pain.
-> 
-> If folks don't mind, I would like more structured output like one of
-> these self-documenting formats. (I know I said I didn't care before,
-> but I'm beginning to care now ;-)
+Introduce version field to nfsd_rpc_status handler in order to help
+the user to maintain backward compatibility.
 
-Lustre, which I am somewhat involved with, uses YAML for various things.
-If someone else introduced yaml-producing sysfs files to the kernel
-first, that might make the path for lustre smoother :-)
+Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+---
+ fs/nfsd/nfssvc.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-Another option is netlink which lustre is stating to use for
-configuration and stats.  It is a self-describing format.  The code
-looks verbose, but it is widely used in the kernel and so well supported.
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 33ad91dd3a2d..6d5feeeb09a7 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -1117,6 +1117,9 @@ int nfsd_stats_release(struct inode *inode, struct file *file)
+ 	return ret;
+ }
+ 
++/* Increment NFSD_RPC_STATUS_VERSION adding new info to the handler */
++#define NFSD_RPC_STATUS_VERSION		1
++
+ static int nfsd_rpc_status_show(struct seq_file *m, void *v)
+ {
+ 	struct inode *inode = file_inode(m->file);
+@@ -1125,6 +1128,8 @@ static int nfsd_rpc_status_show(struct seq_file *m, void *v)
+ 
+ 	rcu_read_lock();
+ 
++	seq_printf(m, "# version %u\n", NFSD_RPC_STATUS_VERSION);
++
+ 	for (i = 0; i < nn->nfsd_serv->sv_nrpools; i++) {
+ 		struct svc_rqst *rqstp;
+ 
+-- 
+2.41.0
 
-> 
-> I'm also wondering if we really ought not add another file under
-> /proc, which is essentially obsolete. Would /sys/fs/nfsd/yada be
-> better for this facility?
-
-It is only under /proc because that is where it is mounted by default :-)
-I think it might be sensible to create a node under /sys where all the
-content of the nfsd filesystem also appears.
-I'm not keen on /sys/fs/nfsd because nfsd isn't a filesystem, it is a
-service.
-But the /sys/fs seems to be largely unstructured (/proc v2??) so maybe
-putting nfsd there is OK.  We could claim that /proc/fs/nfsd is a
-filesystem :-)
-
-> 
-> I hesitate to even mention network namespaces...
-
-Please do mention them - I find them too easy to forget about.
-/proc/fs/nfsd/ inherits the network namespace from whoever mounts it.
-So this can work perfectly.
-If we created a mirror in /sys/ we would presumably use the namespace of
-the process that opens the file.
-
-Thanks,
-NeilBrown
