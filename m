@@ -2,163 +2,131 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BDC3EC04A6A
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 17:37:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1758BC001B0
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 17:44:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230101AbjHHRhu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Aug 2023 13:37:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42234 "EHLO
+        id S234844AbjHHRoX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Aug 2023 13:44:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34902 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234995AbjHHRhP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 13:37:15 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 434C76CC9
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Aug 2023 09:16:17 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        with ESMTP id S234816AbjHHRoF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 13:44:05 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 27D006615
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Aug 2023 09:19:38 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 3EB3862576
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Aug 2023 13:48:45 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 29424C433C7;
-        Tue,  8 Aug 2023 13:48:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1691502524;
-        bh=IU+B8Une8eBp3/2eUVrZhqhdlYmULO6+tMNPdj+G4Tk=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=DRZdhOHl3EpYp2pn1lu0t3lGzYGqWO27KMDTfgBQkWqcg2v/PFG7LTBhCjor/MNs2
-         0cG9TietG++qgMzGkcCYYm9SXvSv+2c1tZGGBOg1Ctbkr4t4/jSB5DRKgcKbZRwazS
-         e0MVkq7zby/xuE6ym1p+nHtUJavxHmWJra5E2eL0JNqGvecVPhkxv89+b1V4XpiBtO
-         dZh9QzBlmCg00s222T83HP3P+0QVS44LIuyTpaaBfipaJy5u1K0sLq2C3FrQTP7SKf
-         RXHYLuSQN4ufOSmmX0U4mUaMOnljiO1oa1sAIDMfG8stVKlwukL+T1GUXa6onNaTuC
-         vYj9dUhn1A6hQ==
-Message-ID: <ea598236b2da9f1aa9b587ca797afaa9de5545c7.camel@kernel.org>
-Subject: Re: [PATCH] NFSD: add version field to nfsd_rpc_status_show handler
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neilb@suse.de>
-Cc:     Lorenzo Bianconi <lorenzo@kernel.org>, linux-nfs@vger.kernel.org,
-        lorenzo.bianconi@redhat.com
-Date:   Tue, 08 Aug 2023 09:48:42 -0400
-In-Reply-To: <ZNJCIRjI64YIY+I0@tissot.1015granger.net>
-References: <6431d0ea2295a1e128f83cd76a419dee161e4c44.1691482815.git.lorenzo@kernel.org>
-         <169149440399.32308.1010201101079709026@noble.neil.brown.name>
-         <ZNJCIRjI64YIY+I0@tissot.1015granger.net>
-Content-Type: text/plain; charset="ISO-8859-15"
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 5F6DC2031C;
+        Tue,  8 Aug 2023 11:33:29 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1691494409; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=l9KkIAPhcN2tN2/oybrV0lI9G9PMRD1NedhrfYYO7b4=;
+        b=pt2g3eD0JUKHj0o6Y1hBY4zC4TDfK3X4jgvlru8+qazSqmID2rqn2xRazvZRus2HwgbLS6
+        pd4PWTIkvCv7fd5Z92scqyJVzvIFKy6xBS9eKzZ/lG5qVjnxfIlhIi+KxbBJkjLYIIfqud
+        DSLuGQnVf0Xfuv1JHSKSNStciY21Hwc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1691494409;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=l9KkIAPhcN2tN2/oybrV0lI9G9PMRD1NedhrfYYO7b4=;
+        b=SisjXbQjGtS0kgThutrcczwfLCZ7/f6TjWX8LWD5A7rKIdrTXv5orc1ual4pYl+wr1+Fd7
+        ru3HGiaDyQf9ndDg==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 7CF5313451;
+        Tue,  8 Aug 2023 11:33:27 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 2k09DAco0mTjVgAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 08 Aug 2023 11:33:27 +0000
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
 MIME-Version: 1.0
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Lorenzo Bianconi" <lorenzo@kernel.org>
+Cc:     linux-nfs@vger.kernel.org, lorenzo.bianconi@redhat.com,
+        chuck.lever@oracle.com, jlayton@kernel.org
+Subject: Re: [PATCH] NFSD: add version field to nfsd_rpc_status_show handler
+In-reply-to: <6431d0ea2295a1e128f83cd76a419dee161e4c44.1691482815.git.lorenzo@kernel.org>
+References: <6431d0ea2295a1e128f83cd76a419dee161e4c44.1691482815.git.lorenzo@kernel.org>
+Date:   Tue, 08 Aug 2023 21:33:23 +1000
+Message-id: <169149440399.32308.1010201101079709026@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 2023-08-08 at 09:24 -0400, Chuck Lever wrote:
-> On Tue, Aug 08, 2023 at 09:33:23PM +1000, NeilBrown wrote:
-> > On Tue, 08 Aug 2023, Lorenzo Bianconi wrote:
-> > > Introduce version field to nfsd_rpc_status handler in order to help
-> > > the user to maintain backward compatibility.
-> >=20
-> > I wonder if this really helps.  What do I do if I see a version that I
-> > don't understand?  Ignore the whole file?  That doesn't make for a good
-> > user experience.
+On Tue, 08 Aug 2023, Lorenzo Bianconi wrote:
+> Introduce version field to nfsd_rpc_status handler in order to help
+> the user to maintain backward compatibility.
+
+I wonder if this really helps.  What do I do if I see a version that I
+don't understand?  Ignore the whole file?  That doesn't make for a good
+user experience.
+
+I would suggest that the first step to promoting compatibility is to
+document the format, including how you expect to extend it.  Jeff's
+suggestion of a header line with field names makes a lot of sense for a
+file with space-separated fields like this.  You should probably promise
+not to remove fields, but to deprecate fields by replacing them with "X"
+or whatever.
+
+A tool really needs to be able to extract anything it can understand,
+and know how to avoid what it doesn't understand.  A version number
+doesn't help with that.
+
+And if you really wanted to change the format so much that old tools
+cannot use any of the content, it would likely make most sense to change
+the name of the file...  or have two files - legacy file with old name
+and new-improved file with new name.
+
+So I'm not keen on a version number.
+
+Thanks,
+NeilBrown
+
+
 >=20
-> There is no UX consideration here. A user browsing the file directly
-> will not care about the version.
+> Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+> ---
+>  fs/nfsd/nfssvc.c | 5 +++++
+>  1 file changed, 5 insertions(+)
 >=20
-> This file is intended to be parsable by scripts and they have to
-> keep up with the occasional changes in format. Scripts can handle an
-> unrecogized version however they like.
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 33ad91dd3a2d..6d5feeeb09a7 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -1117,6 +1117,9 @@ int nfsd_stats_release(struct inode *inode, struct fi=
+le *file)
+>  	return ret;
+>  }
+> =20
+> +/* Increment NFSD_RPC_STATUS_VERSION adding new info to the handler */
+> +#define NFSD_RPC_STATUS_VERSION		1
+> +
+>  static int nfsd_rpc_status_show(struct seq_file *m, void *v)
+>  {
+>  	struct inode *inode =3D file_inode(m->file);
+> @@ -1125,6 +1128,8 @@ static int nfsd_rpc_status_show(struct seq_file *m, v=
+oid *v)
+> =20
+>  	rcu_read_lock();
+> =20
+> +	seq_printf(m, "# version %u\n", NFSD_RPC_STATUS_VERSION);
+> +
+>  	for (i =3D 0; i < nn->nfsd_serv->sv_nrpools; i++) {
+>  		struct svc_rqst *rqstp;
+> =20
+> --=20
+> 2.41.0
 >=20
-> This is what we typically get with a made-up format that isn't .ini
-> or JSON or XML. The file format isn't self-documenting. The final
-> field on each row is a variable number of tokens, so it will be
-> nearly impossible to simply add another field without breaking
-> something.
 >=20
 
-It shouldn't be a variable number of tokens per line. If there is, then
-that's a bug, IMO. We do want it to be simple to just add a new field,
-published version info notwithstanding.
-
->=20
-> > I would suggest that the first step to promoting compatibility is to
-> > document the format, including how you expect to extend it.
->=20
-> I'd be OK with seeing that documentation added as a kdoc comment for
-> nfsd_rpc_status_show(), sure.
->=20
->=20
-> > Jeff's
-> > suggestion of a header line with field names makes a lot of sense for a
-> > file with space-separated fields like this.  You should probably promis=
-e
-> > not to remove fields, but to deprecate fields by replacing them with "X=
-"
-> > or whatever.
-> >=20
-> > A tool really needs to be able to extract anything it can understand,
-> > and know how to avoid what it doesn't understand.  A version number
-> > doesn't help with that.
->=20
-> It's how mountstats format changes are managed. We have bumped that
-> version number over the years, so there is precedent for it.
->=20
->=20
-> > And if you really wanted to change the format so much that old tools
-> > cannot use any of the content, it would likely make most sense to chang=
-e
-> > the name of the file...  or have two files - legacy file with old name
-> > and new-improved file with new name.
-> >=20
-> > So I'm not keen on a version number.
->=20
-> I'm a little surprised to get push-back on "# version" but OK, we
-> can drop that idea in favor of a comment line in rpc_status that
-> acts as a header row, just like in /proc/fs/nfsd/pool_stats.
-> Scripts can treat that header as format version information.
->=20
->=20
-> > Thanks,
-> > NeilBrown
-> >=20
-> >=20
-> > >=20
-> > > Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-> > > ---
-> > >  fs/nfsd/nfssvc.c | 5 +++++
-> > >  1 file changed, 5 insertions(+)
-> > >=20
-> > > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> > > index 33ad91dd3a2d..6d5feeeb09a7 100644
-> > > --- a/fs/nfsd/nfssvc.c
-> > > +++ b/fs/nfsd/nfssvc.c
-> > > @@ -1117,6 +1117,9 @@ int nfsd_stats_release(struct inode *inode, str=
-uct file *file)
-> > >  	return ret;
-> > >  }
-> > > =20
-> > > +/* Increment NFSD_RPC_STATUS_VERSION adding new info to the handler =
-*/
-> > > +#define NFSD_RPC_STATUS_VERSION		1
-> > > +
-> > >  static int nfsd_rpc_status_show(struct seq_file *m, void *v)
-> > >  {
-> > >  	struct inode *inode =3D file_inode(m->file);
-> > > @@ -1125,6 +1128,8 @@ static int nfsd_rpc_status_show(struct seq_file=
- *m, void *v)
-> > > =20
-> > >  	rcu_read_lock();
-> > > =20
-> > > +	seq_printf(m, "# version %u\n", NFSD_RPC_STATUS_VERSION);
-> > > +
-> > >  	for (i =3D 0; i < nn->nfsd_serv->sv_nrpools; i++) {
-> > >  		struct svc_rqst *rqstp;
-> > > =20
-> > > --=20
-> > > 2.41.0
-> > >=20
-> > >=20
-> >=20
->=20
-
---=20
-Jeff Layton <jlayton@kernel.org>
