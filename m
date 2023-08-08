@@ -2,164 +2,199 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 15C28C04FE2
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 17:31:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D4F5C41513
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 17:31:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234720AbjHHRbE (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Aug 2023 13:31:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58658 "EHLO
+        id S229763AbjHHRbd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Aug 2023 13:31:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58430 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234574AbjHHRaX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 13:30:23 -0400
+        with ESMTP id S229611AbjHHRaj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 13:30:39 -0400
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 44D95217B9;
-        Tue,  8 Aug 2023 09:13:11 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4529B8DCCA
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Aug 2023 09:13:18 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id A7B1922468;
-        Tue,  8 Aug 2023 09:05:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-        t=1691485527; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 18F1C21BE0;
+        Tue,  8 Aug 2023 11:25:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1691493941; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=wcZ0MvDWAvHGz+Tvz5BQspV1+Y90atrQ/21gTPDSJ5A=;
-        b=ltvgN98jUPLfVGzwkX2IMCxL1+gt7mU2eMGWerKExKXl9rFxELcQOOu6LDPvkVgELBTWMM
-        RPR+CvNDbp+v8nhbcYMs5NsoZ+s9OQ/UvQVEgQ88doFw/btLczZrQg2i1eZV1+ZBjvbv6d
-        v//UiKTWiNGL8LuYIfEW5snVicPsNCw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-        s=susede2_ed25519; t=1691485527;
+        bh=5fyh1qO7SWX3LJT/N3lj8tTpVeUj5DV4o4IoXfpXJBo=;
+        b=uASV0L0epd6REW7s4AppzI3mcR1bjZnmk04HErVgDHF6TsepMyQBH9l81JKlV6jslcT8Wu
+        hL+VblZV3KJobbrkRR1wZO9L1A3supxAxBi/BhHEc5QJer4ZWLIaP5iXN0FPinUz5+BfmS
+        mvudl6g81VD3GkMQesaFWxXN65NQDWw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1691493941;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=wcZ0MvDWAvHGz+Tvz5BQspV1+Y90atrQ/21gTPDSJ5A=;
-        b=NtHl8v8fs0QRleiCInWaMqHlp3B+YiNNeUD28RUprosc+RMkGA1oFQ5OJqyi3S1c2mho42
-        UGYfjYfTqGY9zJAQ==
+        bh=5fyh1qO7SWX3LJT/N3lj8tTpVeUj5DV4o4IoXfpXJBo=;
+        b=YBl+amNCVJsLpPkV8sDSDWiwka8LzAwKsEbsAs4+UvL2dMNhcwo6EAHdzW3v2vJDtuAowH
+        OUcdCm/MKNDifeBg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 903E5139E9;
-        Tue,  8 Aug 2023 09:05:27 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3848513451;
+        Tue,  8 Aug 2023 11:25:38 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id RgEgI1cF0mRWDgAAMHmgww
-        (envelope-from <jack@suse.cz>); Tue, 08 Aug 2023 09:05:27 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-        id 215FCA0769; Tue,  8 Aug 2023 11:05:27 +0200 (CEST)
-Date:   Tue, 8 Aug 2023 11:05:27 +0200
-From:   Jan Kara <jack@suse.cz>
-To:     Jeff Layton <jlayton@kernel.org>
-Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
-        Christian Brauner <brauner@kernel.org>,
-        Eric Van Hensbergen <ericvh@kernel.org>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Christian Schoenebeck <linux_oss@crudebyte.com>,
-        David Howells <dhowells@redhat.com>,
-        Marc Dionne <marc.dionne@auristor.com>,
-        Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
-        David Sterba <dsterba@suse.com>, Xiubo Li <xiubli@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu,
-        Tyler Hicks <code@tyhicks.com>, Gao Xiang <xiang@kernel.org>,
-        Chao Yu <chao@kernel.org>, Yue Hu <huyue2@coolpad.com>,
-        Jeffle Xu <jefflexu@linux.alibaba.com>,
-        Namjae Jeon <linkinjeon@kernel.org>,
-        Sungjong Seo <sj1557.seo@samsung.com>,
-        Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Bob Peterson <rpeterso@redhat.com>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Tejun Heo <tj@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
-        Mark Fasheh <mark@fasheh.com>,
-        Joel Becker <jlbec@evilplan.org>,
-        Joseph Qi <joseph.qi@linux.alibaba.com>,
-        Mike Marshall <hubcap@omnibond.com>,
-        Martin Brandenburg <martin@omnibond.com>,
-        Luis Chamberlain <mcgrof@kernel.org>,
-        Kees Cook <keescook@chromium.org>,
-        Iurii Zaikin <yzaikin@google.com>,
-        Steve French <sfrench@samba.org>,
-        Paulo Alcantara <pc@manguebit.com>,
-        Ronnie Sahlberg <ronniesahlberg@gmail.com>,
-        Shyam Prasad N <sprasad@microsoft.com>,
-        Tom Talpey <tom@talpey.com>,
-        Sergey Senozhatsky <senozhatsky@chromium.org>,
-        Richard Weinberger <richard@nod.at>,
-        Hans de Goede <hdegoede@redhat.com>,
-        Hugh Dickins <hughd@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Amir Goldstein <amir73il@gmail.com>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Benjamin Coddington <bcodding@redhat.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        v9fs@lists.linux.dev, linux-afs@lists.infradead.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        codalist@coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
-        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, ntfs3@lists.linux.dev,
-        ocfs2-devel@lists.linux.dev, devel@lists.orangefs.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-mtd@lists.infradead.org, linux-mm@kvack.org,
-        linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [PATCH v7 01/13] fs: remove silly warning from current_time
-Message-ID: <20230808090527.nvn6vd5wdw4o5b2m@quack3>
-References: <20230807-mgctime-v7-0-d1dec143a704@kernel.org>
- <20230807-mgctime-v7-1-d1dec143a704@kernel.org>
+        id kVArNzIm0mT6UgAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 08 Aug 2023 11:25:38 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230807-mgctime-v7-1-d1dec143a704@kernel.org>
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Lorenzo Bianconi" <lorenzo@kernel.org>
+Cc:     linux-nfs@vger.kernel.org, lorenzo.bianconi@redhat.com,
+        chuck.lever@oracle.com, jlayton@kernel.org
+Subject: Re: [PATCH] NFSD: reduce code duplication between
+ pool_stats_operations and nfsd_rpc_status_operations
+In-reply-to: <426191138f5801148a6f7df470ccb59d219452d6.1691481752.git.lorenzo@kernel.org>
+References: <426191138f5801148a6f7df470ccb59d219452d6.1691481752.git.lorenzo@kernel.org>
+Date:   Tue, 08 Aug 2023 21:25:33 +1000
+Message-id: <169149393339.32308.3848599313522448037@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon 07-08-23 15:38:32, Jeff Layton wrote:
-> An inode with no superblock? Unpossible!
-> 
-> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+On Tue, 08 Aug 2023, Lorenzo Bianconi wrote:
+> Introduce nfsd_stats_open utility routine in order to reduce code
+> duplication between pool_stats_operations and
+> nfsd_rpc_status_operations.
+> Rename nfsd_pool_stats_release in nfsd_stats_release.
 
-Looks good. Feel free to add:
+Looks good.
+I was imagining going one step further and having only one 'struct
+file_operations' for both files similar to how 'transaction_ops' is used
+for multiple different files.  Maybe that isn't necessary..
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: NeilBrown <neilb@suse.de>
 
-								Honza
+Thanks,
+NeilBrown
 
+>=20
+> Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
 > ---
->  fs/inode.c | 6 ------
->  1 file changed, 6 deletions(-)
-> 
-> diff --git a/fs/inode.c b/fs/inode.c
-> index d4ab92233062..3fc251bfaf73 100644
-> --- a/fs/inode.c
-> +++ b/fs/inode.c
-> @@ -2495,12 +2495,6 @@ struct timespec64 current_time(struct inode *inode)
->  	struct timespec64 now;
->  
->  	ktime_get_coarse_real_ts64(&now);
-> -
-> -	if (unlikely(!inode->i_sb)) {
-> -		WARN(1, "current_time() called with uninitialized super_block in the inode");
-> -		return now;
+>  fs/nfsd/nfsctl.c |  4 ++--
+>  fs/nfsd/nfsd.h   |  2 +-
+>  fs/nfsd/nfssvc.c | 35 ++++++++++++++++++++---------------
+>  3 files changed, 23 insertions(+), 18 deletions(-)
+>=20
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 6bf168b6a410..83eb5c6d894e 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -179,7 +179,7 @@ static const struct file_operations pool_stats_operatio=
+ns =3D {
+>  	.open		=3D nfsd_pool_stats_open,
+>  	.read		=3D seq_read,
+>  	.llseek		=3D seq_lseek,
+> -	.release	=3D nfsd_pool_stats_release,
+> +	.release	=3D nfsd_stats_release,
+>  };
+> =20
+>  DEFINE_SHOW_ATTRIBUTE(nfsd_reply_cache_stats);
+> @@ -200,7 +200,7 @@ static const struct file_operations nfsd_rpc_status_ope=
+rations =3D {
+>  	.open		=3D nfsd_rpc_status_open,
+>  	.read		=3D seq_read,
+>  	.llseek		=3D seq_lseek,
+> -	.release	=3D nfsd_pool_stats_release,
+> +	.release	=3D nfsd_stats_release,
+>  };
+> =20
+>  /*
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 38c390fb2cf9..3e8a47b93fd4 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -93,7 +93,7 @@ int		nfsd_nrpools(struct net *);
+>  int		nfsd_get_nrthreads(int n, int *, struct net *);
+>  int		nfsd_set_nrthreads(int n, int *, struct net *);
+>  int		nfsd_pool_stats_open(struct inode *, struct file *);
+> -int		nfsd_pool_stats_release(struct inode *, struct file *);
+> +int		nfsd_stats_release(struct inode *, struct file *);
+>  int		nfsd_rpc_status_open(struct inode *inode, struct file *file);
+>  void		nfsd_shutdown_threads(struct net *net);
+> =20
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 51a6f7a8d3f7..33ad91dd3a2d 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -1079,23 +1079,34 @@ bool nfssvc_encode_voidres(struct svc_rqst *rqstp, =
+struct xdr_stream *xdr)
+>  	return true;
+>  }
+> =20
+> -int nfsd_pool_stats_open(struct inode *inode, struct file *file)
+> +static int nfsd_stats_open(struct inode *inode)
+>  {
+> -	int ret;
+>  	struct nfsd_net *nn =3D net_generic(inode->i_sb->s_fs_info, nfsd_net_id);
+> =20
+>  	mutex_lock(&nfsd_mutex);
+> -	if (nn->nfsd_serv =3D=3D NULL) {
+> +	if (!nn->nfsd_serv) {
+>  		mutex_unlock(&nfsd_mutex);
+>  		return -ENODEV;
+>  	}
+> +
+>  	svc_get(nn->nfsd_serv);
+> -	ret =3D svc_pool_stats_open(nn->nfsd_serv, file);
+>  	mutex_unlock(&nfsd_mutex);
+> -	return ret;
+> +
+> +	return 0;
+>  }
+> =20
+> -int nfsd_pool_stats_release(struct inode *inode, struct file *file)
+> +int nfsd_pool_stats_open(struct inode *inode, struct file *file)
+> +{
+> +	struct nfsd_net *nn =3D net_generic(inode->i_sb->s_fs_info, nfsd_net_id);
+> +	int ret =3D nfsd_stats_open(inode);
+> +
+> +	if (ret)
+> +		return ret;
+> +
+> +	return svc_pool_stats_open(nn->nfsd_serv, file);
+> +}
+> +
+> +int nfsd_stats_release(struct inode *inode, struct file *file)
+>  {
+>  	int ret =3D seq_release(inode, file);
+>  	struct net *net =3D inode->i_sb->s_fs_info;
+> @@ -1217,16 +1228,10 @@ static int nfsd_rpc_status_show(struct seq_file *m,=
+ void *v)
+>   */
+>  int nfsd_rpc_status_open(struct inode *inode, struct file *file)
+>  {
+> -	struct nfsd_net *nn =3D net_generic(inode->i_sb->s_fs_info, nfsd_net_id);
+> +	int ret =3D nfsd_stats_open(inode);
+> =20
+> -	mutex_lock(&nfsd_mutex);
+> -	if (!nn->nfsd_serv) {
+> -		mutex_unlock(&nfsd_mutex);
+> -		return -ENODEV;
 > -	}
 > -
->  	return timestamp_truncate(now, inode);
+> -	svc_get(nn->nfsd_serv);
+> -	mutex_unlock(&nfsd_mutex);
+> +	if (ret)
+> +		return ret;
+> =20
+>  	return single_open(file, nfsd_rpc_status_show, inode->i_private);
 >  }
->  EXPORT_SYMBOL(current_time);
-> 
-> -- 
+> --=20
 > 2.41.0
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+>=20
+>=20
+
