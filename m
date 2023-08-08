@@ -2,199 +2,163 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7D4F5C41513
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 17:31:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BDC3EC04A6A
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 17:37:51 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229763AbjHHRbd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Aug 2023 13:31:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58430 "EHLO
+        id S230101AbjHHRhu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Aug 2023 13:37:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42234 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229611AbjHHRaj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 13:30:39 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4529B8DCCA
-        for <linux-nfs@vger.kernel.org>; Tue,  8 Aug 2023 09:13:18 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        with ESMTP id S234995AbjHHRhP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 13:37:15 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 434C76CC9
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Aug 2023 09:16:17 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 18F1C21BE0;
-        Tue,  8 Aug 2023 11:25:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1691493941; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=5fyh1qO7SWX3LJT/N3lj8tTpVeUj5DV4o4IoXfpXJBo=;
-        b=uASV0L0epd6REW7s4AppzI3mcR1bjZnmk04HErVgDHF6TsepMyQBH9l81JKlV6jslcT8Wu
-        hL+VblZV3KJobbrkRR1wZO9L1A3supxAxBi/BhHEc5QJer4ZWLIaP5iXN0FPinUz5+BfmS
-        mvudl6g81VD3GkMQesaFWxXN65NQDWw=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1691493941;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=5fyh1qO7SWX3LJT/N3lj8tTpVeUj5DV4o4IoXfpXJBo=;
-        b=YBl+amNCVJsLpPkV8sDSDWiwka8LzAwKsEbsAs4+UvL2dMNhcwo6EAHdzW3v2vJDtuAowH
-        OUcdCm/MKNDifeBg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3848513451;
-        Tue,  8 Aug 2023 11:25:38 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id kVArNzIm0mT6UgAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 08 Aug 2023 11:25:38 +0000
-Content-Type: text/plain; charset="utf-8"
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 3EB3862576
+        for <linux-nfs@vger.kernel.org>; Tue,  8 Aug 2023 13:48:45 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 29424C433C7;
+        Tue,  8 Aug 2023 13:48:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1691502524;
+        bh=IU+B8Une8eBp3/2eUVrZhqhdlYmULO6+tMNPdj+G4Tk=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=DRZdhOHl3EpYp2pn1lu0t3lGzYGqWO27KMDTfgBQkWqcg2v/PFG7LTBhCjor/MNs2
+         0cG9TietG++qgMzGkcCYYm9SXvSv+2c1tZGGBOg1Ctbkr4t4/jSB5DRKgcKbZRwazS
+         e0MVkq7zby/xuE6ym1p+nHtUJavxHmWJra5E2eL0JNqGvecVPhkxv89+b1V4XpiBtO
+         dZh9QzBlmCg00s222T83HP3P+0QVS44LIuyTpaaBfipaJy5u1K0sLq2C3FrQTP7SKf
+         RXHYLuSQN4ufOSmmX0U4mUaMOnljiO1oa1sAIDMfG8stVKlwukL+T1GUXa6onNaTuC
+         vYj9dUhn1A6hQ==
+Message-ID: <ea598236b2da9f1aa9b587ca797afaa9de5545c7.camel@kernel.org>
+Subject: Re: [PATCH] NFSD: add version field to nfsd_rpc_status_show handler
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neilb@suse.de>
+Cc:     Lorenzo Bianconi <lorenzo@kernel.org>, linux-nfs@vger.kernel.org,
+        lorenzo.bianconi@redhat.com
+Date:   Tue, 08 Aug 2023 09:48:42 -0400
+In-Reply-To: <ZNJCIRjI64YIY+I0@tissot.1015granger.net>
+References: <6431d0ea2295a1e128f83cd76a419dee161e4c44.1691482815.git.lorenzo@kernel.org>
+         <169149440399.32308.1010201101079709026@noble.neil.brown.name>
+         <ZNJCIRjI64YIY+I0@tissot.1015granger.net>
+Content-Type: text/plain; charset="ISO-8859-15"
 Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
 MIME-Version: 1.0
-From:   "NeilBrown" <neilb@suse.de>
-To:     "Lorenzo Bianconi" <lorenzo@kernel.org>
-Cc:     linux-nfs@vger.kernel.org, lorenzo.bianconi@redhat.com,
-        chuck.lever@oracle.com, jlayton@kernel.org
-Subject: Re: [PATCH] NFSD: reduce code duplication between
- pool_stats_operations and nfsd_rpc_status_operations
-In-reply-to: <426191138f5801148a6f7df470ccb59d219452d6.1691481752.git.lorenzo@kernel.org>
-References: <426191138f5801148a6f7df470ccb59d219452d6.1691481752.git.lorenzo@kernel.org>
-Date:   Tue, 08 Aug 2023 21:25:33 +1000
-Message-id: <169149393339.32308.3848599313522448037@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 08 Aug 2023, Lorenzo Bianconi wrote:
-> Introduce nfsd_stats_open utility routine in order to reduce code
-> duplication between pool_stats_operations and
-> nfsd_rpc_status_operations.
-> Rename nfsd_pool_stats_release in nfsd_stats_release.
-
-Looks good.
-I was imagining going one step further and having only one 'struct
-file_operations' for both files similar to how 'transaction_ops' is used
-for multiple different files.  Maybe that isn't necessary..
-
-Reviewed-by: NeilBrown <neilb@suse.de>
-
-Thanks,
-NeilBrown
-
+On Tue, 2023-08-08 at 09:24 -0400, Chuck Lever wrote:
+> On Tue, Aug 08, 2023 at 09:33:23PM +1000, NeilBrown wrote:
+> > On Tue, 08 Aug 2023, Lorenzo Bianconi wrote:
+> > > Introduce version field to nfsd_rpc_status handler in order to help
+> > > the user to maintain backward compatibility.
+> >=20
+> > I wonder if this really helps.  What do I do if I see a version that I
+> > don't understand?  Ignore the whole file?  That doesn't make for a good
+> > user experience.
 >=20
-> Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-> ---
->  fs/nfsd/nfsctl.c |  4 ++--
->  fs/nfsd/nfsd.h   |  2 +-
->  fs/nfsd/nfssvc.c | 35 ++++++++++++++++++++---------------
->  3 files changed, 23 insertions(+), 18 deletions(-)
+> There is no UX consideration here. A user browsing the file directly
+> will not care about the version.
 >=20
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 6bf168b6a410..83eb5c6d894e 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -179,7 +179,7 @@ static const struct file_operations pool_stats_operatio=
-ns =3D {
->  	.open		=3D nfsd_pool_stats_open,
->  	.read		=3D seq_read,
->  	.llseek		=3D seq_lseek,
-> -	.release	=3D nfsd_pool_stats_release,
-> +	.release	=3D nfsd_stats_release,
->  };
-> =20
->  DEFINE_SHOW_ATTRIBUTE(nfsd_reply_cache_stats);
-> @@ -200,7 +200,7 @@ static const struct file_operations nfsd_rpc_status_ope=
-rations =3D {
->  	.open		=3D nfsd_rpc_status_open,
->  	.read		=3D seq_read,
->  	.llseek		=3D seq_lseek,
-> -	.release	=3D nfsd_pool_stats_release,
-> +	.release	=3D nfsd_stats_release,
->  };
-> =20
->  /*
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 38c390fb2cf9..3e8a47b93fd4 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -93,7 +93,7 @@ int		nfsd_nrpools(struct net *);
->  int		nfsd_get_nrthreads(int n, int *, struct net *);
->  int		nfsd_set_nrthreads(int n, int *, struct net *);
->  int		nfsd_pool_stats_open(struct inode *, struct file *);
-> -int		nfsd_pool_stats_release(struct inode *, struct file *);
-> +int		nfsd_stats_release(struct inode *, struct file *);
->  int		nfsd_rpc_status_open(struct inode *inode, struct file *file);
->  void		nfsd_shutdown_threads(struct net *net);
-> =20
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 51a6f7a8d3f7..33ad91dd3a2d 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -1079,23 +1079,34 @@ bool nfssvc_encode_voidres(struct svc_rqst *rqstp, =
-struct xdr_stream *xdr)
->  	return true;
->  }
-> =20
-> -int nfsd_pool_stats_open(struct inode *inode, struct file *file)
-> +static int nfsd_stats_open(struct inode *inode)
->  {
-> -	int ret;
->  	struct nfsd_net *nn =3D net_generic(inode->i_sb->s_fs_info, nfsd_net_id);
-> =20
->  	mutex_lock(&nfsd_mutex);
-> -	if (nn->nfsd_serv =3D=3D NULL) {
-> +	if (!nn->nfsd_serv) {
->  		mutex_unlock(&nfsd_mutex);
->  		return -ENODEV;
->  	}
-> +
->  	svc_get(nn->nfsd_serv);
-> -	ret =3D svc_pool_stats_open(nn->nfsd_serv, file);
->  	mutex_unlock(&nfsd_mutex);
-> -	return ret;
-> +
-> +	return 0;
->  }
-> =20
-> -int nfsd_pool_stats_release(struct inode *inode, struct file *file)
-> +int nfsd_pool_stats_open(struct inode *inode, struct file *file)
-> +{
-> +	struct nfsd_net *nn =3D net_generic(inode->i_sb->s_fs_info, nfsd_net_id);
-> +	int ret =3D nfsd_stats_open(inode);
-> +
-> +	if (ret)
-> +		return ret;
-> +
-> +	return svc_pool_stats_open(nn->nfsd_serv, file);
-> +}
-> +
-> +int nfsd_stats_release(struct inode *inode, struct file *file)
->  {
->  	int ret =3D seq_release(inode, file);
->  	struct net *net =3D inode->i_sb->s_fs_info;
-> @@ -1217,16 +1228,10 @@ static int nfsd_rpc_status_show(struct seq_file *m,=
- void *v)
->   */
->  int nfsd_rpc_status_open(struct inode *inode, struct file *file)
->  {
-> -	struct nfsd_net *nn =3D net_generic(inode->i_sb->s_fs_info, nfsd_net_id);
-> +	int ret =3D nfsd_stats_open(inode);
-> =20
-> -	mutex_lock(&nfsd_mutex);
-> -	if (!nn->nfsd_serv) {
-> -		mutex_unlock(&nfsd_mutex);
-> -		return -ENODEV;
-> -	}
-> -
-> -	svc_get(nn->nfsd_serv);
-> -	mutex_unlock(&nfsd_mutex);
-> +	if (ret)
-> +		return ret;
-> =20
->  	return single_open(file, nfsd_rpc_status_show, inode->i_private);
->  }
-> --=20
-> 2.41.0
+> This file is intended to be parsable by scripts and they have to
+> keep up with the occasional changes in format. Scripts can handle an
+> unrecogized version however they like.
 >=20
+> This is what we typically get with a made-up format that isn't .ini
+> or JSON or XML. The file format isn't self-documenting. The final
+> field on each row is a variable number of tokens, so it will be
+> nearly impossible to simply add another field without breaking
+> something.
 >=20
 
+It shouldn't be a variable number of tokens per line. If there is, then
+that's a bug, IMO. We do want it to be simple to just add a new field,
+published version info notwithstanding.
+
+>=20
+> > I would suggest that the first step to promoting compatibility is to
+> > document the format, including how you expect to extend it.
+>=20
+> I'd be OK with seeing that documentation added as a kdoc comment for
+> nfsd_rpc_status_show(), sure.
+>=20
+>=20
+> > Jeff's
+> > suggestion of a header line with field names makes a lot of sense for a
+> > file with space-separated fields like this.  You should probably promis=
+e
+> > not to remove fields, but to deprecate fields by replacing them with "X=
+"
+> > or whatever.
+> >=20
+> > A tool really needs to be able to extract anything it can understand,
+> > and know how to avoid what it doesn't understand.  A version number
+> > doesn't help with that.
+>=20
+> It's how mountstats format changes are managed. We have bumped that
+> version number over the years, so there is precedent for it.
+>=20
+>=20
+> > And if you really wanted to change the format so much that old tools
+> > cannot use any of the content, it would likely make most sense to chang=
+e
+> > the name of the file...  or have two files - legacy file with old name
+> > and new-improved file with new name.
+> >=20
+> > So I'm not keen on a version number.
+>=20
+> I'm a little surprised to get push-back on "# version" but OK, we
+> can drop that idea in favor of a comment line in rpc_status that
+> acts as a header row, just like in /proc/fs/nfsd/pool_stats.
+> Scripts can treat that header as format version information.
+>=20
+>=20
+> > Thanks,
+> > NeilBrown
+> >=20
+> >=20
+> > >=20
+> > > Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+> > > ---
+> > >  fs/nfsd/nfssvc.c | 5 +++++
+> > >  1 file changed, 5 insertions(+)
+> > >=20
+> > > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > > index 33ad91dd3a2d..6d5feeeb09a7 100644
+> > > --- a/fs/nfsd/nfssvc.c
+> > > +++ b/fs/nfsd/nfssvc.c
+> > > @@ -1117,6 +1117,9 @@ int nfsd_stats_release(struct inode *inode, str=
+uct file *file)
+> > >  	return ret;
+> > >  }
+> > > =20
+> > > +/* Increment NFSD_RPC_STATUS_VERSION adding new info to the handler =
+*/
+> > > +#define NFSD_RPC_STATUS_VERSION		1
+> > > +
+> > >  static int nfsd_rpc_status_show(struct seq_file *m, void *v)
+> > >  {
+> > >  	struct inode *inode =3D file_inode(m->file);
+> > > @@ -1125,6 +1128,8 @@ static int nfsd_rpc_status_show(struct seq_file=
+ *m, void *v)
+> > > =20
+> > >  	rcu_read_lock();
+> > > =20
+> > > +	seq_printf(m, "# version %u\n", NFSD_RPC_STATUS_VERSION);
+> > > +
+> > >  	for (i =3D 0; i < nn->nfsd_serv->sv_nrpools; i++) {
+> > >  		struct svc_rqst *rqstp;
+> > > =20
+> > > --=20
+> > > 2.41.0
+> > >=20
+> > >=20
+> >=20
+>=20
+
+--=20
+Jeff Layton <jlayton@kernel.org>
