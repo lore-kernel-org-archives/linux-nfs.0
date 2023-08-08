@@ -2,130 +2,220 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1CB6DC04FE1
-	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 17:01:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8975AC05051
+	for <linux-nfs@archiver.kernel.org>; Tue,  8 Aug 2023 17:08:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233961AbjHHRBk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 8 Aug 2023 13:01:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49682 "EHLO
+        id S234011AbjHHRIC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 8 Aug 2023 13:08:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51280 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233736AbjHHRBB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 13:01:01 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5A90B8682;
-        Tue,  8 Aug 2023 09:00:45 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        with ESMTP id S234110AbjHHRHQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Aug 2023 13:07:16 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 959AE1BC3;
+        Tue,  8 Aug 2023 09:02:57 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 575C462544;
-        Tue,  8 Aug 2023 13:32:08 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 31B3AC433C8;
-        Tue,  8 Aug 2023 13:32:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1691501527;
-        bh=xTIkYrBHz5+6SzO4pB3IGPq/HC4uBhzgU7+be7OH9VU=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=dZpEWm+PTm9uFdGmOoy5ygSH3XOPg6Y5ZyF0Ulu0M0HE1hTyuXrVvdG9f3BOamM/W
-         3m8sLzVajCx1eYX5lZ3b30+sYKYXM3u0ewDW4+nd1xPBNtK65Jo8h2yyJ+inwyMHGs
-         w2WK+YR84CUHGvViczIvWnkEgwBIt6jA9UIpd40G6jrmvqJVOK9KewB009NnSwZCHe
-         FuqGamjpS7LjpwZz+GvSUYyUZWQ2PfS5KwB+UQ3reJTzCdmZf4c/JSvS6NM2uliol5
-         LUwdEFraQwdTOXt7nGBplT/LAucUY6qUfKgCd/hdf4oAwdV56AZjsHCGIqFzd81wlg
-         GdbWrpF/FvN3g==
-Date:   Tue, 8 Aug 2023 15:31:56 +0200
-From:   Christian Brauner <brauner@kernel.org>
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 3FF9421C09;
+        Tue,  8 Aug 2023 10:05:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1691489158; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=cOTJYjkBLnwjV/lxEVtUyReuFAMisDvl/3KW3rcsa80=;
+        b=RYwrn0fdjwhhRR7l27SfhU6sEIZlfDKsRmqY6BlBC/mbMQlEPGtvhbIdRr7h8egn/oN8yh
+        Oz6U9UuTleHENrCE1avR3NSOn0guqcLSLu7iBXijjb70nxn/BQDxhjUWhk7QvvA5/v4PB8
+        VNLrqst7KIs78O2ejOjXiqcNSNVttFQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1691489158;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=cOTJYjkBLnwjV/lxEVtUyReuFAMisDvl/3KW3rcsa80=;
+        b=3BwMkd6c3zAZ5/EGX3xW7irKJimW+k7SoacxDa/XvD8/WW5BAqfXsGAeW7PnSgHdphBpnB
+        7inqEIuyeW8nM7Cw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 2554713451;
+        Tue,  8 Aug 2023 10:05:58 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 9iarCIYT0mRwKwAAMHmgww
+        (envelope-from <jack@suse.cz>); Tue, 08 Aug 2023 10:05:58 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 9F18AA0769; Tue,  8 Aug 2023 12:05:57 +0200 (CEST)
+Date:   Tue, 8 Aug 2023 12:05:57 +0200
+From:   Jan Kara <jack@suse.cz>
 To:     Jeff Layton <jlayton@kernel.org>
 Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christian Brauner <brauner@kernel.org>,
+        Eric Van Hensbergen <ericvh@kernel.org>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Christian Schoenebeck <linux_oss@crudebyte.com>,
+        David Howells <dhowells@redhat.com>,
+        Marc Dionne <marc.dionne@auristor.com>,
+        Chris Mason <clm@fb.com>, Josef Bacik <josef@toxicpanda.com>,
+        David Sterba <dsterba@suse.com>, Xiubo Li <xiubli@redhat.com>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu,
+        Tyler Hicks <code@tyhicks.com>, Gao Xiang <xiang@kernel.org>,
+        Chao Yu <chao@kernel.org>, Yue Hu <huyue2@coolpad.com>,
+        Jeffle Xu <jefflexu@linux.alibaba.com>,
+        Namjae Jeon <linkinjeon@kernel.org>,
+        Sungjong Seo <sj1557.seo@samsung.com>,
+        Jan Kara <jack@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Andreas Gruenbacher <agruenba@redhat.com>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        Tejun Heo <tj@kernel.org>,
         Trond Myklebust <trond.myklebust@hammerspace.com>,
         Anna Schumaker <anna@kernel.org>,
-        Paul Moore <paul@paul-moore.com>,
-        James Morris <jmorris@namei.org>,
-        "Serge E. Hallyn" <serge@hallyn.com>,
-        Stephen Smalley <stephen.smalley.work@gmail.com>,
-        Eric Paris <eparis@parisplace.org>,
-        Casey Schaufler <casey@schaufler-ca.com>,
-        David Howells <dhowells@redhat.com>,
-        Scott Mayhew <smayhew@redhat.com>,
-        Stephen Smalley <sds@tycho.nsa.gov>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        Mark Fasheh <mark@fasheh.com>,
+        Joel Becker <jlbec@evilplan.org>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        Mike Marshall <hubcap@omnibond.com>,
+        Martin Brandenburg <martin@omnibond.com>,
+        Luis Chamberlain <mcgrof@kernel.org>,
+        Kees Cook <keescook@chromium.org>,
+        Iurii Zaikin <yzaikin@google.com>,
+        Steve French <sfrench@samba.org>,
+        Paulo Alcantara <pc@manguebit.com>,
+        Ronnie Sahlberg <ronniesahlberg@gmail.com>,
+        Shyam Prasad N <sprasad@microsoft.com>,
+        Tom Talpey <tom@talpey.com>,
+        Sergey Senozhatsky <senozhatsky@chromium.org>,
+        Richard Weinberger <richard@nod.at>,
+        Hans de Goede <hdegoede@redhat.com>,
+        Hugh Dickins <hughd@google.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Amir Goldstein <amir73il@gmail.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Benjamin Coddington <bcodding@redhat.com>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        selinux@vger.kernel.org
-Subject: Re: [PATCH v9] vfs, security: Fix automount superblock LSM init
- problem, preventing NFS sb sharing
-Message-ID: <20230808-erdaushub-sanieren-2bd8d7e0a286@brauner>
-References: <20230808-master-v9-1-e0ecde888221@kernel.org>
+        v9fs@lists.linux.dev, linux-afs@lists.infradead.org,
+        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        codalist@coda.cs.cmu.edu, ecryptfs@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org, ntfs3@lists.linux.dev,
+        ocfs2-devel@lists.linux.dev, devel@lists.orangefs.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-mtd@lists.infradead.org, linux-mm@kvack.org,
+        linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [PATCH v7 13/13] btrfs: convert to multigrain timestamps
+Message-ID: <20230808100557.dowlxz2destpseqr@quack3>
+References: <20230807-mgctime-v7-0-d1dec143a704@kernel.org>
+ <20230807-mgctime-v7-13-d1dec143a704@kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20230808-master-v9-1-e0ecde888221@kernel.org>
+In-Reply-To: <20230807-mgctime-v7-13-d1dec143a704@kernel.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, Aug 08, 2023 at 07:34:20AM -0400, Jeff Layton wrote:
-> From: David Howells <dhowells@redhat.com>
+On Mon 07-08-23 15:38:44, Jeff Layton wrote:
+> Enable multigrain timestamps, which should ensure that there is an
+> apparent change to the timestamp whenever it has been written after
+> being actively observed via getattr.
 > 
-> When NFS superblocks are created by automounting, their LSM parameters
-> aren't set in the fs_context struct prior to sget_fc() being called,
-> leading to failure to match existing superblocks.
+> Beyond enabling the FS_MGTIME flag, this patch eliminates
+> update_time_for_write, which goes to great pains to avoid in-memory
+> stores. Just have it overwrite the timestamps unconditionally.
 > 
-> This bug leads to messages like the following appearing in dmesg when
-> fscache is enabled:
-> 
->     NFS: Cache volume key already in use (nfs,4.2,2,108,106a8c0,1,,,,100000,100000,2ee,3a98,1d4c,3a98,1)
-> 
-> Fix this by adding a new LSM hook to load fc->security for submount
-> creation.
-> 
-> Signed-off-by: David Howells <dhowells@redhat.com>
 > Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> Fixes: 9bc61ab18b1d ("vfs: Introduce fs_context, switch vfs_kern_mount() to it.")
-> Fixes: 779df6a5480f ("NFS: Ensure security label is set for root inode)
-> Tested-by: Jeff Layton <jlayton@kernel.org>
-> Reviewed-by: Jeff Layton <jlayton@kernel.org>
-> Acked-by: Casey Schaufler <casey@schaufler-ca.com>
-> Acked-by: "Christian Brauner (Microsoft)" <brauner@kernel.org>
-> Link: https://lore.kernel.org/r/165962680944.3334508.6610023900349142034.stgit@warthog.procyon.org.uk/ # v1
-> Link: https://lore.kernel.org/r/165962729225.3357250.14350728846471527137.stgit@warthog.procyon.org.uk/ # v2
-> Link: https://lore.kernel.org/r/165970659095.2812394.6868894171102318796.stgit@warthog.procyon.org.uk/ # v3
-> Link: https://lore.kernel.org/r/166133579016.3678898.6283195019480567275.stgit@warthog.procyon.org.uk/ # v4
-> Link: https://lore.kernel.org/r/217595.1662033775@warthog.procyon.org.uk/ # v5
-> ---
-> ver #2)
-> - Added Smack support
-> - Made LSM parameter extraction dependent on reference != NULL.
-> 
-> ver #3)
-> - Made LSM parameter extraction dependent on fc->purpose ==
->    FS_CONTEXT_FOR_SUBMOUNT.  Shouldn't happen on FOR_RECONFIGURE.
-> 
-> ver #4)
-> - When doing a FOR_SUBMOUNT mount, don't set the root label in SELinux or Smack.
-> 
-> ver #5)
-> - Removed unused variable.
-> - Only allocate smack_mnt_opts if we're dealing with a submount.
-> 
-> ver #6)
-> - Rebase onto v6.5.0-rc4
-> - Link to v6: https://lore.kernel.org/r/20230802-master-v6-1-45d48299168b@kernel.org
-> 
-> ver #7)
-> - Drop lsm_set boolean
-> - Link to v7: https://lore.kernel.org/r/20230804-master-v7-1-5d4e48407298@kernel.org
-> 
-> ver #8)
-> - Remove spurious semicolon in smack_fs_context_init
-> - Make fs_context_init take a superblock as reference instead of dentry
-> - WARN_ON_ONCE's when fc->purpose != FS_CONTEXT_FOR_SUBMOUNT
-> - Call the security hook from fs_context_for_submount instead of alloc_fs_context
-> - Link to v8: https://lore.kernel.org/r/20230807-master-v8-1-54e249595f10@kernel.org
-> 
-> ver #9)
-> - rename *_fs_context_init to *_fs_context_submount
-> - remove checks for FS_CONTEXT_FOR_SUBMOUNT and NULL reference pointers
-> - fix prototype on smack_fs_context_submount
+> Acked-by: David Sterba <dsterba@suse.com>
 
-Thanks, this looks good from my perspective. If it looks fine to LSM
-folks as well I can put it with the rest of the super work for this
-cycle or it can go through the LSM tree.
+Looks good to me. Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
+> ---
+>  fs/btrfs/file.c  | 24 ++++--------------------
+>  fs/btrfs/super.c |  5 +++--
+>  2 files changed, 7 insertions(+), 22 deletions(-)
+> 
+> diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+> index d7a9ece7a40b..b9e75c9f95ac 100644
+> --- a/fs/btrfs/file.c
+> +++ b/fs/btrfs/file.c
+> @@ -1106,25 +1106,6 @@ void btrfs_check_nocow_unlock(struct btrfs_inode *inode)
+>  	btrfs_drew_write_unlock(&inode->root->snapshot_lock);
+>  }
+>  
+> -static void update_time_for_write(struct inode *inode)
+> -{
+> -	struct timespec64 now, ctime;
+> -
+> -	if (IS_NOCMTIME(inode))
+> -		return;
+> -
+> -	now = current_time(inode);
+> -	if (!timespec64_equal(&inode->i_mtime, &now))
+> -		inode->i_mtime = now;
+> -
+> -	ctime = inode_get_ctime(inode);
+> -	if (!timespec64_equal(&ctime, &now))
+> -		inode_set_ctime_to_ts(inode, now);
+> -
+> -	if (IS_I_VERSION(inode))
+> -		inode_inc_iversion(inode);
+> -}
+> -
+>  static int btrfs_write_check(struct kiocb *iocb, struct iov_iter *from,
+>  			     size_t count)
+>  {
+> @@ -1156,7 +1137,10 @@ static int btrfs_write_check(struct kiocb *iocb, struct iov_iter *from,
+>  	 * need to start yet another transaction to update the inode as we will
+>  	 * update the inode when we finish writing whatever data we write.
+>  	 */
+> -	update_time_for_write(inode);
+> +	if (!IS_NOCMTIME(inode)) {
+> +		inode->i_mtime = inode_set_ctime_current(inode);
+> +		inode_inc_iversion(inode);
+> +	}
+>  
+>  	start_pos = round_down(pos, fs_info->sectorsize);
+>  	oldsize = i_size_read(inode);
+> diff --git a/fs/btrfs/super.c b/fs/btrfs/super.c
+> index f1dd172d8d5b..8eda51b095c9 100644
+> --- a/fs/btrfs/super.c
+> +++ b/fs/btrfs/super.c
+> @@ -2144,7 +2144,7 @@ static struct file_system_type btrfs_fs_type = {
+>  	.name		= "btrfs",
+>  	.mount		= btrfs_mount,
+>  	.kill_sb	= btrfs_kill_super,
+> -	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA,
+> +	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA | FS_MGTIME,
+>  };
+>  
+>  static struct file_system_type btrfs_root_fs_type = {
+> @@ -2152,7 +2152,8 @@ static struct file_system_type btrfs_root_fs_type = {
+>  	.name		= "btrfs",
+>  	.mount		= btrfs_mount_root,
+>  	.kill_sb	= btrfs_kill_super,
+> -	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA | FS_ALLOW_IDMAP,
+> +	.fs_flags	= FS_REQUIRES_DEV | FS_BINARY_MOUNTDATA |
+> +			  FS_ALLOW_IDMAP | FS_MGTIME,
+>  };
+>  
+>  MODULE_ALIAS_FS("btrfs");
+> 
+> -- 
+> 2.41.0
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
