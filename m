@@ -2,64 +2,64 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CDB30C001B0
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Aug 2023 20:25:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 70793C001DE
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Aug 2023 20:38:57 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235815AbjHJUZe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Aug 2023 16:25:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38530 "EHLO
+        id S232651AbjHJUi4 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Aug 2023 16:38:56 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56112 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235891AbjHJUZa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Aug 2023 16:25:30 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 056592733
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Aug 2023 13:24:46 -0700 (PDT)
+        with ESMTP id S234916AbjHJUiz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Aug 2023 16:38:55 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 085AF90
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Aug 2023 13:38:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1691699086;
+        s=mimecast20190719; t=1691699882;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=HqygJpPikOyXm/wHwFtZNHvPApi5DlCiSAoJ4H1J1qM=;
-        b=GarmIENn9NZOXH7UOdj4vN70wZ3qKFYCWPRLyvPqkFAEh5fIbDiB68MJWDRgF0NH7+7naq
-        a0UQ0PxDMyvl4vZzehVkRku2tvoNUKNRuwpdCDz6oi0O1KYrekwQSx/orYyMKacKTnF+ls
-        pfDAKhuXAWoawR/RSFXOa9s/oTURjTg=
-Received: from mail-lf1-f70.google.com (mail-lf1-f70.google.com
- [209.85.167.70]) by relay.mimecast.com with ESMTP with STARTTLS
+        bh=dIni07KyJce7xxuw2QLVT5cpv2HHxiYwf+IdLolCCXY=;
+        b=QWHV4vXpBRr2ADLinGbgO1pLl97bU7N7Wukk2giekH/FicUc5u25W54gs/C7Suvs7f3/80
+        2SnLKEbWqKpGHUOjUVywJPdWYRJu226dW8jhbmuLHkIrdUhi1x7Bu3xBG5U7askhgPQxgO
+        9qjYZmTziWmUrsHyh3ufq9SaJjwQVKg=
+Received: from mail-ed1-f72.google.com (mail-ed1-f72.google.com
+ [209.85.208.72]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-649-RoxN_FvwP1GWKIfuITJipQ-1; Thu, 10 Aug 2023 16:24:45 -0400
-X-MC-Unique: RoxN_FvwP1GWKIfuITJipQ-1
-Received: by mail-lf1-f70.google.com with SMTP id 2adb3069b0e04-4fe4a1ce065so1269688e87.3
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Aug 2023 13:24:44 -0700 (PDT)
+ us-mta-404-RBSOskQaNJ2D7pislGGAkw-1; Thu, 10 Aug 2023 16:38:00 -0400
+X-MC-Unique: RBSOskQaNJ2D7pislGGAkw-1
+Received: by mail-ed1-f72.google.com with SMTP id 4fb4d7f45d1cf-52310058f1eso3463066a12.0
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Aug 2023 13:38:00 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1691699083; x=1692303883;
+        d=1e100.net; s=20221208; t=1691699879; x=1692304679;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=HqygJpPikOyXm/wHwFtZNHvPApi5DlCiSAoJ4H1J1qM=;
-        b=cCXovrO8V1KiIoBYAcRkWNam11S06CuK0LX8RtVXL2orYcgii1j00IuYCSmPO8dmI/
-         M2YCsF8T03hnWTMRD2TAXVVEGZRQSVK1/b0XWu8VmG7PFAiuaOt523lSbBGM1QSF4V7z
-         DYsUfePVxQOmkfCyrNpVP8ooDATWGAHLc/UhVWXUJcJFlkFQzS7e8KMRPdSauoOFQBWj
-         N1e2jhtCOAR9D/joEMUQwVeYcognTdMLn2M84cblxOygpRVZVLJpPlFqdPIKI4a8WuUP
-         KvqK01Zd/MeLzv0zxBeEl/cJ5XUoO0lj2mxSRx+OANmYV5lILvjoD7yyzalSsf4zeGG9
-         4j3w==
-X-Gm-Message-State: AOJu0Yx0cWZ3/nbgkMZ6DrJIbe+zgs8w76t8Zk07FcYnFSWn+0XOv6Nb
-        +n/eBaNstUCYBaYi9lT91/UucMvA7ESuYqMxCmYynEIkS5bgmRdZ7jwlrNo45U3pxLywaKyWGlP
-        WqtNOak8nBrfjpgAQFQ8DBTipQbggCafAPDPM4wXxdkWi
-X-Received: by 2002:a19:644e:0:b0:4fe:ef9:c8d0 with SMTP id b14-20020a19644e000000b004fe0ef9c8d0mr2399099lfj.35.1691699082928;
-        Thu, 10 Aug 2023 13:24:42 -0700 (PDT)
-X-Google-Smtp-Source: AGHT+IG4snsAYYAxitJ3kstAcmF6iy3hfrvRNaBhVUSfukWe/rN8pyfG+Rc91yAMi71zKGXU1Y4xobOMUc+21Uza6gA=
-X-Received: by 2002:a19:644e:0:b0:4fe:ef9:c8d0 with SMTP id
- b14-20020a19644e000000b004fe0ef9c8d0mr2399086lfj.35.1691699082596; Thu, 10
- Aug 2023 13:24:42 -0700 (PDT)
+        bh=dIni07KyJce7xxuw2QLVT5cpv2HHxiYwf+IdLolCCXY=;
+        b=EAcKa7uGMq2US2j/32GDVVG2eqz4TdWapUiAj/+HrI1qP04fKuqy8rUJctUwS97cZK
+         MxSCkzqYmgqkAf9aFaL3xASBg4TSXd2OUReatNhKLW7fIgriIWv3fn6d5vnPzYOGKzRv
+         rUqPFXDG9+fSdKK+xOJ22e8r3/sra11sjd6qUfxh/x+G5NTKiwQmirbqIaL5Dk0NuSOr
+         LqnYg4w8ou/TOvJmvdVH9rxQQJv9ztjQlzCe24lXJEUR9DSPUPIA2TV9L1pstSpLcgVM
+         Z1Wd1EbOCGQaPwAiyGhNvhTDMbxSfaABRuGXaGwGJvzhOz+g5zVltZfhzluHNzuUUCUy
+         27xA==
+X-Gm-Message-State: AOJu0YxTKArkhLrWNR3MRpH+sPXFxAIvRyRqsEJoWBSwJ0LKBEjsPiZI
+        S8TnuwjffVRDDZL7iqWkCifqIvyt3CKJSgr7BSz029QAneXgT9W1hSha1gG3wdpdpNVr+iNVnbB
+        iBf/EVyJFr4uuEZ6rc/0T0OTbD8qukTY9JNkV
+X-Received: by 2002:a05:6402:2793:b0:51f:ef58:da87 with SMTP id b19-20020a056402279300b0051fef58da87mr3780699ede.2.1691699879342;
+        Thu, 10 Aug 2023 13:37:59 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IFtyfF/rZBCKNCFMZqumNdBbqxsmDl7zLHcIbu3ah5OjXYkk27PzRjmI6/9s/gxl4lkuZpq+rLAuxBfb7ABrHE=
+X-Received: by 2002:a05:6402:2793:b0:51f:ef58:da87 with SMTP id
+ b19-20020a056402279300b0051fef58da87mr3780687ede.2.1691699879039; Thu, 10 Aug
+ 2023 13:37:59 -0700 (PDT)
 MIME-Version: 1.0
-References: <20230720125806.1385279-1-aahringo@redhat.com> <20230720125806.1385279-3-aahringo@redhat.com>
- <fc5c5e0bcfa7110282106c3319af6a0b5a63b221.camel@kernel.org>
-In-Reply-To: <fc5c5e0bcfa7110282106c3319af6a0b5a63b221.camel@kernel.org>
+References: <20230720125806.1385279-1-aahringo@redhat.com> <20230720125806.1385279-2-aahringo@redhat.com>
+ <af8586c743be551c3f939455368fc288856abe11.camel@kernel.org>
+In-Reply-To: <af8586c743be551c3f939455368fc288856abe11.camel@kernel.org>
 From:   Alexander Aring <aahringo@redhat.com>
-Date:   Thu, 10 Aug 2023 16:24:31 -0400
-Message-ID: <CAK-6q+g4LiMixBe_U7o9sVxdz9i4FjXJ2XpBW-1JzrZ3WjkRCw@mail.gmail.com>
-Subject: Re: [RFC v6.5-rc2 3/3] fs: lockd: introduce safe async lock op
+Date:   Thu, 10 Aug 2023 16:37:47 -0400
+Message-ID: <CAK-6q+gH0Rd36peoGTnGyggFq+oUVh_z+uUdKKE3=CZ9MWkYnQ@mail.gmail.com>
+Subject: Re: [RFC v6.5-rc2 2/3] fs: lockd: fix race in async lock request handling
 To:     Jeff Layton <jlayton@kernel.org>
 Cc:     chuck.lever@oracle.com, neilb@suse.de, kolga@netapp.com,
         Dai.Ngo@oracle.com, tom@talpey.com,
@@ -74,95 +74,256 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 Hi,
 
-On Fri, Jul 21, 2023 at 1:46=E2=80=AFPM Jeff Layton <jlayton@kernel.org> wr=
-ote:
+On Fri, Jul 21, 2023 at 11:45=E2=80=AFAM Jeff Layton <jlayton@kernel.org> w=
+rote:
 >
 > On Thu, 2023-07-20 at 08:58 -0400, Alexander Aring wrote:
-> > This patch reverts mostly commit 40595cdc93ed ("nfs: block notification
-> > on fs with its own ->lock") and introduces an EXPORT_OP_SAFE_ASYNC_LOCK
-> > export flag to signal that the "own ->lock" implementation supports
-> > async lock requests. The only main user is DLM that is used by GFS2 and
-> > OCFS2 filesystem. Those implement their own lock() implementation and
-> > return FILE_LOCK_DEFERRED as return value. Since commit 40595cdc93ed
-> > ("nfs: block notification on fs with its own ->lock") the DLM
-> > implementation were never updated. This patch should prepare for DLM
-> > to set the EXPORT_OP_SAFE_ASYNC_LOCK export flag and update the DLM
-> > plock implementation regarding to it.
+> > This patch fixes a race in async lock request handling between adding
+> > the relevant struct nlm_block to nlm_blocked list after the request was
+> > sent by vfs_lock_file() and nlmsvc_grant_deferred() does a lookup of th=
+e
+> > nlm_block in the nlm_blocked list. It could be that the async request i=
+s
+> > completed before the nlm_block was added to the list. This would end
+> > in a -ENOENT and a kernel log message of "lockd: grant for unknown
+> > block".
+> >
+> > To solve this issue we add the nlm_block before the vfs_lock_file() cal=
+l
+> > to be sure it has been added when a possible nlmsvc_grant_deferred() is
+> > called. If the vfs_lock_file() results in an case when it wouldn't be
+> > added to nlm_blocked list, the nlm_block struct will be removed from
+> > this list again.
 > >
 > > Signed-off-by: Alexander Aring <aahringo@redhat.com>
 > > ---
-> >  fs/lockd/svclock.c       |  5 ++---
-> >  fs/nfsd/nfs4state.c      | 11 ++++++++---
-> >  include/linux/exportfs.h |  1 +
-> >  3 files changed, 11 insertions(+), 6 deletions(-)
+> >  fs/lockd/svclock.c          | 80 +++++++++++++++++++++++++++----------
+> >  include/linux/lockd/lockd.h |  1 +
+> >  2 files changed, 60 insertions(+), 21 deletions(-)
 > >
 > > diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> > index 62ef27a69a9e..54a67bd33843 100644
+> > index 28abec5c451d..62ef27a69a9e 100644
 > > --- a/fs/lockd/svclock.c
 > > +++ b/fs/lockd/svclock.c
-> > @@ -483,9 +483,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file=
+> > @@ -297,6 +297,8 @@ static void nlmsvc_free_block(struct kref *kref)
+> >
+> >       dprintk("lockd: freeing block %p...\n", block);
+> >
+> > +     WARN_ON_ONCE(block->b_flags & B_PENDING_CALLBACK);
+> > +
+> >       /* Remove block from file's list of blocks */
+> >       list_del_init(&block->b_flist);
+> >       mutex_unlock(&file->f_mutex);
+> > @@ -543,6 +545,12 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_fil=
+e *file,
+> >               goto out;
+> >       }
+> >
+> > +     if (block->b_flags & B_PENDING_CALLBACK)
+> > +             goto pending_request;
+> > +
+> > +     /* Append to list of blocked */
+> > +     nlmsvc_insert_block(block, NLM_NEVER);
+> > +
+> >       if (!wait)
+> >               lock->fl.fl_flags &=3D ~FL_SLEEP;
+> >       mode =3D lock_to_openmode(&lock->fl);
+> > @@ -552,9 +560,13 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_fil=
+e *file,
+> >       dprintk("lockd: vfs_lock_file returned %d\n", error);
+> >       switch (error) {
+> >               case 0:
+> > +                     nlmsvc_remove_block(block);
+> >                       ret =3D nlm_granted;
+> >                       goto out;
+> >               case -EAGAIN:
+> > +                     if (!wait)
+> > +                             nlmsvc_remove_block(block);
+> > +pending_request:
+> >                       /*
+> >                        * If this is a blocking request for an
+> >                        * already pending lock request then we need
+> > @@ -565,6 +577,8 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file=
  *file,
-> >           struct nlm_host *host, struct nlm_lock *lock, int wait,
-> >           struct nlm_cookie *cookie, int reclaim)
+> >                       ret =3D async_block ? nlm_lck_blocked : nlm_lck_d=
+enied;
+> >                       goto out;
+> >               case FILE_LOCK_DEFERRED:
+> > +                     block->b_flags |=3D B_PENDING_CALLBACK;
+> > +
+> >                       if (wait)
+> >                               break;
+> >                       /* Filesystem lock operation is in progress
+> > @@ -572,17 +586,16 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_fi=
+le *file,
+> >                       ret =3D nlmsvc_defer_lock_rqst(rqstp, block);
+>
+> When the above function is called, it's going to end up reinserting the
+> block into the list. I think you probably also need to remove the call
+> to nlmsvc_insert_block from nlmsvc_defer_lock_rqst since it could have
+> been granted before that occurs.
+>
+
+it cannot be granted during this time because the f_mutex is held. We
+insert it in the first place to have a way to get the block lookup
+working when a lm_grant() is really fast. Then lm_grant() will lookup
+the lock and have a way to get f_mutex to hold it. Then lm_grant()
+will only run when nobody is in this critical area (on a per nlm_file
+basis).
+
+There is a difference in the call between NLM_NEVER and NLM_TIMEOUT in
+nlmsvc_defer_lock_rqst(), when nlmsvc_defer_lock_rqst() it will just
+update the timeout value. I am not sure about the consequences when it
+does a nlmsvc_insert_block() with NLM_NEVER instead of NLM_TIMEOUT.
+But as I said it should not be possible to grant the block when
+f_mutex is held.
+
+> >                       goto out;
+> >               case -EDEADLK:
+> > +                     nlmsvc_remove_block(block);
+> >                       ret =3D nlm_deadlock;
+> >                       goto out;
+> >               default:                        /* includes ENOLCK */
+> > +                     nlmsvc_remove_block(block);
+> >                       ret =3D nlm_lck_denied_nolocks;
+> >                       goto out;
+> >       }
+> >
+> >       ret =3D nlm_lck_blocked;
+> > -
+> > -     /* Append to list of blocked */
+> > -     nlmsvc_insert_block(block, NLM_NEVER);
+> >  out:
+> >       mutex_unlock(&file->f_mutex);
+> >       nlmsvc_release_block(block);
+> > @@ -739,34 +752,59 @@ nlmsvc_update_deferred_block(struct nlm_block *bl=
+ock, int result)
+> >               block->b_flags |=3D B_TIMED_OUT;
+> >  }
+> >
+> > +static int __nlmsvc_grant_deferred(struct nlm_block *block,
+> > +                                struct file_lock *fl,
+> > +                                int result)
+> > +{
+> > +     int rc =3D 0;
+> > +
+> > +     dprintk("lockd: nlmsvc_notify_blocked block %p flags %d\n",
+> > +                                     block, block->b_flags);
+> > +     if (block->b_flags & B_QUEUED) {
+> > +             if (block->b_flags & B_TIMED_OUT) {
+> > +                     rc =3D -ENOLCK;
+> > +                     goto out;
+> > +             }
+> > +             nlmsvc_update_deferred_block(block, result);
+> > +     } else if (result =3D=3D 0)
+> > +             block->b_granted =3D 1;
+> > +
+> > +     nlmsvc_insert_block_locked(block, 0);
+> > +     svc_wake_up(block->b_daemon);
+> > +out:
+> > +     return rc;
+> > +}
+> > +
+> >  static int nlmsvc_grant_deferred(struct file_lock *fl, int result)
 > >  {
-> > -#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
-> >       struct inode            *inode =3D nlmsvc_file_inode(file);
-> > -#endif
-> >       struct nlm_block        *block =3D NULL;
-> >       int                     error;
-> >       int                     mode;
-> > @@ -499,7 +497,8 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file=
- *file,
-> >                               (long long)lock->fl.fl_end,
-> >                               wait);
+> > -     struct nlm_block *block;
+> > -     int rc =3D -ENOENT;
+> > +     struct nlm_block *block =3D NULL;
+> > +     int rc;
 > >
-> > -     if (nlmsvc_file_file(file)->f_op->lock) {
-> > +     if (!(inode->i_sb->s_export_op->flags & EXPORT_OP_SAFE_ASYNC_LOCK=
-) &&
-> > +         nlmsvc_file_file(file)->f_op->lock) {
-> >               async_block =3D wait;
-> >               wait =3D 0;
+> >       spin_lock(&nlm_blocked_lock);
+> >       list_for_each_entry(block, &nlm_blocked, b_list) {
+> >               if (nlm_compare_locks(&block->b_call->a_args.lock.fl, fl)=
+) {
+> > -                     dprintk("lockd: nlmsvc_notify_blocked block %p fl=
+ags %d\n",
+> > -                                                     block, block->b_f=
+lags);
+> > -                     if (block->b_flags & B_QUEUED) {
+> > -                             if (block->b_flags & B_TIMED_OUT) {
+> > -                                     rc =3D -ENOLCK;
+> > -                                     break;
+> > -                             }
+> > -                             nlmsvc_update_deferred_block(block, resul=
+t);
+> > -                     } else if (result =3D=3D 0)
+> > -                             block->b_granted =3D 1;
+> > -
+> > -                     nlmsvc_insert_block_locked(block, 0);
+> > -                     svc_wake_up(block->b_daemon);
+> > -                     rc =3D 0;
+> > +                     kref_get(&block->b_count);
+> >                       break;
+> >               }
 > >       }
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 6e61fa3acaf1..efcea229d640 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -7432,6 +7432,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_c=
-ompound_state *cstate,
-> >       struct nfsd4_blocked_lock *nbl =3D NULL;
-> >       struct file_lock *file_lock =3D NULL;
-> >       struct file_lock *conflock =3D NULL;
-> > +     struct super_block *sb;
-> >       __be32 status =3D 0;
-> >       int lkflg;
-> >       int err;
-> > @@ -7453,6 +7454,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_c=
-ompound_state *cstate,
-> >               dprintk("NFSD: nfsd4_lock: permission denied!\n");
-> >               return status;
-> >       }
-> > +     sb =3D cstate->current_fh.fh_dentry->d_sb;
-> >
-> >       if (lock->lk_is_new) {
-> >               if (nfsd4_has_session(cstate))
-> > @@ -7504,7 +7506,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_c=
-ompound_state *cstate,
-> >       fp =3D lock_stp->st_stid.sc_file;
-> >       switch (lock->lk_type) {
-> >               case NFS4_READW_LT:
-> > -                     if (nfsd4_has_session(cstate))
-> > +                     if (sb->s_export_op->flags & EXPORT_OP_SAFE_ASYNC=
-_LOCK &&
+> >       spin_unlock(&nlm_blocked_lock);
+> > -     if (rc =3D=3D -ENOENT)
+> > -             printk(KERN_WARNING "lockd: grant for unknown block\n");
+> > +
+> > +     if (!block) {
+> > +             pr_warn("lockd: grant for unknown pending block\n");
+> > +             return -ENOENT;
+> > +     }
+> > +
+> > +     /* don't interfere with nlmsvc_lock() */
+> > +     mutex_lock(&block->b_file->f_mutex);
 >
-> This will break existing filesystems that don't set the new flag. Maybe
-> you also need to test for the filesystem's ->lock operation here too?
+>
+> This is called from lm_grant, and Documentation/filesystems/locking.rst
+> says that lm_grant is not allowed to block. The only caller though is
+> dlm_plock_callback, and I don't see anything that would prevent
+> blocking.
+>
+> Do we need to fix the documentation there?
 >
 
-yes.
+You are right and I think it should not call any sleepable API.
+However DLM is the only one upstream user and I have no other idea how
+to make the current situation better.
 
-> This might be more nicely expressed in a helper function.
+We should update the documentation but be open to make it
+non-sleepable in future?
 
-ok.
+>
+> > +     block->b_flags &=3D ~B_PENDING_CALLBACK;
+> > +
+>
+> You're adding this new flag when the lock is deferred and then clearing
+> it when the lock is granted. What about when the lock request is
+> cancelled (e.g. by signal)? It seems like you also need to clear it then
+> too, correct?
+>
 
-- Alex
+correct. I add code to clear it when the block is getting removed from
+nlm_blocked in nlmsvc_remove_block().
+
+> > +     spin_lock(&nlm_blocked_lock);
+> > +     WARN_ON_ONCE(list_empty(&block->b_list));
+> > +     rc =3D __nlmsvc_grant_deferred(block, fl, result);
+> > +     spin_unlock(&nlm_blocked_lock);
+> > +     mutex_unlock(&block->b_file->f_mutex);
+> > +
+> > +     nlmsvc_release_block(block);
+> >       return rc;
+> >  }
+> >
+> > diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> > index f42594a9efe0..a977be8bcc2c 100644
+> > --- a/include/linux/lockd/lockd.h
+> > +++ b/include/linux/lockd/lockd.h
+> > @@ -189,6 +189,7 @@ struct nlm_block {
+> >  #define B_QUEUED             1       /* lock queued */
+> >  #define B_GOT_CALLBACK               2       /* got lock or conflictin=
+g lock */
+> >  #define B_TIMED_OUT          4       /* filesystem too slow to respond=
+ */
+> > +#define B_PENDING_CALLBACK   8       /* pending callback for lock requ=
+est */
+> >  };
+> >
+> >  /*
+>
+> --
+> Jeff Layton <jlayton@kernel.org>
+>
 
