@@ -2,63 +2,278 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 92F58C001E0
-	for <linux-nfs@archiver.kernel.org>; Thu, 10 Aug 2023 18:25:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 719FBC04A94
+	for <linux-nfs@archiver.kernel.org>; Thu, 10 Aug 2023 20:24:53 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233190AbjHJSZK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 10 Aug 2023 14:25:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55466 "EHLO
+        id S235293AbjHJUYv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 10 Aug 2023 16:24:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38548 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235235AbjHJSZJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Aug 2023 14:25:09 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 088932690
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Aug 2023 11:25:08 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        with ESMTP id S233860AbjHJUYv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Aug 2023 16:24:51 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D6AA02D41
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Aug 2023 13:24:47 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 9302B665C6
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Aug 2023 18:25:07 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 53A6CC433C7;
-        Thu, 10 Aug 2023 18:25:03 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1691691907;
-        bh=FF+vZQWzbhs6UInpEkjINNg151Ulg6gpIQpWY3/smkU=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=WQMjM32HmmIKu1DwVeAgKyUKi6VV1VbDf5ttBmTf6XSLDGdvF+iArLjBMp5u0Iodc
-         jJ27rtntySBvgsa0LTWKRaX//JR5ISplYDKz/MwIcUp0F5nALPqbWe+lL/39aoSWoT
-         pAbWIWy56cQp5xaiYaGEvRnflOMQZy1do95rxBaFGkE++6AV8CzRob6k6Pk2QcCwtf
-         tRVPCMu7t/QEJwX8JZY2Uv5PoW1S0zGB35ey/j5+z69+w8nB4n3gMy7PlkZCU55chS
-         +AchpjKwq9JG+UKwagfoGrBn3rvRAv1reocRPU4y3eIgTa0GHOqNOtNZq2Gs7iJMIL
-         IZyUZOQ/9d0Lg==
-Date:   Thu, 10 Aug 2023 20:24:54 +0200
-From:   Lorenzo Bianconi <lorenzo@kernel.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org, lorenzo.bianconi@redhat.com,
-        jlayton@kernel.org, neilb@suse.de
-Subject: Re: [PATCH v6 3/3] NFSD: add rpc_status entry in nfsd debug
- filesystem
-Message-ID: <ZNUrdju18XO4hYMe@lore-rh-laptop>
-References: <cover.1691656474.git.lorenzo@kernel.org>
- <177cfd4fc640d9b406101761be24da07990ca81e.1691656474.git.lorenzo@kernel.org>
- <ZNT7wdG8SYfDRkDg@tissot.1015granger.net>
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 7974F2187F;
+        Thu, 10 Aug 2023 20:24:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1691699086; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=sXd8HHByZl5x4FgVYN7diqYoGPm/1Iq/ubEabUWaWWI=;
+        b=pkzKiPZYBelpDetgWMJjL/0olsuQ3j6Eliwzr3zETxbq/oE5XcfT1QVMDnJJQTSWo0hPnK
+        2awMdFerrpmtAzUkr//0SwltIKBEX9wKW1eiomR4haM7cQWRTAGh2d6zik/uFgBX1NoKSc
+        sr4NYix5oHc9GNlMUtjgaRZD2ucH5Yc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1691699086;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=sXd8HHByZl5x4FgVYN7diqYoGPm/1Iq/ubEabUWaWWI=;
+        b=RB71XKCuZEErocC40g+0cguikg3cKiSEH62MwDMxrZXwlRwoeSPpWg069p2dv1CTh2HiHD
+        8ts7ON3/tWs7qpCA==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 936FD138E2;
+        Thu, 10 Aug 2023 20:24:44 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id 0WWVEYxH1WTnDgAAMHmgww
+        (envelope-from <neilb@suse.de>); Thu, 10 Aug 2023 20:24:44 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-        protocol="application/pgp-signature"; boundary="1rgV5QfxaAXrIvUy"
-Content-Disposition: inline
-In-Reply-To: <ZNT7wdG8SYfDRkDg@tissot.1015granger.net>
+From:   "NeilBrown" <neilb@suse.de>
+To:     "Chuck Lever" <chuck.lever@oracle.com>
+Cc:     "Lorenzo Bianconi" <lorenzo@kernel.org>, linux-nfs@vger.kernel.org,
+        lorenzo.bianconi@redhat.com, jlayton@kernel.org
+Subject: Re: [PATCH v6 3/3] NFSD: add rpc_status entry in nfsd debug filesystem
+In-reply-to: <ZNT7wdG8SYfDRkDg@tissot.1015granger.net>
+References: <cover.1691656474.git.lorenzo@kernel.org>,
+ <177cfd4fc640d9b406101761be24da07990ca81e.1691656474.git.lorenzo@kernel.org>,
+ <ZNT7wdG8SYfDRkDg@tissot.1015granger.net>
+Date:   Fri, 11 Aug 2023 06:24:39 +1000
+Message-id: <169169907976.11073.6029761322750936330@noble.neil.brown.name>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
---1rgV5QfxaAXrIvUy
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-[...]
+On Fri, 11 Aug 2023, Chuck Lever wrote:
+> On Thu, Aug 10, 2023 at 10:39:21AM +0200, Lorenzo Bianconi wrote:
+> > Introduce rpc_status entry in nfsd debug filesystem in order to dump
+> > pending RPC requests debugging information.
+> >=20
+> > Link: https://bugzilla.linux-nfs.org/show_bug.cgi?id=3D366
+> > Reviewed-by: NeilBrown <neilb@suse.de>
+> > Reviewed-by: Jeff Layton <jlayton@kernel.org>
+> > Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+> > ---
+> >  fs/nfsd/nfs4proc.c         |   4 +-
+> >  fs/nfsd/nfsctl.c           |   9 +++
+> >  fs/nfsd/nfsd.h             |   7 ++
+> >  fs/nfsd/nfssvc.c           | 140 +++++++++++++++++++++++++++++++++++++
+> >  include/linux/sunrpc/svc.h |   1 +
+> >  net/sunrpc/svc.c           |   2 +-
+> >  6 files changed, 159 insertions(+), 4 deletions(-)
+> >=20
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index aa4f21f92deb..ff5a1dddc0ed 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+> > @@ -2496,8 +2496,6 @@ static inline void nfsd4_increment_op_stats(u32 opn=
+um)
+> > =20
+> >  static const struct nfsd4_operation nfsd4_ops[];
+> > =20
+> > -static const char *nfsd4_op_name(unsigned opnum);
+> > -
+> >  /*
+> >   * Enforce NFSv4.1 COMPOUND ordering rules:
+> >   *
+> > @@ -3627,7 +3625,7 @@ void warn_on_nonidempotent_op(struct nfsd4_op *op)
+> >  	}
+> >  }
+> > =20
+> > -static const char *nfsd4_op_name(unsigned opnum)
+> > +const char *nfsd4_op_name(unsigned int opnum)
+> >  {
+> >  	if (opnum < ARRAY_SIZE(nfsd4_ops))
+> >  		return nfsd4_ops[opnum].op_name;
+> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> > index dad88bff3b9e..83eb5c6d894e 100644
+> > --- a/fs/nfsd/nfsctl.c
+> > +++ b/fs/nfsd/nfsctl.c
+> > @@ -47,6 +47,7 @@ enum {
+> >  	NFSD_MaxBlkSize,
+> >  	NFSD_MaxConnections,
+> >  	NFSD_Filecache,
+> > +	NFSD_Rpc_Status,
+> >  	/*
+> >  	 * The below MUST come last.  Otherwise we leave a hole in nfsd_files[]
+> >  	 * with !CONFIG_NFSD_V4 and simple_fill_super() goes oops
+> > @@ -195,6 +196,13 @@ static inline struct net *netns(struct file *file)
+> >  	return file_inode(file)->i_sb->s_fs_info;
+> >  }
+> > =20
+> > +static const struct file_operations nfsd_rpc_status_operations =3D {
+> > +	.open		=3D nfsd_rpc_status_open,
+> > +	.read		=3D seq_read,
+> > +	.llseek		=3D seq_lseek,
+> > +	.release	=3D nfsd_stats_release,
+> > +};
+> > +
+> >  /*
+> >   * write_unlock_ip - Release all locks used by a client
+> >   *
+> > @@ -1394,6 +1402,7 @@ static int nfsd_fill_super(struct super_block *sb, =
+struct fs_context *fc)
+> >  		[NFSD_MaxBlkSize] =3D {"max_block_size", &transaction_ops, S_IWUSR|S_I=
+RUGO},
+> >  		[NFSD_MaxConnections] =3D {"max_connections", &transaction_ops, S_IWUS=
+R|S_IRUGO},
+> >  		[NFSD_Filecache] =3D {"filecache", &nfsd_file_cache_stats_fops, S_IRUG=
+O},
+> > +		[NFSD_Rpc_Status] =3D {"rpc_status", &nfsd_rpc_status_operations, S_IR=
+UGO},
+> >  #ifdef CONFIG_NFSD_V4
+> >  		[NFSD_Leasetime] =3D {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IR=
+USR},
+> >  		[NFSD_Gracetime] =3D {"nfsv4gracetime", &transaction_ops, S_IWUSR|S_IR=
+USR},
+> > diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> > index 55b9d85ed71b..3e8a47b93fd4 100644
+> > --- a/fs/nfsd/nfsd.h
+> > +++ b/fs/nfsd/nfsd.h
+> > @@ -94,6 +94,7 @@ int		nfsd_get_nrthreads(int n, int *, struct net *);
+> >  int		nfsd_set_nrthreads(int n, int *, struct net *);
+> >  int		nfsd_pool_stats_open(struct inode *, struct file *);
+> >  int		nfsd_stats_release(struct inode *, struct file *);
+> > +int		nfsd_rpc_status_open(struct inode *inode, struct file *file);
+> >  void		nfsd_shutdown_threads(struct net *net);
+> > =20
+> >  static inline void nfsd_put(struct net *net)
+> > @@ -511,12 +512,18 @@ extern void nfsd4_ssc_init_umount_work(struct nfsd_=
+net *nn);
+> > =20
+> >  extern void nfsd4_init_leases_net(struct nfsd_net *nn);
+> > =20
+> > +const char *nfsd4_op_name(unsigned int opnum);
+> >  #else /* CONFIG_NFSD_V4 */
+> >  static inline int nfsd4_is_junction(struct dentry *dentry)
+> >  {
+> >  	return 0;
+> >  }
+> > =20
+> > +static inline const char *nfsd4_op_name(unsigned int opnum)
+> > +{
+> > +	return "unknown_operation";
+> > +}
+> > +
+> >  static inline void nfsd4_init_leases_net(struct nfsd_net *nn) { };
+> > =20
+> >  #define register_cld_notifier() 0
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index 460219030ce1..237be14d3a11 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -998,6 +998,15 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
+> >  	if (!proc->pc_decode(rqstp, &rqstp->rq_arg_stream))
+> >  		goto out_decode_err;
+> > =20
+> > +	/*
+> > +	 * Release rq_status_counter setting it to an odd value after the rpc
+> > +	 * request has been properly parsed. rq_status_counter is used to
+> > +	 * notify the consumers if the rqstp fields are stable
+> > +	 * (rq_status_counter is odd) or not meaningful (rq_status_counter
+> > +	 * is even).
+> > +	 */
+> > +	smp_store_release(&rqstp->rq_status_counter, rqstp->rq_status_counter |=
+ 1);
+> > +
+> >  	rp =3D NULL;
+> >  	switch (nfsd_cache_lookup(rqstp, &rp)) {
+> >  	case RC_DOIT:
+> > @@ -1015,6 +1024,12 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
+> >  	if (!proc->pc_encode(rqstp, &rqstp->rq_res_stream))
+> >  		goto out_encode_err;
+> > =20
+> > +	/*
+> > +	 * Release rq_status_counter setting it to an even value after the rpc
+> > +	 * request has been properly processed.
+> > +	 */
+> > +	smp_store_release(&rqstp->rq_status_counter, rqstp->rq_status_counter +=
+ 1);
+> > +
+> >  	nfsd_cache_update(rqstp, rp, rqstp->rq_cachetype, statp + 1);
+> >  out_cached_reply:
+> >  	return 1;
+> > @@ -1101,3 +1116,128 @@ int nfsd_stats_release(struct inode *inode, struc=
+t file *file)
+> >  	mutex_unlock(&nfsd_mutex);
+> >  	return ret;
+> >  }
+> > +
+> > +static int nfsd_rpc_status_show(struct seq_file *m, void *v)
+> > +{
+> > +	struct inode *inode =3D file_inode(m->file);
+> > +	struct nfsd_net *nn =3D net_generic(inode->i_sb->s_fs_info, nfsd_net_id=
+);
+> > +	int i;
+> > +
+> > +	seq_puts(m, "# XID FLAGS VERS PROC TIMESTAMP SADDR SPORT DADDR DPORT CO=
+MPOUND_OPS\n");
+> > +
+> > +	rcu_read_lock();
+> > +
+> > +	for (i =3D 0; i < nn->nfsd_serv->sv_nrpools; i++) {
+> > +		struct svc_rqst *rqstp;
+> > +
+> > +		list_for_each_entry_rcu(rqstp,
+> > +				&nn->nfsd_serv->sv_pools[i].sp_all_threads,
+> > +				rq_all) {
+> > +			struct {
+> > +				struct sockaddr daddr;
+> > +				struct sockaddr saddr;
+> > +				unsigned long rq_flags;
+> > +				const char *pc_name;
+> > +				ktime_t rq_stime;
+> > +				__be32 rq_xid;
+> > +				u32 rq_vers;
+> > +				/* NFSv4 compund */
+> > +				u32 opnum[NFSD_MAX_OPS_PER_COMPOUND];
+> > +			} rqstp_info;
+> > +			unsigned int status_counter;
+> > +			char buf[RPC_MAX_ADDRBUFLEN];
+> > +			int opcnt =3D 0;
+> > +
+> > +			/*
+> > +			 * Acquire rq_status_counter before parsing the rqst
+> > +			 * fields. rq_status_counter is set to an odd value in
+> > +			 * order to notify the consumers the rqstp fields are
+> > +			 * meaningful.
+> > +			 */
+> > +			status_counter =3D smp_load_acquire(&rqstp->rq_status_counter);
+> > +			if (!(status_counter & 1))
+> > +				continue;
+> > +
+> > +			rqstp_info.rq_xid =3D rqstp->rq_xid;
+> > +			rqstp_info.rq_flags =3D rqstp->rq_flags;
+> > +			rqstp_info.rq_vers =3D rqstp->rq_vers;
+> > +			rqstp_info.pc_name =3D svc_proc_name(rqstp);
+> > +			rqstp_info.rq_stime =3D rqstp->rq_stime;
+> > +			memcpy(&rqstp_info.daddr, svc_daddr(rqstp),
+> > +			       sizeof(struct sockaddr));
+> > +			memcpy(&rqstp_info.saddr, svc_addr(rqstp),
+> > +			       sizeof(struct sockaddr));
+> > +
 > > +#ifdef CONFIG_NFSD_V4
 > > +			if (rqstp->rq_vers =3D=3D NFS4_VERSION &&
 > > +			    rqstp->rq_proc =3D=3D NFSPROC4_COMPOUND) {
@@ -89,14 +304,6 @@ Content-Transfer-Encoding: quoted-printable
 > It's proper to display XIDs as 8-hexit hexadecimal values, as you
 > did before. "0x%08x" is the correct format, as that matches the
 > XID display format used by Wireshark and our tracepoints.
-
-ops, I misunderstood your previous comments. I will address them in v7 if t=
-here
-are no other comments.
-
-Regards,
-Lorenzo
-
 >=20
 >=20
 > > +				   rqstp_info.rq_flags,
@@ -138,6 +345,22 @@ Lorenzo
 > control plane, similar to other network subsystems.
 >=20
 > Any comments, complaints or rotten fruit from anyone?
+
+I think netlink is the best way forward.  'cat' is nice, but not
+necessary.  We have an established path for distributing tools for
+working with nfsd so we get easily get a suitable tool into the hands of
+our users.
+
+The only fruit I have relates to the name "rpc_status", and it probably
+over-ripe rather than rotten :-)
+In the context of RPC, "status" means the success/failure result of a
+request.  That is not what this file provides.  It is a list of active
+requests.  So maybe "active_rpc".
+One advantage of netlink is that the API is based on numbers, not names!
+
+NeilBrown
+
+
 >=20
 >=20
 > > +			seq_puts(m, "\n");
@@ -154,10 +377,10 @@ Lorenzo
 > > + * @inode: entry inode pointer.
 > > + * @file: entry file pointer.
 > > + *
-> > + * nfsd_rpc_status_open is the open routine for nfsd_rpc_status procfs=
- handler.
-> > + * nfsd_rpc_status dumps pending RPC requests info queued into nfs ser=
-ver.
+> > + * nfsd_rpc_status_open is the open routine for nfsd_rpc_status procfs h=
+andler.
+> > + * nfsd_rpc_status dumps pending RPC requests info queued into nfs serve=
+r.
 > > + */
 > > +int nfsd_rpc_status_open(struct inode *inode, struct file *file)
 > > +{
@@ -184,8 +407,8 @@ ver.
 > > index af692bff44ab..83bee19df104 100644
 > > --- a/net/sunrpc/svc.c
 > > +++ b/net/sunrpc/svc.c
-> > @@ -1656,7 +1656,7 @@ const char *svc_proc_name(const struct svc_rqst *=
-rqstp)
+> > @@ -1656,7 +1656,7 @@ const char *svc_proc_name(const struct svc_rqst *rq=
+stp)
 > >  		return rqstp->rq_procinfo->pc_name;
 > >  	return "unknown";
 > >  }
@@ -193,24 +416,12 @@ rqstp)
 > > +EXPORT_SYMBOL_GPL(svc_proc_name);
 > > =20
 > >  /**
-> >   * svc_encode_result_payload - mark a range of bytes as a result paylo=
-ad
+> >   * svc_encode_result_payload - mark a range of bytes as a result payload
 > > --=20
 > > 2.41.0
 > >=20
 >=20
 > --=20
 > Chuck Lever
+>=20
 
---1rgV5QfxaAXrIvUy
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iHUEABYKAB0WIQTquNwa3Txd3rGGn7Y6cBh0uS2trAUCZNUrcgAKCRA6cBh0uS2t
-rBQEAQCoX65i3ycyknJqzmh9hlUJmMgOyG/d2pnZazl9rTlaHQD/VJMiaDUkfLE8
-jBSGmQwrohIesVNgN9fvIWVik5WmOgg=
-=E939
------END PGP SIGNATURE-----
-
---1rgV5QfxaAXrIvUy--
