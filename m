@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 792DCEB64DD
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Aug 2023 21:13:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 95808C41513
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Aug 2023 21:14:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232784AbjHNVNC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 14 Aug 2023 17:13:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39834 "EHLO
+        id S232788AbjHNVNd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 14 Aug 2023 17:13:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54380 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232796AbjHNVM6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2023 17:12:58 -0400
+        with ESMTP id S231593AbjHNVNB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2023 17:13:01 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 292B3173C
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Aug 2023 14:11:29 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 98D9E172D
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Aug 2023 14:11:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1692047488;
+        s=mimecast20190719; t=1692047487;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=PSSlrsFejfUvsXC9yE3hAzAsATkv/23guIVtEFIrrmY=;
-        b=B1dtHeQ4GB+i8N+EyZlIWakGdQpwbvXZjCT+uD4sAmvRCstSpN2URiy3r2V/6iITD3CMqC
-        XfUii++6C5Q24bzZR9P6sfJtoD9cMx9loh4oh62806H5cUt47AJKrzEF+pM0/T1tLgyl3H
-        dpFal48Pvbi1qtFZuO1ngcmTzyPA8O4=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-624-leEMYXNCOcyXP1rcvNUETg-1; Mon, 14 Aug 2023 17:11:24 -0400
-X-MC-Unique: leEMYXNCOcyXP1rcvNUETg-1
+        bh=3CdvUCR67HKTzgA8ywdTr8ioyoTx7c9EJeXX3FgxDN0=;
+        b=AeFdHLxt7KGBulq4CqALmOGcWdyPDKGaoIoPvAF06pkWU+6vu6wbwuvgXU+GBu1dT0ZG/v
+        EH6mKlZ2GRlQevz/w4f8KdqHLQZPWHDrK67w0NgT2cldh4k94fTN/oRtR6MkTYcak0QuQ4
+        LDpyy7PAkdXev/GHBl+uFIxa1gORLek=
+Received: from mimecast-mx02.redhat.com (66.187.233.73 [66.187.233.73]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-622-IbmwCf1LOECBsoU0pJIQdw-1; Mon, 14 Aug 2023 17:11:23 -0400
+X-MC-Unique: IbmwCf1LOECBsoU0pJIQdw-1
 Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id EB5D7185A78B;
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 41E5C1C0E0C0;
         Mon, 14 Aug 2023 21:11:23 +0000 (UTC)
 Received: from fs-i40c-03.fs.lab.eng.bos.redhat.com (fs-i40c-03.fs.lab.eng.bos.redhat.com [10.16.224.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 9FBB5C15BAE;
-        Mon, 14 Aug 2023 21:11:23 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E9DD8C15BAD;
+        Mon, 14 Aug 2023 21:11:22 +0000 (UTC)
 From:   Alexander Aring <aahringo@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     cluster-devel@redhat.com, ocfs2-devel@lists.linux.dev,
@@ -44,9 +44,9 @@ Cc:     cluster-devel@redhat.com, ocfs2-devel@lists.linux.dev,
         rpeterso@redhat.com, agruenba@redhat.com,
         trond.myklebust@hammerspace.com, anna@kernel.org,
         chuck.lever@oracle.com, jlayton@kernel.org
-Subject: [RFCv2 5/7] dlm: use fl_owner from lockd
-Date:   Mon, 14 Aug 2023 17:11:14 -0400
-Message-Id: <20230814211116.3224759-6-aahringo@redhat.com>
+Subject: [RFCv2 3/7] lockd: introduce safe async lock op
+Date:   Mon, 14 Aug 2023 17:11:12 -0400
+Message-Id: <20230814211116.3224759-4-aahringo@redhat.com>
 In-Reply-To: <20230814211116.3224759-1-aahringo@redhat.com>
 References: <20230814211116.3224759-1-aahringo@redhat.com>
 MIME-Version: 1.0
@@ -56,115 +56,129 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch is changing the fl_owner value in case of an nfs lock request
-to not be the pid of lockd. Instead this patch changes it to be the
-owner value that nfs is giving us.
-
-Currently there exists proved problems with this behaviour. One nfsd
-server was created to export a gfs2 filesystem mount. Two nfs clients
-doing a nfs mount of this export. Those two clients should conflict each
-other operating on the same nfs file.
-
-A small test program was written:
-
-int main(int argc, const char *argv[])
-{
-	struct flock fl = {
-		.l_type = F_WRLCK,
-		.l_whence = SEEK_SET,
-		.l_start = 1L,
-		.l_len = 1L,
-	};
-	int fd;
-
-	fd = open("filename", O_RDWR | O_CREAT, 0700);
-	printf("try to lock...\n");
-	fcntl(fd, F_SETLKW, &fl);
-	printf("locked!\n");
-	getc(stdin);
-
-	return 0;
-}
-
-Running on both clients at the same time and don't interrupting by
-pressing any key. It will show that both clients are able to acquire the
-lock which shouldn't be the case. The issue is here that the fl_owner
-value is the same and the lock context of both clients should be
-separated.
-
-This patch lets lockd define how to deal with lock contexts and chose
-hopefully the right fl_owner value. A test after this patch was made and
-the locks conflicts each other which should be the case.
+This patch reverts mostly commit 40595cdc93ed ("nfs: block notification
+on fs with its own ->lock") and introduces an EXPORT_OP_SAFE_ASYNC_LOCK
+export flag to signal that the "own ->lock" implementation supports
+async lock requests. The only main user is DLM that is used by GFS2 and
+OCFS2 filesystem. Those implement their own lock() implementation and
+return FILE_LOCK_DEFERRED as return value. Since commit 40595cdc93ed
+("nfs: block notification on fs with its own ->lock") the DLM
+implementation were never updated. This patch should prepare for DLM
+to set the EXPORT_OP_SAFE_ASYNC_LOCK export flag and update the DLM
+plock implementation regarding to it.
 
 Signed-off-by: Alexander Aring <aahringo@redhat.com>
 ---
- fs/dlm/plock.c | 18 ++++--------------
- 1 file changed, 4 insertions(+), 14 deletions(-)
+ fs/lockd/svclock.c       |  5 ++---
+ fs/nfsd/nfs4state.c      | 13 ++++++++++---
+ include/linux/exportfs.h |  8 ++++++++
+ 3 files changed, 20 insertions(+), 6 deletions(-)
 
-diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
-index 00e1d802a81c..0094fa4004cc 100644
---- a/fs/dlm/plock.c
-+++ b/fs/dlm/plock.c
-@@ -145,6 +145,7 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
- 	op->info.number		= number;
- 	op->info.start		= fl->fl_start;
- 	op->info.end		= fl->fl_end;
-+	op->info.owner = (__u64)(long)fl->fl_owner;
- 	/* async handling */
- 	if (fl->fl_lmops && fl->fl_lmops->lm_grant) {
- 		op_data = kzalloc(sizeof(*op_data), GFP_NOFS);
-@@ -154,9 +155,6 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
- 			goto out;
- 		}
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 1e74a578d7de..b8bd2b841ee1 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -449,9 +449,7 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	    struct nlm_host *host, struct nlm_lock *lock, int wait,
+ 	    struct nlm_cookie *cookie, int reclaim)
+ {
+-#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	struct inode		*inode = nlmsvc_file_inode(file);
+-#endif
+ 	struct nlm_block	*block = NULL;
+ 	int			error;
+ 	int			mode;
+@@ -465,7 +463,8 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 				(long long)lock->fl.fl_end,
+ 				wait);
  
--		/* fl_owner is lockd which doesn't distinguish
--		   processes on the nfs client */
--		op->info.owner	= (__u64) fl->fl_pid;
- 		op_data->callback = fl->fl_lmops->lm_grant;
- 		locks_init_lock(&op_data->flc);
- 		locks_copy_lock(&op_data->flc, fl);
-@@ -168,8 +166,6 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
- 		send_op(op);
- 		rv = FILE_LOCK_DEFERRED;
- 		goto out;
--	} else {
--		op->info.owner	= (__u64)(long) fl->fl_owner;
+-	if (nlmsvc_file_file(file)->f_op->lock) {
++	if (!export_op_support_safe_async_lock(inode->i_sb->s_export_op,
++					       nlmsvc_file_file(file)->f_op)) {
+ 		async_block = wait;
+ 		wait = 0;
  	}
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3aefbad4cc09..14ca06424ff1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -7430,6 +7430,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfsd4_blocked_lock *nbl = NULL;
+ 	struct file_lock *file_lock = NULL;
+ 	struct file_lock *conflock = NULL;
++	struct super_block *sb;
+ 	__be32 status = 0;
+ 	int lkflg;
+ 	int err;
+@@ -7451,6 +7452,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		dprintk("NFSD: nfsd4_lock: permission denied!\n");
+ 		return status;
+ 	}
++	sb = cstate->current_fh.fh_dentry->d_sb;
  
- 	send_op(op);
-@@ -326,10 +322,7 @@ int dlm_posix_unlock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
- 	op->info.number		= number;
- 	op->info.start		= fl->fl_start;
- 	op->info.end		= fl->fl_end;
--	if (fl->fl_lmops && fl->fl_lmops->lm_grant)
--		op->info.owner	= (__u64) fl->fl_pid;
--	else
--		op->info.owner	= (__u64)(long) fl->fl_owner;
-+	op->info.owner = (__u64)(long)fl->fl_owner;
+ 	if (lock->lk_is_new) {
+ 		if (nfsd4_has_session(cstate))
+@@ -7502,7 +7504,9 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	fp = lock_stp->st_stid.sc_file;
+ 	switch (lock->lk_type) {
+ 		case NFS4_READW_LT:
+-			if (nfsd4_has_session(cstate))
++			if (nfsd4_has_session(cstate) ||
++			    export_op_support_safe_async_lock(sb->s_export_op,
++							      nf->nf_file->f_op))
+ 				fl_flags |= FL_SLEEP;
+ 			fallthrough;
+ 		case NFS4_READ_LT:
+@@ -7514,7 +7518,9 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			fl_type = F_RDLCK;
+ 			break;
+ 		case NFS4_WRITEW_LT:
+-			if (nfsd4_has_session(cstate))
++			if (nfsd4_has_session(cstate) ||
++			    export_op_support_safe_async_lock(sb->s_export_op,
++							      nf->nf_file->f_op))
+ 				fl_flags |= FL_SLEEP;
+ 			fallthrough;
+ 		case NFS4_WRITE_LT:
+@@ -7542,7 +7548,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 * for file locks), so don't attempt blocking lock notifications
+ 	 * on those filesystems:
+ 	 */
+-	if (nf->nf_file->f_op->lock)
++	if (!export_op_support_safe_async_lock(sb->s_export_op,
++					       nf->nf_file->f_op))
+ 		fl_flags &= ~FL_SLEEP;
  
- 	if (fl->fl_flags & FL_CLOSE) {
- 		op->info.flags |= DLM_PLOCK_FL_CLOSE;
-@@ -389,7 +382,7 @@ int dlm_posix_cancel(dlm_lockspace_t *lockspace, u64 number, struct file *file,
- 	info.number = number;
- 	info.start = fl->fl_start;
- 	info.end = fl->fl_end;
--	info.owner = (__u64)fl->fl_pid;
-+	info.owner = (__u64)(long)fl->fl_owner;
+ 	nbl = find_or_allocate_block(lock_sop, &fp->fi_fhandle, nn);
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index 11fbd0ee1370..10358a93cdc1 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -3,6 +3,7 @@
+ #define LINUX_EXPORTFS_H 1
  
- 	rv = do_lock_cancel(&info);
- 	switch (rv) {
-@@ -450,10 +443,7 @@ int dlm_posix_get(dlm_lockspace_t *lockspace, u64 number, struct file *file,
- 	op->info.number		= number;
- 	op->info.start		= fl->fl_start;
- 	op->info.end		= fl->fl_end;
--	if (fl->fl_lmops && fl->fl_lmops->lm_grant)
--		op->info.owner	= (__u64) fl->fl_pid;
--	else
--		op->info.owner	= (__u64)(long) fl->fl_owner;
-+	op->info.owner = (__u64)(long)fl->fl_owner;
+ #include <linux/types.h>
++#include <linux/fs.h>
  
- 	send_op(op);
- 	wait_event(recv_wq, (op->done != 0));
+ struct dentry;
+ struct iattr;
+@@ -224,9 +225,16 @@ struct export_operations {
+ 						  atomic attribute updates
+ 						*/
+ #define EXPORT_OP_FLUSH_ON_CLOSE	(0x20) /* fs flushes file data on close */
++#define EXPORT_OP_SAFE_ASYNC_LOCK	(0x40) /* fs can do async lock request */
+ 	unsigned long	flags;
+ };
+ 
++static inline bool export_op_support_safe_async_lock(const struct export_operations *export_ops,
++						     const struct file_operations *f_op)
++{
++	return (export_ops->flags & EXPORT_OP_SAFE_ASYNC_LOCK) || !f_op->lock;
++}
++
+ extern int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
+ 				    int *max_len, struct inode *parent,
+ 				    int flags);
 -- 
 2.31.1
 
