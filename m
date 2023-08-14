@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 04ACBC04FE0
-	for <linux-nfs@archiver.kernel.org>; Mon, 14 Aug 2023 21:13:02 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 54C51C001B0
+	for <linux-nfs@archiver.kernel.org>; Mon, 14 Aug 2023 21:13:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232739AbjHNVMa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 14 Aug 2023 17:12:30 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34448 "EHLO
+        id S232779AbjHNVNB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 14 Aug 2023 17:13:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34456 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232504AbjHNVMO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2023 17:12:14 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9FA19172B
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Aug 2023 14:11:26 -0700 (PDT)
+        with ESMTP id S232792AbjHNVMz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2023 17:12:55 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E8482173B
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Aug 2023 14:11:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1692047485;
+        s=mimecast20190719; t=1692047487;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=+ha7qooP5xHAJkp/n5Tt2zY2sO83T4RUyDIe+tf4ioM=;
-        b=N23cmaecstyXzLgcpmbGgO6G+V01KZ/BNBnKaI6x5wOgN4jzHfq1I14DZTTIcmfwRuTkBR
-        jp3DAuqaZkaXR5n3jBKVsIFFmNcSBKsTkDS97Tmk3O6TN7HQSS4T2+zhf/4nXeoyGLAoy5
-        pi+wHwDgzZ6z1rXG/tTZCpE6F40kEhs=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-632-zltn7uhJN3WG1u-waD-sIw-1; Mon, 14 Aug 2023 17:11:23 -0400
-X-MC-Unique: zltn7uhJN3WG1u-waD-sIw-1
+        bh=tZEXFed81ekvMweSZpvZmhvnw/W3DW6CK17WR1HloMI=;
+        b=TnA+b6TAWuu/JyB2YJNDh51HFBdwNcm4l7aIIgT2otlWp8y40yF1szAYAYit80OTAVY0Ln
+        pqvocIQrNb4hzsUUXVekX8MGDJJ1pC+t0UCK/cR9TIDUpuf30UsziXpdJpyK/299bENhiS
+        ZOnM0YXYxqIB1571SQOfPjc5+QFORFM=
+Received: from mimecast-mx02.redhat.com (66.187.233.73 [66.187.233.73]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-607-OwVOreIAOrWvXEOKEJzbog-1; Mon, 14 Aug 2023 17:11:24 -0400
+X-MC-Unique: OwVOreIAOrWvXEOKEJzbog-1
 Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id E13F28007A4;
-        Mon, 14 Aug 2023 21:11:22 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 4BE3F3C0253A;
+        Mon, 14 Aug 2023 21:11:24 +0000 (UTC)
 Received: from fs-i40c-03.fs.lab.eng.bos.redhat.com (fs-i40c-03.fs.lab.eng.bos.redhat.com [10.16.224.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 95902C15BAD;
-        Mon, 14 Aug 2023 21:11:22 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 0000CC15BAD;
+        Mon, 14 Aug 2023 21:11:23 +0000 (UTC)
 From:   Alexander Aring <aahringo@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     cluster-devel@redhat.com, ocfs2-devel@lists.linux.dev,
@@ -44,9 +44,9 @@ Cc:     cluster-devel@redhat.com, ocfs2-devel@lists.linux.dev,
         rpeterso@redhat.com, agruenba@redhat.com,
         trond.myklebust@hammerspace.com, anna@kernel.org,
         chuck.lever@oracle.com, jlayton@kernel.org
-Subject: [RFCv2 2/7] lockd: FILE_LOCK_DEFERRED only on FL_SLEEP
-Date:   Mon, 14 Aug 2023 17:11:11 -0400
-Message-Id: <20230814211116.3224759-3-aahringo@redhat.com>
+Subject: [RFCv2 6/7] dlm: use FL_SLEEP to check if blocking request
+Date:   Mon, 14 Aug 2023 17:11:15 -0400
+Message-Id: <20230814211116.3224759-7-aahringo@redhat.com>
 In-Reply-To: <20230814211116.3224759-1-aahringo@redhat.com>
 References: <20230814211116.3224759-1-aahringo@redhat.com>
 MIME-Version: 1.0
@@ -56,84 +56,78 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch removes to handle non-blocking lock requests as asynchronous
-lock request returning FILE_LOCK_DEFERRED. When fl_lmops and lm_grant()
-is set and a non-blocking lock request returns FILE_LOCK_DEFERRED will
-end in an WARNING to signal the user the misusage of the API.
+This patch uses the FL_SLEEP flag in struct file_lock to check if it's a
+blocking request in case if the request coming from nfs lockd process
+indicated by lm_grant() is set.
 
-The reason why we moving to make non-blocking lock request as
-synchronized call is that we already doing this behaviour for unlock or
-cancellation as well. Those are POSIX lock operations which are handled
-in an synchronized way and waiting for an answer. For non-blocking lock
-requests the answer will probably arrive in the same time as unlock or
-cancellation operations as those are trylock operations only.
-
-In case of a blocking lock request we need to have it asynchronously
-because the time when the lock request getting granted is unknown.
+IF FL_SLEEP is set a asynchronous blocking request is being made and
+it's waiting for lm_grant() callback being called to signal the lock was
+granted. If it's not set a synchronous non-blocking request is being made.
 
 Signed-off-by: Alexander Aring <aahringo@redhat.com>
 ---
- fs/lockd/svclock.c | 39 +++++++--------------------------------
- 1 file changed, 7 insertions(+), 32 deletions(-)
+ fs/dlm/plock.c | 38 ++++++++++++++++++++++----------------
+ 1 file changed, 22 insertions(+), 16 deletions(-)
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 7d63524bdb81..1e74a578d7de 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -440,31 +440,6 @@ static void nlmsvc_freegrantargs(struct nlm_rqst *call)
- 	locks_release_private(&call->a_args.lock.fl);
- }
+diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
+index 0094fa4004cc..524771002a2f 100644
+--- a/fs/dlm/plock.c
++++ b/fs/dlm/plock.c
+@@ -140,7 +140,6 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
+ 	op->info.optype		= DLM_PLOCK_OP_LOCK;
+ 	op->info.pid		= fl->fl_pid;
+ 	op->info.ex		= (fl->fl_type == F_WRLCK);
+-	op->info.wait		= IS_SETLKW(cmd);
+ 	op->info.fsid		= ls->ls_global_id;
+ 	op->info.number		= number;
+ 	op->info.start		= fl->fl_start;
+@@ -148,24 +147,31 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
+ 	op->info.owner = (__u64)(long)fl->fl_owner;
+ 	/* async handling */
+ 	if (fl->fl_lmops && fl->fl_lmops->lm_grant) {
+-		op_data = kzalloc(sizeof(*op_data), GFP_NOFS);
+-		if (!op_data) {
+-			dlm_release_plock_op(op);
+-			rv = -ENOMEM;
+-			goto out;
+-		}
++		if (fl->fl_flags & FL_SLEEP) {
++			op_data = kzalloc(sizeof(*op_data), GFP_NOFS);
++			if (!op_data) {
++				dlm_release_plock_op(op);
++				rv = -ENOMEM;
++				goto out;
++			}
  
--/*
-- * Deferred lock request handling for non-blocking lock
-- */
--static __be32
--nlmsvc_defer_lock_rqst(struct svc_rqst *rqstp, struct nlm_block *block)
--{
--	__be32 status = nlm_lck_denied_nolocks;
--
--	block->b_flags |= B_QUEUED;
--
--	nlmsvc_insert_block(block, NLM_TIMEOUT);
--
--	block->b_cache_req = &rqstp->rq_chandle;
--	if (rqstp->rq_chandle.defer) {
--		block->b_deferred_req =
--			rqstp->rq_chandle.defer(block->b_cache_req);
--		if (block->b_deferred_req != NULL)
--			status = nlm_drop_reply;
--	}
--	dprintk("lockd: nlmsvc_defer_lock_rqst block %p flags %d status %d\n",
--		block, block->b_flags, ntohl(status));
--
--	return status;
--}
--
- /*
-  * Attempt to establish a lock, and if it can't be granted, block it
-  * if required.
-@@ -569,14 +544,14 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 			ret = async_block ? nlm_lck_blocked : nlm_lck_denied;
- 			goto out_cb_mutex;
- 		case FILE_LOCK_DEFERRED:
--			block->b_flags |= B_PENDING_CALLBACK;
-+			/* lock requests without waiters are handled in
-+			 * a non async way. Let assert this to inform
-+			 * the user about a API violation.
-+			 */
-+			WARN_ON_ONCE(!wait);
+-		op_data->callback = fl->fl_lmops->lm_grant;
+-		locks_init_lock(&op_data->flc);
+-		locks_copy_lock(&op_data->flc, fl);
+-		op_data->fl		= fl;
+-		op_data->file	= file;
++			op->info.wait = 1;
++			op_data->callback = fl->fl_lmops->lm_grant;
++			locks_init_lock(&op_data->flc);
++			locks_copy_lock(&op_data->flc, fl);
++			op_data->fl		= fl;
++			op_data->file	= file;
  
--			if (wait)
--				break;
--			/* Filesystem lock operation is in progress
--			   Add it to the queue waiting for callback */
--			ret = nlmsvc_defer_lock_rqst(rqstp, block);
--			goto out_cb_mutex;
-+			block->b_flags |= B_PENDING_CALLBACK;
-+			break;
- 		case -EDEADLK:
- 			nlmsvc_remove_block(block);
- 			ret = nlm_deadlock;
+-		op->data = op_data;
++			op->data = op_data;
+ 
+-		send_op(op);
+-		rv = FILE_LOCK_DEFERRED;
+-		goto out;
++			send_op(op);
++			rv = FILE_LOCK_DEFERRED;
++			goto out;
++		} else {
++			op->info.wait = 0;
++		}
++	} else {
++		op->info.wait = IS_SETLKW(cmd);
+ 	}
+ 
+ 	send_op(op);
 -- 
 2.31.1
 
