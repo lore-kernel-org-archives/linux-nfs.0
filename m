@@ -2,93 +2,233 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 306FCC30639
-	for <linux-nfs@archiver.kernel.org>; Thu, 17 Aug 2023 15:07:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E9B7C3063E
+	for <linux-nfs@archiver.kernel.org>; Thu, 17 Aug 2023 15:18:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233213AbjHQPGk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Aug 2023 11:06:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52936 "EHLO
+        id S1353076AbjHQPSC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Aug 2023 11:18:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58748 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1352772AbjHQPG0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Aug 2023 11:06:26 -0400
-Received: from mail-lf1-x12a.google.com (mail-lf1-x12a.google.com [IPv6:2a00:1450:4864:20::12a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2BDB2106
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Aug 2023 08:06:25 -0700 (PDT)
-Received: by mail-lf1-x12a.google.com with SMTP id 2adb3069b0e04-4fe4762173bso12726135e87.3
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Aug 2023 08:06:25 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=linux-foundation.org; s=google; t=1692284783; x=1692889583;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:from:to:cc:subject:date:message-id:reply-to;
-        bh=K3VUBr4xVNyWd1q3Dkt0BFJj2tgIgj7jnvk0NM4tyvY=;
-        b=M0GzecahLZwhpk2812uTrtIR55hTDGmj8HklJsIPELL3S6X/KFYthmLocxDPKvrMwA
-         TslRe/y2pAgT1zRqrgY9iD1N7hEw4TSXUQwxW2Gv2Ksuycn/xQB9Ehe3nCvJK+V2DWtu
-         xE3nbNBl1d92aI0DHCQoylfxZ/pGQikpe5Vko=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1692284783; x=1692889583;
-        h=cc:to:subject:message-id:date:from:in-reply-to:references
-         :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=K3VUBr4xVNyWd1q3Dkt0BFJj2tgIgj7jnvk0NM4tyvY=;
-        b=ERx8lskrJMepK3KtXc1ZiYDWrSAPfGZbVx7m/RGUXz6Z7HKM1KEcg7eNoJ5UrjTvDE
-         xuooPXTjODioC0oi9y+3zM/MbatPGd55532SJRVosCZTjRa1i+KzsGm3FKkwOqHB8Caq
-         7mIr982Scdyq4yoifUpvCOnTJpoKtTv+NUCGgESJyBuH0iaDiwllfqdgH73iSqE9nh2J
-         ZpoqOlnwdu6juIGVuyEvL+TtUo2G+PV8bhd2EFdKpz2rU7pFMwFL9CqgVRwfAus6c2xX
-         c/ijUl8L1bAcZABI+H3661hxEp37eh7uuOJMEav6+ioOEGQIEVE35lmGwlaIIqLqP3x2
-         wOlA==
-X-Gm-Message-State: AOJu0YyhaUzeqzNShXScds+1ClbptNnlcQMdulxtjgG7amLy6K5u5H8+
-        xKisiqyyhML2dcvqhnMH6tjKUuEballGPdLgo/ezz9kI
-X-Google-Smtp-Source: AGHT+IG5znpLQTQz36JOfKRF2kKfvvTUZYq3dGsFVzVYriLKmH4WOsVuXvNT95XyGf0SkCrzKbFCYg==
-X-Received: by 2002:a05:6512:4024:b0:4fd:f590:1ff7 with SMTP id br36-20020a056512402400b004fdf5901ff7mr5010572lfb.40.1692284783086;
-        Thu, 17 Aug 2023 08:06:23 -0700 (PDT)
-Received: from mail-lj1-f176.google.com (mail-lj1-f176.google.com. [209.85.208.176])
-        by smtp.gmail.com with ESMTPSA id b15-20020ac2562f000000b004ff96c09b47sm530041lff.260.2023.08.17.08.06.22
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 17 Aug 2023 08:06:22 -0700 (PDT)
-Received: by mail-lj1-f176.google.com with SMTP id 38308e7fff4ca-2b95d5ee18dso118560511fa.1
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Aug 2023 08:06:22 -0700 (PDT)
-X-Received: by 2002:a2e:9ad0:0:b0:2b9:e623:c2d8 with SMTP id
- p16-20020a2e9ad0000000b002b9e623c2d8mr4525544ljj.44.1692284365734; Thu, 17
- Aug 2023 07:59:25 -0700 (PDT)
+        with ESMTP id S1353111AbjHQPRp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Aug 2023 11:17:45 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 468482722
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Aug 2023 08:17:42 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id C3A346743A
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Aug 2023 15:17:41 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 34CCCC433CA
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Aug 2023 15:17:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1692285461;
+        bh=kM+qmXOR0I9hFc/lqYsInxLWatGevJgHNrXR7VcGwKA=;
+        h=References:In-Reply-To:From:Date:Subject:To:Cc:From;
+        b=LbWHAQRYoh08WEl4a8JbOV76uWNF5Mq/qNiFN1cWEoAikPGtSmbB/bSiKeLVxD12e
+         mLsD7KsRHNfs5dfo3+SyQS0cLT7V2sOezbkYgRx1iENBJ/j4yxBl6xn57eTsa5rUu+
+         yuJ3T5S2+we2ctBnujzU8U0sNhzg2aygCvh04of4ElAQesPCw495ALTE/paWpMk+7j
+         IhDk78Lv8OlDJcsssCYCvgEq/2tHpapZdr5YR6nA/u3zFZGfQP/SL2vcnREAw7/DJq
+         y16aSn8Xzsski825bem608b9HfnuMqc/x4r8ddAfKCeUC1FwYaFX/nbnu4N/qsD3Lj
+         oSBPaYN+etUBw==
+Received: by mail-qt1-f170.google.com with SMTP id d75a77b69052e-4085ee5b1e6so5046771cf.0
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Aug 2023 08:17:41 -0700 (PDT)
+X-Gm-Message-State: AOJu0YzcFb83dSBPlYikW6IaPoKlPDVCRqocNT9b4YwsIiT4l+aAH2aI
+        tW/Kyyw6e47oS21xqIei4rPEVOAGIhZDkJtGs/M=
+X-Google-Smtp-Source: AGHT+IGrvJeQ+z2i4ZyZSrDuIthq4wt0G+C/DcvlNo2Z0s3LHxErxiZTWcw9xZmM1W3Ce9aXK4jQ3MBLEptAlpNGw/U=
+X-Received: by 2002:a05:622a:130a:b0:3f8:2a37:20f with SMTP id
+ v10-20020a05622a130a00b003f82a37020fmr3774175qtk.34.1692285460245; Thu, 17
+ Aug 2023 08:17:40 -0700 (PDT)
 MIME-Version: 1.0
-References: <499058D2-E924-464F-BBFE-C15EE6028787@oracle.com>
- <CAHk-=whnm7RyZfy2s4BOdkMz=dMrPJRnH79KVH8rtC1vrV9G1w@mail.gmail.com> <27B358DC-D32E-46F5-B611-A179C6AB2B90@oracle.com>
-In-Reply-To: <27B358DC-D32E-46F5-B611-A179C6AB2B90@oracle.com>
-From:   Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Thu, 17 Aug 2023 16:59:08 +0200
-X-Gmail-Original-Message-ID: <CAHk-=whqj8mRjZWCriZnbUyvtnNwwUJE1Zbg8eandWjk059rkw@mail.gmail.com>
-Message-ID: <CAHk-=whqj8mRjZWCriZnbUyvtnNwwUJE1Zbg8eandWjk059rkw@mail.gmail.com>
-Subject: Re: [GIT PULL] one more nfsd fix for 6.5-rc
-To:     Chuck Lever III <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        open list <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jlayton@kernel.org>
+References: <9ee56f62652c3d338aff809f70e7941dfc284bf9.camel@kernel.org>
+ <7C595ADA-E841-44F7-918A-3A46A55D546B@oracle.com> <2fc1f9bf5fdc25acbcabaf4266584f0857bc4b19.camel@kernel.org>
+In-Reply-To: <2fc1f9bf5fdc25acbcabaf4266584f0857bc4b19.camel@kernel.org>
+From:   Anna Schumaker <anna@kernel.org>
+Date:   Thu, 17 Aug 2023 11:17:24 -0400
+X-Gmail-Original-Message-ID: <CAFX2Jf=gq-U464_SrebSwCMOU+g0Vcx9Us7SPn8JQEoA6s27DQ@mail.gmail.com>
+Message-ID: <CAFX2Jf=gq-U464_SrebSwCMOU+g0Vcx9Us7SPn8JQEoA6s27DQ@mail.gmail.com>
+Subject: Re: xfstests results over NFS
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     Chuck Lever III <chuck.lever@oracle.com>,
+        Trond Myklebust <trondmy@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Neil Brown <neilb@suse.de>,
+        "Kornievskaia, Olga" <Olga.Kornievskaia@netapp.com>,
+        Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>
 Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, 17 Aug 2023 at 16:55, Chuck Lever III <chuck.lever@oracle.com> wrote:
-> > On Aug 17, 2023, at 10:49 AM, Linus Torvalds <torvalds@linux-foundation.org> wrote:
+On Thu, Aug 17, 2023 at 10:22=E2=80=AFAM Jeff Layton <jlayton@kernel.org> w=
+rote:
+>
+> On Thu, 2023-08-17 at 14:04 +0000, Chuck Lever III wrote:
 > >
-> > I'm sure it's right, but it really smells odd to set that initial
-> > offset not when the bvec is created, but long afterwards, just before
-> > it is used.
+> > > On Aug 17, 2023, at 7:21 AM, Jeff Layton <jlayton@kernel.org> wrote:
+> > >
+> > > I finally got my kdevops (https://github.com/linux-kdevops/kdevops) t=
+est
+> > > rig working well enough to get some publishable results. To run fstes=
+ts,
+> > > kdevops will spin up a server and (in this case) 2 clients to run
+> > > xfstests' auto group. One client mounts with default options, and the
+> > > other uses NFSv3.
+> > >
+> > > I tested 3 kernels:
+> > >
+> > > v6.4.0 (stock release)
+> > > 6.5.0-rc6-g4853c74bd7ab (Linus' tree as of a couple of days ago)
+> > > 6.5.0-rc6-next-20230816-gef66bf8aeb91 (linux-next as of yesterday mor=
+ning)
+> > >
+> > > Here are the results summary of all 3:
+> > >
+> > > KERNEL:    6.4.0
+> > > CPUS:      8
+> > >
+> > > nfs_v3: 727 tests, 12 failures, 569 skipped, 14863 seconds
+> > >  Failures: generic/053 generic/099 generic/105 generic/124
+> > >    generic/193 generic/258 generic/294 generic/318 generic/319
+> > >    generic/444 generic/528 generic/529
+> > > nfs_default: 727 tests, 18 failures, 452 skipped, 21899 seconds
+> > >  Failures: generic/053 generic/099 generic/105 generic/186
+> > >    generic/187 generic/193 generic/294 generic/318 generic/319
+> > >    generic/357 generic/444 generic/486 generic/513 generic/528
+> > >    generic/529 generic/578 generic/675 generic/688
+> > > Totals: 1454 tests, 1021 skipped, 30 failures, 0 errors, 35096s
+> > >
+> > > KERNEL:    6.5.0-rc6-g4853c74bd7ab
+> > > CPUS:      8
+> > >
+> > > nfs_v3: 727 tests, 9 failures, 570 skipped, 14775 seconds
+> > >  Failures: generic/053 generic/099 generic/105 generic/258
+> > >    generic/294 generic/318 generic/319 generic/444 generic/529
+> > > nfs_default: 727 tests, 16 failures, 453 skipped, 22326 seconds
+> > >  Failures: generic/053 generic/099 generic/105 generic/186
+> > >    generic/187 generic/294 generic/318 generic/319 generic/357
+> > >    generic/444 generic/486 generic/513 generic/529 generic/578
+> > >    generic/675 generic/688
+> > > Totals: 1454 tests, 1023 skipped, 25 failures, 0 errors, 35396s
+> > >
+> > > KERNEL:    6.5.0-rc6-next-20230816-gef66bf8aeb91
+> > > CPUS:      8
+> > >
+> > > nfs_v3: 727 tests, 9 failures, 570 skipped, 14657 seconds
+> > >  Failures: generic/053 generic/099 generic/105 generic/258
+> > >    generic/294 generic/318 generic/319 generic/444 generic/529
+> > > nfs_default: 727 tests, 18 failures, 453 skipped, 21757 seconds
+> > >  Failures: generic/053 generic/099 generic/105 generic/186
+> > >    generic/187 generic/294 generic/318 generic/319 generic/357
+> > >    generic/444 generic/486 generic/513 generic/529 generic/578
+> > >    generic/675 generic/683 generic/684 generic/688
+> > > Totals: 1454 tests, 1023 skipped, 27 failures, 0 errors, 34870s
+
+As long as we're sharing results ... here is what I'm seeing with a
+6.5-rc6 client & server:
+
+anna@gouda ~ % xfstestsdb xunit list --results --runid 1741 --color=3Dnone
++------+----------------------+---------+----------+------+------+------+--=
+-----+
+|  run | device               | xunit   | hostname | pass | fail |
+skip |  time |
++------+----------------------+---------+----------+------+------+------+--=
+-----+
+| 1741 | server:/srv/xfs/test | tcp-3   | client   |  125 |    4 |
+464 | 447 s |
+| 1741 | server:/srv/xfs/test | tcp-4.0 | client   |  117 |   11 |
+465 | 478 s |
+| 1741 | server:/srv/xfs/test | tcp-4.1 | client   |  119 |   12 |
+462 | 404 s |
+| 1741 | server:/srv/xfs/test | tcp-4.2 | client   |  212 |   18 |
+363 | 564 s |
++------+----------------------+---------+----------+------+------+------+--=
+-----+
+
+anna@gouda ~ % xfstestsdb show --failure 1741 --color=3Dnone
++-------------+---------+---------+---------+---------+
+|    testcase | tcp-3   | tcp-4.0 | tcp-4.1 | tcp-4.2 |
++-------------+---------+---------+---------+---------+
+| generic/053 | passed  | failure | failure | failure |
+| generic/099 | passed  | failure | failure | failure |
+| generic/105 | passed  | failure | failure | failure |
+| generic/140 | skipped | skipped | skipped | failure |
+| generic/188 | skipped | skipped | skipped | failure |
+| generic/258 | failure | passed  | passed  | failure |
+| generic/294 | failure | failure | failure | failure |
+| generic/318 | passed  | failure | failure | failure |
+| generic/319 | passed  | failure | failure | failure |
+| generic/357 | skipped | skipped | skipped | failure |
+| generic/444 | failure | failure | failure | failure |
+| generic/465 | passed  | failure | failure | failure |
+| generic/513 | skipped | skipped | skipped | failure |
+| generic/529 | passed  | failure | failure | failure |
+| generic/604 | passed  | passed  | failure | passed  |
+| generic/675 | skipped | skipped | skipped | failure |
+| generic/688 | skipped | skipped | skipped | failure |
+| generic/697 | passed  | failure | failure | failure |
+|     nfs/002 | failure | failure | failure | failure |
++-------------+---------+---------+---------+---------+
+
+
+> > >
+> > > With NFSv4.2, v6.4.0 has 2 extra failures that the current mainline
+> > > kernel doesn't:
+> > >
+> > >    generic/193 (some sort of setattr problem)
+> > >    generic/528 (known problem with btime handling in client that has =
+been fixed)
+> > >
+> > > While I haven't investigated, I'm assuming the 193 bug is also someth=
+ing
+> > > that has been fixed in recent kernels. There are also 3 other NFSv3
+> > > tests that started passing since v6.4.0. I haven't looked into those.
+> > >
+> > > With the linux-next kernel there are 2 new regressions:
+> > >
+> > >    generic/683
+> > >    generic/684
+> > >
+> > > Both of these look like problems with setuid/setgid stripping, and st=
+ill
+> > > need to be investigated. I have more verbose result info on the test
+> > > failures if anyone is interested.
+
+Interesting that I'm not seeing the 683 & 684 failures. What type of
+filesystem is your server exporting?
+
 > >
-> > Is there some reason why 'bv_offset' isn't initialized when the bvec is created?
+> > 100% awesome sauce. Out of curiosity:
+> >
+> > Does kdevops have a way of publishing (via an autonomous web site)
+> > and archiving these results?
+> >
 >
-> Yes:
+> There's nothing much prewritten for this. There is some support for
+> sending emails when you run a "ci" loop. I need to do more investigation
+> here.
+
+xfstests has an option to generate an xunit file, which can help here.
+I use with my own archiving tool to stick everything into a sqlite
+database (https://git.nowheycreamery.com/anna/xfstestsdb).
+
 >
-> https://lore.kernel.org/linux-nfs/7c9421cc4b92dee76cc7560c50a4a0ab3fb1ef0d.camel@kernel.org/T/#t
+> Note that there has been some parallel effort toward CI in the SMB space
+> using buildbot. It may worthwhile to consider combining efforts somehow.
 
-Ugh, how ugly.
+It might be nice to at least see what they're doing. If they have
+something that works well, then setting up something similar might be
+a good idea.
 
-> But also note that this fix will get replaced in v6.6
+Anna
+
 >
-> I just wanted to ensure that v6.5 wasn't broken. It's a little late in the
-> cycle to apply 383bc8bbc.
-
-Sounds good to me. Thanks for the explanation.
-
-              Linus
+> > Does the "auto" group include tests that require a SCRATCH_DEV?
+> >
+>
+> Yes. The nfs server is configured with 2 exported fs', so I have it
+> mounting a directory under one as "test" and the other as "scratch".
+> --
+> Jeff Layton <jlayton@kernel.org>
