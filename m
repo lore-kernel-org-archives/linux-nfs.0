@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 12A69C71134
-	for <linux-nfs@archiver.kernel.org>; Fri, 18 Aug 2023 01:46:11 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3E1ECC3DA66
+	for <linux-nfs@archiver.kernel.org>; Fri, 18 Aug 2023 01:46:43 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1357064AbjHRBpk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 17 Aug 2023 21:45:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40112 "EHLO
+        id S1357109AbjHRBqM (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 17 Aug 2023 21:46:12 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47286 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1357117AbjHRBpj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Aug 2023 21:45:39 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9AB7A2713
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Aug 2023 18:45:37 -0700 (PDT)
+        with ESMTP id S1357104AbjHRBpw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Aug 2023 21:45:52 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 933972723
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Aug 2023 18:45:47 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 554B61F891;
-        Fri, 18 Aug 2023 01:45:36 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 550D421874;
+        Fri, 18 Aug 2023 01:45:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1692323136; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1692323146; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=xqOiy0GjgXH5apEJMrmO0UfFG1mbS645ZltcqxBi2e4=;
-        b=gUh0jBPMisVdzMPdjfon+HDwlAm8mkOu3jVET/0Tk/OP02X+ulfjTvCvoOaZMS83Hx4kVa
-        7YW+rSQgAQvohTlOdk18hYrLVi+goJHwGawKAFiqs0QfJsZ6hXJDGm/6F1z4NUV+WdaW8d
-        PPxRgqd/vQyjvoLCyGl2iIaDxPxhSOg=
+        bh=wenzKYKy4l5SwtDmWkKmRPquhXdm1pp9r577v34WdIE=;
+        b=QqTgmWiUPpy7TJMAe9Rbn4+0vuoutZvuo+6TptezRdocozIzm4gSkPtgFfkzYsHEbT1q1x
+        36O259JaPTWW9f3nT7Ce2QEt29PHDqtrRCbOUQ9020V8XsvQcCgvK2nYaQH9rnwNQG5iE8
+        e0DGBudy1yy/eFzC6Ax9BMFT+emvDxo=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1692323136;
+        s=susede2_ed25519; t=1692323146;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=xqOiy0GjgXH5apEJMrmO0UfFG1mbS645ZltcqxBi2e4=;
-        b=pTtSsaJzWBuPaVBlFcfa/nAJNVbs2IXMYFwtYXPO/RViqKlerrBVt1ChjjpE3cQDYYRgSo
-        98GilPlgtveAoGBA==
+        bh=wenzKYKy4l5SwtDmWkKmRPquhXdm1pp9r577v34WdIE=;
+        b=E7xsNjCrvTZGarLBJ34nCwYhaSTbqWh+uKV8YOQLq23FN2OnTZD2GRJtPyEf0x/Ap2VemF
+        8M3oAHNHvrloChDg==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 1906E1353E;
-        Fri, 18 Aug 2023 01:45:34 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 13B691353E;
+        Fri, 18 Aug 2023 01:45:44 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id kceDLz7N3mR8ZAAAMHmgww
-        (envelope-from <neilb@suse.de>); Fri, 18 Aug 2023 01:45:34 +0000
+        id XbkHLkjN3mSKZAAAMHmgww
+        (envelope-from <neilb@suse.de>); Fri, 18 Aug 2023 01:45:44 +0000
 From:   NeilBrown <neilb@suse.de>
 To:     Chuck Lever <chuck.lever@oracle.com>,
         Jeff Layton <jlayton@kernel.org>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/7] SUNRPC: only have one thread waking up at a time
-Date:   Fri, 18 Aug 2023 11:45:07 +1000
-Message-Id: <20230818014512.26880-3-neilb@suse.de>
+Subject: [PATCH 4/7] SUNRPC: use lwq for sp_sockets - renamed to sp_xprts
+Date:   Fri, 18 Aug 2023 11:45:09 +1000
+Message-Id: <20230818014512.26880-5-neilb@suse.de>
 X-Mailer: git-send-email 2.40.1
 In-Reply-To: <20230818014512.26880-1-neilb@suse.de>
 References: <20230818014512.26880-1-neilb@suse.de>
@@ -64,264 +64,180 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Currently if several items of work become available in quick succession,
-that number of threads (if available) will be woken.  By the time some
-of them wake up another thread that was already cache-warm might have
-come along and completed the work.  Anecdotal evidence suggests as many
-as 15% of wakes find nothing to do once they get to the point of
-looking.
+lwq avoids using back pointers in lists, and uses less locking.
+This introduces a new spinlock, but the other one will be removed in a
+future patch.
 
-This patch changes svc_pool_wake_idle_thread() to wake the first thread
-on the queue but NOT remove it.  Subsequent calls will wake the same
-thread.  Once that thread starts it will dequeue itself and after
-dequeueing some work to do, it will wake the next thread if there is more
-work ready.  This results in a more orderly increase in the number of
-busy threads.
-
-As a bonus, this allows us to reduce locking around the idle queue.
-svc_pool_wake_idle_thread() no longer needs to take a lock (beyond
-rcu_read_lock()) as it doesn't manipulate the queue, it just looks at
-the first item.
-
-The thread itself can avoid locking by using the new
-llist_del_first_this() interface.  This will safely remove the thread
-itself if it is the head.  If it isn't the head, it will do nothing.
-If multiple threads call this concurrently only one will succeed.  The
-others will do nothing, so no corruption can result.
-
-If a thread wakes up and finds that it cannot dequeue itself that means
-either
-- that it wasn't woken because it was the head of the queue.  Maybe the
-  freezer woke it.  In that case it can go back to sleep (after trying
-  to freeze of course).
-- some other thread found there was nothing to do very recently, and
-  placed itself on the head of the queue in front of this thread.
-  It must check again after placing itself there, so it can be deemed to
-  be responsible for any pending work, and this thread can go back to
-  sleep until woken.
-
-No code ever tests for busy threads any more.  Only each thread itself
-cares if it is busy.  So functions to set and test the busy status are
-no longer needed.
+For svc_clean_up_xprts(), we now dequeue the entire queue, walk it to
+remove and process the xprts that need cleaning up, then re-enqueue the
+remaining queue.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- include/linux/llist.h      |  2 ++
- include/linux/sunrpc/svc.h | 24 --------------------
- lib/llist.c                | 27 ++++++++++++++++++++++
- net/sunrpc/svc.c           | 15 +++++--------
- net/sunrpc/svc_xprt.c      | 46 ++++++++++++++++++++++----------------
- 5 files changed, 62 insertions(+), 52 deletions(-)
+ include/linux/sunrpc/svc.h      |  3 +-
+ include/linux/sunrpc/svc_xprt.h |  2 +-
+ net/sunrpc/svc.c                |  2 +-
+ net/sunrpc/svc_xprt.c           | 57 ++++++++++-----------------------
+ 4 files changed, 21 insertions(+), 43 deletions(-)
 
-diff --git a/include/linux/llist.h b/include/linux/llist.h
-index 85bda2d02d65..d8b1b73f3df0 100644
---- a/include/linux/llist.h
-+++ b/include/linux/llist.h
-@@ -248,6 +248,8 @@ static inline struct llist_node *__llist_del_all(struct llist_head *head)
- }
- 
- extern struct llist_node *llist_del_first(struct llist_head *head);
-+extern struct llist_node *llist_del_first_this(struct llist_head *head,
-+					       struct llist_node *this);
- 
- struct llist_node *llist_reverse_order(struct llist_node *head);
- 
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 5216f95411e3..dafa362b4fdd 100644
+index dafa362b4fdd..8b2bd034a760 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -266,30 +266,6 @@ enum {
- 	RQ_DATA,		/* request has data */
- };
+@@ -17,6 +17,7 @@
+ #include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/auth.h>
+ #include <linux/sunrpc/svcauth.h>
++#include <linux/sunrpc/svc_lwq.h>
+ #include <linux/wait.h>
+ #include <linux/mm.h>
+ #include <linux/pagevec.h>
+@@ -34,7 +35,7 @@
+ struct svc_pool {
+ 	unsigned int		sp_id;	    	/* pool id; also node id on NUMA */
+ 	spinlock_t		sp_lock;	/* protects all fields */
+-	struct list_head	sp_sockets;	/* pending sockets */
++	struct lwq		sp_xprts;	/* pending transports */
+ 	unsigned int		sp_nrthreads;	/* # of threads in pool */
+ 	struct list_head	sp_all_threads;	/* all server threads */
+ 	struct llist_head	sp_idle_threads; /* idle server threads */
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index fa55d12dc765..8e20cd60e2e7 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -54,7 +54,7 @@ struct svc_xprt {
+ 	const struct svc_xprt_ops *xpt_ops;
+ 	struct kref		xpt_ref;
+ 	struct list_head	xpt_list;
+-	struct list_head	xpt_ready;
++	struct lwq_node		xpt_ready;
+ 	unsigned long		xpt_flags;
  
--/**
-- * svc_thread_set_busy - mark a thread as busy
-- * @rqstp: the thread which is now busy
-- *
-- * By convention a thread is busy if rq_idle.next points to rq_idle.
-- * This ensures it is not on the idle list.
-- */
--static inline void svc_thread_set_busy(struct svc_rqst *rqstp)
--{
--	rqstp->rq_idle.next = &rqstp->rq_idle;
--}
--
--/**
-- * svc_thread_busy - check if a thread as busy
-- * @rqstp: the thread which might be busy
-- *
-- * By convention a thread is busy if rq_idle.next points to rq_idle.
-- * This ensures it is not on the idle list.
-- */
--static inline bool svc_thread_busy(struct svc_rqst *rqstp)
--{
--	return rqstp->rq_idle.next == &rqstp->rq_idle;
--}
--
- #define SVC_NET(rqst) (rqst->rq_xprt ? rqst->rq_xprt->xpt_net : rqst->rq_bc_net)
- 
- /*
-diff --git a/lib/llist.c b/lib/llist.c
-index 6e668fa5a2c6..7e8a13a13586 100644
---- a/lib/llist.c
-+++ b/lib/llist.c
-@@ -65,6 +65,33 @@ struct llist_node *llist_del_first(struct llist_head *head)
- }
- EXPORT_SYMBOL_GPL(llist_del_first);
- 
-+/**
-+ * llist_del_first_this - delete given entry of lock-less list if it is first
-+ * @head:	the head for your lock-less list
-+ * @this:	a list entry.
-+ *
-+ * If head of the list is given entry, delete and return it, else
-+ * return %NULL.
-+ *
-+ * Providing the caller has exclusive access to @this, multiple callers can
-+ * safely call this concurrently with multiple llist_add() callers.
-+ */
-+struct llist_node *llist_del_first_this(struct llist_head *head,
-+					struct llist_node *this)
-+{
-+	struct llist_node *entry, *next;
-+
-+	entry = smp_load_acquire(&head->first);
-+	do {
-+		if (entry != this)
-+			return NULL;
-+		next = READ_ONCE(entry->next);
-+	} while (!try_cmpxchg(&head->first, &entry, next));
-+
-+	return entry;
-+}
-+EXPORT_SYMBOL_GPL(llist_del_first_this);
-+
- /**
-  * llist_reverse_order - reverse order of a llist chain
-  * @head:	first item of the list to be reversed
+ 	struct svc_serv		*xpt_server;	/* service for transport */
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index addbf28ea50a..3267d740235e 100644
+index 3267d740235e..63cddb8cb08d 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -642,7 +642,6 @@ svc_rqst_alloc(struct svc_serv *serv, struct svc_pool *pool, int node)
+@@ -508,7 +508,7 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 				i, serv->sv_name);
  
- 	folio_batch_init(&rqstp->rq_fbatch);
- 
--	svc_thread_set_busy(rqstp);
- 	rqstp->rq_server = serv;
- 	rqstp->rq_pool = pool;
- 
-@@ -704,18 +703,16 @@ void svc_pool_wake_idle_thread(struct svc_pool *pool)
- 	struct llist_node *ln;
- 
- 	rcu_read_lock();
--	spin_lock_bh(&pool->sp_lock);
--	ln = llist_del_first(&pool->sp_idle_threads);
--	spin_unlock_bh(&pool->sp_lock);
-+	ln = READ_ONCE(pool->sp_idle_threads.first);
- 	if (ln) {
- 		rqstp = llist_entry(ln, struct svc_rqst, rq_idle);
--		svc_thread_set_busy(rqstp);
--
- 		WRITE_ONCE(rqstp->rq_qtime, ktime_get());
--		wake_up_process(rqstp->rq_task);
-+		if (!task_is_running(rqstp->rq_task)) {
-+			wake_up_process(rqstp->rq_task);
-+			trace_svc_wake_up(rqstp->rq_task->pid);
-+			percpu_counter_inc(&pool->sp_threads_woken);
-+		}
- 		rcu_read_unlock();
--		percpu_counter_inc(&pool->sp_threads_woken);
--		trace_svc_wake_up(rqstp->rq_task->pid);
- 		return;
- 	}
- 	rcu_read_unlock();
+ 		pool->sp_id = i;
+-		INIT_LIST_HEAD(&pool->sp_sockets);
++		lwq_init(&pool->sp_xprts);
+ 		INIT_LIST_HEAD(&pool->sp_all_threads);
+ 		init_llist_head(&pool->sp_idle_threads);
+ 		spin_lock_init(&pool->sp_lock);
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 81327001e074..397ca12299a2 100644
+index 397ca12299a2..39843c064361 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -732,26 +732,21 @@ static void svc_rqst_wait_for_work(struct svc_rqst *rqstp)
- 	if (rqst_should_sleep(rqstp)) {
- 		set_current_state(TASK_IDLE | TASK_FREEZABLE);
- 		llist_add(&rqstp->rq_idle, &pool->sp_idle_threads);
-+		/* Maybe there were no idle threads when some work
-+		 * became ready and so nothing was woken.  We've just
-+		 * become idle so someone can do the work - maybe us.
-+		 * So check again for work to do.
-+		 */
-+		if (likely(rqst_should_sleep(rqstp)))
-+			schedule();
+@@ -201,7 +201,6 @@ void svc_xprt_init(struct net *net, struct svc_xprt_class *xcl,
+ 	kref_init(&xprt->xpt_ref);
+ 	xprt->xpt_server = serv;
+ 	INIT_LIST_HEAD(&xprt->xpt_list);
+-	INIT_LIST_HEAD(&xprt->xpt_ready);
+ 	INIT_LIST_HEAD(&xprt->xpt_deferred);
+ 	INIT_LIST_HEAD(&xprt->xpt_users);
+ 	mutex_init(&xprt->xpt_mutex);
+@@ -472,9 +471,7 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ 	pool = svc_pool_for_cpu(xprt->xpt_server);
  
--		if (unlikely(!rqst_should_sleep(rqstp)))
--			/* maybe there were no idle threads when some work
--			 * became ready and so nothing was woken.  We've just
--			 * become idle so someone can to the work - maybe us.
--			 * But we cannot reliably remove ourselves from the
--			 * idle list - we can only remove the first task which
--			 * might be us, and might not.
--			 * So remove and wake it, then schedule().  If it was
--			 * us, we won't sleep.  If it is some other thread, they
--			 * will do the work.
-+		while (llist_del_first_this(&pool->sp_idle_threads,
-+					    &rqstp->rq_idle) == NULL) {
-+			/* Cannot remove myself, so some other thread
-+			 * must have queued themselves after finding
-+			 * no work to do, so they have taken responsibility
-+			 * for any outstanding work.
- 			 */
--			svc_pool_wake_idle_thread(pool);
+ 	percpu_counter_inc(&pool->sp_sockets_queued);
+-	spin_lock_bh(&pool->sp_lock);
+-	list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
+-	spin_unlock_bh(&pool->sp_lock);
++	lwq_enqueue(&xprt->xpt_ready, &pool->sp_xprts);
+ 
+ 	svc_pool_wake_idle_thread(pool);
+ }
+@@ -487,18 +484,9 @@ static struct svc_xprt *svc_xprt_dequeue(struct svc_pool *pool)
+ {
+ 	struct svc_xprt	*xprt = NULL;
+ 
+-	if (list_empty(&pool->sp_sockets))
+-		goto out;
 -
--		/* We mustn't continue while on the idle list, and we
--		 * cannot remove outselves reliably.  The only "work"
--		 * we can do while on the idle list is to freeze.
--		 * So loop until someone removes us
--		 */
--		while (!svc_thread_busy(rqstp)) {
- 			schedule();
- 			set_current_state(TASK_IDLE | TASK_FREEZABLE);
- 		}
-@@ -841,6 +836,15 @@ static void svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
- 	svc_xprt_release(rqstp);
+-	spin_lock_bh(&pool->sp_lock);
+-	if (likely(!list_empty(&pool->sp_sockets))) {
+-		xprt = list_first_entry(&pool->sp_sockets,
+-					struct svc_xprt, xpt_ready);
+-		list_del_init(&xprt->xpt_ready);
++	xprt = lwq_dequeue(&pool->sp_xprts, struct svc_xprt, xpt_ready);
++	if (xprt)
+ 		svc_xprt_get(xprt);
+-	}
+-	spin_unlock_bh(&pool->sp_lock);
+-out:
+ 	return xprt;
  }
  
-+static void wake_next(struct svc_rqst *rqstp)
-+{
-+	if (!rqst_should_sleep(rqstp))
-+		/* More work pending after I dequeued some,
-+		 * wake another worker
-+		 */
-+		svc_pool_wake_idle_thread(rqstp->rq_pool);
-+}
+@@ -708,7 +696,7 @@ rqst_should_sleep(struct svc_rqst *rqstp)
+ 		return false;
+ 
+ 	/* was a socket queued? */
+-	if (!list_empty(&pool->sp_sockets))
++	if (!lwq_empty(&pool->sp_xprts))
+ 		return false;
+ 
+ 	/* are we shutting down? */
+@@ -1052,7 +1040,6 @@ static void svc_delete_xprt(struct svc_xprt *xprt)
+ 
+ 	spin_lock_bh(&serv->sv_lock);
+ 	list_del_init(&xprt->xpt_list);
+-	WARN_ON_ONCE(!list_empty(&xprt->xpt_ready));
+ 	if (test_bit(XPT_TEMP, &xprt->xpt_flags))
+ 		serv->sv_tmpcnt--;
+ 	spin_unlock_bh(&serv->sv_lock);
+@@ -1103,36 +1090,26 @@ static int svc_close_list(struct svc_serv *serv, struct list_head *xprt_list, st
+ 	return ret;
+ }
+ 
+-static struct svc_xprt *svc_dequeue_net(struct svc_serv *serv, struct net *net)
++static void svc_clean_up_xprts(struct svc_serv *serv, struct net *net)
+ {
+-	struct svc_pool *pool;
+ 	struct svc_xprt *xprt;
+-	struct svc_xprt *tmp;
+ 	int i;
+ 
+ 	for (i = 0; i < serv->sv_nrpools; i++) {
+-		pool = &serv->sv_pools[i];
+-
+-		spin_lock_bh(&pool->sp_lock);
+-		list_for_each_entry_safe(xprt, tmp, &pool->sp_sockets, xpt_ready) {
+-			if (xprt->xpt_net != net)
+-				continue;
+-			list_del_init(&xprt->xpt_ready);
+-			spin_unlock_bh(&pool->sp_lock);
+-			return xprt;
++		struct svc_pool *pool = &serv->sv_pools[i];
++		struct llist_node *q, **t1, *t2;
 +
- /**
-  * svc_recv - Receive and process the next request on any transport
-  * @rqstp: an idle RPC service thread
-@@ -860,13 +864,16 @@ void svc_recv(struct svc_rqst *rqstp)
++		q = lwq_dequeue_all(&pool->sp_xprts);
++		lwq_for_each_safe(xprt, t1, t2, &q, xpt_ready) {
++			if (xprt->xpt_net == net) {
++				set_bit(XPT_CLOSE, &xprt->xpt_flags);
++				svc_delete_xprt(xprt);
++				xprt = NULL;
++			}
+ 		}
+-		spin_unlock_bh(&pool->sp_lock);
+-	}
+-	return NULL;
+-}
  
- 	clear_bit(SP_TASK_PENDING, &pool->sp_flags);
+-static void svc_clean_up_xprts(struct svc_serv *serv, struct net *net)
+-{
+-	struct svc_xprt *xprt;
+-
+-	while ((xprt = svc_dequeue_net(serv, net))) {
+-		set_bit(XPT_CLOSE, &xprt->xpt_flags);
+-		svc_delete_xprt(xprt);
++		if (q)
++			lwq_enqueue_batch(q, &pool->sp_xprts);
+ 	}
+ }
  
--	if (svc_thread_should_stop(rqstp))
-+	if (svc_thread_should_stop(rqstp)) {
-+		wake_next(rqstp);
- 		return;
-+	}
- 
- 	rqstp->rq_xprt = svc_xprt_dequeue(pool);
- 	if (rqstp->rq_xprt) {
- 		struct svc_xprt *xprt = rqstp->rq_xprt;
- 
-+		wake_next(rqstp);
- 		/* Normally we will wait up to 5 seconds for any required
- 		 * cache information to be provided.  When there are no
- 		 * idle threads, we reduce the wait time.
-@@ -891,6 +898,7 @@ void svc_recv(struct svc_rqst *rqstp)
- 		if (req) {
- 			list_del(&req->rq_bc_list);
- 			spin_unlock_bh(&serv->sv_cb_lock);
-+			wake_next(rqstp);
- 
- 			svc_process_bc(req, rqstp);
- 			return;
 -- 
 2.40.1
 
