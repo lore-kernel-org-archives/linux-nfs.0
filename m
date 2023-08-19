@@ -2,43 +2,46 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F06FBEE49A5
-	for <linux-nfs@archiver.kernel.org>; Sun, 20 Aug 2023 00:22:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5BDD7EE49AD
+	for <linux-nfs@archiver.kernel.org>; Sun, 20 Aug 2023 00:22:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229512AbjHTAWR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 19 Aug 2023 20:22:17 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40430 "EHLO
+        id S229559AbjHTAWP (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 19 Aug 2023 20:22:15 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45566 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229526AbjHTAVj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Aug 2023 20:21:39 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 06CEBE10BC
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 14:39:14 -0700 (PDT)
+        with ESMTP id S229879AbjHTAVk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Aug 2023 20:21:40 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 42CE0E28F5
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 14:39:15 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 95C7D61523
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 21:39:13 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 85D56C433C7;
-        Sat, 19 Aug 2023 21:39:12 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id C93C4619E0
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 21:39:14 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CE240C433C7;
+        Sat, 19 Aug 2023 21:39:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1692481152;
-        bh=Fuw9fDL1uSQacwGQef40IwdHBgarFsnXK8S0mj29vYE=;
-        h=From:To:Cc:Subject:Date:From;
-        b=Ri1Pk7O4pQ6JM7ry1U1NFPHgKkgtm3TwxZpCc3jtnsJbrVGnwZdwUNOCKv99qP2an
-         RV+XDwrzP/NOp/8U6QJHpCY7dRAXciSb/1h3AyhGMbg1iAGJrPWOLCkvNoMOdJ45V9
-         ZyoQD4mMz1O8PHn8tspwIMCMZJBAg5U5/wp2jL/2r/IQ+vC5IKfYtvMvbpdLH3m/Lh
-         ZuYnOS7OqHH4NWYS4KzNJjUDowNvZvGEMF+nQHftthjlD3K0+WqDXVrBDTxTI2Luqw
-         Ignjxz/MuXEZVOd7uI5Vhh5v1AjICOOwyTgk0ziYwIYemG8TOCsTLRKQ3ogjSD/9pE
-         uc2EbCOqJg+WA==
+        s=k20201202; t=1692481154;
+        bh=s8z4CSMnk0bp6fS9JenTXfCYBKPawhJCOW+NdDsvPYY=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=KPzu6sDvg7zf7QFkGtrAyOma8OW8YpU/WLSxfrglIyaV0DAZw7/e+qwXYeJOqzrHF
+         mMKL/OylobQmjJ2xdNI2VbVHSNZagjUupRRzS7VQBQzrvsiHHjx0Qyn07iyA8yXkZX
+         49s4Hqr/SDPIO1Os16rg38nHiRsQO/YFB+RplWSlmX6TDnLTV8HbPddRP6ZSQpbJ0f
+         o2oOree8NYkrqyoAvFO4NaSZLjjLqxX+kA9v4tymeW7me68MS3iCYtF1ln22qSZz3z
+         hL/7evAKAhs2vd/e4Q/mPXAIzAQQqqjRkT4UKPsGGF74l6U5+n7610TbL2oQky4NK4
+         cKC1INVi7oW0g==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/5] Improve failover times for pNFS mirroring
-Date:   Sat, 19 Aug 2023 17:32:20 -0400
-Message-ID: <20230819213225.731214-1-trondmy@kernel.org>
+Subject: [PATCH v2 2/5] SUNRPC: Refactor and simplify connect timeout
+Date:   Sat, 19 Aug 2023 17:32:22 -0400
+Message-ID: <20230819213225.731214-3-trondmy@kernel.org>
 X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230819213225.731214-2-trondmy@kernel.org>
+References: <20230819213225.731214-1-trondmy@kernel.org>
+ <20230819213225.731214-2-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -47,35 +50,67 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-When a data server goes down, it can currently take 3 minutes for the
-RPC connection attempt to give up, and return control to the NFS layer.
-If the file is mirrored, we usually want to fail the attempt to the
-downed data server much earlier, and retry using one of the other
-mirrors.
-This patchset sets the connect timeout to be closer to the I/O timeout
-value for the case of pNFS to NFSv3 data servers.
+Instead of requiring the requests to redrive the connection several
+times, just let the TCP connect code manage it now that we've adjusted
+the TCP_SYNCNT value.
 
-v2:
- - Don't override connect timeouts in rpc_clnt_add_xprt
- - Don't override specified connect timeouts at setup
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ net/sunrpc/xprtsock.c | 34 +++++++++++++++++++++-------------
+ 1 file changed, 21 insertions(+), 13 deletions(-)
 
-Trond Myklebust (5):
-  SUNRPC: Set the TCP_SYNCNT to match the socket timeout
-  SUNRPC: Refactor and simplify connect timeout
-  SUNRPC: Allow specification of TCP client connect timeout at setup
-  SUNRPC: Don't override connect timeouts in rpc_clnt_add_xprt()
-  NFS/pNFS: Set the connect timeout for the pNFS flexfiles driver
-
- fs/nfs/client.c             |  2 ++
- fs/nfs/internal.h           |  2 ++
- fs/nfs/nfs3client.c         |  3 ++
- fs/nfs/pnfs_nfs.c           |  3 ++
- include/linux/sunrpc/clnt.h |  2 ++
- include/linux/sunrpc/xprt.h |  2 ++
- net/sunrpc/clnt.c           |  7 +++++
- net/sunrpc/xprtsock.c       | 55 +++++++++++++++++++++++++++----------
- 8 files changed, 61 insertions(+), 15 deletions(-)
-
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 47d0b6a8c32e..e558f0024fe5 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2266,6 +2266,25 @@ static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
+ 		tcp_sock_set_syncnt(sock->sk, t - 1);
+ }
+ 
++static void xs_tcp_do_set_connect_timeout(struct rpc_xprt *xprt,
++					  unsigned long connect_timeout)
++{
++	struct sock_xprt *transport =
++		container_of(xprt, struct sock_xprt, xprt);
++	struct rpc_timeout to;
++	unsigned long initval;
++
++	memcpy(&to, xprt->timeout, sizeof(to));
++	/* Arbitrary lower limit */
++	initval = max_t(unsigned long, connect_timeout, XS_TCP_INIT_REEST_TO);
++	to.to_initval = initval;
++	to.to_maxval = initval;
++	to.to_retries = 0;
++	memcpy(&transport->tcp_timeout, &to, sizeof(transport->tcp_timeout));
++	xprt->timeout = &transport->tcp_timeout;
++	xprt->connect_timeout = connect_timeout;
++}
++
+ static void xs_tcp_set_connect_timeout(struct rpc_xprt *xprt,
+ 		unsigned long connect_timeout,
+ 		unsigned long reconnect_timeout)
+@@ -2277,19 +2296,8 @@ static void xs_tcp_set_connect_timeout(struct rpc_xprt *xprt,
+ 	spin_lock(&xprt->transport_lock);
+ 	if (reconnect_timeout < xprt->max_reconnect_timeout)
+ 		xprt->max_reconnect_timeout = reconnect_timeout;
+-	if (connect_timeout < xprt->connect_timeout) {
+-		memcpy(&to, xprt->timeout, sizeof(to));
+-		initval = DIV_ROUND_UP(connect_timeout, to.to_retries + 1);
+-		/* Arbitrary lower limit */
+-		if (initval <  XS_TCP_INIT_REEST_TO << 1)
+-			initval = XS_TCP_INIT_REEST_TO << 1;
+-		to.to_initval = initval;
+-		to.to_maxval = initval;
+-		memcpy(&transport->tcp_timeout, &to,
+-				sizeof(transport->tcp_timeout));
+-		xprt->timeout = &transport->tcp_timeout;
+-		xprt->connect_timeout = connect_timeout;
+-	}
++	if (connect_timeout < xprt->connect_timeout)
++		xs_tcp_do_set_connect_timeout(xprt, connect_timeout);
+ 	set_bit(XPRT_SOCK_UPD_TIMEOUT, &transport->sock_state);
+ 	spin_unlock(&xprt->transport_lock);
+ }
 -- 
 2.41.0
 
