@@ -2,48 +2,43 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 29D78EE49A6
-	for <linux-nfs@archiver.kernel.org>; Sun, 20 Aug 2023 00:22:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F06FBEE49A5
+	for <linux-nfs@archiver.kernel.org>; Sun, 20 Aug 2023 00:22:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229479AbjHTAWQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 19 Aug 2023 20:22:16 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55096 "EHLO
+        id S229512AbjHTAWR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 19 Aug 2023 20:22:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40430 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229880AbjHTAVk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Aug 2023 20:21:40 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B19D7E1C08
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 14:39:16 -0700 (PDT)
+        with ESMTP id S229526AbjHTAVj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Aug 2023 20:21:39 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 06CEBE10BC
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 14:39:14 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 43F35619E1
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 21:39:16 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2A1A7C433C9;
-        Sat, 19 Aug 2023 21:39:15 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 95C7D61523
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 21:39:13 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 85D56C433C7;
+        Sat, 19 Aug 2023 21:39:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1692481155;
-        bh=8Vg7YLpqSpUemOlkTUZSjO5s6OVfvObnyW4C4J4K9zM=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=Wuw+BC7BBBAJaaoeryuAPOFxnYPHMcQNUorGda//lmGkV8sD+Hp91iiM6c2/d5Ysl
-         S71RRjTNZ8mieEyzGb7D2aeU7SvH+/Q+YVJo18kMNBEbQNikt0LE5wFZQ1xFE8j2MS
-         9p5fyEKCPL2J1AH9pSWBL7WcCcmICbzJEm8Dmo60WuTg7bSyS5xTFD5nGag5ZRcSIu
-         TQKQ1XKRvbVou/DmBoQPViUJpM1VKc81qO9fh+HmCzh5akSdu3CxfAAepA0kXFMyEW
-         qFxnFbYLIgcamPJ4X87fm/TH+UAB1qNdkg8epdRCCXpZMW8V78C/VbmxerZVgdrcTZ
-         1jD8JSw68Mgeg==
+        s=k20201202; t=1692481152;
+        bh=Fuw9fDL1uSQacwGQef40IwdHBgarFsnXK8S0mj29vYE=;
+        h=From:To:Cc:Subject:Date:From;
+        b=Ri1Pk7O4pQ6JM7ry1U1NFPHgKkgtm3TwxZpCc3jtnsJbrVGnwZdwUNOCKv99qP2an
+         RV+XDwrzP/NOp/8U6QJHpCY7dRAXciSb/1h3AyhGMbg1iAGJrPWOLCkvNoMOdJ45V9
+         ZyoQD4mMz1O8PHn8tspwIMCMZJBAg5U5/wp2jL/2r/IQ+vC5IKfYtvMvbpdLH3m/Lh
+         ZuYnOS7OqHH4NWYS4KzNJjUDowNvZvGEMF+nQHftthjlD3K0+WqDXVrBDTxTI2Luqw
+         Ignjxz/MuXEZVOd7uI5Vhh5v1AjICOOwyTgk0ziYwIYemG8TOCsTLRKQ3ogjSD/9pE
+         uc2EbCOqJg+WA==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/5] SUNRPC: Don't override connect timeouts in rpc_clnt_add_xprt()
-Date:   Sat, 19 Aug 2023 17:32:24 -0400
-Message-ID: <20230819213225.731214-5-trondmy@kernel.org>
+Subject: [PATCH v2 0/5] Improve failover times for pNFS mirroring
+Date:   Sat, 19 Aug 2023 17:32:20 -0400
+Message-ID: <20230819213225.731214-1-trondmy@kernel.org>
 X-Mailer: git-send-email 2.41.0
-In-Reply-To: <20230819213225.731214-4-trondmy@kernel.org>
-References: <20230819213225.731214-1-trondmy@kernel.org>
- <20230819213225.731214-2-trondmy@kernel.org>
- <20230819213225.731214-3-trondmy@kernel.org>
- <20230819213225.731214-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -52,30 +47,35 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If the caller specifies the connect timeouts in the arguments to
-rpc_clnt_add_xprt(), then we shouldn't override them.
+When a data server goes down, it can currently take 3 minutes for the
+RPC connection attempt to give up, and return control to the NFS layer.
+If the file is mirrored, we usually want to fail the attempt to the
+downed data server much earlier, and retry using one of the other
+mirrors.
+This patchset sets the connect timeout to be closer to the I/O timeout
+value for the case of pNFS to NFSv3 data servers.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- net/sunrpc/clnt.c | 5 +++++
- 1 file changed, 5 insertions(+)
+v2:
+ - Don't override connect timeouts in rpc_clnt_add_xprt
+ - Don't override specified connect timeouts at setup
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 9edebfdb5ce1..943dc3897378 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -3071,6 +3071,11 @@ int rpc_clnt_add_xprt(struct rpc_clnt *clnt,
- 	}
- 	xprt->resvport = resvport;
- 	xprt->reuseport = reuseport;
-+
-+	if (xprtargs->connect_timeout)
-+		connect_timeout = xprtargs->connect_timeout;
-+	if (xprtargs->reconnect_timeout)
-+		reconnect_timeout = xprtargs->reconnect_timeout;
- 	if (xprt->ops->set_connect_timeout != NULL)
- 		xprt->ops->set_connect_timeout(xprt,
- 				connect_timeout,
+Trond Myklebust (5):
+  SUNRPC: Set the TCP_SYNCNT to match the socket timeout
+  SUNRPC: Refactor and simplify connect timeout
+  SUNRPC: Allow specification of TCP client connect timeout at setup
+  SUNRPC: Don't override connect timeouts in rpc_clnt_add_xprt()
+  NFS/pNFS: Set the connect timeout for the pNFS flexfiles driver
+
+ fs/nfs/client.c             |  2 ++
+ fs/nfs/internal.h           |  2 ++
+ fs/nfs/nfs3client.c         |  3 ++
+ fs/nfs/pnfs_nfs.c           |  3 ++
+ include/linux/sunrpc/clnt.h |  2 ++
+ include/linux/sunrpc/xprt.h |  2 ++
+ net/sunrpc/clnt.c           |  7 +++++
+ net/sunrpc/xprtsock.c       | 55 +++++++++++++++++++++++++++----------
+ 8 files changed, 61 insertions(+), 15 deletions(-)
+
 -- 
 2.41.0
 
