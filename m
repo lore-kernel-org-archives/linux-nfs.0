@@ -2,43 +2,48 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C0FF3EE49A5
-	for <linux-nfs@archiver.kernel.org>; Sun, 20 Aug 2023 00:21:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 29D78EE49A6
+	for <linux-nfs@archiver.kernel.org>; Sun, 20 Aug 2023 00:22:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229596AbjHTAUj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sat, 19 Aug 2023 20:20:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35484 "EHLO
+        id S229479AbjHTAWQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 19 Aug 2023 20:22:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55096 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229821AbjHTAU0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Aug 2023 20:20:26 -0400
+        with ESMTP id S229880AbjHTAVk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Aug 2023 20:21:40 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 003C0D126A
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 14:28:37 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B19D7E1C08
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 14:39:16 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 8A6F260E94
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 21:28:37 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 879A9C433C7;
-        Sat, 19 Aug 2023 21:28:36 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 43F35619E1
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 21:39:16 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2A1A7C433C9;
+        Sat, 19 Aug 2023 21:39:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1692480516;
-        bh=7zGditNX7Nj9VUZRBIyNKnaE8BS/nTNg6AKoFQEbADc=;
-        h=From:To:Cc:Subject:Date:From;
-        b=CTLJvJ89Mj6wlsaVBQ2jEY+D1JzV8aFlwS+5bc2KcycO8Yq1vBMwx0aQxxboPEboP
-         ihmZ21woB5nk4mVZBSCkM5gzayi7khsat1HiXiWqsp7GvItLnHAekOhTQcv7PchVhH
-         UFCrKSOuoy9r4BCtKLavRiSGbK4y+J41IudqdHlp8NdHMq0PjVpB7Y35vul+/diQaW
-         wopyFDfLLjYmVIqtzFjZ4YXPuCmoBJ0eYas4aa+nP2wlCs0upNrL26WLiQ3QpXS/zl
-         dM5wkM4Z5R1s4rQJ9wxL+9iFRSBq3wixXbOwQM1IE75YaaIQ0sCaOpxaham/h0tqql
-         8zSYnQa0gZNww==
+        s=k20201202; t=1692481155;
+        bh=8Vg7YLpqSpUemOlkTUZSjO5s6OVfvObnyW4C4J4K9zM=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=Wuw+BC7BBBAJaaoeryuAPOFxnYPHMcQNUorGda//lmGkV8sD+Hp91iiM6c2/d5Ysl
+         S71RRjTNZ8mieEyzGb7D2aeU7SvH+/Q+YVJo18kMNBEbQNikt0LE5wFZQ1xFE8j2MS
+         9p5fyEKCPL2J1AH9pSWBL7WcCcmICbzJEm8Dmo60WuTg7bSyS5xTFD5nGag5ZRcSIu
+         TQKQ1XKRvbVou/DmBoQPViUJpM1VKc81qO9fh+HmCzh5akSdu3CxfAAepA0kXFMyEW
+         qFxnFbYLIgcamPJ4X87fm/TH+UAB1qNdkg8epdRCCXpZMW8V78C/VbmxerZVgdrcTZ
+         1jD8JSw68Mgeg==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2] NFS: Fix a potential data corruption
-Date:   Sat, 19 Aug 2023 17:22:14 -0400
-Message-ID: <20230819212214.728823-1-trondmy@kernel.org>
+Subject: [PATCH v2 4/5] SUNRPC: Don't override connect timeouts in rpc_clnt_add_xprt()
+Date:   Sat, 19 Aug 2023 17:32:24 -0400
+Message-ID: <20230819213225.731214-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230819213225.731214-4-trondmy@kernel.org>
+References: <20230819213225.731214-1-trondmy@kernel.org>
+ <20230819213225.731214-2-trondmy@kernel.org>
+ <20230819213225.731214-3-trondmy@kernel.org>
+ <20230819213225.731214-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -47,59 +52,30 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-We must ensure that the subrequests are joined back into the head before
-we can retransmit a request. If the head was not on the commit lists,
-because the server wrote it synchronously, we still need to add it back
-to the retransmission list.
-Add a call that mirrors the effect of nfs_cancel_remove_inode() for
-O_DIRECT.
+If the caller specifies the connect timeouts in the arguments to
+rpc_clnt_add_xprt(), then we shouldn't override them.
 
-Fixes: ed5d588fe47f ("NFS: Try to join page groups before an O_DIRECT retransmission")
-Cc: stable@vger.kernel.org
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
-v2 - when adding the header back, we need to bump the refcount twice
+ net/sunrpc/clnt.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
- fs/nfs/direct.c | 20 +++++++++++++++++++-
- 1 file changed, 19 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index aaffaaa336cc..47d892a1d363 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -472,13 +472,31 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
- 	return result;
- }
- 
-+static void nfs_direct_add_page_head(struct list_head *list,
-+				     struct nfs_page *req)
-+{
-+	struct nfs_page *head = req->wb_head;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 9edebfdb5ce1..943dc3897378 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -3071,6 +3071,11 @@ int rpc_clnt_add_xprt(struct rpc_clnt *clnt,
+ 	}
+ 	xprt->resvport = resvport;
+ 	xprt->reuseport = reuseport;
 +
-+	if (!list_empty(&head->wb_list) || !nfs_lock_request(head))
-+		return;
-+	if (!list_empty(&head->wb_list)) {
-+		nfs_unlock_request(head);
-+		return;
-+	}
-+	list_add(&head->wb_list, list);
-+	kref_get(&head->wb_kref);
-+	kref_get(&head->wb_kref);
-+}
-+
- static void nfs_direct_join_group(struct list_head *list, struct inode *inode)
- {
- 	struct nfs_page *req, *subreq;
- 
- 	list_for_each_entry(req, list, wb_list) {
--		if (req->wb_head != req)
-+		if (req->wb_head != req) {
-+			nfs_direct_add_page_head(&req->wb_list, req);
- 			continue;
-+		}
- 		subreq = req->wb_this_page;
- 		if (subreq == req)
- 			continue;
++	if (xprtargs->connect_timeout)
++		connect_timeout = xprtargs->connect_timeout;
++	if (xprtargs->reconnect_timeout)
++		reconnect_timeout = xprtargs->reconnect_timeout;
+ 	if (xprt->ops->set_connect_timeout != NULL)
+ 		xprt->ops->set_connect_timeout(xprt,
+ 				connect_timeout,
 -- 
 2.41.0
 
