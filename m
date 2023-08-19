@@ -2,47 +2,49 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EDEDEEE49A6
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DD5F6EE49A5
 	for <linux-nfs@archiver.kernel.org>; Sun, 20 Aug 2023 00:19:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229487AbjHTATD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S229542AbjHTATD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Sat, 19 Aug 2023 20:19:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43022 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51390 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229689AbjHTASj (ORCPT
+        with ESMTP id S229695AbjHTASj (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Aug 2023 20:18:39 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DE489E28F7
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 14:39:15 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 0EBCEE28FA
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 14:39:17 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 7573E60AB9
-        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 21:39:15 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7AEDFC433C8;
-        Sat, 19 Aug 2023 21:39:14 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id E3FEE60304
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Aug 2023 21:39:16 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EC559C433C8;
+        Sat, 19 Aug 2023 21:39:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1692481154;
-        bh=yLnfJs0YfhcZXlPCWYoc0+cFQb1558aLBHuxwac0FYA=;
+        s=k20201202; t=1692481156;
+        bh=9F0mLVE6Px02gqZkud+RH0Oi+Kkcqan4L3icyQXLzm0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=ERRHlnygm44ACBkx6QvJxmYvw4oecGtf5BUD9xIf70ObQshn6DdwpkuJlgmxG1F+1
-         qZ84bOUdItJ8YWifiHiIp6iEnNksqHqxWBqQVnWvzOEI7riJZuPilzIXvo7IrPq0lg
-         /WTR/kYveCv/RbFSadntolHU+gagZiaq0OdJTu2iSuI2l1/8yRnsSgUTNk0A/QNAS0
-         LCtXtSrHEGI9A5yBTL4Mtzle9qjNkiVU8ok6PpNAO7JAkhusl0BpV6cmWLGk4Kje37
-         mwWoV0qOdng9fLIZ48Ve/98JQ+pClPGv5YdLh5iyEqjgQ3p1rA4ab2FotsSJGWS1jS
-         hZw8zsMfkOd/A==
+        b=II3K8K4EbnzoAEdVTqeJYtQdyvTpS7tKYA2TtZPpryM3GfO0PJLDKtGhueKsHQNB0
+         9KfE2q/1oAre0iMwbGmB56WNyFtT1MtLAt8WVwQ539bW4TSz1ov4D3TyoDFtXQoDkG
+         hVE75wP6ExGoZjaoTJNImAM8wvxCLdi3ehUeLKkdrCplncoxP56Z95Z46meqaRGdHF
+         6ghwlrmK+XmaiHkvnY1pyh85nLCxZPSfyuPw2RAheOPqm6UyvecTioC+GUQDXGSzE6
+         2CVkJmYDZpF8UZqZQV7Kol9zNQaYmAlQlGqA9qzDU9pkyhOMYlOVdtZErUOQTzVSXl
+         aEaybopBJkqWA==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/5] SUNRPC: Allow specification of TCP client connect timeout at setup
-Date:   Sat, 19 Aug 2023 17:32:23 -0400
-Message-ID: <20230819213225.731214-4-trondmy@kernel.org>
+Subject: [PATCH v2 5/5] NFS/pNFS: Set the connect timeout for the pNFS flexfiles driver
+Date:   Sat, 19 Aug 2023 17:32:25 -0400
+Message-ID: <20230819213225.731214-6-trondmy@kernel.org>
 X-Mailer: git-send-email 2.41.0
-In-Reply-To: <20230819213225.731214-3-trondmy@kernel.org>
+In-Reply-To: <20230819213225.731214-5-trondmy@kernel.org>
 References: <20230819213225.731214-1-trondmy@kernel.org>
  <20230819213225.731214-2-trondmy@kernel.org>
  <20230819213225.731214-3-trondmy@kernel.org>
+ <20230819213225.731214-4-trondmy@kernel.org>
+ <20230819213225.731214-5-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -51,88 +53,86 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-When we create a TCP transport, the connect timeout parameters are
-currently fixed to be 90s. This is problematic in the pNFS flexfiles
-case, where we may have multiple mirrors, and we would like to fail over
-quickly to the next mirror if a data server is down.
-
-This patch adds the ability to specify the connection parameters at RPC
-client creation time.
+Ensure that the connect timeout for the pNFS flexfiles driver is of the
+same order as the I/O timeout, so that we can fail over quickly when
+trying to read from a data server that is down.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/sunrpc/clnt.h | 2 ++
- include/linux/sunrpc/xprt.h | 2 ++
- net/sunrpc/clnt.c           | 2 ++
- net/sunrpc/xprtsock.c       | 7 +++++--
- 4 files changed, 11 insertions(+), 2 deletions(-)
+ fs/nfs/client.c     | 2 ++
+ fs/nfs/internal.h   | 2 ++
+ fs/nfs/nfs3client.c | 3 +++
+ fs/nfs/pnfs_nfs.c   | 3 +++
+ 4 files changed, 10 insertions(+)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 4f41d839face..af7358277f1c 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -148,6 +148,8 @@ struct rpc_create_args {
- 	const struct cred	*cred;
- 	unsigned int		max_connect;
- 	struct xprtsec_parms	xprtsec;
-+	unsigned long		connect_timeout;
-+	unsigned long		reconnect_timeout;
- };
- 
- struct rpc_add_xprt_test {
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index b52411bcfe4e..4ecc89301eb7 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -351,6 +351,8 @@ struct xprt_create {
- 	struct rpc_xprt_switch	*bc_xps;
- 	unsigned int		flags;
- 	struct xprtsec_parms	xprtsec;
-+	unsigned long		connect_timeout;
-+	unsigned long		reconnect_timeout;
- };
- 
- struct xprt_class {
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index d7c697af3762..9edebfdb5ce1 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -534,6 +534,8 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 		.servername = args->servername,
- 		.bc_xprt = args->bc_xprt,
- 		.xprtsec = args->xprtsec,
-+		.connect_timeout = args->connect_timeout,
-+		.reconnect_timeout = args->reconnect_timeout,
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index e4c5f193ed5e..44eca51b2808 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -517,6 +517,8 @@ int nfs_create_rpc_client(struct nfs_client *clp,
+ 		.authflavor	= flavor,
+ 		.cred		= cl_init->cred,
+ 		.xprtsec	= cl_init->xprtsec,
++		.connect_timeout = cl_init->connect_timeout,
++		.reconnect_timeout = cl_init->reconnect_timeout,
  	};
- 	char servername[48];
- 	struct rpc_clnt *clnt;
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index e558f0024fe5..6e845e51cbf3 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2290,8 +2290,6 @@ static void xs_tcp_set_connect_timeout(struct rpc_xprt *xprt,
- 		unsigned long reconnect_timeout)
+ 
+ 	if (test_bit(NFS_CS_DISCRTRY, &clp->cl_flags))
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 0019c7578f9d..4d80925c94f7 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -82,6 +82,8 @@ struct nfs_client_initdata {
+ 	const struct rpc_timeout *timeparms;
+ 	const struct cred *cred;
+ 	struct xprtsec_parms xprtsec;
++	unsigned long connect_timeout;
++	unsigned long reconnect_timeout;
+ };
+ 
+ /*
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index eff3802c5e03..674c012868b1 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -86,6 +86,7 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 		int ds_proto, unsigned int ds_timeo, unsigned int ds_retrans)
  {
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
--	struct rpc_timeout to;
--	unsigned long initval;
+ 	struct rpc_timeout ds_timeout;
++	unsigned long connect_timeout = ds_timeo * (ds_retrans + 1) * HZ / 10;
+ 	struct nfs_client *mds_clp = mds_srv->nfs_client;
+ 	struct nfs_client_initdata cl_init = {
+ 		.addr = ds_addr,
+@@ -98,6 +99,8 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 		.timeparms = &ds_timeout,
+ 		.cred = mds_srv->cred,
+ 		.xprtsec = mds_clp->cl_xprtsec,
++		.connect_timeout = connect_timeout,
++		.reconnect_timeout = connect_timeout,
+ 	};
+ 	struct nfs_client *clp;
+ 	char buf[INET6_ADDRSTRLEN + 1];
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index a0112ad4937a..a08cfda6fff1 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -852,6 +852,7 @@ static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
+ {
+ 	struct nfs_client *clp = ERR_PTR(-EIO);
+ 	struct nfs4_pnfs_ds_addr *da;
++	unsigned long connect_timeout = timeo * (retrans + 1) * HZ / 10;
+ 	int status = 0;
  
- 	spin_lock(&xprt->transport_lock);
- 	if (reconnect_timeout < xprt->max_reconnect_timeout)
-@@ -3350,8 +3348,13 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
- 	xprt->timeout = &xs_tcp_default_timeout;
+ 	dprintk("--> %s DS %s\n", __func__, ds->ds_remotestr);
+@@ -870,6 +871,8 @@ static int _nfs4_pnfs_v3_ds_connect(struct nfs_server *mds_srv,
+ 				.dstaddr = (struct sockaddr *)&da->da_addr,
+ 				.addrlen = da->da_addrlen,
+ 				.servername = clp->cl_hostname,
++				.connect_timeout = connect_timeout,
++				.reconnect_timeout = connect_timeout,
+ 			};
  
- 	xprt->max_reconnect_timeout = xprt->timeout->to_maxval;
-+	if (args->reconnect_timeout)
-+		xprt->max_reconnect_timeout = args->reconnect_timeout;
-+
- 	xprt->connect_timeout = xprt->timeout->to_initval *
- 		(xprt->timeout->to_retries + 1);
-+	if (args->connect_timeout)
-+		xs_tcp_do_set_connect_timeout(xprt, args->connect_timeout);
- 
- 	INIT_WORK(&transport->recv_worker, xs_stream_data_receive_workfn);
- 	INIT_WORK(&transport->error_worker, xs_error_handle);
+ 			if (da->da_transport != clp->cl_proto)
 -- 
 2.41.0
 
