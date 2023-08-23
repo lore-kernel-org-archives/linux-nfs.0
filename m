@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C169CC71153
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EBC80C7EE43
 	for <linux-nfs@archiver.kernel.org>; Wed, 23 Aug 2023 21:36:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238113AbjHWVfw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S238081AbjHWVfw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Wed, 23 Aug 2023 17:35:52 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38064 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38058 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238157AbjHWVff (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Aug 2023 17:35:35 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4F4FA10EB
+        with ESMTP id S238130AbjHWVf2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Aug 2023 17:35:28 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3D79810E9
         for <linux-nfs@vger.kernel.org>; Wed, 23 Aug 2023 14:34:01 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1692826440;
+        s=mimecast20190719; t=1692826439;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=a6joEGKWnnjVY5UbKUjhUBMyK3LpAKMDMx1lRCkXV9w=;
-        b=LIXI0JuLcChgNlRqDwViGDtJW5v9PpwT9w3LUHorH+PKgCS2y90MJk6h4vOfYDMGBvBAMj
-        oQva5Nyyfwf7vmCqZATu2GBOYrgqyL4NfBbc9HIHZUgzH0cjbBYQGF2l16J7RzJb/FC6jl
-        7P8tFzP06x1tBO6RjpA9KZbMPXlA5t0=
-Received: from mimecast-mx02.redhat.com (66.187.233.73 [66.187.233.73]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-502-LFaibqAEPq-WPmG8rfnF6Q-1; Wed, 23 Aug 2023 17:33:56 -0400
-X-MC-Unique: LFaibqAEPq-WPmG8rfnF6Q-1
+        bh=pArjaDFSJm/PaSO+le75amYj6A0iIy9B3F5/c/CEF10=;
+        b=did84/pVtboPXdyPVNxk26lN6oe3orypI5wy86ymE9wTmxB+09s7ig7JRiYIEDTP8xP2JS
+        JWmgUbyUio1YgXVeMXOqtuQSsTGuRE+p0uhzpR+/77zCfe3ScZDKWx+41TR2TZZIHWeJZG
+        T6KFo+7ASF2iIivZq/9e1Ck5hN3YRlo=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-639-hSjMRL5wMv-Dm62OZlRExg-1; Wed, 23 Aug 2023 17:33:56 -0400
+X-MC-Unique: hSjMRL5wMv-Dm62OZlRExg-1
 Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 0E3D11C05122;
-        Wed, 23 Aug 2023 21:33:55 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 226F8101A528;
+        Wed, 23 Aug 2023 21:33:56 +0000 (UTC)
 Received: from fs-i40c-03.fs.lab.eng.bos.redhat.com (fs-i40c-03.fs.lab.eng.bos.redhat.com [10.16.224.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BA62040C6F4C;
-        Wed, 23 Aug 2023 21:33:54 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id CE4EF40C6F4E;
+        Wed, 23 Aug 2023 21:33:55 +0000 (UTC)
 From:   Alexander Aring <aahringo@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     cluster-devel@redhat.com, ocfs2-devel@lists.linux.dev,
@@ -44,9 +44,9 @@ Cc:     cluster-devel@redhat.com, ocfs2-devel@lists.linux.dev,
         rpeterso@redhat.com, agruenba@redhat.com,
         trond.myklebust@hammerspace.com, anna@kernel.org,
         chuck.lever@oracle.com, jlayton@kernel.org
-Subject: [PATCH 4/7] lockd: add doc to enable EXPORT_OP_SAFE_ASYNC_LOCK
-Date:   Wed, 23 Aug 2023 17:33:49 -0400
-Message-Id: <20230823213352.1971009-5-aahringo@redhat.com>
+Subject: [PATCH 7/7] dlm: implement EXPORT_OP_SAFE_ASYNC_LOCK
+Date:   Wed, 23 Aug 2023 17:33:52 -0400
+Message-Id: <20230823213352.1971009-8-aahringo@redhat.com>
 In-Reply-To: <20230823213352.1971009-1-aahringo@redhat.com>
 References: <20230823213352.1971009-1-aahringo@redhat.com>
 MIME-Version: 1.0
@@ -56,37 +56,39 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch adds a note to enable EXPORT_OP_SAFE_ASYNC_LOCK for
-asynchronous lock request handling.
+This patch is activating the EXPORT_OP_SAFE_ASYNC_LOCK export flag to
+signal lockd that both filesystems are able to handle async lock
+requests. The cluster filesystems gfs2 and ocfs2 will redirect their
+lock requests to DLMs plock implementation that can handle async lock
+requests.
 
 Signed-off-by: Alexander Aring <aahringo@redhat.com>
 ---
- fs/locks.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ fs/gfs2/export.c  | 1 +
+ fs/ocfs2/export.c | 1 +
+ 2 files changed, 2 insertions(+)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index df8b26a42524..edee02d1ca93 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -2255,11 +2255,13 @@ int fcntl_getlk(struct file *filp, unsigned int cmd, struct flock *flock)
-  * To avoid blocking kernel daemons, such as lockd, that need to acquire POSIX
-  * locks, the ->lock() interface may return asynchronously, before the lock has
-  * been granted or denied by the underlying filesystem, if (and only if)
-- * lm_grant is set. Callers expecting ->lock() to return asynchronously
-- * will only use F_SETLK, not F_SETLKW; they will set FL_SLEEP if (and only if)
-- * the request is for a blocking lock. When ->lock() does return asynchronously,
-- * it must return FILE_LOCK_DEFERRED, and call ->lm_grant() when the lock
-- * request completes.
-+ * lm_grant is set. Additionally EXPORT_OP_SAFE_ASYNC_LOCK in export_operations
-+ * flags need to be set.
-+ *
-+ * Callers expecting ->lock() to return asynchronously will only use F_SETLK,
-+ * not F_SETLKW; they will set FL_SLEEP if (and only if) the request is for a
-+ * blocking lock. When ->lock() does return asynchronously, it must return
-+ * FILE_LOCK_DEFERRED, and call ->lm_grant() when the lock request completes.
-  * If the request is for non-blocking lock the file system should return
-  * FILE_LOCK_DEFERRED then try to get the lock and call the callback routine
-  * with the result. If the request timed out the callback routine will return a
+diff --git a/fs/gfs2/export.c b/fs/gfs2/export.c
+index cf40895233f5..36bc43b9d141 100644
+--- a/fs/gfs2/export.c
++++ b/fs/gfs2/export.c
+@@ -192,5 +192,6 @@ const struct export_operations gfs2_export_ops = {
+ 	.fh_to_parent = gfs2_fh_to_parent,
+ 	.get_name = gfs2_get_name,
+ 	.get_parent = gfs2_get_parent,
++	.flags = EXPORT_OP_SAFE_ASYNC_LOCK,
+ };
+ 
+diff --git a/fs/ocfs2/export.c b/fs/ocfs2/export.c
+index eaa8c80ace3c..8a1169e01dd9 100644
+--- a/fs/ocfs2/export.c
++++ b/fs/ocfs2/export.c
+@@ -280,4 +280,5 @@ const struct export_operations ocfs2_export_ops = {
+ 	.fh_to_dentry	= ocfs2_fh_to_dentry,
+ 	.fh_to_parent	= ocfs2_fh_to_parent,
+ 	.get_parent	= ocfs2_get_parent,
++	.flags		= EXPORT_OP_SAFE_ASYNC_LOCK,
+ };
 -- 
 2.31.1
 
