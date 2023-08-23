@@ -2,40 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 529CBC3DA6F
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 84FDFC71145
 	for <linux-nfs@archiver.kernel.org>; Wed, 23 Aug 2023 21:36:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238068AbjHWVfu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 23 Aug 2023 17:35:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37864 "EHLO
+        id S238035AbjHWVfw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 23 Aug 2023 17:35:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38048 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238064AbjHWVfU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Aug 2023 17:35:20 -0400
+        with ESMTP id S238081AbjHWVfW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Aug 2023 17:35:22 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6FBD110DD
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A1D8A10E4
         for <linux-nfs@vger.kernel.org>; Wed, 23 Aug 2023 14:34:00 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1692826439;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=xwzXGvvpmt4FEgLenzZ4PyVYxrazVCtDHUJfiFZMDNA=;
-        b=b9erai11yxSFlBXtrZBGZuWLqykyfbwPU6DR4htHGiGO33kzkXRaSf5Y+39GFqEtHLqlzA
-        QS/So7ZCyb7wEh5MqfcHcGI/0D/u4vo83d7W8tL5gu6JBu6pGc9GC2yJC7HNHGllg0SMQQ
-        KSsTjqn8wEpPgaCH/Y8P1VvtCtvhE3Y=
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=MHYX4a6Baf9t0hYlusUokWnG9KN4LxtXmYn0dFm/ZDM=;
+        b=P30DlMUaxJDAultl50mSQqiK6cCo05WabJ/DbUKtRa1TW5I9eokjbt9D0vA9AXY01kCwqU
+        U9pG3dARgwilealXCcPVg4qxo29eLM3K+SfdPuuyIi+oZHyHtmFmCQZIDJC20UHkqB69td
+        zckmD9KkDgyVsunRvSHPBUNCGeM29g4=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-225-spbckOqvMlO9RRIv8uuOkg-1; Wed, 23 Aug 2023 17:33:54 -0400
-X-MC-Unique: spbckOqvMlO9RRIv8uuOkg-1
+ us-mta-299-7W_F9yi9MmS-MNHeCgyAGw-1; Wed, 23 Aug 2023 17:33:56 -0400
+X-MC-Unique: 7W_F9yi9MmS-MNHeCgyAGw-1
 Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id B2244185A78F;
-        Wed, 23 Aug 2023 21:33:53 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id C690A856DED;
+        Wed, 23 Aug 2023 21:33:55 +0000 (UTC)
 Received: from fs-i40c-03.fs.lab.eng.bos.redhat.com (fs-i40c-03.fs.lab.eng.bos.redhat.com [10.16.224.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 44F2D40C6F4C;
-        Wed, 23 Aug 2023 21:33:53 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 7E5BF400E02F;
+        Wed, 23 Aug 2023 21:33:55 +0000 (UTC)
 From:   Alexander Aring <aahringo@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     cluster-devel@redhat.com, ocfs2-devel@lists.linux.dev,
@@ -43,9 +44,11 @@ Cc:     cluster-devel@redhat.com, ocfs2-devel@lists.linux.dev,
         rpeterso@redhat.com, agruenba@redhat.com,
         trond.myklebust@hammerspace.com, anna@kernel.org,
         chuck.lever@oracle.com, jlayton@kernel.org
-Subject: [PATCH 0/7] lockd: dlm: async lock request changes
-Date:   Wed, 23 Aug 2023 17:33:45 -0400
-Message-Id: <20230823213352.1971009-1-aahringo@redhat.com>
+Subject: [PATCH 6/7] dlm: use FL_SLEEP to determine blocking vs non-blocking
+Date:   Wed, 23 Aug 2023 17:33:51 -0400
+Message-Id: <20230823213352.1971009-7-aahringo@redhat.com>
+In-Reply-To: <20230823213352.1971009-1-aahringo@redhat.com>
+References: <20230823213352.1971009-1-aahringo@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.1 on 10.11.54.2
@@ -53,54 +56,30 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi,
+This patch uses the FL_SLEEP flag in struct file_lock to determine if
+the lock request is a blocking or non-blocking request. Before dlm was
+using IS_SETLKW() was being used which is not usable for lock requests
+coming from lockd when EXPORT_OP_SAFE_ASYNC_LOCK inside the export flags
+is set.
 
-I sent this as a PATCH now and drop the RFC. I got some review back from
-Jeff Layton and hope I was successful to follow it. There are still
-issues with lockd and asynchronous lock request but it will at least not
-directly crash when somebody is using nfs on top of GFS2. The issues are
-related to cancellation of locks/lockd decides to drop nlm_block for
-some reasons while pending request is happening.
+Signed-off-by: Alexander Aring <aahringo@redhat.com>
+---
+ fs/dlm/plock.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-I did not change more documentation about the asynchronous lock request
-functionality to not confuse users. In my opinion there should be more
-documentation about what you SHOULD NOT do with this API. Otherwise I
-think the documentation is still correct.
-
-I will send a follow up patch to fsdevel to change all users using
-IS_SETLKW() to use FL_SLEEP to determine if it's blocking or non-blocking
-and send it to fsdevel as it was recommended. This will just be a grep
-and replace patch and look what happens. 
-
-- Alex
-
-changes since RFC:
-
-- drop the pending callback flag but introduce "lockd: don't call
-  vfs_lock_file() for pending requests", see patch why I need it.
-- drop per nlm_block callback mutex
-- change async lock request documentation
-- use always FL_SLEEP to determine if it's blocking vs non-blocking in
-  DLM
-
-Alexander Aring (7):
-  lockd: introduce safe async lock op
-  lockd: don't call vfs_lock_file() for pending requests
-  lockd: fix race in async lock request handling
-  lockd: add doc to enable EXPORT_OP_SAFE_ASYNC_LOCK
-  dlm: use fl_owner from lockd
-  dlm: use FL_SLEEP to determine blocking vs non-blocking
-  dlm: implement EXPORT_OP_SAFE_ASYNC_LOCK
-
- fs/dlm/plock.c           | 20 +++++---------------
- fs/gfs2/export.c         |  1 +
- fs/lockd/svclock.c       | 40 +++++++++++++++++++++++++++-------------
- fs/locks.c               | 12 +++++++-----
- fs/nfsd/nfs4state.c      | 13 ++++++++++---
- fs/ocfs2/export.c        |  1 +
- include/linux/exportfs.h |  8 ++++++++
- 7 files changed, 59 insertions(+), 36 deletions(-)
-
+diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
+index 0094fa4004cc..0c6ed5eeb840 100644
+--- a/fs/dlm/plock.c
++++ b/fs/dlm/plock.c
+@@ -140,7 +140,7 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 number, struct file *file,
+ 	op->info.optype		= DLM_PLOCK_OP_LOCK;
+ 	op->info.pid		= fl->fl_pid;
+ 	op->info.ex		= (fl->fl_type == F_WRLCK);
+-	op->info.wait		= IS_SETLKW(cmd);
++	op->info.wait		= !!(fl->fl_flags & FL_SLEEP);
+ 	op->info.fsid		= ls->ls_global_id;
+ 	op->info.number		= number;
+ 	op->info.start		= fl->fl_start;
 -- 
 2.31.1
 
