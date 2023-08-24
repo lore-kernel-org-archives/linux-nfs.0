@@ -2,93 +2,117 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DF34C88CB2
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AEFBEE49A6
 	for <linux-nfs@archiver.kernel.org>; Thu, 24 Aug 2023 16:45:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242677AbjHXQpB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Aug 2023 12:45:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52320 "EHLO
+        id S242702AbjHXQpC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Aug 2023 12:45:02 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52338 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242710AbjHXQog (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2023 12:44:36 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C330819A0;
-        Thu, 24 Aug 2023 09:44:26 -0700 (PDT)
+        with ESMTP id S242713AbjHXQoh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2023 12:44:37 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DD1881BF1;
+        Thu, 24 Aug 2023 09:44:27 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 58923673FF;
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 7B9F0673DC;
+        Thu, 24 Aug 2023 16:44:27 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8E003C433C9;
         Thu, 24 Aug 2023 16:44:26 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5639FC433C7;
-        Thu, 24 Aug 2023 16:44:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1692895465;
-        bh=bjiCHH8T4ZSk8GdvMhD5NLseCcS+3y2//Zo3l+5rSNc=;
-        h=From:Subject:Date:To:Cc:From;
-        b=SDTZeUM+wf+EN5V7gw2KGnVervVG4s/2SfFxIcvU57yrxuIhYEGdvFFyUDqy1/Dde
-         sf+q7wRH9/YxrPFfRTOHEUjkmY6K/K1beJ7OWnylSkiEBGSGckb/30JvolHnPTqft9
-         jT/XGepCoBXG73cX9EYtgEMIwlgAabikJKK6PDqxztqVB3ZBNdHaVVrZZNlzxGKTLP
-         XMm4kyJkxo6Bh3pqoXZ28JvSrp5MYkTt8o4/e8cz2I2O9zCFs5q8e/AWvToZmf5O58
-         US39gmues/EjRGC96u5i1RCUn4p8GKmZC1p+HEwgmjoa/fsnQvC92ydf2AHReXZ9D/
-         m2X9B9B0wqRpA==
+        s=k20201202; t=1692895466;
+        bh=HgZga3u8jfJfVDfYAnT9eS86IE3g/cFqBwD3YR8A1jw=;
+        h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
+        b=akexVYjV/f30iIixALyoykqsfVumj+pDnYrI6Fd75erChW/tLJndW24CoRKwuG0jN
+         1zXNZpYViuJETvzNw5dHhTjYPZ7sJFkJgMARGLRS2RK8xvnKHv/p6nm2cshRGo6Evg
+         yW3BjGNAvVK/RJbqLDKH5Sfh90/L1iEkAOdbf8U3zYxZPSMGNKkGV15AwwXNPpiRLS
+         r278UQ9Gj8znTR0mTJAdu6DI/gtRWUhZpcZjbaTH2f+aCv6B31mD0/1JTsvSrHMjRL
+         IcGeqCE+Ifjfdjf1HmKaQEdBnoHl0lKwPTVfcNa76tfQIvBwYnuZ4yk8sOAHRBx/3Q
+         xZsy82dgHL0dw==
 From:   Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH fstests v2 0/3] fstests: add appropriate checks for fs
- features for some tests
-Date:   Thu, 24 Aug 2023 12:44:16 -0400
-Message-Id: <20230824-fixes-v2-0-d60c2faf1057@kernel.org>
+Date:   Thu, 24 Aug 2023 12:44:18 -0400
+Subject: [PATCH fstests v2 2/3] generic/513: limit to filesystems that
+ support capabilities
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAOCI52QC/x3KQQqAIBBA0avErBNsFMquEi3CxpqNhSMRiHdPW
- j7+LyCUmATmrkCih4Wv2IB9B/7c4kGK92ZAjUZPaFXgl0S5wXpvgqMwIrT3TvSHti4QJJNkgbX
- WD+4mQ3NgAAAA
+Message-Id: <20230824-fixes-v2-2-d60c2faf1057@kernel.org>
+References: <20230824-fixes-v2-0-d60c2faf1057@kernel.org>
+In-Reply-To: <20230824-fixes-v2-0-d60c2faf1057@kernel.org>
 To:     fstests@vger.kernel.org
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=870; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=bjiCHH8T4ZSk8GdvMhD5NLseCcS+3y2//Zo3l+5rSNc=;
- b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBk54joE1eo0lNVakBBgdryNA2+Yg2963NuxH3+s
- 6kDbu1mU2+JAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZOeI6AAKCRAADmhBGVaC
- FcOkEACE7WhSnbjV1abljNdcuP8DwPlZ17sXB78VNEQqChxkJoOqbBCKQ6ZbWW5WEEujTjx8H6I
- tcXMMS3nWqyF7CElVMaHQ/4B6WHG/ll6ksYGRmAE+rhfO7slHnQ7M+PBvBfvM0dzSbR4zy1kjI/
- dDSzpYROG94yf1QMpnhfu+0OZoA59mCvdpi/Ts5HC6UrKQpU6e0/Hp6EIoG0ODCRZF1/O+p/pXH
- It04/anXxaUCLP1BOitmyu7RsK0TZExg0lM1/HygNPisaWaclk5WbkakmrQ0jXxqmL6hHIPtqFy
- nnYkARpzH+yHU9eDg486QdyUCDvJwlnQye+Mj7MVa8BnrMRTmf3kYBaJtFE0Z+beMNi8PGim0KS
- aOPSsulHzXce2oJQOP1ECsR4pRLGF5Ic3GCQBdbgVk6FaP0TuZVAwSmV1bqWl8fteNjOnl4zUm+
- qmp1k2W9+vrDuIoP24zqwPTFV9hWE9UrDSjGUoD0WudhuUZRWroRqIXdG07q6f1j9lHtnebK8FA
- JyPFPSygWiPfdc9jOdgBhAt5lC5gm6ozm1GTlQrrAhJllQb0x3a9zmXcm/CR17Cf5OcBIMDJl0t
- HPcWYq0764WnYjxvwz0a+RLo+uUuhfHiumOWHBYMOXaENArlgaFsGBgNt/w4S1b31pYg7N04W3P
- HqvZSrjnqSAgvCw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1299; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=HgZga3u8jfJfVDfYAnT9eS86IE3g/cFqBwD3YR8A1jw=;
+ b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBk54jp0vUrBuzaMm1UcUVs6NjZSpgzqQZa/Z5rR
+ j3rOQDFiXKJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZOeI6QAKCRAADmhBGVaC
+ Fb1kD/0aKRi/+lc09u9wrUFPR6G4bpEMMjDGqMgkzpHVvID95IDyvn9WFf1qq8Gw7AvQEJztS5R
+ /O//rR5bgPxphWwzglh4Lrq4HREvotJTPyHmmYyfE+W2WVEBXobck66kYkReL0E72rTuYxAk0oX
+ d2FEd2cN0fG7p7dv4yhYUyvw4h7h0tMSlTHwGIKBYvYd7vG0Al0P2z/lVbcqGzSA7IV7ljNLOty
+ PE2xrxyh6pSjQb0TU7cNF9BUjzBemKi5v0S2BO/dbypm5+TpWIKgVFBI7JIVJKEp//+QkDgehxn
+ mekEjqOrNNuCo4AZlN4sBFTK8M8+Oy/Xb78I3Gvs2kbHKblY8ikzWqsDPt/Zscwhi/XWGqzp4sM
+ smbDVwAgixw7GDy8XpG8rFVaxbmvYW1aJ+kVwRdAdspFdcRJwdcmUxE4BZ5Vd7O8WoECgj8yelb
+ JJ2V08TcX3KVHYPNe7bFPj5f/84MxDIyJrSz/le6qQ9lsN9M4bylFz8kcLFZ/ICp68wEXCL9Ggs
+ wSX1fK8aGa0BOQunLVzC+oM+EkQW7b9nhvaS+DXMtOG97zXKFxZBNfFLpHZt5UJQW0O4chZHin4
+ fxkWlZkEX5KxluBDobsWzU5nPWPMsrO9MDYRBYaBtnTUXRMcVbu5Yx3iArqlc6sk0q0vUNKD7f1
+ U2xYSlp5G/VsNaA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-A number of fstests fail on NFS, primarily because it lacks certain
-features that are widely supported on local filesystems. This set fixes
-up the test for POSIX ACLs and adds new checks for FIEMAP and file
-capability support on tests that require these features.
+This test requires being able to set file capabilities which some
+filesystems (namely NFS) do not support. Add a _require_setcap test
+and only run it on filesystems that pass it.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Jeff Layton (3):
-      common/attr: fix the _require_acl test
-      generic/513: limit to filesystems that support capabilities
-      generic/578: only run on filesystems that support FIEMAP
-
- common/attr       |  9 ++++-----
- common/rc         | 26 ++++++++++++++++++++++++++
+ common/rc         | 13 +++++++++++++
  tests/generic/513 |  1 +
- tests/generic/578 |  1 +
- 4 files changed, 32 insertions(+), 5 deletions(-)
----
-base-commit: 8de535c53887bb49adae74a1b2e83e77d7e8457d
-change-id: 20230824-fixes-914cc3f9ef72
+ 2 files changed, 14 insertions(+)
 
-Best regards,
+diff --git a/common/rc b/common/rc
+index 5c4429ed0425..33e74d20c28b 100644
+--- a/common/rc
++++ b/common/rc
+@@ -5048,6 +5048,19 @@ _require_mknod()
+ 	rm -f $TEST_DIR/$seq.null
+ }
+ 
++_require_setcap()
++{
++	local testfile=$TEST_DIR/setcaptest.$$
++
++	touch $testfile
++	$SETCAP_PROG "cap_sys_module=p" $testfile > $testfile.out 2>&1
++	if grep -q 'Operation not supported' $testfile.out; then
++	  _notrun "File capabilities are not supported on this filesystem"
++	fi
++
++	rm -f $testfile $testfile.out
++}
++
+ _getcap()
+ {
+ 	$GETCAP_PROG "$@" | _filter_getcap
+diff --git a/tests/generic/513 b/tests/generic/513
+index dc082787ae4e..52f9eb916b4a 100755
+--- a/tests/generic/513
++++ b/tests/generic/513
+@@ -18,6 +18,7 @@ _supported_fs generic
+ _require_scratch_reflink
+ _require_command "$GETCAP_PROG" getcap
+ _require_command "$SETCAP_PROG" setcap
++_require_setcap
+ 
+ _scratch_mkfs >>$seqres.full 2>&1
+ _scratch_mount
+
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.41.0
 
