@@ -2,117 +2,106 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6AEFBEE49A6
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Aug 2023 16:45:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 00D7DC27C40
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Aug 2023 17:10:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242702AbjHXQpC (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Aug 2023 12:45:02 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52338 "EHLO
+        id S232399AbjHXRJu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Aug 2023 13:09:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53912 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242713AbjHXQoh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2023 12:44:37 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DD1881BF1;
-        Thu, 24 Aug 2023 09:44:27 -0700 (PDT)
+        with ESMTP id S231324AbjHXRJe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2023 13:09:34 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C3B79199D;
+        Thu, 24 Aug 2023 10:09:32 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 7B9F0673DC;
-        Thu, 24 Aug 2023 16:44:27 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8E003C433C9;
-        Thu, 24 Aug 2023 16:44:26 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 58B42650C1;
+        Thu, 24 Aug 2023 17:09:32 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AFB34C433C7;
+        Thu, 24 Aug 2023 17:09:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1692895466;
-        bh=HgZga3u8jfJfVDfYAnT9eS86IE3g/cFqBwD3YR8A1jw=;
-        h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-        b=akexVYjV/f30iIixALyoykqsfVumj+pDnYrI6Fd75erChW/tLJndW24CoRKwuG0jN
-         1zXNZpYViuJETvzNw5dHhTjYPZ7sJFkJgMARGLRS2RK8xvnKHv/p6nm2cshRGo6Evg
-         yW3BjGNAvVK/RJbqLDKH5Sfh90/L1iEkAOdbf8U3zYxZPSMGNKkGV15AwwXNPpiRLS
-         r278UQ9Gj8znTR0mTJAdu6DI/gtRWUhZpcZjbaTH2f+aCv6B31mD0/1JTsvSrHMjRL
-         IcGeqCE+Ifjfdjf1HmKaQEdBnoHl0lKwPTVfcNa76tfQIvBwYnuZ4yk8sOAHRBx/3Q
-         xZsy82dgHL0dw==
-From:   Jeff Layton <jlayton@kernel.org>
-Date:   Thu, 24 Aug 2023 12:44:18 -0400
-Subject: [PATCH fstests v2 2/3] generic/513: limit to filesystems that
- support capabilities
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20230824-fixes-v2-2-d60c2faf1057@kernel.org>
+        s=k20201202; t=1692896971;
+        bh=wPcP08GzUhVpeHcQ4xdOOt53tZW2z91rbgdJ7hkjNWg=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=gYJezWGXNiZmBVnjptMkwndSs0GgcWCu7dgRVk3v442hKR7ttFvi4n5zJdnVvXO/x
+         oinlvtyMyZWbS+exUJ5dfgNgw9kImOCaQpGu8cLV8FgSGS4DJmGGF+RaR2XmexRDkF
+         AkZnqVdN7oEWunxTx/27KCpCDAW/WTGA3asUcgy1U2BW7rusXiIX/nfsJ602oRVdtT
+         bbtA80r3Fum/9Ma02DmBzqdA9NGatb6F1zmIp49ytB8EmM05+F7FTKhGWpMhvw47Mj
+         RFrqbcSySgjNhY3olsGFB4bbIUf59659LU775Fi6rvGL28AiDqj9jlFuklmK8jYElN
+         JolXdz0CIJXXg==
+Date:   Thu, 24 Aug 2023 10:09:31 -0700
+From:   "Darrick J. Wong" <djwong@kernel.org>
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     fstests@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH fstests v2 3/3] generic/578: only run on filesystems that
+ support FIEMAP
+Message-ID: <20230824170931.GC11251@frogsfrogsfrogs>
 References: <20230824-fixes-v2-0-d60c2faf1057@kernel.org>
-In-Reply-To: <20230824-fixes-v2-0-d60c2faf1057@kernel.org>
-To:     fstests@vger.kernel.org
-Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1299; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=HgZga3u8jfJfVDfYAnT9eS86IE3g/cFqBwD3YR8A1jw=;
- b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBk54jp0vUrBuzaMm1UcUVs6NjZSpgzqQZa/Z5rR
- j3rOQDFiXKJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZOeI6QAKCRAADmhBGVaC
- Fb1kD/0aKRi/+lc09u9wrUFPR6G4bpEMMjDGqMgkzpHVvID95IDyvn9WFf1qq8Gw7AvQEJztS5R
- /O//rR5bgPxphWwzglh4Lrq4HREvotJTPyHmmYyfE+W2WVEBXobck66kYkReL0E72rTuYxAk0oX
- d2FEd2cN0fG7p7dv4yhYUyvw4h7h0tMSlTHwGIKBYvYd7vG0Al0P2z/lVbcqGzSA7IV7ljNLOty
- PE2xrxyh6pSjQb0TU7cNF9BUjzBemKi5v0S2BO/dbypm5+TpWIKgVFBI7JIVJKEp//+QkDgehxn
- mekEjqOrNNuCo4AZlN4sBFTK8M8+Oy/Xb78I3Gvs2kbHKblY8ikzWqsDPt/Zscwhi/XWGqzp4sM
- smbDVwAgixw7GDy8XpG8rFVaxbmvYW1aJ+kVwRdAdspFdcRJwdcmUxE4BZ5Vd7O8WoECgj8yelb
- JJ2V08TcX3KVHYPNe7bFPj5f/84MxDIyJrSz/le6qQ9lsN9M4bylFz8kcLFZ/ICp68wEXCL9Ggs
- wSX1fK8aGa0BOQunLVzC+oM+EkQW7b9nhvaS+DXMtOG97zXKFxZBNfFLpHZt5UJQW0O4chZHin4
- fxkWlZkEX5KxluBDobsWzU5nPWPMsrO9MDYRBYaBtnTUXRMcVbu5Yx3iArqlc6sk0q0vUNKD7f1
- U2xYSlp5G/VsNaA==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
+ <20230824-fixes-v2-3-d60c2faf1057@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230824-fixes-v2-3-d60c2faf1057@kernel.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This test requires being able to set file capabilities which some
-filesystems (namely NFS) do not support. Add a _require_setcap test
-and only run it on filesystems that pass it.
+On Thu, Aug 24, 2023 at 12:44:19PM -0400, Jeff Layton wrote:
+> Some filesystems (e.g. NFS) don't support FIEMAP. Limit generic/578 to
+> filesystems that do.
+> 
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+>  common/rc         | 13 +++++++++++++
+>  tests/generic/578 |  1 +
+>  2 files changed, 14 insertions(+)
+> 
+> diff --git a/common/rc b/common/rc
+> index 33e74d20c28b..98d27890f6f7 100644
+> --- a/common/rc
+> +++ b/common/rc
+> @@ -3885,6 +3885,19 @@ _require_metadata_journaling()
+>  	fi
+>  }
+>  
+> +_require_fiemap()
+> +{
+> +	local testfile=$TEST_DIR/fiemaptest.$$
+> +
+> +	touch $testfile
+> +	$XFS_IO_PROG -r -c "fiemap" $testfile 1>$testfile.out 2>&1
+> +	if grep -q 'Operation not supported' $testfile.out; then
+> +	  _notrun "FIEMAP is not supported by this filesystem"
+> +	fi
+> +
+> +	rm -f $testfile $testfile.out
+> +}
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- common/rc         | 13 +++++++++++++
- tests/generic/513 |  1 +
- 2 files changed, 14 insertions(+)
+_require_xfs_io_command "fiemap" ?
 
-diff --git a/common/rc b/common/rc
-index 5c4429ed0425..33e74d20c28b 100644
---- a/common/rc
-+++ b/common/rc
-@@ -5048,6 +5048,19 @@ _require_mknod()
- 	rm -f $TEST_DIR/$seq.null
- }
- 
-+_require_setcap()
-+{
-+	local testfile=$TEST_DIR/setcaptest.$$
-+
-+	touch $testfile
-+	$SETCAP_PROG "cap_sys_module=p" $testfile > $testfile.out 2>&1
-+	if grep -q 'Operation not supported' $testfile.out; then
-+	  _notrun "File capabilities are not supported on this filesystem"
-+	fi
-+
-+	rm -f $testfile $testfile.out
-+}
-+
- _getcap()
- {
- 	$GETCAP_PROG "$@" | _filter_getcap
-diff --git a/tests/generic/513 b/tests/generic/513
-index dc082787ae4e..52f9eb916b4a 100755
---- a/tests/generic/513
-+++ b/tests/generic/513
-@@ -18,6 +18,7 @@ _supported_fs generic
- _require_scratch_reflink
- _require_command "$GETCAP_PROG" getcap
- _require_command "$SETCAP_PROG" setcap
-+_require_setcap
- 
- _scratch_mkfs >>$seqres.full 2>&1
- _scratch_mount
+--D
 
--- 
-2.41.0
-
+> +
+>  _count_extents()
+>  {
+>  	$XFS_IO_PROG -r -c "fiemap" $1 | tail -n +2 | grep -v hole | wc -l
+> diff --git a/tests/generic/578 b/tests/generic/578
+> index b024f6ff90b4..903055b2ca58 100755
+> --- a/tests/generic/578
+> +++ b/tests/generic/578
+> @@ -26,6 +26,7 @@ _require_test_program "mmap-write-concurrent"
+>  _require_command "$FILEFRAG_PROG" filefrag
+>  _require_test_reflink
+>  _require_cp_reflink
+> +_require_fiemap
+>  
+>  compare() {
+>  	for i in $(seq 1 8); do
+> 
+> -- 
+> 2.41.0
+> 
