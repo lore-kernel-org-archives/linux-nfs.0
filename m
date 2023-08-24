@@ -2,116 +2,93 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id DE78FC7EE43
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Aug 2023 16:45:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1DF34C88CB2
+	for <linux-nfs@archiver.kernel.org>; Thu, 24 Aug 2023 16:45:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S242688AbjHXQpB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S242677AbjHXQpB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Thu, 24 Aug 2023 12:45:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52342 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52320 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242715AbjHXQoi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2023 12:44:38 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7A0811BF5;
-        Thu, 24 Aug 2023 09:44:28 -0700 (PDT)
+        with ESMTP id S242710AbjHXQog (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2023 12:44:36 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C330819A0;
+        Thu, 24 Aug 2023 09:44:26 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 186FA67416;
-        Thu, 24 Aug 2023 16:44:28 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2A090C433C7;
-        Thu, 24 Aug 2023 16:44:27 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 58923673FF;
+        Thu, 24 Aug 2023 16:44:26 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5639FC433C7;
+        Thu, 24 Aug 2023 16:44:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1692895467;
-        bh=vgCjAo17bP/S+WAkHjSMwOSP8aP1gii4DVtguCfIxhk=;
-        h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-        b=LwQ6ky+wrBhiLrYRhtm16extXmrh0SEWvVUEykXmMSAig9Dy2SNO4U19xSUVP3UF5
-         fkKZ9GlGycd1oF0bZFXKVSa38tSqzBrDA2Ze7SbpLB0QrF8Gkv9CWMQPt4kiGokCfS
-         rtvInLxK7lZf2bjnKYSYzTGrv4QOKLf76D7D0FXEfsPwgnvW2KIKy+8lfV4beTataJ
-         Zc1KZxVdq+5U1c7J/vPd9IhXN55VEIXq1TUryfaUyCqIX9C919oCw3AdUU9rFYDyZY
-         6iZHvVTM1yYO1NFiOf3Ol35sy0x3OkGVnUtxwsg2gE0eDGuv/RB8hSsY9fjLmL8HHo
-         g7urIpwbY+WmA==
+        s=k20201202; t=1692895465;
+        bh=bjiCHH8T4ZSk8GdvMhD5NLseCcS+3y2//Zo3l+5rSNc=;
+        h=From:Subject:Date:To:Cc:From;
+        b=SDTZeUM+wf+EN5V7gw2KGnVervVG4s/2SfFxIcvU57yrxuIhYEGdvFFyUDqy1/Dde
+         sf+q7wRH9/YxrPFfRTOHEUjkmY6K/K1beJ7OWnylSkiEBGSGckb/30JvolHnPTqft9
+         jT/XGepCoBXG73cX9EYtgEMIwlgAabikJKK6PDqxztqVB3ZBNdHaVVrZZNlzxGKTLP
+         XMm4kyJkxo6Bh3pqoXZ28JvSrp5MYkTt8o4/e8cz2I2O9zCFs5q8e/AWvToZmf5O58
+         US39gmues/EjRGC96u5i1RCUn4p8GKmZC1p+HEwgmjoa/fsnQvC92ydf2AHReXZ9D/
+         m2X9B9B0wqRpA==
 From:   Jeff Layton <jlayton@kernel.org>
-Date:   Thu, 24 Aug 2023 12:44:19 -0400
-Subject: [PATCH fstests v2 3/3] generic/578: only run on filesystems that
- support FIEMAP
+Subject: [PATCH fstests v2 0/3] fstests: add appropriate checks for fs
+ features for some tests
+Date:   Thu, 24 Aug 2023 12:44:16 -0400
+Message-Id: <20230824-fixes-v2-0-d60c2faf1057@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20230824-fixes-v2-3-d60c2faf1057@kernel.org>
-References: <20230824-fixes-v2-0-d60c2faf1057@kernel.org>
-In-Reply-To: <20230824-fixes-v2-0-d60c2faf1057@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAOCI52QC/x3KQQqAIBBA0avErBNsFMquEi3CxpqNhSMRiHdPW
+ j7+LyCUmATmrkCih4Wv2IB9B/7c4kGK92ZAjUZPaFXgl0S5wXpvgqMwIrT3TvSHti4QJJNkgbX
+ WD+4mQ3NgAAAA
 To:     fstests@vger.kernel.org
 Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1219; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=vgCjAo17bP/S+WAkHjSMwOSP8aP1gii4DVtguCfIxhk=;
- b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBk54jp9AVkFjUDxXNs3vBVCjZlacHa7fmhVjLwt
- XR5Blhwm/eJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZOeI6QAKCRAADmhBGVaC
- FfRDEACVFab+TNe59DWgztMlDBAXseE2lQE3Xoxl+5Z6L+reaig/yUc4BbHutfXtKGcerv6Z20N
- P8q2s9Dd8XBnAqjiUjqcdTEywSm/9bAyI280FukauyUtbl7QXwhYHW9pLYtLMzyryIXV6D36qla
- 0vx6LzI0JC8OoV4cJU9dmOUWEooTTzZM4Y8r5X+Buh6tDifM3N6ggN1vsxqdH5qkTm9tJZP3bKu
- ukxHgOVIYkRCjiZQRMDHn/ZgbwYNsLSqxDdL5Rmr7qyizIwGXrcrWSPnY6iiW4Mr9rSnCR22XZi
- twXStNrYI53QSmspCMuTbWbJEYneab82aih9i3ZGQ7p2Z6wvqdL3lx4gY9t4skBR5Xev337vKuO
- wGi56sPIcIqVx9JKGOXZUp56sFahydftdSIi8fFvzcqvozKM7qs9gtc23JeaX0ezivAiFqctonP
- f6ik/mnwX86WNrQaCu3r4EfKgb8GVolPi1mku3nH/Wf59lzkk5rabCi8BwxrVLfRCcXjafcs3fs
- 7LsXkjnjERJU+ocxrN62cznPRMUpYUlsm7GeTc1MspGOmfBGCudwq47cn4i1loC07RroiyMWVmd
- 2GuYMIg9q2u7/V01R+ak0ZLQAF79/LZ+s7fWPNJ1PEYOQzZlxQrVwwt1CyCRPiB6QsqLr6H0Xvw
- AvFNhdV6TPO9W0Q==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=870; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=bjiCHH8T4ZSk8GdvMhD5NLseCcS+3y2//Zo3l+5rSNc=;
+ b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBk54joE1eo0lNVakBBgdryNA2+Yg2963NuxH3+s
+ 6kDbu1mU2+JAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZOeI6AAKCRAADmhBGVaC
+ FcOkEACE7WhSnbjV1abljNdcuP8DwPlZ17sXB78VNEQqChxkJoOqbBCKQ6ZbWW5WEEujTjx8H6I
+ tcXMMS3nWqyF7CElVMaHQ/4B6WHG/ll6ksYGRmAE+rhfO7slHnQ7M+PBvBfvM0dzSbR4zy1kjI/
+ dDSzpYROG94yf1QMpnhfu+0OZoA59mCvdpi/Ts5HC6UrKQpU6e0/Hp6EIoG0ODCRZF1/O+p/pXH
+ It04/anXxaUCLP1BOitmyu7RsK0TZExg0lM1/HygNPisaWaclk5WbkakmrQ0jXxqmL6hHIPtqFy
+ nnYkARpzH+yHU9eDg486QdyUCDvJwlnQye+Mj7MVa8BnrMRTmf3kYBaJtFE0Z+beMNi8PGim0KS
+ aOPSsulHzXce2oJQOP1ECsR4pRLGF5Ic3GCQBdbgVk6FaP0TuZVAwSmV1bqWl8fteNjOnl4zUm+
+ qmp1k2W9+vrDuIoP24zqwPTFV9hWE9UrDSjGUoD0WudhuUZRWroRqIXdG07q6f1j9lHtnebK8FA
+ JyPFPSygWiPfdc9jOdgBhAt5lC5gm6ozm1GTlQrrAhJllQb0x3a9zmXcm/CR17Cf5OcBIMDJl0t
+ HPcWYq0764WnYjxvwz0a+RLo+uUuhfHiumOWHBYMOXaENArlgaFsGBgNt/w4S1b31pYg7N04W3P
+ HqvZSrjnqSAgvCw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Some filesystems (e.g. NFS) don't support FIEMAP. Limit generic/578 to
-filesystems that do.
+A number of fstests fail on NFS, primarily because it lacks certain
+features that are widely supported on local filesystems. This set fixes
+up the test for POSIX ACLs and adds new checks for FIEMAP and file
+capability support on tests that require these features.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- common/rc         | 13 +++++++++++++
+Jeff Layton (3):
+      common/attr: fix the _require_acl test
+      generic/513: limit to filesystems that support capabilities
+      generic/578: only run on filesystems that support FIEMAP
+
+ common/attr       |  9 ++++-----
+ common/rc         | 26 ++++++++++++++++++++++++++
+ tests/generic/513 |  1 +
  tests/generic/578 |  1 +
- 2 files changed, 14 insertions(+)
+ 4 files changed, 32 insertions(+), 5 deletions(-)
+---
+base-commit: 8de535c53887bb49adae74a1b2e83e77d7e8457d
+change-id: 20230824-fixes-914cc3f9ef72
 
-diff --git a/common/rc b/common/rc
-index 33e74d20c28b..98d27890f6f7 100644
---- a/common/rc
-+++ b/common/rc
-@@ -3885,6 +3885,19 @@ _require_metadata_journaling()
- 	fi
- }
- 
-+_require_fiemap()
-+{
-+	local testfile=$TEST_DIR/fiemaptest.$$
-+
-+	touch $testfile
-+	$XFS_IO_PROG -r -c "fiemap" $testfile 1>$testfile.out 2>&1
-+	if grep -q 'Operation not supported' $testfile.out; then
-+	  _notrun "FIEMAP is not supported by this filesystem"
-+	fi
-+
-+	rm -f $testfile $testfile.out
-+}
-+
- _count_extents()
- {
- 	$XFS_IO_PROG -r -c "fiemap" $1 | tail -n +2 | grep -v hole | wc -l
-diff --git a/tests/generic/578 b/tests/generic/578
-index b024f6ff90b4..903055b2ca58 100755
---- a/tests/generic/578
-+++ b/tests/generic/578
-@@ -26,6 +26,7 @@ _require_test_program "mmap-write-concurrent"
- _require_command "$FILEFRAG_PROG" filefrag
- _require_test_reflink
- _require_cp_reflink
-+_require_fiemap
- 
- compare() {
- 	for i in $(seq 1 8); do
-
+Best regards,
 -- 
-2.41.0
+Jeff Layton <jlayton@kernel.org>
 
