@@ -2,144 +2,116 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E1FE1EE49B4
-	for <linux-nfs@archiver.kernel.org>; Thu, 24 Aug 2023 23:59:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 15037EE49A6
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Aug 2023 01:59:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241122AbjHXX6u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 24 Aug 2023 19:58:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54518 "EHLO
+        id S240231AbjHYB72 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 24 Aug 2023 21:59:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43294 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244099AbjHXX6h (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2023 19:58:37 -0400
-Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BCA1C1FD3;
-        Thu, 24 Aug 2023 16:58:06 -0700 (PDT)
-Received: from pps.filterd (m0353722.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 37ONvGwO007768;
-        Thu, 24 Aug 2023 23:57:23 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=message-id : subject :
- from : to : date : in-reply-to : references : content-type : mime-version
- : content-transfer-encoding; s=pp1;
- bh=oDLt9MGmCExq5NUMRyFjvZAr8DfskIv92nbC1tyNUVE=;
- b=DnLnCzxivBeoZ8KXN2bBCDB/hHKf66oFtodTwucXnODDJwMQmU0nqQ4PfO2bdsvegT6a
- Zd0JI8a8c2ioPHa8vjm2X1t6sB1Esix7BPUqYrpHZQb/MSsY5O+KT76WhhAsCCYZoSf6
- smN4S11DPM0Fx2Q5LRQIr69CYH++vUL+gdtEp8UR3+hGTi4PHz846QD0TZaiQkvmAtUO
- TU6w/6pwQVCETvlWeZDt2DOvYCCpRYptAnJUJQWbUckY/XhqernTFBNUgnn0mSSmnAZA
- H5myYx8rPJrKRUL1+vvKIaPb6VT02GXsY+uG6uDZ2nv2T+9xnYAPDCjXLr6F7hpzwka5 gQ== 
-Received: from pps.reinject (localhost [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3spgad9eey-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 24 Aug 2023 23:57:22 +0000
-Received: from m0353722.ppops.net (m0353722.ppops.net [127.0.0.1])
-        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 37ONa97Y006045;
-        Thu, 24 Aug 2023 23:57:21 GMT
-Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
-        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3spgad9eep-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 24 Aug 2023 23:57:21 +0000
-Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
-        by ppma21.wdc07v.mail.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 37OLOkcn016727;
-        Thu, 24 Aug 2023 23:57:20 GMT
-Received: from smtprelay03.dal12v.mail.ibm.com ([172.16.1.5])
-        by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 3sn2283anj-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
-        Thu, 24 Aug 2023 23:57:20 +0000
-Received: from smtpav06.wdc07v.mail.ibm.com (smtpav06.wdc07v.mail.ibm.com [10.39.53.233])
-        by smtprelay03.dal12v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 37ONvJV1393924
-        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Thu, 24 Aug 2023 23:57:20 GMT
-Received: from smtpav06.wdc07v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id BDD9458054;
-        Thu, 24 Aug 2023 23:57:19 +0000 (GMT)
-Received: from smtpav06.wdc07v.mail.ibm.com (unknown [127.0.0.1])
-        by IMSVA (Postfix) with ESMTP id 44BC95804E;
-        Thu, 24 Aug 2023 23:57:17 +0000 (GMT)
-Received: from li-f45666cc-3089-11b2-a85c-c57d1a57929f.ibm.com (unknown [9.61.163.153])
-        by smtpav06.wdc07v.mail.ibm.com (Postfix) with ESMTP;
-        Thu, 24 Aug 2023 23:57:17 +0000 (GMT)
-Message-ID: <fd2c26dd2c1e0ef5f4640d36e680f94ca064280e.camel@linux.ibm.com>
-Subject: Re: [PATCH 9/12] evm: Do not include crypto/algapi.h
-From:   Mimi Zohar <zohar@linux.ibm.com>
-To:     Herbert Xu <herbert@gondor.apana.org.au>,
-        Linux Crypto Mailing List <linux-crypto@vger.kernel.org>,
-        Eric Biggers <ebiggers@kernel.org>,
-        "Theodore Y. Ts'o" <tytso@mit.edu>,
+        with ESMTP id S229797AbjHYB6z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2023 21:58:55 -0400
+Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [IPv6:2a03:a000:7:0:5054:ff:fe1c:15ff])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A012B1BD1;
+        Thu, 24 Aug 2023 18:58:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
+        MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=GqmLor0hgV4H3x7IuvuyaB/m3hDiUm8Yzrd7b9keFg8=; b=bxxlNJ96rsx4L2kKszQ8LF6ai5
+        iNtBNOQ6lzvCMPjrA8d2B5SKpMA8ehWy3QlKX8FPouK+kPzVIEZKx+nUetaQRW5JSdDZgZ40B7sUp
+        hz637OO4Su1eEUgn8Gl/dIA4NQM5w6cHamU5x0h4uc+j+8uZ5OMjiX5dOjWaEByfsbwcty7NjoKFy
+        3XYbSKjy+5wYC+oyCRnyAV7fQupk+8Mu6cgtvaubPBjXdneuinMhpNkKRGbKhUYZMh2pnc+qlSq3t
+        /phSE0e2tky2IO5H3c5MgeU2/J9SsgCPwQOsXy7U4/wxiV2850iLaIsQdHEKmyDTGxCmoecJk/YQG
+        iXEtALAQ==;
+Received: from viro by zeniv.linux.org.uk with local (Exim 4.96 #2 (Red Hat Linux))
+        id 1qZM5z-000dvR-0M;
+        Fri, 25 Aug 2023 01:58:43 +0000
+Date:   Fri, 25 Aug 2023 02:58:43 +0100
+From:   Al Viro <viro@zeniv.linux.org.uk>
+To:     Jan Kara <jack@suse.cz>
+Cc:     linux-fsdevel@vger.kernel.org, linux-block@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        Alasdair Kergon <agk@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Anna Schumaker <anna@kernel.org>, Chao Yu <chao@kernel.org>,
+        Christian Borntraeger <borntraeger@linux.ibm.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        David Sterba <dsterba@suse.com>, dm-devel@redhat.com,
+        drbd-dev@lists.linbit.com, Gao Xiang <xiang@kernel.org>,
+        Jack Wang <jinpu.wang@ionos.com>,
         Jaegeuk Kim <jaegeuk@kernel.org>,
-        linux-fscrypt@vger.kernel.org, Richard Weinberger <richard@nod.at>,
-        linux-mtd@lists.infradead.org,
-        Marcel Holtmann <marcel@holtmann.org>,
-        Johan Hedberg <johan.hedberg@gmail.com>,
-        Luiz Augusto von Dentz <luiz.dentz@gmail.com>,
-        linux-bluetooth@vger.kernel.org, Ilya Dryomov <idryomov@gmail.com>,
-        Xiubo Li <xiubli@redhat.com>, Jeff Layton <jlayton@kernel.org>,
-        ceph-devel@vger.kernel.org,
-        Steffen Klassert <steffen.klassert@secunet.com>,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        Johannes Berg <johannes@sipsolutions.net>,
-        linux-wireless@vger.kernel.org,
-        Matthieu Baerts <matthieu.baerts@tessares.net>,
-        Mat Martineau <martineau@kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org,
-        linux-integrity@vger.kernel.org,
-        "Jason A. Donenfeld" <Jason@zx2c4.com>,
-        Ayush Sawal <ayush.sawal@chelsio.com>
-Date:   Thu, 24 Aug 2023 19:57:16 -0400
-In-Reply-To: <E1qYlA7-006vHq-8B@formenos.hmeau.com>
-References: <ZOXf3JTIqhRLbn5j@gondor.apana.org.au>
-         <E1qYlA7-006vHq-8B@formenos.hmeau.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-X-Mailer: Evolution 3.28.5 (3.28.5-22.el8) 
-Mime-Version: 1.0
-Content-Transfer-Encoding: 7bit
-X-TM-AS-GCONF: 00
-X-Proofpoint-GUID: fk1My-hZ_koWxDC0qnmYPIGtla-o51va
-X-Proofpoint-ORIG-GUID: H-MHHBlfn9DDClGPap9dlVrVP8XP4Ko1
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.267,Aquarius:18.0.957,Hydra:6.0.601,FMLib:17.11.176.26
- definitions=2023-08-24_18,2023-08-24_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 bulkscore=0
- priorityscore=1501 mlxscore=0 lowpriorityscore=0 adultscore=0
- clxscore=1011 suspectscore=0 malwarescore=0 phishscore=0 impostorscore=0
- mlxlogscore=999 spamscore=0 classifier=spam adjust=0 reason=mlx
- scancount=1 engine=8.12.0-2308100000 definitions=main-2308240205
+        jfs-discussion@lists.sourceforge.net,
+        Joern Engel <joern@lazybastard.org>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        linux-bcache@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mm@kvack.org,
+        linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-nvme@lists.infradead.org,
+        linux-pm@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
+        linux-xfs@vger.kernel.org,
+        "Md. Haris Iqbal" <haris.iqbal@ionos.com>,
+        Mike Snitzer <snitzer@kernel.org>,
+        Minchan Kim <minchan@kernel.org>, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org,
+        Sergey Senozhatsky <senozhatsky@chromium.org>,
+        Song Liu <song@kernel.org>,
+        Sven Schnelle <svens@linux.ibm.com>,
+        target-devel@vger.kernel.org, Ted Tso <tytso@mit.edu>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        xen-devel@lists.xenproject.org
+Subject: Re: [PATCH v2 0/29] block: Make blkdev_get_by_*() return handle
+Message-ID: <20230825015843.GB95084@ZenIV>
+References: <20230810171429.31759-1-jack@suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230810171429.31759-1-jack@suse.cz>
+Sender: Al Viro <viro@ftp.linux.org.uk>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 2023-08-23 at 18:32 +0800, Herbert Xu wrote:
-> The header file crypto/algapi.h is for internal use only.  Use the
-> header file crypto/utils.h instead.
+On Fri, Aug 11, 2023 at 01:04:31PM +0200, Jan Kara wrote:
+> Hello,
 > 
-> Signed-off-by: Herbert Xu <herbert@gondor.apana.org.au>
-
-Acked-by: Mimi Zohar <zohar@linux.ibm.com>
-
-> ---
+> this is a v2 of the patch series which implements the idea of blkdev_get_by_*()
+> calls returning bdev_handle which is then passed to blkdev_put() [1]. This
+> makes the get and put calls for bdevs more obviously matching and allows us to
+> propagate context from get to put without having to modify all the users
+> (again!).  In particular I need to propagate used open flags to blkdev_put() to
+> be able count writeable opens and add support for blocking writes to mounted
+> block devices. I'll send that series separately.
 > 
->  security/integrity/evm/evm_main.c |    3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
+> The series is based on Christian's vfs tree as of yesterday as there is quite
+> some overlap. Patches have passed some reasonable testing - I've tested block
+> changes, md, dm, bcache, xfs, btrfs, ext4, swap. This obviously doesn't cover
+> everything so I'd like to ask respective maintainers to review / test their
+> changes. Thanks! I've pushed out the full branch to:
 > 
-> diff --git a/security/integrity/evm/evm_main.c b/security/integrity/evm/evm_main.c
-> index c9b6e2a43478..e635a8d18dae 100644
-> --- a/security/integrity/evm/evm_main.c
-> +++ b/security/integrity/evm/evm_main.c
-> @@ -14,7 +14,6 @@
->  #define pr_fmt(fmt) "EVM: "fmt
->  
->  #include <linux/init.h>
-> -#include <linux/crypto.h>
->  #include <linux/audit.h>
->  #include <linux/xattr.h>
->  #include <linux/integrity.h>
-> @@ -24,7 +23,7 @@
->  
->  #include <crypto/hash.h>
->  #include <crypto/hash_info.h>
-> -#include <crypto/algapi.h>
-> +#include <crypto/utils.h>
->  #include "evm.h"
->  
->  int evm_initialized;
+> git://git.kernel.org/pub/scm/linux/kernel/git/jack/linux-fs.git bdev_handle
+> 
+> to ease review / testing.
 
+Hmm...  Completely Insane Idea(tm): how about turning that thing inside out and
+having your bdev_open_by... return an actual opened struct file?
 
+After all, we do that for sockets and pipes just fine and that's a whole lot
+hotter area.
+
+Suppose we leave blkdev_open()/blkdev_release() as-is.  No need to mess with
+what we have for normal opened files for block devices.  And have block_open_by_dev()
+that would find bdev, etc., same yours does and shove it into anon file.
+
+Paired with plain fput() - no need to bother with new primitives for closing.
+With a helper returning I_BDEV(bdev_file_inode(file)) to get from those to bdev.
+
+NOTE: I'm not suggesting replacing ->s_bdev with struct file * if we do that -
+we want that value cached, obviously.  Just store both...
+
+Not saying it's a good idea, but... might be interesting to look into.
+Comments?
