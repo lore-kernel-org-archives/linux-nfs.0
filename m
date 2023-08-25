@@ -2,32 +2,35 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8289EE49B4
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Aug 2023 14:10:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 69BDDEE49B2
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Aug 2023 14:11:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1343615AbjHYOKW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Aug 2023 10:10:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41614 "EHLO
+        id S240053AbjHYOKw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Aug 2023 10:10:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51586 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1343631AbjHYOJv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Aug 2023 10:09:51 -0400
-Received: from out-244.mta1.migadu.com (out-244.mta1.migadu.com [IPv6:2001:41d0:203:375::f4])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 28B042D61
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Aug 2023 07:09:17 -0700 (PDT)
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1692972229;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=k/4ZXSLCSyhuRHiUlNViF+vdvrXezEQu+Nm95mQGfD4=;
-        b=XN4VKQ0vJWdKOqygAoO6O9s0mfT9sbRl6WKC6PlM4YizrHDbuoZWPHymJ4boioTyhTPsXz
-        mzB7w7XoqaVp3khAiC/KVcJAYhLbwQjG/YZ+xeSDe8Sd8K9S+AePqNUb6KBAAuKlTSuaCl
-        kFQBsj5S1c42QHrr1w1CZcr0QQo5mJc=
-From:   Hao Xu <hao.xu@linux.dev>
-To:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>
-Cc:     Dominique Martinet <asmadeus@codewreck.org>,
+        with ESMTP id S1343759AbjHYOKo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Aug 2023 10:10:44 -0400
+Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 624F12D49;
+        Fri, 25 Aug 2023 07:10:20 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+        References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+        Content-Transfer-Encoding:Content-ID:Content-Description;
+        bh=EU4c+QvmUrzx56YT6HV/cCIR2Pjqx+IXpn7k2GV7Q+c=; b=sXnwInRucx8CcJKwrlTfZ031er
+        LEY7y8jsL9Hib5zZnhCnKvqEBOaupx8CYhaoOaWj/VYF41GGvSOMwZwP7gnqnUjyUY5nybhBoSrxT
+        cix5TlGhcoCY3jjdx5/eXfy7PSYCUWLL6z2ZL1LRTqjCJLf619sI6Mfr/SSckV734m8GK683QEHy+
+        aF/xKkJIUvAhE/VXofyvjMKZ4LYU11OPTfozENym+/mg5hUGQWADpmiwU301hOx3e6IcpV8ta4h3y
+        7U3MMVZnd623qdMqd3D0FkVtdSaK+AiLgU+Qa7F9jQSRFB1EUCUT2iSVWxr49S72DAzkgcEx6R3cM
+        2mytwuWw==;
+Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
+        id 1qZXUl-00HWBm-5H; Fri, 25 Aug 2023 14:09:03 +0000
+Date:   Fri, 25 Aug 2023 15:09:03 +0100
+From:   Matthew Wilcox <willy@infradead.org>
+To:     Hao Xu <hao.xu@linux.dev>
+Cc:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
+        Dominique Martinet <asmadeus@codewreck.org>,
         Pavel Begunkov <asml.silence@gmail.com>,
         Christian Brauner <brauner@kernel.org>,
         Alexander Viro <viro@zeniv.linux.org.uk>,
@@ -46,44 +49,27 @@ Cc:     Dominique Martinet <asmadeus@codewreck.org>,
         devel@lists.orangefs.org, linux-cifs@vger.kernel.org,
         samba-technical@lists.samba.org, linux-mtd@lists.infradead.org,
         Wanpeng Li <wanpengli@tencent.com>
-Subject: [PATCH 21/29] xfs: return -EAGAIN when bulk memory allocation fails in nowait case
-Date:   Fri, 25 Aug 2023 21:54:23 +0800
-Message-Id: <20230825135431.1317785-22-hao.xu@linux.dev>
-In-Reply-To: <20230825135431.1317785-1-hao.xu@linux.dev>
+Subject: Re: [PATCH 22/29] xfs: comment page allocation for nowait case in
+ xfs_buf_find_insert()
+Message-ID: <ZOi1/yafn3HQFWnW@casper.infradead.org>
 References: <20230825135431.1317785-1-hao.xu@linux.dev>
+ <20230825135431.1317785-23-hao.xu@linux.dev>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Migadu-Flow: FLOW_OUT
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20230825135431.1317785-23-hao.xu@linux.dev>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Hao Xu <howeyxu@tencent.com>
+On Fri, Aug 25, 2023 at 09:54:24PM +0800, Hao Xu wrote:
+> @@ -633,6 +633,8 @@ xfs_buf_find_insert(
+>  	 * allocate the memory from the heap to minimise memory usage. If we
+>  	 * can't get heap memory for these small buffers, we fall back to using
+>  	 * the page allocator.
+> +	 * xfs_buf_alloc_kmem may return -EAGAIN, let's not return it but turn
+> +	 * to page allocator as well.
 
-Rather than wait for a moment and retry, we return -EAGAIN when we fail
-to allocate bulk memory in xfs_buf_alloc_pages() in nowait case.
-
-Signed-off-by: Hao Xu <howeyxu@tencent.com>
----
- fs/xfs/xfs_buf.c | 5 +++++
- 1 file changed, 5 insertions(+)
-
-diff --git a/fs/xfs/xfs_buf.c b/fs/xfs/xfs_buf.c
-index a6e6e64ff940..eb3cd7702545 100644
---- a/fs/xfs/xfs_buf.c
-+++ b/fs/xfs/xfs_buf.c
-@@ -404,6 +404,11 @@ xfs_buf_alloc_pages(
- 		if (filled != last)
- 			continue;
- 
-+		if (nowait) {
-+			xfs_buf_free_pages(bp);
-+			return -EAGAIN;
-+		}
-+
- 		if (flags & XBF_READ_AHEAD) {
- 			xfs_buf_free_pages(bp);
- 			return -ENOMEM;
--- 
-2.25.1
+This new sentence seems like it says exactly the same thing as the
+previous sentence.  What am I missing?
 
