@@ -2,107 +2,122 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E783EE49B3
-	for <linux-nfs@archiver.kernel.org>; Fri, 25 Aug 2023 17:57:45 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C3F3C3DA6F
+	for <linux-nfs@archiver.kernel.org>; Fri, 25 Aug 2023 18:11:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231597AbjHYR5M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Aug 2023 13:57:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36216 "EHLO
+        id S230188AbjHYSKu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Aug 2023 14:10:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40394 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232120AbjHYR5I (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Aug 2023 13:57:08 -0400
+        with ESMTP id S231206AbjHYSKg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Aug 2023 14:10:36 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 67B87128;
-        Fri, 25 Aug 2023 10:57:06 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4C99C2685;
+        Fri, 25 Aug 2023 11:10:34 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id F261A62CB5;
-        Fri, 25 Aug 2023 17:57:05 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DF2ECC433C9;
-        Fri, 25 Aug 2023 17:57:04 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id D4B09612A4;
+        Fri, 25 Aug 2023 18:10:33 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 39F13C433C7;
+        Fri, 25 Aug 2023 18:10:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1692986225;
-        bh=+EGk3NTklNsc2mqEzAy8hcuNClQWSDUYGoK8D+J3qxI=;
-        h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-        b=nB5DRLhskOL1exhTojx8NKkLNBfkEyEtLwE8jt51STWfGiYCKWyN9OycWLgE1x/7o
-         VMINBdDMQIIw9wGVJ1d42FjqTD0TNvPNb/yNnMsQveCexORhy4I6B7+/rhgYN1dpXk
-         8F2lERfHgjkUPLGxgl6jSPaE84wg5GPGrEISnBZeQRuGwSvaEZwK588ssgzJXSSfIT
-         ETG0fhpgJlFGIHC1wUXPujiYyQmUQxszR4I5Pczh0ey2qAc5ujV8YKizExooQZ6pVc
-         M1KGmMB/5dQvv+FcTvOfpRInO1EPi09sFcbTj/ap78jXn6k6DH1ivjBN0UzIKsOzsx
-         EpRRPkbC62MgQ==
+        s=k20201202; t=1692987033;
+        bh=Ecc5LQmwxrnoqI0nQwKZwEUDx8WMKVZsbyFyi1TKItw=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=gffbYCsI4KQb9MMOrOcTfT4x9IivzcLsyVEzojNa/Z+uDnJQWwlSWRjJ2B1qqun2l
+         4LFKx95d7AghNQCb8QJYRnogm1jK/8/18zcjpcvfZJQCPS8d4+H2/BUCnMDsyp/wH+
+         qudI/azPK+y6apMrM2EwPdXTeL+SqBalf0og0Dwql4cTZXbXjrhbmaYsCUxDbBW/er
+         oiGmEBnzZn74rpLsf64f1NWprTJ1w2D2mKMVXY4gmFr5jc9THh7TdimJNTAq7L2fEj
+         1Iweg50bt9vg/gyiTSI814zT18JHq5aTbNspWmBUYiTmtlPv+Nr1knde4xjDbueujf
+         z2ks7uXpUyEMA==
+Message-ID: <ae36349af354dcf40c29ff1c6bf7d930f08e7115.camel@kernel.org>
+Subject: Re: [PATCH 2/7] lockd: don't call vfs_lock_file() for pending
+ requests
 From:   Jeff Layton <jlayton@kernel.org>
-Date:   Fri, 25 Aug 2023 13:56:54 -0400
-Subject: [PATCH fstests v3 1/2] common/attr: fix the _require_acl test
+To:     Alexander Aring <aahringo@redhat.com>, linux-nfs@vger.kernel.org
+Cc:     cluster-devel@redhat.com, ocfs2-devel@lists.linux.dev,
+        linux-fsdevel@vger.kernel.org, teigland@redhat.com,
+        rpeterso@redhat.com, agruenba@redhat.com,
+        trond.myklebust@hammerspace.com, anna@kernel.org,
+        chuck.lever@oracle.com
+Date:   Fri, 25 Aug 2023 14:10:30 -0400
+In-Reply-To: <20230823213352.1971009-3-aahringo@redhat.com>
+References: <20230823213352.1971009-1-aahringo@redhat.com>
+         <20230823213352.1971009-3-aahringo@redhat.com>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20230825-fixes-v3-1-6484c098f8e8@kernel.org>
-References: <20230825-fixes-v3-0-6484c098f8e8@kernel.org>
-In-Reply-To: <20230825-fixes-v3-0-6484c098f8e8@kernel.org>
-To:     fstests@vger.kernel.org
-Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Darrick Wong <djwong@kernel.org>,
-        Zorro Lang <zlang@redhat.com>, Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1618; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=+EGk3NTklNsc2mqEzAy8hcuNClQWSDUYGoK8D+J3qxI=;
- b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBk6OtvgraKz1sQ55kr+e1bkH/jXKby65uFw3W1H
- 41t2e7hHnaJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZOjrbwAKCRAADmhBGVaC
- FeH2EADNQ5eryxky0WlL9uZE9W3ZuD/OsKLJo5MlwwSKdsQfb/glRxvtInPQ/foeW48ByRz2FiH
- D8N3f22F2xko3bxjIwn2mG67RYp1ozJvXuNBhoJFnjTR8B1Sb7JSYdfTbdMmGlNNjxJLYNEN52g
- HBmwQjrYSRyBQzId59waC0aLMb0j8gJri1RoNibcd67bHuao/IAQxKVrowLTShOEieYrzrI9gVS
- i+qQE3IGoLx/8qZrHy1AdHopdWBOv3gJs7FZRmdrTQH2kJW8B3366Q8hrlF2ZinKnrxt5J6/ITP
- 1+sRTwIYIe9uh0g5ymXA3c4h/ePqAPeG1f9XhSdoDko4+ZhNWjPzCI2Eum6Bstz7NO5lVZ2n+DA
- XNbNrBjP/WtC6372c+jBfsqB4c9gp9fracjkmMADhA4bQcH+jzKll98BM+wpDFY9o3eYCUWgMFE
- akq/qxsG7ZQy5oG3qjfq+nKU0lUxgdx9XTADZkNvgFH2lpg3muqsFDGGAlrTKcxcdn1MIKikYqs
- HW0N0+am9TxSXO9i6N1rYwUDcukQYgo7eGdb+FTFfwMiZ+oCesYndsD/kTssZ/H5S2T+dJZb0H5
- jTx093tNzvK7/u/UsH2yoXXuCVhnhlkNWcTbsYrAnlix9U/ZGRh6KJu4ficfXcpdVDbeIizeGpf
- GAolJ4ChkSVylAg==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-_require_acl tests whether you're able to fetch the ACL from a file
-using chacl, and then tests for an -EOPNOTSUPP error return.
-Unfortunately, filesystems that don't support them (like NFSv4) just
-return -ENODATA when someone calls getxattr for the POSIX ACL, so the
-test doesn't work.
+On Wed, 2023-08-23 at 17:33 -0400, Alexander Aring wrote:
+> This patch returns nlm_lck_blocked in nlmsvc_lock() when an asynchronous
+> lock request is pending. During testing I ran into the case with the
+> side-effects that lockd is waiting for only one lm_grant() callback
+> because it's already part of the nlm_blocked list. If another
+> asynchronous for the same nlm_block is triggered two lm_grant()
+> callbacks will occur but lockd was only waiting for one.
+>=20
+> To avoid any change of existing users this handling will only being made
+> when export_op_support_safe_async_lock() returns true.
+>=20
+> Signed-off-by: Alexander Aring <aahringo@redhat.com>
+> ---
+>  fs/lockd/svclock.c | 24 +++++++++++++++++-------
+>  1 file changed, 17 insertions(+), 7 deletions(-)
+>=20
+> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> index 6e3b230e8317..aa4174fbaf5b 100644
+> --- a/fs/lockd/svclock.c
+> +++ b/fs/lockd/svclock.c
+> @@ -531,6 +531,23 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file =
+*file,
+>  		goto out;
+>  	}
+> =20
+> +	spin_lock(&nlm_blocked_lock);
+> +	/*
+> +	 * If this is a lock request for an already pending
+> +	 * lock request we return nlm_lck_blocked without calling
+> +	 * vfs_lock_file() again. Otherwise we have two pending
+> +	 * requests on the underlaying ->lock() implementation but
+> +	 * only one nlm_block to being granted by lm_grant().
+> +	 */
+> +	if (export_op_support_safe_async_lock(inode->i_sb->s_export_op,
+> +					      nlmsvc_file_file(file)->f_op) &&
+> +	    !list_empty(&block->b_list)) {
+> +		spin_unlock(&nlm_blocked_lock);
+> +		ret =3D nlm_lck_blocked;
+> +		goto out;
+> +	}
 
-Fix the test to have chacl set an ACL on the file instead, which should
-reliably fail on filesystems that don't support them.
+Looks reasonable. The block->b_list check is subtle, but the comment
+helps.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- common/attr | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+> +	spin_unlock(&nlm_blocked_lock);
+> +
+>  	if (!wait)
+>  		lock->fl.fl_flags &=3D ~FL_SLEEP;
+>  	mode =3D lock_to_openmode(&lock->fl);
+> @@ -543,13 +560,6 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file =
+*file,
+>  			ret =3D nlm_granted;
+>  			goto out;
+>  		case -EAGAIN:
+> -			/*
+> -			 * If this is a blocking request for an
+> -			 * already pending lock request then we need
+> -			 * to put it back on lockd's block list
+> -			 */
+> -			if (wait)
+> -				break;
+>  			ret =3D async_block ? nlm_lck_blocked : nlm_lck_denied;
+>  			goto out;
+>  		case FILE_LOCK_DEFERRED:
 
-diff --git a/common/attr b/common/attr
-index cce4d1b201b2..3ebba682c894 100644
---- a/common/attr
-+++ b/common/attr
-@@ -163,13 +163,12 @@ _require_acls()
-     [ -n "$CHACL_PROG" ] || _notrun "chacl command not found"
- 
-     #
--    # Test if chacl is able to list ACLs on the target filesystems.  On really
--    # old kernels the system calls might not be implemented at all, but the
--    # more common case is that the tested filesystem simply doesn't support
--    # ACLs.
-+    # Test if chacl is able to set an ACL on a file.  On really old kernels
-+    # the system calls might not be implemented at all, but the more common
-+    # case is that the tested filesystem simply doesn't support ACLs.
-     #
-     touch $TEST_DIR/syscalltest
--    chacl -l $TEST_DIR/syscalltest > $TEST_DIR/syscalltest.out 2>&1
-+    chacl 'u::rw-,g::---,o::---' $TEST_DIR/syscalltest > $TEST_DIR/syscalltest.out 2>&1
-     cat $TEST_DIR/syscalltest.out >> $seqres.full
- 
-     if grep -q 'Function not implemented' $TEST_DIR/syscalltest.out; then
 
--- 
-2.41.0
-
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
