@@ -2,29 +2,29 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3C9E6EE49B2
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4B701EE49AD
 	for <linux-nfs@archiver.kernel.org>; Fri, 25 Aug 2023 14:01:22 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S245453AbjHYOAu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 25 Aug 2023 10:00:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49500 "EHLO
+        id S245445AbjHYOAt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 25 Aug 2023 10:00:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44176 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S245448AbjHYOAZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Aug 2023 10:00:25 -0400
-Received: from out-253.mta1.migadu.com (out-253.mta1.migadu.com [95.215.58.253])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 76EFC213C;
-        Fri, 25 Aug 2023 06:59:54 -0700 (PDT)
+        with ESMTP id S245554AbjHYOAn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Aug 2023 10:00:43 -0400
+Received: from out-253.mta1.migadu.com (out-253.mta1.migadu.com [IPv6:2001:41d0:203:375::fd])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 654752D63
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Aug 2023 07:00:20 -0700 (PDT)
 X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1692971954;
+        t=1692972015;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=X5RgYva0uI/YfpMcRAQXXXC0hBNumZORbEO2XQnoCOE=;
-        b=hhFKi9whhR2X2IEmGg/HYYhsZrqTloqAijCXD8QFPZxM06DdOnuDX6HZcxaVx0GnWwP31a
-        M0So32b6G0CBwnmz/554zgdXEAR2EreGyRvroTNj1npSBetZMZwgSp6p2inhLbOwP9M7D3
-        1+ZqQCM/k54TMM1J4bjoCTeLz5qWIys=
+        bh=CL8wzJoAbQ75iZcN0EHSqoGXIWt+IFMvEgcKIhs6zqE=;
+        b=UXdbOLDkxTPiI/RUD6vA6Y59upGR8p9yuOS0cheVOmW9wy55dk0PwGqrHNQocUaxtZPqwl
+        8SMpVuiY/GUEZaQEBzm6P0e4nsRhzT+GENJ6bzTIZGRyqbBvQsF+Q3u8++NZNdyfo398WE
+        Pbto4Fcj8Lgxb50rhsqaYEakh0iY2/E=
 From:   Hao Xu <hao.xu@linux.dev>
 To:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>
 Cc:     Dominique Martinet <asmadeus@codewreck.org>,
@@ -46,9 +46,9 @@ Cc:     Dominique Martinet <asmadeus@codewreck.org>,
         devel@lists.orangefs.org, linux-cifs@vger.kernel.org,
         samba-technical@lists.samba.org, linux-mtd@lists.infradead.org,
         Wanpeng Li <wanpengli@tencent.com>
-Subject: [PATCH 09/29] vfs: move file_accessed() to the beginning of iterate_dir()
-Date:   Fri, 25 Aug 2023 21:54:11 +0800
-Message-Id: <20230825135431.1317785-10-hao.xu@linux.dev>
+Subject: [PATCH 11/29] vfs: trylock inode->i_rwsem in iterate_dir() to support nowait
+Date:   Fri, 25 Aug 2023 21:54:13 +0800
+Message-Id: <20230825135431.1317785-12-hao.xu@linux.dev>
 In-Reply-To: <20230825135431.1317785-1-hao.xu@linux.dev>
 References: <20230825135431.1317785-1-hao.xu@linux.dev>
 MIME-Version: 1.0
@@ -60,41 +60,56 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Hao Xu <howeyxu@tencent.com>
 
-Move file_accessed() to the beginning of iterate_dir() so that we don't
-need to rollback all the work done when file_accessed() returns -EAGAIN
-at the end of getdents.
+Trylock inode->i_rwsem in iterate_dir() to support nowait semantics and
+error out -EAGAIN when there is contention.
 
 Signed-off-by: Hao Xu <howeyxu@tencent.com>
 ---
- fs/readdir.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/readdir.c | 20 ++++++++++++++------
+ 1 file changed, 14 insertions(+), 6 deletions(-)
 
 diff --git a/fs/readdir.c b/fs/readdir.c
-index 2f4c9c663a39..6469f076ba6e 100644
+index 6469f076ba6e..664ecd9665a1 100644
 --- a/fs/readdir.c
 +++ b/fs/readdir.c
-@@ -61,6 +61,10 @@ int iterate_dir(struct file *file, struct dir_context *ctx)
+@@ -43,6 +43,8 @@ int iterate_dir(struct file *file, struct dir_context *ctx)
+ 	struct inode *inode = file_inode(file);
+ 	bool shared = false;
+ 	int res = -ENOTDIR;
++	bool nowait;
++
+ 	if (file->f_op->iterate_shared)
+ 		shared = true;
+ 	else if (!file->f_op->iterate)
+@@ -52,16 +54,22 @@ int iterate_dir(struct file *file, struct dir_context *ctx)
+ 	if (res)
+ 		goto out;
+ 
+-	if (shared)
+-		res = down_read_killable(&inode->i_rwsem);
+-	else
+-		res = down_write_killable(&inode->i_rwsem);
+-	if (res)
++	nowait = ctx->flags & DIR_CONTEXT_F_NOWAIT;
++	if (nowait) {
++		res = shared ? down_read_trylock(&inode->i_rwsem) :
++			       down_write_trylock(&inode->i_rwsem);
++		if (!res)
++			res = -EAGAIN;
++	} else {
++		res = shared ? down_read_killable(&inode->i_rwsem) :
++			       down_write_killable(&inode->i_rwsem);
++	}
++	if (res < 0)
+ 		goto out;
  
  	res = -ENOENT;
  	if (!IS_DEADDIR(inode)) {
-+		res = file_accessed(file, ctx->flags & DIR_CONTEXT_F_NOWAIT);
-+		if (res == -EAGAIN)
-+			goto out_unlock;
-+
- 		ctx->pos = file->f_pos;
- 		if (shared)
- 			res = file->f_op->iterate_shared(file, ctx);
-@@ -68,8 +72,9 @@ int iterate_dir(struct file *file, struct dir_context *ctx)
- 			res = file->f_op->iterate(file, ctx);
- 		file->f_pos = ctx->pos;
- 		fsnotify_access(file);
--		file_accessed(file, ctx->flags & DIR_CONTEXT_F_NOWAIT);
- 	}
-+
-+out_unlock:
- 	if (shared)
- 		inode_unlock_shared(inode);
- 	else
+-		res = file_accessed(file, ctx->flags & DIR_CONTEXT_F_NOWAIT);
++		res = file_accessed(file, nowait);
+ 		if (res == -EAGAIN)
+ 			goto out_unlock;
+ 
 -- 
 2.25.1
 
