@@ -2,101 +2,106 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8BFE6C83F16
-	for <linux-nfs@archiver.kernel.org>; Mon, 28 Aug 2023 01:05:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5AB35C83F18
+	for <linux-nfs@archiver.kernel.org>; Mon, 28 Aug 2023 05:54:16 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229534AbjH1BFS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 27 Aug 2023 21:05:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36256 "EHLO
+        id S229470AbjH1Fxo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 28 Aug 2023 01:53:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49622 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229525AbjH1BFE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Aug 2023 21:05:04 -0400
-Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [IPv6:2a03:a000:7:0:5054:ff:fe1c:15ff])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6CECBF4;
-        Sun, 27 Aug 2023 18:05:01 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-        d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
-        MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
-        Content-Transfer-Encoding:Content-ID:Content-Description;
-        bh=joEHMg4Vnx51INzte3pGka01/tHMgi/viw3PIuubDEg=; b=tBQRCz5+oVdl3BS/sNcy7bWOX7
-        GGqnD2dBYFuddcCAHCZIxNjDzAdi2le5BAt0r8Kntb7pX1JY0YphckowafjvL81vNIQ3iZbSuHB8W
-        r/PUBBhyIh5zGyiYSh551Ab8m+qrDF3vUESvq5gmF+156kAmT5ewUZLVGI0pVuCR+wxckZ4BuuSiW
-        RJFEDzRbT6/CwsUyBB67HLFUFCa0gDIENAIc4MS7fD/7hjHRH/QwT9ZGKRpKtatGkE8elHlNUeY9H
-        K7XCyGgu0m99e9gG1KyKu8v/0XPiv+PZlDfNvSozoVu79X3N9xA7HRVP+E5Pt/Irs6JBUgQAoXzdY
-        9136hnSA==;
-Received: from viro by zeniv.linux.org.uk with local (Exim 4.96 #2 (Red Hat Linux))
-        id 1qaQgN-001R4E-2B;
-        Mon, 28 Aug 2023 01:04:43 +0000
-Date:   Mon, 28 Aug 2023 02:04:43 +0100
-From:   Al Viro <viro@zeniv.linux.org.uk>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     Matthew Wilcox <willy@infradead.org>, Jens Axboe <axboe@kernel.dk>,
-        Xiubo Li <xiubli@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Christian Brauner <brauner@kernel.org>,
-        Theodore Ts'o <tytso@mit.edu>,
-        Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        Andreas Gruenbacher <agruenba@redhat.com>,
-        "Darrick J. Wong" <djwong@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        Damien Le Moal <dlemoal@kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-block@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, Hannes Reinecke <hare@suse.de>
-Subject: Re: [PATCH 03/12] filemap: update ki_pos in generic_perform_write
-Message-ID: <20230828010443.GV3390869@ZenIV>
-References: <20230601145904.1385409-1-hch@lst.de>
- <20230601145904.1385409-4-hch@lst.de>
- <20230827194122.GA325446@ZenIV>
+        with ESMTP id S229578AbjH1Fxf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Aug 2023 01:53:35 -0400
+Received: from smtp-relay-internal-1.canonical.com (smtp-relay-internal-1.canonical.com [185.125.188.123])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E36A2115
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Aug 2023 22:53:32 -0700 (PDT)
+Received: from mail-pl1-f199.google.com (mail-pl1-f199.google.com [209.85.214.199])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+        (No client certificate requested)
+        by smtp-relay-internal-1.canonical.com (Postfix) with ESMTPS id B22B23F12F
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Aug 2023 05:53:31 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=canonical.com;
+        s=20210705; t=1693202011;
+        bh=1EdiZtk+rCvL0vfX6cuCtDrMpn2tMOvoJRqg47DcDsQ=;
+        h=From:To:Cc:Subject:Date:Message-Id:MIME-Version;
+        b=cmthtCz9uOTQoPfuRs4ymj1olSjD3P8TosHJGzbdaJmMrlSlBLJzaeo9/cH33+If/
+         vaoiyXjjyCaQRXSZzLMHYZ010R5Yi2I6tt0AYkc4j6MoP6wFuevQ3kem6slKF9xgro
+         4ZWSXeY/RLxvtBjw1mAC4vyFwsevR7r0O5THiro+baTk0fDJV4x9iN8338DBN8S9+b
+         FAKhtwlbs8hoNKBN7Ex9zUoyP0K0lWuBPqRKpOl4ZE0k0JtkLBpIKPz7NUeoGx3lyF
+         W+++hhtZ3nkKTcxf8Xx5vEGGaYjXrSRRVMi/LWHa4S04rv6w1q+3dd9MaNAAYl10Lw
+         IO4pnv5AQlASw==
+Received: by mail-pl1-f199.google.com with SMTP id d9443c01a7336-1c09c1fd0abso26248005ad.2
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Aug 2023 22:53:31 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1693202010; x=1693806810;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=1EdiZtk+rCvL0vfX6cuCtDrMpn2tMOvoJRqg47DcDsQ=;
+        b=f9QgnSpawErxxn5pDq+3ttaYPCu5mdrTbsFlW858lfyI6TZjscCzYXzYffirJLdRid
+         VJ0kJ3fy1hS5M19MSyAf86ltgMLwexQz2IRITvavpLNhmPeFO2Ay4egaBbE50tGJoQvF
+         H4kqNUy0PVgnFNyv2b5Rk6kbx9n0lpEl896yRPj1cf3myW/sdcSAGaxdWv9hDdrI+flH
+         vrURKS2KQcf0ZdTkzNo5gzpWQyNt2dvcDD9m2LZBjQbDBVSmuWG5d4d0RlGLhMXVcF5j
+         MfLkHeu/ZPoEj8J5WTIBCHQcqJ3z5YNZicU7VeECUUOQVp+VsyhRT91sG7aP89adfpiX
+         3qrg==
+X-Gm-Message-State: AOJu0YwWb6NUzJsTtO16gmujIBPQm0GgJHYlHQcO6EOmBwf34RyBzPZ1
+        LaeEk4423JZNgeYCyAnSICYHn/X4iFzcAPu0+oPT7b+mKpqDR+9hYBwNdUcbF0w8hmmdEHbnVtQ
+        l559YxtDuKsBoE7k+VExYo29wdXp7RN2wca4lSg==
+X-Received: by 2002:a17:903:2304:b0:1c0:d17a:bff2 with SMTP id d4-20020a170903230400b001c0d17abff2mr7367432plh.20.1693202010430;
+        Sun, 27 Aug 2023 22:53:30 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IEgPmx1Mxb+XEs1rREv5yU5L/zaLOQbtFNDMF+9yA+FLdTg66hoAGMLmbs2F5RwkQjBO0FG6A==
+X-Received: by 2002:a17:903:2304:b0:1c0:d17a:bff2 with SMTP id d4-20020a170903230400b001c0d17abff2mr7367418plh.20.1693202010063;
+        Sun, 27 Aug 2023 22:53:30 -0700 (PDT)
+Received: from chengendu.. (111-248-129-25.dynamic-ip.hinet.net. [111.248.129.25])
+        by smtp.gmail.com with ESMTPSA id jk17-20020a170903331100b001bdf046ed71sm6319346plb.120.2023.08.27.22.53.28
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Sun, 27 Aug 2023 22:53:29 -0700 (PDT)
+From:   Chengen Du <chengen.du@canonical.com>
+To:     steved@redhat.com
+Cc:     linux-nfs@vger.kernel.org, Chengen Du <chengen.du@canonical.com>
+Subject: [PATCH v3] nfs(5): adding new mount option 'fasc'
+Date:   Mon, 28 Aug 2023 13:53:24 +0800
+Message-Id: <20230828055324.21408-1-chengen.du@canonical.com>
+X-Mailer: git-send-email 2.39.2
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230827194122.GA325446@ZenIV>
-Sender: Al Viro <viro@ftp.linux.org.uk>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Sun, Aug 27, 2023 at 08:41:22PM +0100, Al Viro wrote:
+Add an option that triggers the clearing of the file
+access cache as soon as the cache timestamp becomes
+older than the user's login time.
 
-> That part is somewhat fishy - there's a case where you return a positive value
-> and advance ->ki_pos by more than that amount.  I really wonder if all callers
-> of ->write_iter() are OK with that.
+Signed-off-by: Chengen Du <chengen.du@canonical.com>
+---
+ utils/mount/nfs.man | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-Speaking of which, in case of negative return value we'd better *not* use
-->ki_pos; consider e.g. generic_file_write_iter() with O_DSYNC and
-vfs_fsync_range() failure.  An error gets returned, but ->ki_pos is left
-advanced.  Normal write(2) is fine - it will only update file->f_pos if
-->write_iter() has returned a non-negative.  However, io_uring
-kiocb_done() starts with
-        if (req->flags & REQ_F_CUR_POS)
-                req->file->f_pos = rw->kiocb.ki_pos;
-        if (ret >= 0 && (rw->kiocb.ki_complete == io_complete_rw)) {
-                if (!__io_complete_rw_common(req, ret)) {
-                        /*
-                         * Safe to call io_end from here as we're inline
-                         * from the submission path.
-                         */
-                        io_req_io_end(req);
-                        io_req_set_res(req, final_ret,
-                                       io_put_kbuf(req, issue_flags));
-                        return IOU_OK;
-                }
-        } else {
-                io_rw_done(&rw->kiocb, ret);
-        }
-Note that ->f_pos update is *NOT* conditional upon ret >= 0 - it happens
-no matter what, provided that original request had ->kiocb.ki_pos equal
-to -1 (on a non-FMODE_STREAM file).
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 9b4bc9c9..2ac7b4ad 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -608,6 +608,19 @@ option is not specified,
+ the default behavior depends on the kernel version,
+ but is usually equivalent to
+ .BR "xprtsec=none" .
++.TP 1.5i
++.BI fasc
++Triggers the clearing of the file access cache as soon as the cache 
++timestamp becomes older than the user's login time. It is supported 
++in kernels 6.4 and later.
++.IP
++NFS servers often refresh their users' group membership at their 
++own cadence, which means the NFS client's file access cache can 
++become stale if the user's group membership changes on the server 
++after they've logged in on the client. To align with the principles 
++of the POSIX design, which only refreshes the user's supplementary 
++group information upon login, the mechanism uses the user's login 
++time to determine whether the file access cache needs to be refreshed.
+ .SS "Options for NFS versions 2 and 3 only"
+ Use these options, along with the options in the above subsection,
+ for NFS versions 2 and 3 only.
+-- 
+2.39.2
 
-Jens, is there any reason for doing that unconditionally?  IMO it's
-a bad idea - there's a wide scope for fuckups that way, especially
-since write(2) is not sensitive to that and this use of -1 ki_pos
-is not particularly encouraged on io_uring side either, AFAICT.
-Worse, it's handling of failure exits in the first place, which
-already gets little testing...
