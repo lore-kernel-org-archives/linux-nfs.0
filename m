@@ -2,78 +2,58 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 157C4C83F1C
-	for <linux-nfs@archiver.kernel.org>; Tue, 29 Aug 2023 07:47:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D04F1C6FA8F
+	for <linux-nfs@archiver.kernel.org>; Tue, 29 Aug 2023 07:58:35 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233846AbjH2Hqy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 29 Aug 2023 03:46:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42184 "EHLO
+        id S231377AbjH2H6B (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 29 Aug 2023 03:58:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34082 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233958AbjH2Hqh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2023 03:46:37 -0400
-Received: from out-246.mta1.migadu.com (out-246.mta1.migadu.com [95.215.58.246])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A8E251A1;
-        Tue, 29 Aug 2023 00:46:34 -0700 (PDT)
-Message-ID: <c728bf3f-d9db-4865-8473-058b26c11c06@linux.dev>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1693295192;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=WP3nN15JcnIGn7wEIePFcf6LVOuPCzTP32Hu73YPviw=;
-        b=ngCnTfY2JVdB7UbTvhBxaE99SXYf68v1UOzv1oD4Q4J5vfDrhRAI+RinhUow/HJ/SENsM3
-        ljkpELTTwPgx4fdS1Wsi0U6qZJzH3KEWBSpgNNnZhZo9Ah7qcNPQhnBWxHwyd9Ba5JlzW/
-        R7n89/DPeOOyD3xIKShExED+0gXsmv8=
-Date:   Tue, 29 Aug 2023 15:46:13 +0800
+        with ESMTP id S230327AbjH2H5u (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2023 03:57:50 -0400
+X-Greylist: delayed 913 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 29 Aug 2023 00:57:42 PDT
+Received: from mail.profitpathwaygo.com (mail.profitpathwaygo.com [141.94.21.238])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7886DD2
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 00:57:42 -0700 (PDT)
+Received: by mail.profitpathwaygo.com (Postfix, from userid 1002)
+        id 1F4BF489C6; Tue, 29 Aug 2023 07:31:51 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=profitpathwaygo.com;
+        s=mail; t=1693294333;
+        bh=qp3Ofokho6Ql+WtI8ZPVilyHYhskXL7fod7u9CWs8W4=;
+        h=Date:From:To:Subject:From;
+        b=hmX10MRa3U69if2ZUm9tgJmiJqBgOtX//fRi323a6eg6iUBnxRvBnPA2B2bqW5AqH
+         nPoaKjivj/K1mJcrrhxGNaVJyHyIJV2RCMGGyaKPvPESu5vj7m1GMWFN4DOKDwsude
+         +mxMyxAtRpfMn0SVhSE8o+TsJlyBnTCROs6BxosXt8xMJLDyBeYZVYuEnWqxwLgHhX
+         tFHjf55DU/2dZ+2R+RLN2QytoSg3Rb11709pJARP60ra5Ky7L8YpTJqdUbcaBL8xyB
+         wtlIdbcRTH2mXyLOyTbB/XJlnUhGfwue2brUuhdbu15aY0Bbs5lGGKJ7ncDRVELJ6k
+         LMWHWSco+n8tQ==
+Received: by mail.profitpathwaygo.com for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 07:31:02 GMT
+Message-ID: <20230829064500-0.1.1f.e1zr.0.5wos9jn9si@profitpathwaygo.com>
+Date:   Tue, 29 Aug 2023 07:31:02 GMT
+From:   "Adam Charachuta" <adam.charachuta@profitpathwaygo.com>
+To:     <linux-nfs@vger.kernel.org>
+Subject: =?UTF-8?Q?S=C5=82owa_kluczowe_do_wypozycjonowania_?=
+X-Mailer: mail.profitpathwaygo.com
 MIME-Version: 1.0
-Subject: Re: [PATCH 07/11] vfs: add nowait parameter for file_accessed()
-Content-Language: en-US
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Pavel Begunkov <asml.silence@gmail.com>,
-        Christian Brauner <brauner@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Stefan Roesch <shr@fb.com>, Clay Harris <bugs@claycon.org>,
-        Dave Chinner <david@fromorbit.com>,
-        "Darrick J . Wong" <djwong@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-cachefs@redhat.com,
-        ecryptfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-unionfs@vger.kernel.org, bpf@vger.kernel.org,
-        netdev@vger.kernel.org, linux-s390@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, codalist@coda.cs.cmu.edu,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-mm@kvack.org, linux-nilfs@vger.kernel.org,
-        devel@lists.orangefs.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-mtd@lists.infradead.org,
-        Wanpeng Li <wanpengli@tencent.com>
-References: <20230827132835.1373581-1-hao.xu@linux.dev>
- <20230827132835.1373581-8-hao.xu@linux.dev>
- <ZOvA5DJDZN0FRymp@casper.infradead.org>
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-From:   Hao Xu <hao.xu@linux.dev>
-In-Reply-To: <ZOvA5DJDZN0FRymp@casper.infradead.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Migadu-Flow: FLOW_OUT
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 8/28/23 05:32, Matthew Wilcox wrote:
-> On Sun, Aug 27, 2023 at 09:28:31PM +0800, Hao Xu wrote:
->> From: Hao Xu <howeyxu@tencent.com>
->>
->> Add a boolean parameter for file_accessed() to support nowait semantics.
->> Currently it is true only with io_uring as its initial caller.
-> 
-> So why do we need to do this as part of this series?  Apparently it
-> hasn't caused any problems for filemap_read().
-> 
+Dzie=C5=84 dobry,
 
-We need this parameter to indicate if nowait semantics should be 
-enforced in touch_atime(), There are locks and maybe IOs in it.
+zapozna=C5=82em si=C4=99 z Pa=C5=84stwa ofert=C4=85 i z przyjemno=C5=9Bci=
+=C4=85 przyznaj=C4=99, =C5=BCe przyci=C4=85ga uwag=C4=99 i zach=C4=99ca d=
+o dalszych rozm=C3=B3w.=20
 
+Pomy=C5=9Bla=C5=82em, =C5=BCe mo=C5=BCe m=C3=B3g=C5=82bym mie=C4=87 sw=C3=
+=B3j wk=C5=82ad w Pa=C5=84stwa rozw=C3=B3j i pom=C3=B3c dotrze=C4=87 z t=C4=
+=85 ofert=C4=85 do wi=C4=99kszego grona odbiorc=C3=B3w. Pozycjonuj=C4=99 =
+strony www, dzi=C4=99ki czemu generuj=C4=85 =C5=9Bwietny ruch w sieci.
+
+Mo=C5=BCemy porozmawia=C4=87 w najbli=C5=BCszym czasie?
+
+
+Pozdrawiam serdecznie
+Adam Charachuta
