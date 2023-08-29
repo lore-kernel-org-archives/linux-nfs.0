@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 22907C83F1C
-	for <linux-nfs@archiver.kernel.org>; Tue, 29 Aug 2023 20:20:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BD9C1C71153
+	for <linux-nfs@archiver.kernel.org>; Tue, 29 Aug 2023 20:20:00 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240428AbjH2UTe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 29 Aug 2023 16:19:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54140 "EHLO
+        id S240381AbjH2UTb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 29 Aug 2023 16:19:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53264 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240524AbjH2UTN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2023 16:19:13 -0400
-Received: from mail-io1-xd35.google.com (mail-io1-xd35.google.com [IPv6:2607:f8b0:4864:20::d35])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB3E11BE
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 13:19:09 -0700 (PDT)
-Received: by mail-io1-xd35.google.com with SMTP id ca18e2360f4ac-79293ebfaf2so14493239f.1
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 13:19:09 -0700 (PDT)
+        with ESMTP id S240517AbjH2UTK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2023 16:19:10 -0400
+Received: from mail-io1-xd2f.google.com (mail-io1-xd2f.google.com [IPv6:2607:f8b0:4864:20::d2f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 78274CC0
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 13:19:06 -0700 (PDT)
+Received: by mail-io1-xd2f.google.com with SMTP id ca18e2360f4ac-77dcff76e35so50235239f.1
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 13:19:06 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1693340349; x=1693945149; darn=vger.kernel.org;
+        d=gmail.com; s=20221208; t=1693340346; x=1693945146; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=5D5Kvm1BHqxw7OkRLtU/qxcvETM83IthKpPkvjPcRF4=;
-        b=acn2ynI+g56d77V7Yftl82OcGzGCWtXlbBmvt1zbmA0zI1neAyxPRhYPsrEbaA3jh6
-         1aHKYzGbxg+X06r2IKnfOsGbqLUwSlT2p0UI0YuX78XoASm4Cwq173/f4hzRrZRkF1Q1
-         4HI8L5r1nEkL1yoxYk/fLRwigWOo3mQcSLPVTKOXtiiq+G1oWbr3fJa6Y2OCpdh5tzkJ
-         VruCTXLSf1Y5iaAahrwyBHjMn4HkxdAG5Po4y+j2dvr7HIMI4918buvjNv/aoq5Xlxvg
-         NIMKoc58b8GKr0+UVOOTIRAb4c7DIGPDHftOrNJsJLSAL37qj0aXZ1ZSCkzOSeBc3mJT
-         Mefg==
+        bh=iFalNfo88635XzIIWVYrfOYkVYq3q2qXKvQLV3zSROA=;
+        b=EKmTxbUvHMMvRXVRJsipyHcdilSbgZSRmRcSTN79kWj0jWtoVR6whsLi/YW6D/1cjd
+         ZxWCdm40c0rg4y+4iHT1SJrg22TEtEZ8gkl6mmRFFeakFcUcKRHRRbZnxgQ339XHVvvx
+         KQh4vYWWcfYOHDd7w4sQaYjBvXK5QJgZtItVctC0KXdIaGvl2NmiaTQ1rh6xcrUaFBLY
+         4TJT9NMMiJumIaIB9BtkIFTDHrVU4Do1zeomav6SpqFasf0qxqxmQcirFuubuPH3TnM8
+         fTeiqSDzBH8JA/ayxUg7yhRNABLZSzFdr4SiEWr95lqA6IejSd8Ci4fdIN4MtgL/mG23
+         EURQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1693340349; x=1693945149;
+        d=1e100.net; s=20221208; t=1693340346; x=1693945146;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=5D5Kvm1BHqxw7OkRLtU/qxcvETM83IthKpPkvjPcRF4=;
-        b=AkfwTrNEa9bdKNBDhDf6W+oK3wvfF6gterp1PuEZ+ekSQQW3u5I4bhlIFOhcO9DzTl
-         6VAheUbCdmsQ0yF788lYuil+CwMJ/rXzjgXUn0lQemlvGd5xSLWFW5MJp1hKK/9ybqKN
-         0jCYpB5qM4X29FQ0lK0+eBda1Wa3kPx64TOy2Vev4uVPaIuOG8j4lWzqTGoiDyk4DqFu
-         b6cRZw2tTjjsTGP0LIVOdp1qQ8H5YGmv3FGDCW4bDJRNXqnZrrCOBay+d58V17o5j8D2
-         DYo3OsaRMOBpQmA8LpIlwcTW7Uw78MUf7hbFo2bnGOxN5LnS3jemFESD/orjYBj3+0de
-         VTmg==
-X-Gm-Message-State: AOJu0Yz30mBvZY6Dij/uWQy3S3Gi1t2oKEr+kN3HZBvp6yg470CMNlZH
-        ZXtPcG0eSy58tMmXiZXpbHdEe/t+I0I=
-X-Google-Smtp-Source: AGHT+IE2sS+1bLzGskB5/N1GihLbYvh7VrHxsDA5H1i0FI6stisuxH5dgK9lhhasfKZfD126QIXojw==
-X-Received: by 2002:a6b:e512:0:b0:792:6be4:3dcb with SMTP id y18-20020a6be512000000b007926be43dcbmr368732ioc.2.1693340349112;
-        Tue, 29 Aug 2023 13:19:09 -0700 (PDT)
+        bh=iFalNfo88635XzIIWVYrfOYkVYq3q2qXKvQLV3zSROA=;
+        b=DITiClCDp8PJDqJQF2vXWXfEZe82txW/z/rXrjrm31xwJDDlZOL6eiZzXjHN2LaCxo
+         EEoC9IP04W0s3GAR11erlIs73qh6NU4s1pcBnHoNukHRRIBLlCHfF5XOwqfVdPTXkOuO
+         TlL6eJW9r2ltre2UPjwHPSju5LmmBL9gWp0jW3Wms+2j923M73rCcmWoC9OEEn5oa5ED
+         eP/lIUhRUYZ4g+gwG0BDPL3OiY1zHFUfV7NO3ENBRT9VL2nbFs9MuX6wmgtHrzS+8zel
+         M8XqkxNnREbymw98zomCMAHdfbCLHjIsALs0uOkT84dt25+9CA3hLjPcl6Lr3R2qcLwM
+         4StQ==
+X-Gm-Message-State: AOJu0Yx5qnJ5lBQznVc6nkhRdl7Hj5/gpQehw6ZNmG56vIw3PvpRzpa/
+        X5CtpnfhahN/ebTgBZyLV+4I07+91Xc=
+X-Google-Smtp-Source: AGHT+IHHiWXduepJHA5LG5bHHO/3MRVo2H87pNkQOg2yjfga5JuSexuGyvHNYPkmJp98RZbewhqfpw==
+X-Received: by 2002:a05:6602:3789:b0:794:da1e:b249 with SMTP id be9-20020a056602378900b00794da1eb249mr412250iob.1.1693340345774;
+        Tue, 29 Aug 2023 13:19:05 -0700 (PDT)
 Received: from kolga-mac-1.attlocal.net ([2600:1700:6a10:2e90:b9e5:28ab:6ad7:257e])
-        by smtp.gmail.com with ESMTPSA id gk8-20020a0566386a8800b0042b2f0b77aasm3300798jab.95.2023.08.29.13.19.08
+        by smtp.gmail.com with ESMTPSA id gk8-20020a0566386a8800b0042b2f0b77aasm3300798jab.95.2023.08.29.13.19.05
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 29 Aug 2023 13:19:08 -0700 (PDT)
+        Tue, 29 Aug 2023 13:19:05 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     steved@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] nfs-utils: gssd: handle KRB5_AP_ERR_BAD_INTEGRITY for user credentials
-Date:   Tue, 29 Aug 2023 16:19:02 -0400
-Message-Id: <20230829201902.63036-5-olga.kornievskaia@gmail.com>
+Subject: [PATCH 1/1] libtirpc: gss-api: expose gss major/minor error in authgss_refresh()
+Date:   Tue, 29 Aug 2023 16:18:59 -0400
+Message-Id: <20230829201902.63036-2-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
 In-Reply-To: <20230829201902.63036-1-olga.kornievskaia@gmail.com>
 References: <20230829201902.63036-1-olga.kornievskaia@gmail.com>
@@ -66,96 +66,88 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-Unlike the machine credential case, we can't throw away the ticket
-cache and use the keytab to renew the credentials. Instead, we
-need to remove the service ticket for the server that returned
-KRB5_AP_ERR_BAD_INTEGRITY and try again.
+When the client calls into the libtirpc to establish security
+context, the errors that occurred are squashed. Instead, extend
+authgss_refresh to propagate back the gss major/minor error
+codes to the caller.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- utils/gssd/gssd_proc.c |  2 ++
- utils/gssd/krb5_util.c | 42 ++++++++++++++++++++++++++++++++++++++++++
- utils/gssd/krb5_util.h |  1 +
- 3 files changed, 45 insertions(+)
+ src/auth_gss.c       | 17 +++++++++--------
+ tirpc/rpc/auth_gss.h |  2 ++
+ 2 files changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index e5cc1d98..a96647df 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -419,6 +419,8 @@ create_auth_rpc_client(struct clnt_info *clp,
- 			if (cred == GSS_C_NO_CREDENTIAL)
- 				retval = gssd_refresh_krb5_machine_credential(clp->servername,
- 					"*", NULL, 1);
-+			else
-+				retval = gssd_k5_remove_bad_service_cred(clp->servername);
- 			if (!retval) {
- 				auth = authgss_create_default(rpc_clnt, tgtname,
- 						&sec);
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index f6ce1fec..6f66ef4f 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -1553,6 +1553,48 @@ gssd_acquire_user_cred(gss_cred_id_t *gss_cred)
- 	return ret;
+diff --git a/src/auth_gss.c b/src/auth_gss.c
+index e317664..fa96acd 100644
+--- a/src/auth_gss.c
++++ b/src/auth_gss.c
+@@ -54,7 +54,7 @@
+ 
+ static void	authgss_nextverf(AUTH *);
+ static bool_t	authgss_marshal(AUTH *, XDR *);
+-static bool_t	authgss_refresh(AUTH *, void *);
++static bool_t	authgss_refresh(AUTH *, rpc_gss_options_ret_t *);
+ static bool_t	authgss_validate(AUTH *, struct opaque_auth *);
+ static void	authgss_destroy(AUTH *);
+ static void	authgss_destroy_context(AUTH *);
+@@ -184,6 +184,7 @@ authgss_create(CLIENT *clnt, gss_name_t name, struct rpc_gss_sec *sec)
+ 	AUTH			*auth, *save_auth;
+ 	struct rpc_gss_data	*gd;
+ 	OM_uint32		min_stat = 0;
++	rpc_gss_options_ret_t	ret;
+ 
+ 	gss_log_debug("in authgss_create()");
+ 
+@@ -229,8 +230,12 @@ authgss_create(CLIENT *clnt, gss_name_t name, struct rpc_gss_sec *sec)
+ 	save_auth = clnt->cl_auth;
+ 	clnt->cl_auth = auth;
+ 
+-	if (!authgss_refresh(auth, NULL))
++	memset(&ret, 0, sizeof(rpc_gss_options_ret_t));
++	if (!authgss_refresh(auth, &ret)) {
+ 		auth = NULL;
++		sec->major_status = ret.major_status;
++		sec->minor_status = ret.minor_status;
++	}
+ 	else
+ 		authgss_auth_get(auth); /* Reference for caller */
+ 
+@@ -265,7 +270,6 @@ authgss_create_default(CLIENT *clnt, char *service, struct rpc_gss_sec *sec)
+ 	}
+ 
+ 	auth = authgss_create(clnt, name, sec);
+-
+ 	if (name != GSS_C_NO_NAME) {
+ 		LIBTIRPC_DEBUG(3, ("authgss_create_default: freeing name %p", name));
+  		gss_release_name(&min_stat, &name);
+@@ -619,12 +623,9 @@ _rpc_gss_refresh(AUTH *auth, rpc_gss_options_ret_t *options_ret)
  }
  
-+/* Removed a service ticket for nfs/<name> from the ticket cache
-+ */
-+int
-+gssd_k5_remove_bad_service_cred(char *name)
-+{
-+        krb5_creds in_creds, out_creds;
-+        krb5_error_code ret;
-+        krb5_context context;
-+        krb5_ccache cache;
-+        krb5_principal principal;
-+        int retflags = KRB5_TC_MATCH_SRV_NAMEONLY;
-+        char srvname[1024];
-+
-+        ret = krb5_init_context(&context);
-+        if (ret)
-+                goto out_cred;
-+        ret = krb5_cc_default(context, &cache);
-+        if (ret)
-+                goto out_free_context;
-+        ret = krb5_cc_get_principal(context, cache, &principal);
-+        if (ret)
-+                goto out_close_cache;
-+        memset(&in_creds, 0, sizeof(in_creds));
-+        in_creds.client = principal;
-+        sprintf(srvname, "nfs/%s", name);
-+        ret = krb5_parse_name(context, srvname, &in_creds.server);
-+        if (ret)
-+                goto out_free_principal;
-+        ret = krb5_cc_retrieve_cred(context, cache, retflags, &in_creds, &out_creds);
-+        if (ret)
-+                goto out_free_principal;
-+        ret = krb5_cc_remove_cred(context, cache, 0, &out_creds);
-+out_free_principal:
-+        krb5_free_principal(context, principal);
-+out_close_cache:
-+        krb5_cc_close(context, cache);
-+out_free_context:
-+        krb5_free_context(context);
-+out_cred:
-+        return ret;
-+}
-+
- #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
- /*
-  * this routine obtains a credentials handle via gss_acquire_cred()
-diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index 62c91a0e..7ef87018 100644
---- a/utils/gssd/krb5_util.h
-+++ b/utils/gssd/krb5_util.h
-@@ -22,6 +22,7 @@ char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
- void gssd_k5_get_default_realm(char **def_realm);
+ static bool_t
+-authgss_refresh(AUTH *auth, void *dummy)
++authgss_refresh(AUTH *auth, rpc_gss_options_ret_t *ret)
+ {
+-	rpc_gss_options_ret_t ret;
+-
+-	memset(&ret, 0, sizeof(ret));
+-	return _rpc_gss_refresh(auth, &ret);
++	return _rpc_gss_refresh(auth, ret);
+ }
  
- int gssd_acquire_user_cred(gss_cred_id_t *gss_cred);
-+int gssd_k5_remove_bad_service_cred(char *srvname);
+ bool_t
+diff --git a/tirpc/rpc/auth_gss.h b/tirpc/rpc/auth_gss.h
+index f2af6e9..a530d42 100644
+--- a/tirpc/rpc/auth_gss.h
++++ b/tirpc/rpc/auth_gss.h
+@@ -64,6 +64,8 @@ struct rpc_gss_sec {
+ 	rpc_gss_svc_t	svc;		/* service */
+ 	gss_cred_id_t	cred;		/* cred handle */
+ 	u_int		req_flags;	/* req flags for init_sec_context */
++	int		major_status;
++	int		minor_status;
+ };
  
- #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
- extern int limit_to_legacy_enctypes;
+ /* Private data required for kernel implementation */
 -- 
 2.39.1
 
