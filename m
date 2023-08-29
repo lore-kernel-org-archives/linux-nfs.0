@@ -2,58 +2,89 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D04F1C6FA8F
-	for <linux-nfs@archiver.kernel.org>; Tue, 29 Aug 2023 07:58:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A08DCC83F18
+	for <linux-nfs@archiver.kernel.org>; Tue, 29 Aug 2023 11:04:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231377AbjH2H6B (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 29 Aug 2023 03:58:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34082 "EHLO
+        id S233206AbjH2LDd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 29 Aug 2023 07:03:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36964 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230327AbjH2H5u (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2023 03:57:50 -0400
-X-Greylist: delayed 913 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 29 Aug 2023 00:57:42 PDT
-Received: from mail.profitpathwaygo.com (mail.profitpathwaygo.com [141.94.21.238])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7886DD2
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 00:57:42 -0700 (PDT)
-Received: by mail.profitpathwaygo.com (Postfix, from userid 1002)
-        id 1F4BF489C6; Tue, 29 Aug 2023 07:31:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=profitpathwaygo.com;
-        s=mail; t=1693294333;
-        bh=qp3Ofokho6Ql+WtI8ZPVilyHYhskXL7fod7u9CWs8W4=;
-        h=Date:From:To:Subject:From;
-        b=hmX10MRa3U69if2ZUm9tgJmiJqBgOtX//fRi323a6eg6iUBnxRvBnPA2B2bqW5AqH
-         nPoaKjivj/K1mJcrrhxGNaVJyHyIJV2RCMGGyaKPvPESu5vj7m1GMWFN4DOKDwsude
-         +mxMyxAtRpfMn0SVhSE8o+TsJlyBnTCROs6BxosXt8xMJLDyBeYZVYuEnWqxwLgHhX
-         tFHjf55DU/2dZ+2R+RLN2QytoSg3Rb11709pJARP60ra5Ky7L8YpTJqdUbcaBL8xyB
-         wtlIdbcRTH2mXyLOyTbB/XJlnUhGfwue2brUuhdbu15aY0Bbs5lGGKJ7ncDRVELJ6k
-         LMWHWSco+n8tQ==
-Received: by mail.profitpathwaygo.com for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 07:31:02 GMT
-Message-ID: <20230829064500-0.1.1f.e1zr.0.5wos9jn9si@profitpathwaygo.com>
-Date:   Tue, 29 Aug 2023 07:31:02 GMT
-From:   "Adam Charachuta" <adam.charachuta@profitpathwaygo.com>
-To:     <linux-nfs@vger.kernel.org>
-Subject: =?UTF-8?Q?S=C5=82owa_kluczowe_do_wypozycjonowania_?=
-X-Mailer: mail.profitpathwaygo.com
+        with ESMTP id S235370AbjH2LDP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2023 07:03:15 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 07E8DCDA;
+        Tue, 29 Aug 2023 04:03:00 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 54FF9654FA;
+        Tue, 29 Aug 2023 11:03:00 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5A91DC433C8;
+        Tue, 29 Aug 2023 11:02:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1693306979;
+        bh=U8tO0dLFljDnktuq80r4afitP93wv2ZaRihVU0Qyu2I=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=Zpf44oWH5Z2L6QhPNIGp7PeBhJpnP4KfVurKgcL9DEj/BIRmEq8ijJzbb6q5k8Ovs
+         9bWmbNzBkJw5MyDAxRy27lwjHGda6NbScABpEWJtXeah3765gQ9TUqIkk0ScRRsr4B
+         pgJc/+HtIStX4e0zZcs6Mgm/y0cAQCiR+vX0i9HUCQ2jW21Dvj1m5KvDe2xJG8sZD9
+         7J/ySnM4IatjDikdEeiDLegDHPGVAKFz5CZJOY4FIoLRlouJhKb12RDwuxVPSp/21Q
+         Im6ZTKLVuSh6T0hvwNEhJP5WmzsfCpgy49EfIICESoo8yOH/FPp5HVYEAtlfB2KJ19
+         jLNduaFs+ry8A==
+Date:   Tue, 29 Aug 2023 13:02:47 +0200
+From:   Christian Brauner <brauner@kernel.org>
+To:     Jan Kara <jack@suse.cz>
+Cc:     Jens Axboe <axboe@kernel.dk>, linux-fsdevel@vger.kernel.org,
+        linux-block@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        Alasdair Kergon <agk@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Anna Schumaker <anna@kernel.org>, Chao Yu <chao@kernel.org>,
+        Christian Borntraeger <borntraeger@linux.ibm.com>,
+        "Darrick J. Wong" <djwong@kernel.org>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        David Sterba <dsterba@suse.com>, dm-devel@redhat.com,
+        drbd-dev@lists.linbit.com, Gao Xiang <xiang@kernel.org>,
+        Jack Wang <jinpu.wang@ionos.com>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        jfs-discussion@lists.sourceforge.net,
+        Joern Engel <joern@lazybastard.org>,
+        Joseph Qi <joseph.qi@linux.alibaba.com>,
+        Kent Overstreet <kent.overstreet@gmail.com>,
+        linux-bcache@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mm@kvack.org,
+        linux-mtd@lists.infradead.org, linux-nfs@vger.kernel.org,
+        linux-nilfs@vger.kernel.org, linux-nvme@lists.infradead.org,
+        linux-pm@vger.kernel.org, linux-raid@vger.kernel.org,
+        linux-s390@vger.kernel.org, linux-scsi@vger.kernel.org,
+        linux-xfs@vger.kernel.org,
+        "Md. Haris Iqbal" <haris.iqbal@ionos.com>,
+        Mike Snitzer <snitzer@kernel.org>,
+        Minchan Kim <minchan@kernel.org>, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org,
+        Sergey Senozhatsky <senozhatsky@chromium.org>,
+        Song Liu <song@kernel.org>,
+        Sven Schnelle <svens@linux.ibm.com>,
+        target-devel@vger.kernel.org, Ted Tso <tytso@mit.edu>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        xen-devel@lists.xenproject.org
+Subject: Re: [PATCH v3 0/29] block: Make blkdev_get_by_*() return handle
+Message-ID: <20230829-stark-trapez-2251bf78c6a9@brauner>
+References: <20230818123232.2269-1-jack@suse.cz>
+ <20230825-hubraum-gedreht-8c5c4db9330a@brauner>
+ <20230828170744.iifdmaw732cfiauf@quack3>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20230828170744.iifdmaw732cfiauf@quack3>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Dzie=C5=84 dobry,
+> replacement) I think we can go ahead with the series as is. As you said
+> there will be some conflicts in btrfs and I've learned about f2fs conflicts
+> as well so I can rebase & repost the series on top of rc1 to make life
+> easier for you.
 
-zapozna=C5=82em si=C4=99 z Pa=C5=84stwa ofert=C4=85 i z przyjemno=C5=9Bci=
-=C4=85 przyznaj=C4=99, =C5=BCe przyci=C4=85ga uwag=C4=99 i zach=C4=99ca d=
-o dalszych rozm=C3=B3w.=20
-
-Pomy=C5=9Bla=C5=82em, =C5=BCe mo=C5=BCe m=C3=B3g=C5=82bym mie=C4=87 sw=C3=
-=B3j wk=C5=82ad w Pa=C5=84stwa rozw=C3=B3j i pom=C3=B3c dotrze=C4=87 z t=C4=
-=85 ofert=C4=85 do wi=C4=99kszego grona odbiorc=C3=B3w. Pozycjonuj=C4=99 =
-strony www, dzi=C4=99ki czemu generuj=C4=85 =C5=9Bwietny ruch w sieci.
-
-Mo=C5=BCemy porozmawia=C4=87 w najbli=C5=BCszym czasie?
-
-
-Pozdrawiam serdecznie
-Adam Charachuta
+That is be much appreciated. Thank you!
