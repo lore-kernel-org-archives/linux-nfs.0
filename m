@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 020EFC83F18
-	for <linux-nfs@archiver.kernel.org>; Tue, 29 Aug 2023 20:20:00 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 22907C83F1C
+	for <linux-nfs@archiver.kernel.org>; Tue, 29 Aug 2023 20:20:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240407AbjH2UTd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 29 Aug 2023 16:19:33 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53272 "EHLO
+        id S240428AbjH2UTe (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 29 Aug 2023 16:19:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54140 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240519AbjH2UTL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2023 16:19:11 -0400
-Received: from mail-il1-x12f.google.com (mail-il1-x12f.google.com [IPv6:2607:f8b0:4864:20::12f])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8F4F31BF
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 13:19:07 -0700 (PDT)
-Received: by mail-il1-x12f.google.com with SMTP id e9e14a558f8ab-34bbc394fa0so3969715ab.1
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 13:19:07 -0700 (PDT)
+        with ESMTP id S240524AbjH2UTN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2023 16:19:13 -0400
+Received: from mail-io1-xd35.google.com (mail-io1-xd35.google.com [IPv6:2607:f8b0:4864:20::d35])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BB3E11BE
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 13:19:09 -0700 (PDT)
+Received: by mail-io1-xd35.google.com with SMTP id ca18e2360f4ac-79293ebfaf2so14493239f.1
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 13:19:09 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1693340347; x=1693945147; darn=vger.kernel.org;
+        d=gmail.com; s=20221208; t=1693340349; x=1693945149; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=2vtD2wllK/RrJHf1gxhgLPe7cHGISOLeuFKmzdk1jsI=;
-        b=L/yh/eR7Echrc2jr2p2M+CPXwWkWhU+boqc2Z4a672pN/1DLFML4Xm+lnPqayTci1L
-         ISwfzQrOpOoMfaeVdMEtx3LxjnC5RRMKqyGOkU+mv6KwiM4PZNjfJCDRHOYDtKOIQIAv
-         tyZbGznjj5/gmvdm5ft9SgBHTZnAnwlRFW5gnSRXxhhSMB6gJnNHBYWoI72Ud/DSzGCs
-         jrb0LmFAE0EvPwjqB5U6sbJDnTjoFMjurdXFJRqpGvtx8LDXAGmyWki3znEQlbN6HbaU
-         B5oq8RfHMmBKKQ2sWkhS4BsuUJg6l1Sprjmz33rXHYpYes6oZlHqXKY8FTb/DXDKYiwP
-         mlog==
+        bh=5D5Kvm1BHqxw7OkRLtU/qxcvETM83IthKpPkvjPcRF4=;
+        b=acn2ynI+g56d77V7Yftl82OcGzGCWtXlbBmvt1zbmA0zI1neAyxPRhYPsrEbaA3jh6
+         1aHKYzGbxg+X06r2IKnfOsGbqLUwSlT2p0UI0YuX78XoASm4Cwq173/f4hzRrZRkF1Q1
+         4HI8L5r1nEkL1yoxYk/fLRwigWOo3mQcSLPVTKOXtiiq+G1oWbr3fJa6Y2OCpdh5tzkJ
+         VruCTXLSf1Y5iaAahrwyBHjMn4HkxdAG5Po4y+j2dvr7HIMI4918buvjNv/aoq5Xlxvg
+         NIMKoc58b8GKr0+UVOOTIRAb4c7DIGPDHftOrNJsJLSAL37qj0aXZ1ZSCkzOSeBc3mJT
+         Mefg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1693340347; x=1693945147;
+        d=1e100.net; s=20221208; t=1693340349; x=1693945149;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=2vtD2wllK/RrJHf1gxhgLPe7cHGISOLeuFKmzdk1jsI=;
-        b=GOhZjQZrBE0XDbBUiEWmXoyF84z92ELi2dEKeYQ3MgBWPfj4/oEubm2UQ8QxSRlxnL
-         LtPSK/Pgdp7tSalp61yasiBuchb+BrjiacH0smHdXtMvlsUtEWbMNKwn1JgRbfA516gO
-         zqPzWKEJwT58/GiYzXhAZu7h5EM2+KeXBIiX+B9B00/wcOehOv0GML8399SD7bWDnuPF
-         YfIzs+MVRsyuLiF0KlKcAO1MoFBNrBiLxU92PowmqWGNyfK3Dow2oUueevIvucVDs2Xx
-         AJv5YYGNJHUtxVrgh/4Fb7M4zWKKxFqC/Dl3NkaUJC+5rfi3HjzFfXOydBmbQ7alazI+
-         LMtQ==
-X-Gm-Message-State: AOJu0YxKE7uLhTCPyfe4sC6po0SuPfjbY56xU43Kp5lz4XYRL0J0r3Ru
-        dLhxeO2iwIVzk9hCRmxq/kbMkt7ENrU=
-X-Google-Smtp-Source: AGHT+IHPIPUHU4RyG6Wo6BtI97GEZxsT3Kd9RzUkiACRvbXNhV3n/raUbwYPve3mVV106IdrbxKj1w==
-X-Received: by 2002:a6b:2ac2:0:b0:795:172f:977a with SMTP id q185-20020a6b2ac2000000b00795172f977amr342859ioq.1.1693340346932;
-        Tue, 29 Aug 2023 13:19:06 -0700 (PDT)
+        bh=5D5Kvm1BHqxw7OkRLtU/qxcvETM83IthKpPkvjPcRF4=;
+        b=AkfwTrNEa9bdKNBDhDf6W+oK3wvfF6gterp1PuEZ+ekSQQW3u5I4bhlIFOhcO9DzTl
+         6VAheUbCdmsQ0yF788lYuil+CwMJ/rXzjgXUn0lQemlvGd5xSLWFW5MJp1hKK/9ybqKN
+         0jCYpB5qM4X29FQ0lK0+eBda1Wa3kPx64TOy2Vev4uVPaIuOG8j4lWzqTGoiDyk4DqFu
+         b6cRZw2tTjjsTGP0LIVOdp1qQ8H5YGmv3FGDCW4bDJRNXqnZrrCOBay+d58V17o5j8D2
+         DYo3OsaRMOBpQmA8LpIlwcTW7Uw78MUf7hbFo2bnGOxN5LnS3jemFESD/orjYBj3+0de
+         VTmg==
+X-Gm-Message-State: AOJu0Yz30mBvZY6Dij/uWQy3S3Gi1t2oKEr+kN3HZBvp6yg470CMNlZH
+        ZXtPcG0eSy58tMmXiZXpbHdEe/t+I0I=
+X-Google-Smtp-Source: AGHT+IE2sS+1bLzGskB5/N1GihLbYvh7VrHxsDA5H1i0FI6stisuxH5dgK9lhhasfKZfD126QIXojw==
+X-Received: by 2002:a6b:e512:0:b0:792:6be4:3dcb with SMTP id y18-20020a6be512000000b007926be43dcbmr368732ioc.2.1693340349112;
+        Tue, 29 Aug 2023 13:19:09 -0700 (PDT)
 Received: from kolga-mac-1.attlocal.net ([2600:1700:6a10:2e90:b9e5:28ab:6ad7:257e])
-        by smtp.gmail.com with ESMTPSA id gk8-20020a0566386a8800b0042b2f0b77aasm3300798jab.95.2023.08.29.13.19.05
+        by smtp.gmail.com with ESMTPSA id gk8-20020a0566386a8800b0042b2f0b77aasm3300798jab.95.2023.08.29.13.19.08
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 29 Aug 2023 13:19:06 -0700 (PDT)
+        Tue, 29 Aug 2023 13:19:08 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     steved@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] nfs-utils: gssd: enable forcing cred renewal using the keytab
-Date:   Tue, 29 Aug 2023 16:19:00 -0400
-Message-Id: <20230829201902.63036-3-olga.kornievskaia@gmail.com>
+Subject: [PATCH 3/3] nfs-utils: gssd: handle KRB5_AP_ERR_BAD_INTEGRITY for user credentials
+Date:   Tue, 29 Aug 2023 16:19:02 -0400
+Message-Id: <20230829201902.63036-5-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
 In-Reply-To: <20230829201902.63036-1-olga.kornievskaia@gmail.com>
 References: <20230829201902.63036-1-olga.kornievskaia@gmail.com>
@@ -66,122 +66,96 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-Add a new function parameter "force_renewal" that callers could
-set to force service ticket renewal even if one exists already.
-
-This is needed in preparation for handling
-KRB5_AP_ERR_BAD_INTEGRITY when service's keytab changes while
-the client holds valid service ticket in the cache.
+Unlike the machine credential case, we can't throw away the ticket
+cache and use the keytab to renew the credentials. Instead, we
+need to remove the service ticket for the server that returned
+KRB5_AP_ERR_BAD_INTEGRITY and try again.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- utils/gssd/gssd_proc.c |  2 +-
- utils/gssd/krb5_util.c | 20 ++++++++++++--------
- utils/gssd/krb5_util.h |  3 ++-
- 3 files changed, 15 insertions(+), 10 deletions(-)
+ utils/gssd/gssd_proc.c |  2 ++
+ utils/gssd/krb5_util.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ utils/gssd/krb5_util.h |  1 +
+ 3 files changed, 45 insertions(+)
 
 diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index ae568f15..4fb6b72d 100644
+index e5cc1d98..a96647df 100644
 --- a/utils/gssd/gssd_proc.c
 +++ b/utils/gssd/gssd_proc.c
-@@ -571,7 +571,7 @@ krb5_use_machine_creds(struct clnt_info *clp, uid_t uid,
- 
- 	do {
- 		gssd_refresh_krb5_machine_credential(clp->servername,
--						     service, srchost);
-+						     service, srchost, 0);
- 	/*
- 	 * Get a list of credential cache names and try each
- 	 * of them until one works or we've tried them all
+@@ -419,6 +419,8 @@ create_auth_rpc_client(struct clnt_info *clp,
+ 			if (cred == GSS_C_NO_CREDENTIAL)
+ 				retval = gssd_refresh_krb5_machine_credential(clp->servername,
+ 					"*", NULL, 1);
++			else
++				retval = gssd_k5_remove_bad_service_cred(clp->servername);
+ 			if (!retval) {
+ 				auth = authgss_create_default(rpc_clnt, tgtname,
+ 						&sec);
 diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index e3f270e9..f6ce1fec 100644
+index f6ce1fec..6f66ef4f 100644
 --- a/utils/gssd/krb5_util.c
 +++ b/utils/gssd/krb5_util.c
-@@ -165,7 +165,7 @@ static int select_krb5_ccache(const struct dirent *d);
- static int gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
- 		const char **cctype, struct dirent **d);
- static int gssd_get_single_krb5_cred(krb5_context context,
--		krb5_keytab kt, struct gssd_k5_kt_princ *ple);
-+		krb5_keytab kt, struct gssd_k5_kt_princ *ple, int force_renew);
- static int query_krb5_ccache(const char* cred_cache, char **ret_princname,
- 		char **ret_realm);
- 
-@@ -391,7 +391,8 @@ gssd_check_if_cc_exists(struct gssd_k5_kt_princ *ple)
- static int
- gssd_get_single_krb5_cred(krb5_context context,
- 			  krb5_keytab kt,
--			  struct gssd_k5_kt_princ *ple)
-+			  struct gssd_k5_kt_princ *ple,
-+			  int force_renew)
- {
- #ifdef HAVE_KRB5_GET_INIT_CREDS_OPT_SET_ADDRESSLESS
- 	krb5_get_init_creds_opt *init_opts = NULL;
-@@ -421,7 +422,7 @@ gssd_get_single_krb5_cred(krb5_context context,
- 	 */
- 	now += 300;
- 	pthread_mutex_lock(&ple_lock);
--	if (ple->ccname && ple->endtime > now && !nocache) {
-+	if (ple->ccname && ple->endtime > now && !nocache && !force_renew) {
- 		printerr(3, "%s(0x%lx): Credentials in CC '%s' are good until %s",
- 			 __func__, tid, ple->ccname, ctime((time_t *)&ple->endtime));
- 		code = 0;
-@@ -1155,7 +1156,8 @@ err_cache:
- static int
- gssd_refresh_krb5_machine_credential_internal(char *hostname,
- 				     struct gssd_k5_kt_princ *ple,
--				     char *service, char *srchost)
-+				     char *service, char *srchost,
-+				     int force_renew)
- {
- 	krb5_error_code code = 0;
- 	krb5_context context;
-@@ -1221,7 +1223,7 @@ gssd_refresh_krb5_machine_credential_internal(char *hostname,
- 			goto out_free_kt;
- 		}
- 	}
--	retval = gssd_get_single_krb5_cred(context, kt, ple);
-+	retval = gssd_get_single_krb5_cred(context, kt, ple, force_renew);
- out_free_kt:
- 	krb5_kt_close(context, kt);
- out_free_context:
-@@ -1344,7 +1346,7 @@ gssd_get_krb5_machine_cred_list(char ***list)
- 		pthread_mutex_unlock(&ple_lock);
- 		/* Make sure cred is up-to-date before returning it */
- 		retval = gssd_refresh_krb5_machine_credential_internal(NULL, ple,
--								       NULL, NULL);
-+								       NULL, NULL, 0);
- 		pthread_mutex_lock(&ple_lock);
- 		if (gssd_k5_kt_princ_list == NULL) {
- 			/* Looks like we did shutdown... abort */
-@@ -1456,10 +1458,12 @@ gssd_destroy_krb5_principals(int destroy_machine_creds)
-  */
- int
- gssd_refresh_krb5_machine_credential(char *hostname,
--				     char *service, char *srchost)
-+				     char *service, char *srchost,
-+				     int force_renew)
- {
-     return gssd_refresh_krb5_machine_credential_internal(hostname, NULL,
--							 service, srchost);
-+							 service, srchost,
-+							 force_renew);
+@@ -1553,6 +1553,48 @@ gssd_acquire_user_cred(gss_cred_id_t *gss_cred)
+ 	return ret;
  }
  
++/* Removed a service ticket for nfs/<name> from the ticket cache
++ */
++int
++gssd_k5_remove_bad_service_cred(char *name)
++{
++        krb5_creds in_creds, out_creds;
++        krb5_error_code ret;
++        krb5_context context;
++        krb5_ccache cache;
++        krb5_principal principal;
++        int retflags = KRB5_TC_MATCH_SRV_NAMEONLY;
++        char srvname[1024];
++
++        ret = krb5_init_context(&context);
++        if (ret)
++                goto out_cred;
++        ret = krb5_cc_default(context, &cache);
++        if (ret)
++                goto out_free_context;
++        ret = krb5_cc_get_principal(context, cache, &principal);
++        if (ret)
++                goto out_close_cache;
++        memset(&in_creds, 0, sizeof(in_creds));
++        in_creds.client = principal;
++        sprintf(srvname, "nfs/%s", name);
++        ret = krb5_parse_name(context, srvname, &in_creds.server);
++        if (ret)
++                goto out_free_principal;
++        ret = krb5_cc_retrieve_cred(context, cache, retflags, &in_creds, &out_creds);
++        if (ret)
++                goto out_free_principal;
++        ret = krb5_cc_remove_cred(context, cache, 0, &out_creds);
++out_free_principal:
++        krb5_free_principal(context, principal);
++out_close_cache:
++        krb5_cc_close(context, cache);
++out_free_context:
++        krb5_free_context(context);
++out_cred:
++        return ret;
++}
++
+ #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
  /*
+  * this routine obtains a credentials handle via gss_acquire_cred()
 diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index 2415205a..62c91a0e 100644
+index 62c91a0e..7ef87018 100644
 --- a/utils/gssd/krb5_util.h
 +++ b/utils/gssd/krb5_util.h
-@@ -16,7 +16,8 @@ int  gssd_get_krb5_machine_cred_list(char ***list);
- void gssd_free_krb5_machine_cred_list(char **list);
- void gssd_destroy_krb5_principals(int destroy_machine_creds);
- int  gssd_refresh_krb5_machine_credential(char *hostname,
--					  char *service, char *srchost);
-+					  char *service, char *srchost,
-+					  int force_renew);
- char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
+@@ -22,6 +22,7 @@ char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
  void gssd_k5_get_default_realm(char **def_realm);
  
+ int gssd_acquire_user_cred(gss_cred_id_t *gss_cred);
++int gssd_k5_remove_bad_service_cred(char *srvname);
+ 
+ #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+ extern int limit_to_legacy_enctypes;
 -- 
 2.39.1
 
