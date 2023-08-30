@@ -2,107 +2,115 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5D2DCC83F17
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CFD15C6FA8F
 	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 18:29:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231304AbjH3S3X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 30 Aug 2023 14:29:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36364 "EHLO
+        id S231343AbjH3S3Y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Aug 2023 14:29:24 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58982 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243431AbjH3K7S (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 06:59:18 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 088C9CC2;
-        Wed, 30 Aug 2023 03:59:16 -0700 (PDT)
+        with ESMTP id S242862AbjH3Jxn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 05:53:43 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F276D1B0;
+        Wed, 30 Aug 2023 02:53:40 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 92BBE627EA;
-        Wed, 30 Aug 2023 10:59:15 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7E576C433C9;
-        Wed, 30 Aug 2023 10:59:14 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 801C260F0C;
+        Wed, 30 Aug 2023 09:53:40 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7B009C433C8;
+        Wed, 30 Aug 2023 09:53:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1693393155;
-        bh=+EGk3NTklNsc2mqEzAy8hcuNClQWSDUYGoK8D+J3qxI=;
-        h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-        b=HJKkPYl+80xt3cr3ksqLc9vrQLf0AMttch+vwqRR1UXmGCizQ8kRBAdNY1XT5kLu8
-         /t3aFnH16twgpM1rS/lX/TK6E7tuaRZigY9ffSZ6xn1mviiMeXfvndX1ftgrSLtxZY
-         xaeR+pAki01BEY2NBH3R7jXQvclq1cfeYerzHTORPPb/iwgm5nTVn1qhlnG0BOdA5K
-         QkC+RHdiYLCS/Zk7uB3ztCPP4hnCCrEtiil2HmsASPn1VrOtwRKmi/dgo++0PXtUua
-         VMkrqhiHUivuJAskvyziwKL74esK1K1gqJoKUeh3FEyZnYGlhNSqrGZ/YzUOxzrFL3
-         igFqVAVV0sw4A==
-From:   Jeff Layton <jlayton@kernel.org>
-Date:   Wed, 30 Aug 2023 06:58:50 -0400
-Subject: [PATCH fstests v4 1/3] common/attr: fix the _require_acl test
+        s=k20201202; t=1693389219;
+        bh=nknoL9w3Y4YI7sgEzXEgy31hHjSBtW5t6+EKdvixVT4=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=PGeSqtlADXPNsSRMnED5y2bc51bStrsRKgRLsG0vFmeuS7ZjsjtBx9snAHe0G8Vr2
+         puIswmGZMwYKKpvbAUG4hgCkBPfAo5LnG+Zqi6zCKquDATicIUaBHr5eqdyzNoLlT+
+         eDLqK7F5l64Ce6vhg3+b1Cyvv77qi6SuOOpM4UfSj8i00ym6zp0iNwdRQNPeW8AsCh
+         s7jTGiZrttnG7dc7MMCLuv2nzzC2OWwW1dpk2JWvAsdtCdcLabRj31KBbnR0Ga2XvP
+         vjAjcw2evRgbmv/HS/X8EAdywyIIJ9VzMleY3re1+0iiynu1XGC3tw9hN+y2/tEsbr
+         Pj2cy6RWLJA5g==
+Date:   Wed, 30 Aug 2023 11:53:32 +0200
+From:   Christian Brauner <brauner@kernel.org>
+To:     Roberto Sassu <roberto.sassu@huaweicloud.com>
+Cc:     Mimi Zohar <zohar@linux.ibm.com>, viro@zeniv.linux.org.uk,
+        chuck.lever@oracle.com, jlayton@kernel.org,
+        dmitry.kasatkin@gmail.com, paul@paul-moore.com, jmorris@namei.org,
+        serge@hallyn.com, dhowells@redhat.com, jarkko@kernel.org,
+        stephen.smalley.work@gmail.com, eparis@parisplace.org,
+        casey@schaufler-ca.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
+        linux-security-module@vger.kernel.org, keyrings@vger.kernel.org,
+        selinux@vger.kernel.org, linux-kernel@vger.kernel.org,
+        stefanb@linux.ibm.com, Roberto Sassu <roberto.sassu@huawei.com>
+Subject: Re: [PATCH 15/28] security: Introduce inode_post_removexattr hook
+Message-ID: <20230830-kultfigur-verrohen-a689c59911d6@brauner>
+References: <20230303181842.1087717-1-roberto.sassu@huaweicloud.com>
+ <20230303181842.1087717-16-roberto.sassu@huaweicloud.com>
+ <f5a61c0f09c1b8d8aaeb99ad7ba4aab15818c5ed.camel@linux.ibm.com>
+ <9d482f25475a9d9bc0c93a8cbaf8bd4bb67d2cd6.camel@huaweicloud.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20230830-fixes-v4-1-88d7b8572aa3@kernel.org>
-References: <20230830-fixes-v4-0-88d7b8572aa3@kernel.org>
-In-Reply-To: <20230830-fixes-v4-0-88d7b8572aa3@kernel.org>
-To:     fstests@vger.kernel.org
-Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Darrick Wong <djwong@kernel.org>,
-        Zorro Lang <zlang@redhat.com>, Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.12.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1618; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=+EGk3NTklNsc2mqEzAy8hcuNClQWSDUYGoK8D+J3qxI=;
- b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBk7yEB+KrnLZBnmvDBQ6RkoJULB2rLono8mikw6
- J3t/Z8cxaaJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZO8hAQAKCRAADmhBGVaC
- FcLmD/0Se/EGHVSdAsXx108kCr6W5Dfog5bvWgnxi0875ZhLbwQ9Xl86/YdajGfNUZ1pjUCgjbz
- AQ1hph5OHQoW4h/fGjMmKPqOSG6ibLzZ6DwnndKE3OWevXAX63E4lMSfmkWQMrijO5p1GpH97Dw
- rqf2eLIEkvh99ujTPtw1MJSjQw0XDHFDN85GGjSSyMDlucaHx/rVos7CPdhAeIKAnkXt6H148Aa
- nIKrP7+vlGK3RXpNQ/T1nv9AfbDS4rcG9QDR2p+NpV+iotk5vypydn5Kb+OlY/GEp95/yDIz42U
- JN7KdmJ4iG5SvmjB8AzZeT8IUwwlmTaP/sg2+aWaK53KotY4c1QRF4pQMGHayKEsxpDX0aRGkIf
- Nyzlnnt7TK8AWg11vTe5286wbxHQEBxb6o/4Th5Qpki2501w/kf3dQ337hBPUkC0c4V/fx04LH+
- OX6+WNT0Op5TU3KMg2coIdEX8x8Snkciu0+bTj60Nih1vuo8Ch6nsakFibFMN322XacW5ZqSUUa
- aoXcXQn9h96M+q2Oe+wTgXXoqRmk78e2m3CWfVnR+6f9c2br/Kq0DOPycbwEHcDm5H8GKeZMLQ8
- Uyx9yq9FPOXGkBerWpg2I80MCK9TYdhi5wXZkjNfArn+gFHqtv2g1nGNbE9Q3JImn6DLxA7OAF5
- gKcHogIng2ShkaA==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <9d482f25475a9d9bc0c93a8cbaf8bd4bb67d2cd6.camel@huaweicloud.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-_require_acl tests whether you're able to fetch the ACL from a file
-using chacl, and then tests for an -EOPNOTSUPP error return.
-Unfortunately, filesystems that don't support them (like NFSv4) just
-return -ENODATA when someone calls getxattr for the POSIX ACL, so the
-test doesn't work.
+On Wed, Aug 30, 2023 at 11:31:35AM +0200, Roberto Sassu wrote:
+> On Wed, 2023-03-08 at 10:43 -0500, Mimi Zohar wrote:
+> > Hi Roberto,
+> > 
+> > On Fri, 2023-03-03 at 19:18 +0100, Roberto Sassu wrote:
+> > > From: Roberto Sassu <roberto.sassu@huawei.com>
+> > > 
+> > > In preparation for moving IMA and EVM to the LSM infrastructure, introduce
+> > > the inode_post_removexattr hook.
+> > > 
+> > > Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
+> > > ---
+> > >  fs/xattr.c                    |  1 +
+> > >  include/linux/lsm_hook_defs.h |  2 ++
+> > >  include/linux/security.h      |  5 +++++
+> > >  security/security.c           | 14 ++++++++++++++
+> > >  4 files changed, 22 insertions(+)
+> > > 
+> > > diff --git a/fs/xattr.c b/fs/xattr.c
+> > > index 14a7eb3c8fa..10c959d9fc6 100644
+> > > --- a/fs/xattr.c
+> > > +++ b/fs/xattr.c
+> > > @@ -534,6 +534,7 @@ __vfs_removexattr_locked(struct mnt_idmap *idmap,
+> > >  
+> > >  	if (!error) {
+> > >  		fsnotify_xattr(dentry);
+> > > +		security_inode_post_removexattr(dentry, name);
+> > >  		evm_inode_post_removexattr(dentry, name);
+> > >  	}
+> > 
+> > Nothing wrong with this, but other places in this function test "if
+> > (error) goto ...".   Perhaps it is time to clean this up.
+> > 
+> > >  
+> > > diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
+> > > index eedefbcdde3..2ae5224d967 100644
+> > > --- a/include/linux/lsm_hook_defs.h
+> > > +++ b/include/linux/lsm_hook_defs.h
+> > > @@ -147,6 +147,8 @@ LSM_HOOK(int, 0, inode_getxattr, struct dentry *dentry, const char *name)
+> > >  LSM_HOOK(int, 0, inode_listxattr, struct dentry *dentry)
+> > >  LSM_HOOK(int, 0, inode_removexattr, struct mnt_idmap *idmap,
+> > >  	 struct dentry *dentry, const char *name)
+> > > +LSM_HOOK(void, LSM_RET_VOID, inode_post_removexattr, struct dentry *dentry,
+> > > +	 const char *name)
+> > 
+> > @Christian should the security_inode_removexattr() and
+> > security_inode_post_removexattr() arguments be the same?
+> 
+> Probably this got lost.
+> 
+> Christian, should security_inode_post_removexattr() have the idmap
+> parameter as well?
 
-Fix the test to have chacl set an ACL on the file instead, which should
-reliably fail on filesystems that don't support them.
-
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- common/attr | 9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
-
-diff --git a/common/attr b/common/attr
-index cce4d1b201b2..3ebba682c894 100644
---- a/common/attr
-+++ b/common/attr
-@@ -163,13 +163,12 @@ _require_acls()
-     [ -n "$CHACL_PROG" ] || _notrun "chacl command not found"
- 
-     #
--    # Test if chacl is able to list ACLs on the target filesystems.  On really
--    # old kernels the system calls might not be implemented at all, but the
--    # more common case is that the tested filesystem simply doesn't support
--    # ACLs.
-+    # Test if chacl is able to set an ACL on a file.  On really old kernels
-+    # the system calls might not be implemented at all, but the more common
-+    # case is that the tested filesystem simply doesn't support ACLs.
-     #
-     touch $TEST_DIR/syscalltest
--    chacl -l $TEST_DIR/syscalltest > $TEST_DIR/syscalltest.out 2>&1
-+    chacl 'u::rw-,g::---,o::---' $TEST_DIR/syscalltest > $TEST_DIR/syscalltest.out 2>&1
-     cat $TEST_DIR/syscalltest.out >> $seqres.full
- 
-     if grep -q 'Function not implemented' $TEST_DIR/syscalltest.out; then
-
--- 
-2.41.0
-
+Only if you call anything from any implementers of the hook that needs
+access to the idmap.
