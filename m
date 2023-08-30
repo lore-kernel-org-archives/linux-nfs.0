@@ -2,115 +2,120 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CFD15C6FA8F
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 18:29:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 55269C83F20
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 18:29:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231343AbjH3S3Y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 30 Aug 2023 14:29:24 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58982 "EHLO
+        id S231435AbjH3S3Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Aug 2023 14:29:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56940 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S242862AbjH3Jxn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 05:53:43 -0400
-Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F276D1B0;
-        Wed, 30 Aug 2023 02:53:40 -0700 (PDT)
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
-        (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 801C260F0C;
-        Wed, 30 Aug 2023 09:53:40 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7B009C433C8;
-        Wed, 30 Aug 2023 09:53:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1693389219;
-        bh=nknoL9w3Y4YI7sgEzXEgy31hHjSBtW5t6+EKdvixVT4=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=PGeSqtlADXPNsSRMnED5y2bc51bStrsRKgRLsG0vFmeuS7ZjsjtBx9snAHe0G8Vr2
-         puIswmGZMwYKKpvbAUG4hgCkBPfAo5LnG+Zqi6zCKquDATicIUaBHr5eqdyzNoLlT+
-         eDLqK7F5l64Ce6vhg3+b1Cyvv77qi6SuOOpM4UfSj8i00ym6zp0iNwdRQNPeW8AsCh
-         s7jTGiZrttnG7dc7MMCLuv2nzzC2OWwW1dpk2JWvAsdtCdcLabRj31KBbnR0Ga2XvP
-         vjAjcw2evRgbmv/HS/X8EAdywyIIJ9VzMleY3re1+0iiynu1XGC3tw9hN+y2/tEsbr
-         Pj2cy6RWLJA5g==
-Date:   Wed, 30 Aug 2023 11:53:32 +0200
-From:   Christian Brauner <brauner@kernel.org>
-To:     Roberto Sassu <roberto.sassu@huaweicloud.com>
-Cc:     Mimi Zohar <zohar@linux.ibm.com>, viro@zeniv.linux.org.uk,
-        chuck.lever@oracle.com, jlayton@kernel.org,
-        dmitry.kasatkin@gmail.com, paul@paul-moore.com, jmorris@namei.org,
-        serge@hallyn.com, dhowells@redhat.com, jarkko@kernel.org,
-        stephen.smalley.work@gmail.com, eparis@parisplace.org,
-        casey@schaufler-ca.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
-        linux-security-module@vger.kernel.org, keyrings@vger.kernel.org,
-        selinux@vger.kernel.org, linux-kernel@vger.kernel.org,
-        stefanb@linux.ibm.com, Roberto Sassu <roberto.sassu@huawei.com>
-Subject: Re: [PATCH 15/28] security: Introduce inode_post_removexattr hook
-Message-ID: <20230830-kultfigur-verrohen-a689c59911d6@brauner>
-References: <20230303181842.1087717-1-roberto.sassu@huaweicloud.com>
- <20230303181842.1087717-16-roberto.sassu@huaweicloud.com>
- <f5a61c0f09c1b8d8aaeb99ad7ba4aab15818c5ed.camel@linux.ibm.com>
- <9d482f25475a9d9bc0c93a8cbaf8bd4bb67d2cd6.camel@huaweicloud.com>
+        with ESMTP id S244178AbjH3Mj6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 08:39:58 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DA3BA185
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Aug 2023 05:39:09 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1693399148;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=v2sZJy7coZxAVZRyjBbEYGHy7Fw4aLyn9Mmqx4qqxfs=;
+        b=WPsERkRm4a330G0taRSjAVNgtKTx/F//CWQqQuzlqfLn3gklJU/fljdPAHuAVVNkGYSnRf
+        ldqDcOyr9IND5aAVbh8pZfJiRV1IRTOb3NnzT6KxuUf9Zv/k2Cune+MdQg+VQW6+oNxG+K
+        E5O99/QTka2dFUnPi2OWXHsip8V28JY=
+Received: from mail-ed1-f71.google.com (mail-ed1-f71.google.com
+ [209.85.208.71]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-600-1MOyxbjWMn-gsoLOg6HDQg-1; Wed, 30 Aug 2023 08:39:07 -0400
+X-MC-Unique: 1MOyxbjWMn-gsoLOg6HDQg-1
+Received: by mail-ed1-f71.google.com with SMTP id 4fb4d7f45d1cf-52a3e9c53e7so4367488a12.3
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Aug 2023 05:39:07 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20221208; t=1693399146; x=1694003946;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=v2sZJy7coZxAVZRyjBbEYGHy7Fw4aLyn9Mmqx4qqxfs=;
+        b=UUtyqvUzpSgSbbVDPtlumtuOwOQyEj1wPvQqaCNi9+tVjJSC7u7VTs2XGzyszuNk2n
+         uqDPxZBOgC4PrqoXYRqsULcEAwhg4ZR18pR3QRFoaxSPECk/sg8A5Mu+MWkHFrhP16LA
+         g9N9i1YQx0U0jVUR3OJvb9PpSbd/poTUexpz+ZiW9kObNNmBiFI7/m07DPiWw+ud5lWM
+         REtfuzWTTTZRKu04aZPTLn8noFKz2X8qolBOhFxt7Bheyf6KkF+EBxeSJHpHDKUM8SQe
+         1U4Hf5Vb7XnomEu4N7Lgvvgjc0azB+FeNtPshTm7fJLJAf+1vCISyaCzi0mPkb3dkpSQ
+         P6Jg==
+X-Gm-Message-State: AOJu0YzU0e5RzdSaPxRdzIb/R+QNaowcb2DPU7+OEnPoRjrYSNt0dqrK
+        AbUJ3HzPyOF55+JMXK11lqNc7hjXnorHlOXjFXQ/MAGjDzMkUasIYkBDzkmovGoHDOZVZivMaWI
+        ELQM7lnGCiPWOFu6qieSXdmYUd0gloR9Mxgf5
+X-Received: by 2002:a50:ef1a:0:b0:51b:c714:a2a1 with SMTP id m26-20020a50ef1a000000b0051bc714a2a1mr1972655eds.7.1693399146288;
+        Wed, 30 Aug 2023 05:39:06 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IGfewQayRTjS+ETA5KSggFgeSlv49VrL0zQXHu5OfkWiTGdWkUo1JPaTBQ/aMX8Dt5k7rGTtcbDWOy5lMZ3Qew=
+X-Received: by 2002:a50:ef1a:0:b0:51b:c714:a2a1 with SMTP id
+ m26-20020a50ef1a000000b0051bc714a2a1mr1972643eds.7.1693399146053; Wed, 30 Aug
+ 2023 05:39:06 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Disposition: inline
-In-Reply-To: <9d482f25475a9d9bc0c93a8cbaf8bd4bb67d2cd6.camel@huaweicloud.com>
+References: <20230823213352.1971009-1-aahringo@redhat.com> <20230823213352.1971009-7-aahringo@redhat.com>
+ <9a8ead64cdd32fdad29cae3aff0bd447f33a32c2.camel@kernel.org>
+In-Reply-To: <9a8ead64cdd32fdad29cae3aff0bd447f33a32c2.camel@kernel.org>
+From:   Alexander Aring <aahringo@redhat.com>
+Date:   Wed, 30 Aug 2023 08:38:54 -0400
+Message-ID: <CAK-6q+i+j1TUmWGH+fdYHix5TwujH8_kuR5ayUv9h6Ah8OQecQ@mail.gmail.com>
+Subject: Re: [PATCH 6/7] dlm: use FL_SLEEP to determine blocking vs non-blocking
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     linux-nfs@vger.kernel.org, cluster-devel@redhat.com,
+        ocfs2-devel@lists.linux.dev, linux-fsdevel@vger.kernel.org,
+        teigland@redhat.com, rpeterso@redhat.com, agruenba@redhat.com,
+        trond.myklebust@hammerspace.com, anna@kernel.org,
+        chuck.lever@oracle.com
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Aug 30, 2023 at 11:31:35AM +0200, Roberto Sassu wrote:
-> On Wed, 2023-03-08 at 10:43 -0500, Mimi Zohar wrote:
-> > Hi Roberto,
-> > 
-> > On Fri, 2023-03-03 at 19:18 +0100, Roberto Sassu wrote:
-> > > From: Roberto Sassu <roberto.sassu@huawei.com>
-> > > 
-> > > In preparation for moving IMA and EVM to the LSM infrastructure, introduce
-> > > the inode_post_removexattr hook.
-> > > 
-> > > Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
-> > > ---
-> > >  fs/xattr.c                    |  1 +
-> > >  include/linux/lsm_hook_defs.h |  2 ++
-> > >  include/linux/security.h      |  5 +++++
-> > >  security/security.c           | 14 ++++++++++++++
-> > >  4 files changed, 22 insertions(+)
-> > > 
-> > > diff --git a/fs/xattr.c b/fs/xattr.c
-> > > index 14a7eb3c8fa..10c959d9fc6 100644
-> > > --- a/fs/xattr.c
-> > > +++ b/fs/xattr.c
-> > > @@ -534,6 +534,7 @@ __vfs_removexattr_locked(struct mnt_idmap *idmap,
-> > >  
-> > >  	if (!error) {
-> > >  		fsnotify_xattr(dentry);
-> > > +		security_inode_post_removexattr(dentry, name);
-> > >  		evm_inode_post_removexattr(dentry, name);
-> > >  	}
-> > 
-> > Nothing wrong with this, but other places in this function test "if
-> > (error) goto ...".   Perhaps it is time to clean this up.
-> > 
-> > >  
-> > > diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
-> > > index eedefbcdde3..2ae5224d967 100644
-> > > --- a/include/linux/lsm_hook_defs.h
-> > > +++ b/include/linux/lsm_hook_defs.h
-> > > @@ -147,6 +147,8 @@ LSM_HOOK(int, 0, inode_getxattr, struct dentry *dentry, const char *name)
-> > >  LSM_HOOK(int, 0, inode_listxattr, struct dentry *dentry)
-> > >  LSM_HOOK(int, 0, inode_removexattr, struct mnt_idmap *idmap,
-> > >  	 struct dentry *dentry, const char *name)
-> > > +LSM_HOOK(void, LSM_RET_VOID, inode_post_removexattr, struct dentry *dentry,
-> > > +	 const char *name)
-> > 
-> > @Christian should the security_inode_removexattr() and
-> > security_inode_post_removexattr() arguments be the same?
-> 
-> Probably this got lost.
-> 
-> Christian, should security_inode_post_removexattr() have the idmap
-> parameter as well?
+Hi,
 
-Only if you call anything from any implementers of the hook that needs
-access to the idmap.
+On Fri, Aug 25, 2023 at 2:18=E2=80=AFPM Jeff Layton <jlayton@kernel.org> wr=
+ote:
+>
+> On Wed, 2023-08-23 at 17:33 -0400, Alexander Aring wrote:
+> > This patch uses the FL_SLEEP flag in struct file_lock to determine if
+> > the lock request is a blocking or non-blocking request. Before dlm was
+> > using IS_SETLKW() was being used which is not usable for lock requests
+> > coming from lockd when EXPORT_OP_SAFE_ASYNC_LOCK inside the export flag=
+s
+> > is set.
+> >
+> > Signed-off-by: Alexander Aring <aahringo@redhat.com>
+> > ---
+> >  fs/dlm/plock.c | 2 +-
+> >  1 file changed, 1 insertion(+), 1 deletion(-)
+> >
+> > diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
+> > index 0094fa4004cc..0c6ed5eeb840 100644
+> > --- a/fs/dlm/plock.c
+> > +++ b/fs/dlm/plock.c
+> > @@ -140,7 +140,7 @@ int dlm_posix_lock(dlm_lockspace_t *lockspace, u64 =
+number, struct file *file,
+> >       op->info.optype         =3D DLM_PLOCK_OP_LOCK;
+> >       op->info.pid            =3D fl->fl_pid;
+> >       op->info.ex             =3D (fl->fl_type =3D=3D F_WRLCK);
+> > -     op->info.wait           =3D IS_SETLKW(cmd);
+> > +     op->info.wait           =3D !!(fl->fl_flags & FL_SLEEP);
+> >       op->info.fsid           =3D ls->ls_global_id;
+> >       op->info.number         =3D number;
+> >       op->info.start          =3D fl->fl_start;
+>
+> Not sure you really need the !!, but ok...
+>
+
+The wait is a byte value and FL_SLEEP doesn't fit into it, I already
+run into problems with it. I don't think somebody does a if (foo->wait
+=3D=3D 1) but it should be set to 1 or 0.
+
+An alternative would be: ((fl->fl_flags & FL_SLEEP) =3D=3D FL_SLEEP). I am
+not sure what the coding style says here. I think it's more important
+what the C standard says about !!(condition), but there are other
+users of this in the Linux kernel. :-/
+
+- Alex
+
