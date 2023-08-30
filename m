@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B5B26C6FA8F
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 02:59:19 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0F92FC83F16
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 02:59:20 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235449AbjH3C6u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S239380AbjH3C6u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 29 Aug 2023 22:58:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43700 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51492 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234124AbjH3C6V (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2023 22:58:21 -0400
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.220.29])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5B33E185
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 19:58:19 -0700 (PDT)
+        with ESMTP id S241790AbjH3C6c (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2023 22:58:32 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9B7E0193
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 19:58:29 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out2.suse.de (Postfix) with ESMTPS id 1FAAB1F461;
-        Wed, 30 Aug 2023 02:58:18 +0000 (UTC)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 07FB0211E2;
+        Wed, 30 Aug 2023 02:58:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1693364298; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+        t=1693364308; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=Y8jphQss9HeYy7fr6607tDpyIo8Hc3AHgFDPPac0GpA=;
-        b=hqaNSsonP4tWNLuT+HHELqoxn4J7Lz8tUbH+t2UDwpiAypOEFLgorafAW0i3WUdpnx9XCx
-        4OIk2fjwCjiIqvXkSQ0U1lRAHWXkLD4zIcux7HTeIO/z/mx3W6SJDu/uQXq0iEb6x8U1rN
-        aYd2lDAujBHPY8V3YzrZilRyERZs23I=
+        bh=vYpBzJ2tgW0L8l/P6jQ0OFleSS3iL0SFlQSCIuezm6Y=;
+        b=svCsPu52P7bVnBSL2VrTSJJ5EvJMwLXtM2X1vdBLDEm2LqvHwUFnNkqAv2RKjp8Mh040E5
+        U9frutU0yHUuRLymqoI26+EqeH+aq1mP10yQNNB7cD7jMB1ri3XrCDkhGgMLzPL565iCRr
+        rm3QQTcebrjKHc2BcCtTeioNSnfOsho=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1693364298;
+        s=susede2_ed25519; t=1693364308;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
          mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=Y8jphQss9HeYy7fr6607tDpyIo8Hc3AHgFDPPac0GpA=;
-        b=6gR6xs8jAK6aX9RKGRzmjQVNsyf2C56ur+7vg+RwG/8zlMyTPaMBXuZeMHsb6q9cOEwoBZ
-        91U8GQaqOCA00ECQ==
+        bh=vYpBzJ2tgW0L8l/P6jQ0OFleSS3iL0SFlQSCIuezm6Y=;
+        b=wDfkscRZLdzetFV0Db9DOTL2+PbLnZMRnvk49KEmqEPnsn3/CNaCdU4LPXpLn8zW0qf2Ek
+        yzLAbw4vGNkHKiAA==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id D565213301;
-        Wed, 30 Aug 2023 02:58:16 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id BC36C13301;
+        Wed, 30 Aug 2023 02:58:26 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id w0bXIUiw7mTZYwAAMHmgww
-        (envelope-from <neilb@suse.de>); Wed, 30 Aug 2023 02:58:16 +0000
+        id q5+CG1Kw7mTvYwAAMHmgww
+        (envelope-from <neilb@suse.de>); Wed, 30 Aug 2023 02:58:26 +0000
 From:   NeilBrown <neilb@suse.de>
 To:     Chuck Lever <chuck.lever@oracle.com>,
         Jeff Layton <jlayton@kernel.org>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 01/10] SQUASH: revise comments in SUNRPC: change service idle list to be an llist
-Date:   Wed, 30 Aug 2023 12:54:44 +1000
-Message-ID: <20230830025755.21292-2-neilb@suse.de>
+Subject: [PATCH 03/10] SQUASH use new llist interfaces in SUNRPC: change service idle list to be an llist
+Date:   Wed, 30 Aug 2023 12:54:46 +1000
+Message-ID: <20230830025755.21292-4-neilb@suse.de>
 X-Mailer: git-send-email 2.41.0
 In-Reply-To: <20230830025755.21292-1-neilb@suse.de>
 References: <20230830025755.21292-1-neilb@suse.de>
@@ -64,73 +64,80 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Revise some comments to hopefully make the more clear and less verbose.
+Use init_llist_node, llist_on_list etc for checking if a node is on a
+llist.
+Discard svc_thread_set_busy() completely and simplify svc_thread_busy()
+
+This can only be squashed if the patch to llist is moved earlier in the
+topic.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- include/linux/sunrpc/svc.h |  6 +++---
- net/sunrpc/svc_xprt.c      | 20 +++++++-------------
- 2 files changed, 10 insertions(+), 16 deletions(-)
+ include/linux/sunrpc/svc.h | 17 ++---------------
+ net/sunrpc/svc.c           |  5 ++---
+ 2 files changed, 4 insertions(+), 18 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 5216f95411e3..ed20a2ea1f81 100644
+index ed20a2ea1f81..ad4572630335 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -271,7 +271,7 @@ enum {
-  * @rqstp: the thread which is now busy
-  *
-  * By convention a thread is busy if rq_idle.next points to rq_idle.
-- * This ensures it is not on the idle list.
-+ * This will never be the case for threads on the idle list.
-  */
- static inline void svc_thread_set_busy(struct svc_rqst *rqstp)
- {
-@@ -283,9 +283,9 @@ static inline void svc_thread_set_busy(struct svc_rqst *rqstp)
+@@ -266,28 +266,15 @@ enum {
+ 	RQ_DATA,		/* request has data */
+ };
+ 
+-/**
+- * svc_thread_set_busy - mark a thread as busy
+- * @rqstp: the thread which is now busy
+- *
+- * By convention a thread is busy if rq_idle.next points to rq_idle.
+- * This will never be the case for threads on the idle list.
+- */
+-static inline void svc_thread_set_busy(struct svc_rqst *rqstp)
+-{
+-	rqstp->rq_idle.next = &rqstp->rq_idle;
+-}
+-
+ /**
+  * svc_thread_busy - check if a thread as busy
   * @rqstp: the thread which might be busy
   *
-  * By convention a thread is busy if rq_idle.next points to rq_idle.
-- * This ensures it is not on the idle list.
-+ * This will never be the case for threads on the idle list.
+- * By convention a thread is busy if rq_idle.next points to rq_idle.
+- * This will never be the case for threads on the idle list.
++ * A thread is only busy when it is not an the idle list.
   */
--static inline bool svc_thread_busy(struct svc_rqst *rqstp)
-+static inline bool svc_thread_busy(const struct svc_rqst *rqstp)
+ static inline bool svc_thread_busy(const struct svc_rqst *rqstp)
  {
- 	return rqstp->rq_idle.next == &rqstp->rq_idle;
+-	return rqstp->rq_idle.next == &rqstp->rq_idle;
++	return !llist_on_list(&rqstp->rq_idle);
  }
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 81327001e074..17c43bde35c9 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -734,22 +734,16 @@ static void svc_rqst_wait_for_work(struct svc_rqst *rqstp)
- 		llist_add(&rqstp->rq_idle, &pool->sp_idle_threads);
  
- 		if (unlikely(!rqst_should_sleep(rqstp)))
--			/* maybe there were no idle threads when some work
--			 * became ready and so nothing was woken.  We've just
--			 * become idle so someone can to the work - maybe us.
--			 * But we cannot reliably remove ourselves from the
--			 * idle list - we can only remove the first task which
--			 * might be us, and might not.
--			 * So remove and wake it, then schedule().  If it was
--			 * us, we won't sleep.  If it is some other thread, they
--			 * will do the work.
-+			/* Work just became available.  This thread cannot simply
-+			 * choose not to sleep as it *must* wait until removed.
-+			 * So wake the first waiter - whether it is this
-+			 * thread or some other, it will get the work done.
- 			 */
- 			svc_pool_wake_idle_thread(pool);
+ #define SVC_NET(rqst) (rqst->rq_xprt ? rqst->rq_xprt->xpt_net : rqst->rq_bc_net)
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index addbf28ea50a..5673f30db295 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -642,7 +642,7 @@ svc_rqst_alloc(struct svc_serv *serv, struct svc_pool *pool, int node)
  
--		/* We mustn't continue while on the idle list, and we
--		 * cannot remove outselves reliably.  The only "work"
--		 * we can do while on the idle list is to freeze.
--		 * So loop until someone removes us
-+		/* Since a thread cannot remove itself from an llist,
-+		 * schedule until someone else removes @rqstp from
-+		 * the idle list.
- 		 */
- 		while (!svc_thread_busy(rqstp)) {
- 			schedule();
+ 	folio_batch_init(&rqstp->rq_fbatch);
+ 
+-	svc_thread_set_busy(rqstp);
++	init_llist_node(&rqstp->rq_idle);
+ 	rqstp->rq_server = serv;
+ 	rqstp->rq_pool = pool;
+ 
+@@ -705,11 +705,10 @@ void svc_pool_wake_idle_thread(struct svc_pool *pool)
+ 
+ 	rcu_read_lock();
+ 	spin_lock_bh(&pool->sp_lock);
+-	ln = llist_del_first(&pool->sp_idle_threads);
++	ln = llist_del_first_init(&pool->sp_idle_threads);
+ 	spin_unlock_bh(&pool->sp_lock);
+ 	if (ln) {
+ 		rqstp = llist_entry(ln, struct svc_rqst, rq_idle);
+-		svc_thread_set_busy(rqstp);
+ 
+ 		WRITE_ONCE(rqstp->rq_qtime, ktime_get());
+ 		wake_up_process(rqstp->rq_task);
 -- 
 2.41.0
 
