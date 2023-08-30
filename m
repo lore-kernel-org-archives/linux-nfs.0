@@ -2,73 +2,112 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 40613C6FA8F
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 18:29:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 931C3C83F1A
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 18:29:17 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229988AbjH3S3M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 30 Aug 2023 14:29:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49704 "EHLO
+        id S230110AbjH3S3O (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Aug 2023 14:29:14 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36350 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244375AbjH3NGK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 09:06:10 -0400
+        with ESMTP id S243430AbjH3K7R (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 06:59:17 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B1499193
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Aug 2023 06:06:06 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 42B381BF;
+        Wed, 30 Aug 2023 03:59:15 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 500E56134C
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Aug 2023 13:06:06 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 610B5C433C8;
-        Wed, 30 Aug 2023 13:06:05 +0000 (UTC)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id D52E6627B9;
+        Wed, 30 Aug 2023 10:59:14 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BA506C433C7;
+        Wed, 30 Aug 2023 10:59:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1693400765;
-        bh=8YNoDsKyvEOAqvMXS6auonxVy5cbm4WKA1mJHcz1uaQ=;
-        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=uw+KWRhq/eCFg0xBDHljYIgCY2ASTiTQtXZKw8fwbBAAFPbV5ZZzXZBj92UfxJvoo
-         wOpYdUh3OqmdXPB/Zmx493AX6+akLxDa8W53zuiglZ2yr8xbhe+ThEvQi2jopZjTdn
-         31v3Nn7yN+cYowvL/oGNSZtfmVhhwKV/sJacUG0c2+HxrU+KPkD8oenIbFx0w6AB88
-         Eb4s+YvnMtIESDf4iYnsdxNFVR8Q7gMddsU1AkACPYAwKfskMa1HJdI0HuwR8OMkDe
-         iAsPk05RCfb8XyxnSXhw55W2ejy7IU3oveHFFg9+/fG5hRnAVOG3CEjl54BS4G5fGD
-         RLzt+Rqi3xEuQ==
-From:   Lorenzo Bianconi <lorenzo@kernel.org>
-To:     linux-nfs@vger.kernel.org
-Cc:     lorenzo.bianconi@redhat.com, chuck.lever@oracle.com,
-        jlayton@kernel.org, neilb@suse.de
-Subject: [PATCH v7 2/3] SUNRPC: export svc_proc_name utility routine
-Date:   Wed, 30 Aug 2023 15:05:45 +0200
-Message-ID: <8861f1a29674f6d1be43cb4b0adec2d46559f2de.1693400242.git.lorenzo@kernel.org>
-X-Mailer: git-send-email 2.41.0
-In-Reply-To: <cover.1693400242.git.lorenzo@kernel.org>
-References: <cover.1693400242.git.lorenzo@kernel.org>
+        s=k20201202; t=1693393154;
+        bh=wYJq4N2YWcxC3zxarH9JteFYm6SgG77yA/UCDOnm3qM=;
+        h=From:Subject:Date:To:Cc:From;
+        b=SP8hXdfwFGAWsl+o+1KC2rwsEwUN9EaDmWRKs+zuH3zbKUeVcaa1KmiU5Et8SVBb4
+         5tHBKWa80W28l5VJy3XN35qFpt2qa2IEDjZiGstjPHMvVsCTV3aQ8rJklDQMpKM46h
+         m4KsmvV4XOK1O9xNj+4P//mF08NUitvradFDE4c2OMA7Mn31u/piDjai31U5JSA+2u
+         w1cL6wfqH5bn7hgPpQJKl8cRvEng+YS+Z7LkZ8BP4MEyXSSqij38pY0d7uZUDd+hY7
+         RimARwtNh0WCzAS9w9AbPuZFU41tnCGndhHoTfSqKJ24PMixbl1soflrWS79On0oQx
+         XC/jZa4Y7W6lQ==
+From:   Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH fstests v4 0/3] fstests: add appropriate checks for fs
+ features for some tests
+Date:   Wed, 30 Aug 2023 06:58:49 -0400
+Message-Id: <20230830-fixes-v4-0-88d7b8572aa3@kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAOkg72QC/12MQQrCMBBFr1JmbSSdpG3qynuIi5JO2qC0kglBK
+ b27ISCoy8/7723AFDwxnKoNAiXPfl3y0IcK7DwsEwk/5g0oUUmDWjj/JBZ9ra1VrifXIeTvI1A
+ B+XoBx5E4MlwzmD3HNbxKP2HBf6mEQoqxlRbd4GrZdOcbhYXuxzVMJZHUt9Z8NJW1VhttZW+cI
+ fOj7fv+BkvCq2rbAAAA
+To:     fstests@vger.kernel.org
+Cc:     linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Darrick Wong <djwong@kernel.org>,
+        Zorro Lang <zlang@redhat.com>, Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.12.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1417; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=wYJq4N2YWcxC3zxarH9JteFYm6SgG77yA/UCDOnm3qM=;
+ b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBk7yD8bOeZoKJMFfEptvIwbvbAY687tDs7TVOH3
+ vtJE50rk/mJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZO8g/AAKCRAADmhBGVaC
+ FaN3D/95nz68PF+QEWyKvDmk1rUNczW0Eqb7mnzIVJbUoCk8wwpxZx8v9RZKF4AQ61Wx++n/0Bh
+ JrS8twY63A5EWXM+85i37EISI++toVfdrIVSkf2Wv+8m/GxSUwtKe+GX+ZaSk1EiHw0GuRDlIzd
+ Kn0F61ciHW9S94ptuhZABaHkfOrknrVKRn+h9hTL1YlOypbvQ68jBYqBASkVWmjguQMWqmcnzv/
+ i6RE0YX7jKUCe7N7OglemzDO2Iz2QNUtnqZWHqyP0jYQH0HGZz+mxamr4JLsi96mCkiCo2GkjCs
+ wstp7NIozzH6xDR/tsXvO63XXsNagv4VkC2rR5Dy1ylyYAPvLlksos+xBDrF3zcfOA21REyWj4H
+ VBftbqHLi6vHqpWApSKiS+9J/jSDwZkAp253bI8VwYLcTh+WZOzr2nSNvFpisjxD29uLd5xPnOl
+ 62SqSjhkV3k2TRZNiwJ0ajCZlWojwJC1FdR4XsoYAOzqIB0cT8cOxI77dMmNl3eeU2wjPoML4DX
+ prL0y0giIYyZozB72jR+2EhVj13s9RUgM4Ty7COAXlQzOQHJses0Yx077OhcPEwN1HRUX8vUd+J
+ 3cFIgIY2Qq6Sb/38hFDpT8Rrxrtrfq45mFKoeVOxC4vqC7Z8mR1i14A/5L2Ljh/FHfBFQTEsBWA
+ tCBepxGl+DPC6Ig==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This is a preliminary patch to introduce nfsd_rpc_status netlink info
-in order to dump pending RPC requests debugging information.
+A number of fstests fail on NFS, primarily because it lacks certain
+features that are widely supported on local Linux filesystems. Fix
+up the test for POSIX ACLs and add a new requirement for fiemap support
+in generic/578.
 
-Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- net/sunrpc/svc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Changes in v4:
+- use "_require_attrs security" instead of special setcap test
+- use '_require_xfs_io_command "fiemap"' instead of special fiemap test
+- Link to v3: https://lore.kernel.org/r/20230825-fixes-v3-0-6484c098f8e8@kernel.org
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index dc21e6c732db..458139a6a4d2 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1652,7 +1652,7 @@ const char *svc_proc_name(const struct svc_rqst *rqstp)
- 		return rqstp->rq_procinfo->pc_name;
- 	return "unknown";
- }
--
-+EXPORT_SYMBOL_GPL(svc_proc_name);
- 
- /**
-  * svc_encode_result_payload - mark a range of bytes as a result payload
+Changes in v2:
+- add new checks for fiemap and setcap
+- Link to v2: https://lore.kernel.org/r/20230824-fixes-v2-0-d60c2faf1057@kernel.org
+
+Changes in v3:
+- use _require_xfs_io_command "fiemap" in generic/578
+- drop the _require_setcap patch (Zorro has similar that adds a _require_capabilities)
+
+---
+Jeff Layton (3):
+      common/attr: fix the _require_acl test
+      generic/578: add a check to ensure that fiemap is supported
+      generic/*: add a check for security attrs
+
+ common/attr       | 9 ++++-----
+ tests/generic/270 | 2 ++
+ tests/generic/513 | 2 ++
+ tests/generic/578 | 1 +
+ tests/generic/675 | 2 ++
+ tests/generic/688 | 2 ++
+ tests/generic/727 | 2 ++
+ 7 files changed, 15 insertions(+), 5 deletions(-)
+---
+base-commit: 0ca1d4fbb2e9a492968f2951df101f24477f7991
+change-id: 20230824-fixes-914cc3f9ef72
+
+Best regards,
 -- 
-2.41.0
+Jeff Layton <jlayton@kernel.org>
 
