@@ -2,83 +2,106 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id AA772C83F2A
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 18:29:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB244C83F24
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 18:29:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230374AbjH3S3U (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 30 Aug 2023 14:29:20 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58984 "EHLO
+        id S232059AbjH3S3k (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Aug 2023 14:29:40 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49694 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241392AbjH3Gxk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 02:53:40 -0400
-Received: from mail-ua1-x92e.google.com (mail-ua1-x92e.google.com [IPv6:2607:f8b0:4864:20::92e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8C6C019A
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 23:53:36 -0700 (PDT)
-Received: by mail-ua1-x92e.google.com with SMTP id a1e0cc1a2514c-7a505727e7eso683729241.0
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2023 23:53:36 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1693378415; x=1693983215; darn=vger.kernel.org;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=RIMufmcPljVq9B0zYCPDjqzphZzAERPBfQDoanecvZU=;
-        b=mGNAjYyv6BdQS09mLGfq9VPcCMDdYFJOj5FvbtygSu4l1Y4xS/5nblLRfVVV6kJjA1
-         UY2J5LwIdEV7ozQi+EhNBl7/onBHeaaa7coQOWFvEjVlSYgd8OxyWNzwfUxqdVIM5zZx
-         nIFHXiY5JRUfHyw0RN4beuZ7qdN9ouQF23+xudAC1jvc2ahg7+fKPITJZRqCZcUp4vBe
-         XjZNFJ+wZWqo1MGRehQQszV1RBCqZn88yh+QEZ0WmU9CG6pbYk5tEeMmRoB2ZtkCWDKn
-         OAncvvAtO4582jKpKwaNo3sNSWeiX54W34Y88HOFKM7vs7jiqRIlcuxdIi0vj2upcHfi
-         cquA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1693378415; x=1693983215;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=RIMufmcPljVq9B0zYCPDjqzphZzAERPBfQDoanecvZU=;
-        b=BXsSMDCsQVIx0OjzOFkKm/Rv6Nhz+jCZbQheZNcWnQwqL8M6MvcCRo1sJuk5YaGof7
-         KjIXwaLztcZEn9jSmJnABVkN1aQKZ+9JiAGzzfXNef0sOUqMnra33wuyalMJfv4j0Y1P
-         9nClk4/Oakxr1YQzjCN5HAnDV7tj60GTURJ6qXlnKlJXma0yFZ9cqKZbGePKMuI5UF2u
-         U+1QI2XCLZsuxJ+bgJgdYxh0GgaO5xLAujNmvMYSKI1WBgMRB0I36+D+LQk6x9QN4bZq
-         njxj00Xhrtr8fkZvDdL49K57AAHduqXesfDTzrPDMDQNMWaN18IY/tKaX15o2b1xAiGX
-         8laQ==
-X-Gm-Message-State: AOJu0YxLoK2vE5vSgF6z8G6jNwen2oYDB9r0WIGlQDGNz9SqBUIg0d40
-        vUrjlkJArd3dXD1Lr3xC3gat9jPkLmzlIR4IcwdzEtXCIiBOSg==
-X-Google-Smtp-Source: AGHT+IEECV6rjlOeKnSVwNrCHgupOWD+W7wojg8CqvIR+FvRkVbnWT5LhNqLlV451Lk0W8TBOT6LxyeRSvtsLwDiqBk=
-X-Received: by 2002:a05:6102:2f5:b0:44d:4a41:8941 with SMTP id
- j21-20020a05610202f500b0044d4a418941mr1357236vsj.1.1693378415328; Tue, 29 Aug
- 2023 23:53:35 -0700 (PDT)
-MIME-Version: 1.0
-References: <CABXB=RSMkjoyshFZy5eGbuvAQfoHhFyQvReYNtO_+5f+OM66cA@mail.gmail.com>
-In-Reply-To: <CABXB=RSMkjoyshFZy5eGbuvAQfoHhFyQvReYNtO_+5f+OM66cA@mail.gmail.com>
-From:   J David <j.david.lists@gmail.com>
-Date:   Wed, 30 Aug 2023 02:53:23 -0400
-Message-ID: <CABXB=RR=67b-sksfcrJotivc_9G0vTesP3qtz9T_8G3N3H-15A@mail.gmail.com>
-Subject: Re: Question about different gid management between versions
+        with ESMTP id S244373AbjH3NGC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 09:06:02 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EE39E185
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Aug 2023 06:05:58 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 83F5960EEA
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Aug 2023 13:05:58 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6A616C433C7;
+        Wed, 30 Aug 2023 13:05:57 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1693400758;
+        bh=SajL3ykSEyeKs7KkCsd2SeLPFcq6xM+CIa47dZ5dyWY=;
+        h=From:To:Cc:Subject:Date:From;
+        b=ZnesuVrPvSumu6/WzKQtZOB9o0FS094VBOfbLybklsjfk1oJ1hheIh31waQDHkrtC
+         NuxjbEBvwx6B+nDQ2stLg8dNfRaQ05wFR9leNEEtjyvfyyjxbZtfLggq4YA4UFHsPg
+         xXFswmpxjXmS31vNPR6nvSFv4tBJoUuRAtKJprQkkm4W3pa0potKniL2XVs8eStJei
+         /9EqI9UOA6igJU9oXJn+tXCkSzbuVlWMnOoC0lCuYt+sKATWM7+2zmNGZ69KgMH+l2
+         K8bmFvkcMvJwVT+aIyi/oh4jXPAJm6VPCI1hdIQykeak4eRN7KJPUs8U6SHwiuiH5R
+         64zTr5rD+W3dA==
+From:   Lorenzo Bianconi <lorenzo@kernel.org>
 To:     linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Cc:     lorenzo.bianconi@redhat.com, chuck.lever@oracle.com,
+        jlayton@kernel.org, neilb@suse.de
+Subject: [PATCH v7 0/3] add rpc_status netlink support for NFSD
+Date:   Wed, 30 Aug 2023 15:05:43 +0200
+Message-ID: <cover.1693400242.git.lorenzo@kernel.org>
+X-Mailer: git-send-email 2.41.0
+MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Aug 30, 2023 at 2:17=E2=80=AFAM J David <j.david.lists@gmail.com> w=
-rote:
-> We have existing NFS servers based on Debian Bookworm that run
-> nfs-kernel-server 1.3.4.  We have recently stood up some Debian
-> Bullseye fileservers, which come with 2.6.2.
+Introduce rpc_status netlink support for NFSD in order to dump pending
+RPC requests debugging information from userspace.
+The new code can be tested with the user-space tool reported below:
+https://github.com/LorenzoBianconi/nfsd-rpc-netlink-monitor/tree/main
 
-Of course I got those versions backwards. The old ones are Bullseye,
-the new ones are Bookworm. :-P
+Changes since v6:
+- report info to user-space through netlink and get rid of the related
+  entry in the procfs
 
-Also, for giggles, I tried installing the Bullseye 1.3.4 packages on
-Bookworm.  Somewhat surprisingly, that did work.  But it didn't affect
-the issue at all. I guess that might imply that the change is
-something to do with the bits of NFS built into the kernel, rather
-than the nfs-kernel-server stuff? Operating at the outer limits of my
-knowledge here!
+Changes since v5:
+- add missing delimiters for nfs4 compound ops
+- add a header line for rpc_status handler
+- do not dump rq_prog
+- do not dump rq_flags in hex
 
-FWIW, the kernel is 5.10.0-25-amd64 on the old machines and
-6.1.0-11-amd64 on the new ones.
+Changes since v4:
+- rely on acquire/release APIs and get rid of atomic operation
+- fix kdoc for nfsd_rpc_status_open
+- get rid of ',' as field delimiter in nfsd_rpc_status hanlder
+- move nfsd_rpc_status before nfsd_v4 enum entries
+- fix compilantion error if nfsdv4 is not enabled
 
-This does make me think I'm going to have to reinstall those Bookworm
-servers with Bullseye, at least for now.  Unless maybe somebody here
-who knows a lot more than me has a brilliant idea.
+Changes since v3:
+- introduce rq_status_counter in order to detect if the RPC request is
+  pending and RPC info are stable
+- rely on __svc_print_addr to dump IP info
+
+Changes since v2:
+- minor changes in nfsd_rpc_status_show output
+
+Changes since v1:
+- rework nfsd_rpc_status_show output
+
+Changes since RFCv1:
+- riduce time holding nfsd_mutex bumping svc_serv refcoung in
+  nfsd_rpc_status_open()
+- dump rqstp->rq_stime
+- add missing kdoc for nfsd_rpc_status_open()
+
+Link: https://bugzilla.linux-nfs.org/show_bug.cgi?id=3D3D366
+
+Lorenzo Bianconi (3):
+  SUNRPC: export nfsd4_op_name utility routine
+  SUNRPC: export svc_proc_name utility routine
+  NFSD: add rpc_status netlink support
+
+ fs/nfsd/nfs4proc.c         |   4 +-
+ fs/nfsd/nfsctl.c           | 275 +++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfsd.h             |  25 ++++
+ fs/nfsd/nfssvc.c           |  15 ++
+ fs/nfsd/state.h            |   2 -
+ include/linux/sunrpc/svc.h |   1 +
+ include/uapi/linux/nfs.h   |  54 ++++++++
+ net/sunrpc/svc.c           |   2 +-
+ 8 files changed, 372 insertions(+), 6 deletions(-)
+
+-- 
+2.41.0
+
