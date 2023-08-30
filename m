@@ -2,108 +2,73 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 667E1C83F1A
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 06:18:30 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 40613C6FA8F
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 18:29:13 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232489AbjH3GSA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 30 Aug 2023 02:18:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42690 "EHLO
+        id S229988AbjH3S3M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Aug 2023 14:29:12 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49704 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240331AbjH3GRi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 02:17:38 -0400
-X-Greylist: delayed 331 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 29 Aug 2023 23:17:32 PDT
-Received: from out-251.mta0.migadu.com (out-251.mta0.migadu.com [91.218.175.251])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA2D9CEC;
-        Tue, 29 Aug 2023 23:17:32 -0700 (PDT)
-Message-ID: <642de4e6-801d-fcad-a7ce-bfc6dec3b6e5@linux.dev>
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-        t=1693375918;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=JMzOvVHk770qYz+7D4bRM3eiaC0WBb12Z/fuZleaQ2g=;
-        b=n8qZNKHDJ8ZkQN8s6YCFhUc5vlrIehXvAzssrfT4lOFAEgM70y7j9ccF+kTN544/il9mhv
-        /Qwyv0zoAHdwAPeCdmanHqcxV7A/7XcL4G5u9c/o5+tWUqR2xZIKUSlHotdEAwwwHhjWvg
-        KLK2CGyPGmGk32bcLUct3rbhOUMJhk8=
-Date:   Wed, 30 Aug 2023 14:11:31 +0800
+        with ESMTP id S244375AbjH3NGK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 09:06:10 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [139.178.84.217])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B1499193
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Aug 2023 06:06:06 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 500E56134C
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Aug 2023 13:06:06 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 610B5C433C8;
+        Wed, 30 Aug 2023 13:06:05 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1693400765;
+        bh=8YNoDsKyvEOAqvMXS6auonxVy5cbm4WKA1mJHcz1uaQ=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=uw+KWRhq/eCFg0xBDHljYIgCY2ASTiTQtXZKw8fwbBAAFPbV5ZZzXZBj92UfxJvoo
+         wOpYdUh3OqmdXPB/Zmx493AX6+akLxDa8W53zuiglZ2yr8xbhe+ThEvQi2jopZjTdn
+         31v3Nn7yN+cYowvL/oGNSZtfmVhhwKV/sJacUG0c2+HxrU+KPkD8oenIbFx0w6AB88
+         Eb4s+YvnMtIESDf4iYnsdxNFVR8Q7gMddsU1AkACPYAwKfskMa1HJdI0HuwR8OMkDe
+         iAsPk05RCfb8XyxnSXhw55W2ejy7IU3oveHFFg9+/fG5hRnAVOG3CEjl54BS4G5fGD
+         RLzt+Rqi3xEuQ==
+From:   Lorenzo Bianconi <lorenzo@kernel.org>
+To:     linux-nfs@vger.kernel.org
+Cc:     lorenzo.bianconi@redhat.com, chuck.lever@oracle.com,
+        jlayton@kernel.org, neilb@suse.de
+Subject: [PATCH v7 2/3] SUNRPC: export svc_proc_name utility routine
+Date:   Wed, 30 Aug 2023 15:05:45 +0200
+Message-ID: <8861f1a29674f6d1be43cb4b0adec2d46559f2de.1693400242.git.lorenzo@kernel.org>
+X-Mailer: git-send-email 2.41.0
+In-Reply-To: <cover.1693400242.git.lorenzo@kernel.org>
+References: <cover.1693400242.git.lorenzo@kernel.org>
 MIME-Version: 1.0
-Subject: Re: [PATCH 07/11] vfs: add nowait parameter for file_accessed()
-Content-Language: en-US
-To:     Matthew Wilcox <willy@infradead.org>
-Cc:     io-uring@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Pavel Begunkov <asml.silence@gmail.com>,
-        Christian Brauner <brauner@kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Stefan Roesch <shr@fb.com>, Clay Harris <bugs@claycon.org>,
-        Dave Chinner <david@fromorbit.com>,
-        "Darrick J . Wong" <djwong@kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-xfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-cachefs@redhat.com,
-        ecryptfs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-unionfs@vger.kernel.org, bpf@vger.kernel.org,
-        netdev@vger.kernel.org, linux-s390@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, codalist@coda.cs.cmu.edu,
-        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-mm@kvack.org, linux-nilfs@vger.kernel.org,
-        devel@lists.orangefs.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-mtd@lists.infradead.org,
-        Wanpeng Li <wanpengli@tencent.com>
-References: <20230827132835.1373581-1-hao.xu@linux.dev>
- <20230827132835.1373581-8-hao.xu@linux.dev>
- <ZOvA5DJDZN0FRymp@casper.infradead.org>
- <c728bf3f-d9db-4865-8473-058b26c11c06@linux.dev>
- <ZO3cI+DkotHQo3md@casper.infradead.org>
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-From:   Hao Xu <hao.xu@linux.dev>
-In-Reply-To: <ZO3cI+DkotHQo3md@casper.infradead.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-X-Migadu-Flow: FLOW_OUT
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 8/29/23 19:53, Matthew Wilcox wrote:
-> On Tue, Aug 29, 2023 at 03:46:13PM +0800, Hao Xu wrote:
->> On 8/28/23 05:32, Matthew Wilcox wrote:
->>> On Sun, Aug 27, 2023 at 09:28:31PM +0800, Hao Xu wrote:
->>>> From: Hao Xu <howeyxu@tencent.com>
->>>>
->>>> Add a boolean parameter for file_accessed() to support nowait semantics.
->>>> Currently it is true only with io_uring as its initial caller.
->>>
->>> So why do we need to do this as part of this series?  Apparently it
->>> hasn't caused any problems for filemap_read().
->>>
->>
->> We need this parameter to indicate if nowait semantics should be enforced in
->> touch_atime(), There are locks and maybe IOs in it.
-> 
-> That's not my point.  We currently call file_accessed() and
-> touch_atime() for nowait reads and nowait writes.  You haven't done
-> anything to fix those.
-> 
-> I suspect you can trim this patchset down significantly by avoiding
-> fixing the file_accessed() problem.  And then come back with a later
-> patchset that fixes it for all nowait i/o.  Or do a separate prep series
+This is a preliminary patch to introduce nfsd_rpc_status netlink info
+in order to dump pending RPC requests debugging information.
 
-I'm ok to do that.
+Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+---
+ net/sunrpc/svc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> first that fixes it for the existing nowait users, and then a second
-> series to do all the directory stuff.
-> 
-> I'd do the first thing.  Just ignore the problem.  Directory atime
-> updates cause I/O so rarely that you can afford to ignore it.  Almost
-> everyone uses relatime or nodiratime.
-
-Hi Matthew,
-The previous discussion shows this does cause issues in real
-producations: 
-https://lore.kernel.org/io-uring/2785f009-2ebb-028d-8250-d5f3a30510f0@gmail.com/#:~:text=fwiw%2C%20we%27ve%20just%20recently%20had%20similar%20problems%20with%20io_uring%20read/write
-
-
-
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index dc21e6c732db..458139a6a4d2 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1652,7 +1652,7 @@ const char *svc_proc_name(const struct svc_rqst *rqstp)
+ 		return rqstp->rq_procinfo->pc_name;
+ 	return "unknown";
+ }
+-
++EXPORT_SYMBOL_GPL(svc_proc_name);
+ 
+ /**
+  * svc_encode_result_payload - mark a range of bytes as a result payload
+-- 
+2.41.0
 
