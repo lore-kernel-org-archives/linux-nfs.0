@@ -2,94 +2,93 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31E55C6FA8F
-	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 23:08:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id CBB25C83F01
+	for <linux-nfs@archiver.kernel.org>; Wed, 30 Aug 2023 23:47:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233835AbjH3XI3 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 30 Aug 2023 19:08:29 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57318 "EHLO
+        id S1344295AbjH3XrR (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 30 Aug 2023 19:47:17 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47590 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1344448AbjH3XIR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 19:08:17 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 72C0AB5
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Aug 2023 16:07:13 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1693436832;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=QgLirDDi6Bf9AvA7pTQormXM5whN2AOXHj8mc2+HPWc=;
-        b=JONsGGOFeD5zXnyaYCaGJcu4rfC2VH1/gEX2nZTu1dm+S2gJCK83S04ejEfZildUuh16nx
-        /+XwC9seQxFy28X615lPxUrhU/+A+vmISVEWex5o/TDe2UZn2gwNqumo80KxaYIuFhGgcR
-        wRb0cZ7udIsc55V+T97s2R3VVxsUsyU=
-Received: from mimecast-mx02.redhat.com (66.187.233.73 [66.187.233.73]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-635-v3MohUvhMLqOoNwJh6wUDA-1; Wed, 30 Aug 2023 15:42:14 -0400
-X-MC-Unique: v3MohUvhMLqOoNwJh6wUDA-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 7BC621C29AF7;
-        Wed, 30 Aug 2023 19:42:11 +0000 (UTC)
-Received: from bcodding.csb.redhat.com (unknown [10.22.48.7])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id E7EB06B2B0;
-        Wed, 30 Aug 2023 19:42:10 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     trond.myklebust@hammerspace.com, anna@kernel.org
-Cc:     linux-nfs@vger.kernel.org, jlayton@kernel.org
-Subject: [PATCH v2] NFSv4: Always ask for type with READDIR
-Date:   Wed, 30 Aug 2023 15:42:10 -0400
-Message-Id: <82d1908e4f835a2f16a509a11b62b9d93ccb6cdf.1693424491.git.bcodding@redhat.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.5
+        with ESMTP id S242532AbjH3XrQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Aug 2023 19:47:16 -0400
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5D758CF
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Aug 2023 16:47:14 -0700 (PDT)
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 37UInbRM026411;
+        Wed, 30 Aug 2023 23:47:12 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id; s=corp-2023-03-30;
+ bh=Lzxhi1lPVEyokgiwM88QjMkmxPsc01rkpOefrvjHUL8=;
+ b=OPocOCzvOZu76OtkpS1Jp1Pp5ISwYstRVvjvU938cP9yO0jxCysPj08M2Lt4Jk+A65/Z
+ 99cvXXqCsa32isPo6KI5gJ9DGiXeN3whTHgrD0Lhv0ILrGADHoD+CdaSchYkcudETWRI
+ tZDJW560+1ZhwiwkVyG5VWwukOMBJ2IV89DpapP1P0WM4RtMoaNAX97QHHfpnxwnO2pk
+ 9wd+5tqklGDW5DMbsC85ctEVsTXvuGry+vSyiuOdIXwyHXXY66SVO1CDo07iZasaCbf0
+ c3LDFHtkiXeHRu8CFEY+DqoBcrrKikuFsWifb4R1+G0taWT+yTZKBUQ2kTCKAoYNidtg gQ== 
+Received: from phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta02.appoci.oracle.com [147.154.114.232])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3sq9xt8nvx-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 30 Aug 2023 23:47:11 +0000
+Received: from pps.filterd (phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 37UMCtjP024429;
+        Wed, 30 Aug 2023 23:47:10 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3sr6dq80ct-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Wed, 30 Aug 2023 23:47:10 +0000
+Received: from phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 37UNlAqv017882;
+        Wed, 30 Aug 2023 23:47:10 GMT
+Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
+        by phxpaimrmta02.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 3sr6dq80ce-1;
+        Wed, 30 Aug 2023 23:47:10 +0000
+From:   Dai Ngo <dai.ngo@oracle.com>
+To:     chuck.lever@oracle.com, jlayton@kernel.org
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFSD: initialize copy->cp_clp early in nfsd4_copy for use by trace point
+Date:   Wed, 30 Aug 2023 16:46:58 -0700
+Message-Id: <1693439219-19467-1-git-send-email-dai.ngo@oracle.com>
+X-Mailer: git-send-email 1.8.3.1
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.267,Aquarius:18.0.957,Hydra:6.0.601,FMLib:17.11.176.26
+ definitions=2023-08-30_18,2023-08-29_01,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 spamscore=0 adultscore=0
+ suspectscore=0 mlxlogscore=999 bulkscore=0 mlxscore=0 phishscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2308100000
+ definitions=main-2308300214
+X-Proofpoint-ORIG-GUID: eQKJ9A6agFq5S8VPJaHubNCpPe3ezZiJ
+X-Proofpoint-GUID: eQKJ9A6agFq5S8VPJaHubNCpPe3ezZiJ
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Again we have claimed regressions for walking a directory tree, this time
-with the "find" utility which always tries to optimize away asking for any
-attributes until it has a complete list of entries.  This behavior makes
-the readdir plus heuristic do the wrong thing, which causes a storm of
-GETATTRs to determine each entry's type in order to continue the walk.
+Prepare for adding server copy trace points.
 
-For v4 add the type attribute to each READDIR request to include it no
-matter the heuristic.  This allows a simple `find` command to proceed
-quickly through a directory tree.
-
-Suggested-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-
---
-On v2: Don't add the type attribute twice
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 ---
- fs/nfs/nfs4xdr.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index deec76cf5afe..7200d6f7cd7b 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1602,7 +1602,7 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_pgio_args *args
- static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg *readdir, struct rpc_rqst *req, struct compound_hdr *hdr)
- {
- 	uint32_t attrs[3] = {
--		FATTR4_WORD0_RDATTR_ERROR,
-+		FATTR4_WORD0_TYPE|FATTR4_WORD0_RDATTR_ERROR,
- 		FATTR4_WORD1_MOUNTED_ON_FILEID,
- 	};
- 	uint32_t dircount = readdir->count;
-@@ -1612,7 +1612,7 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 	unsigned int i;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 5ca748309c26..62f6aba6140b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1798,6 +1798,7 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 status;
+ 	struct nfsd4_copy *async_copy = NULL;
  
- 	if (readdir->plus) {
--		attrs[0] |= FATTR4_WORD0_TYPE|FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE|
-+		attrs[0] |= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE|
- 			FATTR4_WORD0_FSID|FATTR4_WORD0_FILEHANDLE|FATTR4_WORD0_FILEID;
- 		attrs[1] |= FATTR4_WORD1_MODE|FATTR4_WORD1_NUMLINKS|FATTR4_WORD1_OWNER|
- 			FATTR4_WORD1_OWNER_GROUP|FATTR4_WORD1_RAWDEV|
++	copy->cp_clp = cstate->clp;
+ 	if (nfsd4_ssc_is_inter(copy)) {
+ 		if (!inter_copy_offload_enable || nfsd4_copy_is_sync(copy)) {
+ 			status = nfserr_notsupp;
+@@ -1812,7 +1813,6 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			return status;
+ 	}
+ 
+-	copy->cp_clp = cstate->clp;
+ 	memcpy(&copy->fh, &cstate->current_fh.fh_handle,
+ 		sizeof(struct knfsd_fh));
+ 	if (nfsd4_copy_is_async(copy)) {
 -- 
-2.40.1
+2.39.3
 
