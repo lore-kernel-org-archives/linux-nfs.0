@@ -2,207 +2,136 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 20668C83F10
-	for <linux-nfs@archiver.kernel.org>; Thu, 31 Aug 2023 15:24:59 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E93BBC83F01
+	for <linux-nfs@archiver.kernel.org>; Thu, 31 Aug 2023 15:53:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244888AbjHaPZA (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 31 Aug 2023 11:25:00 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56542 "EHLO
+        id S231431AbjHaPxf (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 31 Aug 2023 11:53:35 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44030 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231510AbjHaPZA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Aug 2023 11:25:00 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 1D94310E2
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Aug 2023 08:23:38 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1693495403;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=3lOqPGeum2Ohan2O+TXrCHEtxJJw1aqkd7sF483hiKc=;
-        b=hG8/3fJfgt2M7Ddr5tRR7idi0RiaueGXndvk2QOTaZZjTdHnp9VzKtkUvNpIDM2Sz4K9jK
-        SGeAp2KrsZoj7rf4NarlqIg4Dtf8u4MLV1i+XYkDhldbN1xc5ACFxYJt0QZ9qEQtqok92E
-        yF23F5COIytzBzkS35Ryk/UtYy2bhsA=
-Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
- by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-680-_2dcHVdvN2eC1EaSqY032w-1; Thu, 31 Aug 2023 11:23:22 -0400
-X-MC-Unique: _2dcHVdvN2eC1EaSqY032w-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id B05EB381181F
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Aug 2023 15:23:21 +0000 (UTC)
-Received: from [192.168.37.1] (unknown [10.22.48.7])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 63A032166B25
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Aug 2023 15:23:21 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH] NFSv4: add sysctl for setting READDIR attrs
-Date:   Thu, 31 Aug 2023 11:23:20 -0400
-Message-ID: <6F5072E7-2C66-4B17-847E-0AA95ED827B0@redhat.com>
-In-Reply-To: <8f752f70daf73016e20c49508f825e8c2c94f5e7.1693494824.git.bcodding@redhat.com>
-References: <8f752f70daf73016e20c49508f825e8c2c94f5e7.1693494824.git.bcodding@redhat.com>
+        with ESMTP id S230094AbjHaPxf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Aug 2023 11:53:35 -0400
+Received: from mail.digitalelves.com (mail.digitalelves.com [198.211.96.182])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 0B7521A3
+        for <linux-nfs@vger.kernel.org>; Thu, 31 Aug 2023 08:53:32 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple; d=thebarn.com;
+        s=default; t=1693497182;
+        bh=gwWpk3g32WNmT+2Oud2CvqZt37WpighR0o2y2ECLp10=;
+        h=Date:Subject:To:References:From:In-Reply-To:From;
+        b=dYUYEoLb+WpCBp2lcO2zpyruUDlV8+I1IR/q0T0h58VojrK8SBBH2DmDqsyKzFIT1
+         5emXJicM0YpT+RLzLGMrs8y61JCyvHRW/j7XKyl0x91JliiL02bU6tSZGYoNI652jM
+         t6K2Pm1IJHgOFlp3Zs6e58m7WvVU6oXDiMlxw0G4=
+Received: from [172.30.55.129] (24.77.2fa9.ip4.static.sl-reverse.com [169.47.119.36])
+        by mail.digitalelves.com (Postfix) with ESMTPSA id 243EF13B6CD;
+        Thu, 31 Aug 2023 15:53:02 +0000 (UTC)
+Message-ID: <d5cbff72-6119-060f-4fcf-017b5dd1009d@thebarn.com>
+Date:   Thu, 31 Aug 2023 10:53:00 -0500
 MIME-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.6
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
+ Gecko/20100101 Thunderbird/102.14.0
+Subject: Re: Question on RPC_TASK_NO_RETRANS_TIMEOUT /
+ NFS_CS_NO_RETRANS_TIMEOUT for NFSv3
+Content-Language: en-US
+To:     Trond Myklebust <trondmy@hammerspace.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <09b207aa-3670-90e8-9a04-1c35c1397a0c@thebarn.com>
+ <11a5110b-0769-de07-10a4-d266dbb8c5c0@thebarn.com>
+ <cb402253376f2939761169acce1b730bae0e9628.camel@hammerspace.com>
+ <56022b0e-08c1-f1da-5509-4e5e9f5a4f7c@thebarn.com>
+ <59f26502253a5bc3e359a676d24ed12c7181fee3.camel@hammerspace.com>
+From:   Russell Cattelan <cattelan@thebarn.com>
+In-Reply-To: <59f26502253a5bc3e359a676d24ed12c7181fee3.camel@hammerspace.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 31 Aug 2023, at 11:15, Benjamin Coddington wrote:
 
-> Expose a knob in sysfs to set the READDIR requested attributes for a
-> non-plus READDIR request.  This allows installations another option for=
 
-> tuning READDIR on v4.  Further work is needed to detect whether enough
-> attributes are being returned to also prime the dcache.
->
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfs/client.c           |  2 ++
->  fs/nfs/nfs4client.c       |  3 ++
->  fs/nfs/nfs4proc.c         |  1 +
->  fs/nfs/nfs4xdr.c          |  7 ++---
->  fs/nfs/sysfs.c            | 58 +++++++++++++++++++++++++++++++++++++++=
+On 8/26/23 10:30 AM, Trond Myklebust wrote:
 
->  include/linux/nfs_fs_sb.h |  1 +
->  include/linux/nfs_xdr.h   |  1 +
->  7 files changed, 69 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index e4c5f193ed5e..cf23a7c54bf1 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -920,6 +920,8 @@ void nfs_server_copy_userdata(struct nfs_server *ta=
-rget, struct nfs_server *sour
->  	target->options =3D source->options;
->  	target->auth_info =3D source->auth_info;
->  	target->port =3D source->port;
-> +	memcpy(target->readdir_attrs, source->readdir_attrs,
-> +			sizeof(target->readdir_attrs));
->  }
->  EXPORT_SYMBOL_GPL(nfs_server_copy_userdata);
->
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index d9114a754db7..ba1dffdd25eb 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -1108,6 +1108,9 @@ static int nfs4_server_common_setup(struct nfs_se=
-rver *server,
->
->  	nfs4_server_set_init_caps(server);
->
-> +	server->readdir_attrs[0] =3D FATTR4_WORD0_RDATTR_ERROR;
-> +	server->readdir_attrs[1] =3D FATTR4_WORD1_MOUNTED_ON_FILEID;
-> +
->  	/* Probe the root fh to retrieve its FSID and filehandle */
->  	error =3D nfs4_get_rootfh(server, mntfh, auth_probe);
->  	if (error < 0)
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 832fa226b8f2..12cc9e972f36 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5109,6 +5109,7 @@ static int _nfs4_proc_readdir(struct nfs_readdir_=
-arg *nr_arg,
->  		.pgbase =3D 0,
->  		.count =3D nr_arg->page_len,
->  		.plus =3D nr_arg->plus,
-> +		.server =3D server,
->  	};
->  	struct nfs4_readdir_res res;
->  	struct rpc_message msg =3D {
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index deec76cf5afe..1825e3eeb34b 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -1601,16 +1601,15 @@ static void encode_read(struct xdr_stream *xdr,=
- const struct nfs_pgio_args *args
->
->  static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_r=
-eaddir_arg *readdir, struct rpc_rqst *req, struct compound_hdr *hdr)
->  {
-> -	uint32_t attrs[3] =3D {
-> -		FATTR4_WORD0_RDATTR_ERROR,
-> -		FATTR4_WORD1_MOUNTED_ON_FILEID,
-> -	};
-> +	uint32_t attrs[3];
->  	uint32_t dircount =3D readdir->count;
->  	uint32_t maxcount =3D readdir->count;
->  	__be32 *p, verf[2];
->  	uint32_t attrlen =3D 0;
->  	unsigned int i;
->
-> +	memcpy(attrs, readdir->server->readdir_attrs, sizeof(attrs));
-> +
->  	if (readdir->plus) {
->  		attrs[0] |=3D FATTR4_WORD0_TYPE|FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZ=
-E|
->  			FATTR4_WORD0_FSID|FATTR4_WORD0_FILEHANDLE|FATTR4_WORD0_FILEID;
-> diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
-> index bf378ecd5d9f..6bded395df18 100644
-> --- a/fs/nfs/sysfs.c
-> +++ b/fs/nfs/sysfs.c
-> @@ -270,7 +270,59 @@ shutdown_store(struct kobject *kobj, struct kobj_a=
-ttribute *attr,
->  	return count;
->  }
->
-> +static ssize_t
-> +v4_readdir_attrs_show(struct kobject *kobj, struct kobj_attribute *att=
-r,
-> +				char *buf)
-> +{
-> +	struct nfs_server *server;
-> +	server =3D container_of(kobj, struct nfs_server, kobj);
-> +
-> +	return sysfs_emit(buf, "0x%x 0x%x 0x%x\n",
-> +			server->readdir_attrs[0],
-> +			server->readdir_attrs[1],
-> +			server->readdir_attrs[2]);
-> +}
-> +
-> +static ssize_t
-> +v4_readdir_attrs_store(struct kobject *kobj, struct kobj_attribute *at=
-tr,
-> +				const char *buf, size_t count)
-> +{
-> +	struct nfs_server *server;
-> +	u32 attrs[3];
-> +	char p[24], *v;
-> +	size_t token =3D 0;
-> +	int i;
-> +
-> +	if (count > 24)
-> +		return -EINVAL;
-> +
-> +	v =3D strncpy(p, buf, count);
-> +
-> +	for (i =3D 0; i < 3; i++) {
-> +		token +=3D strcspn(v, " ") + 1;
-> +		if (token > 22)
-> +			return -EINVAL;
-> +
-> +		p[token - 1] =3D '\0';
-> +		if (kstrtoint(v, 0, &attrs[i]))
-> +			return -EINVAL;
-> +		v =3D &p[token];
-> +	}
-> +
-> +	server =3D container_of(kobj, struct nfs_server, kobj);
-> +
-> +	if (attrs[0])
-> +		server->readdir_attrs[0] =3D attrs[0];
-> +	if (attrs[1])
-> +		server->readdir_attrs[1] =3D attrs[1];
-> +	if (attrs[2])
-> +		server->readdir_attrs[2] =3D attrs[2];
+> Yes. For instance the Linux knfsd server will drop requests if the GSS
+> sequence number lies outside the window (no, I don't know why it
+> doesn't just return RPCSEC_GSS_CTXPROBLEM). It will also happily drop
+> deferred requests (i.e. requests waiting for a reply to an upcall) once
+> they start piling up. Finally, if the knfsd reply cache says that an
+> earlier transmission of the NFSv3 RPC request is still being processed,
+> then the new request gets dropped.
+> 
+>> Wouldn't the rpc code behave the same as v4 and setup a new
+>> connection
+>> before doing the retrans?
+>> At least in our experimentation if we leave the connection down for
+>> more
+>> 63 seconds we can see from the rpc traces that is what is happening.
+>> Once there is a new connection then old message is ignored and
+>> processing continues with the new set request / responses.
+>>
+>>>
+>>> The right thing to do is to just fix up rpc_decode_header() to
+>>> retry
+>>> instead of firing off an error in this case.
+>> So you are thinking that rpc_decode_header just returns EAGAIN if the
+>> checksum fails?
+>> What happens if the GSS context actually goes bad (times out etc)
+>> wouldn't that also result in the client get stuck just doing re-sends
+>> over and over?
+> 
+> If the GSS context goes bad, then the server is supposed to return
+> either RPCSEC_GSS_CREDPROBLEM (if the server no longer has context for
+> that handle) or RPCSEC_GSS_CTXPROBLEM (context is stale due to ticket
+> expiry, etc).
 
-Eh, this ^^ is obviously wrong - we want to allow setting to 0.  I will f=
-ix
-this if there's interest.
+Test environment got reset so took a day or so try this.
 
-Ben
+I change the return when rpcauth_checkverf fails to be a EKEYREJECTED 
+error vs EAGAIN
 
+Which puts the decode failure down this path vs just re-transmitting the 
+same XID but with a new GSS sequence / checksum.
+
+	case -EKEYREJECTED:
+		task->tk_action = call_reserve;
+		rpc_check_timeout(task);
+		rpcauth_invalcred(task);
+		/* Ensure we obtain a new XID if we retry! */
+		xprt_release(task);
+
+This does appear to work / address the failure that we are able
+to introduce with iptable down ; iptables up.
+
+But question is this a valid thing to do when the gss checksum fails?
+
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index ad3e9a40b061..d0bcb6c6b3df 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2645,7 +2645,8 @@ rpc_decode_header(struct rpc_task *task, struct 
+xdr_stream *xdr)
+
+  out_verifier:
+  	trace_rpc_bad_verifier(task);
+-	goto out_garbage;
++	return -EKEYREJECTED;
++	//goto out_garbage;
+
+  out_msg_denied:
+  	error = -EACCES;
+
+
+
+> 
+> If it just times out, then surely the replay cache should ensure that
+> it gets processed quickly after a retry, no?
+> 
+>>
+>> I'm really not that up to speed on subtleties of NFS kerberos.
+>>
+>> Oh note this isn't even krb5p just krb5 mounts. (not that should
+>> matter
+>> all that much)
+>>
+>> --Russell Cattelan
+> 
