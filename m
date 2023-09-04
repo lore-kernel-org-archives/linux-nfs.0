@@ -2,264 +2,96 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2D59EC83F3F
-	for <linux-nfs@archiver.kernel.org>; Mon,  4 Sep 2023 13:43:12 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8055CC83F2C
+	for <linux-nfs@archiver.kernel.org>; Mon,  4 Sep 2023 16:41:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1348879AbjIDNnN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 4 Sep 2023 09:43:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59522 "EHLO
+        id S234344AbjIDQle (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 4 Sep 2023 12:41:34 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46136 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241768AbjIDNnI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Sep 2023 09:43:08 -0400
-Received: from frasgout12.his.huawei.com (unknown [14.137.139.154])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 36D15E5D;
-        Mon,  4 Sep 2023 06:42:41 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.18.147.227])
-        by frasgout12.his.huawei.com (SkyGuard) with ESMTP id 4RfTwZ0209z9xHM3;
-        Mon,  4 Sep 2023 21:28:14 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.204.63.22])
-        by APP1 (Coremail) with SMTP id LxC2BwCXSblt3vVkorkeAg--.30599S7;
-        Mon, 04 Sep 2023 14:42:13 +0100 (CET)
-From:   Roberto Sassu <roberto.sassu@huaweicloud.com>
-To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
-        chuck.lever@oracle.com, jlayton@kernel.org, neilb@suse.de,
-        kolga@netapp.com, Dai.Ngo@oracle.com, tom@talpey.com,
-        zohar@linux.ibm.com, dmitry.kasatkin@gmail.com,
-        paul@paul-moore.com, jmorris@namei.org, serge@hallyn.com,
-        dhowells@redhat.com, jarkko@kernel.org,
-        stephen.smalley.work@gmail.com, eparis@parisplace.org,
-        casey@schaufler-ca.com
-Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
-        linux-security-module@vger.kernel.org, keyrings@vger.kernel.org,
-        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>
-Subject: [PATCH v3 25/25] integrity: Switch from rbtree to LSM-managed blob for integrity_iint_cache
-Date:   Mon,  4 Sep 2023 15:40:49 +0200
-Message-Id: <20230904134049.1802006-6-roberto.sassu@huaweicloud.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20230904133415.1799503-1-roberto.sassu@huaweicloud.com>
-References: <20230904133415.1799503-1-roberto.sassu@huaweicloud.com>
+        with ESMTP id S236602AbjIDQld (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Sep 2023 12:41:33 -0400
+Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F3ECC1B7
+        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 09:41:30 -0700 (PDT)
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+        (No client certificate requested)
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 89327616F6
+        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 16:41:30 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9DA72C433C9;
+        Mon,  4 Sep 2023 16:41:29 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1693845689;
+        bh=dVm3cA6S4iZBPGlrLFzon4H1c/bWA6gMkAgxXB18xLY=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=WnFESd7nOCvdfqB3AY90PHFlTmYXzBjHdRYAxbe6Y1AlXNuEmA8E+cDbllYaKaLwG
+         eJze7VesheXOKSW0No/ED/M9A18q/of62OXeqjSTVtj7LYOpM7oQvW9R1IJjKFCwSY
+         zEuHhJPIFRycjwaTmScx1GnNu3phq2OHfoG0/6X+L63fvClfaPpxFlNXpEnsfGtrAE
+         SpR1RywVQR23RA74YK9X2/F6qZPZ7gE1S/VotCRLOxp8TG9+isAlWbb6QBlvhY7/1s
+         q6YRAX1tiYpzpW09BJehxGV4HBzDfSg34Pq7FB60USHb0LIjkcHZmRShsrBQVJ8yru
+         HSUGhK++x7DYA==
+From:   trondmy@kernel.org
+To:     Anna Schumaker <anna.schumaker@netapp.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v2 2/5] NFS: Fix O_DIRECT locking issues
+Date:   Mon,  4 Sep 2023 12:34:38 -0400
+Message-ID: <20230904163441.11950-3-trondmy@kernel.org>
+X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230904163441.11950-2-trondmy@kernel.org>
+References: <20230904163441.11950-1-trondmy@kernel.org>
+ <20230904163441.11950-2-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: LxC2BwCXSblt3vVkorkeAg--.30599S7
-X-Coremail-Antispam: 1UD129KBjvJXoWxKryfGFy8XFyDtr1UAFWDurg_yoWxGrWUpF
-        42gayUJws8ZFWj9F4vyF98ur4fKFyjqFZ7W34Ykw1kAFyvvr1jqFs8AryUZF15GrW5t34I
-        qrn0kr4UZF1qyrJanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUBIb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUAV
-        Cq3wA2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0
-        rcxSw2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267
-        AKxVWxJr0_GcWl84ACjcxK6I8E87Iv67AKxVW8JVWxJwA2z4x0Y4vEx4A2jsIEc7CjxVAF
-        wI0_Cr1j6rxdM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7
-        xfMcIj6xIIjxv20xvE14v26r106r15McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Y
-        z7v_Jr0_Gr1lF7xvr2IYc2Ij64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1l42xK82IYc2
-        Ij64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s02
-        6x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0x
-        vE2Ix0cI8IcVAFwI0_Xr0_Ar1lIxAIcVC0I7IYx2IY6xkF7I0E14v26F4UJVW0owCI42IY
-        6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aV
-        CY1x0267AKxVWxJr0_GcJvcSsGvfC2KfnxnUUI43ZEXa7IUbGXdUUUUUU==
-X-CM-SenderInfo: purev21wro2thvvxqx5xdzvxpfor3voofrz/1tbiAQAKBF1jj5OBggAAsu
-X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Roberto Sassu <roberto.sassu@huawei.com>
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Before the security field of kernel objects could be shared among LSMs with
-the LSM stacking feature, IMA and EVM had to rely on an alternative storage
-of inode metadata. The association between inode metadata and inode is
-maintained through an rbtree.
+The dreq fields are protected by the dreq->lock.
 
-With the reservation mechanism offered by the LSM infrastructure, the
-rbtree is no longer necessary, as each LSM could reserve a space in the
-security blob for each inode. Thus, request from the 'integrity' LSM a
-space in the security blob for the pointer of inode metadata
-(integrity_iint_cache structure).
-
-Prefer this to allocating the integrity_iint_cache structure directly, as
-IMA would require it only for a subset of inodes. Always allocating it
-would cause a waste of memory.
-
-Introduce two primitives for getting and setting the pointer of
-integrity_iint_cache in the security blob, respectively
-integrity_inode_get_iint() and integrity_inode_set_iint(). This would make
-the code more understandable, as they directly replace rbtree operations.
-
-Locking is not needed, as access to inode metadata is not shared, it is per
-inode.
-
-Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
-Reviewed-by: Casey Schaufler <casey@schaufler-ca.com>
+Fixes: 0703dc52ef0b ("NFS: Fix error handling for O_DIRECT write scheduling")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- security/integrity/iint.c      | 67 +++-------------------------------
- security/integrity/integrity.h | 19 +++++++++-
- 2 files changed, 24 insertions(+), 62 deletions(-)
+ fs/nfs/direct.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/security/integrity/iint.c b/security/integrity/iint.c
-index 70ee803a33ea..c2fba8afbbdb 100644
---- a/security/integrity/iint.c
-+++ b/security/integrity/iint.c
-@@ -14,56 +14,25 @@
- #include <linux/slab.h>
- #include <linux/init.h>
- #include <linux/spinlock.h>
--#include <linux/rbtree.h>
- #include <linux/file.h>
- #include <linux/uaccess.h>
- #include <linux/security.h>
- #include <linux/lsm_hooks.h>
- #include "integrity.h"
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index ee88f0a6e7b8..e8a1645857dd 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -553,7 +553,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 		/* Bump the transmission count */
+ 		req->wb_nio++;
+ 		if (!nfs_pageio_add_request(&desc, req)) {
+-			spin_lock(&cinfo.inode->i_lock);
++			spin_lock(&dreq->lock);
+ 			if (dreq->error < 0) {
+ 				desc.pg_error = dreq->error;
+ 			} else if (desc.pg_error != -EAGAIN) {
+@@ -563,7 +563,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 				dreq->error = desc.pg_error;
+ 			} else
+ 				dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+-			spin_unlock(&cinfo.inode->i_lock);
++			spin_unlock(&dreq->lock);
+ 			break;
+ 		}
+ 		nfs_release_request(req);
+@@ -871,9 +871,9 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
  
--static struct rb_root integrity_iint_tree = RB_ROOT;
--static DEFINE_RWLOCK(integrity_iint_lock);
- static struct kmem_cache *iint_cache __read_mostly;
- 
- struct dentry *integrity_dir;
- 
--/*
-- * __integrity_iint_find - return the iint associated with an inode
-- */
--static struct integrity_iint_cache *__integrity_iint_find(struct inode *inode)
--{
--	struct integrity_iint_cache *iint;
--	struct rb_node *n = integrity_iint_tree.rb_node;
--
--	while (n) {
--		iint = rb_entry(n, struct integrity_iint_cache, rb_node);
--
--		if (inode < iint->inode)
--			n = n->rb_left;
--		else if (inode > iint->inode)
--			n = n->rb_right;
--		else
--			return iint;
--	}
--
--	return NULL;
--}
--
- /*
-  * integrity_iint_find - return the iint associated with an inode
-  */
- struct integrity_iint_cache *integrity_iint_find(struct inode *inode)
- {
--	struct integrity_iint_cache *iint;
--
- 	if (!IS_IMA(inode))
- 		return NULL;
- 
--	read_lock(&integrity_iint_lock);
--	iint = __integrity_iint_find(inode);
--	read_unlock(&integrity_iint_lock);
--
--	return iint;
-+	return integrity_inode_get_iint(inode);
- }
- 
- static void iint_free(struct integrity_iint_cache *iint)
-@@ -92,9 +61,7 @@ static void iint_free(struct integrity_iint_cache *iint)
-  */
- struct integrity_iint_cache *integrity_inode_get(struct inode *inode)
- {
--	struct rb_node **p;
--	struct rb_node *node, *parent = NULL;
--	struct integrity_iint_cache *iint, *test_iint;
-+	struct integrity_iint_cache *iint;
- 
- 	iint = integrity_iint_find(inode);
- 	if (iint)
-@@ -104,31 +71,10 @@ struct integrity_iint_cache *integrity_inode_get(struct inode *inode)
- 	if (!iint)
- 		return NULL;
- 
--	write_lock(&integrity_iint_lock);
--
--	p = &integrity_iint_tree.rb_node;
--	while (*p) {
--		parent = *p;
--		test_iint = rb_entry(parent, struct integrity_iint_cache,
--				     rb_node);
--		if (inode < test_iint->inode) {
--			p = &(*p)->rb_left;
--		} else if (inode > test_iint->inode) {
--			p = &(*p)->rb_right;
--		} else {
--			write_unlock(&integrity_iint_lock);
--			kmem_cache_free(iint_cache, iint);
--			return test_iint;
--		}
--	}
--
- 	iint->inode = inode;
--	node = &iint->rb_node;
- 	inode->i_flags |= S_IMA;
--	rb_link_node(node, parent, p);
--	rb_insert_color(node, &integrity_iint_tree);
-+	integrity_inode_set_iint(inode, iint);
- 
--	write_unlock(&integrity_iint_lock);
- 	return iint;
- }
- 
-@@ -145,10 +91,8 @@ static void integrity_inode_free(struct inode *inode)
- 	if (!IS_IMA(inode))
- 		return;
- 
--	write_lock(&integrity_iint_lock);
--	iint = __integrity_iint_find(inode);
--	rb_erase(&iint->rb_node, &integrity_iint_tree);
--	write_unlock(&integrity_iint_lock);
-+	iint = integrity_iint_find(inode);
-+	integrity_inode_set_iint(inode, NULL);
- 
- 	iint_free(iint);
- }
-@@ -188,6 +132,7 @@ static int __init integrity_lsm_init(void)
- }
- 
- struct lsm_blob_sizes integrity_blob_sizes __ro_after_init = {
-+	.lbs_inode = sizeof(struct integrity_iint_cache *),
- 	.lbs_xattr_count = 1,
- };
- 
-diff --git a/security/integrity/integrity.h b/security/integrity/integrity.h
-index e020c365997b..24de4ad4a37e 100644
---- a/security/integrity/integrity.h
-+++ b/security/integrity/integrity.h
-@@ -158,7 +158,6 @@ struct ima_file_id {
- 
- /* integrity data associated with an inode */
- struct integrity_iint_cache {
--	struct rb_node rb_node;	/* rooted in integrity_iint_tree */
- 	struct mutex mutex;	/* protects: version, flags, digest */
- 	struct inode *inode;	/* back pointer to inode in question */
- 	u64 version;		/* track inode changes */
-@@ -192,6 +191,24 @@ int integrity_kernel_read(struct file *file, loff_t offset,
- extern struct dentry *integrity_dir;
- extern struct lsm_blob_sizes integrity_blob_sizes;
- 
-+static inline struct integrity_iint_cache *
-+integrity_inode_get_iint(const struct inode *inode)
-+{
-+	struct integrity_iint_cache **iint_sec;
-+
-+	iint_sec = inode->i_security + integrity_blob_sizes.lbs_inode;
-+	return *iint_sec;
-+}
-+
-+static inline void integrity_inode_set_iint(const struct inode *inode,
-+					    struct integrity_iint_cache *iint)
-+{
-+	struct integrity_iint_cache **iint_sec;
-+
-+	iint_sec = inode->i_security + integrity_blob_sizes.lbs_inode;
-+	*iint_sec = iint;
-+}
-+
- struct modsig;
- 
- #ifdef CONFIG_IMA
+ 			/* If the error is soft, defer remaining requests */
+ 			nfs_init_cinfo_from_dreq(&cinfo, dreq);
+-			spin_lock(&cinfo.inode->i_lock);
++			spin_lock(&dreq->lock);
+ 			dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+-			spin_unlock(&cinfo.inode->i_lock);
++			spin_unlock(&dreq->lock);
+ 			nfs_unlock_request(req);
+ 			nfs_mark_request_commit(req, NULL, &cinfo, 0);
+ 			desc.pg_error = 0;
 -- 
-2.34.1
+2.41.0
 
