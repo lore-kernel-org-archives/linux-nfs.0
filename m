@@ -2,46 +2,45 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8055CC83F2C
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 5CD32C71153
 	for <linux-nfs@archiver.kernel.org>; Mon,  4 Sep 2023 16:41:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234344AbjIDQle (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        id S238333AbjIDQle (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Mon, 4 Sep 2023 12:41:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46136 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46134 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236602AbjIDQld (ORCPT
+        with ESMTP id S234344AbjIDQld (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Sep 2023 12:41:33 -0400
 Received: from dfw.source.kernel.org (dfw.source.kernel.org [IPv6:2604:1380:4641:c500::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F3ECC1B7
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7E72B199
         for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 09:41:30 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits))
+         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
         (No client certificate requested)
-        by dfw.source.kernel.org (Postfix) with ESMTPS id 89327616F6
+        by dfw.source.kernel.org (Postfix) with ESMTPS id 0A103616F4
         for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 16:41:30 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9DA72C433C9;
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 19865C433C8;
         Mon,  4 Sep 2023 16:41:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=k20201202; t=1693845689;
-        bh=dVm3cA6S4iZBPGlrLFzon4H1c/bWA6gMkAgxXB18xLY=;
+        bh=2UwLvghTRLYp90etoAHUjh1QPfZfnDpXQaSvdBAmsM0=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=WnFESd7nOCvdfqB3AY90PHFlTmYXzBjHdRYAxbe6Y1AlXNuEmA8E+cDbllYaKaLwG
-         eJze7VesheXOKSW0No/ED/M9A18q/of62OXeqjSTVtj7LYOpM7oQvW9R1IJjKFCwSY
-         zEuHhJPIFRycjwaTmScx1GnNu3phq2OHfoG0/6X+L63fvClfaPpxFlNXpEnsfGtrAE
-         SpR1RywVQR23RA74YK9X2/F6qZPZ7gE1S/VotCRLOxp8TG9+isAlWbb6QBlvhY7/1s
-         q6YRAX1tiYpzpW09BJehxGV4HBzDfSg34Pq7FB60USHb0LIjkcHZmRShsrBQVJ8yru
-         HSUGhK++x7DYA==
+        b=jp0KHDD+r0pJ2e7CVrZhNhyqmVsa402/LO/jDwdQZ8g3jrh68JR1KpfPxBbnSw9MM
+         WsWF1nxcrDO48x9FYrEbuItRa0kHERfb+lJhMz0pqAZ/YXoIRdejkRQ5eYeItYL1se
+         1jp+7ZTNWb3VpEIbj2bDz9b5lpDiUMnNScUiHnsva31WHuhpSY59xfbidks5z+L5il
+         VyWbw4uujoGrxzZTLQaoGlZXMvBYB37HMQ8HldffdTlOtUOIm7/QarqjzsNWybSUFz
+         XGlQ+b2rAmfZH760Y8TdZ9A/Y03ntg77AF0fr4QtAD4A+eGufaCTtkOcH/kenwp7w6
+         /eIEBT3S15Yvg==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/5] NFS: Fix O_DIRECT locking issues
-Date:   Mon,  4 Sep 2023 12:34:38 -0400
-Message-ID: <20230904163441.11950-3-trondmy@kernel.org>
+Subject: [PATCH v2 1/5] NFS: Fix error handling for O_DIRECT write scheduling
+Date:   Mon,  4 Sep 2023 12:34:37 -0400
+Message-ID: <20230904163441.11950-2-trondmy@kernel.org>
 X-Mailer: git-send-email 2.41.0
-In-Reply-To: <20230904163441.11950-2-trondmy@kernel.org>
+In-Reply-To: <20230904163441.11950-1-trondmy@kernel.org>
 References: <20230904163441.11950-1-trondmy@kernel.org>
- <20230904163441.11950-2-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -50,48 +49,137 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-The dreq fields are protected by the dreq->lock.
+If we fail to schedule a request for transmission, there are 2
+possibilities:
+1) Either we hit a fatal error, and we just want to drop the remaining
+   requests on the floor.
+2) We were asked to try again, in which case we should allow the
+   outstanding RPC calls to complete, so that we can recoalesce requests
+   and try again.
 
-Fixes: 0703dc52ef0b ("NFS: Fix error handling for O_DIRECT write scheduling")
+Fixes: d600ad1f2bdb ("NFS41: pop some layoutget errors to application")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/direct.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ fs/nfs/direct.c | 62 ++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 46 insertions(+), 16 deletions(-)
 
 diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index ee88f0a6e7b8..e8a1645857dd 100644
+index 47d892a1d363..ee88f0a6e7b8 100644
 --- a/fs/nfs/direct.c
 +++ b/fs/nfs/direct.c
-@@ -553,7 +553,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+@@ -528,10 +528,9 @@ nfs_direct_write_scan_commit_list(struct inode *inode,
+ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ {
+ 	struct nfs_pageio_descriptor desc;
+-	struct nfs_page *req, *tmp;
++	struct nfs_page *req;
+ 	LIST_HEAD(reqs);
+ 	struct nfs_commit_info cinfo;
+-	LIST_HEAD(failed);
+ 
+ 	nfs_init_cinfo_from_dreq(&cinfo, dreq);
+ 	nfs_direct_write_scan_commit_list(dreq->inode, &reqs, &cinfo);
+@@ -549,27 +548,36 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 			      &nfs_direct_write_completion_ops);
+ 	desc.pg_dreq = dreq;
+ 
+-	list_for_each_entry_safe(req, tmp, &reqs, wb_list) {
++	while (!list_empty(&reqs)) {
++		req = nfs_list_entry(reqs.next);
  		/* Bump the transmission count */
  		req->wb_nio++;
  		if (!nfs_pageio_add_request(&desc, req)) {
--			spin_lock(&cinfo.inode->i_lock);
-+			spin_lock(&dreq->lock);
- 			if (dreq->error < 0) {
- 				desc.pg_error = dreq->error;
- 			} else if (desc.pg_error != -EAGAIN) {
-@@ -563,7 +563,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+-			nfs_list_move_request(req, &failed);
+ 			spin_lock(&cinfo.inode->i_lock);
+-			dreq->flags = 0;
+-			if (desc.pg_error < 0)
++			if (dreq->error < 0) {
++				desc.pg_error = dreq->error;
++			} else if (desc.pg_error != -EAGAIN) {
++				dreq->flags = 0;
++				if (!desc.pg_error)
++					desc.pg_error = -EIO;
  				dreq->error = desc.pg_error;
- 			} else
- 				dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
--			spin_unlock(&cinfo.inode->i_lock);
-+			spin_unlock(&dreq->lock);
- 			break;
+-			else
+-				dreq->error = -EIO;
++			} else
++				dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+ 			spin_unlock(&cinfo.inode->i_lock);
++			break;
  		}
  		nfs_release_request(req);
-@@ -871,9 +871,9 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 	}
+ 	nfs_pageio_complete(&desc);
  
- 			/* If the error is soft, defer remaining requests */
- 			nfs_init_cinfo_from_dreq(&cinfo, dreq);
--			spin_lock(&cinfo.inode->i_lock);
-+			spin_lock(&dreq->lock);
- 			dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
--			spin_unlock(&cinfo.inode->i_lock);
-+			spin_unlock(&dreq->lock);
- 			nfs_unlock_request(req);
- 			nfs_mark_request_commit(req, NULL, &cinfo, 0);
- 			desc.pg_error = 0;
+-	while (!list_empty(&failed)) {
+-		req = nfs_list_entry(failed.next);
++	while (!list_empty(&reqs)) {
++		req = nfs_list_entry(reqs.next);
+ 		nfs_list_remove_request(req);
+ 		nfs_unlock_and_release_request(req);
++		if (desc.pg_error == -EAGAIN)
++			nfs_mark_request_commit(req, NULL, &cinfo, 0);
++		else
++			nfs_release_request(req);
+ 	}
+ 
+ 	if (put_dreq(dreq))
+@@ -794,9 +802,11 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ {
+ 	struct nfs_pageio_descriptor desc;
+ 	struct inode *inode = dreq->inode;
++	struct nfs_commit_info cinfo;
+ 	ssize_t result = 0;
+ 	size_t requested_bytes = 0;
+ 	size_t wsize = max_t(size_t, NFS_SERVER(inode)->wsize, PAGE_SIZE);
++	bool defer = false;
+ 
+ 	trace_nfs_direct_write_schedule_iovec(dreq);
+ 
+@@ -837,17 +847,37 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 				break;
+ 			}
+ 
+-			nfs_lock_request(req);
+-			if (!nfs_pageio_add_request(&desc, req)) {
+-				result = desc.pg_error;
+-				nfs_unlock_and_release_request(req);
+-				break;
+-			}
+ 			pgbase = 0;
+ 			bytes -= req_len;
+ 			requested_bytes += req_len;
+ 			pos += req_len;
+ 			dreq->bytes_left -= req_len;
++
++			if (defer) {
++				nfs_mark_request_commit(req, NULL, &cinfo, 0);
++				continue;
++			}
++
++			nfs_lock_request(req);
++			if (nfs_pageio_add_request(&desc, req))
++				continue;
++
++			/* Exit on hard errors */
++			if (desc.pg_error < 0 && desc.pg_error != -EAGAIN) {
++				result = desc.pg_error;
++				nfs_unlock_and_release_request(req);
++				break;
++			}
++
++			/* If the error is soft, defer remaining requests */
++			nfs_init_cinfo_from_dreq(&cinfo, dreq);
++			spin_lock(&cinfo.inode->i_lock);
++			dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
++			spin_unlock(&cinfo.inode->i_lock);
++			nfs_unlock_request(req);
++			nfs_mark_request_commit(req, NULL, &cinfo, 0);
++			desc.pg_error = 0;
++			defer = true;
+ 		}
+ 		nfs_direct_release_pages(pagevec, npages);
+ 		kvfree(pagevec);
 -- 
 2.41.0
 
