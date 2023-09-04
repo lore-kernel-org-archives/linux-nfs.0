@@ -2,187 +2,63 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id F414CCA0FE2
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C74FCA0FFF
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:45 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238192AbjIEQFi convert rfc822-to-8bit (ORCPT
-        <rfc822;linux-nfs@archiver.kernel.org>);
+        id S238205AbjIEQFi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
         Tue, 5 Sep 2023 12:05:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42132 "EHLO
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33602 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1353608AbjIEGwR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2023 02:52:17 -0400
-Received: from frasgout13.his.huawei.com (unknown [14.137.139.46])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A52DA1B4;
-        Mon,  4 Sep 2023 23:52:13 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.18.147.229])
-        by frasgout13.his.huawei.com (SkyGuard) with ESMTP id 4Rfwq91PZtz9v7ZP;
-        Tue,  5 Sep 2023 14:40:05 +0800 (CST)
-Received: from [127.0.0.1] (unknown [10.204.63.22])
-        by APP2 (Coremail) with SMTP id GxC2BwDX1+_yz_ZkocAiAg--.8435S2;
-        Tue, 05 Sep 2023 07:51:44 +0100 (CET)
-Message-ID: <b4bc9dbb2417dc8afe0bf0a50233d4c2968bfb7a.camel@huaweicloud.com>
-Subject: Re: [PATCH v2 13/25] security: Introduce inode_post_removexattr hook
-From:   Roberto Sassu <roberto.sassu@huaweicloud.com>
-To:     Jarkko Sakkinen <jarkko@kernel.org>, viro@zeniv.linux.org.uk,
-        brauner@kernel.org, chuck.lever@oracle.com, jlayton@kernel.org,
-        neilb@suse.de, kolga@netapp.com, Dai.Ngo@oracle.com,
-        tom@talpey.com, zohar@linux.ibm.com, dmitry.kasatkin@gmail.com,
-        paul@paul-moore.com, jmorris@namei.org, serge@hallyn.com,
-        dhowells@redhat.com, stephen.smalley.work@gmail.com,
-        eparis@parisplace.org, casey@schaufler-ca.com
-Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
-        linux-security-module@vger.kernel.org, keyrings@vger.kernel.org,
-        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>,
-        Stefan Berger <stefanb@linux.ibm.com>
-Date:   Tue, 05 Sep 2023 08:51:26 +0200
-In-Reply-To: <CVAFXF2BQ14B.19BO7F9P62WGT@suppilovahvero>
-References: <20230831104136.903180-1-roberto.sassu@huaweicloud.com>
-         <20230831104136.903180-14-roberto.sassu@huaweicloud.com>
-         <CVAFXF2BQ14B.19BO7F9P62WGT@suppilovahvero>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-User-Agent: Evolution 3.44.4-0ubuntu2 
+        with ESMTP id S1354080AbjIEJfV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2023 05:35:21 -0400
+X-Greylist: delayed 4338 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Tue, 05 Sep 2023 02:35:18 PDT
+Received: from mail.equinoxrise.pl (mail.equinoxrise.pl [217.61.112.157])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6AE301A7
+        for <linux-nfs@vger.kernel.org>; Tue,  5 Sep 2023 02:35:18 -0700 (PDT)
+Received: by mail.equinoxrise.pl (Postfix, from userid 1002)
+        id B3D288357F; Mon,  4 Sep 2023 09:41:30 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=equinoxrise.pl;
+        s=mail; t=1693813368;
+        bh=v6OgBfK5dN7P5dQ0wCu59rOfZaiqziJeLNblJ8dOcGI=;
+        h=Date:From:To:Subject:From;
+        b=kTQbDa2ruxWI8Z5CdIp+R9ZKeqXVFYNh2KdgG7WLfaF+NYggkiFFbm725+zh35I80
+         KAmxLFES18P4GOXAONhum09AxGFbcMZoUDySwFbcPg5Yxt9nQq923TuSA90TMUJOPj
+         opBtTfDt8JYLPW/oms6HYvsuKdfovH5kR/IAiPhi4SjANGbP+lr3RS16x1SYcna/ri
+         dfqzVEHhdFF5sldFLlC46vaDiQ6i27yMtwlViyuD+ILwtLubmbQenII9XwqgHsjcm3
+         kYMRtoVmRwsm4wgCljhs8g3VM6y7DDsUAwuy2Tafm244AVwh6QIqKDOXWX5sEIpYTa
+         ivwOhfd7AddyQ==
+Received: by mail.equinoxrise.pl for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 07:40:34 GMT
+Message-ID: <20230904084500-0.1.7.rif.0.ikdlre2kd3@equinoxrise.pl>
+Date:   Mon,  4 Sep 2023 07:40:34 GMT
+From:   "Mateusz Talaga" <mateusz.talaga@equinoxrise.pl>
+To:     <linux-nfs@vger.kernel.org>
+Subject: Prezentacja
+X-Mailer: mail.equinoxrise.pl
 MIME-Version: 1.0
-X-CM-TRANSID: GxC2BwDX1+_yz_ZkocAiAg--.8435S2
-X-Coremail-Antispam: 1UD129KBjvJXoWxWr4DAry7AF1kXr4xCFWfZrb_yoWruF47pF
-        s8t3W5Cr4rJFy7WFy8tF17uw4I9ayFgry7A3y2gw12yFn2yrn2qrZxCF1UCryrJr40gFyv
-        qFnFkrs5Cr13J3JanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUkjb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7Cj
-        xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVWUJVW8JwA2z4x0Y4vEx4A2jsIEc7CjxV
-        AFwI0_Gr0_Gr1UM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
-        x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
-        0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1l42xK82IYc2Ij
-        64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x
-        8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE
-        2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42
-        xK8VAvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIE
-        c7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07UAkuxUUUUU=
-X-CM-SenderInfo: purev21wro2thvvxqx5xdzvxpfor3voofrz/1tbiAQALBF1jj5OFhQACsu
-X-CFilter-Loop: Reflected
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Tue, 2023-09-05 at 00:11 +0300, Jarkko Sakkinen wrote:
-> On Thu Aug 31, 2023 at 1:41 PM EEST, Roberto Sassu wrote:
-> > From: Roberto Sassu <roberto.sassu@huawei.com>
-> > 
-> > In preparation for moving IMA and EVM to the LSM infrastructure, introduce
-> > the inode_post_removexattr hook.
-> > 
-> > Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
-> > Reviewed-by: Stefan Berger <stefanb@linux.ibm.com>
-> > ---
-> >  fs/xattr.c                    |  9 +++++----
-> >  include/linux/lsm_hook_defs.h |  2 ++
-> >  include/linux/security.h      |  5 +++++
-> >  security/security.c           | 14 ++++++++++++++
-> >  4 files changed, 26 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/xattr.c b/fs/xattr.c
-> > index e7bbb7f57557..4a0280295686 100644
-> > --- a/fs/xattr.c
-> > +++ b/fs/xattr.c
-> > @@ -552,11 +552,12 @@ __vfs_removexattr_locked(struct mnt_idmap *idmap,
-> >  		goto out;
-> >  
-> >  	error = __vfs_removexattr(idmap, dentry, name);
-> > +	if (error)
-> > +		goto out;
-> >  
-> > -	if (!error) {
-> > -		fsnotify_xattr(dentry);
-> > -		evm_inode_post_removexattr(dentry, name);
-> > -	}
-> > +	fsnotify_xattr(dentry);
-> > +	security_inode_post_removexattr(dentry, name);
-> > +	evm_inode_post_removexattr(dentry, name);
-> >  
-> >  out:
-> >  	return error;
-> > diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
-> > index 995d30336cfa..1153e7163b8b 100644
-> > --- a/include/linux/lsm_hook_defs.h
-> > +++ b/include/linux/lsm_hook_defs.h
-> > @@ -148,6 +148,8 @@ LSM_HOOK(int, 0, inode_getxattr, struct dentry *dentry, const char *name)
-> >  LSM_HOOK(int, 0, inode_listxattr, struct dentry *dentry)
-> >  LSM_HOOK(int, 0, inode_removexattr, struct mnt_idmap *idmap,
-> >  	 struct dentry *dentry, const char *name)
-> > +LSM_HOOK(void, LSM_RET_VOID, inode_post_removexattr, struct dentry *dentry,
-> > +	 const char *name)
-> >  LSM_HOOK(int, 0, inode_set_acl, struct mnt_idmap *idmap,
-> >  	 struct dentry *dentry, const char *acl_name, struct posix_acl *kacl)
-> >  LSM_HOOK(int, 0, inode_get_acl, struct mnt_idmap *idmap,
-> > diff --git a/include/linux/security.h b/include/linux/security.h
-> > index 820899db5276..665bba3e0081 100644
-> > --- a/include/linux/security.h
-> > +++ b/include/linux/security.h
-> > @@ -374,6 +374,7 @@ int security_inode_getxattr(struct dentry *dentry, const char *name);
-> >  int security_inode_listxattr(struct dentry *dentry);
-> >  int security_inode_removexattr(struct mnt_idmap *idmap,
-> >  			       struct dentry *dentry, const char *name);
-> > +void security_inode_post_removexattr(struct dentry *dentry, const char *name);
-> >  int security_inode_need_killpriv(struct dentry *dentry);
-> >  int security_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry);
-> >  int security_inode_getsecurity(struct mnt_idmap *idmap,
-> > @@ -919,6 +920,10 @@ static inline int security_inode_removexattr(struct mnt_idmap *idmap,
-> >  	return cap_inode_removexattr(idmap, dentry, name);
-> >  }
-> >  
-> > +static inline void security_inode_post_removexattr(struct dentry *dentry,
-> > +						   const char *name)
-> > +{ }
-> 
-> static inline void security_inode_post_removexattr(struct dentry *dentry, const char *name)
-> {
-> }
-> 
-> > +
-> >  static inline int security_inode_need_killpriv(struct dentry *dentry)
-> >  {
-> >  	return cap_inode_need_killpriv(dentry);
-> > diff --git a/security/security.c b/security/security.c
-> > index 764a6f28b3b9..3947159ba5e9 100644
-> > --- a/security/security.c
-> > +++ b/security/security.c
-> > @@ -2354,6 +2354,20 @@ int security_inode_removexattr(struct mnt_idmap *idmap,
-> >  	return evm_inode_removexattr(idmap, dentry, name);
-> >  }
-> >  
-> > +/**
-> > + * security_inode_post_removexattr() - Update the inode after a removexattr op
-> > + * @dentry: file
-> > + * @name: xattr name
-> > + *
-> > + * Update the inode after a successful removexattr operation.
-> > + */
-> > +void security_inode_post_removexattr(struct dentry *dentry, const char *name)
-> > +{
-> > +	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
-> > +		return;
-> > +	call_void_hook(inode_post_removexattr, dentry, name);
-> > +}
-> > +
-> >  /**
-> >   * security_inode_need_killpriv() - Check if security_inode_killpriv() required
-> >   * @dentry: associated dentry
-> > -- 
-> > 2.34.1
-> 
-> 
-> These odd splits are everywhere in the patch set. Just (nit)picking some.
-> 
-> It is huge patch set so I don't really get for addign extra lines for no
-> good reason.
+Dzie=C5=84 dobry!
 
-Thanks for the review, Jarkko.
+Czy m=C3=B3g=C5=82bym przedstawi=C4=87 rozwi=C4=85zanie, kt=C3=B3re umo=C5=
+=BCliwia monitoring ka=C5=BCdego auta w czasie rzeczywistym w tym jego po=
+zycj=C4=99, zu=C5=BCycie paliwa i przebieg?
 
-I don't know... to be honest I still prefer to stay within 80
-characters.
+Dodatkowo nasze narz=C4=99dzie minimalizuje koszty utrzymania samochod=C3=
+=B3w, skraca czas przejazd=C3=B3w, a tak=C5=BCe tworzenie planu tras czy =
+dostaw.
 
-Roberto
+Z naszej wiedzy i do=C5=9Bwiadczenia korzysta ju=C5=BC ponad 49 tys. Klie=
+nt=C3=B3w. Monitorujemy 809 000 pojazd=C3=B3w na ca=C5=82ym =C5=9Bwiecie,=
+ co jest nasz=C4=85 najlepsz=C4=85 wizyt=C3=B3wk=C4=85.
 
+Bardzo prosz=C4=99 o e-maila zwrotnego, je=C5=9Bli mogliby=C5=9Bmy wsp=C3=
+=B3lnie om=C3=B3wi=C4=87 potencja=C5=82 wykorzystania takiego rozwi=C4=85=
+zania w Pa=C5=84stwa firmie.
+
+
+Pozdrawiam
+Mateusz Talaga
