@@ -2,43 +2,48 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B87E8C83F2C
-	for <linux-nfs@archiver.kernel.org>; Mon,  4 Sep 2023 16:41:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B4F1C88CB2
+	for <linux-nfs@archiver.kernel.org>; Mon,  4 Sep 2023 16:41:36 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238993AbjIDQlg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 4 Sep 2023 12:41:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46140 "EHLO
+        id S236602AbjIDQlh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 4 Sep 2023 12:41:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46208 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236602AbjIDQlf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Sep 2023 12:41:35 -0400
-Received: from sin.source.kernel.org (sin.source.kernel.org [IPv6:2604:1380:40e1:4800::1])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 77961199
-        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 09:41:32 -0700 (PDT)
+        with ESMTP id S240072AbjIDQlh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Sep 2023 12:41:37 -0400
+Received: from ams.source.kernel.org (ams.source.kernel.org [IPv6:2604:1380:4601:e00::1])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 88C2C199
+        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 09:41:33 -0700 (PDT)
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature RSA-PSS (2048 bits))
         (No client certificate requested)
-        by sin.source.kernel.org (Postfix) with ESMTPS id 975ADCE0F1B
-        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 16:41:30 +0000 (UTC)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8CA29C433C7;
-        Mon,  4 Sep 2023 16:41:28 +0000 (UTC)
+        by ams.source.kernel.org (Postfix) with ESMTPS id 46724B80E6D
+        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 16:41:32 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B4D84C433C9;
+        Mon,  4 Sep 2023 16:41:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1693845688;
-        bh=QZCys/k5881DjhsCryhQ5OsonD3f5ANoezrWRzQyySA=;
-        h=From:To:Cc:Subject:Date:From;
-        b=KsulwJfw1fmnGB81U5dkcZqDDEqBLvSqPnvq59SxngxN4pW8fjzoSqIHrH+/MuzxH
-         PXtDijI8vgXfZ1rdaBK+9GdbbOVlHi/ZJ/09yLVMZkMyDPQa7z+uRC7DdnwNKn6sMy
-         KqbQyHTZHNQ63BGKdv5KldNEagqa9bNqAmcdWg5/RaS3UAVGb8xCXBYLfYa1ER3NFr
-         G2UdLF480AHjYXSOnWv7GIuirzocP2La80bevW6Db6m+58Br300n8M94fcIGRRAxm8
-         s+BD1Nf7CkyXtQ6hwL4Vtxi1gPwoEIzwLALnHc64Vd+2JYrKY0LxkivJxX/EwWlFNN
-         FzBhbwXqrm0GA==
+        s=k20201202; t=1693845691;
+        bh=D7UCfNE+Mz3t76Pd6aqc5fxgctpnM1AE0uBJBM/GUwY=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=tRgIssJ0/T1UmKE1I4aaokn/X5/4CRjgf+BH9f4Rrecr8bgDno/48bYx7kkcx0h3k
+         kvw1CxFonypDvSgo6SQRXuRT8S5RwWVcIarSaye1xB6txw5oaG8T2oWq6lFA9q1GUA
+         192TG94qI5o4VAfipnJipwbcw1lL4wI8FkW14KiGvmOjSlpx+Dwqn3AZTC0I4imINV
+         yhCY/WTuIVrsqgYQy8oIc/OisfO0nY75stgaSAl0apUK11Zs95dgGAU2mXj7yagRGI
+         4QDjJcjp6oL07XBZMPrkHjMd6YOs+tyel4OqxaJA7nmXcRiND9yLnICToB8yPuyNH5
+         fio1AhgNLNNEw==
 From:   trondmy@kernel.org
 To:     Anna Schumaker <anna.schumaker@netapp.com>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/5] Fix O_DIRECT writeback error paths
-Date:   Mon,  4 Sep 2023 12:34:36 -0400
-Message-ID: <20230904163441.11950-1-trondmy@kernel.org>
+Subject: [PATCH v2 4/5] NFS: Use the correct commit info in nfs_join_page_group()
+Date:   Mon,  4 Sep 2023 12:34:40 -0400
+Message-ID: <20230904163441.11950-5-trondmy@kernel.org>
 X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230904163441.11950-4-trondmy@kernel.org>
+References: <20230904163441.11950-1-trondmy@kernel.org>
+ <20230904163441.11950-2-trondmy@kernel.org>
+ <20230904163441.11950-3-trondmy@kernel.org>
+ <20230904163441.11950-4-trondmy@kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
@@ -47,32 +52,142 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-In recent tests of the O_DIRECT code, a number of bugs were discovered
-in the error codepaths, some of which were shown to result in data
-corruption. The tests involved using pNFS flexfiles with 3-way
-mirroring, and then shutting down one of the data servers. When the data
-was later re-read from the server, it was shown to not match the
-original data.
+Ensure that nfs_clear_request_commit() updates the correct counters when
+it removes them from the commit list.
 
+Fixes: ed5d588fe47f ("NFS: Try to join page groups before an O_DIRECT retransmission")
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
-v1 - NFS: Fix error handling for O_DIRECT write scheduling
-v2 - Fixes for incorrect commit info
-     Fixes for O_DIRECT accounting
-     O_DIRECT locking issues
-     Fix write scheduling issues
+ fs/nfs/direct.c          |  8 +++++---
+ fs/nfs/write.c           | 23 ++++++++++++-----------
+ include/linux/nfs_page.h |  4 +++-
+ 3 files changed, 20 insertions(+), 15 deletions(-)
 
-Trond Myklebust (5):
-  NFS: Fix error handling for O_DIRECT write scheduling
-  NFS: Fix O_DIRECT locking issues
-  NFS: More O_DIRECT accounting fixes for error paths
-  NFS: Use the correct commit info in nfs_join_page_group()
-  NFS: More fixes for nfs_direct_write_reschedule_io()
-
- fs/nfs/direct.c          | 134 +++++++++++++++++++++++++++------------
- fs/nfs/write.c           |  23 +++----
- include/linux/nfs_page.h |   4 +-
- 3 files changed, 108 insertions(+), 53 deletions(-)
-
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index a53e50123499..3391c8b97da5 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -498,7 +498,9 @@ static void nfs_direct_add_page_head(struct list_head *list,
+ 	kref_get(&head->wb_kref);
+ }
+ 
+-static void nfs_direct_join_group(struct list_head *list, struct inode *inode)
++static void nfs_direct_join_group(struct list_head *list,
++				  struct nfs_commit_info *cinfo,
++				  struct inode *inode)
+ {
+ 	struct nfs_page *req, *subreq;
+ 
+@@ -520,7 +522,7 @@ static void nfs_direct_join_group(struct list_head *list, struct inode *inode)
+ 				nfs_release_request(subreq);
+ 			}
+ 		} while ((subreq = subreq->wb_this_page) != req);
+-		nfs_join_page_group(req, inode);
++		nfs_join_page_group(req, cinfo, inode);
+ 	}
+ }
+ 
+@@ -545,7 +547,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 	nfs_init_cinfo_from_dreq(&cinfo, dreq);
+ 	nfs_direct_write_scan_commit_list(dreq->inode, &reqs, &cinfo);
+ 
+-	nfs_direct_join_group(&reqs, dreq->inode);
++	nfs_direct_join_group(&reqs, &cinfo, dreq->inode);
+ 
+ 	nfs_clear_pnfs_ds_commit_verifiers(&dreq->ds_cinfo);
+ 	get_dreq(dreq);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index f4cca8f00c0c..8c1ee1a1a28f 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -59,7 +59,8 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
+ static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
+ static const struct nfs_rw_ops nfs_rw_write_ops;
+ static void nfs_inode_remove_request(struct nfs_page *req);
+-static void nfs_clear_request_commit(struct nfs_page *req);
++static void nfs_clear_request_commit(struct nfs_commit_info *cinfo,
++				     struct nfs_page *req);
+ static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
+ 				      struct inode *inode);
+ static struct nfs_page *
+@@ -502,8 +503,8 @@ nfs_destroy_unlinked_subrequests(struct nfs_page *destroy_list,
+  * the (former) group.  All subrequests are removed from any write or commit
+  * lists, unlinked from the group and destroyed.
+  */
+-void
+-nfs_join_page_group(struct nfs_page *head, struct inode *inode)
++void nfs_join_page_group(struct nfs_page *head, struct nfs_commit_info *cinfo,
++			 struct inode *inode)
+ {
+ 	struct nfs_page *subreq;
+ 	struct nfs_page *destroy_list = NULL;
+@@ -533,7 +534,7 @@ nfs_join_page_group(struct nfs_page *head, struct inode *inode)
+ 	 * Commit list removal accounting is done after locks are dropped */
+ 	subreq = head;
+ 	do {
+-		nfs_clear_request_commit(subreq);
++		nfs_clear_request_commit(cinfo, subreq);
+ 		subreq = subreq->wb_this_page;
+ 	} while (subreq != head);
+ 
+@@ -566,8 +567,10 @@ static struct nfs_page *nfs_lock_and_join_requests(struct folio *folio)
+ {
+ 	struct inode *inode = folio_file_mapping(folio)->host;
+ 	struct nfs_page *head;
++	struct nfs_commit_info cinfo;
+ 	int ret;
+ 
++	nfs_init_cinfo_from_inode(&cinfo, inode);
+ 	/*
+ 	 * A reference is taken only on the head request which acts as a
+ 	 * reference to the whole page group - the group will not be destroyed
+@@ -584,7 +587,7 @@ static struct nfs_page *nfs_lock_and_join_requests(struct folio *folio)
+ 		return ERR_PTR(ret);
+ 	}
+ 
+-	nfs_join_page_group(head, inode);
++	nfs_join_page_group(head, &cinfo, inode);
+ 
+ 	return head;
+ }
+@@ -955,18 +958,16 @@ static void nfs_folio_clear_commit(struct folio *folio)
+ }
+ 
+ /* Called holding the request lock on @req */
+-static void
+-nfs_clear_request_commit(struct nfs_page *req)
++static void nfs_clear_request_commit(struct nfs_commit_info *cinfo,
++				     struct nfs_page *req)
+ {
+ 	if (test_bit(PG_CLEAN, &req->wb_flags)) {
+ 		struct nfs_open_context *ctx = nfs_req_openctx(req);
+ 		struct inode *inode = d_inode(ctx->dentry);
+-		struct nfs_commit_info cinfo;
+ 
+-		nfs_init_cinfo_from_inode(&cinfo, inode);
+ 		mutex_lock(&NFS_I(inode)->commit_mutex);
+-		if (!pnfs_clear_request_commit(req, &cinfo)) {
+-			nfs_request_remove_commit_list(req, &cinfo);
++		if (!pnfs_clear_request_commit(req, cinfo)) {
++			nfs_request_remove_commit_list(req, cinfo);
+ 		}
+ 		mutex_unlock(&NFS_I(inode)->commit_mutex);
+ 		nfs_folio_clear_commit(nfs_page_to_folio(req));
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index aa9f4c6ebe26..1c315f854ea8 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -157,7 +157,9 @@ extern	void nfs_unlock_request(struct nfs_page *req);
+ extern	void nfs_unlock_and_release_request(struct nfs_page *);
+ extern	struct nfs_page *nfs_page_group_lock_head(struct nfs_page *req);
+ extern	int nfs_page_group_lock_subrequests(struct nfs_page *head);
+-extern	void nfs_join_page_group(struct nfs_page *head, struct inode *inode);
++extern void nfs_join_page_group(struct nfs_page *head,
++				struct nfs_commit_info *cinfo,
++				struct inode *inode);
+ extern int nfs_page_group_lock(struct nfs_page *);
+ extern void nfs_page_group_unlock(struct nfs_page *);
+ extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
 -- 
 2.41.0
 
