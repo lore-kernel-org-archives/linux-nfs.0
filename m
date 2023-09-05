@@ -2,77 +2,123 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D2881CA0FF3
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:28 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C77DCA0FE2
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229529AbjIEQFY (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Sep 2023 12:05:24 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37366 "EHLO
+        id S231438AbjIEQF2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Sep 2023 12:05:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53338 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354776AbjIEOQO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2023 10:16:14 -0400
-Received: from verein.lst.de (verein.lst.de [213.95.11.211])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E2D7B197;
-        Tue,  5 Sep 2023 07:16:10 -0700 (PDT)
-Received: by verein.lst.de (Postfix, from userid 2407)
-        id 9D9CC6732A; Tue,  5 Sep 2023 16:16:04 +0200 (CEST)
-Date:   Tue, 5 Sep 2023 16:16:04 +0200
-From:   Christoph Hellwig <hch@lst.de>
-To:     Jan Kara <jack@suse.cz>, David Howells <dhowells@redhat.com>,
-        David Hildenbrand <david@redhat.com>,
-        Peter Xu <peterx@redhat.com>
-Cc:     Lei Huang <lei.huang@linux.intel.com>, miklos@szeredi.hu,
-        Xiubo Li <xiubli@redhat.com>,
-        Ilya Dryomov <idryomov@gmail.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Dominique Martinet <asmadeus@codewreck.org>,
-        Christian Schoenebeck <linux_oss@crudebyte.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        Jakub Kicinski <kuba@kernel.org>,
-        Paolo Abeni <pabeni@redhat.com>,
-        John Fastabend <john.fastabend@gmail.com>,
-        Jakub Sitnicki <jakub@cloudflare.com>,
-        Boris Pismenny <borisp@nvidia.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-mm@kvack.org, v9fs@lists.linux.dev, netdev@vger.kernel.org
-Subject: getting rid of the last memory modifitions through gup(FOLL_GET)
-Message-ID: <20230905141604.GA27370@lst.de>
+        with ESMTP id S244977AbjIEBkw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Sep 2023 21:40:52 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D7137CC5
+        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 18:40:48 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 82D7C21850;
+        Tue,  5 Sep 2023 01:40:47 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1693878047; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=VjccyfIbUBpHg120mqmn5EIK1r/ysxaJ5q/b2jkUkkQ=;
+        b=P6dVW/2dmSMNm3QXHK/wnEPpz2AbqT+F08pEsd12DGNfx22ZEPRsXqAG/8Xt0zXBQGlxDq
+        04k6Fw6wu3FXOX7vfU9Vf0B5Z8WNOAZjVGJBTsKXfKCEPLWRg3BOZyDSYkwrkT0I3Byse/
+        lHOAOcGyS4LNn4R9YXK3BReiXUU8Fsc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1693878047;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=VjccyfIbUBpHg120mqmn5EIK1r/ysxaJ5q/b2jkUkkQ=;
+        b=2JyT9v1Y+if9sgNFDHuS1lAAvnZn50XoxMZWXfOoGVGJoKi245Au9ifVBzh+8vdBF6shqu
+        u/w2QfeptURgLgDA==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 47A9213499;
+        Tue,  5 Sep 2023 01:40:45 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id q9b0Oh2H9mSuUwAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 05 Sep 2023 01:40:45 +0000
+From:   NeilBrown <neilb@suse.de>
+To:     Chuck Lever <chuck.lever@oracle.com>,
+        Jeff Layton <jlayton@kernel.org>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] SUNRPC: rename some functions from rqst_ to svc_thread_
+Date:   Tue,  5 Sep 2023 11:38:12 +1000
+Message-ID: <20230905014011.25472-3-neilb@suse.de>
+X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230905014011.25472-1-neilb@suse.de>
+References: <20230905014011.25472-1-neilb@suse.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-User-Agent: Mutt/1.5.17 (2007-11-01)
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi all,
+Functions which directly manipulate a 'struct rqst', such as
+svc_rqst_alloc() or svc_rqst_release_pages(), can reasonably
+have "rqst" in there name.
+However functions that act on the running thread, such as
+XX_should_sleep() or XX_wait_for_work() should seem more
+natural with a "svc_thread_" prefix.
 
-we've made some nice progress on converting code that modifies user
-memory to the pin_user_pages interface, especially though the work
-from David Howells on iov_iter_extract_pages.  This thread tries to
-coordinate on how to finish off this work.
+So make those changes.
 
-The obvious next step is the remaining users of iov_iter_get_pages2
-and iov_iter_get_pages_alloc2.  We have three file system direct I/O
-users of those left: ceph, fuse and nfs.  Lei Huang has sent patches
-to convert fuse to iov_iter_extract_pages which I'd love to see merged,
-and we'd need equivalent work for ceph and nfs.
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ net/sunrpc/svc_xprt.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-The non-file system uses are in the vmsplice code, which only reads
-from the pages (but would still benefit from an iov_iter_extract_pages
-conversion), and in net.  Out of the users in net, all but the 9p code
-appear to be for reads from memory, so they don't pin even if a
-conversion would be nice to retire iov_iter_get_pages* APIs.
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 17c43bde35c9..1b300a7889eb 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -699,7 +699,7 @@ static bool svc_alloc_arg(struct svc_rqst *rqstp)
+ }
+ 
+ static bool
+-rqst_should_sleep(struct svc_rqst *rqstp)
++svc_thread_should_sleep(struct svc_rqst *rqstp)
+ {
+ 	struct svc_pool		*pool = rqstp->rq_pool;
+ 
+@@ -725,15 +725,15 @@ rqst_should_sleep(struct svc_rqst *rqstp)
+ 	return true;
+ }
+ 
+-static void svc_rqst_wait_for_work(struct svc_rqst *rqstp)
++static void svc_thread_wait_for_work(struct svc_rqst *rqstp)
+ {
+ 	struct svc_pool *pool = rqstp->rq_pool;
+ 
+-	if (rqst_should_sleep(rqstp)) {
++	if (svc_thread_should_sleep(rqstp)) {
+ 		set_current_state(TASK_IDLE | TASK_FREEZABLE);
+ 		llist_add(&rqstp->rq_idle, &pool->sp_idle_threads);
+ 
+-		if (unlikely(!rqst_should_sleep(rqstp)))
++		if (unlikely(!svc_thread_should_sleep(rqstp)))
+ 			/* Work just became available.  This thread cannot simply
+ 			 * choose not to sleep as it *must* wait until removed.
+ 			 * So wake the first waiter - whether it is this
+@@ -850,7 +850,7 @@ void svc_recv(struct svc_rqst *rqstp)
+ 	if (!svc_alloc_arg(rqstp))
+ 		return;
+ 
+-	svc_rqst_wait_for_work(rqstp);
++	svc_thread_wait_for_work(rqstp);
+ 
+ 	clear_bit(SP_TASK_PENDING, &pool->sp_flags);
+ 
+-- 
+2.41.0
 
-After that we might have to do an audit of the raw get_user_pages APIs,
-but there probably aren't many that modify file backed memory.
-
-I'm also wondering what a good debug aid would be for detecting
-writes to file backed memory without a previous reservation, but
-everything either involves a page flag or file system code.  But if
-someone has an idea I'm all ear as something mechanical to catch these
-uses would be quite helpful.
