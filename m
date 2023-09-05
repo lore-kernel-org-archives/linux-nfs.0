@@ -2,246 +2,187 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 93367CA0FF3
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id F414CCA0FE2
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:44 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238148AbjIEQFg (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Sep 2023 12:05:36 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56558 "EHLO
+        id S238192AbjIEQFi convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Sep 2023 12:05:38 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42132 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354846AbjIEPBe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2023 11:01:34 -0400
-Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A482A18D
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Sep 2023 08:01:30 -0700 (PDT)
-Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 385ExPZs011898;
-        Tue, 5 Sep 2023 15:01:27 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2023-03-30;
- bh=tLdpsOFeydSyp070kuhFU//I80cCp9qnTxz3o/wPMGs=;
- b=UVtI/SM2ioTJoQnd54nUtLhG1BxMgbOdh2nJqKs8+nSuBoercQeEDJUMg2l5n7Eo70VG
- v2yAXBMh8i19SJbEHoikqkdv1iNxVIbciz2l9/BpJW2xKP9ZrX7l7UMbOP1x742esF/W
- RDnhUUnILcCum/YE4ib/qWlnYmG2FGnSz4XTJrZ6xF/A2ZyCO6p+IDM2rW0tjK8nHhtB
- fQeIAZZw8en9lfncDeaDv4QstXTv/GNvTr68ZgO0AdSpNEhNqDPILvOqHBTR/uyWI4j4
- JJJ+SFnJWCT/B+HgqxsRu/TS152k2todmUlBqAEKxHcrzrNu59t73d4bjgsunZ3R/fFg fQ== 
-Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.appoci.oracle.com [130.35.100.223])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3suwktwk4n-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 05 Sep 2023 15:01:25 +0000
-Received: from pps.filterd (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 385De9Au010525;
-        Tue, 5 Sep 2023 15:01:24 GMT
-Received: from nam11-bn8-obe.outbound.protection.outlook.com (mail-bn8nam11lp2169.outbound.protection.outlook.com [104.47.58.169])
-        by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3suugb4dey-1
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Tue, 05 Sep 2023 15:01:24 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=hzrt1hJXoVpv2fff+Ro91z7U8VoXvMYtQUkE/loJLQKv82+ufWGR3coZjaLPCuieOh4aNaJjByRqznhlJotyVCoNsSftj9TMh1pQBJLyXNjpJODUKIdvZr2lzcNV833r+n8WpDQgemSWVQKE5Ja0+aILvruFzX2yhwD4smax8D9s478XrCx06Q5SMDwG0CYOVfNWMB9H2PRbc8UXNV3cj8BcscQR+H1NoLNNGNUdEk0bTFbd7lwLwRzWlXvYNxVBEUk2C5ovYoitjJD1aMPuslTH0GkGKDXvJKbb4u/3kBXEdJIfXj6uu72YAuWaXIy67GK5PLPheA4XMppyx1vjow==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=tLdpsOFeydSyp070kuhFU//I80cCp9qnTxz3o/wPMGs=;
- b=Lh0HGcfwkO1WH66AtbQYRCHftatIBXBcdHoxAebqZlfu3/XXqUjCc/0qdhDXQrVvbz+m7ojmsqYhM/7Z1lz2PItsVgLu5//dHz/Mr1ucSpWfy8mFaCFrW1XYyh9uGGniDMPa7VXxOluduEtR4wV5bwAPwCQTykETJVvzcojfJdukPEKOIf0aPKP3IYAzY8ugRwC2ybBKHLyNRCUPNVRSIx0R/1pzZhzufhY1gn4ByLwoHMU76t3Ru8OYOau4v0yE73kQyRL/jtNIroaqcOo/z3B7UF/o+ghIpj0QLR9hfY/OmwiJfnLmCTL3OXVs+alEp4O42fvuYwZwxaXqLq+fsQ==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=tLdpsOFeydSyp070kuhFU//I80cCp9qnTxz3o/wPMGs=;
- b=Fi4Po5M6ILvMfu9ClYGe8t+0AAkuslKcWLTEPsFmPkSI7yf40R2cm23vHSlgcTHNmjI17g5b6BVPf9kVZ31PqpHc5kGC3uRJP8DnKQ68MUTQ9U0PlfScNp3AX3bCxnFeBUwaPIycIGbr/UUeUgicaCjuza9FMS3IJMcifwdgMEc=
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
- by CH2PR10MB4311.namprd10.prod.outlook.com (2603:10b6:610:79::22) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.6745.33; Tue, 5 Sep
- 2023 15:01:22 +0000
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::2990:c166:9436:40e]) by BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::2990:c166:9436:40e%6]) with mapi id 15.20.6745.030; Tue, 5 Sep 2023
- 15:01:22 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Christian Brauner <brauner@kernel.org>
-CC:     Jeff Layton <jlayton@kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: BUG_ON() hit in sunrpc
-Thread-Topic: BUG_ON() hit in sunrpc
-Thread-Index: AQHZ4AjglDLFb5i35EOVcVfzT1/0ErAMU4uA
-Date:   Tue, 5 Sep 2023 15:01:21 +0000
-Message-ID: <615A8DB3-F931-4EFC-A6EC-CC4DA3766D7A@oracle.com>
-References: <20230905-netzzugang-kubikmeter-6437d53204a2@brauner>
-In-Reply-To: <20230905-netzzugang-kubikmeter-6437d53204a2@brauner>
-Accept-Language: en-US
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-mailer: Apple Mail (2.3731.700.6)
-x-ms-publictraffictype: Email
-x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|CH2PR10MB4311:EE_
-x-ms-office365-filtering-correlation-id: 84ad609e-50ab-4377-d182-08dbae20f7a7
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: P1hWHKor3W7OCf4HaK9JP6IuRPdpu80vqaReMN904bp8A/XBlO35Rh9EgBUy1EAQKVTkRDCVpx1ky4jTFszwjzBJlB7/O4uVZ7mP3R3kIeEhC5v8c8xvDQPFfK+WJTQFVBLk1tklmBYNgC+qXttOe8UNlYhHIULnyRWZelBs0pOYZkvEneE4wOuNWxpBotKX7ei0xkO+YunPO1RriYyMGqIKU0QzeYUH/WbEFCKXJdjX+9IE5KDRlNRUQ2MLpBPtmQBT0AhZQPLIvWiCLlF0ViBxSD/ZOHkGxaXvZfCgosOPpAymRjmzJrq4Z/b2VY5tR0sd/26H64ozFjztmGoVE9OuVGZmJ/ACXO8Z8CcAvGzWcXMN09XGlVMWb8gHCCa4rQ9VAkXweir1rDyOtLGrzISj41hOsAyeciwvidNE0l069wcHiF0NvRNsI8PIjwsRj/n6LuuNY1iTpQUmF719oXTdAXr7VgbzflIdTZ1i9X0WDvjB929Nqhf6Gw0//OVpd74A3WZ4bGy1G5z9mwfLWTz8AxMgBUyFr8+sKO/QGGvRVQ1Hlm+nqmKuPAGl/am1QYxvAFnYXEWbcl7KkMnWwQsPl6e9pJ7lwwKV4HSGS7IEqlgmRnra+1Fzuv8/omqahpsk8oc5hB4EtgL00tKiwO442M2KBFAXOZQDoAg4fyreFyZO5FRwEW734EYFirmr
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230031)(366004)(396003)(39860400002)(346002)(376002)(136003)(1800799009)(451199024)(186009)(8936002)(5660300002)(316002)(6916009)(91956017)(54906003)(36756003)(66476007)(66556008)(2906002)(66446008)(64756008)(66946007)(76116006)(8676002)(4326008)(41300700001)(53546011)(6486002)(6506007)(26005)(6512007)(38100700002)(38070700005)(122000001)(71200400001)(478600001)(2616005)(83380400001)(33656002)(86362001)(45980500001)(1758585002);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?KKNvZm2v3ke3rk8Dm3+rO81uHMG2UFHmAZJgIZDetCOpBkoaG0pu92fcH4jn?=
- =?us-ascii?Q?/VkiMsqNQeLRK6aRgffzEm0kAyrgGR+74eMHGwgDW36DYGWXq+odOGpHYJ9x?=
- =?us-ascii?Q?bbYWlqUefYsrguocGc8Q5SFzgXRaBZuBFKFLzJlPhgJaHkva/Z5ShN9S/jNL?=
- =?us-ascii?Q?Iv74LKXPyUIa6fRtrabm7BnYn2AvndYDP4jV3VFOidlIvDFrQZjiepS9U/+O?=
- =?us-ascii?Q?eAyEJh5ZosiAsh1IxkPVmcgj3ZG6OHDUeAhoH6KvZlO8KxsIXQEsf6vrOFWw?=
- =?us-ascii?Q?e9LssbIeA8x+CrJ9Veqz9GtaNC/vm9u1epAXIdTDpQfEZRVAL4QrgnspJwU2?=
- =?us-ascii?Q?CoRR9Z8mKCyuQ9V01BMqtGZFrOv5wnbD/jmeshEP+CxDzS9x0oc+ktZDnYDc?=
- =?us-ascii?Q?D2L0ZtksJ3hedSjIRl87MqJpNIBkrBMXyy7XteAhy8sLWOoC9MhBlm2AcLAD?=
- =?us-ascii?Q?F7G1V+whNgQ225ayeOZ+DTlry/hKyjvnPqXmqMWRJtdMfRmPwlFU8+p9VKsj?=
- =?us-ascii?Q?gShlKcIOLsLRdjwvzfbP6Z8VXiyMth5gaxy1NG4YyIEFBBhQCUM6IptUypbS?=
- =?us-ascii?Q?Uf1cdWom81H0GK1GQPclHHZ4iURC4dLr+li4Rp1ddi5M++1s99NL8PdrwqGW?=
- =?us-ascii?Q?YD3aotk6yKVb7IFAH7NkLlUEjl+BdgRuw/lwjNWuiqxlqZxZsrTEfYu+ckb6?=
- =?us-ascii?Q?IXufx/WxMxrF9OlU/+F5k1Y0faeoNjIAaFI13CwtGfKe4CB8m2wswLzPMaon?=
- =?us-ascii?Q?ZSMfFreQp85ytTU/RDsm1Rj/5vXes+p4CHhEz7kNus1R4l+UigmSQmZdYaec?=
- =?us-ascii?Q?pcJx4xqnOoF9zgaG5etgR7Vp8QbER3ihw6q8qaUcyUVL2T/YvVZRl4XU2mku?=
- =?us-ascii?Q?qfGM3NaOkjJ76ScyRvbz0OnQbyEE/XEg/TlxeVzbnUUaKokodZupFTrRsZR2?=
- =?us-ascii?Q?OSuJoBtmPCGmWzZ21tBsObCxD4WWYzMaZZwdw+yGRxbyP80i++KUhGOplgX0?=
- =?us-ascii?Q?djmPMJ9LwEFMvbHEWKFXDUVrOlanMSynOMy3XDFRKw1+H2xnHN9q9xr/gKwc?=
- =?us-ascii?Q?FEv/6GgH5hT+S4Jsl2aSZ3AVUvXBtE0LX0wqirWPtHteyaIyt3KCE7KFp9IH?=
- =?us-ascii?Q?k0uCjRWRraGpGw6QQel8+YUYaMHCQaHXD3Rx0d0+w44z5b7JqWT9NEL/nXjm?=
- =?us-ascii?Q?HrNOb6BxsvqaIdvx24/jyd4iUzaikzyw4XoU77PJQ9DzPGi16112rX7NGlgi?=
- =?us-ascii?Q?huLJZMQm+joDIQfAy9C6tXo4XnKTWNFnyDwvpjRDpPsuhSDqkCE+QAT9VGn7?=
- =?us-ascii?Q?de2NTkJSFxOSNLxRHEyQe6wfiXTUo8Wfzia1Pv9rOz1yvxVzoMJ5zUWY0Z0k?=
- =?us-ascii?Q?A/NCXnxuEUX130q1ZM1TZxvGqG6krEykf/ml0WIBKJML7rNdWEoBC0cWzgTx?=
- =?us-ascii?Q?NRc+/apZvU6/I6PQ6tcwlX+9ft3UwykmiXEFNcwI+DyDACpGC7gLt4yYzxhF?=
- =?us-ascii?Q?fnLP/KdCy3TQhjA6wmOZOXFTT6U5HcjOijP59QRKIs20UKRY8xzdhPRnvKiH?=
- =?us-ascii?Q?TnSTFVFg90C3vUHogwTIx9VZuVuIYVhPGw+UR47Zd7Lqzb4AUwtrQntKU4aJ?=
- =?us-ascii?Q?MQ=3D=3D?=
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <6DB1F9288DE1284DA34DB3C289F9E0AA@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+        with ESMTP id S1353608AbjIEGwR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2023 02:52:17 -0400
+Received: from frasgout13.his.huawei.com (unknown [14.137.139.46])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A52DA1B4;
+        Mon,  4 Sep 2023 23:52:13 -0700 (PDT)
+Received: from mail02.huawei.com (unknown [172.18.147.229])
+        by frasgout13.his.huawei.com (SkyGuard) with ESMTP id 4Rfwq91PZtz9v7ZP;
+        Tue,  5 Sep 2023 14:40:05 +0800 (CST)
+Received: from [127.0.0.1] (unknown [10.204.63.22])
+        by APP2 (Coremail) with SMTP id GxC2BwDX1+_yz_ZkocAiAg--.8435S2;
+        Tue, 05 Sep 2023 07:51:44 +0100 (CET)
+Message-ID: <b4bc9dbb2417dc8afe0bf0a50233d4c2968bfb7a.camel@huaweicloud.com>
+Subject: Re: [PATCH v2 13/25] security: Introduce inode_post_removexattr hook
+From:   Roberto Sassu <roberto.sassu@huaweicloud.com>
+To:     Jarkko Sakkinen <jarkko@kernel.org>, viro@zeniv.linux.org.uk,
+        brauner@kernel.org, chuck.lever@oracle.com, jlayton@kernel.org,
+        neilb@suse.de, kolga@netapp.com, Dai.Ngo@oracle.com,
+        tom@talpey.com, zohar@linux.ibm.com, dmitry.kasatkin@gmail.com,
+        paul@paul-moore.com, jmorris@namei.org, serge@hallyn.com,
+        dhowells@redhat.com, stephen.smalley.work@gmail.com,
+        eparis@parisplace.org, casey@schaufler-ca.com
+Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
+        linux-security-module@vger.kernel.org, keyrings@vger.kernel.org,
+        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>,
+        Stefan Berger <stefanb@linux.ibm.com>
+Date:   Tue, 05 Sep 2023 08:51:26 +0200
+In-Reply-To: <CVAFXF2BQ14B.19BO7F9P62WGT@suppilovahvero>
+References: <20230831104136.903180-1-roberto.sassu@huaweicloud.com>
+         <20230831104136.903180-14-roberto.sassu@huaweicloud.com>
+         <CVAFXF2BQ14B.19BO7F9P62WGT@suppilovahvero>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+User-Agent: Evolution 3.44.4-0ubuntu2 
 MIME-Version: 1.0
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0: u8EwVDYGIsS3g5XioJSQwJQ8kSLBcd94MhodbUWuC61cwQVprmUi/aqxvy8lCbnvVNvuyWN6hBykTAYTQBSy/P9yIk4GNkVwefUvWyip1uKq+rtDUF20o4WR6nar6gWSlfi4UG7UE7LgGwL7cQEm6gRGnwO5voaKJn18GK6kP1NZMsYb9dmTbSaBWkM94bghBV/EERbCmbCUxKqEJwnQWmvqyZE1ueaGt7K4i2FEieUx11LF4lSrdchg/+jLaNVFZS7uD4nz1Ylf6uTNr7DJciyJ+aF7jIqvQQNKp/SRu9s5YWm1bpqGhPZIlvkKZwPg3kUitG2cCjdhbKi0yNDVHxjlTfn/z6xR1TRE302L6btahTqpfuaDxFzkFQxcUw/CqD6t/dmJzwDOEaijG1ZQy4Lvlh1rpbSHzq7Xy/Pob4cshNtkR5rkUy+a30Iqxd9EmJrpdyDInjWgtgUNd/TNJi1cIziSQfWJGLzxYQmx2EhDtMAWYQYQLZEtMElbk9QXKjBW/8/82pg/3/YdHg9Qm3Pxu1BiNZOtsweYTnXP7HkE8k7JgS4dRbzJncdLb0dSEMiU6srvkJrVz6IWRSosQTWYnc2CYmrJTXyAKzQygMH06UZIyguCwY/zFe9+ljzbHGsL4LMiUyi3mKrr5CqfO/p3NoJlN8hXIkwiJCfIZtG0B6JmwXFZ5u7M7OgS1csEq8FVl2nklFQtBL2h4zgszz9SH8pvL2aecftAOcfVrRwNu+TpsHfCcuvhUFGnYDQhJVE3NPHcsl5MdSJy9eHZKkWzS4/EHCzXaHo4szXH+A4=
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 84ad609e-50ab-4377-d182-08dbae20f7a7
-X-MS-Exchange-CrossTenant-originalarrivaltime: 05 Sep 2023 15:01:22.0003
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: rwp2qnY2FXmJ0rxLGZHYpyrtKBRiAQcet0XT1Ws296SXOUPRxPio6rN7jPKa1xULXNSf5YCCAd4tB5Ao5z72Fg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CH2PR10MB4311
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.267,Aquarius:18.0.957,Hydra:6.0.601,FMLib:17.11.176.26
- definitions=2023-09-05_10,2023-09-05_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 phishscore=0 bulkscore=0
- suspectscore=0 mlxlogscore=567 malwarescore=0 adultscore=0 mlxscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2308100000
- definitions=main-2309050131
-X-Proofpoint-GUID: N6R1KJKV55pqHMRyE78aWxvgpQFb2LCa
-X-Proofpoint-ORIG-GUID: N6R1KJKV55pqHMRyE78aWxvgpQFb2LCa
+X-CM-TRANSID: GxC2BwDX1+_yz_ZkocAiAg--.8435S2
+X-Coremail-Antispam: 1UD129KBjvJXoWxWr4DAry7AF1kXr4xCFWfZrb_yoWruF47pF
+        s8t3W5Cr4rJFy7WFy8tF17uw4I9ayFgry7A3y2gw12yFn2yrn2qrZxCF1UCryrJr40gFyv
+        qFnFkrs5Cr13J3JanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+        9KBjDU0xBIdaVrnRJUUUkjb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
+        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Jr0_JF4l84ACjcxK6xIIjxv20xvEc7Cj
+        xVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv67AKxVWUJVW8JwA2z4x0Y4vEx4A2jsIEc7CjxV
+        AFwI0_Gr0_Gr1UM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40E
+        x7xfMcIj6xIIjxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x
+        0Yz7v_Jr0_Gr1lF7xvr2IY64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1l42xK82IYc2Ij
+        64vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x
+        8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE
+        2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E14v26r4j6F4UMIIF0xvE42
+        xK8VAvwI8IcIk0rVWrZr1j6s0DMIIF0xvEx4A2jsIE14v26r1j6r4UMIIF0xvEx4A2jsIE
+        c7CjxVAFwI0_Gr0_Gr1UYxBIdaVFxhVjvjDU0xZFpf9x07UAkuxUUUUU=
+X-CM-SenderInfo: purev21wro2thvvxqx5xdzvxpfor3voofrz/1tbiAQALBF1jj5OFhQACsu
+X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
+On Tue, 2023-09-05 at 00:11 +0300, Jarkko Sakkinen wrote:
+> On Thu Aug 31, 2023 at 1:41 PM EEST, Roberto Sassu wrote:
+> > From: Roberto Sassu <roberto.sassu@huawei.com>
+> > 
+> > In preparation for moving IMA and EVM to the LSM infrastructure, introduce
+> > the inode_post_removexattr hook.
+> > 
+> > Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
+> > Reviewed-by: Stefan Berger <stefanb@linux.ibm.com>
+> > ---
+> >  fs/xattr.c                    |  9 +++++----
+> >  include/linux/lsm_hook_defs.h |  2 ++
+> >  include/linux/security.h      |  5 +++++
+> >  security/security.c           | 14 ++++++++++++++
+> >  4 files changed, 26 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/xattr.c b/fs/xattr.c
+> > index e7bbb7f57557..4a0280295686 100644
+> > --- a/fs/xattr.c
+> > +++ b/fs/xattr.c
+> > @@ -552,11 +552,12 @@ __vfs_removexattr_locked(struct mnt_idmap *idmap,
+> >  		goto out;
+> >  
+> >  	error = __vfs_removexattr(idmap, dentry, name);
+> > +	if (error)
+> > +		goto out;
+> >  
+> > -	if (!error) {
+> > -		fsnotify_xattr(dentry);
+> > -		evm_inode_post_removexattr(dentry, name);
+> > -	}
+> > +	fsnotify_xattr(dentry);
+> > +	security_inode_post_removexattr(dentry, name);
+> > +	evm_inode_post_removexattr(dentry, name);
+> >  
+> >  out:
+> >  	return error;
+> > diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
+> > index 995d30336cfa..1153e7163b8b 100644
+> > --- a/include/linux/lsm_hook_defs.h
+> > +++ b/include/linux/lsm_hook_defs.h
+> > @@ -148,6 +148,8 @@ LSM_HOOK(int, 0, inode_getxattr, struct dentry *dentry, const char *name)
+> >  LSM_HOOK(int, 0, inode_listxattr, struct dentry *dentry)
+> >  LSM_HOOK(int, 0, inode_removexattr, struct mnt_idmap *idmap,
+> >  	 struct dentry *dentry, const char *name)
+> > +LSM_HOOK(void, LSM_RET_VOID, inode_post_removexattr, struct dentry *dentry,
+> > +	 const char *name)
+> >  LSM_HOOK(int, 0, inode_set_acl, struct mnt_idmap *idmap,
+> >  	 struct dentry *dentry, const char *acl_name, struct posix_acl *kacl)
+> >  LSM_HOOK(int, 0, inode_get_acl, struct mnt_idmap *idmap,
+> > diff --git a/include/linux/security.h b/include/linux/security.h
+> > index 820899db5276..665bba3e0081 100644
+> > --- a/include/linux/security.h
+> > +++ b/include/linux/security.h
+> > @@ -374,6 +374,7 @@ int security_inode_getxattr(struct dentry *dentry, const char *name);
+> >  int security_inode_listxattr(struct dentry *dentry);
+> >  int security_inode_removexattr(struct mnt_idmap *idmap,
+> >  			       struct dentry *dentry, const char *name);
+> > +void security_inode_post_removexattr(struct dentry *dentry, const char *name);
+> >  int security_inode_need_killpriv(struct dentry *dentry);
+> >  int security_inode_killpriv(struct mnt_idmap *idmap, struct dentry *dentry);
+> >  int security_inode_getsecurity(struct mnt_idmap *idmap,
+> > @@ -919,6 +920,10 @@ static inline int security_inode_removexattr(struct mnt_idmap *idmap,
+> >  	return cap_inode_removexattr(idmap, dentry, name);
+> >  }
+> >  
+> > +static inline void security_inode_post_removexattr(struct dentry *dentry,
+> > +						   const char *name)
+> > +{ }
+> 
+> static inline void security_inode_post_removexattr(struct dentry *dentry, const char *name)
+> {
+> }
+> 
+> > +
+> >  static inline int security_inode_need_killpriv(struct dentry *dentry)
+> >  {
+> >  	return cap_inode_need_killpriv(dentry);
+> > diff --git a/security/security.c b/security/security.c
+> > index 764a6f28b3b9..3947159ba5e9 100644
+> > --- a/security/security.c
+> > +++ b/security/security.c
+> > @@ -2354,6 +2354,20 @@ int security_inode_removexattr(struct mnt_idmap *idmap,
+> >  	return evm_inode_removexattr(idmap, dentry, name);
+> >  }
+> >  
+> > +/**
+> > + * security_inode_post_removexattr() - Update the inode after a removexattr op
+> > + * @dentry: file
+> > + * @name: xattr name
+> > + *
+> > + * Update the inode after a successful removexattr operation.
+> > + */
+> > +void security_inode_post_removexattr(struct dentry *dentry, const char *name)
+> > +{
+> > +	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
+> > +		return;
+> > +	call_void_hook(inode_post_removexattr, dentry, name);
+> > +}
+> > +
+> >  /**
+> >   * security_inode_need_killpriv() - Check if security_inode_killpriv() required
+> >   * @dentry: associated dentry
+> > -- 
+> > 2.34.1
+> 
+> 
+> These odd splits are everywhere in the patch set. Just (nit)picking some.
+> 
+> It is huge patch set so I don't really get for addign extra lines for no
+> good reason.
 
+Thanks for the review, Jarkko.
 
-> On Sep 5, 2023, at 10:54 AM, Christian Brauner <brauner@kernel.org> wrote=
-:
->=20
-> Hey,
->=20
-> I just tried to test some changes which had commit
-> 99d99825fc07 ("Merge tag 'nfs-for-6.6-1' of git://git.linux-nfs.org/proje=
-cts/anna/linux-nfs")
-> as base and when I booted with the appended config I saw a splat right at=
- boot:
->=20
-> [   92.804377][ T5306] kernel BUG at net/sunrpc/svc.c:581!
-> [   92.811194][ T5306] invalid opcode: 0000 [#1] PREEMPT SMP KASAN
-> [   92.821472][ T5306] CPU: 6 PID: 5306 Comm: rpc.nfsd Tainted: G
-> [   92.828578][ T5306] Hardware name: QEMU Standard PC (Q35 + ICH9, 2009)=
-/LXD, BIOS unknown 2/2/2022
-> [   92.836319][ T5306] RIP: 0010:svc_destroy+0x206/0x270
-> [   92.852006][ T5306] Code: 72 49 8b bc 24 a0 00 00 00 e8 a6 a3 5e f8 48=
- 8b 3c 24 48 83 c4 10 5b 5d 41 5c 41 5d 41 5e 41 5f e9 8f a3 5e f8 e8 aa df=
- 1c f8 <0f> 0b e8 a3 df 1c f8 0f 0b 4c 89 ff e8 39 03 79 f8 e9 ae fe ff ff
-> [   92.867075][ T5306] RSP: 0018:ffffc9000a347b60 EFLAGS: 00010293
-> [   92.872714][ T5306] RAX: 0000000000000000 RBX: ffff88813abf5c68 RCX: 0=
-000000000000000
-> [   92.884809][ T5306] RDX: ffff888126c38000 RSI: ffffffff896bcf46 RDI: 0=
-000000000000005
-> [   92.894190][ T5306] RBP: 00000000fffffff4 R08: 0000000000000005 R09: 0=
-000000000000000
-> [   92.900512][ T5306] R10: 0000000000000000 R11: 0000000000000000 R12: f=
-fff88813abf5c50
-> [   92.907935][ T5306] R13: ffff88813abf5c50 R14: ffff88813abf5c00 R15: f=
-fff8881183c8000
-> [   92.917264][ T5306] FS:  00007fabf0bba740(0000) GS:ffff8883a9100000(00=
-00) knlGS:0000000000000000
-> [   92.924880][ T5306] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [   92.930358][ T5306] CR2: 00005568a27d60e8 CR3: 00000001737c3000 CR4: 0=
-000000000750ee0
-> [   92.937465][ T5306] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0=
-000000000000000
-> [   92.943057][ T5306] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0=
-000000000000400
-> [   92.948673][ T5306] PKRU: 55555554
-> [   92.953452][ T5306] Call Trace:
-> [   92.958082][ T5306]  <TASK>
-> [   92.962546][ T5306]  ? show_regs+0x94/0xa0
-> [   92.967221][ T5306]  ? die+0x3b/0xb0
-> [   92.971702][ T5306]  ? do_trap+0x231/0x410
-> [   92.976275][ T5306]  ? svc_destroy+0x206/0x270
-> [   92.980717][ T5306]  ? do_error_trap+0xf9/0x230
-> [   92.985287][ T5306]  ? svc_destroy+0x206/0x270
-> [   92.989693][ T5306]  ? handle_invalid_op+0x34/0x40
-> [   92.994044][ T5306]  ? svc_destroy+0x206/0x270
-> [   92.998317][ T5306]  ? exc_invalid_op+0x2d/0x40
-> [   93.002503][ T5306]  ? asm_exc_invalid_op+0x1a/0x20
-> [   93.006701][ T5306]  ? svc_destroy+0x206/0x270
-> [   93.010766][ T5306]  ? svc_destroy+0x206/0x270
-> [   93.014727][ T5306]  nfsd_svc+0x6d4/0xac0
-> [   93.018510][ T5306]  write_threads+0x296/0x4e0
-> [   93.022298][ T5306]  ? write_filehandle+0x760/0x760
-> [   93.026072][ T5306]  ? simple_transaction_get+0xf8/0x140
-> [   93.029819][ T5306]  ? preempt_count_sub+0x150/0x150
-> [   93.033456][ T5306]  ? do_raw_spin_lock+0x133/0x2c0
-> [   93.037013][ T5306]  ? _copy_from_user+0x5d/0xf0
-> [   93.040385][ T5306]  ? write_filehandle+0x760/0x760
-> [   93.043610][ T5306]  nfsctl_transaction_write+0x100/0x180
-> [   93.046900][ T5306]  vfs_write+0x2a9/0xe40
-> [   93.049930][ T5306]  ? export_features_open+0x60/0x60
-> [   93.053124][ T5306]  ? kernel_write+0x6c0/0x6c0
-> [   93.056116][ T5306]  ? do_sys_openat2+0xb6/0x1e0
-> [   93.059167][ T5306]  ? build_open_flags+0x690/0x690
-> [   93.062197][ T5306]  ? __fget_light+0x201/0x270
-> [   93.065020][ T5306]  ksys_write+0x134/0x260
-> [   93.067775][ T5306]  ? __ia32_sys_read+0xb0/0xb0
-> [   93.070501][ T5306]  ? rcu_is_watching+0x12/0xb0
-> [   93.073073][ T5306]  ? trace_irq_enable.constprop.0+0xd0/0x100
-> [   93.075937][ T5306]  do_syscall_64+0x38/0xb0
-> [   93.078394][ T5306]  entry_SYSCALL_64_after_hwframe+0x63/0xcd
->=20
-> I haven't spent time debugging this further. Maybe you see the issue righ=
-t
-> away.
+I don't know... to be honest I still prefer to stay within 80
+characters.
 
-I don't, unfortunately. A bisect would be appropriate.
-
-I will pull today's master branch and see if I can reproduce.
-
-
-> This problem is only happening after the nfs merges afaict. I'm
-> currently using commit 3ef96fcfd50b ("Merge tag 'ext4_for_linus-6.6-rc1'
-> of git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4") as base
-> and that splat doesn't appear.
->=20
-> Hopefully this is not a red herring.
-> Christian
-> <.config.txt>
-
---
-Chuck Lever
-
+Roberto
 
