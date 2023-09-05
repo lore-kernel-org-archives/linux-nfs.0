@@ -2,123 +2,70 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4C77DCA0FE2
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8B8BC83F2C
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:34 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231438AbjIEQF2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Sep 2023 12:05:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53338 "EHLO
+        id S235292AbjIEQFb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Sep 2023 12:05:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53316 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244977AbjIEBkw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Sep 2023 21:40:52 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D7137CC5
-        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 18:40:48 -0700 (PDT)
+        with ESMTP id S244968AbjIEBkn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Sep 2023 21:40:43 -0400
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2001:67c:2178:6::1d])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B159BCC5
+        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 18:40:38 -0700 (PDT)
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 82D7C21850;
-        Tue,  5 Sep 2023 01:40:47 +0000 (UTC)
+        by smtp-out2.suse.de (Postfix) with ESMTPS id 6C2451F750;
+        Tue,  5 Sep 2023 01:40:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1693878047; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=VjccyfIbUBpHg120mqmn5EIK1r/ysxaJ5q/b2jkUkkQ=;
-        b=P6dVW/2dmSMNm3QXHK/wnEPpz2AbqT+F08pEsd12DGNfx22ZEPRsXqAG/8Xt0zXBQGlxDq
-        04k6Fw6wu3FXOX7vfU9Vf0B5Z8WNOAZjVGJBTsKXfKCEPLWRg3BOZyDSYkwrkT0I3Byse/
-        lHOAOcGyS4LNn4R9YXK3BReiXUU8Fsc=
+        t=1693878037; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+        bh=IfV7ijOl7n4APdARGzwjsy9HIk7+aZScpYTb1rOY40o=;
+        b=QdduR2a5KRo8E3F5OzWkC33IkBlDjxl9rGifzeVrjLoB64LYJVz9sLm1ZPAGJyGUqeLd4M
+        w/uGOcAMNdpgiy5rcCY4tYzKIAM5AU3U6PR9Kq6xO9X9rtB5gxBQhcb5fRLo74ufMYUfqX
+        fdkKtuB9kHuvr4kDcGguUn99SI/QD/I=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1693878047;
+        s=susede2_ed25519; t=1693878037;
         h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=VjccyfIbUBpHg120mqmn5EIK1r/ysxaJ5q/b2jkUkkQ=;
-        b=2JyT9v1Y+if9sgNFDHuS1lAAvnZn50XoxMZWXfOoGVGJoKi245Au9ifVBzh+8vdBF6shqu
-        u/w2QfeptURgLgDA==
+         mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
+        bh=IfV7ijOl7n4APdARGzwjsy9HIk7+aZScpYTb1rOY40o=;
+        b=QXMnXoeX68pK3IIUxhH6iN4qOAOdbIMRwBk4zZLMiMM+vKamlnE2mKQi6sMwk3RYYkxDMC
+        TbwGDocAQ5n2HiDQ==
 Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
         (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
          key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 47A9213499;
-        Tue,  5 Sep 2023 01:40:45 +0000 (UTC)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 2D61D13499;
+        Tue,  5 Sep 2023 01:40:35 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([192.168.254.65])
         by imap2.suse-dmz.suse.de with ESMTPSA
-        id q9b0Oh2H9mSuUwAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 05 Sep 2023 01:40:45 +0000
+        id yFFONBOH9mSXUwAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 05 Sep 2023 01:40:35 +0000
 From:   NeilBrown <neilb@suse.de>
 To:     Chuck Lever <chuck.lever@oracle.com>,
         Jeff Layton <jlayton@kernel.org>
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] SUNRPC: rename some functions from rqst_ to svc_thread_
-Date:   Tue,  5 Sep 2023 11:38:12 +1000
-Message-ID: <20230905014011.25472-3-neilb@suse.de>
+Subject: [PATCH 0/3] Revisions for topic-sunrpc-thread-scheduling
+Date:   Tue,  5 Sep 2023 11:38:10 +1000
+Message-ID: <20230905014011.25472-1-neilb@suse.de>
 X-Mailer: git-send-email 2.41.0
-In-Reply-To: <20230905014011.25472-1-neilb@suse.de>
-References: <20230905014011.25472-1-neilb@suse.de>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Functions which directly manipulate a 'struct rqst', such as
-svc_rqst_alloc() or svc_rqst_release_pages(), can reasonably
-have "rqst" in there name.
-However functions that act on the running thread, such as
-XX_should_sleep() or XX_wait_for_work() should seem more
-natural with a "svc_thread_" prefix.
+This a resend of two recently sent patches (1 and 3) with
+review comments addressed, plus a new patch (2) which renames
+some function names for improved consistency.
 
-So make those changes.
+Thanks,
+NeilBrown
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- net/sunrpc/svc_xprt.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 17c43bde35c9..1b300a7889eb 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -699,7 +699,7 @@ static bool svc_alloc_arg(struct svc_rqst *rqstp)
- }
- 
- static bool
--rqst_should_sleep(struct svc_rqst *rqstp)
-+svc_thread_should_sleep(struct svc_rqst *rqstp)
- {
- 	struct svc_pool		*pool = rqstp->rq_pool;
- 
-@@ -725,15 +725,15 @@ rqst_should_sleep(struct svc_rqst *rqstp)
- 	return true;
- }
- 
--static void svc_rqst_wait_for_work(struct svc_rqst *rqstp)
-+static void svc_thread_wait_for_work(struct svc_rqst *rqstp)
- {
- 	struct svc_pool *pool = rqstp->rq_pool;
- 
--	if (rqst_should_sleep(rqstp)) {
-+	if (svc_thread_should_sleep(rqstp)) {
- 		set_current_state(TASK_IDLE | TASK_FREEZABLE);
- 		llist_add(&rqstp->rq_idle, &pool->sp_idle_threads);
- 
--		if (unlikely(!rqst_should_sleep(rqstp)))
-+		if (unlikely(!svc_thread_should_sleep(rqstp)))
- 			/* Work just became available.  This thread cannot simply
- 			 * choose not to sleep as it *must* wait until removed.
- 			 * So wake the first waiter - whether it is this
-@@ -850,7 +850,7 @@ void svc_recv(struct svc_rqst *rqstp)
- 	if (!svc_alloc_arg(rqstp))
- 		return;
- 
--	svc_rqst_wait_for_work(rqstp);
-+	svc_thread_wait_for_work(rqstp);
- 
- 	clear_bit(SP_TASK_PENDING, &pool->sp_flags);
- 
--- 
-2.41.0
+ [PATCH 1/3] lib: add light-weight queuing mechanism.
+ [PATCH 2/3] SUNRPC: rename some functions from rqst_ to svc_thread_
+ [PATCH 3/3] SUNRPC: only have one thread waking up at a time
 
