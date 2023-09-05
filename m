@@ -2,394 +2,187 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D6759CA0FF8
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 48500CA0FF8
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:56 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238290AbjIEQFr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Sep 2023 12:05:47 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53332 "EHLO
+        id S231571AbjIEQFt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Sep 2023 12:05:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58938 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244974AbjIEBkr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Sep 2023 21:40:47 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E3237CC5
-        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 18:40:43 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 8C13B21850;
-        Tue,  5 Sep 2023 01:40:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1693878042; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ppxSi48FD0R0OjKV6ME1dGirA2s4Zo94mbpK835jSXY=;
-        b=t3Havtc3mVCwqMfl/j7tjaOOiMAx7/M+IG600yLtP65kEURIxljNWksCJPsDapX8UEeE49
-        l2dDpJc1+74mV+CjxIqyHL3ysVzmei5Nb1EI+jUAZ5am2OV8QHE+13X6PdYMzj9Ktzmti6
-        HtPt26iA6R5XaB7hOOmlHSyHX/BYgYE=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1693878042;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ppxSi48FD0R0OjKV6ME1dGirA2s4Zo94mbpK835jSXY=;
-        b=6O9cIPcHcMJFHMi/F211xLLqatOKt5DzSewY2gkADAHCobPg+YJPnp0BahA/Ype21hqoSQ
-        atgb2R05IYQiYaDw==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4D8A113499;
-        Tue,  5 Sep 2023 01:40:41 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id e/PDABmH9mSeUwAAMHmgww
-        (envelope-from <neilb@suse.de>); Tue, 05 Sep 2023 01:40:41 +0000
-From:   NeilBrown <neilb@suse.de>
-To:     Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@kernel.org>
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] lib: add light-weight queuing mechanism.
-Date:   Tue,  5 Sep 2023 11:38:11 +1000
-Message-ID: <20230905014011.25472-2-neilb@suse.de>
-X-Mailer: git-send-email 2.41.0
-In-Reply-To: <20230905014011.25472-1-neilb@suse.de>
-References: <20230905014011.25472-1-neilb@suse.de>
+        with ESMTP id S1354923AbjIEP41 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2023 11:56:27 -0400
+Received: from sonic317-38.consmr.mail.ne1.yahoo.com (sonic317-38.consmr.mail.ne1.yahoo.com [66.163.184.49])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F0A9C194
+        for <linux-nfs@vger.kernel.org>; Tue,  5 Sep 2023 08:56:22 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1693929382; bh=THyHfKoPV2fsuUoiXFpq6kpXStlY1R/c05SvFssw8ic=; h=Date:Subject:To:Cc:References:From:In-Reply-To:From:Subject:Reply-To; b=nL/MCo2EaOVqeGvQVmPkAgdSTBQbXlbl3f9rZgHSTvBlgYky5+NOpmukm4tFGhxMO8jC3h4Kb8vSYSbZzmEiquFJ8novV5wGGi01YJeRQAwKr3L67KBO4CGOdQFucw5aRGYPcmE0zfx/JspHgZI00SfFWzekolOHFDDivqn6w+VKizmP7KXgzjIQDuvlv3uCRzsYuRBpNXTRnicS61wf0BZBVtBv+id8eJFW3Md2rUgFAAfr7vsSp36lbtc6ray61vMJgCj/G//5WovoZ/jFbE/mo4EuWeTDJEr5wBNW0NofS5VpH28Mwjj4we78bHNQMnxlAuZlNa50Cfy/Eczymg==
+X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1693929382; bh=DkaHx4C6jwSxjVSNZ5qs87/z6Ie3ZQRDV6CUZw2QUMp=; h=X-Sonic-MF:Date:Subject:To:From:From:Subject; b=jJGG+AJRYrIJ1NDDUdmLlhcBNyn02E5/iy31ivu44RK3Xj9sKJEMywy0yxw9khQ7LQdA8BFC8BKGWKc5XKbzCWM5B15jZqa6w/qiZ8iwvhc5g8X2DLTksd/yGRxFIv9RKfRjM/zqljetV+e+aVQAcVlor9Fpuo9Qas5rD8LT2w1m1futPR27pAylaTWtX1A+aipty0jAceCRtDrZW2XBl1F/+4ZnSHghOo8v7eiHSoXznzM0uLOeARA5ypRGbgQx5ol8ofiERyoVhxEqWTd66YMNKsxoFVq6JCADef3JMRMYaEsxRJfb/pQjs25iOwRpNDUy4osynLPZluWy/Cz1/Q==
+X-YMail-OSG: k9OkTWIVM1ldty.fWbkXGTKLls.RiXQNn_V.9WMitM5BuQk9.mji_TZb73rvWDt
+ 2G4d2n3DNfceBrop4oIfE26eITf..qCEQ3ynZ_SmqYIlMM.gflwN2aflioiUcK_uqFS05Y8lvVod
+ YdDyA9VsyAX9BqStXDFlOvKNgcJWSytWF0kKm02ZMnvnUnNOkFG.sjj.lhhgAjcHrOBrtkFBOdN4
+ vRvh8qQIDMIntuC3m1f.FaMQTORFHiMpSQaN5F0zL0MuWAcRwNuxkdO66AudRNlKcwnoz0MLk4gi
+ HpXAdLVXAu11.jPOV2NuHO4a8VYWNDz6Y7RXGbrlZ75z_yypqTjrxFA1CStMN6PhbF8z_.72Xbvn
+ Qf4uJ93lbdFj3Ze6YmwbfY5sAm.OsVny9s7FXLyYzBS3crMN8t6ti_lv_JQPGysl9f4gOcyZexdD
+ 9kOZZrKMkorjo1PbmKE3WJHsqCFgPRAbKNL_IGdQ6S0H17WoTGxZv6mi6CBzwzmwkE.xa2PVgsQz
+ k5Gc6LAqRizzDZYWsAPhD4XdbiVn1pZlAZ2LAjtF4Vd2VQM9DsnVc5xebzQyffKcKNYpJPNHsTnN
+ 7YW2yLNPL73QsdXj7hpn__mEKDhHnOLR6MyeXgTshYzhsisf.iwqFZ6rVG05KfK4YbZWvc2wCkOA
+ pNwDY5ssnf4D0FLl6n2KbWUnjUeQAbajLp9ZDkyb1gXFLGqPkVhbMfpIWlhk_oRTFm.2nmflv7Rf
+ oUccSSeFpx6N_VmI5AXB2HsvA_gPuKpMdGVq7zaPKa2nllz01NbJYl8sZmiL3tGoZcjt1VUcJe1N
+ G.7cPvEYFineyvxdJ39jPNoeTI8pWbwWD7pm5su.yl6lgfA7x6QomHf58O.dfqJ3L6qmwXGUlx6X
+ 0sEh6brNUlVUD63FGFJfemhPEF8xFNCLwClV3DsC8MS_tnNlDpppJl_CU9S09fhO7D84bv2jAcnA
+ gOlG04QuuG5x.BoROlXyU1DZFIj1LCwqLuRA3GvItkTPuUP7PNl75AraQbxxvbf2wEtgSnQmqTkt
+ qbkzz3ofX.ztFupgMjx5PzSZ8Lz0i.I34ToMu2Wv_ayPltP.VKcgx8ouflSTGqBKB782.sxewDkk
+ 7EScJHPtfFlETKPfcfn6ycj7CTirwJP4WnVkIFfO._fHq7aRTOJujd0dQv6gec.Qi0ud5GXhdNqr
+ 6QVPYhg6ZOSiDzMZJHbtrUCVbtGdaWIANtxP0Q.HzplEYm6lJbPpigaNkT.NXhjV1PN79YceIDhr
+ thQcLl4PjmG6YHtzQgNjWtWrAASRU1I2PxP9.Wk1Jn6log.eU_EtCJOc2nYDzFdBoj8eQwz3MZc_
+ y21f9eQqWafVA0IWNYUOVWZ5rcjl_X2HEgpufWnwGNzslnTWnBvT1qNSB1oNj7EhotsfpqLHnaLL
+ 7UAJrbW.xeHFqdc.434riLleeytm8pD3AnzXK62lpnepko3Hbzxyw3NPSmi3REeM.1hVzTZd3UHt
+ NmCt6xeESYhdvkkehfPu37LNKbRjNDn5pQwi5.jLAlsVbRAp.FIiQR67xWrOIHc13128yc6xV4hD
+ P9TZGmMhytguxLb9AoTAcEX.Wy2VJaEADkECSXNdXoVFJrXpzOhTdRjoklAvsm3zJc0lDme0Dt1U
+ fsOT162D.MZbOMnizIZjeVmW_9t1MBeUnz_1vVI8M1GNTTrV1SQlXgZzhukp986FBWN2J9agwXH7
+ _.U14P0fxKw0ZTw6UG30FHO._HAQaQr4Rw3jUdrMu14Q9UYceS3dKwhE5S1aRN4Z6bvNMeq3Dvfh
+ xp9LHkWUe676tAdVqJkanKbm0Mv9ZK7W.CiHBoyoGYNa6hA6_iWyil26PRggQTY8rgNNZaw15vbn
+ CCngWJpgZkb74SaefEIxE_Z4AVBsAbwwX_e2olh.dbwY4V_m4QFxx7kbLSvSOY10pKRgENSOSogN
+ UV1l3ufpBsJLF3vC3ENKxfAk1vCasx.eKoSMFFPrkrS9Pc7gwBLZWK5KsrV80WkqRz.ZvH3uIrQP
+ xvwM3QeZptygrwEKsjJtD2FEE0EF22N3J578jZGFKqpbxONR00ILBIxeXbruwprjH7gBiclJoMFo
+ 6s2D1e5ZX_N09VZJpCUo3f4wcNwxoABccGsBSzp.5Hwky2wy3sR0Z1RFZYoVuUZPh8w.cWP.sWw8
+ RKqgpRZ9ymR0UwexFMktwjjisAsfGe2UzqNYfOS8BMZjqNktQ6.b04uhpKCJyMzeyZYtFEwCKERq
+ SSyuQeIW7lRU2WnHA8sZ3H8cX8yuUGDOQLWPkCUF3W4A2pdj_vS219mU7Uj.MBBKE
+X-Sonic-MF: <casey@schaufler-ca.com>
+X-Sonic-ID: 4921507d-37f7-4ee8-b527-766546420342
+Received: from sonic.gate.mail.ne1.yahoo.com by sonic317.consmr.mail.ne1.yahoo.com with HTTP; Tue, 5 Sep 2023 15:56:22 +0000
+Received: by hermes--production-bf1-865889d799-k7hdq (Yahoo Inc. Hermes SMTP Server) with ESMTPA ID 2ef8773b1b277e360687bb4b263a51ff;
+          Tue, 05 Sep 2023 15:56:20 +0000 (UTC)
+Message-ID: <19943e35-2e7c-d27a-1a5d-189eea439dfd@schaufler-ca.com>
+Date:   Tue, 5 Sep 2023 08:56:15 -0700
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
+ Thunderbird/102.14.0
+Subject: Re: [PATCH v2 11/25] security: Align inode_setattr hook definition
+ with EVM
+Content-Language: en-US
+To:     Jarkko Sakkinen <jarkko@kernel.org>,
+        Roberto Sassu <roberto.sassu@huaweicloud.com>,
+        viro@zeniv.linux.org.uk, brauner@kernel.org,
+        chuck.lever@oracle.com, jlayton@kernel.org, neilb@suse.de,
+        kolga@netapp.com, Dai.Ngo@oracle.com, tom@talpey.com,
+        zohar@linux.ibm.com, dmitry.kasatkin@gmail.com,
+        paul@paul-moore.com, jmorris@namei.org, serge@hallyn.com,
+        dhowells@redhat.com, stephen.smalley.work@gmail.com,
+        eparis@parisplace.org
+Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
+        linux-security-module@vger.kernel.org, keyrings@vger.kernel.org,
+        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>,
+        Stefan Berger <stefanb@linux.ibm.com>,
+        Casey Schaufler <casey@schaufler-ca.com>
+References: <20230831104136.903180-1-roberto.sassu@huaweicloud.com>
+ <20230831104136.903180-12-roberto.sassu@huaweicloud.com>
+ <CVAFV92MONCH.257Y9YQ3OEU4B@suppilovahvero>
+From:   Casey Schaufler <casey@schaufler-ca.com>
+In-Reply-To: <CVAFV92MONCH.257Y9YQ3OEU4B@suppilovahvero>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+X-Mailer: WebService/1.1.21763 mail.backend.jedi.jws.acl:role.jedi.acl.token.atz.jws.hermes.yahoo
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-lwq is a FIFO single-linked queue that only requires a spinlock
-for dequeueing, which happens in process context.  Enqueueing is atomic
-with no spinlock and can happen in any context.
+On 9/4/2023 2:08 PM, Jarkko Sakkinen wrote:
+> On Thu Aug 31, 2023 at 1:41 PM EEST, Roberto Sassu wrote:
+>> From: Roberto Sassu <roberto.sassu@huawei.com>
+>>
+>> Add the idmap parameter to the definition, so that evm_inode_setattr() can
+>> be registered as this hook implementation.
+>>
+>> Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
+>> Reviewed-by: Stefan Berger <stefanb@linux.ibm.com>
+>> Acked-by: Casey Schaufler <casey@schaufler-ca.com>
+>> ---
+>>  include/linux/lsm_hook_defs.h | 3 ++-
+>>  security/security.c           | 2 +-
+>>  security/selinux/hooks.c      | 3 ++-
+>>  security/smack/smack_lsm.c    | 4 +++-
+>>  4 files changed, 8 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
+>> index 4bdddb52a8fe..fdf075a6b1bb 100644
+>> --- a/include/linux/lsm_hook_defs.h
+>> +++ b/include/linux/lsm_hook_defs.h
+>> @@ -134,7 +134,8 @@ LSM_HOOK(int, 0, inode_readlink, struct dentry *dentry)
+>>  LSM_HOOK(int, 0, inode_follow_link, struct dentry *dentry, struct inode *inode,
+>>  	 bool rcu)
+>>  LSM_HOOK(int, 0, inode_permission, struct inode *inode, int mask)
+>> -LSM_HOOK(int, 0, inode_setattr, struct dentry *dentry, struct iattr *attr)
+>> +LSM_HOOK(int, 0, inode_setattr, struct mnt_idmap *idmap, struct dentry *dentry,
+>> +	 struct iattr *attr)
+> LSM_HOOK(int, 0, inode_setattr, struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *attr)
+>
+> Only 99 characters, i.e. breaking into two lines is not necessary.
 
-Include a unit test for basic functionality - runs at boot time.  Does
-not use kunit framework.
+We're keeping the LSM code in the ancient 80 character format.
+Until we get some fresh, young maintainers involved who can convince
+us that line wrapped 80 character terminals are kewl we're sticking
+with what we know.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- include/linux/lwq.h | 120 +++++++++++++++++++++++++++++++++++
- lib/Kconfig         |   5 ++
- lib/Makefile        |   2 +-
- lib/lwq.c           | 151 ++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 277 insertions(+), 1 deletion(-)
- create mode 100644 include/linux/lwq.h
- create mode 100644 lib/lwq.c
+	https://lwn.net/Articles/822168/
 
-diff --git a/include/linux/lwq.h b/include/linux/lwq.h
-new file mode 100644
-index 000000000000..52b9c81b493a
---- /dev/null
-+++ b/include/linux/lwq.h
-@@ -0,0 +1,120 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+
-+#ifndef LWQ_H
-+#define LWQ_H
-+/*
-+ * light-weight single-linked queue built from llist
-+ *
-+ * Entries can be enqueued from any context with no locking.
-+ * Entries can be dequeued from process context with integrated locking.
-+ */
-+#include <linux/container_of.h>
-+#include <linux/spinlock.h>
-+#include <linux/llist.h>
-+
-+struct lwq_node {
-+	struct llist_node node;
-+};
-+
-+struct lwq {
-+	spinlock_t		lock;
-+	struct llist_node	*ready;		/* entries to be dequeued */
-+	struct llist_head	new;		/* entries being enqueued */
-+};
-+
-+/**
-+ * lwq_init - initialise a lwq
-+ * @q:	the lwq object
-+ */
-+static inline void lwq_init(struct lwq *q)
-+{
-+	spin_lock_init(&q->lock);
-+	q->ready = NULL;
-+	init_llist_head(&q->new);
-+}
-+
-+/**
-+ * lwq_empty - test if lwq contains any entry
-+ * @q:	the lwq object
-+ *
-+ * This empty test contains an acquire barrier so that if a wakeup
-+ * is sent when lwq_dequeue returns true, it is safe to go to sleep after
-+ * a test on lwq_empty().
-+ */
-+static inline bool lwq_empty(struct lwq *q)
-+{
-+	/* acquire ensures ordering wrt lwq_enqueue() */
-+	return smp_load_acquire(&q->ready) == NULL && llist_empty(&q->new);
-+}
-+
-+struct llist_node *__lwq_dequeue(struct lwq *q);
-+/**
-+ * lwq_dequeue - dequeue first (oldest) entry from lwq
-+ * @q:		the queue to dequeue from
-+ * @type:	the type of object to return
-+ * @member:	them member in returned object which is an lwq_node.
-+ *
-+ * Remove a single object from the lwq and return it.  This will take
-+ * a spinlock and so must always be called in the same context, typcially
-+ * process contet.
-+ */
-+#define lwq_dequeue(q, type, member)					\
-+	({ struct llist_node *_n = __lwq_dequeue(q);			\
-+	  _n ? container_of(_n, type, member.node) : NULL; })
-+
-+struct llist_node *lwq_dequeue_all(struct lwq *q);
-+
-+/**
-+ * lwq_for_each_safe - iterate over detached queue allowing deletion
-+ * @_n:		iterator variable
-+ * @_t1:	temporary struct llist_node **
-+ * @_t2:	temporary struct llist_node *
-+ * @_l:		address of llist_node pointer from lwq_dequeue_all()
-+ * @_member:	member in _n where lwq_node is found.
-+ *
-+ * Iterate over members in a dequeued list.  If the iterator variable
-+ * is set to NULL, the iterator removes that entry from the queue.
-+ */
-+#define lwq_for_each_safe(_n, _t1, _t2, _l, _member)			\
-+	for (_t1 = (_l);						\
-+	     *(_t1) ? (_n = container_of(*(_t1), typeof(*(_n)), _member.node),\
-+		       _t2 = ((*_t1)->next),				\
-+		       true)						\
-+	     : false;							\
-+	     (_n) ? (_t1 = &(_n)->_member.node.next, 0)			\
-+	     : ((*(_t1) = (_t2)),  0))
-+
-+/**
-+ * lwq_enqueue - add a new item to the end of the queue
-+ * @n	- the lwq_node embedded in the item to be added
-+ * @q	- the lwq to append to.
-+ *
-+ * No locking is needed to append to the queue so this can
-+ * be called from any context.
-+ * Return %true is the list may have previously been empty.
-+ */
-+static inline bool lwq_enqueue(struct lwq_node *n, struct lwq *q)
-+{
-+	/* acquire enqures ordering wrt lwq_dequeue */
-+	return llist_add(&n->node, &q->new) &&
-+		smp_load_acquire(&q->ready) == NULL;
-+}
-+
-+/**
-+ * lwq_enqueue_batch - add a list of new items to the end of the queue
-+ * @n	- the lwq_node embedded in the first item to be added
-+ * @q	- the lwq to append to.
-+ *
-+ * No locking is needed to append to the queue so this can
-+ * be called from any context.
-+ * Return %true is the list may have previously been empty.
-+ */
-+static inline bool lwq_enqueue_batch(struct llist_node *n, struct lwq *q)
-+{
-+	struct llist_node *e = n;
-+
-+	/* acquire enqures ordering wrt lwq_dequeue */
-+	return llist_add_batch(llist_reverse_order(n), e, &q->new) &&
-+		smp_load_acquire(&q->ready) == NULL;
-+}
-+#endif /* LWQ_H */
-diff --git a/lib/Kconfig b/lib/Kconfig
-index 5c2da561c516..d9a12a81fd24 100644
---- a/lib/Kconfig
-+++ b/lib/Kconfig
-@@ -763,3 +763,8 @@ config ASN1_ENCODER
- 
- config POLYNOMIAL
-        tristate
-+
-+config LWQ_TEST
-+	bool "lib: enable boot-time test for lwq queuing"
-+	help
-+          Enable boot-time test of lwq functionality.
-diff --git a/lib/Makefile b/lib/Makefile
-index 1ffae65bb7ee..4b67c2d6af62 100644
---- a/lib/Makefile
-+++ b/lib/Makefile
-@@ -45,7 +45,7 @@ obj-y	+= lockref.o
- obj-y += bcd.o sort.o parser.o debug_locks.o random32.o \
- 	 bust_spinlocks.o kasprintf.o bitmap.o scatterlist.o \
- 	 list_sort.o uuid.o iov_iter.o clz_ctz.o \
--	 bsearch.o find_bit.o llist.o memweight.o kfifo.o \
-+	 bsearch.o find_bit.o llist.o lwq.o memweight.o kfifo.o \
- 	 percpu-refcount.o rhashtable.o base64.o \
- 	 once.o refcount.o rcuref.o usercopy.o errseq.o bucket_locks.o \
- 	 generic-radix-tree.o
-diff --git a/lib/lwq.c b/lib/lwq.c
-new file mode 100644
-index 000000000000..7fe6c7125357
---- /dev/null
-+++ b/lib/lwq.c
-@@ -0,0 +1,151 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Light weight single-linked queue.
-+ *
-+ * Entries are enqueued to the head of an llist, with no blocking.
-+ * This can happen in any context.
-+ *
-+ * Entries are dequeued using a spinlock to protect against
-+ * multiple access.  The llist is staged in reverse order, and refreshed
-+ * from the llist when it exhausts.
-+ */
-+#include <linux/rcupdate.h>
-+#include <linux/lwq.h>
-+
-+struct llist_node *__lwq_dequeue(struct lwq *q)
-+{
-+	struct llist_node *this;
-+
-+	if (lwq_empty(q))
-+		return NULL;
-+	spin_lock(&q->lock);
-+	this = q->ready;
-+	if (!this && !llist_empty(&q->new)) {
-+		/* ensure queue doesn't appear transiently lwq_empty */
-+		smp_store_release(&q->ready, (void *)1);
-+		this = llist_reverse_order(llist_del_all(&q->new));
-+		if (!this)
-+			q->ready = NULL;
-+	}
-+	if (this)
-+		q->ready = llist_next(this);
-+	spin_unlock(&q->lock);
-+	return this;
-+}
-+EXPORT_SYMBOL_GPL(__lwq_dequeue);
-+
-+/**
-+ * lwq_dequeue_all - dequeue all currently enqueued objects
-+ * @q:	the queue to dequeue from
-+ *
-+ * Remove and return a linked list of llist_nodes of all the objects that were
-+ * in the queue. The first on the list will be the object that was least
-+ * recently enqueued.
-+ */
-+struct llist_node *lwq_dequeue_all(struct lwq *q)
-+{
-+	struct llist_node *r, *t, **ep;
-+
-+	if (lwq_empty(q))
-+		return NULL;
-+
-+	spin_lock(&q->lock);
-+	r = q->ready;
-+	q->ready = NULL;
-+	t = llist_del_all(&q->new);
-+	spin_unlock(&q->lock);
-+	ep = &r;
-+	while (*ep)
-+		ep = &(*ep)->next;
-+	*ep = llist_reverse_order(t);
-+	return r;
-+}
-+EXPORT_SYMBOL_GPL(lwq_dequeue_all);
-+
-+#if IS_ENABLED(CONFIG_LWQ_TEST)
-+
-+#include <linux/module.h>
-+#include <linux/slab.h>
-+#include <linux/wait_bit.h>
-+#include <linux/kthread.h>
-+#include <linux/delay.h>
-+struct tnode {
-+	struct lwq_node n;
-+	int i;
-+	int c;
-+};
-+
-+static int lwq_exercise(void *qv)
-+{
-+	struct lwq *q = qv;
-+	int cnt;
-+	struct tnode *t;
-+
-+	for (cnt = 0; cnt < 10000; cnt++) {
-+		wait_var_event(q, (t = lwq_dequeue(q, struct tnode, n)) != NULL);
-+		t->c++;
-+		if (lwq_enqueue(&t->n, q))
-+			wake_up_var(q);
-+	}
-+	while (!kthread_should_stop())
-+		schedule_timeout_idle(1);
-+	return 0;
-+}
-+
-+static int lwq_test(void)
-+{
-+	int i;
-+	struct lwq q;
-+	struct llist_node *l, **t1, *t2;
-+	struct tnode *t;
-+	struct task_struct *threads[8];
-+
-+	printk(KERN_INFO "testing lwq....\n");
-+	lwq_init(&q);
-+	printk(KERN_INFO " lwq: run some threads\n");
-+	for (i = 0; i < ARRAY_SIZE(threads); i++)
-+		threads[i] = kthread_run(lwq_exercise, &q, "lwq-test-%d", i);
-+	for (i = 0; i < 100; i++) {
-+		t = kmalloc(sizeof(*t), GFP_KERNEL);
-+		t->i = i;
-+		t->c = 0;
-+		if (lwq_enqueue(&t->n, &q))
-+			wake_up_var(&q);
-+	};
-+	/* wait for threads to exit */
-+	for (i = 0; i < ARRAY_SIZE(threads); i++)
-+		if (!IS_ERR_OR_NULL(threads[i]))
-+			kthread_stop(threads[i]);
-+	printk(KERN_INFO " lwq: dequeue first 50:");
-+	for (i = 0; i < 50 ; i++) {
-+		if (i && (i % 10) == 0) {
-+			printk(KERN_CONT "\n");
-+			printk(KERN_INFO " lwq: ... ");
-+		}
-+		t = lwq_dequeue(&q, struct tnode, n);
-+		printk(KERN_CONT " %d(%d)", t->i, t->c);
-+		kfree(t);
-+	}
-+	printk(KERN_CONT "\n");
-+	l = lwq_dequeue_all(&q);
-+	printk(KERN_INFO " lwq: delete the multiples of 3 (test lwq_for_each_safe())\n");
-+	lwq_for_each_safe(t, t1, t2, &l, n) {
-+		if ((t->i % 3) == 0) {
-+			t->i = -1;
-+			kfree(t);
-+			t = NULL;
-+		}
-+	}
-+	if (l)
-+		lwq_enqueue_batch(l, &q);
-+	printk(KERN_INFO " lwq: dequeue remaining:");
-+	while ((t = lwq_dequeue(&q, struct tnode, n)) != NULL) {
-+		printk(KERN_CONT " %d", t->i);
-+		kfree(t);
-+	}
-+	printk(KERN_CONT "\n");
-+	return 0;
-+}
-+
-+module_init(lwq_test);
-+#endif /* CONFIG_LWQ_TEST*/
--- 
-2.41.0
-
+>
+>>  LSM_HOOK(int, 0, inode_getattr, const struct path *path)
+>>  LSM_HOOK(int, 0, inode_setxattr, struct mnt_idmap *idmap,
+>>  	 struct dentry *dentry, const char *name, const void *value,
+>> diff --git a/security/security.c b/security/security.c
+>> index cb6242feb968..2b24d01cf181 100644
+>> --- a/security/security.c
+>> +++ b/security/security.c
+>> @@ -2117,7 +2117,7 @@ int security_inode_setattr(struct mnt_idmap *idmap,
+>>  
+>>  	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
+>>  		return 0;
+>> -	ret = call_int_hook(inode_setattr, 0, dentry, attr);
+>> +	ret = call_int_hook(inode_setattr, 0, idmap, dentry, attr);
+>>  	if (ret)
+>>  		return ret;
+>>  	return evm_inode_setattr(idmap, dentry, attr);
+>> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+>> index ee7c49c2cfd3..bfcc4d9aa5ab 100644
+>> --- a/security/selinux/hooks.c
+>> +++ b/security/selinux/hooks.c
+>> @@ -3075,7 +3075,8 @@ static int selinux_inode_permission(struct inode *inode, int mask)
+>>  	return rc;
+>>  }
+>>  
+>> -static int selinux_inode_setattr(struct dentry *dentry, struct iattr *iattr)
+>> +static int selinux_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+>> +				 struct iattr *iattr)
+>>  {
+>>  	const struct cred *cred = current_cred();
+>>  	struct inode *inode = d_backing_inode(dentry);
+>> diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+>> index 679156601a10..89f2669d50a9 100644
+>> --- a/security/smack/smack_lsm.c
+>> +++ b/security/smack/smack_lsm.c
+>> @@ -1181,12 +1181,14 @@ static int smack_inode_permission(struct inode *inode, int mask)
+>>  
+>>  /**
+>>   * smack_inode_setattr - Smack check for setting attributes
+>> + * @idmap: idmap of the mount
+>>   * @dentry: the object
+>>   * @iattr: for the force flag
+>>   *
+>>   * Returns 0 if access is permitted, an error code otherwise
+>>   */
+>> -static int smack_inode_setattr(struct dentry *dentry, struct iattr *iattr)
+>> +static int smack_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+>> +			       struct iattr *iattr)
+> static int smack_inode_setattr(struct mnt_idmap *idmap, struct dentry *dentry, struct iattr *iattr)
+>
+> Can be still in a single line (100 characters exactly).
+>
+>
+>>  {
+>>  	struct smk_audit_info ad;
+>>  	int rc;
+>> -- 
+>> 2.34.1
+>
+> BR, Jarkko
