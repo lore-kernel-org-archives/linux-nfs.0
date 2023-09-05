@@ -2,144 +2,394 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7E578C83F2C
-	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D6759CA0FF8
+	for <linux-nfs@archiver.kernel.org>; Tue,  5 Sep 2023 16:05:47 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238286AbjIEQFq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 5 Sep 2023 12:05:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46470 "EHLO
+        id S238290AbjIEQFr (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 5 Sep 2023 12:05:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53332 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1354860AbjIEPJl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2023 11:09:41 -0400
-Received: from mail-wr1-x42d.google.com (mail-wr1-x42d.google.com [IPv6:2a00:1450:4864:20::42d])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7AE91191
-        for <linux-nfs@vger.kernel.org>; Tue,  5 Sep 2023 08:09:36 -0700 (PDT)
-Received: by mail-wr1-x42d.google.com with SMTP id ffacd0b85a97d-31c3df710bdso2052502f8f.1
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Sep 2023 08:09:36 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1693926575; x=1694531375; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:sender:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=B+lygqBJ39E28GuPYBiDY+fsHyBNgoC7RrETyHCc0Xo=;
-        b=QVx2uqz0zO/fXLnhgxcLkuRL/lcvTjEupb9Gu2xXQBdn81U8/IrxrEy88J+/6LFLAh
-         tw+UTNAPuIkOmeIISd0VI7BSJRRXAjYKm138oL829Mw5AEKqh9NVXJ5eDlUHuY85Yexe
-         jZ8FP0sQKknDLm11sLJ2V48hFTXzV67nNLdqF8t1vhSOY2v7SJmyD/xFrpsXLkLodxmh
-         lFgi3WZtGQw/KNDuCFpSs0Op4tBpG2q9dIYSy1BNxOdcmjH8vsmu4QYtzP/5C2SFpA7e
-         ao1BalHhO/U2c3SPwVqL8q20sRikgRzAXPrxNX03YKHzDm2YH0s26Efq37lE9dhzIT9k
-         V7ig==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20221208; t=1693926575; x=1694531375;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:sender:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=B+lygqBJ39E28GuPYBiDY+fsHyBNgoC7RrETyHCc0Xo=;
-        b=Tlx0NCD/oMxQy5zFc/IViAcvazKVDj+2liXWDeMfdfNH9NRkbMc6jt2wRw54y8vtJr
-         lGJGhGd8Ypp0bEZpamiT5z9ZffW205/pPbjV+VJpTLjvA1mcrlchKzjcZm4HbEzPnt5O
-         UWZVut0QdFXujDcWpb97jtbcMIvoDG+zzvAT+Ui6YiWjUdeQBQMR3d39ewVRlRCHugk3
-         4keHGJITMp2lVrLmbJ+r51SqC445fnMGyY5ExDvmgxaluyPiasU1FLMvx1i8kWq7H4mu
-         BqwY45WifnSiHhy13IjIrlw9i+tNPwICmbX1bMzMxZBqeQeo/D9oTxOt/MsA1fzNLYgX
-         dyvg==
-X-Gm-Message-State: AOJu0YwLwq9ACcGPFBHLWZrP+ry6iylZbVLIqQS7cM8wsQczav0Hx1H2
-        KrI/bncg86+MUnZwz7xnsaA=
-X-Google-Smtp-Source: AGHT+IEoQpUSFLg570FxdsCsXTHhn80L0S15ZurtNW9+hfs7dJR7krI8073u2RwRxN2QZzgU1biFRQ==
-X-Received: by 2002:adf:fb10:0:b0:317:6efd:3a6b with SMTP id c16-20020adffb10000000b003176efd3a6bmr78580wrr.24.1693926574543;
-        Tue, 05 Sep 2023 08:09:34 -0700 (PDT)
-Received: from eldamar.lan (c-82-192-242-114.customer.ggaweb.ch. [82.192.242.114])
-        by smtp.gmail.com with ESMTPSA id x18-20020a5d4452000000b0031431fb40fasm17737735wrr.89.2023.09.05.08.09.34
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 05 Sep 2023 08:09:34 -0700 (PDT)
-Sender: Salvatore Bonaccorso <salvatore.bonaccorso@gmail.com>
-Received: by eldamar.lan (Postfix, from userid 1000)
-        id 96579BE2DE0; Tue,  5 Sep 2023 17:09:33 +0200 (CEST)
-Date:   Tue, 5 Sep 2023 17:09:33 +0200
-From:   Salvatore Bonaccorso <carnil@debian.org>
-To:     Andreas Hasenack <andreas@canonical.com>,
-        NeilBrown <neilb@suse.de>, Steve Dickson <steved@redhat.com>
-Cc:     linux-nfs@vger.kernel.org, Scott Mayhew <smayhew@redhat.com>,
-        Benjamin Coddington <bcodding@redhat.com>,
-        Ben Hutchings <benh@debian.org>
-Subject: Re: [PATCH 0/2] Prefer generator to static systemd units
-Message-ID: <ZPdErauSK2sXuh1T@eldamar.lan>
-References: <CANYNYEEy2vf2rxLFeQ0hkstPrvF=eeA-joc0imGZt96Q+_r44w@mail.gmail.com>
+        with ESMTP id S244974AbjIEBkr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Sep 2023 21:40:47 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E3237CC5
+        for <linux-nfs@vger.kernel.org>; Mon,  4 Sep 2023 18:40:43 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 8C13B21850;
+        Tue,  5 Sep 2023 01:40:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+        t=1693878042; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=ppxSi48FD0R0OjKV6ME1dGirA2s4Zo94mbpK835jSXY=;
+        b=t3Havtc3mVCwqMfl/j7tjaOOiMAx7/M+IG600yLtP65kEURIxljNWksCJPsDapX8UEeE49
+        l2dDpJc1+74mV+CjxIqyHL3ysVzmei5Nb1EI+jUAZ5am2OV8QHE+13X6PdYMzj9Ktzmti6
+        HtPt26iA6R5XaB7hOOmlHSyHX/BYgYE=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+        s=susede2_ed25519; t=1693878042;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=ppxSi48FD0R0OjKV6ME1dGirA2s4Zo94mbpK835jSXY=;
+        b=6O9cIPcHcMJFHMi/F211xLLqatOKt5DzSewY2gkADAHCobPg+YJPnp0BahA/Ype21hqoSQ
+        atgb2R05IYQiYaDw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 4D8A113499;
+        Tue,  5 Sep 2023 01:40:41 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id e/PDABmH9mSeUwAAMHmgww
+        (envelope-from <neilb@suse.de>); Tue, 05 Sep 2023 01:40:41 +0000
+From:   NeilBrown <neilb@suse.de>
+To:     Chuck Lever <chuck.lever@oracle.com>,
+        Jeff Layton <jlayton@kernel.org>
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] lib: add light-weight queuing mechanism.
+Date:   Tue,  5 Sep 2023 11:38:11 +1000
+Message-ID: <20230905014011.25472-2-neilb@suse.de>
+X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230905014011.25472-1-neilb@suse.de>
+References: <20230905014011.25472-1-neilb@suse.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CANYNYEEy2vf2rxLFeQ0hkstPrvF=eeA-joc0imGZt96Q+_r44w@mail.gmail.com>
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Steve, Neil,
+lwq is a FIFO single-linked queue that only requires a spinlock
+for dequeueing, which happens in process context.  Enqueueing is atomic
+with no spinlock and can happen in any context.
 
-On Fri, Jul 28, 2023 at 01:06:49PM -0300, Andreas Hasenack wrote:
-> Hi,
-> 
-> in Debian and Ubuntu, the configuration file /etc/nfs.conf is only
-> placed on disk in the postinst script[1]. In this scenario it's possible
-> to have the nfs-common generators run before /etc/nfs.conf exists[2],
-> via another package's postinst calling systemctl daemon-reload. Since
-> there is no /etc/nfs.conf yet, defaults are assumed and the generators
-> exit silently, and the corresponding static units are used.
-> 
-> But in Debian/Ubuntu, the rpc_pipefs directory is /run/rpc_pipefs, and
-> not the one specified in the static units, and thus we get it mounted in
-> the wrong directory.
-> 
-> It seems best to always rely on the generators, as they will always be
-> able to produce the correct target and mount units.
-> 
-> For reference, this was first brought up in this thread[3].
-> 
-> Producing an upstream set of patches was a bit confusing, since these
-> systemd units are highly distro dependent. They are not even installed
-> via `make install` because of this, so I have more confidence in the
-> first patch of the series.
-> 
-> I produced a Debian package with these two patches applied on top of
-> Debian's 2.6.3[6], and ran the DEP8 tests of nfs-utils[4] and autofs[5],
-> which exercise some simple v3 and v4 mounts, with and without kerberos.
-> These tests passed[7][8] (ephemeral links, will be gone once the PPA is
-> destroyed).
-> 
-> 1. https://git.launchpad.net/ubuntu/+source/nfs-utils/tree/debian/nfs-common.postinst?h=applied/ubuntu/devel#n6
-> 2. https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/1971935/comments/22
-> 3. https://marc.info/?l=linux-nfs&m=165729895515639&w=4
-> 4. https://git.launchpad.net/ubuntu/+source/nfs-utils/tree/debian/tests?h=applied/ubuntu/lunar-devel
-> 5. https://git.launchpad.net/ubuntu/+source/autofs/tree/debian/tests?h=applied/ubuntu/lunar-devel
-> 6. https://code.launchpad.net/~ahasenack/ubuntu/+source/nfs-utils/+git/nfs-utils/+ref/upstream-nfs-utils-test
-> 7. https://autopkgtest.ubuntu.com/results/autopkgtest-mantic-ahasenack-nfs-upstream-test/mantic/amd64/a/autofs/20230728_135149_0895b@/log.gz
-> 8. https://autopkgtest.ubuntu.com/results/autopkgtest-mantic-ahasenack-nfs-upstream-test/mantic/amd64/n/nfs-utils/20230728_150122_3ef18@/log.gz
-> 
-> Andreas Hasenack (2):
->   Always run the rpc_pipefs generator
->   Use the generated units instead of static ones
-> 
->  configure.ac                            |  8 +-------
->  systemd/Makefile.am                     |  5 -----
->  systemd/rpc-pipefs-generator.c          |  3 ---
->  systemd/rpc_pipefs.target               |  3 ---
->  systemd/rpc_pipefs.target.in            |  3 ---
->  systemd/var-lib-nfs-rpc_pipefs.mount    | 10 ----------
->  systemd/var-lib-nfs-rpc_pipefs.mount.in | 10 ----------
->  7 files changed, 1 insertion(+), 41 deletions(-)
->  delete mode 100644 systemd/rpc_pipefs.target
->  delete mode 100644 systemd/rpc_pipefs.target.in
->  delete mode 100644 systemd/var-lib-nfs-rpc_pipefs.mount
->  delete mode 100644 systemd/var-lib-nfs-rpc_pipefs.mount.in
+Include a unit test for basic functionality - runs at boot time.  Does
+not use kunit framework.
 
-Is this patch series as prposed by Andreas acceptable upstream?
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ include/linux/lwq.h | 120 +++++++++++++++++++++++++++++++++++
+ lib/Kconfig         |   5 ++
+ lib/Makefile        |   2 +-
+ lib/lwq.c           | 151 ++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 277 insertions(+), 1 deletion(-)
+ create mode 100644 include/linux/lwq.h
+ create mode 100644 lib/lwq.c
 
-We have this change in Debian since the 1:2.6.3-1 upload,
-https://tracker.debian.org/news/1442835/accepted-nfs-utils-1263-1-source-into-unstable/,
-with no regression reported TTBOMK.
+diff --git a/include/linux/lwq.h b/include/linux/lwq.h
+new file mode 100644
+index 000000000000..52b9c81b493a
+--- /dev/null
++++ b/include/linux/lwq.h
+@@ -0,0 +1,120 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++
++#ifndef LWQ_H
++#define LWQ_H
++/*
++ * light-weight single-linked queue built from llist
++ *
++ * Entries can be enqueued from any context with no locking.
++ * Entries can be dequeued from process context with integrated locking.
++ */
++#include <linux/container_of.h>
++#include <linux/spinlock.h>
++#include <linux/llist.h>
++
++struct lwq_node {
++	struct llist_node node;
++};
++
++struct lwq {
++	spinlock_t		lock;
++	struct llist_node	*ready;		/* entries to be dequeued */
++	struct llist_head	new;		/* entries being enqueued */
++};
++
++/**
++ * lwq_init - initialise a lwq
++ * @q:	the lwq object
++ */
++static inline void lwq_init(struct lwq *q)
++{
++	spin_lock_init(&q->lock);
++	q->ready = NULL;
++	init_llist_head(&q->new);
++}
++
++/**
++ * lwq_empty - test if lwq contains any entry
++ * @q:	the lwq object
++ *
++ * This empty test contains an acquire barrier so that if a wakeup
++ * is sent when lwq_dequeue returns true, it is safe to go to sleep after
++ * a test on lwq_empty().
++ */
++static inline bool lwq_empty(struct lwq *q)
++{
++	/* acquire ensures ordering wrt lwq_enqueue() */
++	return smp_load_acquire(&q->ready) == NULL && llist_empty(&q->new);
++}
++
++struct llist_node *__lwq_dequeue(struct lwq *q);
++/**
++ * lwq_dequeue - dequeue first (oldest) entry from lwq
++ * @q:		the queue to dequeue from
++ * @type:	the type of object to return
++ * @member:	them member in returned object which is an lwq_node.
++ *
++ * Remove a single object from the lwq and return it.  This will take
++ * a spinlock and so must always be called in the same context, typcially
++ * process contet.
++ */
++#define lwq_dequeue(q, type, member)					\
++	({ struct llist_node *_n = __lwq_dequeue(q);			\
++	  _n ? container_of(_n, type, member.node) : NULL; })
++
++struct llist_node *lwq_dequeue_all(struct lwq *q);
++
++/**
++ * lwq_for_each_safe - iterate over detached queue allowing deletion
++ * @_n:		iterator variable
++ * @_t1:	temporary struct llist_node **
++ * @_t2:	temporary struct llist_node *
++ * @_l:		address of llist_node pointer from lwq_dequeue_all()
++ * @_member:	member in _n where lwq_node is found.
++ *
++ * Iterate over members in a dequeued list.  If the iterator variable
++ * is set to NULL, the iterator removes that entry from the queue.
++ */
++#define lwq_for_each_safe(_n, _t1, _t2, _l, _member)			\
++	for (_t1 = (_l);						\
++	     *(_t1) ? (_n = container_of(*(_t1), typeof(*(_n)), _member.node),\
++		       _t2 = ((*_t1)->next),				\
++		       true)						\
++	     : false;							\
++	     (_n) ? (_t1 = &(_n)->_member.node.next, 0)			\
++	     : ((*(_t1) = (_t2)),  0))
++
++/**
++ * lwq_enqueue - add a new item to the end of the queue
++ * @n	- the lwq_node embedded in the item to be added
++ * @q	- the lwq to append to.
++ *
++ * No locking is needed to append to the queue so this can
++ * be called from any context.
++ * Return %true is the list may have previously been empty.
++ */
++static inline bool lwq_enqueue(struct lwq_node *n, struct lwq *q)
++{
++	/* acquire enqures ordering wrt lwq_dequeue */
++	return llist_add(&n->node, &q->new) &&
++		smp_load_acquire(&q->ready) == NULL;
++}
++
++/**
++ * lwq_enqueue_batch - add a list of new items to the end of the queue
++ * @n	- the lwq_node embedded in the first item to be added
++ * @q	- the lwq to append to.
++ *
++ * No locking is needed to append to the queue so this can
++ * be called from any context.
++ * Return %true is the list may have previously been empty.
++ */
++static inline bool lwq_enqueue_batch(struct llist_node *n, struct lwq *q)
++{
++	struct llist_node *e = n;
++
++	/* acquire enqures ordering wrt lwq_dequeue */
++	return llist_add_batch(llist_reverse_order(n), e, &q->new) &&
++		smp_load_acquire(&q->ready) == NULL;
++}
++#endif /* LWQ_H */
+diff --git a/lib/Kconfig b/lib/Kconfig
+index 5c2da561c516..d9a12a81fd24 100644
+--- a/lib/Kconfig
++++ b/lib/Kconfig
+@@ -763,3 +763,8 @@ config ASN1_ENCODER
+ 
+ config POLYNOMIAL
+        tristate
++
++config LWQ_TEST
++	bool "lib: enable boot-time test for lwq queuing"
++	help
++          Enable boot-time test of lwq functionality.
+diff --git a/lib/Makefile b/lib/Makefile
+index 1ffae65bb7ee..4b67c2d6af62 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -45,7 +45,7 @@ obj-y	+= lockref.o
+ obj-y += bcd.o sort.o parser.o debug_locks.o random32.o \
+ 	 bust_spinlocks.o kasprintf.o bitmap.o scatterlist.o \
+ 	 list_sort.o uuid.o iov_iter.o clz_ctz.o \
+-	 bsearch.o find_bit.o llist.o memweight.o kfifo.o \
++	 bsearch.o find_bit.o llist.o lwq.o memweight.o kfifo.o \
+ 	 percpu-refcount.o rhashtable.o base64.o \
+ 	 once.o refcount.o rcuref.o usercopy.o errseq.o bucket_locks.o \
+ 	 generic-radix-tree.o
+diff --git a/lib/lwq.c b/lib/lwq.c
+new file mode 100644
+index 000000000000..7fe6c7125357
+--- /dev/null
++++ b/lib/lwq.c
+@@ -0,0 +1,151 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Light weight single-linked queue.
++ *
++ * Entries are enqueued to the head of an llist, with no blocking.
++ * This can happen in any context.
++ *
++ * Entries are dequeued using a spinlock to protect against
++ * multiple access.  The llist is staged in reverse order, and refreshed
++ * from the llist when it exhausts.
++ */
++#include <linux/rcupdate.h>
++#include <linux/lwq.h>
++
++struct llist_node *__lwq_dequeue(struct lwq *q)
++{
++	struct llist_node *this;
++
++	if (lwq_empty(q))
++		return NULL;
++	spin_lock(&q->lock);
++	this = q->ready;
++	if (!this && !llist_empty(&q->new)) {
++		/* ensure queue doesn't appear transiently lwq_empty */
++		smp_store_release(&q->ready, (void *)1);
++		this = llist_reverse_order(llist_del_all(&q->new));
++		if (!this)
++			q->ready = NULL;
++	}
++	if (this)
++		q->ready = llist_next(this);
++	spin_unlock(&q->lock);
++	return this;
++}
++EXPORT_SYMBOL_GPL(__lwq_dequeue);
++
++/**
++ * lwq_dequeue_all - dequeue all currently enqueued objects
++ * @q:	the queue to dequeue from
++ *
++ * Remove and return a linked list of llist_nodes of all the objects that were
++ * in the queue. The first on the list will be the object that was least
++ * recently enqueued.
++ */
++struct llist_node *lwq_dequeue_all(struct lwq *q)
++{
++	struct llist_node *r, *t, **ep;
++
++	if (lwq_empty(q))
++		return NULL;
++
++	spin_lock(&q->lock);
++	r = q->ready;
++	q->ready = NULL;
++	t = llist_del_all(&q->new);
++	spin_unlock(&q->lock);
++	ep = &r;
++	while (*ep)
++		ep = &(*ep)->next;
++	*ep = llist_reverse_order(t);
++	return r;
++}
++EXPORT_SYMBOL_GPL(lwq_dequeue_all);
++
++#if IS_ENABLED(CONFIG_LWQ_TEST)
++
++#include <linux/module.h>
++#include <linux/slab.h>
++#include <linux/wait_bit.h>
++#include <linux/kthread.h>
++#include <linux/delay.h>
++struct tnode {
++	struct lwq_node n;
++	int i;
++	int c;
++};
++
++static int lwq_exercise(void *qv)
++{
++	struct lwq *q = qv;
++	int cnt;
++	struct tnode *t;
++
++	for (cnt = 0; cnt < 10000; cnt++) {
++		wait_var_event(q, (t = lwq_dequeue(q, struct tnode, n)) != NULL);
++		t->c++;
++		if (lwq_enqueue(&t->n, q))
++			wake_up_var(q);
++	}
++	while (!kthread_should_stop())
++		schedule_timeout_idle(1);
++	return 0;
++}
++
++static int lwq_test(void)
++{
++	int i;
++	struct lwq q;
++	struct llist_node *l, **t1, *t2;
++	struct tnode *t;
++	struct task_struct *threads[8];
++
++	printk(KERN_INFO "testing lwq....\n");
++	lwq_init(&q);
++	printk(KERN_INFO " lwq: run some threads\n");
++	for (i = 0; i < ARRAY_SIZE(threads); i++)
++		threads[i] = kthread_run(lwq_exercise, &q, "lwq-test-%d", i);
++	for (i = 0; i < 100; i++) {
++		t = kmalloc(sizeof(*t), GFP_KERNEL);
++		t->i = i;
++		t->c = 0;
++		if (lwq_enqueue(&t->n, &q))
++			wake_up_var(&q);
++	};
++	/* wait for threads to exit */
++	for (i = 0; i < ARRAY_SIZE(threads); i++)
++		if (!IS_ERR_OR_NULL(threads[i]))
++			kthread_stop(threads[i]);
++	printk(KERN_INFO " lwq: dequeue first 50:");
++	for (i = 0; i < 50 ; i++) {
++		if (i && (i % 10) == 0) {
++			printk(KERN_CONT "\n");
++			printk(KERN_INFO " lwq: ... ");
++		}
++		t = lwq_dequeue(&q, struct tnode, n);
++		printk(KERN_CONT " %d(%d)", t->i, t->c);
++		kfree(t);
++	}
++	printk(KERN_CONT "\n");
++	l = lwq_dequeue_all(&q);
++	printk(KERN_INFO " lwq: delete the multiples of 3 (test lwq_for_each_safe())\n");
++	lwq_for_each_safe(t, t1, t2, &l, n) {
++		if ((t->i % 3) == 0) {
++			t->i = -1;
++			kfree(t);
++			t = NULL;
++		}
++	}
++	if (l)
++		lwq_enqueue_batch(l, &q);
++	printk(KERN_INFO " lwq: dequeue remaining:");
++	while ((t = lwq_dequeue(&q, struct tnode, n)) != NULL) {
++		printk(KERN_CONT " %d", t->i);
++		kfree(t);
++	}
++	printk(KERN_CONT "\n");
++	return 0;
++}
++
++module_init(lwq_test);
++#endif /* CONFIG_LWQ_TEST*/
+-- 
+2.41.0
 
-For reference, the patch series is here in the linux-nfs archives
-(referencing it here explicitly as b4 mbox seems not to get all the 3
-mails when requesting the cover letter):
-https://lore.kernel.org/linux-nfs/CANYNYEEy2vf2rxLFeQ0hkstPrvF=eeA-joc0imGZt96Q+_r44w@mail.gmail.com/
-https://lore.kernel.org/linux-nfs/CANYNYEFKtw+_Y-NrOoQt9G9eund2C0=XMrXBj8mt1L=ebrSkLQ@mail.gmail.com/
-https://lore.kernel.org/linux-nfs/CANYNYEHETbcqmEhE7BB57bCH03J-XT986Bb+DucdpbV8KHeZug@mail.gmail.com/
-
-Regards,
-Salvatore
