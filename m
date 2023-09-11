@@ -2,154 +2,104 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7442ECA0ECE
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:03 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 517F4CA0ED4
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:04 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S237951AbjIKV62 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:58:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56850 "EHLO
+        id S239587AbjIKV6a (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:58:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52892 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235964AbjIKJrY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 05:47:24 -0400
-Received: from mail-pl1-x633.google.com (mail-pl1-x633.google.com [IPv6:2607:f8b0:4864:20::633])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4BD5EE40
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 02:46:57 -0700 (PDT)
-Received: by mail-pl1-x633.google.com with SMTP id d9443c01a7336-1bf1876ef69so11139425ad.1
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 02:46:57 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bytedance.com; s=google; t=1694425617; x=1695030417; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=FXa1LVTr7cMGrveLuEzAv2/sv0TRtu2+M0j9hstuDhg=;
-        b=BaRzbLov5BT4pw/1CESQTlJ40A4oFsf/vNTGEkFZ5sTNaIpW+njPUTjTgHU1xeZdNr
-         w8+bj0rh5Ko4tl8fy+3AG5N6ntHkuAMZAfvnrSWJ5s40pfUyhpK425X0XtX6kP6qUmqm
-         sssKIUMe2uV2pupUB724NI76IfVmqTQ1A56xcRV3XPhtXYXDFBtIQ5CDxl2ucnxA6p9G
-         FpKkG69Vu8TYCczUmEitM+SCIi9gyZJFHN7JcQiYKyTJIx1u+Ef2ebci403Ejx8WB+vI
-         bQfvjkWmUZ5xm9afbdrpjtZ23S23PCGHHhAzc/1rrg+LPAjKJqgQpEROsyfsGDVJ7Trq
-         449A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1694425617; x=1695030417;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=FXa1LVTr7cMGrveLuEzAv2/sv0TRtu2+M0j9hstuDhg=;
-        b=ZcKr8c1lxPbsKGMzQwG13NXTkC2YULTFypGnY0W4XtRWud/US6d4A8JHa8QB7vK/7J
-         tRjFz9r36M4uD6xmRbDjQcajvyf9dtcu6YHnYuix9tgzgUjbnxW61rPYLMxSctUXNihP
-         ojixcCLMIKH1vgM9MbMgnMVTeLyqcBAZ9k/gix4WE/KiLSfFwBsfvK0Ub0VYkuF4wsjz
-         Jw5Tja2S12NK10Km4x72Fwdys3gVMjxxLiG/tqem+/VpovD2gHvg68slZgjIsvF/bzTf
-         8qILOlEL9eO4cod6YZZdSuubCoiE4HRY+mTfWDatPT8RBfnUGzVbSIhUG4s3/qixi2MI
-         XuzA==
-X-Gm-Message-State: AOJu0Ywih+fAHpWuGt7lJf+sRzF5DWRzZ06zvs5npmvFgIFIu4dwF/cG
-        CcLiN/cNLw2ZVJ57z+I27NEriA==
-X-Google-Smtp-Source: AGHT+IHKZ7oB5FMEwi+qCC0j2E1ekjFtKsjq/92jKkTijP5Pj32E0W6thfocXbY8FqhF+sPzRd82Ug==
-X-Received: by 2002:a17:902:d508:b0:1c1:fbec:bc32 with SMTP id b8-20020a170902d50800b001c1fbecbc32mr10679560plg.6.1694425616764;
-        Mon, 11 Sep 2023 02:46:56 -0700 (PDT)
-Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
-        by smtp.gmail.com with ESMTPSA id az7-20020a170902a58700b001bdc2fdcf7esm5988188plb.129.2023.09.11.02.46.47
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 11 Sep 2023 02:46:56 -0700 (PDT)
-From:   Qi Zheng <zhengqi.arch@bytedance.com>
-To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
-        vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
-        brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
-        steven.price@arm.com, cel@kernel.org, senozhatsky@chromium.org,
-        yujie.liu@intel.com, gregkh@linuxfoundation.org,
-        muchun.song@linux.dev
-Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-fsdevel@vger.kernel.org,
-        Qi Zheng <zhengqi.arch@bytedance.com>,
-        Muchun Song <songmuchun@bytedance.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@kernel.org>, Neil Brown <neilb@suse.de>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+        with ESMTP id S238157AbjIKNm5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 09:42:57 -0400
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 776C0CD7;
+        Mon, 11 Sep 2023 06:42:53 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 968C7C433C7;
+        Mon, 11 Sep 2023 13:42:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1694439773;
+        bh=luUkSGr/g5UNfuIV8IpfxJSLFBmv1BjknPmAkfe143w=;
+        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+        b=UPGeJeccNlGflzm50XhI+D9GHgCoPz0c4xogcHZQHW3hZq9r2PkwPIzYvqq4bQGh2
+         nhFxz1zufm298bm8DUw+hBsDuyfRNWPYthr1OxWvoBWZ/uHSz8oDU4v0pylZQENvH0
+         bMRIQCBCOx2Hl9Omiw4MlsItN0Qab0rtOP/zC3uhI/f6tnK1bE2GrX4DF2WmUP2eYr
+         qGaSANvydOe7rmCOAPmIWyMFSmjeK+DXhuitzl9OSx1zvq3IR6AAJgzzXgRd2WgWSw
+         KGWL00URM4x+PToxHUwXayntkhxhdOkI6YA9Ip3MNX38+Js1dCBikfVaf588zD+bdb
+         SuLNlscZMC3yA==
+Date:   Mon, 11 Sep 2023 15:42:46 +0200
+From:   Christian Brauner <brauner@kernel.org>
+To:     Jeff Layton <jlayton@kernel.org>
+Cc:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>,
+        Ondrej Valousek <ondrej.valousek.xm@renesas.com>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org
-Subject: [PATCH v6 12/45] nfsd: dynamically allocate the nfsd-filecache shrinker
-Date:   Mon, 11 Sep 2023 17:44:11 +0800
-Message-Id: <20230911094444.68966-13-zhengqi.arch@bytedance.com>
-X-Mailer: git-send-email 2.24.3 (Apple Git-128)
-In-Reply-To: <20230911094444.68966-1-zhengqi.arch@bytedance.com>
-References: <20230911094444.68966-1-zhengqi.arch@bytedance.com>
+Subject: Re: [PATCH v2] fs: add a new SB_NOUMASK flag
+Message-ID: <20230911-blasen-zieren-4d65d9bc245e@brauner>
+References: <20230910-acl-fix-v2-1-38d6caa81419@kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+In-Reply-To: <20230910-acl-fix-v2-1-38d6caa81419@kernel.org>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use new APIs to dynamically allocate the nfsd-filecache shrinker.
+On Sun, Sep 10, 2023 at 03:30:48PM -0400, Jeff Layton wrote:
+> SB_POSIXACL must be set when a filesystem supports POSIX ACLs, but NFSv4
+> also sets this flag to prevent the VFS from applying the umask on
+> newly-created files. NFSv4 doesn't support POSIX ACLs however, which
+> causes confusion when other subsystems try to test for them.
+> 
+> Split the umask-stripping opt-out into a separate SB_NOUMASK flag, and
+> have NFSv4 set that instead of SB_POSIXACL. Fix the appropriate places
+> in the VFS to check for that flag (in addition to SB_POSIXACL) when
+> stripping the umask.
 
-Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
-Reviewed-by: Muchun Song <songmuchun@bytedance.com>
-CC: Chuck Lever <chuck.lever@oracle.com>
-CC: Jeff Layton <jlayton@kernel.org>
-CC: Neil Brown <neilb@suse.de>
-CC: Olga Kornievskaia <kolga@netapp.com>
-CC: Dai Ngo <Dai.Ngo@oracle.com>
-CC: Tom Talpey <tom@talpey.com>
-CC: linux-nfs@vger.kernel.org
----
- fs/nfsd/filecache.c | 23 +++++++++++++----------
- 1 file changed, 13 insertions(+), 10 deletions(-)
+Oh, I see you only raised SB_POSIXACL to avoid umask stripping. That's a
+bit weird indeed. Hm, since this is an internal, non-user changeable
+flag I think it might be better in s_iflags as SB_I_NOUMASK? Also allows
+us to avoid wasting an s_flags bit.
 
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index ee9c923192e0..9c62b4502539 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -521,11 +521,7 @@ nfsd_file_lru_scan(struct shrinker *s, struct shrink_control *sc)
- 	return ret;
- }
- 
--static struct shrinker	nfsd_file_shrinker = {
--	.scan_objects = nfsd_file_lru_scan,
--	.count_objects = nfsd_file_lru_count,
--	.seeks = 1,
--};
-+static struct shrinker *nfsd_file_shrinker;
- 
- /**
-  * nfsd_file_cond_queue - conditionally unhash and queue a nfsd_file
-@@ -746,12 +742,19 @@ nfsd_file_cache_init(void)
- 		goto out_err;
- 	}
- 
--	ret = register_shrinker(&nfsd_file_shrinker, "nfsd-filecache");
--	if (ret) {
--		pr_err("nfsd: failed to register nfsd_file_shrinker: %d\n", ret);
-+	nfsd_file_shrinker = shrinker_alloc(0, "nfsd-filecache");
-+	if (!nfsd_file_shrinker) {
-+		ret = -ENOMEM;
-+		pr_err("nfsd: failed to allocate nfsd_file_shrinker\n");
- 		goto out_lru;
- 	}
- 
-+	nfsd_file_shrinker->count_objects = nfsd_file_lru_count;
-+	nfsd_file_shrinker->scan_objects = nfsd_file_lru_scan;
-+	nfsd_file_shrinker->seeks = 1;
-+
-+	shrinker_register(nfsd_file_shrinker);
-+
- 	ret = lease_register_notifier(&nfsd_file_lease_notifier);
- 	if (ret) {
- 		pr_err("nfsd: unable to register lease notifier: %d\n", ret);
-@@ -774,7 +777,7 @@ nfsd_file_cache_init(void)
- out_notifier:
- 	lease_unregister_notifier(&nfsd_file_lease_notifier);
- out_shrinker:
--	unregister_shrinker(&nfsd_file_shrinker);
-+	shrinker_free(nfsd_file_shrinker);
- out_lru:
- 	list_lru_destroy(&nfsd_file_lru);
- out_err:
-@@ -891,7 +894,7 @@ nfsd_file_cache_shutdown(void)
- 		return;
- 
- 	lease_unregister_notifier(&nfsd_file_lease_notifier);
--	unregister_shrinker(&nfsd_file_shrinker);
-+	shrinker_free(nfsd_file_shrinker);
- 	/*
- 	 * make sure all callers of nfsd_file_lru_cb are done before
- 	 * calling nfsd_file_cache_purge
--- 
-2.30.2
+> 
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+> Yet another approach to fixing this issue. I think this way is probably
+> the best, since makes the purpose of these flags clearer, and stops NFS
+> from relying on SB_POSIXACL to avoid umask stripping.
+> ---
+> Changes in v2:
+> - new approach: add a new SB_NOUMASK flag that NFSv4 can use instead of
+>   SB_POSIXACL
+> - Link to v1: https://lore.kernel.org/r/20230908-acl-fix-v1-1-1e6b76c8dcc8@kernel.org
+> ---
+>  fs/init.c          | 4 ++--
+>  fs/namei.c         | 2 +-
+>  fs/nfs/super.c     | 2 +-
+>  include/linux/fs.h | 4 +++-
+>  4 files changed, 7 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/init.c b/fs/init.c
+> index 9684406a8416..157404bb7d19 100644
+> --- a/fs/init.c
+> +++ b/fs/init.c
+> @@ -153,7 +153,7 @@ int __init init_mknod(const char *filename, umode_t mode, unsigned int dev)
+>  	if (IS_ERR(dentry))
+>  		return PTR_ERR(dentry);
+>  
+> -	if (!IS_POSIXACL(path.dentry->d_inode))
+> +	if (!IS_NOUMASK(path.dentry->d_inode))
+>  		mode &= ~current_umask();
+>  	error = security_path_mknod(&path, dentry, mode, dev);
+>  	if (!error)
+> @@ -229,7 +229,7 @@ int __init init_mkdir(const char *pathname, umode_t mode)
+>  	dentry = kern_path_create(AT_FDCWD, pathname, &path, LOOKUP_DIRECTORY);
+>  	if (IS_ERR(dentry))
+>  		return PTR_ERR(dentry);
+> -	if (!IS_POSIXACL(path.dentry->d_inode))
+> +	if (!IS_NOUMASK(path.dentry->d_inode))
+>  		mode &= ~current_umask();
 
+Could you please just convert them over to mode_strip_umask()?
+Seems I forgot these two places back then.
