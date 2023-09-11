@@ -2,150 +2,145 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CF287CA0EE3
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BC12ACA0EE2
 	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240947AbjIKV6y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:58:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44304 "EHLO
+        id S240854AbjIKV6r (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:58:47 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43088 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240992AbjIKO7L (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 10:59:11 -0400
-Received: from smtp-o-2.desy.de (smtp-o-2.desy.de [131.169.56.155])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A956F1B9
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 07:59:06 -0700 (PDT)
-Received: from smtp-buf-2.desy.de (smtp-buf-2.desy.de [131.169.56.165])
-        by smtp-o-2.desy.de (Postfix) with ESMTP id 0CA8C1611EE
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 16:59:05 +0200 (CEST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-2.desy.de 0CA8C1611EE
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-        t=1694444345; bh=1ROMS8kvUcUhiUc4c+OL2ZSTgs3ivgSt2Uktr1DkDZc=;
-        h=Date:From:To:In-Reply-To:References:Subject:From;
-        b=tappqgFrYCPqC1bDD9+JByRtNq3tgCMfsTUA1QqyTWfLYI2I4k11NuvTm+au/OGnh
-         P2zw75esV96sGBkPPCwGKVfRtLWLbHM4Dm33NMbxdtZT0X2X/JmVqBZR973GbEIg9v
-         WUHuitpWZdVlo9X6iGIVaMTKhur10lsoduGgkSpk=
-Received: from smtp-m-2.desy.de (smtp-m-2.desy.de [131.169.56.130])
-        by smtp-buf-2.desy.de (Postfix) with ESMTP id 0378E1A00C2
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 16:59:05 +0200 (CEST)
-Received: from c1722.mx.srv.dfn.de (c1722.mx.srv.dfn.de [194.95.239.47])
-        by smtp-m-2.desy.de (Postfix) with ESMTP id 065AF120042
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 16:59:05 +0200 (CEST)
-Received: from smtp-intra-3.desy.de (smtp-intra-3.desy.de [131.169.56.69])
-        by c1722.mx.srv.dfn.de (Postfix) with ESMTP id 61C05A003B
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 16:59:04 +0200 (CEST)
-Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
-        by smtp-intra-3.desy.de (Postfix) with ESMTP id 3F63980070
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 16:59:04 +0200 (CEST)
-Date:   Mon, 11 Sep 2023 16:59:04 +0200 (CEST)
-From:   "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To:     linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <582547008.6087350.1694444344114.JavaMail.zimbra@desy.de>
-In-Reply-To: <20230829110411.8394-1-tigran.mkrtchyan@desy.de>
-References: <20230829110411.8394-1-tigran.mkrtchyan@desy.de>
-Subject: Fwd: [PATCH] nfs41: flexfiles: drop dependency between flexfiles
- layout driver and NFSv3 modules
+        with ESMTP id S235977AbjIKJrz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 05:47:55 -0400
+Received: from mail-pl1-x636.google.com (mail-pl1-x636.google.com [IPv6:2607:f8b0:4864:20::636])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2FF42E4E
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 02:47:51 -0700 (PDT)
+Received: by mail-pl1-x636.google.com with SMTP id d9443c01a7336-1c3aa44c0faso1784715ad.1
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 02:47:51 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=bytedance.com; s=google; t=1694425670; x=1695030470; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=4+dyOdEpvdrL2eUxAXXyGxIB/NcoZnEV+TKBfmBMmgQ=;
+        b=fPaC9EAUYalffszD3hRRgazLNMEK9qm4ndUZC6m65bAdOtNemq0DISEDKQnkDoLF63
+         2VnYneZGKHtMaWTF4GywyKohNXZkwEehmSPYhN7wnwJBkf+QEtT/syKn7AHVbDea/z5w
+         YsjsqlHEoTm442ae6vU9iirPQFH5h9TmOSN3xWQxUPsuupD8/q0wek/7/bVGJGkVHlls
+         Od9ws817GuViLEFSzgSc/NTphiXMk3zdIcSpf48tUyw3hYdkGstq+srxvWh6LxJuO54w
+         VGz89I3HZfLpm47+TffPhew9jYk4YyyU7gBM4Ej0VllMBtXU4353yQ7qjEm/g19ZEMG3
+         vL+w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1694425670; x=1695030470;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=4+dyOdEpvdrL2eUxAXXyGxIB/NcoZnEV+TKBfmBMmgQ=;
+        b=FBNqyzeuF7FmL46dZxT9vcAPc2Xj+EBaWicdKI6UYArFAoi+icm3aXdH7v3YaexQrA
+         tgTG6SeYBxxr7c9okmDPk2VeoUgJyG0Yyl28vAZEneDqwroO6mE4u9ZpS6pP6kB5o51H
+         /OUYdPrqPeQApVJnQTf7F+/kbNvNtZb0O4rtLYi9ygSzDivlXwIsEugQ0Q/vPCEvIDHy
+         ixA4eY4XCkCUyajJgDhOcFfwePYh415kOPJ5EttIWDDzor+4P3kDQxPauH7zfm+wyVmY
+         BhxgckysEsnGtoLeVb+TzMn/d3ziW1Saua2bqw6Q0kOKs0dMz+a76rSyHwpiNQ78TnhG
+         N3dQ==
+X-Gm-Message-State: AOJu0YwTS8NVdPk88QTlNo8ILUsfMVyXxF5/WzXCm+t246LN2pFkjgZf
+        8PHbsBKfmCxa1K8g/UNA1E4NbA==
+X-Google-Smtp-Source: AGHT+IFJHaBKDBa9FsHXtzux2UkvFgC3UTp4BhhdsEjv8fCLAr/6/KNue5g8DvDfgdf99+Ek70M0DA==
+X-Received: by 2002:a17:902:ec8b:b0:1c0:cbaf:6939 with SMTP id x11-20020a170902ec8b00b001c0cbaf6939mr11608160plg.3.1694425670620;
+        Mon, 11 Sep 2023 02:47:50 -0700 (PDT)
+Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
+        by smtp.gmail.com with ESMTPSA id az7-20020a170902a58700b001bdc2fdcf7esm5988188plb.129.2023.09.11.02.47.39
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 11 Sep 2023 02:47:50 -0700 (PDT)
+From:   Qi Zheng <zhengqi.arch@bytedance.com>
+To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
+        vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
+        brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
+        steven.price@arm.com, cel@kernel.org, senozhatsky@chromium.org,
+        yujie.liu@intel.com, gregkh@linuxfoundation.org,
+        muchun.song@linux.dev
+Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org,
+        Qi Zheng <zhengqi.arch@bytedance.com>,
+        Muchun Song <songmuchun@bytedance.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Jeff Layton <jlayton@kernel.org>, Neil Brown <neilb@suse.de>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>,
+        Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH v6 18/45] sunrpc: dynamically allocate the sunrpc_cred shrinker
+Date:   Mon, 11 Sep 2023 17:44:17 +0800
+Message-Id: <20230911094444.68966-19-zhengqi.arch@bytedance.com>
+X-Mailer: git-send-email 2.24.3 (Apple Git-128)
+In-Reply-To: <20230911094444.68966-1-zhengqi.arch@bytedance.com>
+References: <20230911094444.68966-1-zhengqi.arch@bytedance.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256; 
-        boundary="----=_Part_6087351_1006156126.1694444344188"
-X-Mailer: Zimbra 9.0.0_GA_4546 (ZimbraWebClient - FF117 (Linux)/9.0.0_GA_4546)
-Thread-Topic: nfs41: flexfiles: drop dependency between flexfiles layout driver and NFSv3 modules
-Thread-Index: 2LwT7vt/6Sff38egg4bc3bBPV1wzCg==
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-------=_Part_6087351_1006156126.1694444344188
-Date: Mon, 11 Sep 2023 16:59:04 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <582547008.6087350.1694444344114.JavaMail.zimbra@desy.de>
-In-Reply-To: <20230829110411.8394-1-tigran.mkrtchyan@desy.de>
-References: <20230829110411.8394-1-tigran.mkrtchyan@desy.de>
-Subject: Fwd: [PATCH] nfs41: flexfiles: drop dependency between flexfiles
- layout driver and NFSv3 modules
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-X-Mailer: Zimbra 9.0.0_GA_4546 (ZimbraWebClient - FF117 (Linux)/9.0.0_GA_4546)
-Thread-Topic: nfs41: flexfiles: drop dependency between flexfiles layout driver and NFSv3 modules
-Thread-Index: 2LwT7vt/6Sff38egg4bc3bBPV1wzCg==
+Use new APIs to dynamically allocate the sunrpc_cred shrinker.
 
-
-Ups. Forwarding to correct list.
-
------ On 29 Aug, 2023, at 13:04, Tigran Mkrtchyan tigran.mkrtchyan@desy.de wrote:
-
-The flexfiles layout driver depends on NFSv3 module as data servers
-might be configure to provide nfsv3 only.
-
-Disabling the nfsv3 protocol completely disables the flexfiles layout driver,
-however, the data server still might support v4.1 protocol. Thus the strond
-couling betwwen flexfiles and nfsv3 modules should be relaxed, as layout driver
-will return UNSUPPORTED if not matching protocol is found.
-
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
+Reviewed-by: Muchun Song <songmuchun@bytedance.com>
+CC: Chuck Lever <chuck.lever@oracle.com>
+CC: Jeff Layton <jlayton@kernel.org>
+CC: Neil Brown <neilb@suse.de>
+CC: Olga Kornievskaia <kolga@netapp.com>
+CC: Dai Ngo <Dai.Ngo@oracle.com>
+CC: Tom Talpey <tom@talpey.com>
+CC: Trond Myklebust <trond.myklebust@hammerspace.com>
+CC: Anna Schumaker <anna@kernel.org>
+CC: linux-nfs@vger.kernel.org
+CC: netdev@vger.kernel.org
 ---
- fs/nfs/Kconfig | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/auth.c | 20 ++++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index b6fc169be1b1..ba95246be09e 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -125,7 +125,7 @@ config PNFS_BLOCK
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 2f16f9d17966..c9c270eececc 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -861,11 +861,7 @@ rpcauth_uptodatecred(struct rpc_task *task)
+ 		test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) != 0;
+ }
  
- config PNFS_FLEXFILE_LAYOUT
- 	tristate
--	depends on NFS_V4_1 && NFS_V3
-+	depends on NFS_V4_1
- 	default NFS_V4
+-static struct shrinker rpc_cred_shrinker = {
+-	.count_objects = rpcauth_cache_shrink_count,
+-	.scan_objects = rpcauth_cache_shrink_scan,
+-	.seeks = DEFAULT_SEEKS,
+-};
++static struct shrinker *rpc_cred_shrinker;
  
- config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+ int __init rpcauth_init_module(void)
+ {
+@@ -874,9 +870,17 @@ int __init rpcauth_init_module(void)
+ 	err = rpc_init_authunix();
+ 	if (err < 0)
+ 		goto out1;
+-	err = register_shrinker(&rpc_cred_shrinker, "sunrpc_cred");
+-	if (err < 0)
++	rpc_cred_shrinker = shrinker_alloc(0, "sunrpc_cred");
++	if (!rpc_cred_shrinker) {
++		err = -ENOMEM;
+ 		goto out2;
++	}
++
++	rpc_cred_shrinker->count_objects = rpcauth_cache_shrink_count;
++	rpc_cred_shrinker->scan_objects = rpcauth_cache_shrink_scan;
++
++	shrinker_register(rpc_cred_shrinker);
++
+ 	return 0;
+ out2:
+ 	rpc_destroy_authunix();
+@@ -887,5 +891,5 @@ int __init rpcauth_init_module(void)
+ void rpcauth_remove_module(void)
+ {
+ 	rpc_destroy_authunix();
+-	unregister_shrinker(&rpc_cred_shrinker);
++	shrinker_free(rpc_cred_shrinker);
+ }
 -- 
-2.39.1
-------=_Part_6087351_1006156126.1694444344188
-Content-Type: application/pkcs7-signature; name=smime.p7s; smime-type=signed-data
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
+2.30.2
 
-MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgEFADCABgkqhkiG9w0BBwEAAKCAMIIF
-vzCCBKegAwIBAgIMJENPm+MXSsxZAQzUMA0GCSqGSIb3DQEBCwUAMIGNMQswCQYDVQQGEwJERTFF
-MEMGA1UECgw8VmVyZWluIHp1ciBGb2VyZGVydW5nIGVpbmVzIERldXRzY2hlbiBGb3JzY2h1bmdz
-bmV0emVzIGUuIFYuMRAwDgYDVQQLDAdERk4tUEtJMSUwIwYDVQQDDBxERk4tVmVyZWluIEdsb2Jh
-bCBJc3N1aW5nIENBMB4XDTIxMDIxMDEyMzEwOVoXDTI0MDIxMDEyMzEwOVowWDELMAkGA1UEBhMC
-REUxLjAsBgNVBAoMJURldXRzY2hlcyBFbGVrdHJvbmVuLVN5bmNocm90cm9uIERFU1kxGTAXBgNV
-BAMMEFRpZ3JhbiBNa3J0Y2h5YW4wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQClVKHU
-er1OiIaoo2MFDgCSzcqRCB8qVjjLJyJwzHWkhKniE6dwY8xHciG0HZFpSQqiRsoakD+BzqINXsqI
-CkVck5n7cUJ6cHBOM1r4pzEBcuuozPrT2tAfnHkFFGTZffOXgjmEITfSh6SD+DYeZH4Dt8kPZmnD
-mzWMDFDyB67WWcWApVC1nPh29yGgJk18UZ+Ut9a+woaovMZlutMbuvLVt/x5rpycMw0z+J1qeK7J
-8F3bKb0o2gg+Mnz9LzpLtJp7E9qJUKOTkZGDua9w9xrlo4XGX9Vn72K5wodu6woahdgNG+sXRcJM
-RH3aWgfdznoi1ORLJCfTbdfjSBpclvt/AgMBAAGjggJRMIICTTA+BgNVHSAENzA1MA8GDSsGAQQB
-ga0hgiwBAQQwEAYOKwYBBAGBrSGCLAEBBAgwEAYOKwYBBAGBrSGCLAIBBAgwCQYDVR0TBAIwADAO
-BgNVHQ8BAf8EBAMCBeAwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMEMB0GA1UdDgQWBBQG
-1+t/IHSjHSbbu11uU5Iw7JW92zAfBgNVHSMEGDAWgBRrOpiL+fJTidrgrbIyHgkf6Ko7dDAjBgNV
-HREEHDAagRh0aWdyYW4ubWtydGNoeWFuQGRlc3kuZGUwgY0GA1UdHwSBhTCBgjA/oD2gO4Y5aHR0
-cDovL2NkcDEucGNhLmRmbi5kZS9kZm4tY2EtZ2xvYmFsLWcyL3B1Yi9jcmwvY2FjcmwuY3JsMD+g
-PaA7hjlodHRwOi8vY2RwMi5wY2EuZGZuLmRlL2Rmbi1jYS1nbG9iYWwtZzIvcHViL2NybC9jYWNy
-bC5jcmwwgdsGCCsGAQUFBwEBBIHOMIHLMDMGCCsGAQUFBzABhidodHRwOi8vb2NzcC5wY2EuZGZu
-LmRlL09DU1AtU2VydmVyL09DU1AwSQYIKwYBBQUHMAKGPWh0dHA6Ly9jZHAxLnBjYS5kZm4uZGUv
-ZGZuLWNhLWdsb2JhbC1nMi9wdWIvY2FjZXJ0L2NhY2VydC5jcnQwSQYIKwYBBQUHMAKGPWh0dHA6
-Ly9jZHAyLnBjYS5kZm4uZGUvZGZuLWNhLWdsb2JhbC1nMi9wdWIvY2FjZXJ0L2NhY2VydC5jcnQw
-DQYJKoZIhvcNAQELBQADggEBADaFbcKsjBPbw6aRf5vxlJdehkafMy4JIdduMEGB+IjpBRZGmu0Z
-R2FRWNyq0lNRz03holZ8Rew0Ldx58REJmvAEzbwox4LT1wG8gRLEehyasSROajZBFrIHadDja0y4
-1JrfqP2umZFE2XWap8pDFpQk4sZOXW1mEamLzFtlgXtCfalmYmbnrq5DnSVKX8LOt5BZvDWin3r4
-m5v313d5/l0Qz2IrN6v7qNIyqT4peW90DUJHB1MGN60W2qe+VimWIuLJkQXMOpaUQJUlhkHOnhw8
-82g+jWG6kpKBMzIQMMGP0urFlPAia2Iuu2VtCkT7Wr43xyhiVzkZcT6uzR23PLsAADGCApswggKX
-AgEBMIGeMIGNMQswCQYDVQQGEwJERTFFMEMGA1UECgw8VmVyZWluIHp1ciBGb2VyZGVydW5nIGVp
-bmVzIERldXRzY2hlbiBGb3JzY2h1bmdzbmV0emVzIGUuIFYuMRAwDgYDVQQLDAdERk4tUEtJMSUw
-IwYDVQQDDBxERk4tVmVyZWluIEdsb2JhbCBJc3N1aW5nIENBAgwkQ0+b4xdKzFkBDNQwDQYJYIZI
-AWUDBAIBBQCggc4wGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjMw
-OTExMTQ1OTA0WjAtBgkqhkiG9w0BCTQxIDAeMA0GCWCGSAFlAwQCAQUAoQ0GCSqGSIb3DQEBCwUA
-MC8GCSqGSIb3DQEJBDEiBCBxCp0A04a8KwF3/TLdDm4EtEzf243BBEahJE4wYX84/zA0BgkqhkiG
-9w0BCQ8xJzAlMAoGCCqGSIb3DQMHMA4GCCqGSIb3DQMCAgIAgDAHBgUrDgMCBzANBgkqhkiG9w0B
-AQsFAASCAQAubuztIwNLn7dSTjwQe2RGKRhZfrmUpXtAc0yNdI81DHOvdSlWZri37pfPF0HGAGb7
-QgMZQPg5TJzmvxesXf5DIoX1U7oYLvmsUA6G6KK/MS1MFDaNTVCsaQWVvAe1ZLUcSVsRjeNtsQJ2
-YRRdkX0Vm44vdoTK65w2ACzGDkTAACtM+9kdofUE178ZLMu9Vhl1izeIiTzTY05MPM+Hz7PNMO0i
-FHW5XLrywqL6hsqehpUbdHzl5vq4daFR+YYKL6qKhCNg56NMgZsexf0+xdOlsqepuFj5ygu+LxfS
-hAQUyZtVUTyBiV3HMypvDjvJX8F0IWpfFlQ+ABZzAxMghdC1AAAAAAAA
-------=_Part_6087351_1006156126.1694444344188--
