@@ -2,39 +2,37 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 62B89CA0ECF
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:17 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 700CBCA0EC9
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241752AbjIKV7M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:59:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58282 "EHLO
+        id S236069AbjIKV7K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:59:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59948 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240280AbjIKOk2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 10:40:28 -0400
+        with ESMTP id S240228AbjIKOj3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 10:39:29 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CD240E40
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 07:40:23 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 140D8C433C8;
-        Mon, 11 Sep 2023 14:40:23 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A748FCF0
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 07:39:25 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 149B4C433C7;
+        Mon, 11 Sep 2023 14:39:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1694443223;
-        bh=R/obyASdWhu87BNi9NoFertrYVgNqd7RwvWdkJTdagk=;
+        s=k20201202; t=1694443165;
+        bh=ky9TbQdqLHqBeVz4xp9zUAV5m8jRJ9G9ubNCJZ0V+fA=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=W2Q3E7zjUWRrrFtqMKYaM6oSGZ7ppQnrWDV43DyHB1TtCqPL+P1AUQ3/qFUfP/G/f
-         2+TAnT2fha+Wl8Tz/+f0e+N96zy8VaieUC/6ApxnCqW6ukEkGkhmf5iIcvd7JvY8zC
-         HpLZ8wIzuNsvMo+/Qd3OZHvakKUNDIYGVju88dYa27ryvkWUkFlHECgbDg4DFNqpTk
-         GUdoutzgya4KK2pG0le5+9O4imfMd5QPC1xfmffhGmjrXj8u/BWq27W6bkwe98s3AF
-         V+dzjL+EGls0tJUlC3rG6wOZ4KBgziQzkHqIdt1/OuEJehijSZTbeWT5fNtgkKDbfQ
-         TILE99Uy7ksVg==
-Subject: [PATCH v1 17/17] SUNRPC: change the back-channel queue to lwq
+        b=mWt19FuRoFNmgBa9k+JT1ag+hdF2kfsY9l0Ijb1BU8YzH3l5pM54SRtAwu1CwCLbu
+         kVuVj6dcwP7yb/YT2afm7UbcfUHql1eUS1/ZSwJx+yvaQ1qm1LH6r13sy7ukFuYXBT
+         5YiUkTI9YZiHyJbieeBAkCAXg8luI0KQYy0dP/t0c02L5Z2ub0+BpEe9vrNOpxtdbC
+         gyr03+SAdRvA2yGUfX3y/72scH/KQA2DE2eevtp9V5Onwj6m7189KDTYWHaFpzldFS
+         kBO5lfoxwSYs5OfYv8t+0GeaDmZ68VvROjU7rlTeKCWcg+plcRDeh1Du10Ava604FD
+         qFc9aqVDHCWyg==
+Subject: [PATCH v1 08/17] llist: add interface to check if a node is on a
+ list.
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
-Cc:     NeilBrown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 11 Sep 2023 10:40:22 -0400
-Message-ID: <169444322208.4327.3984958398787234357.stgit@bazille.1015granger.net>
+Cc:     NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon, 11 Sep 2023 10:39:24 -0400
+Message-ID: <169444316412.4327.17559564827280562621.stgit@bazille.1015granger.net>
 In-Reply-To: <169444233785.4327.4365499966926096681.stgit@bazille.1015granger.net>
 References: <169444233785.4327.4365499966926096681.stgit@bazille.1015granger.net>
 User-Agent: StGit/1.5
@@ -47,143 +45,84 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: NeilBrown <neilb@suse.de>
 
-This removes the need to store and update back-links in the list.
-It also remove the need for the _bh version of spin_lock().
+With list.h lists, it is easy to test if a node is on a list, providing
+it was initialised and that it is removed with list_del_init().
+
+This patch provides similar functionality for llist.h lists.
+
+ init_llist_node()
+marks a node as being not-on-any-list be setting the ->next pointer to
+the node itself.
+ llist_on_list()
+tests if the node is on any list.
+ llist_del_first_init()
+remove the first element from a llist, and marks it as being off-list.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc.h        |    3 +--
- include/linux/sunrpc/xprt.h       |    3 ++-
- net/sunrpc/backchannel_rqst.c     |    5 +----
- net/sunrpc/svc.c                  |    3 +--
- net/sunrpc/svc_xprt.c             |   12 +++---------
- net/sunrpc/xprtrdma/backchannel.c |    4 +---
- 6 files changed, 9 insertions(+), 21 deletions(-)
+ include/linux/llist.h |   42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 8ce1392c1a35..c1feaf0d1542 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -90,10 +90,9 @@ struct svc_serv {
- 	int			(*sv_threadfn)(void *data);
- 
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
--	struct list_head	sv_cb_list;	/* queue for callback requests
-+	struct lwq		sv_cb_list;	/* queue for callback requests
- 						 * that arrive over the same
- 						 * connection */
--	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
- 	bool			sv_bc_enabled;	/* service uses backchannel */
- #endif /* CONFIG_SUNRPC_BACKCHANNEL */
- };
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 4ecc89301eb7..f85d3a0daca2 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -57,6 +57,7 @@ struct xprt_class;
- struct seq_file;
- struct svc_serv;
- struct net;
-+#include <linux/lwq.h>
- 
- /*
-  * This describes a complete RPC request
-@@ -121,7 +122,7 @@ struct rpc_rqst {
- 	int			rq_ntrans;
- 
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
--	struct list_head	rq_bc_list;	/* Callback service list */
-+	struct lwq_node		rq_bc_list;	/* Callback service list */
- 	unsigned long		rq_bc_pa_state;	/* Backchannel prealloc state */
- 	struct list_head	rq_bc_pa_list;	/* Backchannel prealloc list */
- #endif /* CONFIG_SUNRPC_BACKCHANEL */
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index 44b7c89a635f..caa94cf57123 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -83,7 +83,6 @@ static struct rpc_rqst *xprt_alloc_bc_req(struct rpc_xprt *xprt)
- 		return NULL;
- 
- 	req->rq_xprt = xprt;
--	INIT_LIST_HEAD(&req->rq_bc_list);
- 
- 	/* Preallocate one XDR receive buffer */
- 	if (xprt_alloc_xdr_buf(&req->rq_rcv_buf, gfp_flags) < 0) {
-@@ -367,8 +366,6 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied)
- 
- 	dprintk("RPC:       add callback request to list\n");
- 	xprt_get(xprt);
--	spin_lock(&bc_serv->sv_cb_lock);
--	list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
--	spin_unlock(&bc_serv->sv_cb_lock);
-+	lwq_enqueue(&req->rq_bc_list, &bc_serv->sv_cb_list);
- 	svc_pool_wake_idle_thread(&bc_serv->sv_pools[0]);
+diff --git a/include/linux/llist.h b/include/linux/llist.h
+index 85bda2d02d65..dcb91e3bac1c 100644
+--- a/include/linux/llist.h
++++ b/include/linux/llist.h
+@@ -73,6 +73,33 @@ static inline void init_llist_head(struct llist_head *list)
+ 	list->first = NULL;
  }
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index efe7a58ccbdc..7d4c10e609dc 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -438,8 +438,7 @@ EXPORT_SYMBOL_GPL(svc_bind);
- static void
- __svc_init_bc(struct svc_serv *serv)
- {
--	INIT_LIST_HEAD(&serv->sv_cb_list);
--	spin_lock_init(&serv->sv_cb_lock);
-+	lwq_init(&serv->sv_cb_list);
- }
- #else
- static void
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 28ca7db55da1..fee83d1024bc 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -705,7 +705,7 @@ svc_thread_should_sleep(struct svc_rqst *rqstp)
  
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
- 	if (svc_is_backchannel(rqstp)) {
--		if (!list_empty(&rqstp->rq_server->sv_cb_list))
-+		if (!lwq_empty(&rqstp->rq_server->sv_cb_list))
- 			return false;
- 	}
- #endif
-@@ -878,18 +878,12 @@ void svc_recv(struct svc_rqst *rqstp)
- 		struct svc_serv *serv = rqstp->rq_server;
- 		struct rpc_rqst *req;
++/**
++ * init_llist_node - initialize lock-less list node
++ * @node:	the node to be initialised
++ *
++ * In cases where there is a need to test if a node is on
++ * a list or not, this initialises the node to clearly
++ * not be on any list.
++ */
++static inline void init_llist_node(struct llist_node *node)
++{
++	node->next = node;
++}
++
++/**
++ * llist_on_list - test if a lock-list list node is on a list
++ * @node:	the node to test
++ *
++ * When a node is on a list the ->next pointer will be NULL or
++ * some other node.  It can never point to itself.  We use that
++ * in init_llist_node() to record that a node is not on any list,
++ * and here to test whether it is on any list.
++ */
++static inline bool llist_on_list(const struct llist_node *node)
++{
++	return node->next != node;
++}
++
+ /**
+  * llist_entry - get the struct of this entry
+  * @ptr:	the &struct llist_node pointer.
+@@ -249,6 +276,21 @@ static inline struct llist_node *__llist_del_all(struct llist_head *head)
  
--		spin_lock_bh(&serv->sv_cb_lock);
--		req = list_first_entry_or_null(&serv->sv_cb_list,
--					       struct rpc_rqst, rq_bc_list);
-+		req = lwq_dequeue(&serv->sv_cb_list,
-+				  struct rpc_rqst, rq_bc_list);
- 		if (req) {
--			list_del(&req->rq_bc_list);
--			spin_unlock_bh(&serv->sv_cb_lock);
- 			svc_thread_wake_next(rqstp);
--
- 			svc_process_bc(req, rqstp);
--			return;
- 		}
--		spin_unlock_bh(&serv->sv_cb_lock);
- 	}
- #endif
- }
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index bfc434ec52a7..8c817e755262 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -263,9 +263,7 @@ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *r_xprt,
- 	/* Queue rqst for ULP's callback service */
- 	bc_serv = xprt->bc_serv;
- 	xprt_get(xprt);
--	spin_lock(&bc_serv->sv_cb_lock);
--	list_add(&rqst->rq_bc_list, &bc_serv->sv_cb_list);
--	spin_unlock(&bc_serv->sv_cb_lock);
-+	lwq_enqueue(&rqst->rq_bc_list, &bc_serv->sv_cb_list);
+ extern struct llist_node *llist_del_first(struct llist_head *head);
  
- 	svc_pool_wake_idle_thread(&bc_serv->sv_pools[0]);
++/**
++ * llist_del_first_init - delete first entry from lock-list and mark is as being off-list
++ * @head:	the head of lock-less list to delete from.
++ *
++ * This behave the same as llist_del_first() except that llist_init_node() is called
++ * on the returned node so that llist_on_list() will report false for the node.
++ */
++static inline struct llist_node *llist_del_first_init(struct llist_head *head)
++{
++	struct llist_node *n = llist_del_first(head);
++
++	if (n)
++		init_llist_node(n);
++	return n;
++}
+ struct llist_node *llist_reverse_order(struct llist_node *head);
  
+ #endif /* LLIST_H */
 
 
