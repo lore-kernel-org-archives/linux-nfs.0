@@ -2,228 +2,132 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 72991CA0EC7
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:01:16 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ECB74CA0EC6
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:01:19 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244405AbjIKWAj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Sep 2023 18:00:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59224 "EHLO
+        id S1355548AbjIKWAn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Sep 2023 18:00:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53842 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1352340AbjIKVpB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 17:45:01 -0400
-Received: from NAM10-BN7-obe.outbound.protection.outlook.com (mail-bn7nam10on2070e.outbound.protection.outlook.com [IPv6:2a01:111:f400:7e8a::70e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B78AC869E
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 14:00:47 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=QvotIYWl2cciyt4lmCmdWOvjKwtFBZYaZ1Wbk+7ysfl4iwNAgSS8SvEQPQmoulmKesF7aN6E6AoHrZk2lxY4V6STSuaGt6Vo5ne+G930uC47Hejqf2SmFBqu7OohKHbOx6gS0yg8B6ZAX/SKhz43E+mxiimnTPBchrl6BGzt1bDSz1FS0EsyOmg/JobEfsDb9lkdNkxQ+B1K3CrebPQ479kL4x798vFtyC4612iWzkNUgeObTMhEoXez1s0N6AJqTsoX//DMAPVUbsbdswebYZsl+cZ3sSZL46CTLIZnnXuMclneMHcQ22VG7HM+YVHYeqpm3MUVbzUET1ji1aH12Q==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector9901;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=mbZDQM+iF8ymSaJTQYDF6xNArSXrC0ZXpLB+75+WRB4=;
- b=hQTnBDzCxr9HQhJha3DmYyWsuyOv+CQIZ0cAVrCxHN53FwrMxEYm3yIDbPrtUdZ6nXr79/SsskTWyHcu5XK2QqRlsObRC6lUAhaQjig7GEB8GyMlm+t2p86Q8Njdk36XTftF+YF+zcVQKSZ5h3W4cKoM/NPfKLW1a5ZpwXxg9J94Uw4Rp2QoZ4kMl1CEPGJDW8AzHUSL6JQIMXm+CU2O/JjzQTi1Tzlv4OeqSOgUMXpjrIX3YKtTvT5rqGl+vG4DEaY5+4L/3o5UEK11FoGZQKb++0t0AJ0nbnUg9XCXyFSAQa/5rZXSigO8IEllgh9fYAzIXRasEQSyxM+KSkdE7Q==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=mbZDQM+iF8ymSaJTQYDF6xNArSXrC0ZXpLB+75+WRB4=;
- b=DKEvS/4R+ykrEG39R/QWCLocpVQqgfl/N6iIKrC8io8JtPlpP56r26DRhtnQ94b4YsP6oYeSwQbQd+66EbzqWtz8iAWGXoMa62He/mf3yng3C+gJYA3bPR3lGufym66PAUo4+jNgLjtBWRoxZe/YaMkJ+l2GiBMPVkYQgYLyic0=
-Received: from CH0PR13MB5084.namprd13.prod.outlook.com (2603:10b6:610:111::7)
- by DS0PR13MB6251.namprd13.prod.outlook.com (2603:10b6:8:116::20) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.6768.35; Mon, 11 Sep
- 2023 20:54:38 +0000
-Received: from CH0PR13MB5084.namprd13.prod.outlook.com
- ([fe80::6f5a:139d:2430:b061]) by CH0PR13MB5084.namprd13.prod.outlook.com
- ([fe80::6f5a:139d:2430:b061%4]) with mapi id 15.20.6768.029; Mon, 11 Sep 2023
- 20:54:38 +0000
-From:   Trond Myklebust <trondmy@hammerspace.com>
-To:     "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC:     "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Don't reset the write verifier on a commit EAGAIN
-Thread-Topic: [PATCH] nfsd: Don't reset the write verifier on a commit EAGAIN
-Thread-Index: AQHZ5PItxc5QHNJFo06qneQD69ytrg==
-Date:   Mon, 11 Sep 2023 20:54:37 +0000
-Message-ID: <f754d8a170b967d1523d103837eaeeb5e9a6c85b.camel@hammerspace.com>
-References: <20230911184357.11739-1-trond.myklebust@hammerspace.com>
-         <ZP91EwHCt0/c0jvJ@tissot.1015granger.net>
-In-Reply-To: <ZP91EwHCt0/c0jvJ@tissot.1015granger.net>
-Accept-Language: en-US, en-GB
-Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-authentication-results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=hammerspace.com;
-x-ms-publictraffictype: Email
-x-ms-traffictypediagnostic: CH0PR13MB5084:EE_|DS0PR13MB6251:EE_
-x-ms-office365-filtering-correlation-id: 60b4efd7-4b8a-44dc-9592-08dbb3094ff1
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: fxBGPHm7ifOumOxyTr5uCqeS2t34dgsx7z0PAWJQ0Ju5hyL019mn4znuv6uV+MkjkBGG9+sU0kLee2k/mNsZmnod9HUi5XAGZ5+DrKDE2PzP7/KIdOGsu/99NJX29U69IuBYc5TX3G6Vp3tY5hXb/AA9Wo0Hv7ZvJ5Od+3V6yM82c9ilDHCxIf4e0W2BKtSmPTCvK0vnx1TOQP1Z9v68Th+72zP+p2ozkR7Cs/bZcMkLfB9CyHDG/1Ck04hXAp7lFco6jdJCWbVC5XI2tD8J1fyFlWm5yAHNf0gW8YvWNYnUFL4ca/jkSHPpap5da4npPbV0/tL8oUrw2TR6Di/F79xzhZ7gSPsD0Yubx8TRcy88Hm/bW6I8vJj6Yl9Xvee84147wx0gGDTuo1wGBD8mSQkojzaJ6EQpI8yVwCOZ99N0psBQql3HlQ0JbZj07V5OcFS0Pkm7/jvqUHhgRpc5NyLyElf5MYE6/1KxNGCDGEDjvQTXkXcwdZkYl4JvoDs4Zahv+T1EdTdvjhiqdoaTknCbGQUK4VMtma4SKf/TBxTgvm0UMAFA8TViys03FrCnKR8VAIO6OwJYa+YvVJU4LLu1OHaDhJPSEn1QyP0VsPAMn5IZ52iYYQ+3IFoi0wRcwc3RjnCQCIJ8hQ6mYP3YZs+jZWRtOL84J/MB7jgkOp4=
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:CH0PR13MB5084.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230031)(136003)(366004)(376002)(346002)(396003)(39850400004)(451199024)(186009)(1800799009)(5660300002)(122000001)(38100700002)(38070700005)(6486002)(6506007)(71200400001)(6512007)(2906002)(478600001)(83380400001)(2616005)(316002)(66446008)(6916009)(66556008)(66476007)(86362001)(64756008)(66946007)(76116006)(41300700001)(36756003)(8936002)(4326008)(8676002);DIR:OUT;SFP:1102;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?utf-8?B?RFJVUSsvMkI2UitLNndaS0I0aXJRMVdCUkluZlRmOU5sTDFhS0FocUVYWFFG?=
- =?utf-8?B?Ylo1bDVXd1RQTFpmdDYwV1pYQStmNm9EKzJ1WURqdW8zWk9VcnplVnVoeXJE?=
- =?utf-8?B?cm5lTk5Ec0pKdWpvd1ZYWHNic25RUzlLbjJJdHJjM09Gc3BIdGtnMVEwL2F1?=
- =?utf-8?B?VVpmay9pOEs0RmlWUTVCdFhyZjFrd254d3lBenRmL0ZxS3dzVElXYXZpOUhy?=
- =?utf-8?B?UXFaZ1FIdDhWUXUxV2JNMVErVWxjMnM4U2FSN1hJUENDcmtHbVl2TTdwdGxG?=
- =?utf-8?B?N25hZzI0K0g5TmxETDNyYnAvZ1Q4ZnVHZGhTNjY2ZG9JaE8wWkM4ZURUcy94?=
- =?utf-8?B?WVJXcGhtNnF3a1dKZENGWExRdm1jMjhqZjhTQ2R3UFh0TWh5RU00YUJvTXBS?=
- =?utf-8?B?dGF2dGR0RUZhcFp0Y3pqb1N3T0RVS1AzZENhUzNWNExwV3RKdUo1aTBnUzNS?=
- =?utf-8?B?dFh5Q1Fsa3ZWNkpkY2I2ckJBdGJkYkprelZmZHBmTDgyRmVUQUVnM01IMG9y?=
- =?utf-8?B?R2NsZjcwTlhwbUQzeisrWGJkRGFyK1B3eHFkWHZnMVlxT0RsRlY0Wk1RZEtu?=
- =?utf-8?B?cHFsMUFtYVl1bE9ZK0dpa1hpZHduZ25JUzN3emg0RE9JMk56VlB3cWt1L2t5?=
- =?utf-8?B?WjZJRU5ROENIMC8wbHVvZHNybjBPL1FmSDRHeUJKa0VkV1BJdGZuSVVHSEJa?=
- =?utf-8?B?WWpjY1F0djI2Q0NSaFE5UUxtZ1F5cHQ0aTZJUGVzeTA5YUxDcmNFNkdnbDFq?=
- =?utf-8?B?anVKd2NsYTFHT2xsZXZmdXVYVmlDZVR4MndwblNUaUZyakxzeGNwZTFmckdI?=
- =?utf-8?B?ZFI1TTNjZ1NMd3BpTzZNdkY0WlVIdWZxNzdYN3l1bVdGZzFvblBXQTcweXdQ?=
- =?utf-8?B?SnY3cFFGYlJFdys3QVR0UXVyZ2ZweWFoRzczYjJyVlFTWERQU01qV2tDMzVV?=
- =?utf-8?B?WFZJT1F3VGl0RDNpSm4xMjQrVXdqRmI5Zkdyb2ZkNUpXdjhRT0ZUelRBWDdN?=
- =?utf-8?B?SUF2dGQrNWpkaTBNcXNNdytjWGQvMWR5Ly9Pd29uKzc3SUNkRjBPOURSWDJN?=
- =?utf-8?B?cUo1KzJMOG5EMU1vWVFFdjJwVnBZK1FER0NkaCtBenhVN3dIczc2UTBCbzVp?=
- =?utf-8?B?bVdNYXBLQTZjaHJ3TVhnYUllVjhWaU5lYjgveUp4RVJpM0FFY2Qzd1RGcnlz?=
- =?utf-8?B?eE1pY0lNYmVmUGZ1dEl6Q0poTE5XREgyK1plT0VLVTFuNjVyZStRMlRnOEJ1?=
- =?utf-8?B?a05JTWp0aHcrKzFjWDloZXNybXduTy9PRkgxbm9qMjBzZEw3NStDMVhZWlh0?=
- =?utf-8?B?Yi9QVVVtRDREM1gyeWpEOHBUaWdJT0R5OHp2RHIzdTdQSEo2aUozV1BEclN1?=
- =?utf-8?B?cUlEMytTSFd3b2Q2cUN4b2VOMkRhTVpDRlZ5ZjFJTmxBa2pyWTA0akpBSUpC?=
- =?utf-8?B?QWNCV0cyblkwQzQ0UWgyOUlKV2JrNkhZVm9xNDdFeDNkMzQ5WnprWUxobGZG?=
- =?utf-8?B?ZFJubXYyT29EUmFqTGkza0tBRXJlWXFaR3U1THlQSGJ2Q1MwQmJMaGFVTWtl?=
- =?utf-8?B?M2Y2UzR1MHVObnc3Z2VNS0ova2tFWXVpTExtajVpSUNqQmR1RHlScXoxRmVU?=
- =?utf-8?B?S3pBTWg0NVVQR2EyMW4rMDdieUo2WEtpamRwd2g1VURqTEtDRW9VaGNxbTFH?=
- =?utf-8?B?SExhNWtwMlprQXZmY2hrajJ5dXpLTjFwY3NmVlNYSzFoYkRNcE0yTGJKcDdV?=
- =?utf-8?B?SGQ4MzQ2WnpFVzQrbnlsT2NsVHIrelNTaTdkNlk1aFEvcy9kZUtSc1pnR2xv?=
- =?utf-8?B?akpwYkt1a2xlS1BtMXVNUUdpSmt1RDB5TWpVVVJLUUFzZExuN0dLY0RlMC82?=
- =?utf-8?B?aGJCYiszbGplMERpaTgvLzkrSkJVWmxMUkVvMXZkemxuQlNMRGVqREtXSlFR?=
- =?utf-8?B?bjBvUnlEd3piOUhDeTJmUTlEb3U2UVFjWnpWV25wZnZQMHhWV1dPbitMR1hQ?=
- =?utf-8?B?MFB6ZHQ0Q0tqYnpHR2JKRUttQTA1bzFFQm4rSWt2TkRnR3N1R1pmWHVHeURs?=
- =?utf-8?B?YTBIcHYyVGF4U3VseTUwNFcvbVRSZWcyaFhLYVdlaCtWSEEzWjBXWUNkalg4?=
- =?utf-8?B?VSsyZjRkOU84VXJHMU9vQ2FPL0pVcXJGTmNoMktDazhyRFo2NFNzd3N1dFd5?=
- =?utf-8?B?bHovZCtCZG5NaHMrSUkzWDMzNnpCc3Z2U0srd09HdTZ1M2I1b2w4WWFPa2ow?=
- =?utf-8?B?Qml3TkZWc2JRNGU1Uy9uMHo4SXR3PT0=?=
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <B4B34AE132660A4690B06D723D4FC39C@namprd13.prod.outlook.com>
-Content-Transfer-Encoding: base64
+        with ESMTP id S243276AbjIKRCl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 13:02:41 -0400
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A01AF127
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 10:02:36 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AAA91C433C7;
+        Mon, 11 Sep 2023 17:02:35 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1694451756;
+        bh=SmBjocv8IcfIoepIrvAtFygjn3bdJe4VUU/7MxLBt/k=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=mquS37rcCZD8TTy2GV6rUK6VSOQfoqMmIJUDHUTpDJZ9F4/CgDOWADrA8aZPk1KDP
+         xGv0XbLQq8f+f14VKDFshC1EXa2GkNOaqIsoON2U0aUlRNd1QXOIF3XccAB3PDWMg1
+         Sjp2TPBRAYbwXgM0/ysZ3xlIbgfACiJg7KBbW1neGWEA0GRv3Q/RhdVy/nw9iWuPEz
+         jbcteseNf0P/y0zy4Rdh1L3EWLUet1hkL46+679b3l/VVdS52/P5erG8QQRvOGROQn
+         P2a9yskTqUzZsx+9NlBqSfQ76jZAtnjWRfLNmkKugm+0fDq7pBuskrYf8sfsin2lfb
+         XcLqINfcEw62w==
+Message-ID: <3d7271bdcb81239fac471bdb2c4e4ff63d3a65b3.camel@kernel.org>
+Subject: Re: [PATCH] netfs: Only call folio_start_fscache  time for each
+ folio
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Dave Wysochanski <dwysocha@redhat.com>,
+        David Howells <dhowells@redhat.com>
+Cc:     linux-cachefs@redhat.com, linux-nfs@vger.kernel.org
+Date:   Mon, 11 Sep 2023 13:02:34 -0400
+In-Reply-To: <20230608214137.856006-1-dwysocha@redhat.com>
+References: <20230608214137.856006-1-dwysocha@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.48.4 (3.48.4-1.module_f38+17164+63eeee4a) 
 MIME-Version: 1.0
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: CH0PR13MB5084.namprd13.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 60b4efd7-4b8a-44dc-9592-08dbb3094ff1
-X-MS-Exchange-CrossTenant-originalarrivaltime: 11 Sep 2023 20:54:37.9821
- (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: yJXk35SsmkKx4moCWrteQrRhFY96ExEe645hUd+vOT4DZN6vDuDcK7nMKUVL4dpSTb5y5MCQh5lf+kg6uoL1+w==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: DS0PR13MB6251
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-T24gTW9uLCAyMDIzLTA5LTExIGF0IDE2OjE0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToKPiBP
-biBNb24sIFNlcCAxMSwgMjAyMyBhdCAwMjo0Mzo1N1BNIC0wNDAwLCB0cm9uZG15QGdtYWlsLmNv
-bcKgd3JvdGU6Cj4gPiBGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBoYW1t
-ZXJzcGFjZS5jb20+Cj4gPiAKPiA+IElmIGZzeW5jKCkgaXMgcmV0dXJuaW5nIEVBR0FJTiwgdGhl
-biB3ZSBjYW4gYXNzdW1lIHRoYXQgdGhlCj4gPiBmaWxlc3lzdGVtCj4gPiBiZWluZyBleHBvcnRl
-ZCBpcyBzb21ldGhpbmcgbGlrZSBORlMgd2l0aCB0aGUgJ3NvZnRlcnInIG1vdW50Cj4gPiBvcHRp
-b24KPiA+IGVuYWJsZWQsIGFuZCB0aGF0IGl0IGlzIGp1c3QgYXNraW5nIHVzIHRvIHJlcGxheSB0
-aGUgZnN5bmMoKQo+ID4gb3BlcmF0aW9uCj4gPiBhdCBhIGxhdGVyIGRhdGUuCj4gPiBJZiB3ZSBz
-ZWUgYW4gRVNUQUxFLCB0aGVuIGRpdHRvOiB0aGUgZmlsZSBpcyBnb25lLCBzbyB0aGVyZSBpcyBu
-bwo+ID4gZGFuZ2VyCj4gPiBvZiBsb3NpbmcgdGhlIGVycm9yLgo+ID4gRm9yIHRob3NlIGNhc2Vz
-LCBkbyBub3QgcmVzZXQgdGhlIHdyaXRlIHZlcmlmaWVyLgo+IAo+IE91dCBvZiBpbnRlcmVzdCwg
-d2hhdCdzIHRoZSBoYXphcmQgaW4gYSB3cml0ZSB2ZXJpZmllciBjaGFuZ2UgaW4KPiB0aGVzZSBj
-YXNlcz8gVGhlcmUgY291bGQgYmUgYSBzbGlnaHQgcGVyZm9ybWFuY2UgcGVuYWx0eSwgSSBpbWFn
-aW5lLAo+IGJ1dCBob3cgZnJlcXVlbnRseSBkb2VzIHRoaXMgaGFwcGVuPwoKV2hlbiByZS1leHBv
-cnRpbmcgdG8gTkZTdjQgY2xpZW50cywgaXQgc2hvdWxkIGJlIGxlc3Mgb2YgYSBwcm9ibGVtLApz
-aW5jZSBhbnkgUkVNT1ZFIHdpbGwgcmVzdWx0IGluIGEgc2lsbHlyZW5hbWVkIGZpbGUgdGhhdCBv
-bmx5CmRpc2FwcGVhcnMgb25jZSB0aGUgZmlsZSBpcyBjbG9zZWQuIEhvd2V2ZXIgd2l0aCBORlN2
-MyBjbGllbnRzLCB0aGF0IGlzCmNpcmN1bXZlbnRlZCBieSB0aGUgZmFjdCB0aGF0IHRoZSBmaWxl
-Y2FjaGUgY2xvc2VzIHRoZSBmaWxlcyB3aGVuIHRoZXkKYXJlIGluYWN0aXZlLiBXZSd2ZSBzZWVu
-IHRoaXMgb2NjdXIgZnJlcXVlbnRseSB3aXRoIFZNd2FyZSB2bWRrczogdGhlaXIKbG9jayBmaWxl
-cyBhcHBlYXIgdG8gZ2VuZXJhdGUgYSBsb3Qgb2YgdGhlc2UgcGhhbnRvbSBFU1RBTEUgd3JpdGVz
-LgoKQXMgZm9yIEVBR0FJTiwgSSBqdXN0IHB1c2hlZCBvdXQgYSAyIHBhdGNoIGNsaWVudCBzZXJp
-ZXMgdGhhdCBtYWtlcyBpdAphIGxvdCBtb3JlIGZyZXF1ZW50IHdoZW4gcmUtZXhwb3J0aW5nIE5G
-U3Y0IHdpdGggJ3NvZnRlcnInLgoKRmluYWxseSwgaXQgaXMgd29ydGggbm90aW5nIHRoYXQgYSB3
-cml0ZSB2ZXJpZmllciBjaGFuZ2UgaGFzIGEgZ2xvYmFsCmVmZmVjdCwgY2F1c2luZyByZXRyYW5z
-bWlzc2lvbiBieSBhbGwgY2xpZW50cyBvZiBhbGwgdW5jb21taXR0ZWQKdW5zdGFibGUgd3JpdGVz
-IGZvciBhbGwgZmlsZXMsIHNvIGlzIHdvcnRoIG1pdGlnYXRpbmcgd2hlcmUgcG9zc2libGUuCgo+
-IAo+IE9uZSBtb3JlIGJlbG93Lgo+IAo+IAo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVi
-dXN0IDx0cm9uZC5teWtsZWJ1c3RAaGFtbWVyc3BhY2UuY29tPgo+ID4gLS0tCj4gPiDCoGZzL25m
-c2QvdmZzLmMgfCAyOSArKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLQo+ID4gwqAxIGZpbGUg
-Y2hhbmdlZCwgMTkgaW5zZXJ0aW9ucygrKSwgMTAgZGVsZXRpb25zKC0pCj4gPiAKPiA+IGRpZmYg
-LS1naXQgYS9mcy9uZnNkL3Zmcy5jIGIvZnMvbmZzZC92ZnMuYwo+ID4gaW5kZXggOThmYTRmZDA1
-NTZkLi4zMWRhZjlmNjM1NzIgMTAwNjQ0Cj4gPiAtLS0gYS9mcy9uZnNkL3Zmcy5jCj4gPiArKysg
-Yi9mcy9uZnNkL3Zmcy5jCj4gPiBAQCAtMzM3LDYgKzMzNywyMCBAQCBuZnNkX2xvb2t1cChzdHJ1
-Y3Qgc3ZjX3Jxc3QgKnJxc3RwLCBzdHJ1Y3QKPiA+IHN2Y19maCAqZmhwLCBjb25zdCBjaGFyICpu
-YW1lLAo+ID4gwqDCoMKgwqDCoMKgwqDCoHJldHVybiBlcnI7Cj4gPiDCoH0KPiA+IMKgCj4gPiAr
-c3RhdGljIHZvaWQKPiA+ICtjb21taXRfcmVzZXRfd3JpdGVfdmVyaWZpZXIoc3RydWN0IG5mc2Rf
-bmV0ICpubiwgc3RydWN0IHN2Y19ycXN0Cj4gPiAqcnFzdHAsCj4gPiArwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoCBpbnQgZXJyKQo+ID4gK3sKPiA+
-ICvCoMKgwqDCoMKgwqDCoHN3aXRjaCAoZXJyKSB7Cj4gPiArwqDCoMKgwqDCoMKgwqBjYXNlIC1F
-QUdBSU46Cj4gPiArwqDCoMKgwqDCoMKgwqBjYXNlIC1FU1RBTEU6Cj4gPiArwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgYnJlYWs7Cj4gPiArwqDCoMKgwqDCoMKgwqBkZWZhdWx0Ogo+ID4g
-K8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoG5mc2RfcmVzZXRfd3JpdGVfdmVyaWZpZXIo
-bm4pOwo+ID4gK8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHRyYWNlX25mc2Rfd3JpdGV2
-ZXJmX3Jlc2V0KG5uLCBycXN0cCwgZXJyKTsKPiA+ICvCoMKgwqDCoMKgwqDCoH0KPiA+ICt9Cj4g
-PiArCj4gPiDCoC8qCj4gPiDCoCAqIENvbW1pdCBtZXRhZGF0YSBjaGFuZ2VzIHRvIHN0YWJsZSBz
-dG9yYWdlLgo+ID4gwqAgKi8KPiA+IEBAIC02NDcsOCArNjYxLDcgQEAgX19iZTMyIG5mc2Q0X2Ns
-b25lX2ZpbGVfcmFuZ2Uoc3RydWN0IHN2Y19ycXN0Cj4gPiAqcnFzdHAsCj4gPiDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoCZuZnNkNF9nZXRfY3N0YXRlKHJxc3RwKS0KPiA+ID5jdXJyZW50X2ZoLAo+
-ID4gwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBkc3RfcG9zLAo+ID4gwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqBjb3VudCwgc3RhdHVzKTsKPiA+IC3CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgbmZzZF9yZXNldF93cml0ZV92ZXJpZmllcihubik7Cj4gPiAtwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHRyYWNlX25mc2Rfd3JpdGV2
-ZXJmX3Jlc2V0KG5uLCBycXN0cCwKPiA+IHN0YXR1cyk7Cj4gPiArwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGNvbW1pdF9yZXNldF93cml0ZV92ZXJpZmllcihu
-biwgcnFzdHAsCj4gPiBzdGF0dXMpOwo+ID4gwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgcmV0ID0gbmZzZXJybm8oc3RhdHVzKTsKPiA+IMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgfQo+ID4gwqDCoMKgwqDCoMKgwqDCoH0KPiA+IEBAIC0xMTcw
-LDggKzExODMsNyBAQCBuZnNkX3Zmc193cml0ZShzdHJ1Y3Qgc3ZjX3Jxc3QgKnJxc3RwLCBzdHJ1
-Y3QKPiA+IHN2Y19maCAqZmhwLCBzdHJ1Y3QgbmZzZF9maWxlICpuZiwKPiA+IMKgwqDCoMKgwqDC
-oMKgwqBob3N0X2VyciA9IHZmc19pdGVyX3dyaXRlKGZpbGUsICZpdGVyLCAmcG9zLCBmbGFncyk7
-Cj4gPiDCoMKgwqDCoMKgwqDCoMKgZmlsZV9lbmRfd3JpdGUoZmlsZSk7Cj4gPiDCoMKgwqDCoMKg
-wqDCoMKgaWYgKGhvc3RfZXJyIDwgMCkgewo+ID4gLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoG5mc2RfcmVzZXRfd3JpdGVfdmVyaWZpZXIobm4pOwo+ID4gLcKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoHRyYWNlX25mc2Rfd3JpdGV2ZXJmX3Jlc2V0KG5uLCBycXN0cCwgaG9zdF9l
-cnIpOwo+ID4gK8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGNvbW1pdF9yZXNldF93cml0
-ZV92ZXJpZmllcihubiwgcnFzdHAsIGhvc3RfZXJyKTsKPiAKPiBDYW4gZ2VuZXJpY19maWxlX3dy
-aXRlX2l0ZXIoKSBvciBpdHMgYnJldGhyZW4gcmV0dXJuIFNUQUxFIG9yIEFHQUlOCj4gYmVmb3Jl
-IHRoZXkgZ2V0IHRvIHRoZSBnZW5lcmljX3dyaXRlX3N5bmMoKSBjYWxsID8KClRoZSBjYWxsIHRv
-IG5mc19yZXZhbGlkYXRlX2ZpbGVfc2l6ZSgpLCB3aGljaCBjYW4gb2NjdXIgd2hlbiB5b3UgYXJl
-CmFwcGVuZGluZyB0byB0aGUgZmlsZSAod2hldGhlciBvciBub3QgT19BUFBFTkQgaXMgc2V0KSBj
-b3VsZCBpbmRlZWQKcmV0dXJuIEVTVEFMRS4KV2l0aCB0aGUgbmV3IHBhdGNoc2V0IG1lbnRpb25l
-ZCBhYm92ZSwgaXQgY291bGQgYWxzbyByZXR1cm4gRUFHQUlOLgoKPiAKPiAKPiA+IMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgZ290byBvdXRfbmZzZXJyOwo+ID4gwqDCoMKgwqDCoMKg
-wqDCoH0KPiA+IMKgwqDCoMKgwqDCoMKgwqAqY250ID0gaG9zdF9lcnI7Cj4gPiBAQCAtMTE4Mywx
-MCArMTE5NSw4IEBAIG5mc2RfdmZzX3dyaXRlKHN0cnVjdCBzdmNfcnFzdCAqcnFzdHAsCj4gPiBz
-dHJ1Y3Qgc3ZjX2ZoICpmaHAsIHN0cnVjdCBuZnNkX2ZpbGUgKm5mLAo+ID4gwqAKPiA+IMKgwqDC
-oMKgwqDCoMKgwqBpZiAoc3RhYmxlICYmIHVzZV93Z2F0aGVyKSB7Cj4gPiDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoGhvc3RfZXJyID0gd2FpdF9mb3JfY29uY3VycmVudF93cml0ZXMo
-ZmlsZSk7Cj4gPiAtwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgaWYgKGhvc3RfZXJyIDwg
-MCkgewo+ID4gLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBu
-ZnNkX3Jlc2V0X3dyaXRlX3ZlcmlmaWVyKG5uKTsKPiA+IC3CoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgdHJhY2VfbmZzZF93cml0ZXZlcmZfcmVzZXQobm4sIHJx
-c3RwLAo+ID4gaG9zdF9lcnIpOwo+ID4gLcKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoH0K
-PiA+ICvCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBpZiAoaG9zdF9lcnIgPCAwKQo+ID4g
-K8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBjb21taXRfcmVz
-ZXRfd3JpdGVfdmVyaWZpZXIobm4sIHJxc3RwLAo+ID4gaG9zdF9lcnIpOwo+ID4gwqDCoMKgwqDC
-oMKgwqDCoH0KPiA+IMKgCj4gPiDCoG91dF9uZnNlcnI6Cj4gPiBAQCAtMTMyOSw4ICsxMzM5LDcg
-QEAgbmZzZF9jb21taXQoc3RydWN0IHN2Y19ycXN0ICpycXN0cCwgc3RydWN0Cj4gPiBzdmNfZmgg
-KmZocCwgc3RydWN0IG5mc2RfZmlsZSAqbmYsCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBlcnIgPSBuZnNlcnJfbm90c3VwcDsKPiA+IMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGJyZWFrOwo+ID4gwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBkZWZhdWx0Ogo+ID4gLcKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqBuZnNkX3Jlc2V0X3dyaXRlX3ZlcmlmaWVyKG5u
-KTsKPiA+IC3CoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgdHJh
-Y2VfbmZzZF93cml0ZXZlcmZfcmVzZXQobm4sIHJxc3RwLAo+ID4gZXJyMik7Cj4gPiArwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGNvbW1pdF9yZXNldF93cml0
-ZV92ZXJpZmllcihubiwgcnFzdHAsCj4gPiBlcnIyKTsKPiA+IMKgwqDCoMKgwqDCoMKgwqDCoMKg
-wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoGVyciA9IG5mc2Vycm5vKGVycjIpOwo+ID4gwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqB9Cj4gPiDCoMKgwqDCoMKgwqDCoMKgfSBlbHNl
-Cj4gPiAtLSAKPiA+IDIuNDEuMAo+ID4gCj4gCgotLSAKVHJvbmQgTXlrbGVidXN0CkxpbnV4IE5G
-UyBjbGllbnQgbWFpbnRhaW5lciwgSGFtbWVyc3BhY2UKdHJvbmQubXlrbGVidXN0QGhhbW1lcnNw
-YWNlLmNvbQoKCg==
+On Thu, 2023-06-08 at 17:41 -0400, Dave Wysochanski wrote:
+> If a network filesystem using netfs implements a clamp_length()
+> function, it can set subrequest lengths smaller than a page size.
+> When we loop through the folios in netfs_rreq_unlock_folios() to
+> set any folios to be written back, we need to make sure we only
+> call folio_start_fscache() once for each folio.  Otherwise,
+> this simple testcase:
+>   mount -o fsc,rsize=3D1024,wsize=3D1024 127.0.0.1:/export /mnt/nfs
+>   dd if=3D/dev/zero of=3D/mnt/nfs/file.bin bs=3D4096 count=3D1
+>   1+0 records in
+>   1+0 records out
+>   4096 bytes (4.1 kB, 4.0 KiB) copied, 0.0126359 s, 324 kB/s
+>   cat /mnt/nfs/file.bin > /dev/null
+>=20
+> will trigger an oops similar to the following:
+> ...
+>  page dumped because: VM_BUG_ON_FOLIO(folio_test_private_2(folio))
+>  ------------[ cut here ]------------
+>  kernel BUG at include/linux/netfs.h:44!
+> ...
+>  CPU: 5 PID: 134 Comm: kworker/u16:5 Kdump: loaded Not tainted 6.4.0-rc5
+> ...
+>  RIP: 0010:netfs_rreq_unlock_folios+0x68e/0x730 [netfs]
+> ...
+>  Call Trace:
+>   <TASK>
+>   netfs_rreq_assess+0x497/0x660 [netfs]
+>   netfs_subreq_terminated+0x32b/0x610 [netfs]
+>   nfs_netfs_read_completion+0x14e/0x1a0 [nfs]
+>   nfs_read_completion+0x2f9/0x330 [nfs]
+>   rpc_free_task+0x72/0xa0 [sunrpc]
+>   rpc_async_release+0x46/0x70 [sunrpc]
+>   process_one_work+0x3bd/0x710
+>   worker_thread+0x89/0x610
+>   kthread+0x181/0x1c0
+>   ret_from_fork+0x29/0x50
+>=20
+> Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+> ---
+>  fs/netfs/buffered_read.c | 6 +++++-
+>  1 file changed, 5 insertions(+), 1 deletion(-)
+>=20
+> diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
+> index 3404707ddbe7..0dafd970c1b6 100644
+> --- a/fs/netfs/buffered_read.c
+> +++ b/fs/netfs/buffered_read.c
+> @@ -21,6 +21,7 @@ void netfs_rreq_unlock_folios(struct netfs_io_request *=
+rreq)
+>  	pgoff_t last_page =3D ((rreq->start + rreq->len) / PAGE_SIZE) - 1;
+>  	size_t account =3D 0;
+>  	bool subreq_failed =3D false;
+> +	bool folio_started;
+
+nit: I'd move this declaration inside the xas_for_each loop, and just
+initialize it to false there.
+
+> =20
+>  	XA_STATE(xas, &rreq->mapping->i_pages, start_epage);
+> =20
+> @@ -53,6 +54,7 @@ void netfs_rreq_unlock_folios(struct netfs_io_request *=
+rreq)
+> =20
+>  		pg_end =3D folio_pos(folio) + folio_size(folio) - 1;
+> =20
+> +		folio_started =3D false;
+>  		for (;;) {
+>  			loff_t sreq_end;
+> =20
+> @@ -60,8 +62,10 @@ void netfs_rreq_unlock_folios(struct netfs_io_request =
+*rreq)
+>  				pg_failed =3D true;
+>  				break;
+>  			}
+> -			if (test_bit(NETFS_SREQ_COPY_TO_CACHE, &subreq->flags))
+> +			if (!folio_started && test_bit(NETFS_SREQ_COPY_TO_CACHE, &subreq->fla=
+gs)) {
+>  				folio_start_fscache(folio);
+> +				folio_started =3D true;
+> +			}
+>  			pg_failed |=3D subreq_failed;
+>  			sreq_end =3D subreq->start + subreq->len - 1;
+>  			if (pg_end < sreq_end)
+
+
+The logic looks correct though.
+
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
