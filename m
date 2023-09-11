@@ -2,303 +2,307 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 63D41CA0EC3
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 23:18:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D4237CA0EC6
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 23:18:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229639AbjIKXSK (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Sep 2023 19:18:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46714 "EHLO
+        id S231705AbjIKXSQ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Sep 2023 19:18:16 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53534 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1352714AbjIKWZw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 18:25:52 -0400
-Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5366A4E211
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 15:12:39 -0700 (PDT)
-Received: from pps.filterd (m0246627.ppops.net [127.0.0.1])
-        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 38BJcFpt030225;
-        Mon, 11 Sep 2023 22:10:52 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : references : in-reply-to : content-type :
- content-id : content-transfer-encoding : mime-version; s=corp-2023-03-30;
- bh=+H052bTeaUeaB3iQNtbPN0fFKO3QQatrkRPkoOLRKIg=;
- b=ko85xFHsDNBwxGID2n0XYKjSD9FIO/bKZbQL7aGEOdtheLgtBEN+zJG63kCon2z+JDuB
- uOSxMjoJWcqNmOfpYGzIDljQJVt0lTYXooJbzI1tUtW8R3sgbVIGlequNKqimE1DZcWi
- JzTId/vR7G3VIhcvz8DJlyAcJYVvhA/nGnJJ1O2/V+C7dCqO6KZob3/sjkypgcVvxnAF
- /d9zyKEOPOiXGbm/IebsjvwyqJ3OxJNpdwd59uU3I96aAwS+XkrVkekAIMNMXBUa9t6T
- ock7md9GkSHUylrSvjkJMPxMF4VHuOpM/3+QkFNyiZkseZSckNXPDel6yR5SP33ESnLo fg== 
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.appoci.oracle.com [138.1.37.129])
-        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3t1jpatmb2-1
+        with ESMTP id S240472AbjIKVR1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 17:17:27 -0400
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5F4AD8A44
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 14:01:19 -0700 (PDT)
+Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 38BJYkgS022357;
+        Mon, 11 Sep 2023 20:59:22 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=message-id : date :
+ subject : to : cc : references : from : in-reply-to : content-type :
+ content-transfer-encoding : mime-version; s=corp-2023-03-30;
+ bh=beQLJZ5T+Q1N/Lg1lr6t+yov378eLsqRfW2OFEMBfjA=;
+ b=enpt75mIaey5MxO/8gyv3cTouy21dSpFkDDyPUGzSVbSpChooBiPnuV7ekh3792hUcz9
+ PHs2gesl3xMzJb1Qf32ELGh0r71mIMvMiQgWN2ERT5en2dxv5mKISv+b/aINctIfzYyk
+ kCV5rzIYs8MNWe1EvBwfxR7eyJctM3AezGu4/tWt7emfSv7GWXJdXb/DwxgMCGyam+kb
+ GNPudA+U4ljKgI27N8PLjJE/ncpqbl7YUYNwU2Ky9oA5VxYRns9PME/5YbpB7rjQu9JF
+ FqryfpiccbCVvLWgdNe/232KbBs/sVRSdkpKzgFGD8VuYcEzhdxpDu2g1rGA9+pRG6Uy 4Q== 
+Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.appoci.oracle.com [138.1.114.2])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3t1k4cae4m-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 11 Sep 2023 22:10:52 +0000
-Received: from pps.filterd (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 38BKJESa004468;
-        Mon, 11 Sep 2023 22:10:51 GMT
-Received: from nam10-bn7-obe.outbound.protection.outlook.com (mail-bn7nam10lp2107.outbound.protection.outlook.com [104.47.70.107])
-        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3t0f55m0kd-1
+        Mon, 11 Sep 2023 20:59:22 +0000
+Received: from pps.filterd (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 38BKUA4s007582;
+        Mon, 11 Sep 2023 20:59:21 GMT
+Received: from nam10-dm6-obe.outbound.protection.outlook.com (mail-dm6nam10lp2109.outbound.protection.outlook.com [104.47.58.109])
+        by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3t0f54t1dw-1
         (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-        Mon, 11 Sep 2023 22:10:51 +0000
+        Mon, 11 Sep 2023 20:59:21 +0000
 ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
- b=jfWn1x42xvZSdmc0d//dnxr2kuazWsqp7ykTXglv0aKtkNOWvbWw5AA2+wQp90JAj2f2CYjxBnyF1d2ewpgmIvYAtIoWNSFOfpX+Bo/kfDTCkfUEwwg/kQ1/QEdaNL2Eo/cZMgdq7XUHTOAKG+9cq3LxCmfcpOxQZEjgmXSiSYl0oh6brCkx4V5LzMIwt2htTmDdjOHU6vPksWaGYz3eXrvjZQ1rihO2o/+w49YNtvlNRLpYehP8k8jnsNeoYwGvej8yCt7qr9JbBBb/jkMXZ5lIhZQuUvX96MDgMzt+JktXkoKs0QkO5kJNuCkdxpM9bzY6Nv0wNM41iyevV3fR2g==
+ b=R/l/pM253cpzrswSuS9+v2ee6MdahC9ehNgqbQ8US9miWsTMLFEmBijVmW/mok7pcrm8a5yAcgymrOdiWMlR7NXYqSqdW6lw10PE3dtEkgJMFSC/zS5mB2KopwHounWoqSHJ5ZI+PNkv23PCKQtQMWLn4jZJDbwxf9EW+9xNyFgcHex8Z28koAJt6VoF3mLATqzDjoAJf9mQiExyEuLZNB2iUizKgusewC40nG3+swObIPNBMlbqPkxIP6PojSw043PeiJV+XDBGoDOCl2nzN8XNXjFGVi70bGTiSioVkuLvzQ4/To52uu+dZ5X0XOydC3jn7vq0CaeZHzmZqeCT4g==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
  s=arcselector9901;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=+H052bTeaUeaB3iQNtbPN0fFKO3QQatrkRPkoOLRKIg=;
- b=IvTJ3W+8QDmoB3SeTPVfOxtNY36nf/hEDX8yJCOi4J1LwEjXyxa/3bwc3X4hUccL9BS+LJdYKeK9ZIR4CRp7gm4zErs49lEi3hVgSEfTb+eIdBb/d04BWIDwTlaSUQtgXuRRy9o+2nfurO3zVxyLPlkn+ZRniDrteftA/u6M+wWcWyrCZ4U3EvrHCqc08ZsUfa5139CFPZEx4+8gLwP9WY+SqmEacLNFYIkgxClYr+YY2TmrC3Mkopu41iOXYqHO2/tqRn0bSjT6tuMnNkdLO+zcnfArfGcFYvEi8v+R71/Y2Bi9NaLi8XKIfTM0bquw2YxOH/4Yt9baU+om0lxfvA==
+ bh=beQLJZ5T+Q1N/Lg1lr6t+yov378eLsqRfW2OFEMBfjA=;
+ b=S9s63VECmj+I8rgjpGoCKGlaHPUIjo+Q9/85Sq1DCrIaA17UJc5Om0NaWlR9cC5x2r2/wxctBdXfi86shV6CNek3koP2BD0jzOIjM+nTPARaeL9ZNojyeocVDZwL8qNUZxchsZ2ZB9euWUBJXOaCbhUl+pMu/HE7FwDtR5+1c3W4Ol4Fdes+LzYs4Knam7E1h4bgKzDQndneWJNkH5sfff9Y2rfa7SAH1ajXOnQrvh8bBY7OcOTMaKPMcz+L+Mpqx5n+zAFY8eLGofnSdcJJT7RRxKFu1S6WdWuJxfooRCH205xTVQFAz/LDfbwCVdG+MTOzWHirBTvm8Gufm3gyuA==
 ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
  smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
  dkim=pass header.d=oracle.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
  d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
  h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=+H052bTeaUeaB3iQNtbPN0fFKO3QQatrkRPkoOLRKIg=;
- b=MviVWYH7wei6IPrfWJxLyX8OO2irp0cyW+TIndwiVgXk2u9ogdOgMeuxfkXmnczxu0rh/lijKe+187mbf07c+EiXV+ZwanqihQhBZw92xtDsihGzjIrmcp3CD3ke88GoUjquURNnNAcvaJR6t1IaUE5CoFn/f1nmbWcZoMDXoek=
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
- by LV8PR10MB7968.namprd10.prod.outlook.com (2603:10b6:408:200::15) with
+ bh=beQLJZ5T+Q1N/Lg1lr6t+yov378eLsqRfW2OFEMBfjA=;
+ b=D6gMAPMu7ljEsZe7E5J+v+/ISx7T32tvuHSXZIaw+ZcH3o0Bxd4UAYzO0RsSf6b4IZvC9TMR1Vk98CExoF3x5NnIce9qjSAUeg86P5WxrOFBjCFl3Li7j4eusJw8FRCt/aXEkNm1J+tpR/l09jDAerL/i/gTxbI3USWau6XcGho=
+Received: from MN2PR10MB4270.namprd10.prod.outlook.com (2603:10b6:208:1d6::21)
+ by BY5PR10MB4114.namprd10.prod.outlook.com (2603:10b6:a03:211::16) with
  Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.6768.35; Mon, 11 Sep
- 2023 22:10:49 +0000
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::2990:c166:9436:40e]) by BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::2990:c166:9436:40e%6]) with mapi id 15.20.6768.029; Mon, 11 Sep 2023
- 22:10:49 +0000
-From:   Chuck Lever III <chuck.lever@oracle.com>
-To:     Trond Myklebust <trondmy@hammerspace.com>
-CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Don't reset the write verifier on a commit EAGAIN
-Thread-Topic: [PATCH] nfsd: Don't reset the write verifier on a commit EAGAIN
-Thread-Index: AQHZ5ODKf/tGr/TkjUO+olrPJo1n67AWD0yAgAALTICAABU+gA==
-Date:   Mon, 11 Sep 2023 22:10:49 +0000
-Message-ID: <684AB86D-ADC7-44B0-BA54-FC23DB0B4670@oracle.com>
-References: <20230911184357.11739-1-trond.myklebust@hammerspace.com>
- <ZP91EwHCt0/c0jvJ@tissot.1015granger.net>
- <f754d8a170b967d1523d103837eaeeb5e9a6c85b.camel@hammerspace.com>
-In-Reply-To: <f754d8a170b967d1523d103837eaeeb5e9a6c85b.camel@hammerspace.com>
-Accept-Language: en-US
+ 2023 20:59:17 +0000
+Received: from MN2PR10MB4270.namprd10.prod.outlook.com
+ ([fe80::c431:a107:b201:f9e]) by MN2PR10MB4270.namprd10.prod.outlook.com
+ ([fe80::c431:a107:b201:f9e%6]) with mapi id 15.20.6768.029; Mon, 11 Sep 2023
+ 20:59:16 +0000
+Message-ID: <f204d9bd-8b60-463d-5c59-9761ca25308e@oracle.com>
+Date:   Mon, 11 Sep 2023 13:58:58 -0700
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0)
+ Gecko/20100101 Thunderbird/102.14.0
+Subject: Re: turning on s2s copy by default in knfsd
 Content-Language: en-US
-X-MS-Has-Attach: 
-X-MS-TNEF-Correlator: 
-x-mailer: Apple Mail (2.3731.700.6)
-x-ms-publictraffictype: Email
-x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|LV8PR10MB7968:EE_
-x-ms-office365-filtering-correlation-id: b7be1059-83cb-4dab-974a-08dbb313f4f6
-x-ms-exchange-senderadcheck: 1
-x-ms-exchange-antispam-relay: 0
-x-microsoft-antispam: BCL:0;
-x-microsoft-antispam-message-info: P9De0r/rtGtPvmrM2FOJBDVCiEFPQBhU5nVl5ZVKXZX00+MsTXvrkLu6EYEMpTRjLzYwiy8aMNFtU1e+ul8UlMfOwjnHfAnD9hxvqMpVH2+LcGO3ydne6zdQHJTp0eOxKOwvBCG3sKkUMzqjvCn+0I6kZVav75X/fx1DJOiMuu1XthNvXFH09F/RllnTF5B8Py4UGvONWCIWZQRlsX4Gr6iZsOm7OYV11G65Zfqs702aET4TvlwpWupvS2fQKzSg/L0SZ6/t4en+ZZ/tAjfaiDJDVkjSTSkO9PiGyJbR+94U9G2P6awzOxFJdyrrxvHSLpe5eLzZ3TROgZNn87sv3dQSA09eflGnsVAbOC5+aWA/sqefvfzv/0He9U51uP4QKeMNo16iECzUgl+sNipbzYG9ecG2e5m+ivFPj4uEfCpxll5vU5D/GyoAFMdHQSS6zo0ILfK9mD1K/0PXF+6EYW1GIGgEfNMSNi0R9K5NoYkZcZLflhXmMqOTBOWo1NbVtcVtXXugQlKT9Chy3SAT/hrZpIeIznTHrpHan0cwz5uGmVmh7a0uYQqyETf32mdsWYQ/qVFZ7xpqR/iU63Zl5K+3WKIEu0+AbT+IqngT0UT1/OCjCZuE0wOxK0LsyN6zbBwmmt55kYl8pryajH8fFQ==
-x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230031)(376002)(346002)(39860400002)(366004)(396003)(136003)(1800799009)(186009)(451199024)(83380400001)(478600001)(41300700001)(8676002)(5660300002)(4326008)(8936002)(6512007)(6486002)(6506007)(53546011)(71200400001)(316002)(6916009)(26005)(91956017)(66446008)(76116006)(66556008)(66476007)(64756008)(2616005)(66946007)(122000001)(2906002)(86362001)(38100700002)(38070700005)(33656002)(36756003)(45980500001);DIR:OUT;SFP:1101;
-x-ms-exchange-antispam-messagedata-chunkcount: 1
-x-ms-exchange-antispam-messagedata-0: =?us-ascii?Q?KR2RALqMyqCYIoRh7Te6eR8CwhGwapNrKQPrXRA/dueIiHxSb69dd2g53D6r?=
- =?us-ascii?Q?uDrnILCRH60eUmmV2vmbfCtFeo/IzN3LV2Da1DiB/I1+VlV+ItN0/qAgUFYR?=
- =?us-ascii?Q?FODeac9iNGvcsMQZ4lzgr8Y+lg3ULtUwmTSZiijjjDnaKPy/dVuqRiiCsbIs?=
- =?us-ascii?Q?BACE4p+vjJgJV5/iEnS9wXjaaffdPJ8vr92rOWFbtfHU2stqTVMrb3V3kRAh?=
- =?us-ascii?Q?KzWX4Ww0qaAyspvHPhZcr01f8+UhPX2cRpFD82D42epj4QTUwks3kvh/LreL?=
- =?us-ascii?Q?WB0sw8kVXZSXPju51Azo7P1aOJltboPh1CqC9V0oUsVh8KNAosiLYhEnWirO?=
- =?us-ascii?Q?jy9mgYWBMs0l7ed4zXbT7ooN14eJApTUAmT+CtbV1agiRo7/tFPhu1547zxv?=
- =?us-ascii?Q?Xrrv6g2DngGnyZayupCPO/fKJ3Kmsy56vY6WiRwGrthAGKyPBO06NBjKab+I?=
- =?us-ascii?Q?2ZCiHSoannuRjkTQNHBy4roKGWGGvqLvJD8TWkiZG5VhHjJYTWBJzgBusUjK?=
- =?us-ascii?Q?/cyJ4HaZ7MJ+lODOQM37kMOJuEBsbb4lmBJAQQ3u+Vng77sJqABZRmdHm0Hf?=
- =?us-ascii?Q?S2FOzpqTWvaraX5GIFuPWlxYk/WKsUUC/0urqPxeCtIFboCI1qp3SDkWr5IM?=
- =?us-ascii?Q?sJwfUa8b2vsIsdOTQClDzY5Rc/KQB/l+x7+oxVxaVmP6mXFBtarxEKGkEm50?=
- =?us-ascii?Q?V2+3urOOdRBGEMX+iAkUs8YFKQQNjAmEk/x9QPIzp0QclyyBvpCq5NyNkHla?=
- =?us-ascii?Q?t4KnvxxBwpi2kzh+Qofhs3t2hHqHh9Ygwgd6buiMDW1GZ6TJVqhPxNqIPCD0?=
- =?us-ascii?Q?Dhf6jSuBgNneKHrfyfoJ6BHKSXVO7oxtkkvGVyaScAG0fahkkHntUID1WmFr?=
- =?us-ascii?Q?GDlWuKsw+DG6nq7S/LHkn3N/VGON1wpoT9lSJdXmWyGRHKTeMO0tF/Cy2PUS?=
- =?us-ascii?Q?mK30u84xtukf16Zz/gkBpN9zdChPdn44D/58Pkx3Gptvl3SJnsN4CIRMaHH8?=
- =?us-ascii?Q?ACHdty34P6Q9TscibFStmr/dokOkK1bfCis27vsebCGoECU1GztCUnwzLeeR?=
- =?us-ascii?Q?8bwEsYVxeTck7ssOaAcQ8XQ84Zfjnv34c3t5w7xEbPKzVQ/r+7k4rYfX/Fed?=
- =?us-ascii?Q?J5CnNnNHzH3KKkdnFSIrprg3k86YkEUv5uJrOZps6vdZeqx0/0XgyB3vK53v?=
- =?us-ascii?Q?5Y936ZRRbTlLU2H3L90mvDiVulUZAw9GLJZVZZOJpxuge4nISFxxsXxeGDYB?=
- =?us-ascii?Q?JkH0UeIA2tKPNv+jpnG4K0CSmUTWSHHDr11BN5HTLp3fKuUdTz2KLe6TdNqf?=
- =?us-ascii?Q?+HR+k6RFfc99ThxnFwzTx3MGQ+roiIjihbZMzFgoGY16TWZllzE7IazEShpG?=
- =?us-ascii?Q?jHki2QkERHZolef2e8Z8x7kUomvMdlC896BZ241endCGpUhpmHcdH/zy+g+g?=
- =?us-ascii?Q?ud1LJ1FYifyFZrhPVdaMCZvrrXsj35XX0UBcL2/dwwQxIwTwp7XgCKTKAsPW?=
- =?us-ascii?Q?Tt1tUObicKk7Lb+amc1tIUYOE4JAQoes7oZV9TNqAGWXDGB/AocR1wNq/4i8?=
- =?us-ascii?Q?V1BTqETXHvCntJx/cNGnZlqnn6Fs+ZzZYN/2mY/WM2q3ABA68/r0W26AqFJ0?=
- =?us-ascii?Q?/Q=3D=3D?=
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <EE6A8C45387A2F43AB157AFA928AD1E8@namprd10.prod.outlook.com>
-Content-Transfer-Encoding: quoted-printable
+To:     Olga Kornievskaia <aglo@umich.edu>,
+        Jeff Layton <jlayton@kernel.org>
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Dave Wysochanski <dwysocha@redhat.com>,
+        Steve Dickson <steved@redhat.com>,
+        Olga Kornieskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+References: <b1ae55f1c835ea6b30089a9377ae67c40d43a0fc.camel@kernel.org>
+ <CAN-5tyHejgLNPrF-bybFqrkiEvvFb+SZ9NHne9RiQ0kVwESd5A@mail.gmail.com>
+ <CAN-5tyFrNGFbb3Um_=SB0TYGcRoofn9vPqsbjQmNnBf3RkRpog@mail.gmail.com>
+From:   dai.ngo@oracle.com
+In-Reply-To: <CAN-5tyFrNGFbb3Um_=SB0TYGcRoofn9vPqsbjQmNnBf3RkRpog@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
+X-ClientProxiedBy: LO6P123CA0022.GBRP123.PROD.OUTLOOK.COM
+ (2603:10a6:600:313::15) To MN2PR10MB4270.namprd10.prod.outlook.com
+ (2603:10b6:208:1d6::21)
 MIME-Version: 1.0
+X-MS-PublicTrafficType: Email
+X-MS-TrafficTypeDiagnostic: MN2PR10MB4270:EE_|BY5PR10MB4114:EE_
+X-MS-Office365-Filtering-Correlation-Id: 56379d60-d733-4fe4-efe8-08dbb309f60d
+X-MS-Exchange-SenderADCheck: 1
+X-MS-Exchange-AntiSpam-Relay: 0
+X-Microsoft-Antispam: BCL:0;
+X-Microsoft-Antispam-Message-Info: 5L98R/l3wNahMb5Hn+XfbjfhRqFEMponDpmZfgewB17qI39aGARhA0D5sB05ouVOzMiE9BZWVpZdmAZzWiIjJcrg9I8raeBMYoJZktmUdRGNyMyLEaRCvK7x8FJJcHw3eVa6uyjC9937dCxurAGCX+/l3bygyPNarNDwRDNFTy65++Dei3eFBRF0vaTHH9Km4KY+vw+QwSEUUrGPIF0R1qJsRnopfzYf5GGSv/9ut00g0bl2qvlCYfG17GPSOfh0UYZv5kZBRNDZbe06MDKZP4URqPKf3SYWphZOsmLWfWbbGlwHXb1ueM8d0GPFV5Gyyr7LyQNwCvG+z1jqsotiKxibAMC6l+VW8M83X3QH8efUPBgEnhLgjcje+4lCmaR5MLWWeDqJVxxEmhBrpJcIZga8MDwz7+WkujJJYH4osg+MlR3qcZDwpSmuRoGoCn7sG2dCKzDYArHyr120/h7tK5de23Xjbv4WxyW4fBA6xMSwxTwhcQoT2DVW56iQctzh51i9OaoIbbv/ccR6FLXk30HvalW3uyNbCyw7AczKxaskpFVxJhQDt6hWlU3vBVf/vDbx6xF/n1DhaGFDGtVt1Z6yJFcg7F3dLOFXANu8dWXZrGGT1nHK0ltvEzJ2+gNYp66ex9USF2dydyUVEMu6Wg==
+X-Forefront-Antispam-Report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:MN2PR10MB4270.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230031)(376002)(346002)(136003)(396003)(366004)(39860400002)(1800799009)(186009)(451199024)(66899024)(9686003)(6512007)(2906002)(83380400001)(26005)(2616005)(54906003)(66556008)(66946007)(8676002)(4326008)(110136005)(8936002)(316002)(41300700001)(5660300002)(66476007)(6666004)(53546011)(6486002)(6506007)(478600001)(38100700002)(31696002)(86362001)(36756003)(31686004)(17423001)(43740500002);DIR:OUT;SFP:1101;
+X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-MessageData-0: =?utf-8?B?RDRDRjltMml5WFRwdnNTS25FMGFaVW1wd3VKWnhMRjJXWDhSRW9VMmRkSHV6?=
+ =?utf-8?B?L0hvYjVKbjk0cFphN1RNdzZNRWs2ZzBkZi9sQWlyc2l5aTQzbklIaE9UNUlt?=
+ =?utf-8?B?T1ZVMzhkd1R6VDJrVmNCRlpjRVZCU2VWSWMyb2xYOTVVOStPZlFHOTFUMEZ2?=
+ =?utf-8?B?S2dyYUs4SUtmU2FPWTNJNjgvY2JBSTJoTXFKUzdLQnRSQ1ZXZVVJM25sSXA1?=
+ =?utf-8?B?NnV0b3RlVmJBYzZIbUFOOWluQ1ZjWUJCaS9NMldtRnp2eU5tTGdHL05rbGxV?=
+ =?utf-8?B?V0QwYi9mTW5pSW1RSWlXRFR5bk5QVVJ4NlFOU2NGMEpQb1ZIWjFrZ09SZTdo?=
+ =?utf-8?B?TG9tWTluZFVvYmR6eURGSHRML0NjK0REcnZmaEZ6NVMwdDhHNWZrN1kwRVNR?=
+ =?utf-8?B?YTZUbW1CU0JQOE92WFpJZVJETWs0NHhIWTI2bzJiOEkzUWVNSkIySVlub01P?=
+ =?utf-8?B?NDRVVHRsUGJZSlEzVjR4NjVQdmQ2M01YMU0xUzNRdnRReVFZeURlV1B4QWhP?=
+ =?utf-8?B?eGdIblo4bzMwNExVQzRUeUgzYnh5TFMrRmEwR1lWSUVwaGx4aTZhNGZWRFdD?=
+ =?utf-8?B?ZVVadXVyTXJ5c29NeGlINWx5My95UXRoSEREaEtpUkIyR2hpKzNWQWxidGlO?=
+ =?utf-8?B?eHlNMnJXK0J2YWt5TGtIangzeTNSc2hVa2VuZy80R3hWLzh3dysydW9XZmxO?=
+ =?utf-8?B?L1RVK1JIdFlhK3VscmI4WEZaVGRXT3R3emRZN1B0cXJidmpCUjdaUWh3RTR4?=
+ =?utf-8?B?VXRKWDd3WjdrZGhlMjZERkdmWWl5ZGNHM2FWa2J3VG5lM25iMm5hd01QNGJD?=
+ =?utf-8?B?eUt2d3RZUEZXbXd6VFRUQmViT1g2bmhJenBneFRsZGcwd0x5V3M2WVZxOEZL?=
+ =?utf-8?B?V3RBdVVkeEVVcXJMcnNicmE1amVLdGpjZ2xYT2Znc0pvTWdva3JOZmcva1VT?=
+ =?utf-8?B?SHhqMkRTM1Q4dnh0cFIvSVNlbXExUERlMmRpT1FoWldGVW9KUUpmYVdaK0p2?=
+ =?utf-8?B?b3hNMENSYk5mUnVEMHJiSE5IR0JtK3NwTytGWUc4cFZDamFFRG5pKy8ralk2?=
+ =?utf-8?B?RDNhMlJ0akJRa215QkFLQkNCVkRTZ3grTzRiRjR1SkQzRWhuajZFdjF4d24x?=
+ =?utf-8?B?Ry9Ed0psOGhCc0xEMmI0TjZndXRiWVdUUlNXME5Sd1ZEYVVrYlJnQ25ndjR0?=
+ =?utf-8?B?cWlXNzFtZGovemlrVEQvaWlWd3dnWnV3bVJINkhLMThUNHEzY1l6MlBxM3hh?=
+ =?utf-8?B?dWNQakloSmVkcVNRUUZMNXhqRVJWa1Vvdk9IZXdVdTZYS1Z4c3loSktPM1Nr?=
+ =?utf-8?B?UEJnRXZZNU9kaEpsN2ZtN0IwY0tuREMrdlM3WlBtWkpNeHU1N01wUGppWmRj?=
+ =?utf-8?B?dHVEQU1McU5EdldYMFN0Yk4wYXZIT3ZPOTdhZ3c2Qk4vdU1VL1JVQWZTTGx2?=
+ =?utf-8?B?NDBrSEoyMzlQZ0U2Z0h5cWJIWWVLbzhoSnlETmt5QzdCeWU3VXorUE1WZkFD?=
+ =?utf-8?B?Y0oySGo5dFVGbjRmU2tmRkkvT0tic3BoR0kzS2tWcDk4S2VkWEZPYTVSa0NJ?=
+ =?utf-8?B?dUN6bGlQSVNGbm1COXF3Tk5Iell2bi9UTjFuVnFWYjlZTy8vYlE4Q0NMZC9k?=
+ =?utf-8?B?VEVKcTl0R3U5S1krTmJKTzJHTXcraUExZUtXdFVhanBuTVdpajgxaGlVZHZu?=
+ =?utf-8?B?OHNmL1JiZmkvcHJ0b3BZK05rWi9SRUNZVDBTZEtzRkVSL3I5aDRoR3dCcHNs?=
+ =?utf-8?B?NXk5eVl1TFd5eGgveGVxcVpsaWdPaytML3BvVCtZOFZzSnptZXQ1aWhBYWk0?=
+ =?utf-8?B?UXZvSTl4cnFYNUlMVVNKbWVkRWJiSk5Ha040d0huZ2x1bXdsbmh1UFN0c21s?=
+ =?utf-8?B?ekpJalk4K0x6WUltUkdpL0NhUUc5UlptZUFGOWtuK0RzVEVUbmpSSEhpVTM4?=
+ =?utf-8?B?eUtmVXE2LzVxSzB4RkxNVDRhQ2hDQVBCcksrUXhndmNIMVBPeHRhbkdwZWFU?=
+ =?utf-8?B?WEczUjJkR2FIaWx4VFdTL3E4d1hsbVN0WUJBeHVsdElta0lvZUlCUTZIWUhk?=
+ =?utf-8?B?a3hUenhpa09HUi9FdEQrYURlM3RVTi9ORkFvOGd0K1VPQ2FUQnRISmxYa3dk?=
+ =?utf-8?Q?89AVFHaHkWda/E8s3LG/hlq+L?=
 X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0: 4vBhDDpihF0UjfQI+4fS7fUtEQOpGopvynxR5VJgFX7eTFJSHGtP3GLuz/x9k4CRtlQkGc8I5D7FWYPlm2aV6xjWZKipSGLgMKqNKKZCx3nkU39+Tv8IP5mlQ4an+57p1k4GPqZ0EVkk/W4PRsgeuaEEDzg6r501JUpZrNCFdVbi0Wi9ibUSAeWFeS/+0nGiekjnyo2qKHrXVicmw9H+B6H/sRzUNBE097x18mfW+2v/rzEDUqZNo8U3cz2Tqj7LNLCxHPzNMt9SbEbcxlV/jE/jnhGnWB47DHpnpW1eP2V3KEyqzpXuJgfyqJloAuECSrA4XfXNJLu8iOeTd6O5vM4vrR+8cCjjZVpA0zrcq+H5TlvvLmHuVERrkb0s60aJV5djfujWofiz3xapUDLilg2Hc6NHStBT0Ncr+ni1q7q7g3N+Vxz4CphKkeN4SV1v23NlqEwbm6+f6HsoRj7oDWhcOxJMFTqVnL2vrfStWfkc5BEKnPSHcZCSjcmdhKZPzTzSAZtAmhIfyDoHU2aV+/dgRMyvqb0LjRgtHrfmqGyd008dGeyqr8JFmCFGpxC6Q/SZYEcCDdfq1sU0wCMD5HLe5xJ137dS82ZzUz3L4pOCS0rPyVlgKADXbS5Q1HJvPdOaTjgQOpxA2xeP6Q37tTwkl4Ffxad6b9RRtaB15xmntL86ICWhsHpLnStznTP6SOMWBaAmvjSBajEBXUY7Zk8cARWvH/3HgmHib5PPMnBwQK5v2etGlkyEcWyTgZ9T8o8N1mH68L1IjWaFTfWD3MIT5Wlb49xPiUmdCD2NxTl6int+Xe27/kWBXbUGJ9NR
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0: Ai1CWvOtEXVDIqW/YC33Tm5WlemdMpvezpmnbkVuNEPLEz+B9+U0jMoXagpS+HzASU3ccyrwHQN911FqZJt8iAeD5+GsihrWyiv63pycRKCTYqzg+Sq+zjZu3GKpjYW3qBChJF+TNQDAt8FJr9Zuo6xd8jueJl4WdDHbxwg7L7Ahu8h/w6vuNFJR8bwG8/bGdT275zWUxQUYMbCd8JOfZIxWkuZut4gi4c8EGGTZsko6N/E+iukbwL4V7sbTqO5wmn1leXvg5s5INGvpW9/8140pY5zG2D1eWZLeu1dSpGfZ8YU0CFwNAp3/UjSqOgAVWm7uEmbJ9wMN8kq/Folj+aop5SB7qL3IBhmif3JMsGy450XNv0fOTYwkf3wyNZDprJJsUjGeKUpRpx/GJgluEZJ+TpWMaZ4Jdnz3mQXbUgzL3P2MY6b2IORWQ1o5T78kIt9NJOm9RYpP0zhjzbeuHt0HYYuRQvuFvjPeadtS06PCLv3PW79mtvTDJy/jaQfdoxrfBmY0ILaHstdsTmmaNHH0Q/ZreyspLGQlOBrR+tKP2eNUUrNMx8F+XIceQqtQBX5LBmAbrkq2KYq5ZQdvzTIY5rgZ3SqChSdADN+iJlT3Hgf6a4HepBY0/thILTCV7LZHxPe2sbV4STWcMZqFmqE9P1jmBjHcpbNGw8EsvyvD1oinxHuCTLHz9j2lik6eroQis8rks698WMghD9WdZEhBSBOG5N31/UG8FsBlXYo0+vyG86C7jrO7oDxrjiswRTh7rzZSLrzBjqOoP1oU+UMve5ib6a9DlQLN2ZMt+I4oeBj5Jiw5aJWUlD7QoJDGxsep/fEPjml7SK0OFYqbO57rD9anHSKylWkCBVx54XOyh+4u7rSzE5BISEmKm1Gp
 X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 56379d60-d733-4fe4-efe8-08dbb309f60d
+X-MS-Exchange-CrossTenant-AuthSource: MN2PR10MB4270.namprd10.prod.outlook.com
 X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: b7be1059-83cb-4dab-974a-08dbb313f4f6
-X-MS-Exchange-CrossTenant-originalarrivaltime: 11 Sep 2023 22:10:49.8306
+X-MS-Exchange-CrossTenant-OriginalArrivalTime: 11 Sep 2023 20:59:16.8535
  (UTC)
-X-MS-Exchange-CrossTenant-fromentityheader: Hosted
-X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
-X-MS-Exchange-CrossTenant-userprincipalname: 0gIXQ2/c3p2bVrYDUHyLkQ2lTzmqcNZi/bpEnMevjWkfp+9LB+zzRqwtxq4MTHgE0s3fI1ARqIYumzLY4SvFDA==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: LV8PR10MB7968
+X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
+X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-MailboxType: HOSTED
+X-MS-Exchange-CrossTenant-UserPrincipalName: 6cW1+1TKt0t4eUI5mwYmFmBSMDDaFcxHmpEP4gEOqb0V77wfE3xBuOB7Qq+Q2WNCzi4kmGEL6ThMglABkQgYHg==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: BY5PR10MB4114
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.267,Aquarius:18.0.957,Hydra:6.0.601,FMLib:17.11.176.26
- definitions=2023-09-11_18,2023-09-05_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 mlxlogscore=999 mlxscore=0 adultscore=0
- phishscore=0 spamscore=0 suspectscore=0 malwarescore=0 bulkscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2308100000
- definitions=main-2309110204
-X-Proofpoint-GUID: kV23dEeqofJIlNX66AR-jPIa5_QCXUxy
-X-Proofpoint-ORIG-GUID: kV23dEeqofJIlNX66AR-jPIa5_QCXUxy
+ definitions=2023-09-11_16,2023-09-05_01,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 suspectscore=0
+ spamscore=0 mlxscore=0 mlxlogscore=999 adultscore=0 phishscore=0
+ bulkscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2308100000 definitions=main-2309110193
+X-Proofpoint-GUID: ndrZD5OHC4OK5-UyiJheXMn00XlYpFR3
+X-Proofpoint-ORIG-GUID: ndrZD5OHC4OK5-UyiJheXMn00XlYpFR3
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
 
-> On Sep 11, 2023, at 4:54 PM, Trond Myklebust <trondmy@hammerspace.com> wr=
-ote:
->=20
-> On Mon, 2023-09-11 at 16:14 -0400, Chuck Lever wrote:
->> On Mon, Sep 11, 2023 at 02:43:57PM -0400, trondmy@gmail.com wrote:
->>> From: Trond Myklebust <trond.myklebust@hammerspace.com>
->>>=20
->>> If fsync() is returning EAGAIN, then we can assume that the
->>> filesystem
->>> being exported is something like NFS with the 'softerr' mount
->>> option
->>> enabled, and that it is just asking us to replay the fsync()
->>> operation
->>> at a later date.
->>> If we see an ESTALE, then ditto: the file is gone, so there is no
->>> danger
->>> of losing the error.
->>> For those cases, do not reset the write verifier.
->>=20
->> Out of interest, what's the hazard in a write verifier change in
->> these cases? There could be a slight performance penalty, I imagine,
->> but how frequently does this happen?
->=20
-> When re-exporting to NFSv4 clients, it should be less of a problem,
-> since any REMOVE will result in a sillyrenamed file that only
-> disappears once the file is closed. However with NFSv3 clients, that is
-> circumvented by the fact that the filecache closes the files when they
-> are inactive. We've seen this occur frequently with VMware vmdks: their
-> lock files appear to generate a lot of these phantom ESTALE writes.
->=20
-> As for EAGAIN, I just pushed out a 2 patch client series that makes it
-> a lot more frequent when re-exporting NFSv4 with 'softerr'.
->=20
-> Finally, it is worth noting that a write verifier change has a global
-> effect, causing retransmission by all clients of all uncommitted
-> unstable writes for all files, so is worth mitigating where possible.
+On 8/18/23 11:14 AM, Olga Kornievskaia wrote:
+> On Fri, Aug 11, 2023 at 10:28 AM Olga Kornievskaia <aglo@umich.edu> wrote:
+>> On Fri, Aug 11, 2023 at 10:23 AM Jeff Layton <jlayton@kernel.org> wrote:
+>>> Chuck and I were chatting yesterday about what it will take to make the
+>>> inter_copy_offload_enable module option on by default, and I'd like to
+>>> start working toward that end.
+>>>
+>>> I think what we want to aim for is to eventually deprecate the module
+>>> option and have this "just work" when the conditions are right.
+>>>
+>>> It looks like main obstacle is this (from RFC7862 section 4.9):
+>>>
+>>>     NFSv4 clients and servers supporting the inter-server COPY operations
+>>>     described in this section are REQUIRED to implement the mechanism
+>>>     described in Section 4.9.1.1 and to support rejecting COPY_NOTIFY
+>>>     requests that do not use the RPC security protocol (RPCSEC_GSS)
+>>>     [RFC7861] with privacy.  If the server-to-server copy protocol is
+>>>     based on ONC RPC, the servers are also REQUIRED to implement
+>>>     [RFC7861], including the RPCSEC_GSSv3 "copy_to_auth",
+>>>     "copy_from_auth", and "copy_confirm_auth" structured privileges.
+>>>     This requirement to implement is not a requirement to use; for
+>>>     example, a server may, depending on configuration, also allow
+>>>     COPY_NOTIFY requests that use only AUTH_SYS.
+> This spec wording that it's required to implement but not required to
+> use makes me ask why is it a requirement at all. Anyway...
 
-Good info. I've added some of this to the patch description.
+Yes, the wording is confusing. My impression is if an inter-server copy
+implementation is to be secure it needs to implement the RPCSEC_GSSv3
+with structured privileges. However the use of AUTH_SYS is also allowed
+if security is not a concern for a given configuration.
 
+In fact, from section 4.9.1.2 Inter-Server Copy via ONC RPC without
+RPCSEC_GSS:
 
->> One more below.
->>=20
->>=20
->>> Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
->>> ---
->>>  fs/nfsd/vfs.c | 29 +++++++++++++++++++----------
->>>  1 file changed, 19 insertions(+), 10 deletions(-)
->>>=20
->>> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->>> index 98fa4fd0556d..31daf9f63572 100644
->>> --- a/fs/nfsd/vfs.c
->>> +++ b/fs/nfsd/vfs.c
->>> @@ -337,6 +337,20 @@ nfsd_lookup(struct svc_rqst *rqstp, struct
->>> svc_fh *fhp, const char *name,
->>>         return err;
->>>  }
->>> =20
->>> +static void
->>> +commit_reset_write_verifier(struct nfsd_net *nn, struct svc_rqst
->>> *rqstp,
->>> +                           int err)
->>> +{
->>> +       switch (err) {
->>> +       case -EAGAIN:
->>> +       case -ESTALE:
->>> +               break;
->>> +       default:
->>> +               nfsd_reset_write_verifier(nn);
->>> +               trace_nfsd_writeverf_reset(nn, rqstp, err);
->>> +       }
->>> +}
->>> +
->>>  /*
->>>   * Commit metadata changes to stable storage.
->>>   */
->>> @@ -647,8 +661,7 @@ __be32 nfsd4_clone_file_range(struct svc_rqst
->>> *rqstp,
->>>                                         &nfsd4_get_cstate(rqstp)-
->>>> current_fh,
->>>                                         dst_pos,
->>>                                         count, status);
->>> -                       nfsd_reset_write_verifier(nn);
->>> -                       trace_nfsd_writeverf_reset(nn, rqstp,
->>> status);
->>> +                       commit_reset_write_verifier(nn, rqstp,
->>> status);
->>>                         ret =3D nfserrno(status);
->>>                 }
->>>         }
->>> @@ -1170,8 +1183,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct
->>> svc_fh *fhp, struct nfsd_file *nf,
->>>         host_err =3D vfs_iter_write(file, &iter, &pos, flags);
->>>         file_end_write(file);
->>>         if (host_err < 0) {
->>> -               nfsd_reset_write_verifier(nn);
->>> -               trace_nfsd_writeverf_reset(nn, rqstp, host_err);
->>> +               commit_reset_write_verifier(nn, rqstp, host_err);
->>=20
->> Can generic_file_write_iter() or its brethren return STALE or AGAIN
->> before they get to the generic_write_sync() call ?
->=20
-> The call to nfs_revalidate_file_size(), which can occur when you are
-> appending to the file (whether or not O_APPEND is set) could indeed
-> return ESTALE.
-> With the new patchset mentioned above, it could also return EAGAIN.
+     ONC RPC security flavors other than RPCSEC_GSS MAY be used with the
+     server-side copy offload operations described in this section. In
+     particular, host-based ONC RPC security flavors such as AUTH_NONE and
+     AUTH_SYS MAY be used. If a host-based security flavor is used, a
+     minimal level of protection for the server-to-server copy protocol is
+     possible.
 
-Sounds like I should drop this hunk when applying this fix.
+     The biggest issue is that there is a lack of a strong security method
+     to allow the source server and destination server to identify
+     themselves to each other. A further complication is that in a
+     multihomed environment the destination server might not contact the
+     source server from the same network address specified by the client
+     in the COPY_NOTIFY. The cnr_stateid returned from the COPY_NOTIFY
+     can be used to uniquely identify the destination server to the source
+     server. The use of the cnr_stateid provides initial authentication
+     of the destination server but cannot defend against man-in-the-middle
+     attacks after authentication or against an eavesdropper that observes
+     the opaque stateid on the wire. Other secure communication
+     techniques (e.g., IPsec) are necessary to block these attacks.
 
+     Servers SHOULD reject COPY_NOTIFY requests that do not use RPCSEC_GSS
+     with privacy, thus ensuring that the cnr_stateid in the COPY_NOTIFY
+     reply is encrypted. For the same reason, clients SHOULD send COPY
+     requests to the destination using RPCSEC_GSS with privacy.
 
->>>                 goto out_nfserr;
->>>         }
->>>         *cnt =3D host_err;
->>> @@ -1183,10 +1195,8 @@ nfsd_vfs_write(struct svc_rqst *rqstp,
->>> struct svc_fh *fhp, struct nfsd_file *nf,
->>> =20
->>>         if (stable && use_wgather) {
->>>                 host_err =3D wait_for_concurrent_writes(file);
->>> -               if (host_err < 0) {
->>> -                       nfsd_reset_write_verifier(nn);
->>> -                       trace_nfsd_writeverf_reset(nn, rqstp,
->>> host_err);
->>> -               }
->>> +               if (host_err < 0)
->>> +                       commit_reset_write_verifier(nn, rqstp,
->>> host_err);
->>>         }
->>> =20
->>>  out_nfserr:
->>> @@ -1329,8 +1339,7 @@ nfsd_commit(struct svc_rqst *rqstp, struct
->>> svc_fh *fhp, struct nfsd_file *nf,
->>>                         err =3D nfserr_notsupp;
->>>                         break;
->>>                 default:
->>> -                       nfsd_reset_write_verifier(nn);
->>> -                       trace_nfsd_writeverf_reset(nn, rqstp,
->>> err2);
->>> +                       commit_reset_write_verifier(nn, rqstp,
->>> err2);
->>>                         err =3D nfserrno(err2);
->>>                 }
->>>         } else
->>> --=20
->>> 2.41.0
->>>=20
->>=20
->=20
-> --=20
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
+It seems like if krb5p is used as the security service between the client
+and the source (for COPY_NOTIFY) as well as the destination server (for COPY),
+and some form of encryption is used between the destination and source server
+then this would provide a minimal protection of man-in-the-middle attack.
 
+Since the spec suggests IPsec is used between destination and source
+server, I think RPC-with-TLS would accomplish the same purpose.
 
---
-Chuck Lever
+The use of krb5p between the client and the source and destination server
+would not add much overhead to the overall copy operation. However the
+encryption of read data between the destination and the source server
+would add significant overhead and might defeat the performance benefit
+of inter-server copy.
 
+Also, is allowing the user to decide the security flavor between the
+source and destination server the same as letting the user to decide
+which security flavor to use for a regular copy between the client and
+server?
 
+-Dai
+
+>
+>>>     If a server requires the use of an RPCSEC_GSSv3 copy_to_auth,
+>>>     copy_from_auth, or copy_confirm_auth privilege and it is not used,
+>>>     the server will reject the request with NFS4ERR_PARTNER_NO_AUTH.
+>>>
+>>> We don't (yet) have GSSv3 support, so we'd need to implement that in
+>>> order to make this work right with krb5. Has anyone started looking at
+>>> GSSv3?
+>> Andy Adamson way back when implemented a draft gssv3 implementation
+>> and I believe we still have those patches. Anna periodically have been
+>> rebasing them but no more than that. I believe there might have been
+>> even some patches for the copy piece but I believe those might be
+>> lost. I'd have to dig around in my oldest laptop.
+>>
+>> I'd like to address some other questions later as I'm out of the office today.
+>>
+>>> Incidentally, has anyone tried doing this with sec=krb5 in the current
+>>> code?
+> I'm not sure I fully understand your question but yes the COPY would
+> work over a sec=krb5* mount. What is not there is fulfillment of the
+> requirement to make sure that the client does COPY_NOTIFY over
+> sec=krb5p gssv3 regardless what mount flavor was used originally.
+>
+>> Does it actually work? I don't see any place where we return
+>>> nfserr_partner_no_auth,
+> That's because initial implementation followed the spec wording that
+> it is allowed to use auth_sys and not enforce gssv3.
+>
+>> so I wonder if we need to fix up the s2s COPY
+>>> authentication and error handling?
+> Yes the server would need to be change to enforce several things with
+> regards to the COPY_NOTIFY and inter-server copy processing in
+> general.
+>
+>>> Another question: The v4.2 spec was written before the RPC over TLS
+>>> spec. Should we aim to allow this to work by default if the client and
+>>> both servers are using xprtsec=mtls and are secured by the same CA?
+> Yes and no. The fact that COPY_NOTIFY needs to be done over krb5p to
+> insure privacy/integrity of passing the structured privilege. But then
+> in order to use the structured privilege a new operation is used
+> GSSv3_create which makes use of that. this operation must done with
+> gss privacy. TLS is not a GSS protocol so underneath the only choice
+> is krb5(p). You COULD layer gssv3 over TLS but I'm not sure what would
+> be the point of that.
+>
+> So I think the real answer is:"no" we can't use TLS here. Or need to
+> update the spec with a new way of doing "inter" copy security over
+> TLS.
+>
+>>> 1/ the client and servers are all using GSSv3 with krb5p (or some other
+>>> encryption)
+>>>
+>>> ...or...
+>>>
+>>> 2/ the client and servers are all using mtls with certificates signed by
+>>> the same CA
+>>>
+>>>
+>>> ...I expect we'll probably be able to accomodate #2 before #1.
+>>>
+>>> Beyond that, we could allow for module or export option that still
+>>> allows s2s copy to work and relaxes the above restrictions (to allow
+>>> people to use it over plaintext with AUTH_SYS on "secure" networks).
+>>>
+>>> Anything I've overlooked here, or other thoughts?
+>>>
+>>> Cheers,
+>>> --
+>>> Jeff Layton <jlayton@kernel.org>
