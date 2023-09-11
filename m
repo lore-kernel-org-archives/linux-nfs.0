@@ -2,230 +2,240 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CCB70CA0ED4
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:32 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9E598CA0ED8
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1355437AbjIKV7e (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:59:34 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57964 "EHLO
+        id S1355443AbjIKV7g (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:59:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37038 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240258AbjIKOkC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 10:40:02 -0400
+        with ESMTP id S244202AbjIKTf0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 15:35:26 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 16D2CF2
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 07:39:58 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 741DFC433C7;
-        Mon, 11 Sep 2023 14:39:57 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 89AC612A
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 12:35:20 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 95CFEC433C7;
+        Mon, 11 Sep 2023 19:35:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1694443197;
-        bh=Z7MmMYgNbejaJMs2nVbnLwMNYWKE8dTTw2qV3lkYHEA=;
+        s=k20201202; t=1694460920;
+        bh=6qIhTIcCM4bRNjwfE3XkQqR71+1ia8V4QkG+Pt6qJrc=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=cZ3Vya8TwoBbErn72NwwN2ktlTpn2Y61ZyEXBOScB20HqpnVcKDV0zImKJeMgSx4T
-         a0YSuY2RAMKKPAnWFIyIuZv1YDR9cjtrc2Mrskyr3XTJP8YCvB16wbn1/6R1+sc517
-         vMiyHUsBtYjKRByxoilHwRdqe+6s/Pzp657pNOxQGZ/TmPCQwGcEpjkMuzkF43Dm2k
-         VM/IzU9Xv8nQ17qtI3gLxCC6kP60P59u455MeeqhcpSByXPcLd4Xq4Sei0Gm8GKGWp
-         0rpoakyNnciXUEYD9olE56v87Agk763ZFpOQ+uqgmecNI3xQHuSkrTOtyQQhYM531n
-         9lI9uottiBXVQ==
-Subject: [PATCH v1 13/17] SUNRPC: only have one thread waking up at a time
-From:   Chuck Lever <cel@kernel.org>
-To:     linux-nfs@vger.kernel.org
-Cc:     NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 11 Sep 2023 10:39:56 -0400
-Message-ID: <169444319659.4327.14189708269231562829.stgit@bazille.1015granger.net>
-In-Reply-To: <169444233785.4327.4365499966926096681.stgit@bazille.1015granger.net>
-References: <169444233785.4327.4365499966926096681.stgit@bazille.1015granger.net>
-User-Agent: StGit/1.5
+        b=cC9RqQw+fgquSDWlWwPmAAPvV4p755spzuLIlDQ36/YEN1JM48lgz5jq3rBkZ6NAj
+         bP7gbJjVmC+LACAMjy77aQCoV9a/ZvGfhnZQ2RinshtwnuWNbZHYFVGvDZZuN2k2gl
+         kl17iNeXX8o4Ofc8JNtieQySdChifXXlAjAAAoas+9nZw8eyyJt7kQN1pcrLGiX4L2
+         PH2bgTOamr3/uJyjT/5elZ1riTIR4ntm08yMe0YSW0Hctc9RSkFZxkQ0+HJje0wsJQ
+         xa6i8NMtIpTdDRwCFjNLhG8A7oLF6yFemMRA/krU9pNQrhQPYPXOgFMijofMMubBay
+         i6Phljdh3W6Tg==
+Message-ID: <2edfeee39a9aeece7436509eb92871868404eb4d.camel@kernel.org>
+Subject: Re: [PATCH v8 2/3] NFSD: introduce netlink rpc_status stubs
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Lorenzo Bianconi <lorenzo@kernel.org>, linux-nfs@vger.kernel.org
+Cc:     lorenzo.bianconi@redhat.com, chuck.lever@oracle.com, neilb@suse.de,
+        netdev@vger.kernel.org
+Date:   Mon, 11 Sep 2023 15:35:18 -0400
+In-Reply-To: <ce3bc230e1b8d0c741a240c17d99f5a2072e7ce1.1694436263.git.lorenzo@kernel.org>
+References: <cover.1694436263.git.lorenzo@kernel.org>
+         <ce3bc230e1b8d0c741a240c17d99f5a2072e7ce1.1694436263.git.lorenzo@kernel.org>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: NeilBrown <neilb@suse.de>
+On Mon, 2023-09-11 at 14:49 +0200, Lorenzo Bianconi wrote:
+> Generate empty netlink stubs and uAPI through nfsd_server.yaml specs:
+>=20
+> $./tools/net/ynl/ynl-gen-c.py --mode uapi \
+>  --spec Documentation/netlink/specs/nfsd_server.yaml \
+>  --header -o include/uapi/linux/nfsd_server.h
+> $./tools/net/ynl/ynl-gen-c.py --mode kernel \
+>  --spec Documentation/netlink/specs/nfsd_server.yaml \
+>  --header -o fs/nfsd/nfs_netlink_gen.h
+> $./tools/net/ynl/ynl-gen-c.py --mode kernel \
+>  --spec Documentation/netlink/specs/nfsd_server.yaml \
+>  --source -o fs/nfsd/nfs_netlink_gen.c
+>=20
+> Tested-by: Jeff Layton <jlayton@kernel.org>
+> Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+> ---
+>  fs/nfsd/Makefile                 |  3 +-
+>  fs/nfsd/nfs_netlink_gen.c        | 32 +++++++++++++++++++++
+>  fs/nfsd/nfs_netlink_gen.h        | 22 ++++++++++++++
+>  fs/nfsd/nfsctl.c                 | 16 +++++++++++
+>  include/uapi/linux/nfsd_server.h | 49 ++++++++++++++++++++++++++++++++
+>  5 files changed, 121 insertions(+), 1 deletion(-)
+>  create mode 100644 fs/nfsd/nfs_netlink_gen.c
+>  create mode 100644 fs/nfsd/nfs_netlink_gen.h
+>  create mode 100644 include/uapi/linux/nfsd_server.h
+>=20
+> diff --git a/fs/nfsd/Makefile b/fs/nfsd/Makefile
+> index 6fffc8f03f74..6ae1d5450bf6 100644
+> --- a/fs/nfsd/Makefile
+> +++ b/fs/nfsd/Makefile
+> @@ -12,7 +12,8 @@ nfsd-y			+=3D trace.o
+> =20
+>  nfsd-y 			+=3D nfssvc.o nfsctl.o nfsfh.o vfs.o \
+>  			   export.o auth.o lockd.o nfscache.o \
+> -			   stats.o filecache.o nfs3proc.o nfs3xdr.o
+> +			   stats.o filecache.o nfs3proc.o nfs3xdr.o \
+> +			   nfs_netlink_gen.o
+>  nfsd-$(CONFIG_NFSD_V2) +=3D nfsproc.o nfsxdr.o
+>  nfsd-$(CONFIG_NFSD_V2_ACL) +=3D nfs2acl.o
+>  nfsd-$(CONFIG_NFSD_V3_ACL) +=3D nfs3acl.o
+> diff --git a/fs/nfsd/nfs_netlink_gen.c b/fs/nfsd/nfs_netlink_gen.c
+> new file mode 100644
+> index 000000000000..4d71b80bf4a7
+> --- /dev/null
+> +++ b/fs/nfsd/nfs_netlink_gen.c
+> @@ -0,0 +1,32 @@
+> +// SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-=
+Clause)
+> +/* Do not edit directly, auto-generated from: */
+> +/*	Documentation/netlink/specs/nfsd_server.yaml */
+> +/* YNL-GEN kernel source */
+> +
+> +#include <net/netlink.h>
+> +#include <net/genetlink.h>
+> +
+> +#include "nfs_netlink_gen.h"
+> +
+> +#include <uapi/linux/nfsd_server.h>
+> +
+> +/* Ops table for nfsd_server */
+> +static const struct genl_split_ops nfsd_server_nl_ops[] =3D {
+> +	{
+> +		.cmd	=3D NFSD_CMD_RPC_STATUS_GET,
+> +		.start	=3D nfsd_server_nl_rpc_status_get_start,
+> +		.dumpit	=3D nfsd_server_nl_rpc_status_get_dumpit,
+> +		.done	=3D nfsd_server_nl_rpc_status_get_done,
+> +		.flags	=3D GENL_CMD_CAP_DUMP,
+> +	},
+> +};
+> +
+> +struct genl_family nfsd_server_nl_family __ro_after_init =3D {
+> +	.name		=3D NFSD_SERVER_FAMILY_NAME,
+> +	.version	=3D NFSD_SERVER_FAMILY_VERSION,
+> +	.netnsok	=3D true,
+> +	.parallel_ops	=3D true,
+> +	.module		=3D THIS_MODULE,
+> +	.split_ops	=3D nfsd_server_nl_ops,
+> +	.n_split_ops	=3D ARRAY_SIZE(nfsd_server_nl_ops),
+> +};
+> diff --git a/fs/nfsd/nfs_netlink_gen.h b/fs/nfsd/nfs_netlink_gen.h
+> new file mode 100644
+> index 000000000000..f66b29e528c1
+> --- /dev/null
+> +++ b/fs/nfsd/nfs_netlink_gen.h
+> @@ -0,0 +1,22 @@
+> +/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-=
+Clause) */
+> +/* Do not edit directly, auto-generated from: */
+> +/*	Documentation/netlink/specs/nfsd_server.yaml */
+> +/* YNL-GEN kernel header */
+> +
+> +#ifndef _LINUX_NFSD_SERVER_GEN_H
+> +#define _LINUX_NFSD_SERVER_GEN_H
+> +
+> +#include <net/netlink.h>
+> +#include <net/genetlink.h>
+> +
+> +#include <uapi/linux/nfsd_server.h>
+> +
+> +int nfsd_server_nl_rpc_status_get_start(struct netlink_callback *cb);
+> +int nfsd_server_nl_rpc_status_get_done(struct netlink_callback *cb);
+> +
+> +int nfsd_server_nl_rpc_status_get_dumpit(struct sk_buff *skb,
+> +					 struct netlink_callback *cb);
+> +
+> +extern struct genl_family nfsd_server_nl_family;
+> +
+> +#endif /* _LINUX_NFSD_SERVER_GEN_H */
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 33f80d289d63..1be66088849c 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -1495,6 +1495,22 @@ static int create_proc_exports_entry(void)
+> =20
+>  unsigned int nfsd_net_id;
+> =20
+> +int nfsd_server_nl_rpc_status_get_start(struct netlink_callback *cb)
+> +{
+> +	return 0;
+> +}
+> +
+> +int nfsd_server_nl_rpc_status_get_done(struct netlink_callback *cb)
+> +{
+> +	return 0;
+> +}
+> +
+> +int nfsd_server_nl_rpc_status_get_dumpit(struct sk_buff *skb,
+> +					 struct netlink_callback *cb)
+> +{
+> +	return 0;
+> +}
+> +
+>  /**
+>   * nfsd_net_init - Prepare the nfsd_net portion of a new net namespace
+>   * @net: a freshly-created network namespace
+> diff --git a/include/uapi/linux/nfsd_server.h b/include/uapi/linux/nfsd_s=
+erver.h
+> new file mode 100644
+> index 000000000000..c9ee00ceca3b
+> --- /dev/null
+> +++ b/include/uapi/linux/nfsd_server.h
+> @@ -0,0 +1,49 @@
+> +/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-=
+Clause) */
+> +/* Do not edit directly, auto-generated from: */
+> +/*	Documentation/netlink/specs/nfsd_server.yaml */
+> +/* YNL-GEN uapi header */
+> +
+> +#ifndef _UAPI_LINUX_NFSD_SERVER_H
+> +#define _UAPI_LINUX_NFSD_SERVER_H
+> +
+> +#define NFSD_SERVER_FAMILY_NAME		"nfsd_server"
+> +#define NFSD_SERVER_FAMILY_VERSION	1
+> +
+> +enum nfsd_rpc_status_comp_attr {
+> +	NFSD_ATTR_RPC_STATUS_COMP_UNSPEC,
+> +	NFSD_ATTR_RPC_STATUS_COMP_OP,
+> +
+> +	__NFSD_ATTR_RPC_STATUS_COMP_MAX,
+> +	NFSD_ATTR_RPC_STATUS_COMP_MAX =3D (__NFSD_ATTR_RPC_STATUS_COMP_MAX - 1)
+> +};
+> +
+> +enum nfsd_rpc_status_attr {
+> +	NFSD_ATTR_RPC_STATUS_UNSPEC,
+> +	NFSD_ATTR_RPC_STATUS_XID,
+> +	NFSD_ATTR_RPC_STATUS_FLAGS,
+> +	NFSD_ATTR_RPC_STATUS_PROG,
+> +	NFSD_ATTR_RPC_STATUS_VERSION,
+> +	NFSD_ATTR_RPC_STATUS_PROC,
+> +	NFSD_ATTR_RPC_STATUS_SERVICE_TIME,
+> +	NFSD_ATTR_RPC_STATUS_PAD,
+> +	NFSD_ATTR_RPC_STATUS_SADDR4,
+> +	NFSD_ATTR_RPC_STATUS_DADDR4,
+> +	NFSD_ATTR_RPC_STATUS_SADDR6,
+> +	NFSD_ATTR_RPC_STATUS_DADDR6,
+> +	NFSD_ATTR_RPC_STATUS_SPORT,
+> +	NFSD_ATTR_RPC_STATUS_DPORT,
+> +	NFSD_ATTR_RPC_STATUS_COMPOND_OP,
+> +
+> +	__NFSD_ATTR_RPC_STATUS_MAX,
+> +	NFSD_ATTR_RPC_STATUS_MAX =3D (__NFSD_ATTR_RPC_STATUS_MAX - 1)
+> +};
+> +
+> +enum nfsd_commands {
+> +	NFSD_CMD_UNSPEC,
+> +	NFSD_CMD_RPC_STATUS_GET,
+> +
+> +	__NFSD_CMD_MAX,
+> +	NFSD_CMD_MAX =3D (__NFSD_CMD_MAX - 1)
+> +};
+> +
+> +#endif /* _UAPI_LINUX_NFSD_SERVER_H */
 
-Currently if several items of work become available in quick succession,
-that number of threads (if available) will be woken.  By the time some
-of them wake up another thread that was already cache-warm might have
-come along and completed the work.  Anecdotal evidence suggests as many
-as 15% of wakes find nothing to do once they get to the point of
-looking.
 
-This patch changes svc_pool_wake_idle_thread() to wake the first thread
-on the queue but NOT remove it.  Subsequent calls will wake the same
-thread.  Once that thread starts it will dequeue itself and after
-dequeueing some work to do, it will wake the next thread if there is more
-work ready.  This results in a more orderly increase in the number of
-busy threads.
-
-As a bonus, this allows us to reduce locking around the idle queue.
-svc_pool_wake_idle_thread() no longer needs to take a lock (beyond
-rcu_read_lock()) as it doesn't manipulate the queue, it just looks at
-the first item.
-
-The thread itself can avoid locking by using the new
-llist_del_first_this() interface.  This will safely remove the thread
-itself if it is the head.  If it isn't the head, it will do nothing.
-If multiple threads call this concurrently only one will succeed.  The
-others will do nothing, so no corruption can result.
-
-If a thread wakes up and finds that it cannot dequeue itself that means
-either
-- that it wasn't woken because it was the head of the queue.  Maybe the
-  freezer woke it.  In that case it can go back to sleep (after trying
-  to freeze of course).
-- some other thread found there was nothing to do very recently, and
-  placed itself on the head of the queue in front of this thread.
-  It must check again after placing itself there, so it can be deemed to
-  be responsible for any pending work, and this thread can go back to
-  sleep until woken.
-
-No code ever tests for busy threads any more.  Only each thread itself
-cares if it is busy.  So svc_thread_busy() is no longer needed.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/linux/sunrpc/svc.h |   11 -----------
- net/sunrpc/svc.c           |   14 ++++++--------
- net/sunrpc/svc_xprt.c      |   38 +++++++++++++++++++++++++-------------
- 3 files changed, 31 insertions(+), 32 deletions(-)
-
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index ad4572630335..dafa362b4fdd 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -266,17 +266,6 @@ enum {
- 	RQ_DATA,		/* request has data */
- };
- 
--/**
-- * svc_thread_busy - check if a thread as busy
-- * @rqstp: the thread which might be busy
-- *
-- * A thread is only busy when it is not an the idle list.
-- */
--static inline bool svc_thread_busy(const struct svc_rqst *rqstp)
--{
--	return !llist_on_list(&rqstp->rq_idle);
--}
--
- #define SVC_NET(rqst) (rqst->rq_xprt ? rqst->rq_xprt->xpt_net : rqst->rq_bc_net)
- 
- /*
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 54ae6a569f6a..326592162af1 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -642,7 +642,6 @@ svc_rqst_alloc(struct svc_serv *serv, struct svc_pool *pool, int node)
- 
- 	folio_batch_init(&rqstp->rq_fbatch);
- 
--	init_llist_node(&rqstp->rq_idle);
- 	rqstp->rq_server = serv;
- 	rqstp->rq_pool = pool;
- 
-@@ -704,17 +703,16 @@ void svc_pool_wake_idle_thread(struct svc_pool *pool)
- 	struct llist_node *ln;
- 
- 	rcu_read_lock();
--	spin_lock_bh(&pool->sp_lock);
--	ln = llist_del_first_init(&pool->sp_idle_threads);
--	spin_unlock_bh(&pool->sp_lock);
-+	ln = READ_ONCE(pool->sp_idle_threads.first);
- 	if (ln) {
- 		rqstp = llist_entry(ln, struct svc_rqst, rq_idle);
--
- 		WRITE_ONCE(rqstp->rq_qtime, ktime_get());
--		wake_up_process(rqstp->rq_task);
-+		if (!task_is_running(rqstp->rq_task)) {
-+			wake_up_process(rqstp->rq_task);
-+			trace_svc_wake_up(rqstp->rq_task->pid);
-+			percpu_counter_inc(&pool->sp_threads_woken);
-+		}
- 		rcu_read_unlock();
--		percpu_counter_inc(&pool->sp_threads_woken);
--		trace_svc_wake_up(rqstp->rq_task->pid);
- 		return;
- 	}
- 	rcu_read_unlock();
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 1b300a7889eb..75f66714e3a7 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -732,20 +732,19 @@ static void svc_thread_wait_for_work(struct svc_rqst *rqstp)
- 	if (svc_thread_should_sleep(rqstp)) {
- 		set_current_state(TASK_IDLE | TASK_FREEZABLE);
- 		llist_add(&rqstp->rq_idle, &pool->sp_idle_threads);
-+		if (likely(svc_thread_should_sleep(rqstp)))
-+			schedule();
- 
--		if (unlikely(!svc_thread_should_sleep(rqstp)))
--			/* Work just became available.  This thread cannot simply
--			 * choose not to sleep as it *must* wait until removed.
--			 * So wake the first waiter - whether it is this
--			 * thread or some other, it will get the work done.
-+		while (!llist_del_first_this(&pool->sp_idle_threads,
-+					     &rqstp->rq_idle)) {
-+			/* Work just became available.  This thread can only
-+			 * handle it after removing rqstp from the idle
-+			 * list. If that attempt failed, some other thread
-+			 * must have queued itself after finding no
-+			 * work to do, so that thread has taken responsibly
-+			 * for this new work.  This thread can safely sleep
-+			 * until woken again.
- 			 */
--			svc_pool_wake_idle_thread(pool);
--
--		/* Since a thread cannot remove itself from an llist,
--		 * schedule until someone else removes @rqstp from
--		 * the idle list.
--		 */
--		while (!svc_thread_busy(rqstp)) {
- 			schedule();
- 			set_current_state(TASK_IDLE | TASK_FREEZABLE);
- 		}
-@@ -835,6 +834,15 @@ static void svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
- 	svc_xprt_release(rqstp);
- }
- 
-+static void svc_thread_wake_next(struct svc_rqst *rqstp)
-+{
-+	if (!svc_thread_should_sleep(rqstp))
-+		/* More work pending after I dequeued some,
-+		 * wake another worker
-+		 */
-+		svc_pool_wake_idle_thread(rqstp->rq_pool);
-+}
-+
- /**
-  * svc_recv - Receive and process the next request on any transport
-  * @rqstp: an idle RPC service thread
-@@ -854,13 +862,16 @@ void svc_recv(struct svc_rqst *rqstp)
- 
- 	clear_bit(SP_TASK_PENDING, &pool->sp_flags);
- 
--	if (svc_thread_should_stop(rqstp))
-+	if (svc_thread_should_stop(rqstp)) {
-+		svc_thread_wake_next(rqstp);
- 		return;
-+	}
- 
- 	rqstp->rq_xprt = svc_xprt_dequeue(pool);
- 	if (rqstp->rq_xprt) {
- 		struct svc_xprt *xprt = rqstp->rq_xprt;
- 
-+		svc_thread_wake_next(rqstp);
- 		/* Normally we will wait up to 5 seconds for any required
- 		 * cache information to be provided.  When there are no
- 		 * idle threads, we reduce the wait time.
-@@ -885,6 +896,7 @@ void svc_recv(struct svc_rqst *rqstp)
- 		if (req) {
- 			list_del(&req->rq_bc_list);
- 			spin_unlock_bh(&serv->sv_cb_lock);
-+			svc_thread_wake_next(rqstp);
- 
- 			svc_process_bc(req, rqstp);
- 			return;
-
-
+Acked-by: Jeff Layton <jlayton@kernel.org>
