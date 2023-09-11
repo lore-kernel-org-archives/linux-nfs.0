@@ -2,40 +2,42 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 26BDDCA0EC3
+	by smtp.lore.kernel.org (Postfix) with ESMTP id B8C31CA0EE5
 	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241167AbjIKV66 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:58:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49904 "EHLO
+        id S239749AbjIKV7E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:59:04 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37368 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240209AbjIKOjE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 10:39:04 -0400
+        with ESMTP id S240244AbjIKOju (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 10:39:50 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 100BBCF0
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 07:39:00 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4AE2BC433CB;
-        Mon, 11 Sep 2023 14:38:59 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 585D1CF0;
+        Mon, 11 Sep 2023 07:39:45 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 51429C433CA;
+        Mon, 11 Sep 2023 14:39:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1694443139;
-        bh=7WU6i0lHeQzb20klg8dvOfKEisbErnRK/CDZLxLX6gw=;
+        s=k20201202; t=1694443185;
+        bh=WMdHXTlK/F0alepEMWR0Tsn0KrNf5+HlS3u9OgTC6Ek=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=dQ1QGq4NYjMbmbsdp1UFCIt7VsdoWuFW35IBX+EVv0myxwznZ1cAXWxoOw3JLNzap
-         gX3X7b1UPX+wP0ildSJD9kOZsIu/pzI5qDNMprp7ETRqnC6suJqrlENeBZ0kPw0QcX
-         ssz7phWyelVHRj1KRG5EO5/Mj45XbJ1O4XuI5OdA0CHSvpqQrCmquyidu98Wq2PECF
-         NV0KZM7/6xZ35RPvML78s+7zwYOKtdA01pT1kuP5dV6aQWh360aQRr8bh8f8HEjj7K
-         uKPmP8JdOWhISauhOJfr5vs0k1zKPGPOQLRCDWAEtioPWJt2/l1K3t7yxlCS5/41GH
-         NDfrcRU11CfeA==
-Subject: [PATCH v1 04/17] SUNRPC: integrate back-channel processing with
- svc_recv()
+        b=hAz0KziwdfpN4FcKQKXqH6M4J//hyNrlyd84XO9W6PhD2igr2qtJrbIBjTiB15MVV
+         i6T+QMQZl5+4IljzbFHvWJPjTTK6kUrui9qkZP0z3n8i/ebIm/TGr+3tPlur1VIdh5
+         2nUKG+FpEvbZQVCQIVO3mOxEKoywJY2wP+NtKR/SF0CMtba8T73y9w+zav1DhnIIfn
+         Rgu4Mv40CCXGgz+ZQsrTbYQGvSUAqma1FYAjq+aZWGPyXNGl8oDIfMzE9wNsHB+kwc
+         2kRivVCxk2drPt6KDtXlpqtKelFPmYiBZBOms8Y8K7YEJnJon2O0RwE1CFBcSH5YKe
+         4uaJbUuQtNKsA==
+Subject: [PATCH v1 11/17] lib: add light-weight queuing mechanism.
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     NeilBrown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "Liam R. Howlett" <Liam.Howlett@oracle.com>,
+        Kees Cook <keescook@chromium.org>,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        David Gow <davidgow@google.com>, linux-kernel@vger.kernel.org,
         Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 11 Sep 2023 10:38:58 -0400
-Message-ID: <169444313840.4327.16112579899380992132.stgit@bazille.1015granger.net>
+Date:   Mon, 11 Sep 2023 10:39:43 -0400
+Message-ID: <169444318342.4327.18355944158180782708.stgit@bazille.1015granger.net>
 In-Reply-To: <169444233785.4327.4365499966926096681.stgit@bazille.1015granger.net>
 References: <169444233785.4327.4365499966926096681.stgit@bazille.1015granger.net>
 User-Agent: StGit/1.5
@@ -48,216 +50,341 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: NeilBrown <neilb@suse.de>
 
-Using svc_recv() for (NFSv4.1) back-channel handling means we have just
-one mechanism for waking threads.
+lwq is a FIFO single-linked queue that only requires a spinlock
+for dequeueing, which happens in process context.  Enqueueing is atomic
+with no spinlock and can happen in any context.
 
-Also change kthread_freezable_should_stop() in nfs4_callback_svc() to
-kthread_should_stop() as used elsewhere.
-kthread_freezable_should_stop() effectively adds a try_to_freeze() call,
-and svc_recv() already contains that at an appropriate place.
+Include a unit test for basic functionality - runs at boot time.  Does
+not use kunit framework.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Liam R. Howlett <Liam.Howlett@oracle.com>
+Cc: Kees Cook <keescook@chromium.org>
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: David Gow <davidgow@google.com>
+Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/callback.c                 |   42 ++-----------------------------------
- include/linux/sunrpc/svc.h        |    2 --
- net/sunrpc/backchannel_rqst.c     |    8 +++----
- net/sunrpc/svc.c                  |    2 +-
- net/sunrpc/svc_xprt.c             |   27 ++++++++++++++++++++++++
- net/sunrpc/xprtrdma/backchannel.c |    2 +-
- 6 files changed, 34 insertions(+), 49 deletions(-)
+ include/linux/lwq.h |  120 +++++++++++++++++++++++++++++++++++++++++
+ lib/Kconfig         |    5 ++
+ lib/Makefile        |    2 -
+ lib/lwq.c           |  151 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 277 insertions(+), 1 deletion(-)
+ create mode 100644 include/linux/lwq.h
+ create mode 100644 lib/lwq.c
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 272e6d2bb478..42a0c2f1e785 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -78,7 +78,7 @@ nfs4_callback_svc(void *vrqstp)
+diff --git a/include/linux/lwq.h b/include/linux/lwq.h
+new file mode 100644
+index 000000000000..52b9c81b493a
+--- /dev/null
++++ b/include/linux/lwq.h
+@@ -0,0 +1,120 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++
++#ifndef LWQ_H
++#define LWQ_H
++/*
++ * light-weight single-linked queue built from llist
++ *
++ * Entries can be enqueued from any context with no locking.
++ * Entries can be dequeued from process context with integrated locking.
++ */
++#include <linux/container_of.h>
++#include <linux/spinlock.h>
++#include <linux/llist.h>
++
++struct lwq_node {
++	struct llist_node node;
++};
++
++struct lwq {
++	spinlock_t		lock;
++	struct llist_node	*ready;		/* entries to be dequeued */
++	struct llist_head	new;		/* entries being enqueued */
++};
++
++/**
++ * lwq_init - initialise a lwq
++ * @q:	the lwq object
++ */
++static inline void lwq_init(struct lwq *q)
++{
++	spin_lock_init(&q->lock);
++	q->ready = NULL;
++	init_llist_head(&q->new);
++}
++
++/**
++ * lwq_empty - test if lwq contains any entry
++ * @q:	the lwq object
++ *
++ * This empty test contains an acquire barrier so that if a wakeup
++ * is sent when lwq_dequeue returns true, it is safe to go to sleep after
++ * a test on lwq_empty().
++ */
++static inline bool lwq_empty(struct lwq *q)
++{
++	/* acquire ensures ordering wrt lwq_enqueue() */
++	return smp_load_acquire(&q->ready) == NULL && llist_empty(&q->new);
++}
++
++struct llist_node *__lwq_dequeue(struct lwq *q);
++/**
++ * lwq_dequeue - dequeue first (oldest) entry from lwq
++ * @q:		the queue to dequeue from
++ * @type:	the type of object to return
++ * @member:	them member in returned object which is an lwq_node.
++ *
++ * Remove a single object from the lwq and return it.  This will take
++ * a spinlock and so must always be called in the same context, typcially
++ * process contet.
++ */
++#define lwq_dequeue(q, type, member)					\
++	({ struct llist_node *_n = __lwq_dequeue(q);			\
++	  _n ? container_of(_n, type, member.node) : NULL; })
++
++struct llist_node *lwq_dequeue_all(struct lwq *q);
++
++/**
++ * lwq_for_each_safe - iterate over detached queue allowing deletion
++ * @_n:		iterator variable
++ * @_t1:	temporary struct llist_node **
++ * @_t2:	temporary struct llist_node *
++ * @_l:		address of llist_node pointer from lwq_dequeue_all()
++ * @_member:	member in _n where lwq_node is found.
++ *
++ * Iterate over members in a dequeued list.  If the iterator variable
++ * is set to NULL, the iterator removes that entry from the queue.
++ */
++#define lwq_for_each_safe(_n, _t1, _t2, _l, _member)			\
++	for (_t1 = (_l);						\
++	     *(_t1) ? (_n = container_of(*(_t1), typeof(*(_n)), _member.node),\
++		       _t2 = ((*_t1)->next),				\
++		       true)						\
++	     : false;							\
++	     (_n) ? (_t1 = &(_n)->_member.node.next, 0)			\
++	     : ((*(_t1) = (_t2)),  0))
++
++/**
++ * lwq_enqueue - add a new item to the end of the queue
++ * @n	- the lwq_node embedded in the item to be added
++ * @q	- the lwq to append to.
++ *
++ * No locking is needed to append to the queue so this can
++ * be called from any context.
++ * Return %true is the list may have previously been empty.
++ */
++static inline bool lwq_enqueue(struct lwq_node *n, struct lwq *q)
++{
++	/* acquire enqures ordering wrt lwq_dequeue */
++	return llist_add(&n->node, &q->new) &&
++		smp_load_acquire(&q->ready) == NULL;
++}
++
++/**
++ * lwq_enqueue_batch - add a list of new items to the end of the queue
++ * @n	- the lwq_node embedded in the first item to be added
++ * @q	- the lwq to append to.
++ *
++ * No locking is needed to append to the queue so this can
++ * be called from any context.
++ * Return %true is the list may have previously been empty.
++ */
++static inline bool lwq_enqueue_batch(struct llist_node *n, struct lwq *q)
++{
++	struct llist_node *e = n;
++
++	/* acquire enqures ordering wrt lwq_dequeue */
++	return llist_add_batch(llist_reverse_order(n), e, &q->new) &&
++		smp_load_acquire(&q->ready) == NULL;
++}
++#endif /* LWQ_H */
+diff --git a/lib/Kconfig b/lib/Kconfig
+index c686f4adc124..76fe64f933fc 100644
+--- a/lib/Kconfig
++++ b/lib/Kconfig
+@@ -729,6 +729,11 @@ config PARMAN
+ config OBJAGG
+ 	tristate "objagg" if COMPILE_TEST
  
- 	set_freezable();
++config LWQ_TEST
++	bool "Boot-time test for lwq queuing"
++	help
++          Run boot-time test of light-weight queuing.
++
+ endmenu
  
--	while (!kthread_freezable_should_stop(NULL))
+ config GENERIC_IOREMAP
+diff --git a/lib/Makefile b/lib/Makefile
+index 740109b6e2c8..d0c116b706e6 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -45,7 +45,7 @@ obj-y	+= lockref.o
+ obj-y += bcd.o sort.o parser.o debug_locks.o random32.o \
+ 	 bust_spinlocks.o kasprintf.o bitmap.o scatterlist.o \
+ 	 list_sort.o uuid.o iov_iter.o clz_ctz.o \
+-	 bsearch.o find_bit.o llist.o memweight.o kfifo.o \
++	 bsearch.o find_bit.o llist.o lwq.o memweight.o kfifo.o \
+ 	 percpu-refcount.o rhashtable.o base64.o \
+ 	 once.o refcount.o rcuref.o usercopy.o errseq.o bucket_locks.o \
+ 	 generic-radix-tree.o
+diff --git a/lib/lwq.c b/lib/lwq.c
+new file mode 100644
+index 000000000000..7fe6c7125357
+--- /dev/null
++++ b/lib/lwq.c
+@@ -0,0 +1,151 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Light weight single-linked queue.
++ *
++ * Entries are enqueued to the head of an llist, with no blocking.
++ * This can happen in any context.
++ *
++ * Entries are dequeued using a spinlock to protect against
++ * multiple access.  The llist is staged in reverse order, and refreshed
++ * from the llist when it exhausts.
++ */
++#include <linux/rcupdate.h>
++#include <linux/lwq.h>
++
++struct llist_node *__lwq_dequeue(struct lwq *q)
++{
++	struct llist_node *this;
++
++	if (lwq_empty(q))
++		return NULL;
++	spin_lock(&q->lock);
++	this = q->ready;
++	if (!this && !llist_empty(&q->new)) {
++		/* ensure queue doesn't appear transiently lwq_empty */
++		smp_store_release(&q->ready, (void *)1);
++		this = llist_reverse_order(llist_del_all(&q->new));
++		if (!this)
++			q->ready = NULL;
++	}
++	if (this)
++		q->ready = llist_next(this);
++	spin_unlock(&q->lock);
++	return this;
++}
++EXPORT_SYMBOL_GPL(__lwq_dequeue);
++
++/**
++ * lwq_dequeue_all - dequeue all currently enqueued objects
++ * @q:	the queue to dequeue from
++ *
++ * Remove and return a linked list of llist_nodes of all the objects that were
++ * in the queue. The first on the list will be the object that was least
++ * recently enqueued.
++ */
++struct llist_node *lwq_dequeue_all(struct lwq *q)
++{
++	struct llist_node *r, *t, **ep;
++
++	if (lwq_empty(q))
++		return NULL;
++
++	spin_lock(&q->lock);
++	r = q->ready;
++	q->ready = NULL;
++	t = llist_del_all(&q->new);
++	spin_unlock(&q->lock);
++	ep = &r;
++	while (*ep)
++		ep = &(*ep)->next;
++	*ep = llist_reverse_order(t);
++	return r;
++}
++EXPORT_SYMBOL_GPL(lwq_dequeue_all);
++
++#if IS_ENABLED(CONFIG_LWQ_TEST)
++
++#include <linux/module.h>
++#include <linux/slab.h>
++#include <linux/wait_bit.h>
++#include <linux/kthread.h>
++#include <linux/delay.h>
++struct tnode {
++	struct lwq_node n;
++	int i;
++	int c;
++};
++
++static int lwq_exercise(void *qv)
++{
++	struct lwq *q = qv;
++	int cnt;
++	struct tnode *t;
++
++	for (cnt = 0; cnt < 10000; cnt++) {
++		wait_var_event(q, (t = lwq_dequeue(q, struct tnode, n)) != NULL);
++		t->c++;
++		if (lwq_enqueue(&t->n, q))
++			wake_up_var(q);
++	}
 +	while (!kthread_should_stop())
- 		svc_recv(rqstp);
- 
- 	svc_exit_thread(rqstp);
-@@ -86,41 +86,6 @@ nfs4_callback_svc(void *vrqstp)
- }
- 
- #if defined(CONFIG_NFS_V4_1)
--/*
-- * The callback service for NFSv4.1 callbacks
-- */
--static int
--nfs41_callback_svc(void *vrqstp)
--{
--	struct svc_rqst *rqstp = vrqstp;
--	struct svc_serv *serv = rqstp->rq_server;
--	struct rpc_rqst *req;
--	DEFINE_WAIT(wq);
--
--	set_freezable();
--
--	while (!kthread_freezable_should_stop(NULL)) {
--		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_IDLE);
--		spin_lock_bh(&serv->sv_cb_lock);
--		if (!list_empty(&serv->sv_cb_list)) {
--			req = list_first_entry(&serv->sv_cb_list,
--					struct rpc_rqst, rq_bc_list);
--			list_del(&req->rq_bc_list);
--			spin_unlock_bh(&serv->sv_cb_lock);
--			finish_wait(&serv->sv_cb_waitq, &wq);
--			svc_process_bc(req, rqstp);
--		} else {
--			spin_unlock_bh(&serv->sv_cb_lock);
--			if (!kthread_should_stop())
--				schedule();
--			finish_wait(&serv->sv_cb_waitq, &wq);
--		}
--	}
--
--	svc_exit_thread(rqstp);
--	return 0;
--}
--
- static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
- 		struct svc_serv *serv)
- {
-@@ -233,10 +198,7 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
- 			cb_info->users);
- 
- 	threadfn = nfs4_callback_svc;
--#if defined(CONFIG_NFS_V4_1)
--	if (minorversion)
--		threadfn = nfs41_callback_svc;
--#else
-+#if !defined(CONFIG_NFS_V4_1)
- 	if (minorversion)
- 		return ERR_PTR(-ENOTSUPP);
- #endif
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 0cdca5960171..acbe1314febd 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -92,8 +92,6 @@ struct svc_serv {
- 						 * that arrive over the same
- 						 * connection */
- 	spinlock_t		sv_cb_lock;	/* protects the svc_cb_list */
--	wait_queue_head_t	sv_cb_waitq;	/* sleep here if there are no
--						 * entries in the svc_cb_list */
- 	bool			sv_bc_enabled;	/* service uses backchannel */
- #endif /* CONFIG_SUNRPC_BACKCHANNEL */
- };
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index 65a6c6429a53..44b7c89a635f 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -349,10 +349,8 @@ struct rpc_rqst *xprt_lookup_bc_request(struct rpc_xprt *xprt, __be32 xid)
- }
- 
- /*
-- * Add callback request to callback list.  The callback
-- * service sleeps on the sv_cb_waitq waiting for new
-- * requests.  Wake it up after adding enqueing the
-- * request.
-+ * Add callback request to callback list.  Wake a thread
-+ * on the first pool (usually the only pool) to handle it.
-  */
- void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied)
- {
-@@ -371,6 +369,6 @@ void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied)
- 	xprt_get(xprt);
- 	spin_lock(&bc_serv->sv_cb_lock);
- 	list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
--	wake_up(&bc_serv->sv_cb_waitq);
- 	spin_unlock(&bc_serv->sv_cb_lock);
-+	svc_pool_wake_idle_thread(&bc_serv->sv_pools[0]);
- }
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index a3d031deb1ec..b98a159eb17f 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -440,7 +440,6 @@ __svc_init_bc(struct svc_serv *serv)
- {
- 	INIT_LIST_HEAD(&serv->sv_cb_list);
- 	spin_lock_init(&serv->sv_cb_lock);
--	init_waitqueue_head(&serv->sv_cb_waitq);
- }
- #else
- static void
-@@ -718,6 +717,7 @@ void svc_pool_wake_idle_thread(struct svc_pool *pool)
- 
- 	set_bit(SP_CONGESTED, &pool->sp_flags);
- }
-+EXPORT_SYMBOL_GPL(svc_pool_wake_idle_thread);
- 
- static struct svc_pool *
- svc_pool_next(struct svc_serv *serv, struct svc_pool *pool, unsigned int *state)
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 835160da3ad4..b057f1cbe7a1 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -17,6 +17,7 @@
- #include <linux/sunrpc/svc_xprt.h>
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/xprt.h>
-+#include <linux/sunrpc/bc_xprt.h>
- #include <linux/module.h>
- #include <linux/netdevice.h>
- #include <trace/events/sunrpc.h>
-@@ -719,6 +720,13 @@ rqst_should_sleep(struct svc_rqst *rqstp)
- 	if (freezing(current))
- 		return false;
- 
-+#if defined(CONFIG_SUNRPC_BACKCHANNEL)
-+	if (svc_is_backchannel(rqstp)) {
-+		if (!list_empty(&rqstp->rq_server->sv_cb_list))
-+			return false;
-+	}
-+#endif
++		schedule_timeout_idle(1);
++	return 0;
++}
 +
- 	return true;
- }
- 
-@@ -868,6 +876,25 @@ void svc_recv(struct svc_rqst *rqstp)
- 		trace_svc_xprt_dequeue(rqstp);
- 		svc_handle_xprt(rqstp, xprt);
- 	}
++static int lwq_test(void)
++{
++	int i;
++	struct lwq q;
++	struct llist_node *l, **t1, *t2;
++	struct tnode *t;
++	struct task_struct *threads[8];
 +
-+#if defined(CONFIG_SUNRPC_BACKCHANNEL)
-+	if (svc_is_backchannel(rqstp)) {
-+		struct svc_serv *serv = rqstp->rq_server;
-+		struct rpc_rqst *req;
-+
-+		spin_lock_bh(&serv->sv_cb_lock);
-+		req = list_first_entry_or_null(&serv->sv_cb_list,
-+					       struct rpc_rqst, rq_bc_list);
-+		if (req) {
-+			list_del(&req->rq_bc_list);
-+			spin_unlock_bh(&serv->sv_cb_lock);
-+
-+			svc_process_bc(req, rqstp);
-+			return;
++	printk(KERN_INFO "testing lwq....\n");
++	lwq_init(&q);
++	printk(KERN_INFO " lwq: run some threads\n");
++	for (i = 0; i < ARRAY_SIZE(threads); i++)
++		threads[i] = kthread_run(lwq_exercise, &q, "lwq-test-%d", i);
++	for (i = 0; i < 100; i++) {
++		t = kmalloc(sizeof(*t), GFP_KERNEL);
++		t->i = i;
++		t->c = 0;
++		if (lwq_enqueue(&t->n, &q))
++			wake_up_var(&q);
++	};
++	/* wait for threads to exit */
++	for (i = 0; i < ARRAY_SIZE(threads); i++)
++		if (!IS_ERR_OR_NULL(threads[i]))
++			kthread_stop(threads[i]);
++	printk(KERN_INFO " lwq: dequeue first 50:");
++	for (i = 0; i < 50 ; i++) {
++		if (i && (i % 10) == 0) {
++			printk(KERN_CONT "\n");
++			printk(KERN_INFO " lwq: ... ");
 +		}
-+		spin_unlock_bh(&serv->sv_cb_lock);
++		t = lwq_dequeue(&q, struct tnode, n);
++		printk(KERN_CONT " %d(%d)", t->i, t->c);
++		kfree(t);
 +	}
-+#endif
- }
- EXPORT_SYMBOL_GPL(svc_recv);
- 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index e4d84a13c566..bfc434ec52a7 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -267,7 +267,7 @@ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *r_xprt,
- 	list_add(&rqst->rq_bc_list, &bc_serv->sv_cb_list);
- 	spin_unlock(&bc_serv->sv_cb_lock);
- 
--	wake_up(&bc_serv->sv_cb_waitq);
-+	svc_pool_wake_idle_thread(&bc_serv->sv_pools[0]);
- 
- 	r_xprt->rx_stats.bcall_count++;
- 	return;
++	printk(KERN_CONT "\n");
++	l = lwq_dequeue_all(&q);
++	printk(KERN_INFO " lwq: delete the multiples of 3 (test lwq_for_each_safe())\n");
++	lwq_for_each_safe(t, t1, t2, &l, n) {
++		if ((t->i % 3) == 0) {
++			t->i = -1;
++			kfree(t);
++			t = NULL;
++		}
++	}
++	if (l)
++		lwq_enqueue_batch(l, &q);
++	printk(KERN_INFO " lwq: dequeue remaining:");
++	while ((t = lwq_dequeue(&q, struct tnode, n)) != NULL) {
++		printk(KERN_CONT " %d", t->i);
++		kfree(t);
++	}
++	printk(KERN_CONT "\n");
++	return 0;
++}
++
++module_init(lwq_test);
++#endif /* CONFIG_LWQ_TEST*/
 
 
