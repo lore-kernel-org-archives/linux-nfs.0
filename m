@@ -2,174 +2,111 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 797DCCA0ED0
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1875DCA0ED5
 	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S238207AbjIKV6f (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:58:35 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41502 "EHLO
+        id S237174AbjIKV6b (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:58:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48632 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243583AbjIKRVD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 13:21:03 -0400
+        with ESMTP id S236526AbjIKKu3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 06:50:29 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 387A51A5
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 10:20:59 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 161CDC433C8;
-        Mon, 11 Sep 2023 17:20:57 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 11675E9;
+        Mon, 11 Sep 2023 03:50:25 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BD08AC433C9;
+        Mon, 11 Sep 2023 10:50:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1694452858;
-        bh=X4bjx4WcSwqD8tvxg/8TGlrCU9XsGv/Cxoi4cyfXb4w=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=JE7K/34dQLAWJQUXeglzWOEUx52VKhMv2IDeuHk1RMsM68pqJlcplE8BnuLHHDM7P
-         eAgGAdwdg98Xj7PloViMG5tSHYM6JT8VYwpL7bHwk4jMj4cl2KnfuXHOKkBDk6StsV
-         itrScVgKiJrxC0pJs+eJJVhl7cwiZ4JhHb2AgUIxW8ftb+c69jorJnYGCpjt9zaT5p
-         6ayAn9xZrb2/9l5CTrvczWquZRHpNH8J7IaICPt1zJZdF/zKMmgHE+Uy/F0KTSQi05
-         aCQ7c12uOUzMCuB8OkTcBRcW6CDWUX8Cr+RXGBL5cWarIlxNPk03AiFROlvqG0zEy0
-         RynbmzHDFe3ww==
-Message-ID: <a90d95fc491e8c1037b6dd7670fbe5656ee75a97.camel@kernel.org>
-Subject: Re: [PATCH v8 1/3] Documentation: netlink: add a YAML spec for
- nfsd_server
-From:   Jeff Layton <jlayton@kernel.org>
-To:     Lorenzo Bianconi <lorenzo@kernel.org>, linux-nfs@vger.kernel.org
-Cc:     lorenzo.bianconi@redhat.com, chuck.lever@oracle.com, neilb@suse.de,
-        netdev@vger.kernel.org
-Date:   Mon, 11 Sep 2023 13:20:56 -0400
-In-Reply-To: <47c144cfa1859ab089527e67c8540eb920427c64.1694436263.git.lorenzo@kernel.org>
-References: <cover.1694436263.git.lorenzo@kernel.org>
-         <47c144cfa1859ab089527e67c8540eb920427c64.1694436263.git.lorenzo@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+        s=k20201202; t=1694429424;
+        bh=5eCOHpwInPjQA6NxPDr5kZtgwrG8Hy+L9RSiIjoYzXQ=;
+        h=Date:Cc:Subject:From:To:References:In-Reply-To:From;
+        b=I63fO3Oped5CcoSGIlghzn65dDLDS3AgXMOjiToNZvSUdrhpid8dA2fwnZ3L0uvuQ
+         vRO43uNZPPKAjLBYaxKuEpPRCi/DBPQ5JahZ+/xplfXgFn+m6+K1DVaoMVszFQn7e3
+         c/7ShNyPjBTDlCTah8S2O9CnI6mNmrRR5K25WKyBtu4HXfsGlCg1Nmd2cAEeAGJtqk
+         +Xaszsx6GIBzt4dpxcFYC1VW/aJEKgOxHSFW2mvoY/oVjBtFiZDYuvh56WBy8I8ZL6
+         aLRIobdGSMWYlt8ZweMRDuHBYUhcsbpwXJ23mEyEwkNhh06xFKUyD5SbyXxtBFA6QG
+         oJalfh9jeUlHA==
+Mime-Version: 1.0
 Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.48.4 (3.48.4-1.module_f38+17164+63eeee4a) 
-MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Date:   Mon, 11 Sep 2023 13:50:18 +0300
+Message-Id: <CVG13KLCIT1X.1MQT6HYAYFRAU@suppilovahvero>
+Cc:     <linux-fsdevel@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, <linux-integrity@vger.kernel.org>,
+        <linux-security-module@vger.kernel.org>,
+        <keyrings@vger.kernel.org>, <selinux@vger.kernel.org>,
+        "Roberto Sassu" <roberto.sassu@huawei.com>,
+        "Stefan Berger" <stefanb@linux.ibm.com>
+Subject: Re: [PATCH v2 11/25] security: Align inode_setattr hook definition
+ with EVM
+From:   "Jarkko Sakkinen" <jarkko@kernel.org>
+To:     "Casey Schaufler" <casey@schaufler-ca.com>,
+        "Roberto Sassu" <roberto.sassu@huaweicloud.com>,
+        <viro@zeniv.linux.org.uk>, <brauner@kernel.org>,
+        <chuck.lever@oracle.com>, <jlayton@kernel.org>, <neilb@suse.de>,
+        <kolga@netapp.com>, <Dai.Ngo@oracle.com>, <tom@talpey.com>,
+        <zohar@linux.ibm.com>, <dmitry.kasatkin@gmail.com>,
+        <paul@paul-moore.com>, <jmorris@namei.org>, <serge@hallyn.com>,
+        <dhowells@redhat.com>, <stephen.smalley.work@gmail.com>,
+        <eparis@parisplace.org>
+X-Mailer: aerc 0.14.0
+References: <20230831104136.903180-1-roberto.sassu@huaweicloud.com>
+ <20230831104136.903180-12-roberto.sassu@huaweicloud.com>
+ <CVAFV92MONCH.257Y9YQ3OEU4B@suppilovahvero>
+ <19943e35-2e7c-d27a-1a5d-189eea439dfd@schaufler-ca.com>
+In-Reply-To: <19943e35-2e7c-d27a-1a5d-189eea439dfd@schaufler-ca.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Mon, 2023-09-11 at 14:49 +0200, Lorenzo Bianconi wrote:
-> Introduce nfsd_server.yaml specs to generate uAPI and netlink
-> code for nfsd server.
-> Add rpc-status specs to define message reported by the nfsd server
-> dumping the pending RPC requests.
->=20
-> Tested-by: Jeff Layton <jlayton@kernel.org>
-> Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-> ---
->  Documentation/netlink/specs/nfsd_server.yaml | 97 ++++++++++++++++++++
->  1 file changed, 97 insertions(+)
->  create mode 100644 Documentation/netlink/specs/nfsd_server.yaml
->=20
-> diff --git a/Documentation/netlink/specs/nfsd_server.yaml b/Documentation=
-/netlink/specs/nfsd_server.yaml
-> new file mode 100644
-> index 000000000000..e681b493847b
-> --- /dev/null
-> +++ b/Documentation/netlink/specs/nfsd_server.yaml
-> @@ -0,0 +1,97 @@
-> +# SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-C=
-lause)
-> +
-> +name: nfsd_server
-> +
-> +doc:
-> +  nfsd server configuration over generic netlink.
-> +
-> +attribute-sets:
-> +  -
-> +    name: rpc-status-comp-op-attr
-> +    enum-name: nfsd-rpc-status-comp-attr
-> +    name-prefix: nfsd-attr-rpc-status-comp-
-> +    attributes:
-> +      -
-> +        name: unspec
-> +        type: unused
-> +        value: 0
-> +      -
-> +        name: op
-> +        type: u32
-> +  -
-> +    name: rpc-status-attr
-> +    enum-name: nfsd-rpc-status-attr
-> +    name-prefix: nfsd-attr-rpc-status-
-> +    attributes:
-> +      -
-> +        name: unspec
-> +        type: unused
-> +        value: 0
-> +      -
-> +        name: xid
-> +        type: u32
-> +        byte-order: big-endian
-> +      -
-> +        name: flags
-> +        type: u32
-> +      -
-> +        name: prog
-> +        type: u32
-> +      -
-> +        name: version
-> +        type: u8
-> +      -
-> +        name: proc
-> +        type: u32
-> +      -
-> +        name: service_time
-> +        type: s64
-> +      -
-> +        name: pad
-> +        type: pad
-> +      -
-> +        name: saddr4
-> +        type: u32
-> +        byte-order: big-endian
-> +        display-hint: ipv4
-> +      -
-> +        name: daddr4
-> +        type: u32
-> +        byte-order: big-endian
-> +        display-hint: ipv4
-> +      -
-> +        name: saddr6
-> +        type: binary
-> +        display-hint: ipv6
-> +      -
-> +        name: daddr6
-> +        type: binary
-> +        display-hint: ipv6
-> +      -
-> +        name: sport
-> +        type: u16
-> +        byte-order: big-endian
-> +      -
-> +        name: dport
-> +        type: u16
-> +        byte-order: big-endian
-> +      -
-> +        name: compond-op
-> +        type: array-nest
-> +        nested-attributes: rpc-status-comp-op-attr
+On Tue Sep 5, 2023 at 6:56 PM EEST, Casey Schaufler wrote:
+> On 9/4/2023 2:08 PM, Jarkko Sakkinen wrote:
+> > On Thu Aug 31, 2023 at 1:41 PM EEST, Roberto Sassu wrote:
+> >> From: Roberto Sassu <roberto.sassu@huawei.com>
+> >>
+> >> Add the idmap parameter to the definition, so that evm_inode_setattr()=
+ can
+> >> be registered as this hook implementation.
+> >>
+> >> Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
+> >> Reviewed-by: Stefan Berger <stefanb@linux.ibm.com>
+> >> Acked-by: Casey Schaufler <casey@schaufler-ca.com>
+> >> ---
+> >>  include/linux/lsm_hook_defs.h | 3 ++-
+> >>  security/security.c           | 2 +-
+> >>  security/selinux/hooks.c      | 3 ++-
+> >>  security/smack/smack_lsm.c    | 4 +++-
+> >>  4 files changed, 8 insertions(+), 4 deletions(-)
+> >>
+> >> diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_de=
+fs.h
+> >> index 4bdddb52a8fe..fdf075a6b1bb 100644
+> >> --- a/include/linux/lsm_hook_defs.h
+> >> +++ b/include/linux/lsm_hook_defs.h
+> >> @@ -134,7 +134,8 @@ LSM_HOOK(int, 0, inode_readlink, struct dentry *de=
+ntry)
+> >>  LSM_HOOK(int, 0, inode_follow_link, struct dentry *dentry, struct ino=
+de *inode,
+> >>  	 bool rcu)
+> >>  LSM_HOOK(int, 0, inode_permission, struct inode *inode, int mask)
+> >> -LSM_HOOK(int, 0, inode_setattr, struct dentry *dentry, struct iattr *=
+attr)
+> >> +LSM_HOOK(int, 0, inode_setattr, struct mnt_idmap *idmap, struct dentr=
+y *dentry,
+> >> +	 struct iattr *attr)
+> > LSM_HOOK(int, 0, inode_setattr, struct mnt_idmap *idmap, struct dentry =
+*dentry, struct iattr *attr)
+> >
+> > Only 99 characters, i.e. breaking into two lines is not necessary.
+>
+> We're keeping the LSM code in the ancient 80 character format.
+> Until we get some fresh, young maintainers involved who can convince
+> us that line wrapped 80 character terminals are kewl we're sticking
+> with what we know.
+>
+> 	https://lwn.net/Articles/822168/
 
-Is there a way to do unions in netlink? We're sending down the list of
-COMPOUND proc operations here for NFSv4, but it might be interesting to
-send down other info for other program/version/procedures in the
-future.
+Pretty artificial counter-example tbh :-) Even with Rust people tend to
+stick one character variable names for trivial integer indices.
 
-> +
-> +operations:
-> +  enum-name: nfsd-commands
-> +  name-prefix: nfsd-cmd-
-> +  list:
-> +    -
-> +      name: unspec
-> +      doc: unused
-> +      value: 0
-> +    -
-> +      name: rpc-status-get
-> +      doc: dump pending nfsd rpc
-> +      attribute-set: rpc-status-attr
-> +      dump:
-> +        pre: nfsd-server-nl-rpc-status-get-start
-> +        post: nfsd-server-nl-rpc-status-get-done
-
-Looks like a good first stab though.
-
-Acked-by: Jeff Layton <jlayton@kernel.org>
+BR, Jarkko
