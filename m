@@ -2,389 +2,204 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B8C31CA0EE5
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2AFB3CA0EEA
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:10 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239749AbjIKV7E (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:59:04 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37368 "EHLO
+        id S242078AbjIKV7H (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:59:07 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40778 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240244AbjIKOju (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 10:39:50 -0400
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 585D1CF0;
-        Mon, 11 Sep 2023 07:39:45 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 51429C433CA;
-        Mon, 11 Sep 2023 14:39:44 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1694443185;
-        bh=WMdHXTlK/F0alepEMWR0Tsn0KrNf5+HlS3u9OgTC6Ek=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=hAz0KziwdfpN4FcKQKXqH6M4J//hyNrlyd84XO9W6PhD2igr2qtJrbIBjTiB15MVV
-         i6T+QMQZl5+4IljzbFHvWJPjTTK6kUrui9qkZP0z3n8i/ebIm/TGr+3tPlur1VIdh5
-         2nUKG+FpEvbZQVCQIVO3mOxEKoywJY2wP+NtKR/SF0CMtba8T73y9w+zav1DhnIIfn
-         Rgu4Mv40CCXGgz+ZQsrTbYQGvSUAqma1FYAjq+aZWGPyXNGl8oDIfMzE9wNsHB+kwc
-         2kRivVCxk2drPt6KDtXlpqtKelFPmYiBZBOms8Y8K7YEJnJon2O0RwE1CFBcSH5YKe
-         4uaJbUuQtNKsA==
-Subject: [PATCH v1 11/17] lib: add light-weight queuing mechanism.
-From:   Chuck Lever <cel@kernel.org>
+        with ESMTP id S244048AbjIKS5E (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 14:57:04 -0400
+Received: from mail-oo1-xc30.google.com (mail-oo1-xc30.google.com [IPv6:2607:f8b0:4864:20::c30])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C7FF71B8
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 11:56:58 -0700 (PDT)
+Received: by mail-oo1-xc30.google.com with SMTP id 006d021491bc7-575f45e255dso2977897eaf.2
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 11:56:58 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20221208; t=1694458618; x=1695063418; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:to:from:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=t9FA10xdzo3rI/p2Oc+v/6tnWHhSYIWVUzHlU2v7eYk=;
+        b=VvAHsN+geQ+fxlpSMummDCxFn2YmSv3GDJOp9KZp/fgoSO3ukIcwjMj6H4LXfZnRNZ
+         7gsvlYuWYYgeT1PO64UP/MmyWuEU+4ybr5sHpUZoZbZJzEEPQHz8/+D1WVCe6paDK6jZ
+         2STCCx2R7Elbncg3p2BGXencKAPqKrAgt+vwWLp8BXvgmEpeWvSYshPJh6BQMqInvdUM
+         b9wNdWf+mNrltbQlGTWYCWOyLTY7NYWa1k8OZbDk/GIHfL0SX0uvbdh1DsJe/LXqqtcy
+         Kk5gQ7jAbsTbgzH6nH24gWp9sPNTSf8Or+A3EBjkMHeJS7YzSK7vsz/sjGxouQatJatr
+         KgVA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1694458618; x=1695063418;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=t9FA10xdzo3rI/p2Oc+v/6tnWHhSYIWVUzHlU2v7eYk=;
+        b=PUsv5Y0NZcp2EyC014F7fyGD9MVFKEeD9Pi8LwcRByDOn+tnYojEgibMqwTj0dYYPM
+         nY2caOFbjoECXtPIrQMGdm/dEWN2elpXR4+bSWwIOn3Cg2tro7GReycOmOmGYaLAroOw
+         h3DdpbVNovByVCTERc3YTqjQdaDPILNwouvXFN/+hfI42GADLijjhvdpc6dMINtZK6al
+         ray8ZWkSZkRUfGdRCqlEJGwlUwCgyAs7FMWS/AaVo456OStxoMVtfWDPO+DIagp4SbW6
+         7yt4RrIY+V9BbIKSwNOUSMbn591cAONAziv2XavqON9C8r2JJ3G6WJbW7H3FaeaoW5os
+         dFIA==
+X-Gm-Message-State: AOJu0Yw1fJqX53z8KavcNkjdIeJiZCT0y1y8MTlwzRzsdmLpXJwmHPyU
+        Uck5OKujreUBRjlWbBfNpHFXe/LvzQ==
+X-Google-Smtp-Source: AGHT+IEmMe45P4eyqFhQgjrxzGmP8x65sHDhR8/H2Z6ptaGjq0UvSODK2ChEZv/idB86WvhG0Tx2qg==
+X-Received: by 2002:a05:6358:729e:b0:140:f08c:2b50 with SMTP id w30-20020a056358729e00b00140f08c2b50mr7138047rwf.6.1694458617701;
+        Mon, 11 Sep 2023 11:56:57 -0700 (PDT)
+Received: from localhost.localdomain (c-68-32-72-208.hsd1.mi.comcast.net. [68.32.72.208])
+        by smtp.gmail.com with ESMTPSA id e15-20020a0caa4f000000b006263a9e7c63sm3106068qvb.104.2023.09.11.11.56.56
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 11 Sep 2023 11:56:57 -0700 (PDT)
+From:   trondmy@gmail.com
+X-Google-Original-From: trond.myklebust@hammerspace.com
 To:     linux-nfs@vger.kernel.org
-Cc:     NeilBrown <neilb@suse.de>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "Liam R. Howlett" <Liam.Howlett@oracle.com>,
-        Kees Cook <keescook@chromium.org>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        David Gow <davidgow@google.com>, linux-kernel@vger.kernel.org,
-        Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 11 Sep 2023 10:39:43 -0400
-Message-ID: <169444318342.4327.18355944158180782708.stgit@bazille.1015granger.net>
-In-Reply-To: <169444233785.4327.4365499966926096681.stgit@bazille.1015granger.net>
-References: <169444233785.4327.4365499966926096681.stgit@bazille.1015granger.net>
-User-Agent: StGit/1.5
+Subject: [PATCH 1/2] NFSv4: Add a parameter to limit the number of retries after NFS4ERR_DELAY
+Date:   Mon, 11 Sep 2023 14:50:30 -0400
+Message-ID: <20230911185031.11903-2-trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20230911185031.11903-1-trond.myklebust@hammerspace.com>
+References: <20230911185031.11903-1-trond.myklebust@hammerspace.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: NeilBrown <neilb@suse.de>
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-lwq is a FIFO single-linked queue that only requires a spinlock
-for dequeueing, which happens in process context.  Enqueueing is atomic
-with no spinlock and can happen in any context.
+When using a 'softerr' mount, the NFSv4 client can get stuck waiting
+forever while the server just returns NFS4ERR_DELAY. Among other things,
+this causes the knfsd server threads to busy wait.
+Add a parameter that tells the NFSv4 client how many times to retry
+before giving up.
 
-Include a unit test for basic functionality - runs at boot time.  Does
-not use kunit framework.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: Liam R. Howlett <Liam.Howlett@oracle.com>
-Cc: Kees Cook <keescook@chromium.org>
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-Cc: David Gow <davidgow@google.com>
-Cc: linux-kernel@vger.kernel.org
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- include/linux/lwq.h |  120 +++++++++++++++++++++++++++++++++++++++++
- lib/Kconfig         |    5 ++
- lib/Makefile        |    2 -
- lib/lwq.c           |  151 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 277 insertions(+), 1 deletion(-)
- create mode 100644 include/linux/lwq.h
- create mode 100644 lib/lwq.c
+ .../admin-guide/kernel-parameters.txt         |  7 ++++++
+ fs/nfs/nfs4_fs.h                              |  2 ++
+ fs/nfs/nfs4proc.c                             | 25 +++++++++++++++++++
+ fs/nfs/super.c                                |  8 +++++-
+ 4 files changed, 41 insertions(+), 1 deletion(-)
 
-diff --git a/include/linux/lwq.h b/include/linux/lwq.h
-new file mode 100644
-index 000000000000..52b9c81b493a
---- /dev/null
-+++ b/include/linux/lwq.h
-@@ -0,0 +1,120 @@
-+/* SPDX-License-Identifier: GPL-2.0-only */
-+
-+#ifndef LWQ_H
-+#define LWQ_H
-+/*
-+ * light-weight single-linked queue built from llist
-+ *
-+ * Entries can be enqueued from any context with no locking.
-+ * Entries can be dequeued from process context with integrated locking.
-+ */
-+#include <linux/container_of.h>
-+#include <linux/spinlock.h>
-+#include <linux/llist.h>
-+
-+struct lwq_node {
-+	struct llist_node node;
-+};
-+
-+struct lwq {
-+	spinlock_t		lock;
-+	struct llist_node	*ready;		/* entries to be dequeued */
-+	struct llist_head	new;		/* entries being enqueued */
-+};
-+
-+/**
-+ * lwq_init - initialise a lwq
-+ * @q:	the lwq object
-+ */
-+static inline void lwq_init(struct lwq *q)
-+{
-+	spin_lock_init(&q->lock);
-+	q->ready = NULL;
-+	init_llist_head(&q->new);
-+}
-+
-+/**
-+ * lwq_empty - test if lwq contains any entry
-+ * @q:	the lwq object
-+ *
-+ * This empty test contains an acquire barrier so that if a wakeup
-+ * is sent when lwq_dequeue returns true, it is safe to go to sleep after
-+ * a test on lwq_empty().
-+ */
-+static inline bool lwq_empty(struct lwq *q)
-+{
-+	/* acquire ensures ordering wrt lwq_enqueue() */
-+	return smp_load_acquire(&q->ready) == NULL && llist_empty(&q->new);
-+}
-+
-+struct llist_node *__lwq_dequeue(struct lwq *q);
-+/**
-+ * lwq_dequeue - dequeue first (oldest) entry from lwq
-+ * @q:		the queue to dequeue from
-+ * @type:	the type of object to return
-+ * @member:	them member in returned object which is an lwq_node.
-+ *
-+ * Remove a single object from the lwq and return it.  This will take
-+ * a spinlock and so must always be called in the same context, typcially
-+ * process contet.
-+ */
-+#define lwq_dequeue(q, type, member)					\
-+	({ struct llist_node *_n = __lwq_dequeue(q);			\
-+	  _n ? container_of(_n, type, member.node) : NULL; })
-+
-+struct llist_node *lwq_dequeue_all(struct lwq *q);
-+
-+/**
-+ * lwq_for_each_safe - iterate over detached queue allowing deletion
-+ * @_n:		iterator variable
-+ * @_t1:	temporary struct llist_node **
-+ * @_t2:	temporary struct llist_node *
-+ * @_l:		address of llist_node pointer from lwq_dequeue_all()
-+ * @_member:	member in _n where lwq_node is found.
-+ *
-+ * Iterate over members in a dequeued list.  If the iterator variable
-+ * is set to NULL, the iterator removes that entry from the queue.
-+ */
-+#define lwq_for_each_safe(_n, _t1, _t2, _l, _member)			\
-+	for (_t1 = (_l);						\
-+	     *(_t1) ? (_n = container_of(*(_t1), typeof(*(_n)), _member.node),\
-+		       _t2 = ((*_t1)->next),				\
-+		       true)						\
-+	     : false;							\
-+	     (_n) ? (_t1 = &(_n)->_member.node.next, 0)			\
-+	     : ((*(_t1) = (_t2)),  0))
-+
-+/**
-+ * lwq_enqueue - add a new item to the end of the queue
-+ * @n	- the lwq_node embedded in the item to be added
-+ * @q	- the lwq to append to.
-+ *
-+ * No locking is needed to append to the queue so this can
-+ * be called from any context.
-+ * Return %true is the list may have previously been empty.
-+ */
-+static inline bool lwq_enqueue(struct lwq_node *n, struct lwq *q)
-+{
-+	/* acquire enqures ordering wrt lwq_dequeue */
-+	return llist_add(&n->node, &q->new) &&
-+		smp_load_acquire(&q->ready) == NULL;
-+}
-+
-+/**
-+ * lwq_enqueue_batch - add a list of new items to the end of the queue
-+ * @n	- the lwq_node embedded in the first item to be added
-+ * @q	- the lwq to append to.
-+ *
-+ * No locking is needed to append to the queue so this can
-+ * be called from any context.
-+ * Return %true is the list may have previously been empty.
-+ */
-+static inline bool lwq_enqueue_batch(struct llist_node *n, struct lwq *q)
-+{
-+	struct llist_node *e = n;
-+
-+	/* acquire enqures ordering wrt lwq_dequeue */
-+	return llist_add_batch(llist_reverse_order(n), e, &q->new) &&
-+		smp_load_acquire(&q->ready) == NULL;
-+}
-+#endif /* LWQ_H */
-diff --git a/lib/Kconfig b/lib/Kconfig
-index c686f4adc124..76fe64f933fc 100644
---- a/lib/Kconfig
-+++ b/lib/Kconfig
-@@ -729,6 +729,11 @@ config PARMAN
- config OBJAGG
- 	tristate "objagg" if COMPILE_TEST
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index 722b6eca2e93..62af591ee2ad 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -3517,6 +3517,13 @@
+ 			[NFS] set the TCP port on which the NFSv4 callback
+ 			channel should listen.
  
-+config LWQ_TEST
-+	bool "Boot-time test for lwq queuing"
-+	help
-+          Run boot-time test of light-weight queuing.
++	nfs.delay_retrans=
++			[NFS] specifies the number of times the NFSv4 client
++			retries the request before returning an EAGAIN error,
++			after a reply of NFS4ERR_DELAY from the server.
++			Only applies if the softerr mount option is enabled,
++			and the specified value is >= 0.
 +
- endmenu
+ 	nfs.enable_ino64=
+ 			[NFS] enable 64-bit inode numbers.
+ 			If zero, the NFS client will fake up a 32-bit inode
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 4c9f8bd866ab..29b91482e5f4 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -209,6 +209,7 @@ struct nfs4_exception {
+ 	struct inode *inode;
+ 	nfs4_stateid *stateid;
+ 	long timeout;
++	unsigned short retrans;
+ 	unsigned char task_is_privileged : 1;
+ 	unsigned char delay : 1,
+ 		      recovering : 1,
+@@ -546,6 +547,7 @@ extern unsigned short max_session_slots;
+ extern unsigned short max_session_cb_slots;
+ extern unsigned short send_implementation_id;
+ extern bool recover_lost_locks;
++extern short nfs_delay_retrans;
  
- config GENERIC_IOREMAP
-diff --git a/lib/Makefile b/lib/Makefile
-index 740109b6e2c8..d0c116b706e6 100644
---- a/lib/Makefile
-+++ b/lib/Makefile
-@@ -45,7 +45,7 @@ obj-y	+= lockref.o
- obj-y += bcd.o sort.o parser.o debug_locks.o random32.o \
- 	 bust_spinlocks.o kasprintf.o bitmap.o scatterlist.o \
- 	 list_sort.o uuid.o iov_iter.o clz_ctz.o \
--	 bsearch.o find_bit.o llist.o memweight.o kfifo.o \
-+	 bsearch.o find_bit.o llist.o lwq.o memweight.o kfifo.o \
- 	 percpu-refcount.o rhashtable.o base64.o \
- 	 once.o refcount.o rcuref.o usercopy.o errseq.o bucket_locks.o \
- 	 generic-radix-tree.o
-diff --git a/lib/lwq.c b/lib/lwq.c
-new file mode 100644
-index 000000000000..7fe6c7125357
---- /dev/null
-+++ b/lib/lwq.c
-@@ -0,0 +1,151 @@
-+// SPDX-License-Identifier: GPL-2.0-only
+ #define NFS4_CLIENT_ID_UNIQ_LEN		(64)
+ extern char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN];
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 832fa226b8f2..99c054a6c7b5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -585,6 +585,21 @@ static int nfs4_do_handle_exception(struct nfs_server *server,
+ 	return 0;
+ }
+ 
 +/*
-+ * Light weight single-linked queue.
-+ *
-+ * Entries are enqueued to the head of an llist, with no blocking.
-+ * This can happen in any context.
-+ *
-+ * Entries are dequeued using a spinlock to protect against
-+ * multiple access.  The llist is staged in reverse order, and refreshed
-+ * from the llist when it exhausts.
++ * Track the number of NFS4ERR_DELAY related retransmissions and return
++ * EAGAIN if the 'softerr' mount option is set, and we've exceeded the limit
++ * set by 'nfs_delay_retrans'.
 + */
-+#include <linux/rcupdate.h>
-+#include <linux/lwq.h>
-+
-+struct llist_node *__lwq_dequeue(struct lwq *q)
++static int nfs4_exception_should_retrans(const struct nfs_server *server,
++					 struct nfs4_exception *exception)
 +{
-+	struct llist_node *this;
-+
-+	if (lwq_empty(q))
-+		return NULL;
-+	spin_lock(&q->lock);
-+	this = q->ready;
-+	if (!this && !llist_empty(&q->new)) {
-+		/* ensure queue doesn't appear transiently lwq_empty */
-+		smp_store_release(&q->ready, (void *)1);
-+		this = llist_reverse_order(llist_del_all(&q->new));
-+		if (!this)
-+			q->ready = NULL;
++	if (server->flags & NFS_MOUNT_SOFTERR && nfs_delay_retrans >= 0) {
++		if (exception->retrans++ >= (unsigned short)nfs_delay_retrans)
++			return -EAGAIN;
 +	}
-+	if (this)
-+		q->ready = llist_next(this);
-+	spin_unlock(&q->lock);
-+	return this;
-+}
-+EXPORT_SYMBOL_GPL(__lwq_dequeue);
-+
-+/**
-+ * lwq_dequeue_all - dequeue all currently enqueued objects
-+ * @q:	the queue to dequeue from
-+ *
-+ * Remove and return a linked list of llist_nodes of all the objects that were
-+ * in the queue. The first on the list will be the object that was least
-+ * recently enqueued.
-+ */
-+struct llist_node *lwq_dequeue_all(struct lwq *q)
-+{
-+	struct llist_node *r, *t, **ep;
-+
-+	if (lwq_empty(q))
-+		return NULL;
-+
-+	spin_lock(&q->lock);
-+	r = q->ready;
-+	q->ready = NULL;
-+	t = llist_del_all(&q->new);
-+	spin_unlock(&q->lock);
-+	ep = &r;
-+	while (*ep)
-+		ep = &(*ep)->next;
-+	*ep = llist_reverse_order(t);
-+	return r;
-+}
-+EXPORT_SYMBOL_GPL(lwq_dequeue_all);
-+
-+#if IS_ENABLED(CONFIG_LWQ_TEST)
-+
-+#include <linux/module.h>
-+#include <linux/slab.h>
-+#include <linux/wait_bit.h>
-+#include <linux/kthread.h>
-+#include <linux/delay.h>
-+struct tnode {
-+	struct lwq_node n;
-+	int i;
-+	int c;
-+};
-+
-+static int lwq_exercise(void *qv)
-+{
-+	struct lwq *q = qv;
-+	int cnt;
-+	struct tnode *t;
-+
-+	for (cnt = 0; cnt < 10000; cnt++) {
-+		wait_var_event(q, (t = lwq_dequeue(q, struct tnode, n)) != NULL);
-+		t->c++;
-+		if (lwq_enqueue(&t->n, q))
-+			wake_up_var(q);
-+	}
-+	while (!kthread_should_stop())
-+		schedule_timeout_idle(1);
 +	return 0;
 +}
 +
-+static int lwq_test(void)
-+{
-+	int i;
-+	struct lwq q;
-+	struct llist_node *l, **t1, *t2;
-+	struct tnode *t;
-+	struct task_struct *threads[8];
-+
-+	printk(KERN_INFO "testing lwq....\n");
-+	lwq_init(&q);
-+	printk(KERN_INFO " lwq: run some threads\n");
-+	for (i = 0; i < ARRAY_SIZE(threads); i++)
-+		threads[i] = kthread_run(lwq_exercise, &q, "lwq-test-%d", i);
-+	for (i = 0; i < 100; i++) {
-+		t = kmalloc(sizeof(*t), GFP_KERNEL);
-+		t->i = i;
-+		t->c = 0;
-+		if (lwq_enqueue(&t->n, &q))
-+			wake_up_var(&q);
-+	};
-+	/* wait for threads to exit */
-+	for (i = 0; i < ARRAY_SIZE(threads); i++)
-+		if (!IS_ERR_OR_NULL(threads[i]))
-+			kthread_stop(threads[i]);
-+	printk(KERN_INFO " lwq: dequeue first 50:");
-+	for (i = 0; i < 50 ; i++) {
-+		if (i && (i % 10) == 0) {
-+			printk(KERN_CONT "\n");
-+			printk(KERN_INFO " lwq: ... ");
+ /* This is the error handling routine for processes that are allowed
+  * to sleep.
+  */
+@@ -595,6 +610,11 @@ int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_
+ 
+ 	ret = nfs4_do_handle_exception(server, errorcode, exception);
+ 	if (exception->delay) {
++		int ret2 = nfs4_exception_should_retrans(server, exception);
++		if (ret2 < 0) {
++			exception->retry = 0;
++			return ret2;
 +		}
-+		t = lwq_dequeue(&q, struct tnode, n);
-+		printk(KERN_CONT " %d(%d)", t->i, t->c);
-+		kfree(t);
-+	}
-+	printk(KERN_CONT "\n");
-+	l = lwq_dequeue_all(&q);
-+	printk(KERN_INFO " lwq: delete the multiples of 3 (test lwq_for_each_safe())\n");
-+	lwq_for_each_safe(t, t1, t2, &l, n) {
-+		if ((t->i % 3) == 0) {
-+			t->i = -1;
-+			kfree(t);
-+			t = NULL;
+ 		ret = nfs4_delay(&exception->timeout,
+ 				exception->interruptible);
+ 		goto out_retry;
+@@ -623,6 +643,11 @@ nfs4_async_handle_exception(struct rpc_task *task, struct nfs_server *server,
+ 
+ 	ret = nfs4_do_handle_exception(server, errorcode, exception);
+ 	if (exception->delay) {
++		int ret2 = nfs4_exception_should_retrans(server, exception);
++		if (ret2 < 0) {
++			exception->retry = 0;
++			return ret2;
 +		}
-+	}
-+	if (l)
-+		lwq_enqueue_batch(l, &q);
-+	printk(KERN_INFO " lwq: dequeue remaining:");
-+	while ((t = lwq_dequeue(&q, struct tnode, n)) != NULL) {
-+		printk(KERN_CONT " %d", t->i);
-+		kfree(t);
-+	}
-+	printk(KERN_CONT "\n");
-+	return 0;
-+}
-+
-+module_init(lwq_test);
-+#endif /* CONFIG_LWQ_TEST*/
-
+ 		rpc_delay(task, nfs4_update_delay(&exception->timeout));
+ 		goto out_retry;
+ 	}
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2284f749d892..929e122ff34b 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1368,6 +1368,7 @@ unsigned short max_session_cb_slots = NFS4_DEF_CB_SLOT_TABLE_SIZE;
+ unsigned short send_implementation_id = 1;
+ char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN] = "";
+ bool recover_lost_locks = false;
++short nfs_delay_retrans = -1;
+ 
+ EXPORT_SYMBOL_GPL(nfs_callback_nr_threads);
+ EXPORT_SYMBOL_GPL(nfs_callback_set_tcpport);
+@@ -1378,6 +1379,7 @@ EXPORT_SYMBOL_GPL(max_session_cb_slots);
+ EXPORT_SYMBOL_GPL(send_implementation_id);
+ EXPORT_SYMBOL_GPL(nfs4_client_id_uniquifier);
+ EXPORT_SYMBOL_GPL(recover_lost_locks);
++EXPORT_SYMBOL_GPL(nfs_delay_retrans);
+ 
+ #define NFS_CALLBACK_MAXPORTNR (65535U)
+ 
+@@ -1426,5 +1428,9 @@ MODULE_PARM_DESC(recover_lost_locks,
+ 		 "If the server reports that a lock might be lost, "
+ 		 "try to recover it risking data corruption.");
+ 
+-
++module_param_named(delay_retrans, nfs_delay_retrans, short, 0644);
++MODULE_PARM_DESC(delay_retrans,
++		 "Unless negative, specifies the number of times the NFSv4 "
++		 "client retries a request before returning an EAGAIN error, "
++		 "after a reply of NFS4ERR_DELAY from the server.");
+ #endif /* CONFIG_NFS_V4 */
+-- 
+2.41.0
 
