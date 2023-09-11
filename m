@@ -2,208 +2,154 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id CE854CA0EC7
-	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 21:59:57 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7442ECA0ECE
+	for <linux-nfs@archiver.kernel.org>; Mon, 11 Sep 2023 22:00:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235513AbjIKV6M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 11 Sep 2023 17:58:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40788 "EHLO
+        id S237951AbjIKV62 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 11 Sep 2023 17:58:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56850 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244049AbjIKS5F (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 14:57:05 -0400
-Received: from mail-qv1-xf2c.google.com (mail-qv1-xf2c.google.com [IPv6:2607:f8b0:4864:20::f2c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ED2141B6
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 11:56:59 -0700 (PDT)
-Received: by mail-qv1-xf2c.google.com with SMTP id 6a1803df08f44-64f4ac604c2so25874286d6.1
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 11:56:59 -0700 (PDT)
+        with ESMTP id S235964AbjIKJrY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2023 05:47:24 -0400
+Received: from mail-pl1-x633.google.com (mail-pl1-x633.google.com [IPv6:2607:f8b0:4864:20::633])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4BD5EE40
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 02:46:57 -0700 (PDT)
+Received: by mail-pl1-x633.google.com with SMTP id d9443c01a7336-1bf1876ef69so11139425ad.1
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Sep 2023 02:46:57 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20221208; t=1694458619; x=1695063419; darn=vger.kernel.org;
+        d=bytedance.com; s=google; t=1694425617; x=1695030417; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:to:from:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=lJFAHGplLbWURCk//AHrAxo6w0nka4O2qa2RE6264FE=;
-        b=h1/qfLbHwt83rFbuuzdp7VgKC7Q/z2X2rW7+bMRflx6K0W1k6Z90LKWhO1ZmKjhQ8t
-         GiQEAy9PtKrYlayf5OEswwVX0ObIYwP/Gxm1i173Xewhvwsu2/PoJFh1WMu0eT1vU8OA
-         8jiY9jCN80iZbvKOHN5h83uaeFqzigJRWk+HUC5pZzIoC8RZGNKtsce4jsw/U9dx7Cs2
-         xyfzbDqz8zOtuUuD+FYjeTHPjk3Rs6K2Y2s1l0K1Uip+tu0fCSR8ikQR4QgkeZtDFAeu
-         2xs0mUiIfXQ9NFDen2c8WExajmZKH4cNSHc6mwcOf3AxfA+4kJkk7yqMhsiAcAT5fXI6
-         Sriw==
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=FXa1LVTr7cMGrveLuEzAv2/sv0TRtu2+M0j9hstuDhg=;
+        b=BaRzbLov5BT4pw/1CESQTlJ40A4oFsf/vNTGEkFZ5sTNaIpW+njPUTjTgHU1xeZdNr
+         w8+bj0rh5Ko4tl8fy+3AG5N6ntHkuAMZAfvnrSWJ5s40pfUyhpK425X0XtX6kP6qUmqm
+         sssKIUMe2uV2pupUB724NI76IfVmqTQ1A56xcRV3XPhtXYXDFBtIQ5CDxl2ucnxA6p9G
+         FpKkG69Vu8TYCczUmEitM+SCIi9gyZJFHN7JcQiYKyTJIx1u+Ef2ebci403Ejx8WB+vI
+         bQfvjkWmUZ5xm9afbdrpjtZ23S23PCGHHhAzc/1rrg+LPAjKJqgQpEROsyfsGDVJ7Trq
+         449A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1694458619; x=1695063419;
+        d=1e100.net; s=20230601; t=1694425617; x=1695030417;
         h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
+         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=lJFAHGplLbWURCk//AHrAxo6w0nka4O2qa2RE6264FE=;
-        b=NcC7DraPb7w8X9s0PAq4z8hRZcX+KWjB1wyCIxqb5SM+5oO+y1fflTEz/bV70d9p5A
-         syhecF5IGzxpWFfeZ1Jj9kJM+anFnD0GDU8TgFDP6UrapE6xsVBGcPgLYTl9NQBfMtkh
-         PWNQ/9pSAqh75goW1YG32UBJdWIoOyzuGYIerdvVNfu/3PC+Ujoy6+UEj9lDDPQZRRZU
-         9pjsO4ZcOJbfZV09zfvDr4/Hk8nJDVgUK0UgWVyf01vuOwia926ZEhCx2hBMz8isAU+2
-         mHkGAfzrDAf6ncRoDAwXRScKBMUfJ8W/rvw2WEQFk9ZOkQ4RwnYzfeDpqhHIWHeMTNOy
-         fpAg==
-X-Gm-Message-State: AOJu0YwW8YWjOoIrEvcGzwHk01BDYLsNtAJqANaSoJRIgL2c+HlVVVpM
-        lBzsa5uRRRWhVFNf3WhrXOtzl8swuQ==
-X-Google-Smtp-Source: AGHT+IH5zNkAnVvOUQ5OewtqtmwgWYKBQS8YcBCvYSE8kD5QnDMvpe2aUSifGriciAYT/a2Ws4kcVw==
-X-Received: by 2002:a0c:f189:0:b0:64f:3795:c10 with SMTP id m9-20020a0cf189000000b0064f37950c10mr9114264qvl.10.1694458618796;
-        Mon, 11 Sep 2023 11:56:58 -0700 (PDT)
-Received: from localhost.localdomain (c-68-32-72-208.hsd1.mi.comcast.net. [68.32.72.208])
-        by smtp.gmail.com with ESMTPSA id e15-20020a0caa4f000000b006263a9e7c63sm3106068qvb.104.2023.09.11.11.56.57
-        for <linux-nfs@vger.kernel.org>
+        bh=FXa1LVTr7cMGrveLuEzAv2/sv0TRtu2+M0j9hstuDhg=;
+        b=ZcKr8c1lxPbsKGMzQwG13NXTkC2YULTFypGnY0W4XtRWud/US6d4A8JHa8QB7vK/7J
+         tRjFz9r36M4uD6xmRbDjQcajvyf9dtcu6YHnYuix9tgzgUjbnxW61rPYLMxSctUXNihP
+         ojixcCLMIKH1vgM9MbMgnMVTeLyqcBAZ9k/gix4WE/KiLSfFwBsfvK0Ub0VYkuF4wsjz
+         Jw5Tja2S12NK10Km4x72Fwdys3gVMjxxLiG/tqem+/VpovD2gHvg68slZgjIsvF/bzTf
+         8qILOlEL9eO4cod6YZZdSuubCoiE4HRY+mTfWDatPT8RBfnUGzVbSIhUG4s3/qixi2MI
+         XuzA==
+X-Gm-Message-State: AOJu0Ywih+fAHpWuGt7lJf+sRzF5DWRzZ06zvs5npmvFgIFIu4dwF/cG
+        CcLiN/cNLw2ZVJ57z+I27NEriA==
+X-Google-Smtp-Source: AGHT+IHKZ7oB5FMEwi+qCC0j2E1ekjFtKsjq/92jKkTijP5Pj32E0W6thfocXbY8FqhF+sPzRd82Ug==
+X-Received: by 2002:a17:902:d508:b0:1c1:fbec:bc32 with SMTP id b8-20020a170902d50800b001c1fbecbc32mr10679560plg.6.1694425616764;
+        Mon, 11 Sep 2023 02:46:56 -0700 (PDT)
+Received: from C02DW0BEMD6R.bytedance.net ([203.208.167.146])
+        by smtp.gmail.com with ESMTPSA id az7-20020a170902a58700b001bdc2fdcf7esm5988188plb.129.2023.09.11.02.46.47
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 11 Sep 2023 11:56:58 -0700 (PDT)
-From:   trondmy@gmail.com
-X-Google-Original-From: trond.myklebust@hammerspace.com
-To:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFSv4/pnfs: Allow layoutget to return EAGAIN for softerr mounts
-Date:   Mon, 11 Sep 2023 14:50:31 -0400
-Message-ID: <20230911185031.11903-3-trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.41.0
-In-Reply-To: <20230911185031.11903-2-trond.myklebust@hammerspace.com>
-References: <20230911185031.11903-1-trond.myklebust@hammerspace.com>
- <20230911185031.11903-2-trond.myklebust@hammerspace.com>
+        Mon, 11 Sep 2023 02:46:56 -0700 (PDT)
+From:   Qi Zheng <zhengqi.arch@bytedance.com>
+To:     akpm@linux-foundation.org, david@fromorbit.com, tkhai@ya.ru,
+        vbabka@suse.cz, roman.gushchin@linux.dev, djwong@kernel.org,
+        brauner@kernel.org, paulmck@kernel.org, tytso@mit.edu,
+        steven.price@arm.com, cel@kernel.org, senozhatsky@chromium.org,
+        yujie.liu@intel.com, gregkh@linuxfoundation.org,
+        muchun.song@linux.dev
+Cc:     linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org,
+        Qi Zheng <zhengqi.arch@bytedance.com>,
+        Muchun Song <songmuchun@bytedance.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Jeff Layton <jlayton@kernel.org>, Neil Brown <neilb@suse.de>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v6 12/45] nfsd: dynamically allocate the nfsd-filecache shrinker
+Date:   Mon, 11 Sep 2023 17:44:11 +0800
+Message-Id: <20230911094444.68966-13-zhengqi.arch@bytedance.com>
+X-Mailer: git-send-email 2.24.3 (Apple Git-128)
+In-Reply-To: <20230911094444.68966-1-zhengqi.arch@bytedance.com>
+References: <20230911094444.68966-1-zhengqi.arch@bytedance.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+Use new APIs to dynamically allocate the nfsd-filecache shrinker.
 
-If we're using the 'softerr' mount option, we may want to allow
-layoutget to return EAGAIN to allow knfsd server threads to return a
-JUKEBOX/DELAY error to the client instead of busy waiting.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Qi Zheng <zhengqi.arch@bytedance.com>
+Reviewed-by: Muchun Song <songmuchun@bytedance.com>
+CC: Chuck Lever <chuck.lever@oracle.com>
+CC: Jeff Layton <jlayton@kernel.org>
+CC: Neil Brown <neilb@suse.de>
+CC: Olga Kornievskaia <kolga@netapp.com>
+CC: Dai Ngo <Dai.Ngo@oracle.com>
+CC: Tom Talpey <tom@talpey.com>
+CC: linux-nfs@vger.kernel.org
 ---
- fs/nfs/nfs4proc.c | 18 ++++++++++--------
- fs/nfs/pnfs.c     |  8 ++++++--
- fs/nfs/pnfs.h     |  5 ++++-
- fs/nfs/write.c    |  2 ++
- 4 files changed, 22 insertions(+), 11 deletions(-)
+ fs/nfsd/filecache.c | 23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 99c054a6c7b5..5deeaea8026e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -9651,6 +9651,9 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
+diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+index ee9c923192e0..9c62b4502539 100644
+--- a/fs/nfsd/filecache.c
++++ b/fs/nfsd/filecache.c
+@@ -521,11 +521,7 @@ nfsd_file_lru_scan(struct shrinker *s, struct shrink_control *sc)
+ 	return ret;
+ }
  
- 	nfs4_sequence_free_slot(&lgp->res.seq_res);
+-static struct shrinker	nfsd_file_shrinker = {
+-	.scan_objects = nfsd_file_lru_scan,
+-	.count_objects = nfsd_file_lru_count,
+-	.seeks = 1,
+-};
++static struct shrinker *nfsd_file_shrinker;
  
-+	exception->state = NULL;
-+	exception->stateid = NULL;
+ /**
+  * nfsd_file_cond_queue - conditionally unhash and queue a nfsd_file
+@@ -746,12 +742,19 @@ nfsd_file_cache_init(void)
+ 		goto out_err;
+ 	}
+ 
+-	ret = register_shrinker(&nfsd_file_shrinker, "nfsd-filecache");
+-	if (ret) {
+-		pr_err("nfsd: failed to register nfsd_file_shrinker: %d\n", ret);
++	nfsd_file_shrinker = shrinker_alloc(0, "nfsd-filecache");
++	if (!nfsd_file_shrinker) {
++		ret = -ENOMEM;
++		pr_err("nfsd: failed to allocate nfsd_file_shrinker\n");
+ 		goto out_lru;
+ 	}
+ 
++	nfsd_file_shrinker->count_objects = nfsd_file_lru_count;
++	nfsd_file_shrinker->scan_objects = nfsd_file_lru_scan;
++	nfsd_file_shrinker->seeks = 1;
 +
- 	switch (nfs4err) {
- 	case 0:
- 		goto out;
-@@ -9746,7 +9749,8 @@ static const struct rpc_call_ops nfs4_layoutget_call_ops = {
- };
++	shrinker_register(nfsd_file_shrinker);
++
+ 	ret = lease_register_notifier(&nfsd_file_lease_notifier);
+ 	if (ret) {
+ 		pr_err("nfsd: unable to register lease notifier: %d\n", ret);
+@@ -774,7 +777,7 @@ nfsd_file_cache_init(void)
+ out_notifier:
+ 	lease_unregister_notifier(&nfsd_file_lease_notifier);
+ out_shrinker:
+-	unregister_shrinker(&nfsd_file_shrinker);
++	shrinker_free(nfsd_file_shrinker);
+ out_lru:
+ 	list_lru_destroy(&nfsd_file_lru);
+ out_err:
+@@ -891,7 +894,7 @@ nfsd_file_cache_shutdown(void)
+ 		return;
  
- struct pnfs_layout_segment *
--nfs4_proc_layoutget(struct nfs4_layoutget *lgp, long *timeout)
-+nfs4_proc_layoutget(struct nfs4_layoutget *lgp,
-+		    struct nfs4_exception *exception)
- {
- 	struct inode *inode = lgp->args.inode;
- 	struct nfs_server *server = NFS_SERVER(inode);
-@@ -9766,13 +9770,10 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, long *timeout)
- 			 RPC_TASK_MOVEABLE,
- 	};
- 	struct pnfs_layout_segment *lseg = NULL;
--	struct nfs4_exception exception = {
--		.inode = inode,
--		.timeout = *timeout,
--	};
- 	int status = 0;
- 
- 	nfs4_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0, 0);
-+	exception->retry = 0;
- 
- 	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
-@@ -9783,11 +9784,12 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, long *timeout)
- 		goto out;
- 
- 	if (task->tk_status < 0) {
--		status = nfs4_layoutget_handle_exception(task, lgp, &exception);
--		*timeout = exception.timeout;
-+		exception->retry = 1;
-+		status = nfs4_layoutget_handle_exception(task, lgp, exception);
- 	} else if (lgp->res.layoutp->len == 0) {
-+		exception->retry = 1;
- 		status = -EAGAIN;
--		*timeout = nfs4_update_delay(&exception.timeout);
-+		nfs4_update_delay(&exception->timeout);
- 	} else
- 		lseg = pnfs_layout_process(lgp);
- out:
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 306cba0b9e69..63904a372b2f 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1980,7 +1980,9 @@ pnfs_update_layout(struct inode *ino,
- 	struct pnfs_layout_segment *lseg = NULL;
- 	struct nfs4_layoutget *lgp;
- 	nfs4_stateid stateid;
--	long timeout = 0;
-+	struct nfs4_exception exception = {
-+		.inode = ino,
-+	};
- 	unsigned long giveup = jiffies + (clp->cl_lease_time << 1);
- 	bool first;
- 
-@@ -2144,7 +2146,7 @@ pnfs_update_layout(struct inode *ino,
- 	lgp->lo = lo;
- 	pnfs_get_layout_hdr(lo);
- 
--	lseg = nfs4_proc_layoutget(lgp, &timeout);
-+	lseg = nfs4_proc_layoutget(lgp, &exception);
- 	trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
- 				 PNFS_UPDATE_LAYOUT_SEND_LAYOUTGET);
- 	nfs_layoutget_end(lo);
-@@ -2171,6 +2173,8 @@ pnfs_update_layout(struct inode *ino,
- 			goto out_put_layout_hdr;
- 		}
- 		if (lseg) {
-+			if (!exception.retry)
-+				goto out_put_layout_hdr;
- 			if (first)
- 				pnfs_clear_first_layoutget(lo);
- 			trace_pnfs_update_layout(ino, pos, count,
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index d886c8226d8f..db57a85500ee 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -35,6 +35,7 @@
- #include <linux/nfs_page.h>
- #include <linux/workqueue.h>
- 
-+struct nfs4_exception;
- struct nfs4_opendata;
- 
- enum {
-@@ -245,7 +246,9 @@ extern size_t max_response_pages(struct nfs_server *server);
- extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
- 				   struct pnfs_device *dev,
- 				   const struct cred *cred);
--extern struct pnfs_layout_segment* nfs4_proc_layoutget(struct nfs4_layoutget *lgp, long *timeout);
-+extern struct pnfs_layout_segment *
-+nfs4_proc_layoutget(struct nfs4_layoutget *lgp,
-+		    struct nfs4_exception *exception);
- extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp, bool sync);
- 
- /* pnfs.c */
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 8c1ee1a1a28f..59478a32e19f 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -739,6 +739,8 @@ int nfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
- 					&pgio);
- 		pgio.pg_error = 0;
- 		nfs_pageio_complete(&pgio);
-+		if (err == -EAGAIN && mntflags & NFS_MOUNT_SOFTERR)
-+			break;
- 	} while (err < 0 && !nfs_error_is_fatal(err));
- 	nfs_io_completion_put(ioc);
- 
+ 	lease_unregister_notifier(&nfsd_file_lease_notifier);
+-	unregister_shrinker(&nfsd_file_shrinker);
++	shrinker_free(nfsd_file_shrinker);
+ 	/*
+ 	 * make sure all callers of nfsd_file_lru_cb are done before
+ 	 * calling nfsd_file_cache_purge
 -- 
-2.41.0
+2.30.2
 
