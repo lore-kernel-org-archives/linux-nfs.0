@@ -2,41 +2,40 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A41D0EE3F3D
-	for <linux-nfs@archiver.kernel.org>; Tue, 12 Sep 2023 21:54:37 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AD733EE3F39
+	for <linux-nfs@archiver.kernel.org>; Tue, 12 Sep 2023 21:54:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232018AbjILVyk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 12 Sep 2023 17:54:40 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37592 "EHLO
+        id S236369AbjILVyo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 12 Sep 2023 17:54:44 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37600 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234887AbjILVyi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Sep 2023 17:54:38 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 3427110D0
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Sep 2023 14:53:50 -0700 (PDT)
+        with ESMTP id S234887AbjILVyl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Sep 2023 17:54:41 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTP id 86FBA10D3
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Sep 2023 14:53:51 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
         s=mimecast20190719; t=1694555630;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=bm5ioigpX2H28oED9HeU/1D9TJk7vRwYC7hWBAcGBxQ=;
-        b=VNvM9saopXzlxojSyBBElAvxvE82z0Bnl+tHINjAcl/sC3c+XI8QoxH+MGp0pRMIFIB6F+
-        HJu5/ld8mHVb9saYnVTag2QBhtyNrFvAaR8ztHaBqaIqxSOLsuSg7ixCnOkJ6r7f9+mckC
-        hq97/xVw80h2gGRH6E7aKkZhISgArk4=
+         content-transfer-encoding:content-transfer-encoding;
+        bh=twgRLEWHQGgDrs33JHbFXACkmGR+Ekoa3f4TUpczBRw=;
+        b=XYcJzyhV1XONbwn6mv588i6teQQLELvCxL35zSD2+MBE/Y485SnTFCBMmYTWp8IA7axPEw
+        2OBhQ08/KwCDVrQ4F5DxEHtJfy+Af0CpM5Kgutj8caeLtypxa+GQ5jcTf2imHt3Rq8HLIo
+        e2jZ04j3rXpM1quJkf5yuWXIA6497rI=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-323-nnXGloXVPLiYsP6t52r-AQ-1; Tue, 12 Sep 2023 17:53:48 -0400
-X-MC-Unique: nnXGloXVPLiYsP6t52r-AQ-1
+ us-mta-640-NfuNQi9KNDe6K-7MWlQ7wA-1; Tue, 12 Sep 2023 17:53:47 -0400
+X-MC-Unique: NfuNQi9KNDe6K-7MWlQ7wA-1
 Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 1A4AA181A6E0;
-        Tue, 12 Sep 2023 21:53:48 +0000 (UTC)
-Received: from fs-i40c-03.fs.lab.eng.bos.redhat.com (fs-i40c-03.fs.lab.eng.bos.redhat.com [10.16.224.23])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id C061B40C2009;
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 131BF8019DC;
         Tue, 12 Sep 2023 21:53:47 +0000 (UTC)
+Received: from fs-i40c-03.fs.lab.eng.bos.redhat.com (fs-i40c-03.fs.lab.eng.bos.redhat.com [10.16.224.23])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 958C840C2009;
+        Tue, 12 Sep 2023 21:53:46 +0000 (UTC)
 From:   Alexander Aring <aahringo@redhat.com>
 To:     linux-nfs@vger.kernel.org
 Cc:     gfs2@lists.linux.dev, ocfs2-devel@lists.linux.dev,
@@ -44,11 +43,9 @@ Cc:     gfs2@lists.linux.dev, ocfs2-devel@lists.linux.dev,
         rpeterso@redhat.com, agruenba@redhat.com,
         trond.myklebust@hammerspace.com, anna@kernel.org,
         chuck.lever@oracle.com, jlayton@kernel.org, aahringo@redhat.com
-Subject: [PATCHv2 nfsd/master 3/7] lockd: fix race in async lock request handling
-Date:   Tue, 12 Sep 2023 17:53:20 -0400
-Message-Id: <20230912215324.3310111-4-aahringo@redhat.com>
-In-Reply-To: <20230912215324.3310111-1-aahringo@redhat.com>
-References: <20230912215324.3310111-1-aahringo@redhat.com>
+Subject: [PATCHv2 nfsd/master 0/7] lockd: dlm: async lock request changes
+Date:   Tue, 12 Sep 2023 17:53:17 -0400
+Message-Id: <20230912215324.3310111-1-aahringo@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.1 on 10.11.54.1
@@ -56,73 +53,71 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This patch fixes a race in async lock request handling between adding
-the relevant struct nlm_block to nlm_blocked list after the request was
-sent by vfs_lock_file() and nlmsvc_grant_deferred() does a lookup of the
-nlm_block in the nlm_blocked list. It could be that the async request is
-completed before the nlm_block was added to the list. This would end
-in a -ENOENT and a kernel log message of "lockd: grant for unknown
-block".
+Hi,
 
-To solve this issue we add the nlm_block before the vfs_lock_file() call
-to be sure it has been added when a possible nlmsvc_grant_deferred() is
-called. If the vfs_lock_file() results in an case when it wouldn't be
-added to nlm_blocked list, the nlm_block struct will be removed from
-this list again.
+I sent this as a PATCH now and drop the RFC. I got some review back from
+Jeff Layton and hope I was successful to follow it. There are still
+issues with lockd and asynchronous lock request but it will at least not
+directly crash when somebody is using nfs on top of GFS2. The issues are
+related to cancellation of locks/lockd decides to drop nlm_block for
+some reasons while pending request is happening.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Alexander Aring <aahringo@redhat.com>
----
- fs/lockd/svclock.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+I did not change more documentation about the asynchronous lock request
+functionality to not confuse users. In my opinion there should be more
+documentation about what you SHOULD NOT do with this API. Otherwise I
+think the documentation is still correct.
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index c313622a9578..993999297e31 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -555,6 +555,9 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 		ret = nlm_lck_blocked;
- 		goto out;
- 	}
-+
-+	/* Append to list of blocked */
-+	nlmsvc_insert_block_locked(block, NLM_NEVER);
- 	spin_unlock(&nlm_blocked_lock);
- 
- 	if (!wait)
-@@ -566,9 +569,12 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 	dprintk("lockd: vfs_lock_file returned %d\n", error);
- 	switch (error) {
- 		case 0:
-+			nlmsvc_remove_block(block);
- 			ret = nlm_granted;
- 			goto out;
- 		case -EAGAIN:
-+			if (!wait)
-+				nlmsvc_remove_block(block);
- 			ret = async_block ? nlm_lck_blocked : nlm_lck_denied;
- 			goto out;
- 		case FILE_LOCK_DEFERRED:
-@@ -579,17 +585,16 @@ nlmsvc_lock(struct svc_rqst *rqstp, struct nlm_file *file,
- 			ret = nlmsvc_defer_lock_rqst(rqstp, block);
- 			goto out;
- 		case -EDEADLK:
-+			nlmsvc_remove_block(block);
- 			ret = nlm_deadlock;
- 			goto out;
- 		default:			/* includes ENOLCK */
-+			nlmsvc_remove_block(block);
- 			ret = nlm_lck_denied_nolocks;
- 			goto out;
- 	}
- 
- 	ret = nlm_lck_blocked;
--
--	/* Append to list of blocked */
--	nlmsvc_insert_block(block, NLM_NEVER);
- out:
- 	mutex_unlock(&file->f_mutex);
- 	nlmsvc_release_block(block);
+I will send a follow up patch to fsdevel to change all users using
+IS_SETLKW() to use FL_SLEEP to determine if it's blocking or
+non-blocking and send it to fsdevel as it was recommended. This will
+just be a grep and replace patch and look what happens.
+
+- Alex
+
+changes since v2:
+ - remove B_PENDING_CALLBACK paragraph from commit msg. Was a leftover
+   and I forgot to update the commit message.
+ - change function name from export_op_support_safe_async_lock()
+   to exportfs_lock_op_is_async()
+ - change flag name from EXPORT_OP_SAFE_ASYNC_LOCK to
+   EXPORT_OP_ASYNC_LOCK
+ - add documentation for EXPORT_OP_ASYNC_LOCK to
+   Documentation/filesystems/nfs/exporting.rst
+ - add newline between function name and return type of
+   exportfs_lock_op_is_async()
+ - remove f_op->lock() check and mention it in
+   Documentation/filesystems/nfs/exporting.rst to only use it with
+   filesystems implementing their own ->lock()
+ - add kdoc for exportfs_lock_op_is_async()
+
+changes since RFC:
+
+- drop the pending callback flag but introduce "lockd: don't call
+  vfs_lock_file() for pending requests", see patch why I need it.
+- drop per nlm_block callback mutex
+- change async lock request documentation
+- use always FL_SLEEP to determine if it's blocking vs non-blocking in
+  DLM
+
+Alexander Aring (7):
+  lockd: introduce safe async lock op
+  lockd: don't call vfs_lock_file() for pending requests
+  lockd: fix race in async lock request handling
+  lockd: add doc to enable EXPORT_OP_ASYNC_LOCK
+  dlm: use fl_owner from lockd
+  dlm: use FL_SLEEP to determine blocking vs non-blocking
+  dlm: implement EXPORT_OP_ASYNC_LOCK
+
+ Documentation/filesystems/nfs/exporting.rst |  7 ++++
+ fs/dlm/plock.c                              | 20 +++--------
+ fs/gfs2/export.c                            |  1 +
+ fs/lockd/svclock.c                          | 38 ++++++++++++++-------
+ fs/locks.c                                  | 12 ++++---
+ fs/nfsd/nfs4state.c                         | 10 ++++--
+ fs/ocfs2/export.c                           |  1 +
+ include/linux/exportfs.h                    | 14 ++++++++
+ 8 files changed, 67 insertions(+), 36 deletions(-)
+
 -- 
 2.31.1
 
