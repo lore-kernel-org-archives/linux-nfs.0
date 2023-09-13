@@ -2,32 +2,32 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 56173EDEC47
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Sep 2023 11:11:42 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 024B0EDEC40
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Sep 2023 11:11:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240239AbjIMLLo (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Sep 2023 07:11:44 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55468 "EHLO
+        id S240213AbjIMLLy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Sep 2023 07:11:54 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55534 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240001AbjIMLLb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Sep 2023 07:11:31 -0400
+        with ESMTP id S240222AbjIMLLe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Sep 2023 07:11:34 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 38F70212C;
-        Wed, 13 Sep 2023 04:11:14 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 93B901FD4;
+        Wed, 13 Sep 2023 04:11:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=gAQpn3abjr3bCkTLiF8aPyoqkxGk9OOm0IM5g63D6eE=; b=NdBTKNAaKwHERWBpvD3UHGHfWf
-        zb1yuh/XGcMfDzj1uLx+u6lD7qnepKXrpO/pZmptTHoHtwVpXIcZshX4OUVEMjv7TFo69PbppmJ2S
-        rlnKrkO75331r1G0LrzPr74Ld8r5vKU+AwChAsIjk83zQKmZMBIc84YOIDUSjkv5ZJvuC/IOK+E12
-        WpSRWG3djGVWDuKbehP3xIldJ/rcOSFsLliI85QDerGS8G2MUpKUaT8chV07JMkBU1+2CEJsmDyZe
-        wUX0ytw7XTGMjsPQ73ZLJ7fI2JwOsX3VvP93iP4mMmit4r7MmaYr4cQY0nPPcL0S7f0OQ64t+qePR
-        HbqcSKpA==;
+        bh=AwVUXcoXpUXwAjgKY+YMHBurOxH8fp8xakqCS5N8QOI=; b=tQeAokJJ8m0XmksMRtptFl8ZrW
+        6Nom6PA+knKc6r3zg4W2KMC61HNnxlaQel6fkB1HrrRawRzpj0M2vmMWymFHxZopL1KDQnSJ22U5A
+        Ow8kmT5tnVA86aSdIOqZfLkdy4Um0mUCoNALuvG5AqbRguzFlaFgGhQhRRopr604QlKgqzQKzCW5i
+        6ZPKeGOFyLSHYmNqpfo99oZf3xJs34VDYnSiA3E8zNPES+89u4ecfTrDYhf1lDxZiXSmDagrKT8Ad
+        fyPmeFZghP6slRpc1RhK91m65VkoFrK8jVEe0jyJ6QJqD4oF6dovad5lpUbyEsuC1cydeEOELenjv
+        u4xvPPqg==;
 Received: from [190.210.221.22] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1qgNls-005i4Y-1y;
-        Wed, 13 Sep 2023 11:11:01 +0000
+        id 1qgNm2-005i7T-3B;
+        Wed, 13 Sep 2023 11:11:11 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Christian Brauner <brauner@kernel.org>,
         Al Viro <viro@zeniv.linux.org.uk>
@@ -51,9 +51,9 @@ Cc:     Heiko Carstens <hca@linux.ibm.com>,
         linux-s390@vger.kernel.org, linux-rdma@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-hardening@vger.kernel.org,
         cgroups@vger.kernel.org
-Subject: [PATCH 11/19] fs: add new shutdown_sb and free_sb methods
-Date:   Wed, 13 Sep 2023 08:10:05 -0300
-Message-Id: <20230913111013.77623-12-hch@lst.de>
+Subject: [PATCH 14/19] jffs2: convert to ->shutdown_sb and ->free_sb
+Date:   Wed, 13 Sep 2023 08:10:08 -0300
+Message-Id: <20230913111013.77623-15-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230913111013.77623-1-hch@lst.de>
 References: <20230913111013.77623-1-hch@lst.de>
@@ -64,118 +64,90 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Currently super_blocks are shut down using the ->kill_sb method, which
-must call generic_shutdown_super, but allows the file system to
-add extra work before or after the call to generic_shutdown_super.
-
-File systems tend to get rather confused by this, so add an alternative
-shutdown sequence where generic_shutdown_super is called by the core
-code, and there are extra ->shutdown_sb and ->free_sb hooks before and
-after it.  To remove the amount of boilerplate code ->shutdown_sb is only
-called if the super has finished initialization and ->d_root is set.
+Convert jffs2 from ->kill_sb to ->shutdown_sb and ->free_sb.  Drop
+the otherwise unused kill_mtd_super helpers, as there is no benefit in
+it over just calling put_mtd_device on sb->s_mtd.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- Documentation/filesystems/locking.rst |  4 ++++
- Documentation/filesystems/vfs.rst     | 12 ++++++++++++
- fs/super.c                            |  9 +++++++--
- include/linux/fs.h                    |  2 ++
- 4 files changed, 25 insertions(+), 2 deletions(-)
+ drivers/mtd/mtdsuper.c    | 12 ------------
+ fs/jffs2/super.c          | 22 ++++++++++++++--------
+ include/linux/mtd/super.h |  2 --
+ 3 files changed, 14 insertions(+), 22 deletions(-)
 
-diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-index 7be2900806c853..c33e2f03ed1f69 100644
---- a/Documentation/filesystems/locking.rst
-+++ b/Documentation/filesystems/locking.rst
-@@ -220,7 +220,9 @@ prototypes::
+diff --git a/drivers/mtd/mtdsuper.c b/drivers/mtd/mtdsuper.c
+index b7e3763c47f0cd..66da2e6f90f5f5 100644
+--- a/drivers/mtd/mtdsuper.c
++++ b/drivers/mtd/mtdsuper.c
+@@ -165,15 +165,3 @@ int get_tree_mtd(struct fs_context *fc,
+ 	return -EINVAL;
+ }
+ EXPORT_SYMBOL_GPL(get_tree_mtd);
+-
+-/*
+- * destroy an MTD-based superblock
+- */
+-void kill_mtd_super(struct super_block *sb)
+-{
+-	generic_shutdown_super(sb);
+-	put_mtd_device(sb->s_mtd);
+-	sb->s_mtd = NULL;
+-}
+-
+-EXPORT_SYMBOL_GPL(kill_mtd_super);
+diff --git a/fs/jffs2/super.c b/fs/jffs2/super.c
+index 7ea37f49f1e18e..14577368202e90 100644
+--- a/fs/jffs2/super.c
++++ b/fs/jffs2/super.c
+@@ -340,21 +340,27 @@ static void jffs2_put_super (struct super_block *sb)
+ 	jffs2_dbg(1, "%s(): returning\n", __func__);
+ }
  
- 	struct dentry *(*mount) (struct file_system_type *, int,
- 		       const char *, void *);
-+	void (*shutdown_sb) (struct super_block *);
- 	void (*kill_sb) (struct super_block *);
-+	void (*free_sb) (struct super_block *);
- 
- locking rules:
- 
-@@ -228,7 +230,9 @@ locking rules:
- ops		may block
- =======		=========
- mount		yes
-+shutdown_sb	yes
- kill_sb		yes
-+free_sb		yes
- =======		=========
- 
- ->mount() returns ERR_PTR or the root dentry; its superblock should be locked
-diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
-index 99acc2e9867391..1a7c6926c31f34 100644
---- a/Documentation/filesystems/vfs.rst
-+++ b/Documentation/filesystems/vfs.rst
-@@ -119,7 +119,9 @@ members are defined:
- 		const struct fs_parameter_spec *parameters;
- 		struct dentry *(*mount) (struct file_system_type *, int,
- 			const char *, void *);
-+		void (*shutdown_sb) (struct super_block *);
- 		void (*kill_sb) (struct super_block *);
-+		void (*free_sb) (struct super_block *);
- 		struct module *owner;
- 		struct file_system_type * next;
- 		struct hlist_head fs_supers;
-@@ -155,10 +157,20 @@ members are defined:
- 	the method to call when a new instance of this filesystem should
- 	be mounted
- 
-+``shutdown_sb``
-+	Cleanup after a super_block has reached a zero active count, and before
-+	the VFS level cleanup happens.  Typical picks all fs-specific objects
-+	(if any) that need destruction out of superblock and releases them.
-+	Note: dentries and inodes are normally taken care of and do not need
-+	specific handling unless they are pinned by kernel users.
+-static void jffs2_kill_sb(struct super_block *sb)
++static void jffs2_shutdown_sb(struct super_block *sb)
+ {
+ 	struct jffs2_sb_info *c = JFFS2_SB_INFO(sb);
 +
- ``kill_sb``
- 	the method to call when an instance of this filesystem should be
- 	shut down
+ 	if (c && !sb_rdonly(sb))
+ 		jffs2_stop_garbage_collect_thread(c);
+-	kill_mtd_super(sb);
+-	kfree(c);
++}
++
++static void jffs2_free_sb(struct super_block *sb)
++{
++	put_mtd_device(sb->s_mtd);
++	kfree(JFFS2_SB_INFO(sb));
+ }
  
-+``free_sb``
-+	Free file system specific resources like sb->s_fs_info that are
-+	still needed while inodes are freed during umount.
+ static struct file_system_type jffs2_fs_type = {
+-	.owner =	THIS_MODULE,
+-	.name =		"jffs2",
+-	.init_fs_context = jffs2_init_fs_context,
+-	.parameters =	jffs2_fs_parameters,
+-	.kill_sb =	jffs2_kill_sb,
++	.owner			= THIS_MODULE,
++	.name			= "jffs2",
++	.init_fs_context	= jffs2_init_fs_context,
++	.parameters		= jffs2_fs_parameters,
++	.shutdown_sb		= jffs2_shutdown_sb,
++	.free_sb		= jffs2_free_sb,
+ };
+ MODULE_ALIAS_FS("jffs2");
  
- ``owner``
- 	for internal VFS use: you should initialize this to THIS_MODULE
-diff --git a/fs/super.c b/fs/super.c
-index 5c685b4944c2d6..8e173eccc8c113 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -480,10 +480,15 @@ void deactivate_locked_super(struct super_block *s)
+diff --git a/include/linux/mtd/super.h b/include/linux/mtd/super.h
+index 3608a6c36faceb..f6d5c1a17eec23 100644
+--- a/include/linux/mtd/super.h
++++ b/include/linux/mtd/super.h
+@@ -17,8 +17,6 @@
+ extern int get_tree_mtd(struct fs_context *fc,
+ 		     int (*fill_super)(struct super_block *sb,
+ 				       struct fs_context *fc));
+-extern void kill_mtd_super(struct super_block *sb);
+-
  
- 	unregister_shrinker(&s->s_shrink);
+ #endif /* __KERNEL__ */
  
--	if (fs->kill_sb)
-+	if (fs->kill_sb) {
- 		fs->kill_sb(s);
--	else
-+	} else {
-+		if (fs->shutdown_sb)
-+			fs->shutdown_sb(s);
- 		generic_shutdown_super(s);
-+		if (fs->free_sb)
-+			fs->free_sb(s);
-+	}
- 
- 	kill_super_notify(s);
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 31b6b235b36efa..12fff7df3cc46b 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2341,6 +2341,8 @@ struct file_system_type {
- 	struct dentry *(*mount) (struct file_system_type *, int,
- 		       const char *, void *);
- 	void (*kill_sb) (struct super_block *);
-+	void (*shutdown_sb)(struct super_block *sb);
-+	void (*free_sb)(struct super_block *sb);
- 	struct module *owner;
- 	struct file_system_type * next;
- 	struct hlist_head fs_supers;
 -- 
 2.39.2
 
