@@ -2,32 +2,32 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3DCCCEDEC44
-	for <linux-nfs@archiver.kernel.org>; Wed, 13 Sep 2023 11:10:58 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 99085EDEC46
+	for <linux-nfs@archiver.kernel.org>; Wed, 13 Sep 2023 11:10:59 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239927AbjIMLKy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 13 Sep 2023 07:10:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57418 "EHLO
+        id S239980AbjIMLLB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 13 Sep 2023 07:11:01 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57522 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239910AbjIMLKx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Sep 2023 07:10:53 -0400
+        with ESMTP id S239941AbjIMLK5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Sep 2023 07:10:57 -0400
 Received: from bombadil.infradead.org (bombadil.infradead.org [IPv6:2607:7c80:54:3::133])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3F72B19B0;
-        Wed, 13 Sep 2023 04:10:49 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2B2991726;
+        Wed, 13 Sep 2023 04:10:53 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
         d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
         MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:Sender
         :Reply-To:Content-Type:Content-ID:Content-Description;
-        bh=bX4iGfr0tDcuYF5EDBEIAqxef+8miCseN1a4MmuC19c=; b=g4OcufcLBW19o88tMTLEGrn/2M
-        CLpqezXLQzOk/PYicTrYmwexiyk2JYuPbmISbHvegprAO28vD6/ovEfXYs0ZLIoR055SfeBNgbdjN
-        veGb+NyDJ0TjumaKDjj04voay+g2iyGNDKkbHzas9ZSGb+Y5FjtoWgarnLhOBIz72Nykc/DZOau9I
-        bNLLDErOdBxZbTTYG+HAPqeLOwTS2539I2l8NSiXnhbRm5hM6ZZsxCpOZsdn773njAtNPb1oabubo
-        UEDBVo4lHgfnRUX6J2p6FtG40LeHJ0zURd1riXEq/Fw5RqsdMIGqe0EyYlKahq+W1lpCsWNjHdvOd
-        inndOPjw==;
+        bh=QtxUC0PBd27k/jPmifPKRgeZeU54oAe4sU/iHRhk3us=; b=3jF8AWqft55sENPRPWk4+bWnJK
+        Wny8RJRRcJOCnKQfKis+eSo5Ht8lSO5uqi8Mk14bXtPwXbtoItRQ6VHePz91Wi0ab2Mx2UFCjEuii
+        Erb5f7PDwveImNZXjR7INUB/HtkqxUwJkXmozhdIefKQOvgCkbLc5ytAUJXqOiFLd7nQdZ3Ky3FK/
+        ASQQsIleUTxD3RNLoemOhFq0knghz9g8cMssYrT4BoIMgtK46a+CTEWQg9aY8n9xE3pug5xOGLrCr
+        BsZgMnd69QJGoyJHfXBiq2W06yYu+eBLxYYfm9Pj2TFYIpKFqdq41mYxq2Z5ClsQHnFJlVjb229Zh
+        A/eAxolw==;
 Received: from [190.210.221.22] (helo=localhost)
         by bombadil.infradead.org with esmtpsa (Exim 4.96 #2 (Red Hat Linux))
-        id 1qgNlV-005hwf-0G;
-        Wed, 13 Sep 2023 11:10:37 +0000
+        id 1qgNlb-005hy2-2X;
+        Wed, 13 Sep 2023 11:10:44 +0000
 From:   Christoph Hellwig <hch@lst.de>
 To:     Christian Brauner <brauner@kernel.org>,
         Al Viro <viro@zeniv.linux.org.uk>
@@ -51,9 +51,9 @@ Cc:     Heiko Carstens <hca@linux.ibm.com>,
         linux-s390@vger.kernel.org, linux-rdma@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-hardening@vger.kernel.org,
         cgroups@vger.kernel.org
-Subject: [PATCH 04/19] NFS: remove the s_dev field from struct nfs_server
-Date:   Wed, 13 Sep 2023 08:09:58 -0300
-Message-Id: <20230913111013.77623-5-hch@lst.de>
+Subject: [PATCH 06/19] qibfs: use simple_release_fs
+Date:   Wed, 13 Sep 2023 08:10:00 -0300
+Message-Id: <20230913111013.77623-7-hch@lst.de>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20230913111013.77623-1-hch@lst.de>
 References: <20230913111013.77623-1-hch@lst.de>
@@ -64,158 +64,301 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Don't duplicate the dev_t in the nfs_server structure given that it can
-be trivially retrieved from the super_block.
+qibfs currently has convoluted code to allow registering HCAs while qibfs
+is not mounted and vice versa.  Switch to using simple_release_fs every
+time an entry is added to pin the fs instance and remove all the boiler
+plate code.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfs/client.c           |  2 +-
- fs/nfs/nfs4proc.c         |  8 ++++----
- fs/nfs/nfs4trace.h        |  6 +++---
- fs/nfs/nfs4xdr.c          |  2 +-
- fs/nfs/super.c            | 10 +++-------
- include/linux/nfs_fs_sb.h |  1 -
- 6 files changed, 12 insertions(+), 17 deletions(-)
+ drivers/infiniband/hw/qib/qib.h      |   4 +-
+ drivers/infiniband/hw/qib/qib_fs.c   | 105 ++++++---------------------
+ drivers/infiniband/hw/qib/qib_init.c |  32 +++-----
+ 3 files changed, 36 insertions(+), 105 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 44eca51b28085d..039fd67ac17c82 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1337,7 +1337,7 @@ static int nfs_volume_list_show(struct seq_file *m, void *v)
- 	clp = server->nfs_client;
+diff --git a/drivers/infiniband/hw/qib/qib.h b/drivers/infiniband/hw/qib/qib.h
+index 26c615772be390..f73c321d0bff88 100644
+--- a/drivers/infiniband/hw/qib/qib.h
++++ b/drivers/infiniband/hw/qib/qib.h
+@@ -1370,10 +1370,10 @@ void qib_device_remove(struct qib_devdata *);
+ extern int qib_qsfp_dump(struct qib_pportdata *ppd, char *buf, int len);
  
- 	snprintf(dev, sizeof(dev), "%u:%u",
--		 MAJOR(server->s_dev), MINOR(server->s_dev));
-+		 MAJOR(server->super->s_dev), MINOR(server->super->s_dev));
+ int __init qib_init_qibfs(void);
+-int __exit qib_exit_qibfs(void);
++void __exit qib_exit_qibfs(void);
  
- 	snprintf(fsid, sizeof(fsid), "%llx:%llx",
- 		 (unsigned long long) server->fsid.major,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 794343790ea8bb..4d002cc514983c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6763,7 +6763,7 @@ static int _nfs4_proc_getlk(struct nfs4_state *state, int cmd, struct file_lock
- 		goto out;
- 	lsp = request->fl_u.nfs4_fl.owner;
- 	arg.lock_owner.id = lsp->ls_seqid.owner_id;
--	arg.lock_owner.s_dev = server->s_dev;
-+	arg.lock_owner.s_dev = server->super->s_dev;
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	switch (status) {
- 		case 0:
-@@ -7088,7 +7088,7 @@ static struct nfs4_lockdata *nfs4_alloc_lockdata(struct file_lock *fl,
- 		goto out_free_seqid;
- 	p->arg.lock_owner.clientid = server->nfs_client->cl_clientid;
- 	p->arg.lock_owner.id = lsp->ls_seqid.owner_id;
--	p->arg.lock_owner.s_dev = server->s_dev;
-+	p->arg.lock_owner.s_dev = server->super->s_dev;
- 	p->res.lock_seqid = p->arg.lock_seqid;
- 	p->lsp = lsp;
- 	p->server = server;
-@@ -7475,7 +7475,7 @@ nfs4_retry_setlk(struct nfs4_state *state, int cmd, struct file_lock *request)
- 		.inode = state->inode,
- 		.owner = { .clientid = clp->cl_clientid,
- 			   .id = lsp->ls_seqid.owner_id,
--			   .s_dev = server->s_dev },
-+			   .s_dev = server->super->s_dev },
- 	};
- 	int status;
+ int qibfs_add(struct qib_devdata *);
+-int qibfs_remove(struct qib_devdata *);
++void qibfs_remove(struct qib_devdata *);
  
-@@ -7689,7 +7689,7 @@ nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_state *lsp)
- 	data->server = server;
- 	data->args.lock_owner.clientid = server->nfs_client->cl_clientid;
- 	data->args.lock_owner.id = lsp->ls_seqid.owner_id;
--	data->args.lock_owner.s_dev = server->s_dev;
-+	data->args.lock_owner.s_dev = server->super->s_dev;
+ int qib_pcie_init(struct pci_dev *, const struct pci_device_id *);
+ int qib_pcie_ddinit(struct qib_devdata *, struct pci_dev *,
+diff --git a/drivers/infiniband/hw/qib/qib_fs.c b/drivers/infiniband/hw/qib/qib_fs.c
+index ed7d4b02f45a63..c52ca34b32e67d 100644
+--- a/drivers/infiniband/hw/qib/qib_fs.c
++++ b/drivers/infiniband/hw/qib/qib_fs.c
+@@ -43,7 +43,9 @@
  
- 	msg.rpc_argp = &data->args;
- 	msg.rpc_resp = &data->res;
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index d27919d7241d38..13a602c675ddb2 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -945,7 +945,7 @@ TRACE_EVENT(nfs4_delegreturn_exit,
- 		),
+ #define QIBFS_MAGIC 0x726a77
  
- 		TP_fast_assign(
--			__entry->dev = res->server->s_dev;
-+			__entry->dev = res->server->super->s_dev;
- 			__entry->fhandle = nfs_fhandle_hash(args->fhandle);
- 			__entry->error = error < 0 ? -error : 0;
- 			__entry->stateid_seq =
-@@ -1269,7 +1269,7 @@ DECLARE_EVENT_CLASS(nfs4_getattr_event,
- 		),
+-static struct super_block *qib_super;
++static struct file_system_type qibfs_fs_type;
++static struct vfsmount *qib_mount;
++static int qib_mnt_count;
  
- 		TP_fast_assign(
--			__entry->dev = server->s_dev;
-+			__entry->dev = server->super->s_dev;
- 			__entry->valid = fattr->valid;
- 			__entry->fhandle = nfs_fhandle_hash(fhandle);
- 			__entry->fileid = (fattr->valid & NFS_ATTR_FATTR_FILEID) ? fattr->fileid : 0;
-@@ -1966,7 +1966,7 @@ DECLARE_EVENT_CLASS(nfs4_deviceid_status,
- 		),
+ #define private2dd(file) (file_inode(file)->i_private)
  
- 		TP_fast_assign(
--			__entry->dev = server->s_dev;
-+			__entry->dev = server->super->s_dev;
- 			__entry->status = status;
- 			__assign_str(dstaddr, server->nfs_client->cl_hostname);
- 			memcpy(__entry->deviceid, deviceid->data,
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index deec76cf5afeaf..9767c5e2ed1a9a 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1420,7 +1420,7 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
- 	p = xdr_encode_hyper(p, arg->clientid);
- 	*p++ = cpu_to_be32(24);
- 	p = xdr_encode_opaque_fixed(p, "open id:", 8);
--	*p++ = cpu_to_be32(arg->server->s_dev);
-+	*p++ = cpu_to_be32(arg->server->super->s_dev);
- 	*p++ = cpu_to_be32(arg->id.uniquifier);
- 	xdr_encode_hyper(p, arg->id.create_time);
- }
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 29d6a55b9d400d..561221a87b02a6 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1130,13 +1130,9 @@ static int nfs_compare_mount_options(const struct super_block *s, const struct n
- static int nfs_set_super(struct super_block *s, struct fs_context *fc)
+@@ -355,15 +357,19 @@ static const struct file_operations flash_ops = {
+ 	.llseek = default_llseek,
+ };
+ 
+-static int add_cntr_files(struct super_block *sb, struct qib_devdata *dd)
++int qibfs_add(struct qib_devdata *dd)
  {
- 	struct nfs_server *server = fc->s_fs_info;
+ 	struct dentry *dir, *tmp;
+ 	char unit[10];
+ 	int ret, i;
++	
++	ret = simple_pin_fs(&qibfs_fs_type, &qib_mount, &qib_mnt_count);
++	if (ret)
++		return ret;
+ 
+ 	/* create the per-unit directory */
+ 	snprintf(unit, sizeof(unit), "%u", dd->unit);
+-	ret = create_file(unit, S_IFDIR|S_IRUGO|S_IXUGO, sb->s_root, &dir,
++	ret = create_file(unit, S_IFDIR|S_IRUGO|S_IXUGO, qib_mount->mnt_root, &dir,
+ 			  &simple_dir_operations, dd);
+ 	if (ret) {
+ 		pr_err("create_file(%s) failed: %d\n", unit, ret);
+@@ -422,65 +428,35 @@ static int add_cntr_files(struct super_block *sb, struct qib_devdata *dd)
+ 		pr_err("create_file(%s/flash) failed: %d\n",
+ 			unit, ret);
+ bail:
++	simple_release_fs(&qib_mount, &qib_mnt_count);
+ 	return ret;
+ }
+ 
+-static int remove_device_files(struct super_block *sb,
+-			       struct qib_devdata *dd)
++void qibfs_remove(struct qib_devdata *dd)
+ {
+ 	struct dentry *dir;
+ 	char unit[10];
+ 
+ 	snprintf(unit, sizeof(unit), "%u", dd->unit);
+-	dir = lookup_one_len_unlocked(unit, sb->s_root, strlen(unit));
+-
+-	if (IS_ERR(dir)) {
+-		pr_err("Lookup of %s failed\n", unit);
+-		return PTR_ERR(dir);
+-	}
+-	simple_recursive_removal(dir, NULL);
+-	return 0;
++	dir = lookup_one_len_unlocked(unit, qib_mount->mnt_root, strlen(unit));
++	if (!IS_ERR(dir))
++		simple_recursive_removal(dir, NULL);
++	simple_release_fs(&qib_mount, &qib_mnt_count);
+ }
+ 
+-/*
+- * This fills everything in when the fs is mounted, to handle umount/mount
+- * after device init.  The direct add_cntr_files() call handles adding
+- * them from the init code, when the fs is already mounted.
+- */
+ static int qibfs_fill_super(struct super_block *sb, struct fs_context *fc)
+ {
+-	struct qib_devdata *dd;
+-	unsigned long index;
+-	int ret;
+-
+ 	static const struct tree_descr files[] = {
+ 		[2] = {"driver_stats", &driver_ops[0], S_IRUGO},
+ 		[3] = {"driver_stats_names", &driver_ops[1], S_IRUGO},
+ 		{""},
+ 	};
+-
+-	ret = simple_fill_super(sb, QIBFS_MAGIC, files);
+-	if (ret) {
+-		pr_err("simple_fill_super failed: %d\n", ret);
+-		goto bail;
+-	}
+-
+-	xa_for_each(&qib_dev_table, index, dd) {
+-		ret = add_cntr_files(sb, dd);
+-		if (ret)
+-			goto bail;
+-	}
+-
+-bail:
+-	return ret;
++	return simple_fill_super(sb, QIBFS_MAGIC, files);
+ }
+ 
+ static int qibfs_get_tree(struct fs_context *fc)
+ {
+-	int ret = get_tree_single(fc, qibfs_fill_super);
+-	if (ret == 0)
+-		qib_super = fc->root->d_sb;
+-	return ret;
++	return get_tree_single(fc, qibfs_fill_super);
+ }
+ 
+ static const struct fs_context_operations qibfs_context_ops = {
+@@ -493,46 +469,11 @@ static int qibfs_init_fs_context(struct fs_context *fc)
+ 	return 0;
+ }
+ 
+-static void qibfs_kill_super(struct super_block *s)
+-{
+-	kill_litter_super(s);
+-	qib_super = NULL;
+-}
+-
+-int qibfs_add(struct qib_devdata *dd)
+-{
+-	int ret;
+-
+-	/*
+-	 * On first unit initialized, qib_super will not yet exist
+-	 * because nobody has yet tried to mount the filesystem, so
+-	 * we can't consider that to be an error; if an error occurs
+-	 * during the mount, that will get a complaint, so this is OK.
+-	 * add_cntr_files() for all units is done at mount from
+-	 * qibfs_fill_super(), so one way or another, everything works.
+-	 */
+-	if (qib_super == NULL)
+-		ret = 0;
+-	else
+-		ret = add_cntr_files(qib_super, dd);
+-	return ret;
+-}
+-
+-int qibfs_remove(struct qib_devdata *dd)
+-{
+-	int ret = 0;
+-
+-	if (qib_super)
+-		ret = remove_device_files(qib_super, dd);
+-
+-	return ret;
+-}
+-
+ static struct file_system_type qibfs_fs_type = {
+-	.owner =        THIS_MODULE,
+-	.name =         "ipathfs",
+-	.init_fs_context = qibfs_init_fs_context,
+-	.kill_sb =      qibfs_kill_super,
++	.owner			= THIS_MODULE,
++	.name			= "ipathfs",
++	.init_fs_context	= qibfs_init_fs_context,
++	.kill_sb		= kill_litter_super,
+ };
+ MODULE_ALIAS_FS("ipathfs");
+ 
+@@ -541,7 +482,7 @@ int __init qib_init_qibfs(void)
+ 	return register_filesystem(&qibfs_fs_type);
+ }
+ 
+-int __exit qib_exit_qibfs(void)
++void __exit qib_exit_qibfs(void)
+ {
+-	return unregister_filesystem(&qibfs_fs_type);
++	unregister_filesystem(&qibfs_fs_type);
+ }
+diff --git a/drivers/infiniband/hw/qib/qib_init.c b/drivers/infiniband/hw/qib/qib_init.c
+index 33667becd52b04..46306573a37a7d 100644
+--- a/drivers/infiniband/hw/qib/qib_init.c
++++ b/drivers/infiniband/hw/qib/qib_init.c
+@@ -1217,9 +1217,13 @@ static int __init qib_ib_init(void)
+ {
+ 	int ret;
+ 
++	ret = qib_init_qibfs();
++	if (ret)
++		return ret;
++
+ 	ret = qib_dev_init();
+ 	if (ret)
+-		goto bail;
++		goto bail_fs;
+ 
+ 	/*
+ 	 * These must be called before the driver is registered with
+@@ -1237,10 +1241,7 @@ static int __init qib_ib_init(void)
+ 		goto bail_dev;
+ 	}
+ 
+-	/* not fatal if it doesn't work */
+-	if (qib_init_qibfs())
+-		pr_err("Unable to register ipathfs\n");
+-	goto bail; /* all OK */
++	return ret;
+ 
+ bail_dev:
+ #ifdef CONFIG_INFINIBAND_QIB_DCA
+@@ -1250,7 +1251,8 @@ static int __init qib_ib_init(void)
+ 	qib_dbg_exit();
+ #endif
+ 	qib_dev_cleanup();
+-bail:
++bail_fs:
++	qib_exit_qibfs();
+ 	return ret;
+ }
+ 
+@@ -1261,14 +1263,6 @@ module_init(qib_ib_init);
+  */
+ static void __exit qib_ib_cleanup(void)
+ {
+-	int ret;
+-
+-	ret = qib_exit_qibfs();
+-	if (ret)
+-		pr_err(
+-			"Unable to cleanup counter filesystem: error %d\n",
+-			-ret);
+-
+ #ifdef CONFIG_INFINIBAND_QIB_DCA
+ 	dca_unregister_notify(&dca_notifier);
+ #endif
+@@ -1282,6 +1276,7 @@ static void __exit qib_ib_cleanup(void)
+ 
+ 	WARN_ON(!xa_empty(&qib_dev_table));
+ 	qib_dev_cleanup();
++	qib_exit_qibfs();
+ }
+ 
+ module_exit(qib_ib_cleanup);
+@@ -1469,7 +1464,7 @@ static int qib_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
+ 		if (qib_mini_init)
+ 			goto bail;
+ 		if (!j) {
+-			(void) qibfs_remove(dd);
++			qibfs_remove(dd);
+ 			qib_device_remove(dd);
+ 		}
+ 		if (!ret)
+@@ -1496,7 +1491,6 @@ static int qib_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
+ static void qib_remove_one(struct pci_dev *pdev)
+ {
+ 	struct qib_devdata *dd = pci_get_drvdata(pdev);
 -	int ret;
  
- 	s->s_d_op = server->nfs_client->rpc_ops->dentry_ops;
--	ret = set_anon_super(s, server);
--	if (ret == 0)
--		server->s_dev = s->s_dev;
--	return ret;
-+	return set_anon_super(s, server);
- }
+ 	/* unregister from IB core */
+ 	qib_unregister_ib_device(dd);
+@@ -1513,11 +1507,7 @@ static void qib_remove_one(struct pci_dev *pdev)
+ 	/* wait until all of our (qsfp) queue_work() calls complete */
+ 	flush_workqueue(ib_wq);
  
- static int nfs_compare_super_address(struct nfs_server *server1,
-@@ -1292,8 +1288,8 @@ int nfs_get_tree_common(struct fs_context *fc)
- 		nfs_free_server(server);
- 		server = NULL;
- 	} else {
--		error = super_setup_bdi_name(s, "%u:%u", MAJOR(server->s_dev),
--					     MINOR(server->s_dev));
-+		error = super_setup_bdi_name(s, "%u:%u", MAJOR(s->s_dev),
-+					     MINOR(s->s_dev));
- 		if (error)
- 			goto error_splat_super;
- 		s->s_bdi->io_pages = server->rpages;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 20eeba8b009df1..9c71af0e3516fa 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -190,7 +190,6 @@ struct nfs_server {
- 	struct timespec64	time_delta;	/* smallest time granularity */
- 	unsigned long		mount_time;	/* when this fs was mounted */
- 	struct super_block	*super;		/* VFS super block */
--	dev_t			s_dev;		/* superblock dev numbers */
- 	struct nfs_auth_info	auth_info;	/* parsed auth flavors */
+-	ret = qibfs_remove(dd);
+-	if (ret)
+-		qib_dev_err(dd, "Failed counters filesystem cleanup: %d\n",
+-			    -ret);
+-
++	qibfs_remove(dd);
+ 	qib_device_remove(dd);
  
- #ifdef CONFIG_NFS_FSCACHE
+ 	qib_postinit_cleanup(dd);
 -- 
 2.39.2
 
