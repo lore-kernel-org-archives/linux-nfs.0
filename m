@@ -2,115 +2,131 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 43AF6CD37A9
-	for <linux-nfs@archiver.kernel.org>; Fri, 15 Sep 2023 20:16:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2E988CD37AA
+	for <linux-nfs@archiver.kernel.org>; Fri, 15 Sep 2023 20:51:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230398AbjIOUPl (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 15 Sep 2023 16:15:41 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53938 "EHLO
+        id S237480AbjIOUu7 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 15 Sep 2023 16:50:59 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:32846 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S237401AbjIOUPJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Sep 2023 16:15:09 -0400
-Received: from mail-pl1-x62e.google.com (mail-pl1-x62e.google.com [IPv6:2607:f8b0:4864:20::62e])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E6CE3270A
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Sep 2023 13:14:29 -0700 (PDT)
-Received: by mail-pl1-x62e.google.com with SMTP id d9443c01a7336-1bd9b4f8e0eso20187915ad.1
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Sep 2023 13:14:29 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=chromium.org; s=google; t=1694808869; x=1695413669; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=A3Wh5MfEW3doYb+GVlaZ1d5YV1bGIeT17SJ+vtMao2k=;
-        b=QEepu/aLtY4qccwIvqqABP1w/H5WEr5RFGpEbJoComvzU2Ma0vlgZLz39dELfEPlh/
-         Zib0Szi/qK+/dE8Vsx8ym4naerTfh4HtNo9788bMMaTGDKrMV/B+WQytjXdPKeF8BK8F
-         oh3YZEeUTWGQMzeU/5g9boONIJKcfvn6cCAKc=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1694808869; x=1695413669;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=A3Wh5MfEW3doYb+GVlaZ1d5YV1bGIeT17SJ+vtMao2k=;
-        b=N0lb16W5dObVEyHNww+TvIqnK936tFsUvoXYLLeZgKe+YHR5UhQsYp2AYPzgjFKbLN
-         ypbMJglcUiKc9jvPZ1rD4kWLYcBfzzPM51L27tm/Tfx4C/6yX6ruXGT5UEbGcQJwcrFJ
-         /K3u4B9pu8R3WaAu0niow5wVYLTadYd21q0NPHx7wv5FgMLjpHYWjUs3ZFTN6zFOqJCn
-         qX708DSP75qNS0CKRUkLhCpm82lF8Rv6MmoVThvIlwfY+4vjbYT5KpWAdcQmfInBW+P9
-         7VSKSOPXYcW65ZSbP6qpmxTY2DZbpUEIU4fg2/+P3So3ADVOcXxVULeLCqP5tHgrqhtb
-         4f6g==
-X-Gm-Message-State: AOJu0Yxrk50JZYae7jAEvnpBrYQpjB0005D67O2BCzziKpV8EPLWb3bs
-        reBssnpTwXRGkK9herXV5hKZuQ==
-X-Google-Smtp-Source: AGHT+IFjEYcnYF2l1R11y3riePthlRTy4BhFCC7EKD3yzuegAEdhz+e0FghE7BPVrngygglfbrCg4w==
-X-Received: by 2002:a17:902:d50c:b0:1c3:6e38:3943 with SMTP id b12-20020a170902d50c00b001c36e383943mr3120478plg.56.1694808869471;
-        Fri, 15 Sep 2023 13:14:29 -0700 (PDT)
-Received: from www.outflux.net (198-0-35-241-static.hfc.comcastbusiness.net. [198.0.35.241])
-        by smtp.gmail.com with ESMTPSA id jo5-20020a170903054500b001bf6ea340b3sm3862047plb.116.2023.09.15.13.14.29
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 15 Sep 2023 13:14:29 -0700 (PDT)
-From:   Kees Cook <keescook@chromium.org>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc:     Kees Cook <keescook@chromium.org>,
-        Anna Schumaker <anna@kernel.org>,
-        "Gustavo A. R. Silva" <gustavoars@kernel.org>,
-        linux-nfs@vger.kernel.org, Nathan Chancellor <nathan@kernel.org>,
+        with ESMTP id S237536AbjIOUu2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Sep 2023 16:50:28 -0400
+Received: from omta038.useast.a.cloudfilter.net (omta038.useast.a.cloudfilter.net [44.202.169.37])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 43271270E
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Sep 2023 13:49:43 -0700 (PDT)
+Received: from eig-obgw-6003a.ext.cloudfilter.net ([10.0.30.151])
+        by cmsmtp with ESMTP
+        id hFjkqQMhnWU1chFl0qThII; Fri, 15 Sep 2023 20:49:42 +0000
+Received: from gator4166.hostgator.com ([108.167.133.22])
+        by cmsmtp with ESMTPS
+        id hFkzq6J9TlWQAhFl0qzW6I; Fri, 15 Sep 2023 20:49:42 +0000
+X-Authority-Analysis: v=2.4 cv=INMRtyjG c=1 sm=1 tr=0 ts=6504c366
+ a=1YbLdUo/zbTtOZ3uB5T3HA==:117 a=WzbPXH4gqzPVN0x6HrNMNA==:17
+ a=OWjo9vPv0XrRhIrVQ50Ab3nP57M=:19 a=dLZJa+xiwSxG16/P+YVxDGlgEgI=:19
+ a=IkcTkHD0fZMA:10 a=zNV7Rl7Rt7sA:10 a=wYkD_t78qR0A:10 a=NEAV23lmAAAA:8
+ a=SEtKQCMJAAAA:8 a=VwQbUJbxAAAA:8 a=cm27Pg_UAAAA:8 a=HvF037n1xESchLcPDVoA:9
+ a=QEXdDO2ut3YA:10 a=kyTSok1ft720jgMXX5-3:22 a=AjGcO6oz07-iQ99wixmX:22
+ a=xmb-EsYY8bH0VWELuYED:22
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+        d=embeddedor.com; s=default; h=Content-Transfer-Encoding:Content-Type:
+        In-Reply-To:From:References:Cc:To:Subject:MIME-Version:Date:Message-ID:Sender
+        :Reply-To:Content-ID:Content-Description:Resent-Date:Resent-From:
+        Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:List-Id:List-Help:
+        List-Unsubscribe:List-Subscribe:List-Post:List-Owner:List-Archive;
+        bh=WPXWF77vQI3mRyN0nqVJHqF477a6uTsaeYOM8/wRXhs=; b=DGpiEzz9moDN7MXFfJ+t+Stxid
+        CNygQrCWOzNMLuvdvxd9sCAdK/biMwSTztO9AgmKuDH6hnO3qb1m1sGAy7WBkES6ezICHbz6TD4aw
+        m0Piym4aMYV7ZYKWWc7WHnw0ZP7dlEjmPURw/RNwsClAVWa90jWoXQr9AcXq46gW4U6ueMYaabRM3
+        ES6TcINf4+GCir7e3KjDDCZurNlTeW5tqCH+l9dQ9cWSILRAQTO2Ajgh+uKm2CwgJAm+TD7YoFTfv
+        EA8+qVQexXANmhL/azXEc2ZmBz6ubD4QDTcL6qrTxp2teXPhHGZcisWFiJNmSkq8S4VvQEJvpAa5I
+        LZuXJ9dg==;
+Received: from 187-162-21-192.static.axtel.net ([187.162.21.192]:36918 helo=[192.168.15.8])
+        by gator4166.hostgator.com with esmtpsa  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        (Exim 4.96)
+        (envelope-from <gustavo@embeddedor.com>)
+        id 1qhFky-002ewp-2W;
+        Fri, 15 Sep 2023 15:49:40 -0500
+Message-ID: <c36a8c7f-cb6a-cf32-3898-37159e363382@embeddedor.com>
+Date:   Fri, 15 Sep 2023 14:50:36 -0600
+MIME-Version: 1.0
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101
+ Thunderbird/102.13.0
+Subject: Re: [PATCH] NFS/flexfiles: Annotate struct nfs4_ff_layout_segment
+ with __counted_by
+Content-Language: en-US
+To:     Kees Cook <keescook@chromium.org>,
+        Trond Myklebust <trond.myklebust@hammerspace.com>
+Cc:     Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
+        Nathan Chancellor <nathan@kernel.org>,
         Nick Desaulniers <ndesaulniers@google.com>,
         Tom Rix <trix@redhat.com>, linux-kernel@vger.kernel.org,
         llvm@lists.linux.dev, linux-hardening@vger.kernel.org
-Subject: [PATCH] nfs41: Annotate struct nfs4_file_layout_dsaddr with __counted_by
-Date:   Fri, 15 Sep 2023 13:14:27 -0700
-Message-Id: <20230915201427.never.771-kees@kernel.org>
-X-Mailer: git-send-email 2.34.1
-MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1274; i=keescook@chromium.org;
- h=from:subject:message-id; bh=SaTfK3lpyJSSyLqYo6bry2dArg3sE8XflweiHaoI8UY=;
- b=owEBbQKS/ZANAwAKAYly9N/cbcAmAcsmYgBlBLsj9eKEqvjp1mnrSMAJ82NDlddaXaFNP2mEl
- nX0LeLPnkmJAjMEAAEKAB0WIQSlw/aPIp3WD3I+bhOJcvTf3G3AJgUCZQS7IwAKCRCJcvTf3G3A
- Jvx7EACzMY8uhS+c29WkzR+uaQe8YM8IcRIE0an3Tp3hKSe4Qsn1YrfptQ703/ZjufltQQYwTK3
- 6crA9Yqboe7PhB0+QXPWy2sDykXcFrS6Vp/KnGPy6cOziCBe/5r9+SduZZFUM7kurcHYoPCRL3a
- CYFSSoc0FbnHy4/I/lJpEjD+d/k76EhTwB+gshyW3Ex+75+OVjbhKm2NRWL1aFaaxeEJ10+Qnp0
- KN5Ij/AJSHXVq03irD6Iqb92YAAWXBqOhdo1TtabuKyRlGMdu7kjb08LbqpT615kH4fA2tdPaxg
- Fd1x5FBMj4k+f/9czeX3Zd/cr6rfbWLW2U5V04s5lCfITXMi+HoZRpqgQq1YGa4hnFab+wEf2Qd
- oaWkKawR6Li0KzJgKwW/OjxaMdCePA0hgElbqQF39q91h1Kij3CJYRVgO2lBBOCRGNAfGtggf30
- 7LJM2oJGbnRSclIUk6put5bdwX2nVY2K36q4Yw62aNAkK/0ByIRQW8hF/JFK0aFG7TxkIuTXQWA
- GpI0cnh6EFwilcg2I83Kwehss0Ap5NENU4OV64sWydaTwMMd0FcR/fOZ/1SUTABgqKmFUObRZL9
- kNg/SgUzv8YvFDXlSyfqW2siixtbL+sg6XdEwweO+Dp14SLWUYsHV8UWWdYHZwM2cj+DcaPOmoP
- MKF+K9t McubGENA==
-X-Developer-Key: i=keescook@chromium.org; a=openpgp; fpr=A5C3F68F229DD60F723E6E138972F4DFDC6DC026
-Content-Transfer-Encoding: 8bit
+References: <20230915201434.never.346-kees@kernel.org>
+From:   "Gustavo A. R. Silva" <gustavo@embeddedor.com>
+In-Reply-To: <20230915201434.never.346-kees@kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - gator4166.hostgator.com
+X-AntiAbuse: Original Domain - vger.kernel.org
+X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
+X-AntiAbuse: Sender Address Domain - embeddedor.com
+X-BWhitelist: no
+X-Source-IP: 187.162.21.192
+X-Source-L: No
+X-Exim-ID: 1qhFky-002ewp-2W
+X-Source: 
+X-Source-Args: 
+X-Source-Dir: 
+X-Source-Sender: 187-162-21-192.static.axtel.net ([192.168.15.8]) [187.162.21.192]:36918
+X-Source-Auth: gustavo@embeddedor.com
+X-Email-Count: 440
+X-Org:  HG=hgshared;ORG=hostgator;
+X-Source-Cap: Z3V6aWRpbmU7Z3V6aWRpbmU7Z2F0b3I0MTY2Lmhvc3RnYXRvci5jb20=
+X-Local-Domain: yes
+X-CMAE-Envelope: MS4xfNWurg4/RIxMx2CfdJT213droqBTSM7H5yC2FjGDUMBd5YLapcD6xRmvNX1Ou+zH4hbZh9/Vl99DAKALwK7Cz8jEfBqQbjuLGh8kIDhLA5sRFyHZPAVO
+ LLxSTWA8nAAzHeJZNnO+QKZNfvK2VrGV9bu0VJCM2k7mONB33kv11rSCg5QGq/98boM43/miVcseowbIOes3k3KjvT0FoYf1ens=
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Prepare for the coming implementation by GCC and Clang of the __counted_by
-attribute. Flexible array members annotated with __counted_by can have
-their accesses bounds-checked at run-time checking via CONFIG_UBSAN_BOUNDS
-(for array indexing) and CONFIG_FORTIFY_SOURCE (for strcpy/memcpy-family
-functions).
 
-As found with Coccinelle[1], add __counted_by for struct nfs4_file_layout_dsaddr.
 
-[1] https://github.com/kees/kernel-tools/blob/trunk/coccinelle/examples/counted_by.cocci
+On 9/15/23 14:14, Kees Cook wrote:
+> Prepare for the coming implementation by GCC and Clang of the __counted_by
+> attribute. Flexible array members annotated with __counted_by can have
+> their accesses bounds-checked at run-time checking via CONFIG_UBSAN_BOUNDS
+> (for array indexing) and CONFIG_FORTIFY_SOURCE (for strcpy/memcpy-family
+> functions).
+> 
+> As found with Coccinelle[1], add __counted_by for struct nfs4_ff_layout_segment.
+> 
+> [1] https://github.com/kees/kernel-tools/blob/trunk/coccinelle/examples/counted_by.cocci
+> 
+> Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
+> Cc: Anna Schumaker <anna@kernel.org>
+> Cc: linux-nfs@vger.kernel.org
+> Signed-off-by: Kees Cook <keescook@chromium.org>
 
-Cc: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker <anna@kernel.org>
-Cc: "Gustavo A. R. Silva" <gustavoars@kernel.org>
-Cc: linux-nfs@vger.kernel.org
-Signed-off-by: Kees Cook <keescook@chromium.org>
----
- fs/nfs/filelayout/filelayout.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Reviewed-by: Gustavo A. R. Silva <gustavoars@kernel.org>
 
-diff --git a/fs/nfs/filelayout/filelayout.h b/fs/nfs/filelayout/filelayout.h
-index aed0748fd6ec..c7bb5da93307 100644
---- a/fs/nfs/filelayout/filelayout.h
-+++ b/fs/nfs/filelayout/filelayout.h
-@@ -51,7 +51,7 @@ struct nfs4_file_layout_dsaddr {
- 	u32				stripe_count;
- 	u8				*stripe_indices;
- 	u32				ds_num;
--	struct nfs4_pnfs_ds		*ds_list[];
-+	struct nfs4_pnfs_ds		*ds_list[] __counted_by(ds_num);
- };
- 
- struct nfs4_filelayout_segment {
+Thanks
 -- 
-2.34.1
+Gustavo
 
+> ---
+>   fs/nfs/flexfilelayout/flexfilelayout.h | 2 +-
+>   1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+> index 354a031c69b1..f84b3fb0dddd 100644
+> --- a/fs/nfs/flexfilelayout/flexfilelayout.h
+> +++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+> @@ -99,7 +99,7 @@ struct nfs4_ff_layout_segment {
+>   	u64				stripe_unit;
+>   	u32				flags;
+>   	u32				mirror_array_cnt;
+> -	struct nfs4_ff_layout_mirror	*mirror_array[];
+> +	struct nfs4_ff_layout_mirror	*mirror_array[] __counted_by(mirror_array_cnt);
+>   };
+>   
+>   struct nfs4_flexfile_layout {
