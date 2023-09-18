@@ -2,38 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 69686C46CA1
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:46:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D8858CD13D2
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:48:29 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230520AbjIRQqI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 12:46:08 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56682 "EHLO
+        id S229781AbjIRQsd (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 12:48:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42876 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231126AbjIRQp4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:45:56 -0400
+        with ESMTP id S230120AbjIRQsV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:48:21 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA7F02D49
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 09:37:37 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F0FFAC4163D;
-        Mon, 18 Sep 2023 13:57:39 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 92421172C
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 09:47:32 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6E125C32777;
+        Mon, 18 Sep 2023 14:18:31 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045460;
-        bh=qx9Amc4/EpzHEUVIFiDXrdm8bUDFLkxqj4++LgT6vLI=;
-        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=qFM3zQSJYzUIdbtOgrMYzJ/oEITRolLjcysEdEDSSy2e/OR16p4/XpApmwiH5F9tu
-         bvlKq442EwtcBnPsdGE4nf9uJNhHnVMOYsnd2jl4pe4JcnF8edd4vz/38G7Bze9KSO
-         lWodNVS8UWqLKRtS0Mf6H0IBwpYSXdnbN+L4D/hbcv97pGeZScOMeNwmOGGTjB+0qh
-         TXRrrklgRmUM2t310LsP/ycDrkBFgR/YTOQnNHCCtHIFv36b/4EM5cRAE28XEfqKiQ
-         HLHoSulH3LcKcs17CNjVZWULeYRe851GSKAlsEX2x5r6xyWTFc0c1ZlmTlE7wPude3
-         VpN0nXvaVVJcA==
-Subject: [PATCH v1 08/52] NFSD: Add nfsd4_encode_fattr4_type()
+        s=k20201202; t=1695046711;
+        bh=w6i1iNGJem8BsbeiQZQFAHcL5/hlMZkwc4S/pQzy7KY=;
+        h=Subject:From:To:Cc:Date:From;
+        b=DQsCrwjrtdNb9YUWfAutunUkY7HMyeSjxyF+l6fKeoIrMC85bGiKe3v9aHYxSKTxK
+         q/iMhd4S1inG3q5KX7CAuOLPcvlaJvBdPXgWAwzzTnOZktgAvZDjBv8GUQG6wEnqS/
+         wO8rzUbPfENdiIaMlPhfXor1sZORnhdFsaavccU5SQZGj0Q/8jViQN60/LfuBiXnzp
+         av3GHEYfSBGMNXN+4TqAdFMxd04S9oGRMcp0yoxwQYtzo+yGjfi519cYLBdQr0eij4
+         Iuotk6fBhLmuIB2a7XC6n7Zpd7kQL9/R4p62UOVLgVZTBFGd6Oh4nullN1cMZG0w5G
+         8VchCDA+X7mfA==
+Subject: [PATCH v1] SUNRPC: Remove BUG_ON call sites
 From:   Chuck Lever <cel@kernel.org>
-To:     linux-nfs@vger.kernel.org
-Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 09:57:39 -0400
-Message-ID: <169504545905.133720.14224781242740113631.stgit@manet.1015granger.net>
-In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
-References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
+To:     neilb@suse.de, brauner@kernel.org
+Cc:     Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date:   Mon, 18 Sep 2023 10:18:30 -0400
+Message-ID: <169504668787.134583.4338728458451666583.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -44,114 +42,42 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Refactor the encoder for FATTR4_TYPE into a helper. In a subsequent
-patch, this helper will be called from a bitmask loop.
+There is no need to take down the whole system for these assertions.
 
-In addition, restructure the code so that byte-swapping is done on
-constant values rather than at run time. Run-time swapping can be
-costly on some platforms, and "type" is a frequently-requested
-attribute.
+I'd rather not attempt a heroic save here, as some bug has occurred
+that has left the transport data structures in an unknown state.
+Just warn and then leak the left-over resources.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   63 ++++++++++++++++++++++++++++++++++-------------------
- 1 file changed, 40 insertions(+), 23 deletions(-)
+ net/sunrpc/svc.c |   11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index da5df33cac04..c1dc6810f043 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2792,20 +2792,6 @@ static __be32 nfsd4_encode_fs_locations(struct xdr_stream *xdr,
- 	return 0;
- }
+Let's start here. Comments?
+
+
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 587811a002c9..11a1d5e7f5c7 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -575,11 +575,14 @@ svc_destroy(struct kref *ref)
+ 	timer_shutdown_sync(&serv->sv_temptimer);
  
--static u32 nfs4_file_type(umode_t mode)
--{
--	switch (mode & S_IFMT) {
--	case S_IFIFO:	return NF4FIFO;
--	case S_IFCHR:	return NF4CHR;
--	case S_IFDIR:	return NF4DIR;
--	case S_IFBLK:	return NF4BLK;
--	case S_IFLNK:	return NF4LNK;
--	case S_IFREG:	return NF4REG;
--	case S_IFSOCK:	return NF4SOCK;
--	default:	return NF4BAD;
--	}
--}
--
- static inline __be32
- nfsd4_encode_aclname(struct xdr_stream *xdr, struct svc_rqst *rqstp,
- 		     struct nfs4_ace *ace)
-@@ -2977,6 +2963,44 @@ static __be32 nfsd4_encode_fattr4_supported_attrs(struct xdr_stream *xdr,
- 	return nfsd4_encode_bitmap4(xdr, supp[0], supp[1], supp[2]);
- }
+ 	/*
+-	 * The last user is gone and thus all sockets have to be destroyed to
+-	 * the point. Check this.
++	 * Remaining transports at this point are not expected.
+ 	 */
+-	BUG_ON(!list_empty(&serv->sv_permsocks));
+-	BUG_ON(!list_empty(&serv->sv_tempsocks));
++	if (unlikely(!list_empty(&serv->sv_permsocks)))
++		pr_warn("SVC: permsocks remain for %s\n",
++			serv->sv_program->pg_name);
++	if (unlikely(!list_empty(&serv->sv_tempsocks)))
++		pr_warn("SVC: tempsocks remain for %s\n",
++			serv->sv_program->pg_name);
  
-+static __be32 nfsd4_encode_fattr4_type(struct xdr_stream *xdr,
-+				       const struct nfsd4_fattr_args *args)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, XDR_UNIT);
-+	if (!p)
-+		return nfserr_resource;
-+
-+	switch (args->stat.mode & S_IFMT) {
-+	case S_IFIFO:
-+		*p = cpu_to_be32(NF4FIFO);
-+		break;
-+	case S_IFCHR:
-+		*p = cpu_to_be32(NF4CHR);
-+		break;
-+	case S_IFDIR:
-+		*p = cpu_to_be32(NF4DIR);
-+		break;
-+	case S_IFBLK:
-+		*p = cpu_to_be32(NF4BLK);
-+		break;
-+	case S_IFLNK:
-+		*p = cpu_to_be32(NF4LNK);
-+		break;
-+	case S_IFREG:
-+		*p = cpu_to_be32(NF4REG);
-+		break;
-+	case S_IFSOCK:
-+		*p = cpu_to_be32(NF4SOCK);
-+		break;
-+	default:
-+		return nfserr_serverfault;
-+	}
-+
-+	return nfs_ok;
-+}
-+
- /*
-  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
-  * ourselves.
-@@ -2995,7 +3019,6 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 	__be32 *p, *attrlen_p;
- 	int starting_len = xdr->buf->len;
- 	int attrlen_offset;
--	u32 dummy;
- 	u64 dummy64;
- 	__be32 status;
- 	int err;
-@@ -3107,15 +3130,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 			goto out;
- 	}
- 	if (bmval0 & FATTR4_WORD0_TYPE) {
--		p = xdr_reserve_space(xdr, 4);
--		if (!p)
--			goto out_resource;
--		dummy = nfs4_file_type(args.stat.mode);
--		if (dummy == NF4BAD) {
--			status = nfserr_serverfault;
-+		status = nfsd4_encode_fattr4_type(xdr, &args);
-+		if (status != nfs_ok)
- 			goto out;
--		}
--		*p++ = cpu_to_be32(dummy);
- 	}
- 	if (bmval0 & FATTR4_WORD0_FH_EXPIRE_TYPE) {
- 		p = xdr_reserve_space(xdr, 4);
+ 	cache_clean_deferred(serv);
+ 
 
 
