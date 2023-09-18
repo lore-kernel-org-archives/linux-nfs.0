@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D3DE0CD13D9
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:37:14 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 69686C46CA1
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:46:05 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230059AbjIRQhS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 12:37:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40258 "EHLO
+        id S230520AbjIRQqI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 12:46:08 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:56682 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230139AbjIRQhG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:37:06 -0400
+        with ESMTP id S231126AbjIRQp4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:45:56 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BF05410E6
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 09:32:32 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C3DD7C116CB;
-        Mon, 18 Sep 2023 14:01:03 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AA7F02D49
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 09:37:37 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F0FFAC4163D;
+        Mon, 18 Sep 2023 13:57:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045664;
-        bh=eLAMI+04+0pa1jhKRCTkyUFIbNQssVlNGe8wkM70w3g=;
+        s=k20201202; t=1695045460;
+        bh=qx9Amc4/EpzHEUVIFiDXrdm8bUDFLkxqj4++LgT6vLI=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=SvF5H5sBS/U6/neWupfecms+heNrLq+vlIQ62eIz/ekz2T7nzD/jV3zL3klJGk3YJ
-         wR3LLvGRgScHHjt6g88SDIHCEujS0fmvJ5l3YRUFxnooWikSxA0Vz4XkM09ezd+yix
-         IOvyydD0xp6l7EhksOtTf2PrgzVHVvdyKBxKxeegU9v6mLFqSi9gUhsk0kopkveB6r
-         7On81Rx131YEesaGc7gEoc40Ds0DMekJKPJ/OydP3/bS+e/vsyx1V7M84wUR7e+yRv
-         h3Nv3Vc6jKdFkFslAHQu9MUfa4UxDasQUltykNFjujGISLwYcBkSlWUqhCxblj5XNc
-         6ZVVhFie1r3Jg==
-Subject: [PATCH v1 40/52] NFSD: Add nfsd4_encode_fattr4_time_delta()
+        b=qFM3zQSJYzUIdbtOgrMYzJ/oEITRolLjcysEdEDSSy2e/OR16p4/XpApmwiH5F9tu
+         bvlKq442EwtcBnPsdGE4nf9uJNhHnVMOYsnd2jl4pe4JcnF8edd4vz/38G7Bze9KSO
+         lWodNVS8UWqLKRtS0Mf6H0IBwpYSXdnbN+L4D/hbcv97pGeZScOMeNwmOGGTjB+0qh
+         TXRrrklgRmUM2t310LsP/ycDrkBFgR/YTOQnNHCCtHIFv36b/4EM5cRAE28XEfqKiQ
+         HLHoSulH3LcKcs17CNjVZWULeYRe851GSKAlsEX2x5r6xyWTFc0c1ZlmTlE7wPude3
+         VpN0nXvaVVJcA==
+Subject: [PATCH v1 08/52] NFSD: Add nfsd4_encode_fattr4_type()
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 10:01:02 -0400
-Message-ID: <169504566285.133720.8429913510077918237.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 09:57:39 -0400
+Message-ID: <169504545905.133720.14224781242740113631.stgit@manet.1015granger.net>
 In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
@@ -44,94 +44,114 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Refactor the encoder for FATTR4_TIME_DELTA into a helper. In a
-subsequent patch, this helper will be called from a bitmask loop.
+Refactor the encoder for FATTR4_TYPE into a helper. In a subsequent
+patch, this helper will be called from a bitmask loop.
 
-fattr4_time_delta is specified as an nfstime4, so de-duplicate this
-encoder.
+In addition, restructure the code so that byte-swapping is done on
+constant values rather than at run time. Run-time swapping can be
+costly on some platforms, and "type" is a frequently-requested
+attribute.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   53 ++++++++++++++++++++++++-----------------------------
- 1 file changed, 24 insertions(+), 29 deletions(-)
+ fs/nfsd/nfs4xdr.c |   63 ++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 40 insertions(+), 23 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 5a98dc3910ef..28eb777f82d2 100644
+index da5df33cac04..c1dc6810f043 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -2561,31 +2561,6 @@ static __be32 nfsd4_encode_specdata4(struct xdr_stream *xdr,
- 	return nfsd4_encode_uint32_t(xdr, minor);
+@@ -2792,20 +2792,6 @@ static __be32 nfsd4_encode_fs_locations(struct xdr_stream *xdr,
+ 	return 0;
  }
  
--/*
-- * ctime (in NFSv4, time_metadata) is not writeable, and the client
-- * doesn't really care what resolution could theoretically be stored by
-- * the filesystem.
-- *
-- * The client cares how close together changes can be while still
-- * guaranteeing ctime changes.  For most filesystems (which have
-- * timestamps with nanosecond fields) that is limited by the resolution
-- * of the time returned from current_time() (which I'm assuming to be
-- * 1/HZ).
-- */
--static __be32 *encode_time_delta(__be32 *p, struct inode *inode)
+-static u32 nfs4_file_type(umode_t mode)
 -{
--	struct timespec64 ts;
--	u32 ns;
--
--	ns = max_t(u32, NSEC_PER_SEC/HZ, inode->i_sb->s_time_gran);
--	ts = ns_to_timespec64(ns);
--
--	p = xdr_encode_hyper(p, ts.tv_sec);
--	*p++ = cpu_to_be32(ts.tv_nsec);
--
--	return p;
+-	switch (mode & S_IFMT) {
+-	case S_IFIFO:	return NF4FIFO;
+-	case S_IFCHR:	return NF4CHR;
+-	case S_IFDIR:	return NF4DIR;
+-	case S_IFBLK:	return NF4BLK;
+-	case S_IFLNK:	return NF4LNK;
+-	case S_IFREG:	return NF4REG;
+-	case S_IFSOCK:	return NF4SOCK;
+-	default:	return NF4BAD;
+-	}
 -}
 -
- static __be32
- nfsd4_encode_change_info4(struct xdr_stream *xdr, const struct nfsd4_change_info *c)
- {
-@@ -3266,6 +3241,27 @@ static __be32 nfsd4_encode_fattr4_time_create(struct xdr_stream *xdr,
- 	return nfsd4_encode_nfstime4(xdr, &args->stat.btime);
+ static inline __be32
+ nfsd4_encode_aclname(struct xdr_stream *xdr, struct svc_rqst *rqstp,
+ 		     struct nfs4_ace *ace)
+@@ -2977,6 +2963,44 @@ static __be32 nfsd4_encode_fattr4_supported_attrs(struct xdr_stream *xdr,
+ 	return nfsd4_encode_bitmap4(xdr, supp[0], supp[1], supp[2]);
  }
  
-+/*
-+ * ctime (in NFSv4, time_metadata) is not writeable, and the client
-+ * doesn't really care what resolution could theoretically be stored by
-+ * the filesystem.
-+ *
-+ * The client cares how close together changes can be while still
-+ * guaranteeing ctime changes.  For most filesystems (which have
-+ * timestamps with nanosecond fields) that is limited by the resolution
-+ * of the time returned from current_time() (which I'm assuming to be
-+ * 1/HZ).
-+ */
-+static __be32 nfsd4_encode_fattr4_time_delta(struct xdr_stream *xdr,
-+					     const struct nfsd4_fattr_args *args)
++static __be32 nfsd4_encode_fattr4_type(struct xdr_stream *xdr,
++				       const struct nfsd4_fattr_args *args)
 +{
-+	const struct inode *inode = d_inode(args->dentry);
-+	u32 ns = max_t(u32, NSEC_PER_SEC/HZ, inode->i_sb->s_time_gran);
-+	struct timespec64 ts = ns_to_timespec64(ns);
++	__be32 *p;
 +
-+	return nfsd4_encode_nfstime4(xdr, &ts);
++	p = xdr_reserve_space(xdr, XDR_UNIT);
++	if (!p)
++		return nfserr_resource;
++
++	switch (args->stat.mode & S_IFMT) {
++	case S_IFIFO:
++		*p = cpu_to_be32(NF4FIFO);
++		break;
++	case S_IFCHR:
++		*p = cpu_to_be32(NF4CHR);
++		break;
++	case S_IFDIR:
++		*p = cpu_to_be32(NF4DIR);
++		break;
++	case S_IFBLK:
++		*p = cpu_to_be32(NF4BLK);
++		break;
++	case S_IFLNK:
++		*p = cpu_to_be32(NF4LNK);
++		break;
++	case S_IFREG:
++		*p = cpu_to_be32(NF4REG);
++		break;
++	case S_IFSOCK:
++		*p = cpu_to_be32(NF4SOCK);
++		break;
++	default:
++		return nfserr_serverfault;
++	}
++
++	return nfs_ok;
 +}
 +
  /*
   * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
   * ourselves.
-@@ -3599,10 +3595,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+@@ -2995,7 +3019,6 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 	__be32 *p, *attrlen_p;
+ 	int starting_len = xdr->buf->len;
+ 	int attrlen_offset;
+-	u32 dummy;
+ 	u64 dummy64;
+ 	__be32 status;
+ 	int err;
+@@ -3107,15 +3130,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
  			goto out;
  	}
- 	if (bmval1 & FATTR4_WORD1_TIME_DELTA) {
--		p = xdr_reserve_space(xdr, 12);
+ 	if (bmval0 & FATTR4_WORD0_TYPE) {
+-		p = xdr_reserve_space(xdr, 4);
 -		if (!p)
 -			goto out_resource;
--		p = encode_time_delta(p, d_inode(dentry));
-+		status = nfsd4_encode_fattr4_time_delta(xdr, &args);
+-		dummy = nfs4_file_type(args.stat.mode);
+-		if (dummy == NF4BAD) {
+-			status = nfserr_serverfault;
++		status = nfsd4_encode_fattr4_type(xdr, &args);
 +		if (status != nfs_ok)
-+			goto out;
+ 			goto out;
+-		}
+-		*p++ = cpu_to_be32(dummy);
  	}
- 	if (bmval1 & FATTR4_WORD1_TIME_METADATA) {
- 		status = nfsd4_encode_nfstime4(xdr, &args.stat.ctime);
+ 	if (bmval0 & FATTR4_WORD0_FH_EXPIRE_TYPE) {
+ 		p = xdr_reserve_space(xdr, 4);
 
 
