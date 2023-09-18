@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 9C4E6CD37B0
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:22:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 1517ACD13D9
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:22:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S239620AbjIRPWW (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 11:22:22 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49234 "EHLO
+        id S239775AbjIRPWX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 11:22:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49344 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S239634AbjIRPWU (ORCPT
+        with ESMTP id S238605AbjIRPWU (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:22:20 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9449226BA
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:20:16 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AFF54C116A0;
-        Mon, 18 Sep 2023 13:58:24 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D1ED010C8
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:20:11 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6EC31C116B6;
+        Mon, 18 Sep 2023 14:00:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045504;
-        bh=XvaHvfQJlyRNh/aVDspmx5wQA7m0ZtMKN0EboRwQ8Fc=;
+        s=k20201202; t=1695045625;
+        bh=7UlAzVQCyxw8WrqdUycPn4PtvnvgbPr9juX8TTFC9yQ=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=uA8Qt7uK2STwN2BRcBpK6KysAHLLQLkI3jDMqr3v9POktG7RzJRe2cb6w67zcS0QU
-         LVwqcHZFVqFL7E9WqRBef/PTEVMWCsmHg/TvAF3SWF8yruy+kgWCNG+JzDkqu8qiTi
-         FapFmH0gjPyTlTDQH0I6thAVNR8yBDm7oWXZeoUf3w+5nWZZnX5W4KKbx7uWwGr16j
-         gTOU4kSit5VtzV1TbttO605S9RpAvZ0gSCsdaMCgmthybRRkIhQ3j4GJvm51GAtuPW
-         JSSgMwLMYnCrGkrowHHU7b/4XWrf6WRY4muGCZwTxcrJJujwQVzcEtdlmjO6hsTj7I
-         tB7+7JvMvNEGQ==
-Subject: [PATCH v1 15/52] NFSD: Add nfsd4_encode_fattr4_aclsupport()
+        b=c6+O4KNDhABNHF/eQlcFOsP+cQ7QPxyhl8yxVjQlU45V4cuO/rHgbursDcpp/J+rD
+         Gj5aKMbV6FKgRcvN8/WQQkFQ4a48fE4v22fA6yRy75eisHarhZ+BSJ81GeDCqfgQrs
+         iEKpblDWivyaCbNr7KXwXQY/dB6s9Hw1eMOGrakriTch4eQ4Ki5b1DTYnu1If8hC+n
+         m9cC5RAhcg7DdxN2qpQ/8CRdBEeHI/OwMH5C7hREmR5tOeR7NmUVGoaw1LGS3Mm6n8
+         n6NiBj42ZhYOjmcjOhaDbjscUWBuwcQNufydTTnt8wTD9nuzbKvFdKUK2bEYJqEsMs
+         M4MwqPMTrpyHw==
+Subject: [PATCH v1 34/52] NFSD: Add nfsd4_encode_fattr4_space_avail()
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 09:58:23 -0400
-Message-ID: <169504550370.133720.16652934537928090407.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 10:00:24 -0400
+Message-ID: <169504562450.133720.15612884724683454845.stgit@manet.1015granger.net>
 In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
@@ -44,50 +44,47 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Refactor the encoder for FATTR4_ACLSUPPORT into a helper. In a
+Refactor the encoder for FATTR4_SPACE_AVAIL into a helper. In a
 subsequent patch, this helper will be called from a bitmask loop.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   19 ++++++++++++++-----
- 1 file changed, 14 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4xdr.c |   16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c67b5d942390..6604763bd96c 100644
+index 146ac641ef8e..42ce95b8db43 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -3077,6 +3077,17 @@ static __be32 nfsd4_encode_fattr4_rdattr_error(struct xdr_stream *xdr,
- 	return nfsd4_encode_uint32_t(xdr, args->rdattr_err);
+@@ -3224,6 +3224,14 @@ static __be32 nfsd4_encode_fattr4_rawdev(struct xdr_stream *xdr,
+ 				      MINOR(args->stat.rdev));
  }
  
-+static __be32 nfsd4_encode_fattr4_aclsupport(struct xdr_stream *xdr,
-+					     const struct nfsd4_fattr_args *args)
++static __be32 nfsd4_encode_fattr4_space_avail(struct xdr_stream *xdr,
++					      const struct nfsd4_fattr_args *args)
 +{
-+	u32 mask;
++	u64 avail = (u64)args->statfs.f_bavail * (u64)args->statfs.f_bsize;
 +
-+	mask = 0;
-+	if (IS_POSIXACL(d_inode(args->dentry)))
-+		mask = ACL4_SUPPORT_ALLOW_ACL | ACL4_SUPPORT_DENY_ACL;
-+	return nfsd4_encode_uint32_t(xdr, mask);
++	return nfsd4_encode_uint64_t(xdr, avail);
 +}
 +
  /*
   * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
   * ourselves.
-@@ -3291,11 +3302,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+@@ -3528,11 +3536,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out;
  	}
- out_acl:
- 	if (bmval0 & FATTR4_WORD0_ACLSUPPORT) {
--		p = xdr_reserve_space(xdr, 4);
+ 	if (bmval1 & FATTR4_WORD1_SPACE_AVAIL) {
+-		p = xdr_reserve_space(xdr, 8);
 -		if (!p)
 -			goto out_resource;
--		*p++ = cpu_to_be32(IS_POSIXACL(dentry->d_inode) ?
--			ACL4_SUPPORT_ALLOW_ACL|ACL4_SUPPORT_DENY_ACL : 0);
-+		status = nfsd4_encode_fattr4_aclsupport(xdr, &args);
+-		dummy64 = (u64)args.statfs.f_bavail * (u64)args.statfs.f_bsize;
+-		p = xdr_encode_hyper(p, dummy64);
++		status = nfsd4_encode_fattr4_space_avail(xdr, &args);
 +		if (status != nfs_ok)
 +			goto out;
  	}
- 	if (bmval0 & FATTR4_WORD0_CANSETTIME) {
- 		status = nfsd4_encode_fattr4__true(xdr, &args);
+ 	if (bmval1 & FATTR4_WORD1_SPACE_FREE) {
+ 		p = xdr_reserve_space(xdr, 8);
 
 
