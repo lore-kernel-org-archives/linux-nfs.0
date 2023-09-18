@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E44B7CD13D8
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:23:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DC3EBCD37B0
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:23:48 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232220AbjIRPXu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 11:23:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58980 "EHLO
+        id S240729AbjIRPXv (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 11:23:51 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59048 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S240756AbjIRPXs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:23:48 -0400
+        with ESMTP id S236784AbjIRPXu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:23:50 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 58C4F10C9
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:20:05 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 68270C116B2;
-        Mon, 18 Sep 2023 14:00:06 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 613D519D
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:22:05 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EE373C116B4;
+        Mon, 18 Sep 2023 13:59:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045606;
-        bh=FHAAE6TUbfavTm7dq4dD82FCYvzIisEOnVuUD+XO8os=;
+        s=k20201202; t=1695045581;
+        bh=rfFAteDhYCQvoSPjxMRQ5ipc/xK9xXR6g5Fbi87zWOU=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=OxkFSoGl1zFeIeyOkqVB1vTMQ2Dgo4+ff2AhexqFdiNkIuURXG5getegmvAtX8185
-         WIBfxOIwNtmWdxc3cydI/Ux1SHeceeFI5gczyZKp3kMubF00RhfcS2Hn7rxP9mm4pA
-         Wzf9uZOPZpy0CERSkSK/vyfeu0LXyOAcYnspArhWmV7W00eyjLoRwF3Y86CJCXCFGa
-         rDtslbFtra021/8SjOFYrRNox7qigU3GLBD8Iu4pmIKhLWft+Rva8MTeMvdwPI7VD9
-         n6VT3wHx02mqMAUL1RY0Nx6dqrVtM+vY3Qo5jBVCNtH6D194NmILce9nFbqD57OZv0
-         xMiczdoTdSXDA==
-Subject: [PATCH v1 31/52] NFSD: Add nfsd4_encode_fattr4_owner()
+        b=gVU/jMdWy3YfE/TA7pg/2P42r3Xmw62TfbHB8wiMRKGONSieBt/SAwszCF/xmQ5fB
+         YhZu/MDfYe1hTlt+D+5VU3BoggBRrFznuzWJB0C0ZpOAmfef3WYfjaNaGH9oMBnvED
+         AIn253gYWkxf05mjLYjYSiToBbYr5Xi2LAZ7I4ZMHX1QG8T0Y7tdiXHvmZx3WIbi9y
+         wIj/IoSfOyG9txt8cRVaMawdDueBcszW7cExoMgx3flkBLWD+6wf5d1pn0CfzeN2K/
+         4k4zJyB3bO2JPl3h0RiFqkIwVNDYbK7e6mVhsh3CB0Jk+Q33P/EBnmFlGRrS/kbKQ9
+         fkde2LHDDHsuw==
+Subject: [PATCH v1 27/52] NFSD: Add nfsd4_encode_fattr4_maxread()
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 10:00:05 -0400
-Message-ID: <169504560541.133720.17707540313238672641.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 09:59:39 -0400
+Message-ID: <169504557996.133720.11598552337976844789.stgit@manet.1015granger.net>
 In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
@@ -44,41 +44,44 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Refactor the encoder for FATTR4_OWNER into a helper. In a
+Refactor the encoder for FATTR4_MAXREAD into a helper. In a
 subsequent patch, this helper will be called from a bitmask loop.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4xdr.c |   13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index e3d9ec44c817..11922b18f357 100644
+index 546879759c71..35911ecccfbd 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -3194,6 +3194,12 @@ static __be32 nfsd4_encode_fattr4_numlinks(struct xdr_stream *xdr,
- 	return nfsd4_encode_uint32_t(xdr, args->stat.nlink);
+@@ -3170,6 +3170,12 @@ static __be32 nfsd4_encode_fattr4_maxname(struct xdr_stream *xdr,
+ 	return nfsd4_encode_uint32_t(xdr, args->statfs.f_namelen);
  }
  
-+static __be32 nfsd4_encode_fattr4_owner(struct xdr_stream *xdr,
-+					const struct nfsd4_fattr_args *args)
++static __be32 nfsd4_encode_fattr4_maxread(struct xdr_stream *xdr,
++					  const struct nfsd4_fattr_args *args)
 +{
-+	return nfsd4_encode_user(xdr, args->rqstp, args->stat.uid);
++	return nfsd4_encode_uint64_t(xdr, svc_max_payload(args->rqstp));
 +}
 +
  /*
   * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
   * ourselves.
-@@ -3483,8 +3489,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+@@ -3434,10 +3440,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
  			goto out;
  	}
- 	if (bmval1 & FATTR4_WORD1_OWNER) {
--		status = nfsd4_encode_user(xdr, rqstp, args.stat.uid);
--		if (status)
-+		status = nfsd4_encode_fattr4_owner(xdr, &args);
+ 	if (bmval0 & FATTR4_WORD0_MAXREAD) {
+-		p = xdr_reserve_space(xdr, 8);
+-		if (!p)
+-			goto out_resource;
+-		p = xdr_encode_hyper(p, (u64) svc_max_payload(rqstp));
++		status = nfsd4_encode_fattr4_maxread(xdr, &args);
 +		if (status != nfs_ok)
- 			goto out;
++			goto out;
  	}
- 	if (bmval1 & FATTR4_WORD1_OWNER_GROUP) {
+ 	if (bmval0 & FATTR4_WORD0_MAXWRITE) {
+ 		p = xdr_reserve_space(xdr, 8);
 
 
