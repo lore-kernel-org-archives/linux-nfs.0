@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D7C4BC46CA1
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:25:33 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 72E41CD13D2
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:25:41 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230109AbjIRQZh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 12:25:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52450 "EHLO
+        id S230075AbjIRQZp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 12:25:45 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52718 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229975AbjIRQZd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:25:33 -0400
+        with ESMTP id S230096AbjIRQZg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:25:36 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 914872547C
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6356225478
         for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 09:22:40 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 035F5C433BA;
-        Mon, 18 Sep 2023 13:57:07 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3BA9EC433BC;
+        Mon, 18 Sep 2023 13:56:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045428;
-        bh=ivYlbbAmiVVZYNkuHJx1W3/ofNUn2OJQ7vClkjK6ed4=;
+        s=k20201202; t=1695045415;
+        bh=i8hXbphYJz2dndu7u6xWLow0rclV/VusffseX/IlkW8=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=MNUvVqK5CT7jzFctXirM01STWlsprXNaXTwz2HollLyjpnN5spA0OVyV22qs9rIDt
-         BVKre+k/EFm9sdE+BshdjnUqcycAj6cWhUPSSHGcZtnvT5nfztef2RHVS8kQcrNqHK
-         k1ASifW03pu+dP2F7GqZKspNyOsbPOa2qLIzj1gNjdzmi5hFfMJXjh885uZFyvtdAx
-         XvG+mme5Qdve3QvoLlppRYVCfbClXL9c+rcWE/xHuT7G9HglQmUzy18PFF6P12dBB4
-         7jA7JYQcyxuJ5ucHUwcvfak+vlZ9nqGphmIjc4qeP3Lh31+ZCpGYS7uDQp6/kZwukw
-         Wyp9UgIUo9ONQ==
-Subject: [PATCH v1 03/52] NFSD: Clean up nfsd4_encode_setattr()
+        b=QGlrgvmVUldLAYbJOSAyPebfLGD2zdgilvsWhBAeehKmGndJIMls+zZQTLgNybYP3
+         7qqG2wRHhhEZbHYWAYjWU+APuTErSDpDG4K+jLtWMMGQLSaL0Wfi6f1+xeTFCG0liq
+         fGNf32P7nfFAikorEVjkSxPJoQt355iY9UOx8ner0/clF+D2xQhHWIZutl0Fe50tXr
+         nsxxVjABepLeRD2PLTW/SGTcyJe0hb7kbjXY9G/lOydK/JjNzicXPg/Y1hsUWB4SnL
+         LWRI4qmbkcoQagDKd2zhuVgzFNlXujBrUmWD3MwlFMExx4jRmOPPGvJEMwBsF17l8V
+         sYQFQ/cmrqqDQ==
+Subject: [PATCH v1 01/52] NFSD: Add simple u32, u64, and bool encoders
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 09:57:07 -0400
-Message-ID: <169504542705.133720.14718638463977967182.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 09:56:54 -0400
+Message-ID: <169504541407.133720.808437380691220899.stgit@manet.1015granger.net>
 In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
@@ -44,64 +44,145 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-De-duplicate the encoding of bitmap4 results in
-nfsd4_encode_setattr().
+The generic XDR encoders return a length or a negative errno. NFSv4
+encoders want to know simply whether the encode ran out of stream
+buffer space. The return values for server-side encoding are either
+nfs_ok or nfserr_resource.
+
+So far I've found it adds a lot of duplicate code to try to use the
+generic XDR encoder utilities when encoding the simple data types in
+the NFSv4 operation encoders.
+
+Add a set of NFSv4-specific utilities that handle the basic XDR data
+types. These are added in xdr4.h so they might eventually be used by
+the callback server and pNFS driver encoders too.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   33 ++++++++++++---------------------
- 1 file changed, 12 insertions(+), 21 deletions(-)
+ fs/nfsd/xdr4.h |  111 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 111 insertions(+)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 84df0f36c15b..8715a43a70c4 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -4427,34 +4427,25 @@ nfsd4_encode_secinfo_no_name(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	return nfsd4_do_encode_secinfo(xdr, secinfo->sin_exp);
- }
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 9d918a79dc16..5c3eb3691f8b 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -50,6 +50,117 @@
+ #define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
+ #define CLEAR_CSTATE_FLAG(c, f) ((c)->sid_flags &= ~(f))
  
--/*
-- * The SETATTR encode routine is special -- it always encodes a bitmap,
-- * regardless of the error status.
-- */
- static __be32
- nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		     union nfsd4_op_u *u)
- {
- 	struct nfsd4_setattr *setattr = &u->setattr;
--	struct xdr_stream *xdr = resp->xdr;
--	__be32 *p;
-+	__be32 status;
- 
--	p = xdr_reserve_space(xdr, 16);
--	if (!p)
--		return nfserr_resource;
--	if (nfserr) {
--		*p++ = cpu_to_be32(3);
--		*p++ = cpu_to_be32(0);
--		*p++ = cpu_to_be32(0);
--		*p++ = cpu_to_be32(0);
--	}
--	else {
--		*p++ = cpu_to_be32(3);
--		*p++ = cpu_to_be32(setattr->sa_bmval[0]);
--		*p++ = cpu_to_be32(setattr->sa_bmval[1]);
--		*p++ = cpu_to_be32(setattr->sa_bmval[2]);
-+	switch (nfserr) {
-+	case nfs_ok:
-+		/* attrsset */
-+		status = nfsd4_encode_bitmap4(resp->xdr, setattr->sa_bmval[0],
-+					      setattr->sa_bmval[1],
-+					      setattr->sa_bmval[2]);
-+		break;
-+	default:
-+		/* attrsset */
-+		status = nfsd4_encode_bitmap4(resp->xdr, 0, 0, 0);
- 	}
--	return nfserr;
-+	return status != nfs_ok ? status : nfserr;
- }
- 
- static __be32
++/**
++ * nfsd4_encode_bool - Encode an XDR bool type result
++ * @xdr: target XDR stream
++ * @val: boolean value to encode
++ *
++ * Return values:
++ *    %nfs_ok: @val encoded; @xdr advanced to next position
++ *    %nfserr_resource: stream buffer space exhausted
++ */
++static __always_inline __be32
++nfsd4_encode_bool(struct xdr_stream *xdr, bool val)
++{
++	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT);
++
++	if (unlikely(p == NULL))
++		return nfserr_resource;
++	*p = val ? xdr_one : xdr_zero;
++	return nfs_ok;
++}
++
++/**
++ * nfsd4_encode_uint32_t - Encode an XDR uint32_t type result
++ * @xdr: target XDR stream
++ * @val: integer value to encode
++ *
++ * Return values:
++ *    %nfs_ok: @val encoded; @xdr advanced to next position
++ *    %nfserr_resource: stream buffer space exhausted
++ */
++static __always_inline __be32
++nfsd4_encode_uint32_t(struct xdr_stream *xdr, u32 val)
++{
++	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT);
++
++	if (unlikely(p == NULL))
++		return nfserr_resource;
++	*p = cpu_to_be32(val);
++	return nfs_ok;
++}
++
++/**
++ * nfsd4_encode_uint64_t - Encode an XDR uint64_t type result
++ * @xdr: target XDR stream
++ * @val: integer value to encode
++ *
++ * Return values:
++ *    %nfs_ok: @val encoded; @xdr advanced to next position
++ *    %nfserr_resource: stream buffer space exhausted
++ */
++static __always_inline __be32
++nfsd4_encode_uint64_t(struct xdr_stream *xdr, u64 val)
++{
++	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT * 2);
++
++	if (unlikely(p == NULL))
++		return nfserr_resource;
++	put_unaligned_be64(val, p);
++	return nfs_ok;
++}
++
++/**
++ * nfsd4_encode_opaque_fixed - Encode a fixed-length XDR opaque type result
++ * @xdr: target XDR stream
++ * @data: pointer to data
++ * @size: length of data in bytes
++ *
++ * Return values:
++ *    %nfs_ok: @data encoded; @xdr advanced to next position
++ *    %nfserr_resource: stream buffer space exhausted
++ */
++static __always_inline __be32
++nfsd4_encode_opaque_fixed(struct xdr_stream *xdr, const void *data,
++			  size_t size)
++{
++	__be32 *p = xdr_reserve_space(xdr, xdr_align_size(size));
++	size_t pad = xdr_pad_size(size);
++
++	if (unlikely(p == NULL))
++		return nfserr_resource;
++	memcpy(p, data, size);
++	if (pad)
++		memset((char *)p + size, 0, pad);
++	return nfs_ok;
++}
++
++/**
++ * nfsd4_encode_opaque - Encode a variable-length XDR opaque type result
++ * @xdr: target XDR stream
++ * @data: pointer to data
++ * @size: length of data in bytes
++ *
++ * Return values:
++ *    %nfs_ok: @data encoded; @xdr advanced to next position
++ *    %nfserr_resource: stream buffer space exhausted
++ */
++static __always_inline __be32
++nfsd4_encode_opaque(struct xdr_stream *xdr, const void *data, size_t size)
++{
++	size_t pad = xdr_pad_size(size);
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, XDR_UNIT + xdr_align_size(size));
++	if (unlikely(p == NULL))
++		return nfserr_resource;
++	*p++ = cpu_to_be32(size);
++	memcpy(p, data, size);
++	if (pad)
++		memset((char *)p + size, 0, pad);
++	return nfs_ok;
++}
++
+ struct nfsd4_compound_state {
+ 	struct svc_fh		current_fh;
+ 	struct svc_fh		save_fh;
 
 
