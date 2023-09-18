@@ -2,159 +2,81 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2AA9CCD37B0
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:24:34 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6005DC46CA1
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:25:27 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240307AbjIRPYh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 11:24:37 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58922 "EHLO
+        id S235107AbjIRPZa (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 11:25:30 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60400 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S238243AbjIRPYf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:24:35 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9C8C026B6
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:20:10 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1695050402;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         content-transfer-encoding:content-transfer-encoding;
-        bh=6KA4lTlnVdzbmyx5pVQ5ofjoQSRiAU3XEpYXJ1nkwrA=;
-        b=ULhI9McajzvQI47X/5D2isYzY1ugCMRMWS6VDUaI6Z9+WJbswoGe0ZTIj0o/qlSEY4QPrv
-        iQcjDUQjdObwjcLmtbP7/0g4ioOcSfbCg+np2EnQ2hh9Q3PBPF/Qi5REn5cwKQ1ncyaTHh
-        dkn/UxAbOusShomum6jdRtWKay4qgOQ=
-Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
- by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-227-PKA3tFlTMryOWIa3kWRgkg-1; Mon, 18 Sep 2023 09:17:13 -0400
-X-MC-Unique: PKA3tFlTMryOWIa3kWRgkg-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 8FEE929AA386;
-        Mon, 18 Sep 2023 13:17:12 +0000 (UTC)
-Received: from warthog.procyon.org.uk (unknown [10.42.28.216])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 96ADAC158BA;
-        Mon, 18 Sep 2023 13:17:11 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-        Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-        Kingdom.
-        Registered in England and Wales under Company Registration No. 3798903
-From:   David Howells <dhowells@redhat.com>
-To:     torvalds@linux-foundation.org
-cc:     dhowells@redhat.com, Dave Wysochanski <dwysocha@redhat.com>,
-        Jeff Layton <jlayton@kernel.org>, linux-cachefs@redhat.com,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH v2] netfs: Only call folio_start_fscache() one time for each folio
+        with ESMTP id S234376AbjIRPZ0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:25:26 -0400
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 45324E5F
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:22:15 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 724FDC116CA;
+        Mon, 18 Sep 2023 14:00:57 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1695045657;
+        bh=PM4YplbX7xYRY5Wfe94JDDlv5/9Zg7S4w6N+tWUQf8U=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=ndsDrwOjVQHHTEEtXr7Os7jCdpB0pJngw84gfV+hjLZ+M24YVmMbNLpIgBpmg7m0E
+         ElyNzw/lvkKun1kNnc1VrA6TtjJBeujCKACiB6CmvXkrOO5bmDeh7nOX5rUqbcsv+I
+         CqgByY8Zq7SYy1P7cOO7MTSXg9faUA5oCFQ121PZkEtXSLM/jPudcuWHEXcPwv26y/
+         m7SqFcQfE3UhZOtQd8wUJSDP1UDqxdtQlqPDflLYd3Zy49+CKYbDFkKd+eidQp8D0F
+         M7Ekb4YdKQYirgVgPvt27jnWxsxqj9h7/FgqQkcRzq1nPIyoUQK28gdW7r0avAa62c
+         L4qpzuV/PADRQ==
+Subject: [PATCH v1 39/52] NFSD: Add nfsd4_encode_fattr4_time_create()
+From:   Chuck Lever <cel@kernel.org>
+To:     linux-nfs@vger.kernel.org
+Cc:     Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon, 18 Sep 2023 10:00:56 -0400
+Message-ID: <169504565646.133720.8387408052195832855.stgit@manet.1015granger.net>
+In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
+References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <3993456.1695043031.1@warthog.procyon.org.uk>
-Content-Transfer-Encoding: quoted-printable
-Date:   Mon, 18 Sep 2023 14:17:11 +0100
-Message-ID: <3993457.1695043031@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.8
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Linus,
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Could you apply this please?
+Refactor the encoder for FATTR4_TIME_CREATE into a helper. In a
+subsequent patch, this helper will be called from a bitmask loop.
 
-Thanks,
-David
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-From: Dave Wysochanski <dwysocha@redhat.com>
+ fs/nfsd/nfs4xdr.c |    8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-If a network filesystem using netfs implements a clamp_length()
-function, it can set subrequest lengths smaller than a page size.
-When we loop through the folios in netfs_rreq_unlock_folios() to
-set any folios to be written back, we need to make sure we only
-call folio_start_fscache() once for each folio.  Otherwise,
-this simple testcase:
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 214e2fdcbd89..5a98dc3910ef 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3260,6 +3260,12 @@ static __be32 nfsd4_encode_fattr4_time_access(struct xdr_stream *xdr,
+ 	return nfsd4_encode_nfstime4(xdr, &args->stat.atime);
+ }
+ 
++static __be32 nfsd4_encode_fattr4_time_create(struct xdr_stream *xdr,
++					      const struct nfsd4_fattr_args *args)
++{
++	return nfsd4_encode_nfstime4(xdr, &args->stat.btime);
++}
++
+ /*
+  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
+  * ourselves.
+@@ -3588,7 +3594,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out;
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_CREATE) {
+-		status = nfsd4_encode_nfstime4(xdr, &args.stat.btime);
++		status = nfsd4_encode_fattr4_time_create(xdr, &args);
+ 		if (status)
+ 			goto out;
+ 	}
 
-  mount -o fsc,rsize=3D1024,wsize=3D1024 127.0.0.1:/export /mnt/nfs
-  dd if=3D/dev/zero of=3D/mnt/nfs/file.bin bs=3D4096 count=3D1
-  1+0 records in
-  1+0 records out
-  4096 bytes (4.1 kB, 4.0 KiB) copied, 0.0126359 s, 324 kB/s
-  echo 3 > /proc/sys/vm/drop_caches
-  cat /mnt/nfs/file.bin > /dev/null
-
-will trigger an oops similar to the following:
-
-...
- page dumped because: VM_BUG_ON_FOLIO(folio_test_private_2(folio))
- ------------[ cut here ]------------
- kernel BUG at include/linux/netfs.h:44!
-...
- CPU: 5 PID: 134 Comm: kworker/u16:5 Kdump: loaded Not tainted 6.4.0-rc5
-...
- RIP: 0010:netfs_rreq_unlock_folios+0x68e/0x730 [netfs]
-...
- Call Trace:
-  <TASK>
-  netfs_rreq_assess+0x497/0x660 [netfs]
-  netfs_subreq_terminated+0x32b/0x610 [netfs]
-  nfs_netfs_read_completion+0x14e/0x1a0 [nfs]
-  nfs_read_completion+0x2f9/0x330 [nfs]
-  rpc_free_task+0x72/0xa0 [sunrpc]
-  rpc_async_release+0x46/0x70 [sunrpc]
-  process_one_work+0x3bd/0x710
-  worker_thread+0x89/0x610
-  kthread+0x181/0x1c0
-  ret_from_fork+0x29/0x50
-
-Fixes: 3d3c95046742 ("netfs: Provide readahead and readpage netfs helpers"
-Link: https://bugzilla.redhat.com/show_bug.cgi?id=3D2210612
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: David Howells <dhowells@redhat.com>
-Link: https://lore.kernel.org/r/20230608214137.856006-1-dwysocha@redhat.co=
-m/ # v1
-Link: https://lore.kernel.org/r/20230915185704.1082982-1-dwysocha@redhat.c=
-om/ # v2
----
- fs/netfs/buffered_read.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
-
-diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
-index 3404707ddbe7..2cd3ccf4c439 100644
---- a/fs/netfs/buffered_read.c
-+++ b/fs/netfs/buffered_read.c
-@@ -47,12 +47,14 @@ void netfs_rreq_unlock_folios(struct netfs_io_request =
-*rreq)
- 	xas_for_each(&xas, folio, last_page) {
- 		loff_t pg_end;
- 		bool pg_failed =3D false;
-+		bool folio_started;
- =
-
- 		if (xas_retry(&xas, folio))
- 			continue;
- =
-
- 		pg_end =3D folio_pos(folio) + folio_size(folio) - 1;
- =
-
-+		folio_started =3D false;
- 		for (;;) {
- 			loff_t sreq_end;
- =
-
-@@ -60,8 +62,10 @@ void netfs_rreq_unlock_folios(struct netfs_io_request *=
-rreq)
- 				pg_failed =3D true;
- 				break;
- 			}
--			if (test_bit(NETFS_SREQ_COPY_TO_CACHE, &subreq->flags))
-+			if (!folio_started && test_bit(NETFS_SREQ_COPY_TO_CACHE, &subreq->flag=
-s)) {
- 				folio_start_fscache(folio);
-+				folio_started =3D true;
-+			}
- 			pg_failed |=3D subreq_failed;
- 			sreq_end =3D subreq->start + subreq->len - 1;
- 			if (pg_end < sreq_end)
 
