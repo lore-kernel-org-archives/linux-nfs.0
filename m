@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A5D49CD37B0
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:24:15 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 124F3C46CA1
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:24:23 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240741AbjIRPYT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 11:24:19 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49848 "EHLO
+        id S239938AbjIRPY0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 11:24:26 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50188 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236845AbjIRPYR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:24:17 -0400
+        with ESMTP id S239996AbjIRPYZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:24:25 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 93CE0FD
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AAA29109
         for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:22:41 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 107D0C116A5;
-        Mon, 18 Sep 2023 13:58:30 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 11A0BC2BCFE;
+        Mon, 18 Sep 2023 14:02:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045511;
-        bh=i63og+Oy8QoX7wqXUkTyTGKqBSbru6EW6mxAYEBZppk=;
+        s=k20201202; t=1695045727;
+        bh=BQefnBCIPeA85fMx0S7Kv++X5t/KtrIj+QjAcMjiXhk=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=qx3jSaHPnrVbZmfzB32gcDwI/XvQQHg/Y26K6ZGLEeyxWIJKP90dAUPpHJ+S5Go8z
-         FY3aS4vJgQu7t3NaiL4ta8BmxVbh9dWrnqwXAx2UCkcnsSJdbggX2SdJs44NobHdrn
-         vIRSim2Li65wTpOoT0XmbM9yrtpww9OhXqicuHzM/9zShVGVu393AQN2nEJkiCkSGD
-         t4IVeGqrlRCKIlCXTt+Xltroxm8mVNGCDa6fI5gHxu6QbxbGPJ6LKn7rty1/CUT+U3
-         Ihdd0GIJaq1lbNWGcaldEPsti8iUrc5uukMO/BaodvpcAh/NKeWAdpkJ8TtUXjAfXH
-         k/+6wLuzjKxfA==
-Subject: [PATCH v1 16/52] NFSD: Add nfsd4_encode_nfsace4()
+        b=HllNR+E/O8CzK2Hf/GuUEgdx4px16H56V00LPUgyBfLOCOt6XndmH+jep9uwZwbL5
+         0cm7li/M6cxtmddzTzq38CPnb+cn4a+RNNzgDgb1kVJefQthBIVZBEPhpU8qBw/KEf
+         UshGdLLJaWu2xbPgamOoibHbYBUDZ5cr17OprTBcd4rACTaAMxNVv18Pn9Kz96aJZd
+         YV/YmrpgTkZ/rii20ncN+pv/99nX3dBPORRKEKNUG+I8tXT/Ryuy8hxqN3cdnHP2Ud
+         2Ka75pPK984RJEfpE2c1WqdYk01mWnkCx58AVi3CQk+CCYFcokD/VklADWB1mS2wG9
+         Wgubl59Xo2t5A==
+Subject: [PATCH v1 50/52] NFSD: Copy FATTR4 bit number definitions from RFCs
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 09:58:30 -0400
-Message-ID: <169504551010.133720.3074976241793989767.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 10:02:06 -0400
+Message-ID: <169504572609.133720.16474496647723355765.stgit@manet.1015granger.net>
 In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
@@ -44,86 +44,294 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Refactor the ACE encoding helper so that it can eventually be reused
-for encoding OPEN results that contain delegation ACEs.
+I'd like to convert nfsd4_encode_fattr() to rotate through the
+attrmask using for_each_bit() instead of explicitly testing the
+bitmask for each bit value. This means I need the bit numbers, as
+defined in the specs, instead of our internal bitmask constants.
+
+As a clean up, use the new spec-derived values to define the WORD#
+bitmask constants.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   36 +++++++++++++++++++++---------------
- fs/nfsd/xdr4.h    |    3 +++
- 2 files changed, 24 insertions(+), 15 deletions(-)
+ include/linux/nfs4.h |  260 +++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 192 insertions(+), 68 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 6604763bd96c..89d3b276a494 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2783,16 +2783,29 @@ static __be32 nfsd4_encode_fs_locations(struct xdr_stream *xdr,
- 	return 0;
- }
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 730003c4f4af..b23c193523c3 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -389,79 +389,203 @@ enum lock_type4 {
+ 	NFS4_WRITEW_LT = 4
+ };
  
--static inline __be32
--nfsd4_encode_aclname(struct xdr_stream *xdr, struct svc_rqst *rqstp,
--		     struct nfs4_ace *ace)
-+static __be32 nfsd4_encode_nfsace4(struct xdr_stream *xdr, struct svc_rqst *rqstp,
-+				   struct nfs4_ace *ace)
- {
-+	__be32 status;
++/*
++ * Symbol names and values are from RFC 7531 Section 2.
++ * "XDR Description of NFSv4.0"
++ */
++enum {
++	FATTR4_SUPPORTED_ATTRS		= 0,
++	FATTR4_TYPE			= 1,
++	FATTR4_FH_EXPIRE_TYPE		= 2,
++	FATTR4_CHANGE			= 3,
++	FATTR4_SIZE			= 4,
++	FATTR4_LINK_SUPPORT		= 5,
++	FATTR4_SYMLINK_SUPPORT		= 6,
++	FATTR4_NAMED_ATTR		= 7,
++	FATTR4_FSID			= 8,
++	FATTR4_UNIQUE_HANDLES		= 9,
++	FATTR4_LEASE_TIME		= 10,
++	FATTR4_RDATTR_ERROR		= 11,
++	FATTR4_ACL			= 12,
++	FATTR4_ACLSUPPORT		= 13,
++	FATTR4_ARCHIVE			= 14,
++	FATTR4_CANSETTIME		= 15,
++	FATTR4_CASE_INSENSITIVE		= 16,
++	FATTR4_CASE_PRESERVING		= 17,
++	FATTR4_CHOWN_RESTRICTED		= 18,
++	FATTR4_FILEHANDLE		= 19,
++	FATTR4_FILEID			= 20,
++	FATTR4_FILES_AVAIL		= 21,
++	FATTR4_FILES_FREE		= 22,
++	FATTR4_FILES_TOTAL		= 23,
++	FATTR4_FS_LOCATIONS		= 24,
++	FATTR4_HIDDEN			= 25,
++	FATTR4_HOMOGENEOUS		= 26,
++	FATTR4_MAXFILESIZE		= 27,
++	FATTR4_MAXLINK			= 28,
++	FATTR4_MAXNAME			= 29,
++	FATTR4_MAXREAD			= 30,
++	FATTR4_MAXWRITE			= 31,
++	FATTR4_MIMETYPE			= 32,
++	FATTR4_MODE			= 33,
++	FATTR4_NO_TRUNC			= 34,
++	FATTR4_NUMLINKS			= 35,
++	FATTR4_OWNER			= 36,
++	FATTR4_OWNER_GROUP		= 37,
++	FATTR4_QUOTA_AVAIL_HARD		= 38,
++	FATTR4_QUOTA_AVAIL_SOFT		= 39,
++	FATTR4_QUOTA_USED		= 40,
++	FATTR4_RAWDEV			= 41,
++	FATTR4_SPACE_AVAIL		= 42,
++	FATTR4_SPACE_FREE		= 43,
++	FATTR4_SPACE_TOTAL		= 44,
++	FATTR4_SPACE_USED		= 45,
++	FATTR4_SYSTEM			= 46,
++	FATTR4_TIME_ACCESS		= 47,
++	FATTR4_TIME_ACCESS_SET		= 48,
++	FATTR4_TIME_BACKUP		= 49,
++	FATTR4_TIME_CREATE		= 50,
++	FATTR4_TIME_DELTA		= 51,
++	FATTR4_TIME_METADATA		= 52,
++	FATTR4_TIME_MODIFY		= 53,
++	FATTR4_TIME_MODIFY_SET		= 54,
++	FATTR4_MOUNTED_ON_FILEID	= 55,
++};
 +
-+	/* type */
-+	status = nfsd4_encode_acetype4(xdr, ace->type);
-+	if (status != nfs_ok)
-+		return nfserr_resource;
-+	/* flag */
-+	status = nfsd4_encode_aceflag4(xdr, ace->flag);
-+	if (status != nfs_ok)
-+		return nfserr_resource;
-+	/* access mask */
-+	status = nfsd4_encode_acemask4(xdr, ace->access_mask & NFS4_ACE_MASK_ALL);
-+	if (status != nfs_ok)
-+		return nfserr_resource;
-+	/* who */
- 	if (ace->whotype != NFS4_ACL_WHO_NAMED)
- 		return nfs4_acl_write_who(xdr, ace->whotype);
--	else if (ace->flag & NFS4_ACE_IDENTIFIER_GROUP)
-+	if (ace->flag & NFS4_ACE_IDENTIFIER_GROUP)
- 		return nfsd4_encode_group(xdr, rqstp, ace->who_gid);
--	else
--		return nfsd4_encode_user(xdr, rqstp, ace->who_uid);
-+	return nfsd4_encode_user(xdr, rqstp, ace->who_uid);
- }
++/*
++ * Symbol names and values are from RFC 5662 Section 2.
++ * "XDR Description of NFSv4.1"
++ */
++enum {
++	FATTR4_DIR_NOTIF_DELAY		= 56,
++	FATTR4_DIRENT_NOTIF_DELAY	= 57,
++	FATTR4_DACL			= 58,
++	FATTR4_SACL			= 59,
++	FATTR4_CHANGE_POLICY		= 60,
++	FATTR4_FS_STATUS		= 61,
++	FATTR4_FS_LAYOUT_TYPES		= 62,
++	FATTR4_LAYOUT_HINT		= 63,
++	FATTR4_LAYOUT_TYPES		= 64,
++	FATTR4_LAYOUT_BLKSIZE		= 65,
++	FATTR4_LAYOUT_ALIGNMENT		= 66,
++	FATTR4_FS_LOCATIONS_INFO	= 67,
++	FATTR4_MDSTHRESHOLD		= 68,
++	FATTR4_RETENTION_GET		= 69,
++	FATTR4_RETENTION_SET		= 70,
++	FATTR4_RETENTEVT_GET		= 71,
++	FATTR4_RETENTEVT_SET		= 72,
++	FATTR4_RETENTION_HOLD		= 73,
++	FATTR4_MODE_SET_MASKED		= 74,
++	FATTR4_SUPPATTR_EXCLCREAT	= 75,
++	FATTR4_FS_CHARSET_CAP		= 76,
++};
++
++/*
++ * Symbol names and values are from RFC 7863 Section 2.
++ * "XDR Description of NFSv4.2"
++ */
++enum {
++	FATTR4_CLONE_BLKSIZE		= 77,
++	FATTR4_SPACE_FREED		= 78,
++	FATTR4_CHANGE_ATTR_TYPE		= 79,
++	FATTR4_SEC_LABEL		= 80,
++};
++
++/*
++ * Symbol names and values are from RFC 8275 Section 5.
++ * "The mode_umask Attribute"
++ */
++enum {
++	FATTR4_MODE_UMASK		= 81,
++};
++
++/*
++ * Symbol names and values are from RFC 8276 Section 8.6.
++ * "Numeric Values Assigned to Protocol Extensions"
++ */
++enum {
++	FATTR4_XATTR_SUPPORT		= 82,
++};
++
++/*
++ * The following internal definitions enable processing the above
++ * attribute bits within 32-bit word boundaries.
++ */
  
- static inline __be32
-@@ -3288,15 +3301,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 		*p++ = cpu_to_be32(args.acl->naces);
+ /* Mandatory Attributes */
+-#define FATTR4_WORD0_SUPPORTED_ATTRS    (1UL << 0)
+-#define FATTR4_WORD0_TYPE               (1UL << 1)
+-#define FATTR4_WORD0_FH_EXPIRE_TYPE     (1UL << 2)
+-#define FATTR4_WORD0_CHANGE             (1UL << 3)
+-#define FATTR4_WORD0_SIZE               (1UL << 4)
+-#define FATTR4_WORD0_LINK_SUPPORT       (1UL << 5)
+-#define FATTR4_WORD0_SYMLINK_SUPPORT    (1UL << 6)
+-#define FATTR4_WORD0_NAMED_ATTR         (1UL << 7)
+-#define FATTR4_WORD0_FSID               (1UL << 8)
+-#define FATTR4_WORD0_UNIQUE_HANDLES     (1UL << 9)
+-#define FATTR4_WORD0_LEASE_TIME         (1UL << 10)
+-#define FATTR4_WORD0_RDATTR_ERROR       (1UL << 11)
++#define FATTR4_WORD0_SUPPORTED_ATTRS    BIT(FATTR4_SUPPORTED_ATTRS)
++#define FATTR4_WORD0_TYPE               BIT(FATTR4_TYPE)
++#define FATTR4_WORD0_FH_EXPIRE_TYPE     BIT(FATTR4_FH_EXPIRE_TYPE)
++#define FATTR4_WORD0_CHANGE             BIT(FATTR4_CHANGE)
++#define FATTR4_WORD0_SIZE               BIT(FATTR4_SIZE)
++#define FATTR4_WORD0_LINK_SUPPORT       BIT(FATTR4_LINK_SUPPORT)
++#define FATTR4_WORD0_SYMLINK_SUPPORT    BIT(FATTR4_SYMLINK_SUPPORT)
++#define FATTR4_WORD0_NAMED_ATTR         BIT(FATTR4_NAMED_ATTR)
++#define FATTR4_WORD0_FSID               BIT(FATTR4_FSID)
++#define FATTR4_WORD0_UNIQUE_HANDLES     BIT(FATTR4_UNIQUE_HANDLES)
++#define FATTR4_WORD0_LEASE_TIME         BIT(FATTR4_LEASE_TIME)
++#define FATTR4_WORD0_RDATTR_ERROR       BIT(FATTR4_RDATTR_ERROR)
+ /* Mandatory in NFSv4.1 */
+-#define FATTR4_WORD2_SUPPATTR_EXCLCREAT (1UL << 11)
++#define FATTR4_WORD2_SUPPATTR_EXCLCREAT BIT(FATTR4_SUPPATTR_EXCLCREAT - 64)
  
- 		for (ace = args.acl->aces; ace < args.acl->aces + args.acl->naces; ace++) {
--			p = xdr_reserve_space(xdr, 4*3);
--			if (!p)
--				goto out_resource;
--			*p++ = cpu_to_be32(ace->type);
--			*p++ = cpu_to_be32(ace->flag);
--			*p++ = cpu_to_be32(ace->access_mask &
--							NFS4_ACE_MASK_ALL);
--			status = nfsd4_encode_aclname(xdr, rqstp, ace);
--			if (status)
-+			status = nfsd4_encode_nfsace4(xdr, args.rqstp, ace);
-+			if (status != nfs_ok)
- 				goto out;
- 		}
- 	}
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 488ecdacc4c6..f0866a55fd91 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -90,6 +90,9 @@ nfsd4_encode_uint32_t(struct xdr_stream *xdr, u32 val)
- 	return nfs_ok;
- }
+ /* Recommended Attributes */
+-#define FATTR4_WORD0_ACL                (1UL << 12)
+-#define FATTR4_WORD0_ACLSUPPORT         (1UL << 13)
+-#define FATTR4_WORD0_ARCHIVE            (1UL << 14)
+-#define FATTR4_WORD0_CANSETTIME         (1UL << 15)
+-#define FATTR4_WORD0_CASE_INSENSITIVE   (1UL << 16)
+-#define FATTR4_WORD0_CASE_PRESERVING    (1UL << 17)
+-#define FATTR4_WORD0_CHOWN_RESTRICTED   (1UL << 18)
+-#define FATTR4_WORD0_FILEHANDLE         (1UL << 19)
+-#define FATTR4_WORD0_FILEID             (1UL << 20)
+-#define FATTR4_WORD0_FILES_AVAIL        (1UL << 21)
+-#define FATTR4_WORD0_FILES_FREE         (1UL << 22)
+-#define FATTR4_WORD0_FILES_TOTAL        (1UL << 23)
+-#define FATTR4_WORD0_FS_LOCATIONS       (1UL << 24)
+-#define FATTR4_WORD0_HIDDEN             (1UL << 25)
+-#define FATTR4_WORD0_HOMOGENEOUS        (1UL << 26)
+-#define FATTR4_WORD0_MAXFILESIZE        (1UL << 27)
+-#define FATTR4_WORD0_MAXLINK            (1UL << 28)
+-#define FATTR4_WORD0_MAXNAME            (1UL << 29)
+-#define FATTR4_WORD0_MAXREAD            (1UL << 30)
+-#define FATTR4_WORD0_MAXWRITE           (1UL << 31)
+-#define FATTR4_WORD1_MIMETYPE           (1UL << 0)
+-#define FATTR4_WORD1_MODE               (1UL << 1)
+-#define FATTR4_WORD1_NO_TRUNC           (1UL << 2)
+-#define FATTR4_WORD1_NUMLINKS           (1UL << 3)
+-#define FATTR4_WORD1_OWNER              (1UL << 4)
+-#define FATTR4_WORD1_OWNER_GROUP        (1UL << 5)
+-#define FATTR4_WORD1_QUOTA_HARD         (1UL << 6)
+-#define FATTR4_WORD1_QUOTA_SOFT         (1UL << 7)
+-#define FATTR4_WORD1_QUOTA_USED         (1UL << 8)
+-#define FATTR4_WORD1_RAWDEV             (1UL << 9)
+-#define FATTR4_WORD1_SPACE_AVAIL        (1UL << 10)
+-#define FATTR4_WORD1_SPACE_FREE         (1UL << 11)
+-#define FATTR4_WORD1_SPACE_TOTAL        (1UL << 12)
+-#define FATTR4_WORD1_SPACE_USED         (1UL << 13)
+-#define FATTR4_WORD1_SYSTEM             (1UL << 14)
+-#define FATTR4_WORD1_TIME_ACCESS        (1UL << 15)
+-#define FATTR4_WORD1_TIME_ACCESS_SET    (1UL << 16)
+-#define FATTR4_WORD1_TIME_BACKUP        (1UL << 17)
+-#define FATTR4_WORD1_TIME_CREATE        (1UL << 18)
+-#define FATTR4_WORD1_TIME_DELTA         (1UL << 19)
+-#define FATTR4_WORD1_TIME_METADATA      (1UL << 20)
+-#define FATTR4_WORD1_TIME_MODIFY        (1UL << 21)
+-#define FATTR4_WORD1_TIME_MODIFY_SET    (1UL << 22)
+-#define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
+-#define FATTR4_WORD1_DACL               (1UL << 26)
+-#define FATTR4_WORD1_SACL               (1UL << 27)
+-#define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
+-#define FATTR4_WORD2_LAYOUT_TYPES       (1UL << 0)
+-#define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+-#define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
+-#define FATTR4_WORD2_CLONE_BLKSIZE	(1UL << 13)
+-#define FATTR4_WORD2_CHANGE_ATTR_TYPE	(1UL << 15)
+-#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+-#define FATTR4_WORD2_MODE_UMASK		(1UL << 17)
+-#define FATTR4_WORD2_XATTR_SUPPORT	(1UL << 18)
++#define FATTR4_WORD0_ACL                BIT(FATTR4_ACL)
++#define FATTR4_WORD0_ACLSUPPORT         BIT(FATTR4_ACLSUPPORT)
++#define FATTR4_WORD0_ARCHIVE            BIT(FATTR4_ARCHIVE)
++#define FATTR4_WORD0_CANSETTIME         BIT(FATTR4_CANSETTIME)
++#define FATTR4_WORD0_CASE_INSENSITIVE   BIT(FATTR4_CASE_INSENSITIVE)
++#define FATTR4_WORD0_CASE_PRESERVING    BIT(FATTR4_CASE_PRESERVING)
++#define FATTR4_WORD0_CHOWN_RESTRICTED   BIT(FATTR4_CHOWN_RESTRICTED)
++#define FATTR4_WORD0_FILEHANDLE         BIT(FATTR4_FILEHANDLE)
++#define FATTR4_WORD0_FILEID             BIT(FATTR4_FILEID)
++#define FATTR4_WORD0_FILES_AVAIL        BIT(FATTR4_FILES_AVAIL)
++#define FATTR4_WORD0_FILES_FREE         BIT(FATTR4_FILES_FREE)
++#define FATTR4_WORD0_FILES_TOTAL        BIT(FATTR4_FILES_TOTAL)
++#define FATTR4_WORD0_FS_LOCATIONS       BIT(FATTR4_FS_LOCATIONS)
++#define FATTR4_WORD0_HIDDEN             BIT(FATTR4_HIDDEN)
++#define FATTR4_WORD0_HOMOGENEOUS        BIT(FATTR4_HOMOGENEOUS)
++#define FATTR4_WORD0_MAXFILESIZE        BIT(FATTR4_MAXFILESIZE)
++#define FATTR4_WORD0_MAXLINK            BIT(FATTR4_MAXLINK)
++#define FATTR4_WORD0_MAXNAME            BIT(FATTR4_MAXNAME)
++#define FATTR4_WORD0_MAXREAD            BIT(FATTR4_MAXREAD)
++#define FATTR4_WORD0_MAXWRITE           BIT(FATTR4_MAXWRITE)
++
++#define FATTR4_WORD1_MIMETYPE           BIT(FATTR4_MIMETYPE - 32)
++#define FATTR4_WORD1_MODE               BIT(FATTR4_MODE	- 32)
++#define FATTR4_WORD1_NO_TRUNC           BIT(FATTR4_NO_TRUNC - 32)
++#define FATTR4_WORD1_NUMLINKS           BIT(FATTR4_NUMLINKS - 32)
++#define FATTR4_WORD1_OWNER              BIT(FATTR4_OWNER - 32)
++#define FATTR4_WORD1_OWNER_GROUP        BIT(FATTR4_OWNER_GROUP - 32)
++#define FATTR4_WORD1_QUOTA_HARD         BIT(FATTR4_QUOTA_AVAIL_HARD - 32)
++#define FATTR4_WORD1_QUOTA_SOFT         BIT(FATTR4_QUOTA_AVAIL_SOFT - 32)
++#define FATTR4_WORD1_QUOTA_USED         BIT(FATTR4_QUOTA_USED - 32)
++#define FATTR4_WORD1_RAWDEV             BIT(FATTR4_RAWDEV - 32)
++#define FATTR4_WORD1_SPACE_AVAIL        BIT(FATTR4_SPACE_AVAIL - 32)
++#define FATTR4_WORD1_SPACE_FREE         BIT(FATTR4_SPACE_FREE - 32)
++#define FATTR4_WORD1_SPACE_TOTAL        BIT(FATTR4_SPACE_TOTAL - 32)
++#define FATTR4_WORD1_SPACE_USED         BIT(FATTR4_SPACE_USED - 32)
++#define FATTR4_WORD1_SYSTEM             BIT(FATTR4_SYSTEM - 32)
++#define FATTR4_WORD1_TIME_ACCESS        BIT(FATTR4_TIME_ACCESS - 32)
++#define FATTR4_WORD1_TIME_ACCESS_SET    BIT(FATTR4_TIME_ACCESS_SET - 32)
++#define FATTR4_WORD1_TIME_BACKUP        BIT(FATTR4_TIME_BACKUP - 32)
++#define FATTR4_WORD1_TIME_CREATE        BIT(FATTR4_TIME_CREATE - 32)
++#define FATTR4_WORD1_TIME_DELTA         BIT(FATTR4_TIME_DELTA - 32)
++#define FATTR4_WORD1_TIME_METADATA      BIT(FATTR4_TIME_METADATA - 32)
++#define FATTR4_WORD1_TIME_MODIFY        BIT(FATTR4_TIME_MODIFY - 32)
++#define FATTR4_WORD1_TIME_MODIFY_SET    BIT(FATTR4_TIME_MODIFY_SET - 32)
++#define FATTR4_WORD1_MOUNTED_ON_FILEID  BIT(FATTR4_MOUNTED_ON_FILEID - 32)
++#define FATTR4_WORD1_DACL               BIT(FATTR4_DACL	- 32)
++#define FATTR4_WORD1_SACL               BIT(FATTR4_SACL	- 32)
++#define FATTR4_WORD1_FS_LAYOUT_TYPES    BIT(FATTR4_FS_LAYOUT_TYPES - 32)
++
++#define FATTR4_WORD2_LAYOUT_TYPES       BIT(FATTR4_LAYOUT_TYPES - 64)
++#define FATTR4_WORD2_LAYOUT_BLKSIZE     BIT(FATTR4_LAYOUT_BLKSIZE - 64)
++#define FATTR4_WORD2_MDSTHRESHOLD       BIT(FATTR4_MDSTHRESHOLD	- 64)
++#define FATTR4_WORD2_CLONE_BLKSIZE	BIT(FATTR4_CLONE_BLKSIZE - 64)
++#define FATTR4_WORD2_CHANGE_ATTR_TYPE	BIT(FATTR4_CHANGE_ATTR_TYPE - 64)
++#define FATTR4_WORD2_SECURITY_LABEL     BIT(FATTR4_SEC_LABEL - 64)
++#define FATTR4_WORD2_MODE_UMASK		BIT(FATTR4_MODE_UMASK - 64)
++#define FATTR4_WORD2_XATTR_SUPPORT	BIT(FATTR4_XATTR_SUPPORT - 64)
  
-+#define nfsd4_encode_aceflag4(x, v)	nfsd4_encode_uint32_t(x, v)
-+#define nfsd4_encode_acemask4(x, v)	nfsd4_encode_uint32_t(x, v)
-+#define nfsd4_encode_acetype4(x, v)	nfsd4_encode_uint32_t(x, v)
- #define nfsd4_encode_nfs_lease4(x, v)	nfsd4_encode_uint32_t(x, v)
- 
- /**
+ /* MDS threshold bitmap bits */
+ #define THRESHOLD_RD                    (1UL << 0)
 
 
