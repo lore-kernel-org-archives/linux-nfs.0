@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 5EE11CD37B0
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:22:43 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D375EC46CA1
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:23:09 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233992AbjIRPWq (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 11:22:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59930 "EHLO
+        id S229485AbjIRPXN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 11:23:13 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34190 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236084AbjIRPWp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:22:45 -0400
+        with ESMTP id S239865AbjIRPXM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:23:12 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 13DA02707
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B60369C
         for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:18:41 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 85C4FC43142;
-        Mon, 18 Sep 2023 13:58:05 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 89ADAC116AB;
+        Mon, 18 Sep 2023 13:59:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045485;
-        bh=kNaL5e8aaD0GTwAKDAPTJ9K7nCrPYuoVxT9Pmw/x1TI=;
+        s=k20201202; t=1695045555;
+        bh=8igG2bOvJV6gb5Z0K/jxYV0hxPwdZTTiiBz9YVdPno8=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=ssgJi9DY6Ww5dFkndPBe2rE872DWybkcApuMPKEHgUOPkUMm5SX4Oyqjn+0MQsCBP
-         fwSrtmXZQ/Grgwo9Riz2MniKT5NrK2p/ib+yNpzG+2u8rCIQx+YuoPmDs5EDfiVlh5
-         aSWsT3VzBzfbhl3dWazVZr3DHGbJwNv6bihip5J5f9x/XCC28Zk+UmB1BiSO0Bz4+Z
-         ove3RG7JMWCeFWsBiLq1kNTNrqrt++1YzVCrJZdUUAVy1w3UOWlylSmlAW83kGHo0x
-         hmz62TFXIqSnpKTg1NgM5e1AIMD9Dk1zrgAW111aX4mHX5fTAfVo5dq0HcZQWJhMqd
-         TRHUDSzJre00w==
-Subject: [PATCH v1 12/52] NFSD: Add nfsd4_encode_fattr4_fsid()
+        b=Z/URcogfnWYTZ4SmCW787BgZAWQ7fR1p6Ph4UFUVe2ryQQHgpn9fYnHy++CZ7XdS6
+         J2Z+9cYZ2wuQ6wUzHH3WYNPrFCknLW7eisJnILD7mHiYg8PiQTCkw05JBWP2aFoRK5
+         MjFQ81PBUjf0Pmi2nQf/u8yENogP5fu4ha7R2MFx7hIxPA73xMKOljjZwm9nVNpX7D
+         PzwSWhP4JV5U8x7JbPDMQq0N+evP9cucZWVWHBRb8evqXlx5teYcweFnM3+O/yylx4
+         MPr9m7MhbaV7K3hOncka82Z1k1Jx4HdheutJVHsQNd3X7qNaG5ZNsUzjzU4bdawzlk
+         VuuiSMKkQsu8A==
+Subject: [PATCH v1 23/52] NFSD: Add nfsd4_encode_fattr4_fs_locations()
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 09:58:04 -0400
-Message-ID: <169504548451.133720.15494194051885617338.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 09:59:14 -0400
+Message-ID: <169504555464.133720.2700015104145924369.stgit@manet.1015granger.net>
 In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
@@ -44,89 +44,132 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Refactor the encoder for FATTR4_FSID into a helper. In a subsequent
-patch, this helper will be called from a bitmask loop.
+Refactor the encoder for FATTR4_FS_LOCATIONS into a helper. In a
+subsequent patch, this helper will be called from a bitmask loop.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   58 +++++++++++++++++++++++++++++++++--------------------
- 1 file changed, 36 insertions(+), 22 deletions(-)
+ fs/nfsd/nfs4xdr.c |   66 ++++++++++++++++++++++-------------------------------
+ 1 file changed, 28 insertions(+), 38 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 601b3a0e61d4..b41bc1b0c12c 100644
+index e024742abc73..f247fd6f02f5 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -3030,6 +3030,39 @@ static __be32 nfsd4_encode_fattr4_size(struct xdr_stream *xdr,
- 	return nfsd4_encode_uint64_t(xdr, args->stat.size);
+@@ -2658,9 +2658,6 @@ static __be32 nfsd4_encode_components(struct xdr_stream *xdr, char sep,
+ 	return nfsd4_encode_components_esc(xdr, sep, components, 0, 0);
  }
  
-+static __be32 nfsd4_encode_fattr4_fsid(struct xdr_stream *xdr,
-+				       const struct nfsd4_fattr_args *args)
-+{
-+	__be32 *p;
+-/*
+- * encode a location element of a fs_locations structure
+- */
+ static __be32 nfsd4_encode_fs_location4(struct xdr_stream *xdr,
+ 					struct nfsd4_fs_location *location)
+ {
+@@ -2673,15 +2670,12 @@ static __be32 nfsd4_encode_fs_location4(struct xdr_stream *xdr,
+ 	status = nfsd4_encode_components(xdr, '/', location->path);
+ 	if (status)
+ 		return status;
+-	return 0;
++	return nfs_ok;
+ }
+ 
+-/*
+- * Encode a path in RFC3530 'pathname4' format
+- */
+-static __be32 nfsd4_encode_path(struct xdr_stream *xdr,
+-				const struct path *root,
+-				const struct path *path)
++static __be32 nfsd4_encode_pathname4(struct xdr_stream *xdr,
++				     const struct path *root,
++				     const struct path *path)
+ {
+ 	struct path cur = *path;
+ 	__be32 *p;
+@@ -2749,44 +2743,34 @@ static __be32 nfsd4_encode_path(struct xdr_stream *xdr,
+ 	return err;
+ }
+ 
+-static __be32 nfsd4_encode_fsloc_fsroot(struct xdr_stream *xdr,
+-			struct svc_rqst *rqstp, const struct path *path)
++static __be32 nfsd4_encode_fs_locations4(struct xdr_stream *xdr,
++					 struct svc_rqst *rqstp,
++					 struct svc_export *exp)
+ {
++	struct nfsd4_fs_locations *fslocs = &exp->ex_fslocs;
+ 	struct svc_export *exp_ps;
+-	__be32 res;
++	unsigned int i;
++	__be32 status;
+ 
++	/* fs_root */
+ 	exp_ps = rqst_find_fsidzero_export(rqstp);
+ 	if (IS_ERR(exp_ps))
+ 		return nfserrno(PTR_ERR(exp_ps));
+-	res = nfsd4_encode_path(xdr, &exp_ps->ex_path, path);
++	status = nfsd4_encode_pathname4(xdr, &exp_ps->ex_path, &exp->ex_path);
+ 	exp_put(exp_ps);
+-	return res;
+-}
+-
+-/*
+- *  encode a fs_locations structure
+- */
+-static __be32 nfsd4_encode_fs_locations(struct xdr_stream *xdr,
+-			struct svc_rqst *rqstp, struct svc_export *exp)
+-{
+-	__be32 status;
+-	int i;
+-	__be32 *p;
+-	struct nfsd4_fs_locations *fslocs = &exp->ex_fslocs;
+-
+-	status = nfsd4_encode_fsloc_fsroot(xdr, rqstp, &exp->ex_path);
+-	if (status)
++	if (status != nfs_ok)
+ 		return status;
+-	p = xdr_reserve_space(xdr, 4);
+-	if (!p)
 +
-+	p = xdr_reserve_space(xdr, XDR_UNIT * 2 + XDR_UNIT * 2);
-+	if (!p)
-+		return nfserr_resource;
-+
-+	if (unlikely(args->exp->ex_fslocs.migrated)) {
-+		p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MAJOR);
-+		xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MINOR);
-+		return nfs_ok;
-+	}
-+	switch (fsid_source(args->fhp)) {
-+	case FSIDSOURCE_FSID:
-+		p = xdr_encode_hyper(p, (u64)args->exp->ex_fsid);
-+		xdr_encode_hyper(p, (u64)0);
-+		break;
-+	case FSIDSOURCE_DEV:
-+		*p++ = xdr_zero;
-+		*p++ = cpu_to_be32(MAJOR(args->stat.dev));
-+		*p++ = xdr_zero;
-+		*p   = cpu_to_be32(MINOR(args->stat.dev));
-+		break;
-+	case FSIDSOURCE_UUID:
-+		xdr_encode_opaque_fixed(p, args->exp->ex_uuid, EX_UUID_LEN);
-+		break;
-+	}
++	/* locations<> */
++	if (xdr_stream_encode_u32(xdr, fslocs->locations_count) != XDR_UNIT)
+ 		return nfserr_resource;
+-	*p++ = cpu_to_be32(fslocs->locations_count);
+-	for (i=0; i<fslocs->locations_count; i++) {
++	for (i = 0; i < fslocs->locations_count; i++) {
+ 		status = nfsd4_encode_fs_location4(xdr, &fslocs->locations[i]);
+-		if (status)
++		if (status != nfs_ok)
+ 			return status;
+ 	}
+-	return 0;
 +
 +	return nfs_ok;
+ }
+ 
+ static __be32 nfsd4_encode_nfsace4(struct xdr_stream *xdr, struct svc_rqst *rqstp,
+@@ -3160,6 +3144,12 @@ static __be32 nfsd4_encode_fattr4_files_total(struct xdr_stream *xdr,
+ 	return nfsd4_encode_uint64_t(xdr, args->statfs.f_files);
+ }
+ 
++static __be32 nfsd4_encode_fattr4_fs_locations(struct xdr_stream *xdr,
++					       const struct nfsd4_fattr_args *args)
++{
++	return nfsd4_encode_fs_locations4(xdr, args->rqstp, args->exp);
 +}
 +
  /*
   * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
   * ourselves.
-@@ -3195,28 +3228,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+@@ -3399,8 +3389,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
  			goto out;
  	}
- 	if (bmval0 & FATTR4_WORD0_FSID) {
--		p = xdr_reserve_space(xdr, 16);
--		if (!p)
--			goto out_resource;
--		if (exp->ex_fslocs.migrated) {
--			p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MAJOR);
--			p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MINOR);
--		} else switch (fsid_source(args.fhp)) {
--		case FSIDSOURCE_FSID:
--			p = xdr_encode_hyper(p, (u64)exp->ex_fsid);
--			p = xdr_encode_hyper(p, (u64)0);
--			break;
--		case FSIDSOURCE_DEV:
--			*p++ = cpu_to_be32(0);
--			*p++ = cpu_to_be32(MAJOR(args.stat.dev));
--			*p++ = cpu_to_be32(0);
--			*p++ = cpu_to_be32(MINOR(args.stat.dev));
--			break;
--		case FSIDSOURCE_UUID:
--			p = xdr_encode_opaque_fixed(p, exp->ex_uuid,
--								EX_UUID_LEN);
--			break;
--		}
-+		status = nfsd4_encode_fattr4_fsid(xdr, &args);
+ 	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
+-		status = nfsd4_encode_fs_locations(xdr, rqstp, exp);
+-		if (status)
++		status = nfsd4_encode_fattr4_fs_locations(xdr, &args);
 +		if (status != nfs_ok)
-+			goto out;
+ 			goto out;
  	}
- 	if (bmval0 & FATTR4_WORD0_UNIQUE_HANDLES) {
- 		status = nfsd4_encode_fattr4__false(xdr, &args);
+ 	if (bmval0 & FATTR4_WORD0_HOMOGENEOUS) {
 
 
