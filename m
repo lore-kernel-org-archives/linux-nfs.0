@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 580C3CD37B0
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:27:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 37F07C46CA1
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:27:08 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230111AbjIRQ1J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 12:27:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52464 "EHLO
+        id S229608AbjIRQ1K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 12:27:10 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52484 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229944AbjIRQ0u (ORCPT
+        with ESMTP id S229936AbjIRQ0u (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:26:50 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BC8BC282B4
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BEF32282B5
         for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 09:23:24 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4694C433B9;
-        Mon, 18 Sep 2023 13:57:01 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6F33CC433B8;
+        Mon, 18 Sep 2023 13:57:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045421;
-        bh=k+6YGPIKS0IuMgfCBRoQFP48rCzx+pnWcxKtf7hp8f4=;
+        s=k20201202; t=1695045434;
+        bh=8RjLv5ucsS4TqmmplCEXPAGLbBP2aoz/zfsx1GrO6T0=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=HrJ0jriXuu0T/E+JaxTGrgp3sXyOc1igWvxIVPGpQCv1ZtZ48qI2zqRBqDpeEgOIg
-         p5PHr0KlJLawSickuVK+ue5YhdsylYnbkAguyl2K7mFmgXnB2wJlLDZqNSk2gCelFZ
-         o/QGtUwa8wRXr5hFdt6AxHPBKWQbEVxKd4bNJgS0qleHMxyF61lzExUGufn0EH/u1I
-         Bq0mO2KxgGK4SL1oA7ojXdOh19ZyUKEbKT+m2u6yPNZonqOkAQvONz6ORWakijP6JL
-         0fdC6fX7W0GNliT4x1qPcibKCu+Xn2QC5WDtnOvF8pcTWUBLf5hXSwLcEEdsSnDWT2
-         rMvANJci2kI/A==
-Subject: [PATCH v1 02/52] NFSD: Rename nfsd4_encode_bitmap()
+        b=GykiXUoywDNxgXd2ebxQUiKvFNaNflvFLONCynpDWKaQRW9w/VcxSdgaHS+eu1Gss
+         NruRe2AkbSemMX7Fqew71KHobqlowMRpTq7K0sDidzaht/QS5M0iL04Rt9q88GRtwq
+         FPdROiMmQWgX6JVmKpa9cAkkZQzEixQJO/a5ONCR+xMUAAB3jA258LzU3moUujktNf
+         IGDGcSOUsowLHIg9eEgaKo82fKav2rhbBTtzLqwX4KyterEjsGg3mVbJEeeRjWyLGA
+         NNUYwGaJGMd/6p6pK/vxM41Yl6V8im+JHguwpJbila8iBggdD0CuNpeldUiIbRP0/z
+         8FuVfZt67RPDg==
+Subject: [PATCH v1 04/52] NFSD: Add struct nfsd4_fattr_args
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 09:57:00 -0400
-Message-ID: <169504542064.133720.5075262919655124379.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 09:57:13 -0400
+Message-ID: <169504543339.133720.8022594504714835325.stgit@manet.1015granger.net>
 In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
@@ -44,122 +44,387 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-For alignment with the specification, the name of NFSD's encoder
-function should match the name of the XDR type.
-
-I've also replaced a few "naked integers" with symbolic constants
-that better reflect the usage of these values.
+I'm about to split nfsd4_encode_fattr() into a number of smaller
+functions. Instead of passing a large number of arguments to each of
+the smaller functions, create a struct that can gather the common
+argument variables into something with a convenient handle on it.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   28 +++++++++++++++-------------
- 1 file changed, 15 insertions(+), 13 deletions(-)
+ fs/nfsd/nfs4xdr.c |  111 ++++++++++++++++++++++++++++++-----------------------
+ 1 file changed, 62 insertions(+), 49 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 2e40c74d2f72..84df0f36c15b 100644
+index 8715a43a70c4..85466b959c51 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -2906,12 +2906,12 @@ static int nfsd4_get_mounted_on_ino(struct svc_export *exp, u64 *pino)
- }
- 
- static __be32
--nfsd4_encode_bitmap(struct xdr_stream *xdr, u32 bmval0, u32 bmval1, u32 bmval2)
-+nfsd4_encode_bitmap4(struct xdr_stream *xdr, u32 bmval0, u32 bmval1, u32 bmval2)
- {
- 	__be32 *p;
- 
- 	if (bmval2) {
--		p = xdr_reserve_space(xdr, 16);
-+		p = xdr_reserve_space(xdr, XDR_UNIT * 4);
- 		if (!p)
- 			goto out_resource;
- 		*p++ = cpu_to_be32(3);
-@@ -2919,21 +2919,21 @@ nfsd4_encode_bitmap(struct xdr_stream *xdr, u32 bmval0, u32 bmval1, u32 bmval2)
- 		*p++ = cpu_to_be32(bmval1);
- 		*p++ = cpu_to_be32(bmval2);
- 	} else if (bmval1) {
--		p = xdr_reserve_space(xdr, 12);
-+		p = xdr_reserve_space(xdr, XDR_UNIT * 3);
- 		if (!p)
- 			goto out_resource;
- 		*p++ = cpu_to_be32(2);
- 		*p++ = cpu_to_be32(bmval0);
- 		*p++ = cpu_to_be32(bmval1);
- 	} else {
--		p = xdr_reserve_space(xdr, 8);
-+		p = xdr_reserve_space(xdr, XDR_UNIT * 2);
- 		if (!p)
- 			goto out_resource;
- 		*p++ = cpu_to_be32(1);
- 		*p++ = cpu_to_be32(bmval0);
- 	}
- 
--	return 0;
-+	return nfs_ok;
- out_resource:
+@@ -2938,6 +2938,15 @@ nfsd4_encode_bitmap4(struct xdr_stream *xdr, u32 bmval0, u32 bmval1, u32 bmval2)
  	return nfserr_resource;
  }
-@@ -3046,7 +3046,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 	}
- #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
  
--	status = nfsd4_encode_bitmap(xdr, bmval0, bmval1, bmval2);
-+	status = nfsd4_encode_bitmap4(xdr, bmval0, bmval1, bmval2);
- 	if (status)
- 		goto out;
++struct nfsd4_fattr_args {
++	struct svc_fh		*fhp;
++	struct kstat		stat;
++	struct kstatfs		statfs;
++	struct nfs4_acl		*acl;
++	u32			rdattr_err;
++	bool			contextsupport;
++};
++
+ /*
+  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
+  * ourselves.
+@@ -2948,26 +2957,22 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		struct dentry *dentry, u32 *bmval,
+ 		struct svc_rqst *rqstp, int ignore_crossmnt)
+ {
++	struct nfsd4_fattr_args args;
+ 	u32 bmval0 = bmval[0];
+ 	u32 bmval1 = bmval[1];
+ 	u32 bmval2 = bmval[2];
+-	struct kstat stat;
+ 	struct svc_fh *tempfh = NULL;
+-	struct kstatfs statfs;
+ 	__be32 *p, *attrlen_p;
+ 	int starting_len = xdr->buf->len;
+ 	int attrlen_offset;
+ 	u32 dummy;
+ 	u64 dummy64;
+-	u32 rdattr_err = 0;
+ 	__be32 status;
+ 	int err;
+-	struct nfs4_acl *acl = NULL;
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ 	void *context = NULL;
+ 	int contextlen;
+ #endif
+-	bool contextsupport = false;
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+ 	u32 minorversion = resp->cstate.minorversion;
+ 	struct path path = {
+@@ -2979,8 +2984,10 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 	BUG_ON(bmval1 & NFSD_WRITEONLY_ATTRS_WORD1);
+ 	BUG_ON(!nfsd_attrs_supported(minorversion, bmval));
  
-@@ -3443,7 +3443,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 		supp[1] &= NFSD_SUPPATTR_EXCLCREAT_WORD1;
- 		supp[2] &= NFSD_SUPPATTR_EXCLCREAT_WORD2;
- 
--		status = nfsd4_encode_bitmap(xdr, supp[0], supp[1], supp[2]);
-+		status = nfsd4_encode_bitmap4(xdr, supp[0], supp[1], supp[2]);
++	args.rdattr_err = 0;
+ 	if (exp->ex_fslocs.migrated) {
+-		status = fattr_handle_absent_fs(&bmval0, &bmval1, &bmval2, &rdattr_err);
++		status = fattr_handle_absent_fs(&bmval0, &bmval1, &bmval2,
++						&args.rdattr_err);
  		if (status)
  			goto out;
  	}
-@@ -3802,11 +3802,13 @@ nfsd4_encode_create(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	struct nfsd4_create *create = &u->create;
- 	struct xdr_stream *xdr = resp->xdr;
+@@ -2990,19 +2997,20 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out;
+ 	}
  
-+	/* cinfo */
- 	nfserr = nfsd4_encode_change_info4(xdr, &create->cr_cinfo);
- 	if (nfserr)
- 		return nfserr;
--	return nfsd4_encode_bitmap(xdr, create->cr_bmval[0],
--			create->cr_bmval[1], create->cr_bmval[2]);
-+	/* attrset */
-+	return nfsd4_encode_bitmap4(xdr, create->cr_bmval[0],
-+				    create->cr_bmval[1], create->cr_bmval[2]);
- }
+-	err = vfs_getattr(&path, &stat,
++	err = vfs_getattr(&path, &args.stat,
+ 			  STATX_BASIC_STATS | STATX_BTIME | STATX_CHANGE_COOKIE,
+ 			  AT_STATX_SYNC_AS_STAT);
+ 	if (err)
+ 		goto out_nfserr;
+-	if (!(stat.result_mask & STATX_BTIME))
++
++	if (!(args.stat.result_mask & STATX_BTIME))
+ 		/* underlying FS does not offer btime so we can't share it */
+ 		bmval1 &= ~FATTR4_WORD1_TIME_CREATE;
+ 	if ((bmval0 & (FATTR4_WORD0_FILES_AVAIL | FATTR4_WORD0_FILES_FREE |
+ 			FATTR4_WORD0_FILES_TOTAL | FATTR4_WORD0_MAXNAME)) ||
+ 	    (bmval1 & (FATTR4_WORD1_SPACE_AVAIL | FATTR4_WORD1_SPACE_FREE |
+ 		       FATTR4_WORD1_SPACE_TOTAL))) {
+-		err = vfs_statfs(&path, &statfs);
++		err = vfs_statfs(&path, &args.statfs);
+ 		if (err)
+ 			goto out_nfserr;
+ 	}
+@@ -3015,10 +3023,13 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		status = fh_compose(tempfh, exp, dentry, NULL);
+ 		if (status)
+ 			goto out;
+-		fhp = tempfh;
+-	}
++		args.fhp = tempfh;
++	} else
++		args.fhp = fhp;
++
++	args.acl = NULL;
+ 	if (bmval0 & FATTR4_WORD0_ACL) {
+-		err = nfsd4_get_nfs4_acl(rqstp, dentry, &acl);
++		err = nfsd4_get_nfs4_acl(rqstp, dentry, &args.acl);
+ 		if (err == -EOPNOTSUPP)
+ 			bmval0 &= ~FATTR4_WORD0_ACL;
+ 		else if (err == -EINVAL) {
+@@ -3028,6 +3039,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out_nfserr;
+ 	}
  
- static __be32
-@@ -3944,8 +3946,8 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	if (xdr_stream_encode_u32(xdr, open->op_rflags) < 0)
- 		return nfserr_resource;
++	args.contextsupport = false;
++
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ 	if ((bmval2 & FATTR4_WORD2_SECURITY_LABEL) ||
+ 	     bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
+@@ -3036,7 +3049,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 						&context, &contextlen);
+ 		else
+ 			err = -EOPNOTSUPP;
+-		contextsupport = (err == 0);
++		args.contextsupport = (err == 0);
+ 		if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+ 			if (err == -EOPNOTSUPP)
+ 				bmval2 &= ~FATTR4_WORD2_SECURITY_LABEL;
+@@ -3062,7 +3075,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
  
--	nfserr = nfsd4_encode_bitmap(xdr, open->op_bmval[0], open->op_bmval[1],
--					open->op_bmval[2]);
-+	nfserr = nfsd4_encode_bitmap4(xdr, open->op_bmval[0],
-+				      open->op_bmval[1], open->op_bmval[2]);
- 	if (nfserr)
- 		return nfserr;
+ 		if (!IS_POSIXACL(dentry->d_inode))
+ 			supp[0] &= ~FATTR4_WORD0_ACL;
+-		if (!contextsupport)
++		if (!args.contextsupport)
+ 			supp[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+ 		if (!supp[2]) {
+ 			p = xdr_reserve_space(xdr, 12);
+@@ -3085,7 +3098,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 4);
+ 		if (!p)
+ 			goto out_resource;
+-		dummy = nfs4_file_type(stat.mode);
++		dummy = nfs4_file_type(args.stat.mode);
+ 		if (dummy == NF4BAD) {
+ 			status = nfserr_serverfault;
+ 			goto out;
+@@ -3106,13 +3119,13 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		p = encode_change(p, &stat, d_inode(dentry), exp);
++		p = encode_change(p, &args.stat, d_inode(dentry), exp);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_SIZE) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		p = xdr_encode_hyper(p, stat.size);
++		p = xdr_encode_hyper(p, args.stat.size);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_LINK_SUPPORT) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -3139,16 +3152,16 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		if (exp->ex_fslocs.migrated) {
+ 			p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MAJOR);
+ 			p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MINOR);
+-		} else switch(fsid_source(fhp)) {
++		} else switch (fsid_source(args.fhp)) {
+ 		case FSIDSOURCE_FSID:
+ 			p = xdr_encode_hyper(p, (u64)exp->ex_fsid);
+ 			p = xdr_encode_hyper(p, (u64)0);
+ 			break;
+ 		case FSIDSOURCE_DEV:
+ 			*p++ = cpu_to_be32(0);
+-			*p++ = cpu_to_be32(MAJOR(stat.dev));
++			*p++ = cpu_to_be32(MAJOR(args.stat.dev));
+ 			*p++ = cpu_to_be32(0);
+-			*p++ = cpu_to_be32(MINOR(stat.dev));
++			*p++ = cpu_to_be32(MINOR(args.stat.dev));
+ 			break;
+ 		case FSIDSOURCE_UUID:
+ 			p = xdr_encode_opaque_fixed(p, exp->ex_uuid,
+@@ -3172,12 +3185,12 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 4);
+ 		if (!p)
+ 			goto out_resource;
+-		*p++ = cpu_to_be32(rdattr_err);
++		*p++ = cpu_to_be32(args.rdattr_err);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_ACL) {
+ 		struct nfs4_ace *ace;
  
-@@ -4529,14 +4531,14 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		break;
- 	case SP4_MACH_CRED:
- 		/* spo_must_enforce bitmap: */
--		nfserr = nfsd4_encode_bitmap(xdr,
-+		nfserr = nfsd4_encode_bitmap4(xdr,
- 					exid->spo_must_enforce[0],
- 					exid->spo_must_enforce[1],
- 					exid->spo_must_enforce[2]);
- 		if (nfserr)
- 			return nfserr;
- 		/* spo_must_allow bitmap: */
--		nfserr = nfsd4_encode_bitmap(xdr,
-+		nfserr = nfsd4_encode_bitmap4(xdr,
- 					exid->spo_must_allow[0],
- 					exid->spo_must_allow[1],
- 					exid->spo_must_allow[2]);
+-		if (acl == NULL) {
++		if (args.acl == NULL) {
+ 			p = xdr_reserve_space(xdr, 4);
+ 			if (!p)
+ 				goto out_resource;
+@@ -3188,9 +3201,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 4);
+ 		if (!p)
+ 			goto out_resource;
+-		*p++ = cpu_to_be32(acl->naces);
++		*p++ = cpu_to_be32(args.acl->naces);
+ 
+-		for (ace = acl->aces; ace < acl->aces + acl->naces; ace++) {
++		for (ace = args.acl->aces; ace < args.acl->aces + args.acl->naces; ace++) {
+ 			p = xdr_reserve_space(xdr, 4*3);
+ 			if (!p)
+ 				goto out_resource;
+@@ -3236,35 +3249,35 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		*p++ = cpu_to_be32(1);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILEHANDLE) {
+-		p = xdr_reserve_space(xdr, fhp->fh_handle.fh_size + 4);
++		p = xdr_reserve_space(xdr, args.fhp->fh_handle.fh_size + 4);
+ 		if (!p)
+ 			goto out_resource;
+-		p = xdr_encode_opaque(p, &fhp->fh_handle.fh_raw,
+-					fhp->fh_handle.fh_size);
++		p = xdr_encode_opaque(p, &args.fhp->fh_handle.fh_raw,
++					args.fhp->fh_handle.fh_size);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILEID) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		p = xdr_encode_hyper(p, stat.ino);
++		p = xdr_encode_hyper(p, args.stat.ino);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILES_AVAIL) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		p = xdr_encode_hyper(p, (u64) statfs.f_ffree);
++		p = xdr_encode_hyper(p, (u64) args.statfs.f_ffree);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILES_FREE) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		p = xdr_encode_hyper(p, (u64) statfs.f_ffree);
++		p = xdr_encode_hyper(p, (u64) args.statfs.f_ffree);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILES_TOTAL) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		p = xdr_encode_hyper(p, (u64) statfs.f_files);
++		p = xdr_encode_hyper(p, (u64) args.statfs.f_files);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
+ 		status = nfsd4_encode_fs_locations(xdr, rqstp, exp);
+@@ -3293,7 +3306,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 4);
+ 		if (!p)
+ 			goto out_resource;
+-		*p++ = cpu_to_be32(statfs.f_namelen);
++		*p++ = cpu_to_be32(args.statfs.f_namelen);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_MAXREAD) {
+ 		p = xdr_reserve_space(xdr, 8);
+@@ -3311,7 +3324,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 4);
+ 		if (!p)
+ 			goto out_resource;
+-		*p++ = cpu_to_be32(stat.mode & S_IALLUGO);
++		*p++ = cpu_to_be32(args.stat.mode & S_IALLUGO);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_NO_TRUNC) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -3323,15 +3336,15 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 4);
+ 		if (!p)
+ 			goto out_resource;
+-		*p++ = cpu_to_be32(stat.nlink);
++		*p++ = cpu_to_be32(args.stat.nlink);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_OWNER) {
+-		status = nfsd4_encode_user(xdr, rqstp, stat.uid);
++		status = nfsd4_encode_user(xdr, rqstp, args.stat.uid);
+ 		if (status)
+ 			goto out;
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_OWNER_GROUP) {
+-		status = nfsd4_encode_group(xdr, rqstp, stat.gid);
++		status = nfsd4_encode_group(xdr, rqstp, args.stat.gid);
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -3339,44 +3352,44 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		*p++ = cpu_to_be32((u32) MAJOR(stat.rdev));
+-		*p++ = cpu_to_be32((u32) MINOR(stat.rdev));
++		*p++ = cpu_to_be32((u32) MAJOR(args.stat.rdev));
++		*p++ = cpu_to_be32((u32) MINOR(args.stat.rdev));
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_SPACE_AVAIL) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		dummy64 = (u64)statfs.f_bavail * (u64)statfs.f_bsize;
++		dummy64 = (u64)args.statfs.f_bavail * (u64)args.statfs.f_bsize;
+ 		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_SPACE_FREE) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		dummy64 = (u64)statfs.f_bfree * (u64)statfs.f_bsize;
++		dummy64 = (u64)args.statfs.f_bfree * (u64)args.statfs.f_bsize;
+ 		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_SPACE_TOTAL) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		dummy64 = (u64)statfs.f_blocks * (u64)statfs.f_bsize;
++		dummy64 = (u64)args.statfs.f_blocks * (u64)args.statfs.f_bsize;
+ 		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_SPACE_USED) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		dummy64 = (u64)stat.blocks << 9;
++		dummy64 = (u64)args.stat.blocks << 9;
+ 		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_ACCESS) {
+-		status = nfsd4_encode_nfstime4(xdr, &stat.atime);
++		status = nfsd4_encode_nfstime4(xdr, &args.stat.atime);
+ 		if (status)
+ 			goto out;
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_CREATE) {
+-		status = nfsd4_encode_nfstime4(xdr, &stat.btime);
++		status = nfsd4_encode_nfstime4(xdr, &args.stat.btime);
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -3387,17 +3400,17 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = encode_time_delta(p, d_inode(dentry));
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_METADATA) {
+-		status = nfsd4_encode_nfstime4(xdr, &stat.ctime);
++		status = nfsd4_encode_nfstime4(xdr, &args.stat.ctime);
+ 		if (status)
+ 			goto out;
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_MODIFY) {
+-		status = nfsd4_encode_nfstime4(xdr, &stat.mtime);
++		status = nfsd4_encode_nfstime4(xdr, &args.stat.mtime);
+ 		if (status)
+ 			goto out;
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_MOUNTED_ON_FILEID) {
+-		u64 ino = stat.ino;
++		u64 ino = args.stat.ino;
+ 
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+@@ -3432,7 +3445,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_reserve_space(xdr, 4);
+ 		if (!p)
+ 			goto out_resource;
+-		*p++ = cpu_to_be32(stat.blksize);
++		*p++ = cpu_to_be32(args.stat.blksize);
+ 	}
+ #endif /* CONFIG_NFSD_PNFS */
+ 	if (bmval2 & FATTR4_WORD2_SUPPATTR_EXCLCREAT) {
+@@ -3473,7 +3486,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 	if (context)
+ 		security_release_secctx(context, contextlen);
+ #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
+-	kfree(acl);
++	kfree(args.acl);
+ 	if (tempfh) {
+ 		fh_put(tempfh);
+ 		kfree(tempfh);
 
 
