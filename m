@@ -2,80 +2,86 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 4F01FCD13D8
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 11:42:22 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 024E3CD13D9
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:18:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S241250AbjIRLly (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 07:41:54 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52606 "EHLO
+        id S232620AbjIRPSt (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 11:18:49 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33074 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241701AbjIRLlj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 07:41:39 -0400
+        with ESMTP id S230102AbjIRPSo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:18:44 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C80DFB3;
-        Mon, 18 Sep 2023 04:41:33 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C3F2FC433C7;
-        Mon, 18 Sep 2023 11:41:32 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BBA231A3
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:17:32 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 37B7AC116A7;
+        Mon, 18 Sep 2023 13:58:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695037293;
-        bh=k5whRDb703pFSoW6vBuZiC/uLzAA5qCrmwIb0niMTaw=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=Aq8BDUPTeZUbSi6r80BUN/6MwH1BAmiHYY4SHfZ7onFlzdMGfEKZJql8eJgFd8kcU
-         VSUGCximU6yLeulyz9sCP0KhTKpgfeEuARR1qg4bJb/2c3E2+Aaq/FI7E9KE3mXGPA
-         mMkzDccqY/MfireMOZxTAFoqx04P3/eEENahXkm++IxXno8NknhrffAlyV8usX4nkg
-         fRFkfnnveLguRIcv9+LTO4c7dt1uE+rem3E3BlUrXtrNJpo5JMLyLk57Bw4w+y0H+Q
-         CpPUMugfzFQ2rqTkkxwCEL03tDYtT39/xBNsmqTbEmsL2yuFfD5IL+86z+BlChrW+f
-         YsxfJTuf+MXoQ==
-Date:   Mon, 18 Sep 2023 14:41:29 +0300
-From:   Leon Romanovsky <leon@kernel.org>
-To:     Christoph Hellwig <hch@lst.de>
-Cc:     Christian Brauner <brauner@kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Heiko Carstens <hca@linux.ibm.com>,
-        Vasily Gorbik <gor@linux.ibm.com>,
-        Alexander Gordeev <agordeev@linux.ibm.com>,
-        Fenghua Yu <fenghua.yu@intel.com>,
-        Reinette Chatre <reinette.chatre@intel.com>,
-        Miquel Raynal <miquel.raynal@bootlin.com>,
-        Richard Weinberger <richard@nod.at>,
-        Vignesh Raghavendra <vigneshr@ti.com>,
-        Dennis Dalessandro <dennis.dalessandro@cornelisnetworks.com>,
-        Tejun Heo <tj@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>,
-        Kees Cook <keescook@chromium.org>,
-        Damien Le Moal <dlemoal@kernel.org>,
-        Naohiro Aota <naohiro.aota@wdc.com>,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        linux-usb@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-s390@vger.kernel.org, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-hardening@vger.kernel.org,
-        cgroups@vger.kernel.org
-Subject: Re: [PATCH 06/19] qibfs: use simple_release_fs
-Message-ID: <20230918114129.GA103601@unreal>
-References: <20230913111013.77623-1-hch@lst.de>
- <20230913111013.77623-7-hch@lst.de>
+        s=k20201202; t=1695045530;
+        bh=LDzmDY9+OVIwkq/9CVMxOdGFPlemS8fqVm2t+0gQaB0=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=CKGICMAAxl/F5BFoW/1LyFwyMJVrSBcHlL4yW5PaZBMgag2+qXeBZefz/tqidGq6g
+         QbnaNTdF6P0eumhz2RcpqAvLQPJi9l08fVb/e64ZqfXhnYi3ohFIZobIja/3HmsHfP
+         EHIUw9Woz64+ZgRuyXcPEfvBA56ojxnmShpuGhDfwMZabjQyvM3PVvoKmZgXree0M1
+         7YZuZ3hBkMtRDjsvsuHJLx3zPv0d1bi5lK8edVkOPug0JbcjwZ4RJznzalvtDGCCbz
+         MrEZq7mAkkR5zHhm02ydcgvdWQ3IMFJ4n5ZtzzxprcpkMoNYQ7tpI5BijcNKZxshvS
+         RqH+K7ZyvjHRw==
+Subject: [PATCH v1 19/52] NFSD: Add nfsd4_encode_fattr4_fileid()
+From:   Chuck Lever <cel@kernel.org>
+To:     linux-nfs@vger.kernel.org
+Cc:     Chuck Lever <chuck.lever@oracle.com>
+Date:   Mon, 18 Sep 2023 09:58:49 -0400
+Message-ID: <169504552923.133720.14141060340723098538.stgit@manet.1015granger.net>
+In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
+References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20230913111013.77623-7-hch@lst.de>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, Sep 13, 2023 at 08:10:00AM -0300, Christoph Hellwig wrote:
-> qibfs currently has convoluted code to allow registering HCAs while qibfs
-> is not mounted and vice versa.  Switch to using simple_release_fs every
-> time an entry is added to pin the fs instance and remove all the boiler
-> plate code.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  drivers/infiniband/hw/qib/qib.h      |   4 +-
->  drivers/infiniband/hw/qib/qib_fs.c   | 105 ++++++---------------------
->  drivers/infiniband/hw/qib/qib_init.c |  32 +++-----
->  3 files changed, 36 insertions(+), 105 deletions(-)
-> 
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Thanks,
-Reviewed-by: Leon Romanovsky <leon@kernel.org>
+Refactor the encoder for FATTR4_FILEID into a helper. In a
+subsequent patch, this helper will be called from a bitmask loop.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfsd/nfs4xdr.c |   13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 17997bf08139..e3dd05f8d28f 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3136,6 +3136,12 @@ static __be32 nfsd4_encode_fattr4_filehandle(struct xdr_stream *xdr,
+ 	return nfsd4_encode_nfs_fh4(xdr, &args->fhp->fh_handle);
+ }
+ 
++static __be32 nfsd4_encode_fattr4_fileid(struct xdr_stream *xdr,
++					 const struct nfsd4_fattr_args *args)
++{
++	return nfsd4_encode_uint64_t(xdr, args->stat.ino);
++}
++
+ /*
+  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
+  * ourselves.
+@@ -3355,10 +3361,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out;
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILEID) {
+-		p = xdr_reserve_space(xdr, 8);
+-		if (!p)
+-			goto out_resource;
+-		p = xdr_encode_hyper(p, args.stat.ino);
++		status = nfsd4_encode_fattr4_fileid(xdr, &args);
++		if (status != nfs_ok)
++			goto out;
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILES_AVAIL) {
+ 		p = xdr_reserve_space(xdr, 8);
+
+
