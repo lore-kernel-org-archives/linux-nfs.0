@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 72E41CD13D2
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:25:41 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id ADB4BCD37B0
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:25:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230075AbjIRQZp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 12:25:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52718 "EHLO
+        id S230116AbjIRQZx (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 12:25:53 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52464 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230096AbjIRQZg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:25:36 -0400
+        with ESMTP id S229736AbjIRQZh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:25:37 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6356225478
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 09:22:40 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3BA9EC433BC;
-        Mon, 18 Sep 2023 13:56:55 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9E47925AC0
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 09:22:41 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D664CC433BD;
+        Mon, 18 Sep 2023 13:57:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045415;
-        bh=i8hXbphYJz2dndu7u6xWLow0rclV/VusffseX/IlkW8=;
+        s=k20201202; t=1695045441;
+        bh=R55ntVJtfkDGm/0y9Z3qEMOVfy5bp/uRB+n3N+bC5Zg=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=QGlrgvmVUldLAYbJOSAyPebfLGD2zdgilvsWhBAeehKmGndJIMls+zZQTLgNybYP3
-         7qqG2wRHhhEZbHYWAYjWU+APuTErSDpDG4K+jLtWMMGQLSaL0Wfi6f1+xeTFCG0liq
-         fGNf32P7nfFAikorEVjkSxPJoQt355iY9UOx8ner0/clF+D2xQhHWIZutl0Fe50tXr
-         nsxxVjABepLeRD2PLTW/SGTcyJe0hb7kbjXY9G/lOydK/JjNzicXPg/Y1hsUWB4SnL
-         LWRI4qmbkcoQagDKd2zhuVgzFNlXujBrUmWD3MwlFMExx4jRmOPPGvJEMwBsF17l8V
-         sYQFQ/cmrqqDQ==
-Subject: [PATCH v1 01/52] NFSD: Add simple u32, u64, and bool encoders
+        b=ixXEchfWn1Mq+ThHK16YFXR/5ak3yQwZ2o0xA683i2RKghUn/hvud8m271WvnV6/G
+         YX9D3jTFM/ZJ9zIu3nxfD3HvrCF/wCgs6FdWFoJOXdXgGGgfVmRB0hn/LKxWOu+8XU
+         68pXgR7BqgKHIezpo//Fzwz7om1cqnerC5qUiWLDbBqCPkB/omwVypULfiu6XnBOrm
+         3jK906n3cF75ORl8TG+zJuuxCdp2k+71dYGXJf1VpGL4WuER/luOvuHhxI7Mr3ad89
+         VOEjyTPjyZ2/PQCaopdovTk/q3LhTR5dxreWQBaLzUPwueaNCeee6irsNRIKeL3TTe
+         L4UoAghAg67aA==
+Subject: [PATCH v1 05/52] NFSD: Add nfsd4_encode_fattr4__true()
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 09:56:54 -0400
-Message-ID: <169504541407.133720.808437380691220899.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 09:57:19 -0400
+Message-ID: <169504543984.133720.6869405794264080605.stgit@manet.1015granger.net>
 In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
@@ -44,145 +44,121 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-The generic XDR encoders return a length or a negative errno. NFSv4
-encoders want to know simply whether the encode ran out of stream
-buffer space. The return values for server-side encoding are either
-nfs_ok or nfserr_resource.
+Add an encoding helper that encodes a single boolean "true" value.
+Attributes that always return "true" can use this helper.
 
-So far I've found it adds a lot of duplicate code to try to use the
-generic XDR encoder utilities when encoding the simple data types in
-the NFSv4 operation encoders.
-
-Add a set of NFSv4-specific utilities that handle the basic XDR data
-types. These are added in xdr4.h so they might eventually be used by
-the callback server and pNFS driver encoders too.
+In a subsequent patch, this helper will be called from a bitmask
+loop, so it is given a standardized synopsis.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/xdr4.h |  111 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 111 insertions(+)
+ fs/nfsd/nfs4xdr.c |   55 ++++++++++++++++++++++++++---------------------------
+ 1 file changed, 27 insertions(+), 28 deletions(-)
 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 9d918a79dc16..5c3eb3691f8b 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -50,6 +50,117 @@
- #define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
- #define CLEAR_CSTATE_FLAG(c, f) ((c)->sid_flags &= ~(f))
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 85466b959c51..ba07e97c206b 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2947,6 +2947,12 @@ struct nfsd4_fattr_args {
+ 	bool			contextsupport;
+ };
  
-+/**
-+ * nfsd4_encode_bool - Encode an XDR bool type result
-+ * @xdr: target XDR stream
-+ * @val: boolean value to encode
-+ *
-+ * Return values:
-+ *    %nfs_ok: @val encoded; @xdr advanced to next position
-+ *    %nfserr_resource: stream buffer space exhausted
-+ */
-+static __always_inline __be32
-+nfsd4_encode_bool(struct xdr_stream *xdr, bool val)
++static __be32 nfsd4_encode_fattr4__true(struct xdr_stream *xdr,
++					const struct nfsd4_fattr_args *args)
 +{
-+	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT);
-+
-+	if (unlikely(p == NULL))
-+		return nfserr_resource;
-+	*p = val ? xdr_one : xdr_zero;
-+	return nfs_ok;
++	return nfsd4_encode_bool(xdr, true);
 +}
 +
-+/**
-+ * nfsd4_encode_uint32_t - Encode an XDR uint32_t type result
-+ * @xdr: target XDR stream
-+ * @val: integer value to encode
-+ *
-+ * Return values:
-+ *    %nfs_ok: @val encoded; @xdr advanced to next position
-+ *    %nfserr_resource: stream buffer space exhausted
-+ */
-+static __always_inline __be32
-+nfsd4_encode_uint32_t(struct xdr_stream *xdr, u32 val)
-+{
-+	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT);
-+
-+	if (unlikely(p == NULL))
-+		return nfserr_resource;
-+	*p = cpu_to_be32(val);
-+	return nfs_ok;
-+}
-+
-+/**
-+ * nfsd4_encode_uint64_t - Encode an XDR uint64_t type result
-+ * @xdr: target XDR stream
-+ * @val: integer value to encode
-+ *
-+ * Return values:
-+ *    %nfs_ok: @val encoded; @xdr advanced to next position
-+ *    %nfserr_resource: stream buffer space exhausted
-+ */
-+static __always_inline __be32
-+nfsd4_encode_uint64_t(struct xdr_stream *xdr, u64 val)
-+{
-+	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT * 2);
-+
-+	if (unlikely(p == NULL))
-+		return nfserr_resource;
-+	put_unaligned_be64(val, p);
-+	return nfs_ok;
-+}
-+
-+/**
-+ * nfsd4_encode_opaque_fixed - Encode a fixed-length XDR opaque type result
-+ * @xdr: target XDR stream
-+ * @data: pointer to data
-+ * @size: length of data in bytes
-+ *
-+ * Return values:
-+ *    %nfs_ok: @data encoded; @xdr advanced to next position
-+ *    %nfserr_resource: stream buffer space exhausted
-+ */
-+static __always_inline __be32
-+nfsd4_encode_opaque_fixed(struct xdr_stream *xdr, const void *data,
-+			  size_t size)
-+{
-+	__be32 *p = xdr_reserve_space(xdr, xdr_align_size(size));
-+	size_t pad = xdr_pad_size(size);
-+
-+	if (unlikely(p == NULL))
-+		return nfserr_resource;
-+	memcpy(p, data, size);
-+	if (pad)
-+		memset((char *)p + size, 0, pad);
-+	return nfs_ok;
-+}
-+
-+/**
-+ * nfsd4_encode_opaque - Encode a variable-length XDR opaque type result
-+ * @xdr: target XDR stream
-+ * @data: pointer to data
-+ * @size: length of data in bytes
-+ *
-+ * Return values:
-+ *    %nfs_ok: @data encoded; @xdr advanced to next position
-+ *    %nfserr_resource: stream buffer space exhausted
-+ */
-+static __always_inline __be32
-+nfsd4_encode_opaque(struct xdr_stream *xdr, const void *data, size_t size)
-+{
-+	size_t pad = xdr_pad_size(size);
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, XDR_UNIT + xdr_align_size(size));
-+	if (unlikely(p == NULL))
-+		return nfserr_resource;
-+	*p++ = cpu_to_be32(size);
-+	memcpy(p, data, size);
-+	if (pad)
-+		memset((char *)p + size, 0, pad);
-+	return nfs_ok;
-+}
-+
- struct nfsd4_compound_state {
- 	struct svc_fh		current_fh;
- 	struct svc_fh		save_fh;
+ /*
+  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
+  * ourselves.
+@@ -3128,16 +3134,14 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		p = xdr_encode_hyper(p, args.stat.size);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_LINK_SUPPORT) {
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			goto out_resource;
+-		*p++ = cpu_to_be32(1);
++		status = nfsd4_encode_fattr4__true(xdr, &args);
++		if (status != nfs_ok)
++			goto out;
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_SYMLINK_SUPPORT) {
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			goto out_resource;
+-		*p++ = cpu_to_be32(1);
++		status = nfsd4_encode_fattr4__true(xdr, &args);
++		if (status != nfs_ok)
++			goto out;
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_NAMED_ATTR) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -3225,10 +3229,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			ACL4_SUPPORT_ALLOW_ACL|ACL4_SUPPORT_DENY_ACL : 0);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_CANSETTIME) {
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			goto out_resource;
+-		*p++ = cpu_to_be32(1);
++		status = nfsd4_encode_fattr4__true(xdr, &args);
++		if (status != nfs_ok)
++			goto out;
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_CASE_INSENSITIVE) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -3237,16 +3240,14 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		*p++ = cpu_to_be32(0);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_CASE_PRESERVING) {
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			goto out_resource;
+-		*p++ = cpu_to_be32(1);
++		status = nfsd4_encode_fattr4__true(xdr, &args);
++		if (status != nfs_ok)
++			goto out;
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_CHOWN_RESTRICTED) {
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			goto out_resource;
+-		*p++ = cpu_to_be32(1);
++		status = nfsd4_encode_fattr4__true(xdr, &args);
++		if (status != nfs_ok)
++			goto out;
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILEHANDLE) {
+ 		p = xdr_reserve_space(xdr, args.fhp->fh_handle.fh_size + 4);
+@@ -3285,10 +3286,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 			goto out;
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_HOMOGENEOUS) {
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			goto out_resource;
+-		*p++ = cpu_to_be32(1);
++		status = nfsd4_encode_fattr4__true(xdr, &args);
++		if (status != nfs_ok)
++			goto out;
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_MAXFILESIZE) {
+ 		p = xdr_reserve_space(xdr, 8);
+@@ -3327,10 +3327,9 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		*p++ = cpu_to_be32(args.stat.mode & S_IALLUGO);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_NO_TRUNC) {
+-		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			goto out_resource;
+-		*p++ = cpu_to_be32(1);
++		status = nfsd4_encode_fattr4__true(xdr, &args);
++		if (status != nfs_ok)
++			goto out;
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_NUMLINKS) {
+ 		p = xdr_reserve_space(xdr, 4);
 
 
