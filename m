@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 70D5EC46CA1
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:26:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 139E8CD37B0
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:26:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231234AbjIRP0M (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 11:26:12 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55488 "EHLO
+        id S236565AbjIRP0g (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 11:26:36 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54072 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230206AbjIRP0M (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:26:12 -0400
+        with ESMTP id S233190AbjIRP0e (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:26:34 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B082210E3
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:24:19 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E7E4CC3277A;
-        Mon, 18 Sep 2023 14:02:19 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E2E479D
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:23:45 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 26911C116D5;
+        Mon, 18 Sep 2023 14:01:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045740;
-        bh=F7a6thmp0sDPhZVNpiOt10d5AsAUD4N3eOni6yrQT/o=;
+        s=k20201202; t=1695045689;
+        bh=LKBwjOs5grznuP43WvwJlJfLxSIlS02lg4NcoKyC+TA=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=o9QA3tODgqShiEGrL2HRyB6UBmRw9QK2+NFvBwMeoN07NM2C9W8QuOlX/XUk1m4tF
-         qaSeXjkVahniFeF2eqs9Crdne3SWt9G9X5JaplPfGtMr2n6tkQ8dvGnYjo7pGtKEjL
-         +hE3A4fL/+5lGrm9+oLo8U9gAFCKAkErTkaQ7Sa3ruothFbls8fbDBSoghuUu0UZQE
-         1q9PDC1RmQhLYoMzf74qe5z4DTwQGS/UUF+wSA/8+2WoECzau+h2tAUPendp1NQ1z2
-         wNp6L4QnikeUl4LBhd7OrNMKwd0c66vK7oD4DSrCB5p4k5CMYp8IHwJm8mOgVkE+11
-         a8s2MHwKWUarg==
-Subject: [PATCH v1 52/52] NFSD: Rename nfsd4_encode_fattr()
+        b=S3T+xOqY2NM2QCbUSr0n6i3evymGAuXxcZdBZsSCPgwhokl3EQ6gAO+m6GyvLS6Yc
+         bwiajfhm7wR9enODPcJe4gp6/NsHZK8HOzWNXlrq2rCp11nt2rz0qUuNZObU9D/DP6
+         lxXJQUEi0P8zUcWnHVSXz5AvbYZ1GFF9GFQDA9HKsPE6iFnh2uIElee+0fZ7mGhtms
+         Fb9TSpVe+gtK1YCEv4gN7gjiu5ae0UZxVxFGfBlCHNstYq3hLTBvTNLuihRkb1odVu
+         tUq8AQnE+tLDHg/Mn2KmLmoRVvo+8dpfBhpmpVDMUZHAolkXyVuHeyqBvURXK7qBaG
+         B4SQJYqptHf1g==
+Subject: [PATCH v1 44/52] NFSD: Add nfsd4_encode_fattr4_fs_layout_types()
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 10:02:18 -0400
-Message-ID: <169504573893.133720.10007386925698101507.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 10:01:28 -0400
+Message-ID: <169504568820.133720.7893935930026220174.stgit@manet.1015granger.net>
 In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
@@ -44,80 +44,55 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-For better alignment with the specification, NFSD's encoder function
-name should match the name of the XDR data type.
+Refactor the encoder for FATTR4_FS_LAYOUT_TYPES into a helper. In a
+subsequent patch, this helper will be called from a bitmask loop.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |   23 +++++++++++++----------
- 1 file changed, 13 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4xdr.c |   24 +++++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d7f690a3ea86..e38af124169b 100644
+index 929be84482b9..d67fa4b2a2f6 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -3470,10 +3470,10 @@ static const nfsd4_enc_attr nfsd4_enc_fattr4_encode_ops[] = {
+@@ -3292,6 +3292,28 @@ static __be32 nfsd4_encode_fattr4_mounted_on_fileid(struct xdr_stream *xdr,
+ 	return nfsd4_encode_uint64_t(xdr, ino);
+ }
+ 
++#ifdef CONFIG_NFSD_PNFS
++
++static __be32 nfsd4_encode_fattr4_fs_layout_types(struct xdr_stream *xdr,
++						  const struct nfsd4_fattr_args *args)
++{
++	unsigned long mask = args->exp->ex_layout_types;
++	int i;
++
++	/* Hamming weight of @mask is the number of layout types to return */
++	if (xdr_stream_encode_u32(xdr, hweight_long(mask)) != XDR_UNIT)
++		return nfserr_resource;
++	for (i = LAYOUT_NFSV4_1_FILES; i < LAYOUT_TYPE_MAX; ++i)
++		if (mask & BIT(i)) {
++			/* layouttype4 */
++			if (xdr_stream_encode_u32(xdr, i) != XDR_UNIT)
++				return nfserr_resource;
++		}
++	return nfs_ok;
++}
++
++#endif
++
+ /*
+  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
   * ourselves.
-  */
- static __be32
--nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
--		struct svc_export *exp,
--		struct dentry *dentry, const u32 *bmval,
--		struct svc_rqst *rqstp, int ignore_crossmnt)
-+nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
-+		    struct svc_fh *fhp, struct svc_export *exp,
-+		    struct dentry *dentry, const u32 *bmval,
-+		    int ignore_crossmnt)
- {
- 	struct nfsd4_fattr_args args;
- 	struct svc_fh *tempfh = NULL;
-@@ -3582,11 +3582,13 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+@@ -3647,7 +3669,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
  	}
- #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
- 
-+	/* attrmask */
- 	status = nfsd4_encode_bitmap4(xdr, attrmask[0],
- 				      attrmask[1], attrmask[2]);
- 	if (status)
- 		goto out;
- 
-+	/* attr_vals */
- 	attrlen_offset = xdr->buf->len;
- 	attrlen_p = xdr_reserve_space(xdr, XDR_UNIT);
- 	if (!attrlen_p)
-@@ -3646,8 +3648,8 @@ __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
- 	__be32 ret;
- 
- 	svcxdr_init_encode_from_buffer(&xdr, &dummy, *p, words << 2);
--	ret = nfsd4_encode_fattr(&xdr, fhp, exp, dentry, bmval, rqstp,
--							ignore_crossmnt);
-+	ret = nfsd4_encode_fattr4(rqstp, &xdr, fhp, exp, dentry, bmval,
-+				  ignore_crossmnt);
- 	*p = xdr.p;
- 	return ret;
- }
-@@ -3706,8 +3708,8 @@ nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
- 
+ #ifdef CONFIG_NFSD_PNFS
+ 	if (bmval1 & FATTR4_WORD1_FS_LAYOUT_TYPES) {
+-		status = nfsd4_encode_layout_types(xdr, exp->ex_layout_types);
++		status = nfsd4_encode_fattr4_fs_layout_types(xdr, &args);
+ 		if (status)
+ 			goto out;
  	}
- out_encode:
--	nfserr = nfsd4_encode_fattr(xdr, NULL, exp, dentry, cd->rd_bmval,
--					cd->rd_rqstp, ignore_crossmnt);
-+	nfserr = nfsd4_encode_fattr4(cd->rd_rqstp, xdr, NULL, exp, dentry,
-+				     cd->rd_bmval, ignore_crossmnt);
- out_put:
- 	dput(dentry);
- 	exp_put(exp);
-@@ -3951,8 +3953,9 @@ nfsd4_encode_getattr(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	struct svc_fh *fhp = getattr->ga_fhp;
- 	struct xdr_stream *xdr = resp->xdr;
- 
--	return nfsd4_encode_fattr(xdr, fhp, fhp->fh_export, fhp->fh_dentry,
--				    getattr->ga_bmval, resp->rqstp, 0);
-+	/* obj_attributes */
-+	return nfsd4_encode_fattr4(resp->rqstp, xdr, fhp, fhp->fh_export,
-+				   fhp->fh_dentry, getattr->ga_bmval, 0);
- }
- 
- static __be32
 
 
