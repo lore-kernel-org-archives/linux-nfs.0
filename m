@@ -2,36 +2,38 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 3A666CD13D2
-	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:26:55 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 580C3CD37B0
+	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 16:27:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230039AbjIRQ06 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 12:26:58 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52566 "EHLO
+        id S230111AbjIRQ1J (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 12:27:09 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:52464 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230127AbjIRQ0Z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:26:25 -0400
+        with ESMTP id S229944AbjIRQ0u (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 12:26:50 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D45FD282B7
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BC8BC282B4
         for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 09:23:24 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A5B1DC433B6;
-        Mon, 18 Sep 2023 13:56:48 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A4694C433B9;
+        Mon, 18 Sep 2023 13:57:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045408;
-        bh=dQJeM9YgMqokf6Vk+HE1/z4jNWMeQ3bLqeKjuu6O9s4=;
-        h=Subject:From:To:Cc:Date:From;
-        b=WAmhYe3hSx/HnkXk30CSvzLBceEtsDY2MfEwMVJFDimytfaifnnalI8Pq49Ec27xi
-         wb0RzFT/sHh1g+m/0pMdVffGrWUMjteUlzpUli9XIuT2q4p3acKJ2p/YUtojNAVHGc
-         ACJPv8rU6ewMUqd+Qg1O3E1nbpw1H4G1LTXP/zQd3mgtgviQy3RpWeXhmpssGk6AMb
-         w3WuGrgW/XBLOfSeyMSPg9j6g3ikIFuD0WGMkHeC7ZDr+pyTel4t0wVs9nqNrRoJXX
-         HaI00ROX42mXQh0E4wr+YOxQTUFXL6hq6IItdhBUch5cKeE00RDdvY+4qEvmfMd/K+
-         00oshMYC8nukg==
-Subject: [PATCH v1 00/52] Modernize nfsd4_encode_fattr()
+        s=k20201202; t=1695045421;
+        bh=k+6YGPIKS0IuMgfCBRoQFP48rCzx+pnWcxKtf7hp8f4=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=HrJ0jriXuu0T/E+JaxTGrgp3sXyOc1igWvxIVPGpQCv1ZtZ48qI2zqRBqDpeEgOIg
+         p5PHr0KlJLawSickuVK+ue5YhdsylYnbkAguyl2K7mFmgXnB2wJlLDZqNSk2gCelFZ
+         o/QGtUwa8wRXr5hFdt6AxHPBKWQbEVxKd4bNJgS0qleHMxyF61lzExUGufn0EH/u1I
+         Bq0mO2KxgGK4SL1oA7ojXdOh19ZyUKEbKT+m2u6yPNZonqOkAQvONz6ORWakijP6JL
+         0fdC6fX7W0GNliT4x1qPcibKCu+Xn2QC5WDtnOvF8pcTWUBLf5hXSwLcEEdsSnDWT2
+         rMvANJci2kI/A==
+Subject: [PATCH v1 02/52] NFSD: Rename nfsd4_encode_bitmap()
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 09:56:47 -0400
-Message-ID: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 09:57:00 -0400
+Message-ID: <169504542064.133720.5075262919655124379.stgit@manet.1015granger.net>
+In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
+References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -40,93 +42,124 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-This series restructures the server's fattr4 encoder. It is largely
-a maintenance improvement (ie, only 2nd-order benefits). There are
-no new features or performance benefits, and I hope there will be no
-changes in behavior.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-The goals:
-* Better alignment with spec
-* Easier to read and audit
-* Less brittle
-* Some code de-duplication
+For alignment with the specification, the name of NFSD's encoder
+function should match the name of the XDR type.
 
-This series applies to v6.6-rc2. Minor adjustment will be needed to
-apply it to nfsd-next. I apologize for the number of patches, but
-each of them (with only a couple of exceptions) is small and
-mechanical, and therefore easily digested.
+I've also replaced a few "naked integers" with symbolic constants
+that better reflect the usage of these values.
 
-A branch containing these patches is available in this repo:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git
-
-See the "nfsd4-encoder-overhaul" branch.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ fs/nfsd/nfs4xdr.c |   28 +++++++++++++++-------------
+ 1 file changed, 15 insertions(+), 13 deletions(-)
 
-Chuck Lever (52):
-      NFSD: Add simple u32, u64, and bool encoders
-      NFSD: Rename nfsd4_encode_bitmap()
-      NFSD: Clean up nfsd4_encode_setattr()
-      NFSD: Add struct nfsd4_fattr_args
-      NFSD: Add nfsd4_encode_fattr4__true()
-      NFSD: Add nfsd4_encode_fattr4__false()
-      NFSD: Add nfsd4_encode_fattr4_supported_attrs()
-      NFSD: Add nfsd4_encode_fattr4_type()
-      NFSD: Add nfsd4_encode_fattr4_fh_expire_type()
-      NFSD: Add nfsd4_encode_fattr4_change()
-      NFSD: Add nfsd4_encode_fattr4_size()
-      NFSD: Add nfsd4_encode_fattr4_fsid()
-      NFSD: Add nfsd4_encode_fattr4_lease_time()
-      NFSD: Add nfsd4_encode_fattr4_rdattr_error()
-      NFSD: Add nfsd4_encode_fattr4_aclsupport()
-      NFSD: Add nfsd4_encode_nfsace4()
-      NFSD: Add nfsd4_encode_fattr4_acl()
-      NFSD: Add nfsd4_encode_fattr4_filehandle()
-      NFSD: Add nfsd4_encode_fattr4_fileid()
-      NFSD: Add nfsd4_encode_fattr4_files_avail()
-      NFSD: Add nfsd4_encode_fattr4_files_free()
-      NFSD: Add nfsd4_encode_fattr4_files_total()
-      NFSD: Add nfsd4_encode_fattr4_fs_locations()
-      NFSD: Add nfsd4_encode_fattr4_maxfilesize()
-      NFSD: Add nfsd4_encode_fattr4_maxlink()
-      NFSD: Add nfsd4_encode_fattr4_maxname()
-      NFSD: Add nfsd4_encode_fattr4_maxread()
-      NFSD: Add nfsd4_encode_fattr4_maxwrite()
-      NFSD: Add nfsd4_encode_fattr4_mode()
-      NFSD: Add nfsd4_encode_fattr4_numlinks()
-      NFSD: Add nfsd4_encode_fattr4_owner()
-      NFSD: Add nfsd4_encode_fattr4_owner_group()
-      NFSD: Add nfsd4_encode_fattr4_rawdev()
-      NFSD: Add nfsd4_encode_fattr4_space_avail()
-      NFSD: Add nfsd4_encode_fattr4_space_free()
-      NFSD: Add nfsd4_encode_fattr4_space_total()
-      NFSD: Add nfsd4_encode_fattr4_space_used()
-      NFSD: Add nfsd4_encode_fattr4_time_access()
-      NFSD: Add nfsd4_encode_fattr4_time_create()
-      NFSD: Add nfsd4_encode_fattr4_time_delta()
-      NFSD: Add nfsd4_encode_fattr4_time_metadata()
-      NFSD: Add nfsd4_encode_fattr4_time_modify()
-      NFSD: Add nfsd4_encode_fattr4_mounted_on_fileid()
-      NFSD: Add nfsd4_encode_fattr4_fs_layout_types()
-      NFSD: Add nfsd4_encode_fattr4_layout_types()
-      NFSD: Add nfsd4_encode_fattr4_layout_blksize()
-      NFSD: Add nfsd4_encode_fattr4_suppattr_exclcreat()
-      NFSD: Add nfsd4_encode_fattr4_sec_label()
-      NFSD: Add nfsd4_encode_fattr4_xattr_support()
-      NFSD: Copy FATTR4 bit number definitions from RFCs
-      NFSD: Use a bitmask loop to encode FATTR4 results
-      NFSD: Rename nfsd4_encode_fattr()
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 2e40c74d2f72..84df0f36c15b 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2906,12 +2906,12 @@ static int nfsd4_get_mounted_on_ino(struct svc_export *exp, u64 *pino)
+ }
+ 
+ static __be32
+-nfsd4_encode_bitmap(struct xdr_stream *xdr, u32 bmval0, u32 bmval1, u32 bmval2)
++nfsd4_encode_bitmap4(struct xdr_stream *xdr, u32 bmval0, u32 bmval1, u32 bmval2)
+ {
+ 	__be32 *p;
+ 
+ 	if (bmval2) {
+-		p = xdr_reserve_space(xdr, 16);
++		p = xdr_reserve_space(xdr, XDR_UNIT * 4);
+ 		if (!p)
+ 			goto out_resource;
+ 		*p++ = cpu_to_be32(3);
+@@ -2919,21 +2919,21 @@ nfsd4_encode_bitmap(struct xdr_stream *xdr, u32 bmval0, u32 bmval1, u32 bmval2)
+ 		*p++ = cpu_to_be32(bmval1);
+ 		*p++ = cpu_to_be32(bmval2);
+ 	} else if (bmval1) {
+-		p = xdr_reserve_space(xdr, 12);
++		p = xdr_reserve_space(xdr, XDR_UNIT * 3);
+ 		if (!p)
+ 			goto out_resource;
+ 		*p++ = cpu_to_be32(2);
+ 		*p++ = cpu_to_be32(bmval0);
+ 		*p++ = cpu_to_be32(bmval1);
+ 	} else {
+-		p = xdr_reserve_space(xdr, 8);
++		p = xdr_reserve_space(xdr, XDR_UNIT * 2);
+ 		if (!p)
+ 			goto out_resource;
+ 		*p++ = cpu_to_be32(1);
+ 		*p++ = cpu_to_be32(bmval0);
+ 	}
+ 
+-	return 0;
++	return nfs_ok;
+ out_resource:
+ 	return nfserr_resource;
+ }
+@@ -3046,7 +3046,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 	}
+ #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
+ 
+-	status = nfsd4_encode_bitmap(xdr, bmval0, bmval1, bmval2);
++	status = nfsd4_encode_bitmap4(xdr, bmval0, bmval1, bmval2);
+ 	if (status)
+ 		goto out;
+ 
+@@ -3443,7 +3443,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		supp[1] &= NFSD_SUPPATTR_EXCLCREAT_WORD1;
+ 		supp[2] &= NFSD_SUPPATTR_EXCLCREAT_WORD2;
+ 
+-		status = nfsd4_encode_bitmap(xdr, supp[0], supp[1], supp[2]);
++		status = nfsd4_encode_bitmap4(xdr, supp[0], supp[1], supp[2]);
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -3802,11 +3802,13 @@ nfsd4_encode_create(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	struct nfsd4_create *create = &u->create;
+ 	struct xdr_stream *xdr = resp->xdr;
+ 
++	/* cinfo */
+ 	nfserr = nfsd4_encode_change_info4(xdr, &create->cr_cinfo);
+ 	if (nfserr)
+ 		return nfserr;
+-	return nfsd4_encode_bitmap(xdr, create->cr_bmval[0],
+-			create->cr_bmval[1], create->cr_bmval[2]);
++	/* attrset */
++	return nfsd4_encode_bitmap4(xdr, create->cr_bmval[0],
++				    create->cr_bmval[1], create->cr_bmval[2]);
+ }
+ 
+ static __be32
+@@ -3944,8 +3946,8 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	if (xdr_stream_encode_u32(xdr, open->op_rflags) < 0)
+ 		return nfserr_resource;
+ 
+-	nfserr = nfsd4_encode_bitmap(xdr, open->op_bmval[0], open->op_bmval[1],
+-					open->op_bmval[2]);
++	nfserr = nfsd4_encode_bitmap4(xdr, open->op_bmval[0],
++				      open->op_bmval[1], open->op_bmval[2]);
+ 	if (nfserr)
+ 		return nfserr;
+ 
+@@ -4529,14 +4531,14 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		break;
+ 	case SP4_MACH_CRED:
+ 		/* spo_must_enforce bitmap: */
+-		nfserr = nfsd4_encode_bitmap(xdr,
++		nfserr = nfsd4_encode_bitmap4(xdr,
+ 					exid->spo_must_enforce[0],
+ 					exid->spo_must_enforce[1],
+ 					exid->spo_must_enforce[2]);
+ 		if (nfserr)
+ 			return nfserr;
+ 		/* spo_must_allow bitmap: */
+-		nfserr = nfsd4_encode_bitmap(xdr,
++		nfserr = nfsd4_encode_bitmap4(xdr,
+ 					exid->spo_must_allow[0],
+ 					exid->spo_must_allow[1],
+ 					exid->spo_must_allow[2]);
 
-
- fs/nfsd/nfs4xdr.c        | 1419 +++++++++++++++++++++-----------------
- fs/nfsd/nfsfh.c          |    2 +-
- fs/nfsd/nfsfh.h          |    3 +-
- fs/nfsd/xdr4.h           |  119 ++++
- include/linux/iversion.h |    2 +-
- include/linux/nfs4.h     |  260 +++++--
- 6 files changed, 1085 insertions(+), 720 deletions(-)
-
---
-Chuck Lever
 
