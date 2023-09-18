@@ -2,36 +2,36 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0ECDBC46CA1
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A5D49CD37B0
 	for <linux-nfs@archiver.kernel.org>; Mon, 18 Sep 2023 15:24:15 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S240762AbjIRPYS (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 18 Sep 2023 11:24:18 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36522 "EHLO
+        id S240741AbjIRPYT (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 18 Sep 2023 11:24:19 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49848 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S241004AbjIRPYQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:24:16 -0400
+        with ESMTP id S236845AbjIRPYR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Sep 2023 11:24:17 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 36E78BA
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:22:36 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 773A7C116D3;
-        Mon, 18 Sep 2023 14:01:16 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 93CE0FD
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Sep 2023 08:22:41 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 107D0C116A5;
+        Mon, 18 Sep 2023 13:58:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695045676;
-        bh=7T/ahaIQ40lO0iadikPZJwQTz6UCKqt6StYeT1YAY9c=;
+        s=k20201202; t=1695045511;
+        bh=i63og+Oy8QoX7wqXUkTyTGKqBSbru6EW6mxAYEBZppk=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=BnyKX4ZJW2VfzBToga9cZ7p1Sz+8NcuVdMPhJzIo4bhIGw4Nq80UhbUq5F9Muq2Ol
-         lEutkaxaFT3LKJTtb7wxF7nlCZ7MqmEVK5/r71/XsxjbbhKK8tnKz3zE5UOmdZdSKP
-         YL7vNmAq6w6wvV36dD3HDpVKjTvfMAfB1OZgdXb8xebTa5qFrFfbulHIZRStlbgqlB
-         RqkPf+lBFjRwLaJUoEjPVhEG5eRk6Uwqun/y7/eNghXMo5cuc+or9yq/kHZS6DHtvN
-         kJnicJ0fMmTS+tTR91IQw4M7Fc6Opluj5fcv5k+niBgVA8jhKzA7vS0a//1L9E0rk6
-         lsjV0AIrlCalg==
-Subject: [PATCH v1 42/52] NFSD: Add nfsd4_encode_fattr4_time_modify()
+        b=qx3jSaHPnrVbZmfzB32gcDwI/XvQQHg/Y26K6ZGLEeyxWIJKP90dAUPpHJ+S5Go8z
+         FY3aS4vJgQu7t3NaiL4ta8BmxVbh9dWrnqwXAx2UCkcnsSJdbggX2SdJs44NobHdrn
+         vIRSim2Li65wTpOoT0XmbM9yrtpww9OhXqicuHzM/9zShVGVu393AQN2nEJkiCkSGD
+         t4IVeGqrlRCKIlCXTt+Xltroxm8mVNGCDa6fI5gHxu6QbxbGPJ6LKn7rty1/CUT+U3
+         Ihdd0GIJaq1lbNWGcaldEPsti8iUrc5uukMO/BaodvpcAh/NKeWAdpkJ8TtUXjAfXH
+         k/+6wLuzjKxfA==
+Subject: [PATCH v1 16/52] NFSD: Add nfsd4_encode_nfsace4()
 From:   Chuck Lever <cel@kernel.org>
 To:     linux-nfs@vger.kernel.org
 Cc:     Chuck Lever <chuck.lever@oracle.com>
-Date:   Mon, 18 Sep 2023 10:01:15 -0400
-Message-ID: <169504567550.133720.11907611503992862711.stgit@manet.1015granger.net>
+Date:   Mon, 18 Sep 2023 09:58:30 -0400
+Message-ID: <169504551010.133720.3074976241793989767.stgit@manet.1015granger.net>
 In-Reply-To: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 References: <169504501081.133720.4162400017732492854.stgit@manet.1015granger.net>
 User-Agent: StGit/1.5
@@ -44,39 +44,86 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Refactor the encoder for FATTR4_TIME_MODIFY into a helper. In a
-subsequent patch, this helper will be called from a bitmask loop.
+Refactor the ACE encoding helper so that it can eventually be reused
+for encoding OPEN results that contain delegation ACEs.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c |    8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4xdr.c |   36 +++++++++++++++++++++---------------
+ fs/nfsd/xdr4.h    |    3 +++
+ 2 files changed, 24 insertions(+), 15 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 75121b4a6020..730596c53258 100644
+index 6604763bd96c..89d3b276a494 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -3268,6 +3268,12 @@ static __be32 nfsd4_encode_fattr4_time_metadata(struct xdr_stream *xdr,
- 	return nfsd4_encode_nfstime4(xdr, &args->stat.ctime);
+@@ -2783,16 +2783,29 @@ static __be32 nfsd4_encode_fs_locations(struct xdr_stream *xdr,
+ 	return 0;
  }
  
-+static __be32 nfsd4_encode_fattr4_time_modify(struct xdr_stream *xdr,
-+					      const struct nfsd4_fattr_args *args)
-+{
-+	return nfsd4_encode_nfstime4(xdr, &args->stat.mtime);
-+}
+-static inline __be32
+-nfsd4_encode_aclname(struct xdr_stream *xdr, struct svc_rqst *rqstp,
+-		     struct nfs4_ace *ace)
++static __be32 nfsd4_encode_nfsace4(struct xdr_stream *xdr, struct svc_rqst *rqstp,
++				   struct nfs4_ace *ace)
+ {
++	__be32 status;
 +
- /*
-  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
-  * ourselves.
-@@ -3611,7 +3617,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 			goto out;
++	/* type */
++	status = nfsd4_encode_acetype4(xdr, ace->type);
++	if (status != nfs_ok)
++		return nfserr_resource;
++	/* flag */
++	status = nfsd4_encode_aceflag4(xdr, ace->flag);
++	if (status != nfs_ok)
++		return nfserr_resource;
++	/* access mask */
++	status = nfsd4_encode_acemask4(xdr, ace->access_mask & NFS4_ACE_MASK_ALL);
++	if (status != nfs_ok)
++		return nfserr_resource;
++	/* who */
+ 	if (ace->whotype != NFS4_ACL_WHO_NAMED)
+ 		return nfs4_acl_write_who(xdr, ace->whotype);
+-	else if (ace->flag & NFS4_ACE_IDENTIFIER_GROUP)
++	if (ace->flag & NFS4_ACE_IDENTIFIER_GROUP)
+ 		return nfsd4_encode_group(xdr, rqstp, ace->who_gid);
+-	else
+-		return nfsd4_encode_user(xdr, rqstp, ace->who_uid);
++	return nfsd4_encode_user(xdr, rqstp, ace->who_uid);
+ }
+ 
+ static inline __be32
+@@ -3288,15 +3301,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		*p++ = cpu_to_be32(args.acl->naces);
+ 
+ 		for (ace = args.acl->aces; ace < args.acl->aces + args.acl->naces; ace++) {
+-			p = xdr_reserve_space(xdr, 4*3);
+-			if (!p)
+-				goto out_resource;
+-			*p++ = cpu_to_be32(ace->type);
+-			*p++ = cpu_to_be32(ace->flag);
+-			*p++ = cpu_to_be32(ace->access_mask &
+-							NFS4_ACE_MASK_ALL);
+-			status = nfsd4_encode_aclname(xdr, rqstp, ace);
+-			if (status)
++			status = nfsd4_encode_nfsace4(xdr, args.rqstp, ace);
++			if (status != nfs_ok)
+ 				goto out;
+ 		}
  	}
- 	if (bmval1 & FATTR4_WORD1_TIME_MODIFY) {
--		status = nfsd4_encode_nfstime4(xdr, &args.stat.mtime);
-+		status = nfsd4_encode_fattr4_time_modify(xdr, &args);
- 		if (status)
- 			goto out;
- 	}
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 488ecdacc4c6..f0866a55fd91 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -90,6 +90,9 @@ nfsd4_encode_uint32_t(struct xdr_stream *xdr, u32 val)
+ 	return nfs_ok;
+ }
+ 
++#define nfsd4_encode_aceflag4(x, v)	nfsd4_encode_uint32_t(x, v)
++#define nfsd4_encode_acemask4(x, v)	nfsd4_encode_uint32_t(x, v)
++#define nfsd4_encode_acetype4(x, v)	nfsd4_encode_uint32_t(x, v)
+ #define nfsd4_encode_nfs_lease4(x, v)	nfsd4_encode_uint32_t(x, v)
+ 
+ /**
 
 
