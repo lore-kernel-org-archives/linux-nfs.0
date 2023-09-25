@@ -2,324 +2,176 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1F0C6CE7A94
-	for <linux-nfs@archiver.kernel.org>; Mon, 25 Sep 2023 14:32:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C58C6CD54BE
+	for <linux-nfs@archiver.kernel.org>; Mon, 25 Sep 2023 19:22:38 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232287AbjIYOcJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 25 Sep 2023 10:32:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33790 "EHLO
+        id S229970AbjIYTWn (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 25 Sep 2023 15:22:43 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40828 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232308AbjIYOcI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Sep 2023 10:32:08 -0400
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F2776C0
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Sep 2023 07:32:01 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 45E45C433C8;
-        Mon, 25 Sep 2023 14:32:01 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1695652321;
-        bh=34z6Dw/XTxGct0UO29aEYjxEKS5xFSdcTF4M12XnnkY=;
-        h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-        b=U0On9ZghtzWKUIoDiiktZ7mNjyLKaFrbu74v4waDIgT6sJxS5bbPk0IfBEd7jWcF+
-         CYcFpTM98iYZLe6ZDX8PNQU08rsmpBrL7xi44tswJq4tiArulKgyKtyZYBR8P5zrjY
-         qfdz6NFGr3k6yEqwXEqu833pIVoyRDhxRuN7s22A5YyFmGbOWZ1hu6x8D7S1gnMi2K
-         8/2cuNo048L//hejcIQZpoGDfXcLxfU7P4C/KEajzQhGNes0N7wtoPoeaCOW6cYpdb
-         gp42i8eMGnsZrBQzcPb0QrYsEip8fASux3KAs3FNUnSnp3BHE/zRYyY6M/vvOHWQEt
-         EbQO6K14N3ypA==
-Date:   Mon, 25 Sep 2023 16:31:57 +0200
-From:   Lorenzo Bianconi <lorenzo@kernel.org>
-To:     Chuck Lever <chuck.lever@oracle.com>
-Cc:     linux-nfs@vger.kernel.org, lorenzo.bianconi@redhat.com,
-        jlayton@kernel.org, neilb@suse.de, netdev@vger.kernel.org
-Subject: Re: [PATCH v2] NFSD: convert write_threads, write_maxblksize and
- write_maxconn to netlink commands
-Message-ID: <ZRGZ3biV94qRx/IF@lore-desk>
-References: <b9fefe9a15d8a4c5ab597489902ab2f868199365.1695563204.git.lorenzo@kernel.org>
- <ZRGRHbQ4w2hcEre/@tissot.1015granger.net>
+        with ESMTP id S229481AbjIYTWm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Sep 2023 15:22:42 -0400
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A7E32BE
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Sep 2023 12:22:35 -0700 (PDT)
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+        by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 38PIJTkA030439;
+        Mon, 25 Sep 2023 19:22:31 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : references : in-reply-to : content-type :
+ content-id : content-transfer-encoding : mime-version; s=corp-2023-03-30;
+ bh=4lr1nDtfkkjizMkrTxXszlJ+ffDncxR41a5Q+/WocJ0=;
+ b=trcDtFIGwFZ7VvKWnBrX9/2f1It+nv6SZowlCZ4IXdKAq0WUdw5qc1Z4B1s8sj4iaQNP
+ XMs6G/FYZEOJW26c+zE+NwjZFkncl1YrsWbsklayU42wsm0eKSlBdWJxHY4IpZH1YmgI
+ MddczABRsyI6or0+1J2xejW0bgcN/7VhOozDTyOAAbQDwcg+VjsMFcdgote2GiT9NJqY
+ dHWgsPO2mJzrCUJCgyDm+yvBV31nFs7feE9c86DcPyyPSPln546wAlgoNwnB8JQ5jhp/
+ Q3FMbwWJ3zlsU6K7ATUhxJY285dz//9KfbsIjHSnB03LcmnfU4EkVmDTBd56h9vxa+OY jA== 
+Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.appoci.oracle.com [138.1.37.129])
+        by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3t9rjuck3y-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 25 Sep 2023 19:22:31 +0000
+Received: from pps.filterd (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
+        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 38PIiCt5034909;
+        Mon, 25 Sep 2023 19:22:30 GMT
+Received: from nam11-bn8-obe.outbound.protection.outlook.com (mail-bn8nam11lp2169.outbound.protection.outlook.com [104.47.58.169])
+        by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3t9pf57f60-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Mon, 25 Sep 2023 19:22:30 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=ZpkZNhUiHCtysUN1Pjq9Kg3PRqrrtiBstcY4iGurjvTSrO10ZU2DB0LxX7QyD3eG/VRdMLrR+BA0AXdNMpuIFWnxZ3XgrQD/75D7Poz2+Owj6JA8eFKiYkDLnoSrkM6JN/R4nIWNjfCQ2GfNEWlbmSapEVB4W+qjDdTqXnuPr/nPrvT0eF8N9xreMO+1vUpygpN/jakeAL+T8IxMXfZIs+aCT5VQgPqubILWLKG2q4nqMP681TmTQcfWNjG5Gf8u4g4/ne2B8DPPXGB9WfCGeb8R1mSlIedUz8vr/U3V5i7FMWjyKpCgfUxy0GfJCjM61+lqaqr4+4/zn8IqLvM3AA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=4lr1nDtfkkjizMkrTxXszlJ+ffDncxR41a5Q+/WocJ0=;
+ b=TXcTFrDCyU3VW+tPtq8OIpuQL9thzWdWETD28sBqpGTuiLG+Epiq6wkrwXegCmb3BDkD22nva6zeSnIYimGDsLsTaoSRuuGPounZjNG80Jl+rkzRzDhnq/Zruohux5KpocZ8OXKaj+rndp9PYHH4QEN3xyCwbbnMJJmoMykvV8xhKq8ja4R7KGcGmBzbpQd2oF/FIokh4G+CgSIQwdaM6hwAkiMW+9oVd4rIsik//XkFLTsWcx4T0lObM+KhXWvF56l+HVeSejVDjBumNpWiPZID0vB8ZYHjPJ0ZoIFBjSunFek7RAG72pThYWT4O55hNHRfWmB/85CeFIHRKvq6WA==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=4lr1nDtfkkjizMkrTxXszlJ+ffDncxR41a5Q+/WocJ0=;
+ b=VEQWZQKCAJ9FjZXvZtHcLIMmKGdQJQFNpYdeyyVggdQjCdlXc/nkdUMCbfi44vvG8YYzs68jv0aQRRmwfYd7gEeopv8Bw5c098pndx79E5eNwDUF4vTpJHHVU1ZPC6uLRPWIn7VqDTuqtlWbrZBkAi/9YlDfp0LoPuuQuyomSoc=
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
+ by CYXPR10MB7976.namprd10.prod.outlook.com (2603:10b6:930:df::22) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.6813.23; Mon, 25 Sep
+ 2023 19:22:28 +0000
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::bffc:4f39:2aa8:6144]) by BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::bffc:4f39:2aa8:6144%5]) with mapi id 15.20.6813.027; Mon, 25 Sep 2023
+ 19:22:28 +0000
+From:   Chuck Lever III <chuck.lever@oracle.com>
+To:     =?utf-8?B?TWFudGFzIE1pa3VsxJduYXM=?= <grawity@gmail.com>
+CC:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Data corruption with 5.10.x client -> 6.5.x server
+Thread-Topic: Data corruption with 5.10.x client -> 6.5.x server
+Thread-Index: AQHZ7uglcAk7YvaB4kSAn1xCF15i5rAp+BsAgAAR7gCAAAN6gIAAI0qAgAAaJQCAAaJvAA==
+Date:   Mon, 25 Sep 2023 19:22:28 +0000
+Message-ID: <CA1D7203-72FB-4681-AD60-F1D80A57C154@oracle.com>
+References: <f1d0b234-e650-0f6e-0f5d-126b3d51d1eb@gmail.com>
+ <6E4B8EB9-FA7E-4ABD-81AB-6FB0EF07EA46@oracle.com>
+ <f90866e3-8c54-8a9c-c100-f5550c31b664@gmail.com>
+ <9691788F-2B62-4EB5-8879-CEDABD1B9D4B@oracle.com>
+ <78c81a97-4324-c2df-27c0-917436ddee07@gmail.com>
+ <6908E735-6912-4AEC-8AD7-995F2F8A144A@oracle.com>
+In-Reply-To: <6908E735-6912-4AEC-8AD7-995F2F8A144A@oracle.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-mailer: Apple Mail (2.3731.700.6)
+x-ms-publictraffictype: Email
+x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|CYXPR10MB7976:EE_
+x-ms-office365-filtering-correlation-id: 408ced5f-4c2e-4455-bb96-08dbbdfcc1de
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: QgAn9TAWTAMiuvTkqZiqx0S5ItKMxgCDd29SeVeg9jGxiH29/b1jH0ay+948lf5gMoabPQT2M+9radXzNqQ3Ipmxp/diwi9nemBStF3HAHBjT3exbuRgzcN5YVUxmNopMoGawL10omZsHtoRGwMlDEffvVApuHArQofXEA+1zFl3VIZP5gl2WTWH1CnzWudaXXdOQJ6DU6mEO0MSuE4/O+Nf+PPMC938FLjCxxJ+vz0icZfAVK1DvvDLRxyQjxKKfGgRFkz7Dj2rUW/Kuoc7TT8t/G91G2d5HwwI8nOD7RtaX8i1AX0d8BSSE03FAiNk5cbyRbU8a2R8CyqMGnlWSJdE95wr3KIkGJlUpzbpiTQVRNK5hCmmdNGisVyqVXwmbRZO7xjKk/eJIHBhIXBGwkFIOZswgTA6zsbjmWAVmtdD/7v+pUmS68kdYv7p4Ov/3QSbVbiZcT6okrbNLNAqOo171cjklqCskqMg0Gkm+e619A78/wtk9pnZA6L0xe3k+KE/S1UdOROfh/mMhCMCxZIDMWf7zI73377qeEcSY4/Xqh57M7K0P71Dcuag96PVhnOV1HlhpP2D0R9+9wdF3tVs/ufRB7uw2h91XNnpxulFhN0AgAAZsTgekiUKJ2hqZRuSx9NAvNqyy5ubUtWTAQ==
+x-forefront-antispam-report: CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230031)(346002)(376002)(396003)(136003)(39860400002)(366004)(230922051799003)(451199024)(186009)(1800799009)(66946007)(4744005)(2906002)(5660300002)(76116006)(4326008)(8676002)(91956017)(66446008)(66556008)(8936002)(66476007)(71200400001)(478600001)(6512007)(6486002)(53546011)(6506007)(2616005)(316002)(26005)(41300700001)(6916009)(83380400001)(64756008)(86362001)(38100700002)(38070700005)(36756003)(122000001)(33656002)(45980500001);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0: =?utf-8?B?MWw2K0JUNDhubjlWV3RRU1JIMmdiRmQ1MHhyZCtBSkIydzE2MmVmSlEyQU9T?=
+ =?utf-8?B?YVZlbjhyZ2dxc0Z3dlZFQ2s2aGhqZ2VKRk8rMitnTDE1VWVwNit4ckNPckRy?=
+ =?utf-8?B?SVFOWDROK1BSN2UwT3VCYk4rNzlPWmcrWkEraVYxYTBzTVBZOW53ZjAyQmwz?=
+ =?utf-8?B?YlVrZlBaeWQwdW42Q0NWS1duK01OWXRYenVTN0dOcFZLQWtVSE9KM2NlcFQ2?=
+ =?utf-8?B?MkxzVEJaei9rTDlCZVhmVFNCbVVVcXV6ZVB5Z1ovQTlEayt6N2kvYzFnME9Z?=
+ =?utf-8?B?NTR3eENWS2laMHE2MFVLdjdhdDV2WFRxOUlNYi9HMDYwNm05Y3RGZnVLMXN0?=
+ =?utf-8?B?R2hRNDc2SkZzMlBER0pnR095K3gxT2xQZU5RbW5McE1Ga2w0WURXaWtBNWpn?=
+ =?utf-8?B?aGZrNm1JRzJxczA2ZllZMjZ2dEVqOU0rZkpXcXhHVnNKaFdmRHhhLzYreDNH?=
+ =?utf-8?B?SnVzbW9MeWF0OVM0bFJ1TFhXWDFDeDUxQ3cyTTgwQ0c5NVowVVJvL20vUW5j?=
+ =?utf-8?B?RTFRc3JrRXk5Q2E1d2x6dTdGQ1drNTdhZXZoZkp1UUhQSnVuUjB5a3Vpd1BH?=
+ =?utf-8?B?aE1heG80YTFxQjRpTC9FcllsL25zWThLc1Y4ZHVCcnB3aFdnUDdXTXZHRStH?=
+ =?utf-8?B?TnJ6ODhWLzQzZDFyNFBSWXBDRjJGSWV2bmVuR1c4NFBldktwbUFuNjZ2WHN6?=
+ =?utf-8?B?Yy8yZlRRc0JMMUpVdkhiWGZMNVB2dmxabHU2LzduVk1XNnBBMTM4c0FSbHJC?=
+ =?utf-8?B?M1pRczE1eG0rUm9KZ2JOemFVRzZBT2RBa20rWVN6R0JkVGx6WUd6SUVZY2dy?=
+ =?utf-8?B?aVUwNkp1akZ3NXVvUTNhUjNXOGxBRnphVFFkQk83R0NJMi9WNUozbkppZ0hq?=
+ =?utf-8?B?UUc4ZGtpMlQ0TEkxSkVRbU5yVmNRN09xLzVocDZKZzE4S01JVHZSNWNJMFJY?=
+ =?utf-8?B?a3FDREhCS0VlalR1R2tmTmViNGF2bk1lNG9pVW1DcDFsdlZPbndwRnFWQ0Qv?=
+ =?utf-8?B?eXdnU2g5MGZib3RzanZEaWtkQzhqa2VFZmQrcmoydjNKYURJVG54eDFrdUsz?=
+ =?utf-8?B?SURmdkVIZktIaDROSzVIUU5nNlFUbjZxVDZicldUdEhaREVQV0FMQVAzVGl5?=
+ =?utf-8?B?Wi9PZkEvZEZ6Mi85WWdxVFhyUVV3d2dkSkJiMFptTHdkdm0rQ1pjbUhrd2ZS?=
+ =?utf-8?B?N0Z2WXlhZHhtSEt6Ry9hSmhPZGhXMEM3SGwrQjYrNDJSMitxbnJhdWFmQVlx?=
+ =?utf-8?B?ZHcrV3psTWgwSENGcXk4MTk5aXcrVmpVYkdwSFF6TmpyNWQ0VHJuUXFNNFlE?=
+ =?utf-8?B?aVFXa2dnQ21BTDgycVFleG5Xd2J5SEc5dGp6YmVGQmtKZHIxZUVSbFp2bnMr?=
+ =?utf-8?B?Mjg4MmVQTXp5NU5Hb0FDYkdtLzV0YUF5dzZQN0UzaEF5eGw5eHE5WU5GZGQ2?=
+ =?utf-8?B?UzRiTVB6c2dvdk8xbmNRcHE2UzVRY254SnROOVVObGxSUkZEeTZMMDE3MlZp?=
+ =?utf-8?B?ZWVoaXdoUll4endtdjJCNjBSUUVCU3F3STZOMmduc0c4V29SaHdaVGVhbGhT?=
+ =?utf-8?B?U2hOaU8xNTIzUlZnQjBlbStvbTJMb0VnN25Cd2o5RjE5dG1mQzR2YzBNRitM?=
+ =?utf-8?B?UW8yaXMzcmNhTWMzSzl2eUxVamk4VStxUlNWeWd4NVJRWUZDVzFCUzU3SHRW?=
+ =?utf-8?B?Qm1JdW1ZdGZaYy84UmNwM1B6N1BobDBQMmxoWE1JU2ZIc2N6K2doY005ejhF?=
+ =?utf-8?B?UzAyZUh1eEJ0U01iQ1U3S201SHc3UTgrUUM1WWRJYVloa2wzaGV3MkV2cmZO?=
+ =?utf-8?B?eW5xZHgwelBFSjZWOU5CcWJIQisrZGUyMGl5ZzZWOHpLT3VnR1kzeTRDR2dK?=
+ =?utf-8?B?S1M2MHVCcFgyZTlDODk5blJ0TE1CQnFzNzk2bzYzd0NyUnNScncwbzZRVUxJ?=
+ =?utf-8?B?OHl6VURlVDA1VmFid2JkT016S0tDMk9ISG5YS3RJSVZ1cXFwSzd4OWJPSStD?=
+ =?utf-8?B?QjQ3VVlkTFh2ZjJBUE1vMVZEdDV2WVNzeTZsMUxrM0dUR280cE1LUXZLaWgx?=
+ =?utf-8?B?Tk1Yc2pQamV5blRKV2RUWG4yNVIxSUg0cFo1SWZhOU90V3pNamlUbFJvRGQx?=
+ =?utf-8?B?RG05MFdIMjR0anVCVVFDSzdEMEJDaVpBL25ESE1BMjdxN1lHOEhaRythcTlS?=
+ =?utf-8?B?QkE9PQ==?=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <775A3BEF68355C4DB391924D23DABD86@namprd10.prod.outlook.com>
+Content-Transfer-Encoding: base64
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-        protocol="application/pgp-signature"; boundary="qYoQUvXl/ddLoVyJ"
-Content-Disposition: inline
-In-Reply-To: <ZRGRHbQ4w2hcEre/@tissot.1015granger.net>
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0: gP6R1yRh3Vg3sh1O7BMaRXZ5GlB++BF/aSwXRZCs5KcSkPNlZJTDfdxLxfJ6YQ1ulfis+RGnf2qWq7DMK1zqawkBNtiLlUsOqLBvITlOLb0yNMDZuL7pm4AuleCKwoVT4WbvuXJ6PufMU5XYPOWIdvjB8QPAFHHAW/ajK5jPv8CiKdE424YE2Sh2maQBTLAIPJfMNqeD8InOn4GiryxCXEfTEhopQ4ylESRuEikpERekdVWohL6piLiiDH9LwgJpBBCuPl/4bEtyjwdO2gFnzLtrx6rQokfhikuOvBGOsBns0c4O+h7emaJFdC1qzJS+PdaDosqjTrRG0baJUMuVhyn9x3oMqdVaoYj5TCJSBcEovkz4/vVWqlA+IWU/u7M4awq/HFL+uMU3aq1YLgsbnhh+b50zTWopokqETROYB41VEAhadapfRd6jKpZZIPEokU9RvCotlKbfKfTahg6tN9jsQ8tEGSFeDM/LRAA0MI5eIe/W8HHg1G7/LBLzu1mSgl1f3Eo9Qc4jHQ8rz9w/rfOYUz7RyZfjE22rpySnHpu8HZjvizckosDNFfXWg2HZNlucZyRF37+3Yz2DpxRzL/xocwaEr4B09e1Uu4EEUJRjx1hZ/WH3S01/0feF0dVptqq39rBGlZfyA/gO5E0XiWiRAbm/kT/1lYujOxlplbpwXGQzgswOliQ+tSBNzzJjdZwWttHuE3Gx3K3k2tCPJYjGCb7887/2MuVcXXNVmgHFppfVc+TJGObb+QnKcAWJCMzo5XLmPWEX/iYRyk+3N/AK0vFCg32mvbroJet8Mk4=
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 408ced5f-4c2e-4455-bb96-08dbbdfcc1de
+X-MS-Exchange-CrossTenant-originalarrivaltime: 25 Sep 2023 19:22:28.4957
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: VRZcpIxeU3CBJSFNLFdR++qxR8qZzRzvYvjgg7IdX9MkTUFtyhGbCUmJvYWLNqmSZpoAi1NsdG5GtSZ/T9suYA==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CYXPR10MB7976
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.267,Aquarius:18.0.980,Hydra:6.0.619,FMLib:17.11.176.26
+ definitions=2023-09-25_17,2023-09-25_01,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 spamscore=0 bulkscore=0 mlxscore=0
+ mlxlogscore=959 suspectscore=0 phishscore=0 adultscore=0 malwarescore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2309180000
+ definitions=main-2309250151
+X-Proofpoint-ORIG-GUID: ACwW0lcAwc4lZc0Kws-a9iSSKyyf_RXy
+X-Proofpoint-GUID: ACwW0lcAwc4lZc0Kws-a9iSSKyyf_RXy
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-
---qYoQUvXl/ddLoVyJ
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-On Sep 25, Chuck Lever wrote:
-> On Sun, Sep 24, 2023 at 03:52:28PM +0200, Lorenzo Bianconi wrote:
-> > Introduce write_threads, write_maxblksize and write_maxconn netlink
-> > commands similar to the ones available through the procfs.
-> >=20
-> > Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
-> > ---
-> > Changes since v1:
-> > - remove write_v4_end_grace command
-> > - add write_maxblksize and write_maxconn netlink commands
-> >=20
-> > This patch can be tested with user-space tool reported below:
-> > https://github.com/LorenzoBianconi/nfsd-netlink.git
-> > ---
-> >  Documentation/netlink/specs/nfsd.yaml |  63 ++++++++++++
-> >  fs/nfsd/netlink.c                     |  51 ++++++++++
-> >  fs/nfsd/netlink.h                     |   9 ++
-> >  fs/nfsd/nfsctl.c                      | 139 ++++++++++++++++++++++++++
-> >  include/uapi/linux/nfsd_netlink.h     |  15 +++
-> >  5 files changed, 277 insertions(+)
->=20
-> This looks pretty close to me. A couple of comments below.
->=20
->=20
-> > diff --git a/Documentation/netlink/specs/nfsd.yaml b/Documentation/netl=
-ink/specs/nfsd.yaml
-> > index 403d3e3a04f3..10214fcec8a5 100644
-> > --- a/Documentation/netlink/specs/nfsd.yaml
-> > +++ b/Documentation/netlink/specs/nfsd.yaml
-> > @@ -62,6 +62,18 @@ attribute-sets:
-> >          name: compound-ops
-> >          type: u32
-> >          multi-attr: true
-> > +  -
-> > +    name: server-attr
->=20
-> Or, say, "control-plane" ? "server-attr" doesn't seem very self-
-> explanatory or specific.
-
-ack, fine to me..naming is always hard :)
-
->=20
->=20
-> > +    attributes:
-> > +      -
-> > +        name: threads
-> > +        type: u32
-> > +      -
-> > +        name: max-blksize
-> > +        type: u32
-> > +      -
-> > +        name: max-conn
-> > +        type: u32
-> > =20
-> >  operations:
-> >    list:
-> > @@ -72,3 +84,54 @@ operations:
-> >        dump:
-[...]
-> > =20
-> > +/**
-> > + * nfsd_nl_threads_set_doit - set the number of running threads
-> > + * @skb: reply buffer
-> > + * @info: netlink metadata and command arguments
-> > + *
-> > + * Return 0 on success or a negative errno.
-> > + */
-> > +int nfsd_nl_threads_set_doit(struct sk_buff *skb, struct genl_info *in=
-fo)
-> > +{
-> > +	u16 nthreads;
-> > +	int ret;
-> > +
-> > +	if (!info->attrs[NFSD_A_SERVER_ATTR_THREADS])
-> > +		return -EINVAL;
-> > +
-> > +	nthreads =3D nla_get_u32(info->attrs[NFSD_A_SERVER_ATTR_THREADS]);
->=20
-> I worry about what happens if someone sends down a value larger than
-> 64K. While not a likely scenario, the behavior is not well defined,
-> and I don't think the implicit type conversions are necessary.
->=20
-> Can nthreads be u32?
-
-actually this is a leftover of the previous patch. I will fix it in v3.
-
-Regards,
-Lorenzo
-
->=20
->=20
-> > +	ret =3D nfsd_svc(nthreads, genl_info_net(info), get_current_cred());
-> > +	return ret =3D=3D nthreads ? 0 : ret;
-> > +}
-> > +
-> > +static int nfsd_nl_get_dump(struct sk_buff *skb, struct netlink_callba=
-ck *cb,
-> > +			    int cmd, int attr, u32 val)
-> > +{
-> > +	void *hdr;
-> > +
-> > +	if (cb->args[0]) /* already consumed */
-> > +		return 0;
-> > +
-> > +	hdr =3D genlmsg_put(skb, NETLINK_CB(cb->skb).portid, cb->nlh->nlmsg_s=
-eq,
-> > +			  &nfsd_nl_family, NLM_F_MULTI, cmd);
-> > +	if (!hdr)
-> > +		return -ENOBUFS;
-> > +
-> > +	if (nla_put_u32(skb, attr, val))
-> > +		return -ENOBUFS;
-> > +
-> > +	genlmsg_end(skb, hdr);
-> > +	cb->args[0] =3D 1;
-> > +
-> > +	return skb->len;
-> > +}
-> > +
-> > +/**
-> > + * nfsd_nl_threads_get_dumpit - dump the number of running threads
-> > + * @skb: reply buffer
-> > + * @cb: netlink metadata and command arguments
-> > + *
-> > + * Returns the size of the reply or a negative errno.
-> > + */
-> > +int nfsd_nl_threads_get_dumpit(struct sk_buff *skb, struct netlink_cal=
-lback *cb)
-> > +{
-> > +	return nfsd_nl_get_dump(skb, cb, NFSD_CMD_THREADS_GET,
-> > +				NFSD_A_SERVER_ATTR_THREADS,
-> > +				nfsd_nrthreads(sock_net(skb->sk)));
-> > +}
-> > +
-> > +/**
-> > + * nfsd_nl_max_blksize_set_doit - set the nfs block size
-> > + * @skb: reply buffer
-> > + * @info: netlink metadata and command arguments
-> > + *
-> > + * Return 0 on success or a negative errno.
-> > + */
-> > +int nfsd_nl_max_blksize_set_doit(struct sk_buff *skb, struct genl_info=
- *info)
-> > +{
-> > +	struct nfsd_net *nn =3D net_generic(genl_info_net(info), nfsd_net_id);
-> > +	int ret =3D 0;
-> > +
-> > +	if (!info->attrs[NFSD_A_SERVER_ATTR_MAX_BLKSIZE])
-> > +		return -EINVAL;
-> > +
-> > +	mutex_lock(&nfsd_mutex);
-> > +	if (nn->nfsd_serv) {
-> > +		ret =3D -EBUSY;
-> > +		goto out;
-> > +	}
-> > +
-> > +	nfsd_max_blksize =3D nla_get_u32(info->attrs[NFSD_A_SERVER_ATTR_MAX_B=
-LKSIZE]);
-> > +	nfsd_max_blksize =3D max_t(int, nfsd_max_blksize, 1024);
-> > +	nfsd_max_blksize =3D min_t(int, nfsd_max_blksize, NFSSVC_MAXBLKSIZE);
-> > +	nfsd_max_blksize &=3D ~1023;
-> > +out:
-> > +	mutex_unlock(&nfsd_mutex);
-> > +
-> > +	return ret;
-> > +}
-> > +
-> > +/**
-> > + * nfsd_nl_max_blksize_get_dumpit - dump the nfs block size
-> > + * @skb: reply buffer
-> > + * @cb: netlink metadata and command arguments
-> > + *
-> > + * Returns the size of the reply or a negative errno.
-> > + */
-> > +int nfsd_nl_max_blksize_get_dumpit(struct sk_buff *skb,
-> > +				   struct netlink_callback *cb)
-> > +{
-> > +	return nfsd_nl_get_dump(skb, cb, NFSD_CMD_MAX_BLKSIZE_GET,
-> > +				NFSD_A_SERVER_ATTR_MAX_BLKSIZE,
-> > +				nfsd_max_blksize);
-> > +}
-> > +
-> > +/**
-> > + * nfsd_nl_max_conn_set_doit - set the max number of connections
-> > + * @skb: reply buffer
-> > + * @info: netlink metadata and command arguments
-> > + *
-> > + * Return 0 on success or a negative errno.
-> > + */
-> > +int nfsd_nl_max_conn_set_doit(struct sk_buff *skb, struct genl_info *i=
-nfo)
-> > +{
-> > +	struct nfsd_net *nn =3D net_generic(genl_info_net(info), nfsd_net_id);
-> > +
-> > +	if (!info->attrs[NFSD_A_SERVER_ATTR_MAX_CONN])
-> > +		return -EINVAL;
-> > +
-> > +	nn->max_connections =3D nla_get_u32(info->attrs[NFSD_A_SERVER_ATTR_MA=
-X_CONN]);
-> > +
-> > +	return 0;
-> > +}
-> > +
-> > +/**
-> > + * nfsd_nl_max_conn_get_dumpit - dump the max number of connections
-> > + * @skb: reply buffer
-> > + * @cb: netlink metadata and command arguments
-> > + *
-> > + * Returns the size of the reply or a negative errno.
-> > + */
-> > +int nfsd_nl_max_conn_get_dumpit(struct sk_buff *skb,
-> > +				struct netlink_callback *cb)
-> > +{
-> > +	struct nfsd_net *nn =3D net_generic(sock_net(cb->skb->sk), nfsd_net_i=
-d);
-> > +
-> > +	return nfsd_nl_get_dump(skb, cb, NFSD_CMD_MAX_CONN_GET,
-> > +				NFSD_A_SERVER_ATTR_MAX_CONN,
-> > +				nn->max_connections);
-> > +}
-> > +
-> >  /**
-> >   * nfsd_net_init - Prepare the nfsd_net portion of a new net namespace
-> >   * @net: a freshly-created network namespace
-> > diff --git a/include/uapi/linux/nfsd_netlink.h b/include/uapi/linux/nfs=
-d_netlink.h
-> > index c8ae72466ee6..59d0aa22ba94 100644
-> > --- a/include/uapi/linux/nfsd_netlink.h
-> > +++ b/include/uapi/linux/nfsd_netlink.h
-> > @@ -29,8 +29,23 @@ enum {
-> >  	NFSD_A_RPC_STATUS_MAX =3D (__NFSD_A_RPC_STATUS_MAX - 1)
-> >  };
-> > =20
-> > +enum {
-> > +	NFSD_A_SERVER_ATTR_THREADS =3D 1,
-> > +	NFSD_A_SERVER_ATTR_MAX_BLKSIZE,
-> > +	NFSD_A_SERVER_ATTR_MAX_CONN,
-> > +
-> > +	__NFSD_A_SERVER_ATTR_MAX,
-> > +	NFSD_A_SERVER_ATTR_MAX =3D (__NFSD_A_SERVER_ATTR_MAX - 1)
-> > +};
-> > +
-> >  enum {
-> >  	NFSD_CMD_RPC_STATUS_GET =3D 1,
-> > +	NFSD_CMD_THREADS_SET,
-> > +	NFSD_CMD_THREADS_GET,
-> > +	NFSD_CMD_MAX_BLKSIZE_SET,
-> > +	NFSD_CMD_MAX_BLKSIZE_GET,
-> > +	NFSD_CMD_MAX_CONN_SET,
-> > +	NFSD_CMD_MAX_CONN_GET,
-> > =20
-> >  	__NFSD_CMD_MAX,
-> >  	NFSD_CMD_MAX =3D (__NFSD_CMD_MAX - 1)
-> > --=20
-> > 2.41.0
-> >=20
->=20
-> --=20
-> Chuck Lever
-
---qYoQUvXl/ddLoVyJ
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iHUEABYKAB0WIQTquNwa3Txd3rGGn7Y6cBh0uS2trAUCZRGZ3QAKCRA6cBh0uS2t
-rOgqAP9IOs0km0VrwZNf0Y+k6qHjlCGzOfBPpGLErwb1/BfYxgEA3B0gHC1TWlFY
-sGcIe+SOtT/SsMiwY2FbcKHcEcyMAwc=
-=cV6d
------END PGP SIGNATURE-----
-
---qYoQUvXl/ddLoVyJ--
+DQo+IE9uIFNlcCAyNCwgMjAyMywgYXQgMjoyNCBQTSwgQ2h1Y2sgTGV2ZXIgSUlJIDxjaHVjay5s
+ZXZlckBvcmFjbGUuY29tPiB3cm90ZToNCj4gDQo+PiBPbiBTZXAgMjQsIDIwMjMsIGF0IDEyOjUx
+IFBNLCBNYW50YXMgTWlrdWzEl25hcyA8Z3Jhd2l0eUBnbWFpbC5jb20+IHdyb3RlOg0KPj4gDQo+
+PiBSaWdodCwgd2hlcmVhcyBvbiB0aGUgc2VydmVyLCB0aGUgZmlyc3QgZmlsZSBpcyBmaWxsZWQg
+d2l0aCAiSGVsbG8gV29ybGQgKDQwOTIgYnl0ZXMpIiBhcyBJIG9yaWdpbmFsbHkgdHJpZWQgdG8g
+bmFycm93IGRvd24gdGhlIGlzc3VlLg0KPj4gDQo+PiBNZWFud2hpbGUsIDYuNC54IChBcmNoKSBj
+bGllbnRzIGRvbid0IHNlZW0gdG8gYmUgaGF2aW5nIGFueSBwcm9ibGVtcyB3aXRoIHRoZSBzYW1l
+IHNlcnZlciwgYW5kIHdpdGggc2VlbWluZ2x5IHRoZSBzYW1lIG1vdW50IG9wdGlvbnMuDQo+PiAN
+Cj4+IFRoYW5rcyBmb3IgbG9va2luZyBpbnRvIGl0ITxuZnNfa3JiNWlfd29ya2luZ182LjRjbGll
+bnQucGNhcD4NCj4gDQo+IEkgZm91bmQgL2EvIHByb2JsZW0gd2l0aCB0aGUgbmZzZC1maXhlcyBi
+cmFuY2ggYW5kIGtyYjVpLCBidXQNCj4gbWF5YmUgbm90IC95b3VyLyBwcm9ibGVtLCBhbmQgaXQn
+cyB3aXRoIGEgcmVjZW50IGNsaWVudC4gU2Nyb3VuZ2luZw0KPiBhIHY1LjEwLXZpbnRhZ2UgY2xp
+ZW50IGlzIGEgbGl0dGxlIG1vcmUgd29yaywgd2UnbGwgc2VlIGlmIHRoYXQncw0KPiBuZWVkZWQg
+Zm9yIGNvbmZpcm1pbmcgYW4gZXZlbnR1YWwgZml4Lg0KDQpUaGUgaXNzdWUgSSByZXByb2R1Y2Vk
+IGFwcGVhcnMgdG8gYmUgdW5yZWxhdGVkLg0KDQpJJ20gd29uZGVyaW5nIGlmIEkgY2FuIGdldCB5
+b3UgdG8gYmlzZWN0IHRoZSBzZXJ2ZXIga2VybmVsIHVzaW5nDQp5b3VyIHY1LjEwIGNsaWVudCB0
+byB0ZXN0PyBnb29kID0gdjYuNCwgYmFkID0gdjYuNSBzaG91bGQgZG8gaXQuDQoNCg0KLS0NCkNo
+dWNrIExldmVyDQoNCg0K
