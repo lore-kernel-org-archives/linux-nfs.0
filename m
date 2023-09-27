@@ -2,144 +2,92 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D9B3BE7E62B
-	for <linux-nfs@archiver.kernel.org>; Wed, 27 Sep 2023 04:17:27 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 8FB3AE810AC
+	for <linux-nfs@archiver.kernel.org>; Wed, 27 Sep 2023 08:45:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229651AbjI0ER0 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 27 Sep 2023 00:17:26 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41630 "EHLO
+        id S230254AbjI0Ipk (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 27 Sep 2023 04:45:40 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54778 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229543AbjI0EQV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Sep 2023 00:16:21 -0400
-Received: from mail-pl1-x62c.google.com (mail-pl1-x62c.google.com [IPv6:2607:f8b0:4864:20::62c])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 799365245;
-        Tue, 26 Sep 2023 17:16:35 -0700 (PDT)
-Received: by mail-pl1-x62c.google.com with SMTP id d9443c01a7336-1c47309a8ccso81804735ad.1;
-        Tue, 26 Sep 2023 17:16:35 -0700 (PDT)
+        with ESMTP id S230248AbjI0Ipk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Sep 2023 04:45:40 -0400
+Received: from mail-ej1-x62a.google.com (mail-ej1-x62a.google.com [IPv6:2a00:1450:4864:20::62a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 90C34EB
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Sep 2023 01:45:38 -0700 (PDT)
+Received: by mail-ej1-x62a.google.com with SMTP id a640c23a62f3a-9adb9fa7200so2349596266b.0
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Sep 2023 01:45:38 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1695773795; x=1696378595; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=HNJwTTZACq9yLQWS8t+PsblAtdyQNZRiQBfSWneDTAI=;
-        b=HOyYLZvZsgGR7Yhfk2SJTVilR1RVXrnU0UrAnyOi6tmSaWCsv0I3m6YiW0uxBkPCUW
-         gnzR4iDuK+vuTflEjZtpRpJyrCQZqkhtD5IIPP+6apTQwiyj79REQjq/U0baFiyoIyOG
-         8mkUBOht6cqvxtTFaZUH3uDKQ2Qq64OU8NGd4IrMWXrE4JrgwJIvV/rgZXq4RsTvt6hl
-         oKmjJDRBtVenNaXffQJ44XQBebex7pnbwfeP+VKXvHkTQ/og/IEBNnDWHc1l0cPKaHkd
-         7DTwpgZIxm05ByD/nILLwjSzIaITsKmwJAnpyQCP9OfBGRcPgDQvkrW78Eh1SYLEH1y2
-         EnQA==
+        d=gmail.com; s=20230601; t=1695804336; x=1696409136; darn=vger.kernel.org;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=Ft39eXrTN09xRSWXAlhFJWPCRsocPXYDKxU+rW0BfIA=;
+        b=WLLk1tH7Fv+LB0BJZy7Z7Pu3cXCkBErPVCnFBh8WQu84x1LGUzO8yyYnzxdVBD6hSE
+         uu+0ohcg5nM/bGeT1Qxq+21TvGeOv43x5aLBXuGgjT8rDZjPg/SImI4DDt9WCpBiqW8o
+         SHdIFJErxzPWQPjO6s28JqZIa43sdGDaui1kiNbOGKcS3GZzPT3Q+cUwt2aDtUdmR3op
+         o9HDU0Csk5npfQI7fMAdlR6ZSoY3Sfdel3Qvj6nFWOO+qJlAjdg4zIDeO/wWAx9pimnh
+         Fo24AxxKupALB6AfO5jHcCJW4TARIjf+vteVVHgeI0PLm3mzohiLhKGyHpWBS+hCXnwj
+         16+g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1695773795; x=1696378595;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=HNJwTTZACq9yLQWS8t+PsblAtdyQNZRiQBfSWneDTAI=;
-        b=CwwxR7t29v3HCP/awQUmXFiMx7CU9KpzOZXDfspGTHUNkkk6fR2Yw4DFI8sg7xD894
-         Im37PH2zVU9k4WahGoKteozhQMj20ubm3onVV/Iqe7mxSIF01BrXzYEJJXkEv3H5zolk
-         R47q8pS+k6gzCVyPLw9MPHwV0d0sqtB0pfhr9DsfswH++fYO6LMku7KnUa1d5ngeJ8BO
-         3Pg1z1bSZEdtW8htX57Tr5Hu1FJqnmR7ST5K6jM9oH3S9hln+BSqRkta+A7B6n/9PEJm
-         zNIt5jAtFJ0IHcfIVQrnYE0KAjETUjo8TW7UPehqxRwhnyZBn/uG0prg/TQf7ZUvcEnF
-         YxYg==
-X-Gm-Message-State: AOJu0Ywyt9DJXRAbIdj6GGQw+4U18lk//Kc2AfimotQeVbFbaCjA00HK
-        mBFz6ZEqwi6kmi1Myfrkswyw/NBs0o4=
-X-Google-Smtp-Source: AGHT+IGEoQ7+A0JA5z0kXlfyTZItPmnp0nZi0UEkm75KmkCl9l0iN9IZ6VcHDazRrrnAKZjflc6YYw==
-X-Received: by 2002:a17:902:d2c7:b0:1b7:f64b:379b with SMTP id n7-20020a170902d2c700b001b7f64b379bmr758925plc.17.1695773794758;
-        Tue, 26 Sep 2023 17:16:34 -0700 (PDT)
-Received: from wheely.local0.net ([203.63.110.121])
-        by smtp.gmail.com with ESMTPSA id n5-20020a170902e54500b001b8c6890623sm11703754plf.7.2023.09.26.17.16.32
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 26 Sep 2023 17:16:34 -0700 (PDT)
-From:   Nicholas Piggin <npiggin@gmail.com>
-To:     linux-nfs@vger.kernel.org
-Cc:     Nicholas Piggin <npiggin@gmail.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>, linux-kernel@vger.kernel.org
-Subject: [RFC PATCH] nfs: reduce stack usage of nfs_get_root
-Date:   Wed, 27 Sep 2023 10:16:23 +1000
-Message-Id: <20230927001624.750031-1-npiggin@gmail.com>
-X-Mailer: git-send-email 2.40.1
+        d=1e100.net; s=20230601; t=1695804336; x=1696409136;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=Ft39eXrTN09xRSWXAlhFJWPCRsocPXYDKxU+rW0BfIA=;
+        b=Kc7ym9UdzxUvvTmjL/4qjGcaKw2QE/MA9szMd2Ihud1ian008/eBza8l0s2EEWbuAd
+         13GIju2TYM0vz/eLXIOSuk2oWO03M2p40zyse7xir84tUnzRcnsBr+on1rcdhqZyMILC
+         cNcUVAQutDWraAu+f3h+k7SHvSokLly6SQCnz3DPQEspo0xrRjewJq2lEB3A7IFukVj5
+         HDMLqImshCVaro2YqgmtM4EmlfhcTbADs7Ow7kW/1o+JqnFob+4m03mZ0jxl5bLBkh3/
+         ioOfUCw0yG3tBrvXIiSvXOpzseHVL/JmAUHNzH8Q11opkeh7PKAAufFQ4bJYpgoluqWl
+         3ayA==
+X-Gm-Message-State: AOJu0YwHSvZyLlMY86jAyZMVoj3a0soXYazBqGwHYY6rDexTtie5fT5y
+        QiPzWCb6n73St4yx4o6jd5PKWEcUPj4=
+X-Google-Smtp-Source: AGHT+IFJ/X9EUYN41YTnChrvv/saAsl5fNbh1QhuCJirTUrMJzK32lporN/7Fub2V0Np8pGNqzH+hQ==
+X-Received: by 2002:a17:906:99c7:b0:9b2:a783:3d0 with SMTP id s7-20020a17090699c700b009b2a78303d0mr4704956ejn.37.1695804336267;
+        Wed, 27 Sep 2023 01:45:36 -0700 (PDT)
+Received: from ?IPV6:2001:778:e27f:a23:36c4:e19f:3c1:8a8? ([2001:778:e27f:a23:36c4:e19f:3c1:8a8])
+        by smtp.gmail.com with ESMTPSA id s12-20020a170906168c00b009737b8d47b6sm8874412ejd.203.2023.09.27.01.45.34
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Wed, 27 Sep 2023 01:45:34 -0700 (PDT)
+Message-ID: <5048a7a0-d2fe-41f3-be3b-4eead930c414@gmail.com>
+Date:   Wed, 27 Sep 2023 11:45:33 +0300
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: Data corruption with 5.10.x client -> 6.5.x server
+Content-Language: en-US, lt-LT
+To:     Chuck Lever III <chuck.lever@oracle.com>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <f1d0b234-e650-0f6e-0f5d-126b3d51d1eb@gmail.com>
+ <6E4B8EB9-FA7E-4ABD-81AB-6FB0EF07EA46@oracle.com>
+ <f90866e3-8c54-8a9c-c100-f5550c31b664@gmail.com>
+ <9691788F-2B62-4EB5-8879-CEDABD1B9D4B@oracle.com>
+ <78c81a97-4324-c2df-27c0-917436ddee07@gmail.com>
+ <6908E735-6912-4AEC-8AD7-995F2F8A144A@oracle.com>
+ <CA1D7203-72FB-4681-AD60-F1D80A57C154@oracle.com>
+ <8cb19861-7fd2-4d12-bd76-78bbb8fcee7c@gmail.com>
+ <2660F09A-5823-4581-8977-4F41153724D6@oracle.com>
+From:   =?UTF-8?Q?Mantas_Mikul=C4=97nas?= <grawity@gmail.com>
+In-Reply-To: <2660F09A-5823-4581-8977-4F41153724D6@oracle.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Move fsinfo allocation off stack, reducing stack overhead of
-nfs_get_root from 304 to 192 bytes.
+On 26/09/2023 16.57, Chuck Lever III wrote:
+> I'm wondering if I can get you to bisect the server kernel using
+> your v5.10 client to test? good = v6.4, bad = v6.5 should do it.
+>> Yeah, I will try to bisect but it'll probably take a day or two.
 
-Signed-off-by: Nicholas Piggin <npiggin@gmail.com>
----
-Hi,
+I'm *nearly* done with bisect (most of the builds with distro config 
+took over an hour on this aging Xeon), and I'm currently in the middle of:
 
-This is motivated by a stack overflow described here:
-https://lore.kernel.org/netdev/20230927001308.749910-1-npiggin@gmail.com/
+518f375 [refs/bisect/bad] nfsd: don't provide pre/post-op attrs if 
+fh_getattr fails
+df56b38 NFSD: Remove nfsd_readv()
+703d752 [HEAD] NFSD: Hoist rq_vec preparation into nfsd_read() [step two]
+507df40 NFSD: Hoist rq_vec preparation into nfsd_read()
+ed4a567 [refs/bisect/good-XX] NFSD: Update rq_next_page between COMPOUND 
+operations
 
-NFS is not really a major culprit but it seems not too hard to
-shrink the stack a little.
-
-Thanks,
-Nick
-
- fs/nfs/getroot.c | 22 ++++++++++++++--------
- 1 file changed, 14 insertions(+), 8 deletions(-)
-
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 11ff2b2e060f..6e4188c09639 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -68,7 +68,7 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
- {
- 	struct nfs_fs_context *ctx = nfs_fc2context(fc);
- 	struct nfs_server *server = NFS_SB(s), *clone_server;
--	struct nfs_fsinfo fsinfo;
-+	struct nfs_fsinfo *fsinfo;
- 	struct dentry *root;
- 	struct inode *inode;
- 	char *name;
-@@ -79,19 +79,23 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
- 	if (!name)
- 		goto out;
- 
--	/* get the actual root for this mount */
--	fsinfo.fattr = nfs_alloc_fattr_with_label(server);
--	if (fsinfo.fattr == NULL)
-+	fsinfo = kmalloc(sizeof(*fsinfo), GFP_KERNEL);
-+	if (!fsinfo)
- 		goto out_name;
- 
--	error = server->nfs_client->rpc_ops->getroot(server, ctx->mntfh, &fsinfo);
-+	/* get the actual root for this mount */
-+	fsinfo->fattr = nfs_alloc_fattr_with_label(server);
-+	if (fsinfo->fattr == NULL)
-+		goto out_fsinfo;
-+
-+	error = server->nfs_client->rpc_ops->getroot(server, ctx->mntfh, fsinfo);
- 	if (error < 0) {
- 		dprintk("nfs_get_root: getattr error = %d\n", -error);
- 		nfs_errorf(fc, "NFS: Couldn't getattr on root");
- 		goto out_fattr;
- 	}
- 
--	inode = nfs_fhget(s, ctx->mntfh, fsinfo.fattr);
-+	inode = nfs_fhget(s, ctx->mntfh, fsinfo->fattr);
- 	if (IS_ERR(inode)) {
- 		dprintk("nfs_get_root: get root inode failed\n");
- 		error = PTR_ERR(inode);
-@@ -148,11 +152,13 @@ int nfs_get_root(struct super_block *s, struct fs_context *fc)
- 		!(kflags_out & SECURITY_LSM_NATIVE_LABELS))
- 		server->caps &= ~NFS_CAP_SECURITY_LABEL;
- 
--	nfs_setsecurity(inode, fsinfo.fattr);
-+	nfs_setsecurity(inode, fsinfo->fattr);
- 	error = 0;
- 
- out_fattr:
--	nfs_free_fattr(fsinfo.fattr);
-+	nfs_free_fattr(fsinfo->fattr);
-+out_fsinfo:
-+	kfree(fsinfo);
- out_name:
- 	kfree(name);
- out:
--- 
-2.40.1
 
