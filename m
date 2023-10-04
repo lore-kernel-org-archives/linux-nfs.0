@@ -2,38 +2,40 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D3FF7E7C4F4
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Oct 2023 18:56:49 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 3D4E6E7C4E9
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Oct 2023 18:57:02 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244771AbjJDS4u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Oct 2023 14:56:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47068 "EHLO
+        id S244876AbjJDS5D (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 4 Oct 2023 14:57:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:44886 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244925AbjJDSzS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Oct 2023 14:55:18 -0400
+        with ESMTP id S244905AbjJDSza (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Oct 2023 14:55:30 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BABE51711;
-        Wed,  4 Oct 2023 11:54:46 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 16428C433C8;
-        Wed,  4 Oct 2023 18:54:46 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7F310FC;
+        Wed,  4 Oct 2023 11:54:48 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 73DB4C433CB;
+        Wed,  4 Oct 2023 18:54:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1696445686;
-        bh=zFinb0jqT2nU3IpA2qqCTdAgq+MXSMvzuDI0JD/rfC0=;
+        s=k20201202; t=1696445688;
+        bh=pJnNsdencvKwZRbSlZ+blXLwAqnsIPx1YNtPzl1LJFc=;
         h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-        b=fdOKof/hta+WL7Le8kp6liOGDBUAUHO+PDB1a1m7UpyiyhJnb7I8BogRyE+N43si8
-         xmcRgGamJoXwFLXv1ksQ7P1B7GfpY+uSweV6RNRK5m2ybK37fnxmJVfBXqzYJhs5rb
-         UWjN5x5ULx2nw8iPmjRaBzNqptv1xGf1N9nLekClo/lyOTHLfUV2YTfXA2v41qZYBe
-         snQIx0RnyTh6KHJP78q//coD/F1gY6VDBGQ68RnNQULwLEoaLSGnnQC95dNo6PEamL
-         kIgjg7l7/C2qp/RiS05aHGkBTH6wMAxZmydfAi4qZpt1qdPtdFuDE/ySjQ4g8ry0Zf
-         doWzMYmCiqlGQ==
+        b=KJtutZg6tWNN340g/jXrAr3pX1klt2TNzrwNNaZGsYnQZ2/AdEb9lrows+NaO0Ljp
+         6BSgQvsxpy8XQaPXgF1rbbvZqWEwDh2qYf50j7GwKawcQjsV8erPMGtEYwxh3vfosw
+         ncP9fAs06sjCz2F/bf+dY6Z1mqdt5zb5Dcmw5LcJqLfUtdm8GlMQs1wBzQRyCwPGrf
+         yiofC9Er7trtM+j6CcRKV3ow7JcBofI3Wz8z0KqtPBjJe3r5SrsGWWmhke9oJzZ7qZ
+         MlhtUs407eONSRPCDXndt//RA+GVh8wWZtRPJYfZqZ18NPqRm7CBrTnZViahx+yPeV
+         0j3QTsuS83mCA==
 From:   Jeff Layton <jlayton@kernel.org>
 To:     Alexander Viro <viro@zeniv.linux.org.uk>,
         Christian Brauner <brauner@kernel.org>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 51/89] nfs: convert to new timestamp accessors
-Date:   Wed,  4 Oct 2023 14:52:36 -0400
-Message-ID: <20231004185347.80880-49-jlayton@kernel.org>
+Cc:     Neil Brown <neilb@suse.de>, Olga Kornievskaia <kolga@netapp.com>,
+        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v2 52/89] nfsd: convert to new timestamp accessors
+Date:   Wed,  4 Oct 2023 14:52:37 -0400
+Message-ID: <20231004185347.80880-50-jlayton@kernel.org>
 X-Mailer: git-send-email 2.41.0
 In-Reply-To: <20231004185347.80880-1-jlayton@kernel.org>
 References: <20231004185221.80802-1-jlayton@kernel.org>
@@ -48,151 +50,99 @@ Convert to using the new inode timestamp accessor functions.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfs/callback_proc.c |  2 +-
- fs/nfs/fscache.h       |  4 ++--
- fs/nfs/inode.c         | 30 +++++++++++++++---------------
- 3 files changed, 18 insertions(+), 18 deletions(-)
+ fs/nfsd/blocklayout.c | 3 ++-
+ fs/nfsd/nfs3proc.c    | 4 ++--
+ fs/nfsd/nfs4proc.c    | 8 ++++----
+ fs/nfsd/nfsctl.c      | 2 +-
+ fs/nfsd/vfs.c         | 2 +-
+ 5 files changed, 10 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 6bed1394d748..96a4923080ae 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -60,7 +60,7 @@ __be32 nfs4_callback_getattr(void *argp, void *resp,
- 	if (nfs_have_writebacks(inode))
- 		res->change_attr++;
- 	res->ctime = inode_get_ctime(inode);
--	res->mtime = inode->i_mtime;
-+	res->mtime = inode_get_mtime(inode);
- 	res->bitmap[0] = (FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE) &
- 		args->bitmap[0];
- 	res->bitmap[1] = (FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY) &
-diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
-index 2dc64454492b..5407ab8c8783 100644
---- a/fs/nfs/fscache.h
-+++ b/fs/nfs/fscache.h
-@@ -114,8 +114,8 @@ static inline void nfs_fscache_update_auxdata(struct nfs_fscache_inode_auxdata *
- 					      struct inode *inode)
+diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
+index 01d7fd108cf3..46fd74d91ea9 100644
+--- a/fs/nfsd/blocklayout.c
++++ b/fs/nfsd/blocklayout.c
+@@ -117,12 +117,13 @@ static __be32
+ nfsd4_block_commit_blocks(struct inode *inode, struct nfsd4_layoutcommit *lcp,
+ 		struct iomap *iomaps, int nr_iomaps)
  {
- 	memset(auxdata, 0, sizeof(*auxdata));
--	auxdata->mtime_sec  = inode->i_mtime.tv_sec;
--	auxdata->mtime_nsec = inode->i_mtime.tv_nsec;
-+	auxdata->mtime_sec  = inode_get_mtime(inode).tv_sec;
-+	auxdata->mtime_nsec = inode_get_mtime(inode).tv_nsec;
- 	auxdata->ctime_sec  = inode_get_ctime(inode).tv_sec;
- 	auxdata->ctime_nsec = inode_get_ctime(inode).tv_nsec;
++	struct timespec64 mtime = inode_get_mtime(inode);
+ 	loff_t new_size = lcp->lc_last_wr + 1;
+ 	struct iattr iattr = { .ia_valid = 0 };
+ 	int error;
  
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index e21c073158e5..ebb8d60e1152 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -512,8 +512,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		} else
- 			init_special_inode(inode, inode->i_mode, fattr->rdev);
+ 	if (lcp->lc_mtime.tv_nsec == UTIME_NOW ||
+-	    timespec64_compare(&lcp->lc_mtime, &inode->i_mtime) < 0)
++	    timespec64_compare(&lcp->lc_mtime, &mtime) < 0)
+ 		lcp->lc_mtime = current_time(inode);
+ 	iattr.ia_valid |= ATTR_ATIME | ATTR_CTIME | ATTR_MTIME;
+ 	iattr.ia_atime = iattr.ia_ctime = iattr.ia_mtime = lcp->lc_mtime;
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index 9571141701ff..b78eceebd945 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -295,8 +295,8 @@ nfsd3_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			status = nfserr_exist;
+ 			break;
+ 		case NFS3_CREATE_EXCLUSIVE:
+-			if (d_inode(child)->i_mtime.tv_sec == v_mtime &&
+-			    d_inode(child)->i_atime.tv_sec == v_atime &&
++			if (inode_get_mtime_sec(d_inode(child)) == v_mtime &&
++			    inode_get_atime_sec(d_inode(child)) == v_atime &&
+ 			    d_inode(child)->i_size == 0) {
+ 				break;
+ 			}
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 60262fd27b15..2863ca530677 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -322,8 +322,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			status = nfserr_exist;
+ 			break;
+ 		case NFS4_CREATE_EXCLUSIVE:
+-			if (d_inode(child)->i_mtime.tv_sec == v_mtime &&
+-			    d_inode(child)->i_atime.tv_sec == v_atime &&
++			if (inode_get_mtime_sec(d_inode(child)) == v_mtime &&
++			    inode_get_atime_sec(d_inode(child)) == v_atime &&
+ 			    d_inode(child)->i_size == 0) {
+ 				open->op_created = true;
+ 				break;		/* subtle */
+@@ -331,8 +331,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 			status = nfserr_exist;
+ 			break;
+ 		case NFS4_CREATE_EXCLUSIVE4_1:
+-			if (d_inode(child)->i_mtime.tv_sec == v_mtime &&
+-			    d_inode(child)->i_atime.tv_sec == v_atime &&
++			if (inode_get_mtime_sec(d_inode(child)) == v_mtime &&
++			    inode_get_atime_sec(d_inode(child)) == v_atime &&
+ 			    d_inode(child)->i_size == 0) {
+ 				open->op_created = true;
+ 				goto set_attr;	/* subtle */
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index b71744e355a8..2509b95d33d3 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1133,7 +1133,7 @@ static struct inode *nfsd_get_inode(struct super_block *sb, umode_t mode)
+ 	/* Following advice from simple_fill_super documentation: */
+ 	inode->i_ino = iunique(sb, NFSD_MaxReserved);
+ 	inode->i_mode = mode;
+-	inode->i_atime = inode->i_mtime = inode_set_ctime_current(inode);
++	simple_inode_init_ts(inode);
+ 	switch (mode & S_IFMT) {
+ 	case S_IFDIR:
+ 		inode->i_fop = &simple_dir_operations;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 5bf3cffde831..9483c72ffbbd 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -538,7 +538,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
  
--		memset(&inode->i_atime, 0, sizeof(inode->i_atime));
--		memset(&inode->i_mtime, 0, sizeof(inode->i_mtime));
-+		inode_set_atime(inode, 0, 0);
-+		inode_set_mtime(inode, 0, 0);
- 		inode_set_ctime(inode, 0, 0);
- 		inode_set_iversion_raw(inode, 0);
- 		inode->i_size = 0;
-@@ -527,11 +527,11 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		nfsi->read_cache_jiffies = fattr->time_start;
- 		nfsi->attr_gencount = fattr->gencount;
- 		if (fattr->valid & NFS_ATTR_FATTR_ATIME)
--			inode->i_atime = fattr->atime;
-+			inode_set_atime_to_ts(inode, fattr->atime);
- 		else if (fattr_supported & NFS_ATTR_FATTR_ATIME)
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_ATIME);
- 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
--			inode->i_mtime = fattr->mtime;
-+			inode_set_mtime_to_ts(inode, fattr->mtime);
- 		else if (fattr_supported & NFS_ATTR_FATTR_MTIME)
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_MTIME);
- 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
-@@ -742,9 +742,9 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
- 		NFS_I(inode)->cache_validity &= ~(NFS_INO_INVALID_ATIME
- 				| NFS_INO_INVALID_CTIME);
- 		if (fattr->valid & NFS_ATTR_FATTR_ATIME)
--			inode->i_atime = fattr->atime;
-+			inode_set_atime_to_ts(inode, fattr->atime);
- 		else if (attr->ia_valid & ATTR_ATIME_SET)
--			inode->i_atime = attr->ia_atime;
-+			inode_set_atime_to_ts(inode, attr->ia_atime);
- 		else
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_ATIME);
+ 	nfsd_sanitize_attrs(inode, iap);
  
-@@ -758,9 +758,9 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
- 		NFS_I(inode)->cache_validity &= ~(NFS_INO_INVALID_MTIME
- 				| NFS_INO_INVALID_CTIME);
- 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
--			inode->i_mtime = fattr->mtime;
-+			inode_set_mtime_to_ts(inode, fattr->mtime);
- 		else if (attr->ia_valid & ATTR_MTIME_SET)
--			inode->i_mtime = attr->ia_mtime;
-+			inode_set_mtime_to_ts(inode, attr->ia_mtime);
- 		else
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_MTIME);
+-	if (check_guard && guardtime != inode_get_ctime(inode).tv_sec)
++	if (check_guard && guardtime != inode_get_ctime_sec(inode))
+ 		return nfserr_notsync;
  
-@@ -1451,11 +1451,11 @@ static void nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 		inode_set_ctime_to_ts(inode, fattr->ctime);
- 	}
- 
--	ts = inode->i_mtime;
-+	ts = inode_get_mtime(inode);
- 	if ((fattr->valid & NFS_ATTR_FATTR_PREMTIME)
- 			&& (fattr->valid & NFS_ATTR_FATTR_MTIME)
- 			&& timespec64_equal(&ts, &fattr->pre_mtime)) {
--		inode->i_mtime = fattr->mtime;
-+		inode_set_mtime_to_ts(inode, fattr->mtime);
- 	}
- 	if ((fattr->valid & NFS_ATTR_FATTR_PRESIZE)
- 			&& (fattr->valid & NFS_ATTR_FATTR_SIZE)
-@@ -1506,7 +1506,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 		if ((fattr->valid & NFS_ATTR_FATTR_CHANGE) != 0 && !inode_eq_iversion_raw(inode, fattr->change_attr))
- 			invalid |= NFS_INO_INVALID_CHANGE;
- 
--		ts = inode->i_mtime;
-+		ts = inode_get_mtime(inode);
- 		if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec64_equal(&ts, &fattr->mtime))
- 			invalid |= NFS_INO_INVALID_MTIME;
- 
-@@ -1534,7 +1534,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
- 	if ((fattr->valid & NFS_ATTR_FATTR_NLINK) && inode->i_nlink != fattr->nlink)
- 		invalid |= NFS_INO_INVALID_NLINK;
- 
--	ts = inode->i_atime;
-+	ts = inode_get_atime(inode);
- 	if ((fattr->valid & NFS_ATTR_FATTR_ATIME) && !timespec64_equal(&ts, &fattr->atime))
- 		invalid |= NFS_INO_INVALID_ATIME;
- 
-@@ -2002,7 +2002,7 @@ int nfs_post_op_update_inode_force_wcc_locked(struct inode *inode, struct nfs_fa
- 	}
- 	if ((fattr->valid & NFS_ATTR_FATTR_MTIME) != 0 &&
- 			(fattr->valid & NFS_ATTR_FATTR_PREMTIME) == 0) {
--		fattr->pre_mtime = inode->i_mtime;
-+		fattr->pre_mtime = inode_get_mtime(inode);
- 		fattr->valid |= NFS_ATTR_FATTR_PREMTIME;
- 	}
- 	if ((fattr->valid & NFS_ATTR_FATTR_SIZE) != 0 &&
-@@ -2184,7 +2184,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	}
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_MTIME)
--		inode->i_mtime = fattr->mtime;
-+		inode_set_mtime_to_ts(inode, fattr->mtime);
- 	else if (fattr_supported & NFS_ATTR_FATTR_MTIME)
- 		nfsi->cache_validity |=
- 			save_cache_validity & NFS_INO_INVALID_MTIME;
-@@ -2220,7 +2220,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			save_cache_validity & NFS_INO_INVALID_SIZE;
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_ATIME)
--		inode->i_atime = fattr->atime;
-+		inode_set_atime_to_ts(inode, fattr->atime);
- 	else if (fattr_supported & NFS_ATTR_FATTR_ATIME)
- 		nfsi->cache_validity |=
- 			save_cache_validity & NFS_INO_INVALID_ATIME;
+ 	/*
 -- 
 2.41.0
 
