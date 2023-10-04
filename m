@@ -2,132 +2,197 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A7D02E7C4F5
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Oct 2023 18:54:44 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D3FF7E7C4F4
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Oct 2023 18:56:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S244799AbjJDSyp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Oct 2023 14:54:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46878 "EHLO
+        id S244771AbjJDS4u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 4 Oct 2023 14:56:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47068 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S244618AbjJDSye (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Oct 2023 14:54:34 -0400
-Received: from mail-lj1-x235.google.com (mail-lj1-x235.google.com [IPv6:2a00:1450:4864:20::235])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8B2601B8
-        for <linux-nfs@vger.kernel.org>; Wed,  4 Oct 2023 11:53:58 -0700 (PDT)
-Received: by mail-lj1-x235.google.com with SMTP id 38308e7fff4ca-2c29d23bee2so263661fa.0
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Oct 2023 11:53:58 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=umich.edu; s=google-2016-06-03; t=1696445636; x=1697050436; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=0KzDJRS7KxkkZ6Oh0+MnmsXHFeSbYVpjE5bfzb8MwZM=;
-        b=Ws4qCUkDzsKhsOn+heD62DOk+zU6uH2oy9wkshi+mlDUHsfnDtnXPlzXrojsH8zFlb
-         dCf8QESSowRixpMsMkYTxDr8Nh9S+83WJDGy0/1MPG8girIF58TT0KnwtLnhM4flQ8Lf
-         AESVHr4Cen7GR9fS51XrjldqKP6MBS0PDw0t4rwY1rv7A9mSIOOnMsD1gAW8yJb1r1ne
-         ArByjJJ6JboBXCgWPhLHkpWFFn8TPwDn/svKvooMRki7k7w+69H2HFhfb7fHGcpJIyPZ
-         2Gpoc90EunM+8ncdocZtVw4SFjMAGJbKuYNMkNXqisOm0uY3C9GBgdcqZSKMXfr/0sL4
-         6l8A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1696445636; x=1697050436;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=0KzDJRS7KxkkZ6Oh0+MnmsXHFeSbYVpjE5bfzb8MwZM=;
-        b=eXJRBoQUVWGlIXfE4eA6sDLjuE1G6Qfxu+9JvCh/OjtbNIfmNzLrfu4CPBJAXix1S2
-         lOLLhJ4AVi5COwJqJOwWuSo0EcIypow1zXFqZj+PkArwUBCqJnIeVVWhfqCQZV3xmu08
-         OtZMhrznbnP7zUP5SLMWxaDdZ8fW/jIW8luKN9TBp2RP2P9K47YAMzXMoS73AtzvM1/Q
-         /ND/zcKENozfqmiYbMR3N8jw7mhAn8Vf1SCzsj7lWNnZq7QvEb0q8aGJT6VXzZfd7Vqw
-         ezK9YFMf//KbDpMnaJFahSnLrmCtUhhh1P8CKurZv3RhxuBO3yzf9/hUQcr7Wl6NTnbT
-         4fkg==
-X-Gm-Message-State: AOJu0YztzJfy0K0WRJm3QpKcCrxZ3rNsz9aCU9jppH+MCHxqjRuXmqIM
-        ajXfdY1rkGyK3/VtxbhkHRrmDaTwx2pJ8UdsbnA2Geg1
-X-Google-Smtp-Source: AGHT+IHxMII9E+vZVP07wA14i9ESof8uSHDbdaJohu/0MosOxS8pMOVqtNoNcLxfcQzjOIemgvPAy+EsTmvPTMpcL94=
-X-Received: by 2002:a2e:b53a:0:b0:2bc:e36a:9e32 with SMTP id
- z26-20020a2eb53a000000b002bce36a9e32mr2723977ljm.5.1696445636362; Wed, 04 Oct
- 2023 11:53:56 -0700 (PDT)
+        with ESMTP id S244925AbjJDSzS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Oct 2023 14:55:18 -0400
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BABE51711;
+        Wed,  4 Oct 2023 11:54:46 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 16428C433C8;
+        Wed,  4 Oct 2023 18:54:46 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1696445686;
+        bh=zFinb0jqT2nU3IpA2qqCTdAgq+MXSMvzuDI0JD/rfC0=;
+        h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+        b=fdOKof/hta+WL7Le8kp6liOGDBUAUHO+PDB1a1m7UpyiyhJnb7I8BogRyE+N43si8
+         xmcRgGamJoXwFLXv1ksQ7P1B7GfpY+uSweV6RNRK5m2ybK37fnxmJVfBXqzYJhs5rb
+         UWjN5x5ULx2nw8iPmjRaBzNqptv1xGf1N9nLekClo/lyOTHLfUV2YTfXA2v41qZYBe
+         snQIx0RnyTh6KHJP78q//coD/F1gY6VDBGQ68RnNQULwLEoaLSGnnQC95dNo6PEamL
+         kIgjg7l7/C2qp/RiS05aHGkBTH6wMAxZmydfAi4qZpt1qdPtdFuDE/ySjQ4g8ry0Zf
+         doWzMYmCiqlGQ==
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Alexander Viro <viro@zeniv.linux.org.uk>,
+        Christian Brauner <brauner@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc:     linux-nfs@vger.kernel.org
+Subject: [PATCH v2 51/89] nfs: convert to new timestamp accessors
+Date:   Wed,  4 Oct 2023 14:52:36 -0400
+Message-ID: <20231004185347.80880-49-jlayton@kernel.org>
+X-Mailer: git-send-email 2.41.0
+In-Reply-To: <20231004185347.80880-1-jlayton@kernel.org>
+References: <20231004185221.80802-1-jlayton@kernel.org>
+ <20231004185347.80880-1-jlayton@kernel.org>
 MIME-Version: 1.0
-References: <93929ecf62e79670f1e3a1878757fc9fa443aa7c.1688210094.git.bcodding@redhat.com>
-In-Reply-To: <93929ecf62e79670f1e3a1878757fc9fa443aa7c.1688210094.git.bcodding@redhat.com>
-From:   Olga Kornievskaia <aglo@umich.edu>
-Date:   Wed, 4 Oct 2023 14:53:44 -0400
-Message-ID: <CAN-5tyGf6txJpoJBSzEh75BgZAQ1f4TbZF10Dw25GjeE4Pz=7w@mail.gmail.com>
-Subject: Re: [PATCH v3] NFSv4: Fix dropped lock for racing OPEN and delegation return
-To:     Benjamin Coddington <bcodding@redhat.com>
-Cc:     trond.myklebust@hammerspace.com, anna@kernel.org,
-        Olga.Kornievskaia@netapp.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Trond/Ben,
+Convert to using the new inode timestamp accessor functions.
 
-Did this ever go to stable? I don't know if I missed a mail from Greg
-that it was picked up or it never got picked up because it wasn't
-marked for stable?
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/nfs/callback_proc.c |  2 +-
+ fs/nfs/fscache.h       |  4 ++--
+ fs/nfs/inode.c         | 30 +++++++++++++++---------------
+ 3 files changed, 18 insertions(+), 18 deletions(-)
 
-Thank you.
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 6bed1394d748..96a4923080ae 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -60,7 +60,7 @@ __be32 nfs4_callback_getattr(void *argp, void *resp,
+ 	if (nfs_have_writebacks(inode))
+ 		res->change_attr++;
+ 	res->ctime = inode_get_ctime(inode);
+-	res->mtime = inode->i_mtime;
++	res->mtime = inode_get_mtime(inode);
+ 	res->bitmap[0] = (FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE) &
+ 		args->bitmap[0];
+ 	res->bitmap[1] = (FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY) &
+diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
+index 2dc64454492b..5407ab8c8783 100644
+--- a/fs/nfs/fscache.h
++++ b/fs/nfs/fscache.h
+@@ -114,8 +114,8 @@ static inline void nfs_fscache_update_auxdata(struct nfs_fscache_inode_auxdata *
+ 					      struct inode *inode)
+ {
+ 	memset(auxdata, 0, sizeof(*auxdata));
+-	auxdata->mtime_sec  = inode->i_mtime.tv_sec;
+-	auxdata->mtime_nsec = inode->i_mtime.tv_nsec;
++	auxdata->mtime_sec  = inode_get_mtime(inode).tv_sec;
++	auxdata->mtime_nsec = inode_get_mtime(inode).tv_nsec;
+ 	auxdata->ctime_sec  = inode_get_ctime(inode).tv_sec;
+ 	auxdata->ctime_nsec = inode_get_ctime(inode).tv_nsec;
+ 
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index e21c073158e5..ebb8d60e1152 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -512,8 +512,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		} else
+ 			init_special_inode(inode, inode->i_mode, fattr->rdev);
+ 
+-		memset(&inode->i_atime, 0, sizeof(inode->i_atime));
+-		memset(&inode->i_mtime, 0, sizeof(inode->i_mtime));
++		inode_set_atime(inode, 0, 0);
++		inode_set_mtime(inode, 0, 0);
+ 		inode_set_ctime(inode, 0, 0);
+ 		inode_set_iversion_raw(inode, 0);
+ 		inode->i_size = 0;
+@@ -527,11 +527,11 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
+ 		nfsi->read_cache_jiffies = fattr->time_start;
+ 		nfsi->attr_gencount = fattr->gencount;
+ 		if (fattr->valid & NFS_ATTR_FATTR_ATIME)
+-			inode->i_atime = fattr->atime;
++			inode_set_atime_to_ts(inode, fattr->atime);
+ 		else if (fattr_supported & NFS_ATTR_FATTR_ATIME)
+ 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_ATIME);
+ 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
+-			inode->i_mtime = fattr->mtime;
++			inode_set_mtime_to_ts(inode, fattr->mtime);
+ 		else if (fattr_supported & NFS_ATTR_FATTR_MTIME)
+ 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_MTIME);
+ 		if (fattr->valid & NFS_ATTR_FATTR_CTIME)
+@@ -742,9 +742,9 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
+ 		NFS_I(inode)->cache_validity &= ~(NFS_INO_INVALID_ATIME
+ 				| NFS_INO_INVALID_CTIME);
+ 		if (fattr->valid & NFS_ATTR_FATTR_ATIME)
+-			inode->i_atime = fattr->atime;
++			inode_set_atime_to_ts(inode, fattr->atime);
+ 		else if (attr->ia_valid & ATTR_ATIME_SET)
+-			inode->i_atime = attr->ia_atime;
++			inode_set_atime_to_ts(inode, attr->ia_atime);
+ 		else
+ 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_ATIME);
+ 
+@@ -758,9 +758,9 @@ void nfs_setattr_update_inode(struct inode *inode, struct iattr *attr,
+ 		NFS_I(inode)->cache_validity &= ~(NFS_INO_INVALID_MTIME
+ 				| NFS_INO_INVALID_CTIME);
+ 		if (fattr->valid & NFS_ATTR_FATTR_MTIME)
+-			inode->i_mtime = fattr->mtime;
++			inode_set_mtime_to_ts(inode, fattr->mtime);
+ 		else if (attr->ia_valid & ATTR_MTIME_SET)
+-			inode->i_mtime = attr->ia_mtime;
++			inode_set_mtime_to_ts(inode, attr->ia_mtime);
+ 		else
+ 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_MTIME);
+ 
+@@ -1451,11 +1451,11 @@ static void nfs_wcc_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		inode_set_ctime_to_ts(inode, fattr->ctime);
+ 	}
+ 
+-	ts = inode->i_mtime;
++	ts = inode_get_mtime(inode);
+ 	if ((fattr->valid & NFS_ATTR_FATTR_PREMTIME)
+ 			&& (fattr->valid & NFS_ATTR_FATTR_MTIME)
+ 			&& timespec64_equal(&ts, &fattr->pre_mtime)) {
+-		inode->i_mtime = fattr->mtime;
++		inode_set_mtime_to_ts(inode, fattr->mtime);
+ 	}
+ 	if ((fattr->valid & NFS_ATTR_FATTR_PRESIZE)
+ 			&& (fattr->valid & NFS_ATTR_FATTR_SIZE)
+@@ -1506,7 +1506,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
+ 		if ((fattr->valid & NFS_ATTR_FATTR_CHANGE) != 0 && !inode_eq_iversion_raw(inode, fattr->change_attr))
+ 			invalid |= NFS_INO_INVALID_CHANGE;
+ 
+-		ts = inode->i_mtime;
++		ts = inode_get_mtime(inode);
+ 		if ((fattr->valid & NFS_ATTR_FATTR_MTIME) && !timespec64_equal(&ts, &fattr->mtime))
+ 			invalid |= NFS_INO_INVALID_MTIME;
+ 
+@@ -1534,7 +1534,7 @@ static int nfs_check_inode_attributes(struct inode *inode, struct nfs_fattr *fat
+ 	if ((fattr->valid & NFS_ATTR_FATTR_NLINK) && inode->i_nlink != fattr->nlink)
+ 		invalid |= NFS_INO_INVALID_NLINK;
+ 
+-	ts = inode->i_atime;
++	ts = inode_get_atime(inode);
+ 	if ((fattr->valid & NFS_ATTR_FATTR_ATIME) && !timespec64_equal(&ts, &fattr->atime))
+ 		invalid |= NFS_INO_INVALID_ATIME;
+ 
+@@ -2002,7 +2002,7 @@ int nfs_post_op_update_inode_force_wcc_locked(struct inode *inode, struct nfs_fa
+ 	}
+ 	if ((fattr->valid & NFS_ATTR_FATTR_MTIME) != 0 &&
+ 			(fattr->valid & NFS_ATTR_FATTR_PREMTIME) == 0) {
+-		fattr->pre_mtime = inode->i_mtime;
++		fattr->pre_mtime = inode_get_mtime(inode);
+ 		fattr->valid |= NFS_ATTR_FATTR_PREMTIME;
+ 	}
+ 	if ((fattr->valid & NFS_ATTR_FATTR_SIZE) != 0 &&
+@@ -2184,7 +2184,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_MTIME)
+-		inode->i_mtime = fattr->mtime;
++		inode_set_mtime_to_ts(inode, fattr->mtime);
+ 	else if (fattr_supported & NFS_ATTR_FATTR_MTIME)
+ 		nfsi->cache_validity |=
+ 			save_cache_validity & NFS_INO_INVALID_MTIME;
+@@ -2220,7 +2220,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			save_cache_validity & NFS_INO_INVALID_SIZE;
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_ATIME)
+-		inode->i_atime = fattr->atime;
++		inode_set_atime_to_ts(inode, fattr->atime);
+ 	else if (fattr_supported & NFS_ATTR_FATTR_ATIME)
+ 		nfsi->cache_validity |=
+ 			save_cache_validity & NFS_INO_INVALID_ATIME;
+-- 
+2.41.0
 
-On Sat, Jul 1, 2023 at 8:13=E2=80=AFAM Benjamin Coddington <bcodding@redhat=
-.com> wrote:
->
-> Commmit f5ea16137a3f ("NFSv4: Retry LOCK on OLD_STATEID during delegation
-> return") attempted to solve this problem by using nfs4's generic async er=
-ror
-> handling, but introduced a regression where v4.0 lock recovery would hang=
-.
-> The additional complexity introduced by overloading that error handling i=
-s
-> not necessary for this case.  This patch expects that commit to be
-> reverted.
->
-> The problem as originally explained in the above commit is:
->
->     There's a small window where a LOCK sent during a delegation return c=
-an
->     race with another OPEN on client, but the open stateid has not yet be=
-en
->     updated.  In this case, the client doesn't handle the OLD_STATEID err=
-or
->     from the server and will lose this lock, emitting:
->     "NFS: nfs4_handle_delegation_recall_error: unhandled error -10024".
->
-> Fix this by using the old_stateid refresh helpers if the server replies
-> with OLD_STATEID.
->
-> Suggested-by: Trond Myklebust <trondmy@hammerspace.com>
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfs/nfs4proc.c | 9 ++++++++-
->  1 file changed, 8 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 6bb14f6cfbc0..f350f41e1967 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7180,8 +7180,15 @@ static void nfs4_lock_done(struct rpc_task *task, =
-void *calldata)
->                 } else if (!nfs4_update_lock_stateid(lsp, &data->res.stat=
-eid))
->                         goto out_restart;
->                 break;
-> -       case -NFS4ERR_BAD_STATEID:
->         case -NFS4ERR_OLD_STATEID:
-> +               if (data->arg.new_lock_owner !=3D 0 &&
-> +                       nfs4_refresh_open_old_stateid(&data->arg.open_sta=
-teid,
-> +                                       lsp->ls_state))
-> +                       goto out_restart;
-> +               else if (nfs4_refresh_lock_old_stateid(&data->arg.lock_st=
-ateid, lsp))
-> +                       goto out_restart;
-> +               fallthrough;
-> +       case -NFS4ERR_BAD_STATEID:
->         case -NFS4ERR_STALE_STATEID:
->         case -NFS4ERR_EXPIRED:
->                 if (data->arg.new_lock_owner !=3D 0) {
-> --
-> 2.40.1
->
