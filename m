@@ -2,59 +2,59 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 2010AE7C4E2
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Oct 2023 17:32:47 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 85614E7C4E8
+	for <linux-nfs@archiver.kernel.org>; Wed,  4 Oct 2023 17:32:49 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S243433AbjJDRcs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Oct 2023 13:32:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46654 "EHLO
+        id S243549AbjJDRcu (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 4 Oct 2023 13:32:50 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46660 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S243438AbjJDRcs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Oct 2023 13:32:48 -0400
-Received: from mail-io1-xd2a.google.com (mail-io1-xd2a.google.com [IPv6:2607:f8b0:4864:20::d2a])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 854E6A6
-        for <linux-nfs@vger.kernel.org>; Wed,  4 Oct 2023 10:32:44 -0700 (PDT)
-Received: by mail-io1-xd2a.google.com with SMTP id ca18e2360f4ac-7a29359c80bso112339f.0
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Oct 2023 10:32:44 -0700 (PDT)
+        with ESMTP id S243438AbjJDRcu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Oct 2023 13:32:50 -0400
+Received: from mail-il1-x12f.google.com (mail-il1-x12f.google.com [IPv6:2607:f8b0:4864:20::12f])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BD5C59E
+        for <linux-nfs@vger.kernel.org>; Wed,  4 Oct 2023 10:32:46 -0700 (PDT)
+Received: by mail-il1-x12f.google.com with SMTP id e9e14a558f8ab-35291dbf7efso104195ab.1
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Oct 2023 10:32:46 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1696440764; x=1697045564; darn=vger.kernel.org;
+        d=gmail.com; s=20230601; t=1696440766; x=1697045566; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=Z5M5nZmgd0eT5+pfJkgYu11F2ceb5YStJf+SJwFlEFc=;
-        b=cfhEvJDhI+NuD1aNwQC90mrOqlHT/NUoUK7TCWi/Q3Pw3/zsqf1foKQ+fNZ6DLTg2k
-         58k4YWYPY7Ix2VfQbXiTiRzlvFViPokJ2Eir71qXDGE7P20G60anLODuv+wA+EUvQgg2
-         4zhn5HEonCpkab8aSW5Z64bMVTXmQMs1+hNYddpkjjElFOpWe6TxX15WhWFlFWTXAI5+
-         +jV4Qn+PwnaTm6HhmFDRhPdebFcskDoR3q3Saufp3t6djE7L4jjdHHYNasxhrOWa5vbB
-         ftD/VUcH5apGHU2XnIM3oFjZJflFQhmxI7qbvFHTKqYAaI+b21ui09QzUGwmORO/yne0
-         jIyQ==
+        bh=bl8UvEFzSDdHBI7XcST/rpUAGk6LYVE5cYQ1boOklMo=;
+        b=FK1aAJKSYx949TeDa861to6cxdb+OCBuIg5H8ZZ6OZz3abfaqb6LRD81aozHnfVuoI
+         KB6g05V6iAPXFrzQ2ES0+sUITVqqjZRgqtHsC6AQ7t/iPrpR92sejT1zqhS8TNaIVlcO
+         WeNQydW8Axj3n2u0tWjf0Owcj3z1kWXpk3ccdosrDjZp5pHbZPYwrEwPbPmvOvAai233
+         4BLeu4Up1d9LbPEQsDlZ8JjqYHV/a5vY+VRej4Z6si7FbMY+FqHYgXZhFhSTtPvnAorC
+         O7P2RaQpYU+MwJAbJattx+aTlkPOt1MV75ayWz73UO1EWTFMxajpSuBK88VJDvAvbK32
+         nFrQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1696440764; x=1697045564;
+        d=1e100.net; s=20230601; t=1696440766; x=1697045566;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=Z5M5nZmgd0eT5+pfJkgYu11F2ceb5YStJf+SJwFlEFc=;
-        b=pQit0Mjj4hxqZcDU2ea7Z5vELaySCIMGfHG2HeukRzufQa9f8UAzS1LkpO4M6n3pIE
-         t9bSEIEY41lS+Kn+89PYFAhklv1od55Nd+ipc27OAIZyru5MP4Dm028ckfAzvqs1Jqrk
-         JLzXLZcSYqIcrB2ouqLUxw4+IMnJIugAvZmjcAA4a5pBIbCJUrMXPoaaC+IExnEqnhoe
-         no+f+nldXf33SRjDm4Dv+tYPu1mqZU0SRrlbu+L+27EcA3NhHIZ7AxUKITvbZQvvrrNi
-         CvCbNK1zSQOEZau4jg1dt7IDpbUUqoJZ23NBvWjO5d6duxpoIbojogiPV481zQyAMETD
-         XxvQ==
-X-Gm-Message-State: AOJu0YxkpvC6l58ezTQjNkHpVtOpyT+BXSivY08CdNB5htaTUfsX13+3
-        vmdroipAgnp7T41FRlj1sux06VORWYg=
-X-Google-Smtp-Source: AGHT+IHqkOB8dt2Pt4Wt0ooF4YzLxGMJQqCdtkla03F/QWxvYnwGLxkHoGsq272zlL4k6GufhRn0aA==
-X-Received: by 2002:a05:6602:1a07:b0:79d:1c65:9bde with SMTP id bo7-20020a0566021a0700b0079d1c659bdemr3401342iob.1.1696440763843;
-        Wed, 04 Oct 2023 10:32:43 -0700 (PDT)
+        bh=bl8UvEFzSDdHBI7XcST/rpUAGk6LYVE5cYQ1boOklMo=;
+        b=vzWD16V3NnNMKeeagE6Ogd9KEfxwmeYylrRZ/jT7DvCrrTNsVOqkPNpHZdsvnwPTxS
+         oWK62S/DovIarUnqhp5izKTtIrAFO6RSXi0Y6k+JAmx8AOUAckpV5TKVgjWfYpbRjD6/
+         9V/0RJQAtbdmCySpKqUWB5ISsIGjVIcb/K+/yZfCMJYxjd0ih4urJWD9UReB2BLs4GxM
+         H/EeVWnT2n0APi25raQWahmepMmabTtEUfA2IKF3bwxkzGoEKnCVbuu4ku2pzF43/3Pu
+         R90xdZqcI3jDLFlFyYg5Ur4/FiATjzVkv18NxraVEXA/RC8SmXgNT7ddt2gNAj1H137R
+         5jYg==
+X-Gm-Message-State: AOJu0Yz/muD2J+5sG4uV5W+qsCgt7U+3om6L18E1iAcH8jiXMWyqqYbQ
+        /rztRsdNgpTKiDpKQs2jNCD23dnGv/k=
+X-Google-Smtp-Source: AGHT+IHqk+uQNzKhXIsE0W+4/5gMBWdFLKxHs5OQWd4bAUcdq4YguCx16H7jDIga7/3LXF2lN8xWyA==
+X-Received: by 2002:a05:6602:2e03:b0:792:6068:dcc8 with SMTP id o3-20020a0566022e0300b007926068dcc8mr3851227iow.2.1696440766063;
+        Wed, 04 Oct 2023 10:32:46 -0700 (PDT)
 Received: from kolga-mac-1.attlocal.net ([2600:1700:6a10:2e90:d99c:94dd:ccd6:fb22])
-        by smtp.gmail.com with ESMTPSA id u23-20020a6be417000000b007870289f4fdsm1066598iog.51.2023.10.04.10.32.42
+        by smtp.gmail.com with ESMTPSA id u23-20020a6be417000000b007870289f4fdsm1066598iog.51.2023.10.04.10.32.45
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 04 Oct 2023 10:32:43 -0700 (PDT)
+        Wed, 04 Oct 2023 10:32:45 -0700 (PDT)
 From:   Olga Kornievskaia <olga.kornievskaia@gmail.com>
 To:     steved@redhat.com
 Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/1] gss-api: expose gss major/minor error in authgss_refresh()
-Date:   Wed,  4 Oct 2023 13:32:36 -0400
-Message-Id: <20231004173240.46924-2-olga.kornievskaia@gmail.com>
+Subject: [PATCH 1/1] gssd: fix handling DNS lookup failure
+Date:   Wed,  4 Oct 2023 13:32:38 -0400
+Message-Id: <20231004173240.46924-4-olga.kornievskaia@gmail.com>
 X-Mailer: git-send-email 2.30.1 (Apple Git-130)
 In-Reply-To: <20231004173240.46924-1-olga.kornievskaia@gmail.com>
 References: <20231004173240.46924-1-olga.kornievskaia@gmail.com>
@@ -66,73 +66,113 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 
 From: Olga Kornievskaia <kolga@netapp.com>
 
-When the client calls into the libtirpc to establish security
-context, the errors that occurred are squashed. Instead, extend
-authgss_refresh to propagate back the gss major/minor error
-codes to the caller.
+When the kernel does its first ever lookup for a given server ip it
+sends down info for server, protocol, etc. On the gssd side as it
+scans the pipefs structure and sees a new entry it reads that info
+and creates a clp_info structure. At that time it also does
+a DNS lookup of the provided ip to name using getnameinfo(),
+this is saved in clp->servername for all other upcalls that is
+down under that directory.
 
---- v2 fix a compiler warning reported by Steve Dickson
+IF this 1st getnameinfo() results in a failed resolution for
+whatever reason (a temporary DNS resolution problem), this cause
+of all other future upcalls to fail.
+
+As a fix, this patch proposed to (1) save the server info that's
+passed only in the initial pipefs new entry creation in the
+clp_info structure, then (2) for the upcalls, if clp->servername
+is NULL, then do the DNS lookup again and set all the needed
+clp_info fields upon successful resolution.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- src/auth_gss.c       | 14 ++++++++------
- tirpc/rpc/auth_gss.h |  2 ++
- 2 files changed, 10 insertions(+), 6 deletions(-)
+ utils/gssd/gssd.c | 41 +++++++++++++++++++++++++++++++++++++++++
+ utils/gssd/gssd.h |  6 ++++++
+ 2 files changed, 47 insertions(+)
 
-diff --git a/src/auth_gss.c b/src/auth_gss.c
-index e317664..3127b92 100644
---- a/src/auth_gss.c
-+++ b/src/auth_gss.c
-@@ -184,6 +184,7 @@ authgss_create(CLIENT *clnt, gss_name_t name, struct rpc_gss_sec *sec)
- 	AUTH			*auth, *save_auth;
- 	struct rpc_gss_data	*gd;
- 	OM_uint32		min_stat = 0;
-+	rpc_gss_options_ret_t	ret;
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 833d8e01..ca9b3267 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -365,6 +365,12 @@ gssd_read_service_info(int dirfd, struct clnt_info *clp)
  
- 	gss_log_debug("in authgss_create()");
- 
-@@ -229,8 +230,12 @@ authgss_create(CLIENT *clnt, gss_name_t name, struct rpc_gss_sec *sec)
- 	save_auth = clnt->cl_auth;
- 	clnt->cl_auth = auth;
- 
--	if (!authgss_refresh(auth, NULL))
-+	memset(&ret, 0, sizeof(rpc_gss_options_ret_t));
-+	if (!authgss_refresh(auth, &ret)) {
- 		auth = NULL;
-+		sec->major_status = ret.major_status;
-+		sec->minor_status = ret.minor_status;
+ fail:
+ 	printerr(0, "ERROR: failed to parse %s/info\n", clp->relpath);
++	clp->upcall_address = strdup(address);
++	clp->upcall_port = strdup(port);
++	clp->upcall_program = program;
++	clp->upcall_vers = version;
++	clp->upcall_protoname = strdup(protoname);
++	clp->upcall_service = strdup(service);
+ 	free(servername);
+ 	free(protoname);
+ 	clp->servicename = NULL;
+@@ -408,6 +414,16 @@ gssd_free_client(struct clnt_info *clp)
+ 	free(clp->servicename);
+ 	free(clp->servername);
+ 	free(clp->protocol);
++	if (!clp->servername) {
++		if (clp->upcall_address)
++			free(clp->upcall_address);
++		if (clp->upcall_port)
++			free(clp->upcall_port);
++		if (clp->upcall_protoname)
++			free(clp->upcall_protoname);
++		if (clp->upcall_service)
++			free(clp->upcall_service);
 +	}
- 	else
- 		authgss_auth_get(auth); /* Reference for caller */
- 
-@@ -619,12 +624,9 @@ _rpc_gss_refresh(AUTH *auth, rpc_gss_options_ret_t *options_ret)
+ 	free(clp);
  }
  
- static bool_t
--authgss_refresh(AUTH *auth, void *dummy)
-+authgss_refresh(AUTH *auth, void *ret)
+@@ -446,6 +462,31 @@ gssd_clnt_gssd_cb(int UNUSED(fd), short UNUSED(which), void *data)
  {
--	rpc_gss_options_ret_t ret;
--
--	memset(&ret, 0, sizeof(ret));
--	return _rpc_gss_refresh(auth, &ret);
-+	return _rpc_gss_refresh(auth, (rpc_gss_options_ret_t *)ret);
+ 	struct clnt_info *clp = data;
+ 
++	/* if there was a failure to translate IP to name for this server,
++	 * try again
++	 */
++	if (!clp->servername) {
++	        if (!gssd_addrstr_to_sockaddr((struct sockaddr *)&clp->addr,
++                                 clp->upcall_address, clp->upcall_port ?
++				 clp->upcall_port : "")) {
++			goto do_upcall;
++		}
++		clp->servername = gssd_get_servername(clp->upcall_address,
++				(struct sockaddr *)&clp->addr, clp->upcall_address);
++		if (!clp->servername)
++			goto do_upcall;
++
++		if (asprintf(&clp->servicename, "%s@%s", clp->upcall_service,
++					clp->servername) < 0) {
++			free(clp->servername);
++			clp->servername = NULL;
++			goto do_upcall;
++		}
++		clp->prog = clp->upcall_program;
++		clp->vers = clp->upcall_vers;
++		clp->protocol = strdup(clp->upcall_protoname);
++	}
++do_upcall:
+ 	handle_gssd_upcall(clp);
  }
  
- bool_t
-diff --git a/tirpc/rpc/auth_gss.h b/tirpc/rpc/auth_gss.h
-index f2af6e9..a530d42 100644
---- a/tirpc/rpc/auth_gss.h
-+++ b/tirpc/rpc/auth_gss.h
-@@ -64,6 +64,8 @@ struct rpc_gss_sec {
- 	rpc_gss_svc_t	svc;		/* service */
- 	gss_cred_id_t	cred;		/* cred handle */
- 	u_int		req_flags;	/* req flags for init_sec_context */
-+	int		major_status;
-+	int		minor_status;
+diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+index 519dc431..4e070ed6 100644
+--- a/utils/gssd/gssd.h
++++ b/utils/gssd/gssd.h
+@@ -86,6 +86,12 @@ struct clnt_info {
+ 	int			gssd_fd;
+ 	struct event		*gssd_ev;
+ 	struct			sockaddr_storage addr;
++	char			*upcall_address;
++	char			*upcall_port;
++	int			upcall_program;
++	int			upcall_vers;
++	char			*upcall_protoname;
++	char			*upcall_service;
  };
  
- /* Private data required for kernel implementation */
+ struct clnt_upcall_info {
 -- 
 2.39.1
 
