@@ -2,66 +2,214 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id B4F64E92709
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A321CE92707
 	for <linux-nfs@archiver.kernel.org>; Thu,  5 Oct 2023 14:48:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234145AbjJEOsH (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 5 Oct 2023 10:48:07 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55362 "EHLO
+        id S240179AbjJEOsF (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 5 Oct 2023 10:48:05 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55378 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S236873AbjJEOpr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Oct 2023 10:45:47 -0400
+        with ESMTP id S236547AbjJEOpp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Oct 2023 10:45:45 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 86B5B2C291
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 897382C292
         for <linux-nfs@vger.kernel.org>; Thu,  5 Oct 2023 07:27:32 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F26A4C116D5;
-        Thu,  5 Oct 2023 09:38:25 +0000 (UTC)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9786C3279E;
+        Thu,  5 Oct 2023 13:10:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1696498706;
-        bh=d5XE/MSf7FUNkmuxaAGhzKlGv4qni/ds0rW0I4rggWQ=;
-        h=From:To:Cc:Subject:Date:From;
-        b=GMdCxTyN/ZXrU2gvITOIWvT+zTvUviqiUiLbxFT9RdyUd4ushHr1L68d01WdLV9OF
-         1PKmuA9cssRgDX0t3RRC17nDVHzzwJZ2MwDvfjPxW+6l4O5ebLix71VXpvWtxxOoHR
-         rH5RfEKdSxN+wMxsugRNdog+8NMTDBt21/ckCiJnXsO7mbwajkMnWRqgylgCEVtYRH
-         9EX26F+pE/MoDUaiXJWUdtDU8WV3fTM82dCIIIfBOlQVy8agJlm2CHcof4wRyfHmga
-         GdUWVZZuhu1HoB/9Xbb+Rgh+uIlTwVsDGTAuHS8ISYevNs2RE90YDjC1HlIUh2nYxw
-         hTH2/DQTwblJQ==
-From:   Lorenzo Bianconi <lorenzo@kernel.org>
-To:     linux-nfs@vger.kernel.org
-Cc:     lorenzo.bianconi@redhat.com, jlayton@kernel.org, neilb@suse.de,
-        chuck.lever@oracle.com, netdev@vger.kernel.org, kuba@kernel.org
-Subject: [PATCH] NFSD: remove NLM_F_MULTI flag in nfsd_genl_rpc_status_compose_msg
-Date:   Thu,  5 Oct 2023 11:38:17 +0200
-Message-ID: <3dd8abe7304ed6649e581bcaaaf61fc1278cb3e2.1696498541.git.lorenzo@kernel.org>
-X-Mailer: git-send-email 2.41.0
+        s=k20201202; t=1696511440;
+        bh=LxKcAbPkS1cN5cY1R9jQZD6PER+7X5ZwZdPa6n8vJGg=;
+        h=Subject:From:To:Cc:Date:From;
+        b=Ju6KwXVz3gkwfKkmEA3JF3RM+/2VRh1g1trHhqI0As4yUigUHpPWgpwcJBsZ6isKm
+         ew2AN+WZ150cZNuv7SPIoqxDV6TNCVT9aOnQhM2BiQB04A89TRPBXW15majKXBdd1U
+         Mzlv1OdMSCmt7NCfug/NvCk2Wf4ncl2XtgZl1MK/nuoiH6raasAI7A0Z1j0ywpxcuk
+         WE0MhJuj/ES+eXZ0U4R1P13sjnMO8jKsDSeEuYmjCXfKbYm1Ed+FHb2ePp1NmXYNgU
+         K00wiM4HO4Tz2YVQWHx+VREZKU82u1DMnynnwyay/tU1TZiAGTw1bPKed10iRNCIj9
+         jazG71SlqTDBA==
+Subject: [PATCH RFC] tools: ynl: Add source files for nfsd netlink protocol
+From:   Chuck Lever <cel@kernel.org>
+To:     kuba@kernel.org
+Cc:     Chuck Lever <chuck.lever@oracle.com>, netdev@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Date:   Thu, 05 Oct 2023 09:10:38 -0400
+Message-ID: <169651139213.16787.3812644920847558917.stgit@klimt.1015granger.net>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Get rid of unnecessary NLM_F_MULTI flag in nfsd_genl_rpc_status_compose_msg
-routine
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsctl.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ tools/net/ynl/generated/Makefile    |    2 -
+ tools/net/ynl/generated/nfsd-user.c |   95 +++++++++++++++++++++++++++++++++++
+ tools/net/ynl/generated/nfsd-user.h |   33 ++++++++++++
+ 3 files changed, 129 insertions(+), 1 deletion(-)
+ create mode 100644 tools/net/ynl/generated/nfsd-user.c
+ create mode 100644 tools/net/ynl/generated/nfsd-user.h
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index b71744e355a8..739ed5bf71cd 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1527,8 +1527,7 @@ static int nfsd_genl_rpc_status_compose_msg(struct sk_buff *skb,
- 	u32 i;
+Hi Jakub-
+
+Should I include this with the nfsd netlink protocol patches already
+in nfsd-next, or do you want to take it after those have been merged?
+
+
+diff --git a/tools/net/ynl/generated/Makefile b/tools/net/ynl/generated/Makefile
+index f8817d2e56e4..c1935b01902e 100644
+--- a/tools/net/ynl/generated/Makefile
++++ b/tools/net/ynl/generated/Makefile
+@@ -14,7 +14,7 @@ YNL_GEN_ARG_ethtool:=--user-header linux/ethtool_netlink.h \
  
- 	hdr = genlmsg_put(skb, NETLINK_CB(cb->skb).portid, cb->nlh->nlmsg_seq,
--			  &nfsd_nl_family, NLM_F_MULTI,
--			  NFSD_CMD_RPC_STATUS_GET);
-+			  &nfsd_nl_family, 0, NFSD_CMD_RPC_STATUS_GET);
- 	if (!hdr)
- 		return -ENOBUFS;
+ TOOL:=../ynl-gen-c.py
  
--- 
-2.41.0
+-GENS:=ethtool devlink handshake fou netdev
++GENS:=ethtool devlink handshake fou netdev nfsd
+ SRCS=$(patsubst %,%-user.c,${GENS})
+ HDRS=$(patsubst %,%-user.h,${GENS})
+ OBJS=$(patsubst %,%-user.o,${GENS})
+diff --git a/tools/net/ynl/generated/nfsd-user.c b/tools/net/ynl/generated/nfsd-user.c
+new file mode 100644
+index 000000000000..fec6828680ce
+--- /dev/null
++++ b/tools/net/ynl/generated/nfsd-user.c
+@@ -0,0 +1,95 @@
++// SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-Clause)
++/* Do not edit directly, auto-generated from: */
++/*	Documentation/netlink/specs/nfsd.yaml */
++/* YNL-GEN user source */
++
++#include <stdlib.h>
++#include <string.h>
++#include "nfsd-user.h"
++#include "ynl.h"
++#include <linux/nfsd_netlink.h>
++
++#include <libmnl/libmnl.h>
++#include <linux/genetlink.h>
++
++/* Enums */
++static const char * const nfsd_op_strmap[] = {
++	[NFSD_CMD_RPC_STATUS_GET] = "rpc-status-get",
++};
++
++const char *nfsd_op_str(int op)
++{
++	if (op < 0 || op >= (int)MNL_ARRAY_SIZE(nfsd_op_strmap))
++		return NULL;
++	return nfsd_op_strmap[op];
++}
++
++/* Policies */
++struct ynl_policy_attr nfsd_rpc_status_policy[NFSD_A_RPC_STATUS_MAX + 1] = {
++	[NFSD_A_RPC_STATUS_XID] = { .name = "xid", .type = YNL_PT_U32, },
++	[NFSD_A_RPC_STATUS_FLAGS] = { .name = "flags", .type = YNL_PT_U32, },
++	[NFSD_A_RPC_STATUS_PROG] = { .name = "prog", .type = YNL_PT_U32, },
++	[NFSD_A_RPC_STATUS_VERSION] = { .name = "version", .type = YNL_PT_U8, },
++	[NFSD_A_RPC_STATUS_PROC] = { .name = "proc", .type = YNL_PT_U32, },
++	[NFSD_A_RPC_STATUS_SERVICE_TIME] = { .name = "service_time", .type = YNL_PT_U64, },
++	[NFSD_A_RPC_STATUS_PAD] = { .name = "pad", .type = YNL_PT_IGNORE, },
++	[NFSD_A_RPC_STATUS_SADDR4] = { .name = "saddr4", .type = YNL_PT_U32, },
++	[NFSD_A_RPC_STATUS_DADDR4] = { .name = "daddr4", .type = YNL_PT_U32, },
++	[NFSD_A_RPC_STATUS_SADDR6] = { .name = "saddr6", .type = YNL_PT_BINARY,},
++	[NFSD_A_RPC_STATUS_DADDR6] = { .name = "daddr6", .type = YNL_PT_BINARY,},
++	[NFSD_A_RPC_STATUS_SPORT] = { .name = "sport", .type = YNL_PT_U16, },
++	[NFSD_A_RPC_STATUS_DPORT] = { .name = "dport", .type = YNL_PT_U16, },
++	[NFSD_A_RPC_STATUS_COMPOUND_OPS] = { .name = "compound-ops", .type = YNL_PT_U32, },
++};
++
++struct ynl_policy_nest nfsd_rpc_status_nest = {
++	.max_attr = NFSD_A_RPC_STATUS_MAX,
++	.table = nfsd_rpc_status_policy,
++};
++
++/* Common nested types */
++/* ============== NFSD_CMD_RPC_STATUS_GET ============== */
++/* NFSD_CMD_RPC_STATUS_GET - dump */
++void nfsd_rpc_status_get_list_free(struct nfsd_rpc_status_get_list *rsp)
++{
++	struct nfsd_rpc_status_get_list *next = rsp;
++
++	while ((void *)next != YNL_LIST_END) {
++		rsp = next;
++		next = rsp->next;
++
++		free(rsp->obj.saddr6);
++		free(rsp->obj.daddr6);
++		free(rsp->obj.compound_ops);
++		free(rsp);
++	}
++}
++
++struct nfsd_rpc_status_get_list *nfsd_rpc_status_get_dump(struct ynl_sock *ys)
++{
++	struct ynl_dump_state yds = {};
++	struct nlmsghdr *nlh;
++	int err;
++
++	yds.ys = ys;
++	yds.alloc_sz = sizeof(struct nfsd_rpc_status_get_list);
++	yds.cb = nfsd_rpc_status_get_rsp_parse;
++	yds.rsp_cmd = NFSD_CMD_RPC_STATUS_GET;
++	yds.rsp_policy = &nfsd_rpc_status_nest;
++
++	nlh = ynl_gemsg_start_dump(ys, ys->family_id, NFSD_CMD_RPC_STATUS_GET, 1);
++
++	err = ynl_exec_dump(ys, nlh, &yds);
++	if (err < 0)
++		goto free_list;
++
++	return yds.first;
++
++free_list:
++	nfsd_rpc_status_get_list_free(yds.first);
++	return NULL;
++}
++
++const struct ynl_family ynl_nfsd_family =  {
++	.name		= "nfsd",
++};
+diff --git a/tools/net/ynl/generated/nfsd-user.h b/tools/net/ynl/generated/nfsd-user.h
+new file mode 100644
+index 000000000000..b6b69501031a
+--- /dev/null
++++ b/tools/net/ynl/generated/nfsd-user.h
+@@ -0,0 +1,33 @@
++/* SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-Clause) */
++/* Do not edit directly, auto-generated from: */
++/*	Documentation/netlink/specs/nfsd.yaml */
++/* YNL-GEN user header */
++
++#ifndef _LINUX_NFSD_GEN_H
++#define _LINUX_NFSD_GEN_H
++
++#include <stdlib.h>
++#include <string.h>
++#include <linux/types.h>
++#include <linux/nfsd_netlink.h>
++
++struct ynl_sock;
++
++extern const struct ynl_family ynl_nfsd_family;
++
++/* Enums */
++const char *nfsd_op_str(int op);
++
++/* Common nested types */
++/* ============== NFSD_CMD_RPC_STATUS_GET ============== */
++/* NFSD_CMD_RPC_STATUS_GET - dump */
++struct nfsd_rpc_status_get_list {
++	struct nfsd_rpc_status_get_list *next;
++	struct nfsd_rpc_status_get_rsp obj __attribute__ ((aligned (8)));
++};
++
++void nfsd_rpc_status_get_list_free(struct nfsd_rpc_status_get_list *rsp);
++
++struct nfsd_rpc_status_get_list *nfsd_rpc_status_get_dump(struct ynl_sock *ys);
++
++#endif /* _LINUX_NFSD_GEN_H */
+
 
