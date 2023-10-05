@@ -2,119 +2,155 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A89FE936E2
-	for <linux-nfs@archiver.kernel.org>; Wed,  4 Oct 2023 20:37:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BF6C8E92702
+	for <linux-nfs@archiver.kernel.org>; Thu,  5 Oct 2023 14:38:31 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232954AbjJDUhz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 4 Oct 2023 16:37:55 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51596 "EHLO
+        id S237084AbjJEOi2 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 5 Oct 2023 10:38:28 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:35400 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231429AbjJDUhy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Oct 2023 16:37:54 -0400
-Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.7])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A5ECB93
-        for <linux-nfs@vger.kernel.org>; Wed,  4 Oct 2023 13:37:50 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1696451871; x=1727987871;
-  h=date:from:to:cc:subject:message-id:mime-version;
-  bh=1JWBvPt33HK6ZOUD4ML/JmJZj6nsbTPT/ySlCFlr//I=;
-  b=AZr2MNE6ikkU+TnWuPXdj1i5eGuIaZh6cNupaOnUupVJvSzcKYVcdp3C
-   ukQEnt8KuYpF25Av21e3/uhjqIrBh5deKDMBgo/wLP6+PrDCn4JV0ACGC
-   7O2nP2yZlFKAYyF0hZUfX9IFZqqVJ5ZkLsI2jGZEICdBtJzkFLV9Ws1+M
-   pCV6JuFvu21TrRzxphFILnhZNpwWhbkbxHHxGBgrKYjtQo0O1NMvjaB5P
-   ynoPETBby0BeQi6JPTZcYgnPQeFTGSPDKbBk27dKrNRSeQQlLsLHMvfqx
-   lI6bSouT3TT2zn/VE2tgmcWcZ6B9fEoHuj0DzOopcaWIpKQRcFXdJwXM2
-   Q==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10853"; a="4860468"
-X-IronPort-AV: E=Sophos;i="6.03,201,1694761200"; 
-   d="scan'208";a="4860468"
-Received: from fmsmga001.fm.intel.com ([10.253.24.23])
-  by fmvoesa101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 Oct 2023 13:37:50 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6600,9927,10853"; a="895130504"
-X-IronPort-AV: E=Sophos;i="6.03,201,1694761200"; 
-   d="scan'208";a="895130504"
-Received: from lkp-server02.sh.intel.com (HELO c3b01524d57c) ([10.239.97.151])
-  by fmsmga001.fm.intel.com with ESMTP; 04 Oct 2023 13:36:21 -0700
-Received: from kbuild by c3b01524d57c with local (Exim 4.96)
-        (envelope-from <lkp@intel.com>)
-        id 1qo8cs-000KbE-1O;
-        Wed, 04 Oct 2023 20:37:46 +0000
-Date:   Thu, 5 Oct 2023 04:36:47 +0800
-From:   kernel test robot <lkp@intel.com>
-To:     Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc:     llvm@lists.linux.dev, oe-kbuild-all@lists.linux.dev,
-        linux-nfs@vger.kernel.org
-Subject: [trondmy-nfs:testing 12/12]
- fs/nfs/flexfilelayout/flexfilelayout.c:2536:13: error: use of undeclared
- identifier 'inode'
-Message-ID: <202310050440.0XpKt47j-lkp@intel.com>
+        with ESMTP id S235404AbjJEOgJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Oct 2023 10:36:09 -0400
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F357144873
+        for <linux-nfs@vger.kernel.org>; Thu,  5 Oct 2023 07:00:34 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3AB4CC43215;
+        Thu,  5 Oct 2023 13:59:20 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1696514360;
+        bh=5SmXWapcJyPZQUeif7XTx8G5LatpZwA1DoGJ9KZSHH0=;
+        h=Date:From:To:Cc:Subject:In-Reply-To:References:From;
+        b=j1EsiQvZxi2OzCy8jzXh6IS84qtfOMBw8ea/qT3HyImvMlI0vOqtnTEOEgkV1P2Ms
+         R7P6JWNUOcdaI4Qesf6+uZDVvs+InTeBeX/wpk87kXHfchAnovr1SuqU8Mox36MkFd
+         Kv5Dk3n0rJWhKgkZR19XGzBEsZzHZpbYfRlg8zWRHxcUc7hnx3a5RvW9ivEydQgi6Z
+         nCX6GVX4qGa3br/NzpchHu0lvpujd6ArQEPIRd6qRCwjgXXvN3BG9ShxWnnElIR73a
+         o4qyfknOt5jVovGnPZubtlee+WMfnfcB0MqW6kVk5YMJVOhNzRrnNLf4QsgYDQEHxL
+         cc96rJPwY9IEg==
+Date:   Thu, 5 Oct 2023 06:59:19 -0700
+From:   Jakub Kicinski <kuba@kernel.org>
+To:     Lorenzo Bianconi <lorenzo@kernel.org>
+Cc:     Lorenzo Bianconi <lorenzo.bianconi@redhat.com>,
+        Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+        neilb@suse.de, chuck.lever@oracle.com, netdev@vger.kernel.org
+Subject: Re: [PATCH] NFSD: convert write_threads and write_v4_end_grace to
+ netlink commands
+Message-ID: <20231005065919.6001b7ca@kernel.org>
+In-Reply-To: <ZR55TnN4Sr/O5z4a@lore-desk>
+References: <b7985d6f0708d4a2836e1b488d641cdc11ace61b.1695386483.git.lorenzo@kernel.org>
+        <cc6341a7c5f09b731298236b260c9dfd94a811d8.camel@kernel.org>
+        <ZQ2+1NhagxR5bZF+@lore-desk>
+        <20231004100428.3ca993aa@kernel.org>
+        <ZR55TnN4Sr/O5z4a@lore-desk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
-head:   a1a6c3d7c1edb81c0b4b20b44f0f4e7214c92116
-commit: a1a6c3d7c1edb81c0b4b20b44f0f4e7214c92116 [12/12] pNFS/flexfiles: Check the layout validity in ff_layout_mirror_prepare_stats
-config: x86_64-rhel-8.3-rust (https://download.01.org/0day-ci/archive/20231005/202310050440.0XpKt47j-lkp@intel.com/config)
-compiler: clang version 16.0.4 (https://github.com/llvm/llvm-project.git ae42196bc493ffe877a7e3dff8be32035dea4d07)
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20231005/202310050440.0XpKt47j-lkp@intel.com/reproduce)
+On Thu, 5 Oct 2023 10:52:30 +0200 Lorenzo Bianconi wrote:
+> running ynl-regen.sh, I got the following error for the get method:
+> 
+> $ ./tools/net/ynl/ynl-regen.sh
+>         GEN kernel      fs/nfsd/netlink.h
+> Traceback (most recent call last):
+>   File "/home/lorenzo/workspace/nfsd-next/tools/net/ynl/ynl-gen-c.py", line 2609, in <module>
+>     main()
+>   File "/home/lorenzo/workspace/nfsd-next/tools/net/ynl/ynl-gen-c.py", line 2445, in main
+>     print_req_policy_fwd(cw, ri.struct['request'], ri=ri)
+>                              ~~~~~~~~~^^^^^^^^^^^
+> KeyError: 'request'
+> 
+> am I missing something?
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/202310050440.0XpKt47j-lkp@intel.com/
+Not at all, the codegen was only handling dumps with no ops.
+This change seems to make it a little happier, at least it
+doesn't throw any exceptions. Will it work for your case?
 
-All errors (new ones prefixed by >>):
-
-   fs/nfs/flexfilelayout/flexfilelayout.c:1230:6: warning: variable 'err' set but not used [-Wunused-but-set-variable]
-           int err;
-               ^
->> fs/nfs/flexfilelayout/flexfilelayout.c:2536:13: error: use of undeclared identifier 'inode'
-           lo = NFS_I(inode)->layout;
-                      ^
-   1 warning and 1 error generated.
-
-
-vim +/inode +2536 fs/nfs/flexfilelayout/flexfilelayout.c
-
-  2522	
-  2523	static int ff_layout_prepare_layoutstats(struct nfs42_layoutstat_args *args)
-  2524	{
-  2525		struct pnfs_layout_hdr *lo;
-  2526		struct nfs4_flexfile_layout *ff_layout;
-  2527		const int dev_count = PNFS_LAYOUTSTATS_MAXDEV;
-  2528	
-  2529		/* For now, send at most PNFS_LAYOUTSTATS_MAXDEV statistics */
-  2530		args->devinfo = kmalloc_array(dev_count, sizeof(*args->devinfo),
-  2531					      nfs_io_gfp_mask());
-  2532		if (!args->devinfo)
-  2533			return -ENOMEM;
-  2534	
-  2535		spin_lock(&args->inode->i_lock);
-> 2536		lo = NFS_I(inode)->layout;
-  2537		if (lo && pnfs_layout_is_valid(lo)) {
-  2538			ff_layout = FF_LAYOUT_FROM_HDR(lo);
-  2539			args->num_dev = ff_layout_mirror_prepare_stats(
-  2540				&ff_layout->generic_hdr, &args->devinfo[0], dev_count,
-  2541				NFS4_FF_OP_LAYOUTSTATS);
-  2542		} else
-  2543			args->num_dev = 0;
-  2544		spin_unlock(&args->inode->i_lock);
-  2545		if (!args->num_dev) {
-  2546			kfree(args->devinfo);
-  2547			args->devinfo = NULL;
-  2548			return -ENOENT;
-  2549		}
-  2550	
-  2551		return 0;
-  2552	}
-  2553	
-
+diff --git a/tools/net/ynl/ynl-gen-c.py b/tools/net/ynl/ynl-gen-c.py
+index 168fe612b029..593be2632f23 100755
+--- a/tools/net/ynl/ynl-gen-c.py
++++ b/tools/net/ynl/ynl-gen-c.py
+@@ -645,6 +645,33 @@ from lib import SpecFamily, SpecAttrSet, SpecAttr, SpecOperation, SpecEnumSet, S
+         self.inherited = [c_lower(x) for x in sorted(self._inherited)]
+ 
+ 
++class StructNone:
++    def __init__(self, family, space_name):
++        self.family = family
++        self.space_name = space_name
++        self.attr_set = family.attr_sets[space_name]
++
++        if family.name == c_lower(space_name):
++            self.render_name = f"{family.name}"
++        else:
++            self.render_name = f"{family.name}_{c_lower(space_name)}"
++
++        self.request = False
++        self.reply = False
++
++        self.attr_list = []
++        self.attrs = dict()
++
++    def __iter__(self):
++        yield from self.attrs
++
++    def __getitem__(self, key):
++        return self.attrs[key]
++
++    def member_list(self):
++        return self.attr_list
++
++
+ class EnumEntry(SpecEnumEntry):
+     def __init__(self, enum_set, yaml, prev, value_start):
+         super().__init__(enum_set, yaml, prev, value_start)
+@@ -1041,9 +1068,12 @@ from lib import SpecFamily, SpecAttrSet, SpecAttr, SpecOperation, SpecEnumSet, S
+         if op_mode == 'notify':
+             op_mode = 'do'
+         for op_dir in ['request', 'reply']:
+-            if op and op_dir in op[op_mode]:
+-                self.struct[op_dir] = Struct(family, self.attr_set,
+-                                             type_list=op[op_mode][op_dir]['attributes'])
++            if op:
++                if op_dir in op[op_mode]:
++                    self.struct[op_dir] = Struct(family, self.attr_set,
++                                                 type_list=op[op_mode][op_dir]['attributes'])
++                else:
++                    self.struct[op_dir] = StructNone(family, self.attr_set)
+         if op_mode == 'event':
+             self.struct['reply'] = Struct(family, self.attr_set, type_list=op['event']['attributes'])
+ 
+@@ -1752,6 +1782,8 @@ _C_KW = {
+ 
+ 
+ def print_req_type_helpers(ri):
++    if isinstance(ri.struct["request"], StructNone):
++        return
+     print_alloc_wrapper(ri, "request")
+     print_type_helpers(ri, "request")
+ 
+@@ -1773,6 +1805,8 @@ _C_KW = {
+ 
+ 
+ def print_req_type(ri):
++    if isinstance(ri.struct["request"], StructNone):
++        return
+     print_type(ri, "request")
+ 
+ 
+@@ -2515,9 +2549,8 @@ _C_KW = {
+                 if 'dump' in op:
+                     cw.p(f"/* {op.enum_name} - dump */")
+                     ri = RenderInfo(cw, parsed, args.mode, op, 'dump')
+-                    if 'request' in op['dump']:
+-                        print_req_type(ri)
+-                        print_req_type_helpers(ri)
++                    print_req_type(ri)
++                    print_req_type_helpers(ri)
+                     if not ri.type_consistent:
+                         print_rsp_type(ri)
+                     print_wrapped_type(ri)
 -- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+2.41.0
+
