@@ -2,188 +2,138 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 41821CDB482
-	for <linux-nfs@archiver.kernel.org>; Thu, 12 Oct 2023 10:59:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 86503CDB47E
+	for <linux-nfs@archiver.kernel.org>; Thu, 12 Oct 2023 11:44:32 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1347144AbjJLK7v (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 12 Oct 2023 06:59:51 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59346 "EHLO
+        id S233902AbjJLLob (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 12 Oct 2023 07:44:31 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39042 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1343801AbjJLK7u (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Oct 2023 06:59:50 -0400
-Received: from mgamail.intel.com (mgamail.intel.com [192.55.52.88])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 74DFCB7;
-        Thu, 12 Oct 2023 03:59:49 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1697108389; x=1728644389;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=3YC+4BLVMkkibIln0wa4F1QGAJso+eq+Ty6FTxk84Ig=;
-  b=IphY8ZuFRPaIPhlPOSKE1FsfEiI9CZe7wJD+iLkdyu6DEGIcxjKghCEw
-   5TBefT6Nyt3bntQb/YV+KiMqbkYwSFaym8cCl06DMBtAUiRh2arI9dt0Y
-   uPEbTXDJvcVmEDw+S0kdsTDt08tBqZcan/+eo3nSdm34x9qYZ3L/QNKFy
-   C5Z0lsrs2nOageBT2cxjnlQqKDXptC5sDG+3jynH5g6+MwlEzGYSKUnln
-   ZVF0LSxN0ok2Oirnldd3tHxWrv16dTde58pBqnAt0dxEpiaii1/4MfAq9
-   fODl9Mjtq8bIQizb8e4iuOW2sBk3o4Woz1j98KgOrLqCCgyFYzqSxOxf/
-   g==;
-X-IronPort-AV: E=McAfee;i="6600,9927,10860"; a="415941084"
-X-IronPort-AV: E=Sophos;i="6.03,218,1694761200"; 
-   d="scan'208";a="415941084"
-Received: from fmsmga008.fm.intel.com ([10.253.24.58])
-  by fmsmga101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 12 Oct 2023 03:59:49 -0700
-X-ExtLoop1: 1
-X-IronPort-AV: E=McAfee;i="6600,9927,10860"; a="820093078"
-X-IronPort-AV: E=Sophos;i="6.03,218,1694761200"; 
-   d="scan'208";a="820093078"
-Received: from lkp-server02.sh.intel.com (HELO f64821696465) ([10.239.97.151])
-  by fmsmga008.fm.intel.com with ESMTP; 12 Oct 2023 03:59:46 -0700
-Received: from kbuild by f64821696465 with local (Exim 4.96)
-        (envelope-from <lkp@intel.com>)
-        id 1qqtPs-0003O9-04;
-        Thu, 12 Oct 2023 10:59:44 +0000
-Date:   Thu, 12 Oct 2023 18:59:00 +0800
-From:   kernel test robot <lkp@intel.com>
-To:     Geert Uytterhoeven <geert+renesas@glider.be>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@kernel.org>, Neil Brown <neilb@suse.de>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>
-Cc:     llvm@lists.linux.dev, oe-kbuild-all@lists.linux.dev,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Geert Uytterhoeven <geert+renesas@glider.be>
-Subject: Re: [PATCH] sunrpc: Use no_printk() in dfprintk*() dummies
-Message-ID: <202310121849.fnsB0A2T-lkp@intel.com>
-References: <707e5e6dd0db9a663cf443564d1f8ee1c10a0086.1697018818.git.geert+renesas@glider.be>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <707e5e6dd0db9a663cf443564d1f8ee1c10a0086.1697018818.git.geert+renesas@glider.be>
+        with ESMTP id S232490AbjJLLoa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Oct 2023 07:44:30 -0400
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 098DA94;
+        Thu, 12 Oct 2023 04:44:27 -0700 (PDT)
+Received: from pps.filterd (m0356516.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 39CBduDp001318;
+        Thu, 12 Oct 2023 11:43:44 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=message-id : subject :
+ from : to : cc : date : in-reply-to : references : content-type :
+ mime-version : content-transfer-encoding; s=pp1;
+ bh=GNP2HRT0gAKlMcfakYjbZFco/Zl8oaazBkcPChReGHQ=;
+ b=WFCtacQLMNv5wEEpzBluoVkcEszDJnI9JxyAVzZY0M6RCZtLO5ERkqqyhDeU+QmHDwY2
+ dUvZrkCKKi/qFYD3RjsMZvbsqqjkZWqwXUbvXW67H/ILfZHzyh6J4mXcOagCfagrap02
+ 36y/C+rVsBV0UYsrbytqIt3nTTGrQ0iJfVStYiuNFhzjffsuObvZF45MbpJTWkFHg7nG
+ ks84iifvgugT5jQwme2o5r3Gh02VrPBSebKVvAyw8S3N2dcrNzM3IXUHT1mewWxUeIeW
+ 5zCqsAOVp0KA832uNWbxln9ONG0+KzYAsntVecYERoX0QMoOVHEuZTxX8RI7kwoz7WFb LA== 
+Received: from pps.reinject (localhost [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3tpg49g2ng-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 12 Oct 2023 11:43:43 +0000
+Received: from m0356516.ppops.net (m0356516.ppops.net [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 39CBdvmK001335;
+        Thu, 12 Oct 2023 11:43:42 GMT
+Received: from ppma21.wdc07v.mail.ibm.com (5b.69.3da9.ip4.static.sl-reverse.com [169.61.105.91])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3tpg49g2j9-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 12 Oct 2023 11:43:42 +0000
+Received: from pps.filterd (ppma21.wdc07v.mail.ibm.com [127.0.0.1])
+        by ppma21.wdc07v.mail.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 39C9uQ69025891;
+        Thu, 12 Oct 2023 11:43:39 GMT
+Received: from smtprelay05.dal12v.mail.ibm.com ([172.16.1.7])
+        by ppma21.wdc07v.mail.ibm.com (PPS) with ESMTPS id 3tkjnnq6cr-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Thu, 12 Oct 2023 11:43:39 +0000
+Received: from smtpav01.dal12v.mail.ibm.com (smtpav01.dal12v.mail.ibm.com [10.241.53.100])
+        by smtprelay05.dal12v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 39CBhcqj20710036
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Thu, 12 Oct 2023 11:43:39 GMT
+Received: from smtpav01.dal12v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id BF43F58057;
+        Thu, 12 Oct 2023 11:43:38 +0000 (GMT)
+Received: from smtpav01.dal12v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 20C9C58061;
+        Thu, 12 Oct 2023 11:43:37 +0000 (GMT)
+Received: from li-f45666cc-3089-11b2-a85c-c57d1a57929f.ibm.com (unknown [9.61.11.225])
+        by smtpav01.dal12v.mail.ibm.com (Postfix) with ESMTP;
+        Thu, 12 Oct 2023 11:43:37 +0000 (GMT)
+Message-ID: <b295d1aae72d8122178dc93c9aac21217bde682a.camel@linux.ibm.com>
+Subject: Re: [PATCH v3 12/25] security: Introduce inode_post_setattr hook
+From:   Mimi Zohar <zohar@linux.ibm.com>
+To:     Roberto Sassu <roberto.sassu@huaweicloud.com>,
+        viro@zeniv.linux.org.uk, brauner@kernel.org,
+        chuck.lever@oracle.com, jlayton@kernel.org, neilb@suse.de,
+        kolga@netapp.com, Dai.Ngo@oracle.com, tom@talpey.com,
+        dmitry.kasatkin@gmail.com, paul@paul-moore.com, jmorris@namei.org,
+        serge@hallyn.com, dhowells@redhat.com, jarkko@kernel.org,
+        stephen.smalley.work@gmail.com, eparis@parisplace.org,
+        casey@schaufler-ca.com
+Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
+        linux-security-module@vger.kernel.org, keyrings@vger.kernel.org,
+        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>
+Date:   Thu, 12 Oct 2023 07:43:36 -0400
+In-Reply-To: <80e4a1ea172edb2d4d441b70dcd93bfa1654a5b7.camel@huaweicloud.com>
+References: <20230904133415.1799503-1-roberto.sassu@huaweicloud.com>
+         <20230904133415.1799503-13-roberto.sassu@huaweicloud.com>
+         <22761c3d88c2c4dbac747cc7ddca3d743c6d88d9.camel@linux.ibm.com>
+         <80e4a1ea172edb2d4d441b70dcd93bfa1654a5b7.camel@huaweicloud.com>
+Content-Type: text/plain; charset="ISO-8859-15"
+X-Mailer: Evolution 3.28.5 (3.28.5-22.el8) 
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-ORIG-GUID: rZqxV2raaNky2t0Y2n1yXeJjRecmiZQx
+X-Proofpoint-GUID: RCCxgB8C4pZpo8TpW59RDhMvmyn-xMBX
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.267,Aquarius:18.0.980,Hydra:6.0.619,FMLib:17.11.176.26
+ definitions=2023-10-12_05,2023-10-12_01,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 bulkscore=0 phishscore=0
+ mlxlogscore=999 spamscore=0 mlxscore=0 adultscore=0 clxscore=1015
+ impostorscore=0 priorityscore=1501 suspectscore=0 lowpriorityscore=0
+ malwarescore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2309180000 definitions=main-2310120095
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hi Geert,
+On Thu, 2023-10-12 at 09:42 +0200, Roberto Sassu wrote:
+> On Wed, 2023-10-11 at 20:08 -0400, Mimi Zohar wrote:
+> > gOn Mon, 2023-09-04 at 15:34 +0200, Roberto Sassu wrote:
+> > > From: Roberto Sassu <roberto.sassu@huawei.com>
+> > > 
+> > > In preparation for moving IMA and EVM to the LSM infrastructure, introduce
+> > > the inode_post_setattr hook.
+> > > 
+> > > It is useful for EVM to recalculate the HMAC on modified file attributes
+> > > and other file metadata, after it verified the HMAC of current file
+> > > metadata with the inode_setattr hook.
+> > 
+> > "useful"?  
+> > 
+> > At inode_setattr hook, EVM verifies the file's existing HMAC value.  At
+> > inode_post_setattr, EVM re-calculates the file's HMAC based on the
+> > modified file attributes and other file metadata.
+> > 
+> > > 
+> > > LSMs should use the new hook instead of inode_setattr, when they need to
+> > > know that the operation was done successfully (not known in inode_setattr).
+> > > The new hook cannot return an error and cannot cause the operation to be
+> > > reverted.
+> > 
+> > Other LSMs could similarly update security xattrs or ...
+> 
+> I added your sentence. The one above is to satisfy Casey's request to
+> justify the addition of the new hook, and to explain why inode_setattr
+> is not sufficient.
 
-kernel test robot noticed the following build warnings:
+I was suggesting simplifying the wording.  Perhaps something like:
 
-[auto build test WARNING on trondmy-nfs/linux-next]
-[also build test WARNING on linus/master v6.6-rc5 next-20231012]
-[If your patch is applied to the wrong git tree, kindly drop us a note.
-And when submitting patch, we suggest to use '--base' as documented in
-https://git-scm.com/docs/git-format-patch#_base_tree_information]
-
-url:    https://github.com/intel-lab-lkp/linux/commits/Geert-Uytterhoeven/sunrpc-Use-no_printk-in-dfprintk-dummies/20231011-181013
-base:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
-patch link:    https://lore.kernel.org/r/707e5e6dd0db9a663cf443564d1f8ee1c10a0086.1697018818.git.geert%2Brenesas%40glider.be
-patch subject: [PATCH] sunrpc: Use no_printk() in dfprintk*() dummies
-config: powerpc-ebony_defconfig (https://download.01.org/0day-ci/archive/20231012/202310121849.fnsB0A2T-lkp@intel.com/config)
-compiler: clang version 17.0.0 (https://github.com/llvm/llvm-project.git 4a5ac14ee968ff0ad5d2cc1ffa0299048db4c88a)
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20231012/202310121849.fnsB0A2T-lkp@intel.com/reproduce)
-
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/202310121849.fnsB0A2T-lkp@intel.com/
-
-All warnings (new ones prefixed by >>):
-
-   fs/lockd/svclock.c:164:5: error: call to undeclared function 'nlmdbg_cookie2a'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
-     164 |                                 nlmdbg_cookie2a(&block->b_call->a_args.cookie));
-         |                                 ^
->> fs/lockd/svclock.c:164:5: warning: format specifies type 'char *' but the argument has type 'int' [-Wformat]
-     164 |                 dprintk("lockd: check f=%p pd=%d %Ld-%Ld ty=%d cookie=%s\n",
-         |                                                                       ~~
-         |                                                                       %d
-     165 |                                 block->b_file, fl->fl_pid,
-     166 |                                 (long long)fl->fl_start,
-     167 |                                 (long long)fl->fl_end, fl->fl_type,
-     168 |                                 nlmdbg_cookie2a(&block->b_call->a_args.cookie));
-         |                                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/sunrpc/debug.h:25:28: note: expanded from macro 'dprintk'
-      25 |         dfprintk(FACILITY, fmt, ##__VA_ARGS__)
-         |                            ~~~    ^~~~~~~~~~~
-   include/linux/sunrpc/debug.h:70:51: note: expanded from macro 'dfprintk'
-      70 | # define dfprintk(fac, fmt, ...)        no_printk(fmt, ##__VA_ARGS__)
-         |                                                   ~~~    ^~~~~~~~~~~
-   include/linux/printk.h:129:17: note: expanded from macro 'no_printk'
-     129 |                 printk(fmt, ##__VA_ARGS__);             \
-         |                        ~~~    ^~~~~~~~~~~
-   include/linux/printk.h:455:60: note: expanded from macro 'printk'
-     455 | #define printk(fmt, ...) printk_index_wrap(_printk, fmt, ##__VA_ARGS__)
-         |                                                     ~~~    ^~~~~~~~~~~
-   include/linux/printk.h:427:19: note: expanded from macro 'printk_index_wrap'
-     427 |                 _p_func(_fmt, ##__VA_ARGS__);                           \
-         |                         ~~~~    ^~~~~~~~~~~
-   fs/lockd/svclock.c:203:47: error: call to undeclared function 'nlmdbg_cookie2a'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
-     203 |         dprintk("nlmsvc_find_block(%s): block=%p\n", nlmdbg_cookie2a(cookie), block);
-         |                                                      ^
-   fs/lockd/svclock.c:203:47: warning: format specifies type 'char *' but the argument has type 'int' [-Wformat]
-     203 |         dprintk("nlmsvc_find_block(%s): block=%p\n", nlmdbg_cookie2a(cookie), block);
-         |                                    ~~                ^~~~~~~~~~~~~~~~~~~~~~~
-         |                                    %d
-   include/linux/sunrpc/debug.h:25:28: note: expanded from macro 'dprintk'
-      25 |         dfprintk(FACILITY, fmt, ##__VA_ARGS__)
-         |                            ~~~    ^~~~~~~~~~~
-   include/linux/sunrpc/debug.h:70:51: note: expanded from macro 'dfprintk'
-      70 | # define dfprintk(fac, fmt, ...)        no_printk(fmt, ##__VA_ARGS__)
-         |                                                   ~~~    ^~~~~~~~~~~
-   include/linux/printk.h:129:17: note: expanded from macro 'no_printk'
-     129 |                 printk(fmt, ##__VA_ARGS__);             \
-         |                        ~~~    ^~~~~~~~~~~
-   include/linux/printk.h:455:60: note: expanded from macro 'printk'
-     455 | #define printk(fmt, ...) printk_index_wrap(_printk, fmt, ##__VA_ARGS__)
-         |                                                     ~~~    ^~~~~~~~~~~
-   include/linux/printk.h:427:19: note: expanded from macro 'printk_index_wrap'
-     427 |                 _p_func(_fmt, ##__VA_ARGS__);                           \
-         |                         ~~~~    ^~~~~~~~~~~
-   fs/lockd/svclock.c:494:5: error: use of undeclared identifier 'inode'
-     494 |                                 inode->i_sb->s_id, inode->i_ino,
-         |                                 ^
-   fs/lockd/svclock.c:494:24: error: use of undeclared identifier 'inode'
-     494 |                                 inode->i_sb->s_id, inode->i_ino,
-         |                                                    ^
-   2 warnings and 4 errors generated.
-
-
-vim +164 fs/lockd/svclock.c
-
-^1da177e4c3f41 Linus Torvalds  2005-04-16  143  
-^1da177e4c3f41 Linus Torvalds  2005-04-16  144  /*
-d9f6eb75d49007 Trond Myklebust 2006-03-20  145   * Find a block for a given lock
-^1da177e4c3f41 Linus Torvalds  2005-04-16  146   */
-^1da177e4c3f41 Linus Torvalds  2005-04-16  147  static struct nlm_block *
-d9f6eb75d49007 Trond Myklebust 2006-03-20  148  nlmsvc_lookup_block(struct nlm_file *file, struct nlm_lock *lock)
-^1da177e4c3f41 Linus Torvalds  2005-04-16  149  {
-68a2d76cea4234 Olaf Kirch      2006-10-04  150  	struct nlm_block	*block;
-^1da177e4c3f41 Linus Torvalds  2005-04-16  151  	struct file_lock	*fl;
-^1da177e4c3f41 Linus Torvalds  2005-04-16  152  
-^1da177e4c3f41 Linus Torvalds  2005-04-16  153  	dprintk("lockd: nlmsvc_lookup_block f=%p pd=%d %Ld-%Ld ty=%d\n",
-^1da177e4c3f41 Linus Torvalds  2005-04-16  154  				file, lock->fl.fl_pid,
-^1da177e4c3f41 Linus Torvalds  2005-04-16  155  				(long long)lock->fl.fl_start,
-^1da177e4c3f41 Linus Torvalds  2005-04-16  156  				(long long)lock->fl.fl_end, lock->fl.fl_type);
-be2be5f7f44364 Alexander Aring 2023-07-20  157  	spin_lock(&nlm_blocked_lock);
-68a2d76cea4234 Olaf Kirch      2006-10-04  158  	list_for_each_entry(block, &nlm_blocked, b_list) {
-92737230dd3f14 Trond Myklebust 2006-03-20  159  		fl = &block->b_call->a_args.lock.fl;
-^1da177e4c3f41 Linus Torvalds  2005-04-16  160  		dprintk("lockd: check f=%p pd=%d %Ld-%Ld ty=%d cookie=%s\n",
-^1da177e4c3f41 Linus Torvalds  2005-04-16  161  				block->b_file, fl->fl_pid,
-^1da177e4c3f41 Linus Torvalds  2005-04-16  162  				(long long)fl->fl_start,
-^1da177e4c3f41 Linus Torvalds  2005-04-16  163  				(long long)fl->fl_end, fl->fl_type,
-92737230dd3f14 Trond Myklebust 2006-03-20 @164  				nlmdbg_cookie2a(&block->b_call->a_args.cookie));
-^1da177e4c3f41 Linus Torvalds  2005-04-16  165  		if (block->b_file == file && nlm_compare_locks(fl, &lock->fl)) {
-6849c0cab69f5d Trond Myklebust 2006-03-20  166  			kref_get(&block->b_count);
-be2be5f7f44364 Alexander Aring 2023-07-20  167  			spin_unlock(&nlm_blocked_lock);
-^1da177e4c3f41 Linus Torvalds  2005-04-16  168  			return block;
-^1da177e4c3f41 Linus Torvalds  2005-04-16  169  		}
-^1da177e4c3f41 Linus Torvalds  2005-04-16  170  	}
-be2be5f7f44364 Alexander Aring 2023-07-20  171  	spin_unlock(&nlm_blocked_lock);
-^1da177e4c3f41 Linus Torvalds  2005-04-16  172  
-^1da177e4c3f41 Linus Torvalds  2005-04-16  173  	return NULL;
-^1da177e4c3f41 Linus Torvalds  2005-04-16  174  }
-^1da177e4c3f41 Linus Torvalds  2005-04-16  175  
+Other LSMs could similarly take some action after successful file attri
+bute change.
 
 -- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
+thanks,
+
+Mimi
+
