@@ -2,120 +2,115 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A4EABCDB482
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 13:22:04 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 674F3CDB482
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 13:28:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231948AbjJMNWD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Oct 2023 09:22:03 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36258 "EHLO
+        id S231887AbjJMN2G (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Oct 2023 09:28:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:53564 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231892AbjJMNWC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 09:22:02 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AAF22BE
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 06:21:17 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1697203276;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=QQQE31zFpo8QatpPTAvUD2SVRPdN5cNZGFnMJG0fc5U=;
-        b=WhHD85KeUJ7d2LjzJWrU0kcC6O48N8XyLNg+dtcVjiaJjA5PFxF0Bs/VPicaJom7ggpaYw
-        kbzJuvw4rou8K/jtoNbvMfOjm20HyoAr/S4ShUwBYL4MMkLB7H7T4+0pyKcxyTv2dyrQew
-        kZadvU0olZ4ERyEcvthRf9gLRmgRaXs=
-Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
- by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-315-BZaXNoJEPxq5fxXbi_-ttQ-1; Fri, 13 Oct 2023 09:21:05 -0400
-X-MC-Unique: BZaXNoJEPxq5fxXbi_-ttQ-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id E20193C170B3;
-        Fri, 13 Oct 2023 13:21:04 +0000 (UTC)
-Received: from [10.22.32.24] (unknown [10.22.32.24])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id C4E0620296DB;
-        Fri, 13 Oct 2023 13:21:04 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     Chuck Lever <cel@kernel.org>
-Cc:     linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] svcrdma: Fix tracepoint printk format
-Date:   Fri, 13 Oct 2023 09:21:04 -0400
-Message-ID: <26C93D24-5CC6-44CD-9825-17D7D46A64FC@redhat.com>
-In-Reply-To: <169719969566.6999.18083178189502993580.stgit@oracle-102.nfsv4bat.org>
-References: <169719969566.6999.18083178189502993580.stgit@oracle-102.nfsv4bat.org>
-MIME-Version: 1.0
-Content-Type: text/plain
-X-Scanned-By: MIMEDefang 3.1 on 10.11.54.4
+        with ESMTP id S230119AbjJMN2F (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 09:28:05 -0400
+Received: from mx0b-001b2d01.pphosted.com (mx0b-001b2d01.pphosted.com [148.163.158.5])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E62B195;
+        Fri, 13 Oct 2023 06:28:03 -0700 (PDT)
+Received: from pps.filterd (m0353723.ppops.net [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 39DDOtBn019410;
+        Fri, 13 Oct 2023 13:27:38 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ibm.com; h=message-id : subject :
+ from : to : cc : date : in-reply-to : references : content-type :
+ mime-version : content-transfer-encoding; s=pp1;
+ bh=KRl7qnJwiDr9TQ9CGxh6PCx0ajMOTWOKUQ5igKPSQu8=;
+ b=TGO9L8QkQ2l2opqA+We3jdXPgCgYnl1VvuwSHLCxUXvP9Fw8Go1AM9sH2RoglAYjIJpz
+ dOaX8hPPMNiCjTeVNqNPeq/baJvwduZxTzqLhNlkjZr/IPv7zmWVQLzFVQA+NGluPNjB
+ AgqssoK1YuezRkzh95WwpFneY9IsNecnuZLrzjyMJEUJMoWWn+smLIvaiHjFxCN0667i
+ CQ6YC4WCU6YPxkBfXBZwWzXUBUtQyCQCF7Zb8cleMu8K7+pcgDIJjkScWb23RrSpX+Me
+ F1+jTqe3WTZ6ZVQqQJAmovH5YAYcQ6c4LYJB4fIufCH1M1Q1Z8VMOxX9CBaIuzy/vpR/ xg== 
+Received: from pps.reinject (localhost [127.0.0.1])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3tq6rqr5t2-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 13 Oct 2023 13:27:38 +0000
+Received: from m0353723.ppops.net (m0353723.ppops.net [127.0.0.1])
+        by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 39DDP39T019946;
+        Fri, 13 Oct 2023 13:27:35 GMT
+Received: from ppma13.dal12v.mail.ibm.com (dd.9e.1632.ip4.static.sl-reverse.com [50.22.158.221])
+        by mx0a-001b2d01.pphosted.com (PPS) with ESMTPS id 3tq6rqr5sg-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 13 Oct 2023 13:27:35 +0000
+Received: from pps.filterd (ppma13.dal12v.mail.ibm.com [127.0.0.1])
+        by ppma13.dal12v.mail.ibm.com (8.17.1.19/8.17.1.19) with ESMTP id 39DBAlwC029804;
+        Fri, 13 Oct 2023 13:27:34 GMT
+Received: from smtprelay06.wdc07v.mail.ibm.com ([172.16.1.73])
+        by ppma13.dal12v.mail.ibm.com (PPS) with ESMTPS id 3tpt5bm4rs-1
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=NOT);
+        Fri, 13 Oct 2023 13:27:34 +0000
+Received: from smtpav05.dal12v.mail.ibm.com (smtpav05.dal12v.mail.ibm.com [10.241.53.104])
+        by smtprelay06.wdc07v.mail.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id 39DDRXGX26935900
+        (version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+        Fri, 13 Oct 2023 13:27:33 GMT
+Received: from smtpav05.dal12v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 384D658056;
+        Fri, 13 Oct 2023 13:27:33 +0000 (GMT)
+Received: from smtpav05.dal12v.mail.ibm.com (unknown [127.0.0.1])
+        by IMSVA (Postfix) with ESMTP id 9F69558052;
+        Fri, 13 Oct 2023 13:27:31 +0000 (GMT)
+Received: from li-f45666cc-3089-11b2-a85c-c57d1a57929f.ibm.com (unknown [9.61.129.99])
+        by smtpav05.dal12v.mail.ibm.com (Postfix) with ESMTP;
+        Fri, 13 Oct 2023 13:27:31 +0000 (GMT)
+Message-ID: <26e06e4adfb7f252ec2e394d1df54998343ccb42.camel@linux.ibm.com>
+Subject: Re: [PATCH v3 18/25] security: Introduce inode_post_set_acl hook
+From:   Mimi Zohar <zohar@linux.ibm.com>
+To:     Roberto Sassu <roberto.sassu@huaweicloud.com>,
+        viro@zeniv.linux.org.uk, brauner@kernel.org,
+        chuck.lever@oracle.com, jlayton@kernel.org, neilb@suse.de,
+        kolga@netapp.com, Dai.Ngo@oracle.com, tom@talpey.com,
+        dmitry.kasatkin@gmail.com, paul@paul-moore.com, jmorris@namei.org,
+        serge@hallyn.com, dhowells@redhat.com, jarkko@kernel.org,
+        stephen.smalley.work@gmail.com, eparis@parisplace.org,
+        casey@schaufler-ca.com
+Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
+        linux-security-module@vger.kernel.org, keyrings@vger.kernel.org,
+        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>
+Date:   Fri, 13 Oct 2023 09:27:31 -0400
+In-Reply-To: <20230904133415.1799503-19-roberto.sassu@huaweicloud.com>
+References: <20230904133415.1799503-1-roberto.sassu@huaweicloud.com>
+         <20230904133415.1799503-19-roberto.sassu@huaweicloud.com>
+Content-Type: text/plain; charset="ISO-8859-15"
+X-Mailer: Evolution 3.28.5 (3.28.5-22.el8) 
+Mime-Version: 1.0
+Content-Transfer-Encoding: 7bit
+X-TM-AS-GCONF: 00
+X-Proofpoint-ORIG-GUID: _5w3LHeJJdssz9eEdEsLDQFzFickiJQ7
+X-Proofpoint-GUID: fwYZsDo0nOWU53PxWi4X0Ztur6SHCAzb
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.272,Aquarius:18.0.980,Hydra:6.0.619,FMLib:17.11.176.26
+ definitions=2023-10-13_04,2023-10-12_01,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 phishscore=0 bulkscore=0
+ impostorscore=0 mlxlogscore=727 clxscore=1015 mlxscore=0
+ lowpriorityscore=0 suspectscore=0 malwarescore=0 adultscore=0 spamscore=0
+ priorityscore=1501 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2309180000 definitions=main-2310130112
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 13 Oct 2023, at 8:22, Chuck Lever wrote:
+On Mon, 2023-09-04 at 15:34 +0200, Roberto Sassu wrote:
+> From: Roberto Sassu <roberto.sassu@huawei.com>
+> 
+> In preparation for moving IMA and EVM to the LSM infrastructure, introduce
+> the inode_post_set_acl hook.
+> 
+> It is useful for EVM to recalculate the HMAC on the modified POSIX ACL and
+> other file metadata, after it verified the HMAC of current file metadata
+> with the inode_set_acl hook.
 
-> From: Chuck Lever <chuck.lever@oracle.com>
->
-> Other tracepoints use "cq.id=" rather than "cq_id=". Let's make it
-> more reliable to grep for the CQ restracker ID.
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  include/trace/events/rpcrdma.h |   10 +++++-----
->  1 file changed, 5 insertions(+), 5 deletions(-)
->
-> One more trivial fix to svcrdma for 6.7.
->
-> diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
-> index f8069ef2ee0f..718df1d9b834 100644
-> --- a/include/trace/events/rpcrdma.h
-> +++ b/include/trace/events/rpcrdma.h
-> @@ -1667,7 +1667,7 @@ TRACE_EVENT(svcrdma_encode_wseg,
->  		__entry->offset = offset;
->  	),
->
-> -	TP_printk("cq_id=%u cid=%d segno=%u %u@0x%016llx:0x%08x",
-> +	TP_printk("cq.id=%u cid=%d segno=%u %u@0x%016llx:0x%08x",
->  		__entry->cq_id, __entry->completion_id,
->  		__entry->segno, __entry->length,
->  		(unsigned long long)__entry->offset, __entry->handle
-> @@ -1703,7 +1703,7 @@ TRACE_EVENT(svcrdma_decode_rseg,
->  		__entry->offset = segment->rs_offset;
->  	),
->
-> -	TP_printk("cq_id=%u cid=%d segno=%u position=%u %u@0x%016llx:0x%08x",
-> +	TP_printk("cq.id=%u cid=%d segno=%u position=%u %u@0x%016llx:0x%08x",
->  		__entry->cq_id, __entry->completion_id,
->  		__entry->segno, __entry->position, __entry->length,
->  		(unsigned long long)__entry->offset, __entry->handle
-> @@ -1740,7 +1740,7 @@ TRACE_EVENT(svcrdma_decode_wseg,
->  		__entry->offset = segment->rs_offset;
->  	),
->
-> -	TP_printk("cq_id=%u cid=%d segno=%u %u@0x%016llx:0x%08x",
-> +	TP_printk("cq.id=%u cid=%d segno=%u %u@0x%016llx:0x%08x",
->  		__entry->cq_id, __entry->completion_id,
->  		__entry->segno, __entry->length,
->  		(unsigned long long)__entry->offset, __entry->handle
-> @@ -1959,7 +1959,7 @@ TRACE_EVENT(svcrdma_send_pullup,
->  		__entry->msglen = msglen;
->  	),
->
-> -	TP_printk("cq_id=%u cid=%d hdr=%u msg=%u (total %u)",
-> +	TP_printk("cq.id=%u cid=%d hdr=%u msg=%u (total %u)",
->  		__entry->cq_id, __entry->completion_id,
->  		__entry->hdrlen, __entry->msglen,
->  		__entry->hdrlen + __entry->msglen)
-> @@ -2014,7 +2014,7 @@ TRACE_EVENT(svcrdma_post_send,
->  					wr->ex.invalidate_rkey : 0;
->  	),
->
-> -	TP_printk("cq_id=%u cid=%d num_sge=%u inv_rkey=0x%08x",
-> +	TP_printk("cq.id=%u cid=%d num_sge=%u inv_rkey=0x%08x",
->  		__entry->cq_id, __entry->completion_id,
->  		__entry->num_sge, __entry->inv_rkey
->  	)
+Please reword this and the inode_post_remove_acl patch similar to my
+comments on  "[PATCH v3 12/25] security: Introduce inode_post_setattr
+hook]".
 
-Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
+-- 
+thanks,
 
-Ben
+Mimi
 
