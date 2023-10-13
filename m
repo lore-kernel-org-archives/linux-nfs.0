@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 61BF1C46CA1
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 16:26:52 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 25B7ACDB483
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 16:26:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232350AbjJMQ0u (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Oct 2023 12:26:50 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58572 "EHLO
+        id S231310AbjJMQ0w (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Oct 2023 12:26:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58638 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229891AbjJMQ02 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 12:26:28 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 714F835AC
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 09:07:32 -0700 (PDT)
+        with ESMTP id S231453AbjJMQ0c (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 12:26:32 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 79DD3171A
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 09:06:02 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1697213226;
+        s=mimecast20190719; t=1697213159;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=TOWBTb7dSiEX2Zo576hGEWbl47hY2TK0ZPUPW+cuiow=;
-        b=Ou3ZJ3HMoOC8WjJtFmI9HMJ7GMaD/F4gOWDteDnCkZVwNcmS1kpjIgTsAPtTXKC9sfXSx6
-        5woF3xc0niPv+GriRqLXv5P3xNiHw0LaNwAiGHGbGgD1ymUJQeeYKDFBGLIrnIYs51E9SL
-        RhxP2ydAUjPPHVtgaQo4eGQ6H6UfyL0=
+        bh=28kgPZMsHEWnVwc0vT6VK3Ue5Bj5q+rjSv2U7JFM+9k=;
+        b=dyw97cASUVCrtC+ufqH2JMlz6do/9FVyHQ5xFP7RwG2GJDaOp0GMUkVMJi51YE4lqZ2J5r
+        WNlgTb+gilq6JhzINE1vdrfWhp9wgkR6dt4U0xRhfn0vlUj5qH34w6VSnPeU3hfbFFyXEZ
+        +q7xhG6W+bXQCWEKN8BTStDoroiPGUM=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-70-mlred8r2Ooqa8GL90Jlipg-1; Fri, 13 Oct 2023 12:07:03 -0400
-X-MC-Unique: mlred8r2Ooqa8GL90Jlipg-1
-Received: from smtp.corp.redhat.com (int-mx09.intmail.prod.int.rdu2.redhat.com [10.11.54.9])
+ us-mta-93-P-Ft7OcvOIWG1ggPzh_5og-1; Fri, 13 Oct 2023 12:05:56 -0400
+X-MC-Unique: P-Ft7OcvOIWG1ggPzh_5og-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id C93F288B7AD;
-        Fri, 13 Oct 2023 16:07:01 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 4C57B858293;
+        Fri, 13 Oct 2023 16:05:55 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.42.28.226])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id EB8EB492BD9;
-        Fri, 13 Oct 2023 16:06:58 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 9012925C0;
+        Fri, 13 Oct 2023 16:05:52 +0000 (UTC)
 From:   David Howells <dhowells@redhat.com>
 To:     Jeff Layton <jlayton@kernel.org>, Steve French <smfrench@gmail.com>
 Cc:     David Howells <dhowells@redhat.com>,
@@ -52,158 +52,152 @@ Cc:     David Howells <dhowells@redhat.com>,
         linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
         v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
         linux-mm@kvack.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Steve French <sfrench@samba.org>,
-        Shyam Prasad N <nspmangalore@gmail.com>,
-        Rohith Surabattula <rohiths.msft@gmail.com>,
-        linux-cachefs@redhat.com
-Subject: [RFC PATCH 44/53] cifs: Share server EOF pos with netfslib
-Date:   Fri, 13 Oct 2023 17:04:13 +0100
-Message-ID: <20231013160423.2218093-45-dhowells@redhat.com>
+        linux-kernel@vger.kernel.org, linux-cachefs@redhat.com
+Subject: [RFC PATCH 25/53] netfs: Make netfs_read_folio() handle streaming-write pages
+Date:   Fri, 13 Oct 2023 17:03:54 +0100
+Message-ID: <20231013160423.2218093-26-dhowells@redhat.com>
 In-Reply-To: <20231013160423.2218093-1-dhowells@redhat.com>
 References: <20231013160423.2218093-1-dhowells@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.9
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.1
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Use cifsi->netfs_ctx.remote_i_size instead of cifsi->server_eof so that
-netfslib can refer to it to.
+netfs_read_folio() needs to handle partially-valid pages that are marked
+dirty, but not uptodate in the event that someone tries to read a page was
+used to cache data by a streaming write.
+
+In such a case, make netfs_read_folio() set up a bvec iterator that points
+to the parts of the folio that need filling and to a sink page for the data
+that should be discarded and use that instead of i_pages as the iterator to
+be written to.
+
+This requires netfs_rreq_unlock_folios() to convert the page into a normal
+dirty uptodate page, getting rid of the partial write record and bumping
+the group pointer over to folio->private.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Steve French <sfrench@samba.org>
-cc: Shyam Prasad N <nspmangalore@gmail.com>
-cc: Rohith Surabattula <rohiths.msft@gmail.com>
 cc: Jeff Layton <jlayton@kernel.org>
-cc: linux-cifs@vger.kernel.org
 cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 cc: linux-mm@kvack.org
 ---
- fs/smb/client/cifsfs.c   |  2 +-
- fs/smb/client/cifsglob.h |  1 -
- fs/smb/client/file.c     |  8 ++++----
- fs/smb/client/inode.c    |  6 +++---
- fs/smb/client/smb2ops.c  | 10 +++++-----
- 5 files changed, 13 insertions(+), 14 deletions(-)
+ fs/netfs/buffered_read.c     | 61 ++++++++++++++++++++++++++++++++++--
+ include/trace/events/netfs.h |  2 ++
+ 2 files changed, 60 insertions(+), 3 deletions(-)
 
-diff --git a/fs/smb/client/cifsfs.c b/fs/smb/client/cifsfs.c
-index 22869cda1356..85799e9e0f4c 100644
---- a/fs/smb/client/cifsfs.c
-+++ b/fs/smb/client/cifsfs.c
-@@ -395,7 +395,7 @@ cifs_alloc_inode(struct super_block *sb)
- 	spin_lock_init(&cifs_inode->writers_lock);
- 	cifs_inode->writers = 0;
- 	cifs_inode->netfs.inode.i_blkbits = 14;  /* 2**14 = CIFS_MAX_MSGSIZE */
--	cifs_inode->server_eof = 0;
-+	cifs_inode->netfs.remote_i_size = 0;
- 	cifs_inode->uniqueid = 0;
- 	cifs_inode->createtime = 0;
- 	cifs_inode->epoch = 0;
-diff --git a/fs/smb/client/cifsglob.h b/fs/smb/client/cifsglob.h
-index 22fa98428845..1943d035b8d3 100644
---- a/fs/smb/client/cifsglob.h
-+++ b/fs/smb/client/cifsglob.h
-@@ -1527,7 +1527,6 @@ struct cifsInodeInfo {
- 	spinlock_t writers_lock;
- 	unsigned int writers;		/* Number of writers on this inode */
- 	unsigned long time;		/* jiffies of last update of inode */
--	u64  server_eof;		/* current file size on server -- protected by i_lock */
- 	u64  uniqueid;			/* server inode number */
- 	u64  createtime;		/* creation time on server */
- 	__u8 lease_key[SMB2_LEASE_KEY_SIZE];	/* lease key for this inode */
-diff --git a/fs/smb/client/file.c b/fs/smb/client/file.c
-index b4f16ef62115..0383ce61ac35 100644
---- a/fs/smb/client/file.c
-+++ b/fs/smb/client/file.c
-@@ -2117,8 +2117,8 @@ cifs_update_eof(struct cifsInodeInfo *cifsi, loff_t offset,
+diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
+index 2f06344bba21..374707df6575 100644
+--- a/fs/netfs/buffered_read.c
++++ b/fs/netfs/buffered_read.c
+@@ -16,6 +16,7 @@
+ void netfs_rreq_unlock_folios(struct netfs_io_request *rreq)
  {
- 	loff_t end_of_write = offset + bytes_written;
+ 	struct netfs_io_subrequest *subreq;
++	struct netfs_folio *finfo;
+ 	struct folio *folio;
+ 	pgoff_t start_page = rreq->start / PAGE_SIZE;
+ 	pgoff_t last_page = ((rreq->start + rreq->len) / PAGE_SIZE) - 1;
+@@ -86,6 +87,15 @@ void netfs_rreq_unlock_folios(struct netfs_io_request *rreq)
  
--	if (end_of_write > cifsi->server_eof)
--		cifsi->server_eof = end_of_write;
-+	if (end_of_write > cifsi->netfs.remote_i_size)
-+		netfs_resize_file(&cifsi->netfs, end_of_write);
- }
+ 		if (!pg_failed) {
+ 			flush_dcache_folio(folio);
++			finfo = netfs_folio_info(folio);
++			if (finfo) {
++				trace_netfs_folio(folio, netfs_folio_trace_filled_gaps);
++				if (finfo->netfs_group)
++					folio_change_private(folio, finfo->netfs_group);
++				else
++					folio_detach_private(folio);
++				kfree(finfo);
++			}
+ 			folio_mark_uptodate(folio);
+ 		}
  
- static ssize_t
-@@ -3246,8 +3246,8 @@ cifs_uncached_writev_complete(struct work_struct *work)
+@@ -245,6 +255,7 @@ int netfs_read_folio(struct file *file, struct folio *folio)
+ 	struct address_space *mapping = folio_file_mapping(folio);
+ 	struct netfs_io_request *rreq;
+ 	struct netfs_inode *ctx = netfs_inode(mapping->host);
++	struct folio *sink = NULL;
+ 	int ret;
  
- 	spin_lock(&inode->i_lock);
- 	cifs_update_eof(cifsi, wdata->offset, wdata->bytes);
--	if (cifsi->server_eof > inode->i_size)
--		i_size_write(inode, cifsi->server_eof);
-+	if (cifsi->netfs.remote_i_size > inode->i_size)
-+		i_size_write(inode, cifsi->netfs.remote_i_size);
- 	spin_unlock(&inode->i_lock);
+ 	_enter("%lx", folio_index(folio));
+@@ -265,12 +276,56 @@ int netfs_read_folio(struct file *file, struct folio *folio)
+ 	trace_netfs_read(rreq, rreq->start, rreq->len, netfs_read_trace_readpage);
  
- 	complete(&wdata->done);
-diff --git a/fs/smb/client/inode.c b/fs/smb/client/inode.c
-index d7c302442c1e..6815b50ec56c 100644
---- a/fs/smb/client/inode.c
-+++ b/fs/smb/client/inode.c
-@@ -102,7 +102,7 @@ cifs_revalidate_cache(struct inode *inode, struct cifs_fattr *fattr)
- 	 /* revalidate if mtime or size have changed */
- 	fattr->cf_mtime = timestamp_truncate(fattr->cf_mtime, inode);
- 	if (timespec64_equal(&inode->i_mtime, &fattr->cf_mtime) &&
--	    cifs_i->server_eof == fattr->cf_eof) {
-+	    cifs_i->netfs.remote_i_size == fattr->cf_eof) {
- 		cifs_dbg(FYI, "%s: inode %llu is unchanged\n",
- 			 __func__, cifs_i->uniqueid);
- 		return;
-@@ -191,7 +191,7 @@ cifs_fattr_to_inode(struct inode *inode, struct cifs_fattr *fattr)
- 	else
- 		clear_bit(CIFS_INO_DELETE_PENDING, &cifs_i->flags);
+ 	/* Set up the output buffer */
+-	iov_iter_xarray(&rreq->iter, ITER_DEST, &mapping->i_pages,
+-			rreq->start, rreq->len);
++	if (folio_test_dirty(folio)) {
++		/* Handle someone trying to read from an unflushed streaming
++		 * write.  We fiddle the buffer so that a gap at the beginning
++		 * and/or a gap at the end get copied to, but the middle is
++		 * discarded.
++		 */
++		struct netfs_folio *finfo = netfs_folio_info(folio);
++		struct bio_vec *bvec;
++		unsigned int from = finfo->dirty_offset;
++		unsigned int to = from + finfo->dirty_len;
++		unsigned int off = 0, i = 0;
++		size_t flen = folio_size(folio);
++		size_t nr_bvec = flen / PAGE_SIZE + 2;
++		size_t part;
++
++		ret = -ENOMEM;
++		bvec = kmalloc_array(nr_bvec, sizeof(*bvec), GFP_KERNEL);
++		if (!bvec)
++			goto discard;
++
++		sink = folio_alloc(GFP_KERNEL, 0);
++		if (!sink)
++			goto discard;
++
++		trace_netfs_folio(folio, netfs_folio_trace_read_gaps);
++
++		rreq->direct_bv = bvec;
++		rreq->direct_bv_count = nr_bvec;
++		if (from > 0) {
++			bvec_set_folio(&bvec[i++], folio, from, 0);
++			off = from;
++		}
++		while (off < to) {
++			part = min_t(size_t, to - off, PAGE_SIZE);
++			bvec_set_folio(&bvec[i++], sink, part, 0);
++			off += part;
++		}
++		if (to < flen)
++			bvec_set_folio(&bvec[i++], folio, flen - to, to);
++		iov_iter_bvec(&rreq->iter, ITER_DEST, bvec, i, rreq->len);
++	} else {
++		iov_iter_xarray(&rreq->iter, ITER_DEST, &mapping->i_pages,
++				rreq->start, rreq->len);
++	}
  
--	cifs_i->server_eof = fattr->cf_eof;
-+	cifs_i->netfs.remote_i_size = fattr->cf_eof;
- 	/*
- 	 * Can't safely change the file size here if the client is writing to
- 	 * it due to potential races.
-@@ -2776,7 +2776,7 @@ cifs_set_file_size(struct inode *inode, struct iattr *attrs,
+ 	ret = netfs_begin_read(rreq, true);
++	if (sink)
++		folio_put(sink);
+ 	netfs_put_request(rreq, false, netfs_rreq_trace_put_return);
+-	return ret;
++	return ret < 0 ? ret : 0;
  
- set_size_out:
- 	if (rc == 0) {
--		cifsInode->server_eof = attrs->ia_size;
-+		netfs_resize_file(&cifsInode->netfs, attrs->ia_size);
- 		cifs_setsize(inode, attrs->ia_size);
- 		/*
- 		 * i_blocks is not related to (i_size / i_blksize), but instead
-diff --git a/fs/smb/client/smb2ops.c b/fs/smb/client/smb2ops.c
-index dc18130db9b3..e7f765673246 100644
---- a/fs/smb/client/smb2ops.c
-+++ b/fs/smb/client/smb2ops.c
-@@ -3554,7 +3554,7 @@ static long smb3_simple_falloc(struct file *file, struct cifs_tcon *tcon,
- 		rc = SMB2_set_eof(xid, tcon, cfile->fid.persistent_fid,
- 				  cfile->fid.volatile_fid, cfile->pid, &eof);
- 		if (rc == 0) {
--			cifsi->server_eof = off + len;
-+			netfs_resize_file(&cifsi->netfs, off + len);
- 			cifs_setsize(inode, off + len);
- 			cifs_truncate_page(inode->i_mapping, inode->i_size);
- 			truncate_setsize(inode, off + len);
-@@ -3646,8 +3646,8 @@ static long smb3_collapse_range(struct file *file, struct cifs_tcon *tcon,
- 	int rc;
- 	unsigned int xid;
- 	struct inode *inode = file_inode(file);
--	struct cifsFileInfo *cfile = file->private_data;
- 	struct cifsInodeInfo *cifsi = CIFS_I(inode);
-+	struct cifsFileInfo *cfile = file->private_data;
- 	__le64 eof;
- 	loff_t old_eof;
- 
-@@ -3682,9 +3682,9 @@ static long smb3_collapse_range(struct file *file, struct cifs_tcon *tcon,
- 
- 	rc = 0;
- 
--	cifsi->server_eof = i_size_read(inode) - len;
--	truncate_setsize(inode, cifsi->server_eof);
--	fscache_resize_cookie(cifs_inode_cookie(inode), cifsi->server_eof);
-+	netfs_resize_file(&cifsi->netfs, eof);
-+	truncate_setsize(inode, eof);
-+	fscache_resize_cookie(cifs_inode_cookie(inode), eof);
- out_2:
- 	filemap_invalidate_unlock(inode->i_mapping);
-  out:
+ discard:
+ 	netfs_put_request(rreq, false, netfs_rreq_trace_put_discard);
+diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
+index 94793f842000..b7426f455086 100644
+--- a/include/trace/events/netfs.h
++++ b/include/trace/events/netfs.h
+@@ -115,9 +115,11 @@
+ 	EM(netfs_folio_trace_clear,		"clear")	\
+ 	EM(netfs_folio_trace_clear_s,		"clear-s")	\
+ 	EM(netfs_folio_trace_clear_g,		"clear-g")	\
++	EM(netfs_folio_trace_filled_gaps,	"filled-gaps")	\
+ 	EM(netfs_folio_trace_kill,		"kill")		\
+ 	EM(netfs_folio_trace_mkwrite,		"mkwrite")	\
+ 	EM(netfs_folio_trace_mkwrite_plus,	"mkwrite+")	\
++	EM(netfs_folio_trace_read_gaps,		"read-gaps")	\
+ 	EM(netfs_folio_trace_redirty,		"redirty")	\
+ 	EM(netfs_folio_trace_redirtied,		"redirtied")	\
+ 	EM(netfs_folio_trace_store,		"store")	\
 
