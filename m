@@ -2,41 +2,40 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 22D2CC41513
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 16:05:40 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 4BEC9CDB482
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 16:05:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232650AbjJMQFi (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Oct 2023 12:05:38 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50102 "EHLO
+        id S232752AbjJMQFj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Oct 2023 12:05:39 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49998 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232697AbjJMQFb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 12:05:31 -0400
+        with ESMTP id S232636AbjJMQFZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 12:05:25 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 91DEFD8
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 09:04:39 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 504C4DE
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 09:04:33 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1697213078;
+        s=mimecast20190719; t=1697213072;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ybL5Z84E2MKfw9/KPwUGR/SMS/5stuqwlJ261jfXYyg=;
-        b=NipNRHbIFgI+y3c4J666CGh32DcSxi/ToiSOwq1CG1a0bEs2WTtCdShrsWMmr6CppmrMD3
-        PrQPNpV4EJbYo+XLc0T2lYOMehi9IYFuB5K+uZPQYwdg1WSB0bGR+ZU6zrmsRlDy5QaRuV
-        JK2CmPfKqA/YAHzDgiBiRt7H1EVTrCc=
+         content-transfer-encoding:content-transfer-encoding;
+        bh=/T7Rb4XZnpB8qQGskLxctbykFhIHLiOhPwndRDZOESw=;
+        b=AmgFeiQzUletldJb0955FzLMJNYR2Hj3rmsIDIJX5uaaLYKaieZnmXIkn1ftklJTpTYmwH
+        DuV2AZVyyuYdd1n3/4KKCrFwO6vdLD3y+wPzVw0JKlcKn4ZrA5N/sVrImxcnkxYNPjRSM6
+        p+Evaxhr+bXTugp/E1d176daeJZmV5c=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-222-9yKRiki2O6mUFlRHiZ7SOw-1; Fri, 13 Oct 2023 12:04:35 -0400
-X-MC-Unique: 9yKRiki2O6mUFlRHiZ7SOw-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
+ us-mta-144-AouhO1vMPQ-JnIcRI0T7Aw-1; Fri, 13 Oct 2023 12:04:29 -0400
+X-MC-Unique: AouhO1vMPQ-JnIcRI0T7Aw-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 6B4ED85A5A8;
-        Fri, 13 Oct 2023 16:04:34 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id DA771858F1D;
+        Fri, 13 Oct 2023 16:04:27 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.42.28.226])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id D8FD040C6F79;
-        Fri, 13 Oct 2023 16:04:31 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 7CF5D1C060DF;
+        Fri, 13 Oct 2023 16:04:25 +0000 (UTC)
 From:   David Howells <dhowells@redhat.com>
 To:     Jeff Layton <jlayton@kernel.org>, Steve French <smfrench@gmail.com>
 Cc:     David Howells <dhowells@redhat.com>,
@@ -52,201 +51,241 @@ Cc:     David Howells <dhowells@redhat.com>,
         linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
         v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
         linux-mm@kvack.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-cachefs@redhat.com
-Subject: [RFC PATCH 02/53] netfs: Track the fpos above which the server has no data
-Date:   Fri, 13 Oct 2023 17:03:31 +0100
-Message-ID: <20231013160423.2218093-3-dhowells@redhat.com>
-In-Reply-To: <20231013160423.2218093-1-dhowells@redhat.com>
-References: <20231013160423.2218093-1-dhowells@redhat.com>
+        linux-kernel@vger.kernel.org
+Subject: [RFC PATCH 00/53] netfs, afs, cifs: Delegate high-level I/O to netfslib
+Date:   Fri, 13 Oct 2023 17:03:29 +0100
+Message-ID: <20231013160423.2218093-1-dhowells@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.2
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.7
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Track the file position above which the server is not expected to have any
-data and preemptively assume that we can simply fill blocks with zeroes
-locally rather than attempting to download them - even if we've written
-data back to the server.  Assume that any data that was written back above
-that position is held in the local cache.  Call this the "zero point".
+Hi Jeff, Steve,
 
-Make use of this to optimise away some reads from the server.  We need to
-set the zero point in the following circumstances:
+I have been working on my netfslib helpers to the point that I can run
+xfstests on AFS to completion (both with write-back buffering and, with a
+small patch, write-through buffering in the pagecache).  I can also run a
+certain amount of xfstests on CIFS, though that requires some more
+debugging.  However, this seems like a good time to post a preview of the
+patches.
 
- (1) When we see an extant remote inode and have no cache for it, we set
-     the zero_point to i_size.
+The patches remove a little over 800 lines from AFS and over 2000 from
+CIFS, albeit with around 3000 lines added to netfs.  Hopefully, I will be
+able to remove a bunch of lines from 9P and Ceph too.
 
- (2) On local inode creation, we set zero_point to 0.
+The main aims of these patches are to get high-level I/O and knowledge of
+the pagecache out of the filesystem drivers as much as possible and to get
+rid, as much of possible, of the knowledge that pages/folios exist.
 
- (3) On local truncation down, we reduce zero_point to the new i_size if
-     the new i_size is lower.
+Further, I would like to see ->write_begin, ->write_end and ->launder_folio
+go away.
 
- (4) On local truncation up, we don't change zero_point.
+Features that are added by these patches to that which is already there in
+netfslib:
 
- (5) On local modification, we don't change zero_point.
+ (1) NFS-style (and Ceph-style) locking around DIO vs buffered I/O calls to
+     prevent these from happening at the same time.  mmap'd I/O can, of
+     necessity, happen at any time ignoring these locks.
 
- (6) On remote invalidation, we set zero_point to the new i_size.
+ (2) Support for unbuffered I/O.  The data is kept in the bounce buffer and
+     the pagecache is not used.  This can be turned on with an inode flag.
 
- (7) If stored data is culled from the local cache, we must set zero_point
-     above that if the data also got written to the server.
+ (3) Support for direct I/O.  This is basically unbuffered I/O with some
+     extra restrictions and no RMW.
 
- (8) If dirty data is written back to the server, but not the local cache,
-     we must set zero_point above that.
+ (4) Support for using a bounce buffer in an operation.  The bounce buffer
+     may be bigger than the target data/buffer, allowing for crypto
+     rounding.
 
-Assuming the above, any read from the server at or above the zero_point
-position will return all zeroes.
+ (5) Support for content encryption.  This isn't supported yet by AFS/CIFS
+     but is aimed initially at Ceph.
 
-The zero_point value can be stored in the cache, provided the above rules
-are applied to it by any code that culls part of the local cache.
+ (6) ->write_begin() and ->write_end() are ignored in favour of merging all
+     of that into one function, netfs_perform_write(), thereby avoiding the
+     function pointer traversals.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Jeff Layton <jlayton@kernel.org>
-cc: linux-cachefs@redhat.com
-cc: linux-fsdevel@vger.kernel.org
-cc: linux-mm@kvack.org
----
- fs/afs/inode.c           | 13 +++++++------
- fs/netfs/buffered_read.c | 40 +++++++++++++++++++++++++---------------
- include/linux/netfs.h    |  5 +++++
- 3 files changed, 37 insertions(+), 21 deletions(-)
+ (7) Support for write-through caching in the pagecache.
+     netfs_perform_write() adds the pages is modifies to an I/O operation
+     as it goes and directly marks them writeback rather than dirty.  When
+     writing back from write-through, it limits the range written back.
+     This should allow CIFS to deal with byte-range mandatory locks
+     correctly.
 
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index 1c794a1896aa..46bc5574d6f5 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -252,6 +252,7 @@ static void afs_apply_status(struct afs_operation *op,
- 		vnode->netfs.remote_i_size = status->size;
- 		if (change_size) {
- 			afs_set_i_size(vnode, status->size);
-+			vnode->netfs.zero_point = status->size;
- 			inode_set_ctime_to_ts(inode, t);
- 			inode->i_atime = t;
- 		}
-@@ -865,17 +866,17 @@ static void afs_setattr_success(struct afs_operation *op)
- static void afs_setattr_edit_file(struct afs_operation *op)
- {
- 	struct afs_vnode_param *vp = &op->file[0];
--	struct inode *inode = &vp->vnode->netfs.inode;
-+	struct afs_vnode *vnode = vp->vnode;
- 
- 	if (op->setattr.attr->ia_valid & ATTR_SIZE) {
- 		loff_t size = op->setattr.attr->ia_size;
- 		loff_t i_size = op->setattr.old_i_size;
- 
--		if (size < i_size)
--			truncate_pagecache(inode, size);
--		if (size != i_size)
--			fscache_resize_cookie(afs_vnode_cache(vp->vnode),
--					      vp->scb.status.size);
-+		if (size != i_size) {
-+			truncate_pagecache(&vnode->netfs.inode, size);
-+			netfs_resize_file(&vnode->netfs, size);
-+			fscache_resize_cookie(afs_vnode_cache(vnode), size);
-+		}
- 	}
- }
- 
-diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
-index 2cd3ccf4c439..a2852fa64ad0 100644
---- a/fs/netfs/buffered_read.c
-+++ b/fs/netfs/buffered_read.c
-@@ -147,6 +147,22 @@ static void netfs_rreq_expand(struct netfs_io_request *rreq,
- 	}
- }
- 
-+/*
-+ * Begin an operation, and fetch the stored zero point value from the cookie if
-+ * available.
-+ */
-+static int netfs_begin_cache_operation(struct netfs_io_request *rreq,
-+				       struct netfs_inode *ctx)
-+{
-+	int ret = -ENOBUFS;
-+
-+	if (ctx->ops->begin_cache_operation) {
-+		ret = ctx->ops->begin_cache_operation(rreq);
-+		/* TODO: Get the zero point value from the cache */
-+	}
-+	return ret;
-+}
-+
- /**
-  * netfs_readahead - Helper to manage a read request
-  * @ractl: The description of the readahead request
-@@ -180,11 +196,9 @@ void netfs_readahead(struct readahead_control *ractl)
- 	if (IS_ERR(rreq))
- 		return;
- 
--	if (ctx->ops->begin_cache_operation) {
--		ret = ctx->ops->begin_cache_operation(rreq);
--		if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
--			goto cleanup_free;
--	}
-+	ret = netfs_begin_cache_operation(rreq, ctx);
-+	if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
-+		goto cleanup_free;
- 
- 	netfs_stat(&netfs_n_rh_readahead);
- 	trace_netfs_read(rreq, readahead_pos(ractl), readahead_length(ractl),
-@@ -238,11 +252,9 @@ int netfs_read_folio(struct file *file, struct folio *folio)
- 		goto alloc_error;
- 	}
- 
--	if (ctx->ops->begin_cache_operation) {
--		ret = ctx->ops->begin_cache_operation(rreq);
--		if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
--			goto discard;
--	}
-+	ret = netfs_begin_cache_operation(rreq, ctx);
-+	if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
-+		goto discard;
- 
- 	netfs_stat(&netfs_n_rh_readpage);
- 	trace_netfs_read(rreq, rreq->start, rreq->len, netfs_read_trace_readpage);
-@@ -390,11 +402,9 @@ int netfs_write_begin(struct netfs_inode *ctx,
- 	rreq->no_unlock_folio	= folio_index(folio);
- 	__set_bit(NETFS_RREQ_NO_UNLOCK_FOLIO, &rreq->flags);
- 
--	if (ctx->ops->begin_cache_operation) {
--		ret = ctx->ops->begin_cache_operation(rreq);
--		if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
--			goto error_put;
--	}
-+	ret = netfs_begin_cache_operation(rreq, ctx);
-+	if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
-+		goto error_put;
- 
- 	netfs_stat(&netfs_n_rh_write_begin);
- 	trace_netfs_read(rreq, pos, len, netfs_read_trace_write_begin);
-diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index b447cb67f599..282511090ead 100644
---- a/include/linux/netfs.h
-+++ b/include/linux/netfs.h
-@@ -129,6 +129,8 @@ struct netfs_inode {
- 	struct fscache_cookie	*cache;
- #endif
- 	loff_t			remote_i_size;	/* Size of the remote file */
-+	loff_t			zero_point;	/* Size after which we assume there's no data
-+						 * on the server */
- };
- 
- /*
-@@ -330,6 +332,7 @@ static inline void netfs_inode_init(struct netfs_inode *ctx,
- {
- 	ctx->ops = ops;
- 	ctx->remote_i_size = i_size_read(&ctx->inode);
-+	ctx->zero_point = ctx->remote_i_size;
- #if IS_ENABLED(CONFIG_FSCACHE)
- 	ctx->cache = NULL;
- #endif
-@@ -345,6 +348,8 @@ static inline void netfs_inode_init(struct netfs_inode *ctx,
- static inline void netfs_resize_file(struct netfs_inode *ctx, loff_t new_i_size)
- {
- 	ctx->remote_i_size = new_i_size;
-+	if (new_i_size < ctx->zero_point)
-+		ctx->zero_point = new_i_size;
- }
- 
- /**
+ (8) O_*SYNC and RWF_*SYNC writes use write-through rather than writing to
+     the pagecache and then flushing afterwards.  An AIO O_*SYNC write will
+     notify of completion when the sub-writes all complete.
+
+ (9) Support for write-streaming where modifed data is held in !uptodate
+     folios, with a private struct attached indicating the range that is
+     valid.
+
+(10) Support for write grouping, multiplexing a pointer to a group in the
+     folio private data with the write-streaming data.  The writepages
+     algorithm only writes stuff back that's in the nominated group.  This
+     is intended for use by Ceph to write is snaps in order.
+
+(11) Skipping reads for which we know the server could only supply zeros or
+     EOF (for instance if we've done a local write that leaves a hole in
+     the file and extends the local inode size).
+
+
+General notes:
+
+ (1) netfslib now makes use of folio->private, which means the filesystem
+     can't use it.
+
+ (2) Use of fscache is not yet tested.  I'm not sure whether to allow a
+     cache to be used with a write-through write.
+
+ (3) The filesystem provides wrappers to call the write helpers, allowing
+     it to do pre-validation, oplock/capability fetching and the passing in
+     of write group info.
+
+ (4) I want to try flushing the data when tearing down an inode before
+     invalidating it to try and render launder_folio unnecessary.
+
+ (5) Write-through caching will generate and dispatch write subrequests as
+     it gathers enough data to hit wsize and has whole pages that at least
+     span that size.  This needs to be a bit more flexible, allowing for a
+     filesystem such as CIFS to have a variable wsize.
+
+ (6) The filesystem driver is just given read and write calls with an
+     iov_iter describing the data/buffer to use.  Ideally, they don't see
+     pages or folios at all.  A function, extract_iter_to_sg(), is already
+     available to decant part of an iterator into a scatterlist for crypto
+     purposes.
+
+
+CIFS notes:
+
+ (1) CIFS is made to use unbuffered I/O for unbuffered caching modes and
+     write-through caching for cache=strict.
+
+ (2) cifs_init_request() occasionally throws an error that it can't get a
+     writable file when trying to do writeback.
+
+ (3) Apparent file corruption frequently appears in the target file when
+     cifs_copy_file_range(), even though it doesn't use any netfslib
+     helpers and even if it doesn't overlap with any pages in the
+     pagecache.
+
+ (4) I should be able to turn multipage folio support on in CIFS now.
+
+ (5) The then-unused CIFS code is removed in three patches, not one, to
+     avoid the git patch generator from producing confusing patches in
+     which it thinks code is being moved around rather than just being
+     removed.
+
+David
+
+David Howells (53):
+  netfs: Add a procfile to list in-progress requests
+  netfs: Track the fpos above which the server has no data
+  netfs: Note nonblockingness in the netfs_io_request struct
+  netfs: Allow the netfs to make the io (sub)request alloc larger
+  netfs: Add a ->free_subrequest() op
+  afs: Don't use folio->private to record partial modification
+  netfs: Provide invalidate_folio and release_folio calls
+  netfs: Add rsize to netfs_io_request
+  netfs: Implement unbuffered/DIO vs buffered I/O locking
+  netfs: Add iov_iters to (sub)requests to describe various buffers
+  netfs: Add support for DIO buffering
+  netfs: Provide tools to create a buffer in an xarray
+  netfs: Add bounce buffering support
+  netfs: Add func to calculate pagecount/size-limited span of an
+    iterator
+  netfs: Limit subrequest by size or number of segments
+  netfs: Export netfs_put_subrequest() and some tracepoints
+  netfs: Extend the netfs_io_*request structs to handle writes
+  netfs: Add a hook to allow tell the netfs to update its i_size
+  netfs: Make netfs_put_request() handle a NULL pointer
+  fscache: Add a function to begin an cache op from a netfslib request
+  netfs: Make the refcounting of netfs_begin_read() easier to use
+  netfs: Prep to use folio->private for write grouping and streaming
+    write
+  netfs: Dispatch write requests to process a writeback slice
+  netfs: Provide func to copy data to pagecache for buffered write
+  netfs: Make netfs_read_folio() handle streaming-write pages
+  netfs: Allocate multipage folios in the writepath
+  netfs: Implement support for unbuffered/DIO read
+  netfs: Implement unbuffered/DIO write support
+  netfs: Implement buffered write API
+  netfs: Allow buffered shared-writeable mmap through
+    netfs_page_mkwrite()
+  netfs: Provide netfs_file_read_iter()
+  netfs: Provide a writepages implementation
+  netfs: Provide minimum blocksize parameter
+  netfs: Make netfs_skip_folio_read() take account of blocksize
+  netfs: Perform content encryption
+  netfs: Decrypt encrypted content
+  netfs: Support decryption on ubuffered/DIO read
+  netfs: Support encryption on Unbuffered/DIO write
+  netfs: Provide a launder_folio implementation
+  netfs: Implement a write-through caching option
+  netfs: Rearrange netfs_io_subrequest to put request pointer first
+  afs: Use the netfs write helpers
+  cifs: Replace cifs_readdata with a wrapper around netfs_io_subrequest
+  cifs: Share server EOF pos with netfslib
+  cifs: Replace cifs_writedata with a wrapper around netfs_io_subrequest
+  cifs: Use more fields from netfs_io_subrequest
+  cifs: Make wait_mtu_credits take size_t args
+  cifs: Implement netfslib hooks
+  cifs: Move cifs_loose_read_iter() and cifs_file_write_iter() to file.c
+  cifs: Cut over to using netfslib
+  cifs: Remove some code that's no longer used, part 1
+  cifs: Remove some code that's no longer used, part 2
+  cifs: Remove some code that's no longer used, part 3
+
+ fs/9p/vfs_addr.c             |   51 +-
+ fs/afs/file.c                |  206 +--
+ fs/afs/inode.c               |   15 +-
+ fs/afs/internal.h            |   66 +-
+ fs/afs/write.c               |  816 +---------
+ fs/ceph/addr.c               |   28 +-
+ fs/ceph/cache.h              |   12 -
+ fs/fscache/io.c              |   42 +
+ fs/netfs/Makefile            |    9 +-
+ fs/netfs/buffered_read.c     |  245 ++-
+ fs/netfs/buffered_write.c    | 1223 ++++++++++++++
+ fs/netfs/crypto.c            |  148 ++
+ fs/netfs/direct_read.c       |  263 +++
+ fs/netfs/direct_write.c      |  359 +++++
+ fs/netfs/internal.h          |  121 ++
+ fs/netfs/io.c                |  325 +++-
+ fs/netfs/iterator.c          |   97 ++
+ fs/netfs/locking.c           |  209 +++
+ fs/netfs/main.c              |  101 ++
+ fs/netfs/misc.c              |  237 +++
+ fs/netfs/objects.c           |   64 +-
+ fs/netfs/output.c            |  485 ++++++
+ fs/netfs/stats.c             |   22 +-
+ fs/smb/client/Kconfig        |    1 +
+ fs/smb/client/cifsfs.c       |   65 +-
+ fs/smb/client/cifsfs.h       |   10 +-
+ fs/smb/client/cifsglob.h     |   59 +-
+ fs/smb/client/cifsproto.h    |   10 +-
+ fs/smb/client/cifssmb.c      |  111 +-
+ fs/smb/client/file.c         | 2905 ++++++----------------------------
+ fs/smb/client/fscache.c      |  109 --
+ fs/smb/client/fscache.h      |   54 -
+ fs/smb/client/inode.c        |   25 +-
+ fs/smb/client/smb2ops.c      |   20 +-
+ fs/smb/client/smb2pdu.c      |  168 +-
+ fs/smb/client/smb2proto.h    |    5 +-
+ fs/smb/client/trace.h        |  144 +-
+ fs/smb/client/transport.c    |   17 +-
+ include/linux/fscache.h      |    6 +
+ include/linux/netfs.h        |  173 +-
+ include/trace/events/afs.h   |   31 -
+ include/trace/events/netfs.h |  158 +-
+ 42 files changed, 5136 insertions(+), 4079 deletions(-)
+ create mode 100644 fs/netfs/buffered_write.c
+ create mode 100644 fs/netfs/crypto.c
+ create mode 100644 fs/netfs/direct_read.c
+ create mode 100644 fs/netfs/direct_write.c
+ create mode 100644 fs/netfs/locking.c
+ create mode 100644 fs/netfs/misc.c
+ create mode 100644 fs/netfs/output.c
 
