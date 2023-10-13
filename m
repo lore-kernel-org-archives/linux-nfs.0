@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7B0D1CDB483
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 15:59:10 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id DB2ECCDB47E
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 15:59:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232559AbjJMP7K (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Oct 2023 11:59:10 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:48058 "EHLO
+        id S232561AbjJMP7X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Oct 2023 11:59:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51698 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232452AbjJMP7J (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 11:59:09 -0400
+        with ESMTP id S232596AbjJMP7S (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 11:59:18 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 27C9EBD
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 08:57:48 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 5A084DA
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 08:57:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1697212667;
+        s=mimecast20190719; t=1697212674;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=ybL5Z84E2MKfw9/KPwUGR/SMS/5stuqwlJ261jfXYyg=;
-        b=F8YQTqirxRUvDG6w68tYNMJomJd0r8mdTyHVfHqM6mR8KTZK9vbSZYS0q30kkKZ21lvtHd
-        JT/olWUv7Jt/TXGyqlUyo7iVBdBHaW9kIgJEx4WPloCjf56NV7Sgszgx/nR3LpqVh52op9
-        lQGo/vUKltf9pvKrtnT26z3WdTh8x1s=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-216-M9f1MTH9Nyy4xEZUXNXggw-1; Fri, 13 Oct 2023 11:57:40 -0400
-X-MC-Unique: M9f1MTH9Nyy4xEZUXNXggw-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
+        bh=qZVSDRhH8TCwDqqtYYaWhbNXvdmkKJuIxH0fFLIHYlQ=;
+        b=Eh/Vv6coK01Q3WgtMqB4lauu+H1vwCWBf6am3zE5cByZP63DR6IQiQQe4VKaZFqeggkTo0
+        r6oIJ1NtkWIDyQpsWUgv1G4nz/SCvqGPrDGgopjG1TtzPvRgtIkEcDsFlVxbGOQjb+wDwn
+        cmIea9hGZYyWuV0iEvj2+7UdWWtWc28=
+Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
+ by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-358-qqDjH4-bPva_BatiZBcR7A-1; Fri, 13 Oct 2023 11:57:50 -0400
+X-MC-Unique: qqDjH4-bPva_BatiZBcR7A-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id EFB55862DFD;
-        Fri, 13 Oct 2023 15:57:38 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 26A151E441D8;
+        Fri, 13 Oct 2023 15:57:49 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.42.28.226])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 4664425C0;
-        Fri, 13 Oct 2023 15:57:36 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 63FD71C06535;
+        Fri, 13 Oct 2023 15:57:46 +0000 (UTC)
 From:   David Howells <dhowells@redhat.com>
 To:     Jeff Layton <jlayton@kernel.org>, Steve French <smfrench@gmail.com>
 Cc:     David Howells <dhowells@redhat.com>,
@@ -54,52 +54,20 @@ Cc:     David Howells <dhowells@redhat.com>,
         v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
         linux-mm@kvack.org, netdev@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-cachefs@redhat.com
-Subject: [RFC PATCH 02/53] netfs: Track the fpos above which the server has no data
-Date:   Fri, 13 Oct 2023 16:56:35 +0100
-Message-ID: <20231013155727.2217781-3-dhowells@redhat.com>
+Subject: [RFC PATCH 05/53] netfs: Add a ->free_subrequest() op
+Date:   Fri, 13 Oct 2023 16:56:38 +0100
+Message-ID: <20231013155727.2217781-6-dhowells@redhat.com>
 In-Reply-To: <20231013155727.2217781-1-dhowells@redhat.com>
 References: <20231013155727.2217781-1-dhowells@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.1
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.7
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Track the file position above which the server is not expected to have any
-data and preemptively assume that we can simply fill blocks with zeroes
-locally rather than attempting to download them - even if we've written
-data back to the server.  Assume that any data that was written back above
-that position is held in the local cache.  Call this the "zero point".
-
-Make use of this to optimise away some reads from the server.  We need to
-set the zero point in the following circumstances:
-
- (1) When we see an extant remote inode and have no cache for it, we set
-     the zero_point to i_size.
-
- (2) On local inode creation, we set zero_point to 0.
-
- (3) On local truncation down, we reduce zero_point to the new i_size if
-     the new i_size is lower.
-
- (4) On local truncation up, we don't change zero_point.
-
- (5) On local modification, we don't change zero_point.
-
- (6) On remote invalidation, we set zero_point to the new i_size.
-
- (7) If stored data is culled from the local cache, we must set zero_point
-     above that if the data also got written to the server.
-
- (8) If dirty data is written back to the server, but not the local cache,
-     we must set zero_point above that.
-
-Assuming the above, any read from the server at or above the zero_point
-position will return all zeroes.
-
-The zero_point value can be stored in the cache, provided the above rules
-are applied to it by any code that culls part of the local cache.
+Add a ->free_subrequest() op so that the netfs can clean up data attached
+to a subrequest.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Jeff Layton <jlayton@kernel.org>
@@ -107,147 +75,33 @@ cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 cc: linux-mm@kvack.org
 ---
- fs/afs/inode.c           | 13 +++++++------
- fs/netfs/buffered_read.c | 40 +++++++++++++++++++++++++---------------
- include/linux/netfs.h    |  5 +++++
- 3 files changed, 37 insertions(+), 21 deletions(-)
+ fs/netfs/objects.c    | 2 ++
+ include/linux/netfs.h | 1 +
+ 2 files changed, 3 insertions(+)
 
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index 1c794a1896aa..46bc5574d6f5 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -252,6 +252,7 @@ static void afs_apply_status(struct afs_operation *op,
- 		vnode->netfs.remote_i_size = status->size;
- 		if (change_size) {
- 			afs_set_i_size(vnode, status->size);
-+			vnode->netfs.zero_point = status->size;
- 			inode_set_ctime_to_ts(inode, t);
- 			inode->i_atime = t;
- 		}
-@@ -865,17 +866,17 @@ static void afs_setattr_success(struct afs_operation *op)
- static void afs_setattr_edit_file(struct afs_operation *op)
- {
- 	struct afs_vnode_param *vp = &op->file[0];
--	struct inode *inode = &vp->vnode->netfs.inode;
-+	struct afs_vnode *vnode = vp->vnode;
+diff --git a/fs/netfs/objects.c b/fs/netfs/objects.c
+index 2f1865ff7cce..8e92b8401aaa 100644
+--- a/fs/netfs/objects.c
++++ b/fs/netfs/objects.c
+@@ -147,6 +147,8 @@ static void netfs_free_subrequest(struct netfs_io_subrequest *subreq,
+ 	struct netfs_io_request *rreq = subreq->rreq;
  
- 	if (op->setattr.attr->ia_valid & ATTR_SIZE) {
- 		loff_t size = op->setattr.attr->ia_size;
- 		loff_t i_size = op->setattr.old_i_size;
- 
--		if (size < i_size)
--			truncate_pagecache(inode, size);
--		if (size != i_size)
--			fscache_resize_cookie(afs_vnode_cache(vp->vnode),
--					      vp->scb.status.size);
-+		if (size != i_size) {
-+			truncate_pagecache(&vnode->netfs.inode, size);
-+			netfs_resize_file(&vnode->netfs, size);
-+			fscache_resize_cookie(afs_vnode_cache(vnode), size);
-+		}
- 	}
- }
- 
-diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
-index 2cd3ccf4c439..a2852fa64ad0 100644
---- a/fs/netfs/buffered_read.c
-+++ b/fs/netfs/buffered_read.c
-@@ -147,6 +147,22 @@ static void netfs_rreq_expand(struct netfs_io_request *rreq,
- 	}
- }
- 
-+/*
-+ * Begin an operation, and fetch the stored zero point value from the cookie if
-+ * available.
-+ */
-+static int netfs_begin_cache_operation(struct netfs_io_request *rreq,
-+				       struct netfs_inode *ctx)
-+{
-+	int ret = -ENOBUFS;
-+
-+	if (ctx->ops->begin_cache_operation) {
-+		ret = ctx->ops->begin_cache_operation(rreq);
-+		/* TODO: Get the zero point value from the cache */
-+	}
-+	return ret;
-+}
-+
- /**
-  * netfs_readahead - Helper to manage a read request
-  * @ractl: The description of the readahead request
-@@ -180,11 +196,9 @@ void netfs_readahead(struct readahead_control *ractl)
- 	if (IS_ERR(rreq))
- 		return;
- 
--	if (ctx->ops->begin_cache_operation) {
--		ret = ctx->ops->begin_cache_operation(rreq);
--		if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
--			goto cleanup_free;
--	}
-+	ret = netfs_begin_cache_operation(rreq, ctx);
-+	if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
-+		goto cleanup_free;
- 
- 	netfs_stat(&netfs_n_rh_readahead);
- 	trace_netfs_read(rreq, readahead_pos(ractl), readahead_length(ractl),
-@@ -238,11 +252,9 @@ int netfs_read_folio(struct file *file, struct folio *folio)
- 		goto alloc_error;
- 	}
- 
--	if (ctx->ops->begin_cache_operation) {
--		ret = ctx->ops->begin_cache_operation(rreq);
--		if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
--			goto discard;
--	}
-+	ret = netfs_begin_cache_operation(rreq, ctx);
-+	if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
-+		goto discard;
- 
- 	netfs_stat(&netfs_n_rh_readpage);
- 	trace_netfs_read(rreq, rreq->start, rreq->len, netfs_read_trace_readpage);
-@@ -390,11 +402,9 @@ int netfs_write_begin(struct netfs_inode *ctx,
- 	rreq->no_unlock_folio	= folio_index(folio);
- 	__set_bit(NETFS_RREQ_NO_UNLOCK_FOLIO, &rreq->flags);
- 
--	if (ctx->ops->begin_cache_operation) {
--		ret = ctx->ops->begin_cache_operation(rreq);
--		if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
--			goto error_put;
--	}
-+	ret = netfs_begin_cache_operation(rreq, ctx);
-+	if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
-+		goto error_put;
- 
- 	netfs_stat(&netfs_n_rh_write_begin);
- 	trace_netfs_read(rreq, pos, len, netfs_read_trace_write_begin);
+ 	trace_netfs_sreq(subreq, netfs_sreq_trace_free);
++	if (rreq->netfs_ops->free_subrequest)
++		rreq->netfs_ops->free_subrequest(subreq);
+ 	kfree(subreq);
+ 	netfs_stat_d(&netfs_n_rh_sreq);
+ 	netfs_put_request(rreq, was_async, netfs_rreq_trace_put_subreq);
 diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index b447cb67f599..282511090ead 100644
+index 6942b8cf03dc..ed64d1034afa 100644
 --- a/include/linux/netfs.h
 +++ b/include/linux/netfs.h
-@@ -129,6 +129,8 @@ struct netfs_inode {
- 	struct fscache_cookie	*cache;
- #endif
- 	loff_t			remote_i_size;	/* Size of the remote file */
-+	loff_t			zero_point;	/* Size after which we assume there's no data
-+						 * on the server */
- };
+@@ -218,6 +218,7 @@ struct netfs_request_ops {
+ 	unsigned int	io_subrequest_size;	/* Alloc size for netfs_io_subrequest struct */
+ 	int (*init_request)(struct netfs_io_request *rreq, struct file *file);
+ 	void (*free_request)(struct netfs_io_request *rreq);
++	void (*free_subrequest)(struct netfs_io_subrequest *rreq);
+ 	int (*begin_cache_operation)(struct netfs_io_request *rreq);
  
- /*
-@@ -330,6 +332,7 @@ static inline void netfs_inode_init(struct netfs_inode *ctx,
- {
- 	ctx->ops = ops;
- 	ctx->remote_i_size = i_size_read(&ctx->inode);
-+	ctx->zero_point = ctx->remote_i_size;
- #if IS_ENABLED(CONFIG_FSCACHE)
- 	ctx->cache = NULL;
- #endif
-@@ -345,6 +348,8 @@ static inline void netfs_inode_init(struct netfs_inode *ctx,
- static inline void netfs_resize_file(struct netfs_inode *ctx, loff_t new_i_size)
- {
- 	ctx->remote_i_size = new_i_size;
-+	if (new_i_size < ctx->zero_point)
-+		ctx->zero_point = new_i_size;
- }
- 
- /**
+ 	void (*expand_readahead)(struct netfs_io_request *rreq);
 
