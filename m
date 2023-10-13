@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 1EFB9C46CA1
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 16:07:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 80981CDB487
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 16:07:54 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232467AbjJMQHs (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Oct 2023 12:07:48 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:47576 "EHLO
+        id S232559AbjJMQHw (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Oct 2023 12:07:52 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:33982 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233115AbjJMQHB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 12:07:01 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2B95BCF
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 09:05:46 -0700 (PDT)
+        with ESMTP id S233133AbjJMQHZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 12:07:25 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E1AAF1701
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 09:05:59 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1697213145;
+        s=mimecast20190719; t=1697213156;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=F0Ay07c0Gz72YNYgMd2laEIR/IQCWOWvRbIa7ptaL9M=;
-        b=SSyQCt03DeVLVsrjdN5asRLEt3d/jrlsHbXML6Z4mMIxTwzra+1bnKRhov1eUg7CtHC8C/
-        BPtUy+5KGnVJ/7omWPQIPCkvtkBEV9Ekh/gT3BxCFto76IaOPyEIJKtnlkDAStCeRv4jCR
-        O8KMMWGLbKFQ0Gj/l0AFV+EGz8U0/Vc=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-549-ySrH6GjHO9Ka3rsox-_Ymw-1; Fri, 13 Oct 2023 12:05:40 -0400
-X-MC-Unique: ySrH6GjHO9Ka3rsox-_Ymw-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
+        bh=qXcme0kNMrH3V4PIjyzNcjxLbny8iXa7oebH1ad5t2M=;
+        b=PHQZZeQwBjMKsfsmN+lWayLEUPyHZU/EOZVelzuN2PbWNblTV/5DJJnXqkeiGn4/5wcdMM
+        qnFw4UDP8UXM0H+l0wKT9NGi36bBI5r8KGjFien5zcqmpep6ceAT+t3/r9itxOPHquTEvZ
+        Pak2GSA4ol/JQ2Pc+K1YXKs8xjQr/sY=
+Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
+ by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ us-mta-110-wbIsFAmxMSm-WFxmFZQxmw-1; Fri, 13 Oct 2023 12:05:47 -0400
+X-MC-Unique: wbIsFAmxMSm-WFxmFZQxmw-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id C482187B2BB;
-        Fri, 13 Oct 2023 16:05:38 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 2D4EF280D584;
+        Fri, 13 Oct 2023 16:05:45 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.42.28.226])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 41C051C06535;
-        Fri, 13 Oct 2023 16:05:36 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A81CC201F457;
+        Fri, 13 Oct 2023 16:05:42 +0000 (UTC)
 From:   David Howells <dhowells@redhat.com>
 To:     Jeff Layton <jlayton@kernel.org>, Steve French <smfrench@gmail.com>
 Cc:     David Howells <dhowells@redhat.com>,
@@ -53,24 +53,41 @@ Cc:     David Howells <dhowells@redhat.com>,
         v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
         linux-mm@kvack.org, netdev@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-cachefs@redhat.com
-Subject: [RFC PATCH 20/53] fscache: Add a function to begin an cache op from a netfslib request
-Date:   Fri, 13 Oct 2023 17:03:49 +0100
-Message-ID: <20231013160423.2218093-21-dhowells@redhat.com>
+Subject: [RFC PATCH 22/53] netfs: Prep to use folio->private for write grouping and streaming write
+Date:   Fri, 13 Oct 2023 17:03:51 +0100
+Message-ID: <20231013160423.2218093-23-dhowells@redhat.com>
 In-Reply-To: <20231013160423.2218093-1-dhowells@redhat.com>
 References: <20231013160423.2218093-1-dhowells@redhat.com>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.7
+X-Scanned-By: MIMEDefang 3.1 on 10.11.54.4
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Add a function to begin an cache read or write operation from a netfslib
-I/O request.  This function can then be pointed to directly by the network
-filesystem's netfs_request_ops::begin_cache_operation op pointer.
+Prepare to use folio->private to hold information write grouping and
+streaming write.  These are implemented in the same commit as they both
+make use of folio->private and will be both checked at the same time in
+several places.
 
-Ideally, netfslib would just call into fscache directly, but that would
-cause dependency cycles as fscache calls into netfslib directly.
+"Write grouping" involves ordering the writeback of groups of writes, such
+as is needed for ceph snaps.  A group is represented by a
+filesystem-supplied object which must contain a netfs_group struct.  This
+contains just a refcount and a pointer to a destructor.
+
+"Streaming write" is the storage of data in folios that are marked dirty,
+but not uptodate, to avoid unnecessary reads of data.  This is represented
+by a netfs_folio struct.  This contains the offset and length of the
+modified region plus the otherwise displaced write grouping pointer.
+
+The way folio->private is multiplexed is:
+
+ (1) If private is NULL then neither is in operation on a dirty folio.
+
+ (2) If private is set, with bit 0 clear, then this points to a group.
+
+ (3) If private is set, with bit 0 set, then this points to a netfs_folio
+     struct (with bit 0 AND'ed out).
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Jeff Layton <jlayton@kernel.org>
@@ -78,196 +95,160 @@ cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 cc: linux-mm@kvack.org
 ---
- fs/9p/vfs_addr.c        | 18 ++----------------
- fs/afs/file.c           | 14 +-------------
- fs/ceph/addr.c          |  2 +-
- fs/ceph/cache.h         | 12 ------------
- fs/fscache/io.c         | 42 +++++++++++++++++++++++++++++++++++++++++
- include/linux/fscache.h |  6 ++++++
- 6 files changed, 52 insertions(+), 42 deletions(-)
+ fs/netfs/internal.h   | 28 ++++++++++++++++++++++++++
+ fs/netfs/misc.c       | 46 +++++++++++++++++++++++++++++++++++++++++++
+ include/linux/netfs.h | 41 ++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 115 insertions(+)
 
-diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
-index 18a666c43e4a..516572bad412 100644
---- a/fs/9p/vfs_addr.c
-+++ b/fs/9p/vfs_addr.c
-@@ -17,6 +17,7 @@
- #include <linux/swap.h>
- #include <linux/uio.h>
- #include <linux/netfs.h>
-+#include <linux/fscache.h>
- #include <net/9p/9p.h>
- #include <net/9p/client.h>
- 
-@@ -82,25 +83,10 @@ static void v9fs_free_request(struct netfs_io_request *rreq)
- 	p9_fid_put(fid);
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index 46183dad4d50..83418a918ee1 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -147,6 +147,34 @@ static inline bool netfs_is_cache_enabled(struct netfs_inode *ctx)
+ #endif
  }
  
--/**
-- * v9fs_begin_cache_operation - Begin a cache operation for a read
-- * @rreq: The read request
-- */
--static int v9fs_begin_cache_operation(struct netfs_io_request *rreq)
--{
--#ifdef CONFIG_9P_FSCACHE
--	struct fscache_cookie *cookie = v9fs_inode_cookie(V9FS_I(rreq->inode));
--
--	return fscache_begin_read_operation(&rreq->cache_resources, cookie);
--#else
--	return -ENOBUFS;
--#endif
--}
--
- const struct netfs_request_ops v9fs_req_ops = {
- 	.init_request		= v9fs_init_request,
- 	.free_request		= v9fs_free_request,
--	.begin_cache_operation	= v9fs_begin_cache_operation,
-+	.begin_cache_operation	= fscache_begin_cache_operation,
- 	.issue_read		= v9fs_issue_read,
- };
- 
-diff --git a/fs/afs/file.c b/fs/afs/file.c
-index 3e39a2ebcad6..5bb78d874292 100644
---- a/fs/afs/file.c
-+++ b/fs/afs/file.c
-@@ -360,18 +360,6 @@ static int afs_init_request(struct netfs_io_request *rreq, struct file *file)
- 	return 0;
- }
- 
--static int afs_begin_cache_operation(struct netfs_io_request *rreq)
--{
--#ifdef CONFIG_AFS_FSCACHE
--	struct afs_vnode *vnode = AFS_FS_I(rreq->inode);
--
--	return fscache_begin_read_operation(&rreq->cache_resources,
--					    afs_vnode_cache(vnode));
--#else
--	return -ENOBUFS;
--#endif
--}
--
- static int afs_check_write_begin(struct file *file, loff_t pos, unsigned len,
- 				 struct folio **foliop, void **_fsdata)
- {
-@@ -388,7 +376,7 @@ static void afs_free_request(struct netfs_io_request *rreq)
- const struct netfs_request_ops afs_req_ops = {
- 	.init_request		= afs_init_request,
- 	.free_request		= afs_free_request,
--	.begin_cache_operation	= afs_begin_cache_operation,
-+	.begin_cache_operation	= fscache_begin_cache_operation,
- 	.check_write_begin	= afs_check_write_begin,
- 	.issue_read		= afs_issue_read,
- };
-diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-index 92a5ddcd9a76..4841b06df78c 100644
---- a/fs/ceph/addr.c
-+++ b/fs/ceph/addr.c
-@@ -488,7 +488,7 @@ static void ceph_netfs_free_request(struct netfs_io_request *rreq)
- const struct netfs_request_ops ceph_netfs_ops = {
- 	.init_request		= ceph_init_request,
- 	.free_request		= ceph_netfs_free_request,
--	.begin_cache_operation	= ceph_begin_cache_operation,
-+	.begin_cache_operation	= fscache_begin_cache_operation,
- 	.issue_read		= ceph_netfs_issue_read,
- 	.expand_readahead	= ceph_netfs_expand_readahead,
- 	.clamp_length		= ceph_netfs_clamp_length,
-diff --git a/fs/ceph/cache.h b/fs/ceph/cache.h
-index dc502daac49a..b804f1094764 100644
---- a/fs/ceph/cache.h
-+++ b/fs/ceph/cache.h
-@@ -57,13 +57,6 @@ static inline int ceph_fscache_dirty_folio(struct address_space *mapping,
- 	return fscache_dirty_folio(mapping, folio, ceph_fscache_cookie(ci));
- }
- 
--static inline int ceph_begin_cache_operation(struct netfs_io_request *rreq)
--{
--	struct fscache_cookie *cookie = ceph_fscache_cookie(ceph_inode(rreq->inode));
--
--	return fscache_begin_read_operation(&rreq->cache_resources, cookie);
--}
--
- static inline bool ceph_is_cache_enabled(struct inode *inode)
- {
- 	return fscache_cookie_enabled(ceph_fscache_cookie(ceph_inode(inode)));
-@@ -135,11 +128,6 @@ static inline bool ceph_is_cache_enabled(struct inode *inode)
- 	return false;
- }
- 
--static inline int ceph_begin_cache_operation(struct netfs_io_request *rreq)
--{
--	return -ENOBUFS;
--}
--
- static inline void ceph_fscache_note_page_release(struct inode *inode)
- {
- }
-diff --git a/fs/fscache/io.c b/fs/fscache/io.c
-index 0d2b8dec8f82..cb602dd651e6 100644
---- a/fs/fscache/io.c
-+++ b/fs/fscache/io.c
-@@ -158,6 +158,48 @@ int __fscache_begin_write_operation(struct netfs_cache_resources *cres,
- }
- EXPORT_SYMBOL(__fscache_begin_write_operation);
- 
-+/**
-+ * fscache_begin_cache_operation - Begin a cache op for netfslib
-+ * @rreq: The netfs request that wants to access the cache.
-+ *
-+ * Begin an I/O operation on behalf of the netfs helper library, read or write.
-+ * @rreq indicates the netfs operation that wishes to access the cache.
-+ *
-+ * This is intended to be pointed to directly by the ->begin_cache_operation()
-+ * netfs lib operation for the network filesystem.
-+ *
-+ * @cres->inval_counter is set from @cookie->inval_counter for comparison at
-+ * the end of the operation.  This allows invalidation during the operation to
-+ * be detected by the caller.
-+ *
-+ * Returns:
-+ * * 0		- Success
-+ * * -ENOBUFS	- No caching available
-+ * * Other error code from the cache, such as -ENOMEM.
++/*
++ * Get a ref on a netfs group attached to a dirty page (e.g. a ceph snap).
 + */
-+int fscache_begin_cache_operation(struct netfs_io_request *rreq)
++static inline struct netfs_group *netfs_get_group(struct netfs_group *netfs_group)
 +{
-+	struct netfs_inode *ctx = netfs_inode(rreq->inode);
-+
-+	switch (rreq->origin) {
-+	case NETFS_READAHEAD:
-+	case NETFS_READPAGE:
-+	case NETFS_READ_FOR_WRITE:
-+		return fscache_begin_operation(&rreq->cache_resources,
-+					       netfs_i_cookie(ctx),
-+					       FSCACHE_WANT_PARAMS,
-+					       fscache_access_io_read);
-+	case NETFS_WRITEBACK:
-+		return fscache_begin_operation(&rreq->cache_resources,
-+					       netfs_i_cookie(ctx),
-+					       FSCACHE_WANT_PARAMS,
-+					       fscache_access_io_write);
-+	default:
-+		return -ENOBUFS;
-+	}
++	if (netfs_group)
++		refcount_inc(&netfs_group->ref);
++	return netfs_group;
 +}
-+EXPORT_SYMBOL(fscache_begin_cache_operation);
 +
- /**
-  * fscache_dirty_folio - Mark folio dirty and pin a cache object for writeback
-  * @mapping: The mapping the folio belongs to.
-diff --git a/include/linux/fscache.h b/include/linux/fscache.h
-index 8e312c8323a8..9c389adaf286 100644
---- a/include/linux/fscache.h
-+++ b/include/linux/fscache.h
-@@ -177,6 +177,12 @@ extern void __fscache_write_to_cache(struct fscache_cookie *, struct address_spa
- 				     bool);
- extern void __fscache_clear_page_bits(struct address_space *, loff_t, size_t);
++/*
++ * Dispose of a netfs group attached to a dirty page (e.g. a ceph snap).
++ */
++static inline void netfs_put_group(struct netfs_group *netfs_group)
++{
++	if (netfs_group && refcount_dec_and_test(&netfs_group->ref))
++		netfs_group->free(netfs_group);
++}
++
++/*
++ * Dispose of a netfs group attached to a dirty page (e.g. a ceph snap).
++ */
++static inline void netfs_put_group_many(struct netfs_group *netfs_group, int nr)
++{
++	if (netfs_group && refcount_sub_and_test(nr, &netfs_group->ref))
++		netfs_group->free(netfs_group);
++}
++
+ /*****************************************************************************/
+ /*
+  * debug tracing
+diff --git a/fs/netfs/misc.c b/fs/netfs/misc.c
+index c70f856f3129..8a2a56f1f623 100644
+--- a/fs/netfs/misc.c
++++ b/fs/netfs/misc.c
+@@ -159,9 +159,55 @@ void netfs_clear_buffer(struct xarray *buffer)
+  */
+ void netfs_invalidate_folio(struct folio *folio, size_t offset, size_t length)
+ {
++	struct netfs_folio *finfo = NULL;
++	size_t flen = folio_size(folio);
++
+ 	_enter("{%lx},%zx,%zx", folio_index(folio), offset, length);
  
-+#if __fscache_available
-+extern int fscache_begin_cache_operation(struct netfs_io_request *rreq);
-+#else
-+#define fscache_begin_cache_operation NULL
-+#endif
+ 	folio_wait_fscache(folio);
 +
- /**
-  * fscache_acquire_volume - Register a volume as desiring caching services
-  * @volume_key: An identification string for the volume
++	if (!folio_test_private(folio))
++		return;
++
++	finfo = netfs_folio_info(folio);
++
++	if (offset == 0 && length >= flen)
++		goto erase_completely;
++
++	if (finfo) {
++		/* We have a partially uptodate page from a streaming write. */
++		unsigned int fstart = finfo->dirty_offset;
++		unsigned int fend = fstart + finfo->dirty_len;
++		unsigned int end = offset + length;
++
++		if (offset >= fend)
++			return;
++		if (end <= fstart)
++			return;
++		if (offset <= fstart && end >= fend)
++			goto erase_completely;
++		if (offset <= fstart && end > fstart)
++			goto reduce_len;
++		if (offset > fstart && end >= fend)
++			goto move_start;
++		/* A partial write was split.  The caller has already zeroed
++		 * it, so just absorb the hole.
++		 */
++	}
++	return;
++
++erase_completely:
++	netfs_put_group(netfs_folio_group(folio));
++	folio_detach_private(folio);
++	folio_clear_uptodate(folio);
++	kfree(finfo);
++	return;
++reduce_len:
++	finfo->dirty_len = offset + length - finfo->dirty_offset;
++	return;
++move_start:
++	finfo->dirty_len -= offset - finfo->dirty_offset;
++	finfo->dirty_offset = offset;
+ }
+ EXPORT_SYMBOL(netfs_invalidate_folio);
+ 
+diff --git a/include/linux/netfs.h b/include/linux/netfs.h
+index 39b3eeefa03c..11a073506f98 100644
+--- a/include/linux/netfs.h
++++ b/include/linux/netfs.h
+@@ -142,6 +142,47 @@ struct netfs_inode {
+ #define NETFS_ICTX_ODIRECT	0		/* The file has DIO in progress */
+ };
+ 
++/*
++ * A netfs group - for instance a ceph snap.  This is marked on dirty pages and
++ * pages marked with a group must be flushed before they can be written under
++ * the domain of another group.
++ */
++struct netfs_group {
++	refcount_t		ref;
++	void (*free)(struct netfs_group *netfs_group);
++};
++
++/*
++ * Information about a dirty page (attached only if necessary).
++ * folio->private
++ */
++struct netfs_folio {
++	struct netfs_group	*netfs_group;	/* Filesystem's grouping marker (or NULL). */
++	unsigned int		dirty_offset;	/* Write-streaming dirty data offset */
++	unsigned int		dirty_len;	/* Write-streaming dirty data length */
++};
++#define NETFS_FOLIO_INFO	0x1UL	/* OR'd with folio->private. */
++
++static inline struct netfs_folio *netfs_folio_info(struct folio *folio)
++{
++	void *priv = folio_get_private(folio);
++
++	if ((unsigned long)priv & NETFS_FOLIO_INFO)
++		return (struct netfs_folio *)((unsigned long)priv & ~NETFS_FOLIO_INFO);
++	return NULL;
++}
++
++static inline struct netfs_group *netfs_folio_group(struct folio *folio)
++{
++	struct netfs_folio *finfo;
++	void *priv = folio_get_private(folio);
++
++	finfo = netfs_folio_info(folio);
++	if (finfo)
++		return finfo->netfs_group;
++	return priv;
++}
++
+ /*
+  * Resources required to do operations on a cache.
+  */
 
