@@ -2,41 +2,41 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 43375CDB482
-	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 16:27:51 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 2CE7CCDB47E
+	for <linux-nfs@archiver.kernel.org>; Fri, 13 Oct 2023 16:28:24 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230213AbjJMQ1t (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 13 Oct 2023 12:27:49 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46498 "EHLO
+        id S232786AbjJMQ2X (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 13 Oct 2023 12:28:23 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58450 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231708AbjJMQ0n (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 12:26:43 -0400
+        with ESMTP id S231489AbjJMQ1o (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2023 12:27:44 -0400
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8979E189
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 09:07:07 -0700 (PDT)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D605F268A
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2023 09:06:43 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1697213219;
+        s=mimecast20190719; t=1697213202;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=BY0IZ1puEbWlqmZjAm/oiBzHHsszrgyhlAY+cvlLt1A=;
-        b=dpjAemf9lPPRglaM2d/IGN/X7O6ZlsUtcGAGwxWkRPFCH3Qv4VW5RYq+Ic4kB/BRNshCYr
-        /BM0p0WE5p8H1CWw3d2K1nf7/er+7QNuqvkJfWfo39XE9Y4WdcFrfg6RtsEqSCvOllPeZ2
-        r7ywsUapYDtAlGwpMRjMaxiI4t9DQ9w=
+        bh=QdFa/dxqwrihf1ZMFwRJBWJsl8hSozQZEOt+FKZWmzU=;
+        b=U4eahnmppgHhXfezVpYkpUtFvIwM3PKwf7eiVa0eHPBB3RF7+dkwtLOM/4MrxnAawvVu4k
+        ouEmbFWBCoAstI/PqnChU5i4r5KlZv2WARZGJklCeT9PxHvZ8ug/ugZ1uciOhytMEvp3TL
+        IvFQNRZCFWF2F822Lg9TbxZQxfC0jfE=
 Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
  by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-682-Ht3YwKPqOXqHHVTwg42j_A-1; Fri, 13 Oct 2023 12:06:52 -0400
-X-MC-Unique: Ht3YwKPqOXqHHVTwg42j_A-1
+ us-mta-354-bIkAoftxPQSMUL0pN1n9yw-1; Fri, 13 Oct 2023 12:06:38 -0400
+X-MC-Unique: bIkAoftxPQSMUL0pN1n9yw-1
 Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
         (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 11633380670B;
-        Fri, 13 Oct 2023 16:06:51 +0000 (UTC)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 76A6A1C09A56;
+        Fri, 13 Oct 2023 16:06:37 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.42.28.226])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 1556125C1;
-        Fri, 13 Oct 2023 16:06:47 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id E310525C1;
+        Fri, 13 Oct 2023 16:06:33 +0000 (UTC)
 From:   David Howells <dhowells@redhat.com>
 To:     Jeff Layton <jlayton@kernel.org>, Steve French <smfrench@gmail.com>
 Cc:     David Howells <dhowells@redhat.com>,
@@ -52,13 +52,10 @@ Cc:     David Howells <dhowells@redhat.com>,
         linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
         v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
         linux-mm@kvack.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Steve French <sfrench@samba.org>,
-        Shyam Prasad N <nspmangalore@gmail.com>,
-        Rohith Surabattula <rohiths.msft@gmail.com>,
-        linux-cachefs@redhat.com
-Subject: [RFC PATCH 41/53] netfs: Rearrange netfs_io_subrequest to put request pointer first
-Date:   Fri, 13 Oct 2023 17:04:10 +0100
-Message-ID: <20231013160423.2218093-42-dhowells@redhat.com>
+        linux-kernel@vger.kernel.org, linux-cachefs@redhat.com
+Subject: [RFC PATCH 37/53] netfs: Support decryption on ubuffered/DIO read
+Date:   Fri, 13 Oct 2023 17:04:06 +0100
+Message-ID: <20231013160423.2218093-38-dhowells@redhat.com>
 In-Reply-To: <20231013160423.2218093-1-dhowells@redhat.com>
 References: <20231013160423.2218093-1-dhowells@redhat.com>
 MIME-Version: 1.0
@@ -68,35 +65,68 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Rearrange the netfs_io_subrequest struct to put the netfs_io_request
-pointer (rreq) first.  This then allows netfs_io_subrequest to be put in a
-union with a pointer to a wrapper around netfs_io_request for cifs.
+Support unbuffered and direct I/O reads from an encrypted file.  This may
+require making a larger read than is required into a bounce buffer and
+copying out the required bits.  We don't decrypt in-place in the user
+buffer lest userspace interfere and muck up the decryption.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Steve French <sfrench@samba.org>
-cc: Shyam Prasad N <nspmangalore@gmail.com>
-cc: Rohith Surabattula <rohiths.msft@gmail.com>
 cc: Jeff Layton <jlayton@kernel.org>
-cc: linux-cifs@vger.kernel.org
 cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 cc: linux-mm@kvack.org
 ---
- include/linux/netfs.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/netfs/direct_read.c | 10 ++++++++++
+ fs/netfs/internal.h    | 17 +++++++++++++++++
+ 2 files changed, 27 insertions(+)
 
-diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index c416645649e1..ff4f86ae64e4 100644
---- a/include/linux/netfs.h
-+++ b/include/linux/netfs.h
-@@ -209,8 +209,8 @@ struct netfs_cache_resources {
-  * the pages it points to can be relied on to exist for the duration.
-  */
- struct netfs_io_subrequest {
--	struct work_struct	work;
- 	struct netfs_io_request *rreq;		/* Supervising I/O request */
-+	struct work_struct	work;
- 	struct list_head	rreq_link;	/* Link in rreq->subrequests */
- 	struct iov_iter		io_iter;	/* Iterator for this subrequest */
- 	loff_t			start;		/* Where to start the I/O */
+diff --git a/fs/netfs/direct_read.c b/fs/netfs/direct_read.c
+index 52ad8fa66dd5..158719b56900 100644
+--- a/fs/netfs/direct_read.c
++++ b/fs/netfs/direct_read.c
+@@ -181,6 +181,16 @@ static ssize_t netfs_unbuffered_read_iter_locked(struct kiocb *iocb, struct iov_
+ 		iov_iter_advance(iter, orig_count);
+ 	}
+ 
++	/* If we're going to do decryption or decompression, we're going to
++	 * need a bounce buffer - and if the data is misaligned for the crypto
++	 * algorithm, we decrypt in place and then copy.
++	 */
++	if (test_bit(NETFS_RREQ_CONTENT_ENCRYPTION, &rreq->flags)) {
++		if (!netfs_is_crypto_aligned(rreq, iter))
++			__set_bit(NETFS_RREQ_CRYPT_IN_PLACE, &rreq->flags);
++		__set_bit(NETFS_RREQ_USE_BOUNCE_BUFFER, &rreq->flags);
++	}
++
+ 	/* If we're going to use a bounce buffer, we need to set it up.  We
+ 	 * will then need to pad the request out to the minimum block size.
+ 	 */
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index 8dc68a75d6cd..7dd37d3aff3f 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -196,6 +196,23 @@ static inline void netfs_put_group_many(struct netfs_group *netfs_group, int nr)
+ 		netfs_group->free(netfs_group);
+ }
+ 
++/*
++ * Check to see if a buffer aligns with the crypto unit block size.  If it
++ * doesn't the crypto layer is going to copy all the data - in which case
++ * relying on the crypto op for a free copy is pointless.
++ */
++static inline bool netfs_is_crypto_aligned(struct netfs_io_request *rreq,
++					   struct iov_iter *iter)
++{
++	struct netfs_inode *ctx = netfs_inode(rreq->inode);
++	unsigned long align, mask = (1UL << ctx->min_bshift) - 1;
++
++	if (!ctx->min_bshift)
++		return true;
++	align = iov_iter_alignment(iter);
++	return (align & mask) == 0;
++}
++
+ /*****************************************************************************/
+ /*
+  * debug tracing
 
