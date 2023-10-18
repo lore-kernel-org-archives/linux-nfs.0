@@ -2,42 +2,58 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 31FB6CDB47E
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Oct 2023 13:33:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A5CC6CDB47E
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Oct 2023 14:17:42 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231625AbjJRNdp (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Oct 2023 09:33:45 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40618 "EHLO
+        id S1345191AbjJRORm (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 Oct 2023 10:17:42 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:41032 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S231562AbjJRNdo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Oct 2023 09:33:44 -0400
+        with ESMTP id S1345112AbjJROR0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Oct 2023 10:17:26 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 93BD2BA
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Oct 2023 06:33:42 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8A294C433C8;
-        Wed, 18 Oct 2023 13:33:41 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 122F049F0
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Oct 2023 07:16:21 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 993ADC433D9;
+        Wed, 18 Oct 2023 14:16:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1697636022;
-        bh=/KVVEvhK2wTmzNCW5aIqNbFOEHRTLC4/5aBMD+XOMpE=;
+        s=k20201202; t=1697638580;
+        bh=b6/S+vC9UP+EI3YTuEUg+pGgKKUHj7q9M+pY2nQ0754=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=l+YFQK6HyfC/mt7R+oR4M4d5O/ue9WD/7LkEm20R23yilkkxoP3zeAB8ulgwqebID
-         XJdi0yKdLeonn60JCG0Z5zM9U1Ao7VCdVN+n63p+VKr7xRhc6L2QVI6HzdnXfDtPA0
-         JbUHNRhCdxJfVQ+RRsT8h8mmyQh35SN0bnOFup2mk4/vSxmf6KO8vBaqhBvJ3bFqz2
-         iqlWR0+AZhxIMK0o2I5MzCzcrzg/biNCT4takPvAGVzGDSzX79kCDjAvjVlh+Oy+vV
-         6prSA41ljVOrnx1Ghibbg0lr1UWxGdQC6rxi5Du7QUCE5OM8Mk9DfHXoA1SMWLsZfC
-         kyXSXFU4r5pfg==
-Message-ID: <6157b73e380e5b625cd8ed0133ef392d0dd4bd8b.camel@kernel.org>
-Subject: Re: [PATCH 2/2] NFSv4: Allow per-mount tuning of READDIR attrs
+        b=KVjp/OuUhiSms0S8MEONCtwyIFrNfD0LrZca7uV4gSUQWFFWy+OUrIEf+guYPQ2bR
+         3ZmtYh1//Yo+bhzefHre/GXuiKs45l0KykmzjzqAMHQz4sq9V42wvKlQQ/5upE396T
+         0Vky6CcnJynpfoGkm+rGOQeU6/QMO4JRjNJr8e5jO1cv9OGEh1H4PgzJv//xA23nHf
+         yyqTlzocSc00ZVhqaFyoCetuLGHZ+iA4i4hTfLfm2ml2f27s4TxO3YjwaIt/Y/G3zI
+         C4gmHaZp6CoiG/DXgiQJPawkvW3fJ06kgkKAIn1fj5V2y0i8v5xbXcjskbeYHADGSh
+         aycFbfjJf86Xw==
+Message-ID: <b873e5f40babe559bd53fd730d13b358066942fa.camel@kernel.org>
+Subject: Re: [PATCH 3/5] exportfs: make ->encode_fh() a mandatory method for
+ NFS export
 From:   Jeff Layton <jlayton@kernel.org>
-To:     Chuck Lever <chuck.lever@oracle.com>,
-        Benjamin Coddington <bcodding@redhat.com>
-Cc:     trond.myklebust@hammerspace.com, anna@kernel.org,
-        linux-nfs@vger.kernel.org
-Date:   Wed, 18 Oct 2023 09:33:40 -0400
-In-Reply-To: <ZS/V+4Cuzox7erqz@tissot.1015granger.net>
-References: <cover.1697577945.git.bcodding@redhat.com>
-         <bd900de1d19bc56e6df5b44379f373617acc894e.1697577945.git.bcodding@redhat.com>
-         <ZS/V+4Cuzox7erqz@tissot.1015granger.net>
+To:     Amir Goldstein <amir73il@gmail.com>, Jan Kara <jack@suse.cz>
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Christian Brauner <brauner@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        David Sterba <dsterba@suse.com>,
+        Luis de Bethencourt <luisbg@kernel.org>,
+        Salah Triki <salah.triki@gmail.com>,
+        Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Dave Kleikamp <shaggy@kernel.org>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Richard Weinberger <richard@nod.at>,
+        Anton Altaparmakov <anton@tuxera.com>,
+        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+        Steve French <sfrench@samba.org>,
+        Phillip Lougher <phillip@squashfs.org.uk>,
+        Evgeniy Dushistov <dushistov@mail.ru>
+Date:   Wed, 18 Oct 2023 10:16:17 -0400
+In-Reply-To: <20231018100000.2453965-4-amir73il@gmail.com>
+References: <20231018100000.2453965-1-amir73il@gmail.com>
+         <20231018100000.2453965-4-amir73il@gmail.com>
 Content-Type: text/plain; charset="ISO-8859-15"
 Content-Transfer-Encoding: quoted-printable
 User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
@@ -46,269 +62,371 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 2023-10-18 at 08:56 -0400, Chuck Lever wrote:
-> On Tue, Oct 17, 2023 at 05:30:44PM -0400, Benjamin Coddington wrote:
-> > Expose a per-mount knob in sysfs to set the READDIR requested attribute=
-s
-> > for a non-plus READDIR request.
-> >=20
-> > For example:
-> >=20
-> >   echo 0x800 0x800000 0x0 > /sys/fs/nfs/0\:57/v4_readdir_attrs
-> >=20
-> > .. will revert the client to only request rdattr_error and
-> > mounted_on_fileid for any non "plus" READDIR, as before the patch
-> > preceeding this one in this series.  This provides existing installatio=
-ns
-> > an option to fix a potential performance regression that may occur afte=
-r
-> > NFS clients update to request additional default READDIR attributes.
-> >=20
-> > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > ---
-> >  fs/nfs/client.c           |  2 +
-> >  fs/nfs/nfs4client.c       |  4 ++
-> >  fs/nfs/nfs4proc.c         |  1 +
-> >  fs/nfs/nfs4xdr.c          |  7 ++--
-> >  fs/nfs/sysfs.c            | 81 +++++++++++++++++++++++++++++++++++++++
-> >  include/linux/nfs_fs_sb.h |  1 +
-> >  include/linux/nfs_xdr.h   |  1 +
-> >  7 files changed, 93 insertions(+), 4 deletions(-)
+On Wed, 2023-10-18 at 12:59 +0300, Amir Goldstein wrote:
+> export_operations ->encode_fh() no longer has a default implementation to
+> encode FILEID_INO32_GEN* file handles.
 >=20
-> Admittedly, it would be much easier for humans to use if the API was
-> based on the symbolic names of the bits rather than a triplet of raw
-> hexadecimal values.
+> Rename the default helper for encoding FILEID_INO32_GEN* file handles to
+> generic_encode_ino32_fh() and convert the filesystems that used the
+> default implementation to use the generic helper explicitly.
 >=20
-
-I think there are some significant footguns with this interface. It'd be
-very easy to set this wrong and get weird behavior.  OTOH, we could push
-that complexity into userland and provide some sort of script in nfs-
-utils for tuning this.
-
-That said...
-
-When we look at interfaces like this, we have to consider that they may
-be around for a long, long time (decades, even), and people will come to
-rely on them to do strange things that are difficult for us to support.
-If we have someone saying that their READDIR performance slowed down, we
-now have to grab those settings from this sysfs file and validate them
-when trying to help them.
-
-Personally, I'd prefer a simple binary "make it work the old way"
-switch, if we're concerned about performance regressions here. I think
-that's the sort of thing that is simple to explain to admins that are
-suffering from this problem and (more importantly) the sort of setting
-we can later remove when it's no longer needed.
-
-Adding this sort of fine-grained knob will create more problems than it
-solves, as people will (inevitably) use it incorrectly.
-
+> This is a step towards allowing filesystems to encode non-decodeable file
+> handles for fanotify without having to implement any export_operations.
 >=20
-> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> > index 44eca51b2808..e9aa1fd4335f 100644
-> > --- a/fs/nfs/client.c
-> > +++ b/fs/nfs/client.c
-> > @@ -922,6 +922,8 @@ void nfs_server_copy_userdata(struct nfs_server *ta=
-rget, struct nfs_server *sour
-> >  	target->options =3D source->options;
-> >  	target->auth_info =3D source->auth_info;
-> >  	target->port =3D source->port;
-> > +	memcpy(target->readdir_attrs, source->readdir_attrs,
-> > +			sizeof(target->readdir_attrs));
-> >  }
-> >  EXPORT_SYMBOL_GPL(nfs_server_copy_userdata);
-> > =20
-> > diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> > index 11e3a285594c..3bbfb4244c14 100644
-> > --- a/fs/nfs/nfs4client.c
-> > +++ b/fs/nfs/nfs4client.c
-> > @@ -1115,6 +1115,10 @@ static int nfs4_server_common_setup(struct nfs_s=
-erver *server,
-> > =20
-> >  	nfs4_server_set_init_caps(server);
-> > =20
-> > +	/* Default (non-plus) v4 readdir attributes */
-> > +	server->readdir_attrs[0] =3D FATTR4_WORD0_TYPE|FATTR4_WORD0_RDATTR_ER=
-ROR;
-> > +	server->readdir_attrs[1] =3D FATTR4_WORD1_MOUNTED_ON_FILEID;
-> > +
-> >  	/* Probe the root fh to retrieve its FSID and filehandle */
-> >  	error =3D nfs4_get_rootfh(server, mntfh, auth_probe);
-> >  	if (error < 0)
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index 7016eaadf555..0f0028de7941 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -5113,6 +5113,7 @@ static int _nfs4_proc_readdir(struct nfs_readdir_=
-arg *nr_arg,
-> >  		.pgbase =3D 0,
-> >  		.count =3D nr_arg->page_len,
-> >  		.plus =3D nr_arg->plus,
-> > +		.server =3D server,
-> >  	};
-> >  	struct nfs4_readdir_res res;
-> >  	struct rpc_message msg =3D {
-> > diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> > index 7200d6f7cd7b..45a9b40b801e 100644
-> > --- a/fs/nfs/nfs4xdr.c
-> > +++ b/fs/nfs/nfs4xdr.c
-> > @@ -1601,16 +1601,15 @@ static void encode_read(struct xdr_stream *xdr,=
- const struct nfs_pgio_args *args
-> > =20
-> >  static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_r=
-eaddir_arg *readdir, struct rpc_rqst *req, struct compound_hdr *hdr)
-> >  {
-> > -	uint32_t attrs[3] =3D {
-> > -		FATTR4_WORD0_TYPE|FATTR4_WORD0_RDATTR_ERROR,
-> > -		FATTR4_WORD1_MOUNTED_ON_FILEID,
-> > -	};
-> > +	uint32_t attrs[3];
-> >  	uint32_t dircount =3D readdir->count;
-> >  	uint32_t maxcount =3D readdir->count;
-> >  	__be32 *p, verf[2];
-> >  	uint32_t attrlen =3D 0;
-> >  	unsigned int i;
-> > =20
-> > +	memcpy(attrs, readdir->server->readdir_attrs, sizeof(attrs));
-> > +
-> >  	if (readdir->plus) {
-> >  		attrs[0] |=3D FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE|
-> >  			FATTR4_WORD0_FSID|FATTR4_WORD0_FILEHANDLE|FATTR4_WORD0_FILEID;
-> > diff --git a/fs/nfs/sysfs.c b/fs/nfs/sysfs.c
-> > index bf378ecd5d9f..6d4f52bf47b3 100644
-> > --- a/fs/nfs/sysfs.c
-> > +++ b/fs/nfs/sysfs.c
-> > @@ -270,7 +270,82 @@ shutdown_store(struct kobject *kobj, struct kobj_a=
-ttribute *attr,
-> >  	return count;
-> >  }
-> > =20
-> > +static ssize_t
-> > +v4_readdir_attrs_show(struct kobject *kobj, struct kobj_attribute *att=
-r,
-> > +				char *buf)
-> > +{
-> > +	struct nfs_server *server;
-> > +	server =3D container_of(kobj, struct nfs_server, kobj);
-> > +
-> > +	return sysfs_emit(buf, "0x%x 0x%x 0x%x\n",
-> > +			server->readdir_attrs[0],
-> > +			server->readdir_attrs[1],
-> > +			server->readdir_attrs[2]);
-> > +}
-> > +
-> > +static ssize_t
-> > +v4_readdir_attrs_store(struct kobject *kobj, struct kobj_attribute *at=
-tr,
-> > +				const char *buf, size_t count)
-> > +{
-> > +	struct nfs_server *server;
-> > +	u32 attrs[3];
-> > +	char p[36], *v;
-> > +	size_t token =3D 0;
-> > +	int i;
-> > +
-> > +	if (count > 36)
-> > +		return -EINVAL;
-> > +
-> > +	v =3D strncpy(p, buf, count);
-> > +
-> > +	for (i =3D 0; i < 3; i++) {
-> > +		token +=3D strcspn(v, " ") + 1;
-> > +		if (token > 34)
-> > +			return -EINVAL;
-> > +
-> > +		p[token - 1] =3D '\0';
-> > +		if (kstrtoint(v, 0, &attrs[i]))
-> > +			return -EINVAL;
-> > +		v =3D &p[token];
-> > +	}
-> > +
-> > +	/* Allow only what we decode - see decode_getfattr_attrs() */
-> > +	if (attrs[0] & ~(FATTR4_WORD0_TYPE |
-> > +			FATTR4_WORD0_CHANGE |
-> > +			FATTR4_WORD0_SIZE |
-> > +			FATTR4_WORD0_FSID |
-> > +			FATTR4_WORD0_RDATTR_ERROR |
-> > +			FATTR4_WORD0_FILEHANDLE |
-> > +			FATTR4_WORD0_FILEID |
-> > +			FATTR4_WORD0_FS_LOCATIONS) ||
-> > +		attrs[1] & ~(FATTR4_WORD1_MODE |
-> > +			FATTR4_WORD1_NUMLINKS |
-> > +			FATTR4_WORD1_OWNER |
-> > +			FATTR4_WORD1_OWNER_GROUP |
-> > +			FATTR4_WORD1_RAWDEV |
-> > +			FATTR4_WORD1_SPACE_USED |
-> > +			FATTR4_WORD1_TIME_ACCESS |
-> > +			FATTR4_WORD1_TIME_METADATA |
-> > +			FATTR4_WORD1_TIME_MODIFY |
-> > +			FATTR4_WORD1_MOUNTED_ON_FILEID) ||
-> > +		attrs[2] & ~(FATTR4_WORD2_MDSTHRESHOLD |
-> > +			FATTR4_WORD2_SECURITY_LABEL))
-> > +		return -EINVAL;
-> > +
-> > +	server =3D container_of(kobj, struct nfs_server, kobj);
-> > +
-> > +	if (attrs[0])
-> > +		server->readdir_attrs[0] =3D attrs[0];
-> > +	if (attrs[1])
-> > +		server->readdir_attrs[1] =3D attrs[1];
-> > +	if (attrs[2])
-> > +		server->readdir_attrs[2] =3D attrs[2];
-> > +
-> > +	return count;
-> > +}
-> > +
-> >  static struct kobj_attribute nfs_sysfs_attr_shutdown =3D __ATTR_RW(shu=
-tdown);
-> > +static struct kobj_attribute nfs_sysfs_attr_v4_readdir_attrs =3D __ATT=
-R_RW(v4_readdir_attrs);
-> > =20
-> >  #define RPC_CLIENT_NAME_SIZE 64
-> > =20
-> > @@ -325,6 +400,12 @@ void nfs_sysfs_add_server(struct nfs_server *serve=
-r)
-> >  	if (ret < 0)
-> >  		pr_warn("NFS: sysfs_create_file_ns for server-%d failed (%d)\n",
-> >  			server->s_sysfs_id, ret);
-> > +
-> > +	ret =3D sysfs_create_file_ns(&server->kobj, &nfs_sysfs_attr_v4_readdi=
-r_attrs.attr,
-> > +				nfs_netns_server_namespace(&server->kobj));
-> > +	if (ret < 0)
-> > +		pr_warn("NFS: sysfs_create_file_ns for server-%d failed (%d)\n",
-> > +			server->s_sysfs_id, ret);
-> >  }
-> >  EXPORT_SYMBOL_GPL(nfs_sysfs_add_server);
-> > =20
-> > diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> > index cd628c4b011e..db87261b7cd7 100644
-> > --- a/include/linux/nfs_fs_sb.h
-> > +++ b/include/linux/nfs_fs_sb.h
-> > @@ -219,6 +219,7 @@ struct nfs_server {
-> >  						   of change attribute, size, ctime
-> >  						   and mtime attributes supported by
-> >  						   the server */
-> > +	u32			readdir_attrs[3]; /* V4 tuneable default readdir attrs */
-> >  	u32			acl_bitmask;	/* V4 bitmask representing the ACEs
-> >  						   that are supported on this
-> >  						   filesystem */
-> > diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> > index 12bbb5c63664..e05d861b1788 100644
-> > --- a/include/linux/nfs_xdr.h
-> > +++ b/include/linux/nfs_xdr.h
-> > @@ -1142,6 +1142,7 @@ struct nfs4_readdir_arg {
-> >  	struct page **			pages;	/* zero-copy data */
-> >  	unsigned int			pgbase;	/* zero-copy data */
-> >  	const u32 *			bitmask;
-> > +	const struct nfs_server		*server;
-> >  	bool				plus;
-> >  };
-> > =20
-> > --=20
-> > 2.41.0
-> >=20
+> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+> ---
+>  Documentation/filesystems/nfs/exporting.rst |  7 ++-----
+>  Documentation/filesystems/porting.rst       |  9 +++++++++
+>  fs/affs/namei.c                             |  1 +
+>  fs/befs/linuxvfs.c                          |  1 +
+>  fs/efs/super.c                              |  1 +
+>  fs/erofs/super.c                            |  1 +
+>  fs/exportfs/expfs.c                         | 14 ++++++++------
+>  fs/ext2/super.c                             |  1 +
+>  fs/ext4/super.c                             |  1 +
+>  fs/f2fs/super.c                             |  1 +
+>  fs/fat/nfs.c                                |  1 +
+>  fs/jffs2/super.c                            |  1 +
+>  fs/jfs/super.c                              |  1 +
+>  fs/ntfs/namei.c                             |  1 +
+>  fs/ntfs3/super.c                            |  1 +
+>  fs/smb/client/export.c                      |  9 +++------
+>  fs/squashfs/export.c                        |  1 +
+>  fs/ufs/super.c                              |  1 +
+>  include/linux/exportfs.h                    |  4 +++-
+>  19 files changed, 39 insertions(+), 18 deletions(-)
 >=20
+> diff --git a/Documentation/filesystems/nfs/exporting.rst b/Documentation/=
+filesystems/nfs/exporting.rst
+> index 4b30daee399a..de64d2d002a2 100644
+> --- a/Documentation/filesystems/nfs/exporting.rst
+> +++ b/Documentation/filesystems/nfs/exporting.rst
+> @@ -122,12 +122,9 @@ are exportable by setting the s_export_op field in t=
+he struct
+>  super_block.  This field must point to a "struct export_operations"
+>  struct which has the following members:
+> =20
+> -  encode_fh (optional)
+> +  encode_fh (mandatory)
+>      Takes a dentry and creates a filehandle fragment which may later be =
+used
+> -    to find or create a dentry for the same object.  The default
+> -    implementation creates a filehandle fragment that encodes a 32bit in=
+ode
+> -    and generation number for the inode encoded, and if necessary the
+> -    same information for the parent.
+> +    to find or create a dentry for the same object.
+> =20
+>    fh_to_dentry (mandatory)
+>      Given a filehandle fragment, this should find the implied object and
+> diff --git a/Documentation/filesystems/porting.rst b/Documentation/filesy=
+stems/porting.rst
+> index 4d05b9862451..197ef78a5014 100644
+> --- a/Documentation/filesystems/porting.rst
+> +++ b/Documentation/filesystems/porting.rst
+> @@ -1045,3 +1045,12 @@ filesystem type is now moved to a later point when=
+ the devices are closed:
+>  As this is a VFS level change it has no practical consequences for files=
+ystems
+>  other than that all of them must use one of the provided kill_litter_sup=
+er(),
+>  kill_anon_super(), or kill_block_super() helpers.
+> +
+> +---
+> +
+> +**mandatory**
+> +
+> +export_operations ->encode_fh() no longer has a default implementation t=
+o
+> +encode FILEID_INO32_GEN* file handles.
+> +Fillesystems that used the default implementation may use the generic he=
+lper
+> +generic_encode_ino32_fh() explicitly.
+> diff --git a/fs/affs/namei.c b/fs/affs/namei.c
+> index 2fe4a5832fcf..d6b9758ee23d 100644
+> --- a/fs/affs/namei.c
+> +++ b/fs/affs/namei.c
+> @@ -568,6 +568,7 @@ static struct dentry *affs_fh_to_parent(struct super_=
+block *sb, struct fid *fid,
+>  }
+> =20
+>  const struct export_operations affs_export_ops =3D {
+> +	.encode_fh =3D generic_encode_ino32_fh,
+>  	.fh_to_dentry =3D affs_fh_to_dentry,
+>  	.fh_to_parent =3D affs_fh_to_parent,
+>  	.get_parent =3D affs_get_parent,
+> diff --git a/fs/befs/linuxvfs.c b/fs/befs/linuxvfs.c
+> index 9a16a51fbb88..410dcaffd5ab 100644
+> --- a/fs/befs/linuxvfs.c
+> +++ b/fs/befs/linuxvfs.c
+> @@ -96,6 +96,7 @@ static const struct address_space_operations befs_symli=
+nk_aops =3D {
+>  };
+> =20
+>  static const struct export_operations befs_export_operations =3D {
+> +	.encode_fh	=3D generic_encode_ino32_fh,
+>  	.fh_to_dentry	=3D befs_fh_to_dentry,
+>  	.fh_to_parent	=3D befs_fh_to_parent,
+>  	.get_parent	=3D befs_get_parent,
+> diff --git a/fs/efs/super.c b/fs/efs/super.c
+> index b287f47c165b..f17fdac76b2e 100644
+> --- a/fs/efs/super.c
+> +++ b/fs/efs/super.c
+> @@ -123,6 +123,7 @@ static const struct super_operations efs_superblock_o=
+perations =3D {
+>  };
+> =20
+>  static const struct export_operations efs_export_ops =3D {
+> +	.encode_fh	=3D generic_encode_ino32_fh,
+>  	.fh_to_dentry	=3D efs_fh_to_dentry,
+>  	.fh_to_parent	=3D efs_fh_to_parent,
+>  	.get_parent	=3D efs_get_parent,
+> diff --git a/fs/erofs/super.c b/fs/erofs/super.c
+> index 3700af9ee173..edbe07a24156 100644
+> --- a/fs/erofs/super.c
+> +++ b/fs/erofs/super.c
+> @@ -626,6 +626,7 @@ static struct dentry *erofs_get_parent(struct dentry =
+*child)
+>  }
+> =20
+>  static const struct export_operations erofs_export_ops =3D {
+> +	.encode_fh =3D generic_encode_ino32_fh,
+>  	.fh_to_dentry =3D erofs_fh_to_dentry,
+>  	.fh_to_parent =3D erofs_fh_to_parent,
+>  	.get_parent =3D erofs_get_parent,
+> diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+> index 9ee205df8fa7..30da4539e257 100644
+> --- a/fs/exportfs/expfs.c
+> +++ b/fs/exportfs/expfs.c
+> @@ -343,20 +343,21 @@ static int get_name(const struct path *path, char *=
+name, struct dentry *child)
+>  }
+> =20
+>  /**
+> - * export_encode_fh - default export_operations->encode_fh function
+> + * generic_encode_ino32_fh - generic export_operations->encode_fh functi=
+on
+>   * @inode:   the object to encode
+> - * @fid:     where to store the file handle fragment
+> + * @fh:      where to store the file handle fragment
+>   * @max_len: maximum length to store there
+>   * @parent:  parent directory inode, if wanted
+>   *
+> - * This default encode_fh function assumes that the 32 inode number
+> + * This generic encode_fh function assumes that the 32 inode number
+>   * is suitable for locating an inode, and that the generation number
+>   * can be used to check that it is still valid.  It places them in the
+>   * filehandle fragment where export_decode_fh expects to find them.
+>   */
+> -static int export_encode_fh(struct inode *inode, struct fid *fid,
+> -		int *max_len, struct inode *parent)
+> +int generic_encode_ino32_fh(struct inode *inode, __u32 *fh, int *max_len=
+,
+> +			    struct inode *parent)
+>  {
+> +	struct fid *fid =3D (void *)fh;
+>  	int len =3D *max_len;
+>  	int type =3D FILEID_INO32_GEN;
+> =20
+> @@ -380,6 +381,7 @@ static int export_encode_fh(struct inode *inode, stru=
+ct fid *fid,
+>  	*max_len =3D len;
+>  	return type;
+>  }
+> +EXPORT_SYMBOL_GPL(generic_encode_ino32_fh);
+> =20
+>  /**
+>   * exportfs_encode_inode_fh - encode a file handle from inode
+> @@ -402,7 +404,7 @@ int exportfs_encode_inode_fh(struct inode *inode, str=
+uct fid *fid,
+>  	if (nop && nop->encode_fh)
+>  		return nop->encode_fh(inode, fid->raw, max_len, parent);
+> =20
+> -	return export_encode_fh(inode, fid, max_len, parent);
+> +	return -EOPNOTSUPP;
+>  }
+>  EXPORT_SYMBOL_GPL(exportfs_encode_inode_fh);
+> =20
+> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+> index aaf3e3e88cb2..b9f158a34997 100644
+> --- a/fs/ext2/super.c
+> +++ b/fs/ext2/super.c
+> @@ -397,6 +397,7 @@ static struct dentry *ext2_fh_to_parent(struct super_=
+block *sb, struct fid *fid,
+>  }
+> =20
+>  static const struct export_operations ext2_export_ops =3D {
+> +	.encode_fh =3D generic_encode_ino32_fh,
+>  	.fh_to_dentry =3D ext2_fh_to_dentry,
+>  	.fh_to_parent =3D ext2_fh_to_parent,
+>  	.get_parent =3D ext2_get_parent,
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index dbebd8b3127e..c44db1915437 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1646,6 +1646,7 @@ static const struct super_operations ext4_sops =3D =
+{
+>  };
+> =20
+>  static const struct export_operations ext4_export_ops =3D {
+> +	.encode_fh =3D generic_encode_ino32_fh,
+>  	.fh_to_dentry =3D ext4_fh_to_dentry,
+>  	.fh_to_parent =3D ext4_fh_to_parent,
+>  	.get_parent =3D ext4_get_parent,
+> diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+> index a8c8232852bb..60cfa11f65bf 100644
+> --- a/fs/f2fs/super.c
+> +++ b/fs/f2fs/super.c
+> @@ -3282,6 +3282,7 @@ static struct dentry *f2fs_fh_to_parent(struct supe=
+r_block *sb, struct fid *fid,
+>  }
+> =20
+>  static const struct export_operations f2fs_export_ops =3D {
+> +	.encode_fh =3D generic_encode_ino32_fh,
+>  	.fh_to_dentry =3D f2fs_fh_to_dentry,
+>  	.fh_to_parent =3D f2fs_fh_to_parent,
+>  	.get_parent =3D f2fs_get_parent,
+> diff --git a/fs/fat/nfs.c b/fs/fat/nfs.c
+> index 3626eb585a98..c52e63e10d35 100644
+> --- a/fs/fat/nfs.c
+> +++ b/fs/fat/nfs.c
+> @@ -279,6 +279,7 @@ static struct dentry *fat_get_parent(struct dentry *c=
+hild_dir)
+>  }
+> =20
+>  const struct export_operations fat_export_ops =3D {
+> +	.encode_fh	=3D generic_encode_ino32_fh,
+>  	.fh_to_dentry   =3D fat_fh_to_dentry,
+>  	.fh_to_parent   =3D fat_fh_to_parent,
+>  	.get_parent     =3D fat_get_parent,
+> diff --git a/fs/jffs2/super.c b/fs/jffs2/super.c
+> index 7ea37f49f1e1..f99591a634b4 100644
+> --- a/fs/jffs2/super.c
+> +++ b/fs/jffs2/super.c
+> @@ -150,6 +150,7 @@ static struct dentry *jffs2_get_parent(struct dentry =
+*child)
+>  }
+> =20
+>  static const struct export_operations jffs2_export_ops =3D {
+> +	.encode_fh =3D generic_encode_ino32_fh,
+>  	.get_parent =3D jffs2_get_parent,
+>  	.fh_to_dentry =3D jffs2_fh_to_dentry,
+>  	.fh_to_parent =3D jffs2_fh_to_parent,
+> diff --git a/fs/jfs/super.c b/fs/jfs/super.c
+> index 2e2f7f6d36a0..2cc2632f3c47 100644
+> --- a/fs/jfs/super.c
+> +++ b/fs/jfs/super.c
+> @@ -896,6 +896,7 @@ static const struct super_operations jfs_super_operat=
+ions =3D {
+>  };
+> =20
+>  static const struct export_operations jfs_export_operations =3D {
+> +	.encode_fh	=3D generic_encode_ino32_fh,
+>  	.fh_to_dentry	=3D jfs_fh_to_dentry,
+>  	.fh_to_parent	=3D jfs_fh_to_parent,
+>  	.get_parent	=3D jfs_get_parent,
+> diff --git a/fs/ntfs/namei.c b/fs/ntfs/namei.c
+> index ab44f2db533b..d7498ddc4a72 100644
+> --- a/fs/ntfs/namei.c
+> +++ b/fs/ntfs/namei.c
+> @@ -384,6 +384,7 @@ static struct dentry *ntfs_fh_to_parent(struct super_=
+block *sb, struct fid *fid,
+>   * and due to using iget() whereas NTFS needs ntfs_iget().
+>   */
+>  const struct export_operations ntfs_export_ops =3D {
+> +	.encode_fh	=3D generic_encode_ino32_fh,
+>  	.get_parent	=3D ntfs_get_parent,	/* Find the parent of a given
+>  						   directory. */
+>  	.fh_to_dentry	=3D ntfs_fh_to_dentry,
+> diff --git a/fs/ntfs3/super.c b/fs/ntfs3/super.c
+> index 5661a363005e..661ffb5aa1e0 100644
+> --- a/fs/ntfs3/super.c
+> +++ b/fs/ntfs3/super.c
+> @@ -789,6 +789,7 @@ static int ntfs_nfs_commit_metadata(struct inode *ino=
+de)
+>  }
+> =20
+>  static const struct export_operations ntfs_export_ops =3D {
+> +	.encode_fh =3D generic_encode_ino32_fh,
+>  	.fh_to_dentry =3D ntfs_fh_to_dentry,
+>  	.fh_to_parent =3D ntfs_fh_to_parent,
+>  	.get_parent =3D ntfs3_get_parent,
+> diff --git a/fs/smb/client/export.c b/fs/smb/client/export.c
+> index 37c28415df1e..834e9c9197b4 100644
+> --- a/fs/smb/client/export.c
+> +++ b/fs/smb/client/export.c
+> @@ -41,13 +41,10 @@ static struct dentry *cifs_get_parent(struct dentry *=
+dentry)
+>  }
+> =20
+>  const struct export_operations cifs_export_ops =3D {
+> +	.encode_fh =3D generic_encode_ino32_fh,
+>  	.get_parent =3D cifs_get_parent,
+> -/*	Following five export operations are unneeded so far and can default:
+> -	.get_dentry =3D
+> -	.get_name =3D
+> -	.find_exported_dentry =3D
+> -	.decode_fh =3D
+> -	.encode_fs =3D  */
+> +/*	Following export operations are mandatory for NFS export support:
+> +	.fh_to_dentry =3D */
+>  };
+> =20
+>  #endif /* CONFIG_CIFS_NFSD_EXPORT */
+> diff --git a/fs/squashfs/export.c b/fs/squashfs/export.c
+> index 723763746238..62972f0ff868 100644
+> --- a/fs/squashfs/export.c
+> +++ b/fs/squashfs/export.c
+> @@ -173,6 +173,7 @@ __le64 *squashfs_read_inode_lookup_table(struct super=
+_block *sb,
+> =20
+> =20
+>  const struct export_operations squashfs_export_ops =3D {
+> +	.encode_fh =3D generic_encode_ino32_fh,
+>  	.fh_to_dentry =3D squashfs_fh_to_dentry,
+>  	.fh_to_parent =3D squashfs_fh_to_parent,
+>  	.get_parent =3D squashfs_get_parent
+> diff --git a/fs/ufs/super.c b/fs/ufs/super.c
+> index 23377c1baed9..a480810cd4e3 100644
+> --- a/fs/ufs/super.c
+> +++ b/fs/ufs/super.c
+> @@ -137,6 +137,7 @@ static struct dentry *ufs_get_parent(struct dentry *c=
+hild)
+>  }
+> =20
+>  static const struct export_operations ufs_export_ops =3D {
+> +	.encode_fh =3D generic_encode_ino32_fh,
+>  	.fh_to_dentry	=3D ufs_fh_to_dentry,
+>  	.fh_to_parent	=3D ufs_fh_to_parent,
+>  	.get_parent	=3D ufs_get_parent,
+> diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+> index 5b3c9f30b422..6b6e01321405 100644
+> --- a/include/linux/exportfs.h
+> +++ b/include/linux/exportfs.h
+> @@ -235,7 +235,7 @@ extern int exportfs_encode_fh(struct dentry *dentry, =
+struct fid *fid,
+> =20
+>  static inline bool exportfs_can_encode_fid(const struct export_operation=
+s *nop)
+>  {
+> -	return nop;
+> +	return nop && nop->encode_fh;
+>  }
+> =20
+>  static inline bool exportfs_can_decode_fh(const struct export_operations=
+ *nop)
+> @@ -279,6 +279,8 @@ extern struct dentry *exportfs_decode_fh(struct vfsmo=
+unt *mnt, struct fid *fid,
+>  /*
+>   * Generic helpers for filesystems.
+>   */
+> +int generic_encode_ino32_fh(struct inode *inode, __u32 *fh, int *max_len=
+,
+> +			    struct inode *parent);
+>  extern struct dentry *generic_fh_to_dentry(struct super_block *sb,
+>  	struct fid *fid, int fh_len, int fh_type,
+>  	struct inode *(*get_inode) (struct super_block *sb, u64 ino, u32 gen));
 
---=20
-Jeff Layton <jlayton@kernel.org>
+Looks straightforward.
+
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
