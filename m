@@ -2,136 +2,188 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id BD116CDB482
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Oct 2023 14:27:20 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9513CDB483
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Oct 2023 14:28:46 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345526AbjJRO1U (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Oct 2023 10:27:20 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:54338 "EHLO
+        id S1344873AbjJRO2q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 Oct 2023 10:28:46 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34232 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345438AbjJRO1J (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Oct 2023 10:27:09 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EBE6030CA
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Oct 2023 07:24:39 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1697639077;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-         in-reply-to:in-reply-to:references:references;
-        bh=jn3IE8fVQ+MkCWQtv3yw/Yzn5j90c65owH4AJV1W7WU=;
-        b=htyU0DplQwFGQr6h9srLokXR3gnFSXBg4WbfseevrPNRWVBNItjJYU2MTHof3kPrHy6R99
-        Euy54ZUQfRnXqddLCAyQ08szmXhYxD3WxOrv41Usjs/t154EZd0vjqdi8Dqx6j0ZSmH4j+
-        0w9N8qedu4tzRFb6KAPomjgNixVJZ1M=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-398-F3lyvaXkNIq4hnHOJzfw0g-1; Wed, 18 Oct 2023 10:24:34 -0400
-X-MC-Unique: F3lyvaXkNIq4hnHOJzfw0g-1
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 1BB1A88B77F;
-        Wed, 18 Oct 2023 14:24:21 +0000 (UTC)
-Received: from [192.168.37.1] (unknown [10.22.48.7])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 0433F1121318;
-        Wed, 18 Oct 2023 14:24:19 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     Jeff Layton <jlayton@kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Cc:     trond.myklebust@hammerspace.com, anna@kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] NFSv4: Allow per-mount tuning of READDIR attrs
-Date:   Wed, 18 Oct 2023 10:24:18 -0400
-Message-ID: <27DF51B5-0794-497B-A3F5-99F16B14D787@redhat.com>
-In-Reply-To: <6157b73e380e5b625cd8ed0133ef392d0dd4bd8b.camel@kernel.org>
-References: <cover.1697577945.git.bcodding@redhat.com>
- <bd900de1d19bc56e6df5b44379f373617acc894e.1697577945.git.bcodding@redhat.com>
- <ZS/V+4Cuzox7erqz@tissot.1015granger.net>
- <6157b73e380e5b625cd8ed0133ef392d0dd4bd8b.camel@kernel.org>
+        with ESMTP id S1345009AbjJRO2p (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Oct 2023 10:28:45 -0400
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9057A10D
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Oct 2023 07:28:43 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9878DC433C7;
+        Wed, 18 Oct 2023 14:28:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1697639323;
+        bh=oYhl9MfxU1VJMaMsInexscT/Bcqx780AEyZ+o5KwS/Y=;
+        h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+        b=kEfeWy9U5mN0z1ZyUah0lyeWWShMGUaqSPgYY8Y0RfpPO5nsbSSv9OVL/jW6k5i0O
+         yAFJ4B8v1CYRJsI3rdnyDzK7Pc28SvDc/qe8agHlNJDQetecX5rGr13hbZ36wEG7hu
+         GFq1Y0A8i8u7LneGUZ+NOW/isCE4vby4XvLk7eXvjUeeb9n2bI/T9QrxRDWWP/E55H
+         UG4//uIWYLkMBKofHhuz1XY4qnNvAHAb4J+n9ytJRJUJj/6fJBEhl9Bho2JvxvfbNa
+         ESVq3v9FAxe9gaMH6Q6TfltZb5XU5rkfdTAv2+QRDsCEeLhcMw3h3qjijukRCqqQ7+
+         hDh1jx22EtfIA==
+Message-ID: <f4f27df2a26605a01b2e7f62a8ec6d946695e1d6.camel@kernel.org>
+Subject: Re: [PATCH 5/5] exportfs: support encoding non-decodeable file
+ handles by default
+From:   Jeff Layton <jlayton@kernel.org>
+To:     Amir Goldstein <amir73il@gmail.com>, Jan Kara <jack@suse.cz>
+Cc:     Chuck Lever <chuck.lever@oracle.com>,
+        Christian Brauner <brauner@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Date:   Wed, 18 Oct 2023 10:28:41 -0400
+In-Reply-To: <20231018100000.2453965-6-amir73il@gmail.com>
+References: <20231018100000.2453965-1-amir73il@gmail.com>
+         <20231018100000.2453965-6-amir73il@gmail.com>
+Content-Type: text/plain; charset="ISO-8859-15"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
 MIME-Version: 1.0
-Content-Type: text/plain
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.3
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 18 Oct 2023, at 9:33, Jeff Layton wrote:
+On Wed, 2023-10-18 at 13:00 +0300, Amir Goldstein wrote:
+> AT_HANDLE_FID was added as an API for name_to_handle_at() that request
+> the encoding of a file id, which is not intended to be decoded.
+>=20
+> This file id is used by fanotify to describe objects in events.
+>=20
+> So far, overlayfs is the only filesystem that supports encoding
+> non-decodeable file ids, by providing export_operations with an
+> ->encode_fh() method and without a ->decode_fh() method.
+>=20
+> Add support for encoding non-decodeable file ids to all the filesystems
+> that do not provide export_operations, by encoding a file id of type
+> FILEID_INO64_GEN from { i_ino, i_generation }.
+>=20
+> A filesystem may that does not support NFS export, can opt-out of
+> encoding non-decodeable file ids for fanotify by defining an empty
+> export_operations struct (i.e. with a NULL ->encode_fh() method).
+>=20
+> This allows the use of fanotify events with file ids on filesystems
+> like 9p which do not support NFS export to bring fanotify in feature
+> parity with inotify on those filesystems.
+>=20
+> Note that fanotify also requires that the filesystems report a non-null
+> fsid.  Currently, many simple filesystems that have support for inotify
+> (e.g. debugfs, tracefs, sysfs) report a null fsid, so can still not be
+> used with fanotify in file id reporting mode.
+>=20
+> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+> ---
+>  fs/exportfs/expfs.c      | 30 +++++++++++++++++++++++++++---
+>  include/linux/exportfs.h | 10 +++++++---
+>  2 files changed, 34 insertions(+), 6 deletions(-)
+>=20
+> diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+> index 30da4539e257..34e7d835d4ef 100644
+> --- a/fs/exportfs/expfs.c
+> +++ b/fs/exportfs/expfs.c
+> @@ -383,6 +383,30 @@ int generic_encode_ino32_fh(struct inode *inode, __u=
+32 *fh, int *max_len,
+>  }
+>  EXPORT_SYMBOL_GPL(generic_encode_ino32_fh);
+> =20
+> +/**
+> + * exportfs_encode_ino64_fid - encode non-decodeable 64bit ino file id
+> + * @inode:   the object to encode
+> + * @fid:     where to store the file handle fragment
+> + * @max_len: maximum length to store there
+> + *
+> + * This generic function is used to encode a non-decodeable file id for
+> + * fanotify for filesystems that do not support NFS export.
+> + */
+> +static int exportfs_encode_ino64_fid(struct inode *inode, struct fid *fi=
+d,
+> +				     int *max_len)
+> +{
+> +	if (*max_len < 3) {
+> +		*max_len =3D 3;
+> +		return FILEID_INVALID;
+> +	}
+> +
+> +	fid->i64.ino =3D inode->i_ino;
+> +	fid->i64.gen =3D inode->i_generation;
 
-> On Wed, 2023-10-18 at 08:56 -0400, Chuck Lever wrote:
->> On Tue, Oct 17, 2023 at 05:30:44PM -0400, Benjamin Coddington wrote:
->>> Expose a per-mount knob in sysfs to set the READDIR requested attributes
->>> for a non-plus READDIR request.
->>>
->>> For example:
->>>
->>>   echo 0x800 0x800000 0x0 > /sys/fs/nfs/0\:57/v4_readdir_attrs
->>>
->>> .. will revert the client to only request rdattr_error and
->>> mounted_on_fileid for any non "plus" READDIR, as before the patch
->>> preceeding this one in this series.  This provides existing installations
->>> an option to fix a potential performance regression that may occur after
->>> NFS clients update to request additional default READDIR attributes.
->>>
->>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->>> ---
->>>  fs/nfs/client.c           |  2 +
->>>  fs/nfs/nfs4client.c       |  4 ++
->>>  fs/nfs/nfs4proc.c         |  1 +
->>>  fs/nfs/nfs4xdr.c          |  7 ++--
->>>  fs/nfs/sysfs.c            | 81 +++++++++++++++++++++++++++++++++++++++
->>>  include/linux/nfs_fs_sb.h |  1 +
->>>  include/linux/nfs_xdr.h   |  1 +
->>>  7 files changed, 93 insertions(+), 4 deletions(-)
->>
->> Admittedly, it would be much easier for humans to use if the API was
->> based on the symbolic names of the bits rather than a triplet of raw
->> hexadecimal values.
+Note that i_ino is unsigned long and so is a 32-bit value on 32-bit
+arches. If the backend storage uses 64-bit inodes, then we usually end
+up hashing them down to 32-bits first. e.g. see nfs_fattr_to_ino_t().
+ceph has some similar code.
 
-This isn't aiming to be an ease-of-use interface.  This is tinkering with
-the innards of the client.  If you're doing this, you better know how to
-convert between bases, because you're going to need that and more.
+The upshot is that if you're relying on i_ino, the value can change
+between different arches, even when they are dealing with the same
+backend filesystem.
 
-If we want to make it nice, patches to nfsctl can follow.
+Since this is expected to be used by filesystems that don't set up
+export operations, then that may just be something they have to deal
+with. I'm not sure what else you can use in lieu of i_ino in this case.
 
-> I think there are some significant footguns with this interface. It'd be
-> very easy to set this wrong and get weird behavior.  OTOH, we could push
-> that complexity into userland and provide some sort of script in nfs-
-> utils for tuning this.
->
-> That said...
->
-> When we look at interfaces like this, we have to consider that they may
-> be around for a long, long time (decades, even), and people will come to
-> rely on them to do strange things that are difficult for us to support.
-> If we have someone saying that their READDIR performance slowed down, we
-> now have to grab those settings from this sysfs file and validate them
-> when trying to help them.
->
-> Personally, I'd prefer a simple binary "make it work the old way"
-> switch, if we're concerned about performance regressions here. I think
-> that's the sort of thing that is simple to explain to admins that are
-> suffering from this problem and (more importantly) the sort of setting
-> we can later remove when it's no longer needed.
->
-> Adding this sort of fine-grained knob will create more problems than it
-> solves, as people will (inevitably) use it incorrectly.
+> +	*max_len =3D 3;
+> +
+> +	return FILEID_INO64_GEN;
+> +}
+> +
+>  /**
+>   * exportfs_encode_inode_fh - encode a file handle from inode
+>   * @inode:   the object to encode
+> @@ -401,10 +425,10 @@ int exportfs_encode_inode_fh(struct inode *inode, s=
+truct fid *fid,
+>  	if (!exportfs_can_encode_fh(nop, flags))
+>  		return -EOPNOTSUPP;
+> =20
+> -	if (nop && nop->encode_fh)
+> -		return nop->encode_fh(inode, fid->raw, max_len, parent);
+> +	if (!nop && (flags & EXPORT_FH_FID))
+> +		return exportfs_encode_ino64_fid(inode, fid, max_len);
+> =20
+> -	return -EOPNOTSUPP;
+> +	return nop->encode_fh(inode, fid->raw, max_len, parent);
+>  }
+>  EXPORT_SYMBOL_GPL(exportfs_encode_inode_fh);
+> =20
+> diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+> index 21eeb9f6bdbd..6688e457da64 100644
+> --- a/include/linux/exportfs.h
+> +++ b/include/linux/exportfs.h
+> @@ -134,7 +134,11 @@ struct fid {
+>  			u32 parent_ino;
+>  			u32 parent_gen;
+>  		} i32;
+> - 		struct {
+> +		struct {
+> +			u64 ino;
+> +			u32 gen;
+> +		} __packed i64;
+> +		struct {
+>   			u32 block;
+>   			u16 partref;
+>   			u16 parent_partref;
+> @@ -246,7 +250,7 @@ extern int exportfs_encode_fh(struct dentry *dentry, =
+struct fid *fid,
+> =20
+>  static inline bool exportfs_can_encode_fid(const struct export_operation=
+s *nop)
+>  {
+> -	return nop && nop->encode_fh;
+> +	return !nop || nop->encode_fh;
+>  }
+> =20
+>  static inline bool exportfs_can_decode_fh(const struct export_operations=
+ *nop)
+> @@ -259,7 +263,7 @@ static inline bool exportfs_can_encode_fh(const struc=
+t export_operations *nop,
+>  {
+>  	/*
+>  	 * If a non-decodeable file handle was requested, we only need to make
+> -	 * sure that filesystem can encode file handles.
+> +	 * sure that filesystem did not opt-out of encoding fid.
+>  	 */
+>  	if (fh_flags & EXPORT_FH_FID)
+>  		return exportfs_can_encode_fid(nop);
 
-I disagree that it will create more problems than it solves.
-
-Also, sysfs isn't there for you to experiment with in production, and
-sysadmins know this.  Sysfs is "_The_ filesystem for exporting kernel
-objects".   There are plenty of ways to hose a system and corrupt data by
-playing around with sysfs.
-
-If we take the position that everything in NFS' sysfs must have a higher
-standard of safety than even module parameters (see recover_lost_locks),
-that means we better look at making every sysfs interface non-shoot-footy,
-which is just insane.  Just take a look at a sampling of writeable files,
-here's a couple:
-
-/sys/block/sda/device/delete
-/sys/kernel/sunrpc/xprt-switches/switch-1/xprt-0-local/dstaddr
-
-Ben
-
+--=20
+Jeff Layton <jlayton@kernel.org>
