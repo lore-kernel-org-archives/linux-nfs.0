@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id D9513CDB483
-	for <linux-nfs@archiver.kernel.org>; Wed, 18 Oct 2023 14:28:46 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 9B44FC41513
+	for <linux-nfs@archiver.kernel.org>; Wed, 18 Oct 2023 14:29:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1344873AbjJRO2q (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 18 Oct 2023 10:28:46 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34232 "EHLO
+        id S1345456AbjJRO3Z (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 18 Oct 2023 10:29:25 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:38482 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345009AbjJRO2p (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Oct 2023 10:28:45 -0400
+        with ESMTP id S1345528AbjJRO3P (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Oct 2023 10:29:15 -0400
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 9057A10D
-        for <linux-nfs@vger.kernel.org>; Wed, 18 Oct 2023 07:28:43 -0700 (PDT)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9878DC433C7;
-        Wed, 18 Oct 2023 14:28:42 +0000 (UTC)
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 274801BC3
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Oct 2023 07:15:14 -0700 (PDT)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7AB27C43395;
+        Wed, 18 Oct 2023 14:15:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1697639323;
-        bh=oYhl9MfxU1VJMaMsInexscT/Bcqx780AEyZ+o5KwS/Y=;
+        s=k20201202; t=1697638513;
+        bh=s6aY1ZS/yXo5J/gpAx2yUrzGUVyMMUnsaK92PMe3VII=;
         h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-        b=kEfeWy9U5mN0z1ZyUah0lyeWWShMGUaqSPgYY8Y0RfpPO5nsbSSv9OVL/jW6k5i0O
-         yAFJ4B8v1CYRJsI3rdnyDzK7Pc28SvDc/qe8agHlNJDQetecX5rGr13hbZ36wEG7hu
-         GFq1Y0A8i8u7LneGUZ+NOW/isCE4vby4XvLk7eXvjUeeb9n2bI/T9QrxRDWWP/E55H
-         UG4//uIWYLkMBKofHhuz1XY4qnNvAHAb4J+n9ytJRJUJj/6fJBEhl9Bho2JvxvfbNa
-         ESVq3v9FAxe9gaMH6Q6TfltZb5XU5rkfdTAv2+QRDsCEeLhcMw3h3qjijukRCqqQ7+
-         hDh1jx22EtfIA==
-Message-ID: <f4f27df2a26605a01b2e7f62a8ec6d946695e1d6.camel@kernel.org>
-Subject: Re: [PATCH 5/5] exportfs: support encoding non-decodeable file
- handles by default
+        b=GgS5BPAxJF1KKE3iLdd8lnhjobPqK3vI6/tDryYftWSIb5E+JLWCDk4VbkjZ0NCdz
+         6MZWMJ8gyzFNFwhJs5EtoaqrvBu0Bxb5O1aVXJe9yl9TcqSKbyLPMsxE8C+crki0Hh
+         bZBdy5Z+VPiSNNoXOBjWJEhEuwihLF3qiyRd/0S9fjQQSPno863UlZkbXjsj5jpesd
+         3/fXhuQu2Yu2+PdnBqFN4jPTCDt8R4RxbBKeLJ6Yy2P0+I6hBiRy/IpPHiU+v6mhtU
+         c49DbKXVmb/048/8Wp3vK4cJMAhUECdRSVBA6bklHrktJOuqpDalg1BrXCQaDtbUAD
+         xKDVhfVMUfXnw==
+Message-ID: <59e186df80ae6a841ccfada0369110b301ebbaa2.camel@kernel.org>
+Subject: Re: [PATCH 2/5] exportfs: add helpers to check if filesystem can
+ encode/decode file handles
 From:   Jeff Layton <jlayton@kernel.org>
 To:     Amir Goldstein <amir73il@gmail.com>, Jan Kara <jack@suse.cz>
 Cc:     Chuck Lever <chuck.lever@oracle.com>,
         Christian Brauner <brauner@kernel.org>,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Date:   Wed, 18 Oct 2023 10:28:41 -0400
-In-Reply-To: <20231018100000.2453965-6-amir73il@gmail.com>
+Date:   Wed, 18 Oct 2023 10:15:11 -0400
+In-Reply-To: <20231018100000.2453965-3-amir73il@gmail.com>
 References: <20231018100000.2453965-1-amir73il@gmail.com>
-         <20231018100000.2453965-6-amir73il@gmail.com>
+         <20231018100000.2453965-3-amir73il@gmail.com>
 Content-Type: text/plain; charset="ISO-8859-15"
 Content-Transfer-Encoding: quoted-printable
 User-Agent: Evolution 3.48.4 (3.48.4-1.fc38) 
@@ -46,144 +46,167 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Wed, 2023-10-18 at 13:00 +0300, Amir Goldstein wrote:
-> AT_HANDLE_FID was added as an API for name_to_handle_at() that request
-> the encoding of a file id, which is not intended to be decoded.
+On Wed, 2023-10-18 at 12:59 +0300, Amir Goldstein wrote:
+> The logic of whether filesystem can encode/decode file handles is open
+> coded in many places.
 >=20
-> This file id is used by fanotify to describe objects in events.
->=20
-> So far, overlayfs is the only filesystem that supports encoding
-> non-decodeable file ids, by providing export_operations with an
-> ->encode_fh() method and without a ->decode_fh() method.
->=20
-> Add support for encoding non-decodeable file ids to all the filesystems
-> that do not provide export_operations, by encoding a file id of type
-> FILEID_INO64_GEN from { i_ino, i_generation }.
->=20
-> A filesystem may that does not support NFS export, can opt-out of
-> encoding non-decodeable file ids for fanotify by defining an empty
-> export_operations struct (i.e. with a NULL ->encode_fh() method).
->=20
-> This allows the use of fanotify events with file ids on filesystems
-> like 9p which do not support NFS export to bring fanotify in feature
-> parity with inotify on those filesystems.
->=20
-> Note that fanotify also requires that the filesystems report a non-null
-> fsid.  Currently, many simple filesystems that have support for inotify
-> (e.g. debugfs, tracefs, sysfs) report a null fsid, so can still not be
-> used with fanotify in file id reporting mode.
+> In preparation to changing the logic, move the open coded logic into
+> inline helpers.
 >=20
 > Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 > ---
->  fs/exportfs/expfs.c      | 30 +++++++++++++++++++++++++++---
->  include/linux/exportfs.h | 10 +++++++---
->  2 files changed, 34 insertions(+), 6 deletions(-)
+>  fs/exportfs/expfs.c                |  8 ++------
+>  fs/fhandle.c                       |  6 +-----
+>  fs/nfsd/export.c                   |  3 +--
+>  fs/notify/fanotify/fanotify_user.c |  4 ++--
+>  fs/overlayfs/util.c                |  2 +-
+>  include/linux/exportfs.h           | 27 +++++++++++++++++++++++++++
+>  6 files changed, 34 insertions(+), 16 deletions(-)
 >=20
 > diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-> index 30da4539e257..34e7d835d4ef 100644
+> index c20704aa21b3..9ee205df8fa7 100644
 > --- a/fs/exportfs/expfs.c
 > +++ b/fs/exportfs/expfs.c
-> @@ -383,6 +383,30 @@ int generic_encode_ino32_fh(struct inode *inode, __u=
-32 *fh, int *max_len,
->  }
->  EXPORT_SYMBOL_GPL(generic_encode_ino32_fh);
+> @@ -396,11 +396,7 @@ int exportfs_encode_inode_fh(struct inode *inode, st=
+ruct fid *fid,
+>  {
+>  	const struct export_operations *nop =3D inode->i_sb->s_export_op;
 > =20
-> +/**
-> + * exportfs_encode_ino64_fid - encode non-decodeable 64bit ino file id
-> + * @inode:   the object to encode
-> + * @fid:     where to store the file handle fragment
-> + * @max_len: maximum length to store there
-> + *
-> + * This generic function is used to encode a non-decodeable file id for
-> + * fanotify for filesystems that do not support NFS export.
-> + */
-> +static int exportfs_encode_ino64_fid(struct inode *inode, struct fid *fi=
-d,
-> +				     int *max_len)
-> +{
-> +	if (*max_len < 3) {
-> +		*max_len =3D 3;
-> +		return FILEID_INVALID;
-> +	}
-> +
-> +	fid->i64.ino =3D inode->i_ino;
-> +	fid->i64.gen =3D inode->i_generation;
-
-Note that i_ino is unsigned long and so is a 32-bit value on 32-bit
-arches. If the backend storage uses 64-bit inodes, then we usually end
-up hashing them down to 32-bits first. e.g. see nfs_fattr_to_ino_t().
-ceph has some similar code.
-
-The upshot is that if you're relying on i_ino, the value can change
-between different arches, even when they are dealing with the same
-backend filesystem.
-
-Since this is expected to be used by filesystems that don't set up
-export operations, then that may just be something they have to deal
-with. I'm not sure what else you can use in lieu of i_ino in this case.
-
-> +	*max_len =3D 3;
-> +
-> +	return FILEID_INO64_GEN;
-> +}
-> +
->  /**
->   * exportfs_encode_inode_fh - encode a file handle from inode
->   * @inode:   the object to encode
-> @@ -401,10 +425,10 @@ int exportfs_encode_inode_fh(struct inode *inode, s=
-truct fid *fid,
->  	if (!exportfs_can_encode_fh(nop, flags))
+> -	/*
+> -	 * If a decodeable file handle was requested, we need to make sure that
+> -	 * filesystem can decode file handles.
+> -	 */
+> -	if (nop && !(flags & EXPORT_FH_FID) && !nop->fh_to_dentry)
+> +	if (!exportfs_can_encode_fh(nop, flags))
 >  		return -EOPNOTSUPP;
 > =20
-> -	if (nop && nop->encode_fh)
-> -		return nop->encode_fh(inode, fid->raw, max_len, parent);
-> +	if (!nop && (flags & EXPORT_FH_FID))
-> +		return exportfs_encode_ino64_fid(inode, fid, max_len);
+>  	if (nop && nop->encode_fh)
+> @@ -456,7 +452,7 @@ exportfs_decode_fh_raw(struct vfsmount *mnt, struct f=
+id *fid, int fh_len,
+>  	/*
+>  	 * Try to get any dentry for the given file handle from the filesystem.
+>  	 */
+> -	if (!nop || !nop->fh_to_dentry)
+> +	if (!exportfs_can_decode_fh(nop))
+>  		return ERR_PTR(-ESTALE);
+>  	result =3D nop->fh_to_dentry(mnt->mnt_sb, fid, fh_len, fileid_type);
+>  	if (IS_ERR_OR_NULL(result))
+> diff --git a/fs/fhandle.c b/fs/fhandle.c
+> index 6ea8d35a9382..18b3ba8dc8ea 100644
+> --- a/fs/fhandle.c
+> +++ b/fs/fhandle.c
+> @@ -26,12 +26,8 @@ static long do_sys_name_to_handle(const struct path *p=
+ath,
+>  	/*
+>  	 * We need to make sure whether the file system support decoding of
+>  	 * the file handle if decodeable file handle was requested.
+> -	 * Otherwise, even empty export_operations are sufficient to opt-in
+> -	 * to encoding FIDs.
+>  	 */
+> -	if (!path->dentry->d_sb->s_export_op ||
+> -	    (!(fh_flags & EXPORT_FH_FID) &&
+> -	     !path->dentry->d_sb->s_export_op->fh_to_dentry))
+> +	if (!exportfs_can_encode_fh(path->dentry->d_sb->s_export_op, fh_flags))
+>  		return -EOPNOTSUPP;
 > =20
-> -	return -EOPNOTSUPP;
-> +	return nop->encode_fh(inode, fid->raw, max_len, parent);
->  }
->  EXPORT_SYMBOL_GPL(exportfs_encode_inode_fh);
+>  	if (copy_from_user(&f_handle, ufh, sizeof(struct file_handle)))
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 11a0eaa2f914..dc99dfc1d411 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -421,8 +421,7 @@ static int check_export(struct path *path, int *flags=
+, unsigned char *uuid)
+>  		return -EINVAL;
+>  	}
 > =20
+> -	if (!inode->i_sb->s_export_op ||
+> -	    !inode->i_sb->s_export_op->fh_to_dentry) {
+> +	if (!exportfs_can_decode_fh(inode->i_sb->s_export_op)) {
+>  		dprintk("exp_export: export of invalid fs type.\n");
+>  		return -EINVAL;
+>  	}
+> diff --git a/fs/notify/fanotify/fanotify_user.c b/fs/notify/fanotify/fano=
+tify_user.c
+> index 537c70beaad0..ce926eb9feea 100644
+> --- a/fs/notify/fanotify/fanotify_user.c
+> +++ b/fs/notify/fanotify/fanotify_user.c
+> @@ -1595,7 +1595,7 @@ static int fanotify_test_fid(struct dentry *dentry,=
+ unsigned int flags)
+>  	 * file handles so user can use name_to_handle_at() to compare fids
+>  	 * reported with events to the file handle of watched objects.
+>  	 */
+> -	if (!nop)
+> +	if (!exportfs_can_encode_fid(nop))
+>  		return -EOPNOTSUPP;
+> =20
+>  	/*
+> @@ -1603,7 +1603,7 @@ static int fanotify_test_fid(struct dentry *dentry,=
+ unsigned int flags)
+>  	 * supports decoding file handles, so user has a way to map back the
+>  	 * reported fids to filesystem objects.
+>  	 */
+> -	if (mark_type !=3D FAN_MARK_INODE && !nop->fh_to_dentry)
+> +	if (mark_type !=3D FAN_MARK_INODE && !exportfs_can_decode_fh(nop))
+>  		return -EOPNOTSUPP;
+> =20
+>  	return 0;
+> diff --git a/fs/overlayfs/util.c b/fs/overlayfs/util.c
+> index 89e0d60d35b6..f0a712214ec2 100644
+> --- a/fs/overlayfs/util.c
+> +++ b/fs/overlayfs/util.c
+> @@ -55,7 +55,7 @@ int ovl_can_decode_fh(struct super_block *sb)
+>  	if (!capable(CAP_DAC_READ_SEARCH))
+>  		return 0;
+> =20
+> -	if (!sb->s_export_op || !sb->s_export_op->fh_to_dentry)
+> +	if (!exportfs_can_decode_fh(sb->s_export_op))
+>  		return 0;
+> =20
+>  	return sb->s_export_op->encode_fh ? -1 : FILEID_INO32_GEN;
 > diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
-> index 21eeb9f6bdbd..6688e457da64 100644
+> index 11fbd0ee1370..5b3c9f30b422 100644
 > --- a/include/linux/exportfs.h
 > +++ b/include/linux/exportfs.h
-> @@ -134,7 +134,11 @@ struct fid {
->  			u32 parent_ino;
->  			u32 parent_gen;
->  		} i32;
-> - 		struct {
-> +		struct {
-> +			u64 ino;
-> +			u32 gen;
-> +		} __packed i64;
-> +		struct {
->   			u32 block;
->   			u16 partref;
->   			u16 parent_partref;
-> @@ -246,7 +250,7 @@ extern int exportfs_encode_fh(struct dentry *dentry, =
-struct fid *fid,
+> @@ -233,6 +233,33 @@ extern int exportfs_encode_inode_fh(struct inode *in=
+ode, struct fid *fid,
+>  extern int exportfs_encode_fh(struct dentry *dentry, struct fid *fid,
+>  			      int *max_len, int flags);
 > =20
->  static inline bool exportfs_can_encode_fid(const struct export_operation=
+> +static inline bool exportfs_can_encode_fid(const struct export_operation=
 s *nop)
->  {
-> -	return nop && nop->encode_fh;
-> +	return !nop || nop->encode_fh;
->  }
-> =20
->  static inline bool exportfs_can_decode_fh(const struct export_operations=
+> +{
+> +	return nop;
+> +}
+> +
+> +static inline bool exportfs_can_decode_fh(const struct export_operations=
  *nop)
-> @@ -259,7 +263,7 @@ static inline bool exportfs_can_encode_fh(const struc=
-t export_operations *nop,
+> +{
+> +	return nop && nop->fh_to_dentry;
+> +}
+> +
+> +static inline bool exportfs_can_encode_fh(const struct export_operations=
+ *nop,
+> +					  int fh_flags)
+> +{
+> +	/*
+> +	 * If a non-decodeable file handle was requested, we only need to make
+> +	 * sure that filesystem can encode file handles.
+> +	 */
+> +	if (fh_flags & EXPORT_FH_FID)
+> +		return exportfs_can_encode_fid(nop);
+> +
+> +	/*
+> +	 * If a decodeable file handle was requested, we need to make sure that
+> +	 * filesystem can also decode file handles.
+> +	 */
+> +	return exportfs_can_decode_fh(nop);
+> +}
+> +
+>  static inline int exportfs_encode_fid(struct inode *inode, struct fid *f=
+id,
+>  				      int *max_len)
 >  {
->  	/*
->  	 * If a non-decodeable file handle was requested, we only need to make
-> -	 * sure that filesystem can encode file handles.
-> +	 * sure that filesystem did not opt-out of encoding fid.
->  	 */
->  	if (fh_flags & EXPORT_FH_FID)
->  		return exportfs_can_encode_fid(nop);
 
---=20
-Jeff Layton <jlayton@kernel.org>
+Nice cleanup.
+
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
