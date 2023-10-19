@@ -2,95 +2,178 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A1444CDB465
-	for <linux-nfs@archiver.kernel.org>; Thu, 19 Oct 2023 13:35:01 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 47B1FCDB465
+	for <linux-nfs@archiver.kernel.org>; Thu, 19 Oct 2023 14:23:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345991AbjJSNfB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Thu, 19 Oct 2023 09:35:01 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:34436 "EHLO
+        id S235409AbjJSOXD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Thu, 19 Oct 2023 10:23:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45092 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345997AbjJSNfA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Oct 2023 09:35:00 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8A480115
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Oct 2023 06:34:13 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1697722452;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=Oa3tZ8nEmTQ7g03CpQabtkzzRCmD2YRrHZ3zkA1/K5k=;
-        b=XrwVCwgOWgnToUI9HNRw1LDBPR9pUaFvfZOBcL7AqKDiVXaHx3fR1afliNJjaK58LriW8e
-        0xBS2pBdwsdk6tNNe10DRn5CxxDfmmEiz/ECEPHT322v0Ion8rGdrFVboDqboUIe+1tAjU
-        Ystu0y6+YG+7i93ZSWB1b7PYbfdIjPU=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- us-mta-318-dq82Kc1lPTWwn7pHRHAOhQ-1; Thu, 19 Oct 2023 09:34:04 -0400
-X-MC-Unique: dq82Kc1lPTWwn7pHRHAOhQ-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+        with ESMTP id S235412AbjJSOXC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Oct 2023 10:23:02 -0400
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [IPv6:2001:67c:2178:6::1c])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C3F1213A;
+        Thu, 19 Oct 2023 07:22:59 -0700 (PDT)
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
         (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 0A08A88B777;
-        Thu, 19 Oct 2023 13:34:03 +0000 (UTC)
-Received: from bcodding.csb.redhat.com (unknown [10.22.48.7])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 8108340C6F7B;
-        Thu, 19 Oct 2023 13:34:02 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     trond.myklebust@hammerspace.com, anna@kernel.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/2] NFSv4: Always ask for type with READDIR
-Date:   Thu, 19 Oct 2023 09:34:00 -0400
-Message-ID: <badc4f7fbd63c19a9f50a7c5c17968db16bebf5f.1697722160.git.bcodding@redhat.com>
-In-Reply-To: <cover.1697722160.git.bcodding@redhat.com>
-References: <cover.1697722160.git.bcodding@redhat.com>
+        by smtp-out1.suse.de (Postfix) with ESMTPS id 52EEC21A48;
+        Thu, 19 Oct 2023 14:22:58 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+        t=1697725378; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=4E7Btm1jA8tM6Dk6HYd/aVW7uwFxHG0gM68WS0p6SfM=;
+        b=oErc7CHRqi9w0L2wHrNP8sqxdgLBFhlmZqElAvjHfsI/8ywickv3XzqEJERXlGN0qsGPQU
+        Wra/GiXwRbieXPcBINAK/TqbLXeqM154zuP2Sq5fkDefdBCL9S86j5rqgK6uxk6MfwDTj8
+        VxfM8BATKRAxlXmopmCAk1iJdkyVLx4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+        s=susede2_ed25519; t=1697725378;
+        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+         mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=4E7Btm1jA8tM6Dk6HYd/aVW7uwFxHG0gM68WS0p6SfM=;
+        b=9fXmjegVRRCulgG3AJ6e71pr181SScpKn6DyMu9rZWyDeMayPdzl/m6Tn0/+N/MO+9j5OF
+        rFiZ/oLHm4aYNiCw==
+Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
+        (No client certificate requested)
+        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 3A60B139C2;
+        Thu, 19 Oct 2023 14:22:58 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([192.168.254.65])
+        by imap2.suse-dmz.suse.de with ESMTPSA
+        id dz0+DsI7MWVxfQAAMHmgww
+        (envelope-from <jack@suse.cz>); Thu, 19 Oct 2023 14:22:58 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+        id 7831EA06B0; Thu, 19 Oct 2023 16:22:57 +0200 (CEST)
+Date:   Thu, 19 Oct 2023 16:22:57 +0200
+From:   Jan Kara <jack@suse.cz>
+To:     Amir Goldstein <amir73il@gmail.com>
+Cc:     Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Christian Brauner <brauner@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/5] fanotify: limit reporting of event with
+ non-decodeable file handles
+Message-ID: <20231019142257.yevkf7i2istyzen2@quack3>
+References: <20231018100000.2453965-1-amir73il@gmail.com>
+ <20231018100000.2453965-2-amir73il@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.2
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20231018100000.2453965-2-amir73il@gmail.com>
+Authentication-Results: smtp-out1.suse.de;
+        none
+X-Spamd-Result: default: False [-6.60 / 50.00];
+         ARC_NA(0.00)[];
+         RCVD_VIA_SMTP_AUTH(0.00)[];
+         FROM_HAS_DN(0.00)[];
+         TO_DN_SOME(0.00)[];
+         TO_MATCH_ENVRCPT_ALL(0.00)[];
+         FREEMAIL_ENVRCPT(0.00)[gmail.com];
+         MIME_GOOD(-0.10)[text/plain];
+         NEURAL_HAM_LONG(-3.00)[-1.000];
+         DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+         NEURAL_HAM_SHORT(-1.00)[-1.000];
+         RCPT_COUNT_SEVEN(0.00)[7];
+         FREEMAIL_TO(0.00)[gmail.com];
+         FROM_EQ_ENVFROM(0.00)[];
+         MIME_TRACE(0.00)[0:+];
+         MID_RHS_NOT_FQDN(0.50)[];
+         RCVD_COUNT_TWO(0.00)[2];
+         RCVD_TLS_ALL(0.00)[];
+         BAYES_HAM(-3.00)[100.00%]
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Again we have claimed regressions for walking a directory tree, this time
-with the "find" utility which always tries to optimize away asking for any
-attributes until it has a complete list of entries.  This behavior makes
-the readdir plus heuristic do the wrong thing, which causes a storm of
-GETATTRs to determine each entry's type in order to continue the walk.
+On Wed 18-10-23 12:59:56, Amir Goldstein wrote:
+> Commit a95aef69a740 ("fanotify: support reporting non-decodeable file
+> handles") merged in v6.5-rc1, added the ability to use an fanotify group
+> with FAN_REPORT_FID mode to watch filesystems that do not support nfs
+> export, but do know how to encode non-decodeable file handles, with the
+> newly introduced AT_HANDLE_FID flag.
+> 
+> At the time that this commit was merged, there were no filesystems
+> in-tree with those traits.
+> 
+> Commit 16aac5ad1fa9 ("ovl: support encoding non-decodable file handles"),
+> merged in v6.6-rc1, added this trait to overlayfs, thus allowing fanotify
+> watching of overlayfs with FAN_REPORT_FID mode.
+> 
+> In retrospect, allowing an fanotify filesystem/mount mark on such
+> filesystem in FAN_REPORT_FID mode will result in getting events with
+> file handles, without the ability to resolve the filesystem objects from
+> those file handles (i.e. no open_by_handle_at() support).
+> 
+> For v6.6, the safer option would be to allow this mode for inode marks
+> only, where the caller has the opportunity to use name_to_handle_at() at
+> the time of setting the mark. In the future we can revise this decision.
+> 
+> Fixes: a95aef69a740 ("fanotify: support reporting non-decodeable file handles")
+> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 
-For v4 add the type attribute to each READDIR request to include it no
-matter the heuristic.  This allows a simple `find` command to proceed
-quickly through a directory tree.
+OK, I agree sb/mount marks reporting FIDs are hardly usable without
+name_to_handle_at() so better forbid them before someone comes up with some
+creative abuse. I've queued the patch into my tree.
 
-Suggested-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfs/nfs4xdr.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+								Honza
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index deec76cf5afe..7200d6f7cd7b 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1602,7 +1602,7 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_pgio_args *args
- static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg *readdir, struct rpc_rqst *req, struct compound_hdr *hdr)
- {
- 	uint32_t attrs[3] = {
--		FATTR4_WORD0_RDATTR_ERROR,
-+		FATTR4_WORD0_TYPE|FATTR4_WORD0_RDATTR_ERROR,
- 		FATTR4_WORD1_MOUNTED_ON_FILEID,
- 	};
- 	uint32_t dircount = readdir->count;
-@@ -1612,7 +1612,7 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 	unsigned int i;
- 
- 	if (readdir->plus) {
--		attrs[0] |= FATTR4_WORD0_TYPE|FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE|
-+		attrs[0] |= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE|
- 			FATTR4_WORD0_FSID|FATTR4_WORD0_FILEHANDLE|FATTR4_WORD0_FILEID;
- 		attrs[1] |= FATTR4_WORD1_MODE|FATTR4_WORD1_NUMLINKS|FATTR4_WORD1_OWNER|
- 			FATTR4_WORD1_OWNER_GROUP|FATTR4_WORD1_RAWDEV|
+> ---
+>  fs/notify/fanotify/fanotify_user.c | 25 +++++++++++++++++--------
+>  1 file changed, 17 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/notify/fanotify/fanotify_user.c b/fs/notify/fanotify/fanotify_user.c
+> index f69c451018e3..537c70beaad0 100644
+> --- a/fs/notify/fanotify/fanotify_user.c
+> +++ b/fs/notify/fanotify/fanotify_user.c
+> @@ -1585,16 +1585,25 @@ static int fanotify_test_fsid(struct dentry *dentry, __kernel_fsid_t *fsid)
+>  }
+>  
+>  /* Check if filesystem can encode a unique fid */
+> -static int fanotify_test_fid(struct dentry *dentry)
+> +static int fanotify_test_fid(struct dentry *dentry, unsigned int flags)
+>  {
+> +	unsigned int mark_type = flags & FANOTIFY_MARK_TYPE_BITS;
+> +	const struct export_operations *nop = dentry->d_sb->s_export_op;
+> +
+> +	/*
+> +	 * We need to make sure that the filesystem supports encoding of
+> +	 * file handles so user can use name_to_handle_at() to compare fids
+> +	 * reported with events to the file handle of watched objects.
+> +	 */
+> +	if (!nop)
+> +		return -EOPNOTSUPP;
+> +
+>  	/*
+> -	 * We need to make sure that the file system supports at least
+> -	 * encoding a file handle so user can use name_to_handle_at() to
+> -	 * compare fid returned with event to the file handle of watched
+> -	 * objects. However, even the relaxed AT_HANDLE_FID flag requires
+> -	 * at least empty export_operations for ecoding unique file ids.
+> +	 * For sb/mount mark, we also need to make sure that the filesystem
+> +	 * supports decoding file handles, so user has a way to map back the
+> +	 * reported fids to filesystem objects.
+>  	 */
+> -	if (!dentry->d_sb->s_export_op)
+> +	if (mark_type != FAN_MARK_INODE && !nop->fh_to_dentry)
+>  		return -EOPNOTSUPP;
+>  
+>  	return 0;
+> @@ -1812,7 +1821,7 @@ static int do_fanotify_mark(int fanotify_fd, unsigned int flags, __u64 mask,
+>  		if (ret)
+>  			goto path_put_and_out;
+>  
+> -		ret = fanotify_test_fid(path.dentry);
+> +		ret = fanotify_test_fid(path.dentry, flags);
+>  		if (ret)
+>  			goto path_put_and_out;
+>  
+> -- 
+> 2.34.1
+> 
 -- 
-2.41.0
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
