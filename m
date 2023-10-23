@@ -2,78 +2,62 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 46842C25B47
+	by smtp.lore.kernel.org (Postfix) with ESMTP id E35F8C25B46
 	for <linux-nfs@archiver.kernel.org>; Mon, 23 Oct 2023 18:08:21 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232311AbjJWSIU (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Mon, 23 Oct 2023 14:08:20 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59696 "EHLO
+        id S231159AbjJWSIV (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Oct 2023 14:08:21 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:59792 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230492AbjJWSIS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Oct 2023 14:08:18 -0400
-Received: from mail-lj1-x230.google.com (mail-lj1-x230.google.com [IPv6:2a00:1450:4864:20::230])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id DE211BE;
-        Mon, 23 Oct 2023 11:08:14 -0700 (PDT)
-Received: by mail-lj1-x230.google.com with SMTP id 38308e7fff4ca-2c514cbbe7eso50275481fa.1;
-        Mon, 23 Oct 2023 11:08:14 -0700 (PDT)
+        with ESMTP id S232563AbjJWSIT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Oct 2023 14:08:19 -0400
+Received: from mail-wm1-x336.google.com (mail-wm1-x336.google.com [IPv6:2a00:1450:4864:20::336])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 49D5F10D;
+        Mon, 23 Oct 2023 11:08:17 -0700 (PDT)
+Received: by mail-wm1-x336.google.com with SMTP id 5b1f17b1804b1-4083cd39188so27974375e9.2;
+        Mon, 23 Oct 2023 11:08:17 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1698084493; x=1698689293; darn=vger.kernel.org;
+        d=gmail.com; s=20230601; t=1698084495; x=1698689295; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=ZEu59smmc/TKlS1Th6b2TXJ2WG5bW+jZTBOrzgPJ0bM=;
-        b=XbDAUxVQvDGXTUuhx3fkLN7L7fTthLEwnCVF2NBMtz/1HSyb8fxxJu4ZYuX1BohZw8
-         AO2XwZeawgDHmqTADzcvrt90+1fXTrLO66a4RysSMG5a4bKiVI5Y6PfAnC5oJFg4CMu7
-         kig0LU+Fr2WUKy14K/q0ekxTSvCjoZb3zmXc279/+QI6yCZfLiTH7D2d0H0dvC9RbnUy
-         4IKJYbuQggudDw5waMWA43QQhuTtZEz3/vYE0uATSbTDQrBS/xKO3iI7MgK9lyhO33wK
-         tVAEI5Pk8HLKgBUe7ggpUsKbjVNf8nkQ9N0dQdo6CAQLJgtRCvIXZovaZfqlVmy0/j7k
-         XUKg==
+        bh=+tOR1AnPiV86SfZe4OnAbQ+ckmKrdHU3txk2iNYjBpc=;
+        b=I4MTG7lQUC60oLvJSZYAPoViBBRpUNmXjWUiSsMB0RvUBljuJy6fQKF9xYJcI2b1c6
+         WZhDwvdmfbGRgZ3v2C16YFQfxosIi1YOgs3AW2kkqkE8l2fxcEvdXoxPq0H2eZPL1UH8
+         iaR3VpHYa1PpTiw5EgWpB8NRofAXG4p3E/lfZiBurNDWDYky2cOeUdf2p8ZNxaMYxsfi
+         fLb+LZSZBn0lMW0u0vn8sTVTCqT9HgJdh9ZYXWJWqt23OQ08V5aNARtyNLF7BCEN+EAn
+         6u663wozmT9f2wED4egtllQlRO9t39fPKz51fgGFMK7G4qghecCuJWIc6KKArCXB6UTd
+         SRHw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1698084493; x=1698689293;
+        d=1e100.net; s=20230601; t=1698084495; x=1698689295;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=ZEu59smmc/TKlS1Th6b2TXJ2WG5bW+jZTBOrzgPJ0bM=;
-        b=EKxi6mOfzFngGcR/g6oCkfh4m/SSMgb7cs4bKEVyhLGLO7U1SdmhonlnhyLwdWYaQT
-         bTRnQhg7bDLBwf23KbToDeghz158/PlB9EuEg19DJVF98ZDO8mzUoZWW7+9whSVtE+5L
-         iNtTav+jC88/oLGk8Yp0o4PveQQN614bYZuAjtAx9S4+oDrl30+dZb/zdFQz/zb/Ehry
-         854qDVFusaJjz3sjgLCRO7o1uC2ZWClJ9bPnqy6UccJotc7qk5RObUv9UQzMOfFN2jxp
-         qD6dyt5gILrCPNASE+O5DQJtCIXOSGEfp1ptBtMymaGc0YvZK1U1ZTQc1WhHx611WZyI
-         3GRw==
-X-Gm-Message-State: AOJu0YwBoYuk/SeskDs7gRqw2gBuszIaE0CbidWfakg8EqbfvABTkqPZ
-        6DXUbqOCDpzvzo2V+1Lv31s=
-X-Google-Smtp-Source: AGHT+IGN58aVQcrfzMhmTtaPzgtoWAhtEi6j+JzpsRl1CKA6OkKAQCbmG+9g4gSpQMqu9DBkNG5cYA==
-X-Received: by 2002:a2e:bc12:0:b0:2c5:8b1:7561 with SMTP id b18-20020a2ebc12000000b002c508b17561mr8426044ljf.10.1698084492836;
-        Mon, 23 Oct 2023 11:08:12 -0700 (PDT)
+        bh=+tOR1AnPiV86SfZe4OnAbQ+ckmKrdHU3txk2iNYjBpc=;
+        b=tPaF1GKNegelm0MkF3aRrTVVfmGwrms8kkhwcoJyU8E3caF7Pz/W1k0l50Cs6Gw2JB
+         ejMj8AIFH9OD1MEawazM8LpbSLSlgCokiYu8AIkaH0E+0qRcYPWIDyMlr5GAA7vYyF/D
+         QnF1rR4H7iczu0ZEqC00rx5Cjs5TssRnnTQQszclLOj+muXh9NsKr8LhTvg91XsLzaqr
+         nx45M0IaM7pUG1LdvJZ4c8+St+dKNU2lp4Mo8H824tHOVItVSOZh26WU5pj22FCWFLGn
+         sgIDcCQ/mKwAIdQSqOKba+rQ3wO8GFravjyxDcQNQJSqNhUG1ZT4JSRkVQM7QmnCpBHW
+         9SPA==
+X-Gm-Message-State: AOJu0YzmowV4m6RKFqZk+PbjzYK08ol7y19DWCLevtVh55padcXsVirY
+        L3NZIBno6GAML1gso6KFxPQ=
+X-Google-Smtp-Source: AGHT+IHwlhC0sZ9nz37LUDcS8funTiaT0lHXr+R6Uu/ceSORkpBYOEHtXDyRJ4ejVmnMWNubXmY3Pg==
+X-Received: by 2002:a05:600c:1546:b0:3fe:4cbc:c345 with SMTP id f6-20020a05600c154600b003fe4cbcc345mr7394278wmg.41.1698084495437;
+        Mon, 23 Oct 2023 11:08:15 -0700 (PDT)
 Received: from amir-ThinkPad-T480.lan ([5.29.249.86])
-        by smtp.gmail.com with ESMTPSA id c39-20020a05600c4a2700b0040588d85b3asm14391492wmp.15.2023.10.23.11.08.09
+        by smtp.gmail.com with ESMTPSA id c39-20020a05600c4a2700b0040588d85b3asm14391492wmp.15.2023.10.23.11.08.14
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 23 Oct 2023 11:08:11 -0700 (PDT)
+        Mon, 23 Oct 2023 11:08:15 -0700 (PDT)
 From:   Amir Goldstein <amir73il@gmail.com>
 To:     Christian Brauner <brauner@kernel.org>
 Cc:     Al Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
         Jeff Layton <jlayton@kernel.org>,
         Chuck Lever <chuck.lever@oracle.com>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        David Sterba <dsterba@suse.com>,
-        Luis de Bethencourt <luisbg@kernel.org>,
-        Salah Triki <salah.triki@gmail.com>,
-        Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>,
-        "Theodore Ts'o" <tytso@mit.edu>,
-        Andreas Dilger <adilger.kernel@dilger.ca>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
-        Dave Kleikamp <shaggy@kernel.org>,
-        David Woodhouse <dwmw2@infradead.org>,
-        Richard Weinberger <richard@nod.at>,
-        Anton Altaparmakov <anton@tuxera.com>,
-        Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
-        Steve French <sfrench@samba.org>,
-        Phillip Lougher <phillip@squashfs.org.uk>,
-        Evgeniy Dushistov <dushistov@mail.ru>
-Subject: [PATCH v2 2/4] exportfs: make ->encode_fh() a mandatory method for NFS export
-Date:   Mon, 23 Oct 2023 21:07:59 +0300
-Message-Id: <20231023180801.2953446-3-amir73il@gmail.com>
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 4/4] exportfs: support encoding non-decodeable file handles by default
+Date:   Mon, 23 Oct 2023 21:08:01 +0300
+Message-Id: <20231023180801.2953446-5-amir73il@gmail.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20231023180801.2953446-1-amir73il@gmail.com>
 References: <20231023180801.2953446-1-amir73il@gmail.com>
@@ -83,345 +67,126 @@ Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-export_operations ->encode_fh() no longer has a default implementation to
-encode FILEID_INO32_GEN* file handles.
+AT_HANDLE_FID was added as an API for name_to_handle_at() that request
+the encoding of a file id, which is not intended to be decoded.
 
-Rename the default helper for encoding FILEID_INO32_GEN* file handles to
-generic_encode_ino32_fh() and convert the filesystems that used the
-default implementation to use the generic helper explicitly.
+This file id is used by fanotify to describe objects in events.
 
-This is a step towards allowing filesystems to encode non-decodeable file
-handles for fanotify without having to implement any export_operations.
+So far, overlayfs is the only filesystem that supports encoding
+non-decodeable file ids, by providing export_operations with an
+->encode_fh() method and without a ->decode_fh() method.
+
+Add support for encoding non-decodeable file ids to all the filesystems
+that do not provide export_operations, by encoding a file id of type
+FILEID_INO64_GEN from { i_ino, i_generation }.
+
+A filesystem may that does not support NFS export, can opt-out of
+encoding non-decodeable file ids for fanotify by defining an empty
+export_operations struct (i.e. with a NULL ->encode_fh() method).
+
+This allows the use of fanotify events with file ids on filesystems
+like 9p which do not support NFS export to bring fanotify in feature
+parity with inotify on those filesystems.
+
+Note that fanotify also requires that the filesystems report a non-null
+fsid.  Currently, many simple filesystems that have support for inotify
+(e.g. debugfs, tracefs, sysfs) report a null fsid, so can still not be
+used with fanotify in file id reporting mode.
 
 Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Acked-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 ---
- Documentation/filesystems/nfs/exporting.rst |  7 ++-----
- Documentation/filesystems/porting.rst       |  9 +++++++++
- fs/affs/namei.c                             |  1 +
- fs/befs/linuxvfs.c                          |  1 +
- fs/efs/super.c                              |  1 +
- fs/erofs/super.c                            |  1 +
- fs/exportfs/expfs.c                         | 16 +++++++++-------
- fs/ext2/super.c                             |  1 +
- fs/ext4/super.c                             |  1 +
- fs/f2fs/super.c                             |  1 +
- fs/fat/nfs.c                                |  1 +
- fs/jffs2/super.c                            |  1 +
- fs/jfs/super.c                              |  1 +
- fs/ntfs/namei.c                             |  1 +
- fs/ntfs3/super.c                            |  1 +
- fs/smb/client/export.c                      | 11 +++++------
- fs/squashfs/export.c                        |  1 +
- fs/ufs/super.c                              |  1 +
- include/linux/exportfs.h                    |  9 ++++++++-
- 19 files changed, 47 insertions(+), 19 deletions(-)
+ fs/exportfs/expfs.c      | 32 +++++++++++++++++++++++++++++---
+ include/linux/exportfs.h | 10 +++++++---
+ 2 files changed, 36 insertions(+), 6 deletions(-)
 
-diff --git a/Documentation/filesystems/nfs/exporting.rst b/Documentation/filesystems/nfs/exporting.rst
-index 4b30daee399a..de64d2d002a2 100644
---- a/Documentation/filesystems/nfs/exporting.rst
-+++ b/Documentation/filesystems/nfs/exporting.rst
-@@ -122,12 +122,9 @@ are exportable by setting the s_export_op field in the struct
- super_block.  This field must point to a "struct export_operations"
- struct which has the following members:
- 
--  encode_fh (optional)
-+  encode_fh (mandatory)
-     Takes a dentry and creates a filehandle fragment which may later be used
--    to find or create a dentry for the same object.  The default
--    implementation creates a filehandle fragment that encodes a 32bit inode
--    and generation number for the inode encoded, and if necessary the
--    same information for the parent.
-+    to find or create a dentry for the same object.
- 
-   fh_to_dentry (mandatory)
-     Given a filehandle fragment, this should find the implied object and
-diff --git a/Documentation/filesystems/porting.rst b/Documentation/filesystems/porting.rst
-index 4d05b9862451..9cc6cb27c4d5 100644
---- a/Documentation/filesystems/porting.rst
-+++ b/Documentation/filesystems/porting.rst
-@@ -1045,3 +1045,12 @@ filesystem type is now moved to a later point when the devices are closed:
- As this is a VFS level change it has no practical consequences for filesystems
- other than that all of them must use one of the provided kill_litter_super(),
- kill_anon_super(), or kill_block_super() helpers.
-+
-+---
-+
-+**mandatory**
-+
-+export_operations ->encode_fh() no longer has a default implementation to
-+encode FILEID_INO32_GEN* file handles.
-+Filesystems that used the default implementation may use the generic helper
-+generic_encode_ino32_fh() explicitly.
-diff --git a/fs/affs/namei.c b/fs/affs/namei.c
-index 2fe4a5832fcf..d6b9758ee23d 100644
---- a/fs/affs/namei.c
-+++ b/fs/affs/namei.c
-@@ -568,6 +568,7 @@ static struct dentry *affs_fh_to_parent(struct super_block *sb, struct fid *fid,
- }
- 
- const struct export_operations affs_export_ops = {
-+	.encode_fh = generic_encode_ino32_fh,
- 	.fh_to_dentry = affs_fh_to_dentry,
- 	.fh_to_parent = affs_fh_to_parent,
- 	.get_parent = affs_get_parent,
-diff --git a/fs/befs/linuxvfs.c b/fs/befs/linuxvfs.c
-index 9a16a51fbb88..410dcaffd5ab 100644
---- a/fs/befs/linuxvfs.c
-+++ b/fs/befs/linuxvfs.c
-@@ -96,6 +96,7 @@ static const struct address_space_operations befs_symlink_aops = {
- };
- 
- static const struct export_operations befs_export_operations = {
-+	.encode_fh	= generic_encode_ino32_fh,
- 	.fh_to_dentry	= befs_fh_to_dentry,
- 	.fh_to_parent	= befs_fh_to_parent,
- 	.get_parent	= befs_get_parent,
-diff --git a/fs/efs/super.c b/fs/efs/super.c
-index b287f47c165b..f17fdac76b2e 100644
---- a/fs/efs/super.c
-+++ b/fs/efs/super.c
-@@ -123,6 +123,7 @@ static const struct super_operations efs_superblock_operations = {
- };
- 
- static const struct export_operations efs_export_ops = {
-+	.encode_fh	= generic_encode_ino32_fh,
- 	.fh_to_dentry	= efs_fh_to_dentry,
- 	.fh_to_parent	= efs_fh_to_parent,
- 	.get_parent	= efs_get_parent,
-diff --git a/fs/erofs/super.c b/fs/erofs/super.c
-index 3700af9ee173..edbe07a24156 100644
---- a/fs/erofs/super.c
-+++ b/fs/erofs/super.c
-@@ -626,6 +626,7 @@ static struct dentry *erofs_get_parent(struct dentry *child)
- }
- 
- static const struct export_operations erofs_export_ops = {
-+	.encode_fh = generic_encode_ino32_fh,
- 	.fh_to_dentry = erofs_fh_to_dentry,
- 	.fh_to_parent = erofs_fh_to_parent,
- 	.get_parent = erofs_get_parent,
 diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-index 9ee205df8fa7..8f883c4758f5 100644
+index 8f883c4758f5..7d9fdcc187b7 100644
 --- a/fs/exportfs/expfs.c
 +++ b/fs/exportfs/expfs.c
-@@ -343,20 +343,21 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
+@@ -383,6 +383,32 @@ int generic_encode_ino32_fh(struct inode *inode, __u32 *fh, int *max_len,
  }
+ EXPORT_SYMBOL_GPL(generic_encode_ino32_fh);
  
- /**
-- * export_encode_fh - default export_operations->encode_fh function
-+ * generic_encode_ino32_fh - generic export_operations->encode_fh function
-  * @inode:   the object to encode
-- * @fid:     where to store the file handle fragment
-- * @max_len: maximum length to store there
-+ * @fh:      where to store the file handle fragment
++#define FILEID_INO64_GEN_LEN 3
++
++/**
++ * exportfs_encode_ino64_fid - encode non-decodeable 64bit ino file id
++ * @inode:   the object to encode
++ * @fid:     where to store the file handle fragment
 + * @max_len: maximum length to store there (in 4 byte units)
-  * @parent:  parent directory inode, if wanted
-  *
-- * This default encode_fh function assumes that the 32 inode number
-+ * This generic encode_fh function assumes that the 32 inode number
-  * is suitable for locating an inode, and that the generation number
-  * can be used to check that it is still valid.  It places them in the
-  * filehandle fragment where export_decode_fh expects to find them.
-  */
--static int export_encode_fh(struct inode *inode, struct fid *fid,
--		int *max_len, struct inode *parent)
-+int generic_encode_ino32_fh(struct inode *inode, __u32 *fh, int *max_len,
-+			    struct inode *parent)
- {
-+	struct fid *fid = (void *)fh;
- 	int len = *max_len;
- 	int type = FILEID_INO32_GEN;
- 
-@@ -380,6 +381,7 @@ static int export_encode_fh(struct inode *inode, struct fid *fid,
- 	*max_len = len;
- 	return type;
- }
-+EXPORT_SYMBOL_GPL(generic_encode_ino32_fh);
- 
++ *
++ * This generic function is used to encode a non-decodeable file id for
++ * fanotify for filesystems that do not support NFS export.
++ */
++static int exportfs_encode_ino64_fid(struct inode *inode, struct fid *fid,
++				     int *max_len)
++{
++	if (*max_len < FILEID_INO64_GEN_LEN) {
++		*max_len = FILEID_INO64_GEN_LEN;
++		return FILEID_INVALID;
++	}
++
++	fid->i64.ino = inode->i_ino;
++	fid->i64.gen = inode->i_generation;
++	*max_len = FILEID_INO64_GEN_LEN;
++
++	return FILEID_INO64_GEN;
++}
++
  /**
   * exportfs_encode_inode_fh - encode a file handle from inode
-@@ -402,7 +404,7 @@ int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
- 	if (nop && nop->encode_fh)
- 		return nop->encode_fh(inode, fid->raw, max_len, parent);
+  * @inode:   the object to encode
+@@ -401,10 +427,10 @@ int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
+ 	if (!exportfs_can_encode_fh(nop, flags))
+ 		return -EOPNOTSUPP;
  
--	return export_encode_fh(inode, fid, max_len, parent);
-+	return -EOPNOTSUPP;
+-	if (nop && nop->encode_fh)
+-		return nop->encode_fh(inode, fid->raw, max_len, parent);
++	if (!nop && (flags & EXPORT_FH_FID))
++		return exportfs_encode_ino64_fid(inode, fid, max_len);
+ 
+-	return -EOPNOTSUPP;
++	return nop->encode_fh(inode, fid->raw, max_len, parent);
  }
  EXPORT_SYMBOL_GPL(exportfs_encode_inode_fh);
  
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index aaf3e3e88cb2..b9f158a34997 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -397,6 +397,7 @@ static struct dentry *ext2_fh_to_parent(struct super_block *sb, struct fid *fid,
- }
- 
- static const struct export_operations ext2_export_ops = {
-+	.encode_fh = generic_encode_ino32_fh,
- 	.fh_to_dentry = ext2_fh_to_dentry,
- 	.fh_to_parent = ext2_fh_to_parent,
- 	.get_parent = ext2_get_parent,
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index dbebd8b3127e..c44db1915437 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1646,6 +1646,7 @@ static const struct super_operations ext4_sops = {
- };
- 
- static const struct export_operations ext4_export_ops = {
-+	.encode_fh = generic_encode_ino32_fh,
- 	.fh_to_dentry = ext4_fh_to_dentry,
- 	.fh_to_parent = ext4_fh_to_parent,
- 	.get_parent = ext4_get_parent,
-diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
-index a8c8232852bb..60cfa11f65bf 100644
---- a/fs/f2fs/super.c
-+++ b/fs/f2fs/super.c
-@@ -3282,6 +3282,7 @@ static struct dentry *f2fs_fh_to_parent(struct super_block *sb, struct fid *fid,
- }
- 
- static const struct export_operations f2fs_export_ops = {
-+	.encode_fh = generic_encode_ino32_fh,
- 	.fh_to_dentry = f2fs_fh_to_dentry,
- 	.fh_to_parent = f2fs_fh_to_parent,
- 	.get_parent = f2fs_get_parent,
-diff --git a/fs/fat/nfs.c b/fs/fat/nfs.c
-index 3626eb585a98..c52e63e10d35 100644
---- a/fs/fat/nfs.c
-+++ b/fs/fat/nfs.c
-@@ -279,6 +279,7 @@ static struct dentry *fat_get_parent(struct dentry *child_dir)
- }
- 
- const struct export_operations fat_export_ops = {
-+	.encode_fh	= generic_encode_ino32_fh,
- 	.fh_to_dentry   = fat_fh_to_dentry,
- 	.fh_to_parent   = fat_fh_to_parent,
- 	.get_parent     = fat_get_parent,
-diff --git a/fs/jffs2/super.c b/fs/jffs2/super.c
-index 7ea37f49f1e1..f99591a634b4 100644
---- a/fs/jffs2/super.c
-+++ b/fs/jffs2/super.c
-@@ -150,6 +150,7 @@ static struct dentry *jffs2_get_parent(struct dentry *child)
- }
- 
- static const struct export_operations jffs2_export_ops = {
-+	.encode_fh = generic_encode_ino32_fh,
- 	.get_parent = jffs2_get_parent,
- 	.fh_to_dentry = jffs2_fh_to_dentry,
- 	.fh_to_parent = jffs2_fh_to_parent,
-diff --git a/fs/jfs/super.c b/fs/jfs/super.c
-index 2e2f7f6d36a0..2cc2632f3c47 100644
---- a/fs/jfs/super.c
-+++ b/fs/jfs/super.c
-@@ -896,6 +896,7 @@ static const struct super_operations jfs_super_operations = {
- };
- 
- static const struct export_operations jfs_export_operations = {
-+	.encode_fh	= generic_encode_ino32_fh,
- 	.fh_to_dentry	= jfs_fh_to_dentry,
- 	.fh_to_parent	= jfs_fh_to_parent,
- 	.get_parent	= jfs_get_parent,
-diff --git a/fs/ntfs/namei.c b/fs/ntfs/namei.c
-index ab44f2db533b..d7498ddc4a72 100644
---- a/fs/ntfs/namei.c
-+++ b/fs/ntfs/namei.c
-@@ -384,6 +384,7 @@ static struct dentry *ntfs_fh_to_parent(struct super_block *sb, struct fid *fid,
-  * and due to using iget() whereas NTFS needs ntfs_iget().
-  */
- const struct export_operations ntfs_export_ops = {
-+	.encode_fh	= generic_encode_ino32_fh,
- 	.get_parent	= ntfs_get_parent,	/* Find the parent of a given
- 						   directory. */
- 	.fh_to_dentry	= ntfs_fh_to_dentry,
-diff --git a/fs/ntfs3/super.c b/fs/ntfs3/super.c
-index 5661a363005e..661ffb5aa1e0 100644
---- a/fs/ntfs3/super.c
-+++ b/fs/ntfs3/super.c
-@@ -789,6 +789,7 @@ static int ntfs_nfs_commit_metadata(struct inode *inode)
- }
- 
- static const struct export_operations ntfs_export_ops = {
-+	.encode_fh = generic_encode_ino32_fh,
- 	.fh_to_dentry = ntfs_fh_to_dentry,
- 	.fh_to_parent = ntfs_fh_to_parent,
- 	.get_parent = ntfs3_get_parent,
-diff --git a/fs/smb/client/export.c b/fs/smb/client/export.c
-index 37c28415df1e..d606e8cbcb7d 100644
---- a/fs/smb/client/export.c
-+++ b/fs/smb/client/export.c
-@@ -41,13 +41,12 @@ static struct dentry *cifs_get_parent(struct dentry *dentry)
- }
- 
- const struct export_operations cifs_export_ops = {
-+	.encode_fh = generic_encode_ino32_fh,
- 	.get_parent = cifs_get_parent,
--/*	Following five export operations are unneeded so far and can default:
--	.get_dentry =
--	.get_name =
--	.find_exported_dentry =
--	.decode_fh =
--	.encode_fs =  */
-+/*
-+ * Following export operations are mandatory for NFS export support:
-+ *	.fh_to_dentry =
-+ */
- };
- 
- #endif /* CONFIG_CIFS_NFSD_EXPORT */
-diff --git a/fs/squashfs/export.c b/fs/squashfs/export.c
-index 723763746238..62972f0ff868 100644
---- a/fs/squashfs/export.c
-+++ b/fs/squashfs/export.c
-@@ -173,6 +173,7 @@ __le64 *squashfs_read_inode_lookup_table(struct super_block *sb,
- 
- 
- const struct export_operations squashfs_export_ops = {
-+	.encode_fh = generic_encode_ino32_fh,
- 	.fh_to_dentry = squashfs_fh_to_dentry,
- 	.fh_to_parent = squashfs_fh_to_parent,
- 	.get_parent = squashfs_get_parent
-diff --git a/fs/ufs/super.c b/fs/ufs/super.c
-index 23377c1baed9..a480810cd4e3 100644
---- a/fs/ufs/super.c
-+++ b/fs/ufs/super.c
-@@ -137,6 +137,7 @@ static struct dentry *ufs_get_parent(struct dentry *child)
- }
- 
- static const struct export_operations ufs_export_ops = {
-+	.encode_fh = generic_encode_ino32_fh,
- 	.fh_to_dentry	= ufs_fh_to_dentry,
- 	.fh_to_parent	= ufs_fh_to_parent,
- 	.get_parent	= ufs_get_parent,
 diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
-index 5b3c9f30b422..85bd027494e5 100644
+index 4119d3ee72eb..21bae8bfeef1 100644
 --- a/include/linux/exportfs.h
 +++ b/include/linux/exportfs.h
-@@ -235,7 +235,7 @@ extern int exportfs_encode_fh(struct dentry *dentry, struct fid *fid,
+@@ -134,7 +134,11 @@ struct fid {
+ 			u32 parent_ino;
+ 			u32 parent_gen;
+ 		} i32;
+- 		struct {
++		struct {
++			u64 ino;
++			u32 gen;
++		} __packed i64;
++		struct {
+  			u32 block;
+  			u16 partref;
+  			u16 parent_partref;
+@@ -246,7 +250,7 @@ extern int exportfs_encode_fh(struct dentry *dentry, struct fid *fid,
  
  static inline bool exportfs_can_encode_fid(const struct export_operations *nop)
  {
--	return nop;
-+	return nop && nop->encode_fh;
+-	return nop && nop->encode_fh;
++	return !nop || nop->encode_fh;
  }
  
  static inline bool exportfs_can_decode_fh(const struct export_operations *nop)
-@@ -279,6 +279,13 @@ extern struct dentry *exportfs_decode_fh(struct vfsmount *mnt, struct fid *fid,
- /*
-  * Generic helpers for filesystems.
-  */
-+#ifdef CONFIG_EXPORTFS
-+int generic_encode_ino32_fh(struct inode *inode, __u32 *fh, int *max_len,
-+			    struct inode *parent);
-+#else
-+#define generic_encode_ino32_fh NULL
-+#endif
-+
- extern struct dentry *generic_fh_to_dentry(struct super_block *sb,
- 	struct fid *fid, int fh_len, int fh_type,
- 	struct inode *(*get_inode) (struct super_block *sb, u64 ino, u32 gen));
+@@ -259,7 +263,7 @@ static inline bool exportfs_can_encode_fh(const struct export_operations *nop,
+ {
+ 	/*
+ 	 * If a non-decodeable file handle was requested, we only need to make
+-	 * sure that filesystem can encode file handles.
++	 * sure that filesystem did not opt-out of encoding fid.
+ 	 */
+ 	if (fh_flags & EXPORT_FH_FID)
+ 		return exportfs_can_encode_fid(nop);
 -- 
 2.34.1
 
