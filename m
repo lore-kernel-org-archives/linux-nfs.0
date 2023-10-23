@@ -2,302 +2,209 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8EC76C0032E
-	for <linux-nfs@archiver.kernel.org>; Mon, 23 Oct 2023 02:12:13 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id AE7A9CDB474
+	for <linux-nfs@archiver.kernel.org>; Mon, 23 Oct 2023 13:55:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S233057AbjJWCMN (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Sun, 22 Oct 2023 22:12:13 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42710 "EHLO
+        id S230110AbjJWNzz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Mon, 23 Oct 2023 09:55:55 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50454 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S233094AbjJWCMM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Oct 2023 22:12:12 -0400
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.220.28])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AB137E6
-        for <linux-nfs@vger.kernel.org>; Sun, 22 Oct 2023 19:12:07 -0700 (PDT)
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by smtp-out1.suse.de (Postfix) with ESMTPS id 4F69821A80;
-        Mon, 23 Oct 2023 02:12:06 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-        t=1698027126; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=GDCSGpqzzQCPsWJnFwARKruyZ2iXRyLzv259sJdXiwE=;
-        b=afeTQ7mXkyYdbgtEKuSYzWrtRlNWK/cTAVgg3QXY+LYjaNo4xCXFPkYSK2V4Rwfst/3EWS
-        F8k88gQQEi3oqvogw940iZR/Iaw5AuZ/gSxXe1Y0r9JXa2yDT6n+g34S4uXDhdT0kT1UE3
-        odzgtxr4/mMlD09hds9cRYZR+GQfh7k=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-        s=susede2_ed25519; t=1698027126;
-        h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-         mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=GDCSGpqzzQCPsWJnFwARKruyZ2iXRyLzv259sJdXiwE=;
-        b=twdbu0D/g6tyU74HoZ17i88eIkkID54jA378UPB7mgSkhwcE2cK8QML9HJ4tCyL4SF0YSS
-        Rv8GEnVuMpcfVxBg==
-Received: from imap2.suse-dmz.suse.de (imap2.suse-dmz.suse.de [192.168.254.74])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature ECDSA (P-521) server-digest SHA512)
-        (No client certificate requested)
-        by imap2.suse-dmz.suse.de (Postfix) with ESMTPS id 23A19132FD;
-        Mon, 23 Oct 2023 02:12:04 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([192.168.254.65])
-        by imap2.suse-dmz.suse.de with ESMTPSA
-        id VccwM3TWNWWTbwAAMHmgww
-        (envelope-from <neilb@suse.de>); Mon, 23 Oct 2023 02:12:04 +0000
-From:   NeilBrown <neilb@suse.de>
-To:     Steve Dickson <steved@redhat.com>
-Cc:     linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@hammerspace.com>
-Subject: [PATCH 6/6] cache: periodically retry requests that couldn't be answered.
-Date:   Mon, 23 Oct 2023 12:58:36 +1100
-Message-ID: <20231023021052.5258-7-neilb@suse.de>
-X-Mailer: git-send-email 2.42.0
-In-Reply-To: <20231023021052.5258-1-neilb@suse.de>
-References: <20231023021052.5258-1-neilb@suse.de>
+        with ESMTP id S230094AbjJWNzy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Oct 2023 09:55:54 -0400
+Received: from mail-qt1-x82a.google.com (mail-qt1-x82a.google.com [IPv6:2607:f8b0:4864:20::82a])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8AB59101;
+        Mon, 23 Oct 2023 06:55:52 -0700 (PDT)
+Received: by mail-qt1-x82a.google.com with SMTP id d75a77b69052e-41cd444d9d0so19161601cf.2;
+        Mon, 23 Oct 2023 06:55:52 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1698069351; x=1698674151; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=iPMGAbfbGK+qnLdNLN/64hlEEDrMuPiSA0pG5FYaVUE=;
+        b=fiNWZqb3fACXY82aLv4gCbe2BznksQYTpAiG1HNd3f6awoNGzmIyVb5FAYJN80Xusx
+         ZfBsHatYCsIOWEVDUKroW5nKgManZVXbA8Mya7kZQa/OJbU8kNtzGSTIJpHFxCgfof7e
+         J+YKaa6yEfBtCC5dA5AO0pnUy58UUVzpsitrnVg954Vg/gBEaZXuq0YoUZYZBs5xMFgM
+         iiUbIuv32lGR7Ydu0PECDSTrQk1cJmTnoPLXfH9hd9jWVOLXsMylRFB13tw35QuDdu2K
+         qfvgTM2835clJ9OQeBrf31dxElTF52x1m5FAEWgI9fisV6Qn5uqh8XgsXCVzQRlaVCAP
+         90bg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1698069351; x=1698674151;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=iPMGAbfbGK+qnLdNLN/64hlEEDrMuPiSA0pG5FYaVUE=;
+        b=imTm/5ptaZOu/Gv/hohxEUy3bOWuf0Q+QmXGSVudjrvBW52CNGvNYH8NivpSy0xrzn
+         TnDdwa3LXXVVrYvPsladGzMBOoLUnsXthvdxwNdEkR72ZqzV5lVvI25j6h5hr1YLUmCd
+         KUNt9jHJvAMc6ZBZQpo1phMZ/h4M4z/3zFvaYvR6xFae7idbuFeUlofFjWv4P+JE5Jkw
+         zDoCZdlZDzP8MHCGW3Z67eVD4maxP1ceo5wLsqJU9eN7SUGU65onXmUnqSgdd/nFbmr2
+         MxQ5PRvdNVNdbzxbtLH2T7tFCNpl0qoG6N9+2qLhPFjFJ0GnteVPVLksQ9tSUo82LL9F
+         wcQQ==
+X-Gm-Message-State: AOJu0Yw+1RQnMPJgWnbFKgyY8ZBoP+aaCA7FAQKfctmymaZupFxsrw0F
+        OnxbkBga897XkdxGgCuCLOYOfqKpp4bmYLRtAzU=
+X-Google-Smtp-Source: AGHT+IFbl2Pn1JNaoh2hAr9EDzPf6M9UPdOvN2Abps+ScggKZIhxy3ScvMSwdLXnoLZ2NnMuUP/y6X/DZROGYU/83/A=
+X-Received: by 2002:a05:6214:19ed:b0:66d:1e8f:bb98 with SMTP id
+ q13-20020a05621419ed00b0066d1e8fbb98mr9957696qvc.59.1698069351488; Mon, 23
+ Oct 2023 06:55:51 -0700 (PDT)
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Authentication-Results: smtp-out1.suse.de;
-        none
-X-Spamd-Result: default: False [-2.10 / 50.00];
-         ARC_NA(0.00)[];
-         RCVD_VIA_SMTP_AUTH(0.00)[];
-         FROM_HAS_DN(0.00)[];
-         RCPT_COUNT_THREE(0.00)[3];
-         TO_DN_SOME(0.00)[];
-         TO_MATCH_ENVRCPT_ALL(0.00)[];
-         MIME_GOOD(-0.10)[text/plain];
-         R_MISSING_CHARSET(2.50)[];
-         BROKEN_CONTENT_TYPE(1.50)[];
-         NEURAL_HAM_LONG(-3.00)[-1.000];
-         DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-         NEURAL_HAM_SHORT(-1.00)[-1.000];
-         MID_CONTAINS_FROM(1.00)[];
-         FROM_EQ_ENVFROM(0.00)[];
-         MIME_TRACE(0.00)[0:+];
-         RCVD_COUNT_TWO(0.00)[2];
-         RCVD_TLS_ALL(0.00)[];
-         BAYES_HAM(-3.00)[100.00%]
+References: <20231018100000.2453965-1-amir73il@gmail.com> <20231018100000.2453965-6-amir73il@gmail.com>
+In-Reply-To: <20231018100000.2453965-6-amir73il@gmail.com>
+From:   Amir Goldstein <amir73il@gmail.com>
+Date:   Mon, 23 Oct 2023 16:55:40 +0300
+Message-ID: <CAOQ4uxhiRU2nNnYtuXUaURMCuYjssC9Rn=ORWW=MmVyMD1H6Rg@mail.gmail.com>
+Subject: Re: [PATCH 5/5] exportfs: support encoding non-decodeable file
+ handles by default
+To:     Jan Kara <jack@suse.cz>
+Cc:     Jeff Layton <jlayton@kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Christian Brauner <brauner@kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Requests from the kernel to map the fsid from a filehandle to a path
-name sometimes cannot be answered because the filesystems isn't
-available now but might be available later.
+On Wed, Oct 18, 2023 at 1:00=E2=80=AFPM Amir Goldstein <amir73il@gmail.com>=
+ wrote:
+>
+> AT_HANDLE_FID was added as an API for name_to_handle_at() that request
+> the encoding of a file id, which is not intended to be decoded.
+>
+> This file id is used by fanotify to describe objects in events.
+>
+> So far, overlayfs is the only filesystem that supports encoding
+> non-decodeable file ids, by providing export_operations with an
+> ->encode_fh() method and without a ->decode_fh() method.
+>
+> Add support for encoding non-decodeable file ids to all the filesystems
+> that do not provide export_operations, by encoding a file id of type
+> FILEID_INO64_GEN from { i_ino, i_generation }.
+>
+> A filesystem may that does not support NFS export, can opt-out of
+> encoding non-decodeable file ids for fanotify by defining an empty
+> export_operations struct (i.e. with a NULL ->encode_fh() method).
+>
+> This allows the use of fanotify events with file ids on filesystems
+> like 9p which do not support NFS export to bring fanotify in feature
+> parity with inotify on those filesystems.
+>
+> Note that fanotify also requires that the filesystems report a non-null
+> fsid.  Currently, many simple filesystems that have support for inotify
+> (e.g. debugfs, tracefs, sysfs) report a null fsid, so can still not be
+> used with fanotify in file id reporting mode.
+>
+> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+> ---
 
-This happens if an export is marked "mountpoint" but the mountpoint
-isn't currently mounted.  In this case it might get mounted in the
-future.
+Hi Jan,
 
-It also happens in an NFS filesystem is being re-exported and the server
-is unresponsive.  In that case (if it was mounted "softerr") we get
-ETIMEDOUT from a stat() attempt and so cannot give either a positive or
-negative response.
+Did you get a chance to look at this patch?
+I saw your review comments on the rest of the series, so was waiting
+for feedback on this last one before posting v2.
 
-These cases are currently handled poorly.  No answer is returned to the
-kernel so it will continue waiting for an answer - and never get one
-even if the NFS server comes back or the mountpoint is mounted.
+BTW, I am going to post a complementary patch to add fsid support for
+the simple filesystems.
 
-We cannot report a soft error to the kernel so much retry ourselves.
+Thanks,
+Amir.
 
-With this patch we record the request when the lookup fails with
-dev_missing or similar and retry every 2 minutes.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- support/export/cache.c | 121 +++++++++++++++++++++++++++++++++++------
- 1 file changed, 103 insertions(+), 18 deletions(-)
-
-diff --git a/support/export/cache.c b/support/export/cache.c
-index a01eba4f6619..6c0a44a3a209 100644
---- a/support/export/cache.c
-+++ b/support/export/cache.c
-@@ -759,7 +759,15 @@ static struct addrinfo *lookup_client_addr(char *dom)
- 	return ret;
- }
- 
--static void nfsd_fh(int f)
-+#define RETRY_SEC 120
-+struct delayed {
-+	char *message;
-+	time_t last_attempt;
-+	int f;
-+	struct delayed *next;
-+} *delayed;
-+
-+static int nfsd_handle_fh(int f, char *bp, int blen)
- {
- 	/* request are:
- 	 *  domain fsidtype fsid
-@@ -777,21 +785,13 @@ static void nfsd_fh(int f)
- 	nfs_export *exp;
- 	int i;
- 	int dev_missing = 0;
--	char buf[RPC_CHAN_BUF_SIZE], *bp;
--	int blen;
-+	char buf[RPC_CHAN_BUF_SIZE];
- 	int did_uncover = 0;
--
--	blen = cache_read(f, buf, sizeof(buf));
--	if (blen <= 0 || buf[blen-1] != '\n') return;
--	buf[blen-1] = 0;
--
--	xlog(D_CALL, "nfsd_fh: inbuf '%s'", buf);
--
--	bp = buf;
-+	int ret = 0;
- 
- 	dom = malloc(blen);
- 	if (dom == NULL)
--		return;
-+		return ret;
- 	if (qword_get(&bp, dom, blen) <= 0)
- 		goto out;
- 	if (qword_get_int(&bp, &fsidtype) != 0)
-@@ -893,8 +893,10 @@ static void nfsd_fh(int f)
- 		/* The missing dev could be what we want, so just be
- 		 * quiet rather than returning stale yet
- 		 */
--		if (dev_missing)
-+		if (dev_missing) {
-+			ret = 1;
- 			goto out;
-+		}
- 	} else if (found->e_mountpoint &&
- 	    !is_mountpoint(found->e_mountpoint[0]?
- 			   found->e_mountpoint:
-@@ -904,7 +906,7 @@ static void nfsd_fh(int f)
- 		   xlog(L_WARNING, "%s not exported as %d not a mountpoint",
- 		   found->e_path, found->e_mountpoint);
- 		 */
--		/* FIXME we need to make sure we re-visit this later */
-+		ret = 1;
- 		goto out;
- 	}
- 
-@@ -933,7 +935,68 @@ out:
- 		free(found_path);
- 	nfs_freeaddrinfo(ai);
- 	free(dom);
--	xlog(D_CALL, "nfsd_fh: found %p path %s", found, found ? found->e_path : NULL);
-+	if (!ret)
-+		xlog(D_CALL, "nfsd_fh: found %p path %s",
-+		     found, found ? found->e_path : NULL);
-+	return ret;
-+}
-+
-+static void nfsd_fh(int f)
-+{
-+	struct delayed *d, **dp;
-+	char inbuf[RPC_CHAN_BUF_SIZE];
-+	int blen;
-+
-+	blen = cache_read(f, inbuf, sizeof(inbuf));
-+	if (blen <= 0 || inbuf[blen-1] != '\n') return;
-+	inbuf[blen-1] = 0;
-+
-+	xlog(D_CALL, "nfsd_fh: inbuf '%s'", inbuf);
-+
-+	if (nfsd_handle_fh(f, inbuf, blen) == 0)
-+		return;
-+	/* We don't have a definitive answer to give the kernel.
-+	 * This is because an export marked "mountpoint" isn't a
-+	 * mountpoint, or because a stat of a mountpoint fails with
-+	 * a strange error like ETIMEDOUT as is possible with an
-+	 * NFS mount marked "softerr" which is being re-exported.
-+	 *
-+	 * We cannot tell the kernel to retry, so we have to
-+	 * retry ourselves.
-+	 */
-+	d = malloc(sizeof(*d));
-+
-+	if (!d)
-+		return;
-+	d->message = strndup(inbuf, blen);
-+	if (!d->message) {
-+		free(d);
-+		return;
-+	}
-+	d->f = f;
-+	d->last_attempt = time(NULL);
-+	d->next = NULL;
-+	dp = &delayed;
-+	while (*dp)
-+		dp = &(*dp)->next;
-+	*dp = d;
-+}
-+
-+static void nfsd_retry_fh(struct delayed *d)
-+{
-+	struct delayed **dp;
-+
-+	if (nfsd_handle_fh(d->f, d->message, strlen(d->message)+1) == 0) {
-+		free(d->message);
-+		free(d);
-+		return;
-+	}
-+	d->last_attempt = time(NULL);
-+	d->next = NULL;
-+	dp = &delayed;
-+	while (*dp)
-+		dp = &(*dp)->next;
-+	*dp = d;
- }
- 
- #ifdef HAVE_JUNCTION_SUPPORT
-@@ -1512,7 +1575,7 @@ static void nfsd_export(int f)
- 			 * This will cause it not to appear in the V4 Pseudo-root
- 			 * and so a "mount" of this path will fail, just like with
- 			 * V3.
--			 * And filehandle for this mountpoint from an earlier
-+			 * Any filehandle for this mountpoint from an earlier
- 			 * mount will block in nfsd.fh lookup.
- 			 */
- 			xlog(L_WARNING,
-@@ -1610,6 +1673,7 @@ int cache_process(fd_set *readfds)
- {
- 	fd_set fdset;
- 	int	selret;
-+	struct timeval tv = { 24*3600, 0 };
- 
- 	if (!readfds) {
- 		FD_ZERO(&fdset);
-@@ -1618,8 +1682,29 @@ int cache_process(fd_set *readfds)
- 	cache_set_fds(readfds);
- 	v4clients_set_fds(readfds);
- 
--	selret = select(FD_SETSIZE, readfds,
--			(void *) 0, (void *) 0, (struct timeval *) 0);
-+	if (delayed) {
-+		time_t now = time(NULL);
-+		time_t delay;
-+		if (delayed->last_attempt > now)
-+			/* Clock updated - retry immediately */
-+			delayed->last_attempt = now - RETRY_SEC;
-+		delay = delayed->last_attempt + RETRY_SEC - now;
-+		if (delay < 0)
-+			delay = 0;
-+		tv.tv_sec = delay;
-+	}
-+	selret = select(FD_SETSIZE, readfds, NULL, NULL, &tv);
-+
-+	if (delayed) {
-+		time_t now = time(NULL);
-+		struct delayed *d = delayed;
-+
-+		if (d->last_attempt + RETRY_SEC <= now) {
-+			delayed = d->next;
-+			d->next = NULL;
-+			nfsd_retry_fh(d);
-+		}
-+	}
- 
- 	switch (selret) {
- 	case -1:
--- 
-2.42.0
-
+>  fs/exportfs/expfs.c      | 30 +++++++++++++++++++++++++++---
+>  include/linux/exportfs.h | 10 +++++++---
+>  2 files changed, 34 insertions(+), 6 deletions(-)
+>
+> diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+> index 30da4539e257..34e7d835d4ef 100644
+> --- a/fs/exportfs/expfs.c
+> +++ b/fs/exportfs/expfs.c
+> @@ -383,6 +383,30 @@ int generic_encode_ino32_fh(struct inode *inode, __u=
+32 *fh, int *max_len,
+>  }
+>  EXPORT_SYMBOL_GPL(generic_encode_ino32_fh);
+>
+> +/**
+> + * exportfs_encode_ino64_fid - encode non-decodeable 64bit ino file id
+> + * @inode:   the object to encode
+> + * @fid:     where to store the file handle fragment
+> + * @max_len: maximum length to store there
+> + *
+> + * This generic function is used to encode a non-decodeable file id for
+> + * fanotify for filesystems that do not support NFS export.
+> + */
+> +static int exportfs_encode_ino64_fid(struct inode *inode, struct fid *fi=
+d,
+> +                                    int *max_len)
+> +{
+> +       if (*max_len < 3) {
+> +               *max_len =3D 3;
+> +               return FILEID_INVALID;
+> +       }
+> +
+> +       fid->i64.ino =3D inode->i_ino;
+> +       fid->i64.gen =3D inode->i_generation;
+> +       *max_len =3D 3;
+> +
+> +       return FILEID_INO64_GEN;
+> +}
+> +
+>  /**
+>   * exportfs_encode_inode_fh - encode a file handle from inode
+>   * @inode:   the object to encode
+> @@ -401,10 +425,10 @@ int exportfs_encode_inode_fh(struct inode *inode, s=
+truct fid *fid,
+>         if (!exportfs_can_encode_fh(nop, flags))
+>                 return -EOPNOTSUPP;
+>
+> -       if (nop && nop->encode_fh)
+> -               return nop->encode_fh(inode, fid->raw, max_len, parent);
+> +       if (!nop && (flags & EXPORT_FH_FID))
+> +               return exportfs_encode_ino64_fid(inode, fid, max_len);
+>
+> -       return -EOPNOTSUPP;
+> +       return nop->encode_fh(inode, fid->raw, max_len, parent);
+>  }
+>  EXPORT_SYMBOL_GPL(exportfs_encode_inode_fh);
+>
+> diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+> index 21eeb9f6bdbd..6688e457da64 100644
+> --- a/include/linux/exportfs.h
+> +++ b/include/linux/exportfs.h
+> @@ -134,7 +134,11 @@ struct fid {
+>                         u32 parent_ino;
+>                         u32 parent_gen;
+>                 } i32;
+> -               struct {
+> +               struct {
+> +                       u64 ino;
+> +                       u32 gen;
+> +               } __packed i64;
+> +               struct {
+>                         u32 block;
+>                         u16 partref;
+>                         u16 parent_partref;
+> @@ -246,7 +250,7 @@ extern int exportfs_encode_fh(struct dentry *dentry, =
+struct fid *fid,
+>
+>  static inline bool exportfs_can_encode_fid(const struct export_operation=
+s *nop)
+>  {
+> -       return nop && nop->encode_fh;
+> +       return !nop || nop->encode_fh;
+>  }
+>
+>  static inline bool exportfs_can_decode_fh(const struct export_operations=
+ *nop)
+> @@ -259,7 +263,7 @@ static inline bool exportfs_can_encode_fh(const struc=
+t export_operations *nop,
+>  {
+>         /*
+>          * If a non-decodeable file handle was requested, we only need to=
+ make
+> -        * sure that filesystem can encode file handles.
+> +        * sure that filesystem did not opt-out of encoding fid.
+>          */
+>         if (fh_flags & EXPORT_FH_FID)
+>                 return exportfs_can_encode_fid(nop);
+> --
+> 2.34.1
+>
