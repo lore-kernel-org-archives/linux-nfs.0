@@ -2,96 +2,70 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 47DD0C0032E
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Oct 2023 20:12:09 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 09B46C07545
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Oct 2023 20:13:06 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230049AbjJYUMJ (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 25 Oct 2023 16:12:09 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51264 "EHLO
+        id S230210AbjJYUNG convert rfc822-to-8bit (ORCPT
+        <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 25 Oct 2023 16:13:06 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42284 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229441AbjJYUMI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Oct 2023 16:12:08 -0400
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id D7A37136
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Oct 2023 13:11:23 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1698264682;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=Oa3tZ8nEmTQ7g03CpQabtkzzRCmD2YRrHZ3zkA1/K5k=;
-        b=jK1YHJB4gQx5Snm+Bh8hAFYYY2kzKhlk4xduMfS8nIelDApKj+TC33Ww+8tqMbEMdJTl8J
-        qfPmKk/LpZorvFGYFNanUTFsDDdyKWhkZWqJNqNOAMCsOjYHW2LJ5beYxWkiB5WxkvjtpR
-        RtaedveqNyAIUrtGbogoTD4O/qhzGos=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-642-Mjg52eYnOqSySFApoXAMcQ-1; Wed, 25 Oct 2023 16:11:17 -0400
-X-MC-Unique: Mjg52eYnOqSySFApoXAMcQ-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 2D665185A785;
-        Wed, 25 Oct 2023 20:11:17 +0000 (UTC)
-Received: from bcodding.csb.redhat.com (unknown [10.22.50.5])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BCA5D1C060AE;
-        Wed, 25 Oct 2023 20:11:16 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     trond.myklebust@hammerspace.com, anna@kernel.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH v3 1/2] NFSv4: Always ask for type with READDIR
-Date:   Wed, 25 Oct 2023 16:11:14 -0400
-Message-ID: <badc4f7fbd63c19a9f50a7c5c17968db16bebf5f.1698262608.git.bcodding@redhat.com>
-In-Reply-To: <cover.1698262608.git.bcodding@redhat.com>
-References: <cover.1698262608.git.bcodding@redhat.com>
+        with ESMTP id S229441AbjJYUNF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Oct 2023 16:13:05 -0400
+Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id EB395192
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Oct 2023 13:13:02 -0700 (PDT)
+Received: from localhost (localhost [127.0.0.1])
+        by lithops.sigma-star.at (Postfix) with ESMTP id AFB80622F589;
+        Wed, 25 Oct 2023 22:13:01 +0200 (CEST)
+Received: from lithops.sigma-star.at ([127.0.0.1])
+        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10032)
+        with ESMTP id iN3NeRnDa_0H; Wed, 25 Oct 2023 22:13:01 +0200 (CEST)
+Received: from localhost (localhost [127.0.0.1])
+        by lithops.sigma-star.at (Postfix) with ESMTP id 4A2D8622F58A;
+        Wed, 25 Oct 2023 22:13:01 +0200 (CEST)
+Received: from lithops.sigma-star.at ([127.0.0.1])
+        by localhost (lithops.sigma-star.at [127.0.0.1]) (amavisd-new, port 10026)
+        with ESMTP id vmC9xltJM6QH; Wed, 25 Oct 2023 22:13:01 +0200 (CEST)
+Received: from lithops.sigma-star.at (lithops.sigma-star.at [195.201.40.130])
+        by lithops.sigma-star.at (Postfix) with ESMTP id 23623622F589;
+        Wed, 25 Oct 2023 22:13:01 +0200 (CEST)
+Date:   Wed, 25 Oct 2023 22:13:00 +0200 (CEST)
+From:   Richard Weinberger <richard@nod.at>
+To:     Petr Vorel <pvorel@suse.cz>
+Cc:     linux-nfs <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Message-ID: <857096093.3016.1698264780882.JavaMail.zimbra@nod.at>
+In-Reply-To: <20231025194701.456031-1-pvorel@suse.cz>
+References: <20231025194701.456031-1-pvorel@suse.cz>
+Subject: Re: [PATCH 0/3] Add getrandom() fallback, cleanup headers
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.7
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8BIT
+X-Originating-IP: [195.201.40.130]
+X-Mailer: Zimbra 8.8.12_GA_3807 (ZimbraWebClient - FF97 (Linux)/8.8.12_GA_3809)
+Thread-Topic: Add getrandom() fallback, cleanup headers
+Thread-Index: Bpx3skmGDG7VX5pK6h7r55kvR0ekAA==
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Again we have claimed regressions for walking a directory tree, this time
-with the "find" utility which always tries to optimize away asking for any
-attributes until it has a complete list of entries.  This behavior makes
-the readdir plus heuristic do the wrong thing, which causes a storm of
-GETATTRs to determine each entry's type in order to continue the walk.
+----- Ursprüngliche Mail -----
+> Von: "Petr Vorel" <pvorel@suse.cz>
+> I also wonder why getrandom() syscall does not called with GRND_NONBLOCK
+> flag. Is it ok/needed to block?
 
-For v4 add the type attribute to each READDIR request to include it no
-matter the heuristic.  This allows a simple `find` command to proceed
-quickly through a directory tree.
+With GRND_NONBLOCK it would return EAGAIN if not enough
+randomness is ready. How to handle this then? Aborting the start of the daemon?
 
-Suggested-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfs/nfs4xdr.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Before we other think the whole thing, the sole purpose of the getrandom()
+call is seeding libc's PRNG with srand() to give every waiter a different
+amount of sleep time upon concurrent database access.
+See wait_for_dbaccess() and handling of SQLITE_LOCKED.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index deec76cf5afe..7200d6f7cd7b 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1602,7 +1602,7 @@ static void encode_read(struct xdr_stream *xdr, const struct nfs_pgio_args *args
- static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg *readdir, struct rpc_rqst *req, struct compound_hdr *hdr)
- {
- 	uint32_t attrs[3] = {
--		FATTR4_WORD0_RDATTR_ERROR,
-+		FATTR4_WORD0_TYPE|FATTR4_WORD0_RDATTR_ERROR,
- 		FATTR4_WORD1_MOUNTED_ON_FILEID,
- 	};
- 	uint32_t dircount = readdir->count;
-@@ -1612,7 +1612,7 @@ static void encode_readdir(struct xdr_stream *xdr, const struct nfs4_readdir_arg
- 	unsigned int i;
- 
- 	if (readdir->plus) {
--		attrs[0] |= FATTR4_WORD0_TYPE|FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE|
-+		attrs[0] |= FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE|
- 			FATTR4_WORD0_FSID|FATTR4_WORD0_FILEHANDLE|FATTR4_WORD0_FILEID;
- 		attrs[1] |= FATTR4_WORD1_MODE|FATTR4_WORD1_NUMLINKS|FATTR4_WORD1_OWNER|
- 			FATTR4_WORD1_OWNER_GROUP|FATTR4_WORD1_RAWDEV|
--- 
-2.41.0
+I'm pretty sure instead of seeding from getrandom() we can also use the current
+time or read a few bytes from /dev/urandom.
+Just make sure that every user of sqlite_plug_init() has a different seed.
 
+Thanks,
+//richard
