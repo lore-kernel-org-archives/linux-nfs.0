@@ -2,85 +2,121 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id E8E89C0032E
-	for <linux-nfs@archiver.kernel.org>; Wed, 25 Oct 2023 16:31:39 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EEB0AC0032E
+	for <linux-nfs@archiver.kernel.org>; Wed, 25 Oct 2023 16:32:03 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S232579AbjJYQbj (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 25 Oct 2023 12:31:39 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49962 "EHLO
+        id S232807AbjJYQcD (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 25 Oct 2023 12:32:03 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:58860 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229561AbjJYQbi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Oct 2023 12:31:38 -0400
-Received: from out162-62-58-211.mail.qq.com (out162-62-58-211.mail.qq.com [162.62.58.211])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6D87991
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Oct 2023 09:31:33 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=foxmail.com;
-        s=s201512; t=1698251488;
-        bh=fdURGibl0c7gXJtCTDzqXqgfXp0ppJMBARCaqiarhkY=;
-        h=From:To:Cc:Subject:Date;
-        b=s/gfuaAaMBj01v4xchWj2VH8lIRPEbl3XfLhRxI29ysksR7drrviKdvQ5I044pmGT
-         gP3uEVz2IRlQASw6LFnlk5iiuD85AhIQqXSyNTu5YV92uYjHVk/6jTr2qa+CPoL5xn
-         Dcbb6Ln2NlMMXVdClnanbdEe8E099nXi5c7MxAhM=
-Received: from localhost.localdomain ([36.142.182.134])
-        by newxmesmtplogicsvrszc2-1.qq.com (NewEsmtp) with SMTP
-        id 64939A66; Thu, 26 Oct 2023 00:25:09 +0800
-X-QQ-mid: xmsmtpt1698251109tmx76kybs
-Message-ID: <tencent_990266C2252CF3FBEBDE512E5BEEA67CAF06@qq.com>
-X-QQ-XMAILINFO: MiPTq5wGoKOm0vYukzGfSUw1Klf+302xW78V3YWzatPbbMx/IkClKr8QJ+5Kqu
-         pRYqejzWp10yo+XMPbjJV5MG2Pz2HgF+0SuLJfgWR3N0WGlLh6nff7LwRzWAg8kl5Apl32t2ZWje
-         tGHEOypQg/2fPQAS5lnRfdWESKLnsq4D95MUN6R+JzuUoIGdDuChmshh7sm+Dm4tLK51CWW6rBGb
-         uCnUifEdc/dlzL2YZK3APFvOCfOI+bc5DuuIzCojAr7SCg9eBKov/M3Z+Q0dPlxWKlhEWTCjtvqe
-         kGUbs8rarx5gMJpJwu9iBV2GrXsvNnpe6+xuT+rYTUhWjMvCpzPtKrzlIp4MyaoZWM4g/ihPzn8V
-         it2Aa0g1GNgzp1YOr9hFvT60JvFZCi2beFcHsHysQc8H3Z/0jki1QG7EkIGa4uMizRXzpEF6TUBb
-         kFBFV4uavCDY7Lj2kxpUs8Kr1yWudjfTXX2lnZe/7gBJ6nn4X6vIGRIMYqwwAGnaEjkNjaklUE8l
-         BYF6r2qebjNRvnOo2RNECBGIpPq/g1es+ZxRP1f2m02n/gti/7+sr4cdnpFg7NxmUIT+34zfkioa
-         zwcd+otQYyRHtK1gssSYQiFPDNEurTY1p8OcO+Xi/pqjvWdEx3bniyIKScfWv2oinv28dmBnHBkO
-         AIcImlDDuJTxrg9+mFtSGxNeID+pKHFrI9C1d2xYSIkNLnF4SjTcIlwf4m6iev0Si+MB1q1u9vjX
-         /P2FP4PefENCiibH/FOFVVpsW/o1G1RP/ADCDulmrNR/lqcUA3bv/kJ3x8P5tBaYdSj/PxUaAHjc
-         vAxiD7WWljTDcOPP2ZtdIWaE6pYlzra1l8Qgcgoby7s986uE2Iftb5t3JdFOZ1ZYo7yMXRyTdcK5
-         OcAxVAQW7LmC8IyOyPKSwLNGBgq3/g+Oq7Kg2C6JTctOkIEi1D+d0dqZkaH1QElPMBj2gzEWoM1H
-         ofLTQ7R4CpNFcEjE6aaEkd0oYkmqdTpms2pxFQNGPA5QhCYobLDpjEv8mGOFe8gClLvdFVi5f6wf
-         RvxtIXWjOFBKr5nrFNh4ZMNKXKweUpcgTFAZJjv6i/Vwe+Tffi
-X-QQ-XMRINFO: MSVp+SPm3vtS1Vd6Y4Mggwc=
-From:   Zhuohao Bai <zhuohao_bai@foxmail.com>
-To:     steved@redhat.com
-Cc:     falcon@tinylab.org, forrestniu@foxmail.com, baizhh21@lzu.edu.cn,
-        tanyuan@tinylab.org, linux-nfs@vger.kernel.org,
-        Zhuohao Bai <zhuohao_bai@foxmail.com>
-Subject: [RFC PATCH] _rpc_dtablesize: Decrease the value of size.
-Date:   Thu, 26 Oct 2023 00:24:42 +0800
-X-OQ-MSGID: <20231025162442.1501-1-zhuohao_bai@foxmail.com>
-X-Mailer: git-send-email 2.25.1
+        with ESMTP id S232748AbjJYQcC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Oct 2023 12:32:02 -0400
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 34E4E128
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Oct 2023 09:31:17 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1698251476;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type;
+        bh=cjxB3xp7qNdoLHO4rmc9qAWqnKY0DCrkevqsgM+Qm2c=;
+        b=BEmD7UsWoCAi5yIiEkW8uACsXsODe1d0m5CEMGbWRVFnE9zlNam/KtiHgsu2K1VIypFQ9+
+        KMKTH9PjAChVGDCe+FHTYYs1vNa+FEmRLWKkImJ08EdYMnWGTqVaZKfZwUerbwpXYrNmNX
+        Tk+tRRGy7XudUS224h9zR3s049d5zIE=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-631-Z-jgggwrNsevrjYIupxzqw-1; Wed, 25 Oct 2023 12:31:10 -0400
+X-MC-Unique: Z-jgggwrNsevrjYIupxzqw-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+        (No client certificate requested)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id C29309423D1;
+        Wed, 25 Oct 2023 16:31:09 +0000 (UTC)
+Received: from dhcp-27-174.brq.redhat.com (unknown [10.45.224.21])
+        by smtp.corp.redhat.com (Postfix) with SMTP id CB7161121314;
+        Wed, 25 Oct 2023 16:31:07 +0000 (UTC)
+Received: by dhcp-27-174.brq.redhat.com (nbSMTP-1.00) for uid 1000
+        oleg@redhat.com; Wed, 25 Oct 2023 18:30:09 +0200 (CEST)
+Date:   Wed, 25 Oct 2023 18:30:06 +0200
+From:   Oleg Nesterov <oleg@redhat.com>
+To:     Chuck Lever <chuck.lever@oracle.com>,
+        Jeff Layton <jlayton@kernel.org>, Neil Brown <neilb@suse.de>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc:     Ingo Molnar <mingo@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: nfsd_copy_write_verifier: wrong usage of read_seqbegin_or_lock()
+Message-ID: <20231025163006.GA8279@redhat.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+User-Agent: Mutt/1.5.24 (2015-08-30)
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.3
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-In the client code, the function _rpc_dtablesize() is used to determine the memory allocation for the __svc_xports array.
+Hello,
 
-However, some operating systems (including the recent Manjaro OS) can have _SC_OPEN_MAX values as high as 1073741816, which can cause the __svc_xports array to become too large. This results in the process being killed.
+The usage of writeverf_lock is wrong and misleading no matter what and
+I can not understand the intent.
 
-There is a limit to the maximum number of files. To avoid this problem, a possible solution is to set the size to the lesser of 1024 and this value to ensure that the array space for open files is not too large, thus preventing the process from terminating.
+nfsd_copy_write_verifier() uses read_seqbegin_or_lock() incorrectly.
+"seq" is always even, so read_seqbegin_or_lock() can never take the
+lock for writing. We need to make the counter odd for the 2nd round:
 
-Signed-off-by: Zhuohao Bai <zhuohao_bai@foxmail.com>
+	--- a/fs/nfsd/nfssvc.c
+	+++ b/fs/nfsd/nfssvc.c
+	@@ -359,11 +359,14 @@ static bool nfsd_needs_lockd(struct nfsd_net *nn)
+	  */
+	 void nfsd_copy_write_verifier(__be32 verf[2], struct nfsd_net *nn)
+	 {
+	-	int seq = 0;
+	+	int seq, nextseq = 0;
+	 
+		do {
+	+		seq = nextseq;
+			read_seqbegin_or_lock(&nn->writeverf_lock, &seq);
+			memcpy(verf, nn->writeverf, sizeof(nn->writeverf));
+	+		/* If lockless access failed, take the lock. */
+	+		nextseq = 1;
+		} while (need_seqretry(&nn->writeverf_lock, seq));
+		done_seqretry(&nn->writeverf_lock, seq);
+	 }
+
+OTOH. This function just copies 8 bytes, this makes me think that it doesn't
+need the conditional locking and read_seqbegin_or_lock() at all. So perhaps
+the (untested) patch below makes more sense? Please note that it should not
+change the current behaviour, it just makes the code look correct (and more
+optimal but this is minor).
+
+Another question is why we can't simply turn nn->writeverf into seqcount_t.
+I guess we can't because nfsd_reset_write_verifier() needs spin_lock() to
+serialise with itself, right?
+
+Oleg.
 ---
- src/rpc_dtablesize.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/src/rpc_dtablesize.c b/src/rpc_dtablesize.c
-index bce97e8..2027af4 100644
---- a/src/rpc_dtablesize.c
-+++ b/src/rpc_dtablesize.c
-@@ -41,7 +41,7 @@ _rpc_dtablesize(void)
- 	static int size;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index c7af1095f6b5..094b765c5397 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -359,13 +359,12 @@ static bool nfsd_needs_lockd(struct nfsd_net *nn)
+  */
+ void nfsd_copy_write_verifier(__be32 verf[2], struct nfsd_net *nn)
+ {
+-	int seq = 0;
++	unsigned seq;
  
- 	if (size == 0) {
--		size = sysconf(_SC_OPEN_MAX);
-+		size = min(1024, sysconf(_SC_OPEN_MAX));
- 	}
- 	return (size);
+ 	do {
+-		read_seqbegin_or_lock(&nn->writeverf_lock, &seq);
++		seq = read_seqbegin(&nn->writeverf_lock);
+ 		memcpy(verf, nn->writeverf, sizeof(nn->writeverf));
+-	} while (need_seqretry(&nn->writeverf_lock, seq));
+-	done_seqretry(&nn->writeverf_lock, seq);
++	} while (read_seqretry(&nn->writeverf_lock, seq));
  }
--- 
-2.25.1
+ 
+ static void nfsd_reset_write_verifier_locked(struct nfsd_net *nn)
 
