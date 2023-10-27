@@ -2,248 +2,78 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 0D801C25B72
-	for <linux-nfs@archiver.kernel.org>; Fri, 27 Oct 2023 08:54:25 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 0E075C25B67
+	for <linux-nfs@archiver.kernel.org>; Fri, 27 Oct 2023 09:20:37 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345777AbjJ0IyX (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 27 Oct 2023 04:54:23 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37314 "EHLO
+        id S231340AbjJ0JUh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 27 Oct 2023 05:20:37 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40424 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S235251AbjJ0IyK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Oct 2023 04:54:10 -0400
-Received: from frasgout13.his.huawei.com (frasgout13.his.huawei.com [14.137.139.46])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B64201984;
-        Fri, 27 Oct 2023 01:44:11 -0700 (PDT)
-Received: from mail02.huawei.com (unknown [172.18.147.228])
-        by frasgout13.his.huawei.com (SkyGuard) with ESMTP id 4SGwqD100Jz9yKWt;
-        Fri, 27 Oct 2023 16:31:04 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.204.63.22])
-        by APP1 (Coremail) with SMTP id LxC2BwDnP5EaeDtl3AMCAw--.27269S4;
-        Fri, 27 Oct 2023 09:43:43 +0100 (CET)
-From:   Roberto Sassu <roberto.sassu@huaweicloud.com>
-To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
-        chuck.lever@oracle.com, jlayton@kernel.org, neilb@suse.de,
-        kolga@netapp.com, Dai.Ngo@oracle.com, tom@talpey.com,
-        paul@paul-moore.com, jmorris@namei.org, serge@hallyn.com,
-        zohar@linux.ibm.com, dmitry.kasatkin@gmail.com,
-        dhowells@redhat.com, jarkko@kernel.org,
-        stephen.smalley.work@gmail.com, eparis@parisplace.org,
-        casey@schaufler-ca.com, mic@digikod.net
-Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        linux-integrity@vger.kernel.org, keyrings@vger.kernel.org,
-        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>
-Subject: [PATCH v4 22/23] integrity: Move integrity functions to the LSM infrastructure
-Date:   Fri, 27 Oct 2023 10:42:33 +0200
-Message-Id: <20231027084234.485243-3-roberto.sassu@huaweicloud.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20231027083558.484911-1-roberto.sassu@huaweicloud.com>
-References: <20231027083558.484911-1-roberto.sassu@huaweicloud.com>
+        with ESMTP id S229503AbjJ0JUg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Oct 2023 05:20:36 -0400
+Received: from out162-62-58-211.mail.qq.com (out162-62-58-211.mail.qq.com [162.62.58.211])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 37E49C0
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Oct 2023 02:20:32 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=foxmail.com;
+        s=s201512; t=1698398429;
+        bh=FGwyJmx88ElAYWqHpOihsHWE/4m3vOJOJL+g4l6mZOI=;
+        h=From:To:Cc:Subject:Date;
+        b=c9UQqkbB5cIPWbTTFfgoS2VZtRyiZpToh1zyCGd1aXckCXFNsjtt4hhE9C7RDoT/Q
+         qG8O9dIZXgtnozybNMNLaDzOo2BItilr6TNCk/2E291cQSWhsJACAzxGZmCcFDl53k
+         Eoog5D4mve5DPjgdP53auSBX5XZOY1uAv+GVyRqM=
+Received: from linux-lab.localdomain ([202.201.11.22])
+        by newxmesmtplogicsvrszc5-0.qq.com (NewEsmtp) with SMTP
+        id 4EA14ABB; Fri, 27 Oct 2023 17:19:42 +0800
+X-QQ-mid: xmsmtpt1698398382to9n9dan5
+Message-ID: <tencent_51EEC8890D6DB3A4370173F4B28839F41505@qq.com>
+X-QQ-XMAILINFO: MW5hkHoBpWXyN1T7Ml7xDijEmGyoynBYDD8OzkrwA/0U02WevA9tEdSVGMKoei
+         0csvu4T+UMM8Rw3HtSnn+9Z67UN8EeT0jr+CtUvzXguw8O2G7JjKXpMqkZKnKp4w5TVrpCWPLwLf
+         ukOUqofD4e5PzqgzsZg/S4aQDPN0v51icwEQU/dcFfEZ2cyI3ioZbHT6fvQ40ncxHEqRn2t4kOdx
+         75eDU3ZxcCaVkWiTwrjzntG6eSBdFI7+Y3M6D1QVVZkedSDCcn2qJ1UDxX89dbS5pHmuDKOyyfnf
+         E2oWx5gp5PDoWWg/SGAJplZWIejth3Dx4I/POrWgPht5qgsE4GUjJvzVQGN3YacagCZSId8s5Cqo
+         4wYTtDUznXT9oyR4nj+6U4zZ6szuxz28GQP/XeTdk4nldiYhl9CcSweLnssGY4N6fG7S3uDhbOnV
+         4MvLYEgAOOBQja3rcdWxYGCoiu7rcSM4K5g76Q3qIfaGm/R6mbl4Tz3glU67BeqFibq4UlcUDr7L
+         tS+zgL45p63xnN9RuWZD2LNErs+9bKKVnEvnFzYbxq7qMpzJTT4SOrnUH2QEsrFO6R15skyCZHAO
+         YR7EGCZGWvKf/NlqgE5g10+2HesI0/iQhn4D22JedVf2eoD9Fm+uOyt4Wd/a6lYong0COWsjdH8q
+         IluV0ern1OoVWNPw6d3vUF/TiVMHFi/PZZ4lcg4fMqZhPO+FKuEvMu8NHTGlvvF88koeR9fY8sdo
+         WIt0Yj9TVD2aUe9pEcqQC2A9seHQyN4FaAgYjQHGCbi5giMXeR6fGabQhoyubDHpmJ/Gz9YVgqR2
+         bxCOenVjMUkTXPV9l0NA+7R9bM/lZZQ2KXtkHVKAsZl9aBQ20eg/s9CwR9ae2TXLMqxiji5qm5Bd
+         HZYD7RXVZLyAfhORgb98iCSLKQFs0/0EJmvkjMLzlWYReNm9N3KYs55uzevIrfQ+kyc0H1asuPoJ
+         op6hd1s3Ntq2QQaBHiv2yUrFdOc3fSpFqSR3bHX2/jcczEREV4UjYzj+weDba7
+X-QQ-XMRINFO: MSVp+SPm3vtS1Vd6Y4Mggwc=
+From:   Zhuohao Bai <zhuohao_bai@foxmail.com>
+To:     baizhh21@lzu.edu.cn
+Cc:     falcon@tinylab.org, forrestniu@foxmail.com,
+        libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+        steved@redhat.com, tanyuan@tinylab.org, zhuohao_bai@foxmail.com
+Subject: Re: [RFC PATCH] _rpc_dtablesize: Decrease the value of size.
+Date:   Fri, 27 Oct 2023 17:19:41 +0800
+X-OQ-MSGID: <20231027091941.660-1-zhuohao_bai@foxmail.com>
+X-Mailer: git-send-email 2.25.1
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: LxC2BwDnP5EaeDtl3AMCAw--.27269S4
-X-Coremail-Antispam: 1UD129KBjvJXoW3AF13XF15ZF17Jr17Cr1rJFb_yoW7Kw1fpF
-        srKay5Jrn5ZFy2kF4kAFW5ua1fK39Ygry7Wrs8Cwn2yFyqvr10qF4DAry5uFy3WrWrtr1I
-        qFsIgr4UCw1Dt3DanT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUBYb4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28IrcIa0xkI8VA2jI8067AKxVWUXw
-        A2048vs2IY020Ec7CjxVAFwI0_Xr0E3s1l8cAvFVAK0II2c7xJM28CjxkF64kEwVA0rcxS
-        w2x7M28EF7xvwVC0I7IYx2IY67AKxVW5JVW7JwA2z4x0Y4vE2Ix0cI8IcVCY1x0267AKxV
-        WxJr0_GcWl84ACjcxK6I8E87Iv67AKxVW8JVWxJwA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
-        Cr1j6rxdM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMc
-        Ij6xIIjxv20xvE14v26r106r15McIj6I8E87Iv67AKxVWUJVW8JwAm72CE4IkC6x0Yz7v_
-        Jr0_Gr1lF7xvr2IYc2Ij64vIr41lFIxGxcIEc7CjxVA2Y2ka0xkIwI1l42xK82IYc2Ij64
-        vIr41l4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG67AKxVWUJVWUGwC20s026x8G
-        jcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r4a6rW5MIIYrxkI7VAKI48JMIIF0xvE2I
-        x0cI8IcVAFwI0_Xr0_Ar1lIxAIcVC0I7IYx2IY6xkF7I0E14v26F4UJVW0owCI42IY6xAI
-        w20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x
-        0267AKxVWxJr0_GcJvcSsGvfC2KfnxnUUI43ZEXa7IUbp6wtUUUUU==
-X-CM-SenderInfo: purev21wro2thvvxqx5xdzvxpfor3voofrz/1tbiAQADBF1jj5WUfgAAsI
-X-CFilter-Loop: Reflected
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Roberto Sassu <roberto.sassu@huawei.com>
+On 26 Oct 2023, at 09:08, Benjamin Coddington wrote:
 
-Remove hardcoded calls to integrity functions from the LSM infrastructure
-and, instead, register them in integrity_lsm_init() with the IMA or EVM
-LSM ID (the first non-NULL returned by ima_get_lsm_id() and
-evm_get_lsm_id()).
+> This is addressed by several users of rpc_dtablesize() already, which all=
+>  seem to do:
+> 
+>     setsize = _rpc_dtablesize();
+>     if (setsize > FD_SETSIZE)
+>         setsize = FD_SETSIZE;
+> 
+> Does it make sense to try to fix it for everyone, and should we clean up the users?
 
-Also move the global declaration of integrity_inode_get() to
-security/integrity/integrity.h, so that the function can be still called by
-IMA.
+I apologize for not realizing that some users have addressed this issue beforehand. Nonetheless, I think it is necessary to modify the _rpc_dtablesize() function. I suggest modifying the _rpc_dtablesize() function.
 
-Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
----
- include/linux/integrity.h      | 26 --------------------------
- security/integrity/iint.c      | 30 +++++++++++++++++++++++++++++-
- security/integrity/integrity.h |  7 +++++++
- security/security.c            |  9 +--------
- 4 files changed, 37 insertions(+), 35 deletions(-)
+        if (size == 0) {
+                size = sysconf(_SC_OPEN_MAX);
+                if (size > FD_SETSIZE)
+                        size = FD_SETSIZE;
+        }
 
-diff --git a/include/linux/integrity.h b/include/linux/integrity.h
-index 2ea0f2f65ab6..afaae7ad26f4 100644
---- a/include/linux/integrity.h
-+++ b/include/linux/integrity.h
-@@ -21,38 +21,12 @@ enum integrity_status {
- 
- /* List of EVM protected security xattrs */
- #ifdef CONFIG_INTEGRITY
--extern struct integrity_iint_cache *integrity_inode_get(struct inode *inode);
--extern void integrity_inode_free(struct inode *inode);
- extern void __init integrity_load_keys(void);
- 
- #else
--static inline struct integrity_iint_cache *
--				integrity_inode_get(struct inode *inode)
--{
--	return NULL;
--}
--
--static inline void integrity_inode_free(struct inode *inode)
--{
--	return;
--}
--
- static inline void integrity_load_keys(void)
- {
- }
- #endif /* CONFIG_INTEGRITY */
- 
--#ifdef CONFIG_INTEGRITY_ASYMMETRIC_KEYS
--
--extern int integrity_kernel_module_request(char *kmod_name);
--
--#else
--
--static inline int integrity_kernel_module_request(char *kmod_name)
--{
--	return 0;
--}
--
--#endif /* CONFIG_INTEGRITY_ASYMMETRIC_KEYS */
--
- #endif /* _LINUX_INTEGRITY_H */
-diff --git a/security/integrity/iint.c b/security/integrity/iint.c
-index 3d9cf5041739..31a0fda3f1a1 100644
---- a/security/integrity/iint.c
-+++ b/security/integrity/iint.c
-@@ -171,7 +171,7 @@ struct integrity_iint_cache *integrity_inode_get(struct inode *inode)
-  *
-  * Free the integrity information(iint) associated with an inode.
-  */
--void integrity_inode_free(struct inode *inode)
-+static void integrity_inode_free(struct inode *inode)
- {
- 	struct integrity_iint_cache *iint;
- 
-@@ -193,11 +193,39 @@ static void iint_init_once(void *foo)
- 	memset(iint, 0, sizeof(*iint));
- }
- 
-+static struct security_hook_list integrity_hooks[] __ro_after_init = {
-+	LSM_HOOK_INIT(inode_free_security, integrity_inode_free),
-+#ifdef CONFIG_INTEGRITY_ASYMMETRIC_KEYS
-+	LSM_HOOK_INIT(kernel_module_request, integrity_kernel_module_request),
-+#endif
-+};
-+
-+/*
-+ * Perform the initialization of the 'integrity', 'ima' and 'evm' LSMs to
-+ * ensure that the management of integrity metadata is working at the time
-+ * IMA and EVM hooks are registered to the LSM infrastructure, and to keep
-+ * the original ordering of IMA and EVM functions as when they were hardcoded.
-+ */
- static int __init integrity_lsm_init(void)
- {
-+	const struct lsm_id *lsmid;
-+
- 	iint_cache =
- 	    kmem_cache_create("iint_cache", sizeof(struct integrity_iint_cache),
- 			      0, SLAB_PANIC, iint_init_once);
-+	/*
-+	 * Obtain either the IMA or EVM LSM ID to register integrity-specific
-+	 * hooks under that LSM, since there is no LSM ID assigned to the
-+	 * 'integrity' LSM.
-+	 */
-+	lsmid = ima_get_lsm_id();
-+	if (!lsmid)
-+		lsmid = evm_get_lsm_id();
-+	/* No point in continuing, since both IMA and EVM are disabled. */
-+	if (!lsmid)
-+		return 0;
-+
-+	security_add_hooks(integrity_hooks, ARRAY_SIZE(integrity_hooks), lsmid);
- 	init_ima_lsm();
- 	init_evm_lsm();
- 	return 0;
-diff --git a/security/integrity/integrity.h b/security/integrity/integrity.h
-index 7534ec06324e..e4df82d6f6e7 100644
---- a/security/integrity/integrity.h
-+++ b/security/integrity/integrity.h
-@@ -180,6 +180,7 @@ struct integrity_iint_cache {
-  * integrity data associated with an inode.
-  */
- struct integrity_iint_cache *integrity_iint_find(struct inode *inode);
-+struct integrity_iint_cache *integrity_inode_get(struct inode *inode);
- 
- int integrity_kernel_read(struct file *file, loff_t offset,
- 			  void *addr, unsigned long count);
-@@ -266,12 +267,18 @@ static inline int __init integrity_load_cert(const unsigned int id,
- #ifdef CONFIG_INTEGRITY_ASYMMETRIC_KEYS
- int asymmetric_verify(struct key *keyring, const char *sig,
- 		      int siglen, const char *data, int datalen);
-+int integrity_kernel_module_request(char *kmod_name);
- #else
- static inline int asymmetric_verify(struct key *keyring, const char *sig,
- 				    int siglen, const char *data, int datalen)
- {
- 	return -EOPNOTSUPP;
- }
-+
-+static inline int integrity_kernel_module_request(char *kmod_name)
-+{
-+	return 0;
-+}
- #endif
- 
- #ifdef CONFIG_IMA_APPRAISE_MODSIG
-diff --git a/security/security.c b/security/security.c
-index 5bbeedd534b6..c70664c947be 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -19,7 +19,6 @@
- #include <linux/kernel.h>
- #include <linux/kernel_read_file.h>
- #include <linux/lsm_hooks.h>
--#include <linux/integrity.h>
- #include <linux/fsnotify.h>
- #include <linux/mman.h>
- #include <linux/mount.h>
-@@ -1590,7 +1589,6 @@ static void inode_free_by_rcu(struct rcu_head *head)
-  */
- void security_inode_free(struct inode *inode)
- {
--	integrity_inode_free(inode);
- 	call_void_hook(inode_free_security, inode);
- 	/*
- 	 * The inode may still be referenced in a path walk and
-@@ -3175,12 +3173,7 @@ int security_kernel_create_files_as(struct cred *new, struct inode *inode)
-  */
- int security_kernel_module_request(char *kmod_name)
- {
--	int ret;
--
--	ret = call_int_hook(kernel_module_request, 0, kmod_name);
--	if (ret)
--		return ret;
--	return integrity_kernel_module_request(kmod_name);
-+	return call_int_hook(kernel_module_request, 0, kmod_name);
- }
- 
- /**
--- 
-2.34.1
+In the meantime we need to clean up the existing user code.
 
