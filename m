@@ -2,95 +2,58 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EE8C0C4332F
-	for <linux-nfs@archiver.kernel.org>; Sat,  4 Nov 2023 00:27:29 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 46333C4332F
+	for <linux-nfs@archiver.kernel.org>; Sat,  4 Nov 2023 04:34:33 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229557AbjKDA12 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 3 Nov 2023 20:27:28 -0400
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:51650 "EHLO
+        id S229509AbjKDEed (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Sat, 4 Nov 2023 00:34:33 -0400
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:46478 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229476AbjKDA12 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2023 20:27:28 -0400
-Received: from mail-pf1-x42b.google.com (mail-pf1-x42b.google.com [IPv6:2607:f8b0:4864:20::42b])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 31AC7D49;
-        Fri,  3 Nov 2023 17:27:24 -0700 (PDT)
-Received: by mail-pf1-x42b.google.com with SMTP id d2e1a72fcca58-6bb4abb8100so2492009b3a.2;
-        Fri, 03 Nov 2023 17:27:24 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1699057643; x=1699662443; darn=vger.kernel.org;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=ZSruXExCC7oyLfN8ZSYHDj8sJJzKMrm8E7odv0JQbpk=;
-        b=gODxd8mllFY9MoSKZLaHzS2WzPAF6NAZXWh7QPMqJYFmewa4xIn2S93MvkPSK+Lbf9
-         8Pt/twOL4q+V5ojhYyhbTe3/E/pUPw+4c1KHakMLMrrIofObWyVC/xJAMMC8kugTmmgw
-         n9lWjnA2Z839fRF5lTIaqdeR3RkawSvZrBJ34XQa1Z3FJbPODENPLwipx3/PPcI3ylGs
-         /sDVgKwsHKmRIKkc8yJvXXouOG6SH9BPZx0iGCglzJHXKAyRyTw7ELs0ao2yL5XjGVdA
-         xhwfJZxPo7BR9nBlbYdb3AQze2zl2EpXTP0LE3MUt2ZKMELHbI/XF7A6Yfvxrnp30TBM
-         iVbw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1699057643; x=1699662443;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=ZSruXExCC7oyLfN8ZSYHDj8sJJzKMrm8E7odv0JQbpk=;
-        b=B9NcTku8iOkIP2GkSy2weQJkAoVjnb0ie9BBD5dVU3BTWbo1BNWD+Aq5O+jkvzUA8U
-         hXhT4eETB6ekCSrkl5QbwtJ0AWyjgjN/aq3nQfJFaWKnW0ipVb3aKUENgZyil4wjIB+z
-         /bxDIQUu8LRNABR+5B/demKB3b57mEI8k3XXdyT7SIoZDvq8+U79ncDeXoT3dE6rhnOD
-         cn9Ul8lvE22iTEaVEwG8MxoGlqeExxtZpohYdubn3XPnzA49rxasGwIG3QC6ZQIk2+ym
-         pASwyDH8A/iS9f4r0lLlD6hmsyNdQAcQmNez+sX9yHaVK3iqYG1RnzBOGvFiUjnNTjuV
-         /F1g==
-X-Gm-Message-State: AOJu0YyoZfj0fzIAyYXJAXVep8uyrW6eXycDxpA2WDTHn61QXOvmIjs7
-        RthW/zeVHhj/RiX2enquKiY=
-X-Google-Smtp-Source: AGHT+IFfm/C4eEi089pE7HOXJTu6LK5uaY2KHPfzzcBQCM008GsYRPPDZ9ry9IpfM7Ka0d7L3TLDfw==
-X-Received: by 2002:a05:6a00:10d2:b0:693:3963:847a with SMTP id d18-20020a056a0010d200b006933963847amr22580602pfu.30.1699057643443;
-        Fri, 03 Nov 2023 17:27:23 -0700 (PDT)
-Received: from [192.168.0.106] ([103.131.18.64])
-        by smtp.gmail.com with ESMTPSA id it10-20020a056a00458a00b0068ffd4eb66dsm1952259pfb.35.2023.11.03.17.27.19
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Fri, 03 Nov 2023 17:27:22 -0700 (PDT)
-Message-ID: <e93d5996-e9fc-4c28-ad33-5fd62fbac92d@gmail.com>
-Date:   Sat, 4 Nov 2023 07:27:15 +0700
+        with ESMTP id S230431AbjKDEed (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Nov 2023 00:34:33 -0400
+X-Greylist: delayed 4165 seconds by postgrey-1.37 at lindbergh.monkeyblade.net; Fri, 03 Nov 2023 21:34:30 PDT
+Received: from mail.profitpathwaygo.com (mail.profitpathwaygo.com [141.94.21.238])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CABA0D47
+        for <linux-nfs@vger.kernel.org>; Fri,  3 Nov 2023 21:34:30 -0700 (PDT)
+Received: by mail.profitpathwaygo.com (Postfix, from userid 1002)
+        id B2C3459777; Tue, 31 Oct 2023 08:31:09 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=profitpathwaygo.com;
+        s=mail; t=1698741784;
+        bh=qp3Ofokho6Ql+WtI8ZPVilyHYhskXL7fod7u9CWs8W4=;
+        h=Date:From:To:Subject:From;
+        b=UZOtpY0EDhqY1IFtQrYNJGhUimTRLim9E3b9f/Cm34FTyr+VdxeEyCsTBAiKqUBcO
+         3rHzdOF/GYWUGgUErpfcqFO7Za6iSFDdVxNQ5gfKcx/WCbpLGUHeVkGtAoVgJkFazZ
+         efdbqb1kfY4MvlxtB64hvqk1gGG3DB/L+eAwfuvmbfOu7tkC1mCpXgsxW2WI2TH/aI
+         N5zZ7JwVBum5x/Zp4GQMKvQDI8XG7ELvi6z+I3PbPtiRmr4Ym4opSlHr7DehRFHhxq
+         zz+ZEU5mbRxMXoKJqIQy+GYjiGXCzhNDudvA1+3Xlrd4tBgX5vZJqWWFzFtF9ppiKO
+         xf4f/0MkzfFEQ==
+Received: by mail.profitpathwaygo.com for <linux-nfs@vger.kernel.org>; Tue, 31 Oct 2023 08:30:48 GMT
+Message-ID: <20231031074500-0.1.2t.15s01.0.92d3chu711@profitpathwaygo.com>
+Date:   Tue, 31 Oct 2023 08:30:48 GMT
+From:   "Adam Charachuta" <adam.charachuta@profitpathwaygo.com>
+To:     <linux-nfs@vger.kernel.org>
+Subject: =?UTF-8?Q?S=C5=82owa_kluczowe_do_wypozycjonowania_?=
+X-Mailer: mail.profitpathwaygo.com
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: autofs mount/umount hangs with recent kernel?
-To:     Charles Hedrick <hedrick@rutgers.edu>,
-        Daire Byrne <daire@dneg.com>,
-        Linux NFS <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux Regressions <regressions@lists.linux.dev>
-Cc:     Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jlayton@kernel.org>,
-        Trond Myklebust <trond.myklebust@hammerspace.com>,
-        Anna Schumaker <anna@kernel.org>
-References: <CAPt2mGNPSi-+3WdeMsOjkJ2vOqZcRE2S6i=eqi+UA2RmzywAyg@mail.gmail.com>
- <ZUT_W8yoJ5wqSvLv@debian.me>
- <PH0PR14MB5493BD73D14C0002DE32DAE3AAA5A@PH0PR14MB5493.namprd14.prod.outlook.com>
-Content-Language: en-US
-From:   Bagas Sanjaya <bagasdotme@gmail.com>
-In-Reply-To: <PH0PR14MB5493BD73D14C0002DE32DAE3AAA5A@PH0PR14MB5493.namprd14.prod.outlook.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 04/11/2023 03:07, Charles Hedrick wrote:
-> We've seen behavior like that throughout the lifetime of 4.10 and 5.15 as well. It may be a different issue, though. For us it happens only with NFS 4.2. NFS 3 is fine. And once it happens, rebooting the client doesn't help. We have to reboot the NFS server. We're trying setting automount to never unmount, as an attempt to figure out whether the problem is actually caused by the unmounts and mounts.
-> 
-> I'd be happy to help diagnose if someone could tell me what data would be useful.
-> 
+Dzie=C5=84 dobry,
 
-Please don't top-post; reply inline with appropriate context instead.
-And don't send HTML emails either, since mailing lists reject them.
+zapozna=C5=82em si=C4=99 z Pa=C5=84stwa ofert=C4=85 i z przyjemno=C5=9Bci=
+=C4=85 przyznaj=C4=99, =C5=BCe przyci=C4=85ga uwag=C4=99 i zach=C4=99ca d=
+o dalszych rozm=C3=B3w.=20
 
-First, you may want to test the mainline (currently at v6.6) on both
-the server and the client. Then, please attach full system log
-(most likely journalctl) to see if you have the same one as Daire
-reported.
+Pomy=C5=9Bla=C5=82em, =C5=BCe mo=C5=BCe m=C3=B3g=C5=82bym mie=C4=87 sw=C3=
+=B3j wk=C5=82ad w Pa=C5=84stwa rozw=C3=B3j i pom=C3=B3c dotrze=C4=87 z t=C4=
+=85 ofert=C4=85 do wi=C4=99kszego grona odbiorc=C3=B3w. Pozycjonuj=C4=99 =
+strony www, dzi=C4=99ki czemu generuj=C4=85 =C5=9Bwietny ruch w sieci.
 
-Thanks.
+Mo=C5=BCemy porozmawia=C4=87 w najbli=C5=BCszym czasie?
 
--- 
-An old man doll... just what I always wanted! - Clara
 
+Pozdrawiam serdecznie
+Adam Charachuta
