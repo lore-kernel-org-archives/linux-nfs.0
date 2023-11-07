@@ -2,343 +2,77 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 33A22C4167D
-	for <linux-nfs@archiver.kernel.org>; Tue,  7 Nov 2023 13:50:06 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id D9229C4332F
+	for <linux-nfs@archiver.kernel.org>; Tue,  7 Nov 2023 13:50:12 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234028AbjKGNuG (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 7 Nov 2023 08:50:06 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43000 "EHLO
+        id S234422AbjKGNuL (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 7 Nov 2023 08:50:11 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:42950 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234110AbjKGNty (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Nov 2023 08:49:54 -0500
-Received: from frasgout11.his.huawei.com (frasgout11.his.huawei.com [14.137.139.23])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BE91D212A;
-        Tue,  7 Nov 2023 05:47:51 -0800 (PST)
-Received: from mail02.huawei.com (unknown [172.18.147.229])
-        by frasgout11.his.huawei.com (SkyGuard) with ESMTP id 4SPq2C5xDFz9y504;
-        Tue,  7 Nov 2023 21:34:27 +0800 (CST)
-Received: from huaweicloud.com (unknown [10.204.63.22])
-        by APP1 (Coremail) with SMTP id LxC2BwDHtXXdP0pltoA3AA--.60646S2;
-        Tue, 07 Nov 2023 14:47:22 +0100 (CET)
-From:   Roberto Sassu <roberto.sassu@huaweicloud.com>
-To:     viro@zeniv.linux.org.uk, brauner@kernel.org,
-        chuck.lever@oracle.com, jlayton@kernel.org, neilb@suse.de,
-        kolga@netapp.com, Dai.Ngo@oracle.com, tom@talpey.com,
-        paul@paul-moore.com, jmorris@namei.org, serge@hallyn.com,
-        zohar@linux.ibm.com, dmitry.kasatkin@gmail.com,
-        dhowells@redhat.com, jarkko@kernel.org,
-        stephen.smalley.work@gmail.com, eparis@parisplace.org,
-        casey@schaufler-ca.com, mic@digikod.net
-Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        linux-integrity@vger.kernel.org, keyrings@vger.kernel.org,
-        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>,
-        Stefan Berger <stefanb@linux.ibm.com>
-Subject: [PATCH v5 20/23] ima: Move IMA-Appraisal to LSM infrastructure
-Date:   Tue,  7 Nov 2023 14:40:09 +0100
-Message-Id: <20231107134012.682009-21-roberto.sassu@huaweicloud.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20231107134012.682009-1-roberto.sassu@huaweicloud.com>
-References: <20231107134012.682009-1-roberto.sassu@huaweicloud.com>
+        with ESMTP id S234157AbjKGNtz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Nov 2023 08:49:55 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 8B7FA1BF3
+        for <linux-nfs@vger.kernel.org>; Tue,  7 Nov 2023 05:47:00 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1699364819;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         in-reply-to:in-reply-to:references:references;
+        bh=YksAOz8jIIqTDuFlgpPwoyqahgKKroA62zwu9ledT3Y=;
+        b=Oy/3D22ztB6GoGqsVpEbsbNT5LIDPuzAlLGckpQaHw2/MmL3veR7ufpOjDx6Y4p/35pv3F
+        WOqccVVhrrCz0IhDDISQPxETDJKx2ifL1zyfSSUzWfTEncLFlwwW8KTy5525H7kHcDfZJT
+        EpywbilzcIgn5KY8YF1jY6MfSD09GKc=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-195-ncfvZXGzNZanT4NonQpDww-1; Tue, 07 Nov 2023 08:46:56 -0500
+X-MC-Unique: ncfvZXGzNZanT4NonQpDww-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+        (No client certificate requested)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id EDA5C8219A3;
+        Tue,  7 Nov 2023 13:46:55 +0000 (UTC)
+Received: from [192.168.37.1] (unknown [10.22.50.7])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 863851121306;
+        Tue,  7 Nov 2023 13:46:55 +0000 (UTC)
+From:   Benjamin Coddington <bcodding@redhat.com>
+To:     Dan Aloni <dan.aloni@vastdata.com>
+Cc:     linux-nfs@vger.kernel.org
+Subject: Re: mount options not propagating to NFSACL and NSM RPC clients
+Date:   Tue, 07 Nov 2023 08:46:54 -0500
+Message-ID: <80B8993C-645D-4748-93B3-88415E165B87@redhat.com>
+In-Reply-To: <20231105154857.ryakhmgaptq3hb6b@gmail.com>
+References: <20231105154857.ryakhmgaptq3hb6b@gmail.com>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID: LxC2BwDHtXXdP0pltoA3AA--.60646S2
-X-Coremail-Antispam: 1UD129KBjvJXoW3GF4UGFy3WryrJryxCF4kJFb_yoWDGF17pF
-        s5K3WkC34rXFy7Wry0yFWDuwsY9ryjgry7X3y0g3ZayFn3Ar1jqFyftFy2yry5Cry0gF1v
-        qF4qqrnxCr15tr7anT9S1TB71UUUUUUqnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-        9KBjDU0xBIdaVrnRJUUUk2b4IE77IF4wAFF20E14v26rWj6s0DM7CY07I20VC2zVCF04k2
-        6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
-        vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7Cj
-        xVAFwI0_Cr1j6rxdM28EF7xvwVC2z280aVAFwI0_Gr0_Cr1l84ACjcxK6I8E87Iv6xkF7I
-        0E14v26F4UJVW0owAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
-        6I80ewAv7VC0I7IYx2IY67AKxVWUXVWUAwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
-        Cjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4IIrI8v6xkF7I0E8cxan2IY04v7MxAIw28I
-        cxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2
-        IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI
-        42IY6xIIjxv20xvE14v26ryj6F1UMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWxJr0_GcWlIx
-        AIcVCF04k26cxKx2IYs7xG6Fyj6rWUJwCI42IY6I8E87Iv67AKxVW8JVWxJwCI42IY6I8E
-        87Iv6xkF7I0E14v26F4UJVW0obIYCTnIWIevJa73UjIFyTuYvjxUrfOzDUUUU
-X-CM-SenderInfo: purev21wro2thvvxqx5xdzvxpfor3voofrz/1tbiAgAOBF1jj5IbhQAAs1
-X-CFilter-Loop: Reflected
+Content-Type: text/plain
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.3
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-From: Roberto Sassu <roberto.sassu@huawei.com>
+Hi Dan,
 
-Do the registration of IMA-Appraisal only functions separately from the
-rest of IMA functions, as appraisal is a separate feature not necessarily
-enabled in the kernel configuration.
+On 5 Nov 2023, at 10:48, Dan Aloni wrote:
 
-Reuse the same approach as for other IMA functions, move hardcoded calls
-from various places in the kernel to the LSM infrastructure. Declare the
-functions as static and register them as hook implementations in
-init_ima_appraise_lsm(), called by init_ima_lsm().
+> Hi,
+>
+> On Linux v6.6-14500-g1c41041124bd, I added a sysfs file for debugging
+> `/sys/kernel/debug/sunrpc/rpc_clnt/*/info`, and noticed that when
+> passing the following mount options: `soft,timeo=50,retrans=16,vers=3`,
+> NFSACL and NSM seem to take the defaults from somewhere else (xprt).
+> Specifically, locking operation behave as if in a hard mount with
+> these mount options.
+>
+> Is it intentional?
 
-Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
-Reviewed-by: Stefan Berger <stefanb@linux.ibm.com>
-Reviewed-by: Mimi Zohar <zohar@linux.ibm.com>
----
- fs/attr.c                             |  2 -
- include/linux/ima.h                   | 55 ---------------------------
- security/integrity/ima/ima.h          |  5 +++
- security/integrity/ima/ima_appraise.c | 38 +++++++++++++-----
- security/integrity/ima/ima_main.c     |  1 +
- security/security.c                   | 13 -------
- 6 files changed, 35 insertions(+), 79 deletions(-)
+Yes, it usually is intentional.  The various rpc clients that make parts of
+NFS work don't all inherit the mount flags due to reasons about how the
+system should behave as a whole.  I think that you can find usually find the
+reasoning the git logs around "struct rpc_create_args".
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 221d2bb0a906..38841f3ebbcb 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -17,7 +17,6 @@
- #include <linux/filelock.h>
- #include <linux/security.h>
- #include <linux/evm.h>
--#include <linux/ima.h>
- 
- #include "internal.h"
- 
-@@ -503,7 +502,6 @@ int notify_change(struct mnt_idmap *idmap, struct dentry *dentry,
- 	if (!error) {
- 		fsnotify_change(dentry, ia_valid);
- 		security_inode_post_setattr(idmap, dentry, ia_valid);
--		ima_inode_post_setattr(idmap, dentry, ia_valid);
- 		evm_inode_post_setattr(idmap, dentry, ia_valid);
- 	}
- 
-diff --git a/include/linux/ima.h b/include/linux/ima.h
-index 23ae24b60ecf..0bae61a15b60 100644
---- a/include/linux/ima.h
-+++ b/include/linux/ima.h
-@@ -92,66 +92,11 @@ static inline void ima_add_kexec_buffer(struct kimage *image)
- 
- #ifdef CONFIG_IMA_APPRAISE
- extern bool is_ima_appraise_enabled(void);
--extern void ima_inode_post_setattr(struct mnt_idmap *idmap,
--				   struct dentry *dentry, int ia_valid);
--extern int ima_inode_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
--			      const char *xattr_name, const void *xattr_value,
--			      size_t xattr_value_len, int flags);
--extern int ima_inode_set_acl(struct mnt_idmap *idmap,
--			     struct dentry *dentry, const char *acl_name,
--			     struct posix_acl *kacl);
--static inline int ima_inode_remove_acl(struct mnt_idmap *idmap,
--				       struct dentry *dentry,
--				       const char *acl_name)
--{
--	return ima_inode_set_acl(idmap, dentry, acl_name, NULL);
--}
--
--extern int ima_inode_removexattr(struct mnt_idmap *idmap, struct dentry *dentry,
--				 const char *xattr_name);
- #else
- static inline bool is_ima_appraise_enabled(void)
- {
- 	return 0;
- }
--
--static inline void ima_inode_post_setattr(struct mnt_idmap *idmap,
--					  struct dentry *dentry, int ia_valid)
--{
--	return;
--}
--
--static inline int ima_inode_setxattr(struct mnt_idmap *idmap,
--				     struct dentry *dentry,
--				     const char *xattr_name,
--				     const void *xattr_value,
--				     size_t xattr_value_len,
--				     int flags)
--{
--	return 0;
--}
--
--static inline int ima_inode_set_acl(struct mnt_idmap *idmap,
--				    struct dentry *dentry, const char *acl_name,
--				    struct posix_acl *kacl)
--{
--
--	return 0;
--}
--
--static inline int ima_inode_removexattr(struct mnt_idmap *idmap,
--					struct dentry *dentry,
--					const char *xattr_name)
--{
--	return 0;
--}
--
--static inline int ima_inode_remove_acl(struct mnt_idmap *idmap,
--				       struct dentry *dentry,
--				       const char *acl_name)
--{
--	return 0;
--}
- #endif /* CONFIG_IMA_APPRAISE */
- 
- #if defined(CONFIG_IMA_APPRAISE) && defined(CONFIG_INTEGRITY_TRUSTED_KEYRING)
-diff --git a/security/integrity/ima/ima.h b/security/integrity/ima/ima.h
-index c0412100023e..a27fc10f84f7 100644
---- a/security/integrity/ima/ima.h
-+++ b/security/integrity/ima/ima.h
-@@ -334,6 +334,7 @@ enum hash_algo ima_get_hash_algo(const struct evm_ima_xattr_data *xattr_value,
- 				 int xattr_len);
- int ima_read_xattr(struct dentry *dentry,
- 		   struct evm_ima_xattr_data **xattr_value, int xattr_len);
-+void __init init_ima_appraise_lsm(const struct lsm_id *lsmid);
- 
- #else
- static inline int ima_check_blacklist(struct integrity_iint_cache *iint,
-@@ -385,6 +386,10 @@ static inline int ima_read_xattr(struct dentry *dentry,
- 	return 0;
- }
- 
-+static inline void __init init_ima_appraise_lsm(const struct lsm_id *lsmid)
-+{
-+}
-+
- #endif /* CONFIG_IMA_APPRAISE */
- 
- #ifdef CONFIG_IMA_APPRAISE_MODSIG
-diff --git a/security/integrity/ima/ima_appraise.c b/security/integrity/ima/ima_appraise.c
-index 36abc84ba299..076451109637 100644
---- a/security/integrity/ima/ima_appraise.c
-+++ b/security/integrity/ima/ima_appraise.c
-@@ -636,8 +636,8 @@ void ima_update_xattr(struct integrity_iint_cache *iint, struct file *file)
-  * This function is called from notify_change(), which expects the caller
-  * to lock the inode's i_mutex.
-  */
--void ima_inode_post_setattr(struct mnt_idmap *idmap,
--			    struct dentry *dentry, int ia_valid)
-+static void ima_inode_post_setattr(struct mnt_idmap *idmap,
-+				   struct dentry *dentry, int ia_valid)
- {
- 	struct inode *inode = d_backing_inode(dentry);
- 	struct integrity_iint_cache *iint;
-@@ -750,9 +750,9 @@ static int validate_hash_algo(struct dentry *dentry,
- 	return -EACCES;
- }
- 
--int ima_inode_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
--		       const char *xattr_name, const void *xattr_value,
--		       size_t xattr_value_len, int flags)
-+static int ima_inode_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
-+			      const char *xattr_name, const void *xattr_value,
-+			      size_t xattr_value_len, int flags)
- {
- 	const struct evm_ima_xattr_data *xvalue = xattr_value;
- 	int digsig = 0;
-@@ -781,8 +781,8 @@ int ima_inode_setxattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 	return result;
- }
- 
--int ima_inode_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
--		      const char *acl_name, struct posix_acl *kacl)
-+static int ima_inode_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
-+			     const char *acl_name, struct posix_acl *kacl)
- {
- 	if (evm_revalidate_status(acl_name))
- 		ima_reset_appraise_flags(d_backing_inode(dentry), 0);
-@@ -790,8 +790,8 @@ int ima_inode_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
- 	return 0;
- }
- 
--int ima_inode_removexattr(struct mnt_idmap *idmap, struct dentry *dentry,
--			  const char *xattr_name)
-+static int ima_inode_removexattr(struct mnt_idmap *idmap, struct dentry *dentry,
-+				 const char *xattr_name)
- {
- 	int result;
- 
-@@ -803,3 +803,23 @@ int ima_inode_removexattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 	}
- 	return result;
- }
-+
-+static int ima_inode_remove_acl(struct mnt_idmap *idmap, struct dentry *dentry,
-+				const char *acl_name)
-+{
-+	return ima_inode_set_acl(idmap, dentry, acl_name, NULL);
-+}
-+
-+static struct security_hook_list ima_appraise_hooks[] __ro_after_init = {
-+	LSM_HOOK_INIT(inode_post_setattr, ima_inode_post_setattr),
-+	LSM_HOOK_INIT(inode_setxattr, ima_inode_setxattr),
-+	LSM_HOOK_INIT(inode_set_acl, ima_inode_set_acl),
-+	LSM_HOOK_INIT(inode_removexattr, ima_inode_removexattr),
-+	LSM_HOOK_INIT(inode_remove_acl, ima_inode_remove_acl),
-+};
-+
-+void __init init_ima_appraise_lsm(const struct lsm_id *lsmid)
-+{
-+	security_add_hooks(ima_appraise_hooks, ARRAY_SIZE(ima_appraise_hooks),
-+			   lsmid);
-+}
-diff --git a/security/integrity/ima/ima_main.c b/security/integrity/ima/ima_main.c
-index f923ff5c6524..9aabbc37916c 100644
---- a/security/integrity/ima/ima_main.c
-+++ b/security/integrity/ima/ima_main.c
-@@ -1161,6 +1161,7 @@ const struct lsm_id *ima_get_lsm_id(void)
- void __init init_ima_lsm(void)
- {
- 	security_add_hooks(ima_hooks, ARRAY_SIZE(ima_hooks), &ima_lsmid);
-+	init_ima_appraise_lsm(&ima_lsmid);
- }
- 
- /* Introduce a dummy function as 'ima' init method (it cannot be NULL). */
-diff --git a/security/security.c b/security/security.c
-index b2fdcbaa4b30..456f3fe74116 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -20,7 +20,6 @@
- #include <linux/kernel_read_file.h>
- #include <linux/lsm_hooks.h>
- #include <linux/integrity.h>
--#include <linux/ima.h>
- #include <linux/evm.h>
- #include <linux/fsnotify.h>
- #include <linux/mman.h>
-@@ -2308,9 +2307,6 @@ int security_inode_setxattr(struct mnt_idmap *idmap,
- 
- 	if (ret == 1)
- 		ret = cap_inode_setxattr(dentry, name, value, size, flags);
--	if (ret)
--		return ret;
--	ret = ima_inode_setxattr(idmap, dentry, name, value, size, flags);
- 	if (ret)
- 		return ret;
- 	return evm_inode_setxattr(idmap, dentry, name, value, size, flags);
-@@ -2338,9 +2334,6 @@ int security_inode_set_acl(struct mnt_idmap *idmap,
- 		return 0;
- 	ret = call_int_hook(inode_set_acl, 0, idmap, dentry, acl_name,
- 			    kacl);
--	if (ret)
--		return ret;
--	ret = ima_inode_set_acl(idmap, dentry, acl_name, kacl);
- 	if (ret)
- 		return ret;
- 	return evm_inode_set_acl(idmap, dentry, acl_name, kacl);
-@@ -2401,9 +2394,6 @@ int security_inode_remove_acl(struct mnt_idmap *idmap,
- 	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
- 		return 0;
- 	ret = call_int_hook(inode_remove_acl, 0, idmap, dentry, acl_name);
--	if (ret)
--		return ret;
--	ret = ima_inode_remove_acl(idmap, dentry, acl_name);
- 	if (ret)
- 		return ret;
- 	return evm_inode_remove_acl(idmap, dentry, acl_name);
-@@ -2503,9 +2493,6 @@ int security_inode_removexattr(struct mnt_idmap *idmap,
- 	ret = call_int_hook(inode_removexattr, 1, idmap, dentry, name);
- 	if (ret == 1)
- 		ret = cap_inode_removexattr(idmap, dentry, name);
--	if (ret)
--		return ret;
--	ret = ima_inode_removexattr(idmap, dentry, name);
- 	if (ret)
- 		return ret;
- 	return evm_inode_removexattr(idmap, dentry, name);
--- 
-2.34.1
+Are you getting a system hung up in a lock operation?
+
+Ben
 
