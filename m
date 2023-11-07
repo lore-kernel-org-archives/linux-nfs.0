@@ -2,42 +2,42 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id C9042C4167B
-	for <linux-nfs@archiver.kernel.org>; Tue,  7 Nov 2023 13:44:53 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id BC475C04E83
+	for <linux-nfs@archiver.kernel.org>; Tue,  7 Nov 2023 13:44:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234555AbjKGNox (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Tue, 7 Nov 2023 08:44:53 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40814 "EHLO
+        id S234062AbjKGNoz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Tue, 7 Nov 2023 08:44:55 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:40804 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S234345AbjKGNov (ORCPT
+        with ESMTP id S234389AbjKGNov (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Nov 2023 08:44:51 -0500
 Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 21163C6;
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 06A6B94;
         Tue,  7 Nov 2023 05:44:47 -0800 (PST)
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 9C744C433CC;
+Received: by smtp.kernel.org (Postfix) with ESMTPS id 936E0C4339A;
         Tue,  7 Nov 2023 13:44:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
         s=k20201202; t=1699364686;
-        bh=oGAuwTicPekfqewJ5UASm1lSeWTImG5/jlwpiQOtNH4=;
+        bh=Xj/qeNJ1fWTZ5t8tG8CiKkqyjuOspbgdeEVbMKEatVA=;
         h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
-        b=dlXsqceIaRjkuA5IeJHu+LQu++YmsXVE3wOhks2vu6pwQW2Yuf8y3fuqcGTDezhrh
-         nLIn/Wct44n580U3lOHF++guKLo57NBlrLcH+CP8dKEVLZ7TvYqaScDG5YrvoJRlcF
-         QgPdHEVU+DDWMpO0z/+MCEtZHfqSGC/yF8neQyIq+b23aVDal8cEH+L4fAKBF9V1t4
-         cmYfhjd0G/XQ0kFMpKXwcp70TJIBGNrkZ8IQvIBRH32uQuYnIFVy55l62OUBQvZyJX
-         7fYSb8VX8Bikhd65TQJy/X1zRGf2dQSPireqCR6fcSnCtrafJhV8meTgijuZW9O2fr
-         kaneABMaHl3sg==
+        b=oFTJ5WLB7vlFQRcquJ5uh9QbuamVM8WKMIV/pw4Xd8rfT0VxGp+9nySvqMUfIT85k
+         jeZzDs7dDrDim5hsFqidsuy7UIvV4+jJ8yJeFGlLV83K7sDhPAon3CEgZJe28WiXU/
+         LCCN6o2VK85ipkpLoSjRiVG2tzpPv+FOSrsO4eRFSJoUoW7g7aTr0WMK1wrFzoVIf5
+         eUzraECuGYMnOa6MdeEofoNcsrUFgxtcDEMxuGxEZdMd8h2zRy59/0RLFbWB8FzaES
+         /8eIG/5UkIkvcZK0M9b80kKzZcpJGZWOqfOTinUOONpBFnwDeWlR8PZXMrAKgx/LlP
+         VeXIYRw5LcYvQ==
 Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-        by smtp.lore.kernel.org (Postfix) with ESMTP id 876D6C4332F;
+        by smtp.lore.kernel.org (Postfix) with ESMTP id 77B0FC4167B;
         Tue,  7 Nov 2023 13:44:46 +0000 (UTC)
 From:   Joel Granados via B4 Relay 
         <devnull+j.granados.samsung.com@kernel.org>
-Date:   Tue, 07 Nov 2023 14:44:23 +0100
-Subject: [PATCH 4/4] coda: Remove the now superfluous sentinel elements
+Date:   Tue, 07 Nov 2023 14:44:22 +0100
+Subject: [PATCH 3/4] sysctl: Remove the now superfluous sentinel elements
  from ctl_table array
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20231107-jag-sysctl_remove_empty_elem_fs-v1-4-7176632fea9f@samsung.com>
+Message-Id: <20231107-jag-sysctl_remove_empty_elem_fs-v1-3-7176632fea9f@samsung.com>
 References: <20231107-jag-sysctl_remove_empty_elem_fs-v1-0-7176632fea9f@samsung.com>
 In-Reply-To: <20231107-jag-sysctl_remove_empty_elem_fs-v1-0-7176632fea9f@samsung.com>
 To:     Luis Chamberlain <mcgrof@kernel.org>, willy@infradead.org,
@@ -73,17 +73,18 @@ Cc:     linux-cachefs@redhat.com, linux-kernel@vger.kernel.org,
         fsverity@lists.linux.dev, linux-xfs@vger.kernel.org,
         codalist@coda.cs.cmu.edu, Joel Granados <j.granados@samsung.com>
 X-Mailer: b4 0.13-dev-86aa5
-X-Developer-Signature: v=1; a=openpgp-sha256; l=826; i=j.granados@samsung.com;
- h=from:subject:message-id; bh=EW/W6zZslOuVBpUJvlaE+2AnAGMLV/WhhzCxxx+6aVM=;
- b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlSj9MEeSJSagXc2LHP4reG5okoVcP5ennQM0zz
- fLKCMA3zM2JAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZUo/TAAKCRC6l81St5ZB
- T+MEC/4ngnTz5jsk7DKSLQFBRxoyRmnmgQuCFEm3xLruOFhQ58fFGc3jLVQ4SRKcyMbZVYLnA/7
- 92Pua+W916xF0apdkWSutPgZSVFWhE7LqCQB7OANStgZhAKgHWrkjFB8/KPiCDUTdrzG1jdHBd7
- qmw+js8kBekSLH5uC319PDTNTNRfVmu6Si2XVh4HdvnLe4xaz5yzzquq8kaZOcJEbVlPnVXBo3E
- CAy3CAkgj3SWfAzXFyi+Q3xPTvEdBH0vnOqRGR9mIcACCxTVTBlK/TyANrw989cT0ksz8sPCcvE
- MgG8c3gs8wYgbfHMjfQUURrWfZHWTUBhYBXrmma7XkJ2wabGHM5JWzXasay7RGMldjFLEAGwtTj
- Su3+/SkuiwYTpDZc5V8iLd1ewA6g1MSpAWHBJs0BBIMYPu2w52V9pE3e8/bK3QVeSs5NqBeZtYp
- qsORxK78HHwjx16fR/OQVoFLy3Nllnz0WIJoDHWKSbERarg3ey4XX+y7unPjuDW8RiLOk=
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1106;
+ i=j.granados@samsung.com; h=from:subject:message-id;
+ bh=ep6ig3KsG/haTwVjLCKKm4Kk60+leb3CQTaGMwbdTjg=;
+ b=owEB7QES/pANAwAKAbqXzVK3lkFPAcsmYgBlSj9MqPIIARlpG1B3CB33QBqVpFDk5COfTwoWh
+ HqFk8BAtBKJAbMEAAEKAB0WIQSuRwlXJeYxJc7LJ5C6l81St5ZBTwUCZUo/TAAKCRC6l81St5ZB
+ T8o5C/9te1uxNMdDRUp6GfQqK8yJSbjVLxDs0abTPfEjp57TX/AOdFOmrwiXgdAGkwDUpVY5rKg
+ qp0gHNnyXGtehooFW3SxZUwwtjPSVXxpquEnkv8gCjhenPHbGBAmOakMeL/KnhQXmtTWdZmkUDx
+ iQU5SlQjl1a/Gz8IFzQ1MUTKrwEwlvA6K1ytVD+PbkS+gTi8OuUnZcIYG/2j/B+n3xMKoPjIjq2
+ tda2fAiMgQpMxzcedyBjpK3EF4br8IF9NRBk+2eRARZ4TZBQbe3+d8x8c12d6nE8l1Dl6+v8XmC
+ bF3irI5j7i0eA+ybQNI9qLEKv+ajjVTiVPDvndJhtvbFzP/002Ok8AvVDXnWNAfiNPPCg561Shh
+ 0Fa85geyCxUZXk6Kn1GwDdUYeMmie6vRU3YJtYdyrXeujBUHq5VE2iTh29hNEoI5869gs2nrZBZ
+ h/Kx8YXwlg4ru1KYYeSbg04EcMK0N8fGC5qDPrdmtWsu3hksyO0KsYOGOz4r0PfP2pK9E=
 X-Developer-Key: i=j.granados@samsung.com; a=openpgp;
  fpr=F1F8E46D30F0F6C4A45FF4465895FAAC338C6E77
 X-Endpoint-Received: by B4 Relay for j.granados@samsung.com/default with auth_id=70
@@ -101,25 +102,33 @@ will reduce the overall build time size of the kernel and run time
 memory bloat by ~64 bytes per sentinel (further information Link :
 https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
 
-Remove empty sentinel from coda_table
+Remove empty sentinel element from test_table and test_table_unregister.
 
 Signed-off-by: Joel Granados <j.granados@samsung.com>
 ---
- fs/coda/sysctl.c | 1 -
- 1 file changed, 1 deletion(-)
+ lib/test_sysctl.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/coda/sysctl.c b/fs/coda/sysctl.c
-index a247c14aaab7..9f2d5743e2c8 100644
---- a/fs/coda/sysctl.c
-+++ b/fs/coda/sysctl.c
-@@ -36,7 +36,6 @@ static struct ctl_table coda_table[] = {
- 		.mode		= 0600,
- 		.proc_handler	= proc_dointvec
+diff --git a/lib/test_sysctl.c b/lib/test_sysctl.c
+index 8036aa91a1cb..9d71ec5e8a77 100644
+--- a/lib/test_sysctl.c
++++ b/lib/test_sysctl.c
+@@ -130,7 +130,6 @@ static struct ctl_table test_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_do_large_bitmap,
+ 	},
+-	{ }
+ };
+ 
+ static void test_sysctl_calc_match_int_ok(void)
+@@ -184,7 +183,6 @@ static struct ctl_table test_table_unregister[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= proc_dointvec_minmax,
  	},
 -	{}
  };
  
- void coda_sysctl_init(void)
+ static int test_sysctl_run_unregister_nested(void)
 
 -- 
 2.30.2
