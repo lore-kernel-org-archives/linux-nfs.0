@@ -2,65 +2,108 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A337C4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Nov 2023 18:24:07 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A8F7C4332F
+	for <linux-nfs@archiver.kernel.org>; Fri, 10 Nov 2023 18:27:26 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345692AbjKJSYI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Nov 2023 13:24:08 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39698 "EHLO
+        id S230450AbjKJS1Y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 10 Nov 2023 13:27:24 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36912 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345687AbjKJSXE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2023 13:23:04 -0500
-Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B1CC53E416
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 08:28:28 -0800 (PST)
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E1CA6C433C7
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 16:28:27 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-        s=k20201202; t=1699633708;
-        bh=Uq6FIY8xuKA4QS8vWorTfGEn1yiUNLVu7NXrvtW5xMQ=;
-        h=Subject:From:To:Date:From;
-        b=MmpvOEnaN1B/T/ycF68LvG74K/jGv1aHqNXPQNbmJvXV0TZIpYowERtg4eQkibNwd
-         JVF4M6gDUKIoGsdksG3Mke8cq7chdWwoSa2A/aXqMSi56imbOcIjosAsyA2YIIS19Y
-         rX+oLyTEO0z/mD2D6QbF0Y5OF8eTZV6lFQ7OKF1+OvmM9JmMJ/MBHhs7GMMapakKWY
-         WiI02+oNmZDwVkkqTSIcUkdUPz2Fok+m5+X+b6XkBZWVlc1lrqNKcbtdPP/ayRLwCA
-         opedrSaRJYajVVr5Sr1RITHBhRD0Sm18pyyP8/9E4GxqHOJKEoaM7H8O3ZeDBRgqlo
-         sPKOqFQWniuKw==
-Subject: [PATCH v2 0/3] NFSD DRC fixes for v6.7-rc
-From:   Chuck Lever <cel@kernel.org>
-To:     linux-nfs@vger.kernel.org
-Date:   Fri, 10 Nov 2023 11:28:26 -0500
-Message-ID: <169963305585.5404.9796036538735192053.stgit@bazille.1015granger.net>
-User-Agent: StGit/1.5
+        with ESMTP id S1346453AbjKJS0q (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2023 13:26:46 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C055C37AFF
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 05:49:20 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1699624159;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=EPfKlNuwR/GM48Y/IAehJMI4l0NQ5dt7dnnNlpSYYGw=;
+        b=UXOqPavSnMyP7ehhWJrsVeaPJMWp9dPWNgdCdWkl3PvzFd5xgHinDTFHAiubW7auZ7TB2T
+        6XyfxJFDN+Qeudt4SVmfiqQdW2ipn9ow4hsCsSEIv7QTMATvHlRZv0KyDjEixbovcLyBez
+        bny3Xp0pzmX0MyJ0k2eQyryrh9CK9ec=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-688-iEvqUTrCONm0ch9IZfQeBA-1; Fri, 10 Nov 2023 08:49:17 -0500
+X-MC-Unique: iEvqUTrCONm0ch9IZfQeBA-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+        (No client certificate requested)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id EE4CB811E7B;
+        Fri, 10 Nov 2023 13:49:16 +0000 (UTC)
+Received: from [192.168.37.1] (unknown [10.22.50.7])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 5B0732026D68;
+        Fri, 10 Nov 2023 13:49:16 +0000 (UTC)
+From:   Benjamin Coddington <bcodding@redhat.com>
+To:     Martin Wege <martin.l.wege@gmail.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 referrals - custom (non-2049) port numbers in fs_locations?
+Date:   Fri, 10 Nov 2023 08:49:14 -0500
+Message-ID: <2EA6162E-1CF9-49E8-8A05-9E5246606F89@redhat.com>
+In-Reply-To: <CANH4o6NzV2_u-G0dA=hPSTvOTKe+RMy357CFRk7fw-VRNc4=Og@mail.gmail.com>
+References: <CANH4o6Md0+56y0ZYtNj1ViF2WGYqusCmjOB6mLeu+nOtC5DPTw@mail.gmail.com>
+ <DD47B60A-E188-49BC-9254-6C032BA9776E@redhat.com>
+ <CANH4o6NzV2_u-G0dA=hPSTvOTKe+RMy357CFRk7fw-VRNc4=Og@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.4
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-I've chased down the reported failures with krb5i/p. Essentially
-the DRC was broken for krb5i/p because of the extra crap those
-security flavors stick before and after the NFS headers.
+On 10 Nov 2023, at 2:54, Martin Wege wrote:
 
-These patches do address bugs in stable kernels, but they will need
-to be massaged, tested, and applied by hand to get there. Voting now
-open on whether it's worth the trouble for us to do it now, or wait
-until someone complains about a particular LTS problem.
+> On Wed, Nov 1, 2023 at 3:42 PM Benjamin Coddington <bcodding@redhat.com> wrote:
+>>
+>> On 1 Nov 2023, at 5:06, Martin Wege wrote:
+>>
+>>> Good morning!
+>>>
+>>> We have questions about NFSv4 referrals:
+>>> 1. Is there a way to test them in Debian Linux?
+>>>
+>>> 2. How does a fs_locations attribute look like when a nonstandard port
+>>> like 6666 is used?
+>>> RFC5661 says this:
+>>>
+>>> * http://tools.ietf.org/html/rfc5661#section-11.9
+>>> * 11.9. The Attribute fs_locations
+>>> * An entry in the server array is a UTF-8 string and represents one of a
+>>> * traditional DNS host name, IPv4 address, IPv6 address, or a zero-length
+>>> * string.  An IPv4 or IPv6 address is represented as a universal address
+>>> * (see Section 3.3.9 and [15]), minus the netid, and either with or without
+>>> * the trailing ".p1.p2" suffix that represents the port number.  If the
+>>> * suffix is omitted, then the default port, 2049, SHOULD be assumed.  A
+>>> * zero-length string SHOULD be used to indicate the current address being
+>>> * used for the RPC call.
+>>>
+>>> Does anyone have an example of how the content of fs_locations should
+>>> look like with a custom port number?
+>>
+>> If you keep following the references, you end up with the example in
+>> rfc5665, which gives an example for IPv4:
+>>
+>> https://datatracker.ietf.org/doc/html/rfc5665#section-5.2.3.3
+>
+> So just <address>.<upper-byte-of-port-number>.<lower-byte-of-port-number>?
+>
+> How can I test that with the refer= option in /etc/exports? nfsref
+> does not seem to have a ports option...
 
----
+Just test it!
 
-Chuck Lever (3):
-      NFSD: Fix "start of NFS reply" pointer passed to nfsd_cache_update()
-      NFSD: Update nfsd_cache_append() to use xdr_stream
-      NFSD: Fix checksum mismatches in the duplicate reply cache
+I thought the nfsref program actually populates the "trusted.junction.nfs"
+xattr, which is part of the "fedfs" project's metadata to link filesystems
+together.  I don't think that's what you want here.
 
+Chuck - am I right to say that the nfsref program does not populate
+nfsd4_fs_locations on knfsd?
 
- fs/nfsd/cache.h    |  4 +--
- fs/nfsd/nfscache.c | 87 +++++++++++++++++++++++++++-------------------
- fs/nfsd/nfssvc.c   | 14 ++++++--
- 3 files changed, 65 insertions(+), 40 deletions(-)
-
---
-Chuck Lever
+Ben
 
