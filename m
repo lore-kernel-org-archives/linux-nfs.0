@@ -2,63 +2,110 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 820B0C4167B
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Nov 2023 17:58:48 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id EA865C4167D
+	for <linux-nfs@archiver.kernel.org>; Fri, 10 Nov 2023 17:59:52 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S229733AbjKJR6s (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Nov 2023 12:58:48 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:50770 "EHLO
+        id S229484AbjKJR7x (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 10 Nov 2023 12:59:53 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:55694 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S232515AbjKJRzi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2023 12:55:38 -0500
-Received: from mail-oa1-x33.google.com (mail-oa1-x33.google.com [IPv6:2001:4860:4864:20::33])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2F92659E3
-        for <linux-nfs@vger.kernel.org>; Thu,  9 Nov 2023 23:44:00 -0800 (PST)
-Received: by mail-oa1-x33.google.com with SMTP id 586e51a60fabf-1e9c42fc0c9so850221fac.1
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Nov 2023 23:44:00 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1699602238; x=1700207038; darn=vger.kernel.org;
-        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=UVx6XZHt5smtzocTTRvDCY+WME9yo9xYZa4h8WqubJg=;
-        b=BTo6OHoUhMapE5iilNNHDSYt3+qvigxh3dhpVTaWJeGVJAcQRVKj4ohpq8Kyfj0snx
-         KwJCYpYKAQks5utx15k38gHy4N2T+rOjKTO8KVHGU7qxArG96EHKzk1zlpG2kCmWam5s
-         ySxtG1Kb4vujZtGY+JZVx/PLuK6Yo29UgnHt9u9zq8F11V9VR+i+D3Cu5rk5jjV/nDJL
-         sBm8Vwkj2+TxLupbPcSM8yFQPVd7EiRoGXBsDoivQKJCg2GegwB0RiyAcQBYHt0Z2GY8
-         RsSreM6Eh/iI2yJk28el5Wok6e0sguoqf7s02mDx8apw789zWwBW7sFSyi/mR+7P2+H9
-         FSNw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1699602238; x=1700207038;
-        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=UVx6XZHt5smtzocTTRvDCY+WME9yo9xYZa4h8WqubJg=;
-        b=cJxx+eME+bfQg8MNx5BXqUo8qDYBGuoTfZ+xZE8KuOXR1iUB2xPZsSWefjRL2Mypj8
-         tXkKVLLP0ZJe1WSCTTlQnEdLMq6p5iSvUZoe7zu0ePyVjpwKmfifeFo6QN2Pu1d8rfsc
-         lRaxmPzIR6py5IGvg+K0iSuGJhSnvtNB6yvJGJr3CZQWC5gfN2z/ydxAhj8IHwtg2/eZ
-         4fwYR5OQzejnHXLTcKJ+dlZtgoMnpf5C0RcqVRnYhF2QVwgm565EjERbQfaWf2s+Gr9X
-         ZPSj5EmX9Jl9JWd6nHhyu5G8sokvnNuDWl/gRSUWZs5IZ0TwPFv1Tm/wXLUnjj07sOFg
-         YTWw==
-X-Gm-Message-State: AOJu0Yy9B/aFbDrNoLw2uAZJHGhCBRxF33jbT/lGtM+rBkFmAOZvTI/3
-        NnlCxjmWmLR5JcM5NUjh4/VCk4pwyJKDF6FWLYz78p8O
-X-Google-Smtp-Source: AGHT+IGrDj3tU7ASJA8766YHhFvFjeqQurQqtPM3VR0NhM86kuwi8gZpA7mi8X6AGGyqslasZ+jSPbDVIplpPdP40I8=
-X-Received: by 2002:a05:6871:6b9c:b0:1e9:8885:b537 with SMTP id
- zh28-20020a0568716b9c00b001e98885b537mr6530683oab.41.1699602238558; Thu, 09
- Nov 2023 23:43:58 -0800 (PST)
+        with ESMTP id S235110AbjKJR7O (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2023 12:59:14 -0500
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 3E7963E424
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 08:28:35 -0800 (PST)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 38F3FC433C7
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 16:28:34 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1699633714;
+        bh=zB4gtgeUsd/z45jK1/biV1ZJOlO8IUzHXhr8gB075RM=;
+        h=Subject:From:To:Date:In-Reply-To:References:From;
+        b=fSgd2zBp23Y4Tu8qyWosCiAYRFyCQBVOGaI1Khe1L4RSoE0jWBOXuHA27KQLZkcBr
+         1dJjW8lQXxyEDsIBbrES0RutG0k2NIbl8+fJSf0+rwlFXXQG9LHwazNG27IoDnh4DD
+         aLxF38G9F5aWL9VOfEluCKM02g2QedbntC74fTOcKXYzitsZrQFhtYWF7Oikr7tTgw
+         MNzgY9PeSpoYk2st57X74Yf0vZcjn7fH5s+Yn6jQ4HcYF6MHghPISvmMZ5dLcno2ch
+         BR9KmtUy+kCO5zL1BguYAul1ZVSyKJlPxq1hjd9jQFqi4jl8BdPZ7VydIdAcAm7mHm
+         NUr8oGxnakC3Q==
+Subject: [PATCH v2 1/3] NFSD: Fix "start of NFS reply" pointer passed to
+ nfsd_cache_update()
+From:   Chuck Lever <cel@kernel.org>
+To:     linux-nfs@vger.kernel.org
+Date:   Fri, 10 Nov 2023 11:28:33 -0500
+Message-ID: <169963371324.5404.3057239228897633466.stgit@bazille.1015granger.net>
+In-Reply-To: <169963305585.5404.9796036538735192053.stgit@bazille.1015granger.net>
+References: <169963305585.5404.9796036538735192053.stgit@bazille.1015granger.net>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
-From:   Martin Wege <martin.l.wege@gmail.com>
-Date:   Fri, 10 Nov 2023 08:42:00 +0100
-Message-ID: <CANH4o6MqecahkZj3i4YwS1UQjQimFrDcbM8abCbrGiLyk9ZTkg@mail.gmail.com>
-Subject: Filesystem test suite for NFSv4?
-To:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello,
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Is there a filesystem test suite for NFSv4, which can be used by a
-non-root user for testing?
+The "statp + 1" pointer that is passed to nfsd_cache_update() is
+supposed to point to the start of the egress NFS Reply header. In
+fact, it does point there for AUTH_SYS and RPCSEC_GSS_KRB5 requests.
 
-Thanks,
-Martin
+But both krb5i and krb5p add fields between the RPC header's
+accept_stat field and the start of the NFS Reply header. In those
+cases, "statp + 1" points at the extra fields instead of the Reply.
+The result is that nfsd_cache_update() caches what looks to the
+client like garbage.
+
+A connection break can occur for a number of reasons, but the most
+common reason when using krb5i/p is a GSS sequence number window
+underrun. When an underrun is detected, the server is obliged to
+drop the RPC and the connection to force a retransmit with a fresh
+GSS sequence number. The client presents the same XID, it hits in
+the server's DRC, and the server returns the garbage cache entry.
+
+The "statp + 1" argument has been used since the oldest changeset
+in the kernel history repo, so it has been in nfsd_dispatch()
+literally since before history began. The problem arose only when
+the server-side GSS implementation was added twenty years ago.
+
+This particular patch applies cleanly to v6.5 and later, but needs
+some context adjustment to apply to earlier kernels. Before v5.16,
+nfsd_dispatch() does not use xdr_stream, so saving the NFS header
+pointer before calling ->pc_encode is still an appropriate fix
+but it needs to be implemented differently.
+
+Cc: <stable@vger.kernel.org> # v5.16+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfsd/nfssvc.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index d6122bb2d167..60aacca2bca6 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -981,6 +981,7 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
+ 	const struct svc_procedure *proc = rqstp->rq_procinfo;
+ 	__be32 *statp = rqstp->rq_accept_statp;
+ 	struct nfsd_cacherep *rp;
++	__be32 *nfs_reply;
+ 
+ 	/*
+ 	 * Give the xdr decoder a chance to change this if it wants
+@@ -1014,6 +1015,7 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
+ 	if (test_bit(RQ_DROPME, &rqstp->rq_flags))
+ 		goto out_update_drop;
+ 
++	nfs_reply = xdr_inline_decode(&rqstp->rq_res_stream, 0);
+ 	if (!proc->pc_encode(rqstp, &rqstp->rq_res_stream))
+ 		goto out_encode_err;
+ 
+@@ -1023,7 +1025,7 @@ int nfsd_dispatch(struct svc_rqst *rqstp)
+ 	 */
+ 	smp_store_release(&rqstp->rq_status_counter, rqstp->rq_status_counter + 1);
+ 
+-	nfsd_cache_update(rqstp, rp, rqstp->rq_cachetype, statp + 1);
++	nfsd_cache_update(rqstp, rp, rqstp->rq_cachetype, nfs_reply);
+ out_cached_reply:
+ 	return 1;
+ 
+
+
