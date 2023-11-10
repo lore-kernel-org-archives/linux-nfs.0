@@ -2,71 +2,65 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7CFC2C4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Nov 2023 18:19:31 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7A337C4332F
+	for <linux-nfs@archiver.kernel.org>; Fri, 10 Nov 2023 18:24:07 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S1345730AbjKJSTb (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Nov 2023 13:19:31 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:37594 "EHLO
+        id S1345692AbjKJSYI (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 10 Nov 2023 13:24:08 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:39698 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1345205AbjKJSRa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2023 13:17:30 -0500
-Received: from mail-oa1-x30.google.com (mail-oa1-x30.google.com [IPv6:2001:4860:4864:20::30])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AD86A93D6
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 00:19:27 -0800 (PST)
-Received: by mail-oa1-x30.google.com with SMTP id 586e51a60fabf-1ea82246069so929551fac.3
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 00:19:27 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1699604367; x=1700209167; darn=vger.kernel.org;
-        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=3uaZA57uGarLIh4qs7s1mKoog9vNfRfAaoACzrHIoY8=;
-        b=h56c9/bBJwtAO1CVNCg283HJOTYc6jJFimk5Mf5UDcuTIY1Bc2/mJHuNFydHB+kNWa
-         Qc7JmwUrB/Te+zTk4v4xkC7BEqDKq0NfoibfZFCl4Btua8Dwjcngj5U+MZJzvktgT9CP
-         WUA4BuSpWQs5qOjrylZ3AGr0Gbmn4V9B/DGVd+E8ga40bmYP9YKfRt/P2GzKyE8J7Z0G
-         F3SIn0wTYvzdjcJiwkzO09zRNkyXQSLHpB0Zm/w/Oz1eptHNtrrT2xWYXqfincn/eQpb
-         eR8KMSRJKFeQ7zs0pGfjl9zFFxOIqlvOJftUxa8AzvSORWm1l539fHLrKPJpA0AJSdXx
-         1Ziw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1699604367; x=1700209167;
-        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=3uaZA57uGarLIh4qs7s1mKoog9vNfRfAaoACzrHIoY8=;
-        b=aKLcb574rlR16MffkzEIRR3e2eQwdUMI7UjlfnpB0SszHgv7qAgg9eYq4uKBWcMcJn
-         P2QcImVPWQjNSX959aXaZd4LTFoDTwPasGDCzbUptlO1TGbhrV+4m3j1XtcNDftMwTPM
-         uC6H5akdbp0fr4LqdViA8NT2lkJYdoiQ1XGHxMgomceuQzNbB1f2OxooY6HBn5ihIFmV
-         wFA/Fk6Ie1vFeV/P1JQ6eZeY0iWJpt4NRl4Htgqr2HdMEljJV9aKGGl+jZpLDoRej9AN
-         SvsX+nj1fFhKwKU5XyG6P539jEoi+E05urCLpR0X/iCaPg8LXuFV/c7a+DznipJTnJn9
-         4Tww==
-X-Gm-Message-State: AOJu0YyiR3HN0m2e7JZAnPvRhuykqetTEl09pYve/BRtCQIhCNjhQQNO
-        OA0pTsdZomssEaXQHVB0NL34HtgdKvvHBPEuIzWwnVX0eI0=
-X-Google-Smtp-Source: AGHT+IGOAETbWdzXhS1xpJVHyFt3L4ktb5Ry+YOquz1ZVoQh6uAzvF6AdKxDTpZWs6N7i59UGTGT9ogF+LhxoG3b3HQ=
-X-Received: by 2002:a05:6870:c68b:b0:1e9:c28f:45b9 with SMTP id
- cv11-20020a056870c68b00b001e9c28f45b9mr8070955oab.19.1699604366848; Fri, 10
- Nov 2023 00:19:26 -0800 (PST)
+        with ESMTP id S1345687AbjKJSXE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2023 13:23:04 -0500
+Received: from smtp.kernel.org (relay.kernel.org [52.25.139.140])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B1CC53E416
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 08:28:28 -0800 (PST)
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E1CA6C433C7
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 16:28:27 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+        s=k20201202; t=1699633708;
+        bh=Uq6FIY8xuKA4QS8vWorTfGEn1yiUNLVu7NXrvtW5xMQ=;
+        h=Subject:From:To:Date:From;
+        b=MmpvOEnaN1B/T/ycF68LvG74K/jGv1aHqNXPQNbmJvXV0TZIpYowERtg4eQkibNwd
+         JVF4M6gDUKIoGsdksG3Mke8cq7chdWwoSa2A/aXqMSi56imbOcIjosAsyA2YIIS19Y
+         rX+oLyTEO0z/mD2D6QbF0Y5OF8eTZV6lFQ7OKF1+OvmM9JmMJ/MBHhs7GMMapakKWY
+         WiI02+oNmZDwVkkqTSIcUkdUPz2Fok+m5+X+b6XkBZWVlc1lrqNKcbtdPP/ayRLwCA
+         opedrSaRJYajVVr5Sr1RITHBhRD0Sm18pyyP8/9E4GxqHOJKEoaM7H8O3ZeDBRgqlo
+         sPKOqFQWniuKw==
+Subject: [PATCH v2 0/3] NFSD DRC fixes for v6.7-rc
+From:   Chuck Lever <cel@kernel.org>
+To:     linux-nfs@vger.kernel.org
+Date:   Fri, 10 Nov 2023 11:28:26 -0500
+Message-ID: <169963305585.5404.9796036538735192053.stgit@bazille.1015granger.net>
+User-Agent: StGit/1.5
 MIME-Version: 1.0
-From:   Martin Wege <martin.l.wege@gmail.com>
-Date:   Fri, 10 Nov 2023 09:18:00 +0100
-Message-ID: <CANH4o6PDTLSVbMOm=oRLhuupRSkQ9bZ8NGBAmgAa5i6PNCm6Ag@mail.gmail.com>
-Subject: BUG: nfsref(8) has no means to set a non-2049 port number for referrals
-To:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Hello,
+I've chased down the reported failures with krb5i/p. Essentially
+the DRC was broken for krb5i/p because of the extra crap those
+security flavors stick before and after the NFS headers.
 
-simple bug report:
-nfsref(8) has no means to set a non-2049 port number for referrals.
+These patches do address bugs in stable kernels, but they will need
+to be massaged, tested, and applied by hand to get there. Voting now
+open on whether it's worth the trouble for us to do it now, or wait
+until someone complains about a particular LTS problem.
 
-Expected behaviour:
-nfsref(8) should be able to define a non-standard TCP port for
-referrals, for example in case the NFSD port is going through a
-firewall, or is tunneled via ssh or other means.
+---
 
-Actually behaviour.
-No custom TCP port can be specified for referrals.
+Chuck Lever (3):
+      NFSD: Fix "start of NFS reply" pointer passed to nfsd_cache_update()
+      NFSD: Update nfsd_cache_append() to use xdr_stream
+      NFSD: Fix checksum mismatches in the duplicate reply cache
 
-Thanks,
-Martin
+
+ fs/nfsd/cache.h    |  4 +--
+ fs/nfsd/nfscache.c | 87 +++++++++++++++++++++++++++-------------------
+ fs/nfsd/nfssvc.c   | 14 ++++++--
+ 3 files changed, 65 insertions(+), 40 deletions(-)
+
+--
+Chuck Lever
+
