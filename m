@@ -2,108 +2,117 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 6A8F7C4332F
-	for <linux-nfs@archiver.kernel.org>; Fri, 10 Nov 2023 18:27:26 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C6B9DC4332F
+	for <linux-nfs@archiver.kernel.org>; Fri, 10 Nov 2023 18:35:01 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S230450AbjKJS1Y (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 10 Nov 2023 13:27:24 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:36912 "EHLO
+        id S1345504AbjKJSfB (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 10 Nov 2023 13:35:01 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:49208 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346453AbjKJS0q (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2023 13:26:46 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C055C37AFF
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 05:49:20 -0800 (PST)
+        with ESMTP id S1345648AbjKJSdw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2023 13:33:52 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ECBD541B32
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 08:54:35 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1699624159;
+        s=mimecast20190719; t=1699635274;
         h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
          to:to:cc:cc:mime-version:mime-version:content-type:content-type:
          content-transfer-encoding:content-transfer-encoding:
          in-reply-to:in-reply-to:references:references;
-        bh=EPfKlNuwR/GM48Y/IAehJMI4l0NQ5dt7dnnNlpSYYGw=;
-        b=UXOqPavSnMyP7ehhWJrsVeaPJMWp9dPWNgdCdWkl3PvzFd5xgHinDTFHAiubW7auZ7TB2T
-        6XyfxJFDN+Qeudt4SVmfiqQdW2ipn9ow4hsCsSEIv7QTMATvHlRZv0KyDjEixbovcLyBez
-        bny3Xp0pzmX0MyJ0k2eQyryrh9CK9ec=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+        bh=uInXnBA2w8iDT+aYy4ZjsdLV9Mhns17cXF5x+3sdj6w=;
+        b=XhIRdeTJ35C4PofDznhRQI2uwA1UAMnKu3Y09S/Sg47cv7OmK6tgiWSriLlkDkYswiip9q
+        ptkuKCCC1cgkBql/sMi+DiMJKb3+lhekZrkwFPkQjvH84yi2ta1FmCyVxIHdPmti3WdWXD
+        APDqngRIZlUhWmhL12uMj3pgnOdEndM=
+Received: from mail-qt1-f199.google.com (mail-qt1-f199.google.com
+ [209.85.160.199]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-688-iEvqUTrCONm0ch9IZfQeBA-1; Fri, 10 Nov 2023 08:49:17 -0500
-X-MC-Unique: iEvqUTrCONm0ch9IZfQeBA-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id EE4CB811E7B;
-        Fri, 10 Nov 2023 13:49:16 +0000 (UTC)
-Received: from [192.168.37.1] (unknown [10.22.50.7])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 5B0732026D68;
-        Fri, 10 Nov 2023 13:49:16 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     Martin Wege <martin.l.wege@gmail.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Cc:     Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 referrals - custom (non-2049) port numbers in fs_locations?
-Date:   Fri, 10 Nov 2023 08:49:14 -0500
-Message-ID: <2EA6162E-1CF9-49E8-8A05-9E5246606F89@redhat.com>
-In-Reply-To: <CANH4o6NzV2_u-G0dA=hPSTvOTKe+RMy357CFRk7fw-VRNc4=Og@mail.gmail.com>
-References: <CANH4o6Md0+56y0ZYtNj1ViF2WGYqusCmjOB6mLeu+nOtC5DPTw@mail.gmail.com>
- <DD47B60A-E188-49BC-9254-6C032BA9776E@redhat.com>
- <CANH4o6NzV2_u-G0dA=hPSTvOTKe+RMy357CFRk7fw-VRNc4=Og@mail.gmail.com>
+ us-mta-57-Lp-WyizYNkuWimuCGSOLbQ-1; Fri, 10 Nov 2023 11:54:33 -0500
+X-MC-Unique: Lp-WyizYNkuWimuCGSOLbQ-1
+Received: by mail-qt1-f199.google.com with SMTP id d75a77b69052e-41cbafdb4b6so2028501cf.0
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2023 08:54:33 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1699635272; x=1700240072;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=uInXnBA2w8iDT+aYy4ZjsdLV9Mhns17cXF5x+3sdj6w=;
+        b=mdcmH2vYXuu/aGAgL8A8ZJRjlXf9zxeEivWddG/b6oiHWsv5tU3QzccJ8CQav1MSsW
+         P4U1ICvpL2oh/kUjwmA4QjxZqJf2b8yGPGb3Ay16md62wPJr9citqifczVu6uhGSd5L0
+         cx8rI4uiY1Kh2Ee2ysxMacM7ls1ZtW/L8Llu9pfpPQnTVK9lCPlbYoghvwc5O1VSmawr
+         4kQGC8c+9NBlrs9EKXmVqXCtt9a4YRCotNlsi+FhFuKBTWOoVQElUhpVH/Z0mRsW/R9M
+         kPg9l2m5FHC53+c+JYk006Ieb1UeU9GsootPvsCfGFIuunHb5ke4AIG87WpNuuxfjSXi
+         +Wkw==
+X-Gm-Message-State: AOJu0Yx2aP+FE8BFNkywBDWfK9DCbcV4nijRYyijwXmmsgF57b5cvIdj
+        JGnwA/JvhC7DBsYeoLWO9vZBktZrgOceDP5yoPIBxQFrFkjMEOPGlGKND3+w93L7fop3sm4YELY
+        4riUuppHMH/UgKuHmcFCWI4NfOIPL
+X-Received: by 2002:ac8:4dd8:0:b0:412:d46:a8c3 with SMTP id g24-20020ac84dd8000000b004120d46a8c3mr7337462qtw.2.1699635272785;
+        Fri, 10 Nov 2023 08:54:32 -0800 (PST)
+X-Google-Smtp-Source: AGHT+IHtuEUB9wwjV3kLIuPjh4Ae7kKn5MbbIOxgvgENTpmmWoa1oMow42dZ+dS3jP+/wS/GxJYtQw==
+X-Received: by 2002:ac8:4dd8:0:b0:412:d46:a8c3 with SMTP id g24-20020ac84dd8000000b004120d46a8c3mr7337450qtw.2.1699635272502;
+        Fri, 10 Nov 2023 08:54:32 -0800 (PST)
+Received: from [172.31.1.12] ([70.105.251.235])
+        by smtp.gmail.com with ESMTPSA id kk13-20020a05622a2c0d00b004181d77e08fsm2922424qtb.85.2023.11.10.08.54.31
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 10 Nov 2023 08:54:32 -0800 (PST)
+Message-ID: <6b4e6cd5-5711-4033-b813-2f8048c35921@redhat.com>
+Date:   Fri, 10 Nov 2023 11:54:30 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.4
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v3] nfs(5): adding new mount option 'fasc'
+Content-Language: en-US
+To:     Chengen Du <chengen.du@canonical.com>
+Cc:     linux-nfs@vger.kernel.org
+References: <20230828055324.21408-1-chengen.du@canonical.com>
+From:   Steve Dickson <steved@redhat.com>
+In-Reply-To: <20230828055324.21408-1-chengen.du@canonical.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On 10 Nov 2023, at 2:54, Martin Wege wrote:
+Hello,
 
-> On Wed, Nov 1, 2023 at 3:42 PM Benjamin Coddington <bcodding@redhat.com> wrote:
->>
->> On 1 Nov 2023, at 5:06, Martin Wege wrote:
->>
->>> Good morning!
->>>
->>> We have questions about NFSv4 referrals:
->>> 1. Is there a way to test them in Debian Linux?
->>>
->>> 2. How does a fs_locations attribute look like when a nonstandard port
->>> like 6666 is used?
->>> RFC5661 says this:
->>>
->>> * http://tools.ietf.org/html/rfc5661#section-11.9
->>> * 11.9. The Attribute fs_locations
->>> * An entry in the server array is a UTF-8 string and represents one of a
->>> * traditional DNS host name, IPv4 address, IPv6 address, or a zero-length
->>> * string.  An IPv4 or IPv6 address is represented as a universal address
->>> * (see Section 3.3.9 and [15]), minus the netid, and either with or without
->>> * the trailing ".p1.p2" suffix that represents the port number.  If the
->>> * suffix is omitted, then the default port, 2049, SHOULD be assumed.  A
->>> * zero-length string SHOULD be used to indicate the current address being
->>> * used for the RPC call.
->>>
->>> Does anyone have an example of how the content of fs_locations should
->>> look like with a custom port number?
->>
->> If you keep following the references, you end up with the example in
->> rfc5665, which gives an example for IPv4:
->>
->> https://datatracker.ietf.org/doc/html/rfc5665#section-5.2.3.3
->
-> So just <address>.<upper-byte-of-port-number>.<lower-byte-of-port-number>?
->
-> How can I test that with the refer= option in /etc/exports? nfsref
-> does not seem to have a ports option...
+My apologies on this delay...
 
-Just test it!
+On 8/28/23 1:53 AM, Chengen Du wrote:
+> Add an option that triggers the clearing of the file
+> access cache as soon as the cache timestamp becomes
+> older than the user's login time.
+> 
+> Signed-off-by: Chengen Du <chengen.du@canonical.com>
+On a 6.7-rc0 kernel I'm getting "nfs: Unknown parameter 'fasc'"
+error... was this never implemented?
 
-I thought the nfsref program actually populates the "trusted.junction.nfs"
-xattr, which is part of the "fedfs" project's metadata to link filesystems
-together.  I don't think that's what you want here.
+steved.
 
-Chuck - am I right to say that the nfsref program does not populate
-nfsd4_fs_locations on knfsd?
-
-Ben
+> ---
+>   utils/mount/nfs.man | 13 +++++++++++++
+>   1 file changed, 13 insertions(+)
+> 
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index 9b4bc9c9..2ac7b4ad 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -608,6 +608,19 @@ option is not specified,
+>   the default behavior depends on the kernel version,
+>   but is usually equivalent to
+>   .BR "xprtsec=none" .
+> +.TP 1.5i
+> +.BI fasc
+> +Triggers the clearing of the file access cache as soon as the cache
+> +timestamp becomes older than the user's login time. It is supported
+> +in kernels 6.4 and later.
+> +.IP
+> +NFS servers often refresh their users' group membership at their
+> +own cadence, which means the NFS client's file access cache can
+> +become stale if the user's group membership changes on the server
+> +after they've logged in on the client. To align with the principles
+> +of the POSIX design, which only refreshes the user's supplementary
+> +group information upon login, the mechanism uses the user's login
+> +time to determine whether the file access cache needs to be refreshed.
+>   .SS "Options for NFS versions 2 and 3 only"
+>   Use these options, along with the options in the above subsection,
+>   for NFS versions 2 and 3 only.
 
