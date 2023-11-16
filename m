@@ -2,53 +2,53 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 8BF1AC197A0
+	by smtp.lore.kernel.org (Postfix) with ESMTP id C3865C5AE4B
 	for <linux-nfs@archiver.kernel.org>; Thu, 16 Nov 2023 04:33:58 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S235698AbjKPEd5 (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 Nov 2023 23:33:57 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43482 "EHLO
+        id S229786AbjKPEdy (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 Nov 2023 23:33:54 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43474 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S230250AbjKPEdx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Nov 2023 23:33:53 -0500
-Received: from mail-qk1-x736.google.com (mail-qk1-x736.google.com [IPv6:2607:f8b0:4864:20::736])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B311D1BE
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Nov 2023 20:33:49 -0800 (PST)
-Received: by mail-qk1-x736.google.com with SMTP id af79cd13be357-7789577b53fso20343585a.3
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Nov 2023 20:33:49 -0800 (PST)
+        with ESMTP id S229692AbjKPEdw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Nov 2023 23:33:52 -0500
+Received: from mail-qk1-x734.google.com (mail-qk1-x734.google.com [IPv6:2607:f8b0:4864:20::734])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 550031A8
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Nov 2023 20:33:47 -0800 (PST)
+Received: by mail-qk1-x734.google.com with SMTP id af79cd13be357-778999c5ecfso20332185a.2
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Nov 2023 20:33:47 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=paul-moore.com; s=google; t=1700109228; x=1700714028; darn=vger.kernel.org;
+        d=paul-moore.com; s=google; t=1700109226; x=1700714026; darn=vger.kernel.org;
         h=in-reply-to:references:subject:cc:to:from:message-id:date:from:to
          :cc:subject:date:message-id:reply-to;
-        bh=bndky/isFZdPv4y+9HMU+8QO0OsZEFaDO/mxDCye0C0=;
-        b=Be2nyhJV8JByTCu9BsElBdGHDrrhMuIfyJI/dW5Ptt4EUKql5kjRdkX35r7Ph+ocBB
-         /LY1ZvqLo1a6v3v/Mji8zsoeKxpSQeJaWYTwmZTLARnwOL+UqNKskMYW81yULkInncEW
-         y/PVI9i7A2a/GmitESvrxjUERfNuMYi4JjrntU7AwykluwNteWHkgFBBJsCpSOCPMjbE
-         Wy9K70Nl1QZaIPNNbUGKu4zdspq8PzlFWKrViqaq3xAsJ7X5SePmlVcXHUWZl176RH3U
-         JEEv8/hCNT7+uizusuOj0/z6OHBcVfKgfMlYBpnKTxfuQO8eXa/2j+IP9b+ViTfn8PHX
-         NsdA==
+        bh=HOfDZdWy3FlMMU3byFQ5fyH9fZQUeVFWx7pZHVOBZ9I=;
+        b=cUShdtqX6NpRR3sTAX0J50EPelbnHmQNFwtWvwzNOaB5PsWSbAaumzdhhDAezZ/KVs
+         4uAi6bZhs7kWxiaREbmBkx5XOlv0YLLmHnOuaHpkfianch+ql9QBTSLz8ULbt4MoRQhP
+         HS49Y2z6QZAsdUpvur/XvuVba1Prftyd00XHMiGESmfqTkMiO89y110AJ5j6llyg0rd4
+         YD7CtJVPc4kiEp6m1LVvXvZuFGfh6vW8fiOQfNuQXj/6O7yuLxQdstH2aL6JGF64QybS
+         i3RTojbP3mpDQJCYFP1Xh4eVjB/pRvLS5ma7lWrP4rC9H6MczSvb/71xmqO9qtnNDdKN
+         yiyg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1700109228; x=1700714028;
+        d=1e100.net; s=20230601; t=1700109226; x=1700714026;
         h=in-reply-to:references:subject:cc:to:from:message-id:date
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=bndky/isFZdPv4y+9HMU+8QO0OsZEFaDO/mxDCye0C0=;
-        b=m+trxxyc9HRp2k/gGJh9BmgSgcab0XYcDCaVsN+Qt1p6TZWv+E/Y/hFQTL+z3tfrAo
-         XA7ZB73mGG1gr5FJeep4gBXSRSv/3rtySbJC5rV1j4fgRyXz64gPbyEkXPkhKxP8Knqs
-         UBnHQwzEzbSs7qa2p2S3ZTMf87WGpQsx6hSVyFB9NUiKUXL1dS1DpkXBl029kftn8l7K
-         8XwKmcC/+Htf7KggAVUz+xWDpY9m3IHbep87vV3mopgylKeKRbnaE2hj+bpRH3mooGCp
-         qvJV214X9/vy101Sl7AWBrQqsiNWuvLgKi0fce71r6DEPvLp8AnO0uRVYGmrdDcsB1VO
-         n0aw==
-X-Gm-Message-State: AOJu0YzSvjZUCR2tKbXcWSjUgWXfMaEUNd6zHCUdx2QHbjmUBfP2xOvD
-        /nlkQr2gPZLlWZ9ccV5M8T+m
-X-Google-Smtp-Source: AGHT+IGCdgvNrhLjs0RBnM3O7h6Ri70uA7en86HSqfGY/HAxnYl36rBdMYafIeqWPJt4yM0F6QD9XA==
-X-Received: by 2002:a05:620a:4156:b0:775:cf5f:8a57 with SMTP id k22-20020a05620a415600b00775cf5f8a57mr8673614qko.7.1700109228335;
-        Wed, 15 Nov 2023 20:33:48 -0800 (PST)
+        bh=HOfDZdWy3FlMMU3byFQ5fyH9fZQUeVFWx7pZHVOBZ9I=;
+        b=OiA+Ylmenm4LbydeFJICKC2ejn6De7BncPA1WzyTLMwOWsAgKQu6mSuz7FBfyq+dCU
+         dMUsIm7DONyUuDgDFMBvDF1wIXg12vcjJuzRAqtjzkJ64iIRZ+r+SHLtTpmvdsKuIq04
+         HuOVPyBg5xi4CFymzfsPCRtqbKjB/Zq7GSxmFx7RYBKMH495uLLzG66XkkiVIyvhWpmq
+         I6F+Ba0Ryn/VbgJ0WrHAo36AC5dBOlBrfF3uKoXGFU+v0zzspWZTDrgDvRBqYkCGG7qL
+         y0Xhnt+K4j4b0OXbbuq0oshENpKAaKJlZullomympyZczIBSaeoakxknRUIHej/e7PKh
+         bXeQ==
+X-Gm-Message-State: AOJu0YytTcVV1UlMxm0yf5GBgFjyxVLrNjbJBVHXeu7mUEl/PiNQDXcv
+        v2ZCuZg8kgOo2RMM/Ne/CSTv
+X-Google-Smtp-Source: AGHT+IER1laoQSGviRJQuTFe6S8/gip4gdebLlsXd5eO0S7LgScOwZM8Bh3pBl2l/YUS5yGMypAquA==
+X-Received: by 2002:a05:620a:201c:b0:778:920a:7a70 with SMTP id c28-20020a05620a201c00b00778920a7a70mr8484989qka.66.1700109226313;
+        Wed, 15 Nov 2023 20:33:46 -0800 (PST)
 Received: from localhost ([70.22.175.108])
-        by smtp.gmail.com with ESMTPSA id t26-20020a05620a005a00b0077263636a95sm4006757qkt.93.2023.11.15.20.33.47
+        by smtp.gmail.com with ESMTPSA id qc3-20020a05620a654300b0076d25b11b62sm4033067qkn.38.2023.11.15.20.33.45
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 15 Nov 2023 20:33:47 -0800 (PST)
-Date:   Wed, 15 Nov 2023 23:33:47 -0500
-Message-ID: <4f8c441e02222f063242adfbf4d733e1.paul@paul-moore.com>
+        Wed, 15 Nov 2023 20:33:45 -0800 (PST)
+Date:   Wed, 15 Nov 2023 23:33:45 -0500
+Message-ID: <231ff26ec85f437261753faf03b384e6.paul@paul-moore.com>
 From:   Paul Moore <paul@paul-moore.com>
 To:     Roberto Sassu <roberto.sassu@huaweicloud.com>,
         viro@zeniv.linux.org.uk, brauner@kernel.org,
@@ -61,10 +61,11 @@ To:     Roberto Sassu <roberto.sassu@huaweicloud.com>,
 Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
         linux-integrity@vger.kernel.org, keyrings@vger.kernel.org,
-        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>
-Subject: Re: [PATCH v5 13/23] security: Introduce file_pre_free_security hook
-References: <20231107134012.682009-14-roberto.sassu@huaweicloud.com>
-In-Reply-To: <20231107134012.682009-14-roberto.sassu@huaweicloud.com>
+        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>,
+        Stefan Berger <stefanb@linux.ibm.com>
+Subject: Re: [PATCH v5 10/23] security: Introduce inode_post_setattr hook
+References: <20231107134012.682009-11-roberto.sassu@huaweicloud.com>
+In-Reply-To: <20231107134012.682009-11-roberto.sassu@huaweicloud.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -72,45 +73,66 @@ X-Mailing-List: linux-nfs@vger.kernel.org
 On Nov  7, 2023 Roberto Sassu <roberto.sassu@huaweicloud.com> wrote:
 > 
 > In preparation for moving IMA and EVM to the LSM infrastructure, introduce
-> the file_pre_free_security hook.
+> the inode_post_setattr hook.
 > 
-> IMA calculates at file close the new digest of the file content and writes
-> it to security.ima, so that appraisal at next file access succeeds.
+> At inode_setattr hook, EVM verifies the file's existing HMAC value. At
+> inode_post_setattr, EVM re-calculates the file's HMAC based on the modified
+> file attributes and other file metadata.
 > 
-> LSMs could also take some action before the last reference of a file is
-> released.
+> Other LSMs could similarly take some action after successful file attribute
+> change.
 > 
 > The new hook cannot return an error and cannot cause the operation to be
 > reverted.
 > 
 > Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
-> Acked-by: Casey Schaufler <casey@schaufler-ca.com>
+> Reviewed-by: Stefan Berger <stefanb@linux.ibm.com>
 > Reviewed-by: Mimi Zohar <zohar@linux.ibm.com>
+> Acked-by: Casey Schaufler <casey@schaufler-ca.com>
 > ---
->  fs/file_table.c               |  1 +
->  include/linux/lsm_hook_defs.h |  1 +
->  include/linux/security.h      |  4 ++++
->  security/security.c           | 11 +++++++++++
->  4 files changed, 17 insertions(+)
-> 
-> diff --git a/fs/file_table.c b/fs/file_table.c
-> index de4a2915bfd4..64ed74555e64 100644
-> --- a/fs/file_table.c
-> +++ b/fs/file_table.c
-> @@ -385,6 +385,7 @@ static void __fput(struct file *file)
->  	eventpoll_release(file);
->  	locks_remove_file(file);
+>  fs/attr.c                     |  1 +
+>  include/linux/lsm_hook_defs.h |  2 ++
+>  include/linux/security.h      |  7 +++++++
+>  security/security.c           | 16 ++++++++++++++++
+>  4 files changed, 26 insertions(+)
+
+...
+
+> diff --git a/security/security.c b/security/security.c
+> index 7935d11d58b5..ce3bc7642e18 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -2222,6 +2222,22 @@ int security_inode_setattr(struct mnt_idmap *idmap,
+>  }
+>  EXPORT_SYMBOL_GPL(security_inode_setattr);
 >  
-> +	security_file_pre_free(file);
+> +/**
+> + * security_inode_post_setattr() - Update the inode after a setattr operation
+> + * @idmap: idmap of the mount
+> + * @dentry: file
+> + * @ia_valid: file attributes set
+> + *
+> + * Update inode security field after successful setting file attributes.
+> + */
+> +void security_inode_post_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+> +				 int ia_valid)
+> +{
+> +	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
+> +		return;
 
-I worry that security_file_pre_free() is a misleading name as "free"
-tends to imply memory management tasks, which isn't the main focus of
-this hook.  What do you think of security_file_release() or
-security_file_put() instead?
+I may be missing it, but I don't see the S_PRIVATE flag check in the
+existing IMA or EVM hooks so I'm curious as to why it is added here?
+Please don't misunderstand me, I think it makes sense to return early
+on private dentrys/inodes, but why aren't we doing that now?
 
->  	ima_file_free(file);
->  	if (unlikely(file->f_flags & FASYNC)) {
->  		if (file->f_op->fasync)
+> +	call_void_hook(inode_post_setattr, idmap, dentry, ia_valid);
+> +}
+> +
+>  /**
+>   * security_inode_getattr() - Check if getting file attributes is allowed
+>   * @path: file
+> -- 
+> 2.34.1
 
 --
 paul-moore.com
