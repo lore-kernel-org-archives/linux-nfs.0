@@ -2,151 +2,130 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id EBDD8C5ACB2
-	for <linux-nfs@archiver.kernel.org>; Wed, 15 Nov 2023 21:34:35 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id A2446C5AE4A
+	for <linux-nfs@archiver.kernel.org>; Thu, 16 Nov 2023 04:33:55 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S234892AbjKOVeh (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Wed, 15 Nov 2023 16:34:37 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:60904 "EHLO
+        id S230247AbjKPEdz (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Wed, 15 Nov 2023 23:33:55 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:43468 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S229577AbjKOVeg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Nov 2023 16:34:36 -0500
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 128C7B9
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Nov 2023 13:34:28 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-        s=mimecast20190719; t=1700084067;
-        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-         to:to:cc:cc:mime-version:mime-version:
-         content-transfer-encoding:content-transfer-encoding:
-         in-reply-to:in-reply-to:references:references;
-        bh=ucAyEG+RuEJjttp5cIL6NfnUa7OMSRQX1SXlMOyLQXc=;
-        b=blMvLSz6PvZa+9fobd2lZIQ9y9BQEqoVt3ax1In9iF0GK+mSiiMI8XKJAhiYJntRj06bP1
-        xFYUpnoSSDgCNA7xTZLWR9QuN4rAkTcQ0/ojloKTPLT8eRSQDPpy2KN1qiXtHwEOL/VqM6
-        kCElYrR7I4Zv1rrPkkC7CcUcQHcG8HM=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-638--FCUk7NqO_e03m3CrsYzAA-1; Wed, 15 Nov 2023 16:34:25 -0500
-X-MC-Unique: -FCUk7NqO_e03m3CrsYzAA-1
-Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
-        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-        (No client certificate requested)
-        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 3F4FC185A781;
-        Wed, 15 Nov 2023 21:34:25 +0000 (UTC)
-Received: from bcodding.csb.redhat.com (unknown [10.22.48.5])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id C78B7C1596F;
-        Wed, 15 Nov 2023 21:34:24 +0000 (UTC)
-From:   Benjamin Coddington <bcodding@redhat.com>
-To:     trond.myklebust@hammerspace.com, anna@kernel.org
-Cc:     linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFS: drop unused nfs_direct_req bytes_left
-Date:   Wed, 15 Nov 2023 16:34:23 -0500
-Message-ID: <952eea7e97246870f83e7a4592e9338007dfe625.1700083991.git.bcodding@redhat.com>
-In-Reply-To: <21a1f2a6155398965f79ed64f0bd23bf38a50367.1700083991.git.bcodding@redhat.com>
-References: <21a1f2a6155398965f79ed64f0bd23bf38a50367.1700083991.git.bcodding@redhat.com>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.8
+        with ESMTP id S230238AbjKPEdx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Nov 2023 23:33:53 -0500
+Received: from mail-yb1-xb34.google.com (mail-yb1-xb34.google.com [IPv6:2607:f8b0:4864:20::b34])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 821BC1B2
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Nov 2023 20:33:48 -0800 (PST)
+Received: by mail-yb1-xb34.google.com with SMTP id 3f1490d57ef6-d9caf5cc948so356998276.0
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Nov 2023 20:33:48 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=paul-moore.com; s=google; t=1700109227; x=1700714027; darn=vger.kernel.org;
+        h=in-reply-to:references:subject:cc:to:from:message-id:date:from:to
+         :cc:subject:date:message-id:reply-to;
+        bh=6JnX6LhDVyRia5AIt4T5fsWFKT3oTlNbS/+dMYZ6fZQ=;
+        b=Dv+KWzBQX+5o5++l8yO+HpDSfefpsTNkBvdbl2blus3gc1/iv25pulROvWqYEZsLAS
+         mosbscQfoRuSsRGdBdLqwUu/0jxO7bFEHasVVbvlJTPNKM1hWVRE6D+PFzSa7U75WsgZ
+         r4iw3Eev5Nii51+0Y8t5QyPJupT0TDMvXN2U6S+0QBVSh6a2pB6EpQUF7bUb3TAkI+nD
+         dfK9pFLFwO2glDh+b/NF2VYHmy9IZQ61ZbS4iskaLp31yzpAc0xv3iFyeXtWOzhb701s
+         +A8uibPrCCP+sG+Fd7nOorXrU1gtryXvylSrrLsGly3uwlSBiafBYkb+XLlwP5dhr5FM
+         xvEQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1700109227; x=1700714027;
+        h=in-reply-to:references:subject:cc:to:from:message-id:date
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=6JnX6LhDVyRia5AIt4T5fsWFKT3oTlNbS/+dMYZ6fZQ=;
+        b=NR14jfLpnvzpaxwkSLgMUz5bOCNzluldLDU/irba/I2zDiL3npVV7olpR+wCWO9Rkj
+         gHV6tCL3gB+86snGrBdXeZI4mu/4zusCZpsuzqA2ErGf83QcZbYiOvpUGtj+j6r6+wfV
+         6TGVOLPrqBbJp6Y4R3tDe7AK1CKFvKrD0VBd9LrYSCZh+jrG7K+oBVvm98bredKlodN4
+         +zQCUcFjQVnlRsS4C6m+p/Wm0a3Byncu2AS0wnGHfiQusEiTPHkom7kAwpalAr3aWAZ9
+         +cKr7MuSDn1coOrlu4q7e8VTfAYQ191nflV3erLMyLb2Kfjiu6KcxRMl4ODY+fMnFaBj
+         hBvw==
+X-Gm-Message-State: AOJu0Yz5mZE7s1DBZSDxtlAQfc88hor4aYOhQf7iGMVcjg4pirS/GSG+
+        qa67ZMfNR1v6LjdfeoPlLjbJ
+X-Google-Smtp-Source: AGHT+IHfo74mq9awQWwORNNl/SJsz0tMju17DF0SkQPXgHULIEfdwSZtzepXS9fSQ+d8wK7ugySoKw==
+X-Received: by 2002:a25:b4b:0:b0:d9a:be79:c902 with SMTP id 72-20020a250b4b000000b00d9abe79c902mr14846966ybl.53.1700109227402;
+        Wed, 15 Nov 2023 20:33:47 -0800 (PST)
+Received: from localhost ([70.22.175.108])
+        by smtp.gmail.com with ESMTPSA id s20-20020a05621412d400b00647386a3234sm1081913qvv.85.2023.11.15.20.33.46
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 15 Nov 2023 20:33:46 -0800 (PST)
+Date:   Wed, 15 Nov 2023 23:33:46 -0500
+Message-ID: <3d5492a66547c78a888b4256ec0a73f4.paul@paul-moore.com>
+From:   Paul Moore <paul@paul-moore.com>
+To:     Roberto Sassu <roberto.sassu@huaweicloud.com>,
+        viro@zeniv.linux.org.uk, brauner@kernel.org,
+        chuck.lever@oracle.com, jlayton@kernel.org, neilb@suse.de,
+        kolga@netapp.com, Dai.Ngo@oracle.com, tom@talpey.com,
+        jmorris@namei.org, serge@hallyn.com, zohar@linux.ibm.com,
+        dmitry.kasatkin@gmail.com, dhowells@redhat.com, jarkko@kernel.org,
+        stephen.smalley.work@gmail.com, eparis@parisplace.org,
+        casey@schaufler-ca.com, mic@digikod.net
+Cc:     linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
+        linux-integrity@vger.kernel.org, keyrings@vger.kernel.org,
+        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>,
+        Stefan Berger <stefanb@linux.ibm.com>
+Subject: Re: [PATCH v5 11/23] security: Introduce inode_post_removexattr hook
+References: <20231107134012.682009-12-roberto.sassu@huaweicloud.com>
+In-Reply-To: <20231107134012.682009-12-roberto.sassu@huaweicloud.com>
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-Now that we're calculating how large a remaining IO should be based
-on the current request's offset, we no longer need to track bytes_left on
-each struct nfs_direct_req.  Drop the field, and clean up the direct
-request tracepoints.
+On Nov  7, 2023 Roberto Sassu <roberto.sassu@huaweicloud.com> wrote:
+> 
+> In preparation for moving IMA and EVM to the LSM infrastructure, introduce
+> the inode_post_removexattr hook.
+> 
+> At inode_removexattr hook, EVM verifies the file's existing HMAC value. At
+> inode_post_removexattr, EVM re-calculates the file's HMAC with the passed
+> xattr removed and other file metadata.
+> 
+> Other LSMs could similarly take some action after successful xattr removal.
+> 
+> The new hook cannot return an error and cannot cause the operation to be
+> reverted.
+> 
+> Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
+> Reviewed-by: Stefan Berger <stefanb@linux.ibm.com>
+> Reviewed-by: Mimi Zohar <zohar@linux.ibm.com>
+> ---
+>  fs/xattr.c                    |  9 +++++----
+>  include/linux/lsm_hook_defs.h |  2 ++
+>  include/linux/security.h      |  5 +++++
+>  security/security.c           | 14 ++++++++++++++
+>  4 files changed, 26 insertions(+), 4 deletions(-)
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/direct.c   | 4 ----
- fs/nfs/internal.h | 1 -
- fs/nfs/nfstrace.h | 6 ++----
- 3 files changed, 2 insertions(+), 9 deletions(-)
+...
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 5918c67dae0d..7167f588b1fc 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -369,7 +369,6 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 			bytes -= req_len;
- 			requested_bytes += req_len;
- 			pos += req_len;
--			dreq->bytes_left -= req_len;
- 		}
- 		nfs_direct_release_pages(pagevec, npages);
- 		kvfree(pagevec);
-@@ -441,7 +440,6 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
- 		goto out;
- 
- 	dreq->inode = inode;
--	dreq->bytes_left = dreq->max_count = count;
- 	dreq->io_start = iocb->ki_pos;
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
- 	l_ctx = nfs_get_lock_context(dreq->ctx);
-@@ -874,7 +872,6 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 			bytes -= req_len;
- 			requested_bytes += req_len;
- 			pos += req_len;
--			dreq->bytes_left -= req_len;
- 
- 			if (defer) {
- 				nfs_mark_request_commit(req, NULL, &cinfo, 0);
-@@ -981,7 +978,6 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
- 		goto out;
- 
- 	dreq->inode = inode;
--	dreq->bytes_left = dreq->max_count = count;
- 	dreq->io_start = pos;
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
- 	l_ctx = nfs_get_lock_context(dreq->ctx);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b1fa81c9dff6..e3722ce6722e 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -936,7 +936,6 @@ struct nfs_direct_req {
- 	loff_t			io_start;	/* Start offset for I/O */
- 	ssize_t			count,		/* bytes actually processed */
- 				max_count,	/* max expected count */
--				bytes_left,	/* bytes left to be sent */
- 				error;		/* any reported error */
- 	struct completion	completion;	/* wait for i/o completion */
- 
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index 4e90ca531176..03cbc3893cef 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -1539,7 +1539,6 @@ DECLARE_EVENT_CLASS(nfs_direct_req_class,
- 			__field(u32, fhandle)
- 			__field(loff_t, offset)
- 			__field(ssize_t, count)
--			__field(ssize_t, bytes_left)
- 			__field(ssize_t, error)
- 			__field(int, flags)
- 		),
-@@ -1554,19 +1553,18 @@ DECLARE_EVENT_CLASS(nfs_direct_req_class,
- 			__entry->fhandle = nfs_fhandle_hash(fh);
- 			__entry->offset = dreq->io_start;
- 			__entry->count = dreq->count;
--			__entry->bytes_left = dreq->bytes_left;
- 			__entry->error = dreq->error;
- 			__entry->flags = dreq->flags;
- 		),
- 
- 		TP_printk(
- 			"error=%zd fileid=%02x:%02x:%llu fhandle=0x%08x "
--			"offset=%lld count=%zd bytes_left=%zd flags=%s",
-+			"offset=%lld count=%zd flags=%s",
- 			__entry->error, MAJOR(__entry->dev),
- 			MINOR(__entry->dev),
- 			(unsigned long long)__entry->fileid,
- 			__entry->fhandle, __entry->offset,
--			__entry->count, __entry->bytes_left,
-+			__entry->count,
- 			nfs_show_direct_req_flags(__entry->flags)
- 		)
- );
--- 
-2.41.0
+> diff --git a/security/security.c b/security/security.c
+> index ce3bc7642e18..8aa6e9f316dd 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -2452,6 +2452,20 @@ int security_inode_removexattr(struct mnt_idmap *idmap,
+>  	return evm_inode_removexattr(idmap, dentry, name);
+>  }
+>  
+> +/**
+> + * security_inode_post_removexattr() - Update the inode after a removexattr op
+> + * @dentry: file
+> + * @name: xattr name
+> + *
+> + * Update the inode after a successful removexattr operation.
+> + */
+> +void security_inode_post_removexattr(struct dentry *dentry, const char *name)
+> +{
+> +	if (unlikely(IS_PRIVATE(d_backing_inode(dentry))))
+> +		return;
 
+Similar comment about the S_PRIVATE check as was in patch 10/23.
+
+> +	call_void_hook(inode_post_removexattr, dentry, name);
+> +}
+> +
+>  /**
+>   * security_inode_need_killpriv() - Check if security_inode_killpriv() required
+>   * @dentry: associated dentry
+> -- 
+> 2.34.1
+
+--
+paul-moore.com
