@@ -2,219 +2,345 @@ Return-Path: <linux-nfs-owner@vger.kernel.org>
 X-Spam-Checker-Version: SpamAssassin 3.4.0 (2014-02-07) on
 	aws-us-west-2-korg-lkml-1.web.codeaurora.org
 Received: from vger.kernel.org (vger.kernel.org [23.128.96.18])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id A8A6BC54FB9
-	for <linux-nfs@archiver.kernel.org>; Fri, 17 Nov 2023 21:26:05 +0000 (UTC)
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 7FE54C5ACB3
+	for <linux-nfs@archiver.kernel.org>; Fri, 17 Nov 2023 21:27:50 +0000 (UTC)
 Received: (majordomo@vger.kernel.org) by vger.kernel.org via listexpand
-        id S231533AbjKQV0G (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
-        Fri, 17 Nov 2023 16:26:06 -0500
-Received: from lindbergh.monkeyblade.net ([23.128.96.19]:45182 "EHLO
+        id S1346300AbjKQV1v (ORCPT <rfc822;linux-nfs@archiver.kernel.org>);
+        Fri, 17 Nov 2023 16:27:51 -0500
+Received: from lindbergh.monkeyblade.net ([23.128.96.19]:57148 "EHLO
         lindbergh.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1346439AbjKQVZw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2023 16:25:52 -0500
-Received: from mail-yb1-xb35.google.com (mail-yb1-xb35.google.com [IPv6:2607:f8b0:4864:20::b35])
-        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B4D0C35B6
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2023 13:22:25 -0800 (PST)
-Received: by mail-yb1-xb35.google.com with SMTP id 3f1490d57ef6-daf26d84100so2428338276.3
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2023 13:22:25 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=paul-moore.com; s=google; t=1700256136; x=1700860936; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=7VlTgLQgobFGG9PZZStnDlmcBu7nmiBF+q+s3UJ3hXY=;
-        b=dY0g61TIlRN+hRurbcp/9nn1mUxdFaB+a/xJadYgi4t8eIYBYVIAz/Ru5FfvpS0cja
-         2BUtKjga6tWLZGA2I4PBeEaOu5MWt9UwyrWFRSYTCY7sTtZV2RzRVwFkhqqA+O8OOsIy
-         JPeHLrHYuEJ8RL8U93ZQT18EvbHiTz5PCjWjbL3q7JfKiQdHoGzBvLNJDfNFE7mvHze9
-         sqqomks9/Mn7bOSHMfXsAZP738FRG5j5BHmBkTZ/1HB0nTisVNQ2xjKlLslMIgUyV4I5
-         wWiuBIK5GgAJjZpBK0+rlOlXQtrM2f8g5ue3QtlPuk12dYGh7Zujx4+wQP9y+yI7FtNQ
-         qG3Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1700256136; x=1700860936;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=7VlTgLQgobFGG9PZZStnDlmcBu7nmiBF+q+s3UJ3hXY=;
-        b=qJnfHP9r9105zpuyC6Lyd8WNA61NJibmhBq+lMtotNhtxZQ3G9KIORWAFYrPNZ+GE7
-         pHV2W9YMW1SgjB48M7drvD3viDtIItb72ZDWwTDq6DWvvlvbFUuVIyPZJfs2jFbAjDw5
-         CuCW1d0JDlfwdUlyJn6RfVPrHDU7sTSAEH1+VqBMFiDbBvLiuVTv6dqWJMXMc2jK0Vq/
-         Vltnk1RJAHyW64+qMh9/8yT9FkAoKbwhHmCGZaxouYxCbQB1GpZeXA/jqim658JHLJwy
-         g5MkrOBLylGBwNFgKeVN8FycmLgMeoQReGF0aLUPK1wEvOM/rURmclh6T7VYYtIZfh/H
-         Sk4g==
-X-Gm-Message-State: AOJu0Yxd7Sb/rARUm/FzUGIVRKouWtMAh5IBkOGsAd3xzAgfJK2sHi2o
-        XJ5OJCI0w72IJZogfJNG2ObnH3WxYlq8Hed5SqcO
-X-Google-Smtp-Source: AGHT+IH5POWzxfJUHKpYri9R+UVG+Wr3w1T0ws/aAxZr3RWyKZUULPlBJx6xRvviFDadIjnVfDAi37L7P8ExDxDrolc=
-X-Received: by 2002:a25:2693:0:b0:da0:86e8:aea4 with SMTP id
- m141-20020a252693000000b00da086e8aea4mr790094ybm.57.1700256136343; Fri, 17
- Nov 2023 13:22:16 -0800 (PST)
+        with ESMTP id S235790AbjKQV1s (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2023 16:27:48 -0500
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+        by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 4E49E19A6
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2023 13:18:06 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+        s=mimecast20190719; t=1700255885;
+        h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+         to:to:cc:cc:mime-version:mime-version:
+         content-transfer-encoding:content-transfer-encoding:
+         in-reply-to:in-reply-to:references:references;
+        bh=vexZJLzBIyyLPeX5Ek0LXizOmJkCJIbOd7D7U7LHKH0=;
+        b=Asepmo+EK22KCl1diWuaR/Skv45FNaeaf6Y1EWvh/WROH96ahV3dF3srddH7pZF07JfAeY
+        WkiGBwNbRRznYE7BGx/NfdgUyWnkxY59jZxK1+Non8ZWu9e9bPlSNfRRVlU8KPJTps4VdY
+        sXJoAzS/ckvuqTUTDjoewxNkTE8pxvE=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-41-DTQdvzYOMMuT2PyT53z6MA-1; Fri, 17 Nov 2023 16:18:01 -0500
+X-MC-Unique: DTQdvzYOMMuT2PyT53z6MA-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
+        (using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+         key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+        (No client certificate requested)
+        by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 13BC4811E8E;
+        Fri, 17 Nov 2023 21:18:00 +0000 (UTC)
+Received: from warthog.procyon.org.com (unknown [10.42.28.16])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 73A471121307;
+        Fri, 17 Nov 2023 21:17:57 +0000 (UTC)
+From:   David Howells <dhowells@redhat.com>
+To:     Jeff Layton <jlayton@kernel.org>, Steve French <smfrench@gmail.com>
+Cc:     David Howells <dhowells@redhat.com>,
+        Matthew Wilcox <willy@infradead.org>,
+        Marc Dionne <marc.dionne@auristor.com>,
+        Paulo Alcantara <pc@manguebit.com>,
+        Shyam Prasad N <sprasad@microsoft.com>,
+        Tom Talpey <tom@talpey.com>,
+        Dominique Martinet <asmadeus@codewreck.org>,
+        Ilya Dryomov <idryomov@gmail.com>,
+        Christian Brauner <christian@brauner.io>,
+        linux-cachefs@redhat.com, linux-afs@lists.infradead.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, v9fs@lists.linux.dev,
+        linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 33/51] netfs: Perform content encryption
+Date:   Fri, 17 Nov 2023 21:15:25 +0000
+Message-ID: <20231117211544.1740466-34-dhowells@redhat.com>
+In-Reply-To: <20231117211544.1740466-1-dhowells@redhat.com>
+References: <20231117211544.1740466-1-dhowells@redhat.com>
 MIME-Version: 1.0
-References: <20231107134012.682009-23-roberto.sassu@huaweicloud.com>
- <f529266a02533411e72d706b908924e8.paul@paul-moore.com> <49a7fd0a1f89188fa92f258e88c50eaeca0f4ac9.camel@huaweicloud.com>
-In-Reply-To: <49a7fd0a1f89188fa92f258e88c50eaeca0f4ac9.camel@huaweicloud.com>
-From:   Paul Moore <paul@paul-moore.com>
-Date:   Fri, 17 Nov 2023 16:22:05 -0500
-Message-ID: <CAHC9VhRpG3wFbu6-EZw3t1TeKxBzYX86YzizE6x9JGeWmyxixA@mail.gmail.com>
-Subject: Re: [PATCH v5 22/23] integrity: Move integrity functions to the LSM infrastructure
-To:     Roberto Sassu <roberto.sassu@huaweicloud.com>
-Cc:     viro@zeniv.linux.org.uk, brauner@kernel.org,
-        chuck.lever@oracle.com, jlayton@kernel.org, neilb@suse.de,
-        kolga@netapp.com, Dai.Ngo@oracle.com, tom@talpey.com,
-        jmorris@namei.org, serge@hallyn.com, zohar@linux.ibm.com,
-        dmitry.kasatkin@gmail.com, dhowells@redhat.com, jarkko@kernel.org,
-        stephen.smalley.work@gmail.com, eparis@parisplace.org,
-        casey@schaufler-ca.com, mic@digikod.net,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-        linux-integrity@vger.kernel.org, keyrings@vger.kernel.org,
-        selinux@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.3
 Precedence: bulk
 List-ID: <linux-nfs.vger.kernel.org>
 X-Mailing-List: linux-nfs@vger.kernel.org
 
-On Thu, Nov 16, 2023 at 5:08=E2=80=AFAM Roberto Sassu
-<roberto.sassu@huaweicloud.com> wrote:
-> On Wed, 2023-11-15 at 23:33 -0500, Paul Moore wrote:
-> > On Nov  7, 2023 Roberto Sassu <roberto.sassu@huaweicloud.com> wrote:
+When dealing with an encrypted file, we gather together sufficient pages
+from the pagecache to constitute a logical crypto block, allocate a bounce
+buffer and then ask the filesystem to encrypt between the buffers.  The
+bounce buffer is then passed to the filesystem to upload.
 
-...
+The network filesystem must set a flag to indicate what service is desired
+and what the logical blocksize will be.
 
-> > > +/*
-> > > + * Perform the initialization of the 'integrity', 'ima' and 'evm' LS=
-Ms to
-> > > + * ensure that the management of integrity metadata is working at th=
-e time
-> > > + * IMA and EVM hooks are registered to the LSM infrastructure, and t=
-o keep
-> > > + * the original ordering of IMA and EVM functions as when they were =
-hardcoded.
-> > > + */
-> > >  static int __init integrity_lsm_init(void)
-> > >  {
-> > > +   const struct lsm_id *lsmid;
-> > > +
-> > >     iint_cache =3D
-> > >         kmem_cache_create("iint_cache", sizeof(struct integrity_iint_=
-cache),
-> > >                           0, SLAB_PANIC, iint_init_once);
-> > > +   /*
-> > > +    * Obtain either the IMA or EVM LSM ID to register integrity-spec=
-ific
-> > > +    * hooks under that LSM, since there is no LSM ID assigned to the
-> > > +    * 'integrity' LSM.
-> > > +    */
-> > > +   lsmid =3D ima_get_lsm_id();
-> > > +   if (!lsmid)
-> > > +           lsmid =3D evm_get_lsm_id();
-> > > +   /* No point in continuing, since both IMA and EVM are disabled. *=
-/
-> > > +   if (!lsmid)
-> > > +           return 0;
-> > > +
-> > > +   security_add_hooks(integrity_hooks, ARRAY_SIZE(integrity_hooks), =
-lsmid);
-> >
-> > Ooof.  I understand, or at least I think I understand, why the above
-> > hack is needed, but I really don't like the idea of @integrity_hooks
-> > jumping between IMA and EVM depending on how the kernel is configured.
-> >
-> > Just to make sure I'm understanding things correctly, the "integrity"
-> > LSM exists to ensure the proper hook ordering between IMA/EVM, shared
-> > metadata management for IMA/EVM, and a little bit of a hack to solve
-> > some kernel module loading issues with signatures.  Is that correct?
-> >
-> > I see that patch 23/23 makes some nice improvements to the metadata
-> > management, moving them into LSM security blobs, but it appears that
-> > they are still shared, and thus the requirement is still there for
-> > an "integrity" LSM to manage the shared blobs.
->
-> Yes, all is correct.
+The netfs library iterates through each block to be processed, providing a
+pair of scatterlists to describe the start and end buffers.
 
-Thanks for the clarification, more on this below.
+Note that it should be possible in future to encrypt DIO writes also by
+this same mechanism.
 
-> > I'd like to hear everyone's honest opinion on this next question: do
-> > we have any hope of separating IMA and EVM so they are independent
-> > (ignore the ordering issues for a moment), or are we always going to
-> > need to have the "integrity" LSM to manage shared resources, hooks,
-> > etc.?
->
-> I think it should not be technically difficult to do it. But, it would
-> be very important to understand all the implications of doing those
-> changes.
->
-> Sorry, for now I don't see an immediate need to do that, other than
-> solving this LSM naming issue. I tried to find the best solution I
-> could.
+Signed-off-by: David Howells <dhowells@redhat.com>
+cc: Jeff Layton <jlayton@kernel.org>
+cc: linux-cachefs@redhat.com
+cc: linux-fsdevel@vger.kernel.org
+cc: linux-mm@kvack.org
+---
+ fs/netfs/Makefile            |  1 +
+ fs/netfs/buffered_write.c    |  3 +-
+ fs/netfs/crypto.c            | 89 ++++++++++++++++++++++++++++++++++++
+ fs/netfs/internal.h          |  5 ++
+ fs/netfs/objects.c           |  2 +
+ fs/netfs/output.c            |  7 ++-
+ include/linux/netfs.h        | 11 +++++
+ include/trace/events/netfs.h |  2 +
+ 8 files changed, 118 insertions(+), 2 deletions(-)
+ create mode 100644 fs/netfs/crypto.c
 
-I first want to say that I think you've done a great job thus far, and
-I'm very grateful for the work you've done.  We can always use more
-help in the kernel security space and I'm very happy to see your
-contributions - thank you :)
+diff --git a/fs/netfs/Makefile b/fs/netfs/Makefile
+index d5c2809fc029..5ea852ac276c 100644
+--- a/fs/netfs/Makefile
++++ b/fs/netfs/Makefile
+@@ -3,6 +3,7 @@
+ netfs-y := \
+ 	buffered_read.o \
+ 	buffered_write.o \
++	crypto.o \
+ 	direct_read.o \
+ 	direct_write.o \
+ 	io.o \
+diff --git a/fs/netfs/buffered_write.c b/fs/netfs/buffered_write.c
+index 4f0feedb357a..93e16f7caf67 100644
+--- a/fs/netfs/buffered_write.c
++++ b/fs/netfs/buffered_write.c
+@@ -77,7 +77,8 @@ static enum netfs_how_to_modify netfs_how_to_modify(struct netfs_inode *ctx,
+ 	if (!maybe_trouble && offset == 0 && len >= flen)
+ 		return NETFS_WHOLE_FOLIO_MODIFY;
+ 
+-	if (file->f_mode & FMODE_READ)
++	if (file->f_mode & FMODE_READ ||
++	    test_bit(NETFS_ICTX_ENCRYPTED, &ctx->flags))
+ 		return NETFS_JUST_PREFETCH;
+ 
+ 	if (netfs_is_cache_enabled(ctx) ||
+diff --git a/fs/netfs/crypto.c b/fs/netfs/crypto.c
+new file mode 100644
+index 000000000000..943d01f430e2
+--- /dev/null
++++ b/fs/netfs/crypto.c
+@@ -0,0 +1,89 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/* Network filesystem content encryption support.
++ *
++ * Copyright (C) 2023 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ */
++
++#include <linux/fs.h>
++#include <linux/mm.h>
++#include <linux/pagemap.h>
++#include <linux/slab.h>
++#include <linux/scatterlist.h>
++#include "internal.h"
++
++/*
++ * Populate a scatterlist from the next bufferage of an I/O iterator.
++ */
++static int netfs_iter_to_sglist(const struct iov_iter *iter, size_t len,
++				struct scatterlist *sg, unsigned int n_sg)
++{
++	struct iov_iter tmp_iter = *iter;
++	struct sg_table sgtable = { .sgl = sg };
++	ssize_t ret;
++
++	_enter("%zx/%zx", len, iov_iter_count(iter));
++
++	sg_init_table(sg, n_sg);
++	ret = extract_iter_to_sg(&tmp_iter, len, &sgtable, n_sg, 0);
++	if (ret < 0)
++		return ret;
++	sg_mark_end(&sg[sgtable.nents - 1]);
++	return sgtable.nents;
++}
++
++/*
++ * Prepare a write request for writing.  We encrypt in/into the bounce buffer.
++ */
++bool netfs_encrypt(struct netfs_io_request *wreq)
++{
++	struct netfs_inode *ctx = netfs_inode(wreq->inode);
++	struct scatterlist source_sg[16], dest_sg[16];
++	unsigned int n_dest;
++	size_t n, chunk, bsize = 1UL << ctx->crypto_bshift;
++	loff_t pos;
++	int ret;
++
++	_enter("");
++
++	trace_netfs_rreq(wreq, netfs_rreq_trace_encrypt);
++
++	pos = wreq->start;
++	n = wreq->len;
++	_debug("ENCRYPT %llx-%llx", pos, pos + n - 1);
++
++	for (; n > 0; n -= chunk, pos += chunk) {
++		chunk = min(n, bsize);
++
++		ret = netfs_iter_to_sglist(&wreq->io_iter, chunk,
++					   dest_sg, ARRAY_SIZE(dest_sg));
++		if (ret < 0)
++			goto error;
++		n_dest = ret;
++
++		if (test_bit(NETFS_RREQ_CRYPT_IN_PLACE, &wreq->flags)) {
++			ret = ctx->ops->encrypt_block(wreq, pos, chunk,
++						      dest_sg, n_dest,
++						      dest_sg, n_dest);
++		} else {
++			ret = netfs_iter_to_sglist(&wreq->iter, chunk,
++						   source_sg, ARRAY_SIZE(source_sg));
++			if (ret < 0)
++				goto error;
++			ret = ctx->ops->encrypt_block(wreq, pos, chunk,
++						      source_sg, ret,
++						      dest_sg, n_dest);
++		}
++
++		if (ret < 0)
++			goto error_failed;
++	}
++
++	return true;
++
++error_failed:
++	trace_netfs_failure(wreq, NULL, ret, netfs_fail_encryption);
++error:
++	wreq->error = ret;
++	return false;
++}
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index edb94c437793..d3e74ad478ce 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -22,6 +22,11 @@ void netfs_rreq_unlock_folios(struct netfs_io_request *rreq);
+ int netfs_prefetch_for_write(struct file *file, struct folio *folio,
+ 			     size_t offset, size_t len);
+ 
++/*
++ * crypto.c
++ */
++bool netfs_encrypt(struct netfs_io_request *wreq);
++
+ /*
+  * direct_write.c
+  */
+diff --git a/fs/netfs/objects.c b/fs/netfs/objects.c
+index c1218b183197..6bf3b3f51499 100644
+--- a/fs/netfs/objects.c
++++ b/fs/netfs/objects.c
+@@ -44,6 +44,8 @@ struct netfs_io_request *netfs_alloc_request(struct address_space *mapping,
+ 	refcount_set(&rreq->ref, 1);
+ 
+ 	__set_bit(NETFS_RREQ_IN_PROGRESS, &rreq->flags);
++	if (test_bit(NETFS_ICTX_ENCRYPTED, &ctx->flags))
++		__set_bit(NETFS_RREQ_CONTENT_ENCRYPTION, &rreq->flags);
+ 	if (cached)
+ 		__set_bit(NETFS_RREQ_WRITE_TO_CACHE, &rreq->flags);
+ 	if (file && file->f_flags & O_NONBLOCK)
+diff --git a/fs/netfs/output.c b/fs/netfs/output.c
+index bb42789c7a24..2d2530dc9507 100644
+--- a/fs/netfs/output.c
++++ b/fs/netfs/output.c
+@@ -366,7 +366,11 @@ int netfs_begin_write(struct netfs_io_request *wreq, bool may_wait,
+ 	 * background whilst we generate a list of write ops that we want to
+ 	 * perform.
+ 	 */
+-	// TODO: Encrypt or compress the region as appropriate
++	if (test_bit(NETFS_RREQ_CONTENT_ENCRYPTION, &wreq->flags) &&
++	    !netfs_encrypt(wreq)) {
++		may_wait = true;
++		goto out;
++	}
+ 
+ 	/* We need to write all of the region to the cache */
+ 	if (test_bit(NETFS_RREQ_WRITE_TO_CACHE, &wreq->flags))
+@@ -378,6 +382,7 @@ int netfs_begin_write(struct netfs_io_request *wreq, bool may_wait,
+ 	if (test_bit(NETFS_RREQ_UPLOAD_TO_SERVER, &wreq->flags))
+ 		ctx->ops->create_write_requests(wreq, wreq->start, wreq->len);
+ 
++out:
+ 	if (atomic_dec_and_test(&wreq->nr_outstanding))
+ 		netfs_write_terminated(wreq, false);
+ 
+diff --git a/include/linux/netfs.h b/include/linux/netfs.h
+index cb80de66d165..639f1f9cb7e0 100644
+--- a/include/linux/netfs.h
++++ b/include/linux/netfs.h
+@@ -19,6 +19,7 @@
+ #include <linux/pagemap.h>
+ #include <linux/uio.h>
+ 
++struct scatterlist;
+ enum netfs_sreq_ref_trace;
+ 
+ /*
+@@ -141,7 +142,9 @@ struct netfs_inode {
+ 	unsigned long		flags;
+ #define NETFS_ICTX_ODIRECT	0		/* The file has DIO in progress */
+ #define NETFS_ICTX_UNBUFFERED	1		/* I/O should not use the pagecache */
++#define NETFS_ICTX_ENCRYPTED	2		/* The file contents are encrypted */
+ 	unsigned char		min_bshift;	/* log2 min block size for bounding box or 0 */
++	unsigned char		crypto_bshift;	/* log2 of crypto block size */
+ };
+ 
+ /*
+@@ -286,6 +289,8 @@ struct netfs_io_request {
+ #define NETFS_RREQ_UPLOAD_TO_SERVER	8	/* Need to write to the server */
+ #define NETFS_RREQ_NONBLOCK		9	/* Don't block if possible (O_NONBLOCK) */
+ #define NETFS_RREQ_BLOCKED		10	/* We blocked */
++#define NETFS_RREQ_CONTENT_ENCRYPTION	11	/* Content encryption is in use */
++#define NETFS_RREQ_CRYPT_IN_PLACE	12	/* Enc/dec in place in ->io_iter */
+ 	const struct netfs_request_ops *netfs_ops;
+ 	void (*cleanup)(struct netfs_io_request *req);
+ };
+@@ -317,6 +322,11 @@ struct netfs_request_ops {
+ 	void (*create_write_requests)(struct netfs_io_request *wreq,
+ 				      loff_t start, size_t len);
+ 	void (*invalidate_cache)(struct netfs_io_request *wreq);
++
++	/* Content encryption */
++	int (*encrypt_block)(struct netfs_io_request *wreq, loff_t pos, size_t len,
++			     struct scatterlist *source_sg, unsigned int n_source,
++			     struct scatterlist *dest_sg, unsigned int n_dest);
+ };
+ 
+ /*
+@@ -465,6 +475,7 @@ static inline void netfs_inode_init(struct netfs_inode *ctx,
+ 	ctx->zero_point = ctx->remote_i_size;
+ 	ctx->flags = 0;
+ 	ctx->min_bshift = 0;
++	ctx->crypto_bshift = 0;
+ #if IS_ENABLED(CONFIG_FSCACHE)
+ 	ctx->cache = NULL;
+ #endif
+diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
+index 60f98c99fe21..70e2f9a48f24 100644
+--- a/include/trace/events/netfs.h
++++ b/include/trace/events/netfs.h
+@@ -41,6 +41,7 @@
+ 	EM(netfs_rreq_trace_assess,		"ASSESS ")	\
+ 	EM(netfs_rreq_trace_copy,		"COPY   ")	\
+ 	EM(netfs_rreq_trace_done,		"DONE   ")	\
++	EM(netfs_rreq_trace_encrypt,		"ENCRYPT")	\
+ 	EM(netfs_rreq_trace_free,		"FREE   ")	\
+ 	EM(netfs_rreq_trace_redirty,		"REDIRTY")	\
+ 	EM(netfs_rreq_trace_resubmit,		"RESUBMT")	\
+@@ -76,6 +77,7 @@
+ 	EM(netfs_fail_copy_to_cache,		"copy-to-cache")	\
+ 	EM(netfs_fail_dio_read_short,		"dio-read-short")	\
+ 	EM(netfs_fail_dio_read_zero,		"dio-read-zero")	\
++	EM(netfs_fail_encryption,		"encryption")		\
+ 	EM(netfs_fail_read,			"read")			\
+ 	EM(netfs_fail_short_read,		"short-read")		\
+ 	EM(netfs_fail_prepare_write,		"prep-write")		\
 
-I'm concerned about the integrity LSM because it isn't really a LSM,
-it is simply an implementation artifact from a time when only one LSM
-was enabled.  Now that we have basic support for stacking LSMs, as we
-promote integrity/IMA/EVM I think this is the perfect time to move
-away from the "integrity" portion and integrate the necessary
-functionality into the IMA and EVM LSMs.  This is even more important
-now that we are looking at making the LSMs more visible to userspace
-via syscalls; how would you explain to a developer or user the need
-for an "integrity" LSM along with the IMA and EVM LSMs?
-
-Let's look at the three things the the integrity code provides in this patc=
-hset:
-
-* IMA/EVM hook ordering
-
-For better or worse, we have requirements on LSM ordering today that
-are enforced only by convention, the BPF LSM being the perfect
-example.  As long as we document this in Kconfig I think we are okay.
-
-* Shared metadata
-
-Looking at the integrity_iint_cache struct at the end of your patchset
-I see the following:
-
-  struct integrity_iint_cache {
-    struct mutex mutex;
-    struct inode *inode;
-    u64 version;
-    unsigned long flags;
-    unsigned long measured_pcrs;
-    unsigned long atomic_flags;
-    enum integrity_status ima_file_status:4;
-    enum integrity_status ima_mmap_status:4;
-    enum integrity_status ima_bprm_status:4;
-    enum integrity_status ima_read_status:4;
-    enum integrity_status ima_creds_status:4;
-    enum integrity_status evm_status:4;
-    struct ima_digest_data *ima_hash;
-  };
-
-Now that we are stashing the metadata in the inode, we should be able
-to remove the @inode field back pointer.  It seems like we could
-duplicate @mutex and @version without problem.
-
-I only see the @measured_pcrs, @atomic_flags used in the IMA code.
-
-I only see the @ima_XXX_status fields using in the IMA code, and the
-@evm_status used in the EVM code.
-
-I only see the @ima_hash field used by the IMA code.
-
-I do see both IMA and EVM using the @flags field, but only one case
-(IMA_NEW_FILE) where one LSM (EVM) looks for another flags (IMA).  I'm
-not sure how difficult that would be to untangle, but I imagine we
-could do something here; if we had to, we could make EVM be dependent
-on IMA in Kconfig and add a function call to check on the inode
-status.  Although I hope we could find a better solution.
-
-* Kernel module loading hook (integrity_kernel_module_request(...))
-
-My guess is that this is really an IMA hook, but I can't say for
-certain.  If it is needed for EVM we could always duplicate it across
-the IMA and EVM LSMs, it is trivially small and one extra strcmp() at
-kernel module load time doesn't seem awful to me.
-
---=20
-paul-moore.com
