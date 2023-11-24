@@ -1,23 +1,23 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2a07:de40:b251:101:10:150:64:2])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C3BA410DC
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Nov 2023 20:33:13 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C42BE10E3
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Nov 2023 20:33:12 -0800 (PST)
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 51CF520C47;
-	Fri, 24 Nov 2023 00:30:05 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 2AD195BE8C;
+	Fri, 24 Nov 2023 00:31:17 +0000 (UTC)
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 212011340B;
-	Fri, 24 Nov 2023 00:30:02 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 0C0911340B;
+	Fri, 24 Nov 2023 00:31:14 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([10.150.64.162])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 1M6uMYruX2VkegAAD6G6ig
-	(envelope-from <neilb@suse.de>); Fri, 24 Nov 2023 00:30:02 +0000
+	id naqVK9LuX2WgegAAD6G6ig
+	(envelope-from <neilb@suse.de>); Fri, 24 Nov 2023 00:31:14 +0000
 From: NeilBrown <neilb@suse.de>
 To: Chuck Lever <chuck.lever@oracle.com>,
 	Jeff Layton <jlayton@kernel.org>
@@ -26,11 +26,11 @@ Cc: linux-nfs@vger.kernel.org,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Subject: [PATCH 03/11] nfsd: avoid race after unhash_delegation_locked()
-Date: Fri, 24 Nov 2023 11:23:15 +1100
-Message-ID: <20231124002504.19515-4-neilb@suse.de>
+Date: Fri, 24 Nov 2023 11:28:38 +1100
+Message-ID: <20231124002925.1816-4-neilb@suse.de>
 X-Mailer: git-send-email 2.42.1
-In-Reply-To: <20231124002504.19515-1-neilb@suse.de>
-References: <20231124002504.19515-1-neilb@suse.de>
+In-Reply-To: <20231124002925.1816-1-neilb@suse.de>
+References: <20231124002925.1816-1-neilb@suse.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,14 +41,14 @@ Content-Transfer-Encoding: 8bit
 X-Spamd-Bar: +++++++++++
 X-Spam-Score: 11.70
 X-Rspamd-Server: rspamd1
-X-Rspamd-Queue-Id: 51CF520C47
+X-Rspamd-Queue-Id: 2AD195BE8C
 Authentication-Results: smtp-out2.suse.de;
 	dkim=none;
 	dmarc=fail reason="No valid SPF, No valid DKIM" header.from=suse.de (policy=none);
 	spf=softfail (smtp-out2.suse.de: 2a07:de40:b281:104:10:150:64:97 is neither permitted nor denied by domain of neilb@suse.de) smtp.mailfrom=neilb@suse.de
 X-Spamd-Result: default: False [11.70 / 50.00];
-	 RCVD_VIA_SMTP_AUTH(0.00)[];
 	 ARC_NA(0.00)[];
+	 RCVD_VIA_SMTP_AUTH(0.00)[];
 	 SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
 	 FROM_HAS_DN(0.00)[];
 	 TO_DN_SOME(0.00)[];
@@ -56,7 +56,7 @@ X-Spamd-Result: default: False [11.70 / 50.00];
 	 TO_MATCH_ENVRCPT_ALL(0.00)[];
 	 MIME_GOOD(-0.10)[text/plain];
 	 BROKEN_CONTENT_TYPE(1.50)[];
-	 R_SPF_SOFTFAIL(4.60)[~all];
+	 R_SPF_SOFTFAIL(4.60)[~all:c];
 	 RCPT_COUNT_FIVE(0.00)[6];
 	 RCVD_COUNT_THREE(0.00)[3];
 	 MX_GOOD(-0.01)[];
