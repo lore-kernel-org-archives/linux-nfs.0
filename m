@@ -1,43 +1,23 @@
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="hjZjza9C";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="thqP9SFu"
+Authentication-Results: smtp.subspace.kernel.org; dkim=none
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2a07:de40:b251:101:10:150:64:2])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C493C10E6
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Nov 2023 20:33:12 -0800 (PST)
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [10.150.64.97])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C3BA410DC
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Nov 2023 20:33:13 -0800 (PST)
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 151CC5BE92;
-	Fri, 24 Nov 2023 00:31:59 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1700785919; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=l+Jy2Um2n8HBnWnrSA4EkYdCGq6uSt4dpWmuxWAoARU=;
-	b=hjZjza9CJ8wjO8V3mLGEAuCplUxIET2cRZHhIlChvuyzFxfkozOa6mbYw5VvK7BVSsvkXd
-	t2aoFyhWVa4Fn+NDNtCkFFNQ1CQMHPvJ/U/SPioJ4HJX7Yi6nPx5ZuVosWeHy+Jl+J/ewl
-	hpsoNsVXj5UkADyMvGP5f2KcG7SanA8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1700785919;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=l+Jy2Um2n8HBnWnrSA4EkYdCGq6uSt4dpWmuxWAoARU=;
-	b=thqP9SFuf1TNPJAsYjNkiVqDNbOHiZ9Vipy/C2L8tAeezr6uRW53ou0+I2MVVFgZEaEZJf
-	RLamXxDxVwhpLTCA==
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 51CF520C47;
+	Fri, 24 Nov 2023 00:30:05 +0000 (UTC)
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id F30DD1340B;
-	Fri, 24 Nov 2023 00:31:56 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 212011340B;
+	Fri, 24 Nov 2023 00:30:02 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([10.150.64.162])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id E4khKvzuX2XJegAAD6G6ig
-	(envelope-from <neilb@suse.de>); Fri, 24 Nov 2023 00:31:56 +0000
+	id 1M6uMYruX2VkegAAD6G6ig
+	(envelope-from <neilb@suse.de>); Fri, 24 Nov 2023 00:30:02 +0000
 From: NeilBrown <neilb@suse.de>
 To: Chuck Lever <chuck.lever@oracle.com>,
 	Jeff Layton <jlayton@kernel.org>
@@ -45,12 +25,12 @@ Cc: linux-nfs@vger.kernel.org,
 	Olga Kornievskaia <kolga@netapp.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
-Subject: [PATCH 09/11] nfsd: allow open state ids to be revoked and then freed
-Date: Fri, 24 Nov 2023 11:28:44 +1100
-Message-ID: <20231124002925.1816-10-neilb@suse.de>
+Subject: [PATCH 03/11] nfsd: avoid race after unhash_delegation_locked()
+Date: Fri, 24 Nov 2023 11:23:15 +1100
+Message-ID: <20231124002504.19515-4-neilb@suse.de>
 X-Mailer: git-send-email 2.42.1
-In-Reply-To: <20231124002925.1816-1-neilb@suse.de>
-References: <20231124002925.1816-1-neilb@suse.de>
+In-Reply-To: <20231124002504.19515-1-neilb@suse.de>
+References: <20231124002504.19515-1-neilb@suse.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -58,91 +38,150 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-Spamd-Bar: +++++++++++
+X-Spam-Score: 11.70
+X-Rspamd-Server: rspamd1
+X-Rspamd-Queue-Id: 51CF520C47
 Authentication-Results: smtp-out2.suse.de;
-	none
-X-Spam-Score: 4.70
-X-Spamd-Result: default: False [4.70 / 50.00];
-	 ARC_NA(0.00)[];
+	dkim=none;
+	dmarc=fail reason="No valid SPF, No valid DKIM" header.from=suse.de (policy=none);
+	spf=softfail (smtp-out2.suse.de: 2a07:de40:b281:104:10:150:64:97 is neither permitted nor denied by domain of neilb@suse.de) smtp.mailfrom=neilb@suse.de
+X-Spamd-Result: default: False [11.70 / 50.00];
 	 RCVD_VIA_SMTP_AUTH(0.00)[];
+	 ARC_NA(0.00)[];
+	 SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
 	 FROM_HAS_DN(0.00)[];
 	 TO_DN_SOME(0.00)[];
 	 R_MISSING_CHARSET(2.50)[];
 	 TO_MATCH_ENVRCPT_ALL(0.00)[];
 	 MIME_GOOD(-0.10)[text/plain];
 	 BROKEN_CONTENT_TYPE(1.50)[];
+	 R_SPF_SOFTFAIL(4.60)[~all];
 	 RCPT_COUNT_FIVE(0.00)[6];
 	 RCVD_COUNT_THREE(0.00)[3];
-	 DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	 NEURAL_HAM_SHORT(-0.20)[-0.987];
+	 MX_GOOD(-0.01)[];
+	 NEURAL_HAM_SHORT(-0.09)[-0.446];
 	 MID_CONTAINS_FROM(1.00)[];
 	 DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email];
 	 FUZZY_BLOCKED(0.00)[rspamd.com];
 	 FROM_EQ_ENVFROM(0.00)[];
+	 R_DKIM_NA(2.20)[];
 	 MIME_TRACE(0.00)[0:+];
-	 RCVD_TLS_ALL(0.00)[]
+	 RCVD_TLS_ALL(0.00)[];
+	 DMARC_POLICY_SOFTFAIL(0.10)[suse.de : No valid SPF, No valid DKIM,none]
 
-Revoking state through 'unlock_filesystem' now revokes any open states
-found.  When the stateids are then freed by the client, the revoked
-stateids will be cleaned up correctly.
+NFS4_CLOSED_DELEG_STID and NFS4_REVOKED_DELEG_STID are similar in
+purpose.
+REVOKED is used for NFSv4.1 states which have been revoked because the
+lease has expired.  CLOSED is used in other cases.
+The difference has two practical effects.
+1/ REVOKED states are on the ->cl_revoked list
+2/ REVOKED states result in nfserr_deleg_revoked from
+   nfsd4_verify_open_stid() asnd nfsd4_validate_stateid while
+   CLOSED states result in nfserr_bad_stid.
 
-Possibly the related lock states should be revoked too, but a
-subsequent patch will do that for all lock state on the superblock.
+Currently a state that is being revoked is first set to "CLOSED" in
+unhash_delegation_locked(), then possibly to "REVOKED" in
+revoke_delegation(), at which point it is added to the cl_revoked list.
 
+It is possible that a stateid test could see the CLOSED state
+which really should be REVOKED, and so return the wrong error code.  So
+it is safest to remove this window of inconsistency.
+
+With this patch, unhash_delegation_locked() always set the state
+correctly, and revoke_delegation() no longer changes the state.
+
+Also remove a redundant test on minorversion when
+NFS4_REVOKED_DELEG_STID is seen - it can only be seen when minorversion
+is non-zero.
+
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfsd/nfs4state.c | 25 ++++++++++++++++++++++++-
- 1 file changed, 24 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0f52e10fbdfb..8712eb81123f 100644
+index dd01d0b9e21e..276afcba07a0 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1708,7 +1708,7 @@ void nfsd4_revoke_states(struct net *net, struct super_block *sb)
- 	unsigned int idhashval;
- 	unsigned int sc_types;
+@@ -1334,7 +1334,7 @@ static bool delegation_hashed(struct nfs4_delegation *dp)
+ }
  
--	sc_types = NFS4_LOCK_STID;
-+	sc_types = NFS4_OPEN_STID | NFS4_LOCK_STID;
+ static bool
+-unhash_delegation_locked(struct nfs4_delegation *dp)
++unhash_delegation_locked(struct nfs4_delegation *dp, unsigned char type)
+ {
+ 	struct nfs4_file *fp = dp->dl_stid.sc_file;
  
- 	spin_lock(&nn->client_lock);
- 	for (idhashval = 0; idhashval < CLIENT_HASH_MASK; idhashval++) {
-@@ -1723,6 +1723,22 @@ void nfsd4_revoke_states(struct net *net, struct super_block *sb)
+@@ -1343,7 +1343,9 @@ unhash_delegation_locked(struct nfs4_delegation *dp)
+ 	if (!delegation_hashed(dp))
+ 		return false;
  
- 				spin_unlock(&nn->client_lock);
- 				switch (stid->sc_type) {
-+				case NFS4_OPEN_STID:
-+					stp = openlockstateid(stid);
-+					mutex_lock_nested(&stp->st_mutex,
-+							  OPEN_STATEID_MUTEX);
-+
-+					spin_lock(&clp->cl_lock);
-+					if (stid->sc_status == 0) {
-+						stid->sc_status |=
-+							NFS4_STID_ADMIN_REVOKED;
-+						atomic_inc(&clp->cl_admin_revoked);
-+						spin_unlock(&clp->cl_lock);
-+						release_all_access(stp);
-+					} else
-+						spin_unlock(&clp->cl_lock);
-+					mutex_unlock(&stp->st_mutex);
-+					break;
- 				case NFS4_LOCK_STID:
- 					stp = openlockstateid(stid);
- 					mutex_lock_nested(&stp->st_mutex,
-@@ -4692,6 +4708,13 @@ static void nfsd_drop_revoked_stid(struct nfs4_stid *s)
+-	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
++	if (dp->dl_stid.sc_client->cl_minorversion == 0)
++		type = NFS4_CLOSED_DELEG_STID;
++	dp->dl_stid.sc_type = type;
+ 	/* Ensure that deleg break won't try to requeue it */
+ 	++dp->dl_time;
+ 	spin_lock(&fp->fi_lock);
+@@ -1359,7 +1361,7 @@ static void destroy_delegation(struct nfs4_delegation *dp)
  	bool unhashed;
  
- 	switch (s->sc_type) {
-+	case NFS4_OPEN_STID:
-+		stp = openlockstateid(s);
-+		if (unhash_open_stateid(stp, &reaplist))
-+			put_ol_stateid_locked(stp, &reaplist);
-+		spin_unlock(&cl->cl_lock);
-+		free_ol_stateid_reaplist(&reaplist);
-+		break;
- 	case NFS4_LOCK_STID:
- 		stp = openlockstateid(s);
- 		unhashed = unhash_lock_stateid(stp);
+ 	spin_lock(&state_lock);
+-	unhashed = unhash_delegation_locked(dp);
++	unhashed = unhash_delegation_locked(dp, NFS4_CLOSED_DELEG_STID);
+ 	spin_unlock(&state_lock);
+ 	if (unhashed)
+ 		destroy_unhashed_deleg(dp);
+@@ -1373,9 +1375,8 @@ static void revoke_delegation(struct nfs4_delegation *dp)
+ 
+ 	trace_nfsd_stid_revoke(&dp->dl_stid);
+ 
+-	if (clp->cl_minorversion) {
++	if (dp->dl_stid.sc_type == NFS4_REVOKED_DELEG_STID) {
+ 		spin_lock(&clp->cl_lock);
+-		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
+ 		refcount_inc(&dp->dl_stid.sc_count);
+ 		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
+ 		spin_unlock(&clp->cl_lock);
+@@ -2234,7 +2235,7 @@ __destroy_client(struct nfs4_client *clp)
+ 	spin_lock(&state_lock);
+ 	while (!list_empty(&clp->cl_delegations)) {
+ 		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
+-		unhash_delegation_locked(dp);
++		unhash_delegation_locked(dp, NFS4_CLOSED_DELEG_STID);
+ 		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+@@ -5196,8 +5197,7 @@ nfs4_check_deleg(struct nfs4_client *cl, struct nfsd4_open *open,
+ 		goto out;
+ 	if (deleg->dl_stid.sc_type == NFS4_REVOKED_DELEG_STID) {
+ 		nfs4_put_stid(&deleg->dl_stid);
+-		if (cl->cl_minorversion)
+-			status = nfserr_deleg_revoked;
++		status = nfserr_deleg_revoked;
+ 		goto out;
+ 	}
+ 	flags = share_access_to_flags(open->op_share_access);
+@@ -6234,7 +6234,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+ 		if (!state_expired(&lt, dp->dl_time))
+ 			break;
+-		unhash_delegation_locked(dp);
++		unhash_delegation_locked(dp, NFS4_REVOKED_DELEG_STID);
+ 		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+@@ -8353,7 +8353,7 @@ nfs4_state_shutdown_net(struct net *net)
+ 	spin_lock(&state_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		unhash_delegation_locked(dp);
++		unhash_delegation_locked(dp, NFS4_CLOSED_DELEG_STID);
+ 		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
 -- 
 2.42.1
 
