@@ -1,23 +1,23 @@
 Authentication-Results: smtp.subspace.kernel.org; dkim=none
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id C412F10E0
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Nov 2023 20:33:13 -0800 (PST)
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [IPv6:2a07:de40:b251:101:10:150:64:2])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id ACD4810C8
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Nov 2023 20:33:12 -0800 (PST)
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id B8A425BE86;
-	Fri, 24 Nov 2023 00:30:50 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 1BA135BE90;
+	Fri, 24 Nov 2023 00:31:44 +0000 (UTC)
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 909DA1340B;
-	Fri, 24 Nov 2023 00:30:48 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id EF7B01340B;
+	Fri, 24 Nov 2023 00:31:41 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([10.150.64.162])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id i1d3EbjuX2WNegAAD6G6ig
-	(envelope-from <neilb@suse.de>); Fri, 24 Nov 2023 00:30:48 +0000
+	id 8LS7KO3uX2W+egAAD6G6ig
+	(envelope-from <neilb@suse.de>); Fri, 24 Nov 2023 00:31:41 +0000
 From: NeilBrown <neilb@suse.de>
 To: Chuck Lever <chuck.lever@oracle.com>,
 	Jeff Layton <jlayton@kernel.org>
@@ -25,12 +25,12 @@ Cc: linux-nfs@vger.kernel.org,
 	Olga Kornievskaia <kolga@netapp.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
-Subject: [PATCH 11/11] nfsd: allow layout state to be admin-revoked.
-Date: Fri, 24 Nov 2023 11:23:23 +1100
-Message-ID: <20231124002504.19515-12-neilb@suse.de>
+Subject: [PATCH 07/11] nfsd: allow admin-revoked NFSv4.0 state to be freed.
+Date: Fri, 24 Nov 2023 11:28:42 +1100
+Message-ID: <20231124002925.1816-8-neilb@suse.de>
 X-Mailer: git-send-email 2.42.1
-In-Reply-To: <20231124002504.19515-1-neilb@suse.de>
-References: <20231124002504.19515-1-neilb@suse.de>
+In-Reply-To: <20231124002925.1816-1-neilb@suse.de>
+References: <20231124002925.1816-1-neilb@suse.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,8 +41,7 @@ Content-Transfer-Encoding: 8bit
 X-Spamd-Bar: ++++++++
 X-Spam-Score: 8.66
 X-Rspamd-Server: rspamd1
-X-Spam-Level: *
-X-Rspamd-Queue-Id: B8A425BE86
+X-Rspamd-Queue-Id: 1BA135BE90
 Authentication-Results: smtp-out2.suse.de;
 	dkim=none;
 	dmarc=fail reason="No valid SPF, No valid DKIM" header.from=suse.de (policy=none);
@@ -61,7 +60,7 @@ X-Spamd-Result: default: False [8.66 / 50.00];
 	 RCPT_COUNT_FIVE(0.00)[6];
 	 RCVD_COUNT_THREE(0.00)[3];
 	 MX_GOOD(-0.01)[];
-	 NEURAL_HAM_SHORT(-0.13)[-0.674];
+	 NEURAL_HAM_SHORT(-0.13)[-0.672];
 	 MID_CONTAINS_FROM(1.00)[];
 	 DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email];
 	 FUZZY_BLOCKED(0.00)[rspamd.com];
@@ -72,220 +71,231 @@ X-Spamd-Result: default: False [8.66 / 50.00];
 	 BAYES_HAM(-3.00)[100.00%];
 	 DMARC_POLICY_SOFTFAIL(0.10)[suse.de : No valid SPF, No valid DKIM,none]
 
-When there is layout state on a filesystem that is being "unlocked" that
-is now revoked, which involves closing the nfsd_file and releasing the
-vfs lease.
+For NFSv4.1 and later the client easily discovers if there is any
+admin-revoked state and will then find and explicitly free it.
 
-To avoid races, all users of ->ls_file - after the layout state has been
-successfully created - now need to take a counted reference under
-rcu_read_lock().  To support this, ->fence_client and
-nfsd4_cb_layout_fail() now take a second argument being the nfsd_file.
+For NFSv4.0 there is no such mechanism.  The client can only find that
+state is admin-revoked if it tries to use that state, and there is no
+way for it to explicitly free the state.  So the server must hold on to
+the stateid (at least) for an indefinite amount of time.  A
+RELEASE_LOCKOWNER request might justify forgetting some of these
+stateids, as would the whole clients lease lapsing, but these are not
+reliable.
+
+This patch takes two approaches.
+
+Whenever a client uses an revoked stateid, that stateid is then
+discarded and will not be recognised again.  This might confuse a client
+which expect to get NFS4ERR_ADMIN_REVOKED consistently once it get it at
+all, but should mostly work.  Hopefully one error will lead to other
+resources being closed (e.g.  process exits), which will result in more
+stateid being freed when a CLOSE attempt gets NFS4ERR_ADMIN_REVOKED.
+
+Also, any admin-revoked stateids that have been that way for more than
+one lease time are periodically revoke.
+
+No actual freeing of state happens in this patch.  That will come in
+future patches which handle the different sorts of revoked state.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfsd/blocklayout.c |  4 ++--
- fs/nfsd/nfs4layouts.c | 38 +++++++++++++++++++++++++++-----------
- fs/nfsd/nfs4state.c   | 26 ++++++++++++++++++++------
- fs/nfsd/pnfs.h        |  7 ++++++-
- 4 files changed, 55 insertions(+), 20 deletions(-)
+ fs/nfsd/netns.h     |  4 ++
+ fs/nfsd/nfs4state.c | 97 ++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 100 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index 46fd74d91ea9..3c040c81c77d 100644
---- a/fs/nfsd/blocklayout.c
-+++ b/fs/nfsd/blocklayout.c
-@@ -328,10 +328,10 @@ nfsd4_scsi_proc_layoutcommit(struct inode *inode,
- }
- 
- static void
--nfsd4_scsi_fence_client(struct nfs4_layout_stateid *ls)
-+nfsd4_scsi_fence_client(struct nfs4_layout_stateid *ls, struct nfsd_file *file)
- {
- 	struct nfs4_client *clp = ls->ls_stid.sc_client;
--	struct block_device *bdev = ls->ls_file->nf_file->f_path.mnt->mnt_sb->s_bdev;
-+	struct block_device *bdev = file->nf_file->f_path.mnt->mnt_sb->s_bdev;
- 
- 	bdev->bd_disk->fops->pr_ops->pr_preempt(bdev, NFSD_MDS_PR_KEY,
- 			nfsd4_scsi_pr_key(clp), 0, true);
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 77656126ad2a..dbc52413ce57 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -152,6 +152,18 @@ void nfsd4_setup_layout_type(struct svc_export *exp)
- #endif
- }
- 
-+void nfsd4_close_layout(struct nfs4_layout_stateid *ls)
-+{
-+	struct nfsd_file *fl = xchg(&ls->ls_file, NULL);
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index ab303a8b77d5..7458f672b33e 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -197,6 +197,10 @@ struct nfsd_net {
+ 	atomic_t		nfsd_courtesy_clients;
+ 	struct shrinker		*nfsd_client_shrinker;
+ 	struct work_struct	nfsd_shrinker_work;
 +
-+	if (fl) {
-+		if (!nfsd4_layout_ops[ls->ls_layout_type]->disable_recalls)
-+			vfs_setlease(fl->nf_file, F_UNLCK, NULL,
-+				     (void **)&ls);
-+		nfsd_file_put(fl);
-+	}
-+}
++	/* last time an admin-revoke happened for NFSv4.0 */
++	time64_t		nfs40_last_revoke;
 +
- static void
- nfsd4_free_layout_stateid(struct nfs4_stid *stid)
- {
-@@ -169,9 +181,7 @@ nfsd4_free_layout_stateid(struct nfs4_stid *stid)
- 	list_del_init(&ls->ls_perfile);
- 	spin_unlock(&fp->fi_lock);
+ };
  
--	if (!nfsd4_layout_ops[ls->ls_layout_type]->disable_recalls)
--		vfs_setlease(ls->ls_file->nf_file, F_UNLCK, NULL, (void **)&ls);
--	nfsd_file_put(ls->ls_file);
-+	nfsd4_close_layout(ls);
- 
- 	if (ls->ls_recalled)
- 		atomic_dec(&ls->ls_stid.sc_file->fi_lo_recalls);
-@@ -605,7 +615,7 @@ nfsd4_return_all_file_layouts(struct nfs4_client *clp, struct nfs4_file *fp)
- }
- 
- static void
--nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
-+nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls, struct nfsd_file *file)
- {
- 	struct nfs4_client *clp = ls->ls_stid.sc_client;
- 	char addr_str[INET6_ADDRSTRLEN];
-@@ -627,7 +637,7 @@ nfsd4_cb_layout_fail(struct nfs4_layout_stateid *ls)
- 
- 	argv[0] = (char *)nfsd_recall_failed;
- 	argv[1] = addr_str;
--	argv[2] = ls->ls_file->nf_file->f_path.mnt->mnt_sb->s_id;
-+	argv[2] = file->nf_file->f_path.mnt->mnt_sb->s_id;
- 	argv[3] = NULL;
- 
- 	error = call_usermodehelper(nfsd_recall_failed, argv, envp,
-@@ -657,6 +667,7 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
- 	struct nfsd_net *nn;
- 	ktime_t now, cutoff;
- 	const struct nfsd4_layout_ops *ops;
-+	struct nfsd_file *fl;
- 
- 	trace_nfsd_cb_layout_done(&ls->ls_stid.sc_stateid, task);
- 	switch (task->tk_status) {
-@@ -688,12 +699,17 @@ nfsd4_cb_layout_done(struct nfsd4_callback *cb, struct rpc_task *task)
- 		 * Unknown error or non-responding client, we'll need to fence.
- 		 */
- 		trace_nfsd_layout_recall_fail(&ls->ls_stid.sc_stateid);
--
--		ops = nfsd4_layout_ops[ls->ls_layout_type];
--		if (ops->fence_client)
--			ops->fence_client(ls);
--		else
--			nfsd4_cb_layout_fail(ls);
-+		rcu_read_lock();
-+		fl = nfsd_file_get(ls->ls_file);
-+		rcu_read_unlock();
-+		if (fl) {
-+			ops = nfsd4_layout_ops[ls->ls_layout_type];
-+			if (ops->fence_client)
-+				ops->fence_client(ls, fl);
-+			else
-+				nfsd4_cb_layout_fail(ls, fl);
-+			nfsd_file_put(fl);
-+		}
- 		return 1;
- 	case -NFS4ERR_NOMATCHING_LAYOUT:
- 		trace_nfsd_layout_recall_done(&ls->ls_stid.sc_stateid);
+ /* Simple check to find out if a given net was properly initialized */
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3d85c88ec4d7..560d246f6e02 100644
+index 52e680235afe..c57f2ff954cb 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1712,7 +1712,8 @@ void nfsd4_revoke_states(struct net *net, struct super_block *sb)
- 	unsigned int idhashval;
- 	unsigned int sc_types;
- 
--	sc_types = NFS4_OPEN_STID | NFS4_LOCK_STID | NFS4_DELEG_STID;
-+	sc_types = (NFS4_OPEN_STID | NFS4_LOCK_STID |
-+		    NFS4_DELEG_STID | NFS4_LAYOUT_STID);
- 
- 	spin_lock(&nn->client_lock);
- 	for (idhashval = 0; idhashval < CLIENT_HASH_MASK; idhashval++) {
-@@ -1725,6 +1726,7 @@ void nfsd4_revoke_states(struct net *net, struct super_block *sb)
- 			if (stid) {
- 				struct nfs4_ol_stateid *stp;
- 				struct nfs4_delegation *dp;
-+				struct nfs4_layout_stateid *ls;
- 
- 				spin_unlock(&nn->client_lock);
- 				switch (stid->sc_type) {
-@@ -1780,6 +1782,10 @@ void nfsd4_revoke_states(struct net *net, struct super_block *sb)
- 					if (dp)
- 						revoke_delegation(dp);
- 					break;
-+				case NFS4_LAYOUT_STID:
-+					ls = layoutstateid(stid);
-+					nfsd4_close_layout(ls);
-+					break;
+@@ -1724,6 +1724,14 @@ void nfsd4_revoke_states(struct net *net, struct super_block *sb)
  				}
  				nfs4_put_stid(stid);
  				spin_lock(&nn->client_lock);
-@@ -2859,17 +2865,25 @@ static int nfs4_show_layout(struct seq_file *s, struct nfs4_stid *st)
- 	struct nfsd_file *file;
- 
- 	ls = container_of(st, struct nfs4_layout_stateid, ls_stid);
--	file = ls->ls_file;
-+	rcu_read_lock();
-+	file = nfsd_file_get(ls->ls_file);
-+	rcu_read_unlock();
- 
- 	seq_printf(s, "- ");
- 	nfs4_show_stateid(s, &st->sc_stateid);
--	seq_printf(s, ": { type: layout, ");
-+	seq_printf(s, ": { type: layout");
- 
- 	/* XXX: What else would be useful? */
- 
--	nfs4_show_superblock(s, file);
--	seq_printf(s, ", ");
--	nfs4_show_fname(s, file);
-+	if (file) {
-+		seq_printf(s, ", ");
-+		nfs4_show_superblock(s, file);
-+		seq_printf(s, ", ");
-+		nfs4_show_fname(s, file);
-+		nfsd_file_put(file);
-+	}
-+	if (st->sc_status & NFS4_STID_ADMIN_REVOKED)
-+		seq_puts(s, ", admin-revoked");
- 	seq_printf(s, " }\n");
- 
- 	return 0;
-diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
-index de1e0dfed06a..f2777577865e 100644
---- a/fs/nfsd/pnfs.h
-+++ b/fs/nfsd/pnfs.h
-@@ -37,7 +37,8 @@ struct nfsd4_layout_ops {
- 	__be32 (*proc_layoutcommit)(struct inode *inode,
- 			struct nfsd4_layoutcommit *lcp);
- 
--	void (*fence_client)(struct nfs4_layout_stateid *ls);
-+	void (*fence_client)(struct nfs4_layout_stateid *ls,
-+			     struct nfsd_file *file);
- };
- 
- extern const struct nfsd4_layout_ops *nfsd4_layout_ops[];
-@@ -72,6 +73,7 @@ void nfsd4_setup_layout_type(struct svc_export *exp);
- void nfsd4_return_all_client_layouts(struct nfs4_client *);
- void nfsd4_return_all_file_layouts(struct nfs4_client *clp,
- 		struct nfs4_file *fp);
-+void nfsd4_close_layout(struct nfs4_layout_stateid *ls);
- int nfsd4_init_pnfs(void);
- void nfsd4_exit_pnfs(void);
- #else
-@@ -89,6 +91,9 @@ static inline void nfsd4_return_all_file_layouts(struct nfs4_client *clp,
- 		struct nfs4_file *fp)
- {
++				if (clp->cl_minorversion == 0)
++					/* Allow cleanup after a lease period.
++					 * store_release ensures cleanup will
++					 * see any newly revoked states if it
++					 * sees the time updated.
++					 */
++					nn->nfs40_last_revoke =
++						ktime_get_boottime_seconds();
+ 				goto retry;
+ 			}
+ 		}
+@@ -4648,6 +4656,39 @@ nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
+ 	return ret;
  }
-+static inline void nfsd4_close_layout(struct nfs4_layout_stateid *ls)
+ 
++static void nfsd_drop_revoked_stid(struct nfs4_stid *s)
 +{
++	struct nfs4_client *cl = s->sc_client;
++
++	switch (s->sc_type) {
++	default:
++		spin_unlock(&cl->cl_lock);
++	}
 +}
- static inline void nfsd4_exit_pnfs(void)
++
++static void nfs40_drop_revoked_stid(struct nfs4_client *cl,
++				    stateid_t *stid)
++{
++	/* NFSv4.0 has no way for the client to tell the server
++	 * that it can forget an admin-revoked stateid.
++	 * So we keep it around until the first time that the
++	 * client uses it, and drop it the first time
++	 * nfserr_admin_revoked is returned.
++	 * For v4.1 and later we wait until explicitly told
++	 * to free the stateid.
++	 */
++	if (cl->cl_minorversion == 0) {
++		struct nfs4_stid *st;
++
++		spin_lock(&cl->cl_lock);
++		st = find_stateid_locked(cl, stid);
++		if (st)
++			nfsd_drop_revoked_stid(st);
++		else
++			spin_unlock(&cl->cl_lock);
++	}
++}
++
+ static __be32
+ nfsd4_verify_open_stid(struct nfs4_stid *s)
  {
+@@ -4670,6 +4711,10 @@ nfsd4_lock_ol_stateid(struct nfs4_ol_stateid *stp)
+ 
+ 	mutex_lock_nested(&stp->st_mutex, LOCK_STATEID_MUTEX);
+ 	ret = nfsd4_verify_open_stid(&stp->st_stid);
++	if (ret == nfserr_admin_revoked)
++		nfs40_drop_revoked_stid(stp->st_stid.sc_client,
++					&stp->st_stid.sc_stateid);
++
+ 	if (ret != nfs_ok)
+ 		mutex_unlock(&stp->st_mutex);
+ 	return ret;
+@@ -5253,6 +5298,7 @@ nfs4_check_deleg(struct nfs4_client *cl, struct nfsd4_open *open,
+ 	}
+ 	if (deleg->dl_stid.sc_status & NFS4_STID_REVOKED) {
+ 		nfs4_put_stid(&deleg->dl_stid);
++		nfs40_drop_revoked_stid(cl, &open->op_delegate_stateid);
+ 		status = nfserr_deleg_revoked;
+ 		goto out;
+ 	}
+@@ -6251,6 +6297,43 @@ nfs4_process_client_reaplist(struct list_head *reaplist)
+ 	}
  }
+ 
++static void nfs40_clean_admin_revoked(struct nfsd_net *nn,
++				      struct laundry_time *lt)
++{
++	struct nfs4_client *clp;
++
++	spin_lock(&nn->client_lock);
++	if (nn->nfs40_last_revoke == 0 ||
++	    nn->nfs40_last_revoke > lt->cutoff) {
++		spin_unlock(&nn->client_lock);
++		return;
++	}
++	nn->nfs40_last_revoke = 0;
++
++retry:
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		unsigned long id, tmp;
++		struct nfs4_stid *stid;
++
++		if (atomic_read(&clp->cl_admin_revoked) == 0)
++			continue;
++
++		spin_lock(&clp->cl_lock);
++		idr_for_each_entry_ul(&clp->cl_stateids, stid, tmp, id)
++			if (stid->sc_status & NFS4_STID_ADMIN_REVOKED) {
++				refcount_inc(&stid->sc_count);
++				spin_unlock(&nn->client_lock);
++				/* this function drops ->cl_lock */
++				nfsd_drop_revoked_stid(stid);
++				nfs4_put_stid(stid);
++				spin_lock(&nn->client_lock);
++				goto retry;
++			}
++		spin_unlock(&clp->cl_lock);
++	}
++	spin_unlock(&nn->client_lock);
++}
++
+ static time64_t
+ nfs4_laundromat(struct nfsd_net *nn)
+ {
+@@ -6284,6 +6367,8 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	nfs4_get_client_reaplist(nn, &reaplist, &lt);
+ 	nfs4_process_client_reaplist(&reaplist);
+ 
++	nfs40_clean_admin_revoked(nn, &lt);
++
+ 	spin_lock(&state_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+@@ -6502,6 +6587,9 @@ static __be32 nfsd4_stid_check_stateid_generation(stateid_t *in, struct nfs4_sti
+ 	if (ret == nfs_ok)
+ 		ret = check_stateid_generation(in, &s->sc_stateid, has_session);
+ 	spin_unlock(&s->sc_lock);
++	if (ret == nfserr_admin_revoked)
++		nfs40_drop_revoked_stid(s->sc_client,
++					&s->sc_stateid);
+ 	return ret;
+ }
+ 
+@@ -6546,6 +6634,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 	}
+ out_unlock:
+ 	spin_unlock(&cl->cl_lock);
++	if (status == nfserr_admin_revoked)
++		nfs40_drop_revoked_stid(cl, stateid);
+ 	return status;
+ }
+ 
+@@ -6592,6 +6682,7 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 		return nfserr_deleg_revoked;
+ 	}
+ 	if (stid->sc_type & NFS4_STID_ADMIN_REVOKED) {
++		nfs40_drop_revoked_stid(cstate->clp, stateid);
+ 		nfs4_put_stid(stid);
+ 		return nfserr_admin_revoked;
+ 	}
+@@ -6884,6 +6975,11 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	s = find_stateid_locked(cl, stateid);
+ 	if (!s || s->sc_status & NFS4_STID_CLOSED)
+ 		goto out_unlock;
++	if (s->sc_status & NFS4_STID_ADMIN_REVOKED) {
++		nfsd_drop_revoked_stid(s);
++		ret = nfs_ok;
++		goto out;
++	}
+ 	spin_lock(&s->sc_lock);
+ 	switch (s->sc_type) {
+ 	case NFS4_DELEG_STID:
+@@ -6910,7 +7006,6 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		spin_unlock(&cl->cl_lock);
+ 		ret = nfsd4_free_lock_stateid(stateid, s);
+ 		goto out;
+-	/* Default falls through and returns nfserr_bad_stateid */
+ 	}
+ 	spin_unlock(&s->sc_lock);
+ out_unlock:
 -- 
 2.42.1
 
