@@ -1,88 +1,57 @@
-Authentication-Results: smtp.subspace.kernel.org; dkim=none
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CECD711F
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Nov 2023 20:33:20 -0800 (PST)
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 632405BE89;
-	Fri, 24 Nov 2023 00:30:56 +0000 (UTC)
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 356101340B;
-	Fri, 24 Nov 2023 00:30:53 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([10.150.64.162])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id B0iqNr3uX2WPegAAD6G6ig
-	(envelope-from <neilb@suse.de>); Fri, 24 Nov 2023 00:30:53 +0000
-From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	Olga Kornievskaia <kolga@netapp.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Subject: [PATCH 00/11 v4] nfsd: support admin-revocation of v4 state
-Date: Fri, 24 Nov 2023 11:28:35 +1100
-Message-ID: <20231124002925.1816-1-neilb@suse.de>
-X-Mailer: git-send-email 2.42.1
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OeKrP9na"
+Received: from mail-oa1-x36.google.com (mail-oa1-x36.google.com [IPv6:2001:4860:4864:20::36])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id BF5A7A9
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Nov 2023 00:58:01 -0800 (PST)
+Received: by mail-oa1-x36.google.com with SMTP id 586e51a60fabf-1f066fc2a2aso845538fac.0
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Nov 2023 00:58:01 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1700816281; x=1701421081; darn=vger.kernel.org;
+        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=6LhAboDm6sUuuCQVgP+c8PrU6vIFFbuKKGvnvRsYyfY=;
+        b=OeKrP9naXo9VRDYGYfG0EoOHxYwN+4kxVaNnfzMx+p6X9b2+RVuAnS0+fmGn0flmmm
+         xuevUq5cmov0m4/K6rY545OYIEE7lTJV9b4zDy7ExcXAGkDMOV7ggkMIgcUgQE0mlZqC
+         wxB+VwCSZY9b2OoX6XTHrZb7hItNpuUOp2KhUBMttuzCZGwNDm0LFXkez7BSd+/htpvU
+         693S0DgJpTFBdmd9HUKHyFEposkgoYH9NEZeUl5+1HkBkVOuPUfOCLUP+qfLHbtETs+X
+         sndiltgrf4saprWRnflx1JN2pruJjsRX2jv93QieOKxnNCV06t/ELLzjMlHvCduqgSiO
+         trOw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1700816281; x=1701421081;
+        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=6LhAboDm6sUuuCQVgP+c8PrU6vIFFbuKKGvnvRsYyfY=;
+        b=p9L/gDNGkY6J0NdlROM1n9i65kT0GAIE4FMQxVuVij85qLj9WwvmjtIk6tzlEv/dfp
+         WsHFljJWtQynLNWuKDovCISno3tgh3Av6/KS4mG3CRtPPiR8UDJRtPqC/4F1YwGBewGN
+         f6ppNJE6JQ5RLVx2dXLzQKmpOU7wVk2ObomRyAaTCIf+fFX0RhkyNZqwb/N7nFhXSC5s
+         tyVNau9qt6u/e1cZZBvUroJ/fUx79upwCLb8O1tSveOo3mxiNf/HyjJ+4lDYNp1D2m/q
+         YHzBG2QUHzci4ct0FxbySZdfuaRPktFJrW+M5wkdA7CMhl8/F8aowwkF2K9Q4Fh25h1j
+         AKMw==
+X-Gm-Message-State: AOJu0YxdAB3jb9WO4RepHZ1/C1NGluyqI/yARd+wEZhIMdJQC3m84oFX
+	zBfdQKkS7YZyCOBN0+3DW56Ft72nqGu5wOwNNQpCYvaoRxI=
+X-Google-Smtp-Source: AGHT+IHLh5xsIhSyHawY0M8H6Ga22qP8JuO3MudnXsM1rLEXiONio9/XKU4dnQvc/jHJmqoDjpkOCO4EqJfjrihURdw=
+X-Received: by 2002:a05:6870:5588:b0:1e9:b08d:69f0 with SMTP id
+ qj8-20020a056870558800b001e9b08d69f0mr2135568oac.51.1700816280936; Fri, 24
+ Nov 2023 00:58:00 -0800 (PST)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Spamd-Bar: +++++++++++++
-X-Spam-Score: 13.21
-X-Rspamd-Server: rspamd1
-X-Spam-Level: *
-X-Rspamd-Queue-Id: 632405BE89
-Authentication-Results: smtp-out2.suse.de;
-	dkim=none;
-	dmarc=fail reason="No valid SPF, No valid DKIM" header.from=suse.de (policy=none);
-	spf=softfail (smtp-out2.suse.de: 2a07:de40:b281:104:10:150:64:97 is neither permitted nor denied by domain of neilb@suse.de) smtp.mailfrom=neilb@suse.de
-X-Spamd-Result: default: False [13.21 / 50.00];
-	 ARC_NA(0.00)[];
-	 RCVD_VIA_SMTP_AUTH(0.00)[];
-	 SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	 FROM_HAS_DN(0.00)[];
-	 TO_DN_SOME(0.00)[];
-	 R_MISSING_CHARSET(2.50)[];
-	 TO_MATCH_ENVRCPT_ALL(0.00)[];
-	 MIME_GOOD(-0.10)[text/plain];
-	 NEURAL_SPAM_SHORT(1.42)[0.472];
-	 BROKEN_CONTENT_TYPE(1.50)[];
-	 R_SPF_SOFTFAIL(4.60)[~all:c];
-	 RCPT_COUNT_FIVE(0.00)[6];
-	 RCVD_COUNT_THREE(0.00)[3];
-	 MX_GOOD(-0.01)[];
-	 MID_CONTAINS_FROM(1.00)[];
-	 FUZZY_BLOCKED(0.00)[rspamd.com];
-	 FROM_EQ_ENVFROM(0.00)[];
-	 R_DKIM_NA(2.20)[];
-	 MIME_TRACE(0.00)[0:+];
-	 RCVD_TLS_ALL(0.00)[];
-	 DMARC_POLICY_SOFTFAIL(0.10)[suse.de : No valid SPF, No valid DKIM,none]
+From: Martin Wege <martin.l.wege@gmail.com>
+Date: Fri, 24 Nov 2023 09:57:50 +0100
+Message-ID: <CANH4o6OdF=hjLtZ1_jbqPjexuenYn6cSvxFrJ+BUUDQv86DRzA@mail.gmail.com>
+Subject: umount.nfs: /mnt: block devices not permitted on fs
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 
-This revision addes revocation of layout state, is rebased on latest
-nfsd-next, and addresses a couple of other review comments.
+Hello,
+
+We get a umount.nfs: /mnt: block devices not permitted on fs in a snap
+container on Ubuntu.
+
+Can anyone explain what is going wrong?
 
 Thanks,
-NeilBrown
-
- [PATCH 01/11] nfsd: hold ->cl_lock for hash_delegation_locked()
- [PATCH 02/11] nfsd: don't call functions with side-effecting inside
- [PATCH 03/11] nfsd: avoid race after unhash_delegation_locked()
- [PATCH 04/11] nfsd: split sc_status out of sc_type
- [PATCH 05/11] nfsd: prepare for supporting admin-revocation of state
- [PATCH 06/11] nfsd: allow admin-revoked state to appear in
- [PATCH 07/11] nfsd: allow admin-revoked NFSv4.0 state to be freed.
- [PATCH 08/11] nfsd: allow lock state ids to be revoked and then freed
- [PATCH 09/11] nfsd: allow open state ids to be revoked and then freed
- [PATCH 10/11] nfsd: allow delegation state ids to be revoked and then
- [PATCH 11/11] nfsd: allow layout state to be admin-revoked.
-
+Martin
