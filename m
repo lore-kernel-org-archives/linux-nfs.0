@@ -1,228 +1,598 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4CBFC3AC1A;
-	Thu, 30 Nov 2023 16:31:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2C0C482DC;
+	Thu, 30 Nov 2023 16:32:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="fLnOk8l9"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CAF67C433C7;
-	Thu, 30 Nov 2023 16:31:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-	s=korg; t=1701361865;
-	bh=hLzX0/g8xksVFwfgFJxouPHcgeei02byPxEDkBKeY0M=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=fLnOk8l9XcpwMotm+74JixXiHdsOJbJiND2k+1pIkbrjUA/PD4VKRDZpZemCfVnwA
-	 zVE3wQdpW2NscANRbdGuA4KMDf+4kbaIU0Wz+qmvqpcdZ4/lGwQ/80NgnL+Mn0XLFh
-	 WS1RVE3SFMl/LihUO7AFD/xKeihKX04JEFTAG2QM=
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-To: stable@vger.kernel.org
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	patches@lists.linux.dev,
-	linux-nfs@vger.kernel.org,
-	Jeff Layton <jlayton@kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6.1 54/82] NFSD: Fix checksum mismatches in the duplicate reply cache
-Date: Thu, 30 Nov 2023 16:22:25 +0000
-Message-ID: <20231130162137.683303891@linuxfoundation.org>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20231130162135.977485944@linuxfoundation.org>
-References: <20231130162135.977485944@linuxfoundation.org>
-User-Agent: quilt/0.67
-X-stable: review
-X-Patchwork-Hint: ignore
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Qs4NKLU3"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3320AC433C7;
+	Thu, 30 Nov 2023 16:32:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1701361953;
+	bh=3fiBePA2SQ87pfXqNznKtUGmW2YvCJSsuFR11L1S668=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=Qs4NKLU3lVTIJkT2uUEhvLB7t0cN2o+1N9AvfieAH8pCpVdqc2VuL8S1EA4wDkSsP
+	 CRudP8ZRheDLPWPXQCpTq/dGnFSEG3v2N/ep/5uLIv53AiA4n1GEknmUyJjeoPn/ge
+	 TgU9ZEvtVY9ZtyJ5yI/kzOvSh7K9vKfRjjSJysBLjpwM5/PpLYWbLhdwYbEIroaG6b
+	 i21F9qAIDz7vMJiCyW4rgzuf5qfhyd7wfBRfW3rMc7L4sIDGdc3zWA1qFRs8o+L4RJ
+	 vVoOQ/runlk4xTRoxsuihQmIbVsEImamtbB+8b5BkxKmOqr1k/2P/0KxRt5Lv3tmAG
+	 oadBuO1pNRElQ==
+Date: Thu, 30 Nov 2023 17:32:29 +0100
+From: Lorenzo Bianconi <lorenzo@kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+	lorenzo.bianconi@redhat.com, neilb@suse.de, netdev@vger.kernel.org,
+	kuba@kernel.org
+Subject: Re: [PATCH v5 2/3] NFSD: convert write_version to netlink command
+Message-ID: <ZWi5HXStptUgeLrX@lore-desk>
+References: <cover.1701277475.git.lorenzo@kernel.org>
+ <8b47d2e3f704066204149653fd1bd86a64188f61.1701277475.git.lorenzo@kernel.org>
+ <88d91863e36a1e36f7770aa8a7f42853250e3d55.camel@kernel.org>
+ <ZWi0OkrOsv8j6ev3@tissot.1015granger.net>
+ <ZWi3kO5nOXqzC5mS@lore-desk>
+ <ZWi4am03iXb6LY01@tissot.1015granger.net>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-
-6.1-stable review patch.  If anyone has any objections, please let me know.
-
-------------------
-
-From: Chuck Lever <chuck.lever@oracle.com>
-
-[ Upstream commit bf51c52a1f3c238d72c64e14d5e7702d3a245b82 ]
-
-nfsd_cache_csum() currently assumes that the server's RPC layer has
-been advancing rq_arg.head[0].iov_base as it decodes an incoming
-request, because that's the way it used to work. On entry, it
-expects that buf->head[0].iov_base points to the start of the NFS
-header, and excludes the already-decoded RPC header.
-
-These days however, head[0].iov_base now points to the start of the
-RPC header during all processing. It no longer points at the NFS
-Call header when execution arrives at nfsd_cache_csum().
-
-In a retransmitted RPC the XID and the NFS header are supposed to
-be the same as the original message, but the contents of the
-retransmitted RPC header can be different. For example, for krb5,
-the GSS sequence number will be different between the two. Thus if
-the RPC header is always included in the DRC checksum computation,
-the checksum of the retransmitted message might not match the
-checksum of the original message, even though the NFS part of these
-messages is identical.
-
-The result is that, even if a matching XID is found in the DRC,
-the checksum mismatch causes the server to execute the
-retransmitted RPC transaction again.
-
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Tested-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
----
- fs/nfsd/cache.h    |    3 +-
- fs/nfsd/nfscache.c |   65 +++++++++++++++++++++++++++++++++++------------------
- fs/nfsd/nfssvc.c   |   11 ++++++++
- 3 files changed, 56 insertions(+), 23 deletions(-)
-
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -82,7 +82,8 @@ int	nfsd_drc_slab_create(void);
- void	nfsd_drc_slab_free(void);
- int	nfsd_reply_cache_init(struct nfsd_net *);
- void	nfsd_reply_cache_shutdown(struct nfsd_net *);
--int	nfsd_cache_lookup(struct svc_rqst *);
-+int	nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
-+			  unsigned int len);
- void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
- int	nfsd_reply_cache_stats_show(struct seq_file *m, void *v);
- 
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -311,33 +311,53 @@ nfsd_reply_cache_scan(struct shrinker *s
- 
- 	return prune_cache_entries(nn);
- }
--/*
-- * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
-+
-+/**
-+ * nfsd_cache_csum - Checksum incoming NFS Call arguments
-+ * @buf: buffer containing a whole RPC Call message
-+ * @start: starting byte of the NFS Call header
-+ * @remaining: size of the NFS Call header, in bytes
-+ *
-+ * Compute a weak checksum of the leading bytes of an NFS procedure
-+ * call header to help verify that a retransmitted Call matches an
-+ * entry in the duplicate reply cache.
-+ *
-+ * To avoid assumptions about how the RPC message is laid out in
-+ * @buf and what else it might contain (eg, a GSS MIC suffix), the
-+ * caller passes us the exact location and length of the NFS Call
-+ * header.
-+ *
-+ * Returns a 32-bit checksum value, as defined in RFC 793.
-  */
--static __wsum
--nfsd_cache_csum(struct svc_rqst *rqstp)
-+static __wsum nfsd_cache_csum(struct xdr_buf *buf, unsigned int start,
-+			      unsigned int remaining)
- {
-+	unsigned int base, len;
-+	struct xdr_buf subbuf;
-+	__wsum csum = 0;
-+	void *p;
- 	int idx;
--	unsigned int base;
--	__wsum csum;
--	struct xdr_buf *buf = &rqstp->rq_arg;
--	const unsigned char *p = buf->head[0].iov_base;
--	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
--				RC_CSUMLEN);
--	size_t len = min(buf->head[0].iov_len, csum_len);
-+
-+	if (remaining > RC_CSUMLEN)
-+		remaining = RC_CSUMLEN;
-+	if (xdr_buf_subsegment(buf, &subbuf, start, remaining))
-+		return csum;
- 
- 	/* rq_arg.head first */
--	csum = csum_partial(p, len, 0);
--	csum_len -= len;
-+	if (subbuf.head[0].iov_len) {
-+		len = min_t(unsigned int, subbuf.head[0].iov_len, remaining);
-+		csum = csum_partial(subbuf.head[0].iov_base, len, csum);
-+		remaining -= len;
-+	}
- 
- 	/* Continue into page array */
--	idx = buf->page_base / PAGE_SIZE;
--	base = buf->page_base & ~PAGE_MASK;
--	while (csum_len) {
--		p = page_address(buf->pages[idx]) + base;
--		len = min_t(size_t, PAGE_SIZE - base, csum_len);
-+	idx = subbuf.page_base / PAGE_SIZE;
-+	base = subbuf.page_base & ~PAGE_MASK;
-+	while (remaining) {
-+		p = page_address(subbuf.pages[idx]) + base;
-+		len = min_t(unsigned int, PAGE_SIZE - base, remaining);
- 		csum = csum_partial(p, len, csum);
--		csum_len -= len;
-+		remaining -= len;
- 		base = 0;
- 		++idx;
- 	}
-@@ -408,6 +428,8 @@ out:
- /**
-  * nfsd_cache_lookup - Find an entry in the duplicate reply cache
-  * @rqstp: Incoming Call to find
-+ * @start: starting byte in @rqstp->rq_arg of the NFS Call header
-+ * @len: size of the NFS Call header, in bytes
-  *
-  * Try to find an entry matching the current call in the cache. When none
-  * is found, we try to grab the oldest expired entry off the LRU list. If
-@@ -420,7 +442,8 @@ out:
-  *   %RC_REPLY: Reply from cache
-  *   %RC_DROPIT: Do not process the request further
-  */
--int nfsd_cache_lookup(struct svc_rqst *rqstp)
-+int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
-+		      unsigned int len)
- {
- 	struct nfsd_net		*nn;
- 	struct svc_cacherep	*rp, *found;
-@@ -435,7 +458,7 @@ int nfsd_cache_lookup(struct svc_rqst *r
- 		goto out;
- 	}
- 
--	csum = nfsd_cache_csum(rqstp);
-+	csum = nfsd_cache_csum(&rqstp->rq_arg, start, len);
- 
- 	/*
- 	 * Since the common case is a cache miss followed by an insert,
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -1027,6 +1027,7 @@ out:
- int nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
- {
- 	const struct svc_procedure *proc = rqstp->rq_procinfo;
-+	unsigned int start, len;
- 	__be32 *nfs_reply;
- 
- 	/*
-@@ -1036,10 +1037,18 @@ int nfsd_dispatch(struct svc_rqst *rqstp
- 	rqstp->rq_cachetype = proc->pc_cachetype;
- 
- 	svcxdr_init_decode(rqstp);
-+
-+	/*
-+	 * ->pc_decode advances the argument stream past the NFS
-+	 * Call header, so grab the header's starting location and
-+	 * size now for the call to nfsd_cache_lookup().
-+	 */
-+	start = xdr_stream_pos(&rqstp->rq_arg_stream);
-+	len = xdr_stream_remaining(&rqstp->rq_arg_stream);
- 	if (!proc->pc_decode(rqstp, &rqstp->rq_arg_stream))
- 		goto out_decode_err;
- 
--	switch (nfsd_cache_lookup(rqstp)) {
-+	switch (nfsd_cache_lookup(rqstp, start, len)) {
- 	case RC_DOIT:
- 		break;
- 	case RC_REPLY:
+Content-Type: multipart/signed; micalg=pgp-sha512;
+	protocol="application/pgp-signature"; boundary="agUwACALdI3DEFIQ"
+Content-Disposition: inline
+In-Reply-To: <ZWi4am03iXb6LY01@tissot.1015granger.net>
 
 
+--agUwACALdI3DEFIQ
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
+
+On Nov 30, Chuck Lever wrote:
+> On Thu, Nov 30, 2023 at 05:25:52PM +0100, Lorenzo Bianconi wrote:
+> > > On Wed, Nov 29, 2023 at 01:23:37PM -0500, Jeff Layton wrote:
+> > > > On Wed, 2023-11-29 at 18:12 +0100, Lorenzo Bianconi wrote:
+> > > > > Introduce write_version netlink command similar to the ones avail=
+able
+> > > > > through the procfs.
+> > > > >=20
+> > > > > Signed-off-by: Lorenzo Bianconi <lorenzo@kernel.org>
+> > > > > ---
+> > > > >  Documentation/netlink/specs/nfsd.yaml |  32 ++++++++
+> > > > >  fs/nfsd/netlink.c                     |  19 +++++
+> > > > >  fs/nfsd/netlink.h                     |   3 +
+> > > > >  fs/nfsd/nfsctl.c                      | 105 ++++++++++++++++++++=
+++++++
+> > > > >  include/uapi/linux/nfsd_netlink.h     |  11 +++
+> > > > >  tools/net/ynl/generated/nfsd-user.c   |  81 ++++++++++++++++++++
+> > > > >  tools/net/ynl/generated/nfsd-user.h   |  55 ++++++++++++++
+> > > > >  7 files changed, 306 insertions(+)
+> > > > >=20
+> > > > > diff --git a/Documentation/netlink/specs/nfsd.yaml b/Documentatio=
+n/netlink/specs/nfsd.yaml
+> > > > > index c92e1425d316..6c5e42bb20f6 100644
+> > > > > --- a/Documentation/netlink/specs/nfsd.yaml
+> > > > > +++ b/Documentation/netlink/specs/nfsd.yaml
+> > > > > @@ -68,6 +68,18 @@ attribute-sets:
+> > > > >        -
+> > > > >          name: threads
+> > > > >          type: u32
+> > > > > +  -
+> > > > > +    name: server-version
+> > > > > +    attributes:
+> > > > > +      -
+> > > > > +        name: major
+> > > > > +        type: u32
+> > > > > +      -
+> > > > > +        name: minor
+> > > > > +        type: u32
+> > > > > +      -
+> > > > > +        name: status
+> > > > > +        type: u8
+> > > > > =20
+> > > > >  operations:
+> > > > >    list:
+> > > > > @@ -110,3 +122,23 @@ operations:
+> > > > >          reply:
+> > > > >            attributes:
+> > > > >              - threads
+> > > > > +    -
+> > > > > +      name: version-set
+> > > > > +      doc: enable/disable server version
+> > > > > +      attribute-set: server-version
+> > > > > +      flags: [ admin-perm ]
+> > > > > +      do:
+> > > > > +        request:
+> > > > > +          attributes:
+> > > > > +            - major
+> > > > > +            - minor
+> > > > > +            - status
+> > > > > +    -
+> > > > > +      name: version-get
+> > > > > +      doc: dump server versions
+> > > > > +      attribute-set: server-version
+> > > > > +      dump:
+> > > > > +        reply:
+> > > > > +          attributes:
+> > > > > +            - major
+> > > > > +            - minor
+> > > > > diff --git a/fs/nfsd/netlink.c b/fs/nfsd/netlink.c
+> > > > > index 1a59a8e6c7e2..0608a7bd193b 100644
+> > > > > --- a/fs/nfsd/netlink.c
+> > > > > +++ b/fs/nfsd/netlink.c
+> > > > > @@ -15,6 +15,13 @@ static const struct nla_policy nfsd_threads_se=
+t_nl_policy[NFSD_A_SERVER_WORKER_T
+> > > > >  	[NFSD_A_SERVER_WORKER_THREADS] =3D { .type =3D NLA_U32, },
+> > > > >  };
+> > > > > =20
+> > > > > +/* NFSD_CMD_VERSION_SET - do */
+> > > > > +static const struct nla_policy nfsd_version_set_nl_policy[NFSD_A=
+_SERVER_VERSION_STATUS + 1] =3D {
+> > > > > +	[NFSD_A_SERVER_VERSION_MAJOR] =3D { .type =3D NLA_U32, },
+> > > > > +	[NFSD_A_SERVER_VERSION_MINOR] =3D { .type =3D NLA_U32, },
+> > > > > +	[NFSD_A_SERVER_VERSION_STATUS] =3D { .type =3D NLA_U8, },
+> > > > > +};
+> > > > > +
+> > > > >  /* Ops table for nfsd */
+> > > > >  static const struct genl_split_ops nfsd_nl_ops[] =3D {
+> > > > >  	{
+> > > > > @@ -36,6 +43,18 @@ static const struct genl_split_ops nfsd_nl_ops=
+[] =3D {
+> > > > >  		.doit	=3D nfsd_nl_threads_get_doit,
+> > > > >  		.flags	=3D GENL_CMD_CAP_DO,
+> > > > >  	},
+> > > > > +	{
+> > > > > +		.cmd		=3D NFSD_CMD_VERSION_SET,
+> > > > > +		.doit		=3D nfsd_nl_version_set_doit,
+> > > > > +		.policy		=3D nfsd_version_set_nl_policy,
+> > > > > +		.maxattr	=3D NFSD_A_SERVER_VERSION_STATUS,
+> > > > > +		.flags		=3D GENL_ADMIN_PERM | GENL_CMD_CAP_DO,
+> > > > > +	},
+> > > > > +	{
+> > > > > +		.cmd	=3D NFSD_CMD_VERSION_GET,
+> > > > > +		.dumpit	=3D nfsd_nl_version_get_dumpit,
+> > > > > +		.flags	=3D GENL_CMD_CAP_DUMP,
+> > > > > +	},
+> > > > >  };
+> > > > > =20
+> > > > >  struct genl_family nfsd_nl_family __ro_after_init =3D {
+> > > > > diff --git a/fs/nfsd/netlink.h b/fs/nfsd/netlink.h
+> > > > > index 4137fac477e4..7d203cec08e4 100644
+> > > > > --- a/fs/nfsd/netlink.h
+> > > > > +++ b/fs/nfsd/netlink.h
+> > > > > @@ -18,6 +18,9 @@ int nfsd_nl_rpc_status_get_dumpit(struct sk_buf=
+f *skb,
+> > > > >  				  struct netlink_callback *cb);
+> > > > >  int nfsd_nl_threads_set_doit(struct sk_buff *skb, struct genl_in=
+fo *info);
+> > > > >  int nfsd_nl_threads_get_doit(struct sk_buff *skb, struct genl_in=
+fo *info);
+> > > > > +int nfsd_nl_version_set_doit(struct sk_buff *skb, struct genl_in=
+fo *info);
+> > > > > +int nfsd_nl_version_get_dumpit(struct sk_buff *skb,
+> > > > > +			       struct netlink_callback *cb);
+> > > > > =20
+> > > > >  extern struct genl_family nfsd_nl_family;
+> > > > > =20
+> > > > > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> > > > > index 130b3d937a79..f04430f79687 100644
+> > > > > --- a/fs/nfsd/nfsctl.c
+> > > > > +++ b/fs/nfsd/nfsctl.c
+> > > > > @@ -1757,6 +1757,111 @@ int nfsd_nl_threads_get_doit(struct sk_bu=
+ff *skb, struct genl_info *info)
+> > > > >  	return err;
+> > > > >  }
+> > > > > =20
+> > > > > +/**
+> > > > > + * nfsd_nl_version_set_doit - enable/disable the provided nfs se=
+rver version
+> > > > > + * @skb: reply buffer
+> > > > > + * @info: netlink metadata and command arguments
+> > > > > + *
+> > > > > + * Return 0 on success or a negative errno.
+> > > > > + */
+> > > > > +int nfsd_nl_version_set_doit(struct sk_buff *skb, struct genl_in=
+fo *info)
+> > > > > +{
+> > > > > +	struct nfsd_net *nn =3D net_generic(genl_info_net(info), nfsd_n=
+et_id);
+> > > > > +	enum vers_op cmd;
+> > > > > +	u32 major, minor;
+> > > > > +	u8 status;
+> > > > > +	int ret;
+> > > > > +
+> > > > > +	if (GENL_REQ_ATTR_CHECK(info, NFSD_A_SERVER_VERSION_MAJOR) ||
+> > > > > +	    GENL_REQ_ATTR_CHECK(info, NFSD_A_SERVER_VERSION_MINOR) ||
+> > > > > +	    GENL_REQ_ATTR_CHECK(info, NFSD_A_SERVER_VERSION_STATUS))
+> > > > > +		return -EINVAL;
+> > > > > +
+> > > > > +	major =3D nla_get_u32(info->attrs[NFSD_A_SERVER_VERSION_MAJOR]);
+> > > > > +	minor =3D nla_get_u32(info->attrs[NFSD_A_SERVER_VERSION_MINOR]);
+> > > > > +
+> > > > > +	status =3D nla_get_u32(info->attrs[NFSD_A_SERVER_VERSION_STATUS=
+]);
+> > > > > +	cmd =3D !!status ? NFSD_SET : NFSD_CLEAR;
+> > > > > +
+> > > > > +	mutex_lock(&nfsd_mutex);
+> > > > > +	switch (major) {
+> > > > > +	case 4:
+> > > > > +		ret =3D nfsd_minorversion(nn, minor, cmd);
+> > > > > +		break;
+> > > > > +	case 2:
+> > > > > +	case 3:
+> > > > > +		if (!minor) {
+> > > > > +			ret =3D nfsd_vers(nn, major, cmd);
+> > > > > +			break;
+> > > > > +		}
+> > > > > +		fallthrough;
+> > > > > +	default:
+> > > > > +		ret =3D -EINVAL;
+> > > > > +		break;
+> > > > > +	}
+> > > > > +	mutex_unlock(&nfsd_mutex);
+> > > > > +
+> > > > > +	return ret;
+> > > > > +}
+> > > > > +
+> > > > > +/**
+> > > > > + * nfsd_nl_version_get_doit - Handle verion_get dumpit
+> > > > > + * @skb: reply buffer
+> > > > > + * @cb: netlink metadata and command arguments
+> > > > > + *
+> > > > > + * Returns the size of the reply or a negative errno.
+> > > > > + */
+> > > > > +int nfsd_nl_version_get_dumpit(struct sk_buff *skb,
+> > > > > +			       struct netlink_callback *cb)
+> > > > > +{
+> > > > > +	struct nfsd_net *nn =3D net_generic(sock_net(skb->sk), nfsd_net=
+_id);
+> > > > > +	int i, ret =3D -ENOMEM;
+> > > > > +
+> > > > > +	mutex_lock(&nfsd_mutex);
+> > > > > +
+> > > > > +	for (i =3D 2; i <=3D 4; i++) {
+> > > > > +		int j;
+> > > > > +
+> > > > > +		if (i < cb->args[0]) /* already consumed */
+> > > > > +			continue;
+> > > > > +
+> > > > > +		if (!nfsd_vers(nn, i, NFSD_AVAIL))
+> > > > > +			continue;
+> > > > > +
+> > > > > +		for (j =3D 0; j <=3D NFSD_SUPPORTED_MINOR_VERSION; j++) {
+> > > > > +			void *hdr;
+> > > > > +
+> > > > > +			if (!nfsd_vers(nn, i, NFSD_TEST))
+> > > > > +				continue;
+> > > > > +
+> > > > > +			/* NFSv{2,3} does not support minor numbers */
+> > > > > +			if (i < 4 && j)
+> > > > > +				continue;
+> > > > > +
+> > > > > +			if (i =3D=3D 4 && !nfsd_minorversion(nn, j, NFSD_TEST))
+> > > > > +				continue;
+> > > > > +
+> > > > > +			hdr =3D genlmsg_put(skb, NETLINK_CB(cb->skb).portid,
+> > > > > +					  cb->nlh->nlmsg_seq, &nfsd_nl_family,
+> > > > > +					  0, NFSD_CMD_VERSION_GET);
+> > > > > +			if (!hdr)
+> > > > > +				goto out;
+> > > > > +
+> > > > > +			if (nla_put_u32(skb, NFSD_A_SERVER_VERSION_MAJOR, i) ||
+> > > > > +			    nla_put_u32(skb, NFSD_A_SERVER_VERSION_MINOR, j))
+> > > > > +				goto out;
+> > > > > +
+> > > > > +			genlmsg_end(skb, hdr);
+> > > > > +		}
+> > > > > +	}
+> > > > > +	cb->args[0] =3D i;
+> > > > > +	ret =3D skb->len;
+> > > > > +out:
+> > > > > +	mutex_unlock(&nfsd_mutex);
+> > > > > +
+> > > > > +	return ret;
+> > > > > +}
+> > > > > +
+> > > > >  /**
+> > > > >   * nfsd_net_init - Prepare the nfsd_net portion of a new net nam=
+espace
+> > > > >   * @net: a freshly-created network namespace
+> > > > > diff --git a/include/uapi/linux/nfsd_netlink.h b/include/uapi/lin=
+ux/nfsd_netlink.h
+> > > > > index 1b6fe1f9ed0e..1b3340f31baa 100644
+> > > > > --- a/include/uapi/linux/nfsd_netlink.h
+> > > > > +++ b/include/uapi/linux/nfsd_netlink.h
+> > > > > @@ -36,10 +36,21 @@ enum {
+> > > > >  	NFSD_A_SERVER_WORKER_MAX =3D (__NFSD_A_SERVER_WORKER_MAX - 1)
+> > > > >  };
+> > > > > =20
+> > > > > +enum {
+> > > > > +	NFSD_A_SERVER_VERSION_MAJOR =3D 1,
+> > > > > +	NFSD_A_SERVER_VERSION_MINOR,
+> > > > > +	NFSD_A_SERVER_VERSION_STATUS,
+> > > > > +
+> > > > > +	__NFSD_A_SERVER_VERSION_MAX,
+> > > > > +	NFSD_A_SERVER_VERSION_MAX =3D (__NFSD_A_SERVER_VERSION_MAX - 1)
+> > > > > +};
+> > > > > +
+> > > > >  enum {
+> > > > >  	NFSD_CMD_RPC_STATUS_GET =3D 1,
+> > > > >  	NFSD_CMD_THREADS_SET,
+> > > > >  	NFSD_CMD_THREADS_GET,
+> > > > > +	NFSD_CMD_VERSION_SET,
+> > > > > +	NFSD_CMD_VERSION_GET,
+> > > > > =20
+> > > > >  	__NFSD_CMD_MAX,
+> > > > >  	NFSD_CMD_MAX =3D (__NFSD_CMD_MAX - 1)
+> > > > > diff --git a/tools/net/ynl/generated/nfsd-user.c b/tools/net/ynl/=
+generated/nfsd-user.c
+> > > > > index 9768328a7751..4cb71c3cd18d 100644
+> > > > > --- a/tools/net/ynl/generated/nfsd-user.c
+> > > > > +++ b/tools/net/ynl/generated/nfsd-user.c
+> > > > > @@ -17,6 +17,8 @@ static const char * const nfsd_op_strmap[] =3D {
+> > > > >  	[NFSD_CMD_RPC_STATUS_GET] =3D "rpc-status-get",
+> > > > >  	[NFSD_CMD_THREADS_SET] =3D "threads-set",
+> > > > >  	[NFSD_CMD_THREADS_GET] =3D "threads-get",
+> > > > > +	[NFSD_CMD_VERSION_SET] =3D "version-set",
+> > > > > +	[NFSD_CMD_VERSION_GET] =3D "version-get",
+> > > > >  };
+> > > > > =20
+> > > > >  const char *nfsd_op_str(int op)
+> > > > > @@ -58,6 +60,17 @@ struct ynl_policy_nest nfsd_server_worker_nest=
+ =3D {
+> > > > >  	.table =3D nfsd_server_worker_policy,
+> > > > >  };
+> > > > > =20
+> > > > > +struct ynl_policy_attr nfsd_server_version_policy[NFSD_A_SERVER_=
+VERSION_MAX + 1] =3D {
+> > > > > +	[NFSD_A_SERVER_VERSION_MAJOR] =3D { .name =3D "major", .type =
+=3D YNL_PT_U32, },
+> > > > > +	[NFSD_A_SERVER_VERSION_MINOR] =3D { .name =3D "minor", .type =
+=3D YNL_PT_U32, },
+> > > > > +	[NFSD_A_SERVER_VERSION_STATUS] =3D { .name =3D "status", .type =
+=3D YNL_PT_U8, },
+> > > > > +};
+> > > > > +
+> > > > > +struct ynl_policy_nest nfsd_server_version_nest =3D {
+> > > > > +	.max_attr =3D NFSD_A_SERVER_VERSION_MAX,
+> > > > > +	.table =3D nfsd_server_version_policy,
+> > > > > +};
+> > > > > +
+> > > > >  /* Common nested types */
+> > > > >  /* =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D NFSD_CMD_RPC_STATU=
+S_GET =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D */
+> > > > >  /* NFSD_CMD_RPC_STATUS_GET - dump */
+> > > > > @@ -290,6 +303,74 @@ struct nfsd_threads_get_rsp *nfsd_threads_ge=
+t(struct ynl_sock *ys)
+> > > > >  	return NULL;
+> > > > >  }
+> > > > > =20
+> > > > > +/* =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D NFSD_CMD_VERSION_S=
+ET =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D */
+> > > > > +/* NFSD_CMD_VERSION_SET - do */
+> > > > > +void nfsd_version_set_req_free(struct nfsd_version_set_req *req)
+> > > > > +{
+> > > > > +	free(req);
+> > > > > +}
+> > > > > +
+> > > > > +int nfsd_version_set(struct ynl_sock *ys, struct nfsd_version_se=
+t_req *req)
+> > > > > +{
+> > > > > +	struct nlmsghdr *nlh;
+> > > > > +	int err;
+> > > > > +
+> > > > > +	nlh =3D ynl_gemsg_start_req(ys, ys->family_id, NFSD_CMD_VERSION=
+_SET, 1);
+> > > > > +	ys->req_policy =3D &nfsd_server_version_nest;
+> > > > > +
+> > > > > +	if (req->_present.major)
+> > > > > +		mnl_attr_put_u32(nlh, NFSD_A_SERVER_VERSION_MAJOR, req->major);
+> > > > > +	if (req->_present.minor)
+> > > > > +		mnl_attr_put_u32(nlh, NFSD_A_SERVER_VERSION_MINOR, req->minor);
+> > > > > +	if (req->_present.status)
+> > > > > +		mnl_attr_put_u8(nlh, NFSD_A_SERVER_VERSION_STATUS, req->status=
+);
+> > > > > +
+> > > > > +	err =3D ynl_exec(ys, nlh, NULL);
+> > > > > +	if (err < 0)
+> > > > > +		return -1;
+> > > > > +
+> > > > > +	return 0;
+> > > > > +}
+> > > > > +
+> > > > > +/* =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D NFSD_CMD_VERSION_G=
+ET =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D */
+> > > > > +/* NFSD_CMD_VERSION_GET - dump */
+> > > > > +void nfsd_version_get_list_free(struct nfsd_version_get_list *rs=
+p)
+> > > > > +{
+> > > > > +	struct nfsd_version_get_list *next =3D rsp;
+> > > > > +
+> > > > > +	while ((void *)next !=3D YNL_LIST_END) {
+> > > > > +		rsp =3D next;
+> > > > > +		next =3D rsp->next;
+> > > > > +
+> > > > > +		free(rsp);
+> > > > > +	}
+> > > > > +}
+> > > > > +
+> > > > > +struct nfsd_version_get_list *nfsd_version_get_dump(struct ynl_s=
+ock *ys)
+> > > > > +{
+> > > > > +	struct ynl_dump_state yds =3D {};
+> > > > > +	struct nlmsghdr *nlh;
+> > > > > +	int err;
+> > > > > +
+> > > > > +	yds.ys =3D ys;
+> > > > > +	yds.alloc_sz =3D sizeof(struct nfsd_version_get_list);
+> > > > > +	yds.cb =3D nfsd_version_get_rsp_parse;
+> > > > > +	yds.rsp_cmd =3D NFSD_CMD_VERSION_GET;
+> > > > > +	yds.rsp_policy =3D &nfsd_server_version_nest;
+> > > > > +
+> > > > > +	nlh =3D ynl_gemsg_start_dump(ys, ys->family_id, NFSD_CMD_VERSIO=
+N_GET, 1);
+> > > > > +
+> > > > > +	err =3D ynl_exec_dump(ys, nlh, &yds);
+> > > > > +	if (err < 0)
+> > > > > +		goto free_list;
+> > > > > +
+> > > > > +	return yds.first;
+> > > > > +
+> > > > > +free_list:
+> > > > > +	nfsd_version_get_list_free(yds.first);
+> > > > > +	return NULL;
+> > > > > +}
+> > > > > +
+> > > > >  const struct ynl_family ynl_nfsd_family =3D  {
+> > > > >  	.name		=3D "nfsd",
+> > > > >  };
+> > > > > diff --git a/tools/net/ynl/generated/nfsd-user.h b/tools/net/ynl/=
+generated/nfsd-user.h
+> > > > > index e162a4f20d91..e61c5a9e46fb 100644
+> > > > > --- a/tools/net/ynl/generated/nfsd-user.h
+> > > > > +++ b/tools/net/ynl/generated/nfsd-user.h
+> > > > > @@ -111,4 +111,59 @@ void nfsd_threads_get_rsp_free(struct nfsd_t=
+hreads_get_rsp *rsp);
+> > > > >   */
+> > > > >  struct nfsd_threads_get_rsp *nfsd_threads_get(struct ynl_sock *y=
+s);
+> > > > > =20
+> > > > > +/* =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D NFSD_CMD_VERSION_S=
+ET =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D */
+> > > > > +/* NFSD_CMD_VERSION_SET - do */
+> > > > > +struct nfsd_version_set_req {
+> > > > > +	struct {
+> > > > > +		__u32 major:1;
+> > > > > +		__u32 minor:1;
+> > > > > +		__u32 status:1;
+> > > > > +	} _present;
+> > > > > +
+> > > > > +	__u32 major;
+> > > > > +	__u32 minor;
+> > > > > +	__u8 status;
+> > > > > +};
+> > > > > +
+> > > >=20
+> > > > This more or less mirrors how the "versions" file works today, but =
+that
+> > > > interface is quite klunky.=A0 We don't have a use case that require=
+s that
+> > > > we do this piecemeal like this. I think we'd be better served with a
+> > > > more declarative interface that reconfigures the supported versions=
+ in
+> > > > one shot:
+> > > >=20
+> > > > Instead of having "major,minor,status" and potentially having to ca=
+ll
+> > > > this command several times from userland, it seems like it would be
+> > > > nicer to just have userland send down a list "major,minor" that sho=
+uld
+> > > > be enabled, and then just let the kernel figure out whether to enab=
+le or
+> > > > disable each. An empty list could mean "disable everything".
+> > > >=20
+> > > > That's simpler to reason out as an interface from userland too. Try=
+ing
+> > > > to keep track of the enabled and disabled versions and twiddle it is
+> > > > really tricky in rpc.nfsd today.
+> > >=20
+> > > Jeff and Lorenzo, this sounds to me like a useful and narrow
+> > > improvement to this interface, one that should be implemented as
+> > > part of this patch series.
+> >=20
+> > ack, I am fine with it, I will work on patch 2/3 and 3/3.
+> > @Chuck: am I suppose to respin patch 1/3 too?
+>=20
+> I assumed there might be minor changes to 1/3 after Jakub's second
+> review, so I have not applied it yet. You can resend all three to
+> me.
+
+iirc jakub's review was just for patch 2/3, anyway up to you.
+
+Regards,
+Lorenzo
+
+>=20
+>=20
+> > Regards,
+> > Lorenzo
+> >=20
+> > >=20
+> > > Ditto for Jeff's review comment on 3/3.
+> > >=20
+> > >=20
+> > > > > +static inline struct nfsd_version_set_req *nfsd_version_set_req_=
+alloc(void)
+> > > > > +{
+> > > > > +	return calloc(1, sizeof(struct nfsd_version_set_req));
+> > > > > +}
+> > > > > +void nfsd_version_set_req_free(struct nfsd_version_set_req *req);
+> > > > > +
+> > > > > +static inline void
+> > > > > +nfsd_version_set_req_set_major(struct nfsd_version_set_req *req,=
+ __u32 major)
+> > > > > +{
+> > > > > +	req->_present.major =3D 1;
+> > > > > +	req->major =3D major;
+> > > > > +}
+> > > > > +static inline void
+> > > > > +nfsd_version_set_req_set_minor(struct nfsd_version_set_req *req,=
+ __u32 minor)
+> > > > > +{
+> > > > > +	req->_present.minor =3D 1;
+> > > > > +	req->minor =3D minor;
+> > > > > +}
+> > > > > +static inline void
+> > > > > +nfsd_version_set_req_set_status(struct nfsd_version_set_req *req=
+, __u8 status)
+> > > > > +{
+> > > > > +	req->_present.status =3D 1;
+> > > > > +	req->status =3D status;
+> > > > > +}
+> > > > > +
+> > > > > +/*
+> > > > > + * enable/disable server version
+> > > > > + */
+> > > > > +int nfsd_version_set(struct ynl_sock *ys, struct nfsd_version_se=
+t_req *req);
+> > > > > +
+> > > > > +/* =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D NFSD_CMD_VERSION_G=
+ET =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D */
+> > > > > +/* NFSD_CMD_VERSION_GET - dump */
+> > > > > +struct nfsd_version_get_list {
+> > > > > +	struct nfsd_version_get_list *next;
+> > > > > +	struct nfsd_version_get_rsp obj __attribute__ ((aligned (8)));
+> > > > > +};
+> > > > > +
+> > > > > +void nfsd_version_get_list_free(struct nfsd_version_get_list *rs=
+p);
+> > > > > +
+> > > > > +struct nfsd_version_get_list *nfsd_version_get_dump(struct ynl_s=
+ock *ys);
+> > > > > +
+> > > > >  #endif /* _LINUX_NFSD_GEN_H */
+> > > >=20
+> > > > --=20
+> > > > Jeff Layton <jlayton@kernel.org>
+> > > >=20
+> > >=20
+> > > --=20
+> > > Chuck Lever
+>=20
+>=20
+>=20
+> --=20
+> Chuck Lever
+
+--agUwACALdI3DEFIQ
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iHUEABYKAB0WIQTquNwa3Txd3rGGn7Y6cBh0uS2trAUCZWi5HQAKCRA6cBh0uS2t
+rJHpAQDbSymuvpMhaIfDzwgot/evboYQ574jqEN8QRCpI5IIHwD+P7R+G/Edo0BM
+a/sUcrQDu47mNOq789cA1lgo1J1VWwM=
+=191l
+-----END PGP SIGNATURE-----
+
+--agUwACALdI3DEFIQ--
