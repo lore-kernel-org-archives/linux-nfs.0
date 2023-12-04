@@ -1,26 +1,26 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="CVVlyVrJ"
-Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A1013101;
-	Sun,  3 Dec 2023 18:25:31 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="XueloJ4X"
+Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [IPv6:2a03:a000:7:0:5054:ff:fe1c:15ff])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6FC06C5;
+	Sun,  3 Dec 2023 18:40:42 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
+	MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
 	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=SsyO4lSpIna9nQlHkHCb+VcH3551LY+52acm9hFhGCc=; b=CVVlyVrJxEBg2Dlyh4y8vfflT7
-	q2uxs8LdAfB6rw6+ZOUhBW5EvZn+htCaCeLPtnK64sYUfOf+boOrTzgABjSap5FtNXKTXTqs01pH+
-	TteMtKPJeELKRGpg42mJ1yP65XdMsC/4XIhEPKtku+cCgt/US+Bko0Xzrk4MZicvNpAMZywDWn/1J
-	HnUOfGuX+rc/YAojLqIB/NX/oTh7cMZsT5t0u32JYN5OxAhBuzl4DxNfx2MfCbDJAUw0/jNoh1wp1
-	unuFQeip7ehpmpPjhFWgewImA3jCgKuYneeAcdfLvj+lg9OgbpWsxqSKiNnnv9d3Ol6YlcLB4TA4w
-	60Qae1vw==;
-Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-	id 1r9ye0-000FhU-Fi; Mon, 04 Dec 2023 02:25:12 +0000
-Date: Mon, 4 Dec 2023 02:25:12 +0000
-From: Matthew Wilcox <willy@infradead.org>
+	bh=LVTxDRpbm4m8/L9l+PdmnoSZZXeKUDl437Ufb7hbh2I=; b=XueloJ4XOx6AvGagXXqf5zKEn6
+	Kd5AGBMar6KgXfVvTp/7bdTGl3DdqsgzJxNve8zpIAvjgBZF3V0eQGEADal6zwOjS3aNKL4ftzMLN
+	rjoiFwGFS3yizzESIkiPgOhziQogNXixp2rvMHVbe9hH6vo5z528uimva4HJN9LTEaMy3hA4xJJ6p
+	2J6Go6+2sdlMnM6i2xxXWn5D9YFtLk7fb+WBiY5TRAwsMUSUTJSyv4r4slX7mtCWJzKfssciHJsOZ
+	28eiZSUBaWqnd0eNWVAQ3j0FXQmUQpq9iWRRp65vJ4AaWDeVACyNu+yHrrr2reHauRZY7zS8495/5
+	wOj7nPaA==;
+Received: from viro by zeniv.linux.org.uk with local (Exim 4.96 #2 (Red Hat Linux))
+	id 1r9ysp-006nG8-1T;
+	Mon, 04 Dec 2023 02:40:31 +0000
+Date: Mon, 4 Dec 2023 02:40:31 +0000
+From: Al Viro <viro@zeniv.linux.org.uk>
 To: NeilBrown <neilb@suse.de>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>,
-	Jens Axboe <axboe@kernel.dk>, Oleg Nesterov <oleg@redhat.com>,
+Cc: Christian Brauner <brauner@kernel.org>, Jens Axboe <axboe@kernel.dk>,
+	Oleg Nesterov <oleg@redhat.com>,
 	Chuck Lever <chuck.lever@oracle.com>,
 	Jeff Layton <jlayton@kernel.org>, Ingo Molnar <mingo@redhat.com>,
 	Peter Zijlstra <peterz@infradead.org>,
@@ -30,7 +30,7 @@ Cc: Al Viro <viro@zeniv.linux.org.uk>,
 	linux-nfs@vger.kernel.org
 Subject: Re: [PATCH 1/2] Allow a kthread to declare that it calls
  task_work_run()
-Message-ID: <ZW04iGENbNm3A/Ki@casper.infradead.org>
+Message-ID: <20231204024031.GV38156@ZenIV>
 References: <20231204014042.6754-1-neilb@suse.de>
  <20231204014042.6754-2-neilb@suse.de>
 Precedence: bulk
@@ -42,36 +42,45 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 In-Reply-To: <20231204014042.6754-2-neilb@suse.de>
+Sender: Al Viro <viro@ftp.linux.org.uk>
 
 On Mon, Dec 04, 2023 at 12:36:41PM +1100, NeilBrown wrote:
-> +++ b/fs/namespace.c
+
+> This means that any cost for doing the work is not imposed on the kernel
+> thread, and importantly excessive amounts of work cannot apply
+> back-pressure to reduce the amount of new work queued.
+
+It also means that a stuck ->release() won't end up with stuck
+kernel thread...
+
+> earlier than would be ideal.  When __dput (from the workqueue) calls
+
+WTF is that __dput thing?  __fput, perhaps?
+
+> This patch adds a new process flag PF_RUNS_TASK_WORK which is now used
+> instead of PF_KTHREAD to determine whether it is sensible to queue
+> something to task_works.  This flag is always set for non-kernel threads.
+
+*ugh*
+
+What's that flag for?  task_work_add() always can fail; any caller must
+have a fallback to cope with that possibility; fput() certainly does.
+
+Just have the kernel threads born with ->task_works set to &work_exited
+and provide a primitive that would flip it from that to NULL.
+
 > @@ -1328,7 +1328,7 @@ static void mntput_no_expire(struct mount *mnt)
 >  
 >  	if (likely(!(mnt->mnt.mnt_flags & MNT_INTERNAL))) {
 >  		struct task_struct *task = current;
 > -		if (likely(!(task->flags & PF_KTHREAD))) {
 > +		if (likely((task->flags & PF_RUNS_TASK_WORK))) {
+>  			init_task_work(&mnt->mnt_rcu, __cleanup_mnt);
+>  			if (!task_work_add(task, &mnt->mnt_rcu, TWA_RESUME))
+>  				return;
 
-You could lose one set of parens here ...
+Now, *that* is something I have much stronger objections to.
+Stuck filesystem shutdown is far more likely than stuck
+->release().  You are seriously asking for trouble here.
 
-		if (likely(task->flags & PF_RUNS_TASK_WORK)) {
-
->  #define PF_RANDOMIZE		0x00400000	/* Randomize virtual address space */
-> -#define PF__HOLE__00800000	0x00800000
-> +#define PF_RUNS_TASK_WORK	0x00800000	/* Will call task_work_run() periodically */
-
-And you could lose "Will" here:
-
-#define PF_RUNS_TASK_WORK    0x00800000      /* Calls task_work_run() periodically */
-
-> diff --git a/kernel/task_work.c b/kernel/task_work.c
-> index 95a7e1b7f1da..aec19876e121 100644
-> --- a/kernel/task_work.c
-> +++ b/kernel/task_work.c
-> @@ -183,3 +183,4 @@ void task_work_run(void)
->  		} while (work);
->  	}
->  }
-> +EXPORT_SYMBOL(task_work_run);
-
-_GPL?
+Why would you want to have nfsd block on that?
