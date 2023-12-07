@@ -1,32 +1,32 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="e9+CU6nh"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="LwHZgIBu"
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 28BB41730
-	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:22:40 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id A65A81988
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:22:47 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1701984159;
+	s=mimecast20190719; t=1701984166;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=L6Nzn1U1IMf1491MyvgZvSo5JblVwGGM3Bq6QVVh7aA=;
-	b=e9+CU6nhJWYXj0DR668mYUtJ0aeF12UbG+ywiMwPFOsGbB4PSM+0bQiHCjVmEqCZndwxwW
-	a7nXXuiVldl7r41SdOALLL6U6dbkHD0iCTIYhAn0gkbbsdMScrM4MPRigUW/duIpvi9gBw
-	htO3sdv+nVjVseW+YMN0eWkHkrmByts=
+	bh=wQZ/Z/NT5+hAvWe9Uf0FGBMHxHMTiJ+Q89UZt0KNWcU=;
+	b=LwHZgIBukuz/LsMOR4B0V9q0XAitTdF3li52kKanV4M4UZaIfx/M0Lu2Chh3xQCcMncCWo
+	YrrndqkLI9yRG0ZqOdLxDAFAScviKN+OYGBzOJ/fx3MIFZOQ+cd8Rf2lCPowJwRdmUb15n
+	xONvkiobfzV7ZLxYqLTWpSy3BOtOrek=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-333-Rmd4kNOzOv2dbdXN55v1Qg-1; Thu, 07 Dec 2023 16:22:29 -0500
-X-MC-Unique: Rmd4kNOzOv2dbdXN55v1Qg-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
+ us-mta-33-5xLv4kx5MBmxxHhX6MFK-Q-1; Thu, 07 Dec 2023 16:22:42 -0500
+X-MC-Unique: 5xLv4kx5MBmxxHhX6MFK-Q-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 8C2C6863066;
-	Thu,  7 Dec 2023 21:22:28 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id D0E3110AFD6E;
+	Thu,  7 Dec 2023 21:22:41 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.161])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id D4EF68CD0;
-	Thu,  7 Dec 2023 21:22:25 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 25345C15880;
+	Thu,  7 Dec 2023 21:22:39 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Jeff Layton <jlayton@kernel.org>,
 	Steve French <smfrench@gmail.com>
@@ -50,9 +50,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 05/59] netfs: Move pinning-for-writeback from fscache to netfs
-Date: Thu,  7 Dec 2023 21:21:12 +0000
-Message-ID: <20231207212206.1379128-6-dhowells@redhat.com>
+Subject: [PATCH v3 09/59] afs: Don't use folio->private to record partial modification
+Date: Thu,  7 Dec 2023 21:21:16 +0000
+Message-ID: <20231207212206.1379128-10-dhowells@redhat.com>
 In-Reply-To: <20231207212206.1379128-1-dhowells@redhat.com>
 References: <20231207212206.1379128-1-dhowells@redhat.com>
 Precedence: bulk
@@ -62,643 +62,603 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.5
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.8
 
-Move the resource pinning-for-writeback from fscache code to netfslib code.
-This is used to keep a cache backing object pinned whilst we have dirty
-pages on the netfs inode in the pagecache such that VM writeback will be
-able to reach it.
+AFS currently uses folio->private to store the range of bytes within a
+folio that have been modified - the idea being that if we have, say, a 2MiB
+folio and someone writes a single byte, we only have to write back that
+single page and not the whole 2MiB folio - thereby saving on network
+bandwidth.
 
-Whilst we're at it, switch the parameters of netfs_unpin_writeback() to
-match ->write_inode() so that it can be used for that directly.
+Remove this, at least for now, and accept the extra network load (which
+doesn't matter in the common case of writing a whole file at a time from
+beginning to end).
 
-Note that this mechanism could be more generically useful than that for
-network filesystems.  Quite often they have to keep around other resources
-(e.g. authentication tokens or network connections) until the writeback is
-complete.
+This makes folio->private available for netfslib to use.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
+cc: Marc Dionne <marc.dionne@auristor.com>
 cc: Jeff Layton <jlayton@kernel.org>
+cc: linux-afs@lists.infradead.org
 cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 cc: linux-mm@kvack.org
 ---
- fs/9p/vfs_addr.c          | 33 ++++-----------
- fs/9p/vfs_inode.c         |  3 +-
- fs/9p/vfs_super.c         | 14 +------
- fs/afs/file.c             |  8 +---
- fs/afs/inode.c            |  2 +-
- fs/afs/internal.h         |  6 ---
- fs/afs/super.c            |  2 +-
- fs/afs/write.c            |  9 ----
- fs/ceph/cache.h           | 23 ++++-------
- fs/ceph/inode.c           |  2 +-
- fs/fs-writeback.c         | 10 ++---
- fs/netfs/Makefile         |  1 +
- fs/netfs/fscache_io.c     | 40 ------------------
- fs/netfs/misc.c           | 86 +++++++++++++++++++++++++++++++++++++++
- fs/smb/client/cifsfs.c    |  5 +--
- fs/smb/client/file.c      | 18 +-------
- include/linux/fs.h        |  2 +-
- include/linux/fscache.h   | 42 -------------------
- include/linux/netfs.h     |  3 ++
- include/linux/writeback.h |  2 +-
- 20 files changed, 124 insertions(+), 187 deletions(-)
- create mode 100644 fs/netfs/misc.c
+ fs/afs/file.c              |  67 -------------
+ fs/afs/internal.h          |  56 -----------
+ fs/afs/write.c             | 188 ++++++++-----------------------------
+ include/trace/events/afs.h |  16 +---
+ 4 files changed, 42 insertions(+), 285 deletions(-)
 
-diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
-index 39db7c01e30a..131b83c31f85 100644
---- a/fs/9p/vfs_addr.c
-+++ b/fs/9p/vfs_addr.c
-@@ -317,30 +317,15 @@ static int v9fs_write_end(struct file *filp, struct address_space *mapping,
- 	return copied;
- }
- 
--#ifdef CONFIG_9P_FSCACHE
--/*
-- * Mark a page as having been made dirty and thus needing writeback.  We also
-- * need to pin the cache object to write back to.
-- */
--static bool v9fs_dirty_folio(struct address_space *mapping, struct folio *folio)
--{
--	struct v9fs_inode *v9inode = V9FS_I(mapping->host);
--
--	return fscache_dirty_folio(mapping, folio, v9fs_inode_cookie(v9inode));
--}
--#else
--#define v9fs_dirty_folio filemap_dirty_folio
--#endif
--
- const struct address_space_operations v9fs_addr_operations = {
--	.read_folio = netfs_read_folio,
--	.readahead = netfs_readahead,
--	.dirty_folio = v9fs_dirty_folio,
--	.writepage = v9fs_vfs_writepage,
--	.write_begin = v9fs_write_begin,
--	.write_end = v9fs_write_end,
--	.release_folio = v9fs_release_folio,
-+	.read_folio	= netfs_read_folio,
-+	.readahead	= netfs_readahead,
-+	.dirty_folio	= netfs_dirty_folio,
-+	.writepage	= v9fs_vfs_writepage,
-+	.write_begin	= v9fs_write_begin,
-+	.write_end	= v9fs_write_end,
-+	.release_folio	= v9fs_release_folio,
- 	.invalidate_folio = v9fs_invalidate_folio,
--	.launder_folio = v9fs_launder_folio,
--	.direct_IO = v9fs_direct_IO,
-+	.launder_folio	= v9fs_launder_folio,
-+	.direct_IO	= v9fs_direct_IO,
- };
-diff --git a/fs/9p/vfs_inode.c b/fs/9p/vfs_inode.c
-index b845ee18a80b..74122540e00f 100644
---- a/fs/9p/vfs_inode.c
-+++ b/fs/9p/vfs_inode.c
-@@ -376,8 +376,7 @@ void v9fs_evict_inode(struct inode *inode)
- 
- #ifdef CONFIG_9P_FSCACHE
- 	version = cpu_to_le32(v9inode->qid.version);
--	fscache_clear_inode_writeback(v9fs_inode_cookie(v9inode), inode,
--				      &version);
-+	netfs_clear_inode_writeback(inode, &version);
- #endif
- 
- 	clear_inode(inode);
-diff --git a/fs/9p/vfs_super.c b/fs/9p/vfs_super.c
-index 73db55c050bf..941f7d0e0bfa 100644
---- a/fs/9p/vfs_super.c
-+++ b/fs/9p/vfs_super.c
-@@ -289,31 +289,21 @@ static int v9fs_drop_inode(struct inode *inode)
- static int v9fs_write_inode(struct inode *inode,
- 			    struct writeback_control *wbc)
- {
--	struct v9fs_inode *v9inode;
--
- 	/*
- 	 * send an fsync request to server irrespective of
- 	 * wbc->sync_mode.
- 	 */
- 	p9_debug(P9_DEBUG_VFS, "%s: inode %p\n", __func__, inode);
--
--	v9inode = V9FS_I(inode);
--	fscache_unpin_writeback(wbc, v9fs_inode_cookie(v9inode));
--
--	return 0;
-+	return netfs_unpin_writeback(inode, wbc);
- }
- 
- static int v9fs_write_inode_dotl(struct inode *inode,
- 				 struct writeback_control *wbc)
- {
--	struct v9fs_inode *v9inode;
- 
--	v9inode = V9FS_I(inode);
- 	p9_debug(P9_DEBUG_VFS, "%s: inode %p\n", __func__, inode);
- 
--	fscache_unpin_writeback(wbc, v9fs_inode_cookie(v9inode));
--
--	return 0;
-+	return netfs_unpin_writeback(inode, wbc);
- }
- 
- static const struct super_operations v9fs_super_ops = {
 diff --git a/fs/afs/file.c b/fs/afs/file.c
-index 8c17e37c2e59..9142fda7dbd6 100644
+index 9142fda7dbd6..0d783e5b2147 100644
 --- a/fs/afs/file.c
 +++ b/fs/afs/file.c
-@@ -55,7 +55,7 @@ const struct inode_operations afs_file_inode_operations = {
- const struct address_space_operations afs_file_aops = {
- 	.read_folio	= netfs_read_folio,
- 	.readahead	= netfs_readahead,
--	.dirty_folio	= afs_dirty_folio,
-+	.dirty_folio	= netfs_dirty_folio,
- 	.launder_folio	= afs_launder_folio,
- 	.release_folio	= afs_release_folio,
- 	.invalidate_folio = afs_invalidate_folio,
-@@ -386,12 +386,6 @@ const struct netfs_request_ops afs_req_ops = {
+@@ -386,63 +386,6 @@ const struct netfs_request_ops afs_req_ops = {
  	.issue_read		= afs_issue_read,
  };
  
--int afs_write_inode(struct inode *inode, struct writeback_control *wbc)
+-/*
+- * Adjust the dirty region of the page on truncation or full invalidation,
+- * getting rid of the markers altogether if the region is entirely invalidated.
+- */
+-static void afs_invalidate_dirty(struct folio *folio, size_t offset,
+-				 size_t length)
 -{
--	fscache_unpin_writeback(wbc, afs_vnode_cache(AFS_FS_I(inode)));
--	return 0;
+-	struct afs_vnode *vnode = AFS_FS_I(folio_inode(folio));
+-	unsigned long priv;
+-	unsigned int f, t, end = offset + length;
+-
+-	priv = (unsigned long)folio_get_private(folio);
+-
+-	/* we clean up only if the entire page is being invalidated */
+-	if (offset == 0 && length == folio_size(folio))
+-		goto full_invalidate;
+-
+-	 /* If the page was dirtied by page_mkwrite(), the PTE stays writable
+-	  * and we don't get another notification to tell us to expand it
+-	  * again.
+-	  */
+-	if (afs_is_folio_dirty_mmapped(priv))
+-		return;
+-
+-	/* We may need to shorten the dirty region */
+-	f = afs_folio_dirty_from(folio, priv);
+-	t = afs_folio_dirty_to(folio, priv);
+-
+-	if (t <= offset || f >= end)
+-		return; /* Doesn't overlap */
+-
+-	if (f < offset && t > end)
+-		return; /* Splits the dirty region - just absorb it */
+-
+-	if (f >= offset && t <= end)
+-		goto undirty;
+-
+-	if (f < offset)
+-		t = offset;
+-	else
+-		f = end;
+-	if (f == t)
+-		goto undirty;
+-
+-	priv = afs_folio_dirty(folio, f, t);
+-	folio_change_private(folio, (void *)priv);
+-	trace_afs_folio_dirty(vnode, tracepoint_string("trunc"), folio);
+-	return;
+-
+-undirty:
+-	trace_afs_folio_dirty(vnode, tracepoint_string("undirty"), folio);
+-	folio_clear_dirty_for_io(folio);
+-full_invalidate:
+-	trace_afs_folio_dirty(vnode, tracepoint_string("inval"), folio);
+-	folio_detach_private(folio);
 -}
 -
  /*
-  * Adjust the dirty region of the page on truncation or full invalidation,
-  * getting rid of the markers altogether if the region is entirely invalidated.
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index 78efc9719349..6f375f0cf650 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -823,7 +823,7 @@ void afs_evict_inode(struct inode *inode)
- 	truncate_inode_pages_final(&inode->i_data);
+  * invalidate part or all of a page
+  * - release a page and clean up its private data if offset is 0 (indicating
+@@ -453,11 +396,6 @@ static void afs_invalidate_folio(struct folio *folio, size_t offset,
+ {
+ 	_enter("{%lu},%zu,%zu", folio->index, offset, length);
  
- 	afs_set_cache_aux(vnode, &aux);
--	fscache_clear_inode_writeback(afs_vnode_cache(vnode), inode, &aux);
-+	netfs_clear_inode_writeback(inode, &aux);
- 	clear_inode(inode);
+-	BUG_ON(!folio_test_locked(folio));
+-
+-	if (folio_get_private(folio))
+-		afs_invalidate_dirty(folio, offset, length);
+-
+ 	folio_wait_fscache(folio);
+ 	_leave("");
+ }
+@@ -485,11 +423,6 @@ static bool afs_release_folio(struct folio *folio, gfp_t gfp)
+ 	fscache_note_page_release(afs_vnode_cache(vnode));
+ #endif
  
- 	while (!list_empty(&vnode->wb_keys)) {
+-	if (folio_test_private(folio)) {
+-		trace_afs_folio_dirty(vnode, tracepoint_string("rel"), folio);
+-		folio_detach_private(folio);
+-	}
+-
+ 	/* Indicate that the folio can be released */
+ 	_leave(" = T");
+ 	return true;
 diff --git a/fs/afs/internal.h b/fs/afs/internal.h
-index c885d63af432..ba25a75609a2 100644
+index ba25a75609a2..ec173e58ddfe 100644
 --- a/fs/afs/internal.h
 +++ b/fs/afs/internal.h
-@@ -1072,7 +1072,6 @@ extern int afs_release(struct inode *, struct file *);
- extern int afs_fetch_data(struct afs_vnode *, struct afs_read *);
- extern struct afs_read *afs_alloc_read(gfp_t);
- extern void afs_put_read(struct afs_read *);
--extern int afs_write_inode(struct inode *, struct writeback_control *);
+@@ -893,62 +893,6 @@ static inline void afs_invalidate_cache(struct afs_vnode *vnode, unsigned int fl
+ 			   i_size_read(&vnode->netfs.inode), flags);
+ }
  
- static inline struct afs_read *afs_get_read(struct afs_read *req)
- {
-@@ -1520,11 +1519,6 @@ extern int afs_check_volume_status(struct afs_volume *, struct afs_operation *);
- /*
-  * write.c
-  */
--#ifdef CONFIG_AFS_FSCACHE
--bool afs_dirty_folio(struct address_space *, struct folio *);
+-/*
+- * We use folio->private to hold the amount of the folio that we've written to,
+- * splitting the field into two parts.  However, we need to represent a range
+- * 0...FOLIO_SIZE, so we reduce the resolution if the size of the folio
+- * exceeds what we can encode.
+- */
+-#ifdef CONFIG_64BIT
+-#define __AFS_FOLIO_PRIV_MASK		0x7fffffffUL
+-#define __AFS_FOLIO_PRIV_SHIFT		32
+-#define __AFS_FOLIO_PRIV_MMAPPED	0x80000000UL
 -#else
--#define afs_dirty_folio filemap_dirty_folio
+-#define __AFS_FOLIO_PRIV_MASK		0x7fffUL
+-#define __AFS_FOLIO_PRIV_SHIFT		16
+-#define __AFS_FOLIO_PRIV_MMAPPED	0x8000UL
 -#endif
- extern int afs_write_begin(struct file *file, struct address_space *mapping,
- 			loff_t pos, unsigned len,
- 			struct page **pagep, void **fsdata);
-diff --git a/fs/afs/super.c b/fs/afs/super.c
-index a01a0fb2cdbb..4f1b0492f1c5 100644
---- a/fs/afs/super.c
-+++ b/fs/afs/super.c
-@@ -55,7 +55,7 @@ int afs_net_id;
- static const struct super_operations afs_super_ops = {
- 	.statfs		= afs_statfs,
- 	.alloc_inode	= afs_alloc_inode,
--	.write_inode	= afs_write_inode,
-+	.write_inode	= netfs_unpin_writeback,
- 	.drop_inode	= afs_drop_inode,
- 	.destroy_inode	= afs_destroy_inode,
- 	.free_inode	= afs_free_inode,
+-
+-static inline unsigned int afs_folio_dirty_resolution(struct folio *folio)
+-{
+-	int shift = folio_shift(folio) - (__AFS_FOLIO_PRIV_SHIFT - 1);
+-	return (shift > 0) ? shift : 0;
+-}
+-
+-static inline size_t afs_folio_dirty_from(struct folio *folio, unsigned long priv)
+-{
+-	unsigned long x = priv & __AFS_FOLIO_PRIV_MASK;
+-
+-	/* The lower bound is inclusive */
+-	return x << afs_folio_dirty_resolution(folio);
+-}
+-
+-static inline size_t afs_folio_dirty_to(struct folio *folio, unsigned long priv)
+-{
+-	unsigned long x = (priv >> __AFS_FOLIO_PRIV_SHIFT) & __AFS_FOLIO_PRIV_MASK;
+-
+-	/* The upper bound is immediately beyond the region */
+-	return (x + 1) << afs_folio_dirty_resolution(folio);
+-}
+-
+-static inline unsigned long afs_folio_dirty(struct folio *folio, size_t from, size_t to)
+-{
+-	unsigned int res = afs_folio_dirty_resolution(folio);
+-	from >>= res;
+-	to = (to - 1) >> res;
+-	return (to << __AFS_FOLIO_PRIV_SHIFT) | from;
+-}
+-
+-static inline unsigned long afs_folio_dirty_mmapped(unsigned long priv)
+-{
+-	return priv | __AFS_FOLIO_PRIV_MMAPPED;
+-}
+-
+-static inline bool afs_is_folio_dirty_mmapped(unsigned long priv)
+-{
+-	return priv & __AFS_FOLIO_PRIV_MMAPPED;
+-}
+-
+ #include <trace/events/afs.h>
+ 
+ /*****************************************************************************/
 diff --git a/fs/afs/write.c b/fs/afs/write.c
-index e87b52b1f34c..7354aa5775fc 100644
+index 7354aa5775fc..6aa272acb95c 100644
 --- a/fs/afs/write.c
 +++ b/fs/afs/write.c
-@@ -23,15 +23,6 @@ static void afs_write_to_cache(struct afs_vnode *vnode, loff_t start, size_t len
- 			       loff_t i_size, bool caching);
+@@ -16,7 +16,8 @@
  
- #ifdef CONFIG_AFS_FSCACHE
+ static int afs_writepages_region(struct address_space *mapping,
+ 				 struct writeback_control *wbc,
+-				 loff_t start, loff_t end, loff_t *_next,
++				 unsigned long long start,
++				 unsigned long long end, loff_t *_next,
+ 				 bool max_one_loop);
+ 
+ static void afs_write_to_cache(struct afs_vnode *vnode, loff_t start, size_t len,
+@@ -34,25 +35,6 @@ static void afs_folio_start_fscache(bool caching, struct folio *folio)
+ }
+ #endif
+ 
 -/*
-- * Mark a page as having been made dirty and thus needing writeback.  We also
-- * need to pin the cache object to write back to.
+- * Flush out a conflicting write.  This may extend the write to the surrounding
+- * pages if also dirty and contiguous to the conflicting region..
 - */
--bool afs_dirty_folio(struct address_space *mapping, struct folio *folio)
+-static int afs_flush_conflicting_write(struct address_space *mapping,
+-				       struct folio *folio)
 -{
--	return fscache_dirty_folio(mapping, folio,
--				afs_vnode_cache(AFS_FS_I(mapping->host)));
--}
- static void afs_folio_start_fscache(bool caching, struct folio *folio)
- {
- 	if (caching)
-diff --git a/fs/ceph/cache.h b/fs/ceph/cache.h
-index b804f1094764..8fc7d828d990 100644
---- a/fs/ceph/cache.h
-+++ b/fs/ceph/cache.h
-@@ -43,19 +43,13 @@ static inline void ceph_fscache_resize(struct inode *inode, loff_t to)
- 	}
- }
- 
--static inline void ceph_fscache_unpin_writeback(struct inode *inode,
-+static inline int ceph_fscache_unpin_writeback(struct inode *inode,
- 						struct writeback_control *wbc)
- {
--	fscache_unpin_writeback(wbc, ceph_fscache_cookie(ceph_inode(inode)));
-+	return netfs_unpin_writeback(inode, wbc);
- }
- 
--static inline int ceph_fscache_dirty_folio(struct address_space *mapping,
--		struct folio *folio)
--{
--	struct ceph_inode_info *ci = ceph_inode(mapping->host);
+-	struct writeback_control wbc = {
+-		.sync_mode	= WB_SYNC_ALL,
+-		.nr_to_write	= LONG_MAX,
+-		.range_start	= folio_pos(folio),
+-		.range_end	= LLONG_MAX,
+-	};
+-	loff_t next;
 -
--	return fscache_dirty_folio(mapping, folio, ceph_fscache_cookie(ci));
+-	return afs_writepages_region(mapping, &wbc, folio_pos(folio), LLONG_MAX,
+-				     &next, true);
 -}
-+#define ceph_fscache_dirty_folio netfs_dirty_folio
- 
- static inline bool ceph_is_cache_enabled(struct inode *inode)
+-
+ /*
+  * prepare to perform part of a write to a page
+  */
+@@ -62,10 +44,6 @@ int afs_write_begin(struct file *file, struct address_space *mapping,
  {
-@@ -112,16 +106,13 @@ static inline void ceph_fscache_resize(struct inode *inode, loff_t to)
+ 	struct afs_vnode *vnode = AFS_FS_I(file_inode(file));
+ 	struct folio *folio;
+-	unsigned long priv;
+-	unsigned f, from;
+-	unsigned t, to;
+-	pgoff_t index;
+ 	int ret;
+ 
+ 	_enter("{%llx:%llu},%llx,%x",
+@@ -79,49 +57,20 @@ int afs_write_begin(struct file *file, struct address_space *mapping,
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	index = folio_index(folio);
+-	from = pos - index * PAGE_SIZE;
+-	to = from + len;
+-
+ try_again:
+ 	/* See if this page is already partially written in a way that we can
+ 	 * merge the new write with.
+ 	 */
+-	if (folio_test_private(folio)) {
+-		priv = (unsigned long)folio_get_private(folio);
+-		f = afs_folio_dirty_from(folio, priv);
+-		t = afs_folio_dirty_to(folio, priv);
+-		ASSERTCMP(f, <=, t);
+-
+-		if (folio_test_writeback(folio)) {
+-			trace_afs_folio_dirty(vnode, tracepoint_string("alrdy"), folio);
+-			folio_unlock(folio);
+-			goto wait_for_writeback;
+-		}
+-		/* If the file is being filled locally, allow inter-write
+-		 * spaces to be merged into writes.  If it's not, only write
+-		 * back what the user gives us.
+-		 */
+-		if (!test_bit(AFS_VNODE_NEW_CONTENT, &vnode->flags) &&
+-		    (to < f || from > t))
+-			goto flush_conflicting_write;
++	if (folio_test_writeback(folio)) {
++		trace_afs_folio_dirty(vnode, tracepoint_string("alrdy"), folio);
++		folio_unlock(folio);
++		goto wait_for_writeback;
+ 	}
+ 
+ 	*_page = folio_file_page(folio, pos / PAGE_SIZE);
+ 	_leave(" = 0");
+ 	return 0;
+ 
+-	/* The previous write and this write aren't adjacent or overlapping, so
+-	 * flush the page out.
+-	 */
+-flush_conflicting_write:
+-	trace_afs_folio_dirty(vnode, tracepoint_string("confl"), folio);
+-	folio_unlock(folio);
+-
+-	ret = afs_flush_conflicting_write(mapping, folio);
+-	if (ret < 0)
+-		goto error;
+-
+ wait_for_writeback:
+ 	ret = folio_wait_writeback_killable(folio);
+ 	if (ret < 0)
+@@ -147,9 +96,6 @@ int afs_write_end(struct file *file, struct address_space *mapping,
  {
- }
+ 	struct folio *folio = page_folio(subpage);
+ 	struct afs_vnode *vnode = AFS_FS_I(file_inode(file));
+-	unsigned long priv;
+-	unsigned int f, from = offset_in_folio(folio, pos);
+-	unsigned int t, to = from + copied;
+ 	loff_t i_size, write_end_pos;
  
--static inline void ceph_fscache_unpin_writeback(struct inode *inode,
--						struct writeback_control *wbc)
-+static inline int ceph_fscache_unpin_writeback(struct inode *inode,
-+					       struct writeback_control *wbc)
- {
-+	return 0;
- }
+ 	_enter("{%llx:%llu},{%lx}",
+@@ -179,23 +125,6 @@ int afs_write_end(struct file *file, struct address_space *mapping,
+ 		fscache_update_cookie(afs_vnode_cache(vnode), NULL, &write_end_pos);
+ 	}
  
--static inline int ceph_fscache_dirty_folio(struct address_space *mapping,
--		struct folio *folio)
--{
--	return filemap_dirty_folio(mapping, folio);
--}
-+#define ceph_fscache_dirty_folio filemap_dirty_folio
+-	if (folio_test_private(folio)) {
+-		priv = (unsigned long)folio_get_private(folio);
+-		f = afs_folio_dirty_from(folio, priv);
+-		t = afs_folio_dirty_to(folio, priv);
+-		if (from < f)
+-			f = from;
+-		if (to > t)
+-			t = to;
+-		priv = afs_folio_dirty(folio, f, t);
+-		folio_change_private(folio, (void *)priv);
+-		trace_afs_folio_dirty(vnode, tracepoint_string("dirty+"), folio);
+-	} else {
+-		priv = afs_folio_dirty(folio, from, to);
+-		folio_attach_private(folio, (void *)priv);
+-		trace_afs_folio_dirty(vnode, tracepoint_string("dirty"), folio);
+-	}
+-
+ 	if (folio_mark_dirty(folio))
+ 		_debug("dirtied %lx", folio_index(folio));
  
- static inline bool ceph_is_cache_enabled(struct inode *inode)
- {
-diff --git a/fs/ceph/inode.c b/fs/ceph/inode.c
-index 0679240f06db..3149d79a9dbe 100644
---- a/fs/ceph/inode.c
-+++ b/fs/ceph/inode.c
-@@ -694,7 +694,7 @@ void ceph_evict_inode(struct inode *inode)
- 	percpu_counter_dec(&mdsc->metric.total_inodes);
- 
- 	truncate_inode_pages_final(&inode->i_data);
--	if (inode->i_state & I_PINNING_FSCACHE_WB)
-+	if (inode->i_state & I_PINNING_NETFS_WB)
- 		ceph_fscache_unuse_cookie(inode, true);
- 	clear_inode(inode);
- 
-diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-index a66c9d0556dc..3c9e4256a6d3 100644
---- a/fs/fs-writeback.c
-+++ b/fs/fs-writeback.c
-@@ -1675,11 +1675,11 @@ __writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
- 
- 	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
- 		inode->i_state |= I_DIRTY_PAGES;
--	else if (unlikely(inode->i_state & I_PINNING_FSCACHE_WB)) {
-+	else if (unlikely(inode->i_state & I_PINNING_NETFS_WB)) {
- 		if (!(inode->i_state & I_DIRTY_PAGES)) {
--			inode->i_state &= ~I_PINNING_FSCACHE_WB;
--			wbc->unpinned_fscache_wb = true;
--			dirty |= I_PINNING_FSCACHE_WB; /* Cause write_inode */
-+			inode->i_state &= ~I_PINNING_NETFS_WB;
-+			wbc->unpinned_netfs_wb = true;
-+			dirty |= I_PINNING_NETFS_WB; /* Cause write_inode */
+@@ -300,7 +229,6 @@ static void afs_pages_written_back(struct afs_vnode *vnode, loff_t start, unsign
  		}
+ 
+ 		trace_afs_folio_dirty(vnode, tracepoint_string("clear"), folio);
+-		folio_detach_private(folio);
+ 		folio_end_writeback(folio);
  	}
  
-@@ -1691,7 +1691,7 @@ __writeback_single_inode(struct inode *inode, struct writeback_control *wbc)
- 		if (ret == 0)
- 			ret = err;
+@@ -454,17 +382,12 @@ static void afs_extend_writeback(struct address_space *mapping,
+ 				 long *_count,
+ 				 loff_t start,
+ 				 loff_t max_len,
+-				 bool new_content,
+ 				 bool caching,
+-				 unsigned int *_len)
++				 size_t *_len)
+ {
+ 	struct folio_batch fbatch;
+ 	struct folio *folio;
+-	unsigned long priv;
+-	unsigned int psize, filler = 0;
+-	unsigned int f, t;
+-	loff_t len = *_len;
+-	pgoff_t index = (start + len) / PAGE_SIZE;
++	pgoff_t index = (start + *_len) / PAGE_SIZE;
+ 	bool stop = true;
+ 	unsigned int i;
+ 
+@@ -492,7 +415,7 @@ static void afs_extend_writeback(struct address_space *mapping,
+ 				continue;
+ 			}
+ 
+-			/* Has the page moved or been split? */
++			/* Has the folio moved or been split? */
+ 			if (unlikely(folio != xas_reload(&xas))) {
+ 				folio_put(folio);
+ 				break;
+@@ -510,24 +433,13 @@ static void afs_extend_writeback(struct address_space *mapping,
+ 				break;
+ 			}
+ 
+-			psize = folio_size(folio);
+-			priv = (unsigned long)folio_get_private(folio);
+-			f = afs_folio_dirty_from(folio, priv);
+-			t = afs_folio_dirty_to(folio, priv);
+-			if (f != 0 && !new_content) {
+-				folio_unlock(folio);
+-				folio_put(folio);
+-				break;
+-			}
+-
+-			len += filler + t;
+-			filler = psize - t;
+-			if (len >= max_len || *_count <= 0)
++			index += folio_nr_pages(folio);
++			*_count -= folio_nr_pages(folio);
++			*_len += folio_size(folio);
++			stop = false;
++			if (*_len >= max_len || *_count <= 0)
+ 				stop = true;
+-			else if (t == psize || new_content)
+-				stop = false;
+ 
+-			index += folio_nr_pages(folio);
+ 			if (!folio_batch_add(&fbatch, folio))
+ 				break;
+ 			if (stop)
+@@ -552,16 +464,12 @@ static void afs_extend_writeback(struct address_space *mapping,
+ 				BUG();
+ 			folio_start_writeback(folio);
+ 			afs_folio_start_fscache(caching, folio);
+-
+-			*_count -= folio_nr_pages(folio);
+ 			folio_unlock(folio);
+ 		}
+ 
+ 		folio_batch_release(&fbatch);
+ 		cond_resched();
+ 	} while (!stop);
+-
+-	*_len = len;
+ }
+ 
+ /*
+@@ -571,14 +479,13 @@ static void afs_extend_writeback(struct address_space *mapping,
+ static ssize_t afs_write_back_from_locked_folio(struct address_space *mapping,
+ 						struct writeback_control *wbc,
+ 						struct folio *folio,
+-						loff_t start, loff_t end)
++						unsigned long long start,
++						unsigned long long end)
+ {
+ 	struct afs_vnode *vnode = AFS_FS_I(mapping->host);
+ 	struct iov_iter iter;
+-	unsigned long priv;
+-	unsigned int offset, to, len, max_len;
+-	loff_t i_size = i_size_read(&vnode->netfs.inode);
+-	bool new_content = test_bit(AFS_VNODE_NEW_CONTENT, &vnode->flags);
++	unsigned long long i_size = i_size_read(&vnode->netfs.inode);
++	size_t len, max_len;
+ 	bool caching = fscache_cookie_enabled(afs_vnode_cache(vnode));
+ 	long count = wbc->nr_to_write;
+ 	int ret;
+@@ -595,13 +502,9 @@ static ssize_t afs_write_back_from_locked_folio(struct address_space *mapping,
+ 	 * immediately lockable, is not dirty or is missing, or we reach the
+ 	 * end of the range.
+ 	 */
+-	priv = (unsigned long)folio_get_private(folio);
+-	offset = afs_folio_dirty_from(folio, priv);
+-	to = afs_folio_dirty_to(folio, priv);
+ 	trace_afs_folio_dirty(vnode, tracepoint_string("store"), folio);
+ 
+-	len = to - offset;
+-	start += offset;
++	len = folio_size(folio);
+ 	if (start < i_size) {
+ 		/* Trim the write to the EOF; the extra data is ignored.  Also
+ 		 * put an upper limit on the size of a single storedata op.
+@@ -610,12 +513,10 @@ static ssize_t afs_write_back_from_locked_folio(struct address_space *mapping,
+ 		max_len = min_t(unsigned long long, max_len, end - start + 1);
+ 		max_len = min_t(unsigned long long, max_len, i_size - start);
+ 
+-		if (len < max_len &&
+-		    (to == folio_size(folio) || new_content))
++		if (len < max_len)
+ 			afs_extend_writeback(mapping, vnode, &count,
+-					     start, max_len, new_content,
+-					     caching, &len);
+-		len = min_t(loff_t, len, max_len);
++					     start, max_len, caching, &len);
++		len = min_t(unsigned long long, len, i_size - start);
  	}
--	wbc->unpinned_fscache_wb = false;
-+	wbc->unpinned_netfs_wb = false;
- 	trace_writeback_single_inode(inode, wbc, nr_to_write);
+ 
+ 	/* We now have a contiguous set of dirty pages, each with writeback
+@@ -625,7 +526,7 @@ static ssize_t afs_write_back_from_locked_folio(struct address_space *mapping,
+ 	folio_unlock(folio);
+ 
+ 	if (start < i_size) {
+-		_debug("write back %x @%llx [%llx]", len, start, i_size);
++		_debug("write back %zx @%llx [%llx]", len, start, i_size);
+ 
+ 		/* Speculatively write to the cache.  We have to fix this up
+ 		 * later if the store fails.
+@@ -635,7 +536,7 @@ static ssize_t afs_write_back_from_locked_folio(struct address_space *mapping,
+ 		iov_iter_xarray(&iter, ITER_SOURCE, &mapping->i_pages, start, len);
+ 		ret = afs_store_data(vnode, &iter, start, false);
+ 	} else {
+-		_debug("write discard %x @%llx [%llx]", len, start, i_size);
++		_debug("write discard %zx @%llx [%llx]", len, start, i_size);
+ 
+ 		/* The dirty region was entirely beyond the EOF. */
+ 		fscache_clear_page_bits(mapping, start, len, caching);
+@@ -691,7 +592,8 @@ static ssize_t afs_write_back_from_locked_folio(struct address_space *mapping,
+  */
+ static int afs_writepages_region(struct address_space *mapping,
+ 				 struct writeback_control *wbc,
+-				 loff_t start, loff_t end, loff_t *_next,
++				 unsigned long long start,
++				 unsigned long long end, loff_t *_next,
+ 				 bool max_one_loop)
+ {
+ 	struct folio *folio;
+@@ -903,7 +805,6 @@ vm_fault_t afs_page_mkwrite(struct vm_fault *vmf)
+ 	struct inode *inode = file_inode(file);
+ 	struct afs_vnode *vnode = AFS_FS_I(inode);
+ 	struct afs_file *af = file->private_data;
+-	unsigned long priv;
+ 	vm_fault_t ret = VM_FAULT_RETRY;
+ 
+ 	_enter("{{%llx:%llu}},{%lx}", vnode->fid.vid, vnode->fid.vnode, folio_index(folio));
+@@ -927,24 +828,15 @@ vm_fault_t afs_page_mkwrite(struct vm_fault *vmf)
+ 	if (folio_lock_killable(folio) < 0)
+ 		goto out;
+ 
+-	/* We mustn't change folio->private until writeback is complete as that
+-	 * details the portion of the page we need to write back and we might
+-	 * need to redirty the page if there's a problem.
+-	 */
+ 	if (folio_wait_writeback_killable(folio) < 0) {
+ 		folio_unlock(folio);
+ 		goto out;
+ 	}
+ 
+-	priv = afs_folio_dirty(folio, 0, folio_size(folio));
+-	priv = afs_folio_dirty_mmapped(priv);
+-	if (folio_test_private(folio)) {
+-		folio_change_private(folio, (void *)priv);
++	if (folio_test_dirty(folio))
+ 		trace_afs_folio_dirty(vnode, tracepoint_string("mkwrite+"), folio);
+-	} else {
+-		folio_attach_private(folio, (void *)priv);
++	else
+ 		trace_afs_folio_dirty(vnode, tracepoint_string("mkwrite"), folio);
+-	}
+ 	file_update_time(file);
+ 
+ 	ret = VM_FAULT_LOCKED;
+@@ -989,30 +881,26 @@ int afs_launder_folio(struct folio *folio)
+ 	struct afs_vnode *vnode = AFS_FS_I(folio_inode(folio));
+ 	struct iov_iter iter;
+ 	struct bio_vec bv;
+-	unsigned long priv;
+-	unsigned int f, t;
++	unsigned long long fend, i_size = vnode->netfs.inode.i_size;
++	size_t len;
+ 	int ret = 0;
+ 
+ 	_enter("{%lx}", folio->index);
+ 
+-	priv = (unsigned long)folio_get_private(folio);
+-	if (folio_clear_dirty_for_io(folio)) {
+-		f = 0;
+-		t = folio_size(folio);
+-		if (folio_test_private(folio)) {
+-			f = afs_folio_dirty_from(folio, priv);
+-			t = afs_folio_dirty_to(folio, priv);
+-		}
++	if (folio_clear_dirty_for_io(folio) && folio_pos(folio) < i_size) {
++		len = folio_size(folio);
++		fend = folio_pos(folio) + len;
++		if (vnode->netfs.inode.i_size < fend)
++			len = fend - i_size;
+ 
+-		bvec_set_folio(&bv, folio, t - f, f);
+-		iov_iter_bvec(&iter, ITER_SOURCE, &bv, 1, bv.bv_len);
++		bvec_set_folio(&bv, folio, len, 0);
++		iov_iter_bvec(&iter, WRITE, &bv, 1, len);
+ 
+ 		trace_afs_folio_dirty(vnode, tracepoint_string("launder"), folio);
+-		ret = afs_store_data(vnode, &iter, folio_pos(folio) + f, true);
++		ret = afs_store_data(vnode, &iter, folio_pos(folio), true);
+ 	}
+ 
+ 	trace_afs_folio_dirty(vnode, tracepoint_string("laundered"), folio);
+-	folio_detach_private(folio);
+ 	folio_wait_fscache(folio);
  	return ret;
  }
-diff --git a/fs/netfs/Makefile b/fs/netfs/Makefile
-index b57162ef9cfb..a84fe9bbd3c4 100644
---- a/fs/netfs/Makefile
-+++ b/fs/netfs/Makefile
-@@ -5,6 +5,7 @@ netfs-y := \
- 	io.o \
- 	iterator.o \
- 	main.o \
-+	misc.o \
- 	objects.o
+diff --git a/include/trace/events/afs.h b/include/trace/events/afs.h
+index 597677acc6b1..08506680350c 100644
+--- a/include/trace/events/afs.h
++++ b/include/trace/events/afs.h
+@@ -846,26 +846,18 @@ TRACE_EVENT(afs_folio_dirty,
+ 		    __field(struct afs_vnode *,		vnode)
+ 		    __field(const char *,		where)
+ 		    __field(pgoff_t,			index)
+-		    __field(unsigned long,		from)
+-		    __field(unsigned long,		to)
++		    __field(size_t,			size)
+ 			     ),
  
- netfs-$(CONFIG_NETFS_STATS) += stats.o
-diff --git a/fs/netfs/fscache_io.c b/fs/netfs/fscache_io.c
-index 0d2b8dec8f82..79171a687930 100644
---- a/fs/netfs/fscache_io.c
-+++ b/fs/netfs/fscache_io.c
-@@ -158,46 +158,6 @@ int __fscache_begin_write_operation(struct netfs_cache_resources *cres,
- }
- EXPORT_SYMBOL(__fscache_begin_write_operation);
+ 	    TP_fast_assign(
+-		    unsigned long priv = (unsigned long)folio_get_private(folio);
+ 		    __entry->vnode = vnode;
+ 		    __entry->where = where;
+ 		    __entry->index = folio_index(folio);
+-		    __entry->from  = afs_folio_dirty_from(folio, priv);
+-		    __entry->to    = afs_folio_dirty_to(folio, priv);
+-		    __entry->to   |= (afs_is_folio_dirty_mmapped(priv) ?
+-				      (1UL << (BITS_PER_LONG - 1)) : 0);
++		    __entry->size = folio_size(folio);
+ 			   ),
  
--/**
-- * fscache_dirty_folio - Mark folio dirty and pin a cache object for writeback
-- * @mapping: The mapping the folio belongs to.
-- * @folio: The folio being dirtied.
-- * @cookie: The cookie referring to the cache object
-- *
-- * Set the dirty flag on a folio and pin an in-use cache object in memory
-- * so that writeback can later write to it.  This is intended
-- * to be called from the filesystem's ->dirty_folio() method.
-- *
-- * Return: true if the dirty flag was set on the folio, false otherwise.
-- */
--bool fscache_dirty_folio(struct address_space *mapping, struct folio *folio,
--				struct fscache_cookie *cookie)
--{
--	struct inode *inode = mapping->host;
--	bool need_use = false;
--
--	_enter("");
--
--	if (!filemap_dirty_folio(mapping, folio))
--		return false;
--	if (!fscache_cookie_valid(cookie))
--		return true;
--
--	if (!(inode->i_state & I_PINNING_FSCACHE_WB)) {
--		spin_lock(&inode->i_lock);
--		if (!(inode->i_state & I_PINNING_FSCACHE_WB)) {
--			inode->i_state |= I_PINNING_FSCACHE_WB;
--			need_use = true;
--		}
--		spin_unlock(&inode->i_lock);
--
--		if (need_use)
--			fscache_use_cookie(cookie, true);
--	}
--	return true;
--}
--EXPORT_SYMBOL(fscache_dirty_folio);
--
- struct fscache_write_request {
- 	struct netfs_cache_resources cache_resources;
- 	struct address_space	*mapping;
-diff --git a/fs/netfs/misc.c b/fs/netfs/misc.c
-new file mode 100644
-index 000000000000..68baf55c47a4
---- /dev/null
-+++ b/fs/netfs/misc.c
-@@ -0,0 +1,86 @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/* Miscellaneous routines.
-+ *
-+ * Copyright (C) 2023 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ */
-+
-+#include <linux/swap.h>
-+#include "internal.h"
-+
-+/**
-+ * netfs_dirty_folio - Mark folio dirty and pin a cache object for writeback
-+ * @mapping: The mapping the folio belongs to.
-+ * @folio: The folio being dirtied.
-+ *
-+ * Set the dirty flag on a folio and pin an in-use cache object in memory so
-+ * that writeback can later write to it.  This is intended to be called from
-+ * the filesystem's ->dirty_folio() method.
-+ *
-+ * Return: true if the dirty flag was set on the folio, false otherwise.
-+ */
-+bool netfs_dirty_folio(struct address_space *mapping, struct folio *folio)
-+{
-+	struct inode *inode = mapping->host;
-+	struct netfs_inode *ictx = netfs_inode(inode);
-+	struct fscache_cookie *cookie = netfs_i_cookie(ictx);
-+	bool need_use = false;
-+
-+	_enter("");
-+
-+	if (!filemap_dirty_folio(mapping, folio))
-+		return false;
-+	if (!fscache_cookie_valid(cookie))
-+		return true;
-+
-+	if (!(inode->i_state & I_PINNING_NETFS_WB)) {
-+		spin_lock(&inode->i_lock);
-+		if (!(inode->i_state & I_PINNING_NETFS_WB)) {
-+			inode->i_state |= I_PINNING_NETFS_WB;
-+			need_use = true;
-+		}
-+		spin_unlock(&inode->i_lock);
-+
-+		if (need_use)
-+			fscache_use_cookie(cookie, true);
-+	}
-+	return true;
-+}
-+EXPORT_SYMBOL(netfs_dirty_folio);
-+
-+/**
-+ * netfs_unpin_writeback - Unpin writeback resources
-+ * @inode: The inode on which the cookie resides
-+ * @wbc: The writeback control
-+ *
-+ * Unpin the writeback resources pinned by netfs_dirty_folio().  This is
-+ * intended to be called as/by the netfs's ->write_inode() method.
-+ */
-+int netfs_unpin_writeback(struct inode *inode, struct writeback_control *wbc)
-+{
-+	struct fscache_cookie *cookie = netfs_i_cookie(netfs_inode(inode));
-+
-+	if (wbc->unpinned_netfs_wb)
-+		fscache_unuse_cookie(cookie, NULL, NULL);
-+	return 0;
-+}
-+EXPORT_SYMBOL(netfs_unpin_writeback);
-+
-+/**
-+ * netfs_clear_inode_writeback - Clear writeback resources pinned by an inode
-+ * @inode: The inode to clean up
-+ * @aux: Auxiliary data to apply to the inode
-+ *
-+ * Clear any writeback resources held by an inode when the inode is evicted.
-+ * This must be called before clear_inode() is called.
-+ */
-+void netfs_clear_inode_writeback(struct inode *inode, const void *aux)
-+{
-+	struct fscache_cookie *cookie = netfs_i_cookie(netfs_inode(inode));
-+
-+	if (inode->i_state & I_PINNING_NETFS_WB) {
-+		loff_t i_size = i_size_read(inode);
-+		fscache_unuse_cookie(cookie, aux, &i_size);
-+	}
-+}
-+EXPORT_SYMBOL(netfs_clear_inode_writeback);
-diff --git a/fs/smb/client/cifsfs.c b/fs/smb/client/cifsfs.c
-index 2131638f26d0..96a65cf9b5ec 100644
---- a/fs/smb/client/cifsfs.c
-+++ b/fs/smb/client/cifsfs.c
-@@ -429,7 +429,7 @@ static void
- cifs_evict_inode(struct inode *inode)
- {
- 	truncate_inode_pages_final(&inode->i_data);
--	if (inode->i_state & I_PINNING_FSCACHE_WB)
-+	if (inode->i_state & I_PINNING_NETFS_WB)
- 		cifs_fscache_unuse_inode_cookie(inode, true);
- 	cifs_fscache_release_inode_cookie(inode);
- 	clear_inode(inode);
-@@ -792,8 +792,7 @@ static int cifs_show_stats(struct seq_file *s, struct dentry *root)
+-	    TP_printk("vn=%p %lx %s %lx-%lx%s",
+-		      __entry->vnode, __entry->index, __entry->where,
+-		      __entry->from,
+-		      __entry->to & ~(1UL << (BITS_PER_LONG - 1)),
+-		      __entry->to & (1UL << (BITS_PER_LONG - 1)) ? " M" : "")
++	    TP_printk("vn=%p ix=%05lx s=%05lx %s",
++		      __entry->vnode, __entry->index, __entry->size, __entry->where)
+ 	    );
  
- static int cifs_write_inode(struct inode *inode, struct writeback_control *wbc)
- {
--	fscache_unpin_writeback(wbc, cifs_inode_cookie(inode));
--	return 0;
-+	return netfs_unpin_writeback(inode, wbc);
- }
- 
- static int cifs_drop_inode(struct inode *inode)
-diff --git a/fs/smb/client/file.c b/fs/smb/client/file.c
-index 45ca492c141c..b25cace63768 100644
---- a/fs/smb/client/file.c
-+++ b/fs/smb/client/file.c
-@@ -5041,27 +5041,13 @@ static void cifs_swap_deactivate(struct file *file)
- 	/* do we need to unpin (or unlock) the file */
- }
- 
--/*
-- * Mark a page as having been made dirty and thus needing writeback.  We also
-- * need to pin the cache object to write back to.
-- */
--#ifdef CONFIG_CIFS_FSCACHE
--static bool cifs_dirty_folio(struct address_space *mapping, struct folio *folio)
--{
--	return fscache_dirty_folio(mapping, folio,
--					cifs_inode_cookie(mapping->host));
--}
--#else
--#define cifs_dirty_folio filemap_dirty_folio
--#endif
--
- const struct address_space_operations cifs_addr_ops = {
- 	.read_folio = cifs_read_folio,
- 	.readahead = cifs_readahead,
- 	.writepages = cifs_writepages,
- 	.write_begin = cifs_write_begin,
- 	.write_end = cifs_write_end,
--	.dirty_folio = cifs_dirty_folio,
-+	.dirty_folio = netfs_dirty_folio,
- 	.release_folio = cifs_release_folio,
- 	.direct_IO = cifs_direct_io,
- 	.invalidate_folio = cifs_invalidate_folio,
-@@ -5085,7 +5071,7 @@ const struct address_space_operations cifs_addr_ops_smallbuf = {
- 	.writepages = cifs_writepages,
- 	.write_begin = cifs_write_begin,
- 	.write_end = cifs_write_end,
--	.dirty_folio = cifs_dirty_folio,
-+	.dirty_folio = netfs_dirty_folio,
- 	.release_folio = cifs_release_folio,
- 	.invalidate_folio = cifs_invalidate_folio,
- 	.launder_folio = cifs_launder_folio,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 897c63c64556..f4fd7f80ce93 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2373,7 +2373,7 @@ static inline void kiocb_clone(struct kiocb *kiocb, struct kiocb *kiocb_src,
- #define I_CREATING		(1 << 15)
- #define I_DONTCACHE		(1 << 16)
- #define I_SYNC_QUEUED		(1 << 17)
--#define I_PINNING_FSCACHE_WB	(1 << 18)
-+#define I_PINNING_NETFS_WB	(1 << 18)
- 
- #define I_DIRTY_INODE (I_DIRTY_SYNC | I_DIRTY_DATASYNC)
- #define I_DIRTY (I_DIRTY_INODE | I_DIRTY_PAGES)
-diff --git a/include/linux/fscache.h b/include/linux/fscache.h
-index 9ed6696aee7a..6e8562cbcc43 100644
---- a/include/linux/fscache.h
-+++ b/include/linux/fscache.h
-@@ -626,48 +626,6 @@ static inline void fscache_write_to_cache(struct fscache_cookie *cookie,
- 
- }
- 
--#if __fscache_available
--bool fscache_dirty_folio(struct address_space *mapping, struct folio *folio,
--		struct fscache_cookie *cookie);
--#else
--#define fscache_dirty_folio(MAPPING, FOLIO, COOKIE) \
--		filemap_dirty_folio(MAPPING, FOLIO)
--#endif
--
--/**
-- * fscache_unpin_writeback - Unpin writeback resources
-- * @wbc: The writeback control
-- * @cookie: The cookie referring to the cache object
-- *
-- * Unpin the writeback resources pinned by fscache_dirty_folio().  This is
-- * intended to be called by the netfs's ->write_inode() method.
-- */
--static inline void fscache_unpin_writeback(struct writeback_control *wbc,
--					   struct fscache_cookie *cookie)
--{
--	if (wbc->unpinned_fscache_wb)
--		fscache_unuse_cookie(cookie, NULL, NULL);
--}
--
--/**
-- * fscache_clear_inode_writeback - Clear writeback resources pinned by an inode
-- * @cookie: The cookie referring to the cache object
-- * @inode: The inode to clean up
-- * @aux: Auxiliary data to apply to the inode
-- *
-- * Clear any writeback resources held by an inode when the inode is evicted.
-- * This must be called before clear_inode() is called.
-- */
--static inline void fscache_clear_inode_writeback(struct fscache_cookie *cookie,
--						 struct inode *inode,
--						 const void *aux)
--{
--	if (inode->i_state & I_PINNING_FSCACHE_WB) {
--		loff_t i_size = i_size_read(inode);
--		fscache_unuse_cookie(cookie, aux, &i_size);
--	}
--}
--
- /**
-  * fscache_note_page_release - Note that a netfs page got released
-  * @cookie: The cookie corresponding to the file
-diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index 9bd91cd615d5..32faf6c89702 100644
---- a/include/linux/netfs.h
-+++ b/include/linux/netfs.h
-@@ -288,6 +288,9 @@ int netfs_read_folio(struct file *, struct folio *);
- int netfs_write_begin(struct netfs_inode *, struct file *,
- 		struct address_space *, loff_t pos, unsigned int len,
- 		struct folio **, void **fsdata);
-+bool netfs_dirty_folio(struct address_space *mapping, struct folio *folio);
-+int netfs_unpin_writeback(struct inode *inode, struct writeback_control *wbc);
-+void netfs_clear_inode_writeback(struct inode *inode, const void *aux);
- 
- void netfs_subreq_terminated(struct netfs_io_subrequest *, ssize_t, bool);
- void netfs_get_subrequest(struct netfs_io_subrequest *subreq,
-diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index f47701c114dd..4148d8ffff26 100644
---- a/include/linux/writeback.h
-+++ b/include/linux/writeback.h
-@@ -60,7 +60,7 @@ struct writeback_control {
- 	unsigned for_reclaim:1;		/* Invoked from the page allocator */
- 	unsigned range_cyclic:1;	/* range_start is cyclic */
- 	unsigned for_sync:1;		/* sync(2) WB_SYNC_ALL writeback */
--	unsigned unpinned_fscache_wb:1;	/* Cleared I_PINNING_FSCACHE_WB */
-+	unsigned unpinned_netfs_wb:1;	/* Cleared I_PINNING_NETFS_WB */
- 
- 	/*
- 	 * When writeback IOs are bounced through async layers, only the
+ TRACE_EVENT(afs_call_state,
 
