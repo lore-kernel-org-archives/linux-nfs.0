@@ -1,21 +1,21 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="HTuLP32Y"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="CWIkn3yc"
 Received: from casper.infradead.org (casper.infradead.org [IPv6:2001:8b0:10b:1236::1])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id AE5284C3B;
-	Thu,  7 Dec 2023 13:35:42 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 30E681727;
+	Thu,  7 Dec 2023 13:39:20 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
 	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
 	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=AWfjo1FCG0zNp8yVCNT7ypjhavVj3uaSeJIY6fXZW/Q=; b=HTuLP32YvRPL+oDE1a2yf5CShL
-	ZnbMwPGwoi+NE6tA3HShRYkj/nFemjITFmj5Ox2jNRUaliUFlLDv9SObg0rJ5oT1WvP7zsjxun+um
-	1n3KXNVINV0TCPAQxQN4czj4sTVT9Of4N8CX4cSkmDyuAKQVEgGkD44HDRPlI7QwkZdWumu+qgxyR
-	4Q0V0xPz3VUXOTkIqALZfgsxEDxeNab4xoQyhQsDoX1YlLarOB5VF88kzf1zLdrTvw3UPcsPbwiq3
-	gQ2O1DcxXwjjfagYLU32Q7kUgRaotlnTsgr99KIFU7JUjVCyTwfXDfsYjgLIdajtZG/qiOgqqpm8d
-	CB99jGig==;
+	bh=JRqlC0m2HmQ6Q73zpLh1BJg1SslxUknYiWPpL10AV9g=; b=CWIkn3ycvoBevfglURIl/8u2Qr
+	wrCjMfUSNpFV4uKR8+6hS+2YMYRDfaE8PPcFWnAuvXbCQhvASsAOQOHbDRmZ03+w37vzj4H1yYAwE
+	kbNsOBkG+cxqBNGLgk21INpxUeApkhOuzvXtLjiwbW4Tznh9/FctywjesoWOisjryVQX0A8y4hJ/W
+	t6bFCLfaEIb3nYKZCQOEXi83EJ6qBb11mJeFU4r1eOwBnpOYtI9eP11qsmvy5lxDAi+syinWKepDj
+	zCqK9Tbg4ao9r5H43578TFriztHCv5L4vDiun6leQQfGKSopB1Rus16i3atlvXTvnmkMCuWRY1q72
+	QePMsqBw==;
 Received: from willy by casper.infradead.org with local (Exim 4.94.2 #2 (Red Hat Linux))
-	id 1rBM1H-004PV4-3e; Thu, 07 Dec 2023 21:34:55 +0000
-Date: Thu, 7 Dec 2023 21:34:55 +0000
+	id 1rBM52-004PsR-IU; Thu, 07 Dec 2023 21:38:48 +0000
+Date: Thu, 7 Dec 2023 21:38:48 +0000
 From: Matthew Wilcox <willy@infradead.org>
 To: David Howells <dhowells@redhat.com>
 Cc: Jeff Layton <jlayton@kernel.org>, Steve French <smfrench@gmail.com>,
@@ -31,11 +31,11 @@ Cc: Jeff Layton <jlayton@kernel.org>, Steve French <smfrench@gmail.com>,
 	v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org, netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v3 23/59] netfs: Prep to use folio->private for write
- grouping and streaming write
-Message-ID: <ZXI6fyO1xJbLNXFg@casper.infradead.org>
+Subject: Re: [PATCH v3 59/59] netfs: Eliminate PG_fscache by setting
+ folio->private and marking dirty
+Message-ID: <ZXI7aGHkxZyiytXg@casper.infradead.org>
 References: <20231207212206.1379128-1-dhowells@redhat.com>
- <20231207212206.1379128-24-dhowells@redhat.com>
+ <20231207212206.1379128-60-dhowells@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -44,20 +44,10 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20231207212206.1379128-24-dhowells@redhat.com>
+In-Reply-To: <20231207212206.1379128-60-dhowells@redhat.com>
 
-On Thu, Dec 07, 2023 at 09:21:30PM +0000, David Howells wrote:
-> +#define NETFS_FOLIO_INFO	0x1UL	/* OR'd with folio->private. */
-> +
-> +static inline struct netfs_folio *netfs_folio_info(struct folio *folio)
-> +{
-> +	void *priv = folio_get_private(folio);
-> +
-> +	if ((unsigned long)priv & NETFS_FOLIO_INFO)
-> +		return (struct netfs_folio *)((unsigned long)priv & ~NETFS_FOLIO_INFO);
+On Thu, Dec 07, 2023 at 09:22:06PM +0000, David Howells wrote:
+> With this, PG_fscache is no longer required.
 
-Often one gets better code by using '-' instead of '& ~', and that's
-because 'subtract one, then load four bytes from offset 12' can be
-optimised into 'load four bytes from offset 11' in a way that 'clear
-the bottom bit, then load four bytes from offset 12' can't be.
-
+... for filesystems that use netfslib, right?  ie we can't delete
+folio_wait_private_2_killable() and friends because nfs still uses it?
