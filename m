@@ -1,32 +1,32 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="OGJn60S/"
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 450152117
-	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:23:36 -0800 (PST)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="GWOsGDcb"
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 742C1171C
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:24:10 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1701984213;
+	s=mimecast20190719; t=1701984249;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=9CUqcQhkx342wCXCrXY79eb8GLJZvNRKMGt3t1k0yyQ=;
-	b=OGJn60S/5lOFEt2CyOZMRDACm8REO1gxGLph4hR3+crnmWsL24AP3ZjiU9+W/k/mrpLx0k
-	32rBz/IUY5X/dqeEKVSG6Zdv7liMqr79QZQ3HZ6/DhjRuTvCBBpNltnalUiIafemgLlRil
-	v1t9w/woLyEnzNO1ySx1NIuXT34gHTY=
+	bh=GWz3UetJ1H2inkDCEy0FPsiHj6M0nuo6NxktZOcXvKA=;
+	b=GWOsGDcbF54dGDfwxoFsZ/en0zXUBcgItoTeVwxRTP8g3e4OXJz958OIR281OCDePN4zGf
+	VDlzdaVSmeurtAR8KdqgW78xPzgcn1RHlKGS/miGKtnYSBDFo6CQe0uvmHU1GrzMnQLFma
+	SrQu8VwlVkpP63pYNCG4wMJM1otNu38=
 Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
  by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-647-U1IGKwaGNJuvFFeWmI00Lw-1; Thu,
- 07 Dec 2023 16:23:28 -0500
-X-MC-Unique: U1IGKwaGNJuvFFeWmI00Lw-1
-Received: from smtp.corp.redhat.com (int-mx09.intmail.prod.int.rdu2.redhat.com [10.11.54.9])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-528-CgN40KOpOgG4AEmFSx37PQ-1; Thu,
+ 07 Dec 2023 16:24:06 -0500
+X-MC-Unique: CgN40KOpOgG4AEmFSx37PQ-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id B5B0229AC00A;
-	Thu,  7 Dec 2023 21:23:27 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 84A4D3C40B53;
+	Thu,  7 Dec 2023 21:24:05 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.161])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id 229FF492BCE;
-	Thu,  7 Dec 2023 21:23:25 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id D986B3C2E;
+	Thu,  7 Dec 2023 21:24:02 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Jeff Layton <jlayton@kernel.org>,
 	Steve French <smfrench@gmail.com>
@@ -50,9 +50,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 22/59] netfs: Make the refcounting of netfs_begin_read() easier to use
-Date: Thu,  7 Dec 2023 21:21:29 +0000
-Message-ID: <20231207212206.1379128-23-dhowells@redhat.com>
+Subject: [PATCH v3 33/59] netfs, cachefiles: Pass upper bound length to allow expansion
+Date: Thu,  7 Dec 2023 21:21:40 +0000
+Message-ID: <20231207212206.1379128-34-dhowells@redhat.com>
 In-Reply-To: <20231207212206.1379128-1-dhowells@redhat.com>
 References: <20231207212206.1379128-1-dhowells@redhat.com>
 Precedence: bulk
@@ -62,11 +62,13 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.9
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.1
 
-Make the refcounting of netfs_begin_read() easier to use by not eating the
-caller's ref on the netfs_io_request it's given.  This makes it easier to
-use when we need to look in the request struct after.
+Make netfslib pass the maximum length to the ->prepare_write() op to tell
+the cache how much it can expand the length of a write to.  This allows a
+write to the server at the end of a file to be limited to a few bytes
+whilst writing an entire block to the cache (something required by direct
+I/O).
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Jeff Layton <jlayton@kernel.org>
@@ -74,143 +76,206 @@ cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 cc: linux-mm@kvack.org
 ---
- fs/netfs/buffered_read.c     |  6 +++++-
- fs/netfs/io.c                | 28 +++++++++++++---------------
- include/trace/events/netfs.h |  9 +++++----
- 3 files changed, 23 insertions(+), 20 deletions(-)
+ fs/cachefiles/internal.h |  2 +-
+ fs/cachefiles/io.c       | 10 ++++++----
+ fs/cachefiles/ondemand.c |  2 +-
+ fs/netfs/fscache_io.c    |  2 +-
+ fs/netfs/io.c            |  2 +-
+ fs/netfs/objects.c       |  1 +
+ fs/netfs/output.c        | 25 ++++++++++---------------
+ fs/smb/client/fscache.c  |  2 +-
+ include/linux/netfs.h    |  5 +++--
+ 9 files changed, 25 insertions(+), 26 deletions(-)
 
-diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
-index 751556faa70b..6b9a44cafbac 100644
---- a/fs/netfs/buffered_read.c
-+++ b/fs/netfs/buffered_read.c
-@@ -210,6 +210,7 @@ void netfs_readahead(struct readahead_control *ractl)
- 		;
+diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
+index 4a87c9d714a9..d33169f0018b 100644
+--- a/fs/cachefiles/internal.h
++++ b/fs/cachefiles/internal.h
+@@ -246,7 +246,7 @@ extern bool cachefiles_begin_operation(struct netfs_cache_resources *cres,
+ 				       enum fscache_want_state want_state);
+ extern int __cachefiles_prepare_write(struct cachefiles_object *object,
+ 				      struct file *file,
+-				      loff_t *_start, size_t *_len,
++				      loff_t *_start, size_t *_len, size_t upper_len,
+ 				      bool no_space_allocated_yet);
+ extern int __cachefiles_write(struct cachefiles_object *object,
+ 			      struct file *file,
+diff --git a/fs/cachefiles/io.c b/fs/cachefiles/io.c
+index 5857241c5918..9fe69a60eb24 100644
+--- a/fs/cachefiles/io.c
++++ b/fs/cachefiles/io.c
+@@ -517,7 +517,7 @@ cachefiles_prepare_ondemand_read(struct netfs_cache_resources *cres,
+  */
+ int __cachefiles_prepare_write(struct cachefiles_object *object,
+ 			       struct file *file,
+-			       loff_t *_start, size_t *_len,
++			       loff_t *_start, size_t *_len, size_t upper_len,
+ 			       bool no_space_allocated_yet)
+ {
+ 	struct cachefiles_cache *cache = object->volume->cache;
+@@ -529,6 +529,8 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
+ 	down = start - round_down(start, PAGE_SIZE);
+ 	*_start = start - down;
+ 	*_len = round_up(down + len, PAGE_SIZE);
++	if (down < start || *_len > upper_len)
++		return -ENOBUFS;
  
- 	netfs_begin_read(rreq, false);
-+	netfs_put_request(rreq, false, netfs_rreq_trace_put_return);
- 	return;
+ 	/* We need to work out whether there's sufficient disk space to perform
+ 	 * the write - but we can skip that check if we have space already
+@@ -591,8 +593,8 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
+ }
  
- cleanup_free:
-@@ -260,7 +261,9 @@ int netfs_read_folio(struct file *file, struct folio *folio)
- 	iov_iter_xarray(&rreq->iter, ITER_DEST, &mapping->i_pages,
- 			rreq->start, rreq->len);
+ static int cachefiles_prepare_write(struct netfs_cache_resources *cres,
+-				    loff_t *_start, size_t *_len, loff_t i_size,
+-				    bool no_space_allocated_yet)
++				    loff_t *_start, size_t *_len, size_t upper_len,
++				    loff_t i_size, bool no_space_allocated_yet)
+ {
+ 	struct cachefiles_object *object = cachefiles_cres_object(cres);
+ 	struct cachefiles_cache *cache = object->volume->cache;
+@@ -608,7 +610,7 @@ static int cachefiles_prepare_write(struct netfs_cache_resources *cres,
  
--	return netfs_begin_read(rreq, true);
-+	ret = netfs_begin_read(rreq, true);
-+	netfs_put_request(rreq, false, netfs_rreq_trace_put_return);
-+	return ret;
+ 	cachefiles_begin_secure(cache, &saved_cred);
+ 	ret = __cachefiles_prepare_write(object, cachefiles_cres_file(cres),
+-					 _start, _len,
++					 _start, _len, upper_len,
+ 					 no_space_allocated_yet);
+ 	cachefiles_end_secure(cache, saved_cred);
+ 	return ret;
+diff --git a/fs/cachefiles/ondemand.c b/fs/cachefiles/ondemand.c
+index b8fbbb1961bb..5fd74ec60bef 100644
+--- a/fs/cachefiles/ondemand.c
++++ b/fs/cachefiles/ondemand.c
+@@ -50,7 +50,7 @@ static ssize_t cachefiles_ondemand_fd_write_iter(struct kiocb *kiocb,
+ 		return -ENOBUFS;
  
- discard:
- 	netfs_put_request(rreq, false, netfs_rreq_trace_put_discard);
-@@ -429,6 +432,7 @@ int netfs_write_begin(struct netfs_inode *ctx,
- 	ret = netfs_begin_read(rreq, true);
+ 	cachefiles_begin_secure(cache, &saved_cred);
+-	ret = __cachefiles_prepare_write(object, file, &pos, &len, true);
++	ret = __cachefiles_prepare_write(object, file, &pos, &len, len, true);
+ 	cachefiles_end_secure(cache, saved_cred);
  	if (ret < 0)
- 		goto error;
-+	netfs_put_request(rreq, false, netfs_rreq_trace_put_return);
+ 		return ret;
+diff --git a/fs/netfs/fscache_io.c b/fs/netfs/fscache_io.c
+index 79171a687930..ad572f7ee897 100644
+--- a/fs/netfs/fscache_io.c
++++ b/fs/netfs/fscache_io.c
+@@ -237,7 +237,7 @@ void __fscache_write_to_cache(struct fscache_cookie *cookie,
+ 				    fscache_access_io_write) < 0)
+ 		goto abandon_free;
  
- have_folio:
- 	ret = folio_wait_fscache_killable(folio);
+-	ret = cres->ops->prepare_write(cres, &start, &len, i_size, false);
++	ret = cres->ops->prepare_write(cres, &start, &len, len, i_size, false);
+ 	if (ret < 0)
+ 		goto abandon_end;
+ 
 diff --git a/fs/netfs/io.c b/fs/netfs/io.c
-index c80b8eed1209..1795f8679be9 100644
+index 894c3305710d..5d9098db815a 100644
 --- a/fs/netfs/io.c
 +++ b/fs/netfs/io.c
-@@ -362,6 +362,7 @@ static void netfs_rreq_assess(struct netfs_io_request *rreq, bool was_async)
+@@ -199,7 +199,7 @@ static void netfs_rreq_do_write_to_cache(struct netfs_io_request *rreq)
+ 		}
  
- 	netfs_rreq_unlock_folios(rreq);
+ 		ret = cres->ops->prepare_write(cres, &subreq->start, &subreq->len,
+-					       rreq->i_size, true);
++					       subreq->len, rreq->i_size, true);
+ 		if (ret < 0) {
+ 			trace_netfs_failure(rreq, subreq, ret, netfs_fail_prepare_write);
+ 			trace_netfs_sreq(subreq, netfs_sreq_trace_write_skip);
+diff --git a/fs/netfs/objects.c b/fs/netfs/objects.c
+index c1218b183197..16252cc4576e 100644
+--- a/fs/netfs/objects.c
++++ b/fs/netfs/objects.c
+@@ -33,6 +33,7 @@ struct netfs_io_request *netfs_alloc_request(struct address_space *mapping,
  
-+	trace_netfs_rreq(rreq, netfs_rreq_trace_wake_ip);
- 	clear_bit_unlock(NETFS_RREQ_IN_PROGRESS, &rreq->flags);
- 	wake_up_bit(&rreq->flags, NETFS_RREQ_IN_PROGRESS);
- 
-@@ -657,7 +658,6 @@ int netfs_begin_read(struct netfs_io_request *rreq, bool sync)
- 
- 	if (rreq->len == 0) {
- 		pr_err("Zero-sized read [R=%x]\n", rreq->debug_id);
--		netfs_put_request(rreq, false, netfs_rreq_trace_put_zero_len);
- 		return -EIO;
+ 	rreq->start	= start;
+ 	rreq->len	= len;
++	rreq->upper_len	= len;
+ 	rreq->origin	= origin;
+ 	rreq->netfs_ops	= ctx->ops;
+ 	rreq->mapping	= mapping;
+diff --git a/fs/netfs/output.c b/fs/netfs/output.c
+index 560cbcea0c0a..cc9065733b42 100644
+--- a/fs/netfs/output.c
++++ b/fs/netfs/output.c
+@@ -280,7 +280,7 @@ EXPORT_SYMBOL(netfs_queue_write_request);
+  */
+ static void netfs_set_up_write_to_cache(struct netfs_io_request *wreq)
+ {
+-	struct netfs_cache_resources *cres;
++	struct netfs_cache_resources *cres = &wreq->cache_resources;
+ 	struct netfs_io_subrequest *subreq;
+ 	struct netfs_inode *ctx = netfs_inode(wreq->inode);
+ 	struct fscache_cookie *cookie = netfs_i_cookie(ctx);
+@@ -294,26 +294,21 @@ static void netfs_set_up_write_to_cache(struct netfs_io_request *wreq)
  	}
  
-@@ -669,12 +669,10 @@ int netfs_begin_read(struct netfs_io_request *rreq, bool sync)
+ 	_debug("write to cache");
+-	subreq = netfs_create_write_request(wreq, NETFS_WRITE_TO_CACHE, start, len,
+-					    netfs_write_to_cache_op_worker);
+-	if (!subreq)
++	ret = fscache_begin_write_operation(cres, cookie);
++	if (ret < 0)
+ 		return;
  
- 	INIT_WORK(&rreq->work, netfs_rreq_work);
+-	cres = &wreq->cache_resources;
+-	ret = fscache_begin_read_operation(cres, cookie);
+-	if (ret < 0) {
+-		netfs_write_subrequest_terminated(subreq, ret, false);
++	ret = cres->ops->prepare_write(cres, &start, &len, wreq->upper_len,
++				       i_size_read(wreq->inode), true);
++	if (ret < 0)
+ 		return;
+-	}
  
--	if (sync)
--		netfs_get_request(rreq, netfs_rreq_trace_get_hold);
--
- 	/* Chop the read into slices according to what the cache and the netfs
- 	 * want and submit each one.
+-	ret = cres->ops->prepare_write(cres, &start, &len, i_size_read(wreq->inode),
+-				       true);
+-	if (ret < 0) {
+-		netfs_write_subrequest_terminated(subreq, ret, false);
++	subreq = netfs_create_write_request(wreq, NETFS_WRITE_TO_CACHE, start, len,
++					    netfs_write_to_cache_op_worker);
++	if (!subreq)
+ 		return;
+-	}
+ 
+-	netfs_queue_write_request(subreq);
++	netfs_write_to_cache_op(subreq);
+ }
+ 
+ /*
+diff --git a/fs/smb/client/fscache.c b/fs/smb/client/fscache.c
+index e5cad149f5a2..c4a3cb736881 100644
+--- a/fs/smb/client/fscache.c
++++ b/fs/smb/client/fscache.c
+@@ -180,7 +180,7 @@ static int fscache_fallback_write_pages(struct inode *inode, loff_t start, size_
+ 	if (ret < 0)
+ 		return ret;
+ 
+-	ret = cres.ops->prepare_write(&cres, &start, &len, i_size_read(inode),
++	ret = cres.ops->prepare_write(&cres, &start, &len, len, i_size_read(inode),
+ 				      no_space_allocated_yet);
+ 	if (ret == 0)
+ 		ret = fscache_write(&cres, start, &iter, NULL, NULL);
+diff --git a/include/linux/netfs.h b/include/linux/netfs.h
+index 638f42fdaef5..f98deef22d06 100644
+--- a/include/linux/netfs.h
++++ b/include/linux/netfs.h
+@@ -263,6 +263,7 @@ struct netfs_io_request {
+ 	atomic_t		nr_copy_ops;	/* Number of copy-to-cache ops in progress */
+ 	size_t			submitted;	/* Amount submitted for I/O so far */
+ 	size_t			len;		/* Length of the request */
++	size_t			upper_len;	/* Length can be extended to here */
+ 	size_t			transferred;	/* Amount to be indicated as transferred */
+ 	short			error;		/* 0 or error that occurred */
+ 	enum netfs_io_origin	origin;		/* Origin of the request */
+@@ -360,8 +361,8 @@ struct netfs_cache_ops {
+ 	 * actually do.
  	 */
-+	netfs_get_request(rreq, netfs_rreq_trace_get_for_outstanding);
- 	atomic_set(&rreq->nr_outstanding, 1);
- 	io_iter = rreq->io_iter;
- 	do {
-@@ -684,25 +682,25 @@ int netfs_begin_read(struct netfs_io_request *rreq, bool sync)
- 	} while (rreq->submitted < rreq->len);
+ 	int (*prepare_write)(struct netfs_cache_resources *cres,
+-			     loff_t *_start, size_t *_len, loff_t i_size,
+-			     bool no_space_allocated_yet);
++			     loff_t *_start, size_t *_len, size_t upper_len,
++			     loff_t i_size, bool no_space_allocated_yet);
  
- 	if (sync) {
--		/* Keep nr_outstanding incremented so that the ref always belongs to
--		 * us, and the service code isn't punted off to a random thread pool to
--		 * process.
-+		/* Keep nr_outstanding incremented so that the ref always
-+		 * belongs to us, and the service code isn't punted off to a
-+		 * random thread pool to process.  Note that this might start
-+		 * further work, such as writing to the cache.
- 		 */
--		for (;;) {
--			wait_var_event(&rreq->nr_outstanding,
--				       atomic_read(&rreq->nr_outstanding) == 1);
-+		wait_var_event(&rreq->nr_outstanding,
-+			       atomic_read(&rreq->nr_outstanding) == 1);
-+		if (atomic_dec_and_test(&rreq->nr_outstanding))
- 			netfs_rreq_assess(rreq, false);
--			if (!test_bit(NETFS_RREQ_IN_PROGRESS, &rreq->flags))
--				break;
--			cond_resched();
--		}
-+
-+		trace_netfs_rreq(rreq, netfs_rreq_trace_wait_ip);
-+		wait_on_bit(&rreq->flags, NETFS_RREQ_IN_PROGRESS,
-+			    TASK_UNINTERRUPTIBLE);
- 
- 		ret = rreq->error;
- 		if (ret == 0 && rreq->submitted < rreq->len) {
- 			trace_netfs_failure(rreq, NULL, ret, netfs_fail_short_read);
- 			ret = -EIO;
- 		}
--		netfs_put_request(rreq, false, netfs_rreq_trace_put_hold);
- 	} else {
- 		/* If we decrement nr_outstanding to 0, the ref belongs to us. */
- 		if (atomic_dec_and_test(&rreq->nr_outstanding))
-diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
-index 4ea4e34d279f..6daadf2aac8a 100644
---- a/include/trace/events/netfs.h
-+++ b/include/trace/events/netfs.h
-@@ -34,7 +34,9 @@
- 	EM(netfs_rreq_trace_free,		"FREE   ")	\
- 	EM(netfs_rreq_trace_resubmit,		"RESUBMT")	\
- 	EM(netfs_rreq_trace_unlock,		"UNLOCK ")	\
--	E_(netfs_rreq_trace_unmark,		"UNMARK ")
-+	EM(netfs_rreq_trace_unmark,		"UNMARK ")	\
-+	EM(netfs_rreq_trace_wait_ip,		"WAIT-IP")	\
-+	E_(netfs_rreq_trace_wake_ip,		"WAKE-IP")
- 
- #define netfs_sreq_sources					\
- 	EM(NETFS_FILL_WITH_ZEROES,		"ZERO")		\
-@@ -65,14 +67,13 @@
- 	E_(netfs_fail_prepare_write,		"prep-write")
- 
- #define netfs_rreq_ref_traces					\
--	EM(netfs_rreq_trace_get_hold,		"GET HOLD   ")	\
-+	EM(netfs_rreq_trace_get_for_outstanding,"GET OUTSTND")	\
- 	EM(netfs_rreq_trace_get_subreq,		"GET SUBREQ ")	\
- 	EM(netfs_rreq_trace_put_complete,	"PUT COMPLT ")	\
- 	EM(netfs_rreq_trace_put_discard,	"PUT DISCARD")	\
- 	EM(netfs_rreq_trace_put_failed,		"PUT FAILED ")	\
--	EM(netfs_rreq_trace_put_hold,		"PUT HOLD   ")	\
-+	EM(netfs_rreq_trace_put_return,		"PUT RETURN ")	\
- 	EM(netfs_rreq_trace_put_subreq,		"PUT SUBREQ ")	\
--	EM(netfs_rreq_trace_put_zero_len,	"PUT ZEROLEN")	\
- 	E_(netfs_rreq_trace_new,		"NEW        ")
- 
- #define netfs_sreq_ref_traces					\
+ 	/* Prepare an on-demand read operation, shortening it to a cached/uncached
+ 	 * boundary as appropriate.
 
