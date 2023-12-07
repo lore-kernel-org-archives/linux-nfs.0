@@ -1,32 +1,32 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ifEMd1XK"
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id CC11C198D
-	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:22:55 -0800 (PST)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="NlFpQoan"
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 71EA01719
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:23:07 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1701984175;
+	s=mimecast20190719; t=1701984186;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=hI7SPLixeI9nlQ4BAck1nNakLW38S3QG1L7ZzowPna4=;
-	b=ifEMd1XK/H6QVjGdUczJqvBc/UpswRXXP0qM/p3OZDJUl5jBY18tZo6F5ksAJsmYLKj1rK
-	7vArIqm/471mhmzzk5axX98I3yJbMYqNJH/l0Yz9R3MxPZYwWLA9+bYntrUJ9dJM5RIiSa
-	WETxabXmKdnR7xIA/cBemdpPtueaO1o=
-Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
- by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-455-UXXlRnlKMEyQfzn5h1o12Q-1; Thu,
- 07 Dec 2023 16:22:49 -0500
-X-MC-Unique: UXXlRnlKMEyQfzn5h1o12Q-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
+	bh=8LJStTcEUC8o0lLNAVpCzprXOnufVOzk9OY/aFWfrk0=;
+	b=NlFpQoan5NdRyci///gRGA3iNw47sKtwmx1fc+8O++1e/8U9Y4sVyk0VZ3BDNPUuPhj4iG
+	JnfF2hE3zz/OL6YiElt3wBA9SsKqzTxQzr/3SNr9sSlsFJ/i2ON+I3xn511xbkZjXxWFrN
+	0f6FmdSAfxLd+bwwt+jQIAJ+2sWN8M0=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-654-_nDF-Qt8MKuELyYFtWU5zg-1; Thu, 07 Dec 2023 16:23:00 -0500
+X-MC-Unique: _nDF-Qt8MKuELyYFtWU5zg-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 86A413C29A76;
-	Thu,  7 Dec 2023 21:22:48 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 140E38489A5;
+	Thu,  7 Dec 2023 21:22:59 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.161])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id DD9541C060AF;
-	Thu,  7 Dec 2023 21:22:45 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 2A4A1C185A0;
+	Thu,  7 Dec 2023 21:22:56 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Jeff Layton <jlayton@kernel.org>,
 	Steve French <smfrench@gmail.com>
@@ -50,9 +50,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 11/59] netfs: Implement unbuffered/DIO vs buffered I/O locking
-Date: Thu,  7 Dec 2023 21:21:18 +0000
-Message-ID: <20231207212206.1379128-12-dhowells@redhat.com>
+Subject: [PATCH v3 14/59] netfs: Provide tools to create a buffer in an xarray
+Date: Thu,  7 Dec 2023 21:21:21 +0000
+Message-ID: <20231207212206.1379128-15-dhowells@redhat.com>
 In-Reply-To: <20231207212206.1379128-1-dhowells@redhat.com>
 References: <20231207212206.1379128-1-dhowells@redhat.com>
 Precedence: bulk
@@ -62,13 +62,12 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.7
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.8
 
-Borrow NFS's direct-vs-buffered I/O locking into netfslib.  Similar code is
-also used in ceph.
-
-Modify it to have the correct checker annotations for i_rwsem lock
-acquisition/release and to return -ERESTARTSYS if waits are interrupted.
+Provide tools to create a buffer in an xarray, with a function to add new
+folios with a mark.  This will be used to create bounce buffer and can be
+used more easily to create a list of folios the span of which would require
+more than a page's worth of bio_vec structs.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Jeff Layton <jlayton@kernel.org>
@@ -76,278 +75,140 @@ cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 cc: linux-mm@kvack.org
 ---
- fs/netfs/Makefile     |   1 +
- fs/netfs/locking.c    | 215 ++++++++++++++++++++++++++++++++++++++++++
- include/linux/netfs.h |  10 ++
- 3 files changed, 226 insertions(+)
- create mode 100644 fs/netfs/locking.c
+ fs/netfs/internal.h   | 13 +++++++
+ fs/netfs/misc.c       | 81 +++++++++++++++++++++++++++++++++++++++++++
+ include/linux/netfs.h |  4 +++
+ 3 files changed, 98 insertions(+)
 
-diff --git a/fs/netfs/Makefile b/fs/netfs/Makefile
-index a84fe9bbd3c4..cf3fc847b8ac 100644
---- a/fs/netfs/Makefile
-+++ b/fs/netfs/Makefile
-@@ -4,6 +4,7 @@ netfs-y := \
- 	buffered_read.o \
- 	io.o \
- 	iterator.o \
-+	locking.o \
- 	main.o \
- 	misc.o \
- 	objects.o
-diff --git a/fs/netfs/locking.c b/fs/netfs/locking.c
-new file mode 100644
-index 000000000000..58e0f48394c5
---- /dev/null
-+++ b/fs/netfs/locking.c
-@@ -0,0 +1,215 @@
-+// SPDX-License-Identifier: GPL-2.0
-+/*
-+ * I/O and data path helper functionality.
-+ *
-+ * Borrowed from NFS Copyright (c) 2016 Trond Myklebust
-+ */
-+
-+#include <linux/kernel.h>
-+#include <linux/netfs.h>
-+
-+/*
-+ * inode_dio_wait_interruptible - wait for outstanding DIO requests to finish
-+ * @inode: inode to wait for
-+ *
-+ * Waits for all pending direct I/O requests to finish so that we can
-+ * proceed with a truncate or equivalent operation.
-+ *
-+ * Must be called under a lock that serializes taking new references
-+ * to i_dio_count, usually by inode->i_mutex.
-+ */
-+static int inode_dio_wait_interruptible(struct inode *inode)
-+{
-+	if (!atomic_read(&inode->i_dio_count))
-+		return 0;
-+
-+	wait_queue_head_t *wq = bit_waitqueue(&inode->i_state, __I_DIO_WAKEUP);
-+	DEFINE_WAIT_BIT(q, &inode->i_state, __I_DIO_WAKEUP);
-+
-+	for (;;) {
-+		prepare_to_wait(wq, &q.wq_entry, TASK_INTERRUPTIBLE);
-+		if (!atomic_read(&inode->i_dio_count))
-+			break;
-+		if (signal_pending(current))
-+			break;
-+		schedule();
-+	}
-+	finish_wait(wq, &q.wq_entry);
-+
-+	return atomic_read(&inode->i_dio_count) ? -ERESTARTSYS : 0;
-+}
-+
-+/* Call with exclusively locked inode->i_rwsem */
-+static int netfs_block_o_direct(struct netfs_inode *ictx)
-+{
-+	if (!test_bit(NETFS_ICTX_ODIRECT, &ictx->flags))
-+		return 0;
-+	clear_bit(NETFS_ICTX_ODIRECT, &ictx->flags);
-+	return inode_dio_wait_interruptible(&ictx->inode);
-+}
-+
-+/**
-+ * netfs_start_io_read - declare the file is being used for buffered reads
-+ * @inode: file inode
-+ *
-+ * Declare that a buffered read operation is about to start, and ensure
-+ * that we block all direct I/O.
-+ * On exit, the function ensures that the NETFS_ICTX_ODIRECT flag is unset,
-+ * and holds a shared lock on inode->i_rwsem to ensure that the flag
-+ * cannot be changed.
-+ * In practice, this means that buffered read operations are allowed to
-+ * execute in parallel, thanks to the shared lock, whereas direct I/O
-+ * operations need to wait to grab an exclusive lock in order to set
-+ * NETFS_ICTX_ODIRECT.
-+ * Note that buffered writes and truncates both take a write lock on
-+ * inode->i_rwsem, meaning that those are serialised w.r.t. the reads.
-+ */
-+int netfs_start_io_read(struct inode *inode)
-+	__acquires(inode->i_rwsem)
-+{
-+	struct netfs_inode *ictx = netfs_inode(inode);
-+
-+	/* Be an optimist! */
-+	if (down_read_interruptible(&inode->i_rwsem) < 0)
-+		return -ERESTARTSYS;
-+	if (test_bit(NETFS_ICTX_ODIRECT, &ictx->flags) == 0)
-+		return 0;
-+	up_read(&inode->i_rwsem);
-+
-+	/* Slow path.... */
-+	if (down_write_killable(&inode->i_rwsem) < 0)
-+		return -ERESTARTSYS;
-+	if (netfs_block_o_direct(ictx) < 0) {
-+		up_write(&inode->i_rwsem);
-+		return -ERESTARTSYS;
-+	}
-+	downgrade_write(&inode->i_rwsem);
-+	return 0;
-+}
-+EXPORT_SYMBOL(netfs_start_io_read);
-+
-+/**
-+ * netfs_end_io_read - declare that the buffered read operation is done
-+ * @inode: file inode
-+ *
-+ * Declare that a buffered read operation is done, and release the shared
-+ * lock on inode->i_rwsem.
-+ */
-+void netfs_end_io_read(struct inode *inode)
-+	__releases(inode->i_rwsem)
-+{
-+	up_read(&inode->i_rwsem);
-+}
-+EXPORT_SYMBOL(netfs_end_io_read);
-+
-+/**
-+ * netfs_start_io_write - declare the file is being used for buffered writes
-+ * @inode: file inode
-+ *
-+ * Declare that a buffered read operation is about to start, and ensure
-+ * that we block all direct I/O.
-+ */
-+int netfs_start_io_write(struct inode *inode)
-+	__acquires(inode->i_rwsem)
-+{
-+	struct netfs_inode *ictx = netfs_inode(inode);
-+
-+	if (down_write_killable(&inode->i_rwsem) < 0)
-+		return -ERESTARTSYS;
-+	if (netfs_block_o_direct(ictx) < 0) {
-+		up_write(&inode->i_rwsem);
-+		return -ERESTARTSYS;
-+	}
-+	return 0;
-+}
-+EXPORT_SYMBOL(netfs_start_io_write);
-+
-+/**
-+ * netfs_end_io_write - declare that the buffered write operation is done
-+ * @inode: file inode
-+ *
-+ * Declare that a buffered write operation is done, and release the
-+ * lock on inode->i_rwsem.
-+ */
-+void netfs_end_io_write(struct inode *inode)
-+	__releases(inode->i_rwsem)
-+{
-+	up_write(&inode->i_rwsem);
-+}
-+EXPORT_SYMBOL(netfs_end_io_write);
-+
-+/* Call with exclusively locked inode->i_rwsem */
-+static int netfs_block_buffered(struct inode *inode)
-+{
-+	struct netfs_inode *ictx = netfs_inode(inode);
-+	int ret;
-+
-+	if (!test_bit(NETFS_ICTX_ODIRECT, &ictx->flags)) {
-+		set_bit(NETFS_ICTX_ODIRECT, &ictx->flags);
-+		if (inode->i_mapping->nrpages != 0) {
-+			unmap_mapping_range(inode->i_mapping, 0, 0, 0);
-+			ret = filemap_fdatawait(inode->i_mapping);
-+			if (ret < 0) {
-+				clear_bit(NETFS_ICTX_ODIRECT, &ictx->flags);
-+				return ret;
-+			}
-+		}
-+	}
-+	return 0;
-+}
-+
-+/**
-+ * netfs_start_io_direct - declare the file is being used for direct i/o
-+ * @inode: file inode
-+ *
-+ * Declare that a direct I/O operation is about to start, and ensure
-+ * that we block all buffered I/O.
-+ * On exit, the function ensures that the NETFS_ICTX_ODIRECT flag is set,
-+ * and holds a shared lock on inode->i_rwsem to ensure that the flag
-+ * cannot be changed.
-+ * In practice, this means that direct I/O operations are allowed to
-+ * execute in parallel, thanks to the shared lock, whereas buffered I/O
-+ * operations need to wait to grab an exclusive lock in order to clear
-+ * NETFS_ICTX_ODIRECT.
-+ * Note that buffered writes and truncates both take a write lock on
-+ * inode->i_rwsem, meaning that those are serialised w.r.t. O_DIRECT.
-+ */
-+int netfs_start_io_direct(struct inode *inode)
-+	__acquires(inode->i_rwsem)
-+{
-+	struct netfs_inode *ictx = netfs_inode(inode);
-+	int ret;
-+
-+	/* Be an optimist! */
-+	if (down_read_interruptible(&inode->i_rwsem) < 0)
-+		return -ERESTARTSYS;
-+	if (test_bit(NETFS_ICTX_ODIRECT, &ictx->flags) != 0)
-+		return 0;
-+	up_read(&inode->i_rwsem);
-+
-+	/* Slow path.... */
-+	if (down_write_killable(&inode->i_rwsem) < 0)
-+		return -ERESTARTSYS;
-+	ret = netfs_block_buffered(inode);
-+	if (ret < 0) {
-+		up_write(&inode->i_rwsem);
-+		return ret;
-+	}
-+	downgrade_write(&inode->i_rwsem);
-+	return 0;
-+}
-+EXPORT_SYMBOL(netfs_start_io_direct);
-+
-+/**
-+ * netfs_end_io_direct - declare that the direct i/o operation is done
-+ * @inode: file inode
-+ *
-+ * Declare that a direct I/O operation is done, and release the shared
-+ * lock on inode->i_rwsem.
-+ */
-+void netfs_end_io_direct(struct inode *inode)
-+	__releases(inode->i_rwsem)
-+{
-+	up_read(&inode->i_rwsem);
-+}
-+EXPORT_SYMBOL(netfs_end_io_direct);
-diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index 8efbfd3b2820..fc6d9756a029 100644
---- a/include/linux/netfs.h
-+++ b/include/linux/netfs.h
-@@ -129,6 +129,8 @@ struct netfs_inode {
- 	struct fscache_cookie	*cache;
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index 2bd99989dd7f..1f25e8622b8a 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -56,6 +56,19 @@ static inline void netfs_proc_add_rreq(struct netfs_io_request *rreq) {}
+ static inline void netfs_proc_del_rreq(struct netfs_io_request *rreq) {}
  #endif
- 	loff_t			remote_i_size;	/* Size of the remote file */
-+	unsigned long		flags;
-+#define NETFS_ICTX_ODIRECT	0		/* The file has DIO in progress */
- };
  
++/*
++ * misc.c
++ */
++#define NETFS_FLAG_PUT_MARK		BIT(0)
++#define NETFS_FLAG_PAGECACHE_MARK	BIT(1)
++int netfs_xa_store_and_mark(struct xarray *xa, unsigned long index,
++			    struct folio *folio, unsigned int flags,
++			    gfp_t gfp_mask);
++int netfs_add_folios_to_buffer(struct xarray *buffer,
++			       struct address_space *mapping,
++			       pgoff_t index, pgoff_t to, gfp_t gfp_mask);
++void netfs_clear_buffer(struct xarray *buffer);
++
  /*
-@@ -310,6 +312,13 @@ ssize_t netfs_extract_user_iter(struct iov_iter *orig, size_t orig_len,
- 				struct iov_iter *new,
- 				iov_iter_extraction_t extraction_flags);
+  * objects.c
+  */
+diff --git a/fs/netfs/misc.c b/fs/netfs/misc.c
+index d946d85764de..96014c3d1683 100644
+--- a/fs/netfs/misc.c
++++ b/fs/netfs/misc.c
+@@ -8,6 +8,87 @@
+ #include <linux/swap.h>
+ #include "internal.h"
  
-+int netfs_start_io_read(struct inode *inode);
-+void netfs_end_io_read(struct inode *inode);
-+int netfs_start_io_write(struct inode *inode);
-+void netfs_end_io_write(struct inode *inode);
-+int netfs_start_io_direct(struct inode *inode);
-+void netfs_end_io_direct(struct inode *inode);
++/*
++ * Attach a folio to the buffer and maybe set marks on it to say that we need
++ * to put the folio later and twiddle the pagecache flags.
++ */
++int netfs_xa_store_and_mark(struct xarray *xa, unsigned long index,
++			    struct folio *folio, unsigned int flags,
++			    gfp_t gfp_mask)
++{
++	XA_STATE_ORDER(xas, xa, index, folio_order(folio));
++
++retry:
++	xas_lock(&xas);
++	for (;;) {
++		xas_store(&xas, folio);
++		if (!xas_error(&xas))
++			break;
++		xas_unlock(&xas);
++		if (!xas_nomem(&xas, gfp_mask))
++			return xas_error(&xas);
++		goto retry;
++	}
++
++	if (flags & NETFS_FLAG_PUT_MARK)
++		xas_set_mark(&xas, NETFS_BUF_PUT_MARK);
++	if (flags & NETFS_FLAG_PAGECACHE_MARK)
++		xas_set_mark(&xas, NETFS_BUF_PAGECACHE_MARK);
++	xas_unlock(&xas);
++	return xas_error(&xas);
++}
++
++/*
++ * Create the specified range of folios in the buffer attached to the read
++ * request.  The folios are marked with NETFS_BUF_PUT_MARK so that we know that
++ * these need freeing later.
++ */
++int netfs_add_folios_to_buffer(struct xarray *buffer,
++			       struct address_space *mapping,
++			       pgoff_t index, pgoff_t to, gfp_t gfp_mask)
++{
++	struct folio *folio;
++	int ret;
++
++	if (to + 1 == index) /* Page range is inclusive */
++		return 0;
++
++	do {
++		/* TODO: Figure out what order folio can be allocated here */
++		folio = filemap_alloc_folio(readahead_gfp_mask(mapping), 0);
++		if (!folio)
++			return -ENOMEM;
++		folio->index = index;
++		ret = netfs_xa_store_and_mark(buffer, index, folio,
++					      NETFS_FLAG_PUT_MARK, gfp_mask);
++		if (ret < 0) {
++			folio_put(folio);
++			return ret;
++		}
++
++		index += folio_nr_pages(folio);
++	} while (index <= to && index != 0);
++
++	return 0;
++}
++
++/*
++ * Clear an xarray buffer, putting a ref on the folios that have
++ * NETFS_BUF_PUT_MARK set.
++ */
++void netfs_clear_buffer(struct xarray *buffer)
++{
++	struct folio *folio;
++	XA_STATE(xas, buffer, 0);
++
++	rcu_read_lock();
++	xas_for_each_marked(&xas, folio, ULONG_MAX, NETFS_BUF_PUT_MARK) {
++		folio_put(folio);
++	}
++	rcu_read_unlock();
++	xa_destroy(buffer);
++}
 +
  /**
-  * netfs_inode - Get the netfs inode context from the inode
-  * @inode: The inode to query
-@@ -335,6 +344,7 @@ static inline void netfs_inode_init(struct netfs_inode *ctx,
- {
- 	ctx->ops = ops;
- 	ctx->remote_i_size = i_size_read(&ctx->inode);
-+	ctx->flags = 0;
- #if IS_ENABLED(CONFIG_FSCACHE)
- 	ctx->cache = NULL;
- #endif
+  * netfs_dirty_folio - Mark folio dirty and pin a cache object for writeback
+  * @mapping: The mapping the folio belongs to.
+diff --git a/include/linux/netfs.h b/include/linux/netfs.h
+index bbb33ccbf719..c05150f51beb 100644
+--- a/include/linux/netfs.h
++++ b/include/linux/netfs.h
+@@ -109,6 +109,10 @@ static inline int wait_on_page_fscache_killable(struct page *page)
+ 	return folio_wait_private_2_killable(page_folio(page));
+ }
+ 
++/* Marks used on xarray-based buffers */
++#define NETFS_BUF_PUT_MARK	XA_MARK_0	/* - Page needs putting  */
++#define NETFS_BUF_PAGECACHE_MARK XA_MARK_1	/* - Page needs wb/dirty flag wrangling */
++
+ enum netfs_io_source {
+ 	NETFS_FILL_WITH_ZEROES,
+ 	NETFS_DOWNLOAD_FROM_SERVER,
 
