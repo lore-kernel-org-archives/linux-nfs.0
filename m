@@ -1,32 +1,32 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="BxqfQjWP"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="AUiakcWy"
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 955D62D51
-	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:23:47 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id B1DC735BC
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:24:05 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1701984226;
+	s=mimecast20190719; t=1701984244;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=n7vsxkTeFDyw/Xz/jQpnFttohdwf2WdzS8Vx6FHSJ3Y=;
-	b=BxqfQjWPm4gPm+pq1siw4fazLxiM7Ljc3C8AygFzCV7ltv/pIekxdyjmngV89qjWRGbLex
-	D3BupvZg7XlJPwXQ9Os51xc7ure6E44Cp/G1iFCvLRX8PRd567LjhcR6yte+h02EdU3oG5
-	yar6aEdEvkccUy5T9kZr8wQ/MJVubl0=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-390-uJ4kU2GuPDu9qpLtNto3NQ-1; Thu, 07 Dec 2023 16:23:43 -0500
-X-MC-Unique: uJ4kU2GuPDu9qpLtNto3NQ-1
+	bh=bK45Roxm3IC/nkVEsH43k2qGwF+l+q9rJ2GGBczBW+0=;
+	b=AUiakcWyhAYMg8BX1CbneTdY6m7G4kbtQ+lNBg8Q9XKhtWIPDIIeP/3lMaPXs/1OTyR2c4
+	sEaldYotxz8WPtVUGc8hP5JdPzC39ZdvUGf3W6L1e2+Zn5iy6md+Uunkro232wAb+fBmvn
+	fFpTRy0EiJpMYyHJvzhhrIS+v/1Ojig=
+Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
+ by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-652-posFfXSVM5iCUojQBMehhw-1; Thu,
+ 07 Dec 2023 16:23:57 -0500
+X-MC-Unique: posFfXSVM5iCUojQBMehhw-1
 Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id DF523185A785;
-	Thu,  7 Dec 2023 21:23:41 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 5D1CE29AC011;
+	Thu,  7 Dec 2023 21:23:55 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.161])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id 469821C060AF;
-	Thu,  7 Dec 2023 21:23:39 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id BF5661C060BC;
+	Thu,  7 Dec 2023 21:23:52 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Jeff Layton <jlayton@kernel.org>,
 	Steve French <smfrench@gmail.com>
@@ -50,9 +50,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 26/59] netfs: Make netfs_read_folio() handle streaming-write pages
-Date: Thu,  7 Dec 2023 21:21:33 +0000
-Message-ID: <20231207212206.1379128-27-dhowells@redhat.com>
+Subject: [PATCH v3 30/59] netfs: Implement buffered write API
+Date: Thu,  7 Dec 2023 21:21:37 +0000
+Message-ID: <20231207212206.1379128-31-dhowells@redhat.com>
 In-Reply-To: <20231207212206.1379128-1-dhowells@redhat.com>
 References: <20231207212206.1379128-1-dhowells@redhat.com>
 Precedence: bulk
@@ -64,18 +64,10 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.7
 
-netfs_read_folio() needs to handle partially-valid pages that are marked
-dirty, but not uptodate in the event that someone tries to read a page was
-used to cache data by a streaming write.
-
-In such a case, make netfs_read_folio() set up a bvec iterator that points
-to the parts of the folio that need filling and to a sink page for the data
-that should be discarded and use that instead of i_pages as the iterator to
-be written to.
-
-This requires netfs_rreq_unlock_folios() to convert the page into a normal
-dirty uptodate page, getting rid of the partial write record and bumping
-the group pointer over to folio->private.
+Institute a netfs write helper, netfs_file_write_iter(), to be pointed at
+by the network filesystem ->write_iter() call.  Make it handled buffered
+writes by calling the previously defined netfs_perform_write() to copy the
+source data into the pagecache.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Jeff Layton <jlayton@kernel.org>
@@ -83,120 +75,114 @@ cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 cc: linux-mm@kvack.org
 ---
- fs/netfs/buffered_read.c     | 61 ++++++++++++++++++++++++++++++++++--
- include/trace/events/netfs.h |  2 ++
- 2 files changed, 60 insertions(+), 3 deletions(-)
+ fs/netfs/buffered_write.c | 83 +++++++++++++++++++++++++++++++++++++++
+ include/linux/netfs.h     |  3 ++
+ 2 files changed, 86 insertions(+)
 
-diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
-index 73a6e4d61f9d..950f63fc156a 100644
---- a/fs/netfs/buffered_read.c
-+++ b/fs/netfs/buffered_read.c
-@@ -16,6 +16,7 @@
- void netfs_rreq_unlock_folios(struct netfs_io_request *rreq)
- {
- 	struct netfs_io_subrequest *subreq;
-+	struct netfs_folio *finfo;
- 	struct folio *folio;
- 	pgoff_t start_page = rreq->start / PAGE_SIZE;
- 	pgoff_t last_page = ((rreq->start + rreq->len) / PAGE_SIZE) - 1;
-@@ -87,6 +88,15 @@ void netfs_rreq_unlock_folios(struct netfs_io_request *rreq)
- 
- 		if (!pg_failed) {
- 			flush_dcache_folio(folio);
-+			finfo = netfs_folio_info(folio);
-+			if (finfo) {
-+				trace_netfs_folio(folio, netfs_folio_trace_filled_gaps);
-+				if (finfo->netfs_group)
-+					folio_change_private(folio, finfo->netfs_group);
-+				else
-+					folio_detach_private(folio);
-+				kfree(finfo);
-+			}
- 			folio_mark_uptodate(folio);
- 		}
- 
-@@ -239,6 +249,7 @@ int netfs_read_folio(struct file *file, struct folio *folio)
- 	struct address_space *mapping = folio_file_mapping(folio);
- 	struct netfs_io_request *rreq;
- 	struct netfs_inode *ctx = netfs_inode(mapping->host);
-+	struct folio *sink = NULL;
- 	int ret;
- 
- 	_enter("%lx", folio_index(folio));
-@@ -259,12 +270,56 @@ int netfs_read_folio(struct file *file, struct folio *folio)
- 	trace_netfs_read(rreq, rreq->start, rreq->len, netfs_read_trace_readpage);
- 
- 	/* Set up the output buffer */
--	iov_iter_xarray(&rreq->iter, ITER_DEST, &mapping->i_pages,
--			rreq->start, rreq->len);
-+	if (folio_test_dirty(folio)) {
-+		/* Handle someone trying to read from an unflushed streaming
-+		 * write.  We fiddle the buffer so that a gap at the beginning
-+		 * and/or a gap at the end get copied to, but the middle is
-+		 * discarded.
-+		 */
-+		struct netfs_folio *finfo = netfs_folio_info(folio);
-+		struct bio_vec *bvec;
-+		unsigned int from = finfo->dirty_offset;
-+		unsigned int to = from + finfo->dirty_len;
-+		unsigned int off = 0, i = 0;
-+		size_t flen = folio_size(folio);
-+		size_t nr_bvec = flen / PAGE_SIZE + 2;
-+		size_t part;
+diff --git a/fs/netfs/buffered_write.c b/fs/netfs/buffered_write.c
+index b76688e98f81..f244123ab568 100644
+--- a/fs/netfs/buffered_write.c
++++ b/fs/netfs/buffered_write.c
+@@ -333,3 +333,86 @@ ssize_t netfs_perform_write(struct kiocb *iocb, struct iov_iter *iter,
+ 	goto out;
+ }
+ EXPORT_SYMBOL(netfs_perform_write);
 +
-+		ret = -ENOMEM;
-+		bvec = kmalloc_array(nr_bvec, sizeof(*bvec), GFP_KERNEL);
-+		if (!bvec)
-+			goto discard;
++/**
++ * netfs_buffered_write_iter_locked - write data to a file
++ * @iocb:	IO state structure (file, offset, etc.)
++ * @from:	iov_iter with data to write
++ * @netfs_group: Grouping for dirty pages (eg. ceph snaps).
++ *
++ * This function does all the work needed for actually writing data to a
++ * file. It does all basic checks, removes SUID from the file, updates
++ * modification times and calls proper subroutines depending on whether we
++ * do direct IO or a standard buffered write.
++ *
++ * The caller must hold appropriate locks around this function and have called
++ * generic_write_checks() already.  The caller is also responsible for doing
++ * any necessary syncing afterwards.
++ *
++ * This function does *not* take care of syncing data in case of O_SYNC write.
++ * A caller has to handle it. This is mainly due to the fact that we want to
++ * avoid syncing under i_rwsem.
++ *
++ * Return:
++ * * number of bytes written, even for truncated writes
++ * * negative error code if no data has been written at all
++ */
++ssize_t netfs_buffered_write_iter_locked(struct kiocb *iocb, struct iov_iter *from,
++					 struct netfs_group *netfs_group)
++{
++	struct file *file = iocb->ki_filp;
++	ssize_t ret;
 +
-+		sink = folio_alloc(GFP_KERNEL, 0);
-+		if (!sink)
-+			goto discard;
++	trace_netfs_write_iter(iocb, from);
 +
-+		trace_netfs_folio(folio, netfs_folio_trace_read_gaps);
++	ret = file_remove_privs(file);
++	if (ret)
++		return ret;
 +
-+		rreq->direct_bv = bvec;
-+		rreq->direct_bv_count = nr_bvec;
-+		if (from > 0) {
-+			bvec_set_folio(&bvec[i++], folio, from, 0);
-+			off = from;
-+		}
-+		while (off < to) {
-+			part = min_t(size_t, to - off, PAGE_SIZE);
-+			bvec_set_folio(&bvec[i++], sink, part, 0);
-+			off += part;
-+		}
-+		if (to < flen)
-+			bvec_set_folio(&bvec[i++], folio, flen - to, to);
-+		iov_iter_bvec(&rreq->iter, ITER_DEST, bvec, i, rreq->len);
-+	} else {
-+		iov_iter_xarray(&rreq->iter, ITER_DEST, &mapping->i_pages,
-+				rreq->start, rreq->len);
-+	}
++	ret = file_update_time(file);
++	if (ret)
++		return ret;
++
++	return netfs_perform_write(iocb, from, netfs_group);
++}
++EXPORT_SYMBOL(netfs_buffered_write_iter_locked);
++
++/**
++ * netfs_file_write_iter - write data to a file
++ * @iocb: IO state structure
++ * @from: iov_iter with data to write
++ *
++ * Perform a write to a file, writing into the pagecache if possible and doing
++ * an unbuffered write instead if not.
++ *
++ * Return:
++ * * Negative error code if no data has been written at all of
++ *   vfs_fsync_range() failed for a synchronous write
++ * * Number of bytes written, even for truncated writes
++ */
++ssize_t netfs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
++{
++	struct file *file = iocb->ki_filp;
++	struct inode *inode = file->f_mapping->host;
++	struct netfs_inode *ictx = netfs_inode(inode);
++	ssize_t ret;
++
++	_enter("%llx,%zx,%llx", iocb->ki_pos, iov_iter_count(from), i_size_read(inode));
++
++	if ((iocb->ki_flags & IOCB_DIRECT) ||
++	    test_bit(NETFS_ICTX_UNBUFFERED, &ictx->flags))
++		return netfs_unbuffered_write_iter(iocb, from);
++
++	ret = netfs_start_io_write(inode);
++	if (ret < 0)
++		return ret;
++
++	ret = generic_write_checks(iocb, from);
++	if (ret > 0)
++		ret = netfs_buffered_write_iter_locked(iocb, from, NULL);
++	netfs_end_io_write(inode);
++	if (ret > 0)
++		ret = generic_write_sync(iocb, ret);
++	return ret;
++}
++EXPORT_SYMBOL(netfs_file_write_iter);
+diff --git a/include/linux/netfs.h b/include/linux/netfs.h
+index 00c87f4e809c..702b864a4993 100644
+--- a/include/linux/netfs.h
++++ b/include/linux/netfs.h
+@@ -385,7 +385,10 @@ ssize_t netfs_unbuffered_read_iter(struct kiocb *iocb, struct iov_iter *iter);
+ /* High-level write API */
+ ssize_t netfs_perform_write(struct kiocb *iocb, struct iov_iter *iter,
+ 			    struct netfs_group *netfs_group);
++ssize_t netfs_buffered_write_iter_locked(struct kiocb *iocb, struct iov_iter *from,
++					 struct netfs_group *netfs_group);
+ ssize_t netfs_unbuffered_write_iter(struct kiocb *iocb, struct iov_iter *from);
++ssize_t netfs_file_write_iter(struct kiocb *iocb, struct iov_iter *from);
  
- 	ret = netfs_begin_read(rreq, true);
-+	if (sink)
-+		folio_put(sink);
- 	netfs_put_request(rreq, false, netfs_rreq_trace_put_return);
--	return ret;
-+	return ret < 0 ? ret : 0;
- 
- discard:
- 	netfs_put_request(rreq, false, netfs_rreq_trace_put_discard);
-diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
-index 8308b81f36be..082a5e717b58 100644
---- a/include/trace/events/netfs.h
-+++ b/include/trace/events/netfs.h
-@@ -118,9 +118,11 @@
- 	EM(netfs_folio_trace_clear_g,		"clear-g")	\
- 	EM(netfs_folio_trace_copy_to_cache,	"copy")		\
- 	EM(netfs_folio_trace_end_copy,		"end-copy")	\
-+	EM(netfs_folio_trace_filled_gaps,	"filled-gaps")	\
- 	EM(netfs_folio_trace_kill,		"kill")		\
- 	EM(netfs_folio_trace_mkwrite,		"mkwrite")	\
- 	EM(netfs_folio_trace_mkwrite_plus,	"mkwrite+")	\
-+	EM(netfs_folio_trace_read_gaps,		"read-gaps")	\
- 	EM(netfs_folio_trace_redirty,		"redirty")	\
- 	EM(netfs_folio_trace_redirtied,		"redirtied")	\
- 	EM(netfs_folio_trace_store,		"store")	\
+ /* Address operations API */
+ struct readahead_control;
 
