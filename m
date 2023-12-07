@@ -1,32 +1,32 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="GspyhyMz"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="OUwua5lF"
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 7F4F1172E
-	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:22:30 -0800 (PST)
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 6524D1722
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:22:38 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1701984149;
+	s=mimecast20190719; t=1701984157;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Xqq79jY95IXblzWTsHO1+WeGcio5Fxlavb7x6El1ZTM=;
-	b=GspyhyMzsDxzZXdFuCmErhyLEN8Uob2HVwVBsUXi3azvE6qo/MtfU4ZtcONG+3qaE7f0KG
-	bqzwTGXpRSTatrdwNTlPd4Fbm6gPxv4N8FBiyFCCG2lMwCsKRlrcVdwWo5SdKEA/PnVFof
-	pG76BtATx/+qYGSvM6/wFu2qkGjhWbw=
+	bh=gYUIXZ+PiNdh85g2qszNwYuewLXwpj0jIftWKnkTXRI=;
+	b=OUwua5lFS1mngemwkN72bFeqCQtLhDggDODtJzp/6asWr/iuozTEB02fSNRsxicVo+FgXi
+	YeDXO3KwcSaGIxH7oP3l8xAbb2NT2j7o5QGyhCsziuF+WTkpMgwWGvjmN4tT8T8PgWMHGM
+	Cn5Rwyi7+IvEiipQ5tzfcTD1fTs9G3o=
 Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
  by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-482-1vF4A8LAMdWXZM6puesyCQ-1; Thu,
- 07 Dec 2023 16:22:26 -0500
-X-MC-Unique: 1vF4A8LAMdWXZM6puesyCQ-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-444-9TFoskq0M--Sa6dgwYyDuA-1; Thu,
+ 07 Dec 2023 16:22:33 -0500
+X-MC-Unique: 9TFoskq0M--Sa6dgwYyDuA-1
+Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 3714C3813BC8;
-	Thu,  7 Dec 2023 21:22:25 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id CFEB33813BC8;
+	Thu,  7 Dec 2023 21:22:31 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.161])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id 9934F8CD0;
-	Thu,  7 Dec 2023 21:22:22 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 3DE911C060AF;
+	Thu,  7 Dec 2023 21:22:29 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Jeff Layton <jlayton@kernel.org>,
 	Steve French <smfrench@gmail.com>
@@ -50,9 +50,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v3 04/59] netfs, fscache: Move /proc/fs/fscache to /proc/fs/netfs and put in a symlink
-Date: Thu,  7 Dec 2023 21:21:11 +0000
-Message-ID: <20231207212206.1379128-5-dhowells@redhat.com>
+Subject: [PATCH v3 06/59] netfs: Add a procfile to list in-progress requests
+Date: Thu,  7 Dec 2023 21:21:13 +0000
+Message-ID: <20231207212206.1379128-7-dhowells@redhat.com>
 In-Reply-To: <20231207212206.1379128-1-dhowells@redhat.com>
 References: <20231207212206.1379128-1-dhowells@redhat.com>
 Precedence: bulk
@@ -62,277 +62,187 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.5
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.7
 
-Rename /proc/fs/fscache to "netfs" and make a symlink from fscache to that.
+Add a procfile, /proc/fs/netfs/requests, to list in-progress netfslib I/O
+requests.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Jeff Layton <jlayton@kernel.org>
-cc: Christian Brauner <christian@brauner.io>
-cc: linux-fsdevel@vger.kernel.org
 cc: linux-cachefs@redhat.com
+cc: linux-fsdevel@vger.kernel.org
+cc: linux-mm@kvack.org
 ---
- fs/netfs/fscache_main.c  |  8 ++------
- fs/netfs/fscache_proc.c  | 23 ++++++++---------------
- fs/netfs/fscache_stats.c |  4 +---
- fs/netfs/internal.h      | 12 +++++++++++-
- fs/netfs/main.c          | 34 ++++++++++++++++++++++++++++++++++
- fs/netfs/stats.c         | 13 +++++++------
- include/linux/netfs.h    |  1 -
- 7 files changed, 63 insertions(+), 32 deletions(-)
+ fs/netfs/internal.h   | 22 ++++++++++++++
+ fs/netfs/main.c       | 69 ++++++++++++++++++++++++++++++++++++++++++-
+ fs/netfs/objects.c    |  4 ++-
+ include/linux/netfs.h |  6 +++-
+ 4 files changed, 98 insertions(+), 3 deletions(-)
 
-diff --git a/fs/netfs/fscache_main.c b/fs/netfs/fscache_main.c
-index 00600a4d9ce5..42e98bb523e3 100644
---- a/fs/netfs/fscache_main.c
-+++ b/fs/netfs/fscache_main.c
-@@ -62,7 +62,7 @@ unsigned int fscache_hash(unsigned int salt, const void *data, size_t len)
- /*
-  * initialise the fs caching module
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index 3e6e6a2c0375..2bd99989dd7f 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -33,6 +33,28 @@ int netfs_begin_read(struct netfs_io_request *rreq, bool sync);
+  * main.c
   */
--static int __init fscache_init(void)
-+int __init fscache_init(void)
+ extern unsigned int netfs_debug;
++extern struct list_head netfs_io_requests;
++extern spinlock_t netfs_proc_lock;
++
++#ifdef CONFIG_PROC_FS
++static inline void netfs_proc_add_rreq(struct netfs_io_request *rreq)
++{
++	spin_lock(&netfs_proc_lock);
++	list_add_tail_rcu(&rreq->proc_link, &netfs_io_requests);
++	spin_unlock(&netfs_proc_lock);
++}
++static inline void netfs_proc_del_rreq(struct netfs_io_request *rreq)
++{
++	if (!list_empty(&rreq->proc_link)) {
++		spin_lock(&netfs_proc_lock);
++		list_del_rcu(&rreq->proc_link);
++		spin_unlock(&netfs_proc_lock);
++	}
++}
++#else
++static inline void netfs_proc_add_rreq(struct netfs_io_request *rreq) {}
++static inline void netfs_proc_del_rreq(struct netfs_io_request *rreq) {}
++#endif
+ 
+ /*
+  * objects.c
+diff --git a/fs/netfs/main.c b/fs/netfs/main.c
+index c9af6e0896d3..97ce1436615b 100644
+--- a/fs/netfs/main.c
++++ b/fs/netfs/main.c
+@@ -21,13 +21,80 @@ unsigned netfs_debug;
+ module_param_named(debug, netfs_debug, uint, S_IWUSR | S_IRUGO);
+ MODULE_PARM_DESC(netfs_debug, "Netfs support debugging mask");
+ 
++#ifdef CONFIG_PROC_FS
++LIST_HEAD(netfs_io_requests);
++DEFINE_SPINLOCK(netfs_proc_lock);
++
++static const char *netfs_origins[] = {
++	[NETFS_READAHEAD]	= "RA",
++	[NETFS_READPAGE]	= "RP",
++	[NETFS_READ_FOR_WRITE]	= "RW",
++};
++
++/*
++ * Generate a list of I/O requests in /proc/fs/netfs/requests
++ */
++static int netfs_requests_seq_show(struct seq_file *m, void *v)
++{
++	struct netfs_io_request *rreq;
++
++	if (v == &netfs_io_requests) {
++		seq_puts(m,
++			 "REQUEST  OR REF FL ERR  OPS COVERAGE\n"
++			 "======== == === == ==== === =========\n"
++			 );
++		return 0;
++	}
++
++	rreq = list_entry(v, struct netfs_io_request, proc_link);
++	seq_printf(m,
++		   "%08x %s %3d %2lx %4d %3d @%04llx %zx/%zx",
++		   rreq->debug_id,
++		   netfs_origins[rreq->origin],
++		   refcount_read(&rreq->ref),
++		   rreq->flags,
++		   rreq->error,
++		   atomic_read(&rreq->nr_outstanding),
++		   rreq->start, rreq->submitted, rreq->len);
++	seq_putc(m, '\n');
++	return 0;
++}
++
++static void *netfs_requests_seq_start(struct seq_file *m, loff_t *_pos)
++	__acquires(rcu)
++{
++	rcu_read_lock();
++	return seq_list_start_head(&netfs_io_requests, *_pos);
++}
++
++static void *netfs_requests_seq_next(struct seq_file *m, void *v, loff_t *_pos)
++{
++	return seq_list_next(v, &netfs_io_requests, _pos);
++}
++
++static void netfs_requests_seq_stop(struct seq_file *m, void *v)
++	__releases(rcu)
++{
++	rcu_read_unlock();
++}
++
++static const struct seq_operations netfs_requests_seq_ops = {
++	.start  = netfs_requests_seq_start,
++	.next   = netfs_requests_seq_next,
++	.stop   = netfs_requests_seq_stop,
++	.show   = netfs_requests_seq_show,
++};
++#endif /* CONFIG_PROC_FS */
++
+ static int __init netfs_init(void)
  {
  	int ret = -ENOMEM;
  
-@@ -94,12 +94,10 @@ static int __init fscache_init(void)
- 	return ret;
- }
- 
--fs_initcall(fscache_init);
--
- /*
-  * clean up on module removal
-  */
--static void __exit fscache_exit(void)
-+void __exit fscache_exit(void)
- {
- 	_enter("");
- 
-@@ -108,5 +106,3 @@ static void __exit fscache_exit(void)
- 	destroy_workqueue(fscache_wq);
- 	pr_notice("FS-Cache unloaded\n");
- }
--
--module_exit(fscache_exit);
-diff --git a/fs/netfs/fscache_proc.c b/fs/netfs/fscache_proc.c
-index dc3b0e9c8cce..ecd0d1edafaa 100644
---- a/fs/netfs/fscache_proc.c
-+++ b/fs/netfs/fscache_proc.c
-@@ -12,41 +12,34 @@
- #include "internal.h"
- 
- /*
-- * initialise the /proc/fs/fscache/ directory
-+ * Add files to /proc/fs/netfs/.
-  */
- int __init fscache_proc_init(void)
- {
--	if (!proc_mkdir("fs/fscache", NULL))
--		goto error_dir;
-+	if (!proc_symlink("fs/fscache", NULL, "../netfs"))
-+		goto error_sym;
- 
--	if (!proc_create_seq("fs/fscache/caches", S_IFREG | 0444, NULL,
-+	if (!proc_create_seq("fs/netfs/caches", S_IFREG | 0444, NULL,
- 			     &fscache_caches_seq_ops))
- 		goto error;
- 
--	if (!proc_create_seq("fs/fscache/volumes", S_IFREG | 0444, NULL,
-+	if (!proc_create_seq("fs/netfs/volumes", S_IFREG | 0444, NULL,
- 			     &fscache_volumes_seq_ops))
- 		goto error;
- 
--	if (!proc_create_seq("fs/fscache/cookies", S_IFREG | 0444, NULL,
-+	if (!proc_create_seq("fs/netfs/cookies", S_IFREG | 0444, NULL,
- 			     &fscache_cookies_seq_ops))
+ 	if (!proc_mkdir("fs/netfs", NULL))
  		goto error;
 -
--#ifdef CONFIG_FSCACHE_STATS
--	if (!proc_create_single("fs/fscache/stats", S_IFREG | 0444, NULL,
--				fscache_stats_show))
--		goto error;
--#endif
--
- 	return 0;
- 
- error:
- 	remove_proc_entry("fs/fscache", NULL);
--error_dir:
-+error_sym:
- 	return -ENOMEM;
- }
- 
- /*
-- * clean up the /proc/fs/fscache/ directory
-+ * Clean up the /proc/fs/fscache symlink.
-  */
- void fscache_proc_cleanup(void)
- {
-diff --git a/fs/netfs/fscache_stats.c b/fs/netfs/fscache_stats.c
-index fc94e5e79f1c..aad812ead398 100644
---- a/fs/netfs/fscache_stats.c
-+++ b/fs/netfs/fscache_stats.c
-@@ -52,7 +52,7 @@ EXPORT_SYMBOL(fscache_n_culled);
- /*
-  * display the general statistics
-  */
--int fscache_stats_show(struct seq_file *m, void *v)
-+int fscache_stats_show(struct seq_file *m)
- {
- 	seq_puts(m, "FS-Cache statistics\n");
- 	seq_printf(m, "Cookies: n=%d v=%d vcol=%u voom=%u\n",
-@@ -96,7 +96,5 @@ int fscache_stats_show(struct seq_file *m, void *v)
- 	seq_printf(m, "IO     : rd=%u wr=%u\n",
- 		   atomic_read(&fscache_n_read),
- 		   atomic_read(&fscache_n_write));
--
--	netfs_stats_show(m);
- 	return 0;
- }
-diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
-index dc764b98c7f0..3e6e6a2c0375 100644
---- a/fs/netfs/internal.h
-+++ b/fs/netfs/internal.h
-@@ -76,6 +76,7 @@ extern atomic_t netfs_n_rh_write_done;
- extern atomic_t netfs_n_rh_write_failed;
- extern atomic_t netfs_n_rh_write_zskip;
- 
-+int netfs_stats_show(struct seq_file *m, void *v);
- 
- static inline void netfs_stat(atomic_t *stat)
- {
-@@ -168,6 +169,13 @@ static inline void fscache_see_cookie(struct fscache_cookie *cookie,
- extern unsigned fscache_debug;
- 
- extern unsigned int fscache_hash(unsigned int salt, const void *data, size_t len);
-+#ifdef CONFIG_PROC_FS
-+int __init fscache_init(void);
-+void __exit fscache_exit(void);
-+#else
-+static inline int fscache_init(void) { return 0; }
-+static inline void fscache_exit(void) {}
-+#endif
- 
- /*
-  * fscache-proc.c
-@@ -218,12 +226,14 @@ static inline void fscache_stat_d(atomic_t *stat)
- 
- #define __fscache_stat(stat) (stat)
- 
--int fscache_stats_show(struct seq_file *m, void *v);
-+int fscache_stats_show(struct seq_file *m);
- #else
- 
- #define __fscache_stat(stat) (NULL)
- #define fscache_stat(stat) do {} while (0)
- #define fscache_stat_d(stat) do {} while (0)
-+
-+static inline int fscache_stats_show(struct seq_file *m) { return 0; }
- #endif
- 
- /*
-diff --git a/fs/netfs/main.c b/fs/netfs/main.c
-index 068568702957..c9af6e0896d3 100644
---- a/fs/netfs/main.c
-+++ b/fs/netfs/main.c
-@@ -7,6 +7,8 @@
- 
- #include <linux/module.h>
- #include <linux/export.h>
-+#include <linux/proc_fs.h>
-+#include <linux/seq_file.h>
- #include "internal.h"
- #define CREATE_TRACE_POINTS
- #include <trace/events/netfs.h>
-@@ -18,3 +20,35 @@ MODULE_LICENSE("GPL");
- unsigned netfs_debug;
- module_param_named(debug, netfs_debug, uint, S_IWUSR | S_IRUGO);
- MODULE_PARM_DESC(netfs_debug, "Netfs support debugging mask");
-+
-+static int __init netfs_init(void)
-+{
-+	int ret = -ENOMEM;
-+
-+	if (!proc_mkdir("fs/netfs", NULL))
-+		goto error;
-+
-+#ifdef CONFIG_FSCACHE_STATS
-+	if (!proc_create_single("fs/netfs/stats", S_IFREG | 0444, NULL,
-+				netfs_stats_show))
++	if (!proc_create_seq("fs/netfs/requests", S_IFREG | 0444, NULL,
++			     &netfs_requests_seq_ops))
 +		goto error_proc;
-+#endif
-+
-+	ret = fscache_init();
-+	if (ret < 0)
-+		goto error_proc;
-+	return 0;
-+
-+error_proc:
-+	remove_proc_entry("fs/netfs", NULL);
-+error:
-+	return ret;
-+}
-+fs_initcall(netfs_init);
-+
-+static void __exit netfs_exit(void)
-+{
-+	fscache_exit();
-+	remove_proc_entry("fs/netfs", NULL);
-+}
-+module_exit(netfs_exit);
-diff --git a/fs/netfs/stats.c b/fs/netfs/stats.c
-index 5510a7a14a40..6025dc485f7e 100644
---- a/fs/netfs/stats.c
-+++ b/fs/netfs/stats.c
-@@ -28,31 +28,32 @@ atomic_t netfs_n_rh_write_done;
- atomic_t netfs_n_rh_write_failed;
- atomic_t netfs_n_rh_write_zskip;
+ #ifdef CONFIG_FSCACHE_STATS
+ 	if (!proc_create_single("fs/netfs/stats", S_IFREG | 0444, NULL,
+ 				netfs_stats_show))
+diff --git a/fs/netfs/objects.c b/fs/netfs/objects.c
+index e17cdf53f6a7..85f428fc52e6 100644
+--- a/fs/netfs/objects.c
++++ b/fs/netfs/objects.c
+@@ -45,6 +45,7 @@ struct netfs_io_request *netfs_alloc_request(struct address_space *mapping,
+ 		}
+ 	}
  
--void netfs_stats_show(struct seq_file *m)
-+int netfs_stats_show(struct seq_file *m, void *v)
- {
--	seq_printf(m, "RdHelp : RA=%u RP=%u WB=%u WBZ=%u rr=%u sr=%u\n",
-+	seq_printf(m, "Netfs  : RA=%u RP=%u WB=%u WBZ=%u rr=%u sr=%u\n",
- 		   atomic_read(&netfs_n_rh_readahead),
- 		   atomic_read(&netfs_n_rh_readpage),
- 		   atomic_read(&netfs_n_rh_write_begin),
- 		   atomic_read(&netfs_n_rh_write_zskip),
- 		   atomic_read(&netfs_n_rh_rreq),
- 		   atomic_read(&netfs_n_rh_sreq));
--	seq_printf(m, "RdHelp : ZR=%u sh=%u sk=%u\n",
-+	seq_printf(m, "Netfs  : ZR=%u sh=%u sk=%u\n",
- 		   atomic_read(&netfs_n_rh_zero),
- 		   atomic_read(&netfs_n_rh_short_read),
- 		   atomic_read(&netfs_n_rh_write_zskip));
--	seq_printf(m, "RdHelp : DL=%u ds=%u df=%u di=%u\n",
-+	seq_printf(m, "Netfs  : DL=%u ds=%u df=%u di=%u\n",
- 		   atomic_read(&netfs_n_rh_download),
- 		   atomic_read(&netfs_n_rh_download_done),
- 		   atomic_read(&netfs_n_rh_download_failed),
- 		   atomic_read(&netfs_n_rh_download_instead));
--	seq_printf(m, "RdHelp : RD=%u rs=%u rf=%u\n",
-+	seq_printf(m, "Netfs  : RD=%u rs=%u rf=%u\n",
- 		   atomic_read(&netfs_n_rh_read),
- 		   atomic_read(&netfs_n_rh_read_done),
- 		   atomic_read(&netfs_n_rh_read_failed));
--	seq_printf(m, "RdHelp : WR=%u ws=%u wf=%u\n",
-+	seq_printf(m, "Netfs  : WR=%u ws=%u wf=%u\n",
- 		   atomic_read(&netfs_n_rh_write),
- 		   atomic_read(&netfs_n_rh_write_done),
- 		   atomic_read(&netfs_n_rh_write_failed));
-+	return fscache_stats_show(m);
++	netfs_proc_add_rreq(rreq);
+ 	netfs_stat(&netfs_n_rh_rreq);
+ 	return rreq;
  }
- EXPORT_SYMBOL(netfs_stats_show);
+@@ -76,12 +77,13 @@ static void netfs_free_request(struct work_struct *work)
+ 		container_of(work, struct netfs_io_request, work);
+ 
+ 	trace_netfs_rreq(rreq, netfs_rreq_trace_free);
++	netfs_proc_del_rreq(rreq);
+ 	netfs_clear_subrequests(rreq, false);
+ 	if (rreq->netfs_ops->free_request)
+ 		rreq->netfs_ops->free_request(rreq);
+ 	if (rreq->cache_resources.ops)
+ 		rreq->cache_resources.ops->end_operation(&rreq->cache_resources);
+-	kfree(rreq);
++	kfree_rcu(rreq, rcu);
+ 	netfs_stat_d(&netfs_n_rh_rreq);
+ }
+ 
 diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index d294ff8f9ae4..9bd91cd615d5 100644
+index 32faf6c89702..7244ddebd974 100644
 --- a/include/linux/netfs.h
 +++ b/include/linux/netfs.h
-@@ -294,7 +294,6 @@ void netfs_get_subrequest(struct netfs_io_subrequest *subreq,
- 			  enum netfs_sreq_ref_trace what);
- void netfs_put_subrequest(struct netfs_io_subrequest *subreq,
- 			  bool was_async, enum netfs_sreq_ref_trace what);
--void netfs_stats_show(struct seq_file *);
- ssize_t netfs_extract_user_iter(struct iov_iter *orig, size_t orig_len,
- 				struct iov_iter *new,
- 				iov_iter_extraction_t extraction_flags);
+@@ -175,10 +175,14 @@ enum netfs_io_origin {
+  * operations to a variety of data stores and then stitch the result together.
+  */
+ struct netfs_io_request {
+-	struct work_struct	work;
++	union {
++		struct work_struct work;
++		struct rcu_head rcu;
++	};
+ 	struct inode		*inode;		/* The file being accessed */
+ 	struct address_space	*mapping;	/* The mapping being accessed */
+ 	struct netfs_cache_resources cache_resources;
++	struct list_head	proc_link;	/* Link in netfs_iorequests */
+ 	struct list_head	subrequests;	/* Contributory I/O operations */
+ 	void			*netfs_priv;	/* Private data for the netfs */
+ 	unsigned int		debug_id;
 
