@@ -1,32 +1,32 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="GzfqPDFC"
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 57B561FCE
-	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:25:48 -0800 (PST)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="eUwtpfA9"
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id E54A23253
+	for <linux-nfs@vger.kernel.org>; Thu,  7 Dec 2023 13:23:56 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1701984326;
+	s=mimecast20190719; t=1701984235;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=CTmXKlaARSc+/4qCQwpNxe6YLvLKHn4pqqsvYn+RGCg=;
-	b=GzfqPDFCXcBNZRrx0TB7dSNqZGBN/gZsoqT4nBusZyLxnk3wZoxLqnnXmul+Zfemnsg5Xj
-	LMm2FZThL2L7ADi7QmKZ/dGRMbPissc1hTRr4PJSwQMLJdB0+Cu4u3sRoyPCrTuVjEEMXw
-	rBkJaQK/9gjVXMAC6uB5sWgT0UXnhvg=
-Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
- by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-679-td7G57ocMXuIQoNIfh4pWA-1; Thu,
- 07 Dec 2023 16:25:23 -0500
-X-MC-Unique: td7G57ocMXuIQoNIfh4pWA-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
+	bh=KbBg4oLyg/4VjucqWLPnAUrUGVI7xibirsiFMNrNygw=;
+	b=eUwtpfA9C6fTtcRL7/oNOK8RXc0FrNh1lKNqk05HrR/ZDi8qwESCt4iVvpCBZgbQbmXaJi
+	3qQYLTxAJH/Iy9RggTYMopmcr/fydFt5S+JLdPHMmzz1AA4knB+SFQ2Zyuq6THmQZbMfw6
+	6pYsryuPMobXFZa3TfMiuww97aOhIjE=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-64-QpeNj_4NMEmIciYa2Sj6iw-1; Thu, 07 Dec 2023 16:23:51 -0500
+X-MC-Unique: QpeNj_4NMEmIciYa2Sj6iw-1
+Received: from smtp.corp.redhat.com (int-mx09.intmail.prod.int.rdu2.redhat.com [10.11.54.9])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id ED3E53C40B56;
-	Thu,  7 Dec 2023 21:25:21 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 2958A85A5B5;
+	Thu,  7 Dec 2023 21:23:45 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.161])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id EFF6C3C2E;
-	Thu,  7 Dec 2023 21:25:18 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 8A7CF492BC6;
+	Thu,  7 Dec 2023 21:23:42 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Jeff Layton <jlayton@kernel.org>,
 	Steve French <smfrench@gmail.com>
@@ -49,13 +49,10 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Steve French <sfrench@samba.org>,
-	Shyam Prasad N <nspmangalore@gmail.com>,
-	Rohith Surabattula <rohiths.msft@gmail.com>
-Subject: [PATCH v3 54/59] cifs: Move cifs_loose_read_iter() and cifs_file_write_iter() to file.c
-Date: Thu,  7 Dec 2023 21:22:01 +0000
-Message-ID: <20231207212206.1379128-55-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v3 27/59] netfs: Allocate multipage folios in the writepath
+Date: Thu,  7 Dec 2023 21:21:34 +0000
+Message-ID: <20231207212206.1379128-28-dhowells@redhat.com>
 In-Reply-To: <20231207212206.1379128-1-dhowells@redhat.com>
 References: <20231207212206.1379128-1-dhowells@redhat.com>
 Precedence: bulk
@@ -65,168 +62,44 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.1
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.9
 
-Move cifs_loose_read_iter() and cifs_file_write_iter() to file.c so that
-they are colocated with similar functions rather than being split with
-cifsfs.c.
+Allocate a multipage folio when copying data into the pagecache if possible
+if there's sufficient data to warrant it.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Steve French <sfrench@samba.org>
-cc: Shyam Prasad N <nspmangalore@gmail.com>
-cc: Rohith Surabattula <rohiths.msft@gmail.com>
 cc: Jeff Layton <jlayton@kernel.org>
-cc: linux-cifs@vger.kernel.org
 cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 cc: linux-mm@kvack.org
 ---
- fs/smb/client/cifsfs.c | 55 ------------------------------------------
- fs/smb/client/cifsfs.h |  2 ++
- fs/smb/client/file.c   | 53 ++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 55 insertions(+), 55 deletions(-)
+ fs/netfs/buffered_write.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/fs/smb/client/cifsfs.c b/fs/smb/client/cifsfs.c
-index ebe04c78a955..1cd9309e46f7 100644
---- a/fs/smb/client/cifsfs.c
-+++ b/fs/smb/client/cifsfs.c
-@@ -981,61 +981,6 @@ cifs_smb3_do_mount(struct file_system_type *fs_type,
- 	return root;
+diff --git a/fs/netfs/buffered_write.c b/fs/netfs/buffered_write.c
+index 6e7f06d9962d..b76688e98f81 100644
+--- a/fs/netfs/buffered_write.c
++++ b/fs/netfs/buffered_write.c
+@@ -84,14 +84,19 @@ static enum netfs_how_to_modify netfs_how_to_modify(struct netfs_inode *ctx,
  }
  
--
--static ssize_t
--cifs_loose_read_iter(struct kiocb *iocb, struct iov_iter *iter)
--{
--	ssize_t rc;
--	struct inode *inode = file_inode(iocb->ki_filp);
--
--	if (iocb->ki_flags & IOCB_DIRECT)
--		return cifs_user_readv(iocb, iter);
--
--	rc = cifs_revalidate_mapping(inode);
--	if (rc)
--		return rc;
--
--	return generic_file_read_iter(iocb, iter);
--}
--
--static ssize_t cifs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
--{
--	struct inode *inode = file_inode(iocb->ki_filp);
--	struct cifsInodeInfo *cinode = CIFS_I(inode);
--	ssize_t written;
--	int rc;
--
--	if (iocb->ki_filp->f_flags & O_DIRECT) {
--		written = cifs_user_writev(iocb, from);
--		if (written > 0 && CIFS_CACHE_READ(cinode)) {
--			cifs_zap_mapping(inode);
--			cifs_dbg(FYI,
--				 "Set no oplock for inode=%p after a write operation\n",
--				 inode);
--			cinode->oplock = 0;
--		}
--		return written;
--	}
--
--	written = cifs_get_writer(cinode);
--	if (written)
--		return written;
--
--	written = generic_file_write_iter(iocb, from);
--
--	if (CIFS_CACHE_WRITE(CIFS_I(inode)))
--		goto out;
--
--	rc = filemap_fdatawrite(inode->i_mapping);
--	if (rc)
--		cifs_dbg(FYI, "cifs_file_write_iter: %d rc on %p inode\n",
--			 rc, inode);
--
--out:
--	cifs_put_writer(cinode);
--	return written;
--}
--
- static loff_t cifs_llseek(struct file *file, loff_t offset, int whence)
+ /*
+- * Grab a folio for writing and lock it.
++ * Grab a folio for writing and lock it.  Attempt to allocate as large a folio
++ * as possible to hold as much of the remaining length as possible in one go.
+  */
+ static struct folio *netfs_grab_folio_for_write(struct address_space *mapping,
+ 						loff_t pos, size_t part)
  {
- 	struct cifsFileInfo *cfile = file->private_data;
-diff --git a/fs/smb/client/cifsfs.h b/fs/smb/client/cifsfs.h
-index 3adea10aa9da..28c41c449205 100644
---- a/fs/smb/client/cifsfs.h
-+++ b/fs/smb/client/cifsfs.h
-@@ -100,6 +100,8 @@ extern ssize_t cifs_strict_readv(struct kiocb *iocb, struct iov_iter *to);
- extern ssize_t cifs_user_writev(struct kiocb *iocb, struct iov_iter *from);
- extern ssize_t cifs_direct_writev(struct kiocb *iocb, struct iov_iter *from);
- extern ssize_t cifs_strict_writev(struct kiocb *iocb, struct iov_iter *from);
-+ssize_t cifs_file_write_iter(struct kiocb *iocb, struct iov_iter *from);
-+ssize_t cifs_loose_read_iter(struct kiocb *iocb, struct iov_iter *iter);
- extern int cifs_flock(struct file *pfile, int cmd, struct file_lock *plock);
- extern int cifs_lock(struct file *, int, struct file_lock *);
- extern int cifs_fsync(struct file *, loff_t, loff_t, int);
-diff --git a/fs/smb/client/file.c b/fs/smb/client/file.c
-index 255d78581e56..dfeb8cb86d61 100644
---- a/fs/smb/client/file.c
-+++ b/fs/smb/client/file.c
-@@ -4567,6 +4567,59 @@ ssize_t cifs_user_readv(struct kiocb *iocb, struct iov_iter *to)
- 	return __cifs_readv(iocb, to, false);
+ 	pgoff_t index = pos / PAGE_SIZE;
++	fgf_t fgp_flags = FGP_WRITEBEGIN;
+ 
+-	return __filemap_get_folio(mapping, index, FGP_WRITEBEGIN,
++	if (mapping_large_folio_support(mapping))
++		fgp_flags |= fgf_set_order(pos % PAGE_SIZE + part);
++
++	return __filemap_get_folio(mapping, index, fgp_flags,
+ 				   mapping_gfp_mask(mapping));
  }
  
-+ssize_t cifs_loose_read_iter(struct kiocb *iocb, struct iov_iter *iter)
-+{
-+	ssize_t rc;
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+
-+	if (iocb->ki_flags & IOCB_DIRECT)
-+		return cifs_user_readv(iocb, iter);
-+
-+	rc = cifs_revalidate_mapping(inode);
-+	if (rc)
-+		return rc;
-+
-+	return generic_file_read_iter(iocb, iter);
-+}
-+
-+ssize_t cifs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
-+{
-+	struct inode *inode = file_inode(iocb->ki_filp);
-+	struct cifsInodeInfo *cinode = CIFS_I(inode);
-+	ssize_t written;
-+	int rc;
-+
-+	if (iocb->ki_filp->f_flags & O_DIRECT) {
-+		written = cifs_user_writev(iocb, from);
-+		if (written > 0 && CIFS_CACHE_READ(cinode)) {
-+			cifs_zap_mapping(inode);
-+			cifs_dbg(FYI,
-+				 "Set no oplock for inode=%p after a write operation\n",
-+				 inode);
-+			cinode->oplock = 0;
-+		}
-+		return written;
-+	}
-+
-+	written = cifs_get_writer(cinode);
-+	if (written)
-+		return written;
-+
-+	written = generic_file_write_iter(iocb, from);
-+
-+	if (CIFS_CACHE_WRITE(CIFS_I(inode)))
-+		goto out;
-+
-+	rc = filemap_fdatawrite(inode->i_mapping);
-+	if (rc)
-+		cifs_dbg(FYI, "cifs_file_write_iter: %d rc on %p inode\n",
-+			 rc, inode);
-+
-+out:
-+	cifs_put_writer(cinode);
-+	return written;
-+}
-+
- ssize_t
- cifs_strict_readv(struct kiocb *iocb, struct iov_iter *to)
- {
 
