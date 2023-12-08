@@ -1,226 +1,128 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="anmxB+fk";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="RVlBKXdB"
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 21E8D10E6;
-	Thu,  7 Dec 2023 19:39:49 -0800 (PST)
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id AD09022102;
-	Fri,  8 Dec 2023 03:39:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1702006787; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="T4j9z1+e"
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 2EBFA1723
+	for <linux-nfs@vger.kernel.org>; Fri,  8 Dec 2023 02:53:52 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1702032831;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=Vu248dzuKJlGI9r2nLRgAmjct9Ps79FDgE6mGoaCwWU=;
-	b=anmxB+fkH2fqhNie3MRW+XjNo0iXCABg60BSQw5Gsayu+iRy7OkPLqu3TWa1mTc05JFt4b
-	PB64CHduam7aN+CxqIAk22QBDh8iM9NqskeG90Tsq/T3SdNhJ7iBncCsTGKBzfB+NjIlQb
-	YV+pMG2fSEtB7Ejcs7hIWeF6ddVnbHY=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1702006787;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Vu248dzuKJlGI9r2nLRgAmjct9Ps79FDgE6mGoaCwWU=;
-	b=RVlBKXdBjGA2gqTyBfMjuQ3JTo5Idgr/yQkZVdm/OFHxFJVi1kDjDn+oWJNh1MzyNl0vx4
-	h92N1tS4/CTf9XCQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 1DB3C13725;
-	Fri,  8 Dec 2023 03:30:33 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([10.150.64.162])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id h/XQKNmNcmX+MAAAD6G6ig
-	(envelope-from <neilb@suse.de>); Fri, 08 Dec 2023 03:30:33 +0000
-From: NeilBrown <neilb@suse.de>
-To: Al Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>,
-	Jens Axboe <axboe@kernel.dk>,
-	Oleg Nesterov <oleg@redhat.com>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] nfsd: use __fput_sync() to avoid delayed closing of files.
-Date: Fri,  8 Dec 2023 14:27:26 +1100
-Message-ID: <20231208033006.5546-2-neilb@suse.de>
-X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20231208033006.5546-1-neilb@suse.de>
-References: <20231208033006.5546-1-neilb@suse.de>
+	bh=LR35QZGRFkULz+F2wJsQvKhm56MBRmsdbE9EOS2j0RI=;
+	b=T4j9z1+ecWbSmNXkGxWFKTWnh9KsQK4RJWAynLU0J9n8AyXeu8D3m6eRczRbvjjhueVBrN
+	M8z8/RMW+OFoiPWphPD/RIHkRG7rJQ5f0tT0Wx+Cvr7HHLiVJu6kBFXaSNIN519hgBm7MC
+	kLDX0824xjXG/BtGnalDBByVvMzb3k8=
+Received: from mail-vs1-f69.google.com (mail-vs1-f69.google.com
+ [209.85.217.69]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-671-Thf1QlfqNU6OnwtyF8bzXA-1; Fri, 08 Dec 2023 05:53:49 -0500
+X-MC-Unique: Thf1QlfqNU6OnwtyF8bzXA-1
+Received: by mail-vs1-f69.google.com with SMTP id ada2fe7eead31-4648274100aso401678137.1
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Dec 2023 02:53:49 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1702032829; x=1702637629;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
+         :content-language:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=LR35QZGRFkULz+F2wJsQvKhm56MBRmsdbE9EOS2j0RI=;
+        b=WCwGxuLgn/KVVA181sKlfbdYy/22VGfddG7QxzW2ppNOWrzX2fU0z3Z1DJiISy03Ej
+         ah+1b9S/R8X74KXQnkw1ylakQOpgCXlCB7snpN2Z6nAyA2IYVvzLX+NQzedSVVnqLAHp
+         geD4jT4dTD2VQp1PKJ7o1khiWhGRfLYDukwC2vsBBYKr0ZJv9ESRNS04rOfVJDH2ViRn
+         PdBHtp9+0736/1xBk/2/LvPnmzm8YsN/Njg/6/q9GiNoKIU/AQiwRQEaTAEgWeMxj8VU
+         FpTl7U0jKoGmwMWRRfhnlywhRQu/twHhBYy3hMhdMfgJrisCdEVK2l97i7XIJleZ7dux
+         br8Q==
+X-Gm-Message-State: AOJu0YxmfFpxwFfWAW08NiqHVhU//tw2/P1K2Hu4X20cas1IocjKyHTs
+	Db8tZoJQzGb1JLVeFgKxEE6fe8sPubKoxBhWEKwCehsogbrgMHdscLvNg2N4OldiRcC2S8QF7J2
+	tmXKWJCTgilvwpMa0PigB
+X-Received: by 2002:a67:f7d4:0:b0:464:7d73:526d with SMTP id a20-20020a67f7d4000000b004647d73526dmr7794583vsp.2.1702032829442;
+        Fri, 08 Dec 2023 02:53:49 -0800 (PST)
+X-Google-Smtp-Source: AGHT+IEpNHX+/p+SgJ8Iwp2qx0khkQ0diE1c+T5wCy9B2DRXiUlBaumVWHPUegj6qxobMUO7HBWtbw==
+X-Received: by 2002:a67:f7d4:0:b0:464:7d73:526d with SMTP id a20-20020a67f7d4000000b004647d73526dmr7794577vsp.2.1702032829135;
+        Fri, 08 Dec 2023 02:53:49 -0800 (PST)
+Received: from [172.31.1.12] ([70.109.128.46])
+        by smtp.gmail.com with ESMTPSA id ec6-20020ad44e66000000b0067a24f5b432sm694519qvb.62.2023.12.08.02.53.48
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Fri, 08 Dec 2023 02:53:48 -0800 (PST)
+Message-ID: <bc48cb89-e1e2-44c9-8a99-61de8ab0fa57@redhat.com>
+Date: Fri, 8 Dec 2023 05:53:48 -0500
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Spamd-Result: default: False [10.00 / 50.00];
-	 ARC_NA(0.00)[];
-	 RCVD_VIA_SMTP_AUTH(0.00)[];
-	 BAYES_SPAM(5.10)[100.00%];
-	 FROM_HAS_DN(0.00)[];
-	 TO_DN_SOME(0.00)[];
-	 R_MISSING_CHARSET(2.50)[];
-	 TO_MATCH_ENVRCPT_ALL(0.00)[];
-	 MIME_GOOD(-0.10)[text/plain];
-	 BROKEN_CONTENT_TYPE(1.50)[];
-	 RCVD_COUNT_THREE(0.00)[3];
-	 DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	 RCPT_COUNT_SEVEN(0.00)[9];
-	 MID_CONTAINS_FROM(1.00)[];
-	 DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email];
-	 FUZZY_BLOCKED(0.00)[rspamd.com];
-	 FROM_EQ_ENVFROM(0.00)[];
-	 MIME_TRACE(0.00)[0:+];
-	 RCVD_TLS_ALL(0.00)[]
-Authentication-Results: smtp-out1.suse.de;
-	none
-X-Spam-Score: 10.00
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] autoconf: don't build nfsdcltrack by default
+Content-Language: en-US
+To: Jeff Layton <jlayton@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+References: <20231127-master-v1-1-5786ec1c6d38@kernel.org>
+ <2c9be16b-012e-4438-a396-fd1050284310@redhat.com>
+ <5e8863edb88f2bf5a2913736fbd71228fc986a5a.camel@kernel.org>
+From: Steve Dickson <steved@redhat.com>
+In-Reply-To: <5e8863edb88f2bf5a2913736fbd71228fc986a5a.camel@kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Calling fput() directly or though filp_close() from a kernel thread like
-nfsd causes the final __fput() (if necessary) to be called from a
-workqueue.  This means that nfsd is not forced to wait for any work to
-complete.  If the ->release of ->destroy_inode function is slow for any
-reason, this can result in nfsd closing files more quickly than the
-workqueue can complete the close and the queue of pending closes can
-grow without bounces (30 million has been seen at one customer site,
-though this was in part due to a slowness in xfs which has since been
-fixed).
+Hey
 
-nfsd does not need this.  This quite appropriate and safe for nfsd to do
-its own close work.  There is now reason that close should ever wait for
-nfsd, so no deadlock can occur.
+On 12/7/23 3:14 PM, Jeff Layton wrote:
+> On Thu, 2023-12-07 at 14:42 -0500, Steve Dickson wrote:
+>> Hey Jeff!
+>>
+>> On 11/27/23 10:18 AM, Jeff Layton wrote:
+>>> Now that we've started the process to remove legacy v4 client tracking
+>>> methods, let's stop building nfsdcltrack by default.
+>>>
+>>> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+>>> ---
+>>>    configure.ac | 4 ++--
+>>>    1 file changed, 2 insertions(+), 2 deletions(-)
+>>>
+>>> diff --git a/configure.ac b/configure.ac
+>>> index 93a1202807ea..62c833cc2409 100644
+>>> --- a/configure.ac
+>>> +++ b/configure.ac
+>>> @@ -248,9 +248,9 @@ AC_ARG_ENABLE(nfsrahead,
+>>>    	fi
+>>>    
+>>>    AC_ARG_ENABLE(nfsdcltrack,
+>>> -	[AS_HELP_STRING([--disable-nfsdcltrack],[disable NFSv4 clientid tracking programs @<:@default=no@:>@])],
+>>> +	[AS_HELP_STRING([--enable-nfsdcltrack],[enable NFSv4 clientid tracking programs @<:@default=no@:>@])],
+>>>    	enable_nfsdcltrack=$enableval,
+>>> -	enable_nfsdcltrack="yes")
+>>> +	enable_nfsdcltrack="no")
+>>>    
+>>>    AC_ARG_ENABLE(nfsv4server,
+>>>    	[AS_HELP_STRING([--enable-nfsv4server],[enable support for NFSv4 only server  @<:@default=no@:>@])],
+>>>
+>>> ---
+>>> base-commit: cc5cccbb9f24a2324f50a5cb4c29d83fdf6b1f90
+>>> change-id: 20231127-master-5ef1c15da9c4
+>>>
+>>> Best regards,
+>> Quick Question... Should we remove the code or just
+>> turn off the building as this patch does?
+>>
+>> steved.
+>>
+> 
+> Eventually, I think we'll want to remove nfsdcltrack entirely, but I
+> think we shouldn't do that right away, without announcing it first and
+> giving distros some warning.
+> 
+> Since we're on the subject, how long should we wait before fully
+> deprecating it? A year? 2 or 3 releases? What makes sense?
+Well, I was planning on make a new release (nfs-utils-2-7-1) when
+I took the patch... So I guess turning the build off for
+now makes sense... just to see what happens.
 
-So change all fput() calls to __fput_sync(), and convert filp_close() to
-the sequence get_file();filp_close();__fput_sync().
+> 
+> Maybe we should have configure spew a warning about its impending
+> removal when someone enables it too?
+Hmm... If it is not needed... why go through the effort?
+I've always been a fan of... a clean cut! :-)
 
-This ensure that no fput work is queued to the workqueue.
-
-Note that this removes the only in-module use of flush_fput_queue().
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/nfsd/filecache.c   |  3 ++-
- fs/nfsd/lockd.c       |  2 +-
- fs/nfsd/nfs4proc.c    |  4 ++--
- fs/nfsd/nfs4recover.c |  2 +-
- fs/nfsd/vfs.c         | 12 ++++++------
- 5 files changed, 12 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-index ef063f93fde9..e9734c7451b5 100644
---- a/fs/nfsd/filecache.c
-+++ b/fs/nfsd/filecache.c
-@@ -283,7 +283,9 @@ nfsd_file_free(struct nfsd_file *nf)
- 		nfsd_file_mark_put(nf->nf_mark);
- 	if (nf->nf_file) {
- 		nfsd_file_check_write_error(nf);
-+		get_file(nf->nf_file);
- 		filp_close(nf->nf_file, NULL);
-+		__fput_sync(nf->nf_file);
- 	}
- 
- 	/*
-@@ -631,7 +633,6 @@ nfsd_file_close_inode_sync(struct inode *inode)
- 		list_del_init(&nf->nf_lru);
- 		nfsd_file_free(nf);
- 	}
--	flush_delayed_fput();
- }
- 
- /**
-diff --git a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
-index 46a7f9b813e5..f9d1059096a4 100644
---- a/fs/nfsd/lockd.c
-+++ b/fs/nfsd/lockd.c
-@@ -60,7 +60,7 @@ nlm_fopen(struct svc_rqst *rqstp, struct nfs_fh *f, struct file **filp,
- static void
- nlm_fclose(struct file *filp)
- {
--	fput(filp);
-+	__fput_sync(filp);
- }
- 
- static const struct nlmsvc_binding nfsd_nlm_ops = {
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 6f2d4aa4970d..20d60823d530 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -629,7 +629,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		nn->somebody_reclaimed = true;
- out:
- 	if (open->op_filp) {
--		fput(open->op_filp);
-+		__fput_sync(open->op_filp);
- 		open->op_filp = NULL;
- 	}
- 	if (resfh && resfh != &cstate->current_fh) {
-@@ -1546,7 +1546,7 @@ nfsd4_cleanup_inter_ssc(struct nfsd4_ssc_umount_item *nsui, struct file *filp,
- 	long timeout = msecs_to_jiffies(nfsd4_ssc_umount_timeout);
- 
- 	nfs42_ssc_close(filp);
--	fput(filp);
-+	__fput_sync(filp);
- 
- 	spin_lock(&nn->nfsd_ssc_lock);
- 	list_del(&nsui->nsui_list);
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 3509e73abe1f..f8f0112fd9f5 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -561,7 +561,7 @@ nfsd4_shutdown_recdir(struct net *net)
- 
- 	if (!nn->rec_file)
- 		return;
--	fput(nn->rec_file);
-+	__fput_sync(nn->rec_file);
- 	nn->rec_file = NULL;
- }
- 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index fbbea7498f02..15a811229211 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -879,7 +879,7 @@ __nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
- 
- 	host_err = ima_file_check(file, may_flags);
- 	if (host_err) {
--		fput(file);
-+		__fput_sync(file);
- 		goto out;
- 	}
- 
-@@ -1884,10 +1884,10 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 	fh_drop_write(ffhp);
- 
- 	/*
--	 * If the target dentry has cached open files, then we need to try to
--	 * close them prior to doing the rename. Flushing delayed fput
--	 * shouldn't be done with locks held however, so we delay it until this
--	 * point and then reattempt the whole shebang.
-+	 * If the target dentry has cached open files, then we need to
-+	 * try to close them prior to doing the rename.  Final fput
-+	 * shouldn't be done with locks held however, so we delay it
-+	 * until this point and then reattempt the whole shebang.
- 	 */
- 	if (close_cached) {
- 		close_cached = false;
-@@ -2141,7 +2141,7 @@ nfsd_readdir(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t *offsetp,
- 	if (err == nfserr_eof || err == nfserr_toosmall)
- 		err = nfs_ok; /* can still be found in ->err */
- out_close:
--	fput(file);
-+	__fput_sync(file);
- out:
- 	return err;
- }
--- 
-2.43.0
+steved.
 
