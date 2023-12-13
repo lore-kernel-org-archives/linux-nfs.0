@@ -1,30 +1,30 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D73B02E3FF
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Dec 2023 14:26:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5C2C26AC7
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Dec 2023 14:42:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oWPJduSM"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9918EC433C7;
-	Wed, 13 Dec 2023 14:26:34 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dclJ6RG4"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 92F5CC433C8;
+	Wed, 13 Dec 2023 14:42:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1702477595;
-	bh=dofaZavQ5QSZZHVwo5tenL/YgmVS+tUEXqYK0QeC6EI=;
+	s=k20201202; t=1702478546;
+	bh=U7LdoUMWxdpDr8NChlJ+ttZZ//+9xXv8WqCa9t1Q4C0=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=oWPJduSM7WxMLTCX4Ss9dCQiw2YOk/XyVAz7imZtndzb7bsiteWrYmSgqF8yzOv7j
-	 bi8ACrQ96nE3aa+OtxaA8CsPTgvMGoGBXvKjIcXPU/3pz5gLO95kZqADAWOhemiaEv
-	 qUts8/gB5NCG67/2XAziyCz1S7LO5bnrex5nhuTlnpdxTywXIx0XKClMqdre+3vElZ
-	 WAaKs4jkNnedc4JnP/twucvHh4lj63Ab7WyIx+vpKrcNvbr9k2vmwM+O5HJv+rYZcv
-	 pivpbSfy0JuLbze/lCPZ3aYxXqU4rS2OW/7DKzXuL2ritx9oUZJXti0bS46Y1cw2o9
-	 k7MwY10Jq5cFQ==
-Message-ID: <3bada85ea59a20e68367f8ea98355dc76f31e42f.camel@kernel.org>
+	b=dclJ6RG4J83UyervWTldDYptURTXcJtxyd+S0J5+zyR0STngvx7Xp2gWQW5Ns47gK
+	 RFrpHdFvG/sVW3TgM2CrxJHqw01OToFaPBVpYniw+IGl0hDGQIKEuSbWB//zxS5dJa
+	 phpiMD9fScAhf3kfJ14XfPUB7PYEN18F5OPl9dNLu9Q66kpuD6n6eOK2h9Gr/XxWrA
+	 iQvozqBdhjl9jJIqkzPnXeW7Wx+y74WoC0eIOVd+0sZ0fPgRAgNtMTMQ6A5Qjl5V4N
+	 ysJ26k69LJBPfVoe83iDOCb64/b5J0AvA18GZebgKPIGUo6R4Em69ZtmW05lB2Q5i7
+	 rVHu6O5oY4CYQ==
+Message-ID: <0eb1d3b99233ad5db743e894580f5397009c66ef.camel@kernel.org>
 Subject: Re: [PATCH] nfsd: properly tear down server when write_ports fails
 From: Jeff Layton <jlayton@kernel.org>
 To: NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>
 Cc: Olga Kornievskaia <kolga@netapp.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org,
  linux-kernel@vger.kernel.org, Zhi Li <yieli@redhat.com>
-Date: Wed, 13 Dec 2023 09:26:33 -0500
+Date: Wed, 13 Dec 2023 09:42:24 -0500
 In-Reply-To: <170243914810.12910.1721447953189600231@noble.neil.brown.name>
 References: <20231211-nfsd-fixes-v1-1-c87a802f4977@kernel.org>
 	, <170233558429.12910.17902271117186364002@noble.neil.brown.name>
@@ -151,6 +151,11 @@ ke that
 > I think the "error cleanup" was addressed in a different series.  Maybe
 > it hasn't landed either.
 >=20
+
+No, I think that one is in. The main problem we have now is the
+write_ports oops, which is a different problem altogether.
+
+
 > >=20
 > > And on 2/5:
 > >=20
@@ -201,33 +206,12 @@ ler
 > We can't store the function pointers in the serv because the purpose of
 > the first function is to find the serv.
 >=20
-
-Sorry, I didn't mean the serv there. You had this in the patch:
-
-+struct pool_private {
-+	struct svc_serv *(*get_serv)(struct seq_file *, bool);
-+	struct svc_serv *serv;
-+};
-
-Let's just make that:
-
-+struct pool_private {
-+	struct svc_serv *(*get_serv)(struct seq_file *);
-+	struct svc_serv *(*put_serv)(struct seq_file *);
-+	struct svc_serv *serv;
-+};
-
-...and then just have svc_pool_stats_open take 2 function pointers. It's
-not pretty but it should be fine. We have other functions that take
-multiple function pointers in the kernel, so I don't see it as that bad.
-
 > I guess I should just repost everything again....  but it isn't a good
 > time for year for sustained debates.
 >=20
+> NeilBrown
 >=20
-
-That would be good. I'm hoping this is close to merge ready.
-
+>=20
 > > > Moving the mutex to be per-net does make a lot of sense, but I think
 > > > that's a separate project. If you decide to do that and it allows you=
  to
