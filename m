@@ -1,32 +1,32 @@
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="iYRZoaNY"
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id 09A1A19B
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Dec 2023 07:24:49 -0800 (PST)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="jJe9lAwK"
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	by lindbergh.monkeyblade.net (Postfix) with ESMTPS id F358E12C
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Dec 2023 07:24:50 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1702481089;
+	s=mimecast20190719; t=1702481090;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=jj3k9IeX7NTGcPRjglvEPxLODcDVViOsYShT5ukMf5o=;
-	b=iYRZoaNY7PGGj2hXAeCIzdX80QN+sddCWDKYy371Og8+YAVQV6GyZc1MFWiZg6ddMxMH24
-	o8UyjtsAlY/3OtpaeA2AE/bWgfQgPTv5lQVVzPLJbzhCnQGMSZO9ne5InCD4w43qKmdRjI
-	ZxJz2q9blkcudEXWhpUCIymppBfVYno=
+	bh=YNj0M7wIH2KyJkCq66ZNM2ALuHL5lOHXJKpMpeEunrM=;
+	b=jJe9lAwKRbxgPqVOeOT8eh2CMzHeJ78NXdpFPD0yXcEeYJzR8DExNxTwkahKkMq5XSaDM3
+	sr4pAx1bOLFFxOqKkC7xV4T//YPj7TO+kC4bwltBIca7S26cJMdxPdTp/xocp7jM5szYGu
+	ON4g+d5SpJ6hPa9DP4OXi5pSa9b3xuY=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-134-erhQmRKCNr2uZTNY3BdNZw-1; Wed, 13 Dec 2023 10:24:40 -0500
-X-MC-Unique: erhQmRKCNr2uZTNY3BdNZw-1
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
+ us-mta-675-9FNdQqbQO5ugbyzmDoD44A-1; Wed, 13 Dec 2023 10:24:48 -0500
+X-MC-Unique: 9FNdQqbQO5ugbyzmDoD44A-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 70D82881B6F;
-	Wed, 13 Dec 2023 15:24:39 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 3E581863012;
+	Wed, 13 Dec 2023 15:24:47 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.2])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id 80F8D2166B31;
-	Wed, 13 Dec 2023 15:24:36 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 139493C2F;
+	Wed, 13 Dec 2023 15:24:43 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Jeff Layton <jlayton@kernel.org>,
 	Steve French <smfrench@gmail.com>
@@ -50,9 +50,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v4 10/39] netfs: Provide invalidate_folio and release_folio calls
-Date: Wed, 13 Dec 2023 15:23:20 +0000
-Message-ID: <20231213152350.431591-11-dhowells@redhat.com>
+Subject: [PATCH v4 12/39] netfs: Add iov_iters to (sub)requests to describe various buffers
+Date: Wed, 13 Dec 2023 15:23:22 +0000
+Message-ID: <20231213152350.431591-13-dhowells@redhat.com>
 In-Reply-To: <20231213152350.431591-1-dhowells@redhat.com>
 References: <20231213152350.431591-1-dhowells@redhat.com>
 Precedence: bulk
@@ -62,271 +62,286 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.6
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.1
 
-Provide default invalidate_folio and release_folio calls.  These will need
-to interact with invalidation correctly at some point.  They will be needed
-if netfslib is to make use of folio->private for its own purposes.
+Add three iov_iter structs:
+
+ (1) Add an iov_iter (->iter) to the I/O request to describe the
+     unencrypted-side buffer.
+
+ (2) Add an iov_iter (->io_iter) to the I/O request to describe the
+     encrypted-side I/O buffer.  This may be a different size to the buffer
+     in (1).
+
+ (3) Add an iov_iter (->io_iter) to the I/O subrequest to describe the part
+     of the I/O buffer for that subrequest.
+
+This will allow future patches to point to a bounce buffer instead for
+purposes of handling oversize writes, decryption (where we want to save the
+encrypted data to the cache) and decompression.
+
+These iov_iters persist for the lifetime of the (sub)request, and so can be
+accessed multiple times without worrying about them being deallocated upon
+return to the caller.
+
+The network filesystem must appropriately advance the iterator before
+terminating the request.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+cc: Jeff Layton <jlayton@kernel.org>
 cc: linux-cachefs@redhat.com
 cc: linux-fsdevel@vger.kernel.org
 cc: linux-mm@kvack.org
 ---
- fs/9p/vfs_addr.c      | 33 ++-------------------------
- fs/afs/file.c         | 53 ++++---------------------------------------
- fs/ceph/addr.c        | 24 ++------------------
- fs/netfs/misc.c       | 42 ++++++++++++++++++++++++++++++++++
- include/linux/netfs.h |  6 +++--
- 5 files changed, 54 insertions(+), 104 deletions(-)
+ fs/afs/file.c            |  6 +---
+ fs/netfs/buffered_read.c | 13 ++++++++
+ fs/netfs/io.c            | 69 +++++++++++++++++++++++++++++-----------
+ include/linux/netfs.h    |  3 ++
+ 4 files changed, 67 insertions(+), 24 deletions(-)
 
-diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
-index 131b83c31f85..055b672a247d 100644
---- a/fs/9p/vfs_addr.c
-+++ b/fs/9p/vfs_addr.c
-@@ -88,35 +88,6 @@ const struct netfs_request_ops v9fs_req_ops = {
- 	.issue_read		= v9fs_issue_read,
- };
- 
--/**
-- * v9fs_release_folio - release the private state associated with a folio
-- * @folio: The folio to be released
-- * @gfp: The caller's allocation restrictions
-- *
-- * Returns true if the page can be released, false otherwise.
-- */
--
--static bool v9fs_release_folio(struct folio *folio, gfp_t gfp)
--{
--	if (folio_test_private(folio))
--		return false;
--#ifdef CONFIG_9P_FSCACHE
--	if (folio_test_fscache(folio)) {
--		if (current_is_kswapd() || !(gfp & __GFP_FS))
--			return false;
--		folio_wait_fscache(folio);
--	}
--	fscache_note_page_release(v9fs_inode_cookie(V9FS_I(folio_inode(folio))));
--#endif
--	return true;
--}
--
--static void v9fs_invalidate_folio(struct folio *folio, size_t offset,
--				 size_t length)
--{
--	folio_wait_fscache(folio);
--}
--
- #ifdef CONFIG_9P_FSCACHE
- static void v9fs_write_to_cache_done(void *priv, ssize_t transferred_or_error,
- 				     bool was_async)
-@@ -324,8 +295,8 @@ const struct address_space_operations v9fs_addr_operations = {
- 	.writepage	= v9fs_vfs_writepage,
- 	.write_begin	= v9fs_write_begin,
- 	.write_end	= v9fs_write_end,
--	.release_folio	= v9fs_release_folio,
--	.invalidate_folio = v9fs_invalidate_folio,
-+	.release_folio	= netfs_release_folio,
-+	.invalidate_folio = netfs_invalidate_folio,
- 	.launder_folio	= v9fs_launder_folio,
- 	.direct_IO	= v9fs_direct_IO,
- };
 diff --git a/fs/afs/file.c b/fs/afs/file.c
-index 5e2bca3b02fd..c5013ec3c1dc 100644
+index c5013ec3c1dc..aa95b4d6376c 100644
 --- a/fs/afs/file.c
 +++ b/fs/afs/file.c
-@@ -20,9 +20,6 @@
+@@ -320,11 +320,7 @@ static void afs_issue_read(struct netfs_io_subrequest *subreq)
+ 	fsreq->len	= subreq->len   - subreq->transferred;
+ 	fsreq->key	= key_get(subreq->rreq->netfs_priv);
+ 	fsreq->vnode	= vnode;
+-	fsreq->iter	= &fsreq->def_iter;
+-
+-	iov_iter_xarray(&fsreq->def_iter, ITER_DEST,
+-			&fsreq->vnode->netfs.inode.i_mapping->i_pages,
+-			fsreq->pos, fsreq->len);
++	fsreq->iter	= &subreq->io_iter;
  
- static int afs_file_mmap(struct file *file, struct vm_area_struct *vma);
- static int afs_symlink_read_folio(struct file *file, struct folio *folio);
--static void afs_invalidate_folio(struct folio *folio, size_t offset,
--			       size_t length);
--static bool afs_release_folio(struct folio *folio, gfp_t gfp_flags);
+ 	afs_fetch_data(fsreq->vnode, fsreq);
+ 	afs_put_read(fsreq);
+diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
+index d39d0ffe75d2..751556faa70b 100644
+--- a/fs/netfs/buffered_read.c
++++ b/fs/netfs/buffered_read.c
+@@ -199,6 +199,10 @@ void netfs_readahead(struct readahead_control *ractl)
  
- static ssize_t afs_file_read_iter(struct kiocb *iocb, struct iov_iter *iter);
- static ssize_t afs_file_splice_read(struct file *in, loff_t *ppos,
-@@ -57,8 +54,8 @@ const struct address_space_operations afs_file_aops = {
- 	.readahead	= netfs_readahead,
- 	.dirty_folio	= netfs_dirty_folio,
- 	.launder_folio	= afs_launder_folio,
--	.release_folio	= afs_release_folio,
--	.invalidate_folio = afs_invalidate_folio,
-+	.release_folio	= netfs_release_folio,
-+	.invalidate_folio = netfs_invalidate_folio,
- 	.write_begin	= afs_write_begin,
- 	.write_end	= afs_write_end,
- 	.writepages	= afs_writepages,
-@@ -67,8 +64,8 @@ const struct address_space_operations afs_file_aops = {
+ 	netfs_rreq_expand(rreq, ractl);
  
- const struct address_space_operations afs_symlink_aops = {
- 	.read_folio	= afs_symlink_read_folio,
--	.release_folio	= afs_release_folio,
--	.invalidate_folio = afs_invalidate_folio,
-+	.release_folio	= netfs_release_folio,
-+	.invalidate_folio = netfs_invalidate_folio,
- 	.migrate_folio	= filemap_migrate_folio,
- };
++	/* Set up the output buffer */
++	iov_iter_xarray(&rreq->iter, ITER_DEST, &ractl->mapping->i_pages,
++			rreq->start, rreq->len);
++
+ 	/* Drop the refs on the folios here rather than in the cache or
+ 	 * filesystem.  The locks will be dropped in netfs_rreq_unlock().
+ 	 */
+@@ -251,6 +255,11 @@ int netfs_read_folio(struct file *file, struct folio *folio)
  
-@@ -383,48 +380,6 @@ const struct netfs_request_ops afs_req_ops = {
- 	.issue_read		= afs_issue_read,
- };
+ 	netfs_stat(&netfs_n_rh_readpage);
+ 	trace_netfs_read(rreq, rreq->start, rreq->len, netfs_read_trace_readpage);
++
++	/* Set up the output buffer */
++	iov_iter_xarray(&rreq->iter, ITER_DEST, &mapping->i_pages,
++			rreq->start, rreq->len);
++
+ 	return netfs_begin_read(rreq, true);
  
--/*
-- * invalidate part or all of a page
-- * - release a page and clean up its private data if offset is 0 (indicating
-- *   the entire page)
-- */
--static void afs_invalidate_folio(struct folio *folio, size_t offset,
--			       size_t length)
--{
--	_enter("{%lu},%zu,%zu", folio->index, offset, length);
--
--	folio_wait_fscache(folio);
--	_leave("");
--}
--
--/*
-- * release a page and clean up its private state if it's not busy
-- * - return true if the page can now be released, false if not
-- */
--static bool afs_release_folio(struct folio *folio, gfp_t gfp)
--{
--	struct afs_vnode *vnode = AFS_FS_I(folio_inode(folio));
--
--	_enter("{{%llx:%llu}[%lu],%lx},%x",
--	       vnode->fid.vid, vnode->fid.vnode, folio_index(folio), folio->flags,
--	       gfp);
--
--	/* deny if folio is being written to the cache and the caller hasn't
--	 * elected to wait */
--#ifdef CONFIG_AFS_FSCACHE
--	if (folio_test_fscache(folio)) {
--		if (current_is_kswapd() || !(gfp & __GFP_FS))
--			return false;
--		folio_wait_fscache(folio);
--	}
--	fscache_note_page_release(afs_vnode_cache(vnode));
--#endif
--
--	/* Indicate that the folio can be released */
--	_leave(" = T");
--	return true;
--}
--
- static void afs_add_open_mmap(struct afs_vnode *vnode)
+ discard:
+@@ -408,6 +417,10 @@ int netfs_write_begin(struct netfs_inode *ctx,
+ 	ractl._nr_pages = folio_nr_pages(folio);
+ 	netfs_rreq_expand(rreq, &ractl);
+ 
++	/* Set up the output buffer */
++	iov_iter_xarray(&rreq->iter, ITER_DEST, &mapping->i_pages,
++			rreq->start, rreq->len);
++
+ 	/* We hold the folio locks, so we can drop the references */
+ 	folio_get(folio);
+ 	while (readahead_folio(&ractl))
+diff --git a/fs/netfs/io.c b/fs/netfs/io.c
+index 7f753380e047..e9d408e211b8 100644
+--- a/fs/netfs/io.c
++++ b/fs/netfs/io.c
+@@ -21,12 +21,7 @@
+  */
+ static void netfs_clear_unread(struct netfs_io_subrequest *subreq)
  {
- 	if (atomic_inc_return(&vnode->cb_nr_mmap) == 1) {
-diff --git a/fs/ceph/addr.c b/fs/ceph/addr.c
-index 654f408a0aca..500a87b68a9a 100644
---- a/fs/ceph/addr.c
-+++ b/fs/ceph/addr.c
-@@ -159,27 +159,7 @@ static void ceph_invalidate_folio(struct folio *folio, size_t offset,
- 		ceph_put_snap_context(snapc);
- 	}
- 
--	folio_wait_fscache(folio);
--}
+-	struct iov_iter iter;
 -
--static bool ceph_release_folio(struct folio *folio, gfp_t gfp)
--{
--	struct inode *inode = folio->mapping->host;
--	struct ceph_client *cl = ceph_inode_to_client(inode);
--
--	doutc(cl, "%llx.%llx idx %lu (%sdirty)\n", ceph_vinop(inode),
--	      folio->index, folio_test_dirty(folio) ? "" : "not ");
--
--	if (folio_test_private(folio))
--		return false;
--
--	if (folio_test_fscache(folio)) {
--		if (current_is_kswapd() || !(gfp & __GFP_FS))
--			return false;
--		folio_wait_fscache(folio);
--	}
--	ceph_fscache_note_page_release(inode);
--	return true;
-+	netfs_invalidate_folio(folio, offset, length);
+-	iov_iter_xarray(&iter, ITER_DEST, &subreq->rreq->mapping->i_pages,
+-			subreq->start + subreq->transferred,
+-			subreq->len   - subreq->transferred);
+-	iov_iter_zero(iov_iter_count(&iter), &iter);
++	iov_iter_zero(iov_iter_count(&subreq->io_iter), &subreq->io_iter);
  }
  
- static void ceph_netfs_expand_readahead(struct netfs_io_request *rreq)
-@@ -1585,7 +1565,7 @@ const struct address_space_operations ceph_aops = {
- 	.write_end = ceph_write_end,
- 	.dirty_folio = ceph_dirty_folio,
- 	.invalidate_folio = ceph_invalidate_folio,
--	.release_folio = ceph_release_folio,
-+	.release_folio = netfs_release_folio,
- 	.direct_IO = noop_direct_IO,
- };
+ static void netfs_cache_read_terminated(void *priv, ssize_t transferred_or_error,
+@@ -46,14 +41,9 @@ static void netfs_read_from_cache(struct netfs_io_request *rreq,
+ 				  enum netfs_read_from_hole read_hole)
+ {
+ 	struct netfs_cache_resources *cres = &rreq->cache_resources;
+-	struct iov_iter iter;
  
-diff --git a/fs/netfs/misc.c b/fs/netfs/misc.c
-index 68baf55c47a4..d946d85764de 100644
---- a/fs/netfs/misc.c
-+++ b/fs/netfs/misc.c
-@@ -84,3 +84,45 @@ void netfs_clear_inode_writeback(struct inode *inode, const void *aux)
- 	}
+ 	netfs_stat(&netfs_n_rh_read);
+-	iov_iter_xarray(&iter, ITER_DEST, &rreq->mapping->i_pages,
+-			subreq->start + subreq->transferred,
+-			subreq->len   - subreq->transferred);
+-
+-	cres->ops->read(cres, subreq->start, &iter, read_hole,
++	cres->ops->read(cres, subreq->start, &subreq->io_iter, read_hole,
+ 			netfs_cache_read_terminated, subreq);
  }
- EXPORT_SYMBOL(netfs_clear_inode_writeback);
-+
+ 
+@@ -88,6 +78,11 @@ static void netfs_read_from_server(struct netfs_io_request *rreq,
+ 				   struct netfs_io_subrequest *subreq)
+ {
+ 	netfs_stat(&netfs_n_rh_download);
++	if (iov_iter_count(&subreq->io_iter) != subreq->len - subreq->transferred)
++		pr_warn("R=%08x[%u] ITER PRE-MISMATCH %zx != %zx-%zx %lx\n",
++			rreq->debug_id, subreq->debug_index,
++			iov_iter_count(&subreq->io_iter), subreq->len,
++			subreq->transferred, subreq->flags);
+ 	rreq->netfs_ops->issue_read(subreq);
+ }
+ 
+@@ -259,6 +254,30 @@ static void netfs_rreq_short_read(struct netfs_io_request *rreq,
+ 		netfs_read_from_server(rreq, subreq);
+ }
+ 
 +/*
-+ * netfs_invalidate_folio - Invalidate or partially invalidate a folio
-+ * @folio: Folio proposed for release
-+ * @offset: Offset of the invalidated region
-+ * @length: Length of the invalidated region
-+ *
-+ * Invalidate part or all of a folio for a network filesystem.  The folio will
-+ * be removed afterwards if the invalidated region covers the entire folio.
++ * Reset the subrequest iterator prior to resubmission.
 + */
-+void netfs_invalidate_folio(struct folio *folio, size_t offset, size_t length)
++static void netfs_reset_subreq_iter(struct netfs_io_request *rreq,
++				    struct netfs_io_subrequest *subreq)
 +{
-+	_enter("{%lx},%zx,%zx", folio_index(folio), offset, length);
++	size_t remaining = subreq->len - subreq->transferred;
++	size_t count = iov_iter_count(&subreq->io_iter);
 +
-+	folio_wait_fscache(folio);
++	if (count == remaining)
++		return;
++
++	_debug("R=%08x[%u] ITER RESUB-MISMATCH %zx != %zx-%zx-%llx %x\n",
++	       rreq->debug_id, subreq->debug_index,
++	       iov_iter_count(&subreq->io_iter), subreq->transferred,
++	       subreq->len, rreq->i_size,
++	       subreq->io_iter.iter_type);
++
++	if (count < remaining)
++		iov_iter_revert(&subreq->io_iter, remaining - count);
++	else
++		iov_iter_advance(&subreq->io_iter, count - remaining);
 +}
-+EXPORT_SYMBOL(netfs_invalidate_folio);
 +
-+/**
-+ * netfs_release_folio - Try to release a folio
-+ * @folio: Folio proposed for release
-+ * @gfp: Flags qualifying the release
-+ *
-+ * Request release of a folio and clean up its private state if it's not busy.
-+ * Returns true if the folio can now be released, false if not
-+ */
-+bool netfs_release_folio(struct folio *folio, gfp_t gfp)
-+{
-+	struct netfs_inode *ctx = netfs_inode(folio_inode(folio));
-+
-+	if (folio_test_private(folio))
-+		return false;
-+	if (folio_test_fscache(folio)) {
-+		if (current_is_kswapd() || !(gfp & __GFP_FS))
-+			return false;
-+		folio_wait_fscache(folio);
+ /*
+  * Resubmit any short or failed operations.  Returns true if we got the rreq
+  * ref back.
+@@ -287,6 +306,7 @@ static bool netfs_rreq_perform_resubmissions(struct netfs_io_request *rreq)
+ 			trace_netfs_sreq(subreq, netfs_sreq_trace_download_instead);
+ 			netfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);
+ 			atomic_inc(&rreq->nr_outstanding);
++			netfs_reset_subreq_iter(rreq, subreq);
+ 			netfs_read_from_server(rreq, subreq);
+ 		} else if (test_bit(NETFS_SREQ_SHORT_IO, &subreq->flags)) {
+ 			netfs_rreq_short_read(rreq, subreq);
+@@ -399,9 +419,9 @@ void netfs_subreq_terminated(struct netfs_io_subrequest *subreq,
+ 	struct netfs_io_request *rreq = subreq->rreq;
+ 	int u;
+ 
+-	_enter("[%u]{%llx,%lx},%zd",
+-	       subreq->debug_index, subreq->start, subreq->flags,
+-	       transferred_or_error);
++	_enter("R=%x[%x]{%llx,%lx},%zd",
++	       rreq->debug_id, subreq->debug_index,
++	       subreq->start, subreq->flags, transferred_or_error);
+ 
+ 	switch (subreq->source) {
+ 	case NETFS_READ_FROM_CACHE:
+@@ -501,7 +521,8 @@ static enum netfs_io_source netfs_cache_prepare_read(struct netfs_io_subrequest
+  */
+ static enum netfs_io_source
+ netfs_rreq_prepare_read(struct netfs_io_request *rreq,
+-			struct netfs_io_subrequest *subreq)
++			struct netfs_io_subrequest *subreq,
++			struct iov_iter *io_iter)
+ {
+ 	enum netfs_io_source source;
+ 
+@@ -528,9 +549,14 @@ netfs_rreq_prepare_read(struct netfs_io_request *rreq,
+ 		}
+ 	}
+ 
+-	if (WARN_ON(subreq->len == 0))
++	if (WARN_ON(subreq->len == 0)) {
+ 		source = NETFS_INVALID_READ;
++		goto out;
 +	}
+ 
++	subreq->io_iter = *io_iter;
++	iov_iter_truncate(&subreq->io_iter, subreq->len);
++	iov_iter_advance(io_iter, subreq->len);
+ out:
+ 	subreq->source = source;
+ 	trace_netfs_sreq(subreq, netfs_sreq_trace_prepare);
+@@ -541,6 +567,7 @@ netfs_rreq_prepare_read(struct netfs_io_request *rreq,
+  * Slice off a piece of a read request and submit an I/O request for it.
+  */
+ static bool netfs_rreq_submit_slice(struct netfs_io_request *rreq,
++				    struct iov_iter *io_iter,
+ 				    unsigned int *_debug_index)
+ {
+ 	struct netfs_io_subrequest *subreq;
+@@ -565,7 +592,7 @@ static bool netfs_rreq_submit_slice(struct netfs_io_request *rreq,
+ 	 * (the starts must coincide), in which case, we go around the loop
+ 	 * again and ask it to download the next piece.
+ 	 */
+-	source = netfs_rreq_prepare_read(rreq, subreq);
++	source = netfs_rreq_prepare_read(rreq, subreq, io_iter);
+ 	if (source == NETFS_INVALID_READ)
+ 		goto subreq_failed;
+ 
+@@ -603,6 +630,7 @@ static bool netfs_rreq_submit_slice(struct netfs_io_request *rreq,
+  */
+ int netfs_begin_read(struct netfs_io_request *rreq, bool sync)
+ {
++	struct iov_iter io_iter;
+ 	unsigned int debug_index = 0;
+ 	int ret;
+ 
+@@ -615,6 +643,8 @@ int netfs_begin_read(struct netfs_io_request *rreq, bool sync)
+ 		return -EIO;
+ 	}
+ 
++	rreq->io_iter = rreq->iter;
 +
-+	fscache_note_page_release(netfs_i_cookie(ctx));
-+	return true;
-+}
-+EXPORT_SYMBOL(netfs_release_folio);
+ 	INIT_WORK(&rreq->work, netfs_rreq_work);
+ 
+ 	if (sync)
+@@ -624,8 +654,9 @@ int netfs_begin_read(struct netfs_io_request *rreq, bool sync)
+ 	 * want and submit each one.
+ 	 */
+ 	atomic_set(&rreq->nr_outstanding, 1);
++	io_iter = rreq->io_iter;
+ 	do {
+-		if (!netfs_rreq_submit_slice(rreq, &debug_index))
++		if (!netfs_rreq_submit_slice(rreq, &io_iter, &debug_index))
+ 			break;
+ 
+ 	} while (rreq->submitted < rreq->len);
 diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index 06f57d9d09f6..8efbfd3b2820 100644
+index fc6d9756a029..3da962e977f5 100644
 --- a/include/linux/netfs.h
 +++ b/include/linux/netfs.h
-@@ -293,11 +293,13 @@ struct readahead_control;
- void netfs_readahead(struct readahead_control *);
- int netfs_read_folio(struct file *, struct folio *);
- int netfs_write_begin(struct netfs_inode *, struct file *,
--		struct address_space *, loff_t pos, unsigned int len,
--		struct folio **, void **fsdata);
-+		      struct address_space *, loff_t pos, unsigned int len,
-+		      struct folio **, void **fsdata);
- bool netfs_dirty_folio(struct address_space *mapping, struct folio *folio);
- int netfs_unpin_writeback(struct inode *inode, struct writeback_control *wbc);
- void netfs_clear_inode_writeback(struct inode *inode, const void *aux);
-+void netfs_invalidate_folio(struct folio *folio, size_t offset, size_t length);
-+bool netfs_release_folio(struct folio *folio, gfp_t gfp);
- 
- void netfs_subreq_terminated(struct netfs_io_subrequest *, ssize_t, bool);
- void netfs_get_subrequest(struct netfs_io_subrequest *subreq,
+@@ -150,6 +150,7 @@ struct netfs_cache_resources {
+ struct netfs_io_subrequest {
+ 	struct netfs_io_request *rreq;		/* Supervising I/O request */
+ 	struct list_head	rreq_link;	/* Link in rreq->subrequests */
++	struct iov_iter		io_iter;	/* Iterator for this subrequest */
+ 	loff_t			start;		/* Where to start the I/O */
+ 	size_t			len;		/* Size of the I/O */
+ 	size_t			transferred;	/* Amount of data transferred */
+@@ -186,6 +187,8 @@ struct netfs_io_request {
+ 	struct netfs_cache_resources cache_resources;
+ 	struct list_head	proc_link;	/* Link in netfs_iorequests */
+ 	struct list_head	subrequests;	/* Contributory I/O operations */
++	struct iov_iter		iter;		/* Unencrypted-side iterator */
++	struct iov_iter		io_iter;	/* I/O (Encrypted-side) iterator */
+ 	void			*netfs_priv;	/* Private data for the netfs */
+ 	unsigned int		debug_id;
+ 	atomic_t		nr_outstanding;	/* Number of ops in progress */
 
