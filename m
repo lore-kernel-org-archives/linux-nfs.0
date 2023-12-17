@@ -1,31 +1,31 @@
 Received: from mail.svario.it (mail.svario.it [84.22.98.252])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C72044C7D
-	for <linux-nfs@vger.kernel.org>; Sun, 17 Dec 2023 14:56:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B7CD44C7E
+	for <linux-nfs@vger.kernel.org>; Sun, 17 Dec 2023 14:56:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=svario.it
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=svario.it
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=svario.it header.i=@svario.it header.b="WUC97PYx"
+	dkim=pass (2048-bit key) header.d=svario.it header.i=@svario.it header.b="mDzp0n88"
 Received: from localhost.localdomain (dynamic-093-133-078-169.93.133.pool.telefonica.de [93.133.78.169])
-	by mail.svario.it (Postfix) with ESMTPSA id F0792DE2B7;
-	Sun, 17 Dec 2023 15:56:41 +0100 (CET)
+	by mail.svario.it (Postfix) with ESMTPSA id 6CB38DEDA3;
+	Sun, 17 Dec 2023 15:56:42 +0100 (CET)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=svario.it; s=201710;
-	t=1702825002; bh=XZYePS7JfSvkwjuXpnphG12TabeU8njK3rD0GiM4x1A=;
+	t=1702825002; bh=pkCeLYOwM238t/LSezjOUDc/b73l5grGmhSZYVmp/AQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=WUC97PYxqcHIlzV31UNxT0CdzNhmeAIZZySvOkXVJQdicitn2zByd8IZYQnc5FUFy
-	 kEpVBX0JxSiTb35H22JkCvLomhyyg/lmFQThyKloMR4MP6A3qU4xA7dsQwxvn3ai27
-	 rTxwo5T5Dp2Wj16aX6XT1d7UcB9liPiUFPxpf2zUlhzU85Y75ghnSTiV0lPGnU1cKv
-	 39A0sVY6Yurdwm74LusdMESSGDf9TAjlEHKVyq1RseMO3WTuF9jLzxUreyP690NFGU
-	 D9zEAy1aOc2iQX1+tPoNCYk0AbVDUWfeKUeso3t+btFr/9QpKS2m8T0goZParLg6z+
-	 iSPpBaxJEm3/A==
+	b=mDzp0n88+VsgarNHfLFpef4FgQuCtzJjoxONtmj5vgBegxSTsrpwlpjdssAm6GG+3
+	 QAMm/4sMV2j1oBYhHX4dEt1+gIPMiWpzzfgKk1xrfp1AoUD5iRoBsdh/bC2ecbg2TQ
+	 cuRDKV9Y4osQVxESab0DWYu18luYBy3mU46yA5T6XFMya9U+eLH2iSeHgawFMPSyds
+	 chn70LkH4fdKyzF6xCt/q+Cz5186VZe9wPZjoqHMstT9NM5rSQSTyRZJV+DiXt1XMN
+	 JvGCSr+FtjF46WyW14FOpNWHhWsZ78zwcWThA1lg728RFnxVgxvs0Idyyt9hzOi26U
+	 I65cwYrhI8CTw==
 From: Gioele Barabucci <gioele@svario.it>
 To: linux-nfs@vger.kernel.org
 Cc: Steve Dickson <steved@redhat.com>,
 	Gioele Barabucci <gioele@svario.it>
-Subject: [PATCH 1/3] Fix typos in error messages
-Date: Sun, 17 Dec 2023 15:55:37 +0100
-Message-ID: <20231217145539.1380837-2-gioele@svario.it>
+Subject: [PATCH 3/3] systemd: Add Documentation= option to service units
+Date: Sun, 17 Dec 2023 15:55:39 +0100
+Message-ID: <20231217145539.1380837-4-gioele@svario.it>
 X-Mailer: git-send-email 2.42.0
 In-Reply-To: <20231217145539.1380837-1-gioele@svario.it>
 References: <20231217145539.1380837-1-gioele@svario.it>
@@ -38,50 +38,116 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
 ---
- support/export/export.c      | 2 +-
- support/export/v4root.c      | 2 +-
- utils/mount/mount_libmount.c | 2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+ systemd/nfs-blkmap.service       | 1 +
+ systemd/nfs-idmapd.service       | 1 +
+ systemd/nfs-mountd.service       | 1 +
+ systemd/nfs-server.service       | 1 +
+ systemd/nfsdcld.service          | 1 +
+ systemd/rpc-gssd.service.in      | 1 +
+ systemd/rpc-statd-notify.service | 1 +
+ systemd/rpc-statd.service        | 1 +
+ systemd/rpc-svcgssd.service      | 1 +
+ 9 files changed, 9 insertions(+)
 
-diff --git a/support/export/export.c b/support/export/export.c
-index 100912cb..2c8c3335 100644
---- a/support/export/export.c
-+++ b/support/export/export.c
-@@ -140,7 +140,7 @@ export_read(char *fname, int ignore_hosts)
- 					continue;
- 
- 				if (exp->m_export.e_flags & NFSEXP_FSID) {
--					xlog(L_ERROR, "When a reexport= option is present no manully assigned numerical fsid= options are allowed");
-+					xlog(L_ERROR, "When a reexport= option is present no manually assigned numerical fsid= options are allowed");
- 					return -1;
- 				}
- 			}
-diff --git a/support/export/v4root.c b/support/export/v4root.c
-index 03805dcb..c3b17a55 100644
---- a/support/export/v4root.c
-+++ b/support/export/v4root.c
-@@ -137,7 +137,7 @@ v4root_support(void)
- 	if (!warned) {
- 		xlog(L_WARNING, "Kernel does not have pseudo root support.");
- 		xlog(L_WARNING, "NFS v4 mounts will be disabled unless fsid=0");
--		xlog(L_WARNING, "is specfied in /etc/exports file.");
-+		xlog(L_WARNING, "is specified in /etc/exports file.");
- 		warned++;
- 	}
- 	return 0;
-diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
-index aa4ac5c3..fd6cb2cb 100644
---- a/utils/mount/mount_libmount.c
-+++ b/utils/mount/mount_libmount.c
-@@ -442,7 +442,7 @@ int main(int argc, char *argv[])
- 	mnt_init_debug(0);
- 	cxt = mnt_new_context();
- 	if (!cxt) {
--		nfs_error(_("Can't initilize libmount: %s"),
-+		nfs_error(_("Can't initialize libmount: %s"),
- 					strerror(errno));
- 		rc = EX_FAIL;
- 		goto done;
+diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
+index 6aa45ba1..57181632 100644
+--- a/systemd/nfs-blkmap.service
++++ b/systemd/nfs-blkmap.service
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=pNFS block layout mapping daemon
++Documentation=man:blkmapd(8)
+ DefaultDependencies=no
+ Conflicts=umount.target
+ After=rpc_pipefs.target
+diff --git a/systemd/nfs-idmapd.service b/systemd/nfs-idmapd.service
+index 198ca87c..d820f10c 100644
+--- a/systemd/nfs-idmapd.service
++++ b/systemd/nfs-idmapd.service
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=NFSv4 ID-name mapping service
++Documentation=man:idmapd(8)
+ DefaultDependencies=no
+ Requires=rpc_pipefs.target
+ After=rpc_pipefs.target local-fs.target network-online.target
+diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
+index e8ece533..4618fab1 100644
+--- a/systemd/nfs-mountd.service
++++ b/systemd/nfs-mountd.service
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=NFS Mount Daemon
++Documentation=man:rpc.mountd(8)
+ DefaultDependencies=no
+ Requires=proc-fs-nfsd.mount
+ Wants=network-online.target
+diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+index 2cdd7868..ac17d528 100644
+--- a/systemd/nfs-server.service
++++ b/systemd/nfs-server.service
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=NFS server and services
++Documentation=man:rpc.nfsd(8) man:exportfs(8)
+ DefaultDependencies=no
+ Requires=network.target proc-fs-nfsd.mount
+ Requires=nfs-mountd.service
+diff --git a/systemd/nfsdcld.service b/systemd/nfsdcld.service
+index a32d2430..3ced5658 100644
+--- a/systemd/nfsdcld.service
++++ b/systemd/nfsdcld.service
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=NFSv4 Client Tracking Daemon
++Documentation=man:nfsdcld(8)
+ DefaultDependencies=no
+ Conflicts=umount.target
+ Requires=rpc_pipefs.target proc-fs-nfsd.mount
+diff --git a/systemd/rpc-gssd.service.in b/systemd/rpc-gssd.service.in
+index 6807db35..38382ed3 100644
+--- a/systemd/rpc-gssd.service.in
++++ b/systemd/rpc-gssd.service.in
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=RPC security service for NFS client and server
++Documentation=man:rpc.gssd(8)
+ DefaultDependencies=no
+ Conflicts=umount.target
+ Requires=rpc_pipefs.target
+diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
+index aad4c0d2..962f18b2 100644
+--- a/systemd/rpc-statd-notify.service
++++ b/systemd/rpc-statd-notify.service
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=Notify NFS peers of a restart
++Documentation=man:sm-notify(8) man:rpc.statd(8)
+ DefaultDependencies=no
+ Wants=network-online.target
+ After=local-fs.target network-online.target nss-lookup.target
+diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
+index 392750da..660ed861 100644
+--- a/systemd/rpc-statd.service
++++ b/systemd/rpc-statd.service
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=NFS status monitor for NFSv2/3 locking.
++Documentation=man:rpc.statd(8)
+ DefaultDependencies=no
+ Conflicts=umount.target
+ Requires=nss-lookup.target rpcbind.socket
+diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
+index cb2bcd4f..401fba11 100644
+--- a/systemd/rpc-svcgssd.service
++++ b/systemd/rpc-svcgssd.service
+@@ -1,5 +1,6 @@
+ [Unit]
+ Description=RPC security service for NFS server
++Documentation=man:rpc.svcgssd(8)
+ DefaultDependencies=no
+ After=local-fs.target
+ PartOf=nfs-server.service
 -- 
 2.42.0
 
