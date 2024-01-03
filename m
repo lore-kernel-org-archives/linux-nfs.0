@@ -1,19 +1,19 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 36B6C1C282;
-	Wed,  3 Jan 2024 17:03:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4CDD01BDDE;
+	Wed,  3 Jan 2024 17:09:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="g4OTfGSy"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 74591C433C9;
-	Wed,  3 Jan 2024 17:03:15 +0000 (UTC)
+	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="n3J6BBCx"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9575AC433C8;
+	Wed,  3 Jan 2024 17:09:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-	s=korg; t=1704301396;
-	bh=doZvB1AhWDPhSXJDSLa0IYHlW1KUg+XWUQ4t3H3LFEo=;
+	s=korg; t=1704301752;
+	bh=cmxX8PILbpL3xKu052OYdedPeAiLgERVsRgsQcGdejg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=g4OTfGSy0nTHa7PbIHmcPpc3O7kGlt6wrDhfPuHnD1deoD7KBFdTVrXrQ2iwEZwFU
-	 7IPS7yU7nR0jLziPRj9w97M8IrkvdloRwvvJml1KDAHSMnQvqO10NpTdY6FxTQtGCp
-	 lBWyNeNPPQWdeds2rTaEydpwpeFo0ec2w+wdS9BQ=
+	b=n3J6BBCxcrfzmwDb7ngu6wlaFqDHnmdwlxikdn9uJkMEpE8aa1N6eciBgtHETQmYk
+	 637nu9BbN9/UO1Lr7zNZVqWV5qH/FuGhQoYwSmRSQRlHSYEzi7pkg8l20oTXLADZX7
+	 evZ3Ny07KtcYQB7ekTxsC7510K8wRxkM50QXcm9g=
 From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 To: stable@vger.kernel.org
 Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
@@ -36,12 +36,12 @@ Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
 	keyrings@vger.kernel.org,
 	netdev@vger.kernel.org,
 	Sasha Levin <sashal@kernel.org>
-Subject: [PATCH 5.15 21/95] keys, dns: Allow key types (eg. DNS) to be reclaimed immediately on expiry
-Date: Wed,  3 Jan 2024 17:54:29 +0100
-Message-ID: <20240103164857.327278177@linuxfoundation.org>
+Subject: [PATCH 5.10 19/75] keys, dns: Allow key types (eg. DNS) to be reclaimed immediately on expiry
+Date: Wed,  3 Jan 2024 17:55:00 +0100
+Message-ID: <20240103164846.109915439@linuxfoundation.org>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20240103164853.921194838@linuxfoundation.org>
-References: <20240103164853.921194838@linuxfoundation.org>
+In-Reply-To: <20240103164842.953224409@linuxfoundation.org>
+References: <20240103164842.953224409@linuxfoundation.org>
 User-Agent: quilt/0.67
 X-stable: review
 X-Patchwork-Hint: ignore
@@ -53,7 +53,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-5.15-stable review patch.  If anyone has any objections, please let me know.
+5.10-stable review patch.  If anyone has any objections, please let me know.
 
 ------------------
 
@@ -106,10 +106,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  6 files changed, 47 insertions(+), 23 deletions(-)
 
 diff --git a/include/linux/key-type.h b/include/linux/key-type.h
-index 7d985a1dfe4af..5caf3ce823733 100644
+index 2ab2d6d6aeab8..7de851a9af8f3 100644
 --- a/include/linux/key-type.h
 +++ b/include/linux/key-type.h
-@@ -73,6 +73,7 @@ struct key_type {
+@@ -72,6 +72,7 @@ struct key_type {
  
  	unsigned int flags;
  #define KEY_TYPE_NET_DOMAIN	0x00000001 /* Keys of this type have a net namespace domain */
@@ -264,7 +264,7 @@ index 9b9cf3b6fcbb4..bede6c71ffd97 100644
  }
  
 diff --git a/security/keys/key.c b/security/keys/key.c
-index c45afdd1dfbb4..e65240641ca57 100644
+index 151ff39b68030..67ad0826e385c 100644
 --- a/security/keys/key.c
 +++ b/security/keys/key.c
 @@ -294,6 +294,7 @@ struct key *key_alloc(struct key_type *type, const char *desc,
@@ -287,7 +287,7 @@ index c45afdd1dfbb4..e65240641ca57 100644
  		}
  	}
  
-@@ -606,8 +604,7 @@ int key_reject_and_link(struct key *key,
+@@ -605,8 +603,7 @@ int key_reject_and_link(struct key *key,
  		atomic_inc(&key->user->nikeys);
  		mark_key_instantiated(key, -error);
  		notify_key(key, NOTIFY_KEY_INSTANTIATED, -error);
@@ -297,7 +297,7 @@ index c45afdd1dfbb4..e65240641ca57 100644
  
  		if (test_and_clear_bit(KEY_FLAG_USER_CONSTRUCT, &key->flags))
  			awaken = 1;
-@@ -722,16 +719,14 @@ struct key_type *key_type_lookup(const char *type)
+@@ -721,16 +718,14 @@ struct key_type *key_type_lookup(const char *type)
  
  void key_set_timeout(struct key *key, unsigned timeout)
  {
