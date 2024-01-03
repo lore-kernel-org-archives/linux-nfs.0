@@ -1,35 +1,35 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EFCB31A282
-	for <linux-nfs@vger.kernel.org>; Wed,  3 Jan 2024 13:59:28 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80B6C19BD8
+	for <linux-nfs@vger.kernel.org>; Wed,  3 Jan 2024 14:04:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="iKlYlh+d"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="d1oF5TCK"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1704290368;
+	s=mimecast20190719; t=1704290670;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=6dAWkrI8v4YS0rv7Bi/6xzx13i604x2fNTwwBvd0CnM=;
-	b=iKlYlh+dhB/C3vhU1BOkNvAc9zfgyyW4YgUfGS4RvI9vpd9t+UGoF5EaHbRzNinaTwy4mE
-	fQgr878+zer+Rbi7HskhBDfbbMAHQi7DH7KVp2OEm/fYbaY0Mt4AV0fuBlyKquCrWEHPyU
-	pitEFgivrL+aheEQBAtv1VODbPHEvA0=
+	bh=dm5uQwn+49K96zJWxQsiqkazcQLayYKEShHZEQ+JYDg=;
+	b=d1oF5TCKj77QBWduueGBezNvH8XV/2ncicZizQivDByMTsS05ZISeuaP9QmSwpLJP8qV2T
+	3NO2oymSXe+6WpIK2eSdVRHsjrPVYQHaR2az8LnedNWCtOkN1JLF5QG3stHaBbNdToi+1M
+	4etKyS+hF3HfSEe0gZxMeNS6eXXzf5s=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-387-faj2gZTSNqKsLFzR_ZyENA-1; Wed, 03 Jan 2024 08:59:23 -0500
-X-MC-Unique: faj2gZTSNqKsLFzR_ZyENA-1
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.rdu2.redhat.com [10.11.54.2])
+ us-mta-613-i-DxWH5nPu6c-fysuoabdA-1; Wed, 03 Jan 2024 09:04:26 -0500
+X-MC-Unique: i-DxWH5nPu6c-fysuoabdA-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id EDA55845DC1;
-	Wed,  3 Jan 2024 13:59:21 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 1041384AF84;
+	Wed,  3 Jan 2024 14:04:22 +0000 (UTC)
 Received: from warthog.procyon.org.uk (unknown [10.42.28.68])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id B5F0940C6EB9;
-	Wed,  3 Jan 2024 13:59:18 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 372852026D66;
+	Wed,  3 Jan 2024 14:04:18 +0000 (UTC)
 Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
 	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
 	Kingdom.
@@ -61,17 +61,18 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Content-ID: <357812.1704290358.1@warthog.procyon.org.uk>
-Date: Wed, 03 Jan 2024 13:59:18 +0000
-Message-ID: <357813.1704290358@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.2
+Content-ID: <368445.1704290657.1@warthog.procyon.org.uk>
+Date: Wed, 03 Jan 2024 14:04:17 +0000
+Message-ID: <368446.1704290657@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.4
 
 Dominique Martinet <asmadeus@codewreck.org> wrote:
 
 > Would it make sense to just always update netfs's ctx->remote_i_size in
 > the various stat2inode calls instead?
 
-Yeah, that's probably a good idea.
+Btw, v9fs_i_size_write() should be redundant.  It should be sufficient to just
+use i_size_write() as long as you use i_size_read().
 
 David
 
