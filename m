@@ -1,36 +1,36 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B9241B295
-	for <linux-nfs@vger.kernel.org>; Wed,  3 Jan 2024 14:59:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 917B51C287
+	for <linux-nfs@vger.kernel.org>; Wed,  3 Jan 2024 15:00:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="NzBP1IFG"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="WbIVdre/"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1704293997;
+	s=mimecast20190719; t=1704294006;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=SdFCD8YJUNnwtU5qwz/M+xF7ih7tS/QW8qR9RpiR7QY=;
-	b=NzBP1IFG5kRUehdC9xp0+JWMT8f/3WKEbQ1ao4h8MOMV5w/W7qKprmGHtIUEMmh8seQ98S
-	fRKg0PH1zhR3CgVGVGpIVmogmPVBp1uo44lH9EZZy8X7pnGNG+Ervsgs6f5Nk5zVe5NMZV
-	mCvnYO1Vs+jvGmcCV/cAdxdMp/eEJd0=
+	bh=ZUPriBHgZCe048XAouZ6FVZlUrGVgRcZGkDmJ6vhI+o=;
+	b=WbIVdre/77BYAs7VnmULYmFKFJtIZgm28xhi+FQbOnzkgc+eDT1o0psUmkZusvQm2uqw+J
+	TUAjVHJg2k54XZ0Nzo7IbsEyS68AJR7ls2rSU1wKWFGMVQpKIr1q+g643FhQewC9MzFAEw
+	ZRciCyrgsWf4PBK4IAeW0SbHsvLtaXU=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-369-l-ZawQD_NwSxVHuoSJh8mg-1; Wed, 03 Jan 2024 09:59:54 -0500
-X-MC-Unique: l-ZawQD_NwSxVHuoSJh8mg-1
+ us-mta-194-mFIdXobHMneufCW3dOaAMw-1; Wed, 03 Jan 2024 10:00:04 -0500
+X-MC-Unique: mFIdXobHMneufCW3dOaAMw-1
 Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 450EB83B826;
-	Wed,  3 Jan 2024 14:59:53 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 7FA74185A780;
+	Wed,  3 Jan 2024 15:00:02 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.68])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id 45F673C27;
-	Wed,  3 Jan 2024 14:59:49 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 0074C3C30;
+	Wed,  3 Jan 2024 14:59:58 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -56,11 +56,11 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
-	Yiqun Leng <yqleng@linux.alibaba.com>,
-	Jia Zhu <zhujia.zj@bytedance.com>
-Subject: [PATCH 1/5] cachefiles: Fix __cachefiles_prepare_write()
-Date: Wed,  3 Jan 2024 14:59:25 +0000
-Message-ID: <20240103145935.384404-2-dhowells@redhat.com>
+	Latchesar Ionkov <lucho@ionkov.net>,
+	Christian Schoenebeck <linux_oss@crudebyte.com>
+Subject: [PATCH 3/5] 9p: Do a couple of cleanups
+Date: Wed,  3 Jan 2024 14:59:27 +0000
+Message-ID: <20240103145935.384404-4-dhowells@redhat.com>
 In-Reply-To: <20240103145935.384404-1-dhowells@redhat.com>
 References: <20240103145935.384404-1-dhowells@redhat.com>
 Precedence: bulk
@@ -72,96 +72,70 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.1
 
-Fix __cachefiles_prepare_write() to correctly determine whether the
-requested write will fit correctly with the DIO alignment.
+Do a couple of cleanups to 9p:
 
-Reported-by: Gao Xiang <hsiangkao@linux.alibaba.com>
+ (1) Remove a couple of unused variables.
+
+ (2) Turn a BUG_ON() into a warning, consolidate with another warning and
+     make the warning message include the inode number rather than
+     whatever's in i_private (which will get hashed anyway).
+
+Suggested-by: Dominique Martinet <asmadeus@codewreck.org>
+Link: https://lore.kernel.org/r/ZZULNQAZ0n0WQv7p@codewreck.org/
 Signed-off-by: David Howells <dhowells@redhat.com>
-Tested-by: Yiqun Leng <yqleng@linux.alibaba.com>
-Tested-by: Jia Zhu <zhujia.zj@bytedance.com>
-cc: Jeff Layton <jlayton@kernel.org>
+cc: Eric Van Hensbergen <ericvh@kernel.org>
+cc: Latchesar Ionkov <lucho@ionkov.net>
+cc: Christian Schoenebeck <linux_oss@crudebyte.com>
+cc: v9fs@lists.linux.dev
 cc: linux-cachefs@redhat.com
-cc: linux-erofs@lists.ozlabs.org
 cc: linux-fsdevel@vger.kernel.org
-cc: linux-mm@kvack.org
 ---
- fs/cachefiles/io.c | 28 +++++++++++++++++-----------
- 1 file changed, 17 insertions(+), 11 deletions(-)
+ fs/9p/vfs_addr.c | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
 
-diff --git a/fs/cachefiles/io.c b/fs/cachefiles/io.c
-index bffffedce4a9..7529b40bc95a 100644
---- a/fs/cachefiles/io.c
-+++ b/fs/cachefiles/io.c
-@@ -522,16 +522,22 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
- 			       bool no_space_allocated_yet)
+diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
+index d8fb407189a0..f7f83eec3bcc 100644
+--- a/fs/9p/vfs_addr.c
++++ b/fs/9p/vfs_addr.c
+@@ -28,8 +28,6 @@
+ 
+ static void v9fs_upload_to_server(struct netfs_io_subrequest *subreq)
  {
- 	struct cachefiles_cache *cache = object->volume->cache;
--	loff_t start = *_start, pos;
--	size_t len = *_len, down;
-+	unsigned long long start = *_start, pos;
-+	size_t len = *_len;
- 	int ret;
+-	struct inode *inode = subreq->rreq->inode;
+-	struct v9fs_inode __maybe_unused *v9inode = V9FS_I(inode);
+ 	struct p9_fid *fid = subreq->rreq->netfs_priv;
+ 	int err;
  
- 	/* Round to DIO size */
--	down = start - round_down(start, PAGE_SIZE);
--	*_start = start - down;
--	*_len = round_up(down + len, PAGE_SIZE);
--	if (down < start || *_len > upper_len)
-+	start = round_down(*_start, PAGE_SIZE);
-+	if (start != *_start) {
-+		kleave(" = -ENOBUFS [down]");
-+		return -ENOBUFS;
-+	}
-+	if (*_len > upper_len) {
-+		kleave(" = -ENOBUFS [up]");
- 		return -ENOBUFS;
-+	}
+@@ -98,15 +96,13 @@ static int v9fs_init_request(struct netfs_io_request *rreq, struct file *file)
+ 
+ 	if (file) {
+ 		fid = file->private_data;
+-		BUG_ON(!fid);
++		if (!fid)
++			goto no_fid;
+ 		p9_fid_get(fid);
+ 	} else {
+ 		fid = v9fs_fid_find_inode(rreq->inode, writing, INVALID_UID, true);
+-		if (!fid) {
+-			WARN_ONCE(1, "folio expected an open fid inode->i_private=%p\n",
+-				  rreq->inode->i_private);
+-			return -EINVAL;
+-		}
++		if (!fid)
++			goto no_fid;
+ 	}
+ 
+ 	/* we might need to read from a fid that was opened write-only
+@@ -115,6 +111,11 @@ static int v9fs_init_request(struct netfs_io_request *rreq, struct file *file)
+ 	WARN_ON(rreq->origin == NETFS_READ_FOR_WRITE && !(fid->mode & P9_ORDWR));
+ 	rreq->netfs_priv = fid;
+ 	return 0;
 +
-+	*_len = round_up(len, PAGE_SIZE);
++no_fid:
++	WARN_ONCE(1, "folio expected an open fid inode->i_ino=%lx\n",
++		  rreq->inode->i_ino);
++	return -EINVAL;
+ }
  
- 	/* We need to work out whether there's sufficient disk space to perform
- 	 * the write - but we can skip that check if we have space already
-@@ -542,7 +548,7 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
- 
- 	pos = cachefiles_inject_read_error();
- 	if (pos == 0)
--		pos = vfs_llseek(file, *_start, SEEK_DATA);
-+		pos = vfs_llseek(file, start, SEEK_DATA);
- 	if (pos < 0 && pos >= (loff_t)-MAX_ERRNO) {
- 		if (pos == -ENXIO)
- 			goto check_space; /* Unallocated tail */
-@@ -550,7 +556,7 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
- 					  cachefiles_trace_seek_error);
- 		return pos;
- 	}
--	if ((u64)pos >= (u64)*_start + *_len)
-+	if (pos >= start + *_len)
- 		goto check_space; /* Unallocated region */
- 
- 	/* We have a block that's at least partially filled - if we're low on
-@@ -563,13 +569,13 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
- 
- 	pos = cachefiles_inject_read_error();
- 	if (pos == 0)
--		pos = vfs_llseek(file, *_start, SEEK_HOLE);
-+		pos = vfs_llseek(file, start, SEEK_HOLE);
- 	if (pos < 0 && pos >= (loff_t)-MAX_ERRNO) {
- 		trace_cachefiles_io_error(object, file_inode(file), pos,
- 					  cachefiles_trace_seek_error);
- 		return pos;
- 	}
--	if ((u64)pos >= (u64)*_start + *_len)
-+	if (pos >= start + *_len)
- 		return 0; /* Fully allocated */
- 
- 	/* Partially allocated, but insufficient space: cull. */
-@@ -577,7 +583,7 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
- 	ret = cachefiles_inject_remove_error();
- 	if (ret == 0)
- 		ret = vfs_fallocate(file, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
--				    *_start, *_len);
-+				    start, *_len);
- 	if (ret < 0) {
- 		trace_cachefiles_io_error(object, file_inode(file), ret,
- 					  cachefiles_trace_fallocate_error);
+ /**
 
