@@ -1,55 +1,55 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4BF921F932
-	for <linux-nfs@vger.kernel.org>; Wed,  3 Jan 2024 23:39:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 71DECF4EB
+	for <linux-nfs@vger.kernel.org>; Thu,  4 Jan 2024 00:39:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="dN9ESy5J"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="G+WBiCol"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1704325145;
+	s=mimecast20190719; t=1704328778;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=hhX+sFpw7NtL035Q+70Z1mcyDrlKANyUjNATssayT+g=;
-	b=dN9ESy5JdkogkXQkT0t0MUCka5iic1sNeOu8/uBGGtwej5EA5c96zOKnmUsc6YiTsxoaXO
-	1DBWGgpeaSCFkXa1tG0Pui+0hf1wey4Y9F/+vRFWBKvIVWF8/6kgDn7cq7XWL363Zai0cy
-	pw0lsIwFJhOZU2TgznrwdOeKEjKKxcY=
-Received: from mail-qv1-f70.google.com (mail-qv1-f70.google.com
- [209.85.219.70]) by relay.mimecast.com with ESMTP with STARTTLS
+	bh=4BUPgWyVtlJ9usLQuZmv4zFKIIAeL7q3FzPiROXZguc=;
+	b=G+WBiColAhNmXNgMCCR+gEBj7pkgoQm/Zk5HFWVLwBI1NUWul1y4y94wARKXy+z0WpuzCT
+	DkC6sU8pZYNBOZAMILL/nkkULrFLdjLL6eo4IUSFmdtF5o4OAtyqjRo/j8zL24Mf/csI2H
+	9Qyf7TEjZiI8luOF/iXAMSiJydFVhFg=
+Received: from mail-oa1-f70.google.com (mail-oa1-f70.google.com
+ [209.85.160.70]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-615-DeIs4YaVMi2IMr3DxnSXGg-1; Wed, 03 Jan 2024 18:39:03 -0500
-X-MC-Unique: DeIs4YaVMi2IMr3DxnSXGg-1
-Received: by mail-qv1-f70.google.com with SMTP id 6a1803df08f44-6801dd788faso23750166d6.0
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Jan 2024 15:39:03 -0800 (PST)
+ us-mta-340-CFng5LnWPwWr2AqvjQvfDg-1; Wed, 03 Jan 2024 19:39:36 -0500
+X-MC-Unique: CFng5LnWPwWr2AqvjQvfDg-1
+Received: by mail-oa1-f70.google.com with SMTP id 586e51a60fabf-20455c22255so2485fac.1
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Jan 2024 16:39:36 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1704325143; x=1704929943;
+        d=1e100.net; s=20230601; t=1704328776; x=1704933576;
         h=content-transfer-encoding:in-reply-to:from:references:cc:to
          :content-language:subject:user-agent:mime-version:date:message-id
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=hhX+sFpw7NtL035Q+70Z1mcyDrlKANyUjNATssayT+g=;
-        b=BWbzqKf5a1MW6MGh4xswfu5hBSdYAAVwkHReSW6zs+pgHbZPFs3gSb71vaiNOKiaHJ
-         chz5QBDRsqs3ebF8UZRF5CwQosumMEZ3RPzKlcZ/tl7N09sYqvBKraS/4sQL+mB1zYoy
-         08V0g3sifPp3avmpr8ckgrfIsgzentphUP+Cp0svDx9wCYdEqcl61/o9pzusmrtP8b1n
-         1fWbI7tWDmr36mMNwzZjXSXYPS5GhfJPjKnuTOUVvccaZV3+9k14WekFkCGT07j8mnFb
-         5nwFeijupAVl7lxlvAXe9QHOSqaH+oeZONxAi8YNGGPeGhMS1o50n/dvGB+H0Rj2FIoo
-         RVvQ==
-X-Gm-Message-State: AOJu0YwQBqa3fCKGBghcp9CgdI9eO4kzQk8sgiBRS458G/Mlwz0YWcNO
-	BBnnwX5q6ZNLtGv/kENe2cGeTXtOiEzdf7vA8Rpfb6SnxItAMVJK1qQ3fT/+WKN6eFoTKDM+7u2
-	cFOl6j2ojgi9t+VbCsMKDCz2PWL6o
-X-Received: by 2002:a05:6214:500d:b0:680:b6ec:ea3b with SMTP id jo13-20020a056214500d00b00680b6ecea3bmr9468004qvb.5.1704325143075;
-        Wed, 03 Jan 2024 15:39:03 -0800 (PST)
-X-Google-Smtp-Source: AGHT+IFWNrex+2Ob7VenCoWfyWUR7Mbd4bM1CD/uM2bUet/SHzoSFmW3Zb6a7EDEzrTt8jP7vIOzbQ==
-X-Received: by 2002:a05:6214:500d:b0:680:b6ec:ea3b with SMTP id jo13-20020a056214500d00b00680b6ecea3bmr9467997qvb.5.1704325142847;
-        Wed, 03 Jan 2024 15:39:02 -0800 (PST)
+        bh=4BUPgWyVtlJ9usLQuZmv4zFKIIAeL7q3FzPiROXZguc=;
+        b=K9eCmr3ICJzOs+uOIlb7G8BqANn7VXwZmfuDDdRtVba3PLXQ4Hsi7qbcXhPgL9CX95
+         8nh6wP6SAk87E6M1bmPLxw93MAwwreZSsDCM9smqHcTd6lS5ZN3iS5O00PTFCEOjiQaC
+         qxFpsPPyXsRIVprKUG/3nwZOI/0x4D+Wvap03m3bl42iHAe4PL9k0jyYp1stRYlbt+nq
+         3Q8KYxeWxIBrpUMUMl4D2kFMGb4Nbjxlg2lZMEB+OFfR/xm2IXkYZ3g3kXFWWCRHiqe1
+         kxoF18Gnv82qVyo8uF+eyUdBbAY+JlWN13aMlFIxE/wzgeeZpwGqxU551GPmj+bhZc24
+         Cmfw==
+X-Gm-Message-State: AOJu0Yypzj70tTItgiY7WkkY9SXiMIybARi45PurOo9pCgpy8i4krV48
+	VfuVVX7Hz+qWg0gRueCjF08E1LWKxHnM9uGtzzeZsHgUvpOnej50JgI3Fs/ue++4SIVzYnRCSqk
+	B4ZicRMJfa3VEQd4xHq5ZtvdAmTHu
+X-Received: by 2002:a05:6870:8a10:b0:1fa:f404:b958 with SMTP id p16-20020a0568708a1000b001faf404b958mr36163522oaq.3.1704328775964;
+        Wed, 03 Jan 2024 16:39:35 -0800 (PST)
+X-Google-Smtp-Source: AGHT+IFSVUswUiylI478qJKaqNmhm6PIilw9fYFwxgvwcVBLJc+FdCV35g7f1hPCbqCZKpZfQRIj+A==
+X-Received: by 2002:a05:6870:8a10:b0:1fa:f404:b958 with SMTP id p16-20020a0568708a1000b001faf404b958mr36163514oaq.3.1704328775707;
+        Wed, 03 Jan 2024 16:39:35 -0800 (PST)
 Received: from [172.31.1.12] ([70.109.152.76])
-        by smtp.gmail.com with ESMTPSA id o2-20020a0cecc2000000b0067aab230ed9sm11283824qvq.21.2024.01.03.15.39.02
+        by smtp.gmail.com with ESMTPSA id z27-20020a05620a261b00b007811b8e3ff5sm10680889qko.48.2024.01.03.16.39.35
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 03 Jan 2024 15:39:02 -0800 (PST)
-Message-ID: <c5fe6393-86fc-4918-9d02-9257296b2f89@redhat.com>
-Date: Wed, 3 Jan 2024 18:39:02 -0500
+        Wed, 03 Jan 2024 16:39:35 -0800 (PST)
+Message-ID: <382a47bb-7d7d-4ed6-bbe2-3afad19480fe@redhat.com>
+Date: Wed, 3 Jan 2024 19:39:35 -0500
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -57,48 +57,59 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 2/2] gssapi: fix rpc_gss_seccreate passed in cred
+Subject: Re: [PATCH v2] reexport/{fsidd,reexport}.c: Re-add missing includes
 Content-Language: en-US
-To: Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-References: <20231206213127.55310-1-olga.kornievskaia@gmail.com>
- <20231206213127.55310-2-olga.kornievskaia@gmail.com>
+To: Petr Vorel <pvorel@suse.cz>, linux-nfs@vger.kernel.org
+Cc: Giulio Benetti <giulio.benetti@benettiengineering.com>
+References: <20231205223543.31443-1-pvorel@suse.cz>
 From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <20231206213127.55310-2-olga.kornievskaia@gmail.com>
+In-Reply-To: <20231205223543.31443-1-pvorel@suse.cz>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
 
 
-On 12/6/23 4:31 PM, Olga Kornievskaia wrote:
-> From: Olga Kornievskaia <kolga@netapp.com>
+On 12/5/23 5:35 PM, Petr Vorel wrote:
+> Older uClibc-ng requires <unistd.h> for close(2), unlink(2) and write(2),
+> <sys/un.h> for struct sockaddr_un.
 > 
-> Fix rpc_gss_seccreate() usage of the passed in gss credential.
-> 
-> Fixes: 5f1fe4dde861 ("Pass time_req and input_channel_bindings through to init_sec_context")
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-Committed... (tag: libtirpc-1-3-5-rc1)
+> Fixes: 1a4edb2a ("reexport/fsidd.c: Remove unused headers")
+> Fixes: bdc79f02 ("support/reexport.c: Remove unused headers")
+> Signed-off-by: Petr Vorel <pvorel@suse.cz>
+Committed... (tag: nfs-utils-2-7-1-rc3
 
 steved.
-
 > ---
->   src/auth_gss.c | 4 ++--
->   1 file changed, 2 insertions(+), 2 deletions(-)
+> Changes v1->v2:
+> * Add also <sys/un.h>
 > 
-> diff --git a/src/auth_gss.c b/src/auth_gss.c
-> index e317664..9d18f96 100644
-> --- a/src/auth_gss.c
-> +++ b/src/auth_gss.c
-> @@ -842,9 +842,9 @@ rpc_gss_seccreate(CLIENT *clnt, char *principal, char *mechanism,
->   	gd->sec = sec;
+>   support/reexport/fsidd.c    | 2 ++
+>   support/reexport/reexport.c | 1 +
+>   2 files changed, 3 insertions(+)
+> 
+> diff --git a/support/reexport/fsidd.c b/support/reexport/fsidd.c
+> index 8a70b78f..51750ea3 100644
+> --- a/support/reexport/fsidd.c
+> +++ b/support/reexport/fsidd.c
+> @@ -7,6 +7,8 @@
+>   #include <dlfcn.h>
+>   #endif
+>   #include <event2/event.h>
+> +#include <sys/un.h>
+> +#include <unistd.h>
 >   
->   	if (req) {
-> -		sec.req_flags = req->req_flags;
-> +		gd->sec.req_flags = req->req_flags;
->   		gd->time_req = req->time_req;
-> -		sec.cred = req->my_cred;
-> +		gd->sec.cred = req->my_cred;
->   		gd->icb = req->input_channel_bindings;
->   	}
+>   #include "conffile.h"
+>   #include "reexport_backend.h"
+> diff --git a/support/reexport/reexport.c b/support/reexport/reexport.c
+> index 0fb49a46..c7bff6a3 100644
+> --- a/support/reexport/reexport.c
+> +++ b/support/reexport/reexport.c
+> @@ -7,6 +7,7 @@
+>   #endif
+>   #include <sys/types.h>
+>   #include <sys/vfs.h>
+> +#include <unistd.h>
+>   #include <errno.h>
 >   
+>   #include "nfsd_path.h"
 
