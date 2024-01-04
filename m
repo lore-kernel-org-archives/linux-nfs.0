@@ -1,55 +1,55 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24E784417
-	for <linux-nfs@vger.kernel.org>; Thu,  4 Jan 2024 00:42:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5242EA29
+	for <linux-nfs@vger.kernel.org>; Thu,  4 Jan 2024 00:45:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="dnwTFixZ"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="KlBC20sG"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1704328969;
+	s=mimecast20190719; t=1704329154;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:mime-version:mime-version:content-type:content-type:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=hazj/EglDv+zjaOJ1/S2j+NXvIVn0r3XtXmpta+OTJc=;
-	b=dnwTFixZqYybo5NsO89ThCLjupx+kc6W60wRJnxsCJa4nVBeUY2TyNKkYk4F6x+q9rIcC+
-	xA6cTR5XTMTkyNCSkyXz/LXKO0VlKCrJUz2umcZYBAHOLieK3ULa3VmC9BSqQe6+bRmK/g
-	C5F2taFw98ZdtCmWg6wmp/OvC+VgwVg=
-Received: from mail-ot1-f69.google.com (mail-ot1-f69.google.com
- [209.85.210.69]) by relay.mimecast.com with ESMTP with STARTTLS
+	bh=KkWwSNklpJ8E06Au5xFEoxWh+RdWypKvqiwsHLu/U1A=;
+	b=KlBC20sGnlxe26rYK+5KeLGdi3576t/pOpDiOFEDO0T1mPzNvnJZhINHXsB4niS9TR3m5o
+	f4Z+Ppt7R+Mxvzo+sCch/Rk22J8mwkPpCwiv9DxSnThg64HS1c3Pf3vlE0hNJ/A2WZmQm0
+	MADeFy9potM0/PI/2A8Hf9fkhm9GIJM=
+Received: from mail-pj1-f69.google.com (mail-pj1-f69.google.com
+ [209.85.216.69]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-657-36kBkOK0NKaN7PNJ5L2P3g-1; Wed, 03 Jan 2024 19:42:47 -0500
-X-MC-Unique: 36kBkOK0NKaN7PNJ5L2P3g-1
-Received: by mail-ot1-f69.google.com with SMTP id 46e09a7af769-6dbe8af9ae8so11769a34.0
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Jan 2024 16:42:47 -0800 (PST)
+ us-mta-460-82AnVoawNWCevMmnBgz6pA-1; Wed, 03 Jan 2024 19:45:47 -0500
+X-MC-Unique: 82AnVoawNWCevMmnBgz6pA-1
+Received: by mail-pj1-f69.google.com with SMTP id 98e67ed59e1d1-28bea0ff98cso2521874a91.0
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Jan 2024 16:45:47 -0800 (PST)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1704328967; x=1704933767;
-        h=content-transfer-encoding:in-reply-to:from:references:to
+        d=1e100.net; s=20230601; t=1704329146; x=1704933946;
+        h=content-transfer-encoding:in-reply-to:from:references:cc:to
          :content-language:subject:user-agent:mime-version:date:message-id
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=hazj/EglDv+zjaOJ1/S2j+NXvIVn0r3XtXmpta+OTJc=;
-        b=MsScVni+jeT7SbEGgsDoGN9zuQJZYDbAqdiT/0Ty2RDC7GtSQQ/nalDm7BdznLeXPy
-         aGkQqm6pnEYUXrGWMuV4Lpyy3S6pOgVD+8Nj/KZJAedDpKu0OVIUGp+sGBPfL/7Tfv/7
-         vk4Ikkldwxh3tiWuiz0sNAd6N5sxVeg2s8zjEqDEnhdWluepQbVuRRhcHe4Y33NQ32Qh
-         x6mK1z6ndIYaIpqUyFv/9RurgapylYgIjkRZCi2yhn1VBGpYKKYsM/5qWpIor5eG09f1
-         yaJowRWReVg7q0tHJPI8HK1EaoOBb9t3v6oMwVj7nkmjwWHf5EcwBPSgAkxYZXO6uzbM
-         5E2w==
-X-Gm-Message-State: AOJu0YzNWgR2eCQ1GHvAKNItKCiBeCfCXX1RmYTzE1M+P2kE+KBwejTi
-	9ya8LP1sj+QElBtkASKU2hQJImIRL96Q4JtHYHMeONoHtfr4srDiwWgEZWx+/8wYUmTdfrAqx29
-	PM97S7+tOsjkt7wKXMIm/60A4RLngpnTu7Uvy
-X-Received: by 2002:a05:6830:348d:b0:6db:9bc7:7426 with SMTP id c13-20020a056830348d00b006db9bc77426mr33965945otu.0.1704328967065;
-        Wed, 03 Jan 2024 16:42:47 -0800 (PST)
-X-Google-Smtp-Source: AGHT+IEOGQkRmfjU4QW28Kg5JJvIoAjg/y7YPURlLkcAJwajwzrAN1UueJuJIV99mGO1M6YgHpGMDQ==
-X-Received: by 2002:a05:6830:348d:b0:6db:9bc7:7426 with SMTP id c13-20020a056830348d00b006db9bc77426mr33965936otu.0.1704328966831;
-        Wed, 03 Jan 2024 16:42:46 -0800 (PST)
+        bh=KkWwSNklpJ8E06Au5xFEoxWh+RdWypKvqiwsHLu/U1A=;
+        b=linqzTeE/RtrF422PHAGxENEjDgbJKBkh1SGxUrtV6QJRRGmokEkYZM1tKaqxOOyGl
+         g1Dv6Mc/90mhQheiHHQiB5zLLhBXpoQFm+hkaQ2XOVN/x0CPhrrLuUthJEEarQtDebGH
+         HV6P/Ub+La46kpcv1FVGIKhkNoEVUhmhldp8aXhnWVlcE12b3SyqrKgBJP8TpA8SF1qN
+         Oy5PL8fp7Z8jmQFrLuBkQ3llD+Ig4A7QtpvAj43POijkrTzUolp90JsOS0kKfbrfRLyh
+         rOTJQ4Gv4Wso/tsdXkIxF0ObyDyA/9x26f2lIqrcz/2923q2+2PSccJbTS41o/TOW9Cb
+         T2rA==
+X-Gm-Message-State: AOJu0YxS3QPdecAfNC3U+wb2WVg6Yj1cDyHUQwT1jcULJz1zIm9i5B/K
+	7oF+Ata1XXSRCOwQxBKoCSiIB/3ryJl5tquHbjUf1vQnEyOH3sYvUpqvQK00aa7CeIvnOm+face
+	w/jkFOZum8+e2LqsGdzqGOzosGRMc
+X-Received: by 2002:a05:620a:1918:b0:781:917:bc0f with SMTP id bj24-20020a05620a191800b007810917bc0fmr42998591qkb.4.1704328718488;
+        Wed, 03 Jan 2024 16:38:38 -0800 (PST)
+X-Google-Smtp-Source: AGHT+IEBLukOPQzgwj4ha++GuUsW2JUCc49tUL7tOV4NU4jz1cUyei2LsVtmQvThyuKOwNQyJMyJ8w==
+X-Received: by 2002:a05:620a:1918:b0:781:917:bc0f with SMTP id bj24-20020a05620a191800b007810917bc0fmr42998584qkb.4.1704328718162;
+        Wed, 03 Jan 2024 16:38:38 -0800 (PST)
 Received: from [172.31.1.12] ([70.109.152.76])
-        by smtp.gmail.com with ESMTPSA id cr9-20020a05622a428900b00427b3271ab4sm13062221qtb.41.2024.01.03.16.42.46
+        by smtp.gmail.com with ESMTPSA id z27-20020a05620a261b00b007811b8e3ff5sm10680889qko.48.2024.01.03.16.38.37
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Wed, 03 Jan 2024 16:42:46 -0800 (PST)
-Message-ID: <ddc121f6-e80d-43ea-894d-2ad10cdf3051@redhat.com>
-Date: Wed, 3 Jan 2024 19:42:45 -0500
+        Wed, 03 Jan 2024 16:38:37 -0800 (PST)
+Message-ID: <9fc4294f-4fb9-45b7-a4e8-7243f075ea16@redhat.com>
+Date: Wed, 3 Jan 2024 19:38:37 -0500
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -57,47 +57,44 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [nfs-utils PATCH] reexport.h: Include unistd.h to compile with
- musl
+Subject: Re: [PATCH 0/6] nfs-utils: handle BAD_INTEGRITY ERROR
 Content-Language: en-US
-To: liezhi.yang@windriver.com, linux-nfs@vger.kernel.org
-References: <20231214101206.70608-1-liezhi.yang@windriver.com>
+To: Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
+References: <20231206213332.55565-1-olga.kornievskaia@gmail.com>
 From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <20231214101206.70608-1-liezhi.yang@windriver.com>
+In-Reply-To: <20231206213332.55565-1-olga.kornievskaia@gmail.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
 
 
-On 12/14/23 5:12 AM, liezhi.yang@windriver.com wrote:
-> From: Robert Yang <liezhi.yang@windriver.com>
+On 12/6/23 4:33 PM, Olga Kornievskaia wrote:
+> From: Olga Kornievskaia <kolga@netapp.com>
 > 
-> Fixed error when compile with musl
-> reexport.c: In function 'reexpdb_init':
-> reexport.c:62:17: error: implicit declaration of function 'sleep' [-Werror=implicit-function-declaration]
->     62 |                 sleep(1);
+> This patch series is re-work of the previous patch series that handles
+> gss error for bad integrity. In this version, gssd is changed to use
+> rpc_gss_seccreate() function in tirpc which exposes the gss errors to
+> the caller. This functionality is further checked with configure for the
+> presence of this function in the tirpc library.
 > 
-> Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
-> ---
->   support/reexport/reexport.h | 2 ++
->   1 file changed, 2 insertions(+)
-I believe this is fixed the last RC release
-Please me know if that is not the case.
+> Note that the current libtirpc (1.3.4 version) needs a fix to
+> rpc_gss_seccreate() to work correctly for the gssd that passes in
+> credentials to be used for the gss context establishement.
+> 
+> Olga Kornievskaia (6):
+>    gssd: revert commit a5f3b7ccb01c
+>    gssd: revert commit 513630d720bd
+>    gssd: switch to using rpc_gss_seccreate()
+>    gssd: handle KRB5_AP_ERR_BAD_INTEGRITY for machine credentials
+>    gssd: handle KRB5_AP_ERR_BAD_INTEGRITY for user credentials
+>    configure: check for rpc_gss_seccreate
+> 
+>   aclocal/libtirpc.m4    |  5 +++++
+>   utils/gssd/gssd_proc.c | 26 +++++++++++++++++++++++---
+>   2 files changed, 28 insertions(+), 3 deletions(-)
+> 
+Committed... (tag: nfs-utils-2-7-1-rc3)
 
 steved.
-
-> 
-> diff --git a/support/reexport/reexport.h b/support/reexport/reexport.h
-> index 85fd59c1..02f86844 100644
-> --- a/support/reexport/reexport.h
-> +++ b/support/reexport/reexport.h
-> @@ -1,6 +1,8 @@
->   #ifndef REEXPORT_H
->   #define REEXPORT_H
->   
-> +#include <unistd.h>
-> +
->   #include "nfslib.h"
->   
->   enum {
 
