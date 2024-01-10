@@ -1,55 +1,119 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91E3752F8A;
-	Wed, 10 Jan 2024 20:38:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EE23F4F5EA
+	for <linux-nfs@vger.kernel.org>; Wed, 10 Jan 2024 21:11:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SeES673r"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 10F57C41679;
-	Wed, 10 Jan 2024 20:38:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1704919126;
-	bh=5cQDO1LmTW0IZ/M1gQAukt0C6E5oydM9ivSKDR/2ick=;
-	h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
-	b=SeES673rdP6IuSEFvHmUFsX8C6DSxSGb6nu7OJ93O3LSrcwOK/dEpQpuLDC5UOShM
-	 yNCYRtjFipkCtR/vywhkTw1tMsuCHgsU0PuGfzH7oHMxftLGhd+d/PNhrQrmVIlbMZ
-	 EluWGB4FEHszFQUHFnqh76WIQ9Rj8i7LGI7rU89OEZ6AflJFp1wnK6P+7WMgTzXCpr
-	 ntdeProRz+EhehZnphwfH26kQGIqshJvOz2WJpBSbpRiO1iH8CBixQn+UKnxTCUpMq
-	 sNk99ANrdXwvwDXePV+UwI77CRDk/MO2auQ1pmmV62lxUgQmNYbKSLSSgI9WuzdOWq
-	 kHGmKJqFAW5ew==
-Received: from aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by aws-us-west-2-korg-oddjob-1.ci.codeaurora.org (Postfix) with ESMTP id EE926DFC686;
-	Wed, 10 Jan 2024 20:38:45 +0000 (UTC)
-Subject: Re: [GIT PULL] NFSD changes for v6.8
-From: pr-tracker-bot@kernel.org
-In-Reply-To: <ZZ10c3vzhM/CVjQs@tissot.1015granger.net>
-References: <ZZ10c3vzhM/CVjQs@tissot.1015granger.net>
-X-PR-Tracked-List-Id: <linux-kernel.vger.kernel.org>
-X-PR-Tracked-Message-Id: <ZZ10c3vzhM/CVjQs@tissot.1015granger.net>
-X-PR-Tracked-Remote: https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-6.8
-X-PR-Tracked-Commit-Id: 17419aefcbfd9891863e8b8132f0bca9a6b2984e
-X-PR-Merge-Tree: torvalds/linux.git
-X-PR-Merge-Refname: refs/heads/master
-X-PR-Merge-Commit-Id: 49f4810356f7d4294ad63dc70fe3c65ca3b8ada9
-Message-Id: <170491912597.22036.5546653673843399911.pr-tracker-bot@kernel.org>
-Date: Wed, 10 Jan 2024 20:38:45 +0000
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>, Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="GD1Qp3dz"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1704921111;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=gbbBO9lNpJR0MfDA9zvC1wgSIs185cCcwjZiJnDa0wI=;
+	b=GD1Qp3dz0kSWpPMIFetsuV5rG5JPGfCrbNIXV1IssPkXuKjkTsVVv+3Sh38GsNQmGQ2lAi
+	ziO2zS8/lJ/iGQaw8XiUhOCXor7h4P9E/lpcw+cMbD/ftIgfWnbb0dNu8YNgaLOXoCdXiG
+	YfWcoGyv6VxjEIRrp/e59MHSd+zC3+I=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-99-OxrgtCRHNg-my24eDO2Ukg-1; Wed, 10 Jan 2024 16:11:45 -0500
+X-MC-Unique: OxrgtCRHNg-my24eDO2Ukg-1
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 421108371C0;
+	Wed, 10 Jan 2024 21:11:44 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.42.28.67])
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 795C61121306;
+	Wed, 10 Jan 2024 21:11:41 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+	Kingdom.
+	Registered in England and Wales under Company Registration No. 3798903
+From: David Howells <dhowells@redhat.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+    Edward Adam Davis <eadavis@qq.com>,
+    Pengfei Xu <pengfei.xu@intel.com>
+Cc: dhowells@redhat.com, Simon Horman <horms@kernel.org>,
+    Markus Suvanto <markus.suvanto@gmail.com>,
+    Jeffrey E Altman <jaltman@auristor.com>,
+    Marc Dionne <marc.dionne@auristor.com>,
+    Wang Lei <wang840925@gmail.com>, Jeff Layton <jlayton@redhat.com>,
+    Steve French <smfrench@gmail.com>,
+    Jarkko Sakkinen <jarkko@kernel.org>,
+    "David S. Miller" <davem@davemloft.net>,
+    Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
+    Paolo Abeni <pabeni@redhat.com>, linux-afs@lists.infradead.org,
+    keyrings@vger.kernel.org, linux-cifs@vger.kernel.org,
+    linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+    netdev@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+    linux-kernel@vger.kernel.org
+Subject: [PATCH] keys, dns: Fix size check of V1 server-list header
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <1850030.1704921100.1@warthog.procyon.org.uk>
+Content-Transfer-Encoding: quoted-printable
+Date: Wed, 10 Jan 2024 21:11:40 +0000
+Message-ID: <1850031.1704921100@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.3
 
-The pull request you sent on Tue, 9 Jan 2024 11:29:39 -0500:
+    =
 
-> https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-6.8
+Fix the size check added to dns_resolver_preparse() for the V1 server-list
+header so that it doesn't give EINVAL if the size supplied is the same as
+the size of the header struct (which should be valid).
 
-has been merged into torvalds/linux.git:
-https://git.kernel.org/torvalds/c/49f4810356f7d4294ad63dc70fe3c65ca3b8ada9
+This can be tested with:
 
-Thank you!
+        echo -n -e '\0\0\01\xff\0\0' | keyctl padd dns_resolver desc @p
 
--- 
-Deet-doot-dot, I am a bot.
-https://korg.docs.kernel.org/prtracker.html
+which will give "add_key: Invalid argument" without this fix.
+
+Fixes: 1997b3cb4217 ("keys, dns: Fix missing size check of V1 server-list =
+header")
+Reported-by: Pengfei Xu <pengfei.xu@intel.com>
+Link: https://lore.kernel.org/r/ZZ4fyY4r3rqgZL+4@xpf.sh.intel.com/
+Signed-off-by: David Howells <dhowells@redhat.com>
+cc: Edward Adam Davis <eadavis@qq.com>
+cc: Linus Torvalds <torvalds@linux-foundation.org>
+cc: Simon Horman <horms@kernel.org>
+Cc: Jarkko Sakkinen <jarkko@kernel.org>
+Cc: Jeffrey E Altman <jaltman@auristor.com>
+Cc: Wang Lei <wang840925@gmail.com>
+Cc: Jeff Layton <jlayton@redhat.com>
+Cc: Steve French <sfrench@us.ibm.com>
+Cc: Marc Dionne <marc.dionne@auristor.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Eric Dumazet <edumazet@google.com>
+Cc: Jakub Kicinski <kuba@kernel.org>
+Cc: Paolo Abeni <pabeni@redhat.com>
+---
+ net/dns_resolver/dns_key.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/dns_resolver/dns_key.c b/net/dns_resolver/dns_key.c
+index f18ca02aa95a..c42ddd85ff1f 100644
+--- a/net/dns_resolver/dns_key.c
++++ b/net/dns_resolver/dns_key.c
+@@ -104,7 +104,7 @@ dns_resolver_preparse(struct key_preparsed_payload *pr=
+ep)
+ 		const struct dns_server_list_v1_header *v1;
+ =
+
+ 		/* It may be a server list. */
+-		if (datalen <=3D sizeof(*v1))
++		if (datalen < sizeof(*v1))
+ 			return -EINVAL;
+ =
+
+ 		v1 =3D (const struct dns_server_list_v1_header *)data;
+
