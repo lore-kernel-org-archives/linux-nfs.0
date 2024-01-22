@@ -1,43 +1,45 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6A0231427C
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Jan 2024 22:32:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 28ABA1D536
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Jan 2024 22:32:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1705962762; cv=none; b=jB1L0bad4l9tTCMUZ5G1FUlrgLQc/3NQ+UNihXYpPSqFcYDJormkN4fPMozl+8TLQHxI+hGG2tsw9RsIjFasriZDme1l1f0YogX4ivU8s4Frb7iP8ExIcJWlK/AdPwwyVBXuEAi5RghHgsOqgd9/oq7z/oOoj10BOSro04IdaiI=
+	t=1705962764; cv=none; b=HPZNabm+QI6T0o7iZt71BgBc4NPm5JkXIfhbu4s3q5ILHGIaScvi1p/Pfd4r6YQIvw0t6y4sMgQTJbFrxvFpeY1jKJtZYCGuWYxXJ4aDktnXS+rW8FZr3gtgUuHY8hr0lX4aG0TosFzmZs9nbOcja2071iPIkWq1RMf8PI2jTWI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1705962762; c=relaxed/simple;
-	bh=daZFC62S3UR5/eYOj7P2J+CoCIGhjBE2E3ZrLE+pFjQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=CaQwGD3YmuEcmgTvTk8oyNElnJ577eSjs3vLcD7teS67yObik5MhhYphhPZ4aUPfA7qlEDz07CiSZvPTaFLw8Cn9ilwmOJq2aUKjta56sBdHpKphJsmLBc3a3s7JqXOjc3VSxpj7/Wzl/iiPKDBhUpZzaN23zffHAj5U2lF8s3s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=gkxfnqMO; arc=none smtp.client-ip=170.10.129.124
+	s=arc-20240116; t=1705962764; c=relaxed/simple;
+	bh=/cvksSSZmxrtzmRzMtQyJ29qGFgkxxbGXyOn+BgtGh0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=mJjkV6rVQSrI9nE9OWt7LpGhowqeT9vb/ntPSI5okeZpZfrONCT8/zbiDl8c5kOZYitx1YgMXleI4MqJiC5cy7JuMteCQoIW72KaKtFKUti+tzKQT9XfdgnKOsamT77NYBIbXm31ogEQIuNPDXPw1kLC3JrTF6fATaiz0AnUVKs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Wb/QxFiM; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="gkxfnqMO"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Wb/QxFiM"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1705962760;
+	s=mimecast20190719; t=1705962762;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=6rMqtCN9Nns9gicLLQn3euoOj3eY7rsKvUOdFV5pAfA=;
-	b=gkxfnqMOqGq/4rz0l3u/mMjoN4fdQLuR4XL2JzgBHS1cqjh94p5Ksr304ougP+kdksdsHW
-	UlmG3u1EKqDnVv96tOWFKwPRv5LnEjCELETdIRzcmhSno32BsgULLVJiMDFW1FiDyvtVB8
-	qKM8k0v7va+vFDp9uEw5pTYX6YOWabw=
-Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
- [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-101-xVA4GeBNMjm4A_25AiODpA-1; Mon, 22 Jan 2024 17:32:35 -0500
-X-MC-Unique: xVA4GeBNMjm4A_25AiODpA-1
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=x1zKGT6uFapv0Zv34dL5cckA4sfK0obP1h5qgfcrNJU=;
+	b=Wb/QxFiM+NkATy7wg9JU6pbMHDCnKF8QzQ0MBRB5TvXOKoZ6LonYXn+V/RVRKP2Ntv+681
+	Q/XZvn43Mmfp0pJeD42iwfjDSBOXRoqzntk7gLRByo+0OfQRYajd0z/w9PQWEmxpXaMUu9
+	PPIY8qywnawRDAw0/xq7GCUJzZzwsd8=
+Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
+ by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-677-D55WZ7cLO0uVwnEeCzBXJA-1; Mon,
+ 22 Jan 2024 17:32:39 -0500
+X-MC-Unique: D55WZ7cLO0uVwnEeCzBXJA-1
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 03AE785A589;
-	Mon, 22 Jan 2024 22:32:34 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 233F61C04181;
+	Mon, 22 Jan 2024 22:32:39 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.67])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id 48FAB5012;
-	Mon, 22 Jan 2024 22:32:32 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 4C0FC2026D66;
+	Mon, 22 Jan 2024 22:32:37 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>
 Cc: David Howells <dhowells@redhat.com>,
@@ -52,10 +54,13 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-erofs@lists.ozlabs.org,
 	linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v2 00/10] netfs, afs, cifs, cachefiles, erofs: Miscellaneous fixes
-Date: Mon, 22 Jan 2024 22:32:13 +0000
-Message-ID: <20240122223230.4000595-1-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org,
+	Marc Dionne <marc.dionne@auristor.com>
+Subject: [PATCH v2 02/10] afs: Don't use certain unnecessary folio_*() functions
+Date: Mon, 22 Jan 2024 22:32:15 +0000
+Message-ID: <20240122223230.4000595-3-dhowells@redhat.com>
+In-Reply-To: <20240122223230.4000595-1-dhowells@redhat.com>
+References: <20240122223230.4000595-1-dhowells@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -63,70 +68,71 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.5
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.4
 
-Hi Christian,
+Filesystems should use folio->index and folio->mapping, instead of
+folio_index(folio), folio_mapping() and folio_file_mapping() since
+they know that it's in the pagecache.
 
-Here are some miscellaneous fixes for netfslib and a number of filesystems:
+Change this automagically with:
 
- (1) Replace folio_index() with folio->index in netfs, afs and cifs.
+perl -p -i -e 's/folio_mapping[(]([^)]*)[)]/\1->mapping/g' fs/afs/*.c
+perl -p -i -e 's/folio_file_mapping[(]([^)]*)[)]/\1->mapping/g' fs/afs/*.c
+perl -p -i -e 's/folio_index[(]([^)]*)[)]/\1->index/g' fs/afs/*.c
 
- (2) Fix an oops in fscache_put_cache().
+Reported-by: Matthew Wilcox <willy@infradead.org>
+Signed-off-by: David Howells <dhowells@redhat.com>
+cc: Marc Dionne <marc.dionne@auristor.com>
+cc: linux-afs@lists.infradead.org
+cc: linux-fsdevel@vger.kernel.org
+---
+ fs/afs/dir.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
- (3) Fix error handling in netfs_perform_write().
-
- (4) Fix an oops in cachefiles when not using erofs ondemand mode.
-
- (5) In afs, hide silly-rename files from getdents() to avoid problems with
-     tar and suchlike.
-
- (6) In afs, fix error handling in lookup with a bulk status fetch.
-
- (7) In afs, afs_dynroot_d_revalidate() is redundant, so remove it.
-
- (8) In afs, fix the RCU unlocking in afs_proc_addr_prefs_show().
-
-The patches can also be found here:
-
-	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/log/?h=netfs-fixes
-
-Thanks,
-David
-
-Changes
-=======
-ver #2)
- - Update the commit messages of the don't-use-folio_index patches.
- - Move check of object->ondemand into cachefiles_ondemand_init_object().
-
-
-Link: https://lore.kernel.org/r/20240122123845.3822570-1-dhowells@redhat.com/ # v1
-
-Dan Carpenter (2):
-  netfs, fscache: Prevent Oops in fscache_put_cache()
-  netfs: Fix a NULL vs IS_ERR() check in netfs_perform_write()
-
-David Howells (8):
-  netfs: Don't use certain unnecessary folio_*() functions
-  afs: Don't use certain unnecessary folio_*() functions
-  cifs: Don't use certain unnecessary folio_*() functions
-  cachefiles, erofs: Fix NULL deref in when cachefiles is not doing
-    ondemand-mode
-  afs: Hide silly-rename files from userspace
-  afs: Fix error handling with lookup via FS.InlineBulkStatus
-  afs: Remove afs_dynroot_d_revalidate() as it is redundant
-  afs: Fix missing/incorrect unlocking of RCU read lock
-
- fs/afs/dir.c               | 30 ++++++++++++++++++++++--------
- fs/afs/dynroot.c           |  9 ---------
- fs/afs/proc.c              |  5 +++--
- fs/cachefiles/ondemand.c   |  3 +++
- fs/netfs/buffered_read.c   | 12 ++++++------
- fs/netfs/buffered_write.c  | 15 ++++++++-------
- fs/netfs/fscache_cache.c   |  3 ++-
- fs/netfs/io.c              |  2 +-
- fs/netfs/misc.c            |  2 +-
- fs/smb/client/file.c       | 10 +++++-----
- include/trace/events/afs.h | 25 +++++++++++++++++++++++++
- 11 files changed, 76 insertions(+), 40 deletions(-)
+diff --git a/fs/afs/dir.c b/fs/afs/dir.c
+index c14533ef108f..3f73d61f7c8a 100644
+--- a/fs/afs/dir.c
++++ b/fs/afs/dir.c
+@@ -124,7 +124,7 @@ static void afs_dir_read_cleanup(struct afs_read *req)
+ 		if (xas_retry(&xas, folio))
+ 			continue;
+ 		BUG_ON(xa_is_value(folio));
+-		ASSERTCMP(folio_file_mapping(folio), ==, mapping);
++		ASSERTCMP(folio->mapping, ==, mapping);
+ 
+ 		folio_put(folio);
+ 	}
+@@ -202,12 +202,12 @@ static void afs_dir_dump(struct afs_vnode *dvnode, struct afs_read *req)
+ 		if (xas_retry(&xas, folio))
+ 			continue;
+ 
+-		BUG_ON(folio_file_mapping(folio) != mapping);
++		BUG_ON(folio->mapping != mapping);
+ 
+ 		size = min_t(loff_t, folio_size(folio), req->actual_len - folio_pos(folio));
+ 		for (offset = 0; offset < size; offset += sizeof(*block)) {
+ 			block = kmap_local_folio(folio, offset);
+-			pr_warn("[%02lx] %32phN\n", folio_index(folio) + offset, block);
++			pr_warn("[%02lx] %32phN\n", folio->index + offset, block);
+ 			kunmap_local(block);
+ 		}
+ 	}
+@@ -233,7 +233,7 @@ static int afs_dir_check(struct afs_vnode *dvnode, struct afs_read *req)
+ 		if (xas_retry(&xas, folio))
+ 			continue;
+ 
+-		BUG_ON(folio_file_mapping(folio) != mapping);
++		BUG_ON(folio->mapping != mapping);
+ 
+ 		if (!afs_dir_check_folio(dvnode, folio, req->actual_len)) {
+ 			afs_dir_dump(dvnode, req);
+@@ -2022,7 +2022,7 @@ static bool afs_dir_release_folio(struct folio *folio, gfp_t gfp_flags)
+ {
+ 	struct afs_vnode *dvnode = AFS_FS_I(folio_inode(folio));
+ 
+-	_enter("{{%llx:%llu}[%lu]}", dvnode->fid.vid, dvnode->fid.vnode, folio_index(folio));
++	_enter("{{%llx:%llu}[%lu]}", dvnode->fid.vid, dvnode->fid.vnode, folio->index);
+ 
+ 	folio_detach_private(folio);
+ 
 
