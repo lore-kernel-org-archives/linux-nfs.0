@@ -1,432 +1,207 @@
-Received: from smtp-fw-2101.amazon.com (smtp-fw-2101.amazon.com [72.21.196.25])
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E48601C33;
-	Wed, 24 Jan 2024 13:01:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=72.21.196.25
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706101265; cv=none; b=s8Eo5LaT3+ZIQPHerWQdNNwERnO2duzS2FO3eJz4tSJv7Mg4C3NGJpCB6WBgADXsFf/3LyKeoSjlPP0z7EGG9PxZ+SIFGUEYgGq5xBZKP8FokvxFDcN+a8u1kpWypjaJXRNKQT4if5Ih3wGv/WtQMozi47dRB1WO2CvwFdpTb48=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1706101265; c=relaxed/simple;
-	bh=CaWBk8W57U1J2tKr/2lfxmwlgUWi6Z7kOVUq7Ob3Osg=;
-	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=rJeLnPdxU0LDlvlFXfotEHTAmVe8lW5PY/G/MnX58ivSpNfQZt8Rie+sZreYP0oFYCWZd04KGFXjts/qFJrc1s0eQ00RqyDxLJVtc5fb6liCLoIUoPTt+iEAszZoDPLXRYOYup5s2sjfGhDZ6qbVgBUVSzpGCcIl6fbNL/0RdlE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.com; spf=pass smtp.mailfrom=amazon.com; dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b=vF9Ge5f1; arc=none smtp.client-ip=72.21.196.25
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=amazon.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76B1A77F35;
+	Wed, 24 Jan 2024 13:55:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.165.32
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1706104527; cv=fail; b=CJqvqpH5IKJpfA5N+XSLQ9qYdPaooDm7ZE32XDnfyzYEx0sV+WARae1I545nz6TzFwY9sccVW586wGyOQzUDQUDCuQSO+2IwZqI6/bcRXMevkt1tQKnMK3iYukyVUnFIp4yy2JyPEXlg9H1AErXCCWyTtSb4beNdGFJ1n2tX24Q=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1706104527; c=relaxed/simple;
+	bh=QLmqNpWdpPrIAvu7c3TYxs1TE9SwC6v1XzVsvoRVDac=;
+	h=From:To:CC:Subject:Date:Message-ID:References:In-Reply-To:
+	 Content-Type:MIME-Version; b=PDOQgsXnKaFKbOFisNv0nQccaGznldU5e1vFDw40SceXsVQVWUKdabP9bS5qb1/tiHRLW5YyWC3j52IA0d2qT0p2hebkHImww1Y/ucUdX4/PBUwmG44KdCyLR4iuJ4eYYFGBKVcykqkJHU8tuIFEdqcylO9qVbv++nFAr5ttTTc=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=owrklBrd; dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b=PCHcTrQh; arc=fail smtp.client-ip=205.220.165.32
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oracle.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=amazon.com header.i=@amazon.com header.b="vF9Ge5f1"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="owrklBrd";
+	dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b="PCHcTrQh"
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+	by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 40OCxWrs023552;
+	Wed, 24 Jan 2024 13:55:18 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
+ subject : date : message-id : references : in-reply-to : content-type :
+ content-id : content-transfer-encoding : mime-version; s=corp-2023-11-20;
+ bh=QLmqNpWdpPrIAvu7c3TYxs1TE9SwC6v1XzVsvoRVDac=;
+ b=owrklBrd7GsuWUQjmjBkg8Wj2Y040Vq6vv4ZC9aLjxvSenDWfnvikyGw1G6W+Tjy/IKc
+ uvA914pwHmdHQRjndulQCIFyfcMxtQXtVUnhJcvJW+QGhPC5XitsIWk8ITrUYMt0CV0e
+ FxxcmkEsceEAq3sv6s45f0AGSbpRnbTk5mjecGdJCvkhNXD8Cw15JRRV/YD9P5U2KLL/
+ X3IUKNgg2eVeZM8NEPUolNgEZGSgr1XXmyrr83cQHGjewGH0bQ6NLtpXTksJJ1iIenAs
+ XVy8rflA1NarGNTItoPGk6+sJi9t1Iaw3WMhq1mlcvD9dKq9rSvklEI35RNycQAxz7Xs vg== 
+Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.appoci.oracle.com [130.35.100.223])
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3vr7ac3jq7-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Wed, 24 Jan 2024 13:55:17 +0000
+Received: from pps.filterd (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 40OD5EoH029575;
+	Wed, 24 Jan 2024 13:55:16 GMT
+Received: from nam10-dm6-obe.outbound.protection.outlook.com (mail-dm6nam10lp2100.outbound.protection.outlook.com [104.47.58.100])
+	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 3vs372phty-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Wed, 24 Jan 2024 13:55:16 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector9901; d=microsoft.com; cv=none;
+ b=m+hbLDv5tLQs6BaX7XQxbQeSjr1Xxk4brdg97MGJbHqLITaetdkCTqVBZXtwpN3cmQ2l+kXGTInVPup+e8/eWWdUQG6l2UjXbHwWXod5tm6+uf1/oftK5vJ6w+AJQc0OSxmhMzhK9U8DRpevDnHLRdAN32R7xcba/OYUALnN3vpaZEs1KDukuHg87hGI5vySVdJ9ZyH5G3AF0zVc07j5frpI1oYwXhvuRJnGaBcI55iYkB7IHxRkQen2Z5tBdSmpnfYjaKo9ZqOiR75y1kd7zLROKvFERYyFRQ9zhJX7YiImhO3c6jhdkiVflGrdhHuqH4BgdXhHTnZCpLnLdWSAkw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector9901;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=QLmqNpWdpPrIAvu7c3TYxs1TE9SwC6v1XzVsvoRVDac=;
+ b=YFDDaUWmMC/HwxO5NazUb1tAkVzgyXfBDkxbIumbMmPoMG1SkWJxTJXWwUyaZ6JoY5ieKbDYb1HLsAQy20TxxJYJ4RbN9BqMw1CJhPDY8QtmZFFPwlYa1AjoxX3j0ahRPv4KL5FGwabTAUcIcTz1BWuT8iUl8ofFKz2uTWtY0by6tzov+V6H3mL8pRuSEbuY0/shtklT12PTf3NPSqgU34+6PyLlRJmEtk/4KuvRl9Tq+Pdt5oVuf/4idk0qxLv7Bmh9Qr7CDQUyE/mLZB/ap96Xhjudly1LbULJ4SUju0MUn9uWFOgRLSqFYWbfMisvs0Z5BwW9r1rWrtYYDdJs2w==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazon201209;
-  t=1706101263; x=1737637263;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=EyfEbuE2m3W3td1FX1vnkdULktPLmvgov4r/SOas2DM=;
-  b=vF9Ge5f16VykeAVaFYm/TFGsq6skEUMknvVge6t+r+HZzJw7MPf50tsZ
-   Hi38kx+yAnY3LNDUq2GymH2ZTWX9s40MU733OkQQxGYqogUoFEvUcuj3a
-   r3qdHby6K2n+euwDujSi3aLJIgtx+tSpNdskBY2yvIenOWD3djL9sWwS2
-   A=;
-X-IronPort-AV: E=Sophos;i="6.05,216,1701129600"; 
-   d="scan'208";a="376507030"
-Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO email-inbound-relay-iad-1d-m6i4x-25ac6bd5.us-east-1.amazon.com) ([10.43.8.6])
-  by smtp-border-fw-2101.iad2.amazon.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 24 Jan 2024 13:00:57 +0000
-Received: from smtpout.prod.us-west-2.prod.farcaster.email.amazon.dev (iad7-ws-svc-p70-lb3-vlan2.iad.amazon.com [10.32.235.34])
-	by email-inbound-relay-iad-1d-m6i4x-25ac6bd5.us-east-1.amazon.com (Postfix) with ESMTPS id CCFE84A256;
-	Wed, 24 Jan 2024 13:00:54 +0000 (UTC)
-Received: from EX19MTAUWC001.ant.amazon.com [10.0.7.35:29753]
- by smtpin.naws.us-west-2.prod.farcaster.email.amazon.dev [10.0.13.57:2525] with esmtp (Farcaster)
- id 2c1c4b45-4d43-48c9-8a9a-9ac46e67b68f; Wed, 24 Jan 2024 13:00:54 +0000 (UTC)
-X-Farcaster-Flow-ID: 2c1c4b45-4d43-48c9-8a9a-9ac46e67b68f
-Received: from EX19MTAUWC001.ant.amazon.com (10.250.64.174) by
- EX19MTAUWC001.ant.amazon.com (10.250.64.174) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.1118.40; Wed, 24 Jan 2024 13:00:52 +0000
-Received: from dev-dsk-mngyadam-1c-a2602c62.eu-west-1.amazon.com (10.15.1.225)
- by mail-relay.amazon.com (10.250.64.145) with Microsoft SMTP Server id
- 15.2.1118.40 via Frontend Transport; Wed, 24 Jan 2024 13:00:52 +0000
-Received: by dev-dsk-mngyadam-1c-a2602c62.eu-west-1.amazon.com (Postfix, from userid 23907357)
-	id 138952D62; Wed, 24 Jan 2024 14:00:52 +0100 (CET)
-From: Mahmoud Adam <mngyadam@amazon.com>
-To: <gregkh@linuxfoundation.org>
-CC: <viro@zeniv.linux.org.uk>, <xuyang2018.jy@fujitsu.com>,
-	<stable@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-	<--suppress-cc=body@amazon.com>, Dave Chinner <david@fromorbit.com>,
-	Christian Brauner <brauner@kernel.org>, "Darrick J . Wong"
-	<djwong@kernel.org>, Jeff Layton <jlayton@kernel.org>, Amir Goldstein
-	<amir73il@gmail.com>, Mahmoud Adam <mngyadam@amazon.com>
-Subject: [PATCH 2/2] fs: move S_ISGID stripping into the vfs_*() helpers
-Date: Wed, 24 Jan 2024 14:00:26 +0100
-Message-ID: <20240124130025.2292-3-mngyadam@amazon.com>
-X-Mailer: git-send-email 2.40.1
-In-Reply-To: <20240124130025.2292-1-mngyadam@amazon.com>
-References: <20240124130025.2292-1-mngyadam@amazon.com>
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=QLmqNpWdpPrIAvu7c3TYxs1TE9SwC6v1XzVsvoRVDac=;
+ b=PCHcTrQhHR4BnIvIPQqcjGLkQ/ludgcPjygdSSD40vJu3bgxsOoJVAwUT7eI8mxun4JxzJCT02wKBtDNhIHjbpBPtOoMLd/PMS3T+7rQ6UXHWZe2URoU4EnemNg8wdUjZ7WB/oVgs3MfBznBJ/x9dpGO2VglXqFiQd2AyJE936c=
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
+ by CY8PR10MB7338.namprd10.prod.outlook.com (2603:10b6:930:7e::21) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.7202.37; Wed, 24 Jan
+ 2024 13:55:14 +0000
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::5475:bf96:8fdf:8ff9]) by BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::5475:bf96:8fdf:8ff9%7]) with mapi id 15.20.7228.022; Wed, 24 Jan 2024
+ 13:55:14 +0000
+From: Chuck Lever III <chuck.lever@oracle.com>
+To: Jeff Layton <jlayton@kernel.org>, Lorenzo Bianconi <lorenzo@kernel.org>,
+        Neil Brown <neilb@suse.de>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Lorenzo Bianconi
+	<lorenzo.bianconi@redhat.com>,
+        Jakub Kicinski <kuba@kernel.org>, Simon Horman
+	<horms@kernel.org>,
+        "open list:NETWORKING [GENERAL]" <netdev@vger.kernel.org>
+Subject: Re: [PATCH v6 3/3] NFSD: add write_ports to netlink command
+Thread-Topic: [PATCH v6 3/3] NFSD: add write_ports to netlink command
+Thread-Index: 
+ AQHaS8bpZ9RzO76t8E+mXe8FqSN12LDl2fGAgACEPYCAABdWAIAAuIYAgAAV2ICAACKWgIAAEuAAgAFFH4CAABm8AIAAKhqA
+Date: Wed, 24 Jan 2024 13:55:14 +0000
+Message-ID: <917EC07C-C9D9-4CF2-9ACB-DCA2676DFF67@oracle.com>
+References: <cover.1705771400.git.lorenzo@kernel.org>
+ <f7c42dae2b232b3b06e54ceb3f00725893973e02.1705771400.git.lorenzo@kernel.org>
+ <9e3ae337dcf168c60c4cfd51aa0b2fc7b24bcbfb.camel@kernel.org>
+ <170595930799.23031.17998490973211605470@noble.neil.brown.name>
+ <Za7zHvPJdei/vWm4@tissot.1015granger.net> <Za-N6BxOMXTGyxmW@lore-desk>
+ <85b02061798a1b750a87b0302681b86651d0c7a3.camel@kernel.org>
+ <Za-9P0NjlIsc1PcE@lore-desk>
+ <3f035d3bc494ec03b83ae237e407c42f2ddc4c53.camel@kernel.org>
+ <ZbDdzwvP6-O2zosC@lore-desk>
+ <8fabd83caa0d44369853a4040a89c069f9b0f935.camel@kernel.org>
+In-Reply-To: <8fabd83caa0d44369853a4040a89c069f9b0f935.camel@kernel.org>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach: 
+X-MS-TNEF-Correlator: 
+x-mailer: Apple Mail (2.3774.300.61.1.2)
+x-ms-publictraffictype: Email
+x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|CY8PR10MB7338:EE_
+x-ms-office365-filtering-correlation-id: 239c281b-0326-4a26-bbb4-08dc1ce416fb
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+x-microsoft-antispam: BCL:0;
+x-microsoft-antispam-message-info: 
+ Ny4d6RArO0BSd6/2QDgkFQRZ0IT3iDYPCUoXNb8ZMFOcDlMlZRvi7oWW57+KH1EBBmgsXC7q5vKC931xuhQpsdb0N+EE9zA9bdJrAQWSwv+za7/9FICL57IcoKUKV8nyQG4F04F+P9s5zO8KZWOSw3gWZlF7+L/CjoOSddFtOlIaYzaIgrHUUnmJVp4S6x4YO0aFylydVPInVdMkNuPEvAlK+blTXShPVI0mVhvpfU3X1mB+icjlzocowzT5ckuEpbDtjyy7OX51pcVAlNlP7wefpj4MAF+FVyABqzR1TXWpSm65S/+5CR527p4AUyTVkmW1U7GSjgnUcFdV++jPWkI5MfYaB9jVjyT9XHPd0NOYIRxZsGtcHwsfghbPYmR55nZCBPARcsLveaI2JP1SySljkG4wGJkX2MJYkBDDTwxAHS/20rDVaQHIU3BTUYpHIENX0aRfEfsxS9U/WDcAl1C9qZoRwBSRw9voRVbw4XPsSECrjNz9n46aSQHaB3uroWPrnT+KHVtTUA8WacsovPDs/VJ9MPJv9poAyO03o1TmeshcDdcNJXbR7FSo3Dfzn4K/d633bldrmJLxbs4wG1kmk19nQtrDPGyDfvXLb79beIj0BD3H9rJCOzD5EfKyhT36F8RBvdx9MFAajP+HuQ==
+x-forefront-antispam-report: 
+ CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230031)(376002)(366004)(346002)(396003)(39860400002)(136003)(230922051799003)(64100799003)(186009)(451199024)(1800799012)(6506007)(53546011)(316002)(76116006)(2616005)(64756008)(66446008)(66476007)(66556008)(54906003)(91956017)(66946007)(110136005)(5660300002)(6512007)(26005)(478600001)(71200400001)(6486002)(38070700009)(36756003)(2906002)(41300700001)(38100700002)(122000001)(86362001)(8936002)(8676002)(66899024)(4326008)(33656002)(45980500001);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0: 
+ =?utf-8?B?dUxWWmRBOEhoMFRMeUFJMFFWRUVzZ3licnpkWm5rNjhUc1MzaGNtOFdKSi8r?=
+ =?utf-8?B?ZmdiRHd0Tm5tQXJUdUsvV2F1TUFZQm83NWtveFQyNTdrWDJlVTRhSmpxV3k1?=
+ =?utf-8?B?MTZBUEp6N3oxNFZUa05CMGhkK1U0aUFtaVZ3VlorZjdURC96L1dUWnZSVHlX?=
+ =?utf-8?B?S1VoVmhYTUpnV2p1K0tuYU9IVFVLQkN1VDZnM3VxU0ZiSFY2SWtndHNYeVJK?=
+ =?utf-8?B?ODY0c01tR1daUml3LzJVOTBkQUorQVAvSVBsUE84by9UOFVXTjR5cVBER00x?=
+ =?utf-8?B?TzRYVmFjWDlEdWExdkZHazZXZm5IN3J3dzNFemY4cjBuSzErdVRHbmUxQU11?=
+ =?utf-8?B?NUg1Q2F4dzN4dkFiZGM3SUpKRUpyVlpCL09SOGVQa0VrMXIzalFPTHBqTHly?=
+ =?utf-8?B?K00rYy9OaHBZNVhNV2tNTE1ueElrM0ZaR0VRakFMd1BDTXpLUkRhTDVDTlNm?=
+ =?utf-8?B?RUM1N1FhNGVIRDFpRHNyeUFRTzc1TnJ2UnFxaHVtNzc5MHYxbkdvY1lNRHZN?=
+ =?utf-8?B?dEoxUFFRckZJUyt0SC9WeXJlUmpMeXlaTzFJMXJLdGNZZTdlVndkaGJNd1Qz?=
+ =?utf-8?B?NXBZeWJuVVIrRU9WRno4dDVodzNrSGFmQVhHSjVXOXVlVjJmK0ZQeUk5U1k3?=
+ =?utf-8?B?SDNBTzNRcDQ4TlM2WmVrZFBDN1ptaXZNd29mTHF4VFpZZG53ZWpKcGY3SGYy?=
+ =?utf-8?B?TzlJNWllWGo4L1Bab25vTzBxbkVWQ0hDU0RZZkVUZVQvZ3h2Q2wyaGROdnlT?=
+ =?utf-8?B?UEl0Y3BrandvNG0vcjAyWFhaWXlmS3AwZnFtUklCbjlzbHNsYldWVWRldXIr?=
+ =?utf-8?B?Z3BkNW1NSk0wY1dFWTVyYjFsYlBOeE81bTU3RmJUYzR2WmJoMlhwbDUrTnJj?=
+ =?utf-8?B?eFVOaDI5RlNKcTVHOHE0QkRBaUFXSjZSaEVlUUhDMG9zbWRvak1rMytpM2d3?=
+ =?utf-8?B?czRqaG9DN1I2VkJXaU9mbDYrRW1QdWZ4bzhEaEJqVTFzYWVDNGhISFZrZkdz?=
+ =?utf-8?B?YTd1bTlBek5uU2xVcnc4VzJOVlJxZTRaTkd5RWhQamw2MjBHaERIL2RYU1h0?=
+ =?utf-8?B?R3grZGdnclZBelluM3NlY3pRdm9UMVZ6YlhtNXF3dmt6OXIvc05hZ3pEeHE0?=
+ =?utf-8?B?OXYzRjBkMjZydExWMnI5RENNQkpxa1M1VjFGNmNWUHNLUlNXMWM1RWp6NkpC?=
+ =?utf-8?B?TFJTRU1JNVFxN3BTQ01YSmVWREE5c2pBclRQWFFxRG51ZUNjNzM0VXlCUjhm?=
+ =?utf-8?B?RmZwL2Y5Q2hhcy9HUVh3Y3FMa2M5dXA3eEFPSC9tTWZmL1AxaEdyWXpFSyto?=
+ =?utf-8?B?cGFQYy9jYmFzSFd3YjZvODZ1ZnFwUU5pVExXL1YzUUN4aXFqcXdvN1ZMM2w4?=
+ =?utf-8?B?VS9qdEdSaFFHYUhWaVFIM0tKSitHcEFNY0dpeUp2MUZKMWtUb3lvRzR2SURE?=
+ =?utf-8?B?ejZTNkZKMnc3SjI3NTZUbjFaY2hTZ0QzSFNZU1VTNzNGYU9iOVJOU1hWZ0k3?=
+ =?utf-8?B?UlRUa3VXUzZPUDNVaFVjRmQrTkRubjlYWXlWd1ZleTFFVTFiSVZXUUZoM2ha?=
+ =?utf-8?B?dnRSOEFlSzA2azRJZEcrS0xQSDBZM2tiUTVsNmgwanRIa25UUGQyK2pFS002?=
+ =?utf-8?B?dG5FaHN1NUhsbHBxSUtTREdLdkF6YjkwZEk2MFFOWC9RT3YxRWJDdjhzdmZs?=
+ =?utf-8?B?SzFpN2QzZFh4QnJBS05JNmwycmtSSlJ3WHlwRUpseWNZTE5BQ05pSEtpVXNU?=
+ =?utf-8?B?andMOHhsbmk3OHh5S2FiM2FkN1UzY2hYTHRYVkdpN1lYaHg3NUZvbElhNGtz?=
+ =?utf-8?B?Z0dQMVQ5b2tLdzRnYVczY1FkQXlId0ZoNXJRV0hoc3drRkZWZkxSejU0K0Qw?=
+ =?utf-8?B?ZENrWmpPWUNnUFBzMlZoRjRuUnlERHpZdkJiYXJqamVzM1h3dU5ydUxydldB?=
+ =?utf-8?B?M204Z010Si92c1RGTVZmT1N0UzdwMy9hMncvMkl6VEYwTjFpL3lpdDNJWVdK?=
+ =?utf-8?B?Mk1XTVJGaFdRc0tsUHN5QTJodmJOd1RtMFpRbzlmb2QyRnpTUXZLRS9EcXJ5?=
+ =?utf-8?B?aWtSUTh5dllLSW1PaG1XeEhXRDFEdldTNFAwVmZLMTN3Sng1SmNLRlY4a0c4?=
+ =?utf-8?B?cDU0Qnk0Y0lYQit5aUdzWkx0NVNtbW5UNk44dk1iWm5kVEpnU2hQZkRlck02?=
+ =?utf-8?B?Zmc9PQ==?=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <14E062C4003F4849B43E99FB409C4551@namprd10.prod.outlook.com>
+Content-Transfer-Encoding: base64
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0: 
+	YQq0UT5PS+ki/BkKDgxjarIkBx0J44I3/B6yglkXwMtJAlTN5PKeLSkBdcsnh3t/DeCpzzmGFnbmbFXoE956Xm7EjRBkJ1wfOK9foJEtAO9B59ZWonui55qfBh/JI2T1R26N5qWh29RU2lAtyvKo5vV7qBH/mHL9sSEXjEA8exsvQokS/HnHosWl2PBicwSsATcBNM3cqNDTHK9uAI/ax5Lup2v/5taT8uVkY2dFDYVKkWpnze+31SwUNiE7x8UWx1LhcS4KnPPdeYolTS8RuC6/5mGPYUgd8FJT3I+lOS8227iKvFJTZkgf66DSJmsda27ey9/TVTzNKtyTZ/JXd/fxLf40lB1HyK5/HinpNeCMjiX2bHUjqr+FeUaKNgcDSIAq5MLgBr3BWucY/5RgNb49vm1do+uMEQz1PyCoFm/hk/bFIks1T5/i/pUcniN5ysKHx4BrIfMpdhDd5kli18lpeqUkhkUkZnst4D+ERo4UWEaHo+Y4pLn3akiA+1cxGM5DHjeIlO5E6qCseoQWoi0368LPUI8WPgO14kEIWTvJM2sUg9DiCx/lqflwF2NEmdyjwUoLuneyu3xREHV1hgPqJeCXJYd2UpMIbtBJGXs=
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 239c281b-0326-4a26-bbb4-08dc1ce416fb
+X-MS-Exchange-CrossTenant-originalarrivaltime: 24 Jan 2024 13:55:14.3096
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: 7WCOhxzprgFkh2HHqvqQtQhbCq0Re+0t+UInLi+3Uf39CJkI2JkW4V6iwnOL0nK75iji5em9Wg5+dEaQkaBhMQ==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: CY8PR10MB7338
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.272,Aquarius:18.0.1011,Hydra:6.0.619,FMLib:17.11.176.26
+ definitions=2024-01-24_06,2024-01-24_01,2023-05-22_02
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0 bulkscore=0
+ mlxlogscore=891 mlxscore=0 phishscore=0 adultscore=0 spamscore=0
+ suspectscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2311290000 definitions=main-2401240100
+X-Proofpoint-GUID: dySLLdg9IzKJxcHs6AypR5KyfEzNie-p
+X-Proofpoint-ORIG-GUID: dySLLdg9IzKJxcHs6AypR5KyfEzNie-p
 
-From: Yang Xu <xuyang2018.jy@fujitsu.com>
-
-commit 1639a49ccdce58ea248841ed9b23babcce6dbb0b upstream.
-
-[remove userns argument of helpers for 5.4.y backport]
-
-Move setgid handling out of individual filesystems and into the VFS
-itself to stop the proliferation of setgid inheritance bugs.
-
-Creating files that have both the S_IXGRP and S_ISGID bit raised in
-directories that themselves have the S_ISGID bit set requires additional
-privileges to avoid security issues.
-
-When a filesystem creates a new inode it needs to take care that the
-caller is either in the group of the newly created inode or they have
-CAP_FSETID in their current user namespace and are privileged over the
-parent directory of the new inode. If any of these two conditions is
-true then the S_ISGID bit can be raised for an S_IXGRP file and if not
-it needs to be stripped.
-
-However, there are several key issues with the current implementation:
-
-* S_ISGID stripping logic is entangled with umask stripping.
-
-  If a filesystem doesn't support or enable POSIX ACLs then umask
-  stripping is done directly in the vfs before calling into the
-  filesystem.
-  If the filesystem does support POSIX ACLs then unmask stripping may be
-  done in the filesystem itself when calling posix_acl_create().
-
-  Since umask stripping has an effect on S_ISGID inheritance, e.g., by
-  stripping the S_IXGRP bit from the file to be created and all relevant
-  filesystems have to call posix_acl_create() before inode_init_owner()
-  where we currently take care of S_ISGID handling S_ISGID handling is
-  order dependent. IOW, whether or not you get a setgid bit depends on
-  POSIX ACLs and umask and in what order they are called.
-
-  Note that technically filesystems are free to impose their own
-  ordering between posix_acl_create() and inode_init_owner() meaning
-  that there's additional ordering issues that influence S_SIGID
-  inheritance.
-
-* Filesystems that don't rely on inode_init_owner() don't get S_ISGID
-  stripping logic.
-
-  While that may be intentional (e.g. network filesystems might just
-  defer setgid stripping to a server) it is often just a security issue.
-
-This is not just ugly it's unsustainably messy especially since we do
-still have bugs in this area years after the initial round of setgid
-bugfixes.
-
-So the current state is quite messy and while we won't be able to make
-it completely clean as posix_acl_create() is still a filesystem specific
-call we can improve the S_SIGD stripping situation quite a bit by
-hoisting it out of inode_init_owner() and into the vfs creation
-operations. This means we alleviate the burden for filesystems to handle
-S_ISGID stripping correctly and can standardize the ordering between
-S_ISGID and umask stripping in the vfs.
-
-We add a new helper vfs_prepare_mode() so S_ISGID handling is now done
-in the VFS before umask handling. This has S_ISGID handling is
-unaffected unaffected by whether umask stripping is done by the VFS
-itself (if no POSIX ACLs are supported or enabled) or in the filesystem
-in posix_acl_create() (if POSIX ACLs are supported).
-
-The vfs_prepare_mode() helper is called directly in vfs_*() helpers that
-create new filesystem objects. We need to move them into there to make
-sure that filesystems like overlayfs hat have callchains like:
-
-sys_mknod()
--> do_mknodat(mode)
-   -> .mknod = ovl_mknod(mode)
-      -> ovl_create(mode)
-         -> vfs_mknod(mode)
-
-get S_ISGID stripping done when calling into lower filesystems via
-vfs_*() creation helpers. Moving vfs_prepare_mode() into e.g.
-vfs_mknod() takes care of that. This is in any case semantically cleaner
-because S_ISGID stripping is VFS security requirement.
-
-Security hooks so far have seen the mode with the umask applied but
-without S_ISGID handling done. The relevant hooks are called outside of
-vfs_*() creation helpers so by calling vfs_prepare_mode() from vfs_*()
-helpers the security hooks would now see the mode without umask
-stripping applied. For now we fix this by passing the mode with umask
-settings applied to not risk any regressions for LSM hooks. IOW, nothing
-changes for LSM hooks. It is worth pointing out that security hooks
-never saw the mode that is seen by the filesystem when actually creating
-the file. They have always been completely misplaced for that to work.
-
-The following filesystems use inode_init_owner() and thus relied on
-S_ISGID stripping: spufs, 9p, bfs, btrfs, ext2, ext4, f2fs, hfsplus,
-hugetlbfs, jfs, minix, nilfs2, ntfs3, ocfs2, omfs, overlayfs, ramfs,
-reiserfs, sysv, ubifs, udf, ufs, xfs, zonefs, bpf, tmpfs.
-
-All of the above filesystems end up calling inode_init_owner() when new
-filesystem objects are created through the ->mkdir(), ->mknod(),
-->create(), ->tmpfile(), ->rename() inode operations.
-
-Since directories always inherit the S_ISGID bit with the exception of
-xfs when irix_sgid_inherit mode is turned on S_ISGID stripping doesn't
-apply. The ->symlink() and ->link() inode operations trivially inherit
-the mode from the target and the ->rename() inode operation inherits the
-mode from the source inode. All other creation inode operations will get
-S_ISGID handling via vfs_prepare_mode() when called from their relevant
-vfs_*() helpers.
-
-In addition to this there are filesystems which allow the creation of
-filesystem objects through ioctl()s or - in the case of spufs -
-circumventing the vfs in other ways. If filesystem objects are created
-through ioctl()s the vfs doesn't know about it and can't apply regular
-permission checking including S_ISGID logic. Therfore, a filesystem
-relying on S_ISGID stripping in inode_init_owner() in their ioctl()
-callpath will be affected by moving this logic into the vfs. We audited
-those filesystems:
-
-* btrfs allows the creation of filesystem objects through various
-  ioctls(). Snapshot creation literally takes a snapshot and so the mode
-  is fully preserved and S_ISGID stripping doesn't apply.
-
-  Creating a new subvolum relies on inode_init_owner() in
-  btrfs_new_subvol_inode() but only creates directories and doesn't
-  raise S_ISGID.
-
-* ocfs2 has a peculiar implementation of reflinks. In contrast to e.g.
-  xfs and btrfs FICLONE/FICLONERANGE ioctl() that is only concerned with
-  the actual extents ocfs2 uses a separate ioctl() that also creates the
-  target file.
-
-  Iow, ocfs2 circumvents the vfs entirely here and did indeed rely on
-  inode_init_owner() to strip the S_ISGID bit. This is the only place
-  where a filesystem needs to call mode_strip_sgid() directly but this
-  is self-inflicted pain.
-
-* spufs doesn't go through the vfs at all and doesn't use ioctl()s
-  either. Instead it has a dedicated system call spufs_create() which
-  allows the creation of filesystem objects. But spufs only creates
-  directories and doesn't allo S_SIGID bits, i.e. it specifically only
-  allows 0777 bits.
-
-* bpf uses vfs_mkobj() but also doesn't allow S_ISGID bits to be created.
-
-The patch will have an effect on ext2 when the EXT2_MOUNT_GRPID mount
-option is used, on ext4 when the EXT4_MOUNT_GRPID mount option is used,
-and on xfs when the XFS_FEAT_GRPID mount option is used. When any of
-these filesystems are mounted with their respective GRPID option then
-newly created files inherit the parent directories group
-unconditionally. In these cases non of the filesystems call
-inode_init_owner() and thus did never strip the S_ISGID bit for newly
-created files. Moving this logic into the VFS means that they now get
-the S_ISGID bit stripped. This is a user visible change. If this leads
-to regressions we will either need to figure out a better way or we need
-to revert. However, given the various setgid bugs that we found just in
-the last two years this is a regression risk we should take.
-
-Associated with this change is a new set of fstests to enforce the
-semantics for all new filesystems.
-
-Link: https://lore.kernel.org/ceph-devel/20220427092201.wvsdjbnc7b4dttaw@wittgenstein [1]
-Link: e014f37db1a2 ("xfs: use setattr_copy to set vfs inode attributes") [2]
-Link: 01ea173e103e ("xfs: fix up non-directory creation in SGID directories") [3]
-Link: fd84bfdddd16 ("ceph: fix up non-directory creation in SGID directories") [4]
-Link: https://lore.kernel.org/r/1657779088-2242-3-git-send-email-xuyang2018.jy@fujitsu.com
-Suggested-by: Dave Chinner <david@fromorbit.com>
-Suggested-by: Christian Brauner (Microsoft) <brauner@kernel.org>
-Reviewed-by: Darrick J. Wong <djwong@kernel.org>
-Reviewed-and-Tested-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Yang Xu <xuyang2018.jy@fujitsu.com>
-[<brauner@kernel.org>: rewrote commit message]
-Signed-off-by: Christian Brauner (Microsoft) <brauner@kernel.org>
-Signed-off-by: Amir Goldstein <amir73il@gmail.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-[commit 94ac142c19f1016283a1860b07de7fa555385d31 upstream
-	backported from 5.10.y, resolved context conflicts]
-Signed-off-by: Mahmoud Adam <mngyadam@amazon.com>
----
- fs/inode.c       |  2 --
- fs/namei.c       | 84 +++++++++++++++++++++++++++++++++++++++---------
- fs/ocfs2/namei.c |  1 +
- 3 files changed, 70 insertions(+), 17 deletions(-)
-
-diff --git a/fs/inode.c b/fs/inode.c
-index 2995130e0cdc..a6c4c443d45a 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -2100,8 +2100,6 @@ void inode_init_owner(struct inode *inode, const struct inode *dir,
- 		/* Directories are special, and always inherit S_ISGID */
- 		if (S_ISDIR(mode))
- 			mode |= S_ISGID;
--		else
--			mode = mode_strip_sgid(dir, mode);
- 	} else
- 		inode->i_gid = current_fsgid();
- 	inode->i_mode = mode;
-diff --git a/fs/namei.c b/fs/namei.c
-index f6708ab8ec7e..4ad800c82ac9 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -52,8 +52,8 @@
-  * The new code replaces the old recursive symlink resolution with
-  * an iterative one (in case of non-nested symlink chains).  It does
-  * this with calls to <fs>_follow_link().
-- * As a side effect, dir_namei(), _namei() and follow_link() are now 
-- * replaced with a single function lookup_dentry() that can handle all 
-+ * As a side effect, dir_namei(), _namei() and follow_link() are now
-+ * replaced with a single function lookup_dentry() that can handle all
-  * the special cases of the former code.
-  *
-  * With the new dcache, the pathname is stored at each inode, at least as
-@@ -2906,6 +2906,63 @@ void unlock_rename(struct dentry *p1, struct dentry *p2)
- }
- EXPORT_SYMBOL(unlock_rename);
- 
-+/**
-+ * mode_strip_umask - handle vfs umask stripping
-+ * @dir:	parent directory of the new inode
-+ * @mode:	mode of the new inode to be created in @dir
-+ *
-+ * Umask stripping depends on whether or not the filesystem supports POSIX
-+ * ACLs. If the filesystem doesn't support it umask stripping is done directly
-+ * in here. If the filesystem does support POSIX ACLs umask stripping is
-+ * deferred until the filesystem calls posix_acl_create().
-+ *
-+ * Returns: mode
-+ */
-+static inline umode_t mode_strip_umask(const struct inode *dir, umode_t mode)
-+{
-+	if (!IS_POSIXACL(dir))
-+		mode &= ~current_umask();
-+	return mode;
-+}
-+
-+/**
-+ * vfs_prepare_mode - prepare the mode to be used for a new inode
-+ * @dir:	parent directory of the new inode
-+ * @mode:	mode of the new inode
-+ * @mask_perms:	allowed permission by the vfs
-+ * @type:	type of file to be created
-+ *
-+ * This helper consolidates and enforces vfs restrictions on the @mode of a new
-+ * object to be created.
-+ *
-+ * Umask stripping depends on whether the filesystem supports POSIX ACLs (see
-+ * the kernel documentation for mode_strip_umask()). Moving umask stripping
-+ * after setgid stripping allows the same ordering for both non-POSIX ACL and
-+ * POSIX ACL supporting filesystems.
-+ *
-+ * Note that it's currently valid for @type to be 0 if a directory is created.
-+ * Filesystems raise that flag individually and we need to check whether each
-+ * filesystem can deal with receiving S_IFDIR from the vfs before we enforce a
-+ * non-zero type.
-+ *
-+ * Returns: mode to be passed to the filesystem
-+ */
-+static inline umode_t vfs_prepare_mode(const struct inode *dir, umode_t mode,
-+				       umode_t mask_perms, umode_t type)
-+{
-+	mode = mode_strip_sgid(dir, mode);
-+	mode = mode_strip_umask(dir, mode);
-+
-+	/*
-+	 * Apply the vfs mandated allowed permission mask and set the type of
-+	 * file to be created before we call into the filesystem.
-+	 */
-+	mode &= (mask_perms & ~S_IFMT);
-+	mode |= (type & S_IFMT);
-+
-+	return mode;
-+}
-+
- int vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
- 		bool want_excl)
- {
-@@ -2915,8 +2972,8 @@ int vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
- 
- 	if (!dir->i_op->create)
- 		return -EACCES;	/* shouldn't it be ENOSYS? */
--	mode &= S_IALLUGO;
--	mode |= S_IFREG;
-+
-+	mode = vfs_prepare_mode(dir, mode, S_IALLUGO, S_IFREG);
- 	error = security_inode_create(dir, dentry, mode);
- 	if (error)
- 		return error;
-@@ -3186,8 +3243,7 @@ static int lookup_open(struct nameidata *nd, struct path *path,
- 	 * O_EXCL open we want to return EEXIST not EROFS).
- 	 */
- 	if (open_flag & O_CREAT) {
--		if (!IS_POSIXACL(dir->d_inode))
--			mode &= ~current_umask();
-+		mode = vfs_prepare_mode(dir->d_inode, mode, mode, mode);
- 		if (unlikely(!got_write)) {
- 			create_error = -EROFS;
- 			open_flag &= ~O_CREAT;
-@@ -3463,8 +3519,7 @@ struct dentry *vfs_tmpfile(struct dentry *dentry, umode_t mode, int open_flag)
- 	child = d_alloc(dentry, &slash_name);
- 	if (unlikely(!child))
- 		goto out_err;
--	if (!IS_POSIXACL(dir))
--		mode &= ~current_umask();
-+	mode = vfs_prepare_mode(dir, mode, mode, mode);
- 	error = dir->i_op->tmpfile(dir, child, mode);
- 	if (error)
- 		goto out_err;
-@@ -3723,6 +3778,7 @@ int vfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
- 	if (!dir->i_op->mknod)
- 		return -EPERM;
- 
-+	mode = vfs_prepare_mode(dir, mode, mode, mode);
- 	error = devcgroup_inode_mknod(mode, dev);
- 	if (error)
- 		return error;
-@@ -3771,9 +3827,8 @@ long do_mknodat(int dfd, const char __user *filename, umode_t mode,
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
--	if (!IS_POSIXACL(path.dentry->d_inode))
--		mode &= ~current_umask();
--	error = security_path_mknod(&path, dentry, mode, dev);
-+	error = security_path_mknod(&path, dentry,
-+			mode_strip_umask(path.dentry->d_inode, mode), dev);
- 	if (error)
- 		goto out;
- 	switch (mode & S_IFMT) {
-@@ -3821,7 +3876,7 @@ int vfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
- 	if (!dir->i_op->mkdir)
- 		return -EPERM;
- 
--	mode &= (S_IRWXUGO|S_ISVTX);
-+	mode = vfs_prepare_mode(dir, mode, S_IRWXUGO | S_ISVTX, 0);
- 	error = security_inode_mkdir(dir, dentry, mode);
- 	if (error)
- 		return error;
-@@ -3848,9 +3903,8 @@ long do_mkdirat(int dfd, const char __user *pathname, umode_t mode)
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
--	if (!IS_POSIXACL(path.dentry->d_inode))
--		mode &= ~current_umask();
--	error = security_path_mkdir(&path, dentry, mode);
-+	error = security_path_mkdir(&path, dentry,
-+			mode_strip_umask(path.dentry->d_inode, mode));
- 	if (!error)
- 		error = vfs_mkdir(path.dentry->d_inode, dentry, mode);
- 	done_path_create(&path, dentry);
-diff --git a/fs/ocfs2/namei.c b/fs/ocfs2/namei.c
-index cd6a21439826..ba574fade6f0 100644
---- a/fs/ocfs2/namei.c
-+++ b/fs/ocfs2/namei.c
-@@ -198,6 +198,7 @@ static struct inode *ocfs2_get_init_inode(struct inode *dir, umode_t mode)
- 	 * callers. */
- 	if (S_ISDIR(mode))
- 		set_nlink(inode, 2);
-+	mode = mode_strip_sgid(dir, mode);
- 	inode_init_owner(inode, dir, mode);
- 	status = dquot_initialize(inode);
- 	if (status)
--- 
-2.40.1
-
+DQoNCj4gT24gSmFuIDI0LCAyMDI0LCBhdCA2OjI04oCvQU0sIEplZmYgTGF5dG9uIDxqbGF5dG9u
+QGtlcm5lbC5vcmc+IHdyb3RlOg0KPiANCj4gT24gV2VkLCAyMDI0LTAxLTI0IGF0IDEwOjUyICsw
+MTAwLCBMb3JlbnpvIEJpYW5jb25pIHdyb3RlOg0KPj4gWy4uLl0NCj4+PiANCj4+PiBUaGF0J3Mg
+YSBncmVhdCBxdWVzdGlvbi4gV2UgZG8gbmVlZCB0byBwcm9wZXJseSBzdXBwb3J0IHRoZSAtSCBv
+cHRpb24gdG8NCj4+PiBycGMubmZzZC4gV2hhdCB3ZSBkbyB0b2RheSBpcyBsb29rIHVwIHRoZSBo
+b3N0bmFtZSBvciBhZGRyZXNzIHVzaW5nDQo+Pj4gZ2V0YWRkcmluZm8sIGFuZCB0aGVuIG9wZW4g
+YSBsaXN0ZW5pbmcgc29ja2V0IGZvciB0aGF0IGFkZHJlc3MgYW5kIHRoZW4NCj4+PiBwYXNzIHRo
+YXQgZmQgZG93biB0byB0aGUga2VybmVsLCB3aGljaCBJIHRoaW5rIHRoZW4gdGFrZXMgdGhlIHNv
+Y2tldCBhbmQNCj4+PiBzdGlja3MgaXQgb24gc3ZfcGVybXNvY2tzLg0KPj4+IA0KPj4+IEFsbCBv
+ZiB0aGF0IHNlZW1zIGEgYml0IGtsdW5reS4gSWRlYWxseSwgSSdkIHNheSB0aGUgYmVzdCB0aGlu
+ZyB3b3VsZCBiZQ0KPj4+IHRvIGFsbG93IHVzZXJsYW5kIHRvIHBhc3MgdGhlIHNvY2thZGRyIHdl
+IGxvb2sgdXAgZGlyZWN0bHkgdmlhIG5ldGxpbmssDQo+Pj4gYW5kIHRoZW4gbGV0IHRoZSBrZXJu
+ZWwgb3BlbiB0aGUgc29ja2V0LiBUaGF0IHdpbGwgcHJvYmFibHkgbWVhbg0KPj4+IHJlZmFjdG9y
+aW5nIHNvbWUgb2YgdGhlIHN2Y194cHJ0X2NyZWF0ZSBtYWNoaW5lcnkgdG8gdGFrZSBhIHNvY2th
+ZGRyLA0KPj4+IGJ1dCBJIGRvbid0IHRoaW5rIGl0IGxvb2tzIHRvbyBoYXJkIHRvIGRvLg0KPj4g
+DQo+PiBEbyB3ZSBhbHJlYWR5IGhhdmUgYSBzcGVjaWZpYyB1c2UgY2FzZSBmb3IgaXQ/IEkgdGhp
+bmsgd2UgY2FuIGV2ZW4gYWRkIGl0DQo+PiBsYXRlciB3aGVuIHdlIGhhdmUgYSBkZWZpbmVkIHVz
+ZSBjYXNlIGZvciBpdCBvbiB0b3Agb2YgdGhlIGN1cnJlbnQgc2VyaWVzLg0KPj4gDQo+IA0KPiBZ
+ZXM6DQo+IA0KPiBycGMubmZzZCAtSCBtYWtlcyBuZnNkIGxpc3RlbiBvbiBhIHBhcnRpY3VsYXIg
+YWRkcmVzcyBhbmQgcG9ydC4gQnkNCj4gcGFzc2luZyBkb3duIHRoZSBzb2NrYWRkciBpbnN0ZWFk
+IG9mIGFuIGFscmVhZHktb3BlbmVkIHNvY2tldA0KPiBkZXNjcmlwdG9yLCB3ZSBjYW4gYWNoaWV2
+ZSB0aGUgZ29hbCB3aXRob3V0IGhhdmluZyB0byBvcGVuIHNvY2tldHMgaW4NCj4gdXNlcmxhbmQu
+DQoNClRlYXJpbmcgZG93biBhIGxpc3RlbmVyIHRoYXQgd2FzIGNyZWF0ZWQgdGhhdCB3YXkgd291
+bGQgYmUgYQ0KdXNlIGNhc2UgZm9yOg0KDQo+IERvIHdlIGV2ZXIgd2FudC9uZWVkIHRvIHJlbW92
+ZSBsaXN0ZW5pbmcgc29ja2V0cz8NCj4gTm9ybWFsIHByYWN0aWNlIHdoZW4gbWFraW5nIGFueSBj
+aGFuZ2VzIGlzIHRvIHN0b3AgYW5kIHJlc3RhcnQgd2hlcmUNCj4gInN0b3AiIHJlbW92ZXMgYWxs
+IHNvY2tldHMsIHVuZXhwb3J0cyBhbGwgZmlsZXN5c3RlbXMsIGRpc2FibGVzIGFsbA0KPiB2ZXJz
+aW9ucy4NCg0KDQoNCi0tDQpDaHVjayBMZXZlcg0KDQoNCg==
