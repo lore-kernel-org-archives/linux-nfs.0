@@ -1,61 +1,66 @@
-Received: from mail-yw1-f173.google.com (mail-yw1-f173.google.com [209.85.128.173])
+Received: from mail-yw1-f172.google.com (mail-yw1-f172.google.com [209.85.128.172])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 38BF18472
-	for <linux-nfs@vger.kernel.org>; Thu, 25 Jan 2024 19:53:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACBF545C0B
+	for <linux-nfs@vger.kernel.org>; Thu, 25 Jan 2024 19:53:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706212420; cv=none; b=aL/q5KWoU3D9UGWQr6KWDsD5Nt/QW9cK7iboheeOC2LXoWY1ZvadNE3dm6sso+ySikqcoyIEpycOz7ikR9BbxWYhXyZOIGejAQ33YL9+n/MAlxo3A0wE32kh2yTJXQI1NrllZ5mZe36M8TcVNX5ojiKf9RvRwRStY6Q4WbZ+zjg=
+	t=1706212421; cv=none; b=hEsjB/uGhPSpX69gwb1Jho2oWA4FYaeM/t15Zpckpz6md4DMYXBr4n4KEoCt+FRtRO2kK+TclYUKn/Xfvrhe0G4ENYfhjgkKf7P9tjq/NaT3gxg+N30LB0AiEASSgOpNkO4ecgPEMEpwJ7ExVj82yB9iKmnihGBzjR9sJohME/U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1706212420; c=relaxed/simple;
-	bh=BBauO0dfPBCkOgquKUpzHwfByZUbvH7rZFvY/exQlJA=;
-	h=From:To:Subject:Date:Message-ID:MIME-Version; b=Xw8eqrLvuTESvizpKuOfYqCC+2+y4thb3Yn8SDxfiKL5oAl8aF1JX1+rxrG2Pj69xNttbdACFSQVd90JWylncjqs1fOCQgcSVvjYbN25ghPPToYOw/3nwNtSfSFbSSCeq+0FC8k5eFTLN2XFGNNNqfiuIp6hNUPU/jbl7P2wKxI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=xHdGi1VF; arc=none smtp.client-ip=209.85.128.173
+	s=arc-20240116; t=1706212421; c=relaxed/simple;
+	bh=5JQ1/M6bbxJsfyHx012U0mDRp/eH8t9frg0weJDiN9M=;
+	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=Ib2Qy+VDi6CNrSC96NwBLlOrBWLHzYDOE9G4UiHbYTuNjEiDYiLCiptQzYjx/w1u7bhKmUlErW2jRjgN6uxXdpEoLhcunVJDfICyBOewKRkzUNO21tSwYzHQxIUYShdf+3Ryk7easZd5QlocCBX3+ciYYMI5R8UdpwjxfFxllpw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=NFVjasuZ; arc=none smtp.client-ip=209.85.128.172
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="xHdGi1VF"
-Received: by mail-yw1-f173.google.com with SMTP id 00721157ae682-5edfcba97e3so72556627b3.2
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Jan 2024 11:53:37 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="NFVjasuZ"
+Received: by mail-yw1-f172.google.com with SMTP id 00721157ae682-5ff828b93f0so65312527b3.3
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Jan 2024 11:53:39 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1706212417; x=1706817217; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:to
-         :from:from:to:cc:subject:date:message-id:reply-to;
-        bh=JsVqDNsRoBMC66hu6EgrqRGtxd3g6r7gKr0dNwfERXs=;
-        b=xHdGi1VFZkJI96G8dUUHqQzGc0c+AegxoSB2/+qLVNkK7CMIUPPGelMTGhG5CUrhRq
-         F0u1cv6HFijlowT/CHFWvnFS3em6L+d4QkegCCOtpgBNehYpaAevUl3afzzxyfDAmetM
-         iMl8xS+Lfz7RZWBQCqLabiOh7B+elukjMjYe3jS4bQ5EURrc5Qm45s4Hw7yPtAjrTj4H
-         sWLyJWC23XZPF+2NE3QYoZemwwpArO83UPW8GJA8N2SPt5L43sI7EXrVPSbhdDe9SCHq
-         jF5IHr/mC6J9vKlII/m7hZkgbvWo/FRRGPbDQLSkhSrtuAffKK8YOYUaffwxYWz9XRP8
-         00fA==
+        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1706212418; x=1706817218; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:to:from:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=TN9NkdmlW/r4hsktKj1asTsOnKMChQLhJUHVox7Fcng=;
+        b=NFVjasuZCBLCnnV4GzMkjlrpz+bTgQ3k5rBKuufq7AgBBcpUJPKEDPymspAvoPz47j
+         F1OEpptDaAqyxV/C1Behz1VveM211pirHF6v6k5OuOe8HXfysJUgl5wj1bDwx9IhcZ/j
+         tTYA/6cxA8mJJ8g/N9E9nhj/PwrP5NlKQaT2EJeJLAb3Hv6rVjhfyHOMeBKcUGOE/3Zx
+         a/ziebf/b32kkE9lQWEpcUl9fSSZLNZPNq52tkaJ4S5RzuQiEAudLCWtkrp6xQTCseVu
+         vDL8/rsShtMGmc924Q4NQZUJ4VRaIprxxXkuwYqJgs0DSsCEkWw19fL0GEy8HcA5/QLt
+         EXog==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1706212417; x=1706817217;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:to
-         :from:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=JsVqDNsRoBMC66hu6EgrqRGtxd3g6r7gKr0dNwfERXs=;
-        b=BxoofgNJB6OeYXtmWkCvmMloQWdWiuyNgyv57JjRk8qDEuZmXRmTioI/cwX/ff4Nn7
-         pU0Wzd51sM6hmNl6vyIqJUMN0KMzekOkbiO7K/RfD7VklXaOvKgrp9YrRTnrxaCIFHZR
-         7+45AWK4p7ngOdkXd2ai7AdtbDySChH71eIgnEWIsdO7kgshG5lSe6xE4Zt0JxvXtQ4b
-         GipTagt0r9aSSOMZczb2SUa+S0v1cfs/BuZPx8IjQImvCxAbP4HiQxQXhO/JU/JccSQq
-         qDUByKZK0t0UvRaYxOYEX8PBtntejuouzzG5z6pqUGWPl1dgmVMDB1m0M9Na0swKvOcV
-         TBqA==
-X-Gm-Message-State: AOJu0YwVKxjnkO32ljtHv41i2xPH7UATXN1k81mh9Ex6ISIPmvs0cbTx
-	Ck8z9Nsumo/Po3XsqKggVlUMxYQYS5cwpeP/0fAwjiD+Z0kDJ85VvHIm8XAUA3LV4zKjhYyu8Xi
-	4
-X-Google-Smtp-Source: AGHT+IHBRMHEQOlUyKbIf41pq9DkOkLTx4Ew1lenomVfHp5OzKNAQhMrhOl4iP0VFvcABtsKe78H3g==
-X-Received: by 2002:a81:ca0f:0:b0:5ff:82fc:9686 with SMTP id p15-20020a81ca0f000000b005ff82fc9686mr400827ywi.3.1706212416608;
-        Thu, 25 Jan 2024 11:53:36 -0800 (PST)
+        d=1e100.net; s=20230601; t=1706212418; x=1706817218;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=TN9NkdmlW/r4hsktKj1asTsOnKMChQLhJUHVox7Fcng=;
+        b=KbfH6NnMMna/ubVFAGFA8lTYXUQTqF9H+Eeamnvzf+wrgM1G2mhiTlAAE098HxklxJ
+         rJtNMYByjYYNm+sGF23djnsNHcAFxVlUwwEWj8+9NZZNwoR+pIC9J40BOqOn4qw2ai7T
+         l5/I+yfUkER3MP3lVfRKB8Hisfgj42Y3etGuMJEiNrDMmmAGE3p9oG6wtzBJErFBswWe
+         y0S4eItxYbScxelkEK/GLTNypKVRfVM5eiG4Ywpz7TBxv1uoSQ3Jnv9sdNuHneqVPc36
+         ylJxGdF91u7bmRnZKtGe1v9+va3tMntcpK/dVj254q//6CfQL4YFDWbAU8gDjj7QJSBU
+         Lu9g==
+X-Gm-Message-State: AOJu0YwwT6SP9ahdbL8ycDD3WUnqvdPpXR3cgLQUer0ZYObjTZot0500
+	/gzXijeSK1lYElW+29hSiH74qtyMlAUG2pwuPkyvebU9l7F8jOjDijeuj/0jET8p7yQ0gwIg/g7
+	y
+X-Google-Smtp-Source: AGHT+IEihT4vJuk6uQQMRhBdBOrk+URoheLYpMxQ73aJpgtetr5hpmhjgI162c9YHQAOFNn6oVZ5jw==
+X-Received: by 2002:a81:ce07:0:b0:5ff:7cb4:d200 with SMTP id t7-20020a81ce07000000b005ff7cb4d200mr363388ywi.17.1706212418439;
+        Thu, 25 Jan 2024 11:53:38 -0800 (PST)
 Received: from localhost (076-182-020-124.res.spectrum.com. [76.182.20.124])
-        by smtp.gmail.com with ESMTPSA id ci12-20020a05690c0a8c00b006029d6509casm855596ywb.67.2024.01.25.11.53.36
+        by smtp.gmail.com with ESMTPSA id hc5-20020a05690c480500b005ff952f0073sm860476ywb.11.2024.01.25.11.53.38
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 25 Jan 2024 11:53:36 -0800 (PST)
+        Thu, 25 Jan 2024 11:53:38 -0800 (PST)
 From: Josef Bacik <josef@toxicpanda.com>
 To: linux-nfs@vger.kernel.org,
 	kernel-team@fb.com
-Subject: [PATCH v2 00/13] Make nfs and nfsd stats visible in network ns
-Date: Thu, 25 Jan 2024 14:53:10 -0500
-Message-ID: <cover.1706212207.git.josef@toxicpanda.com>
+Subject: [PATCH v2 02/13] nfs: stop setting ->pg_stats for unused stats
+Date: Thu, 25 Jan 2024 14:53:12 -0500
+Message-ID: <ed177ee00c9a0d1e21492ad52224fb115e504c93.1706212208.git.josef@toxicpanda.com>
 X-Mailer: git-send-email 2.43.0
+In-Reply-To: <cover.1706212207.git.josef@toxicpanda.com>
+References: <cover.1706212207.git.josef@toxicpanda.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -64,71 +69,86 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-v1: https://lore.kernel.org/linux-nfs/cover.1706124811.git.josef@toxicpanda.com/
+A lot of places are setting a blank svc_stats in ->pg_stats and never
+utilizing these stats.  Remove all of these extra structs as we're not
+reporting these stats anywhere.
 
-v1->v2:
-- rework the sunprc service creation to take a pointer to the sv_stats.
-- dropped ->pg_stats from the svc_program.
-- converted all of the nfsd global stats to per-network namespace.
-- added the ability to point at a specific rpc_stat for rpc program creation.
-- converted the rpc stats for nfs to per-network namespace.
+Signed-off-by: Josef Bacik <josef@toxicpanda.com>
+---
+ fs/lockd/svc.c    | 3 ---
+ fs/nfs/callback.c | 3 ---
+ fs/nfsd/nfssvc.c  | 5 -----
+ 3 files changed, 11 deletions(-)
 
--- Original email --
-Hello,
-
-We're currently deploying NFS internally and have run into some oddities with
-our usage of containers.  All of the services that mount and export NFS volumes
-run inside of containers, specifically all the namespaces including network
-namespaces.  Our monitoring is done on a per-container basis, so we need access
-to the nfs and nfsd stats that are under /proc/net/sunrpc.  However these are
-only tied to the init_net, which makes them invisible to containers in a
-different network namespace.
-
-Fix this so that these files are tied to the network namespace.  This allows us
-to avoid the hack of bind mounting the hosts /proc into the container in order
-to do proper monitoring.  Thanks,
-
-Josef
-
-Josef Bacik (13):
-  sunrpc: don't change ->sv_stats if it doesn't exist
-  nfs: stop setting ->pg_stats for unused stats
-  sunrpc: pass in the sv_stats struct through svc_create*
-  sunrpc: remove ->pg_stats from svc_program
-  sunrpc: add a struct rpc_stats arg to rpc_create_args
-  sunrpc: use the struct net as the svc proc private
-  nfsd: rename NFSD_NET_* to NFSD_STATS_*
-  nfsd: expose /proc/net/sunrpc/nfsd in net namespaces
-  nfsd: make all of the nfsd stats per-network namespace
-  nfsd: move th_cnt into nfsd_net
-  nfsd: make svc_stat per-network namespace instead of global
-  nfs: expose /proc/net/sunrpc/nfs in net namespaces
-  nfs: make the rpc_stat per net namespace
-
- fs/lockd/svc.c              |  5 +--
- fs/nfs/callback.c           |  5 +--
- fs/nfs/client.c             |  5 ++-
- fs/nfs/inode.c              |  8 ++---
- fs/nfs/internal.h           |  2 --
- fs/nfs/netns.h              |  2 ++
- fs/nfsd/cache.h             |  2 --
- fs/nfsd/netns.h             | 28 ++++++++++++---
- fs/nfsd/nfs4proc.c          |  6 ++--
- fs/nfsd/nfs4state.c         |  3 +-
- fs/nfsd/nfscache.c          | 40 +++++----------------
- fs/nfsd/nfsctl.c            | 16 ++++-----
- fs/nfsd/nfsfh.c             |  3 +-
- fs/nfsd/nfssvc.c            | 13 +++----
- fs/nfsd/stats.c             | 53 ++++++++++++----------------
- fs/nfsd/stats.h             | 70 +++++++++++++------------------------
- fs/nfsd/vfs.c               |  5 +--
- include/linux/sunrpc/clnt.h |  1 +
- include/linux/sunrpc/svc.h  |  9 +++--
- net/sunrpc/clnt.c           |  2 +-
- net/sunrpc/stats.c          |  2 +-
- net/sunrpc/svc.c            | 44 ++++++++++++++---------
- 22 files changed, 147 insertions(+), 177 deletions(-)
-
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index ce5862482097..ab8042a5b895 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -710,8 +710,6 @@ static const struct svc_version *nlmsvc_version[] = {
+ #endif
+ };
+ 
+-static struct svc_stat		nlmsvc_stats;
+-
+ #define NLM_NRVERS	ARRAY_SIZE(nlmsvc_version)
+ static struct svc_program	nlmsvc_program = {
+ 	.pg_prog		= NLM_PROGRAM,		/* program number */
+@@ -719,7 +717,6 @@ static struct svc_program	nlmsvc_program = {
+ 	.pg_vers		= nlmsvc_version,	/* version table */
+ 	.pg_name		= "lockd",		/* service name */
+ 	.pg_class		= "nfsd",		/* share authentication with nfsd */
+-	.pg_stats		= &nlmsvc_stats,	/* stats table */
+ 	.pg_authenticate	= &lockd_authenticate,	/* export authentication */
+ 	.pg_init_request	= svc_generic_init_request,
+ 	.pg_rpcbind_set		= svc_generic_rpcbind_set,
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 760d27dd7225..8adfcd4c8c1a 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -356,15 +356,12 @@ static const struct svc_version *nfs4_callback_version[] = {
+ 	[4] = &nfs4_callback_version4,
+ };
+ 
+-static struct svc_stat nfs4_callback_stats;
+-
+ static struct svc_program nfs4_callback_program = {
+ 	.pg_prog = NFS4_CALLBACK,			/* RPC service number */
+ 	.pg_nvers = ARRAY_SIZE(nfs4_callback_version),	/* Number of entries */
+ 	.pg_vers = nfs4_callback_version,		/* version table */
+ 	.pg_name = "NFSv4 callback",			/* service name */
+ 	.pg_class = "nfs",				/* authentication class */
+-	.pg_stats = &nfs4_callback_stats,
+ 	.pg_authenticate = nfs_callback_authenticate,
+ 	.pg_init_request = svc_generic_init_request,
+ 	.pg_rpcbind_set	= svc_generic_rpcbind_set,
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 9a894c3511ba..a0b117107e86 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -80,7 +80,6 @@ unsigned long	nfsd_drc_max_mem;
+ unsigned long	nfsd_drc_mem_used;
+ 
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+-static struct svc_stat	nfsd_acl_svcstats;
+ static const struct svc_version *nfsd_acl_version[] = {
+ # if defined(CONFIG_NFSD_V2_ACL)
+ 	[2] = &nfsd_acl_version2,
+@@ -99,15 +98,11 @@ static struct svc_program	nfsd_acl_program = {
+ 	.pg_vers		= nfsd_acl_version,
+ 	.pg_name		= "nfsacl",
+ 	.pg_class		= "nfsd",
+-	.pg_stats		= &nfsd_acl_svcstats,
+ 	.pg_authenticate	= &svc_set_client,
+ 	.pg_init_request	= nfsd_acl_init_request,
+ 	.pg_rpcbind_set		= nfsd_acl_rpcbind_set,
+ };
+ 
+-static struct svc_stat	nfsd_acl_svcstats = {
+-	.program	= &nfsd_acl_program,
+-};
+ #endif /* defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) */
+ 
+ static const struct svc_version *nfsd_version[] = {
 -- 
 2.43.0
 
