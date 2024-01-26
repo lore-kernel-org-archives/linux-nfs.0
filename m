@@ -1,64 +1,63 @@
-Received: from mail-yw1-f180.google.com (mail-yw1-f180.google.com [209.85.128.180])
+Received: from mail-yw1-f172.google.com (mail-yw1-f172.google.com [209.85.128.172])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C63D61CFB5
-	for <linux-nfs@vger.kernel.org>; Fri, 26 Jan 2024 15:40:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.180
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C80111CFBF
+	for <linux-nfs@vger.kernel.org>; Fri, 26 Jan 2024 15:40:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1706283654; cv=none; b=tMCoKb4R0/+nt2Mox0wXd2h/Pdx6AKheYeg568KG/5tE2kDJLyR8O2vIN1aE8jceUqBWRFtBVExZVWCTfAv4Wg+IR3CUm3FIPF5C0s46X1InnoYBPccJaZAUFLiDKXH5Pw6S4XyLM3XEaC3Gw9u1ud4D2TX+OOjqx42QTRL+qJg=
+	t=1706283660; cv=none; b=ouYMg+q3aQJOvm2Fy56DxJpAyjghkLi/GV0RpUbg67EGT6yDKS86bFW43HkEEpZV5D1LJN/kZu9PaR9J6N6a/R5WbkWDZhS0DA3hme1CYmE2061XpkyxA4zC8FVjYbpkJceNojS3q8kYLUEdMmN9LLODiPtwkuw2/+Nksf3mnc8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1706283654; c=relaxed/simple;
-	bh=kH4C69gXhYzpUQZNXdH8fdQsSdqyLfCEoP54BXBFA0U=;
+	s=arc-20240116; t=1706283660; c=relaxed/simple;
+	bh=35jsdxf8lwzU36VgGl//nJgt1RwsHszFXySzzFXvlUk=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=mCT9V53aXuO78FjBBcJgDkvPCcSI9/xesXXyOGXfaXfth+mazOz3ITmGO+2Id+hG1Wosnn2dOwh04xlm7D+fvQs4Hk4G+FNB8cAyrLx8ytYGhqTrVlkckkVA3XxG1SEoTnHhOyfXehUXu1X8pTpM5JTuPpgeqfWe1v2LpvRQDZU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=KVbJ2xHd; arc=none smtp.client-ip=209.85.128.180
+	 MIME-Version; b=HlPb82bMorV6fqYE6hooNDLMlDA7JjoeydKatpnVaWptE1PwbZX3eztw8H1lIijYDfKIcGSMdIYvdVMwivQbIMhAYyOByE5qwmC3Rd51gQ1XV/Gd0csu7PXEM0mHK90LMUgaoqcdo8VvdFC/MzVrVqQC8i30nAcVYGK+vG/+jbA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com; spf=none smtp.mailfrom=toxicpanda.com; dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b=HPnCP5NH; arc=none smtp.client-ip=209.85.128.172
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=toxicpanda.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="KVbJ2xHd"
-Received: by mail-yw1-f180.google.com with SMTP id 00721157ae682-6029e069e08so11121207b3.0
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Jan 2024 07:40:52 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=toxicpanda-com.20230601.gappssmtp.com header.i=@toxicpanda-com.20230601.gappssmtp.com header.b="HPnCP5NH"
+Received: by mail-yw1-f172.google.com with SMTP id 00721157ae682-602d222c078so4488247b3.0
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Jan 2024 07:40:58 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1706283652; x=1706888452; darn=vger.kernel.org;
+        d=toxicpanda-com.20230601.gappssmtp.com; s=20230601; t=1706283658; x=1706888458; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:from:to:cc:subject:date:message-id
          :reply-to;
-        bh=pPYWgezIyTTIaXhRwEKknhgUQv07nyNgQ9eiW6X1xO4=;
-        b=KVbJ2xHdIR0fAVAZf0caCn4xVDxd020DJa/3wNdzwdbyw54rSmoq3SL1Ud0/CN1pPJ
-         vpTOk1sr26FWloL7OIJu1gJFUmjhiNulxnPALJjvNaRa2UUWWEXXZcIyF/U5RTAXszuG
-         F6VAj7Oua/+6gkQ2MdleLSpEMIrtFGwwFKG/yZrSSMr0a/mJgDoV0DxDuquPy/Hqy7Y/
-         +Vec+NjIvRwird4G9JWob8yP5az8fDIROZ2UqtD5JYzExaGbWkmLB7vuZX8yR3+iUZ0Q
-         LKMguO27JP6L/OuoKzyY7z/+zX1dWnfsVzjavcKpxg+4c4fZ5j1y4AJlx7bD6F50gQ0k
-         kPOw==
+        bh=L9HH43wDjRvJ0WXW6QamUAjH4CWIkZZgYv2Lp+qh0h0=;
+        b=HPnCP5NHtzHPRCR1bNiGq0IsU3o1PQOr2QstE8G9/37j8YkMLzujk1pe7jRqQvR/LO
+         QjY8sArTYhzffL5Z/ocvtD9DGYutJqXKF1hSGh0sZz5g6+1ayd5+fMS0O6PLdEo5vIF1
+         QPSx0dtxoS7SFIUy7vevIxPEs8Cu5UdFk+tcd3FUKdUbBWdyP0UZ4iR8k2XRg4KMOuOc
+         ecSEZNLxMk2L5vn/2joEGWw7GRVjaKwUn+GEpK/TkpwXIzQL9qAEvI+AvqqtlRU9zRz+
+         MSRJ4s1CJLljlDlv8VsS6UKRqbb0V1jCOmN4rJCXuy02zvHj2I1kGrO6KeM4F7ynyAOF
+         Zvpg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1706283652; x=1706888452;
+        d=1e100.net; s=20230601; t=1706283658; x=1706888458;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=pPYWgezIyTTIaXhRwEKknhgUQv07nyNgQ9eiW6X1xO4=;
-        b=wNrqYSo+oHtyLdoMzkpFup67RkQVevMB/+ke59dKmHHkUPsUkmcdRl6RJT91J/3ieF
-         IrBOFMddpkImNK3IxC/kSywAdxQPuBKg425NYHGaVGjmC159JeMS3LemciFK/8kjdJvF
-         SSsduyRFIE2Nr3kvkcbLEBqSt/hZE0YSUZUzyes47QQt2sN+0y6S1/dXZ/kKN+WJ1bmM
-         veA53Mn/Kdboh5LTBXzS3KZbWc8YKdHVr2iP2t0CrhElr1UiuRekr6ys/Mfw+ww+1/RJ
-         ob8WCaOWuh0qp65FRNddq4ELNdxKM/L6OYY5GZoXDUe6i0D+DCPaZZjEgeZRzufott7U
-         a0ug==
-X-Gm-Message-State: AOJu0YxTWXVV51CuGdPgr5dYwnNFo/GycKslXltZVc8xf4BakeJNWkBD
-	9apRYXfvVVSQstjukZtL4z6MPlHil/JoO1yK1UmeicOEkWQ4LxWwVp7XsbYn0kjqvZwOS7smgpU
-	v
-X-Google-Smtp-Source: AGHT+IFdjQh+x5O2qdxhv9puWZ2c1OM64KYT75MJA5Q8ezSTh6e+mrk8UdAJ9cmNaJg1GlSi83DoUQ==
-X-Received: by 2002:a0d:dd93:0:b0:5ed:7d36:7963 with SMTP id g141-20020a0ddd93000000b005ed7d367963mr1502532ywe.6.1706283651646;
-        Fri, 26 Jan 2024 07:40:51 -0800 (PST)
+        bh=L9HH43wDjRvJ0WXW6QamUAjH4CWIkZZgYv2Lp+qh0h0=;
+        b=FqWYavGxHf1Wyd+TN0YMF5eEsltjFrHJft2f5L7/mCiemyMJ46+SpfoEU1+L2qvwOY
+         0WIsgOyx1577iKVX4pfZ41UBBk3YFGSTnHGU06Nqqc5rr4kVN7rsUFC/y6VOn12roWI0
+         lVoZax1jJkZmOmvj39Zvxj+R7i1kERMxQ50jpG5biP6sdFiV8pfI/VHkTxPB6ZIE2f5N
+         NWM4RyLh+5K7i9kyCenUz5YC2hVFf/WtVHdPN4oiftqWJxdifs/dUPBSwdSYi/6Kymoo
+         +qD+ROycWj28ItLzHV8FZWYrrHJnPiz4r9TSb82kBiPixyUFOi3xOLEKD7zkurctw+Hv
+         WkWQ==
+X-Gm-Message-State: AOJu0YxijiaEzfxi/0F91W7fOPo4b98amcdaXOrDMcaMUwVsCfgoLNF/
+	UA0uW1f6UR7Xnswv2WjHLl5qrnS8jROMzlTPPBPmMzC2dZePcnsYo9prZqXJEeU=
+X-Google-Smtp-Source: AGHT+IEQNYP3HwnFO0fiptekPvQ75rJkFQLmTzRzslE6AvL0SYO3kee72dCCzOJoRfAwdwz3cPsAGA==
+X-Received: by 2002:a81:4053:0:b0:5ff:7c9a:8385 with SMTP id m19-20020a814053000000b005ff7c9a8385mr1416923ywn.67.1706283657721;
+        Fri, 26 Jan 2024 07:40:57 -0800 (PST)
 Received: from localhost (076-182-020-124.res.spectrum.com. [76.182.20.124])
-        by smtp.gmail.com with ESMTPSA id fq5-20020a05690c350500b005ff7e023754sm448747ywb.55.2024.01.26.07.40.49
+        by smtp.gmail.com with ESMTPSA id bd3-20020a05690c010300b005ff952f0073sm453512ywb.11.2024.01.26.07.40.55
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 26 Jan 2024 07:40:49 -0800 (PST)
+        Fri, 26 Jan 2024 07:40:55 -0800 (PST)
 From: Josef Bacik <josef@toxicpanda.com>
 To: chuck.lever@oracle.com,
 	jlayton@kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v3 08/10] nfsd: make all of the nfsd stats per-network namespace
-Date: Fri, 26 Jan 2024 10:39:47 -0500
-Message-ID: <5aa4d36f6993637bff99a0c487521a00a9048243.1706283433.git.josef@toxicpanda.com>
+Subject: [PATCH v3 10/10] nfsd: make svc_stat per-network namespace instead of global
+Date: Fri, 26 Jan 2024 10:39:49 -0500
+Message-ID: <256921ebcb66d444fba600fbf478dc8d556e22ea.1706283433.git.josef@toxicpanda.com>
 X-Mailer: git-send-email 2.43.0
 In-Reply-To: <cover.1706283433.git.josef@toxicpanda.com>
 References: <cover.1706283433.git.josef@toxicpanda.com>
@@ -70,482 +69,115 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-We have a global set of counters that we modify for all of the nfsd
-operations, but now that we're exposing these stats across all network
-namespaces we need to make the stats also be per-network namespace.  We
-already have some caching stats that are per-network namespace, so move
-these definitions into the same counter and then adjust all the helpers
-and users of these stats to provide the appropriate nfsd_net struct so
-that the stats are maintained for the per-network namespace objects.
+The final bit of stats that is global is the rpc svc_stat.  Move this
+into the nfsd_net struct and use that everywhere instead of the global
+struct.  Remove the unused global struct.
 
 Signed-off-by: Josef Bacik <josef@toxicpanda.com>
 ---
- fs/nfsd/cache.h     |  2 --
- fs/nfsd/netns.h     | 17 ++++++++++++--
- fs/nfsd/nfs4proc.c  |  6 ++---
- fs/nfsd/nfs4state.c |  3 ++-
- fs/nfsd/nfscache.c  | 36 ++++++------------------------
- fs/nfsd/nfsctl.c    | 12 +++-------
- fs/nfsd/nfsfh.c     |  3 ++-
- fs/nfsd/stats.c     | 26 ++++++++++++----------
- fs/nfsd/stats.h     | 54 ++++++++++++++++-----------------------------
- fs/nfsd/vfs.c       |  5 +++--
- 10 files changed, 68 insertions(+), 96 deletions(-)
+ fs/nfsd/netns.h  |  4 ++++
+ fs/nfsd/nfsctl.c |  2 ++
+ fs/nfsd/nfssvc.c |  2 +-
+ fs/nfsd/stats.c  | 10 ++++------
+ fs/nfsd/stats.h  |  2 --
+ 5 files changed, 11 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index 4cbe0434cbb8..66a05fefae98 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -80,8 +80,6 @@ enum {
- 
- int	nfsd_drc_slab_create(void);
- void	nfsd_drc_slab_free(void);
--int	nfsd_net_reply_cache_init(struct nfsd_net *nn);
--void	nfsd_net_reply_cache_destroy(struct nfsd_net *nn);
- int	nfsd_reply_cache_init(struct nfsd_net *);
- void	nfsd_reply_cache_shutdown(struct nfsd_net *);
- int	nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
 diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index e3605cb5f044..0cef4bb407a9 100644
+index 0cef4bb407a9..afc16ee4da74 100644
 --- a/fs/nfsd/netns.h
 +++ b/fs/nfsd/netns.h
-@@ -11,6 +11,7 @@
- #include <net/net_namespace.h>
- #include <net/netns/generic.h>
- #include <linux/filelock.h>
-+#include <linux/nfs4.h>
+@@ -14,6 +14,7 @@
+ #include <linux/nfs4.h>
  #include <linux/percpu_counter.h>
  #include <linux/siphash.h>
++#include <linux/sunrpc/stats.h>
  
-@@ -29,7 +30,19 @@ enum {
- 	NFSD_STATS_PAYLOAD_MISSES,
- 	/* amount of memory (in bytes) currently consumed by the DRC */
- 	NFSD_STATS_DRC_MEM_USAGE,
--	NFSD_NET_COUNTERS_NUM
-+	NFSD_STATS_RC_HITS,		/* repcache hits */
-+	NFSD_STATS_RC_MISSES,		/* repcache misses */
-+	NFSD_STATS_RC_NOCACHE,		/* uncached reqs */
-+	NFSD_STATS_FH_STALE,		/* FH stale error */
-+	NFSD_STATS_IO_READ,		/* bytes returned to read requests */
-+	NFSD_STATS_IO_WRITE,		/* bytes passed in write requests */
-+#ifdef CONFIG_NFSD_V4
-+	NFSD_STATS_FIRST_NFS4_OP,	/* count of individual nfsv4 operations */
-+	NFSD_STATS_LAST_NFS4_OP = NFSD_STATS_FIRST_NFS4_OP + LAST_NFS4_OP,
-+#define NFSD_STATS_NFS4_OP(op)	(NFSD_STATS_FIRST_NFS4_OP + (op))
-+	NFSD_STATS_WDELEG_GETATTR,	/* count of getattr conflict with wdeleg */
-+#endif
-+	NFSD_STATS_COUNTERS_NUM
- };
- 
- /*
-@@ -164,7 +177,7 @@ struct nfsd_net {
- 	atomic_t                 num_drc_entries;
- 
+ /* Hash tables for nfs4_clientid state */
+ #define CLIENT_HASH_BITS                 4
+@@ -179,6 +180,9 @@ struct nfsd_net {
  	/* Per-netns stats counters */
--	struct percpu_counter    counter[NFSD_NET_COUNTERS_NUM];
-+	struct percpu_counter    counter[NFSD_STATS_COUNTERS_NUM];
+ 	struct percpu_counter    counter[NFSD_STATS_COUNTERS_NUM];
  
++	/* sunrpc svc stats */
++	struct svc_stat          nfsd_svcstats;
++
  	/* longest hash chain seen */
  	unsigned int             longest_chain;
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 14712fa08f76..648ff427005e 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -2490,10 +2490,10 @@ nfsd4_proc_null(struct svc_rqst *rqstp)
- 	return rpc_success;
- }
  
--static inline void nfsd4_increment_op_stats(u32 opnum)
-+static inline void nfsd4_increment_op_stats(struct nfsd_net *nn, u32 opnum)
- {
- 	if (opnum >= FIRST_NFS4_OP && opnum <= LAST_NFS4_OP)
--		percpu_counter_inc(&nfsdstats.counter[NFSD_STATS_NFS4_OP(opnum)]);
-+		percpu_counter_inc(&nn->counter[NFSD_STATS_NFS4_OP(opnum)]);
- }
- 
- static const struct nfsd4_operation nfsd4_ops[];
-@@ -2768,7 +2768,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- 					   status, nfsd4_op_name(op->opnum));
- 
- 		nfsd4_cstate_clear_replay(cstate);
--		nfsd4_increment_op_stats(op->opnum);
-+		nfsd4_increment_op_stats(nn, op->opnum);
- 	}
- 
- 	fh_put(current_fh);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fbf8b426950e..83c260ab485d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -8457,6 +8457,7 @@ __be32
- nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct inode *inode)
- {
- 	__be32 status;
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 	struct file_lock_context *ctx;
- 	struct file_lock *fl;
- 	struct nfs4_delegation *dp;
-@@ -8486,7 +8487,7 @@ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct inode *inode)
- 			}
- break_lease:
- 			spin_unlock(&ctx->flc_lock);
--			nfsd_stats_wdeleg_getattr_inc();
-+			nfsd_stats_wdeleg_getattr_inc(nn);
- 			status = nfserrno(nfsd_open_break_lease(inode, NFSD_MAY_READ));
- 			if (status != nfserr_jukebox ||
- 					!nfsd_wait_for_delegreturn(rqstp, inode))
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 3d4a9d181c43..cfcc6ac8f255 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -176,27 +176,6 @@ void nfsd_drc_slab_free(void)
- 	kmem_cache_destroy(drc_slab);
- }
- 
--/**
-- * nfsd_net_reply_cache_init - per net namespace reply cache set-up
-- * @nn: nfsd_net being initialized
-- *
-- * Returns zero on succes; otherwise a negative errno is returned.
-- */
--int nfsd_net_reply_cache_init(struct nfsd_net *nn)
--{
--	return nfsd_percpu_counters_init(nn->counter, NFSD_NET_COUNTERS_NUM);
--}
--
--/**
-- * nfsd_net_reply_cache_destroy - per net namespace reply cache tear-down
-- * @nn: nfsd_net being freed
-- *
-- */
--void nfsd_net_reply_cache_destroy(struct nfsd_net *nn)
--{
--	nfsd_percpu_counters_destroy(nn->counter, NFSD_NET_COUNTERS_NUM);
--}
--
- int nfsd_reply_cache_init(struct nfsd_net *nn)
- {
- 	unsigned int hashsize;
-@@ -501,7 +480,7 @@ nfsd_cache_insert(struct nfsd_drc_bucket *b, struct nfsd_cacherep *key,
- int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
- 		      unsigned int len, struct nfsd_cacherep **cacherep)
- {
--	struct nfsd_net		*nn;
-+	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 	struct nfsd_cacherep	*rp, *found;
- 	__wsum			csum;
- 	struct nfsd_drc_bucket	*b;
-@@ -510,7 +489,7 @@ int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
- 	int rtn = RC_DOIT;
- 
- 	if (type == RC_NOCACHE) {
--		nfsd_stats_rc_nocache_inc();
-+		nfsd_stats_rc_nocache_inc(nn);
- 		goto out;
- 	}
- 
-@@ -520,7 +499,6 @@ int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
- 	 * Since the common case is a cache miss followed by an insert,
- 	 * preallocate an entry.
- 	 */
--	nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 	rp = nfsd_cacherep_alloc(rqstp, csum, nn);
- 	if (!rp)
- 		goto out;
-@@ -537,7 +515,7 @@ int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
- 
- 	nfsd_cacherep_dispose(&dispose);
- 
--	nfsd_stats_rc_misses_inc();
-+	nfsd_stats_rc_misses_inc(nn);
- 	atomic_inc(&nn->num_drc_entries);
- 	nfsd_stats_drc_mem_usage_add(nn, sizeof(*rp));
- 	goto out;
-@@ -545,7 +523,7 @@ int nfsd_cache_lookup(struct svc_rqst *rqstp, unsigned int start,
- found_entry:
- 	/* We found a matching entry which is either in progress or done. */
- 	nfsd_reply_cache_free_locked(NULL, rp, nn);
--	nfsd_stats_rc_hits_inc();
-+	nfsd_stats_rc_hits_inc(nn);
- 	rtn = RC_DROPIT;
- 	rp = found;
- 
-@@ -689,11 +667,11 @@ int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
- 	seq_printf(m, "mem usage:             %lld\n",
- 		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_DRC_MEM_USAGE]));
- 	seq_printf(m, "cache hits:            %lld\n",
--		   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_RC_HITS]));
-+		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_HITS]));
- 	seq_printf(m, "cache misses:          %lld\n",
--		   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_RC_MISSES]));
-+		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_MISSES]));
- 	seq_printf(m, "not cached:            %lld\n",
--		   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_RC_NOCACHE]));
-+		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_NOCACHE]));
- 	seq_printf(m, "payload misses:        %lld\n",
- 		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_PAYLOAD_MISSES]));
- 	seq_printf(m, "longest chain len:     %u\n", nn->longest_chain);
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index b57480b50e35..ea3c8114245c 100644
+index ea3c8114245c..5a5547bd6ecf 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -1671,7 +1671,7 @@ static __net_init int nfsd_net_init(struct net *net)
- 	retval = nfsd_idmap_init(net);
- 	if (retval)
- 		goto out_idmap_error;
--	retval = nfsd_net_reply_cache_init(nn);
-+	retval = nfsd_stat_counters_init(nn);
+@@ -1674,6 +1674,8 @@ static __net_init int nfsd_net_init(struct net *net)
+ 	retval = nfsd_stat_counters_init(nn);
  	if (retval)
  		goto out_repcache_error;
++	memset(&nn->nfsd_svcstats, 0, sizeof(nn->nfsd_svcstats));
++	nn->nfsd_svcstats.program = &nfsd_program;
  	nn->nfsd_versions = NULL;
-@@ -1701,7 +1701,7 @@ static __net_exit void nfsd_net_exit(struct net *net)
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	nfsd_proc_stat_shutdown(net);
--	nfsd_net_reply_cache_destroy(nn);
-+	nfsd_stat_counters_destroy(nn);
- 	nfsd_idmap_shutdown(net);
- 	nfsd_export_shutdown(net);
- 	nfsd_netns_free_versions(nn);
-@@ -1724,12 +1724,9 @@ static int __init init_nfsd(void)
- 	retval = nfsd4_init_pnfs();
- 	if (retval)
- 		goto out_free_slabs;
--	retval = nfsd_stat_counters_init();	/* Statistics */
--	if (retval)
--		goto out_free_pnfs;
- 	retval = nfsd_drc_slab_create();
- 	if (retval)
--		goto out_free_stat;
-+		goto out_free_pnfs;
- 	nfsd_lockd_init();	/* lockd->nfsd callbacks */
- 	retval = create_proc_exports_entry();
- 	if (retval)
-@@ -1763,8 +1760,6 @@ static int __init init_nfsd(void)
- out_free_lockd:
- 	nfsd_lockd_shutdown();
- 	nfsd_drc_slab_free();
--out_free_stat:
--	nfsd_stat_counters_destroy();
- out_free_pnfs:
- 	nfsd4_exit_pnfs();
- out_free_slabs:
-@@ -1782,7 +1777,6 @@ static void __exit exit_nfsd(void)
- 	nfsd_drc_slab_free();
- 	remove_proc_entry("fs/nfs/exports", NULL);
- 	remove_proc_entry("fs/nfs", NULL);
--	nfsd_stat_counters_destroy();
- 	nfsd_lockd_shutdown();
- 	nfsd4_free_slabs();
- 	nfsd4_exit_pnfs();
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index dbfa0ac13564..40fecf7b224f 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -327,6 +327,7 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
- __be32
- fh_verify(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type, int access)
- {
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 	struct svc_export *exp = NULL;
- 	struct dentry	*dentry;
- 	__be32		error;
-@@ -395,7 +396,7 @@ fh_verify(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type, int access)
- out:
- 	trace_nfsd_fh_verify_err(rqstp, fhp, type, access, error);
- 	if (error == nfserr_stale)
--		nfsd_stats_fh_stale_inc(exp);
-+		nfsd_stats_fh_stale_inc(nn, exp);
- 	return error;
- }
- 
+ 	nn->nfsd4_minorversions = NULL;
+ 	nfsd4_init_leases_net(nn);
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index fdb591896430..c0d17b92b249 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -661,7 +661,7 @@ int nfsd_create_serv(struct net *net)
+ 	if (nfsd_max_blksize == 0)
+ 		nfsd_max_blksize = nfsd_get_default_max_blksize();
+ 	nfsd_reset_versions(nn);
+-	serv = svc_create_pooled(&nfsd_program, &nfsd_svcstats,
++	serv = svc_create_pooled(&nfsd_program, &nn->nfsd_svcstats,
+ 				 nfsd_max_blksize, nfsd);
+ 	if (serv == NULL)
+ 		return -ENOMEM;
 diff --git a/fs/nfsd/stats.c b/fs/nfsd/stats.c
-index 394a65a33942..44e275324b06 100644
+index 3a7f791c3052..be52fb1e928e 100644
 --- a/fs/nfsd/stats.c
 +++ b/fs/nfsd/stats.c
-@@ -34,15 +34,17 @@ struct svc_stat		nfsd_svcstats = {
+@@ -27,10 +27,6 @@
  
+ #include "nfsd.h"
+ 
+-struct svc_stat		nfsd_svcstats = {
+-	.program	= &nfsd_program,
+-};
+-
  static int nfsd_show(struct seq_file *seq, void *v)
  {
-+	struct net *net = pde_data(file_inode(seq->file));
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	int i;
+ 	struct net *net = pde_data(file_inode(seq->file));
+@@ -56,7 +52,7 @@ static int nfsd_show(struct seq_file *seq, void *v)
+ 	seq_puts(seq, "\nra 0 0 0 0 0 0 0 0 0 0 0 0\n");
  
- 	seq_printf(seq, "rc %lld %lld %lld\nfh %lld 0 0 0 0\nio %lld %lld\n",
--		   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_RC_HITS]),
--		   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_RC_MISSES]),
--		   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_RC_NOCACHE]),
--		   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_FH_STALE]),
--		   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_IO_READ]),
--		   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_IO_WRITE]));
-+		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_HITS]),
-+		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_MISSES]),
-+		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_NOCACHE]),
-+		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_FH_STALE]),
-+		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_IO_READ]),
-+		   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_IO_WRITE]));
+ 	/* show my rpc info */
+-	svc_seq_show(seq, &nfsd_svcstats);
++	svc_seq_show(seq, &nn->nfsd_svcstats);
  
- 	/* thread usage: */
- 	seq_printf(seq, "th %u 0", atomic_read(&nfsdstats.th_cnt));
-@@ -63,10 +65,10 @@ static int nfsd_show(struct seq_file *seq, void *v)
- 	seq_printf(seq, "proc4ops %u", LAST_NFS4_OP + 1);
- 	for (i = 0; i <= LAST_NFS4_OP; i++) {
- 		seq_printf(seq, " %lld",
--			   percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_NFS4_OP(i)]));
-+			   percpu_counter_sum_positive(&nn->counter[NFSD_STATS_NFS4_OP(i)]));
- 	}
- 	seq_printf(seq, "\nwdeleg_getattr %lld",
--		percpu_counter_sum_positive(&nfsdstats.counter[NFSD_STATS_WDELEG_GETATTR]));
-+		percpu_counter_sum_positive(&nn->counter[NFSD_STATS_WDELEG_GETATTR]));
- 
- 	seq_putc(seq, '\n');
- #endif
-@@ -108,14 +110,14 @@ void nfsd_percpu_counters_destroy(struct percpu_counter counters[], int num)
- 		percpu_counter_destroy(&counters[i]);
- }
- 
--int nfsd_stat_counters_init(void)
-+int nfsd_stat_counters_init(struct nfsd_net *nn)
- {
--	return nfsd_percpu_counters_init(nfsdstats.counter, NFSD_STATS_COUNTERS_NUM);
-+	return nfsd_percpu_counters_init(nn->counter, NFSD_STATS_COUNTERS_NUM);
- }
- 
--void nfsd_stat_counters_destroy(void)
-+void nfsd_stat_counters_destroy(struct nfsd_net *nn)
- {
--	nfsd_percpu_counters_destroy(nfsdstats.counter, NFSD_STATS_COUNTERS_NUM);
-+	nfsd_percpu_counters_destroy(nn->counter, NFSD_STATS_COUNTERS_NUM);
- }
+ #ifdef CONFIG_NFSD_V4
+ 	/* Show count for individual nfsv4 operations */
+@@ -121,7 +117,9 @@ void nfsd_stat_counters_destroy(struct nfsd_net *nn)
  
  void nfsd_proc_stat_init(struct net *net)
+ {
+-	svc_proc_register(net, &nfsd_svcstats, &nfsd_proc_ops);
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
++	svc_proc_register(net, &nn->nfsd_svcstats, &nfsd_proc_ops);
+ }
+ 
+ void nfsd_proc_stat_shutdown(struct net *net)
 diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
-index 38811aa7d13e..c24be4ddbe7d 100644
+index 5675d283a537..d2753e975dfd 100644
 --- a/fs/nfsd/stats.h
 +++ b/fs/nfsd/stats.h
-@@ -10,26 +10,7 @@
+@@ -10,8 +10,6 @@
  #include <uapi/linux/nfsd/stats.h>
  #include <linux/percpu_counter.h>
  
+-extern struct svc_stat		nfsd_svcstats;
 -
--enum {
--	NFSD_STATS_RC_HITS,		/* repcache hits */
--	NFSD_STATS_RC_MISSES,		/* repcache misses */
--	NFSD_STATS_RC_NOCACHE,		/* uncached reqs */
--	NFSD_STATS_FH_STALE,		/* FH stale error */
--	NFSD_STATS_IO_READ,		/* bytes returned to read requests */
--	NFSD_STATS_IO_WRITE,		/* bytes passed in write requests */
--#ifdef CONFIG_NFSD_V4
--	NFSD_STATS_FIRST_NFS4_OP,	/* count of individual nfsv4 operations */
--	NFSD_STATS_LAST_NFS4_OP = NFSD_STATS_FIRST_NFS4_OP + LAST_NFS4_OP,
--#define NFSD_STATS_NFS4_OP(op)	(NFSD_STATS_FIRST_NFS4_OP + (op))
--	NFSD_STATS_WDELEG_GETATTR,	/* count of getattr conflict with wdeleg */
--#endif
--	NFSD_STATS_COUNTERS_NUM
--};
--
- struct nfsd_stats {
--	struct percpu_counter	counter[NFSD_STATS_COUNTERS_NUM];
--
- 	atomic_t	th_cnt;		/* number of available threads */
- };
- 
-@@ -40,43 +21,46 @@ extern struct svc_stat		nfsd_svcstats;
  int nfsd_percpu_counters_init(struct percpu_counter *counters, int num);
  void nfsd_percpu_counters_reset(struct percpu_counter *counters, int num);
  void nfsd_percpu_counters_destroy(struct percpu_counter *counters, int num);
--int nfsd_stat_counters_init(void);
--void nfsd_stat_counters_destroy(void);
-+int nfsd_stat_counters_init(struct nfsd_net *nn);
-+void nfsd_stat_counters_destroy(struct nfsd_net *nn);
- void nfsd_proc_stat_init(struct net *net);
- void nfsd_proc_stat_shutdown(struct net *net);
- 
--static inline void nfsd_stats_rc_hits_inc(void)
-+static inline void nfsd_stats_rc_hits_inc(struct nfsd_net *nn)
- {
--	percpu_counter_inc(&nfsdstats.counter[NFSD_STATS_RC_HITS]);
-+	percpu_counter_inc(&nn->counter[NFSD_STATS_RC_HITS]);
- }
- 
--static inline void nfsd_stats_rc_misses_inc(void)
-+static inline void nfsd_stats_rc_misses_inc(struct nfsd_net *nn)
- {
--	percpu_counter_inc(&nfsdstats.counter[NFSD_STATS_RC_MISSES]);
-+	percpu_counter_inc(&nn->counter[NFSD_STATS_RC_MISSES]);
- }
- 
--static inline void nfsd_stats_rc_nocache_inc(void)
-+static inline void nfsd_stats_rc_nocache_inc(struct nfsd_net *nn)
- {
--	percpu_counter_inc(&nfsdstats.counter[NFSD_STATS_RC_NOCACHE]);
-+	percpu_counter_inc(&nn->counter[NFSD_STATS_RC_NOCACHE]);
- }
- 
--static inline void nfsd_stats_fh_stale_inc(struct svc_export *exp)
-+static inline void nfsd_stats_fh_stale_inc(struct nfsd_net *nn,
-+					   struct svc_export *exp)
- {
--	percpu_counter_inc(&nfsdstats.counter[NFSD_STATS_FH_STALE]);
-+	percpu_counter_inc(&nn->counter[NFSD_STATS_FH_STALE]);
- 	if (exp && exp->ex_stats)
- 		percpu_counter_inc(&exp->ex_stats->counter[EXP_STATS_FH_STALE]);
- }
- 
--static inline void nfsd_stats_io_read_add(struct svc_export *exp, s64 amount)
-+static inline void nfsd_stats_io_read_add(struct nfsd_net *nn,
-+					  struct svc_export *exp, s64 amount)
- {
--	percpu_counter_add(&nfsdstats.counter[NFSD_STATS_IO_READ], amount);
-+	percpu_counter_add(&nn->counter[NFSD_STATS_IO_READ], amount);
- 	if (exp && exp->ex_stats)
- 		percpu_counter_add(&exp->ex_stats->counter[EXP_STATS_IO_READ], amount);
- }
- 
--static inline void nfsd_stats_io_write_add(struct svc_export *exp, s64 amount)
-+static inline void nfsd_stats_io_write_add(struct nfsd_net *nn,
-+					   struct svc_export *exp, s64 amount)
- {
--	percpu_counter_add(&nfsdstats.counter[NFSD_STATS_IO_WRITE], amount);
-+	percpu_counter_add(&nn->counter[NFSD_STATS_IO_WRITE], amount);
- 	if (exp && exp->ex_stats)
- 		percpu_counter_add(&exp->ex_stats->counter[EXP_STATS_IO_WRITE], amount);
- }
-@@ -97,9 +81,9 @@ static inline void nfsd_stats_drc_mem_usage_sub(struct nfsd_net *nn, s64 amount)
- }
- 
- #ifdef CONFIG_NFSD_V4
--static inline void nfsd_stats_wdeleg_getattr_inc(void)
-+static inline void nfsd_stats_wdeleg_getattr_inc(struct nfsd_net *nn)
- {
--	percpu_counter_inc(&nfsdstats.counter[NFSD_STATS_WDELEG_GETATTR]);
-+	percpu_counter_inc(&nn->counter[NFSD_STATS_WDELEG_GETATTR]);
- }
- #endif
- #endif /* _NFSD_STATS_H */
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index f57749cd6f0b..33af4bc7f423 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1002,7 +1002,8 @@ static __be32 nfsd_finish_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			       unsigned long *count, u32 *eof, ssize_t host_err)
- {
- 	if (host_err >= 0) {
--		nfsd_stats_io_read_add(fhp->fh_export, host_err);
-+		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+		nfsd_stats_io_read_add(nn, fhp->fh_export, host_err);
- 		*eof = nfsd_eof_on_read(file, offset, host_err, *count);
- 		*count = host_err;
- 		fsnotify_access(file);
-@@ -1185,7 +1186,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
- 		goto out_nfserr;
- 	}
- 	*cnt = host_err;
--	nfsd_stats_io_write_add(exp, *cnt);
-+	nfsd_stats_io_write_add(nn, exp, *cnt);
- 	fsnotify_modify(file);
- 	host_err = filemap_check_wb_err(file->f_mapping, since);
- 	if (host_err < 0)
 -- 
 2.43.0
 
