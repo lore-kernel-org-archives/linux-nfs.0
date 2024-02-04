@@ -1,33 +1,33 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACBBC6FA8;
-	Sun,  4 Feb 2024 02:17:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B4D47460;
+	Sun,  4 Feb 2024 02:17:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1707013064; cv=none; b=mCkDyvVh3RmGzDwoVrJzY0dWQ678j9YRE/LTuqWysCDw6flnnu8rJb+LyfTV5YkoL8K/WZSBiFIh06UHotNJn3El71bkyU9nF6W97CeMMeUa42zePgI+yNebWAhiK1Yabzc+ydM7glJ2uLK20xpvoa2R2y35HTvXj2g+yX9V2lk=
+	t=1707013064; cv=none; b=tcLqQ+Y2qvtnPMrN1vGcukvnFqYb5cZdu1Rt63mpJI4p8Mxp4J7x1Hd3JM91QCi8XleDmm99IA2DKJOELLRNgE87QVb3EbnYokhTHclnBpksVJmv9jTJEKtf17ZlqtZNDudkBnSYIzUE0PLbqRZMP6vRvmpd8rYvfg161kNTqgs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1707013064; c=relaxed/simple;
-	bh=j6rsvNN8oo5Bvj0EJ/yVmFHfs8Um7QkVVzBq0K42Rqw=;
+	bh=sG42Zf5DTiNNOcAGlM3Zr/H2o4OoCoJx8NrtZkRtutU=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=cPgtVnBcKCWxjXzi7+XVXHH0zFHCgwZ+zZKo749MYFARMsaH2v/qnNpx4PCaCQ50yS1KZflORTm8Eg9ahQvuxVTW0VU1xYBIwI89aVhj5p5N+ig5oTtviOnxt1Vg8NXrH9mB+0cIcojiOaMGn7766pRFg/OPDElmY0cFCWv34pQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=BfiaI6RP; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=aK5h7M0WyGTbKtTPJlaKi2diYtQC5Ty72zarF9tS+o8NeNyav+FG5xq9U0MgRUIMWhvE0U0WiRqlhY1Cg33m4hP0WOhw427JTcki9vP3mo4XMTPt0qYy/nsfXohwCH+8KiBse21q0kD8Hm+z4jS4p93m0Ae4Ra9FdJtvnlsJjR0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=qxbrWosc; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="BfiaI6RP"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="qxbrWosc"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-Id:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=1HFI4KKL79Sd/NlR6QYbK/LO3YNDNZj8ruRJ2Po8n78=; b=BfiaI6RPnXysexAqLOvzi/xd4/
-	xNQPKqHFXPKgXHMATcWLBhPpjAX2hBrdsZ4f2kv8pFN9qnEXeVAY/T/0zHISphhPHGp983TaopYhX
-	JiEhRug4uAeivhZ62q8RBH8BwurRmaVlNA1rrxGt8VaXyN1F6MeVAYVwVaU2/Ficj/n1MLKSqBm8K
-	koW3ZUCW855MWUF1bfbFJBFasSiwUaGxg4mXy5aTcN9Woh5mqF0sOTyPKg3TEC3/QJx4HsDKAe90F
-	Tp1hdtHYVWhp05Uq7XiM2VqM0KEfl6fQwDbgJmGRk5d0g0ZKc2lEjYLtjlvY+eZSGgv/puzMo0UXt
-	NvAu0mpw==;
+	bh=EjWkAFYMC0New8r7aI9BMXvNYwHQVwhCzm32GsCIcMM=; b=qxbrWoscao3BKYzdD4PD0fuDnE
+	UqP/FXLwX6jwmPbGH2l3okPgOnMkOvN4mfB2xIe3CBE66vbg4tcyGehDknGgRcBnzWVYAW9Lg8lVq
+	WVina8FjERTRoggaxszJIc4HAQ9rlrJRXvyuw/HlXZ22ksVm5olRNKwf3xv0uJiKF9sbAoRapGU0k
+	6pyhPYetdWWbFzrocj9H5kQ/F2sJK8oHTQCFJZvodGoXar0hHTveIw5gYjefjHKtH+BMyuFF5aWAi
+	Nyc4n7zXFjKgC28keu+RISSYHcrJL6Aw9O04dAx9sLqRm4/8q1iHdse2CmN8CIT7esZk4ENubZV2O
+	m1XMfxRw==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.96 #2 (Red Hat Linux))
-	id 1rWS4h-004rCn-2m;
+	id 1rWS4i-004rD1-2B;
 	Sun, 04 Feb 2024 02:17:40 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
@@ -37,12 +37,13 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	linux-nfs@vger.kernel.org,
 	Miklos Szeredi <miklos@szeredi.hu>,
 	linux-cifs@vger.kernel.org
-Subject: [PATCH 01/13] fs/super.c: don't drop ->s_user_ns until we free struct super_block itself
-Date: Sun,  4 Feb 2024 02:17:27 +0000
-Message-Id: <20240204021739.1157830-1-viro@zeniv.linux.org.uk>
+Subject: [PATCH 05/13] hfsplus: switch to rcu-delayed unloading of nls and freeing ->s_fs_info
+Date: Sun,  4 Feb 2024 02:17:31 +0000
+Message-Id: <20240204021739.1157830-5-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.40.1
-In-Reply-To: <20240204021436.GH2087318@ZenIV>
+In-Reply-To: <20240204021739.1157830-1-viro@zeniv.linux.org.uk>
 References: <20240204021436.GH2087318@ZenIV>
+ <20240204021739.1157830-1-viro@zeniv.linux.org.uk>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -52,52 +53,57 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-Avoids fun races in RCU pathwalk...  Same goes for freeing LSM shite
-hanging off super_block's arse.
+->d_hash() and ->d_compare() use those, so we need to delay freeing
+them.
 
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/super.c | 13 ++++---------
- 1 file changed, 4 insertions(+), 9 deletions(-)
+ fs/hfsplus/hfsplus_fs.h |  1 +
+ fs/hfsplus/super.c      | 12 +++++++++---
+ 2 files changed, 10 insertions(+), 3 deletions(-)
 
-diff --git a/fs/super.c b/fs/super.c
-index d35e85295489..d6efeba0d0ce 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -274,9 +274,10 @@ static void destroy_super_work(struct work_struct *work)
+diff --git a/fs/hfsplus/hfsplus_fs.h b/fs/hfsplus/hfsplus_fs.h
+index 7ededcb720c1..012a3d003fbe 100644
+--- a/fs/hfsplus/hfsplus_fs.h
++++ b/fs/hfsplus/hfsplus_fs.h
+@@ -190,6 +190,7 @@ struct hfsplus_sb_info {
+ 	int work_queued;               /* non-zero delayed work is queued */
+ 	struct delayed_work sync_work; /* FS sync delayed work */
+ 	spinlock_t work_lock;          /* protects sync_work and work_queued */
++	struct rcu_head rcu;
+ };
+ 
+ #define HFSPLUS_SB_WRITEBACKUP	0
+diff --git a/fs/hfsplus/super.c b/fs/hfsplus/super.c
+index 1986b4f18a90..97920202790f 100644
+--- a/fs/hfsplus/super.c
++++ b/fs/hfsplus/super.c
+@@ -277,6 +277,14 @@ void hfsplus_mark_mdb_dirty(struct super_block *sb)
+ 	spin_unlock(&sbi->work_lock);
+ }
+ 
++static void delayed_free(struct rcu_head *p)
++{
++	struct hfsplus_sb_info *sbi = container_of(p, struct hfsplus_sb_info, rcu);
++
++	unload_nls(sbi->nls);
++	kfree(sbi);
++}
++
+ static void hfsplus_put_super(struct super_block *sb)
  {
- 	struct super_block *s = container_of(work, struct super_block,
- 							destroy_work);
--	int i;
--
--	for (i = 0; i < SB_FREEZE_LEVELS; i++)
-+	security_sb_free(s);
-+	put_user_ns(s->s_user_ns);
-+	kfree(s->s_subtype);
-+	for (int i = 0; i < SB_FREEZE_LEVELS; i++)
- 		percpu_free_rwsem(&s->s_writers.rw_sem[i]);
- 	kfree(s);
+ 	struct hfsplus_sb_info *sbi = HFSPLUS_SB(sb);
+@@ -302,9 +310,7 @@ static void hfsplus_put_super(struct super_block *sb)
+ 	hfs_btree_close(sbi->ext_tree);
+ 	kfree(sbi->s_vhdr_buf);
+ 	kfree(sbi->s_backup_vhdr_buf);
+-	unload_nls(sbi->nls);
+-	kfree(sb->s_fs_info);
+-	sb->s_fs_info = NULL;
++	call_rcu(&sbi->rcu, delayed_free);
  }
-@@ -296,9 +297,6 @@ static void destroy_unused_super(struct super_block *s)
- 	super_unlock_excl(s);
- 	list_lru_destroy(&s->s_dentry_lru);
- 	list_lru_destroy(&s->s_inode_lru);
--	security_sb_free(s);
--	put_user_ns(s->s_user_ns);
--	kfree(s->s_subtype);
- 	shrinker_free(s->s_shrink);
- 	/* no delays needed */
- 	destroy_super_work(&s->destroy_work);
-@@ -409,9 +407,6 @@ static void __put_super(struct super_block *s)
- 		WARN_ON(s->s_dentry_lru.node);
- 		WARN_ON(s->s_inode_lru.node);
- 		WARN_ON(!list_empty(&s->s_mounts));
--		security_sb_free(s);
--		put_user_ns(s->s_user_ns);
--		kfree(s->s_subtype);
- 		call_rcu(&s->rcu, destroy_super_rcu);
- 	}
- }
+ 
+ static int hfsplus_statfs(struct dentry *dentry, struct kstatfs *buf)
 -- 
 2.39.2
 
