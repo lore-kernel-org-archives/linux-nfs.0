@@ -1,61 +1,61 @@
-Received: from mail-qk1-f176.google.com (mail-qk1-f176.google.com [209.85.222.176])
+Received: from mail-qt1-f182.google.com (mail-qt1-f182.google.com [209.85.160.182])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F0FCB1DA44
-	for <linux-nfs@vger.kernel.org>; Thu,  8 Feb 2024 03:18:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4289E28DAE
+	for <linux-nfs@vger.kernel.org>; Thu,  8 Feb 2024 03:18:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1707362323; cv=none; b=nUM0CQeCTjWYF8wE/MK4X8nvyFpJvzevcIYNy78x8lXesIA/6sl8mrmerTcFwAA3y38ZoGXq5FqOMrJlVh4129LTrvL3dL6Y8r2MN62PbaAwER2Na+x2VDW9m8srWkqy24FUa979Xv0eWHaSyP5VvP0W6BCzuBFBHNl3yI/malY=
+	t=1707362325; cv=none; b=mhC5xzsDI3FuFj6eirx7NqgKbqfusgpC8JrkqcTQ8Yo332XlqFVvJ/QiJxbp3/5HyU+3zkUMlQkhOz6oVuf1gEFFEastJyJAVkXItZUmXpQMKYz+9xGLDpJDP+IrMLClqYK5f7zLH9pfCIEVoI3Gf96lzPKl7aoSOKTU7F7h9CM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1707362323; c=relaxed/simple;
-	bh=cLWclghEYe/SobXj7ek2TNURXsYLQRe2DX0GBHQN0JE=;
+	s=arc-20240116; t=1707362325; c=relaxed/simple;
+	bh=geS3uhgfJdunV4nVLQ/ITMCCZg/0OQfPAT1tmDfbG+A=;
 	h=Date:Message-ID:MIME-Version:Content-Type:Content-Disposition:
-	 From:To:Cc:Subject:References:In-Reply-To; b=iThRbXTP0A/QPloW8zkANCt8ziCZrYu49vu8zP+766kj0lXUsJF0Muhg/HwBblW9M5Z2/ckf0wmccz8GYIfCeBBSSAggfzDtnGI1katLpKa5azSHjQDAnwKHyq/Q4Un1oaxsQDTxlSfxKF1UkimRmGNz6BNH2ZFUTzwj8/a8DTo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com; spf=pass smtp.mailfrom=paul-moore.com; dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b=LZnu8tNa; arc=none smtp.client-ip=209.85.222.176
+	 From:To:Cc:Subject:References:In-Reply-To; b=Oms5DSYaLU6wnN4CrfB/5MT+toNC3nmdj7rCiuUaBT2ISwqJc7vCVMUvojbhwR1JLwqrbDiLVPywMnEL6krfVNHFQcnGNfIo2Vb594B44SW89Pn7FVuIKp8fkGRuj/Twc99C03NJvsTa3d99cWCJaEVX25fHDlFKyYcz1dqPEU4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com; spf=pass smtp.mailfrom=paul-moore.com; dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b=YNYLQOie; arc=none smtp.client-ip=209.85.160.182
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=paul-moore.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b="LZnu8tNa"
-Received: by mail-qk1-f176.google.com with SMTP id af79cd13be357-7857bc09456so48716785a.3
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Feb 2024 19:18:39 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b="YNYLQOie"
+Received: by mail-qt1-f182.google.com with SMTP id d75a77b69052e-42bf5d7869eso7708291cf.0
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Feb 2024 19:18:41 -0800 (PST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=paul-moore.com; s=google; t=1707362318; x=1707967118; darn=vger.kernel.org;
+        d=paul-moore.com; s=google; t=1707362320; x=1707967120; darn=vger.kernel.org;
         h=in-reply-to:references:subject:cc:to:from:content-transfer-encoding
          :content-disposition:mime-version:message-id:date:from:to:cc:subject
          :date:message-id:reply-to;
-        bh=iGhBKZfymtW/GJZMXD0cDxEYezGwj2g+N6EhP9MakuU=;
-        b=LZnu8tNa4B9QxXmzt23dce3YZcjlfa8u2tgd++ucG8XCxKNZH/ys3krK04p1+ibY9E
-         Pz/dD94/aBeNQcTI7AEWFMJP9cNWywy0BxSu/VxfpmPvHO2gXg4pUXAmBkZSjxToMSCx
-         oIYE1BNZqzdGM/KOOxHL8thF2HJWG3jgfWkWEO39P+gVHtlS/1ZUdSDy9gXjNzigDPPy
-         gUoXsXJMhlQ7ZM/2amVcX5htTNb1irq2sauWEboHSOHPL9gEwN0o210/F9XSqc7QdREP
-         hZDZqCiX+IJkH0GvPC3HX8t7QsbmIBZGb0ellcqSFywypc6TStN82IFb2cfcm0dfiPQS
-         q4SA==
+        bh=f9a68xK47oRXllyR+mnjvXvrpcakKcNUJFmQMtWCIHE=;
+        b=YNYLQOiejdFvFk2r1ZV1UXTZJC0D2e3KmDA5v4fUdMu/iJIX0QkTonk6MIIrdWUGoc
+         GsRkjN2M8F7TVEy6Q7wZcGQZl1CuNhz2R0y6HjuWqS8zH1CvVsn4WqtzsQP7cBkvHQ5V
+         0tntwDzzKK4HraWdZjVpj/8K21gHw/tBcnP4dlW08EDWLsLxtk0QcAkgVE/kI1UCaH7R
+         pxVykKF+92VKMViIpE+3fQr57P7McuNqXBGcEuTQ7PyBMT221n3RX/srs7lXYS/R2G2i
+         62+m/gwVlxxpFEwqr7yP3fdzt1nqfwa6sE9lTaEXDGAnRqMwU26GNjmzTt3FzrjQDdLE
+         Wy9A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1707362318; x=1707967118;
+        d=1e100.net; s=20230601; t=1707362320; x=1707967120;
         h=in-reply-to:references:subject:cc:to:from:content-transfer-encoding
          :content-disposition:mime-version:message-id:date:x-gm-message-state
          :from:to:cc:subject:date:message-id:reply-to;
-        bh=iGhBKZfymtW/GJZMXD0cDxEYezGwj2g+N6EhP9MakuU=;
-        b=f6o9cgbn3cUWygF3pltrhS1eMfxeVXrecmSHjKvAT4Gw+EhDL6X8gOh/1sgsbfhdIT
-         X52XT1tMFvDS0gTJyNhdOjdNLUAxkm0i7P8yAQmtQ++r9Kux7HFV6TMhzbnMZe67fLnS
-         nHiU2mz+4g+VrLOULDDIkRgEaTtLE3eOpK8BEXb7bZIN2193uHhXkaowBL7/pUWxuzL+
-         XGNA4fvwACtt8YYKmoT9NGzygBcTtEEP0ljpv5+2fKuKgxwvvzqPcf0nodwH6ALKiAWR
-         H+3XlaW9CE6k+n3OkSP2XM+OoYtP0EXyKmZMG+Yu9Qhs9ZnNZwgZZrnT4rXONQyYJpNQ
-         lAuA==
-X-Forwarded-Encrypted: i=1; AJvYcCX6VzP+CfbE5ZAcZ/30J8ED1D91HjfYGQvYK71xntMEAJQOQtPn+YYWuvMHRevt85XgEy2jkeY/u90tuhyi4FY+RjOqdJj040ij
-X-Gm-Message-State: AOJu0Yw0m3iFlltRx2FK3uRWo3GZWOIrkvi+cf3WFtTveT+Y9ln2S4JS
-	ooKwLoiZa7iTZhJsJv1znG8q8I6RBe2G0QBti0dABSdecL9y3q4bx1w8DzFFWw==
-X-Google-Smtp-Source: AGHT+IGVc7X9TG0g4eq+IMY9L5yw86w+Gj4YoO63Nw7ud9AV+DVgQA7Bjc7Nzxt38UNM0zWVNMeakw==
-X-Received: by 2002:a05:620a:1787:b0:785:9046:f66c with SMTP id ay7-20020a05620a178700b007859046f66cmr8253337qkb.75.1707362318469;
-        Wed, 07 Feb 2024 19:18:38 -0800 (PST)
-X-Forwarded-Encrypted: i=1; AJvYcCWWU/6/SBJRb+VACUYCQK0U1De0vdZ3zw0RRmRKiaVjA8RwkS1x2YP4BzNe6CAqn674YoHHSCiVXIyCNBtKp68Ty2Z4F0B5cGWl4fs++jkEpp0CvDmBpQacpfIDOwDUbrUUhM+xD9XbbeC7Siq4zwJGl1FEvh+cGJxa9uAIhbXnk9SibSavc4WUKVvf/Lrsn5exAYiZOd50Emok5BclC0RaBqp551AmgN0rsa6mJLoHxuPVUn8eBha3htL8jV7ESUBsMTekuxyCifiDEJWDpz0/rbrnxh4I0EMfA4QoVKV89qWL3FnvabaGolulVI1Anq70GR/V/QQPa+Mca8rhQ9mc6RWaZsFJk0Uv8NNnqqOyxMHZ4/GVc+UVHAaI6MoOhTNPMqwWuNrW38P7/r3B0RPBRe2xjU1K44pN0+gwLQxIpmW96GDqkld0GHWxpyO56Q8chQv3vW7JyKIKIAzk9EHVbFx4Jg8npOF1kSWVWgvEdVeCNT50/XMG+GZy8vMxzcN+yQYGIRW16QATvYm4f++AiWz/ZS7suhjhRuQsgeYmKdT9ywU4XkS6S92phILAxNBRKKUfRMoFLiDGeXKc7yfyRA0mdDpq1DhV96Pmok0Tbm6xpwNoE4KTyhxSNyXjYMDLZZOmob5dRU5c6J1wobNNXBUW1VrH96BGIKXwKZ77cLPDUPDTRMZbUSx+i3ddcf9BvMPW/Ri6vLMGmF+05YTPyHBSODVDFL2oni+iCRG7NeFDnk+2jVSOvrC9XmB0+nuw+gZb+ECRZYH6S9zXU3D4IMEB3wF4XC8pmi1tIxxaVdS6AfTgd3f9qRKLBYlnVM59cSozeIclqTTQg+xok9xTZHxWSBA0z+B2KddElQIP0gN5QOtGWMNi8ZNy919b5E/NkiANVZvmfPO9oyhfkMmoIi5wNzp820R28nE7Bu7iXYj1RmvzlVNYfv4Le/gJB8R3vB
- CSi04GOdhdvgc=
+        bh=f9a68xK47oRXllyR+mnjvXvrpcakKcNUJFmQMtWCIHE=;
+        b=jbjf2Qi8e4tvBu2hODKwHjNdmwsLGh0c5q9moa6JF8JJ9hwQ3W10WYl8GVYMR+w5tt
+         v2z5QF6pa3aVui/WisdQd7whDI9kuVtpGkEvPqA01Iqv+0aPJgWe10jJIk3LZDpJrz7A
+         DO7q+aNAPTILCspZUouFf6bBYSgYb7SL+PBZeOWRmT5+MsdgZ9P2Dse4k2/iE1hT23nZ
+         8ULd8hkuKXz9FloMX+aUmOPScnQiWNKBenA294enGd6WxAgat/HgWTF5RLECWoGl6vPl
+         1TRcfiOBAvfVdy05urKJiOYMoVw4KHVr9oRZdqOVsM6bbHTwxlIUqmI6ZTxDdJdTpllm
+         bYWg==
+X-Forwarded-Encrypted: i=1; AJvYcCViZqtPjdCfBMYGEaCg4a+/kWBW1OIMh41EtQoGidOtGFyP5aFO4H34Kj2u/vWX0CYtgkG6gg8WrFLbvTPxl0PApuP53o8XUqHa
+X-Gm-Message-State: AOJu0YxbszsItgLfX0Ko0I58pVIHIV6LA87aXu/13yvxALXnuRHoQXNz
+	sMKBvgaOf8Ipkd3GhgbUgJ025BuSFUtyq5LdUKJOfsbEd6aahnmTw5ZpIo8gmw==
+X-Google-Smtp-Source: AGHT+IFzT43LiUkGz/EGAkpNY7i32M+6kZqMoZ4GuuvK+zDVfnYRSrYzSfvQH3ZaHpZpap80oTiqDA==
+X-Received: by 2002:ac8:7e95:0:b0:42c:4773:c3d2 with SMTP id w21-20020ac87e95000000b0042c4773c3d2mr2492941qtj.53.1707362320520;
+        Wed, 07 Feb 2024 19:18:40 -0800 (PST)
+X-Forwarded-Encrypted: i=1; AJvYcCWPPJ6qzORQCQTgdORb/FnmueS5tjB7vy2+mLdqZ77tLfgybSlSS9yDsKniHR7D5+wO64pv0YJTfh/l6GmEJi06dqeAc71+snxZp0f12Iun94nsZMnkitEUqBs8qw0sNQgFZUuYtfGqfWJxi9bpIQT/k3vGTHtZomQZGRaUZzz6akTP1r3cVqUpgOeo5ao+07a33CqUTaOfGwpHozMe/gxMc1uEwzbEdxKbNsPEUQPq8bHtTnU3F2Jk4TjlF5etWt1Xiql0VC1euGwjehOJvSqVttoDOYNQnQx76iHnuv9b63gUfccs/eU5PnP/Ax9Jcs2pkgAo5t/RgeEro7W6+Me6Ye3vkLvZPt/jJjUmPZXIyaxd+4MaM6xRCMxP0il6EySpoxhYPK8pLu+0cRaOcr2E2y7aFcdIpjf7R0tygmwUA0Cxc9M+wzDQs2AcP84r0TyU+zvQnxlB86/KAEbAXw7VFj4GJt5yAud2RKqSxj5Nki+cmpbchQeqc5sK0bdsOK0IP+MsEEQbfGYAHOAkExncGr5AbUoCf/sdFmbdHf5MaOQ7fC/uOdmWAsIUM7ycaMbc/PO6xxKBZK5zQTyjBAAbh1BqIlphdpdgk4INDpKlO1GtAdQPGlRRIMMHnFqEMiaA65w9fW1vg38h3NOCrJxLC13gwYLRbFzlfqTfdwmFGBFpkY8SdGvbGHx3LEGt08fvZ4mwns8zWr+asBuIApOyhmFDwRZRwBGcNF9nRkcqzD6UyFmG+eCqWTGqQ9xXHQ0G8gP/0fRAxgC67VXuYIXpnmpIg5nHMKnwJVEm4nY+8RrNQQhSsgrtr/CQQyB9gA/oYst7KHrh4Oql7Sxdprxq8NKtsO5zwOG2jshafYhlTHiL1hoXsp9QTHkWH0MYkI6LNOP1/9bIF5UXcRGVuf7pAtVX7qd4Xh7TP1Benu/oXB5CwgC13yAfSW6ri5aog6MO4A
+ NLdA3ncI/3kzs=
 Received: from localhost ([70.22.175.108])
-        by smtp.gmail.com with ESMTPSA id m16-20020ae9e010000000b00783feb25669sm1067754qkk.116.2024.02.07.19.18.38
+        by smtp.gmail.com with ESMTPSA id f19-20020ac859d3000000b0042ab4a129easm1065675qtf.73.2024.02.07.19.18.39
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 07 Feb 2024 19:18:38 -0800 (PST)
-Date: Wed, 07 Feb 2024 22:18:37 -0500
-Message-ID: <c0b607b41771394610d11d48e22ac6ec@paul-moore.com>
+        Wed, 07 Feb 2024 19:18:40 -0800 (PST)
+Date: Wed, 07 Feb 2024 22:18:39 -0500
+Message-ID: <79289275487c2513371bd8dac5565d68@paul-moore.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -68,26 +68,26 @@ Content-Transfer-Encoding: 8bit
 From: Paul Moore <paul@paul-moore.com>
 To: Roberto Sassu <roberto.sassu@huaweicloud.com>, viro@zeniv.linux.org.uk, brauner@kernel.org, chuck.lever@oracle.com, jlayton@kernel.org, neilb@suse.de, kolga@netapp.com, Dai.Ngo@oracle.com, tom@talpey.com, jmorris@namei.org, serge@hallyn.com, zohar@linux.ibm.com, dmitry.kasatkin@gmail.com, eric.snowberg@oracle.com, dhowells@redhat.com, jarkko@kernel.org, stephen.smalley.work@gmail.com, eparis@parisplace.org, casey@schaufler-ca.com, shuah@kernel.org, mic@digikod.net
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org, linux-integrity@vger.kernel.org, keyrings@vger.kernel.org, selinux@vger.kernel.org, linux-kselftest@vger.kernel.org, Roberto Sassu <roberto.sassu@huawei.com>, Stefan Berger <stefanb@linux.ibm.com>
-Subject: Re: [PATCH v9 6/25] evm: Align evm_inode_post_setattr() definition  with LSM infrastructure
-References: <20240115181809.885385-7-roberto.sassu@huaweicloud.com>
-In-Reply-To: <20240115181809.885385-7-roberto.sassu@huaweicloud.com>
+Subject: Re: [PATCH v9 8/25] evm: Align evm_inode_post_setxattr() definition  with LSM infrastructure
+References: <20240115181809.885385-9-roberto.sassu@huaweicloud.com>
+In-Reply-To: <20240115181809.885385-9-roberto.sassu@huaweicloud.com>
 
 On Jan 15, 2024 Roberto Sassu <roberto.sassu@huaweicloud.com> wrote:
 > 
-> Change evm_inode_post_setattr() definition, so that it can be registered as
-> implementation of the inode_post_setattr hook (to be introduced).
+> Change evm_inode_post_setxattr() definition, so that it can be registered
+> as implementation of the inode_post_setxattr hook.
 > 
 > Signed-off-by: Roberto Sassu <roberto.sassu@huawei.com>
 > Reviewed-by: Stefan Berger <stefanb@linux.ibm.com>
-> Reviewed-by: Casey Schaufler <casey@schaufler-ca.com>
 > Reviewed-by: Mimi Zohar <zohar@linux.ibm.com>
+> Reviewed-by: Casey Schaufler <casey@schaufler-ca.com>
 > ---
->  fs/attr.c                         | 2 +-
->  include/linux/evm.h               | 6 ++++--
+>  include/linux/evm.h               | 8 +++++---
 >  security/integrity/evm/evm_main.c | 4 +++-
->  3 files changed, 8 insertions(+), 4 deletions(-)
+>  security/security.c               | 2 +-
+>  3 files changed, 9 insertions(+), 5 deletions(-)
 
-Reviewed-by: Paul Moore <paul@paul-moore.com>
+Acked-by: Paul Moore <paul@paul-moore.com>
 
 --
 paul-moore.com
