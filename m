@@ -1,185 +1,231 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DBF91B96E
-	for <linux-nfs@vger.kernel.org>; Sun, 25 Feb 2024 23:19:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BB231B964
+	for <linux-nfs@vger.kernel.org>; Sun, 25 Feb 2024 23:44:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1708903162; cv=none; b=qgGRdq1H10o+viulaNw5jHvH2krZC0fIPucUnnOahgL4JkgyN4hyt1ClNPkGPyOt5KCZ/eQDPzLmZ3tUPXJBStnpk118TbHAIe0UPrhPWfXOHCnnPd6E6+sGnnjusUuGlFiNLF8UW1Of2xQHiBKxmAtTJgfcEab4ZXLvWDBfvcw=
+	t=1708904658; cv=none; b=NroKfN0K467stJdLPajRBgZKEyjz86d/T2GHqZOuUlx14h6c6nU7IFK8gtmWptdowRt/MwwPEN8UA+lfhOQWpPvNHKD27W4iylgejtx03YydQcRdm+iXdBGPYwlsr4ENQ5YD2E4yVHtrsgV0lEC+VvLXiJyq/TE0yCp2Q5iZxSY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1708903162; c=relaxed/simple;
-	bh=yG9VK6sYoKL048BNDlWVezDntTk+6IaNxaDCzd/sRRU=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=oWweGFBRJA7UaG7Uo/UGlEJ7xfY5bFPmUOidxFoJt1RwyhdsdYnH6lMq/56EmlXR8B1l4sCGJKcowdT4pEpM+SJZVn6n1BiJlFXpfxOAsNRopxzaBGEUCJRJzs2uuDwLiTOIGFSQniw1RUQrnJsZKZtMEh9m94vq1bcNGU761lA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=Zww1bbDp; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=6x7Oum5J; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=Zww1bbDp; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=6x7Oum5J; arc=none smtp.client-ip=195.135.223.130
+	s=arc-20240116; t=1708904658; c=relaxed/simple;
+	bh=fTygNOnP+sx3HqtgQokDSEkdeIMqSqRqjn83M0tegO0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=TfOG5p2tPxx/8uQ8XagMdK7M4EAeC8ADRXE2xStqKwLiOt+Everw5m291sFuA3BxK4AfPOQ63XketIT7uGJ0Upc7NdcJUKRGB3WT9nPm3uFlkNDcsQib47HCABzHeK2d6sw1TMXSjrUcgJ9/ChqkCGDU0BZMpiA7VbSzjVspetg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=uYCRzJTB; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=joPTJzoW; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=uYCRzJTB; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=joPTJzoW; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="Zww1bbDp";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="6x7Oum5J";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="Zww1bbDp";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="6x7Oum5J"
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="uYCRzJTB";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="joPTJzoW";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="uYCRzJTB";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="joPTJzoW"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 538D32249B;
-	Sun, 25 Feb 2024 23:19:18 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 4DCDA22406;
+	Sun, 25 Feb 2024 23:44:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1708903158; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
+	t=1708904654; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=EL7IrpQyam8/xJ3PnuPmhMw6711+BfeHlinpyiycVCE=;
-	b=Zww1bbDp/BiU7Xms07SBT8gS7Uva+YN19AOiKCCXw4H37JM2rDBq5YlBFkBdsmX6zO9BJ/
-	eggEO21AL7+DJjnaDkY47i3cIGJFwidysNiWr+DkVfmKSMbZqzK1DPf9kHbEvH3UERY80Z
-	oIe2q8TnILMpiB+MVKvmkfLQzhrJri4=
+	bh=8vo39r89H0izKhQVn+7WXCzz84Khuz9WfpzQwhFbtRU=;
+	b=uYCRzJTB7MjfeqIIzLTMKmoBmWdIfxxt7ioz4SVMw9S7H9cMI1wC3ykajPhg8Wx3Gk8jFk
+	VYV1WrPJt2sZSEvof4hHLpjdx6dCjiRfhz2m7QeBZJOJU0yaS9WivUd8qYjPzJ7ORaMugR
+	3p2e6+yZzgr+b9e5pKocNNKT07Sxuls=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1708903158;
+	s=susede2_ed25519; t=1708904654;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
+	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=EL7IrpQyam8/xJ3PnuPmhMw6711+BfeHlinpyiycVCE=;
-	b=6x7Oum5JnEAtdyPsOHWe/QoB0pZaw6yPX1IPJq2bo7DWw7hUx+6KKJb8IGhocFnZ9x0PHP
-	AMrtDJWKQDSRGsCw==
+	bh=8vo39r89H0izKhQVn+7WXCzz84Khuz9WfpzQwhFbtRU=;
+	b=joPTJzoWfBZ7LrPZ20WFLVuICl5TsmMO1enUCJqv4ANvoALNMYbH32tnpryzXJ9q9w38el
+	Z540l7sYY+IckbAA==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1708903158; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
+	t=1708904654; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=EL7IrpQyam8/xJ3PnuPmhMw6711+BfeHlinpyiycVCE=;
-	b=Zww1bbDp/BiU7Xms07SBT8gS7Uva+YN19AOiKCCXw4H37JM2rDBq5YlBFkBdsmX6zO9BJ/
-	eggEO21AL7+DJjnaDkY47i3cIGJFwidysNiWr+DkVfmKSMbZqzK1DPf9kHbEvH3UERY80Z
-	oIe2q8TnILMpiB+MVKvmkfLQzhrJri4=
+	bh=8vo39r89H0izKhQVn+7WXCzz84Khuz9WfpzQwhFbtRU=;
+	b=uYCRzJTB7MjfeqIIzLTMKmoBmWdIfxxt7ioz4SVMw9S7H9cMI1wC3ykajPhg8Wx3Gk8jFk
+	VYV1WrPJt2sZSEvof4hHLpjdx6dCjiRfhz2m7QeBZJOJU0yaS9WivUd8qYjPzJ7ORaMugR
+	3p2e6+yZzgr+b9e5pKocNNKT07Sxuls=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1708903158;
+	s=susede2_ed25519; t=1708904654;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
+	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=EL7IrpQyam8/xJ3PnuPmhMw6711+BfeHlinpyiycVCE=;
-	b=6x7Oum5JnEAtdyPsOHWe/QoB0pZaw6yPX1IPJq2bo7DWw7hUx+6KKJb8IGhocFnZ9x0PHP
-	AMrtDJWKQDSRGsCw==
+	bh=8vo39r89H0izKhQVn+7WXCzz84Khuz9WfpzQwhFbtRU=;
+	b=joPTJzoWfBZ7LrPZ20WFLVuICl5TsmMO1enUCJqv4ANvoALNMYbH32tnpryzXJ9q9w38el
+	Z540l7sYY+IckbAA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 6225B13A89;
-	Sun, 25 Feb 2024 23:19:16 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id B1C3C13A89;
+	Sun, 25 Feb 2024 23:44:12 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([10.150.64.162])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id oO7yAPTK22XRHwAAD6G6ig
-	(envelope-from <neilb@suse.de>); Sun, 25 Feb 2024 23:19:16 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	id KB+2FMzQ22VFJAAAD6G6ig
+	(envelope-from <neilb@suse.de>); Sun, 25 Feb 2024 23:44:12 +0000
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <steved@redhat.com>
+Cc: linux-nfs@vger.kernel.org,
+	Petr Vorel <pvorel@suse.cz>
+Subject: [PATCH 1/3] Allow working with abstract AF_UNIX addresses.
+Date: Mon, 26 Feb 2024 10:40:48 +1100
+Message-ID: <20240225234337.19744-2-neilb@suse.de>
+X-Mailer: git-send-email 2.43.0
+In-Reply-To: <20240225234337.19744-1-neilb@suse.de>
+References: <20240225234337.19744-1-neilb@suse.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: "NeilBrown" <neilb@suse.de>
-To: "Jacek Tomaka" <Jacek.Tomaka@poczta.fm>
-Cc: trond.myklebust@hammerspace.com, anna.schumaker@netapp.com,
- linux-nfs@vger.kernel.org
-Subject: Re: NFS data corruption on congested network
-In-reply-to: <170890214013.24797.3257981274610636720@noble.neil.brown.name>
-References: <ujvntmhlfharduyanjob@tgqn>,
- <170890214013.24797.3257981274610636720@noble.neil.brown.name>
-Date: Mon, 26 Feb 2024 10:19:08 +1100
-Message-id: <170890314859.24797.16728369357798855399@noble.neil.brown.name>
+Content-Transfer-Encoding: 8bit
 Authentication-Results: smtp-out1.suse.de;
 	none
-X-Spamd-Result: default: False [-3.10 / 50.00];
+X-Spamd-Result: default: False [4.90 / 50.00];
 	 ARC_NA(0.00)[];
 	 RCVD_VIA_SMTP_AUTH(0.00)[];
 	 FROM_HAS_DN(0.00)[];
-	 RCPT_COUNT_THREE(0.00)[4];
-	 FREEMAIL_ENVRCPT(0.00)[poczta.fm];
+	 RCPT_COUNT_THREE(0.00)[3];
+	 R_MISSING_CHARSET(2.50)[];
 	 TO_MATCH_ENVRCPT_ALL(0.00)[];
 	 MIME_GOOD(-0.10)[text/plain];
+	 BROKEN_CONTENT_TYPE(1.50)[];
 	 TO_DN_SOME(0.00)[];
 	 RCVD_COUNT_THREE(0.00)[3];
 	 DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	 FREEMAIL_TO(0.00)[poczta.fm];
+	 MID_CONTAINS_FROM(1.00)[];
+	 DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email];
 	 FUZZY_BLOCKED(0.00)[rspamd.com];
 	 FROM_EQ_ENVFROM(0.00)[];
 	 MIME_TRACE(0.00)[0:+];
-	 RCVD_TLS_ALL(0.00)[];
-	 BAYES_HAM(-3.00)[100.00%]
-X-Spam-Level: 
+	 RCVD_TLS_ALL(0.00)[]
+X-Spam-Level: ****
+X-Spam-Score: 4.90
 X-Spam-Flag: NO
-X-Spam-Score: -3.10
 
-On Mon, 26 Feb 2024, NeilBrown wrote:
-> On Fri, 23 Feb 2024, Jacek Tomaka wrote:
-> > Hello,
-> > I ran into an issue where the NFS file ends up being corrupted on disk. W=
-e started noticing it on certain, quite old hardware after upgrading OS from =
-Centos 6 to Rocky 9.2. We do see it on Rocky 9.3 but not on 9.1.
-> >=20
-> > After some investigation we have reasons to believe that the change was i=
-ntroduced by the following commit:=20
-> > https://github.com/torvalds/linux/commit/6df25e58532be7a4cd6fb15bcd858059=
-47402d91
->=20
-> Thanks for the report.
-> Can you try a change to your kernel?
->=20
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index bb79d3a886ae..08a787147bd2 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -668,8 +668,10 @@ static int nfs_writepage_locked(struct folio *folio,
->  	int err;
-> =20
->  	if (wbc->sync_mode =3D=3D WB_SYNC_NONE &&
-> -	    NFS_SERVER(inode)->write_congested)
-> +	    NFS_SERVER(inode)->write_congested) {
-> +		folio_redirty_for_writepage(wbc, folio);
->  		return AOP_WRITEPAGE_ACTIVATE;
-> +	}
-> =20
->  	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGE);
->  	nfs_pageio_init_write(&pgio, inode, 0, false,
+Linux supports abstract addresses for AF_UNIX.
+These have .sun_path starting with '\0'.
+When presented in human-readable form they have a leading '@' instead.
+The length of the sockaddr must not include any trailing
+zeroes after the abstract name, as they will treated as part of the
+name and cause address matching to fail.
 
-Actually this is only needed before linux 6.8 as only nfs_writepage()
-can call nfs_writepage_locked() with sync_mode of WB_SYNC_NONE.
-So v5.18 through v6.7 might need fixing.
+This patch makes various changes to code that works with sun_path to
+ensure that abstract addresses work correctly.
 
-NeilBrown
+In particular it fixes a bug in __rpc_sockisbound() which incorrectly
+determines that a socket bound to an abstract address is in fact not
+bound.  This prevents sockets with abstract addresses being used even
+when created outside of the library.
 
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ src/rpc_com.h     |  6 ++++++
+ src/rpc_generic.c | 18 ++++++++++++------
+ src/rpc_soc.c     |  6 +++++-
+ 3 files changed, 23 insertions(+), 7 deletions(-)
 
->=20
->=20
-> though if your kernel is older than 6.3, that will be
->          redirty_for_writepage(wbc, page);
->=20
-> Thanks,
-> NeilBrown
->=20
->=20
-> >=20
-> > We write a number of files on a single thread. Each file is up to 4GB. Be=
-fore closing we call fdatasync. Sometimes the file ends up being corrupted. T=
-he corruptions is in a form of a number ( more than 3k pages in one case) of =
-zero filled pages.
-> > When this happens the file cannot be deleted from the client machine whic=
-h created the file, even when the process which wrote the file completed succ=
-essfully.
-> >=20
-> > The machines have about 128GB of memory, i think and probably network tha=
-t leaves to be desired.
-> >=20
-> > My reproducer is currently tied up to our internal software, but i suspec=
-t setting the write_congested flag randomly should allow to reproduce the iss=
-ue.
-> >=20
-> > Regards.
-> > Jacek Tomaka
-> >=20
->=20
->=20
->=20
+diff --git a/src/rpc_com.h b/src/rpc_com.h
+index 76badefcfe90..ded72d1a647e 100644
+--- a/src/rpc_com.h
++++ b/src/rpc_com.h
+@@ -60,6 +60,12 @@ bool_t __xdrrec_getrec(XDR *, enum xprt_stat *, bool_t);
+ void __xprt_unregister_unlocked(SVCXPRT *);
+ void __xprt_set_raddr(SVCXPRT *, const struct sockaddr_storage *);
+ 
++/* Evaluate to actual length of the `sockaddr_un' structure, whether
++ * abstract or not.
++ */
++#include <stddef.h>
++#define SUN_LEN_A(ptr) (offsetof(struct sockaddr_un, sun_path)	\
++			+ 1 + strlen((ptr)->sun_path + 1))
+ 
+ extern int __svc_maxrec;
+ 
+diff --git a/src/rpc_generic.c b/src/rpc_generic.c
+index aabbe4be896c..e649c87198a3 100644
+--- a/src/rpc_generic.c
++++ b/src/rpc_generic.c
+@@ -650,7 +650,8 @@ __rpc_taddr2uaddr_af(int af, const struct netbuf *nbuf)
+ 		if (path_len < 0)
+ 			return NULL;
+ 
+-		if (asprintf(&ret, "%.*s", path_len, sun->sun_path) < 0)
++		if (asprintf(&ret, "%c%.*s", sun->sun_path[0] ?: '\0',
++			     path_len - 1, sun->sun_path + 1) < 0)
+ 			return (NULL);
+ 		break;
+ 	default:
+@@ -682,9 +683,10 @@ __rpc_uaddr2taddr_af(int af, const char *uaddr)
+ 
+ 	/*
+ 	 * AF_LOCAL addresses are expected to be absolute
+-	 * pathnames, anything else will be AF_INET or AF_INET6.
++	 * pathnames or abstract names, anything else will be
++	 * AF_INET or AF_INET6.
+ 	 */
+-	if (*addrstr != '/') {
++	if (*addrstr != '/' && *addrstr != '@') {
+ 		p = strrchr(addrstr, '.');
+ 		if (p == NULL)
+ 			goto out;
+@@ -747,6 +749,9 @@ __rpc_uaddr2taddr_af(int af, const char *uaddr)
+ 		strncpy(sun->sun_path, addrstr, sizeof(sun->sun_path) - 1);
+ 		ret->len = SUN_LEN(sun);
+ 		ret->maxlen = sizeof(struct sockaddr_un);
++		if (sun->sun_path[0] == '@')
++			/* Abstract address */
++			sun->sun_path[0] = '\0';
+ 		ret->buf = sun;
+ 		break;
+ 	default:
+@@ -834,6 +839,7 @@ __rpc_sockisbound(int fd)
+ 		struct sockaddr_un  usin;
+ 	} u_addr;
+ 	socklen_t slen;
++	int path_len;
+ 
+ 	slen = sizeof (struct sockaddr_storage);
+ 	if (getsockname(fd, (struct sockaddr *)(void *)&ss, &slen) < 0)
+@@ -849,9 +855,9 @@ __rpc_sockisbound(int fd)
+ 			return (u_addr.sin6.sin6_port != 0);
+ #endif
+ 		case AF_LOCAL:
+-			/* XXX check this */
+-			memcpy(&u_addr.usin, &ss, sizeof(u_addr.usin)); 
+-			return (u_addr.usin.sun_path[0] != 0);
++			memcpy(&u_addr.usin, &ss, sizeof(u_addr.usin));
++			path_len = slen - offsetof(struct sockaddr_un, sun_path);
++			return path_len > 0;
+ 		default:
+ 			break;
+ 	}
+diff --git a/src/rpc_soc.c b/src/rpc_soc.c
+index fde121db75cf..c6c93b50337d 100644
+--- a/src/rpc_soc.c
++++ b/src/rpc_soc.c
+@@ -701,7 +701,11 @@ svcunix_create(sock, sendsize, recvsize, path)
+ 	memset(&sun, 0, sizeof sun);
+ 	sun.sun_family = AF_LOCAL;
+ 	strncpy(sun.sun_path, path, (sizeof(sun.sun_path)-1));
+-	addrlen = sizeof(struct sockaddr_un);
++	if (sun.sun_path[0] == '@')
++		/* abstract address */
++		sun.sun_path[0] = '\0';
++
++	addrlen = SUN_LEN_A(&sun);
+ 	sa = (struct sockaddr *)&sun;
+ 
+ 	if (bind(sock, sa, addrlen) < 0)
+-- 
+2.43.0
 
