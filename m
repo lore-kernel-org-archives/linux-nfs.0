@@ -1,45 +1,45 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CE97613E6AD
-	for <linux-nfs@vger.kernel.org>; Thu, 28 Mar 2024 16:39:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1C7A413EFF6
+	for <linux-nfs@vger.kernel.org>; Thu, 28 Mar 2024 16:39:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1711643949; cv=none; b=YI96qmehqtdewjZGOPZmBtHIz58NnHVPCcmUOh+Bpw34wXlTJ9vOqk98/JvVB7swShV9jZK0/S+k38FRKTsUkwB6FX3wrLg2fZMP5KxI/2ZCGWLnR/eiqZtlx3INx/8DrP68u+kbY+UzZuQiGPp3r1cxmEuBUdJravFkOPrCaFI=
+	t=1711643955; cv=none; b=Q2/CaOmllgTzrzjmO9ZA5dIEtfnfGPpEZxT1y4ik3qAdkG7fjV+jH0YO9hYcQRuJ88g4NB5cx0I5/zhAW5QQk3eG36vPfV+oR8pqn0daoGEG2t2suONK6iZyguduzOiznbmH8eKqKJhonsZIeDrz6yq/tCjOjFLR3/EsWpNm3A0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1711643949; c=relaxed/simple;
-	bh=YbOsA41M4sFoThuuVNZw07f+V9OfvCH9DdXZ5K83PCo=;
+	s=arc-20240116; t=1711643955; c=relaxed/simple;
+	bh=/05oRYXuuD62BOWpkiLmjztCrdnWPcumQgd+9QYa1e4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Vl9U1Bb6ykbFd61epyzV3+tFmQOeiJ4HFqK/sM60E9NAFdm4v2kUJu8z9VgvWxjQKfGV3DFQ/oO/Rgn65yaj/ZwNBGuZemlEtOeul+RuS3Uo61Vx3+ic2ncDJgra7tkcPupTTehGfFylqEyQamJa/Yvobxmq6t49gHp/1NoNk8M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=QByiR/fH; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=mhsnx9ONosz05L1FFTJ9Vs4mf0RrfCec7IHsGutTmFPnc48fapUdL9oznvCz8L7IbHfMJRQ3f0/rjxERP/mqgcs5u6sFfaYKKyd3HuwZxUQToLoLwIWAmMb0etRhk+/E1+Ke4r8IKULBFJAKEZxqb/AO7xu/0nYWCfxSRGKxZjU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=P0bZP8uK; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="QByiR/fH"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="P0bZP8uK"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1711643945;
+	s=mimecast20190719; t=1711643952;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=UKP8EIk/90tXduvWfbi83OCfYJOvuR93XNpIpLtR7a4=;
-	b=QByiR/fHG8YKrzbo9CcXYNpM63foE5BOhSAax1I3RJn8gLjjKkjN7qhINkTiVFv4ZY8c2f
-	Z1Pd5ZM/bVepPbB64jMa/oFfRyH1ipGEXxFKGcJAbm3k8hWa9fpHijcl5v7T9kdvo/97Zz
-	JjBPBEhIdrgYEM5xegfAFDWMI36IN2M=
-Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
- by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-10-L7b2-t2COAqIU4q9j17nCQ-1; Thu,
- 28 Mar 2024 12:38:57 -0400
-X-MC-Unique: L7b2-t2COAqIU4q9j17nCQ-1
-Received: from smtp.corp.redhat.com (int-mx07.intmail.prod.int.rdu2.redhat.com [10.11.54.7])
+	bh=clNmVAkUKGd8Z01ZlWkYBIz9mR2bmkgLzFIGVS5d4sY=;
+	b=P0bZP8uKTkT+7RRDrbOLvUlSmtPPsC+uEmZ9h6/472MemOVef0+My/uf09Rllx2BN/kVHY
+	QxHQ/zwLh/Cd2hGPuy7iooSqbOntXdvmMmulwKDzHL0Se7jhp/SHAe7kk/XQRGXPl8d0RK
+	BgTe2saWeuMh43WBmZpgjnAG96sHYsk=
+Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
+ [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-7-ZlAnjQNcP7WbHuSb6f6JGQ-1; Thu, 28 Mar 2024 12:39:09 -0400
+X-MC-Unique: ZlAnjQNcP7WbHuSb6f6JGQ-1
+Received: from smtp.corp.redhat.com (int-mx08.intmail.prod.int.rdu2.redhat.com [10.11.54.8])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 334EE3801FF3;
-	Thu, 28 Mar 2024 16:38:56 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id A36488007A2;
+	Thu, 28 Mar 2024 16:39:07 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.146])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id 5D0D51C05E1F;
-	Thu, 28 Mar 2024 16:38:52 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 98F80C423E0;
+	Thu, 28 Mar 2024 16:39:04 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -65,12 +65,10 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Latchesar Ionkov <lucho@ionkov.net>,
-	Christian Schoenebeck <linux_oss@crudebyte.com>
-Subject: [PATCH 24/26] netfs: Remove the old writeback code
-Date: Thu, 28 Mar 2024 16:34:16 +0000
-Message-ID: <20240328163424.2781320-25-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org
+Subject: [PATCH 26/26] netfs, afs: Use writeback retry to deal with alternate keys
+Date: Thu, 28 Mar 2024 16:34:18 +0000
+Message-ID: <20240328163424.2781320-27-dhowells@redhat.com>
 In-Reply-To: <20240328163424.2781320-1-dhowells@redhat.com>
 References: <20240328163424.2781320-1-dhowells@redhat.com>
 Precedence: bulk
@@ -80,1257 +78,346 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.7
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.8
 
-Remove the old writeback code.
+Use a hook in the new writeback code's retry algorithm to rotate the keys
+once all the outstanding subreqs have failed rather than doing it
+separately on each subreq.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Jeff Layton <jlayton@kernel.org>
-cc: Eric Van Hensbergen <ericvh@kernel.org>
-cc: Latchesar Ionkov <lucho@ionkov.net>
-cc: Dominique Martinet <asmadeus@codewreck.org>
-cc: Christian Schoenebeck <linux_oss@crudebyte.com>
 cc: Marc Dionne <marc.dionne@auristor.com>
-cc: v9fs@lists.linux.dev
+cc: Jeff Layton <jlayton@kernel.org>
 cc: linux-afs@lists.infradead.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/9p/vfs_addr.c          |  34 ---
- fs/afs/write.c            |  40 ---
- fs/netfs/buffered_write.c | 629 --------------------------------------
- fs/netfs/direct_write.c   |   2 +-
- fs/netfs/output.c         | 477 -----------------------------
- 5 files changed, 1 insertion(+), 1181 deletions(-)
- delete mode 100644 fs/netfs/output.c
+ fs/afs/file.c            |   1 +
+ fs/afs/internal.h        |   1 +
+ fs/afs/write.c           | 175 +++++++++++++++++++--------------------
+ fs/netfs/write_collect.c |   9 +-
+ include/linux/netfs.h    |   2 +
+ 5 files changed, 96 insertions(+), 92 deletions(-)
 
-diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
-index 4845e655bc39..a97ceb105cd8 100644
---- a/fs/9p/vfs_addr.c
-+++ b/fs/9p/vfs_addr.c
-@@ -60,40 +60,6 @@ static void v9fs_issue_write(struct netfs_io_subrequest *subreq)
- 	netfs_write_subrequest_terminated(subreq, len ?: err, false);
+diff --git a/fs/afs/file.c b/fs/afs/file.c
+index 8f983e3ecae7..c3f0c45ae9a9 100644
+--- a/fs/afs/file.c
++++ b/fs/afs/file.c
+@@ -368,6 +368,7 @@ static int afs_check_write_begin(struct file *file, loff_t pos, unsigned len,
+ static void afs_free_request(struct netfs_io_request *rreq)
+ {
+ 	key_put(rreq->netfs_priv);
++	afs_put_wb_key(rreq->netfs_priv2);
  }
  
--#if 0 // TODO: Remove
--static void v9fs_upload_to_server(struct netfs_io_subrequest *subreq)
+ static void afs_update_i_size(struct inode *inode, loff_t new_i_size)
+diff --git a/fs/afs/internal.h b/fs/afs/internal.h
+index 887245f9336d..6e1d3c4daf72 100644
+--- a/fs/afs/internal.h
++++ b/fs/afs/internal.h
+@@ -1601,6 +1601,7 @@ extern int afs_check_volume_status(struct afs_volume *, struct afs_operation *);
+ void afs_prepare_write(struct netfs_io_subrequest *subreq);
+ void afs_issue_write(struct netfs_io_subrequest *subreq);
+ void afs_begin_writeback(struct netfs_io_request *wreq);
++void afs_retry_request(struct netfs_io_request *wreq, struct netfs_io_stream *stream);
+ extern int afs_writepages(struct address_space *, struct writeback_control *);
+ extern int afs_fsync(struct file *, loff_t, loff_t, int);
+ extern vm_fault_t afs_page_mkwrite(struct vm_fault *vmf);
+diff --git a/fs/afs/write.c b/fs/afs/write.c
+index 6ef7d4cbc008..838db2e94388 100644
+--- a/fs/afs/write.c
++++ b/fs/afs/write.c
+@@ -29,43 +29,39 @@ static void afs_pages_written_back(struct afs_vnode *vnode, loff_t start, unsign
+ 
+ /*
+  * Find a key to use for the writeback.  We cached the keys used to author the
+- * writes on the vnode.  *_wbk will contain the last writeback key used or NULL
+- * and we need to start from there if it's set.
++ * writes on the vnode.  wreq->netfs_priv2 will contain the last writeback key
++ * record used or NULL and we need to start from there if it's set.
++ * wreq->netfs_priv will be set to the key itself or NULL.
+  */
+-static int afs_get_writeback_key(struct afs_vnode *vnode,
+-				 struct afs_wb_key **_wbk)
++static void afs_get_writeback_key(struct netfs_io_request *wreq)
+ {
+-	struct afs_wb_key *wbk = NULL;
+-	struct list_head *p;
+-	int ret = -ENOKEY, ret2;
++	struct afs_wb_key *wbk, *old = wreq->netfs_priv2;
++	struct afs_vnode *vnode = AFS_FS_I(wreq->inode);
++
++	key_put(wreq->netfs_priv);
++	wreq->netfs_priv = NULL;
++	wreq->netfs_priv2 = NULL;
+ 
+ 	spin_lock(&vnode->wb_lock);
+-	if (*_wbk)
+-		p = (*_wbk)->vnode_link.next;
++	if (old)
++		wbk = list_next_entry(old, vnode_link);
+ 	else
+-		p = vnode->wb_keys.next;
++		wbk = list_first_entry(&vnode->wb_keys, struct afs_wb_key, vnode_link);
+ 
+-	while (p != &vnode->wb_keys) {
+-		wbk = list_entry(p, struct afs_wb_key, vnode_link);
++	list_for_each_entry_from(wbk, &vnode->wb_keys, vnode_link) {
+ 		_debug("wbk %u", key_serial(wbk->key));
+-		ret2 = key_validate(wbk->key);
+-		if (ret2 == 0) {
++		if (key_validate(wbk->key) == 0) {
+ 			refcount_inc(&wbk->usage);
++			wreq->netfs_priv = key_get(wbk->key);
++			wreq->netfs_priv2 = wbk;
+ 			_debug("USE WB KEY %u", key_serial(wbk->key));
+ 			break;
+ 		}
+-
+-		wbk = NULL;
+-		if (ret == -ENOKEY)
+-			ret = ret2;
+-		p = p->next;
+ 	}
+ 
+ 	spin_unlock(&vnode->wb_lock);
+-	if (*_wbk)
+-		afs_put_wb_key(*_wbk);
+-	*_wbk = wbk;
+-	return 0;
++
++	afs_put_wb_key(old);
+ }
+ 
+ static void afs_store_data_success(struct afs_operation *op)
+@@ -88,72 +84,83 @@ static const struct afs_operation_ops afs_store_data_operation = {
+ };
+ 
+ /*
+- * write to a file
++ * Prepare a subrequest to write to the server.  This sets the max_len
++ * parameter.
+  */
+-static int afs_store_data(struct afs_vnode *vnode, struct iov_iter *iter, loff_t pos)
++void afs_prepare_write(struct netfs_io_subrequest *subreq)
++{
++	//if (test_bit(NETFS_SREQ_RETRYING, &subreq->flags))
++	//	subreq->max_len = 512 * 1024;
++	//else
++	subreq->max_len = 256 * 1024 * 1024;
++}
++
++/*
++ * Issue a subrequest to write to the server.
++ */
++void afs_issue_write(struct netfs_io_subrequest *subreq)
+ {
++	struct netfs_io_request *wreq = subreq->rreq;
+ 	struct afs_operation *op;
+-	struct afs_wb_key *wbk = NULL;
+-	loff_t size = iov_iter_count(iter);
++	struct afs_vnode *vnode = AFS_FS_I(wreq->inode);
++	unsigned long long pos = subreq->start + subreq->transferred;
++	size_t len = subreq->len - subreq->transferred;
+ 	int ret = -ENOKEY;
+ 
+-	_enter("%s{%llx:%llu.%u},%llx,%llx",
++	_enter("R=%x[%x],%s{%llx:%llu.%u},%llx,%zx",
++	       wreq->debug_id, subreq->debug_index,
+ 	       vnode->volume->name,
+ 	       vnode->fid.vid,
+ 	       vnode->fid.vnode,
+ 	       vnode->fid.unique,
+-	       size, pos);
++	       pos, len);
+ 
+-	ret = afs_get_writeback_key(vnode, &wbk);
+-	if (ret) {
+-		_leave(" = %d [no keys]", ret);
+-		return ret;
+-	}
++#if 0 // Error injection
++	if (subreq->debug_index == 3)
++		return netfs_write_subrequest_terminated(subreq, -ENOANO, false);
+ 
+-	op = afs_alloc_operation(wbk->key, vnode->volume);
+-	if (IS_ERR(op)) {
+-		afs_put_wb_key(wbk);
+-		return -ENOMEM;
++	if (!test_bit(NETFS_SREQ_RETRYING, &subreq->flags)) {
++		set_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags);
++		return netfs_write_subrequest_terminated(subreq, -EAGAIN, false);
+ 	}
++#endif
++
++	op = afs_alloc_operation(wreq->netfs_priv, vnode->volume);
++	if (IS_ERR(op))
++		return netfs_write_subrequest_terminated(subreq, -EAGAIN, false);
+ 
+ 	afs_op_set_vnode(op, 0, vnode);
+-	op->file[0].dv_delta = 1;
++	op->file[0].dv_delta	= 1;
+ 	op->file[0].modification = true;
+-	op->store.pos = pos;
+-	op->store.size = size;
+-	op->flags |= AFS_OPERATION_UNINTR;
+-	op->ops = &afs_store_data_operation;
++	op->store.pos		= pos;
++	op->store.size		= len,
++	op->flags		|= AFS_OPERATION_UNINTR;
++	op->ops			= &afs_store_data_operation;
+ 
+-try_next_key:
+ 	afs_begin_vnode_operation(op);
+ 
+-	op->store.write_iter = iter;
+-	op->store.i_size = max(pos + size, vnode->netfs.remote_i_size);
+-	op->mtime = inode_get_mtime(&vnode->netfs.inode);
++	op->store.write_iter	= &subreq->io_iter;
++	op->store.i_size	= umax(pos + len, vnode->netfs.remote_i_size);
++	op->mtime		= inode_get_mtime(&vnode->netfs.inode);
+ 
+ 	afs_wait_for_operation(op);
+-
+-	switch (afs_op_error(op)) {
++	ret = afs_put_operation(op);
++	switch (ret) {
+ 	case -EACCES:
+ 	case -EPERM:
+ 	case -ENOKEY:
+ 	case -EKEYEXPIRED:
+ 	case -EKEYREJECTED:
+ 	case -EKEYREVOKED:
+-		_debug("next");
+-
+-		ret = afs_get_writeback_key(vnode, &wbk);
+-		if (ret == 0) {
+-			key_put(op->key);
+-			op->key = key_get(wbk->key);
+-			goto try_next_key;
+-		}
++		/* If there are more keys we can try, use the retry algorithm
++		 * to rotate the keys.
++		 */
++		if (wreq->netfs_priv2)
++			set_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags);
+ 		break;
+ 	}
+ 
+-	afs_put_wb_key(wbk);
+-	_leave(" = %d", afs_op_error(op));
+-	return afs_put_operation(op);
++	netfs_write_subrequest_terminated(subreq, ret < 0 ? ret : subreq->len, false);
+ }
+ 
+ /*
+@@ -162,44 +169,32 @@ static int afs_store_data(struct afs_vnode *vnode, struct iov_iter *iter, loff_t
+  */
+ void afs_begin_writeback(struct netfs_io_request *wreq)
+ {
++	afs_get_writeback_key(wreq);
+ 	wreq->io_streams[0].avail = true;
+ }
+ 
+ /*
+- * Prepare a subrequest to write to the server.  This sets the max_len
+- * parameter.
+- */
+-void afs_prepare_write(struct netfs_io_subrequest *subreq)
 -{
--	struct p9_fid *fid = subreq->rreq->netfs_priv;
--	int err, len;
--
--	trace_netfs_sreq(subreq, netfs_sreq_trace_submit);
--	len = p9_client_write(fid, subreq->start, &subreq->io_iter, &err);
--	netfs_write_subrequest_terminated(subreq, len ?: err, false);
--}
--
--static void v9fs_upload_to_server_worker(struct work_struct *work)
--{
--	struct netfs_io_subrequest *subreq =
--		container_of(work, struct netfs_io_subrequest, work);
--
--	v9fs_upload_to_server(subreq);
+-	//if (test_bit(NETFS_SREQ_RETRYING, &subreq->flags))
+-	//	subreq->max_len = 512 * 1024;
+-	//else
+-	subreq->max_len = 256 * 1024 * 1024;
 -}
 -
 -/*
-- * Set up write requests for a writeback slice.  We need to add a write request
-- * for each write we want to make.
-- */
--static void v9fs_create_write_requests(struct netfs_io_request *wreq, loff_t start, size_t len)
--{
--	struct netfs_io_subrequest *subreq;
--
--	subreq = netfs_create_write_request(wreq, NETFS_UPLOAD_TO_SERVER,
--					    start, len, v9fs_upload_to_server_worker);
--	if (subreq)
--		netfs_queue_write_request(subreq);
--}
--#endif
--
- /**
-  * v9fs_issue_read - Issue a read from 9P
-  * @subreq: The read to make
-diff --git a/fs/afs/write.c b/fs/afs/write.c
-index 0ead204c84cb..6ef7d4cbc008 100644
---- a/fs/afs/write.c
-+++ b/fs/afs/write.c
-@@ -156,46 +156,6 @@ static int afs_store_data(struct afs_vnode *vnode, struct iov_iter *iter, loff_t
- 	return afs_put_operation(op);
- }
- 
--#if 0 // TODO: Remove
--static void afs_upload_to_server(struct netfs_io_subrequest *subreq)
--{
+- * Issue a subrequest to write to the server.
++ * Prepare to retry the writes in request.  Use this to try rotating the
++ * available writeback keys.
+  */
+-void afs_issue_write(struct netfs_io_subrequest *subreq)
++void afs_retry_request(struct netfs_io_request *wreq, struct netfs_io_stream *stream)
+ {
 -	struct afs_vnode *vnode = AFS_FS_I(subreq->rreq->inode);
 -	ssize_t ret;
 -
 -	_enter("%x[%x],%zx",
 -	       subreq->rreq->debug_id, subreq->debug_index, subreq->io_iter.count);
 -
--	trace_netfs_sreq(subreq, netfs_sreq_trace_submit);
+-#if 0 // Error injection
+-	if (subreq->debug_index == 3)
+-		return netfs_write_subrequest_terminated(subreq, -ENOANO, false);
++	struct netfs_io_subrequest *subreq =
++		list_first_entry(&stream->subrequests,
++				 struct netfs_io_subrequest, rreq_link);
+ 
+-	if (!test_bit(NETFS_SREQ_RETRYING, &subreq->flags)) {
+-		set_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags);
+-		return netfs_write_subrequest_terminated(subreq, -EAGAIN, false);
++	switch (subreq->error) {
++	case -EACCES:
++	case -EPERM:
++	case -ENOKEY:
++	case -EKEYEXPIRED:
++	case -EKEYREJECTED:
++	case -EKEYREVOKED:
++		afs_get_writeback_key(wreq);
++		if (!wreq->netfs_priv)
++			stream->failed = true;
++		break;
+ 	}
+-#endif
+-
 -	ret = afs_store_data(vnode, &subreq->io_iter, subreq->start);
--	netfs_write_subrequest_terminated(subreq, ret < 0 ? ret : subreq->len,
--					  false);
--}
--
--static void afs_upload_to_server_worker(struct work_struct *work)
--{
--	struct netfs_io_subrequest *subreq =
--		container_of(work, struct netfs_io_subrequest, work);
--
--	afs_upload_to_server(subreq);
--}
--
--/*
-- * Set up write requests for a writeback slice.  We need to add a write request
-- * for each write we want to make.
-- */
--void afs_create_write_requests(struct netfs_io_request *wreq, loff_t start, size_t len)
--{
--	struct netfs_io_subrequest *subreq;
--
--	_enter("%x,%llx-%llx", wreq->debug_id, start, start + len);
--
--	subreq = netfs_create_write_request(wreq, NETFS_UPLOAD_TO_SERVER,
--					    start, len, afs_upload_to_server_worker);
--	if (subreq)
--		netfs_queue_write_request(subreq);
--}
--#endif
--
- /*
-  * Writeback calls this when it finds a folio that needs uploading.  This isn't
-  * called if writeback only has copy-to-cache to deal with.
-diff --git a/fs/netfs/buffered_write.c b/fs/netfs/buffered_write.c
-index 945e646cd2db..2da9905abec9 100644
---- a/fs/netfs/buffered_write.c
-+++ b/fs/netfs/buffered_write.c
-@@ -575,632 +575,3 @@ vm_fault_t netfs_page_mkwrite(struct vm_fault *vmf, struct netfs_group *netfs_gr
- 	return ret;
+-	netfs_write_subrequest_terminated(subreq, ret < 0 ? ret : subreq->len, false);
  }
- EXPORT_SYMBOL(netfs_page_mkwrite);
--
--#if 0 // TODO: Remove
--/*
-- * Kill all the pages in the given range
-- */
--static void netfs_kill_pages(struct address_space *mapping,
--			     loff_t start, loff_t len)
--{
--	struct folio *folio;
--	pgoff_t index = start / PAGE_SIZE;
--	pgoff_t last = (start + len - 1) / PAGE_SIZE, next;
--
--	_enter("%llx-%llx", start, start + len - 1);
--
--	do {
--		_debug("kill %lx (to %lx)", index, last);
--
--		folio = filemap_get_folio(mapping, index);
--		if (IS_ERR(folio)) {
--			next = index + 1;
--			continue;
--		}
--
--		next = folio_next_index(folio);
--
--		trace_netfs_folio(folio, netfs_folio_trace_kill);
--		folio_clear_uptodate(folio);
--		folio_end_writeback(folio);
--		folio_lock(folio);
--		generic_error_remove_folio(mapping, folio);
--		folio_unlock(folio);
--		folio_put(folio);
--
--	} while (index = next, index <= last);
--
--	_leave("");
--}
--
--/*
-- * Redirty all the pages in a given range.
-- */
--static void netfs_redirty_pages(struct address_space *mapping,
--				loff_t start, loff_t len)
--{
--	struct folio *folio;
--	pgoff_t index = start / PAGE_SIZE;
--	pgoff_t last = (start + len - 1) / PAGE_SIZE, next;
--
--	_enter("%llx-%llx", start, start + len - 1);
--
--	do {
--		_debug("redirty %llx @%llx", len, start);
--
--		folio = filemap_get_folio(mapping, index);
--		if (IS_ERR(folio)) {
--			next = index + 1;
--			continue;
--		}
--
--		next = folio_next_index(folio);
--		trace_netfs_folio(folio, netfs_folio_trace_redirty);
--		filemap_dirty_folio(mapping, folio);
--		folio_end_writeback(folio);
--		folio_put(folio);
--	} while (index = next, index <= last);
--
--	balance_dirty_pages_ratelimited(mapping);
--
--	_leave("");
--}
--
--/*
-- * Completion of write to server
-- */
--static void netfs_pages_written_back(struct netfs_io_request *wreq)
--{
--	struct address_space *mapping = wreq->mapping;
--	struct netfs_folio *finfo;
--	struct netfs_group *group = NULL;
--	struct folio *folio;
--	pgoff_t last;
--	int gcount = 0;
--
--	XA_STATE(xas, &mapping->i_pages, wreq->start / PAGE_SIZE);
--
--	_enter("%llx-%llx", wreq->start, wreq->start + wreq->len);
--
--	rcu_read_lock();
--
--	last = (wreq->start + wreq->len - 1) / PAGE_SIZE;
--	xas_for_each(&xas, folio, last) {
--		WARN(!folio_test_writeback(folio),
--		     "bad %llx @%llx page %lx %lx\n",
--		     wreq->len, wreq->start, folio->index, last);
--
--		if ((finfo = netfs_folio_info(folio))) {
--			/* Streaming writes cannot be redirtied whilst under
--			 * writeback, so discard the streaming record.
--			 */
--			folio_detach_private(folio);
--			group = finfo->netfs_group;
--			gcount++;
--			trace_netfs_folio(folio, netfs_folio_trace_clear_s);
--			kfree(finfo);
--		} else if ((group = netfs_folio_group(folio))) {
--			/* Need to detach the group pointer if the page didn't
--			 * get redirtied.  If it has been redirtied, then it
--			 * must be within the same group.
--			 */
--			if (folio_test_dirty(folio)) {
--				trace_netfs_folio(folio, netfs_folio_trace_redirtied);
--				goto end_wb;
--			}
--			if (folio_trylock(folio)) {
--				if (!folio_test_dirty(folio)) {
--					folio_detach_private(folio);
--					gcount++;
--					if (group == NETFS_FOLIO_COPY_TO_CACHE)
--						trace_netfs_folio(folio,
--								  netfs_folio_trace_end_copy);
--					else
--						trace_netfs_folio(folio, netfs_folio_trace_clear_g);
--				} else {
--					trace_netfs_folio(folio, netfs_folio_trace_redirtied);
--				}
--				folio_unlock(folio);
--				goto end_wb;
--			}
--
--			xas_pause(&xas);
--			rcu_read_unlock();
--			folio_lock(folio);
--			if (!folio_test_dirty(folio)) {
--				folio_detach_private(folio);
--				gcount++;
--				trace_netfs_folio(folio, netfs_folio_trace_clear_g);
--			} else {
--				trace_netfs_folio(folio, netfs_folio_trace_redirtied);
--			}
--			folio_unlock(folio);
--			rcu_read_lock();
--		} else {
--			trace_netfs_folio(folio, netfs_folio_trace_clear);
--		}
--	end_wb:
--		xas_advance(&xas, folio_next_index(folio) - 1);
--		folio_end_writeback(folio);
--	}
--
--	rcu_read_unlock();
--	netfs_put_group_many(group, gcount);
--	_leave("");
--}
--
--/*
-- * Deal with the disposition of the folios that are under writeback to close
-- * out the operation.
-- */
--static void netfs_cleanup_buffered_write(struct netfs_io_request *wreq)
--{
--	struct address_space *mapping = wreq->mapping;
--
--	_enter("");
--
--	switch (wreq->error) {
--	case 0:
--		netfs_pages_written_back(wreq);
--		break;
--
--	default:
--		pr_notice("R=%08x Unexpected error %d\n", wreq->debug_id, wreq->error);
--		fallthrough;
--	case -EACCES:
--	case -EPERM:
--	case -ENOKEY:
--	case -EKEYEXPIRED:
--	case -EKEYREJECTED:
--	case -EKEYREVOKED:
--	case -ENETRESET:
--	case -EDQUOT:
--	case -ENOSPC:
--		netfs_redirty_pages(mapping, wreq->start, wreq->len);
--		break;
--
--	case -EROFS:
--	case -EIO:
--	case -EREMOTEIO:
--	case -EFBIG:
--	case -ENOENT:
--	case -ENOMEDIUM:
--	case -ENXIO:
--		netfs_kill_pages(mapping, wreq->start, wreq->len);
--		break;
--	}
--
--	if (wreq->error)
--		mapping_set_error(mapping, wreq->error);
--	if (wreq->netfs_ops->done)
--		wreq->netfs_ops->done(wreq);
--}
--
--/*
-- * Extend the region to be written back to include subsequent contiguously
-- * dirty pages if possible, but don't sleep while doing so.
-- *
-- * If this page holds new content, then we can include filler zeros in the
-- * writeback.
-- */
--static void netfs_extend_writeback(struct address_space *mapping,
--				   struct netfs_group *group,
--				   struct xa_state *xas,
--				   long *_count,
--				   loff_t start,
--				   loff_t max_len,
--				   size_t *_len,
--				   size_t *_top)
--{
--	struct netfs_folio *finfo;
--	struct folio_batch fbatch;
--	struct folio *folio;
--	unsigned int i;
--	pgoff_t index = (start + *_len) / PAGE_SIZE;
--	size_t len;
--	void *priv;
--	bool stop = true;
--
--	folio_batch_init(&fbatch);
--
--	do {
--		/* Firstly, we gather up a batch of contiguous dirty pages
--		 * under the RCU read lock - but we can't clear the dirty flags
--		 * there if any of those pages are mapped.
--		 */
--		rcu_read_lock();
--
--		xas_for_each(xas, folio, ULONG_MAX) {
--			stop = true;
--			if (xas_retry(xas, folio))
--				continue;
--			if (xa_is_value(folio))
--				break;
--			if (folio->index != index) {
--				xas_reset(xas);
--				break;
--			}
--
--			if (!folio_try_get_rcu(folio)) {
--				xas_reset(xas);
--				continue;
--			}
--
--			/* Has the folio moved or been split? */
--			if (unlikely(folio != xas_reload(xas))) {
--				folio_put(folio);
--				xas_reset(xas);
--				break;
--			}
--
--			if (!folio_trylock(folio)) {
--				folio_put(folio);
--				xas_reset(xas);
--				break;
--			}
--			if (!folio_test_dirty(folio) ||
--			    folio_test_writeback(folio)) {
--				folio_unlock(folio);
--				folio_put(folio);
--				xas_reset(xas);
--				break;
--			}
--
--			stop = false;
--			len = folio_size(folio);
--			priv = folio_get_private(folio);
--			if ((const struct netfs_group *)priv != group) {
--				stop = true;
--				finfo = netfs_folio_info(folio);
--				if (!finfo ||
--				    finfo->netfs_group != group ||
--				    finfo->dirty_offset > 0) {
--					folio_unlock(folio);
--					folio_put(folio);
--					xas_reset(xas);
--					break;
--				}
--				len = finfo->dirty_len;
--			}
--
--			*_top += folio_size(folio);
--			index += folio_nr_pages(folio);
--			*_count -= folio_nr_pages(folio);
--			*_len += len;
--			if (*_len >= max_len || *_count <= 0)
--				stop = true;
--
--			if (!folio_batch_add(&fbatch, folio))
--				break;
--			if (stop)
--				break;
--		}
--
--		xas_pause(xas);
--		rcu_read_unlock();
--
--		/* Now, if we obtained any folios, we can shift them to being
--		 * writable and mark them for caching.
--		 */
--		if (!folio_batch_count(&fbatch))
--			break;
--
--		for (i = 0; i < folio_batch_count(&fbatch); i++) {
--			folio = fbatch.folios[i];
--			if (group == NETFS_FOLIO_COPY_TO_CACHE)
--				trace_netfs_folio(folio, netfs_folio_trace_copy_plus);
--			else
--				trace_netfs_folio(folio, netfs_folio_trace_store_plus);
--
--			if (!folio_clear_dirty_for_io(folio))
--				BUG();
--			folio_start_writeback(folio);
--			folio_unlock(folio);
--		}
--
--		folio_batch_release(&fbatch);
--		cond_resched();
--	} while (!stop);
--}
--
--/*
-- * Synchronously write back the locked page and any subsequent non-locked dirty
-- * pages.
-- */
--static ssize_t netfs_write_back_from_locked_folio(struct address_space *mapping,
--						  struct writeback_control *wbc,
--						  struct netfs_group *group,
--						  struct xa_state *xas,
--						  struct folio *folio,
--						  unsigned long long start,
--						  unsigned long long end)
--{
--	struct netfs_io_request *wreq;
--	struct netfs_folio *finfo;
--	struct netfs_inode *ctx = netfs_inode(mapping->host);
--	unsigned long long i_size = i_size_read(&ctx->inode);
--	size_t len, max_len;
--	long count = wbc->nr_to_write;
--	int ret;
--
--	_enter(",%lx,%llx-%llx", folio->index, start, end);
--
--	wreq = netfs_alloc_request(mapping, NULL, start, folio_size(folio),
--				   group == NETFS_FOLIO_COPY_TO_CACHE ?
--				   NETFS_COPY_TO_CACHE : NETFS_WRITEBACK);
--	if (IS_ERR(wreq)) {
--		folio_unlock(folio);
--		return PTR_ERR(wreq);
--	}
--
--	if (!folio_clear_dirty_for_io(folio))
--		BUG();
--	folio_start_writeback(folio);
--
--	count -= folio_nr_pages(folio);
--
--	/* Find all consecutive lockable dirty pages that have contiguous
--	 * written regions, stopping when we find a page that is not
--	 * immediately lockable, is not dirty or is missing, or we reach the
--	 * end of the range.
--	 */
--	if (group == NETFS_FOLIO_COPY_TO_CACHE)
--		trace_netfs_folio(folio, netfs_folio_trace_copy);
--	else
--		trace_netfs_folio(folio, netfs_folio_trace_store);
--
--	len = wreq->len;
--	finfo = netfs_folio_info(folio);
--	if (finfo) {
--		start += finfo->dirty_offset;
--		if (finfo->dirty_offset + finfo->dirty_len != len) {
--			len = finfo->dirty_len;
--			goto cant_expand;
--		}
--		len = finfo->dirty_len;
--	}
--
--	if (start < i_size) {
--		/* Trim the write to the EOF; the extra data is ignored.  Also
--		 * put an upper limit on the size of a single storedata op.
--		 */
--		max_len = 65536 * 4096;
--		max_len = min_t(unsigned long long, max_len, end - start + 1);
--		max_len = min_t(unsigned long long, max_len, i_size - start);
--
--		if (len < max_len)
--			netfs_extend_writeback(mapping, group, xas, &count, start,
--					       max_len, &len, &wreq->upper_len);
--	}
--
--cant_expand:
--	len = min_t(unsigned long long, len, i_size - start);
--
--	/* We now have a contiguous set of dirty pages, each with writeback
--	 * set; the first page is still locked at this point, but all the rest
--	 * have been unlocked.
--	 */
--	folio_unlock(folio);
--	wreq->start = start;
--	wreq->len = len;
--
--	if (start < i_size) {
--		_debug("write back %zx @%llx [%llx]", len, start, i_size);
--
--		/* Speculatively write to the cache.  We have to fix this up
--		 * later if the store fails.
--		 */
--		wreq->cleanup = netfs_cleanup_buffered_write;
--
--		iov_iter_xarray(&wreq->iter, ITER_SOURCE, &mapping->i_pages, start,
--				wreq->upper_len);
--		if (group != NETFS_FOLIO_COPY_TO_CACHE) {
--			__set_bit(NETFS_RREQ_UPLOAD_TO_SERVER, &wreq->flags);
--			ret = netfs_begin_write(wreq, true, netfs_write_trace_writeback);
--		} else {
--			ret = netfs_begin_write(wreq, true, netfs_write_trace_copy_to_cache);
--		}
--		if (ret == 0 || ret == -EIOCBQUEUED)
--			wbc->nr_to_write -= len / PAGE_SIZE;
--	} else {
--		_debug("write discard %zx @%llx [%llx]", len, start, i_size);
--
--		/* The dirty region was entirely beyond the EOF. */
--		netfs_pages_written_back(wreq);
--		ret = 0;
--	}
--
--	netfs_put_request(wreq, false, netfs_rreq_trace_put_return);
--	_leave(" = 1");
--	return 1;
--}
--
--/*
-- * Write a region of pages back to the server
-- */
--static ssize_t netfs_writepages_begin(struct address_space *mapping,
--				      struct writeback_control *wbc,
--				      struct netfs_group *group,
--				      struct xa_state *xas,
--				      unsigned long long *_start,
--				      unsigned long long end)
--{
--	const struct netfs_folio *finfo;
--	struct folio *folio;
--	unsigned long long start = *_start;
--	ssize_t ret;
--	void *priv;
--	int skips = 0;
--
--	_enter("%llx,%llx,", start, end);
--
--search_again:
--	/* Find the first dirty page in the group. */
--	rcu_read_lock();
--
--	for (;;) {
--		folio = xas_find_marked(xas, end / PAGE_SIZE, PAGECACHE_TAG_DIRTY);
--		if (xas_retry(xas, folio) || xa_is_value(folio))
--			continue;
--		if (!folio)
--			break;
--
--		if (!folio_try_get_rcu(folio)) {
--			xas_reset(xas);
--			continue;
--		}
--
--		if (unlikely(folio != xas_reload(xas))) {
--			folio_put(folio);
--			xas_reset(xas);
--			continue;
--		}
--
--		/* Skip any dirty folio that's not in the group of interest. */
--		priv = folio_get_private(folio);
--		if ((const struct netfs_group *)priv == NETFS_FOLIO_COPY_TO_CACHE) {
--			group = NETFS_FOLIO_COPY_TO_CACHE;
--		} else if ((const struct netfs_group *)priv != group) {
--			finfo = __netfs_folio_info(priv);
--			if (!finfo || finfo->netfs_group != group) {
--				folio_put(folio);
--				continue;
--			}
--		}
--
--		xas_pause(xas);
--		break;
--	}
--	rcu_read_unlock();
--	if (!folio)
--		return 0;
--
--	start = folio_pos(folio); /* May regress with THPs */
--
--	_debug("wback %lx", folio->index);
--
--	/* At this point we hold neither the i_pages lock nor the page lock:
--	 * the page may be truncated or invalidated (changing page->mapping to
--	 * NULL), or even swizzled back from swapper_space to tmpfs file
--	 * mapping
--	 */
--lock_again:
--	if (wbc->sync_mode != WB_SYNC_NONE) {
--		ret = folio_lock_killable(folio);
--		if (ret < 0)
--			return ret;
--	} else {
--		if (!folio_trylock(folio))
--			goto search_again;
--	}
--
--	if (folio->mapping != mapping ||
--	    !folio_test_dirty(folio)) {
--		start += folio_size(folio);
--		folio_unlock(folio);
--		goto search_again;
--	}
--
--	if (folio_test_writeback(folio)) {
--		folio_unlock(folio);
--		if (wbc->sync_mode != WB_SYNC_NONE) {
--			folio_wait_writeback(folio);
--			goto lock_again;
--		}
--
--		start += folio_size(folio);
--		if (wbc->sync_mode == WB_SYNC_NONE) {
--			if (skips >= 5 || need_resched()) {
--				ret = 0;
--				goto out;
--			}
--			skips++;
--		}
--		goto search_again;
--	}
--
--	ret = netfs_write_back_from_locked_folio(mapping, wbc, group, xas,
--						 folio, start, end);
--out:
--	if (ret > 0)
--		*_start = start + ret;
--	_leave(" = %zd [%llx]", ret, *_start);
--	return ret;
--}
--
--/*
-- * Write a region of pages back to the server
-- */
--static int netfs_writepages_region(struct address_space *mapping,
--				   struct writeback_control *wbc,
--				   struct netfs_group *group,
--				   unsigned long long *_start,
--				   unsigned long long end)
--{
--	ssize_t ret;
--
--	XA_STATE(xas, &mapping->i_pages, *_start / PAGE_SIZE);
--
--	do {
--		ret = netfs_writepages_begin(mapping, wbc, group, &xas,
--					     _start, end);
--		if (ret > 0 && wbc->nr_to_write > 0)
--			cond_resched();
--	} while (ret > 0 && wbc->nr_to_write > 0);
--
--	return ret > 0 ? 0 : ret;
--}
--
--/*
-- * write some of the pending data back to the server
-- */
--int netfs_writepages(struct address_space *mapping,
--		     struct writeback_control *wbc)
--{
--	struct netfs_group *group = NULL;
--	loff_t start, end;
--	int ret;
--
--	_enter("");
--
--	/* We have to be careful as we can end up racing with setattr()
--	 * truncating the pagecache since the caller doesn't take a lock here
--	 * to prevent it.
--	 */
--
--	if (wbc->range_cyclic && mapping->writeback_index) {
--		start = mapping->writeback_index * PAGE_SIZE;
--		ret = netfs_writepages_region(mapping, wbc, group,
--					      &start, LLONG_MAX);
--		if (ret < 0)
--			goto out;
--
--		if (wbc->nr_to_write <= 0) {
--			mapping->writeback_index = start / PAGE_SIZE;
--			goto out;
--		}
--
--		start = 0;
--		end = mapping->writeback_index * PAGE_SIZE;
--		mapping->writeback_index = 0;
--		ret = netfs_writepages_region(mapping, wbc, group, &start, end);
--		if (ret == 0)
--			mapping->writeback_index = start / PAGE_SIZE;
--	} else if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX) {
--		start = 0;
--		ret = netfs_writepages_region(mapping, wbc, group,
--					      &start, LLONG_MAX);
--		if (wbc->nr_to_write > 0 && ret == 0)
--			mapping->writeback_index = start / PAGE_SIZE;
--	} else {
--		start = wbc->range_start;
--		ret = netfs_writepages_region(mapping, wbc, group,
--					      &start, wbc->range_end);
--	}
--
--out:
--	_leave(" = %d", ret);
--	return ret;
--}
--EXPORT_SYMBOL(netfs_writepages);
--#endif
-diff --git a/fs/netfs/direct_write.c b/fs/netfs/direct_write.c
-index 330ba7cb3f10..e4a9cf7cd234 100644
---- a/fs/netfs/direct_write.c
-+++ b/fs/netfs/direct_write.c
-@@ -37,7 +37,7 @@ static ssize_t netfs_unbuffered_write_iter_locked(struct kiocb *iocb, struct iov
- 	size_t len = iov_iter_count(iter);
- 	bool async = !is_sync_kiocb(iocb);
  
--	_enter("");
-+	_enter("%lx", iov_iter_count(iter));
+ /*
+diff --git a/fs/netfs/write_collect.c b/fs/netfs/write_collect.c
+index bea939ab0830..7ff15e2d7270 100644
+--- a/fs/netfs/write_collect.c
++++ b/fs/netfs/write_collect.c
+@@ -168,6 +168,13 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
  
- 	/* We're going to need a bounce buffer if what we transmit is going to
- 	 * be different in some way to the source buffer, e.g. because it gets
-diff --git a/fs/netfs/output.c b/fs/netfs/output.c
-deleted file mode 100644
-index 85374322f10f..000000000000
---- a/fs/netfs/output.c
-+++ /dev/null
-@@ -1,477 +0,0 @@
--// SPDX-License-Identifier: GPL-2.0-only
--/* Network filesystem high-level write support.
-- *
-- * Copyright (C) 2023 Red Hat, Inc. All Rights Reserved.
-- * Written by David Howells (dhowells@redhat.com)
-- */
--
--#include <linux/fs.h>
--#include <linux/mm.h>
--#include <linux/pagemap.h>
--#include <linux/slab.h>
--#include <linux/writeback.h>
--#include <linux/pagevec.h>
--#include "internal.h"
--
--/**
-- * netfs_create_write_request - Create a write operation.
-- * @wreq: The write request this is storing from.
-- * @dest: The destination type
-- * @start: Start of the region this write will modify
-- * @len: Length of the modification
-- * @worker: The worker function to handle the write(s)
-- *
-- * Allocate a write operation, set it up and add it to the list on a write
-- * request.
-- */
--struct netfs_io_subrequest *netfs_create_write_request(struct netfs_io_request *wreq,
--						       enum netfs_io_source dest,
--						       loff_t start, size_t len,
--						       work_func_t worker)
--{
--	struct netfs_io_subrequest *subreq;
--
--	subreq = netfs_alloc_subrequest(wreq);
--	if (subreq) {
--		INIT_WORK(&subreq->work, worker);
--		subreq->source	= dest;
--		subreq->start	= start;
--		subreq->len	= len;
--
--		switch (subreq->source) {
--		case NETFS_UPLOAD_TO_SERVER:
--			netfs_stat(&netfs_n_wh_upload);
--			break;
--		case NETFS_WRITE_TO_CACHE:
--			netfs_stat(&netfs_n_wh_write);
--			break;
--		default:
--			BUG();
--		}
--
--		subreq->io_iter = wreq->io_iter;
--		iov_iter_advance(&subreq->io_iter, subreq->start - wreq->start);
--		iov_iter_truncate(&subreq->io_iter, subreq->len);
--
--		trace_netfs_sreq_ref(wreq->debug_id, subreq->debug_index,
--				     refcount_read(&subreq->ref),
--				     netfs_sreq_trace_new);
--		atomic_inc(&wreq->nr_outstanding);
--		list_add_tail(&subreq->rreq_link, &wreq->subrequests);
--		trace_netfs_sreq(subreq, netfs_sreq_trace_prepare);
--	}
--
--	return subreq;
--}
--EXPORT_SYMBOL(netfs_create_write_request);
--
--/*
-- * Process a completed write request once all the component operations have
-- * been completed.
-- */
--static void netfs_write_terminated(struct netfs_io_request *wreq, bool was_async)
--{
--	struct netfs_io_subrequest *subreq;
--	struct netfs_inode *ctx = netfs_inode(wreq->inode);
--	size_t transferred = 0;
--
--	_enter("R=%x[]", wreq->debug_id);
--
--	trace_netfs_rreq(wreq, netfs_rreq_trace_write_done);
--
--	list_for_each_entry(subreq, &wreq->subrequests, rreq_link) {
--		if (subreq->error || subreq->transferred == 0)
--			break;
--		transferred += subreq->transferred;
--		if (subreq->transferred < subreq->len)
--			break;
--	}
--	wreq->transferred = transferred;
--
--	list_for_each_entry(subreq, &wreq->subrequests, rreq_link) {
--		if (!subreq->error)
--			continue;
--		switch (subreq->source) {
--		case NETFS_UPLOAD_TO_SERVER:
--			/* Depending on the type of failure, this may prevent
--			 * writeback completion unless we're in disconnected
--			 * mode.
--			 */
--			if (!wreq->error)
--				wreq->error = subreq->error;
--			break;
--
--		case NETFS_WRITE_TO_CACHE:
--			/* Failure doesn't prevent writeback completion unless
--			 * we're in disconnected mode.
--			 */
--			if (subreq->error != -ENOBUFS)
--				ctx->ops->invalidate_cache(wreq);
--			break;
--
--		default:
--			WARN_ON_ONCE(1);
--			if (!wreq->error)
--				wreq->error = -EIO;
--			return;
--		}
--	}
--
--	wreq->cleanup(wreq);
--
--	if (wreq->origin == NETFS_DIO_WRITE &&
--	    wreq->mapping->nrpages) {
--		pgoff_t first = wreq->start >> PAGE_SHIFT;
--		pgoff_t last = (wreq->start + wreq->transferred - 1) >> PAGE_SHIFT;
--		invalidate_inode_pages2_range(wreq->mapping, first, last);
--	}
--
--	if (wreq->origin == NETFS_DIO_WRITE)
--		inode_dio_end(wreq->inode);
--
--	_debug("finished");
--	trace_netfs_rreq(wreq, netfs_rreq_trace_wake_ip);
--	clear_bit_unlock(NETFS_RREQ_IN_PROGRESS, &wreq->flags);
--	wake_up_bit(&wreq->flags, NETFS_RREQ_IN_PROGRESS);
--
--	if (wreq->iocb) {
--		wreq->iocb->ki_pos += transferred;
--		if (wreq->iocb->ki_complete)
--			wreq->iocb->ki_complete(
--				wreq->iocb, wreq->error ? wreq->error : transferred);
--	}
--
--	netfs_clear_subrequests(wreq, was_async);
--	netfs_put_request(wreq, was_async, netfs_rreq_trace_put_complete);
--}
--
--/*
-- * Deal with the completion of writing the data to the cache.
-- */
--void netfs_write_subrequest_terminated(void *_op, ssize_t transferred_or_error,
--				       bool was_async)
--{
--	struct netfs_io_subrequest *subreq = _op;
--	struct netfs_io_request *wreq = subreq->rreq;
--	unsigned int u;
--
--	_enter("%x[%x] %zd", wreq->debug_id, subreq->debug_index, transferred_or_error);
--
--	switch (subreq->source) {
--	case NETFS_UPLOAD_TO_SERVER:
--		netfs_stat(&netfs_n_wh_upload_done);
--		break;
--	case NETFS_WRITE_TO_CACHE:
--		netfs_stat(&netfs_n_wh_write_done);
--		break;
--	case NETFS_INVALID_WRITE:
--		break;
--	default:
--		BUG();
--	}
--
--	if (IS_ERR_VALUE(transferred_or_error)) {
--		subreq->error = transferred_or_error;
--		trace_netfs_failure(wreq, subreq, transferred_or_error,
--				    netfs_fail_write);
--		goto failed;
--	}
--
--	if (WARN(transferred_or_error > subreq->len - subreq->transferred,
--		 "Subreq excess write: R%x[%x] %zd > %zu - %zu",
--		 wreq->debug_id, subreq->debug_index,
--		 transferred_or_error, subreq->len, subreq->transferred))
--		transferred_or_error = subreq->len - subreq->transferred;
--
--	subreq->error = 0;
--	subreq->transferred += transferred_or_error;
--
--	if (iov_iter_count(&subreq->io_iter) != subreq->len - subreq->transferred)
--		pr_warn("R=%08x[%u] ITER POST-MISMATCH %zx != %zx-%zx %x\n",
--			wreq->debug_id, subreq->debug_index,
--			iov_iter_count(&subreq->io_iter), subreq->len,
--			subreq->transferred, subreq->io_iter.iter_type);
--
--	if (subreq->transferred < subreq->len)
--		goto incomplete;
--
--	__clear_bit(NETFS_SREQ_NO_PROGRESS, &subreq->flags);
--out:
--	trace_netfs_sreq(subreq, netfs_sreq_trace_terminated);
--
--	/* If we decrement nr_outstanding to 0, the ref belongs to us. */
--	u = atomic_dec_return(&wreq->nr_outstanding);
--	if (u == 0)
--		netfs_write_terminated(wreq, was_async);
--	else if (u == 1)
--		wake_up_var(&wreq->nr_outstanding);
--
--	netfs_put_subrequest(subreq, was_async, netfs_sreq_trace_put_terminated);
--	return;
--
--incomplete:
--	if (transferred_or_error == 0) {
--		if (__test_and_set_bit(NETFS_SREQ_NO_PROGRESS, &subreq->flags)) {
--			subreq->error = -ENODATA;
--			goto failed;
--		}
--	} else {
--		__clear_bit(NETFS_SREQ_NO_PROGRESS, &subreq->flags);
--	}
--
--	__set_bit(NETFS_SREQ_SHORT_IO, &subreq->flags);
--	set_bit(NETFS_RREQ_INCOMPLETE_IO, &wreq->flags);
--	goto out;
--
--failed:
--	switch (subreq->source) {
--	case NETFS_WRITE_TO_CACHE:
--		netfs_stat(&netfs_n_wh_write_failed);
--		set_bit(NETFS_RREQ_INCOMPLETE_IO, &wreq->flags);
--		break;
--	case NETFS_UPLOAD_TO_SERVER:
--		netfs_stat(&netfs_n_wh_upload_failed);
--		set_bit(NETFS_RREQ_FAILED, &wreq->flags);
--		wreq->error = subreq->error;
--		break;
--	default:
--		break;
--	}
--	goto out;
--}
--EXPORT_SYMBOL(netfs_write_subrequest_terminated);
--
--static void netfs_write_to_cache_op(struct netfs_io_subrequest *subreq)
--{
--	struct netfs_io_request *wreq = subreq->rreq;
--	struct netfs_cache_resources *cres = &wreq->cache_resources;
--
--	trace_netfs_sreq(subreq, netfs_sreq_trace_submit);
--
--	cres->ops->write(cres, subreq->start, &subreq->io_iter,
--			 netfs_write_subrequest_terminated, subreq);
--}
--
--static void netfs_write_to_cache_op_worker(struct work_struct *work)
--{
--	struct netfs_io_subrequest *subreq =
--		container_of(work, struct netfs_io_subrequest, work);
--
--	netfs_write_to_cache_op(subreq);
--}
--
--/**
-- * netfs_queue_write_request - Queue a write request for attention
-- * @subreq: The write request to be queued
-- *
-- * Queue the specified write request for processing by a worker thread.  We
-- * pass the caller's ref on the request to the worker thread.
-- */
--void netfs_queue_write_request(struct netfs_io_subrequest *subreq)
--{
--	if (!queue_work(system_unbound_wq, &subreq->work))
--		netfs_put_subrequest(subreq, false, netfs_sreq_trace_put_wip);
--}
--EXPORT_SYMBOL(netfs_queue_write_request);
--
--/*
-- * Set up a op for writing to the cache.
-- */
--static void netfs_set_up_write_to_cache(struct netfs_io_request *wreq)
--{
--	struct netfs_cache_resources *cres = &wreq->cache_resources;
--	struct netfs_io_subrequest *subreq;
--	struct netfs_inode *ctx = netfs_inode(wreq->inode);
--	struct fscache_cookie *cookie = netfs_i_cookie(ctx);
--	loff_t start = wreq->start;
--	size_t len = wreq->len;
--	int ret;
--
--	if (!fscache_cookie_enabled(cookie)) {
--		clear_bit(NETFS_RREQ_WRITE_TO_CACHE, &wreq->flags);
+ 	_enter("R=%x[%x:]", wreq->debug_id, stream->stream_nr);
+ 
++	if (list_empty(&stream->subrequests))
++		return;
++
++	if (stream->source == NETFS_UPLOAD_TO_SERVER &&
++	    wreq->netfs_ops->retry_request)
++		wreq->netfs_ops->retry_request(wreq, stream);
++
+ 	if (unlikely(stream->failed))
+ 		return;
+ 
+@@ -187,8 +194,6 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 		return;
+ 	}
+ 
+-	if (list_empty(&stream->subrequests))
 -		return;
--	}
--
--	_debug("write to cache");
--	ret = fscache_begin_write_operation(cres, cookie);
--	if (ret < 0)
--		return;
--
--	ret = cres->ops->prepare_write(cres, &start, &len, wreq->upper_len,
--				       i_size_read(wreq->inode), true);
--	if (ret < 0)
--		return;
--
--	subreq = netfs_create_write_request(wreq, NETFS_WRITE_TO_CACHE, start, len,
--					    netfs_write_to_cache_op_worker);
--	if (!subreq)
--		return;
--
--	netfs_write_to_cache_op(subreq);
--}
--
--/*
-- * Begin the process of writing out a chunk of data.
-- *
-- * We are given a write request that holds a series of dirty regions and
-- * (partially) covers a sequence of folios, all of which are present.  The
-- * pages must have been marked as writeback as appropriate.
-- *
-- * We need to perform the following steps:
-- *
-- * (1) If encrypting, create an output buffer and encrypt each block of the
-- *     data into it, otherwise the output buffer will point to the original
-- *     folios.
-- *
-- * (2) If the data is to be cached, set up a write op for the entire output
-- *     buffer to the cache, if the cache wants to accept it.
-- *
-- * (3) If the data is to be uploaded (ie. not merely cached):
-- *
-- *     (a) If the data is to be compressed, create a compression buffer and
-- *         compress the data into it.
-- *
-- *     (b) For each destination we want to upload to, set up write ops to write
-- *         to that destination.  We may need multiple writes if the data is not
-- *         contiguous or the span exceeds wsize for a server.
-- */
--int netfs_begin_write(struct netfs_io_request *wreq, bool may_wait,
--		      enum netfs_write_trace what)
--{
--	struct netfs_inode *ctx = netfs_inode(wreq->inode);
--
--	_enter("R=%x %llx-%llx f=%lx",
--	       wreq->debug_id, wreq->start, wreq->start + wreq->len - 1,
--	       wreq->flags);
--
--	trace_netfs_write(wreq, what);
--	if (wreq->len == 0 || wreq->iter.count == 0) {
--		pr_err("Zero-sized write [R=%x]\n", wreq->debug_id);
--		return -EIO;
--	}
--
--	if (wreq->origin == NETFS_DIO_WRITE)
--		inode_dio_begin(wreq->inode);
--
--	wreq->io_iter = wreq->iter;
--
--	/* ->outstanding > 0 carries a ref */
--	netfs_get_request(wreq, netfs_rreq_trace_get_for_outstanding);
--	atomic_set(&wreq->nr_outstanding, 1);
--
--	/* Start the encryption/compression going.  We can do that in the
--	 * background whilst we generate a list of write ops that we want to
--	 * perform.
--	 */
--	// TODO: Encrypt or compress the region as appropriate
--
--	/* We need to write all of the region to the cache */
--	if (test_bit(NETFS_RREQ_WRITE_TO_CACHE, &wreq->flags))
--		netfs_set_up_write_to_cache(wreq);
--
--	/* However, we don't necessarily write all of the region to the server.
--	 * Caching of reads is being managed this way also.
--	 */
--	if (test_bit(NETFS_RREQ_UPLOAD_TO_SERVER, &wreq->flags))
--		ctx->ops->create_write_requests(wreq, wreq->start, wreq->len);
--
--	if (atomic_dec_and_test(&wreq->nr_outstanding))
--		netfs_write_terminated(wreq, false);
--
--	if (!may_wait)
--		return -EIOCBQUEUED;
--
--	wait_on_bit(&wreq->flags, NETFS_RREQ_IN_PROGRESS,
--		    TASK_UNINTERRUPTIBLE);
--	return wreq->error;
--}
--
--/*
-- * Begin a write operation for writing through the pagecache.
-- */
--struct netfs_io_request *netfs_begin_writethrough(struct kiocb *iocb, size_t len)
--{
--	struct netfs_io_request *wreq;
--	struct file *file = iocb->ki_filp;
--
--	wreq = netfs_alloc_request(file->f_mapping, file, iocb->ki_pos, len,
--				   NETFS_WRITETHROUGH);
--	if (IS_ERR(wreq))
--		return wreq;
--
--	trace_netfs_write(wreq, netfs_write_trace_writethrough);
--
--	__set_bit(NETFS_RREQ_UPLOAD_TO_SERVER, &wreq->flags);
--	iov_iter_xarray(&wreq->iter, ITER_SOURCE, &wreq->mapping->i_pages, wreq->start, 0);
--	wreq->io_iter = wreq->iter;
--
--	/* ->outstanding > 0 carries a ref */
--	netfs_get_request(wreq, netfs_rreq_trace_get_for_outstanding);
--	atomic_set(&wreq->nr_outstanding, 1);
--	return wreq;
--}
--
--static void netfs_submit_writethrough(struct netfs_io_request *wreq, bool final)
--{
--	struct netfs_inode *ictx = netfs_inode(wreq->inode);
--	unsigned long long start;
--	size_t len;
--
--	if (!test_bit(NETFS_RREQ_UPLOAD_TO_SERVER, &wreq->flags))
--		return;
--
--	start = wreq->start + wreq->submitted;
--	len = wreq->iter.count - wreq->submitted;
--	if (!final) {
--		len /= wreq->wsize; /* Round to number of maximum packets */
--		len *= wreq->wsize;
--	}
--
--	ictx->ops->create_write_requests(wreq, start, len);
--	wreq->submitted += len;
--}
--
--/*
-- * Advance the state of the write operation used when writing through the
-- * pagecache.  Data has been copied into the pagecache that we need to append
-- * to the request.  If we've added more than wsize then we need to create a new
-- * subrequest.
-- */
--int netfs_advance_writethrough(struct netfs_io_request *wreq, size_t copied, bool to_page_end)
--{
--	_enter("ic=%zu sb=%llu ws=%u cp=%zu tp=%u",
--	       wreq->iter.count, wreq->submitted, wreq->wsize, copied, to_page_end);
--
--	wreq->iter.count += copied;
--	wreq->io_iter.count += copied;
--	if (to_page_end && wreq->io_iter.count - wreq->submitted >= wreq->wsize)
--		netfs_submit_writethrough(wreq, false);
--
--	return wreq->error;
--}
--
--/*
-- * End a write operation used when writing through the pagecache.
-- */
--int netfs_end_writethrough(struct netfs_io_request *wreq, struct kiocb *iocb)
--{
--	int ret = -EIOCBQUEUED;
--
--	_enter("ic=%zu sb=%llu ws=%u",
--	       wreq->iter.count, wreq->submitted, wreq->wsize);
--
--	if (wreq->submitted < wreq->io_iter.count)
--		netfs_submit_writethrough(wreq, true);
--
--	if (atomic_dec_and_test(&wreq->nr_outstanding))
--		netfs_write_terminated(wreq, false);
--
--	if (is_sync_kiocb(iocb)) {
--		wait_on_bit(&wreq->flags, NETFS_RREQ_IN_PROGRESS,
--			    TASK_UNINTERRUPTIBLE);
--		ret = wreq->error;
--	}
--
--	netfs_put_request(wreq, false, netfs_rreq_trace_put_return);
--	return ret;
--}
+ 	next = stream->subrequests.next;
+ 
+ 	do {
+diff --git a/include/linux/netfs.h b/include/linux/netfs.h
+index c2ba364041b0..298552f5122c 100644
+--- a/include/linux/netfs.h
++++ b/include/linux/netfs.h
+@@ -235,6 +235,7 @@ struct netfs_io_request {
+ 	struct iov_iter		iter;		/* Unencrypted-side iterator */
+ 	struct iov_iter		io_iter;	/* I/O (Encrypted-side) iterator */
+ 	void			*netfs_priv;	/* Private data for the netfs */
++	void			*netfs_priv2;	/* Private data for the netfs */
+ 	struct bio_vec		*direct_bv;	/* DIO buffer list (when handling iovec-iter) */
+ 	unsigned int		direct_bv_count; /* Number of elements in direct_bv[] */
+ 	unsigned int		debug_id;
+@@ -306,6 +307,7 @@ struct netfs_request_ops {
+ 	void (*begin_writeback)(struct netfs_io_request *wreq);
+ 	void (*prepare_write)(struct netfs_io_subrequest *subreq);
+ 	void (*issue_write)(struct netfs_io_subrequest *subreq);
++	void (*retry_request)(struct netfs_io_request *wreq, struct netfs_io_stream *stream);
+ 	void (*invalidate_cache)(struct netfs_io_request *wreq);
+ };
+ 
 
