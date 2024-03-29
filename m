@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BCC581AFC80;
-	Fri, 29 Mar 2024 12:49:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B6141B7E6E;
+	Fri, 29 Mar 2024 12:50:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1711716573; cv=none; b=SUyAXIROQ2erIzZrj6yeHczys3Ff/mOOTvbtxi02djBnm35n3e7PXCEJKsV1MAK3om5EYjoGmwW5UFg9Jn6xo/arDmqy7KaKuUYu0aKQNEh19LuBSWde4iWN0+Kvdx7zz+9jxpWenBNtBfvL6g+pePnY8S7MytYNq3piVOT4ApE=
+	t=1711716635; cv=none; b=RCqV0zNfVp9b4XAe0mDIeY5plwLFGHt+L8Cl4p677YnGHQ2yZKEOF41tpShBEIoM0misGju5yYNIuX0lX+vK8umBzw8MhewkETylFkLXfzmRgkimrjbecUaz1tlpFgXqYFAnmPxzIdyuBD3jXSjODr4Gmqz/uBqmMp3lCk6wdUI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1711716573; c=relaxed/simple;
-	bh=dxXI/iC0KD+37cemqvO+pdxsi8LfSx1tdwemdIKv2vM=;
+	s=arc-20240116; t=1711716635; c=relaxed/simple;
+	bh=xs7/v+Mzn5X7V0ApC3oJ6aQLmUE0xXQdx/iuOdrouHQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Np5tfkiRaRYZ+JAju2N7HS0ABdi3TTPJV5pCfJr1QAbOjY4jz7q/iM0aL8yjGUkgWW5YwDY5B+zD0XikN47iqU4HeEaz9p82DTjrv/EoW7JXMENSlpiqdjowIEqq51MIL31v7S1Pfg6pcdDmm0JFKX81i91U9ziHQamKBlEeyjU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mP5DhiWB; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=p9dAx9sSIa6FRc3L1vX6+rZFZcKdKGpA7lA67ot+RCxpV5gqxwVpcZQ4KOvQIs/L4Gjim3hbZoBq6R91j+RVqUwWIwgCCB+J3fwcZDyNCoNJtG7frsEkeJwZPw05BroTmEgd2w+lNxElmBEDypIByAdiASXR0o14J3l6bklgWeI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=glPlO2rn; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mP5DhiWB"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4F838C433F1;
-	Fri, 29 Mar 2024 12:49:32 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="glPlO2rn"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1A289C43390;
+	Fri, 29 Mar 2024 12:50:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1711716573;
-	bh=dxXI/iC0KD+37cemqvO+pdxsi8LfSx1tdwemdIKv2vM=;
+	s=k20201202; t=1711716635;
+	bh=xs7/v+Mzn5X7V0ApC3oJ6aQLmUE0xXQdx/iuOdrouHQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=mP5DhiWB8ilGr5Gv1iWWItIp5bhd7QXYtSgHxOpUw/9XfQmKAmrl0wrtuRD0O+9hw
-	 z2mCrZ8yzqByanLQoQWm9DUErn0N990Xpip2ojYFuW6MPvxDdOBWgEwIJGeYzog7w2
-	 Y365i2ESdL30p74zXAAqlsCyx818gJZfMl5S67Xj4QlpS2uIzxjEP7CA7X+0u45pAd
-	 5B0ucIxmSw+E7Il0T36ua/9RjaZp2NM7uL1+y8Djs3lSL916xsGY3a5qbggE5m0Atz
-	 6nhhTPzzgPCsSLzZP6pplCLs6zFvJnseUCF6lsokDZVXcEMZX/pdKmJ1P9AoJLNMlb
-	 m1Q6h5G3gE2fg==
+	b=glPlO2rnPGGhDrRhuBEWZXQRETpQAZrpoAZAXzP4zgXH4UfkXNhpYH/Nf/xgApkY5
+	 eZwi69s5kq9/Z6wTHyLG6Yoeb9DSm6cMLHVBfaRlXa3/HIntgfVwstETrKwd5GPv2t
+	 HIhmw88ME0aXs3CWDLE7vp1cmVe2QwEYZQRcIV1utBuW2kc65qO7ldaspz2wRqWiKF
+	 rT7jiY1paihfe0yW/qB8ryQC/IgQ8lIVNatl1m6Qqz8njKJqCKouIx8EiXPxmgnQNE
+	 trvaa1AIkeflcLPY/ePzwewnuczfxx1kdl5/UJKncnOCHHGiwVYe89QPcg0dtkNnM9
+	 mJDMPEF6gwCnQ==
 From: Sasha Levin <sashal@kernel.org>
 To: linux-kernel@vger.kernel.org,
 	stable@vger.kernel.org
@@ -33,15 +33,15 @@ Cc: Dai Ngo <dai.ngo@oracle.com>,
 	Jeff Layton <jlayton@kernel.org>,
 	Trond Myklebust <trond.myklebust@hammerspace.com>,
 	Sasha Levin <sashal@kernel.org>,
-	anna@kernel.org,
 	chuck.lever@oracle.com,
+	anna@kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 17/31] SUNRPC: increase size of rpc_wait_queue.qlen from unsigned short to unsigned int
-Date: Fri, 29 Mar 2024 08:48:34 -0400
-Message-ID: <20240329124903.3093161-17-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 13/23] SUNRPC: increase size of rpc_wait_queue.qlen from unsigned short to unsigned int
+Date: Fri, 29 Mar 2024 08:49:46 -0400
+Message-ID: <20240329125009.3093845-13-sashal@kernel.org>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20240329124903.3093161-1-sashal@kernel.org>
-References: <20240329124903.3093161-1-sashal@kernel.org>
+In-Reply-To: <20240329125009.3093845-1-sashal@kernel.org>
+References: <20240329125009.3093845-1-sashal@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -50,7 +50,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
-X-stable-base: Linux 5.10.214
+X-stable-base: Linux 5.4.273
 Content-Transfer-Encoding: 8bit
 
 From: Dai Ngo <dai.ngo@oracle.com>
@@ -119,10 +119,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index 256dff36cf720..0527a4bc9a36f 100644
+index 5c37fabdec103..61de83be9cc27 100644
 --- a/include/linux/sunrpc/sched.h
 +++ b/include/linux/sunrpc/sched.h
-@@ -197,7 +197,7 @@ struct rpc_wait_queue {
+@@ -196,7 +196,7 @@ struct rpc_wait_queue {
  	unsigned char		maxpriority;		/* maximum priority (0 if queue is not a priority queue) */
  	unsigned char		priority;		/* current priority */
  	unsigned char		nr;			/* # tasks remaining for cookie */
