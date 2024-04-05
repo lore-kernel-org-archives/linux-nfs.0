@@ -1,237 +1,199 @@
-Received: from mailout1.w1.samsung.com (mailout1.w1.samsung.com [210.118.77.11])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-yb1-f172.google.com (mail-yb1-f172.google.com [209.85.219.172])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C1FE16D4FF;
-	Fri,  5 Apr 2024 13:34:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=210.118.77.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5836116D9A0
+	for <linux-nfs@vger.kernel.org>; Fri,  5 Apr 2024 13:47:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1712324052; cv=none; b=W+QcWlksg8NbOP19gT1zfwpZYBe1loxKUUY3eov7T1nLF/IF+GCjsQrj7x2BaQtIIB+rru5ncuItdHQZh2fH6uxRhMf5f8kxUcVzhhPiLoDTqMjwEZh2f365UEMfvpa88+c9Q1FQD3I1NMR5eEzv7g6ADtQHtHTAZGHUaboe3Sw=
+	t=1712324854; cv=none; b=ZBxpDOL0taiTuibv/DIgrleyEEZTAjMQ6vSgLlJDckYvT/Hi9X0vhhZ8XnbgmyTCXCAlzM+Cj8Of73ICSK4wIiLnaUWqX5i4gOlA7d9DnXKDXkx1fAAFyoUX2atIUnr1vb8ztruS5iu7g0+aSs0h/cxz1V+aF9jI2Oll3eHCnwg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1712324052; c=relaxed/simple;
-	bh=LJj/6K9S0mccLf8EzL0tHISHfup0kONjt4pdLG952wc=;
-	h=Date:From:To:CC:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition:In-Reply-To:References; b=L+jkd/K7nSJIY7eKRSmcYMNDScK7m6nj3NiTEf5A5RqjpENk2u9NRpUgG91O2FZMkkMUeYH/5F450J6clGNFQJmF8aGNbifalj8uwU55Qs1V4eDCj6Lp9WG5J8kCA/lK3XNwlCq8DnIAnm4j9y2IHh9f4I6IzKrgmkKxZvSweoo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=YKhX3vsr; arc=none smtp.client-ip=210.118.77.11
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
+	s=arc-20240116; t=1712324854; c=relaxed/simple;
+	bh=eHFqbIhCRlO8+eg0bsye3/gnRyfWteI0TtMg8FRqQjs=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=bCa7kU3dkj85iLCSZytNhAjg79j6ZtPchHC9lKRAbdZjQAkO+i8WFo4zoH7BWEAwqtN8NalgFBozxTtduv/KzkqZVeJ9ISMIbcZh6NqTNji4Q0VhHC9WLcDR18IMP123tITWCSP7jZ1AUr5R/DogjWxWkIWKqRruPgkUS4KT/+s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=VUbNjwdS; arc=none smtp.client-ip=209.85.219.172
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="YKhX3vsr"
-Received: from eucas1p1.samsung.com (unknown [182.198.249.206])
-	by mailout1.w1.samsung.com (KnoxPortal) with ESMTP id 20240405133401euoutp0130e9bdebb3e41d400edfa9e541a3840a~DZaS-L9et0180601806euoutp01z;
-	Fri,  5 Apr 2024 13:34:01 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout1.w1.samsung.com 20240405133401euoutp0130e9bdebb3e41d400edfa9e541a3840a~DZaS-L9et0180601806euoutp01z
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1712324041;
-	bh=i+a4M7yICQ2HnP92i8Uv6JJWR1edpPHj8jQXZpZYBH4=;
-	h=Date:From:To:CC:Subject:In-Reply-To:References:From;
-	b=YKhX3vsrA71sZeueE+2+MgNpe71G3PLv4t4SN6kD8caKNpwMl0UBDtLeuO2mObwiD
-	 dwf35oPYrx7CMhrIrJ2KyMWZTpLXasIrnmh5Gj1fWMcyMHtpPj68JGhl01Ql4gy5i6
-	 gk/EctOtGYb6SPs3o1drGd49WVWPSiDlcygGXDoE=
-Received: from eusmges1new.samsung.com (unknown [203.254.199.242]) by
-	eucas1p1.samsung.com (KnoxPortal) with ESMTP id
-	20240405133401eucas1p180bf7886e5501a175873e1fa6d28381b~DZaSwD5pi2523125231eucas1p1e;
-	Fri,  5 Apr 2024 13:34:01 +0000 (GMT)
-Received: from eucas1p2.samsung.com ( [182.198.249.207]) by
-	eusmges1new.samsung.com (EUCPMTA) with SMTP id D6.83.09539.9CDFF066; Fri,  5
-	Apr 2024 14:34:01 +0100 (BST)
-Received: from eusmtrp1.samsung.com (unknown [182.198.249.138]) by
-	eucas1p1.samsung.com (KnoxPortal) with ESMTPA id
-	20240405133400eucas1p17a657be41afd1be881bbb599e769968a~DZaSKzIvA2124621246eucas1p1f;
-	Fri,  5 Apr 2024 13:34:00 +0000 (GMT)
-Received: from eusmgms1.samsung.com (unknown [182.198.249.179]) by
-	eusmtrp1.samsung.com (KnoxPortal) with ESMTP id
-	20240405133400eusmtrp15f4b2e2b477b0577c76ad47d2a727a34~DZaSJSYyi1386013860eusmtrp1Y;
-	Fri,  5 Apr 2024 13:34:00 +0000 (GMT)
-X-AuditID: cbfec7f2-515ff70000002543-54-660ffdc93c52
-Received: from eusmtip2.samsung.com ( [203.254.199.222]) by
-	eusmgms1.samsung.com (EUCPMTA) with SMTP id 94.A3.09146.8CDFF066; Fri,  5
-	Apr 2024 14:34:00 +0100 (BST)
-Received: from CAMSVWEXC02.scsc.local (unknown [106.1.227.72]) by
-	eusmtip2.samsung.com (KnoxPortal) with ESMTPA id
-	20240405133400eusmtip2bf1c1d03faee0a07935c7405979e5cff~DZaR2giF20852408524eusmtip2m;
-	Fri,  5 Apr 2024 13:34:00 +0000 (GMT)
-Received: from localhost (106.210.248.212) by CAMSVWEXC02.scsc.local
-	(2002:6a01:e348::6a01:e348) with Microsoft SMTP Server (TLS) id 15.0.1497.2;
-	Fri, 5 Apr 2024 14:33:59 +0100
-Date: Fri, 5 Apr 2024 09:15:31 +0200
-From: Joel Granados <j.granados@samsung.com>
-To: Kuniyuki Iwashima <kuniyu@amazon.com>
-CC: <devnull+j.granados.samsung.com@kernel.org>, <Dai.Ngo@oracle.com>,
-	<alex.aring@gmail.com>, <alibuda@linux.alibaba.com>,
-	<allison.henderson@oracle.com>, <anna@kernel.org>, <bridge@lists.linux.dev>,
-	<chuck.lever@oracle.com>, <coreteam@netfilter.org>, <courmisch@gmail.com>,
-	<davem@davemloft.net>, <dccp@vger.kernel.org>, <dhowells@redhat.com>,
-	<dsahern@kernel.org>, <edumazet@google.com>, <fw@strlen.de>,
-	<geliang@kernel.org>, <guwen@linux.alibaba.com>,
-	<herbert@gondor.apana.org.au>, <horms@verge.net.au>, <ja@ssi.bg>,
-	<jaka@linux.ibm.com>, <jlayton@kernel.org>, <jmaloy@redhat.com>,
-	<jreuter@yaina.de>, <kadlec@netfilter.org>, <keescook@chromium.org>,
-	<kolga@netapp.com>, <kuba@kernel.org>, <linux-afs@lists.infradead.org>,
-	<linux-hams@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-	<linux-nfs@vger.kernel.org>, <linux-rdma@vger.kernel.org>,
-	<linux-s390@vger.kernel.org>, <linux-sctp@vger.kernel.org>,
-	<linux-wpan@vger.kernel.org>, <linux-x25@vger.kernel.org>,
-	<lucien.xin@gmail.com>, <lvs-devel@vger.kernel.org>,
-	<marc.dionne@auristor.com>, <marcelo.leitner@gmail.com>,
-	<martineau@kernel.org>, <matttbe@kernel.org>, <mcgrof@kernel.org>,
-	<miquel.raynal@bootlin.com>, <mptcp@lists.linux.dev>, <ms@dev.tdt.de>,
-	<neilb@suse.de>, <netdev@vger.kernel.org>,
-	<netfilter-devel@vger.kernel.org>, <pabeni@redhat.com>,
-	<pablo@netfilter.org>, <ralf@linux-mips.org>, <razor@blackwall.org>,
-	<rds-devel@oss.oracle.com>, <roopa@nvidia.com>, <stefan@datenfreihafen.org>,
-	<steffen.klassert@secunet.com>, <tipc-discussion@lists.sourceforge.net>,
-	<tom@talpey.com>, <tonylu@linux.alibaba.com>,
-	<trond.myklebust@hammerspace.com>, <wenjia@linux.ibm.com>,
-	<ying.xue@windriver.com>
-Subject: Re: [PATCH v2 4/4] ax.25: Remove the now superfluous sentinel
- elements from ctl_table array
-Message-ID: <20240405071531.fv6smp55znlfnul2@joelS2.panther.com>
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="VUbNjwdS"
+Received: by mail-yb1-f172.google.com with SMTP id 3f1490d57ef6-dcc84ae94c1so2362622276.1
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Apr 2024 06:47:32 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20230601; t=1712324851; x=1712929651; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=RDkodhxPHjCRcYuHL8QJdxmj/UyX4mSAQyu360+3BOI=;
+        b=VUbNjwdSHuFql+0qqSA6ulfb92n/na/cVGs9xcWDSze4ziRSFHPv67sZK5aQUDeQsb
+         3TuuRG5ceBVzSdQWK6ylm141wxF/YJSyp+7F71VKNBSU9GB0yjWMTL1R9JapJSI8Gv9m
+         I1YxyWBxwMy9EqXxX8R1RPb6+AcZul2LuqH7ba1Yx/NabSMQyem5R3CkTZ1EEvowdeHa
+         isOarVU/YLDKbyYy/URONSvQu5EcZOyIrMIBbLa5ZzP8Yt3T81nTcDtmT3TWN3wm7gb6
+         4nPV0rPArcITIyCy945cZX7BGr6gY1nwBvjL1nNuQ7LjG+tRrC0uBdBtWdveKzp7pCJ0
+         OsiQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1712324851; x=1712929651;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=RDkodhxPHjCRcYuHL8QJdxmj/UyX4mSAQyu360+3BOI=;
+        b=WIUKhJUhoKYidUO2cKTlU3jPFKdbqFVX7sXAcCRha5ltLpB52WTH+ibOdPJmIhavzr
+         0QP5k8m9MuInKPbiiP5YONdisgoIfriIw+xHIndhMDFydzTnmI2FDhCIItSm63n5Fgla
+         zYwvZf6UvGHaPXyY/89gmwDIBW16dghQxWg2A3552thKpyPnSPSfxonLR7OspmzhJccL
+         dYbOVxRvLiglFhN1FV220ICXe+JQrb0+uWEwFZhxrk0u8MTtGIPMa+nhLvMLlF1pvzVK
+         qTZePcaPkOeAq1sLpqQ86/F1obCTxaSMA9nyCz2zUFjhgCrVWkCCi78+8GlHGVEye0am
+         pyYg==
+X-Forwarded-Encrypted: i=1; AJvYcCU1xboGAE2lpy1Rut6XmURxoFfXRG5C0lVwnMya+FPk0wdyE3IT3e/24CKpJsL35wzbSuiBS9O0xHpVxWUYvl5xIn4W+NlgoCaF
+X-Gm-Message-State: AOJu0YwoCB1yAlgjr7xlJWFgd7tt/5QFTjjjLX9o9k0yT+1Kod204umC
+	7G4IfYe/zJ4acQX3Y/jYn6sBYr6EbkOcmckPehTM1fZyP3g9UcKDx3673jjOu3FlKxgnUCh0Mal
+	Vf71H4IYXMOvODIwjPxwz/Fok34TSNmLbBeZ6
+X-Google-Smtp-Source: AGHT+IETt+9jSDY6jbVQEtdOA/2Ue8S5T1KTCdTuvtcb7ogtZ6i7ZvA/55fNMoiVG+R35qGWCJRB01iqaNVA/qZfNAE=
+X-Received: by 2002:a25:e30e:0:b0:dd0:2076:4706 with SMTP id
+ z14-20020a25e30e000000b00dd020764706mr1142654ybd.31.1712324850962; Fri, 05
+ Apr 2024 06:47:30 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha512";
-	protocol="application/pgp-signature"; boundary="h65h3fnxnuqgv2vq"
-Content-Disposition: inline
-In-Reply-To: <20240328194934.42278-1-kuniyu@amazon.com>
-X-ClientProxiedBy: CAMSVWEXC01.scsc.local (2002:6a01:e347::6a01:e347) To
-	CAMSVWEXC02.scsc.local (2002:6a01:e348::6a01:e348)
-X-Brightmail-Tracker: H4sIAAAAAAAAA2VTaVBTVxj1vi0BG/sExVt0uiA4rdpQHGf8aNVSu/BmOhbH6Q+rUys2T0Qg
-	KJG6UDuRRSQBZMQWiRAQbViiQCEN4FIRWUxAwKKFUlCJLIogaliESKjh2daZ/jvn3HPuPefH
-	FZMuqWJ3cbB8Nx8hDwz1YJwpY+1407umyVe3vfeXxRmqlCug64KKBmXsIQLiKqYoMJ5SEzDV
-	2UfAZEU8CdauPhqyckoZyGiKpWCyVc1AS2Y3AQ+jbRQUnosjoKfWIgJjkh6BPrqDgrK+MQbU
-	/Qsg5tcRBN1HLDTc0D1iYFxXIILbIxYKxpNnQroqhoAGdRiUd3ZT0GxMpkGXeJaBFLMP/FHW
-	SUDLuQwGmivraeitSqIg5WQMCT3ZD2joSNVRUHkxC4GlaIiAmKwnJMRY75IwkVdHQ2PSFAma
-	wgIS2lJ6EFyJ/42GhqJoEYxqr5JwMUtJQW22G6QUmikYrR9AkDZwk4TfL3iCeXiKgMZSKw3W
-	jLchNc9AwPmEpyIwNO0A84SZgLtjfQxMtX3ot4bLa1bRXLtlhOQeNpoQpz0TxZ1QXqe4ifHF
-	nCH/T4JTV/eTXIWmU8QZK7247JJI7lnVLyKupCCB4WryzxJcRZcvl5JTidZ5bHReKeNDg7/j
-	I7xXb3HenpRlInY+dNtrGotllCjHVYWcxJhdjq9eu4BUyFnswuYhPDqqfUGGET5qbmAEYkV4
-	vMFMq5B4OmK8EyLouQg3Dt5H/5rKDkYTAjEg3NtejByPUKwn1qa3TGOGXYqbBjpIB57DvoMP
-	FybSjgDJlkqwKaGVdhy4stvw01s90wEJ64ev3LxMCng2NqV3Uw5MsnvxTycNjKMSyc7HuXax
-	Q3ZiV+DLE1dfNF2IHxStFHYewGZD+3Q3zF57Bd8Z7iAEzyf4+OBGweOK++sMIgEvwPWpiZTg
-	T0X4kv2RSCB6hHUHRwjB9QGOvdH9IvERHrQeZIRLZ+G2wdlCzVn4qDGNFGQJPnzIRXAvwvpb
-	A1QKWqh5aZjmpWGa/4YJshS3/Xjs//ISrDv5gBTwKlxYOERlI1EBmsdHKsKCeIWPnN8jVQSG
-	KSLlQdJvw8NK0PO/Wm+ve1KOMvsfS6sQIUZVyPN52FKsb0bulDxcznvMkaj9JNtcJLLAffv5
-	iPBvIiJDeUUVmi+mPOZJvGRv8C5sUOBuPoTnd/IR/5wSYid3JTH3XrK0J/jr6vW2kXMxa8JP
-	H/c/Eaa3Sb12GDYHtLttjdd1bvBM2Fw5Kf7YL65r0zq9tzRf0hrVO7DB356hza1vOpaoeOux
-	XRTifcBW8ZpMvW7J+gDb6j2bZvhmBTyZ6T/zVLuxvDjc//aX93O+6nWupkprX5+x98YP9fsj
-	7YO7bJKoVa5vLpc1RLXKrGn93td3pJ5Z5f4Zu+XTn6X2zEdOh3WyZWO+z2ruVcbNqQs+v3C9
-	ZthkWfv92mpl36VivHGXZCihw3KnJ371ikixJWPLvRq6qKhh2HvJF76LLO9/HpBdoq2+NBdl
-	bGrW5S4VNZ/WrJka9twnXTw5FL5blb51WbW2RW31oBTbA30WkxGKwL8B0oUGfSYFAAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAA2WTe0yTZxTGfb9Lv4Jp/KSKn+AWUzHZQAtVLqeLMDTRfRqzuItb4txKI+Uy
-	LjUtJehmRkBEC2iNMYaKgM51QGdraQFRYAgOoVwH4i2UjVokQgNqQe4wsFlmsv9+73PO8+Sc
-	Nzlc3Osm5cONT06RKZKliQKOJ9G6cL9/a/P8qpigdudGaEgPg4EaNQnpJ09hkFW9SEDlzzkY
-	LNqGMJivzsbBNTBEQtE1MwcKOk8SMP8ohwM9VxwYjGbMEmC4nYXBYJOdgso8PQJ9Rh8BVUOT
-	HMgZ3gCZFRMIHOfsJDzQveTAtK6Mgr8m7ARMn10J+epMDNpykuCWzUFAV+VZEnS5NzigsYrg
-	YZUNg57bBRzoqm8l4XlDHgGaq5k4DBaPkNB3QUdAfW0RArtxDIPMotc4ZLqe4TBTcp+EjrxF
-	HLSGMhweawYRNGbXkdBmzKDgTWEzDrVF6QQ0FXuDxmAl4E2rE8ElZy8O3TV+YB1fxKDD7CLB
-	VfABXCixYHDnzBQFls7vwTpjxeDZ5BAHFh9/HLmLLelSk+xT+wTOjna0ILbwtx/Yy+l/EuzM
-	tD9rKX2CsTn3hnG2Wmuj2Mr6zWxxuYqdazBRbHnZGQ77R+kNjK0eELOaa/XogOCQcIdCrkqR
-	bYyTK1PCBd+IYJtQJAbhtmCxULQ97NuPtoUIAiN2RMsS41NlisCIKGFcj9ZMHHV6p+UZm6l0
-	VMxXIy6XoYOZyr8T1MiT60X/gpj+GjOlRh5L+gbGNN5LupnPzD1Uc9xNrxBTce4U5n5YEKPT
-	G992EbQfU5jfg5aZQ29hOp19+DKvoT9kThtyyWUDTpt4jFPf+bbAp2OYqf7BtwYeHck09t7F
-	3amtiGluHaHchdVMS76DWGacTmVsHU/I5blx2pf5dYG7LHvQYczdmWbSvc4mZsS4wz31CcY1
-	/xxpEF/7TpD2nSDtf0FueQtTXdHH+Z8cwOiujuBuDmcMhjGiGFFlaI1MpUyKTVKKhEppklKV
-	HCs8Ik8qR0vnUtk0bb6FCodfCRsQxkUNyG/Jab+p70I+RLI8WSZYw8uJ5MV48aKlx47LFHKJ
-	QpUoUzagkKVfPI/7rD0iX7q95BSJKDQoRBQcKg4KEYduF6zj7T16WupFx0pTZAky2VGZ4l8f
-	xvXwScdW54q7V3xCx2wNlkb47tvc2ysKj9e6Ht7BH3EDo8LKcwPfN+6J5Zu+POjTaZH46jcF
-	DHnu3//13cMV2kONA/YXPWPrAvhJT9OyS85JnZdgxXftLe/xHk2I7RfruxKuMD/yuUdqHgum
-	j2EoYmGmfXb0QZuJYAu/qnLNOrzF+etflBJ54VZV5tzE+i2afThluyepbynqCKBt/o7JE6mp
-	Duz1yGRjo393amSo12e75yjs89hVRtVxicgsnzuQldHktWvtzsUoiemnoZ3XLd1ZebVfNB2+
-	Hri9LcSSPfVSsqfG2lanTzO0rwzUjad+ahLX/W5OiK7oDw/wz927W375YNZ5AaGMk4r8cYVS
-	+g8887p5wwQAAA==
-X-CMS-MailID: 20240405133400eucas1p17a657be41afd1be881bbb599e769968a
-X-Msg-Generator: CA
-X-RootMTR: 20240328195008eucas1p2fc32577c64a80424c10f30e4f69fc11a
-X-EPHeader: CA
-CMS-TYPE: 201P
-X-CMS-RootMailID: 20240328195008eucas1p2fc32577c64a80424c10f30e4f69fc11a
-References: <20240328-jag-sysctl_remset_net-v2-4-52c9fad9a1af@samsung.com>
-	<CGME20240328195008eucas1p2fc32577c64a80424c10f30e4f69fc11a@eucas1p2.samsung.com>
-	<20240328194934.42278-1-kuniyu@amazon.com>
-
---h65h3fnxnuqgv2vq
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Disposition: inline
+References: <20240404165404.3805498-1-surenb@google.com> <Zg7dmp5VJkm1nLRM@casper.infradead.org>
+ <CAJuCfpHbTCwDERz+Hh+aLZzNdtSFKA+Q7sW-xzvmFmtyHCqROg@mail.gmail.com>
+ <CAJuCfpHy5Xo76S7h9rEuA3cQ1pVqurL=wmtQ2cx9-xN1aa_C_A@mail.gmail.com>
+ <Zg8qstJNfK07siNn@casper.infradead.org> <jb25mtkveqf63bv74jhynf6ncxmums5s37esveqsv52yurh4z7@5q55ttv34bia>
+ <20240404154150.c25ba3a0b98023c8c1eff3a4@linux-foundation.org>
+ <jpaw4hdd73ngt7mvtcdryqscivx6m2ic76ikfkcopceb47becp@vox5czt5bec3>
+ <CAJuCfpF10COO2nh1nt3CcaZOFe4iSXszsup+a0qAEQ1ngyy5tQ@mail.gmail.com> <20240405095327.ufsimeplwahh6mem@quack3>
+In-Reply-To: <20240405095327.ufsimeplwahh6mem@quack3>
+From: Suren Baghdasaryan <surenb@google.com>
+Date: Fri, 5 Apr 2024 06:47:17 -0700
+Message-ID: <CAJuCfpHG5U5Radv+_D3nD3OxAgqzBa_Za28+RS=NTG53Y=xpsg@mail.gmail.com>
+Subject: Re: [PATCH 1/1] mm: change inlined allocation helpers to account at
+ the call site
+To: Jan Kara <jack@suse.cz>
+Cc: Kent Overstreet <kent.overstreet@linux.dev>, Andrew Morton <akpm@linux-foundation.org>, 
+	Matthew Wilcox <willy@infradead.org>, joro@8bytes.org, will@kernel.org, 
+	trond.myklebust@hammerspace.com, anna@kernel.org, arnd@arndb.de, 
+	herbert@gondor.apana.org.au, davem@davemloft.net, jikos@kernel.org, 
+	benjamin.tissoires@redhat.com, tytso@mit.edu, jack@suse.com, 
+	dennis@kernel.org, tj@kernel.org, cl@linux.com, jakub@cloudflare.com, 
+	penberg@kernel.org, rientjes@google.com, iamjoonsoo.kim@lge.com, 
+	vbabka@suse.cz, edumazet@google.com, kuba@kernel.org, pabeni@redhat.com, 
+	iommu@lists.linux.dev, linux-kernel@vger.kernel.org, 
+	linux-nfs@vger.kernel.org, linux-acpi@vger.kernel.org, 
+	acpica-devel@lists.linux.dev, linux-arch@vger.kernel.org, 
+	linux-crypto@vger.kernel.org, bpf@vger.kernel.org, 
+	linux-input@vger.kernel.org, linux-ext4@vger.kernel.org, linux-mm@kvack.org, 
+	netdev@vger.kernel.org, linux-security-module@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Mar 28, 2024 at 12:49:34PM -0700, Kuniyuki Iwashima wrote:
-> From: Joel Granados via B4 Relay <devnull+j.granados.samsung.com@kernel.o=
-rg>
-> Date: Thu, 28 Mar 2024 16:40:05 +0100
-> > This commit comes at the tail end of a greater effort to remove the
-> > empty elements at the end of the ctl_table arrays (sentinels) which will
-> > reduce the overall build time size of the kernel and run time memory
-> > bloat by ~64 bytes per sentinel (further information Link :
-> > https://lore.kernel.org/all/ZO5Yx5JFogGi%2FcBo@bombadil.infradead.org/)
-> >=20
-> > When we remove the sentinel from ax25_param_table a buffer overflow
-> > shows its ugly head. The sentinel's data element used to be changed when
-> > CONFIG_AX25_DAMA_SLAVE was not defined.
->=20
-> I think it's better to define the relation explicitly between the
-> enum and sysctl table by BUILD_BUG_ON() in ax25_register_dev_sysctl()
->=20
->   BUILD_BUG_ON(AX25_MAX_VALUES !=3D ARRAY_SIZE(ax25_param_table));
->=20
-> and guard AX25_VALUES_DS_TIMEOUT with #ifdef CONFIG_AX25_DAMA_SLAVE
-> as done for other enum.
+On Fri, Apr 5, 2024 at 2:53=E2=80=AFAM Jan Kara <jack@suse.cz> wrote:
+>
+> On Thu 04-04-24 16:16:15, Suren Baghdasaryan wrote:
+> > On Thu, Apr 4, 2024 at 4:01=E2=80=AFPM Kent Overstreet
+> > <kent.overstreet@linux.dev> wrote:
+> > >
+> > > On Thu, Apr 04, 2024 at 03:41:50PM -0700, Andrew Morton wrote:
+> > > > On Thu, 4 Apr 2024 18:38:39 -0400 Kent Overstreet <kent.overstreet@=
+linux.dev> wrote:
+> > > >
+> > > > > On Thu, Apr 04, 2024 at 11:33:22PM +0100, Matthew Wilcox wrote:
+> > > > > > On Thu, Apr 04, 2024 at 03:17:43PM -0700, Suren Baghdasaryan wr=
+ote:
+> > > > > > > Ironically, checkpatch generates warnings for these type cast=
+s:
+> > > > > > >
+> > > > > > > WARNING: unnecessary cast may hide bugs, see
+> > > > > > > http://c-faq.com/malloc/mallocnocast.html
+> > > > > > > #425: FILE: include/linux/dma-fence-chain.h:90:
+> > > > > > > + ((struct dma_fence_chain *)kmalloc(sizeof(struct dma_fence_=
+chain),
+> > > > > > > GFP_KERNEL))
+> > > > > > >
+> > > > > > > I guess I can safely ignore them in this case (since we cast =
+to the
+> > > > > > > expected type)?
+> > > > > >
+> > > > > > I find ignoring checkpatch to be a solid move 99% of the time.
+> > > > > >
+> > > > > > I really don't like the codetags.  This is so much churn, and i=
+t could
+> > > > > > all be avoided by just passing in _RET_IP_ or _THIS_IP_ dependi=
+ng on
+> > > > > > whether we wanted to profile this function or its caller.  vmal=
+loc
+> > > > > > has done it this way since 2008 (OK, using __builtin_return_add=
+ress())
+> > > > > > and lockdep has used _THIS_IP_ / _RET_IP_ since 2006.
+> > > > >
+> > > > > Except you can't. We've been over this; using that approach for t=
+racing
+> > > > > is one thing, using it for actual accounting isn't workable.
+> > > >
+> > > > I missed that.  There have been many emails.  Please remind us of t=
+he
+> > > > reasoning here.
+> > >
+> > > I think it's on the other people claiming 'oh this would be so easy i=
+f
+> > > you just do it this other way' to put up some code - or at least more
+> > > than hot takes.
+> > >
+> > > But, since you asked - one of the main goals of this patchset was to =
+be
+> > > fast enough to run in production, and if you do it by return address
+> > > then you've added at minimum a hash table lookup to every allocate an=
+d
+> > > free; if you do that, running it in production is completely out of t=
+he
+> > > question.
+> > >
+> > > Besides that - the issues with annotating and tracking the correct
+> > > callsite really don't go away, they just shift around a bit. It's tru=
+e
+> > > that the return address approach would be easier initially, but that'=
+s
+> > > not all we're concerned with; we're concerned with making sure
+> > > allocations get accounted to the _correct_ callsite so that we're giv=
+ing
+> > > numbers that you can trust, and by making things less explicit you ma=
+ke
+> > > that harder.
+> > >
+> > > Additionally: the alloc_hooks() macro is for more than this. It's als=
+o
+> > > for more usable fault injection - remember every thread we have where
+> > > people are begging for every allocation to be __GFP_NOFAIL - "oh, err=
+or
+> > > paths are hard to test, let's just get rid of them" - never mind that
+> > > actually do have to have error paths - but _per callsite_ selectable
+> > > fault injection will actually make it practical to test memory error
+> > > paths.
+> > >
+> > > And Kees working on stuff that'll make use of the alloc_hooks() macro
+> > > for segregating kmem_caches.
+> >
+> > Yeah, that pretty much summarizes it. Note that we don't have to make
+> > the conversions in this patch and accounting will still work but then
+> > all allocations from different callers will be accounted to the helper
+> > function and that's less useful than accounting at the call site.
+> > It's a sizable churn but the conversions are straight-forward and we
+> > do get accurate, performant and easy to use memory accounting.
+>
+> OK, fair enough. I guess I can live with the allocation macros in jbd2 if
+> type safety is preserved. But please provide a short summary of why we ne=
+ed
+> these macros (e.g. instead of RET_IP approach) in the changelog (or at
+> least a link to some email explaining this if the explanation would get t=
+oo
+> long). Because I was wondering about the same as Andrew (and yes, this is
+> because I wasn't really following the huge discussion last time).
 
-When I remove AX25_VALUES_DS_TIMEOUT from the un-guarded build it
-complains in net/ax25/ax25_ds_timer.c (ax25_ds_set_timer). Here is the
-report https://lore.kernel.org/oe-kbuild-all/202404040301.qzKmVQGB-lkp@inte=
-l.com/.
+Ack. I'll write up the explanation or if there is a good one already
+in our previous discussion will add a link to it. Thanks!
 
-How best to address this? Should we just guard the whole function and do
-nothing when not set? like this:
-
-```
-void ax25_ds_set_timer(ax25_dev *ax25_dev)
-{
-#ifdef COFNIG_AX25_DAMA_SLAVE
-        if (ax25_dev =3D=3D NULL)        =B7=B7=B7/* paranoia */
-                return;
-
-        ax25_dev->dama.slave_timeout =3D
-                msecs_to_jiffies(ax25_dev->values[AX25_VALUES_DS_TIMEOUT]) =
-/ 10;
-        mod_timer(&ax25_dev->dama.slave_timer, jiffies + HZ);
-#else
-        return;
-#endif
-}
-
-```
-
-I'm not too familiar with this, so pointing me to the "correct" way to
-handle this would be helpfull.
-
-Thx in advance.
-
-Best
-
---=20
-
-Joel Granados
-
---h65h3fnxnuqgv2vq
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQGzBAABCgAdFiEErkcJVyXmMSXOyyeQupfNUreWQU8FAmYPpRMACgkQupfNUreW
-QU+GdwwAk+SQw0o7uu63t5QC8II75UQQXXzD86NcnboVLtTTKuPbn2y+rcWUY7tu
-RfnrQvG2ui15fSX0cYv66um6AIlYtvOAjlKfh5wBAA3YZQdmnSTGuHW8vcu5B6Iu
-WdjX4C12SNI/7Y8S7yLZurWvE5QrS/RHQ5sHtDfNm/HUmIoylsHmbuNvwxrOdzFH
-xxfDDdCrT5jxjVmr0Ctx3tJEmAHnkUD5voVBT1p6bJNNUOdYK986gsCYlgJpYuqE
-J3hSfJnhAnMGJcmtfnTXwoaje7XN5opqF9qaSinY7HaEoidu6pRGCA/M8a6N+PT7
-wBYhl0umuMOOBkqS7o0HtadAx6yv2fO7sOiZl4ZXvA9fRWam40n2CvKGZmF2koPs
-KRllZIQ+Uh+pbfhN9g6w0Mbjb10W9sFaZdN7CsEKKk6nxmkmgH/2PmmNhwYkdgXG
-7SLMAqeOLP/ZtTEypd2LzGdpLvjZq54jgAcB2c3cQI8jb4eogkqaMeazsf247+zt
-i5D8SOSY
-=Yv9S
------END PGP SIGNATURE-----
-
---h65h3fnxnuqgv2vq--
+>
+>                                                                 Honza
+> --
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
