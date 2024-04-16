@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5FC813A3EF;
-	Tue, 16 Apr 2024 20:20:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 40E522AF02;
+	Tue, 16 Apr 2024 20:33:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713298811; cv=none; b=ALDjBCisbEgAgfOt/gkMH+7tgC2Y2mlDmJJEjZnBEgkSc0PaaThzqjFNwVNPvK1BlfEjnrZswfmKIdEl7+O6dittonmfjeaX2+knbJ13ymfvVH62gE385xHISbr2gFBjVsKPd9U2BGLK6bWDIVmN6Nsc6Z6OgWiRRawCKtQZ5Y4=
+	t=1713299622; cv=none; b=dbTI+M/G2mhOO10vi2fnD73ThTa5jh3T7zncYngsmwANT1FNsoy9bH8/pw9+tqg7NKRMg7EbweDDylGee8wEr6+/r1jnYsd/vmjqrmT7k21vx9WXaHYFcO/UUVJ4fVRD4LxxTH//zLQw6YAO9/mtMHvNCBED9IfcHKd/twYpXR8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713298811; c=relaxed/simple;
-	bh=vUhVeWXJmiQxPeOjQ5ffuRN4z/tn2RK2d3lS/O0alko=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=G1/gaLRUNByjEYU+tkrUbP5ocilQ/Z3pfC8pXsgAlf9CstdCJlerFUAbvJWEzxU5eIDoh4co3lR0aLIsREkOsrTMzS0GK/q/25weEEZhoR08PrApjmwq2lkkb5QYLF1iWUzC5HHOKOXD5d8LQbhWxMTDK71UgOesTX05Q824Ieg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=i1Qqaeyk; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1713299622; c=relaxed/simple;
+	bh=eXSPYBxn/l0S9sMtImb1xGWJp1lG0mtVRN4XUUEEJAk=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=jVRKaAomz0A3/7kfU1LWwh3/gcHymL5se9JT2p8CvqkExl1EN8YpmE/ngvcrimVhoBo3nL2fleQLY6RMBSG1E+uvlQVGNVgDA3WElSP8Ew7qb4UBKh197ZcSk7Tf9TD9VkPP0uep2XzxDb88xWRscABjHwZfTIU1c3UCtnQW0cM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gsNZUelp; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="i1Qqaeyk"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F3563C113CE;
-	Tue, 16 Apr 2024 20:20:08 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gsNZUelp"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6E7F5C3277B;
+	Tue, 16 Apr 2024 20:33:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1713298809;
-	bh=vUhVeWXJmiQxPeOjQ5ffuRN4z/tn2RK2d3lS/O0alko=;
+	s=k20201202; t=1713299620;
+	bh=eXSPYBxn/l0S9sMtImb1xGWJp1lG0mtVRN4XUUEEJAk=;
 	h=From:To:Cc:Subject:Date:From;
-	b=i1QqaeykDlZdTI9/rKfETnYtZea42ZqcM6b/oJ33Oom+uzwyOW9KHZZeVOK67zYdW
-	 52fhST/nK1BC+wtaCurtctIobxYND584RB99Y3eSQ5KsnsmIA2lESri5hHKMdpReN+
-	 jUceVk7U5O+SS/355Cii6QUPgVQBZToQM0yv59YvrIqiLOXNnxAZuT1KDYLXBxrxRF
-	 FcFW80k+KBbdiRPZswigoY3VitQ0gBW+Po5FG6zOLPA22IrCgVGYY/7sZZduPFBjNG
-	 aJJrRj3/n3Kl6ELDhIsbQkPJXDbPRfDMA+T1WuQGND0Uv+9vRu+NcbhYhNqxZd3lqg
-	 Tx/xMfVuAzJpg==
+	b=gsNZUelpP2j1WUWxiS1tQJEM//Aasq1+7B7GoqKe4j8VTIOqwU9uewx4Lj/j4u8n8
+	 Yyid7TaF/jYWt7+UuPdzEPZgvS0NGvgTPRFBeXxlCBlIgbiDKV3+MvxvDncGlyeI/d
+	 oc3f6mSUJwUdD5ZX5IkKRmQPWkG0jOLU+0D8mOKrqNU0B/t1SY8cJ+tHn6lYxyw0+r
+	 kY/RTp8+VWXIaboAguAnKW6s5Nv5cvDMVfZ5pfLEsGf4y4VWTTqR+R5DsutWbTYTJg
+	 A+fHq9a7w6sF6xxigfovCHqH+hUo4/jooMD7r0a/zl3fAFarOIMfolnZTuxKpLFJK9
+	 /TbYbhgpXdNyw==
 From: cel@kernel.org
 To: <stable@vger.kernel.org>
 Cc: <linux-nfs@vger.kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>,
 	Harshit Mogalapalli <harshit.m.mogalapalli@oracle.com>
 Subject: [PATCH] Revert 2267b2e84593bd3d61a1188e68fba06307fa9dab
-Date: Tue, 16 Apr 2024 16:20:06 -0400
-Message-ID: <20240416202006.10194-1-cel@kernel.org>
+Date: Tue, 16 Apr 2024 16:33:37 -0400
+Message-ID: <20240416203337.10248-1-cel@kernel.org>
 X-Mailer: git-send-email 2.44.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -48,6 +48,7 @@ ltp test fcntl17 fails on v5.15.154. This was bisected to commit
 2267b2e84593 ("lockd: introduce safe async lock op").
 
 Reported-by: Harshit Mogalapalli <harshit.m.mogalapalli@oracle.com>
+Cc: stable@vger.kernel.org
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
  Documentation/filesystems/nfs/exporting.rst |  7 -------
