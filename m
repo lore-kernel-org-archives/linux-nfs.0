@@ -1,106 +1,132 @@
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+Received: from akranes.kaiser.cx (akranes.kaiser.cx [152.53.16.207])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD1AF1CD0C
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Apr 2024 21:31:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.177.32
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6E4D51CF9B;
+	Mon, 22 Apr 2024 23:01:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=152.53.16.207
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713821498; cv=none; b=Jf2vlBCzkqsKS7gg+tzAyg1mKGuUUELjb0k5GeG82qooHGMtBeJqTI7zIsee+1vaTS1MPpZrtIplzQrym3HH7pGAVViB7/t504aEvjfb/JleJK9z17ugxYkHAG2hH4YaiEwzs7ndIGAbzpcX4oZZq/nlsBlYF6q9KSxsiL9DqWE=
+	t=1713826891; cv=none; b=DDatGKEw7uAXEIVtrybmQMckoTWGDzihixYS/v/yGc9TSvd7fnId5ylHNe0tES6PlLYvPYeJfAFkJDFQ9TK2tV4UWDZXhoLaCX9mx7A/qNQN+GXN0vNS7DcRxsurZK8N1ZIdC0if0RAgtG8J1rukKqT/Iz+VVpbkCWInIkNF/+E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713821498; c=relaxed/simple;
-	bh=n2iABvu4jzNMv28Q0kHWlr62XDxaaIVOyXfwMIVxwG4=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=cmX6V3HWJgPabJhQyXSzCeVld8BzJNQJ9N4VfoapwpzcnXevNuHsCcdRiMVN1bycNVfX6WQlWhM3LBt10Jbj6P/YIlV7vKK/+id7tMt0vE3kMVPs/vMfrLKSP57y3Rju0809AqYdHmNd1Hq1ihLM/g3Dm2b51ek3HbW7H18Ixks=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=HZ9ewPqz; arc=none smtp.client-ip=205.220.177.32
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=oracle.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="HZ9ewPqz"
-Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
-	by mx0b-00069f02.pphosted.com (8.17.1.19/8.17.1.19) with ESMTP id 43MHmjso017355;
-	Mon, 22 Apr 2024 21:31:32 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=from : to : cc :
- subject : date : message-id : in-reply-to : references; s=corp-2023-11-20;
- bh=hR/6xUHOjAJUSUlB/K9DyntUMzRZrTpcVkIhovIouEY=;
- b=HZ9ewPqzxmav+HYfH30gq/4t7t2YOp41dlMUtYtXVV9jFYxdTLHjY1QfK68mbdWt0CKQ
- ETz/UM598n8s2pNeYPbgEl8oQ2QfzYUzJhIZDQcyW0Ig9dof3w8B7ecGFbOSM2kpi46P
- EubTdbrOm+rKAYcPm0NwdTwZPxCHA6snDCMxQcLM32D8R1QQdq3roNno58s9HMswA2lE
- 8ROR9fUsDVVdwYEVPkqKbqTIzvN3wt+6ZrRctCnSPv8nvllyXepHyey7OQlGHlgTSitN
- JF1zcMJxl7GW2RigDcZ9cSfTEiqEfgJoX+nDSxdhv8MzYrvoswRPQyNdV7cPt0M8JNAU XA== 
-Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.appoci.oracle.com [138.1.114.2])
-	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 3xm4g4bsd1-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 22 Apr 2024 21:31:31 +0000
-Received: from pps.filterd (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (8.17.1.19/8.17.1.19) with ESMTP id 43MKTZTa033774;
-	Mon, 22 Apr 2024 21:31:30 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 3xm4569817-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 22 Apr 2024 21:31:30 +0000
-Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-	by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 43MLUw1P008733;
-	Mon, 22 Apr 2024 21:31:30 GMT
-Received: from ca-common-hq.us.oracle.com (ca-common-hq.us.oracle.com [10.211.9.209])
-	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 3xm456980c-3;
-	Mon, 22 Apr 2024 21:31:30 +0000
-From: Dai Ngo <dai.ngo@oracle.com>
-To: chuck.lever@oracle.com, jlayton@kernel.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] NFSD: add helper to set NFSD4_CLIENT_CB_KILL to stop the callback
-Date: Mon, 22 Apr 2024 14:31:14 -0700
-Message-Id: <1713821475-21474-3-git-send-email-dai.ngo@oracle.com>
-X-Mailer: git-send-email 1.8.3.1
-In-Reply-To: <1713821475-21474-1-git-send-email-dai.ngo@oracle.com>
-References: <1713821475-21474-1-git-send-email-dai.ngo@oracle.com>
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1011,Hydra:6.0.619,FMLib:17.11.176.26
- definitions=2024-04-22_15,2024-04-22_01,2023-05-22_02
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 phishscore=0 suspectscore=0 mlxscore=0
- mlxlogscore=999 bulkscore=0 malwarescore=0 spamscore=0 adultscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2404010000
- definitions=main-2404220090
-X-Proofpoint-GUID: _leMx5pY0RWB6APpX55A6vQxrIUTBM7n
-X-Proofpoint-ORIG-GUID: _leMx5pY0RWB6APpX55A6vQxrIUTBM7n
+	s=arc-20240116; t=1713826891; c=relaxed/simple;
+	bh=Kn/X7LXt1iZwCxzFJZ37XYQ5DBemw1641eh3Gy1yxh4=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=RNL/r37CzvumY7/JasIFynS8r5GOYkBQ7Hi4hDyrRIbWTbvBLv9zs+ZKE/5dPsEK02XsLtkg+o7qQ5UUIapAyalgCunax6svzN00iV1EX26dfro+U6CVxYB8lPe4/9adwq6rU1oPbnYAAjN902f0Hl9D+NPZ60MKX1k0jzd0BrE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kaiser.cx; spf=pass smtp.mailfrom=kaiser.cx; arc=none smtp.client-ip=152.53.16.207
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=kaiser.cx
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=kaiser.cx
+Received: from martin by akranes.kaiser.cx with local (Exim 4.96)
+	(envelope-from <martin@akranes.kaiser.cx>)
+	id 1rz2ER-000ZXO-02;
+	Tue, 23 Apr 2024 00:33:51 +0200
+Date: Tue, 23 Apr 2024 00:33:50 +0200
+From: Martin Kaiser <martin@kaiser.cx>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+	Trond Myklebust <trond.myklebust@hammerspace.com>,
+	David Howells <dhowells@redhat.com>, NeilBrown <neilb@suse.de>,
+	Josef Bacik <josef@toxicpanda.com>,
+	Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v3] nfs: keep server info for remounts
+Message-ID: <ZiblzgAJ5M38dPh8@akranes.kaiser.cx>
+References: <20240414170109.137696-1-martin@kaiser.cx>
+ <d12c4998028014829713093ceccdbb521e34f05c.camel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <d12c4998028014829713093ceccdbb521e34f05c.camel@kernel.org>
+Sender: "Martin Kaiser,,," <martin@akranes.kaiser.cx>
 
-Add helper for nfs4state functions to set NFSD4_CLIENT_CB_KILL
-to stop the callback.
+Thus wrote Jeff Layton (jlayton@kernel.org):
 
-Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
----
- fs/nfsd/nfs4callback.c | 5 +++++
- fs/nfsd/state.h        | 1 +
- 2 files changed, 6 insertions(+)
+> On Sun, 2024-04-14 at 19:01 +0200, Martin Kaiser wrote:
+> > With newer kernels that use fs_context for nfs mounts, remounts fail with
+> > -EINVAL.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index f8bb5ff2e9ac..4c3a4d5df626 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1562,3 +1562,8 @@ bool nfsd4_run_cb(struct nfsd4_callback *cb)
- 		nfsd41_cb_inflight_end(clp);
- 	return queued;
- }
-+
-+void nfsd4_kill_callback(struct nfs4_client *clp)
-+{
-+	set_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags);
-+}
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index f42d8d782c84..cde05c26afd8 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -757,6 +757,7 @@ struct nfsd_file *find_any_file(struct nfs4_file *f);
- 
- #ifdef CONFIG_NFSD_V4
- void nfsd4_revoke_states(struct net *net, struct super_block *sb);
-+void nfsd4_kill_callback(struct nfs4_client *clp);
- #else
- static inline void nfsd4_revoke_states(struct net *net, struct super_block *sb)
- {
--- 
-2.39.3
+> > $ mount -t nfs -o nolock 10.0.0.1:/tmp/test /mnt/test/
+> > $ mount -t nfs -o remount /mnt/test/
+> > mount: mounting 10.0.0.1:/tmp/test on /mnt/test failed: Invalid argument
 
+> > For remounts, the nfs server address and port are populated by
+> > nfs_init_fs_context and later overwritten with 0x00 bytes by
+> > nfs23_parse_monolithic. The remount then fails as the server address is
+> > invalid.
+
+> > Fix this by not overwriting nfs server info in nfs23_parse_monolithic if
+> > we're doing a remount.
+
+> > Fixes: f2aedb713c28 ("NFS: Add fs_context support.")
+> > Signed-off-by: Martin Kaiser <martin@kaiser.cx>
+> > ---
+> >  v3:
+> >  - rebased against linux-next from 12th April 2024
+
+> >  v2:
+> >  - rebased against linux-next from 26th February 2024
+
+> > Dear all,
+> > I'm resending this patch again. The problem that I'm trying to fix is still
+> > present in linux-next. Thanks in advance for any reviews and comments.
+
+> > I guess that we're taking this path for remounts
+
+> > do_remount
+> >     fs_context_for_reconfigure
+> >         alloc_fs_context
+> >             init_fs_context == nfs_init_fs_context
+> >                fc->root is set for remounts
+> >                ctx->nfs_server is populated
+> >     parse_monolithic_mount_data
+> >         nfs_fs_context_parse_monolithic
+> >             nfs23_parse_monolithic
+> >                ctx->nfs_server is overwritten with data from mount request
+
+> > An alternative to checking for !is_remount_fc(fc) would be to check
+> > if (ctx->nfs_server.addrlen == 0)
+
+> > fs/nfs/fs_context.c | 9 ++++++---
+> >  1 file changed, 6 insertions(+), 3 deletions(-)
+
+> > diff --git a/fs/nfs/fs_context.c b/fs/nfs/fs_context.c
+> > index d0a0956f8a13..cac1157be2c2 100644
+> > --- a/fs/nfs/fs_context.c
+> > +++ b/fs/nfs/fs_context.c
+> > @@ -1112,9 +1112,12 @@ static int nfs23_parse_monolithic(struct fs_context *fc,
+> >  		ctx->acdirmax	= data->acdirmax;
+> >  		ctx->need_mount	= false;
+
+> > -		memcpy(sap, &data->addr, sizeof(data->addr));
+> > -		ctx->nfs_server.addrlen = sizeof(data->addr);
+> > -		ctx->nfs_server.port = ntohs(data->addr.sin_port);
+> > +		if (!is_remount_fc(fc)) {
+> > +			memcpy(sap, &data->addr, sizeof(data->addr));
+> > +			ctx->nfs_server.addrlen = sizeof(data->addr);
+> > +			ctx->nfs_server.port = ntohs(data->addr.sin_port);
+> > +		}
+> > +
+> >  		if (sap->ss_family != AF_INET ||
+> >  		    !nfs_verify_server_address(sap))
+> >  			goto out_no_address;
+
+> Doesn't nfs4_parse_monolithic need the same fix? 
+
+Sorry for the delayed response. It took me a moment to set up a test with nfs4
+(busybox mount has no nfs4 support).
+
+The nfs4 remounts do not fail for me. The mount syscall goes into
+nfs4_parse_monolithic and 
+
+   if (data->version != 1)                                                                                             
+      return generic_parse_monolithic(fc, data);                                                                       
+
+branches off into generic_parse_monolithic before the server address is
+overwritten (this is what breaks nfs23).
+
+Best regards,
+
+   Martin
