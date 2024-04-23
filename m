@@ -1,99 +1,99 @@
-Received: from todd.t-8ch.de (todd.t-8ch.de [159.69.126.157])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E1C994F895;
-	Tue, 23 Apr 2024 08:03:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=159.69.126.157
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AFAEC101EE
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Apr 2024 11:00:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1713859392; cv=none; b=B9mJr6cIlREq52RSODeNdRyiHuXUKSbOWihnyw29zFkbaRTNroUVs7YyQGW27ZTqPqUrBroP0KyDx5jWoOwPYf/3VP/pcA0I20PTQ0Tl9w30QIpcOaVJnoi92htqWnMo5nVXOdESdanNjiuByRqFvwEU5gEF4gLUuviVIhsFqv0=
+	t=1713870022; cv=none; b=j3zBB/92zoXhzsB/Wa3rmjWHg4FpkJl8niEZr49K8ykqkuigGcV0pQq0hwy3FjeSKdDv6sb3iTuaXwonQ8wJ2Ea4Wl3wRamLcs9tUTdqBaTeKTF/F6fIq7CaJ/J5/sgOFZN34nyttG5T56cBX9W7YcL44AtxuYaArNRLUMaadIo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1713859392; c=relaxed/simple;
-	bh=D/3OJwMoANYNDnHN43YEhKh/XOzsWgZJBxcvKVpFvHo=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=Pgjt2HeOaWpCD3/KmNZSLYs+dNlSDzoHT6KAie1wwV7ioDLlDYliyTUJ8Fa5RdZOB1OZpEKLO+JJZ2KJuHALyFvtV+HkZ6sLlP4WbvMWS4OVwcudrwd6R1kks1FiHDOaCAy/nWFcDTTuWYA9r708tCXeizJkfwjfxcf31o1+vHU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=weissschuh.net; spf=pass smtp.mailfrom=weissschuh.net; dkim=pass (1024-bit key) header.d=weissschuh.net header.i=@weissschuh.net header.b=Z4eTOEAy; arc=none smtp.client-ip=159.69.126.157
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=weissschuh.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=weissschuh.net
+	s=arc-20240116; t=1713870022; c=relaxed/simple;
+	bh=bkhyIxsPfkLTH4djuOHIwSCuppns5Bi/nGqCBjcyfyc=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=j5CvU3ccrvynJn0Dz7kvdjGdZCQMDnRcxqYybgRo8kZcfz/HZbagGvG0tfTY/KXUp13sw4b2boylXFOqoZu99f0TKCcR9pjgC8KZk7EdrxK8XUlOzMwdjvRQpIbXOgEX11IMYdCzQsxOsgqvO1NGtQdRJUu+Ei6/BTaCCmoBgSI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=g8hZM6qD; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=weissschuh.net header.i=@weissschuh.net header.b="Z4eTOEAy"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=weissschuh.net;
-	s=mail; t=1713858962;
-	bh=D/3OJwMoANYNDnHN43YEhKh/XOzsWgZJBxcvKVpFvHo=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=Z4eTOEAyeZGZRhMLErDlHrOzyIn7K/DlkM60MPZgILl0NsHakg85D489lgcJ2pyps
-	 w8ZjrPHlpbLbeknooUuGV8AX44PHoyXa1MFbZ8JyqpCmrdU3drnEDl22/6rS7GAbFk
-	 mLBVLjPqI1ce59ORnQdEOqbJ1Zk5A8F74faI2Ijw=
-From: =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>
-Date: Tue, 23 Apr 2024 09:54:36 +0200
-Subject: [PATCH v3 01/11] stackleak: don't modify ctl_table argument
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="g8hZM6qD"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1713870019;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=fdt5E/yf4lR6lW7uAMb8A4HSxdTHeNatG0BvyRnH+ew=;
+	b=g8hZM6qDI89M2DYvYR1+QqQ3TBDqjRRBkB5i8UywZWygM6sSPq+sY0rRJuoKTtdS/MpVzc
+	HB1VHcvRiOGJQin4vagVWL6ehVjj2scbjYMn4l3jKQWl28enOtR+1rFd4ZCumiVRTqbasj
+	pVryL1Enmjkh+B2hJi8wL7dkR954CJs=
+Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
+ by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-546-qogDM_HwOQ6R37L3t3m2Bw-1; Tue,
+ 23 Apr 2024 07:00:17 -0400
+X-MC-Unique: qogDM_HwOQ6R37L3t3m2Bw-1
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id C07CD1C3F0EE;
+	Tue, 23 Apr 2024 11:00:16 +0000 (UTC)
+Received: from [192.168.37.1] (ovpn-0-6.rdu2.redhat.com [10.22.0.6])
+	by smtp.corp.redhat.com (Postfix) with ESMTPS id 51FB4581E2;
+	Tue, 23 Apr 2024 11:00:16 +0000 (UTC)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Robert Ayrapetyan <robert.ayrapetyan@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS server side folder copy
+Date: Tue, 23 Apr 2024 07:00:15 -0400
+Message-ID: <D635B005-5EF1-44A0-8136-0823EDECAD39@redhat.com>
+In-Reply-To: <CAAboi9s9=h-ULoTJ4kcTi3S297RWou0JfBz5nTQP90pVpA37bA@mail.gmail.com>
+References: <CAAboi9s9=h-ULoTJ4kcTi3S297RWou0JfBz5nTQP90pVpA37bA@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20240423-sysctl-const-handler-v3-1-e0beccb836e2@weissschuh.net>
-References: <20240423-sysctl-const-handler-v3-0-e0beccb836e2@weissschuh.net>
-In-Reply-To: <20240423-sysctl-const-handler-v3-0-e0beccb836e2@weissschuh.net>
-To: Luis Chamberlain <mcgrof@kernel.org>, 
- Joel Granados <j.granados@samsung.com>, Kees Cook <keescook@chromium.org>
-Cc: Eric Dumazet <edumazet@google.com>, Dave Chinner <david@fromorbit.com>, 
- linux-fsdevel@vger.kernel.org, netdev@vger.kernel.org, 
- linux-arm-kernel@lists.infradead.org, linux-s390@vger.kernel.org, 
- linux-kernel@vger.kernel.org, linux-riscv@lists.infradead.org, 
- linux-mm@kvack.org, linux-security-module@vger.kernel.org, 
- bpf@vger.kernel.org, linuxppc-dev@lists.ozlabs.org, 
- linux-xfs@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
- linux-perf-users@vger.kernel.org, netfilter-devel@vger.kernel.org, 
- coreteam@netfilter.org, kexec@lists.infradead.org, 
- linux-hardening@vger.kernel.org, bridge@lists.linux.dev, 
- lvs-devel@vger.kernel.org, linux-rdma@vger.kernel.org, 
- rds-devel@oss.oracle.com, linux-sctp@vger.kernel.org, 
- linux-nfs@vger.kernel.org, apparmor@lists.ubuntu.com, 
- =?utf-8?q?Thomas_Wei=C3=9Fschuh?= <linux@weissschuh.net>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=ed25519-sha256; t=1713858961; l=1205;
- i=linux@weissschuh.net; s=20221212; h=from:subject:message-id;
- bh=D/3OJwMoANYNDnHN43YEhKh/XOzsWgZJBxcvKVpFvHo=;
- b=1RhNomBbqj6XFaD6ZYOxEHBLV6bfBHp2WGUjkt4XBn/Ez17CpMDHBnau1hMCabUBp0fIJIUhv
- lq3ewsWLz9gCbCEhY4DcLZnRRhb9Y2u6rar0aoKgOs7QrHrAJv1mc4Z
-X-Developer-Key: i=linux@weissschuh.net; a=ed25519;
- pk=KcycQgFPX2wGR5azS7RhpBqedglOZVgRPfdFSPB1LNw=
+Content-Type: text/plain
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.1
 
-In a future commit the proc_handlers will change to
-"const struct ctl_table".
-As a preparation for that adapt the logic to work with a temporary
-variable, similar to how it is done in other parts of the kernel.
+On 21 Apr 2024, at 13:37, Robert Ayrapetyan wrote:
 
-Fixes: 964c9dff0091 ("stackleak: Allow runtime disabling of kernel stack erasing")
-Acked-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: Thomas Weißschuh <linux@weissschuh.net>
----
- kernel/stackleak.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+> Hello!
+>
+> Attempting to understand the implementation of server-side copying of
+> folders mounted via NFS 4.2.
+> Currently copying an entire folder (cp -r --reflink=always) produces:
+>
+> newfstatat(AT_FDCWD, "/mnt/source_file", {st_mode=S_IFREG|0644,
+> st_size=2466, ...}, AT_SYMLINK_NOFOLLOW) = 0
+> newfstatat(3, "dest_file", {st_mode=S_IFREG|0644, st_size=2466, ...}, 0) = 0
+> openat(AT_FDCWD, "/mnt/source_file", O_RDONLY|O_NOFOLLOW) = 4
+> newfstatat(4, "", {st_mode=S_IFREG|0644, st_size=2466, ...}, AT_EMPTY_PATH) = 0
+> openat(3, "dest_file", O_WRONLY|O_TRUNC) = 5
+> ioctl(5, BTRFS_IOC_CLONE or FICLONE, 4) = 0
+> close(5)                                = 0
+> close(4)
+>
+> sequence of operations for each file within the directory on the
+> client side.  Notably, the actual file copy occurs on the server side
+> and is instantaneous (BTRFS_IOC_CLONE).
+> But for TTLs around 50 ms (such as within intra-regional connections
+> like US West/East), copying a 700MB directory containing 500 files
+> takes about 4 minutes (while "true" server-side folder copy is almost
+> instant).
 
-diff --git a/kernel/stackleak.c b/kernel/stackleak.c
-index d099f3affcf1..558b9d6d28d3 100644
---- a/kernel/stackleak.c
-+++ b/kernel/stackleak.c
-@@ -27,10 +27,11 @@ static int stack_erasing_sysctl(struct ctl_table *table, int write,
- 	int ret = 0;
- 	int state = !static_branch_unlikely(&stack_erasing_bypass);
- 	int prev_state = state;
-+	struct ctl_table tmp = *table;
- 
--	table->data = &state;
--	table->maxlen = sizeof(int);
--	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
-+	tmp.data = &state;
-+	tmp.maxlen = sizeof(int);
-+	ret = proc_dointvec_minmax(&tmp, write, buffer, lenp, ppos);
- 	state = !!state;
- 	if (ret || !write || state == prev_state)
- 		return ret;
+Hi Robert,
 
--- 
-2.44.0
+Looks like `cp` is serialized?  Is there a way to send COPY/CLONE in
+parallel?
+
+> Exploring if there exists a Linux mechanism enabling the copying of an
+> entire folder without individually accessing each file within the
+> directory for server-side copy operation.
+
+The NFSv4 protocol doesn't have an operation that can do a server-side
+copy/clone of a folder and all its files.  It'd be quite an interesting one,
+though.  The failure and recovery cases would be sprawling.
+
+Ben
 
