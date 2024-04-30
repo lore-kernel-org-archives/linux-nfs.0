@@ -1,45 +1,45 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 238BE1C0DF4
-	for <linux-nfs@vger.kernel.org>; Tue, 30 Apr 2024 14:03:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E1F4C1C2320
+	for <linux-nfs@vger.kernel.org>; Tue, 30 Apr 2024 14:03:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1714485788; cv=none; b=cFpmh6lNmnedst7m/RkrTzRWDaKrMFuLYy52uNfr5zK9qA+rc+blq+ZSI6IVsRrtsHTk6E71nGv1LvmQvx4JnW04fCG13n5lOF0Ivxq8Wtf6ws80U+e1u3teW61606GVKxYBS61QUy4d48pVC0MMO1vGiHMPbH1qZK0oJKiCeRo=
+	t=1714485791; cv=none; b=onwrtzUz/eab/3dNQ2ahHjvrNjmTZsVeC9WcHnG9xHe+Wxwjx8hlJk7XPXuO3784dw1Wxls3MM/Z148vcCuKqCtOzNJ1dmyKwsSdPmy4EWHidPLx+fZRGC0fCYXtXOCq7KzSaHmn95ExpF4mmY9Oh7S1KFCsEsfhzAnuKZBz1k0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1714485788; c=relaxed/simple;
-	bh=Fs+ByYPRKNYmi2F7ny9ZJLGxANz4TNfi7rvVwKEL1dc=;
+	s=arc-20240116; t=1714485791; c=relaxed/simple;
+	bh=01uPlYp+gvlCfzslwRki94T9N2SRBI4xvdjRNvc/FwA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=LDsQgL05C02gGh+qBxbFM16gquhsbrCwii+U+Pon7BIW4s0yi0JM7XXG0kt2m6O04JaE6VkSqnd0PzUx3zJ4v1xKWEJtgRLOC8FT+wDtlzLM3IylmUM39wRE4XFr7qbSicvHoD0cnIEJ1O+XAip+14G7z41FggzdQkZD/99k81k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=MiE2TcE1; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=Ess26PIpQ+a2Ju7UxIyTnEn1/gcp5Cep1VnadiZbfaqiFzlsJzUss4nDHor73njcshjmXXU6H5T3P/o8VqRcAVetQ+rJZ48jR1AK7uwvINSzTVrrZs6V35XJnOQLtB4nV/Z7IpKGf/qeIv8TJ/BaqfQypo+oVrKwCpcil+ekvPo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=HsWmCEac; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="MiE2TcE1"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="HsWmCEac"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1714485785;
+	s=mimecast20190719; t=1714485786;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=b5EgDjFNrAAafAzZBTKxBCvxuUsmkAdGKL3AYN1EAj4=;
-	b=MiE2TcE1+I0KkA9TXiLAsP/6IgqrCO026OuUm0Veh3jPThef5tIt1B9ab/fa/qKFMbFW4S
-	kuqLIVwM+TDFHS60jmpvETuXXAZMt7VOT+0fmW8jrpw5fiCXnaGhb8Lg5EJOjI+ZzH4G1L
-	twZgr2YTKOTYHfp/54Sj2MWjv9L56cA=
+	bh=vGCt48jeC555R9pX52pBDvHMiG4CZMcxlPULZd6gPmg=;
+	b=HsWmCEacwoxE04E6JwFiBabTHAOemorIeLiJAKnfWz0Ovel9sZLfJ24Ml61hfNJP+yfMV3
+	BsIQikplJX+dYCYpqVcYvCLGdbnrJcRWHCCQ+u3xqsaucl0Pz63Bvacgwl+jfB2JloyOwJ
+	IajorhoqpcfD4gtRSR4Q/p+degxl094=
 Received: from mimecast-mx02.redhat.com (mimecast-mx02.redhat.com
  [66.187.233.88]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-240-X6AaRPb4Mp-V7xLKIzX4rA-1; Tue, 30 Apr 2024 10:03:02 -0400
-X-MC-Unique: X6AaRPb4Mp-V7xLKIzX4rA-1
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.rdu2.redhat.com [10.11.54.1])
+ us-mta-118-SoCcPPCCPq6LefypiSX-qA-1; Tue, 30 Apr 2024 10:02:56 -0400
+X-MC-Unique: SoCcPPCCPq6LefypiSX-qA-1
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 9766F834FFE;
-	Tue, 30 Apr 2024 14:02:08 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 0ADA788294A;
+	Tue, 30 Apr 2024 14:02:16 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.22])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id A59F2581CA;
-	Tue, 30 Apr 2024 14:02:05 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id D1AD6EC680;
+	Tue, 30 Apr 2024 14:02:12 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -65,10 +65,12 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v2 15/22] netfs: Add some write-side stats and clean up some stat names
-Date: Tue, 30 Apr 2024 15:00:46 +0100
-Message-ID: <20240430140056.261997-16-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org,
+	Latchesar Ionkov <lucho@ionkov.net>,
+	Christian Schoenebeck <linux_oss@crudebyte.com>
+Subject: [PATCH v2 17/22] netfs, 9p: Implement helpers for new write code
+Date: Tue, 30 Apr 2024 15:00:48 +0100
+Message-ID: <20240430140056.261997-18-dhowells@redhat.com>
 In-Reply-To: <20240430140056.261997-1-dhowells@redhat.com>
 References: <20240430140056.261997-1-dhowells@redhat.com>
 Precedence: bulk
@@ -78,150 +80,208 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.1
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.5
 
-Add some write-side stats to count buffered writes, buffered writethrough,
-and writepages calls.
-
-Whilst we're at it, clean up the naming on some of the existing stats
-counters and organise the output into two sets.
+Implement the helpers for the new write code in 9p.  There's now an
+optional ->prepare_write() that allows the filesystem to set the parameters
+for the next write, such as maximum size and maximum segment count, and an
+->issue_write() that is called to initiate an (asynchronous) write
+operation.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
+cc: Eric Van Hensbergen <ericvh@kernel.org>
+cc: Latchesar Ionkov <lucho@ionkov.net>
+cc: Dominique Martinet <asmadeus@codewreck.org>
+cc: Christian Schoenebeck <linux_oss@crudebyte.com>
+cc: v9fs@lists.linux.dev
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/netfs/buffered_read.c  |  2 +-
- fs/netfs/buffered_write.c |  3 +++
- fs/netfs/direct_write.c   |  2 +-
- fs/netfs/internal.h       |  7 +++++--
- fs/netfs/stats.c          | 17 ++++++++++++-----
- fs/netfs/write_issue.c    |  1 +
- 6 files changed, 23 insertions(+), 9 deletions(-)
 
-diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
-index 47603f08680e..a6bb03bea920 100644
---- a/fs/netfs/buffered_read.c
-+++ b/fs/netfs/buffered_read.c
-@@ -282,7 +282,7 @@ int netfs_read_folio(struct file *file, struct folio *folio)
- 	if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
- 		goto discard;
+Notes:
+    Changes
+    =======
+    ver #2)
+     - Use 'int len' rather than 'size_t len' because of the varargs packet
+       formatter.
+
+ fs/9p/vfs_addr.c        | 48 ++++++++++++++++++++++++++++++++++++++++
+ include/net/9p/client.h |  2 ++
+ net/9p/Kconfig          |  1 +
+ net/9p/client.c         | 49 +++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 100 insertions(+)
+
+diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
+index 5a943c122d83..07d03efdd594 100644
+--- a/fs/9p/vfs_addr.c
++++ b/fs/9p/vfs_addr.c
+@@ -26,6 +26,40 @@
+ #include "cache.h"
+ #include "fid.h"
  
--	netfs_stat(&netfs_n_rh_readpage);
-+	netfs_stat(&netfs_n_rh_read_folio);
- 	trace_netfs_read(rreq, rreq->start, rreq->len, netfs_read_trace_readpage);
- 
- 	/* Set up the output buffer */
-diff --git a/fs/netfs/buffered_write.c b/fs/netfs/buffered_write.c
-index 84ac95ee4b4d..33ea4c20e7e7 100644
---- a/fs/netfs/buffered_write.c
-+++ b/fs/netfs/buffered_write.c
-@@ -210,6 +210,9 @@ ssize_t netfs_perform_write(struct kiocb *iocb, struct iov_iter *iter,
- 		if (!is_sync_kiocb(iocb))
- 			wreq->iocb = iocb;
- 		wreq->cleanup = netfs_cleanup_buffered_write;
-+		netfs_stat(&netfs_n_wh_writethrough);
-+	} else {
-+		netfs_stat(&netfs_n_wh_buffered_write);
- 	}
- 
- 	do {
-diff --git a/fs/netfs/direct_write.c b/fs/netfs/direct_write.c
-index 2b81cd4aae6e..36b6db504500 100644
---- a/fs/netfs/direct_write.c
-+++ b/fs/netfs/direct_write.c
-@@ -145,7 +145,7 @@ ssize_t netfs_unbuffered_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		return 0;
- 
- 	trace_netfs_write_iter(iocb, from);
--	netfs_stat(&netfs_n_rh_dio_write);
-+	netfs_stat(&netfs_n_wh_dio_write);
- 
- 	ret = netfs_start_io_direct(inode);
- 	if (ret < 0)
-diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
-index dc11d1f67363..5d3f74a70fa7 100644
---- a/fs/netfs/internal.h
-+++ b/fs/netfs/internal.h
-@@ -106,9 +106,8 @@ int netfs_end_writethrough(struct netfs_io_request *wreq, struct kiocb *iocb);
-  */
- #ifdef CONFIG_NETFS_STATS
- extern atomic_t netfs_n_rh_dio_read;
--extern atomic_t netfs_n_rh_dio_write;
- extern atomic_t netfs_n_rh_readahead;
--extern atomic_t netfs_n_rh_readpage;
-+extern atomic_t netfs_n_rh_read_folio;
- extern atomic_t netfs_n_rh_rreq;
- extern atomic_t netfs_n_rh_sreq;
- extern atomic_t netfs_n_rh_download;
-@@ -125,6 +124,10 @@ extern atomic_t netfs_n_rh_write_begin;
- extern atomic_t netfs_n_rh_write_done;
- extern atomic_t netfs_n_rh_write_failed;
- extern atomic_t netfs_n_rh_write_zskip;
-+extern atomic_t netfs_n_wh_buffered_write;
-+extern atomic_t netfs_n_wh_writethrough;
-+extern atomic_t netfs_n_wh_dio_write;
-+extern atomic_t netfs_n_wh_writepages;
- extern atomic_t netfs_n_wh_wstream_conflict;
- extern atomic_t netfs_n_wh_upload;
- extern atomic_t netfs_n_wh_upload_done;
-diff --git a/fs/netfs/stats.c b/fs/netfs/stats.c
-index deeba9f9dcf5..0892768eea32 100644
---- a/fs/netfs/stats.c
-+++ b/fs/netfs/stats.c
-@@ -10,9 +10,8 @@
- #include "internal.h"
- 
- atomic_t netfs_n_rh_dio_read;
--atomic_t netfs_n_rh_dio_write;
- atomic_t netfs_n_rh_readahead;
--atomic_t netfs_n_rh_readpage;
-+atomic_t netfs_n_rh_read_folio;
- atomic_t netfs_n_rh_rreq;
- atomic_t netfs_n_rh_sreq;
- atomic_t netfs_n_rh_download;
-@@ -29,6 +28,10 @@ atomic_t netfs_n_rh_write_begin;
- atomic_t netfs_n_rh_write_done;
- atomic_t netfs_n_rh_write_failed;
- atomic_t netfs_n_rh_write_zskip;
-+atomic_t netfs_n_wh_buffered_write;
-+atomic_t netfs_n_wh_writethrough;
-+atomic_t netfs_n_wh_dio_write;
-+atomic_t netfs_n_wh_writepages;
- atomic_t netfs_n_wh_wstream_conflict;
- atomic_t netfs_n_wh_upload;
- atomic_t netfs_n_wh_upload_done;
-@@ -39,13 +42,17 @@ atomic_t netfs_n_wh_write_failed;
- 
- int netfs_stats_show(struct seq_file *m, void *v)
++/*
++ * Writeback calls this when it finds a folio that needs uploading.  This isn't
++ * called if writeback only has copy-to-cache to deal with.
++ */
++static void v9fs_begin_writeback(struct netfs_io_request *wreq)
++{
++	struct p9_fid *fid;
++
++	fid = v9fs_fid_find_inode(wreq->inode, true, INVALID_UID, true);
++	if (!fid) {
++		WARN_ONCE(1, "folio expected an open fid inode->i_ino=%lx\n",
++			  wreq->inode->i_ino);
++		return;
++	}
++
++	wreq->wsize = fid->clnt->msize - P9_IOHDRSZ;
++	if (fid->iounit)
++		wreq->wsize = min(wreq->wsize, fid->iounit);
++	wreq->netfs_priv = fid;
++	wreq->io_streams[0].avail = true;
++}
++
++/*
++ * Issue a subrequest to write to the server.
++ */
++static void v9fs_issue_write(struct netfs_io_subrequest *subreq)
++{
++	struct p9_fid *fid = subreq->rreq->netfs_priv;
++	int err, len;
++
++	len = p9_client_write(fid, subreq->start, &subreq->io_iter, &err);
++	netfs_write_subrequest_terminated(subreq, len ?: err, false);
++}
++
+ static void v9fs_upload_to_server(struct netfs_io_subrequest *subreq)
  {
--	seq_printf(m, "Netfs  : DR=%u DW=%u RA=%u RP=%u WB=%u WBZ=%u\n",
-+	seq_printf(m, "Netfs  : DR=%u RA=%u RF=%u WB=%u WBZ=%u\n",
- 		   atomic_read(&netfs_n_rh_dio_read),
--		   atomic_read(&netfs_n_rh_dio_write),
- 		   atomic_read(&netfs_n_rh_readahead),
--		   atomic_read(&netfs_n_rh_readpage),
-+		   atomic_read(&netfs_n_rh_read_folio),
- 		   atomic_read(&netfs_n_rh_write_begin),
- 		   atomic_read(&netfs_n_rh_write_zskip));
-+	seq_printf(m, "Netfs  : BW=%u WT=%u DW=%u WP=%u\n",
-+		   atomic_read(&netfs_n_wh_buffered_write),
-+		   atomic_read(&netfs_n_wh_writethrough),
-+		   atomic_read(&netfs_n_wh_dio_write),
-+		   atomic_read(&netfs_n_wh_writepages));
- 	seq_printf(m, "Netfs  : ZR=%u sh=%u sk=%u\n",
- 		   atomic_read(&netfs_n_rh_zero),
- 		   atomic_read(&netfs_n_rh_short_read),
-diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c
-index 0293b714d8ee..11b62e6f82fa 100644
---- a/fs/netfs/write_issue.c
-+++ b/fs/netfs/write_issue.c
-@@ -510,6 +510,7 @@ int new_netfs_writepages(struct address_space *mapping,
+ 	struct p9_fid *fid = subreq->rreq->netfs_priv;
+@@ -92,6 +126,14 @@ static int v9fs_init_request(struct netfs_io_request *rreq, struct file *file)
+ 			rreq->origin == NETFS_UNBUFFERED_WRITE ||
+ 			rreq->origin == NETFS_DIO_WRITE);
+ 
++#if 0 // TODO: Cut over
++	if (rreq->origin == NETFS_WRITEBACK)
++		return 0; /* We don't get the write handle until we find we
++			   * have actually dirty data and not just
++			   * copy-to-cache data.
++			   */
++#endif
++
+ 	if (file) {
+ 		fid = file->private_data;
+ 		if (!fid)
+@@ -103,6 +145,10 @@ static int v9fs_init_request(struct netfs_io_request *rreq, struct file *file)
+ 			goto no_fid;
  	}
  
- 	trace_netfs_write(wreq, netfs_write_trace_writeback);
-+	netfs_stat(&netfs_n_wh_writepages);
++	rreq->wsize = fid->clnt->msize - P9_IOHDRSZ;
++	if (fid->iounit)
++		rreq->wsize = min(rreq->wsize, fid->iounit);
++
+ 	/* we might need to read from a fid that was opened write-only
+ 	 * for read-modify-write of page cache, use the writeback fid
+ 	 * for that */
+@@ -131,6 +177,8 @@ const struct netfs_request_ops v9fs_req_ops = {
+ 	.init_request		= v9fs_init_request,
+ 	.free_request		= v9fs_free_request,
+ 	.issue_read		= v9fs_issue_read,
++	.begin_writeback	= v9fs_begin_writeback,
++	.issue_write		= v9fs_issue_write,
+ 	.create_write_requests	= v9fs_create_write_requests,
+ };
  
- 	do {
- 		_debug("wbiter %lx %llx", folio->index, wreq->start + wreq->submitted);
+diff --git a/include/net/9p/client.h b/include/net/9p/client.h
+index 78ebcf782ce5..4f785098c67a 100644
+--- a/include/net/9p/client.h
++++ b/include/net/9p/client.h
+@@ -207,6 +207,8 @@ int p9_client_read(struct p9_fid *fid, u64 offset, struct iov_iter *to, int *err
+ int p9_client_read_once(struct p9_fid *fid, u64 offset, struct iov_iter *to,
+ 		int *err);
+ int p9_client_write(struct p9_fid *fid, u64 offset, struct iov_iter *from, int *err);
++struct netfs_io_subrequest;
++void p9_client_write_subreq(struct netfs_io_subrequest *subreq);
+ int p9_client_readdir(struct p9_fid *fid, char *data, u32 count, u64 offset);
+ int p9dirent_read(struct p9_client *clnt, char *buf, int len,
+ 		  struct p9_dirent *dirent);
+diff --git a/net/9p/Kconfig b/net/9p/Kconfig
+index 00ebce9e5a65..bcdab9c23b40 100644
+--- a/net/9p/Kconfig
++++ b/net/9p/Kconfig
+@@ -5,6 +5,7 @@
+ 
+ menuconfig NET_9P
+ 	tristate "Plan 9 Resource Sharing Support (9P2000)"
++	select NETFS_SUPPORT
+ 	help
+ 	  If you say Y here, you will get experimental support for
+ 	  Plan 9 resource sharing via the 9P2000 protocol.
+diff --git a/net/9p/client.c b/net/9p/client.c
+index f7e90b4769bb..00774656eeac 100644
+--- a/net/9p/client.c
++++ b/net/9p/client.c
+@@ -18,6 +18,7 @@
+ #include <linux/sched/signal.h>
+ #include <linux/uaccess.h>
+ #include <linux/uio.h>
++#include <linux/netfs.h>
+ #include <net/9p/9p.h>
+ #include <linux/parser.h>
+ #include <linux/seq_file.h>
+@@ -1661,6 +1662,54 @@ p9_client_write(struct p9_fid *fid, u64 offset, struct iov_iter *from, int *err)
+ }
+ EXPORT_SYMBOL(p9_client_write);
+ 
++void
++p9_client_write_subreq(struct netfs_io_subrequest *subreq)
++{
++	struct netfs_io_request *wreq = subreq->rreq;
++	struct p9_fid *fid = wreq->netfs_priv;
++	struct p9_client *clnt = fid->clnt;
++	struct p9_req_t *req;
++	unsigned long long start = subreq->start + subreq->transferred;
++	int written, len = subreq->len - subreq->transferred;
++	int err;
++
++	p9_debug(P9_DEBUG_9P, ">>> TWRITE fid %d offset %llu len %d\n",
++		 fid->fid, start, len);
++
++	/* Don't bother zerocopy for small IO (< 1024) */
++	if (clnt->trans_mod->zc_request && len > 1024) {
++		req = p9_client_zc_rpc(clnt, P9_TWRITE, NULL, &subreq->io_iter,
++				       0, wreq->len, P9_ZC_HDR_SZ, "dqd",
++				       fid->fid, start, len);
++	} else {
++		req = p9_client_rpc(clnt, P9_TWRITE, "dqV", fid->fid,
++				    start, len, &subreq->io_iter);
++	}
++	if (IS_ERR(req)) {
++		netfs_write_subrequest_terminated(subreq, PTR_ERR(req), false);
++		return;
++	}
++
++	err = p9pdu_readf(&req->rc, clnt->proto_version, "d", &written);
++	if (err) {
++		trace_9p_protocol_dump(clnt, &req->rc);
++		p9_req_put(clnt, req);
++		netfs_write_subrequest_terminated(subreq, err, false);
++		return;
++	}
++
++	if (written > len) {
++		pr_err("bogus RWRITE count (%d > %u)\n", written, len);
++		written = len;
++	}
++
++	p9_debug(P9_DEBUG_9P, "<<< RWRITE count %d\n", len);
++
++	p9_req_put(clnt, req);
++	netfs_write_subrequest_terminated(subreq, written, false);
++}
++EXPORT_SYMBOL(p9_client_write_subreq);
++
+ struct p9_wstat *p9_client_stat(struct p9_fid *fid)
+ {
+ 	int err;
 
