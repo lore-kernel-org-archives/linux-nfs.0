@@ -1,45 +1,45 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 67539181315
-	for <linux-nfs@vger.kernel.org>; Tue, 30 Apr 2024 14:01:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 85D44181339
+	for <linux-nfs@vger.kernel.org>; Tue, 30 Apr 2024 14:01:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1714485706; cv=none; b=dScQuoMC7Tz1d7nydntlz7Fua6z7s/NFkgvfUqk1pnEQrBskTxBHtt6tBL+x3Ecy7Lv1JDNQtnogjoLiQqBMIrXL7kwUVmmSiu7xWa8qAXTqpAa4O6ZJjIra2bzf8j/PqzKKhjsGMcpMgljUoEwMfXThk8OlHqaUGXp+l892vlw=
+	t=1714485708; cv=none; b=Ol5tBWzuLNfn99NgCgeSMbDc7qYBtF+u6zGhyeqj7sWoT4N2OVjOvhzstAAByj231KXomNKa49IvY2HO8TULKIIHnVMAiv1vfzyXbKJYobjdt4EDUzPBaXOSWPxSqu1TC3pyDuDujbe/dABMfSNxuFROTVhAlAqmS+IKrYmWlrU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1714485706; c=relaxed/simple;
-	bh=l2BwvZmtrfT4S750WyzyWkcltqFLAI/SdD29xvEFeeI=;
+	s=arc-20240116; t=1714485708; c=relaxed/simple;
+	bh=PB7SnwgwSuhIThU7zY8GpB9n+FiBFKNy4XU+/XyZBBo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=i2a8FbCebm2Ayu9JFNI7c3MyiXt2eKq1k6P6WM9RrV06U8Nq4r5Bezj2epSKv8WZdQSAW9hBRwqsllQvkkZ3MLMnZaPmSTL/X/kycoo5xZr+SgZSHrADyemw8yOvttimgBt/vAkzL7NkrxBZnslEvoXcmJmgkQ9QnffFFPc9mfI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Hdme3Ped; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=OVsaZu+tmUR9dM2LuS6FwSL4O0LDkiE6wGELHUp9zsldK6wxg8J8+2Mz5p6wl3Fa7Ix2f5YOuLLUFQ1FjrMKsKQgxGAYMXCvWmHfxjiDhimdgQxnDGEAQ6kF77BNC++TixP3jwYuiHgfZtbrXOL2G5muiqngrQU/+zs6a3j/kMc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=RxBGWkS2; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Hdme3Ped"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="RxBGWkS2"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1714485704;
+	s=mimecast20190719; t=1714485706;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=uYKvItVfQ5vMLpVWGuG4Wu9Mz+mrcrwjH5IKasVHZvQ=;
-	b=Hdme3PedPCyRHJX2zQfFtnR0rn+p+iRS8IfcepRmOuhRnMh0FcQIN1onAf/RchKIYCfpfF
-	i4NsLJHeSmi2d8ZBa4zz1KJE7fmCzpNcG6zNe9bVEHm049BesaPu8kt1+cfAhy8x9ijkXZ
-	vcEm5xH6QPfMKYTLBuSwr0pFl1rsfRo=
+	bh=83auCTKPJvOhAjo7iO96K59ucStUj2OSCQeoe5vc/FY=;
+	b=RxBGWkS2/5uoDWxO8kwF8lhzLABRHAOxEUtrXyfkWwwuEijzJL3bDRmjNDCfjgphZ45QcM
+	vWNXvFLkEIIWmd2wgz8yyo+pZL80kOr0k/ZS4U+NlFDZc4TI4QteuvX4OBxkudniEZVYYT
+	0A7oypGb4ONLOizc/Lqc2ZsX5HLQYPs=
 Received: from mimecast-mx02.redhat.com (mx-ext.redhat.com [66.187.233.73])
  by relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-618--sMwcTQuMLKiRlu_VVUNdw-1; Tue,
- 30 Apr 2024 10:01:25 -0400
-X-MC-Unique: -sMwcTQuMLKiRlu_VVUNdw-1
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.rdu2.redhat.com [10.11.54.4])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-284-oZEuSy0zPnaGWzXYr0XEnQ-1; Tue,
+ 30 Apr 2024 10:01:39 -0400
+X-MC-Unique: oZEuSy0zPnaGWzXYr0XEnQ-1
+Received: from smtp.corp.redhat.com (int-mx10.intmail.prod.int.rdu2.redhat.com [10.11.54.10])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id 04A6C1C4C397;
-	Tue, 30 Apr 2024 14:01:24 +0000 (UTC)
+	by mimecast-mx02.redhat.com (Postfix) with ESMTPS id B246C29AC019;
+	Tue, 30 Apr 2024 14:01:36 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.22])
-	by smtp.corp.redhat.com (Postfix) with ESMTP id 2175A202450F;
-	Tue, 30 Apr 2024 14:01:20 +0000 (UTC)
+	by smtp.corp.redhat.com (Postfix) with ESMTP id 01FC340BAA2;
+	Tue, 30 Apr 2024 14:01:32 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -65,10 +65,12 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v2 05/22] netfs: Make netfs_io_request::subreq_counter an atomic_t
-Date: Tue, 30 Apr 2024 15:00:36 +0100
-Message-ID: <20240430140056.261997-6-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org,
+	Latchesar Ionkov <lucho@ionkov.net>,
+	Christian Schoenebeck <linux_oss@crudebyte.com>
+Subject: [PATCH v2 08/22] 9p: Use alternative invalidation to using launder_folio
+Date: Tue, 30 Apr 2024 15:00:39 +0100
+Message-ID: <20240430140056.261997-9-dhowells@redhat.com>
 In-Reply-To: <20240430140056.261997-1-dhowells@redhat.com>
 References: <20240430140056.261997-1-dhowells@redhat.com>
 Precedence: bulk
@@ -78,45 +80,43 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.4
+X-Scanned-By: MIMEDefang 3.4.1 on 10.11.54.10
 
-Make the netfs_io_request::subreq_counter, used to generate values for
-netfs_io_subrequest::debug_index, into an atomic_t so that it can be called
-from the retry thread at the same time as the app thread issuing writes.
+Use writepages-based flushing invalidation instead of
+invalidate_inode_pages2() and ->launder_folio().  This will allow
+->launder_folio() to be removed eventually.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+cc: Eric Van Hensbergen <ericvh@kernel.org>
+cc: Latchesar Ionkov <lucho@ionkov.net>
+cc: Dominique Martinet <asmadeus@codewreck.org>
+cc: Christian Schoenebeck <linux_oss@crudebyte.com>
+cc: Jeff Layton <jlayton@kernel.org>
+cc: v9fs@lists.linux.dev
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/netfs/output.c     | 2 +-
- include/linux/netfs.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/9p/vfs_addr.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/netfs/output.c b/fs/netfs/output.c
-index 625eb68f3e5a..fbdbb4f78234 100644
---- a/fs/netfs/output.c
-+++ b/fs/netfs/output.c
-@@ -37,7 +37,7 @@ struct netfs_io_subrequest *netfs_create_write_request(struct netfs_io_request *
- 		subreq->source	= dest;
- 		subreq->start	= start;
- 		subreq->len	= len;
--		subreq->debug_index = wreq->subreq_counter++;
-+		subreq->debug_index = atomic_inc_return(&wreq->subreq_counter);
+diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
+index 047855033d32..5a943c122d83 100644
+--- a/fs/9p/vfs_addr.c
++++ b/fs/9p/vfs_addr.c
+@@ -89,7 +89,6 @@ static int v9fs_init_request(struct netfs_io_request *rreq, struct file *file)
+ 	bool writing = (rreq->origin == NETFS_READ_FOR_WRITE ||
+ 			rreq->origin == NETFS_WRITEBACK ||
+ 			rreq->origin == NETFS_WRITETHROUGH ||
+-			rreq->origin == NETFS_LAUNDER_WRITE ||
+ 			rreq->origin == NETFS_UNBUFFERED_WRITE ||
+ 			rreq->origin == NETFS_DIO_WRITE);
  
- 		switch (subreq->source) {
- 		case NETFS_UPLOAD_TO_SERVER:
-diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index f36a6d8163d1..ddafc6ebff42 100644
---- a/include/linux/netfs.h
-+++ b/include/linux/netfs.h
-@@ -202,7 +202,7 @@ struct netfs_io_request {
- 	unsigned int		debug_id;
- 	unsigned int		rsize;		/* Maximum read size (0 for none) */
- 	unsigned int		wsize;		/* Maximum write size (0 for none) */
--	unsigned int		subreq_counter;	/* Next subreq->debug_index */
-+	atomic_t		subreq_counter;	/* Next subreq->debug_index */
- 	atomic_t		nr_outstanding;	/* Number of ops in progress */
- 	atomic_t		nr_copy_ops;	/* Number of copy-to-cache ops in progress */
- 	size_t			submitted;	/* Amount submitted for I/O so far */
+@@ -141,7 +140,6 @@ const struct address_space_operations v9fs_addr_operations = {
+ 	.dirty_folio		= netfs_dirty_folio,
+ 	.release_folio		= netfs_release_folio,
+ 	.invalidate_folio	= netfs_invalidate_folio,
+-	.launder_folio		= netfs_launder_folio,
+ 	.direct_IO		= noop_direct_IO,
+ 	.writepages		= netfs_writepages,
+ };
 
