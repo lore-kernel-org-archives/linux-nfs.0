@@ -1,54 +1,55 @@
-Received: from mail-lf1-f48.google.com (mail-lf1-f48.google.com [209.85.167.48])
+Received: from mail-lf1-f50.google.com (mail-lf1-f50.google.com [209.85.167.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7DBC1E491
-	for <linux-nfs@vger.kernel.org>; Tue, 14 May 2024 21:21:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.48
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 760DE180A77
+	for <linux-nfs@vger.kernel.org>; Tue, 14 May 2024 21:50:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1715721717; cv=none; b=Af209gLNr9/7KymnDGwnlS3gOoKNB+lwK0Sazrz2j8ugLYafNPeMk6FV5WwDdfQs9vJqnc7cBIvICbs2mrQLvz1e1zHBsHHAaetblJrz5sP1Ccz7hQsK/4wHkpGZ+gU9bZX7cF10xU4LwgRMAdY7tjGEOsYm3PA5GNIHvwvZWd4=
+	t=1715723410; cv=none; b=Bg46lemrxSQhDtNTL4++pY71Le1X4GJGaY66oaE49NrQWMDag05f+h9eFaa1mPT3Hjls8aA9gNpVrYUDATW+rZS5zLbyzZT3sZN5Lac5o5ANB7e753Xfg3FEJpxWHd0uPBped9VGCCqbOj49ygayiKO5PGthjj6jTZQY9XXZdVM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1715721717; c=relaxed/simple;
-	bh=om2afHVLXbEBAwXNSr8doBYtFWiob61AQIeolBNom1Q=;
+	s=arc-20240116; t=1715723410; c=relaxed/simple;
+	bh=zh87VwEwup4bdSL8lzYFN/HA0wVw4v2hPUsEJkEziro=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=uIqTcF/2R3sxvPQFDFtf7i2lOPHn0vQGOwsF1jJee/pM/s3GPHB4g6niZjcVElf+uJUH92FPousukico4WjU8bbIE2+8vWgasY6BGLXprxYsZnyjcFfMqaRSmUnytWS5n7SCHK65/7S018koao8rSBvGyQT6garQMS1LxpH3swE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=umich.edu; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b=GPmCUoNC; arc=none smtp.client-ip=209.85.167.48
+	 To:Cc:Content-Type; b=ixTJ1gcKDFfwCSUw81v9lfGErBUBahU3EHrZX88MPwm0a7eO3jUbJ5Rh1udRKef7VbYXbs1Sgrv5eQTpXPFzwNJV61fj9M7aboeoyO0ee94EDn1RfZ/G+JX0iOT2MmqUJTELQor+hPv927jEri3IRsOfpK7Z3bbk6Fm4btUzv/M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=umich.edu; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b=YkPnyPJI; arc=none smtp.client-ip=209.85.167.50
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=umich.edu
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="GPmCUoNC"
-Received: by mail-lf1-f48.google.com with SMTP id 2adb3069b0e04-51fe647633dso591438e87.1
-        for <linux-nfs@vger.kernel.org>; Tue, 14 May 2024 14:21:54 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=umich.edu header.i=@umich.edu header.b="YkPnyPJI"
+Received: by mail-lf1-f50.google.com with SMTP id 2adb3069b0e04-5232f0ca07cso304724e87.2
+        for <linux-nfs@vger.kernel.org>; Tue, 14 May 2024 14:50:07 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=umich.edu; s=google-2016-06-03; t=1715721713; x=1716326513; darn=vger.kernel.org;
+        d=umich.edu; s=google-2016-06-03; t=1715723405; x=1716328205; darn=vger.kernel.org;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=om2afHVLXbEBAwXNSr8doBYtFWiob61AQIeolBNom1Q=;
-        b=GPmCUoNC+7pg8mfX/YTnZ9oBVlJbvn5XdmXrbSax9XlPBZoKiPSSzVk/4XrHb/LMP3
-         wrK3qIuVcGF7KdyJroJRXeEEoG5HGoWFxaJ4fZkz7yZeA+k+PeOadi0xxHnbHZ4F3qhd
-         ksWQBK5AiXllqqOLGRQGvFvM6/hybGSaNrXGk31qldV9byGsZGpGqCcKg2TC+iNBIEds
-         ipUm6ZvqM0fPWzpmwJJYBqjqjOMXYQndGuqV11kbSVSeg3jr/ZL7gKzY/t2ItImC3sqC
-         3xhQ8fbd0+x5zBiJ62ZG4L9mc0KZ8ZzXBMwJhV8507MtfIWP/dnaTaZixXBlVMCpfDaZ
-         RhnA==
+        bh=zh87VwEwup4bdSL8lzYFN/HA0wVw4v2hPUsEJkEziro=;
+        b=YkPnyPJI1sW0a4WSHGHR77bNiqCTlxj+SNDEve4GAn0NTw4T1pMLMCG2nPXfnPICE/
+         yiuKI8mUxSkTB/YgUIbXveig2N9CLhBtyj4QX8JTBJYkrBS+dEVD2c9rVJnFEdg+pg7V
+         HfvJ3mvgBTndj3BA/6A4UfmiI1zIEj7v6FmjaKDub0vDq9DZz1TWn93NEHje4VtfDWsl
+         r0K2as7D5nrHA4FvcBnoYKVtRPnp9LwECNJl4bb++3uTyUbcBUOUTMFZu93q+jgfq04a
+         td/reRQghKbbLEkBqUtw2Cu0/QsCEsSzHl2z0wUxVZFQcEdRWMkGScXKWSURgQuvUs/O
+         hKyg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1715721713; x=1716326513;
+        d=1e100.net; s=20230601; t=1715723405; x=1716328205;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=om2afHVLXbEBAwXNSr8doBYtFWiob61AQIeolBNom1Q=;
-        b=eAYuBm1VRRXcH2AI+Zvv27o1G+EDtSY+zK5uejfbRKUUc7ajj4dMct6XnGvJ8sPimX
-         l7+VdgdkfTndB2DsUBJOE0F3xUfmnOjBNHDIC5t0T2x046yr2sTg3iDUQdawAW3K7a2D
-         QmQhtQVxsSaACrkto8EGLCSPznELTJJ3gkdo/PnYTluE80EdMk2B2MHEu8MbTOMs/ON8
-         /9RGYkom1NXP0GMCGDQtbhHdLklbUFxavwSOkPGHKCwEVFln1irIzlA3l3xbmOChYPjY
-         U4W2cU+UJTd+1T/IbKwwIm9wL+eluJByvWErbGv/RZxjTqOabNsX3EAFQHjPn99U/VOg
-         pVPg==
-X-Gm-Message-State: AOJu0YyBUpV/Aiqk5UKtMzt4mIhiOeqDiJd0CKRMmMBvFCBeLkTvJ620
-	e2C4/tTPb9Gs+qLIQ4qawG1vioxmBxora/1QXY+IpzbSIQg55iUz+9zaSfNtACTtGl4iYUaTe8U
-	x1c6F0eomv3NJnczINfc6VFJnw5iuOw==
-X-Google-Smtp-Source: AGHT+IHAIzo90JyANAz55cDSZjH6PPvj00ty+q05Qou+rvKVM0lOFY3ZEDSqBNU/Q0sNjdzLn2Fe1jMjPt4vrPn0tEA=
-X-Received: by 2002:a2e:b5d6:0:b0:2e1:fd4a:cc3d with SMTP id
- 38308e7fff4ca-2e51fd4dd13mr88006291fa.2.1715721712675; Tue, 14 May 2024
- 14:21:52 -0700 (PDT)
+        bh=zh87VwEwup4bdSL8lzYFN/HA0wVw4v2hPUsEJkEziro=;
+        b=HMLD6SY9yFg07F3jumCUVvH240WnVWmF/16auX56q4H1mSavVAkvy5q7y88u5zQA1t
+         spPYBZh3xFc/O3BBABF9zeRzICdqZAIxBaj/fYlAPX9HVKG5ERfmpx9P0Nm7DC5E+dA2
+         lPylG37I4enNMRN1pUVioQzDEayU/9PVvmvovwqMc1ip7EjPc5mw+RxlwvpFhVQ4KzV7
+         mxxaRdkQ6rqVsanZUvxnY5aNvVgdtCFNDxtxLl7fS1bPZQyyblDxh+EKZuCmg6JbmORA
+         pmuRKM4lhkAlQzel6PFvOwPbAuso6zvQJhS196SbIu489ZgVGTBO+SsaBD7jG4A7nr6f
+         Ur9g==
+X-Forwarded-Encrypted: i=1; AJvYcCXrDBFEomTXRsoyFv1LCm3q9GdELiiVzKirz1UpSUR91QHJPhEwqTuHc8dbacl7qHHsDsLYuXWftNtpd4WxMnT6uy17ypEIGRD7
+X-Gm-Message-State: AOJu0YxQKxvKbcYikEoW4T8IZC6Q3EW9HLemwPr1E2eJdHfHDl9guM0a
+	Gpmhqlcb5iw5kRqvsrYJfiMuwQ9e2fnvdA9PYKCESncRBtZz2umI04+RN6lFOT5fCXSBwtzzPuw
+	XIM9goXafh1cds9A+GnDGKEubj+4=
+X-Google-Smtp-Source: AGHT+IH3llqG5FNtuR/8ZvEHzshilx5nCVV54ByaHRmsqPst33djfQEZi9BKSOeRLIZj73mMVZj7pqEZTsODFU0X0wI=
+X-Received: by 2002:a2e:9f4e:0:b0:2e5:6859:1902 with SMTP id
+ 38308e7fff4ca-2e56859194bmr77461941fa.0.1715723405416; Tue, 14 May 2024
+ 14:50:05 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -56,77 +57,79 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 References: <CAN-5tyFBn3C_CTrsftuYeWJHe7KWxd82YFCyrN9t=az8J4RU0w@mail.gmail.com>
- <2C80B5BC-AAEC-41F8-BEB6-C920F88C89BB@oracle.com>
-In-Reply-To: <2C80B5BC-AAEC-41F8-BEB6-C920F88C89BB@oracle.com>
+ <2C80B5BC-AAEC-41F8-BEB6-C920F88C89BB@oracle.com> <0b1101daa646$d26a6300$773f2900$@mindspring.com>
+In-Reply-To: <0b1101daa646$d26a6300$773f2900$@mindspring.com>
 From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 14 May 2024 17:21:40 -0400
-Message-ID: <CAN-5tyGxDtO7BuXvU=MQKad3W9+Zsf_9BMB5Hojnyy6bQ6fj0w@mail.gmail.com>
+Date: Tue, 14 May 2024 17:49:53 -0400
+Message-ID: <CAN-5tyGECFmtzFsYNSZicPcH4SMKF0yovk6V20sWJ1LrZKzzyA@mail.gmail.com>
 Subject: Re: sm notify (nlm) question
-To: Chuck Lever III <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: Chuck Lever III <chuck.lever@oracle.com>, 
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Tue, May 14, 2024 at 5:09=E2=80=AFPM Chuck Lever III <chuck.lever@oracle=
-.com> wrote:
+On Tue, May 14, 2024 at 5:36=E2=80=AFPM Frank Filz <ffilzlnx@mindspring.com=
+> wrote:
 >
->
->
-> > On May 14, 2024, at 2:56=E2=80=AFPM, Olga Kornievskaia <aglo@umich.edu>=
- wrote:
+> > > On May 14, 2024, at 2:56=E2=80=AFPM, Olga Kornievskaia <aglo@umich.ed=
+u> wrote:
+> > >
+> > > Hi folks,
+> > >
+> > > Given that not everything for NFSv3 has a specification, I post a
+> > > question here (as it concerns linux v3 (client) implementation) but I
+> > > ask a generic question with respect to NOTIFY sent by an NFS server.
 > >
-> > Hi folks,
+> > There is a standard:
 > >
-> > Given that not everything for NFSv3 has a specification, I post a
-> > question here (as it concerns linux v3 (client) implementation) but I
-> > ask a generic question with respect to NOTIFY sent by an NFS server.
->
-> There is a standard:
->
-> https://pubs.opengroup.org/onlinepubs/9629799/chap11.htm
-
-Thank you Chuck. This too does not give any limits as to the
-uniqueness of the state value.
-
-> > A NOTIFY message that is sent by an NFS server upon reboot has a monito=
-r
-> > name and a state. This "state" is an integer and is modified on each
-> > server reboot. My question is: what about state value uniqueness? Is
-> > there somewhere some notion that this value has to be unique (as in
-> > say a random value).
+> > https://pubs.opengroup.org/onlinepubs/9629799/chap11.htm
 > >
-> > Here's a problem. Say a client has 2 mounts to ip1 and ip2 (both
-> > representing the same DNS name) and acquires a lock per mount. Now say
-> > each of those servers reboot. Once up they each send a NOTIFY call and
-> > each use a timestamp as basis for their "state" value -- which very
-> > likely is to produce the same value for 2 servers rebooted at the same
-> > time (or for the linux server that looks like a counter). On the
-> > client side, once the client processes the 1st NOTIFY call, it updates
-> > the "state" for the monitor name (ie a client monitors based on a DNS
-> > name which is the same for ip1 and ip2) and then in the current code,
-> > because the 2nd NOTIFY has the same "state" value this NOTIFY call
-> > would be ignored. The linux client would never reclaim the 2nd lock
-> > (but the application obviously would never know it's missing a lock)
-> > --- data corruption.
 > >
-> > Who is to blame: is the server not allowed to send "non-unique" state
-> > value? Or is the client at fault here for some reason?
+> > > A NOTIFY message that is sent by an NFS server upon reboot has a
+> > > monitor name and a state. This "state" is an integer and is modified
+> > > on each server reboot. My question is: what about state value
+> > > uniqueness? Is there somewhere some notion that this value has to be
+> > > unique (as in say a random value).
+> > >
+> > > Here's a problem. Say a client has 2 mounts to ip1 and ip2 (both
+> > > representing the same DNS name) and acquires a lock per mount. Now sa=
+y
+> > > each of those servers reboot. Once up they each send a NOTIFY call an=
+d
+> > > each use a timestamp as basis for their "state" value -- which very
+> > > likely is to produce the same value for 2 servers rebooted at the sam=
+e
+> > > time (or for the linux server that looks like a counter). On the
+> > > client side, once the client processes the 1st NOTIFY call, it update=
+s
+> > > the "state" for the monitor name (ie a client monitors based on a DNS
+> > > name which is the same for ip1 and ip2) and then in the current code,
+> > > because the 2nd NOTIFY has the same "state" value this NOTIFY call
+> > > would be ignored. The linux client would never reclaim the 2nd lock
+> > > (but the application obviously would never know it's missing a lock)
+> > > --- data corruption.
+> > >
+> > > Who is to blame: is the server not allowed to send "non-unique" state
+> > > value? Or is the client at fault here for some reason?
+> >
+> > The state value is supposed to be specific to the monitored host. If th=
+e client is
+> > indeed ignoring the second reboot notification, that's incorrect behavi=
+or, IMO.
 >
-> The state value is supposed to be specific to the monitored
-> host. If the client is indeed ignoring the second reboot
-> notification, that's incorrect behavior, IMO.
+> If you are using multiple server IP addresses with the same DNS name, you=
+ may want to set:
+>
+> sysctl fs.nfs.nsm_use_hostnames=3D0
+>
+> The NLM will register with statd using the IP address as name instead of =
+host name. Then your two IP addresses will each have a separate monitor ent=
+ry and state value monitored.
 
-State is supposed to help against replays I think. This client is in
-its right to update the state value upon processing a reboot
-notification.
-The fact that another sm_notiffy comes with the same state (and from
-the same DNS name monitor name) seems logical that can be a re-try and
-thus grounds for ignoring it.
-
+In my setup I already have this set to 0. But I'll look around the
+code to see what it is supposed to do.
 
 >
->
-> --
-> Chuck Lever
->
+> Frank
 >
