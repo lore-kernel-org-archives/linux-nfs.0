@@ -1,37 +1,45 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13FF21DDC9;
-	Mon, 27 May 2024 18:11:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D4C01DA23;
+	Mon, 27 May 2024 18:17:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1716833461; cv=none; b=df2WRCHMPQGzXC1Yg8Llzcvq7OvtBPfZylgqNS1lsB30i0zjXVg8pAuYH2aTG7z7QofLjkRJWKBuL94YPEqcjUV8W3rffmzsZZ7PB8G4eYo+WrjQzjXINSDY//kKxH4I1avILjBuoZcVDCYyTrLdryLMnky+UmM/sBGiUxy5S9k=
+	t=1716833843; cv=none; b=TgMJXZGBrUdDnaJMEyYgwlNCo1zs9i7I2nEL3Kv+O7pySw5P35wg607CqiwswRtUhFIih9lMZSGVLeO702PK3VQov4oXA6PUx4ugTF3bCeUYqyi6dAuVrPEz1fZlecaOX2jgcoTykOAwRT1Jud49iWAlXCLDp6PoDVZtCFc0fgo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1716833461; c=relaxed/simple;
-	bh=eK10ZMnKSMB5tS2KY137h2lm3DPOIZknF+dHeHfG/0U=;
+	s=arc-20240116; t=1716833843; c=relaxed/simple;
+	bh=73l1YPr/2J7LXLM4NzJGlrHdLbkHv4cNTEwSMSwytdI=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Dfn1SUPwXmARB9hA1ggJuDbaqweD7aFGa4w57rtJz6bY6fX19HP5ZGTo5g3bAE1xTqWL94sQi1uGAcwCWtwK9ey11lobybdJjH+n4gViZhCHHcVeFyTg3lSm9TxVm5+ug2TC7ammdYN+9ZFv6R6OBTOgUVSmXhLWxmi64rBSD4I=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b=P4Yg7YO0; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=bkJcHLodrcMgh7Y4trPt/IdGSec+XjkKuGyVZf2+eLsTFDeOwAINykeCxtKZcBuvfzcm4C38ozPYIADCL3AMqB0/xU94118uRSFljvV/WJgUx8l3LnqIQoN+V1Mha7/u5Eqz+DPITMfPueuM+ZR35n6hwiuF8WPFu9wOROXbpbk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=EBoD/Hrh; arc=none smtp.client-ip=90.155.50.34
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="P4Yg7YO0"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 43629C2BBFC;
-	Mon, 27 May 2024 18:11:00 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-	s=korg; t=1716833460;
-	bh=eK10ZMnKSMB5tS2KY137h2lm3DPOIZknF+dHeHfG/0U=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=P4Yg7YO0y+76XcOBnyWhGJ8zsbs3nPZApqwp80DSICRZ+sTVwUkzdY13ad6+OP3H1
-	 HZK6RC51J6a8A1/4jIipezyQdUinCTvyciGere1cIS0M0Ml8oo0BFRNNipFsjOB5dl
-	 JPIYKwT71qImvSEVaULHbEQcbRmmJv2O7aVLdcS0=
-Date: Mon, 27 May 2024 20:11:04 +0200
-From: Greg KH <gregkh@linuxfoundation.org>
-To: cel@kernel.org
-Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
-	regressions@lists.linux.dev, Josef Bacik <josef@toxicpanda.com>,
-	Jeff Layton <jlayton@kernel.org>
-Subject: Re: [PATCH 6.8.y] sunrpc: use the struct net as the svc proc private
-Message-ID: <2024052748-frolic-angular-c754@gregkh>
-References: <20240527152728.1097505-1-cel@kernel.org>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="EBoD/Hrh"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=yQPndnt/VKkoxE+QATcqk3pffHAGhUlkEJl1EekOfS0=; b=EBoD/HrhhFDFz4F7sBZCAVQPZ3
+	UdPROiG8LxqhGX4WRjDUOkrv/AG5V/dDZE0KCq0UT1U7xc+ygKs4+n3RfQWs8xwEgBIopsRAC1BlN
+	+pbsBC1Eqdkk7Lv06FUj8iLILqJU0qpqWZ5U0J3gRjRvqWmtfvof0zSHvb4fHqbpM5exeJeN9G3uC
+	h8hH6miNT4tf4zY0nvd6MDPJ15+dPejJTPhb3OPZy4JGs47OgDCjbvNVsApJ+87WwHo/jarDC3uiO
+	Nq4q6dA9H4UtVIPaE/oDcG7YAc7YUnK325Dpy7hgiSKfb0jLGQrZZWdMV9bvuI3JS1licFjcnRc7V
+	apptAnSA==;
+Received: from willy by casper.infradead.org with local (Exim 4.97.1 #2 (Red Hat Linux))
+	id 1sBeuM-00000007sZU-0Y5G;
+	Mon, 27 May 2024 18:17:18 +0000
+Date: Mon, 27 May 2024 19:17:18 +0100
+From: Matthew Wilcox <willy@infradead.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Trond Myklebust <trond.myklebust@hammerspace.com>,
+	Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [PATCH 1/2] filemap: Convert generic_perform_write() to support
+ large folios
+Message-ID: <ZlTOLsrhD4P4Yiwl@casper.infradead.org>
+References: <20240527163616.1135968-1-hch@lst.de>
+ <20240527163616.1135968-2-hch@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -40,28 +48,36 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20240527152728.1097505-1-cel@kernel.org>
+In-Reply-To: <20240527163616.1135968-2-hch@lst.de>
 
-On Mon, May 27, 2024 at 11:27:28AM -0400, cel@kernel.org wrote:
-> From: Josef Bacik <josef@toxicpanda.com>
+On Mon, May 27, 2024 at 06:36:08PM +0200, Christoph Hellwig wrote:
+> From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 > 
-> [ Upstream commit 418b9687dece5bd763c09b5c27a801a7e3387be9 ]
+> Modelled after the loop in iomap_write_iter(), copy larger chunks from
+> userspace if the filesystem has created large folios.
 > 
-> nfsd is the only thing using this helper, and it doesn't use the private
-> currently.  When we switch to per-network namespace stats we will need
-> the struct net * in order to get to the nfsd_net.  Use the net as the
-> proc private so we can utilize this when we make the switch over.
-> 
-> Signed-off-by: Josef Bacik <josef@toxicpanda.com>
-> Reviewed-by: Jeff Layton <jlayton@kernel.org>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/stats.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> This pre-requisite is needed for upstream commit 4b14885411f7 ("nfsd:
-> make all of the nfsd stats per-network namespace").
+> Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+> [hch: use mapping_max_folio_size to keep supporting file systems that do
+>  not support large folios]
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Now queued up, thanks.
+Yup, this still makes sense to me.
 
-greg k-h
+Could you remind me why we need to call flush_dcache_folio() in
+generic_perform_write() while we don't in iomap_write_iter()?
+
+>  		if (mapping_writably_mapped(mapping))
+> -			flush_dcache_page(page);
+> +			flush_dcache_folio(folio);
+
+(i'm not talking about this one)
+
+> -		copied = copy_page_from_iter_atomic(page, offset, bytes, i);
+> -		flush_dcache_page(page);
+> +		copied = copy_folio_from_iter_atomic(folio, offset, bytes, i);
+> +		flush_dcache_folio(folio);
+
+(this one has no equivalent in iomap)
+
+>  		status = a_ops->write_end(file, mapping, pos, bytes, copied,
+>  						page, fsdata);
