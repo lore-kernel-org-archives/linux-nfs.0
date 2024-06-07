@@ -1,52 +1,52 @@
-Received: from mail-yb1-f182.google.com (mail-yb1-f182.google.com [209.85.219.182])
+Received: from mail-qt1-f181.google.com (mail-qt1-f181.google.com [209.85.160.181])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 02E2C194A7D
-	for <linux-nfs@vger.kernel.org>; Fri,  7 Jun 2024 14:27:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.182
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0B29015D5D2
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Jun 2024 14:27:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.181
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1717770425; cv=none; b=DK2kl0fI0Tq46lnNKaMK22pURpdzMPMi9gpWYJE033g5Kb1QrNbenhnwMEmtKJlrIBiBglTHi95Zqy41i4/rtq3uysK+1YwQ2Ew38pdD5ZQ+LteQgBn7cBMBWDADetNAGPPnIqh7RONS93CrOE4WRs1uOMfBjko/HFztpjZEJAE=
+	t=1717770428; cv=none; b=PjWfTHA9JGMPR1hj0GosNxpdTPsGUz9d2xP94jQhoxnl82X4IY9gsSsFiYFoNvKMwdf9UtfrsRYYXTYzFVzLUoI1jI/9Dq3dobcKhg+M6kwy9MFfSa8DqwMngPe6jnA9JuQ349sZTIkyx34PlDQ56xoGv9frF9d1aguWItYW50g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1717770425; c=relaxed/simple;
-	bh=3yeXpgjflLNWr7DJcLC+Bll0/2QlKYVwAP82MUzpMk4=;
+	s=arc-20240116; t=1717770428; c=relaxed/simple;
+	bh=OZ1/KIho29dGUdUEE6G7CWa7k7tgrQWchBn20rQ2H+M=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=hjnIk/c+8eliUFzVucrTuRjph1+XrL4KrSfV6BljrupRthb/Lmjtf8B83SL9bXt70GGSMbB7ODalpWSdkAyz9wtYMkrFYJmWyjEZ8GinVJDDToKJoMrRFhjdLJsKYMoo5IqMZkKGwaXfepl6Wx2cwjuSO/KsanyVGVR8t7bFJMI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org; spf=none smtp.mailfrom=snitzer.net; arc=none smtp.client-ip=209.85.219.182
+	 MIME-Version; b=g7ueRqAPT4qHwsNHNzNr5s78FqokAY+OgCirBJhm/BGIjn+oMY1FWKwnWcM5G2GxnlwPv1EVIvglYU8Fx3j/IMsJdzhNkW7gEUeU1VHK0LXH8J6s2zHqzNFmFVf249IxhGKuTqys1kDGnocV4CpkvGLhoGTmgbZBfCGONYBMJ7I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org; spf=none smtp.mailfrom=snitzer.net; arc=none smtp.client-ip=209.85.160.181
 Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=kernel.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=snitzer.net
-Received: by mail-yb1-f182.google.com with SMTP id 3f1490d57ef6-df4d5d0b8d0so2145008276.2
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Jun 2024 07:27:03 -0700 (PDT)
+Received: by mail-qt1-f181.google.com with SMTP id d75a77b69052e-4402602a116so11084561cf.0
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Jun 2024 07:27:06 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1717770422; x=1718375222;
+        d=1e100.net; s=20230601; t=1717770425; x=1718375225;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=jj1QH7sw/Kw1P84SGIZlEFUNbm1ML7/DtljafjAq3Og=;
-        b=sjetYUYPWb1zcgJdYpLQgxLqnD5Gq8yioJKSUN7+gsX4d3cHaAKtcWRRnqoSLOgCoS
-         4OKl0aZ9IWzTw9jc/9VAeGoJoV3FArV8udpvu9034J+iTBTZWPqWHUh4QfToAcwWEzyD
-         hszvSLp6/36UdUthNUjYBG2ZdZAQrWRvMx9xj61Lk38kF23BjeZ5GnNd0GbvqjxWN17X
-         lgy3PLZSHKiw7NYborptghFKmvgsFm+apw0xC0iL8Hn+H5AQEHyok5wh9ItKrxy3HjCZ
-         hfHvTRHtbJLdjC0IINjk/JvsdXNyeAcvzqXoicOnEvNU6vZBDLeeSjpXX3cGyMNO0Tar
-         csOA==
-X-Gm-Message-State: AOJu0YyV3863F2Ne2GMNZhqKQvb1wXNcf0u6vsTLBlyUwL+CtllqtKNh
-	SLgCM+ukKx4E8Pafen3O3in+vKKMjuVDu0d3zg+iePV5xggQHoWkTaz4mr+GhcmI/ry1yT85/kf
-	LYa3C+A==
-X-Google-Smtp-Source: AGHT+IGL9PPQTXWqtYM072iTD2t34YzLHz7Z1YubXPL+Aut6N55x0VGcyecIuGXoQlNVH7TFJnfSeA==
-X-Received: by 2002:a05:6902:a92:b0:dfb:30e:25b5 with SMTP id 3f1490d57ef6-dfb030e2ef8mr1522324276.25.1717770422152;
-        Fri, 07 Jun 2024 07:27:02 -0700 (PDT)
+        bh=d6cF2mg24tlpOxDpu+TJ7Xxlze6Cn1GpW1T7FR/ACXc=;
+        b=sGMhXNkU2S8kaYpZa2bbsmaPhKN0RCuqC7f8V3dsmAQ4mllC/u0/WrX2X/Sx3zELME
+         HPpQKX6qGmxGymB6vDWGKxO0f1S6rT7eFiPBSLTcQen0uxm08sGcjTTRs2DcAtB8Pc5+
+         r/a7E7A3ZCN+/S9UyMP02LHHDVNf+23woVYyNTXqM83Kk/ivWgV0Hyr9D+dyr3W/ZWzN
+         QrXqFsnPjBNwKu+J3YLXZI3Uc/Vqj4lOhW3/1Il1/uFhVv6TYGx/C5xSXS81KXeJXhUj
+         Hx1K+coJVdPxh1tFoci9rEo6dW6Bwlhj2L/sOzCZZDkAQWnzyXtmZncXh3W4zzWdk7Ss
+         namw==
+X-Gm-Message-State: AOJu0Yyes0sMbGW8SRmytKbF65lqSXXUajAnBVAqv4LmfgGA7nlH9SMe
+	idYNY2pqEOsWhCCImG7HH0N0ZS15R0ghbft55wDCgmM6plE0lnZxJUMlfrl3KbnuYjXPEBHsNFr
+	kGaEf3g==
+X-Google-Smtp-Source: AGHT+IH+DgdkmB7+t5BXMadrrh23L2KWvC3eCvfpycHkP5+VIfIOuLcSVFzhcfpRBj3gUFJqswbEqA==
+X-Received: by 2002:a05:622a:d:b0:43f:f018:6a7c with SMTP id d75a77b69052e-44041c68b74mr28448681cf.33.1717770425153;
+        Fri, 07 Jun 2024 07:27:05 -0700 (PDT)
 Received: from localhost (pool-68-160-141-91.bstnma.fios.verizon.net. [68.160.141.91])
-        by smtp.gmail.com with ESMTPSA id d75a77b69052e-4404a8ee860sm3937491cf.94.2024.06.07.07.27.01
+        by smtp.gmail.com with ESMTPSA id d75a77b69052e-44038b5e617sm12492921cf.93.2024.06.07.07.27.04
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 07 Jun 2024 07:27:01 -0700 (PDT)
+        Fri, 07 Jun 2024 07:27:04 -0700 (PDT)
 From: Mike Snitzer <snitzer@kernel.org>
 To: linux-nfs@vger.kernel.org
 Cc: Jeff Layton <jlayton@kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>,
 	Trond Myklebust <trondmy@hammerspace.com>,
 	snitzer@hammerspace.com
-Subject: [for-6.11 PATCH 09/29] NFS: Manage boot verifier correctly in the case of localio
-Date: Fri,  7 Jun 2024 10:26:26 -0400
-Message-ID: <20240607142646.20924-10-snitzer@kernel.org>
+Subject: [for-6.11 PATCH 11/29] NFS: Enable localio for non-pNFS I/O
+Date: Fri,  7 Jun 2024 10:26:28 -0400
+Message-ID: <20240607142646.20924-12-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20240607142646.20924-1-snitzer@kernel.org>
 References: <20240607142646.20924-1-snitzer@kernel.org>
@@ -60,43 +60,82 @@ Content-Transfer-Encoding: 8bit
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-If there is a localio error, we want to manage the boot verifier in
-a similar fashion to how it is done on the server.
+Try a local open of the file we're writing to, and if it succeeds, then
+do local I/O.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- fs/nfs/client.c           | 3 +++
- include/linux/nfs_fs_sb.h | 4 ++++
- 2 files changed, 7 insertions(+)
+ fs/nfs/pagelist.c | 19 ++++++++++---------
+ fs/nfs/write.c    |  7 ++++++-
+ 2 files changed, 16 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index de77848ae654..dd3278dcfca8 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -178,6 +178,9 @@ struct nfs_client *nfs_alloc_client(const struct nfs_client_initdata *cl_init)
- 	clp->cl_max_connect = cl_init->max_connect ? cl_init->max_connect : 1;
- 	clp->cl_net = get_net(cl_init->net);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 9210a1821ec9..5890824f6200 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -1066,6 +1066,7 @@ EXPORT_SYMBOL_GPL(nfs_generic_pgio);
+ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
+ {
+ 	struct nfs_pgio_header *hdr;
++	struct file *filp;
+ 	int ret;
+ 	unsigned short task_flags = 0;
  
-+	seqlock_init(&clp->cl_boot_lock);
-+	ktime_get_real_ts64(&clp->cl_nfssvc_boot);
+@@ -1077,18 +1078,18 @@ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
+ 	nfs_pgheader_init(desc, hdr, nfs_pgio_header_free);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret == 0) {
++		struct nfs_client *clp = NFS_SERVER(hdr->inode)->nfs_client;
 +
- 	clp->cl_principal = "*";
- 	clp->cl_xprtsec = cl_init->xprtsec;
- 	return clp;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 92de074e63b9..82a6f66fe1d0 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -125,6 +125,10 @@ struct nfs_client {
- 	struct net		*cl_net;
- 	struct list_head	pending_cb_stateids;
- 	struct rcu_head		rcu;
++		filp = nfs_local_file_open(clp, hdr->cred, hdr->args.fh,
++					   hdr->args.context);
 +
-+	/* localio */
-+	struct timespec64	cl_nfssvc_boot;
-+	seqlock_t		cl_boot_lock;
- };
+ 		if (NFS_SERVER(hdr->inode)->nfs_client->cl_minorversion)
+ 			task_flags = RPC_TASK_MOVEABLE;
+-		ret = nfs_initiate_pgio(desc,
+-					NFS_SERVER(hdr->inode)->nfs_client,
+-					NFS_CLIENT(hdr->inode),
+-					hdr,
+-					hdr->cred,
+-					NFS_PROTO(hdr->inode),
+-					desc->pg_rpc_callops,
+-					desc->pg_ioflags,
++		ret = nfs_initiate_pgio(desc, clp, NFS_CLIENT(hdr->inode),
++					hdr, hdr->cred, NFS_PROTO(hdr->inode),
++					desc->pg_rpc_callops, desc->pg_ioflags,
+ 					RPC_TASK_CRED_NOREF | task_flags,
+-					NULL);
++					filp);
+ 	}
+ 	return ret;
+ }
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index ba0b36b15bc1..79375af3f2a6 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1808,6 +1808,8 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
+ 		struct nfs_commit_info *cinfo)
+ {
+ 	struct nfs_commit_data	*data;
++	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
++	struct file *filp;
+ 	unsigned short task_flags = 0;
+ 
+ 	/* another commit raced with us */
+@@ -1824,10 +1826,13 @@ nfs_commit_list(struct inode *inode, struct list_head *head, int how,
+ 	nfs_init_commit(data, head, NULL, cinfo);
+ 	if (NFS_SERVER(inode)->nfs_client->cl_minorversion)
+ 		task_flags = RPC_TASK_MOVEABLE;
++
++	filp = nfs_local_file_open(clp, data->cred, data->args.fh,
++				   data->context);
+ 	return nfs_initiate_commit(NFS_SERVER(inode)->nfs_client,
+ 				   NFS_CLIENT(inode), data, NFS_PROTO(inode),
+ 				   data->mds_ops, how,
+-				   RPC_TASK_CRED_NOREF | task_flags, NULL);
++				   RPC_TASK_CRED_NOREF | task_flags, filp);
+ }
  
  /*
 -- 
