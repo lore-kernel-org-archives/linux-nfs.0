@@ -1,44 +1,44 @@
-Received: from mail-lj1-f180.google.com (mail-lj1-f180.google.com [209.85.208.180])
+Received: from mail-wr1-f42.google.com (mail-wr1-f42.google.com [209.85.221.42])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0029C13698F
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Jun 2024 09:17:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.180
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D8F4229AB
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Jun 2024 09:17:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1718270245; cv=none; b=QARUw29FthTgDVkB3uYT6JnfbOKweiGlFVoI3zMHeZdliBAp/t7QKRWADxpc17EZqv3PZKhm1iEnF24Teq4GS7dg/qtjDLB5QWnKk9PmNAZv7oIkTfc0daU4bQ6f5JhC+YvHhtmXGApcM+mrfbQUk8qtxadONxon9TAnOeyELhs=
+	t=1718270252; cv=none; b=es3beYsavFsUIA4JzX8ddiL9GeiIWdhRHmcpK7P/SQDOMDI4FI4NuN0KPmXr4c/OBqeC8/ztTKUWyWgWri5fd7TUq2vhxMnipVRsRVE1g/w5WOYM2w0eZ4I+1d/uUv09BqfjVh9wZkarCo4d1VZ3TpYcOHqVkJAjtGf5jaILLck=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1718270245; c=relaxed/simple;
+	s=arc-20240116; t=1718270252; c=relaxed/simple;
 	bh=nWpDQmZNg8zKVk12QskQ7NNS05C4fI/JmZBKLdKyu8Q=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=goUmu8KRsCeNC43q6f9n2ByGYsG/kvYUZKKz0Hr/UoE8vEFN5pr3qQYCKb5yGtsPVsj6qIKj35Fmk7iIAWt96gc9OVNDK8aZOBW05GhaNRDwUIz2k+LgZsNxuEzoPnHTMmCsGEQNkChWRwN9zA9NyK9TNQLbhHP8oBKnQgIjieY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=grimberg.me; spf=pass smtp.mailfrom=gmail.com; arc=none smtp.client-ip=209.85.208.180
+	 In-Reply-To:Content-Type; b=Kmgk3+dsnvh0VyLaMq++fuy/pmwQHGrS2ZmlxWWAiPBqEXCCpmDGkJgh6BS+naC2O/rSzC4LLV0c2SEq+0WLHSkKveT3VhogbYU2lkhta2OfRXWGAmMCIN7d9hdCfVE8Atq3aNdiQCQDAKzwc60sWXVRtRLZOffyY0ooX/I2zBE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=grimberg.me; spf=pass smtp.mailfrom=gmail.com; arc=none smtp.client-ip=209.85.221.42
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=grimberg.me
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Received: by mail-lj1-f180.google.com with SMTP id 38308e7fff4ca-2ebfb526d49so522971fa.1
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Jun 2024 02:17:23 -0700 (PDT)
+Received: by mail-wr1-f42.google.com with SMTP id ffacd0b85a97d-35f18e66530so81073f8f.1
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Jun 2024 02:17:30 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1718270242; x=1718875042;
+        d=1e100.net; s=20230601; t=1718270249; x=1718875049;
         h=content-transfer-encoding:in-reply-to:from:content-language
          :references:cc:to:subject:user-agent:mime-version:date:message-id
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
         bh=nWpDQmZNg8zKVk12QskQ7NNS05C4fI/JmZBKLdKyu8Q=;
-        b=vRLoj/N8Xg/jiBLAsjtLndMoOVpO1X82i1732FaFe9kSFEwdfRj1usQf7OzfJTAlcv
-         K2uFknhSuxLKGiv0BaH0IZpbqsyiyybIpVXIzXacl6RHl2K/GGZlcP2kmaZBP5s9fvvd
-         k9SlXJMZRuC7jvWCUrRJSj1gaQHLrypLesjloxgGN91DKFW5KhjRGKI2gg2IDU2RGi2Q
-         ZNRNHyiQr6J3ak+1rjaJQ1Ju9Cvg0vvI7/zfzjGsNeBpg+3vB5E5PuU1JeKCbYBXjbUg
-         Pit3s0RWrs9NXIS1zsqi/2WTclqvFMB4bKOlMLADfc+tuJKZdleB/C8EFI/ck3fjhgif
-         5oGQ==
-X-Gm-Message-State: AOJu0YxG/jJlzUCdTUL5T0rKs7rvJj9NVhJTS0l4/pQ54c4+lP+ne1K9
-	HXIJo2eeNGbU9H4ny3NY6YB30GYvqXgJug0UsHfr+MMBKuZtYHmD
-X-Google-Smtp-Source: AGHT+IGIL/v/xzVP+cSfIvHTTs3ZU+ql+Dru1R3+jTOvrShx1PBykUre/3ayLbV1f3QWF2FkPH/FIg==
-X-Received: by 2002:a2e:2284:0:b0:2ec:2f8:f4ae with SMTP id 38308e7fff4ca-2ec02f8f6eamr11179871fa.0.1718270241841;
-        Thu, 13 Jun 2024 02:17:21 -0700 (PDT)
+        b=L7gmEcFN7hlwZbMProYJ9DmmaZBM3uAVhFpW1aSfD+ZNX27DaiYm5iabw+u8dG8u2m
+         Fw+7ZyU4ah962ndv0iAdI1ZgZMGY+cEbw1Z734vcpX4iZK1V5Q7B1nTO7xGrOiDthAM0
+         yi50YIOh/njt2bYORG0Qt4fQ76w75nD6vVZgFWBUpuOQlvWLBM1LocBsk8B635TaQddG
+         S8Jgjr2Y6l0RA3E3a9ciagruSTF/B3L9wWj/ZDlssbtBbjk/kMwbtdLSgUyeQlujfa+y
+         cmt/KF2bV6ZB8iRg2KF99VIatySWS4FUrZ1TthjVRyQJqQpAnkyVAinO/vb8kcPRCaKR
+         hOFg==
+X-Gm-Message-State: AOJu0YyQMejppquo18uFElO3eRwmORs1dqJaXmzqz5BChui+R/2FL9Z7
+	giZtVa2lPbzvE+xp4M+nURge3p2DSmN+x6RKtblnn732NG3W9GKM
+X-Google-Smtp-Source: AGHT+IGTOYL9B1VLzfrcMwrSpz7znZ8Y01L4MwYXA9/kvDNvgwUlhqiR21NacOuhD8NqSlzXfTQQJg==
+X-Received: by 2002:a5d:47a6:0:b0:35f:29c8:5142 with SMTP id ffacd0b85a97d-35fe8913ad2mr3254821f8f.5.1718270248987;
+        Thu, 13 Jun 2024 02:17:28 -0700 (PDT)
 Received: from [10.100.102.74] (46-117-188-129.bb.netvision.net.il. [46.117.188.129])
-        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-360750ad20bsm1091692f8f.54.2024.06.13.02.17.21
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-36075104a0fsm1095959f8f.96.2024.06.13.02.17.28
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Thu, 13 Jun 2024 02:17:21 -0700 (PDT)
-Message-ID: <4e89b4de-66b5-4eae-9695-fae5ced0d75e@grimberg.me>
-Date: Thu, 13 Jun 2024 12:17:20 +0300
+        Thu, 13 Jun 2024 02:17:28 -0700 (PDT)
+Message-ID: <6872a555-627f-407b-a0fd-9526600caf69@grimberg.me>
+Date: Thu, 13 Jun 2024 12:17:27 +0300
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -46,15 +46,14 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 1/3] nfs: Drop pointless check from
- nfs_commit_release_pages()
+Subject: Re: [PATCH 2/3] nfs: Properly initialize server->writeback
 To: Jan Kara <jack@suse.cz>, Trond Myklebust <trond.myklebust@hammerspace.com>
 Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
 References: <20240612153022.25454-1-jack@suse.cz>
- <20240613082821.849-1-jack@suse.cz>
+ <20240613082821.849-2-jack@suse.cz>
 Content-Language: en-US
 From: Sagi Grimberg <sagi@grimberg.me>
-In-Reply-To: <20240613082821.849-1-jack@suse.cz>
+In-Reply-To: <20240613082821.849-2-jack@suse.cz>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 
