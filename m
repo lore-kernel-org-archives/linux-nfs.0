@@ -1,71 +1,80 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 31E2047F60
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7761E12C491
 	for <linux-nfs@vger.kernel.org>; Mon,  1 Jul 2024 10:51:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1719831067; cv=none; b=uzyaLI2rardQGpCyLD6pFVvE7o0cAbNz/+1MJXpw8XSzOZ4McnA7n+3xWTR/bqSU+Pmx5dpsdeF8pvgkiIC017PB4aRGL7l5Uiw6Ggh/kRgpRg9Kqv4wEmsqg7fmv9KJeT4bIT0POSwqDcfYdu0LpmVHdzxAAv7wdVSsW29MR7k=
+	t=1719831068; cv=none; b=GntpSYCS2F+bhtTctFfrwnzsYX4nfLhUvDJd6t8l0r1c13SOZmWSt5CUS58kE3t/0e39TIC1KX7gmAi895IaFRS9ZAx5qxygz58jGBOuCTDhbvl5OTUmISDVLEHMq6WyBOTPeqCcN691NIoAPVj+brmhl+sTZRXj37+n/Irr6zw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1719831067; c=relaxed/simple;
-	bh=EAvWN3B/OzWBY0s/FBT3XMcRk7fnqo6349gDNEpdhoE=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=SSbeuvcRpU4SHzPAtXVvTjmqYnApwdY4I4l/VOYZ96LQZ/epRwrz/bnPjw3aL8NjQHzzrioIrN3JijyaM7A7ELCf/FlqHR3+e0dNIizUKZqZ7UNO6dY2Ufx2k7UR7BksBmYkffxOPydLPbOYudPe2EWe9w5TkItF7wkknaLHarE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=u8TUnFSX; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=aXUHzfti; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=u8TUnFSX; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=aXUHzfti; arc=none smtp.client-ip=195.135.223.131
+	s=arc-20240116; t=1719831068; c=relaxed/simple;
+	bh=Yu5E67eCRJyBriuDiXxjFJAxZ1jtzEDh611a6togicY=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=umaPqOgC5o2AGZtEXU+lF9AuBBtxs7Fi8c625fzyXfCo7XyRoawK6iAe614XKlpv/MRG0KEaFJrRqmVD1DCY9A5/SgGA5KSjkfYpDUXGF3yhqCEV4+FZGra5/dtg+RiKxfLb8m/KE4eqpXImop/uF3Pv80pTq0Bs1IMS/pQR9sE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=umTBw2hI; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=XrntKHCh; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=umTBw2hI; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=XrntKHCh; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="u8TUnFSX";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="aXUHzfti";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="u8TUnFSX";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="aXUHzfti"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="umTBw2hI";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="XrntKHCh";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="umTBw2hI";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="XrntKHCh"
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 7C0D71F828;
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 8AC391FB3D;
 	Mon,  1 Jul 2024 10:51:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
 	t=1719831064; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=S2HqJH0a6xgadTTJl8rI6O2Xeo/UirUZfVeHWwwYLS0=;
-	b=u8TUnFSXDV6q/DhaWB+b2YRiTknGAGoxaegho3OjTa89enNEn5BxPub02oyIf5mzbYJ8JA
-	mtF6VjdRLKWhsI3M3Zq6wkf7m6eJPzRFlSoI7AnN5OO8s0n8yOBL0qcZ+isobZNoyAHpy7
-	+634zQaPUhkQr5vyJlVvZLqgbZZRf68=
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=J8rOhWv36GLnu3ALR5iB/Y6ldaN6h4X/wKLPlWdLhTc=;
+	b=umTBw2hIkmqms0lfcI3viV1AjTkCH4OZzCAlawV8wY+zQSgU81MHhbuMuZaY7li7sOmCJv
+	81r4q4ywvwMBUzWALv5v6THwSwhMjkG0pKQ9cG2WWUoaVLMH7T1hwX7LyqQU4NtFvUrjzg
+	G8bgILfOw8ZGSuJoms95L/R/qd1p54w=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
 	s=susede2_ed25519; t=1719831064;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=S2HqJH0a6xgadTTJl8rI6O2Xeo/UirUZfVeHWwwYLS0=;
-	b=aXUHzfti60zsFMSf4iU7yMYADXwINd2zDVp+y39DWEnWdNSWT9d6g0zPhX1dYECQ8AA3j8
-	i1GlhltQh0gMWNBA==
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=J8rOhWv36GLnu3ALR5iB/Y6ldaN6h4X/wKLPlWdLhTc=;
+	b=XrntKHCh1jxTRXUFIjNzThjmfidrP+RNBbcEY4UFRqY8zCVAJh0h7kOvEExp3kg7lx1IAP
+	NWwFKz1Fq8HXrxBQ==
 Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
 	t=1719831064; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=S2HqJH0a6xgadTTJl8rI6O2Xeo/UirUZfVeHWwwYLS0=;
-	b=u8TUnFSXDV6q/DhaWB+b2YRiTknGAGoxaegho3OjTa89enNEn5BxPub02oyIf5mzbYJ8JA
-	mtF6VjdRLKWhsI3M3Zq6wkf7m6eJPzRFlSoI7AnN5OO8s0n8yOBL0qcZ+isobZNoyAHpy7
-	+634zQaPUhkQr5vyJlVvZLqgbZZRf68=
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=J8rOhWv36GLnu3ALR5iB/Y6ldaN6h4X/wKLPlWdLhTc=;
+	b=umTBw2hIkmqms0lfcI3viV1AjTkCH4OZzCAlawV8wY+zQSgU81MHhbuMuZaY7li7sOmCJv
+	81r4q4ywvwMBUzWALv5v6THwSwhMjkG0pKQ9cG2WWUoaVLMH7T1hwX7LyqQU4NtFvUrjzg
+	G8bgILfOw8ZGSuJoms95L/R/qd1p54w=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
 	s=susede2_ed25519; t=1719831064;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:  content-transfer-encoding:content-transfer-encoding;
-	bh=S2HqJH0a6xgadTTJl8rI6O2Xeo/UirUZfVeHWwwYLS0=;
-	b=aXUHzfti60zsFMSf4iU7yMYADXwINd2zDVp+y39DWEnWdNSWT9d6g0zPhX1dYECQ8AA3j8
-	i1GlhltQh0gMWNBA==
+	 mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=J8rOhWv36GLnu3ALR5iB/Y6ldaN6h4X/wKLPlWdLhTc=;
+	b=XrntKHCh1jxTRXUFIjNzThjmfidrP+RNBbcEY4UFRqY8zCVAJh0h7kOvEExp3kg7lx1IAP
+	NWwFKz1Fq8HXrxBQ==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 703C1139C2;
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7D4D113AA4;
 	Mon,  1 Jul 2024 10:51:04 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id fJVeGxiKgmYxLgAAD6G6ig
+	id FWBOHhiKgmY0LgAAD6G6ig
 	(envelope-from <jack@suse.cz>); Mon, 01 Jul 2024 10:51:04 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 1B2B2A088D; Mon,  1 Jul 2024 12:50:56 +0200 (CEST)
+	id 28486A08A9; Mon,  1 Jul 2024 12:50:56 +0200 (CEST)
 From: Jan Kara <jack@suse.cz>
 To: Anna Schumaker <anna@kernel.org>
 Cc: Trond Myklebust <trondmy@kernel.org>,
@@ -73,34 +82,34 @@ Cc: Trond Myklebust <trondmy@kernel.org>,
 	Sagi Grimberg <sagi@grimberg.me>,
 	Jeff Layton <jlayton@kernel.org>,
 	Jan Kara <jack@suse.cz>
-Subject: [PATCH RESEND v2 0/3] nfs: Improve throughput for random buffered writes
-Date: Mon,  1 Jul 2024 12:50:45 +0200
-Message-Id: <20240617073525.10666-1-jack@suse.cz>
+Subject: [PATCH v2 2/3] nfs: Properly initialize server->writeback
+Date: Mon,  1 Jul 2024 12:50:47 +0200
+Message-Id: <20240701105056.25535-2-jack@suse.cz>
 X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20240617073525.10666-1-jack@suse.cz>
+References: <20240617073525.10666-1-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=999; i=jack@suse.cz; h=from:subject:message-id; bh=EAvWN3B/OzWBY0s/FBT3XMcRk7fnqo6349gDNEpdhoE=; b=owGbwMvMwME4Z+4qdvsUh5uMp9WSGNKaOr9xTS7TYpL9OzFF9bVy2KXi954XMkqzHP+Ke01dbJeR sdGik9GYhYGRg0FWTJFldeRF7WvzjLq2hmrIwAxiZQKZwsDFKQAT8V/J/r/AYnaPgAHX9XC1wMdbzb Zl6nh0qx7538tUe17AaqHUtBdatl2yx20TQ5wtYyfe05b5PW/j/0gZhwsOHe8DKxZde3DN1rbY087p /5pDOXa2zyJdGOve3I2/6126/tqqFze87n546Jb4a3Hjn/KOifJWi9wvxrz+ox0pFybi5+IgtoNl17 pq2yIx1rN2UnbGnVx1HyISupvD93qWWTyq8b52TX5vSefmyhTDhIQFd0Vue7jf7eG8UW+f9ntbwbcZ Oz9uW+wg5cQVF1Wz9uKr2bpt2yK19m7ZO+OT1cQrOQ9qgn2Md71+qXtg02u9/xsPHpSXa7YyOb5UKJ ZX9a4Np33e065SO07DP3lKRnvLAQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=711; i=jack@suse.cz; h=from:subject; bh=Yu5E67eCRJyBriuDiXxjFJAxZ1jtzEDh611a6togicY=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBmgooG1CDZahFESXIF/SMwxrQbvoLCxy49f7rPp1Z9 YnWq2BqJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZoKKBgAKCRCcnaoHP2RA2fUVB/ 9oYOauzj1a0rBJfVOaClBkA6G+suzvrpZYyUczxwu0e2+sJhJ8SE5OVjYsyp0JfdHQSpXykuEpIveR pkAUp4jlF6GUMssEn7JScw0dxkxwxuSnJ++upQ88eUSBUWCf97sPM/3qDE6s5aIU+39xERYUCXAtm8 w67YyQPrWsJ2LSJLiVrVAq9KEHumNwLS1SuNZHYCk1rY5vuwA4MuJi3lmw4OIohBEpGwe+51x2B/xW qrPngSMm4qOdMb/KLgH51yvPRFlGsE7D4f/M5No3fbzdWo9FuJDyHCRjeATVS4WjsbQRM+uD5FQ9e3 J4iWiYoYLbXPfCICOSSfg6f0AtJpy2
 X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
 Content-Transfer-Encoding: 8bit
-X-Spam-Score: -2.67
-X-Spam-Level: 
-X-Spam-Flag: NO
-X-Spamd-Result: default: False [-2.67 / 50.00];
-	BAYES_HAM(-2.87)[99.43%];
+X-Spamd-Result: default: False [-6.80 / 50.00];
+	REPLY(-4.00)[];
+	BAYES_HAM(-3.00)[100.00%];
 	MID_CONTAINS_FROM(1.00)[];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
 	R_MISSING_CHARSET(0.50)[];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TO_DN_SOME(0.00)[];
 	MIME_TRACE(0.00)[0:+];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
 	ARC_NA(0.00)[];
 	RCVD_COUNT_THREE(0.00)[3];
-	TO_DN_SOME(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
 	FUZZY_BLOCKED(0.00)[rspamd.com];
 	FROM_HAS_DN(0.00)[];
@@ -109,32 +118,32 @@ X-Spamd-Result: default: False [-2.67 / 50.00];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo]
+X-Spam-Flag: NO
+X-Spam-Score: -6.80
+X-Spam-Level: 
 
-[Resending because of messed up mailing list address]
+Atomic types should better be initialized with atomic_long_set() instead
+of relying on zeroing done by kzalloc(). Clean this up.
 
-Hello,
+Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/nfs/client.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-this is second revision of my patch series improving NFS throughput for
-buffered writes.
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index de77848ae654..3b252dceebf5 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -994,6 +994,8 @@ struct nfs_server *nfs_alloc_server(void)
+ 
+ 	server->change_attr_type = NFS4_CHANGE_TYPE_IS_UNDEFINED;
+ 
++	atomic_long_set(&server->writeback, 0);
++
+ 	ida_init(&server->openowner_id);
+ 	ida_init(&server->lockowner_id);
+ 	pnfs_init_server(server);
+-- 
+2.35.3
 
-Changes since v1:
-* Added Reviewed-by tags
-* Made sleep waiting for congestion to resolve killable
-
-Original cover letter below:
-
-I was thinking how to best address the performance regression coming from
-NFS write congestion. After considering various options and concerns raised
-in the previous discussion, I've got an idea for a simple option that could
-help to keep the server more busy - just mimick what block devices do and
-block the flush worker waiting for congestion to resolve instead of aborting
-the writeback. And it actually helps enough that I don't think more complex
-solutions are warranted at this point.
-
-This patch series has two preparatory cleanups and then a patch implementing
-this idea.
-
-								Honza
-
-Previous versions:
-Link: http://lore.kernel.org/r/20240612153022.25454-1-jack@suse.cz # v1
