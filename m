@@ -1,220 +1,110 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1F60915B14F;
-	Mon,  1 Jul 2024 10:27:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 31E6884D13
+	for <linux-nfs@vger.kernel.org>; Mon,  1 Jul 2024 10:51:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1719829654; cv=none; b=lzHfx6+NyQPrrf/bGXf5xf5o8+Gco+mbVAuXLrX4KACh/PwuL7go8UdM9tfdEgUt3sdUAKasnlgeoinn97ZeyHAIYKaHtPHcSmu1cF2B+UyNIoTN1muAI3/F0b6hcDMi0OeW76B23LPDGue1rR+Zno35TYJ1yMasi+k3ZvaOpHQ=
+	t=1719831067; cv=none; b=oKrG54h3VGtQfxwn3YmV6RvmRXxUn9WUF7nOOW8ZBBsdov+vgBj1mgifqVRD89z2gAao63YwCYtpy/HguDitHVeJI+Ci2EcfFM4a8DJKIRhSklcg0UC8pBffzPgjBKHUGP7kvUDNUxRvHO0Bd0qxIZc+YMObZdLeHmFfpmSlWWY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1719829654; c=relaxed/simple;
-	bh=yGbFoI0x64Criq5hVXpnf8cTDkEYS+drfXiF9/4UXTc=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=mTE37RnGBtfVOi9d+2VjpFajRZt2en2vR4FKluwaydpzfuNVpgK8vftEmLa6bAdf3Th0C79ldS11gG1+YL6jZ0a/9JtA1/k5o7H0YBCF7Z2vm8ErxqGc1lueCi1SfhX1hlpU8jm/b3jbsct7c+9ZJZxBYT4NmZSf5tAaWM6EfKM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Z6GNnASo; arc=none smtp.client-ip=10.30.226.201
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Z6GNnASo"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 947F5C116B1;
-	Mon,  1 Jul 2024 10:27:31 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1719829653;
-	bh=yGbFoI0x64Criq5hVXpnf8cTDkEYS+drfXiF9/4UXTc=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=Z6GNnASo0fot0PtERrcGCWLqCNkhG+ti+9IgcG2z62xbIC1ym5I817maTy4fkKhbY
-	 R2soLnBsN9ntBuRXtGUYtbUxBrvdurk/E0KX7EbbDmjOFHzMmSyo90wX0FwClonR8X
-	 P4RBkhzh+f0YRGrqIUSoKG7uVfAoeaEL0Ss0NQOw6/1RUJIexOvqBArjV7Pm3HKK+T
-	 ELGB782hclQDbjeAOXe38I7SPtwUvE2y977540crj+h57ilap+jopmlWAGnCDy6jcC
-	 lu8QPn3FZYpTj4N486u8gYzuOufgDmx/UFNBSoDMzdpGwk8GFl1VmaMqBSCpZXUEsG
-	 h//393LSr0nGQ==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 01 Jul 2024 06:26:47 -0400
-Subject: [PATCH v2 11/11] Documentation: add a new file documenting
- multigrain timestamps
+	s=arc-20240116; t=1719831067; c=relaxed/simple;
+	bh=iGBynELGZMK2LYf8td7ocINQb+N7faDvcxMKhsg8yXU=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=ZbsEHJWDN0s0ST229WlpdK7wYl4nGJ3Fc7NzvGnB/t39Ut9taMJKhkkfyZj+5epaqw+kjxYD8cCVyK08Z6oD/m01o+K1aF4C6wDmvRLkfeoZRyvQPt763da/0xRS6PM9FL1fEb8MstXSt/An86YOazhkApYwFmA7+tV4RVHuoec=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 871851F8D6;
+	Mon,  1 Jul 2024 10:51:04 +0000 (UTC)
+Authentication-Results: smtp-out2.suse.de;
+	none
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7B15813A92;
+	Mon,  1 Jul 2024 10:51:04 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id bNILHhiKgmY4LgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 01 Jul 2024 10:51:04 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 1EF89A084B; Mon,  1 Jul 2024 12:50:56 +0200 (CEST)
+From: Jan Kara <jack@suse.cz>
+To: Anna Schumaker <anna@kernel.org>
+Cc: Trond Myklebust <trondmy@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	Sagi Grimberg <sagi@grimberg.me>,
+	Jeff Layton <jlayton@kernel.org>,
+	Jan Kara <jack@suse.cz>
+Subject: [PATCH v2 1/3] nfs: Drop pointless check from nfs_commit_release_pages()
+Date: Mon,  1 Jul 2024 12:50:46 +0200
+Message-Id: <20240701105056.25535-1-jack@suse.cz>
+X-Mailer: git-send-email 2.35.3
+In-Reply-To: <20240617073525.10666-1-jack@suse.cz>
+References: <20240617073525.10666-1-jack@suse.cz>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20240701-mgtime-v2-11-19d412a940d9@kernel.org>
-References: <20240701-mgtime-v2-0-19d412a940d9@kernel.org>
-In-Reply-To: <20240701-mgtime-v2-0-19d412a940d9@kernel.org>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Chandan Babu R <chandan.babu@oracle.com>, 
- "Darrick J. Wong" <djwong@kernel.org>, Theodore Ts'o <tytso@mit.edu>, 
- Andreas Dilger <adilger.kernel@dilger.ca>, Chris Mason <clm@fb.com>, 
- Josef Bacik <josef@toxicpanda.com>, David Sterba <dsterba@suse.com>, 
- Hugh Dickins <hughd@google.com>, Andrew Morton <akpm@linux-foundation.org>
-Cc: Andi Kleen <ak@linux.intel.com>, kernel-team@fb.com, 
- linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-trace-kernel@vger.kernel.org, linux-xfs@vger.kernel.org, 
- linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org, linux-mm@kvack.org, 
- linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.13.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6401; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=yGbFoI0x64Criq5hVXpnf8cTDkEYS+drfXiF9/4UXTc=;
- b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBmgoR51H+Vt+Exq9KPckzpWSJI72DyZw39g58HZ
- 6vgl2QTkO+JAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZoKEeQAKCRAADmhBGVaC
- FUgRD/9lsIjZK2rTJJTMM0K7QsIaOP3fGuxn3FJzgS/8fA0BxnWEFHyOjfHbW7G8Pk2e7T3FUtF
- eRaFdjrKm58/m+Pri5Gimbl9u0L3k8bs3OwWdfEHjjd3vY8dBeCHDYsyOOU96h0C8YAeLXYKW7v
- awrdt160eBzPfrVCLR+PYf0Nr2R5N1w4tTp8UCEaSy8BhOhiWHE5yEU+0dILaoEVaKub1bwYVjV
- mPVEWbsALVgC3JDWdkI4JTid9yXq+2fKgyT8ZRN9DuQqtfhetl6akwSxiTy2ZhYjQWXn4MwseN+
- Sl42qLYCNzrpb+I3GsuPzd4w3YrijPaS2vDQ82BPfRbQqqj+64kR1zd/yjaqoWMcp0YB5VEUnGO
- l8uyRah0FF1rQNatV4c+a/SpXu1jdNXXtOG6rlSN+0Vih1+1Q/miYBQH6ApBVf+QJxDKzXW10YR
- ywIi+5WIwTwVnTTUoJdTzKDyW7vSlMCR/n50SSiuX9vYI7wm5/wi5HL/+KT5Idgv29ro6UPca5C
- tuQZld6B1HnPwUHD0E34Slj4q9H2YbmDz2UYLavQK9GWVOSWvyVApcHSF74iwlV6XMnozuLwVRs
- iOP1aC1GI5fBD0AJrcgAxYw/xjmU0slyWE7EPk6otXIYcdc4Qrgc4cWAu3TP2Cu6Kw7o6A269Hq
- VCQ37btdGTtuEEA==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1223; i=jack@suse.cz; h=from:subject; bh=iGBynELGZMK2LYf8td7ocINQb+N7faDvcxMKhsg8yXU=; b=owEBbQGS/pANAwAIAZydqgc/ZEDZAcsmYgBmgooFBr66GK4/afnDU6gguT+XVkHEYh88DQYr0djR 0rVo64KJATMEAAEIAB0WIQSrWdEr1p4yirVVKBycnaoHP2RA2QUCZoKKBQAKCRCcnaoHP2RA2RzoB/ 0aNVG/7ylX2H5KitJwNkFrOscBmH2NGJddM/3X/y1edywIRS0Ko8gxVQbm9bLKryerRa8HB4f5Eh99 WA9J8QvT29FNR8rRhCy9RaWCGVc8urV3uh4jaYqPAc0U3mq14M8hSU17JsAv2OpXUZVSIVjg8r2jc2 Gdq/0YT00s2GSsexG9IkdAGKuKlngXVcH4gar03yZ912+WxbRW+4wWaqbjkzxfCF1cKFb0bqBsgIEQ 66K8Aul0aa3wTUnCTPiRDvxyRBALm7u4WbdcqddXYXcWTkzwPLTyVAnFPB204s+e4dlqwZIKaW7VK2 uoecYlXIkJxNEGWweVm5h7D8kz/8wC
+X-Developer-Key: i=jack@suse.cz; a=openpgp; fpr=93C6099A142276A28BBE35D815BC833443038D8C
+Content-Transfer-Encoding: 8bit
+X-Rspamd-Pre-Result: action=no action;
+	module=replies;
+	Message is reply to one we originated
+X-Spamd-Result: default: False [-4.00 / 50.00];
+	REPLY(-4.00)[]
+X-Rspamd-Queue-Id: 871851F8D6
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Pre-Result: action=no action;
+	module=replies;
+	Message is reply to one we originated
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spam-Score: -4.00
+X-Spam-Level: 
 
-Add a high-level document that describes how multigrain timestamps work,
-rationale for them, and some info about implementation and tradeoffs.
+nfss->writeback is updated only when we are ending page writeback and at
+that moment we also clear nfss->write_congested. So there's no point in
+rechecking congestion state in nfs_commit_release_pages(). Drop the
+pointless check.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- Documentation/filesystems/multigrain-ts.rst | 126 ++++++++++++++++++++++++++++
- 1 file changed, 126 insertions(+)
+ fs/nfs/write.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-diff --git a/Documentation/filesystems/multigrain-ts.rst b/Documentation/filesystems/multigrain-ts.rst
-new file mode 100644
-index 000000000000..beef7f79108c
---- /dev/null
-+++ b/Documentation/filesystems/multigrain-ts.rst
-@@ -0,0 +1,126 @@
-+.. SPDX-License-Identifier: GPL-2.0
-+
-+=====================
-+Multigrain Timestamps
-+=====================
-+
-+Introduction
-+============
-+Historically, the kernel has always used a coarse time values to stamp
-+inodes. This value is updated on every jiffy, so any change that happens
-+within that jiffy will end up with the same timestamp.
-+
-+When the kernel goes to stamp an inode (due to a read or write), it first gets
-+the current time and then compares it to the existing timestamp(s) to see
-+whether anything will change. If nothing changed, then it can avoid updating
-+the inode's metadata.
-+
-+Coarse timestamps are therefore good from a performance standpoint, since they
-+reduce the need for metadata updates, but bad from the standpoint of
-+determining whether anything has changed, since a lot of things can happen in a
-+jiffy.
-+
-+They are particularly troublesome with NFSv3, where unchanging timestamps can
-+make it difficult to tell whether to invalidate caches. NFSv4 provides a
-+dedicated change attribute that should always show a visible change, but not
-+all filesystems implement this properly, and many just populating this with
-+the ctime.
-+
-+Multigrain timestamps aim to remedy this by selectively using fine-grained
-+timestamps when a file has had its timestamps queried recently, and the current
-+coarse-grained time does not cause a change.
-+
-+Inode Timestamps
-+================
-+There are currently 3 timestamps in the inode that are updated to the current
-+wallclock time on different activity:
-+
-+ctime:
-+  The inode change time. This is stamped with the current time whenever
-+  the inode's metadata is changed. Note that this value is not settable
-+  from userland.
-+
-+mtime:
-+  The inode modification time. This is stamped with the current time
-+  any time a file's contents change.
-+
-+atime:
-+  The inode access time. This is stamped whenever an inode's contents are
-+  read. Widely considered to be a terrible mistake. Usually avoided with
-+  options like noatime or relatime.
-+
-+Updating the mtime always implies a change to the ctime, but updating the
-+atime due to a read request does not.
-+
-+Multigrain timestamps are only tracked for the ctime and the mtime. atimes are
-+not affected and always use the coarse-grained value (subject to the floor).
-+
-+Inode Timestamp Ordering
-+========================
-+
-+In addition just providing info about changes to individual files, file
-+timestamps also serve an important purpose in applications like "make". These
-+programs measure timestamps in order to determine whether source files might be
-+newer than cached objects.
-+
-+Userland applications like make can only determine ordering based on
-+operational boundaries. For a syscall those are the syscall entry and exit
-+points. For io_uring or nfsd operations, that's the request submission and
-+response. In the case of concurrent operations, userland can make no
-+determination about the order in which things will occur.
-+
-+For instance, if a single thread modifies one file, and then another file in
-+sequence, the second file must show an equal or later mtime than the first. The
-+same is true if two threads are issuing similar operations that do not overlap
-+in time.
-+
-+If however, two threads have racing syscalls that overlap in time, then there
-+is no such guarantee, and the second file may appear to have been modified
-+before, after or at the same time as the first, regardless of which one was
-+submitted first.
-+
-+Multigrain Timestamps
-+=====================
-+Multigrain timestamps are aimed at ensuring that changes to a single file are
-+always recognizeable, without violating the ordering guarantees when multiple
-+different files are modified. This affects the mtime and the ctime, but the
-+atime will always use coarse-grained timestamps.
-+
-+It uses the lowest-order bit in the timestamp as a flag that indicates whether
-+the mtime or ctime have been queried. If either or both have, then the kernel
-+takes special care to ensure the next timestamp update will display a visible
-+change. This ensures tight cache coherency for use-cases like NFS, without
-+sacrificing the benefits of reduced metadata updates when files aren't being
-+watched.
-+
-+The ctime Floor Value
-+=====================
-+It's not sufficient to simply use fine or coarse-grained timestamps based on
-+whether the mtime or ctime has been queried. A file could get a fine grained
-+timestamp, and then a second file modified later could get a coarse-grained one
-+that appears earlier than the first, which would break the kernel's timestamp
-+ordering guarantees.
-+
-+To mitigate this problem, we maintain a per-time_namespace floor value that
-+ensures that this can't happen. The two files in the above example may appear
-+to have been modified at the same time in such a case, but they will never show
-+the reverse order.
-+
-+Implementation Notes
-+====================
-+Multigrain timestamps are intended for use by local filesystems that get
-+ctime values from the local clock. This is in contrast to network filesystems
-+and the like that just mirror timestamp values from a server.
-+
-+For most filesystems, it's sufficient to just set the FS_MGTIME flag in the
-+fstype->fs_flags in order to opt-in, providing the ctime is only ever set via
-+inode_set_ctime_current(). If the filesystem has a ->getattr routine that
-+doesn't call generic_fillattr, then you should have it call fill_mg_cmtime to
-+fill those values.
-+
-+Caveats
-+=======
-+The main sacrifice is the lowest bit in the ctime's field, since that's
-+where the flag is stored. Thus, timestamps presented by multigrain enabled
-+filesystems will always have an even tv_nsec value (since the lowest bit
-+is masked off).
-
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 5fc12a721ec3..c6255d7edd3c 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1837,7 +1837,6 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 	struct nfs_page	*req;
+ 	int status = data->task.tk_status;
+ 	struct nfs_commit_info cinfo;
+-	struct nfs_server *nfss;
+ 	struct folio *folio;
+ 
+ 	while (!list_empty(&data->pages)) {
+@@ -1880,9 +1879,6 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 		/* Latency breaker */
+ 		cond_resched();
+ 	}
+-	nfss = NFS_SERVER(data->inode);
+-	if (atomic_long_read(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
+-		nfss->write_congested = 0;
+ 
+ 	nfs_init_cinfo(&cinfo, data->inode, data->dreq);
+ 	nfs_commit_end(cinfo.mds);
 -- 
-2.45.2
+2.35.3
 
