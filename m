@@ -1,78 +1,61 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-lj1-f169.google.com (mail-lj1-f169.google.com [209.85.208.169])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 465744CB23;
-	Tue,  2 Jul 2024 07:37:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03C90133987
+	for <linux-nfs@vger.kernel.org>; Tue,  2 Jul 2024 07:38:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.169
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1719905876; cv=none; b=W6wg9moEUN1R95TjERWcw/pXdnkLbfVI+EATzZV+auLbFu3aq6Xcx1zw0UeIET0bNfk7Sjm933pHv4a0o03lXs0umM4F7Yt052NVKvHV5CsUxCD2rp2J5Zej0KvIHkd7XQBDWc6YuU2l0Nq38u0hjzPhyfzGDvVxUsJnlwN0uIo=
+	t=1719905907; cv=none; b=og05gF5znQg67huWZk1lJnwzQE/fWFOu24k4+Fxr+0LvGN4RNjNXWhzXg9vgSaVczyaF9XXRdDfYdOedf+imQCFq7+L4dHs5skg4EBZDuYJYjd/Jiyu2+ofcW+vouKM5M+84keOWAHcfyCkt+nFSzIBqSAQt0QaWiv2UcTkGc+I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1719905876; c=relaxed/simple;
-	bh=2VYDxOt/ANNEhf8pUSMHmU8uQwhxTzHw4bbej7YnNQA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=cpN4Tc6FSFKq2h40U5YAA1r5V8GZwxAVDMTK7k2suZ107bocAxi8yni0bg90brOZJ1T/4d8yMcGw+KnYZz8QRf5Rup7EqDynhW6/ApP8LD1eeifbwhQVlA0f9YzJzfyvNHTjePfFupm4/SFnjMmRiiDPdFIhhlBt3PopjO/YJLI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=GCBLdFrj; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="GCBLdFrj"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=rxGl+63oN1WDMSTt3tuoEFowmTF6ElvlJY4+FmesakA=; b=GCBLdFrjfKQdOXAbJDYAUldMcU
-	DSmkwndO1FhRCRFEv30KICrnRNwrFf9kJcEYMqhwqQDtLGuTCsv/XKs1i4qYzbEK4bDB//29ZIl/Z
-	TyUMsccI/iUY5NQUTOrNNQZM0hhSV+5kkoK79H8Po0NcbQPcICCM3GQwh25NRLhmhXCICDRSuyiPq
-	wrFue8viWQOTqL+Fg5JPI4ghXP1YvSA80e3qc0eztth2PFfU/1m0gidDEYPN+n80rPsZURhP7EL1V
-	ZfShbVBnFGywltDR18+pzXwEuIrHk/UYIUMD5W1zc+qOJRqd8wAWe5dbAhyAv/2NL90AXPEqVJLQ0
-	Xb2L/HoA==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.97.1 #2 (Red Hat Linux))
-	id 1sOY5D-00000005sux-1EZd;
-	Tue, 02 Jul 2024 07:37:47 +0000
-Date: Tue, 2 Jul 2024 00:37:47 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: "Darrick J. Wong" <djwong@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-	Steven Rostedt <rostedt@goodmis.org>,
-	Masami Hiramatsu <mhiramat@kernel.org>,
-	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-	Chandan Babu R <chandan.babu@oracle.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Andreas Dilger <adilger.kernel@dilger.ca>, Chris Mason <clm@fb.com>,
-	Josef Bacik <josef@toxicpanda.com>, David Sterba <dsterba@suse.com>,
-	Hugh Dickins <hughd@google.com>,
-	Andrew Morton <akpm@linux-foundation.org>, kernel-team@fb.com,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-trace-kernel@vger.kernel.org, linux-xfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-	linux-mm@kvack.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 01/10] fs: turn inode ctime fields into a single ktime_t
-Message-ID: <ZoOuSxRlvEQ5rOqn@infradead.org>
-References: <20240626-mgtime-v1-0-a189352d0f8f@kernel.org>
- <20240626-mgtime-v1-1-a189352d0f8f@kernel.org>
- <20240701224941.GE612460@frogsfrogsfrogs>
- <3042db2f803fbc711575ec4f1c4a273912a50904.camel@kernel.org>
+	s=arc-20240116; t=1719905907; c=relaxed/simple;
+	bh=nWpDQmZNg8zKVk12QskQ7NNS05C4fI/JmZBKLdKyu8Q=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=CmtpMQuQ7hrP4TQPmQFftqjajUw6sVA72rYC1A/37AlqRTA5JnYLfVCSHHT/lhvJU2oS7FUllWfGl8ra+91nSgwfxbWMDx3SVe5x9JynoDeE4EV7LGADkLfhlu5v96eFdaivZ3GTob0N8qdPR4den4cNF97/TdrkOJIw6ciRAVw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=grimberg.me; spf=pass smtp.mailfrom=gmail.com; arc=none smtp.client-ip=209.85.208.169
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=grimberg.me
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Received: by mail-lj1-f169.google.com with SMTP id 38308e7fff4ca-2ee483284b4so3572341fa.1
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Jul 2024 00:38:25 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1719905904; x=1720510704;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=nWpDQmZNg8zKVk12QskQ7NNS05C4fI/JmZBKLdKyu8Q=;
+        b=eK4OdS166rXBO3LzOT4Sp1MO3YUXf3K7TxFZOgm/eVbkuscc/KhrmimZfp6dQbaeRy
+         CqxOmw3WiNQWOe4sWcecIXZWdqd4w/9DCRzeiQbi5P7X5Ck0cUwL/di/lfHBg2nT3th9
+         1xN3fPAJBjUX/hRBzxUmOu6okRriga59TNZzswrMu8BnnVUSBGGOT8f2/4UGo2No7IUn
+         9qUBe07vB69rJ1XprfW3vuK4j4zUVEYr4R6A6neN24o5YzZZ8fhmWBhyYCqpG/IVrxgv
+         uBK43d+p+CMOX7XAxUOo6ltysJB1wpcohA8vA01JkT12SnUqw2AtQw1x+e/Vq93LA6t7
+         dVOQ==
+X-Gm-Message-State: AOJu0YxA+yfc/XV43L6Efp3RUiUMWyRsHZJHNSf/HjqsiLVAGeqdNwZo
+	npagwUuXw11B5v/B8JbDb8XeYbNFXAFOJeS3arpnayDQqR+rPET3MmWftg==
+X-Google-Smtp-Source: AGHT+IHHmjuUwh2ggb9/91NGaf78124f8sg+lDZUYLny17Xy/xvz6x29ZBfJNiAWHHdGZji/hb5D2w==
+X-Received: by 2002:a2e:b0c8:0:b0:2ec:5258:e89b with SMTP id 38308e7fff4ca-2ee5e6e6098mr40125481fa.3.1719905903783;
+        Tue, 02 Jul 2024 00:38:23 -0700 (PDT)
+Received: from [10.50.4.180] (bzq-84-110-32-226.static-ip.bezeqint.net. [84.110.32.226])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4258014f8b7sm90987555e9.41.2024.07.02.00.38.23
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 02 Jul 2024 00:38:23 -0700 (PDT)
+Message-ID: <f1f2a6bb-8ebe-4ce0-b31d-e23b4f86e2c8@grimberg.me>
+Date: Tue, 2 Jul 2024 10:38:22 +0300
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <3042db2f803fbc711575ec4f1c4a273912a50904.camel@kernel.org>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 2/7] nfs: remove nfs_folio_private_request
+To: Christoph Hellwig <hch@lst.de>, Trond Myklebust <trondmy@kernel.org>,
+ Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+References: <20240701052707.1246254-1-hch@lst.de>
+ <20240701052707.1246254-3-hch@lst.de>
+Content-Language: en-US
+From: Sagi Grimberg <sagi@grimberg.me>
+In-Reply-To: <20240701052707.1246254-3-hch@lst.de>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Mon, Jul 01, 2024 at 08:22:07PM -0400, Jeff Layton wrote:
-> 2) the filesystem has been altered (fuzzing? deliberate doctoring?).
-> 
-> None of these seem like legitimate use cases so I'm arguing that we
-> shouldn't worry about them.
-
-Not worry seems like the wrong answer here.  Either we decide they
-are legitimate enough and we preserve them, or we decide they are
-bogus and refuse reading the inode.  But we'll need to consciously
-deal with the case.
-
+Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
