@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5CFA714901A;
-	Sun, 28 Jul 2024 15:49:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 93FAD157484;
+	Sun, 28 Jul 2024 15:50:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1722181748; cv=none; b=Q9iEKwizxu42DKTp0H0LkDVbB4kcGgQKm9nXZC+NSNI9IWw2CLgD05oOrOoGJVwkyPVBwN7X2go5F60EmN1GL7yDbYY0d2E8mtXnY0E0aW15xJuIngu0eievHws51/5r44e7sxmpqpmNxIsqxfyC/IP0EyvyBZWn+kpCTzKVSEI=
+	t=1722181800; cv=none; b=XNxK0D4fbRWZnThcOGPrzuI1Uk+O20C9ZLVRq1aNmCWGdAjSf4WSYP+Y/lMALM8OZmTK56LlIxLuYOatWePBCv9OPClIfSS5QLfOt1DrdJ2x9A8Frzwv5yBbeBg71ttNFYnEgY7iEH7eddy2xx18xFWb9ID6xsxQ4hraX0hDge0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1722181748; c=relaxed/simple;
-	bh=bW8puwp8UG1FE5R0NW0YGF8HexNK9uU3nHZPanPzjUI=;
+	s=arc-20240116; t=1722181800; c=relaxed/simple;
+	bh=y6pIeYbB6+lpyvvtYVHUUVmb4tpbRuegA1GXDCj+U4Y=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=mtn0J42VuZ9RYzuLpjy3Vxy1m/0hD0WNSbWCTTMAjH4qN9Zm0f43HKw+tEe/3Kr/sg9fXjgmM/06KXfztiZUomxd2fopnzaPudeu2LzLyn34h7UY6CkMzWwBOmeqopSLXXkk7XyIf+vn28puon+O8L5RElEdLSo6OSFMpnUY2kM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=D7C3XA8d; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=cof03cHCL7cJObZRbKhh/xfAySL+Q+oF6tT4Ec0pTmyjAS+0Rlky535QjdK3dHelKjjidASfTnfHnYZnw/bB7XQUfUjmUmuCQkjn8D6WPXKga+DpM7MCfG3usru5vxpT7UMeft4qPYkvxJqWDKkHS3sPpT+k63iVqIp9ODfAQdI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GM8RsSWc; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="D7C3XA8d"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 27EEAC4AF0B;
-	Sun, 28 Jul 2024 15:49:06 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GM8RsSWc"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A8D58C116B1;
+	Sun, 28 Jul 2024 15:49:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1722181748;
-	bh=bW8puwp8UG1FE5R0NW0YGF8HexNK9uU3nHZPanPzjUI=;
+	s=k20201202; t=1722181800;
+	bh=y6pIeYbB6+lpyvvtYVHUUVmb4tpbRuegA1GXDCj+U4Y=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=D7C3XA8dJqBGTqZXq4wTWx2+ABzWFguvPllZdgJk8PpXAzPgfsxzzUdIhUWVXYnQ7
-	 uwhxp022kNSOcBxVqAr3oDrN5B0CNQIeTLB8qlqiK4rkfcPZ31aHGoRlDa3LEnAarA
-	 dCItHQVfYhbwEj69CvEP3qjWp+par1WJuVdIKva4ljfl8MThgWUSlRF9chEMAFNO4g
-	 IL9b9F+TB2HK7fPC9Q+EL7wHKRSWSf4W8o4eP5oYOB/oUCdeQJrpBmaS1q6FZi1QVG
-	 KfGr/1U850/XFvQ+5Q21cisZjcv4vjoSL4wpa/bRJOiM8dDzr4zMZ/mqD58lf2vrRV
-	 /r1WU0qOyremw==
+	b=GM8RsSWcoupxrwUndKjxEc22In4SUcOkhKmZBrkhVGbz50xsjJxcFAHmbE8j5/ZEd
+	 F/YGu466jxb6iHB802ytowAXeajLWh84LaQ2CZVv/Llu4vNpoFRiCmVJUu70+APX4A
+	 rBqGAlKOzpthoK5tPrNsaNYw/dEyJ1qFC4kP87bzTUHy/POBkuRK0Cgnf9zIdJ1ZOx
+	 krSzQUEHjSWOSD5mudNWNMNas2MbpIurB/VHdvHAThc5v/fQqLPTzaKqfPvmi/vtNt
+	 5oIerhUtQKzUPWDWZTlOwOFfai0O2Ff/JzHfS/VbAQqX0umdZyclqUESkkYMsHD0vS
+	 3UEoOkvDAypKg==
 From: Sasha Levin <sashal@kernel.org>
 To: linux-kernel@vger.kernel.org,
 	stable@vger.kernel.org
@@ -42,12 +42,12 @@ Cc: Benjamin Coddington <bcodding@redhat.com>,
 	pabeni@redhat.com,
 	linux-nfs@vger.kernel.org,
 	netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.1 17/17] SUNRPC: Fix a race to wake a sync task
-Date: Sun, 28 Jul 2024 11:47:27 -0400
-Message-ID: <20240728154805.2049226-17-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.15 10/10] SUNRPC: Fix a race to wake a sync task
+Date: Sun, 28 Jul 2024 11:49:08 -0400
+Message-ID: <20240728154927.2050160-10-sashal@kernel.org>
 X-Mailer: git-send-email 2.43.0
-In-Reply-To: <20240728154805.2049226-1-sashal@kernel.org>
-References: <20240728154805.2049226-1-sashal@kernel.org>
+In-Reply-To: <20240728154927.2050160-1-sashal@kernel.org>
+References: <20240728154927.2050160-1-sashal@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -56,7 +56,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
-X-stable-base: Linux 6.1.102
+X-stable-base: Linux 5.15.164
 Content-Transfer-Encoding: 8bit
 
 From: Benjamin Coddington <bcodding@redhat.com>
@@ -89,10 +89,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 6debf4fd42d4e..cef623ea15060 100644
+index a00890962e115..540220264b31e 100644
 --- a/net/sunrpc/sched.c
 +++ b/net/sunrpc/sched.c
-@@ -369,8 +369,10 @@ static void rpc_make_runnable(struct workqueue_struct *wq,
+@@ -348,8 +348,10 @@ static void rpc_make_runnable(struct workqueue_struct *wq,
  	if (RPC_IS_ASYNC(task)) {
  		INIT_WORK(&task->u.tk_work, rpc_async_schedule);
  		queue_work(wq, &task->u.tk_work);
