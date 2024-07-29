@@ -1,79 +1,79 @@
 Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E48D226AC3
-	for <linux-nfs@vger.kernel.org>; Mon, 29 Jul 2024 01:50:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9FE832BD04
+	for <linux-nfs@vger.kernel.org>; Mon, 29 Jul 2024 01:50:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1722217811; cv=none; b=tIZQxcKJpPmcVvyfu8kcYGFo4l56ucz6miHnUIBJYo1R0yTCC5pFGWOp47pQa8u4GoEkVvmAIbuvD2aeIYH/4qcxjQ1i8rDTI1IR0YrHB+eUJZrIp9t9vZjTnzKMFf2hFGgNLfOgQhJe0xeGBOAz1GN3q/5PIHGfZfqOHSXsa2Q=
+	t=1722217815; cv=none; b=RjpROTlkq2WzGkaERsFAGT/AO1upoCJWfldcNyQdBnzwkiioFyBphSoHiMZKxWYPicfjTnUD2Zk8lIZlQRvDm19GbMRW9YSes383q1GnEiKtyDNJv9osq8PfZtSdgwYmyfKZq+/uAt9yYImc2XUTFysZB6SiCtgvEiPrhSj14mg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1722217811; c=relaxed/simple;
-	bh=e4vTQs1xzqR8Q5MH38LMl1pT5wrlF3LmT0nmjOn8DeE=;
+	s=arc-20240116; t=1722217815; c=relaxed/simple;
+	bh=ieMIOIMZN4RfXjaRjxYufSc/e8GqehpVluUd8/9h9Es=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=JwDGPi7yJJ5Vxkm3tM1vPSflMVZ9POznkIVhdRJ+7CEjh04XG2/uM8Krvld8vwQE3O6XRbDmtEWrUDVd//VYaq7PG/SAdmnPhm8IkduUBrxC0EwIYmP6QuMkr6h6ZoTzFWRH/+aPv30cZ119b3PGDs3jNeoOOxafQiTfDde+0WY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=fYaX0w5p; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=ukW0xLzM; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=fYaX0w5p; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=ukW0xLzM; arc=none smtp.client-ip=195.135.223.130
+	 MIME-Version; b=bHTzdmmECgkTI26yeyWCAi99t46Twn6UBGtrlTdjgkhLovx3cXvPP1qs6RsccBfaL7vG8cK7LzAO2RS4JK01TLj42FR+HB6cNOcoWQHRPTOMR/hY2SALnsRLMP7exhDZxEbdWWb4poB39KvgqZyg/6RW2e/fOJAXv4010QvzOAY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=tx3kk0gn; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=beIv36a7; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=tx3kk0gn; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=beIv36a7; arc=none smtp.client-ip=195.135.223.130
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="fYaX0w5p";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="ukW0xLzM";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="fYaX0w5p";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="ukW0xLzM"
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="tx3kk0gn";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="beIv36a7";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="tx3kk0gn";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="beIv36a7"
 Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 9B7A021BBD;
-	Mon, 29 Jul 2024 01:50:00 +0000 (UTC)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id BB30321BBD;
+	Mon, 29 Jul 2024 01:50:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1722217800; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1722217811; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=P51x/qorReur0cBzK6aCOAHYoIEO7uUdlL0hSO/EYEY=;
-	b=fYaX0w5p7kArrYNEAMRbqDs+CN7RYrgzJQ4/epve3z69pHNDalAig7BovkomNORC0vEScd
-	iJvOzaJFS/h2RQTzlrX9S3poMGoFdphAovCm5w42UNPb+S+6PhX1s2hZFT4wHIQIhc/170
-	EL5Hg+GyNAUFoivD3yq8yMEzxoPbEMk=
+	bh=pSXl1CCQjo7iQ6hAOwADz/NikvSCAPBWsjXk6iaNLTc=;
+	b=tx3kk0gno1jITeCfRoaeNTm6gNt3wQ+BblA7MrkQ4eEf3xfPB6VB7VX3/DvXUlkkUTfJY3
+	MZ3nW3VGOthWHMPZuWqnZSFb6h/7833nd+yg6fahbVXbELhSsNKG/9dPxlZqCyiMplzciO
+	1PrRSt3Qpzv1qSxwaAzq25kjEsVrTgU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1722217800;
+	s=susede2_ed25519; t=1722217811;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=P51x/qorReur0cBzK6aCOAHYoIEO7uUdlL0hSO/EYEY=;
-	b=ukW0xLzMct5qM+gIU1TOMViQCx+SAtwLHLPB+o5kcIP83xqCteILsOa0UQu+MFPt5gk/Uo
-	X+OhtISr2XGIlZDg==
+	bh=pSXl1CCQjo7iQ6hAOwADz/NikvSCAPBWsjXk6iaNLTc=;
+	b=beIv36a7tKLACEkrkMI8fUIfuepMKlMDx6kgOhEPpAGVo3QfVU8mDXWdoZdtF8WNmNCh1P
+	eD6FlNruEYd697Cg==
 Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=fYaX0w5p;
-	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=ukW0xLzM
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=tx3kk0gn;
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=beIv36a7
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1722217800; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1722217811; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=P51x/qorReur0cBzK6aCOAHYoIEO7uUdlL0hSO/EYEY=;
-	b=fYaX0w5p7kArrYNEAMRbqDs+CN7RYrgzJQ4/epve3z69pHNDalAig7BovkomNORC0vEScd
-	iJvOzaJFS/h2RQTzlrX9S3poMGoFdphAovCm5w42UNPb+S+6PhX1s2hZFT4wHIQIhc/170
-	EL5Hg+GyNAUFoivD3yq8yMEzxoPbEMk=
+	bh=pSXl1CCQjo7iQ6hAOwADz/NikvSCAPBWsjXk6iaNLTc=;
+	b=tx3kk0gno1jITeCfRoaeNTm6gNt3wQ+BblA7MrkQ4eEf3xfPB6VB7VX3/DvXUlkkUTfJY3
+	MZ3nW3VGOthWHMPZuWqnZSFb6h/7833nd+yg6fahbVXbELhSsNKG/9dPxlZqCyiMplzciO
+	1PrRSt3Qpzv1qSxwaAzq25kjEsVrTgU=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1722217800;
+	s=susede2_ed25519; t=1722217811;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=P51x/qorReur0cBzK6aCOAHYoIEO7uUdlL0hSO/EYEY=;
-	b=ukW0xLzMct5qM+gIU1TOMViQCx+SAtwLHLPB+o5kcIP83xqCteILsOa0UQu+MFPt5gk/Uo
-	X+OhtISr2XGIlZDg==
+	bh=pSXl1CCQjo7iQ6hAOwADz/NikvSCAPBWsjXk6iaNLTc=;
+	b=beIv36a7tKLACEkrkMI8fUIfuepMKlMDx6kgOhEPpAGVo3QfVU8mDXWdoZdtF8WNmNCh1P
+	eD6FlNruEYd697Cg==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 7D48713704;
-	Mon, 29 Jul 2024 01:49:58 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 9D51013704;
+	Mon, 29 Jul 2024 01:50:09 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id PDjFDEb1pmb+FgAAD6G6ig
-	(envelope-from <neilb@suse.de>); Mon, 29 Jul 2024 01:49:58 +0000
+	id bcedFFH1pmYRFwAAD6G6ig
+	(envelope-from <neilb@suse.de>); Mon, 29 Jul 2024 01:50:09 +0000
 From: NeilBrown <neilb@suse.de>
 To: Chuck Lever <chuck.lever@oracle.com>,
 	Jeff Layton <jlayton@kernel.org>
@@ -81,9 +81,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Olga Kornievskaia <kolga@netapp.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
-Subject: [PATCH 1/3] nfsd: Move error code mapping to per-version proc code.
-Date: Mon, 29 Jul 2024 11:47:22 +1000
-Message-ID: <20240729014940.23053-2-neilb@suse.de>
+Subject: [PATCH 3/3] nfsd: move error choice for incorrect object types to version-specific code.
+Date: Mon, 29 Jul 2024 11:47:24 +1000
+Message-ID: <20240729014940.23053-4-neilb@suse.de>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20240729014940.23053-1-neilb@suse.de>
 References: <20240729014940.23053-1-neilb@suse.de>
@@ -94,489 +94,232 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: 9B7A021BBD
-X-Spam-Score: -4.81
 X-Spam-Level: 
-X-Spam-Flag: NO
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
 X-Spamd-Result: default: False [-4.81 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	DWL_DNSWL_MED(-2.00)[suse.de:dkim];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
 	MID_CONTAINS_FROM(1.00)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
 	R_MISSING_CHARSET(0.50)[];
 	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
 	MIME_GOOD(-0.10)[text/plain];
 	MX_GOOD(-0.01)[];
-	FROM_HAS_DN(0.00)[];
-	ARC_NA(0.00)[];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email,suse.de:dkim];
+	ARC_NA(0.00)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	FUZZY_BLOCKED(0.00)[rspamd.com];
+	FROM_HAS_DN(0.00)[];
 	TO_DN_SOME(0.00)[];
 	MIME_TRACE(0.00)[0:+];
 	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
-	RCVD_COUNT_TWO(0.00)[2];
-	RCVD_TLS_ALL(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
 	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	FROM_EQ_ENVFROM(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_TRACE(0.00)[suse.de:+];
+	R_RATELIMIT(0.00)[from(RLewrxuus8mos16izbn)];
+	RCVD_COUNT_TWO(0.00)[2];
+	RCVD_TLS_ALL(0.00)[];
 	RCPT_COUNT_FIVE(0.00)[6];
-	DKIM_TRACE(0.00)[suse.de:+]
+	FROM_EQ_ENVFROM(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:email,suse.de:dkim]
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spam-Score: -4.81
+X-Rspamd-Queue-Id: BB30321BBD
 
-There is code scattered around nfsd which chooses an error status based
-on the particular version of nfs being used.  It is cleaner to have the
-version specific choices in version specific code.
+If an NFS operation expect a particular sort of object (file, dir, link,
+etc) but gets a file handle for a different sort of object, it must
+return an error.  The actual error varies among version in no-trivial
+ways.
 
-With this patch common code returns the most specific error code
-possible and the version specific code maps that if necessary.
+For v2 and v3 there are ISDIR and NOTDIR errors, and for any else, only
+INVAL is suitable.
 
-Both v2 (nfsproc.c) and v3 (nfs3proc.c) now have a "map_status()"
-function which is called to map the resp->status before each non-trivial
-nfsd_proc_* or nfsd3_proc_* function returns.
+For v4.0 there is also NFS4ERR_SYMLINK which should be used if a SYMLINK
+was found when not expected.  This take precedence over NOTDIR.
 
-NFS4ERR_SYMLINK and NFS4ERR_WRONG_TYPE introduce extra complications and
-are left for a later patch.
+For v4.1+ there is also NFS4ERR_WRONG_TYPE which should be used in
+preference to EINVAL when none of the specific error codes apply.
+
+When nfsd_mode_check() finds a symlink where it expect a directory it
+needs to return an error code that can be converted to NOTDIR for v2 or
+v3 but will be SYMLINK for v4.  It must be different from the error
+code returns when it finds a symlink but expects a regular file - that
+must be converted to EINVAL or SYMLINK.
+
+So we introduce an internal error code nfserr_symlink_not_dir which each
+version converts as appropriate.
+
+We also allow nfserr_wrong_type to be returned by
+nfsd_check_obj_is_reg() in nfsv4 code) and nfsd_mode_check().  This a
+behavioural change as nfsd_check_obj_is_reg() would previously return
+nfserr_symiink for non-directory objects that aren't regular files.  Now
+it will return nfserr_wrong_type for objects that aren't regular,
+directory, symlink (so char-special, block-special, sockets), which is
+mapped to nfserr_inval for NFSv4.0.  This should not be a problem as the
+behaviour is supported by RFCs.
+
+As a result of these changes, nfsd_mode_check() doesn't need an rqstp
+arg any more.
 
 Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfsd/export.c   |  2 +-
- fs/nfsd/nfs3proc.c | 35 +++++++++++++++++++++++++++++++++++
- fs/nfsd/nfsfh.c    | 10 +++-------
- fs/nfsd/nfsproc.c  | 31 +++++++++++++++++++++++++++++++
- fs/nfsd/vfs.c      | 14 ++++----------
- 5 files changed, 74 insertions(+), 18 deletions(-)
+ fs/nfsd/nfs3proc.c |  8 ++++++++
+ fs/nfsd/nfs4proc.c | 24 ++++++++++++++++--------
+ fs/nfsd/nfsd.h     |  5 +++++
+ fs/nfsd/nfsfh.c    | 16 +++++++---------
+ fs/nfsd/nfsproc.c  |  7 +++++++
+ 5 files changed, 43 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 50b3135d07ac..08e3527062e8 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1121,7 +1121,7 @@ __be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp)
- 		return 0;
- 
- denied:
--	return rqstp->rq_vers < 4 ? nfserr_acces : nfserr_wrongsec;
-+	return nfserr_wrongsec;
- }
- 
- /*
 diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index dfcc957e460d..31bd9bcf8687 100644
+index 31bd9bcf8687..ac7ee24415a3 100644
 --- a/fs/nfsd/nfs3proc.c
 +++ b/fs/nfsd/nfs3proc.c
-@@ -28,6 +28,20 @@ static int	nfs3_ftypes[] = {
- 	S_IFIFO,		/* NF3FIFO */
+@@ -38,6 +38,14 @@ static __be32 map_status(__be32 status)
+ 	case nfserr_file_open:
+ 		status = nfserr_acces;
+ 		break;
++
++	case nfserr_symlink_not_dir:
++		status = nfserr_notdir;
++		break;
++	case nfserr_symlink:
++	case nfserr_wrong_type:
++		status = nfserr_inval;
++		break;
+ 	}
+ 	return status;
+ }
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 46bd20fe5c0f..cc715438e77a 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -166,14 +166,9 @@ static __be32 nfsd_check_obj_isreg(struct svc_fh *fh)
+ 		return nfs_ok;
+ 	if (S_ISDIR(mode))
+ 		return nfserr_isdir;
+-	/*
+-	 * Using err_symlink as our catch-all case may look odd; but
+-	 * there's no other obvious error for this case in 4.0, and we
+-	 * happen to know that it will cause the linux v4 client to do
+-	 * the right thing on attempts to open something other than a
+-	 * regular file.
+-	 */
+-	return nfserr_symlink;
++	if (S_ISLNK(mode))
++		return nfserr_symlink;
++	return nfserr_wrong_type;
+ }
+ 
+ static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state *cstate, struct nfsd4_open *open, struct svc_fh *resfh)
+@@ -184,6 +179,17 @@ static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state *cstate
+ 			&resfh->fh_handle);
+ }
+ 
++static __be32 map_status(__be32 status, int minor)
++{
++	if (status == nfserr_wrong_type &&
++	    minor == 0)
++		/* RFC5661 - 15.1.2.9 */
++		status = nfserr_inval;
++
++	if (status == nfserr_symlink_not_dir)
++		status = nfserr_symlink;
++	return status;
++}
+ static inline bool nfsd4_create_is_exclusive(int createmode)
+ {
+ 	return createmode == NFS4_CREATE_EXCLUSIVE ||
+@@ -2798,6 +2804,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
+ 			nfsd4_encode_replay(resp->xdr, op);
+ 			status = op->status = op->replay->rp_status;
+ 		} else {
++			op->status = map_status(op->status,
++						cstate->minorversion);
+ 			nfsd4_encode_operation(resp, op);
+ 			status = op->status;
+ 		}
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 593c34fd325a..3c8c8da063b0 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -349,6 +349,11 @@ enum {
+ 	NFSERR_REPLAY_CACHE,
+ #define	nfserr_replay_cache	cpu_to_be32(NFSERR_REPLAY_CACHE)
+ 
++/* symlink found where dir expected - handled differently to
++ * other symlink found errors by NFSv3.
++ */
++	NFSERR_SYMLINK_NOT_DIR,
++#define	nfserr_symlink_not_dir	cpu_to_be32(NFSERR_SYMLINK_NOT_DIR)
  };
  
-+static __be32 map_status(__be32 status)
-+{
-+	switch (status) {
-+	case nfserr_nofilehandle:
-+		status = nfserr_badhandle;
-+		break;
-+	case nfserr_wrongsec:
-+	case nfserr_file_open:
-+		status = nfserr_acces;
-+		break;
-+	}
-+	return status;
-+}
-+
- /*
-  * NULL call.
-  */
-@@ -57,6 +71,7 @@ nfsd3_proc_getattr(struct svc_rqst *rqstp)
- 
- 	resp->status = fh_getattr(&resp->fh, &resp->stat);
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -80,6 +95,7 @@ nfsd3_proc_setattr(struct svc_rqst *rqstp)
- 	if (argp->check_guard)
- 		guardtime = &argp->guardtime;
- 	resp->status = nfsd_setattr(rqstp, &resp->fh, &attrs, guardtime);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -103,6 +119,7 @@ nfsd3_proc_lookup(struct svc_rqst *rqstp)
- 	resp->status = nfsd_lookup(rqstp, &resp->dirfh,
- 				   argp->name, argp->len,
- 				   &resp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -122,6 +139,7 @@ nfsd3_proc_access(struct svc_rqst *rqstp)
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->access = argp->access;
- 	resp->status = nfsd_access(rqstp, &resp->fh, &resp->access, NULL);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -142,6 +160,7 @@ nfsd3_proc_readlink(struct svc_rqst *rqstp)
- 	resp->pages = rqstp->rq_next_page++;
- 	resp->status = nfsd_readlink(rqstp, &resp->fh,
- 				     page_address(*resp->pages), &resp->len);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -179,6 +198,7 @@ nfsd3_proc_read(struct svc_rqst *rqstp)
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->status = nfsd_read(rqstp, &resp->fh, argp->offset,
- 				 &resp->count, &resp->eof);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -212,6 +232,7 @@ nfsd3_proc_write(struct svc_rqst *rqstp)
- 				  rqstp->rq_vec, nvecs, &cnt,
- 				  resp->committed, resp->verf);
- 	resp->count = cnt;
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -359,6 +380,7 @@ nfsd3_proc_create(struct svc_rqst *rqstp)
- 	newfhp = fh_init(&resp->fh, NFS3_FHSIZE);
- 
- 	resp->status = nfsd3_create_file(rqstp, dirfhp, newfhp, argp);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -384,6 +406,7 @@ nfsd3_proc_mkdir(struct svc_rqst *rqstp)
- 	fh_init(&resp->fh, NFS3_FHSIZE);
- 	resp->status = nfsd_create(rqstp, &resp->dirfh, argp->name, argp->len,
- 				   &attrs, S_IFDIR, 0, &resp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -424,6 +447,7 @@ nfsd3_proc_symlink(struct svc_rqst *rqstp)
- 				    argp->flen, argp->tname, &attrs, &resp->fh);
- 	kfree(argp->tname);
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -465,6 +489,7 @@ nfsd3_proc_mknod(struct svc_rqst *rqstp)
- 	resp->status = nfsd_create(rqstp, &resp->dirfh, argp->name, argp->len,
- 				   &attrs, type, rdev, &resp->fh);
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -486,6 +511,7 @@ nfsd3_proc_remove(struct svc_rqst *rqstp)
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->status = nfsd_unlink(rqstp, &resp->fh, -S_IFDIR,
- 				   argp->name, argp->len);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -506,6 +532,7 @@ nfsd3_proc_rmdir(struct svc_rqst *rqstp)
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->status = nfsd_unlink(rqstp, &resp->fh, S_IFDIR,
- 				   argp->name, argp->len);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -528,6 +555,7 @@ nfsd3_proc_rename(struct svc_rqst *rqstp)
- 	fh_copy(&resp->tfh, &argp->tfh);
- 	resp->status = nfsd_rename(rqstp, &resp->ffh, argp->fname, argp->flen,
- 				   &resp->tfh, argp->tname, argp->tlen);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -548,6 +576,7 @@ nfsd3_proc_link(struct svc_rqst *rqstp)
- 	fh_copy(&resp->tfh, &argp->tfh);
- 	resp->status = nfsd_link(rqstp, &resp->tfh, argp->tname, argp->tlen,
- 				 &resp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -600,6 +629,7 @@ nfsd3_proc_readdir(struct svc_rqst *rqstp)
- 	/* Recycle only pages that were part of the reply */
- 	rqstp->rq_next_page = resp->xdr.page_ptr + 1;
- 
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -644,6 +674,7 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp)
- 	rqstp->rq_next_page = resp->xdr.page_ptr + 1;
- 
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -661,6 +692,7 @@ nfsd3_proc_fsstat(struct svc_rqst *rqstp)
- 
- 	resp->status = nfsd_statfs(rqstp, &argp->fh, &resp->stats, 0);
- 	fh_put(&argp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -704,6 +736,7 @@ nfsd3_proc_fsinfo(struct svc_rqst *rqstp)
- 	}
- 
- 	fh_put(&argp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -746,6 +779,7 @@ nfsd3_proc_pathconf(struct svc_rqst *rqstp)
- 	}
- 
- 	fh_put(&argp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -773,6 +807,7 @@ nfsd3_proc_commit(struct svc_rqst *rqstp)
- 				   argp->count, resp->verf);
- 	nfsd_file_put(nf);
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
+ /* Check for dir entries '.' and '..' */
 diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index 0b75305fb5f5..0130103833e5 100644
+index 0130103833e5..8cd70f93827c 100644
 --- a/fs/nfsd/nfsfh.c
 +++ b/fs/nfsd/nfsfh.c
-@@ -162,10 +162,8 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
- 	int len;
- 	__be32 error;
+@@ -62,8 +62,7 @@ static int nfsd_acceptable(void *expv, struct dentry *dentry)
+  * the write call).
+  */
+ static inline __be32
+-nfsd_mode_check(struct svc_rqst *rqstp, struct dentry *dentry,
+-		umode_t requested)
++nfsd_mode_check(struct dentry *dentry, umode_t requested)
+ {
+ 	umode_t mode = d_inode(dentry)->i_mode & S_IFMT;
  
--	error = nfserr_stale;
--	if (rqstp->rq_vers > 2)
--		error = nfserr_badhandle;
--	if (rqstp->rq_vers == 4 && fh->fh_size == 0)
-+	error = nfserr_badhandle;
-+	if (fh->fh_size == 0)
- 		return nfserr_nofilehandle;
+@@ -76,17 +75,16 @@ nfsd_mode_check(struct svc_rqst *rqstp, struct dentry *dentry,
+ 		}
+ 		return nfs_ok;
+ 	}
+-	/*
+-	 * v4 has an error more specific than err_notdir which we should
+-	 * return in preference to err_notdir:
+-	 */
+-	if (rqstp->rq_vers == 4 && mode == S_IFLNK)
++	if (mode == S_IFLNK) {
++		if (requested == S_IFDIR)
++			return nfserr_symlink_not_dir;
+ 		return nfserr_symlink;
++	}
+ 	if (requested == S_IFDIR)
+ 		return nfserr_notdir;
+ 	if (mode == S_IFDIR)
+ 		return nfserr_isdir;
+-	return nfserr_inval;
++	return nfserr_wrong_type;
+ }
  
- 	if (fh->fh_version != 1)
-@@ -237,9 +235,7 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
- 	/*
- 	 * Look up the dentry using the NFS file handle.
- 	 */
--	error = nfserr_stale;
--	if (rqstp->rq_vers > 2)
--		error = nfserr_badhandle;
-+	error = nfserr_badhandle;
+ static bool nfsd_originating_port_ok(struct svc_rqst *rqstp, int flags)
+@@ -362,7 +360,7 @@ fh_verify(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type, int access)
+ 	if (error)
+ 		goto out;
  
- 	fileid_type = fh->fh_fileid_type;
+-	error = nfsd_mode_check(rqstp, dentry, type);
++	error = nfsd_mode_check(dentry, type);
+ 	if (error)
+ 		goto out;
  
 diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 36370b957b63..cb7099c6dc78 100644
+index cb7099c6dc78..3d65ab558091 100644
 --- a/fs/nfsd/nfsproc.c
 +++ b/fs/nfsd/nfsproc.c
-@@ -13,6 +13,22 @@
- 
- #define NFSDDBG_FACILITY		NFSDDBG_PROC
- 
-+static __be32 map_status(__be32 status)
-+{
-+	switch (status) {
-+	case nfserr_nofilehandle:
-+	case nfserr_badhandle:
-+		status = nfserr_stale;
+@@ -25,6 +25,13 @@ static __be32 map_status(__be32 status)
+ 	case nfserr_file_open:
+ 		status = nfserr_acces;
+ 		break;
++	case nfserr_symlink_not_dir:
++		status = nfserr_notdir;
 +		break;
-+	case nfserr_wrongsec:
-+	case nfserr_xdev:
-+	case nfserr_file_open:
-+		status = nfserr_acces;
++	case nfserr_symlink:
++	case nfserr_wrong_type:
++		status = nfserr_inval;
 +		break;
-+	}
-+	return status;
-+}
-+
- static __be32
- nfsd_proc_null(struct svc_rqst *rqstp)
- {
-@@ -38,6 +54,7 @@ nfsd_proc_getattr(struct svc_rqst *rqstp)
- 		goto out;
- 	resp->status = fh_getattr(&resp->fh, &resp->stat);
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -109,6 +126,7 @@ nfsd_proc_setattr(struct svc_rqst *rqstp)
- 
- 	resp->status = fh_getattr(&resp->fh, &resp->stat);
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -143,6 +161,7 @@ nfsd_proc_lookup(struct svc_rqst *rqstp)
- 
- 	resp->status = fh_getattr(&resp->fh, &resp->stat);
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -164,6 +183,7 @@ nfsd_proc_readlink(struct svc_rqst *rqstp)
- 				     page_address(resp->page), &resp->len);
- 
- 	fh_put(&argp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -200,6 +220,7 @@ nfsd_proc_read(struct svc_rqst *rqstp)
- 		resp->status = fh_getattr(&resp->fh, &resp->stat);
- 	else if (resp->status == nfserr_jukebox)
- 		set_bit(RQ_DROPME, &rqstp->rq_flags);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -235,6 +256,7 @@ nfsd_proc_write(struct svc_rqst *rqstp)
- 		resp->status = fh_getattr(&resp->fh, &resp->stat);
- 	else if (resp->status == nfserr_jukebox)
- 		set_bit(RQ_DROPME, &rqstp->rq_flags);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -403,6 +425,7 @@ nfsd_proc_create(struct svc_rqst *rqstp)
- 		goto out;
- 	resp->status = fh_getattr(&resp->fh, &resp->stat);
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -419,6 +442,7 @@ nfsd_proc_remove(struct svc_rqst *rqstp)
- 	resp->status = nfsd_unlink(rqstp, &argp->fh, -S_IFDIR,
- 				   argp->name, argp->len);
- 	fh_put(&argp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -437,6 +461,7 @@ nfsd_proc_rename(struct svc_rqst *rqstp)
- 				   &argp->tfh, argp->tname, argp->tlen);
- 	fh_put(&argp->ffh);
- 	fh_put(&argp->tfh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -457,6 +482,7 @@ nfsd_proc_link(struct svc_rqst *rqstp)
- 				 &argp->ffh);
- 	fh_put(&argp->ffh);
- 	fh_put(&argp->tfh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -495,6 +521,7 @@ nfsd_proc_symlink(struct svc_rqst *rqstp)
- 	fh_put(&argp->ffh);
- 	fh_put(&newfh);
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -528,6 +555,7 @@ nfsd_proc_mkdir(struct svc_rqst *rqstp)
- 
- 	resp->status = fh_getattr(&resp->fh, &resp->stat);
- out:
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -545,6 +573,7 @@ nfsd_proc_rmdir(struct svc_rqst *rqstp)
- 	resp->status = nfsd_unlink(rqstp, &argp->fh, S_IFDIR,
- 				   argp->name, argp->len);
- 	fh_put(&argp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -590,6 +619,7 @@ nfsd_proc_readdir(struct svc_rqst *rqstp)
- 	nfssvc_encode_nfscookie(resp, offset);
- 
- 	fh_put(&argp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-@@ -607,6 +637,7 @@ nfsd_proc_statfs(struct svc_rqst *rqstp)
- 	resp->status = nfsd_statfs(rqstp, &argp->fh, &resp->stats,
- 				   NFSD_MAY_BYPASS_GSS_ON_ROOT);
- 	fh_put(&argp->fh);
-+	resp->status = map_status(resp->status);
- 	return rpc_success;
- }
- 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 29b1f3613800..b4f7b35cf0c0 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1767,10 +1767,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
- 		if (!err)
- 			err = nfserrno(commit_metadata(tfhp));
- 	} else {
--		if (host_err == -EXDEV && rqstp->rq_vers == 2)
--			err = nfserr_acces;
--		else
--			err = nfserrno(host_err);
-+		err = nfserrno(host_err);
  	}
- 	dput(dnew);
- out_drop_write:
-@@ -1836,7 +1833,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 	if (!flen || isdotent(fname, flen) || !tlen || isdotent(tname, tlen))
- 		goto out;
- 
--	err = (rqstp->rq_vers == 2) ? nfserr_acces : nfserr_xdev;
-+	err = nfserr_xdev;
- 	if (ffhp->fh_export->ex_path.mnt != tfhp->fh_export->ex_path.mnt)
- 		goto out;
- 	if (ffhp->fh_export->ex_path.dentry != tfhp->fh_export->ex_path.dentry)
-@@ -1851,7 +1848,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 
- 	trap = lock_rename(tdentry, fdentry);
- 	if (IS_ERR(trap)) {
--		err = (rqstp->rq_vers == 2) ? nfserr_acces : nfserr_xdev;
-+		err = nfserr_xdev;
- 		goto out_want_write;
- 	}
- 	err = fh_fill_pre_attrs(ffhp);
-@@ -2020,10 +2017,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 		/* name is mounted-on. There is no perfect
- 		 * error status.
- 		 */
--		if (nfsd_v4client(rqstp))
--			err = nfserr_file_open;
--		else
--			err = nfserr_acces;
-+		err = nfserr_file_open;
- 	} else {
- 		err = nfserrno(host_err);
- 	}
+ 	return status;
+ }
 -- 
 2.44.0
 
