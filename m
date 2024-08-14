@@ -1,46 +1,46 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DDE61C4603
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Aug 2024 20:39:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58A9C1BF315
+	for <linux-nfs@vger.kernel.org>; Wed, 14 Aug 2024 20:39:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1723667962; cv=none; b=dExBHetzwvaEQDYiPAqZsXWWXbifJETnQz2IwWngQ3cr8NT5J6OT0qIpk0Ynwi7Gs9h+0VFQT98Om8Vs3MKgZaFoHRcBYTrquq6ospGpGaywOP8TS4do/zv/H+u9BzskTakOWl2MZZCmj8z5Qcx99m/rG5zXEKvGY1JxKmsTcZE=
+	t=1723667974; cv=none; b=Zwxg2qGIuE0AMb2G7hzdnObPOPs3qnOPYSi+Ma/4kxLKSZPGCES8/s1tPi5z3YTxhdHoEbpG4BqB7zDV8zPPDgI6H8wcaBFv25OUDnuNA5+QmU+o3LK+y7tTr//c9wRDbiDBRLz/8sLiqW0QqA+3oYLf1UbRZlXT3gv4WcBb5Aw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1723667962; c=relaxed/simple;
-	bh=IHyODcEE763hJBCK3rKDKBkcelFClmu6LkKn24BrvVs=;
+	s=arc-20240116; t=1723667974; c=relaxed/simple;
+	bh=dSBDPG/FjcygfFFDbaMBvikq9ZldreOsesR4n2CHWMI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=TLwxCtdeYvkbxW0ibnAHN0SS4h1/LQZRNtLtuqbRjp1XetHO0q2iOeIlhRHNFL4OLQ3iIaoKEwmZ+SfuZmLDhshnEr01FV3isGzcNAZoH4B9uJqbc8Pjf87XzgZ/VaKIUCIS6G1pbsGX4bLVVfTiBtK37CWGALQCJz+WKjquBHk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=dPzNxRGg; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=j6D8ZxOwMNA2QxiJ2hTeJTDDcKOH7TxvFqtNKHGaUSxgP5UK2SY6KzLV565lJeqZZonnXSzLkZblQ6OJ/ch2kevZvA4ucIXAEHtczcoHvdtQNLaxbK+QZK16u9aAHPLkudmAg0u8e/jsTP6TxBZuQRiTycia/CNLV3lN+YApw2U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=S0Dp82ic; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="dPzNxRGg"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="S0Dp82ic"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1723667958;
+	s=mimecast20190719; t=1723667972;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=JSm2exThzk/ONkPYsLo5wk2mtv0Gd6Av4xPNxsPfqsw=;
-	b=dPzNxRGgLj0+Hj93JpzVSJeK21XEkDgXdPWBRoRa7EtrUcw+QP+cepDmBuOkhWQPnWeGze
-	Kxr/ShVMu0L9jMHMF/KXLX/a2IXVMtz4M3brEqYBoId0v9kuucQMhm4vy/+OfJES2HyezH
-	w5VVzD51PlI/5CZNE7EHbkowoir9Pys=
+	bh=nD8BuDcHuaWMd5Fn2FK+IU9NPvXO40RV6M0I0jL+Pvo=;
+	b=S0Dp82ic6SEMm5HK+KXfJg7DPG5HqKMyl/c80i8HW6lm4rufruLicAYLFfsjrF2qgGdmei
+	n3mI85VR9VaIBiIGPeNywh9vvr4QEXtkLJ1CWl5QOUx4BqpPDXLRejWqaSkQG2oYX3O85B
+	6yWwZRYBpoP3njBdjyaXWhLn4Rk0yfk=
 Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
  (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-637-9yDs-KHPO0qhfQhsIZ1yWQ-1; Wed,
- 14 Aug 2024 16:39:15 -0400
-X-MC-Unique: 9yDs-KHPO0qhfQhsIZ1yWQ-1
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-437-Vr_VRDFSNTuDCt44PrJuxw-1; Wed,
+ 14 Aug 2024 16:39:30 -0400
+X-MC-Unique: Vr_VRDFSNTuDCt44PrJuxw-1
+Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 0C2591956095;
-	Wed, 14 Aug 2024 20:39:10 +0000 (UTC)
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id BB18B1955F6A;
+	Wed, 14 Aug 2024 20:39:26 +0000 (UTC)
 Received: from warthog.procyon.org.uk.com (unknown [10.42.28.30])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 9959E3001FE1;
-	Wed, 14 Aug 2024 20:39:02 +0000 (UTC)
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id CCA5919560A3;
+	Wed, 14 Aug 2024 20:39:20 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Steve French <smfrench@gmail.com>,
@@ -65,12 +65,10 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Max Kellermann <max.kellermann@ionos.com>,
-	Xiubo Li <xiubli@redhat.com>
-Subject: [PATCH v2 01/25] netfs, ceph: Partially revert "netfs: Replace PG_fscache by setting folio->private and marking dirty"
-Date: Wed, 14 Aug 2024 21:38:21 +0100
-Message-ID: <20240814203850.2240469-2-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v2 03/25] netfs: Adjust labels in /proc/fs/netfs/stats
+Date: Wed, 14 Aug 2024 21:38:23 +0100
+Message-ID: <20240814203850.2240469-4-dhowells@redhat.com>
 In-Reply-To: <20240814203850.2240469-1-dhowells@redhat.com>
 References: <20240814203850.2240469-1-dhowells@redhat.com>
 Precedence: bulk
@@ -80,70 +78,70 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
 
-This partially reverts commit 2ff1e97587f4d398686f52c07afde3faf3da4e5c.
+Adjust the labels in /proc/fs/netfs/stats that refer to netfs-specific
+counters.  These currently all begin with "Netfs", but change them to begin
+with more specific labels.
 
-In addition to reverting the removal of PG_private_2 wrangling from the
-buffered read code[1][2], the removal of the waits for PG_private_2 from
-netfs_release_folio() and netfs_invalidate_folio() need reverting too.
-
-It also adds a wait into ceph_evict_inode() to wait for netfs read and
-copy-to-cache ops to complete.
-
-Fixes: 2ff1e97587f4 ("netfs: Replace PG_fscache by setting folio->private and marking dirty")
 Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Max Kellermann <max.kellermann@ionos.com>
-cc: Ilya Dryomov <idryomov@gmail.com>
-cc: Xiubo Li <xiubli@redhat.com>
 cc: Jeff Layton <jlayton@kernel.org>
-cc: Matthew Wilcox <willy@infradead.org>
-cc: ceph-devel@vger.kernel.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
-cc: linux-mm@kvack.org
-Link: https://lore.kernel.org/r/3575457.1722355300@warthog.procyon.org.uk [1]
-Link: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=8e5ced7804cb9184c4a23f8054551240562a8eda [2]
 ---
- fs/ceph/inode.c | 1 +
- fs/netfs/misc.c | 7 +++++++
- 2 files changed, 8 insertions(+)
+ fs/netfs/stats.c | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ceph/inode.c b/fs/ceph/inode.c
-index 71cd70514efa..4a8eec46254b 100644
---- a/fs/ceph/inode.c
-+++ b/fs/ceph/inode.c
-@@ -695,6 +695,7 @@ void ceph_evict_inode(struct inode *inode)
+diff --git a/fs/netfs/stats.c b/fs/netfs/stats.c
+index 0892768eea32..95ed2d2623a8 100644
+--- a/fs/netfs/stats.c
++++ b/fs/netfs/stats.c
+@@ -42,39 +42,39 @@ atomic_t netfs_n_wh_write_failed;
  
- 	percpu_counter_dec(&mdsc->metric.total_inodes);
- 
-+	netfs_wait_for_outstanding_io(inode);
- 	truncate_inode_pages_final(&inode->i_data);
- 	if (inode->i_state & I_PINNING_NETFS_WB)
- 		ceph_fscache_unuse_cookie(inode, true);
-diff --git a/fs/netfs/misc.c b/fs/netfs/misc.c
-index 83e644bd518f..554a1a4615ad 100644
---- a/fs/netfs/misc.c
-+++ b/fs/netfs/misc.c
-@@ -101,6 +101,8 @@ void netfs_invalidate_folio(struct folio *folio, size_t offset, size_t length)
- 
- 	_enter("{%lx},%zx,%zx", folio->index, offset, length);
- 
-+	folio_wait_private_2(folio); /* [DEPRECATED] */
-+
- 	if (!folio_test_private(folio))
- 		return;
- 
-@@ -165,6 +167,11 @@ bool netfs_release_folio(struct folio *folio, gfp_t gfp)
- 
- 	if (folio_test_private(folio))
- 		return false;
-+	if (unlikely(folio_test_private_2(folio))) { /* [DEPRECATED] */
-+		if (current_is_kswapd() || !(gfp & __GFP_FS))
-+			return false;
-+		folio_wait_private_2(folio);
-+	}
- 	fscache_note_page_release(netfs_i_cookie(ctx));
- 	return true;
- }
+ int netfs_stats_show(struct seq_file *m, void *v)
+ {
+-	seq_printf(m, "Netfs  : DR=%u RA=%u RF=%u WB=%u WBZ=%u\n",
++	seq_printf(m, "Reads  : DR=%u RA=%u RF=%u WB=%u WBZ=%u\n",
+ 		   atomic_read(&netfs_n_rh_dio_read),
+ 		   atomic_read(&netfs_n_rh_readahead),
+ 		   atomic_read(&netfs_n_rh_read_folio),
+ 		   atomic_read(&netfs_n_rh_write_begin),
+ 		   atomic_read(&netfs_n_rh_write_zskip));
+-	seq_printf(m, "Netfs  : BW=%u WT=%u DW=%u WP=%u\n",
++	seq_printf(m, "Writes : BW=%u WT=%u DW=%u WP=%u\n",
+ 		   atomic_read(&netfs_n_wh_buffered_write),
+ 		   atomic_read(&netfs_n_wh_writethrough),
+ 		   atomic_read(&netfs_n_wh_dio_write),
+ 		   atomic_read(&netfs_n_wh_writepages));
+-	seq_printf(m, "Netfs  : ZR=%u sh=%u sk=%u\n",
++	seq_printf(m, "ZeroOps: ZR=%u sh=%u sk=%u\n",
+ 		   atomic_read(&netfs_n_rh_zero),
+ 		   atomic_read(&netfs_n_rh_short_read),
+ 		   atomic_read(&netfs_n_rh_write_zskip));
+-	seq_printf(m, "Netfs  : DL=%u ds=%u df=%u di=%u\n",
++	seq_printf(m, "DownOps: DL=%u ds=%u df=%u di=%u\n",
+ 		   atomic_read(&netfs_n_rh_download),
+ 		   atomic_read(&netfs_n_rh_download_done),
+ 		   atomic_read(&netfs_n_rh_download_failed),
+ 		   atomic_read(&netfs_n_rh_download_instead));
+-	seq_printf(m, "Netfs  : RD=%u rs=%u rf=%u\n",
++	seq_printf(m, "CaRdOps: RD=%u rs=%u rf=%u\n",
+ 		   atomic_read(&netfs_n_rh_read),
+ 		   atomic_read(&netfs_n_rh_read_done),
+ 		   atomic_read(&netfs_n_rh_read_failed));
+-	seq_printf(m, "Netfs  : UL=%u us=%u uf=%u\n",
++	seq_printf(m, "UpldOps: UL=%u us=%u uf=%u\n",
+ 		   atomic_read(&netfs_n_wh_upload),
+ 		   atomic_read(&netfs_n_wh_upload_done),
+ 		   atomic_read(&netfs_n_wh_upload_failed));
+-	seq_printf(m, "Netfs  : WR=%u ws=%u wf=%u\n",
++	seq_printf(m, "CaWrOps: WR=%u ws=%u wf=%u\n",
+ 		   atomic_read(&netfs_n_wh_write),
+ 		   atomic_read(&netfs_n_wh_write_done),
+ 		   atomic_read(&netfs_n_wh_write_failed));
+-	seq_printf(m, "Netfs  : rr=%u sr=%u wsc=%u\n",
++	seq_printf(m, "Objs   : rr=%u sr=%u wsc=%u\n",
+ 		   atomic_read(&netfs_n_rh_rreq),
+ 		   atomic_read(&netfs_n_rh_sreq),
+ 		   atomic_read(&netfs_n_wh_wstream_conflict));
 
