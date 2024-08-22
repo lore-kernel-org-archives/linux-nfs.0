@@ -1,29 +1,29 @@
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+Received: from szxga04-in.huawei.com (szxga04-in.huawei.com [45.249.212.190])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66E48183CB0;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3071F1C944B;
 	Thu, 22 Aug 2024 13:31:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.188
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.190
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724333499; cv=none; b=RA4i1pqxsrHsn2jdxpsf8LUgM34zj16LZMPc9pnYmb5mAAbCWfvidgcTBhb9mokUjfBs794fAwxwJtb5UBBH3iDfp0uyl4cUbK01rJ7VtE/sxC1n8cbKn25B21scp9l/zSOhBNkJSA/ylsChAbuVZ819aZoru7O9Z7HOPB2MPM8=
+	t=1724333500; cv=none; b=WWldeq+s5f65M1wlO+6zKJ7hRQ7U2nv3HyBNqKCr5mo42KQGALLuvTpcvOgNS/NI2VqQAI3KfEf6pbl+UpD1nVVmDtHxBjloDRmvFj6hxIkuBf9XHL7a2ST6ZW3G5imtUxWxsuRBSZhr9o7Nl9YaRUo7axh/x7icP3W4r6mdTjo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724333499; c=relaxed/simple;
-	bh=h6QniSsn+iP/ZJ8YjlAlY0rwKvwjfTZgr12f0Msgkc4=;
+	s=arc-20240116; t=1724333500; c=relaxed/simple;
+	bh=NFgLzZeCnwGzYZjN2AnH5yOVdhYopM0nyGVaWiOVNe4=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=BEnw7uCb+t6xwEB9p6J0xoJ7IN2Olb86157EOhquUo0r2sp1C9IgN8hrDn1jIXZvmZ+GAs81gLoy8ALku/eVRaA6xl1zyL3o8Or5BcsJwgOsUEJBPVauTAZYwRiMlozAc1zOB5NAyk6/pebNzdDLOYl6oHxdmP3StTa113VdG/Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.188
+	 MIME-Version:Content-Type; b=Cf+1NIVwZxZ6Y2iKBYRlnkjreNqUXDTrWS2++6tBC9OFESj94/kwagJCELfmrWR089eQAgJuHrgH/kEhwUDeIW7snHqD+hVednEDXoIoC/YqpmfjgWSgHlXNe+2EZc0n+/+ZxVSUknewBQFTqgKTJCpT2L8nFA/OFPgYfi8KU98=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.190
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.174])
-	by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4WqPFh1wJKzpTj8;
-	Thu, 22 Aug 2024 21:30:00 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.88.234])
+	by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4WqPHQ4kstz2Cn9w;
+	Thu, 22 Aug 2024 21:31:30 +0800 (CST)
 Received: from kwepemd500012.china.huawei.com (unknown [7.221.188.25])
-	by mail.maildlp.com (Postfix) with ESMTPS id 500AD140134;
-	Thu, 22 Aug 2024 21:31:33 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 601B41400CA;
+	Thu, 22 Aug 2024 21:31:34 +0800 (CST)
 Received: from huawei.com (10.90.53.73) by kwepemd500012.china.huawei.com
  (7.221.188.25) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1258.34; Thu, 22 Aug
- 2024 21:31:32 +0800
+ 2024 21:31:33 +0800
 From: Li Zetao <lizetao1@huawei.com>
 To: <davem@davemloft.net>, <edumazet@google.com>, <kuba@kernel.org>,
 	<pabeni@redhat.com>, <marcel@holtmann.org>, <johan.hedberg@gmail.com>,
@@ -38,9 +38,9 @@ To: <davem@davemloft.net>, <edumazet@google.com>, <kuba@kernel.org>,
 CC: <netdev@vger.kernel.org>, <linux-bluetooth@vger.kernel.org>,
 	<ceph-devel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
 	<tipc-discussion@lists.sourceforge.net>
-Subject: [PATCH net-next 2/8] Bluetooth: use min() to simplify the code
-Date: Thu, 22 Aug 2024 21:39:02 +0800
-Message-ID: <20240822133908.1042240-3-lizetao1@huawei.com>
+Subject: [PATCH net-next 3/8] net: caif: use max() to simplify the code
+Date: Thu, 22 Aug 2024 21:39:03 +0800
+Message-ID: <20240822133908.1042240-4-lizetao1@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20240822133908.1042240-1-lizetao1@huawei.com>
 References: <20240822133908.1042240-1-lizetao1@huawei.com>
@@ -55,27 +55,32 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
  kwepemd500012.china.huawei.com (7.221.188.25)
 
-When copying data from skb, it needs to determine the copy length.
-It is easier to understand using min() here.
+When processing the tail append of sk buffer, the final length needs
+to be determined based on expectlen and addlen. Using max() here can
+increase the readability of the code.
 
 Signed-off-by: Li Zetao <lizetao1@huawei.com>
 ---
- net/bluetooth/hidp/core.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/caif/cfpkt_skbuff.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/net/bluetooth/hidp/core.c b/net/bluetooth/hidp/core.c
-index 707f229f896a..7bf24f2993ba 100644
---- a/net/bluetooth/hidp/core.c
-+++ b/net/bluetooth/hidp/core.c
-@@ -294,7 +294,7 @@ static int hidp_get_raw_report(struct hid_device *hid,
+diff --git a/net/caif/cfpkt_skbuff.c b/net/caif/cfpkt_skbuff.c
+index 2ae8cfa3df88..96236d21b18e 100644
+--- a/net/caif/cfpkt_skbuff.c
++++ b/net/caif/cfpkt_skbuff.c
+@@ -298,10 +298,8 @@ struct cfpkt *cfpkt_append(struct cfpkt *dstpkt,
+ 	if (unlikely(is_erronous(dstpkt) || is_erronous(addpkt))) {
+ 		return dstpkt;
+ 	}
+-	if (expectlen > addlen)
+-		neededtailspace = expectlen;
+-	else
+-		neededtailspace = addlen;
++
++	neededtailspace = max(expectlen, addlen);
  
- 	skb = session->report_return;
- 	if (skb) {
--		len = skb->len < count ? skb->len : count;
-+		len = min(skb->len, count);
- 		memcpy(data, skb->data, len);
- 
- 		kfree_skb(skb);
+ 	if (dst->tail + neededtailspace > dst->end) {
+ 		/* Create a dumplicate of 'dst' with more tail space */
 -- 
 2.34.1
 
