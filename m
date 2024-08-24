@@ -1,32 +1,32 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D8C4C20B0F;
-	Sat, 24 Aug 2024 18:03:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4A2844D9FE;
+	Sat, 24 Aug 2024 18:07:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724522605; cv=none; b=QRYdrmJjbdzxvg4RKRvLRgmDLKii2k01vdcSr7YY6VNd5/pFn9zTf7Tt7Wxi0jcUr06tbJg5mtW7mpc/hUJ6UN7726nvtbYxISnH9N55O/tD7qu0Pn7a7QMKppuopxwe8tSmpzRB1cAGf0GT53wUP5kAta7L/Y0L6h3Ui+57DpI=
+	t=1724522879; cv=none; b=Iw5mgv/8+19M81EEkiTeoQ9giotJF5zRt3Z8lQAY0U79uhU4vWHgOHNL04VKvG0cp3Zp7AlK4JTumFp1w6qyN/TT5KO2BkoeF27JsEiOnhF8W26C+IDaZDvELpW3YjqhlV2dVoEXnu3Tmp3yzs7uNfa3OrUYoyEYivs+D+NP8a8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724522605; c=relaxed/simple;
-	bh=RFmHCUIsqlb05LzxYhXpFiVUrQMsqddPLjxKmpoiTzU=;
+	s=arc-20240116; t=1724522879; c=relaxed/simple;
+	bh=xobUbeL4MWwNrhjODlqIltVMwrBAX/LlpFsseDVrB0o=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=reUVzzlqkX9DZB++7E/7AsNrII3ZuM+RiaEI5OyGPnohGsMBvOvMoDw06bEnij/4IvLHavy/C1E24/fAFZCQAeVxj4g3YTZK0MNwQFZrzetI7ybzEBVHOxv6Ai3LUIMy8TqMKJ38iCEsXNq6rz3H3scGiTeI4X2hR+LSiUkzszo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VwEKT7GY; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=LRvGadr2YqTA/QhXEg89aNFB3Pn28qtp57Qy1soKwuMgaALBl3m+irIWuQl7X2OJk5i8zXOZTQxv9aSugN3kPGnBLLmhbHX22tB1oPHQyCvnTa3zAxcOMo2Ss4AvXpMs4aDiJ6cFv/ZHKgLWrDFsSAMoNfb84foMh9ikhyIIkMw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oast/GqF; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VwEKT7GY"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B22C4C32781;
-	Sat, 24 Aug 2024 18:03:18 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oast/GqF"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C8724C4AF0B;
+	Sat, 24 Aug 2024 18:07:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1724522604;
-	bh=RFmHCUIsqlb05LzxYhXpFiVUrQMsqddPLjxKmpoiTzU=;
+	s=k20201202; t=1724522878;
+	bh=xobUbeL4MWwNrhjODlqIltVMwrBAX/LlpFsseDVrB0o=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=VwEKT7GYEyM5O28duV16IGtZ/0bTQk5TOj8dlaU/LiSG1/7DTRY6OPgTwcJDOWw4F
-	 2SvmW8D/f1Fg2SsQKobDZYa63ofNNu0FXe1/cf2Q5NaSG5CVJTH8L69GbJlZ36hd+g
-	 bQBEQunlsXQm9Qi4Wdtvgy5dKYFyOGqvx/yZZZZoqYy0ks5GVK/IJNagGTE58UZLsZ
-	 zADAFaq/3c48Iht3dG0Uj0a85Dp7JqVdQZghu7hbO+qQ0TDSSaWO73OOGBtS/Y0fXm
-	 66YTevEkNgtY5A9AOC/DUakCBEcBTW/eamPdGSSlWsXAbMDkruYDSHexEUMLGg4v65
-	 SBlMDpa4IzBGQ==
-Date: Sat, 24 Aug 2024 19:03:16 +0100
+	b=oast/GqFYj9l9ObgKISNoBQRbm1cDdGtoRzxDtUShP+LG0e1yhrUD+P04oFU7iLbH
+	 DXpZA3PCbWspACl3IJiO1zIFUatWKS/j9NliF4k+VsG2IYlSHEQDt06Z1zxOPHyjS8
+	 /AY8dUOHVvdJ6ACnx6KjF/gkMKYJfmtbpWD/fzlx0XMgrtQmgDj7DsWwgJx4hxMAdD
+	 sPyTDBzCx5XE1rOi+cmNEj16GfuFk+h9+yxQp19ivybwe24AlSj593YrXa24j846nE
+	 Y6rhchP5/QsaJfryVi1TdFnt8Qf/IN9RdOQb3WsJKYxHEbNZytfV4eHd+OB+jyAl5B
+	 ltru5LvqS1GiA==
+Date: Sat, 24 Aug 2024 19:07:50 +0100
 From: Simon Horman <horms@kernel.org>
 To: Li Zetao <lizetao1@huawei.com>
 Cc: davem@davemloft.net, edumazet@google.com, kuba@kernel.org,
@@ -41,10 +41,10 @@ Cc: davem@davemloft.net, edumazet@google.com, kuba@kernel.org,
 	gouhao@uniontech.com, netdev@vger.kernel.org,
 	linux-bluetooth@vger.kernel.org, ceph-devel@vger.kernel.org,
 	linux-nfs@vger.kernel.org, tipc-discussion@lists.sourceforge.net
-Subject: Re: [PATCH net-next 7/8] tipc: use min() to simplify the code
-Message-ID: <20240824180316.GP2164@kernel.org>
+Subject: Re: [PATCH net-next 8/8] SUNRPC: use min() to simplify the code
+Message-ID: <20240824180750.GQ2164@kernel.org>
 References: <20240822133908.1042240-1-lizetao1@huawei.com>
- <20240822133908.1042240-8-lizetao1@huawei.com>
+ <20240822133908.1042240-9-lizetao1@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -53,42 +53,45 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20240822133908.1042240-8-lizetao1@huawei.com>
+In-Reply-To: <20240822133908.1042240-9-lizetao1@huawei.com>
 
-On Thu, Aug 22, 2024 at 09:39:07PM +0800, Li Zetao wrote:
-> When calculating size of own domain based on number of peers, the result
-> should be less than MAX_MON_DOMAIN, so using min() here is very semantic.
+On Thu, Aug 22, 2024 at 09:39:08PM +0800, Li Zetao wrote:
+> When reading pages in xdr_read_pages, the number of XDR encoded bytes
+> should be less than the len of aligned pages, so using min() here is
+> very semantic.
 > 
 > Signed-off-by: Li Zetao <lizetao1@huawei.com>
 > ---
->  net/tipc/monitor.c | 2 +-
+>  net/sunrpc/xdr.c | 2 +-
 >  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> diff --git a/net/tipc/monitor.c b/net/tipc/monitor.c
-> index 77a3d016cade..e2f19627e43d 100644
-> --- a/net/tipc/monitor.c
-> +++ b/net/tipc/monitor.c
-> @@ -149,7 +149,7 @@ static int dom_size(int peers)
+> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+> index 62e07c330a66..6746e920dbbb 100644
+> --- a/net/sunrpc/xdr.c
+> +++ b/net/sunrpc/xdr.c
+> @@ -1602,7 +1602,7 @@ unsigned int xdr_read_pages(struct xdr_stream *xdr, unsigned int len)
+>  	end = xdr_stream_remaining(xdr) - pglen;
 >  
->  	while ((i * i) < peers)
->  		i++;
-> -	return i < MAX_MON_DOMAIN ? i : MAX_MON_DOMAIN;
-> +	return min(i, MAX_MON_DOMAIN);
->  }
+>  	xdr_set_tail_base(xdr, base, end);
+> -	return len <= pglen ? len : pglen;
+> +	return min(len, pglen);
 
-Perhaps this whole function is open coding something, but
-if so I couldn't find it.
+Both len and pglen are unsigned int, so this seems correct to me.
 
-In any case this looks safe to me as i is an unsigned int
-while MAX_MON_DOMAIN is 64 (also an unsigned int, I believe).
-
-And the code being replaced appears to be a min() operation
-in both form and function.
+And the code being replaced does appear to be a min() operation in
+both form and function.
 
 Reviewed-by: Simon Horman <horms@kernel.org>
 
+However, I don't believe SUNRPC changes usually don't go through next-next.
+So I think this either needs to be reposted or get some acks from
+Chuck Lever (already CCed).
+
+Chuck, perhaps you can offer some guidance here?
+
+>  }
+>  EXPORT_SYMBOL_GPL(xdr_read_pages);
 >  
->  static void map_set(u64 *up_map, int i, unsigned int v)
 > -- 
 > 2.34.1
 > 
