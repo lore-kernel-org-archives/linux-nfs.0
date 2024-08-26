@@ -1,28 +1,29 @@
-Received: from szxga05-in.huawei.com (szxga05-in.huawei.com [45.249.212.191])
+Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E36941714B8;
-	Mon, 26 Aug 2024 12:05:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.191
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E13818CC0B;
+	Mon, 26 Aug 2024 12:06:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.35
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724673961; cv=none; b=XYwegzUvQk/SRdokgkMJ1QaVH23WemnJhomb4SRXiOHNuoYgwMDVmoWnQ9bca/q6HIc3ZK11/z5hOR++jX7TpNojI0u4AWscwKT45zhRQ3myNUIDwBmxgtPcTKTS7fye/9aikCBEudDPsd7UdtLz6iuwVeqlC5JbZpAHnAlv7t8=
+	t=1724673961; cv=none; b=jDEE9gaA3H4v19w1bnPXXLbB/Qb44e/YTGbmz+8ZwSs5Tng/a+nRrnDWRINFx9DmlMiRL3+J1ODa2btg1akMW4d4LV885mhKo8kA3gQ1wZnLP9vZrioOfsUE+bMdJZFqKrS84suqTxVWlbN59LxPUDP4l4c6+cv1A4D5quAqomg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1724673961; c=relaxed/simple;
-	bh=jYSQ6pJxpSYwMpwZDbbEJZOSv/YbXrBVP6F9ORiCQek=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=RJcMMI2eobD2PV7TFs84x2Al4jmSQp8BcaGgWuVWwTgy4Tk0P6ljkNNcRvadx8G2xbYN6Jqq87shaEVR8aC38WLSxdzA3TdxZjKNpze63uBUAOH9Mi32YR5rqPwRGF+isZlxf8ifUeydoRgszAlBNIcr+vmJdFVc29h0Gfr9zIk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.191
+	bh=RTNGUAO5itpLjZGw9oMXbavzoowXLbU/XBJUb5mwAps=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=oHLWei1soQjfCCY1z/wKa0Xbv+VnsPkJo8r/k0tSq/KsLtli6/tT9ZCKCxXw6DgHju8I75QvlNl5VUUZ4C+iCXW2p3btnttqOd6mwSX4J3nXGS1rkxSp/pzcx4QQ718wOvdqOgweQY6ehayO0ahTOc3q5zJIKgnSkiFdkMVF7kc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.35
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.44])
-	by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4WsqB02FC8z1j7CK;
-	Mon, 26 Aug 2024 20:05:12 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.88.234])
+	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4WsqBS6x1zz1S916;
+	Mon, 26 Aug 2024 20:05:36 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id E18471402E1;
-	Mon, 26 Aug 2024 20:05:20 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 5703714022F;
+	Mon, 26 Aug 2024 20:05:46 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Mon, 26 Aug
- 2024 20:05:18 +0800
+ 2024 20:05:43 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>
 CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
@@ -39,10 +40,12 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
 	<linux-mm@kvack.org>, <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
 	<linux-security-module@vger.kernel.org>, <wangkefeng.wang@huawei.com>
-Subject: [PATCH -next 00/15] sysctl: move sysctls from vm_table into its own files
-Date: Mon, 26 Aug 2024 20:04:34 +0800
-Message-ID: <20240826120449.1666461-1-yukaixiong@huawei.com>
+Subject: [PATCH -next 11/15] sunrpc: use vfs_pressure_ratio() helper
+Date: Mon, 26 Aug 2024 20:04:45 +0800
+Message-ID: <20240826120449.1666461-12-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.25.1
+In-Reply-To: <20240826120449.1666461-1-yukaixiong@huawei.com>
+References: <20240826120449.1666461-1-yukaixiong@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -54,59 +57,26 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-This patch series moves sysctls of vm_table in kernel/sysctl.c to
-places where they actually belong, and do some related code clean-ups.
-After this patch series, all sysctls in vm_table have been moved into its
-own files, meanwhile, delete vm_table.
+Use vfs_pressure_ratio() to simplify code.
 
-All the modifications of this patch series base on
-linux-next(tags/next-20240823). To test this patch series, the code was
-compiled with both the CONFIG_SYSCTL enabled and disabled on arm64 and
-x86_64 architectures. After this patch series is applied, all files
-under /proc/sys/vm can be read or written normally.
+Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
+---
+ net/sunrpc/auth.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Kaixiong Yu (15):
-  mm: vmstat: move sysctls to its own files
-  mm: filemap: move sysctl to its own file
-  mm: swap: move sysctl to its own file
-  mm: vmscan: move vmscan sysctls to its own file
-  mm: util: move sysctls into it own files
-  mm: mmap: move sysctl into its own file
-  security: min_addr: move sysctl into its own file
-  mm: nommu: move sysctl to its own file
-  fs: fs-writeback: move sysctl to its own file
-  fs: drop_caches: move sysctl to its own file
-  sunrpc: use vfs_pressure_ratio() helper
-  fs: dcache: move the sysctl into its own file
-  x86: vdso: move the sysctl into its own file
-  sh: vdso: move the sysctl into its own file
-  sysctl: remove unneeded include
-
- arch/sh/kernel/vsyscall/vsyscall.c |  14 ++
- arch/x86/entry/vdso/vdso32-setup.c |  16 ++-
- fs/dcache.c                        |  21 ++-
- fs/drop_caches.c                   |  23 ++-
- fs/fs-writeback.c                  |  28 ++--
- include/linux/dcache.h             |   7 +-
- include/linux/mm.h                 |  42 ------
- include/linux/mman.h               |   2 -
- include/linux/swap.h               |   9 --
- include/linux/vmstat.h             |  11 --
- include/linux/writeback.h          |   4 -
- kernel/sysctl.c                    | 221 -----------------------------
- mm/filemap.c                       |  18 ++-
- mm/internal.h                      |  10 ++
- mm/mmap.c                          |  75 ++++++++++
- mm/nommu.c                         |  15 +-
- mm/swap.c                          |  16 ++-
- mm/swap.h                          |   1 +
- mm/util.c                          |  68 +++++++--
- mm/vmscan.c                        |  23 +++
- mm/vmstat.c                        |  42 +++++-
- net/sunrpc/auth.c                  |   2 +-
- security/min_addr.c                |  11 ++
- 23 files changed, 349 insertions(+), 330 deletions(-)
-
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 04534ea537c8..3d2b51d7e934 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -489,7 +489,7 @@ static unsigned long
+ rpcauth_cache_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
+ 
+ {
+-	return number_cred_unused * sysctl_vfs_cache_pressure / 100;
++	return vfs_pressure_ratio(number_cred_unused);
+ }
+ 
+ static void
 -- 
 2.25.1
 
