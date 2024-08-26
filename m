@@ -1,29 +1,29 @@
-Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
+Received: from szxga05-in.huawei.com (szxga05-in.huawei.com [45.249.212.191])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37CD118A6DD;
-	Mon, 26 Aug 2024 12:05:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.255
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39DA818BC04;
+	Mon, 26 Aug 2024 12:05:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.191
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724673959; cv=none; b=clhGi3mwYq11Dg/JBSh82BG7sVewRWRNL2NVVGd0r4oaDKDSIICUqfBVCGe8q1FiNS1HvFuVUAMOsMPHPE99rncuxbMJAsXpGHbcgZPJsos1C7UvEY8zDs+Q+zOnkEbl+iwthui8awcj9MSTLzBzUABh/4jwVYVkfO5+/BrEwNM=
+	t=1724673961; cv=none; b=M41EzSZifY2xyRMYYmZ6NxM0DvCOasFqQ39x2owaXLhJnLXOmLzs8/qPbMJAbJu1SqNhrhjDxwTLMUwVYPcQ2CfGWhiLDtXCTlU0QXIQyh4rigPagzN6K8xUDfEhC/MxGiXF+Rzcj45YsJwDuCWYfFYt3o/3y83onzSQ8e97Vtc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724673959; c=relaxed/simple;
-	bh=fcId/KzZShAyCSi5rsz8ZDzxf5TvkVVpkGEoV9FLoLI=;
+	s=arc-20240116; t=1724673961; c=relaxed/simple;
+	bh=bdI/3A5/XBDbfr4/aJQ3cnS66/Zvg50jbO2GlYEF3ug=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=IhysoHWBL6B88bbU5RAdytdMqGUjPQO8SMtMAUKCN32KAKhvOQwhW29fKut511f9H/o43VqrOWcfRzrMlAJCM+yhU3xfZUir4lFEYcU1lQk5/cmuTG8zp5vQpTXd8aBxdey4gB3X3DDbbVBeQEs42GmQF92VVE/85KuY3zRB550=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.255
+	 MIME-Version:Content-Type; b=BBlIQjw4OPpfAn338AsmEqpaWISig0wkobeIdJ0cjNgtoQuG8L9VOjK3Rm8IrM3v6m0gHb5dq2CnXKfnJwBgkv6clKun+Omu3L7DD7JkqrCCQCb3Ni1tDaZ+h9onHruDMrHil6FwiCOc1MIYgDRcGfO/T5NUabtkS5lnczi6U5I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.191
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.162.254])
-	by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4Wsq9y0730z13Kmh;
-	Mon, 26 Aug 2024 20:05:10 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.88.163])
+	by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4Wsq6P4rRpz1HHLX;
+	Mon, 26 Aug 2024 20:02:05 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id 94F22180101;
-	Mon, 26 Aug 2024 20:05:55 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 4166218002B;
+	Mon, 26 Aug 2024 20:05:23 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Mon, 26 Aug
- 2024 20:05:53 +0800
+ 2024 20:05:20 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>
 CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
@@ -40,9 +40,9 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
 	<linux-mm@kvack.org>, <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
 	<linux-security-module@vger.kernel.org>, <wangkefeng.wang@huawei.com>
-Subject: [PATCH -next 15/15] sysctl: remove unneeded include
-Date: Mon, 26 Aug 2024 20:04:49 +0800
-Message-ID: <20240826120449.1666461-16-yukaixiong@huawei.com>
+Subject: [PATCH -next 01/15] mm: vmstat: move sysctls to its own files
+Date: Mon, 26 Aug 2024 20:04:35 +0800
+Message-ID: <20240826120449.1666461-2-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20240826120449.1666461-1-yukaixiong@huawei.com>
 References: <20240826120449.1666461-1-yukaixiong@huawei.com>
@@ -57,56 +57,191 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-Removing unneeded mm includes in kernel/sysctl.c.
+This moves all vmstat related sysctls to its own file, removes useless
+extern variable declarations, and do some related clean-ups. To avoid
+compiler warnings when CONFIG_PROC_FS is not defined, add the macro
+definition CONFIG_PROC_FS ahead CONFIG_NUMA in vmstat.c.
 
 Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
 ---
- kernel/sysctl.c | 6 ------
- 1 file changed, 6 deletions(-)
+ include/linux/vmstat.h | 11 -----------
+ kernel/sysctl.c        | 28 ----------------------------
+ mm/vmstat.c            | 42 +++++++++++++++++++++++++++++++++++++++---
+ 3 files changed, 39 insertions(+), 42 deletions(-)
 
+diff --git a/include/linux/vmstat.h b/include/linux/vmstat.h
+index d2761bf8ff32..b2ccb6845595 100644
+--- a/include/linux/vmstat.h
++++ b/include/linux/vmstat.h
+@@ -10,15 +10,8 @@
+ #include <linux/static_key.h>
+ #include <linux/mmdebug.h>
+ 
+-extern int sysctl_stat_interval;
+-
+ #ifdef CONFIG_NUMA
+-#define ENABLE_NUMA_STAT   1
+-#define DISABLE_NUMA_STAT   0
+-extern int sysctl_vm_numa_stat;
+ DECLARE_STATIC_KEY_TRUE(vm_numa_stat_key);
+-int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
+-		void *buffer, size_t *length, loff_t *ppos);
+ #endif
+ 
+ struct reclaim_stat {
+@@ -304,10 +297,6 @@ void quiet_vmstat(void);
+ void cpu_vm_stats_fold(int cpu);
+ void refresh_zone_stat_thresholds(void);
+ 
+-struct ctl_table;
+-int vmstat_refresh(const struct ctl_table *, int write, void *buffer, size_t *lenp,
+-		loff_t *ppos);
+-
+ void drain_zonestat(struct zone *zone, struct per_cpu_zonestat *);
+ 
+ int calculate_pressure_threshold(struct zone *zone);
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index f04da9f3abc6..6e3e0ce4da79 100644
+index 79e6cb1d5c48..726b866af57b 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -20,8 +20,6 @@
-  */
- 
- #include <linux/module.h>
--#include <linux/mm.h>
--#include <linux/slab.h>
- #include <linux/sysctl.h>
- #include <linux/bitmap.h>
- #include <linux/signal.h>
-@@ -30,7 +28,6 @@
- #include <linux/proc_fs.h>
- #include <linux/security.h>
- #include <linux/ctype.h>
--#include <linux/kmemleak.h>
- #include <linux/filter.h>
- #include <linux/fs.h>
- #include <linux/init.h>
-@@ -41,7 +38,6 @@
- #include <linux/highuid.h>
- #include <linux/writeback.h>
- #include <linux/ratelimit.h>
--#include <linux/hugetlb.h>
- #include <linux/initrd.h>
- #include <linux/key.h>
- #include <linux/times.h>
-@@ -52,13 +48,11 @@
+@@ -49,7 +49,6 @@
+ #include <linux/limits.h>
+ #include <linux/dcache.h>
+ #include <linux/syscalls.h>
+-#include <linux/vmstat.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/acpi.h>
  #include <linux/reboot.h>
- #include <linux/ftrace.h>
- #include <linux/perf_event.h>
--#include <linux/oom.h>
- #include <linux/kmod.h>
- #include <linux/capability.h>
- #include <linux/binfmts.h>
- #include <linux/sched/sysctl.h>
- #include <linux/mount.h>
--#include <linux/userfaultfd_k.h>
- #include <linux/pid.h>
+@@ -2081,17 +2080,6 @@ static struct ctl_table vm_table[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 		.extra2		= SYSCTL_TWO_HUNDRED,
+ 	},
+-#ifdef CONFIG_NUMA
+-	{
+-		.procname	= "numa_stat",
+-		.data		= &sysctl_vm_numa_stat,
+-		.maxlen		= sizeof(int),
+-		.mode		= 0644,
+-		.proc_handler	= sysctl_vm_numa_stat_handler,
+-		.extra1		= SYSCTL_ZERO,
+-		.extra2		= SYSCTL_ONE,
+-	},
+-#endif
+ 	{
+ 		.procname	= "drop_caches",
+ 		.data		= &sysctl_drop_caches,
+@@ -2157,22 +2145,6 @@ static struct ctl_table vm_table[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 	},
+ #endif
+-#ifdef CONFIG_SMP
+-	{
+-		.procname	= "stat_interval",
+-		.data		= &sysctl_stat_interval,
+-		.maxlen		= sizeof(sysctl_stat_interval),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_jiffies,
+-	},
+-	{
+-		.procname	= "stat_refresh",
+-		.data		= NULL,
+-		.maxlen		= 0,
+-		.mode		= 0600,
+-		.proc_handler	= vmstat_refresh,
+-	},
+-#endif
+ #ifdef CONFIG_MMU
+ 	{
+ 		.procname	= "mmap_min_addr",
+diff --git a/mm/vmstat.c b/mm/vmstat.c
+index f41984dc856f..9f9d6a92b98f 100644
+--- a/mm/vmstat.c
++++ b/mm/vmstat.c
+@@ -31,8 +31,10 @@
  
- #include "../lib/kstrtox.h"
+ #include "internal.h"
+ 
++#ifdef CONFIG_PROC_FS
+ #ifdef CONFIG_NUMA
+-int sysctl_vm_numa_stat = ENABLE_NUMA_STAT;
++#define ENABLE_NUMA_STAT 1
++static int sysctl_vm_numa_stat = ENABLE_NUMA_STAT;
+ 
+ /* zero numa counters within a zone */
+ static void zero_zone_numa_counters(struct zone *zone)
+@@ -74,7 +76,7 @@ static void invalid_numa_statistics(void)
+ 
+ static DEFINE_MUTEX(vm_numa_stat_lock);
+ 
+-int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
++static int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
+ 		void *buffer, size_t *length, loff_t *ppos)
+ {
+ 	int ret, oldval;
+@@ -102,6 +104,7 @@ int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
+ 	return ret;
+ }
+ #endif
++#endif /* CONFIG_PROC_FS */
+ 
+ #ifdef CONFIG_VM_EVENT_COUNTERS
+ DEFINE_PER_CPU(struct vm_event_state, vm_event_states) = {{0}};
+@@ -1936,7 +1939,7 @@ static void refresh_vm_stats(struct work_struct *work)
+ 	refresh_cpu_vm_stats(true);
+ }
+ 
+-int vmstat_refresh(const struct ctl_table *table, int write,
++static int vmstat_refresh(const struct ctl_table *table, int write,
+ 		   void *buffer, size_t *lenp, loff_t *ppos)
+ {
+ 	long val;
+@@ -2174,6 +2177,38 @@ static int __init vmstat_late_init(void)
+ late_initcall(vmstat_late_init);
+ #endif
+ 
++#ifdef CONFIG_PROC_FS
++static struct ctl_table vmstat_table[] = {
++#ifdef CONFIG_SMP
++	{
++		.procname	= "stat_interval",
++		.data		= &sysctl_stat_interval,
++		.maxlen		= sizeof(sysctl_stat_interval),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec_jiffies,
++	},
++	{
++		.procname	= "stat_refresh",
++		.data		= NULL,
++		.maxlen		= 0,
++		.mode		= 0600,
++		.proc_handler	= vmstat_refresh,
++	},
++#endif
++#ifdef CONFIG_NUMA
++	{
++		.procname	= "numa_stat",
++		.data		= &sysctl_vm_numa_stat,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= sysctl_vm_numa_stat_handler,
++		.extra1		= SYSCTL_ZERO,
++		.extra2		= SYSCTL_ONE,
++	},
++#endif
++};
++#endif
++
+ struct workqueue_struct *mm_percpu_wq;
+ 
+ void __init init_mm_internals(void)
+@@ -2205,6 +2240,7 @@ void __init init_mm_internals(void)
+ 	proc_create_seq("pagetypeinfo", 0400, NULL, &pagetypeinfo_op);
+ 	proc_create_seq("vmstat", 0444, NULL, &vmstat_op);
+ 	proc_create_seq("zoneinfo", 0444, NULL, &zoneinfo_op);
++	register_sysctl_init("vm", vmstat_table);
+ #endif
+ }
+ 
 -- 
 2.25.1
 
