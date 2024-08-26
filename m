@@ -1,29 +1,29 @@
-Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
+Received: from szxga05-in.huawei.com (szxga05-in.huawei.com [45.249.212.191])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4B91318D62C;
-	Mon, 26 Aug 2024 12:06:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.35
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA98F18BC1B;
+	Mon, 26 Aug 2024 12:05:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.191
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724673962; cv=none; b=j/6PbymjgMqrMz7Dv74f4STPPexEEbtQkNAC8KX9kuuv0TgZwYuCDyztTZAf+aRxm4VKBvIZcmrf0JaBn4t1dWjXQwT7WIoKva2vpmlnX+T6Ks1COao2ilzdlS1kZ8JCY6Xl1pmtL8s5IKluFlInJeqAKf/2Lux8id1nQ6rcA0k=
+	t=1724673962; cv=none; b=U1mClFDnD1fNmmD4G5VHHO8ilz1Kc9xYbBKSZhvtN+zQGwG8DnDj68sgbniqE+xBa0kClduwuInwtJLVTCMWh6/O0qsw7XgghQxnfcmV0oXEefPvWs1YB/elCNVcCMGw8aWjrgYVN1KS/nNB+5JJZel2y3oP0otaG4zpFSi7eMw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1724673962; c=relaxed/simple;
-	bh=U69HCK4SsbxtZPxMddnOTp0bY/S4nqcRl//dNXlQVKg=;
+	bh=h3Deb6bUTfVPM8fisrmPIzFbDwC8S/5kpgH7lZ8PYpE=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=FlkhNWFVtbilaXbtHtJEE8cgGNshKp4+XVu6ZwqTrQsnVQRh2OOSF9dXHZWn847BrHiw+NOUdHjOeJCjjoDAHXcAfOTrZ3Qe6iIkWhWlh7QM4/+OnbF6eL2yv7/zqb08T9nKQI/uVMWPy2OMtoAwdX9UvHxgeCnz3t9DJ0jf/Os=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.35
+	 MIME-Version:Content-Type; b=frFuS8rW4oG9qCRNjTx/Ds9T87QDc0XSSPPBNv6oLPX9RnvVvEQmOzqEDShNjBViZPi8smkzqCpwWDGZFvayrN6Ura0P6W8U2nynQy5Bjsox56H3MTV8E9WDUSUtx03o3k8PiKaf92Z1mHZ1/JZF4NQfgRRdFr0hDKodSrrUxys=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.191
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Received: from mail.maildlp.com (unknown [172.19.163.17])
-	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4WsqBQ4qLNz1S913;
-	Mon, 26 Aug 2024 20:05:34 +0800 (CST)
+	by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4WsqB46qZYz1j7Lb;
+	Mon, 26 Aug 2024 20:05:16 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id 0E97B1A0188;
-	Mon, 26 Aug 2024 20:05:44 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 8B0FF1A0188;
+	Mon, 26 Aug 2024 20:05:25 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Mon, 26 Aug
- 2024 20:05:41 +0800
+ 2024 20:05:23 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>
 CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
@@ -40,9 +40,9 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
 	<linux-mm@kvack.org>, <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
 	<linux-security-module@vger.kernel.org>, <wangkefeng.wang@huawei.com>
-Subject: [PATCH -next 10/15] fs: drop_caches: move sysctl to its own file
-Date: Mon, 26 Aug 2024 20:04:44 +0800
-Message-ID: <20240826120449.1666461-11-yukaixiong@huawei.com>
+Subject: [PATCH -next 02/15] mm: filemap: move sysctl to its own file
+Date: Mon, 26 Aug 2024 20:04:36 +0800
+Message-ID: <20240826120449.1666461-3-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20240826120449.1666461-1-yukaixiong@huawei.com>
 References: <20240826120449.1666461-1-yukaixiong@huawei.com>
@@ -57,99 +57,98 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-The sysctl_drop_caches to fs/drop_caches.c, move it into
-its own file from /kernel/sysctl.c. And remove the useless
-extern variable declaration from include/linux/mm.h
+This moves the filemap related sysctl to its own file, and
+removes the redundant external variable declaration.
 
 Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
 ---
- fs/drop_caches.c   | 23 +++++++++++++++++++++--
- include/linux/mm.h |  6 ------
- kernel/sysctl.c    |  9 ---------
- 3 files changed, 21 insertions(+), 17 deletions(-)
+ include/linux/mm.h |  2 --
+ kernel/sysctl.c    |  8 --------
+ mm/filemap.c       | 18 +++++++++++++++---
+ 3 files changed, 15 insertions(+), 13 deletions(-)
 
-diff --git a/fs/drop_caches.c b/fs/drop_caches.c
-index d45ef541d848..f2551ace800f 100644
---- a/fs/drop_caches.c
-+++ b/fs/drop_caches.c
-@@ -14,7 +14,7 @@
- #include "internal.h"
- 
- /* A global variable is a bit ugly, but it keeps the code simple */
--int sysctl_drop_caches;
-+static int sysctl_drop_caches;
- 
- static void drop_pagecache_sb(struct super_block *sb, void *unused)
- {
-@@ -48,7 +48,7 @@ static void drop_pagecache_sb(struct super_block *sb, void *unused)
- 	iput(toput_inode);
- }
- 
--int drop_caches_sysctl_handler(const struct ctl_table *table, int write,
-+static int drop_caches_sysctl_handler(const struct ctl_table *table, int write,
- 		void *buffer, size_t *length, loff_t *ppos)
- {
- 	int ret;
-@@ -77,3 +77,22 @@ int drop_caches_sysctl_handler(const struct ctl_table *table, int write,
- 	}
- 	return 0;
- }
-+
-+static struct ctl_table drop_caches_table[] = {
-+	{
-+		.procname	= "drop_caches",
-+		.data		= &sysctl_drop_caches,
-+		.maxlen		= sizeof(int),
-+		.mode		= 0200,
-+		.proc_handler	= drop_caches_sysctl_handler,
-+		.extra1		= SYSCTL_ONE,
-+		.extra2		= SYSCTL_FOUR,
-+	},
-+};
-+
-+static int __init init_vm_drop_caches_sysctls(void)
-+{
-+	register_sysctl_init("vm", drop_caches_table);
-+	return 0;
-+}
-+fs_initcall(init_vm_drop_caches_sysctls);
 diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 9e37d46fa666..a297a298542c 100644
+index fc111a0a5375..1db4cd7136ff 100644
 --- a/include/linux/mm.h
 +++ b/include/linux/mm.h
-@@ -3693,12 +3693,6 @@ static inline int in_gate_area(struct mm_struct *mm, unsigned long addr)
+@@ -39,8 +39,6 @@ struct user_struct;
+ struct pt_regs;
+ struct folio_batch;
  
- extern bool process_shares_mm(struct task_struct *p, struct mm_struct *mm);
- 
--#ifdef CONFIG_SYSCTL
--extern int sysctl_drop_caches;
--int drop_caches_sysctl_handler(const struct ctl_table *, int, void *, size_t *,
--		loff_t *);
--#endif
+-extern int sysctl_page_lock_unfairness;
 -
- void drop_slab(void);
+ void mm_core_init(void);
+ void init_mm_internals(void);
  
- #ifndef CONFIG_MMU
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 373e018b950c..d638a1bac9af 100644
+index 726b866af57b..2a875b739054 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -2024,15 +2024,6 @@ static struct ctl_table kern_table[] = {
- };
- 
- static struct ctl_table vm_table[] = {
+@@ -2089,14 +2089,6 @@ static struct ctl_table vm_table[] = {
+ 		.extra1		= SYSCTL_ONE,
+ 		.extra2		= SYSCTL_FOUR,
+ 	},
 -	{
--		.procname	= "drop_caches",
--		.data		= &sysctl_drop_caches,
--		.maxlen		= sizeof(int),
--		.mode		= 0200,
--		.proc_handler	= drop_caches_sysctl_handler,
--		.extra1		= SYSCTL_ONE,
--		.extra2		= SYSCTL_FOUR,
+-		.procname	= "page_lock_unfairness",
+-		.data		= &sysctl_page_lock_unfairness,
+-		.maxlen		= sizeof(sysctl_page_lock_unfairness),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_minmax,
+-		.extra1		= SYSCTL_ZERO,
 -	},
+ #ifdef CONFIG_MMU
  	{
- 		.procname	= "vfs_cache_pressure",
- 		.data		= &sysctl_vfs_cache_pressure,
+ 		.procname	= "max_map_count",
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 0f13126b43b0..72695ccacb86 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -47,6 +47,7 @@
+ #include <linux/splice.h>
+ #include <linux/rcupdate_wait.h>
+ #include <linux/sched/mm.h>
++#include <linux/sysctl.h>
+ #include <asm/pgalloc.h>
+ #include <asm/tlbflush.h>
+ #include "internal.h"
+@@ -1067,6 +1068,19 @@ static wait_queue_head_t *folio_waitqueue(struct folio *folio)
+ 	return &folio_wait_table[hash_ptr(folio, PAGE_WAIT_TABLE_BITS)];
+ }
+ 
++/* How many times do we accept lock stealing from under a waiter? */
++static int sysctl_page_lock_unfairness = 5;
++static struct ctl_table filemap_sysctl_table[] = {
++	{
++		.procname	= "page_lock_unfairness",
++		.data		= &sysctl_page_lock_unfairness,
++		.maxlen		= sizeof(sysctl_page_lock_unfairness),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec_minmax,
++		.extra1		= SYSCTL_ZERO,
++	}
++};
++
+ void __init pagecache_init(void)
+ {
+ 	int i;
+@@ -1075,6 +1089,7 @@ void __init pagecache_init(void)
+ 		init_waitqueue_head(&folio_wait_table[i]);
+ 
+ 	page_writeback_init();
++	register_sysctl_init("vm", filemap_sysctl_table);
+ }
+ 
+ /*
+@@ -1222,9 +1237,6 @@ static inline bool folio_trylock_flag(struct folio *folio, int bit_nr,
+ 	return true;
+ }
+ 
+-/* How many times do we accept lock stealing from under a waiter? */
+-int sysctl_page_lock_unfairness = 5;
+-
+ static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
+ 		int state, enum behavior behavior)
+ {
 -- 
 2.25.1
 
