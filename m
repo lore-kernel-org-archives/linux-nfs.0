@@ -1,29 +1,29 @@
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+Received: from szxga04-in.huawei.com (szxga04-in.huawei.com [45.249.212.190])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA34717B51A;
-	Mon, 26 Aug 2024 12:05:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E55316EC19;
+	Mon, 26 Aug 2024 12:05:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.190
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724673943; cv=none; b=leKoRiQ9BJCwGsY4qdBVPupyBorF7HeR9E0arU3e+IYYeXjlJiIJS8cBzMfXzmhQ2FADUgRts3F2msJ1ymoyBfuMAB0k4LzyT9Rowm/HSIlPC/7JIfCae5oboiBbU3SKQHPXrpOla1rzvQ6ns+RLjk9SueqkvJdmouvR4HkZR3A=
+	t=1724673955; cv=none; b=uMLnJ19NV+l5Vz9CEn1U286DydaLFnYRAwN718zsaGczvU1pJxUp1SNk9avUQIoOblwjyvYuq+h7p4Tzb65DGBkEsf/rdH1l4c9ujgC0N1SoGn8Mifz8tocDyWtxRS9SJQ8z2KVGaU++liN7t/oYiSMsaSRZMCJRFNKrTHLD7e4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724673943; c=relaxed/simple;
-	bh=8C6V24t9B/ZAyaa2lnsXhkKXChe6T09hukyJHd+vfmo=;
+	s=arc-20240116; t=1724673955; c=relaxed/simple;
+	bh=mOpqRJqcTa3aFt5LqEXBMlD+dlCToV0cJhoNi8dD7Zc=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=G5wAkrr+rOEx8GfxvWVovDiWlLJjYOkB6GD0sO2KeqsvzqvTnXCgkpNcvCbtPsx9Wk0eC3ulkAwhtj3mO8b9I7IZCpWj6LPeBuEnP8s9xZLHZff7zdBzUp3keTtGmbsfn/f4K58idcS4qrU7WsiIyHOY9i4XA3WMqW/hZ9dGB1s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.187
+	 MIME-Version:Content-Type; b=PlF+1XbMlpbRLh9pyzSofY9I0tW8I9+Wh6yjXOUcfdJfQ0TRbWllA6fo/0rXcaXfLU7wLkPJ99S87YSzpCW5awBgxbwISFFwoIbRwtyMw7fYEGyKH+Qrxc+2Q3bBlEuz9DWojE93Qfxm3JwEu1Y78nQTKjky647+jOsVsXMDx8E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.190
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.174])
-	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4Wsq9d3wqzzyQKn;
-	Mon, 26 Aug 2024 20:04:53 +0800 (CST)
-Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id 6A46E1404FC;
+Received: from mail.maildlp.com (unknown [172.19.163.17])
+	by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4WsqBW6Kndz2Cnfm;
 	Mon, 26 Aug 2024 20:05:39 +0800 (CST)
+Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
+	by mail.maildlp.com (Postfix) with ESMTPS id A83AD1A0188;
+	Mon, 26 Aug 2024 20:05:48 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Mon, 26 Aug
- 2024 20:05:36 +0800
+ 2024 20:05:46 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>
 CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
@@ -40,9 +40,9 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
 	<linux-mm@kvack.org>, <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
 	<linux-security-module@vger.kernel.org>, <wangkefeng.wang@huawei.com>
-Subject: [PATCH -next 08/15] mm: nommu: move sysctl to its own file
-Date: Mon, 26 Aug 2024 20:04:42 +0800
-Message-ID: <20240826120449.1666461-9-yukaixiong@huawei.com>
+Subject: [PATCH -next 12/15] fs: dcache: move the sysctl into its own file
+Date: Mon, 26 Aug 2024 20:04:46 +0800
+Message-ID: <20240826120449.1666461-13-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20240826120449.1666461-1-yukaixiong@huawei.com>
 References: <20240826120449.1666461-1-yukaixiong@huawei.com>
@@ -57,91 +57,105 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems706-chm.china.huawei.com (10.3.19.183) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-The sysctl_nr_trim_pages belongs to nommu.c, move it into its own file
-from /kernel/sysctl.c. And remove the useless extern variable declaration
-from include/linux/mm.h
+The sysctl_vfs_cache_pressure belongs to fs/dcache.c, move it to
+its own file from kernel/sysctl.c. As a part of fs/dcache.c cleaning,
+sysctl_vfs_cache_pressure is changed to a static variable, and export
+vfs_pressure_ratio with EXPORT_SYMBOL_GPL to be used by other files.
+And move the unneeded include(linux/dcache.h).
 
 Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
 ---
- include/linux/mm.h |  2 --
- kernel/sysctl.c    | 10 ----------
- mm/nommu.c         | 15 ++++++++++++++-
- 3 files changed, 14 insertions(+), 13 deletions(-)
+ fs/dcache.c            | 21 +++++++++++++++++++--
+ include/linux/dcache.h |  7 +------
+ kernel/sysctl.c        |  9 ---------
+ 3 files changed, 20 insertions(+), 17 deletions(-)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 9400c92b4522..9e37d46fa666 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -3972,8 +3972,6 @@ unsigned long wp_shared_mapping_range(struct address_space *mapping,
- 				      pgoff_t first_index, pgoff_t nr);
- #endif
- 
--extern int sysctl_nr_trim_pages;
--
- #ifdef CONFIG_PRINTK
- void mem_dump_obj(void *object);
- #else
-diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 0c0bab3dad7d..d3de31ec74bf 100644
---- a/kernel/sysctl.c
-+++ b/kernel/sysctl.c
-@@ -2041,16 +2041,6 @@ static struct ctl_table vm_table[] = {
- 		.extra1		= SYSCTL_ONE,
- 		.extra2		= SYSCTL_FOUR,
- 	},
--#ifndef CONFIG_MMU
--	{
--		.procname	= "nr_trim_pages",
--		.data		= &sysctl_nr_trim_pages,
--		.maxlen		= sizeof(sysctl_nr_trim_pages),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec_minmax,
--		.extra1		= SYSCTL_ZERO,
--	},
--#endif
- 	{
- 		.procname	= "vfs_cache_pressure",
- 		.data		= &sysctl_vfs_cache_pressure,
-diff --git a/mm/nommu.c b/mm/nommu.c
-index 385b0c15add8..983ee961dd67 100644
---- a/mm/nommu.c
-+++ b/mm/nommu.c
-@@ -48,7 +48,6 @@ struct page *mem_map;
- unsigned long max_mapnr;
- EXPORT_SYMBOL(max_mapnr);
- unsigned long highest_memmap_pfn;
--int sysctl_nr_trim_pages = CONFIG_NOMMU_INITIAL_TRIM_EXCESS;
- int heap_stack_gap = 0;
- 
- atomic_long_t mmap_pages_allocated;
-@@ -392,6 +391,19 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
- 	return mm->brk = brk;
- }
- 
-+static int sysctl_nr_trim_pages = CONFIG_NOMMU_INITIAL_TRIM_EXCESS;
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 1af75fa68638..8717d5026cda 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -73,8 +73,13 @@
+  * If no ancestor relationship:
+  * arbitrary, since it's serialized on rename_lock
+  */
+-int sysctl_vfs_cache_pressure __read_mostly = 100;
+-EXPORT_SYMBOL_GPL(sysctl_vfs_cache_pressure);
++static int sysctl_vfs_cache_pressure __read_mostly = 100;
 +
-+static struct ctl_table nommu_table[] = {
++unsigned long vfs_pressure_ratio(unsigned long val)
++{
++	return mult_frac(val, sysctl_vfs_cache_pressure, 100);
++}
++EXPORT_SYMBOL_GPL(vfs_pressure_ratio);
+ 
+ __cacheline_aligned_in_smp DEFINE_SEQLOCK(rename_lock);
+ 
+@@ -196,8 +201,20 @@ static struct ctl_table fs_dcache_sysctls[] = {
+ 	},
+ };
+ 
++static struct ctl_table vm_dcache_sysctls[] = {
 +	{
-+		.procname	= "nr_trim_pages",
-+		.data		= &sysctl_nr_trim_pages,
-+		.maxlen		= sizeof(sysctl_nr_trim_pages),
++		.procname	= "vfs_cache_pressure",
++		.data		= &sysctl_vfs_cache_pressure,
++		.maxlen		= sizeof(sysctl_vfs_cache_pressure),
 +		.mode		= 0644,
 +		.proc_handler	= proc_dointvec_minmax,
 +		.extra1		= SYSCTL_ZERO,
 +	},
-+}
++};
 +
- /*
-  * initialise the percpu counter for VM and region record slabs
-  */
-@@ -402,6 +414,7 @@ void __init mmap_init(void)
- 	ret = percpu_counter_init(&vm_committed_as, 0, GFP_KERNEL);
- 	VM_BUG_ON(ret);
- 	vm_region_jar = KMEM_CACHE(vm_region, SLAB_PANIC|SLAB_ACCOUNT);
-+	register_syscall_init("vm", nommu_table);
+ static int __init init_fs_dcache_sysctls(void)
+ {
++	register_sysctl_init("vm", vm_dcache_sysctls);
+ 	register_sysctl_init("fs", fs_dcache_sysctls);
+ 	return 0;
+ }
+diff --git a/include/linux/dcache.h b/include/linux/dcache.h
+index bff956f7b2b9..c81c2e9e13df 100644
+--- a/include/linux/dcache.h
++++ b/include/linux/dcache.h
+@@ -508,12 +508,7 @@ static inline int simple_positive(const struct dentry *dentry)
+ 	return d_really_is_positive(dentry) && !d_unhashed(dentry);
  }
  
- /*
+-extern int sysctl_vfs_cache_pressure;
+-
+-static inline unsigned long vfs_pressure_ratio(unsigned long val)
+-{
+-	return mult_frac(val, sysctl_vfs_cache_pressure, 100);
+-}
++unsigned long vfs_pressure_ratio(unsigned long val);
+ 
+ /**
+  * d_inode - Get the actual inode of this dentry
+diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+index d638a1bac9af..6f03fc749794 100644
+--- a/kernel/sysctl.c
++++ b/kernel/sysctl.c
+@@ -46,7 +46,6 @@
+ #include <linux/key.h>
+ #include <linux/times.h>
+ #include <linux/limits.h>
+-#include <linux/dcache.h>
+ #include <linux/syscalls.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/acpi.h>
+@@ -2024,14 +2023,6 @@ static struct ctl_table kern_table[] = {
+ };
+ 
+ static struct ctl_table vm_table[] = {
+-	{
+-		.procname	= "vfs_cache_pressure",
+-		.data		= &sysctl_vfs_cache_pressure,
+-		.maxlen		= sizeof(sysctl_vfs_cache_pressure),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_minmax,
+-		.extra1		= SYSCTL_ZERO,
+-	},
+ #if (defined(CONFIG_X86_32) && !defined(CONFIG_UML))|| \
+    (defined(CONFIG_SUPERH) && defined(CONFIG_VSYSCALL))
+ 	{
 -- 
 2.25.1
 
