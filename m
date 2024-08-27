@@ -1,147 +1,125 @@
-Received: from fhigh2-smtp.messagingengine.com (fhigh2-smtp.messagingengine.com [103.168.172.153])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 65AAE1C5792;
-	Tue, 27 Aug 2024 15:33:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.153
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5BC031A0726;
+	Tue, 27 Aug 2024 16:08:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724772829; cv=none; b=BhAHyFq7Gg8QD5/K8/FVb5i10098oZGmAgT/Za7U6aTJn83AGiagMY1VSDl9+g0HTdA6Mbqt6azwyDh3yVPIDoKsjTQ72XT0/PK6JglUiwgtTL94PU6rTX8q58T9WEi4ZcoJGLbyEsA9s6AWXFVcEeNzXm1tjuJlrZfL4gSe4BQ=
+	t=1724774907; cv=none; b=mQrpHCs1WFtS+SeHNn5f001aYSfbG5CSr9rj4ixEpL5/tQOeKFUI4cQMIhICnVQBvQaW+NPoBPBq5zxfvW0HJygUnUY3xDcbLX5bPXu37rxJcvFxFPIUyI0YIrLytzIgMRHoUzutAeggtrdK6so3wGlPIOc4tOnngOO2QfGT48Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724772829; c=relaxed/simple;
-	bh=PqW3LaLdaIXUKRv7ae1w6/zjG46YRxp+ySlwBpNlSDA=;
+	s=arc-20240116; t=1724774907; c=relaxed/simple;
+	bh=TXDRS7lXUCRKRE6nQ2+0gejSHVe2zbDjrojORqrRI/4=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=gvoeT+QCDbTOAMUiAuFwsqGS4bnBRs7z+dwcDRl7JU086+tWEF8SB/angXi5AkLgaEKjcal9mHsbKxn97KbIBerGHoM+AVXJS25KwoBqPAt+8xVrHhCLJYZigbNCnoFsInMpiJdfWlS+79+CKiFA6ImFG/4Ri7q644nUbH+X04E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=kroah.com; spf=pass smtp.mailfrom=kroah.com; dkim=pass (2048-bit key) header.d=kroah.com header.i=@kroah.com header.b=hjAz/mTr; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=VuP9xHwv; arc=none smtp.client-ip=103.168.172.153
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=kroah.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=kroah.com
+	 Content-Type:Content-Disposition:In-Reply-To; b=ssrbispT/miyDZogMRFTUG460jfXLnOnpdnNVX26EXDnxC33hhXjEDoEr+6LEHrILp2kJonsLHp+sFE9lBxp6Ba4tsxAaYDyEMUYSsiot+Vdep2/cLOAsm0NO29ert9PL/Bnz4jiTOXZNDPKRY2yGa2LVInoMF/PX78GfjJEYtY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OTFyVX0A; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kroah.com header.i=@kroah.com header.b="hjAz/mTr";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="VuP9xHwv"
-Received: from phl-compute-05.internal (phl-compute-05.nyi.internal [10.202.2.45])
-	by mailfhigh.nyi.internal (Postfix) with ESMTP id 761F41151B29;
-	Tue, 27 Aug 2024 11:33:46 -0400 (EDT)
-Received: from phl-mailfrontend-01 ([10.202.2.162])
-  by phl-compute-05.internal (MEProxy); Tue, 27 Aug 2024 11:33:46 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kroah.com; h=cc
-	:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to; s=fm1; t=1724772826;
-	 x=1724859226; bh=9uGAv2l5IKc9PnaG89xszMBC4k6+LpWKy1GRqAd95vM=; b=
-	hjAz/mTrH+BLHWsTj+xoouDhwLjLgPYmztWxfWsb5c8eawFjoR2zYN9ap9kt33XQ
-	GU4q+V6Yldpm4N5emTM/r/95AFzKE147uR6NSevaPxhubp6k6Mbe38/NpyKt36IK
-	Yi90k5R/t+ANLicDm85Qq0K0fkYJxW2VeYy0wKQP5AFsb8WJyiF+lvJ3klqpnmQp
-	ZgPq19SW/2eKN7weOChp3sLMdqCXltoEMkcWZfkAJSmCl0Ae5I0n02PpyuuLWhnN
-	D7knO7bRh/QaojLeDdrzkeAUeixxOcsaR+5DwiaGl85ePgpmlwbmkOcw7/fl91xR
-	zxjQJlhOXs2Raj09nui9Ow==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to:x-me-proxy:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1724772826; x=
-	1724859226; bh=9uGAv2l5IKc9PnaG89xszMBC4k6+LpWKy1GRqAd95vM=; b=V
-	uP9xHwvimD1XOGUWIMnqMLs8z3QV5g3x4pG2hdqnvJ66w20G5pHAGvuXo1mUmtXb
-	2qKp/Fe2RpNR8tUzMG5VXUK7ck4MqWfknl3tRH45YVGu34c/2nznCDdi3x3grGge
-	nD20dliZvuk0UaOm9JhY+RA/MPC+QLNiFJyMSbVHBLJ3Y/fYB/Eyv0lWU7VHz/X6
-	EwTRhVh6qmIEPBON9qq2lzag5ZeO720gsOdg1YjPOaaJNzm9XJa5UXdo2WXHf83T
-	NdFebojTxwrp048grzdeue2weJGnNIxH5V1sAlgzZyluy+6h7KiLvlHFxDMQAOTj
-	IiE00zjJOSXKBDtPHIvtw==
-X-ME-Sender: <xms:2fHNZpM3m46PK3zB6LAp_x9KFftUh-rmoVjeT_Y6olZ_LZQ93G8daA>
-    <xme:2fHNZr_XfinGtvRpiAAxDcfsutbi6gaYb4EnBqNmZIh11AsJCZBZdpKD1SRz-5ccx
-    cZ24Q9KjVAx1Q>
-X-ME-Received: <xmr:2fHNZoTOSx6o9cu6ITeWAa3Fb5D8bn9fxA13OIoP8_zinPA_w4ShsW4MrqKsTydWIj8h3wcrFtu-98PXMWUSiVjeUjhRPQN1pP0jPg>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeeftddrudeftddgkeelucetufdoteggodetrfdotf
-    fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdggtfgfnhhsuhgsshgtrhhisggvpdfu
-    rfetoffkrfgpnffqhgenuceurghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnh
-    htshculddquddttddmnecujfgurhepfffhvfevuffkfhggtggugfgjsehtkeertddttdej
-    necuhfhrohhmpefirhgvghcumffjuceoghhrvghgsehkrhhorghhrdgtohhmqeenucggtf
-    frrghtthgvrhhnpefgkeffieefieevkeelteejvdetvddtledugfdvhfetjeejieduledt
-    fefffedvieenucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhroh
-    hmpehgrhgvgheskhhrohgrhhdrtghomhdpnhgspghrtghpthhtohepudegpdhmohguvgep
-    shhmthhpohhuthdprhgtphhtthhopegthhhutghkrdhlvghvvghrsehorhgrtghlvgdrtg
-    homhdprhgtphhtthhopegtvghlsehkvghrnhgvlhdrohhrghdprhgtphhtthhopehsthgr
-    sghlvgesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehlihhnuhigqdhnfh
-    hssehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtoheplhhilhhinhhgfhgvnhhg
-    feeshhhurgifvghirdgtohhmpdhrtghpthhtohepnhgvihhlsgesshhushgvrdguvgdprh
-    gtphhtthhopehjlhgrhihtohhnsehkvghrnhgvlhdrohhrgh
-X-ME-Proxy: <xmx:2vHNZlvyZCCN5sAkb1cEvxFlTuX6OaXaV_PCYmI4wvxXnKn6fUIlTQ>
-    <xmx:2vHNZhe34A6nRC1KvTZzYcrJeu84ijWUZXJxY9JipVRvLZO0Oy9P4Q>
-    <xmx:2vHNZh07R3aq0Gi5aeHUPfr1_X83ca_ENszluGC_ydeQww5rRm3Jbw>
-    <xmx:2vHNZt_KyXJLj0mUa9smfexmv7P4uI8IM5W-PT4ovqYSskkbkBpcBw>
-    <xmx:2vHNZs1tgptKVrCeCmVPzuufnMcWE0LAwoMnRnU8hT2YtK30al1gIs78>
-Feedback-ID: i787e41f1:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 27 Aug 2024 11:33:45 -0400 (EDT)
-Date: Tue, 27 Aug 2024 16:40:54 +0200
-From: Greg KH <greg@kroah.com>
-To: Chuck Lever III <chuck.lever@oracle.com>
-Cc: Chuck Lever <cel@kernel.org>, linux-stable <stable@vger.kernel.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Li Lingfeng <lilingfeng3@huawei.com>, Neil Brown <neilb@suse.de>,
-	Jeff Layton <jlayton@kernel.org>
-Subject: Re: [PATCH 6.6.y] NFSD: simplify error paths in nfsd_svc()
-Message-ID: <2024082749-goldfish-handwoven-09b3@gregkh>
-References: <20240824162137.2157-1-cel@kernel.org>
- <2024082712-haiku-take-ef45@gregkh>
- <3C709C8F-8708-4434-8E64-41931DC5C753@oracle.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OTFyVX0A"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id ADE52C61076;
+	Tue, 27 Aug 2024 16:08:24 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1724774904;
+	bh=TXDRS7lXUCRKRE6nQ2+0gejSHVe2zbDjrojORqrRI/4=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=OTFyVX0A19JadU4zgB0qAyng472imX0BNg6NeQRYgGzENal5NmFs9V3HV0jmvICjD
+	 5vNHkVMm0FH6eVw208PWk0xwsOUhZ4aoGP32OmJc7INCUB/Dx9yEi8gr2c5QmQZoof
+	 J37hUALnTZMRtmJV3+X62AZ9YnsxQcaA64b2E3YkRmyvBBTalPXemacZoM9TAiWMS3
+	 zxmS1o5azdBKdQkQxbowNXXfAGz4x2rBpxQGKzgGFq3FV+N51CzHoSKvOv6zrcuxqE
+	 0AhuEJFuzHTAsLD0ZT+Wf+ifZe3eZ/rfl8Bj+K/CsVQXeAOJu8h0tqfT7hHpEYDNYI
+	 Nrb8ad9G/s/Ow==
+Date: Tue, 27 Aug 2024 12:08:23 -0400
+From: Mike Snitzer <snitzer@kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Trond Myklebust <trondmy@hammerspace.com>,
+	NeilBrown <neilb@suse.de>, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH v13 07/19] SUNRPC: add rpcauth_map_clnt_to_svc_cred_local
+Message-ID: <Zs359_29KyHnEqdr@kernel.org>
+References: <20240823181423.20458-1-snitzer@kernel.org>
+ <20240823181423.20458-8-snitzer@kernel.org>
+ <ZstK7BKf02uD17sl@tissot.1015granger.net>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <3C709C8F-8708-4434-8E64-41931DC5C753@oracle.com>
+In-Reply-To: <ZstK7BKf02uD17sl@tissot.1015granger.net>
 
-On Tue, Aug 27, 2024 at 02:25:03PM +0000, Chuck Lever III wrote:
-> 
-> 
-> > On Aug 27, 2024, at 8:46 AM, Greg KH <greg@kroah.com> wrote:
+On Sun, Aug 25, 2024 at 11:17:00AM -0400, Chuck Lever wrote:
+> On Fri, Aug 23, 2024 at 02:14:05PM -0400, Mike Snitzer wrote:
+> > From: Weston Andros Adamson <dros@primarydata.com>
 > > 
-> > On Sat, Aug 24, 2024 at 12:21:37PM -0400, cel@kernel.org wrote:
-> >> From: NeilBrown <neilb@suse.de>
-> >> 
-> >> [ Upstream commit bf32075256e9dd9c6b736859e2c5813981339908 ]
-> >> 
-> >> The error paths in nfsd_svc() are needlessly complex and can result in a
-> >> final call to svc_put() without nfsd_last_thread() being called.  This
-> >> results in the listening sockets not being closed properly.
-> >> 
-> >> The per-netns setup provided by nfsd_startup_new() and removed by
-> >> nfsd_shutdown_net() is needed precisely when there are running threads.
-> >> So we don't need nfsd_up_before.  We don't need to know if it *was* up.
-> >> We only need to know if any threads are left.  If none are, then we must
-> >> call nfsd_shutdown_net().  But we don't need to do that explicitly as
-> >> nfsd_last_thread() does that for us.
-> >> 
-> >> So simply call nfsd_last_thread() before the last svc_put() if there are
-> >> no running threads.  That will always do the right thing.
-> >> 
-> >> Also discard:
-> >> pr_info("nfsd: last server has exited, flushing export cache\n");
-> >> It may not be true if an attempt to start the first server failed, and
-> >> it isn't particularly helpful and it simply reports normal behaviour.
-> >> 
-> >> Signed-off-by: NeilBrown <neilb@suse.de>
-> >> Reviewed-by: Jeff Layton <jlayton@kernel.org>
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> ---
-> >> fs/nfsd/nfssvc.c | 14 ++++----------
-> >> 1 file changed, 4 insertions(+), 10 deletions(-)
-> >> 
-> >> Reported-by: Li Lingfeng <lilingfeng3@huawei.com>
-> >> Suggested-by: Li Lingfeng <lilingfeng3@huawei.com>
-> >> Tested-by: Li Lingfeng <lilingfeng3@huawei.com>
+> > Add new funtion rpcauth_map_clnt_to_svc_cred_local which maps a
+> > generic cred to a svc_cred suitable for use in nfsd.
 > > 
-> > Odd placement of these :)
+> > This is needed by the localio code to map nfs client creds to nfs
+> > server credentials.
+> > 
+> > Following from net/sunrpc/auth_unix.c:unx_marshal() it is clear that
+> > ->fsuid and ->fsgid must be used (rather than ->uid and ->gid).  In
+> > addition, these uid and gid must be translated with from_kuid_munged()
+> > so local client uses correct uid and gid when acting as local server.
+> > 
+> > Suggested-by: NeilBrown <neilb@suse.de> # to approximate unx_marshal()
+> > Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> > Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+> > Co-developed-by: Mike Snitzer <snitzer@kernel.org>
+> > Signed-off-by: Mike Snitzer <snitzer@kernel.org>
+> > ---
+> >  include/linux/sunrpc/auth.h |  4 ++++
+> >  net/sunrpc/auth.c           | 22 ++++++++++++++++++++++
+> >  2 files changed, 26 insertions(+)
+> > 
+> > diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+> > index 61e58327b1aa..4cfb68f511db 100644
+> > --- a/include/linux/sunrpc/auth.h
+> > +++ b/include/linux/sunrpc/auth.h
+> > @@ -11,6 +11,7 @@
+> >  #define _LINUX_SUNRPC_AUTH_H
+> >  
+> >  #include <linux/sunrpc/sched.h>
+> > +#include <linux/sunrpc/svcauth.h>
+> >  #include <linux/sunrpc/msg_prot.h>
+> >  #include <linux/sunrpc/xdr.h>
+> >  
+> > @@ -184,6 +185,9 @@ int			rpcauth_uptodatecred(struct rpc_task *);
+> >  int			rpcauth_init_credcache(struct rpc_auth *);
+> >  void			rpcauth_destroy_credcache(struct rpc_auth *);
+> >  void			rpcauth_clear_credcache(struct rpc_cred_cache *);
+> > +void			rpcauth_map_clnt_to_svc_cred_local(struct rpc_clnt *clnt,
+> > +							   const struct cred *,
+> > +							   struct svc_cred *);
+> >  char *			rpcauth_stringify_acceptor(struct rpc_cred *);
+> >  
+> >  static inline
+> > diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+> > index 04534ea537c8..3b6d91b36589 100644
+> > --- a/net/sunrpc/auth.c
+> > +++ b/net/sunrpc/auth.c
+> > @@ -17,6 +17,7 @@
+> >  #include <linux/sunrpc/clnt.h>
+> >  #include <linux/sunrpc/gss_api.h>
+> >  #include <linux/spinlock.h>
+> > +#include <linux/user_namespace.h>
+> >  
+> >  #include <trace/events/sunrpc.h>
+> >  
+> > @@ -308,6 +309,27 @@ rpcauth_init_credcache(struct rpc_auth *auth)
+> >  }
+> >  EXPORT_SYMBOL_GPL(rpcauth_init_credcache);
+> >  
 > 
-> Wasn't sure I was supposed to add them to the actual
-> patch description because they weren't part of the
-> original upstream commit.
+> rpcauth_map_clnt_to_svc_cred_local() needs a kdoc comment.
 > 
-> But if that's OK to do for stable patches, I will
-> add them in the usual spot next time.
+> Since it is called only from fs/nfsd/localio.c -- should this API
+>                                 ^^^^
+> reside in net/sunrpc/svcauth.c instead of net/sunrpc/auth.c ?
+> 
 
-Yes please, thanks!
+Yes, that makes sense.  I also renamed it to
+svcauth_map_clnt_to_svc_cred_local
+
+Thanks.
