@@ -1,136 +1,64 @@
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7ADCC10A3E;
-	Tue, 27 Aug 2024 02:44:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.188
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9A83117BD6;
+	Tue, 27 Aug 2024 03:33:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1724726647; cv=none; b=Naxj1QOXKXMzdxNTnM3HNoHHPFl/xQRBVN1iLvZRUWroYqisuF++JG04m4O6peCJke8q7tOyD0jsf3ePtcjHN6ta8VF6EWy+rh5q8aFFPBb3Q5bLTF3ICKBf1JiHfM4vkcQdFfsAcfHYuS1MfZ1Mu4+dx6E20HJPIXWxt+ytnx8=
+	t=1724729607; cv=none; b=Z6m8ISkSnwtcrxHHMyeZ9JEQPW5B38kxYkz9tarsBWbTA1fCmEBXTfwPncOi3ur3n4ZzZi104H4y+XkZGd55hzFmbXGZTrG/Nqngu8WJlSHWkFCj44iOXtrdauYcj+byuv0+xfzyxA6A3wi2C7gEXMAZ4sjNFk4Xj16uywrlJpk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1724726647; c=relaxed/simple;
-	bh=56PvTSzz2bsQsKrOscUBkrq0mjnUZ7Tact5/NAj6MEY=;
-	h=Subject:To:References:CC:From:Message-ID:Date:MIME-Version:
-	 In-Reply-To:Content-Type; b=Tvz29OadMypV3qQiU3ZI/lfIgEZ/dahDymzWGb/A8xXEvb4kMgVG4lkq0SlYYzp///bi4jubS2+TUo/uiZI+tS6bKtcBIMvVISzy6TkOWE8RRcwFxkeC3Gs50l4YeY9Eo/+5KWh6edrMi3qkFF1iNADN2kY0jxGo8FAr3zIemEQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.188
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.252])
-	by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4WtBdf07S4zfbYx;
-	Tue, 27 Aug 2024 10:41:58 +0800 (CST)
-Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id 3FBA3180AE7;
-	Tue, 27 Aug 2024 10:44:01 +0800 (CST)
-Received: from [10.174.178.75] (10.174.178.75) by
- kwepemh100016.china.huawei.com (7.202.181.102) with Microsoft SMTP Server
- (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.2.1544.11; Tue, 27 Aug 2024 10:43:58 +0800
-Subject: Re: [PATCH -next 07/15] security: min_addr: move sysctl into its own
- file
-To: Paul Moore <paul@paul-moore.com>
-References: <20240826120449.1666461-1-yukaixiong@huawei.com>
- <20240826120449.1666461-8-yukaixiong@huawei.com>
- <CAHC9VhS=5k3zZyuuon2c6Lsf5GixAra6+d3A4bG2FVytv33n_w@mail.gmail.com>
- <aeb685e9-3a2d-13b4-4ec8-0752ded06d61@huawei.com>
- <CAHC9VhS4TKvTyUB+H6cQNjRFbssGRM-U6S-X7011bSv7bHiQqg@mail.gmail.com>
-CC: <akpm@linux-foundation.org>, <mcgrof@kernel.org>,
-	<ysato@users.sourceforge.jp>, <dalias@libc.org>,
-	<glaubitz@physik.fu-berlin.de>, <luto@kernel.org>, <tglx@linutronix.de>,
-	<bp@alien8.de>, <dave.hansen@linux.intel.com>, <hpa@zytor.com>,
-	<viro@zeniv.linux.org.uk>, <brauner@kernel.org>, <jack@suse.cz>,
-	<kees@kernel.org>, <j.granados@samsung.com>, <willy@infradead.org>,
-	<Liam.Howlett@oracle.com>, <vbabka@suse.cz>, <lorenzo.stoakes@oracle.com>,
-	<trondmy@kernel.org>, <anna@kernel.org>, <chuck.lever@oracle.com>,
-	<jlayton@kernel.org>, <neilb@suse.de>, <okorniev@redhat.com>,
-	<Dai.Ngo@oracle.com>, <tom@talpey.com>, <davem@davemloft.net>,
-	<edumazet@google.com>, <kuba@kernel.org>, <pabeni@redhat.com>,
-	<jmorris@namei.org>, <linux-sh@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-	<linux-mm@kvack.org>, <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
-	<linux-security-module@vger.kernel.org>, <wangkefeng.wang@huawei.com>
-From: yukaixiong <yukaixiong@huawei.com>
-Message-ID: <3f2bf67a-e37b-f6aa-b0de-3c05d19a5f02@huawei.com>
-Date: Tue, 27 Aug 2024 10:43:57 +0800
-User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; rv:45.0) Gecko/20100101
- Thunderbird/45.7.1
+	s=arc-20240116; t=1724729607; c=relaxed/simple;
+	bh=cijOwHKpKAsGe2raRwTDNWk6X/WEHh5CmaToPYhrWqM=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=hL4n2rvd5Fgx8bO4IET7ppF1Z0XVBG4ogctqfn1nh4p12rXvZKUIIcROCQ8r6j7aFF91hrokitwiVF+gURGGcq1rJLqXpx9aTDLRua+59X0AxVR/vh44QflCnsNC7vghIhXH6yUqDtz+CeveAnxsN67yUYzzpuqO758UK2zzu80=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=fnDQ7Grv; arc=none smtp.client-ip=90.155.50.34
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="fnDQ7Grv"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=NU1cB0bm9+5+AnigtBB6FgsC6ItxiV1eaE/bQA93zmk=; b=fnDQ7Grvw+WZwRewFPWS/1Z4Ln
+	3US/Lw0slAVAWlbW+48FxNcnQn3wl3fRkzoVxo0kWcajcVMhw4oyKxxjkmAM7yIlNJhtXbwBKBwux
+	VJuUw44ZQQs5GSriT3vnM530i/Zs91Y6smbbXFCWjE/IZA97ExYxzXEYLr+5kzNTMB+f82+X/d8c7
+	GUkNfufPKEiFrguQJI2j1taL2auDCz27XrdWL7RkJrAj7eTwpfqe8+1sIJ4HH/A20kkC3xB3CsFOQ
+	tSdrTHY4HLKyb1spQ3lDIU2/zhKDImTJQzzTR5SHOOtwuFsKYP4vdCzXB99BiRAawtQ3b/ae5tJ5g
+	gbI3YM8A==;
+Received: from willy by casper.infradead.org with local (Exim 4.98 #2 (Red Hat Linux))
+	id 1simxN-0000000GKhn-10lI;
+	Tue, 27 Aug 2024 03:33:21 +0000
+Date: Tue, 27 Aug 2024 04:33:21 +0100
+From: Matthew Wilcox <willy@infradead.org>
+To: Hongbo Li <lihongbo22@huawei.com>
+Cc: kees@kernel.org, andy@kernel.org, akpm@linux-foundation.org,
+	trondmy@kernel.org, anna@kernel.org, gregkh@linuxfoundation.org,
+	linux-hardening@vger.kernel.org, linux-mm@kvack.org,
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH -next v3 3/3] nfs make use of str_false_true helper
+Message-ID: <Zs1JAfGWQOZMfHKT@casper.infradead.org>
+References: <20240827024517.914100-1-lihongbo22@huawei.com>
+ <20240827024517.914100-4-lihongbo22@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <CAHC9VhS4TKvTyUB+H6cQNjRFbssGRM-U6S-X7011bSv7bHiQqg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"; format=flowed
-Content-Transfer-Encoding: 8bit
-X-ClientProxiedBy: dggpeml500026.china.huawei.com (7.185.36.106) To
- kwepemh100016.china.huawei.com (7.202.181.102)
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20240827024517.914100-4-lihongbo22@huawei.com>
 
+On Tue, Aug 27, 2024 at 10:45:17AM +0800, Hongbo Li wrote:
+> The helper str_false_true is introduced to reback "false/true"
+> string literal. We can simplify this format by str_false_true.
 
+This seems unnecessarily verbose & complex.  How about:
 
-On 2024/8/27 9:56, Paul Moore wrote:
-> On Mon, Aug 26, 2024 at 9:38 PM yukaixiong <yukaixiong@huawei.com> wrote:
->> On 2024/8/27 6:49, Paul Moore wrote:
->>> On Mon, Aug 26, 2024 at 8:05 AM Kaixiong Yu <yukaixiong@huawei.com> wrote:
->>>> The dac_mmap_min_addr belongs to min_addr.c, move it into
->>>> its own file from /kernel/sysctl.c. In the previous Linux kernel
->>>> boot process, sysctl_init_bases needs to be executed before
->>>> init_mmap_min_addr, So, register_sysctl_init should be executed
->>>> before update_mmap_min_addr in init_mmap_min_addr.
->>>>
->>>> Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
->>>> ---
->>>>    kernel/sysctl.c     |  9 ---------
->>>>    security/min_addr.c | 11 +++++++++++
->>>>    2 files changed, 11 insertions(+), 9 deletions(-)
->>>>
->>>> diff --git a/kernel/sysctl.c b/kernel/sysctl.c
->>>> index 41d4afc978e6..0c0bab3dad7d 100644
->>>> --- a/kernel/sysctl.c
->>>> +++ b/kernel/sysctl.c
->>>> @@ -2059,15 +2059,6 @@ static struct ctl_table vm_table[] = {
->>>>                   .proc_handler   = proc_dointvec_minmax,
->>>>                   .extra1         = SYSCTL_ZERO,
->>>>           },
->>>> -#ifdef CONFIG_MMU
->>>> -       {
->>>> -               .procname       = "mmap_min_addr",
->>>> -               .data           = &dac_mmap_min_addr,
->>>> -               .maxlen         = sizeof(unsigned long),
->>>> -               .mode           = 0644,
->>>> -               .proc_handler   = mmap_min_addr_handler,
->>>> -       },
->>>> -#endif
->>>>    #if (defined(CONFIG_X86_32) && !defined(CONFIG_UML))|| \
->>>>       (defined(CONFIG_SUPERH) && defined(CONFIG_VSYSCALL))
->>>>           {
->>>> diff --git a/security/min_addr.c b/security/min_addr.c
->>>> index 0ce267c041ab..b2f61649e110 100644
->>>> --- a/security/min_addr.c
->>>> +++ b/security/min_addr.c
->>>> @@ -44,8 +44,19 @@ int mmap_min_addr_handler(const struct ctl_table *table, int write,
->>>>           return ret;
->>>>    }
->>>>
->>>> +static struct ctl_table min_addr_sysctl_table[] = {
->>>> +       {
->>>> +               .procname       = "mmap_min_addr",
->>>> +               .data           = &dac_mmap_min_addr,
->>>> +               .maxlen         = sizeof(unsigned long),
->>>> +               .mode           = 0644,
->>>> +               .proc_handler   = mmap_min_addr_handler,
->>>> +       },
->>>> +};
->>> I haven't chased all of the Kconfig deps to see if there is a problem,
->>> but please provide a quick explanation in the commit description about
->>> why it is okay to drop the CONFIG_MMU check.
->> According to the compilation condition in security/Makefile:
->>
->>                 obj-$(CONFIG_MMU)            += min_addr.o
->>
->> if CONFIG_MMU is not defined, min_addr.c would not be included in the
->> compilation process.
->> So，it is okay to drop the CONFIG_MMU check.
-> Great, please add some text about that in the commit description as it
-> is an important difference in the code changes that isn't currently
-> documented in the patch.
-ok, I will add the related text in this patch series v2.
+	dprintk("%s: link support=%s\n", __func__, strbool(*res != 0));
 
+> -	dprintk("%s: link support=%s\n", __func__, *res == 0 ? "false" : "true");
+> +	dprintk("%s: link support=%s\n", __func__, str_false_true(*res == 0));
+
+(do we have a convention for the antonym of kstrtoX?)
