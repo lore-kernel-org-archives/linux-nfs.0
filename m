@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 04CE319D8AF;
-	Thu,  5 Sep 2024 15:31:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4262119DF4C;
+	Thu,  5 Sep 2024 15:31:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1725550283; cv=none; b=j9JStY8hnMpjrOUzQmjJ0oImPqJ0z2JNpwbxe6WgBuoCnB7QGkquKVGjPlh8mMvaNOMU41M9E2dAudIiA5SWV8Ioy++pS/WODE2lf/FwO7qQzbaK53jCSgw9wqqGkvaD+k08L7GAR2IwLVNmWnIlnqM7fEZIzntnBtnNa5/AaxM=
+	t=1725550286; cv=none; b=MFN2MYFnXvTL2es7ycf7WtAVdaXawMuVnPZikfGj40wOsnBebkyVo5N5i8YMJM4l5LlgZ6swDZrG6AY2T9nEG7rQlEFzxICT2xSSPYfRLyitOR0pPxkn1Y4P6jn0+V+lS3rMKL41oKnhD+Pg/lPBrEU1IDUayWqdvIG0FJdbv1Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1725550283; c=relaxed/simple;
-	bh=YVyi2Qv13rn4pqrFEjMQPcuYB779gqvAvF1xg+vl2+U=;
+	s=arc-20240116; t=1725550286; c=relaxed/simple;
+	bh=fjM7Ja8K79kwkQ2MC6WZl8VEdzyTtr5c7wks7Z7H1jQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=THl1JaN0WOI3yZLs6jLpOwZBMuUlkCLVaASVO6pJzGesDBZxQTnUXQ2lgL1LtHsj0kqPGbPeG2dc54SrdRCbTc47BTzYhhOZjJABIli98Z3n3tg9Hs9kMs8I0INQjU3SLAQkbtzB7r7b7pLeh5epp2hHYG2aUy0UEjkM2/E6Ny8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=r2nFKEPz; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=q6kNbQFeHoyNup4XJka3qd8i6yAFgDJFkaytCfSCzA0YUZZ0o0L1bv9iFNuTygPGwoM4CTGYNobAMRMBIbzhrIjXVMVlMw9rmROJ7sKmx0sT6AMisTe0bCd78RM7+7lP1FsFKFfmmywl3rGAOcOQCvvIjJpoL+6Bl/VCUGEFPoI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=InDIr5DM; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="r2nFKEPz"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 25988C4CEC5;
-	Thu,  5 Sep 2024 15:31:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="InDIr5DM"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1941FC4CEC9;
+	Thu,  5 Sep 2024 15:31:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1725550282;
-	bh=YVyi2Qv13rn4pqrFEjMQPcuYB779gqvAvF1xg+vl2+U=;
+	s=k20201202; t=1725550284;
+	bh=fjM7Ja8K79kwkQ2MC6WZl8VEdzyTtr5c7wks7Z7H1jQ=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=r2nFKEPzYxv3UPBa/wl/8UTldkNxL/zmv5Mb5VGb7MdUPVJ4EQCFubkLiPhzOErb8
-	 LK3OHZC9nUpvH5a1hNxQc1cIAbD/XRaq+NMmAo8wlFCSKPC6n7B/wH+Qg7N8Apk5jp
-	 wguxbnam3/Nq7EyoJjMOk9JollJ7bibidpNWWD0HgGtBDXZMjW8TBbNgCknV/Hy9Te
-	 QWZ9xqOUmutNUO1GaBcdPq5hg2WoQeRt8wbrCRBTP5ZMW25VhZcq+H4CTAySydOSgU
-	 WcBOz8PSyc7UkH1qAl9N3extJC+sF9x5fLASr7LUXAM3+zGgIKYHEy1D0D3QzkzmLz
-	 uFaCOJndhYFjQ==
+	b=InDIr5DMOwwzeB18bHfeZX5irzmWjdA/339CIwtL1mNBLThxiI1YScS54vIAVbBgL
+	 7hMOrtIDhIfiK8JYQ5A/TqQcfwfKSWswk4tDz5hPTlcNZcP/BaZu/b2iX1RA+wTZhB
+	 0GgMIsXTGUUL57gnzR2s4sLfzxpOucv5NieoABU3C4aB5AgxJdq2ugaMovZRG3bLXk
+	 CqEr6/Y+5GNR/ycqxkDIJXkbCgOJfdewvVxa8YnnO2Z//wDByo0iPhZ3O3TQoj2iyy
+	 NIdaA6SZJkOYoMc9Sqg3y0HrusNSSgmpLALNVMAiZWiK4i870e6kk5YWeMUSROQw5g
+	 VipY3mJ7wwstw==
 From: cel@kernel.org
 To: <stable@vger.kernel.org>
 Cc: <linux-nfs@vger.kernel.org>,
@@ -34,10 +34,11 @@ Cc: <linux-nfs@vger.kernel.org>,
 	calum.mackay@oracle.com,
 	kernel-team@fb.com,
 	Chuck Lever <chuck.lever@oracle.com>,
+	Amir Goldstein <amir73il@gmail.com>,
 	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 5.10.y 06/19] NFSD: Refactor the duplicate reply cache shrinker
-Date: Thu,  5 Sep 2024 11:30:48 -0400
-Message-ID: <20240905153101.59927-7-cel@kernel.org>
+Subject: [PATCH 5.10.y 08/19] NFSD: Rewrite synopsis of nfsd_percpu_counters_init()
+Date: Thu,  5 Sep 2024 11:30:50 -0400
+Message-ID: <20240905153101.59927-9-cel@kernel.org>
 X-Mailer: git-send-email 2.45.1
 In-Reply-To: <20240905153101.59927-1-cel@kernel.org>
 References: <20240905153101.59927-1-cel@kernel.org>
@@ -47,135 +48,63 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-[ Upstream commit c135e1269f34dfdea4bd94c11060c83a3c0b3c12 ]
+[ Upstream commit 5ec39944f874e1ecc09f624a70dfaa8ac3bf9d08 ]
 
-Avoid holding the bucket lock while freeing cache entries. This
-change also caps the number of entries that are freed when the
-shrinker calls to reduce the shrinker's impact on the cache's
-effectiveness.
+In function ‘export_stats_init’,
+    inlined from ‘svc_export_alloc’ at fs/nfsd/export.c:866:6:
+fs/nfsd/export.c:337:16: warning: ‘nfsd_percpu_counters_init’ accessing 40 bytes in a region of size 0 [-Wstringop-overflow=]
+  337 |         return nfsd_percpu_counters_init(&stats->counter, EXP_STATS_COUNTERS_NUM);
+      |                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+fs/nfsd/export.c:337:16: note: referencing argument 1 of type ‘struct percpu_counter[0]’
+fs/nfsd/stats.h: In function ‘svc_export_alloc’:
+fs/nfsd/stats.h:40:5: note: in a call to function ‘nfsd_percpu_counters_init’
+   40 | int nfsd_percpu_counters_init(struct percpu_counter counters[], int num);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~
 
+Cc: Amir Goldstein <amir73il@gmail.com>
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Stable-dep-of: 93483ac5fec6 ("nfsd: expose /proc/net/sunrpc/nfsd in net namespaces")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfscache.c | 86 ++++++++++++++++++++++------------------------
- 1 file changed, 41 insertions(+), 45 deletions(-)
+ fs/nfsd/stats.c | 2 +-
+ fs/nfsd/stats.h | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index e60313ce0fb6..7e1a53c10a7c 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -309,51 +309,16 @@ nfsd_prune_bucket_locked(struct nfsd_net *nn, struct nfsd_drc_bucket *b,
- 	}
- }
+diff --git a/fs/nfsd/stats.c b/fs/nfsd/stats.c
+index 777e24e5da33..1fe6488a1cf9 100644
+--- a/fs/nfsd/stats.c
++++ b/fs/nfsd/stats.c
+@@ -74,7 +74,7 @@ static int nfsd_show(struct seq_file *seq, void *v)
  
--static long prune_bucket(struct nfsd_drc_bucket *b, struct nfsd_net *nn,
--			 unsigned int max)
--{
--	struct svc_cacherep *rp, *tmp;
--	long freed = 0;
--
--	list_for_each_entry_safe(rp, tmp, &b->lru_head, c_lru) {
--		/*
--		 * Don't free entries attached to calls that are still
--		 * in-progress, but do keep scanning the list.
--		 */
--		if (rp->c_state == RC_INPROG)
--			continue;
--		if (atomic_read(&nn->num_drc_entries) <= nn->max_drc_entries &&
--		    time_before(jiffies, rp->c_timestamp + RC_EXPIRE))
--			break;
--		nfsd_reply_cache_free_locked(b, rp, nn);
--		if (max && freed++ > max)
--			break;
--	}
--	return freed;
--}
--
--/*
-- * Walk the LRU list and prune off entries that are older than RC_EXPIRE.
-- * Also prune the oldest ones when the total exceeds the max number of entries.
-+/**
-+ * nfsd_reply_cache_count - count_objects method for the DRC shrinker
-+ * @shrink: our registered shrinker context
-+ * @sc: garbage collection parameters
-+ *
-+ * Returns the total number of entries in the duplicate reply cache. To
-+ * keep things simple and quick, this is not the number of expired entries
-+ * in the cache (ie, the number that would be removed by a call to
-+ * nfsd_reply_cache_scan).
-  */
--static long
--prune_cache_entries(struct nfsd_net *nn)
--{
--	unsigned int i;
--	long freed = 0;
--
--	for (i = 0; i < nn->drc_hashsize; i++) {
--		struct nfsd_drc_bucket *b = &nn->drc_hashtbl[i];
--
--		if (list_empty(&b->lru_head))
--			continue;
--		spin_lock(&b->cache_lock);
--		freed += prune_bucket(b, nn, 0);
--		spin_unlock(&b->cache_lock);
--	}
--	return freed;
--}
--
- static unsigned long
- nfsd_reply_cache_count(struct shrinker *shrink, struct shrink_control *sc)
+ DEFINE_PROC_SHOW_ATTRIBUTE(nfsd);
+ 
+-int nfsd_percpu_counters_init(struct percpu_counter counters[], int num)
++int nfsd_percpu_counters_init(struct percpu_counter *counters, int num)
  {
-@@ -363,14 +328,45 @@ nfsd_reply_cache_count(struct shrinker *shrink, struct shrink_control *sc)
- 	return atomic_read(&nn->num_drc_entries);
- }
+ 	int i, err = 0;
  
-+/**
-+ * nfsd_reply_cache_scan - scan_objects method for the DRC shrinker
-+ * @shrink: our registered shrinker context
-+ * @sc: garbage collection parameters
-+ *
-+ * Free expired entries on each bucket's LRU list until we've released
-+ * nr_to_scan freed objects. Nothing will be released if the cache
-+ * has not exceeded it's max_drc_entries limit.
-+ *
-+ * Returns the number of entries released by this call.
-+ */
- static unsigned long
- nfsd_reply_cache_scan(struct shrinker *shrink, struct shrink_control *sc)
- {
- 	struct nfsd_net *nn = container_of(shrink,
- 				struct nfsd_net, nfsd_reply_cache_shrinker);
-+	unsigned long freed = 0;
-+	LIST_HEAD(dispose);
-+	unsigned int i;
+diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
+index 9b43dc3d9991..c3abe1830da5 100644
+--- a/fs/nfsd/stats.h
++++ b/fs/nfsd/stats.h
+@@ -36,9 +36,9 @@ extern struct nfsd_stats	nfsdstats;
  
--	return prune_cache_entries(nn);
-+	for (i = 0; i < nn->drc_hashsize; i++) {
-+		struct nfsd_drc_bucket *b = &nn->drc_hashtbl[i];
-+
-+		if (list_empty(&b->lru_head))
-+			continue;
-+
-+		spin_lock(&b->cache_lock);
-+		nfsd_prune_bucket_locked(nn, b, 0, &dispose);
-+		spin_unlock(&b->cache_lock);
-+
-+		freed += nfsd_cacherep_dispose(&dispose);
-+		if (freed > sc->nr_to_scan)
-+			break;
-+	}
-+
-+	trace_nfsd_drc_gc(nn, freed);
-+	return freed;
- }
-+
- /*
-  * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
-  */
+ extern struct svc_stat		nfsd_svcstats;
+ 
+-int nfsd_percpu_counters_init(struct percpu_counter counters[], int num);
+-void nfsd_percpu_counters_reset(struct percpu_counter counters[], int num);
+-void nfsd_percpu_counters_destroy(struct percpu_counter counters[], int num);
++int nfsd_percpu_counters_init(struct percpu_counter *counters, int num);
++void nfsd_percpu_counters_reset(struct percpu_counter *counters, int num);
++void nfsd_percpu_counters_destroy(struct percpu_counter *counters, int num);
+ int nfsd_stat_init(void);
+ void nfsd_stat_shutdown(void);
+ 
 -- 
 2.45.1
 
