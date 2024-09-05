@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 425B919DF44;
-	Thu,  5 Sep 2024 15:31:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 548C419DF4D;
+	Thu,  5 Sep 2024 15:31:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1725550286; cv=none; b=iYqc3XsTjwaj0nvCYYsrzh3+ER07VsdHZJ6OzUaxFHcTRuiOI4wFiEld29hgDkVcDOrOwcUvAsGNIIyWFKHRXmFJ2WcBALC+XPdGb5bbyobd7IeSQ1B4UI2x+x2KVDhU0bkMTZhDFfIY5Obh20MCHyxrlxdXL8lJ0ofe/TsXOLE=
+	t=1725550286; cv=none; b=Begfgx1f3Dr4pdonIAfHcFq8qQTJXNGThPe1etoOzkjZ3Sx3w7NQ7HnP3b4/cnwAyNWoJhf+I9rLN484mV9AKibIuElMwpDYUzZ3pwl+Vwa16tQjjQn6AybOMNGQjnNdZ/sIcPmtgfplU33XYwBtYQq0OFvl23dwDeVmAg7T6gU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1725550286; c=relaxed/simple;
-	bh=c9LzjEs+YEEjSeQA6IdNWXH+Ub4Fif/LxtCd2j00ft0=;
+	bh=De5/Ub+uqrAP4mvp1EuWfklRk7HtLDgXhbEpyYIDLF8=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=l9vkFKnfh89eWuLbTbPSr5AXu1yzvg8cgcmXImTD9Ro7DaRp76ULHPA4+G7fAe6spc6CSNYR4HHHX5MMttitvQyGeh9wq3QEOCGInnYdMOKsuvQrqy3nxWuq9LEHbmJgkLzPI/Lpa6VqtZnBf4cDmEQ0uBGCC7+pkr8AAsB3IbQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aFoMYa7I; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=JCyohJR31if3qF0f5XKt2QkZoBap9veF2R47sv8rqHjBBw/8zb5Vz6QoQ5ky/leIB2OYNybirLyAZ4yD02jm9De2JSiw9hvOx4gW74w90PSYcON3hnyL6Sxa3N+EPfX+ARa9GNhHIitk6l4khrEj9+g3HesCjhWDoayiNFHj0bY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=a2YGxDF3; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aFoMYa7I"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1EB7DC4CEC7;
-	Thu,  5 Sep 2024 15:31:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="a2YGxDF3"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2B6B5C4CECA;
+	Thu,  5 Sep 2024 15:31:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1725550283;
-	bh=c9LzjEs+YEEjSeQA6IdNWXH+Ub4Fif/LxtCd2j00ft0=;
+	s=k20201202; t=1725550286;
+	bh=De5/Ub+uqrAP4mvp1EuWfklRk7HtLDgXhbEpyYIDLF8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=aFoMYa7IiO4H5RD9naGXo2mhGXnXmk8LhwbIhpTxwm4Vl0SmA7Cq1vh34JZ3D57s0
-	 5onxbD46ZjnmbNzNSC2rhegahu6HBBRUJfWOygYGV5kqRsLnHtLSucyWGPyVTfv5D4
-	 5sHMipnC+EhJrMDoTmmsSj0SRcfrXydOsptb5O5XbrkdpPHloA3jQLC4pVVJ8x7hJ7
-	 ZU6vQaKaGABVeqtvpbPas6IcgUD0PTyTdOaQvBOcIYbhENi1uyQhC9aq3aIunbhy5R
-	 D8GMgWJEJOAHDDQ7+T8h9yMN6WBiE4VyUwTAbFghzF9/eX301eo3/12l8HeVW6hO0G
-	 2fI8/nQfnnNSw==
+	b=a2YGxDF340kjyXs7UFytjtxzIZKkcpBQTSs7S4ZOrGHLRjC0drdTRekpiszmPQrze
+	 e/ScY8O9GtjKlxeQACtzibpkFzjs6fXDRBcZP1/S3voM/LV8xTZ3WKdZdvuWwu6Pud
+	 wTn1wrmR+RbgRI7KTewQ912wzED1vhdXQ2UZNTQw1F0ydARMi82aBdhUqBZzayEqY3
+	 JFWHjKokgmz13CcH50NkbVyLjtdKgsLS+Q4knT5fi2vCko+50ZQX0dOH7V6JYupM6p
+	 WuTY/zoJDSXWVsW9EX5mLhRAVq+3qzR+ljce7BN2lGsDsb3OkK49gQg7ygPAI+btny
+	 dBQykumSgHxPA==
 From: cel@kernel.org
 To: <stable@vger.kernel.org>
 Cc: <linux-nfs@vger.kernel.org>,
@@ -33,11 +33,13 @@ Cc: <linux-nfs@vger.kernel.org>,
 	sherry.yang@oracle.com,
 	calum.mackay@oracle.com,
 	kernel-team@fb.com,
-	NeilBrown <neilb@suse.de>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	kernel test robot <lkp@intel.com>,
+	Amir Goldstein <amir73il@gmail.com>,
 	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 5.10.y 07/19] NFSD: simplify error paths in nfsd_svc()
-Date: Thu,  5 Sep 2024 11:30:49 -0400
-Message-ID: <20240905153101.59927-8-cel@kernel.org>
+Subject: [PATCH 5.10.y 09/19] NFSD: Fix frame size warning in svc_export_parse()
+Date: Thu,  5 Sep 2024 11:30:51 -0400
+Message-ID: <20240905153101.59927-10-cel@kernel.org>
 X-Mailer: git-send-email 2.45.1
 In-Reply-To: <20240905153101.59927-1-cel@kernel.org>
 References: <20240905153101.59927-1-cel@kernel.org>
@@ -49,87 +51,170 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: NeilBrown <neilb@suse.de>
+From: Chuck Lever <chuck.lever@oracle.com>
 
-[ Upstream commit bf32075256e9dd9c6b736859e2c5813981339908 ]
+[ Upstream commit 6939ace1f22681fface7841cdbf34d3204cc94b5 ]
 
-The error paths in nfsd_svc() are needlessly complex and can result in a
-final call to svc_put() without nfsd_last_thread() being called.  This
-results in the listening sockets not being closed properly.
+fs/nfsd/export.c: In function 'svc_export_parse':
+fs/nfsd/export.c:737:1: warning: the frame size of 1040 bytes is larger than 1024 bytes [-Wframe-larger-than=]
+    737 | }
 
-The per-netns setup provided by nfsd_startup_new() and removed by
-nfsd_shutdown_net() is needed precisely when there are running threads.
-So we don't need nfsd_up_before.  We don't need to know if it *was* up.
-We only need to know if any threads are left.  If none are, then we must
-call nfsd_shutdown_net().  But we don't need to do that explicitly as
-nfsd_last_thread() does that for us.
+On my systems, svc_export_parse() has a stack frame of over 800
+bytes, not 1040, but nonetheless, it could do with some reduction.
 
-So simply call nfsd_last_thread() before the last svc_put() if there are
-no running threads.  That will always do the right thing.
+When a struct svc_export is on the stack, it's a temporary structure
+used as an argument, and not visible as an actual exported FS. No
+need to reserve space for export_stats in such cases.
 
-Also discard:
- pr_info("nfsd: last server has exited, flushing export cache\n");
-It may not be true if an attempt to start the first server failed, and
-it isn't particularly helpful and it simply reports normal behaviour.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202310012359.YEw5IrK6-lkp@intel.com/
+Cc: Amir Goldstein <amir73il@gmail.com>
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Stable-dep-of: 4b14885411f7 ("nfsd: make all of the nfsd stats per-network namespace")
+[ cel: adjusted to apply to v5.10.y ]
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfssvc.c | 14 ++++----------
- 1 file changed, 4 insertions(+), 10 deletions(-)
+ fs/nfsd/export.c | 32 +++++++++++++++++++++++---------
+ fs/nfsd/export.h |  4 ++--
+ fs/nfsd/stats.h  | 12 ++++++------
+ 3 files changed, 31 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index a68e9904224a..3fdff9a3b182 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -567,7 +567,6 @@ void nfsd_last_thread(struct net *net)
- 		return;
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 7c863f2c21e0..617a5b6ae6c3 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -339,12 +339,16 @@ static int export_stats_init(struct export_stats *stats)
  
- 	nfsd_shutdown_net(net);
--	pr_info("nfsd: last server has exited, flushing export cache\n");
- 	nfsd_export_flush(net);
+ static void export_stats_reset(struct export_stats *stats)
+ {
+-	nfsd_percpu_counters_reset(stats->counter, EXP_STATS_COUNTERS_NUM);
++	if (stats)
++		nfsd_percpu_counters_reset(stats->counter,
++					   EXP_STATS_COUNTERS_NUM);
  }
  
-@@ -782,7 +781,6 @@ int
- nfsd_svc(int nrservs, struct net *net, const struct cred *cred)
+ static void export_stats_destroy(struct export_stats *stats)
  {
- 	int	error;
--	bool	nfsd_up_before;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	struct svc_serv *serv;
+-	nfsd_percpu_counters_destroy(stats->counter, EXP_STATS_COUNTERS_NUM);
++	if (stats)
++		nfsd_percpu_counters_destroy(stats->counter,
++					     EXP_STATS_COUNTERS_NUM);
+ }
  
-@@ -802,8 +800,6 @@ nfsd_svc(int nrservs, struct net *net, const struct cred *cred)
- 	error = nfsd_create_serv(net);
- 	if (error)
- 		goto out;
--
--	nfsd_up_before = nn->nfsd_net_up;
- 	serv = nn->nfsd_serv;
- 
- 	error = nfsd_startup_net(net, cred);
-@@ -811,17 +807,15 @@ nfsd_svc(int nrservs, struct net *net, const struct cred *cred)
- 		goto out_put;
- 	error = svc_set_num_threads(serv, NULL, nrservs);
- 	if (error)
--		goto out_shutdown;
-+		goto out_put;
- 	error = serv->sv_nrthreads;
--	if (error == 0)
--		nfsd_last_thread(net);
--out_shutdown:
--	if (error < 0 && !nfsd_up_before)
--		nfsd_shutdown_net(net);
- out_put:
- 	/* Threads now hold service active */
- 	if (xchg(&nn->keep_active, 0))
- 		svc_put(serv);
+ static void svc_export_put(struct kref *ref)
+@@ -353,7 +357,8 @@ static void svc_export_put(struct kref *ref)
+ 	path_put(&exp->ex_path);
+ 	auth_domain_put(exp->ex_client);
+ 	nfsd4_fslocs_free(&exp->ex_fslocs);
+-	export_stats_destroy(&exp->ex_stats);
++	export_stats_destroy(exp->ex_stats);
++	kfree(exp->ex_stats);
+ 	kfree(exp->ex_uuid);
+ 	kfree_rcu(exp, ex_rcu);
+ }
+@@ -738,13 +743,15 @@ static int svc_export_show(struct seq_file *m,
+ 	seq_putc(m, '\t');
+ 	seq_escape(m, exp->ex_client->name, " \t\n\\");
+ 	if (export_stats) {
+-		seq_printf(m, "\t%lld\n", exp->ex_stats.start_time);
++		struct percpu_counter *counter = exp->ex_stats->counter;
 +
-+	if (serv->sv_nrthreads == 0)
-+		nfsd_last_thread(net);
- 	svc_put(serv);
- out:
- 	mutex_unlock(&nfsd_mutex);
++		seq_printf(m, "\t%lld\n", exp->ex_stats->start_time);
+ 		seq_printf(m, "\tfh_stale: %lld\n",
+-			   percpu_counter_sum_positive(&exp->ex_stats.counter[EXP_STATS_FH_STALE]));
++			   percpu_counter_sum_positive(&counter[EXP_STATS_FH_STALE]));
+ 		seq_printf(m, "\tio_read: %lld\n",
+-			   percpu_counter_sum_positive(&exp->ex_stats.counter[EXP_STATS_IO_READ]));
++			   percpu_counter_sum_positive(&counter[EXP_STATS_IO_READ]));
+ 		seq_printf(m, "\tio_write: %lld\n",
+-			   percpu_counter_sum_positive(&exp->ex_stats.counter[EXP_STATS_IO_WRITE]));
++			   percpu_counter_sum_positive(&counter[EXP_STATS_IO_WRITE]));
+ 		seq_putc(m, '\n');
+ 		return 0;
+ 	}
+@@ -790,7 +797,7 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_layout_types = 0;
+ 	new->ex_uuid = NULL;
+ 	new->cd = item->cd;
+-	export_stats_reset(&new->ex_stats);
++	export_stats_reset(new->ex_stats);
+ }
+ 
+ static void export_update(struct cache_head *cnew, struct cache_head *citem)
+@@ -826,7 +833,14 @@ static struct cache_head *svc_export_alloc(void)
+ 	if (!i)
+ 		return NULL;
+ 
+-	if (export_stats_init(&i->ex_stats)) {
++	i->ex_stats = kmalloc(sizeof(*(i->ex_stats)), GFP_KERNEL);
++	if (!i->ex_stats) {
++		kfree(i);
++		return NULL;
++	}
++
++	if (export_stats_init(i->ex_stats)) {
++		kfree(i->ex_stats);
+ 		kfree(i);
+ 		return NULL;
+ 	}
+diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+index d03f7f6a8642..f73e23bb24a1 100644
+--- a/fs/nfsd/export.h
++++ b/fs/nfsd/export.h
+@@ -64,10 +64,10 @@ struct svc_export {
+ 	struct cache_head	h;
+ 	struct auth_domain *	ex_client;
+ 	int			ex_flags;
++	int			ex_fsid;
+ 	struct path		ex_path;
+ 	kuid_t			ex_anon_uid;
+ 	kgid_t			ex_anon_gid;
+-	int			ex_fsid;
+ 	unsigned char *		ex_uuid; /* 16 byte fsid */
+ 	struct nfsd4_fs_locations ex_fslocs;
+ 	uint32_t		ex_nflavors;
+@@ -76,7 +76,7 @@ struct svc_export {
+ 	struct nfsd4_deviceid_map *ex_devid_map;
+ 	struct cache_detail	*cd;
+ 	struct rcu_head		ex_rcu;
+-	struct export_stats	ex_stats;
++	struct export_stats	*ex_stats;
+ };
+ 
+ /* an "export key" (expkey) maps a filehandlefragement to an
+diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
+index c3abe1830da5..ac58c4b2ab70 100644
+--- a/fs/nfsd/stats.h
++++ b/fs/nfsd/stats.h
+@@ -60,22 +60,22 @@ static inline void nfsd_stats_rc_nocache_inc(void)
+ static inline void nfsd_stats_fh_stale_inc(struct svc_export *exp)
+ {
+ 	percpu_counter_inc(&nfsdstats.counter[NFSD_STATS_FH_STALE]);
+-	if (exp)
+-		percpu_counter_inc(&exp->ex_stats.counter[EXP_STATS_FH_STALE]);
++	if (exp && exp->ex_stats)
++		percpu_counter_inc(&exp->ex_stats->counter[EXP_STATS_FH_STALE]);
+ }
+ 
+ static inline void nfsd_stats_io_read_add(struct svc_export *exp, s64 amount)
+ {
+ 	percpu_counter_add(&nfsdstats.counter[NFSD_STATS_IO_READ], amount);
+-	if (exp)
+-		percpu_counter_add(&exp->ex_stats.counter[EXP_STATS_IO_READ], amount);
++	if (exp && exp->ex_stats)
++		percpu_counter_add(&exp->ex_stats->counter[EXP_STATS_IO_READ], amount);
+ }
+ 
+ static inline void nfsd_stats_io_write_add(struct svc_export *exp, s64 amount)
+ {
+ 	percpu_counter_add(&nfsdstats.counter[NFSD_STATS_IO_WRITE], amount);
+-	if (exp)
+-		percpu_counter_add(&exp->ex_stats.counter[EXP_STATS_IO_WRITE], amount);
++	if (exp && exp->ex_stats)
++		percpu_counter_add(&exp->ex_stats->counter[EXP_STATS_IO_WRITE], amount);
+ }
+ 
+ static inline void nfsd_stats_payload_misses_inc(struct nfsd_net *nn)
 -- 
 2.45.1
 
