@@ -1,37 +1,37 @@
 Received: from mx0a-0064b401.pphosted.com (mx0a-0064b401.pphosted.com [205.220.166.238])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80846158203
-	for <linux-nfs@vger.kernel.org>; Sun,  8 Sep 2024 11:43:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9A0936B0D
+	for <linux-nfs@vger.kernel.org>; Sun,  8 Sep 2024 12:12:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.166.238
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1725795802; cv=none; b=VKiWGgLh6MNdfkRR4Jx6tCvrnhPrneNDUS6l8DkvM9Sbm1L3mhmze2dSJ5/ft9KcocAfjOS707obpVCn4Ez9ywN2FccG65bHaifr9RcZzQCI84KfpzMcgV6l054ciyOBjWzeGHdyVX2ZiMhnAiO8Hi62vnRDbe+0t3nhkCdvG64=
+	t=1725797545; cv=none; b=iTQFIukeoxe+N27r6MX6n5qiX5cn/NJwldLtvfQJSIs/1JXYR3bCyO9PD79nXaF8Uw98NwM0vxADsXw3Ow7Vthkqrg4d/4vRTfL49cSr6AEgKTCtkiZVeEmUN3HV17Sad4pkrJz/iouVMVxEk8/Zg+I9WN05Hink9ODKDGUyEms=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1725795802; c=relaxed/simple;
+	s=arc-20240116; t=1725797545; c=relaxed/simple;
 	bh=MGS/t7x6CFK1Ff3es3+Kp7U2+qdPaCL1662Aqr6R01Y=;
-	h=From:To:Subject:Date:Message-ID:MIME-Version:Content-Type; b=KxphBpS6oc87S8f88V1oyvK1F83qPFpz8OBpusUZ0fOwZVFmLbORPY2LukY/LysSDvMjGRnD+Y8TePtN5m0FdU7DmclL4OxoC9iGfMq1oD4FOigId6ahJD0f7+JcPPInq8388zJYIbg6vTm94lpTDopKdWaCdCqCS0kX1Zr1oHI=
+	h=From:To:Subject:Date:Message-ID:MIME-Version:Content-Type; b=d75lQfscozaI4Yz9fgrcRgCZd3McROSeLFMA3Nh6tcQb44H/5WF0bmVGH1ttjem2JPr7SVrB9VZPrGkgi+1XhiB8muVcvCNrePu9kbEc4XFxCaucCTtSaGah5twyGv4NUvoiHmVup780R/nxK+rxKYrPA3jcRh/G9Itew43N76I=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com; spf=pass smtp.mailfrom=windriver.com; arc=none smtp.client-ip=205.220.166.238
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=windriver.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=windriver.com
 Received: from pps.filterd (m0250809.ppops.net [127.0.0.1])
-	by mx0a-0064b401.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 488BF3J0023946
-	for <linux-nfs@vger.kernel.org>; Sun, 8 Sep 2024 04:43:13 -0700
-Received: from ala-exchng02.corp.ad.wrs.com (ala-exchng02.wrs.com [147.11.82.254])
-	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 41gpbk0n36-1
+	by mx0a-0064b401.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 488BuSar018023
+	for <linux-nfs@vger.kernel.org>; Sun, 8 Sep 2024 05:12:23 -0700
+Received: from ala-exchng01.corp.ad.wrs.com (ala-exchng01.wrs.com [147.11.82.252])
+	by mx0a-0064b401.pphosted.com (PPS) with ESMTPS id 41gpbk0ngj-2
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=NOT)
-	for <linux-nfs@vger.kernel.org>; Sun, 08 Sep 2024 04:43:12 -0700 (PDT)
+	for <linux-nfs@vger.kernel.org>; Sun, 08 Sep 2024 05:12:23 -0700 (PDT)
 Received: from ala-exchng01.corp.ad.wrs.com (147.11.82.252) by
- ALA-EXCHNG02.corp.ad.wrs.com (147.11.82.254) with Microsoft SMTP Server
+ ala-exchng01.corp.ad.wrs.com (147.11.82.252) with Microsoft SMTP Server
  (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256) id
- 15.1.2507.39; Sun, 8 Sep 2024 04:43:12 -0700
+ 15.1.2507.39; Sun, 8 Sep 2024 05:12:17 -0700
 Received: from ala-lpggp7.wrs.com (147.11.136.210) by
  ala-exchng01.corp.ad.wrs.com (147.11.82.252) with Microsoft SMTP Server id
- 15.1.2507.39 via Frontend Transport; Sun, 8 Sep 2024 04:43:12 -0700
+ 15.1.2507.39 via Frontend Transport; Sun, 8 Sep 2024 05:12:17 -0700
 From: <liezhi.yang@windriver.com>
 To: <linux-nfs@vger.kernel.org>
 Subject: [nfs-utils PATCH 1/2] support/include/junction.h: Define macros for musl
-Date: Sun, 8 Sep 2024 04:43:11 -0700
-Message-ID: <20240908114312.3883312-1-liezhi.yang@windriver.com>
+Date: Sun, 8 Sep 2024 05:12:16 -0700
+Message-ID: <20240908121217.967390-1-liezhi.yang@windriver.com>
 X-Mailer: git-send-email 2.25.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -41,17 +41,17 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
-X-Proofpoint-GUID: __pBueujIbQ1VSCFVjuTiE7xwKy_JMrg
-X-Authority-Analysis: v=2.4 cv=Ye3v5BRf c=1 sm=1 tr=0 ts=66dd8dd0 cx=c_pps a=K4BcnWQioVPsTJd46EJO2w==:117 a=K4BcnWQioVPsTJd46EJO2w==:17 a=EaEq8P2WXUwA:10 a=t7CeM3EgAAAA:8 a=ShGS3BTFOA_Yc9cHPcMA:9 a=FdTzh2GWekK77mhwV6Dw:22
-X-Proofpoint-ORIG-GUID: __pBueujIbQ1VSCFVjuTiE7xwKy_JMrg
+X-Proofpoint-GUID: 3Uc-Y0Xt0gKmxjk8IKaQLxGVASQ-KcES
+X-Authority-Analysis: v=2.4 cv=Ye3v5BRf c=1 sm=1 tr=0 ts=66dd94a7 cx=c_pps a=/ZJR302f846pc/tyiSlYyQ==:117 a=/ZJR302f846pc/tyiSlYyQ==:17 a=EaEq8P2WXUwA:10 a=t7CeM3EgAAAA:8 a=ShGS3BTFOA_Yc9cHPcMA:9 a=FdTzh2GWekK77mhwV6Dw:22
+X-Proofpoint-ORIG-GUID: 3Uc-Y0Xt0gKmxjk8IKaQLxGVASQ-KcES
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1039,Hydra:6.0.680,FMLib:17.12.60.29
- definitions=2024-09-08_02,2024-09-06_01,2024-09-02_01
+ definitions=2024-09-08_04,2024-09-06_01,2024-09-02_01
 X-Proofpoint-Spam-Details: rule=outbound_notspam policy=outbound score=0 impostorscore=0 adultscore=0
- spamscore=0 mlxlogscore=747 clxscore=1011 bulkscore=0 malwarescore=0
+ spamscore=0 mlxlogscore=744 clxscore=1015 bulkscore=0 malwarescore=0
  mlxscore=0 lowpriorityscore=0 phishscore=0 suspectscore=0
  priorityscore=1501 classifier=spam authscore=0 adjust=0 reason=mlx
- scancount=1 engine=8.21.0-2408220000 definitions=main-2409080097
+ scancount=1 engine=8.21.0-2408220000 definitions=main-2409080102
 
 From: Robert Yang <liezhi.yang@windriver.com>
 
