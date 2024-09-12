@@ -1,41 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D7341D52B;
-	Thu, 12 Sep 2024 13:02:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 90B461A724B;
+	Thu, 12 Sep 2024 13:02:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1726146161; cv=none; b=LWX+t5KXd2LD6+MbSBpDhecjMaqom2nycaJNimz8Bb/oXySjRcD9knw5nYw7dLEuTbdoIlDGiEhh7hzqPIckA9GHHcOqAmuFkNqPLHlNE2sHF9sjxoiUI8dYaz2tiPya7cRGwMoNgbhgbJi51rAqgEiSRBQ3Irm/IWBgDB1kLvM=
+	t=1726146161; cv=none; b=CAKGTGvKPqhV2yJp0oztuqNLqNimValUs0IR+AAkuN7+EXv5NfANMCOItMxB6REAscRdB/zsJoxJtprUMsDOe+enfzOOa2PX4UUNkf2VZWDnlbOC77z0YAYEhyeCLblmYuua4bkxH+n6qDBpxO+tBNV+41OCMVI5Cd0PYvqqWV0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1726146161; c=relaxed/simple;
-	bh=DhkEH8ExzFb5xrRh5wL4/exJl72OCo+ono29/8YfNxo=;
+	bh=8NnT5GcEEYmNpynFrCa/PdBFk8587dLDSKFdhXjTYvY=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=oEl57XeQyZYz4/PpfHVnjAVO+mzP1DHm8bMhAJsj6MJB6Mir8+rTD7M30ley00Ll2LIoo8jTcIeMRPWaT3r01Usz1fp7/x1JYO3NrwmO07DSke3UPtMc261qUt1WPj36vpBkXJo2qw2XMBObBxsQoUlwXCQq6wJqB7efobTam5w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bbDXu4Vb; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=V67mYshBF04PASdwxHP66YSj3Skn38mC0LCsbLbotvYthY6Ws1ZXEQ8a3UELf6a4gSkFPKNiiOyxF0Bq+Gh0205K4ZNzvPwBZ9DStCoXrn/uoHJ+oF4LNs/13ANavby0PUaTw1Q7L3UHSuQIXFm2Pah0xcIuYHE4qomuFIMKWkk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=rJQOTpfc; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bbDXu4Vb"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A835CC4CECC;
-	Thu, 12 Sep 2024 13:02:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="rJQOTpfc"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 319FEC4CED5;
+	Thu, 12 Sep 2024 13:02:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1726146160;
-	bh=DhkEH8ExzFb5xrRh5wL4/exJl72OCo+ono29/8YfNxo=;
+	s=k20201202; t=1726146161;
+	bh=8NnT5GcEEYmNpynFrCa/PdBFk8587dLDSKFdhXjTYvY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=bbDXu4Vbs2li49y06D9uXknvzsgdhVblx8o7SmcwgvuFkYOyBxhw/r1wrv7IJ/VgX
-	 iR7dvoBBz38agIOmm92Fnaxka27pRmejtuOcWmcQCs7jSsLn0+2oZmYktsqJmXhK7g
-	 YGFJLgYsO6vDbV0zV2ThoZ6YWKGudB3GE7i50RmUcP9pzPQRxAZ2PEqt6wJDX7Mh7f
-	 ro/xSKx5s+i3zw3wLqBHE39WsREl2kk7GPvQn8bi5h7438XY3bPkxladoSeo9vSi8U
-	 aaij2zA5UurcsmIK7JJwPiQWQosGZqVAt511V+j5vYJ6XWPuiFgcmcWi7ho3VoaZ7J
-	 3RmDzG4VWTiLA==
+	b=rJQOTpfcIWk1NVNqFo9JqHoubAl88u+eQ7oGyxtJ207285fZo5KjYLikDJJW0NcOV
+	 OWQ6IcCWJu3a2/yiTZNeMK51RXxPtr0Bfq21pPAbb2yPDfc09irLU6zlYJf8sU90e7
+	 31hvwOLmUgYR7M7wYZISh7LL3qFy0FJlNSkRxmn7UYhoz/DQwAulnUkF0yX/JNfPu+
+	 CNrfC8TMMiKxJI4BDJ9S+SzSpYbeBynEKfEQLzrrb7Vv0F39CFBwzPsn1/Is605Tmm
+	 qwBw3k28nmf9u5Bj203fBFDjXzM73aF1sM8n6zlmcLxPWHpP7wfTwAyDBXKZXk31ME
+	 ayvXToHbNJMkw==
 Received: by pali.im (Postfix)
-	id B4368A4E; Thu, 12 Sep 2024 15:02:35 +0200 (CEST)
+	id 4600CC46; Thu, 12 Sep 2024 15:02:36 +0200 (CEST)
 From: =?UTF-8?q?Pali=20Roh=C3=A1r?= <pali@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH 2/5] nfs: Propagate AUTH_NULL/AUTH_UNIX PATHCONF NFS3ERR_ACCESS failures
-Date: Thu, 12 Sep 2024 15:02:17 +0200
-Message-Id: <20240912130220.17032-3-pali@kernel.org>
+Subject: [PATCH 5/5] nfs: Remove duplicate debug message 'using auth flavor'
+Date: Thu, 12 Sep 2024 15:02:20 +0200
+Message-Id: <20240912130220.17032-6-pali@kernel.org>
 X-Mailer: git-send-email 2.39.2
 In-Reply-To: <20240912130220.17032-1-pali@kernel.org>
 References: <20240912130220.17032-1-pali@kernel.org>
@@ -48,53 +48,28 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-Linux NFS3 server returns NFS3ERR_ACCESS for PATHCONF procedure if
-client-selected auth flavor is not enabled for export which is being
-mounted. Ignoring this error results in choosing wrong auth flavor during
-mount and so making the mount point inaccessible. It is because Linux NFS3
-server allows to call other procedures used during mount time (FSINFO and
-GETATTR) also with auth flavor which is explicitly disabled on particular
-export.
-
-This is particularly problem with mounting AUTH_NULL-only exports from
-Linux NFS3 server as kernel client first try to use AUTH_UNIX auth flavor,
-even when AUTH_UNIX is not announced by the MNTv3 server.
-
-Do not propagate this failure for other auth methods, like GSS, as Linux
-NFS3 server expects that accessing root export GSS dir may be done also by
-other auth methods.
+Function nfs_verify_authflavors() prints debug message 'using auth flavor'
+on success. So not print same debug message after nfs_verify_authflavors()
+call again.
 
 Signed-off-by: Pali Rohár <pali@kernel.org>
-Cc: stable@vger.kernel.org
 ---
- fs/nfs/client.c | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
+ fs/nfs/super.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 8286edd6062d..5171ae112355 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -864,7 +864,19 @@ static int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *mntfh, str
- 		pathinfo.fattr = fattr;
- 		nfs_fattr_init(fattr);
- 
--		if (clp->rpc_ops->pathconf(server, mntfh, &pathinfo) >= 0)
-+		error = clp->rpc_ops->pathconf(server, mntfh, &pathinfo);
-+		/*
-+		 * Linux NFS3 server for PATHCONF procedure returns back error
-+		 * NFS3ERR_ACCESS when selected auth flavor is not enabled for
-+		 * export. For auth flavors without authentication (none and
-+		 * sys) propagate error back to nfs_probe_server() caller and
-+		 * allow to choose different auth flavor.
-+		 */
-+		if (error == -EACCES && (
-+		     server->client->cl_auth->au_flavor == RPC_AUTH_UNIX ||
-+		     server->client->cl_auth->au_flavor == RPC_AUTH_NULL))
-+			return error;
-+		else if (error >= 0)
- 			server->namelen = pathinfo.max_namelen;
- 	}
- 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 86d98d15ee22..be487118cedc 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -938,8 +938,6 @@ static struct nfs_server *nfs_try_mount_request(struct fs_context *fc)
+ 	 */
+ 	if (ctx->auth_info.flavor_len > 0) {
+ 		status = nfs_verify_authflavors(ctx, authlist, authlist_len);
+-		dfprintk(MOUNT, "NFS: using auth flavor %u\n",
+-			 ctx->selected_flavor);
+ 		if (status)
+ 			return ERR_PTR(status);
+ 		return ctx->nfs_mod->rpc_ops->create_server(fc);
 -- 
 2.20.1
 
