@@ -1,117 +1,103 @@
-Received: from mail-pl1-f173.google.com (mail-pl1-f173.google.com [209.85.214.173])
+Received: from mail-ua1-f53.google.com (mail-ua1-f53.google.com [209.85.222.53])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D9681946AA;
-	Mon, 30 Sep 2024 16:46:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BF896194A5A
+	for <linux-nfs@vger.kernel.org>; Mon, 30 Sep 2024 16:46:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.53
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1727714804; cv=none; b=ik1EqUmQWvcFXq8/m/mn+1syl6nBg0RrWwUJv5KYHq86M5UccLO55ZxVGSDjPaSSSktILhyYNMYVLkCUnJ8JDAhRCPQSUXGk6wTHwbRA6X5AfG2djAyYhiqhi7nh9did/zWUV0oIgC4Jh7N10Svs0ND5XUaKmMIOJzMOm7ZL35g=
+	t=1727714805; cv=none; b=WVmcyDKV6IdUE3Ay05dHJUO+oJtIBsAVZ7h7pSv1kcQkBiL28JnhXkQVMA6GO+SC/QM3b6Rn0ALVuxyvYLc8P5K+YVk6KAv7N9zN4dpa19enuqYp0G7ZKUoId7RbPkZKjsNAkjzojAYzgE4HpMGVMder4wSMKuMgezmxu41IdIY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1727714804; c=relaxed/simple;
-	bh=1rGJ3ml+BkufanYBiG4ElBjkODsCW83l25J2SX/Nfmc=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=ZaUPklMNsKYNvD+Mjh4I/wDxnu0iEmmQP00eS6gJ3B8I/VAYDDFspb3GP1Bu7N9nc0m7urHGcn9Z7ZbzgeZDFcUHPncRdaOmtS2Cni4jEb3CQhE3rv8cxO6wWdC8OQgpRhFhzVNGHzFU/2jfIIzo/53seHYuI6KgW2i8AXmE7Lc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=YJHYfrs9; arc=none smtp.client-ip=209.85.214.173
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="YJHYfrs9"
-Received: by mail-pl1-f173.google.com with SMTP id d9443c01a7336-20ba6b39a78so3168215ad.3;
-        Mon, 30 Sep 2024 09:46:43 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1727714803; x=1728319603; darn=vger.kernel.org;
-        h=mime-version:user-agent:content-transfer-encoding:references
-         :in-reply-to:date:cc:to:from:subject:message-id:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=oFMgdLn7hB0TMtt+qsWxpUh5i8iT0KYc/LM27VmdFOA=;
-        b=YJHYfrs9rpOwz+to2j6Ewri3t9bulRdMja1hdfA+4zSyelhdRwvxLUkdTp82IwFElq
-         BXql3ebOzd+EZ0dI+c/vxh92LxBsv9Uu0qtdFrEU4cdBRdB9vcwMT8j84b2iQr0c/I9A
-         Lk4sv7eUnDmCKfx3B+Zjov7D3gkzu9ix3sdZH0SCEM6ycWlOsEhlpjy3ZMEJcY535nHL
-         YTy+KGU7pGeMAulxfv1eP+Qn1UYOMGlLZQERGvfj3gPXht7XdBVZPUVc+FWh57rV6xFY
-         YtpVY/TNPtuFOqg5RQcoY0VWJdXuriWGMzazx01WzMDFGdPVwV/af2iMJmBFfh1E2LHH
-         nlaQ==
+	s=arc-20240116; t=1727714805; c=relaxed/simple;
+	bh=LH/9XcmSR3NkV6nlSKilhsUp6En/XXDQY9YjjgQLYr0=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=X8zQyWZZezWi22YN9CddL5xmOXac6CUK/Z3XwKwqfAU3AlMUoFnL5RPctx64Wi4ehf+29ey/+ojfzzsi3Sp1xj76go9aLrnXZTEjL/s43Z+9w1U+rdIqojFvsSbnQ6xgwGoRLvEYBSUOsggrz7qLPjhCSdPbuJf5z3+lv+r3on8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org; spf=pass smtp.mailfrom=redhat.com; arc=none smtp.client-ip=209.85.222.53
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+Received: by mail-ua1-f53.google.com with SMTP id a1e0cc1a2514c-84e962c9a99so1313466241.2
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Sep 2024 09:46:43 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1727714803; x=1728319603;
-        h=mime-version:user-agent:content-transfer-encoding:references
-         :in-reply-to:date:cc:to:from:subject:message-id:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=oFMgdLn7hB0TMtt+qsWxpUh5i8iT0KYc/LM27VmdFOA=;
-        b=uwT7KMhsGPy75Myyn0ejoae+y/DdljZCiYXdhyNo1eRQORxrbLAg0zoPc8uukkoMcf
-         lNNI5ZevBVCQeaL5IIJIKkyoyi/HRPVDzr1Ns08t4UZC7lb0iT5/w3Kvs3JDvRRP8VlC
-         7/aHmwbKKV5kkOL/Kv48g59Bh1tvjKqwTDmG3Y88dshYZgk6Vy7u5pU/WVhVFKFHHZRp
-         IbAWtHfJV0CXM62lu2IcWH/bWKJlDghNZOWxutPaoDAbcwGjdKW8njvEYmIj+pZOgx4q
-         e3vfZFUzsl0d928g5ENWK+KsbzJc3Mq2Wb/kpbdbcAxYA7/3cPTZxNRi3hsTpUZgejjA
-         FgAA==
-X-Forwarded-Encrypted: i=1; AJvYcCUurJcBxE+Jf1VdErf8gnsQNhLUa5tet9/FhHqD7rfQRH4uwXWdzJKIbUuj8IAj/dz5Yg1nhGsl1cIX@vger.kernel.org, AJvYcCV3yGyHlJ9hE7W3Y5aXSnhEJgjTMMG+kHRCsHys5Uobv1haaRmLgRyg5fct3ByPWuMBkNchMfy/zOhdXg==@vger.kernel.org, AJvYcCV4sbMorniZ3KfQc0Rih4TZ9ZWlJgcBgpSZqePsWlFe7ubS/caetrCgOeKzGpM0d8Jydpoc50ULZtuwypTt@vger.kernel.org, AJvYcCVb6pIf1TbZjzsiLKYVxRS7TPzolRyG6Vy2elsiHFh45x8RHqahw2Gl3UKV5UDr6j84a3kA+b1Z@vger.kernel.org, AJvYcCXXL5UV8hH0YeVMWh/DvPd0jDv7VgJEHYqfd1T0sQ61PzVZkubiSl1pz9sp+Hg83uPa5nUFH9Su+Qde@vger.kernel.org, AJvYcCXrkyUnt7g+t5QYVU2eJU1ZynbB40QkddROShZ4HQNURiGCf532IpTCrfO3XdxT9LPMgJA72U21Lwu9vQFQrg==@vger.kernel.org
-X-Gm-Message-State: AOJu0YzJME94YiV0877LQk+iWJrD6qCwVVUJF/LlFnYLHIY6PB22WCxp
-	mO7zjjtLd0Aj4HsCgnFZf1mOTrO71GLznNYhQH0bSZ+s9IXisZiy
-X-Google-Smtp-Source: AGHT+IFZC3EJ0qzaaUHzbstF3Ibe+95zgKik8WWlYGIZbkQX0EKejoD/dNihbdBEqG2pUNucAQRStA==
-X-Received: by 2002:a17:90a:bf03:b0:2e0:a28a:ef88 with SMTP id 98e67ed59e1d1-2e0b8eeebe9mr12068969a91.41.1727714802654;
-        Mon, 30 Sep 2024 09:46:42 -0700 (PDT)
-Received: from [192.168.0.235] ([38.34.87.7])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-2e0b6c9d354sm8211290a91.25.2024.09.30.09.46.40
+        d=1e100.net; s=20230601; t=1727714801; x=1728319601;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=l7mWYU8SpdaNosLi30zt/7SRNoNMYVqo9lHMgAOchDs=;
+        b=h0Vj9CmqSHZt7ehcn8ROAehtEp+BPAEm/H6DwAclRFSr7b7Unq1GZgc1yTrRgzf7Ad
+         YpVq4+zYMpvvbulySpvuvFQc1yvGTpfqcPsp1yJpmmrZtobpCR8PLwx3G8NKVvXx/3iX
+         2IQUa66h3T+vyPCvDlvd2KPN+4y5S4ulgAnD0EDZTfTED9qfWWDGfjtpPV4H3I5Ka6hp
+         FDtk8wukdzBmkPaP5kWIrkF7MQJy6vO8bwmaF3o080w2fuQebgmMtzChLm80FvqhDujq
+         xKbFyGTjmEGTYACQ3iT94SV4a6WxCeBnlljHuGlK38HsbZyjMJjNcuLWLGS8rtq8nLFH
+         FA3w==
+X-Gm-Message-State: AOJu0YyJigUzy82anP+oWccN8oZoOaUfkUHhLmPzw8iFwwT2ifVD1CKn
+	88XlNGdo4oYeJzDtsG/+b9EmkpuSdTIy2dhpYboOwpMPhaWiPuXYMEtkIwzLf3eye+4BkNxJfa0
+	Cl2rl94lhVe8Gr1ZRwbZa7BCumY6WwFWwsQdV3DJSYJFEQj7uCT6UC8ZH636/YExD81v6Yx2T0P
+	OzIMkxXCsTS3i1N/2ZvcRHCus4vNYo/8obbQqxCt8=
+X-Google-Smtp-Source: AGHT+IHpFzZvc1M+5zHttY/bbaprE+d54TAO4RYiO6+ObH4K0uHskLoeXwdG1j+Wos5YE8msCx2JKQ==
+X-Received: by 2002:a05:6122:da6:b0:502:bd0d:abe2 with SMTP id 71dfb90a1353d-507816decd4mr9681473e0c.6.1727714801226;
+        Mon, 30 Sep 2024 09:46:41 -0700 (PDT)
+Received: from localhost (pool-68-160-145-92.bstnma.fios.verizon.net. [68.160.145.92])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-6cb3b69421csm40590306d6.142.2024.09.30.09.46.38
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 30 Sep 2024 09:46:42 -0700 (PDT)
-Message-ID: <423fbd9101dab18ba772f24db4ab2fecf5de2261.camel@gmail.com>
-Subject: Re: [PATCH v2 19/25] netfs: Speed up buffered reading
-From: Eduard Zingerman <eddyz87@gmail.com>
-To: David Howells <dhowells@redhat.com>, Leon Romanovsky <leon@kernel.org>
-Cc: Christian Brauner <brauner@kernel.org>, Manu Bretelle
- <chantr4@gmail.com>,  asmadeus@codewreck.org, ceph-devel@vger.kernel.org,
- christian@brauner.io,  ericvh@kernel.org, hsiangkao@linux.alibaba.com,
- idryomov@gmail.com,  jlayton@kernel.org, linux-afs@lists.infradead.org,
- linux-cifs@vger.kernel.org,  linux-erofs@lists.ozlabs.org,
- linux-fsdevel@vger.kernel.org,  linux-kernel@vger.kernel.org,
- linux-mm@kvack.org, linux-nfs@vger.kernel.org,  marc.dionne@auristor.com,
- netdev@vger.kernel.org, netfs@lists.linux.dev,  pc@manguebit.com,
- smfrench@gmail.com, sprasad@microsoft.com, tom@talpey.com, 
- v9fs@lists.linux.dev, willy@infradead.org
-Date: Mon, 30 Sep 2024 09:46:36 -0700
-In-Reply-To: <2969660.1727700717@warthog.procyon.org.uk>
-References: <2968940.1727700270@warthog.procyon.org.uk>
-	 <20240925103118.GE967758@unreal>
-	 <20240923183432.1876750-1-chantr4@gmail.com>
-	 <20240814203850.2240469-20-dhowells@redhat.com>
-	 <1279816.1727220013@warthog.procyon.org.uk>
-	 <4b5621958a758da830c1cf09c6f6893aed371f9d.camel@gmail.com>
-	 <2969660.1727700717@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.52.4 (3.52.4-1.fc40) 
+        Mon, 30 Sep 2024 09:46:38 -0700 (PDT)
+From: Mike Snitzer <snitzer@kernel.org>
+To: linux-nfs@vger.kernel.org
+Cc: Jeff Layton <jlayton@kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Anna Schumaker <anna@kernel.org>,
+	Trond Myklebust <trondmy@hammerspace.com>,
+	NeilBrown <neilb@suse.de>,
+	Matthew Wilcox <willy@infradead.org>
+Subject: [6.12-rc2 PATCH 0/5] NFS LOCALIO: fix and various cleanups
+Date: Mon, 30 Sep 2024 12:46:32 -0400
+Message-ID: <20240930164637.8300-1-snitzer@kernel.org>
+X-Mailer: git-send-email 2.44.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-On Mon, 2024-09-30 at 13:51 +0100, David Howells wrote:
-> David Howells <dhowells@redhat.com> wrote:
->=20
-> > Okay, let's try something a little more drastic.  See if we can at leas=
-t get
-> > it booting to the point we can read the tracelog.  If you can apply the
-> > attached patch?
->=20
-> It's also on my branch:
->=20
-> 	https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/lo=
-g/?h=3Dnetfs-fixes
->=20
-> along with another one that clears the folio pointer after unlocking.
+Hi,
 
-Hi David,
+Here is a LOCALIO fix and various cleanups I've accumulated.
 
-dmesg is here:
-https://gist.github.com/eddyz87/3a5f2a7ae9ba6803fc46f06223a501fc
+The first patch should certainly go upstream for 6.12-rc2.
 
-Used the following commit from your branch:
-ba1659e0f147 ("9p: [DEBUGGING] Don't release pages or folioq structs")
+The other 4 patches are cleanups that are more subjective (relative to
+them being sent for 6.12-rcX), I'd prefer they go upstream now but I
+can carry them until 6.13 if that is how others would like to proceed.
 
-Still does not boot, unfortunately.
-Are there any hacks possible to printout tracelog before complete boot some=
-how?
+Please note that there are 3 other patches that should be merged into
+6.12-rcX:
+filemap: Fix bounds checking in filemap_read()
+filemap: filemap_read() should check that the offset is positive or zero
+sunrpc: fix prog selection loop in svc_process_common
+
+Hopefully Willy or Andrew will pick up the filemap fixes soon:
+https://marc.info/?l=linux-nfs&m=172736276211019&w=2
 
 Thanks,
-Eduard
+Mike
+
+Mike Snitzer (5):
+  nfs_common: fix race in NFS calls to nfsd_file_put_local() and
+    nfsd_serv_put()
+  nfs/localio: remove redundant suid/sgid handling
+  nfs/localio: eliminate unnecessary kref in nfs_local_fsync_ctx
+  nfs/localio: remove extra indirect nfs_to call to check
+    {read,write}_iter
+  nfs/localio: eliminate need for nfs_local_fsync_work forward
+    declaration
+
+ fs/nfs/localio.c           | 96 ++++++++++++++++----------------------
+ fs/nfs_common/nfslocalio.c |  5 +-
+ fs/nfsd/filecache.c        |  2 +-
+ fs/nfsd/localio.c          |  2 +-
+ fs/nfsd/nfssvc.c           |  4 +-
+ include/linux/nfslocalio.h | 15 ++++++
+ 6 files changed, 64 insertions(+), 60 deletions(-)
+
+-- 
+2.44.0
 
