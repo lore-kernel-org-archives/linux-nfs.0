@@ -1,45 +1,61 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AF9F245BE3
-	for <linux-nfs@vger.kernel.org>; Thu,  3 Oct 2024 15:02:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBEF3197A65
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Oct 2024 15:14:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1727967725; cv=none; b=fi3az8vJDLGwLA9MNQoJCq4tohsbxyXBtbBcmEtC5S1g6LDjuMrud96b44bCHqaO3cCgOSwoSttJ7EFkjgRiXpWULqqYJTN8zbNSiMFPFXSnva3BoCYQX10iiD8fq6kac3+FkDnf4UN3rp4zr9hKyn4eQKHBHQTZv0SzbGcAm2c=
+	t=1727968500; cv=none; b=oAwtdv43Nh9YP9Rlad+hOG0e+HvHfhUzl5lPteWhlpkDwk0nDKNaSR/dXZkNP4jkMOX9ZKQUgVWHtsZcRdnnPsfdF1gn3Rpw3X4kw91ttUHvFFMEDmLPT2DMYfvRsCmhoxMcHfescfmDabk0iH45ihPeDPWB6M1gp1fzRMFbKyY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1727967725; c=relaxed/simple;
-	bh=0+PUm9bD/Z9aDEFRgodi0+MqUkWZ9gSLz8zL+lzVuG0=;
+	s=arc-20240116; t=1727968500; c=relaxed/simple;
+	bh=x7e6IA84Y6g/2IMVAFPlI1KZz8qVpAguY4Mb70GdZTU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=fK5J67jxSRaRKHSY7hwGI1nnwzky9i2cgHFw+BpsY48jmLGdFRlV2/pVDtYSMF96bEPbyLjfacR+m1iWXS1jx2F2xFTEz/w27QaH4xM0rNLplLurMLxFc9NzNuT3zyNnzhZuEaQha1ZnfF9HyA7yQSz8qIjRN9GDFNZpbMuNbjs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=I7yjaJKp; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=m4l5Fqd0Yjh+dZCyUXb0oQWIfUrUpSZAseJq6UJjoqDsf+Er+Hj5sJFoKAq1uR/zIcPzrbkgx1aQAAsRz1wjQYp/aRSYu2IMAtba8/QKq1YbnGopC5Nt5hE3b1csWaBQaxNSRYKpSbRftf/0VxvdujgY9WJNOs1lKzyYJEbrel0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=V72qORzn; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="I7yjaJKp"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8A086C4CEC5;
-	Thu,  3 Oct 2024 15:02:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1727967725;
-	bh=0+PUm9bD/Z9aDEFRgodi0+MqUkWZ9gSLz8zL+lzVuG0=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=I7yjaJKpEDIHJ07hiQlcutaIFvBHxBxDeGN2UvyY2W+cbzvi82z5Y9f5+VxFUDt26
-	 0u/BNwJTXSCpDCCrbjrXB5MVS11jmOcHdpVRDlRJ/SsIO3NWu9t9D7GUEXkglYy/+9
-	 zqxGGDpsRTUScbJzzdY69OWg/zscuEkuNdR/Vc9yXT7pbfB/i3JK8T6MNHQ3WlJLGQ
-	 gNr+wJ52GxDvt0M0fOvcHmkwFrKhKsS42vgKzwoG91sbhcj2kR0x1QVHYQHcfVLmfN
-	 +xso0OrnHyRYER41XjQmbycCS0oK1d8fxM+an/wP9lez1oWBEYZhPTs+Ykci/RQb/p
-	 ySB424q29KoMA==
-From: cel@kernel.org
-To: Neil Brown <neilb@suse.de>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/16] xdrgen: XDR width for variable-length array
-Date: Thu,  3 Oct 2024 11:01:51 -0400
-Message-ID: <20241003150151.81951-10-cel@kernel.org>
-X-Mailer: git-send-email 2.46.2
-In-Reply-To: <20241003150151.81951-1-cel@kernel.org>
-References: <20241003150151.81951-1-cel@kernel.org>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="V72qORzn"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1727968497;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=oQhx9++kG+k1aQeYKn4epgOWGCe4SvtQMhjT//HHnyw=;
+	b=V72qORzn79ENZET25BJqQizrNygFWt96WC6pmkilq3yadkzW82VRvB6YquZN9qvXoI4pjc
+	sUvAznZA/j7pFgmCJbuk3VSaD8QeoG9zmLCyzMxh/PG1gZHbHiC03bYAw69X6QJcauOMgL
+	2PfDCJV6U/ewmjDDPHWbWOHC7+cASbA=
+Received: from mx-prod-mc-04.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-63-z9YEDdHKMECjWaCiFVKw9Q-1; Thu,
+ 03 Oct 2024 11:14:54 -0400
+X-MC-Unique: z9YEDdHKMECjWaCiFVKw9Q-1
+Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-04.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id AE83C19560BF;
+	Thu,  3 Oct 2024 15:14:52 +0000 (UTC)
+Received: from fs-i40c-03.mgmt.fast.eng.rdu2.dc.redhat.com (fs-i40c-03.mgmt.fast.eng.rdu2.dc.redhat.com [10.6.24.150])
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 0D4D71955E8F;
+	Thu,  3 Oct 2024 15:14:50 +0000 (UTC)
+From: Alexander Aring <aahringo@redhat.com>
+To: trondmy@kernel.org
+Cc: anna@kernel.org,
+	bcodding@redhat.com,
+	gregkh@linuxfoundation.org,
+	rafael@kernel.org,
+	akpm@linux-foundation.org,
+	linux-nfs@vger.kernel.org,
+	gfs2@lists.linux.dev,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH 1/4] kobject: add kset_type_create_and_add() helper
+Date: Thu,  3 Oct 2024 11:14:32 -0400
+Message-ID: <20241003151435.3753959-2-aahringo@redhat.com>
+In-Reply-To: <20241003151435.3753959-1-aahringo@redhat.com>
+References: <20241003151435.3753959-1-aahringo@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -47,41 +63,155 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
 
-From: Chuck Lever <chuck.lever@oracle.com>
+Currently there exists the kset_create_and_add() helper that does not
+allow to have a different ktype for the created kset kobject. To allow
+a different ktype this patch will introduce the function
+kset_type_create_and_add() that allows to set a different ktype instead
+of using the global default kset_ktype variable.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+In my example I need to separate the created kobject inside the kset by
+net-namespaces. This patch allows me to do that by providing a user
+defined kobj_type structure that implements the necessary namespace
+functionality.
+
+Acked-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Alexander Aring <aahringo@redhat.com>
 ---
- tools/net/sunrpc/xdrgen/xdr_ast.py | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ include/linux/kobject.h |  8 ++++--
+ lib/kobject.c           | 59 ++++++++++++++++++++++++++++++-----------
+ 2 files changed, 50 insertions(+), 17 deletions(-)
 
-diff --git a/tools/net/sunrpc/xdrgen/xdr_ast.py b/tools/net/sunrpc/xdrgen/xdr_ast.py
-index e9bc81e83b48..cb89d5d9987c 100644
---- a/tools/net/sunrpc/xdrgen/xdr_ast.py
-+++ b/tools/net/sunrpc/xdrgen/xdr_ast.py
-@@ -220,6 +220,22 @@ class _XdrVariableLengthArray(_XdrDeclaration):
-     maxsize: str
-     template: str = "variable_length_array"
+diff --git a/include/linux/kobject.h b/include/linux/kobject.h
+index c8219505a79f..7504b7547ed2 100644
+--- a/include/linux/kobject.h
++++ b/include/linux/kobject.h
+@@ -175,8 +175,12 @@ struct kset {
+ void kset_init(struct kset *kset);
+ int __must_check kset_register(struct kset *kset);
+ void kset_unregister(struct kset *kset);
+-struct kset * __must_check kset_create_and_add(const char *name, const struct kset_uevent_ops *u,
+-					       struct kobject *parent_kobj);
++struct kset * __must_check
++kset_type_create_and_add(const char *name, const struct kset_uevent_ops *u,
++			 struct kobject *parent_kobj, const struct kobj_type *ktype);
++struct kset * __must_check
++kset_create_and_add(const char *name, const struct kset_uevent_ops *u,
++		    struct kobject *parent_kobj);
  
-+    def max_width(self) -> int:
-+        """Return width of type in XDR_UNITS"""
-+        return 1 + (xdr_quadlen(self.maxsize) * max_widths[self.spec.type_name])
-+
-+    def symbolic_width(self) -> List:
-+        """Return list containing XDR width of type's components"""
-+        widths = ["XDR_unsigned_int"]
-+        if self.maxsize != "0":
-+            item_width = " + ".join(symbolic_widths[self.spec.type_name])
-+            widths.append("(" + self.maxsize + " * (" + item_width + "))")
-+        return widths
-+
-+    def __post_init__(self):
-+        max_widths[self.name] = self.max_width()
-+        symbolic_widths[self.name] = self.symbolic_width()
-+
+ static inline struct kset *to_kset(struct kobject *kobj)
+ {
+diff --git a/lib/kobject.c b/lib/kobject.c
+index 72fa20f405f1..09dd3d4c7f56 100644
+--- a/lib/kobject.c
++++ b/lib/kobject.c
+@@ -946,6 +946,7 @@ static const struct kobj_type kset_ktype = {
+  * @name: the name for the kset
+  * @uevent_ops: a struct kset_uevent_ops for the kset
+  * @parent_kobj: the parent kobject of this kset, if any.
++ * @ktype: a struct kobj_type for the kset
+  *
+  * This function creates a kset structure dynamically.  This structure can
+  * then be registered with the system and show up in sysfs with a call to
+@@ -957,7 +958,8 @@ static const struct kobj_type kset_ktype = {
+  */
+ static struct kset *kset_create(const char *name,
+ 				const struct kset_uevent_ops *uevent_ops,
+-				struct kobject *parent_kobj)
++				struct kobject *parent_kobj,
++				const struct kobj_type *ktype)
+ {
+ 	struct kset *kset;
+ 	int retval;
+@@ -973,39 +975,38 @@ static struct kset *kset_create(const char *name,
+ 	kset->uevent_ops = uevent_ops;
+ 	kset->kobj.parent = parent_kobj;
  
- @dataclass
- class _XdrOptionalData(_XdrDeclaration):
+-	/*
+-	 * The kobject of this kset will have a type of kset_ktype and belong to
+-	 * no kset itself.  That way we can properly free it when it is
+-	 * finished being used.
+-	 */
+-	kset->kobj.ktype = &kset_ktype;
++	kset->kobj.ktype = ktype;
+ 	kset->kobj.kset = NULL;
+ 
+ 	return kset;
+ }
+ 
+ /**
+- * kset_create_and_add() - Create a struct kset dynamically and add it to sysfs.
++ * kset_type_create_and_add() - Create a struct kset with kobj_type dynamically
++ *                              and add it to sysfs.
+  *
+  * @name: the name for the kset
+  * @uevent_ops: a struct kset_uevent_ops for the kset
+  * @parent_kobj: the parent kobject of this kset, if any.
++ * @ktype: a struct kobj_type for the kset
+  *
+- * This function creates a kset structure dynamically and registers it
+- * with sysfs.  When you are finished with this structure, call
++ * This function creates a kset structure with ktype structure dynamically and
++ * registers it with sysfs.  When you are finished with this structure, call
+  * kset_unregister() and the structure will be dynamically freed when it
+- * is no longer being used.
++ * is no longer being used. Works like kset_create_and_add() just with the
++ * possibility to assign kobj_type to the kset.
+  *
+  * If the kset was not able to be created, NULL will be returned.
+  */
+-struct kset *kset_create_and_add(const char *name,
+-				 const struct kset_uevent_ops *uevent_ops,
+-				 struct kobject *parent_kobj)
++struct kset *kset_type_create_and_add(const char *name,
++				      const struct kset_uevent_ops *uevent_ops,
++				      struct kobject *parent_kobj,
++				      const struct kobj_type *ktype)
+ {
+ 	struct kset *kset;
+ 	int error;
+ 
+-	kset = kset_create(name, uevent_ops, parent_kobj);
++	kset = kset_create(name, uevent_ops, parent_kobj, ktype);
+ 	if (!kset)
+ 		return NULL;
+ 	error = kset_register(kset);
+@@ -1015,6 +1016,34 @@ struct kset *kset_create_and_add(const char *name,
+ 	}
+ 	return kset;
+ }
++EXPORT_SYMBOL_GPL(kset_type_create_and_add);
++
++/**
++ * kset_create_and_add() - Create a struct kset dynamically and add it to sysfs.
++ *
++ * @name: the name for the kset
++ * @uevent_ops: a struct kset_uevent_ops for the kset
++ * @parent_kobj: the parent kobject of this kset, if any.
++ *
++ * This function creates a kset structure dynamically and registers it
++ * with sysfs.  When you are finished with this structure, call
++ * kset_unregister() and the structure will be dynamically freed when it
++ * is no longer being used.
++ *
++ * If the kset was not able to be created, NULL will be returned.
++ */
++struct kset *kset_create_and_add(const char *name,
++				 const struct kset_uevent_ops *uevent_ops,
++				 struct kobject *parent_kobj)
++{
++	/*
++	 * The kobject of this kset will have a type of kset_ktype and belong to
++	 * no kset itself.  That way we can properly free it when it is
++	 * finished being used.
++	 */
++	return kset_type_create_and_add(name, uevent_ops, parent_kobj,
++					&kset_ktype);
++}
+ EXPORT_SYMBOL_GPL(kset_create_and_add);
+ 
+ 
 -- 
-2.46.2
+2.43.0
 
