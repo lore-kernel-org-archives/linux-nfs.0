@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8FDFD1AAE0C
-	for <linux-nfs@vger.kernel.org>; Thu,  3 Oct 2024 19:35:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F25121AC429
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Oct 2024 19:35:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1727984112; cv=none; b=uPgezLpREoELofsGMqy7MAgJTVTuFLWsAFXQM8ZAskdfgz8dG4gmc4qzPQqJpYgB13aywKWzyU1R5oirBn6yZPviy/XI1ajlV5u8780QkIZl8Aj6RozHMvgv14CSrhd+k/HmLajybJwELAf8uODJT6Mr64PWGPD0aIzpqNg9kfI=
+	t=1727984115; cv=none; b=hWMqlkKt/W88JfKTR2X2Tn8AC+rXJM0B4MDzQYwTIsZ6HI6sQ4JweKUHzngJAFiDs0UmdIPybYLnsCKDa/L4rMq2lbjMN/hvXQndvtMsehlLSNfiXe+j/Ss/CCdBe0hG0ZSU6rVeIvjDsrU7NBaNeJqA7a+iMgM1+H4SmO2sH18=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1727984112; c=relaxed/simple;
-	bh=7ldDcdObu85WuKTz+1DDacI/L7k70lt+f+X9H03hq7M=;
+	s=arc-20240116; t=1727984115; c=relaxed/simple;
+	bh=wf+uxwVhQ23mgHRQ1/toeoe9veu4h6XUqaiUyiHud5k=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=I0bKkOVOP2grcfIKoKOH4tP0kSulESXIgp50I9tQyJyN8T/ykCogTVaMQQUsxQ4v4OT79jBaYme9bXzyOiqEuZ+92wRRIW9xPco7JF3AGOv8JoO+tIyfB36sf6AUTWIOkluXUk14/D1QRoYFAsiLexockBx7nINrCw82iunOFi8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LKm5mArS; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=iGdiJ6WvwqsbKZ3YtS//Cat+FzgkyFmD2WF8oU3DllS1m5jxVNl9ZcrPVt6ENUj/+CGuCYm+j1S8tK2erJ9hXkznP89I1na00XXl5sdR8uyBFfPo/Lj6ThiIvz3ah8+YylRYFS7SfV7luyiAcApdBg/huz+b3ldshfuT5kLXJ1k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Nct6g8xG; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LKm5mArS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 14153C4CEC5;
-	Thu,  3 Oct 2024 19:35:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Nct6g8xG"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A1538C4CECC;
+	Thu,  3 Oct 2024 19:35:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1727984112;
-	bh=7ldDcdObu85WuKTz+1DDacI/L7k70lt+f+X9H03hq7M=;
+	s=k20201202; t=1727984114;
+	bh=wf+uxwVhQ23mgHRQ1/toeoe9veu4h6XUqaiUyiHud5k=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=LKm5mArS2X/UjI5eI7oIaFqMz4gUXXnhbHsIdOEzlnGl2M89CD5OpNK7R5S3lLvLk
-	 /IFeEOYVRpBOMP1qeSYYxnHKa0Ntn1Pz+XvSCrLcmW2DbLUskJKOKmUnR4OrzF84cr
-	 qR798ug55KTx1WhvHikVuBOo1kCy32PNukkO1Xf5SgJdqdzWShRPIqT3l+TpffHda5
-	 QmRHyAOwGNOvQYy3WSbBHJ2DNPPgVEzH6H2Jwz2KMOBolQWi3kO89t+16l1TZmSYu6
-	 hBwLG2y4QD/ilC4OyFnldis50KSuSJPLrQGibucieRQkPHcXNECPdiAHIoETofohYz
-	 BVp5Gt6HoD7iw==
+	b=Nct6g8xGd35mkIc2fqpHaxGsQgNW4ZZUkEOgI5RIdUYSscMjPoM8bLidS0BDDRLDk
+	 nZK1IMd0z0wmrgCqXsof7LdvY2swFBM16SJJBPVVVVHkKQ8e0oax8YQUg4ZAkyCSyx
+	 wHvvX7huXaOEp6yL7PCK/nsMgUowTGbobiLFIY190vQx3dpRpq3mquCFqjozpi/wO3
+	 fwVS3szaS1Vtb+hZwyIbqQA5lJBDiZcFjThLsyyivLeXqn2y1Z2k3d+5Jt81ZCFGxE
+	 lE5oO1jHoGA8gIcOQcjYRrWwE4uUmYDzPn6sujcIhkDdy5HM3vKT+OxOMTc5OaDAze
+	 ONjuCk9vPdz+Q==
 From: Mike Snitzer <snitzer@kernel.org>
 To: linux-nfs@vger.kernel.org
 Cc: Jeff Layton <jlayton@kernel.org>,
@@ -35,9 +35,9 @@ Cc: Jeff Layton <jlayton@kernel.org>,
 	NeilBrown <neilb@suse.de>,
 	Matthew Wilcox <willy@infradead.org>,
 	Christian Brauner <brauner@kernel.org>
-Subject: [6.12-rc2 v2 PATCH 5/7] nfs/localio: eliminate unnecessary kref in nfs_local_fsync_ctx
-Date: Thu,  3 Oct 2024 15:35:02 -0400
-Message-ID: <20241003193504.34640-6-snitzer@kernel.org>
+Subject: [6.12-rc2 v2 PATCH 7/7] nfs/localio: eliminate need for nfs_local_fsync_work forward declaration
+Date: Thu,  3 Oct 2024 15:35:04 -0400
+Message-ID: <20241003193504.34640-8-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20241003193504.34640-1-snitzer@kernel.org>
 References: <20241003193504.34640-1-snitzer@kernel.org>
@@ -49,75 +49,69 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-nfs_local_commit() doesn't need async cleanup of nfs_local_fsync_ctx,
-so there is no need to use a kref.
+Move nfs_local_fsync_ctx_alloc() after nfs_local_fsync_work().
 
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- fs/nfs/localio.c | 20 +++-----------------
- 1 file changed, 3 insertions(+), 17 deletions(-)
+ fs/nfs/localio.c | 31 +++++++++++++++----------------
+ 1 file changed, 15 insertions(+), 16 deletions(-)
 
 diff --git a/fs/nfs/localio.c b/fs/nfs/localio.c
-index 88b6658b93fc..2f302b03b253 100644
+index 12d3e200156c..98cd572426b4 100644
 --- a/fs/nfs/localio.c
 +++ b/fs/nfs/localio.c
-@@ -43,7 +43,6 @@ struct nfs_local_fsync_ctx {
- 	struct nfsd_file	*localio;
- 	struct nfs_commit_data	*data;
+@@ -45,7 +45,6 @@ struct nfs_local_fsync_ctx {
  	struct work_struct	work;
--	struct kref		kref;
  	struct completion	*done;
  };
- static void nfs_local_fsync_work(struct work_struct *work);
-@@ -683,30 +682,17 @@ nfs_local_fsync_ctx_alloc(struct nfs_commit_data *data,
- 		ctx->localio = localio;
- 		ctx->data = data;
- 		INIT_WORK(&ctx->work, nfs_local_fsync_work);
--		kref_init(&ctx->kref);
- 		ctx->done = NULL;
- 	}
- 	return ctx;
+-static void nfs_local_fsync_work(struct work_struct *work);
+ 
+ static bool localio_enabled __read_mostly = true;
+ module_param(localio_enabled, bool, 0644);
+@@ -678,21 +677,6 @@ nfs_local_release_commit_data(struct nfsd_file *localio,
+ 	call_ops->rpc_release(data);
  }
  
--static void
--nfs_local_fsync_ctx_kref_free(struct kref *kref)
+-static struct nfs_local_fsync_ctx *
+-nfs_local_fsync_ctx_alloc(struct nfs_commit_data *data,
+-			  struct nfsd_file *localio, gfp_t flags)
 -{
--	kfree(container_of(kref, struct nfs_local_fsync_ctx, kref));
--}
+-	struct nfs_local_fsync_ctx *ctx = kmalloc(sizeof(*ctx), flags);
 -
--static void
--nfs_local_fsync_ctx_put(struct nfs_local_fsync_ctx *ctx)
--{
--	kref_put(&ctx->kref, nfs_local_fsync_ctx_kref_free);
+-	if (ctx != NULL) {
+-		ctx->localio = localio;
+-		ctx->data = data;
+-		INIT_WORK(&ctx->work, nfs_local_fsync_work);
+-		ctx->done = NULL;
+-	}
+-	return ctx;
 -}
 -
  static void
  nfs_local_fsync_ctx_free(struct nfs_local_fsync_ctx *ctx)
  {
- 	nfs_local_release_commit_data(ctx->localio, ctx->data,
- 				      ctx->data->task.tk_ops);
--	nfs_local_fsync_ctx_put(ctx);
-+	kfree(ctx);
+@@ -717,6 +701,21 @@ nfs_local_fsync_work(struct work_struct *work)
+ 	nfs_local_fsync_ctx_free(ctx);
  }
  
- static void
-@@ -739,7 +725,7 @@ int nfs_local_commit(struct nfsd_file *localio,
- 	}
- 
- 	nfs_local_init_commit(data, call_ops);
--	kref_get(&ctx->kref);
++static struct nfs_local_fsync_ctx *
++nfs_local_fsync_ctx_alloc(struct nfs_commit_data *data,
++			  struct nfsd_file *localio, gfp_t flags)
++{
++	struct nfs_local_fsync_ctx *ctx = kmalloc(sizeof(*ctx), flags);
 +
- 	if (how & FLUSH_SYNC) {
- 		DECLARE_COMPLETION_ONSTACK(done);
- 		ctx->done = &done;
-@@ -747,6 +733,6 @@ int nfs_local_commit(struct nfsd_file *localio,
- 		wait_for_completion(&done);
- 	} else
- 		queue_work(nfsiod_workqueue, &ctx->work);
--	nfs_local_fsync_ctx_put(ctx);
++	if (ctx != NULL) {
++		ctx->localio = localio;
++		ctx->data = data;
++		INIT_WORK(&ctx->work, nfs_local_fsync_work);
++		ctx->done = NULL;
++	}
++	return ctx;
++}
 +
- 	return 0;
- }
+ int nfs_local_commit(struct nfsd_file *localio,
+ 		     struct nfs_commit_data *data,
+ 		     const struct rpc_call_ops *call_ops, int how)
 -- 
 2.44.0
 
