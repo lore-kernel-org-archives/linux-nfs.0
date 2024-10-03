@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B615416F0F0
-	for <linux-nfs@vger.kernel.org>; Thu,  3 Oct 2024 15:02:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1F96316F0F0
+	for <linux-nfs@vger.kernel.org>; Thu,  3 Oct 2024 15:02:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1727967720; cv=none; b=hAIIlwAaCEH+BEmrtoBZ1qM1d9Q+zW4KWziLETRjwBQ/1UNJnk7Dor4n0bVl7WtMAv7YIvHAMp6FMpgyM1P/0cvtTswV/+MU2pxyZpSVr11td5x2M+clS3Y4Trr9UV2od5Zxy68IYNtTc8qUpqZb+FMbXB4u3T6ahCnNtg5Su9E=
+	t=1727967722; cv=none; b=dwRSS7FwWKrxIqM0tQI8Fxv3rEvUOUDCUk00Pk1JDgBsHA9Xcb/Zjr5KaP5jUSbUhTA42MrhaCkV/ZX+/K7SamU5+KhnAPKmL4OiXwZezRcG635XkzvFb0qkJCo5VooI1l5zo05beZsjxaoRzGCadCHl80un4qCtdf5XrbubSdA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1727967720; c=relaxed/simple;
-	bh=SoSWvT0n8eQFx0vdcmEa/oaMA3v+0uKf/pAk5pq1oZc=;
+	s=arc-20240116; t=1727967722; c=relaxed/simple;
+	bh=zVPNu+hait7j1cpUDsk2WqOtmmz2VyWXZW/4CWdhAEY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ga3qct1ws6Bxru3a3FNh2SGUMA2BjM8Gvg24aP+E/P6DwHutE7Wfz3e/ggGrwc0+EiLm5Bkqi2X+QRWyOBbMn0HJLRrwA1Hq9eBt8rcaGl1GkT5/wPHjd+A85tBnhfdDFI0/Pxfdu8PMqMP06bG4gOP+OsstwWIOqhwyMotJ2ag=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=sHHZSoAZ; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=jDLpTwfVK5J6agk8Ej1cs0gFCyntGhe19JPoEPTlDjBwRaVOi9cF0P2+Ex4qH4GbIlI2tabIA431vcd4xA/2e5n+JdLGyMjTD3G+UdRDdIsWQqy9XxFXSQYya1fea60Y00w+RThr59yLu+bIYc3MC1vuQLnzx7hc5sUmqQ12Pp4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TvvSeCpv; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="sHHZSoAZ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B4CE0C4CEC5;
-	Thu,  3 Oct 2024 15:01:59 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TvvSeCpv"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9D9A4C4CEC7;
+	Thu,  3 Oct 2024 15:02:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1727967720;
-	bh=SoSWvT0n8eQFx0vdcmEa/oaMA3v+0uKf/pAk5pq1oZc=;
+	s=k20201202; t=1727967721;
+	bh=zVPNu+hait7j1cpUDsk2WqOtmmz2VyWXZW/4CWdhAEY=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=sHHZSoAZIODCV+blaL4tniSbCbVsjRfvCa9KsPe6TJrnz2UmmaKHdP/oyRCQPi8bh
-	 W+zUPLav1UX5Gwkk9jjN62QfF1S6+Q5fp8zC5Cny8H9pMKjDx+2Z5Z0imWcot3ne5z
-	 bjbn0Y3nNZ+8OqD5FYzUQQCK2LKQUw+iIH/n/rZ1rg9RbhXtod4TY9jHaP1ySUWhox
-	 k7RfuviEdqqix0Cm6WSoWGrMTSroNAqSCAmg1XHsRfhcEDr2+Y43AD7b0mH0hxXbu7
-	 818SDWKQ4teiIM0x7Rei9HUAt6A62KNxn8/pWCcsfdzH8IE2JtwXqByAVAGz4aXUiK
-	 qSYXC1rSEbQyg==
+	b=TvvSeCpvk66Q1iJP6YMYm6M9UWj3O+ctVMCh6NSw1DBihZ/RzKSrlPDk7U4E5K9yr
+	 hAPcwFbtX/k/TEaI7TL0eoDHsllBBUr759H90ulWy22N2V6bISqk2U1SFguWaEr8lQ
+	 xsZClI8bScui35lYr8fESwN5n/7puW2HnLANpFsWaXhuKqULtw1rDbIUeX2DBe++hv
+	 KRZ5eXOlSsRzpF5Mrux6RDmTpA1x8QyZdT0T10w/4Em/603CJd7ndD3EHQnrFV3jV8
+	 vizhsVXjCPcCakmtU6Cgy2DxpYazSRQygZPKqV1FwPiAkcHYzcaKBGcw8ujoeWYKXD
+	 ZaWea/TpMBaVQ==
 From: cel@kernel.org
 To: Neil Brown <neilb@suse.de>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -34,9 +34,9 @@ To: Neil Brown <neilb@suse.de>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 04/16] xdrgen: XDR widths for enum types
-Date: Thu,  3 Oct 2024 11:01:46 -0400
-Message-ID: <20241003150151.81951-5-cel@kernel.org>
+Subject: [PATCH 05/16] xdrgen: XDR width for fixed-length opaque
+Date: Thu,  3 Oct 2024 11:01:47 -0400
+Message-ID: <20241003150151.81951-6-cel@kernel.org>
 X-Mailer: git-send-email 2.46.2
 In-Reply-To: <20241003150151.81951-1-cel@kernel.org>
 References: <20241003150151.81951-1-cel@kernel.org>
@@ -50,29 +50,46 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-RFC 4506 says that an XDR enum is represented as a signed integer
-on the wire; thus its width is 1 XDR_UNIT.
+The XDR width for a fixed-length opaque is the byte size of the
+opaque rounded up to the next XDR_UNIT, divided by XDR_UNIT.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- tools/net/sunrpc/xdrgen/xdr_ast.py | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ tools/net/sunrpc/xdrgen/xdr_ast.py | 22 ++++++++++++++++++++++
+ 1 file changed, 22 insertions(+)
 
 diff --git a/tools/net/sunrpc/xdrgen/xdr_ast.py b/tools/net/sunrpc/xdrgen/xdr_ast.py
-index f1d93a1d0ed8..fbee954c7f70 100644
+index fbee954c7f70..9fe7fa688caa 100644
 --- a/tools/net/sunrpc/xdrgen/xdr_ast.py
 +++ b/tools/net/sunrpc/xdrgen/xdr_ast.py
-@@ -227,6 +227,18 @@ class _XdrEnum(_XdrAst):
-     maximum: int
-     enumerators: List[_XdrEnumerator]
+@@ -21,6 +21,16 @@ pass_by_reference = set()
+ 
+ constants = {}
+ 
++
++def xdr_quadlen(val: str) -> int:
++    """Return integer XDR width of an XDR type"""
++    if val in constants:
++        octets = constants[val]
++    else:
++        octets = int(val)
++    return int((octets + 3) / 4)
++
++
+ symbolic_widths = {
+     "void": ["XDR_void"],
+     "bool": ["XDR_bool"],
+@@ -117,6 +127,18 @@ class _XdrFixedLengthOpaque(_XdrDeclaration):
+     size: str
+     template: str = "fixed_length_opaque"
  
 +    def max_width(self) -> int:
 +        """Return width of type in XDR_UNITS"""
-+        return 1
++        return xdr_quadlen(self.size)
 +
 +    def symbolic_width(self) -> List:
 +        """Return list containing XDR width of type's components"""
-+        return ["XDR_int"]
++        return ["XDR_QUADLEN(" + self.size + ")"]
 +
 +    def __post_init__(self):
 +        max_widths[self.name] = self.max_width()
@@ -80,7 +97,7 @@ index f1d93a1d0ed8..fbee954c7f70 100644
 +
  
  @dataclass
- class _XdrStruct(_XdrAst):
+ class _XdrVariableLengthOpaque(_XdrDeclaration):
 -- 
 2.46.2
 
