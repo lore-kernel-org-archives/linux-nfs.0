@@ -1,33 +1,33 @@
-Received: from smtp-1909.mail.infomaniak.ch (smtp-1909.mail.infomaniak.ch [185.125.25.9])
+Received: from smtp-8fac.mail.infomaniak.ch (smtp-8fac.mail.infomaniak.ch [83.166.143.172])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B203B1C9ED3
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2024 15:34:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.125.25.9
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 143C01C9ED3;
+	Thu, 10 Oct 2024 15:34:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=83.166.143.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728574475; cv=none; b=Eatci3QjjtyyHEYACRVq4qVlquFGhgJLbK3EoXqjpGjoM5aVAalhVFn1j33vn7HPZdnvx4I2KDQze5/+2egAGxVLi/uUajtXHO47KPtUWGgXA+3sIbJ5E4G5jhCu8IMvkZR5jgtkaoOQyXp2mDpefsqMkx2WHvRvWuYneTId9fk=
+	t=1728574480; cv=none; b=Ayd0GAYWXCUNLKv+BGdsKZHmzibPSGEhQ5oe4ra/irHqDUSWYSzeWOu7INshN71zQr2jb4qa8WSuJ+kCEhGW4dtSQH1sbNfcLIIk7R7vjD4tG0MSn+JfaIkytVn0TT1fHo1eVqinDcCrmEt6hImj9AdiYWKI//L4myMDQufRROk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728574475; c=relaxed/simple;
-	bh=Vri/r0kNCh5EU1OTk7JJRg44INfy3aDynIPyEgdheKw=;
+	s=arc-20240116; t=1728574480; c=relaxed/simple;
+	bh=IP04WyH8b5ClX6RyMbLRjoix/rEmabeVB5T705Da+EI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=oZOdmlL+788pXGaLgU+jr1jq5fX4PMaTNCrKEuh6GDwAhco5kPB5+a0EMDYF3BLdZFKSMd6mGe3oAQa0OvaXpRq9dz9B7aCn7z/ojiDLtptzDx7Cz7g68aaF4PvEqsO5nYd5jKqlaCwoUAVsp4Fh4u4gqwxWdIlAbQPAUUD3r2E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net; spf=pass smtp.mailfrom=digikod.net; dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b=hWNGFBMf; arc=none smtp.client-ip=185.125.25.9
+	 MIME-Version:Content-Type; b=OP5wr/imK9eVD4gRLouqtJ7FxhCjqyRNwMz9edyP5V4/k/9GOqSCd67WNLFQVjydUjCvzMLGCT0fZCbYE2jkiGd7tKlNFtFxpmeYnMgx3y78Gpx4lwbFzDwRl7a/RX+iPkZzKrcR0SvHHWpFMqGRhBgLvIUVgvsWicGYHi0SpTo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net; spf=pass smtp.mailfrom=digikod.net; dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b=gKW1gsty; arc=none smtp.client-ip=83.166.143.172
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=digikod.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b="hWNGFBMf"
-Received: from smtp-4-0001.mail.infomaniak.ch (unknown [IPv6:2001:1600:7:10:40ca:feff:fe05:1])
-	by smtp-4-3000.mail.infomaniak.ch (Postfix) with ESMTPS id 4XPYX4594xz66K;
-	Thu, 10 Oct 2024 17:27:00 +0200 (CEST)
+	dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b="gKW1gsty"
+Received: from smtp-3-0000.mail.infomaniak.ch (smtp-3-0000.mail.infomaniak.ch [10.4.36.107])
+	by smtp-3-3000.mail.infomaniak.ch (Postfix) with ESMTPS id 4XPYX13NR6zVX;
+	Thu, 10 Oct 2024 17:26:57 +0200 (CEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=digikod.net;
-	s=20191114; t=1728574020;
-	bh=SdLulSzLT9TYl10U9ZqAnL7lkf3eOC+kIIq0uoFGsDk=;
+	s=20191114; t=1728574017;
+	bh=Df586XROJKMF1yQSr381EiSbt/vI6xpJkJY3x0sWo24=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=hWNGFBMfIp1QSTsWRQlrQDxzvxvOygpg0kHOobA5wJtDJY3BwxjkdEX1oRPf7WJ7z
-	 laIho5wqdxc7WL98l7jtNzi5MDL6aRLiAmClXYe8IGACDGSUoCtKP/Sd/bbRI/j7bz
-	 FJjktKckl2gMB65AcGalWicLifgoj9td+JomvmZc=
-Received: from unknown by smtp-4-0001.mail.infomaniak.ch (Postfix) with ESMTPA id 4XPYX2758tzSKb;
-	Thu, 10 Oct 2024 17:26:58 +0200 (CEST)
+	b=gKW1gstyIqxFplH2KkdMo3/4XmIDKzp7/O2Ibj1sLoDJfTS6MRKhEY4nvBxMuja5W
+	 bYy0A4L+fiNz/URueq3YROpu+osO3p+sBKsvN5EUPTCIl8TWIenJiDHdm8IPu39l1f
+	 +y6wzQ55DHIZMxcNqruev0BkrBpS0PAFPPVEOm7g=
+Received: from unknown by smtp-3-0000.mail.infomaniak.ch (Postfix) with ESMTPA id 4XPYX06nnGz9Rb;
+	Thu, 10 Oct 2024 17:26:56 +0200 (CEST)
 From: =?UTF-8?q?Micka=C3=ABl=20Sala=C3=BCn?= <mic@digikod.net>
 To: Christian Brauner <brauner@kernel.org>,
 	Paul Moore <paul@paul-moore.com>
@@ -36,13 +36,10 @@ Cc: =?UTF-8?q?Micka=C3=ABl=20Sala=C3=BCn?= <mic@digikod.net>,
 	linux-nfs@vger.kernel.org,
 	linux-security-module@vger.kernel.org,
 	audit@vger.kernel.org,
-	Mimi Zohar <zohar@linux.ibm.com>,
-	Roberto Sassu <roberto.sassu@huawei.com>,
-	Dmitry Kasatkin <dmitry.kasatkin@gmail.com>,
-	Eric Snowberg <eric.snowberg@oracle.com>
-Subject: [RFC PATCH v1 4/7] integrity: Fix inode numbers in audit records
-Date: Thu, 10 Oct 2024 17:26:44 +0200
-Message-ID: <20241010152649.849254-4-mic@digikod.net>
+	Eric Paris <eparis@redhat.com>
+Subject: [RFC PATCH v1 2/7] audit: Fix inode numbers
+Date: Thu, 10 Oct 2024 17:26:42 +0200
+Message-ID: <20241010152649.849254-2-mic@digikod.net>
 In-Reply-To: <20241010152649.849254-1-mic@digikod.net>
 References: <20241010152649.849254-1-mic@digikod.net>
 Precedence: bulk
@@ -58,28 +55,62 @@ X-Infomaniak-Routing: alpha
 Use the new inode_get_ino() helper to log the user space's view of
 inode's numbers instead of the private kernel values.
 
-Cc: Mimi Zohar <zohar@linux.ibm.com>
-Cc: Roberto Sassu <roberto.sassu@huawei.com>
-Cc: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>
-Cc: Eric Snowberg <eric.snowberg@oracle.com>
+Cc: Paul Moore <paul@paul-moore.com>
+Cc: Eric Paris <eparis@redhat.com>
 Signed-off-by: Mickaël Salaün <mic@digikod.net>
 ---
- security/integrity/integrity_audit.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ security/lsm_audit.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/security/integrity/integrity_audit.c b/security/integrity/integrity_audit.c
-index 0ec5e4c22cb2..e344d5bcf99c 100644
---- a/security/integrity/integrity_audit.c
-+++ b/security/integrity/integrity_audit.c
-@@ -62,7 +62,7 @@ void integrity_audit_message(int audit_msgno, struct inode *inode,
- 	if (inode) {
+diff --git a/security/lsm_audit.c b/security/lsm_audit.c
+index 849e832719e2..c39a22b27cce 100644
+--- a/security/lsm_audit.c
++++ b/security/lsm_audit.c
+@@ -227,7 +227,7 @@ static void dump_common_audit_data(struct audit_buffer *ab,
+ 		if (inode) {
+ 			audit_log_format(ab, " dev=");
+ 			audit_log_untrustedstring(ab, inode->i_sb->s_id);
+-			audit_log_format(ab, " ino=%lu", inode->i_ino);
++			audit_log_format(ab, " ino=%llu", inode_get_ino(inode));
+ 		}
+ 		break;
+ 	}
+@@ -240,7 +240,7 @@ static void dump_common_audit_data(struct audit_buffer *ab,
+ 		if (inode) {
+ 			audit_log_format(ab, " dev=");
+ 			audit_log_untrustedstring(ab, inode->i_sb->s_id);
+-			audit_log_format(ab, " ino=%lu", inode->i_ino);
++			audit_log_format(ab, " ino=%llu", inode_get_ino(inode));
+ 		}
+ 		break;
+ 	}
+@@ -253,7 +253,7 @@ static void dump_common_audit_data(struct audit_buffer *ab,
+ 		if (inode) {
+ 			audit_log_format(ab, " dev=");
+ 			audit_log_untrustedstring(ab, inode->i_sb->s_id);
+-			audit_log_format(ab, " ino=%lu", inode->i_ino);
++			audit_log_format(ab, " ino=%llu", inode_get_ino(inode));
+ 		}
+ 
+ 		audit_log_format(ab, " ioctlcmd=0x%hx", a->u.op->cmd);
+@@ -271,7 +271,7 @@ static void dump_common_audit_data(struct audit_buffer *ab,
+ 		if (inode) {
+ 			audit_log_format(ab, " dev=");
+ 			audit_log_untrustedstring(ab, inode->i_sb->s_id);
+-			audit_log_format(ab, " ino=%lu", inode->i_ino);
++			audit_log_format(ab, " ino=%llu", inode_get_ino(inode));
+ 		}
+ 		break;
+ 	}
+@@ -290,7 +290,7 @@ static void dump_common_audit_data(struct audit_buffer *ab,
+ 		}
  		audit_log_format(ab, " dev=");
  		audit_log_untrustedstring(ab, inode->i_sb->s_id);
 -		audit_log_format(ab, " ino=%lu", inode->i_ino);
 +		audit_log_format(ab, " ino=%llu", inode_get_ino(inode));
+ 		rcu_read_unlock();
+ 		break;
  	}
- 	audit_log_format(ab, " res=%d errno=%d", !result, errno);
- 	audit_log_end(ab);
 -- 
 2.46.1
 
