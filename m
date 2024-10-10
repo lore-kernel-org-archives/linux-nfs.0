@@ -1,89 +1,128 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from smtp-190b.mail.infomaniak.ch (smtp-190b.mail.infomaniak.ch [185.125.25.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F1F42C6BB
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2024 15:33:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A0FF71CB502
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2024 15:34:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.125.25.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728574423; cv=none; b=qu0yJmAIskOwKP/2ddVyNTpD/Vfh4UQ9dAG+ta3MqSCa9P/fsRYRGjLLKK2auJP//b91EFib5/akX+5QqixjKf0gp39xalsNqaDlsgS7e4dSKWTIdY+b1yVYxwNMoG5GqcDk4oe+Fj4jj9VLK4+ydVpFvOhKDBoEWi8YNb5PWSc=
+	t=1728574471; cv=none; b=XyLQpsMc6rS0WZQqH/Pq6J1DKx2JROO36GPP6wDJlZeXrMd4Z6joc36kFDNrkMbsSj8JdNRrJ0d1ZzonjQhBnrr1igDtUwEODiUz3NejFM6KOjaV0YegN81zONbka24Qc/NdVoc0BKwDMHYzAvZkcxXYmx+y/QCekGG1vf9eOns=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728574423; c=relaxed/simple;
-	bh=uqXecdjcR8k3LA+NVp/r1LZh3qnd4ctXahiF7ZIOrxQ=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=BmLvLzcqlghiCsdHQXnrMET35wxH2BYmKTzgoblTjk8eoY9bhyEhPx565KrBmQ6IrHeJJRguoR9tiYwgG4D5Tfbl1HA1NSTnTZpaQyhHd1MvC5LTabEKWvfamiBQIO7Il4sKBYAT8xZoctY88R4V4M9yhoSQ8EAhS/ngzcD/USo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=a6xgu7Oq; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1728574471; c=relaxed/simple;
+	bh=eOBhKnEXSIV7rYPECudDK6DtOaktNZ5HqAb3X21chGQ=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=qba7KS49dcPQpphwbj8SYQ5uR0+KEt0RY367eoblwkLS2uoFdTcEIwhPWg2MmhhdlA3z4QD2f13QePagXTGG1uOk7sRR2w32PatmKBsYXjOcmZnQj6hPmsaxReuUvtJmeCGAlSxdc56lBzBiYeiP4qL8uWJeSXK48kpH5ARpIGU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net; spf=pass smtp.mailfrom=digikod.net; dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b=viQD5Unf; arc=none smtp.client-ip=185.125.25.11
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=digikod.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="a6xgu7Oq"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 86443C4CEC5;
-	Thu, 10 Oct 2024 15:33:41 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1728574423;
-	bh=uqXecdjcR8k3LA+NVp/r1LZh3qnd4ctXahiF7ZIOrxQ=;
-	h=From:To:Cc:Subject:Date:From;
-	b=a6xgu7OqY9vIG6Pua/CNkPWd10Qs4u4hWPNurmFxCRVrGt8JP1Y2AUzq4uW2BxK8P
-	 in3YQqsLHmJr5lk8NY5CjOYSmpUC0WnG0K4tm2zp6Z1OnvkH7evNBtc9rTXOnbhQoF
-	 2UDYn2MLlFEDUNxdcg2D2c5lWRReDAy4HMZRl9P2CuLu0KccLhdUBMwtsqbPNY6j0T
-	 tIzjTTkF4zQVPtPLUsTbpEu0PTUAcwC8Zf3OBDEmnPVxHaMu5LGVfoXrpsY4nhOUir
-	 CO/xHOIFzcC1JaYHRSWCO2HDAM3jIbcnzOyTnn+uG3cSaRnrNxsWg53m4UVVmDS3+9
-	 FGDeG8nFOfwoQ==
-From: cel@kernel.org
-To: Neil Brown <neilb@suse.de>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: [RFC PATCH] NFSD: Replace use of NFSD_MAY_LOCK in nfsd4_lock()
-Date: Thu, 10 Oct 2024 11:33:32 -0400
-Message-ID: <20241010153331.143845-2-cel@kernel.org>
-X-Mailer: git-send-email 2.46.2
+	dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b="viQD5Unf"
+Received: from smtp-4-0000.mail.infomaniak.ch (smtp-4-0000.mail.infomaniak.ch [10.7.10.107])
+	by smtp-4-3000.mail.infomaniak.ch (Postfix) with ESMTPS id 4XPYX95RxLzskR;
+	Thu, 10 Oct 2024 17:27:05 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=digikod.net;
+	s=20191114; t=1728574025;
+	bh=h+xbwtkv9Q0HfRvF0JnaC1JBpxwqk3C/8JEj+tSRoi0=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=viQD5UnfVVrkQwxXvKuz2f8rvu3AVr0TTmAand/JkKo3azywinegXl/kkpQsafg0T
+	 VQAeNcmxNnuaEkRDlnYVYMVwL/OwkRbvbJxuhpY+kyzuPzTSkeAyzN/77uV+zFXT/O
+	 S5ARmU3HrWJQxDdjj9voLP/BZlG+B6mJcPMGTKYg=
+Received: from unknown by smtp-4-0000.mail.infomaniak.ch (Postfix) with ESMTPA id 4XPYX72DrWzBR4;
+	Thu, 10 Oct 2024 17:27:03 +0200 (CEST)
+From: =?UTF-8?q?Micka=C3=ABl=20Sala=C3=BCn?= <mic@digikod.net>
+To: Christian Brauner <brauner@kernel.org>,
+	Paul Moore <paul@paul-moore.com>
+Cc: =?UTF-8?q?Micka=C3=ABl=20Sala=C3=BCn?= <mic@digikod.net>,
+	linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-security-module@vger.kernel.org,
+	audit@vger.kernel.org,
+	Kentaro Takeda <takedakn@nttdata.co.jp>,
+	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Subject: [RFC PATCH v1 7/7] tomoyo: Fix inode numbers in logs
+Date: Thu, 10 Oct 2024 17:26:47 +0200
+Message-ID: <20241010152649.849254-7-mic@digikod.net>
+In-Reply-To: <20241010152649.849254-1-mic@digikod.net>
+References: <20241010152649.849254-1-mic@digikod.net>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1354; i=chuck.lever@oracle.com; h=from:subject; bh=jkBWB3dERlUwH60EFio6ZCtKUyJs0/ABgNt15AT6Wd8=; b=owEBbQKS/ZANAwAIATNqszNvZn+XAcsmYgBnB/PMH5YB0RUMB6huDL/ufMU7iOumW2GYgVmia /VgactAfIiJAjMEAAEIAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCZwfzzAAKCRAzarMzb2Z/ l7fZD/wOo5qruTZRC++nSswxBrs+bqqrAW6PQ2/nSaNRiHn4/1y6xIN5wOjxR2zO8RSNzaju1qa uc2rSS7o1dQcuPuq7GjmbLdrQEgnjE5M/Js61/8NAeV8PCeO1Au6JfUI7iV3VB7hD5Y7qaYECGz Rkyf/3CCw4u5J/4NUginuHJJVQvuXDISHJ1VSSbBeNTfridvQ+siIk8SWT7hLAOrh0sd5e7EvCR GAr/1RT7eGxe9PSdwI0fXIMdrNxavL0KvcREtVx0nSep1ZbAO/TXUrs5BEqLnU6bhza1yedBg5l 5HzZpHUajKR6mUY286LCtu7K+ZCGaXi9uGKyceVqaFvWE62rL9o+owuNvPqY28T4yQtBSAuyue+ OPMOc7RhFEDP7himVcOBnAevq5xw0n3/EHaBShrYAxZDvWlpvEFjLs55QSBgt9VAAjJ8MIDEnf8 qerEGiTYSEKkqa7LWUW0kPzAgffhyC7UOfisBoWUpOW5Ic3b4sizGpvwTWBZGvJQGhToUFYZ01T wKKmXTecN/fVbqp5/xvPzEPUrlTml3a3z00ahiwoqRSqWiiYXJRuOBFivUt3Sve6D9H5tcCRPiB S7KSa3Y8TYjsiNe67FwArDFZcyHd7IS7vRhBU4m6L0hw5tVccIBxWa1AdgJabzUT9jETGFUV5it zbJ3ls6lFcFWaqA==
-X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp; fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
+X-Infomaniak-Routing: alpha
 
-From: Chuck Lever <chuck.lever@oracle.com>
+Use the new inode_get_ino() helper to log the user space's view of
+inode's numbers instead of the private kernel values.
 
-NFSv4 LOCK operations should not avoid the set of authorization
-checks that apply to all other NFSv4 operations. Also, the
-"no_auth_nlm" export option should apply only to NLM LOCK requests.
-It's not necessary or sensible to apply it to NFSv4 LOCK operations.
-
-The replacement MAY bit mask,
-"NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE", comes from the access
-bits that are set in nfsd_permission() when the caller has set
-NFSD_MAY_LOCK.
-
-Reported-by: NeilBrown <neilb@suse.de>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Kentaro Takeda <takedakn@nttdata.co.jp>
+Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Signed-off-by: Mickaël Salaün <mic@digikod.net>
 ---
- fs/nfsd/nfs4state.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9c2b1d251ab3..3f2c11414390 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -7967,11 +7967,10 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (check_lock_length(lock->lk_offset, lock->lk_length))
- 		 return nfserr_inval;
+Because of the required type changes, there might be some side effects.
+Please review carefully.
+---
+ security/tomoyo/common.h    | 4 ++--
+ security/tomoyo/condition.c | 8 ++++----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/security/tomoyo/common.h b/security/tomoyo/common.h
+index 0e8e2e959aef..c670a8e3c351 100644
+--- a/security/tomoyo/common.h
++++ b/security/tomoyo/common.h
+@@ -524,7 +524,7 @@ struct tomoyo_name_union {
  
--	if ((status = fh_verify(rqstp, &cstate->current_fh,
--				S_IFREG, NFSD_MAY_LOCK))) {
--		dprintk("NFSD: nfsd4_lock: permission denied!\n");
-+	status = fh_verify(rqstp, &cstate->current_fh, S_IFREG,
-+			   NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE);
-+	if (status != nfs_ok)
- 		return status;
--	}
- 	sb = cstate->current_fh.fh_dentry->d_sb;
+ /* Structure for holding a number. */
+ struct tomoyo_number_union {
+-	unsigned long values[2];
++	u64 values[2];
+ 	struct tomoyo_group *group; /* Maybe NULL. */
+ 	/* One of values in "enum tomoyo_value_type". */
+ 	u8 value_type[2];
+@@ -567,7 +567,7 @@ struct tomoyo_address_group {
+ struct tomoyo_mini_stat {
+ 	kuid_t uid;
+ 	kgid_t gid;
+-	ino_t ino;
++	u64 ino;
+ 	umode_t mode;
+ 	dev_t dev;
+ 	dev_t rdev;
+diff --git a/security/tomoyo/condition.c b/security/tomoyo/condition.c
+index f8bcc083bb0d..a44ea574fd89 100644
+--- a/security/tomoyo/condition.c
++++ b/security/tomoyo/condition.c
+@@ -741,7 +741,7 @@ void tomoyo_get_attributes(struct tomoyo_obj_info *obj)
  
- 	if (lock->lk_is_new) {
+ 			stat->uid  = inode->i_uid;
+ 			stat->gid  = inode->i_gid;
+-			stat->ino  = inode->i_ino;
++			stat->ino  = inode_get_ino(inode);
+ 			stat->mode = inode->i_mode;
+ 			stat->dev  = inode->i_sb->s_dev;
+ 			stat->rdev = inode->i_rdev;
+@@ -766,8 +766,8 @@ bool tomoyo_condition(struct tomoyo_request_info *r,
+ 		      const struct tomoyo_condition *cond)
+ {
+ 	u32 i;
+-	unsigned long min_v[2] = { 0, 0 };
+-	unsigned long max_v[2] = { 0, 0 };
++	u64 min_v[2] = { 0, 0 };
++	u64 max_v[2] = { 0, 0 };
+ 	const struct tomoyo_condition_element *condp;
+ 	const struct tomoyo_number_union *numbers_p;
+ 	const struct tomoyo_name_union *names_p;
+@@ -834,7 +834,7 @@ bool tomoyo_condition(struct tomoyo_request_info *r,
+ 		/* Check numeric or bit-op expressions. */
+ 		for (j = 0; j < 2; j++) {
+ 			const u8 index = j ? right : left;
+-			unsigned long value = 0;
++			u64 value = 0;
+ 
+ 			switch (index) {
+ 			case TOMOYO_TASK_UID:
 -- 
-2.46.2
+2.46.1
 
