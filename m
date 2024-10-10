@@ -1,33 +1,33 @@
-Received: from smtp-190b.mail.infomaniak.ch (smtp-190b.mail.infomaniak.ch [185.125.25.11])
+Received: from smtp-1909.mail.infomaniak.ch (smtp-1909.mail.infomaniak.ch [185.125.25.9])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A0FF71CB502
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2024 15:34:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.125.25.11
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B20961CB502
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2024 15:34:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.125.25.9
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728574471; cv=none; b=XyLQpsMc6rS0WZQqH/Pq6J1DKx2JROO36GPP6wDJlZeXrMd4Z6joc36kFDNrkMbsSj8JdNRrJ0d1ZzonjQhBnrr1igDtUwEODiUz3NejFM6KOjaV0YegN81zONbka24Qc/NdVoc0BKwDMHYzAvZkcxXYmx+y/QCekGG1vf9eOns=
+	t=1728574475; cv=none; b=KEJdXd9QuAUa6x8pqXR0fE1rhpDGljbJ03h+cEgISFq1tecmL0KcNhiPdzmNDvP6CaGbtP4lvTgCFUTvpD4gYVU8RcaoV74NV1JbDmfXMxCHN41BWL4X73F8fzwnH9POmKWBKCKvZnommJQ9POEJimqUhls52rPlUWSxOrBy27A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728574471; c=relaxed/simple;
-	bh=eOBhKnEXSIV7rYPECudDK6DtOaktNZ5HqAb3X21chGQ=;
+	s=arc-20240116; t=1728574475; c=relaxed/simple;
+	bh=b9m/+J0NHIYt2XBf4REoel7im/5tGdJ8vx2caisRitU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=qba7KS49dcPQpphwbj8SYQ5uR0+KEt0RY367eoblwkLS2uoFdTcEIwhPWg2MmhhdlA3z4QD2f13QePagXTGG1uOk7sRR2w32PatmKBsYXjOcmZnQj6hPmsaxReuUvtJmeCGAlSxdc56lBzBiYeiP4qL8uWJeSXK48kpH5ARpIGU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net; spf=pass smtp.mailfrom=digikod.net; dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b=viQD5Unf; arc=none smtp.client-ip=185.125.25.11
+	 MIME-Version:Content-Type; b=BtYjVFUmN4QUoPkf3fQCoicHjdcq4DI+LHTyXYS9rxQD5MzERWrJwfLKXSyoud/d0CySTzgbQzhtGC5nClKG2taNwfJucF5M6Yg++oFzDf4FKz5ti9rg6usCc5xhB/yW4yV+/4eJ2qrytwBUZrkfYrb5nJ6hWZstFRWYr23+RrY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net; spf=pass smtp.mailfrom=digikod.net; dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b=kxzGWNz8; arc=none smtp.client-ip=185.125.25.9
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=digikod.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b="viQD5Unf"
-Received: from smtp-4-0000.mail.infomaniak.ch (smtp-4-0000.mail.infomaniak.ch [10.7.10.107])
-	by smtp-4-3000.mail.infomaniak.ch (Postfix) with ESMTPS id 4XPYX95RxLzskR;
-	Thu, 10 Oct 2024 17:27:05 +0200 (CEST)
+	dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b="kxzGWNz8"
+Received: from smtp-4-0000.mail.infomaniak.ch (unknown [IPv6:2001:1600:7:10:40ca:feff:fe05:0])
+	by smtp-4-3000.mail.infomaniak.ch (Postfix) with ESMTPS id 4XPYX23TrVz6C1;
+	Thu, 10 Oct 2024 17:26:58 +0200 (CEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=digikod.net;
-	s=20191114; t=1728574025;
-	bh=h+xbwtkv9Q0HfRvF0JnaC1JBpxwqk3C/8JEj+tSRoi0=;
+	s=20191114; t=1728574018;
+	bh=AvPae8614W2IhRWzUsWrgc6FU1WWWePg3y3V213ZELM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=viQD5UnfVVrkQwxXvKuz2f8rvu3AVr0TTmAand/JkKo3azywinegXl/kkpQsafg0T
-	 VQAeNcmxNnuaEkRDlnYVYMVwL/OwkRbvbJxuhpY+kyzuPzTSkeAyzN/77uV+zFXT/O
-	 S5ARmU3HrWJQxDdjj9voLP/BZlG+B6mJcPMGTKYg=
-Received: from unknown by smtp-4-0000.mail.infomaniak.ch (Postfix) with ESMTPA id 4XPYX72DrWzBR4;
-	Thu, 10 Oct 2024 17:27:03 +0200 (CEST)
+	b=kxzGWNz8JdR99s0m1e7yN3Ny21/+iH2p9EBA4vF4rLkWIt1vU6NxgFwpsBOQaYgml
+	 cWhnNyw/uaMeE1SxnntnZ3bF1Xjo+IHSiHdHf1Qm5SCSmgA6MBkgOGpNkjYgQ9Hz2Q
+	 13aB+ZJzPIuua1hXfXD5ZzhcgDehAH4SKr1acYAU=
+Received: from unknown by smtp-4-0000.mail.infomaniak.ch (Postfix) with ESMTPA id 4XPYX172zpzBF7;
+	Thu, 10 Oct 2024 17:26:57 +0200 (CEST)
 From: =?UTF-8?q?Micka=C3=ABl=20Sala=C3=BCn?= <mic@digikod.net>
 To: Christian Brauner <brauner@kernel.org>,
 	Paul Moore <paul@paul-moore.com>
@@ -36,11 +36,11 @@ Cc: =?UTF-8?q?Micka=C3=ABl=20Sala=C3=BCn?= <mic@digikod.net>,
 	linux-nfs@vger.kernel.org,
 	linux-security-module@vger.kernel.org,
 	audit@vger.kernel.org,
-	Kentaro Takeda <takedakn@nttdata.co.jp>,
-	Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
-Subject: [RFC PATCH v1 7/7] tomoyo: Fix inode numbers in logs
-Date: Thu, 10 Oct 2024 17:26:47 +0200
-Message-ID: <20241010152649.849254-7-mic@digikod.net>
+	Stephen Smalley <stephen.smalley.work@gmail.com>,
+	Ondrej Mosnacek <omosnace@redhat.com>
+Subject: [RFC PATCH v1 3/7] selinux: Fix inode numbers in error messages
+Date: Thu, 10 Oct 2024 17:26:43 +0200
+Message-ID: <20241010152649.849254-3-mic@digikod.net>
 In-Reply-To: <20241010152649.849254-1-mic@digikod.net>
 References: <20241010152649.849254-1-mic@digikod.net>
 Precedence: bulk
@@ -56,73 +56,57 @@ X-Infomaniak-Routing: alpha
 Use the new inode_get_ino() helper to log the user space's view of
 inode's numbers instead of the private kernel values.
 
-Cc: Kentaro Takeda <takedakn@nttdata.co.jp>
-Cc: Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Cc: Paul Moore <paul@paul-moore.com>
+Cc: Stephen Smalley <stephen.smalley.work@gmail.com>
+Cc: Ondrej Mosnacek <omosnace@redhat.com>
 Signed-off-by: Mickaël Salaün <mic@digikod.net>
 ---
+ security/selinux/hooks.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-Because of the required type changes, there might be some side effects.
-Please review carefully.
----
- security/tomoyo/common.h    | 4 ++--
- security/tomoyo/condition.c | 8 ++++----
- 2 files changed, 6 insertions(+), 6 deletions(-)
-
-diff --git a/security/tomoyo/common.h b/security/tomoyo/common.h
-index 0e8e2e959aef..c670a8e3c351 100644
---- a/security/tomoyo/common.h
-+++ b/security/tomoyo/common.h
-@@ -524,7 +524,7 @@ struct tomoyo_name_union {
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index fc926d3cac6e..60b31b35f475 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -1384,8 +1384,8 @@ static int inode_doinit_use_xattr(struct inode *inode, struct dentry *dentry,
+ 	if (rc < 0) {
+ 		kfree(context);
+ 		if (rc != -ENODATA) {
+-			pr_warn("SELinux: %s:  getxattr returned %d for dev=%s ino=%ld\n",
+-				__func__, -rc, inode->i_sb->s_id, inode->i_ino);
++			pr_warn("SELinux: %s:  getxattr returned %d for dev=%s ino=%llu\n",
++				__func__, -rc, inode->i_sb->s_id, inode_get_ino(inode));
+ 			return rc;
+ 		}
+ 		*sid = def_sid;
+@@ -1396,13 +1396,13 @@ static int inode_doinit_use_xattr(struct inode *inode, struct dentry *dentry,
+ 					     def_sid, GFP_NOFS);
+ 	if (rc) {
+ 		char *dev = inode->i_sb->s_id;
+-		unsigned long ino = inode->i_ino;
++		u64 ino = inode_get_ino(inode);
  
- /* Structure for holding a number. */
- struct tomoyo_number_union {
--	unsigned long values[2];
-+	u64 values[2];
- 	struct tomoyo_group *group; /* Maybe NULL. */
- 	/* One of values in "enum tomoyo_value_type". */
- 	u8 value_type[2];
-@@ -567,7 +567,7 @@ struct tomoyo_address_group {
- struct tomoyo_mini_stat {
- 	kuid_t uid;
- 	kgid_t gid;
--	ino_t ino;
-+	u64 ino;
- 	umode_t mode;
- 	dev_t dev;
- 	dev_t rdev;
-diff --git a/security/tomoyo/condition.c b/security/tomoyo/condition.c
-index f8bcc083bb0d..a44ea574fd89 100644
---- a/security/tomoyo/condition.c
-+++ b/security/tomoyo/condition.c
-@@ -741,7 +741,7 @@ void tomoyo_get_attributes(struct tomoyo_obj_info *obj)
+ 		if (rc == -EINVAL) {
+-			pr_notice_ratelimited("SELinux: inode=%lu on dev=%s was found to have an invalid context=%s.  This indicates you may need to relabel the inode or the filesystem in question.\n",
++			pr_notice_ratelimited("SELinux: inode=%llu on dev=%s was found to have an invalid context=%s.  This indicates you may need to relabel the inode or the filesystem in question.\n",
+ 					      ino, dev, context);
+ 		} else {
+-			pr_warn("SELinux: %s:  context_to_sid(%s) returned %d for dev=%s ino=%ld\n",
++			pr_warn("SELinux: %s:  context_to_sid(%s) returned %d for dev=%s ino=%llu\n",
+ 				__func__, context, -rc, dev, ino);
+ 		}
+ 	}
+@@ -3324,8 +3324,8 @@ static void selinux_inode_post_setxattr(struct dentry *dentry, const char *name,
+ 					   &newsid);
+ 	if (rc) {
+ 		pr_err("SELinux:  unable to map context to SID"
+-		       "for (%s, %lu), rc=%d\n",
+-		       inode->i_sb->s_id, inode->i_ino, -rc);
++		       "for (%s, %llu), rc=%d\n",
++		       inode->i_sb->s_id, inode_get_ino(inode), -rc);
+ 		return;
+ 	}
  
- 			stat->uid  = inode->i_uid;
- 			stat->gid  = inode->i_gid;
--			stat->ino  = inode->i_ino;
-+			stat->ino  = inode_get_ino(inode);
- 			stat->mode = inode->i_mode;
- 			stat->dev  = inode->i_sb->s_dev;
- 			stat->rdev = inode->i_rdev;
-@@ -766,8 +766,8 @@ bool tomoyo_condition(struct tomoyo_request_info *r,
- 		      const struct tomoyo_condition *cond)
- {
- 	u32 i;
--	unsigned long min_v[2] = { 0, 0 };
--	unsigned long max_v[2] = { 0, 0 };
-+	u64 min_v[2] = { 0, 0 };
-+	u64 max_v[2] = { 0, 0 };
- 	const struct tomoyo_condition_element *condp;
- 	const struct tomoyo_number_union *numbers_p;
- 	const struct tomoyo_name_union *names_p;
-@@ -834,7 +834,7 @@ bool tomoyo_condition(struct tomoyo_request_info *r,
- 		/* Check numeric or bit-op expressions. */
- 		for (j = 0; j < 2; j++) {
- 			const u8 index = j ? right : left;
--			unsigned long value = 0;
-+			u64 value = 0;
- 
- 			switch (index) {
- 			case TOMOYO_TASK_UID:
 -- 
 2.46.1
 
