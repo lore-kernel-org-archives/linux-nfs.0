@@ -1,64 +1,245 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8251E2178FF;
-	Fri, 11 Oct 2024 12:54:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EB100216A14;
+	Fri, 11 Oct 2024 13:04:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728651279; cv=none; b=oA3Yjs0jM47QNkauNj3SF+bJnNhDVHmwaQoZZYJZHLoo2nPrhn5yI6yPhwbDsK2Dgn9bjS87lpRiUIBsGUSwQqzA5X4XcGC7roA/pKtHeBCbUSan4PPJ9VGuuToojnH+6HBqPLyt5+F+Tao4L+yAPTt07KF1VjBaY86kSXCD3r8=
+	t=1728651895; cv=none; b=jCBIt3vQhFymTiare41ZOQYTzyVwtclCCZZDnup+yBR1E5s7DDZKPmDSbPjXEX+F+M8vJVdI+idp+c+ieyL3d3gEKVwG3zP4+tVWE0RnTBTcTZyfutmYjyALkcD3peONzlrEDUPPzGRaASkCxQN4KMQ19RalBnxGgnvKQFzAFFo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728651279; c=relaxed/simple;
-	bh=hUF503SshZFnhDTc/TnXqrKN0/ZZy1/GZ3WEZ0BbrjI=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=gHM+f3ZIjal4ywvVSQDj/avcAy/AtLp5N8GeieDRvnPeQpvkUYtxrLdsXS84iDXyOfXJ+h25es6RpKowjoxfA1QNaEW8pcILgkXMNIeFCp8J6lEAVd8Ysx+mQmK3fTsa7mdrVj31QnNuKfoG9EBf7yyiFAltaMOcYm9HDElluQA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=cB3SRmzC; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	s=arc-20240116; t=1728651895; c=relaxed/simple;
+	bh=NxAglJjLgkj0eQvaRxN5LlRLkWEy5OEDwnaSVtlUGtg=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=GDo6YlVZg9OhPdahNnoDcZ0Pn8DbbbHCRKcrfq40XwnzGY9mOoQ7yidsmMlMb837zsmsoubP2KMTbycjnWU/W7GU7ODP0iXZf/AObnjt5HiAMDqrua3CWXNKa6T7t2TSoz+M8KNOZobXaWRlTrbxhLkt8bmmqD7/JkEaByf6aQ0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=U8crctls; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="cB3SRmzC"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Transfer-Encoding
-	:Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
-	Sender:Reply-To:Content-ID:Content-Description;
-	bh=hUF503SshZFnhDTc/TnXqrKN0/ZZy1/GZ3WEZ0BbrjI=; b=cB3SRmzCdneY8cgh56Eemb7PlF
-	yFL6JsxdLZw5J8sO/8eTqXbSXxtqP/5OUxS4fTzQszsMfug6ufol/YKP9zR9hgGAsxGpJn7/OIA7Y
-	Ukt8xNXuhKMm7AVpf6e6cWMkWl0ucqIU9AQCuG5Dqf5evD9ueIIVwZig66QEMgv5oOZ8EsZYjPBDo
-	8EQdNBwT74H5jk801UgF8s7AsRA1dP6osrdrTbCE9jwZcSKgFXSMtx8mxCpmQTj0W6uO3Hs0u8OLz
-	0P9712ZQ2x8pfTIzp9Cs0aaqyI0VsWlkNsiL4vEsLaK7SR+lY1B87x+OKc/uCzFemw2KDF+YXd3ya
-	E4T692cA==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1szFAD-0000000GMXd-1Y70;
-	Fri, 11 Oct 2024 12:54:37 +0000
-Date: Fri, 11 Oct 2024 05:54:37 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: =?iso-8859-1?Q?Micka=EBl_Sala=FCn?= <mic@digikod.net>
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Christian Brauner <brauner@kernel.org>,
-	Paul Moore <paul@paul-moore.com>, linux-fsdevel@vger.kernel.org,
-	linux-nfs@vger.kernel.org, linux-security-module@vger.kernel.org,
-	audit@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH v1 1/7] fs: Add inode_get_ino() and implement
- get_ino() for NFS
-Message-ID: <ZwkgDd1JO2kZBobc@infradead.org>
-References: <20241010152649.849254-1-mic@digikod.net>
- <ZwkaVLOFElypvSDX@infradead.org>
- <20241011.ieghie3Aiye4@digikod.net>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="U8crctls"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1F557C4CEC3;
+	Fri, 11 Oct 2024 13:04:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1728651894;
+	bh=NxAglJjLgkj0eQvaRxN5LlRLkWEy5OEDwnaSVtlUGtg=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+	b=U8crctlslPlrC6U5KDZV+kaeJf/CQ5dW2Zv2oizRsacjvEDG67zLWX+V/WWTMZhAH
+	 DiPCCvbfLlEWMUa7iU+1ek9fs52eJAU6tIB/AP+nJ2CXJMfnIAVFvpsFELXhcgYz1c
+	 yVHQAqh+/ankvAB8FtFvcVSGcWDnIPdPwbcWkY6+1BymS8tV79qlLgebYD5Rq0eGs3
+	 JeHvrUJxIeerhN2BIVXlwRggALvK+zP8CGKZEW6IEC/O9of/embYBMrdSQLKbWr9l3
+	 /EsJiVfAdd4Vtkyqk92lU1sKZvvNnSTSwwT2NFfJ4e/qaefmtMIYSZj2zfEDufwIjU
+	 3YAEmAVXtmUew==
+Message-ID: <ae0003013659a34279e3666180cd8b730ca3a2d8.camel@kernel.org>
+Subject: Re: [PATCH 1/1] nfsd: fix race between laundromat and free_stateid
+From: Jeff Layton <jlayton@kernel.org>
+To: Olga Kornievskaia <okorniev@redhat.com>, chuck.lever@oracle.com
+Cc: linux-nfs@vger.kernel.org, stable@vger.kernel.org
+Date: Fri, 11 Oct 2024 09:04:53 -0400
+In-Reply-To: <20241010221801.35462-1-okorniev@redhat.com>
+References: <20241010221801.35462-1-okorniev@redhat.com>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.52.4 (3.52.4-1.fc40) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <20241011.ieghie3Aiye4@digikod.net>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Fri, Oct 11, 2024 at 02:47:14PM +0200, Mickaël Salaün wrote:
-> How to get the inode number with ->getattr and only a struct inode?
+On Thu, 2024-10-10 at 18:18 -0400, Olga Kornievskaia wrote:
+> There is a race between laundromat handling of revoked delegations
+> and a client sending free_stateid operation. Laundromat thread
+> finds that delegation has expired and needs to be revoked so it
+> marks the delegation stid revoked and it puts it on a reaper list
+> but then it unlock the state lock and the actual delegation revocation
+> happens without the lock. Once the stid is marked revoked a racing
+> free_stateid processing thread does the following (1) it calls
+> list_del_init() which removes it from the reaper list and (2) frees
+> the delegation stid structure. The laundromat thread ends up not
+> calling the revoke_delegation() function for this particular delegation
+> but that means it will no release the lock lease that exists on
+> the file.
+>=20
+> Now, a new open for this file comes in and ends up finding that
+> lease list isn't empty and calls nfsd_breaker_owns_lease() which ends
+> up trying to derefence a freed delegation stateid. Leading to the
+> followint use-after-free KASAN warning:
+>=20
+> kernel: =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> kernel: BUG: KASAN: slab-use-after-free in nfsd_breaker_owns_lease+0x140/=
+0x160 [nfsd]
+> kernel: Read of size 8 at addr ffff0000e73cd0c8 by task nfsd/6205
+> kernel:
+> kernel: CPU: 2 UID: 0 PID: 6205 Comm: nfsd Kdump: loaded Not tainted 6.11=
+.0-rc7+ #9
+> kernel: Hardware name: Apple Inc. Apple Virtualization Generic Platform, =
+BIOS 2069.0.0.0.0 08/03/2024
+> kernel: Call trace:
+> kernel: dump_backtrace+0x98/0x120
+> kernel: show_stack+0x1c/0x30
+> kernel: dump_stack_lvl+0x80/0xe8
+> kernel: print_address_description.constprop.0+0x84/0x390
+> kernel: print_report+0xa4/0x268
+> kernel: kasan_report+0xb4/0xf8
+> kernel: __asan_report_load8_noabort+0x1c/0x28
+> kernel: nfsd_breaker_owns_lease+0x140/0x160 [nfsd]
+> kernel: leases_conflict+0x68/0x370
+> kernel: __break_lease+0x204/0xc38
+> kernel: nfsd_open_break_lease+0x8c/0xf0 [nfsd]
+> kernel: nfsd_file_do_acquire+0xb3c/0x11d0 [nfsd]
+> kernel: nfsd_file_acquire_opened+0x84/0x110 [nfsd]
+> kernel: nfs4_get_vfs_file+0x634/0x958 [nfsd]
+> kernel: nfsd4_process_open2+0xa40/0x1a40 [nfsd]
+> kernel: nfsd4_open+0xa08/0xe80 [nfsd]
+> kernel: nfsd4_proc_compound+0xb8c/0x2130 [nfsd]
+> kernel: nfsd_dispatch+0x22c/0x718 [nfsd]
+> kernel: svc_process_common+0x8e8/0x1960 [sunrpc]
+> kernel: svc_process+0x3d4/0x7e0 [sunrpc]
+> kernel: svc_handle_xprt+0x828/0xe10 [sunrpc]
+> kernel: svc_recv+0x2cc/0x6a8 [sunrpc]
+> kernel: nfsd+0x270/0x400 [nfsd]
+> kernel: kthread+0x288/0x310
+> kernel: ret_from_fork+0x10/0x20
+>=20
+> Proposing to have laundromat thread hold the state_lock over both
+> marking thru revoking the delegation as well as making free_stateid
+> acquire state_lock before accessing the list. Making sure that
+> revoke_delegation() (ie kernel_setlease(unlock)) is called for
+> every delegation that was revoked and added to the reaper list.
+>=20
 
-You get a struct kstat and extract it from that.
+Nice detective work!
 
+> CC: stable@vger.kernel.org
+> Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
+>=20
+> --- I can't figure out the Fixes: tag. Laundromat's behaviour has
+> been like that forever. But the free_stateid bits wont apply before
+> the 1e3577a4521e ("SUNRPC: discard sv_refcnt, and svc_get/svc_put").
+> But we used that fixes tag already with a previous fix for a different
+> problem.
+> ---
+>  fs/nfsd/nfs4state.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+>=20
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 9c2b1d251ab3..c97907d7fb38 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -6605,13 +6605,13 @@ nfs4_laundromat(struct nfsd_net *nn)
+>  		unhash_delegation_locked(dp, SC_STATUS_REVOKED);
+>  		list_add(&dp->dl_recall_lru, &reaplist);
+>  	}
+> -	spin_unlock(&state_lock);
+>  	while (!list_empty(&reaplist)) {
+>  		dp =3D list_first_entry(&reaplist, struct nfs4_delegation,
+>  					dl_recall_lru);
+>  		list_del_init(&dp->dl_recall_lru);
+>  		revoke_delegation(dp);
+>  	}
+> +	spin_unlock(&state_lock);
+> =20
+>  	spin_lock(&nn->client_lock);
+>  	while (!list_empty(&nn->close_lru)) {
+> @@ -7213,7 +7213,9 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct n=
+fsd4_compound_state *cstate,
+>  		if (s->sc_status & SC_STATUS_REVOKED) {
+>  			spin_unlock(&s->sc_lock);
+>  			dp =3D delegstateid(s);
+> +			spin_lock(&state_lock);
+>  			list_del_init(&dp->dl_recall_lru);
+> +			spin_unlock(&state_lock);
+>  			spin_unlock(&cl->cl_lock);
+>  			nfs4_put_stid(s);
+>  			ret =3D nfs_ok;
+
+
+I'm not thrilled with this patch, but it does seem like it would fix
+the problem. Long term, I think we need to get rid of the state_lock,
+but I don't have a real plan for that just yet as it's not 100% clear
+what it still protects.
+
+As far as a Fixes tag, this bug is likely very old. I'd say it probably
+got introduced here:
+
+    2d4a532d385f nfsd: ensure that clp->cl_revoked list is protected by clp=
+->cl_lock
+
+In any case, let's go with this patch until we can come up with a
+better plan for delegation handling.
+
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
