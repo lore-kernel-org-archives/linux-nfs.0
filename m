@@ -1,47 +1,47 @@
-Received: from smtp-bc0a.mail.infomaniak.ch (smtp-bc0a.mail.infomaniak.ch [45.157.188.10])
+Received: from smtp-42ac.mail.infomaniak.ch (smtp-42ac.mail.infomaniak.ch [84.16.66.172])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C8DC82178F1
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Oct 2024 12:38:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.157.188.10
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B203A2178EA;
+	Fri, 11 Oct 2024 12:38:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=84.16.66.172
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728650323; cv=none; b=ijo4T1PUQWOHHG8Qmw8C+UfCqeIG3aLkMxj5b5hsarQgeOGxVtO0uV+tHThJN6ri9eFLziBLkA+xB2OUq+i5tq0GGB8cfjj7iLpZrQkT3yAum+HNkeIZJYAHHyRKA24GJ18k9ZuCZc9tw0EQP+MJxub6qnY13WrwHu7aR9iFxu4=
+	t=1728650338; cv=none; b=mvmyZtOJrSgGM7dlSf481qxJPiYAm1Wg3nR4RgxkhGt+9pb5pWk3iD6mdFaGsmtoxC9EipZ0mqhU18NPFVzkfStp7ICkUKHt9Ja1W3kXnRy3Ll3NOKWY7aG1IfOkC1vJyPu3oADJt0MNGnyLmWd3ZWSPgedMNPEKsPCzi0sizqI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728650323; c=relaxed/simple;
-	bh=kRdY9KX9bxi97dGRI3QXfhG2WvTbCZbsYY0Pa+qNdv8=;
+	s=arc-20240116; t=1728650338; c=relaxed/simple;
+	bh=MHOjzrUYLVcXDaO1SFFuif6X9lEzDQLQU8rL7K6XTnM=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=KbQjz8HQY1UUnlcb5gAlGTRJOx3ZEgncpTs21Yh3TzFOtjXBmvTXdORbdDOFIIxs97sQKOZfgE5L7RSjQIV4NCYwbIwqyXw0fLIN1/B7vDLUB/mt3NsEZxiu7Rv4zkFKwNexDRnXKG7jCG1D4JqxGBkT8IOO4qq55to7ooer5D4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net; spf=pass smtp.mailfrom=digikod.net; dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b=gUq0f1Oh; arc=none smtp.client-ip=45.157.188.10
+	 Content-Type:Content-Disposition:In-Reply-To; b=rj+ZJ/96yUSitKfxcI9lMDUVcNQjWYq1/FlfcGqh5IhlZNJwHrJkYzvO19CFnqWzO+DgqSs+IWjLM2xN9KPEVhAEDj97Aqp+NaPvdMeX0GO1kZIkof1QgrL0N4HGLN0pk8b6ypAND8jhopLs9BsI3Fapd2kJo2o2NoyZ+S2eRHw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net; spf=pass smtp.mailfrom=digikod.net; dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b=rQ771CiR; arc=none smtp.client-ip=84.16.66.172
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=digikod.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=digikod.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b="gUq0f1Oh"
-Received: from smtp-3-0000.mail.infomaniak.ch (smtp-3-0000.mail.infomaniak.ch [10.4.36.107])
-	by smtp-3-3000.mail.infomaniak.ch (Postfix) with ESMTPS id 4XQ5lD2YJbznCQ;
-	Fri, 11 Oct 2024 14:38:32 +0200 (CEST)
+	dkim=pass (1024-bit key) header.d=digikod.net header.i=@digikod.net header.b="rQ771CiR"
+Received: from smtp-3-0001.mail.infomaniak.ch (smtp-3-0001.mail.infomaniak.ch [10.4.36.108])
+	by smtp-3-3000.mail.infomaniak.ch (Postfix) with ESMTPS id 4XQ5ld4hBkzm2d;
+	Fri, 11 Oct 2024 14:38:53 +0200 (CEST)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=digikod.net;
-	s=20191114; t=1728650312;
-	bh=w/11312f14wpfp+F5nlR2cIA65JVRRn+TKoZFd1ei0I=;
+	s=20191114; t=1728650333;
+	bh=YaVtQnc6mbIiONxg+8gg3YONHFrtLTIDXq9ZqDN4GPw=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=gUq0f1Oh4cSQJdoj1t7yitsCxIWzDoEJ5ed5OkOK97APNCBA0Rs+84IeS/TUABVdo
-	 yBKWGDN6yHRTUoOUwcWnYIikjcv666mbSQbcqlLNIdM/7oXgl3qd5IuUO2qAhqrUtp
-	 JEkjOYf4hThVxZpTqAk9hANgFSWoY8cyWjQkAMO0=
-Received: from unknown by smtp-3-0000.mail.infomaniak.ch (Postfix) with ESMTPA id 4XQ5lC4T80zlHP;
-	Fri, 11 Oct 2024 14:38:31 +0200 (CEST)
-Date: Fri, 11 Oct 2024 14:38:28 +0200
+	b=rQ771CiR0WOfkPm2nZu6uT3+Fo3GXLTQUsRpBEC/ylTfiFq2eiLSAKKXjVKI4drPP
+	 D2Hc+NzfeVUe9fa6vuzy8uJ18QIx1H/JGHdKVcSd0w21lLG0vzCC7t7SSavVmmwjWe
+	 hZ0INWXRy6VIBwEm3nLW46NJ6cKCViuSjnZ58QPw=
+Received: from unknown by smtp-3-0001.mail.infomaniak.ch (Postfix) with ESMTPA id 4XQ5lc5FFrzs8q;
+	Fri, 11 Oct 2024 14:38:52 +0200 (CEST)
+Date: Fri, 11 Oct 2024 14:38:49 +0200
 From: =?utf-8?Q?Micka=C3=ABl_Sala=C3=BCn?= <mic@digikod.net>
-To: Trond Myklebust <trondmy@kernel.org>
-Cc: Christian Brauner <brauner@kernel.org>, 
-	Paul Moore <paul@paul-moore.com>, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org, 
-	linux-security-module@vger.kernel.org, audit@vger.kernel.org, Anna Schumaker <anna@kernel.org>, 
-	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>
-Subject: Re: [RFC PATCH v1 1/7] fs: Add inode_get_ino() and implement
- get_ino() for NFS
-Message-ID: <20241011.uL8bu2bie4Ai@digikod.net>
-References: <20241010152649.849254-1-mic@digikod.net>
- <fd90d5d173a47732da87d31aed8a955f73ea086e.camel@kernel.org>
- <20241011.xaeMo6Fohj3h@digikod.net>
- <1465e709f91b771e3aa4b3f0a6fe948855204f09.camel@kernel.org>
+To: Roberto Sassu <roberto.sassu@huaweicloud.com>
+Cc: Paul Moore <paul@paul-moore.com>, 
+	Christian Brauner <brauner@kernel.org>, linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	linux-security-module@vger.kernel.org, audit@vger.kernel.org, Mimi Zohar <zohar@linux.ibm.com>, 
+	Roberto Sassu <roberto.sassu@huawei.com>, Dmitry Kasatkin <dmitry.kasatkin@gmail.com>, 
+	Eric Snowberg <eric.snowberg@oracle.com>
+Subject: Re: [PATCH RFC v1 4/7] integrity: Fix inode numbers in audit records
+Message-ID: <20241011.upah1Ek3faiB@digikod.net>
+References: <20241010152649.849254-4-mic@digikod.net>
+ <bafd35c50bbcd62ee69e0d3c5f6b112d@paul-moore.com>
+ <20241011.Eigh6nohChai@digikod.net>
+ <370204a3fbceef1bebfdcfc136beed98a3ca0229.camel@huaweicloud.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -51,224 +51,64 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <1465e709f91b771e3aa4b3f0a6fe948855204f09.camel@kernel.org>
+In-Reply-To: <370204a3fbceef1bebfdcfc136beed98a3ca0229.camel@huaweicloud.com>
 X-Infomaniak-Routing: alpha
 
-On Fri, Oct 11, 2024 at 08:22:51AM -0400, Trond Myklebust wrote:
+On Fri, Oct 11, 2024 at 01:34:39PM +0200, Roberto Sassu wrote:
 > On Fri, 2024-10-11 at 12:15 +0200, Mickaël Salaün wrote:
-> > On Thu, Oct 10, 2024 at 03:28:12PM -0400, Trond Myklebust wrote:
-> > > On Thu, 2024-10-10 at 17:26 +0200, Mickaël Salaün wrote:
-> > > > When a filesystem manages its own inode numbers, like NFS's
-> > > > fileid
-> > > > shown
-> > > > to user space with getattr(), other part of the kernel may still
-> > > > expose
-> > > > the private inode->ino through kernel logs and audit.
+> > On Thu, Oct 10, 2024 at 09:20:52PM -0400, Paul Moore wrote:
+> > > On Oct 10, 2024 =?UTF-8?q?Micka=C3=ABl=20Sala=C3=BCn?= <mic@digikod.net> wrote:
 > > > > 
-> > > > Another issue is on 32-bit architectures, on which ino_t is 32
-> > > > bits,
-> > > > whereas the user space's view of an inode number can still be 64
-> > > > bits.
+> > > > Use the new inode_get_ino() helper to log the user space's view of
+> > > > inode's numbers instead of the private kernel values.
 > > > > 
-> > > > Add a new inode_get_ino() helper calling the new struct
-> > > > inode_operations' get_ino() when set, to get the user space's
-> > > > view of
-> > > > an
-> > > > inode number.  inode_get_ino() is called by generic_fillattr().
-> > > > 
-> > > > Implement get_ino() for NFS.
-> > > > 
-> > > > Cc: Trond Myklebust <trondmy@kernel.org>
-> > > > Cc: Anna Schumaker <anna@kernel.org>
-> > > > Cc: Alexander Viro <viro@zeniv.linux.org.uk>
-> > > > Cc: Christian Brauner <brauner@kernel.org>
-> > > > Cc: Jan Kara <jack@suse.cz>
+> > > > Cc: Mimi Zohar <zohar@linux.ibm.com>
+> > > > Cc: Roberto Sassu <roberto.sassu@huawei.com>
+> > > > Cc: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>
+> > > > Cc: Eric Snowberg <eric.snowberg@oracle.com>
 > > > > Signed-off-by: Mickaël Salaün <mic@digikod.net>
 > > > > ---
-> > > > 
-> > > > I'm not sure about nfs_namespace_getattr(), please review
-> > > > carefully.
-> > > > 
-> > > > I guess there are other filesystems exposing inode numbers
-> > > > different
-> > > > than inode->i_ino, and they should be patched too.
-> > > > ---
-> > > >  fs/nfs/inode.c     | 6 ++++--
-> > > >  fs/nfs/internal.h  | 1 +
-> > > >  fs/nfs/namespace.c | 2 ++
-> > > >  fs/stat.c          | 2 +-
-> > > >  include/linux/fs.h | 9 +++++++++
-> > > >  5 files changed, 17 insertions(+), 3 deletions(-)
-> > > > 
-> > > > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> > > > index 542c7d97b235..5dfc176b6d92 100644
-> > > > --- a/fs/nfs/inode.c
-> > > > +++ b/fs/nfs/inode.c
-> > > > @@ -83,18 +83,19 @@ EXPORT_SYMBOL_GPL(nfs_wait_bit_killable);
-> > > >  
-> > > >  /**
-> > > >   * nfs_compat_user_ino64 - returns the user-visible inode number
-> > > > - * @fileid: 64-bit fileid
-> > > > + * @inode: inode pointer
-> > > >   *
-> > > >   * This function returns a 32-bit inode number if the boot
-> > > > parameter
-> > > >   * nfs.enable_ino64 is zero.
-> > > >   */
-> > > > -u64 nfs_compat_user_ino64(u64 fileid)
-> > > > +u64 nfs_compat_user_ino64(const struct *inode)
-> > > >  {
-> > > >  #ifdef CONFIG_COMPAT
-> > > >  	compat_ulong_t ino;
-> > > >  #else	
-> > > >  	unsigned long ino;
-> > > >  #endif
-> > > > +	u64 fileid = NFS_FILEID(inode);
-> > > >  
-> > > >  	if (enable_ino64)
-> > > >  		return fileid;
-> > > > @@ -103,6 +104,7 @@ u64 nfs_compat_user_ino64(u64 fileid)
-> > > >  		ino ^= fileid >> (sizeof(fileid)-sizeof(ino)) *
-> > > > 8;
-> > > >  	return ino;
-> > > >  }
-> > > > +EXPORT_SYMBOL_GPL(nfs_compat_user_ino64);
-> > > >  
-> > > >  int nfs_drop_inode(struct inode *inode)
-> > > >  {
-> > > > diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> > > > index 430733e3eff2..f5555a71a733 100644
-> > > > --- a/fs/nfs/internal.h
-> > > > +++ b/fs/nfs/internal.h
-> > > > @@ -451,6 +451,7 @@ extern void nfs_zap_acl_cache(struct inode
-> > > > *inode);
-> > > >  extern void nfs_set_cache_invalid(struct inode *inode, unsigned
-> > > > long
-> > > > flags);
-> > > >  extern bool nfs_check_cache_invalid(struct inode *, unsigned
-> > > > long);
-> > > >  extern int nfs_wait_bit_killable(struct wait_bit_key *key, int
-> > > > mode);
-> > > > +extern u64 nfs_compat_user_ino64(const struct *inode);
-> > > >  
-> > > >  #if IS_ENABLED(CONFIG_NFS_LOCALIO)
-> > > >  /* localio.c */
-> > > > diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-> > > > index e7494cdd957e..d9b1e0606833 100644
-> > > > --- a/fs/nfs/namespace.c
-> > > > +++ b/fs/nfs/namespace.c
-> > > > @@ -232,11 +232,13 @@ nfs_namespace_setattr(struct mnt_idmap
-> > > > *idmap,
-> > > > struct dentry *dentry,
-> > > >  const struct inode_operations nfs_mountpoint_inode_operations =
-> > > > {
-> > > >  	.getattr	= nfs_getattr,
-> > > >  	.setattr	= nfs_setattr,
-> > > > +	.get_ino	= nfs_compat_user_ino64,
-> > > >  };
-> > > >  
-> > > >  const struct inode_operations nfs_referral_inode_operations = {
-> > > >  	.getattr	= nfs_namespace_getattr,
-> > > >  	.setattr	= nfs_namespace_setattr,
-> > > > +	.get_ino	= nfs_compat_user_ino64,
-> > > >  };
-> > > >  
-> > > >  static void nfs_expire_automounts(struct work_struct *work)
-> > > > diff --git a/fs/stat.c b/fs/stat.c
-> > > > index 41e598376d7e..05636919f94b 100644
-> > > > --- a/fs/stat.c
-> > > > +++ b/fs/stat.c
-> > > > @@ -50,7 +50,7 @@ void generic_fillattr(struct mnt_idmap *idmap,
-> > > > u32
-> > > > request_mask,
-> > > >  	vfsgid_t vfsgid = i_gid_into_vfsgid(idmap, inode);
-> > > >  
-> > > >  	stat->dev = inode->i_sb->s_dev;
-> > > > -	stat->ino = inode->i_ino;
-> > > > +	stat->ino = inode_get_ino(inode);
-> > > >  	stat->mode = inode->i_mode;
-> > > >  	stat->nlink = inode->i_nlink;
-> > > >  	stat->uid = vfsuid_into_kuid(vfsuid);
-> > > > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > > > index e3c603d01337..0eba09a21cf7 100644
-> > > > --- a/include/linux/fs.h
-> > > > +++ b/include/linux/fs.h
-> > > > @@ -2165,6 +2165,7 @@ struct inode_operations {
-> > > >  			    struct dentry *dentry, struct
-> > > > fileattr
-> > > > *fa);
-> > > >  	int (*fileattr_get)(struct dentry *dentry, struct
-> > > > fileattr
-> > > > *fa);
-> > > >  	struct offset_ctx *(*get_offset_ctx)(struct inode
-> > > > *inode);
-> > > > +	u64 (*get_ino)(const struct inode *inode);
-> > > >  } ____cacheline_aligned;
-> > > >  
-> > > >  static inline int call_mmap(struct file *file, struct
-> > > > vm_area_struct
-> > > > *vma)
-> > > > @@ -2172,6 +2173,14 @@ static inline int call_mmap(struct file
-> > > > *file,
-> > > > struct vm_area_struct *vma)
-> > > >  	return file->f_op->mmap(file, vma);
-> > > >  }
-> > > >  
-> > > > +static inline u64 inode_get_ino(struct inode *inode)
-> > > > +{
-> > > > +	if (unlikely(inode->i_op->get_ino))
-> > > > +		return inode->i_op->get_ino(inode);
-> > > > +
-> > > > +	return inode->i_ino;
-> > > > +}
-> > > > +
-> > > >  extern ssize_t vfs_read(struct file *, char __user *, size_t,
-> > > > loff_t
-> > > > *);
-> > > >  extern ssize_t vfs_write(struct file *, const char __user *,
-> > > > size_t,
-> > > > loff_t *);
-> > > >  extern ssize_t vfs_copy_file_range(struct file *, loff_t ,
-> > > > struct
-> > > > file *,
+> > > >  security/integrity/integrity_audit.c | 2 +-
+> > > >  1 file changed, 1 insertion(+), 1 deletion(-)
 > > > 
-> > > There should be no need to add this callback to generic_fillattr().
-> > > 
-> > > generic_fillattr() is a helper function for use by the filesystems
-> > > themselves. It should never be called from any outside functions,
-> > > as
-> > > the inode number would be far from the only attribute that will be
-> > > incorrect.
+> > > Should we also need to update the inode value used in hmac_add_misc()?
 > > 
-> > This change will not impact filesystems except the ones that
-> > implement the new
-> > get_ino() operation, and I suspect NFS is not or will not be the only
-> > one.  We
-> > need to investigate on other filesystems but I wanted to get a first
-> > feedback
-> > before.  Using get_ino() in generic_fillattr() should guarantee a
-> > consistent
-> > getattr() wrt inode numbers.  I forgot to remove the now-useless call
-> > to
-> > nfs_compat_user_ino64() in nfs_getattr() for this to make sense:
+> > I'm not sure what the impact will be wrt backward compatibility. Mimi,
+> > Roberto?
 > 
-> You're missing my point. From the point of view of NFS, all you're
-> doing is to replace a relatively fast direct call to
-> nfs_compat_user_ino64() with a much slower callback. There is no
-> benefit at all to anyone in doing so.
+> Changing the inode number the HMAC was calculated with has the
+> potential effect of making the file inaccessible.
 > 
-> Yes, other filesystems may also want to replace this and/or other
-> fields in the "struct kstat" that they return, but none of them should
-> have a problem with doing that after the actual call to
-> generic_fillattr().
+> In order to use the new inode number, we need to define a new EVM xattr
+> type, and update the previous xattr version with the new one. We could
+> deprecate the old xattr version after a while (to be discussed with
+> Mimi).
 
-OK, I'll remove this part then.
+That was my though.  I don't we should patch hmac_add_misc() because it
+is already in the IMA/EVM ABI and not directly reflected to user space.
+The issue might be that user space cannot recreate this hmac because
+this private inode number is not known to user space, but I don't know
+if there is such user space implementation of IMA/EVM.
 
 > 
+> Roberto
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer, Hammerspace
-> trond.myklebust@hammerspace.com
+> > > 
+> > > diff --git a/security/integrity/evm/evm_crypto.c b/security/integrity/evm/evm_crypto.c
+> > > index 7c06ffd633d2..68ae454e187f 100644
+> > > --- a/security/integrity/evm/evm_crypto.c
+> > > +++ b/security/integrity/evm/evm_crypto.c
+> > > @@ -155,7 +155,7 @@ static void hmac_add_misc(struct shash_desc *desc, struct inode *inode,
+> > >          * signatures
+> > >          */
+> > >         if (type != EVM_XATTR_PORTABLE_DIGSIG) {
+> > > -               hmac_misc.ino = inode->i_ino;
+> > > +               hmac_misc.ino = inode_get_ino(inode->i_ino);
+> > >                 hmac_misc.generation = inode->i_generation;
+> > >         }
+> > >         /* The hmac uid and gid must be encoded in the initial user
+> > > 
+> > > --
+> > > paul-moore.com
 > 
 > 
