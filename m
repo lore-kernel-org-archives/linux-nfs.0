@@ -1,41 +1,61 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 466F71CDFA6
-	for <linux-nfs@vger.kernel.org>; Fri, 11 Oct 2024 12:35:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 59B6A20ADF6;
+	Fri, 11 Oct 2024 12:38:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728650112; cv=none; b=RECFT3LPFeOcpa0km5gl7zeItb0mhOG6Yu45kPyWzSMN/peX8q1R9ZwC5g9EHWVJ3+sse2MERdXzEtmHsyb0gc3n6vKim/yDhN5LvdfVJlk4Q4vdA2mMZx8BPm2G8tsQQuZh8yW2+yGi8HGDJqdDwBAHkVVGWF/EKrBDehfPHNA=
+	t=1728650319; cv=none; b=BxGDMazKo9hOpFfsZqPrM88JoouTfwcbE//a1EgTzztypWzN8ESlavbyzlzb+3uscWoZE9Bz1FtbJN5FI3yGGekRNngfyheIgaMj8Ub1DdXRltiIynWb0DK5qMz6UI6NZ3nhDs6jFveZZxvlOzU2IpkaZULc1sB5JMsexUlSUCI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728650112; c=relaxed/simple;
-	bh=vNjAmJyDkp1XacLAhlPA/FkKiOK40qz1wqtt6b/S5+Q=;
+	s=arc-20240116; t=1728650319; c=relaxed/simple;
+	bh=foG8+vckoR1mQ2glQADILcmJ6jiSNlJ3mZrxtgFpCKk=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=P1ogLzjEHVvs2F0wwWNLFOcDtl0S2gPDAgjtOEuURnqDWcwVcwL9XAIXXB3C7DlfLoy6WqJqBHtO7qNYEYy++N+Gj0DS7HMj4DZ9YZjzH7g+Jku2ojdbbbzoR44dGJbcX04JbDWFWk79WgI+PEVaOSfBz8kel5vwDEbaioaQl4k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Pjn11fZ1; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:MIME-Version; b=V/5JJ4bqBeZFQf4a6tl5X8R86z9qasHJMzGK9rtbWIyon3NDfzDb0409BAZJ7WI6+kfAsZbi/M+4uagFzgFFz2OnxQCly5nqBfU1nf/jT4tMMF3SnZHGrPZ/DzGEiB7kRhX05olV1pCLJmyzrzhA0/EUSzebE9rysCb6qKPDwAw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=uuC8Ej9X; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Pjn11fZ1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 41875C4CEC3;
-	Fri, 11 Oct 2024 12:35:11 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="uuC8Ej9X"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1251FC4CEC3;
+	Fri, 11 Oct 2024 12:38:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1728650111;
-	bh=vNjAmJyDkp1XacLAhlPA/FkKiOK40qz1wqtt6b/S5+Q=;
+	s=k20201202; t=1728650319;
+	bh=foG8+vckoR1mQ2glQADILcmJ6jiSNlJ3mZrxtgFpCKk=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=Pjn11fZ1Gc2Ns2TKBiIdfmw7Sifal7QlDHr9TH1x+/R3k8wsEkGJ2/wGFFuSImKa1
-	 8ah0aqBFYfBnhMTpae8lPVYL0DrST7ZHA3EpvW9SFJ3VbJzTehi8cj68nL2i4l/MnU
-	 hPnZom44qIiSx6KCsyEx71nRs6t5sZ63poBWXl5dc0LsAwXh34J21uYGeuS1K+n5R4
-	 qSNBPx9es8NR0+iITJ+jztSu1/ATjYaX8szHA1soXcnoy0zCq5k4y3KzMYEpuyFMST
-	 Mtea+8BNC6+ylWUYCXdj28Gst+vHk2Ph6vGgfFJmUrzucC2hE6Rcyo/glnwg1Vddkc
-	 M1aLvDzdwC4Tg==
-Message-ID: <7ef7885808d58b7a0f557b047184b18fbc941f73.camel@kernel.org>
-Subject: Re: [PATCH nfsd-next] nfsd: refine and rename NFSD_MAY_LOCK
+	b=uuC8Ej9XJA65Q2h/HJ7zNH1oU8lvpVAtFtS48dryytT/XrVJ/LyW5MZ53lg49WCiw
+	 rNjfKelnOyschGSmq+wW+393y0CW/TtXYHJ5w4zFaWFzu/JN5pKUHG9lBgXsokOJue
+	 /CbTAfeXBbGyd4Cag+CJJAcbm0pzFf6wUDQmbzaCDZE8SYCc4R0mWWbgsXzrWm7/cn
+	 90luO8XQv/Cs4CtQhJuM7ntW7ECPYnLit7Y0bJ2EnGxTpr2Qjb1v2FMftKZylYqWh0
+	 C6zJUTpqis466BBsctvPlIsmXmhFZHRJEeWKrtHy8JMYGbAsrw9kDZ43uFanLr37wv
+	 p+pTGFdQz/X5g==
+Message-ID: <b0cf00eec77014ad473d4510904eb2d4fd084e5a.camel@kernel.org>
+Subject: Re: [PATCH v3 -next 11/15] sunrpc: use vfs_pressure_ratio() helper
 From: Jeff Layton <jlayton@kernel.org>
-To: NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 11 Oct 2024 08:35:10 -0400
-In-Reply-To: <172859586932.444407.11362678410508147927@noble.neil.brown.name>
-References: <172859586932.444407.11362678410508147927@noble.neil.brown.name>
+To: NeilBrown <neilb@suse.de>
+Cc: Kaixiong Yu <yukaixiong@huawei.com>, akpm@linux-foundation.org, 
+ mcgrof@kernel.org, ysato@users.sourceforge.jp, dalias@libc.org, 
+ glaubitz@physik.fu-berlin.de, luto@kernel.org, tglx@linutronix.de, 
+ mingo@redhat.com, bp@alien8.de, dave.hansen@linux.intel.com, hpa@zytor.com,
+  viro@zeniv.linux.org.uk, brauner@kernel.org, jack@suse.cz,
+ kees@kernel.org,  j.granados@samsung.com, willy@infradead.org,
+ Liam.Howlett@oracle.com,  vbabka@suse.cz, lorenzo.stoakes@oracle.com,
+ trondmy@kernel.org, anna@kernel.org,  chuck.lever@oracle.com,
+ okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com, 
+ davem@davemloft.net, edumazet@google.com, kuba@kernel.org,
+ pabeni@redhat.com,  paul@paul-moore.com, jmorris@namei.org,
+ linux-sh@vger.kernel.org,  linux-kernel@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, linux-mm@kvack.org, 
+ linux-nfs@vger.kernel.org, netdev@vger.kernel.org, 
+ linux-security-module@vger.kernel.org, dhowells@redhat.com, 
+ haifeng.xu@shopee.com, baolin.wang@linux.alibaba.com,
+ shikemeng@huaweicloud.com,  dchinner@redhat.com, bfoster@redhat.com,
+ souravpanda@google.com,  hannes@cmpxchg.org, rientjes@google.com,
+ pasha.tatashin@soleen.com,  david@redhat.com, ryan.roberts@arm.com,
+ ying.huang@intel.com,  yang@os.amperecomputing.com, zev@bewilderbeest.net,
+ serge@hallyn.com,  vegard.nossum@oracle.com, wangkefeng.wang@huawei.com,
+ sunnanyong@huawei.com
+Date: Fri, 11 Oct 2024 08:38:32 -0400
+In-Reply-To: <172859659591.444407.1507982523726708908@noble.neil.brown.name>
+References: <>, <12ec5b63b17b360f2e249a4de0ac7b86e09851a3.camel@kernel.org>
+	 <172859659591.444407.1507982523726708908@noble.neil.brown.name>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -120,161 +140,67 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2024-10-11 at 08:31 +1100, NeilBrown wrote:
-> NFSD_MAY_LOCK means a few different things.
-> - it means that GSS is not required.
-> - it means that with NFSEXP_NOAUTHNLM, authentication is not required
-> - it means that OWNER_OVERRIDE is allowed.
+On Fri, 2024-10-11 at 08:43 +1100, NeilBrown wrote:
+> On Fri, 11 Oct 2024, Jeff Layton wrote:
+> > On Thu, 2024-10-10 at 23:22 +0800, Kaixiong Yu wrote:
+> > > Use vfs_pressure_ratio() to simplify code.
+> > >=20
+> > > Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
+> > > Reviewed-by: Kees Cook <kees@kernel.org>
+> > > Acked-by: Anna Schumaker <anna.schumaker@oracle.com>
+> > > ---
+> > >  net/sunrpc/auth.c | 2 +-
+> > >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > >=20
+> > > diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+> > > index 04534ea537c8..3d2b51d7e934 100644
+> > > --- a/net/sunrpc/auth.c
+> > > +++ b/net/sunrpc/auth.c
+> > > @@ -489,7 +489,7 @@ static unsigned long
+> > >  rpcauth_cache_shrink_count(struct shrinker *shrink, struct shrink_co=
+ntrol *sc)
+> > > =20
+> > >  {
+> > > -	return number_cred_unused * sysctl_vfs_cache_pressure / 100;
+> > > +	return vfs_pressure_ratio(number_cred_unused);
+> > >  }
+> > > =20
+> > >  static void
+> >=20
+> > Acked-by: Jeff Layton <jlayton@kernel.org>
+> >=20
 >=20
-> None of these are specific to locking, they are specific to the NLM
-> protocol.
-> So:
->  - rename to NFSD_MAY_NLM
->  - set NFSD_MAY_OWNER_OVERRIDE and NFSD_MAY_BYPASS_GSS in nlm_fopen()
->    so that NFSD_MAY_NLM doesn't need to imply these.
->  - move the test on NFSEXP_NOAUTHNLM out of nfsd_permission() and
->    into fh_verify() where other special-case tests on the MAY flags
->    happen.  nfsd_permission() can be called from other places than
->    fh_verify(), but none of these will have NFSD_MAY_NLM.
+> I realise this is a bit of a tangent, and I'm not objecting to this
+> patch, but I wonder what the justification is for using
+> vfs_cache_pressure here.  The sysctl is documented as
 >=20
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  fs/nfsd/lockd.c | 13 +++++++++++--
->  fs/nfsd/nfsfh.c | 12 ++++--------
->  fs/nfsd/trace.h |  2 +-
->  fs/nfsd/vfs.c   | 12 +-----------
->  fs/nfsd/vfs.h   |  2 +-
->  5 files changed, 18 insertions(+), 23 deletions(-)
+>    This percentage value controls the tendency of the kernel to reclaim
+>    the memory which is used for caching of directory and inode objects.
 >=20
-> diff --git a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
-> index 46a7f9b813e5..edc9f75dc75c 100644
-> --- a/fs/nfsd/lockd.c
-> +++ b/fs/nfsd/lockd.c
-> @@ -38,11 +38,20 @@ nlm_fopen(struct svc_rqst *rqstp, struct nfs_fh *f, s=
-truct file **filp,
->  	memcpy(&fh.fh_handle.fh_raw, f->data, f->size);
->  	fh.fh_export =3D NULL;
-> =20
-> +	/*
-> +	 * Allow BYPASS_GSS as some client implementations use AUTH_SYS
-> +	 * for NLM even when GSS is used for NFS.
-> +	 * Allow OWNER_OVERRIDE as permission might have been changed
-> +	 * after the file was opened.
-> +	 * Pass MAY_NLM so that authentication can be completely bypassed
-> +	 * if NFSEXP_NOAUTHNLM is set.  Some older clients use AUTH_NULL
-> +	 * for NLM requests.
-> +	 */
->  	access =3D (mode =3D=3D O_WRONLY) ? NFSD_MAY_WRITE : NFSD_MAY_READ;
-> -	access |=3D NFSD_MAY_LOCK;
-> +	access |=3D NFSD_MAY_NLM | NFSD_MAY_OWNER_OVERRIDE | NFSD_MAY_BYPASS_GS=
-S;
->  	nfserr =3D nfsd_open(rqstp, &fh, S_IFREG, access, filp);
->  	fh_put(&fh);
-> - 	/* We return nlm error codes as nlm doesn't know
-> +	/* We return nlm error codes as nlm doesn't know
->  	 * about nfsd, but nfsd does know about nlm..
->  	 */
->  	switch (nfserr) {
-> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-> index 4c5deea0e953..885a58ca33d8 100644
-> --- a/fs/nfsd/nfsfh.c
-> +++ b/fs/nfsd/nfsfh.c
-> @@ -363,13 +363,10 @@ __fh_verify(struct svc_rqst *rqstp,
->  	if (error)
->  		goto out;From 226d19d36029605a16d837d1a94a6f81b6e06681 Mon Sep 17 00:0=
-0:00 2001
-> From: NeilBrown <neilb@suse.de>
-> Date: Fri, 11 Oct 2024 08:23:08 +1100
+> So it can sensibly be used for dentries and inode, and for anything
+> directly related like the nfs access cache (which is attached to inodes)
+> and the nfs xattr cache.
 >=20
-^^^
-This patch appears to be mangled.
+> But the sunrpc cred cache scales with the number of active users, not
+> the number of inodes/dentries.
+>=20
+> So I think this should simply "return number_cred_unused;".
+>=20
+> What do others think?
+>=20
+> NeilBrown
+>=20
 
->=20
-> =20
-> -	/*
-> -	 * pseudoflavor restrictions are not enforced on NLM,
-> -	 * which clients virtually always use auth_sys for,
-> -	 * even while using RPCSEC_GSS for NFS.
-> -	 */
-> -	if (access & NFSD_MAY_LOCK)
-> -		goto skip_pseudoflavor_check;
-> +	if ((access & NFSD_MAY_NLM) && (exp->ex_flags & NFSEXP_NOAUTHNLM))
-> +		/* NLM is allowed to fully bypass authentication */
-> +		goto out;
-> +
->  	if (access & NFSD_MAY_BYPASS_GSS)
->  		may_bypass_gss =3D true;
->  	/*
-> @@ -385,7 +382,6 @@ __fh_verify(struct svc_rqst *rqstp,
->  	if (error)
->  		goto out;
-> =20
-> -skip_pseudoflavor_check:
->  	/* Finally, check access permissions. */
->  	error =3D nfsd_permission(cred, exp, dentry, access);
->  out:
-> diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-> index c625966cfcf3..b7abf1cba9e2 100644
-> --- a/fs/nfsd/trace.h
-> +++ b/fs/nfsd/trace.h
-> @@ -79,7 +79,7 @@ DEFINE_NFSD_XDR_ERR_EVENT(cant_encode);
->  		{ NFSD_MAY_READ,		"READ" },		\
->  		{ NFSD_MAY_SATTR,		"SATTR" },		\
->  		{ NFSD_MAY_TRUNC,		"TRUNC" },		\
-> -		{ NFSD_MAY_LOCK,		"LOCK" },		\
-> +		{ NFSD_MAY_NLM,			"NLM" },		\
->  		{ NFSD_MAY_OWNER_OVERRIDE,	"OWNER_OVERRIDE" },	\
->  		{ NFSD_MAY_LOCAL_ACCESS,	"LOCAL_ACCESS" },	\
->  		{ NFSD_MAY_BYPASS_GSS_ON_ROOT,	"BYPASS_GSS_ON_ROOT" },	\
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 51f5a0b181f9..2610638f4301 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -2509,7 +2509,7 @@ nfsd_permission(struct svc_cred *cred, struct svc_e=
-xport *exp,
->  		(acc & NFSD_MAY_EXEC)?	" exec"  : "",
->  		(acc & NFSD_MAY_SATTR)?	" sattr" : "",
->  		(acc & NFSD_MAY_TRUNC)?	" trunc" : "",
-> -		(acc & NFSD_MAY_LOCK)?	" lock"  : "",
-> +		(acc & NFSD_MAY_NLM)?	" nlm"  : "",
->  		(acc & NFSD_MAY_OWNER_OVERRIDE)? " owneroverride" : "",
->  		inode->i_mode,
->  		IS_IMMUTABLE(inode)?	" immut" : "",
-> @@ -2534,16 +2534,6 @@ nfsd_permission(struct svc_cred *cred, struct svc_=
-export *exp,
->  	if ((acc & NFSD_MAY_TRUNC) && IS_APPEND(inode))
->  		return nfserr_perm;
-> =20
-> -	if (acc & NFSD_MAY_LOCK) {
-> -		/* If we cannot rely on authentication in NLM requests,
-> -		 * just allow locks, otherwise require read permission, or
-> -		 * ownership
-> -		 */
-> -		if (exp->ex_flags & NFSEXP_NOAUTHNLM)
-> -			return 0;
-> -		else
-> -			acc =3D NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE;
-> -	}
->  	/*
->  	 * The file owner always gets access permission for accesses that
->  	 * would normally be checked at open time. This is to make
-> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-> index 854fb95dfdca..f9b09b842856 100644
-> --- a/fs/nfsd/vfs.h
-> +++ b/fs/nfsd/vfs.h
-> @@ -20,7 +20,7 @@
->  #define NFSD_MAY_READ			0x004 /* =3D=3D MAY_READ */
->  #define NFSD_MAY_SATTR			0x008
->  #define NFSD_MAY_TRUNC			0x010
-> -#define NFSD_MAY_LOCK			0x020
-> +#define NFSD_MAY_NLM			0x020 /* request is from lockd */
->  #define NFSD_MAY_MASK			0x03f
-> =20
->  /* extra hints to permission and open routines: */
->=20
-> base-commit: 144cb1225cd863e1bd3ae3d577d86e1531afd932
-> prerequisite-patch-id: 7a049ff3732fdc61d6d4ff6f916f35341eddfa04
+-----------------8<------------------
+ * @count_objects should return the number of freeable items in the cache. =
+If
+ * there are no objects to free, it should return SHRINK_EMPTY, while 0 is
+ * returned in cases of the number of freeable items cannot be determined
+ * or shrinker should skip this cache for this time (e.g., their number
+ * is below shrinkable limit)...
+-----------------8<------------------
 
-The patch itself makes sense though.
+number_cred_unused does sound like a better way to report this.
+
 --=20
 Jeff Layton <jlayton@kernel.org>
