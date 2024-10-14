@@ -1,176 +1,237 @@
-Received: from out28-82.mail.aliyun.com (out28-82.mail.aliyun.com [115.124.28.82])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3DCA219C551
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Oct 2024 13:23:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.28.82
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 302E619CCFA;
+	Mon, 14 Oct 2024 13:30:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728912242; cv=none; b=b522v14Yoak0LXX+gjPcc03RT+iXTZpd/2X9vT7z+4SJdJevYM+vvj04Rjr9OG0t8HAzZzm0iYCyzLSvPzQCtPAvo7Qre3xGwTjh6mxWTdacMSu4ItSGy3guux27HKxVXpxDNzcUEE3/G6kE9i7v81O0t8WZbGm0rvNnFKOsc/4=
+	t=1728912648; cv=none; b=RZ6h+WdyoVJG7YvlabcLaxvc5cnOXaLkDGlMXrteiYAEntlyOTWW6qORKkTKcUH+IUcXuXxHFpSHix8hodjI7NqCOAF9nUFJN2mHQ76Z+7qNzJHvD8CIjQnSWQCZbstJg9TCLh47rP4aDDTTF+dO71Xbiz/20Gd/No0Tzq4D9OM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728912242; c=relaxed/simple;
-	bh=NYqq6n6ocMspcgnj7l596bEBClIkYRGt4qP9TxVqMpA=;
-	h=Date:From:To:Subject:Cc:In-Reply-To:References:Message-Id:
-	 MIME-Version:Content-Type; b=dRRG1waUbVNgdSHo+dv1io8dRXCbv4bVTQ4dcavO3oKYFBOv8mdWBoZEGwvaJ7jyFoeXCEZHE1zVa2KhUvmnITtCL0mZ+vaO4xv+TBJMp6i5EMRybTaEp2J7xonlowpWZ/AESRCVz8fujov/avLkphyU2aQh3kpYsg/ju7lS3wA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=e16-tech.com; spf=pass smtp.mailfrom=e16-tech.com; arc=none smtp.client-ip=115.124.28.82
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=e16-tech.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=e16-tech.com
-Received: from 192.168.2.112(mailfrom:wangyugui@e16-tech.com fp:SMTPD_---.Zhq-9Gq_1728908564 cluster:ay29)
-          by smtp.aliyun-inc.com;
-          Mon, 14 Oct 2024 20:22:45 +0800
-Date: Mon, 14 Oct 2024 20:22:45 +0800
-From: Wang Yugui <wangyugui@e16-tech.com>
-To: Trond Myklebust <trondmy@hammerspace.com>
-Subject: Re: nfs client deadloop on 6.6.53
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <2ef7160ab8a62d8afba9654ee43f8ab7e65cd6b5.camel@hammerspace.com>
-References: <20241014061048.E3F1.409509F4@e16-tech.com> <2ef7160ab8a62d8afba9654ee43f8ab7e65cd6b5.camel@hammerspace.com>
-Message-Id: <20241014202244.D592.409509F4@e16-tech.com>
+	s=arc-20240116; t=1728912648; c=relaxed/simple;
+	bh=r5A234qwQWPwcqsYi1jgGoXNx091qhoDlVXzZGi7Dhg=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=H1OltQmddfAspgzq1lZQ3Q7qjsKZ0YSyAVVPq2EBtWkZ/M7Q1jsURANw3HrNBDNUOH9ixLU59vL7BsJ7sO/n5ynKU2iHnT5LWuU5DE86p2sjXeDtiCn6z57lm6CNSiyx2HXso7hp9KhNd2gjl/W0TkPDqGdRfXJ9Y2elDVwdg/8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=AkZA5JrL; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=v6bIqgcA; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=HuC4ts3d; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Dd+aoLJP; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="AkZA5JrL";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="v6bIqgcA";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="HuC4ts3d";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Dd+aoLJP"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 718AD1FE53;
+	Mon, 14 Oct 2024 13:30:43 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1728912644; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=235JuUpvspvGYow+ON4E4Do0RYXuLHAk110/di76hcM=;
+	b=AkZA5JrLM+TUDUxoF6BfJ1zsSSFQzX51TcPsWrXXH+ZZUNwcqLxkSKAkAfhTpRTj+ZQXpt
+	b5Y6Z7TqdLGwYnwQ9KTleVT8hOnPuUzQXzq8fGSIOKYlJvoa0iVvSEJslF9c/9gaGA+GSM
+	DXuFB+6+0ZDWUagzudILk1GZyzyvbwk=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1728912644;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=235JuUpvspvGYow+ON4E4Do0RYXuLHAk110/di76hcM=;
+	b=v6bIqgcADWr6s0yC6RdYIywFMusbeMvXAmymzghzHS36Ey/xCdRj2YWMnQUZvwRfeUDiqQ
+	4Svli02NR4VIEqAQ==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1728912643; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=235JuUpvspvGYow+ON4E4Do0RYXuLHAk110/di76hcM=;
+	b=HuC4ts3drYC6MZq9yDleJR72QppBjLzLqIbLVnHVKP//+uHrlncXhc4t/EWC2iJGnwqB3C
+	hBcsAfO6kGMSSR0p/JLW4pZXNdvePeaCuduPim0KEgPpZCFZOIEuTaN+Sr4EQb8CqVD0rk
+	PT41K+umufUkvRtyXAziJ5qsBT08Brw=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1728912643;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=235JuUpvspvGYow+ON4E4Do0RYXuLHAk110/di76hcM=;
+	b=Dd+aoLJPrN4V2yCU4lUyTX5au+zBGFOY5FKo5qG1OM9MTFJRoCFZuOX0MF1mp2BzENSvvs
+	JJm7lFLZIEjfWlCg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 66EFC13A51;
+	Mon, 14 Oct 2024 13:30:43 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id y80ZGQMdDWeaVgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 14 Oct 2024 13:30:43 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 10A3BA0896; Mon, 14 Oct 2024 15:30:43 +0200 (CEST)
+Date: Mon, 14 Oct 2024 15:30:43 +0200
+From: Jan Kara <jack@suse.cz>
+To: Amir Goldstein <amir73il@gmail.com>
+Cc: Christian Brauner <brauner@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>, Jan Kara <jack@suse.cz>,
+	Aleksa Sarai <cyphar@cyphar.com>,
+	Chuck Lever <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 1/3] fs: prepare for "explicit connectable" file
+ handles
+Message-ID: <20241014133043.sucfbpsx4gnjvacb@quack3>
+References: <20241011090023.655623-1-amir73il@gmail.com>
+ <20241011090023.655623-2-amir73il@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
-Content-Transfer-Encoding: 7bit
-X-Mailer: Becky! ver. 2.81.07 [en]
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20241011090023.655623-2-amir73il@gmail.com>
+X-Spam-Level: 
+X-Spamd-Result: default: False [-3.80 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-0.998];
+	MID_RHS_NOT_FQDN(0.50)[];
+	NEURAL_HAM_SHORT(-0.20)[-0.997];
+	MIME_GOOD(-0.10)[text/plain];
+	FREEMAIL_TO(0.00)[gmail.com];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCPT_COUNT_SEVEN(0.00)[8];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCVD_COUNT_THREE(0.00)[3];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FUZZY_BLOCKED(0.00)[rspamd.com];
+	RCVD_TLS_LAST(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.cz:email,imap1.dmz-prg2.suse.org:helo,suse.com:email]
+X-Spam-Score: -3.80
+X-Spam-Flag: NO
 
-Hi,
-
-> On Mon, 2024-10-14 at 06:10 +0800, Wang Yugui wrote:
-> > Hi,
-> > 
-> > > On Tue, 2024-10-08 at 21:27 +0800, Wang Yugui wrote:
-> > > > Hi,
-> > > > 
-> > > > nfs client deadloop on 6.6.53.
-> > > > 
-> > > > [ 9409.381322] sysrq: Show Blocked State
-> > > > [ 9409.386146] task:bash??????????? state:D stack:0???? pid:2323?
-> > > > ppid:2226?? flags:0x00004002
-> > > > [ 9409.395225] Call Trace:
-> > > > [ 9409.398376]? <TASK>
-> > > > [ 9409.401172]? __schedule+0x232/0x5d0
-> > > > [ 9409.405370]? schedule+0x5e/0xd0
-> > > > [ 9409.409217]? schedule_timeout+0x8c/0x170
-> > > > [ 9409.413837]? ? __pfx_process_timeout+0x10/0x10
-> > > > [ 9409.418989]? msleep+0x3b/0x50
-> > > > [ 9409.422656]? ff_layout_pg_init_read+0x1c1/0x290
-> > > > [nfs_layout_flexfiles]
-> > > > [ 9409.429910]? __nfs_pageio_add_request+0x29b/0x480 [nfs]
-> > > > [ 9409.435911]? nfs_pageio_add_request+0x221/0x2a0 [nfs]
-> > > > [ 9409.441715]? nfs_read_add_folio+0x1a3/0x280 [nfs]
-> > > > [ 9409.447175]? nfs_readahead+0x235/0x2d0 [nfs]
-> > > > [ 9409.452193]? read_pages+0x56/0x2c0
-> > > > [ 9409.456298]? page_cache_ra_unbounded+0x134/0x1a0
-> > > > [ 9409.461626]? filemap_get_pages+0xf5/0x3a0
-> > > > [ 9409.466355]? ? __nfs_lookup_revalidate+0x53/0x140 [nfs]
-> > > > [ 9409.472325]? filemap_read+0xdc/0x350
-> > > > [ 9409.476614]? ? find_idlest_group+0x113/0x530
-> > > > [ 9409.481614]? nfs_file_read+0x74/0xc0 [nfs]
-> > > > [ 9409.486461]? __kernel_read+0xff/0x2b0
-> > > > [ 9409.490838]? search_binary_handler+0x70/0x250
-> > > > [ 9409.495908]? exec_binprm+0x50/0x1a0
-> > > > [ 9409.500102]? bprm_execve.part.0+0x17d/0x230
-> > > > [ 9409.504993]? do_execveat_common.isra.0+0x1a2/0x240
-> > > > [ 9409.510489]? __x64_sys_execve+0x37/0x50
-> > > > [ 9409.515026]? do_syscall_64+0x5a/0x90
-> > > > [ 9409.519298]? ? __count_memcg_events+0x4c/0xa0
-> > > > [ 9409.524348]? ? mm_account_fault+0x6c/0x100
-> > > > [ 9409.529129]? ? handle_mm_fault+0x154/0x280
-> > > > [ 9409.533903]? ? do_user_addr_fault+0x35f/0x680
-> > > > [ 9409.538935]? ? exc_page_fault+0x69/0x150
-> > > > [ 9409.543537]? entry_SYSCALL_64_after_hwframe+0x78/0xe2
-> > > > [ 9409.549277] RIP: 0033:0x7f57378d987b
-> > > > [ 9409.553572] RSP: 002b:00007ffdb5978708 EFLAGS: 00000246
-> > > > ORIG_RAX:
-> > > > 000000000000003b
-> > > > [ 9409.561847] RAX: ffffffffffffffda RBX: 0000000000000001 RCX:
-> > > > 00007f57378d987b
-> > > > [ 9409.569690] RDX: 000055d26e403600 RSI: 000055d26e5cdc50 RDI:
-> > > > 000055d26e6ce7f0
-> > > > [ 9409.577534] RBP: 000055d26e6ce7f0 R08: 000055d26e5a5b60 R09:
-> > > > 0000000000000000
-> > > > [ 9409.585375] R10: 0000000000000008 R11: 0000000000000246 R12:
-> > > > 00000000ffffffff
-> > > > [ 9409.593208] R13: 000055d26e5cdc50 R14: 000055d26e403600 R15:
-> > > > 000055d26e6ceb40
-> > > > [ 9409.601047]? </TASK>
-> > > > [ 9409.603946] task:bash??????????? state:D stack:0???? pid:2550?
-> > > > ppid:2462?? flags:0x00004002
-> > > > [ 9409.613027] Call Trace:
-> > > > [ 9409.616185]? <TASK>
-> > > > [ 9409.618983]? __schedule+0x232/0x5d0
-> > > > [ 9409.623186]? schedule+0x5e/0xd0
-> > > > [ 9409.627033]? io_schedule+0x46/0x70
-> > > > [ 9409.631140]? folio_wait_bit_common+0x133/0x390
-> > > > [ 9409.636294]? ? folio_wait_bit_common+0x100/0x390
-> > > > [ 9409.641624]? ? nfs4_do_open+0xcd/0x210 [nfsv4]
-> > > > [ 9409.646854]? ? __pfx_wake_page_function+0x10/0x10
-> > > > [ 9409.652268]? filemap_update_page+0x2bc/0x300
-> > > > [ 9409.657242]? filemap_get_pages+0x21d/0x3a0
-> > > > [ 9409.662042]? ? __nfs_lookup_revalidate+0x53/0x140 [nfs]
-> > > > [ 9409.668010]? filemap_read+0xdc/0x350
-> > > > [ 9409.672299]? nfs_file_read+0x74/0xc0 [nfs]
-> > > > [ 9409.677126]? __kernel_read+0xff/0x2b0
-> > > > [ 9409.681476]? search_binary_handler+0x70/0x250
-> > > > [ 9409.686526]? exec_binprm+0x50/0x1a0
-> > > > [ 9409.690702]? bprm_execve.part.0+0x17d/0x230
-> > > > [ 9409.695573]? do_execveat_common.isra.0+0x1a2/0x240
-> > > > [ 9409.701047]? __x64_sys_execve+0x37/0x50
-> > > > [ 9409.705559]? do_syscall_64+0x5a/0x90
-> > > > [ 9409.709805]? ? do_user_addr_fault+0x35f/0x680
-> > > > [ 9409.714834]? ? exc_page_fault+0x69/0x150
-> > > > [ 9409.719414]? entry_SYSCALL_64_after_hwframe+0x78/0xe2
-> > > > [ 9409.725126] RIP: 0033:0x7f3c492d987b
-> > > > [ 9409.729362] RSP: 002b:00007ffc6413a458 EFLAGS: 00000246
-> > > > ORIG_RAX:
-> > > > 000000000000003b
-> > > > [ 9409.737609] RAX: ffffffffffffffda RBX: 0000000000000001 RCX:
-> > > > 00007f3c492d987b
-> > > > [ 9409.745429] RDX: 000055c6a8f07600 RSI: 000055c6a90e72a0 RDI:
-> > > > 000055c6a90f7890
-> > > > [ 9409.753256] RBP: 000055c6a90f7890 R08: 000055c6a90f6250 R09:
-> > > > 0000000000000000
-> > > > [ 9409.761078] R10: 0000000000000008 R11: 0000000000000246 R12:
-> > > > 00000000ffffffff
-> > > > [ 9409.768904] R13: 000055c6a90e72a0 R14: 000055c6a8f07600 R15:
-> > > > 000055c6a90e1ea0
-> > > > [ 9409.776732]? </TASK>
-> > > > 
-> > > > Notice:
-> > > > 1, nfs server:? kernel 6.6.54
-> > > > pnfs optin in the service side /etc/exports.
-> > > > 
-> > > 
-> > > This is not a client bug.
-> > > 
-> > > The client has no choice other than to retry here. It is being
-> > > given a
-> > > layout that it cannot use (probably because it has already
-> > > discovered
-> > > that it cannot talk to the data server), but it is also being told
-> > > by
-> > > the same layout that it is not allowed to fall back to doing I/O
-> > > through the metadata server.
-> > > 
-> > > IOW: This bug needs to be fixed on the server, which is handing out
-> > > a
-> > > layout that is impossible to satisfy.
-> > 
-> > It seems that pnfs need nfs3/udp.
-> > but the nfs3/udp is disabled on this server.
+On Fri 11-10-24 11:00:21, Amir Goldstein wrote:
+> We would like to use the high 16bit of the handle_type field to encode
+> file handle traits, such as "connectable".
 > 
-> That is incorrect. There should be no need to enable RPC over UDP.
+> In preparation for this change, make sure that filesystems do not return
+> a handle_type value with upper bits set and that the open_by_handle_at(2)
+> syscall rejects these handle types.
+> 
+> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 
-With the 2 changes in /etc/nfs.conf [nfsd] section, this problem disappeared.
-1,  vers3=n     =>    vers3=y
-2,  udp=n       =>    udp=y
+Looks good. Feel free to add:
 
-And both nfs-server and nfs-client version are upgraded to 6.6.56.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Best Regards
-Wang Yugui (wangyugui@e16-tech.com)
-2024/10/14
+								Honza
 
-
+> ---
+>  fs/exportfs/expfs.c      | 17 +++++++++++++++--
+>  fs/fhandle.c             |  7 +++++++
+>  include/linux/exportfs.h | 11 +++++++++++
+>  3 files changed, 33 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+> index 4f2dd4ab4486..0c899cfba578 100644
+> --- a/fs/exportfs/expfs.c
+> +++ b/fs/exportfs/expfs.c
+> @@ -382,14 +382,24 @@ int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
+>  			     int *max_len, struct inode *parent, int flags)
+>  {
+>  	const struct export_operations *nop = inode->i_sb->s_export_op;
+> +	enum fid_type type;
+>  
+>  	if (!exportfs_can_encode_fh(nop, flags))
+>  		return -EOPNOTSUPP;
+>  
+>  	if (!nop && (flags & EXPORT_FH_FID))
+> -		return exportfs_encode_ino64_fid(inode, fid, max_len);
+> +		type = exportfs_encode_ino64_fid(inode, fid, max_len);
+> +	else
+> +		type = nop->encode_fh(inode, fid->raw, max_len, parent);
+> +
+> +	if (type > 0 && FILEID_USER_FLAGS(type)) {
+> +		pr_warn_once("%s: unexpected fh type value 0x%x from fstype %s.\n",
+> +			     __func__, type, inode->i_sb->s_type->name);
+> +		return -EINVAL;
+> +	}
+> +
+> +	return type;
+>  
+> -	return nop->encode_fh(inode, fid->raw, max_len, parent);
+>  }
+>  EXPORT_SYMBOL_GPL(exportfs_encode_inode_fh);
+>  
+> @@ -436,6 +446,9 @@ exportfs_decode_fh_raw(struct vfsmount *mnt, struct fid *fid, int fh_len,
+>  	char nbuf[NAME_MAX+1];
+>  	int err;
+>  
+> +	if (fileid_type < 0 || FILEID_USER_FLAGS(fileid_type))
+> +		return ERR_PTR(-EINVAL);
+> +
+>  	/*
+>  	 * Try to get any dentry for the given file handle from the filesystem.
+>  	 */
+> diff --git a/fs/fhandle.c b/fs/fhandle.c
+> index 82df28d45cd7..218511f38cbb 100644
+> --- a/fs/fhandle.c
+> +++ b/fs/fhandle.c
+> @@ -307,6 +307,11 @@ static int handle_to_path(int mountdirfd, struct file_handle __user *ufh,
+>  		retval = -EINVAL;
+>  		goto out_path;
+>  	}
+> +	if (f_handle.handle_type < 0 ||
+> +	    FILEID_USER_FLAGS(f_handle.handle_type) & ~FILEID_VALID_USER_FLAGS) {
+> +		retval = -EINVAL;
+> +		goto out_path;
+> +	}
+>  	handle = kmalloc(struct_size(handle, f_handle, f_handle.handle_bytes),
+>  			 GFP_KERNEL);
+>  	if (!handle) {
+> @@ -322,6 +327,8 @@ static int handle_to_path(int mountdirfd, struct file_handle __user *ufh,
+>  		goto out_handle;
+>  	}
+>  
+> +	/* Filesystem code should not be exposed to user flags */
+> +	handle->handle_type &= ~FILEID_USER_FLAGS_MASK;
+>  	retval = do_handle_to_path(handle, path, &ctx);
+>  
+>  out_handle:
+> diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+> index 893a1d21dc1c..5e14d4500a75 100644
+> --- a/include/linux/exportfs.h
+> +++ b/include/linux/exportfs.h
+> @@ -160,6 +160,17 @@ struct fid {
+>  #define EXPORT_FH_FID		0x2 /* File handle may be non-decodeable */
+>  #define EXPORT_FH_DIR_ONLY	0x4 /* Only decode file handle for a directory */
+>  
+> +/*
+> + * Filesystems use only lower 8 bits of file_handle type for fid_type.
+> + * name_to_handle_at() uses upper 16 bits of type as user flags to be
+> + * interpreted by open_by_handle_at().
+> + */
+> +#define FILEID_USER_FLAGS_MASK	0xffff0000
+> +#define FILEID_USER_FLAGS(type) ((type) & FILEID_USER_FLAGS_MASK)
+> +
+> +/* Flags supported in encoded handle_type that is exported to user */
+> +#define FILEID_VALID_USER_FLAGS	(0)
+> +
+>  /**
+>   * struct export_operations - for nfsd to communicate with file systems
+>   * @encode_fh:      encode a file handle fragment from a dentry
+> -- 
+> 2.34.1
+> 
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
