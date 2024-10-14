@@ -1,159 +1,303 @@
-Received: from mail-il1-f198.google.com (mail-il1-f198.google.com [209.85.166.198])
+Received: from sonic314-26.consmr.mail.ne1.yahoo.com (sonic314-26.consmr.mail.ne1.yahoo.com [66.163.189.152])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E068C1AC8AE
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Oct 2024 14:58:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.198
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D08271C32FE
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Oct 2024 15:15:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.163.189.152
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1728917911; cv=none; b=KWHn/w1QSz0uv2NTNXp2mXEkC3Wj5Vj+428oGqljfJPN/O7/kIGGtcsP4t0QV/v1srgcp3IX/BY2ovz1rv5ewDYntj9coce7tI4qQ/JyaVnEP1oc4PrnoGkbzo1FkQ7GLtyhX+oqi9IS6FhWx3trYSQStTofhUlbkKC26REYYOA=
+	t=1728918908; cv=none; b=qQciCW5BQfpphSXgpzdQ3R3Sw6+5TUOTwUOG1uhtd2PM9lRPWLc6yOlVHINnF6C0SCElPCroVlwa/aIdoEQMChu9259TmFFIvb3wQfQKbriOooNCFORbzw7ZypTUd09kNnANCElad+OVzXwPI8hAQIvKvrH2kDT5TJCd6WhVeA0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1728917911; c=relaxed/simple;
-	bh=1wR7YdaWzBIS6u0Cat88ac9y44YTUIqrEdgFxL5/gg0=;
-	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=Pib1P6WOUs7W2QS/ntphz6XONJ0VuFeaz4Q4dVjjFHHpXEGdfvJtjerHsP8axi+52mpttfGHUr/ISyIBTYyM/1yLWMsbYU0828zhRe+mAHS/PjhkzzMYzqyLRUR8qK1qzOsqx3754VAKJMnuaRsN64xVQE2iC+i9f7o/sOb/6JA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.198
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-il1-f198.google.com with SMTP id e9e14a558f8ab-3a3b9c5bcd8so15314725ab.2
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Oct 2024 07:58:29 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1728917909; x=1729522709;
-        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=wgtJ2x4yj8vTp/yllpKOmU0ZKxEzoY4DU1ac/XOZFQE=;
-        b=f4hcCwpgRCarvO7o/99RDlugrzI7JwPI1fpHKcGEVdH3S0PQCkvk3DYskWrawO9SeJ
-         OvyLevVN0xg6dGATA/rU0bxTOBCzi+o9LTaTpxNzwybC5vo9wJzovzVrrC64OFSTqZ05
-         DyyGGCx1b2RG5uNRq4/d95QryndltZoX91oKNFph7syI8AVzMJaOE1+X3/4I8Fj5zEHA
-         eggAsVXW1xVx4eXEwTS5LFf1uwCaUF/7e+cLJmMFoBp0jpi7/NXh/fAw/PNnDILGsTlu
-         CejTPJhmfyKCdKHlnZmFti0gOZglOEZQgN4v/DvJpA80GjTIcZqNmhrsNS1PgBtFGrGr
-         UIpQ==
-X-Forwarded-Encrypted: i=1; AJvYcCX7oHNjfnhoWSJalCKUf0ivYKrixkafjx7IUKDx2sgeWGwlKgBr7HraPtPD+SFt42mKeyuGm3b2cvo=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yz/UUsxb9Fo3MyRizhUsldRMB4bS9rJ0ifTi8CJzjS70Ih/St0l
-	EWlqfP046IDEe1sL3gL/ozNKjpZ2K62VS85FfwJ6VdfXp0fjs0XxC7iErRLQ3izWk3/1p0OovkP
-	35JjHSpMoElECZkoIiMe/U3+/qQSw6bOLGBjb7Cy1nr6HenN6JxLE0jg=
-X-Google-Smtp-Source: AGHT+IGhhDnTU50L00P3nzyexwLD+fRWHJDCmc8c8puq1mbo7sDM4/G+CJFyy0SPEQCZRkq+bNgIfjcOE3le0ZdbJWtuyLM0q7P9
+	s=arc-20240116; t=1728918908; c=relaxed/simple;
+	bh=K+VmdhpCUdytTi8DRHz8Ar8BXNcPqnkXTLuH0kUYKvw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=aBX/VTpCb0Ndw2aOH+NPmRiItFUHmdOkEeQC5eAbflJV4+5ZRtO0VDRGTMFdg0LPlxEWkwqjbJNymwyQoUUuHyxbi32Y1RkNixu5aPtqmoW7z99YbpERfdFJjMz4Xg6i4xOn1MPttzs6hfKcrnKbpiMLmpxe7W79xMXLT+BSPO4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=schaufler-ca.com; spf=none smtp.mailfrom=schaufler-ca.com; dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.b=AnwpwClr; arc=none smtp.client-ip=66.163.189.152
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=schaufler-ca.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=schaufler-ca.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.b="AnwpwClr"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1728918906; bh=bHv1UO7IMwvV06D+Xx0bjVVo9VkCj8df8TY8GRx7WvY=; h=From:To:Cc:Subject:Date:In-Reply-To:References:From:Subject:Reply-To; b=AnwpwClrX0QITEdbEATnwICi9svtdZmyMPpCOV0dtz1dgqOww/11ReP7TOESMaznIlByJFV77oVHAZhSjqN3or1uPM5q0xGtEF2l1mZJ4Sf/KjmOqzljKT7fR/b970eUcuv5ccLBRel8BmHVXXty2xxYpzoPPH2ZgNA0srTHqlhNTJXKpcOVqZZGscBOxF3+0BTSJnO97GRdSP4A0BtJXmVq16nbaenrw1KGfjLROA59TO+9HQz5KvOh1UyhbbXLWvxg+2Ioh7DnRhVsKqGHLK9lFHvL7NEV7PglpvaWeaiN1tCAnJln8L57sd2dZ84iS0ueN/cnAQm6fdnY+ACVAw==
+X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1728918906; bh=uryQrzzfqkXuekHCcNroMy++Mp5mDKnbc8kmutQWKM9=; h=X-Sonic-MF:From:To:Subject:Date:From:Subject; b=mhMalrZciQej/YBEnoJfURxa1TpyoJlGtsf0hONo4ZV1/9QnlDEhKx/9YLTkyNGYsQirzrg9qD+Q+28qaK2MJpTy9TFCsZkS0RhNhvNKy4+2hDfv5VYODS6So3TyolG3dzubU11g95qqciYd/DafUA2ATDFzZntIQ44SijHD8n5Pzcm4OKCPTanp31ghbOOKe+SiM3yGU6dGhX3illgBTxCn2rB3xLrsMA2QFoQiM1nLBNuunmr3AmA8Hpp82/a6XLVRuhND2igL/pIrD5BD99BC5Mj0YAVSsX8crLCY+Rg+3VHTe9/lWxPBtlEmjPyOOzh+amYvZkeshzQ6cPWcGA==
+X-YMail-OSG: tVQgn74VM1mpqMr3JRXDkj5RTmwZe4nj6zHuHuNBLR9UrH_npXajnFiWOQSZJ_I
+ FqpYAvB6jYjcUgDUNOnooNNyUgVm89uXWyOrg69EQ7vTcT6SoRDLtcNmQmrmiy.IQH.mmoh1hOp_
+ ZJtTVucWX99KgFJO30FACApKfOtnHav5xYCEO_9jK2nwSXxgNzmXyKuSBeZon.SGOmXwadHqhxxY
+ 3l41VNyUZTeDMqfYZelsdSBIqSdM1KvtZ6uqthT_rFl5SC1IRUNincL6voHLoxN3EZtWSenYKB9C
+ QU9lLBW25LKPG.geXAv8FzRniDHyeg6OXKnnwutX_O7TMCMs4iZGXYRzXMxS3zs5q_3oN8XFoTXy
+ yuUgvAlviHedvofhKce1Mrh7SdmKfzqRee7eLzD6PzUhk5FE5m4drKHdaFXlHUoKbYAloSCB36Xd
+ nk8EncSJZ.TGsuSZxZEk_gBYOwZapPu9J2asRf9R0AcUAkaHjkF4cjn0OPBiGUiZsN_oC56fqBZo
+ 5zLIvPn9AUdhDujh04wqRwOPav8iAIRyHJZWHeTsRd4sM_rq_dwfoYVrAF4jxbtn7kzaamdFDvlx
+ Ioo1NFRgcge.EFmb5uPORjserk6Vb7mbNAqHXaQ7eSVhc4uBBwsg2s7RUPGID2qwAdqkUu6QQZJ3
+ Q3gaIm6rQ.LEpTgZHX7EBXrQas5fnt0SbXjidibZby6dbyrd1ofusYWvsgEKolf5RneFHBK9TEt0
+ 6vRN4CnriRUM2TfV9rjq4bNFCnrepnKvBdqUNpXZpjksasuxYN1.4exGbsHQK2X2M85WLWi.dVmO
+ CwvzxQahLulAdTo4QBBXwoS1XUJuUqSUTRpeIEDBLR2Xs_hV6MtBtPpGJuN.IGAijzq_r0xJLlzp
+ f2c_RjWM403I2hjiLA8W..oCbIJW_14upgdjzkJPskV_6Iu25GusAyh3s.pcm803mka3XqxgM3gV
+ ARqKdIGsz8MFlVhwJp7y196tJsek16o6EGbWtppI9ud5zDVjGpoQAr9t2GaeQh2xs6rsqjV1qK_p
+ fd6sPCBP2.1O8WHfQGfFJubB7U09FmNiK5gbuij9K26sxYQ.nMKVlZn0zqt1sBlEnTACwqqpdrFi
+ Op0HuDSuIAvCV0l.FMf4pxLurODjnhpqbnwv4WkBWYN6e9iUJp0Da.F7mdOiEIsRhsYUqmjeYK.A
+ MTVKbDuGpYiSjwDuVOcz_m7sJ4e0O9hMBJ9AnckXOwlUkVIP_MiVAeAn5BqZmGUZTifac0KItyGa
+ LOxfjlJxfJP.C_Y0dKuNOSTlItkd6lZ0rx.Wxzpw4G_MifsIVDUtrDTMHfPRH0XZzKUqUBa9XhuE
+ 4ADXot366RxsBEXRsR9HjmMlPjhf50IAM4lePZ8EDsSsiHMIk.P9UZwcESCd4exUkZlO5uSpPJP9
+ tvLhO0YSqDrWCHgPLfQMu6HAnPdSr0DCM1WvqUxInKUOWXCeaghmQRIYVLHWU7k5.pEZ1mA26mdX
+ voJpoKLKZ5uyZeZKGAIohsUXS2IJiJIuRx9jfFJ4TIOK2SNpQ4_UrH7xoJ9PWuWs2H_pFqk1NDrc
+ S6h1pdXP.j3N.UZoVJc_G.f5eK9Y2cXbm.w39g2rD79e3r0uHggc770hOGEt6koNkc5eHtqIQFX3
+ .ZSMdTvaDvuPgxNjcps_PBobkER5i_Fw6t.HwIz4nK7wBghke4.LcmcDlQzx_H502jLXlwOsS8YS
+ 3a44BXNTRgWY8RTv3W6fX_zmdyPp2vH33OFzMzijdNVNjaXjGC5gWPjXT2UAvefj4sEbGdDZKQdo
+ bRh9Ckb_AmMRE5VHXta1AJWYnUkdEnkmn.nscQaPB17YwyjZHqDTJauQbuokDXx78CfI4pBZDg2t
+ GBMUqiEs_n0g2F83ho7ygbtRcduvQNOOa46qcOCLy6zq_5gQevyzb_0OuYuAvbJzcPE.NA3tNiJY
+ OqyuDhIlpRpZg4X41mXtepgLGvzoOfdDhHTm1zMfn2qJ26WbQSRQunMiLmMtv8N0FbZzjK_CJUpL
+ cNhGNReEXBmzn9ZJ1bx.lp0BlPiH.xAo68s8c7QpcbyykFs8owREakMdTojUUay3lPglu9ODJNel
+ xstYN2QbcfyU9y0zeoXlGQbvREOkEdU.a25MZp3krizEjt_V6Khevtp0dQnGua8xObknjqb2YXa4
+ eReRLcTqrbRrKQkxZiiEwEZRumvPNmUDsoVPCpp_fA4nUeyO8mLHHbD2m5b8h2AOLT.ALovXXruY
+ ak4RgCd28J.z6L8HhlyZBqVx8FifxExioln2UuMFiR60Nra.6YfS6mCDzaKSRmBTBpaopYTQv2G7
+ 8ZMPG1GhHFtlmE7h7lzqES8Tm4Zm3JV6RSxEGRN4-
+X-Sonic-MF: <casey@schaufler-ca.com>
+X-Sonic-ID: 9387055b-7561-4f4a-bf09-95d4bce60f66
+Received: from sonic.gate.mail.ne1.yahoo.com by sonic314.consmr.mail.ne1.yahoo.com with HTTP; Mon, 14 Oct 2024 15:15:06 +0000
+Received: by hermes--production-gq1-5d95dc458-4tw7n (Yahoo Inc. Hermes SMTP Server) with ESMTPA ID 6c392927ea0eb898578ed262d71f570d;
+          Mon, 14 Oct 2024 15:15:00 +0000 (UTC)
+From: Casey Schaufler <casey@schaufler-ca.com>
+To: casey@schaufler-ca.com,
+	paul@paul-moore.com,
+	linux-security-module@vger.kernel.org
+Cc: jmorris@namei.org,
+	serge@hallyn.com,
+	keescook@chromium.org,
+	john.johansen@canonical.com,
+	penguin-kernel@i-love.sakura.ne.jp,
+	stephen.smalley.work@gmail.com,
+	linux-kernel@vger.kernel.org,
+	selinux@vger.kernel.org,
+	mic@digikod.net,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH v2 3/6] LSM: Use lsm_context in security_inode_getsecctx
+Date: Mon, 14 Oct 2024 08:14:47 -0700
+Message-ID: <20241014151450.73674-4-casey@schaufler-ca.com>
+X-Mailer: git-send-email 2.46.0
+In-Reply-To: <20241014151450.73674-1-casey@schaufler-ca.com>
+References: <20241014151450.73674-1-casey@schaufler-ca.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6e02:1c88:b0:3a3:b1c4:8176 with SMTP id
- e9e14a558f8ab-3a3b5fc417amr93003495ab.24.1728917909015; Mon, 14 Oct 2024
- 07:58:29 -0700 (PDT)
-Date: Mon, 14 Oct 2024 07:58:28 -0700
-X-Google-Appengine-App-Id: s~syzkaller
-X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <670d3194.050a0220.4cbc0.004c.GAE@google.com>
-Subject: [syzbot] [nfs?] WARNING: ODEBUG bug in __cancel_work (2)
-From: syzbot <syzbot+3e0cda9a4186a611611b@syzkaller.appspotmail.com>
-To: Dai.Ngo@oracle.com, chuck.lever@oracle.com, jlayton@kernel.org, 
-	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, neilb@suse.de, 
-	okorniev@redhat.com, syzkaller-bugs@googlegroups.com, tom@talpey.com
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
 
-Hello,
+Change the security_inode_getsecctx() interface to fill a lsm_context
+structure instead of data and length pointers.  This provides
+the information about which LSM created the context so that
+security_release_secctx() can use the correct hook.
 
-syzbot found the following issue on:
-
-HEAD commit:    e32cde8d2bd7 Merge tag 'sched_ext-for-6.12-rc1-fixes-1' of..
-git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=13ef139f980000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=1671921cf1ab80dd
-dashboard link: https://syzkaller.appspot.com/bug?extid=3e0cda9a4186a611611b
-compiler:       gcc (Debian 12.2.0-14) 12.2.0, GNU ld (GNU Binutils for Debian) 2.40
-
-Unfortunately, I don't have any reproducer for this issue yet.
-
-Downloadable assets:
-disk image: https://storage.googleapis.com/syzbot-assets/f8f10daca68e/disk-e32cde8d.raw.xz
-vmlinux: https://storage.googleapis.com/syzbot-assets/2149fcb8bea3/vmlinux-e32cde8d.xz
-kernel image: https://storage.googleapis.com/syzbot-assets/394448ca45de/bzImage-e32cde8d.xz
-
-IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+3e0cda9a4186a611611b@syzkaller.appspotmail.com
-
-svc: failed to register nfsdv3 RPC service (errno 111).
-svc: failed to register nfsaclv3 RPC service (errno 111).
-------------[ cut here ]------------
-ODEBUG: assert_init not available (active state 0) object: ffffffff9a462b08 object type: timer_list hint: 0x0
-WARNING: CPU: 1 PID: 6772 at lib/debugobjects.c:514 debug_print_object+0x1a3/0x2b0 lib/debugobjects.c:514
-Modules linked in:
-CPU: 1 UID: 0 PID: 6772 Comm: syz.1.278 Not tainted 6.12.0-rc1-syzkaller-00031-ge32cde8d2bd7 #0
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 09/13/2024
-RIP: 0010:debug_print_object+0x1a3/0x2b0 lib/debugobjects.c:514
-Code: fc ff df 48 89 fa 48 c1 ea 03 80 3c 02 00 75 54 48 8b 14 dd 60 32 b1 8b 41 56 4c 89 e6 48 c7 c7 c0 25 b1 8b e8 9e 72 c0 fc 90 <0f> 0b 90 90 58 83 05 ed 42 8f 0b 01 48 83 c4 18 5b 5d 41 5c 41 5d
-RSP: 0018:ffffc90004277158 EFLAGS: 00010082
-RAX: 0000000000000000 RBX: 0000000000000005 RCX: ffffffff814e2a49
-RDX: ffff888026c81e00 RSI: ffffffff814e2a56 RDI: 0000000000000001
-RBP: 0000000000000001 R08: 0000000000000001 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000001 R12: ffffffff8bb12ca0
-R13: ffffffff8b4f6c60 R14: 0000000000000000 R15: ffffc90004277218
-FS:  00007f08550c46c0(0000) GS:ffff8880b8700000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00005555559c1808 CR3: 000000007ff7a000 CR4: 00000000003526f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
-Call Trace:
- <TASK>
- debug_object_assert_init+0x249/0x370 lib/debugobjects.c:910
- debug_timer_assert_init kernel/time/timer.c:846 [inline]
- debug_assert_init kernel/time/timer.c:891 [inline]
- __timer_delete+0x81/0x1c0 kernel/time/timer.c:1413
- del_timer include/linux/timer.h:202 [inline]
- try_to_grab_pending+0x7d/0x850 kernel/workqueue.c:2064
- work_grab_pending kernel/workqueue.c:2157 [inline]
- __cancel_work+0xac/0x370 kernel/workqueue.c:4308
- __cancel_work_sync+0x1d/0x130 kernel/workqueue.c:4325
- nfsd_file_cache_shutdown+0xc8/0x4e0 fs/nfsd/filecache.c:928
- nfsd_shutdown_generic fs/nfsd/nfssvc.c:314 [inline]
- nfsd_shutdown_generic fs/nfsd/nfssvc.c:308 [inline]
- nfsd_startup_net fs/nfsd/nfssvc.c:429 [inline]
- nfsd_svc+0x6a9/0x940 fs/nfsd/nfssvc.c:820
- nfsd_nl_threads_set_doit+0x535/0xbe0 fs/nfsd/nfsctl.c:1722
- genl_family_rcv_msg_doit+0x202/0x2f0 net/netlink/genetlink.c:1115
- genl_family_rcv_msg net/netlink/genetlink.c:1195 [inline]
- genl_rcv_msg+0x565/0x800 net/netlink/genetlink.c:1210
- netlink_rcv_skb+0x165/0x410 net/netlink/af_netlink.c:2550
- genl_rcv+0x28/0x40 net/netlink/genetlink.c:1219
- netlink_unicast_kernel net/netlink/af_netlink.c:1331 [inline]
- netlink_unicast+0x53c/0x7f0 net/netlink/af_netlink.c:1357
- netlink_sendmsg+0x8b8/0xd70 net/netlink/af_netlink.c:1901
- sock_sendmsg_nosec net/socket.c:729 [inline]
- __sock_sendmsg net/socket.c:744 [inline]
- ____sys_sendmsg+0x9ae/0xb40 net/socket.c:2602
- ___sys_sendmsg+0x135/0x1e0 net/socket.c:2656
- __sys_sendmsg+0x117/0x1f0 net/socket.c:2685
- do_syscall_x64 arch/x86/entry/common.c:52 [inline]
- do_syscall_64+0xcd/0x250 arch/x86/entry/common.c:83
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7f085437dff9
-Code: ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 a8 ff ff ff f7 d8 64 89 01 48
-RSP: 002b:00007f08550c4038 EFLAGS: 00000246 ORIG_RAX: 000000000000002e
-RAX: ffffffffffffffda RBX: 00007f0854535f80 RCX: 00007f085437dff9
-RDX: 000000002000c014 RSI: 0000000020000140 RDI: 0000000000000004
-RBP: 00007f08543f0296 R08: 0000000000000000 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
-R13: 0000000000000000 R14: 00007f0854535f80 R15: 00007ffe830ff138
- </TASK>
-
-
+Signed-off-by: Casey Schaufler <casey@schaufler-ca.com>
+Cc: linux-nfs@vger.kernel.org
 ---
-This report is generated by a bot. It may contain errors.
-See https://goo.gl/tpsmEJ for more information about syzbot.
-syzbot engineers can be reached at syzkaller@googlegroups.com.
+ fs/nfsd/nfs4xdr.c             | 26 ++++++++++----------------
+ include/linux/lsm_hook_defs.h |  4 ++--
+ include/linux/security.h      |  5 +++--
+ security/security.c           | 12 ++++++------
+ security/selinux/hooks.c      | 10 ++++++----
+ security/smack/smack_lsm.c    |  7 ++++---
+ 6 files changed, 31 insertions(+), 33 deletions(-)
 
-syzbot will keep track of this issue. See:
-https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 537ad363d70a..93faa238b979 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2827,11 +2827,11 @@ static __be32 nfsd4_encode_nfsace4(struct xdr_stream *xdr, struct svc_rqst *rqst
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ static inline __be32
+ nfsd4_encode_security_label(struct xdr_stream *xdr, struct svc_rqst *rqstp,
+-			    void *context, int len)
++			    const struct lsm_context *context)
+ {
+ 	__be32 *p;
+ 
+-	p = xdr_reserve_space(xdr, len + 4 + 4 + 4);
++	p = xdr_reserve_space(xdr, context->len + 4 + 4 + 4);
+ 	if (!p)
+ 		return nfserr_resource;
+ 
+@@ -2841,13 +2841,13 @@ nfsd4_encode_security_label(struct xdr_stream *xdr, struct svc_rqst *rqstp,
+ 	 */
+ 	*p++ = cpu_to_be32(0); /* lfs */
+ 	*p++ = cpu_to_be32(0); /* pi */
+-	p = xdr_encode_opaque(p, context, len);
++	p = xdr_encode_opaque(p, context->context, context->len);
+ 	return 0;
+ }
+ #else
+ static inline __be32
+ nfsd4_encode_security_label(struct xdr_stream *xdr, struct svc_rqst *rqstp,
+-			    void *context, int len)
++			    struct lsm_context *context)
+ { return 0; }
+ #endif
+ 
+@@ -2930,8 +2930,7 @@ struct nfsd4_fattr_args {
+ 	struct nfs4_acl		*acl;
+ 	u64			size;
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+-	void			*context;
+-	int			contextlen;
++	struct lsm_context	context;
+ #endif
+ 	u32			rdattr_err;
+ 	bool			contextsupport;
+@@ -3386,8 +3385,7 @@ static __be32 nfsd4_encode_fattr4_suppattr_exclcreat(struct xdr_stream *xdr,
+ static __be32 nfsd4_encode_fattr4_sec_label(struct xdr_stream *xdr,
+ 					    const struct nfsd4_fattr_args *args)
+ {
+-	return nfsd4_encode_security_label(xdr, args->rqstp,
+-					   args->context, args->contextlen);
++	return nfsd4_encode_security_label(xdr, args->rqstp, &args->context);
+ }
+ #endif
+ 
+@@ -3538,7 +3536,7 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	args.ignore_crossmnt = (ignore_crossmnt != 0);
+ 	args.acl = NULL;
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+-	args.context = NULL;
++	args.context.context = NULL;
+ #endif
+ 
+ 	/*
+@@ -3616,7 +3614,7 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	     attrmask[0] & FATTR4_WORD0_SUPPORTED_ATTRS) {
+ 		if (exp->ex_flags & NFSEXP_SECURITY_LABEL)
+ 			err = security_inode_getsecctx(d_inode(dentry),
+-						&args.context, &args.contextlen);
++						&args.context);
+ 		else
+ 			err = -EOPNOTSUPP;
+ 		args.contextsupport = (err == 0);
+@@ -3653,12 +3651,8 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 
+ out:
+ #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+-	if (args.context) {
+-		struct lsm_context scaff; /* scaffolding */
+-
+-		lsmcontext_init(&scaff, args.context, args.contextlen, 0);
+-		security_release_secctx(&scaff);
+-	}
++	if (args.context.context)
++		security_release_secctx(&args.context);
+ #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
+ 	kfree(args.acl);
+ 	if (tempfh) {
+diff --git a/include/linux/lsm_hook_defs.h b/include/linux/lsm_hook_defs.h
+index 01e5a8e09bba..69e1076448c6 100644
+--- a/include/linux/lsm_hook_defs.h
++++ b/include/linux/lsm_hook_defs.h
+@@ -303,8 +303,8 @@ LSM_HOOK(void, LSM_RET_VOID, release_secctx, struct lsm_context *cp)
+ LSM_HOOK(void, LSM_RET_VOID, inode_invalidate_secctx, struct inode *inode)
+ LSM_HOOK(int, 0, inode_notifysecctx, struct inode *inode, void *ctx, u32 ctxlen)
+ LSM_HOOK(int, 0, inode_setsecctx, struct dentry *dentry, void *ctx, u32 ctxlen)
+-LSM_HOOK(int, -EOPNOTSUPP, inode_getsecctx, struct inode *inode, void **ctx,
+-	 u32 *ctxlen)
++LSM_HOOK(int, -EOPNOTSUPP, inode_getsecctx, struct inode *inode,
++	 struct lsm_context *cp)
+ 
+ #if defined(CONFIG_SECURITY) && defined(CONFIG_WATCH_QUEUE)
+ LSM_HOOK(int, 0, post_notification, const struct cred *w_cred,
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 64e8b18e6ea5..7d0adc1833ab 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -591,7 +591,7 @@ void security_release_secctx(struct lsm_context *cp);
+ void security_inode_invalidate_secctx(struct inode *inode);
+ int security_inode_notifysecctx(struct inode *inode, void *ctx, u32 ctxlen);
+ int security_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen);
+-int security_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen);
++int security_inode_getsecctx(struct inode *inode, struct lsm_context *cp);
+ int security_locked_down(enum lockdown_reason what);
+ int lsm_fill_user_ctx(struct lsm_ctx __user *uctx, u32 *uctx_len,
+ 		      void *val, size_t val_len, u64 id, u64 flags);
+@@ -1591,7 +1591,8 @@ static inline int security_inode_setsecctx(struct dentry *dentry, void *ctx, u32
+ {
+ 	return -EOPNOTSUPP;
+ }
+-static inline int security_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
++static inline int security_inode_getsecctx(struct inode *inode,
++					   struct lsm_context *cp)
+ {
+ 	return -EOPNOTSUPP;
+ }
+diff --git a/security/security.c b/security/security.c
+index 914d8c8beea7..4ca3c9e28b6f 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -4431,17 +4431,17 @@ EXPORT_SYMBOL(security_inode_setsecctx);
+ /**
+  * security_inode_getsecctx() - Get the security label of an inode
+  * @inode: inode
+- * @ctx: secctx
+- * @ctxlen: length of secctx
++ * @cp: security context
+  *
+- * On success, returns 0 and fills out @ctx and @ctxlen with the security
+- * context for the given @inode.
++ * On success, returns 0 and fills out @cp with the security context
++ * for the given @inode.
+  *
+  * Return: Returns 0 on success, error on failure.
+  */
+-int security_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
++int security_inode_getsecctx(struct inode *inode, struct lsm_context *cp)
+ {
+-	return call_int_hook(inode_getsecctx, inode, ctx, ctxlen);
++	memset(cp, 0, sizeof(*cp));
++	return call_int_hook(inode_getsecctx, inode, cp);
+ }
+ EXPORT_SYMBOL(security_inode_getsecctx);
+ 
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 692735eb04aa..ce5e45abd8d3 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -6678,14 +6678,16 @@ static int selinux_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
+ 				     ctx, ctxlen, 0, NULL);
+ }
+ 
+-static int selinux_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
++static int selinux_inode_getsecctx(struct inode *inode, struct lsm_context *cp)
+ {
+-	int len = 0;
++	int len;
+ 	len = selinux_inode_getsecurity(&nop_mnt_idmap, inode,
+-					XATTR_SELINUX_SUFFIX, ctx, true);
++					XATTR_SELINUX_SUFFIX,
++					(void **)&cp->context, true);
+ 	if (len < 0)
+ 		return len;
+-	*ctxlen = len;
++	cp->len = len;
++	cp->id = LSM_ID_SELINUX;
+ 	return 0;
+ }
+ #ifdef CONFIG_KEYS
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index d52163d3dd64..c9ec4d93fb13 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -4899,12 +4899,13 @@ static int smack_inode_setsecctx(struct dentry *dentry, void *ctx, u32 ctxlen)
+ 				     ctx, ctxlen, 0, NULL);
+ }
+ 
+-static int smack_inode_getsecctx(struct inode *inode, void **ctx, u32 *ctxlen)
++static int smack_inode_getsecctx(struct inode *inode, struct lsm_context *cp)
+ {
+ 	struct smack_known *skp = smk_of_inode(inode);
+ 
+-	*ctx = skp->smk_known;
+-	*ctxlen = strlen(skp->smk_known);
++	cp->context = skp->smk_known;
++	cp->len = strlen(skp->smk_known);
++	cp->id = LSM_ID_SMACK;
+ 	return 0;
+ }
+ 
+-- 
+2.46.0
 
-If the report is already addressed, let syzbot know by replying with:
-#syz fix: exact-commit-title
-
-If you want to overwrite report's subsystems, reply with:
-#syz set subsystems: new-subsystem
-(See the list of subsystem names on the web dashboard)
-
-If the report is a duplicate of another one, reply with:
-#syz dup: exact-subject-of-another-report
-
-If you want to undo deduplication, reply with:
-#syz undup
