@@ -1,81 +1,55 @@
-Received: from fhigh-a5-smtp.messagingengine.com (fhigh-a5-smtp.messagingengine.com [103.168.172.156])
+Received: from smtpbgau2.qq.com (smtpbgau2.qq.com [54.206.34.216])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C7EF29AF
-	for <linux-nfs@vger.kernel.org>; Sat, 19 Oct 2024 05:23:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.156
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51BC71CC15E;
+	Sat, 19 Oct 2024 07:17:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=54.206.34.216
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1729315430; cv=none; b=nNxY4+gLMJBNT5F0QG6gZ6nSIVo2gToHKjclhg6uypnnRwKkabTI4ZPcwkCvx5cKlPoodGwhhhXpoaaaYjJ1hKqaN4VlyOYEcwSzUrmOIHQznNleKf/Q7gOitHRMmd0QKcAIvdSU1gfB9W1uMpToev3MjA1ApaBQUyk7zlM6QAE=
+	t=1729322261; cv=none; b=ov3Q/QA4e8UVTAGnzK+liOkh5HnW5f++O76jnxAvv5/wltfHJ/k6+8ePN9HOMJVnFxH7bKRAo5tfZ2b8zFH5l0dyrG6mYYHBoe7YZ+eeHKSF0tAqwWyTTwfX5HbqyHn2oa/2cnXcF5qktPzHCUVGLZOciSj5eygBi7y2r3mETns=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1729315430; c=relaxed/simple;
-	bh=HPwQR+8u4Y+R1iiMk1pNO7fgsGZySKT9Y56Lv2WFNa0=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=cPGDqZjEyLhexPtZOGVIr0OFe7FraYwhCALXCwr+t1BEAJ4nJZuHyYoh7T+u9nI3jya2Qpja+P84NVpKahNpgqOzgK9GV2tVXCJgb4AJN8Dw1S49BYRxO4mHVeMdqOUkkfsLNYZc37Q8+yGKxW+5GOIUHTbYnJHkKWeiRmwANCU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=themaw.net; spf=pass smtp.mailfrom=themaw.net; dkim=pass (2048-bit key) header.d=themaw.net header.i=@themaw.net header.b=YmjwPFxs; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=iwiKaTZ9; arc=none smtp.client-ip=103.168.172.156
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=themaw.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=themaw.net
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=themaw.net header.i=@themaw.net header.b="YmjwPFxs";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="iwiKaTZ9"
-Received: from phl-compute-01.internal (phl-compute-01.phl.internal [10.202.2.41])
-	by mailfhigh.phl.internal (Postfix) with ESMTP id 4D5DA11401A1;
-	Sat, 19 Oct 2024 01:23:46 -0400 (EDT)
-Received: from phl-mailfrontend-01 ([10.202.2.162])
-  by phl-compute-01.internal (MEProxy); Sat, 19 Oct 2024 01:23:46 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=themaw.net; h=cc
-	:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:message-id:mime-version:reply-to:subject:subject:to
-	:to; s=fm1; t=1729315426; x=1729401826; bh=xUVE0NgXMBmiceTMebckt
-	nxXXRgxBqOlLraiu55hJJk=; b=YmjwPFxsLV1CRP98dZVEX9giyLAFOHOfUDwJY
-	03v7LA2inHmi+Tku6BBB5DpDGhut2OnHA+C9wfi56TzSbYG/32h86wWqdOU8PAcz
-	s1LMsE/u+TiBgEBMbPdFmokzwvm/3w7dcTdjFcr1FEDGYK8SAV1czjg9XrUhqc/z
-	V8wLouGZjIaL9p8JAgB17RSYUafd9KIB6BLgErpsQmYDYjCEuVMcoIpqJnFPQDPK
-	DbpJLBJjidBd8yZqJ57cqFK1GVXaAwIXVn9q2AxMy7QAaZjrCleUGjCKO2M0RVkc
-	xTmEpmhHTey3Vo1/ZBDqEAwB6mi0fbVL61+rb3NEjJfbRdkNw==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:message-id:mime-version:reply-to:subject:subject:to
-	:to:x-me-proxy:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
-	fm2; t=1729315426; x=1729401826; bh=xUVE0NgXMBmiceTMebcktnxXXRgx
-	BqOlLraiu55hJJk=; b=iwiKaTZ9LWkGJjHnmrOOOGgDtuUCfBssXePLgYirooXC
-	kVggyMQvDUUsYtMNggoVG6KNsIi8bl0MbIpGyn7N39Xn1PKE6H+y7dNDavYHQoyu
-	5AvH2hTJZ6LQDo+T//+T/qEzi7Ha2Hx9DYL3L7YSlHpj3FU02GOYNpdJKRejDFxm
-	IDL6iqcPW6urbEdWw3EHAKA9G7QaP7xIl263ERkqzUqHR+w9imVgXNqNwRPvojGA
-	Q2DmqFWbOikjCeo8JI4DX5ngQvTYPoRBCEhnnEtvu0Q1Se6OMVR7qwkDQJeUwEmz
-	y7sVbiJnr66Z+U3Xs2pd/AojtHFqNTS5mWxEMboMcg==
-X-ME-Sender: <xms:YkITZ0UgKl1nG3mhNUnzewtl0kmMfIcGjp7QMTxCB9rykNoNPnZXVQ>
-    <xme:YkITZ4nXf2HDxLxITplMLryfB7JuI5GRuXLxNHdUyA1qzFN39HwdoirvEi5h3pdY0
-    ZVTKW5qE7fj>
-X-ME-Received: <xmr:YkITZ4YzwNYdGK0zjNDTDCjWv60QS0hpLU-nigUz8mjAwcxXUACuj8TNNSKPrCBwUx3HebhVdM0JOs7j5Rs-BgzqU3ablMRngeN61rxlWpXiI5LbFK_qQC6idg>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeeftddrvdehgedgleeiucetufdoteggodetrfdotf
-    fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdggtfgfnhhsuhgsshgtrhhisggvpdfu
-    rfetoffkrfgpnffqhgenuceurghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnh
-    htshculddquddttddmnecujfgurhephffvvefufffkofgggfestdekredtredttdenucfh
-    rhhomhepkfgrnhcumfgvnhhtuceorhgrvhgvnhesthhhvghmrgifrdhnvghtqeenucggtf
-    frrghtthgvrhhnpedutdfhveehuefhjefgffegieduhefhtdejkefhvdekteeihfehtddt
-    gffgheduleenucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhroh
-    hmpehrrghvvghnsehthhgvmhgrfidrnhgvthdpnhgspghrtghpthhtohepgedpmhhouggv
-    pehsmhhtphhouhhtpdhrtghpthhtoheplhhinhhugidqnhhfshesvhhgvghrrdhkvghrnh
-    gvlhdrohhrghdprhgtphhtthhopehrrghvvghnsehthhgvmhgrfidrnhgvthdprhgtphht
-    thhopehhvggurhhitghksehruhhtghgvrhhsrdgvughupdhrtghpthhtohepshhtvghvvg
-    gusehrvgguhhgrthdrtghomh
-X-ME-Proxy: <xmx:YkITZzXAixbu1nWMyM0R4up6qGwSHqgNd9pIfLnWLjj2k3Md68ySZg>
-    <xmx:YkITZ-k4UIvygXHYoZ_LSzdfzW4WZOXx8U1-OvNxTNzmSI63oRx9ew>
-    <xmx:YkITZ4ct_Gl4UXJG6eCz9xhjWh0JnwfOyxUVo6UglvuXpCkEeCckWQ>
-    <xmx:YkITZwE-WC40guBmxai79TSSPwD-arGmF8icY7yzfBU7lGAvZJgi9A>
-    <xmx:YkITZ_Ar-bHJ7sUa63ekXDqRgZKVKBMjdDOa6R4NEEGVr5TSUB_EOuvB>
-Feedback-ID: i31e841b0:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Sat,
- 19 Oct 2024 01:23:44 -0400 (EDT)
-From: Ian Kent <raven@themaw.net>
-To: linux-nfs@vger.kernel.org
-Cc: Ian Kent <raven@themaw.net>,
-	Charles Hedrick <hedrick@rutgers.edu>,
-	Steve Dickson <steved@redhat.com>
-Subject: [PATCH] nfs-utils: use getpwuid_r() and getpwnam_r() in gssd
-Date: Sat, 19 Oct 2024 13:23:35 +0800
-Message-ID: <20241019052340.28225-1-raven@themaw.net>
-X-Mailer: git-send-email 2.46.2
+	s=arc-20240116; t=1729322261; c=relaxed/simple;
+	bh=pjx16WCMw/sQrrsCxHRbpEFWf5y2yLaA1KolqpC+Wjc=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=FrNcKTKvELEV3uM1FX6x0gKWKo2T4gi/R4E8w8l4Fi4xdqM/v08jZZNDCHlSwNdKIcI7g2TP4jEuVbn3SdjF426cBIG5yM/W9B2Ah5PWKQ5jTm7wYTtw9I668Qoe15nqZCyLZHcvTCEqouKCJMFc2D40dCQ24xGvKjH4kQlKiPE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=chenxiaosong.com; spf=none smtp.mailfrom=chenxiaosong.com; arc=none smtp.client-ip=54.206.34.216
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=chenxiaosong.com
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=chenxiaosong.com
+X-QQ-mid: bizesmtpsz10t1729322168tw3qsh
+X-QQ-Originating-IP: Eh4zX456hZMGcfuxgcpGlK9/0p8Mh8Jxw52RkerpuR4=
+Received: from sonvhi-TianYi510S-07IMB.. ( [116.128.244.171])
+	by bizesmtp.qq.com (ESMTP) with 
+	id ; Sat, 19 Oct 2024 15:15:48 +0800 (CST)
+X-QQ-SSF: 0000000000000000000000000000000
+X-QQ-GoodBg: 0
+X-BIZMAIL-ID: 3942789612294147170
+From: chenxiaosong@chenxiaosong.com
+To: corbet@lwn.net,
+	dhowells@redhat.com,
+	jlayton@kernel.org,
+	brauner@kernel.org,
+	rostedt@goodmis.org,
+	mhiramat@kernel.org,
+	mathieu.desnoyers@efficios.com,
+	trondmy@kernel.org,
+	anna@kernel.org,
+	chuck.lever@oracle.com,
+	neilb@suse.de,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com
+Cc: linux-doc@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	netfs@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org,
+	linux-trace-kernel@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	ChenXiaoSong <chenxiaosong@kylinos.cn>
+Subject: [PATCH 1/3] Documentation: nfs: idmapper: keep consistent with nfsidmap manual
+Date: Sat, 19 Oct 2024 15:15:37 +0800
+Message-Id: <20241019071539.125934-2-chenxiaosong@chenxiaosong.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20241019071539.125934-1-chenxiaosong@chenxiaosong.com>
+References: <20241019071539.125934-1-chenxiaosong@chenxiaosong.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -83,80 +57,129 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+X-QQ-SENDSIZE: 520
+Feedback-ID: bizesmtpsz:chenxiaosong.com:qybglogicsvrsz:qybglogicsvrsz4a-0
+X-QQ-XMAILINFO: M3ziZXKDk+iOsjm9mH5d8oiRCkBzKEtIIucugsMBUMQ55Qpcs0Vu5/nF
+	jh380GYPkKGRjKRY+9KiCfo+R6eo86AcouDlMcp9K5VgCvz4eCjNENksuVdC2CRie94Mn9G
+	5WTszOitSep0BTjrWXb/48bVXlUCXCyycTG1JiXcyU6kYK94m2qVPnaP6UXMi680/2DGMKd
+	2TExRoJGs1KCkFTO9Q5oXx5x65VVI2cXCi5AUvpGSyVjGTZTpgbMEdakLlW/ypicWcDN9qG
+	edBBTVjdGN+XDVlTTFZAIMpmB5fk9GsxHy+LF7XWohk4TbykhZ43cyNWaAFJGMNLx1lSTZS
+	ULb6wynlDG09NO2fNBR5GXOJr+Lgq68WTC7SOKguspcb5ZkBvS7ocxY/pQBC1WRUfq9IQBf
+	V3Nm+SMY9jJlqWasK/cCMRhHpvwFV3yULijxq7y0Jqns5bC/E+zXsfYQ15+fZfuTVZG7V8F
+	uIOhEEGi0BdtBF7RNwEXIJ7K5DF2NCaR0LKp/gXIgtuTTWy2SCniOeMZV5CncWP3KByQXRT
+	n9y4vLBs70+FPYfkXYvHfFY8ubXPj8t/zxAlu2d2rwIEx/ca+rm5FriKJn0/38xlgvtYX87
+	nygNGL6q+AQrVJbvw9+FGMvTgxQUmlhbO6Or9PC0cAC+F2WDr8V66TZ/VcaB6KV/kcvixjm
+	yneJ5V2k56faGXsfT0+StU54YmGk4wQs6TDcdNHRKDS9vL0h3NRrbedqjQZumtExacx2NLP
+	a/zgEEdOyx2DZVMdJjtfNlFa90uVu8KufV4cDx653xwFyraHlJO0CV/rjAv9G4QaHliuSZK
+	85BH3vEfj9qgcCJ9P2/NgoxJSvKG4Z2BSbjyJM161cct7qJhUbw8ayxrjjWCDERjIdcLI4a
+	4tabA75lY9EW3VLuD6/nIcSfumGnzU/Lem+6miMkkkt6O0Gje0ZDubKmZ+qFHLKoWBeqNx4
+	zaXmtwCwACQK6LE3+tGYOVswiHtA2V1K5uPc=
+X-QQ-XMRINFO: OD9hHCdaPRBwq3WW+NvGbIU=
+X-QQ-RECHKSPAM: 0
 
-gssd uses getpwuid(3) and getpwnam(3) in a pthreads context but
-these functions are not thread safe.
+From: ChenXiaoSong <chenxiaosong@kylinos.cn>
 
-Signed-off-by: Ian Kent <raven@themaw.net>
+The usage of `nfsidmap` has been updated(e.g., use `-t 600` set the
+expiration timer), keep it consistent with nfsidmap manual (Link[1]).
+
+Link[1]: https://git.kernel.org/pub/scm/linux/kernel/git/rw/nfs-utils.git/tree/utils/nfsidmap/nfsidmap.man
+Signed-off-by: ChenXiaoSong <chenxiaosong@kylinos.cn>
 ---
- utils/gssd/gssd_proc.c | 34 ++++++++++++++++++++++++----------
- 1 file changed, 24 insertions(+), 10 deletions(-)
+ Documentation/admin-guide/nfs/nfs-idmapper.rst | 59 ++++++++++++++++++++++++++++++++---------------------------
+ 1 file changed, 32 insertions(+), 27 deletions(-)
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 2ad84c59..01331485 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -489,7 +489,10 @@ success:
- static int
- change_identity(uid_t uid)
- {
--	struct passwd	*pw;
-+	struct passwd  pw;
-+	struct passwd *ppw;
-+	char *pw_tmp;
-+	long tmplen;
- 	int res;
+diff --git a/Documentation/admin-guide/nfs/nfs-idmapper.rst b/Documentation/admin-guide/nfs/nfs-idmapper.rst
+index 58b8e63412d5..0b72fd3a38af 100644
+--- a/Documentation/admin-guide/nfs/nfs-idmapper.rst
++++ b/Documentation/admin-guide/nfs/nfs-idmapper.rst
+@@ -24,55 +24,60 @@ Configuring
+ ===========
  
- 	/* drop list of supplimentary groups first */
-@@ -502,15 +505,25 @@ change_identity(uid_t uid)
- 		return errno;
- 	}
+ The file /etc/request-key.conf will need to be modified so /sbin/request-key can
+-direct the upcall.  The following line should be added:
++properly direct the upcall. The following line should be added before a call to
++keyctl negate:
  
-+	tmplen = sysconf(_SC_GETPW_R_SIZE_MAX);
-+	if (tmplen < 0)
-+		tmplen = 16384;
+-``#OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...``
+-``#======	=======	===============	===============	===============================``
+-``create	id_resolver	*	*		/usr/sbin/nfs.idmap %k %d 600``
++.. code-block:: none
+ 
++	#OP	TYPE		DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
++	#======	===============	===============	===============	===============================
++	create	id_resolver	*		*		/usr/sbin/nfsidmap -t 600 %k %d
+ 
+-This will direct all id_resolver requests to the program /usr/sbin/nfs.idmap.
+-The last parameter, 600, defines how many seconds into the future the key will
+-expire.  This parameter is optional for /usr/sbin/nfs.idmap.  When the timeout
+-is not specified, nfs.idmap will default to 600 seconds.
++This will direct all id_resolver requests to the program /usr/sbin/nfsidmap.
++The -t 600 defines how many seconds into the future the key will expire.
++This is an optional parameter for  /usr/sbin/nfsidmap  and  will default to 600
++seconds when not specified.
+ 
+-id mapper uses for key descriptions::
++The idmapper system uses four key descriptions:
+ 
+-	  uid:  Find the UID for the given user
+-	  gid:  Find the GID for the given group
+-	 user:  Find the user  name for the given UID
+-	group:  Find the group name for the given GID
++.. code-block:: none
+ 
+-You can handle any of these individually, rather than using the generic upcall
+-program.  If you would like to use your own program for a uid lookup then you
+-would edit your request-key.conf so it look similar to this:
++	  uid: Find the UID for the given user
++	  gid: Find the GID for the given group
++	 user: Find the user name for the given UID
++	group: Find the group name for the given GID
+ 
+-``#OP	TYPE	DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...``
+-``#======	=======	===============	===============	===============================``
+-``create	id_resolver	uid:*	*		/some/other/program %k %d 600``
+-``create	id_resolver	*	*		/usr/sbin/nfs.idmap %k %d 600``
++You can choose to handle any of these individually, rather than using the
++generic upcall program.  If you would like to use your own program for a uid
++lookup then you would edit your request-key.conf so it looks similar to this:
+ 
++.. code-block:: none
 +
-+	pw_tmp = malloc(tmplen);
-+	if (!pw_tmp) {
-+		printerr(0, "WARNING: unable to allocate passwd buffer\n");
-+		return errno ? errno : ENOMEM;
-+	}
-+
- 	/* try to get pwent for user */
--	pw = getpwuid(uid);
--	if (!pw) {
-+	res = getpwuid_r(uid, &pw, pw_tmp, tmplen, &ppw);
-+	if (!ppw) {
- 		/* if that doesn't work, try to get one for "nobody" */
--		errno = 0;
--		pw = getpwnam("nobody");
--		if (!pw) {
-+		res = getpwnam_r("nobody", &pw, pw_tmp, tmplen, &ppw);
-+		if (!ppw) {
- 			printerr(0, "WARNING: unable to determine gid for uid %u\n", uid);
--			return errno ? errno : ENOENT;
-+			free(pw_tmp);
-+			return res ? res : ENOENT;
- 		}
- 	}
++	#OP	TYPE		DESCRIPTION	CALLOUT INFO	PROGRAM ARG1 ARG2 ARG3 ...
++	#======	===============	===============	===============	==========================
++	create	id_resolver	uid:*		*		/some/other/program %k %d
++	create	id_resolver	*		*		/usr/sbin/nfsidmap %k %d
  
-@@ -521,12 +534,13 @@ change_identity(uid_t uid)
- 	 * other threads. To bypass this, we have to call syscall() directly.
- 	 */
- #ifdef __NR_setresgid32
--	res = syscall(SYS_setresgid32, pw->pw_gid, pw->pw_gid, pw->pw_gid);
-+	res = syscall(SYS_setresgid32, pw.pw_gid, pw.pw_gid, pw.pw_gid);
- #else 
--	res = syscall(SYS_setresgid, pw->pw_gid, pw->pw_gid, pw->pw_gid);
-+	res = syscall(SYS_setresgid, pw.pw_gid, pw.pw_gid, pw.pw_gid);
- #endif
-+	free(pw_tmp);
- 	if (res != 0) {
--		printerr(0, "WARNING: failed to set gid to %u!\n", pw->pw_gid);
-+		printerr(0, "WARNING: failed to set gid to %u!\n", pw.pw_gid);
- 		return errno;
- 	}
+ Notice that the new line was added above the line for the generic program.
+-request-key will find the first matching line and corresponding program.  In
+-this case, /some/other/program will handle all uid lookups and
+-/usr/sbin/nfs.idmap will handle gid, user, and group lookups.
++request-key will find the first matching line and run the corresponding program.
++In this case,  /some/other/program  will  handle  all  uid lookups,
++and /usr/sbin/nfsidmap will handle gid, user, and group lookups.
  
+ See Documentation/security/keys/request-key.rst for more information
+ about the request-key function.
+ 
+ 
+-nfs.idmap
++nfsidmap
+ =========
+ 
+-nfs.idmap is designed to be called by request-key, and should not be run "by
++nfsidmap is designed to be called by request-key, and should not be run "by
+ hand".  This program takes two arguments, a serialized key and a key
+ description.  The serialized key is first converted into a key_serial_t, and
+ then passed as an argument to keyctl_instantiate (both are part of keyutils.h).
+ 
+-The actual lookups are performed by functions found in nfsidmap.h.  nfs.idmap
++The actual lookups are performed by functions found in nfsidmap.h.  nfsidmap
+ determines the correct function to call by looking at the first part of the
+ description string.  For example, a uid lookup description will appear as
+ "uid:user@domain".
+ 
+-nfs.idmap will return 0 if the key was instantiated, and non-zero otherwise.
++nfsidmap will return 0 if the key was instantiated, and non-zero otherwise.
 -- 
-2.46.2
+2.34.1
 
