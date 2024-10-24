@@ -1,164 +1,177 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B301513B7BE
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Oct 2024 22:10:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CAF498493;
+	Thu, 24 Oct 2024 01:38:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1729721455; cv=none; b=lwp7orh/QPsL3BD95DW4j1gJ/Y9SE32UG14mjGf2Pxp6EB+TjGn8UpsJjhbfnjJLC0ZO2FTnHzecadQb2GpLlzeGLqm4yl7kr1pH4KniopKL9mMEddR2smDi+leh1hhhW9yXrcjsqJNbqdaxfPiDvdFaxJRj7A0Gx4JcCYUKyng=
+	t=1729733900; cv=none; b=sTWmrcbiF2G2oxdcMF3cp1qABwTVSLDOXgfHUCJnZGbjZ1ZlKYTy+9ykOaanekzVKANBJ1Ji8W61c+Rqz+ihO0R/r2GOFFz3v8LGtT446f7ng4pde1ea4qHP+tpFniSk8xrDwmcjwKbgSiWuaBEBHHFt9UV7pT4lUPXES2oQj6U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1729721455; c=relaxed/simple;
-	bh=alL2Cv4Hl+ZEYVzGiS/M4OzbiV/lEZskfpw2qNbgxgk=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:Date:Message-id; b=Vwk8xhhqz8X7rbc77Ka2wlU9H/hdPLTLBqyO4hsWIVK0upc6kCqB/cnA3De2f1u51qeGr4maCFWznMuVuarOzKA/vceCul3b4N4krXDDAmwTPh3izjzjPnKjDV2w9pDZ7h25fizJSJZw5w1YwtYzpZBpraaOBzq9OqZqosnA2kg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=WWBaAy7i; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=LgDZ2Noq; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=WWBaAy7i; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=LgDZ2Noq; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="WWBaAy7i";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="LgDZ2Noq";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="WWBaAy7i";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="LgDZ2Noq"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id E04DA21C1B;
-	Wed, 23 Oct 2024 22:10:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1729721451; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=sN6yLlFNJDr+xeexiS/wv7nX6gmXjqreE33xqvnlPGU=;
-	b=WWBaAy7icGKDZHbkJUwt41iSBX+Qe0GL5PzhAzu6j3pheFMQYshTDV5SCJ5ckQ6qVm4aKf
-	UzUfRi9+hhE2lNXfELZvbd+AtEJajgK3S6aO/JDU1SfSGvXgdRWkXJQCp+EUQGI4L43OMF
-	Y/YaiPrBKL2piAy5fe/DA+ZOXRN2a/M=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1729721451;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=sN6yLlFNJDr+xeexiS/wv7nX6gmXjqreE33xqvnlPGU=;
-	b=LgDZ2NoqA9rWYNDdWtUzQ5rbBFUGWunGZndeYoxa2U34Rlabx/Ws5KNPIF0udNYhTKXyQ0
-	QKoRU1Mujy133WCw==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1729721451; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=sN6yLlFNJDr+xeexiS/wv7nX6gmXjqreE33xqvnlPGU=;
-	b=WWBaAy7icGKDZHbkJUwt41iSBX+Qe0GL5PzhAzu6j3pheFMQYshTDV5SCJ5ckQ6qVm4aKf
-	UzUfRi9+hhE2lNXfELZvbd+AtEJajgK3S6aO/JDU1SfSGvXgdRWkXJQCp+EUQGI4L43OMF
-	Y/YaiPrBKL2piAy5fe/DA+ZOXRN2a/M=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1729721451;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=sN6yLlFNJDr+xeexiS/wv7nX6gmXjqreE33xqvnlPGU=;
-	b=LgDZ2NoqA9rWYNDdWtUzQ5rbBFUGWunGZndeYoxa2U34Rlabx/Ws5KNPIF0udNYhTKXyQ0
-	QKoRU1Mujy133WCw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id C747113AD3;
-	Wed, 23 Oct 2024 22:10:49 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id hf6gHml0GWfTFwAAD6G6ig
-	(envelope-from <neilb@suse.de>); Wed, 23 Oct 2024 22:10:49 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+	s=arc-20240116; t=1729733900; c=relaxed/simple;
+	bh=fjywpgRvVOdgSK497gfY1uGV4+uk3KYDrp1MppB85Hg=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=qJ5imBFiKa0I+TsZ04t7bkWMjdkuOw3iXsdLk52WPvQT53l2VmUW76BvoFnvslfRx086NOk7ZyafIlQ6wF2DC6jN0ka2AQCGa8WsDEDcE7FOOo75MSc2oCO+SgS1E0CFSqQscGaPNftN5FNCNgg78MLwgcYuT0WVgkMSImQY/JM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.187
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+Received: from mail.maildlp.com (unknown [172.19.88.194])
+	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4XYpRT4YkpzyTfr;
+	Thu, 24 Oct 2024 09:36:37 +0800 (CST)
+Received: from kwepemg200003.china.huawei.com (unknown [7.202.181.30])
+	by mail.maildlp.com (Postfix) with ESMTPS id C98D81402E1;
+	Thu, 24 Oct 2024 09:38:09 +0800 (CST)
+Received: from huawei.com (10.175.101.6) by kwepemg200003.china.huawei.com
+ (7.202.181.30) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Thu, 24 Oct
+ 2024 09:38:08 +0800
+From: Liu Jian <liujian56@huawei.com>
+To: <trondmy@kernel.org>, <anna@kernel.org>, <chuck.lever@oracle.com>,
+	<jlayton@kernel.org>, <neilb@suse.de>, <okorniev@redhat.com>,
+	<Dai.Ngo@oracle.com>, <tom@talpey.com>, <davem@davemloft.net>,
+	<edumazet@google.com>, <kuba@kernel.org>, <pabeni@redhat.com>,
+	<ebiederm@xmission.com>
+CC: <linux-nfs@vger.kernel.org>, <netdev@vger.kernel.org>,
+	<liujian56@huawei.com>
+Subject: [PATCH net] sunrpc: fix one UAF issue caused by sunrpc kernel tcp socket
+Date: Thu, 24 Oct 2024 09:55:43 +0800
+Message-ID: <20241024015543.568476-1-liujian56@huawei.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: "NeilBrown" <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
- okorniev@redhat.com, Dai Ngo <Dai.Ngo@oracle.com>,
- Tom Talpey <tom@talpey.com>
-Subject:
- [PATCH v2] nfsd: Don't fail OP_SETCLIENTID when there are too many clients.
-Date: Thu, 24 Oct 2024 09:10:42 +1100
-Message-id: <172972144286.81717.3023946721770566532@noble.neil.brown.name>
-X-Spam-Score: -4.30
-X-Spamd-Result: default: False [-4.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	MISSING_XM_UA(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCVD_TLS_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
-	FROM_HAS_DN(0.00)[];
-	RCPT_COUNT_FIVE(0.00)[6];
-	FROM_EQ_ENVFROM(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCVD_COUNT_TWO(0.00)[2];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.de:email,noble.neil.brown.name:mid]
-X-Spam-Flag: NO
-X-Spam-Level: 
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+ kwepemg200003.china.huawei.com (7.202.181.30)
 
+BUG: KASAN: slab-use-after-free in tcp_write_timer_handler+0x156/0x3e0
+Read of size 1 at addr ffff888111f322cd by task swapper/0/0
 
-Failing OP_SETCLIENTID or OP_EXCHANGE_ID should only happen if there is
-memory allocation failure.  Putting a hard limit on the number of
-clients is really helpful as it will either happen too early and prevent
-clients that the server can easily handle, or too late and allow clients
-when the server is swamped.
+CPU: 0 UID: 0 PID: 0 Comm: swapper/0 Not tainted 6.12.0-rc4-dirty #7
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.15.0-1
+Call Trace:
+ <IRQ>
+ dump_stack_lvl+0x68/0xa0
+ print_address_description.constprop.0+0x2c/0x3d0
+ print_report+0xb4/0x270
+ kasan_report+0xbd/0xf0
+ tcp_write_timer_handler+0x156/0x3e0
+ tcp_write_timer+0x66/0x170
+ call_timer_fn+0xfb/0x1d0
+ __run_timers+0x3f8/0x480
+ run_timer_softirq+0x9b/0x100
+ handle_softirqs+0x153/0x390
+ __irq_exit_rcu+0x103/0x120
+ irq_exit_rcu+0xe/0x20
+ sysvec_apic_timer_interrupt+0x76/0x90
+ </IRQ>
+ <TASK>
+ asm_sysvec_apic_timer_interrupt+0x1a/0x20
+RIP: 0010:default_idle+0xf/0x20
+Code: 4c 01 c7 4c 29 c2 e9 72 ff ff ff 90 90 90 90 90 90 90 90 90 90 90 90
+ 90 90 90 90 f3 0f 1e fa 66 90 0f 00 2d 33 f8 25 00 fb f4 <fa> c3 cc cc cc
+ cc 66 66 2e 0f 1f 84 00 00 00 00 00 90 90 90 90 90
+RSP: 0018:ffffffffa2007e28 EFLAGS: 00000242
+RAX: 00000000000f3b31 RBX: 1ffffffff4400fc7 RCX: ffffffffa09c3196
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffffffff9f00590f
+RBP: 0000000000000000 R08: 0000000000000001 R09: ffffed102360835d
+R10: ffff88811b041aeb R11: 0000000000000001 R12: 0000000000000000
+R13: ffffffffa202d7c0 R14: 0000000000000000 R15: 00000000000147d0
+ default_idle_call+0x6b/0xa0
+ cpuidle_idle_call+0x1af/0x1f0
+ do_idle+0xbc/0x130
+ cpu_startup_entry+0x33/0x40
+ rest_init+0x11f/0x210
+ start_kernel+0x39a/0x420
+ x86_64_start_reservations+0x18/0x30
+ x86_64_start_kernel+0x97/0xa0
+ common_startup_64+0x13e/0x141
+ </TASK>
 
-The calculated limit is still useful for expiring courtesy clients where
-there are "too many" clients, but it shouldn't prevent the creation of
-active clients.
+Allocated by task 595:
+ kasan_save_stack+0x24/0x50
+ kasan_save_track+0x14/0x30
+ __kasan_slab_alloc+0x87/0x90
+ kmem_cache_alloc_noprof+0x12b/0x3f0
+ copy_net_ns+0x94/0x380
+ create_new_namespaces+0x24c/0x500
+ unshare_nsproxy_namespaces+0x75/0xf0
+ ksys_unshare+0x24e/0x4f0
+ __x64_sys_unshare+0x1f/0x30
+ do_syscall_64+0x70/0x180
+ entry_SYSCALL_64_after_hwframe+0x76/0x7e
 
-Testing of lots of clients against small-mem servers reports repeated
-NFS4ERR_DELAY responses which doesn't seem helpful.  There may have been
-reports of similar problems in production use.
+Freed by task 100:
+ kasan_save_stack+0x24/0x50
+ kasan_save_track+0x14/0x30
+ kasan_save_free_info+0x3b/0x60
+ __kasan_slab_free+0x54/0x70
+ kmem_cache_free+0x156/0x5d0
+ cleanup_net+0x5d3/0x670
+ process_one_work+0x776/0xa90
+ worker_thread+0x2e2/0x560
+ kthread+0x1a8/0x1f0
+ ret_from_fork+0x34/0x60
+ ret_from_fork_asm+0x1a/0x30
 
-Also remove an outdated comment - we do use a slab cache.
+Reproduction script:
 
-Signed-off-by: NeilBrown <neilb@suse.de>
+mkdir -p /mnt/nfsshare
+mkdir -p /mnt/nfs/netns_1
+mkfs.ext4 /dev/sdb
+mount /dev/sdb /mnt/nfsshare
+systemctl restart nfs-server
+chmod 777 /mnt/nfsshare
+exportfs -i -o rw,no_root_squash *:/mnt/nfsshare
+
+ip netns add netns_1
+ip link add name veth_1_peer type veth peer veth_1
+ifconfig veth_1_peer 11.11.0.254 up
+ip link set veth_1 netns netns_1
+ip netns exec netns_1 ifconfig veth_1 11.11.0.1
+
+ip netns exec netns_1 /root/iptables -A OUTPUT -d 11.11.0.254 -p tcp \
+	--tcp-flags FIN FIN  -j DROP
+
+(note: In my environment, a DESTROY_CLIENTID operation is always sent
+ immediately, breaking the nfs tcp connection.)
+ip netns exec netns_1 timeout -s 9 300 mount -t nfs -o proto=tcp,vers=4.1 \
+	11.11.0.254:/mnt/nfsshare /mnt/nfs/netns_1
+
+ip netns del netns_1
+
+The reason here is that the tcp socket in netns_1 (nfs side) has been
+shutdown and closed (done in xs_destroy), but the FIN message (with ack)
+is discarded, and the nfsd side keeps sending retransmission messages.
+As a result, when the tcp sock in netns_1 processes the received message,
+it sends the message (FIN message) in the sending queue, and the tcp timer
+is re-established. When the network namespace is deleted, the net structure
+accessed by tcp's timer handler function causes problems.
+
+The modification here aborts the TCP connection directly in xs_destroy().
+
+Fixes: 26abe14379f8 ("net: Modify sk_alloc to not reference count the netns of kernel sockets.")
+Signed-off-by: Liu Jian <liujian56@huawei.com>
 ---
- fs/nfsd/nfs4state.c | 11 +++--------
- 1 file changed, 3 insertions(+), 8 deletions(-)
+ net/sunrpc/xprtsock.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d585c267731b..0791a43b19e6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2218,21 +2218,16 @@ STALE_CLIENTID(clientid_t *clid, struct nfsd_net *nn)
- 	return 1;
- }
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 0e1691316f42..91ee3484155a 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1287,6 +1287,9 @@ static void xs_reset_transport(struct sock_xprt *transport)
+ 	release_sock(sk);
+ 	mutex_unlock(&transport->recv_mutex);
  
--/* 
-- * XXX Should we use a slab cache ?
-- * This type of memory management is somewhat inefficient, but we use it
-- * anyway since SETCLIENTID is not a common operation.
-- */
- static struct nfs4_client *alloc_client(struct xdr_netobj name,
- 				struct nfsd_net *nn)
- {
- 	struct nfs4_client *clp;
- 	int i;
- 
--	if (atomic_read(&nn->nfs4_client_count) >= nn->nfs4_max_clients) {
-+	if (atomic_read(&nn->nfs4_client_count) >= nn->nfs4_max_clients &&
-+	    atomic_read(&nn->nfsd_courtesy_clients) > 0)
- 		mod_delayed_work(laundry_wq, &nn->laundromat_work, 0);
--		return NULL;
--	}
++	if (sk->sk_prot == &tcp_prot)
++		tcp_abort(sk, ECONNABORTED);
 +
- 	clp = kmem_cache_zalloc(client_slab, GFP_KERNEL);
- 	if (clp == NULL)
- 		return NULL;
+ 	trace_rpc_socket_close(xprt, sock);
+ 	__fput_sync(filp);
+ 
 -- 
-2.46.0
+2.34.1
 
