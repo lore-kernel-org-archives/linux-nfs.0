@@ -1,94 +1,137 @@
-Received: from mail-qk1-f171.google.com (mail-qk1-f171.google.com [209.85.222.171])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9CCFF1D1310
-	for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2024 22:53:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.171
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4236313777E
+	for <linux-nfs@vger.kernel.org>; Fri,  1 Nov 2024 02:27:13 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1730415232; cv=none; b=QA9Qe1EhCYPp3P1UriEs0w7edAopTaNkMto4YHpxtLzW3nP0bTej5w3r8OFpyRUawj3wlp68fkGNIZZvqO7jp8u7vM4x8KTZsNM6kp1lfbzwf6M3T8tHXLbm3AkGXvvdJ7NQgIxCtjj+xpyyB36RmLvjndUMi31Y5YDkQh5NbPI=
+	t=1730428039; cv=none; b=gES4xKk5/M30cTR1gXW90SzDzRgn6woOyzAR9Ce1tLBK08ojTUxG8HSNGfgGbhi9CZIlGRCsSfG4qucl+ReSAoyJ2V896o0x6C+9kA/RIVNoZS0DZ1VPlTpbST0XAPICCVXT1BYiLD3mdnEr3LaHPVPRZZvLnbkYuuqwERUoCes=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1730415232; c=relaxed/simple;
-	bh=BDJdR5tVzmh5dizUpgrVvPq8LICL0s5XylwlqyMeGjM=;
-	h=Date:Message-ID:MIME-Version:Content-Type:From:To:Cc:Subject:
-	 References:In-Reply-To; b=DZWbYLwn+K4Yw9JBJFz61q06mb5AaNjkPgFyaHztW+UKAWZEbs37i0c2vnAXC4inbkWnUpLjBHZ1dmGETBtxyUK314Wuq6W6PVxxS5dz9oKrPW946fZ0Nni3YOH8Wph1e4lPUxxAbehJqSZowrtND5z4bv8AlTufdW3qikkg2W8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com; spf=pass smtp.mailfrom=paul-moore.com; dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b=CTnMub5d; arc=none smtp.client-ip=209.85.222.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=paul-moore.com
+	s=arc-20240116; t=1730428039; c=relaxed/simple;
+	bh=FFtDTXxxJDzHqttt3yo2hJcxZXvP++ooiYm3ozZMzX0=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=IGk+uWjjfKnQF+JYbgWH1msDSOoN43kQcC09zRw5KK24yEJHqSUtsi5nSPFYCRMifKqql6ko5We2eDRCQZ+kM+PeLvLQTu2d4Bdk3qplSn+2aOkmdsyxHw4onZEGTnjrFDHCErW4YDqWGij5Ik2nWoPge2JrHgZN82ebI5knFWE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=KWTxKE/W; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b="CTnMub5d"
-Received: by mail-qk1-f171.google.com with SMTP id af79cd13be357-7b18da94ba9so123365085a.0
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2024 15:53:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=paul-moore.com; s=google; t=1730415220; x=1731020020; darn=vger.kernel.org;
-        h=in-reply-to:references:subject:cc:to:from:content-transfer-encoding
-         :mime-version:message-id:date:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=yMeaJ3dGSvREgbPQf+JCmGH6FTTejL81SGUx/vgLdsc=;
-        b=CTnMub5dVwuBSTlgfxp5Q+Nt0Xs2d7LU2Q1PT77d6vOhJ1s0rT00Rnnu0R2SQUoDUp
-         NBtQ8JUYtg/EExoymmtCvx7OVz6EUU8XST4xeOlVNMQomDYor63PXjWQLjPgWmSJ5C0v
-         jyqSXg5AD2vyHhmYiirzLQIBLy9hcMVsX5wCt3+pzLBk2izXlM6GAp8OaOa6wVWCGfGv
-         /PmdJBnnnTKX93sUUQ122cJDomNb5Ieq48sKGfNJEOP7HoLdVcuqSRcwtz1TfvqBFEUt
-         0fCT3pqgeOoAZOq3+o9eM2FKhzx58GAdTcRdW9vcOzdlgVjvwNaac6KwKN09nW6+tu/I
-         a+Vg==
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="KWTxKE/W"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1730428032;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=AuIeR0CURUIdPc8dB8c06x52sP5yO/gx5bYj9nXTypU=;
+	b=KWTxKE/Wz6ksHF6kapz1SXA+/uSCGYgrTR6zR5dSj94/+Ew60yl/icrqYLn7PKqf/ywc0U
+	Pb3WNJO1nU4piqnPXF0sdmeReATtblmJCeqw9LbI7QKwQrEYeBKOfnDBIEPvJMiEJ5n52D
+	h8ZzUEk8z1zHGQQSMVfy/xYgSXA/l/w=
+Received: from mail-qk1-f197.google.com (mail-qk1-f197.google.com
+ [209.85.222.197]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-634-DbNBHeekNgam3E3-OQVjyw-1; Thu, 31 Oct 2024 22:27:09 -0400
+X-MC-Unique: DbNBHeekNgam3E3-OQVjyw-1
+Received: by mail-qk1-f197.google.com with SMTP id af79cd13be357-7b14a4e771fso244569885a.3
+        for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2024 19:27:09 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1730415220; x=1731020020;
-        h=in-reply-to:references:subject:cc:to:from:content-transfer-encoding
-         :mime-version:message-id:date:x-gm-message-state:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=yMeaJ3dGSvREgbPQf+JCmGH6FTTejL81SGUx/vgLdsc=;
-        b=eTep2pB3tF13KAxNM2dwRKIseYkkPHmU8IHD4KI0Ryl9wiHtgr3q8lGpSgHzUEFnVY
-         fnqyt3iV4m/uJ/ocwRCpN7j/Thl64tmF8EW/fl/53cTydNITAOSqAqfWegHoo1TrlJKl
-         APfVCy+9/TT2rnCQMvqDIy0L1TJZvmrLwj47TLOKAr6lLmkKIC0B/g7PCEqzf9xCzP+5
-         6GsWw4XMNqcijAW6ssSAW048CXnszGKrvHaKj3AjYfEs0YQ7frhi2oSIjbvj0LnN0E6E
-         u2c/yToySmFFJzENrXDZgnmohs5mGJy7Ov2g+PIxaeshHnd9gcw/IOfLyLGA4kTJ1oKH
-         k9yw==
-X-Forwarded-Encrypted: i=1; AJvYcCXulW87nY0fOsc3y4rPmW4Csh2vUePnPqrVea439MMAoY6pvzDcwMC6qkm7hAJG/S900bqwsRLahSs=@vger.kernel.org
-X-Gm-Message-State: AOJu0YzvEdljxTzUo+9R0ey8p680g95tH3po24s5M4f/VxZhNFrJlIY5
-	TtnIQEsG8P4+WwLtYPnmol5iKUVEkh2mVcCVhNnJmUOMDyVZuJNTLQPzLNbuQw==
-X-Google-Smtp-Source: AGHT+IG+igldW75wPFcvIPuMqdxa+k8g3IwKJeTuYvaI0vnsn5mlrSCaSUavQE103p36m8T74a9/hw==
-X-Received: by 2002:a05:620a:2956:b0:7ac:9b07:dbd3 with SMTP id af79cd13be357-7b2fa60b808mr303815785a.5.1730415220453;
-        Thu, 31 Oct 2024 15:53:40 -0700 (PDT)
-Received: from localhost ([70.22.175.108])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-7b2f3a9ae1bsm114481885a.123.2024.10.31.15.53.39
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 31 Oct 2024 15:53:39 -0700 (PDT)
-Date: Thu, 31 Oct 2024 18:53:39 -0400
-Message-ID: <5e5c5e04ff82a8a8e94f02ecbe63b1fd@paul-moore.com>
+        d=1e100.net; s=20230601; t=1730428027; x=1731032827;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=AuIeR0CURUIdPc8dB8c06x52sP5yO/gx5bYj9nXTypU=;
+        b=m2Dv7Z41Eo8ewiXmF76XMyMeYlvdhLQhD6RTE1k1xONRwXOAZmx/FD5rpHLKoki9YH
+         wdcXvDnyO0LrQ2fSbZga8BJQqB/DX/DfKVTzUwoG9gYNDIjvrX0s8zPE+RR0Fju4uoRh
+         baQuVxb+q1jPwdcgYdfQrcj/IhpfmzW/DRjleZGAtKt3RZ0PXwwj4g5IgLUoTwf+WL9E
+         6srLKkxyIcS0rAHjQdLMqmZ9Slz2/RLkPerzzSwe0cn21HCjaVAjjdrBbKEW8l7mA2Gx
+         +hizgD78pLhBR8OJ36nmO9V2LSLS9w5HTKxveVNe7aCxDCERfdp3cA6PkggHvk0q2D3T
+         iWOA==
+X-Gm-Message-State: AOJu0YzJmHm1MzpkEtFZvKIpUMiQinkhSL9sTseDOQ6/D94nIWlJxr3R
+	EiLkkVdg/PdLeevAS4sdnipq4eewU1LrXXdQkR1VJcHd9OHIpsTsOzcNBjCgjApAoM7NpJo6wNR
+	zeawThTzJHnI1/R2ZkgG+a4TCm8tKgVb9qYJMpe5IQS8gNNKyykk1uyh20ueKTUk2qA==
+X-Received: by 2002:a05:620a:178d:b0:7ae:64a2:be61 with SMTP id af79cd13be357-7b193eff6a3mr3168187985a.36.1730428027415;
+        Thu, 31 Oct 2024 19:27:07 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IHN1lheMnxCXm9T4vAwhN8smffBTdKLBI6+ZDXmriVpMGkSThtagc4XYB7aImtt0MEeqC8dAg==
+X-Received: by 2002:a05:620a:178d:b0:7ae:64a2:be61 with SMTP id af79cd13be357-7b193eff6a3mr3168186885a.36.1730428027088;
+        Thu, 31 Oct 2024 19:27:07 -0700 (PDT)
+Received: from [172.31.1.136] ([70.105.251.7])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-7b2f3a7139fsm127973185a.76.2024.10.31.19.27.03
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 31 Oct 2024 19:27:04 -0700 (PDT)
+Message-ID: <9ef76fc7-e575-4229-867a-a6a56efabaec@redhat.com>
+Date: Thu, 31 Oct 2024 22:27:02 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0 
-Content-Type: text/plain; charset=UTF-8 
-Content-Transfer-Encoding: 8bit 
-X-Mailer: pstg-pwork:20241031_1534/pstg-lib:20241031_1459/pstg-pwork:20241031_1534
-From: Paul Moore <paul@paul-moore.com>
-To: Casey Schaufler <casey@schaufler-ca.com>, casey@schaufler-ca.com, linux-security-module@vger.kernel.org
-Cc: jmorris@namei.org, serge@hallyn.com, keescook@chromium.org, john.johansen@canonical.com, penguin-kernel@i-love.sakura.ne.jp, stephen.smalley.work@gmail.com, linux-kernel@vger.kernel.org, selinux@vger.kernel.org, mic@digikod.net, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 3/5] LSM: Use lsm_context in security_inode_getsecctx
-References: <20241023212158.18718-4-casey@schaufler-ca.com>
-In-Reply-To: <20241023212158.18718-4-casey@schaufler-ca.com>
+MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: ANNOUNCE: libtirpc-1.2.6 released.
+To: Petr Vorel <pvorel@suse.cz>,
+ libtirpc <libtirpc-devel@lists.sourceforge.net>
+Cc: linux-nfs@vger.kernel.org
+References: <91ef3508-d0a6-48db-adfc-4f7831fba74e@redhat.com>
+ <91ef3508-d0a6-48db-adfc-4f7831fba74e@redhat.com>
+Content-Language: en-US
+From: Steve Dickson <steved@redhat.com>
+In-Reply-To: <91ef3508-d0a6-48db-adfc-4f7831fba74e@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
 
-On Oct 23, 2024 Casey Schaufler <casey@schaufler-ca.com> wrote:
+
+
+On 10/29/24 7:20 AM, Petr Vorel wrote:
+> From: Steve Dickson <steved@redhat.com>
 > 
-> Change the security_inode_getsecctx() interface to fill a lsm_context
-> structure instead of data and length pointers.  This provides
-> the information about which LSM created the context so that
-> security_release_secctx() can use the correct hook.
+> Hi Steve,
 > 
-> Signed-off-by: Casey Schaufler <casey@schaufler-ca.com>
-> Cc: linux-nfs@vger.kernel.org
-> ---
->  fs/nfsd/nfs4xdr.c             | 26 ++++++++++----------------
->  include/linux/lsm_hook_defs.h |  4 ++--
->  include/linux/security.h      |  5 +++--
->  security/security.c           | 12 ++++++------
->  security/selinux/hooks.c      | 10 ++++++----
->  security/smack/smack_lsm.c    |  7 ++++---
->  6 files changed, 31 insertions(+), 33 deletions(-)
+>> Hello,
+>>
+>> The 1.2.6 version of libtirpc has just been release.
+> 
+> I suppose this should be 1.3.6.
+Yes.. My bad... Re-using old email... Sorry about that!
 
-See my note on patch 1/5, merging into lsm/dev.
+> 
+>>
+>> Minor release... a couple rpcbind config changes and
+>> a few configuration changes for macOS.
+>>
+>> The tarball:
+>> http://sourceforge.net/projects/libtirpc/files/libtirpc/1.2.6/ 
+>> libtirpc-1.2.6.tar.bz2
+> 
+> https://sourceforge.net/projects/libtirpc/files/libtirpc/1.3.6/ 
+> libtirpc-1.3.6.tar.bz2
+True!
 
---
-paul-moore.com
+> 
+>>
+>> Release notes:
+>> http://sourceforge.net/projects/libtirpc/files/libtirpc/1.2.6/ 
+>> Release-1.2.6.txt
+> 
+> Could you please delete Release-1.2.6.txt
+> https://sourceforge.net/projects/libtirpc/files/libtirpc/1.3.6/ 
+> Release-1.2.6.txt
+> 
+> and upload:
+> http://sourceforge.net/projects/libtirpc/files/libtirpc/1.3.6/ 
+> Release-1.3.6.txt
+Thanks for point this out...
+
+steved.
+> 
+> Kind regards,
+> Petr
+> 
+>>
+>> The git tree is at:
+>>     git://linux-nfs.org/~steved/libtirpc
+>>
+>>
+>> steved.
+>>
+>>
+> 
+
