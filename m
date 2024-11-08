@@ -1,47 +1,47 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0221721D239
-	for <linux-nfs@vger.kernel.org>; Fri,  8 Nov 2024 17:36:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 680743DABE6
+	for <linux-nfs@vger.kernel.org>; Fri,  8 Nov 2024 17:36:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731087397; cv=none; b=sTQYXhKxjrm4zTViVzai/LF73lN6UNi2Eszp+8w7teXSmhNtXJjimboL/GV5CDiqRF+41JajneU8wiLeXKyagNaOLXXxW6eRVKuAa7piw8N2idfS1ETPbh1RoBspGuo9uswThpqi1GY++iSym6MunazPUkyb5AvuFUL0GbuhDZM=
+	t=1731087414; cv=none; b=LL/eCWhx2hqPet8rrH21RqZs86c+3Hk6SQyzKXE9eFLk+8YrU0wCwJYuQOjs16IEeaCp1g1gYLpnmtW5OTH4YXWN1MCaazkn1pwI0aIKx4+aYFmmlJTupMuT6P4+6Ymu5JBGQ93UTE/YQqsvsTUQ6lzkQZjfwOh7LbJJBBo8rBc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1731087397; c=relaxed/simple;
-	bh=I4L3md35rvmc1C72E1lOWwx2AoRius+PP3b8FWLJ+aQ=;
+	s=arc-20240116; t=1731087414; c=relaxed/simple;
+	bh=YfHQHHklQqGthguUT+hofehz3Evx2ahQywNsAF+2OGI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=B4+56My/NxO3jDw63ZEdmS4K1FjXhrCIvp49xSIQmHOMOHoArnC3PwVu/eNMegHwBwenzQOKmbxYrxAPMMzPiMwrPoWZOjD81Jc4+h95xEiFrZwcw3rUt0vh7On2/OMfjjYPi3+7yMW4kCsJBrp6741Rio6CIpKaXSxRt7zEBPY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=iMrdnGNQ; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=mmkNAs2AK4MHmmbxbUqcUGm1ep52f5drVo+FKUxshbSFpQyuoPfpUH7lH+0hoNq7nGB4iLUw5tZJNobrAgvbM6Ck/DkGkaSduXEuEZeCHb0zYthtxU6SKP85pdHd6KI3ng+eDjdXCdx8BqGZY5RlQ/VKv7mKotf81uYb8o42XDM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=EnlVuOKH; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="iMrdnGNQ"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="EnlVuOKH"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1731087395;
+	s=mimecast20190719; t=1731087411;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=IFH4nAXrPrYA9knzNJw2PqNPG2o324dUKCIftg33KNo=;
-	b=iMrdnGNQ8UpR9qooa5r3Wgqv4sjaj5Q6uz4JWhj2bNL5MS2eKofbsSjScHnMEmFLVDJ1UW
-	wg4qCja5C57keyrHLXOA3BMF/Q1noPbby8NHuOFurYw82PIJz6SZQDToM6xzPbGZeQqr3d
-	k93v6+yoft/UCl7303N9D8uiRKkQjKo=
-Received: from mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com
+	bh=Jlfv2ApsSBgn//KdBsSlx8BkotK5+tCpg2808yZLllw=;
+	b=EnlVuOKHtxRm5r/XUbwfEDUBfGg31uzPO+BhRxchcqfbRr6OVJnmSkMZd0jMy66pgqC8zh
+	2AnnDYGSll+xZ6ojZPTVsb7ehvZRQrSsSm2bzTFHRwyPrGf2ZS3fc+iey5vHpGiUcoTRPF
+	7N0oO5JsWY4du3oVMEUlc0lotqfO3QA=
+Received: from mx-prod-mc-02.mail-002.prod.us-west-2.aws.redhat.com
  (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-301-zQA4ISPnOveGXnynQdnMAw-1; Fri,
- 08 Nov 2024 12:36:32 -0500
-X-MC-Unique: zQA4ISPnOveGXnynQdnMAw-1
-X-Mimecast-MFC-AGG-ID: zQA4ISPnOveGXnynQdnMAw
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-226-sjYpWV5SMt6Lmz3uofTwYw-1; Fri,
+ 08 Nov 2024 12:36:48 -0500
+X-MC-Unique: sjYpWV5SMt6Lmz3uofTwYw-1
+X-Mimecast-MFC-AGG-ID: sjYpWV5SMt6Lmz3uofTwYw
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 613E619560A6;
-	Fri,  8 Nov 2024 17:36:29 +0000 (UTC)
+	by mx-prod-mc-02.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 935F41954128;
+	Fri,  8 Nov 2024 17:36:43 +0000 (UTC)
 Received: from warthog.procyon.org.uk.com (unknown [10.42.28.231])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id E600030001A0;
-	Fri,  8 Nov 2024 17:36:23 +0000 (UTC)
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 9CB78195E480;
+	Fri,  8 Nov 2024 17:36:37 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Steve French <smfrench@gmail.com>,
@@ -66,10 +66,12 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-mm@kvack.org,
 	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v4 31/33] afs: Locally initialise the contents of a new symlink on creation
-Date: Fri,  8 Nov 2024 17:32:32 +0000
-Message-ID: <20241108173236.1382366-32-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org,
+	syzbot+af5c06208fa71bf31b16@syzkaller.appspotmail.com,
+	Chang Yu <marcus.yu.56@gmail.com>
+Subject: [PATCH v4 33/33] netfs: Report on NULL folioq in netfs_writeback_unlock_folios()
+Date: Fri,  8 Nov 2024 17:32:34 +0000
+Message-ID: <20241108173236.1382366-34-dhowells@redhat.com>
 In-Reply-To: <20241108173236.1382366-1-dhowells@redhat.com>
 References: <20241108173236.1382366-1-dhowells@redhat.com>
 Precedence: bulk
@@ -79,139 +81,95 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-Since we know what the contents of a symlink will be when we create it on
-the server, initialise its contents locally too to avoid the need to
-download it.
+It seems that it's possible to get to netfs_writeback_unlock_folios() with
+an empty rolling buffer during buffered writes.  This should not be
+possible as the rolling buffer is initialised as the write request is set
+up and thereafter maintains at least one folio_queue struct therein until
+it gets destroyed.  This allows lockless addition and removal of
+folio_queue structs in the buffer because, unlike with a ring buffer, the
+producer and consumer each only need to look at and alter one pointer into
+the buffer.
 
+Now, the rolling buffer is only used for buffered I/O operations as
+netfs_collect_write_results() should only call
+netfs_writeback_unlock_folios() if the request is of origin type
+NETFS_WRITEBACK, NETFS_WRITETHROUGH or NETFS_PGPRIV2_COPY_TO_CACHE.
+
+So it would seem that one of the following occurred: (1) I/O started before
+the request was fully initialised, (2) the origin got switched mid-flow or
+(3) the request has already been freed and this is a UAF error.  I think the
+last is the most likely.
+
+Make netfs_writeback_unlock_folios() report information about the request
+and subrequests if folioq is seen to be NULL to try and help debug this,
+throw a warning and return.
+
+Note that this does not try to fix the problem.
+
+Reported-by: syzbot+af5c06208fa71bf31b16@syzkaller.appspotmail.com
+Link: https://syzkaller.appspot.com/bug?extid=af5c06208fa71bf31b16
 Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Marc Dionne <marc.dionne@auristor.com>
-cc: linux-afs@lists.infradead.org
+cc: Chang Yu <marcus.yu.56@gmail.com>
+Link: https://lore.kernel.org/r/ZxshMEW4U7MTgQYa@gmail.com/
+cc: Jeff Layton <jlayton@kernel.org>
+cc: netfs@lists.linux.dev
+cc: linux-fsdevel@vger.kernel.org
 ---
- fs/afs/dir.c             |  2 ++
- fs/afs/inode.c           | 46 ++++++++++++++++++++++++++++++++++------
- fs/afs/internal.h        |  1 +
- fs/netfs/buffered_read.c |  2 +-
- fs/netfs/read_single.c   |  2 +-
- 5 files changed, 45 insertions(+), 8 deletions(-)
+ fs/netfs/write_collect.c | 34 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 34 insertions(+)
 
-diff --git a/fs/afs/dir.c b/fs/afs/dir.c
-index d195a42cea1d..b6a202fd9926 100644
---- a/fs/afs/dir.c
-+++ b/fs/afs/dir.c
-@@ -1271,6 +1271,8 @@ static void afs_vnode_new_inode(struct afs_operation *op)
- 	set_bit(AFS_VNODE_NEW_CONTENT, &vnode->flags);
- 	if (S_ISDIR(inode->i_mode))
- 		afs_mkdir_init_dir(vnode, dvp->vnode);
-+	else if (S_ISLNK(inode->i_mode))
-+		afs_init_new_symlink(vnode, op);
- 	if (!afs_op_error(op))
- 		afs_cache_permit(vnode, op->key, vnode->cb_break, &vp->scb);
- 	d_instantiate(op->dentry, inode);
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index 0e3c43c40632..e9538e91f848 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -25,6 +25,24 @@
- #include "internal.h"
- #include "afs_fs.h"
+diff --git a/fs/netfs/write_collect.c b/fs/netfs/write_collect.c
+index 3d8b87c8e6a6..4a1499167770 100644
+--- a/fs/netfs/write_collect.c
++++ b/fs/netfs/write_collect.c
+@@ -21,6 +21,34 @@
+ #define NEED_RETRY		0x10	/* A front op requests retrying */
+ #define SAW_FAILURE		0x20	/* One stream or hit a permanent failure */
  
-+void afs_init_new_symlink(struct afs_vnode *vnode, struct afs_operation *op)
++static void netfs_dump_request(const struct netfs_io_request *rreq)
 +{
-+	size_t size = strlen(op->create.symlink) + 1;
-+	size_t dsize = 0;
-+	char *p;
++	pr_err("Request R=%08x r=%d fl=%lx or=%x e=%ld\n",
++	       rreq->debug_id, refcount_read(&rreq->ref), rreq->flags,
++	       rreq->origin, rreq->error);
++	pr_err("  st=%llx tsl=%zx/%llx/%llx\n",
++	       rreq->start, rreq->transferred, rreq->submitted, rreq->len);
++	pr_err("  cci=%llx/%llx/%llx\n",
++	       rreq->cleaned_to, rreq->collected_to, atomic64_read(&rreq->issued_to));
++	pr_err("  iw=%pSR\n", rreq->netfs_ops->issue_write);
++	for (int i = 0; i < NR_IO_STREAMS; i++) {
++		const struct netfs_io_subrequest *sreq;
++		const struct netfs_io_stream *s = &rreq->io_streams[i];
 +
-+	if (netfs_alloc_folioq_buffer(NULL, &vnode->directory, &dsize, size,
-+				      mapping_gfp_mask(vnode->netfs.inode.i_mapping)) < 0)
-+		return;
-+
-+	vnode->directory_size = dsize;
-+	p = kmap_local_folio(folioq_folio(vnode->directory, 0), 0);
-+	memcpy(p, op->create.symlink, size);
-+	kunmap_local(p);
-+	set_bit(AFS_VNODE_DIR_READ, &vnode->flags);
-+	netfs_single_mark_inode_dirty(&vnode->netfs.inode);
++		pr_err("  str[%x] s=%x e=%d acnf=%u,%u,%u,%u\n",
++		       s->stream_nr, s->source, s->error,
++		       s->avail, s->active, s->need_retry, s->failed);
++		pr_err("  str[%x] ct=%llx t=%zx\n",
++		       s->stream_nr, s->collected_to, s->transferred);
++		list_for_each_entry(sreq, &s->subrequests, rreq_link) {
++			pr_err("  sreq[%x:%x] sc=%u s=%llx t=%zx/%zx r=%d f=%lx\n",
++			       sreq->stream_nr, sreq->debug_index, sreq->source,
++			       sreq->start, sreq->transferred, sreq->len,
++			       refcount_read(&sreq->ref), sreq->flags);
++		}
++	}
 +}
 +
- static void afs_put_link(void *arg)
- {
- 	struct folio *folio = virt_to_folio(arg);
-@@ -41,15 +59,31 @@ const char *afs_get_link(struct dentry *dentry, struct inode *inode,
- 	char *content;
- 	ssize_t ret;
+ /*
+  * Successful completion of write of a folio to the server and/or cache.  Note
+  * that we are not allowed to lock the folio here on pain of deadlocking with
+@@ -87,6 +115,12 @@ static void netfs_writeback_unlock_folios(struct netfs_io_request *wreq,
+ 	unsigned long long collected_to = wreq->collected_to;
+ 	unsigned int slot = wreq->buffer.first_tail_slot;
  
--	if (atomic64_read(&vnode->cb_expires_at) == AFS_NO_CB_PROMISE ||
--	    !test_bit(AFS_VNODE_DIR_READ, &vnode->flags)) {
--		if (!dentry)
-+	if (!dentry) {
-+		/* RCU pathwalk. */
-+		if (!test_bit(AFS_VNODE_DIR_READ, &vnode->flags) || !afs_check_validity(vnode))
- 			return ERR_PTR(-ECHILD);
--		ret = afs_read_single(vnode, NULL);
--		if (ret < 0)
--			return ERR_PTR(ret);
-+		goto good;
- 	}
- 
-+	if (test_bit(AFS_VNODE_DIR_READ, &vnode->flags))
-+		goto fetch;
++	if (WARN_ON_ONCE(!folioq)) {
++		pr_err("[!] Writeback unlock found empty rolling buffer!\n");
++		netfs_dump_request(wreq);
++		return;
++	}
 +
-+	ret = afs_validate(vnode, NULL);
-+	if (ret < 0)
-+		return ERR_PTR(ret);
-+
-+	if (!test_and_clear_bit(AFS_VNODE_ZAP_DATA, &vnode->flags) &&
-+	    test_bit(AFS_VNODE_DIR_READ, &vnode->flags))
-+		goto good;
-+
-+fetch:
-+	ret = afs_read_single(vnode, NULL);
-+	if (ret < 0)
-+		return ERR_PTR(ret);
-+	set_bit(AFS_VNODE_DIR_READ, &vnode->flags);
-+
-+good:
- 	folio = folioq_folio(vnode->directory, 0);
- 	folio_get(folio);
- 	content = kmap_local_folio(folio, 0);
-diff --git a/fs/afs/internal.h b/fs/afs/internal.h
-index b7d02c105340..90f407774a9a 100644
---- a/fs/afs/internal.h
-+++ b/fs/afs/internal.h
-@@ -1221,6 +1221,7 @@ extern void afs_fs_probe_cleanup(struct afs_net *);
-  */
- extern const struct afs_operation_ops afs_fetch_status_operation;
- 
-+void afs_init_new_symlink(struct afs_vnode *vnode, struct afs_operation *op);
- const char *afs_get_link(struct dentry *dentry, struct inode *inode,
- 			 struct delayed_call *callback);
- int afs_readlink(struct dentry *dentry, char __user *buffer, int buflen);
-diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
-index 7036e9f12b07..65d9dd71f65d 100644
---- a/fs/netfs/buffered_read.c
-+++ b/fs/netfs/buffered_read.c
-@@ -210,7 +210,7 @@ static void netfs_read_to_pagecache(struct netfs_io_request *rreq)
- 
- 	do {
- 		struct netfs_io_subrequest *subreq;
--		enum netfs_io_source source = NETFS_DOWNLOAD_FROM_SERVER;
-+		enum netfs_io_source source = NETFS_SOURCE_UNKNOWN;
- 		ssize_t slice;
- 
- 		subreq = netfs_alloc_subrequest(rreq);
-diff --git a/fs/netfs/read_single.c b/fs/netfs/read_single.c
-index 14bc61107182..fea0ecdecc53 100644
---- a/fs/netfs/read_single.c
-+++ b/fs/netfs/read_single.c
-@@ -97,7 +97,7 @@ static int netfs_single_dispatch_read(struct netfs_io_request *rreq)
- 	if (!subreq)
- 		return -ENOMEM;
- 
--	subreq->source	= NETFS_DOWNLOAD_FROM_SERVER;
-+	subreq->source	= NETFS_SOURCE_UNKNOWN;
- 	subreq->start	= 0;
- 	subreq->len	= rreq->len;
- 	subreq->io_iter	= rreq->buffer.iter;
+ 	if (wreq->origin == NETFS_PGPRIV2_COPY_TO_CACHE) {
+ 		if (netfs_pgpriv2_unlock_copied_folios(wreq))
+ 			*notes |= MADE_PROGRESS;
 
