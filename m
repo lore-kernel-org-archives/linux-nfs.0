@@ -1,68 +1,97 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D5E61200C96;
-	Tue, 12 Nov 2024 21:58:18 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 780A8D53C
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Nov 2024 22:05:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731448699; cv=none; b=GF8LOPM2ezNmOHFWHO9+PCnQubfiAi1pU7Rs6VXsZIp8c/W5JHPpkNaYGt13V6gtR95ohQ7iNFHSI8MYxShGunBa94OpC4XOWwLVIEUPjTMDZ1CFoouKNSHHetWcP7almtJ3t3Un0FdTAE6jAyFC9RGzMoaWSoBO2qtrLcdoh+g=
+	t=1731449132; cv=none; b=su1AfvCTRiZEBdRUrbLMm3RUtYF+lwQ6pQSV0G9oyZ/h6GsL3DT1/YVaIx+9wPLnvR/5PipGHMdlYvDfpxUvVmVORczJ7KtFEkQeBKp0vpvvXBCy2sSKhrifo9m4sFsWaI63tBqaF5HQxE6RTlSrYJaGa/BAkGZYCRW4yE3impY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1731448699; c=relaxed/simple;
-	bh=N4mkR2zBBSmHdT6f4fdhVCH/CsMm4CZ2hzcH+plynlA=;
+	s=arc-20240116; t=1731449132; c=relaxed/simple;
+	bh=mRjLEonEdVANDcDtHp55s59A3cvGcvWQXaGcVHO6Oxk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ojI1ytuuubsTLkrG106AFu/nlZHQ0qV+jwZrp0Tqm1ecWlQu4pgES3jyynhDO3WdtUISANI9+2dVzPPu8p3J6357OqT0840elSdn6mxOAl0X+ZGZSFU3pbUE1MYA1W0WDAHMbBF3+Yyd41jJ+ETCVq0bDgSyhgizsMMp7j5YEo0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nNJSZxm6; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=KMnA/m/gZuztOqOI/o9KwNBouJF4WBUtj61fiZpIRAXUzXFJXkYge3LZyEkU7cS6Vnkjq8Q2ayqGTpYo1rTpHAxRm9S9oJuAuU9LVHNr8GVz0GNLfoIn6U+3QY3VUbwdecc73eo69T5SzGlhtne2zjqZbJYIhPObt8ZaoWyJ7rA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=a8kEfWiy; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nNJSZxm6"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C32AEC4CECD;
-	Tue, 12 Nov 2024 21:58:17 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1731448698;
-	bh=N4mkR2zBBSmHdT6f4fdhVCH/CsMm4CZ2hzcH+plynlA=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=nNJSZxm6LAubrVG/XoRm+WvaF+rY343wxxf5I+gjvrnzihEWEPAo1d9ixCXVc9nx3
-	 E3Fu+fJxBRZC0UWm5qTbB7qeDar7uwNIOAVPurTCWKkkIo3NsWZDmQuqhFMtQIQxu0
-	 7z1wnQOjIpXVTd5cljM/MVJWOM9LJMw60bEphjShAMv/lpA4bdFuNWLCk972zB851b
-	 6OUPORUzmPHmyXxK+ZJM1sz+4Jf8O7LLx8TYCAV3wBIsO2dtNc0CFXK8MNPncZ5wD2
-	 P3D5shRFkuQ3yo48QwsNRVJjW0GJME9vy+jH1NHP42gIjw1n+8x0MITM2FYBmt2XQ4
-	 ll7BRwJfwSaHA==
-From: cel@kernel.org
-To: Al Viro <viro@zeniv.linux.org.uk>,
-	linux-fsdevel@vger.kernel.org
-Cc: <linux-nfs@vger.kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Christian Brauner <brauner@kernel.org>,
-	Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] nfsd: get rid of include ../internal.h
-Date: Tue, 12 Nov 2024 16:58:10 -0500
-Message-ID: <173144863588.162655.6981261964613528856.b4-ty@oracle.com>
-X-Mailer: git-send-email 2.47.0
-In-Reply-To: <20241112213524.GB3387508@ZenIV>
-References: <20241112213524.GB3387508@ZenIV>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="a8kEfWiy"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1731449129;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=izza4to8ykixeWATuVDFmM0hsMG2wLgfuAvCzCWMuuA=;
+	b=a8kEfWiy2A1WLQpKBvAMsMZFzGTdYD45IYOsfTWu7h3C3LrUaw7BuXl5rsNhVoEH72TwVn
+	eCnioC/5aR8lTS3uJN9eNRaoaYljIrRWW4dsQNexOHgyN2pk3MW5E2+9SpUPM4fB3jllsL
+	dSgFGP6SeOR6VnE8jRNwjuc5ZXX4NOM=
+Received: from mx-prod-mc-04.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-629-IDr2j_rGOGur8Q-_ZQvA8A-1; Tue,
+ 12 Nov 2024 17:05:27 -0500
+X-MC-Unique: IDr2j_rGOGur8Q-_ZQvA8A-1
+X-Mimecast-MFC-AGG-ID: IDr2j_rGOGur8Q-_ZQvA8A
+Received: from mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.15])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-04.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 6434B19792DB;
+	Tue, 12 Nov 2024 22:05:26 +0000 (UTC)
+Received: from [192.168.37.1] (unknown [10.22.74.7])
+	by mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id D00C5195607C;
+	Tue, 12 Nov 2024 22:05:25 +0000 (UTC)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Cedric Blancher <cedric.blancher@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: rsize/wsize chaos in heterogeneous environments Re: [PATCH]
+ nfs(5): Update rsize/wsize options
+Date: Tue, 12 Nov 2024 17:05:23 -0500
+Message-ID: <1A03FF0A-1A24-40D2-9FCB-5CC0226A356D@redhat.com>
+In-Reply-To: <CALXu0UdpPpM2GHX6cWr+YbYqCqb8eEuLhPJa+oKVr6GfuZGKsA@mail.gmail.com>
+References: <OSZPR01MB7772841F20140ACC90AA433B88582@OSZPR01MB7772.jpnprd01.prod.outlook.com>
+ <CAHnbEGKJ+=gn4F5tuy+2dY58VS7wOyhyxEqsBQ5xdzXMs-C7cw@mail.gmail.com>
+ <B74B2995-94D8-4E45-B2D7-3F7361D1A386@redhat.com>
+ <CAHnbEGL_WD1M2FSQbNkCuZyUSMo8ktUsWRLYFjZ-NKKe1aoLAw@mail.gmail.com>
+ <8F936203-8576-4309-B089-E8F38B477E7B@redhat.com>
+ <CAHnbEGL1FVT+dfeSK=UUohNzRpvUZFnrM4dD1mwiYHCHeQUHLw@mail.gmail.com>
+ <E358D8BB-3DCB-4784-A05F-35BF43A2CA6C@redhat.com>
+ <CALXu0UdpPpM2GHX6cWr+YbYqCqb8eEuLhPJa+oKVr6GfuZGKsA@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-X-Developer-Signature: v=1; a=openpgp-sha256; l=655; i=chuck.lever@oracle.com; h=from:subject:message-id; bh=L+9BkY1dGWIhdXeZYfcBMLKg98+nAC9ykyp6ydcbSks=; b=owEBbQKS/ZANAwAIATNqszNvZn+XAcsmYgBnM89xsUq5ywG7UyCfyUpYdQSTbW5i9xW2oJan0 +fh5nXFtWyJAjMEAAEIAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCZzPPcQAKCRAzarMzb2Z/ l8AAD/0RmBroxq60Xsgl3vIEgzmHvaPuD2fsDUJiiJDMbjFlpFHpl66c+yZq0xd0ACFlKsfvmPo bqdoNmFbeT3MYC8zDT15xqolUCiPDPUaGAeogEg+zAVVDAwd7b4MLQM4yByfjlcEXF5mAxajzAP Ync+0FHIbA4QtJc4FzTXbwzJrAOVlYS34RFPfaNzohlxC3ba7NQQbk7T5pVvvhAIFif+CDFmmGH 0AVKkHseWElmlOsirQk9vuBocNmLmTq2g1OJZA4y23xPC76XwymSSY/ASlHV3/pgnmnkDsdxo+8 sorHM06dac8ulxaaUhg735wpwrS2QjYldRO7nhwE/ku38phvh/2pZHrQ4tpCgLP3Ab3XxSTSpIV t/B2rcv8RNLgRqfQJUcWH5VEInLFqGr2cYxLU/e9Sx61dllKZTDAHoGsd9rcw7vRNxNFcAZ8oOE tWqe20alkSC0TjQQYOghFNWTOpmpqy8ZRKhXOV/FXYnqY6E5nBkVU9pFXxxXjU807W6bVUB/H9e SiU+QpSDwJvvK51+EPFpuBKwMfxQF0jja7AvXo+YVLvfbb78leMho7erDsgnKCZ09/gt112ehNT KTaxIv/gfWG6N+Lqv4vWsOznKvEY5V/LkaK3+8ABvGQExfgilsWg2hFjZQPHlDkXyrTI2L29vJQ 8g44pWXXgWqocRg==
-X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp; fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.15
 
-From: Chuck Lever <chuck.lever@oracle.com>
+On 12 Nov 2024, at 13:52, Cedric Blancher wrote:
 
-On Tue, 12 Nov 2024 21:35:24 +0000, Al Viro wrote:                                              
-> added back in 2015 for the sake of vfs_clone_file_range(),
-> which is in linux/fs.h these days
-> 
->                                                                         
+> On Tue, 12 Nov 2024 at 15:40, Benjamin Coddington <bcodding@redhat.com> wrote:
+>>
+>> On 12 Nov 2024, at 9:25, Sebastian Feld wrote:
+>>
+>>> Because "pagesize" is a non-portable per-platform value?
+>>
+>> ah.  The code we're talking about is the linux kernel which is compiled for
+>> the architecture and yes - not portable anyway.
+>
+> It has to be portable for an Administrator. NFS rsize and wsize should
+> not depend on a machine's page size.
 
-Applied to nfsd-next for v6.13, thanks!                                                                
+They don't, they're just optimized to the machine's page size.
 
-[1/1] nfsd: get rid of include ../internal.h
-      commit: 92fbf04c399bbc17047af893c7537c8bd6a00b20                                                                      
+> Otherwise you cannot have such entries in /etc/fstab, instead an
+> Administrator has to rely on /usr/bin/pagesize, /bin/bc and manual
+> mount script just to pass the rsize+wsize in a portable manner. 100%
+> not compatible to puppet and common cluster software, and even less
+> portable for people using nfsroot.
 
---                                                                              
-Chuck Lever
+Puppet and common cluster software absolutely can dynamically generate fstab
+values based on machine types for this theoretical problem.
+
+Anyway, I'm sure reasonable patches will be accepted.
+
+Ben
 
