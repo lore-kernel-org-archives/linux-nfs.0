@@ -1,740 +1,243 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39B8221F4C2;
-	Tue, 12 Nov 2024 23:23:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1731453814; cv=none; b=G7cKmoV1N9nYRM7lNFim8KeOEMdUuLCrUzvSAZl6rvhBBrm8fGeKig7gKEO2rSo3sDaDMySpgLILFTRG4iYoHDWnZrs/Gss5tTXkE9ZCd4r9zhp5PGrlWJPan0I3hUs29dJW0HahmG0u4loqJ7gj6yTb2wswFmETdI/iEjt5X/g=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1731453814; c=relaxed/simple;
-	bh=fIH7YKNRdnDwHXQJQ+eGO2ojw1OjUb3MgO/Fg4KGOYg=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=iJGUkSOYxNE5pH8g9IM+vCagNZkTICLgdthYgz77Yw0vmZw9NkDMYlw4nHr9M0uL5yF0N8mvoPnWJRc5ZDQh2AWA6eBn/h0osYJj0wvGAi2OGGEFLnBEG5tlmkbZCk56xvYSfl8zLpInmmOJKRAezjKIrWqGXrevOXRH9uzd84s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=jmEu1u4g; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=+QVs0orI; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=jmEu1u4g; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=+QVs0orI; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5038A10F1
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2024 00:07:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.177.32
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1731456463; cv=fail; b=hK4N0GTIUkgKuybeVFHPY615QSrmGdx2TTJDraasUqg828dCwtfxArec09k2kFiR3QSPuYwI5r9iDYNQ4oj9RwXLE115AGL2BKWWfBToUsdFEWMA7o4mRxBeg8IRAaSeSAKYqFb+8SYH1LA/IJuaMzt4HcSaLNZNPyU2PNTm6hw=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1731456463; c=relaxed/simple;
+	bh=N+wIB+6AszW04nB0H3AWhgYi/5AGemBb20zLfOWPVyA=;
+	h=From:To:CC:Subject:Date:Message-ID:References:In-Reply-To:
+	 Content-Type:MIME-Version; b=HNwhdRyVJKD5PqBX6Yt6RWZ4YYXYix45OnVuvEfC19AqmCBzxVVHuqiQXoqI0GBN4E/gRNKhkbHKKGWQUF3p/ToWK17Xy6QWbXRMpLuy80JDbzIoRFdY+oNI6jag5FZVPi+/VlP4bVkV4IiXe/M8Vfm3xl7lZZ2OF+wcQaaYzoM=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=DDwScfPV; dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b=NHf06/dI; arc=fail smtp.client-ip=205.220.177.32
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="jmEu1u4g";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="+QVs0orI";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="jmEu1u4g";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="+QVs0orI"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 152C121237;
-	Tue, 12 Nov 2024 23:23:29 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1731453809; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=hzaWT5C7u+Ov4TZ3S5mDntEpKItEmq6x9TMLIPhviXE=;
-	b=jmEu1u4gZFCIPtOmP4w0XWxxFC8SXBgvFMfPb634a1UasilqiplyjT7/QOBCLeFK3MoJPf
-	V5v+N8tJ96rrSqoCo+bhdiZ0TC6dPkddOgteZ6TY8WKbU7MEngdPovT4a7/fevDh+m8swr
-	4W2HCb+qbjMkeks6/lhLWY2wZmOOej8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1731453809;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=hzaWT5C7u+Ov4TZ3S5mDntEpKItEmq6x9TMLIPhviXE=;
-	b=+QVs0orIMziYHu8ETvOUZIJWPuuoCOIKSS5SnnN46vkgTBsGndFbXRI1VznsoEykuIUrb2
-	l4RkRJDCRouT0mAA==
-Authentication-Results: smtp-out1.suse.de;
-	none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1731453809; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=hzaWT5C7u+Ov4TZ3S5mDntEpKItEmq6x9TMLIPhviXE=;
-	b=jmEu1u4gZFCIPtOmP4w0XWxxFC8SXBgvFMfPb634a1UasilqiplyjT7/QOBCLeFK3MoJPf
-	V5v+N8tJ96rrSqoCo+bhdiZ0TC6dPkddOgteZ6TY8WKbU7MEngdPovT4a7/fevDh+m8swr
-	4W2HCb+qbjMkeks6/lhLWY2wZmOOej8=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1731453809;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=hzaWT5C7u+Ov4TZ3S5mDntEpKItEmq6x9TMLIPhviXE=;
-	b=+QVs0orIMziYHu8ETvOUZIJWPuuoCOIKSS5SnnN46vkgTBsGndFbXRI1VznsoEykuIUrb2
-	l4RkRJDCRouT0mAA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 29A7B13301;
-	Tue, 12 Nov 2024 23:23:25 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id veJqNG3jM2dqFAAAD6G6ig
-	(envelope-from <neilb@suse.de>); Tue, 12 Nov 2024 23:23:25 +0000
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="DDwScfPV";
+	dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b="NHf06/dI"
+Received: from pps.filterd (m0246632.ppops.net [127.0.0.1])
+	by mx0b-00069f02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 4ACN1THJ030920;
+	Wed, 13 Nov 2024 00:07:32 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
+	:content-id:content-transfer-encoding:content-type:date:from
+	:in-reply-to:message-id:mime-version:references:subject:to; s=
+	corp-2023-11-20; bh=N+wIB+6AszW04nB0H3AWhgYi/5AGemBb20zLfOWPVyA=; b=
+	DDwScfPVsWdaq2gbyyLA4pvrQ2BW4KwEwjrgeeFZhKgRIzDmjsg4luH07U8070Rm
+	GISJH5o9M9VgkDXNp5KQ2HhQPM5irwqcXDfCPAJVez/McfjUakZz/aRrxbfj/yMs
+	EML3/7KyWTGGtZopNpBh5H6zjffkpa8q2JZ+Xhvg11proG4KJwLuE6Pcu24EEtEy
+	5a/tp7/c+tL1LYEXeDUY/MDqXW63Qs5G9Cs4ICGum1Zei3YEWWNAv6lcE1Qu8fxH
+	1wgUgaRunZaBYFFqgYlc7jDI18RxMfeDWeLXWVyi7V157bnSMGBWi6jbK4OZy8I/
+	IhtH1X5I9Y5dOXlRAkYwRg==
+Received: from iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta03.appoci.oracle.com [130.35.103.27])
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 42t0henn4n-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Wed, 13 Nov 2024 00:07:32 +0000 (GMT)
+Received: from pps.filterd (iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+	by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 4ACN3ZAu000355;
+	Wed, 13 Nov 2024 00:07:31 GMT
+Received: from nam02-bn1-obe.outbound.protection.outlook.com (mail-bn1nam02lp2048.outbound.protection.outlook.com [104.47.51.48])
+	by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 42tbp7y701-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Wed, 13 Nov 2024 00:07:31 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=wO114+3lBUETtB43s9hd5yVhTIEpIv8nzFHwm65h9nUpg59S3szB6u8a/AbpTvXv/abBLtxi6mK4fQSb5m7ITx98sPmN7IXvglHlRIS/37zrTIDKrH9XibJ+TBUWXEZZbBZOPxF8Sk6khuuObXs2HkCmXgXmoTAQCBiu6BlqTR+RhBI+E59t/96DZM0f8qapatdYvGo+NkigLwJWAJ+vi9Goc8NhZ2/OwKtDxojei747Af2jFCP5ZoyFm9ZMORmxAsf4kYf4gcusYgHl9p5jUCVt8Ca566c1POOkEmyorUCs/zqerdnJ8T/G83+tdpZ50LdXg6WLt1fFd8tENW/vtw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=N+wIB+6AszW04nB0H3AWhgYi/5AGemBb20zLfOWPVyA=;
+ b=waID9XO7XgWEwfpA8s1VyWOMougKR9rp9TNEnb08raJhr9dijVIdZcMD7nTw5MFfx8Z5ZG0hPx3XVkSJ/+/UK9IRBfVM55dfpFDOKea68igprXFOyw5ILFRFi0i6vRHb5XWvdrWkDEjiYbAQV35q3e136PgR7kxLTBE5gCbjUEoLolChC37KSo00LfSVFu+TRebpBXc7OIZhGKIljQYSAvdJuLnwvgvpPJg0rcpN9NGTjKQjRkG8INvyHV1RnzrAGOiU9/WCiZ7wJw7DLOl1+b06Yty3NxUxii01Y2tEWXkijcpRzrGdbBiPj5yZStArnohcXWngeO0kkqH2iPC3UQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=N+wIB+6AszW04nB0H3AWhgYi/5AGemBb20zLfOWPVyA=;
+ b=NHf06/dI9a7gkJln3CnkNaOCygEeU4kWdSo938iQOpzpBb3foAmrUb4fINaYPh6GXFX+TwVsd7uwOigla/pKV+GWKIryIUS7q6pflOKFksYAGkXbV4gUFafyOX9MMbYuTsfhAvM0l/0n6Co4arR5/ziRtauPpd+q6rj0YWQq9SI=
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
+ by MW4PR10MB5704.namprd10.prod.outlook.com (2603:10b6:303:18e::8) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8137.28; Wed, 13 Nov
+ 2024 00:07:29 +0000
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::743a:3154:40da:cf90]) by BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::743a:3154:40da:cf90%4]) with mapi id 15.20.8137.027; Wed, 13 Nov 2024
+ 00:07:29 +0000
+From: Chuck Lever III <chuck.lever@oracle.com>
+To: Neil Brown <neilb@suse.de>
+CC: Mike Snitzer <snitzer@kernel.org>,
+        Linux NFS Mailing List
+	<linux-nfs@vger.kernel.org>,
+        Anna Schumaker <anna@kernel.org>,
+        Trond
+ Myklebust <trondmy@hammerspace.com>,
+        Jeff Layton <jlayton@kernel.org>
+Subject: Re: [for-6.13 PATCH 10/19] nfs_common: move localio_lock to new lock
+ member of nfs_uuid_t
+Thread-Topic: [for-6.13 PATCH 10/19] nfs_common: move localio_lock to new lock
+ member of nfs_uuid_t
+Thread-Index:
+ AQHbMjeVpJdkpikre0CCB4tP6hMv+7KxVRwAgADktYCAAFQgAIAAH4WAgAAPfYCAAA7zAIAACSEAgADm94CAAJCCAIAADxEA
+Date: Wed, 13 Nov 2024 00:07:29 +0000
+Message-ID: <24F9F9A5-7EB3-430D-BDB2-A9314C581817@oracle.com>
+References: <ZzNn2czIB0f66g0Y@tissot.1015granger.net>
+ <173145320232.1734440.886416117667950658@noble.neil.brown.name>
+In-Reply-To: <173145320232.1734440.886416117667950658@noble.neil.brown.name>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+x-mailer: Apple Mail (2.3776.700.51.11.1)
+x-ms-publictraffictype: Email
+x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|MW4PR10MB5704:EE_
+x-ms-office365-filtering-correlation-id: eac66367-f9af-4afa-57dc-08dd037729b0
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+x-microsoft-antispam: BCL:0;ARA:13230040|376014|366016|1800799024|38070700018;
+x-microsoft-antispam-message-info:
+ =?utf-8?B?bnFqRkZ3dXdhQWNLb29WUy93eUJuaGhuSEluRkdFN1lWdEFYSkMrWUxXZTc2?=
+ =?utf-8?B?T1BPdWx5ZVRob2NpZGZLd0taQTFMR1U1TS84TWVxcVpHVUhmNE5kVUZSNGVR?=
+ =?utf-8?B?V1ZBZGQ1amtRS29meGxueVFVbzNnd3hhNGYzSUN3NVFMNjVJMXBEWDZ3VHVK?=
+ =?utf-8?B?SEZydG1zTSs4YjNkMEM4UHhpdThPMk1LRVcvWCtNRTlUbHVzZndXb2FscThs?=
+ =?utf-8?B?QTd0YXQ4aTdrUGhpbHp2dWlwTEY2VTVFRmtqM2VJMS9Ed2FEcEI1Y0wrWTJt?=
+ =?utf-8?B?K1ZuUS9IMDR4Z0NkNlJ2VGtjRlY3NE8xNGtiNWluS3pFaVRzbGdmUFBhMkZq?=
+ =?utf-8?B?eDNUV1l4Ty9UbWlpclU4YWVkcnQrQnVKUW9Mc1BKSjhrdE5udTJLWFlXNjJk?=
+ =?utf-8?B?L0NjaW1zc3kweWNFSDRqWUJYcjZCMCtYd2lQVlRHek1Va1grdVlEbG9uK24z?=
+ =?utf-8?B?TjNudTh4alp3ejZXR210alVDUHZaS2hRMzd3U055NXZ3WGNrS0FyYVdITjJy?=
+ =?utf-8?B?UkFWSXdZSzhBZHh0bnVncFV5T1pIb0VVTCtzUkxSbTFOQWdhUnRIcXdWSHVQ?=
+ =?utf-8?B?bW0zSXV3QWovU1oxN3lpN2pOVFYrdzZzZXFWRC9YMEFtNWl2WWE1TVB1T0hV?=
+ =?utf-8?B?ZW9wUlZFYjNtU1E2Q0puRkR2bkNHK3NSQWN6NTdkcXZuemdDTWRkWnRuM2Ry?=
+ =?utf-8?B?L3ZtZ2h3cEhickJPM1hrZ0dvWXpJUHQ5aU92QXM5MHNseWkvUUtzV0phRXVs?=
+ =?utf-8?B?Q2RkOXc5VGozbWRZUkRjMmU4NUVFUW1HQU9ldVRPekV4VHJvWDdBNndTZ0Rn?=
+ =?utf-8?B?d0FMb3BxQURoZjJhMHk5bjBaL05EbmRzRDU2L2Z0eXJqUDhvWkJvWmY1VUpF?=
+ =?utf-8?B?bzhPRzd1cTlCcmtyaTAyQ3IwREJmT1ZWZ2tBYW1uZVNpU3doYVJ5dERUTUNs?=
+ =?utf-8?B?aDllcXRMT2ZBbk95K3NPc2JHZWFPa3NyN2NUdTVjRUhoMVdTUWgvSzNnSUZW?=
+ =?utf-8?B?MHJMNndJNkRKdkFFRDU3VlBBalg5VGJBMWJjTjdQcHFnRks4dm1GL1BHLzNv?=
+ =?utf-8?B?NnNsZlhoeHYyQlBJdno0L3RpYzFFZkpqb25zeW5LWWNMWU5EWHlTUFYzNDc3?=
+ =?utf-8?B?cVVheHNvNHNwVG9vSDBYT0UxejVONTBRMnB4ODltNVd2RkdPT2pLYUZTZ0ZH?=
+ =?utf-8?B?bHJGVTF4M2I5ZEJhbzRIYmtycGh2eHNUMWtSWSsyQlhxK0Y1TXhvUTV4S2RR?=
+ =?utf-8?B?TVFzMjVIUUk4TDVyZmVLYTVxMEt4RVlWbkNNWWhQZWw4TXZ1MG1qVk5zSTI5?=
+ =?utf-8?B?VzFCRmZZNjVjVkh3KzJkby91dHNQU2pkaHhjY3ZNUHc0UUFQb2ZYWTlydjFD?=
+ =?utf-8?B?QWlWRmFzb0F4dUZKYkZJc2x1UVRmMVpaQkZzL0dCMUNiT0ZuVWliam9UQ0pu?=
+ =?utf-8?B?YXY1TDZRcEZmVWJSMXIvMEVsOXVuOFBHMWhlVitFSXdzTVdraFFzOHpTaFZj?=
+ =?utf-8?B?RXJPbWVYbmdqS0lURWx0bG5PcXNzQ25aT0tvYmhkSVo2Y2I4bitIREZ3dUYy?=
+ =?utf-8?B?bGFSZG9renJ1dGN3RHhoUVZyUTh4OFg5bXA5bkFyenQ0UjhPNEJJajVMajdm?=
+ =?utf-8?B?ODhUNWYxMzFBUGpxWjFXbDVUUURkUlg1Znl4c2ZpdUFVWmtUV2U3UGhKR1dv?=
+ =?utf-8?B?T09GVFREYndLQzBaSDg4d1VQS3NzMG04RXFUdC9QbW9JblVLM0s4dzEvOEs4?=
+ =?utf-8?B?c2dnZUx2YlNRWFF2bEpYVDZtLzcwaGVCdDNwK1lLaXU3eXJVcmIzb3Q5RHBQ?=
+ =?utf-8?Q?TW3YyL9YwWe6FPjqh6zxQsbNfg/avg5asaPag=3D?=
+x-forefront-antispam-report:
+ CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(366016)(1800799024)(38070700018);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0:
+ =?utf-8?B?eWpRVnJINlVSUVU0V0pnWnZsZFYwT1YxR3g4NnY4blZTT0hIcHYrNFMrMDlH?=
+ =?utf-8?B?NGNZT0ppYlpBMEdCeFl6M245dzlubjBkZ3pXRHVTK0NvN1YwWjNzOW5aeEpI?=
+ =?utf-8?B?cG9tZndSejN5aGY3enhMczA2UTVDTHZlL083RTBvUmJUUmh4TXYwMWtaVUFT?=
+ =?utf-8?B?MjFGc3BZWXNlODJQdjVuVEhuZytCL1AxWTZkTWpFUlIvYjA4Z2NKSTFZdHhv?=
+ =?utf-8?B?RGRQbTY0bmxoeXRaRUQvZ2d1ZllPcEcrVERCUys1cExTTU5rNTdmMzZ0Qldz?=
+ =?utf-8?B?cVMzTFBwMVRZbzFVRm1SemV3eEZUWHBvY3Z0QjA0cUlZa3RTN0Z6SGNldmZv?=
+ =?utf-8?B?dkI0Qytid1hnRldqbGlka1FZNHFURWFEWm9HQTgxaE00TjYwRktXelI3c0NO?=
+ =?utf-8?B?MThVWWp1eXZOUzhpbjkwQTNuRFQ4VytCZGg1aHQzQXcwdVJMRnRkcXl2MEZq?=
+ =?utf-8?B?Y2o0RWpaL0EzQzA2RWYvOWlXM2lqdE9RU3JCb3lYQWkrVjV0TU1nQWRBS3k5?=
+ =?utf-8?B?bnl5WU5WNEloUTdYZlRMK1dRKyswYkZxSnZHSjdlYzBMMVgveFd6Yy8rSkV0?=
+ =?utf-8?B?UjZtR1p6SGJwb0U4RTVraHFkaHlYai9ZZzVYZStrVVJoZUkwa1EzMWV3QXJl?=
+ =?utf-8?B?R1IrSmlCRnJJK3Y5VGkxdG1MaEtpT09SSVMwL1liUDR3UU03Z1l3YngwL0hZ?=
+ =?utf-8?B?aUxCZUprYnZITnhBRHUwN2JkNFYyWHA5akdpVlhtNGRHRnhXL3psN0ZBaW53?=
+ =?utf-8?B?RyswbXZHcStBek1IOGVHbGZkeU1oaUg1NHFGUnlVeWkvT3BMNDBmRFNnZHJT?=
+ =?utf-8?B?V1hjRVRSby93V0lvNkxxclhjdGFnTGQzcXg5cVV4MEoweElCVDNHeHdhVlJl?=
+ =?utf-8?B?TUgweGl3b01SdVYyK2VveUhmNUZ1TENwRXFSRy8zMzlQVUFHckFhNDJoUmpK?=
+ =?utf-8?B?azcyZjhXckpOcEV0SHd5ZFpNQThxQ3UzY2p3UkdEUy8xS1g5cXVaSU9YOGFr?=
+ =?utf-8?B?TUVOWXFGM3JjNzJMSllxbTlUaFB2eWpNR3ZsTi9iRXViMndFd2lwWHZ2V0ly?=
+ =?utf-8?B?YjdONllEdXQvRXNnZTBxejZRZkFXb2M2NnBhVVhUWnBLTmxDQTk3VXZ5enMz?=
+ =?utf-8?B?VGlUa2Fmby8wbTNGUi9DU1p0TXVGc2twTkZKMFF3ZWY5UkJxakpHblVocnFp?=
+ =?utf-8?B?Y2sxd0VDbHpyZWN0Z2N2eVdsTCtJQVBWVEVBQ3BBelVTMlV2eEIzMXdxc2pK?=
+ =?utf-8?B?NHJ2MlQ5TUg3UGVtTlE0WGV2clA3Rk4yYW9pS2dJMm9MaUlUYUJpQmNtK3lw?=
+ =?utf-8?B?STEyeE5Ub2Z3ZTJYdFlIdnJWWEgwZ0NBYUltZGVIOE1BOElhbCtiRGNJdWRN?=
+ =?utf-8?B?Q3ltL3R1ZERrQ3ovUGpZUnF4emtFODdzT2FsYUlNeFd0TDgvVityM0hvWkdm?=
+ =?utf-8?B?dWJreHJBRGRtTmVvbER0N0xvM3phYkRMNW96Y1pOZXBNeHRkU3RJblB3UnlH?=
+ =?utf-8?B?Z2hnZUJGWWwyRnc3UFZwOGtZVVBPcmNEQlF6TlFpbVgxTkxyVWRJa1FoQzcx?=
+ =?utf-8?B?enl0Z0hXNTJiQ25YYmNhSjdSb2FSSXpYZDN6RC9laG1DMmVYUXdrOFMwWlp1?=
+ =?utf-8?B?N2JUc2p2eER2RUVYZnFnWEt3bTB2a0daTktZanl1b2lNWUpLbGZ4dFJHZm82?=
+ =?utf-8?B?YmtLMGY3K3N0UzM2dkNJUmRyaG5yM0xYek8rQmgxU1NRSlVMcnNQQzB1RDdu?=
+ =?utf-8?B?NVVWNUd2VU9oZmR5VFJiR2VLbXhiU2Q4UW40U1JyUHZRQU9rVzRLU1h2Qk1U?=
+ =?utf-8?B?ZVRGaXdCV0Z5UGFnYVU2M1k1MGRlMTdIaUY0Y3J5YS93SGMrWFV2TmtSWXgv?=
+ =?utf-8?B?M1NCV1RKd1pRbmlxZFh5aUJYQVBNZ2l0MXJvakw2UUVmUTdweHNMNDNhK2pM?=
+ =?utf-8?B?dC9SbDFGbmhuWldKVDZTSUZwRlBKSkx5THA0Q1UzMEhaclZ0Yy9DMHFoRTF4?=
+ =?utf-8?B?ekwzK3RoYzFsWDIycWNGUkkyS2kzQ3ZnODBOaHEwb2hubDNMcSszMWhUY3lI?=
+ =?utf-8?B?WXhCc1RhTzYwMU1SSUNwQzZYbWVWb3Z6TFJmdzZJUDdHaFhMNTRLSjladGhC?=
+ =?utf-8?B?QmZwd0U4dkVBYk1TbWFWbVA3MGg4QVBJdC9IaFNKZ2czRW5PVXhBSTJRMEpi?=
+ =?utf-8?B?TkE9PQ==?=
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+Content-ID: <BB9AB1233A0F9341834DCBFD5B9BC5A2@namprd10.prod.outlook.com>
+Content-Transfer-Encoding: base64
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: "NeilBrown" <neilb@suse.de>
-To: "Olga Kornievskaia" <aglo@umich.edu>
-Cc: "Jeff Layton" <jlayton@kernel.org>, "Chuck Lever" <chuck.lever@oracle.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Olga Kornievskaia" <okorniev@redhat.com>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v4] nfsd: allow for up to 32 callback session slots
-In-reply-to:
- <CAN-5tyEh6MrTBQQt99+VO4FcnX3x1DX7XOpRwmkXFryqzr95Jw@mail.gmail.com>
-References:
- <>, <CAN-5tyEh6MrTBQQt99+VO4FcnX3x1DX7XOpRwmkXFryqzr95Jw@mail.gmail.com>
-Date: Wed, 13 Nov 2024 10:23:23 +1100
-Message-id: <173145380308.1734440.15862582751276033840@noble.neil.brown.name>
-X-Spam-Score: -4.30
-X-Spamd-Result: default: False [-4.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	NEURAL_HAM_SHORT(-0.20)[-0.998];
-	MIME_GOOD(-0.10)[text/plain];
-	ARC_NA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	RCPT_COUNT_SEVEN(0.00)[8];
-	RCVD_TLS_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCVD_COUNT_TWO(0.00)[2];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo]
-X-Spam-Flag: NO
-X-Spam-Level: 
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
+	rzxAnlStBw5UIGYPBzqe0x7UVn92XK/tvI9DSBbuEHnTWYH+lYodN2wp+Gl6XvvxYNIcHlwIrkwQcEmGfARtVYY/RH6blVRbUSt/3XSj8Iq9cYrsOt3lPALpI2aKVaAoJWd/7+MdYPKFPLvXs3Iq/dLzMdxoHhKZ3V1hTBFliZjTaZHTM640Qy2uLPMbLBD0jtXKml5B0B7znZQT9b4wGQ7pqJEsGi5TWOLur0ANp/fEbv94jzsR8RRWXlp8NJktqvox4OPBlbGM9AZPAwJFYkKaMyEgwzPoNO0AObgRGi4Si5bSFNyNIogHckW2etylYIfgo/cj/CWE+sE+B4JpABJjhAeHL7/MQauXciNkV5ByHv7my27zhrCzhC1jphuOAYfvcfEptnMS2Ghtwv9CDeXDxRze/w21k+nH8Z3WgVknxJsykJBdOQnCaiNBq2cCj/W75IIOT5QzSxJuEbG7Y5tKNCHjhXCc4HbMYWpBD4CNYigvrJJHNI/+msTGUrKjoGO8QfzWPrOtUFkCVGgC3Hp1O12uvkZvogYKot+cbIHUsHBpFwmaxQTH0WPzdjhw3tTV8r39Wg38AbE1NcS/pSeqYeVVo18L5aN+IqyYCXU=
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: eac66367-f9af-4afa-57dc-08dd037729b0
+X-MS-Exchange-CrossTenant-originalarrivaltime: 13 Nov 2024 00:07:29.1694
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: QZp0UJM3QcFbL+96DR3m3cs8jl1wX0GgIz5HHYAi3jRO7uTiZqTswqrB2nWdmUsg8Fas4GqoDkawrgWpPJFl/A==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: MW4PR10MB5704
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1057,Hydra:6.0.680,FMLib:17.12.62.30
+ definitions=2024-11-12_09,2024-11-12_02,2024-09-30_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 mlxscore=0 malwarescore=0
+ mlxlogscore=999 spamscore=0 phishscore=0 adultscore=0 suspectscore=0
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2409260000
+ definitions=main-2411120194
+X-Proofpoint-ORIG-GUID: gxLEJPD36zdqP0EoUZ3y5F4ZkkW7qcbX
+X-Proofpoint-GUID: gxLEJPD36zdqP0EoUZ3y5F4ZkkW7qcbX
 
-On Tue, 12 Nov 2024, Olga Kornievskaia wrote:
-> On Mon, Nov 11, 2024 at 12:40=E2=80=AFPM Jeff Layton <jlayton@kernel.org> w=
-rote:
-> >
-> > On Mon, 2024-11-11 at 12:17 -0500, Olga Kornievskaia wrote:
-> > > On Mon, Nov 11, 2024 at 9:56=E2=80=AFAM Chuck Lever <chuck.lever@oracle=
-.com> wrote:
-> > > >
-> > > > On Mon, Nov 11, 2024 at 08:22:07AM -0500, Jeff Layton wrote:
-> > > > > On Sun, 2024-11-10 at 21:19 -0500, Olga Kornievskaia wrote:
-> > > > > > On Sat, Nov 9, 2024 at 2:26=E2=80=AFPM Jeff Layton <jlayton@kerne=
-l.org> wrote:
-> > > > > > >
-> > > > > > > On Sat, 2024-11-09 at 13:50 -0500, Olga Kornievskaia wrote:
-> > > > > > > > On Tue, Nov 5, 2024 at 7:31=E2=80=AFPM Jeff Layton <jlayton@k=
-ernel.org> wrote:
-> > > > > > > > >
-> > > > > > > > > nfsd currently only uses a single slot in the callback chan=
-nel, which is
-> > > > > > > > > proving to be a bottleneck in some cases. Widen the callbac=
-k channel to
-> > > > > > > > > a max of 32 slots (subject to the client's target_maxreqs v=
-alue).
-> > > > > > > > >
-> > > > > > > > > Change the cb_holds_slot boolean to an integer that tracks =
-the current
-> > > > > > > > > slot number (with -1 meaning "unassigned").  Move the callb=
-ack slot
-> > > > > > > > > tracking info into the session. Add a new u32 that acts as =
-a bitmap to
-> > > > > > > > > track which slots are in use, and a u32 to track the latest=
- callback
-> > > > > > > > > target_slotid that the client reports. To protect the new f=
-ields, add
-> > > > > > > > > a new per-session spinlock (the se_lock). Fix nfsd41_cb_get=
-_slot to always
-> > > > > > > > > search for the lowest slotid (using ffs()).
-> > > > > > > > >
-> > > > > > > > > Finally, convert the session->se_cb_seq_nr field into an ar=
-ray of
-> > > > > > > > > counters and add the necessary handling to ensure that the =
-seqids get
-> > > > > > > > > reset at the appropriate times.
-> > > > > > > > >
-> > > > > > > > > Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> > > > > > > > > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > > > > > > > > ---
-> > > > > > > > > v3 has a bug that Olga hit in testing. This version should =
-fix the wait
-> > > > > > > > > when the slot table is full. Olga, if you're able to test t=
-his one, it
-> > > > > > > > > would be much appreciated.
-> > > > > > > > > ---
-> > > > > > > > > Changes in v4:
-> > > > > > > > > - Fix the wait for a slot in nfsd41_cb_get_slot()
-> > > > > > > > > - Link to v3: https://lore.kernel.org/r/20241030-bcwide-v3-=
-0-c2df49a26c45@kernel.org
-> > > > > > > > >
-> > > > > > > > > Changes in v3:
-> > > > > > > > > - add patch to convert se_flags to single se_dead bool
-> > > > > > > > > - fix off-by-one bug in handling of NFSD_BC_SLOT_TABLE_MAX
-> > > > > > > > > - don't reject target highest slot value of 0
-> > > > > > > > > - Link to v2: https://lore.kernel.org/r/20241029-bcwide-v2-=
-1-e9010b6ef55d@kernel.org
-> > > > > > > > >
-> > > > > > > > > Changes in v2:
-> > > > > > > > > - take cl_lock when fetching fields from session to be enco=
-ded
-> > > > > > > > > - use fls() instead of bespoke highest_unset_index()
-> > > > > > > > > - rename variables in several functions with more descripti=
-ve names
-> > > > > > > > > - clamp limit of for loop in update_cb_slot_table()
-> > > > > > > > > - re-add missing rpc_wake_up_queued_task() call
-> > > > > > > > > - fix slotid check in decode_cb_sequence4resok()
-> > > > > > > > > - add new per-session spinlock
-> > > > > > > > > ---
-> > > > > > > > >  fs/nfsd/nfs4callback.c | 113 +++++++++++++++++++++++++++++=
-+++++++-------------
-> > > > > > > > >  fs/nfsd/nfs4state.c    |  11 +++--
-> > > > > > > > >  fs/nfsd/state.h        |  15 ++++---
-> > > > > > > > >  fs/nfsd/trace.h        |   2 +-
-> > > > > > > > >  4 files changed, 101 insertions(+), 40 deletions(-)
-> > > > > > > > >
-> > > > > > > > > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> > > > > > > > > index e38fa834b3d91333acf1425eb14c644e5d5f2601..47a67833390=
-7eaa92db305dada503704c34c15b2 100644
-> > > > > > > > > --- a/fs/nfsd/nfs4callback.c
-> > > > > > > > > +++ b/fs/nfsd/nfs4callback.c
-> > > > > > > > > @@ -406,6 +406,19 @@ encode_cb_getattr4args(struct xdr_stre=
-am *xdr, struct nfs4_cb_compound_hdr *hdr,
-> > > > > > > > >         hdr->nops++;
-> > > > > > > > >  }
-> > > > > > > > >
-> > > > > > > > > +static u32 highest_slotid(struct nfsd4_session *ses)
-> > > > > > > > > +{
-> > > > > > > > > +       u32 idx;
-> > > > > > > > > +
-> > > > > > > > > +       spin_lock(&ses->se_lock);
-> > > > > > > > > +       idx =3D fls(~ses->se_cb_slot_avail);
-> > > > > > > > > +       if (idx > 0)
-> > > > > > > > > +               --idx;
-> > > > > > > > > +       idx =3D max(idx, ses->se_cb_highest_slot);
-> > > > > > > > > +       spin_unlock(&ses->se_lock);
-> > > > > > > > > +       return idx;
-> > > > > > > > > +}
-> > > > > > > > > +
-> > > > > > > > >  /*
-> > > > > > > > >   * CB_SEQUENCE4args
-> > > > > > > > >   *
-> > > > > > > > > @@ -432,15 +445,35 @@ static void encode_cb_sequence4args(s=
-truct xdr_stream *xdr,
-> > > > > > > > >         encode_sessionid4(xdr, session);
-> > > > > > > > >
-> > > > > > > > >         p =3D xdr_reserve_space(xdr, 4 + 4 + 4 + 4 + 4);
-> > > > > > > > > -       *p++ =3D cpu_to_be32(session->se_cb_seq_nr);      /=
-* csa_sequenceid */
-> > > > > > > > > -       *p++ =3D xdr_zero;                        /* csa_sl=
-otid */
-> > > > > > > > > -       *p++ =3D xdr_zero;                        /* csa_hi=
-ghest_slotid */
-> > > > > > > > > +       *p++ =3D cpu_to_be32(session->se_cb_seq_nr[cb->cb_h=
-eld_slot]);    /* csa_sequenceid */
-> > > > > > > > > +       *p++ =3D cpu_to_be32(cb->cb_held_slot);           /=
-* csa_slotid */
-> > > > > > > > > +       *p++ =3D cpu_to_be32(highest_slotid(session)); /* c=
-sa_highest_slotid */
-> > > > > > > > >         *p++ =3D xdr_zero;                        /* csa_ca=
-chethis */
-> > > > > > > > >         xdr_encode_empty_array(p);              /* csa_refe=
-rring_call_lists */
-> > > > > > > > >
-> > > > > > > > >         hdr->nops++;
-> > > > > > > > >  }
-> > > > > > > > >
-> > > > > > > > > +static void update_cb_slot_table(struct nfsd4_session *ses=
-, u32 target)
-> > > > > > > > > +{
-> > > > > > > > > +       /* No need to do anything if nothing changed */
-> > > > > > > > > +       if (likely(target =3D=3D READ_ONCE(ses->se_cb_highe=
-st_slot)))
-> > > > > > > > > +               return;
-> > > > > > > > > +
-> > > > > > > > > +       spin_lock(&ses->se_lock);
-> > > > > > > > > +       if (target > ses->se_cb_highest_slot) {
-> > > > > > > > > +               int i;
-> > > > > > > > > +
-> > > > > > > > > +               target =3D min(target, NFSD_BC_SLOT_TABLE_M=
-AX);
-> > > > > > > > > +
-> > > > > > > > > +               /* Growing the slot table. Reset any new se=
-quences to 1 */
-> > > > > > > > > +               for (i =3D ses->se_cb_highest_slot + 1; i <=
-=3D target; ++i)
-> > > > > > > > > +                       ses->se_cb_seq_nr[i] =3D 1;
-> > > > > > > > > +       }
-> > > > > > > > > +       ses->se_cb_highest_slot =3D target;
-> > > > > > > > > +       spin_unlock(&ses->se_lock);
-> > > > > > > > > +}
-> > > > > > > > > +
-> > > > > > > > >  /*
-> > > > > > > > >   * CB_SEQUENCE4resok
-> > > > > > > > >   *
-> > > > > > > > > @@ -468,7 +501,7 @@ static int decode_cb_sequence4resok(str=
-uct xdr_stream *xdr,
-> > > > > > > > >         struct nfsd4_session *session =3D cb->cb_clp->cl_cb=
-_session;
-> > > > > > > > >         int status =3D -ESERVERFAULT;
-> > > > > > > > >         __be32 *p;
-> > > > > > > > > -       u32 dummy;
-> > > > > > > > > +       u32 seqid, slotid, target;
-> > > > > > > > >
-> > > > > > > > >         /*
-> > > > > > > > >          * If the server returns different values for sessi=
-onID, slotID or
-> > > > > > > > > @@ -484,21 +517,22 @@ static int decode_cb_sequence4resok(s=
-truct xdr_stream *xdr,
-> > > > > > > > >         }
-> > > > > > > > >         p +=3D XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN);
-> > > > > > > > >
-> > > > > > > > > -       dummy =3D be32_to_cpup(p++);
-> > > > > > > > > -       if (dummy !=3D session->se_cb_seq_nr) {
-> > > > > > > > > +       seqid =3D be32_to_cpup(p++);
-> > > > > > > > > +       if (seqid !=3D session->se_cb_seq_nr[cb->cb_held_sl=
-ot]) {
-> > > > > > > > >                 dprintk("NFS: %s Invalid sequence number\n"=
-, __func__);
-> > > > > > > > >                 goto out;
-> > > > > > > > >         }
-> > > > > > > > >
-> > > > > > > > > -       dummy =3D be32_to_cpup(p++);
-> > > > > > > > > -       if (dummy !=3D 0) {
-> > > > > > > > > +       slotid =3D be32_to_cpup(p++);
-> > > > > > > > > +       if (slotid !=3D cb->cb_held_slot) {
-> > > > > > > > >                 dprintk("NFS: %s Invalid slotid\n", __func_=
-_);
-> > > > > > > > >                 goto out;
-> > > > > > > > >         }
-> > > > > > > > >
-> > > > > > > > > -       /*
-> > > > > > > > > -        * FIXME: process highest slotid and target highest=
- slotid
-> > > > > > > > > -        */
-> > > > > > > > > +       p++; // ignore current highest slot value
-> > > > > > > > > +
-> > > > > > > > > +       target =3D be32_to_cpup(p++);
-> > > > > > > > > +       update_cb_slot_table(session, target);
-> > > > > > > > >         status =3D 0;
-> > > > > > > > >  out:
-> > > > > > > > >         cb->cb_seq_status =3D status;
-> > > > > > > > > @@ -1203,6 +1237,22 @@ void nfsd4_change_callback(struct nf=
-s4_client *clp, struct nfs4_cb_conn *conn)
-> > > > > > > > >         spin_unlock(&clp->cl_lock);
-> > > > > > > > >  }
-> > > > > > > > >
-> > > > > > > > > +static int grab_slot(struct nfsd4_session *ses)
-> > > > > > > > > +{
-> > > > > > > > > +       int idx;
-> > > > > > > > > +
-> > > > > > > > > +       spin_lock(&ses->se_lock);
-> > > > > > > > > +       idx =3D ffs(ses->se_cb_slot_avail) - 1;
-> > > > > > > > > +       if (idx < 0 || idx > ses->se_cb_highest_slot) {
-> > > > > > > > > +               spin_unlock(&ses->se_lock);
-> > > > > > > > > +               return -1;
-> > > > > > > > > +       }
-> > > > > > > > > +       /* clear the bit for the slot */
-> > > > > > > > > +       ses->se_cb_slot_avail &=3D ~BIT(idx);
-> > > > > > > > > +       spin_unlock(&ses->se_lock);
-> > > > > > > > > +       return idx;
-> > > > > > > > > +}
-> > > > > > > > > +
-> > > > > > > > >  /*
-> > > > > > > > >   * There's currently a single callback channel slot.
-> > > > > > > > >   * If the slot is available, then mark it busy.  Otherwise=
-, set the
-> > > > > > > > > @@ -1211,28 +1261,32 @@ void nfsd4_change_callback(struct n=
-fs4_client *clp, struct nfs4_cb_conn *conn)
-> > > > > > > > >  static bool nfsd41_cb_get_slot(struct nfsd4_callback *cb, =
-struct rpc_task *task)
-> > > > > > > > >  {
-> > > > > > > > >         struct nfs4_client *clp =3D cb->cb_clp;
-> > > > > > > > > +       struct nfsd4_session *ses =3D clp->cl_cb_session;
-> > > > > > > > >
-> > > > > > > > > -       if (!cb->cb_holds_slot &&
-> > > > > > > > > -           test_and_set_bit(0, &clp->cl_cb_slot_busy) !=3D=
- 0) {
-> > > > > > > > > +       if (cb->cb_held_slot >=3D 0)
-> > > > > > > > > +               return true;
-> > > > > > > > > +       cb->cb_held_slot =3D grab_slot(ses);
-> > > > > > > > > +       if (cb->cb_held_slot < 0) {
-> > > > > > > > >                 rpc_sleep_on(&clp->cl_cb_waitq, task, NULL);
-> > > > > > > > >                 /* Race breaker */
-> > > > > > > > > -               if (test_and_set_bit(0, &clp->cl_cb_slot_bu=
-sy) !=3D 0) {
-> > > > > > > > > -                       dprintk("%s slot is busy\n", __func=
-__);
-> > > > > > > > > +               cb->cb_held_slot =3D grab_slot(ses);
-> > > > > > > > > +               if (cb->cb_held_slot < 0)
-> > > > > > > > >                         return false;
-> > > > > > > > > -               }
-> > > > > > > > >                 rpc_wake_up_queued_task(&clp->cl_cb_waitq, =
-task);
-> > > > > > > > >         }
-> > > > > > > > > -       cb->cb_holds_slot =3D true;
-> > > > > > > > >         return true;
-> > > > > > > > >  }
-> > > > > > > > >
-> > > > > > > > >  static void nfsd41_cb_release_slot(struct nfsd4_callback *=
-cb)
-> > > > > > > > >  {
-> > > > > > > > >         struct nfs4_client *clp =3D cb->cb_clp;
-> > > > > > > > > +       struct nfsd4_session *ses =3D clp->cl_cb_session;
-> > > > > > > > >
-> > > > > > > > > -       if (cb->cb_holds_slot) {
-> > > > > > > > > -               cb->cb_holds_slot =3D false;
-> > > > > > > > > -               clear_bit(0, &clp->cl_cb_slot_busy);
-> > > > > > > > > +       if (cb->cb_held_slot >=3D 0) {
-> > > > > > > > > +               spin_lock(&ses->se_lock);
-> > > > > > > > > +               ses->se_cb_slot_avail |=3D BIT(cb->cb_held_=
-slot);
-> > > > > > > > > +               spin_unlock(&ses->se_lock);
-> > > > > > > > > +               cb->cb_held_slot =3D -1;
-> > > > > > > > >                 rpc_wake_up_next(&clp->cl_cb_waitq);
-> > > > > > > > >         }
-> > > > > > > > >  }
-> > > > > > > > > @@ -1249,8 +1303,8 @@ static void nfsd41_destroy_cb(struct =
-nfsd4_callback *cb)
-> > > > > > > > >  }
-> > > > > > > > >
-> > > > > > > > >  /*
-> > > > > > > > > - * TODO: cb_sequence should support referring call lists, =
-cachethis, multiple
-> > > > > > > > > - * slots, and mark callback channel down on communication =
-errors.
-> > > > > > > > > + * TODO: cb_sequence should support referring call lists, =
-cachethis,
-> > > > > > > > > + * and mark callback channel down on communication errors.
-> > > > > > > > >   */
-> > > > > > > > >  static void nfsd4_cb_prepare(struct rpc_task *task, void *=
-calldata)
-> > > > > > > > >  {
-> > > > > > > > > @@ -1292,7 +1346,7 @@ static bool nfsd4_cb_sequence_done(st=
-ruct rpc_task *task, struct nfsd4_callback
-> > > > > > > > >                 return true;
-> > > > > > > > >         }
-> > > > > > > > >
-> > > > > > > > > -       if (!cb->cb_holds_slot)
-> > > > > > > > > +       if (cb->cb_held_slot < 0)
-> > > > > > > > >                 goto need_restart;
-> > > > > > > > >
-> > > > > > > > >         /* This is the operation status code for CB_SEQUENC=
-E */
-> > > > > > > > > @@ -1306,10 +1360,10 @@ static bool nfsd4_cb_sequence_done(=
-struct rpc_task *task, struct nfsd4_callback
-> > > > > > > > >                  * If CB_SEQUENCE returns an error, then th=
-e state of the slot
-> > > > > > > > >                  * (sequence ID, cached reply) MUST NOT cha=
-nge.
-> > > > > > > > >                  */
-> > > > > > > > > -               ++session->se_cb_seq_nr;
-> > > > > > > > > +               ++session->se_cb_seq_nr[cb->cb_held_slot];
-> > > > > > > > >                 break;
-> > > > > > > > >         case -ESERVERFAULT:
-> > > > > > > > > -               ++session->se_cb_seq_nr;
-> > > > > > > > > +               ++session->se_cb_seq_nr[cb->cb_held_slot];
-> > > > > > > > >                 nfsd4_mark_cb_fault(cb->cb_clp);
-> > > > > > > > >                 ret =3D false;
-> > > > > > > > >                 break;
-> > > > > > > > > @@ -1335,17 +1389,16 @@ static bool nfsd4_cb_sequence_done(=
-struct rpc_task *task, struct nfsd4_callback
-> > > > > > > > >         case -NFS4ERR_BADSLOT:
-> > > > > > > > >                 goto retry_nowait;
-> > > > > > > > >         case -NFS4ERR_SEQ_MISORDERED:
-> > > > > > > > > -               if (session->se_cb_seq_nr !=3D 1) {
-> > > > > > > > > -                       session->se_cb_seq_nr =3D 1;
-> > > > > > > > > +               if (session->se_cb_seq_nr[cb->cb_held_slot]=
- !=3D 1) {
-> > > > > > > > > +                       session->se_cb_seq_nr[cb->cb_held_s=
-lot] =3D 1;
-> > > > > > > > >                         goto retry_nowait;
-> > > > > > > > >                 }
-> > > > > > > > >                 break;
-> > > > > > > > >         default:
-> > > > > > > > >                 nfsd4_mark_cb_fault(cb->cb_clp);
-> > > > > > > > >         }
-> > > > > > > > > -       nfsd41_cb_release_slot(cb);
-> > > > > > > > > -
-> > > > > > > > >         trace_nfsd_cb_free_slot(task, cb);
-> > > > > > > > > +       nfsd41_cb_release_slot(cb);
-> > > > > > > > >
-> > > > > > > > >         if (RPC_SIGNALLED(task))
-> > > > > > > > >                 goto need_restart;
-> > > > > > > > > @@ -1565,7 +1618,7 @@ void nfsd4_init_cb(struct nfsd4_callb=
-ack *cb, struct nfs4_client *clp,
-> > > > > > > > >         INIT_WORK(&cb->cb_work, nfsd4_run_cb_work);
-> > > > > > > > >         cb->cb_status =3D 0;
-> > > > > > > > >         cb->cb_need_restart =3D false;
-> > > > > > > > > -       cb->cb_holds_slot =3D false;
-> > > > > > > > > +       cb->cb_held_slot =3D -1;
-> > > > > > > > >  }
-> > > > > > > > >
-> > > > > > > > >  /**
-> > > > > > > > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > > > > > > > index baf7994131fe1b0a4715174ba943fd2a9882aa12..75557e7cc92=
-65517f51952563beaa4cfe8adcc3f 100644
-> > > > > > > > > --- a/fs/nfsd/nfs4state.c
-> > > > > > > > > +++ b/fs/nfsd/nfs4state.c
-> > > > > > > > > @@ -2002,6 +2002,9 @@ static struct nfsd4_session *alloc_se=
-ssion(struct nfsd4_channel_attrs *fattrs,
-> > > > > > > > >         }
-> > > > > > > > >
-> > > > > > > > >         memcpy(&new->se_fchannel, fattrs, sizeof(struct nfs=
-d4_channel_attrs));
-> > > > > > > > > +       new->se_cb_slot_avail =3D ~0U;
-> > > > > > > > > +       new->se_cb_highest_slot =3D battrs->maxreqs - 1;
-> > > > > > > > > +       spin_lock_init(&new->se_lock);
-> > > > > > > > >         return new;
-> > > > > > > > >  out_free:
-> > > > > > > > >         while (i--)
-> > > > > > > > > @@ -2132,11 +2135,14 @@ static void init_session(struct svc=
-_rqst *rqstp, struct nfsd4_session *new, stru
-> > > > > > > > >
-> > > > > > > > >         INIT_LIST_HEAD(&new->se_conns);
-> > > > > > > > >
-> > > > > > > > > -       new->se_cb_seq_nr =3D 1;
-> > > > > > > > > +       atomic_set(&new->se_ref, 0);
-> > > > > > > > >         new->se_dead =3D false;
-> > > > > > > > >         new->se_cb_prog =3D cses->callback_prog;
-> > > > > > > > >         new->se_cb_sec =3D cses->cb_sec;
-> > > > > > > > > -       atomic_set(&new->se_ref, 0);
-> > > > > > > > > +
-> > > > > > > > > +       for (idx =3D 0; idx < NFSD_BC_SLOT_TABLE_MAX; ++idx)
-> > > > > > > > > +               new->se_cb_seq_nr[idx] =3D 1;
-> > > > > > > > > +
-> > > > > > > > >         idx =3D hash_sessionid(&new->se_sessionid);
-> > > > > > > > >         list_add(&new->se_hash, &nn->sessionid_hashtbl[idx]=
-);
-> > > > > > > > >         spin_lock(&clp->cl_lock);
-> > > > > > > > > @@ -3159,7 +3165,6 @@ static struct nfs4_client *create_cli=
-ent(struct xdr_netobj name,
-> > > > > > > > >         kref_init(&clp->cl_nfsdfs.cl_ref);
-> > > > > > > > >         nfsd4_init_cb(&clp->cl_cb_null, clp, NULL, NFSPROC4=
-_CLNT_CB_NULL);
-> > > > > > > > >         clp->cl_time =3D ktime_get_boottime_seconds();
-> > > > > > > > > -       clear_bit(0, &clp->cl_cb_slot_busy);
-> > > > > > > > >         copy_verf(clp, verf);
-> > > > > > > > >         memcpy(&clp->cl_addr, sa, sizeof(struct sockaddr_st=
-orage));
-> > > > > > > > >         clp->cl_cb_session =3D NULL;
-> > > > > > > > > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> > > > > > > > > index d22e4f2c9039324a0953a9e15a3c255fb8ee1a44..848d023cb30=
-8f0b69916c4ee34b09075708f0de3 100644
-> > > > > > > > > --- a/fs/nfsd/state.h
-> > > > > > > > > +++ b/fs/nfsd/state.h
-> > > > > > > > > @@ -71,8 +71,8 @@ struct nfsd4_callback {
-> > > > > > > > >         struct work_struct cb_work;
-> > > > > > > > >         int cb_seq_status;
-> > > > > > > > >         int cb_status;
-> > > > > > > > > +       int cb_held_slot;
-> > > > > > > > >         bool cb_need_restart;
-> > > > > > > > > -       bool cb_holds_slot;
-> > > > > > > > >  };
-> > > > > > > > >
-> > > > > > > > >  struct nfsd4_callback_ops {
-> > > > > > > > > @@ -307,6 +307,9 @@ struct nfsd4_conn {
-> > > > > > > > >         unsigned char cn_flags;
-> > > > > > > > >  };
-> > > > > > > > >
-> > > > > > > > > +/* Highest slot index that nfsd implements in NFSv4.1+ bac=
-kchannel */
-> > > > > > > > > +#define NFSD_BC_SLOT_TABLE_MAX (sizeof(u32) * 8 - 1)
-> > > > > > > >
-> > > > > > > > Are there some values that are known not to work? I was exper=
-imenting
-> > > > > > > > with values and set it to 2 and 4 and the kernel oopsed. I un=
-derstand
-> > > > > > > > it's not a configurable value but it would still be good to k=
-now the
-> > > > > > > > expectations...
-> > > > > > > >
-> > > > > > > > [  198.625021] Unable to handle kernel paging request at virt=
-ual
-> > > > > > > > address dfff800020000000
-> > > > > > > > [  198.625870] KASAN: probably user-memory-access in range
-> > > > > > > > [0x0000000100000000-0x0000000100000007]
-> > > > > > > > [  198.626444] Mem abort info:
-> > > > > > > > [  198.626630]   ESR =3D 0x0000000096000005
-> > > > > > > > [  198.626882]   EC =3D 0x25: DABT (current EL), IL =3D 32 bi=
-ts
-> > > > > > > > [  198.627234]   SET =3D 0, FnV =3D 0
-> > > > > > > > [  198.627441]   EA =3D 0, S1PTW =3D 0
-> > > > > > > > [  198.627627]   FSC =3D 0x05: level 1 translation fault
-> > > > > > > > [  198.627859] Data abort info:
-> > > > > > > > [  198.628000]   ISV =3D 0, ISS =3D 0x00000005, ISS2 =3D 0x00=
-000000
-> > > > > > > > [  198.628272]   CM =3D 0, WnR =3D 0, TnD =3D 0, TagAccess =
-=3D 0
-> > > > > > > > [  198.628619]   GCS =3D 0, Overlay =3D 0, DirtyBit =3D 0, Xs=
- =3D 0
-> > > > > > > > [  198.628967] [dfff800020000000] address between user and ke=
-rnel address ranges
-> > > > > > > > [  198.629438] Internal error: Oops: 0000000096000005 [#1] SMP
-> > > > > > > > [  198.629806] Modules linked in: rpcsec_gss_krb5 nfsv4 dns_r=
-esolver
-> > > > > > > > nfs netfs nfnetlink_queue nfnetlink_log nfnetlink bluetooth c=
-fg80211
-> > > > > > > > rpcrdma rdma_cm iw_cm ib_cm ib_core nfsd auth_rpcgss nfs_acl =
-lockd
-> > > > > > > > grace isofs uinput snd_seq_dummy snd_hrtimer vsock_loopback
-> > > > > > > > vmw_vsock_virtio_transport_common qrtr rfkill vmw_vsock_vmci_=
-transport
-> > > > > > > > vsock sunrpc vfat fat snd_hda_codec_generic snd_hda_intel
-> > > > > > > > snd_intel_dspcfg snd_hda_codec snd_hda_core snd_hwdep snd_seq=
- uvcvideo
-> > > > > > > > videobuf2_vmalloc snd_seq_device videobuf2_memops uvc videobu=
-f2_v4l2
-> > > > > > > > videodev snd_pcm videobuf2_common mc snd_timer snd vmw_vmci s=
-oundcore
-> > > > > > > > xfs libcrc32c vmwgfx drm_ttm_helper ttm nvme drm_kms_helper
-> > > > > > > > crct10dif_ce nvme_core ghash_ce sha2_ce sha256_arm64 sha1_ce =
-drm
-> > > > > > > > nvme_auth sr_mod cdrom e1000e sg fuse
-> > > > > > > > [  198.633799] CPU: 5 UID: 0 PID: 6081 Comm: nfsd Kdump: load=
-ed Not
-> > > > > > > > tainted 6.12.0-rc6+ #47
-> > > > > > > > [  198.634345] Hardware name: VMware, Inc. VMware20,1/VBSA, B=
-IOS
-> > > > > > > > VMW201.00V.21805430.BA64.2305221830 05/22/2023
-> > > > > > > > [  198.635014] pstate: 11400005 (nzcV daif +PAN -UAO -TCO +DI=
-T -SSBS BTYPE=3D--)
-> > > > > > > > [  198.635492] pc : nfsd4_sequence+0x5a0/0x1f60 [nfsd]
-> > > > > > > > [  198.635798] lr : nfsd4_sequence+0x340/0x1f60 [nfsd]
-> > > > > > > > [  198.636065] sp : ffff8000884977e0
-> > > > > > > > [  198.636234] x29: ffff800088497910 x28: ffff0000b1b39280 x2=
-7: ffff0000ab508128
-> > > > > > > > [  198.636624] x26: ffff0000b1b39298 x25: ffff0000b1b39290 x2=
-4: ffff0000a65e1c64
-> > > > > > > > [  198.637049] x23: 1fffe000212e6804 x22: ffff000109734024 x2=
-1: 1ffff00011092f16
-> > > > > > > > [  198.637472] x20: ffff00010aed8000 x19: ffff000109734000 x1=
-8: 1fffe0002de20c8b
-> > > > > > > > [  198.637883] x17: 0100000000000000 x16: 1ffff0000fcef234 x1=
-5: 1fffe000212e600f
-> > > > > > > > [  198.638286] x14: ffff80007e779000 x13: ffff80007e7791a0 x1=
-2: 0000000000000000
-> > > > > > > > [  198.638697] x11: ffff0000a65e1c38 x10: ffff00010aedaca0 x9=
- : 1fffe000215db594
-> > > > > > > > [  198.639110] x8 : 1fffe00014cbc387 x7 : ffff0000a65e1c03 x6=
- : ffff0000a65e1c00
-> > > > > > > > [  198.639541] x5 : ffff0000a65e1c00 x4 : 0000000020000000 x3=
- : 0000000100000001
-> > > > > > > > [  198.639962] x2 : ffff000109730060 x1 : 0000000000000003 x0=
- : dfff800000000000
-> > > > > > > > [  198.640332] Call trace:
-> > > > > > > > [  198.640460]  nfsd4_sequence+0x5a0/0x1f60 [nfsd]
-> > > > > > > > [  198.640715]  nfsd4_proc_compound+0xb94/0x23b0 [nfsd]
-> > > > > > > > [  198.640997]  nfsd_dispatch+0x22c/0x718 [nfsd]
-> > > > > > > > [  198.641260]  svc_process_common+0x8e8/0x1968 [sunrpc]
-> > > > > > > > [  198.641566]  svc_process+0x3d4/0x7e0 [sunrpc]
-> > > > > > > > [  198.641827]  svc_handle_xprt+0x828/0xe10 [sunrpc]
-> > > > > > > > [  198.642108]  svc_recv+0x2cc/0x6a8 [sunrpc]
-> > > > > > > > [  198.642346]  nfsd+0x270/0x400 [nfsd]
-> > > > > > > > [  198.642562]  kthread+0x288/0x310
-> > > > > > > > [  198.642745]  ret_from_fork+0x10/0x20
-> > > > > > > > [  198.642937] Code: f2fbffe0 f9003be4 f94007e2 52800061 (38e=
-06880)
-> > > > > > > > [  198.643267] SMP: stopping secondary CPUs
-> > > > > > > >
-> > > > > > > >
-> > > > > > > >
-> > > > > > >
-> > > > > > >
-> > > > > > > Good catch. I think the problem here is that we don't currently=
- cap the
-> > > > > > > initial value of se_cb_highest_slot at NFSD_BC_SLOT_TABLE_MAX. =
-Does
-> > > > > > > this patch prevent the panic?
-> > > > > > >
-> > > > > > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > > > > > index 3afe56ab9e0a..839be4ba765a 100644
-> > > > > > > --- a/fs/nfsd/nfs4state.c
-> > > > > > > +++ b/fs/nfsd/nfs4state.c
-> > > > > > > @@ -2011,7 +2011,7 @@ static struct nfsd4_session *alloc_sessio=
-n(struct nfsd4_channel_attrs *fattrs,
-> > > > > > >
-> > > > > > >         memcpy(&new->se_fchannel, fattrs, sizeof(struct nfsd4_c=
-hannel_attrs));
-> > > > > > >         new->se_cb_slot_avail =3D ~0U;
-> > > > > > > -       new->se_cb_highest_slot =3D battrs->maxreqs - 1;
-> > > > > > > +       new->se_cb_highest_slot =3D min(battrs->maxreqs - 1, NF=
-SD_BC_SLOT_TABLE_MAX);
-> > > > > > >         spin_lock_init(&new->se_lock);
-> > > > > > >         return new;
-> > > > > > >  out_free:
-> > > > > >
-> > > > > > It does help. I thought that the CREATE_SESSION reply for the
-> > > > > > backchannel would be guided by the NFSD_BC_SLOT_TABLE_MAX value b=
-ut
-> > > > > > instead it seems like it's not. But yes I can see that the highest
-> > > > > > slot used by the server is capped by the NFSD_BC_SLOT_TABLE_MAX v=
-alue.
-> > > > >
-> > > > > Thanks for testing it, Olga.
-> > > > >
-> > > > > Chuck, would you be OK with folding the above delta into 9ab4c4077d=
-e9,
-> > > > > or would you rather I resend the patch?
-> > > >
-> > > > I've folded the above one-liner into the applied patch.
-> > > >
-> > > > I agree with Tom, I think there's probably a (surprising)
-> > > > explanation lurking for not seeing the expected performance
-> > > > improvement. I can delay sending the NFSD v6.13 merge window pull
-> > > > request for a bit to see if you can get it teased out.
-> > >
-> > > I would like to raise a couple of issues:
-> > > (1) I believe the server should be reporting back an accurate value
-> > > for the backchannel session table size. I think if the
-> > > NFSD_BC_SLOT_TABLE_MAX was way lower than the client's value then the
-> > > client would be wasting resources for its bc session table?
-> >
-> > Yes, but those resources are 32-bit integer per wasted slot. The Linux
-> > client allows for up to 16 slots, so we're wasting 64 bytes per session
-> > with this scheme with the Linux client. I didn't think it was worth
-> > doing a separate allocation for that.
-> >
-> > We could make NFSD_BC_SLOT_TABLE_MAX smaller though. Maybe we should
-> > match the client's size and make it 15?
-> >
-> > > ->back_channel->maxreqs gets decoded in nfsd4_decode_create_session()
-> > > and is never adjusted for the reply to be based on the
-> > > NFSD_BC_SLOT_TABLE_MAX. The problem is currently invisible because
-> > > linux client's bc slot table size is 16 and nfsd's is higher.
-> > >
-> >
-> > I'm not sure I understand the problem here. We don't care about most of
-> > the backchannel attributes. maxreqs is the only one that matters, and
-> > track that in se_cb_highest_slot.
->=20
-> Client sends a create_session with cba_back_chan_attrs with max_reqs
-> of 16 -- stating that the client can handle 16 slots in it's slot
-> table. Server currently doesn't do anything about reflecting back to
-> the client its session slot table. It blindly returns what the client
-> sent. Say NFSD_BC_SLOT_TABLE_MAX was 4. Server would never use more
-> than 4 slots and yet the client would have to create a reply cache
-> table for 16 slots. Isn't that poor sportsmanship on behalf of the
-> linux server?
-
-RFC8881 section 18.36.2 - Description for CREATE_SESSION
-
-ca_maxrequests:
-
- The maximum number of concurrent COMPOUND or CB_COMPOUND requests the
- requester will send on the session.  Subsequent requests will each be
- assigned a slot identifier by the requester within the range zero to
- ca_maxrequests - 1 inclusive.  For the backchannel, the server MUST NOT
- change the value the client offers.  For the fore channel, the server
- MAY change the requested value.=20
-
-The "MUST NOT" doesn't seem ambiguous.
-
-NeilBrown
+DQoNCj4gT24gTm92IDEyLCAyMDI0LCBhdCA2OjEz4oCvUE0sIE5laWxCcm93biA8bmVpbGJAc3Vz
+ZS5kZT4gd3JvdGU6DQo+IA0KPiBPbiBXZWQsIDEzIE5vdiAyMDI0LCBDaHVjayBMZXZlciB3cm90
+ZToNCj4+IE9uIFR1ZSwgTm92IDEyLCAyMDI0IGF0IDExOjQ5OjMwQU0gKzExMDAsIE5laWxCcm93
+biB3cm90ZToNCj4+Pj4gDQo+Pj4+IElmIHlvdSBoYXZlIGEgc3BlY2lmaWMgaWRlYSBmb3IgdGhl
+IG1lY2hhbmlzbSB3ZSBuZWVkIHRvIGNyZWF0ZSB0bw0KPj4+PiBkZXRlY3QgdGhlIHYzIGNsaWVu
+dCByZWNvbm5lY3RzIHRvIHRoZSBzZXJ2ZXIgcGxlYXNlIGxldCBtZSBrbm93Lg0KPj4+PiBSZXVz
+aW5nIG9yIGF1Z21lbnRpbmcgYW4gZXhpc3RpbmcgdGhpbmcgaXMgZmluZSBieSBtZS4NCj4+PiAN
+Cj4+PiBuZnMzX2xvY2FsX3Byb2JlKHN0cnVjdCBuZnNfc2VydmVyICpzZXJ2ZXIpDQo+Pj4gew0K
+Pj4+ICBzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwID0gc2VydmVyLT5uZnNfY2xpZW50Ow0KPj4+ICBu
+ZnNfdXVpZF90ICpuZnNfdXVpZCA9ICZjbHAtPmNsX3V1aWQ7DQo+Pj4gDQo+Pj4gIGlmIChuZnNf
+dXVpZC0+Y29ubmVjdF9jb29raWUgIT0gY2xwLT5jbF9ycGNjbGllbnQtPmNsX3hwcnQtPmNvbm5l
+Y3RfY29va2llKQ0KPj4+ICAgICAgIG5mc19sb2NhbF9wcm9iZV9hc3luYygpDQo+Pj4gfQ0KPj4+
+IA0KPj4+IHN0YXRpYyB2b2lkIG5mc19sb2NhbF9wcm9iZV9hc3luY193b3JrKHN0cnVjdCB3b3Jr
+X3N0cnVjdCAqd29yaykNCj4+PiB7DQo+Pj4gIHN0cnVjdCBuZnNfY2xpZW50ICpjbHAgPSBjb250
+YWluZXJfb2Yod29yaywgc3RydWN0IG5mc19jbGllbnQsDQo+Pj4gICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICBjbF9sb2NhbF9wcm9iZV93b3JrKTsNCj4+PiAgY2xwLT5jbF91dWlkLmNvbm5l
+Y3RfY29va2llID0NCj4+PiAgICAgY2xwLT5jbF9ycGNjbGllbnQtPmNsX3hwcnQtPmNvbm5lY3Rf
+Y29va2llOw0KPj4+ICBuZnNfbG9jYWxfcHJvYmUoY2xwKTsNCj4+PiB9DQo+Pj4gDQo+Pj4gT3Ig
+bWF5YmUgYXNzaWduIGNvbm5lY3RfY29va2llICh3aGljaCB3ZSBoYXZlIHRvIGFkZCB0byB1dWlk
+KSBpbnNpZGUNCj4+PiBuZnNfbG9jYWxfcHJvYmUoKS4NCj4+IA0KPj4gVGhlIHByb2JsZW0gd2l0
+aCBwZXItY29ubmVjdGlvbiBjaGVja3MgaXMgdGhhdCBhIGNoYW5nZSBpbiBleHBvcnQNCj4+IHNl
+Y3VyaXR5IHBvbGljeSBjb3VsZCBkaXNhYmxlIExPQ0FMSU8gcmF0aGVyIHBlcnNpc3RlbnRseS4g
+VGhlIG9ubHkNCj4+IHdheSB0byByZWNvdmVyLCBpZiBjaGVja2luZyBpcyBkb25lIG9ubHkgd2hl
+biBhIGNvbm5lY3Rpb24gaXMNCj4+IGVzdGFibGlzaGVkLCBpcyB0byByZW1vdW50IG9yIGZvcmNl
+IGEgZGlzY29ubmVjdC4NCj4+IA0KPiBXaGF0IGV4cG9ydCBzZWN1cml0eSBwb2xpY3kgc3BlY2lm
+aWNhbGx5Pw0KPiBEbyB5b3UgbWVhbiBjaGFuZ2luZyBmcm9tIHNlYz1zeXMgdG8gdG8gc2VjPWty
+YjVpIGZvciBleGFtcGxlPw0KDQpBbm90aGVyIGV4YW1wbGUgbWlnaHQgYmUgYWx0ZXJpbmcgdGhl
+IElQIGFkZHJlc3MgbGlzdCBvbg0KdGhlIGV4cG9ydC4gU3VwcG9zZSB0aGUgY2xpZW50IGlzIGFj
+Y2lkZW50YWxseSBibG9ja2VkDQpieSB0aGlzIHBvbGljeSwgdGhlIGFkbWluaXN0cmF0b3IgcmVh
+bGl6ZXMgaXQsIGFuZCBjaGFuZ2VzDQppdCBhZ2FpbiB0byByZXN0b3JlIGFjY2Vzcy4NCg0KVGhl
+IGNsaWVudCBkb2VzIG5vdCBkaXNjb25uZWN0IGluIHRoaXMgY2FzZSwgQUZBSUsuDQoNCg0KPiBU
+aGlzDQo+IHdvdWxkIChob3BlZnVsbHkpIGRpc2FibGUgbG9jYWxpby4gIFRoZW4gY2hhbmdpbmcg
+dGhlIGV4cG9ydCBiYWNrIHRvDQo+IHNlYz1zeXMgd291bGQgbWVhbiB0aGF0IGxvY2FsaW8gd291
+bGQgYmUgcG9zc2libGUgYWdhaW4uICBJIHdvbmRlciBob3cNCj4gdGhlIGNsaWVudCBjb3BlcyB3
+aXRoIHRoaXMuICBEb2VzIGl0IHdvcmsgb24gYSBsaXZlIG1vdW50IHdpdGhvdXQNCj4gcmVtb3Vu
+dD8gIElmIHNvIGl0IHdvdWxkIGNlcnRhaW5seSBtYWtlIHNlbnNlIGZvciB0aGUgY3VycmVudCBz
+ZWN1cml0eQ0KPiBzZXR0aW5nIHRvIGJlIGNhY2hlZCBpbiBuZnNfdWlkZCBhbmQgZm9yIGEgcHJv
+YmUgdG8gYmUgYXR0ZW1wdGVkDQo+IHdoZW5ldmVyIHRoYXQgY2hhbmdlZCB0byBzZWM9c3lzLg0K
+PiANCj4gVGhhbmtzLA0KPiBOZWlsQnJvd24NCg0KLS0NCkNodWNrIExldmVyDQoNCg0K
