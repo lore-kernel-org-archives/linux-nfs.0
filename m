@@ -1,93 +1,126 @@
-Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA9D2171D2;
-	Fri, 22 Nov 2024 14:29:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC1E26A009
+	for <linux-nfs@vger.kernel.org>; Fri, 22 Nov 2024 15:11:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1732285761; cv=none; b=Z5FqWT5UIhs+Of6eJP/BeNhD2ASdr+K1jLzQsjnJBLt63ORib4pk1cPoZKt2yDUa2MdrQWQixfeTj+gfUA/1E8l8n+QN2LpjDYo5uN4aU6X9WTOfM4+acHQoKJcD88ZdiTgk9y5343y7wpI4TvsXdz8qg/hiTWffH0TBuDI2skY=
+	t=1732288283; cv=none; b=KHP/cuVR14Qpo1n07f09LeUti16E1zPUQGAtN195KBJI4mjAxcM4pgNxyF321poOLpzL8cFBa3VfwnEQtY1WoAIjbxPc4WRcNwgzXy8nqAuUc2Qu9rVUhAMMcHRamn+uy79TI/Q24M1tarzkjJv4cWwoIcC0ZCvHVLrpTLRG8Zs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1732285761; c=relaxed/simple;
-	bh=ALWtShgKlACg5peP3rjy/sBRWgmDv3+Kp9cFCaaIV7A=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=A8Sao7HV8FO6tx3E/Jj90QK1ncuM2lrzDUTi9MyEgUMshwJg35fWspWqftm3CKYAqMad76Cgn5CRuwonVVUwdwX7Wm9rhUUY/oSxl3o3ua4WF0XQ2v9UMfN81fs+i7ysA5EJi5qKcQTrxwgG+2l83gTeLRMZoQcCmw7i0jdo94c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org; spf=pass smtp.mailfrom=gmail.com; arc=none smtp.client-ip=209.85.214.169
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=kernel.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-21288d3b387so16865515ad.1;
-        Fri, 22 Nov 2024 06:29:19 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1732285759; x=1732890559;
-        h=mime-version:user-agent:content-transfer-encoding:references
-         :in-reply-to:date:cc:to:from:subject:message-id:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=ALWtShgKlACg5peP3rjy/sBRWgmDv3+Kp9cFCaaIV7A=;
-        b=mYO7Z73LoI/pyxzUv9UUK75M8s3m+SMwknJnp+bcC3+CCyWXish9CjakRwgrYBXI94
-         1E2k9L/9BRm5Lga2eVI8t8SHITRCAG7yRjiAVz9665vWRqGYDLaIHcuq0kgNf5yT91f5
-         vMopwnBwRyglFP96EKVHs8zkTbG58ZEGQY4jbasuf0rfp5V4QYJwlulQla3EDWvIPYH/
-         47W3aYg0OnAdqhWedctRc8Bl2bgozgpmTg5ubyqhM+R2UH1EUBQpHoo0o6gM9sLeSoYm
-         2dhkmsjUqeZQpt2xOY6L1hd/hrubvA5ATu6xWGXkYCsNJz7KtAzEMEoPt16z2YFD/fAF
-         aKeg==
-X-Forwarded-Encrypted: i=1; AJvYcCVVn9qztWX3E59Eq5UJEnayqjYX2/gxzu3hUanLCbKHHx9VgWXnVXBWJjC+4QRkvE4w9veafcA168rWJd4=@vger.kernel.org
-X-Gm-Message-State: AOJu0YyZK+TxsbBSs6x+YGUk1rNLbngwkcNKtC520nALlIb4gEhttC1h
-	ALgkTDIBAOm9UyE6nq96q4Ocr8UubJipJdTPtx7ayqfN0i8vBSPRO3lb
-X-Gm-Gg: ASbGncvTvOZ7mDkqD61QVrNbps09ZRM7koxzg+nF0lwQY7nN498eggWluVSJlNFhqzs
-	L05AnFgDZojA6+2ZiOP3jabqMPWlsdRFIFydjnh6OSxbxp/S+L2/RWq0JrxbAWdeIvNTCOjHubM
-	ANstnV5oG8cTJBF+PvBTdGNIECJ1lWgyw0Npa0nUVE89FESAsqW3BGGyyqCjPFGeTzRUa7dFcUM
-	sjiduXBFjAYtENaPIzUB21bLh2IYc+remYBAZyU94OlAbJ/v+dGJKiXVGybQgM5+jcjT07P6W34
-	fSpbY0thtcH0xGqqLKfIN79Soh7JqWvVjHzEEgiHOCc=
-X-Google-Smtp-Source: AGHT+IHel6+PKEihHvZyFEe4e3RNy6kPKRotK4Z9syzvfzmS32VcpNb0Rz9EH0NPaRwp67vJtT6eOg==
-X-Received: by 2002:a17:902:d4cb:b0:212:996:3536 with SMTP id d9443c01a7336-2129f5c3cf0mr42291255ad.10.1732285758986;
-        Fri, 22 Nov 2024 06:29:18 -0800 (PST)
-Received: from leira.trondhjem.org (104-63-89-173.lightspeed.livnmi.sbcglobal.net. [104.63.89.173])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2129dc207bbsm16542835ad.228.2024.11.22.06.29.17
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 22 Nov 2024 06:29:18 -0800 (PST)
-Message-ID: <d7b2d246dfffb921f7d2c1e59fc0e6d847fcaf2f.camel@kernel.org>
-Subject: Re: [PATCH v3 0/2] two fixes for pNFS SCSI device handling
-From: Trond Myklebust <trondmy@kernel.org>
-To: Benjamin Coddington <bcodding@redhat.com>, Anna Schumaker
- <anna@kernel.org>,  Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, Christoph
- Hellwig	 <hch@lst.de>
-Date: Fri, 22 Nov 2024 09:29:15 -0500
-In-Reply-To: <cover.1732279560.git.bcodding@redhat.com>
-References: <cover.1732279560.git.bcodding@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.54.1 (3.54.1-1.fc41) 
+	s=arc-20240116; t=1732288283; c=relaxed/simple;
+	bh=AimJ11uxufoed/sDRYAOLuvEayVn4YN6qm5ISIiR3q8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=Ga4cse07BmYbDa8I1FoIJbeAtWP/I/KBq4qx4yFEqFWqgKLSgZmADkaLRugXnvJsm8gykIPpfxwC/AaRhRnzaRhzod4o1Ca/lzB65Aai03ZnLYtgAftTu8ZnXgjVyRL7aEIz0HBavf9A+BXy3qMpUI9dKhSytwH9lQKp1thwfM4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Rp9bPEKV; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Rp9bPEKV"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1732288281;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=0Uuqe0QCVbyX763fc1rUZSeIQKe9ONR1oYq0/7YUtzA=;
+	b=Rp9bPEKVPsI1gauxrxdov7EksqSboDRmoYCHkBODr5wjoz8HrDAiFJ/ugkL2aBEv8r9YgI
+	mvs7g51Vr8PFVJw2T5OvYAo8wJjju4q59xPSkz0MkVDfireaVSZGZ8sYW/zGmnPuzDqwoa
+	7rcPjhfpop6kz8QQH2ONSBbK1pyZ5o4=
+Received: from mx-prod-mc-04.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-290-pkPjr96HMdC1csYqW5qrIg-1; Fri,
+ 22 Nov 2024 10:11:17 -0500
+X-MC-Unique: pkPjr96HMdC1csYqW5qrIg-1
+X-Mimecast-MFC-AGG-ID: pkPjr96HMdC1csYqW5qrIg
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-04.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 5EB3C1955F77;
+	Fri, 22 Nov 2024 15:11:16 +0000 (UTC)
+Received: from bcodding.csb.redhat.com (unknown [10.22.74.7])
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 1FAE6195E481;
+	Fri, 22 Nov 2024 15:11:14 +0000 (UTC)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Christoph Hellwig <hch@lst.de>
+Subject: [PATCH v4 1/2] nfs/blocklayout: Don't attempt unregister for invalid block device
+Date: Fri, 22 Nov 2024 10:11:11 -0500
+Message-ID: <328bdcc958ebc16e95dca0c712a19cdb9b42bb99.1732288202.git.bcodding@redhat.com>
+In-Reply-To: <cover.1732288202.git.bcodding@redhat.com>
+References: <cover.1732288202.git.bcodding@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-On Fri, 2024-11-22 at 07:47 -0500, Benjamin Coddington wrote:
-> A bit late for v6.13 perhaps, but here are two fresh corrections for
-> pNFS
-> SCSI device handling, and some comments as requested by Christoph.
->=20
-> On v2: add full commit subject in 1/2, change the caller in 2/2.
-> On v3: add r-b for Chuck, tweak comments in 2/2.
->=20
-> Benjamin Coddington (2):
-> =C2=A0 nfs/blocklayout: Don't attempt unregister for invalid block device
-> =C2=A0 nfs/blocklayout: Limit repeat device registration on failure
->=20
-> =C2=A0fs/nfs/blocklayout/blocklayout.c | 15 ++++++++++++++-
-> =C2=A0fs/nfs/blocklayout/dev.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
-=C2=A0 |=C2=A0 6 ++----
-> =C2=A02 files changed, 16 insertions(+), 5 deletions(-)
->=20
->=20
-> base-commit: adc218676eef25575469234709c2d87185ca223a
+Since commit d869da91cccb ("nfs/blocklayout: Fix premature PR key
+unregistration") an unmount of a pNFS SCSI layout-enabled NFS may
+dereference a NULL block_device in:
 
-Please make those patches be incremental against what is already in
-linux-next.
---=20
-Trond Myklebust
-Linux NFS client maintainer, Hammerspace
-trond.myklebust@hammerspace.com
+  bl_unregister_scsi+0x16/0xe0 [blocklayoutdriver]
+  bl_free_device+0x70/0x80 [blocklayoutdriver]
+  bl_free_deviceid_node+0x12/0x30 [blocklayoutdriver]
+  nfs4_put_deviceid_node+0x60/0xc0 [nfsv4]
+  nfs4_deviceid_purge_client+0x132/0x190 [nfsv4]
+  unset_pnfs_layoutdriver+0x59/0x60 [nfsv4]
+  nfs4_destroy_server+0x36/0x70 [nfsv4]
+  nfs_free_server+0x23/0xe0 [nfs]
+  deactivate_locked_super+0x30/0xb0
+  cleanup_mnt+0xba/0x150
+  task_work_run+0x59/0x90
+  syscall_exit_to_user_mode+0x217/0x220
+  do_syscall_64+0x8e/0x160
 
+This happens because even though we were able to create the
+nfs4_deviceid_node, the lookup for the device was unable to attach the
+block device to the pnfs_block_dev.
+
+If we never found a block device to register, we can avoid this case with
+the PNFS_BDEV_REGISTERED flag.  Move the deref behind the test for the
+flag.
+
+Fixes: d869da91cccb ("nfs/blocklayout: Fix premature PR key unregistration")
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/blocklayout/dev.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
+index 6252f4447945..cab8809f0e0f 100644
+--- a/fs/nfs/blocklayout/dev.c
++++ b/fs/nfs/blocklayout/dev.c
+@@ -20,9 +20,6 @@ static void bl_unregister_scsi(struct pnfs_block_dev *dev)
+ 	const struct pr_ops *ops = bdev->bd_disk->fops->pr_ops;
+ 	int status;
+ 
+-	if (!test_and_clear_bit(PNFS_BDEV_REGISTERED, &dev->flags))
+-		return;
+-
+ 	status = ops->pr_register(bdev, dev->pr_key, 0, false);
+ 	if (status)
+ 		trace_bl_pr_key_unreg_err(bdev, dev->pr_key, status);
+@@ -58,7 +55,8 @@ static void bl_unregister_dev(struct pnfs_block_dev *dev)
+ 		return;
+ 	}
+ 
+-	if (dev->type == PNFS_BLOCK_VOLUME_SCSI)
++	if (dev->type == PNFS_BLOCK_VOLUME_SCSI &&
++		test_and_clear_bit(PNFS_BDEV_REGISTERED, &dev->flags))
+ 		bl_unregister_scsi(dev);
+ }
+ 
+-- 
+2.47.0
 
