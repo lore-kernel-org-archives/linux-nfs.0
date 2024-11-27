@@ -1,36 +1,36 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 84A7654F8C
-	for <linux-nfs@vger.kernel.org>; Wed, 27 Nov 2024 02:35:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4BD801BC3F
+	for <linux-nfs@vger.kernel.org>; Wed, 27 Nov 2024 02:35:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1732674912; cv=none; b=AA6BL53QQUrb1TCa0hsMv6wrGWuudI4Q9VcBZNNjg/bCljmMetY8ql0pDKmoyMaQbVpb97L0D4R9dcSiWVdXuV+tKQJQ63QFRR3x2ddFZl4Ez2YE5WI+RoB982/3oOSZpqBOW+cm/t739Xj72YL40ajXt83fmCfmsHcfHSfRuwA=
+	t=1732674917; cv=none; b=ixeU2HRxCLcKNx+EGeFJVWaT2wGHNSikwcCMyyaSuwyIsPyYl6iKrc5PQLfJyHSXWW/IX3N8wzd/lqlYePuABpTeLY1dm0GPmwIpac6vFD8t9aW5N+6WX0ZyKUYheNOVluSP7vI3dbGGX+V5lDAWnCMW147c2VXDSPo/diyMtrQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1732674912; c=relaxed/simple;
-	bh=bza4C01K9SmErLWecfHlK1vUmU88j02DBYLRkJmec8A=;
+	s=arc-20240116; t=1732674917; c=relaxed/simple;
+	bh=nEacNsBoHQWoCbwYaSszzBA1/zVP2bxSP2KqtvqssTc=;
 	h=From:Date:MIME-Version:Content-Type:To:Message-ID:In-Reply-To:
-	 References:Subject; b=ZCT/eITvHM3s4wUUHzMEoNaOb6WdCSQg0+FUgBd65d2UhFHR5jJyKRhgB1NeTW0BdnHJKsprFInfhUNUpM0vyRipm/ZoVnS8r364/ulmN40dEEzlSGj4xByoeTgrtdBM9VsU1k01gTWTHnDyzrSg2R36tstO1p5sFjMSjkhygo0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=b5DKndDA; arc=none smtp.client-ip=10.30.226.201
+	 References:Subject; b=OFXG4NzFskMkjAClw/xb3DQHeUARQjP9bBZKpjHhkdIe+NwiJFLlX7Hwok9Am0m5MhjVEbFV5PkngpAkirDNNugyxeuBUE3GpOsT9gwDFOzJt7t3aPURxyBNQzQI9+9NfED/UUvifczOluTcr2UQuIGP7jNFcNUOMXfUl8P0Vk4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TqK9Haer; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="b5DKndDA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 57979C4CECF;
-	Wed, 27 Nov 2024 02:35:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TqK9Haer"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CC1A4C4CECF;
+	Wed, 27 Nov 2024 02:35:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1732674912;
-	bh=bza4C01K9SmErLWecfHlK1vUmU88j02DBYLRkJmec8A=;
+	s=k20201202; t=1732674916;
+	bh=nEacNsBoHQWoCbwYaSszzBA1/zVP2bxSP2KqtvqssTc=;
 	h=From:Date:To:In-Reply-To:References:Subject:From;
-	b=b5DKndDAUyGLyJFaHX/bJ6P2bWNJ1vRPcFVaCrkWYICm0IyFw9YildwbQbYH8+qR0
-	 uqm2UUr2fNwkMLBj20TmSdmCGVhhfZwWTgIwnrSKc1QATGvuJPcMxd1BiDJSnx9gPO
-	 fB58ZwcIpUCGVMpNbU4CUKk6EzfD8mdEld6aACVkrkBTZcADl0uJrfOz5NIFoo/nr1
-	 xUAw8WCcHDYVGVRmK4NmteK+m59KT6USoSld3qnOtZMtXVq0FOzlzvHxVR8+6X6DNh
-	 G2P63aPE19KeIkq0Y6jlmq/bISJbcr695unKZiHAS0LiY6P/5MxGCOpr5FsUf1UiT9
-	 0LnGR+VvJ0vdg==
+	b=TqK9HaerBM8vK69DVQdd3v7mGgpJvl8PGHXQSiyzMG5IPAe9+grxRyHRuYNIuDNlE
+	 wtib+/TBLeXpXTTNkqKbRlFNSHX9Hv6/6mXNFR1/oNbaVh4cGILRCbMYCsJ1GEjhFl
+	 VrkQSXfkCpQo5FmDB7EE4OtBeUe42zR8esUwQoNfMXmRhXzqpbfGanr2PUhQWIDghx
+	 EwIU8+S4f+cwgVEb6+MeaUbIuv+o/Rt2AQhsXbPrT9kdhlqaowx9dMNX7f1Y0uHiJf
+	 wgxPl0huQT+VJP7CA4J82NmVLY4FBeVvQzna5etjMtaTIcLYKynyNB4FMuQHYSBKtq
+	 fu8DtUukQATgA==
 Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 70DBF3809A00;
-	Wed, 27 Nov 2024 02:35:26 +0000 (UTC)
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id EB2463809A00;
+	Wed, 27 Nov 2024 02:35:30 +0000 (UTC)
 From: Chen Chen via Bugspray Bot <bugbot@kernel.org>
-Date: Wed, 27 Nov 2024 02:35:13 +0000
+Date: Wed, 27 Nov 2024 02:35:14 +0000
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,7 +41,7 @@ Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 To: linux-nfs@vger.kernel.org, trondmy@kernel.org, jlayton@kernel.org, 
  anna@kernel.org, cel@kernel.org
-Message-ID: <20241127-b219535c6-7870885cef87@bugzilla.kernel.org>
+Message-ID: <20241127-b219535c7-828e9c22296f@bugzilla.kernel.org>
 In-Reply-To: <20241127-b219535c0-4d5445e74947@bugzilla.kernel.org>
 References: <20241127-b219535c0-4d5445e74947@bugzilla.kernel.org>
 Subject: Re: Possible memory leak on nfsd
@@ -51,14 +51,14 @@ X-Mailer: bugspray 0.1-dev
 
 Chen Chen added an attachment on Kernel.org Bugzilla:
 
-Created attachment 307289
-/proc/vmstat
+Created attachment 307290
+oom dmesg from kdump
 
-File: vmstat (text/plain)
-Size: 3.65 KiB
-Link: https://bugzilla.kernel.org/attachment.cgi?id=307289
+File: vmcore-dmesg.txt (text/plain)
+Size: 535.11 KiB
+Link: https://bugzilla.kernel.org/attachment.cgi?id=307290
 ---
-/proc/vmstat
+oom dmesg from kdump
 
 You can reply to this message to join the discussion.
 -- 
