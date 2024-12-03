@@ -1,39 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EB07D1F8AD4
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Dec 2024 16:29:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 407E71F8AE4
+	for <linux-nfs@vger.kernel.org>; Tue,  3 Dec 2024 16:29:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1733243361; cv=none; b=JEx8nwrNJoH1839ZNjy+NaXD4tPFjMwR8+5MtS/VAwetEKmKbIK2j8DbLZebiaas0FEj0Toq5JPx5a/ZNSDfI7Mq+pSJct/SPSvI6qisB8c55mD7a2kGcXp2iWkDwSH2dkjwv6hsj5JDTz12+c4BBf5PgVc2RneBNLHwzigWUNs=
+	t=1733243361; cv=none; b=mKVbPFo+18RKjKG0XzkQRHB9l+b/J/9CR76jGhqYivHx3/fn7Ksqasu+sOk9REjhllCPtLf8bVNSjeIj68aFTHAK5xX39faeurnb5wt/INIn6P61SpG2iAQmU7fV36ARTf3zL+BJCtOUP2vXdJM/u4aQl7EC690RWNea9LfvYwE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1733243361; c=relaxed/simple;
-	bh=o4OPCvcvzGjpQ2jsC3ajssM6BwUC/ZQrtYpiBuMazYk=;
+	bh=UHYvkJ/Qmw8fb6OtUDOkOorY6lSj4IVXt1zWIkSVVuM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=J/l5u0PPwS6d/PIhCh3bAWOpYtAAgvuvSChsRZ56KYTy856cEBOUjvYHMuH0sWdqxAwETgoWqwDwZM/Tl6aZ3sx+TOqvzQ65egoupdjryHA4pwg+GRrR71MhGPKY8TxXDA2A7MOIt51N6TDDOnBfBuCWTkysD4Ec69Pg6YKdymw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fdozGFLS; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=K4puTOS/txuPkBieRoW946YbP3KmMflfeAiIhtDXtNkbaRtsdQ5zJW9I9bAyC1i02WCvINug6RDKy445zw9zA679ym2QLrXkcEBxkDAA+pUSF5/xynR7z74ANWXNlv29tHvm8IZ6W66TzFNVybC+OdA8he+ZRDK1BjtAt3SnHao=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QIY+IgOS; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fdozGFLS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0CEF7C4CED6;
-	Tue,  3 Dec 2024 16:29:19 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QIY+IgOS"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AF00FC4CECF;
+	Tue,  3 Dec 2024 16:29:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1733243360;
-	bh=o4OPCvcvzGjpQ2jsC3ajssM6BwUC/ZQrtYpiBuMazYk=;
+	s=k20201202; t=1733243361;
+	bh=UHYvkJ/Qmw8fb6OtUDOkOorY6lSj4IVXt1zWIkSVVuM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=fdozGFLS6VkmHbYVPmwpKOyRzZ060T5mFSuMYf5D5/lVOTlw4ihoXP25g+SfKE4bt
-	 oe613Flc0a52d+vodvBt0UvAOYVn1EYU1XODLgfc/uNVKojyajVVLK+U7419L+Ojpd
-	 wEHV40Hl5u3A+3r+gAyQcfbeqX/I0AozyQBK4WMkLtDw2v9hwPlQO3kvlsVfVGeWbf
-	 2xhuOKonleVnSRVZzixgJwXNRUKb445C6cYxY9cy5Zrlyk5ctPfcPToXu2yJV29e6a
-	 KgxnHB+jYpbLZdN9y3+zHXIM23KRWDx6Qe4nnK4udvm1IJaT9BUAfkZq7kI8Hg0Y5n
-	 5B+Ntbpwf2TYw==
+	b=QIY+IgOSeWiQU3BfdYREzVyDWhB83pgOoCMOe5ey4mcE6YpCt+f+QszfI9ueWyAfP
+	 5gpzbaCnqnp5GTZybMAdZaqdIQINCRVvWZokciLGuOuSQJnk5n8oIb2wjmDp7siLfM
+	 ZOBkCDdI4V14FA7dupmqXe4kweElQ3dChkYeeFD+KnPFkKpNtYowmthOhXSPCXai+G
+	 QqJA1ZNxqfBSYYPtsHSrCMnVEgwKSZrM9ZV/hJZKydq7mw5x7e/FQ20MY3/i9k0SmK
+	 KOf/wRpaPssjdX12Cv+6L5DvTV0B/vXhJCBA9oAougMxNT73FDsy8XqSWxHTSqrv0N
+	 xLrN8AxqrMt+A==
 From: cel@kernel.org
 To: Olga Kornievskaia <okorniev@redhat.com>,
 	Anna Schumaker <anna@kernel.org>
 Cc: <linux-nfs@vger.kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 3/7] NFS: Rename struct nfs4_offloadcancel_data
-Date: Tue,  3 Dec 2024 11:29:12 -0500
-Message-ID: <20241203162908.302354-12-cel@kernel.org>
+Subject: [PATCH v1 4/7] NFS: Implement NFSv4.2's OFFLOAD_STATUS XDR
+Date: Tue,  3 Dec 2024 11:29:13 -0500
+Message-ID: <20241203162908.302354-13-cel@kernel.org>
 X-Mailer: git-send-email 2.47.0
 In-Reply-To: <20241203162908.302354-9-cel@kernel.org>
 References: <20241203162908.302354-9-cel@kernel.org>
@@ -43,88 +43,195 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2778; i=chuck.lever@oracle.com; h=from:subject; bh=OjH+m397zWOGeAlWbq2+w1ipk8WludUbOjofUQ3hJn0=; b=owEBbQKS/ZANAwAIATNqszNvZn+XAcsmYgBnTzHaQUDdD5d36iI9/pYM8QCFMEyhnWZ4TGPJD HbLmfXMYZKJAjMEAAEIAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCZ08x2gAKCRAzarMzb2Z/ l8hkD/9OEAJlQmawDJg4bhojNEuWEvasXvP9QD7a2RAlYpa4W/lrtyq+WWXMF+PvZ7XucoNDyyW qnmxWbBtToeK75mQHVMhh53ES/9R4SD3Gx/SBrWP1WOxvtpiWWF5mZngJBfNIpNvFwyFUNyigwC BBD6HwDbFiy2YY77f6TFBVIiNm6hbUrjnGnrAz5UAJlLV2QXTmIATcS3ZDUttL/ZDQR6x7aIVWC R1EBEFbLm09s+sHKlM4NwLk4xpnZKCKuOl28ONqeulBGKyKEZ53K2HdbJSznvndHr4IvcrOycmT hPDgf1umoXV16TptRtCtyNvKTxmHEuB3JllCpSb2d81zI9r4RSKV1h0gajoiX/DGg8PQiaf61H+ LeskHBP3aoJs867XsnkLKqJpNFp9tHocBtmv0eKnAjdZWTUDgprraCUrwcvEwLdMvs5PtSHrfrc byc8/9YNMYNi9A0IHOa4O7E6XkkmGevmVHP7fcDJRD1D2q9ST6zKhordu6TfyQIvP9UbzVVGAxn Oc3s0l03Wsz8LDJvYisWektUzPRZmkqrLdUnvfapoKlhsM0S4E08iMmM1MTxCcSLZg1CXhErF4y HBFVoEzEGbP2+0ehTx08aL9hl8M1rdmOhz0CR4e3ULal372yjxw3NJdm1lPmeP+yORcRHEiWoa7 27UIr1pPbcZMWdw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5792; i=chuck.lever@oracle.com; h=from:subject; bh=VVja45jvjBnwA3YK9gym7fzUL0QdIxmHxMQFFKKkUpQ=; b=owEBbQKS/ZANAwAIATNqszNvZn+XAcsmYgBnTzHbhVDTbw1zxqw0jFYj1hGPnXzRPUAwUwLxx gMEHCYAGWKJAjMEAAEIAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCZ08x2wAKCRAzarMzb2Z/ l7nXD/0XRJqdhH03BpFWEzm+GY3dCMp7yrTuQwu6kYK/sj5ctXIF8MPPDRNMZa/AUs3beLef2pu 4elBc+Mta2DoybPS+VJUADKbHoK3vDVtWYLRgTB5TDqzsoC45dQaTjv/cbWCHGh9pwUK6Xt8Hms NGWZfGD6df928lM6MWiteUSZf3+4ShmOObjuBvmgjzy+vJ7X7QC/qkGP3q4nGUlXnr6HSXrxJHH vHfU3hdbkoCSAcGuiJtaxkL9nT7vN76+HdiT50bOLGnMtBo2W8b74f4NzaoGUmuSdkBYtC0m1L0 fFiEA0XEUMidiopQzQMx/h79Fgm1E+3wqIltrmJ/t3i9oMdfeZGNDHqylcdVAlsee58BOztciOD lTryzKvLof+9dizmuYbpVv1LJ+E806Lp7Q0e/MJBrIrmziSj6vhlqM6RNqeR79W9MDmA+FAG3Md M2OkA6YFmkJ7QHb2NEChvEgNOBiC7Nop8+QV/vCFMG3SlP1aI4PPlHiIWBCM7aIiuMs2lkl3+zE 4hNwLMUjFzIBM/sOLK9ygEm8oTfHuj+nN1/4IoeII0fS2iWNSfsySv9j/lSB9cIbQQJ3hGWeknp kFCJ6wR7QKAN2IPkQ3LUUFQJk2CaEZ/M+NSZh7usee4ohlWCW1Xs806GA5v3ell1fb41d/sHV7I ItQmI4n5r2pbWAA==
 X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp; fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Refactor: This struct can be used unchanged for the new
-OFFLOAD_STATUS implementation, so give it a more generic name.
+Add XDR encoding and decoding functions for the NFSv4.2
+OFFLOAD_STATUS operation.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs42proc.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+ fs/nfs/nfs42xdr.c       | 86 +++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4xdr.c        |  1 +
+ include/linux/nfs4.h    |  1 +
+ include/linux/nfs_xdr.h |  5 ++-
+ 4 files changed, 91 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 531c9c20ef1d..9d716907cf30 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -498,15 +498,15 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 	return err;
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index ef5730c5e704..a928b7f90e59 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -35,6 +35,11 @@
+ #define encode_offload_cancel_maxsz	(op_encode_hdr_maxsz + \
+ 					 XDR_QUADLEN(NFS4_STATEID_SIZE))
+ #define decode_offload_cancel_maxsz	(op_decode_hdr_maxsz)
++#define encode_offload_status_maxsz	(op_encode_hdr_maxsz + \
++					 XDR_QUADLEN(NFS4_STATEID_SIZE))
++#define decode_offload_status_maxsz	(op_decode_hdr_maxsz + \
++					 2 /* osr_count */ + \
++					 2 /* osr_complete */)
+ #define encode_copy_notify_maxsz	(op_encode_hdr_maxsz + \
+ 					 XDR_QUADLEN(NFS4_STATEID_SIZE) + \
+ 					 1 + /* nl4_type */ \
+@@ -143,6 +148,14 @@
+ 					 decode_sequence_maxsz + \
+ 					 decode_putfh_maxsz + \
+ 					 decode_offload_cancel_maxsz)
++#define NFS4_enc_offload_status_sz	(compound_encode_hdr_maxsz + \
++					 encode_sequence_maxsz + \
++					 encode_putfh_maxsz + \
++					 encode_offload_status_maxsz)
++#define NFS4_dec_offload_status_sz	(compound_decode_hdr_maxsz + \
++					 decode_sequence_maxsz + \
++					 decode_putfh_maxsz + \
++					 decode_offload_status_maxsz)
+ #define NFS4_enc_copy_notify_sz		(compound_encode_hdr_maxsz + \
+ 					 encode_putfh_maxsz + \
+ 					 encode_copy_notify_maxsz)
+@@ -343,6 +356,14 @@ static void encode_offload_cancel(struct xdr_stream *xdr,
+ 	encode_nfs4_stateid(xdr, &args->osa_stateid);
  }
  
--struct nfs42_offloadcancel_data {
-+struct nfs42_offload_data {
- 	struct nfs_server *seq_server;
- 	struct nfs42_offload_status_args args;
- 	struct nfs42_offload_status_res res;
++static void encode_offload_status(struct xdr_stream *xdr,
++				  const struct nfs42_offload_status_args *args,
++				  struct compound_hdr *hdr)
++{
++	encode_op_hdr(xdr, OP_OFFLOAD_STATUS, decode_offload_status_maxsz, hdr);
++	encode_nfs4_stateid(xdr, &args->osa_stateid);
++}
++
+ static void encode_copy_notify(struct xdr_stream *xdr,
+ 			       const struct nfs42_copy_notify_args *args,
+ 			       struct compound_hdr *hdr)
+@@ -567,6 +588,25 @@ static void nfs4_xdr_enc_offload_cancel(struct rpc_rqst *req,
+ 	encode_nops(&hdr);
+ }
+ 
++/*
++ * Encode OFFLOAD_STATUS request
++ */
++static void nfs4_xdr_enc_offload_status(struct rpc_rqst *req,
++					struct xdr_stream *xdr,
++					const void *data)
++{
++	const struct nfs42_offload_status_args *args = data;
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->osa_seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->osa_seq_args, &hdr);
++	encode_putfh(xdr, args->osa_src_fh, &hdr);
++	encode_offload_status(xdr, args, &hdr);
++	encode_nops(&hdr);
++}
++
+ /*
+  * Encode COPY_NOTIFY request
+  */
+@@ -919,6 +959,26 @@ static int decode_offload_cancel(struct xdr_stream *xdr,
+ 	return decode_op_hdr(xdr, OP_OFFLOAD_CANCEL);
+ }
+ 
++static int decode_offload_status(struct xdr_stream *xdr,
++				 struct nfs42_offload_status_res *res)
++{
++	ssize_t result;
++	int status;
++
++	status = decode_op_hdr(xdr, OP_OFFLOAD_STATUS);
++	if (status)
++		return status;
++	/* osr_count */
++	if (xdr_stream_decode_u64(xdr, &res->osr_count) < 0)
++		return -EIO;
++	/* osr_complete<1> */
++	result = xdr_stream_decode_uint32_array(xdr, &res->osr_complete, 1);
++	if (result < 0)
++		return -EIO;
++	res->complete_count = result;
++	return 0;
++}
++
+ static int decode_copy_notify(struct xdr_stream *xdr,
+ 			      struct nfs42_copy_notify_res *res)
+ {
+@@ -1368,6 +1428,32 @@ static int nfs4_xdr_dec_offload_cancel(struct rpc_rqst *rqstp,
+ 	return status;
+ }
+ 
++/*
++ * Decode OFFLOAD_STATUS response
++ */
++static int nfs4_xdr_dec_offload_status(struct rpc_rqst *rqstp,
++				       struct xdr_stream *xdr,
++				       void *data)
++{
++	struct nfs42_offload_status_res *res = data;
++	struct compound_hdr hdr;
++	int status;
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->osr_seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_offload_status(xdr, res);
++
++out:
++	return status;
++}
++
+ /*
+  * Decode COPY_NOTIFY response
+  */
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e8ac3f615f93..08be0a0cce24 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -7702,6 +7702,7 @@ const struct rpc_procinfo nfs4_procedures[] = {
+ 	PROC42(CLONE,		enc_clone,		dec_clone),
+ 	PROC42(COPY,		enc_copy,		dec_copy),
+ 	PROC42(OFFLOAD_CANCEL,	enc_offload_cancel,	dec_offload_cancel),
++	PROC42(OFFLOAD_STATUS,	enc_offload_status,	dec_offload_status),
+ 	PROC42(COPY_NOTIFY,	enc_copy_notify,	dec_copy_notify),
+ 	PROC(LOOKUPP,		enc_lookupp,		dec_lookupp),
+ 	PROC42(LAYOUTERROR,	enc_layouterror,	dec_layouterror),
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 8d7430d9f218..5de96243a252 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -695,6 +695,7 @@ enum {
+ 	NFSPROC4_CLNT_LISTXATTRS,
+ 	NFSPROC4_CLNT_REMOVEXATTR,
+ 	NFSPROC4_CLNT_READ_PLUS,
++	NFSPROC4_CLNT_OFFLOAD_STATUS,
  };
  
--static void nfs42_offload_cancel_prepare(struct rpc_task *task, void *calldata)
-+static void nfs42_offload_prepare(struct rpc_task *task, void *calldata)
- {
--	struct nfs42_offloadcancel_data *data = calldata;
-+	struct nfs42_offload_data *data = calldata;
+ /* nfs41 types */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 559273a0f16d..9ac6c7a26b44 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1520,8 +1520,9 @@ struct nfs42_offload_status_args {
  
- 	nfs4_setup_sequence(data->seq_server->nfs_client,
- 				&data->args.osa_seq_args,
-@@ -515,7 +515,7 @@ static void nfs42_offload_cancel_prepare(struct rpc_task *task, void *calldata)
- 
- static void nfs42_offload_cancel_done(struct rpc_task *task, void *calldata)
- {
--	struct nfs42_offloadcancel_data *data = calldata;
-+	struct nfs42_offload_data *data = calldata;
- 
- 	trace_nfs4_offload_cancel(&data->args, task->tk_status);
- 	nfs41_sequence_done(task, &data->res.osr_seq_res);
-@@ -525,22 +525,22 @@ static void nfs42_offload_cancel_done(struct rpc_task *task, void *calldata)
- 		rpc_restart_call_prepare(task);
- }
- 
--static void nfs42_free_offloadcancel_data(void *data)
-+static void nfs42_offload_release(void *data)
- {
- 	kfree(data);
- }
- 
- static const struct rpc_call_ops nfs42_offload_cancel_ops = {
--	.rpc_call_prepare = nfs42_offload_cancel_prepare,
-+	.rpc_call_prepare = nfs42_offload_prepare,
- 	.rpc_call_done = nfs42_offload_cancel_done,
--	.rpc_release = nfs42_free_offloadcancel_data,
-+	.rpc_release = nfs42_offload_release,
+ struct nfs42_offload_status_res {
+ 	struct nfs4_sequence_res	osr_seq_res;
+-	uint64_t			osr_count;
+-	int				osr_status;
++	u64				osr_count;
++	int				complete_count;
++	u32				osr_complete;
  };
  
- static int nfs42_do_offload_cancel_async(struct file *dst,
- 					 nfs4_stateid *stateid)
- {
- 	struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
--	struct nfs42_offloadcancel_data *data = NULL;
-+	struct nfs42_offload_data *data = NULL;
- 	struct nfs_open_context *ctx = nfs_file_open_context(dst);
- 	struct rpc_task *task;
- 	struct rpc_message msg = {
-@@ -559,7 +559,7 @@ static int nfs42_do_offload_cancel_async(struct file *dst,
- 	if (!(dst_server->caps & NFS_CAP_OFFLOAD_CANCEL))
- 		return -EOPNOTSUPP;
- 
--	data = kzalloc(sizeof(struct nfs42_offloadcancel_data), GFP_KERNEL);
-+	data = kzalloc(sizeof(struct nfs42_offload_data), GFP_KERNEL);
- 	if (data == NULL)
- 		return -ENOMEM;
- 
+ struct nfs42_copy_notify_args {
 -- 
 2.47.0
 
