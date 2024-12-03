@@ -1,312 +1,237 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13A551F4711
-	for <linux-nfs@vger.kernel.org>; Tue,  3 Dec 2024 14:25:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1733235950; cv=none; b=J72nSLT6XFbUPJHF5tH+IvuFQAjgaMxUVwocLUyyaF3iPBEMmq2NtcDb8PP2Tot4qDmKKkFXht37C11KwG1Vc3E74GeZbKUEaRklf82J6/SXHcNWSCwawvu9OzvxCcVi2Ev4ef3jrDbS750TgnKY3qLM/HDDVC0QX6ySG/+Rs6s=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1733235950; c=relaxed/simple;
-	bh=qGs72Lt+jnNIS8XqNVLYFd1oAvTcZrmmZs0KAnC+olo=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=Y4/jaS4hCMfV8Ml8BKgaV2K3f+tXaLmj569WB1fPM7nfmMX8tH+dV+yKr1O5ni+K72EPsgriRwNMNHoUcmKIklVmGSyPdpxKvJBob8yQdqab82ezcJxCqPgx+ogR/LTbo0K3DPgNKZUypJjDcm/u7mPnbJBrTmfx4OzndvkrGUg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=cEmytWCJ; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 55CE31F6662
+	for <linux-nfs@vger.kernel.org>; Tue,  3 Dec 2024 14:28:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.177.32
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1733236135; cv=fail; b=sA2pSaA5maiJxrTn/lqTxtgLewXaeCgf34pRImDq0mMDR9DuFEbVkchIHbufTpkOFUgVKJ8MCNCffqTDjTM6WLvA710dsOf5M2L6Afnu1JvUUG//qSSOHC3lzaHYWs7TuGLskFrgLruRciowBaHPmi91FTW84OT4rpln4Zb15S0=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1733236135; c=relaxed/simple;
+	bh=4Cau1EmA/AldC/nVybyHUZcmMX5/nlt/LBZWXHMZvjA=;
+	h=From:To:CC:Subject:Date:Message-ID:References:In-Reply-To:
+	 Content-Type:MIME-Version; b=mC0M4kk/IrqtfxSIkGUx8vAtp9G3t3wEO5ANEcgPVMOEb1gc1achuLM3/ighfCp1YVYQmrEEn+3JxGPJ1z/N/WpJ0u3HhGycsSImCXFq9rD4zzkS0B9gjaZ75q3j6ykN3c7J8Ux/wl7UfZ3EvRM1k4/jz4EiMKd7rKpNr1HCKGU=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=Husc04Ux; dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b=osb4mFSx; arc=fail smtp.client-ip=205.220.177.32
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="cEmytWCJ"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1733235947;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=rwFl0xGy0sFljemOoRVRkclOhT67MkC9yxXvaDUzC1M=;
-	b=cEmytWCJheSOUcf/uJHNj5E9wO6Ayz3N9AWVbvrFsNaKEbABj9VR0THaT7uWcQUGelRHmF
-	Ye3aUz2ARZ+pP4XC9OWO2Z25F26pyM1aGWcOIFi9Nk90zXcraGLBhjHQ7S7eq0BJA81O3V
-	K0yBo/V6Q11fF+r8uhBWyEQhnkoqQAQ=
-Received: from mail-il1-f200.google.com (mail-il1-f200.google.com
- [209.85.166.200]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-435-TDcs65qDNu-nykLOFyVlaQ-1; Tue, 03 Dec 2024 09:25:46 -0500
-X-MC-Unique: TDcs65qDNu-nykLOFyVlaQ-1
-X-Mimecast-MFC-AGG-ID: TDcs65qDNu-nykLOFyVlaQ
-Received: by mail-il1-f200.google.com with SMTP id e9e14a558f8ab-3a7e0d7b804so42729325ab.0
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Dec 2024 06:25:45 -0800 (PST)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1733235944; x=1733840744;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=rwFl0xGy0sFljemOoRVRkclOhT67MkC9yxXvaDUzC1M=;
-        b=Y/pzhebwKt0znDdPavmTfrYQljT76YTte0kVfj0RfQ3W3FQWMn6XyRm/UycBlmp9nu
-         2kqvG9xhRBK4oPqvL69Q2Bw+NVAOX3F3cQVLImSRdtgjBHE8bkjqYZJLlneOae4CGkO7
-         uAa4exBhZmyHhIP8AoAxeTw4Ao+QBXtGeT5+U7LdwxnP7YO/jmdUEA2qyw7ZgmNg78lj
-         m9LjFsP8OfBQ7wcmsVDExBaZH4JfYX8fi9FD5MWAc11TN/7L6Wqm+GnmNJ/1GpCT9c1w
-         HP5AZNlZpdKq451/h5/C4ZkV8p5VGzxjszwpA8x6K4hkgpJgM8ROpyOszhHRHFuh5Jzw
-         8glA==
-X-Gm-Message-State: AOJu0YwZJfgC4A2FVK/opgZg23V51UlFAvnhh8Casr+3viJOwmbFxfes
-	Cc45JrEvrUXV9wLYCSvEHIMiZoTqxx4mLWDQ7eLMR4ie3ZM5yJeZIDZ1utlaBwtY/HDchiL9vd3
-	JBmPYXI3Vn5idWKtNi4ugGufrKwD9OKeYcmWogWSBELv2YxnaV2dNYj5zxDiL8GeEIA==
-X-Gm-Gg: ASbGncvPpmeGsHF3nxmbpR5Zh1ogUlSnv+dimrtm7mgcPNbHVgHw0Whdjkvn5iPdnCh
-	43JsmF7pA/PsTrJbSsXETlaSK9D3TD1yStyivR6J+t2EcXtOgB5YHGJGjo63ZvRgaougwZpJ+4U
-	siWdFR0mh/qskJzXu44GRkEiz68b0c+MxyD/5+vXPvLWPV18pktuuOQU+Pp4Dxy8CUofxvJUX0X
-	1YuCwjRJfYp7x5OKHdTpXO1svQ+TEDnLcmCrTmsvSfM108tKg==
-X-Received: by 2002:a05:6e02:1c23:b0:3a7:85ee:fa78 with SMTP id e9e14a558f8ab-3a7f9a9805emr39522655ab.18.1733235943943;
-        Tue, 03 Dec 2024 06:25:43 -0800 (PST)
-X-Google-Smtp-Source: AGHT+IEVwUHrvhS4FSB/7DhUOecTADGcdmBnmp7cllGAw2cIQwGSWk6CqwPj6MdIuGESR18sfVNOxg==
-X-Received: by 2002:a05:6e02:1c23:b0:3a7:85ee:fa78 with SMTP id e9e14a558f8ab-3a7f9a9805emr39522445ab.18.1733235943563;
-        Tue, 03 Dec 2024 06:25:43 -0800 (PST)
-Received: from [172.31.1.12] ([70.105.249.243])
-        by smtp.gmail.com with ESMTPSA id 8926c6da1cb9f-4e230e74473sm2586963173.119.2024.12.03.06.25.42
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 03 Dec 2024 06:25:42 -0800 (PST)
-Message-ID: <da85d221-2eea-4bf2-bc52-388803f15feb@redhat.com>
-Date: Tue, 3 Dec 2024 09:25:41 -0500
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Husc04Ux";
+	dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b="osb4mFSx"
+Received: from pps.filterd (m0246632.ppops.net [127.0.0.1])
+	by mx0b-00069f02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 4B37Y4Ok003706;
+	Tue, 3 Dec 2024 14:28:51 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
+	:content-id:content-transfer-encoding:content-type:date:from
+	:in-reply-to:message-id:mime-version:references:subject:to; s=
+	corp-2023-11-20; bh=4Cau1EmA/AldC/nVybyHUZcmMX5/nlt/LBZWXHMZvjA=; b=
+	Husc04UxjkCxsa7S2x0LeUFXn9OJjumiDb7qPuFiuFYCpjFE3BhTBeYEA/18q0cf
+	WvrIpTYw1TQ+yDBUNLcqHlQaEymb/pGGFwE+ByS0Lz0p2/+usvIlY16jrNQkrVUJ
+	gVL/6PrDW8Mo3RyE6GwppHe4Pcm7s6yq1zyfXeJcPNHd/MrA53pHaZ4lfyxbmQ63
+	yOGkTaNzW2WvOYTAtAVyo5DpaWcmpu/o8OyLY/AUxb/89EwnPVfan/wC/Y5Hxd+z
+	qCBqaWLPEfH/yxlAdnElfgMt+Xn8HjY6L78+/pGKHifb7vW8HQNBWMyAdI+MQIRa
+	dAIWyhUzAmH8rWCcK7nSEg==
+Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.appoci.oracle.com [130.35.100.223])
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 437tas646m-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Tue, 03 Dec 2024 14:28:50 +0000 (GMT)
+Received: from pps.filterd (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 4B3DrKw6001198;
+	Tue, 3 Dec 2024 14:28:50 GMT
+Received: from nam11-bn8-obe.outbound.protection.outlook.com (mail-bn8nam11lp2168.outbound.protection.outlook.com [104.47.58.168])
+	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 437s57yjdp-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Tue, 03 Dec 2024 14:28:49 +0000
+ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
+ b=tHCBXG12mLlM7vYn/Y3YYA4OuVQqE+Vv4o/xqRrJeW5p8RCJ7lL/Db2nPxxyiLGghCGrQVYX/m2azKXpJc2GCmQhXpK5Zy1mjZksCO2eOwkd/Ci0EKdradNaMEU4qu7ERjhO2xRw9kUXFeyHf76/80DPCP/0Tr4VUu40+N2vkCJBiGnC03H1p2ABoklYpAO2E0TNfNo0LlVXHRMkuKBRHKsqZPo7e9Pp6OR7XLGoRhyYsgcs9ux0YF1oZ45gj/EDoVw0a0qzWVSph8Xw8gD21Foc2H7Fl2CFcX0fthHh+7wUNDnlvPPhEdKYxzVtZZsLT3oYx5ai2YfMc2b4m+Y/VQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
+ s=arcselector10001;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
+ bh=4Cau1EmA/AldC/nVybyHUZcmMX5/nlt/LBZWXHMZvjA=;
+ b=u9X77uSkUltwTrGxhzNvHCwAXb2fMkwR73M0AgxIA+QGzGo77k3BVdKejzZWIu05x5a5szqJI/wxOC8NIv7Nn0ivrcyzEX8kUbThg6T982gx7xPeuhtJWTk1Q8b5VQAJkLOC4GGoyFcLDEFqW9GL2M8ln/aHWkC2pklZkIF/ULw/eEFqVWRuEZ0MrGqI1uaQ0+Va4RftDhZ3XJJQB71zr5MM8O7ZodH/sy+PJJA+SknJMj67wkQq2ExBZzNJOK3rHLhhQpv2s3jZARdKG/8E3STlC+eyJzPdYrkV9+wQot+Z6VeNwDor1gt4hUpu+krYT6gfVBm4JWI5H+udUrdnqQ==
+ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
+ smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
+ dkim=pass header.d=oracle.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
+ h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
+ bh=4Cau1EmA/AldC/nVybyHUZcmMX5/nlt/LBZWXHMZvjA=;
+ b=osb4mFSxFlOEyp7K/eGytIoa+yytlV4eRb108RhvNMGbdBPq7X+yIrk9ccx7gr0yomMVGWOtyhJI+Yl03XcoI36NsCGDxrCitNJhYhIYZrgidZGTspi/UmCIFhfseKTtDxmSF5GDxh0qvd1MOZcOIO0KXEp6UuV2J9h8v9jmH1k=
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
+ by PH7PR10MB6226.namprd10.prod.outlook.com (2603:10b6:510:1f1::22) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8207.18; Tue, 3 Dec
+ 2024 14:28:47 +0000
+Received: from BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::743a:3154:40da:cf90]) by BN0PR10MB5128.namprd10.prod.outlook.com
+ ([fe80::743a:3154:40da:cf90%7]) with mapi id 15.20.8207.017; Tue, 3 Dec 2024
+ 14:28:47 +0000
+From: Chuck Lever III <chuck.lever@oracle.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Scott Mayhew <smayhew@redhat.com>,
+        Linux NFS Mailing List
+	<linux-nfs@vger.kernel.org>
+Subject: Re: [nfs-utils PATCH] exports: Fix referrals when
+ --enable-junction=no
+Thread-Topic: [nfs-utils PATCH] exports: Fix referrals when
+ --enable-junction=no
+Thread-Index: AQHbRQEiw86raxJWZUWDjDc1ottT+LLT2liAgAC67AA=
+Date: Tue, 3 Dec 2024 14:28:47 +0000
+Message-ID: <A47A9D21-EF59-4263-AC63-059FB0661CA8@oracle.com>
+References: <328fdce3-a66b-4254-a178-389caf75a685@redhat.com>
+ <20241202203046.1436990-1-smayhew@redhat.com>
+ <6b8990cc-ec29-4e01-acd6-8c7ec6487d99@redhat.com>
+In-Reply-To: <6b8990cc-ec29-4e01-acd6-8c7ec6487d99@redhat.com>
+Accept-Language: en-US
+Content-Language: en-US
+X-MS-Has-Attach:
+X-MS-TNEF-Correlator:
+x-mailer: Apple Mail (2.3776.700.51.11.1)
+x-ms-publictraffictype: Email
+x-ms-traffictypediagnostic: BN0PR10MB5128:EE_|PH7PR10MB6226:EE_
+x-ms-office365-filtering-correlation-id: 17ce038f-274c-49ae-25dd-08dd13a6ccc4
+x-ms-exchange-senderadcheck: 1
+x-ms-exchange-antispam-relay: 0
+x-microsoft-antispam: BCL:0;ARA:13230040|376014|1800799024|366016|38070700018;
+x-microsoft-antispam-message-info:
+ =?utf-8?B?L0x5a3dYSkhtYUxQdTJKN2hUQlljV1I3RzBRaURzaUlSbkxiaWpna3Yxamdv?=
+ =?utf-8?B?d1d1SjRXNUN5a1lCaytsZ0k1TTJ1QmlhaElhNGlCYmVCZFNSU3BZTkN2aHlG?=
+ =?utf-8?B?WjdHdzdVQ0RzNWd6UFdEZ1ZObk9YOHFJNEdYcm5yelV4Q2hKQ2VKSVhsajJp?=
+ =?utf-8?B?cGlCcWlMWTJEM295UlBQWCtibW41UTdlYXlqTWRJd3FwaHAvRmdDZlV1TmZN?=
+ =?utf-8?B?aUVoMWJuUUp1K3NkZldxZ2J2UjhWOHQyYUVTVTVFUW1FTWhIa2RmR0JCQzRx?=
+ =?utf-8?B?V3VIS0VqSkhlRVZPandiNDEyZGp0U3QwTjJDdU5NQjJab2xsODN0Y2VqL1F4?=
+ =?utf-8?B?S3pWQVVLRGdxV1FHM2tvNEpkTGRuTEFGSldoanJBMmRzQzdMN3FRYkY3bjYx?=
+ =?utf-8?B?eFVDeXZTM3owaXdPUlBFNzVYdm5CdXAwelpaN0M4NUl6Q3pKSmdiODRMYzVi?=
+ =?utf-8?B?Z0FJbVl6SUtCV2kyWWI5djJjbEw4TFU5MXJjNmd2YkNWYks4ZERYSzc5anh2?=
+ =?utf-8?B?UGFNRnRXVjc5TXRRN0pVV3p5SFJYUzV5UWVZYlc0Y2JYTmZxS0pRMTNLd2JQ?=
+ =?utf-8?B?WmtERzBXSnlNbUdqaUhnS1RERm9UdElqczU3TjI5RzJTbEViNDhjby9NRFp4?=
+ =?utf-8?B?bFU0UWNGWUVueXhvNDM1NXBiRXBXTEFJREpKNmkwVWhwdUZkMFNTRlZ3TjVR?=
+ =?utf-8?B?M3NtK3dCdWE3dmorQ0VWNldGbmdWQjBleWJQeHJSTnZmdWpSZFlNU3FwLzFW?=
+ =?utf-8?B?N1U5dm40ZldBQnpaZmp6bDlqcEx4VXB2c29SSjVmZmdFQVdTeE5sZ3FBTjhD?=
+ =?utf-8?B?WnFFT3NWalB1bFJyWnNaMjk4MUlwNFdYcGpCRzlvYUlWVXNFN2dpTXRRRzlN?=
+ =?utf-8?B?WXkra2x6ZkpOaFZJUXdDcE00T0VCQkJPbUpqTitrZnlzdkFoeFYxYjFrc3FU?=
+ =?utf-8?B?R2NlckE0ZHFzT25LVWs2czMyc1pHNTBEd3ZDREhZdnlhSkhPcGxzM2lIb3dP?=
+ =?utf-8?B?cUUvQmZSbWdLVWxHd2JlTnM3bjZJdWRPUEJiQktTbTJmL2l4QXptNGdSWjJD?=
+ =?utf-8?B?dWtEK09JSVV5LzM2TnhRWDBZWE8vL0o2c1BoT2VWakFRUDlqY0tSdXlCaGwz?=
+ =?utf-8?B?MjlVbFQxc3NiWUgwYmkzcXA2TjEybWxLRlpydDA0WC9uanZDUkNnQmtMaEFh?=
+ =?utf-8?B?bTZXOVoyaEdQb3Rwc1BlUkFweWhDVUhEckhJditHTXNwVEZDUDJLMWE3TVNG?=
+ =?utf-8?B?Vk1oSHJMZlovYkp6VDZJdjlOYXRnRUV4SUFlY0M5NGhpMmlXa2h2NE4ydlNq?=
+ =?utf-8?B?ZGtYNWN3dEhReUd2T3lldk1tZHRXaFVOek0yeG1RM2hQemVKck0vRWV2UmFR?=
+ =?utf-8?B?emplb09WbFNWL1ZXYVdQelh5bGU0SUs2Z3ljZW9aVDJmUURmbWI2cDBaWVVx?=
+ =?utf-8?B?WEV3dEo0TE1UMUgyVHNmU1p3UTdNK2VIOGtBcGJDbjlYWXNJTGlVWkNHZm5C?=
+ =?utf-8?B?ZnZLMklpL0dpNTJOclhCSmtybStKVjVEbTZTaTRpbGJpM0RHVGlyZ3k3SGFa?=
+ =?utf-8?B?cWdFaURuVkhqcU5tVWtFZmtZVGVTYko1KzFwb3hEY1JVUERyWGdZdTl1S0VE?=
+ =?utf-8?B?aC84cEZ4ZS9tUnBBdnVmL3dDMDkwVFBKb3V6dU51U0pVNjFsdVRnQUNySzJj?=
+ =?utf-8?B?NCtOQ1kyOHZmWWlLOGNqd0RXVnZrUHU3cmdpTDBFVEVNbWNFbUxSSHNKQ3BG?=
+ =?utf-8?B?Rldtb3ZkUkw5OWt2RXRtcmNrRmhxSzdLNW1UU2djblRrcVZoeS9xU0pKUFdR?=
+ =?utf-8?B?cjVCNjJtNDI0Q3JiUWV5enZjb1o0WUhnZ001NFpvanJNR1hYdVdoTitYK0lh?=
+ =?utf-8?B?UlpGSW9YcFUreVRLeWp3V09tSFFyYXdtM0s4ekkxYW1TOXc9PQ==?=
+x-forefront-antispam-report:
+ CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(376014)(1800799024)(366016)(38070700018);DIR:OUT;SFP:1101;
+x-ms-exchange-antispam-messagedata-chunkcount: 1
+x-ms-exchange-antispam-messagedata-0:
+ =?utf-8?B?b3BmMFh4amFRT1JRY3RKUWEzMlpQRUQxM2hvQkxRSTNmWklqTUFCbTlCZmxB?=
+ =?utf-8?B?Tm9WTnJyVFM0V2ZSdGtoTExXeENrbjRqV2ZpL291U3I0MURVc0VpVlVOUk52?=
+ =?utf-8?B?V052WWRoQlVBSGlLaHR0WHFiaDBJOTZSczEzTXMxdTRDRkg3WmtJTXpmd1Nj?=
+ =?utf-8?B?M1g2MlkvUXFGaXVnTTFoRHFpT2VzS0orNkFkYlV5WHJMY1pzZW5HZ3RGVVFt?=
+ =?utf-8?B?YlRiZm91eGpBRXF5V3dDUjZ0OU1ycElmS2lqRVdoaGNiQlpCL0xNM1VUY3BN?=
+ =?utf-8?B?elErYll4bHhwZUkxTEd0WVl1WTFneEpEQTRMdVhvekNpRTZHOHdoNjBFUFc0?=
+ =?utf-8?B?SFJxQTRqcmdUT01tNXArRmRPd2d6RWVGNWQ3cGpkQUlLUkJmSFFzeGR4R25n?=
+ =?utf-8?B?aDRVeFJ2cEp5U2cwaUhWbW40NDRXUDFHUW1hZ0FGeXFCbUZWcW5admRPSWNw?=
+ =?utf-8?B?U2tITUxWWDBuM2ozQ1U2NThFZ2dVSkE2T1c2QTBuM2ZVREJ2U1RGeXJuTmsv?=
+ =?utf-8?B?WXlEUGdaR2ExNDV4d1p0SjdmUXJiMXk3bThaTFdqMWZrNC9qNWRNeWxDREFX?=
+ =?utf-8?B?Qmg2UnI2ZWxQV2puaC9pTXBaSHRYVXRITzJYNXFZR0c0SXhoNGJMRkEwQmJE?=
+ =?utf-8?B?enBSWmdGZWhTVDFCUlA5UnNteERBQ25OakJRU1dMa1Z0L1Y4YUZWSldSY1dY?=
+ =?utf-8?B?dExPRVMzS1VTdWdsb1FrNlZMTjJWNmVrMmJXTUNHYTI4SG5Dd1dUd295VVMr?=
+ =?utf-8?B?NWE4MzBxbEVsVTZ3eE5DM1dPV2h4R3p1cGk2YjQyRUNyWERpRzN6WHBGejZo?=
+ =?utf-8?B?U25oV1ZTTEF0ai9IVDFtZG1mdm8vMzdQQTB3NVJVMlhTeWRKdThLcHhhTmhG?=
+ =?utf-8?B?Tm9HRFp2N0ZVbW1iRG93UFQwdmFyY2hHWmJXeHZvNmdpbU4wbDVnQUl6RHRP?=
+ =?utf-8?B?c25Ib3VYdXp0WHAycm9ZMlU3Vk1vUys2ZlpMRERMb1IyQ1V6RGJFV09rVERo?=
+ =?utf-8?B?WGNHYXFVbE1uVXBlbjVxdG9jdWY2Q1ZmUHI1VHdyNWtSUzBIUGp5VklhMXBW?=
+ =?utf-8?B?OU42cFU0U3AwQnR6MXdRNHBUdnhuTGwrWS9CYTFYQ1RqZi9FWjdQeSs4b3l6?=
+ =?utf-8?B?aEk1NHpEZHBCMU1RYmNyd1R4K0F2ckFuUG45OEN6NEErT2NJNUJraXUyRnNx?=
+ =?utf-8?B?QndibzdubktJN0lnb0RmK2szbmR2bmNoZVRiVlFyc0ErYWFvT2VyQk1ycVlu?=
+ =?utf-8?B?WFZRU2tVVEFBSldQVVFrZHlqcnVPbHNUdnFIaWlwZHNZSEZyT3o2Q0thNVJV?=
+ =?utf-8?B?OFBkZWVqRkxsTWtrTnB5bEV6eTJUM01lclgySjYwcW1scWZsR0hIMk5FSmdx?=
+ =?utf-8?B?b3RYTFBWYjZYVzJyZmZBTlI4M0JVUU8wUGl1K00zeE0wWUJqenVpRXJjMDVj?=
+ =?utf-8?B?R09rNnFZZEloZ2FEaDh5ZGRQeVZ2eDZnUjV4Z3lRRVVaNXNScGI5S2hLa1Jk?=
+ =?utf-8?B?TEJ0SnBFMVYzTEsvZUFDT05tR0lneW9KelAwN3VZZlRMQzJ1SlZqWXpYS2ZV?=
+ =?utf-8?B?QjNEMXUzY1FBTlY2NWpPUjFkQXdCNVZQdGw4L1E4NHlCVXFPS21sSmgrdFFJ?=
+ =?utf-8?B?UFpjZkhuTmc0Q2ZNOW9aU2xYNEEvWW1jZVVlczdqUHdWcDc1ZTRhVEl2djc5?=
+ =?utf-8?B?U1hVbURZNy81RkllMkx1Wm9UbU5WQm51d0RlTFk1ZXkxajBhWlBzMnZSWThM?=
+ =?utf-8?B?UW5MYjJGMnFBR0pUdXBlQWJRZ1B5OFJiNlAxdTR6UEsrTVo4bWp4SGF1Rlpr?=
+ =?utf-8?B?VFF4eFNHM1NoTTh1S2RBTUxCVU1Ja2JWUGQzSnVMZU85V0pBa1pxdldVODlz?=
+ =?utf-8?B?eDVEa282clZYUU1PNXcwSCsrQTVlakVsWHFHS3N3Y1l1ZXZaeEtON3ZwbU81?=
+ =?utf-8?B?OTVGUXgwL2JqZE4rNktxaWpGU0xQL2k4VUQwU3JES3l6bUVuL045aXREWWl3?=
+ =?utf-8?B?QkdIYk0zK3pyd3NtNFhxK0hFeWJFYjFmMXJWUm9sUXExQitseDFJdUJ1Qjgw?=
+ =?utf-8?B?UHgzQnEzZ0dqWitRWjYrWDM5WjM4b3FMeW8wTlMzOEwyZ0NVb1VyOFpRWUhL?=
+ =?utf-8?B?Tnk2V3Y2NFE3T0FZTGxlZWZscWdVekFrRmVoS0t0Y2VoajhjbXQzTWJJOVhD?=
+ =?utf-8?B?NlE9PQ==?=
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <DB46913146A4464E87D23F113102846F@namprd10.prod.outlook.com>
+Content-Transfer-Encoding: base64
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [nfs-utils PATCH] exports: Fix referrals when
- --enable-junction=no
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-References: <328fdce3-a66b-4254-a178-389caf75a685@redhat.com>
- <20241202203046.1436990-1-smayhew@redhat.com>
- <6b8990cc-ec29-4e01-acd6-8c7ec6487d99@redhat.com> <Z0788RTTA4bn0WBe@aion>
-Content-Language: en-US
-From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <Z0788RTTA4bn0WBe@aion>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
+X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
+	95XjjerIhWQYS/SlxN9GIEfphubUqTKoS1+CgIV8d2WNffaqsUrhSQCJ9xgxRtIh87/YDoBtJkq6fAO9GODWCxkKfKVgyqfsqKzzg3mEjyOezI5mp4nO037gBSJw0qOd59Bz3FFPKOABaporaDUYL7+bS/bhIlRSy+DVBf/F2KpYRRtZRWef6uBnMOqrB1IxP2PdkYny9HZuKFqZD2/tw26TGwswXFbuJ0YMCiexV0DRiMJ5Deoy8JhkZDqnAhVsA2ocfv5rQHen5TYdhyzfh9um5hAHpWD8vyhVqad4sW6PVuyU9L/w3yCaF53QJ3W7OQHG2mzZimKEieaJ28Utl85naRFIlj4gqf2kzpJn1HiEhihDsm/9fzwckHepZclubTNbzR2z8ZHq6HAERiDtmxP54GltBZ5GRNGqKUVjUZiyeF5uCLAPTs9AjnqEc6c5dkI6iX+ufAr0+xpDCZy1HIu8OXchp95G7UPHZjuI3ZfonCa2Ov1Tz/My8AIEKIRHkRuhPnah/9J4f0uJPVO8u2T623NWvh5lKph+NgANflcV6clPgfrrMcGbAbJbocuuKNT89vHOFnT5RZChtiPIA966sINl2TA7dofx6f+VTVo=
+X-OriginatorOrg: oracle.com
+X-MS-Exchange-CrossTenant-AuthAs: Internal
+X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
+X-MS-Exchange-CrossTenant-Network-Message-Id: 17ce038f-274c-49ae-25dd-08dd13a6ccc4
+X-MS-Exchange-CrossTenant-originalarrivaltime: 03 Dec 2024 14:28:47.7078
+ (UTC)
+X-MS-Exchange-CrossTenant-fromentityheader: Hosted
+X-MS-Exchange-CrossTenant-id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
+X-MS-Exchange-CrossTenant-mailboxtype: HOSTED
+X-MS-Exchange-CrossTenant-userprincipalname: iBHMdepq7etpxfZIlZwEXaM4qQZrgOsluxTEE/olPo0nzwbG5kL/ojdq31Nhiky8CKSO9MMZFEzpj/zG2qNZpg==
+X-MS-Exchange-Transport-CrossTenantHeadersStamped: PH7PR10MB6226
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1057,Hydra:6.0.680,FMLib:17.12.68.34
+ definitions=2024-12-03_04,2024-12-03_03,2024-11-22_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 mlxlogscore=999
+ adultscore=0 mlxscore=0 spamscore=0 suspectscore=0 malwarescore=0
+ phishscore=0 classifier=spam adjust=0 reason=mlx scancount=1
+ engine=8.12.0-2411120000 definitions=main-2412030123
+X-Proofpoint-GUID: 7lnNI-fFGp4Ss0VinOoTRqzkv51FNw98
+X-Proofpoint-ORIG-GUID: 7lnNI-fFGp4Ss0VinOoTRqzkv51FNw98
 
-
-
-On 12/3/24 7:43 AM, Scott Mayhew wrote:
-> On Mon, 02 Dec 2024, Steve Dickson wrote:
-> 
->> Hey,
->>
->> On 12/2/24 3:30 PM, Scott Mayhew wrote:
->>> Commit 15dc0bea ("exportd: Moved cache upcalls routines into
->>> libexport.a") caused write_fsloc() to be elided when junction support is
->>> disabled.  Get rid of the bogus #ifdef HAVE_JUNCTION_SUPPORT blocks so
->>> that referrals work again (the only #ifdef HAVE_JUNCTION_SUPPORT should
->>> be around actual junction code).
->> Why not just take the enable_junction config variable
->> out of configure.ac as well?
->>
->> If we want junctions/referrals (which are the same)
->> IMHO... on all the time... Lets not be able to
->> turn them off at all?
->>
->> Point being... if we are going remove 3 of the 4
->> HAVE_JUNCTION_SUPPORT ifdefs... let get ride of
->> all of them.
-> 
-> Junctions and referrals are _not_ the same.  A junction is one mechanism
-> that can be used to generate a referral.  The other way to generate a
-> referral is with an export entry, and that is the method that stopped
-> working after 15dc0bea.
-> 
-> When you set up a referral via an export entry you use the refer=
-> export option, and the directory must be a mountpoint so that nfsd will
-> consult the export cache when the client tries to access the directory.
-> 
-> For example, I set up the following in /etc/exports:
-> 
-> /export *(rw,insecure,no_root_squash)
-> /export/ref     *(rw,insecure,no_root_squash,refer=/export@192.168.124.66)
-> 
-> After the client tries to access /export/ref, this is what I see when I
-> dump the export cache without my fix:
-> 
-> [root@rawhide ~]# cat /proc/net/rpc/nfsd.export/content
-> #path domain(flags)
-> /       *(ro,insecure,no_root_squash,sync,no_wdelay,no_subtree_check,v4root,fsid=0,sec=1)
-> /export *(rw,insecure,no_root_squash,sync,wdelay,no_subtree_check,uuid=c4eeda84:ea1a4dcd:a043fdc1:372d7878,sec=1)
-> /export/ref     *(rw,insecure,no_root_squash,sync,wdelay,no_subtree_check,uuid=c4eeda84:ea1a4dcd:a043fdc1:372d7878,sec=1)
-> 
-> Notice there's no refer= option.  So when the client does a LOOKUP of
-> /export/ref, the server treats it as a normal directory... it doesn't
-> return NFS4ERR_MOVED and so the client doesn't know to query
-> fs_locations.
-> 
-> Here is what the export cache looks like with my fix:
-> 
-> [root@rawhide ~]# cat /proc/net/rpc/nfsd.export/content
-> #path domain(flags)
-> /export *(rw,insecure,no_root_squash,sync,wdelay,no_subtree_check,uuid=c4eeda84:ea1a4dcd:a043fdc1:372d7878,sec=1)
-> /       *(ro,insecure,no_root_squash,sync,no_wdelay,no_subtree_check,v4root,fsid=0,sec=1)
-> /export/ref     *(rw,insecure,no_root_squash,sync,wdelay,no_subtree_check,refer=/export@192.168.124.66,uuid=c4eeda84:ea1a4dcd:a043fdc1:372d7878,sec=1)
-> 
-> Note the refer= option is present, and the referral works normally.
-> 
-> A junction is basically a fancy directory that has the user/group/other
-> mode bits set to 0 and the sticky bit turned on.  The original mode bits
-> are stored in the trusted.junction.mode extended attribute and the
-> referral information is stored in the trusted.junction.nfs extended
-> attribute.
-> 
-> Continuing with my previous example, I have this in my /etc/exports
-> 
-> [root@rawhide ~]# cat /etc/exports
-> /export *(rw,insecure,no_root_squash)
-> /export/ref     *(rw,insecure,no_root_squash,refer=/export@192.168.124.66)
-> 
-> Let's add a referral using a junction.
-> 
-> [root@rawhide ~]# nfsref add /export/junc 192.168.124.66 /export
-> Created junction /export/junc
-> 
-> In this case, /export/junc didn't previously exist, so the nfsref tool
-> created it.  If /export/junc did already exist, then the original mode
-> would be stored in the trusted.junction.mode and the original contents
-> of the directory would be hidden from the client (as well as
-> non-privileged users on the server).
-> 
-> You can look up the referral info using 'nfsref lookup':
-> 
-> [root@rawhide ~]# nfsref lookup /export/junc
-> 192.168.124.66:/export
-> 
->          NFS port:       2049
->          Valid for:      0
->          Currency:       -1
->          Flags:          varsub(false)
->          GenFlags:       writable(false), going(false), split(true)
->          TransFlags:     rdma(true)
->          Class:          simul(0), handle(0), fileid(0)
->          Class:          writever(0), change(0), readdir(0)
->          Read:           rank(0), order(0)
->          Write:          rank(0), order(0)
-> 
-> Or you can just use getfattr if you want to see the raw xml:
-> 
-> [root@rawhide ~]# getfattr --only-values -d -m trusted.junction.nfs /export/junc
-> getfattr: Removing leading '/' from absolute path names
-> <?xml version="1.0" encoding="UTF-8"?>
-> <junction>
->    <savedmode bits="755"/>
->    <fileset>
->      <location>
->        <host name="192.168.124.66"/>
->        <path>
->          <component>export</component>
->        </path>
->        <currency>-1</currency>
->        <genflags writable="false" going="false" split="true"/>
->        <transflags rdma="true"/>
->        <class simul="0" handle="0" fileid="0" writever="0" change="0" readdir="0"/>
->        <read rank="0" order="0"/>
->        <write rank="0" order="0"/>
->        <flags varsub="false"/>
->        <validfor>0</validfor>
->      </location>
->    </fileset>
-> </junction>
-> 
-> Note that since the /export/junc referral is stored in a junction, it
-> doesn't appear in the export info:
-> 
-> [root@rawhide ~]# exportfs -v
-> /export         <world>(sync,wdelay,hide,no_subtree_check,sec=sys,rw,insecure,no_root_squash,no_all_squash)
-> /export/ref     <world>(sync,wdelay,hide,no_subtree_check,refer=/export@192.168.124.66,sec=sys,rw,insecure,no_root_squash,no_all_squash)
-> 
->  From the client's standpoint, both style referrals work the same:
-> 
-> root@aion:~# mount 192.168.124.26:/export /mnt/t
-> root@aion:~# ls /mnt/t
-> junc  ref
-> root@aion:~# ls /mnt/t/ref
-> file
-> root@aion:~# cat /mnt/t/ref/file
-> I am on the referral server.
-> root@aion:~# grep nfs4 /proc/mounts
-> 192.168.124.26:/export /mnt/t nfs4 rw,relatime,vers=4.2,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.124.1,local_lock=none,addr=192.168.124.26 0 0
-> 192.168.124.66:/export /mnt/t/ref nfs4 rw,relatime,vers=4.2,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.124.1,local_lock=none,addr=192.168.124.66 0 0
-> root@aion:~# ls /mnt/t/junc
-> file
-> root@aion:~# cat /mnt/t/junc/file
-> I am on the referral server.
-> root@aion:~# grep nfs4 /proc/mounts
-> 192.168.124.26:/export /mnt/t nfs4 rw,relatime,vers=4.2,rsize=524288,wsize=524288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.124.1,local_lock=none,addr=192.168.124.26 0 0
-> 192.168.124.66:/export /mnt/t/ref nfs4 rw,relatime,vers=4.2,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.124.1,local_lock=none,addr=192.168.124.66 0 0
-> 192.168.124.66:/export /mnt/t/junc nfs4 rw,relatime,vers=4.2,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.124.1,local_lock=none,addr=192.168.124.66 0 0
-> 
-> 
-> So if you want to get rid of that last #ifdef HAVE_JUNCTION_SUPPORT
-> then you have 2 options:
-> 
-> a) get rid of junctions entirely, leaving users with only the old
-> (relatively speaking) method for configuring referrals
-> b) force all packagers of nfs-utils to pull in the extra dependencies
-> needed to support junctions, which is the exact opposite of what the
-> Debian folks are requesting.
-> 
-> Or you can take the patch and we can continue to have both style
-> referrals.
-Very good explanation... we should put this on linux-nfs.org on
-how to uses both junctions and referrals...
-
-I'll let the distros decide how they want to deal with this.
-
-thanks!
-
-steved.
-
-> 
-> -Scott
->>
->> steved.
->>>
->>> Fixes: 15dc0bea ("exportd: Moved cache upcalls routines into libexport.a")
->>> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
->>> ---
->>>    support/export/cache.c | 7 -------
->>>    1 file changed, 7 deletions(-)
->>>
->>> diff --git a/support/export/cache.c b/support/export/cache.c
->>> index 6c0a44a3..3a8e57cf 100644
->>> --- a/support/export/cache.c
->>> +++ b/support/export/cache.c
->>> @@ -34,10 +34,7 @@
->>>    #include "pseudoflavors.h"
->>>    #include "xcommon.h"
->>>    #include "reexport.h"
->>> -
->>> -#ifdef HAVE_JUNCTION_SUPPORT
->>>    #include "fsloc.h"
->>> -#endif
->>>    #ifdef USE_BLKID
->>>    #include "blkid/blkid.h"
->>> @@ -999,7 +996,6 @@ static void nfsd_retry_fh(struct delayed *d)
->>>    	*dp = d;
->>>    }
->>> -#ifdef HAVE_JUNCTION_SUPPORT
->>>    static void write_fsloc(char **bp, int *blen, struct exportent *ep)
->>>    {
->>>    	struct servers *servers;
->>> @@ -1022,7 +1018,6 @@ static void write_fsloc(char **bp, int *blen, struct exportent *ep)
->>>    	qword_addint(bp, blen, servers->h_referral);
->>>    	release_replicas(servers);
->>>    }
->>> -#endif
->>>    static void write_secinfo(char **bp, int *blen, struct exportent *ep, int flag_mask, int extra_flag)
->>>    {
->>> @@ -1120,9 +1115,7 @@ static int dump_to_cache(int f, char *buf, int blen, char *domain,
->>>    		qword_addint(&bp, &blen, exp->e_anongid);
->>>    		qword_addint(&bp, &blen, fsidnum);
->>> -#ifdef HAVE_JUNCTION_SUPPORT
->>>    		write_fsloc(&bp, &blen, exp);
->>> -#endif
->>>    		write_secinfo(&bp, &blen, exp, flag_mask, do_fsidnum ? NFSEXP_FSID : 0);
->>>    		if (exp->e_uuid == NULL || different_fs) {
->>>    			char u[16];
->>
-> 
-
+DQoNCj4gT24gRGVjIDIsIDIwMjQsIGF0IDEwOjE54oCvUE0sIFN0ZXZlIERpY2tzb24gPFN0ZXZl
+REByZWRoYXQuY29tPiB3cm90ZToNCj4gDQo+IEhleSwNCj4gDQo+IE9uIDEyLzIvMjQgMzozMCBQ
+TSwgU2NvdHQgTWF5aGV3IHdyb3RlOg0KPj4gQ29tbWl0IDE1ZGMwYmVhICgiZXhwb3J0ZDogTW92
+ZWQgY2FjaGUgdXBjYWxscyByb3V0aW5lcyBpbnRvDQo+PiBsaWJleHBvcnQuYSIpIGNhdXNlZCB3
+cml0ZV9mc2xvYygpIHRvIGJlIGVsaWRlZCB3aGVuIGp1bmN0aW9uIHN1cHBvcnQgaXMNCj4+IGRp
+c2FibGVkLiAgR2V0IHJpZCBvZiB0aGUgYm9ndXMgI2lmZGVmIEhBVkVfSlVOQ1RJT05fU1VQUE9S
+VCBibG9ja3Mgc28NCj4+IHRoYXQgcmVmZXJyYWxzIHdvcmsgYWdhaW4gKHRoZSBvbmx5ICNpZmRl
+ZiBIQVZFX0pVTkNUSU9OX1NVUFBPUlQgc2hvdWxkDQo+PiBiZSBhcm91bmQgYWN0dWFsIGp1bmN0
+aW9uIGNvZGUpLg0KPiBXaHkgbm90IGp1c3QgdGFrZSB0aGUgZW5hYmxlX2p1bmN0aW9uIGNvbmZp
+ZyB2YXJpYWJsZQ0KPiBvdXQgb2YgY29uZmlndXJlLmFjIGFzIHdlbGw/DQoNCkl0J3Mgbm90IGdl
+bmVyYWxseSBnb29kIHByYWN0aWNlLCBidXQgSSB3aWxsIGJyZWFrIHVwIHlvdXINCnNlbnRlbmNl
+IGJlbG93IHRvIHJlcGx5IHRvIGVhY2ggYml0LiBUaGVyZSBpcyBzb21ldGhpbmcgdG8NCnVucGFj
+ayBpbiBlYWNoIHBhcnQuDQoNCg0KPiBJZiB3ZSB3YW50IGp1bmN0aW9ucy9yZWZlcnJhbHMgKHdo
+aWNoIGFyZSB0aGUgc2FtZSkNCj4gSU1ITy4uLg0KDQpKdW5jdGlvbnMgYW5kIHJlZmVyPSBhcmUg
+cmVsYXRlZCwgYnV0IHRoZXkgYXJlbid0DQp0aGUgc2FtZS4gQXMgU2NvdHQgZGVtb25zdHJhdGVk
+LCBhIGp1bmN0aW9uIGlzIGEgZmlsZQ0Kc3lzdGVtIG9iamVjdCB0aGF0IHN0b3JlcyBORlN2NCBy
+ZWZlcnJhbCBpbmZvcm1hdGlvbi4NClRoZSAicmVmZXI9IiBleHBvcnQgb3B0aW9uIHN0b3JlcyB0
+aGF0IGluZm9ybWF0aW9uIGluDQovZXRjL2V4cG9ydHMuDQoNClRoZSBjb21tb24gcGFydCBvZiB0
+aGVzZSB0d28gbWVjaGFuaXNtcyByZXNpZGVzIGluDQpORlNELCB3aGljaCB0dXJucyB0aGF0IGlu
+Zm9ybWF0aW9uIGludG8gdGhlIHJlc3BvbnNlDQp0byBhIEdFVEFUVFIoZnNfbG9jYXRpb25zKS4N
+Cg0KDQo+IG9uIGFsbCB0aGUgdGltZS4uLg0KDQpXZSB3YW50ICJyZWZlcj0iIG9uIGFsbCB0aGUg
+dGltZSwgeWVzLg0KDQpKdW5jdGlvbiBzdXBwb3J0IGhhcyB0byBiZSBlbmFibGVkIG1hbnVhbGx5
+LiBUaGlzIGlzDQpiZWNhdXNlIGl0IGRlcGVuZHMgb24gbGlieG1sMiwgd2hpY2ggbm90IGV2ZXJ5
+IGRpc3Rybw0Kd2FudHMgdG8sIG9yIGNhbiwgcHVsbCBpbnRvIGl0cyBuZnMtdXRpbHMgcGFja2Fn
+ZS4NCg0KVGhhdCBpcyBpbiBmYWN0IGV4YWN0bHkgaG93IFNhbHZhdG9yZSBpcyB1c2luZyB0aGlz
+DQpvcHRpb24uIFRoZSBzdGFibGUgdmVyc2lvbiBvZiBEZWJpYW4ncyBuZnMtdXRpbHMNCnBhY2th
+Z2UgZG9lcyBub3Qgd2FudCBsaWJ4bWwyLCBzbyBqdW5jdGlvbiBzdXBwb3J0IGlzDQpkaXNhYmxl
+ZCB0aGVyZS4gQnV0IHRoZXkgL2RvLyB3YW50ICJyZWZlcj0iIHN1cHBvcnQuDQoNCg0KPiBMZXRz
+IG5vdCBiZSBhYmxlIHRvIHR1cm4gdGhlbSBvZmYgYXQgYWxsPw0KDQpUaGF0IHdvdWxkIGJlIG5p
+Y2UsIGJ1dCBpdCdzIG5vdCB5ZXQgcHJhY3RpY2FsIGZvcg0KZXZlcnkgZGlzdHJvIHRvIGVuYWJs
+ZSBpdC4NCg0KSSBhbSB0b2xkIHRoYXQgRGViaWFuIHVuc3RhYmxlJ3MgbmZzLXV0aWxzIHdpbGwN
+CmVuYWJsZSBqdW5jdGlvbiBzdXBwb3J0LCBhbmQgaGFzIGFkZGVkIHRoZSBsaWJ4bWwyDQpkZXBl
+bmRlbmN5IHN1Y2Nlc3NmdWxseS4NCg0KV2Ugd2lsbCBnZXQgdGhlcmUgZXZlbnR1YWxseS4NCg0K
+DQo+IFBvaW50IGJlaW5nLi4uIGlmIHdlIGFyZSBnb2luZyByZW1vdmUgMyBvZiB0aGUgNA0KPiBI
+QVZFX0pVTkNUSU9OX1NVUFBPUlQgaWZkZWZzLi4uIGxldCBnZXQgcmlkZSBvZg0KPiBhbGwgb2Yg
+dGhlbS4NCg0KDQotLQ0KQ2h1Y2sgTGV2ZXINCg0KDQo=
