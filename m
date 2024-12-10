@@ -1,43 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F33CC1A0B13;
-	Tue, 10 Dec 2024 12:26:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A9FCA1A0B13
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Dec 2024 12:29:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1733833583; cv=none; b=Zf3/pwGvlt1PV/3hhBSKGJGyUlFnZGoVedUgNQ6539fZFb1Lqnv3IIkraDipRr6OvC76l1NZy6/DAbZf5yaHzVG6R86EVzlMH6r7MMxdGGwT7EfKIBi5oJOpMNmE45PlqECDAPmn/HbAMek3ho3LO4njgJI6oKJ5PIEpVx42oS4=
+	t=1733833763; cv=none; b=alI7Cuz/ku2s9V6BYBjYqe9eysrEtkmaKDtZ7nckvfar3+duPWzFUGATgEpfBs5HUJNYuKixBvg4Y72NrYp64uZay/9TKRX9euE3oRm0DIZkMyGiREjGW2miGVNHwsiFMfdNk4YjpiO8/MOjNXOUEY2I8xThfE6U2oAofnQhn2k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1733833583; c=relaxed/simple;
-	bh=s/iiOtPWHoCcLxvobmllF6mQuN+Q2Nh6pFmhJMm77bE=;
+	s=arc-20240116; t=1733833763; c=relaxed/simple;
+	bh=RWY9ZEWOp3oR2vtwAUiYbbQagFhwVDzJC/w5DJ/1RCY=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=iSW2zXo5IUuSneQw0PGGjlcovje7sJ4BoLkRwBhqhGOmgqGA9jiT0PKWwmnnZVbBdTKofOeWcMQ4ntdcGeBY9YpsMgNRAQ8tKuC3BMqavWKN7fNhgANeAMc6yGvZ5qXVeRL2ogWo9sQLnS7HRS+Z40cHW/SuhG5+BtR2JD42eRE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Is/6DbxO; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:MIME-Version; b=GnE0h1dBgUocLStDYMvmQoG0JgbNBMrV9QYDkWpqU67qeLW3Zc78wEqCcZ9mc4Lha7KEIfwvTNoFHg94iP5AMyZAD/0cMVjqy7HB+V+hnwzlTLv50bo0WWQ2Rp1URNbUi3CDaP625a0lBUeowZw7wQjYrZFqDr8aAcepGV9JdTY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oYlGvb59; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Is/6DbxO"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3A8B0C4CEDE;
-	Tue, 10 Dec 2024 12:26:21 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oYlGvb59"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 96E6BC4CED6;
+	Tue, 10 Dec 2024 12:29:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1733833582;
-	bh=s/iiOtPWHoCcLxvobmllF6mQuN+Q2Nh6pFmhJMm77bE=;
+	s=k20201202; t=1733833763;
+	bh=RWY9ZEWOp3oR2vtwAUiYbbQagFhwVDzJC/w5DJ/1RCY=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=Is/6DbxORXLqA19cDuHHnP74T3EI+EPwb5qhVvy1jMbpATIVnGiVIz8FpNKVjuwrT
-	 wK/Sg+std1pQTDmKSrpuqIg7V6E6K535qlPwYfKfmeMgAPD/T5xyYGnVmegBTZG4G5
-	 jW0Nkz+y0gqHOPJqhsFlj1e35qXlOUHoCHsL0hqDKlIWBaU59jiMTsSx5NdfmrI4S+
-	 kSmtcwJhPU5np/h18rdPBcblW7OQvHa5xURvkcjWtJyDTeh8vuqVhA+hNKEAWNQB/Z
-	 e5H1i0A+lxxpHidPUOOk3NbK+bCzdSFyY4GwaepOPMsp8K7p+aoItRqNjGt2g4RClv
-	 qOE5X3DSXXofQ==
-Message-ID: <03fff89e9df7d04eaa1a793c289b5126f145e46a.camel@kernel.org>
-Subject: Re: [PATCH 0/3] sunrpc: Deadcoding
+	b=oYlGvb59ANxUS0e+p5sSJ9uplhO625fNgHREl5vpDCTqG8oWDg98b+BwgszbVWhNO
+	 lybXw4CD0yxndsHfNedcj4+d5sb2txtxumXeVoSG4bgnm4ptBN191x46GuMvZRPlEN
+	 D7oJSMQS/R/m0CcvG2+RulX6vxXn5B4y4H6QVdyGZZfOYZksFrmDsTUyYMEd+Q+C3U
+	 VWDLwIbXXMNiz7i5hqD0w54dfHo8v6+hyYMugrYdxNm9TB+ZzMxjnPZW/PKMDXz5IG
+	 y8+/pU5J184cjUVgIP43b3qogHLvSUezKXoSZNdVtziB7MJ+IuQmnAM0mwd7IG+o+J
+	 Vb1DZItpSzlkQ==
+Message-ID: <c152bd8f69185a3c1efd7b22a748f890049ad02c.camel@kernel.org>
+Subject: Re: [PATCH 2/2] sunrpc: remove all connection limit configuration
 From: Jeff Layton <jlayton@kernel.org>
-To: linux@treblig.org, trondmy@kernel.org, anna@kernel.org, 
- chuck.lever@oracle.com, neilb@suse.de, okorniev@redhat.com,
- Dai.Ngo@oracle.com,  tom@talpey.com
-Cc: linux-nfs@vger.kernel.org, davem@davemloft.net, edumazet@google.com, 
- kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
- netdev@vger.kernel.org,  linux-kernel@vger.kernel.org
-Date: Tue, 10 Dec 2024 07:26:20 -0500
-In-Reply-To: <20241210010225.343017-1-linux@treblig.org>
-References: <20241210010225.343017-1-linux@treblig.org>
+To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org, Olga Kornievskaia <okorniev@redhat.com>, Dai
+ Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Date: Tue, 10 Dec 2024 07:29:21 -0500
+In-Reply-To: <6803341d-5071-46f2-971a-b1699572d833@oracle.com>
+References: <20241209004310.728309-1-neilb@suse.de>
+	 <20241209004310.728309-3-neilb@suse.de>
+	 <6803341d-5071-46f2-971a-b1699572d833@oracle.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -122,37 +121,276 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2024-12-10 at 01:02 +0000, linux@treblig.org wrote:
-> From: "Dr. David Alan Gilbert" <linux@treblig.org>
+On Mon, 2024-12-09 at 12:27 -0500, Chuck Lever wrote:
+> On 12/8/24 7:41 PM, NeilBrown wrote:
+> > Now that the connection limit only apply to unconfirmed connections,
+> > there is no need to configure it.  So remove all the configuration and
+> > fix the number of unconfirmed connections as always 64 - which is
+> > now given a name: XPT_MAX_TMP_CONN
+> >=20
+> > Reviewed-by: Jeff Layton <jlayton@kernel.org>
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+> > ---
+> >   fs/lockd/svc.c                  |  8 -------
+> >   fs/nfsd/netns.h                 |  6 -----
+> >   fs/nfsd/nfsctl.c                | 42 --------------------------------=
+-
+> >   fs/nfsd/nfssvc.c                |  5 ----
+> >   include/linux/sunrpc/svc.h      |  4 ----
+> >   include/linux/sunrpc/svc_xprt.h |  6 +++++
+> >   net/sunrpc/svc_xprt.c           |  8 +------
+> >   7 files changed, 7 insertions(+), 72 deletions(-)
+> >=20
+> > diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> > index 4ec22c2f2ea3..7ded57ec3a60 100644
+> > --- a/fs/lockd/svc.c
+> > +++ b/fs/lockd/svc.c
+> > @@ -70,9 +70,6 @@ static unsigned long		nlm_grace_period;
+> >   unsigned long			nlm_timeout =3D LOCKD_DFLT_TIMEO;
+> >   static int			nlm_udpport, nlm_tcpport;
+> >  =20
+> > -/* RLIM_NOFILE defaults to 1024. That seems like a reasonable default =
+here. */
+> > -static unsigned int		nlm_max_connections =3D 1024;
+> > -
+> >   /*
+> >    * Constants needed for the sysctl interface.
+> >    */
+> > @@ -136,9 +133,6 @@ lockd(void *vrqstp)
+> >   	 * NFS mount or NFS daemon has gone away.
+> >   	 */
+> >   	while (!svc_thread_should_stop(rqstp)) {
+> > -		/* update sv_maxconn if it has changed */
+> > -		rqstp->rq_server->sv_maxconn =3D nlm_max_connections;
+> > -
+> >   		nlmsvc_retry_blocked(rqstp);
+> >   		svc_recv(rqstp);
+> >   	}
+> > @@ -340,7 +334,6 @@ static int lockd_get(void)
+> >   		return -ENOMEM;
+> >   	}
+> >  =20
+> > -	serv->sv_maxconn =3D nlm_max_connections;
+> >   	error =3D svc_set_num_threads(serv, NULL, 1);
+> >   	if (error < 0) {
+> >   		svc_destroy(&serv);
+> > @@ -542,7 +535,6 @@ module_param_call(nlm_udpport, param_set_port, para=
+m_get_int,
+> >   module_param_call(nlm_tcpport, param_set_port, param_get_int,
+> >   		  &nlm_tcpport, 0644);
+> >   module_param(nsm_use_hostnames, bool, 0644);
+> > -module_param(nlm_max_connections, uint, 0644);
 >=20
-> Hi,
->   This is a bunch of deadcoding around the sunrpc code.
-> This all removes whole functions/definitions/files
-> rather than changing any actual codepaths.
->=20
-> Dave
->=20
-> Signed-off-by: Dr. David Alan Gilbert <linux@treblig.org>
->=20
-> Dr. David Alan Gilbert (3):
->   sunrpc: Remove unused xprt_iter_get_xprt
->   sunrpc: Remove gss_generic_token deadcode
->   sunrpc: Remove gss_{de,en}crypt_xdr_buf deadcode
->=20
->  include/linux/sunrpc/gss_asn1.h         |  81 ---------
->  include/linux/sunrpc/gss_krb5.h         |   1 -
->  include/linux/sunrpc/xprtmultipath.h    |   1 -
->  net/sunrpc/auth_gss/Makefile            |   2 +-
->  net/sunrpc/auth_gss/gss_generic_token.c | 231 ------------------------
->  net/sunrpc/auth_gss/gss_krb5_crypto.c   |  55 ------
->  net/sunrpc/auth_gss/gss_krb5_internal.h |   7 -
->  net/sunrpc/auth_gss/gss_mech_switch.c   |   1 -
->  net/sunrpc/xprtmultipath.c              |  17 --
->  9 files changed, 1 insertion(+), 395 deletions(-)
->  delete mode 100644 include/linux/sunrpc/gss_asn1.h
->  delete mode 100644 net/sunrpc/auth_gss/gss_generic_token.c
+> We've discussed deprecation and removal of items from /proc/fs/nfsd
+> before, but removing a module parameter seems like it needs to be
+> handled with the usual deprecation schedule?
 >=20
 
-I love removing unused code. Assuming everything builds OK after this:
+Yeah, that could break someone on an upgrade. What we should probably
+do is keep the knob around, but just make it not do anything now, and
+throw a pr_warn message or something if someone tries to set it.
+Eventually in a year or two, we should be able to remove it.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+
+> >   static int lockd_init_net(struct net *net)
+> >   {
+> > diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+> > index a05a45bb1978..4a07b8d0837b 100644
+> > --- a/fs/nfsd/netns.h
+> > +++ b/fs/nfsd/netns.h
+> > @@ -128,12 +128,6 @@ struct nfsd_net {
+> >   	seqlock_t writeverf_lock;
+> >   	unsigned char writeverf[8];
+> >  =20
+> > -	/*
+> > -	 * Max number of non-validated connections this nfsd container
+> > -	 * will allow.  Defaults to '0' gets mapped to 64.
+> > -	 */
+> > -	unsigned int max_connections;
+> > -
+> >   	u32 clientid_base;
+> >   	u32 clientid_counter;
+> >   	u32 clverifier_counter;
+> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> > index 3adbc05ebaac..95ea4393305b 100644
+> > --- a/fs/nfsd/nfsctl.c
+> > +++ b/fs/nfsd/nfsctl.c
+> > @@ -48,7 +48,6 @@ enum {
+> >   	NFSD_Versions,
+> >   	NFSD_Ports,
+> >   	NFSD_MaxBlkSize,
+> > -	NFSD_MaxConnections,
+> >   	NFSD_Filecache,
+> >   	NFSD_Leasetime,
+> >   	NFSD_Gracetime,
+> > @@ -68,7 +67,6 @@ static ssize_t write_pool_threads(struct file *file, =
+char *buf, size_t size);
+> >   static ssize_t write_versions(struct file *file, char *buf, size_t si=
+ze);
+> >   static ssize_t write_ports(struct file *file, char *buf, size_t size)=
+;
+> >   static ssize_t write_maxblksize(struct file *file, char *buf, size_t =
+size);
+> > -static ssize_t write_maxconn(struct file *file, char *buf, size_t size=
+);
+> >   #ifdef CONFIG_NFSD_V4
+> >   static ssize_t write_leasetime(struct file *file, char *buf, size_t s=
+ize);
+> >   static ssize_t write_gracetime(struct file *file, char *buf, size_t s=
+ize);
+> > @@ -87,7 +85,6 @@ static ssize_t (*const write_op[])(struct file *, cha=
+r *, size_t) =3D {
+> >   	[NFSD_Versions] =3D write_versions,
+> >   	[NFSD_Ports] =3D write_ports,
+> >   	[NFSD_MaxBlkSize] =3D write_maxblksize,
+> > -	[NFSD_MaxConnections] =3D write_maxconn,
+> >   #ifdef CONFIG_NFSD_V4
+> >   	[NFSD_Leasetime] =3D write_leasetime,
+> >   	[NFSD_Gracetime] =3D write_gracetime,
+> > @@ -902,44 +899,6 @@ static ssize_t write_maxblksize(struct file *file,=
+ char *buf, size_t size)
+> >   							nfsd_max_blksize);
+> >   }
+> >  =20
+> > -/*
+> > - * write_maxconn - Set or report the current max number of connections
+> > - *
+> > - * Input:
+> > - *			buf:		ignored
+> > - *			size:		zero
+> > - * OR
+> > - *
+> > - * Input:
+> > - *			buf:		C string containing an unsigned
+> > - *					integer value representing the new
+> > - *					number of max connections
+> > - *			size:		non-zero length of C string in @buf
+> > - * Output:
+> > - *	On success:	passed-in buffer filled with '\n'-terminated C string
+> > - *			containing numeric value of max_connections setting
+> > - *			for this net namespace;
+> > - *			return code is the size in bytes of the string
+> > - *	On error:	return code is zero or a negative errno value
+> > - */
+> > -static ssize_t write_maxconn(struct file *file, char *buf, size_t size=
+)
+> > -{
+> > -	char *mesg =3D buf;
+> > -	struct nfsd_net *nn =3D net_generic(netns(file), nfsd_net_id);
+> > -	unsigned int maxconn =3D nn->max_connections;
+> > -
+> > -	if (size > 0) {
+> > -		int rv =3D get_uint(&mesg, &maxconn);
+> > -
+> > -		if (rv)
+> > -			return rv;
+> > -		trace_nfsd_ctl_maxconn(netns(file), maxconn);
+> > -		nn->max_connections =3D maxconn;
+> > -	}
+> > -
+> > -	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%u\n", maxconn);
+> > -}
+> > -
+> >   #ifdef CONFIG_NFSD_V4
+> >   static ssize_t __nfsd4_write_time(struct file *file, char *buf, size_=
+t size,
+> >   				  time64_t *time, struct nfsd_net *nn)
+> > @@ -1372,7 +1331,6 @@ static int nfsd_fill_super(struct super_block *sb=
+, struct fs_context *fc)
+> >   		[NFSD_Versions] =3D {"versions", &transaction_ops, S_IWUSR|S_IRUSR}=
+,
+> >   		[NFSD_Ports] =3D {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
+> >   		[NFSD_MaxBlkSize] =3D {"max_block_size", &transaction_ops, S_IWUSR|=
+S_IRUGO},
+> > -		[NFSD_MaxConnections] =3D {"max_connections", &transaction_ops, S_IW=
+USR|S_IRUGO},
+> >   		[NFSD_Filecache] =3D {"filecache", &nfsd_file_cache_stats_fops, S_I=
+RUGO},
+> >   #ifdef CONFIG_NFSD_V4
+> >   		[NFSD_Leasetime] =3D {"nfsv4leasetime", &transaction_ops, S_IWUSR|S=
+_IRUSR},
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index 49e2f32102ab..b77097de5936 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -668,7 +668,6 @@ int nfsd_create_serv(struct net *net)
+> >   	if (serv =3D=3D NULL)
+> >   		return -ENOMEM;
+> >  =20
+> > -	serv->sv_maxconn =3D nn->max_connections;
+> >   	error =3D svc_bind(serv, net);
+> >   	if (error < 0) {
+> >   		svc_destroy(&serv);
+> > @@ -954,11 +953,7 @@ nfsd(void *vrqstp)
+> >   	 * The main request loop
+> >   	 */
+> >   	while (!svc_thread_should_stop(rqstp)) {
+> > -		/* Update sv_maxconn if it has changed */
+> > -		rqstp->rq_server->sv_maxconn =3D nn->max_connections;
+> > -
+> >   		svc_recv(rqstp);
+> > -
+> >   		nfsd_file_net_dispose(nn);
+> >   	}
+> >  =20
+> > diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> > index 617ebfff2f30..9d288a673705 100644
+> > --- a/include/linux/sunrpc/svc.h
+> > +++ b/include/linux/sunrpc/svc.h
+> > @@ -72,10 +72,6 @@ struct svc_serv {
+> >   	spinlock_t		sv_lock;
+> >   	unsigned int		sv_nprogs;	/* Number of sv_programs */
+> >   	unsigned int		sv_nrthreads;	/* # of server threads */
+> > -	unsigned int		sv_maxconn;	/* max connections allowed or
+> > -						 * '0' causing max to be based
+> > -						 * on number of threads. */
+> > -
+> >   	unsigned int		sv_max_payload;	/* datagram payload size */
+> >   	unsigned int		sv_max_mesg;	/* max_payload + 1 page for overheads */
+> >   	unsigned int		sv_xdrsize;	/* XDR buffer size */
+> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc=
+_xprt.h
+> > index 35929a7727c7..114051ad985a 100644
+> > --- a/include/linux/sunrpc/svc_xprt.h
+> > +++ b/include/linux/sunrpc/svc_xprt.h
+> > @@ -105,6 +105,12 @@ enum {
+> >   				 */
+> >   };
+> >  =20
+> > +/*
+> > + * Maximum number of "tmp" connections - those without XPT_PEER_VALID =
+-
+> > + * permitted on any service.
+> > + */
+> > +#define XPT_MAX_TMP_CONN	64
+> > +
+> >   static inline void svc_xprt_set_valid(struct svc_xprt *xpt)
+> >   {
+> >   	if (test_bit(XPT_TEMP, &xpt->xpt_flags) &&
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index ff5b8bb8a88f..070bdeb50496 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -619,16 +619,10 @@ int svc_port_is_privileged(struct sockaddr *sin)
+> >    * The only somewhat efficient mechanism would be if drop old
+> >    * connections from the same IP first. But right now we don't even
+> >    * record the client IP in svc_sock.
+> > - *
+> > - * single-threaded services that expect a lot of clients will probably
+> > - * need to set sv_maxconn to override the default value which is based
+> > - * on the number of threads
+> >    */
+> >   static void svc_check_conn_limits(struct svc_serv *serv)
+> >   {
+> > -	unsigned int limit =3D serv->sv_maxconn ? serv->sv_maxconn : 64;
+> > -
+> > -	if (serv->sv_tmpcnt > limit) {
+> > +	if (serv->sv_tmpcnt > XPT_MAX_TMP_CONN) {
+> >   		struct svc_xprt *xprt =3D NULL, *xprti;
+> >   		spin_lock_bh(&serv->sv_lock);
+> >   		if (!list_empty(&serv->sv_tempsocks)) {
+>=20
+>=20
+
+--=20
+Jeff Layton <jlayton@kernel.org>
