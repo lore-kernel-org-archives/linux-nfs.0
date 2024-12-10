@@ -1,82 +1,91 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5BAA81B2195
-	for <linux-nfs@vger.kernel.org>; Tue, 10 Dec 2024 14:44:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DB0141A9B25
+	for <linux-nfs@vger.kernel.org>; Tue, 10 Dec 2024 14:53:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1733841891; cv=none; b=EOX4tYg3GjTHuAjCQPiNifUg/YI9lahct+ovLbqoEtAzs332Znd24XbvOvWZJ+nux5X0CbPTT8LBjd9p6ulIWjaN7+mBL/mOxLHER46JaYIWCc6PFrX1jHi9tHuzX5WFhWUG+2jTMZ2X5anyrDtOMttppIAUkoc/6SOW6RDk+Tw=
+	t=1733842406; cv=none; b=nUb36pDaUkBpRPKVZqFvy/Fg026aQ1J+8BJD+xloIiQ5j53t8rcpzsJGsT0kGad7exTmRZ3OI5x0SohBqix3W+Uqj//Egv3wTMNKQQB0eCpVi48YpnF5HZDSWYb0ylZwn06wcnpN1YIWyGUIrU2v2KqocJwYPKzqYEU5asbXiEI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1733841891; c=relaxed/simple;
-	bh=F8a58kaQ5HBZIhboLnmf7ghhmu9jU4mV2qydZOzHjpw=;
-	h=From:Date:MIME-Version:Content-Type:To:Message-ID:In-Reply-To:
-	 References:Subject; b=TtYFPasLbxax+QPhWAMgJjMa7/pL4LSr+6swzFcN/2G/5/ruQMfvt9PUMa3RUqIP1AP7rx1OYEHpc8BNrfiLg7XHagvcZiQRcOkQTr/ZY5OkmxnqFm4vbALIKXpeG2+8AJM4E5zvFRnxgum52sNKlslEj1LpkIs6F33rH/EfEeM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=o6NxqYLV; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1733842406; c=relaxed/simple;
+	bh=uTa/lBLietCuUfe0XcM5vlYIN5s6xguVoMLTN2F94+g=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=DyjYvssgUmJa8iQNpd1l07xo4LmG55yQE0J0cXkOT+f23ukVpmeDoRrZrByZUreGgFfTdSY7hlvd7M+f9Gk005zKODjsypKSnm5hJyT1kBQyacIliF7xg8xVzurntRpa9XpujKsFOmnkVVKGp7YnyXe8JSrMPWRbiyAhuJ3fGMU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=h6EIMpRN; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="o6NxqYLV"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D841BC4CED6;
-	Tue, 10 Dec 2024 14:44:50 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1733841890;
-	bh=F8a58kaQ5HBZIhboLnmf7ghhmu9jU4mV2qydZOzHjpw=;
-	h=From:Date:To:In-Reply-To:References:Subject:From;
-	b=o6NxqYLVxlYdNP6ldBVPdEyNQRjrEyDmOQQBTZiQrMgn/JRCPXiJ1CBZMa6UJANND
-	 W5MGGjy9tTfUXLHZ/1vw/BNXyUhO2ew2+neeJwXPL2SRHGyQ4IeYI9VbMvbkrnZ10I
-	 2txW08Wh+XJMBh9rLEL5DblEn3hxnvt/q3pikjnzth3xK8Ipn+tAcfgd/+KkuOtL0h
-	 0x4KZ+lCHZnW6RsTs4NkHpLkFs5i3bp7gdv27aYVHE0UOlgaB3U786puAXGCgKOyt5
-	 47uHcyT5fMcMQU+kh6pT2LR51j38+SUXF7fhtKKJloaoNAE8I2/47UXacWoBjfIxu6
-	 GSIx808a2i8Yw==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id B3F0D380A954;
-	Tue, 10 Dec 2024 14:45:07 +0000 (UTC)
-From: Chuck Lever via Bugspray Bot <bugbot@kernel.org>
-Date: Tue, 10 Dec 2024 14:45:14 +0000
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="h6EIMpRN"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1733842403;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=io5bbeV8+yj9M/pxlfkVOg9q/DEsngnyV1yPYFNp39k=;
+	b=h6EIMpRNvMl1V3RjTRyHXwMh+msGwmvKCNBTcLE31dG/VTX8RDWKgYcgl3XeEbDy5Hy5Pc
+	7zz8/6Bp/+fVEZ5h07JWmDVUzzvFBSweOayPviZNhPoYibqJptOQS3tDQkiKA05ktVc8i/
+	ZHvnqoP/zLlS2E+Ed2eUEwPu8HN0A1Q=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-27-JFE45WakPlOJgSqcag66vA-1; Tue,
+ 10 Dec 2024 09:53:19 -0500
+X-MC-Unique: JFE45WakPlOJgSqcag66vA-1
+X-Mimecast-MFC-AGG-ID: JFE45WakPlOJgSqcag66vA
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 385761954211;
+	Tue, 10 Dec 2024 14:53:18 +0000 (UTC)
+Received: from aion.redhat.com (unknown [10.22.82.57])
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id D9CE519560A7;
+	Tue, 10 Dec 2024 14:53:17 +0000 (UTC)
+Received: from aion.. (localhost [IPv6:::1])
+	by aion.redhat.com (Postfix) with ESMTP id 08F2F2E6672;
+	Tue, 10 Dec 2024 07:25:55 -0500 (EST)
+From: Scott Mayhew <smayhew@redhat.com>
+To: chuck.lever@oracle.com,
+	jlayton@kernel.org
+Cc: jur@avtware.com,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: fix legacy client tracking initialization
+Date: Tue, 10 Dec 2024 07:25:54 -0500
+Message-ID: <20241210122554.133412-1-smayhew@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-To: linux-nfs@vger.kernel.org, cel@kernel.org, anna@kernel.org, 
- trondmy@kernel.org, jlayton@kernel.org
-Message-ID: <20241210-b219535c11-366357209853@bugzilla.kernel.org>
-In-Reply-To: <20241127-b219535c0-4d5445e74947@bugzilla.kernel.org>
-References: <20241127-b219535c0-4d5445e74947@bugzilla.kernel.org>
-Subject: Re: Possible memory leak on nfsd
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: NFSD
-X-Mailer: bugspray 0.1-dev
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-Chuck Lever writes via Kernel.org Bugzilla:
+Get rid of the nfsd4_legacy_tracking_ops->init() call in
+check_for_legacy_methods().  That will be handled in the caller
+(nfsd4_client_tracking_init()).  Otherwise, we'll wind up calling
+nfsd4_legacy_tracking_ops->init() twice, and the second time we'll
+trigger the BUG_ON() in nfsd4_init_recdir().
 
-This is what comment 0 says:
+Fixes: 74fd48739d04 ("nfsd: new Kconfig option for legacy client tracking")
+Reported-by: Jur van der Burg <jur@avtware.com>
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=219580
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfsd/nfs4recover.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-> My RHEL9 server with only NFS service often OOMed after a day or two,
-> with no userspace memory usage. So I switched to elrepo kernel-lts and
-> still the problem persists.
-
-> I'm now using 6.1.119-1.el9.elrepo.x86_64. The problem also occured on
-> (RHEL 5.14.0-427.40.1.el9_4, (RHEL) 5.14.0-503.14.1.el9_5 and
-> 6.1.115-1.el9.elrepo.x86_64.
-
-You mentioned RHEL, and RHEL 9 in particular, several times here. I have no prior knowledge of "the ELRepo Project" -- never heard of it. By "uname" these all look like distro-built kernels to me.
-
-> Anyway, I encountered another 2 crashes in the last two days and
-> call stack insists nfsd caused it.
-
-I'm not saying this isn't an NFSD bug. But it might not be a problem in recent kernels. If I'm reading your reports correctly, you have not tested with 6.12 or newer. 6.1.anything is based on a two-year old code base.
-
-Any fix we create for this issue must be applied to the upstream Linus kernel first. Indeed, a fix might already exist somewhere in upstream. By upstream, I mean the "master" branch in this repo:
-
-https://git.kernel.org./pub/scm/linux/kernel/git/torvalds/linux.git
-
-Therefore the first task is for you to confirm by testing that this branch either still has this issue, in which case we have to troubleshoot further; or does not, in which case you can bisect to find the upstream fix that needs to be backported to the LTS kernels.
-
-View: https://bugzilla.kernel.org/show_bug.cgi?id=219535#c11
-You can reply to this message to join the discussion.
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 4a765555bf84..1c8fcb04b3cd 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -2052,7 +2052,6 @@ static inline int check_for_legacy_methods(int status, struct net *net)
+ 		path_put(&path);
+ 		if (status)
+ 			return -ENOTDIR;
+-		status = nn->client_tracking_ops->init(net);
+ 	}
+ 	return status;
+ }
 -- 
-Deet-doot-dot, I am a bot.
-Kernel.org Bugzilla (bugspray 0.1-dev)
+2.47.1
 
