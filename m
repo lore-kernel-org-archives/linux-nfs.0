@@ -1,114 +1,215 @@
-Received: from mail-pf1-f173.google.com (mail-pf1-f173.google.com [209.85.210.173])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from szxga05-in.huawei.com (szxga05-in.huawei.com [45.249.212.191])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 817D72AF03;
-	Mon, 16 Dec 2024 10:13:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C804329CA
+	for <linux-nfs@vger.kernel.org>; Mon, 16 Dec 2024 13:58:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.191
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1734344026; cv=none; b=KFvlKgOqE8enXyO8gpud4AJUQ9/uo7ht0xhWxQiBuTo0W/pq+RDPBazW8s7Grx4ihG5xsZv0/aUhlTb01wt5492el1JvIn8iiNiG2KuRyGi8D0l8Nmeq4iPihkL6a09dXvfcjCEFJyGtbjdddD2TGNNXJO0tDqwnAObg01WyfJM=
+	t=1734357522; cv=none; b=VMZ7v4gr715AVTePqpoZ3DuePY9CUN5OL/5ym/2H4CVft+P7ogPgNqTbLR3FodEXdTaeLJm5pdnkIpd8VdPUdIDJRxgEkwe2KqZcq54BNUbvYKSSyxrlL9e17EDWf9AdaEHBcQ8ZH1O+7fNNWKDV4rAFmNXuR0eh1KgaJcSAweA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1734344026; c=relaxed/simple;
-	bh=6o4jofo5o0s4egvVbxhwmAn4YH9WdHGRsBXLWeO+DtM=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=llWH7MRcpQy8dGn/jx8skZVadlDxoccd0lbpK7Y9ONTF97m5uy+cnN8V1Q5NUic78onqaRGtWZpJU+8uPwHSvo7bVxyg/xVU/ONFx3ST9VI8mpnN60w4AUgdKlbKlRbz6QEXsezNbuLCg2CyZkC3/dtVHoST2FM4Maa27ZfTI+s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ArWhBjJl; arc=none smtp.client-ip=209.85.210.173
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ArWhBjJl"
-Received: by mail-pf1-f173.google.com with SMTP id d2e1a72fcca58-728f1525565so4530416b3a.1;
-        Mon, 16 Dec 2024 02:13:45 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1734344025; x=1734948825; darn=vger.kernel.org;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=V9ZM1VYLJhmWw0JXWXrNZw/asAR3qnp4u24wAg0Zo6s=;
-        b=ArWhBjJl3hPPOaKkIaY/r+yGPfLKSnkKdtF1TEpdvVhnWMOKURtfK/Wn5Ix/UNNpzX
-         pZrrqBnJVHlbkENmVJLNlVaP0hTHxqSN8zJtu3np8YV3WQzU4ZnbFqSRJzhDjS+Yv+lh
-         VZ+4KObdpdXeZOzP7J6NH3YfE4mb2gcewtTPjW0H/rFt7vFyAkkxqvA4RM2KWejpQv5x
-         6C9dvGXjsA4SCWDSU4qzdHbdptEKkGlTwCjtDds/pUGtc3zBBUKhfTHLoEVXAT8LG+64
-         3l1SCjyQChpZQ6AdjHNDjhLv+2L1bxmEamsQkDFoqb5Luj7Asd0eVlTi18xkAj0ava2e
-         s6GA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1734344025; x=1734948825;
-        h=content-transfer-encoding:in-reply-to:from:content-language
-         :references:cc:to:subject:user-agent:mime-version:date:message-id
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=V9ZM1VYLJhmWw0JXWXrNZw/asAR3qnp4u24wAg0Zo6s=;
-        b=BvT4pudPVPlb4iKaFCjVriJQTM2XQ1ovXhOWJJX9/XHZJLxM06tuvpcO53bImru50u
-         eCvT4kl2Vxc88xpU8zz6iCJEs/jJ35KLYnZX4JPex7oJ9Xomf7DV7UlJ1D97Oyy/ZGqJ
-         Rvw2LoZd+wf4aL+E3FBre6FRsndV44I9sGXMrnrPCZNuWNBT8r9f97h2CR9eSmG/3xx0
-         wF3n2iXF7VMS9U00uHiJ/FXBBXDISvwlPGYBWkrNprxLDwISbqsOzBEuwmjDsds7evRa
-         fovmE5gTJQioUfG7e4zELpVJBPn6fu0bPJmrlcDsFfTxlcTY1NeRO6ZTYAR93lG257QE
-         3ghw==
-X-Forwarded-Encrypted: i=1; AJvYcCUY8Pq35Ai8nboc5CMbQH0A9pYJBAiivv4BxokddKHnyu0ug4lvLY6bO2pJ9x7qC1iytiP1Vme733W8@vger.kernel.org, AJvYcCUgj+VAC9wZScEale4DvdNt6oaQkScbLqvU4dedr0S2X5GbGTg90AxvRBhi+bezyUJDTFJe6sYanOwG@vger.kernel.org, AJvYcCVFeBzHM9UQ22kV5ed0chN0KT+kFeFLr1umx5PCZWCynHEIE1ONeM2uAtRj803fgHYWvpH/6VBSSa24YeBM@vger.kernel.org, AJvYcCWDTIkjNr30p6AOumCmZ5VBQ8PY8TmJ4PwqmZR/c2nWTq8W9dgFXplTD2uaBQ4+Alk+Xj0a8Mbh709IN7nRCw==@vger.kernel.org, AJvYcCXFJ/hXevDkYzQJ1eERqLePiy2/yzSfCcywqxTxPgxv5+L7NwLTguvIDsJM0gt8uyAqfkCc+Q2lcMazrA==@vger.kernel.org
-X-Gm-Message-State: AOJu0YyTe67VOy4vncRMgAkQ0GdDriMtRUv8BENPHvOjbXrwBVJxkU46
-	LSKkU9A+GbvtJf/9Eqrzilwlq3uynuXBk4nJCFbDKlKz3TrAfsJC
-X-Gm-Gg: ASbGncus2+wAW8zO/M4IDWlchL4Qx8c/EiHaaynjcEUCZWuSykEdl6rQWcHcD9tqNoj
-	XLiBaZUepirhuO+nFFomVyqJrHFdE+mh4SkrhMXgXzD4GAk/o6HfqWmU5Rqx8VcVN5iqlq99muG
-	uhzK0hN/75NHl2Qgj6t34NkrblyL3tGs8ad63hFuu7mX0N0WkmJ9bvpIteW5oedQsnzsGQufQp5
-	PUlDj6tLqSA0m3K+EootKncgwXHVIl23OhLDxjy4lNj5zYVX1XUmchop8N+mOYgIGTzUDUcW/kB
-	SlYE+eMwkiwL5gTiQkpgAt0=
-X-Google-Smtp-Source: AGHT+IFq3zJyvoXfAV7XVBdCiDQC4vaO/7xLrUwixiOvu21RBmLw5wfgxXzoYw8zU6Yia4k+KM7puQ==
-X-Received: by 2002:a05:6a20:4304:b0:1e1:bdae:e045 with SMTP id adf61e73a8af0-1e1dfd91980mr18130458637.23.1734344023005;
-        Mon, 16 Dec 2024 02:13:43 -0800 (PST)
-Received: from [10.0.2.15] (KD106167137155.ppp-bb.dion.ne.jp. [106.167.137.155])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-72918bce39csm4517791b3a.189.2024.12.16.02.13.38
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Mon, 16 Dec 2024 02:13:42 -0800 (PST)
-Message-ID: <843f5270-d715-4c98-b191-1c271eb418c5@gmail.com>
-Date: Mon, 16 Dec 2024 19:13:39 +0900
+	s=arc-20240116; t=1734357522; c=relaxed/simple;
+	bh=lDm06dcQ1ONe8rQauRVy1Q79S+PJeWq6qLurUUuVZOQ=;
+	h=Message-ID:Date:MIME-Version:Subject:To:CC:References:From:
+	 In-Reply-To:Content-Type; b=jUm3h4jIkpImnvC+iFpS7eMC5D+0+o6op5L8V1iURedWOxdM8CW633+/KaD3yXTm3YfleACVsPhPAWRZyBCUbt4Mu85QiOVThFlE2UWB7C1wi5D+JMwhFYbvGKiGspFicBhzVpmDzs1ExL4Lrf/YahaeJC5fyyjRsNlinjpxQ2s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.191
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+Received: from mail.maildlp.com (unknown [172.19.163.17])
+	by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4YBhNl2R7Hz1JFMw;
+	Mon, 16 Dec 2024 21:58:15 +0800 (CST)
+Received: from kwepemf100006.china.huawei.com (unknown [7.202.181.220])
+	by mail.maildlp.com (Postfix) with ESMTPS id 051A61A0188;
+	Mon, 16 Dec 2024 21:58:36 +0800 (CST)
+Received: from [10.174.177.210] (10.174.177.210) by
+ kwepemf100006.china.huawei.com (7.202.181.220) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1544.11; Mon, 16 Dec 2024 21:58:35 +0800
+Message-ID: <1d1e1432-80b5-5d41-d202-3dffe61b207b@huawei.com>
+Date: Mon, 16 Dec 2024 21:58:34 +0800
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 06/10] netfs: Remove redundant use of smp_rmb()
-To: David Howells <dhowells@redhat.com>,
- Christian Brauner <christian@brauner.io>
-Cc: Max Kellermann <max.kellermann@ionos.com>,
- Ilya Dryomov <idryomov@gmail.com>, Xiubo Li <xiubli@redhat.com>,
- Trond Myklebust <trondmy@kernel.org>, Jeff Layton <jlayton@kernel.org>,
- Matthew Wilcox <willy@infradead.org>, netfs@lists.linux.dev,
- linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
- linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, v9fs@lists.linux.dev,
- linux-erofs@lists.ozlabs.org, linux-fsdevel@vger.kernel.org,
- linux-mm@kvack.org, linux-kernel@vger.kernel.org,
- Zilin Guan <zilin@seu.edu.cn>, Akira Yokosawa <akiyks@gmail.com>
-References: <20241213135013.2964079-1-dhowells@redhat.com>
- <20241213135013.2964079-7-dhowells@redhat.com>
-Content-Language: en-US
-From: Akira Yokosawa <akiyks@gmail.com>
-In-Reply-To: <20241213135013.2964079-7-dhowells@redhat.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101
+ Thunderbird/102.5.1
+Subject: Re: [PATCH] nfsd: do not use async mode when not in rcu context
+To: Chuck Lever <chuck.lever@oracle.com>, yangerkun
+	<yangerkun@huaweicloud.com>, <jlayton@kernel.org>,
+	<linux-nfs@vger.kernel.org>
+CC: <liumingrui@huawei.com>
+References: <20241214134916.422488-1-yangerkun@huaweicloud.com>
+ <eb4a56e2-d6d2-0491-fcf5-95d5c29cd7ab@huaweicloud.com>
+ <c210fba1-181f-4e5a-adf1-4305c7f01ac8@oracle.com>
+From: yangerkun <yangerkun@huawei.com>
+In-Reply-To: <c210fba1-181f-4e5a-adf1-4305c7f01ac8@oracle.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 8bit
+X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+ kwepemf100006.china.huawei.com (7.202.181.220)
 
-David Howells wrote:
-> From: Zilin Guan <zilin@seu.edu.cn>
-> 
-> The function netfs_unbuffered_write_iter_locked() in
-> fs/netfs/direct_write.c contains an unnecessary smp_rmb() call after
-> wait_on_bit(). Since wait_on_bit() already incorporates a memory barrier
-> that ensures the flag update is visible before the function returns, the
-> smp_rmb() provides no additional benefit and incurs unnecessary overhead.
-> 
-> This patch removes the redundant barrier to simplify and optimize the code.
-> 
-> Signed-off-by: Zilin Guan <zilin@seu.edu.cn>
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> cc: Akira Yokosawa <akiyks@gmail.com>
 
-Reviewed-by: Akira Yokosawa <akiyks@gmail.com>
 
-> cc: Jeff Layton <jlayton@kernel.org>
-> cc: netfs@lists.linux.dev
-> cc: linux-fsdevel@vger.kernel.org
-> Link: https://lore.kernel.org/r/20241207021952.2978530-1-zilin@seu.edu.cn/
-> ---
->  fs/netfs/direct_write.c | 1 -
->  1 file changed, 1 deletion(-)
+在 2024/12/16 21:48, Chuck Lever 写道:
+> On 12/15/24 10:18 PM, yangerkun wrote:
+>>
+>>
+>> 在 2024/12/14 21:49, Yang Erkun 写道:
+>>> From: Yang Erkun <yangerkun@huawei.com>
+>>>
+>>> shell:
+>>>
+>>> mkfs.xfs -f /dev/sda
+>>> echo "/ *(rw,no_root_squash,fsid=0)" > /etc/exports
+>>> echo "/mnt *(rw,no_root_squash,fsid=1)" >> /etc/exports
+>>> exportfs -ra
+>>> service nfs-server start
+>>> mount -t nfs -o vers=4.0 127.0.0.1:/mnt /mnt1
+>>> mount /dev/sda /mnt/sda
+>>> touch /mnt1/sda/file
+>>> exportfs -r
+>>> umount /mnt/sda
+>>>
+>>> Commit f8c989a0c89a ("nfsd: release svc_expkey/svc_export with 
+>>> rcu_work")
+>>> describe that when we call e_show/c_show, the last reference can down to
+>>> 0, and we will call expkey_put/svc_export_put with rcu context, this may
+>>> lead uaf or sleep in atomic bug. Finally, we introduce async mode to the
+>>> release and fix the bug. However, some other command may also finally 
+>>> call
+>>> expkey_put/svc_export_put without rcu context, but expect that the sync
+>>> mode for the resource release. Like upper shell, before that commit,
+>>> exportfs -r will remove all entry with sync mode, and the last umount
+>>> /mnt/sda will always success. But after this commit, the umount will 
+>>> always
+>>> fail, after we add some delay, they will success again. Personally, I 
+>>> think
+>>> is actually a bug, and need be fixed.
+>>>
+>>> Use rcu_read_lock_any_held to distinguish does we really under rcu 
+>>> context,
+>>> and if no, release resource with sync mode.
+>>>
+>>> Fixes: f8c989a0c89a ("nfsd: release svc_expkey/svc_export with 
+>>> rcu_work")
+>>> Signed-off-by: Yang Erkun <yangerkun@huawei.com>
+>>> ---
+>>>   fs/nfsd/export.c | 44 ++++++++++++++++++++++++++++++++------------
+>>>   1 file changed, 32 insertions(+), 12 deletions(-)
+>>>
+>>> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+>>> index eacafe46e3b6..25f13e877c2f 100644
+>>> --- a/fs/nfsd/export.c
+>>> +++ b/fs/nfsd/export.c
+>>> @@ -40,11 +40,8 @@
+>>>   #define    EXPKEY_HASHMAX        (1 << EXPKEY_HASHBITS)
+>>>   #define    EXPKEY_HASHMASK        (EXPKEY_HASHMAX -1)
+>>> -static void expkey_put_work(struct work_struct *work)
+>>> +static void expkey_release(struct svc_expkey *key)
+>>>   {
+>>> -    struct svc_expkey *key =
+>>> -        container_of(to_rcu_work(work), struct svc_expkey, 
+>>> ek_rcu_work);
+>>> -
+>>>       if (test_bit(CACHE_VALID, &key->h.flags) &&
+>>>           !test_bit(CACHE_NEGATIVE, &key->h.flags))
+>>>           path_put(&key->ek_path);
+>>> @@ -52,12 +49,25 @@ static void expkey_put_work(struct work_struct 
+>>> *work)
+>>>       kfree(key);
+>>>   }
+>>> +static void expkey_put_work(struct work_struct *work)
+>>> +{
+>>> +    struct svc_expkey *key =
+>>> +        container_of(to_rcu_work(work), struct svc_expkey, 
+>>> ek_rcu_work);
+>>> +
+>>> +    expkey_release(key);
+>>> +}
+>>> +
+>>>   static void expkey_put(struct kref *ref)
+>>>   {
+>>>       struct svc_expkey *key = container_of(ref, struct svc_expkey, 
+>>> h.ref);
+>>> -    INIT_RCU_WORK(&key->ek_rcu_work, expkey_put_work);
+>>> -    queue_rcu_work(system_wq, &key->ek_rcu_work);
+>>> +    if (rcu_read_lock_any_held()) {
+>>
+>> Emm...
+>>
+>> This api won't work when we disable CONFIG_PREEMPT_COUNT...
 > 
+> OK, I assume you will send a v2 :-)
 
+Yes~ V2 will be posted soon.
+
+> 
+> Can you include the reviewers listed in MAINTAINERS on the To: line?
+> 
+> R:      Neil Brown <neilb@suse.de>
+> R:      Olga Kornievskaia <okorniev@redhat.com>
+> R:      Dai Ngo <Dai.Ngo@oracle.com>
+> R:      Tom Talpey <tom@talpey.com>
+> 
+> Thanks!
+
+Thanks for your reminder!
+
+> 
+> 
+>>> +        INIT_RCU_WORK(&key->ek_rcu_work, expkey_put_work);
+>>> +        queue_rcu_work(system_wq, &key->ek_rcu_work);
+>>> +    } else {
+>>> +        synchronize_rcu();
+>>> +        expkey_release(key);
+>>> +    }
+>>>   }
+>>>   static int expkey_upcall(struct cache_detail *cd, struct cache_head 
+>>> *h)
+>>> @@ -364,11 +374,8 @@ static void export_stats_destroy(struct 
+>>> export_stats *stats)
+>>>                           EXP_STATS_COUNTERS_NUM);
+>>>   }
+>>> -static void svc_export_put_work(struct work_struct *work)
+>>> +static void svc_export_release(struct svc_export *exp)
+>>>   {
+>>> -    struct svc_export *exp =
+>>> -        container_of(to_rcu_work(work), struct svc_export, 
+>>> ex_rcu_work);
+>>> -
+>>>       path_put(&exp->ex_path);
+>>>       auth_domain_put(exp->ex_client);
+>>>       nfsd4_fslocs_free(&exp->ex_fslocs);
+>>> @@ -378,12 +385,25 @@ static void svc_export_put_work(struct 
+>>> work_struct *work)
+>>>       kfree(exp);
+>>>   }
+>>> +static void svc_export_put_work(struct work_struct *work)
+>>> +{
+>>> +    struct svc_export *exp =
+>>> +        container_of(to_rcu_work(work), struct svc_export, 
+>>> ex_rcu_work);
+>>> +
+>>> +    svc_export_release(exp);
+>>> +}
+>>> +
+>>>   static void svc_export_put(struct kref *ref)
+>>>   {
+>>>       struct svc_export *exp = container_of(ref, struct svc_export, 
+>>> h.ref);
+>>> -    INIT_RCU_WORK(&exp->ex_rcu_work, svc_export_put_work);
+>>> -    queue_rcu_work(system_wq, &exp->ex_rcu_work);
+>>> +    if (rcu_read_lock_any_held()) {
+>>> +        INIT_RCU_WORK(&exp->ex_rcu_work, svc_export_put_work);
+>>> +        queue_rcu_work(system_wq, &exp->ex_rcu_work);
+>>> +    } else {
+>>> +        synchronize_rcu();
+>>> +        svc_export_release(exp);
+>>> +    }
+>>>   }
+>>>   static int svc_export_upcall(struct cache_detail *cd, struct 
+>>> cache_head *h)
+>>
+> 
+> 
