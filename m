@@ -1,29 +1,29 @@
-Received: from szxga05-in.huawei.com (szxga05-in.huawei.com [45.249.212.191])
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 026AD1B4139;
-	Mon, 23 Dec 2024 14:19:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.191
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91F50364D6;
+	Mon, 23 Dec 2024 14:19:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1734963590; cv=none; b=unN2/IA0XVKRBPRMpBZ0tATN+/PoZys18QJtIwF4aGxg4hoD+5vf8+5XA7JNtXHCxlPGqXaRyjRRDJ54baNXZXP+yeb5ucuilJ5vXoINzT0aVxaBN6THs0uv71U7Kp2QTj4W2shr8L9xCwr8HQD4VhyWzchP3x7oJzAoB7FKMDA=
+	t=1734963592; cv=none; b=RQf2+uiSjyHpPf9JCkMJZ4aY6yjHWm3yNXXGK+j5tfJrZClIPGqU2+zynl8TRGdUw+U0QtxgINuzSF4nXtlzJsv9qfhdJbw8k16VyGp4Joqf6tmaimNwsYWwebpBcnP4E329zb36KFQXrgepzwxuunrIPL0+8vfTQJERtXCBrKE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1734963590; c=relaxed/simple;
-	bh=76Znpg9xVRFFoHfXBiA6e666MGObcCOjqgHz9jpaXrk=;
+	s=arc-20240116; t=1734963592; c=relaxed/simple;
+	bh=q/KVGBiB0aB2oN3QIjJSYPFAB3w9t/SpKmFvlSoJm8c=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=qsUhVTQXLuuyjixE+im72Xz1ZC0gD0tAF8kPwCOTVchx/f9aZ938fTiKdx8lURgEZ6Oj6W/xBle1+NHKKUA8ooHj/OgXuqLZTgi6lmjhMYhvqN3xSbmrxpRn/97JRuEPeeAEF7G3TQ/lXjkJkd36eGTNKDzYf44+HhWUVglHi3Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.191
+	 MIME-Version:Content-Type; b=CrjObQXWncbcwh9ma/qZZOc+5IT+bAWqboZuPnlwTLPnBUkP/2cx+YNQmQe0ylg3OJLIBk3X4eqW2D9t9r0z2cWVI6XaekEMrVutcFDe12Pz0inuJxCnRlMqJhyD4EtMiQCOb5EKtvTDZkRRPlO2Qj3tyfimJk4awNc++S3jfHs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.187
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.162.112])
-	by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4YH0T43gyMz1kwqV;
-	Mon, 23 Dec 2024 22:16:56 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.174])
+	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4YH0ST4tLgz11NKd;
+	Mon, 23 Dec 2024 22:16:25 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id 883851402E2;
-	Mon, 23 Dec 2024 22:19:37 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 44843140391;
+	Mon, 23 Dec 2024 22:19:47 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Mon, 23 Dec
- 2024 22:19:34 +0800
+ 2024 22:19:43 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>
 CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
@@ -48,9 +48,9 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<ying.huang@intel.com>, <yang@os.amperecomputing.com>,
 	<zev@bewilderbeest.net>, <serge@hallyn.com>, <vegard.nossum@oracle.com>,
 	<wangkefeng.wang@huawei.com>
-Subject: [PATCH v4 -next 01/15] mm: vmstat: move sysctls to mm/vmstat.c
-Date: Mon, 23 Dec 2024 22:15:20 +0800
-Message-ID: <20241223141550.638616-2-yukaixiong@huawei.com>
+Subject: [PATCH v4 -next 04/15] mm: vmscan: move vmscan sysctls to mm/vmscan.c
+Date: Mon, 23 Dec 2024 22:15:23 +0800
+Message-ID: <20241223141550.638616-5-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20241223141550.638616-1-yukaixiong@huawei.com>
 References: <20241223141550.638616-1-yukaixiong@huawei.com>
@@ -65,206 +65,157 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-This moves all vmstat related sysctls to its own file, removes useless
-extern variable declarations, and do some related clean-ups. To avoid
-compiler warnings when CONFIG_PROC_FS is not defined, add the macro
-definition CONFIG_PROC_FS ahead CONFIG_NUMA in vmstat.c.
+This moves vm_swappiness and zone_reclaim_mode to mm/vmscan.c,
+as part of the kernel/sysctl.c cleaning, also moves some external
+variable declarations and function declarations from include/linux/swap.h
+into mm/internal.h.
 
 Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
 Reviewed-by: Kees Cook <kees@kernel.org>
 ---
 v4:
- - const qualify struct ctl_table vmstat_table
+ - const qualify struct ctl_table vmscan_sysctl_table
 v3:
  - change the title
- - change sysctl_stat_interval to static type
 ---
 ---
- include/linux/vmstat.h | 11 -----------
- kernel/sysctl.c        | 28 ---------------------------
- mm/vmstat.c            | 44 ++++++++++++++++++++++++++++++++++++++----
- 3 files changed, 40 insertions(+), 43 deletions(-)
+ include/linux/swap.h |  9 ---------
+ kernel/sysctl.c      | 19 -------------------
+ mm/internal.h        | 10 ++++++++++
+ mm/vmscan.c          | 23 +++++++++++++++++++++++
+ 4 files changed, 33 insertions(+), 28 deletions(-)
 
-diff --git a/include/linux/vmstat.h b/include/linux/vmstat.h
-index 9f3a04345b86..4751e3ecc467 100644
---- a/include/linux/vmstat.h
-+++ b/include/linux/vmstat.h
-@@ -10,15 +10,8 @@
- #include <linux/static_key.h>
- #include <linux/mmdebug.h>
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index 187715eec3cb..db1a28683e10 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -427,19 +427,10 @@ extern int vm_swappiness;
+ long remove_mapping(struct address_space *mapping, struct folio *folio);
  
--extern int sysctl_stat_interval;
--
  #ifdef CONFIG_NUMA
--#define ENABLE_NUMA_STAT   1
--#define DISABLE_NUMA_STAT   0
--extern int sysctl_vm_numa_stat;
- DECLARE_STATIC_KEY_TRUE(vm_numa_stat_key);
--int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
--		void *buffer, size_t *length, loff_t *ppos);
+-extern int node_reclaim_mode;
+ extern int sysctl_min_unmapped_ratio;
+ extern int sysctl_min_slab_ratio;
+-#else
+-#define node_reclaim_mode 0
  #endif
  
- struct reclaim_stat {
-@@ -304,10 +297,6 @@ void quiet_vmstat(void);
- void cpu_vm_stats_fold(int cpu);
- void refresh_zone_stat_thresholds(void);
- 
--struct ctl_table;
--int vmstat_refresh(const struct ctl_table *, int write, void *buffer, size_t *lenp,
--		loff_t *ppos);
+-static inline bool node_reclaim_enabled(void)
+-{
+-	/* Is any node_reclaim_mode bit set? */
+-	return node_reclaim_mode & (RECLAIM_ZONE|RECLAIM_WRITE|RECLAIM_UNMAP);
+-}
 -
- void drain_zonestat(struct zone *zone, struct per_cpu_zonestat *);
+ void check_move_unevictable_folios(struct folio_batch *fbatch);
  
- int calculate_pressure_threshold(struct zone *zone);
+ extern void __meminit kswapd_run(int nid);
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 7ae7a4136855..f1ab251fc2d0 100644
+index ab5d94f07e53..cb6ca272fe9f 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -49,7 +49,6 @@
- #include <linux/limits.h>
- #include <linux/dcache.h>
- #include <linux/syscalls.h>
--#include <linux/vmstat.h>
- #include <linux/nfs_fs.h>
- #include <linux/acpi.h>
- #include <linux/reboot.h>
-@@ -2071,17 +2070,6 @@ static struct ctl_table vm_table[] = {
+@@ -2051,15 +2051,6 @@ static struct ctl_table vm_table[] = {
+ 		.proc_handler	= dirtytime_interval_handler,
  		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_TWO_HUNDRED,
  	},
--#ifdef CONFIG_NUMA
 -	{
--		.procname	= "numa_stat",
--		.data		= &sysctl_vm_numa_stat,
--		.maxlen		= sizeof(int),
+-		.procname	= "swappiness",
+-		.data		= &vm_swappiness,
+-		.maxlen		= sizeof(vm_swappiness),
 -		.mode		= 0644,
--		.proc_handler	= sysctl_vm_numa_stat_handler,
+-		.proc_handler	= proc_dointvec_minmax,
 -		.extra1		= SYSCTL_ZERO,
--		.extra2		= SYSCTL_ONE,
+-		.extra2		= SYSCTL_TWO_HUNDRED,
 -	},
--#endif
  	{
  		.procname	= "drop_caches",
  		.data		= &sysctl_drop_caches,
-@@ -2147,22 +2135,6 @@ static struct ctl_table vm_table[] = {
+@@ -2107,16 +2098,6 @@ static struct ctl_table vm_table[] = {
  		.extra1		= SYSCTL_ZERO,
  	},
  #endif
--#ifdef CONFIG_SMP
+-#ifdef CONFIG_NUMA
 -	{
--		.procname	= "stat_interval",
--		.data		= &sysctl_stat_interval,
--		.maxlen		= sizeof(sysctl_stat_interval),
+-		.procname	= "zone_reclaim_mode",
+-		.data		= &node_reclaim_mode,
+-		.maxlen		= sizeof(node_reclaim_mode),
 -		.mode		= 0644,
--		.proc_handler	= proc_dointvec_jiffies,
--	},
--	{
--		.procname	= "stat_refresh",
--		.data		= NULL,
--		.maxlen		= 0,
--		.mode		= 0600,
--		.proc_handler	= vmstat_refresh,
+-		.proc_handler	= proc_dointvec_minmax,
+-		.extra1		= SYSCTL_ZERO,
 -	},
 -#endif
  #ifdef CONFIG_MMU
  	{
  		.procname	= "mmap_min_addr",
-diff --git a/mm/vmstat.c b/mm/vmstat.c
-index 4d016314a56c..cb4dcd4c6715 100644
---- a/mm/vmstat.c
-+++ b/mm/vmstat.c
-@@ -31,8 +31,10 @@
+diff --git a/mm/internal.h b/mm/internal.h
+index 39227887e47b..ea2623dc414a 100644
+--- a/mm/internal.h
++++ b/mm/internal.h
+@@ -1095,9 +1095,13 @@ static inline void mminit_verify_zonelist(void)
+ #define NODE_RECLAIM_SUCCESS	1
  
- #include "internal.h"
- 
-+#ifdef CONFIG_PROC_FS
  #ifdef CONFIG_NUMA
--int sysctl_vm_numa_stat = ENABLE_NUMA_STAT;
-+#define ENABLE_NUMA_STAT 1
-+static int sysctl_vm_numa_stat = ENABLE_NUMA_STAT;
- 
- /* zero numa counters within a zone */
- static void zero_zone_numa_counters(struct zone *zone)
-@@ -74,7 +76,7 @@ static void invalid_numa_statistics(void)
- 
- static DEFINE_MUTEX(vm_numa_stat_lock);
- 
--int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
-+static int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
- 		void *buffer, size_t *length, loff_t *ppos)
++extern int node_reclaim_mode;
++
+ extern int node_reclaim(struct pglist_data *, gfp_t, unsigned int);
+ extern int find_next_best_node(int node, nodemask_t *used_node_mask);
+ #else
++#define node_reclaim_mode 0
++
+ static inline int node_reclaim(struct pglist_data *pgdat, gfp_t mask,
+ 				unsigned int order)
  {
- 	int ret, oldval;
-@@ -102,6 +104,7 @@ int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
- 	return ret;
+@@ -1109,6 +1113,12 @@ static inline int find_next_best_node(int node, nodemask_t *used_node_mask)
  }
  #endif
-+#endif /* CONFIG_PROC_FS */
  
- #ifdef CONFIG_VM_EVENT_COUNTERS
- DEFINE_PER_CPU(struct vm_event_state, vm_event_states) = {{0}};
-@@ -1938,7 +1941,7 @@ static const struct seq_operations vmstat_op = {
- 
- #ifdef CONFIG_SMP
- static DEFINE_PER_CPU(struct delayed_work, vmstat_work);
--int sysctl_stat_interval __read_mostly = HZ;
-+static int sysctl_stat_interval __read_mostly = HZ;
- static int vmstat_late_init_done;
- 
- #ifdef CONFIG_PROC_FS
-@@ -1947,7 +1950,7 @@ static void refresh_vm_stats(struct work_struct *work)
- 	refresh_cpu_vm_stats(true);
++static inline bool node_reclaim_enabled(void)
++{
++	/* Is any node_reclaim_mode bit set? */
++	return node_reclaim_mode & (RECLAIM_ZONE|RECLAIM_WRITE|RECLAIM_UNMAP);
++}
++
+ /*
+  * mm/memory-failure.c
+  */
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 39886f435ec5..10cc05b5952d 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -7351,6 +7351,28 @@ void __meminit kswapd_stop(int nid)
+ 	pgdat_kswapd_unlock(pgdat);
  }
  
--int vmstat_refresh(const struct ctl_table *table, int write,
-+static int vmstat_refresh(const struct ctl_table *table, int write,
- 		   void *buffer, size_t *lenp, loff_t *ppos)
- {
- 	long val;
-@@ -2185,6 +2188,38 @@ static int __init vmstat_late_init(void)
- late_initcall(vmstat_late_init);
- #endif
- 
-+#ifdef CONFIG_PROC_FS
-+static const struct ctl_table vmstat_table[] = {
-+#ifdef CONFIG_SMP
++static const struct ctl_table vmscan_sysctl_table[] = {
 +	{
-+		.procname	= "stat_interval",
-+		.data		= &sysctl_stat_interval,
-+		.maxlen		= sizeof(sysctl_stat_interval),
++		.procname	= "swappiness",
++		.data		= &vm_swappiness,
++		.maxlen		= sizeof(vm_swappiness),
 +		.mode		= 0644,
-+		.proc_handler	= proc_dointvec_jiffies,
++		.proc_handler	= proc_dointvec_minmax,
++		.extra1		= SYSCTL_ZERO,
++		.extra2		= SYSCTL_TWO_HUNDRED,
 +	},
-+	{
-+		.procname	= "stat_refresh",
-+		.data		= NULL,
-+		.maxlen		= 0,
-+		.mode		= 0600,
-+		.proc_handler	= vmstat_refresh,
-+	},
-+#endif
 +#ifdef CONFIG_NUMA
 +	{
-+		.procname	= "numa_stat",
-+		.data		= &sysctl_vm_numa_stat,
-+		.maxlen		= sizeof(int),
++		.procname	= "zone_reclaim_mode",
++		.data		= &node_reclaim_mode,
++		.maxlen		= sizeof(node_reclaim_mode),
 +		.mode		= 0644,
-+		.proc_handler	= sysctl_vm_numa_stat_handler,
++		.proc_handler	= proc_dointvec_minmax,
 +		.extra1		= SYSCTL_ZERO,
-+		.extra2		= SYSCTL_ONE,
-+	},
++	}
 +#endif
 +};
-+#endif
 +
- struct workqueue_struct *mm_percpu_wq;
- 
- void __init init_mm_internals(void)
-@@ -2216,6 +2251,7 @@ void __init init_mm_internals(void)
- 	proc_create_seq("pagetypeinfo", 0400, NULL, &pagetypeinfo_op);
- 	proc_create_seq("vmstat", 0444, NULL, &vmstat_op);
- 	proc_create_seq("zoneinfo", 0444, NULL, &zoneinfo_op);
-+	register_sysctl_init("vm", vmstat_table);
- #endif
+ static int __init kswapd_init(void)
+ {
+ 	int nid;
+@@ -7358,6 +7380,7 @@ static int __init kswapd_init(void)
+ 	swap_setup();
+ 	for_each_node_state(nid, N_MEMORY)
+  		kswapd_run(nid);
++	register_sysctl_init("vm", vmscan_sysctl_table);
+ 	return 0;
  }
  
 -- 
