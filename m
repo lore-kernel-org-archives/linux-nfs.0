@@ -1,29 +1,29 @@
 Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AD3DA1B85DF;
-	Mon, 23 Dec 2024 14:19:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98FC51B983F;
+	Mon, 23 Dec 2024 14:19:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.35
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1734963594; cv=none; b=g9sbPp5xHNYXl1AdqhQHCACnVF3C1Xp7BxCewWXx3sLVRQK3RAl7sp15vvbLzAy9Bg+tpkBnr//UMIEc7ui/2kpdofpAQmwR5lBpr/AHkScjUz48MIFCvvu+vrJLK3xtOWL7WpFotaXlDYD83gA88n0rO/vDCTzobHd0R+sex+w=
+	t=1734963595; cv=none; b=CR7qMbcupWrcoJ7PuXxa0WJL20g0L41Vxz2wOB1Sob+ev+IKTsJKTmBvdq/lg20Xd0C9qApF8sU/44SapnvbUbd1HLAxdIzQo8xSfAbOrmk20jTPBdYJUeax0FT9u/9EFXqAE3imZmoTGB76ZFF9Ib5CtyIHYMMgg4/kSqgnpVw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1734963594; c=relaxed/simple;
-	bh=bamcIdzVZRRdfLmC1Lu05/MmX20ZnHBl+HSAyfF2ZMs=;
+	s=arc-20240116; t=1734963595; c=relaxed/simple;
+	bh=0AolZDYtgGxxGpOxhhhy3rFLwpUhOMRU96p5Vb4YMg8=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=qvjen58ges66rJAkMVL1d7xlESeLi0JfHBnQqAC7nIiwEklSnQr7IFv1PhExC2GifcdERTIdED2Nh9Y7FxL55OuLfplNuxVdnFpGVvUdYMtPAAeFJbkr5qfCj2LYVokVe2fZ00crmbfGVwkqSB6BIM2lwoRhYUEhFuB74Hq3GZw=
+	 MIME-Version:Content-Type; b=fZFXp0fSeIDK67Az/knIZNoI14p56aSPY2se+WTDuo5RH66ftuWVSai4RBFwk3r66e4CbRthdah3Yc97oYY0NvMriwgrc+6P8u7GDd55FhzGsGJkvWmudOqcG50rK7Ha30zVa8NHjan72kDFiMI8leKuP5gCSsyBakwNPdYe4qQ=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.35
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.88.163])
-	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4YH0TB1fQ0z1T711;
-	Mon, 23 Dec 2024 22:17:02 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.44])
+	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4YH0TJ599gz1T7HM;
+	Mon, 23 Dec 2024 22:17:08 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id 087BF180043;
-	Mon, 23 Dec 2024 22:19:44 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 81DB01402DE;
+	Mon, 23 Dec 2024 22:19:50 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Mon, 23 Dec
- 2024 22:19:40 +0800
+ 2024 22:19:47 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>
 CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
@@ -48,9 +48,9 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<ying.huang@intel.com>, <yang@os.amperecomputing.com>,
 	<zev@bewilderbeest.net>, <serge@hallyn.com>, <vegard.nossum@oracle.com>,
 	<wangkefeng.wang@huawei.com>
-Subject: [PATCH v4 -next 03/15] mm: swap: move sysctl to mm/swap.c
-Date: Mon, 23 Dec 2024 22:15:22 +0800
-Message-ID: <20241223141550.638616-4-yukaixiong@huawei.com>
+Subject: [PATCH v4 -next 05/15] mm: util: move sysctls to mm/util.c
+Date: Mon, 23 Dec 2024 22:15:24 +0800
+Message-ID: <20241223141550.638616-6-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20241223141550.638616-1-yukaixiong@huawei.com>
 References: <20241223141550.638616-1-yukaixiong@huawei.com>
@@ -65,117 +65,225 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-The page-cluster belongs to mm/swap.c, move it to mm/swap.c .
-Removes the redundant external variable declaration and unneeded
-include(linux/swap.h).
+This moves all util related sysctls to mm/util.c, as part of the
+kernel/sysctl.c cleaning, also removes redundant external
+variable declarations and function declarations.
 
 Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
 Reviewed-by: Kees Cook <kees@kernel.org>
 ---
 v4:
- - const qualify struct ctl_table swap_sysctl_table
+ - const qualify struct ctl_table util_sysctl_table
 v3:
  - change the title
 ---
 ---
- include/linux/mm.h |  2 --
- kernel/sysctl.c    | 10 ----------
- mm/swap.c          | 16 +++++++++++++++-
- mm/swap.h          |  1 +
- 4 files changed, 16 insertions(+), 13 deletions(-)
+ include/linux/mm.h   | 11 --------
+ include/linux/mman.h |  2 --
+ kernel/sysctl.c      | 37 ------------------------
+ mm/util.c            | 67 ++++++++++++++++++++++++++++++++++++++------
+ 4 files changed, 59 insertions(+), 58 deletions(-)
 
 diff --git a/include/linux/mm.h b/include/linux/mm.h
-index dbdf8950d681..8941ba3d9a77 100644
+index 8941ba3d9a77..b3b87c1dc1e4 100644
 --- a/include/linux/mm.h
 +++ b/include/linux/mm.h
-@@ -76,8 +76,6 @@ static inline void totalram_pages_add(long count)
- }
+@@ -205,17 +205,6 @@ extern int sysctl_max_map_count;
+ extern unsigned long sysctl_user_reserve_kbytes;
+ extern unsigned long sysctl_admin_reserve_kbytes;
  
- extern void * high_memory;
--extern int page_cluster;
--extern const int page_cluster_max;
+-extern int sysctl_overcommit_memory;
+-extern int sysctl_overcommit_ratio;
+-extern unsigned long sysctl_overcommit_kbytes;
+-
+-int overcommit_ratio_handler(const struct ctl_table *, int, void *, size_t *,
+-		loff_t *);
+-int overcommit_kbytes_handler(const struct ctl_table *, int, void *, size_t *,
+-		loff_t *);
+-int overcommit_policy_handler(const struct ctl_table *, int, void *, size_t *,
+-		loff_t *);
+-
+ #if defined(CONFIG_SPARSEMEM) && !defined(CONFIG_SPARSEMEM_VMEMMAP)
+ #define nth_page(page,n) pfn_to_page(page_to_pfn((page)) + (n))
+ #define folio_page_idx(folio, p)	(page_to_pfn(p) - folio_pfn(folio))
+diff --git a/include/linux/mman.h b/include/linux/mman.h
+index a842783ffa62..bce214fece16 100644
+--- a/include/linux/mman.h
++++ b/include/linux/mman.h
+@@ -59,8 +59,6 @@
+ 		| MAP_HUGE_1GB)
  
- #ifdef CONFIG_SYSCTL
- extern int sysctl_legacy_va_layout;
+ extern int sysctl_overcommit_memory;
+-extern int sysctl_overcommit_ratio;
+-extern unsigned long sysctl_overcommit_kbytes;
+ extern struct percpu_counter vm_committed_as;
+ 
+ #ifdef CONFIG_SMP
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 23c8db80da5d..ab5d94f07e53 100644
+index cb6ca272fe9f..aea3482106e0 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -21,7 +21,6 @@
+@@ -2020,29 +2020,6 @@ static struct ctl_table kern_table[] = {
+ };
  
- #include <linux/module.h>
- #include <linux/mm.h>
--#include <linux/swap.h>
- #include <linux/slab.h>
- #include <linux/sysctl.h>
- #include <linux/bitmap.h>
-@@ -2044,15 +2043,6 @@ static struct ctl_table vm_table[] = {
- 		.mode		= 0644,
- 		.proc_handler	= overcommit_kbytes_handler,
- 	},
+ static struct ctl_table vm_table[] = {
 -	{
--		.procname	= "page-cluster",
--		.data		= &page_cluster,
--		.maxlen		= sizeof(int),
+-		.procname	= "overcommit_memory",
+-		.data		= &sysctl_overcommit_memory,
+-		.maxlen		= sizeof(sysctl_overcommit_memory),
 -		.mode		= 0644,
--		.proc_handler	= proc_dointvec_minmax,
+-		.proc_handler	= overcommit_policy_handler,
 -		.extra1		= SYSCTL_ZERO,
--		.extra2		= (void *)&page_cluster_max,
+-		.extra2		= SYSCTL_TWO,
+-	},
+-	{
+-		.procname	= "overcommit_ratio",
+-		.data		= &sysctl_overcommit_ratio,
+-		.maxlen		= sizeof(sysctl_overcommit_ratio),
+-		.mode		= 0644,
+-		.proc_handler	= overcommit_ratio_handler,
+-	},
+-	{
+-		.procname	= "overcommit_kbytes",
+-		.data		= &sysctl_overcommit_kbytes,
+-		.maxlen		= sizeof(sysctl_overcommit_kbytes),
+-		.mode		= 0644,
+-		.proc_handler	= overcommit_kbytes_handler,
 -	},
  	{
  		.procname	= "dirtytime_expire_seconds",
  		.data		= &dirtytime_expire_interval,
-diff --git a/mm/swap.c b/mm/swap.c
-index 062c8565b899..d3344123381c 100644
---- a/mm/swap.c
-+++ b/mm/swap.c
-@@ -45,7 +45,7 @@
+@@ -2123,20 +2100,6 @@ static struct ctl_table vm_table[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 	},
+ #endif
+-	{
+-		.procname	= "user_reserve_kbytes",
+-		.data		= &sysctl_user_reserve_kbytes,
+-		.maxlen		= sizeof(sysctl_user_reserve_kbytes),
+-		.mode		= 0644,
+-		.proc_handler	= proc_doulongvec_minmax,
+-	},
+-	{
+-		.procname	= "admin_reserve_kbytes",
+-		.data		= &sysctl_admin_reserve_kbytes,
+-		.maxlen		= sizeof(sysctl_admin_reserve_kbytes),
+-		.mode		= 0644,
+-		.proc_handler	= proc_doulongvec_minmax,
+-	},
+ #ifdef CONFIG_HAVE_ARCH_MMAP_RND_BITS
+ 	{
+ 		.procname	= "mmap_rnd_bits",
+diff --git a/mm/util.c b/mm/util.c
+index b7dc6fabaae5..6c64664937b3 100644
+--- a/mm/util.c
++++ b/mm/util.c
+@@ -12,6 +12,7 @@
+ #include <linux/security.h>
+ #include <linux/swap.h>
+ #include <linux/swapops.h>
++#include <linux/sysctl.h>
+ #include <linux/mman.h>
+ #include <linux/hugetlb.h>
+ #include <linux/vmalloc.h>
+@@ -911,14 +912,16 @@ int folio_mc_copy(struct folio *dst, struct folio *src)
+ EXPORT_SYMBOL(folio_mc_copy);
  
- /* How many pages do we try to swap or page in/out together? As a power of 2 */
- int page_cluster;
--const int page_cluster_max = 31;
-+static const int page_cluster_max = 31;
+ int sysctl_overcommit_memory __read_mostly = OVERCOMMIT_GUESS;
+-int sysctl_overcommit_ratio __read_mostly = 50;
+-unsigned long sysctl_overcommit_kbytes __read_mostly;
++static int sysctl_overcommit_ratio __read_mostly = 50;
++static unsigned long sysctl_overcommit_kbytes __read_mostly;
+ int sysctl_max_map_count __read_mostly = DEFAULT_MAX_MAP_COUNT;
+ unsigned long sysctl_user_reserve_kbytes __read_mostly = 1UL << 17; /* 128MB */
+ unsigned long sysctl_admin_reserve_kbytes __read_mostly = 1UL << 13; /* 8MB */
  
- struct cpu_fbatches {
- 	/*
-@@ -1072,6 +1072,18 @@ void folio_batch_remove_exceptionals(struct folio_batch *fbatch)
- 	fbatch->nr = j;
+-int overcommit_ratio_handler(const struct ctl_table *table, int write, void *buffer,
+-		size_t *lenp, loff_t *ppos)
++#ifdef CONFIG_SYSCTL
++
++static int overcommit_ratio_handler(const struct ctl_table *table, int write,
++				void *buffer, size_t *lenp, loff_t *ppos)
+ {
+ 	int ret;
+ 
+@@ -933,8 +936,8 @@ static void sync_overcommit_as(struct work_struct *dummy)
+ 	percpu_counter_sync(&vm_committed_as);
  }
  
-+static const struct ctl_table swap_sysctl_table[] = {
+-int overcommit_policy_handler(const struct ctl_table *table, int write, void *buffer,
+-		size_t *lenp, loff_t *ppos)
++static int overcommit_policy_handler(const struct ctl_table *table, int write,
++				void *buffer, size_t *lenp, loff_t *ppos)
+ {
+ 	struct ctl_table t;
+ 	int new_policy = -1;
+@@ -969,8 +972,8 @@ int overcommit_policy_handler(const struct ctl_table *table, int write, void *bu
+ 	return ret;
+ }
+ 
+-int overcommit_kbytes_handler(const struct ctl_table *table, int write, void *buffer,
+-		size_t *lenp, loff_t *ppos)
++static int overcommit_kbytes_handler(const struct ctl_table *table, int write,
++				void *buffer, size_t *lenp, loff_t *ppos)
+ {
+ 	int ret;
+ 
+@@ -980,6 +983,54 @@ int overcommit_kbytes_handler(const struct ctl_table *table, int write, void *bu
+ 	return ret;
+ }
+ 
++static const struct ctl_table util_sysctl_table[] = {
 +	{
-+		.procname	= "page-cluster",
-+		.data		= &page_cluster,
-+		.maxlen		= sizeof(int),
++		.procname	= "overcommit_memory",
++		.data		= &sysctl_overcommit_memory,
++		.maxlen		= sizeof(sysctl_overcommit_memory),
 +		.mode		= 0644,
-+		.proc_handler	= proc_dointvec_minmax,
++		.proc_handler	= overcommit_policy_handler,
 +		.extra1		= SYSCTL_ZERO,
-+		.extra2		= (void *)&page_cluster_max,
-+	}
++		.extra2		= SYSCTL_TWO,
++	},
++	{
++		.procname	= "overcommit_ratio",
++		.data		= &sysctl_overcommit_ratio,
++		.maxlen		= sizeof(sysctl_overcommit_ratio),
++		.mode		= 0644,
++		.proc_handler	= overcommit_ratio_handler,
++	},
++	{
++		.procname	= "overcommit_kbytes",
++		.data		= &sysctl_overcommit_kbytes,
++		.maxlen		= sizeof(sysctl_overcommit_kbytes),
++		.mode		= 0644,
++		.proc_handler	= overcommit_kbytes_handler,
++	},
++	{
++		.procname	= "user_reserve_kbytes",
++		.data		= &sysctl_user_reserve_kbytes,
++		.maxlen		= sizeof(sysctl_user_reserve_kbytes),
++		.mode		= 0644,
++		.proc_handler	= proc_doulongvec_minmax,
++	},
++	{
++		.procname	= "admin_reserve_kbytes",
++		.data		= &sysctl_admin_reserve_kbytes,
++		.maxlen		= sizeof(sysctl_admin_reserve_kbytes),
++		.mode		= 0644,
++		.proc_handler	= proc_doulongvec_minmax,
++	},
 +};
 +
- /*
-  * Perform any setup for the swap system
-  */
-@@ -1088,4 +1100,6 @@ void __init swap_setup(void)
- 	 * Right now other parts of the system means that we
- 	 * _really_ don't want to cluster much more
- 	 */
++static int __init init_vm_util_sysctls(void)
++{
++	register_sysctl_init("vm", util_sysctl_table);
++	return 0;
++}
++subsys_initcall(init_vm_util_sysctls);
++#endif /* CONFIG_SYSCTL */
 +
-+	register_sysctl_init("vm", swap_sysctl_table);
- }
-diff --git a/mm/swap.h b/mm/swap.h
-index ad2f121de970..274dcc6219a0 100644
---- a/mm/swap.h
-+++ b/mm/swap.h
-@@ -3,6 +3,7 @@
- #define _MM_SWAP_H
- 
- struct mempolicy;
-+extern int page_cluster;
- 
- #ifdef CONFIG_SWAP
- #include <linux/swapops.h> /* for swp_offset */
+ /*
+  * Committed memory limit enforced when OVERCOMMIT_NEVER policy is used
+  */
 -- 
 2.34.1
 
