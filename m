@@ -1,28 +1,27 @@
-Received: from dggsgout12.his.huawei.com (dggsgout12.his.huawei.com [45.249.212.56])
+Received: from dggsgout11.his.huawei.com (dggsgout11.his.huawei.com [45.249.212.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E20144315A;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2370C5A7B8;
 	Wed, 25 Dec 2024 07:02:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.56
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1735110174; cv=none; b=c3o9MPoOJFDdDYl0HhGjrLC9gaktmQzhloa+lzO0qiuaX5Kcyv+65U6xrbffNL+n4ILAd3uKBZF+lweKRde5pclLNU0agcTSkeSjCpd6WjU/hFsZt8cXwokAtmV5OJRlmrY/QDsSiUV9trP39V+1lkkx8Toe0qijCV7vpGW2Cv4=
+	t=1735110174; cv=none; b=lz28zMdmm4VLivmicFdd3THrn1MRePXX0gJDBXYpak4r1RuNFutCdsLRtEY4idsE14i8Wq5jz1mkdMN2hmuf7xZtS+QIDQ0cJZY9PGpQGXj9qQgNJUUvAyfdktCXkWDHePOX30qC0fhFE9+vIydE2w4fUk64UQkQO+AXXeE4tQ0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1735110174; c=relaxed/simple;
-	bh=aeL9mbeypXdTxExMFMbyDFB2uk41TANLulFVz5be+jk=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=BHMO5ozPhNxMfRisC11jNs5pOi67MJcfKIHKH3ZfZN6XONox87ltqYDDlBUNMYAu7Wc8SKGR7ifgwEShUeUZWMeXf060qB3eAwB5GcUNO0kSDfD1GNGpDNvkvZJhK90nGeCVxHxQ4wgwK3CsqyRUeO+TSyiKODDxjYlypOe85G8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.56
+	bh=6c7GZt2h5/0/ohqsz3xC8bwG3+4ZKfAA/p0od79IWzc=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=X5rcFofwPM4BKGkp6zDlpKOq5ILpcyYB9wS/Et+pbjrxp4ZzvXjYH+9+5rPL+W0juvbDsTbZdDiyjqqTs4M4D1dNny4T7jlMIvrlLE8+eM7q6rfCO0ALlgr5esACOos23PKlrcJr0Hb/pJIA4x0vS4g2H4jMkAZQXtT2ikZD+E4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huaweicloud.com; arc=none smtp.client-ip=45.249.212.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huaweicloud.com
-Received: from mail.maildlp.com (unknown [172.19.93.142])
-	by dggsgout12.his.huawei.com (SkyGuard) with ESMTP id 4YJ2ks07z4z4f3jR1;
-	Wed, 25 Dec 2024 15:02:29 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.216])
+	by dggsgout11.his.huawei.com (SkyGuard) with ESMTP id 4YJ2kp3gL0z4f3lDN;
+	Wed, 25 Dec 2024 15:02:26 +0800 (CST)
 Received: from mail02.huawei.com (unknown [10.116.40.128])
-	by mail.maildlp.com (Postfix) with ESMTP id B42D11A018D;
-	Wed, 25 Dec 2024 15:02:48 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTP id 4C1BB1A0197;
+	Wed, 25 Dec 2024 15:02:47 +0800 (CST)
 Received: from huaweicloud.com (unknown [10.175.112.188])
-	by APP4 (Coremail) with SMTP id gCh0CgAHL4MRrmtnO8dPFg--.38269S6;
-	Wed, 25 Dec 2024 15:02:48 +0800 (CST)
+	by APP4 (Coremail) with SMTP id gCh0CgAHL4MRrmtnO8dPFg--.38269S4;
+	Wed, 25 Dec 2024 15:02:46 +0800 (CST)
 From: Yang Erkun <yangerkun@huawei.com>
 To: chuck.lever@oracle.com,
 	jlayton@kernel.org,
@@ -42,12 +41,10 @@ Cc: linux-nfs@vger.kernel.org,
 	yangerkun@huawei.com,
 	yangerkun@huaweicloud.com,
 	liumingrui@huawei.com
-Subject: [PATCH v2 2/4] nfsd: no need get cache ref when protected by rcu
-Date: Wed, 25 Dec 2024 14:59:06 +0800
-Message-ID: <20241225065908.1547645-3-yangerkun@huawei.com>
+Subject: [PATCH v2 0/4] nfsd/sunrpc: cleanup resource with sync mode
+Date: Wed, 25 Dec 2024 14:59:04 +0800
+Message-ID: <20241225065908.1547645-1-yangerkun@huawei.com>
 X-Mailer: git-send-email 2.46.1
-In-Reply-To: <20241225065908.1547645-1-yangerkun@huawei.com>
-References: <20241225065908.1547645-1-yangerkun@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -55,60 +52,70 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:gCh0CgAHL4MRrmtnO8dPFg--.38269S6
-X-Coremail-Antispam: 1UD129KBjvdXoW7JFy5WrWfWF13Xr1xGw13CFg_yoWDKFcE9a
-	18Wa4Duws8ZFsxJF1akw45tFy7uayqyF45Kr4rKrZxKry5tFyktrykt3s5Ar9xCw4j9F93
-	Ar1DCw1fWw4a9jkaLaAFLSUrUUUUjb8apTn2vfkv8UJUUUU8Yxn0WfASr-VFAUDa7-sFnT
-	9fnUUIcSsGvfJTRUUUbl8YFVCjjxCrM7AC8VAFwI0_Wr0E3s1l1xkIjI8I6I8E6xAIw20E
-	Y4v20xvaj40_Wr0E3s1l1IIY67AEw4v_Jr0_Jr4l82xGYIkIc2x26280x7IE14v26r15M2
-	8IrcIa0xkI8VCY1x0267AKxVW5JVCq3wA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK
-	021l84ACjcxK6xIIjxv20xvE14v26ryj6F1UM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r
-	4UJVWxJr1l84ACjcxK6I8E87Iv67AKxVW0oVCq3wA2z4x0Y4vEx4A2jsIEc7CjxVAFwI0_
-	GcCE3s1le2I262IYc4CY6c8Ij28IcVAaY2xG8wAqx4xG64xvF2IEw4CE5I8CrVC2j2WlYx
-	0E2Ix0cI8IcVAFwI0_Jr0_Jr4lYx0Ex4A2jsIE14v26r1j6r4UMcvjeVCFs4IE7xkEbVWU
-	JVW8JwACjcxG0xvY0x0EwIxGrwACjsIEF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6x
-	kF7I0E8cxan2IY04v7MxkF7I0En4kS14v26r4a6rW5MxAIw28IcxkI7VAKI48JMxAIw28I
-	cVAKzI0EY4vE52x082I5MxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr
-	0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0E
-	wIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxVWxJV
-	W8Jr1lIxAIcVCF04k26cxKx2IYs7xG6r1j6r1xMIIF0xvEx4A2jsIE14v26r4j6F4UMIIF
-	0xvEx4A2jsIEc7CjxVAFwI0_Gr1j6F4UJbIYCTnIWIevJa73UjIFyTuYvjxUIsqWUUUUU
+X-CM-TRANSID:gCh0CgAHL4MRrmtnO8dPFg--.38269S4
+X-Coremail-Antispam: 1UD129KBjvJXoW7tF4rWF18uFWxCFy8CryxuFg_yoW8Ar1UpF
+	Z3ArZxKr4kWFWakan3Ca1UXFyrWrZYyw1xJ3Z2qw4Fvw1rur18Gwn0yF40934qqFyrG3y2
+	qr10qFy5CF1DAFJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUP2b4IE77IF4wAFF20E14v26ryj6rWUM7CY07I20VC2zVCF04k2
+	6cxKx2IYs7xG6rWj6s0DM7CIcVAFz4kK6r1j6r18M28lY4IEw2IIxxk0rwA2F7IY1VAKz4
+	vEj48ve4kI8wA2z4x0Y4vE2Ix0cI8IcVAFwI0_Xr0_Ar1l84ACjcxK6xIIjxv20xvEc7Cj
+	xVAFwI0_Gr1j6F4UJwA2z4x0Y4vEx4A2jsIE14v26rxl6s0DM28EF7xvwVC2z280aVCY1x
+	0267AKxVW0oVCq3wAS0I0E0xvYzxvE52x082IY62kv0487Mc02F40EFcxC0VAKzVAqx4xG
+	6I80ewAv7VC0I7IYx2IY67AKxVWUJVWUGwAv7VC2z280aVAFwI0_Jr0_Gr1lOx8S6xCaFV
+	Cjc4AY6r1j6r4UM4x0Y48IcxkI7VAKI48JM4x0aVACjI8F5VA0II8E6IAqYI8I648v4I1l
+	FIxGxcIEc7CjxVA2Y2ka0xkIwI1lc7CjxVAaw2AFwI0_GFv_Wryl42xK82IYc2Ij64vIr4
+	1l42xK82IY64kExVAvwVAq07x20xyl4I8I3I0E4IkC6x0Yz7v_Jr0_Gr1lx2IqxVAqx4xG
+	67AKxVWUJVWUGwC20s026x8GjcxK67AKxVWUGVWUWwC2zVAF1VAY17CE14v26r4a6rW5MI
+	IYrxkI7VAKI48JMIIF0xvE2Ix0cI8IcVAFwI0_Jr0_JF4lIxAIcVC0I7IYx2IY6xkF7I0E
+	14v26r4j6F4UMIIF0xvE42xK8VAvwI8IcIk0rVWUJVWUCwCI42IY6I8E87Iv67AKxVW8JV
+	WxJwCI42IY6I8E87Iv6xkF7I0E14v26r4UJVWxJrUvcSsGvfC2KfnxnUUI43ZEXa7IU0sq
+	XJUUUUU==
 Sender: yangerkun@huaweicloud.com
 X-CM-SenderInfo: 51dqwvhunx0q5kxd4v5lfo033gof0z/
 
-rcu_read_lock/rcu_read_unlock has already provide protection for the
-pointer we will reference when we call e_show. Therefore, there is no
-need to obtain a cache reference to help protect cache_head.
-Additionally, the .put such as expkey_put/svc_export_put will invoke
-dput, which can sleep and break rcu. Stop get cache reference to fix
-them all.
+After f8c989a0c89a ("nfsd: release svc_expkey/svc_export with
+rcu_work"), svc_export_put/expkey_put will call path_put with async
+mode. This can lead some unexpected failure:
 
-Fixes: ae74136b4bb6 ("SUNRPC: Allow cache lookups to use RCU protection rather than the r/w spinlock")
-Suggested-by: NeilBrown <neilb@suse.de>
-Signed-off-by: Yang Erkun <yangerkun@huawei.com>
----
- fs/nfsd/export.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+mkdir /mnt/sda
+mkfs.xfs -f /dev/sda
+echo "/ *(rw,no_root_squash,fsid=0)" > /etc/exports
+echo "/mnt *(rw,no_root_squash,fsid=1)" >> /etc/exports
+exportfs -ra
+service nfs-server start
+mount -t nfs -o vers=4.0 127.0.0.1:/mnt /mnt1
+mount /dev/sda /mnt/sda
+touch /mnt1/sda/file
+exportfs -r
+umount /mnt/sda # failed unexcepted
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index aa4712362b3b..c6168bccfb6c 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1425,13 +1425,9 @@ static int e_show(struct seq_file *m, void *p)
- 		return 0;
- 	}
- 
--	if (!cache_get_rcu(&exp->h))
-+	if (cache_check_rcu(cd, &exp->h, NULL))
- 		return 0;
- 
--	if (cache_check(cd, &exp->h, NULL))
--		return 0;
--
--	exp_put(exp);
- 	return svc_export_show(m, cd, cp);
- }
- 
+The touch above will finally call nfsd_cross_mnt, add refcount to mount,
+and then add cache_head. Before this commit, exportfs -r will call
+cache_flush to cleanup all cache_head, and path_put in
+svc_export_put/expkey_put will be finished with sync mode. So, the
+latter umount will always success. However, after this commit, path_put
+will be called with async mode, the latter umount may failed, and if we
+add some delay, umount will success too. Personally I think this bug and
+should be fixed. We first revert before bugfix patch, and then fix the
+original bug with a different way.
+
+v1->v2:
+
+1. do not change cache_check, instead add cache_check_rcu and use it in
+c_show/e_show
+2. the first patch has been applied
+
+Yang Erkun (4):
+  SUNRPC: introduce cache_check_rcu to help check in rcu context
+  nfsd: no need get cache ref when protected by rcu
+  SUNRPC: no need get cache ref when protected by rcu
+  nfsd: fix UAF when access ex_uuid or ex_stats
+
+ fs/nfsd/export.c             | 25 ++++++++++-------
+ include/linux/sunrpc/cache.h |  2 ++
+ net/sunrpc/cache.c           | 53 ++++++++++++++++++++----------------
+ 3 files changed, 46 insertions(+), 34 deletions(-)
+
 -- 
 2.46.1
 
