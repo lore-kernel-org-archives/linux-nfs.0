@@ -1,257 +1,122 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from mail-ed1-f42.google.com (mail-ed1-f42.google.com [209.85.208.42])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DBAF6442F;
-	Fri, 27 Dec 2024 04:39:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 74FD71876;
+	Fri, 27 Dec 2024 06:44:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1735274401; cv=none; b=FSEIz/WIG1RUfEP5fepHBNCVyZFElAbdUrrnrZMScTo47ZzNEzUmHXz6UMtYXENAGtw/ptmfmtvod9/UztfBzj3k8Pt3fDgpOlYVNwfcj5cct406cskm5r6QV+4+02OA+z5PNPvDyrKnOIkK+DlwvTQ40trltuGGWBXa6pdBPxg=
+	t=1735281845; cv=none; b=DrQ0+Jo7qT8DK4udXQhHzzL3WfpmBEPahhQHfLIFzmo/YVVJJgzeMhB06vsfykC7TJ9K9IgSMGsxnhlH2Q5G+8E5Bntd1CWocLucSAOsQgABQkgcip0qiRDWJpeCwEM09jaJEJOcq0Hv2rh58kTDo8qDFK7/OMytRPU0AqYGk4c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1735274401; c=relaxed/simple;
-	bh=oXOC8w4LryNBWWZTFgZIBOy+Jd6ujNu1imLYi4l/Pio=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=kgI/1VJGZu4E7PgOP0sfschvmXPuyg9F4U7dv9oAkdsYOTsORO7Gtjl/w6HYEqJ689uvHVj1qajX9gdnYV8+3GicAOdiWX1QoI+xPRHPTHsFFGBuf+Q2UoOkbujCbcY3toBzJOVPO3t4PCROHY1Qj6Erq7sY+BW8PjEmiEl3kzM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=N9PM/80V; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=Tzfdd5SC; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=KsBUNgsX; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=s4bA7t6E; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+	s=arc-20240116; t=1735281845; c=relaxed/simple;
+	bh=mtEVHdjFrMeo0LcF+J7XobO9iNcWNDV9Gsnss4pHriM=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Content-Type; b=lOL99MqsCTWqWgfNKiAPFK/VMmL8FdtljFwyzlAuLkavfFw86ZN0X23c6pAoCCGOM2Lib8Jp0ygYBeg15ZRbIUFgwOtvUDCiMTCJ65VZ20uUNpmvS1TSSrLJrero+jYCoCVIVefO4+gM+C7U6h++YC1ZJ2Dmuwbp/tGVEjJHki4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=QYBnJUhZ; arc=none smtp.client-ip=209.85.208.42
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="N9PM/80V";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="Tzfdd5SC";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="KsBUNgsX";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="s4bA7t6E"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id C9FC135014;
-	Fri, 27 Dec 2024 04:39:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1735274396; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=btyJO4iJKTu2q6zHArKwx2WvQRD0da9qtbTG89osV6Y=;
-	b=N9PM/80VLnU80fQkZ3+jdEZzvfAHjbzfSBaVYh0GMasF/mDiXbWvXJWDHL1TwbnBrhfclP
-	gZCqjJ24+6S5IX+8dA0Z3vUUgefhxK0/4lYLFSCN7jk/KzEvwLBC4SoJJpsqrtUJTA5TcG
-	MP1Z1C0vahcaKqm83d3sG66kRqoeL1I=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1735274396;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=btyJO4iJKTu2q6zHArKwx2WvQRD0da9qtbTG89osV6Y=;
-	b=Tzfdd5SC4IZZCQwJ/JhWYC33xVu1eijioW+tVReOXKR43yNsw5U8LCepQmoGinQGHteUJ5
-	7qhy7/AkMCBLuRDA==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=KsBUNgsX;
-	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=s4bA7t6E
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1735274395; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=btyJO4iJKTu2q6zHArKwx2WvQRD0da9qtbTG89osV6Y=;
-	b=KsBUNgsX0lJOi+IVrQrR96z2Nrzva7I3QcIkq913iAeqdPFaTFASQMJJ8gpdCnksF+Sabk
-	KWkxRIy+WOpadrBaodO25IWoDaMcjvcKp1eXTlLLHa2ozxWpADkenpXVcTT423aj0UbRCZ
-	XcwLS3Z1OEel3YWG/90oM4378eAZy1A=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1735274395;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=btyJO4iJKTu2q6zHArKwx2WvQRD0da9qtbTG89osV6Y=;
-	b=s4bA7t6Ejhu4xJ1lL1ixCRk3WhqwDmfuPokfAtwlFoWBBAGI9FJ68QROcg8lrjr6PlRzXK
-	8c94zJbOCM5nyJDw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 50F4D13A30;
-	Fri, 27 Dec 2024 04:39:50 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id jH0BAZYvbmdRBwAAD6G6ig
-	(envelope-from <neilb@suse.de>); Fri, 27 Dec 2024 04:39:50 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QYBnJUhZ"
+Received: by mail-ed1-f42.google.com with SMTP id 4fb4d7f45d1cf-5d0ac27b412so9162202a12.1;
+        Thu, 26 Dec 2024 22:44:03 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1735281841; x=1735886641; darn=vger.kernel.org;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=Ekaj3T/I82JW+8FjErfQ0VZwUHj+ybs1lVyr97c52dQ=;
+        b=QYBnJUhZzar8bzxpodnwq3rmDM6VJX7Do7ghqxuwA41D3wcPaoGu1mhL1nluuOgz6V
+         ZdVvDOsJQDzjD6M25Da9HbqKbc44cfVjngxfW0D6L++uurF3ClZnK6bJVzeGlDaIjlqa
+         izqbrfzslMd57PAAGKkd5Osb/Dfr6S/y8AolL3spwY8Vn2oVrZqSoUtHRNAoR4hVFWv+
+         nQVVeZpIe/laWXgYLUR+0gQZl6SflzQMP0Ajwr7lkmDdE82Az2op+7yakWWkcjV5Oz4a
+         ModT85hTz4ISU0IbLArdesBBNHWhaeETOx0K3LDJfYu6nGASOQWlO0KA1NKb0NTxuACq
+         0JcA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1735281841; x=1735886641;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=Ekaj3T/I82JW+8FjErfQ0VZwUHj+ybs1lVyr97c52dQ=;
+        b=INVtqf8cVKtuTGgfoRcP9wwf48XCDPqJhHBjQLfUCQeJXy0Cp0rrLSb1WlJPcsG6mi
+         JFU6IPPznt3i95H67hxvyrpj72Dkd9473HBQBZyWgYpSIZQYUHljZlJZx6JTCpGN6by8
+         ERuMbC6pQQj7wUcnctj/t91XaSeM6rBufvy+K2/VMljFWPMoQX4a22FYl9h/OLLUQzjT
+         FfBGJfE+p2h0/wQ0lmnXyXYKvTTCy4CYL0H12uvD/JDVq5HpDDx4js4o/QKvFgEUqmyg
+         at7gkjRF/wVukLuiO+cxoYQAMOg3A0AklD6dziugcwlGeoAiSQggNlmyDChHsGu8o2hd
+         fJUw==
+X-Forwarded-Encrypted: i=1; AJvYcCVIny0os/oq7fdW6sm4qF7vnV++9o0ch75l+PLLQ0xQ6rPMaswidsdpZB5L/87B1G4eYCBdcnJJ1+w9@vger.kernel.org, AJvYcCWaotskztFDOaq13b9uzu74hTygOqLlHqjklFkMPJdg7n4QJcx4cXdDn0S34DWc+EW6lz/3vlD27QCa7ck=@vger.kernel.org
+X-Gm-Message-State: AOJu0YzTT8ObGsYqdI5xRCjpNhqURF5950C7xXIjB0uIdz+SzF3Ls3lk
+	GVrfqp7F0tDKLgaeQPDarh5kLVP+WrMOqrUQbH1QAGDD5tnIwvh6RLe9c6hVn2/XknsK//4qcmX
+	w4cpmSToSpgIg6SkQiTlrukrD/R7SNQ==
+X-Gm-Gg: ASbGncsO+BpDWTXqvZGJB1PWZFQ5qxfsNxmp1GsYLSkfYIvsgWzQ/N/rbgElAuEg/lo
+	Icnky2UaiqX3oKdamADEo0yJLiJFqdIRfes3bkYQ=
+X-Google-Smtp-Source: AGHT+IGLQPRro6p+IqEDYMslg8fSvVAn+4l/feE/ZC3pT4O7FHtn+vOWij1lWZ9vd56F7/do5oxfTBvhqGGjJ7N2HOI=
+X-Received: by 2002:a05:6402:2344:b0:5d0:e410:468b with SMTP id
+ 4fb4d7f45d1cf-5d81dd64032mr20383623a12.2.1735281840726; Thu, 26 Dec 2024
+ 22:44:00 -0800 (PST)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: "NeilBrown" <neilb@suse.de>
-To: "yangerkun" <yangerkun@huaweicloud.com>
-Cc: "Yang Erkun" <yangerkun@huawei.com>, chuck.lever@oracle.com,
- jlayton@kernel.org, okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com,
- trondmy@kernel.org, anna@kernel.org, davem@davemloft.net, edumazet@google.com,
- kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
- linux-nfs@vger.kernel.org, netdev@vger.kernel.org, liumingrui@huawei.com
-Subject: Re: [PATCH v2 4/4] nfsd: fix UAF when access ex_uuid or ex_stats
-In-reply-to: <3edb6771-9b61-2efc-1295-48d962af7acc@huaweicloud.com>
-References: <>, <3edb6771-9b61-2efc-1295-48d962af7acc@huaweicloud.com>
-Date: Fri, 27 Dec 2024 15:39:46 +1100
-Message-id: <173527438676.22054.1191932613540665112@noble.neil.brown.name>
-X-Rspamd-Queue-Id: C9FC135014
-X-Spam-Level: 
-X-Spamd-Result: default: False [-4.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	FROM_HAS_DN(0.00)[];
-	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[17];
-	MIME_TRACE(0.00)[0:+];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	RCVD_TLS_ALL(0.00)[];
-	DKIM_TRACE(0.00)[suse.de:+];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	RCVD_COUNT_TWO(0.00)[2];
-	FROM_EQ_ENVFROM(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	ASN(0.00)[asn:25478, ipnet:::/0, country:RU];
-	R_RATELIMIT(0.00)[from(RLewrxuus8mos16izbn)];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:dkim,suse.de:email]
-X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
-X-Rspamd-Action: no action
-X-Spam-Score: -4.51
-X-Spam-Flag: NO
+References: <20240905-delstid-v4-0-d3e5fd34d107@kernel.org>
+ <20240905-delstid-v4-1-d3e5fd34d107@kernel.org> <Zt3mK3fn0gWEsD9d@tissot.1015granger.net>
+ <4eb752d9d8fabc0951df41762d92f751507292a3.camel@kernel.org>
+In-Reply-To: <4eb752d9d8fabc0951df41762d92f751507292a3.camel@kernel.org>
+From: Cedric Blancher <cedric.blancher@gmail.com>
+Date: Fri, 27 Dec 2024 07:42:00 +0100
+Message-ID: <CALXu0UcORpnDCOz4Z-BQmXXvaNZ3cH4Og+E1L-CUwqzNGjh6oQ@mail.gmail.com>
+Subject: Re: [PATCH v4 01/11] nfsd: fix initial getattr on write delegation
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-On Fri, 27 Dec 2024, yangerkun wrote:
->=20
-> =E5=9C=A8 2024/12/27 7:15, NeilBrown =E5=86=99=E9=81=93:
-> > On Wed, 25 Dec 2024, Yang Erkun wrote:
-> >> We can access exp->ex_stats or exp->ex_uuid in rcu context(c_show and
-> >> e_show). All these resources should be released using kfree_rcu. Fix this
-> >> by using call_rcu, clean them all after a rcu grace period.
-> >>
-> >> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> >> BUG: KASAN: slab-use-after-free in svc_export_show+0x362/0x430 [nfsd]
-> >> Read of size 1 at addr ff11000010fdc120 by task cat/870
-> >>
-> >> CPU: 1 UID: 0 PID: 870 Comm: cat Not tainted 6.12.0-rc3+ #1
-> >> Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
-> >> 1.16.1-2.fc37 04/01/2014
-> >> Call Trace:
-> >>   <TASK>
-> >>   dump_stack_lvl+0x53/0x70
-> >>   print_address_description.constprop.0+0x2c/0x3a0
-> >>   print_report+0xb9/0x280
-> >>   kasan_report+0xae/0xe0
-> >>   svc_export_show+0x362/0x430 [nfsd]
-> >>   c_show+0x161/0x390 [sunrpc]
-> >>   seq_read_iter+0x589/0x770
-> >>   seq_read+0x1e5/0x270
-> >>   proc_reg_read+0xe1/0x140
-> >>   vfs_read+0x125/0x530
-> >>   ksys_read+0xc1/0x160
-> >>   do_syscall_64+0x5f/0x170
-> >>   entry_SYSCALL_64_after_hwframe+0x76/0x7e
-> >>
-> >> Allocated by task 830:
-> >>   kasan_save_stack+0x20/0x40
-> >>   kasan_save_track+0x14/0x30
-> >>   __kasan_kmalloc+0x8f/0xa0
-> >>   __kmalloc_node_track_caller_noprof+0x1bc/0x400
-> >>   kmemdup_noprof+0x22/0x50
-> >>   svc_export_parse+0x8a9/0xb80 [nfsd]
-> >>   cache_do_downcall+0x71/0xa0 [sunrpc]
-> >>   cache_write_procfs+0x8e/0xd0 [sunrpc]
-> >>   proc_reg_write+0xe1/0x140
-> >>   vfs_write+0x1a5/0x6d0
-> >>   ksys_write+0xc1/0x160
-> >>   do_syscall_64+0x5f/0x170
-> >>   entry_SYSCALL_64_after_hwframe+0x76/0x7e
-> >>
-> >> Freed by task 868:
-> >>   kasan_save_stack+0x20/0x40
-> >>   kasan_save_track+0x14/0x30
-> >>   kasan_save_free_info+0x3b/0x60
-> >>   __kasan_slab_free+0x37/0x50
-> >>   kfree+0xf3/0x3e0
-> >>   svc_export_put+0x87/0xb0 [nfsd]
-> >>   cache_purge+0x17f/0x1f0 [sunrpc]
-> >>   nfsd_destroy_serv+0x226/0x2d0 [nfsd]
-> >>   nfsd_svc+0x125/0x1e0 [nfsd]
-> >>   write_threads+0x16a/0x2a0 [nfsd]
-> >>   nfsctl_transaction_write+0x74/0xa0 [nfsd]
-> >>   vfs_write+0x1a5/0x6d0
-> >>   ksys_write+0xc1/0x160
-> >>   do_syscall_64+0x5f/0x170
-> >>   entry_SYSCALL_64_after_hwframe+0x76/0x7e
-> >>
-> >> Fixes: ae74136b4bb6 ("SUNRPC: Allow cache lookups to use RCU protection =
-rather than the r/w spinlock")
-> >> Reviewed-by: NeilBrown <neilb@suse.de>
-> >> Signed-off-by: Yang Erkun <yangerkun@huawei.com>
-> >> ---
-> >>   fs/nfsd/export.c | 19 ++++++++++++++-----
-> >>   1 file changed, 14 insertions(+), 5 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> >> index c6168bccfb6c..0363720280d4 100644
-> >> --- a/fs/nfsd/export.c
-> >> +++ b/fs/nfsd/export.c
-> >> @@ -355,16 +355,25 @@ static void export_stats_destroy(struct export_sta=
-ts *stats)
-> >>   					    EXP_STATS_COUNTERS_NUM);
-> >>   }
-> >>  =20
-> >> -static void svc_export_put(struct kref *ref)
-> >> +static void svc_export_release(struct rcu_head *rcu_head)
-> >>   {
-> >> -	struct svc_export *exp =3D container_of(ref, struct svc_export, h.ref);
-> >> -	path_put(&exp->ex_path);
-> >> -	auth_domain_put(exp->ex_client);
-> >> +	struct svc_export *exp =3D container_of(rcu_head, struct svc_export,
-> >> +			ex_rcu);
-> >> +
-> >>   	nfsd4_fslocs_free(&exp->ex_fslocs);
-> >>   	export_stats_destroy(exp->ex_stats);
-> >>   	kfree(exp->ex_stats);
-> >>   	kfree(exp->ex_uuid);
-> >> -	kfree_rcu(exp, ex_rcu);
-> >> +	kfree(exp);
-> >> +}
-> >> +
-> >> +static void svc_export_put(struct kref *ref)
-> >> +{
-> >> +	struct svc_export *exp =3D container_of(ref, struct svc_export, h.ref);
-> >> +
-> >> +	path_put(&exp->ex_path);
-> >> +	auth_domain_put(exp->ex_client);
-> >> +	call_rcu(&exp->ex_rcu, svc_export_release);
-> >>   }
-> >>  =20
-> >=20
-> > I think that ip_map_put() needs to be fixed for the same reason that
-> > svc_export_put() needed to be fixed.
-> >=20
-> > ip_map_put() calls auth_domain_put() in ->im_client immediately, but
-> > ip_map_show() accesses ->im_client.
-> > So ip_map_put() needs to delay the auth_domain_put() using rcu.
->=20
-> Thanks for your detail review!
->=20
-> auth_domain_put will eventually call auth_domain_release, which all
-> .domain_release will call call_rcu to free auth_domain. Maybe it is safe
-> now?
+On Sun, 8 Sept 2024 at 22:40, Jeff Layton <jlayton@kernel.org> wrote:
+>
+> On Sun, 2024-09-08 at 14:00 -0400, Chuck Lever wrote:
+> > On Thu, Sep 05, 2024 at 08:41:45AM -0400, Jeff Layton wrote:
+> > > At this point in compound processing, currentfh refers to the parent of
+> > > the file, not the file itself. Get the correct dentry from the delegation
+> > > stateid instead.
+> > >
+> > > Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> > > ---
+> > >  fs/nfsd/nfs4state.c | 31 +++++++++++++++++++++++--------
+> > >  1 file changed, 23 insertions(+), 8 deletions(-)
+> > >
+> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > > index df69dc6af467..db90677fc016 100644
+> > > --- a/fs/nfsd/nfs4state.c
+> > > +++ b/fs/nfsd/nfs4state.c
+> > > @@ -5914,6 +5914,26 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
+> > >     }
+> > >  }
+> > >
+> > > +static bool
+> > > +nfs4_delegation_stat(struct nfs4_delegation *dp, struct svc_fh *currentfh,
+> > > +                struct kstat *stat)
+> > > +{
+> > > +   struct nfsd_file *nf = find_rw_file(dp->dl_stid.sc_file);
+> >
+> > The xfstests workflow on NFSv4.2 exhausts the capacity of both the
+> > main and scratch devices (backed by xfs) about half-way through
+> > each test run.
+> >
+> > Deleting all visible files on both devices frees only a little bit
+> > of space. The test exports can be unshared but not unmounted
+> > (EBUSY). Looks like unlinked but still open files, maybe.
+> >
+> > Bisected to this here patch.
+> >
+> > Should there be a matching nfsd_file_put() book-end for the new
+> > find_rw_file() call site?
+> >
+>
+> Yes. Braino on my end. I was thinking that find_rw_file didn't take a
+> reference, but it does and we do need to put it. Would you like me to
+> respin, or do you just want to add it in the appropriate spot?
 
-Yes, that makes sense.  As you say, no change is needed for
-ip_map_put().
+Did the respin ever happen?
 
-Thanks,
-NeilBrown
+Ced
+-- 
+Cedric Blancher <cedric.blancher@gmail.com>
+[https://plus.google.com/u/0/+CedricBlancher/]
+Institute Pasteur
