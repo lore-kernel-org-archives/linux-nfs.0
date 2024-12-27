@@ -1,135 +1,91 @@
-Received: from stravinsky.debian.org (stravinsky.debian.org [82.195.75.108])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ed1-f53.google.com (mail-ed1-f53.google.com [209.85.208.53])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2B745647
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Dec 2024 06:48:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=82.195.75.108
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9871F13BAEE;
+	Fri, 27 Dec 2024 07:53:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.53
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1735282091; cv=none; b=klu+M+I18LjpuFzZOkGw6KE4K4Q5Q4/EZ8xMxuECdliOD4yZQKeHOMxiPL/MYqGd6TNEmQnRVKt+IWiBt6kp3GZZjruQAmJvkT94rT9gIBZsdynnbtAA98hANPmUZu4mK8CHJaPznp6+UCFCt3i1uK7SDP3QKSK+GKyDTJnirJA=
+	t=1735286024; cv=none; b=no9YXYKY/O7jHCSMFSmXAUKCEFnOL31VvADH8JlnKrBhVJIcq283O4/y3bBygEtW9/drpfD7DNIA8loP2PvjcXnrBkLr2ga73uRlFLrwCVBa79l/aapwKUjbZDIA7kfqTT/vDI+Aqrw6SaqlOLo87RyPtVmVp52Da1RsdDZ4hFs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1735282091; c=relaxed/simple;
-	bh=CnwDEIOsqdrLlsmwmPexEj06fBp6yczZaPkhf8S6zII=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Pf1rVPVy90rtt56PkvWZFLrA/+fhhc7OEo3wWVWEp6Cy/z6WD2WUbcopnq/Jzu6LR99uQnNqjNPx7OaaKRWXST1z0ENWU9U1QU4lANLq2GkUc9MKXvbF48eyKSrnT8TEsZbD/oYu/pU/ol5UzRSOPTidzcuLQnC2gVbTDYK73Ik=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=debian.org; spf=none smtp.mailfrom=debian.org; dkim=pass (2048-bit key) header.d=debian.org header.i=@debian.org header.b=cfWwIL5W; arc=none smtp.client-ip=82.195.75.108
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=debian.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=debian.org
+	s=arc-20240116; t=1735286024; c=relaxed/simple;
+	bh=x0nFkOoOBz2ukVI2xPXMDWQvT/LzpSsjOGJHbkobsCY=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Content-Type; b=XlcjCined2HBfscrDR63fYt7yLzQnH947XRnfKDbYsDSmnfq2gJQ1QUs0COYGsQplUprOvntAFob13J1mWfHv4Aq/KFhj6AxVInSb4hO3M6ZpJ8bQepqCT62NCekDdn+w9WxVKNPTLhYiHZmAcQljL7MBBAlah0O1wL6qqN1Kng=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=OqNXCaDc; arc=none smtp.client-ip=209.85.208.53
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=debian.org header.i=@debian.org header.b="cfWwIL5W"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=debian.org;
-	s=smtpauto.stravinsky; h=X-Debian-User:In-Reply-To:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=8YM2Q9S0FAaZ+aP3vTHn8pSZ0In5Xj3D+I83N/+iNZg=; b=cfWwIL5WTWLb6HNAY1d+uMwUfv
-	M2hQrrmvBEs/ZdyZl1yzMJI4viruArnHf5TWqAwmiC+PEUI3V85dkBxaLe1dR+ayvF4Ipe3Etjt8t
-	gV5h0O+xkI4hJKvBjGbPanR6Gy4zD+PWUr7PfPtcq/GiTsHvrljgkuPe1o2tQqb3fVDoyumemEtRq
-	JumRKB6gfBF42OPBl9xnXmiVJbF2MNjfOmlJSI9bo0yFIf1bBQxSA8IxYhzG+NByIME66pNwMd+Ll
-	yYxnWF6z3G9K0a97Vowa/V/dm2H70uMoI/1f5G6nstZnHyGQcaMQHuqLHO6itmtQ7LPJwvH+xJSZS
-	prcDzkPg==;
-Received: from authenticated user
-	by stravinsky.debian.org with esmtpsa (TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256)
-	(Exim 4.94.2)
-	(envelope-from <carnil@debian.org>)
-	id 1tR3xy-003FBn-0C; Fri, 27 Dec 2024 06:36:58 +0000
-Received: by eldamar.lan (Postfix, from userid 1000)
-	id A7D09BE2EE7; Fri, 27 Dec 2024 07:36:56 +0100 (CET)
-Date: Fri, 27 Dec 2024 07:36:56 +0100
-From: Salvatore Bonaccorso <carnil@debian.org>
-To: Chuck Lever <chuck.lever@oracle.com>, Scott Mayhew <smayhew@redhat.com>
-Cc: Jur van der Burg via Bugspray Bot <bugbot@kernel.org>, anna@kernel.org,
-	trondmy@kernel.org, jlayton@kernel.org, linux-nfs@vger.kernel.org,
-	cel@kernel.org, 1091439@bugs.debian.org,
-	1091439-submitter@bugs.debian.org, 1087900@bugs.debian.org,
-	1087900-submitter@bugs.debian.org
-Subject: Re: kernel BUG at fs/nfsd/nfs4recover.c:534 Oops: invalid opcode:
- 0000
-Message-ID: <Z25LCAz9-qDVAop9@eldamar.lan>
-References: <20241209-b219580c0-d09195e1d9e8@bugzilla.kernel.org>
- <20241209-b219580c2-2def6494caed@bugzilla.kernel.org>
- <Z22DIiV98XBSfPVr@eldamar.lan>
- <7c76ca67-8552-4cfa-b579-75a33caa3ed2@oracle.com>
- <Z22r2RBlGT8PUHHb@eldamar.lan>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OqNXCaDc"
+Received: by mail-ed1-f53.google.com with SMTP id 4fb4d7f45d1cf-5d3dce16a3dso12373088a12.1;
+        Thu, 26 Dec 2024 23:53:42 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1735286020; x=1735890820; darn=vger.kernel.org;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=KLhKix/P0wr3bxa7rW/L2B7kqtz6IfdfelkFzyBcfIc=;
+        b=OqNXCaDcdivdXuNE3rXZVDen1IzxwGRLozwor5DlBc7N9I5I+xD86lriEA52CPpZxr
+         xsHvNjRB4JrTdX5pzSe3dlFx6EslgpZjhtDd54LzFMJlbkjGNB0p71G4T7GM09KYZhhd
+         ns+LcXuPfXby11LfS4+EdIn7KO8gdEAYwAiMgm+HMmtBvvqnbRYXUtGaqP1nXdaC5DYq
+         3zRcfWRM2DZvT0z1YDs1UPIxy4lkAs4SvqiDQjIa/6R0iARNiqur8mMUgZKjsIiRtTCA
+         FeOdxmoigSQ6zPA/CqQKwRc5ZjFCEbubu8y/jqcNmoOf2M/mfB4apvA6frcIi3lOgqDo
+         SJlA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1735286020; x=1735890820;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=KLhKix/P0wr3bxa7rW/L2B7kqtz6IfdfelkFzyBcfIc=;
+        b=jl3yltCXC61D8J2Rn+HB1Vb7fuZZVZ/tw6TiYTqZ0hT3xt+Zt5zmlU6iILI9N3qTgE
+         ZuuXjvpX4KMJ6df5qV6o6Nj2tcblalkFxWGkWxnrn1ykcWrshHL6JOqrKFSDSGC6jGMi
+         ghlqSUEj2+0enxJJzZ6SHSdDTLecHB0RP9CRi5A5KAqV8jhbwYKzUKfBY4/H3E/3jIXc
+         ItGdViHzALBp6Bxyps8yLCKYAO8CcTVraCax0xJgVnol2FNkcGOQprSj0ec3qt4Qfy66
+         zcrbfb9bHM8N+j8RBX34SonqmOp1Zf+aGrbRzDb7rKI3eFvDN4/KrCz9JEeWGV2toMr5
+         ve6w==
+X-Forwarded-Encrypted: i=1; AJvYcCU2esm3RY8mQxj5v++25lJmZS0uv6I1QMbtSvk4BYD26+riRg4mLln6oehexap7TvrnfxSjyb/DIOBb@vger.kernel.org, AJvYcCUKSry+xwS9yyWsc/kykd6QjAVMso5o8TXnSweVRgBm6QhH4J4RsDPzvOeht8Nq/XdxBp+PdlKjK9ikpPI=@vger.kernel.org
+X-Gm-Message-State: AOJu0YzrHW/O4pIYOxpmXQwklD8wmuHydL5Y5j7kB9V1TIDBkNMhNsA+
+	RqCqvWg/kFPr+QNyWMCaAhLzScnccDmKhBGR3WqNeOLhrOmDuvzuKHIcbQ1UZdnpTlj7wOXR6gF
+	03lr2LJVkpxzwOHqnN1xG4XAi9VeDvQ==
+X-Gm-Gg: ASbGncvdicSF3wI3FfCUHloXjC1uHfXO51M9Nf7TNHR7XgVkJeylkKt5AP/3YiZU/6o
+	IywP1d0YE/KcqOc+O24abSDrxjRvzHZ7rR2xoTL4=
+X-Google-Smtp-Source: AGHT+IFiGwXYo6biQ0B7K9mlRX51bCQVmkrG8PQZe+6tsH2qNQ0CaRxDtxNdMDVpyxxE1B79GURabrQ9jF6c31OQdwE=
+X-Received: by 2002:a05:6402:2801:b0:5d3:cd9a:d05e with SMTP id
+ 4fb4d7f45d1cf-5d8023a11c2mr24592523a12.9.1735286020081; Thu, 26 Dec 2024
+ 23:53:40 -0800 (PST)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <Z22r2RBlGT8PUHHb@eldamar.lan>
-X-Debian-User: carnil
+References: <20240905-delstid-v4-0-d3e5fd34d107@kernel.org> <20240905-delstid-v4-1-d3e5fd34d107@kernel.org>
+In-Reply-To: <20240905-delstid-v4-1-d3e5fd34d107@kernel.org>
+From: Cedric Blancher <cedric.blancher@gmail.com>
+Date: Fri, 27 Dec 2024 08:53:00 +0100
+Message-ID: <CALXu0Ue5f2XKSSYEo8N73DRJWVNJbesO_17eRgbSbAhXVS6v2w@mail.gmail.com>
+Subject: Re: [PATCH v4 01/11] nfsd: fix initial getattr on write delegation
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-Hi,
+On Thu, 5 Sept 2024 at 14:42, Jeff Layton <jlayton@kernel.org> wrote:
+>
+> At this point in compound processing, currentfh refers to the parent of
+> the file, not the file itself. Get the correct dentry from the delegation
+> stateid instead.
+>
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+>  fs/nfsd/nfs4state.c | 31 +++++++++++++++++++++++--------
+>  1 file changed, 23 insertions(+), 8 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index df69dc6af467..db90677fc016 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
 
-On Thu, Dec 26, 2024 at 08:17:45PM +0100, Salvatore Bonaccorso wrote:
-> Hi Chuck, hi all,
-> 
-> On Thu, Dec 26, 2024 at 11:33:01AM -0500, Chuck Lever wrote:
-> > On 12/26/24 11:24 AM, Salvatore Bonaccorso wrote:
-> > > Hi Jur,
-> > > 
-> > > On Mon, Dec 09, 2024 at 04:50:05PM +0000, Jur van der Burg via Bugspray Bot wrote:
-> > > > Jur van der Burg writes via Kernel.org Bugzilla:
-> > > > 
-> > > > I tried kernel 6.10.1 and that one is ok. In the mean time I
-> > > > upgraded nfs-utils from 2.5.1 to 2.8.1 which seems to fix the issue.
-> > > > Sorry for the noise, case closed.
-> > > > 
-> > > > View: https://bugzilla.kernel.org/show_bug.cgi?id=219580#c2
-> > > > You can reply to this message to join the discussion.
-> > > 
-> > > Are you sure this is solved? I got hit by this today after trying to
-> > > check the report from another Debian user:
-> > > 
-> > > https://bugs.debian.org/1091439
-> > > the earlier report was
-> > > https://bugs.debian.org/1087900
-> > > 
-> > > Surprisingly I managed to hit this, after:
-> > > 
-> > > Doing a fresh Debian installation with Debian unstable, rebooting
-> > > after installation. The running kernel is 6.12.6-1 (but now believe it
-> > > might be hit in any sufficient earlier version):
-> > > 
-> > > Notably, in kernel-log I see as well
-> > > 
-> > > [   50.295209] RPC: Registered tcp NFSv4.1 backchannel transport module.
-> > > [   52.158301] NFSD: Using /var/lib/nfs/v4recovery as the NFSv4 state recovery directory
-> > > [   52.158333] NFSD: Using legacy client tracking operations.
-> > 
-> > Hi Salvatore,
-> > 
-> > If you no longer provision nfsdcltrack in user space, then you want to
-> > set CONFIG_NFSD_LEGACY_CLIENT_TRACKING to 'N' in your kernel config.
-> 
-> Right, while this might not be possible right now in the distribution,
-> to confirm, setting CONFIG_NFSD_LEGACY_CLIENT_TRACKING would resolve
-> the problem. In the distribution I think we would not yet be able to
-> do a hard cut for planned next stable release.
-> 
-> Remember, that in Debian we only with the current stable release got
-> again somehow on "track" with nfs-utils code.
-> 
-> > Otherwise, Scott Mayhew is the area expert (cc'd).
-> 
-> Thanks!
-> 
-> I will try to get more narrow down to the versions to see where the
-> problem might be introduced, but if you already have a clue, and know
-> what we might try (e.g. commit revert on top, or patch) I'm happy to
-> test this as well (since now reliably able to trigger it).
+Is this commit going to be backported to Linux 6.6 LTS?
 
-Okay so this was maybe obvious for you already but bisecting leads to
-the first bad commit beeing:
-
-74fd48739d04 ("nfsd: new Kconfig option for legacy client tracking")
-
-The Problem is not present in v6.7 and it is triggerable with
-74fd48739d04 ("nfsd: new Kconfig option for legacy client tracking")
-
-Most importantly as the switch to defaulting to y was only in later
-versions, explicitly setting CONFIG_NFSD_LEGACY_CLIENT_TRACKING=y.
-
-Regards,
-Salvatore
+Ced
+-- 
+Cedric Blancher <cedric.blancher@gmail.com>
+[https://plus.google.com/u/0/+CedricBlancher/]
+Institute Pasteur
