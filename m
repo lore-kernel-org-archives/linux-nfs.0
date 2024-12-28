@@ -1,29 +1,29 @@
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+Received: from szxga04-in.huawei.com (szxga04-in.huawei.com [45.249.212.190])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F36CF193077;
-	Sat, 28 Dec 2024 15:02:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2CF5419DF48;
+	Sat, 28 Dec 2024 15:02:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.190
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1735398135; cv=none; b=bGjk0CQaryVqGtIaLTfYkiBAjEcbKWFLCClOvXg9PIC+VFHWfhY643CCilBl49/6jKNPt5kXoZQczi4e7yuBBkDuxGOsrmxddIU2dAmqFxyOgI0E/KxTGQ7CIKZaNHH4pdJaMaI3uWYTR9kK+siDQKIkxmWV1NzMhDd5Dk7OPVw=
+	t=1735398138; cv=none; b=A/U+kIrBDSzzeGTe+IrP9WEfABMJgkcPQZuE27FO1nbky5yjlwTPLjJw4MuRvYHbwcao9lmVDhHN7sbWyaM/QGuWf3f712AMCAEkGoNNYbKDXWloh7j2Rr+n5HrNQGJR+mZa0RlvMqmGDZiC82/DH9man+rFi2yO2beDQBcG6B4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1735398135; c=relaxed/simple;
-	bh=Tccj/tz55NUPblipPso+u0JDZRXNi9TZg7iDf+IxlWA=;
+	s=arc-20240116; t=1735398138; c=relaxed/simple;
+	bh=fAeSG8GX2vLrPZYjKh64LRtiL1F/nvMSmcxJk9KJfNI=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=Xk7t7L335k2VfuPsx3jAonhC4fwnzHAJS/bqQpBZpi458lzly4b/I50O7VCzMIQFWiwNnNb5o6CrV0QZYwwr1AerYlt7eEG+0TKEmbFNkRHjGmxY4Rn1pOgSVVOzbyPYFU1GvANa2Max0ANqtWJJsTWAVmZ1hFAp1W+Fp+1aQCs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.187
+	 MIME-Version:Content-Type; b=c9TSWWWuzxigzqevMH/LU8bBJwVJPaGYiuyjEx5J7SEHSCwj2NdSl0kZaBw09FqDvi9ErU1v+AodplcDhiWX4W565St61m8iNv3VGodiU9k8W5Cryrg63eVkgDTonrEI2op91FHp1uhMaCs70muVylaCbBPRqQxDgi20WtLouUI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.190
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.88.105])
-	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4YL58p4BSlz11Nds;
-	Sat, 28 Dec 2024 22:58:34 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.17])
+	by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4YL59n2bf5z2FcBc;
+	Sat, 28 Dec 2024 22:59:25 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id A55541400D1;
-	Sat, 28 Dec 2024 23:02:02 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id F29C51A0188;
+	Sat, 28 Dec 2024 23:02:12 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Sat, 28 Dec
- 2024 23:01:59 +0800
+ 2024 23:02:09 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>
 CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
@@ -48,9 +48,9 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<ying.huang@intel.com>, <yang@os.amperecomputing.com>,
 	<zev@bewilderbeest.net>, <serge@hallyn.com>, <vegard.nossum@oracle.com>,
 	<wangkefeng.wang@huawei.com>
-Subject: [PATCH v4 -next 06/15] mm: mmap: move sysctl to mm/mmap.c
-Date: Sat, 28 Dec 2024 22:57:37 +0800
-Message-ID: <20241228145746.2783627-7-yukaixiong@huawei.com>
+Subject: [PATCH v4 -next 09/15] fs: fs-writeback: move sysctl to fs/fs-writeback.c
+Date: Sat, 28 Dec 2024 22:57:40 +0800
+Message-ID: <20241228145746.2783627-10-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20241228145746.2783627-1-yukaixiong@huawei.com>
 References: <20241228145746.2783627-1-yukaixiong@huawei.com>
@@ -65,179 +65,118 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-This moves all mmap related sysctls to mm/mmap.c, as part of the
-kernel/sysctl.c cleaning, also move the variable declaration from
-kernel/sysctl.c into mm/mmap.c.
+The dirtytime_expire_interval belongs to fs/fs-writeback.c, move it to
+fs/fs-writeback.c from /kernel/sysctl.c. And remove the useless extern
+variable declaration and the function declaration from
+include/linux/writeback.h
 
 Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
 Reviewed-by: Kees Cook <kees@kernel.org>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
 v4:
- - const qualify struct ctl_table mmap_table
+ - const qualify struct ctl_table vm_fs_writeback_table
 v3:
+ - change dirtytime_expire_interval to static type
  - change the title
-v2:
- - fix sysctl_max_map_count undeclared issue in mm/nommu.c
 ---
 ---
- kernel/sysctl.c | 50 +--------------------------------------------
- mm/mmap.c       | 54 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 55 insertions(+), 49 deletions(-)
+ fs/fs-writeback.c         | 30 +++++++++++++++++++++---------
+ include/linux/writeback.h |  4 ----
+ kernel/sysctl.c           |  8 --------
+ 3 files changed, 21 insertions(+), 21 deletions(-)
 
+diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
+index 5980ac24c7a4..4f907e8dbfff 100644
+--- a/fs/fs-writeback.c
++++ b/fs/fs-writeback.c
+@@ -65,7 +65,7 @@ struct wb_writeback_work {
+  * timestamps written to disk after 12 hours, but in the worst case a
+  * few inodes might not their timestamps updated for 24 hours.
+  */
+-unsigned int dirtytime_expire_interval = 12 * 60 * 60;
++static unsigned int dirtytime_expire_interval = 12 * 60 * 60;
+ 
+ static inline struct inode *wb_inode(struct list_head *head)
+ {
+@@ -2435,14 +2435,7 @@ static void wakeup_dirtytime_writeback(struct work_struct *w)
+ 	schedule_delayed_work(&dirtytime_work, dirtytime_expire_interval * HZ);
+ }
+ 
+-static int __init start_dirtytime_writeback(void)
+-{
+-	schedule_delayed_work(&dirtytime_work, dirtytime_expire_interval * HZ);
+-	return 0;
+-}
+-__initcall(start_dirtytime_writeback);
+-
+-int dirtytime_interval_handler(const struct ctl_table *table, int write,
++static int dirtytime_interval_handler(const struct ctl_table *table, int write,
+ 			       void *buffer, size_t *lenp, loff_t *ppos)
+ {
+ 	int ret;
+@@ -2453,6 +2446,25 @@ int dirtytime_interval_handler(const struct ctl_table *table, int write,
+ 	return ret;
+ }
+ 
++static const struct ctl_table vm_fs_writeback_table[] = {
++	{
++		.procname	= "dirtytime_expire_seconds",
++		.data		= &dirtytime_expire_interval,
++		.maxlen		= sizeof(dirtytime_expire_interval),
++		.mode		= 0644,
++		.proc_handler	= dirtytime_interval_handler,
++		.extra1		= SYSCTL_ZERO,
++	},
++};
++
++static int __init start_dirtytime_writeback(void)
++{
++	schedule_delayed_work(&dirtytime_work, dirtytime_expire_interval * HZ);
++	register_sysctl_init("vm", vm_fs_writeback_table);
++	return 0;
++}
++__initcall(start_dirtytime_writeback);
++
+ /**
+  * __mark_inode_dirty -	internal function to mark an inode dirty
+  *
+diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+index d11b903c2edb..caf4f0b12235 100644
+--- a/include/linux/writeback.h
++++ b/include/linux/writeback.h
+@@ -327,12 +327,8 @@ extern struct wb_domain global_wb_domain;
+ /* These are exported to sysctl. */
+ extern unsigned int dirty_writeback_interval;
+ extern unsigned int dirty_expire_interval;
+-extern unsigned int dirtytime_expire_interval;
+ extern int laptop_mode;
+ 
+-int dirtytime_interval_handler(const struct ctl_table *table, int write,
+-		void *buffer, size_t *lenp, loff_t *ppos);
+-
+ void global_dirty_limits(unsigned long *pbackground, unsigned long *pdirty);
+ unsigned long wb_calc_thresh(struct bdi_writeback *wb, unsigned long thresh);
+ unsigned long cgwb_calc_thresh(struct bdi_writeback *wb);
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index aea3482106e0..9c245898f535 100644
+index 97f9abffff0f..c5527f59e3f2 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -127,12 +127,6 @@ enum sysctl_writes_mode {
- 
- static enum sysctl_writes_mode sysctl_writes_strict = SYSCTL_WRITES_STRICT;
- #endif /* CONFIG_PROC_SYSCTL */
--
--#if defined(HAVE_ARCH_PICK_MMAP_LAYOUT) || \
--    defined(CONFIG_ARCH_WANT_DEFAULT_TOPDOWN_MMAP_LAYOUT)
--int sysctl_legacy_va_layout;
--#endif
--
- #endif /* CONFIG_SYSCTL */
- 
- /*
-@@ -2037,16 +2031,7 @@ static struct ctl_table vm_table[] = {
- 		.extra1		= SYSCTL_ONE,
- 		.extra2		= SYSCTL_FOUR,
- 	},
--#ifdef CONFIG_MMU
--	{
--		.procname	= "max_map_count",
--		.data		= &sysctl_max_map_count,
--		.maxlen		= sizeof(sysctl_max_map_count),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec_minmax,
--		.extra1		= SYSCTL_ZERO,
--	},
--#else
-+#ifndef CONFIG_MMU
- 	{
- 		.procname	= "nr_trim_pages",
- 		.data		= &sysctl_nr_trim_pages,
-@@ -2064,17 +2049,6 @@ static struct ctl_table vm_table[] = {
- 		.proc_handler	= proc_dointvec_minmax,
- 		.extra1		= SYSCTL_ZERO,
- 	},
--#if defined(HAVE_ARCH_PICK_MMAP_LAYOUT) || \
--    defined(CONFIG_ARCH_WANT_DEFAULT_TOPDOWN_MMAP_LAYOUT)
--	{
--		.procname	= "legacy_va_layout",
--		.data		= &sysctl_legacy_va_layout,
--		.maxlen		= sizeof(sysctl_legacy_va_layout),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec_minmax,
--		.extra1		= SYSCTL_ZERO,
--	},
--#endif
- #ifdef CONFIG_MMU
- 	{
- 		.procname	= "mmap_min_addr",
-@@ -2100,28 +2074,6 @@ static struct ctl_table vm_table[] = {
- 		.extra1		= SYSCTL_ZERO,
- 	},
- #endif
--#ifdef CONFIG_HAVE_ARCH_MMAP_RND_BITS
--	{
--		.procname	= "mmap_rnd_bits",
--		.data		= &mmap_rnd_bits,
--		.maxlen		= sizeof(mmap_rnd_bits),
--		.mode		= 0600,
--		.proc_handler	= proc_dointvec_minmax,
--		.extra1		= (void *)&mmap_rnd_bits_min,
--		.extra2		= (void *)&mmap_rnd_bits_max,
--	},
--#endif
--#ifdef CONFIG_HAVE_ARCH_MMAP_RND_COMPAT_BITS
--	{
--		.procname	= "mmap_rnd_compat_bits",
--		.data		= &mmap_rnd_compat_bits,
--		.maxlen		= sizeof(mmap_rnd_compat_bits),
--		.mode		= 0600,
--		.proc_handler	= proc_dointvec_minmax,
--		.extra1		= (void *)&mmap_rnd_compat_bits_min,
--		.extra2		= (void *)&mmap_rnd_compat_bits_max,
--	},
--#endif
+@@ -2014,14 +2014,6 @@ static struct ctl_table kern_table[] = {
  };
  
- int __init sysctl_init_bases(void)
-diff --git a/mm/mmap.c b/mm/mmap.c
-index aef835984b1c..cc579aafd7ba 100644
---- a/mm/mmap.c
-+++ b/mm/mmap.c
-@@ -1603,6 +1603,57 @@ struct vm_area_struct *_install_special_mapping(
- 					&special_mapping_vmops);
- }
- 
-+#ifdef CONFIG_SYSCTL
-+#if defined(HAVE_ARCH_PICK_MMAP_LAYOUT) || \
-+		defined(CONFIG_ARCH_WANT_DEFAULT_TOPDOWN_MMAP_LAYOUT)
-+int sysctl_legacy_va_layout;
-+#endif
-+
-+static const struct ctl_table mmap_table[] = {
-+		{
-+				.procname       = "max_map_count",
-+				.data           = &sysctl_max_map_count,
-+				.maxlen         = sizeof(sysctl_max_map_count),
-+				.mode           = 0644,
-+				.proc_handler   = proc_dointvec_minmax,
-+				.extra1         = SYSCTL_ZERO,
-+		},
-+#if defined(HAVE_ARCH_PICK_MMAP_LAYOUT) || \
-+		defined(CONFIG_ARCH_WANT_DEFAULT_TOPDOWN_MMAP_LAYOUT)
-+		{
-+				.procname       = "legacy_va_layout",
-+				.data           = &sysctl_legacy_va_layout,
-+				.maxlen         = sizeof(sysctl_legacy_va_layout),
-+				.mode           = 0644,
-+				.proc_handler   = proc_dointvec_minmax,
-+				.extra1         = SYSCTL_ZERO,
-+		},
-+#endif
-+#ifdef CONFIG_HAVE_ARCH_MMAP_RND_BITS
-+		{
-+				.procname       = "mmap_rnd_bits",
-+				.data           = &mmap_rnd_bits,
-+				.maxlen         = sizeof(mmap_rnd_bits),
-+				.mode           = 0600,
-+				.proc_handler   = proc_dointvec_minmax,
-+				.extra1         = (void *)&mmap_rnd_bits_min,
-+				.extra2         = (void *)&mmap_rnd_bits_max,
-+		},
-+#endif
-+#ifdef CONFIG_HAVE_ARCH_MMAP_RND_COMPAT_BITS
-+		{
-+				.procname       = "mmap_rnd_compat_bits",
-+				.data           = &mmap_rnd_compat_bits,
-+				.maxlen         = sizeof(mmap_rnd_compat_bits),
-+				.mode           = 0600,
-+				.proc_handler   = proc_dointvec_minmax,
-+				.extra1         = (void *)&mmap_rnd_compat_bits_min,
-+				.extra2         = (void *)&mmap_rnd_compat_bits_max,
-+		},
-+#endif
-+};
-+#endif /* CONFIG_SYSCTL */
-+
- /*
-  * initialise the percpu counter for VM
-  */
-@@ -1612,6 +1663,9 @@ void __init mmap_init(void)
- 
- 	ret = percpu_counter_init(&vm_committed_as, 0, GFP_KERNEL);
- 	VM_BUG_ON(ret);
-+#ifdef CONFIG_SYSCTL
-+	register_sysctl_init("vm", mmap_table);
-+#endif
- }
- 
- /*
+ static struct ctl_table vm_table[] = {
+-	{
+-		.procname	= "dirtytime_expire_seconds",
+-		.data		= &dirtytime_expire_interval,
+-		.maxlen		= sizeof(dirtytime_expire_interval),
+-		.mode		= 0644,
+-		.proc_handler	= dirtytime_interval_handler,
+-		.extra1		= SYSCTL_ZERO,
+-	},
+ 	{
+ 		.procname	= "drop_caches",
+ 		.data		= &sysctl_drop_caches,
 -- 
 2.34.1
 
