@@ -1,29 +1,29 @@
 Received: from szxga03-in.huawei.com (szxga03-in.huawei.com [45.249.212.189])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C319F1A00D6;
-	Sat, 28 Dec 2024 15:02:31 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 245091A9B4C;
+	Sat, 28 Dec 2024 15:02:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.189
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1735398155; cv=none; b=scZ07EfzjW5eiN8n2RhcUZBPYcx2sVFCOq9z0R0vi6Cuy94kqSXguJ/bBGxpRoAQp2W6Eb8CrWelMJVUh1lxqJIMwwh4Gzb5ZptHKR9cPpRHDRYeA3AToPoGpCcwccqYRpX/oIyFnS9pMLg0iMj9ZXabcDf1onzVvLNZiE89JP0=
+	t=1735398157; cv=none; b=inm2y+VdaTMVFU2mcj5/6qf1CSvP+CetEeDkU4/oVQMk0+KcVmMF6/DqEYz77qO2qQq4cAtwBuNOfzbV6CbaurkxDuWPAQBUS+sS+Ljhf5bxM4q3m/Sb09ul2KSkC66I+ThBEtvQPqyjyltgtIoQanmzCCrdHIQ89NfCt/xRs2I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1735398155; c=relaxed/simple;
-	bh=cCXzle1aOmQhUqNQ8R/XsZIMZehG8SpEKq614igrZkk=;
+	s=arc-20240116; t=1735398157; c=relaxed/simple;
+	bh=QlnJEpBp4fXU3fC+e0GKeOTxfhyigAYnpz0GbfIk3zI=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=tfl3Ad0SoSC8VNHW/0xUdBzDXDTJMgAv3N4TTcLd6Rgx+x33t48Zi+LNXUcZeJ9CtLh+fsmFimvHH5Ct9jLsi1WQYvaFPU2lSVtgkcHQJpxRHrZkCsjI8F/e1kSSUTqUsNr/e8kscnrpQpXJfneflKWMPmOaqUB17UvoIMXhrBI=
+	 MIME-Version:Content-Type; b=uJ70psErHzoIqGifPbxNi6MkrXQYph0cC9PthrSSxXWJOHO6KQno6B9VPnWijphO1G97xji2ioe09sViW3s+Pa5aQ6A9os3m0GA6VmrfBfmTrGcocnItjj9j5WVCzB0eo3LrZlWaKHFSD298hhOrg6rFaOMqT37DYKlyZvzwmSw=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.189
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.88.105])
-	by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4YL5Bq5G54zRkMd;
-	Sat, 28 Dec 2024 23:00:19 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.162.254])
+	by szxga03-in.huawei.com (SkyGuard) with ESMTP id 4YL5C20R7LzRkTJ;
+	Sat, 28 Dec 2024 23:00:30 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id 500CA1400D1;
-	Sat, 28 Dec 2024 23:02:23 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 9FB3F180105;
+	Sat, 28 Dec 2024 23:02:33 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Sat, 28 Dec
- 2024 23:02:19 +0800
+ 2024 23:02:30 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>
 CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
@@ -48,9 +48,9 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<ying.huang@intel.com>, <yang@os.amperecomputing.com>,
 	<zev@bewilderbeest.net>, <serge@hallyn.com>, <vegard.nossum@oracle.com>,
 	<wangkefeng.wang@huawei.com>
-Subject: [PATCH v4 -next 12/15] fs: dcache: move the sysctl to fs/dcache.c
-Date: Sat, 28 Dec 2024 22:57:43 +0800
-Message-ID: <20241228145746.2783627-13-yukaixiong@huawei.com>
+Subject: [PATCH v4 -next 15/15] sysctl: remove unneeded include
+Date: Sat, 28 Dec 2024 22:57:46 +0800
+Message-ID: <20241228145746.2783627-16-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20241228145746.2783627-1-yukaixiong@huawei.com>
 References: <20241228145746.2783627-1-yukaixiong@huawei.com>
@@ -65,118 +65,57 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-The sysctl_vfs_cache_pressure belongs to fs/dcache.c, move it to
-fs/dcache.c from kernel/sysctl.c. As a part of fs/dcache.c cleaning,
-sysctl_vfs_cache_pressure is changed to a static variable, and change
-the inline-type function vfs_pressure_ratio() to out-of-inline type,
-export vfs_pressure_ratio() with EXPORT_SYMBOL_GPL to be used by other
-files. Move the unneeded include(linux/dcache.h).
+Removing unneeded mm includes in kernel/sysctl.c.
 
 Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
 Reviewed-by: Kees Cook <kees@kernel.org>
-Reviewed-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Christian Brauner <brauner@kernel.org>
 ---
-v4:
- - const qualify struct ctl_table vm_dcache_sysctls
-v3:
- - change the title
-v2:
- - update the changelog to call out changing the inline-type function
-   vfs_pressure_ratio() to out-of-inline type
----
----
- fs/dcache.c            | 21 +++++++++++++++++++--
- include/linux/dcache.h |  7 +------
- kernel/sysctl.c        |  9 ---------
- 3 files changed, 20 insertions(+), 17 deletions(-)
+ kernel/sysctl.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-diff --git a/fs/dcache.c b/fs/dcache.c
-index b4d5e9e1e43d..77ca6e9bb71e 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -73,8 +73,13 @@
-  * If no ancestor relationship:
-  * arbitrary, since it's serialized on rename_lock
-  */
--int sysctl_vfs_cache_pressure __read_mostly = 100;
--EXPORT_SYMBOL_GPL(sysctl_vfs_cache_pressure);
-+static int sysctl_vfs_cache_pressure __read_mostly = 100;
-+
-+unsigned long vfs_pressure_ratio(unsigned long val)
-+{
-+	return mult_frac(val, sysctl_vfs_cache_pressure, 100);
-+}
-+EXPORT_SYMBOL_GPL(vfs_pressure_ratio);
- 
- __cacheline_aligned_in_smp DEFINE_SEQLOCK(rename_lock);
- 
-@@ -211,8 +216,20 @@ static struct ctl_table fs_dcache_sysctls[] = {
- 	},
- };
- 
-+static const struct ctl_table vm_dcache_sysctls[] = {
-+	{
-+		.procname	= "vfs_cache_pressure",
-+		.data		= &sysctl_vfs_cache_pressure,
-+		.maxlen		= sizeof(sysctl_vfs_cache_pressure),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec_minmax,
-+		.extra1		= SYSCTL_ZERO,
-+	},
-+};
-+
- static int __init init_fs_dcache_sysctls(void)
- {
-+	register_sysctl_init("vm", vm_dcache_sysctls);
- 	register_sysctl_init("fs", fs_dcache_sysctls);
- 	return 0;
- }
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index bff956f7b2b9..c81c2e9e13df 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -508,12 +508,7 @@ static inline int simple_positive(const struct dentry *dentry)
- 	return d_really_is_positive(dentry) && !d_unhashed(dentry);
- }
- 
--extern int sysctl_vfs_cache_pressure;
--
--static inline unsigned long vfs_pressure_ratio(unsigned long val)
--{
--	return mult_frac(val, sysctl_vfs_cache_pressure, 100);
--}
-+unsigned long vfs_pressure_ratio(unsigned long val);
- 
- /**
-  * d_inode - Get the actual inode of this dentry
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 7fb77cbcc24d..860dea8f1587 100644
+index cebd0ef5d19d..aece984bee19 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -46,7 +46,6 @@
+@@ -20,8 +20,6 @@
+  */
+ 
+ #include <linux/module.h>
+-#include <linux/mm.h>
+-#include <linux/slab.h>
+ #include <linux/sysctl.h>
+ #include <linux/bitmap.h>
+ #include <linux/signal.h>
+@@ -30,7 +28,6 @@
+ #include <linux/proc_fs.h>
+ #include <linux/security.h>
+ #include <linux/ctype.h>
+-#include <linux/kmemleak.h>
+ #include <linux/filter.h>
+ #include <linux/fs.h>
+ #include <linux/init.h>
+@@ -41,7 +38,6 @@
+ #include <linux/highuid.h>
+ #include <linux/writeback.h>
+ #include <linux/ratelimit.h>
+-#include <linux/hugetlb.h>
+ #include <linux/initrd.h>
  #include <linux/key.h>
  #include <linux/times.h>
- #include <linux/limits.h>
--#include <linux/dcache.h>
- #include <linux/syscalls.h>
- #include <linux/nfs_fs.h>
- #include <linux/acpi.h>
-@@ -2014,14 +2013,6 @@ static struct ctl_table kern_table[] = {
- };
+@@ -52,13 +48,11 @@
+ #include <linux/reboot.h>
+ #include <linux/ftrace.h>
+ #include <linux/perf_event.h>
+-#include <linux/oom.h>
+ #include <linux/kmod.h>
+ #include <linux/capability.h>
+ #include <linux/binfmts.h>
+ #include <linux/sched/sysctl.h>
+ #include <linux/mount.h>
+-#include <linux/userfaultfd_k.h>
+ #include <linux/pid.h>
  
- static struct ctl_table vm_table[] = {
--	{
--		.procname	= "vfs_cache_pressure",
--		.data		= &sysctl_vfs_cache_pressure,
--		.maxlen		= sizeof(sysctl_vfs_cache_pressure),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec_minmax,
--		.extra1		= SYSCTL_ZERO,
--	},
- #if (defined(CONFIG_X86_32) && !defined(CONFIG_UML))|| \
-    (defined(CONFIG_SUPERH) && defined(CONFIG_VSYSCALL))
- 	{
+ #include "../lib/kstrtox.h"
 -- 
 2.34.1
 
