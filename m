@@ -1,28 +1,29 @@
 Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 45CA7154BF5;
-	Sat, 28 Dec 2024 15:01:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C08A91917F1;
+	Sat, 28 Dec 2024 15:01:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.35
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1735398114; cv=none; b=rN/1u9gUT6SwjCyuafpOqoK0p5noFkwqeUWWv+wgGgLWmQSnGN3mvD6NO/eQjIKtmIMF8TA+aX7UdnjsQBDpxp+gKyBbYtE28v2q52Y/eDRGonmWPNYBl39n0cjSlXE3AFqSQvQeEw6FsjcktGXcpe38hyVzn3XSDEXe15iWH+c=
+	t=1735398117; cv=none; b=IOD6j+xOuhPun5Td1tkrDi+gR4UCjTTWa41r8MkwPMP3OkZiygG01GEY1CXY2kFqiFcu2RvGMmNbTjGGvcTNoREUCEhXnV1ziu5kxrizLR+ThbfZW2cbJdg5soRjyeNhO4Ixtci1pCAGOHyVOSEI8pVg7Ojz53tTJ5S85S+DsuA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1735398114; c=relaxed/simple;
-	bh=A3tNDP/U/L2KZi3cVmdi+N9iWAbxpoX0GtN57AnL5A8=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=L8Q6r77g4VOIdrnOxo9BfAUuChpsUREHy2D9c2Iq3NbumvKRVd2IfnKTVkJooSYSWgDRXFDCItMbnCV/SFvjyc4bL4iXloDM02TzSfTniZC5HE83AhuZfnY3Ax7zyl9djzEbr7RVPhTBZdvqlMWdKw+ZPKy/HD2khXw+te8CjEs=
+	s=arc-20240116; t=1735398117; c=relaxed/simple;
+	bh=bamcIdzVZRRdfLmC1Lu05/MmX20ZnHBl+HSAyfF2ZMs=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=DWqce/syqSAfjW9ql6l6kKuF9wN1Fddowd+r9p8jk03zPB7vjKCGL1Y9e1snfciImmPgWlUm4SKML3NgOwApZQThKstT0xLJVym9mIROMV578UbJ7C6z8JaB5zi8kj4cTWZQdhOipkLugogkChSjJVtRdqERyKw/D5krC/4Orus=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.35
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.44])
-	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4YL59954ZHz1T6K3;
-	Sat, 28 Dec 2024 22:58:53 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.88.163])
+	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4YL59N0JR2z1T7Z7;
+	Sat, 28 Dec 2024 22:59:04 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id E23781402C7;
-	Sat, 28 Dec 2024 23:01:41 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 3E452180042;
+	Sat, 28 Dec 2024 23:01:52 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Sat, 28 Dec
- 2024 23:01:38 +0800
+ 2024 23:01:48 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>
 CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
@@ -47,10 +48,12 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<ying.huang@intel.com>, <yang@os.amperecomputing.com>,
 	<zev@bewilderbeest.net>, <serge@hallyn.com>, <vegard.nossum@oracle.com>,
 	<wangkefeng.wang@huawei.com>
-Subject: [PATCH v4 -next 00/15] sysctl: move sysctls from vm_table into its own files
-Date: Sat, 28 Dec 2024 22:57:31 +0800
-Message-ID: <20241228145746.2783627-1-yukaixiong@huawei.com>
+Subject: [PATCH v4 -next 03/15] mm: swap: move sysctl to mm/swap.c
+Date: Sat, 28 Dec 2024 22:57:34 +0800
+Message-ID: <20241228145746.2783627-4-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.34.1
+In-Reply-To: <20241228145746.2783627-1-yukaixiong@huawei.com>
+References: <20241228145746.2783627-1-yukaixiong@huawei.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -62,80 +65,117 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems705-chm.china.huawei.com (10.3.19.182) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-This patch series moves sysctls of vm_table in kernel/sysctl.c to
-places where they actually belong, and do some related code clean-ups.
-After this patch series, all sysctls in vm_table have been moved into its
-own files, meanwhile, delete vm_table.
+The page-cluster belongs to mm/swap.c, move it to mm/swap.c .
+Removes the redundant external variable declaration and unneeded
+include(linux/swap.h).
 
-All the modifications of this patch series base on
-linux-next(tags/next-20241219). To test this patch series, the code was
-compiled with both the CONFIG_SYSCTL enabled and disabled on arm64 and
-x86_64 architectures. After this patch series is applied, all files
-under /proc/sys/vm can be read or written normally.
+Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
+Reviewed-by: Kees Cook <kees@kernel.org>
+---
+v4:
+ - const qualify struct ctl_table swap_sysctl_table
+v3:
+ - change the title
+---
+---
+ include/linux/mm.h |  2 --
+ kernel/sysctl.c    | 10 ----------
+ mm/swap.c          | 16 +++++++++++++++-
+ mm/swap.h          |  1 +
+ 4 files changed, 16 insertions(+), 13 deletions(-)
 
-Changes in v4:
- - due to my mistake, the previous version sent 15 patches twice.
-   Please ignore that, as this version is the correct one.
- - change all "static struct ctl_table" type into
-   "static const struct ctl_table" type in patch1~10,12,13,14
- - simplify result of rpcauth_cache_shrink_count() in patch11
-
-Changes in v3:
- - change patch1~10, patch14 title suggested by Joel Granados
- - change sysctl_stat_interval to static type in patch1
- - add acked-by from Paul Moore in patch7
- - change dirtytime_expire_interval to static type in patch9
- - add acked-by from Anna Schumaker in patch11
-
-Changes in v2:
- - fix sysctl_max_map_count undeclared issue in mm/nommu.c for patch6
- - update changelog for patch7/12, suggested by Kees/Paul
- - fix patch8, sorry for wrong changes and forget to built with NOMMU
- - add reviewed-by from Kees except patch8 since patch8 is wrong in v1
- - add reviewed-by from Jan Kara, Christian Brauner in patch12
-
-Kaixiong Yu (15):
-  mm: vmstat: move sysctls to mm/vmstat.c
-  mm: filemap: move sysctl to mm/filemap.c
-  mm: swap: move sysctl to mm/swap.c
-  mm: vmscan: move vmscan sysctls to mm/vmscan.c
-  mm: util: move sysctls to mm/util.c
-  mm: mmap: move sysctl to mm/mmap.c
-  security: min_addr: move sysctl to security/min_addr.c
-  mm: nommu: move sysctl to mm/nommu.c
-  fs: fs-writeback: move sysctl to fs/fs-writeback.c
-  fs: drop_caches: move sysctl to fs/drop_caches.c
-  sunrpc: simplify rpcauth_cache_shrink_count()
-  fs: dcache: move the sysctl to fs/dcache.c
-  x86: vdso: move the sysctl to arch/x86/entry/vdso/vdso32-setup.c
-  sh: vdso: move the sysctl to arch/sh/kernel/vsyscall/vsyscall.c
-  sysctl: remove unneeded include
-
- arch/sh/kernel/vsyscall/vsyscall.c |  14 ++
- arch/x86/entry/vdso/vdso32-setup.c |  16 ++-
- fs/dcache.c                        |  21 ++-
- fs/drop_caches.c                   |  23 ++-
- fs/fs-writeback.c                  |  30 ++--
- include/linux/dcache.h             |   7 +-
- include/linux/mm.h                 |  23 ---
- include/linux/mman.h               |   2 -
- include/linux/swap.h               |   9 --
- include/linux/vmstat.h             |  11 --
- include/linux/writeback.h          |   4 -
- kernel/sysctl.c                    | 221 -----------------------------
- mm/filemap.c                       |  18 ++-
- mm/internal.h                      |  10 ++
- mm/mmap.c                          |  54 +++++++
- mm/nommu.c                         |  15 +-
- mm/swap.c                          |  16 ++-
- mm/swap.h                          |   1 +
- mm/util.c                          |  67 +++++++--
- mm/vmscan.c                        |  23 +++
- mm/vmstat.c                        |  44 +++++-
- net/sunrpc/auth.c                  |   2 +-
- security/min_addr.c                |  11 ++
- 23 files changed, 330 insertions(+), 312 deletions(-)
-
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index dbdf8950d681..8941ba3d9a77 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -76,8 +76,6 @@ static inline void totalram_pages_add(long count)
+ }
+ 
+ extern void * high_memory;
+-extern int page_cluster;
+-extern const int page_cluster_max;
+ 
+ #ifdef CONFIG_SYSCTL
+ extern int sysctl_legacy_va_layout;
+diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+index 23c8db80da5d..ab5d94f07e53 100644
+--- a/kernel/sysctl.c
++++ b/kernel/sysctl.c
+@@ -21,7 +21,6 @@
+ 
+ #include <linux/module.h>
+ #include <linux/mm.h>
+-#include <linux/swap.h>
+ #include <linux/slab.h>
+ #include <linux/sysctl.h>
+ #include <linux/bitmap.h>
+@@ -2044,15 +2043,6 @@ static struct ctl_table vm_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= overcommit_kbytes_handler,
+ 	},
+-	{
+-		.procname	= "page-cluster",
+-		.data		= &page_cluster,
+-		.maxlen		= sizeof(int),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_minmax,
+-		.extra1		= SYSCTL_ZERO,
+-		.extra2		= (void *)&page_cluster_max,
+-	},
+ 	{
+ 		.procname	= "dirtytime_expire_seconds",
+ 		.data		= &dirtytime_expire_interval,
+diff --git a/mm/swap.c b/mm/swap.c
+index 062c8565b899..d3344123381c 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -45,7 +45,7 @@
+ 
+ /* How many pages do we try to swap or page in/out together? As a power of 2 */
+ int page_cluster;
+-const int page_cluster_max = 31;
++static const int page_cluster_max = 31;
+ 
+ struct cpu_fbatches {
+ 	/*
+@@ -1072,6 +1072,18 @@ void folio_batch_remove_exceptionals(struct folio_batch *fbatch)
+ 	fbatch->nr = j;
+ }
+ 
++static const struct ctl_table swap_sysctl_table[] = {
++	{
++		.procname	= "page-cluster",
++		.data		= &page_cluster,
++		.maxlen		= sizeof(int),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec_minmax,
++		.extra1		= SYSCTL_ZERO,
++		.extra2		= (void *)&page_cluster_max,
++	}
++};
++
+ /*
+  * Perform any setup for the swap system
+  */
+@@ -1088,4 +1100,6 @@ void __init swap_setup(void)
+ 	 * Right now other parts of the system means that we
+ 	 * _really_ don't want to cluster much more
+ 	 */
++
++	register_sysctl_init("vm", swap_sysctl_table);
+ }
+diff --git a/mm/swap.h b/mm/swap.h
+index ad2f121de970..274dcc6219a0 100644
+--- a/mm/swap.h
++++ b/mm/swap.h
+@@ -3,6 +3,7 @@
+ #define _MM_SWAP_H
+ 
+ struct mempolicy;
++extern int page_cluster;
+ 
+ #ifdef CONFIG_SWAP
+ #include <linux/swapops.h> /* for swp_offset */
 -- 
 2.34.1
 
