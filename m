@@ -1,41 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B395E204088
-	for <linux-nfs@vger.kernel.org>; Wed,  8 Jan 2025 21:36:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1A62F202C58
+	for <linux-nfs@vger.kernel.org>; Wed,  8 Jan 2025 21:37:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1736372195; cv=none; b=LWF9pJY9PLCu3l350MyYeMws82eC/bIyT3xlBZfpR8evvBZF+ohhp13zxWARVZYnvmKQ64YX7IBqrMSAUWwCgeLMXn1lejkPKFwgZsRHNzEp8cytNN3fKNedchc8lWvwcXqvaZCj7ncgMZh1OinXQsguXbAiAYaz0z3+N2aN8m0=
+	t=1736372248; cv=none; b=mZKDCayaAngBV1VHHYYPKaGNswPn0zrrT8Kz+Ky4WjbrX4Wu1khFknN9mliIwIfB21Ra5toBvZxVb8TDLfPekK4DWT/NralA3T8Q2dl7+FJK5OvWM/WCIgqOH9teZFOTSiV39OvfcZfFoCqnvS7CjDUoMaD682SCJ3Dy2pSTwJ8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1736372195; c=relaxed/simple;
-	bh=Bc+C/cM85B8utmREyttjysNOrZ9zz9NLXY3W5HC/6XI=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=hxtnLhNvqgzD0Rr4O8pZH9etJyMzd3/d+3pCJvOD5I/syDinukBBdk3zMzdtagasor9UL6IaSBaFN+ap6f6sw1QpGX1WDFwHULoqwyC0mAAAdFTRIb+RLM5O3k3RDL5UAw5PsLq3rPxy7lrTqibUzbcAgRpbCZJ2EfgF+3t4YuQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=J1SvzkxB; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1736372248; c=relaxed/simple;
+	bh=jj7iwpfhFS3UXNofoCYVf3/yWGLpAAwxz5FukzaPxZc=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=PN1LadcSpa3HxvzXuEXfXsCC/1P1nBp4HFMWBLRC3PFkM6vIuICfeDtvX91fAqm6T1g0vITXNs45CPKm3SXqR97iTbH8Tnty6N8Ho/NoUyY64/ckHlv3I8OggVfBqlX0mkThD8hvM/MpUSnG2NjVCxU+GfuU1b9gaIoQSah22AA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PGBgYj0o; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="J1SvzkxB"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69C63C4CEDF;
-	Wed,  8 Jan 2025 21:36:34 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PGBgYj0o"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 33F9CC4CEDF;
+	Wed,  8 Jan 2025 21:37:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1736372194;
-	bh=Bc+C/cM85B8utmREyttjysNOrZ9zz9NLXY3W5HC/6XI=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=J1SvzkxBVfGoddU/b2aCw0r+ygmhtdrCG/lM9+ib9r1Vk9nq9BjfuPX81XkFF3pZY
-	 cNvWUfEhifGmYOpyJgLcH92U1vKvh8kVfHo1+sMYrpsQveRScorWNpfmQDjNXuT+M+
-	 Z500tiLlSCzU5pomtiNdXoU+mEbngPhw90pRUf+ofn2v3iG63MERKpShh/nTtLtduQ
-	 tJihGpz7A4gvmzawI6a2yHOb6zLMypa82dNwLkPXjSfY/9Cwh7P5J6LItPfwtoCWTN
-	 8gKqrVbbq/jgEdfLNTyWTCLWFk9fHkviTNY4S1vzQCkpx5Qzl+VYrvwmeWDx5jf+we
-	 atKBYocPfJkBQ==
+	s=k20201202; t=1736372247;
+	bh=jj7iwpfhFS3UXNofoCYVf3/yWGLpAAwxz5FukzaPxZc=;
+	h=From:To:Cc:Subject:Date:From;
+	b=PGBgYj0onVAAI10WyyeORo9nWWz/aripkHqZc5OQ+T3EYQlO+dk2l+Ch/yF8/jN2r
+	 VkzZMdb8dssPWDhEmUdtsBQpVDBM/Y+7A0mM8bs+r0+WGCnU5Mi4ArkFsWNFXXdujH
+	 VfrTwgItvgwF/68qI37Nswbx8yldli5CQ1mp4PmjGCCIMDgVZ6wXKMQRfhrZvOZsrX
+	 dDmV8miJH5RgaTMG9ssOhJ8mb3UwY1A8FbTqwXEkl5YnhG7rDP0dFg9Rsxig/IRWob
+	 gBcd64b/PyExqRqnimRE6d0npBmN/mb4kwFUnx2KqPQ87sD3TxYB3/0iZZy+qTZSlK
+	 E6Hgl1mJmkgWg==
 From: Anna Schumaker <anna@kernel.org>
 To: linux-nfs@vger.kernel.org,
-	trond.myklebust@hammerspace.com
+	steved@redhat.com
 Cc: anna@kernel.org
-Subject: [PATCH 2/3] sunrpc: Add a sysfs attr for xprtsec
-Date: Wed,  8 Jan 2025 16:36:31 -0500
-Message-ID: <20250108213632.260498-3-anna@kernel.org>
+Subject: [PATCH NFS-UTILS 00/10] rpcctl: Various Improvements
+Date: Wed,  8 Jan 2025 16:37:16 -0500
+Message-ID: <20250108213726.260664-1-anna@kernel.org>
 X-Mailer: git-send-email 2.47.1
-In-Reply-To: <20250108213632.260498-1-anna@kernel.org>
-References: <20250108213632.260498-1-anna@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -46,67 +43,30 @@ Content-Transfer-Encoding: 8bit
 
 From: Anna Schumaker <anna.schumaker@oracle.com>
 
-This allows the admin to check the TLS configuration for each xprt.
+The first several patches in this series fix up several Python style
+errors found through the flake8 to clean up the tool. The remaining
+patches update the tool for the xprtsec and add_xprt features added to
+the NFS / sunrpc client with the companion kernel patches.
 
-Signed-off-by: Anna Schumaker <anna.schumaker@oracle.com>
----
- net/sunrpc/sysfs.c | 29 +++++++++++++++++++++++++++++
- 1 file changed, 29 insertions(+)
+Thoughts?
+Anna
 
-diff --git a/net/sunrpc/sysfs.c b/net/sunrpc/sysfs.c
-index 5c8ecdaaa985..dc3b7cd70000 100644
---- a/net/sunrpc/sysfs.c
-+++ b/net/sunrpc/sysfs.c
-@@ -129,6 +129,31 @@ static ssize_t rpc_sysfs_xprt_srcaddr_show(struct kobject *kobj,
- 	return ret;
- }
- 
-+static const char *xprtsec_strings[] = {
-+	[RPC_XPRTSEC_NONE] = "none",
-+	[RPC_XPRTSEC_TLS_ANON] = "tls-anon",
-+	[RPC_XPRTSEC_TLS_X509] = "tls-x509",
-+};
-+
-+static ssize_t rpc_sysfs_xprt_xprtsec_show(struct kobject *kobj,
-+					   struct kobj_attribute *attr,
-+					   char *buf)
-+{
-+	struct rpc_xprt *xprt = rpc_sysfs_xprt_kobj_get_xprt(kobj);
-+	ssize_t ret;
-+
-+	if (!xprt) {
-+		ret = sprintf(buf, "<closed>\n");
-+		goto out;
-+	}
-+
-+	ret = sprintf(buf, "%s\n", xprtsec_strings[xprt->xprtsec.policy]);
-+	xprt_put(xprt);
-+out:
-+	return ret;
-+
-+}
-+
- static ssize_t rpc_sysfs_xprt_info_show(struct kobject *kobj,
- 					struct kobj_attribute *attr, char *buf)
- {
-@@ -404,6 +429,9 @@ static struct kobj_attribute rpc_sysfs_xprt_dstaddr = __ATTR(dstaddr,
- static struct kobj_attribute rpc_sysfs_xprt_srcaddr = __ATTR(srcaddr,
- 	0644, rpc_sysfs_xprt_srcaddr_show, NULL);
- 
-+static struct kobj_attribute rpc_sysfs_xprt_xprtsec = __ATTR(xprtsec,
-+	0644, rpc_sysfs_xprt_xprtsec_show, NULL);
-+
- static struct kobj_attribute rpc_sysfs_xprt_info = __ATTR(xprt_info,
- 	0444, rpc_sysfs_xprt_info_show, NULL);
- 
-@@ -413,6 +441,7 @@ static struct kobj_attribute rpc_sysfs_xprt_change_state = __ATTR(xprt_state,
- static struct attribute *rpc_sysfs_xprt_attrs[] = {
- 	&rpc_sysfs_xprt_dstaddr.attr,
- 	&rpc_sysfs_xprt_srcaddr.attr,
-+	&rpc_sysfs_xprt_xprtsec.attr,
- 	&rpc_sysfs_xprt_info.attr,
- 	&rpc_sysfs_xprt_change_state.attr,
- 	NULL,
+Anna Schumaker (10):
+  rpcctl: Fix flake8 whitespace errors
+  rpcctl: Fix flake8 line-too-long errors
+  rpcctl: Fix flake8 bare exception error
+  rpcctl: Fix flake8 ambiguous-variable-name error
+  rpcctl: Add missing docstrings to the Xprt class
+  rpcctl: Add missing docstrings to the XprtSwitch class
+  rpcctl: Add remaining missing docstrings
+  rpcctl.py: Rename {read,write}_addr_file()
+  rpcctl.py: Add support for the xprtsec sysfs attribute
+  rpcctl: Add support for `rpcctl switch add-xprt`
+
+ tools/rpcctl/rpcctl.man |   4 ++
+ tools/rpcctl/rpcctl.py  | 145 ++++++++++++++++++++++++++++++----------
+ 2 files changed, 114 insertions(+), 35 deletions(-)
+
 -- 
 2.47.1
 
