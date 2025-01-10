@@ -1,191 +1,146 @@
-Received: from mail-ed1-f41.google.com (mail-ed1-f41.google.com [209.85.208.41])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC92D212B10
-	for <linux-nfs@vger.kernel.org>; Fri, 10 Jan 2025 19:50:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A37F22332F
+	for <linux-nfs@vger.kernel.org>; Fri, 10 Jan 2025 20:17:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1736538612; cv=none; b=bkdSWWnYURxu8cqJi08vzT35eOko6PHFlUcVfJ2dM2e155QsBKOQD5529ZRNBRyZa76TxG7GheUavYmn9k8A+GrQTOAPRB+G1nI2C3ClGjrOWheKuWfHt4cSkruJTGMjxs4ARtkmSZ4k2akkIIVUsDxiYFu/3ADlmrRGvmzh0Hc=
+	t=1736540274; cv=none; b=fjZhDD/g5y3sLCe6VNwzyVYFZVpDKz4AWAEQXdEDmx9gguIuGj2KK1qkAtwcgcdjeY9PRPQX4QO3d3mOPRWN7Z+ZZeWb46jeDYc/VcuIz5xcgRSnQXp4CEE6JRPdNKyFIusVRYO10vFkMxrQcYBNFCnpJagPdTu5CMT3NZMXgsc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1736538612; c=relaxed/simple;
-	bh=akmv6jG9evAnGYZtRTa43likBrMDC1+t2oVD11t0kxA=;
-	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=tei+RUiP92q9F0WMUYKvAEsVp3YEld49+77Pn904TvgvU0T7HN4beDikkoQyMLhnwOxJ03lqX0mxshoylHUbszAf1olqvd5BCFO+hk6lm2YEQToMjm3Eu2UlJmvAiuJQqaxLMrmc96tZQQ1mTePDbaEkABUB5dt4Spv6P9o9XVc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=GOV47hiF; arc=none smtp.client-ip=209.85.208.41
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1736540274; c=relaxed/simple;
+	bh=50MwRORWrQ4AR9DgZAyJidu2U9c8JzITqMkgVrpb72Q=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=VBTmkB2+eDjNclg7pqjdsnWomqetKvv6Sad2cFUR6+P581zz8SblYpOHGM9TVG7+PXeRiKZluKphgTPHD5mduRxYyCzDgy/HfXGmGjR0roQkLWql5L0DS3u1Xf4r3ghz9GOpUR7KwUsfl793d8UpDtJClVjM30hsI/gaaHxRo/I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=ElXRYgmt; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="GOV47hiF"
-Received: by mail-ed1-f41.google.com with SMTP id 4fb4d7f45d1cf-5d3e6f6cf69so3877161a12.1
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Jan 2025 11:50:10 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1736538609; x=1737143409; darn=vger.kernel.org;
-        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=OpuVC9t9AIT5+ABqm8Haww++uTE5F3Hn/z4RUhKj5Mg=;
-        b=GOV47hiF8mzhLEUulMYXbLTY/5doPDW7YFiqd1YInT+qWmLdIx56n04rfSkmVwGzdU
-         WoleS1FMvs46v2Wdt38rOCfL/YDzvdyr4pBV2457+DFI1RSHYVrjpVXrWm+CoIKynjT2
-         LnE0VQPY1WqvC3qvy6m92BvQ6bnXAu8m5yglUCp+wETFvPniQG3D+LM078KjaF7A2j5x
-         vv2NhbSQREqZdfTZuStEIW2zALWoY2l78K3Sx2VNiNj+OYIKEkqStJcb228yWMHrXvY8
-         dNlU8bkTEA4l3Q/EpbEH65iZit0eVQNeK/urrkhNmeuvz9WI3dwpQOZaq+aVxqJXJj+b
-         gquQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1736538609; x=1737143409;
-        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
-         :from:to:cc:subject:date:message-id:reply-to;
-        bh=OpuVC9t9AIT5+ABqm8Haww++uTE5F3Hn/z4RUhKj5Mg=;
-        b=L3IfqJVSPOYmQWE2SQArM9hqGWxHBnn5YeGCNu0G2KmyhMzDedp4ZwoHD7D6lYUjDm
-         jiFhHDaxwd1MuwZvaWyFCT75DQe6/s4JnAJc3mwICPU7SS664dHoQTi8HPyXqEAHKCF5
-         z/fegyrBP3AC9gUI50A+qj7Mc9PxHSEe86c5BvOCmN9Y9eoOgDIgNgeIv5p81rXjQvtA
-         6LSD0rfmI2twbTxziZLXdBGpxucNfahH0gF0pIuhb+15/ozNQ2eo9llqNiYSi3JGuKhM
-         Uwdnse6go0Zl+/dvT918nTTamrpdp572U5mfBdA5KDyhhnoPT5ATjImCwDLRwRvOVS8G
-         abVw==
-X-Gm-Message-State: AOJu0Yyv9XhzZ67zhnocFo81ccdbuiPZTgC5b8RJgcJOfx1czqVR3DDT
-	NeVe72Npa0ZBEuuxtjywhSaD5naHYKhCpBHTvz7qT2zjN9ntRnvTn5MnfKWlICMnUiivu57Tulb
-	DhmHdLA12Q4DtG9doD+ERP0UHFusQ6B2XboE=
-X-Gm-Gg: ASbGncuGdJKHZA0U8XScWu+YK8ss+7e9MVVWoryHVSurWgIgil0+4/avEfWSnrmynfG
-	FPePoKf9pA8//bnoy0sF/YP8lUjUKrUaWkXML4DuT2l4OwtAgmp3B
-X-Google-Smtp-Source: AGHT+IHiF799rlPpFYGNIFnFSY6Cj9Tdee8li1DQlKoIAd3FGnuQbBj4LpEQuKhNPeEty+qKxvC0FC06aTzflnEt38E=
-X-Received: by 2002:a05:6402:4305:b0:5d0:8889:de02 with SMTP id
- 4fb4d7f45d1cf-5d972e4c4f8mr11117020a12.22.1736538609041; Fri, 10 Jan 2025
- 11:50:09 -0800 (PST)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ElXRYgmt"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1736540271;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=ZfVTK2dcM4xy2CN54FgNVjlK++KLAB66tNc/J9SUg0Q=;
+	b=ElXRYgmtrmaqcEPfmpnw7EK3fw7K9GIGtg4Fe00hqoCM8CPbSfjLqifRXEY6GZuMY8sfjF
+	sc5d2KCPyLPQNPXA62OLKSUrrJ26VfbKaAWdWQ/I7HVo8Lf9W1VAvDkFkARxvxBEGvapbH
+	agSGNHRTrWjH66x8WEthPdEfQ86qiq8=
+Received: from mx-prod-mc-02.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-621-JTiAoZN5NiWlC6uFl8nRIQ-1; Fri,
+ 10 Jan 2025 15:17:50 -0500
+X-MC-Unique: JTiAoZN5NiWlC6uFl8nRIQ-1
+X-Mimecast-MFC-AGG-ID: JTiAoZN5NiWlC6uFl8nRIQ
+Received: from mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.15])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-02.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 36B071955DDA;
+	Fri, 10 Jan 2025 20:17:49 +0000 (UTC)
+Received: from aion.redhat.com (unknown [10.22.80.211])
+	by mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 03982195E3D9;
+	Fri, 10 Jan 2025 20:17:49 +0000 (UTC)
+Received: from aion.redhat.com (localhost [IPv6:::1])
+	by aion.redhat.com (Postfix) with ESMTP id 1A2102EA239;
+	Fri, 10 Jan 2025 15:17:47 -0500 (EST)
+From: Scott Mayhew <smayhew@redhat.com>
+To: steved@redhat.com
+Cc: jlayton@kernel.org,
+	yoyang@redhat.com,
+	linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH v2 1/2] nfsdctl: tweak the version subcommand behavior
+Date: Fri, 10 Jan 2025 15:17:45 -0500
+Message-ID: <20250110201746.869995-2-smayhew@redhat.com>
+In-Reply-To: <20250110201746.869995-1-smayhew@redhat.com>
+References: <20250110201746.869995-1-smayhew@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: Rik Theys <rik.theys@gmail.com>
-Date: Fri, 10 Jan 2025 20:49:57 +0100
-X-Gm-Features: AbW1kvYu8I2sYWF3Jw9TOV4XrGOdpt8SByeE0IPyLOiozfDteHKxfnXQeReApWY
-Message-ID: <CAPwv0JnSQ=hsmUMy0VY-8k+dANBLNkJdFJ75q9EEE+Hj0XXB8A@mail.gmail.com>
-Subject: nfsd4 laundromat_main hung tasks
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.15
 
-Hi,
+The section for the 'nfsdctl version' subcommand on the man page states
+that the minorversion is optional, and if omitted it will cause all
+minorversions to be enabled/disabled.  Make it work that way.
 
-Our Rocky 9 NFS server running the upstream 6.11.11 kernel is starting
-to log the following hung task messages:
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/nfsdctl/nfsdctl.c | 36 ++++++++++++++++++++++++++++++++----
+ 1 file changed, 32 insertions(+), 4 deletions(-)
 
-INFO: task kworker/u194:11:1677933 blocked for more than 215285 seconds.
-      Tainted: G        W   E      6.11.11-1.el9.esat.x86_64 #1
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-task:kworker/u194:11 state:D stack:0     pid:1677933 tgid:1677933
-ppid:2      flags:0x00004000
-Workqueue: nfsd4 laundromat_main [nfsd]
-Call Trace:
- <TASK>
- __schedule+0x21c/0x5d0
- ? preempt_count_add+0x47/0xa0
- schedule+0x26/0xa0
- nfsd4_shutdown_callback+0xea/0x120 [nfsd]
- ? __pfx_var_wake_function+0x10/0x10
- __destroy_client+0x1f0/0x290 [nfsd]
- nfs4_process_client_reaplist+0xa1/0x110 [nfsd]
- nfs4_laundromat+0x126/0x7a0 [nfsd]
- ? _raw_spin_unlock_irqrestore+0x23/0x40
- laundromat_main+0x16/0x40 [nfsd]
- process_one_work+0x179/0x390
- worker_thread+0x239/0x340
- ? __pfx_worker_thread+0x10/0x10
- kthread+0xdb/0x110
- ? __pfx_kthread+0x10/0x10
- ret_from_fork+0x2d/0x50
- ? __pfx_kthread+0x10/0x10
- ret_from_fork_asm+0x1a/0x30
- </TASK>
+diff --git a/utils/nfsdctl/nfsdctl.c b/utils/nfsdctl/nfsdctl.c
+index ef917ff0..38c22225 100644
+--- a/utils/nfsdctl/nfsdctl.c
++++ b/utils/nfsdctl/nfsdctl.c
+@@ -754,6 +754,19 @@ static int update_nfsd_version(int major, int minor, bool enabled)
+ 	return -EINVAL;
+ }
+ 
++static int get_max_minorversion(void)
++{
++	int i, max = 0;
++
++	for (i = 0; i < MAX_NFS_VERSIONS; ++i) {
++		if (nfsd_versions[i].major == 0)
++			break;
++		if (nfsd_versions[i].major == 4 && nfsd_versions[i].minor > max)
++			max = nfsd_versions[i].minor;
++	}
++	return max;
++}
++
+ static void version_usage(void)
+ {
+ 	printf("Usage: %s version { {+,-}major.minor } ...\n", taskname);
+@@ -771,7 +784,7 @@ static void version_usage(void)
+ 
+ static int version_func(struct nl_sock *sock, int argc, char ** argv)
+ {
+-	int ret, i;
++	int ret, i, j, max_minor;
+ 
+ 	/* help is only valid as first argument after command */
+ 	if (argc > 1 &&
+@@ -785,6 +798,8 @@ static int version_func(struct nl_sock *sock, int argc, char ** argv)
+ 		return ret;
+ 
+ 	if (argc > 1) {
++		max_minor = get_max_minorversion();
++
+ 		for (i = 1; i < argc; ++i) {
+ 			int ret, major, minor = 0;
+ 			char sign = '\0', *str = argv[i];
+@@ -808,9 +823,22 @@ static int version_func(struct nl_sock *sock, int argc, char ** argv)
+ 				return -EINVAL;
+ 			}
+ 
+-			ret = update_nfsd_version(major, minor, enabled);
+-			if (ret)
+-				return ret;
++			/*
++			 * The minorversion field is optional. If omitted, it should
++			 * cause all the minor versions for that major version to be
++			 * enabled/disabled.
++			 */
++			if (major == 4 && ret == 2) {
++				for (j = 0; j <= max_minor; ++j) {
++					ret = update_nfsd_version(major, j, enabled);
++					if (ret)
++						return ret;
++				}
++			} else {
++				ret = update_nfsd_version(major, minor, enabled);
++				if (ret)
++					return ret;
++			}
+ 		}
+ 		return set_nfsd_versions(sock);
+ 	}
+-- 
+2.45.2
 
-If I read this correctly, it seems to be blocked on a callback
-operation during shutdown of a client connection?
-
-Is this a known issue that may be fixed in the 6.12.x kernel? Could
-the following commit be relevant?
-
-8dd91e8d31febf4d9cca3ae1bb4771d33ae7ee5a    nfsd: fix race between
-laundromat and free_stateid
-
-If I increase the hung_task_warnings sysctl and wait a few minutes,
-the hung task message appears again, so the issue is still present on
-the system. How can I debug which client is causing this issue?
-
-Is there any other information I can provide?
-
-Could this be related to the following thread:
-https://lore.kernel.org/linux-nfs/Z2vNQ6HXfG_LqBQc@eldamar.lan/T/#u ?
-
-I don't know if this is relevant but I've noticed that some clients
-have multiple entries in the /proc/fs/nfsd/clients directory, so I
-assume these clients are not cleaned up correctly?
-
-For example:
-
-clientid: 0x6d077c99675df2b3
-address: "10.87.29.32:864"
-status: confirmed
-seconds from last renew: 0
-name: "Linux NFSv4.2 betelgeuse.esat.kuleuven.be"
-minor version: 2
-Implementation domain: "kernel.org"
-Implementation name: "Linux 4.18.0-553.32.1.el8_10.x86_64 #1 SMP Wed
-Dec 11 16:33:48 UTC 2024 x86_64"
-Implementation time: [0, 0]
-callback state: UP
-callback address: 10.87.29.32:0
-admin-revoked states: 0
-***
-clientid: 0x6d0596d0675df2b3
-address: "10.87.29.32:864"
-status: courtesy
-seconds from last renew: 2288446
-name: "Linux NFSv4.2 betelgeuse.esat.kuleuven.be"
-minor version: 2
-Implementation domain: "kernel.org"
-Implementation name: "Linux 4.18.0-553.32.1.el8_10.x86_64 #1 SMP Wed
-Dec 11 16:33:48 UTC 2024 x86_64"
-Implementation time: [0, 0]
-callback state: UP
-callback address: 10.87.29.32:0
-admin-revoked states: 0
-
-The first one has status confirmed and the second one "courtesy" with
-a high "seconds from last renew". The address and port matches for
-both client entries and the callback state is both UP.
-
-For another client, there's a different output:
-
-clientid: 0x6d078a79675df2b3
-address: "10.33.130.34:864"
-status: unconfirmed
-seconds from last renew: 158910
-name: "Linux NFSv4.2 bujarski.esat.kuleuven.be"
-minor version: 2
-Implementation domain: "kernel.org"
-Implementation name: "Linux 5.14.0-503.19.1.el9_5.x86_64 #1 SMP
-PREEMPT_DYNAMIC Thu Dec 19 12:55:03 UTC 2024 x86_64"
-Implementation time: [0, 0]
-callback state: UNKNOWN
-callback address: (einval)
-admin-revoked states: 0
-***
-clientid: 0x6d078a7a675df2b3
-address: "10.33.130.34:864"
-status: confirmed
-seconds from last renew: 2
-name: "Linux NFSv4.2 bujarski.esat.kuleuven.be"
-minor version: 2
-Implementation domain: "kernel.org"
-Implementation name: "Linux 5.14.0-503.19.1.el9_5.x86_64 #1 SMP
-PREEMPT_DYNAMIC Thu Dec 19 12:55:03 UTC 2024 x86_64"
-Implementation time: [0, 0]
-callback state: UP
-callback address: 10.33.130.34:0
-admin-revoked states: 0
-
-
-Here the first status is unconfirmed and the callback state is UNKNOWN.
-
-The clients are Rocky 8, Rocky 9 and Fedora 41 clients.
-
-Regards,
-
-Rik
