@@ -1,33 +1,33 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC3AC1E32C5;
-	Fri, 10 Jan 2025 02:43:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 672AB1E32CD;
+	Fri, 10 Jan 2025 02:43:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1736476989; cv=none; b=HeXBQVy2AKcVYOsDGcn7MxkNFkv3Qb2JIaXPsjs2qRcggQ2LXGcefzAMaioeB6Yf5lhjzMOQU3RhRGFjxmqRw3fy34qv1i0yf2CCoWCTELmubD84F5zUg4JFYAa4GOpMkB2loivcFapTNAWADRvD82L/ttJ2Ci86RN3Cmb1dYSo=
+	t=1736476989; cv=none; b=shjOF5wJByCTiOBugkLoMZq5Q3W/tqdS/qBlfWQudqTjQ71F+Bal5cFhdRneP039AHfdM27JPtsyAbSFtpvOp21NtfCjWdq6V1p+dME7NVaPtJf2wYxBOm+W1JgyQOSEMTKPZSqHa3sT0rGbRsp0Fj4Rte5wTv80UX4YxSc9H1Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1736476989; c=relaxed/simple;
-	bh=jmK/wW2YLHbJxfn8fI7IJgelVSspe4ngR4kICJ2MuNo=;
+	bh=g7Lu5xQgxjRSidy2rPJsTtxWfzI6PXU7b2S+xxhBCjY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Px/BiElAIwPPNhgbg2mC4phSVr0ISdFdq9UqGG9IcxaTfhxiWwjcEkIjMXNaZc+L0JnRCDpGfCiQpZnluDHhPfQyX0B/JWSmVJDJ85hvdjq+lY/3UofaRXT/Y2UbP66M/lF4760wFLo4yWtwUehJYSR345ok1/eNbeQYGQVIOpI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=gku9RaIM; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=kq+dU9FPv0mKzPS6NYcm/qbhfEh4AxQM15EWqHcfjBFpo2OFNDjB12YMw1mFSuD61FB8/FnC25PBwU2o4YQVx86niSTOhnkGboV5u/+yiyvewkZFGdz0DS0UdefTZKZIhBDwK1oE6zAbaBCi0+7Di1ohUkW+BdRNaxRcTvC8e20=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=rYbLgpzj; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="gku9RaIM"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="rYbLgpzj"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=ufJMBHMAmpmiY/Djp1CabwveoHb3CZ40EXQ3u044p9E=; b=gku9RaIM8hF3vKgcAgtxM1RevQ
-	umaV11Uj9ryjQmoTcybMVn1d/hl6JCzmWG8MVnIhR3Kqsea5EdrVCLnSNp8FP/j6GXbxDjS7vP/EW
-	PkLb6CI4xx41sBE99ezmcwjFEDHRmtH1hRbTzgXpofjfNx+bNjrdcTxU9KBKVAL+EJVH22mjyA+QE
-	flqJFwfvHGesUn3KuVnvHA0rv7WhTP9DSJnyMkTr3vWELq+zE04T0flIRNtyVVsZHOmNQglJVAqcF
-	9mJu7pEBSvh8VZrS/sc/gVBLAnxoHn7Xnpk1dxbRDDiCNIaTv++gYAgX5OTbqqoPzrJNZk0XMugQz
-	n7oGyPew==;
+	bh=BiVfBMu4+MG8Xe+/zseR3lQpx3kkw90WuZTpkxLOa3k=; b=rYbLgpzjVR2zIesyj5xITA9/B8
+	VWmsEPw5FWZaKkqJ9ze6SBMaetpb7iHysPI5wEl5/BFQsw2W13WmIdORqo0hg5RE1IQYdNFt+8pDo
+	CNef+3ILi4LVwooAMmrmVNm4lZIgdjm2U7bzPsBhm0xyAryuMv2Jog/WdqmjfLYdlz5/LAuNrovwc
+	fS0O1EA1HIVxyvXoavTCd9ZBDv+MyhNvXxX+DWgZ4y3VErcgN78FdScA4vPm7Bg2NLA2hdLjpjhN/
+	/o4pM3WbWhTrCsrshlt28B4HSMoS7mEiEQX/6g+9832QMJYOdbAnOaTednIJ81hd6J6hcxbwgsXGD
+	8A09+6NA==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1tW4zJ-0000000HRcS-0IMr;
+	id 1tW4zJ-0000000HRdA-2I9b;
 	Fri, 10 Jan 2025 02:43:05 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
@@ -42,9 +42,9 @@ Cc: agruenba@redhat.com,
 	linux-nfs@vger.kernel.org,
 	miklos@szeredi.hu,
 	torvalds@linux-foundation.org
-Subject: [PATCH 14/20] fuse_dentry_revalidate(): use stable parent inode and name passed by caller
-Date: Fri, 10 Jan 2025 02:42:57 +0000
-Message-ID: <20250110024303.4157645-14-viro@zeniv.linux.org.uk>
+Subject: [PATCH 19/20] orangefs_d_revalidate(): use stable parent inode and name passed by caller
+Date: Fri, 10 Jan 2025 02:43:02 +0000
+Message-ID: <20250110024303.4157645-19-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.47.1
 In-Reply-To: <20250110024303.4157645-1-viro@zeniv.linux.org.uk>
 References: <20250110023854.GS1977892@ZenIV>
@@ -58,51 +58,66 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-No need to mess with dget_parent() for the former; for the latter we really should
-not rely upon ->d_name.name remaining stable - it's a real-life UAF.
+->d_name use is a UAF.
 
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/fuse/dir.c | 11 +++--------
- 1 file changed, 3 insertions(+), 8 deletions(-)
+ fs/orangefs/dcache.c | 17 ++++++-----------
+ 1 file changed, 6 insertions(+), 11 deletions(-)
 
-diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
-index d9e9f26917eb..7e93a8470c36 100644
---- a/fs/fuse/dir.c
-+++ b/fs/fuse/dir.c
-@@ -196,7 +196,6 @@ static int fuse_dentry_revalidate(struct inode *dir, const struct qstr *name,
- 				  struct dentry *entry, unsigned int flags)
+diff --git a/fs/orangefs/dcache.c b/fs/orangefs/dcache.c
+index c32c9a86e8d0..060c94e9759b 100644
+--- a/fs/orangefs/dcache.c
++++ b/fs/orangefs/dcache.c
+@@ -13,10 +13,9 @@
+ #include "orangefs-kernel.h"
+ 
+ /* Returns 1 if dentry can still be trusted, else 0. */
+-static int orangefs_revalidate_lookup(struct dentry *dentry)
++static int orangefs_revalidate_lookup(struct inode *parent_inode, const struct qstr *name,
++				      struct dentry *dentry)
  {
- 	struct inode *inode;
--	struct dentry *parent;
- 	struct fuse_mount *fm;
- 	struct fuse_inode *fi;
- 	int ret;
-@@ -228,11 +227,9 @@ static int fuse_dentry_revalidate(struct inode *dir, const struct qstr *name,
+-	struct dentry *parent_dentry = dget_parent(dentry);
+-	struct inode *parent_inode = parent_dentry->d_inode;
+ 	struct orangefs_inode_s *parent = ORANGEFS_I(parent_inode);
+ 	struct inode *inode = dentry->d_inode;
+ 	struct orangefs_kernel_op_s *new_op;
+@@ -26,14 +25,12 @@ static int orangefs_revalidate_lookup(struct dentry *dentry)
+ 	gossip_debug(GOSSIP_DCACHE_DEBUG, "%s: attempting lookup.\n", __func__);
  
- 		attr_version = fuse_get_attr_version(fm->fc);
+ 	new_op = op_alloc(ORANGEFS_VFS_OP_LOOKUP);
+-	if (!new_op) {
+-		ret = -ENOMEM;
+-		goto out_put_parent;
+-	}
++	if (!new_op)
++		return -ENOMEM;
  
--		parent = dget_parent(entry);
--		fuse_lookup_init(fm->fc, &args, get_node_id(d_inode(parent)),
--				 &entry->d_name, &outarg);
-+		fuse_lookup_init(fm->fc, &args, get_node_id(dir),
-+				 name, &outarg);
- 		ret = fuse_simple_request(fm, &args);
--		dput(parent);
- 		/* Zero nodeid is same as -ENOENT */
- 		if (!ret && !outarg.nodeid)
- 			ret = -ENOENT;
-@@ -266,9 +263,7 @@ static int fuse_dentry_revalidate(struct inode *dir, const struct qstr *name,
- 			if (test_bit(FUSE_I_INIT_RDPLUS, &fi->state))
- 				return -ECHILD;
- 		} else if (test_and_clear_bit(FUSE_I_INIT_RDPLUS, &fi->state)) {
--			parent = dget_parent(entry);
--			fuse_advise_use_readdirplus(d_inode(parent));
--			dput(parent);
-+			fuse_advise_use_readdirplus(dir);
- 		}
- 	}
+ 	new_op->upcall.req.lookup.sym_follow = ORANGEFS_LOOKUP_LINK_NO_FOLLOW;
+ 	new_op->upcall.req.lookup.parent_refn = parent->refn;
+-	strscpy(new_op->upcall.req.lookup.d_name, dentry->d_name.name);
++	strscpy(new_op->upcall.req.lookup.d_name, name->name);
+ 
+ 	gossip_debug(GOSSIP_DCACHE_DEBUG,
+ 		     "%s:%s:%d interrupt flag [%d]\n",
+@@ -78,8 +75,6 @@ static int orangefs_revalidate_lookup(struct dentry *dentry)
  	ret = 1;
+ out_release_op:
+ 	op_release(new_op);
+-out_put_parent:
+-	dput(parent_dentry);
+ 	return ret;
+ out_drop:
+ 	gossip_debug(GOSSIP_DCACHE_DEBUG, "%s:%s:%d revalidate failed\n",
+@@ -115,7 +110,7 @@ static int orangefs_d_revalidate(struct inode *dir, const struct qstr *name,
+ 	 * If this passes, the positive dentry still exists or the negative
+ 	 * dentry still does not exist.
+ 	 */
+-	if (!orangefs_revalidate_lookup(dentry))
++	if (!orangefs_revalidate_lookup(dir, name, dentry))
+ 		return 0;
+ 
+ 	/* We do not need to continue with negative dentries. */
 -- 
 2.39.5
 
