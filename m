@@ -1,34 +1,34 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3DEE5149C50;
-	Fri, 10 Jan 2025 02:43:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 865031E2607;
+	Fri, 10 Jan 2025 02:43:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1736476988; cv=none; b=sSqr1QrYTC9mL/NQVJx4H3RNobwzHzFjHtjZV9QlsY2CUJNYn9HWUEUI/AijJTM/swyqaGaJV/yGLeRmyj8l06oLFC2F3pcBiLKmwMjzKzIjzjpkxaL2IjhjWY6QWHfSnUwbuBTUYm3v9/LIvUg7CiDYR13m4s877Y4ZONx3yAU=
+	t=1736476988; cv=none; b=qww9aKlstUTPG7NOJInCarDOc7lbNCfP8R3veikzRnRyEIZevSG5uuWXYUu2Jm9C3V78GRR/Mw8IqeYkqS+hvdwrpsxmX6ceMeQerB3lMmGW7mXQCzbbZTb+snhLHM9JWFXugKs1XpaaYloFsQcTkst21mdoVV0r97Ww7n1WB6U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1736476988; c=relaxed/simple;
-	bh=/+23/NdxjPLdcAKyYWPvhNukDGf5iaCTaLLO1EjgLHE=;
+	bh=SHs2ilSWDO/pKgcDk/TzeH6WoJeSPAPSLHBpIkfNX14=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gb4MXX1hGgIl4g7HFzn3vuwOM8HqDMrk3i9oaDl1O9fFmcsjXvN2LaVlzCvWmTH5HEF8r2PjURZNokt47EDJEKs0IRnfqwPhS/TMxLtJAwQJbUfNP0w//lREqRrPdD1TZlRDbO2vNCP72AVV/deNvoQrO62H59ydRIb9MKnjfzQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=n7W3mIqv; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=Ds8UTE+nVM7PPeU+/4h8aZrmcrZzsarHZ/K1t6OpZ8aE7EXxxPcwY9/arv3oVtyMak91xhuQMEazmaJgn035R0gJQIjmBqhYdn78C2ybN62nN+cQKECwkfI5EbVgYIlq8cpxunxEOR4EMnLbpGyciuqI5Sps9btgTpSXEZIMSTw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=h1MN5U4N; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="n7W3mIqv"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="h1MN5U4N"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=YothkI0qm/ny+i6tgohpDmcCLFOR152J1clRwveDxFk=; b=n7W3mIqvH9FENwHMUbUkXs9b7e
-	mgJPo6XHjpX8rQd+QAItxDxXmBvOL4zagODv3prl80Qxo6bNNAbQZ5ImXGOG+gTwlM0nNw7CfpQBH
-	JiXKsq03wSMpvYw9FxmwQipZ8fBCQSpZZBG5YAG4f/n6MyFPfMxsBBdC0ODQ8zEO1Ouu3C9wK2TS2
-	kq+iGCR2kPe+HXBBDPM0AnSJuk9rK86wXl4CSdiXvswFt3OCG/9HhSJbXLnN3ZASt+7FkdYCC8vhx
-	3DjyHbq8q6YgttmqUX4/1wfJS2diuJdCMoYxDUaZ5eRbrTiAelphJLDxS9KmiV6SlFT0FPWuL2aGC
-	kvfu8aOw==;
+	bh=e09c+mh4a1QxHTNrOzqotxokwF7Jj+VLy4WQY4XpFUQ=; b=h1MN5U4Nml5YcwrliNCXqQQAvH
+	tyoTx2F8SE5q3TaWKydbG4YdxyfiN4KhiUpMOf9m885iiEtruzg3rcwEu98cp0yaA+S8kq0NNQuS6
+	pDc2PlumH2Mfsj3K6H35Mvtm68QQUd9Xwjf86PNUVFIqnh+lApGcAzvLSSL/tSW8n5mZhvjFqZu3y
+	Ti2Q2Spouou32ndxc+aU8HLRTufWVB+5UEpCmwUnev7Swy/aZzFtwF95J4kSLkIFKmGDlc9T0M3lY
+	V1O+7xyu+A9Nmt7mg4kLXL7XhuvkPPW1YCq0uiyRtf5d+F00dL2wfMt2+mYkIVzrXrcfpEEZU7GiT
+	YGqOjAYQ==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1tW4zH-0000000HRau-2CE5;
-	Fri, 10 Jan 2025 02:43:03 +0000
+	id 1tW4zI-0000000HRcE-3gO1;
+	Fri, 10 Jan 2025 02:43:04 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
 Cc: agruenba@redhat.com,
@@ -42,12 +42,13 @@ Cc: agruenba@redhat.com,
 	linux-nfs@vger.kernel.org,
 	miklos@szeredi.hu,
 	torvalds@linux-foundation.org
-Subject: [PATCH 01/20] make sure that DNAME_INLINE_LEN is a multiple of word size
-Date: Fri, 10 Jan 2025 02:42:44 +0000
-Message-ID: <20250110024303.4157645-1-viro@zeniv.linux.org.uk>
+Subject: [PATCH 12/20] exfat_d_revalidate(): use stable parent inode passed by caller
+Date: Fri, 10 Jan 2025 02:42:55 +0000
+Message-ID: <20250110024303.4157645-12-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.47.1
-In-Reply-To: <20250110023854.GS1977892@ZenIV>
+In-Reply-To: <20250110024303.4157645-1-viro@zeniv.linux.org.uk>
 References: <20250110023854.GS1977892@ZenIV>
+ <20250110024303.4157645-1-viro@zeniv.linux.org.uk>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -57,59 +58,39 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-... calling the number of words DNAME_INLINE_WORDS.
-
-The next step will be to have a structure to hold inline name arrays
-(both in dentry and in name_snapshot) and use that to alias the
-existing arrays of unsigned char there.  That will allow both
-full-structure copies and convenient word-by-word accesses.
+... no need to bother with ->d_lock and ->d_parent->d_inode.
 
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/dcache.c            | 4 +---
- include/linux/dcache.h | 8 +++++---
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ fs/exfat/namei.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
 
-diff --git a/fs/dcache.c b/fs/dcache.c
-index b4d5e9e1e43d..ea0f0bea511b 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -2748,9 +2748,7 @@ static void swap_names(struct dentry *dentry, struct dentry *target)
- 			/*
- 			 * Both are internal.
- 			 */
--			unsigned int i;
--			BUILD_BUG_ON(!IS_ALIGNED(DNAME_INLINE_LEN, sizeof(long)));
--			for (i = 0; i < DNAME_INLINE_LEN / sizeof(long); i++) {
-+			for (int i = 0; i < DNAME_INLINE_WORDS; i++) {
- 				swap(((long *) &dentry->d_iname)[i],
- 				     ((long *) &target->d_iname)[i]);
- 			}
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index bff956f7b2b9..42dd89beaf4e 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -68,15 +68,17 @@ extern const struct qstr dotdot_name;
-  * large memory footprint increase).
-  */
- #ifdef CONFIG_64BIT
--# define DNAME_INLINE_LEN 40 /* 192 bytes */
-+# define DNAME_INLINE_WORDS 5 /* 192 bytes */
- #else
- # ifdef CONFIG_SMP
--#  define DNAME_INLINE_LEN 36 /* 128 bytes */
-+#  define DNAME_INLINE_WORDS 9 /* 128 bytes */
- # else
--#  define DNAME_INLINE_LEN 44 /* 128 bytes */
-+#  define DNAME_INLINE_WORDS 11 /* 128 bytes */
- # endif
- #endif
+diff --git a/fs/exfat/namei.c b/fs/exfat/namei.c
+index e3b4feccba07..61c7164b85b3 100644
+--- a/fs/exfat/namei.c
++++ b/fs/exfat/namei.c
+@@ -34,8 +34,6 @@ static inline void exfat_d_version_set(struct dentry *dentry,
+ static int exfat_d_revalidate(struct inode *dir, const struct qstr *name,
+ 			      struct dentry *dentry, unsigned int flags)
+ {
+-	int ret;
+-
+ 	if (flags & LOOKUP_RCU)
+ 		return -ECHILD;
  
-+#define DNAME_INLINE_LEN (DNAME_INLINE_WORDS*sizeof(unsigned long))
-+
- #define d_lock	d_lockref.lock
+@@ -59,11 +57,7 @@ static int exfat_d_revalidate(struct inode *dir, const struct qstr *name,
+ 	if (flags & (LOOKUP_CREATE | LOOKUP_RENAME_TARGET))
+ 		return 0;
  
- struct dentry {
+-	spin_lock(&dentry->d_lock);
+-	ret = inode_eq_iversion(d_inode(dentry->d_parent),
+-			exfat_d_version(dentry));
+-	spin_unlock(&dentry->d_lock);
+-	return ret;
++	return inode_eq_iversion(dir, exfat_d_version(dentry));
+ }
+ 
+ /* returns the length of a struct qstr, ignoring trailing dots if necessary */
 -- 
 2.39.5
 
