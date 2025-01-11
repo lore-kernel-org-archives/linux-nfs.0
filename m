@@ -1,29 +1,29 @@
-Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
+Received: from szxga04-in.huawei.com (szxga04-in.huawei.com [45.249.212.190])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5812D18E37B;
-	Sat, 11 Jan 2025 07:12:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.188
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D629E16DEB3;
+	Sat, 11 Jan 2025 07:12:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.190
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1736579554; cv=none; b=MfPXC8HXVpKs4+Ij1lC92MatTJ5GG+f/tdtEImI3Mly35oV4FC+0aNAqU56jCEO7zsFCXKC9ZVKuyiKDrbaGpxWRAJnE6K9fTHoHRYSFTbtQYkD/D37SM5eMN9U9jbAOfIJ2BkUW93ctAs57+sLfS+ADrXWtBHqpA5UlweNYsQg=
+	t=1736579562; cv=none; b=cm5X/PtnLPxUeh70b5Y1CT4qbRviaq2Q5+oajHGntUti/aygSKQiPIsvtECLfDwtcC9Ch6DmwhZ1w8Wc2XLQfPH6g3ScB0SdUKG5aVl45gEyJX2DTqSAKrh1oammV8Lcg1GH94t+87JcbnQ0pBUax+Ia4LxbY8buIwRNJIQ+S+U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1736579554; c=relaxed/simple;
-	bh=yqq0o6Y7elY/pyZf6BPhmMUsEoELhpYxXsuHE6Fe2fQ=;
+	s=arc-20240116; t=1736579562; c=relaxed/simple;
+	bh=J6d7z/kRT4HBLB6mnmq2N6zU3tbR25XClQO6XrEL+iU=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ldnmJlO4aFpHNwv6JZhzhd9TRqU7Ej64bZkAR2MWW0McP6v/+pqD1/38dGJpYjF/P7mkrYP7URImY9xKspYNc3WGitBu78U7W6JmakbMcVK5upSbtNfka276WxfjD+FnpVqaxSYZ/ijTGIKENfa53JRarvSKrfO3Ct5CLCTT32s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.188
+	 MIME-Version:Content-Type; b=TVmyXEba4o0LBhRBFsZiyXaXCeKDzT9qUmNaBCTs1HhTl8XyDahVB8o7mNMx97uDFpFl37Db22Ej77v1ZGi5NMcTns1zRFCQcFkwVetJgEw3pkCEMoY1le6k1L0Zux9lFYQ780t9PiUF8iUNqBIssBW1t2tzggHTllmGFkqIzic=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.190
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.88.194])
-	by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4YVV4s40hhzbjqn;
-	Sat, 11 Jan 2025 15:09:17 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.17])
+	by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4YVV516XRFz2DhnV;
+	Sat, 11 Jan 2025 15:09:25 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id 10BBC1401F3;
-	Sat, 11 Jan 2025 15:12:24 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id E72E41A0188;
+	Sat, 11 Jan 2025 15:12:30 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Sat, 11 Jan
- 2025 15:12:20 +0800
+ 2025 15:12:27 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>,
 	<joel.granados@kernel.org>
@@ -49,9 +49,9 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<ying.huang@intel.com>, <yang@os.amperecomputing.com>,
 	<zev@bewilderbeest.net>, <serge@hallyn.com>, <vegard.nossum@oracle.com>,
 	<wangkefeng.wang@huawei.com>
-Subject: [PATCH v5 -next 02/16] mm: filemap: move sysctl to mm/filemap.c
-Date: Sat, 11 Jan 2025 15:07:37 +0800
-Message-ID: <20250111070751.2588654-3-yukaixiong@huawei.com>
+Subject: [PATCH v5 -next 04/16] mm: vmscan: move vmscan sysctls to mm/vmscan.c
+Date: Sat, 11 Jan 2025 15:07:39 +0800
+Message-ID: <20250111070751.2588654-5-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20250111070751.2588654-1-yukaixiong@huawei.com>
 References: <20250111070751.2588654-1-yukaixiong@huawei.com>
@@ -66,105 +66,159 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-This moves the filemap related sysctl to mm/filemap.c, and
-removes the redundant external variable declaration.
+This moves vm_swappiness and zone_reclaim_mode to mm/vmscan.c,
+as part of the kernel/sysctl.c cleaning, also moves some external
+variable declarations and function declarations from include/linux/swap.h
+into mm/internal.h.
 
 Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
 Reviewed-by: Kees Cook <kees@kernel.org>
 ---
 v4:
- - const qualify struct ctl_table filemap_sysctl_table
+ - const qualify struct ctl_table vmscan_sysctl_table
 v3:
  - change the title
 ---
 ---
- include/linux/mm.h |  2 --
- kernel/sysctl.c    |  8 --------
- mm/filemap.c       | 18 +++++++++++++++---
- 3 files changed, 15 insertions(+), 13 deletions(-)
+ include/linux/swap.h |  9 ---------
+ kernel/sysctl.c      | 19 -------------------
+ mm/internal.h        | 10 ++++++++++
+ mm/vmscan.c          | 23 +++++++++++++++++++++++
+ 4 files changed, 33 insertions(+), 28 deletions(-)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 75c9b4f46897..b9a63a6c960f 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -41,8 +41,6 @@ struct user_struct;
- struct pt_regs;
- struct folio_batch;
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index b13b72645db3..a98c757400fe 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -433,19 +433,10 @@ extern int vm_swappiness;
+ long remove_mapping(struct address_space *mapping, struct folio *folio);
  
--extern int sysctl_page_lock_unfairness;
+ #ifdef CONFIG_NUMA
+-extern int node_reclaim_mode;
+ extern int sysctl_min_unmapped_ratio;
+ extern int sysctl_min_slab_ratio;
+-#else
+-#define node_reclaim_mode 0
+ #endif
+ 
+-static inline bool node_reclaim_enabled(void)
+-{
+-	/* Is any node_reclaim_mode bit set? */
+-	return node_reclaim_mode & (RECLAIM_ZONE|RECLAIM_WRITE|RECLAIM_UNMAP);
+-}
 -
- void mm_core_init(void);
- void init_mm_internals(void);
+ void check_move_unevictable_folios(struct folio_batch *fbatch);
  
+ extern void __meminit kswapd_run(int nid);
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index f1ab251fc2d0..23c8db80da5d 100644
+index ab5d94f07e53..cb6ca272fe9f 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -2079,14 +2079,6 @@ static struct ctl_table vm_table[] = {
- 		.extra1		= SYSCTL_ONE,
- 		.extra2		= SYSCTL_FOUR,
+@@ -2051,15 +2051,6 @@ static struct ctl_table vm_table[] = {
+ 		.proc_handler	= dirtytime_interval_handler,
+ 		.extra1		= SYSCTL_ZERO,
  	},
 -	{
--		.procname	= "page_lock_unfairness",
--		.data		= &sysctl_page_lock_unfairness,
--		.maxlen		= sizeof(sysctl_page_lock_unfairness),
+-		.procname	= "swappiness",
+-		.data		= &vm_swappiness,
+-		.maxlen		= sizeof(vm_swappiness),
+-		.mode		= 0644,
+-		.proc_handler	= proc_dointvec_minmax,
+-		.extra1		= SYSCTL_ZERO,
+-		.extra2		= SYSCTL_TWO_HUNDRED,
+-	},
+ 	{
+ 		.procname	= "drop_caches",
+ 		.data		= &sysctl_drop_caches,
+@@ -2107,16 +2098,6 @@ static struct ctl_table vm_table[] = {
+ 		.extra1		= SYSCTL_ZERO,
+ 	},
+ #endif
+-#ifdef CONFIG_NUMA
+-	{
+-		.procname	= "zone_reclaim_mode",
+-		.data		= &node_reclaim_mode,
+-		.maxlen		= sizeof(node_reclaim_mode),
 -		.mode		= 0644,
 -		.proc_handler	= proc_dointvec_minmax,
 -		.extra1		= SYSCTL_ZERO,
 -	},
+-#endif
  #ifdef CONFIG_MMU
  	{
- 		.procname	= "max_map_count",
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 9a1aad0c66b9..29c131b84294 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -47,6 +47,7 @@
- #include <linux/splice.h>
- #include <linux/rcupdate_wait.h>
- #include <linux/sched/mm.h>
-+#include <linux/sysctl.h>
- #include <linux/fsnotify.h>
- #include <asm/pgalloc.h>
- #include <asm/tlbflush.h>
-@@ -1078,6 +1079,19 @@ static wait_queue_head_t *folio_waitqueue(struct folio *folio)
- 	return &folio_wait_table[hash_ptr(folio, PAGE_WAIT_TABLE_BITS)];
+ 		.procname	= "mmap_min_addr",
+diff --git a/mm/internal.h b/mm/internal.h
+index 109ef30fee11..cdbbe4c215c0 100644
+--- a/mm/internal.h
++++ b/mm/internal.h
+@@ -1097,9 +1097,13 @@ static inline void mminit_verify_zonelist(void)
+ #define NODE_RECLAIM_SUCCESS	1
+ 
+ #ifdef CONFIG_NUMA
++extern int node_reclaim_mode;
++
+ extern int node_reclaim(struct pglist_data *, gfp_t, unsigned int);
+ extern int find_next_best_node(int node, nodemask_t *used_node_mask);
+ #else
++#define node_reclaim_mode 0
++
+ static inline int node_reclaim(struct pglist_data *pgdat, gfp_t mask,
+ 				unsigned int order)
+ {
+@@ -1111,6 +1115,12 @@ static inline int find_next_best_node(int node, nodemask_t *used_node_mask)
+ }
+ #endif
+ 
++static inline bool node_reclaim_enabled(void)
++{
++	/* Is any node_reclaim_mode bit set? */
++	return node_reclaim_mode & (RECLAIM_ZONE|RECLAIM_WRITE|RECLAIM_UNMAP);
++}
++
+ /*
+  * mm/memory-failure.c
+  */
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 6d06bb40d5ad..f1183519bf41 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -7404,6 +7404,28 @@ void __meminit kswapd_stop(int nid)
+ 	pgdat_kswapd_unlock(pgdat);
  }
  
-+/* How many times do we accept lock stealing from under a waiter? */
-+static int sysctl_page_lock_unfairness = 5;
-+static const struct ctl_table filemap_sysctl_table[] = {
++static const struct ctl_table vmscan_sysctl_table[] = {
 +	{
-+		.procname	= "page_lock_unfairness",
-+		.data		= &sysctl_page_lock_unfairness,
-+		.maxlen		= sizeof(sysctl_page_lock_unfairness),
++		.procname	= "swappiness",
++		.data		= &vm_swappiness,
++		.maxlen		= sizeof(vm_swappiness),
++		.mode		= 0644,
++		.proc_handler	= proc_dointvec_minmax,
++		.extra1		= SYSCTL_ZERO,
++		.extra2		= SYSCTL_TWO_HUNDRED,
++	},
++#ifdef CONFIG_NUMA
++	{
++		.procname	= "zone_reclaim_mode",
++		.data		= &node_reclaim_mode,
++		.maxlen		= sizeof(node_reclaim_mode),
 +		.mode		= 0644,
 +		.proc_handler	= proc_dointvec_minmax,
 +		.extra1		= SYSCTL_ZERO,
 +	}
++#endif
 +};
 +
- void __init pagecache_init(void)
+ static int __init kswapd_init(void)
  {
- 	int i;
-@@ -1086,6 +1100,7 @@ void __init pagecache_init(void)
- 		init_waitqueue_head(&folio_wait_table[i]);
- 
- 	page_writeback_init();
-+	register_sysctl_init("vm", filemap_sysctl_table);
+ 	int nid;
+@@ -7411,6 +7433,7 @@ static int __init kswapd_init(void)
+ 	swap_setup();
+ 	for_each_node_state(nid, N_MEMORY)
+  		kswapd_run(nid);
++	register_sysctl_init("vm", vmscan_sysctl_table);
+ 	return 0;
  }
  
- /*
-@@ -1233,9 +1248,6 @@ static inline bool folio_trylock_flag(struct folio *folio, int bit_nr,
- 	return true;
- }
- 
--/* How many times do we accept lock stealing from under a waiter? */
--int sysctl_page_lock_unfairness = 5;
--
- static inline int folio_wait_bit_common(struct folio *folio, int bit_nr,
- 		int state, enum behavior behavior)
- {
 -- 
 2.34.1
 
