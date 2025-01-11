@@ -1,29 +1,29 @@
 Received: from szxga02-in.huawei.com (szxga02-in.huawei.com [45.249.212.188])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E23A515DBB3;
-	Sat, 11 Jan 2025 07:12:28 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 261DD1632F3;
+	Sat, 11 Jan 2025 07:12:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.188
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1736579551; cv=none; b=iAr/aF6vWMH0Wp6FKtEku3Q98/XnAZP+21/K+CWiunfTVB2iwLNk87aV7BRuBZojCO0QTbaqXfWhkBPxVxSf8j5RoAtTuBpVXBnbc2U1zSApwwntUCZaTaupHdUC0YRUQKOCbF4+IhxWm+J8P051BWnFCMR7YYyxW9ZnihtuZR0=
+	t=1736579552; cv=none; b=HIVbGgnU3v77X595XMqNjwUF56Q4K9BnEi0LWUW27UZeGN+3zXCx7G6U1zhjh56UcaJeV9tjTN5PwOW5ZE1LUNejobrbxHfN8ufbRPcU7lgAMb1RKoHRbAzYzTOqCQSzk1Xl8Jx8rHSc3J59mIPV38viuzyfZHBx5NLiO+z5aOo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1736579551; c=relaxed/simple;
-	bh=HXovYQjYYkHFWEMgBUrmy0EjJmQ2n503EepH3Dl/9sc=;
+	s=arc-20240116; t=1736579552; c=relaxed/simple;
+	bh=X9XlW3EeFhfT/GIehKECT4Vefvi6Fw5WTxTGMfsU0uY=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=S6WCQLOCV5hs8+4E2XUvlA1/xDXjyiMegfQ4UNOwhOiBIYJKqm5075pZMYJ9JncTgT6zUheKS725FIYZ4UPKudLK0mX0DCFuOETl/qF3er1XcYNPUOBaw8ZPT30uDSxiGnBondiMNsWCTRmZfLL0VCeTH+hArRiL4zbGKjJvuzM=
+	 MIME-Version:Content-Type; b=CI0Dy+7bO5hytm8f8O0681Gmtuezp9bocs3hxql80uhlm4es9Hu6fSJQsyOD6On8rMJTglxWRE3ExpckfXDGeedx5qGX2H+wAjXHdVK8ltB8UQHAXjaAv9BkFPzx+TIaEl+LKhxJvHDuXMJzacrot0cHeYJED2CzdA/IAu+Jp9E=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.188
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.48])
-	by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4YVV6R4bKjzrS4r;
-	Sat, 11 Jan 2025 15:10:39 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.163.252])
+	by szxga02-in.huawei.com (SkyGuard) with ESMTP id 4YVV6Z3mXnzrSD8;
+	Sat, 11 Jan 2025 15:10:46 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id 9D196180064;
-	Sat, 11 Jan 2025 15:12:20 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 7F8FB180218;
+	Sat, 11 Jan 2025 15:12:27 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Sat, 11 Jan
- 2025 15:12:17 +0800
+ 2025 15:12:23 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>,
 	<joel.granados@kernel.org>
@@ -49,9 +49,9 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<ying.huang@intel.com>, <yang@os.amperecomputing.com>,
 	<zev@bewilderbeest.net>, <serge@hallyn.com>, <vegard.nossum@oracle.com>,
 	<wangkefeng.wang@huawei.com>
-Subject: [PATCH v5 -next 01/16] mm: vmstat: move sysctls to mm/vmstat.c
-Date: Sat, 11 Jan 2025 15:07:36 +0800
-Message-ID: <20250111070751.2588654-2-yukaixiong@huawei.com>
+Subject: [PATCH v5 -next 03/16] mm: swap: move sysctl to mm/swap.c
+Date: Sat, 11 Jan 2025 15:07:38 +0800
+Message-ID: <20250111070751.2588654-4-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20250111070751.2588654-1-yukaixiong@huawei.com>
 References: <20250111070751.2588654-1-yukaixiong@huawei.com>
@@ -66,208 +66,117 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-This moves all vmstat related sysctls to its own file, removes useless
-extern variable declarations, and do some related clean-ups. To avoid
-compiler warnings when CONFIG_PROC_FS is not defined, add the macro
-definition CONFIG_PROC_FS ahead CONFIG_NUMA in vmstat.c.
+The page-cluster belongs to mm/swap.c, move it to mm/swap.c .
+Removes the redundant external variable declaration and unneeded
+include(linux/swap.h).
 
 Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
 Reviewed-by: Kees Cook <kees@kernel.org>
 ---
 v4:
- - const qualify struct ctl_table vmstat_table
+ - const qualify struct ctl_table swap_sysctl_table
 v3:
  - change the title
- - change sysctl_stat_interval to static type
 ---
 ---
- include/linux/vmstat.h | 11 -----------
- kernel/sysctl.c        | 28 ---------------------------
- mm/vmstat.c            | 44 ++++++++++++++++++++++++++++++++++++++----
- 3 files changed, 40 insertions(+), 43 deletions(-)
+ include/linux/mm.h |  2 --
+ kernel/sysctl.c    | 10 ----------
+ mm/swap.c          | 16 +++++++++++++++-
+ mm/swap.h          |  1 +
+ 4 files changed, 16 insertions(+), 13 deletions(-)
 
-diff --git a/include/linux/vmstat.h b/include/linux/vmstat.h
-index 9f3a04345b86..4751e3ecc467 100644
---- a/include/linux/vmstat.h
-+++ b/include/linux/vmstat.h
-@@ -10,15 +10,8 @@
- #include <linux/static_key.h>
- #include <linux/mmdebug.h>
+diff --git a/include/linux/mm.h b/include/linux/mm.h
+index b9a63a6c960f..fb00ee129f77 100644
+--- a/include/linux/mm.h
++++ b/include/linux/mm.h
+@@ -77,8 +77,6 @@ static inline void totalram_pages_add(long count)
+ }
  
--extern int sysctl_stat_interval;
--
- #ifdef CONFIG_NUMA
--#define ENABLE_NUMA_STAT   1
--#define DISABLE_NUMA_STAT   0
--extern int sysctl_vm_numa_stat;
- DECLARE_STATIC_KEY_TRUE(vm_numa_stat_key);
--int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
--		void *buffer, size_t *length, loff_t *ppos);
- #endif
+ extern void * high_memory;
+-extern int page_cluster;
+-extern const int page_cluster_max;
  
- struct reclaim_stat {
-@@ -304,10 +297,6 @@ void quiet_vmstat(void);
- void cpu_vm_stats_fold(int cpu);
- void refresh_zone_stat_thresholds(void);
- 
--struct ctl_table;
--int vmstat_refresh(const struct ctl_table *, int write, void *buffer, size_t *lenp,
--		loff_t *ppos);
--
- void drain_zonestat(struct zone *zone, struct per_cpu_zonestat *);
- 
- int calculate_pressure_threshold(struct zone *zone);
+ #ifdef CONFIG_SYSCTL
+ extern int sysctl_legacy_va_layout;
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 7ae7a4136855..f1ab251fc2d0 100644
+index 23c8db80da5d..ab5d94f07e53 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -49,7 +49,6 @@
- #include <linux/limits.h>
- #include <linux/dcache.h>
- #include <linux/syscalls.h>
--#include <linux/vmstat.h>
- #include <linux/nfs_fs.h>
- #include <linux/acpi.h>
- #include <linux/reboot.h>
-@@ -2071,17 +2070,6 @@ static struct ctl_table vm_table[] = {
- 		.extra1		= SYSCTL_ZERO,
- 		.extra2		= SYSCTL_TWO_HUNDRED,
+@@ -21,7 +21,6 @@
+ 
+ #include <linux/module.h>
+ #include <linux/mm.h>
+-#include <linux/swap.h>
+ #include <linux/slab.h>
+ #include <linux/sysctl.h>
+ #include <linux/bitmap.h>
+@@ -2044,15 +2043,6 @@ static struct ctl_table vm_table[] = {
+ 		.mode		= 0644,
+ 		.proc_handler	= overcommit_kbytes_handler,
  	},
--#ifdef CONFIG_NUMA
 -	{
--		.procname	= "numa_stat",
--		.data		= &sysctl_vm_numa_stat,
+-		.procname	= "page-cluster",
+-		.data		= &page_cluster,
 -		.maxlen		= sizeof(int),
 -		.mode		= 0644,
--		.proc_handler	= sysctl_vm_numa_stat_handler,
+-		.proc_handler	= proc_dointvec_minmax,
 -		.extra1		= SYSCTL_ZERO,
--		.extra2		= SYSCTL_ONE,
+-		.extra2		= (void *)&page_cluster_max,
 -	},
--#endif
  	{
- 		.procname	= "drop_caches",
- 		.data		= &sysctl_drop_caches,
-@@ -2147,22 +2135,6 @@ static struct ctl_table vm_table[] = {
- 		.extra1		= SYSCTL_ZERO,
- 	},
- #endif
--#ifdef CONFIG_SMP
--	{
--		.procname	= "stat_interval",
--		.data		= &sysctl_stat_interval,
--		.maxlen		= sizeof(sysctl_stat_interval),
--		.mode		= 0644,
--		.proc_handler	= proc_dointvec_jiffies,
--	},
--	{
--		.procname	= "stat_refresh",
--		.data		= NULL,
--		.maxlen		= 0,
--		.mode		= 0600,
--		.proc_handler	= vmstat_refresh,
--	},
--#endif
- #ifdef CONFIG_MMU
- 	{
- 		.procname	= "mmap_min_addr",
-diff --git a/mm/vmstat.c b/mm/vmstat.c
-index 16bfe1c694dd..39704b5b17e0 100644
---- a/mm/vmstat.c
-+++ b/mm/vmstat.c
-@@ -31,8 +31,10 @@
+ 		.procname	= "dirtytime_expire_seconds",
+ 		.data		= &dirtytime_expire_interval,
+diff --git a/mm/swap.c b/mm/swap.c
+index fc8281ef4241..b81cce146eb2 100644
+--- a/mm/swap.c
++++ b/mm/swap.c
+@@ -45,7 +45,7 @@
  
- #include "internal.h"
+ /* How many pages do we try to swap or page in/out together? As a power of 2 */
+ int page_cluster;
+-const int page_cluster_max = 31;
++static const int page_cluster_max = 31;
  
-+#ifdef CONFIG_PROC_FS
- #ifdef CONFIG_NUMA
--int sysctl_vm_numa_stat = ENABLE_NUMA_STAT;
-+#define ENABLE_NUMA_STAT 1
-+static int sysctl_vm_numa_stat = ENABLE_NUMA_STAT;
- 
- /* zero numa counters within a zone */
- static void zero_zone_numa_counters(struct zone *zone)
-@@ -74,7 +76,7 @@ static void invalid_numa_statistics(void)
- 
- static DEFINE_MUTEX(vm_numa_stat_lock);
- 
--int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
-+static int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
- 		void *buffer, size_t *length, loff_t *ppos)
- {
- 	int ret, oldval;
-@@ -102,6 +104,7 @@ int sysctl_vm_numa_stat_handler(const struct ctl_table *table, int write,
- 	return ret;
- }
- #endif
-+#endif /* CONFIG_PROC_FS */
- 
- #ifdef CONFIG_VM_EVENT_COUNTERS
- DEFINE_PER_CPU(struct vm_event_state, vm_event_states) = {{0}};
-@@ -1938,7 +1941,7 @@ static const struct seq_operations vmstat_op = {
- 
- #ifdef CONFIG_SMP
- static DEFINE_PER_CPU(struct delayed_work, vmstat_work);
--int sysctl_stat_interval __read_mostly = HZ;
-+static int sysctl_stat_interval __read_mostly = HZ;
- static int vmstat_late_init_done;
- 
- #ifdef CONFIG_PROC_FS
-@@ -1947,7 +1950,7 @@ static void refresh_vm_stats(struct work_struct *work)
- 	refresh_cpu_vm_stats(true);
+ struct cpu_fbatches {
+ 	/*
+@@ -1076,6 +1076,18 @@ void folio_batch_remove_exceptionals(struct folio_batch *fbatch)
+ 	fbatch->nr = j;
  }
  
--int vmstat_refresh(const struct ctl_table *table, int write,
-+static int vmstat_refresh(const struct ctl_table *table, int write,
- 		   void *buffer, size_t *lenp, loff_t *ppos)
- {
- 	long val;
-@@ -2196,6 +2199,38 @@ static int __init vmstat_late_init(void)
- late_initcall(vmstat_late_init);
- #endif
- 
-+#ifdef CONFIG_PROC_FS
-+static const struct ctl_table vmstat_table[] = {
-+#ifdef CONFIG_SMP
++static const struct ctl_table swap_sysctl_table[] = {
 +	{
-+		.procname	= "stat_interval",
-+		.data		= &sysctl_stat_interval,
-+		.maxlen		= sizeof(sysctl_stat_interval),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec_jiffies,
-+	},
-+	{
-+		.procname	= "stat_refresh",
-+		.data		= NULL,
-+		.maxlen		= 0,
-+		.mode		= 0600,
-+		.proc_handler	= vmstat_refresh,
-+	},
-+#endif
-+#ifdef CONFIG_NUMA
-+	{
-+		.procname	= "numa_stat",
-+		.data		= &sysctl_vm_numa_stat,
++		.procname	= "page-cluster",
++		.data		= &page_cluster,
 +		.maxlen		= sizeof(int),
 +		.mode		= 0644,
-+		.proc_handler	= sysctl_vm_numa_stat_handler,
++		.proc_handler	= proc_dointvec_minmax,
 +		.extra1		= SYSCTL_ZERO,
-+		.extra2		= SYSCTL_ONE,
-+	},
-+#endif
++		.extra2		= (void *)&page_cluster_max,
++	}
 +};
-+#endif
 +
- struct workqueue_struct *mm_percpu_wq;
- 
- void __init init_mm_internals(void)
-@@ -2227,6 +2262,7 @@ void __init init_mm_internals(void)
- 	proc_create_seq("pagetypeinfo", 0400, NULL, &pagetypeinfo_op);
- 	proc_create_seq("vmstat", 0444, NULL, &vmstat_op);
- 	proc_create_seq("zoneinfo", 0444, NULL, &zoneinfo_op);
-+	register_sysctl_init("vm", vmstat_table);
- #endif
+ /*
+  * Perform any setup for the swap system
+  */
+@@ -1092,4 +1104,6 @@ void __init swap_setup(void)
+ 	 * Right now other parts of the system means that we
+ 	 * _really_ don't want to cluster much more
+ 	 */
++
++	register_sysctl_init("vm", swap_sysctl_table);
  }
+diff --git a/mm/swap.h b/mm/swap.h
+index ad2f121de970..274dcc6219a0 100644
+--- a/mm/swap.h
++++ b/mm/swap.h
+@@ -3,6 +3,7 @@
+ #define _MM_SWAP_H
  
+ struct mempolicy;
++extern int page_cluster;
+ 
+ #ifdef CONFIG_SWAP
+ #include <linux/swapops.h> /* for swp_offset */
 -- 
 2.34.1
 
