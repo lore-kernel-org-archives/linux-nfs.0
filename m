@@ -1,29 +1,29 @@
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+Received: from szxga04-in.huawei.com (szxga04-in.huawei.com [45.249.212.190])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BFF6C194C67;
-	Sat, 11 Jan 2025 07:12:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 04C5E16DEB3;
+	Sat, 11 Jan 2025 07:12:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.190
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1736579566; cv=none; b=s55i7Cb9RUf6CSyPnpis27sVDxOBZdcpVRy9pr/8sb5Ga5Igs0BC9p9bQymCpSUNslofNSDOFbNXI5EPUfBAkvkj6neBoFesQlcUrpc5+YKqpVoUTf7EuK2iwdyephZrfQfVrxhWVLbx8Tub2TxIOHZDCeIXyXRxzTwPz5TfAEA=
+	t=1736579568; cv=none; b=F6qLiCiItvCE8m7PqF0WQJJws4/1CQPvG4MsIaYcAI5sO1mbwFZ4gW0KF8+zeX/SDwgmH2xBspEVgU8jzDqdSpwHKUhplVyExEG+lbXsTwKENFTBhNHss+qf5BEmgXkNW3404IimZQq55TGUz+slNl5n8e8O4mO7TYz3BFMsvOo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1736579566; c=relaxed/simple;
-	bh=hEx/1yx+9NIxuaP0d8CpdXkeA6H1Cn+tvPipkT0qCG0=;
+	s=arc-20240116; t=1736579568; c=relaxed/simple;
+	bh=M3xZTu6EzZyd6n2YrYUR5sdHROdsWcbu6nDRtPtIFM8=;
 	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=amwR7R7eO1OgJ5R+ZBjUz1YIHiW16LmPu4n4euAhgAHH1SlNqwK2RqGsEUF4XE6/aCvLnWye7ydv2KwoDr/3e4krLbuPl8fnhRg49IFId0uFBlGryzV/opO7ARHmpXt/YGVf2rxul+mSdH9pdLMRPrjO+9F4X6u1yY75dwkujvg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.187
+	 MIME-Version:Content-Type; b=VBBLTP6kPJQluzOfL5YbmAfhwwoJH6Y8+gg5PTP603FUlopG/kJf8BjV9JOgteGB0ixCybLmrh0rxT9qte4XwNwq6UXOsz9ezVMX5dTCOJXdY8JZrKLzJTZ8xzyuM11FGG5jv9Wdi+W/ZI+EckRATaSPkRmsWuT9z3pulyjcTMI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.190
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.48])
-	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4YVV5G4mbpz11RmN;
-	Sat, 11 Jan 2025 15:09:38 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.88.234])
+	by szxga04-in.huawei.com (SkyGuard) with ESMTP id 4YVV692Jpyz22ktr;
+	Sat, 11 Jan 2025 15:10:25 +0800 (CST)
 Received: from kwepemh100016.china.huawei.com (unknown [7.202.181.102])
-	by mail.maildlp.com (Postfix) with ESMTPS id 892DD180064;
-	Sat, 11 Jan 2025 15:12:36 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 6C5F81402DE;
+	Sat, 11 Jan 2025 15:12:43 +0800 (CST)
 Received: from huawei.com (10.175.113.32) by kwepemh100016.china.huawei.com
  (7.202.181.102) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Sat, 11 Jan
- 2025 15:12:30 +0800
+ 2025 15:12:39 +0800
 From: Kaixiong Yu <yukaixiong@huawei.com>
 To: <akpm@linux-foundation.org>, <mcgrof@kernel.org>,
 	<joel.granados@kernel.org>
@@ -49,9 +49,9 @@ CC: <ysato@users.sourceforge.jp>, <dalias@libc.org>,
 	<ying.huang@intel.com>, <yang@os.amperecomputing.com>,
 	<zev@bewilderbeest.net>, <serge@hallyn.com>, <vegard.nossum@oracle.com>,
 	<wangkefeng.wang@huawei.com>
-Subject: [PATCH v5 -next 05/16] mm: util: move sysctls to mm/util.c
-Date: Sat, 11 Jan 2025 15:07:40 +0800
-Message-ID: <20250111070751.2588654-6-yukaixiong@huawei.com>
+Subject: [PATCH v5 -next 07/16] security: min_addr: move sysctl to security/min_addr.c
+Date: Sat, 11 Jan 2025 15:07:42 +0800
+Message-ID: <20250111070751.2588654-8-yukaixiong@huawei.com>
 X-Mailer: git-send-email 2.34.1
 In-Reply-To: <20250111070751.2588654-1-yukaixiong@huawei.com>
 References: <20250111070751.2588654-1-yukaixiong@huawei.com>
@@ -66,225 +66,78 @@ Content-Type: text/plain
 X-ClientProxiedBy: dggems703-chm.china.huawei.com (10.3.19.180) To
  kwepemh100016.china.huawei.com (7.202.181.102)
 
-This moves all util related sysctls to mm/util.c, as part of the
-kernel/sysctl.c cleaning, also removes redundant external
-variable declarations and function declarations.
+The dac_mmap_min_addr belongs to min_addr.c, move it to
+min_addr.c from /kernel/sysctl.c. In the previous Linux kernel
+boot process, sysctl_init_bases needs to be executed before
+init_mmap_min_addr, So, register_sysctl_init should be executed
+before update_mmap_min_addr in init_mmap_min_addr. And according
+to the compilation condition in security/Makefile:
+
+      obj-$(CONFIG_MMU)            += min_addr.o
+
+if CONFIG_MMU is not defined, min_addr.c would not be included in the
+compilation process. So, drop the CONFIG_MMU check.
 
 Signed-off-by: Kaixiong Yu <yukaixiong@huawei.com>
 Reviewed-by: Kees Cook <kees@kernel.org>
+Acked-by: Paul Moore <paul@paul-moore.com>
 ---
 v4:
- - const qualify struct ctl_table util_sysctl_table
+ - const qualify struct ctl_table min_addr_sysctl_table
 v3:
  - change the title
+v2:
+ - update the changelog to explain why drop CONFIG_MMU check.
 ---
 ---
- include/linux/mm.h   | 11 --------
- include/linux/mman.h |  2 --
- kernel/sysctl.c      | 37 ------------------------
- mm/util.c            | 67 ++++++++++++++++++++++++++++++++++++++------
- 4 files changed, 59 insertions(+), 58 deletions(-)
+ kernel/sysctl.c     |  9 ---------
+ security/min_addr.c | 11 +++++++++++
+ 2 files changed, 11 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index fb00ee129f77..5776bc524087 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -206,17 +206,6 @@ extern int sysctl_max_map_count;
- extern unsigned long sysctl_user_reserve_kbytes;
- extern unsigned long sysctl_admin_reserve_kbytes;
- 
--extern int sysctl_overcommit_memory;
--extern int sysctl_overcommit_ratio;
--extern unsigned long sysctl_overcommit_kbytes;
--
--int overcommit_ratio_handler(const struct ctl_table *, int, void *, size_t *,
--		loff_t *);
--int overcommit_kbytes_handler(const struct ctl_table *, int, void *, size_t *,
--		loff_t *);
--int overcommit_policy_handler(const struct ctl_table *, int, void *, size_t *,
--		loff_t *);
--
- #if defined(CONFIG_SPARSEMEM) && !defined(CONFIG_SPARSEMEM_VMEMMAP)
- #define nth_page(page,n) pfn_to_page(page_to_pfn((page)) + (n))
- #define folio_page_idx(folio, p)	(page_to_pfn(p) - folio_pfn(folio))
-diff --git a/include/linux/mman.h b/include/linux/mman.h
-index a842783ffa62..bce214fece16 100644
---- a/include/linux/mman.h
-+++ b/include/linux/mman.h
-@@ -59,8 +59,6 @@
- 		| MAP_HUGE_1GB)
- 
- extern int sysctl_overcommit_memory;
--extern int sysctl_overcommit_ratio;
--extern unsigned long sysctl_overcommit_kbytes;
- extern struct percpu_counter vm_committed_as;
- 
- #ifdef CONFIG_SMP
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index cb6ca272fe9f..aea3482106e0 100644
+index 9c245898f535..62a58e417c40 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
-@@ -2020,29 +2020,6 @@ static struct ctl_table kern_table[] = {
- };
- 
- static struct ctl_table vm_table[] = {
--	{
--		.procname	= "overcommit_memory",
--		.data		= &sysctl_overcommit_memory,
--		.maxlen		= sizeof(sysctl_overcommit_memory),
--		.mode		= 0644,
--		.proc_handler	= overcommit_policy_handler,
--		.extra1		= SYSCTL_ZERO,
--		.extra2		= SYSCTL_TWO,
--	},
--	{
--		.procname	= "overcommit_ratio",
--		.data		= &sysctl_overcommit_ratio,
--		.maxlen		= sizeof(sysctl_overcommit_ratio),
--		.mode		= 0644,
--		.proc_handler	= overcommit_ratio_handler,
--	},
--	{
--		.procname	= "overcommit_kbytes",
--		.data		= &sysctl_overcommit_kbytes,
--		.maxlen		= sizeof(sysctl_overcommit_kbytes),
--		.mode		= 0644,
--		.proc_handler	= overcommit_kbytes_handler,
--	},
- 	{
- 		.procname	= "dirtytime_expire_seconds",
- 		.data		= &dirtytime_expire_interval,
-@@ -2123,20 +2100,6 @@ static struct ctl_table vm_table[] = {
+@@ -2049,15 +2049,6 @@ static struct ctl_table vm_table[] = {
+ 		.proc_handler	= proc_dointvec_minmax,
  		.extra1		= SYSCTL_ZERO,
  	},
- #endif
+-#ifdef CONFIG_MMU
 -	{
--		.procname	= "user_reserve_kbytes",
--		.data		= &sysctl_user_reserve_kbytes,
--		.maxlen		= sizeof(sysctl_user_reserve_kbytes),
+-		.procname	= "mmap_min_addr",
+-		.data		= &dac_mmap_min_addr,
+-		.maxlen		= sizeof(unsigned long),
 -		.mode		= 0644,
--		.proc_handler	= proc_doulongvec_minmax,
+-		.proc_handler	= mmap_min_addr_handler,
 -	},
--	{
--		.procname	= "admin_reserve_kbytes",
--		.data		= &sysctl_admin_reserve_kbytes,
--		.maxlen		= sizeof(sysctl_admin_reserve_kbytes),
--		.mode		= 0644,
--		.proc_handler	= proc_doulongvec_minmax,
--	},
- #ifdef CONFIG_HAVE_ARCH_MMAP_RND_BITS
+-#endif
+ #if (defined(CONFIG_X86_32) && !defined(CONFIG_UML))|| \
+    (defined(CONFIG_SUPERH) && defined(CONFIG_VSYSCALL))
  	{
- 		.procname	= "mmap_rnd_bits",
-diff --git a/mm/util.c b/mm/util.c
-index b6b9684a1438..b3480f358d11 100644
---- a/mm/util.c
-+++ b/mm/util.c
-@@ -12,6 +12,7 @@
- #include <linux/security.h>
- #include <linux/swap.h>
- #include <linux/swapops.h>
-+#include <linux/sysctl.h>
- #include <linux/mman.h>
- #include <linux/hugetlb.h>
- #include <linux/vmalloc.h>
-@@ -906,14 +907,16 @@ int folio_mc_copy(struct folio *dst, struct folio *src)
- EXPORT_SYMBOL(folio_mc_copy);
- 
- int sysctl_overcommit_memory __read_mostly = OVERCOMMIT_GUESS;
--int sysctl_overcommit_ratio __read_mostly = 50;
--unsigned long sysctl_overcommit_kbytes __read_mostly;
-+static int sysctl_overcommit_ratio __read_mostly = 50;
-+static unsigned long sysctl_overcommit_kbytes __read_mostly;
- int sysctl_max_map_count __read_mostly = DEFAULT_MAX_MAP_COUNT;
- unsigned long sysctl_user_reserve_kbytes __read_mostly = 1UL << 17; /* 128MB */
- unsigned long sysctl_admin_reserve_kbytes __read_mostly = 1UL << 13; /* 8MB */
- 
--int overcommit_ratio_handler(const struct ctl_table *table, int write, void *buffer,
--		size_t *lenp, loff_t *ppos)
-+#ifdef CONFIG_SYSCTL
-+
-+static int overcommit_ratio_handler(const struct ctl_table *table, int write,
-+				void *buffer, size_t *lenp, loff_t *ppos)
- {
- 	int ret;
- 
-@@ -928,8 +931,8 @@ static void sync_overcommit_as(struct work_struct *dummy)
- 	percpu_counter_sync(&vm_committed_as);
- }
- 
--int overcommit_policy_handler(const struct ctl_table *table, int write, void *buffer,
--		size_t *lenp, loff_t *ppos)
-+static int overcommit_policy_handler(const struct ctl_table *table, int write,
-+				void *buffer, size_t *lenp, loff_t *ppos)
- {
- 	struct ctl_table t;
- 	int new_policy = -1;
-@@ -964,8 +967,8 @@ int overcommit_policy_handler(const struct ctl_table *table, int write, void *bu
+diff --git a/security/min_addr.c b/security/min_addr.c
+index 0ce267c041ab..df1bc643d886 100644
+--- a/security/min_addr.c
++++ b/security/min_addr.c
+@@ -44,8 +44,19 @@ int mmap_min_addr_handler(const struct ctl_table *table, int write,
  	return ret;
  }
  
--int overcommit_kbytes_handler(const struct ctl_table *table, int write, void *buffer,
--		size_t *lenp, loff_t *ppos)
-+static int overcommit_kbytes_handler(const struct ctl_table *table, int write,
-+				void *buffer, size_t *lenp, loff_t *ppos)
- {
- 	int ret;
- 
-@@ -975,6 +978,54 @@ int overcommit_kbytes_handler(const struct ctl_table *table, int write, void *bu
- 	return ret;
- }
- 
-+static const struct ctl_table util_sysctl_table[] = {
++static const struct ctl_table min_addr_sysctl_table[] = {
 +	{
-+		.procname	= "overcommit_memory",
-+		.data		= &sysctl_overcommit_memory,
-+		.maxlen		= sizeof(sysctl_overcommit_memory),
++		.procname	= "mmap_min_addr",
++		.data		= &dac_mmap_min_addr,
++		.maxlen		= sizeof(unsigned long),
 +		.mode		= 0644,
-+		.proc_handler	= overcommit_policy_handler,
-+		.extra1		= SYSCTL_ZERO,
-+		.extra2		= SYSCTL_TWO,
-+	},
-+	{
-+		.procname	= "overcommit_ratio",
-+		.data		= &sysctl_overcommit_ratio,
-+		.maxlen		= sizeof(sysctl_overcommit_ratio),
-+		.mode		= 0644,
-+		.proc_handler	= overcommit_ratio_handler,
-+	},
-+	{
-+		.procname	= "overcommit_kbytes",
-+		.data		= &sysctl_overcommit_kbytes,
-+		.maxlen		= sizeof(sysctl_overcommit_kbytes),
-+		.mode		= 0644,
-+		.proc_handler	= overcommit_kbytes_handler,
-+	},
-+	{
-+		.procname	= "user_reserve_kbytes",
-+		.data		= &sysctl_user_reserve_kbytes,
-+		.maxlen		= sizeof(sysctl_user_reserve_kbytes),
-+		.mode		= 0644,
-+		.proc_handler	= proc_doulongvec_minmax,
-+	},
-+	{
-+		.procname	= "admin_reserve_kbytes",
-+		.data		= &sysctl_admin_reserve_kbytes,
-+		.maxlen		= sizeof(sysctl_admin_reserve_kbytes),
-+		.mode		= 0644,
-+		.proc_handler	= proc_doulongvec_minmax,
++		.proc_handler	= mmap_min_addr_handler,
 +	},
 +};
 +
-+static int __init init_vm_util_sysctls(void)
-+{
-+	register_sysctl_init("vm", util_sysctl_table);
-+	return 0;
-+}
-+subsys_initcall(init_vm_util_sysctls);
-+#endif /* CONFIG_SYSCTL */
-+
- /*
-  * Committed memory limit enforced when OVERCOMMIT_NEVER policy is used
-  */
+ static int __init init_mmap_min_addr(void)
+ {
++	register_sysctl_init("vm", min_addr_sysctl_table);
+ 	update_mmap_min_addr();
+ 
+ 	return 0;
 -- 
 2.34.1
 
