@@ -1,33 +1,33 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 290C9137C37;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8BF6614D428;
 	Thu, 16 Jan 2025 05:23:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737005002; cv=none; b=gkq6WTM9HZZlfdaxq3xVcqFtAE/y4MqDpSffYeJHTbv/o6SQfdNjHBR0QFpbYwSOgEQ+AcstI6kKwKikpMkOY5oLO4IaCLdKf3AdWch+6ClekVtCTBb5EL22xY+6/6OQHAvW7fzbUtq9LrkQgKSCeXDkTwaIb18OVBaY45c6UdM=
+	t=1737005002; cv=none; b=r/EjPGZId44cTGCIUawnV3mCxRclNgfbm/zSmy/jE6pe7skKVdBMzIF1hCINE2kgaxScgJM0snKmiRB3ZrCTI/XW6E5NOpVoT+o+5z5IsBwXErYmtp+fW0UFoIKndFy3J0AqQqXFQYEqS6GneMCinp1W5cWfWEaS9HKo1571NYk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1737005002; c=relaxed/simple;
-	bh=5/9yM5ojUlQc53d97UeQCAbTyQhStbmVRo+Y1Ie111M=;
+	bh=uG5X8+jczopsvykrPB6xench4ua1MmO7EExaE3lHOcQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=V6nIGr6qTnm+N6XiIR88jCCtzKOAWtSv2w0s+XNvjCJkwCZiM3ZCmB4psPoANT5pqzUftb+bZf8p6vWSGfhyhareeGxDqdvIpCRgDYd7xA1DhhDFsSXInFw4AC+45CBHr8D5AZW4Up1wAPRuwArUgC+TpR2E9wyn1DBFpPC0Q5w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=rKHNQ34P; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=ch9/vUBNt2cPfx478P9yYJsaJ5mXdDtPDE4FYrQRZm1VuQIn0sE/IfpVnTbEresswELmyTGcc7M+afL0XtfAuDIz+2WHfPmMOQemwQA1cfdaXbSpbmQnD0cVUNraUY3n73CL7paohA6n2ALvk9s24gsSfwIirEgp1vc4dZw7fHo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=Z3G1ROm0; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="rKHNQ34P"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="Z3G1ROm0"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=38sAdafy9hl8ktdl0+YXGOT6YW1uWUKdlWxFvgD4pCQ=; b=rKHNQ34PK28x9b3B4OEVjXhuig
-	q3tBE2/1Hy4/HPXcUpgbJonQNy5gIOrtTWuAJ5QA5R4JT47A7MURsv1u2DPookLl3fT8SO5Yno8cb
-	nT6Jrd+enQoRf8X2LWWEjximJ9PhBVGjsrmHHmFPI3mwSYYBxTizAnlmU+TQNItbgm4+wjn6SM6XR
-	41oFsI1KXTrc+Yq/7WHE7Fa7WPNl3vnhV11k9LY9ZDbkPYbcJcpXJ/gLG14LNj4pUVswhO6BjJhXl
-	pf5b9UwBKfV+n86uPR8aIU5NHodzXw1lgpx03rD/iVwbmCX+JcpOpKKlzpklPPqu9Bdf5S7LFZTq0
-	18tiTeUA==;
+	bh=sYKSRrwY+Cm35cFir8V1URMctS20XWh4l9lLNI10SiI=; b=Z3G1ROm0D3wqJEnqjw6TUMQiUU
+	9ZVTNDQ8wZaFtl2HQEdZj86KIaPUzZFTvKjWIu06Q8F3SymQ76H2oARFu9KSUIwd9+yO19kGc9UII
+	a/TJ1znvaolXUXwJzqMiX2ack/qMobTdhU1wHnAVspcWdLKapAn6dnHKdn4yoxReGvoXz8oO0iDE7
+	hQekdwgiT8L9Nt+2UPp1odUVz/9U95Psu233+VidOj/iScVkSfKz+KR3kt4RLYEVfxbn6OZGm6V5L
+	ZXN8na6Dcw8/7C9L1eq/M+EVy+lVsw5aD0p3nmleSfmO1NuorLQwrcBi3iyCdEs6d2mIwhFXZE/3B
+	RJdb621g==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1tYILd-000000022GR-3mVY;
+	id 1tYILe-000000022HF-3zph;
 	Thu, 16 Jan 2025 05:23:18 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
@@ -42,12 +42,13 @@ Cc: agruenba@redhat.com,
 	linux-nfs@vger.kernel.org,
 	miklos@szeredi.hu,
 	torvalds@linux-foundation.org
-Subject: [PATCH v2 01/20] make sure that DNAME_INLINE_LEN is a multiple of word size
-Date: Thu, 16 Jan 2025 05:22:58 +0000
-Message-ID: <20250116052317.485356-1-viro@zeniv.linux.org.uk>
+Subject: [PATCH v2 09/20] ceph_d_revalidate(): use stable parent inode passed by caller
+Date: Thu, 16 Jan 2025 05:23:06 +0000
+Message-ID: <20250116052317.485356-9-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.47.1
-In-Reply-To: <20250116052103.GF1977892@ZenIV>
+In-Reply-To: <20250116052317.485356-1-viro@zeniv.linux.org.uk>
 References: <20250116052103.GF1977892@ZenIV>
+ <20250116052317.485356-1-viro@zeniv.linux.org.uk>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -57,60 +58,70 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-... calling the number of words DNAME_INLINE_WORDS.
+No need to mess with the boilerplate for obtaining what we already
+have.  Note that ceph is one of the "will want a path from filesystem
+root if we want to talk to server" cases, so the name of the last
+component is of little use - it is passed to fscrypt_d_revalidate()
+and it's used to deal with (also crypt-related) case in request
+marshalling, when encrypted name turns out to be too long.  The former
+is not a problem, but the latter is racy; that part will be handled
+in the next commit.
 
-The next step will be to have a structure to hold inline name arrays
-(both in dentry and in name_snapshot) and use that to alias the
-existing arrays of unsigned char there.  That will allow both
-full-structure copies and convenient word-by-word accesses.
-
-Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Viacheslav Dubeyko <Slava.Dubeyko@ibm.com>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/dcache.c            | 4 +---
- include/linux/dcache.h | 8 +++++---
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ fs/ceph/dir.c | 22 ++++------------------
+ 1 file changed, 4 insertions(+), 18 deletions(-)
 
-diff --git a/fs/dcache.c b/fs/dcache.c
-index b4d5e9e1e43d..ea0f0bea511b 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -2748,9 +2748,7 @@ static void swap_names(struct dentry *dentry, struct dentry *target)
- 			/*
- 			 * Both are internal.
- 			 */
--			unsigned int i;
--			BUILD_BUG_ON(!IS_ALIGNED(DNAME_INLINE_LEN, sizeof(long)));
--			for (i = 0; i < DNAME_INLINE_LEN / sizeof(long); i++) {
-+			for (int i = 0; i < DNAME_INLINE_WORDS; i++) {
- 				swap(((long *) &dentry->d_iname)[i],
- 				     ((long *) &target->d_iname)[i]);
- 			}
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index bff956f7b2b9..42dd89beaf4e 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -68,15 +68,17 @@ extern const struct qstr dotdot_name;
-  * large memory footprint increase).
+diff --git a/fs/ceph/dir.c b/fs/ceph/dir.c
+index c4c71c24221b..dc5f55bebad7 100644
+--- a/fs/ceph/dir.c
++++ b/fs/ceph/dir.c
+@@ -1940,30 +1940,19 @@ static int dir_lease_is_valid(struct inode *dir, struct dentry *dentry,
+ /*
+  * Check if cached dentry can be trusted.
   */
- #ifdef CONFIG_64BIT
--# define DNAME_INLINE_LEN 40 /* 192 bytes */
-+# define DNAME_INLINE_WORDS 5 /* 192 bytes */
- #else
- # ifdef CONFIG_SMP
--#  define DNAME_INLINE_LEN 36 /* 128 bytes */
-+#  define DNAME_INLINE_WORDS 9 /* 128 bytes */
- # else
--#  define DNAME_INLINE_LEN 44 /* 128 bytes */
-+#  define DNAME_INLINE_WORDS 11 /* 128 bytes */
- # endif
- #endif
+-static int ceph_d_revalidate(struct inode *parent_dir, const struct qstr *name,
++static int ceph_d_revalidate(struct inode *dir, const struct qstr *name,
+ 			     struct dentry *dentry, unsigned int flags)
+ {
+ 	struct ceph_mds_client *mdsc = ceph_sb_to_fs_client(dentry->d_sb)->mdsc;
+ 	struct ceph_client *cl = mdsc->fsc->client;
+ 	int valid = 0;
+-	struct dentry *parent;
+-	struct inode *dir, *inode;
++	struct inode *inode;
  
-+#define DNAME_INLINE_LEN (DNAME_INLINE_WORDS*sizeof(unsigned long))
-+
- #define d_lock	d_lockref.lock
+-	valid = fscrypt_d_revalidate(parent_dir, name, dentry, flags);
++	valid = fscrypt_d_revalidate(dir, name, dentry, flags);
+ 	if (valid <= 0)
+ 		return valid;
  
- struct dentry {
+-	if (flags & LOOKUP_RCU) {
+-		parent = READ_ONCE(dentry->d_parent);
+-		dir = d_inode_rcu(parent);
+-		if (!dir)
+-			return -ECHILD;
+-		inode = d_inode_rcu(dentry);
+-	} else {
+-		parent = dget_parent(dentry);
+-		dir = d_inode(parent);
+-		inode = d_inode(dentry);
+-	}
++	inode = d_inode_rcu(dentry);
+ 
+ 	doutc(cl, "%p '%pd' inode %p offset 0x%llx nokey %d\n",
+ 	      dentry, dentry, inode, ceph_dentry(dentry)->offset,
+@@ -2039,9 +2028,6 @@ static int ceph_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 	doutc(cl, "%p '%pd' %s\n", dentry, dentry, valid ? "valid" : "invalid");
+ 	if (!valid)
+ 		ceph_dir_clear_complete(dir);
+-
+-	if (!(flags & LOOKUP_RCU))
+-		dput(parent);
+ 	return valid;
+ }
+ 
 -- 
 2.39.5
 
