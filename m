@@ -1,33 +1,33 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7032157E88;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3B54157E99;
 	Thu, 16 Jan 2025 05:23:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737005004; cv=none; b=PAirpko2MqnnbziI4PiWtYNeJbhlhtZAyFaZcwKgp0GyqWgOodyeol/TB9/nIGNRzIwP7p5axWvZ3s0BVHby7a6AtSySkXOTJ6TUnKRSQ3fq9Y+9eEwigQlJOEf7PHdXKvOTX4MSvMlEc3v35PbPDwQsJXuYkJ3ZS2V6mHbKUBU=
+	t=1737005004; cv=none; b=tcpKv1r8PMAJG8bh4VUP/oJy0G1Qmc/QdF5rG9qcS65kdr552GS3e1gIwlFGZwUxfXbXD0SAZ+6dYSrtspmSe6e3qn166Dv9X1/W4QnSrFaBa7yfpva6Nfz7xkTZidweBeQsSYjvM/ZdHIO8714QXD09Akt8LXCusFl+BLspvzM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1737005004; c=relaxed/simple;
-	bh=pebguC7yBaT1CfCeU8IoKa1qp9w/nenKal0WBuZHXFo=;
+	bh=iMTwkherERqG2jXg3Z7V0S70qleyzVs7qz0zbFHx5Ic=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=m4BB6yvjgXiHc4tVoj7IB1r/uOjNsrXrI4HmOvBH/MUwbCwjtP1WyXlKtBsCVJKIUxi3KRQaE+4lh8B9i7Ai6qk+za8MO7gqnIIFpKn5bl3hNEpNctUSM1+EstyE+qFuWvWQScIBc6dnLwR6gMQUrTjpsVsmJSQxLPXGIWKikUc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=wvZL/YdY; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=fwGyDWsV/bjZPvh+GHfqxfMXQQpQo7cyCl9evRF6Fk6vX2HCLgzYk+Q31NEc+kjAMYgnFJf6/iwuRStjuuvKHnx4vLGTko48VPLZVDse0Go9YwUnq7/m+w95gQqePnZUTZCftqGsXB9i1c/7sgurEIm1EPx7+ufa3tIs52REPRs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=JGIH7BoS; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="wvZL/YdY"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="JGIH7BoS"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=1cyqCeqgV8SV7Bbn/l88t8DR8FQG+BtXpkABEHx6sIY=; b=wvZL/YdYkWVnTwHOXUHFTY6W3b
-	yk9UoduAo7QTUfwIYCigCZdTqBSz9oOdVirOO3iCV7bew+mFvhaP38vkWe5o7d/Wtv5dAsN+aYvD7
-	+PW89IAB2WFqIkf3JEKQEf32WVHiqfiMDnXCR1L7b8MvSAOds5908z69ET8ZdAAdiQIx9O2rEb3Vy
-	lXO3iOVD35LSQBwGzcqXN2e3M+Zdk64wRjilH1nJuKTi7arvYAsYnGDL0cQc/Im4ihEYAI+aZepup
-	YfD+IXfMR6P3mI40/2LYNS8/28n2ttiCmUEAz8CHOFpvfGJe/yBZhH3sDeJ2WzOk3XYTlK5gfBE1R
-	rBb8csRg==;
+	bh=Si/uF5hJcqrfgE3sJVbSurvV2+6YdEKTgvQSMpIDyZU=; b=JGIH7BoSvquH4mljBFOFL33SqZ
+	1+0Ue1ZYcT/ni3cNLHRvp/9nuBRN17oOadHldxhUmvlYngw2dQ1TNO34TqwDchO/0L19UFDzcTAwB
+	GnCl74DvDXpb4m51dIJONoJ8Oj+/anfC4z5mA5Jm5iG3d79/gk+2EmXWeqCTpAJr9d2J4LE9HuW0O
+	9UrScuq6S7GL9FzMMGDBp3eDUb7uXerAOfBVBZEf4kh3hm/R3goQrUYvaFs6kEPfVXcIQ+L1sKNNg
+	CGGztT1vQ1VEJhZnDEE0s6PIoFM5RdrnrCiK3DD8hsZS51hWIJUAOlJcbBN9IBeTNA9Ww9atWYO90
+	hu8XYfeQ==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1tYILg-000000022Ir-0n2j;
+	id 1tYILg-000000022If-03bP;
 	Thu, 16 Jan 2025 05:23:20 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
@@ -42,9 +42,9 @@ Cc: agruenba@redhat.com,
 	linux-nfs@vger.kernel.org,
 	miklos@szeredi.hu,
 	torvalds@linux-foundation.org
-Subject: [PATCH v2 20/20] 9p: fix ->rename_sem exclusion
-Date: Thu, 16 Jan 2025 05:23:17 +0000
-Message-ID: <20250116052317.485356-20-viro@zeniv.linux.org.uk>
+Subject: [PATCH v2 18/20] ocfs2_dentry_revalidate(): use stable parent inode and name passed by caller
+Date: Thu, 16 Jan 2025 05:23:15 +0000
+Message-ID: <20250116052317.485356-18-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.47.1
 In-Reply-To: <20250116052317.485356-1-viro@zeniv.linux.org.uk>
 References: <20250116052103.GF1977892@ZenIV>
@@ -58,188 +58,44 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-9p wants to be able to build a path from given dentry to fs root and keep
-it valid over a blocking operation.
+theoretically, ->d_name use in there is a UAF, but only if you are messing with
+tracepoints...
 
-->s_vfs_rename_mutex would be a natural candidate, but there are places
-where we need that and where we have no way to tell if ->s_vfs_rename_mutex
-is already held deeper in callchain.  Moreover, it's only held for
-cross-directory renames; name changes within the same directory happen
-without it.
-
-Solution:
-	* have d_move() done in ->rename() rather than in its caller
-	* maintain a 9p-private rwsem (per-filesystem)
-	* hold it exclusive over the relevant part of ->rename()
-	* hold it shared over the places where we want the path.
-
-That almost works.  FS_RENAME_DOES_D_MOVE is enough to put all d_move()
-and d_exchange() calls under filesystem's control.  However, there's
-also __d_unalias(), which isn't covered by any of that.
-
-If ->lookup() hits a directory inode with preexisting dentry elsewhere
-(due to e.g. rename done on server behind our back), d_splice_alias()
-called by ->lookup() will move/rename that alias.
-
-Add a couple of optional methods, so that __d_unalias() would do
-	if alias->d_op->d_unalias_trylock != NULL
-		if (!alias->d_op->d_unalias_trylock(alias))
-			fail (resulting in -ESTALE from lookup)
-	__d_move(...)
-	if alias->d_op->d_unalias_unlock != NULL
-		alias->d_unalias_unlock(alias)
-where it currently does __d_move().  9p instances do down_write_trylock()
-and up_write() of ->rename_mutex.
-
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- Documentation/filesystems/locking.rst |  4 ++++
- Documentation/filesystems/vfs.rst     | 21 +++++++++++++++++++++
- fs/9p/v9fs.h                          |  2 +-
- fs/9p/vfs_dentry.c                    | 16 ++++++++++++++++
- fs/dcache.c                           |  5 +++++
- include/linux/dcache.h                |  2 ++
- 6 files changed, 49 insertions(+), 1 deletion(-)
+ fs/ocfs2/dcache.c | 11 +++--------
+ 1 file changed, 3 insertions(+), 8 deletions(-)
 
-diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-index 146e7d8aa736..d20a32b77b60 100644
---- a/Documentation/filesystems/locking.rst
-+++ b/Documentation/filesystems/locking.rst
-@@ -31,6 +31,8 @@ prototypes::
- 	struct vfsmount *(*d_automount)(struct path *path);
- 	int (*d_manage)(const struct path *, bool);
- 	struct dentry *(*d_real)(struct dentry *, enum d_real_type type);
-+	bool (*d_unalias_trylock)(const struct dentry *);
-+	void (*d_unalias_unlock)(const struct dentry *);
+diff --git a/fs/ocfs2/dcache.c b/fs/ocfs2/dcache.c
+index ecb1ce6301c4..1873bbbb7e5b 100644
+--- a/fs/ocfs2/dcache.c
++++ b/fs/ocfs2/dcache.c
+@@ -45,8 +45,7 @@ static int ocfs2_dentry_revalidate(struct inode *dir, const struct qstr *name,
+ 	inode = d_inode(dentry);
+ 	osb = OCFS2_SB(dentry->d_sb);
  
- locking rules:
+-	trace_ocfs2_dentry_revalidate(dentry, dentry->d_name.len,
+-				      dentry->d_name.name);
++	trace_ocfs2_dentry_revalidate(dentry, name->len, name->name);
  
-@@ -50,6 +52,8 @@ d_dname:	   no		no		no		no
- d_automount:	   no		no		yes		no
- d_manage:	   no		no		yes (ref-walk)	maybe
- d_real		   no		no		yes 		no
-+d_unalias_trylock  yes		no		no 		no
-+d_unalias_unlock   yes		no		no 		no
- ================== ===========	========	==============	========
- 
- inode_operations
-diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
-index 7c352ebaae98..31eea688609a 100644
---- a/Documentation/filesystems/vfs.rst
-+++ b/Documentation/filesystems/vfs.rst
-@@ -1265,6 +1265,8 @@ defined:
- 		struct vfsmount *(*d_automount)(struct path *);
- 		int (*d_manage)(const struct path *, bool);
- 		struct dentry *(*d_real)(struct dentry *, enum d_real_type type);
-+		bool (*d_unalias_trylock)(const struct dentry *);
-+		void (*d_unalias_unlock)(const struct dentry *);
- 	};
- 
- ``d_revalidate``
-@@ -1428,6 +1430,25 @@ defined:
- 
- 	For non-regular files, the 'dentry' argument is returned.
- 
-+``d_unalias_trylock``
-+	if present, will be called by d_splice_alias() before moving a
-+	preexisting attached alias.  Returning false prevents __d_move(),
-+	making d_splice_alias() fail with -ESTALE.
-+
-+	Rationale: setting FS_RENAME_DOES_D_MOVE will prevent d_move()
-+	and d_exchange() calls from the outside of filesystem methods;
-+	however, it does not guarantee that attached dentries won't
-+	be renamed or moved by d_splice_alias() finding a preexisting
-+	alias for a directory inode.  Normally we would not care;
-+	however, something that wants to stabilize the entire path to
-+	root over a blocking operation might need that.  See 9p for one
-+	(and hopefully only) example.
-+
-+``d_unalias_unlock``
-+	should be paired with ``d_unalias_trylock``; that one is called after
-+	__d_move() call in __d_unalias().
-+
-+
- Each dentry has a pointer to its parent dentry, as well as a hash list
- of child dentries.  Child dentries are basically like files in a
- directory.
-diff --git a/fs/9p/v9fs.h b/fs/9p/v9fs.h
-index 698c43dd5dc8..f28bc763847a 100644
---- a/fs/9p/v9fs.h
-+++ b/fs/9p/v9fs.h
-@@ -202,7 +202,7 @@ static inline struct v9fs_session_info *v9fs_inode2v9ses(struct inode *inode)
- 	return inode->i_sb->s_fs_info;
- }
- 
--static inline struct v9fs_session_info *v9fs_dentry2v9ses(struct dentry *dentry)
-+static inline struct v9fs_session_info *v9fs_dentry2v9ses(const struct dentry *dentry)
- {
- 	return dentry->d_sb->s_fs_info;
- }
-diff --git a/fs/9p/vfs_dentry.c b/fs/9p/vfs_dentry.c
-index 872c1abe3295..5061f192eafd 100644
---- a/fs/9p/vfs_dentry.c
-+++ b/fs/9p/vfs_dentry.c
-@@ -105,14 +105,30 @@ static int v9fs_lookup_revalidate(struct inode *dir, const struct qstr *name,
- 	return __v9fs_lookup_revalidate(dentry, flags);
- }
- 
-+static bool v9fs_dentry_unalias_trylock(const struct dentry *dentry)
-+{
-+	struct v9fs_session_info *v9ses = v9fs_dentry2v9ses(dentry);
-+	return down_write_trylock(&v9ses->rename_sem);
-+}
-+
-+static void v9fs_dentry_unalias_unlock(const struct dentry *dentry)
-+{
-+	struct v9fs_session_info *v9ses = v9fs_dentry2v9ses(dentry);
-+	up_write(&v9ses->rename_sem);
-+}
-+
- const struct dentry_operations v9fs_cached_dentry_operations = {
- 	.d_revalidate = v9fs_lookup_revalidate,
- 	.d_weak_revalidate = __v9fs_lookup_revalidate,
- 	.d_delete = v9fs_cached_dentry_delete,
- 	.d_release = v9fs_dentry_release,
-+	.d_unalias_trylock = v9fs_dentry_unalias_trylock,
-+	.d_unalias_unlock = v9fs_dentry_unalias_unlock,
- };
- 
- const struct dentry_operations v9fs_dentry_operations = {
- 	.d_delete = always_delete_dentry,
- 	.d_release = v9fs_dentry_release,
-+	.d_unalias_trylock = v9fs_dentry_unalias_trylock,
-+	.d_unalias_unlock = v9fs_dentry_unalias_unlock,
- };
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 6f36d3e8c739..695406e48937 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -2961,7 +2961,12 @@ static int __d_unalias(struct dentry *dentry, struct dentry *alias)
- 		goto out_err;
- 	m2 = &alias->d_parent->d_inode->i_rwsem;
- out_unalias:
-+	if (alias->d_op->d_unalias_trylock &&
-+	    !alias->d_op->d_unalias_trylock(alias))
-+		goto out_err;
- 	__d_move(alias, dentry, false);
-+	if (alias->d_op->d_unalias_unlock)
-+		alias->d_op->d_unalias_unlock(alias);
- 	ret = 0;
- out_err:
- 	if (m2)
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index 4a6bdadf2f29..9a1a30857763 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -159,6 +159,8 @@ struct dentry_operations {
- 	struct vfsmount *(*d_automount)(struct path *);
- 	int (*d_manage)(const struct path *, bool);
- 	struct dentry *(*d_real)(struct dentry *, enum d_real_type type);
-+	bool (*d_unalias_trylock)(const struct dentry *);
-+	void (*d_unalias_unlock)(const struct dentry *);
- } ____cacheline_aligned;
- 
- /*
+ 	/* For a negative dentry -
+ 	 * check the generation number of the parent and compare with the
+@@ -54,12 +53,8 @@ static int ocfs2_dentry_revalidate(struct inode *dir, const struct qstr *name,
+ 	 */
+ 	if (inode == NULL) {
+ 		unsigned long gen = (unsigned long) dentry->d_fsdata;
+-		unsigned long pgen;
+-		spin_lock(&dentry->d_lock);
+-		pgen = OCFS2_I(d_inode(dentry->d_parent))->ip_dir_lock_gen;
+-		spin_unlock(&dentry->d_lock);
+-		trace_ocfs2_dentry_revalidate_negative(dentry->d_name.len,
+-						       dentry->d_name.name,
++		unsigned long pgen = OCFS2_I(dir)->ip_dir_lock_gen;
++		trace_ocfs2_dentry_revalidate_negative(name->len, name->name,
+ 						       pgen, gen);
+ 		if (gen != pgen)
+ 			goto bail;
 -- 
 2.39.5
 
