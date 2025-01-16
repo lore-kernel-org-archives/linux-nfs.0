@@ -1,34 +1,34 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3B54157E99;
-	Thu, 16 Jan 2025 05:23:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A90C9155335;
+	Thu, 16 Jan 2025 05:23:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737005004; cv=none; b=tcpKv1r8PMAJG8bh4VUP/oJy0G1Qmc/QdF5rG9qcS65kdr552GS3e1gIwlFGZwUxfXbXD0SAZ+6dYSrtspmSe6e3qn166Dv9X1/W4QnSrFaBa7yfpva6Nfz7xkTZidweBeQsSYjvM/ZdHIO8714QXD09Akt8LXCusFl+BLspvzM=
+	t=1737005004; cv=none; b=iCM9LRJSOYfiyV8vVzwY3hXymSjkr0Kfbd0YNntYdTxRQw4o8EtFLer261rjBn69pbLRk0y5YfT+MF1FVdVSgXlN1cpJTpCvpkpGr69XArWCug3avP78jpxDmn7gm7lSiHrpZ3buDeoZcbia2YvCqClx8fzKfxTmfHUhoylbgow=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1737005004; c=relaxed/simple;
-	bh=iMTwkherERqG2jXg3Z7V0S70qleyzVs7qz0zbFHx5Ic=;
+	bh=xll445NA9CDt1doNqJg5AW6QYeiL0uC7l/8N2NBaxd4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=fwGyDWsV/bjZPvh+GHfqxfMXQQpQo7cyCl9evRF6Fk6vX2HCLgzYk+Q31NEc+kjAMYgnFJf6/iwuRStjuuvKHnx4vLGTko48VPLZVDse0Go9YwUnq7/m+w95gQqePnZUTZCftqGsXB9i1c/7sgurEIm1EPx7+ufa3tIs52REPRs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=JGIH7BoS; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=AK1uMLMKPIFvRcmsr2Wmjd/IEJlNs3J9kWxEuWhqOe4aSGHW+RCm+MxVNOvwvSwT7WaMMTT3pyHsl4OLwoPDOUdV4+jZaEfN4d1sPaxah9x+M62HX99czjaCUXOW6+A72/Zw0eYm3qK3todKWg7JiKQvc58LAqS3TNpMhEIDFcw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=RkwD0Hiw; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="JGIH7BoS"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="RkwD0Hiw"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=Si/uF5hJcqrfgE3sJVbSurvV2+6YdEKTgvQSMpIDyZU=; b=JGIH7BoSvquH4mljBFOFL33SqZ
-	1+0Ue1ZYcT/ni3cNLHRvp/9nuBRN17oOadHldxhUmvlYngw2dQ1TNO34TqwDchO/0L19UFDzcTAwB
-	GnCl74DvDXpb4m51dIJONoJ8Oj+/anfC4z5mA5Jm5iG3d79/gk+2EmXWeqCTpAJr9d2J4LE9HuW0O
-	9UrScuq6S7GL9FzMMGDBp3eDUb7uXerAOfBVBZEf4kh3hm/R3goQrUYvaFs6kEPfVXcIQ+L1sKNNg
-	CGGztT1vQ1VEJhZnDEE0s6PIoFM5RdrnrCiK3DD8hsZS51hWIJUAOlJcbBN9IBeTNA9Ww9atWYO90
-	hu8XYfeQ==;
+	bh=XkQHyBfy7cWsOFwEw1uqtx8wpSFb7k25tuptSzuWiIg=; b=RkwD0Hiw47jqgq1vxgerh6EEMO
+	MJRHUuV3IbAc7j1ycIRU0aE1K8XbiocesKhdPZzk10aMcuNoGe1cP9Ila+Ep5lfpRNCJUDKsgxLa7
+	cgHAYKar/9bFBrBl1qZZmt7M0No0CnVmrED10Acxlir3GsJSU7vjpgO1w9eachv1iLsZEXdYIZ/v7
+	CM3TOcppJ+wnBjxMT9qfSxi+6yUKDJGjsK0YRX5jUuVh6f2b8F+Aw/U7ftnAuaqT+nmkC+fAhS68J
+	fZLVLNmjLVJilLZ1VmZZD09nLrvjBmIqPCtozvDUnl6ugI984PtzD2uhCIwtxRPeDMDGRZlmsmxcF
+	yQT89Rfw==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1tYILg-000000022If-03bP;
-	Thu, 16 Jan 2025 05:23:20 +0000
+	id 1tYILf-000000022HN-0YNg;
+	Thu, 16 Jan 2025 05:23:19 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
 Cc: agruenba@redhat.com,
@@ -42,9 +42,9 @@ Cc: agruenba@redhat.com,
 	linux-nfs@vger.kernel.org,
 	miklos@szeredi.hu,
 	torvalds@linux-foundation.org
-Subject: [PATCH v2 18/20] ocfs2_dentry_revalidate(): use stable parent inode and name passed by caller
-Date: Thu, 16 Jan 2025 05:23:15 +0000
-Message-ID: <20250116052317.485356-18-viro@zeniv.linux.org.uk>
+Subject: [PATCH v2 11/20] fscrypt_d_revalidate(): use stable parent inode passed by caller
+Date: Thu, 16 Jan 2025 05:23:08 +0000
+Message-ID: <20250116052317.485356-11-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.47.1
 In-Reply-To: <20250116052317.485356-1-viro@zeniv.linux.org.uk>
 References: <20250116052103.GF1977892@ZenIV>
@@ -58,44 +58,67 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-theoretically, ->d_name use in there is a UAF, but only if you are messing with
-tracepoints...
+The only thing it's using is parent directory inode and we are already
+given a stable reference to that - no need to bother with boilerplate.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/ocfs2/dcache.c | 11 +++--------
- 1 file changed, 3 insertions(+), 8 deletions(-)
+ fs/crypto/fname.c | 21 +++++----------------
+ 1 file changed, 5 insertions(+), 16 deletions(-)
 
-diff --git a/fs/ocfs2/dcache.c b/fs/ocfs2/dcache.c
-index ecb1ce6301c4..1873bbbb7e5b 100644
---- a/fs/ocfs2/dcache.c
-+++ b/fs/ocfs2/dcache.c
-@@ -45,8 +45,7 @@ static int ocfs2_dentry_revalidate(struct inode *dir, const struct qstr *name,
- 	inode = d_inode(dentry);
- 	osb = OCFS2_SB(dentry->d_sb);
+diff --git a/fs/crypto/fname.c b/fs/crypto/fname.c
+index 389f5b2bf63b..010f9c0a4c2f 100644
+--- a/fs/crypto/fname.c
++++ b/fs/crypto/fname.c
+@@ -574,12 +574,10 @@ EXPORT_SYMBOL_GPL(fscrypt_fname_siphash);
+  * Validate dentries in encrypted directories to make sure we aren't potentially
+  * caching stale dentries after a key has been added.
+  */
+-int fscrypt_d_revalidate(struct inode *parent_dir, const struct qstr *name,
++int fscrypt_d_revalidate(struct inode *dir, const struct qstr *name,
+ 			 struct dentry *dentry, unsigned int flags)
+ {
+-	struct dentry *dir;
+ 	int err;
+-	int valid;
  
--	trace_ocfs2_dentry_revalidate(dentry, dentry->d_name.len,
--				      dentry->d_name.name);
-+	trace_ocfs2_dentry_revalidate(dentry, name->len, name->name);
- 
- 	/* For a negative dentry -
- 	 * check the generation number of the parent and compare with the
-@@ -54,12 +53,8 @@ static int ocfs2_dentry_revalidate(struct inode *dir, const struct qstr *name,
+ 	/*
+ 	 * Plaintext names are always valid, since fscrypt doesn't support
+@@ -592,30 +590,21 @@ int fscrypt_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 	/*
+ 	 * No-key name; valid if the directory's key is still unavailable.
+ 	 *
+-	 * Although fscrypt forbids rename() on no-key names, we still must use
+-	 * dget_parent() here rather than use ->d_parent directly.  That's
+-	 * because a corrupted fs image may contain directory hard links, which
+-	 * the VFS handles by moving the directory's dentry tree in the dcache
+-	 * each time ->lookup() finds the directory and it already has a dentry
+-	 * elsewhere.  Thus ->d_parent can be changing, and we must safely grab
+-	 * a reference to some ->d_parent to prevent it from being freed.
++	 * Note in RCU mode we have to bail if we get here -
++	 * fscrypt_get_encryption_info() may block.
  	 */
- 	if (inode == NULL) {
- 		unsigned long gen = (unsigned long) dentry->d_fsdata;
--		unsigned long pgen;
--		spin_lock(&dentry->d_lock);
--		pgen = OCFS2_I(d_inode(dentry->d_parent))->ip_dir_lock_gen;
--		spin_unlock(&dentry->d_lock);
--		trace_ocfs2_dentry_revalidate_negative(dentry->d_name.len,
--						       dentry->d_name.name,
-+		unsigned long pgen = OCFS2_I(dir)->ip_dir_lock_gen;
-+		trace_ocfs2_dentry_revalidate_negative(name->len, name->name,
- 						       pgen, gen);
- 		if (gen != pgen)
- 			goto bail;
+ 
+ 	if (flags & LOOKUP_RCU)
+ 		return -ECHILD;
+ 
+-	dir = dget_parent(dentry);
+ 	/*
+ 	 * Pass allow_unsupported=true, so that files with an unsupported
+ 	 * encryption policy can be deleted.
+ 	 */
+-	err = fscrypt_get_encryption_info(d_inode(dir), true);
+-	valid = !fscrypt_has_encryption_key(d_inode(dir));
+-	dput(dir);
+-
++	err = fscrypt_get_encryption_info(dir, true);
+ 	if (err < 0)
+ 		return err;
+ 
+-	return valid;
++	return !fscrypt_has_encryption_key(dir);
+ }
+ EXPORT_SYMBOL_GPL(fscrypt_d_revalidate);
 -- 
 2.39.5
 
