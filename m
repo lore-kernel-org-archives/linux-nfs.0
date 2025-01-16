@@ -1,33 +1,33 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 31BBE142E77;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A7C313B58C;
 	Thu, 16 Jan 2025 05:23:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737005003; cv=none; b=hXQNmen37SWkaECt2oEPAsTFBI5kLW5Qp0J/z6smGWBQUImSGFaAI4GpyH1AfVgfaEy0iT5Mr3pcSuNvkQudFoUgNMh0FkhZeCUhorlTNxSQRrSp3t/Ymbv5vY15TAxP3Fr3xEUu3pzoFlp9Q842ltqupw3e76MGnEHuQiOyjgI=
+	t=1737005003; cv=none; b=eOcaSoin2jFfBgnqaJXQ0is1aT7sudycbvD3s+SQIBA0MIX9buiVbVf6ENgNilPFtcqYNLSNV9uvxOyk4C+GGA//4XFKueNXVFAE7TgA6/di4+OKTWVLUQb+fi0G4AgFRQeBFoWJP5Vim51+wul7mGdvzg+D36B/wTthPNYm7mU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1737005003; c=relaxed/simple;
-	bh=0pqd3ZnC5nmSvMGsKhNDRjsnFN8uYOov2iGfFQiLndg=;
+	bh=zIxB/xfAqHlBcdiFDzVxYd4JOE7HAWWShfu+sT0UAAk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=iphwAE3ZFoLGtgjZjKmzq9jlCQ9jjZLd0DlPsXLayulDUBZo/szEchRE6QvKWPt7u7EtdWVaZcMsecVpsubbF6jkNJYPlNoHLbl3XXGwQYKuofFsRRXJLzoPq+BCE45jlDVnzJO3EJQA+k6u2R68Q93intlbsqKgPH+fxj1i6CI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=dZ+xa51p; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=ZXgS6Ch8HoDi6hlbAQkBa/VgkMAyWL4vroTWklkcvhnZ6nM7WRPG82bswZci9eqCwpvsJMsdfEIUlKva2n5DQCQ2EZmjjR/v1gVnH06f/TsG70w6A7IYdBfywvjS8KqTxgVZ90mEiCroDtAvKPmtbHQSGF5BqIxU0dLiTngyicI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=dJc8U299; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="dZ+xa51p"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="dJc8U299"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=6yQSgsSx/EuQvVjcfKOTYxHSiedk1IAz8gfPawD+vP8=; b=dZ+xa51palQlKdW7TAes/6yE/X
-	C0lZaf4VkBOdhjuzzA3OksVZaRuZJ95AXrBw5/uB3WeeKKfu8EzRH4Y/o7UkYg4n/+3k+LuOc5Sui
-	PFrNxiDMDejMj/DIXSQ05Zqvk3wGS/ISRJRI6u4XZ7dVAjrmnGZbJrGYW1GZP28CQrxwYx/WxU/21
-	OLjDOb1a8/uM9+yCZZhfa+yBVL4OZaVP/dd4vWGKB03LhXVA4cbr45aPPYJ1sWyDbZaGHEtEdOmWH
-	UGSh6Dj4xwSlts2srFFLBuYlBWVLiMdb6mBrTcB7izXFg637RxyXiLGCuqHkK4n70Rq3GZYn6FuKe
-	TzJWS9kw==;
+	bh=0buG/7OZs9jtxpEEdWaf0bfk6vfpuorY4d+pCDs2m78=; b=dJc8U299mNNn8jgx/YIKoRb837
+	e7dEF7nWCaO0UqeNv/HsIjhfID9i2ZXJqYerN8W3ECyON/EZKxEX5MGNLUX16G+2OGHVMVYgd4ZW7
+	U7Br+xTwL4yZK3cWNVonopYjLmvrXBmagpTHYvSX0DbdoXakK9bPmBicAB7b0lV3X8sXWd3nqESlQ
+	fs4EsNJ7j0KJJUqcxERjP5Y44lSQFOYYerVLFtEX7zyYjMRQRqx0isR74fHOkwL2YhnNMF+jZnz60
+	VTOaZeDQRbK6kJxNZywdVSDwp/WP5pzU3nCvZSZcbvMHFWPSrzdSWEzTxnGRQJWFbDk4ZmHRFG7pd
+	KSdps7CA==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1tYILe-000000022Gk-3E8T;
+	id 1tYILe-000000022Gb-26TO;
 	Thu, 16 Jan 2025 05:23:18 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
@@ -42,9 +42,9 @@ Cc: agruenba@redhat.com,
 	linux-nfs@vger.kernel.org,
 	miklos@szeredi.hu,
 	torvalds@linux-foundation.org
-Subject: [PATCH v2 08/20] afs_d_revalidate(): use stable name and parent inode passed by caller
-Date: Thu, 16 Jan 2025 05:23:05 +0000
-Message-ID: <20250116052317.485356-8-viro@zeniv.linux.org.uk>
+Subject: [PATCH v2 05/20] ext4 fast_commit: make use of name_snapshot primitives
+Date: Thu, 16 Jan 2025 05:23:02 +0000
+Message-ID: <20250116052317.485356-5-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.47.1
 In-Reply-To: <20250116052317.485356-1-viro@zeniv.linux.org.uk>
 References: <20250116052103.GF1977892@ZenIV>
@@ -58,133 +58,98 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-No need to bother with boilerplate for obtaining the latter and for
-the former we really should not count upon ->d_name.name remaining
-stable under us.
+... rather than open-coding them.  As a bonus, that avoids the pointless
+work with extra allocations, etc. for long names.
 
+Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/afs/dir.c | 34 ++++++++--------------------------
- 1 file changed, 8 insertions(+), 26 deletions(-)
+ fs/ext4/fast_commit.c | 29 +++++------------------------
+ fs/ext4/fast_commit.h |  3 +--
+ 2 files changed, 6 insertions(+), 26 deletions(-)
 
-diff --git a/fs/afs/dir.c b/fs/afs/dir.c
-index 9780013cd83a..c6ee6257d4c6 100644
---- a/fs/afs/dir.c
-+++ b/fs/afs/dir.c
-@@ -607,19 +607,19 @@ static bool afs_lookup_one_filldir(struct dir_context *ctx, const char *name,
-  * Do a lookup of a single name in a directory
-  * - just returns the FID the dentry name maps to if found
-  */
--static int afs_do_lookup_one(struct inode *dir, struct dentry *dentry,
-+static int afs_do_lookup_one(struct inode *dir, const struct qstr *name,
- 			     struct afs_fid *fid, struct key *key,
- 			     afs_dataversion_t *_dir_version)
+diff --git a/fs/ext4/fast_commit.c b/fs/ext4/fast_commit.c
+index 26c4fc37edcf..da4263a14a20 100644
+--- a/fs/ext4/fast_commit.c
++++ b/fs/ext4/fast_commit.c
+@@ -322,9 +322,7 @@ void ext4_fc_del(struct inode *inode)
+ 	WARN_ON(!list_empty(&ei->i_fc_dilist));
+ 	spin_unlock(&sbi->s_fc_lock);
+ 
+-	if (fc_dentry->fcd_name.name &&
+-		fc_dentry->fcd_name.len > DNAME_INLINE_LEN)
+-		kfree(fc_dentry->fcd_name.name);
++	release_dentry_name_snapshot(&fc_dentry->fcd_name);
+ 	kmem_cache_free(ext4_fc_dentry_cachep, fc_dentry);
+ 
+ 	return;
+@@ -449,22 +447,7 @@ static int __track_dentry_update(handle_t *handle, struct inode *inode,
+ 	node->fcd_op = dentry_update->op;
+ 	node->fcd_parent = dir->i_ino;
+ 	node->fcd_ino = inode->i_ino;
+-	if (dentry->d_name.len > DNAME_INLINE_LEN) {
+-		node->fcd_name.name = kmalloc(dentry->d_name.len, GFP_NOFS);
+-		if (!node->fcd_name.name) {
+-			kmem_cache_free(ext4_fc_dentry_cachep, node);
+-			ext4_fc_mark_ineligible(sb, EXT4_FC_REASON_NOMEM, handle);
+-			mutex_lock(&ei->i_fc_lock);
+-			return -ENOMEM;
+-		}
+-		memcpy((u8 *)node->fcd_name.name, dentry->d_name.name,
+-			dentry->d_name.len);
+-	} else {
+-		memcpy(node->fcd_iname, dentry->d_name.name,
+-			dentry->d_name.len);
+-		node->fcd_name.name = node->fcd_iname;
+-	}
+-	node->fcd_name.len = dentry->d_name.len;
++	take_dentry_name_snapshot(&node->fcd_name, dentry);
+ 	INIT_LIST_HEAD(&node->fcd_dilist);
+ 	spin_lock(&sbi->s_fc_lock);
+ 	if (sbi->s_journal->j_flags & JBD2_FULL_COMMIT_ONGOING ||
+@@ -832,7 +815,7 @@ static bool ext4_fc_add_dentry_tlv(struct super_block *sb, u32 *crc,
  {
- 	struct afs_super_info *as = dir->i_sb->s_fs_info;
- 	struct afs_lookup_one_cookie cookie = {
- 		.ctx.actor = afs_lookup_one_filldir,
--		.name = dentry->d_name,
-+		.name = *name,
- 		.fid.vid = as->volume->vid
- 	};
- 	int ret;
+ 	struct ext4_fc_dentry_info fcd;
+ 	struct ext4_fc_tl tl;
+-	int dlen = fc_dentry->fcd_name.len;
++	int dlen = fc_dentry->fcd_name.name.len;
+ 	u8 *dst = ext4_fc_reserve_space(sb,
+ 			EXT4_FC_TAG_BASE_LEN + sizeof(fcd) + dlen, crc);
  
--	_enter("{%lu},%p{%pd},", dir->i_ino, dentry, dentry);
-+	_enter("{%lu},{%s},", dir->i_ino, name->name);
+@@ -847,7 +830,7 @@ static bool ext4_fc_add_dentry_tlv(struct super_block *sb, u32 *crc,
+ 	dst += EXT4_FC_TAG_BASE_LEN;
+ 	memcpy(dst, &fcd, sizeof(fcd));
+ 	dst += sizeof(fcd);
+-	memcpy(dst, fc_dentry->fcd_name.name, dlen);
++	memcpy(dst, fc_dentry->fcd_name.name.name, dlen);
  
- 	/* search the directory */
- 	ret = afs_dir_iterate(dir, &cookie.ctx, key, _dir_version);
-@@ -1052,21 +1052,12 @@ static struct dentry *afs_lookup(struct inode *dir, struct dentry *dentry,
- /*
-  * Check the validity of a dentry under RCU conditions.
-  */
--static int afs_d_revalidate_rcu(struct dentry *dentry)
-+static int afs_d_revalidate_rcu(struct afs_vnode *dvnode, struct dentry *dentry)
- {
--	struct afs_vnode *dvnode;
--	struct dentry *parent;
--	struct inode *dir;
- 	long dir_version, de_version;
+ 	return true;
+ }
+@@ -1328,9 +1311,7 @@ static void ext4_fc_cleanup(journal_t *journal, int full, tid_t tid)
+ 		list_del_init(&fc_dentry->fcd_dilist);
+ 		spin_unlock(&sbi->s_fc_lock);
  
- 	_enter("%p", dentry);
- 
--	/* Check the parent directory is still valid first. */
--	parent = READ_ONCE(dentry->d_parent);
--	dir = d_inode_rcu(parent);
--	if (!dir)
--		return -ECHILD;
--	dvnode = AFS_FS_I(dir);
- 	if (test_bit(AFS_VNODE_DELETED, &dvnode->flags))
- 		return -ECHILD;
- 
-@@ -1097,9 +1088,8 @@ static int afs_d_revalidate_rcu(struct dentry *dentry)
- static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
- 			    struct dentry *dentry, unsigned int flags)
- {
--	struct afs_vnode *vnode, *dir;
-+	struct afs_vnode *vnode, *dir = AFS_FS_I(parent_dir);
- 	struct afs_fid fid;
--	struct dentry *parent;
- 	struct inode *inode;
- 	struct key *key;
- 	afs_dataversion_t dir_version, invalid_before;
-@@ -1107,7 +1097,7 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
- 	int ret;
- 
- 	if (flags & LOOKUP_RCU)
--		return afs_d_revalidate_rcu(dentry);
-+		return afs_d_revalidate_rcu(dir, dentry);
- 
- 	if (d_really_is_positive(dentry)) {
- 		vnode = AFS_FS_I(d_inode(dentry));
-@@ -1122,14 +1112,9 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
- 	if (IS_ERR(key))
- 		key = NULL;
- 
--	/* Hold the parent dentry so we can peer at it */
--	parent = dget_parent(dentry);
--	dir = AFS_FS_I(d_inode(parent));
--
- 	/* validate the parent directory */
- 	ret = afs_validate(dir, key);
- 	if (ret == -ERESTARTSYS) {
--		dput(parent);
- 		key_put(key);
- 		return ret;
+-		if (fc_dentry->fcd_name.name &&
+-			fc_dentry->fcd_name.len > DNAME_INLINE_LEN)
+-			kfree(fc_dentry->fcd_name.name);
++		release_dentry_name_snapshot(&fc_dentry->fcd_name);
+ 		kmem_cache_free(ext4_fc_dentry_cachep, fc_dentry);
+ 		spin_lock(&sbi->s_fc_lock);
  	}
-@@ -1157,7 +1142,7 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
- 	afs_stat_v(dir, n_reval);
- 
- 	/* search the directory for this vnode */
--	ret = afs_do_lookup_one(&dir->netfs.inode, dentry, &fid, key, &dir_version);
-+	ret = afs_do_lookup_one(&dir->netfs.inode, name, &fid, key, &dir_version);
- 	switch (ret) {
- 	case 0:
- 		/* the filename maps to something */
-@@ -1201,22 +1186,19 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
- 		goto out_valid;
- 
- 	default:
--		_debug("failed to iterate dir %pd: %d",
--		       parent, ret);
-+		_debug("failed to iterate parent %pd2: %d", dentry, ret);
- 		goto not_found;
- 	}
- 
- out_valid:
- 	dentry->d_fsdata = (void *)(unsigned long)dir_version;
- out_valid_noupdate:
--	dput(parent);
- 	key_put(key);
- 	_leave(" = 1 [valid]");
- 	return 1;
- 
- not_found:
- 	_debug("dropping dentry %pd2", dentry);
--	dput(parent);
- 	key_put(key);
- 
- 	_leave(" = 0 [bad]");
+diff --git a/fs/ext4/fast_commit.h b/fs/ext4/fast_commit.h
+index 2fadb2c4780c..3bd534e4dbbf 100644
+--- a/fs/ext4/fast_commit.h
++++ b/fs/ext4/fast_commit.h
+@@ -109,8 +109,7 @@ struct ext4_fc_dentry_update {
+ 	int fcd_op;		/* Type of update create / unlink / link */
+ 	int fcd_parent;		/* Parent inode number */
+ 	int fcd_ino;		/* Inode number */
+-	struct qstr fcd_name;	/* Dirent name */
+-	unsigned char fcd_iname[DNAME_INLINE_LEN];	/* Dirent name string */
++	struct name_snapshot fcd_name;	/* Dirent name */
+ 	struct list_head fcd_list;
+ 	struct list_head fcd_dilist;
+ };
 -- 
 2.39.5
 
