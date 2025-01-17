@@ -1,45 +1,45 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7C53146D59;
-	Fri, 17 Jan 2025 18:35:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B494E1A262D;
+	Fri, 17 Jan 2025 18:35:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737138909; cv=none; b=BcLDmzeOcnVwaw28JI4t2qu73HPG/vTosThu/VVYClwllt9y3CfVPK0V+ygiPVHLFwIpVjTjQFkNsCJXojgDB34jvbqBVqDH9dyTpweTfKEm1JBvG+8qLLe9SV/ED5m3xn1xi8fmqJsA/PpqznG7XDy1XnDa7jcIPDFVndzOKF0=
+	t=1737138926; cv=none; b=GDclGStfcjo2zZ+XAfkTDGyNp81f7FGa0GQEc0Ze0L7k0blTl1SSsLu7GcdXAKuHBL9+0UhmGAy5vFnQ9FpEbOM/fO/i1PnMguLLKovYz5OQiLONku3plzxnXBy4FfuB92C5lATfra3OGK0msyj8r5ESqCOQLClt2dAtnipzz08=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737138909; c=relaxed/simple;
-	bh=k0K37uhikP02KgNPl7Yl2qKsqs4lwRDULvVzU6RKc0k=;
+	s=arc-20240116; t=1737138926; c=relaxed/simple;
+	bh=/Jstp5gZO677+u/4vPSLNL3kWUSGzxhVWPCnm4def1c=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=qY4FbSh6vGWlsvrYCK8rFZ9K0iCPzyiSPVLJUvqhCHcQL5E3wu8yxYyFniEF0PKwqMlnz1ifiT66g7av4W7HiZhDevQG2J2J1uge47HH7wWi48X666ZtOrIL32dxe7wuZiTMyl6LgwRqU0CrJYGWHRJ+mWfZgmOGJqhlzl8lVtw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=c1H4bP+z; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:MIME-Version; b=p4kRHZqTpMnZ4zy6jtZaH9KohIW7xRE31fCXwA2dNA1RbJYNJtIDX61712yUOgbJ0rL9qVQEfB9Ivuq8jsL0W+X0/vcOivbdSUOZu3H1gPZVHefC17i86sBbjndIgWl1CB/EuJkjbZdrb0HVkvXeQICaBkcsqMfsWjE4sk0ovmo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=qnRntgaU; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="c1H4bP+z"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0FA64C4CEDD;
-	Fri, 17 Jan 2025 18:35:07 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="qnRntgaU"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1B13BC4CEDD;
+	Fri, 17 Jan 2025 18:35:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1737138909;
-	bh=k0K37uhikP02KgNPl7Yl2qKsqs4lwRDULvVzU6RKc0k=;
+	s=k20201202; t=1737138926;
+	bh=/Jstp5gZO677+u/4vPSLNL3kWUSGzxhVWPCnm4def1c=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=c1H4bP+zVFvwdccjwqIqFg3/C1UTtVjJUyqjHVdXulraTgioobUFpQUmEj1HB3Bdt
-	 S7SHhInzKerRjOy3uF5eEX3/fgjgh/rblAZRhc2DIZIQFevKAuL8GTorVSrOdM8vEF
-	 X8pBMtzh0L+iepHNZ7r31ck9mVwu6pjDwuWgn9mAwqd/waACBG1pzd/Vtr9PuGV8pe
-	 SJMo3eVTg1OWgKBpJpyWV/D0wXbd8rr9fS/BkrnMMw5XGdorEZyseHDxIPx0YkWK3R
-	 6tb4VKkAl9DRtA0N4hePss4NCF+QCZvxa71M6i4Xstt9esfBdo3X2O9U2I9/aDP+MT
-	 cmhTp/lj43V+g==
-Message-ID: <66e834053c02c71e6bb8361251d44b3bc738eb2e.camel@kernel.org>
-Subject: Re: [PATCH v2 10/20] ceph_d_revalidate(): propagate stable name
- down into request enconding
+	b=qnRntgaUHgS7PlEYgCEw0awZJuO10MrJ7y3GiuK0jq7c1UUQMg16nK/edv+jSR6hU
+	 GV36ngng5xyvbbC1FbYvfLR5v9VKJIEzO3d7LOr0op+2d6OFLJLQJtG75VEB5ZmJ6U
+	 0wuQfxj6cZ6T5KIHBJGzL9LkQrkj1OD2bdva0A8qfkP+Pyjw2lNWCuQ3gHdKe/Gt2Z
+	 ZZt2Vq46plRoCdFcC0ML8xTNnZkSseQbMzu3iLSuZFDW7W1HGjiuBFjN/df8WunMnK
+	 HZgH20csE14txxFFgge1kwTWl4c+9z8ANnzGw+XWIk9Vi3I5xJklXS6D6fjT9puZU1
+	 MXJVvCN0rx4Pg==
+Message-ID: <c19c77ae49446ae30076bd6cc6ec3851755891f5.camel@kernel.org>
+Subject: Re: [PATCH v2 09/20] ceph_d_revalidate(): use stable parent inode
+ passed by caller
 From: Jeff Layton <jlayton@kernel.org>
 To: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org
 Cc: agruenba@redhat.com, amir73il@gmail.com, brauner@kernel.org, 
 	ceph-devel@vger.kernel.org, dhowells@redhat.com, hubcap@omnibond.com,
  jack@suse.cz, 	krisman@kernel.org, linux-nfs@vger.kernel.org,
  miklos@szeredi.hu, 	torvalds@linux-foundation.org
-Date: Fri, 17 Jan 2025 13:35:06 -0500
-In-Reply-To: <20250116052317.485356-10-viro@zeniv.linux.org.uk>
+Date: Fri, 17 Jan 2025 13:35:24 -0500
+In-Reply-To: <20250116052317.485356-9-viro@zeniv.linux.org.uk>
 References: <20250116052103.GF1977892@ZenIV>
 	 <20250116052317.485356-1-viro@zeniv.linux.org.uk>
-	 <20250116052317.485356-10-viro@zeniv.linux.org.uk>
+	 <20250116052317.485356-9-viro@zeniv.linux.org.uk>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -125,86 +125,74 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
 On Thu, 2025-01-16 at 05:23 +0000, Al Viro wrote:
-> Currently get_fscrypt_altname() requires ->r_dentry->d_name to be stable
-> and it gets that in almost all cases.  The only exception is ->d_revalida=
-te(),
-> where we have a stable name, but it's passed separately - dentry->d_name
-> is not stable there.
+> No need to mess with the boilerplate for obtaining what we already
+> have.  Note that ceph is one of the "will want a path from filesystem
+> root if we want to talk to server" cases, so the name of the last
+> component is of little use - it is passed to fscrypt_d_revalidate()
+> and it's used to deal with (also crypt-related) case in request
+> marshalling, when encrypted name turns out to be too long.  The former
+> is not a problem, but the latter is racy; that part will be handled
+> in the next commit.
 >=20
-> Propagate it down to get_fscrypt_altname() as a new field of struct
-> ceph_mds_request - ->r_dname, to be used instead ->r_dentry->d_name
-> when non-NULL.
->=20
+> Reviewed-by: Viacheslav Dubeyko <Slava.Dubeyko@ibm.com>
 > Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 > ---
->  fs/ceph/dir.c        | 2 ++
->  fs/ceph/mds_client.c | 9 ++++++---
->  fs/ceph/mds_client.h | 2 ++
->  3 files changed, 10 insertions(+), 3 deletions(-)
+>  fs/ceph/dir.c | 22 ++++------------------
+>  1 file changed, 4 insertions(+), 18 deletions(-)
 >=20
 > diff --git a/fs/ceph/dir.c b/fs/ceph/dir.c
-> index dc5f55bebad7..62e99e65250d 100644
+> index c4c71c24221b..dc5f55bebad7 100644
 > --- a/fs/ceph/dir.c
 > +++ b/fs/ceph/dir.c
-> @@ -1998,6 +1998,8 @@ static int ceph_d_revalidate(struct inode *dir, con=
-st struct qstr *name,
->  			req->r_parent =3D dir;
->  			ihold(dir);
-> =20
-> +			req->r_dname =3D name;
-> +
->  			mask =3D CEPH_STAT_CAP_INODE | CEPH_CAP_AUTH_SHARED;
->  			if (ceph_security_xattr_wanted(dir))
->  				mask |=3D CEPH_CAP_XATTR_SHARED;
-> diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
-> index 219a2cc2bf3c..3b766b984713 100644
-> --- a/fs/ceph/mds_client.c
-> +++ b/fs/ceph/mds_client.c
-> @@ -2621,6 +2621,7 @@ static u8 *get_fscrypt_altname(const struct ceph_md=
-s_request *req, u32 *plen)
+> @@ -1940,30 +1940,19 @@ static int dir_lease_is_valid(struct inode *dir, =
+struct dentry *dentry,
+>  /*
+>   * Check if cached dentry can be trusted.
+>   */
+> -static int ceph_d_revalidate(struct inode *parent_dir, const struct qstr=
+ *name,
+> +static int ceph_d_revalidate(struct inode *dir, const struct qstr *name,
+>  			     struct dentry *dentry, unsigned int flags)
 >  {
->  	struct inode *dir =3D req->r_parent;
->  	struct dentry *dentry =3D req->r_dentry;
-> +	const struct qstr *name =3D req->r_dname;
->  	u8 *cryptbuf =3D NULL;
->  	u32 len =3D 0;
->  	int ret =3D 0;
-> @@ -2641,8 +2642,10 @@ static u8 *get_fscrypt_altname(const struct ceph_m=
-ds_request *req, u32 *plen)
->  	if (!fscrypt_has_encryption_key(dir))
->  		goto success;
+>  	struct ceph_mds_client *mdsc =3D ceph_sb_to_fs_client(dentry->d_sb)->md=
+sc;
+>  	struct ceph_client *cl =3D mdsc->fsc->client;
+>  	int valid =3D 0;
+> -	struct dentry *parent;
+> -	struct inode *dir, *inode;
+> +	struct inode *inode;
 > =20
-> -	if (!fscrypt_fname_encrypted_size(dir, dentry->d_name.len, NAME_MAX,
-> -					  &len)) {
-> +	if (!name)
-> +		name =3D &dentry->d_name;
-> +
-> +	if (!fscrypt_fname_encrypted_size(dir, name->len, NAME_MAX, &len)) {
->  		WARN_ON_ONCE(1);
->  		return ERR_PTR(-ENAMETOOLONG);
->  	}
-> @@ -2657,7 +2660,7 @@ static u8 *get_fscrypt_altname(const struct ceph_md=
-s_request *req, u32 *plen)
->  	if (!cryptbuf)
->  		return ERR_PTR(-ENOMEM);
+> -	valid =3D fscrypt_d_revalidate(parent_dir, name, dentry, flags);
+> +	valid =3D fscrypt_d_revalidate(dir, name, dentry, flags);
+>  	if (valid <=3D 0)
+>  		return valid;
 > =20
-> -	ret =3D fscrypt_fname_encrypt(dir, &dentry->d_name, cryptbuf, len);
-> +	ret =3D fscrypt_fname_encrypt(dir, name, cryptbuf, len);
->  	if (ret) {
->  		kfree(cryptbuf);
->  		return ERR_PTR(ret);
-> diff --git a/fs/ceph/mds_client.h b/fs/ceph/mds_client.h
-> index 38bb7e0d2d79..7c9fee9e80d4 100644
-> --- a/fs/ceph/mds_client.h
-> +++ b/fs/ceph/mds_client.h
-> @@ -299,6 +299,8 @@ struct ceph_mds_request {
->  	struct inode *r_target_inode;       /* resulting inode */
->  	struct inode *r_new_inode;	    /* new inode (for creates) */
+> -	if (flags & LOOKUP_RCU) {
+> -		parent =3D READ_ONCE(dentry->d_parent);
+> -		dir =3D d_inode_rcu(parent);
+> -		if (!dir)
+> -			return -ECHILD;
+> -		inode =3D d_inode_rcu(dentry);
+> -	} else {
+> -		parent =3D dget_parent(dentry);
+> -		dir =3D d_inode(parent);
+> -		inode =3D d_inode(dentry);
+> -	}
+> +	inode =3D d_inode_rcu(dentry);
 > =20
-> +	const struct qstr *r_dname;	    /* stable name (for ->d_revalidate) */
-> +
->  #define CEPH_MDS_R_DIRECT_IS_HASH	(1) /* r_direct_hash is valid */
->  #define CEPH_MDS_R_ABORTED		(2) /* call was aborted */
->  #define CEPH_MDS_R_GOT_UNSAFE		(3) /* got an unsafe reply */
+>  	doutc(cl, "%p '%pd' inode %p offset 0x%llx nokey %d\n",
+>  	      dentry, dentry, inode, ceph_dentry(dentry)->offset,
+> @@ -2039,9 +2028,6 @@ static int ceph_d_revalidate(struct inode *parent_d=
+ir, const struct qstr *name,
+>  	doutc(cl, "%p '%pd' %s\n", dentry, dentry, valid ? "valid" : "invalid")=
+;
+>  	if (!valid)
+>  		ceph_dir_clear_complete(dir);
+> -
+> -	if (!(flags & LOOKUP_RCU))
+> -		dput(parent);
+>  	return valid;
+>  }
+> =20
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
