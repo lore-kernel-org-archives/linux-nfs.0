@@ -1,469 +1,85 @@
-Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.12])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A01851F63DD
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Jan 2025 04:08:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.12
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 82DF01F869E
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Jan 2025 08:14:03 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737086927; cv=none; b=LJntqQi2zlBVyXaiEBCSrYhEezol7j+XmZTudx75wzNBdf1v/jU5v32MiglFNJCfQbyvRT9JnXZ6rXd0ckZAPtSDDJI2Sz1bzXQjSK+6UMNY0JDA3dI7s9mIcF6wDmpDiuqxBnIR6kWbnil+Bfi8nv3fW+if+IhnBjCLWv/qvJg=
+	t=1737101645; cv=none; b=aYaIkz38nuwtDf9h49gby7tRJOMuCapWkl0ShgmyKZJLRBgjRtQJWhWZ0jsgKofGAVf9+8D5j+N2jm2fu4lEYwgs6q90y1fg3g0GIsOc6utlZibxCNMP2qNuZtj/k4zJeFpuVRC2dAq2/uleiY+oYQbrc2MuxDHic7y1A4s7/Aw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737086927; c=relaxed/simple;
-	bh=fm0fs58+uy4E7RC/zVKOcN9L7JDQCBTiGjTPpjzx8Ac=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ltJxRX3qSUgse6bg7L0QgoBidAieuZOcfvArpnDLJb1oO683Go8e9tQ1s64ugEFvOb5BMMlTyv6iHn2HVnO3LTssHp6e3S/ihYRcrt6/UyKC44D1HKZ5KGtL4bMTuU2qFj2+hyrwWdFZrz2jVF6+p6jEHisRLxYIVNusdvaRQGc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=HEfvAW4B; arc=none smtp.client-ip=198.175.65.12
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
+	s=arc-20240116; t=1737101645; c=relaxed/simple;
+	bh=3+9EXq8c69zlapwyGKd0faqxS2tr4mse1g9KpcBCpek=;
+	h=From:In-Reply-To:References:To:Cc:Subject:MIME-Version:
+	 Content-Type:Date:Message-ID; b=UrwJEScx0NMVsp92CgpjBR6dtrJKmuLSgY8v2jPGkxJsZ4cbwJ01tgEa2VybE1Sx9JPGAODRI+VzQCSiD87UcdUFrRuTCjVQdw2AyS6jtbZBYJljis1cDhBj8GQMjbUxcKVUg4nWMOantYONbHudmrcC6lgQec7lqQO5ZWwBbas=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=EbBczqT9; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="HEfvAW4B"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
-  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1737086926; x=1768622926;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=fm0fs58+uy4E7RC/zVKOcN9L7JDQCBTiGjTPpjzx8Ac=;
-  b=HEfvAW4Brm8RZE2eqkakQrpJSjPDwp0TRjqy8id221MR+wjRCb0DwWTD
-   CIjoQK424+VtXEZXBflV/NsvmOfoQgsV7Wz6pA2edy3HcObhBaxPyhndH
-   jPvmiIOr18IFvfvSSTxHDJIE3ZBW5qsR2R+kIkS7kwz+eXGUZwFuLExre
-   xN9agDIP7cxgGbNU2icFRc/0VuNjrX/E4VYtJF5rDJm0tnQCRZRnrUcel
-   93nQDLlWuspmp6RvVhTQWouUMERlIOii9wNxwlrz+SuypjAdn93trOEEM
-   7H0Z5ifzjAtdDjdAtOvmsgInWKn3BRHuAJODh2ZRcbuxnK5/QFwWLcMph
-   g==;
-X-CSE-ConnectionGUID: 4+rfxHVtSj2p5ml6+8jwgA==
-X-CSE-MsgGUID: qjsSBMbLTAi8oEESmgoocg==
-X-IronPort-AV: E=McAfee;i="6700,10204,11317"; a="48902133"
-X-IronPort-AV: E=Sophos;i="6.13,211,1732608000"; 
-   d="scan'208";a="48902133"
-Received: from orviesa001.jf.intel.com ([10.64.159.141])
-  by orvoesa104.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 16 Jan 2025 20:08:45 -0800
-X-CSE-ConnectionGUID: bCrjebbvSniZQXFICjXtvQ==
-X-CSE-MsgGUID: BFgR0q09TS2Px0wP1/9Y0w==
-X-ExtLoop1: 1
-X-IronPort-AV: E=Sophos;i="6.12,224,1728975600"; 
-   d="scan'208";a="142979124"
-Received: from lkp-server01.sh.intel.com (HELO d63d4d77d921) ([10.239.97.150])
-  by orviesa001.jf.intel.com with ESMTP; 16 Jan 2025 20:08:42 -0800
-Received: from kbuild by d63d4d77d921 with local (Exim 4.96)
-	(envelope-from <lkp@intel.com>)
-	id 1tYdey-000Sjv-1d;
-	Fri, 17 Jan 2025 04:08:40 +0000
-Date: Fri, 17 Jan 2025 12:08:06 +0800
-From: kernel test robot <lkp@intel.com>
-To: Olga Kornievskaia <okorniev@redhat.com>, chuck.lever@oracle.com,
-	jlayton@kernel.org
-Cc: llvm@lists.linux.dev, oe-kbuild-all@lists.linux.dev,
-	linux-nfs@vger.kernel.org, Olga Kornievskaia <okorniev@redhat.com>
-Subject: Re: [PATCH 1/3] llist: add ability to remove a particular entry from
- the list
-Message-ID: <202501171157.gr1JO94W-lkp@intel.com>
-References: <20250115232406.44815-2-okorniev@redhat.com>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="EbBczqT9"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1737101642;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=SNATCbmWLUR77OPC8BefAZNQQT/tPVMfTchLVGd8Ygs=;
+	b=EbBczqT9vCFXRxbYjIyISS0ZeQ1n6sOcefkuVvjnovlBK64wRLzzJ4FbwQcAqTuSHa5T2u
+	Oq4Loh7sKvxqqmMs8GZEeSqmMfl4AUBi56GJwxxvGVtDWhdt+dJKNtE9TOnShNRx1m/sMa
+	xt7aW2xu0AZRRHoCrNHmlFbeejtnVlw=
+Received: from mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-107-5bCMvOPrOQGG7Zl88GVNeQ-1; Fri,
+ 17 Jan 2025 03:13:57 -0500
+X-MC-Unique: 5bCMvOPrOQGG7Zl88GVNeQ-1
+X-Mimecast-MFC-AGG-ID: 5bCMvOPrOQGG7Zl88GVNeQ
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 22D8019560B3;
+	Fri, 17 Jan 2025 08:13:55 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.42.28.5])
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 1FA3519560AE;
+	Fri, 17 Jan 2025 08:13:50 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+	Kingdom.
+	Registered in England and Wales under Company Registration No. 3798903
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <Z4Ds9NBiXUti-idl@gondor.apana.org.au>
+References: <Z4Ds9NBiXUti-idl@gondor.apana.org.au> <20250110010313.1471063-1-dhowells@redhat.com> <20250110010313.1471063-3-dhowells@redhat.com>
+To: Herbert Xu <herbert@gondor.apana.org.au>
+Cc: dhowells@redhat.com, Chuck Lever <chuck.lever@oracle.com>,
+    Trond Myklebust <trond.myklebust@hammerspace.com>,
+    "David S. Miller" <davem@davemloft.net>,
+    Marc Dionne <marc.dionne@auristor.com>,
+    Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
+    Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>,
+    linux-crypto@vger.kernel.org, linux-afs@lists.infradead.org,
+    linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+    netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH 2/8] crypto/krb5: Provide Kerberos 5 crypto through AEAD API
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20250115232406.44815-2-okorniev@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <477968.1737101629.1@warthog.procyon.org.uk>
+Date: Fri, 17 Jan 2025 08:13:49 +0000
+Message-ID: <477969.1737101629@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-Hi Olga,
+Herbert Xu <herbert@gondor.apana.org.au> wrote:
 
-kernel test robot noticed the following build errors:
+> rfc8009 is basically the same as authenc.
 
-[auto build test ERROR on trondmy-nfs/linux-next]
-[also build test ERROR on brauner-vfs/vfs.all linus/master v6.13-rc7 next-20250116]
-[If your patch is applied to the wrong git tree, kindly drop us a note.
-And when submitting patch, we suggest to use '--base' as documented in
-https://git-scm.com/docs/git-format-patch#_base_tree_information]
+Actually, it's not quite the same :-/
 
-url:    https://github.com/intel-lab-lkp/linux/commits/Olga-Kornievskaia/llist-add-ability-to-remove-a-particular-entry-from-the-list/20250116-072951
-base:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
-patch link:    https://lore.kernel.org/r/20250115232406.44815-2-okorniev%40redhat.com
-patch subject: [PATCH 1/3] llist: add ability to remove a particular entry from the list
-config: s390-randconfig-002-20250117 (https://download.01.org/0day-ci/archive/20250117/202501171157.gr1JO94W-lkp@intel.com/config)
-compiler: clang version 20.0.0git (https://github.com/llvm/llvm-project c23f2417dc5f6dc371afb07af5627ec2a9d373a0)
-reproduce (this is a W=1 build): (https://download.01.org/0day-ci/archive/20250117/202501171157.gr1JO94W-lkp@intel.com/reproduce)
+rfc8009 chucks the IV from the encryption into the hash first, but authenc()
+does not.  It may be possible to arrange the buffer so that the assoc data is
+also the IV buffer.
 
-If you fix the issue in a separate patch/commit (i.e. not just a new version of
-the same patch/commit), kindly add following tags
-| Reported-by: kernel test robot <lkp@intel.com>
-| Closes: https://lore.kernel.org/oe-kbuild-all/202501171157.gr1JO94W-lkp@intel.com/
+David
 
-All error/warnings (new ones prefixed by >>):
-
-   In file included from arch/s390/kernel/asm-offsets.c:11:
-   In file included from include/linux/kvm_host.h:7:
-   In file included from include/linux/hardirq.h:5:
-   In file included from include/linux/context_tracking_state.h:5:
-   In file included from include/linux/percpu.h:5:
-   In file included from include/linux/alloc_tag.h:14:
-   In file included from include/linux/smp.h:15:
-   In file included from include/linux/smp_types.h:5:
->> include/linux/llist.h:283:7: warning: variable 'pos' is uninitialized when used here [-Wuninitialized]
-     283 |                 if (pos->next == entry) {
-         |                     ^~~
-   include/linux/llist.h:269:24: note: initialize the variable 'pos' to silence this warning
-     269 |         struct llist_node *pos;
-         |                               ^
-         |                                = NULL
-   In file included from arch/s390/kernel/asm-offsets.c:11:
-   In file included from include/linux/kvm_host.h:16:
-   In file included from include/linux/mm.h:2224:
-   include/linux/vmstat.h:504:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     504 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     505 |                            item];
-         |                            ~~~~
-   include/linux/vmstat.h:511:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     511 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     512 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/vmstat.h:524:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     524 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     525 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   4 warnings generated.
---
-   In file included from <built-in>:4:
-   In file included from lib/vdso/getrandom.c:8:
-   In file included from include/vdso/datapage.h:164:
-   In file included from arch/s390/include/asm/vdso/gettimeofday.h:11:
-   In file included from arch/s390/include/asm/syscall.h:13:
-   In file included from include/linux/sched.h:20:
-   In file included from include/linux/smp_types.h:5:
->> include/linux/llist.h:283:7: warning: variable 'pos' is uninitialized when used here [-Wuninitialized]
-     283 |                 if (pos->next == entry) {
-         |                     ^~~
-   include/linux/llist.h:269:24: note: initialize the variable 'pos' to silence this warning
-     269 |         struct llist_node *pos;
-         |                               ^
-         |                                = NULL
-   1 warning generated.
---
-   In file included from lib/vsprintf.c:22:
-   In file included from include/linux/clk.h:14:
-   In file included from include/linux/notifier.h:14:
-   In file included from include/linux/mutex.h:17:
-   In file included from include/linux/lockdep.h:14:
-   In file included from include/linux/smp.h:15:
-   In file included from include/linux/smp_types.h:5:
->> include/linux/llist.h:283:7: warning: variable 'pos' is uninitialized when used here [-Wuninitialized]
-     283 |                 if (pos->next == entry) {
-         |                     ^~~
-   include/linux/llist.h:269:24: note: initialize the variable 'pos' to silence this warning
-     269 |         struct llist_node *pos;
-         |                               ^
-         |                                = NULL
-   In file included from lib/vsprintf.c:25:
-   In file included from include/linux/module.h:19:
-   In file included from include/linux/elf.h:6:
-   In file included from arch/s390/include/asm/elf.h:181:
-   In file included from arch/s390/include/asm/mmu_context.h:11:
-   In file included from arch/s390/include/asm/pgalloc.h:18:
-   In file included from include/linux/mm.h:2224:
-   include/linux/vmstat.h:504:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     504 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     505 |                            item];
-         |                            ~~~~
-   include/linux/vmstat.h:511:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     511 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     512 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/vmstat.h:524:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     524 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     525 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   In file included from lib/vsprintf.c:50:
-   In file included from lib/../mm/internal.h:13:
-   include/linux/mm_inline.h:47:41: warning: arithmetic between different enumeration types ('enum node_stat_item' and 'enum lru_list') [-Wenum-enum-conversion]
-      47 |         __mod_lruvec_state(lruvec, NR_LRU_BASE + lru, nr_pages);
-         |                                    ~~~~~~~~~~~ ^ ~~~
-   include/linux/mm_inline.h:49:22: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum lru_list') [-Wenum-enum-conversion]
-      49 |                                 NR_ZONE_LRU_BASE + lru, nr_pages);
-         |                                 ~~~~~~~~~~~~~~~~ ^ ~~~
-   6 warnings generated.
---
-   In file included from lib/test_bitops.c:10:
-   In file included from include/linux/module.h:17:
-   In file included from include/linux/kmod.h:9:
-   In file included from include/linux/umh.h:4:
-   In file included from include/linux/gfp.h:7:
-   In file included from include/linux/mmzone.h:8:
-   In file included from include/linux/spinlock.h:63:
-   In file included from include/linux/lockdep.h:14:
-   In file included from include/linux/smp.h:15:
-   In file included from include/linux/smp_types.h:5:
->> include/linux/llist.h:283:7: error: variable 'pos' is uninitialized when used here [-Werror,-Wuninitialized]
-     283 |                 if (pos->next == entry) {
-         |                     ^~~
-   include/linux/llist.h:269:24: note: initialize the variable 'pos' to silence this warning
-     269 |         struct llist_node *pos;
-         |                               ^
-         |                                = NULL
-   In file included from lib/test_bitops.c:10:
-   In file included from include/linux/module.h:19:
-   In file included from include/linux/elf.h:6:
-   In file included from arch/s390/include/asm/elf.h:181:
-   In file included from arch/s390/include/asm/mmu_context.h:11:
-   In file included from arch/s390/include/asm/pgalloc.h:18:
-   In file included from include/linux/mm.h:2224:
-   include/linux/vmstat.h:504:43: error: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Werror,-Wenum-enum-conversion]
-     504 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     505 |                            item];
-         |                            ~~~~
-   include/linux/vmstat.h:511:43: error: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Werror,-Wenum-enum-conversion]
-     511 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     512 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/vmstat.h:524:43: error: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Werror,-Wenum-enum-conversion]
-     524 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     525 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   4 errors generated.
---
-   In file included from lib/test_maple_tree.c:10:
-   In file included from include/linux/maple_tree.h:12:
-   In file included from include/linux/rcupdate.h:29:
-   In file included from include/linux/lockdep.h:14:
-   In file included from include/linux/smp.h:15:
-   In file included from include/linux/smp_types.h:5:
->> include/linux/llist.h:283:7: warning: variable 'pos' is uninitialized when used here [-Wuninitialized]
-     283 |                 if (pos->next == entry) {
-         |                     ^~~
-   include/linux/llist.h:269:24: note: initialize the variable 'pos' to silence this warning
-     269 |         struct llist_node *pos;
-         |                               ^
-         |                                = NULL
-   In file included from lib/test_maple_tree.c:11:
-   In file included from include/linux/module.h:19:
-   In file included from include/linux/elf.h:6:
-   In file included from arch/s390/include/asm/elf.h:181:
-   In file included from arch/s390/include/asm/mmu_context.h:11:
-   In file included from arch/s390/include/asm/pgalloc.h:18:
-   In file included from include/linux/mm.h:2224:
-   include/linux/vmstat.h:504:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     504 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     505 |                            item];
-         |                            ~~~~
-   include/linux/vmstat.h:511:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     511 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     512 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/vmstat.h:524:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     524 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     525 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   lib/test_maple_tree.c:212:26: warning: unused function 'not_empty' [-Wunused-function]
-     212 | static inline __init int not_empty(struct maple_node *node)
-         |                          ^~~~~~~~~
-   5 warnings generated.
---
-   In file included from lib/locking-selftest.c:14:
-   In file included from include/linux/rwsem.h:15:
-   In file included from include/linux/spinlock.h:63:
-   In file included from include/linux/lockdep.h:14:
-   In file included from include/linux/smp.h:15:
-   In file included from include/linux/smp_types.h:5:
->> include/linux/llist.h:283:7: warning: variable 'pos' is uninitialized when used here [-Wuninitialized]
-     283 |                 if (pos->next == entry) {
-         |                     ^~~
-   include/linux/llist.h:269:24: note: initialize the variable 'pos' to silence this warning
-     269 |         struct llist_node *pos;
-         |                               ^
-         |                                = NULL
-   In file included from lib/locking-selftest.c:22:
-   In file included from include/linux/kallsyms.h:13:
-   In file included from include/linux/mm.h:2224:
-   include/linux/vmstat.h:504:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     504 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     505 |                            item];
-         |                            ~~~~
-   include/linux/vmstat.h:511:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     511 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     512 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/vmstat.h:524:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     524 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     525 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   lib/locking-selftest.c:2510:1: warning: unused function 'class_HARDIRQ_lock_ptr' [-Wunused-function]
-    2510 | DEFINE_LOCK_GUARD_0(HARDIRQ, HARDIRQ_ENTER(), HARDIRQ_EXIT())
-         | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/cleanup.h:407:49: note: expanded from macro 'DEFINE_LOCK_GUARD_0'
-     407 | __DEFINE_CLASS_IS_CONDITIONAL(_name, false);                            \
-         |                                                                         ^
-     408 | __DEFINE_UNLOCK_GUARD(_name, void, _unlock, __VA_ARGS__)                \
-         | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/cleanup.h:378:21: note: expanded from macro '\
-   __DEFINE_UNLOCK_GUARD'
-     378 | static inline void *class_##_name##_lock_ptr(class_##_name##_t *_T)     \
-         |                     ^~~~~~~~~~~~~~~~~~~~~~~~
-   <scratch space>:93:1: note: expanded from here
-      93 | class_HARDIRQ_lock_ptr
-         | ^~~~~~~~~~~~~~~~~~~~~~
-   lib/locking-selftest.c:2511:1: warning: unused function 'class_NOTTHREADED_HARDIRQ_lock_ptr' [-Wunused-function]
-    2511 | DEFINE_LOCK_GUARD_0(NOTTHREADED_HARDIRQ,
-         | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    2512 |         do {
-         |         ~~~~
-    2513 |                 local_irq_disable();
-         |                 ~~~~~~~~~~~~~~~~~~~~
-    2514 |                 __irq_enter();
-         |                 ~~~~~~~~~~~~~~
-    2515 |                 WARN_ON(!in_irq());
-         |                 ~~~~~~~~~~~~~~~~~~~
-    2516 |         } while(0), HARDIRQ_EXIT())
-         |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/cleanup.h:407:49: note: expanded from macro 'DEFINE_LOCK_GUARD_0'
-     407 | __DEFINE_CLASS_IS_CONDITIONAL(_name, false);                            \
-         |                                                                         ^
-     408 | __DEFINE_UNLOCK_GUARD(_name, void, _unlock, __VA_ARGS__)                \
-         | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/cleanup.h:378:21: note: expanded from macro '\
-   __DEFINE_UNLOCK_GUARD'
-     378 | static inline void *class_##_name##_lock_ptr(class_##_name##_t *_T)     \
-         |                     ^~~~~~~~~~~~~~~~~~~~~~~~
-   <scratch space>:121:1: note: expanded from here
-     121 | class_NOTTHREADED_HARDIRQ_lock_ptr
-         | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   lib/locking-selftest.c:2517:1: warning: unused function 'class_SOFTIRQ_lock_ptr' [-Wunused-function]
-    2517 | DEFINE_LOCK_GUARD_0(SOFTIRQ, SOFTIRQ_ENTER(), SOFTIRQ_EXIT())
-         | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/cleanup.h:407:49: note: expanded from macro 'DEFINE_LOCK_GUARD_0'
-     407 | __DEFINE_CLASS_IS_CONDITIONAL(_name, false);                            \
-         |                                                                         ^
-     408 | __DEFINE_UNLOCK_GUARD(_name, void, _unlock, __VA_ARGS__)                \
-         | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/cleanup.h:378:21: note: expanded from macro '\
-   __DEFINE_UNLOCK_GUARD'
-     378 | static inline void *class_##_name##_lock_ptr(class_##_name##_t *_T)     \
-         |                     ^~~~~~~~~~~~~~~~~~~~~~~~
-   <scratch space>:141:1: note: expanded from here
-     141 | class_SOFTIRQ_lock_ptr
-         | ^~~~~~~~~~~~~~~~~~~~~~
-   lib/locking-selftest.c:2520:1: warning: unused function 'class_RCU_lock_ptr' [-Wunused-function]
-    2520 | DEFINE_LOCK_GUARD_0(RCU, rcu_read_lock(), rcu_read_unlock())
-         | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/cleanup.h:407:49: note: expanded from macro 'DEFINE_LOCK_GUARD_0'
-     407 | __DEFINE_CLASS_IS_CONDITIONAL(_name, false);                            \
-         |                                                                         ^
-     408 | __DEFINE_UNLOCK_GUARD(_name, void, _unlock, __VA_ARGS__)                \
-         | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/cleanup.h:378:21: note: expanded from macro '\
-   __DEFINE_UNLOCK_GUARD'
-     378 | static inline void *class_##_name##_lock_ptr(class_##_name##_t *_T)     \
-         |                     ^~~~~~~~~~~~~~~~~~~~~~~~
-   <scratch space>:159:1: note: expanded from here
-     159 | class_RCU_lock_ptr
-         | ^~~~~~~~~~~~~~~~~~
-   lib/locking-selftest.c:2521:1: warning: unused function 'class_RCU_BH_lock_ptr' [-Wunused-function]
-    2521 | DEFINE_LOCK_GUARD_0(RCU_BH, rcu_read_lock_bh(), rcu_read_unlock_bh())
-         | ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/cleanup.h:407:49: note: expanded from macro 'DEFINE_LOCK_GUARD_0'
-     407 | __DEFINE_CLASS_IS_CONDITIONAL(_name, false);                            \
-         |                                                                         ^
---
-   In file included from kernel/bpf/kmem_cache_iter.c:3:
-   In file included from include/linux/bpf.h:10:
-   In file included from include/linux/workqueue.h:9:
-   In file included from include/linux/timer.h:8:
-   In file included from include/linux/debugobjects.h:6:
-   In file included from include/linux/spinlock.h:63:
-   In file included from include/linux/lockdep.h:14:
-   In file included from include/linux/smp.h:15:
-   In file included from include/linux/smp_types.h:5:
->> include/linux/llist.h:283:7: warning: variable 'pos' is uninitialized when used here [-Wuninitialized]
-     283 |                 if (pos->next == entry) {
-         |                     ^~~
-   include/linux/llist.h:269:24: note: initialize the variable 'pos' to silence this warning
-     269 |         struct llist_node *pos;
-         |                               ^
-         |                                = NULL
-   In file included from kernel/bpf/kmem_cache_iter.c:3:
-   In file included from include/linux/bpf.h:20:
-   In file included from include/linux/module.h:19:
-   In file included from include/linux/elf.h:6:
-   In file included from arch/s390/include/asm/elf.h:181:
-   In file included from arch/s390/include/asm/mmu_context.h:11:
-   In file included from arch/s390/include/asm/pgalloc.h:18:
-   In file included from include/linux/mm.h:2224:
-   include/linux/vmstat.h:504:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     504 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     505 |                            item];
-         |                            ~~~~
-   include/linux/vmstat.h:511:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     511 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     512 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   include/linux/vmstat.h:524:43: warning: arithmetic between different enumeration types ('enum zone_stat_item' and 'enum numa_stat_item') [-Wenum-enum-conversion]
-     524 |         return vmstat_text[NR_VM_ZONE_STAT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~ ^
-     525 |                            NR_VM_NUMA_EVENT_ITEMS +
-         |                            ~~~~~~~~~~~~~~~~~~~~~~
-   kernel/bpf/kmem_cache_iter.c:227:27: warning: bitwise operation between different enumeration types ('enum bpf_reg_type' and 'enum bpf_type_flag') [-Wenum-enum-conversion]
-     227 |                   PTR_TO_BTF_ID_OR_NULL | PTR_TRUSTED },
-         |                   ~~~~~~~~~~~~~~~~~~~~~ ^ ~~~~~~~~~~~
-   5 warnings generated.
-..
-
-
-vim +/pos +283 include/linux/llist.h
-
-   255	
-   256	/**
-   257	 * llist_del_entry - remove a particular entry from a lock-less list
-   258	 * @head: head of the list to remove the entry from
-   259	 * @entry: entry to be removed from the list
-   260	 *
-   261	 * Walk the list, find the given entry and remove it from the list.
-   262	 * The caller must ensure that nothing can race in and change the
-   263	 * list while this is running.
-   264	 *
-   265	 * Returns true if the entry was found and removed.
-   266	 */
-   267	static inline bool llist_del_entry(struct llist_head *head, struct llist_node *entry)
-   268	{
-   269		struct llist_node *pos;
-   270	
-   271		if (!head->first)
-   272			return false;
-   273	
-   274		/* Is it the first entry? */
-   275		if (head->first == entry) {
-   276			head->first = entry->next;
-   277			entry->next = entry;
-   278			return true;
-   279		}
-   280	
-   281		/* Find it in the list */
-   282		llist_for_each(head->first, pos) {
- > 283			if (pos->next == entry) {
-   284				pos->next = entry->next;
-   285				entry->next = entry;
-   286				return true;
-   287			}
-   288		}
-   289		return false;
-   290	}
-   291	
-
--- 
-0-DAY CI Kernel Test Service
-https://github.com/intel/lkp-tests/wiki
