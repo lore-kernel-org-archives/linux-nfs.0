@@ -1,110 +1,115 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 785521509BF
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Jan 2025 17:34:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A95BA1F5421;
+	Tue, 21 Jan 2025 17:54:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737480885; cv=none; b=kXApiyc6+2UAveSLraRW4aEwCy46GctIAsxBwRDiUF8xNkXdpwIl/wQasPfr8CAalbL/OSnC0bYW7czil0eyoHN5FUBNG0vAiqXvPQ9osI+YBj/sVhkaAgu/XFZl2hUeCPusM/I35iKt3RdJv4vChjHc8xWwmYfpvCHP0MZI+ns=
+	t=1737482081; cv=none; b=VuYJvipfWCD1tt0aplOnAMmWjHBO97LIKLPBjEpcnu4uwFTSh7YM5hdpZLWXavp3f1xZgpQAbandxgidvu8S4cK+MSlh2ugrvx8mAkbiTrMa6RXLfiAhWeNL8GyunN8qdw0BwhogwC9nHFjbd0VRJURcnEDjvig9TkvLeHvAzFI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737480885; c=relaxed/simple;
-	bh=u1QuwL0IQn4TcUhKSM7Tp+N19EaWFbQZStkMCStE0lU=;
-	h=From:Date:MIME-Version:Content-Type:To:Message-ID:In-Reply-To:
-	 References:Subject; b=lZQrsDdLXcq6SpLchTjt1V+lp1CuOAEDL4fgmcVCUfWr1e6qnjNTwCsJg73tUMCqZCvZ74CU8jCbCli6wqmmgRKeCnq6Vf0cUtIxws+o6UYE10RMWog+h9aSTbza7W6v7YLtFXHuaI/BnlX5eAqm4YGoqkYpRlheBD2Zz1sdL18=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=scL9rjrB; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1737482081; c=relaxed/simple;
+	bh=LznHj3P0y4u3InOUm0GqT5gUP/G3uHRNGk1MzYvIRN8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=Z6YGeB0I4OBu6jIDjPvGg14yyRCxps38xLxUhXVQOOxwOJ1+LYZmCBkTlZwPYw4JPUJ1jqpOiDBKYGdLvrUf0CGr32KB5ciK0Iz7HH26yGOUlKBZarJuqRx+0U+Iy3Y5eUxC+CrpqDEXS/kxf4/34IlGwVm9cK3c0LeDta40XdY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b=kgtPiiXR; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="scL9rjrB"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E4CDEC4CEDF;
-	Tue, 21 Jan 2025 17:34:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1737480883;
-	bh=u1QuwL0IQn4TcUhKSM7Tp+N19EaWFbQZStkMCStE0lU=;
-	h=From:Date:To:In-Reply-To:References:Subject:From;
-	b=scL9rjrBe5/EaGkKpogHGPwWFkCKEOig9v6T0MzRZV1tBBt/QocI++TK83BNVW8J1
-	 hgt7jLRJ+TKmqRWbRMh7z98389SEHY2SJ+9LtHM0kqC+fNqQLY6ZYkRysVMORGX8jU
-	 0lNyvrSds3pWcKqCH9rhvl6+FBokTMgxXjQSndpIg0TBMZw1LI64tl53D2k8Umq13C
-	 xsaV/Zc4J+dU0wAz2joRm3D68ZSDZGAzzNLxPG0a+v1UvL7h28Mrjl85/rZ8ReXSBs
-	 E/cH3YUClrPNWLpmHvrwGCaSjVyVp3eGk45Vj6Yh1IgYnLrEuvRw9GvlIqtY+XBzYX
-	 9GG9gjHdrxkyQ==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 3D76A380AA75;
-	Tue, 21 Jan 2025 17:35:08 +0000 (UTC)
-From: Jeff Layton via Bugspray Bot <bugbot@kernel.org>
-Date: Tue, 21 Jan 2025 17:35:14 +0000
+	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="kgtPiiXR"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 331F9C4CEE0;
+	Tue, 21 Jan 2025 17:54:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
+	s=korg; t=1737482081;
+	bh=LznHj3P0y4u3InOUm0GqT5gUP/G3uHRNGk1MzYvIRN8=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=kgtPiiXR8bNPItu47uih0g77igx8nvp7AEYKuz9y/bcXtAzefSTSGi+AnmymmRg5W
+	 j6z/ZOV4ygVJR2MvYgQhNGee7WUwQKE0AI+fralcKHkIy/0aClANcElTws9YI7ZRs7
+	 EssyJ9EKE4egNBn5QhcRSuiHxIEy/Xc6uFK141VQ=
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: stable@vger.kernel.org
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+	patches@lists.linux.dev,
+	David Howells <dhowells@redhat.com>,
+	Masahiro Yamada <masahiroy@kernel.org>,
+	Marc Dionne <marc.dionne@auristor.com>,
+	linux-afs@lists.infradead.org,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Christian Brauner <brauner@kernel.org>,
+	Sasha Levin <sashal@kernel.org>
+Subject: [PATCH 6.6 28/72] kheaders: Ignore silly-rename files
+Date: Tue, 21 Jan 2025 18:51:54 +0100
+Message-ID: <20250121174524.509553308@linuxfoundation.org>
+X-Mailer: git-send-email 2.48.1
+In-Reply-To: <20250121174523.429119852@linuxfoundation.org>
+References: <20250121174523.429119852@linuxfoundation.org>
+User-Agent: quilt/0.68
+X-stable: review
+X-Patchwork-Hint: ignore
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-To: cel@kernel.org, trondmy@kernel.org, carnil@debian.org, anna@kernel.org, 
- linux-nfs@vger.kernel.org, herzog@phys.ethz.ch, harald.dunkel@aixigo.com, 
- chuck.lever@oracle.com, jlayton@kernel.org, 
- baptiste.pellegrin@ac-grenoble.fr, benoit.gschwind@minesparis.psl.eu
-Message-ID: <20250121-b219710c10-7af78b1a3afc@bugzilla.kernel.org>
-In-Reply-To: <20250121-b219710c7-773af1987926@bugzilla.kernel.org>
-References: <20250121-b219710c7-773af1987926@bugzilla.kernel.org>
-Subject: Re: NFSD threads hang when destroying a session or client ID
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: NFSD
-X-Mailer: bugspray 0.1-dev
+Content-Transfer-Encoding: 8bit
 
-Jeff Layton writes via Kernel.org Bugzilla:
+6.6-stable review patch.  If anyone has any objections, please let me know.
 
-(In reply to Chuck Lever from comment #7)
-> The trace captures I've reviewed suggest that a callback session is in use,
-> so I would say the NFS minor version is 1 or higher. Perhaps it's not the
-> RPC_SIGNALLED test above that is the problem, but the one later in
-> nfsd4_cb_sequence_done().
+------------------
 
+From: David Howells <dhowells@redhat.com>
 
-Ok, good. Knowing that it's not v4.0 allows us to rule out some codepaths.
-There are a couple of other cases where we goto need_restart:
+[ Upstream commit 973b710b8821c3401ad7a25360c89e94b26884ac ]
 
-The NFS4ERR_BADSESSION case does this, and also if it doesn't get a reply at all (case 1).
-There is also this that looks a little sketchy:
+Tell tar to ignore silly-rename files (".__afs*" and ".nfs*") when building
+the header archive.  These occur when a file that is open is unlinked
+locally, but hasn't yet been closed.  Such files are visible to the user
+via the getdents() syscall and so programs may want to do things with them.
 
-------------8<-------------------
-        trace_nfsd_cb_free_slot(task, cb);
-        nfsd41_cb_release_slot(cb);
+During the kernel build, such files may be made during the processing of
+header files and the cleanup may get deferred by fput() which may result in
+tar seeing these files when it reads the directory, but they may have
+disappeared by the time it tries to open them, causing tar to fail with an
+error.  Further, we don't want to include them in the tarball if they still
+exist.
 
-        if (RPC_SIGNALLED(task))
-                goto need_restart;
-out:
-        return ret;
-retry_nowait:
-        if (rpc_restart_call_prepare(task))
-                ret = false;
-        goto out;
-need_restart:
-        if (!test_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags)) {
-                trace_nfsd_cb_restart(clp, cb);
-                task->tk_status = 0;
-                cb->cb_need_restart = true;
-        }
-        return false;
-------------8<-------------------
+With CONFIG_HEADERS_INSTALL=y, something like the following may be seen:
 
-Probably now the same bug, but it looks like if RPC_SIGNALLED returns true, then it'll restart the RPC after releasing the slot. It seems like that could break the reply cache handling, as the restarted call could be on a different slot. I'll look at patching that, at least, though I'm not sure it's related to the hang.
+   find: './kernel/.tmp_cpio_dir/include/dt-bindings/reset/.__afs2080': No such file or directory
+   tar: ./include/linux/greybus/.__afs3C95: File removed before we read it
 
-More notes. The only way RPC_TASK_SIGNALLED gets set is:
+The find warning doesn't seem to cause a problem.
 
-   nfsd4_process_cb_update()
-      rpc_shutdown_client()
-          rpc_killall_tasks()
+Fix this by telling tar when called from in gen_kheaders.sh to exclude such
+files.  This only affects afs and nfs; cifs uses the Windows Hidden
+attribute to prevent the file from being seen.
 
-That gets called if:
+Signed-off-by: David Howells <dhowells@redhat.com>
+Link: https://lore.kernel.org/r/20241213135013.2964079-2-dhowells@redhat.com
+cc: Masahiro Yamada <masahiroy@kernel.org>
+cc: Marc Dionne <marc.dionne@auristor.com>
+cc: linux-afs@lists.infradead.org
+cc: linux-nfs@vger.kernel.org
+cc: linux-kernel@vger.kernel.org
+Signed-off-by: Christian Brauner <brauner@kernel.org>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
+---
+ kernel/gen_kheaders.sh | 1 +
+ 1 file changed, 1 insertion(+)
 
-        if (clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK)
-                nfsd4_process_cb_update(cb);
-
-Which means that NFSD4_CLIENT_CB_UPDATE was probably set? NFSD4_CLIENT_CB_KILL seems less likely since that would nerf the cb_need_restart handling.
-
-View: https://bugzilla.kernel.org/show_bug.cgi?id=219710#c10
-You can reply to this message to join the discussion.
+diff --git a/kernel/gen_kheaders.sh b/kernel/gen_kheaders.sh
+index 383fd43ac6122..7e1340da5acae 100755
+--- a/kernel/gen_kheaders.sh
++++ b/kernel/gen_kheaders.sh
+@@ -89,6 +89,7 @@ find $cpio_dir -type f -print0 |
+ 
+ # Create archive and try to normalize metadata for reproducibility.
+ tar "${KBUILD_BUILD_TIMESTAMP:+--mtime=$KBUILD_BUILD_TIMESTAMP}" \
++    --exclude=".__afs*" --exclude=".nfs*" \
+     --owner=0 --group=0 --sort=name --numeric-owner --mode=u=rw,go=r,a+X \
+     -I $XZ -cf $tarfile -C $cpio_dir/ . > /dev/null
+ 
 -- 
-Deet-doot-dot, I am a bot.
-Kernel.org Bugzilla (bugspray 0.1-dev)
+2.39.5
+
+
 
