@@ -1,36 +1,36 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D1CFF1C36
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Jan 2025 16:09:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EB011F4715
+	for <linux-nfs@vger.kernel.org>; Tue, 21 Jan 2025 16:24:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737475783; cv=none; b=A6zam0xCX1GC9RK+r/dmIQYv3JEjZka99MPpT/JrffelT4rnJvuWJG44XYFIfaMChGnIasvueklDTUOyVkaxJharGevoZUWJsKKXwF592wNwO8cd/6YqEDPRrSj7WDZqLu973VS4+0+CBvbfQ1ylnVltoq7AsMgLw9Czcm0Ak3c=
+	t=1737476685; cv=none; b=eyW8EIFzR7uwTtP4a/dhy/UeArXJqJjBWxmWnUJLPgWnHo/MP85DYwUuF030zHxU0SxvhUqeR2VjJYc6uHzgdZ0qxKjvw+FQPyk2NXT3ENNPl2ADB6wH2vbOA7JDeSEEJvQZTDBTOBfcY0vRYTFCCi2UYcSA5n4hhhyi0uneVi4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737475783; c=relaxed/simple;
-	bh=mJUpUba6HEc91Bmn601iMxFzT8RhlqRvafcA/f3TpBc=;
+	s=arc-20240116; t=1737476685; c=relaxed/simple;
+	bh=Qd8iz1RcEfL28XBhemSIQAWF9rsRsYXAU2bGiFGB83I=;
 	h=From:Date:MIME-Version:Content-Type:To:Message-ID:In-Reply-To:
-	 References:Subject; b=S0dwksXWAzd3RkYmDq0O6pDy2feOj676ljU2ytT1byVJMSwJ5iXD0y9RobLJ7Ii2E30LdxT90MtzLaEZHcuRRHGBvg31wfOJ3ogTtx1wt/qU0ZPRiFkMBdlIKG4nCy2R3OoQdwqbT+L6AZh/wJ9RM2RnDKK8VqavLuim2HPbsvU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=M9VMxFWZ; arc=none smtp.client-ip=10.30.226.201
+	 References:Subject; b=bNK0Arx96DbRw2PmrSb4p8YM5p1AXmRxIEyumHGHamOBWa5jTGYAI4VCqepephosMzxYI/1dLHTivhHwZVAW1Y4giAhfXY7dCHMAHS+2DcGh5Nmv5C8y3O9abLQ9mKYJgiWCWKIoLNJWuotStmksAZ5hYh5F8Y1+kzBNy93dabk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CD4DfXQw; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="M9VMxFWZ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 463B3C4CEDF;
-	Tue, 21 Jan 2025 16:09:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CD4DfXQw"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BEC7FC4CEDF;
+	Tue, 21 Jan 2025 16:24:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1737475783;
-	bh=mJUpUba6HEc91Bmn601iMxFzT8RhlqRvafcA/f3TpBc=;
+	s=k20201202; t=1737476684;
+	bh=Qd8iz1RcEfL28XBhemSIQAWF9rsRsYXAU2bGiFGB83I=;
 	h=From:Date:To:In-Reply-To:References:Subject:From;
-	b=M9VMxFWZkRDWGMH8TZeyfZE06cP0l9Dzx8D7wNEAuVgdSm+lvv6b4lfQ2g6Pt8lke
-	 e6Dbc0WAwOWgHptHMBgHncD84ButmIclgoFtw1rmiWj3DczGUItXuHTPUgJzz+8bnJ
-	 g4qzSITjvZ+OnN5PGyFzm0OcT/WbddnWX7jBzT6VAwr02nlgBQ59HtIF4zsKkhTbzu
-	 LdP4UBWPxy+ANcq0eZ1QYlRIF/qT8hGIM5Rob9pokmkqzbkcD4e7rtWjGncRCm/vTM
-	 EznZ6ta5vvtX9UAs0hrBtDmpdF6HsL4aaw4Abjx2iKuaBK295muczlMgW7qMT6lt88
-	 x07ls9sLHW58g==
+	b=CD4DfXQwB+wI9M43Pufldi/z5EpLySHdrHMtMaaL55MkRzRPZpbgJWvVOzwZysgOD
+	 qQvB85zFnUbhrKGaqte3LkPUADlND21hO0jfIC1sRZsIvORQjQ7kX0Q0Z4UtHVGjQ9
+	 lXqncaRQ8lFUF3KCbRHMGTySubGr94SLsLbrCt/VykABbYOITv9NgqhYW36LC2Mamz
+	 9zhuucYb/d6wvWidae38WBn/5rB+TPYQIQbcnvsLIi7JNpj3MH+4mmBfHmASR6c9EP
+	 IUAVzi+63u1Xbmr3knYKzeVzzoQMh6eqbqHevTjgsVNnvoX73NLCKhsCKhqFVXvcl9
+	 UFRLqVA0rtyDw==
 Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 7B05D380AA75;
-	Tue, 21 Jan 2025 16:10:08 +0000 (UTC)
-From: Chuck Lever via Bugspray Bot <bugbot@kernel.org>
-Date: Tue, 21 Jan 2025 16:10:11 +0000
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 3A0E3380AA75;
+	Tue, 21 Jan 2025 16:25:08 +0000 (UTC)
+From: Baptiste PELLEGRIN via Bugspray Bot <bugbot@kernel.org>
+Date: Tue, 21 Jan 2025 16:25:12 +0000
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -39,12 +39,11 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-To: harald.dunkel@aixigo.com, anna@kernel.org, jlayton@kernel.org, 
- benoit.gschwind@minesparis.psl.eu, chuck.lever@oracle.com, 
- trondmy@kernel.org, cel@kernel.org, herzog@phys.ethz.ch, 
- baptiste.pellegrin@ac-grenoble.fr, carnil@debian.org, 
- linux-nfs@vger.kernel.org
-Message-ID: <20250121-b219710c7-773af1987926@bugzilla.kernel.org>
+To: anna@kernel.org, chuck.lever@oracle.com, carnil@debian.org, 
+ linux-nfs@vger.kernel.org, cel@kernel.org, herzog@phys.ethz.ch, 
+ trondmy@kernel.org, harald.dunkel@aixigo.com, jlayton@kernel.org, 
+ benoit.gschwind@minesparis.psl.eu, baptiste.pellegrin@ac-grenoble.fr
+Message-ID: <20250121-b219710c8-a588c580949d@bugzilla.kernel.org>
 In-Reply-To: <20250120-b219710c0-da932078cddb@bugzilla.kernel.org>
 References: <20250120-b219710c0-da932078cddb@bugzilla.kernel.org>
 Subject: Re: NFSD threads hang when destroying a session or client ID
@@ -52,11 +51,31 @@ X-Bugzilla-Product: File System
 X-Bugzilla-Component: NFSD
 X-Mailer: bugspray 0.1-dev
 
-Chuck Lever writes via Kernel.org Bugzilla:
+Baptiste PELLEGRIN writes via Kernel.org Bugzilla:
 
-The trace captures I've reviewed suggest that a callback session is in use, so I would say the NFS minor version is 1 or higher. Perhaps it's not the RPC_SIGNALLED test above that is the problem, but the one later in nfsd4_cb_sequence_done().
+Hello.
 
-View: https://bugzilla.kernel.org/show_bug.cgi?id=219710#c7
+My clients are all v4.2 using Debian stable kernel 6.1.0-29-amd64 (= 6.1.123-1).
+
+If you suspect one of my client doing "wrong things" checking my server trace. Give me the IP and I can give you back the client syslog.
+
+In my case, one point seems important. The hang occur almost exactly one time per week. But not always the same day in the week (depending on when I reboot the server). The greater is the server uptime, the greater is the probability to see some "unrecognized reply" messages in syslog.
+
+I always see one or two "unrecognized reply" message around 120 seconds before the hang message.
+
+So it may something that happen on client or server weekly jobs ?
+Or maybe some memory leak or cache corruption ?
+Or something related to expired Kerberos cache file ?
+Or expired NFS session ?
+...
+
+It seems also that the number of nfsd_cb_recall_any callback message increase with the server uptime. This seems in favor of the memory leak hypothesis.
+
+Regards,
+
+Baptiste.
+
+View: https://bugzilla.kernel.org/show_bug.cgi?id=219710#c8
 You can reply to this message to join the discussion.
 -- 
 Deet-doot-dot, I am a bot.
