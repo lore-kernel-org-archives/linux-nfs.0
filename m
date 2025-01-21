@@ -1,28 +1,28 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8CD7B1F55FA;
-	Tue, 21 Jan 2025 17:59:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 960311F0E36;
+	Tue, 21 Jan 2025 18:03:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737482370; cv=none; b=gcljuwHDlrDlsNDmAEtX5axvnVpVtrkyDHU7zW9bpwxOLZkb2iZbk34okS6LSJN1Iy69rPEXViUBSXHuM6Ladx2caNAQ/TreKIP2nzjpa9kgFi1RXRqeN0taMzIPVKI+G3xfADPMEyecIeLnbmrFe6wCf1PJPcWtpdzLkvUurKs=
+	t=1737482639; cv=none; b=EGx0KHGtYq0tztwv1iZCgrX3N8YUv04FiQzJhtn/YfH7UjsJzRF/F0PDjNfKQjZ0Bk9/t3b6tTkzqN9/eFOMpYxcEtV1mmd5R3ZZY7HVNWOlx8h8kf+tBit4irxWYSucIS5My+aLTGeuuzjKewlombsF2kO8/JL5e2yt3Urdb/U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737482370; c=relaxed/simple;
-	bh=NeWPTQYT0qHEsZtlgGXDfysNKBT3N5hNvfadcDAzhNs=;
+	s=arc-20240116; t=1737482639; c=relaxed/simple;
+	bh=g4U/2YVjLKxXAQl/Hk6sUOKQCCtmcBlmF1CpTaxZwzg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=OOspgNvas3cxx/EKjPoPv8q1HhXX0FoqCjkrSZuSaJswymw1eBM6GQXzGaVwCC+Yov/uyBvQ6LLS5o1mFKtmo01pFPhkx73kRy5PuAKdK6qMhCx9qDRb5twblQ6fs8I5AsJrN+UA7BBDc8g76KUR3OFw7QQ7MV2TP5sVfddEVG8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b=euRbX2+y; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=L66a6lwDT9oLHyM1S2+k497CYIQcknza/J6xdydfcXZnkfBqtW5VeXtthW+FE5PzHwu1HfGQymN9Qxz/yl2Bliw2CcnX+mp4mOOcsAXxU8k3h8IscmuxrwhQR3826Mz1R58Nh24xEs3qCO6EF+1NSEBN1muZ+O9GvRL5Fi8UHgQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b=2VN+TMoq; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="euRbX2+y"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0D340C4CEDF;
-	Tue, 21 Jan 2025 17:59:29 +0000 (UTC)
+	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="2VN+TMoq"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7ABCDC4CEDF;
+	Tue, 21 Jan 2025 18:03:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-	s=korg; t=1737482370;
-	bh=NeWPTQYT0qHEsZtlgGXDfysNKBT3N5hNvfadcDAzhNs=;
+	s=korg; t=1737482639;
+	bh=g4U/2YVjLKxXAQl/Hk6sUOKQCCtmcBlmF1CpTaxZwzg=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=euRbX2+yUC7/PmfKW3++SuvDgjvEgD2z3lzaVE240fLfOD7myPZgSMSdseTpRwJhY
-	 O4WK26zwAmonNlrwHSkGXacr3mextL9Y4374o7q8mtSuP+6PWQbdy8p8/O5mrY5pK6
-	 G1BYzaH8ZLzIWt9Z40vbeqOGT9zR5A9NnRGPXgB4=
+	b=2VN+TMoq28KN94fsLODarJZqyqPW9xSwyZgXPkL/B4kEqTElfMr4s6cB1VmTPp/Ff
+	 DIIEJwNdQcGTTrPW/20HHbk6rJB6auWH/BcFi7rJOrnemNk4YAlVjBL+fH2cZ+zVvm
+	 BCzrRyQixiUZ3zDwT+f2j244uU151hOQbTrw1bSY=
 From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 To: stable@vger.kernel.org
 Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
@@ -35,12 +35,12 @@ Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
 	linux-kernel@vger.kernel.org,
 	Christian Brauner <brauner@kernel.org>,
 	Sasha Levin <sashal@kernel.org>
-Subject: [PATCH 6.12 053/122] kheaders: Ignore silly-rename files
-Date: Tue, 21 Jan 2025 18:51:41 +0100
-Message-ID: <20250121174535.034891265@linuxfoundation.org>
+Subject: [PATCH 6.1 22/64] kheaders: Ignore silly-rename files
+Date: Tue, 21 Jan 2025 18:52:21 +0100
+Message-ID: <20250121174522.404249164@linuxfoundation.org>
 X-Mailer: git-send-email 2.48.1
-In-Reply-To: <20250121174532.991109301@linuxfoundation.org>
-References: <20250121174532.991109301@linuxfoundation.org>
+In-Reply-To: <20250121174521.568417761@linuxfoundation.org>
+References: <20250121174521.568417761@linuxfoundation.org>
 User-Agent: quilt/0.68
 X-stable: review
 X-Patchwork-Hint: ignore
@@ -52,7 +52,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-6.12-stable review patch.  If anyone has any objections, please let me know.
+6.1-stable review patch.  If anyone has any objections, please let me know.
 
 ------------------
 
@@ -97,10 +97,10 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  1 file changed, 1 insertion(+)
 
 diff --git a/kernel/gen_kheaders.sh b/kernel/gen_kheaders.sh
-index 383fd43ac6122..7e1340da5acae 100755
+index 12bcd08fe79d4..5d506c6e8c0e7 100755
 --- a/kernel/gen_kheaders.sh
 +++ b/kernel/gen_kheaders.sh
-@@ -89,6 +89,7 @@ find $cpio_dir -type f -print0 |
+@@ -82,6 +82,7 @@ find $cpio_dir -type f -print0 |
  
  # Create archive and try to normalize metadata for reproducibility.
  tar "${KBUILD_BUILD_TIMESTAMP:+--mtime=$KBUILD_BUILD_TIMESTAMP}" \
