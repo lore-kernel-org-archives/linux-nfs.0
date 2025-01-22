@@ -1,72 +1,212 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 84CE61B6CE0
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Jan 2025 21:24:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B625A1C5D64;
+	Wed, 22 Jan 2025 21:24:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737581096; cv=none; b=gXIrrfJZBOw/FLnpPYhEMM+NLoaeJwc6vRujQ0GQR5UIkNcwp7WwebELSZeoU+CbPjWB0kaH81401Uq8kysxzqxkqDe1AVXYLOZpKTnlniwjoRxN0ACax+xgTrjlvtdpyUuzeJ8c+k2UtWFQgGHOhYYgB/xPlT971stq/krQdp8=
+	t=1737581101; cv=none; b=Cl6P4Xdx7hhKOQ/Au1JyA/MiJQovKdyHT6scUVMfpx6T68SFZNdx4Soe6Picu59ws8Tn03a+uNj8LzKA0RMmjNtl2DzEIDx9gD0ijSNPPetcFz6xYD9TU1gC0QNblGT65i4uGQfIwMrPOIuopXNvs/f24gnn1+ybZ58Ub6H/SL0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737581096; c=relaxed/simple;
-	bh=5ZOv7Gj4cH84bHqB83smta1lUCN4qK15xjOpgcG6ieo=;
-	h=From:Date:MIME-Version:Content-Type:To:Message-ID:In-Reply-To:
-	 References:Subject; b=PZO9NhPZ7k+g385x7zryIRUnvo3wi3CepC0h6px+4j4fi7bVartiR6b3/J+wrC2F2X1GQAhZ3dCRk98+dvQB18py3lk4h4bjZUhtBPxCuhzLfhaEp6dgGpqZMK6+nLjKpwz0U5Dc8R6lNEBAw5FVX3mo/HXO3TWPIw+tBAAVqGw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VlnKhGc2; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1737581101; c=relaxed/simple;
+	bh=L3wby2Xc3JR89MSoGfqjJ+nhKa/cuxN3/wba+ayzDL8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=BSEL7u4lGGTgPkgQR2RoSHdx8qspjoBe38B+v2vNT6d+Big/4z6qMoKwdUDonAGplPVesyfbDjsHG1+r6AJ+/TNSWaJyEEsHDihiXvpOq27Yd+xL0WS5exkIA7ABT24ijiZN/d0B0JAO52TMjcBbpGIPXKrMHkKgYk6sXm+u5oI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=f4Z7PTLA; arc=none smtp.client-ip=62.89.141.173
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VlnKhGc2"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E876DC4CED2;
-	Wed, 22 Jan 2025 21:24:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1737581096;
-	bh=5ZOv7Gj4cH84bHqB83smta1lUCN4qK15xjOpgcG6ieo=;
-	h=From:Date:To:In-Reply-To:References:Subject:From;
-	b=VlnKhGc2J1Hkk91FBtgNTKupqR8aONJ7Zr59P5c3EgwLdZCpN8hAI+9eyMKgfAtcd
-	 Dxf0j1bIZmQQGl8n4hhzbQ+3vMBvl6G+8UzGsYEOGra/C8k3rNlyhiSXCrns9geUQV
-	 +xkZYk7KUMPSbYKb744pu9ipz5sd7yM8f5LA3c8t/SD9/7/NrGLqrbqDjPd4iuAmiv
-	 4DH2BdHbANY0WYzhbeZt8QNRmzysHQPCr0hljdiFCyt9+nyGYb1z5VKFAwr8jYI7Kf
-	 i/J68R/9zyM50OdwJAWiXicaAImaWEk4UAfgWL77vWDekHLRo5ry/69DbfTcgLcC2Q
-	 IhY3UdyZLqWBA==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id AEBDB380AA62;
-	Wed, 22 Jan 2025 21:25:21 +0000 (UTC)
-From: JJ Jordan via Bugspray Bot <bugbot@kernel.org>
-Date: Wed, 22 Jan 2025 21:25:30 +0000
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="f4Z7PTLA"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
+	MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=E1gx7IlX9hOJkDbodUVnN+t8TR6bvMTWZysQxuIIuyM=; b=f4Z7PTLADs6J8ANoVJhizUEkH3
+	OPXw4JGYqin406HnRrzc0uhUlrY/lh7E32hzDhLaqCF1TNTPTWJL86qDNCM8UDT04ol2qkh2RNzY3
+	s9dWNK8QiQBc78FfPvuA/K1teqX2mWe8iaPOqcbBBskeRiVzRh+vE9aThtzQINk9vtEvhg10SwIAk
+	6pI8Rd+UARItDeG5oVZP2ypHlj0ktCkZSyJi8uMjYFTKlAHCKLly5To7F4kOb82zClxG9HTUI27B1
+	/zDeigQByDdVGIYuazQma94I1iNy+fELNqwYqpIEoaoCZP/zy4rEYerr6asynwo+t7PLKDjSKo5e8
+	HiTg9SJQ==;
+Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
+	id 1taiDY-000000082zQ-1lcY;
+	Wed, 22 Jan 2025 21:24:56 +0000
+Date: Wed, 22 Jan 2025 21:24:56 +0000
+From: Al Viro <viro@zeniv.linux.org.uk>
+To: David Howells <dhowells@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, agruenba@redhat.com, amir73il@gmail.com,
+	brauner@kernel.org, ceph-devel@vger.kernel.org, hubcap@omnibond.com,
+	jack@suse.cz, krisman@kernel.org, linux-nfs@vger.kernel.org,
+	miklos@szeredi.hu, torvalds@linux-foundation.org
+Subject: Re: [PATCH v2 08/20] afs_d_revalidate(): use stable name and parent
+ inode passed by caller
+Message-ID: <20250122212456.GA1977892@ZenIV>
+References: <20250116052317.485356-8-viro@zeniv.linux.org.uk>
+ <20250116052103.GF1977892@ZenIV>
+ <20250116052317.485356-1-viro@zeniv.linux.org.uk>
+ <2066311.1737577661@warthog.procyon.org.uk>
+ <20250122210124.GZ1977892@ZenIV>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-To: trondmy@kernel.org, tom@talpey.com, anna@kernel.org, 
- harald.dunkel@aixigo.com, herzog@phys.ethz.ch, jlayton@kernel.org, 
- carnil@debian.org, cel@kernel.org, linux-nfs@vger.kernel.org, 
- chuck.lever@oracle.com, benoit.gschwind@minesparis.psl.eu, 
- baptiste.pellegrin@ac-grenoble.fr
-Message-ID: <20250122-b219710c16-bf97093cb6ed@bugzilla.kernel.org>
-In-Reply-To: <20250120-b219710c0-da932078cddb@bugzilla.kernel.org>
-References: <20250120-b219710c0-da932078cddb@bugzilla.kernel.org>
-Subject: Re: NFSD threads hang when destroying a session or client ID
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: NFSD
-X-Mailer: bugspray 0.1-dev
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20250122210124.GZ1977892@ZenIV>
+Sender: Al Viro <viro@ftp.linux.org.uk>
 
-JJ Jordan added an attachment on Kernel.org Bugzilla:
+On Wed, Jan 22, 2025 at 09:01:24PM +0000, Al Viro wrote:
+> On Wed, Jan 22, 2025 at 08:27:41PM +0000, David Howells wrote:
+> > Al Viro <viro@zeniv.linux.org.uk> wrote:
+> > 
+> > > -	_enter("{%lu},%p{%pd},", dir->i_ino, dentry, dentry);
+> > > +	_enter("{%lu},{%s},", dir->i_ino, name->name);
+> > 
+> > I don't think that name->name is guaranteed to be NUL-terminated after
+> > name->len characters.  The following:
+> > 
+> > 	_enter("{%lu},{%*s},", dir->i_ino, name->len, name->name);
+> > 
+> > might be better, though:
+> > 
+> > 	_enter("{%lu},{%*.*s},", dir->i_ino, name->len, name->len, name->name);
+> > 
+> > might be necessary.
+> 
+> Good catch (and that definitely needs to be documented in previous commit),
+> but what's wrong with
+> 	_enter("{%lu},{%.*s},", dir->i_ino, name->len, name->name);
 
-Created attachment 307528
-Logs and traces from Jan-18 pt2
+IOW, are you OK with the following?
 
-Part 2 of previous
+commit bf61e4013ab1cb9a819303faca018e7b7cbaf3e7
+Author: Al Viro <viro@zeniv.linux.org.uk>
+Date:   Fri Jan 3 00:27:27 2025 -0500
 
-File: nfs-traces-250118-pt2.tar.bz2 (application/octet-stream)
-Size: 601.99 KiB
-Link: https://bugzilla.kernel.org/attachment.cgi?id=307528
----
-Logs and traces from Jan-18 pt2
+    afs_d_revalidate(): use stable name and parent inode passed by caller
+    
+    No need to bother with boilerplate for obtaining the latter and for
+    the former we really should not count upon ->d_name.name remaining
+    stable under us.
+    
+    Reviewed-by: Jeff Layton <jlayton@kernel.org>
+    Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 
-You can reply to this message to join the discussion.
--- 
-Deet-doot-dot, I am a bot.
-Kernel.org Bugzilla (bugspray 0.1-dev)
-
+diff --git a/fs/afs/dir.c b/fs/afs/dir.c
+index 9780013cd83a..e04cffe4beb1 100644
+--- a/fs/afs/dir.c
++++ b/fs/afs/dir.c
+@@ -607,19 +607,19 @@ static bool afs_lookup_one_filldir(struct dir_context *ctx, const char *name,
+  * Do a lookup of a single name in a directory
+  * - just returns the FID the dentry name maps to if found
+  */
+-static int afs_do_lookup_one(struct inode *dir, struct dentry *dentry,
++static int afs_do_lookup_one(struct inode *dir, const struct qstr *name,
+ 			     struct afs_fid *fid, struct key *key,
+ 			     afs_dataversion_t *_dir_version)
+ {
+ 	struct afs_super_info *as = dir->i_sb->s_fs_info;
+ 	struct afs_lookup_one_cookie cookie = {
+ 		.ctx.actor = afs_lookup_one_filldir,
+-		.name = dentry->d_name,
++		.name = *name,
+ 		.fid.vid = as->volume->vid
+ 	};
+ 	int ret;
+ 
+-	_enter("{%lu},%p{%pd},", dir->i_ino, dentry, dentry);
++	_enter("{%lu},{%.*s},", dir->i_ino, name->len, name->name);
+ 
+ 	/* search the directory */
+ 	ret = afs_dir_iterate(dir, &cookie.ctx, key, _dir_version);
+@@ -1052,21 +1052,12 @@ static struct dentry *afs_lookup(struct inode *dir, struct dentry *dentry,
+ /*
+  * Check the validity of a dentry under RCU conditions.
+  */
+-static int afs_d_revalidate_rcu(struct dentry *dentry)
++static int afs_d_revalidate_rcu(struct afs_vnode *dvnode, struct dentry *dentry)
+ {
+-	struct afs_vnode *dvnode;
+-	struct dentry *parent;
+-	struct inode *dir;
+ 	long dir_version, de_version;
+ 
+ 	_enter("%p", dentry);
+ 
+-	/* Check the parent directory is still valid first. */
+-	parent = READ_ONCE(dentry->d_parent);
+-	dir = d_inode_rcu(parent);
+-	if (!dir)
+-		return -ECHILD;
+-	dvnode = AFS_FS_I(dir);
+ 	if (test_bit(AFS_VNODE_DELETED, &dvnode->flags))
+ 		return -ECHILD;
+ 
+@@ -1097,9 +1088,8 @@ static int afs_d_revalidate_rcu(struct dentry *dentry)
+ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 			    struct dentry *dentry, unsigned int flags)
+ {
+-	struct afs_vnode *vnode, *dir;
++	struct afs_vnode *vnode, *dir = AFS_FS_I(parent_dir);
+ 	struct afs_fid fid;
+-	struct dentry *parent;
+ 	struct inode *inode;
+ 	struct key *key;
+ 	afs_dataversion_t dir_version, invalid_before;
+@@ -1107,7 +1097,7 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 	int ret;
+ 
+ 	if (flags & LOOKUP_RCU)
+-		return afs_d_revalidate_rcu(dentry);
++		return afs_d_revalidate_rcu(dir, dentry);
+ 
+ 	if (d_really_is_positive(dentry)) {
+ 		vnode = AFS_FS_I(d_inode(dentry));
+@@ -1122,14 +1112,9 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 	if (IS_ERR(key))
+ 		key = NULL;
+ 
+-	/* Hold the parent dentry so we can peer at it */
+-	parent = dget_parent(dentry);
+-	dir = AFS_FS_I(d_inode(parent));
+-
+ 	/* validate the parent directory */
+ 	ret = afs_validate(dir, key);
+ 	if (ret == -ERESTARTSYS) {
+-		dput(parent);
+ 		key_put(key);
+ 		return ret;
+ 	}
+@@ -1157,7 +1142,7 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 	afs_stat_v(dir, n_reval);
+ 
+ 	/* search the directory for this vnode */
+-	ret = afs_do_lookup_one(&dir->netfs.inode, dentry, &fid, key, &dir_version);
++	ret = afs_do_lookup_one(&dir->netfs.inode, name, &fid, key, &dir_version);
+ 	switch (ret) {
+ 	case 0:
+ 		/* the filename maps to something */
+@@ -1201,22 +1186,19 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 		goto out_valid;
+ 
+ 	default:
+-		_debug("failed to iterate dir %pd: %d",
+-		       parent, ret);
++		_debug("failed to iterate parent %pd2: %d", dentry, ret);
+ 		goto not_found;
+ 	}
+ 
+ out_valid:
+ 	dentry->d_fsdata = (void *)(unsigned long)dir_version;
+ out_valid_noupdate:
+-	dput(parent);
+ 	key_put(key);
+ 	_leave(" = 1 [valid]");
+ 	return 1;
+ 
+ not_found:
+ 	_debug("dropping dentry %pd2", dentry);
+-	dput(parent);
+ 	key_put(key);
+ 
+ 	_leave(" = 0 [bad]");
