@@ -1,34 +1,34 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7276135965;
-	Thu, 23 Jan 2025 01:46:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BD371E871;
+	Thu, 23 Jan 2025 01:46:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737596809; cv=none; b=CVd/+77RjLHasgB75EWSzP9ALTYnVwQtvKu+f60DTzazPNrz8uYdgzleKsxB3A5jHD2Zv7gN9cmAw7CzCRP4rlF+gkVsf/wfL6a9NIle0kVGg9lDMTz5Y9vAJNeD9bLf6XEg5egiBTtmZaM0yjTkThOD9iObL4b2Mo5bh7M4Yfg=
+	t=1737596809; cv=none; b=LxiSQm0tF5O0REO96MOReKq4uoNM2uvC8SB3Fw7Vima4JdfEVPQdMT4KHkr9EINlNV7eLxgs5stnq0CfmNobKQXaXUgQe8uC4mb1XOSqDYuK+bNI+5dDIsq3gmSeA7TWtgeTny6eMpDPENUu8gw3fHDKCPNgrlIweBrpag7QHR4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1737596809; c=relaxed/simple;
-	bh=hergQ0UtAkYbyivylSWUfYg/yaL+rMJ0njc/JZrW/sU=;
+	bh=OvsCYac6VREQ9DwhL1y7feV26RFKLeShf5vlrlSidkk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=TEMLJVkho1s+ArbLsSYfgANJvsAjxa2Tbdb5drGdfmKBGt08l+uooUB5S+mgJbB0ywVGHmCNsZ7GPdbb2Km2slVO0NjcPbAGTEwKoE/YRCWNBClbBt9XsF54TDjU3hlijzSTfgzdMlUmjE0st2nmzE+ngLrf/M5LoHirZjRFR1Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=hkEgvNE6; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=Luj8RCo+zov5x6CIg3cjyGkDipbSLI1F8hE0TTPaDo3P7Jh2GQebg6yGlUHZAL/S/mgMsiTvULXp6X6S5Jt0DpbFStRxUi1DR2eio/GED+jHaC86eX3BFqaIThZG8c7GeLD2lqfvS3Ci0Z2vNAxy3qGJfQ9jjJmeT8CJBZxiCBs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=Wsivcfnt; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="hkEgvNE6"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="Wsivcfnt"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=hqOmDaE4VdnWGGxnsANM+Oqb7CSop4zrRhX19MfRv+A=; b=hkEgvNE6XsQ9AaTlLP840OoBkl
-	bgUF7396QyIQy+BqphB/CcG8PhhnJZMDZ7owYBAyk9Visi7Y0vff7cz7YeEfrRkXq+W3NRifUBPnQ
-	N7e9yRrhtvG2hpq9Twmex01jxnsrLzjkF2js2HZvIu0eILGHwzn4ThffO6WV84x//LMaz6uvXLvDV
-	hf6ypECe02wdkisWQZt3tMoMHxFK4I9K6YUqL1Z0pNk+hUelwFc/zJpZBM0BqGnbEN7DS4jsUMIGx
-	enTihowYP+Qw9IwX6rR/GWFBzQLLz1WPCys81wT5HJqEzTYw0jCjnxlzCw4kGpxUzXDxRf++jkh7m
-	QJ1mA35A==;
+	bh=ct/u613PzDWPcdGjSLq5vJ5UW9GDE+E/FU7hcfHVMnI=; b=WsivcfntNw5OS0CZEs0d7U0aJn
+	SqZJ1INki+mnIFjGRm8wsxFPy9F4Rj3YIxO6HwpF51/tNTUJaRRZkeX0SrnmICW+PpwxKUWmptvAg
+	MYXkj8sSZhwIUN2ufBeySQpS0mN+oF+e4eIXJG3W1b0l5eMOfGDo9euLO69V/63BLBKmHp9xgodc/
+	OUzBtLcEykvRO61haPWGmDhU0W8BSCtfJnmrmzJ4qHgLJpZst3N/UTDFo2QVFJqRKWa5ZtYw45LbS
+	Pa58aajZuor+GnBJaRKbeIGieuU9wiLuXJd2FMMrX4GzKfvwkINk4Ypi8YwRtEF4uxyceUKMwvuo3
+	LY68910A==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1tamIv-00000008F3z-32pZ;
-	Thu, 23 Jan 2025 01:46:45 +0000
+	id 1tamIu-00000008F2Y-3DI4;
+	Thu, 23 Jan 2025 01:46:44 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
 Cc: agruenba@redhat.com,
@@ -42,9 +42,9 @@ Cc: agruenba@redhat.com,
 	linux-nfs@vger.kernel.org,
 	miklos@szeredi.hu,
 	torvalds@linux-foundation.org
-Subject: [PATCH v3 19/20] orangefs_d_revalidate(): use stable parent inode and name passed by caller
-Date: Thu, 23 Jan 2025 01:46:42 +0000
-Message-ID: <20250123014643.1964371-19-viro@zeniv.linux.org.uk>
+Subject: [PATCH v3 10/20] ceph_d_revalidate(): propagate stable name down into request encoding
+Date: Thu, 23 Jan 2025 01:46:33 +0000
+Message-ID: <20250123014643.1964371-10-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.47.1
 In-Reply-To: <20250123014643.1964371-1-viro@zeniv.linux.org.uk>
 References: <20250123014511.GA1962481@ZenIV>
@@ -58,69 +58,83 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-->d_name use is a UAF if the userland side of things can be slowed down
-by attacker.
+Currently get_fscrypt_altname() requires ->r_dentry->d_name to be stable
+and it gets that in almost all cases.  The only exception is ->d_revalidate(),
+where we have a stable name, but it's passed separately - dentry->d_name
+is not stable there.
 
+Propagate it down to get_fscrypt_altname() as a new field of struct
+ceph_mds_request - ->r_dname, to be used instead ->r_dentry->d_name
+when non-NULL.
+
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/orangefs/dcache.c | 19 ++++++++-----------
- 1 file changed, 8 insertions(+), 11 deletions(-)
+ fs/ceph/dir.c        | 2 ++
+ fs/ceph/mds_client.c | 9 ++++++---
+ fs/ceph/mds_client.h | 2 ++
+ 3 files changed, 10 insertions(+), 3 deletions(-)
 
-diff --git a/fs/orangefs/dcache.c b/fs/orangefs/dcache.c
-index c32c9a86e8d0..a19d1ad705db 100644
---- a/fs/orangefs/dcache.c
-+++ b/fs/orangefs/dcache.c
-@@ -13,10 +13,9 @@
- #include "orangefs-kernel.h"
+diff --git a/fs/ceph/dir.c b/fs/ceph/dir.c
+index dc5f55bebad7..62e99e65250d 100644
+--- a/fs/ceph/dir.c
++++ b/fs/ceph/dir.c
+@@ -1998,6 +1998,8 @@ static int ceph_d_revalidate(struct inode *dir, const struct qstr *name,
+ 			req->r_parent = dir;
+ 			ihold(dir);
  
- /* Returns 1 if dentry can still be trusted, else 0. */
--static int orangefs_revalidate_lookup(struct dentry *dentry)
-+static int orangefs_revalidate_lookup(struct inode *parent_inode, const struct qstr *name,
-+				      struct dentry *dentry)
++			req->r_dname = name;
++
+ 			mask = CEPH_STAT_CAP_INODE | CEPH_CAP_AUTH_SHARED;
+ 			if (ceph_security_xattr_wanted(dir))
+ 				mask |= CEPH_CAP_XATTR_SHARED;
+diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
+index 219a2cc2bf3c..3b766b984713 100644
+--- a/fs/ceph/mds_client.c
++++ b/fs/ceph/mds_client.c
+@@ -2621,6 +2621,7 @@ static u8 *get_fscrypt_altname(const struct ceph_mds_request *req, u32 *plen)
  {
--	struct dentry *parent_dentry = dget_parent(dentry);
--	struct inode *parent_inode = parent_dentry->d_inode;
- 	struct orangefs_inode_s *parent = ORANGEFS_I(parent_inode);
- 	struct inode *inode = dentry->d_inode;
- 	struct orangefs_kernel_op_s *new_op;
-@@ -26,14 +25,14 @@ static int orangefs_revalidate_lookup(struct dentry *dentry)
- 	gossip_debug(GOSSIP_DCACHE_DEBUG, "%s: attempting lookup.\n", __func__);
+ 	struct inode *dir = req->r_parent;
+ 	struct dentry *dentry = req->r_dentry;
++	const struct qstr *name = req->r_dname;
+ 	u8 *cryptbuf = NULL;
+ 	u32 len = 0;
+ 	int ret = 0;
+@@ -2641,8 +2642,10 @@ static u8 *get_fscrypt_altname(const struct ceph_mds_request *req, u32 *plen)
+ 	if (!fscrypt_has_encryption_key(dir))
+ 		goto success;
  
- 	new_op = op_alloc(ORANGEFS_VFS_OP_LOOKUP);
--	if (!new_op) {
--		ret = -ENOMEM;
--		goto out_put_parent;
--	}
-+	if (!new_op)
-+		return -ENOMEM;
+-	if (!fscrypt_fname_encrypted_size(dir, dentry->d_name.len, NAME_MAX,
+-					  &len)) {
++	if (!name)
++		name = &dentry->d_name;
++
++	if (!fscrypt_fname_encrypted_size(dir, name->len, NAME_MAX, &len)) {
+ 		WARN_ON_ONCE(1);
+ 		return ERR_PTR(-ENAMETOOLONG);
+ 	}
+@@ -2657,7 +2660,7 @@ static u8 *get_fscrypt_altname(const struct ceph_mds_request *req, u32 *plen)
+ 	if (!cryptbuf)
+ 		return ERR_PTR(-ENOMEM);
  
- 	new_op->upcall.req.lookup.sym_follow = ORANGEFS_LOOKUP_LINK_NO_FOLLOW;
- 	new_op->upcall.req.lookup.parent_refn = parent->refn;
--	strscpy(new_op->upcall.req.lookup.d_name, dentry->d_name.name);
-+	/* op_alloc() leaves ->upcall zeroed */
-+	memcpy(new_op->upcall.req.lookup.d_name, name->name,
-+			min(name->len, ORANGEFS_NAME_MAX - 1));
+-	ret = fscrypt_fname_encrypt(dir, &dentry->d_name, cryptbuf, len);
++	ret = fscrypt_fname_encrypt(dir, name, cryptbuf, len);
+ 	if (ret) {
+ 		kfree(cryptbuf);
+ 		return ERR_PTR(ret);
+diff --git a/fs/ceph/mds_client.h b/fs/ceph/mds_client.h
+index 38bb7e0d2d79..7c9fee9e80d4 100644
+--- a/fs/ceph/mds_client.h
++++ b/fs/ceph/mds_client.h
+@@ -299,6 +299,8 @@ struct ceph_mds_request {
+ 	struct inode *r_target_inode;       /* resulting inode */
+ 	struct inode *r_new_inode;	    /* new inode (for creates) */
  
- 	gossip_debug(GOSSIP_DCACHE_DEBUG,
- 		     "%s:%s:%d interrupt flag [%d]\n",
-@@ -78,8 +77,6 @@ static int orangefs_revalidate_lookup(struct dentry *dentry)
- 	ret = 1;
- out_release_op:
- 	op_release(new_op);
--out_put_parent:
--	dput(parent_dentry);
- 	return ret;
- out_drop:
- 	gossip_debug(GOSSIP_DCACHE_DEBUG, "%s:%s:%d revalidate failed\n",
-@@ -115,7 +112,7 @@ static int orangefs_d_revalidate(struct inode *dir, const struct qstr *name,
- 	 * If this passes, the positive dentry still exists or the negative
- 	 * dentry still does not exist.
- 	 */
--	if (!orangefs_revalidate_lookup(dentry))
-+	if (!orangefs_revalidate_lookup(dir, name, dentry))
- 		return 0;
- 
- 	/* We do not need to continue with negative dentries. */
++	const struct qstr *r_dname;	    /* stable name (for ->d_revalidate) */
++
+ #define CEPH_MDS_R_DIRECT_IS_HASH	(1) /* r_direct_hash is valid */
+ #define CEPH_MDS_R_ABORTED		(2) /* call was aborted */
+ #define CEPH_MDS_R_GOT_UNSAFE		(3) /* got an unsafe reply */
 -- 
 2.39.5
 
