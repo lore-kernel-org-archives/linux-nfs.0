@@ -1,33 +1,33 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C429D2914;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3718B8F5A;
 	Thu, 23 Jan 2025 01:46:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737596806; cv=none; b=gUI1W7dw/VMXnxwRdyY2Nwy8Eg0cS0ZxLa5Y8Y/L4QQij7N6kJK7wYHI44eYoaMnVpVIJuywhlmcQmWsilm1sK7X3SdRkzU857D485TZreHDVvAQo9pMoLvoB3OnnT8fvV4FO/Zd/QxfGDG6pklWucthz9zBgpclj5M41nAF1L0=
+	t=1737596807; cv=none; b=FsN+3V/u7YQfRHbSjE4pySEBgLfgaOH9d64hRVmkQRYA8J4aGv1DpByyvIEtU/eAZL6/FVuodwfMDMNQDuD9xorJSBW7CVaVkC5J4G3qNaAn0t4M0ZvhYx+eFSI55E8q9y5uupLJT1T1RJB4A1lci58vG2PfL6wRhOeOxhoglW0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737596806; c=relaxed/simple;
-	bh=XPZkiJKXYfeFofa+2VFXwjMK3RU50OpTdvCEwvPZQgE=;
+	s=arc-20240116; t=1737596807; c=relaxed/simple;
+	bh=O99DaNH/9UoS2mloDzfckbmT7zcw9IH3XkcraOUqx1U=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=aJKkAnA+8L/MaFgP+YVc93LC6RiPjYLOet0b4H2i3euxtIlsF8x+Ohd8kBbmhqxzrMgD98f/CLfNPHXiQqswluUtTcw5KruurkHpSQeFEuDkrC45G10ms1ST4bX6QKgCHZdECSh8HcVcptE/euuv8wTmaNju9jfuJemVlUr1wgk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=bBqdc5XT; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=QToIU4+gP2yQ8zr0Wf3zu7cWcvm0K6NYy5Jzsx7KEmqhJRsIMU8Wf4WwFW/5CW7BRaJwQO2XBmh4xu81SRfmSiyGApfSTk2m5tOMF80XgAorzro3FLkHwdB1vPaOB4lAANHOPjaTvGJ53/WN8uZ6fVBfCh4fzqATwnY9AZdXjPY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=ZxGZ/VHQ; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="bBqdc5XT"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="ZxGZ/VHQ"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=d06SqmicZT/MxgsCOW0a8y/YjAavZHt5mB4tHTNwgH0=; b=bBqdc5XTg2+JftM5OteQOFxdQf
-	roylvUpjWe52D0cs6+J675WBrgE4poEQBkRmublhcYFZvgpAoK3lWR5I2J5rz6uFceEywMOPg7BpY
-	jb+ShruUs75FfaMmbPg0Oz4yQtWWS0TXvNimD6qku5AcgTm+IJHkp3Bqi0Lj6COS5YVHl9JyIPJrU
-	RooA8Vttp7vZ4BgeNGf2YWFBPvyZRkvpmieAkuqnsnBap6QJdSKfNdVh9O1CfEXZzIKwyUxFnwWfy
-	aZ82SGFoFZHt1WK7nnysWjLaPUKjzYeVu0zwE6F5gLbu9ANoo/8z6uVoVfA+EmOT0xqoALIXy8zsS
-	gXRDjg1A==;
+	bh=uluj5dvO+EeL5bFRJd14lCVgGa2Cb6Ufz0cEimr7VOM=; b=ZxGZ/VHQ8IuNWS89oPebaki1pq
+	3omejEdKZFepLKolw9pmsC+sKfRIGmcscFN2D7gI2D92hDGmZIgGSmU5NM1Y6yXpf7LrYzG8F7oQW
+	78cfOaYmbVwjsqAu8rfFY4/65aPglcBIieOfoGuku+Kl5TA2gNuaJTQXlh2wdYbRoMMbEnVM/R/gY
+	5o4+YD+KkNK8/jxfO+NpfRq+3JtbahWHc9/s8zCgp5x+CgU8GXF8v5ZQiXuAg6OHPSgVV6VQqO7vg
+	YT6/TS8auAtB4h+bUaOAQWUkIYaKthF+wLoZhr4g+8dulUdmtRlUTjxjWgGjeL8bQtAUK829QA0o9
+	7S1Li2KQ==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1tamIt-00000008F1W-1Py4;
+	id 1tamIt-00000008F1e-2jls;
 	Thu, 23 Jan 2025 01:46:43 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
@@ -42,12 +42,13 @@ Cc: agruenba@redhat.com,
 	linux-nfs@vger.kernel.org,
 	miklos@szeredi.hu,
 	torvalds@linux-foundation.org
-Subject: [PATCH v3 01/20] make sure that DNAME_INLINE_LEN is a multiple of word size
-Date: Thu, 23 Jan 2025 01:46:24 +0000
-Message-ID: <20250123014643.1964371-1-viro@zeniv.linux.org.uk>
+Subject: [PATCH v3 03/20] make take_dentry_name_snapshot() lockless
+Date: Thu, 23 Jan 2025 01:46:26 +0000
+Message-ID: <20250123014643.1964371-3-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.47.1
-In-Reply-To: <20250123014511.GA1962481@ZenIV>
+In-Reply-To: <20250123014643.1964371-1-viro@zeniv.linux.org.uk>
 References: <20250123014511.GA1962481@ZenIV>
+ <20250123014643.1964371-1-viro@zeniv.linux.org.uk>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -57,61 +58,84 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-... calling the number of words DNAME_INLINE_WORDS.
+Use ->d_seq instead of grabbing ->d_lock; in case of shortname dentries
+that avoids any stores to shared data objects and in case of long names
+we are down to (unavoidable) atomic_inc on the external_name refcount.
 
-The next step will be to have a structure to hold inline name arrays
-(both in dentry and in name_snapshot) and use that to alias the
-existing arrays of unsigned char there.  That will allow both
-full-structure copies and convenient word-by-word accesses.
+Makes the thing safer as well - the areas where ->d_seq is held odd are
+all nested inside the areas where ->d_lock is held, and the latter are
+much more numerous.
+
+NOTE: now that there is a lockless path where we might try to grab
+a reference to an already doomed external_name instance, it is no
+longer possible for external_name.u.count and external_name.u.head
+to share space (kudos to Linus for spotting that).
+
+To reduce the noise this commit just make external_name.u a struct
+(instead of union); the next commit will dissolve it.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Reviewed-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/dcache.c            | 4 +---
- include/linux/dcache.h | 8 +++++---
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ fs/dcache.c | 35 +++++++++++++++++++++++++----------
+ 1 file changed, 25 insertions(+), 10 deletions(-)
 
 diff --git a/fs/dcache.c b/fs/dcache.c
-index b4d5e9e1e43d..ea0f0bea511b 100644
+index 52662a5d08e4..f387dc97df86 100644
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
-@@ -2748,9 +2748,7 @@ static void swap_names(struct dentry *dentry, struct dentry *target)
- 			/*
- 			 * Both are internal.
- 			 */
--			unsigned int i;
--			BUILD_BUG_ON(!IS_ALIGNED(DNAME_INLINE_LEN, sizeof(long)));
--			for (i = 0; i < DNAME_INLINE_LEN / sizeof(long); i++) {
-+			for (int i = 0; i < DNAME_INLINE_WORDS; i++) {
- 				swap(((long *) &dentry->d_iname)[i],
- 				     ((long *) &target->d_iname)[i]);
- 			}
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index bff956f7b2b9..42dd89beaf4e 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -68,15 +68,17 @@ extern const struct qstr dotdot_name;
-  * large memory footprint increase).
-  */
- #ifdef CONFIG_64BIT
--# define DNAME_INLINE_LEN 40 /* 192 bytes */
-+# define DNAME_INLINE_WORDS 5 /* 192 bytes */
- #else
- # ifdef CONFIG_SMP
--#  define DNAME_INLINE_LEN 36 /* 128 bytes */
-+#  define DNAME_INLINE_WORDS 9 /* 128 bytes */
- # else
--#  define DNAME_INLINE_LEN 44 /* 128 bytes */
-+#  define DNAME_INLINE_WORDS 11 /* 128 bytes */
- # endif
- #endif
+@@ -296,9 +296,9 @@ static inline int dentry_cmp(const struct dentry *dentry, const unsigned char *c
+ }
  
-+#define DNAME_INLINE_LEN (DNAME_INLINE_WORDS*sizeof(unsigned long))
+ struct external_name {
+-	union {
+-		atomic_t count;
+-		struct rcu_head head;
++	struct {
++		atomic_t count;		// ->count and ->head can't be combined
++		struct rcu_head head;	// see take_dentry_name_snapshot()
+ 	} u;
+ 	unsigned char name[];
+ };
+@@ -329,15 +329,30 @@ static inline int dname_external(const struct dentry *dentry)
+ 
+ void take_dentry_name_snapshot(struct name_snapshot *name, struct dentry *dentry)
+ {
+-	spin_lock(&dentry->d_lock);
+-	name->name = dentry->d_name;
+-	if (unlikely(dname_external(dentry))) {
+-		atomic_inc(&external_name(dentry)->u.count);
+-	} else {
++	unsigned seq;
++	const unsigned char *s;
 +
- #define d_lock	d_lockref.lock
++	rcu_read_lock();
++retry:
++	seq = read_seqcount_begin(&dentry->d_seq);
++	s = READ_ONCE(dentry->d_name.name);
++	name->name.hash_len = dentry->d_name.hash_len;
++	name->name.name = name->inline_name.string;
++	if (likely(s == dentry->d_shortname.string)) {
+ 		name->inline_name = dentry->d_shortname;
+-		name->name.name = name->inline_name.string;
++	} else {
++		struct external_name *p;
++		p = container_of(s, struct external_name, name[0]);
++		// get a valid reference
++		if (unlikely(!atomic_inc_not_zero(&p->u.count)))
++			goto retry;
++		name->name.name = s;
+ 	}
+-	spin_unlock(&dentry->d_lock);
++	if (read_seqcount_retry(&dentry->d_seq, seq)) {
++		release_dentry_name_snapshot(name);
++		goto retry;
++	}
++	rcu_read_unlock();
+ }
+ EXPORT_SYMBOL(take_dentry_name_snapshot);
  
- struct dentry {
 -- 
 2.39.5
 
