@@ -1,290 +1,227 @@
-Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 004B922EE4;
-	Thu, 23 Jan 2025 01:46:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76ED32914
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Jan 2025 02:09:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737596813; cv=none; b=P7yeyz7FmtsAkP6hbpiYHtyElEa2cymYKzSWyteWCCPh1uKtb0PDFpdp7dc4tbavXDHu6BMzp8NNHJwQt+R5tAfJQUeY9nKvVgyyn5ofQxfUXo87x72S2/9EV+Yz+HVY32z9Aios4UhdbDG/2cHPaEFXS6yUQ66Gm3nV239k/IE=
+	t=1737598184; cv=none; b=rBY7Eko7105G6AAtl2hcbCPu/WSwPxgS1/+cbmo6mMroEtio29WF/EyVbduQHK79cdhHIKBPrRDtaobrE/nzwHLVsH+G8HAnVZ3Gu1ZznEtPw0iIdxI+tVwfnMfvcSOe88sQB0kkP9y1pqfBLh7tV8+rqSMMYqlZCfZqbdQIqHQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737596813; c=relaxed/simple;
-	bh=M1nqz3Ruf9CHrKCGSk7S0M+j7AGw8+RWL3w12E5UdFk=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=nywqjXyOVeiSxAUqAnRKeiYshOkCO2jDGmqPMmq9DNxeNHDyG/hC/ocLiPBp1iGcwlsJhQGHLhDu2ZO6Y0g3R4BOf6TRSfQCB2o3EEf8AsjQHEyc9n0MoI8PRd+X1eeUV5MsjDqEowKL+5E9fsZbFgpQXE65Qak7EdMfoKyzVAA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=tRjOvNKj; arc=none smtp.client-ip=62.89.141.173
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
+	s=arc-20240116; t=1737598184; c=relaxed/simple;
+	bh=p6FP1JXEf/Pg6Ap3ul93BbXxmL3uNdAonhYDUlBEk2M=;
+	h=From:Date:MIME-Version:Content-Type:To:Message-ID:In-Reply-To:
+	 References:Subject; b=Ns/Vl/jVbOeugVr+pZ+TOYtxa4kdk9rVtmzXfWqjypGEbffAM7PC0FcvaHBrN43EDYG6niXUhKjwnGEIZlxqJMuJ+6nr1N4c7J7J6InXkrd6ZNZTOlFPG9Khdc5v6LJAzRAsJDUqb/70dGSj9BwoBVlnE+K0aP0XkmgjNgg8rj4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jIdTYvOR; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="tRjOvNKj"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
-	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
-	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=h+ZdOAkNQ69HQ2HJweuE2THmxU7FyYXZQLZ05+cByIs=; b=tRjOvNKjqVyXz597h0RTqztudY
-	Z1xm1W2p97QT8/KvbwodQn4Ze2ONGiGVd1hO2sPnE50fmG2AY4o+HRy1CqZRuX4w4WyJium+T0HXX
-	eB9xYvdzmQxuDlDo5RMDwouUPKe9q1c1OoP7JAnx9yGYyhQH5GnjKUEkMObYAf/14l9sANDPGVIXa
-	bx42nLiEZ9EYxeogyuJePvgH66BBImNssjs9LaVLQZ009tt2a8PZWJWhuMCJ7yMWlz6QElX1j5RFa
-	DeEidO5UGQEQHftZGM54e4j/ESzYdRV1Wx7wGH4ub0PR/FfDnTm5H0TtYA6swM18W9r4L6F5KyV7v
-	BraFirAw==;
-Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1tamIv-00000008F3c-1z2E;
-	Thu, 23 Jan 2025 01:46:45 +0000
-From: Al Viro <viro@zeniv.linux.org.uk>
-To: linux-fsdevel@vger.kernel.org
-Cc: agruenba@redhat.com,
-	amir73il@gmail.com,
-	brauner@kernel.org,
-	ceph-devel@vger.kernel.org,
-	dhowells@redhat.com,
-	hubcap@omnibond.com,
-	jack@suse.cz,
-	krisman@kernel.org,
-	linux-nfs@vger.kernel.org,
-	miklos@szeredi.hu,
-	torvalds@linux-foundation.org
-Subject: [PATCH v3 17/20] nfs: fix ->d_revalidate() UAF on ->d_name accesses
-Date: Thu, 23 Jan 2025 01:46:40 +0000
-Message-ID: <20250123014643.1964371-17-viro@zeniv.linux.org.uk>
-X-Mailer: git-send-email 2.47.1
-In-Reply-To: <20250123014643.1964371-1-viro@zeniv.linux.org.uk>
-References: <20250123014511.GA1962481@ZenIV>
- <20250123014643.1964371-1-viro@zeniv.linux.org.uk>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jIdTYvOR"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D9F5CC4CED2;
+	Thu, 23 Jan 2025 02:09:42 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1737598182;
+	bh=p6FP1JXEf/Pg6Ap3ul93BbXxmL3uNdAonhYDUlBEk2M=;
+	h=From:Date:To:In-Reply-To:References:Subject:From;
+	b=jIdTYvORFXIpqwNWx3UMUsM52ZdAkeVWS/pvTjUaYn3WOI/U6eykHfYx2gkB6kkqe
+	 j0zoKmJWTkTSAiybDBI88026dnyUgJmPPeveQ8dflejbcH1wul2JgMOv1RDVPd+6eB
+	 lmLcLlC0zbbaKEvvcGogVUfvlvmtyYBlNkcYysPk3EbPVOlValjbtyVYhFGRSBAPW3
+	 57oUDJ6jeq5jmxgxF4tfb1cuvcjlhBNUe2kteP7aDAiXi7hguxUB/aVY7KsGlq9hhz
+	 tJ8FZNXqHi4oEnz9wNpgqfesVhs8eTNtjGoRq1UyMWZmrbq/Wgu/hWjFU6BAp78wk9
+	 wRyXuNfoeWBoA==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 7D611380AA70;
+	Thu, 23 Jan 2025 02:10:08 +0000 (UTC)
+From: Li Lingfeng via Bugspray Bot <bugbot@kernel.org>
+Date: Thu, 23 Jan 2025 02:10:21 +0000
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Sender: Al Viro <viro@ftp.linux.org.uk>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+To: benoit.gschwind@minesparis.psl.eu, harald.dunkel@aixigo.com, 
+ herzog@phys.ethz.ch, tom@talpey.com, chuck.lever@oracle.com, 
+ jlayton@kernel.org, cel@kernel.org, trondmy@kernel.org, 
+ baptiste.pellegrin@ac-grenoble.fr, carnil@debian.org, 
+ linux-nfs@vger.kernel.org, anna@kernel.org
+Message-ID: <20250123-b219710c17-c6cd701c9207@bugzilla.kernel.org>
+In-Reply-To: <20250120-b219710c0-da932078cddb@bugzilla.kernel.org>
+References: <20250120-b219710c0-da932078cddb@bugzilla.kernel.org>
+Subject: Re: NFSD threads hang when destroying a session or client ID
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: NFSD
+X-Mailer: bugspray 0.1-dev
 
-Pass the stable name all the way down to ->rpc_ops->lookup() instances.
+Li Lingfeng writes via Kernel.org Bugzilla:
 
-Note that passing &dentry->d_name is safe in e.g. nfs_lookup() - it *is*
-stable there, as it is in ->create() et.al.
+(In reply to Chuck Lever from comment #0)
+> On recent v6.1.y, intermittently, NFSD threads wait forever for NFSv4
+> callback to shutdown. The wait is in __flush_workqueue(). A server system
+> reboot is necessary to recover.
+> 
+> On new kernels, similar symptoms but the indefinite wait is in the "destroy
+> client" path, waiting for NFSv4 callback shutdown. The wait is on the
+> wait_var_event() in nfsd41_cb_inflight_wait_complete().
 
-dget_parent() in nfs_instantiate() should be redundant - it'd better be
-stable there; if it's not, we have more trouble, since ->d_name would
-also be unsafe in such case.
+Hi, I've had a similar problem recently.
+And I've also done some analysis.
 
-nfs_submount() and nfs4_submount() may or may not require fixes - if
-they ever get moved on server with fhandle preserved, we are in trouble
-there...
+[ 6526.031343] INFO: task bash:846259 blocked for more than 606 seconds.
+[ 6526.032060]       Not tainted 6.6.0-gfbf24d352c28-dirty #22
+[ 6526.032635] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[ 6526.033404] task:bash            state:D stack:0     pid:846259 ppid:838395 flags:0x0000020d
+[ 6526.034226] Call trace:
+[ 6526.034527]  __switch_to+0x218/0x3e0
+[ 6526.034925]  __schedule+0x734/0x11a8
+[ 6526.035323]  schedule+0xa8/0x200
+[ 6526.035731]  nfsd4_shutdown_callback+0x24c/0x2f0
+[ 6526.036228]  __destroy_client+0x414/0x680
+[ 6526.036663]  nfs4_state_destroy_net+0x144/0x448
+[ 6526.037152]  nfs4_state_shutdown_net+0x2c8/0x450
+[ 6526.037640]  nfsd_shutdown_net+0x100/0x2e0
+[ 6526.038078]  nfsd_last_thread+0x190/0x330
+[ 6526.038518]  nfsd_svc+0x3cc/0x4a0
+[ 6526.038892]  write_threads+0x15c/0x2f0
+[ 6526.039301]  nfsctl_transaction_write+0x90/0xd0
+[ 6526.039836]  vfs_write+0x110/0x688
+[ 6526.040221]  ksys_write+0xd0/0x188
+[ 6526.040607]  __arm64_sys_write+0x4c/0x68
+[ 6526.041035]  invoke_syscall+0x68/0x198
+[ 6526.041455]  el0_svc_common.constprop.0+0x11c/0x150
+[ 6526.041967]  do_el0_svc+0x38/0x50
+[ 6526.042353]  el0_svc+0x5c/0x240
+[ 6526.042723]  el0t_64_sync_handler+0x100/0x130
+[ 6526.043186]  el0t_64_sync+0x188/0x190
+[ 6526.051007] INFO: task cat:846265 blocked for more than 606 seconds.
 
-UAF window is fairly narrow here and exfiltration requires the ability
-to watch the traffic.
+1) Check cl_cb_inflight
+crash> nfs4_client.cl_cb_inflight ffff000012338f08
+  cl_cb_inflight = {
+    counter = 1
+  },
+crash>
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
----
- fs/nfs/dir.c            | 14 ++++++++------
- fs/nfs/namespace.c      |  2 +-
- fs/nfs/nfs3proc.c       |  5 ++---
- fs/nfs/nfs4proc.c       | 20 ++++++++++----------
- fs/nfs/proc.c           |  6 +++---
- include/linux/nfs_xdr.h |  2 +-
- 6 files changed, 25 insertions(+), 24 deletions(-)
+2) No work is associated with nfsd
+Only two works unrelated to NFSD.
+crash> p callback_wq
+callback_wq = $1 = (struct workqueue_struct *) 0xffff0000c30a1400
+crash>
+crash> workqueue_struct.cpu_pwq 0xffff0000c30a1400
+  cpu_pwq = 0xccfe9cb5d8d0
+crash> kmem -o
+PER-CPU OFFSET VALUES:
+  CPU 0: ffff2f015341c000
+  CPU 1: ffff2f0153442000
+  CPU 2: ffff2f0153468000
+  CPU 3: ffff2f015348e000
+crash>
+// ffff2f015341c000 + ccfe9cb5d8d0  = FFFFFBFFEFF798D0
+crash> rd FFFFFBFFEFF798D0
+fffffbffeff798d0:  ffff0000d3488d00                    ..H.....
+crash>
+// ffff2f0153442000 + ccfe9cb5d8d0 = FFFFFBFFEFF9F8D0
+crash> rd FFFFFBFFEFF9F8D0
+fffffbffeff9f8d0:  ffff0000d3488d00                    ..H.....
+crash>
+// ffff2f0153468000 + ccfe9cb5d8d0 = FFFFFBFFEFFC58D0
+crash> rd FFFFFBFFEFFC58D0
+fffffbffeffc58d0:  ffff0000d3488d00                    ..H.....
+crash>
+// ffff2f015348e000 + ccfe9cb5d8d0 = FFFFFBFFEFFEB8D0
+crash> rd FFFFFBFFEFFEB8D0
+fffffbffeffeb8d0:  ffff0000d3488d00                    ..H.....
+crash>
+crash> pool_workqueue.pool ffff0000d3488d00
+  pool = 0xffff0000c01b6800,
+crash>
+crash> worker_pool.worklist 0xffff0000c01b6800
+  worklist = {
+    next = 0xffff0000c906c4a8,
+    prev = 0xffffd0ff8944fc68 <stats_flush_dwork+8>
+  },
+crash>
+crash> list 0xffff0000c906c4a8
+ffff0000c906c4a8
+ffffd0ff8944fc68
+ffff0000c01b6860
+crash>
+crash> work_struct.func ffff0000c906c4a0
+  func = 0xffffd0ff84fae128 <wb_update_bandwidth_workfn>,
+crash> work_struct.func 0xffffd0ff8944fc60
+  func = 0xffffd0ff8510b258 <flush_memcg_stats_dwork>,
+crash>
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index c28983ee75ca..2b04038b0e40 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1672,7 +1672,7 @@ nfs_lookup_revalidate_delegated(struct inode *dir, struct dentry *dentry,
- 	return nfs_lookup_revalidate_done(dir, dentry, inode, 1);
- }
- 
--static int nfs_lookup_revalidate_dentry(struct inode *dir,
-+static int nfs_lookup_revalidate_dentry(struct inode *dir, const struct qstr *name,
- 					struct dentry *dentry,
- 					struct inode *inode, unsigned int flags)
- {
-@@ -1690,7 +1690,7 @@ static int nfs_lookup_revalidate_dentry(struct inode *dir,
- 		goto out;
- 
- 	dir_verifier = nfs_save_change_attribute(dir);
--	ret = NFS_PROTO(dir)->lookup(dir, dentry, fhandle, fattr);
-+	ret = NFS_PROTO(dir)->lookup(dir, dentry, name, fhandle, fattr);
- 	if (ret < 0)
- 		goto out;
- 
-@@ -1775,7 +1775,7 @@ nfs_do_lookup_revalidate(struct inode *dir, const struct qstr *name,
- 	if (NFS_STALE(inode))
- 		goto out_bad;
- 
--	return nfs_lookup_revalidate_dentry(dir, dentry, inode, flags);
-+	return nfs_lookup_revalidate_dentry(dir, name, dentry, inode, flags);
- out_valid:
- 	return nfs_lookup_revalidate_done(dir, dentry, inode, 1);
- out_bad:
-@@ -1970,7 +1970,8 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 
- 	dir_verifier = nfs_save_change_attribute(dir);
- 	trace_nfs_lookup_enter(dir, dentry, flags);
--	error = NFS_PROTO(dir)->lookup(dir, dentry, fhandle, fattr);
-+	error = NFS_PROTO(dir)->lookup(dir, dentry, &dentry->d_name,
-+				       fhandle, fattr);
- 	if (error == -ENOENT) {
- 		if (nfs_server_capable(dir, NFS_CAP_CASE_INSENSITIVE))
- 			dir_verifier = inode_peek_iversion_raw(dir);
-@@ -2246,7 +2247,7 @@ nfs4_lookup_revalidate(struct inode *dir, const struct qstr *name,
- reval_dentry:
- 	if (flags & LOOKUP_RCU)
- 		return -ECHILD;
--	return nfs_lookup_revalidate_dentry(dir, dentry, inode, flags);
-+	return nfs_lookup_revalidate_dentry(dir, name, dentry, inode, flags);
- 
- full_reval:
- 	return nfs_do_lookup_revalidate(dir, name, dentry, flags);
-@@ -2305,7 +2306,8 @@ nfs_add_or_obtain(struct dentry *dentry, struct nfs_fh *fhandle,
- 	d_drop(dentry);
- 
- 	if (fhandle->size == 0) {
--		error = NFS_PROTO(dir)->lookup(dir, dentry, fhandle, fattr);
-+		error = NFS_PROTO(dir)->lookup(dir, dentry, &dentry->d_name,
-+					       fhandle, fattr);
- 		if (error)
- 			goto out_error;
- 	}
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index 2d53574da605..973aed9cc5fe 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -308,7 +308,7 @@ int nfs_submount(struct fs_context *fc, struct nfs_server *server)
- 	int err;
- 
- 	/* Look it up again to get its attributes */
--	err = server->nfs_client->rpc_ops->lookup(d_inode(parent), dentry,
-+	err = server->nfs_client->rpc_ops->lookup(d_inode(parent), dentry, &dentry->d_name,
- 						  ctx->mntfh, ctx->clone_data.fattr);
- 	dput(parent);
- 	if (err != 0)
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 1566163c6d85..ce70768e0201 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -192,7 +192,7 @@ __nfs3_proc_lookup(struct inode *dir, const char *name, size_t len,
- }
- 
- static int
--nfs3_proc_lookup(struct inode *dir, struct dentry *dentry,
-+nfs3_proc_lookup(struct inode *dir, struct dentry *dentry, const struct qstr *name,
- 		 struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
- 	unsigned short task_flags = 0;
-@@ -202,8 +202,7 @@ nfs3_proc_lookup(struct inode *dir, struct dentry *dentry,
- 		task_flags |= RPC_TASK_TIMEOUT;
- 
- 	dprintk("NFS call  lookup %pd2\n", dentry);
--	return __nfs3_proc_lookup(dir, dentry->d_name.name,
--				  dentry->d_name.len, fhandle, fattr,
-+	return __nfs3_proc_lookup(dir, name->name, name->len, fhandle, fattr,
- 				  task_flags);
- }
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 405f17e6e0b4..4d85068e820d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4536,15 +4536,15 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- }
- 
- static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
--		struct dentry *dentry, struct nfs_fh *fhandle,
--		struct nfs_fattr *fattr)
-+		struct dentry *dentry, const struct qstr *name,
-+		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
- 	struct nfs_server *server = NFS_SERVER(dir);
- 	int		       status;
- 	struct nfs4_lookup_arg args = {
- 		.bitmask = server->attr_bitmask,
- 		.dir_fh = NFS_FH(dir),
--		.name = &dentry->d_name,
-+		.name = name,
- 	};
- 	struct nfs4_lookup_res res = {
- 		.server = server,
-@@ -4586,17 +4586,16 @@ static void nfs_fixup_secinfo_attributes(struct nfs_fattr *fattr)
- }
- 
- static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
--				   struct dentry *dentry, struct nfs_fh *fhandle,
--				   struct nfs_fattr *fattr)
-+				   struct dentry *dentry, const struct qstr *name,
-+				   struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
- 	struct nfs4_exception exception = {
- 		.interruptible = true,
- 	};
- 	struct rpc_clnt *client = *clnt;
--	const struct qstr *name = &dentry->d_name;
- 	int err;
- 	do {
--		err = _nfs4_proc_lookup(client, dir, dentry, fhandle, fattr);
-+		err = _nfs4_proc_lookup(client, dir, dentry, name, fhandle, fattr);
- 		trace_nfs4_lookup(dir, name, err);
- 		switch (err) {
- 		case -NFS4ERR_BADNAME:
-@@ -4631,13 +4630,13 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
- 	return err;
- }
- 
--static int nfs4_proc_lookup(struct inode *dir, struct dentry *dentry,
-+static int nfs4_proc_lookup(struct inode *dir, struct dentry *dentry, const struct qstr *name,
- 			    struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
- 	int status;
- 	struct rpc_clnt *client = NFS_CLIENT(dir);
- 
--	status = nfs4_proc_lookup_common(&client, dir, dentry, fhandle, fattr);
-+	status = nfs4_proc_lookup_common(&client, dir, dentry, name, fhandle, fattr);
- 	if (client != NFS_CLIENT(dir)) {
- 		rpc_shutdown_client(client);
- 		nfs_fixup_secinfo_attributes(fattr);
-@@ -4652,7 +4651,8 @@ nfs4_proc_lookup_mountpoint(struct inode *dir, struct dentry *dentry,
- 	struct rpc_clnt *client = NFS_CLIENT(dir);
- 	int status;
- 
--	status = nfs4_proc_lookup_common(&client, dir, dentry, fhandle, fattr);
-+	status = nfs4_proc_lookup_common(&client, dir, dentry, &dentry->d_name,
-+					 fhandle, fattr);
- 	if (status < 0)
- 		return ERR_PTR(status);
- 	return (client == NFS_CLIENT(dir)) ? rpc_clone_client(client) : client;
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 6c09cd090c34..77920a2e3cef 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -153,13 +153,13 @@ nfs_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- }
- 
- static int
--nfs_proc_lookup(struct inode *dir, struct dentry *dentry,
-+nfs_proc_lookup(struct inode *dir, struct dentry *dentry, const struct qstr *name,
- 		struct nfs_fh *fhandle, struct nfs_fattr *fattr)
- {
- 	struct nfs_diropargs	arg = {
- 		.fh		= NFS_FH(dir),
--		.name		= dentry->d_name.name,
--		.len		= dentry->d_name.len
-+		.name		= name->name,
-+		.len		= name->len
- 	};
- 	struct nfs_diropok	res = {
- 		.fh		= fhandle,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 559273a0f16d..08b62bbf59f0 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1785,7 +1785,7 @@ struct nfs_rpc_ops {
- 			    struct nfs_fattr *, struct inode *);
- 	int	(*setattr) (struct dentry *, struct nfs_fattr *,
- 			    struct iattr *);
--	int	(*lookup)  (struct inode *, struct dentry *,
-+	int	(*lookup)  (struct inode *, struct dentry *, const struct qstr *,
- 			    struct nfs_fh *, struct nfs_fattr *);
- 	int	(*lookupp) (struct inode *, struct nfs_fh *,
- 			    struct nfs_fattr *);
+3) No running kworker
+I checked vmcore by "foreach bt" and find all kworker are as follows.
+PID: 62       TASK: ffff0000c31d0040  CPU: 1    COMMAND: "kworker/R-nfsio"
+ #0 [ffff800080c27b80] __switch_to at ffffd0ff866297dc
+ #1 [ffff800080c27bd0] __schedule at ffffd0ff8662a180
+ #2 [ffff800080c27d00] schedule at ffffd0ff8662ac9c
+ #3 [ffff800080c27d40] rescuer_thread at ffffd0ff84b418e4
+ #4 [ffff800080c27e60] kthread at ffffd0ff84b52e14
+PID: 94       TASK: ffff0000c74ba080  CPU: 0    COMMAND: "kworker/0:1H"
+ #0 [ffff800080e07c00] __switch_to at ffffd0ff866297dc
+ #1 [ffff800080e07c50] __schedule at ffffd0ff8662a180
+ #2 [ffff800080e07d80] schedule at ffffd0ff8662ac9c
+ #3 [ffff800080e07dc0] worker_thread at ffffd0ff84b40f94
+ #4 [ffff800080e07e60] kthread at ffffd0ff84b52e14
+
+4) Check works releated to nfsd4_run_cb_work
+crash> p nfsd4_run_cb_work
+nfsd4_run_cb_work = $5 =
+ {void (struct work_struct *)} 0xffffd0ff855691e0 <nfsd4_run_cb_work>
+crash> search ffffd0ff855691e0
+ffff000010474138: ffffd0ff855691e0
+ffff0000104750f8: ffffd0ff855691e0
+ffff0000104752f0: ffffd0ff855691e0
+ffff0000104756e0: ffffd0ff855691e0
+ffff000012338388: ffffd0ff855691e0
+ffff000012339288: ffffd0ff855691e0
+ffff00001233a908: ffffd0ff855691e0
+ffff00001233b808: ffffd0ff855691e0
+ffff0000c745d038: ffffd0ff855691e0
+ffff0000c86499f8: ffffd0ff855691e0
+ffff0000c8649b30: ffffd0ff855691e0
+ffff0000c9ff8dc8: ffffd0ff855691e0
+crash>
+ffff000010474138 --> (work) ffff000010474120
+ffff0000104750f8 --> (work) ffff0000104750e0
+ffff0000104752f0 --> (work) ffff0000104752d8
+ffff0000104756e0 --> (work) ffff0000104756c8
+ffff000012338388 --> (work) ffff000012338370
+ffff000012339288 --> (work) ffff000012339270
+ffff00001233a908 --> (work) ffff00001233a8f0
+ffff00001233b808 --> (work) ffff00001233b7f0
+ffff0000c745d038 --> (work) ffff0000c745d020
+ffff0000c86499f8 --> (work) ffff0000c86499e0
+ffff0000c8649b30 --> (work) ffff0000c8649b18
+ffff0000c9ff8dc8 --> (work) ffff0000c9ff8db0
+crash> work_struct.data ffff0000104750e0
+  data = {
+    counter = 68719476704 // FFFFFFFE0 bit0~5 are 0
+  },
+crash>
+crash> work_struct.data ffff0000c9ff8db0
+  data = {
+    counter = 256 // 0x100
+  },
+crash>
+
+I have added some debug information and am trying to reproduce it.
+Could you please provide more information you got?
+Or any suggestions about this?
+
+Thanks.
+> 
+> In some cases, clients suspend (inactivity). The server converts them to
+> courteous clients. The NFSv4 callback shutdown workqueue item for that
+> client appears to be stuck waiting in rpc_shutdown_client().
+> 
+> Let's collect data under this bug report.
+
+View: https://bugzilla.kernel.org/show_bug.cgi?id=219710#c17
+You can reply to this message to join the discussion.
 -- 
-2.39.5
+Deet-doot-dot, I am a bot.
+Kernel.org Bugzilla (bugspray 0.1-dev)
 
