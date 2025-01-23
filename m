@@ -1,33 +1,33 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EB481B960;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF7351DFE8;
 	Thu, 23 Jan 2025 01:46:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737596807; cv=none; b=pEhBa3eZTM+gVormSjfiMrvUmgA8CMKXRMyZGHvGtxPbEqi3d6jJm4jlgurI3oUWKTCmjvfFwMIhXE0uKX33ekP1JNklRm/rKdKcRmxQ2bQ+uBTAzHxjfthSDcyNz46Ni6XCTuIN7q6lrz9u74v6Xip6rRsrbnjBqalKBPyaZUQ=
+	t=1737596807; cv=none; b=ureOmAuAFmkfqexW47V0KwGqt3Bib3K272De0oM5uK8rV9xN4QAo74AOIVMz0r1A92eb/jF0bU62lPTpLF3wqnfDQjDigINKqarTlIsQNAWUA/3qADphAinCSmuQAVX/z+QI4Ho862oHUpKLmdPMAuHtZ2H+1XR6ho4NHLrMXNU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1737596807; c=relaxed/simple;
-	bh=hNjWBL2KmS9FdATL1no+Yj5BX9FCAVCPi4dtX2UnMnY=;
+	bh=3d1GYacffIblHnLd2V4o04q0rVe3NcYZ6ux58LRExps=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Ti1i2nb1dYOPd1BZ5Ir61IFrBsGPKNmZWQoL90w5ziiXTNOLsywfy0JzauNViHLVX5PXSR8afUvPrP6yao/sFO1phpFbMEjx/i/OVSCr9KJ3/Kj1UjApV1Z6owPzAO1Yc8NWL8tjqJ2mXhE+5XECeeRdrqrRop1FHUuy40QBl8o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=VvrFElcq; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=BvZp5h4n78QZPhq0LPcGXXrv0mLvQNoDd6rmznGSjt/HxCQRrcixt7olBMw2scgQJt++wBMVwt1sVO4/ajnqHdoqltZAPhNblAOvb1aNznT3zosrzYXfTezyoiN2hs+bJg7UQP5ChQ7Crp3FvFSNMJLKQzs2eiQj6Bpq/ya71X4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=rsJs+5ul; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="VvrFElcq"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="rsJs+5ul"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=H9Wm1UK6tHASZaQMCTJwWKu9NefN/le7+GAalYPesP8=; b=VvrFElcqx+AAp6YuImouxJ0Rbq
-	uUD0kqsDpIh2y6DyXjo+jQ/qmlCsOLuhDrY94FGMlAsHppwRyErMXnCdUd6lSQcIB2/ZpROV/WWFq
-	HsaJmSDoWuJlhFiHhwNmJyfbcbPU9SMnSymW1Ta7q5NGdLbQEr+t2Tjjs+mvVnbqXIP0BK5EmUWu2
-	+zvInRXYUx10uF3doze+9SLS3W2ssqOKlfCx+D3N0wUZnrs9HSDVuF7RJQCK/pSiGn4+RS355g7jF
-	f3elyhfcSZH+nhm8dkVTC675UNdqEVx1LIoDSAEG4ZvIt3c31pdzqI5dkoN2n6kEcFl4Ffzvd+paO
-	50lt/XEQ==;
+	bh=lyPEdJ19DaxJMMc+1T1c7Z4Lz6PI4RrQXIHRIX+EBpQ=; b=rsJs+5ulYYzo/lDHsa+hXl1eY6
+	aP6/iUNr4Y/sc5fhuswbP/s+sHmmZfqF7VR9YQBpwCyn3O0uHZTxH4V23H6JLy7/uJPnzl1Eo2eNW
+	KWl4qmAVvBED1gUMSy7CbaAtqlIweS5eF6avJ12/Prg9U+jTyCJpyZ6hJN+siHYlKgx8X9O9dfHj4
+	pkMWYLTpmfr0uFBkVT5EeHvRPCZoHNsokiEKlgV3YB72IjFSwt00SOjAFgTpBhDyHw934I72xKtlF
+	uSB6iUkKledZscQsvZ6dnF9S8Ven93Zq/0boJ+xKFK/RHbgGBjKDnJ9swkIymnF0oCAfAApHQSXIB
+	UQjrJw6A==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98 #2 (Red Hat Linux))
-	id 1tamIt-00000008F1w-47za;
+	id 1tamIu-00000008F2H-1Mm3;
 	Thu, 23 Jan 2025 01:46:44 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
@@ -42,9 +42,9 @@ Cc: agruenba@redhat.com,
 	linux-nfs@vger.kernel.org,
 	miklos@szeredi.hu,
 	torvalds@linux-foundation.org
-Subject: [PATCH v3 06/20] generic_ci_d_compare(): use shortname_storage
-Date: Thu, 23 Jan 2025 01:46:29 +0000
-Message-ID: <20250123014643.1964371-6-viro@zeniv.linux.org.uk>
+Subject: [PATCH v3 08/20] afs_d_revalidate(): use stable name and parent inode passed by caller
+Date: Thu, 23 Jan 2025 01:46:31 +0000
+Message-ID: <20250123014643.1964371-8-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.47.1
 In-Reply-To: <20250123014643.1964371-1-viro@zeniv.linux.org.uk>
 References: <20250123014511.GA1962481@ZenIV>
@@ -58,59 +58,135 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-... and check the "name might be unstable" predicate
-the right way.
+No need to bother with boilerplate for obtaining the latter and for
+the former we really should not count upon ->d_name.name remaining
+stable under us.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Reviewed-by: Gabriel Krisman Bertazi <gabriel@krisman.be>
+Acked-by: David Howells <dhowells@redhat.com>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/libfs.c | 15 ++++++++-------
- 1 file changed, 8 insertions(+), 7 deletions(-)
+ fs/afs/dir.c | 34 ++++++++--------------------------
+ 1 file changed, 8 insertions(+), 26 deletions(-)
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 748ac5923154..3ad1b1b7fed6 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1789,7 +1789,7 @@ int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
+diff --git a/fs/afs/dir.c b/fs/afs/dir.c
+index 9780013cd83a..e04cffe4beb1 100644
+--- a/fs/afs/dir.c
++++ b/fs/afs/dir.c
+@@ -607,19 +607,19 @@ static bool afs_lookup_one_filldir(struct dir_context *ctx, const char *name,
+  * Do a lookup of a single name in a directory
+  * - just returns the FID the dentry name maps to if found
+  */
+-static int afs_do_lookup_one(struct inode *dir, struct dentry *dentry,
++static int afs_do_lookup_one(struct inode *dir, const struct qstr *name,
+ 			     struct afs_fid *fid, struct key *key,
+ 			     afs_dataversion_t *_dir_version)
  {
- 	const struct dentry *parent;
- 	const struct inode *dir;
--	char strbuf[DNAME_INLINE_LEN];
-+	union shortname_store strbuf;
- 	struct qstr qstr;
+ 	struct afs_super_info *as = dir->i_sb->s_fs_info;
+ 	struct afs_lookup_one_cookie cookie = {
+ 		.ctx.actor = afs_lookup_one_filldir,
+-		.name = dentry->d_name,
++		.name = *name,
+ 		.fid.vid = as->volume->vid
+ 	};
+ 	int ret;
  
- 	/*
-@@ -1809,22 +1809,23 @@ int generic_ci_d_compare(const struct dentry *dentry, unsigned int len,
- 	if (!dir || !IS_CASEFOLDED(dir))
- 		return 1;
+-	_enter("{%lu},%p{%pd},", dir->i_ino, dentry, dentry);
++	_enter("{%lu},{%.*s},", dir->i_ino, name->len, name->name);
  
-+	qstr.len = len;
-+	qstr.name = str;
- 	/*
- 	 * If the dentry name is stored in-line, then it may be concurrently
- 	 * modified by a rename.  If this happens, the VFS will eventually retry
- 	 * the lookup, so it doesn't matter what ->d_compare() returns.
- 	 * However, it's unsafe to call utf8_strncasecmp() with an unstable
- 	 * string.  Therefore, we have to copy the name into a temporary buffer.
-+	 * As above, len is guaranteed to match str, so the shortname case
-+	 * is exactly when str points to ->d_shortname.
- 	 */
--	if (len <= DNAME_INLINE_LEN - 1) {
--		memcpy(strbuf, str, len);
--		strbuf[len] = 0;
--		str = strbuf;
-+	if (qstr.name == dentry->d_shortname.string) {
-+		strbuf = dentry->d_shortname; // NUL is guaranteed to be in there
-+		qstr.name = strbuf.string;
- 		/* prevent compiler from optimizing out the temporary buffer */
- 		barrier();
+ 	/* search the directory */
+ 	ret = afs_dir_iterate(dir, &cookie.ctx, key, _dir_version);
+@@ -1052,21 +1052,12 @@ static struct dentry *afs_lookup(struct inode *dir, struct dentry *dentry,
+ /*
+  * Check the validity of a dentry under RCU conditions.
+  */
+-static int afs_d_revalidate_rcu(struct dentry *dentry)
++static int afs_d_revalidate_rcu(struct afs_vnode *dvnode, struct dentry *dentry)
+ {
+-	struct afs_vnode *dvnode;
+-	struct dentry *parent;
+-	struct inode *dir;
+ 	long dir_version, de_version;
+ 
+ 	_enter("%p", dentry);
+ 
+-	/* Check the parent directory is still valid first. */
+-	parent = READ_ONCE(dentry->d_parent);
+-	dir = d_inode_rcu(parent);
+-	if (!dir)
+-		return -ECHILD;
+-	dvnode = AFS_FS_I(dir);
+ 	if (test_bit(AFS_VNODE_DELETED, &dvnode->flags))
+ 		return -ECHILD;
+ 
+@@ -1097,9 +1088,8 @@ static int afs_d_revalidate_rcu(struct dentry *dentry)
+ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 			    struct dentry *dentry, unsigned int flags)
+ {
+-	struct afs_vnode *vnode, *dir;
++	struct afs_vnode *vnode, *dir = AFS_FS_I(parent_dir);
+ 	struct afs_fid fid;
+-	struct dentry *parent;
+ 	struct inode *inode;
+ 	struct key *key;
+ 	afs_dataversion_t dir_version, invalid_before;
+@@ -1107,7 +1097,7 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 	int ret;
+ 
+ 	if (flags & LOOKUP_RCU)
+-		return afs_d_revalidate_rcu(dentry);
++		return afs_d_revalidate_rcu(dir, dentry);
+ 
+ 	if (d_really_is_positive(dentry)) {
+ 		vnode = AFS_FS_I(d_inode(dentry));
+@@ -1122,14 +1112,9 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 	if (IS_ERR(key))
+ 		key = NULL;
+ 
+-	/* Hold the parent dentry so we can peer at it */
+-	parent = dget_parent(dentry);
+-	dir = AFS_FS_I(d_inode(parent));
+-
+ 	/* validate the parent directory */
+ 	ret = afs_validate(dir, key);
+ 	if (ret == -ERESTARTSYS) {
+-		dput(parent);
+ 		key_put(key);
+ 		return ret;
  	}
--	qstr.len = len;
--	qstr.name = str;
+@@ -1157,7 +1142,7 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 	afs_stat_v(dir, n_reval);
  
- 	return utf8_strncasecmp(dentry->d_sb->s_encoding, name, &qstr);
- }
+ 	/* search the directory for this vnode */
+-	ret = afs_do_lookup_one(&dir->netfs.inode, dentry, &fid, key, &dir_version);
++	ret = afs_do_lookup_one(&dir->netfs.inode, name, &fid, key, &dir_version);
+ 	switch (ret) {
+ 	case 0:
+ 		/* the filename maps to something */
+@@ -1201,22 +1186,19 @@ static int afs_d_revalidate(struct inode *parent_dir, const struct qstr *name,
+ 		goto out_valid;
+ 
+ 	default:
+-		_debug("failed to iterate dir %pd: %d",
+-		       parent, ret);
++		_debug("failed to iterate parent %pd2: %d", dentry, ret);
+ 		goto not_found;
+ 	}
+ 
+ out_valid:
+ 	dentry->d_fsdata = (void *)(unsigned long)dir_version;
+ out_valid_noupdate:
+-	dput(parent);
+ 	key_put(key);
+ 	_leave(" = 1 [valid]");
+ 	return 1;
+ 
+ not_found:
+ 	_debug("dropping dentry %pd2", dentry);
+-	dput(parent);
+ 	key_put(key);
+ 
+ 	_leave(" = 0 [bad]");
 -- 
 2.39.5
 
