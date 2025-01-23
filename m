@@ -1,36 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 046F51BDAB5
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Jan 2025 20:24:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95C6C1C5D62;
+	Thu, 23 Jan 2025 20:25:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737663884; cv=none; b=e+A+EJRkuFI5EjgFHC4BcCC4ALmN/LBdShiamStl1Dco5UYioHtmRhbigazNXvlZOo7kSbtv70wCot7PDNTVG03dQXd3z6Xg1ufTOPwnRKHALlYlz75p0pWLQxpq0eUl2ULIRjHAhEIRy+CDiZIq75/jqw1gi0vFvtnC2g4emEQ=
+	t=1737663935; cv=none; b=q9lcFpTlAtuZAI8Ws62Cs1xRlApG6rLOGSgENAdafLOGgZx4F8eWhkwk3mRO0OqeidRxWtoAorfa2JqxEKV+Rnk6/yTIWOJLm1TONx+a8CWNWEXAJT1weyl5oxGYtDbQGby8pdPS6YL9sipzhB7sN23lw9qfT/g1KI+4rTGmCoQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737663884; c=relaxed/simple;
-	bh=H8bnm2oduBa6IKB9nusE7KBDsuX8wZcvNU9SQgkY3mw=;
-	h=From:Date:MIME-Version:Content-Type:To:Message-ID:In-Reply-To:
-	 References:Subject; b=U9f9QhgTt3ZK2aVSJLfao6GnyldfYgspdxl5NNClQc+48m4kn6saYckTXx54vkIyx1MrD6l9br115zUsKckA7a+87j8s8jlchppHBjGGr0xusEHyYwVGTUiQ0C54ewQDhvVaNI/KjY4Nxm6Uap8QAhpFLHC1EqMH7Qc0fj86YR8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gZy9wGNO; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1737663935; c=relaxed/simple;
+	bh=InyBiJX/ZrPVjzxsBNdprnqCrCMGTNTHttu2kN3J+3A=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=ikp59aOM7lo5t/Mu1fYqQYs4Bhs5LKvLAvDjDdy+YW8uVfArsDMUbMPFJlitvOZ+lHwtQc/fB4TSTczM8ZND4/5KR7NIdY5ytfxm1IZa/1A8OPmoYawqf5Xr9ZJo6cfj+/MvHIN7u8dY+utrKIBM6hc9owgQGL1Pa2lo8V7+4Zg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=B1l8/HJv; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gZy9wGNO"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6F8BAC4CED3;
-	Thu, 23 Jan 2025 20:24:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="B1l8/HJv"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8A761C4CED3;
+	Thu, 23 Jan 2025 20:25:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1737663883;
-	bh=H8bnm2oduBa6IKB9nusE7KBDsuX8wZcvNU9SQgkY3mw=;
-	h=From:Date:To:In-Reply-To:References:Subject:From;
-	b=gZy9wGNO2kRKloWyvNMP4gGegKiO3Cai3ZCYuNuVW2g68YwfLkXjBEDMS7UnElZxK
-	 K4riaAdG2l4pv/N/ZnWkyEVaSlG0vTECJpHIOY2qkUNVVRkZjzH/8zI9cGVwukZDnA
-	 yUIFSoxDEQb5dpGEBTUrgT1/yHHqhDW+iPyBQ6IyXum3kwMWDuu2vluRFX5LFSKslC
-	 MHbt2BT74brZLcun4Jp9AMtoDM3tVi8tIky+H05VOvqBt4wrIfxlZrgfVXSjrzudnG
-	 CDLbvd2AoKOLIXR9cVAFxUY4FAYgcLozGSjbUF3EnX/7l03cNY2GntY+d7SPRx3ylJ
-	 lrm/SoleYFOxg==
-Received: from [10.30.226.235] (localhost [IPv6:::1])
-	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 3CE48380AA79;
-	Thu, 23 Jan 2025 20:25:09 +0000 (UTC)
-From: Baptiste PELLEGRIN via Bugspray Bot <bugbot@kernel.org>
-Date: Thu, 23 Jan 2025 20:25:24 +0000
+	s=k20201202; t=1737663935;
+	bh=InyBiJX/ZrPVjzxsBNdprnqCrCMGTNTHttu2kN3J+3A=;
+	h=From:Subject:Date:To:Cc:From;
+	b=B1l8/HJvYp9w4oLdxgo+rfXkz/Zioh3JQkn6IDo5THV2cTKOxhhr+OIxBH7Quc1X4
+	 JgGQ21jabilC3K/GVCzJIFDF/McctbkqYcf4Dx5M8PkuL6PORsPfnL7pDV+DnPoZHW
+	 FItMdaUT5ayLp1dwoDZlpYSDbDG1byfjCplFK8I55HeyKOstLeqMMtZBLYS/omjIyj
+	 uHoEPJapT6Qe9HseNqlWbcQDJjBp3eBwgfi1ZWIHfafpZc1NC1MKnLEjkllujDR3JX
+	 sKvm0nVh8TpKpuuOrp5EUctGCliG4Kkl7ZW4sDGo62mzbs/huHB776IEg5XJcFKrLW
+	 VzFCuDMIy/+hA==
+From: Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH 0/8] nfsd: CB_SEQUENCE error handling fixes and cleanups
+Date: Thu, 23 Jan 2025 15:25:17 -0500
+Message-Id: <20250123-nfsd-6-14-v1-0-c1137a4fa2ae@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -39,42 +37,70 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-To: trondmy@kernel.org, baptiste.pellegrin@ac-grenoble.fr, anna@kernel.org, 
- cel@kernel.org, chuck.lever@oracle.com, herzog@phys.ethz.ch, 
- harald.dunkel@aixigo.com, jlayton@kernel.org, carnil@debian.org, 
- tom@talpey.com, linux-nfs@vger.kernel.org, 
- benoit.gschwind@minesparis.psl.eu
-Message-ID: <20250123-b219710c20-c1ea7afe5a91@bugzilla.kernel.org>
-In-Reply-To: <20250120-b219710c0-da932078cddb@bugzilla.kernel.org>
-References: <20250120-b219710c0-da932078cddb@bugzilla.kernel.org>
-Subject: Re: NFSD threads hang when destroying a session or client ID
-X-Bugzilla-Product: File System
-X-Bugzilla-Component: NFSD
-X-Mailer: bugspray 0.1-dev
+X-B4-Tracking: v=1; b=H4sIAK2lkmcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
+ vPSU3UzU4B8JSMDI1MDQyNj3by04hRdM11DE90kA3NL81RjC9OUZAMloPqCotS0zAqwWdGxtbU
+ AdfVgblsAAAA=
+X-Change-ID: 20250123-nfsd-6-14-b0797e385dc0
+To: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, "J. Bruce Fields" <bfields@fieldses.org>, 
+ Kinglong Mee <kinglongmee@gmail.com>, Trond Myklebust <trondmy@kernel.org>, 
+ Anna Schumaker <anna@kernel.org>, "David S. Miller" <davem@davemloft.net>, 
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>, 
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ netdev@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1550; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=InyBiJX/ZrPVjzxsBNdprnqCrCMGTNTHttu2kN3J+3A=;
+ b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBnkqW7DC5ulbQLNbJnWLLi0FuKmMGANycWQr5Gb
+ LIS97fL8kCJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZ5KluwAKCRAADmhBGVaC
+ FfGBD/96BcnS1gx7z1ubD5AbyZcZOJ/QAu/MfqBIB+AXp6XzgRjjlAVkA690Z4LEQA+mliKQAEo
+ Pzq11f8MYGyfumQqIn+i2EL3sH+lGVHkeTDCU0AyIYkkYiyOGh1sUAOGoX63oHibB78+KT7DXVG
+ JfIT1/lWbbNBcL5wXpgReVP65iH4XvgE8tSfuoTswPvn31eZEKdq+d9BDycNO7RBq46k610FAzz
+ 8kZ0egcYoM65qz+hCngg6eZtmRMiCcZ8A1l2S3X2o2Ok/pJapwANNN1ThF37KuzudYfxyGoo9V8
+ Iu+2a7t5KVFHs7eRqhecqO5eHtJG4ZWDhLFerNvPqxDsPfAzlpQV1LdGk+Ay3PWvjYI9oSNGvH2
+ y7auyU6YphWMlcaOmWhqD2GLc5TaJci05qJdmff8jOElY/abStpaKYF7Ql9gEqKJprSSpk8iXsD
+ T8vGogOD/HAlxtnrNsNNlLYHH/NtkPgypCoXbW6BjU4l9rBpvC7DlWJBpXHEAfk6LMWQ4f78gn0
+ A14I1cHUxJpeK4Y7zRU1VN5+BrL9CaHNozyKjixlJlU/5vx6odPOQXEojgeg2mm2gQoTCohLx79
+ iaJG4vkL32y5xzlZC4j1wygYpXzYdtMVUURMBz90n5fH45gPBmOI5MzDPEiy3X1kekwGeNiuuSp
+ JLiGOKSes7EHtPg==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Baptiste PELLEGRIN added an attachment on Kernel.org Bugzilla:
+The first four patches fix bugs in the CB_SEQUENCE error handling. The
+last patches are cleanups.
 
-Created attachment 307533
-Recorded trace 20250123
+These are only lightly tested, mostly because we don't have a great way
+to test backchannel error handling. I tried to keep these very small so
+that we could bisect if there are problems.
 
-This time I have got a complete trace.
+These should probably go in via Chuck's tree, but the last patch touches
+some NFS client code, so it'd be good to have R-b's or A-b's from Trond
+and/or Anna on that one.
 
-- trace-cmd with all flags enabled :
-
-trace-cmd record -e nfsd:nfsd_cb_\* -e sunrpc:svc_xprt_detach -e sunrpc:xprt_reserve -p function -l nfsd4_destroy_session
-
-- Syslog with all kernel messages and a task dump just after the crash.
-
-Hope this help.
-
-File: record_nfsdc_20250123.tar.gz (application/gzip)
-Size: 2.02 MiB
-Link: https://bugzilla.kernel.org/attachment.cgi?id=307533
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Recorded trace 20250123
+Jeff Layton (8):
+      nfsd: don't restart v4.1+ callback when RPC_SIGNALLED is set
+      nfsd: fix CB_SEQUENCE error handling of NFS4ERR_{BADSLOT,BADSESSION,SEQ_MISORDERED}
+      nfsd: when CB_SEQUENCE gets NFS4ERR_DELAY, release the slot
+      nfsd: fix default case in nfsd4_cb_sequence_done()
+      nfsd: reverse default of "ret" variable in nfsd4_cb_sequence_done()
+      nfsd: remove unneeded forward declaration of nfsd4_mark_cb_fault()
+      nfsd: clean up and amend comments around nfsd4_cb_sequence_done()
+      sunrpc: make rpc_restart_call() and rpc_restart_call_prepare() void return
 
-You can reply to this message to join the discussion.
+ fs/nfs/nfs4proc.c           | 12 ++++----
+ fs/nfsd/nfs4callback.c      | 69 +++++++++++++++++++++++----------------------
+ include/linux/sunrpc/clnt.h |  4 +--
+ net/sunrpc/clnt.c           |  7 ++---
+ 4 files changed, 45 insertions(+), 47 deletions(-)
+---
+base-commit: 0ab8e05a5a694a1e4c6854a98f08a477d16b6aeb
+change-id: 20250123-nfsd-6-14-b0797e385dc0
+
+Best regards,
 -- 
-Deet-doot-dot, I am a bot.
-Kernel.org Bugzilla (bugspray 0.1-dev)
+Jeff Layton <jlayton@kernel.org>
 
