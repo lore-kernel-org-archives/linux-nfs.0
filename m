@@ -1,160 +1,80 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2E137E105
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Jan 2025 19:52:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 046F51BDAB5
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Jan 2025 20:24:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737661970; cv=none; b=kg+bEtN7f4DWqaMDC5OYW7feqEvVLMCopnE+zweEIAUCUVk7c2k52VJw0bTLlWnvnfbRPrsQpgeFmqQd6M05JhX0uuY74CgJ1TfBzzjXxuiiFefAR/Jo9O9PUzYChAIY+vPGeU2SQqzhqRrRsv6RXJcuo3GFIBG0h8/5NKGm0Fk=
+	t=1737663884; cv=none; b=e+A+EJRkuFI5EjgFHC4BcCC4ALmN/LBdShiamStl1Dco5UYioHtmRhbigazNXvlZOo7kSbtv70wCot7PDNTVG03dQXd3z6Xg1ufTOPwnRKHALlYlz75p0pWLQxpq0eUl2ULIRjHAhEIRy+CDiZIq75/jqw1gi0vFvtnC2g4emEQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737661970; c=relaxed/simple;
-	bh=RdLHGc4i0BeNbFMb4ZVieqeEJEHPiEWqsizdAmF6Du4=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=dcOXlRSPWqOxddR2YBpLPjuXarpkRTo6Yyl9zCAg5VGiiJet6L0m35+ts1GOwp3ew8nR2OX71C8YxvkwkH2tdaMRE2wRJPcqxq9aoDTzkJ5GSOsNCi5WyNUGRMWQxLj8YyB4X16z8BfsA0UNstKtHsCY9QcIo47mVGtSKKdl8bk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jUOWysSh; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1737663884; c=relaxed/simple;
+	bh=H8bnm2oduBa6IKB9nusE7KBDsuX8wZcvNU9SQgkY3mw=;
+	h=From:Date:MIME-Version:Content-Type:To:Message-ID:In-Reply-To:
+	 References:Subject; b=U9f9QhgTt3ZK2aVSJLfao6GnyldfYgspdxl5NNClQc+48m4kn6saYckTXx54vkIyx1MrD6l9br115zUsKckA7a+87j8s8jlchppHBjGGr0xusEHyYwVGTUiQ0C54ewQDhvVaNI/KjY4Nxm6Uap8QAhpFLHC1EqMH7Qc0fj86YR8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gZy9wGNO; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jUOWysSh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9BF57C4CEDF;
-	Thu, 23 Jan 2025 19:52:49 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gZy9wGNO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6F8BAC4CED3;
+	Thu, 23 Jan 2025 20:24:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1737661970;
-	bh=RdLHGc4i0BeNbFMb4ZVieqeEJEHPiEWqsizdAmF6Du4=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=jUOWysShEVLUdfh2TwM2FsePewZGme80kgRiRbn9VoeDoUg4d29xLgspS/5dn7zf/
-	 82qTnGDvDc22g/nzkixH/zfdBzDs1VIgIsE0Djd7fqWPfQt6ecdBBKWQ3RQxBFa9dY
-	 rWmf9ZfjZU+4rYcGjE07A9h4rgRuT7UpPsmhkRGs5qoozov0o81JjnZGpFvfBsbvdE
-	 /UHr31eHkBU4zndHiTsZG2KRlGLevsqU/WBXXuoLWm2RslVpA5eL/HLTigUPRqzuvr
-	 UHC4yfEdgFigwNNWW/oncPJGEZ4xpiwhCJSSs6s8VA+IoMdLtu3cFYHG6VpL/K+RJe
-	 4uPJhVZm9NtpA==
-From: cel@kernel.org
-To: Neil Brown <neilb@suse.de>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: [RFC PATCH 4/4] NFSD: Return NFS4ERR_FILE_OPEN only when linking an open file
-Date: Thu, 23 Jan 2025 14:52:42 -0500
-Message-ID: <20250123195242.1378601-5-cel@kernel.org>
-X-Mailer: git-send-email 2.47.0
-In-Reply-To: <20250123195242.1378601-1-cel@kernel.org>
-References: <20250123195242.1378601-1-cel@kernel.org>
+	s=k20201202; t=1737663883;
+	bh=H8bnm2oduBa6IKB9nusE7KBDsuX8wZcvNU9SQgkY3mw=;
+	h=From:Date:To:In-Reply-To:References:Subject:From;
+	b=gZy9wGNO2kRKloWyvNMP4gGegKiO3Cai3ZCYuNuVW2g68YwfLkXjBEDMS7UnElZxK
+	 K4riaAdG2l4pv/N/ZnWkyEVaSlG0vTECJpHIOY2qkUNVVRkZjzH/8zI9cGVwukZDnA
+	 yUIFSoxDEQb5dpGEBTUrgT1/yHHqhDW+iPyBQ6IyXum3kwMWDuu2vluRFX5LFSKslC
+	 MHbt2BT74brZLcun4Jp9AMtoDM3tVi8tIky+H05VOvqBt4wrIfxlZrgfVXSjrzudnG
+	 CDLbvd2AoKOLIXR9cVAFxUY4FAYgcLozGSjbUF3EnX/7l03cNY2GntY+d7SPRx3ylJ
+	 lrm/SoleYFOxg==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 3CE48380AA79;
+	Thu, 23 Jan 2025 20:25:09 +0000 (UTC)
+From: Baptiste PELLEGRIN via Bugspray Bot <bugbot@kernel.org>
+Date: Thu, 23 Jan 2025 20:25:24 +0000
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+To: trondmy@kernel.org, baptiste.pellegrin@ac-grenoble.fr, anna@kernel.org, 
+ cel@kernel.org, chuck.lever@oracle.com, herzog@phys.ethz.ch, 
+ harald.dunkel@aixigo.com, jlayton@kernel.org, carnil@debian.org, 
+ tom@talpey.com, linux-nfs@vger.kernel.org, 
+ benoit.gschwind@minesparis.psl.eu
+Message-ID: <20250123-b219710c20-c1ea7afe5a91@bugzilla.kernel.org>
+In-Reply-To: <20250120-b219710c0-da932078cddb@bugzilla.kernel.org>
+References: <20250120-b219710c0-da932078cddb@bugzilla.kernel.org>
+Subject: Re: NFSD threads hang when destroying a session or client ID
+X-Bugzilla-Product: File System
+X-Bugzilla-Component: NFSD
+X-Mailer: bugspray 0.1-dev
 
-From: Chuck Lever <chuck.lever@oracle.com>
+Baptiste PELLEGRIN added an attachment on Kernel.org Bugzilla:
 
-RFC 8881 Section 18.9.4 paragraphs 1 - 2 tell us that RENAME should
-return NFS4ERR_FILE_OPEN only when the target object is a file that
-is currently open. If the target is a directory, some other status
-must be returned.
+Created attachment 307533
+Recorded trace 20250123
 
-Generally I expect that a delegation recall will be triggered in
-some of these circumstances. In other cases, the VFS might return
--EBUSY for other reasons, and NFSD has to ensure that errno does
-not leak to clients as a status code that is not permitted by spec.
+This time I have got a complete trace.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+- trace-cmd with all flags enabled :
+
+trace-cmd record -e nfsd:nfsd_cb_\* -e sunrpc:svc_xprt_detach -e sunrpc:xprt_reserve -p function -l nfsd4_destroy_session
+
+- Syslog with all kernel messages and a task dump just after the crash.
+
+Hope this help.
+
+File: record_nfsdc_20250123.tar.gz (application/gzip)
+Size: 2.02 MiB
+Link: https://bugzilla.kernel.org/attachment.cgi?id=307533
 ---
- fs/nfsd/vfs.c | 44 +++++++++++++++++++++++++++++++-------------
- 1 file changed, 31 insertions(+), 13 deletions(-)
+Recorded trace 20250123
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 5cfb5eb54c23..566b9adf2259 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1699,9 +1699,17 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	return err;
- }
- 
--/*
-- * Create a hardlink
-- * N.B. After this call _both_ ffhp and tfhp need an fh_put
-+/**
-+ * nfsd_link - create a link
-+ * @rqstp: RPC transaction context
-+ * @ffhp: the file handle of the directory where the new link is to be created
-+ * @name: the filename of the new link
-+ * @len: the length of @name in octets
-+ * @tfhp: the file handle of an existing file object
-+ *
-+ * After this call _both_ ffhp and tfhp need an fh_put.
-+ *
-+ * Returns a generic NFS status code in network byte-order.
-  */
- __be32
- nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
-@@ -1709,6 +1717,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
- {
- 	struct dentry	*ddir, *dnew, *dold;
- 	struct inode	*dirp;
-+	int		type;
- 	__be32		err;
- 	int		host_err;
- 
-@@ -1728,11 +1737,11 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
- 	if (isdotent(name, len))
- 		goto out;
- 
-+	err = nfs_ok;
-+	type = d_inode(tfhp->fh_dentry)->i_mode & S_IFMT;
- 	host_err = fh_want_write(tfhp);
--	if (host_err) {
--		err = nfserrno(host_err);
-+	if (host_err)
- 		goto out;
--	}
- 
- 	ddir = ffhp->fh_dentry;
- 	dirp = d_inode(ddir);
-@@ -1740,7 +1749,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
- 
- 	dnew = lookup_one_len(name, ddir, len);
- 	if (IS_ERR(dnew)) {
--		err = nfserrno(PTR_ERR(dnew));
-+		host_err = PTR_ERR(dnew);
- 		goto out_unlock;
- 	}
- 
-@@ -1756,17 +1765,26 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
- 	fh_fill_post_attrs(ffhp);
- 	inode_unlock(dirp);
- 	if (!host_err) {
--		err = nfserrno(commit_metadata(ffhp));
--		if (!err)
--			err = nfserrno(commit_metadata(tfhp));
--	} else {
--		err = nfserrno(host_err);
-+		host_err = commit_metadata(ffhp);
-+		if (!host_err)
-+			host_err = commit_metadata(tfhp);
- 	}
-+
- 	dput(dnew);
- out_drop_write:
- 	fh_drop_write(tfhp);
-+	if (host_err == -EBUSY) {
-+		/*
-+		 * See RFC 8881 Section 18.9.4 para 1-2: NFSv4 LINK
-+		 * status distinguishes between reg file and dir.
-+		 */
-+		if (type != S_IFDIR)
-+			err = nfserr_file_open;
-+		else
-+			err = nfserr_acces;
-+	}
- out:
--	return err;
-+	return err != nfs_ok ? err : nfserrno(host_err);
- 
- out_dput:
- 	dput(dnew);
+You can reply to this message to join the discussion.
 -- 
-2.47.0
+Deet-doot-dot, I am a bot.
+Kernel.org Bugzilla (bugspray 0.1-dev)
 
