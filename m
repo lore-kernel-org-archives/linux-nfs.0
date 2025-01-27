@@ -1,43 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3088327466
-	for <linux-nfs@vger.kernel.org>; Mon, 27 Jan 2025 14:40:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 41F2171747
+	for <linux-nfs@vger.kernel.org>; Mon, 27 Jan 2025 14:40:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1737988811; cv=none; b=uYS4E2JuuGqfii8LofnsXyCoxXZH7QTP4U0KCtH+XW20s/a0v0iWBN7VxXsLSXaoPdJNzPm3F30WKYK/myIy6tRPA1QwDzCOfJMnrldyL8tm5jWvYAwFIylXYu5rmN4OELXyVxOR3M4pywzhl013/Wo1U0VjA/lIKb2WSRv/qj8=
+	t=1737988831; cv=none; b=PbvK/xN1HCCueQRFyex6wpHe+/OwYQIF/nLAhmH9ZI0GPnDTw67h/bSDB+Pq/ID9krOtRsD2tq6FLLlQj3ywijPOmqNeAB7lhYgrBgOO9RSbkIZeZr9vZipRoRf9OEBGJOzvJBWozUs6QJdFPa/g1XRK5c2B0qbhAM+xpLlSaPc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1737988811; c=relaxed/simple;
-	bh=3waeSRUEuJhpv6evrvqC0vJILveMGGni/lpnhx/SIt8=;
+	s=arc-20240116; t=1737988831; c=relaxed/simple;
+	bh=tyYeAb+rq7O0A6JFSQQJR0ZYu+HpytVli0ObPmlQXd8=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=t0HJeBVf7XH8Erv93Tduz7cwbXsCT10UU5AlPIbsw6Ua8KISN8afB3dCEOhu2orobSH7jfeFhXz/eesTnM+1lqeVqyYhz8bDwwoZoMV07VB+KcNJnGwU12vDVGwM8JrqOH7Dvfd6rnX9pfsEblRdiW0OnU1mq2Voy7bWr6HhrLk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=THacuavZ; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:MIME-Version; b=KFVnkjiTbIvs2caBgrQaXXFLxs0GadGWE+WHHQayielEeEMQ4rihQWQO1KGg9KfPFMbOuectj6pQPm/XtxXoKkgokzFPlTaOckCq1SR8iHRaDu7k89Zga0PUQsp6bms4w2ullqQ8+SPY/QOhTCpLyBF47ofchIXYdaQhW+ZvhnA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AkYTZOB8; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="THacuavZ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0EA41C4CED2;
-	Mon, 27 Jan 2025 14:40:09 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AkYTZOB8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 58203C4CED2;
+	Mon, 27 Jan 2025 14:40:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1737988810;
-	bh=3waeSRUEuJhpv6evrvqC0vJILveMGGni/lpnhx/SIt8=;
+	s=k20201202; t=1737988831;
+	bh=tyYeAb+rq7O0A6JFSQQJR0ZYu+HpytVli0ObPmlQXd8=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=THacuavZgxKr+ap8YTwKVrm7LIllHZWMBaTRMzI7/5KYl91Y3PJ4C65Fj/+NJLwXc
-	 X/W54MACk6tB5r1gbUbwYGLljXGohvT6Auili5CeHAob391BojVxXqO3kRwANV267j
-	 12/5jYj+LEXYe9Qomjde2hPlJptS59U0GjjeEMWkV04KKxLFD3/03l9vV1Ijak5Am3
-	 XtcvzznXH86r91KdZxs3kih6CGnnP8GbXPFQWtXW1NlQL/7NKla2L65Z6umH0e4e5a
-	 O9HAGjZmJS9m6Aug7mCj4Q4pJc3+Riq50qCHneyLJWj9fR+d9LPrnYRLIC+fJIVca6
-	 o7yj5i8glvVYA==
-Message-ID: <acb2c69ce2ef0f4fe0e2ba91397e9c9d3ef4aa89.camel@kernel.org>
-Subject: Re: [PATCH 5/7] nfsd: filecache: document the arbitrary limit on
- file-disposes-per-loop
+	b=AkYTZOB8qB0IJIlnStYcX0nHEvVRTwjMi7fiN5LhC9s0sCzBO6GpDrWjtHaKhxdUC
+	 ePuT1o5XkF4SOZnnXqSCjwCSaD9G29KLgmJqT0+UryB489n60RQ7NWVTmsuOpCVJQc
+	 F9qkbrlSnWJcGYdwYCqDAyw3hx12scdhrsvxt02DBI18+sbiTmO7KnCbvMdz/kQA5N
+	 tw9HtSn1TZ0nlyxnKg8MP+YGXQzeY9nxH80644AfpY8vUnf9Nk8+515QPkmnfUxbkS
+	 g7FAMAFk7rT3yhlQKc8cgnHy8Ra1bzcSCojCDKvf4GKo53B7Iw67FLtdWfD2a0Jqzv
+	 t+AY0KU0GbY4w==
+Message-ID: <aa9b98a41a588aca0a47e545e04bda78b2f8191c.camel@kernel.org>
+Subject: Re: [PATCH 7/7] nfsd: filecache: give disposal lock a unique class
+ name.
 From: Jeff Layton <jlayton@kernel.org>
 To: NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>
 Cc: linux-nfs@vger.kernel.org, Olga Kornievskaia <okorniev@redhat.com>, Dai
  Ngo	 <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Dave Chinner	
  <david@fromorbit.com>
-Date: Mon, 27 Jan 2025 09:40:09 -0500
-In-Reply-To: <20250127012257.1803314-6-neilb@suse.de>
+Date: Mon, 27 Jan 2025 09:40:29 -0500
+In-Reply-To: <20250127012257.1803314-8-neilb@suse.de>
 References: <20250127012257.1803314-1-neilb@suse.de>
-	 <20250127012257.1803314-6-neilb@suse.de>
+	 <20250127012257.1803314-8-neilb@suse.de>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -123,52 +123,45 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
 On Mon, 2025-01-27 at 12:20 +1100, NeilBrown wrote:
-> Rather than having the bare number "8" use a named constant and explain
-> the tradeoffs that lead to the choice.
+> There are at least three locks in the kernel which are initialised as
+>=20
+>   spin_Lock_init(&l->lock);
+>=20
+> This makes them hard to differential in /proc/lock_stat.
+>=20
+> For the lock in nfsd/filecache.c introduce a variable with a more
+> descriptve name so we can:
+>=20
+>   spin_lock_init(&nfsd_fcache_disposal->lock);
+>=20
+> and easily identify this in /proc/lock_stat.
 >=20
 > Signed-off-by: NeilBrown <neilb@suse.de>
 > ---
->  fs/nfsd/filecache.c | 18 +++++++++++++++++-
->  1 file changed, 17 insertions(+), 1 deletion(-)
+>  fs/nfsd/filecache.c | 5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
 >=20
 > diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
-> index 1e90da507152..7264faa57280 100644
+> index eb95a53f806f..af95bc381753 100644
 > --- a/fs/nfsd/filecache.c
 > +++ b/fs/nfsd/filecache.c
-> @@ -493,6 +493,21 @@ nfsd_file_dispose_list_delayed(struct list_head *dis=
-pose)
->  	}
->  }
+> @@ -867,12 +867,13 @@ __nfsd_file_cache_purge(struct net *net)
+>  static struct nfsd_fcache_disposal *
+>  nfsd_alloc_fcache_disposal(void)
+>  {
+> -	struct nfsd_fcache_disposal *l;
+> +	struct nfsd_fcache_disposal *l, *nfsd_fcache_disposal;
 > =20
-> +/*
-> + * Disposing of files can involve non-trivial work, and they
-> + * can appear in batches.  So we don't want to try handling them
-> + * all in one thread - if there are lots it would be better to allow
-> + * several nfsd threads to handle them in parallel.
-> + * On average one RPC request can create at most 1 file to be disposed
-> + * so handling one each time around the nfsd loop should keep the list
-> + * under control.  However there are often benefits of batching so
-> + * 2 at a time will likely be more efficient than 1.  4 more so.
-> + * We need to choose a number which will often handle all the files,
-> + * but will allow other threads to help when the list gets long.
-> + * The current choice is:
-> + */
-> +#define NFSD_FILE_DISPOSE_BATCH	8
-> +
->  /**
->   * nfsd_file_net_dispose - deal with nfsd_files waiting to be disposed.
->   * @nn: nfsd_net in which to find files to be disposed.
-> @@ -511,7 +526,8 @@ void nfsd_file_net_dispose(struct nfsd_net *nn)
->  		int i;
-> =20
->  		spin_lock(&l->lock);
-> -		for (i =3D 0; i < 8 && !list_empty(&l->freeme); i++) {
-> +		for (i =3D 0; i < NFSD_FILE_DISPOSE_BATCH &&
-> +		     !list_empty(&l->freeme); i++) {
->  			struct nfsd_file *nf =3D list_first_entry(
->  				&l->freeme, struct nfsd_file, nf_lru);
-> =20
+>  	l =3D kmalloc(sizeof(*l), GFP_KERNEL);
+>  	if (!l)
+>  		return NULL;
+> -	spin_lock_init(&l->lock);
+> +	nfsd_fcache_disposal =3D l;
+> +	spin_lock_init(&nfsd_fcache_disposal->lock);
+>  	timer_setup(&l->timer, nfsd_file_gc_worker, 0);
+>  	INIT_LIST_HEAD(&l->recent);
+>  	INIT_LIST_HEAD(&l->older);
 
-Thanks for doing this.
+Weird, but ok.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
