@@ -1,174 +1,150 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5B8F21EEE6
-	for <linux-nfs@vger.kernel.org>; Wed, 29 Jan 2025 22:38:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E5121B425D;
+	Wed, 29 Jan 2025 23:20:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1738190303; cv=none; b=M9yOX4WmQlJ5KH6zNvOUApqBGlS8c13y3fAJEscdwkZ729iD0Toasmd/inmbIF8Zss3lDgiP3yLbDSbfmaCFLLKS/PDJWQE5DFGH4ExKKj8CNvg5MbM0NGYyVGJn6cE8Wud+sXQCxdyz7TwwEJVB44LN+eiMYKURXryjMUVDNdw=
+	t=1738192855; cv=none; b=DnmAv6sNdYKqF4xhRGuBp3k5wo7vavM/n9wUfQHWt+ZuJvPPF0YbxqB24lAETp4eOTLru5M/U7FFD8bt0fFaDxAAZyBSxfWLQj5Q2DG54tEIxEASK0HHRPsPiYvT4KgHBawO9SM59lyerXMBmcp9dhb1YW3++YNPIOq0NenGsKE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1738190303; c=relaxed/simple;
-	bh=aK2ilSzv64mUy19mP+3hlFVBAlQYJul065v9whBp5MY=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=YG0eSFmfGmfW23RjQSENE7IA787/BNgbhqOEInRtiOwqhg9PiSZKNSkycV95hSMcrW1QGJeMCN2oXDJ1xXHG49cPOwE6r7oCrquSuzb5svDXu57Mcpuh8Lxdl0xdJsx0Me2DPVqK/x+jFYs9E3/9CkzUKpSUC9/gdgostG6TFNg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oyqDC236; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1738192855; c=relaxed/simple;
+	bh=0WRw457uiiqAmupT0nL4dUWX82jE82sEr8yyHXSOa5Y=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=QiYKghXIhsmNsbhDyMOVo8ch6m0QovdZwRRRAHxdVrPV0dMtENjLRbIl5xkhTjTG9EM+XZZePuzDpNCP04/TScTLNn4zsc6Zkni3VCmFgxI8amVokZouh2f6GFL//gKHusWiCRDnL6NLclLY4a2jRWMZ2vJ7x1iIah9laICd9eM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FQK6gTEV; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oyqDC236"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7F557C4CED1;
-	Wed, 29 Jan 2025 22:38:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FQK6gTEV"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 42719C4CEE2;
+	Wed, 29 Jan 2025 23:20:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1738190302;
-	bh=aK2ilSzv64mUy19mP+3hlFVBAlQYJul065v9whBp5MY=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=oyqDC236Wf1KvREMvyHMMiWQzPVJxqQ3InVvTVXH69kkhqynmDLaPtsSWbmDbA/JG
-	 Zx250tF238gz7ifqB32MT6g5C1ZUIbkr8LwayhfCKN2HjTmdj8VPouu+TWb8xObPOJ
-	 ktbApqDsy5scAAk/pHjwgouUfHvo8npEnstX0fCCf/pCjLzkmcLb36A6ecRMAfjCi9
-	 7LWrM85M5emnlBqojyqcCSWQZiP97ca/iEGNcDJ+rF4GCyW6DvPOh+ASD6i+N/qZIL
-	 PvZI824k5ZcF7nIhJ2zybWhbwVzmWHS1mg2Qy8/g8sZW5lE9mhMxP4LsPZwEQKIm9m
-	 PQxGFezWcRcEA==
-Message-ID: <51d07eb6ddefb73902004877b442750dd05e153a.camel@kernel.org>
-Subject: Re: [PATCH 1/1] NFSD: fix hang in nfsd4_shutdown_callback
+	s=k20201202; t=1738192855;
+	bh=0WRw457uiiqAmupT0nL4dUWX82jE82sEr8yyHXSOa5Y=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
+	b=FQK6gTEVU2MzeHqG11SvEw9fMcJ35Gm/a+2Tt5wJEa8zp5hUpcPv7yuXVWhVOuwex
+	 4jq1VjslaV8HS/JpsWZLqDtBtWWvOeGfJJu0qTlXP4xfSJRDAXYKtg4PHbNgpTJehV
+	 5zlxZl6gXCs+bGSOhuWl0kkRUILEetBw+8Xi/KJUeyzDJwoQbKOjr4ZwHdHmJcf6vA
+	 fp2JEAVWB+WqNisOmMsntCQpyvBtFT5XvxZac62arxHIPeSyRHPWEN5iVIlQGNdsgX
+	 1+4W1uJuhjA4lxJqQEWDTV8vLrT5L6/aEPuDco7bqqm2/E6L6hs4vANx9k9m/K0Mtq
+	 tB0fgg3vNkvYQ==
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>, Dai Ngo <dai.ngo@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 29 Jan 2025 17:38:21 -0500
-In-Reply-To: <69cab2b4-ca79-44ab-b622-0f2076eaf524@oracle.com>
-References: <1738185446-7488-1-git-send-email-dai.ngo@oracle.com>
-	 <69cab2b4-ca79-44ab-b622-0f2076eaf524@oracle.com>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.54.3 (3.54.3-1.fc41) 
+Date: Wed, 29 Jan 2025 18:20:41 -0500
+Subject: [PATCH v3 1/6] nfsd: add routines to get/put session references
+ for callbacks
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20250129-nfsd-6-14-v3-1-506e71e39e6b@kernel.org>
+References: <20250129-nfsd-6-14-v3-0-506e71e39e6b@kernel.org>
+In-Reply-To: <20250129-nfsd-6-14-v3-0-506e71e39e6b@kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+ Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.2
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3008; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=0WRw457uiiqAmupT0nL4dUWX82jE82sEr8yyHXSOa5Y=;
+ b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBnmrfTHIiyNSUmAARPmUcM92GB9fipXDf1fGeYp
+ bf+O7FoKieJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZ5q30wAKCRAADmhBGVaC
+ FZJkD/9rR03U9XMS47NGkYcrXwmn4W9VYNopM4F9zLq4rExrJ8SSeKjw+PJOQa6p8s5uSLCibgW
+ dy35k/JlTmuZnq1IcaCJ4nL1o4kOq9/n+8jzMFCNtu4sVrEiWCQ/K1TnE40NE3wpAoxUJGtwFUZ
+ O5A/E8PcgyzVp1Ep2IRK5usT9XJC+vxTj1EghOSQVMVdez0HNKW1E+RKFef+6U6S3guDj/rswNb
+ GW+1WdxaJVCVoxPBRQiPhw72BQRHmfGEJ3BZJecl3RlOGj1bEczUs8C0sYAiY4Q8gR+Frxb3172
+ UxezeN7idCAUhmWnzJfqu7lWIl7juYwOKgD2SsrugYl9AdGqc+IfXFWu9N6zk3a3F8pJKQhoucU
+ DHZP4QZopuOQ6W5d0+pHbyNGFe2duo78K9qmjXelGlE3hfujvnEZMOLfz4a3t8TwhT8KyCVr4TX
+ TZv/HITs8kMQE+g527ERoqZS7nXThQnr6zabMxptHATcYV907Z+FVWMz5zYMJfReRbQ/AtHfQzO
+ x8ImQ/aeFUSYCE2A8OGmoEaQ8BZhenNNfISl3bzHdVAFTnUxqFzKYuHRibBY7HDw/uTPox6CDBc
+ yOv6l7+Galf9AQP8wica8JtqOBEQKI+3kXxDsRzUtKjd+1z1hatX2noZlQXkeC2A53ibmsHvwd7
+ vdgaofYlQY77iPA==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-On Wed, 2025-01-29 at 16:39 -0500, Chuck Lever wrote:
-> On 1/29/25 4:17 PM, Dai Ngo wrote:
-> > If nfs4_client is in COURTESY state then there is no point to retry
-> > the callback. This causes nfsd4_shutdown_callback to hang since
-> > cl_cb_inflight is not 0. This hang lasts about 15 minutes until TCP
-> > notifies NFSD that the connection was closed.
-> >=20
-> > This patch modifies nfsd4_cb_sequence_done to skip the restart the
-> > RPC if nfs4_client is in  COURTESY state.
-> >=20
-> > Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
-> > ---
-> >  fs/nfsd/nfs4callback.c | 5 +++++
-> >  1 file changed, 5 insertions(+)
-> >=20
-> > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> > index 50e468bdb8d4..c90f94898cc5 100644
-> > --- a/fs/nfsd/nfs4callback.c
-> > +++ b/fs/nfsd/nfs4callback.c
-> > @@ -1372,6 +1372,11 @@ static bool nfsd4_cb_sequence_done(struct rpc_ta=
-sk *task, struct nfsd4_callback
-> >  		ret =3D false;
-> >  		break;
-> >  	case 1:
-> > +		if (clp->cl_state =3D=3D NFSD4_COURTESY) {
-> > +			nfsd4_mark_cb_fault(cb->cb_clp);
-> > +			ret =3D false;
-> > +			break;
-> > +		}
->=20
-> We could do toss this operation here or at the top of
-> nfsd4_run_cb_work().
->=20
+The existing session reference counting is too heavyweight for
+callbacks. There is an atomic refcount in nfsd4_session (se_ref), but
+the existing functions take a client reference alongside it, and require
+the nn->client_lock. This is unnecessary for callbacks as they are
+already owned by the client.
 
-Like Olga, I'm wondering if this is the culprit on the recently
-reported rpc_shutdown_client hangs.
+Add new nfsd4_cb_get_session() and nfsd4_cb_put_session() calls that
+take and put a session reference on behalf of a callback.
 
-I'm assuming that with a courtesy client that we don't want to do any
-callbacks? If that's the case, then I think doing it early in
-nfsd4_run_cb_work() would be better. That would prevent new cb's from
-being queued until the cl_state changes too.
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/nfsd/nfs4state.c | 34 ++++++++++++++++++++++++++++++++--
+ fs/nfsd/state.h     |  2 ++
+ 2 files changed, 34 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cc819b8e8acdf5dcfe44c5bae45c6233f7b695e9..db68fd579ff0454153537817ee3cca71303654b4 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -234,6 +234,37 @@ static void put_client_renew(struct nfs4_client *clp)
+ 	spin_unlock(&nn->client_lock);
+ }
+ 
++/**
++ * nfsd4_cb_get_session - get a session reference for a callback
++ * @ses: session of which to get a reference
++ *
++ * Callbacks are different than client-driven RPCs. The caller doesn't
++ * need a reference to the nfs4_client, and doesn't want to renew the
++ * lease when putting the reference. Returns true if a session was
++ * acquired, or false otherwise (which indicates that the session is
++ * dead).
++ */
++bool nfsd4_cb_get_session(struct nfsd4_session *ses)
++{
++	if (is_session_dead(ses))
++		return false;
++	return atomic_inc_not_zero(&ses->se_ref);
++}
++
++/**
++ * nfsd4_cb_put_session - put a session reference for a callback
++ * @ses: session of which to put a reference
++ *
++ * Callbacks are different than client-driven RPCs. The caller doesn't
++ * need a reference to the nfs4_client, and doesn't want to renew the
++ * lease when putting the reference.
++ */
++void nfsd4_cb_put_session(struct nfsd4_session *ses)
++{
++	if (ses && atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
++		free_session(ses);
++}
++
+ static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
+ {
+ 	__be32 status;
+@@ -254,8 +285,7 @@ static void nfsd4_put_session_locked(struct nfsd4_session *ses)
+ 
+ 	lockdep_assert_held(&nn->client_lock);
+ 
+-	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
+-		free_session(ses);
++	nfsd4_cb_put_session(ses);
+ 	put_client_renew_locked(clp);
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 74d2d7b42676d907bec9159b927aeed223d668c3..79d985d2a656e1a5b22a6a9c88f309515725e847 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -753,6 +753,8 @@ struct nfsd4_compound_state;
+ struct nfsd_net;
+ struct nfsd4_copy;
+ 
++bool nfsd4_cb_get_session(struct nfsd4_session *ses);
++void nfsd4_cb_put_session(struct nfsd4_session *ses);
+ extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
+ 		stateid_t *stateid, int flags, struct nfsd_file **filp,
 
->=20
-> >  		/*
-> >  		 * cb_seq_status remains 1 if an RPC Reply was never
-> >  		 * received. NFSD can't know if the client processed
->=20
->=20
+-- 
+2.48.1
 
-Nice catch though!
---=20
-Jeff Layton <jlayton@kernel.org>
