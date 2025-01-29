@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 892F21E0E10;
-	Wed, 29 Jan 2025 23:20:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 20DAE1E3DD6;
+	Wed, 29 Jan 2025 23:20:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1738192855; cv=none; b=m0oC6CcXNTBnRGWV4LN3JtFvTFJ9PxQMZVJHPa1XBuhxB6u3K9bHIcI5VPWS8L9MagPlNcAYUWwt+Ul3/0qEqPDyGqQkYt29bJU4e/uiEaut0YcPC0gqXVkWEBx2HICpzotU7Ioomrd3SF93Dp11lmS1jNebxXdGubsek6UiygY=
+	t=1738192856; cv=none; b=jtj5JruxaSnSTui52tRX7DgCU+Tow0MymYunhFDTh72FZ3vZGE3D1IYyI1SBnF+m/oQfmEJL4xRqfV9jvt3KpwonVN7lD7rA6L6e7BDx53VRJpcNJQUY817di11Jho+Cng/1sLfHR2y87cFB6HyAlfhuPHbrjpKHf6Y/csDWdWY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1738192855; c=relaxed/simple;
-	bh=YEqdYM/eY7W98kpVAcC4ClHn1rdPQ8rtGyxmGyK6PCA=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=uTheE/jMeCRGA0Rt3Z7zrPBpjfnarh78ohXNF59ED/GLw5BG15s9JKgzWON3UaEVRrcxOPOL1FWORtgKDsNOFs+OhvOeAFRrO2pvGXYxKo6Et/Skr79gvV3BUtaHej1TXopqe8bnP+PLF024iBlbF6vmJQ/Zjr5kUZLiO7gD2ck=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=raQoBrb+; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1738192856; c=relaxed/simple;
+	bh=OiL8q1LfHA/I9AsXcKVH8K322R8abnjFCLN6FLdRUSQ=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=OB9ACMbRBkYLfEC2mCMrNHrDZLaBmjb1VYlQ2UfEKmnnO/Y6jxFfgyI6AAHRaMRO5dR8e4AQNdsf6li63qh3tXK7s5l1WhPlzq0RQvL6TZ/wjdoDBn45YQgMcZK/XZP3R66EfeXU3VLWFtANqpW7ZnQurWpILz+Vg6T2D+cPtaQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=s242wHhM; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="raQoBrb+"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 42702C4CED1;
-	Wed, 29 Jan 2025 23:20:53 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="s242wHhM"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3C04BC4CEE4;
+	Wed, 29 Jan 2025 23:20:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1738192854;
-	bh=YEqdYM/eY7W98kpVAcC4ClHn1rdPQ8rtGyxmGyK6PCA=;
-	h=From:Subject:Date:To:Cc:From;
-	b=raQoBrb+24rfIMbUIUGs6ryPrV5Cir77b3081LCKTWZZQnmXcu/L+6UZbXu9p6dUM
-	 m4TWR5Kn8jmPBHrh2RG5gSxxHRf6CVis+AsDX5ReIJ0Mi424kg7h7I8COIpx8MnBlN
-	 T0rXOAwHa/PVMlnJW//2694fkudTN3x9Qjh/mn0+++NKXGtCD480oIzO18H4sSRcwe
-	 iPIxp9F5mU8RIdmICqTHCZQVBgS9hE9cX2+jnb3pAJ04s0OgqAjhCjOJhqoNlNucEd
-	 wx65S/THVJvHgMy2GKT019PK/HFzDU6qOd1AE3dg2cUuyGA0mRKpJKS5SaHyz8M9oE
-	 XCeoUjYjEGCSg==
+	s=k20201202; t=1738192856;
+	bh=OiL8q1LfHA/I9AsXcKVH8K322R8abnjFCLN6FLdRUSQ=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
+	b=s242wHhMFUWyBxKvDwZgymd8KV25vZ8jIx8+rxHstzeS10W1GYl7JTc2STN/S3cRi
+	 sS9TsIOasm3gPRuuOInY8uvZv1n1a2JEi8QJKInftS+RmY/+yF8n1qs/dj/zWb6GL4
+	 kvXMpytt1h3qGbjPgxZOUYIlzb+2NycDO9heF5Ktel5cXADGjCQBKNYOr9wqy/9wUB
+	 cdfpsUB9wlc9Bdu/ln1JGXySyMtleSBbJkM41oEMJ/vFlMuYPy/Z5xckd5wEDACNf3
+	 DKcWsvTflFWB1DVb3Adm8GlN0O3wzrS42XwHyxrbEuaQ73Fp5HkdrUnmHOGlJzLczi
+	 90Fl56FmaXXEA==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v3 0/6] nfsd: CB_SEQUENCE error handling fixes and cleanups
-Date: Wed, 29 Jan 2025 18:20:40 -0500
-Message-Id: <20250129-nfsd-6-14-v3-0-506e71e39e6b@kernel.org>
+Date: Wed, 29 Jan 2025 18:20:42 -0500
+Subject: [PATCH v3 2/6] nfsd: make clp->cl_cb_session be an RCU managed
+ pointer
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,93 +38,178 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAMi3mmcC/22MwQ7CIBAFf6Xh7BpYqFhP/ofxgHRpiQYMGKJp+
- u/SnmricV7ezMQyJU+ZnZqJJSo++xgqyF3D7GjCQOD7ygw5tlyghOByDwcQCm5cd5rkse0tZ/X
- /TOT8e21drpVHn18xfdZ0Ecv6r1IEcLBCSG2UM2jofKcU6LGPaWBLpuBW7bYqVhU157ZDJ0mpH
- 3We5y87b8/y3gAAAA==
-X-Change-ID: 20250123-nfsd-6-14-b0797e385dc0
+Message-Id: <20250129-nfsd-6-14-v3-2-506e71e39e6b@kernel.org>
+References: <20250129-nfsd-6-14-v3-0-506e71e39e6b@kernel.org>
+In-Reply-To: <20250129-nfsd-6-14-v3-0-506e71e39e6b@kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2711; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=YEqdYM/eY7W98kpVAcC4ClHn1rdPQ8rtGyxmGyK6PCA=;
- b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBnmrfO9E8UhT6368yrI+kjV5u77o/o7tlWmcQwK
- Ut1hggsmEiJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZ5q3zgAKCRAADmhBGVaC
- FSdVD/oCYo8crmE7pDw+UjtZ8H6AaSbkN7+eQ8VsElXez9BC6jzgSkG1QCjBR5xjTSB4zFfl3yt
- +8K8baEHrWAyDKOuhmgD8aJKsjwUm9nd61Y/WykKcmrbRVfhqMX9tnVcsiem/VfBuxkrDe84lkx
- 4BzGpb/xnMxMniueMtgZgG5kKdadkoc9V8GK6cVPSgHbLvGtUbbtAvFCxhYS+wKWjjXtQgjBHum
- PWavGch+O76G78WY+0AYExd+YJBNberXPmlKUa5yeYTEN4UeR6kC0qe6O7F+FsoIuKUAYXoyGgc
- 3Nqw/ijJtlKmTohRBAO48L51BpadmGJCd5lCCik3baEc4YCgSARDYQeo6rMo4IBxN4qJI8YFoMA
- 8UmOtI9BDMTIuhm8xNkOiLroh768tVALb6oTSWiYNXQfJ9G4Sg+8YYTM60kx/oGRIbSFDjW7mtj
- FMlkVjZ8+sPJY887kmjIaBOCJmX6ZgmsNhjwsqB921oeFZwR1r/c5FfOVGs+uVtY/OFB1o2xBd/
- lrVEz2tVgl808pRgD3CnAtP3QfMTNsj14i7bNUlH713m/wHvSzOa14fzapXC2UhOPXYIVYkuc6l
- +rh1ozTZdquKrwgYcgy5OlOffMf4pVllbg0d9Hvvo+ZGxWyYPrtRXT64vePQfyVefCKQJjfz1gj
- p/qASB6wqVKXeMg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5132; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=OiL8q1LfHA/I9AsXcKVH8K322R8abnjFCLN6FLdRUSQ=;
+ b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBnmrfU6rKdmT6h/T/xIiITDkf7glkLWYjyWRRJE
+ 9wamiqtBgWJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZ5q31AAKCRAADmhBGVaC
+ FecvEACHwdFbOL7MO/krhGsetbMdrgJ4vtbGthNke+p87/8psLO7Jc4OpKmU19FZHINQBxcB3ub
+ qVvmp/OziCGmGrjXCBX/45GTVr4OF47FXoNmqD1VZoGZhlyGnfcFL1GI2bJDR2btEXNmDMOocSj
+ VAyLxNbM1tD4oiBMcNiueDJdw9Gi1AjYUZz0/+k+e5qPzOmZLwPJxoAsmfVgCMPVGUJl73XCuyy
+ RLaIM6Js/ua7RhTTPE+wX9RBiq8VTAunM7l5lsxwOvmHytPU8AIBNCvo0qIWrCKTSgvzVpsrofn
+ 0+x9UukF+bawrzNCNys6y/GUM9kIzr84ypDdXJsC6mE/iUuNDAhrvDZ3txfmS6kXQSFpliu67h+
+ hITLhAcrw/WjqhfyDPniukecsGUD89SZVFvMJIbWltMNyRcJaMMvprbpW/Ob8M2h/C0Mrpm5l2f
+ RvfDW6uraYVuwgHalTn6XrAVpq4zX7FbLmaeJk1Xdch5hr1ZMiT1+fb5uKHRIkI5MMDlNbmhgbd
+ 49o94MJtrBFzums7Uqpbbe8BYBKsiVTprJx6Iq1vFpHHyHIWw3YSDfvql7mmxIjzN5MKCoa7SgD
+ NKSGUjl2fBUfYGsnrzLYT/qMppmUG+weKtObRYp5ui5LVXBEw5ou72sd/jhuaYR9Y1Dec3oZ8HT
+ D4dNRO9rv26Igtw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-While looking over the CB_SEQUENCE error handling, I discovered that
-callbacks don't hold a reference to a session, and the
-clp->cl_cb_session could easily change between request and response.
-If that happens at an inopportune time, there could be UAFs or weird
-slot/sequence handling problems.
+Currently, this is just a pointer to the most recent session, but
+there is no guarantee that the session is still valid and in memory.
+It's possible for this pointer go NULL or replaced.
 
-This series changes the nfsd4_session to be RCU-freed, and then adds a
-new method of session refcounting that is compatible with the old.
-nfsd4_callback RPCs will now hold a lightweight reference to the session
-in addition to the slot. Then, all of the callback handling is switched
-to use that session instead of dereferencing clp->cb_cb_session.
-I've also reworked the error handling in nfsd4_cb_sequence_done()
-based on review comments, and lifted the v4.0 handing out of that
-function.
+First, embed a struct rcu in nfsd4_session and free it via free_rcu.
+Ensure that when clp->cl_cb_session pointer is changed, that it is done
+via RCU-safe methods.
 
-This passes pynfs, nfstests, and fstests for me, but I'm not sure how
-much any of that stresses the backchannel's error handling.
-
-These should probably go in via Chuck's tree, but the last patch touches
-some NFS cnd sunrpc client code, so it'd be good to have R-b's or A-b's
-from Trond and/or Anna on that one.
+This will allow callbacks to access the cl_cb_session pointer safely via
+RCU.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Changes in v3:
-- rename cb_session_changed to nfsd4_cb_session_changed
-- rename restart_callback to requeue_callback, and rename need_restart:
-  label to requeue:
-- don't increment seq_nr on -ESERVERFAULT
-- comment cleanups
-- drop client-side rpc patch (will send separately)
-- Link to v2: https://lore.kernel.org/r/20250129-nfsd-6-14-v2-0-2700c92f3e44@kernel.org
+ fs/nfsd/nfs4callback.c | 21 ++++++++++++++++++---
+ fs/nfsd/nfs4state.c    | 11 +++++++++--
+ fs/nfsd/state.h        |  3 ++-
+ 3 files changed, 29 insertions(+), 6 deletions(-)
 
-Changes in v2:
-- make nfsd4_session be RCU-freed
-- change code to keep reference to session over callback RPCs
-- rework error handling in nfsd4_cb_sequence_done()
-- move NFSv4.0 handling out of nfsd4_cb_sequence_done()
-- Link to v1: https://lore.kernel.org/r/20250123-nfsd-6-14-v1-0-c1137a4fa2ae@kernel.org
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 50e468bdb8d4838b5217346dcc2bd0fec1765c1a..e55bf66a33d6efb56d2f75f0a49a60307e3807ac 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1122,6 +1122,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 	};
+ 	struct rpc_clnt *client;
+ 	const struct cred *cred;
++	int ret;
+ 
+ 	if (clp->cl_minorversion == 0) {
+ 		if (!clp->cl_cred.cr_principal &&
+@@ -1137,7 +1138,9 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 	} else {
+ 		if (!conn->cb_xprt || !ses)
+ 			return -EINVAL;
+-		clp->cl_cb_session = ses;
++		if (!nfsd4_cb_get_session(ses))
++			return -EINVAL;
++		rcu_assign_pointer(clp->cl_cb_session, ses);
+ 		args.bc_xprt = conn->cb_xprt;
+ 		args.prognumber = clp->cl_cb_session->se_cb_prog;
+ 		args.protocol = conn->cb_xprt->xpt_class->xcl_ident |
+@@ -1148,13 +1151,15 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 	client = rpc_create(&args);
+ 	if (IS_ERR(client)) {
+ 		trace_nfsd_cb_setup_err(clp, PTR_ERR(client));
+-		return PTR_ERR(client);
++		ret = PTR_ERR(client);
++		goto out_put_ses;
+ 	}
+ 	cred = get_backchannel_cred(clp, client, ses);
+ 	if (!cred) {
+ 		trace_nfsd_cb_setup_err(clp, -ENOMEM);
+ 		rpc_shutdown_client(client);
+-		return -ENOMEM;
++		ret = -ENOMEM;
++		goto out_put_ses;
+ 	}
+ 
+ 	if (clp->cl_minorversion != 0)
+@@ -1166,6 +1171,12 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 			    args.authflavor);
+ 	rcu_read_unlock();
+ 	return 0;
++out_put_ses:
++	if (clp->cl_minorversion != 0) {
++		rcu_assign_pointer(clp->cl_cb_session, NULL);
++		nfsd4_cb_put_session(ses);
++	}
++	return ret;
+ }
+ 
+ static void nfsd4_mark_cb_state(struct nfs4_client *clp, int newstate)
+@@ -1529,11 +1540,15 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 	 * kill the old client:
+ 	 */
+ 	if (clp->cl_cb_client) {
++		struct nfsd4_session *ses;
++
+ 		trace_nfsd_cb_bc_shutdown(clp, cb);
+ 		rpc_shutdown_client(clp->cl_cb_client);
+ 		clp->cl_cb_client = NULL;
+ 		put_cred(clp->cl_cb_cred);
+ 		clp->cl_cb_cred = NULL;
++		ses = rcu_replace_pointer(clp->cl_cb_session, NULL, true);
++		nfsd4_cb_put_session(ses);
+ 	}
+ 	if (clp->cl_cb_conn.cb_xprt) {
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index db68fd579ff0454153537817ee3cca71303654b4..77b0338c50d7f75fe6d03659b2ed3188976debac 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2182,7 +2182,7 @@ static void __free_session(struct nfsd4_session *ses)
+ {
+ 	free_session_slots(ses, 0);
+ 	xa_destroy(&ses->se_slots);
+-	kfree(ses);
++	kfree_rcu(ses, se_rcu);
+ }
+ 
+ static void free_session(struct nfsd4_session *ses)
+@@ -3285,7 +3285,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	clp->cl_time = ktime_get_boottime_seconds();
+ 	copy_verf(clp, verf);
+ 	memcpy(&clp->cl_addr, sa, sizeof(struct sockaddr_storage));
+-	clp->cl_cb_session = NULL;
++	rcu_assign_pointer(clp->cl_cb_session, NULL);
+ 	clp->net = net;
+ 	clp->cl_nfsd_dentry = nfsd_client_mkdir(
+ 		nn, &clp->cl_nfsdfs,
+@@ -4253,6 +4253,13 @@ nfsd4_destroy_session(struct svc_rqst *r, struct nfsd4_compound_state *cstate,
+ 	status = nfserr_wrong_cred;
+ 	if (!nfsd4_mach_creds_match(ses->se_client, r))
+ 		goto out_put_session;
++
++	/*
++	 * Is this session the backchannel session? Count an extra
++	 * reference if so.
++	 */
++	if (ses == rcu_access_pointer(ses->se_client->cl_cb_session))
++		ref_held_by_me++;
+ 	status = mark_session_dead_locked(ses, 1 + ref_held_by_me);
+ 	if (status)
+ 		goto out_put_session;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 79d985d2a656e1a5b22a6a9c88f309515725e847..0faa367c9fa3280fa4a8a982f974804bb89f2035 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -354,6 +354,7 @@ struct nfsd4_session {
+ 	u16			se_slot_gen;
+ 	bool			se_dead;
+ 	u32			se_target_maxslots;
++	struct rcu_head		se_rcu;
+ };
+ 
+ /* formatted contents of nfs4_sessionid */
+@@ -465,7 +466,7 @@ struct nfs4_client {
+ #define NFSD4_CB_FAULT		3
+ 	int			cl_cb_state;
+ 	struct nfsd4_callback	cl_cb_null;
+-	struct nfsd4_session	*cl_cb_session;
++	struct nfsd4_session	__rcu *cl_cb_session;
+ 
+ 	/* for all client information that callback code might need: */
+ 	spinlock_t		cl_lock;
 
----
-Jeff Layton (6):
-      nfsd: add routines to get/put session references for callbacks
-      nfsd: make clp->cl_cb_session be an RCU managed pointer
-      nfsd: add a cb_ses pointer to nfsd4_callback and use it instead of clp->cb_cb_session
-      nfsd: overhaul CB_SEQUENCE error handling
-      nfsd: remove unneeded forward declaration of nfsd4_mark_cb_fault()
-      nfsd: lift NFSv4.0 handling out of nfsd4_cb_sequence_done()
-
- fs/nfsd/nfs4callback.c | 217 +++++++++++++++++++++++++++++++++++--------------
- fs/nfsd/nfs4state.c    |  45 +++++++++-
- fs/nfsd/state.h        |   6 +-
- fs/nfsd/trace.h        |   6 +-
- 4 files changed, 204 insertions(+), 70 deletions(-)
----
-base-commit: a05af3c6103b703d1d38d8180b3ebbe0a03c2f07
-change-id: 20250123-nfsd-6-14-b0797e385dc0
-
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.48.1
 
