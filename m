@@ -1,49 +1,75 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB05F1E3DC8;
-	Thu, 30 Jan 2025 14:19:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D9D6A1E8823
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jan 2025 14:20:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1738246782; cv=none; b=XbZw56gnhL2KkkYzm7lA50jsEl+N+0Rt/v2sN/JOceckFiey4VrfPxIx4H66x5Mnn6mYAH+F4WaRW/MPdCEffiNRxYhs0WqCv8j51IgMUVLa/mvaW7m4nSNvVni+P4pMEP/tOyrIaBPWQFaMnweBsNzgDrUeXY2Yzc5l6v+hcKY=
+	t=1738246846; cv=none; b=IFb1WZRE6J53CYnXETwXcR5Av/bbHDfC5jU0x/4dbyBLVRzp4LNbz9dRhdStQVsAEMayaxyyGc48tCSVWXIqGGWYW3TiV84/vNHBA6LD5RKPO08W0OKl724uhGpeODLt52u4fI7e4R9jRwe5TYx+wwIczuwKGIe+RbcaMurTu7Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1738246782; c=relaxed/simple;
-	bh=Bsv2iW63WoGZ0KDHVebw9lAh6mApNHHvA7ec+yONvMI=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=o7MNtg3XlX/qefNJe2yb8PUuacsYJsm+fxAuSRv4eV8td8IflVgVJbI/yVya0e+ZZJemT3usj6Ay8xQIARqiH/+3WBPHQRTu/N4/gN0+VKtstyDuvy/kZxDX/8xEZbzVKQPVQPawudpDjoId88Y95q74+QhAdLL3uBLD0+q+W0c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b=EefcbhtR; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1738246846; c=relaxed/simple;
+	bh=HlK7FzKzs5bxpvt+QHT9VaW+K83VFQo97ibdfoZC+Iw=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=W40FrOKqoehBXrgLqHuLLgpEp5LD6Ny4duOmecuavHdZJ+z/rKCvSWDyO7qxv3zda7HQlFvZ3gXtuv7Ur/doniE1v0PGPPCYhsNDa9YNPn03BBK6Vh3kK4mqFKwPt2yB9iX2/6w4xOcr0C3oo3ADMq4PpDIxsmC9IgBqfA7s5zw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=T8LOhL+v; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="EefcbhtR"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 38DECC4CED2;
-	Thu, 30 Jan 2025 14:19:42 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-	s=korg; t=1738246782;
-	bh=Bsv2iW63WoGZ0KDHVebw9lAh6mApNHHvA7ec+yONvMI=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=EefcbhtR44DhcdKa6E9/2GIJJbimTUz85PWezw6rndsQ0uOPSfgf6oCWtjAIpKu3V
-	 z/YXckvkh+Lt2InU4etX23B5vWXlPsA8Tjb6r8tF98N8wXdT+dxpHkRZeEw5G2TDE9
-	 NauWqQTSo5IWfSpZBJzzcDDD9E4tZXHY0xP6FINM=
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-To: stable@vger.kernel.org
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	patches@lists.linux.dev,
-	David Howells <dhowells@redhat.com>,
-	Masahiro Yamada <masahiroy@kernel.org>,
-	Marc Dionne <marc.dionne@auristor.com>,
-	linux-afs@lists.infradead.org,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Christian Brauner <brauner@kernel.org>,
-	Sasha Levin <sashal@kernel.org>
-Subject: [PATCH 5.4 65/91] kheaders: Ignore silly-rename files
-Date: Thu, 30 Jan 2025 15:01:24 +0100
-Message-ID: <20250130140136.291051235@linuxfoundation.org>
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="T8LOhL+v"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1738246843;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=2zRiEr3eq6BDcFgqFLPNUk3gUbnD04tngkxU7d9QZSg=;
+	b=T8LOhL+vOSZoNvsRymHqv9lxXb42SzHqKkV0KZwsR6+sKnO4lzErBN7FY6uPTkUcN7pnPm
+	k4EUtSSp1rvMtXkSbaKSC/bY7H+hVzJKTDYWHg15lgWgteg8qdH48MtxNM0Mutvm5xuU6r
+	9U2Ijl2VHyeDnoIFb7x6yTReuJ4eesQ=
+Received: from mail-qk1-f198.google.com (mail-qk1-f198.google.com
+ [209.85.222.198]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-474-s94T94FwOrGmpD23cdwsOQ-1; Thu, 30 Jan 2025 09:20:41 -0500
+X-MC-Unique: s94T94FwOrGmpD23cdwsOQ-1
+X-Mimecast-MFC-AGG-ID: s94T94FwOrGmpD23cdwsOQ
+Received: by mail-qk1-f198.google.com with SMTP id af79cd13be357-7b6ecd22efbso133030685a.0
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jan 2025 06:20:41 -0800 (PST)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1738246840; x=1738851640;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=2zRiEr3eq6BDcFgqFLPNUk3gUbnD04tngkxU7d9QZSg=;
+        b=EcTpfthM0gNZbOTKvgZbZ6XqVliO1AvhsyRh6TW7jQ7JDj3u2BpA0A0AkE3wGMdhCx
+         Urrvui7bJjLUC6falMerWtyenNRRN8Ave+hpbK0WN7P3AcI/hH+o+VH7FVgv6bdGeJcr
+         T3NYWdynoJIAmfkk6O7YI28OV0D0qFizZ/UnRbNnYyGD7+HZraXvQrPIPM/vLxG6NEbx
+         se7tvjgUqIPYEdLaVsqo4Ovvtucp1ljv5ZRMzrWhqeOwEnhZtymm2vZDz8GV1UXA9pes
+         c4nFlEx+xWBLmXqwtIkF8SYUukEzePMYyP65o2aNhgbxtZCv0ryZJxzyD4PjZdqt291A
+         qxPA==
+X-Gm-Message-State: AOJu0YzwpmHEjPbIINQWm2oMzCzrOK4bcxuoSXLDEC6psVJ2WCCVamdW
+	3y7GJ0EDfTpI4XANEkR4DXdjrauEMbOXsxdJQJqBeJGlBOBVRlDfGQPi45HTQ6KceKYEFbKM9S+
+	lKREDxLEnLQUvz9nwgPlI6782G0pJ78vjDAAzMMzCWZzrYBDRdxy26WPVieq8hLhfPDg/DGjivk
+	aSYkzDag0B5WWUqxCqZOS8bF2fIooMoMe3KBoAN0eJ9Q==
+X-Gm-Gg: ASbGnctVbQSyj5kL1K+RUdtm5xL/dcfIvyUmzdnNFu/+dNX0WZ0h2VqKt7mcBTUIT0e
+	vItp8cYalMG7zPpXvnwkOoZLZ6oc2OeczWaJYJDPAzMy6EKdznEjGe/FPHEVbH2o6M6Ph5Nw5RT
+	//2utLqBBVwOyGmR4k/XIOTxb2/oepRnth5qkr2GnUaXchz75bIVea7oZkNaz/D9dNULAYxLlnY
+	Woe4c7FtB6WHmB3/QQR8AstnKLn/Ih51hZSWUWnOia2YhM/AlxthdsslduWpdW+69/HRhpcXcAy
+	yeFzYrvk8+pb9em3P882yv0u1VVIDmwTWYoJdP2mflfVCbFf3QFWANWmR2ZjeNPD
+X-Received: by 2002:a05:620a:2cc3:b0:7b1:ab32:b71e with SMTP id af79cd13be357-7c009702666mr367527385a.0.1738246840128;
+        Thu, 30 Jan 2025 06:20:40 -0800 (PST)
+X-Google-Smtp-Source: AGHT+IGl0+hel9VhfVlph3Z1sYbaBMxZUHkOMDAbVeedCCVmvj91oMLu6+o1fAdKRCuxSbyp7umOCg==
+X-Received: by 2002:a05:620a:2cc3:b0:7b1:ab32:b71e with SMTP id af79cd13be357-7c009702666mr367524585a.0.1738246839746;
+        Thu, 30 Jan 2025 06:20:39 -0800 (PST)
+Received: from bearskin.sorenson.redhat.com (c-98-227-24-213.hsd1.il.comcast.net. [98.227.24.213])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-7c00a9205f4sm77449285a.114.2025.01.30.06.20.39
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 30 Jan 2025 06:20:39 -0800 (PST)
+From: Frank Sorenson <sorenson@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: steved@redhat.com,
+	chuck.lever@oracle.com
+Subject: [nfs-utils PATCH 0/8] mountstats/nfsiostat: bugfixes for iostat
+Date: Thu, 30 Jan 2025 08:19:59 -0600
+Message-ID: <20250130142008.3600334-1-sorenson@redhat.com>
 X-Mailer: git-send-email 2.48.1
-In-Reply-To: <20250130140133.662535583@linuxfoundation.org>
-References: <20250130140133.662535583@linuxfoundation.org>
-User-Agent: quilt/0.68
-X-stable: review
-X-Patchwork-Hint: ignore
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -52,64 +78,81 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-5.4-stable review patch.  If anyone has any objections, please let me know.
+This patchset is intended to fix several bugs in nfsiostat and
+'mountstats iostat', in particular when an <interval> is specified.
 
-------------------
+Specifically, the patches address the following issues when printing
+multiple times:
 
-From: David Howells <dhowells@redhat.com>
+* both nfsiostat and 'mountstats iostat':
+   - if <count> is also specified, the scripts sleep an additional
+     <interval> after printing <count> times, and parse mountstats
+     unnecessarily before checking the <count>
 
-[ Upstream commit 973b710b8821c3401ad7a25360c89e94b26884ac ]
+   - if no nfs mounts are present when printing, the scripts output
+     a message that there are no nfs mounts, and exit immediately.
 
-Tell tar to ignore silly-rename files (".__afs*" and ".nfs*") when building
-the header archive.  These occur when a file that is open is unlinked
-locally, but hasn't yet been closed.  Such files are visible to the user
-via the getdents() syscall and so programs may want to do things with them.
+     However, if multiple intervals are indicated, it makes more sense
+     to output the message and sleep until the next iteration; there
+     may be nfs mounts the next time through.
 
-During the kernel build, such files may be made during the processing of
-header files and the cleanup may get deferred by fput() which may result in
-tar seeing these files when it reads the directory, but they may have
-disappeared by the time it tries to open them, causing tar to fail with an
-error.  Further, we don't want to include them in the tarball if they still
-exist.
+   - if mountpoints are specified on the command-line, but are not
+     present during an iteration, the scripts crash.
 
-With CONFIG_HEADERS_INSTALL=y, something like the following may be seen:
 
-   find: './kernel/.tmp_cpio_dir/include/dt-bindings/reset/.__afs2080': No such file or directory
-   tar: ./include/linux/greybus/.__afs3C95: File removed before we read it
+ * 'mountstats iostat':
+   - if an nfs filesystem is unmounted between iterations, the
+     script will crash attempting to reference the non-existent
+     mountpoint in the new mountstats file (or if another filesystem
+     type is mounted at that location, will instead crash while
+     comparing old and new stats)
 
-The find warning doesn't seem to cause a problem.
+   - new nfs mounts are not detected
 
-Fix this by telling tar when called from in gen_kheaders.sh to exclude such
-files.  This only affects afs and nfs; cifs uses the Windows Hidden
-attribute to prevent the file from being seen.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-Link: https://lore.kernel.org/r/20241213135013.2964079-2-dhowells@redhat.com
-cc: Masahiro Yamada <masahiroy@kernel.org>
-cc: Marc Dionne <marc.dionne@auristor.com>
-cc: linux-afs@lists.infradead.org
-cc: linux-nfs@vger.kernel.org
-cc: linux-kernel@vger.kernel.org
-Signed-off-by: Christian Brauner <brauner@kernel.org>
-Signed-off-by: Sasha Levin <sashal@kernel.org>
----
- kernel/gen_kheaders.sh | 1 +
- 1 file changed, 1 insertion(+)
+ * nfsiostat:
+   - if a new nfs filesystem is mounted between iterations, the
+     script will crash attempting to reference the non-existent
+     mountpoint in the old mountstats file
 
-diff --git a/kernel/gen_kheaders.sh b/kernel/gen_kheaders.sh
-index 206ab3d41ee76..7fc44d8da2052 100755
---- a/kernel/gen_kheaders.sh
-+++ b/kernel/gen_kheaders.sh
-@@ -84,6 +84,7 @@ find $cpio_dir -type f -print0 |
- 
- # Create archive and try to normalize metadata for reproducibility.
- tar "${KBUILD_BUILD_TIMESTAMP:+--mtime=$KBUILD_BUILD_TIMESTAMP}" \
-+    --exclude=".__afs*" --exclude=".nfs*" \
-     --owner=0 --group=0 --sort=name --numeric-owner --mode=u=rw,go=r,a+X \
-     -I $XZ -cf $tarfile -C $cpio_dir/ . > /dev/null
- 
+   - if a mountpoint is specified on the command-line, but topmost
+     mount there is not nfs, the script crashes while trying to
+     compare old and new stats
+
+
+To address these issues, the patches do the following:
+ * when printing diff stats from previous iteration:
+   - verify that a device exists in the old mountstats before referencing it
+   - verify that both old and new fstypes are the same
+
+ * when filtering the current mountstats file:
+   - verify the device exists in the mountstats file before referencing it
+   - filter the list of nfs mountpoints each iostat iteration
+
+ * check for empty device list and output the 'No NFS mount points found'
+    message, but don't immediately exit the script
+
+ * merge the infinite loop and counted loop, and (for the counted loop)
+    decrement and check the count before sleeping and parsing the mountstats
+    file
+
+
+Frank Sorenson (8):
+  mountstats/nfsiostat: add a function to return the fstype
+  mountstats: when printing iostats, verify that old and new types are
+    the same
+  nfsiostat: mirror how mountstats iostat prints the stats
+  nfsiostat: fix crash when filtering mountstats after unmount
+  nfsiostat: make comment explain mount/unmount more broadly
+  mountstats: filter for nfs mounts in a function, each iostat iteration
+  mountstats/nfsiostat: Move the checks for empty mountpoint list into
+    the print function
+  mountstats/nfsiostat: merge and rework the infinite and counted loops
+
+ tools/mountstats/mountstats.py | 102 ++++++++++++++++--------------
+ tools/nfs-iostat/nfs-iostat.py | 110 +++++++++++++--------------------
+ 2 files changed, 100 insertions(+), 112 deletions(-)
+
 -- 
-2.39.5
-
-
+2.47.1
 
