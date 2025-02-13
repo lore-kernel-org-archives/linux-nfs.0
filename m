@@ -1,52 +1,59 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 33A16281360;
-	Thu, 13 Feb 2025 14:31:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 40DF1148855;
+	Thu, 13 Feb 2025 15:01:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1739457108; cv=none; b=jzjrtjgMA0zpDQOrhx1Fl/YcvRoYpTAmDtkyzqElqtG04sDrJAztKY+6/YZ/EJAVC/dmHoLvfNbU8NFwz2SEURL8AXPS84Alv2FTk5PwhCMRkN4nFrN0WC6FkpTxLvKZcicWESd1uEsxfK99pNt4rRvb/W95/FDpQ2tIjfGYCE8=
+	t=1739458905; cv=none; b=Q8GPrG7Spj997zNbW3wPi4GJa5sge6WHOoIe95RTtMTdlc/1uYxCaZr9NlDOwo/OLQJseNLmmPQ/aHVPo41imocAODFpOqAKMVKMdr4lXeNiZIiEjGqf3X59dYbw6NeoxVEF9Jy+oogwhojZKJiujh6roTgC4Nv+dzDzDo57XE4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1739457108; c=relaxed/simple;
-	bh=OA53EvUVXv1GhM5nFaZwYKdlhJhq0PlyQ6nM6WoxQ5k=;
+	s=arc-20240116; t=1739458905; c=relaxed/simple;
+	bh=M392JolpqBN59UU7gj1lCbZNzReqJFGeXEqLCAtPZIo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=cJtyWu65pryRRB5IFQCyfk+d47obdEI2V0ztKuP0sYyHs7WKPpWJqUUI7oOScquUrL52po2Wl+AbQ4pXHpvv93GGKs26fbYpsQjOt3de+Yd78sXPnhRJ5M7WlgDmkzbX153Bc59FTa05nzrcne50lum3Qh/1Onzd978Qc+3aV0E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NAcmDLI4; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version:Content-Type; b=u08Q8hKKewjA/jOEwxAsPpv7+yyDbQoUVmu4QdjBo3e6BANPTgkxLoA9bvfbshyg4xtr36PINphRNHtO2QUnQX0gZ8ni4Tn7WSH/Ty7Npru/48kfpcO5Un68UqD9DRQ8ubUbk9Rbb3kyU4js1867rR9Y9JJuLe93+e0DHG86BWk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=a05nNJBU; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NAcmDLI4"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 654C1C4CEE8;
-	Thu, 13 Feb 2025 14:31:46 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="a05nNJBU"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4582FC4CED1;
+	Thu, 13 Feb 2025 15:01:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1739457107;
-	bh=OA53EvUVXv1GhM5nFaZwYKdlhJhq0PlyQ6nM6WoxQ5k=;
+	s=k20201202; t=1739458905;
+	bh=M392JolpqBN59UU7gj1lCbZNzReqJFGeXEqLCAtPZIo=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=NAcmDLI49tnhWxwzXDphQWUBEilB0AbJCqZ9K6H6jvIOO8naxJwJtPt9cM3IfrzWm
-	 GtGGHbCU9ER3G7KV2zY65oplYowGGiD+XVwvhsB2aBpz2M6MP3U+Ota0H2CnnJ+BNk
-	 g0QoaZCKCXEW+nsO2pMweI5bMFk0JCBih2oipLuVaDa/HTF9e0shquxyZ+HW51KCpX
-	 9rsNEkya68f+EHItQFVFLJszS9loxH/1JvBczkJXL8Ks598xN6sL4FjihPURumLbRD
-	 qRd+EPVprlcVbdGEF9Zf0Ldw3GZ+cukfo+yN8aGNUD1FRsjwJw8qn0XyT4nZsHBh5Z
-	 krPQ+swBN9oog==
-From: cel@kernel.org
-To: jlayton@kernel.org,
-	neilb@suse.de,
-	okorniev@redhat.com,
-	Dai.Ngo@oracle.com,
-	tom@talpey.com,
+	b=a05nNJBUGp8ldp6m7CxxQpionQHaidKP1wtCgpsDBiaAlk+TJxXuOBid1JHLpxhYe
+	 RRYvXjSgJTb6djMCF88SXDmbPfTU0RCq+MnBP1LFA1VUpRPXpjZ+Tsd1Uj4GPOGDW5
+	 xtZETGfyQamJSU/DaXSN7wG1yuq0y70qozSS5ztzjnvGF0RNaFQc+F50d9FkkZ3u22
+	 GlXPPbGgDI6NkXrMxE7EfE8Gkq5jopatEuyWY70TopeDiNOx6MUkF17E9PZvSjUnaR
+	 yASl9kNkKq706ougqtL3coEehtbb9A3sEraayr/vC1irSrBQB9IyKkJu8PdoHDmbFP
+	 DKMMA1AQurMGQ==
+From: Christian Brauner <brauner@kernel.org>
+To: David Howells <dhowells@redhat.com>
+Cc: Christian Brauner <brauner@kernel.org>,
+	Ihor Solodrai <ihor.solodrai@linux.dev>,
+	Max Kellermann <max.kellermann@ionos.com>,
+	Steve French <sfrench@samba.org>,
+	Marc Dionne <marc.dionne@auristor.com>,
+	Jeff Layton <jlayton@kernel.org>,
+	Paulo Alcantara <pc@manguebit.com>,
+	Tom Talpey <tom@talpey.com>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Dominique Martinet <asmadeus@codewreck.org>,
+	netfs@lists.linux.dev,
+	linux-afs@lists.infradead.org,
+	linux-cifs@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Li Lingfeng <lilingfeng3@huawei.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	yukuai1@huaweicloud.com,
-	houtao1@huawei.com,
-	yi.zhang@huawei.com,
-	yangerkun@huawei.com,
-	lilingfeng@huaweicloud.com
-Subject: Re: [PATCH v2] nfsd: put dl_stid if fail to queue dl_recall
-Date: Thu, 13 Feb 2025 09:31:43 -0500
-Message-ID: <173945704787.138332.16372203572251102866.b4-ty@oracle.com>
-X-Mailer: git-send-email 2.47.0
-In-Reply-To: <20250213144220.156089-1-lilingfeng3@huawei.com>
-References: <20250213144220.156089-1-lilingfeng3@huawei.com>
+	ceph-devel@vger.kernel.org,
+	v9fs@lists.linux.dev,
+	linux-erofs@lists.ozlabs.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-mm@kvack.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 0/3] netfs: Miscellaneous fixes
+Date: Thu, 13 Feb 2025 16:01:24 +0100
+Message-ID: <20250213-kosenamen-bestochen-0d997261875e@brauner>
+X-Mailer: git-send-email 2.47.2
+In-Reply-To: <20250212222402.3618494-1-dhowells@redhat.com>
+References: <20250212222402.3618494-1-dhowells@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -54,69 +61,39 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1290; i=brauner@kernel.org; h=from:subject:message-id; bh=M392JolpqBN59UU7gj1lCbZNzReqJFGeXEqLCAtPZIo=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMaSv4wx4qRqnFzRflWne51XHu+cbHcxM/LR4XWtwoIP68 pjO1Di5jlIWBjEuBlkxRRaHdpNwueU8FZuNMjVg5rAygQxh4OIUgIncUGH4Hzljn3D5UVnhu+8v H3HpkQj4c+vpHef+E9JuPMKmR1fNfsfwP+BBsxSb6ufgd6c/ROlzPtv598zXZ99Sq1J6GpewNHO oMAAA
+X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 Content-Transfer-Encoding: 8bit
 
-From: Chuck Lever <chuck.lever@oracle.com>
-
-On Thu, 13 Feb 2025 22:42:20 +0800, Li Lingfeng wrote:
-> Before calling nfsd4_run_cb to queue dl_recall to the callback_wq, we
-> increment the reference count of dl_stid.
-> We expect that after the corresponding work_struct is processed, the
-> reference count of dl_stid will be decremented through the callback
-> function nfsd4_cb_recall_release.
-> However, if the call to nfsd4_run_cb fails, the incremented reference
-> count of dl_stid will not be decremented correspondingly, leading to the
-> following nfs4_stid leak:
-> unreferenced object 0xffff88812067b578 (size 344):
->   comm "nfsd", pid 2761, jiffies 4295044002 (age 5541.241s)
->   hex dump (first 32 bytes):
->     01 00 00 00 6b 6b 6b 6b b8 02 c0 e2 81 88 ff ff  ....kkkk........
->     00 6b 6b 6b 6b 6b 6b 6b 00 00 00 00 ad 4e ad de  .kkkkkkk.....N..
->   backtrace:
->     kmem_cache_alloc+0x4b9/0x700
->     nfsd4_process_open1+0x34/0x300
->     nfsd4_open+0x2d1/0x9d0
->     nfsd4_proc_compound+0x7a2/0xe30
->     nfsd_dispatch+0x241/0x3e0
->     svc_process_common+0x5d3/0xcc0
->     svc_process+0x2a3/0x320
->     nfsd+0x180/0x2e0
->     kthread+0x199/0x1d0
->     ret_from_fork+0x30/0x50
->     ret_from_fork_asm+0x1b/0x30
-> unreferenced object 0xffff8881499f4d28 (size 368):
->   comm "nfsd", pid 2761, jiffies 4295044005 (age 5541.239s)
->   hex dump (first 32 bytes):
->     01 00 00 00 00 00 00 00 30 4d 9f 49 81 88 ff ff  ........0M.I....
->     30 4d 9f 49 81 88 ff ff 20 00 00 00 01 00 00 00  0M.I.... .......
->   backtrace:
->     kmem_cache_alloc+0x4b9/0x700
->     nfs4_alloc_stid+0x29/0x210
->     alloc_init_deleg+0x92/0x2e0
->     nfs4_set_delegation+0x284/0xc00
->     nfs4_open_delegation+0x216/0x3f0
->     nfsd4_process_open2+0x2b3/0xee0
->     nfsd4_open+0x770/0x9d0
->     nfsd4_proc_compound+0x7a2/0xe30
->     nfsd_dispatch+0x241/0x3e0
->     svc_process_common+0x5d3/0xcc0
->     svc_process+0x2a3/0x320
->     nfsd+0x180/0x2e0
->     kthread+0x199/0x1d0
->     ret_from_fork+0x30/0x50
->     ret_from_fork_asm+0x1b/0x30
-> Fix it by checking the result of nfsd4_run_cb and call nfs4_put_stid if
-> fail to queue dl_recall.
+On Wed, 12 Feb 2025 22:23:58 +0000, David Howells wrote:
+> Here are some miscellaneous fixes and changes for netfslib, if you could
+> pull them:
+> 
+>  (1) Fix a number of read-retry hangs, including:
+> 
+>      (a) Incorrect getting/putting of references on subreqs as we retry
+>      	 them.
 > 
 > [...]
 
-I replaced the Fixes: tag with Cc: stable.
+Applied to the vfs.fixes branch of the vfs/vfs.git tree.
+Patches in the vfs.fixes branch should appear in linux-next soon.
 
-Applied to nfsd-testing, thanks!
+Please report any outstanding bugs that were missed during review in a
+new review to the original patch series allowing us to drop it.
 
-[1/1] nfsd: put dl_stid if fail to queue dl_recall
-      commit: d520b70859e0fb6d62ca12eee601a3d6ff4a11b6
+It's encouraged to provide Acked-bys and Reviewed-bys even though the
+patch has now been applied. If possible patch trailers will be updated.
 
---
-Chuck Lever
+Note that commit hashes shown below are subject to change due to rebase,
+trailer updates or similar. If in doubt, please check the listed branch.
 
+tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
+branch: vfs.fixes
+
+[1/3] netfs: Fix a number of read-retry hangs
+      https://git.kernel.org/vfs/vfs/c/1d0013962d22
+[2/3] netfs: Add retry stat counters
+      https://git.kernel.org/vfs/vfs/c/d01c495f432c
+[3/3] netfs: Fix setting NETFS_RREQ_ALL_QUEUED to be after all subreqs queued
+      https://git.kernel.org/vfs/vfs/c/5de0219a9bb9
