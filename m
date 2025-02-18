@@ -1,156 +1,186 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49EF11D61B7;
-	Tue, 18 Feb 2025 21:29:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BBF6F28629B
+	for <linux-nfs@vger.kernel.org>; Tue, 18 Feb 2025 22:27:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1739914152; cv=none; b=TzC2Ql7qJ2kSYnHZpXcJpjAJXUGNeHYcqk+R/w2t9Bktj6GbavJwONsx1nGUTKxFLsrIIo9BNV9bvufSJIL6s1O3QoY7kznlWzJVKE5d/l7YwlvCBtE+mayWyV1yFuXOtsgYzAJDm9gOvZEo6B0CwvmhrtXe0h8n06QfxQp3XE0=
+	t=1739917634; cv=none; b=hizw6ZRC45mPl1f4+/JyptMt8xyVqJiG/N4U9opPbLU/70tVN/v1LctmHY4bBZ0VYM5sol7MHKzIi+jcRMu9RZQfcsDWdS5CmYYDFcq8sKEljCCEg1I2swYvzfdL94AUO1fu1GWqQUWFcwJGjZd5zG5m3zywG47BPKttu1l3P8M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1739914152; c=relaxed/simple;
-	bh=ReRXsXNJmQD4dXv+Zb3a5U4yhOcrKkTYpzeFoSc49Vc=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=HweIcjcYMCfNR1Yd5rH/vlEx5cu0ZIs0sN4+gYzeTjfUbt7jS+0Fr/Kua92Hvowbpza1Fpi1/HLuPlg6TpMAEAXwexmVJ0Rne3er43HvdGIiUNf/9TDYVZ+dEn+OOoZXfcXR2yqboDW2s0we4gjbV/hQncRfQFOKgVrtgBNAdNc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cuSVORij; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1739917634; c=relaxed/simple;
+	bh=V1gGI3XvX5MCCgrYLHp85uoDkyNvQtWgmp6p6apcOXU=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=vFTHa2UyxYJtFl14gJPhc6ZxvWIUEk/H9Z6ST33jyE08oozMMvSXHUrpvLTEOHcze+wgqRpfAgM5WdTz6LlMj5Z4z4XrQvvQRq1fPN7D9KaRYTInotpZ0XPqX5wnRCJgUgPmGrR+2BtzHIodIVyC3YN2BSAdyv7DpQo6xJ7w66s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=fail smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=Zjd16IS+; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=ImofqmNp; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=Zjd16IS+; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=ImofqmNp; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cuSVORij"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0A2C1C4CEEC;
-	Tue, 18 Feb 2025 21:29:10 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1739914151;
-	bh=ReRXsXNJmQD4dXv+Zb3a5U4yhOcrKkTYpzeFoSc49Vc=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=cuSVORijZAhgbhkBYvcJsGGxPe5gKfXjkIC8tSsb+d/2zJJU24S4zpHfUbaOqx301
-	 mKHGxk2e1a8R7RlnZXnDDngWOu59DcWdM9j1qXzWfYo3gRa5YahGFEXy1l35A2D+7J
-	 CbSsmUctdsHGRHBpNjtlzeqf8NpC/OQJWGAjL3ecy9nUVYkjNQeKLZ1yXv7MpDY/Zx
-	 dbSME4zrdZpcO/X+V1dwB5i3LSWpL04U/mVDwkeuR/pJV+rcg+pioSJmTxl/WKRRoG
-	 h0li/fqgGhksxZ4T6TNU9Tzr2KuxeVdwGWa/fxnMdmXVPg+bQczuLxbwOHoBV9F24L
-	 2XDYaxb+FBjHA==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 18 Feb 2025 16:28:59 -0500
-Subject: [PATCH 3/3] nfsd: move cb_need_restart flag into cb_flags
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="Zjd16IS+";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="ImofqmNp";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="Zjd16IS+";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="ImofqmNp"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 9CF1D1F396;
+	Tue, 18 Feb 2025 22:27:10 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1739917630; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=A2VyOLn0+pTGux40SRgGbccItWcU6fEoLbEoJszf/5E=;
+	b=Zjd16IS+3rrOab0NEgb1+z137x5IB/oxrDa/UKzBQIYYIHr2QLGJHXU7OXn4zt4CQsYpUK
+	a58wdbV0ohUJtsYSHH3MMSAU5WrrhZ4wbrhy/IBC2x/Vng9pz/89BzhRfLKxfis9Tp7gAu
+	fcaWSnT+OwYIcXqYvHevWNm/reOCpTQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1739917630;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=A2VyOLn0+pTGux40SRgGbccItWcU6fEoLbEoJszf/5E=;
+	b=ImofqmNpDE100XD9zr2QxkbigWZP5ApAOEHkEyrMkez/jTbgolpIkmYqJ16i/YzjmqIRsy
+	2T2dzpP74PpXXTBQ==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=Zjd16IS+;
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=ImofqmNp
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1739917630; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=A2VyOLn0+pTGux40SRgGbccItWcU6fEoLbEoJszf/5E=;
+	b=Zjd16IS+3rrOab0NEgb1+z137x5IB/oxrDa/UKzBQIYYIHr2QLGJHXU7OXn4zt4CQsYpUK
+	a58wdbV0ohUJtsYSHH3MMSAU5WrrhZ4wbrhy/IBC2x/Vng9pz/89BzhRfLKxfis9Tp7gAu
+	fcaWSnT+OwYIcXqYvHevWNm/reOCpTQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1739917630;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=A2VyOLn0+pTGux40SRgGbccItWcU6fEoLbEoJszf/5E=;
+	b=ImofqmNpDE100XD9zr2QxkbigWZP5ApAOEHkEyrMkez/jTbgolpIkmYqJ16i/YzjmqIRsy
+	2T2dzpP74PpXXTBQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id EA347132C7;
+	Tue, 18 Feb 2025 22:27:07 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id ag2gJzsJtWfzcwAAD6G6ig
+	(envelope-from <neilb@suse.de>); Tue, 18 Feb 2025 22:27:07 +0000
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20250218-nfsd-callback-v1-3-14f966967dd8@kernel.org>
+From: "NeilBrown" <neilb@suse.de>
+To: "Jeff Layton" <jlayton@kernel.org>
+Cc: "Chuck Lever" <chuck.lever@oracle.com>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Li Lingfeng" <lilingfeng3@huawei.com>,
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+ "Jeff Layton" <jlayton@kernel.org>
+Subject:
+ Re: [PATCH 0/3] nfsd: don't allow concurrent queueing of workqueue jobs
+In-reply-to: <20250218-nfsd-callback-v1-0-14f966967dd8@kernel.org>
 References: <20250218-nfsd-callback-v1-0-14f966967dd8@kernel.org>
-In-Reply-To: <20250218-nfsd-callback-v1-0-14f966967dd8@kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>
-Cc: Li Lingfeng <lilingfeng3@huawei.com>, linux-nfs@vger.kernel.org, 
- linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3096; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=ReRXsXNJmQD4dXv+Zb3a5U4yhOcrKkTYpzeFoSc49Vc=;
- b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBntPujiwG8OGwdxHvjObLQUjESPO9LVn8dpGxKB
- erNetxdOr6JAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZ7T7owAKCRAADmhBGVaC
- FV8BEADHPWIp2iI6ajMePfbpbfMQKcPCClow4ru/Chv29zXJt5nTYkavEVWcULdoJOyUNX8gEhr
- sXvdxyNPnzo3/eIHwQp0H5p3aPuh0p7KtO1YHIiiQIlyNDNnSlj4ZdvhMbElYbUVR3i85g3y7a3
- C9KSzoYQH0ycZXjwxb5qKICr31kaIRnTrzgkfiU79kkot1rf9cLe84j/4ixgkrPTzTsoa+lfW/9
- 0wmY3yfWBjnBIOL7JfphU+R1vZz8yec60Z1GlwNl7lHKgwltUbSnIDG340w4mRsiyOUT0QhPFl6
- pOChmBxFhR4zIuqRQVe5f5k3SXwH3kjltIQeRWncZN2gbItOA3xDo+WK/Lnpglh0ZF/ViEdzYuc
- WvWsAQEAbzo0vaqcQ3QGTu0YXqAGm8Pl9gk6E+/jlyCE/xnjHDCmxNCMlL8AgPfguVAT8f8xP5W
- HDzBmHfIaPBeHwRQBsuPMOBN++KXTZVxfNwtyyp5YFPhbmhZ0gH24DgYK2wdAr2KTlVKyLRmBdO
- pzxLKg1DENK/TOX4nolqUjxUxRh4o4jcKEY/6n4VtH+IdBvKUf9LEdayfCTP46AUulZU7cyW/bZ
- AN+wVMsivyPu3h6cEfLpRw8HX8/tzRv18600DFGDFjCYU3eKhWA0LjFUZLBgbyssIp7sA9s+wsj
- jLIfz4dXY3cHteg==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
+Date: Wed, 19 Feb 2025 09:26:59 +1100
+Message-id: <173991761979.3118120.3421996111713215488@noble.neil.brown.name>
+X-Rspamd-Queue-Id: 9CF1D1F396
+X-Spam-Level: 
+X-Spamd-Result: default: False [-4.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	ARC_NA(0.00)[];
+	ASN(0.00)[asn:25478, ipnet:::/0, country:RU];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TO_DN_SOME(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCPT_COUNT_SEVEN(0.00)[9];
+	RCVD_TLS_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	FROM_HAS_DN(0.00)[];
+	FUZZY_BLOCKED(0.00)[rspamd.com];
+	FROM_EQ_ENVFROM(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	RCVD_COUNT_TWO(0.00)[2];
+	DKIM_TRACE(0.00)[suse.de:+]
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
+X-Spam-Score: -4.51
+X-Spam-Flag: NO
 
-Since there is now a cb_flags word, use a new NFSD4_CALLBACK_RESTART
-flag in that instead of a separate boolean.
+On Wed, 19 Feb 2025, Jeff Layton wrote:
+> While looking at the problem that Li Lingfeng reported [1] around
+> callback queueing failures, I noticed that there were potential
+> scenarios where the callback workqueue jobs could run concurrently with
+> an rpc_task. Since they touch some of the same fields, this is incorrect
+> at best and potentially dangerous.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfsd/nfs4callback.c | 10 ++++------
- fs/nfsd/state.h        |  2 +-
- fs/nfsd/trace.h        |  2 +-
- 3 files changed, 6 insertions(+), 8 deletions(-)
+If the problem is that workqueue jobs might run concurrently with
+rpc_tasks and that we don't want that, could we simply run all the cb
+tasks as "sync" rpc tasks in the workqueue??
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 1f26c811e5f73c2e745ee68d0b6e668d1dd7c704..0b94fccbabb49097e23881ab170d38e0eeef90e2 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1071,7 +1071,7 @@ static void nfsd4_requeue_cb(struct rpc_task *task, struct nfsd4_callback *cb)
- 	if (!test_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags)) {
- 		trace_nfsd_cb_restart(clp, cb);
- 		task->tk_status = 0;
--		cb->cb_need_restart = true;
-+		set_bit(NFSD4_CALLBACK_RESTART, &cb->cb_flags);
- 	}
- }
- 
-@@ -1475,7 +1475,7 @@ static void nfsd4_cb_release(void *calldata)
- 
- 	trace_nfsd_cb_rpc_release(cb->cb_clp);
- 
--	if (cb->cb_need_restart)
-+	if (test_bit(NFSD4_CALLBACK_RESTART, &cb->cb_flags))
- 		nfsd4_queue_cb(cb);
- 	else
- 		nfsd41_destroy_cb(cb);
-@@ -1614,12 +1614,11 @@ nfsd4_run_cb_work(struct work_struct *work)
- 		return;
- 	}
- 
--	if (cb->cb_need_restart) {
--		cb->cb_need_restart = false;
--	} else {
-+	if (!test_and_clear_bit(NFSD4_CALLBACK_RESTART, &cb->cb_flags)) {
- 		if (cb->cb_ops && cb->cb_ops->prepare)
- 			cb->cb_ops->prepare(cb);
- 	}
-+
- 	cb->cb_msg.rpc_cred = clp->cl_cb_cred;
- 	flags = clp->cl_minorversion ? RPC_TASK_NOCONNECT : RPC_TASK_SOFTCONN;
- 	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFT | flags,
-@@ -1637,7 +1636,6 @@ void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
- 	cb->cb_ops = ops;
- 	INIT_WORK(&cb->cb_work, nfsd4_run_cb_work);
- 	cb->cb_status = 0;
--	cb->cb_need_restart = false;
- 	cb->cb_held_slot = -1;
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index d1a8f074885aa6576843baf46de3a55de530d8d9..f75b77dceb47c0b3795df9dbf9131b8c0ce4525f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -68,13 +68,13 @@ struct nfsd4_callback {
- 	struct nfs4_client *cb_clp;
- 	struct rpc_message cb_msg;
- #define NFSD4_CALLBACK_RUNNING	BIT(0)
-+#define NFSD4_CALLBACK_RESTART	BIT(1)
- 	unsigned long cb_flags;
- 	const struct nfsd4_callback_ops *cb_ops;
- 	struct work_struct cb_work;
- 	int cb_seq_status;
- 	int cb_status;
- 	int cb_held_slot;
--	bool cb_need_restart;
- };
- 
- struct nfsd4_callback_ops {
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 49bbd26ffcdb36173047569b8d4b41efdec4880b..00140556d50aab4bab8900fb1890cd920d5124c6 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -1613,7 +1613,7 @@ DECLARE_EVENT_CLASS(nfsd_cb_lifetime_class,
- 		__entry->cl_id = clp->cl_clientid.cl_id;
- 		__entry->cb = cb;
- 		__entry->opcode = cb->cb_ops ? cb->cb_ops->opcode : _CB_NULL;
--		__entry->need_restart = cb->cb_need_restart;
-+		__entry->need_restart = test_bit(NFSD4_CALLBACK_RESTART, &cb->cb_flags);
- 		__assign_sockaddr(addr, &clp->cl_cb_conn.cb_addr,
- 				  clp->cl_cb_conn.cb_addrlen)
- 	),
+i.e. change rpc_call_async() in nfsd4_run_cb_work() to rpc_call_sync ...
+and fix any breakage because I doubt it is really as simple as that.
 
--- 
-2.48.1
+This would fully serialise all the callbacks.  Is that what to goal is
+here, or is the goal more subtle?
+
+Thanks,
+NeilBrown
+
+
+>=20
+> This patchset adds a new mechanism for ensuring that the same
+> nfsd4_callback can't run concurrently with itself, regardless of where
+> it is in its execution. This also gives us a more sure mechanism for
+> handling the places where we need to take and hold a reference on an
+> object while the callback is running.
+>=20
+> This should also fix the problem that Li Lingfeng reported, since
+> queueing the work from nfsd4_cb_release() should never fail. Note that
+> the patch they sent earlier (fdf5c9413ea) should be dropped from
+> nfsd-testing before this will apply cleanly.
+>=20
+> [1]: https://lore.kernel.org/linux-nfs/20250218135423.1487309-1-lilingfeng3=
+@huawei.com/
+>=20
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+> Jeff Layton (3):
+>       nfsd: prevent callback tasks running concurrently
+>       nfsd: eliminate cl_ra_cblist and NFSD4_CLIENT_CB_RECALL_ANY
+>       nfsd: move cb_need_restart flag into cb_flags
+>=20
+>  fs/nfsd/nfs4callback.c | 12 ++++++------
+>  fs/nfsd/nfs4layouts.c  |  7 ++++---
+>  fs/nfsd/nfs4proc.c     |  2 +-
+>  fs/nfsd/nfs4state.c    | 26 +++++++++++---------------
+>  fs/nfsd/state.h        | 13 ++++++++++---
+>  fs/nfsd/trace.h        |  2 +-
+>  6 files changed, 33 insertions(+), 29 deletions(-)
+> ---
+> base-commit: 4a52e5e49d1b50fcb584e434cced6d0547ddea42
+> change-id: 20250218-nfsd-callback-f723b8498c78
+>=20
+> Best regards,
+> --=20
+> Jeff Layton <jlayton@kernel.org>
+>=20
+>=20
 
