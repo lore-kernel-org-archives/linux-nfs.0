@@ -1,165 +1,98 @@
-Received: from mail-vs1-f53.google.com (mail-vs1-f53.google.com [209.85.217.53])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from szxga08-in.huawei.com (szxga08-in.huawei.com [45.249.212.255])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9E9691CAAC
-	for <linux-nfs@vger.kernel.org>; Fri, 21 Feb 2025 03:30:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.217.53
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 868A51D7E2F;
+	Fri, 21 Feb 2025 08:09:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.255
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1740108641; cv=none; b=qvtwFrAFxiRm3gNuxN78WKO69jGLn9wtCiIv3ahUz5ghAbW/O5u9Y+P+AhdumsueniMLSV0l3g5AOSCMtbqzVy6CrloaWBl1g1ivTBL+vT+hhVp/tR94x4btRD8OtWdAudKHxv2HQKqZJJjaDrxsxO9CejscBozDN+zq4tjoe7w=
+	t=1740125343; cv=none; b=WweoyRCxA/LhZaFVizXn3BBRpotz1e3cZyfpSCzo19oQL4VMjediisY2Y/PV8GfR2lHTqrYUXzgVwKLWa7xNmWlkWFAufr7SGxpjiL8saplAIZtr9ecmzCKd9486EJM9vpgpCHdXPQKJPpWqq5smuwkiErKTzE3DGuH932MfnhI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1740108641; c=relaxed/simple;
-	bh=eNC9ZuejUvdpqu5WNpeuhEOoPI/+DOEicU46P4QdZZw=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=f8xNeth8cwvQyapHdDWb2hm6MpeRFR2IWRHw61Eottw2soQWLezxKh6p8H36lRunXFA0J2N5WwFBjt6HciaMlGGicj8I1y0BLieLlzTL/DkXLmOOowY/V8V3yYKFi9MqKR7mWR2DBTM2Ps1H7JkNZBnXZVl9DATc9sfre2PVR6s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com; spf=pass smtp.mailfrom=paul-moore.com; dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b=EaSRICvW; arc=none smtp.client-ip=209.85.217.53
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=paul-moore.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b="EaSRICvW"
-Received: by mail-vs1-f53.google.com with SMTP id ada2fe7eead31-4ba0eb3b0f9so518786137.0
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Feb 2025 19:30:38 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=paul-moore.com; s=google; t=1740108637; x=1740713437; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=1jhxEXkcJolsUqGmM9PW7X2Wli6iSVP3m68cQMuMSGo=;
-        b=EaSRICvWkeUTP/1qVNR6CLhbACmm5yumTZEjKWwwitxmMCDltjVPvWcVuRyrhOO8si
-         Ot0nL9clV39+Glzpn0Ol8jzWKvDoh569YM5ybl2nnxiAnCfgce9tQE+oUvwTcuVuQbNx
-         I5PKWJMNLR5HrJS2wS9rZXkTIqKGJN//MN7D+xH0lZRk8CAxZciYxvxKrJ8wxYoOL53f
-         7WzqNmA2P7NZtthAcakS8uLjFAXlRqnNbg1kff53lzvQwtuhrnEiPxtMQxnOUCCanse9
-         lKRcHwmvfrJz+vLTljmwiVEKAfFrSV7yc/7+Y6ON5hm2LwFBCuGu9oS8pASPriyGE3HW
-         Jq9g==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1740108637; x=1740713437;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=1jhxEXkcJolsUqGmM9PW7X2Wli6iSVP3m68cQMuMSGo=;
-        b=fqy3FhP0Qmou5chBDZxpEs+4F6Kmmlapw7Ig03wJNrdzHtKPq2BAeKg1aQgwuEpTYW
-         9K0cyeOqdxGh7GL/ictth7Mn6fmdkxhbXKMe63xVo/Yg1h/Ns6SbcxjuUfHeGfnznQVn
-         s+Sxnq9BbJox0mkDIgnQB8lNysLQucxEuZ/NXf0kHKD8z5GIae+c/CCGpemh7UErfmAh
-         cJUz9AdgjEo9EzXOtALqGjdCzgawzQnueukAvBccvhvf2zzGUsUa1ULbqpBlmoJKAtch
-         CiSt5UdanpFG2shBT9PRjntgD+BdWa6+23sPsbhzPN+nw4Jdf5O9yFS69iQ0DZePfMKk
-         87Vw==
-X-Forwarded-Encrypted: i=1; AJvYcCUiX8jOm0YSfWU6CYyd3VGh917wWYzMy+r88NNDWI0ulzGWYCx+kEs6C3jLT6qEEwvROkTf09f0X9A=@vger.kernel.org
-X-Gm-Message-State: AOJu0YypeaENqSnJq61meqqrjJVQGPPRVSOmYZcMAIYTYnSTvA3xu8G+
-	sXrOq41CPBBAYhTK90G+tdplcKuPYpVuKa/HhgSSZmWvKj5IvGFIuXT6O/qlOsUiRGG3AYIxfkc
-	8FudBKoi2h3d7th/stMAeHCJiKanYBeIOwkTXlzEAPBeev7c=
-X-Gm-Gg: ASbGncv8dV5/FaCOzIOQGSAPIRa67zOUk4BFDg41uvwRJMUD+aLOt+c42DMqwVkcaqa
-	CGyeJWvjHHbjooEcn35T3zsKkPsjVp4zRIBxBYq6L21hBFDvsKBAmaSfw3qxZTT6j9/FrtlFk1l
-	cX7wyBCqw=
-X-Google-Smtp-Source: AGHT+IElmufFPlRhN6WUP6xsl2j3aSKliL509oOsAP2BM3ztinN4sZ7IjqPpc6kdwKkEtT/lAxOMSlL/ROY6KYO1KR8=
-X-Received: by 2002:a05:6102:3710:b0:4bb:e1c9:80c6 with SMTP id
- ada2fe7eead31-4bfbfd6a86emr1520102137.0.1740108637514; Thu, 20 Feb 2025
- 19:30:37 -0800 (PST)
+	s=arc-20240116; t=1740125343; c=relaxed/simple;
+	bh=x6Je/MiGfzQ7gAuCruwEQwF7HP2I/8JRFgCqS/KI0K0=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=ROLOgbH8aawCu2ruOLs06jLwkPdzU7OnRI8p+/ATZcvbWacArkJYQloPzbhOEEv9rm+xnw8BXL6vqmmg/h/3/BFompDhqaCaolAtCn49R6kDPNzh1qUKYhfouDjDUhBlcLo1APWMmgZNIY26XB+0CEUqfU35PZoXWlP0ITWlDX0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.255
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+Received: from mail.maildlp.com (unknown [172.19.163.174])
+	by szxga08-in.huawei.com (SkyGuard) with ESMTP id 4YzjMR1rbVz1GDcp;
+	Fri, 21 Feb 2025 16:04:19 +0800 (CST)
+Received: from kwepemg500017.china.huawei.com (unknown [7.202.181.81])
+	by mail.maildlp.com (Postfix) with ESMTPS id BA5641402E2;
+	Fri, 21 Feb 2025 16:08:57 +0800 (CST)
+Received: from huawei.com (10.175.127.227) by kwepemg500017.china.huawei.com
+ (7.202.181.81) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Fri, 21 Feb
+ 2025 16:08:56 +0800
+From: Li Lingfeng <lilingfeng3@huawei.com>
+To: <trondmy@kernel.org>, <anna@kernel.org>
+CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	<ehagberg@janestreet.com>, <yukuai1@huaweicloud.com>, <houtao1@huawei.com>,
+	<yi.zhang@huawei.com>, <yangerkun@huawei.com>, <lilingfeng@huaweicloud.com>,
+	<lilingfeng3@huawei.com>
+Subject: [PATCH] nfs: remove SB_RDONLY when remounting nfs
+Date: Fri, 21 Feb 2025 16:26:13 +0800
+Message-ID: <20250221082613.2674633-1-lilingfeng3@huawei.com>
+X-Mailer: git-send-email 2.31.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20250220192935.9014-2-stephen.smalley.work@gmail.com> <6bf60899-fbc2-404f-b6e9-378fd828f303@schaufler-ca.com>
-In-Reply-To: <6bf60899-fbc2-404f-b6e9-378fd828f303@schaufler-ca.com>
-From: Paul Moore <paul@paul-moore.com>
-Date: Thu, 20 Feb 2025 22:30:26 -0500
-X-Gm-Features: AWEUYZmWL9Qf57mUu_KeL1_WsMAja84czDYkD32q68uwNEjULQl6e3slofEC6z4
-Message-ID: <CAHC9VhS4WcoOhrCsxP=ea6XD1f6pu2uCi7=TH=BBvSkW6SyYiA@mail.gmail.com>
-Subject: Re: [PATCH] lsm,nfs: fix memory leak of lsm_context
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: Stephen Smalley <stephen.smalley.work@gmail.com>, linux-security-module@vger.kernel.org, 
-	linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: dggems702-chm.china.huawei.com (10.3.19.179) To
+ kwepemg500017.china.huawei.com (7.202.181.81)
 
-On Thu, Feb 20, 2025 at 2:35=E2=80=AFPM Casey Schaufler <casey@schaufler-ca=
-.com> wrote:
->
-> On 2/20/2025 11:29 AM, Stephen Smalley wrote:
-> > commit b530104f50e8 ("lsm: lsm_context in security_dentry_init_security=
-")
-> > did not preserve the lsm id for subsequent release calls, which results
-> > in a memory leak. Fix it by saving the lsm id in the nfs4_label and
-> > providing it on the subsequent release call.
-> >
-> > Fixes: b530104f50e8 ("lsm: lsm_context in security_dentry_init_security=
-")
-> > Signed-off-by: Stephen Smalley <stephen.smalley.work@gmail.com>
->
-> Please don't accept this. I will have a better, simpler, more appropriate
-> fix promptly.
+In some scenarios, when mounting NFS, more than one superblock may be
+created. The final superblock used is the last one created, but only the
+first superblock carries the ro flag passed from user space. If a ro flag
+is added to the superblock via remount, it will trigger the issue
+described in Link[1].
 
-We're still only at -rc3 so if you need another couple of days to get
-an alternate solution out for review/discussion I think that's okay.
-However, the solution proposed here is rather small and easy to
-understand, which has a lot of value for an -rcX fix.  If the
-alternative is notably larger and/or more complex, the patch here may
-be preferable for v6.14 with the alternative/"proper-fix" being
-something we can queue up for the next merge window.
+Link[2] attempted to address this by marking the superblock as ro during
+the initial mount. However, this introduced a new problem in scenarios
+where multiple mount points share the same superblock:
+[root@a ~]# mount /dev/sdb /mnt/sdb
+[root@a ~]# echo "/mnt/sdb *(rw,no_root_squash)" > /etc/exports
+[root@a ~]# echo "/mnt/sdb/test_dir2 *(ro,no_root_squash)" >> /etc/exports
+[root@a ~]# systemctl restart nfs-server
+[root@a ~]# mount -t nfs -o rw 127.0.0.1:/mnt/sdb/test_dir1 /mnt/test_mp1
+[root@a ~]# mount | grep nfs4
+127.0.0.1:/mnt/sdb/test_dir1 on /mnt/test_mp1 type nfs4 (rw,relatime,...
+[root@a ~]# mount -t nfs -o ro 127.0.0.1:/mnt/sdb/test_dir2 /mnt/test_mp2
+[root@a ~]# mount | grep nfs4
+127.0.0.1:/mnt/sdb/test_dir1 on /mnt/test_mp1 type nfs4 (ro,relatime,...
+127.0.0.1:/mnt/sdb/test_dir2 on /mnt/test_mp2 type nfs4 (ro,relatime,...
+[root@a ~]#
 
-Regardless, let's see Casey's fix before we worry too much about this.
+When mounting the second NFS, the shared superblock is marked as ro,
+causing the previous NFS mount to become read-only.
 
-> > ---
-> >  fs/nfs/nfs4proc.c    | 7 ++++---
-> >  include/linux/nfs4.h | 1 +
-> >  2 files changed, 5 insertions(+), 3 deletions(-)
-> >
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index df9669d4ded7..c0caaec7bd20 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -133,6 +133,7 @@ nfs4_label_init_security(struct inode *dir, struct =
-dentry *dentry,
-> >       if (err)
-> >               return NULL;
-> >
-> > +     label->lsmid =3D shim.id;
-> >       label->label =3D shim.context;
-> >       label->len =3D shim.len;
-> >       return label;
-> > @@ -145,7 +146,7 @@ nfs4_label_release_security(struct nfs4_label *labe=
-l)
-> >       if (label) {
-> >               shim.context =3D label->label;
-> >               shim.len =3D label->len;
-> > -             shim.id =3D LSM_ID_UNDEF;
-> > +             shim.id =3D label->lsmid;
-> >               security_release_secctx(&shim);
-> >       }
-> >  }
-> > @@ -6269,7 +6270,7 @@ static int _nfs4_get_security_label(struct inode =
-*inode, void *buf,
-> >                                       size_t buflen)
-> >  {
-> >       struct nfs_server *server =3D NFS_SERVER(inode);
-> > -     struct nfs4_label label =3D {0, 0, buflen, buf};
-> > +     struct nfs4_label label =3D {0, 0, 0, buflen, buf};
-> >
-> >       u32 bitmask[3] =3D { 0, 0, FATTR4_WORD2_SECURITY_LABEL };
-> >       struct nfs_fattr fattr =3D {
-> > @@ -6374,7 +6375,7 @@ static int nfs4_do_set_security_label(struct inod=
-e *inode,
-> >  static int
-> >  nfs4_set_security_label(struct inode *inode, const void *buf, size_t b=
-uflen)
-> >  {
-> > -     struct nfs4_label ilabel =3D {0, 0, buflen, (char *)buf };
-> > +     struct nfs4_label ilabel =3D {0, 0, 0, buflen, (char *)buf };
-> >       struct nfs_fattr *fattr;
-> >       int status;
-> >
-> > diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> > index 71fbebfa43c7..9ac83ca88326 100644
-> > --- a/include/linux/nfs4.h
-> > +++ b/include/linux/nfs4.h
-> > @@ -47,6 +47,7 @@ struct nfs4_acl {
-> >  struct nfs4_label {
-> >       uint32_t        lfs;
-> >       uint32_t        pi;
-> > +     u32             lsmid;
-> >       u32             len;
-> >       char    *label;
-> >  };
+To resolve both issues, the ro flag is no longer applied to the superblock
+during remount. Instead, the ro flag on the mount is used to control
+whether the mount point is read-only.
 
---=20
-paul-moore.com
+Fixes: 281cad46b34d ("NFS: Create a submount rpc_op")
+Link[1]: https://lore.kernel.org/all/20240604112636.236517-3-lilingfeng@huaweicloud.com/
+Link[2]: https://lore.kernel.org/all/20241130035818.1459775-1-lilingfeng3@huawei.com/
+Signed-off-by: Li Lingfeng <lilingfeng3@huawei.com>
+---
+ fs/nfs/super.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index aeb715b4a690..f08e1d7fb179 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1047,6 +1047,7 @@ int nfs_reconfigure(struct fs_context *fc)
+ 
+ 	sync_filesystem(sb);
+ 
++	fc->sb_flags &= ~SB_RDONLY;
+ 	/*
+ 	 * Userspace mount programs that send binary options generally send
+ 	 * them populated with default values. We have no way to know which
+-- 
+2.31.1
+
