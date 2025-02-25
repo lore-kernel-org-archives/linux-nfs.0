@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 66D70213E84
-	for <linux-nfs@vger.kernel.org>; Tue, 25 Feb 2025 20:19:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 852C321D5B6
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Feb 2025 20:28:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1740514784; cv=none; b=hby1wxDaAjOBHgtX395IBnv7i0rSnsXIhuznrDJ5THf6YYlubD/kiWFGnDnExxQLf9T37j1vAkV0SO1nt6EJooQs1O1YfJp+n03qRcJ/T5oEVQ4HUlf73GrD03g1U5lmF64rEK0cEPwU1XyNMDkEg7Y+A6E0o/sXiLQSFgsnXB8=
+	t=1740515330; cv=none; b=BfTjBIhTs4Yb297uGmUShYw7nnfnnns5CHd02sC/kuyubSsuxbOFiL75+vr9DM3l1G/Q4KfH/mqCKNcIrRF9VFh2OFaZf8Rw7CC1Eog1Ifdy9GKbYL5iy+Eu9rmb4Vlg0pDXxW48bvUY5L5n7ChtL27bap6GlGf4AnjHeJqcGDE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1740514784; c=relaxed/simple;
+	s=arc-20240116; t=1740515330; c=relaxed/simple;
 	bh=kESsj05B+77mOqXZnlpDt7BIg72CLt6Liz1yn770qJs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=rLmPK9hse0LHDaD+BxwRvtXUmmyqERGuJXiSrFvlhuolM5xcLcBjCiTHhJc1uE7BMGJTe+a8Zdbw4QVe981/fSsuT2JcuyZLPYTBzkEZ3/+vbtfTPq/4+WZjG2D+ZBQe08+mpWYuRbRvCiYp2x+v2Nb/o8akfjOZRy1YPRbyXcI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AmDbonAJ; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=u60TCBwnO8o1mK9PNZKouYbVHUodcBei911/ZQGGAg8htWOBWpm0La9McValoJkSojME/sPs9NKTsg6IMy+zvBvLaX+fnhyI3jJNNDKVrg6GPccDxdrjQLum+bbfLWKgTFK4yaD5/4FxI4fzVt6ELRJuvPyDzdI5m5zZOANmyN0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Tw9BiANA; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AmDbonAJ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8E9C6C4CEE7;
-	Tue, 25 Feb 2025 20:19:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Tw9BiANA"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C2ED3C4CEDD;
+	Tue, 25 Feb 2025 20:28:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1740514783;
+	s=k20201202; t=1740515330;
 	bh=kESsj05B+77mOqXZnlpDt7BIg72CLt6Liz1yn770qJs=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=AmDbonAJORQ3YzM2NXvAwX8vQFQYnyLmTcDkZaU0V8hgL3UhUFMvbcM6ccrz5ns8L
-	 T5Jjuo5ZTBktCb6tKEYKw62gWte53HGutpQiuoezU60TST8OG+zEjhdPIeYzgXhVm4
-	 WMvj+bCM8WMnIc3e/oDPdpHXlv2JYtaduBFRdZ7JPlX9HRkj+BSOWNGsJsW0Bm/yYO
-	 OL8fDJebW6TZyWdYtMh9X7hcSyI12SuHilLUpqmFkwohaiAVHSMlHgW+ISa+eNmxH2
-	 jbGI0vcZDx1dFVhWY/ZOFn89nAGWHdVPa3L7jaP6M0If+7BtZbpectk35Y77Rj8VQr
-	 NY4qxZgMoRZTQ==
+	b=Tw9BiANAUoVDxzUGhOxa1aNaR1ACvbFq3THuUHYLWA305uAukVunX+Cf/9K2mjnMD
+	 u1fTPlSnDKRtFk9LrlAxuxO9AwMDHJzxebGgPOrqX06GnTJvzK3tFztCkiG1gH5Tf6
+	 hbTKGy37wDSGkllcww4x7KJ+vft1gLMu5tnWIz0YDnc2m8lt8W4nEBgfvFnA+iQG97
+	 w2Y5ZSemTuLBwMrYqFvPeDmJ6bYCw6ml8zCOlSuycB6K1OA4Oecc/+I9h1sQaiIy6Y
+	 6hDckVXJdUXvhtXg2KLkAmk+oYsBaEpqy8pdy+NS1xRFzXmQynm3+gLCOwfWg+Cgp0
+	 a62yQYaDnPs3w==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>
 Cc: Trond Myklebust <trond.myklebust@hammerspace.com>,
@@ -33,8 +33,8 @@ Cc: Trond Myklebust <trond.myklebust@hammerspace.com>,
 	linux-nfs@vger.kernel.org,
 	linux-mm@kvack.org
 Subject: [PATCH v3 for-akpm for-6.14-rcX] NFS: fix nfs_release_folio() to not deadlock via kcompactd writeback
-Date: Tue, 25 Feb 2025 15:19:42 -0500
-Message-ID: <20250225201942.31669-1-snitzer@kernel.org>
+Date: Tue, 25 Feb 2025 15:28:48 -0500
+Message-ID: <20250225202848.31721-1-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <Z733qhxzJyoIN41J@kernel.org>
 References: <Z733qhxzJyoIN41J@kernel.org>
