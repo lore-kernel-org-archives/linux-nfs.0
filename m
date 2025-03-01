@@ -1,30 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D421823F37C
-	for <linux-nfs@vger.kernel.org>; Sat,  1 Mar 2025 18:31:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3D14423F37C
+	for <linux-nfs@vger.kernel.org>; Sat,  1 Mar 2025 18:31:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1740853915; cv=none; b=qQlfRIPqWxxNrzlgvwG5dUGCIxgk4nmvjNcafLkA3xtPLSQA8eoJ9A4ImlP4XDNYFoi/deKvNR0FkUChl8HEziFVUQvM9hd4wKfMyrdNhuC821dUBuJeWa+95hVJbPTCiHVWRjq86+MIufKrtVtIwDEn9ociYw3vrF3GVoj1rpY=
+	t=1740853917; cv=none; b=BsZXwW2uDJYbe6aYCjeAuK4DX7HlEYmWsGqfmtTXz9kxm/KyUJC/+mX6bpFQ93xhTDIZYgnCMiLizogQ9ChDlC6d2yUHgPmfIfYUfA3bNkuzcWyFPcnE6yW1+i8GT2a5/6bqbG0iat04zlBkkZy+OcpzGiYZEjRMDj9hx8GeOSU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1740853915; c=relaxed/simple;
-	bh=Vk04tEd8JRTsftssTdNqtvOU/+Zz7FoEVLJ5XD23uP8=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=tXIYZpOF7NR7/gxgUfiPFjKeQq9kA+7vHGlJvcym31slDmgFhIzaUzSg9plK2aDAerBboYbmesnvHQGqGrNC1qNJbQa67Pe5J/CFaoQ8FC7hwUG/o4zPkyr3m1n628I2+s7HjLSS8LVKOGCZ69nzjUCqtS/lTxXgBm8O6NEfZNI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=S0MsFbwW; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1740853917; c=relaxed/simple;
+	bh=pXLkTue2agU9aUoirGM9pYc+ArZ6Ml0BGKW+n3BCSPw=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=eCiPvuMmx71ezGD1/qASYaWa7yCPY1DL8C47IloKG/ZLcUqLmcpZltSI8Sa3cFZZEhDTo8giDbr0oHImKFiNZQLLMbNILgVZBVdy3wJt8QGV7Vj35iE3bVKs4ZUDJ181k8dchV5ImNfTb/62ANRnCSE5GiM8cB3NfI8nVIcJf7U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=i7a0Rji2; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="S0MsFbwW"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 97435C4CEDD;
-	Sat,  1 Mar 2025 18:31:54 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="i7a0Rji2"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 69DCAC4CEEA;
+	Sat,  1 Mar 2025 18:31:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1740853915;
-	bh=Vk04tEd8JRTsftssTdNqtvOU/+Zz7FoEVLJ5XD23uP8=;
-	h=From:To:Cc:Subject:Date:From;
-	b=S0MsFbwWrcl7iV0qZtoRe9BG2av/tuwFDiWXkEn57LbDOV6iHIczRVqR39qTQL1FF
-	 LQMX3XjZLx9YoA+YW266dYTTVSfYuDq5aOy+iM4W2XXfUGlGTlBSX1U+FvZ8SkKphN
-	 GNSDa7h5MTZVJjjyhjw5Fo6uufcq3VYsFi57s0a7ToQ4ElahlrhYAbL+pdUuOviXya
-	 U6ULaxnwy+d6PUKjGfJjV4+QRNrNUYrr1J6/yQC/1iZKEkL+DETx0GskuWi+zLZmLh
-	 /M14bgDN4NuyFzHU2B57hqj0g2X+Zz2qFCgSrmEDm45P0v9uuhH5ExBr2ilymuw5zv
-	 1CXLcHodYLwMg==
+	s=k20201202; t=1740853917;
+	bh=pXLkTue2agU9aUoirGM9pYc+ArZ6Ml0BGKW+n3BCSPw=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=i7a0Rji2oMYCanpFcZLXRZoeIdLqAtMHzIKndAL32sP5ts+VB403IqzNBPrJqnWBa
+	 dSU7v68xce7wLTLFDFNYzDp9Ecm81kQusgbOvwf/oaND+YPsmBJJPBDGFpjc8U0ykt
+	 RxFQOlfA3STJsajMy/V08Ij+n2+zH7sFxvyizbZS3593f+2gfQI4ZBXov17l4M7vBu
+	 ksYiSluT2LDzkvRlej+km3DnaoRe3pbMgGhczbwVj7YRzPhJThcvQ2ZzYda8D5XBK1
+	 7fmISQXTcC8CFs4hHIgqCBd+LXXJDOsyjpQojleIO6VfzRtjKCP3uIMUjpAFxEC4VZ
+	 247PkZEUiIuCA==
 From: cel@kernel.org
 To: Neil Brown <neilb@suse.de>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,10 +34,12 @@ To: Neil Brown <neilb@suse.de>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2 0/5] Implement referring call lists for CB_OFFLOAD
-Date: Sat,  1 Mar 2025 13:31:46 -0500
-Message-ID: <20250301183151.11362-1-cel@kernel.org>
+Subject: [PATCH v2 2/5] NFSD: Shorten CB_OFFLOAD response to NFS4ERR_DELAY
+Date: Sat,  1 Mar 2025 13:31:48 -0500
+Message-ID: <20250301183151.11362-3-cel@kernel.org>
 X-Mailer: git-send-email 2.47.0
+In-Reply-To: <20250301183151.11362-1-cel@kernel.org>
+References: <20250301183151.11362-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -47,41 +50,27 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-I've built a naive proof-of-concept of the csa_referring_call_list
-argument of the CB_SEQUENCE operation, and hooked it up for the
-CB_OFFLOAD callback operation.
+Try not to prolong the wait for completion of a COPY or COPY_NOTIFY
+operation.
 
-This has been pushed to my kernel.org "fix-async-copy" branch for
-folks to play around with.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfsd/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-I've done some basic testing with a server that ensures the
-CB_OFFLOAD callback is sent before the COPY reply, while running a
-network capture. Operation appears correct, Wireshark is happy
-with the construction of the XDR, and the CB_SEQUENCE arguments
-match the SEQUENCE operation in the COPY COMPOUND.
-
-I'd like to include this series in nfsd-testing.
-
-Changes since RFC:
-- Add a field to struct nfsd4_slot that records its table index
-- Include a few additional COPY-related fixes
-- Some operational testing has been done
-
-Chuck Lever (5):
-  NFSD: OFFLOAD_CANCEL should mark an async COPY as completed
-  NFSD: Shorten CB_OFFLOAD response to NFS4ERR_DELAY
-  NFSD: Implement CB_SEQUENCE referring call lists
-  NFSD: Record each NFSv4 call's session slot index
-  NFSD: Use a referring call list for CB_OFFLOAD
-
- fs/nfsd/nfs4callback.c | 132 +++++++++++++++++++++++++++++++++++++++--
- fs/nfsd/nfs4proc.c     |  16 ++++-
- fs/nfsd/nfs4state.c    |  38 ++++++------
- fs/nfsd/state.h        |  23 +++++++
- fs/nfsd/xdr4.h         |   4 ++
- fs/nfsd/xdr4cb.h       |   5 +-
- 6 files changed, 193 insertions(+), 25 deletions(-)
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 9a0e68aa246f..3431b695882d 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1712,7 +1712,7 @@ static int nfsd4_cb_offload_done(struct nfsd4_callback *cb,
+ 	switch (task->tk_status) {
+ 	case -NFS4ERR_DELAY:
+ 		if (cbo->co_retries--) {
+-			rpc_delay(task, 1 * HZ);
++			rpc_delay(task, HZ / 5);
+ 			return 0;
+ 		}
+ 	}
 -- 
 2.47.0
 
