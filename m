@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FCB823ED76;
-	Mon,  3 Mar 2025 17:26:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FBF323ED72;
+	Mon,  3 Mar 2025 17:26:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1741022777; cv=none; b=rRv48nCHhD8j/M4W15YojEq5Q3BRM1kfCDWQ+Uxd0TTCOtF1v70k34KMkzqKTAVAcMtq5jeqk28GBXcV3X1jsg6+bgG21FfdUAFnD8/OH8SO1hTCmmS6cK4DtVot5ModjJFq3+gAcpPWt3W7otj22xbiaqpAUIb2t6Ro2HvhkN8=
+	t=1741022777; cv=none; b=Ohe7zpR0Io5Mz48/g9tFO4WuX54zzeKnJtptnuipk/8RnxpaVTsfiMasDvu4MeqRDV2kQpzA8oXGXxTM2lPBMaK2xMRD/uoC2vttVbma3W+cpaKloe4jSc3HvDwsx9D2UNk3zIZINSEv7OIklHWezR9TXhAYX0QncMegeNwclc8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1741022777; c=relaxed/simple;
-	bh=M3zwmPSFyDgRrbI26d67suhYPxb/JbKj+ArYoTc5fh4=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=c+3GZGAmBs/cONlGAhHWKDiNeQwJqLoQFi/H8xlK2q7kfLthpRJXHYMYe6/3SrsD5LpySJykYvEMu6PnybDCZlOGZGihScqX+1EveYjrDK9t82LxH8PcFZF68Foumrursro8ZOFrIdu125oRmQQlw8VCAC+e7M5vGroD3clLb1w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cVFIW2aB; arc=none smtp.client-ip=10.30.226.201
+	bh=5ps/lRcV8mI+EOJr2ILZlLxZ6dG3Q0LGDfar6CNuxvg=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=JYiKtUZ3d4rfOD5uwEk8mgMwUrEX08P6sjk8oqBUn5yaNCYqXfVFjfUDKOlKJIYvbeWNL0XMoDQrlKclMCf3ShI24EYRhqr5kojHzXWh41Po2CTmxydDIuF+3hIqK58l14xVTcJdOc5td1xUJRi8f10tHG4lWNiBd3K96Rjgs/Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K7vjiK5Q; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cVFIW2aB"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5ECAFC4CEE5;
-	Mon,  3 Mar 2025 17:26:14 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K7vjiK5Q"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 36929C4CEE9;
+	Mon,  3 Mar 2025 17:26:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1741022775;
-	bh=M3zwmPSFyDgRrbI26d67suhYPxb/JbKj+ArYoTc5fh4=;
-	h=From:Subject:Date:To:Cc:From;
-	b=cVFIW2aBKZ1xdR79K2vD1mE4TJ1NBA+Jsb+SF1OeuCIe4pLAsRHV5d0zyTiN5lIKD
-	 EezndNkh55tDbx17Wp77fhrBFSnjTXVHb6+cCiibHqn19VNaTCx/TR5fL4iJCG+iOM
-	 52r5VSR0qJ0p0wz3JRZshcgxjqrr+eWWRbtnn3BBF9pEurX/sz9WKQMsRsdbmz0weD
-	 ZPs9m3wcyrwxibLrUSGcMQg9kjfe+P5b1nCZPmHr/bO+UFrrZI0IZk3gZIHwgIl4l8
-	 9TdBjnQ3EgeaIJ0CJqiRX4QWi70Eh3MDmub7R7OhULilDXoLIuec6A1nbyRmroFyWG
-	 rFIjwwVn/AlEA==
+	s=k20201202; t=1741022776;
+	bh=5ps/lRcV8mI+EOJr2ILZlLxZ6dG3Q0LGDfar6CNuxvg=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
+	b=K7vjiK5Q0F9Wc/vEbhtmSYUuPqgsP+zJ6yqKyb7Dfnq33OXVDJArCjdlc30at7EJz
+	 VEyAn8ecFiMzfnJV2xNT8+mJuyd9yLJSSQs8pvopycZNRuhkUz4KiqNv6bOKDE+Eqm
+	 FUBk64dbSheEfcdg2ZS4lpOPZdKFTGxjOPeivH3prgOjj1Emf7k7ouHorxyfoZWuuI
+	 0LBelWdbpechROnNrqXtNeltNbesgAAXz8FxO4hLouhXWLL4lnc4l1kluzcVRHK6ao
+	 7I95edxRrohzd9OHuGyAYOx7AgyLZ/x4lYOjFYycNFPdL/l0gWKj6NAR41lxsfmekn
+	 j4xFL3q98vLEQ==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 0/5] nfsd: some small cleanup patches
-Date: Mon, 03 Mar 2025 12:25:58 -0500
-Message-Id: <20250303-nfsd-cleanup-v1-0-14068e8f59c5@kernel.org>
+Date: Mon, 03 Mar 2025 12:26:00 -0500
+Subject: [PATCH 2/5] nfsd: remove unneeded forward declaration of
+ nfsd4_mark_cb_fault()
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,54 +38,53 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIACbmxWcC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDI1MDI0Nj3by04hTd5JzUxLzSAt0kk6TUpCQLAxNzoxQloJaCotS0zAqwcdG
- xtbUARkIY0F4AAAA=
-X-Change-ID: 20250213-nfsd-cleanup-b4bebb80472d
+Message-Id: <20250303-nfsd-cleanup-v1-2-14068e8f59c5@kernel.org>
+References: <20250303-nfsd-cleanup-v1-0-14068e8f59c5@kernel.org>
+In-Reply-To: <20250303-nfsd-cleanup-v1-0-14068e8f59c5@kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>, Neil Brown <neilb@suse.de>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=830; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=M3zwmPSFyDgRrbI26d67suhYPxb/JbKj+ArYoTc5fh4=;
- b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBnxeYwNYtLej2MmQHZsZXV8jPBurrGgEjWhRfMV
- R6GiheOJoiJAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZ8XmMAAKCRAADmhBGVaC
- FYfUEADGesxDUAYHX27SKNHsno2Xg8ydXb+ZwGhP8OuYB0tQO2B/piOZtT95PVYAAMWoEvq17fP
- QExVkfEtNYEuoF/AQPQg+vKynW6eDeWXvrYiY42npakmVIm3s5dDAWbosgNva6qk/MqZpnzxIo0
- UqWULr0bWj2ZHKOyFLz97/IxyH8WjjjdiqKCuXMfrfA0K3aGjyMLyanIe14y2LRhIDp3yLGKNfl
- cQRGw8wqQ07nOi+0EmdyHcxK50HbytTr6IrbjLVMydG0qU+AYaSFowjxWRL+X/oS+C10dR5x7cj
- vl2fR8ZBslXMsxya1OgTXRo8OgDojIxRliYlrSP4DRN885wi8DxJoWQD0xCRPmIsRk3VlGjwgPR
- +i5kpgF9+ql1SEhejoXYXgijmyPzdZhKliE1idhd5jsl8+2Cd6FUgvDFucOf7dynVXuNNdSG4kR
- 1CAnwNYI2uJ8ToJvPiwWBbwUeJUnCSO2ratPwPJKLD87G933j3Fq4nqWAnrExYSie+z71nigoRf
- Q6y9hVXSm4Wz3BtLBWXApNhRjvHQhhZGFA4/TD0cD+kNb04+nKUsc9L29+XXCphubSxG+YTtQp5
- DJ7lRS5llTqHDQj3o9tCfczdxe45Kh9GcsyCr5z4CcNM48dpJmCb9cJ1JfKzb1mpPBIYneonG0M
- fudQXgYr5+e1OUQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=585; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=5ps/lRcV8mI+EOJr2ILZlLxZ6dG3Q0LGDfar6CNuxvg=;
+ b=owEBbQKS/ZANAwAIAQAOaEEZVoIVAcsmYgBnxeY1aBmU10/MDzC9Tjl3rVg5+8MYHehwRU4bh
+ I5CY8ZDR36JAjMEAAEIAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCZ8XmNQAKCRAADmhBGVaC
+ FV41D/oDFim3x2p+rsL0MRYrb1vapxGhhs60e9v9AfZgYuWKAhKm/yED9tCFppA6e/Y5wWlxhTt
+ hO8Q9lkEFhCPM+cjf2nWoXiE79Uut5LavqrPEldnDt/gEXxWWtETtV8If19McCR5LSf90I1Facy
+ YZYSt2BAao6X9jX0t62BEOMQTCye6L9uw+vKyJR20di/blwmQhJU96YewtXOwZ7RmCjfnV19C2E
+ rXuyGStvtetxKow6SWFQzwwhGWWEYyvl8sU4Gl7KG8Lu4Kc2wPtP9e6b5Jj+LZ7jUFQaDOtQUTd
+ ne1X6lpZu3EREIZPKMa0bum4NcfZp5BEQe6UDLHeFX4+cixQkj/wqSKWQjR3DwZjmwCZBwg2Llq
+ 6eyRCyLA3WzbQCoDSA39kukd/fdNB9Q/WT3xZCduzNdsLY41QNLC+mmvWaxOT+4txcW4QUpJpvJ
+ kMuqdfZR/xKt+70Om7qEHPf0P/HKgL17aym814vKfURFrJ3Raaer0vb5kYPlBiSGcslhV5/Ujlv
+ 3b2XM+To/AQteIXy7xprPjr81Yyzsqp0Vu/FIwYU9LC0yryAX/kH5YUj+T25aDxgZDkSt6OLQDa
+ ghUs9tyeWti/pcuYta5oOX57pQrh+6iwcxxzlrP6d198eTA4WxMqZKYRo8eKcCFWZCqcsfaKOyN
+ zK299LcvdAYO9Iw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-This is a pile of small patches that I've been collecting. None are
-terribly critical.
+This isn't needed.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Jeff Layton (5):
-      nfsd: reorganize struct nfs4_delegation for better packing
-      nfsd: remove unneeded forward declaration of nfsd4_mark_cb_fault()
-      nfsd: remove obsolete comment from nfs4_alloc_stid
-      nfsd: clean up if statement in nfsd4_close_open_stateid()
-      nfsd: use a long for the count in nfsd4_state_shrinker_count()
+ fs/nfsd/nfs4callback.c | 2 --
+ 1 file changed, 2 deletions(-)
 
- fs/nfsd/nfs4callback.c |  2 --
- fs/nfsd/nfs4state.c    | 20 +++++---------------
- fs/nfsd/state.h        |  2 +-
- 3 files changed, 6 insertions(+), 18 deletions(-)
----
-base-commit: 7dc86d35a5f8a7ac24b53792c704b101e5041842
-change-id: 20250213-nfsd-cleanup-b4bebb80472d
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index ab81774bf1d2766272e610f5d081f7c04d9b5933..ccb00aa93be01961fb182eb05470a7bd8e642256 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -46,8 +46,6 @@
+ 
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ 
+-static void nfsd4_mark_cb_fault(struct nfs4_client *clp);
+-
+ #define NFSPROC4_CB_NULL 0
+ #define NFSPROC4_CB_COMPOUND 1
+ 
 
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.48.1
 
