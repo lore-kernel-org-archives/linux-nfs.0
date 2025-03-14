@@ -1,24 +1,24 @@
 Received: from neil.brown.name (neil.brown.name [103.29.64.221])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 945BC34545;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B9F0126BF1;
 	Fri, 14 Mar 2025 04:57:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.29.64.221
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1741928234; cv=none; b=rNngQSH0JTZ8/H0piMNdm2sRhoDQcXUy4njnYYKxkAb020Gmj1VZU2FEasmmdy3SVrhSUFFAK+FUiJkgt/FjI730yVuGtwYg10RvnltyTF2FlV2jJCKhAX4H5RkAiPwAeKVU7sAkCyE5VoZHltwQKfkjpPHKy8miLTGwUNB7+Jc=
+	t=1741928234; cv=none; b=nooQBweZMwSN7mbcsQMw6OjK27wEwj53BZfeLrkRqlF44aPrifGDdd4P8dDKIQPqgwNQgAC1c+l96DzaTuugRvwVfZY7y8pN6pzbHHhS+NPxquQ/N1IpXQSnOv4m+qLrMirAy0D/AmrMX2r4w5OEq7esDrmeC6KOshRGXwjKjRU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1741928234; c=relaxed/simple;
-	bh=pJMgeHFGHRX+0ofP3+P9Vi6llfSVTrBK7pociVBNG7Q=;
+	bh=9EgO9GVucLKgNNWzj/aDBAWgwaGLI0wpp8PpIH+o8LY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=AEEWc0+mgxO+XJYL/oCtAwTojpAFyZy1/te5Bg3kRUbeEvwi9dRo8CnIk8z51beWvxeKJnmkpnUC5MP7aLzFu/bzM0HVTU+RN6PKbZqDx0nL16dY8RrAtBhD68SLs2lVRTrC2CY1EaV2ayFPDsyopGAT+Ducb+M7ioO2DRj2v8s=
+	 MIME-Version; b=K+50fw/YbV6V1iBV8DZdeIQVCEJevmtM4wmOMMehYc3Q5haUfvoLqnGDbA6Dfxlw88n/wkraFC3T/TBcTbS3PDGF4Bt3tvh8TIvkywPtIxWCpGNoEqo6oZckAOLsBaOA8AzBVGNGaPsj9YEopBF3/+mJhc5shDIYpu2zMrPsf1c=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name; spf=pass smtp.mailfrom=neil.brown.name; arc=none smtp.client-ip=103.29.64.221
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=neil.brown.name
 Received: from 196.186.233.220.static.exetel.com.au ([220.233.186.196] helo=home.neil.brown.name)
 	by neil.brown.name with esmtp (Exim 4.95)
 	(envelope-from <mr@neil.brown.name>)
-	id 1tsx6a-00E3w9-GC;
-	Fri, 14 Mar 2025 04:57:08 +0000
+	id 1tsx6Y-00E3vn-4R;
+	Fri, 14 Mar 2025 04:57:06 +0000
 From: NeilBrown <neil@brown.name>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>,
@@ -29,9 +29,9 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>,
 Cc: linux-nfs@vger.kernel.org,
 	netfs@lists.linux.dev,
 	linux-fsdevel@vger.kernel.org
-Subject: [PATCH 7/8] Use try_lookup_noperm() instead of d_hash_and_lookup() outside of VFS
-Date: Fri, 14 Mar 2025 11:34:13 +1100
-Message-ID: <20250314045655.603377-8-neil@brown.name>
+Subject: [PATCH 3/8] nfsd: use correct idmap for all accesses.
+Date: Fri, 14 Mar 2025 11:34:09 +1100
+Message-ID: <20250314045655.603377-4-neil@brown.name>
 X-Mailer: git-send-email 2.48.1
 In-Reply-To: <20250314045655.603377-1-neil@brown.name>
 References: <20250314045655.603377-1-neil@brown.name>
@@ -43,238 +43,203 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-try_lookup_noperm() and d_hash_and_lookup() are nearly identical.  The
-former does some validation of the name wile the latter doesn't.
-Outside of the VFS that validation is likely valuable, and having only
-one exported function for this task is certainly a good idea.
+When accessing the exported filesystem, or the filesystem storing
+state-recovery data, we should use the idmap associated with the mount,
+or incorrect behaviour could eventuate of an idmapped filesystem were in
+use.
 
-So make d_hash_and_lookup() local to VFS files and change all other
-callers to try_lookup_noperm().  Note that the arguments are swapped.
+This patch adds fh_idmap() to return the mnt_idmap for a given svc_fh()
+and uses that or other means to provide the correct mnt_idmap.  nfsd no
+longer users nop_mnt_idmap.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- Documentation/filesystems/porting.rst | 11 +++++++++++
- fs/dcache.c                           |  1 -
- fs/efivarfs/super.c                   |  8 ++++----
- fs/internal.h                         |  1 +
- fs/proc/base.c                        |  2 +-
- fs/smb/client/readdir.c               |  3 ++-
- fs/xfs/scrub/orphanage.c              |  4 ++--
- include/linux/dcache.h                |  1 -
- net/sunrpc/rpc_pipe.c                 | 12 ++++++------
- security/selinux/selinuxfs.c          |  4 ++--
- 10 files changed, 29 insertions(+), 18 deletions(-)
+ fs/nfsd/nfs2acl.c     |  4 ++--
+ fs/nfsd/nfs3acl.c     |  4 ++--
+ fs/nfsd/nfs3proc.c    |  2 +-
+ fs/nfsd/nfs4recover.c |  7 ++++---
+ fs/nfsd/nfs4state.c   |  9 ++++++---
+ fs/nfsd/nfs4xdr.c     |  2 +-
+ fs/nfsd/state.h       |  4 +++-
+ fs/nfsd/vfs.h         | 12 ++++++++++++
+ 8 files changed, 31 insertions(+), 13 deletions(-)
 
-diff --git a/Documentation/filesystems/porting.rst b/Documentation/filesystems/porting.rst
-index 49a7be912e5f..672cd427d1e4 100644
---- a/Documentation/filesystems/porting.rst
-+++ b/Documentation/filesystems/porting.rst
-@@ -1226,3 +1226,14 @@ checked that the caller has 'X' permission on the parent.  They must
- ONLY be used internally by a filesystem on itself when it knows that
- permissions are irrelevant or in a context where permission checks have
- already been performed such as after vfs_path_parent_lookup()
-+
-+---
-+
-+** mandatory**
-+
-+d_hash_and_lookup() is no longer exported or available outside the VFS.
-+Use try_lookup_noperm() instead.  This adds name validation and takes
-+arguments in the opposite order but is otherwise identical.
-+
-+Using try_lookup_noperm() will require linux/namei.h to be included.
-+
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 726a5be2747b..17f8e0b7f04f 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -2395,7 +2395,6 @@ struct dentry *d_hash_and_lookup(struct dentry *dir, struct qstr *name)
- 	}
- 	return d_lookup(dir, name);
- }
--EXPORT_SYMBOL(d_hash_and_lookup);
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index 5fb202acb0fd..cb15d2d0dd50 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -115,11 +115,11 @@ static __be32 nfsacld_proc_setacl(struct svc_rqst *rqstp)
  
- /*
-  * When a file is deleted, we have two options:
-diff --git a/fs/efivarfs/super.c b/fs/efivarfs/super.c
-index 09fcf731e65d..c16206581b2d 100644
---- a/fs/efivarfs/super.c
-+++ b/fs/efivarfs/super.c
-@@ -219,7 +219,7 @@ bool efivarfs_variable_is_present(efi_char16_t *variable_name,
+ 	inode_lock(inode);
  
- 	qstr.name = name;
- 	qstr.len = strlen(name);
--	dentry = d_hash_and_lookup(sb->s_root, &qstr);
-+	dentry = try_lookup_noperm(&qstr, sb->s_root);
- 	kfree(name);
- 	if (!IS_ERR_OR_NULL(dentry))
- 		dput(dentry);
-@@ -402,8 +402,8 @@ static bool efivarfs_actor(struct dir_context *ctx, const char *name, int len,
- {
- 	unsigned long size;
- 	struct efivarfs_ctx *ectx = container_of(ctx, struct efivarfs_ctx, ctx);
--	struct qstr qstr = { .name = name, .len = len };
--	struct dentry *dentry = d_hash_and_lookup(ectx->sb->s_root, &qstr);
-+	struct qstr qstr = QSTR_INIT(name, len);
-+	struct dentry *dentry = try_lookup_noperm(&qstr, ectx->sb->s_root);
- 	struct inode *inode;
- 	struct efivar_entry *entry;
- 	int err;
-@@ -451,7 +451,7 @@ static int efivarfs_check_missing(efi_char16_t *name16, efi_guid_t vendor,
+-	error = set_posix_acl(&nop_mnt_idmap, fh->fh_dentry, ACL_TYPE_ACCESS,
++	error = set_posix_acl(fh_idmap(fh), fh->fh_dentry, ACL_TYPE_ACCESS,
+ 			      argp->acl_access);
+ 	if (error)
+ 		goto out_drop_lock;
+-	error = set_posix_acl(&nop_mnt_idmap, fh->fh_dentry, ACL_TYPE_DEFAULT,
++	error = set_posix_acl(fh_idmap(fh), fh->fh_dentry, ACL_TYPE_DEFAULT,
+ 			      argp->acl_default);
+ 	if (error)
+ 		goto out_drop_lock;
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index 7b5433bd3019..2e92a5673021 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -105,11 +105,11 @@ static __be32 nfsd3_proc_setacl(struct svc_rqst *rqstp)
  
- 	qstr.name = name;
- 	qstr.len = strlen(name);
--	dentry = d_hash_and_lookup(sb->s_root, &qstr);
-+	dentry = try_lookup_noperm(&qstr, sb->s_root);
- 	if (IS_ERR(dentry)) {
- 		err = PTR_ERR(dentry);
+ 	inode_lock(inode);
+ 
+-	error = set_posix_acl(&nop_mnt_idmap, fh->fh_dentry, ACL_TYPE_ACCESS,
++	error = set_posix_acl(fh_idmap(fh), fh->fh_dentry, ACL_TYPE_ACCESS,
+ 			      argp->acl_access);
+ 	if (error)
+ 		goto out_drop_lock;
+-	error = set_posix_acl(&nop_mnt_idmap, fh->fh_dentry, ACL_TYPE_DEFAULT,
++	error = set_posix_acl(fh_idmap(fh), fh->fh_dentry, ACL_TYPE_DEFAULT,
+ 			      argp->acl_default);
+ 
+ out_drop_lock:
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index 457638bf0f32..d32ce5956ca0 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -344,7 +344,7 @@ nfsd3_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	status = fh_fill_pre_attrs(fhp);
+ 	if (status != nfs_ok)
  		goto out;
-diff --git a/fs/internal.h b/fs/internal.h
-index e7f02ae1e098..c21534a23196 100644
---- a/fs/internal.h
-+++ b/fs/internal.h
-@@ -66,6 +66,7 @@ int do_linkat(int olddfd, struct filename *old, int newdfd,
- int vfs_tmpfile(struct mnt_idmap *idmap,
- 		const struct path *parentpath,
- 		struct file *file, umode_t mode);
-+struct dentry *d_hash_and_lookup(struct dentry *, struct qstr *);
+-	host_err = vfs_create(&nop_mnt_idmap, inode, child, iap->ia_mode, true);
++	host_err = vfs_create(fh_idmap(fhp), inode, child, iap->ia_mode, true);
+ 	if (host_err < 0) {
+ 		status = nfserrno(host_err);
+ 		goto out;
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 10d24bec532f..f8fe23941873 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -233,7 +233,8 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
+ 		 * as well be forgiving and just succeed silently.
+ 		 */
+ 		goto out_put;
+-	dentry = vfs_mkdir(&nop_mnt_idmap, d_inode(dir), dentry, S_IRWXU);
++	dentry = vfs_mkdir(mnt_idmap(nn->rec_file->f_path.mnt), d_inode(dir),
++				  dentry, S_IRWXU);
+ 	if (IS_ERR(dentry))
+ 		status = PTR_ERR(dentry);
+ out_put:
+@@ -357,7 +358,7 @@ nfsd4_unlink_clid_dir(char *name, struct nfsd_net *nn)
+ 	status = -ENOENT;
+ 	if (d_really_is_negative(dentry))
+ 		goto out;
+-	status = vfs_rmdir(&nop_mnt_idmap, d_inode(dir), dentry);
++	status = vfs_rmdir(mnt_idmap(nn->rec_file->f_path.mnt), d_inode(dir), dentry);
+ out:
+ 	dput(dentry);
+ out_unlock:
+@@ -447,7 +448,7 @@ purge_old(struct dentry *parent, struct dentry *child, struct nfsd_net *nn)
+ 	if (nfs4_has_reclaimed_state(name, nn))
+ 		goto out_free;
  
- /*
-  * namespace.c
-diff --git a/fs/proc/base.c b/fs/proc/base.c
-index cd89e956c322..7d36c7567c31 100644
---- a/fs/proc/base.c
-+++ b/fs/proc/base.c
-@@ -2124,7 +2124,7 @@ bool proc_fill_cache(struct file *file, struct dir_context *ctx,
- 	unsigned type = DT_UNKNOWN;
- 	ino_t ino = 1;
+-	status = vfs_rmdir(&nop_mnt_idmap, d_inode(parent), child);
++	status = vfs_rmdir(mnt_idmap(nn->rec_file->f_path.mnt), d_inode(parent), child);
+ 	if (status)
+ 		printk("failed to remove client recovery directory %pd\n",
+ 				child);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 153eeea2c7c9..1796a6aeedd8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -9079,7 +9079,8 @@ static bool set_cb_time(struct timespec64 *cb, const struct timespec64 *orig,
+ 	return true;
+ }
  
--	child = d_hash_and_lookup(dir, &qname);
-+	child = try_lookup_noperm(&qname, dir);
- 	if (!child) {
- 		DECLARE_WAIT_QUEUE_HEAD_ONSTACK(wq);
- 		child = d_alloc_parallel(dir, &qname, &wq);
-diff --git a/fs/smb/client/readdir.c b/fs/smb/client/readdir.c
-index 50f96259d9ad..7329ec532bcf 100644
---- a/fs/smb/client/readdir.c
-+++ b/fs/smb/client/readdir.c
-@@ -9,6 +9,7 @@
+-static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation *dp)
++static int cb_getattr_update_times(struct vfsmount *mnt, struct dentry *dentry,
++				   struct nfs4_delegation *dp)
+ {
+ 	struct inode *inode = d_inode(dentry);
+ 	struct timespec64 now = current_time(inode);
+@@ -9111,7 +9112,7 @@ static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation
+ 
+ 	attrs.ia_valid |= ATTR_DELEG;
+ 	inode_lock(inode);
+-	ret = notify_change(&nop_mnt_idmap, dentry, &attrs, NULL);
++	ret = notify_change(mnt_idmap(mnt), dentry, &attrs, NULL);
+ 	inode_unlock(inode);
+ 	return ret;
+ }
+@@ -9120,6 +9121,7 @@ static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation
+  * nfsd4_deleg_getattr_conflict - Recall if GETATTR causes conflict
+  * @rqstp: RPC transaction context
+  * @dentry: dentry of inode to be checked for a conflict
++ * @exp: svc_export being accessed
+  * @pdp: returned WRITE delegation, if one was found
   *
+  * This function is called when there is a conflict between a write
+@@ -9135,6 +9137,7 @@ static int cb_getattr_update_times(struct dentry *dentry, struct nfs4_delegation
   */
- #include <linux/fs.h>
-+#include <linux/namei.h>
- #include <linux/pagemap.h>
- #include <linux/slab.h>
- #include <linux/stat.h>
-@@ -78,7 +79,7 @@ cifs_prime_dcache(struct dentry *parent, struct qstr *name,
- 
- 	cifs_dbg(FYI, "%s: for %s\n", __func__, name->name);
- 
--	dentry = d_hash_and_lookup(parent, name);
-+	dentry = try_lookup_noperm(name, parent);
- 	if (!dentry) {
- 		/*
- 		 * If we know that the inode will need to be revalidated
-diff --git a/fs/xfs/scrub/orphanage.c b/fs/xfs/scrub/orphanage.c
-index 987af5b2bb82..f42ffad5a7b9 100644
---- a/fs/xfs/scrub/orphanage.c
-+++ b/fs/xfs/scrub/orphanage.c
-@@ -444,7 +444,7 @@ xrep_adoption_check_dcache(
- 	if (!d_orphanage)
- 		return 0;
- 
--	d_child = d_hash_and_lookup(d_orphanage, &qname);
-+	d_child = try_lookup_noperm(&qname, d_orphanage);
- 	if (d_child) {
- 		trace_xrep_adoption_check_child(sc->mp, d_child);
- 
-@@ -481,7 +481,7 @@ xrep_adoption_zap_dcache(
- 	if (!d_orphanage)
- 		return;
- 
--	d_child = d_hash_and_lookup(d_orphanage, &qname);
-+	d_child = try_lookup_noperm(&qname, d_orphanage);
- 	while (d_child != NULL) {
- 		trace_xrep_adoption_invalidate_child(sc->mp, d_child);
- 
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index 1f01f4e734c5..cf37ae54955d 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -288,7 +288,6 @@ extern void d_exchange(struct dentry *, struct dentry *);
- extern struct dentry *d_ancestor(struct dentry *, struct dentry *);
- 
- extern struct dentry *d_lookup(const struct dentry *, const struct qstr *);
--extern struct dentry *d_hash_and_lookup(struct dentry *, struct qstr *);
- 
- static inline unsigned d_count(const struct dentry *dentry)
+ __be32
+ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct dentry *dentry,
++			     struct svc_export *exp,
+ 			     struct nfs4_delegation **pdp)
  {
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index eadc00410ebc..98f78cd55905 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -631,7 +631,7 @@ static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
- 					  const char *name)
- {
- 	struct qstr q = QSTR(name);
--	struct dentry *dentry = d_hash_and_lookup(parent, &q);
-+	struct dentry *dentry = try_lookup_noperm(&q, parent);
- 	if (!dentry) {
- 		dentry = d_alloc(parent, &q);
- 		if (!dentry)
-@@ -658,7 +658,7 @@ static void __rpc_depopulate(struct dentry *parent,
- 	for (i = start; i < eof; i++) {
- 		name.name = files[i].name;
- 		name.len = strlen(files[i].name);
--		dentry = d_hash_and_lookup(parent, &name);
-+		dentry = try_lookup_noperm(&name, parent);
- 
- 		if (dentry == NULL)
- 			continue;
-@@ -1190,7 +1190,7 @@ static const struct rpc_filelist files[] = {
- struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- 			       const unsigned char *dir_name)
- {
--	return d_hash_and_lookup(sb->s_root, &QSTR(dir_name));
-+	return try_lookup_noperm(&QSTR(dir_name), sb->s_root);
+ 	__be32 status;
+@@ -9203,7 +9206,7 @@ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct dentry *dentry,
+ 		 * not update the file's metadata with the client's
+ 		 * modified size
+ 		 */
+-		err = cb_getattr_update_times(dentry, dp);
++		err = cb_getattr_update_times(exp->ex_path.mnt, dentry, dp);
+ 		if (err) {
+ 			status = nfserrno(err);
+ 			goto out_status;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 64ab2c605e93..e7c87653e979 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3618,7 +3618,7 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 	    (attrmask[1] & (FATTR4_WORD1_TIME_ACCESS |
+ 			    FATTR4_WORD1_TIME_MODIFY |
+ 			    FATTR4_WORD1_TIME_METADATA))) {
+-		status = nfsd4_deleg_getattr_conflict(rqstp, dentry, &dp);
++		status = nfsd4_deleg_getattr_conflict(rqstp, dentry, exp, &dp);
+ 		if (status)
+ 			goto out;
+ 	}
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 74d2d7b42676..8ef2bec43afa 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -826,5 +826,7 @@ static inline bool try_to_expire_client(struct nfs4_client *clp)
  }
- EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
  
-@@ -1301,7 +1301,7 @@ rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
- 	struct dentry *pipe_dentry = NULL;
+ extern __be32 nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp,
+-		struct dentry *dentry, struct nfs4_delegation **pdp);
++					   struct dentry *dentry,
++					   struct svc_export *exp,
++					   struct nfs4_delegation **pdp);
+ #endif   /* NFSD4_STATE_H */
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 5a60004468b8..1bb75d740427 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -205,4 +205,16 @@ static inline struct vfsmount *fh_mnt(struct svc_fh *fhp)
+ 	return fhp->fh_export->ex_path.mnt;
+ }
  
- 	/* We should never get this far if "gssd" doesn't exist */
--	gssd_dentry = d_hash_and_lookup(root, &QSTR(files[RPCAUTH_gssd].name));
-+	gssd_dentry = try_lookup_noperm(&QSTR(files[RPCAUTH_gssd].name), root);
- 	if (!gssd_dentry)
- 		return ERR_PTR(-ENOENT);
- 
-@@ -1311,8 +1311,8 @@ rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
- 		goto out;
- 	}
- 
--	clnt_dentry = d_hash_and_lookup(gssd_dentry,
--					&QSTR(gssd_dummy_clnt_dir[0].name));
-+	clnt_dentry = try_lookup_noperm(&QSTR(gssd_dummy_clnt_dir[0].name),
-+					  gssd_dentry);
- 	if (!clnt_dentry) {
- 		__rpc_depopulate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1);
- 		pipe_dentry = ERR_PTR(-ENOENT);
-diff --git a/security/selinux/selinuxfs.c b/security/selinux/selinuxfs.c
-index 47480eb2189b..e67a8ce4b64c 100644
---- a/security/selinux/selinuxfs.c
-+++ b/security/selinux/selinuxfs.c
-@@ -2158,8 +2158,8 @@ static int __init init_sel_fs(void)
- 		return err;
- 	}
- 
--	selinux_null.dentry = d_hash_and_lookup(selinux_null.mnt->mnt_root,
--						&null_name);
-+	selinux_null.dentry = try_lookup_noperm(&null_name,
-+						  selinux_null.mnt->mnt_root);
- 	if (IS_ERR(selinux_null.dentry)) {
- 		pr_err("selinuxfs:  could not lookup null!\n");
- 		err = PTR_ERR(selinux_null.dentry);
++/**
++ * fh_idmap - access idmap of vfsmount of a given file handle
++ * @fhp:  the filehandle
++ *
++ * Returns the struct idmap from the vfsmount of the export referenced in the
++ * filehandle.
++ */
++static inline struct mnt_idmap *fh_idmap(struct svc_fh *fhp)
++{
++	return mnt_idmap(fh_mnt(fhp));;
++}
++
+ #endif /* LINUX_NFSD_VFS_H */
 -- 
 2.48.1
 
