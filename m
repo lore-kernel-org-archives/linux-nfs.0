@@ -1,79 +1,189 @@
 Received: from neil.brown.name (neil.brown.name [103.29.64.221])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B50F1F585F;
-	Thu, 13 Mar 2025 22:53:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8526C24B29;
+	Fri, 14 Mar 2025 04:57:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.29.64.221
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1741906439; cv=none; b=jz0x3mpksoFHOXPgs8eiIUjm4xhBYaQ1jKFZ1iv0DdwRMVZasW+gQKN5L++PXqyKBxJ1Y4MchrRXJcCgFGgLz5AjD+K4qua4vyIThcoRck5YFT/0mFPd2PsjEilgNs1QpQualCUSE9cyZyd6XciPfKr2FfpvVKHEDhB3S8R8TcU=
+	t=1741928232; cv=none; b=cy94x1UTNnZhEDbWp8oEIqNTiiPPqSNXslxCJ/qIFwUtxqXEmAYefJKIfocciiyw+OIWYbVbRgoqnZT2dzGY6UTYut9ITXRqqNxh9xHGEm+V0hWDOkiSHkkkerN6GMLQLglRL0hKZWwHqIqlWhLBeNgUI1DdK2032KkJcfdgb1k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1741906439; c=relaxed/simple;
-	bh=/ie6fpq0FXgm9kqxwUTNFnggiB1jw1uZU5XBs5Clzoo=;
-	h=Content-Type:MIME-Version:From:To:Subject:Date:Message-id; b=LzaHOWdcgA1AHT2qdMRK/5FhGS3NcQvFTHpiYE5KGF+VEMsC05piY9xyZ5KLFeq2tRUd8q982LYEsd6ctFY7yJC4jj0ee446TNZQOikKyjBgnqRsTSTELm+bd7t/jOl+gNxbf5yP+SUoQfKstZCvn01cgK/Mlu2TebWJapHD6Uw=
+	s=arc-20240116; t=1741928232; c=relaxed/simple;
+	bh=f3+gpEKJAqYzbzqvVJPsD4a2ui2KwmtT1yKX34lie0s=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=DHxh5Tn+kvShOv2SdCpqgyPS3LFeuU4JMozO6IyxKfMsO6sxaEGJE/m9Gcjuj0p+BarQCTCiJdavq4p03LIOBoM7+yJgFhWqHHw3ELZgkVCO4QqDl6ATFjdrrBlFiVXUKGz9I378opAP3o4bXqZjMO0FA20i7Fu/ol+tgjZqwQw=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name; spf=pass smtp.mailfrom=neil.brown.name; arc=none smtp.client-ip=103.29.64.221
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=neil.brown.name
 Received: from 196.186.233.220.static.exetel.com.au ([220.233.186.196] helo=home.neil.brown.name)
 	by neil.brown.name with esmtp (Exim 4.95)
 	(envelope-from <mr@neil.brown.name>)
-	id 1tsr3V-00DymL-Fj;
-	Thu, 13 Mar 2025 22:29:33 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+	id 1tsx6Z-00E3vr-7M;
+	Fri, 14 Mar 2025 04:57:07 +0000
+From: NeilBrown <neil@brown.name>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	David Howells <dhowells@redhat.com>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Jeff Layton <jlayton@kernel.org>
+Cc: linux-nfs@vger.kernel.org,
+	netfs@lists.linux.dev,
+	linux-fsdevel@vger.kernel.org
+Subject: [PATCH 5/8] cachefiles: use correct mnt_idmap
+Date: Fri, 14 Mar 2025 11:34:11 +1100
+Message-ID: <20250314045655.603377-6-neil@brown.name>
+X-Mailer: git-send-email 2.48.1
+In-Reply-To: <20250314045655.603377-1-neil@brown.name>
+References: <20250314045655.603377-1-neil@brown.name>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: "NeilBrown" <neil@brown.name>
-To: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>,
- Amir Goldstein <amir73il@gmail.com>, linux-fsdevel@vger.kernel.org,
- linux-nfs@vger.kernel.org
-Subject: [PATCH] exportfs: remove locking around ->get_parent() call.
-Date: Fri, 14 Mar 2025 09:29:33 +1100
-Message-id: <174190497326.9342.9313518146512158587@noble.neil.brown.name>
+Content-Transfer-Encoding: 8bit
 
-
-The locking around the ->get_parent() call brings no value.
-We are locking a child which is only used to find an inode and thence the
-parent inode number.  All further activity involves the parent inode
-which may have several children so locking one child cannot protect the
-parent in any useful way.
-
-The filesystem must already ensure that only one 'struct inode' exists
-for a given inode, and will call d_obtain_alias() which contains the
-required locking to ensure only one dentry will be attached to that
-inode.
-
-So remove the unnecessary locking.
+If cachesfiles is configured on a mount that is idmapped, it needs to
+use the idmap from the mount point.  This patch changes all occurrences
+of nop_mnt_idmap in cachefiles to file the correct mnt_idmap.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
+ fs/cachefiles/interface.c |  6 ++++--
+ fs/cachefiles/namei.c     | 14 ++++++++------
+ fs/cachefiles/xattr.c     | 12 +++++++-----
+ 3 files changed, 19 insertions(+), 13 deletions(-)
 
-I've been reviewing locking in directories and this stood out has
-unnecessary.  It isn't harmful, but it doesn't bring any value.
-NeilBrown
-
-
- fs/exportfs/expfs.c | 2 --
- 1 file changed, 2 deletions(-)
-
-diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-index 0c899cfba578..b5845c4846b8 100644
---- a/fs/exportfs/expfs.c
-+++ b/fs/exportfs/expfs.c
-@@ -126,10 +126,8 @@ static struct dentry *reconnect_one(struct vfsmount *mnt,
- 	int err;
+diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
+index 3e63cfe15874..b2b9867d8428 100644
+--- a/fs/cachefiles/interface.c
++++ b/fs/cachefiles/interface.c
+@@ -143,7 +143,8 @@ static int cachefiles_adjust_size(struct cachefiles_object *object)
+ 		newattrs.ia_size = oi_size & PAGE_MASK;
+ 		ret = cachefiles_inject_remove_error();
+ 		if (ret == 0)
+-			ret = notify_change(&nop_mnt_idmap, file->f_path.dentry,
++			ret = notify_change(mnt_idmap(file->f_path.mnt),
++					    file->f_path.dentry,
+ 					    &newattrs, NULL);
+ 		if (ret < 0)
+ 			goto truncate_failed;
+@@ -153,7 +154,8 @@ static int cachefiles_adjust_size(struct cachefiles_object *object)
+ 	newattrs.ia_size = ni_size;
+ 	ret = cachefiles_inject_write_error();
+ 	if (ret == 0)
+-		ret = notify_change(&nop_mnt_idmap, file->f_path.dentry,
++		ret = notify_change(file_mnt_idmap(file),
++				    file->f_path.dentry,
+ 				    &newattrs, NULL);
  
- 	parent = ERR_PTR(-EACCES);
--	inode_lock(dentry->d_inode);
- 	if (mnt->mnt_sb->s_export_op->get_parent)
- 		parent = mnt->mnt_sb->s_export_op->get_parent(dentry);
--	inode_unlock(dentry->d_inode);
+ truncate_failed:
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+index a440a2ff5d41..b156a0671a3d 100644
+--- a/fs/cachefiles/namei.c
++++ b/fs/cachefiles/namei.c
+@@ -130,7 +130,8 @@ struct dentry *cachefiles_get_directory(struct cachefiles_cache *cache,
+ 			goto mkdir_error;
+ 		subdir = ERR_PTR(cachefiles_inject_write_error());
+ 		if (!IS_ERR(subdir))
+-			subdir = vfs_mkdir(&nop_mnt_idmap, d_inode(dir), subdir, 0700);
++			subdir = vfs_mkdir(mnt_idmap(cache->mnt), d_inode(dir),
++					   subdir, 0700);
+ 		ret = PTR_ERR(subdir);
+ 		if (IS_ERR(subdir)) {
+ 			trace_cachefiles_vfs_error(NULL, d_inode(dir), ret,
+@@ -247,7 +248,8 @@ static int cachefiles_unlink(struct cachefiles_cache *cache,
  
- 	if (IS_ERR(parent)) {
- 		dprintk("get_parent of %lu failed, err %ld\n",
+ 	ret = cachefiles_inject_remove_error();
+ 	if (ret == 0) {
+-		ret = vfs_unlink(&nop_mnt_idmap, d_backing_inode(dir), dentry, NULL);
++		ret = vfs_unlink(mnt_idmap(cache->mnt),
++				 d_backing_inode(dir), dentry, NULL);
+ 		if (ret == -EIO)
+ 			cachefiles_io_error(cache, "Unlink failed");
+ 	}
+@@ -386,10 +388,10 @@ int cachefiles_bury_object(struct cachefiles_cache *cache,
+ 		cachefiles_io_error(cache, "Rename security error %d", ret);
+ 	} else {
+ 		struct renamedata rd = {
+-			.old_mnt_idmap	= &nop_mnt_idmap,
++			.old_mnt_idmap	= mnt_idmap(cache->mnt),
+ 			.old_dir	= d_inode(dir),
+ 			.old_dentry	= rep,
+-			.new_mnt_idmap	= &nop_mnt_idmap,
++			.new_mnt_idmap	= mnt_idmap(cache->mnt),
+ 			.new_dir	= d_inode(cache->graveyard),
+ 			.new_dentry	= grave,
+ 		};
+@@ -455,7 +457,7 @@ struct file *cachefiles_create_tmpfile(struct cachefiles_object *object)
+ 
+ 	ret = cachefiles_inject_write_error();
+ 	if (ret == 0) {
+-		file = kernel_tmpfile_open(&nop_mnt_idmap, &parentpath,
++		file = kernel_tmpfile_open(mnt_idmap(cache->mnt), &parentpath,
+ 					   S_IFREG | 0600,
+ 					   O_RDWR | O_LARGEFILE | O_DIRECT,
+ 					   cache->cache_cred);
+@@ -714,7 +716,7 @@ bool cachefiles_commit_tmpfile(struct cachefiles_cache *cache,
+ 
+ 	ret = cachefiles_inject_read_error();
+ 	if (ret == 0)
+-		ret = vfs_link(object->file->f_path.dentry, &nop_mnt_idmap,
++		ret = vfs_link(object->file->f_path.dentry, file_mnt_idmap(object->file),
+ 			       d_inode(fan), dentry, NULL);
+ 	if (ret < 0) {
+ 		trace_cachefiles_vfs_error(object, d_inode(fan), ret,
+diff --git a/fs/cachefiles/xattr.c b/fs/cachefiles/xattr.c
+index 52383b1d0ba6..a2ab9100ba74 100644
+--- a/fs/cachefiles/xattr.c
++++ b/fs/cachefiles/xattr.c
+@@ -67,7 +67,7 @@ int cachefiles_set_object_xattr(struct cachefiles_object *object)
+ 	if (ret == 0) {
+ 		ret = mnt_want_write_file(file);
+ 		if (ret == 0) {
+-			ret = vfs_setxattr(&nop_mnt_idmap, dentry,
++			ret = vfs_setxattr(file_mnt_idmap(file), dentry,
+ 					   cachefiles_xattr_cache, buf,
+ 					   sizeof(struct cachefiles_xattr) + len, 0);
+ 			mnt_drop_write_file(file);
+@@ -116,7 +116,8 @@ int cachefiles_check_auxdata(struct cachefiles_object *object, struct file *file
+ 
+ 	xlen = cachefiles_inject_read_error();
+ 	if (xlen == 0)
+-		xlen = vfs_getxattr(&nop_mnt_idmap, dentry, cachefiles_xattr_cache, buf, tlen);
++		xlen = vfs_getxattr(file_mnt_idmap(file), dentry,
++				    cachefiles_xattr_cache, buf, tlen);
+ 	if (xlen != tlen) {
+ 		if (xlen < 0) {
+ 			ret = xlen;
+@@ -167,7 +168,7 @@ int cachefiles_remove_object_xattr(struct cachefiles_cache *cache,
+ 	if (ret == 0) {
+ 		ret = mnt_want_write(cache->mnt);
+ 		if (ret == 0) {
+-			ret = vfs_removexattr(&nop_mnt_idmap, dentry,
++			ret = vfs_removexattr(mnt_idmap(cache->mnt), dentry,
+ 					      cachefiles_xattr_cache);
+ 			mnt_drop_write(cache->mnt);
+ 		}
+@@ -230,7 +231,7 @@ bool cachefiles_set_volume_xattr(struct cachefiles_volume *volume)
+ 	if (ret == 0) {
+ 		ret = mnt_want_write(volume->cache->mnt);
+ 		if (ret == 0) {
+-			ret = vfs_setxattr(&nop_mnt_idmap, dentry,
++			ret = vfs_setxattr(mnt_idmap(volume->cache->mnt), dentry,
+ 					   cachefiles_xattr_cache,
+ 					   buf, len, 0);
+ 			mnt_drop_write(volume->cache->mnt);
+@@ -276,7 +277,8 @@ int cachefiles_check_volume_xattr(struct cachefiles_volume *volume)
+ 
+ 	xlen = cachefiles_inject_read_error();
+ 	if (xlen == 0)
+-		xlen = vfs_getxattr(&nop_mnt_idmap, dentry, cachefiles_xattr_cache, buf, len);
++		xlen = vfs_getxattr(mnt_idmap(volume->cache->mnt),
++				    dentry, cachefiles_xattr_cache, buf, len);
+ 	if (xlen != len) {
+ 		if (xlen < 0) {
+ 			ret = xlen;
 -- 
 2.48.1
 
