@@ -1,24 +1,24 @@
 Received: from neil.brown.name (neil.brown.name [103.29.64.221])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F242520DD65;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F21958F4A;
 	Wed, 19 Mar 2025 03:16:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.29.64.221
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1742354170; cv=none; b=LGr0gJmM5w0eY3RUVA0nN0CuHR3CXLYEcmCXU/EWwNl7VenuilCwk517YEA/rjn2uN316LQ6Whyb0p8SGsEokmSgb4hEKFE34JTWa5s4uj8NYl9MtA4jN6fSmABaFvbb0YmxY4stm0VW0lInwsgPVyDPSLSFBTdLYOTHrO5kelg=
+	t=1742354170; cv=none; b=R4NFE11rDinua41ifyHldjImPIRvotaWKqCs0nD9AagGCnk2N0tfB0N9+2sg+9mSvhe3MOM6YdtdwjXRtne80XYy7N8Ps0eBBU0NY3/HXARiUe9Qmf4eHyx7sihisRLfJSavrMnOUz3A/gqm15SAJP6+3YlGtNNscpR3rhP3lTQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1742354170; c=relaxed/simple;
-	bh=i2C6e0R+h5HigK1EMJTyr6V0zwaF1vkYqkrBPiUFgFI=;
+	bh=sRIKnTBfTrSytLtH79YlVAb85MagsjE/nw85WVkQjlo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=h9heSASgJUfX7zOd4OW+1p1KJAsJPCnu0xe+n1sIu0SIop+lUIfY1ETY8QAXwqqPIOe/jr48yeQy3tFewNNLXczU6NNten69nHSvxYiZSyQDZK6yL4Gu+N/HbBfp3tyt3aVoX0iEUl3nk8atTyLeyGwVBg+FbTARt9ZoRBqZveE=
+	 MIME-Version; b=XEcv5GSLnzMKgmqMfpjWLNEQft78Hhb4pWrbH9cK0/j6etrR8eLP073BAOPBuR5umj8x0nqQcgPT7gHuvrmP5QJt5QzVjsT/+i7xEvaqRQzR6AY6587eQ/Wt7eEQl0dOKla2fEn5J7LX4vuKkTOliJpKTGPotMU0blfvaOCdZQY=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name; spf=pass smtp.mailfrom=neil.brown.name; arc=none smtp.client-ip=103.29.64.221
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=neil.brown.name
 Received: from 196.186.233.220.static.exetel.com.au ([220.233.186.196] helo=home.neil.brown.name)
 	by neil.brown.name with esmtp (Exim 4.95)
 	(envelope-from <mr@neil.brown.name>)
-	id 1tujuN-00G6oh-GC;
-	Wed, 19 Mar 2025 03:15:55 +0000
+	id 1tujuP-00G6op-CO;
+	Wed, 19 Mar 2025 03:15:57 +0000
 From: NeilBrown <neil@brown.name>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>,
@@ -29,9 +29,9 @@ To: Alexander Viro <viro@zeniv.linux.org.uk>,
 Cc: linux-nfs@vger.kernel.org,
 	netfs@lists.linux.dev,
 	linux-fsdevel@vger.kernel.org
-Subject: [PATCH 1/6] VFS: improve interface for lookup_one functions
-Date: Wed, 19 Mar 2025 14:01:32 +1100
-Message-ID: <20250319031545.2999807-2-neil@brown.name>
+Subject: [PATCH 4/6] VFS: rename lookup_one_len family to lookup_noperm and remove permission check
+Date: Wed, 19 Mar 2025 14:01:35 +1100
+Message-ID: <20250319031545.2999807-5-neil@brown.name>
 X-Mailer: git-send-email 2.48.1
 In-Reply-To: <20250319031545.2999807-1-neil@brown.name>
 References: <20250319031545.2999807-1-neil@brown.name>
@@ -43,403 +43,711 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The family of functions:
-  lookup_one()
-  lookup_one_unlocked()
-  lookup_one_positive_unlocked()
+The lookup_one_len family of functions is (now) only used internally by
+a filesystem on itself either
+- in a context where permission checking is irrelevant such as by a
+  virtual filesystem populating itself, or xfs accessing its ORPHANAGE
+  or dquota accessing the quota file; or
+- in a context where a permission check (MAY_EXEC on the parent) has just
+  been performed such as a network filesystem finding in "silly-rename"
+  file in the same directory.  This is also the context after the
+  _parentat() functions where currently lookup_one_qstr_excl() is used.
 
-appear designed to be used by external clients of the filesystem rather
-than by filesystems acting on themselves as the lookup_one_len family
-are used.
+So the permission check is pointless.
 
-They are used by:
-   btrfs/ioctl - which is a user-space interface rather than an internal
-     activity
-   exportfs - i.e. from nfsd or the open_by_handle_at interface
-   overlayfs - at access the underlying filesystems
-   smb/server - for file service
+The name "one_len" is unhelpful in understanding the purpose of these
+functions and should be changed.  Most of the callers pass the len as
+"strlen()" so using a qstr and QSTR() can simplify the code.
 
-They should be used by nfsd (more than just the exportfs path) and
-cachefs but aren't.
+This patch renames these functions (include lookup_positive_unlocked()
+which is part of the family despite the name) to have a name based on
+"lookup_noperm".  They are changed to receive a 'struct qstr' instead
+of separate name and len.  In a few cases the use of QSTR() results in a
+new call to strlen().
 
-It would help if the documentation didn't claim they should "not be
-called by generic code".
+try_lookup_noperm() takes a pointer to a qstr instead of the whole
+qstr.  This is consistent with d_hash_and_lookup() (which is nearly
+identical) and useful for lookup_noperm_unlocked().
 
-Also the path component name is passed as "name" and "len" which are
-(confusingly?) separate by the "base".  In some cases the len in simply
-"strlen" and so passing a qstr using QSTR() would make the calling
-clearer.
-Other callers do pass separate name and len which are stored in a
-struct.  Sometimes these are already stored in a qstr, other times it
-easily could be.
-
-So this patch changes these three functions to receive a 'struct qstr',
-and improves the documentation.
-
-QSTR_LEN() is added to make it easy to pass a QSTR containing a known
-len.
+The new lookup_noperm_common() doesn't take a qstr yet.  That will be
+tidied up in a subsequent patch.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- Documentation/filesystems/porting.rst |  9 +++++
- fs/btrfs/ioctl.c                      |  9 ++---
- fs/exportfs/expfs.c                   |  5 ++-
- fs/namei.c                            | 51 ++++++++++++---------------
- fs/overlayfs/namei.c                  | 10 +++---
- fs/overlayfs/overlayfs.h              |  2 +-
- fs/overlayfs/readdir.c                |  9 ++---
- fs/smb/server/smb2pdu.c               |  7 ++--
- include/linux/dcache.h                |  3 +-
- include/linux/namei.h                 |  9 +++--
- 10 files changed, 57 insertions(+), 57 deletions(-)
+ Documentation/filesystems/porting.rst | 20 +++++++
+ arch/s390/hypfs/inode.c               |  2 +-
+ drivers/android/binderfs.c            |  4 +-
+ drivers/infiniband/hw/qib/qib_fs.c    |  4 +-
+ fs/afs/dir.c                          |  2 +-
+ fs/afs/dir_silly.c                    |  6 +-
+ fs/autofs/dev-ioctl.c                 |  3 +-
+ fs/binfmt_misc.c                      |  2 +-
+ fs/debugfs/inode.c                    |  6 +-
+ fs/ecryptfs/inode.c                   | 16 ++---
+ fs/kernfs/mount.c                     |  4 +-
+ fs/namei.c                            | 86 ++++++++++++++++-----------
+ fs/nfs/unlink.c                       | 11 ++--
+ fs/overlayfs/export.c                 |  6 +-
+ fs/overlayfs/namei.c                  |  2 +-
+ fs/quota/dquot.c                      |  2 +-
+ fs/smb/client/cached_dir.c            |  5 +-
+ fs/smb/client/cifsfs.c                |  3 +-
+ fs/tracefs/inode.c                    |  2 +-
+ fs/xfs/scrub/orphanage.c              |  3 +-
+ include/linux/namei.h                 |  8 +--
+ ipc/mqueue.c                          |  5 +-
+ kernel/bpf/inode.c                    |  2 +-
+ security/apparmor/apparmorfs.c        |  4 +-
+ security/inode.c                      |  2 +-
+ 25 files changed, 123 insertions(+), 87 deletions(-)
 
 diff --git a/Documentation/filesystems/porting.rst b/Documentation/filesystems/porting.rst
-index 6817614e0820..06296ffd1e81 100644
+index 06296ffd1e81..df9516cd82e0 100644
 --- a/Documentation/filesystems/porting.rst
 +++ b/Documentation/filesystems/porting.rst
-@@ -1196,3 +1196,12 @@ should use d_drop();d_splice_alias() and return the result of the latter.
- If a positive dentry cannot be returned for some reason, in-kernel
- clients such as cachefiles, nfsd, smb/server may not perform ideally but
- will fail-safe.
+@@ -1205,3 +1205,23 @@ lookup_one(), lookup_one_unlocked(), lookup_one_positive_unlocked() now
+ take a qstr instead of a name and len.  These, not the "one_len"
+ versions, should be used whenever accessing a filesystem from outside
+ that filesysmtem, through a mount point - which will have a mnt_idmap.
 +
 +---
 +
 +** mandatory**
 +
-+lookup_one(), lookup_one_unlocked(), lookup_one_positive_unlocked() now
-+take a qstr instead of a name and len.  These, not the "one_len"
-+versions, should be used whenever accessing a filesystem from outside
-+that filesysmtem, through a mount point - which will have a mnt_idmap.
-diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
-index 6c18bad53cd3..f94b638f9478 100644
---- a/fs/btrfs/ioctl.c
-+++ b/fs/btrfs/ioctl.c
-@@ -911,7 +911,7 @@ static noinline int btrfs_mksubvol(const struct path *parent,
- 	if (error == -EINTR)
- 		return error;
++Functions try_lookup_one_len(), lookup_one_len(),
++lookup_one_len_unlocked() and lookup_positive_unlocked() have been
++renamed to try_lookup_noperm(), lookup_noperm(),
++lookup_noperm_unlocked(), lookup_noperm_positive_unlocked().  They now
++take a qstr instead of separate name and length.  QSTR() can be used
++when strlen() is needed for the length.
++
++For try_lookup_noperm() a reference to the qstr is passed in case the
++hash might subsequently be needed.
++
++These function no longer do any permission checking - they previously
++checked that the caller has 'X' permission on the parent.  They must
++ONLY be used internally by a filesystem on itself when it knows that
++permissions are irrelevant or in a context where permission checks have
++already been performed such as after vfs_path_parent_lookup()
+diff --git a/arch/s390/hypfs/inode.c b/arch/s390/hypfs/inode.c
+index d428635abf08..2eed957393f4 100644
+--- a/arch/s390/hypfs/inode.c
++++ b/arch/s390/hypfs/inode.c
+@@ -341,7 +341,7 @@ static struct dentry *hypfs_create_file(struct dentry *parent, const char *name,
+ 	struct inode *inode;
  
--	dentry = lookup_one(idmap, name, parent->dentry, namelen);
-+	dentry = lookup_one(idmap, QSTR_LEN(name, namelen), parent->dentry);
- 	error = PTR_ERR(dentry);
- 	if (IS_ERR(dentry))
- 		goto out_unlock;
-@@ -2289,7 +2289,6 @@ static noinline int btrfs_ioctl_snap_destroy(struct file *file,
- 	struct btrfs_ioctl_vol_args_v2 *vol_args2 = NULL;
- 	struct mnt_idmap *idmap = file_mnt_idmap(file);
- 	char *subvol_name, *subvol_name_ptr = NULL;
--	int subvol_namelen;
- 	int ret = 0;
- 	bool destroy_parent = false;
- 
-@@ -2412,10 +2411,8 @@ static noinline int btrfs_ioctl_snap_destroy(struct file *file,
- 			goto out;
- 	}
- 
--	subvol_namelen = strlen(subvol_name);
--
- 	if (strchr(subvol_name, '/') ||
--	    strncmp(subvol_name, "..", subvol_namelen) == 0) {
-+	    strcmp(subvol_name, "..") == 0) {
- 		ret = -EINVAL;
- 		goto free_subvol_name;
- 	}
-@@ -2428,7 +2425,7 @@ static noinline int btrfs_ioctl_snap_destroy(struct file *file,
- 	ret = down_write_killable_nested(&dir->i_rwsem, I_MUTEX_PARENT);
- 	if (ret == -EINTR)
- 		goto free_subvol_name;
--	dentry = lookup_one(idmap, subvol_name, parent, subvol_namelen);
-+	dentry = lookup_one(idmap, QSTR(subvol_name), parent);
+ 	inode_lock(d_inode(parent));
+-	dentry = lookup_one_len(name, parent, strlen(name));
++	dentry = lookup_noperm(QSTR(name), parent);
  	if (IS_ERR(dentry)) {
+ 		dentry = ERR_PTR(-ENOMEM);
+ 		goto fail;
+diff --git a/drivers/android/binderfs.c b/drivers/android/binderfs.c
+index bc6bae76ccaf..172e825168c8 100644
+--- a/drivers/android/binderfs.c
++++ b/drivers/android/binderfs.c
+@@ -187,7 +187,7 @@ static int binderfs_binder_device_create(struct inode *ref_inode,
+ 	inode_lock(d_inode(root));
+ 
+ 	/* look it up */
+-	dentry = lookup_one_len(name, root, name_len);
++	dentry = lookup_noperm(QSTR(name), root);
+ 	if (IS_ERR(dentry)) {
+ 		inode_unlock(d_inode(root));
  		ret = PTR_ERR(dentry);
- 		goto out_unlock_dir;
-diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-index 0c899cfba578..974b432087aa 100644
---- a/fs/exportfs/expfs.c
-+++ b/fs/exportfs/expfs.c
-@@ -145,7 +145,7 @@ static struct dentry *reconnect_one(struct vfsmount *mnt,
- 	if (err)
- 		goto out_err;
- 	dprintk("%s: found name: %s\n", __func__, nbuf);
--	tmp = lookup_one_unlocked(mnt_idmap(mnt), nbuf, parent, strlen(nbuf));
-+	tmp = lookup_one_unlocked(mnt_idmap(mnt), QSTR(nbuf), parent);
- 	if (IS_ERR(tmp)) {
- 		dprintk("lookup failed: %ld\n", PTR_ERR(tmp));
- 		err = PTR_ERR(tmp);
-@@ -551,8 +551,7 @@ exportfs_decode_fh_raw(struct vfsmount *mnt, struct fid *fid, int fh_len,
+@@ -486,7 +486,7 @@ static struct dentry *binderfs_create_dentry(struct dentry *parent,
+ {
+ 	struct dentry *dentry;
+ 
+-	dentry = lookup_one_len(name, parent, strlen(name));
++	dentry = lookup_noperm(QSTR(name), parent);
+ 	if (IS_ERR(dentry))
+ 		return dentry;
+ 
+diff --git a/drivers/infiniband/hw/qib/qib_fs.c b/drivers/infiniband/hw/qib/qib_fs.c
+index b27791029fa9..c3aa40c3fb8f 100644
+--- a/drivers/infiniband/hw/qib/qib_fs.c
++++ b/drivers/infiniband/hw/qib/qib_fs.c
+@@ -89,7 +89,7 @@ static int create_file(const char *name, umode_t mode,
+ 	int error;
+ 
+ 	inode_lock(d_inode(parent));
+-	*dentry = lookup_one_len(name, parent, strlen(name));
++	*dentry = lookup_noperm(QSTR(name), parent);
+ 	if (!IS_ERR(*dentry))
+ 		error = qibfs_mknod(d_inode(parent), *dentry,
+ 				    mode, fops, data);
+@@ -432,7 +432,7 @@ static int remove_device_files(struct super_block *sb,
+ 	char unit[10];
+ 
+ 	snprintf(unit, sizeof(unit), "%u", dd->unit);
+-	dir = lookup_one_len_unlocked(unit, sb->s_root, strlen(unit));
++	dir = lookup_noperm_unlocked(QSTR(unit), sb->s_root);
+ 
+ 	if (IS_ERR(dir)) {
+ 		pr_err("Lookup of %s failed\n", unit);
+diff --git a/fs/afs/dir.c b/fs/afs/dir.c
+index 5bddcc20786e..0e633535d2c7 100644
+--- a/fs/afs/dir.c
++++ b/fs/afs/dir.c
+@@ -943,7 +943,7 @@ static struct dentry *afs_lookup_atsys(struct inode *dir, struct dentry *dentry)
  		}
  
- 		inode_lock(target_dir->d_inode);
--		nresult = lookup_one(mnt_idmap(mnt), nbuf,
--				     target_dir, strlen(nbuf));
-+		nresult = lookup_one(mnt_idmap(mnt), QSTR(nbuf), target_dir);
- 		if (!IS_ERR(nresult)) {
- 			if (unlikely(nresult->d_inode != result->d_inode)) {
- 				dput(nresult);
+ 		strcpy(p, name);
+-		ret = lookup_one_len(buf, dentry->d_parent, len);
++		ret = lookup_noperm(QSTR(buf), dentry->d_parent);
+ 		if (IS_ERR(ret) || d_is_positive(ret))
+ 			goto out_s;
+ 		dput(ret);
+diff --git a/fs/afs/dir_silly.c b/fs/afs/dir_silly.c
+index a1e581946b93..292a5c8c752a 100644
+--- a/fs/afs/dir_silly.c
++++ b/fs/afs/dir_silly.c
+@@ -113,16 +113,14 @@ int afs_sillyrename(struct afs_vnode *dvnode, struct afs_vnode *vnode,
+ 
+ 	sdentry = NULL;
+ 	do {
+-		int slen;
+-
+ 		dput(sdentry);
+ 		sillycounter++;
+ 
+ 		/* Create a silly name.  Note that the ".__afs" prefix is
+ 		 * understood by the salvager and must not be changed.
+ 		 */
+-		slen = scnprintf(silly, sizeof(silly), ".__afs%04X", sillycounter);
+-		sdentry = lookup_one_len(silly, dentry->d_parent, slen);
++		scnprintf(silly, sizeof(silly), ".__afs%04X", sillycounter);
++		sdentry = lookup_noperm(QSTR(silly), dentry->d_parent);
+ 
+ 		/* N.B. Better to return EBUSY here ... it could be dangerous
+ 		 * to delete the file while it's in use.
+diff --git a/fs/autofs/dev-ioctl.c b/fs/autofs/dev-ioctl.c
+index 6d57efbb8110..a577b175c38a 100644
+--- a/fs/autofs/dev-ioctl.c
++++ b/fs/autofs/dev-ioctl.c
+@@ -461,7 +461,8 @@ static int autofs_dev_ioctl_timeout(struct file *fp,
+ 				"prevent shutdown\n");
+ 
+ 		inode_lock_shared(inode);
+-		dentry = try_lookup_one_len(param->path, base, path_len);
++		dentry = try_lookup_noperm(&QSTR_LEN(param->path, path_len),
++					   base);
+ 		inode_unlock_shared(inode);
+ 		if (IS_ERR_OR_NULL(dentry))
+ 			return dentry ? PTR_ERR(dentry) : -ENOENT;
+diff --git a/fs/binfmt_misc.c b/fs/binfmt_misc.c
+index 5a7ebd160724..f0996a76ee7c 100644
+--- a/fs/binfmt_misc.c
++++ b/fs/binfmt_misc.c
+@@ -842,7 +842,7 @@ static ssize_t bm_register_write(struct file *file, const char __user *buffer,
+ 	}
+ 
+ 	inode_lock(d_inode(root));
+-	dentry = lookup_one_len(e->name, root, strlen(e->name));
++	dentry = lookup_noperm(QSTR(e->name), root);
+ 	err = PTR_ERR(dentry);
+ 	if (IS_ERR(dentry))
+ 		goto out;
+diff --git a/fs/debugfs/inode.c b/fs/debugfs/inode.c
+index 75715d8877ee..feb5ccb5bba8 100644
+--- a/fs/debugfs/inode.c
++++ b/fs/debugfs/inode.c
+@@ -346,7 +346,7 @@ struct dentry *debugfs_lookup(const char *name, struct dentry *parent)
+ 	if (!parent)
+ 		parent = debugfs_mount->mnt_root;
+ 
+-	dentry = lookup_positive_unlocked(name, parent, strlen(name));
++	dentry = lookup_noperm_positive_unlocked(QSTR(name), parent);
+ 	if (IS_ERR(dentry))
+ 		return NULL;
+ 	return dentry;
+@@ -388,7 +388,7 @@ static struct dentry *start_creating(const char *name, struct dentry *parent)
+ 	if (unlikely(IS_DEADDIR(d_inode(parent))))
+ 		dentry = ERR_PTR(-ENOENT);
+ 	else
+-		dentry = lookup_one_len(name, parent, strlen(name));
++		dentry = lookup_noperm(QSTR(name), parent);
+ 	if (!IS_ERR(dentry) && d_really_is_positive(dentry)) {
+ 		if (d_is_dir(dentry))
+ 			pr_err("Directory '%s' with parent '%s' already present!\n",
+@@ -872,7 +872,7 @@ int __printf(2, 3) debugfs_change_name(struct dentry *dentry, const char *fmt, .
+ 	}
+ 	if (strcmp(old_name.name.name, new_name) == 0)
+ 		goto out;
+-	target = lookup_one_len(new_name, parent, strlen(new_name));
++	target = lookup_noperm(QSTR(new_name), parent);
+ 	if (IS_ERR(target)) {
+ 		error = PTR_ERR(target);
+ 		goto out;
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index 51a5c54eb740..9a0d40bb43d6 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -394,8 +394,8 @@ static struct dentry *ecryptfs_lookup(struct inode *ecryptfs_dir_inode,
+ 	char *encrypted_and_encoded_name = NULL;
+ 	struct ecryptfs_mount_crypt_stat *mount_crypt_stat;
+ 	struct dentry *lower_dir_dentry, *lower_dentry;
+-	const char *name = ecryptfs_dentry->d_name.name;
+-	size_t len = ecryptfs_dentry->d_name.len;
++	struct qstr qname = QSTR_INIT(ecryptfs_dentry->d_name.name,
++				      ecryptfs_dentry->d_name.len);
+ 	struct dentry *res;
+ 	int rc = 0;
+ 
+@@ -404,23 +404,25 @@ static struct dentry *ecryptfs_lookup(struct inode *ecryptfs_dir_inode,
+ 	mount_crypt_stat = &ecryptfs_superblock_to_private(
+ 				ecryptfs_dentry->d_sb)->mount_crypt_stat;
+ 	if (mount_crypt_stat->flags & ECRYPTFS_GLOBAL_ENCRYPT_FILENAMES) {
++		size_t len = qname.len;
+ 		rc = ecryptfs_encrypt_and_encode_filename(
+ 			&encrypted_and_encoded_name, &len,
+-			mount_crypt_stat, name, len);
++			mount_crypt_stat, qname.name, len);
+ 		if (rc) {
+ 			printk(KERN_ERR "%s: Error attempting to encrypt and encode "
+ 			       "filename; rc = [%d]\n", __func__, rc);
+ 			return ERR_PTR(rc);
+ 		}
+-		name = encrypted_and_encoded_name;
++		qname.name = encrypted_and_encoded_name;
++		qname.len = len;
+ 	}
+ 
+-	lower_dentry = lookup_one_len_unlocked(name, lower_dir_dentry, len);
++	lower_dentry = lookup_noperm_unlocked(qname, lower_dir_dentry);
+ 	if (IS_ERR(lower_dentry)) {
+-		ecryptfs_printk(KERN_DEBUG, "%s: lookup_one_len() returned "
++		ecryptfs_printk(KERN_DEBUG, "%s: lookup_noperm() returned "
+ 				"[%ld] on lower_dentry = [%s]\n", __func__,
+ 				PTR_ERR(lower_dentry),
+-				name);
++				qname.name);
+ 		res = ERR_CAST(lower_dentry);
+ 	} else {
+ 		res = ecryptfs_lookup_interpose(ecryptfs_dentry, lower_dentry);
+diff --git a/fs/kernfs/mount.c b/fs/kernfs/mount.c
+index 1358c21837f1..46943a7fb4df 100644
+--- a/fs/kernfs/mount.c
++++ b/fs/kernfs/mount.c
+@@ -233,8 +233,8 @@ struct dentry *kernfs_node_dentry(struct kernfs_node *kn,
+ 			dput(dentry);
+ 			return ERR_PTR(-EINVAL);
+ 		}
+-		dtmp = lookup_positive_unlocked(kntmp->name, dentry,
+-					       strlen(kntmp->name));
++		dtmp = lookup_noperm_positive_unlocked(QSTR(kntmp->name),
++							 dentry);
+ 		dput(dentry);
+ 		if (IS_ERR(dtmp))
+ 			return dtmp;
 diff --git a/fs/namei.c b/fs/namei.c
-index b5abf456c5f4..75816fa80028 100644
+index 75816fa80028..16605f7108c0 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -2922,19 +2922,17 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
- EXPORT_SYMBOL(lookup_one_len);
+@@ -2833,9 +2833,9 @@ int vfs_path_lookup(struct dentry *dentry, struct vfsmount *mnt,
+ }
+ EXPORT_SYMBOL(vfs_path_lookup);
+ 
+-static int lookup_one_common(struct mnt_idmap *idmap,
+-			     const char *name, struct dentry *base, int len,
+-			     struct qstr *this)
++static int lookup_noperm_common(const char *name, struct dentry *base,
++				  int len,
++				  struct qstr *this)
+ {
+ 	this->name = name;
+ 	this->len = len;
+@@ -2860,51 +2860,59 @@ static int lookup_one_common(struct mnt_idmap *idmap,
+ 		if (err < 0)
+ 			return err;
+ 	}
++	return 0;
++}
+ 
++static int lookup_one_common(struct mnt_idmap *idmap,
++			     const char *name, struct dentry *base, int len,
++			     struct qstr *this) {
++	int err;
++	err = lookup_noperm_common(name, base, len, this);
++	if (err < 0)
++		return err;
+ 	return inode_permission(idmap, base->d_inode, MAY_EXEC);
+ }
  
  /**
-- * lookup_one - filesystem helper to lookup single pathname component
-+ * lookup_one - lookup single pathname component
-  * @idmap:	idmap of the mount the lookup is performed from
+- * try_lookup_one_len - filesystem helper to lookup single pathname component
 - * @name:	pathname component to lookup
-+ * @name:	qstr holding pathname component to lookup
++ * try_lookup_noperm - filesystem helper to lookup single pathname component
++ * @name:	qstr storing pathname component to lookup
   * @base:	base directory to lookup from
 - * @len:	maximum length @len should be interpreted to
   *
-- * Note that this routine is purely a helper for filesystem usage and should
+  * Look up a dentry by name in the dcache, returning NULL if it does not
+  * currently exist.  The function does not try to create a dentry.
+  *
+  * Note that this routine is purely a helper for filesystem usage and should
 - * not be called by generic code.
-+ * This can be used for in-kernel filesystem clients such as file servers.
++ * not be called by generic code.  It does no permission checking.
   *
   * The caller must hold base->i_mutex.
   */
--struct dentry *lookup_one(struct mnt_idmap *idmap, const char *name,
--			  struct dentry *base, int len)
-+struct dentry *lookup_one(struct mnt_idmap *idmap, struct qstr name,
-+			  struct dentry *base)
+-struct dentry *try_lookup_one_len(const char *name, struct dentry *base, int len)
++struct dentry *try_lookup_noperm(struct qstr *name, struct dentry *base)
  {
- 	struct dentry *dentry;
  	struct qstr this;
-@@ -2942,7 +2940,7 @@ struct dentry *lookup_one(struct mnt_idmap *idmap, const char *name,
+ 	int err;
  
  	WARN_ON_ONCE(!inode_is_locked(base->d_inode));
  
--	err = lookup_one_common(idmap, name, base, len, &this);
-+	err = lookup_one_common(idmap, name.name, base, name.len, &this);
+-	err = lookup_one_common(&nop_mnt_idmap, name, base, len, &this);
++	err = lookup_noperm_common(name->name, base, name->len, &this);
  	if (err)
  		return ERR_PTR(err);
  
-@@ -2952,27 +2950,24 @@ struct dentry *lookup_one(struct mnt_idmap *idmap, const char *name,
- EXPORT_SYMBOL(lookup_one);
+-	return lookup_dcache(&this, base, 0);
++	name->hash = this.hash;
++	return lookup_dcache(name, base, 0);
+ }
+-EXPORT_SYMBOL(try_lookup_one_len);
++EXPORT_SYMBOL(try_lookup_noperm);
  
  /**
-- * lookup_one_unlocked - filesystem helper to lookup single pathname component
-+ * lookup_one_unlocked - lookup single pathname component
-  * @idmap:	idmap of the mount the lookup is performed from
+- * lookup_one_len - filesystem helper to lookup single pathname component
 - * @name:	pathname component to lookup
-+ * @name:	qstr olding pathname component to lookup
++ * lookup_noperm - filesystem helper to lookup single pathname component
++ * @name:	qstr storing pathname component to lookup
   * @base:	base directory to lookup from
 - * @len:	maximum length @len should be interpreted to
   *
-- * Note that this routine is purely a helper for filesystem usage and should
+  * Note that this routine is purely a helper for filesystem usage and should
 - * not be called by generic code.
-+ * This can be used for in-kernel filesystem clients such as file servers.
++ * not be called by generic code.  It does no permission checking.
   *
-  * Unlike lookup_one_len, it should be called without the parent
+  * The caller must hold base->i_mutex.
+  */
+-struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
++struct dentry *lookup_noperm(struct qstr name, struct dentry *base)
+ {
+ 	struct dentry *dentry;
+ 	struct qstr this;
+@@ -2912,14 +2920,14 @@ struct dentry *lookup_one_len(const char *name, struct dentry *base, int len)
+ 
+ 	WARN_ON_ONCE(!inode_is_locked(base->d_inode));
+ 
+-	err = lookup_one_common(&nop_mnt_idmap, name, base, len, &this);
++	err = lookup_noperm_common(name.name, base, name.len, &this);
+ 	if (err)
+ 		return ERR_PTR(err);
+ 
+ 	dentry = lookup_dcache(&this, base, 0);
+ 	return dentry ? dentry : __lookup_slow(&this, base, 0);
+ }
+-EXPORT_SYMBOL(lookup_one_len);
++EXPORT_SYMBOL(lookup_noperm);
+ 
+ /**
+  * lookup_one - lookup single pathname component
+@@ -2957,7 +2965,7 @@ EXPORT_SYMBOL(lookup_one);
+  *
+  * This can be used for in-kernel filesystem clients such as file servers.
+  *
+- * Unlike lookup_one_len, it should be called without the parent
++ * Unlike lookup_one, it should be called without the parent
+  * i_rwsem held, and will take the i_rwsem itself if necessary.
+  */
+ struct dentry *lookup_one_unlocked(struct mnt_idmap *idmap,
+@@ -3010,39 +3018,49 @@ struct dentry *lookup_one_positive_unlocked(struct mnt_idmap *idmap,
+ EXPORT_SYMBOL(lookup_one_positive_unlocked);
+ 
+ /**
+- * lookup_one_len_unlocked - filesystem helper to lookup single pathname component
++ * lookup_noperm_unlocked - filesystem helper to lookup single pathname component
+  * @name:	pathname component to lookup
+  * @base:	base directory to lookup from
+  * @len:	maximum length @len should be interpreted to
+  *
+  * Note that this routine is purely a helper for filesystem usage and should
+- * not be called by generic code.
++ * not be called by generic code. It does no permission checking.
+  *
+- * Unlike lookup_one_len, it should be called without the parent
 - * i_mutex held, and will take the i_mutex itself if necessary.
++ * Unlike lookup_noperm, it should be called without the parent
 + * i_rwsem held, and will take the i_rwsem itself if necessary.
   */
- struct dentry *lookup_one_unlocked(struct mnt_idmap *idmap,
--				   const char *name, struct dentry *base,
--				   int len)
-+				   struct qstr name, struct dentry *base)
+-struct dentry *lookup_one_len_unlocked(const char *name,
+-				       struct dentry *base, int len)
++struct dentry *lookup_noperm_unlocked(struct qstr name,
++					struct dentry *base)
  {
- 	struct qstr this;
- 	int err;
- 	struct dentry *ret;
+-	return lookup_one_unlocked(&nop_mnt_idmap, QSTR_LEN(name, len), base);
++	struct dentry *ret;
++
++	ret = try_lookup_noperm(&name, base);
++	if (!ret)
++		ret = lookup_slow(&name, base, 0);
++	return ret;
+ }
+-EXPORT_SYMBOL(lookup_one_len_unlocked);
++EXPORT_SYMBOL(lookup_noperm_unlocked);
  
--	err = lookup_one_common(idmap, name, base, len, &this);
-+	err = lookup_one_common(idmap, name.name, base, name.len, &this);
- 	if (err)
- 		return ERR_PTR(err);
- 
-@@ -2984,12 +2979,10 @@ struct dentry *lookup_one_unlocked(struct mnt_idmap *idmap,
- EXPORT_SYMBOL(lookup_one_unlocked);
- 
- /**
-- * lookup_one_positive_unlocked - filesystem helper to lookup single
-- *				  pathname component
-+ * lookup_one_positive_unlocked - lookup single pathname component
-  * @idmap:	idmap of the mount the lookup is performed from
-- * @name:	pathname component to lookup
-+ * @name:	qstr holding pathname component to lookup
-  * @base:	base directory to lookup from
-- * @len:	maximum length @len should be interpreted to
-  *
-  * This helper will yield ERR_PTR(-ENOENT) on negatives. The helper returns
-  * known positive or ERR_PTR(). This is what most of the users want.
-@@ -2998,16 +2991,15 @@ EXPORT_SYMBOL(lookup_one_unlocked);
-  * time, so callers of lookup_one_unlocked() need to be very careful; pinned
-  * positives have >d_inode stable, so this one avoids such problems.
-  *
-- * Note that this routine is purely a helper for filesystem usage and should
-- * not be called by generic code.
-+ * This can be used for in-kernel filesystem clients such as file servers.
-  *
-- * The helper should be called without i_mutex held.
-+ * The helper should be called without i_rwsem held.
+ /*
+- * Like lookup_one_len_unlocked(), except that it yields ERR_PTR(-ENOENT)
++ * Like lookup_noperm_unlocked(), except that it yields ERR_PTR(-ENOENT)
+  * on negatives.  Returns known positive or ERR_PTR(); that's what
+  * most of the users want.  Note that pinned negative with unlocked parent
+- * _can_ become positive at any time, so callers of lookup_one_len_unlocked()
++ * _can_ become positive at any time, so callers of lookup_noperm_unlocked()
+  * need to be very careful; pinned positives have ->d_inode stable, so
+  * this one avoids such problems.
   */
- struct dentry *lookup_one_positive_unlocked(struct mnt_idmap *idmap,
--					    const char *name,
--					    struct dentry *base, int len)
-+					    struct qstr name,
-+					    struct dentry *base)
+-struct dentry *lookup_positive_unlocked(const char *name,
+-				       struct dentry *base, int len)
++struct dentry *lookup_noperm_positive_unlocked(struct qstr name,
++					       struct dentry *base)
  {
--	struct dentry *ret = lookup_one_unlocked(idmap, name, base, len);
-+	struct dentry *ret = lookup_one_unlocked(idmap, name, base);
- 
- 	if (!IS_ERR(ret) && d_flags_negative(smp_load_acquire(&ret->d_flags))) {
- 		dput(ret);
-@@ -3032,7 +3024,7 @@ EXPORT_SYMBOL(lookup_one_positive_unlocked);
- struct dentry *lookup_one_len_unlocked(const char *name,
- 				       struct dentry *base, int len)
- {
--	return lookup_one_unlocked(&nop_mnt_idmap, name, base, len);
-+	return lookup_one_unlocked(&nop_mnt_idmap, QSTR_LEN(name, len), base);
+-	return lookup_one_positive_unlocked(&nop_mnt_idmap, QSTR_LEN(name, len),
+-					    base);
++	struct dentry *ret = lookup_noperm_unlocked(name, base);
++
++	if (!IS_ERR(ret) && d_flags_negative(smp_load_acquire(&ret->d_flags))) {
++		dput(ret);
++		ret = ERR_PTR(-ENOENT);
++	}
++	return ret;
  }
- EXPORT_SYMBOL(lookup_one_len_unlocked);
+-EXPORT_SYMBOL(lookup_positive_unlocked);
++EXPORT_SYMBOL(lookup_noperm_positive_unlocked);
  
-@@ -3047,7 +3039,8 @@ EXPORT_SYMBOL(lookup_one_len_unlocked);
- struct dentry *lookup_positive_unlocked(const char *name,
- 				       struct dentry *base, int len)
- {
--	return lookup_one_positive_unlocked(&nop_mnt_idmap, name, base, len);
-+	return lookup_one_positive_unlocked(&nop_mnt_idmap, QSTR_LEN(name, len),
-+					    base);
- }
- EXPORT_SYMBOL(lookup_positive_unlocked);
+ #ifdef CONFIG_UNIX98_PTYS
+ int path_pts(struct path *path)
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index bf77399696a7..f52e57c31ae4 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -464,18 +464,17 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
  
+ 	sdentry = NULL;
+ 	do {
+-		int slen;
+ 		dput(sdentry);
+ 		sillycounter++;
+-		slen = scnprintf(silly, sizeof(silly),
+-				SILLYNAME_PREFIX "%0*llx%0*x",
+-				SILLYNAME_FILEID_LEN, fileid,
+-				SILLYNAME_COUNTER_LEN, sillycounter);
++		scnprintf(silly, sizeof(silly),
++			  SILLYNAME_PREFIX "%0*llx%0*x",
++			  SILLYNAME_FILEID_LEN, fileid,
++			  SILLYNAME_COUNTER_LEN, sillycounter);
+ 
+ 		dfprintk(VFS, "NFS: trying to rename %pd to %s\n",
+ 				dentry, silly);
+ 
+-		sdentry = lookup_one_len(silly, dentry->d_parent, slen);
++		sdentry = lookup_noperm(QSTR(silly), dentry->d_parent);
+ 		/*
+ 		 * N.B. Better to return EBUSY here ... it could be
+ 		 * dangerous to delete the file while it's in use.
+diff --git a/fs/overlayfs/export.c b/fs/overlayfs/export.c
+index 444aeeccb6da..a51025e8b2d0 100644
+--- a/fs/overlayfs/export.c
++++ b/fs/overlayfs/export.c
+@@ -385,11 +385,9 @@ static struct dentry *ovl_lookup_real_one(struct dentry *connected,
+ 	 */
+ 	take_dentry_name_snapshot(&name, real);
+ 	/*
+-	 * No idmap handling here: it's an internal lookup.  Could skip
+-	 * permission checking altogether, but for now just use non-idmap
+-	 * transformed ids.
++	 * No idmap handling here: it's an internal lookup.
+ 	 */
+-	this = lookup_one_len(name.name.name, connected, name.name.len);
++	this = lookup_noperm(name.name, connected);
+ 	release_dentry_name_snapshot(&name);
+ 	err = PTR_ERR(this);
+ 	if (IS_ERR(this)) {
 diff --git a/fs/overlayfs/namei.c b/fs/overlayfs/namei.c
-index be5c65d6f848..6a6301e4bba5 100644
+index 6a6301e4bba5..adb4af8d08db 100644
 --- a/fs/overlayfs/namei.c
 +++ b/fs/overlayfs/namei.c
-@@ -205,8 +205,8 @@ static struct dentry *ovl_lookup_positive_unlocked(struct ovl_lookup_data *d,
- 						   struct dentry *base, int len,
- 						   bool drop_negative)
- {
--	struct dentry *ret = lookup_one_unlocked(mnt_idmap(d->layer->mnt), name,
--						 base, len);
-+	struct dentry *ret = lookup_one_unlocked(mnt_idmap(d->layer->mnt),
-+						 QSTR_LEN(name, len), base);
- 
- 	if (!IS_ERR(ret) && d_flags_negative(smp_load_acquire(&ret->d_flags))) {
- 		if (drop_negative && ret->d_lockref.count == 1) {
-@@ -789,8 +789,8 @@ struct dentry *ovl_lookup_index(struct ovl_fs *ofs, struct dentry *upper,
+@@ -757,7 +757,7 @@ struct dentry *ovl_get_index_fh(struct ovl_fs *ofs, struct ovl_fh *fh)
  	if (err)
  		return ERR_PTR(err);
  
--	index = lookup_one_positive_unlocked(ovl_upper_mnt_idmap(ofs), name.name,
--					     ofs->workdir, name.len);
-+	index = lookup_one_positive_unlocked(ovl_upper_mnt_idmap(ofs), name,
-+					     ofs->workdir);
+-	index = lookup_positive_unlocked(name.name, ofs->workdir, name.len);
++	index = lookup_noperm_positive_unlocked(name, ofs->workdir);
+ 	kfree(name.name);
  	if (IS_ERR(index)) {
- 		err = PTR_ERR(index);
- 		if (err == -ENOENT) {
-@@ -1396,7 +1396,7 @@ bool ovl_lower_positive(struct dentry *dentry)
+ 		if (PTR_ERR(index) == -ENOENT)
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 825c5c2e0962..ea426467f26b 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -2560,7 +2560,7 @@ int dquot_quota_on_mount(struct super_block *sb, char *qf_name,
+ 	struct dentry *dentry;
+ 	int error;
  
- 		this = lookup_one_positive_unlocked(
- 				mnt_idmap(parentpath->layer->mnt),
--				name->name, parentpath->dentry, name->len);
-+				*name, parentpath->dentry);
- 		if (IS_ERR(this)) {
- 			switch (PTR_ERR(this)) {
- 			case -ENOENT:
-diff --git a/fs/overlayfs/overlayfs.h b/fs/overlayfs/overlayfs.h
-index 6f2f8f4cfbbc..ceaf4eb199c7 100644
---- a/fs/overlayfs/overlayfs.h
-+++ b/fs/overlayfs/overlayfs.h
-@@ -402,7 +402,7 @@ static inline struct dentry *ovl_lookup_upper(struct ovl_fs *ofs,
- 					      const char *name,
- 					      struct dentry *base, int len)
- {
--	return lookup_one(ovl_upper_mnt_idmap(ofs), name, base, len);
-+	return lookup_one(ovl_upper_mnt_idmap(ofs), QSTR_LEN(name, len), base);
- }
+-	dentry = lookup_positive_unlocked(qf_name, sb->s_root, strlen(qf_name));
++	dentry = lookup_noperm_positive_unlocked(QSTR(qf_name), sb->s_root);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
  
- static inline bool ovl_open_flags_need_copy_up(int flags)
-diff --git a/fs/overlayfs/readdir.c b/fs/overlayfs/readdir.c
-index 881ec5592da5..68df61f4bba7 100644
---- a/fs/overlayfs/readdir.c
-+++ b/fs/overlayfs/readdir.c
-@@ -271,7 +271,6 @@ static bool ovl_fill_merge(struct dir_context *ctx, const char *name,
- static int ovl_check_whiteouts(const struct path *path, struct ovl_readdir_data *rdd)
- {
- 	int err;
--	struct ovl_cache_entry *p;
- 	struct dentry *dentry, *dir = path->dentry;
- 	const struct cred *old_cred;
+diff --git a/fs/smb/client/cached_dir.c b/fs/smb/client/cached_dir.c
+index fe738623cf1b..854de94fc394 100644
+--- a/fs/smb/client/cached_dir.c
++++ b/fs/smb/client/cached_dir.c
+@@ -109,7 +109,8 @@ path_to_dentry(struct cifs_sb_info *cifs_sb, const char *path)
+ 		while (*s && *s != sep)
+ 			s++;
  
-@@ -280,9 +279,11 @@ static int ovl_check_whiteouts(const struct path *path, struct ovl_readdir_data
- 	err = down_write_killable(&dir->d_inode->i_rwsem);
- 	if (!err) {
- 		while (rdd->first_maybe_whiteout) {
--			p = rdd->first_maybe_whiteout;
-+			struct ovl_cache_entry *p =
-+				rdd->first_maybe_whiteout;
- 			rdd->first_maybe_whiteout = p->next_maybe_whiteout;
--			dentry = lookup_one(mnt_idmap(path->mnt), p->name, dir, p->len);
-+			dentry = lookup_one(mnt_idmap(path->mnt),
-+					    QSTR_LEN(p->name, p->len), dir);
- 			if (!IS_ERR(dentry)) {
- 				p->is_whiteout = ovl_is_whiteout(dentry);
- 				dput(dentry);
-@@ -492,7 +493,7 @@ static int ovl_cache_update(const struct path *path, struct ovl_cache_entry *p,
- 		}
- 	}
- 	/* This checks also for xwhiteouts */
--	this = lookup_one(mnt_idmap(path->mnt), p->name, dir, p->len);
-+	this = lookup_one(mnt_idmap(path->mnt), QSTR_LEN(p->name, p->len), dir);
- 	if (IS_ERR_OR_NULL(this) || !this->d_inode) {
- 		/* Mark a stale entry */
- 		p->is_whiteout = true;
-diff --git a/fs/smb/server/smb2pdu.c b/fs/smb/server/smb2pdu.c
-index f1efcd027475..c862e3bd4531 100644
---- a/fs/smb/server/smb2pdu.c
-+++ b/fs/smb/server/smb2pdu.c
-@@ -4091,9 +4091,10 @@ static int process_query_dir_entries(struct smb2_query_dir_private *priv)
- 			return -EINVAL;
+-		child = lookup_positive_unlocked(p, dentry, s - p);
++		child = lookup_noperm_positive_unlocked(QSTR_LEN(p, s-p),
++							dentry);
+ 		dput(dentry);
+ 		dentry = child;
+ 	} while (!IS_ERR(dentry));
+@@ -207,7 +208,7 @@ int open_cached_dir(unsigned int xid, struct cifs_tcon *tcon,
+ 	spin_unlock(&cfids->cfid_list_lock);
  
- 		lock_dir(priv->dir_fp);
--		dent = lookup_one(idmap, priv->d_info->name,
--				  priv->dir_fp->filp->f_path.dentry,
--				  priv->d_info->name_len);
-+		dent = lookup_one(idmap,
-+				  QSTR_LEN(priv->d_info->name,
-+					   priv->d_info->name_len),
-+				  priv->dir_fp->filp->f_path.dentry);
- 		unlock_dir(priv->dir_fp);
+ 	/*
+-	 * Skip any prefix paths in @path as lookup_positive_unlocked() ends up
++	 * Skip any prefix paths in @path as lookup_noperm_positive_unlocked() ends up
+ 	 * calling ->lookup() which already adds those through
+ 	 * build_path_from_dentry().  Also, do it earlier as we might reconnect
+ 	 * below when trying to send compounded request and then potentially
+diff --git a/fs/smb/client/cifsfs.c b/fs/smb/client/cifsfs.c
+index 6a3bd652d251..71eadc0305b5 100644
+--- a/fs/smb/client/cifsfs.c
++++ b/fs/smb/client/cifsfs.c
+@@ -925,7 +925,8 @@ cifs_get_root(struct smb3_fs_context *ctx, struct super_block *sb)
+ 		while (*s && *s != sep)
+ 			s++;
  
- 		if (IS_ERR(dent)) {
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index 45bff10d3773..1f01f4e734c5 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -57,7 +57,8 @@ struct qstr {
- };
+-		child = lookup_positive_unlocked(p, dentry, s - p);
++		child = lookup_noperm_positive_unlocked(QSTR_LEN(p, s - p),
++							dentry);
+ 		dput(dentry);
+ 		dentry = child;
+ 	} while (!IS_ERR(dentry));
+diff --git a/fs/tracefs/inode.c b/fs/tracefs/inode.c
+index cb1af30b49f5..aa7982e9b579 100644
+--- a/fs/tracefs/inode.c
++++ b/fs/tracefs/inode.c
+@@ -555,7 +555,7 @@ struct dentry *tracefs_start_creating(const char *name, struct dentry *parent)
+ 	if (unlikely(IS_DEADDIR(d_inode(parent))))
+ 		dentry = ERR_PTR(-ENOENT);
+ 	else
+-		dentry = lookup_one_len(name, parent, strlen(name));
++		dentry = lookup_noperm(QSTR(name), parent);
+ 	if (!IS_ERR(dentry) && d_inode(dentry)) {
+ 		dput(dentry);
+ 		dentry = ERR_PTR(-EEXIST);
+diff --git a/fs/xfs/scrub/orphanage.c b/fs/xfs/scrub/orphanage.c
+index 3537f3cca6d5..987af5b2bb82 100644
+--- a/fs/xfs/scrub/orphanage.c
++++ b/fs/xfs/scrub/orphanage.c
+@@ -153,8 +153,7 @@ xrep_orphanage_create(
  
- #define QSTR_INIT(n,l) { { { .len = l } }, .name = n }
--#define QSTR(n) (struct qstr)QSTR_INIT(n, strlen(n))
-+#define QSTR_LEN(n,l) (struct qstr)QSTR_INIT(n,l)
-+#define QSTR(n) QSTR_LEN(n, strlen(n))
- 
- extern const struct qstr empty_name;
- extern const struct qstr slash_name;
+ 	/* Try to find the orphanage directory. */
+ 	inode_lock_nested(root_inode, I_MUTEX_PARENT);
+-	orphanage_dentry = lookup_one_len(ORPHANAGE, root_dentry,
+-			strlen(ORPHANAGE));
++	orphanage_dentry = lookup_noperm(QSTR(ORPHANAGE), root_dentry);
+ 	if (IS_ERR(orphanage_dentry)) {
+ 		error = PTR_ERR(orphanage_dentry);
+ 		goto out_unlock_root;
 diff --git a/include/linux/namei.h b/include/linux/namei.h
-index e3042176cdf4..508dae67e3c5 100644
+index 508dae67e3c5..befe75439d7e 100644
 --- a/include/linux/namei.h
 +++ b/include/linux/namei.h
-@@ -73,13 +73,12 @@ extern struct dentry *try_lookup_one_len(const char *, struct dentry *, int);
- extern struct dentry *lookup_one_len(const char *, struct dentry *, int);
- extern struct dentry *lookup_one_len_unlocked(const char *, struct dentry *, int);
- extern struct dentry *lookup_positive_unlocked(const char *, struct dentry *, int);
--struct dentry *lookup_one(struct mnt_idmap *, const char *, struct dentry *, int);
-+struct dentry *lookup_one(struct mnt_idmap *, struct qstr, struct dentry *);
- struct dentry *lookup_one_unlocked(struct mnt_idmap *idmap,
--				   const char *name, struct dentry *base,
--				   int len);
-+				   struct qstr name, struct dentry *base);
- struct dentry *lookup_one_positive_unlocked(struct mnt_idmap *idmap,
--					    const char *name,
--					    struct dentry *base, int len);
-+					    struct qstr name,
-+					    struct dentry *base);
+@@ -69,10 +69,10 @@ int vfs_path_parent_lookup(struct filename *filename, unsigned int flags,
+ int vfs_path_lookup(struct dentry *, struct vfsmount *, const char *,
+ 		    unsigned int, struct path *);
  
- extern int follow_down_one(struct path *);
- extern int follow_down(struct path *path, unsigned int flags);
+-extern struct dentry *try_lookup_one_len(const char *, struct dentry *, int);
+-extern struct dentry *lookup_one_len(const char *, struct dentry *, int);
+-extern struct dentry *lookup_one_len_unlocked(const char *, struct dentry *, int);
+-extern struct dentry *lookup_positive_unlocked(const char *, struct dentry *, int);
++extern struct dentry *try_lookup_noperm(struct qstr *, struct dentry *);
++extern struct dentry *lookup_noperm(struct qstr, struct dentry *);
++extern struct dentry *lookup_noperm_unlocked(struct qstr, struct dentry *);
++extern struct dentry *lookup_noperm_positive_unlocked(struct qstr, struct dentry *);
+ struct dentry *lookup_one(struct mnt_idmap *, struct qstr, struct dentry *);
+ struct dentry *lookup_one_unlocked(struct mnt_idmap *idmap,
+ 				   struct qstr name, struct dentry *base);
+diff --git a/ipc/mqueue.c b/ipc/mqueue.c
+index 35b4f8659904..f3d76c4b6013 100644
+--- a/ipc/mqueue.c
++++ b/ipc/mqueue.c
+@@ -913,7 +913,7 @@ static int do_mq_open(const char __user *u_name, int oflag, umode_t mode,
+ 
+ 	ro = mnt_want_write(mnt);	/* we'll drop it in any case */
+ 	inode_lock(d_inode(root));
+-	path.dentry = lookup_one_len(name->name, root, strlen(name->name));
++	path.dentry = lookup_noperm(QSTR(name->name), root);
+ 	if (IS_ERR(path.dentry)) {
+ 		error = PTR_ERR(path.dentry);
+ 		goto out_putfd;
+@@ -969,8 +969,7 @@ SYSCALL_DEFINE1(mq_unlink, const char __user *, u_name)
+ 	if (err)
+ 		goto out_name;
+ 	inode_lock_nested(d_inode(mnt->mnt_root), I_MUTEX_PARENT);
+-	dentry = lookup_one_len(name->name, mnt->mnt_root,
+-				strlen(name->name));
++	dentry = lookup_noperm(QSTR(name->name), mnt->mnt_root);
+ 	if (IS_ERR(dentry)) {
+ 		err = PTR_ERR(dentry);
+ 		goto out_unlock;
+diff --git a/kernel/bpf/inode.c b/kernel/bpf/inode.c
+index dc3aa91a6ba0..77fda4101b06 100644
+--- a/kernel/bpf/inode.c
++++ b/kernel/bpf/inode.c
+@@ -421,7 +421,7 @@ static int bpf_iter_link_pin_kernel(struct dentry *parent,
+ 	int ret;
+ 
+ 	inode_lock(parent->d_inode);
+-	dentry = lookup_one_len(name, parent, strlen(name));
++	dentry = lookup_noperm(QSTR(name), parent);
+ 	if (IS_ERR(dentry)) {
+ 		inode_unlock(parent->d_inode);
+ 		return PTR_ERR(dentry);
+diff --git a/security/apparmor/apparmorfs.c b/security/apparmor/apparmorfs.c
+index 6039afae4bfc..dfc56cec5ab5 100644
+--- a/security/apparmor/apparmorfs.c
++++ b/security/apparmor/apparmorfs.c
+@@ -283,7 +283,7 @@ static struct dentry *aafs_create(const char *name, umode_t mode,
+ 	dir = d_inode(parent);
+ 
+ 	inode_lock(dir);
+-	dentry = lookup_one_len(name, parent, strlen(name));
++	dentry = lookup_noperm(QSTR(name), parent);
+ 	if (IS_ERR(dentry)) {
+ 		error = PTR_ERR(dentry);
+ 		goto fail_lock;
+@@ -2551,7 +2551,7 @@ static int aa_mk_null_file(struct dentry *parent)
+ 		return error;
+ 
+ 	inode_lock(d_inode(parent));
+-	dentry = lookup_one_len(NULL_FILE_NAME, parent, strlen(NULL_FILE_NAME));
++	dentry = lookup_noperm(QSTR(NULL_FILE_NAME), parent);
+ 	if (IS_ERR(dentry)) {
+ 		error = PTR_ERR(dentry);
+ 		goto out;
+diff --git a/security/inode.c b/security/inode.c
+index da3ab44c8e57..d04a52a52bdd 100644
+--- a/security/inode.c
++++ b/security/inode.c
+@@ -128,7 +128,7 @@ static struct dentry *securityfs_create_dentry(const char *name, umode_t mode,
+ 	dir = d_inode(parent);
+ 
+ 	inode_lock(dir);
+-	dentry = lookup_one_len(name, parent, strlen(name));
++	dentry = lookup_noperm(QSTR(name), parent);
+ 	if (IS_ERR(dentry))
+ 		goto out;
+ 
 -- 
 2.48.1
 
