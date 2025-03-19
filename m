@@ -1,40 +1,56 @@
-Received: from neil.brown.name (neil.brown.name [103.29.64.221])
+Received: from esa12.hc1455-7.c3s2.iphmx.com (esa12.hc1455-7.c3s2.iphmx.com [139.138.37.100])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F227B20CCD6;
-	Wed, 19 Mar 2025 03:16:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.29.64.221
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80022524F
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Mar 2025 03:24:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=139.138.37.100
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1742354170; cv=none; b=fz2eTWEf1GNTK/zL6zNTC5Vow1XdHwLq+zq+Q12Zl1tdl3FUXvVpTJx0yFeiTZ9X8kyFkZ2BUPwXsJBIlJ0hsO2CO5ndJjQ1x5aXUGcL1ya+foDv18reNVuWPSfBIbK1nf0fWZDyU2htBZ0f1MTCBWlvSXkvyukQgwKNI6P7n7Q=
+	t=1742354662; cv=none; b=gZZ6y6MYsC0QXp5WxXLk0pKIQDnLe0KMuAQvGM7wCojAdhI8W7KOzYgXqRei9ND1+6XSafm8jPYxlo92xzpbNTmgY8rgm9I6zfaV5MkqzxZRDZZF0KgmFuNGEKBssEvIDPV1Wmy75lqvV7ABTFBzOH286pzQow8gLmYI58eFwoU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1742354170; c=relaxed/simple;
-	bh=3x7wDQfm5TEXpoA1bSFNwJuCTn7lEwpUWFhzLb2+vt0=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=BJgBQt1yTimJk7sdGhLr7FN0PTlQOnSr2eGbR1i8rj7gaYg2IbA+JPjORy29gj+JtQa7JwJ31KOLn4+dqiuGlmWCJFC/UdevJU5DYnGNBWnGQz3SMlDMoXr45jTnfJhPpOwhpTqoBbbE3GndQjA9hUzrnj4m9LejZgIdsgZBoeg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name; spf=pass smtp.mailfrom=neil.brown.name; arc=none smtp.client-ip=103.29.64.221
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=neil.brown.name
-Received: from 196.186.233.220.static.exetel.com.au ([220.233.186.196] helo=home.neil.brown.name)
-	by neil.brown.name with esmtp (Exim 4.95)
-	(envelope-from <mr@neil.brown.name>)
-	id 1tujuO-00G6om-LT;
-	Wed, 19 Mar 2025 03:15:56 +0000
-From: NeilBrown <neil@brown.name>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	David Howells <dhowells@redhat.com>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	netfs@lists.linux.dev,
-	linux-fsdevel@vger.kernel.org
-Subject: [PATCH 3/6] cachefiles: Use lookup_one() rather than lookup_one_len()
-Date: Wed, 19 Mar 2025 14:01:34 +1100
-Message-ID: <20250319031545.2999807-4-neil@brown.name>
-X-Mailer: git-send-email 2.48.1
-In-Reply-To: <20250319031545.2999807-1-neil@brown.name>
-References: <20250319031545.2999807-1-neil@brown.name>
+	s=arc-20240116; t=1742354662; c=relaxed/simple;
+	bh=MN9oZmbNILNdEvoHmvsDnZPCG22sTovtr1MWMH+ia4A=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=RIZyKNxKoTyBecPwrOJBxzi50gw2MX+zanFzkEkAAEMrleaGCmLWlHe9F9q9bg4CIaaC5a+3q2JOiIIBJ6xm6vGXCbtT+xzlT1CVg47A0/g6jDj+crYCnO3L3LMFYT6QsFt/KDT9gImsM7kMzrS1O0gF6JphXcdrDV4pj2Vx5cQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=fujitsu.com; spf=pass smtp.mailfrom=fujitsu.com; dkim=pass (2048-bit key) header.d=fujitsu.com header.i=@fujitsu.com header.b=TD65pRA9; arc=none smtp.client-ip=139.138.37.100
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=fujitsu.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=fujitsu.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=fujitsu.com header.i=@fujitsu.com header.b="TD65pRA9"
+DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
+  d=fujitsu.com; i=@fujitsu.com; q=dns/txt; s=fj2;
+  t=1742354660; x=1773890660;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=MN9oZmbNILNdEvoHmvsDnZPCG22sTovtr1MWMH+ia4A=;
+  b=TD65pRA9c+iVS6EoL4IFo/8+4EvJj7QNEC48/E54JRLjQXdAVCK0PmOk
+   QEwlIKL6KIuRpIpXuTF9ujI2ati1YDlFgH2iHZQNVXbsCEOUnxubTTyjt
+   p3y5BdceQITQWUVmu/bng4FVZJiMiRcjv0jfDPOVV3e8zXABpiBue5nTY
+   SDG6VK85YF9hmG3OxqU00AdbgHH/DW69UVYTtQB34wljS9n0lsKHPRRM0
+   ibI1+nF/MFiINKBVWkV6b94Nr+r3lQjVkP4q3mNu9ZSMBsJsiZ6gEPRLI
+   wrk5LTc3nthISkAvLeIwoaL5DOSz3fKZXI3PYSxDCmJv8GUyal2M/cbm9
+   A==;
+X-CSE-ConnectionGUID: Dnoj5PGtSlu/gGtOBTg/TA==
+X-CSE-MsgGUID: sfW3vGp8ShC2iJXcGWu2fw==
+X-IronPort-AV: E=McAfee;i="6700,10204,11377"; a="172482630"
+X-IronPort-AV: E=Sophos;i="6.14,258,1736780400"; 
+   d="scan'208";a="172482630"
+Received: from unknown (HELO oym-r2.gw.nic.fujitsu.com) ([210.162.30.90])
+  by esa12.hc1455-7.c3s2.iphmx.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 19 Mar 2025 12:24:12 +0900
+Received: from oym-m1.gw.nic.fujitsu.com (oym-nat-oym-m1.gw.nic.fujitsu.com [192.168.87.58])
+	by oym-r2.gw.nic.fujitsu.com (Postfix) with ESMTP id 305A6D4C33
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Mar 2025 12:24:10 +0900 (JST)
+Received: from edo.cn.fujitsu.com (edo.cn.fujitsu.com [10.167.33.5])
+	by oym-m1.gw.nic.fujitsu.com (Postfix) with ESMTP id EAE6BD8B6E
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Mar 2025 12:24:09 +0900 (JST)
+Received: from G08XZGSD200059.g08.fujitsu.local (unknown [10.167.135.156])
+	by edo.cn.fujitsu.com (Postfix) with ESMTP id 5826E1A009A;
+	Wed, 19 Mar 2025 11:24:09 +0800 (CST)
+From: Chen Hanxiao <chenhx.fnst@fujitsu.com>
+To: calum.mackay@oracle.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] pynfs: fix key error if FATTR4_OPEN_ARGUMENTS is not supported
+Date: Wed, 19 Mar 2025 11:23:43 +0800
+Message-ID: <20250319032402.1789-1-chenhx.fnst@fujitsu.com>
+X-Mailer: git-send-email 2.47.1.windows.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -43,122 +59,31 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: NeilBrown <neilb@suse.de>
+If FATTR4_OPEN_ARGUMENTS is not supportd, DELEG24 and DELEG25
+will throw:
+	KeyError: 86
 
-cachefiles uses some VFS interfaces (such as vfs_mkdir) which take an
-explicit mnt_idmap, and it passes &nop_mnt_idmap as cachefiles doesn't
-yet support idmapped mounts.
+Check FATTR4_OPEN_ARGUMENTS in caps from server
 
-It also uses the lookup_one_len() family of functions which implicitly
-use &nop_mnt_idmap.  This mixture of implicit and explicit could be
-confusing.  When we eventually update cachefiles to support idmap mounts it
-would be best if all places which need an idmap determined from the
-mount point were similar and easily found.
-
-So this patch changes cachefiles to use lookup_one(), lookup_one_unlocked(),
-and lookup_one_positive_unlocked(), passing &nop_mnt_idmap.
-
-This has the benefit of removing the remaining user of the
-lookup_one_len functions where permission checking is actually needed.
-Other callers don't care about permission checking and using these
-function only where permission checking is needed is a valuable
-simplification.
-
-This requires passing the name in a qstr.  This is easily done with
-QSTR() as the name is always nul terminated, and often strlen is used
-anyway.  ->d_name_len is removed as no longer useful.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Chen Hanxiao <chenhx.fnst@fujitsu.com>
 ---
- fs/cachefiles/internal.h |  1 -
- fs/cachefiles/key.c      |  1 -
- fs/cachefiles/namei.c    | 14 +++++++-------
- 3 files changed, 7 insertions(+), 9 deletions(-)
+ nfs4.1/server41tests/st_delegation.py | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index 38c236e38cef..b62cd3e9a18e 100644
---- a/fs/cachefiles/internal.h
-+++ b/fs/cachefiles/internal.h
-@@ -71,7 +71,6 @@ struct cachefiles_object {
- 	int				debug_id;
- 	spinlock_t			lock;
- 	refcount_t			ref;
--	u8				d_name_len;	/* Length of filename */
- 	enum cachefiles_content		content_info:8;	/* Info about content presence */
- 	unsigned long			flags;
- #define CACHEFILES_OBJECT_USING_TMPFILE	0		/* Have an unlinked tmpfile */
-diff --git a/fs/cachefiles/key.c b/fs/cachefiles/key.c
-index bf935e25bdbe..4927b533b9ae 100644
---- a/fs/cachefiles/key.c
-+++ b/fs/cachefiles/key.c
-@@ -132,7 +132,6 @@ bool cachefiles_cook_key(struct cachefiles_object *object)
- success:
- 	name[len] = 0;
- 	object->d_name = name;
--	object->d_name_len = len;
- 	_leave(" = %s", object->d_name);
- 	return true;
- }
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 83a60126de0f..4fc6f3efd3d9 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -98,7 +98,7 @@ struct dentry *cachefiles_get_directory(struct cachefiles_cache *cache,
- retry:
- 	ret = cachefiles_inject_read_error();
- 	if (ret == 0)
--		subdir = lookup_one_len(dirname, dir, strlen(dirname));
-+		subdir = lookup_one(&nop_mnt_idmap, QSTR(dirname), dir);
- 	else
- 		subdir = ERR_PTR(ret);
- 	trace_cachefiles_lookup(NULL, dir, subdir);
-@@ -337,7 +337,7 @@ int cachefiles_bury_object(struct cachefiles_cache *cache,
- 		return -EIO;
- 	}
+diff --git a/nfs4.1/server41tests/st_delegation.py b/nfs4.1/server41tests/st_delegation.py
+index fa9b451..f27e852 100644
+--- a/nfs4.1/server41tests/st_delegation.py
++++ b/nfs4.1/server41tests/st_delegation.py
+@@ -311,6 +311,9 @@ def _testCbGetattr(t, env, change=0, size=0):
+                 OPEN4_SHARE_ACCESS_WRITE |
+                 OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG)
  
--	grave = lookup_one_len(nbuffer, cache->graveyard, strlen(nbuffer));
-+	grave = lookup_one(&nop_mnt_idmap, QSTR(nbuffer), cache->graveyard);
- 	if (IS_ERR(grave)) {
- 		unlock_rename(cache->graveyard, dir);
- 		trace_cachefiles_vfs_error(object, d_inode(cache->graveyard),
-@@ -629,8 +629,8 @@ bool cachefiles_look_up_object(struct cachefiles_object *object)
- 	/* Look up path "cache/vol/fanout/file". */
- 	ret = cachefiles_inject_read_error();
- 	if (ret == 0)
--		dentry = lookup_positive_unlocked(object->d_name, fan,
--						  object->d_name_len);
-+		dentry = lookup_one_positive_unlocked(&nop_mnt_idmap,
-+						      QSTR(object->d_name), fan);
- 	else
- 		dentry = ERR_PTR(ret);
- 	trace_cachefiles_lookup(object, fan, dentry);
-@@ -682,7 +682,7 @@ bool cachefiles_commit_tmpfile(struct cachefiles_cache *cache,
- 	inode_lock_nested(d_inode(fan), I_MUTEX_PARENT);
- 	ret = cachefiles_inject_read_error();
- 	if (ret == 0)
--		dentry = lookup_one_len(object->d_name, fan, object->d_name_len);
-+		dentry = lookup_one(&nop_mnt_idmap, QSTR(object->d_name), fan);
- 	else
- 		dentry = ERR_PTR(ret);
- 	if (IS_ERR(dentry)) {
-@@ -701,7 +701,7 @@ bool cachefiles_commit_tmpfile(struct cachefiles_cache *cache,
- 		dput(dentry);
- 		ret = cachefiles_inject_read_error();
- 		if (ret == 0)
--			dentry = lookup_one_len(object->d_name, fan, object->d_name_len);
-+			dentry = lookup_one(&nop_mnt_idmap, QSTR(object->d_name), fan);
- 		else
- 			dentry = ERR_PTR(ret);
- 		if (IS_ERR(dentry)) {
-@@ -750,7 +750,7 @@ static struct dentry *cachefiles_lookup_for_cull(struct cachefiles_cache *cache,
- 
- 	inode_lock_nested(d_inode(dir), I_MUTEX_PARENT);
- 
--	victim = lookup_one_len(filename, dir, strlen(filename));
-+	victim = lookup_one(&nop_mnt_idmap, QSTR(filename), dir);
- 	if (IS_ERR(victim))
- 		goto lookup_error;
- 	if (d_is_negative(victim))
++    if FATTR4_OPEN_ARGUMENTS not in caps:
++        fail("FATTR4_OPEN_ARGUMENTS not supported")
++
+     if caps[FATTR4_SUPPORTED_ATTRS] & FATTR4_OPEN_ARGUMENTS:
+         if caps[FATTR4_OPEN_ARGUMENTS].oa_share_access_want & OPEN_ARGS_SHARE_ACCESS_WANT_DELEG_TIMESTAMPS:
+             openmask |= 1<<OPEN_ARGS_SHARE_ACCESS_WANT_DELEG_TIMESTAMPS
 -- 
-2.48.1
+2.47.1
 
