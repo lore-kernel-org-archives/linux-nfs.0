@@ -1,80 +1,71 @@
-Received: from mail-244102.protonmail.ch (mail-244102.protonmail.ch [109.224.244.102])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej1-f42.google.com (mail-ej1-f42.google.com [209.85.218.42])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E100D1C84B6
-	for <linux-nfs@vger.kernel.org>; Sat, 22 Mar 2025 18:58:27 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=109.224.244.102
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7CA93EEC5
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Mar 2025 14:29:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1742669910; cv=none; b=kTnYrmaZnY0vk14lHkR7ls+TiDhWZ6NosaZClPHvoqjn2KMJpaUxnWaZirU7vOXzhERfsXAegAvsI1bIkZmHa0szBEuaM5mAlqKAfeST5tj4sc169G+MGB/APa5cFeJkXLVURyUxEH1eGZ9l18ap855OxuUB4kG/qltU7sCpQHM=
+	t=1742826598; cv=none; b=GDpvxCfiEG5qjTGW8JwS3vYRicef1Gdekn5iW0OCG2D/iZZnksfTjqtgwMkjH1qbujfBE+nrF4dKRzRCALlSnroCBJvFoTo7ONFq2Q9wefyaqsmd8ddIYfr3bvnfC4Gid3ffuYPMEFrZX5aE3Q9j3QgAWY1U+4QJA2bjTfdD0uk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1742669910; c=relaxed/simple;
-	bh=AQehVEGcHQlNtoNiVD+cDMG2JFMx+buNTLzFo+pJI0E=;
-	h=Date:To:From:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=dcnd9Zk3ABLYj/FRNI/HAGoftE11S+gYb3vlkQ3Lc7wzbbVA79cgTnoWRQf/HfUtJ9E85LKphOmIhfxZ0/m2qpWGOxSEijPPMlQDvx8oUkdcmzHykvUXMdBxkdlNEAXQt0Lq+zIC3KhWu1v6g4CnllF+eaI/JzviQcX0/HK2m2o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=proton.me; spf=pass smtp.mailfrom=proton.me; dkim=pass (2048-bit key) header.d=proton.me header.i=@proton.me header.b=GgS0urfs; arc=none smtp.client-ip=109.224.244.102
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=proton.me
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=proton.me
+	s=arc-20240116; t=1742826598; c=relaxed/simple;
+	bh=bd/MIbN3zOnWWraUbjfQLEjmGOyrVvJEqzQcTOxjP+U=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=Xk50gcmJRCSoQwAQjqeE/k6EeFHoqETSHEUp/MlzDBcT5VhyeNJwtYo4vyA4uCB4TfuidzIttTndRum2kng3Wm33/UMqc+vKX2bPQrRRxjRcHT7S8aJ83kLVCEbv+Gn6no8GNfgj7qSopl+jBsj7VjkP3m1Ng8DNaKTxqsnb8yQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=DCUk7B39; arc=none smtp.client-ip=209.85.218.42
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=proton.me header.i=@proton.me header.b="GgS0urfs"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=proton.me;
-	s=protonmail; t=1742669536; x=1742928736;
-	bh=AQehVEGcHQlNtoNiVD+cDMG2JFMx+buNTLzFo+pJI0E=;
-	h=Date:To:From:Cc:Subject:Message-ID:In-Reply-To:References:
-	 Feedback-ID:From:To:Cc:Date:Subject:Reply-To:Feedback-ID:
-	 Message-ID:BIMI-Selector:List-Unsubscribe:List-Unsubscribe-Post;
-	b=GgS0urfsd3ow57RM+0p6Ips7sY9lfNOUVbWa7IlEmtYCPBZ/9eD8MU+3noLWN2Hei
-	 hiqZKzLl6nbkOdHRWDWVb1K0ho0QeOWuDy+rPPVZqHWay2gY6T7nx/BMU0os2zhIzn
-	 feyASNSYOqN2LHz1QMPdVcovJo3SJbQpEVxUMfAon8s65PXEwZC2itwtprDhnPIm/A
-	 40asZX68ZcBtJDfsQeGTGIrn+p3WGEWZ4y84vs2ygbXXOzxpF9JMpFLuCv/vImnfm0
-	 +9MsAj5AQuBGbpo3DELVw5xHjF5gRnwL72JSe/EPS2VlGqid6F2KolZJyiLuxxtLdF
-	 Tj48t2F94JH0A==
-Date: Sat, 22 Mar 2025 18:52:09 +0000
-To: Chuck Lever <chuck.lever@oracle.com>
-From: John <therealgraysky@proton.me>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: kernel panic when starting nfsd on OpenWrt with kernel 6.12.19
-Message-ID: <aftSYzYb2wDE8d8Q_6_jph3l5F2XfBHwu8PA6UBHPO4lq8UtgdpUoGk_YQcd1upHD4ynl1B5LWzPytWanWx2-JGJ11rCmZVKgrdF3y-pUuY=@proton.me>
-In-Reply-To: <75ec06ad-7472-4e83-a20e-28543ec2909d@oracle.com>
-References: <xD3JWWvIeTEG7_-UtXFNOaGpYHZL9Dr4beYme8ebQZiBvaBcTu3u7Q9GxE7cJrGRYsfTjC2BPxBTuyl1TijqjUP8_nC4tpcfekVKuBtDp68=@proton.me> <0cd73138-baa7-4cd7-a6ed-7c5eefed495f@oracle.com> <yW5ewBN3-dAMHSq9KmbFRPRt_fK0FTmuqclUbu4K1kZPcfB6DmXRPOVC_OAwh1waQz2Of0qUDqxQ3YL-NBULF9H6-HMdVjixFAad20f5sUY=@proton.me> <75ec06ad-7472-4e83-a20e-28543ec2909d@oracle.com>
-Feedback-ID: 47473199:user:proton
-X-Pm-Message-ID: 4d1879361cfa4f3d3ccaa3421b7649d68c08035e
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="DCUk7B39"
+Received: by mail-ej1-f42.google.com with SMTP id a640c23a62f3a-ab7430e27b2so936272066b.3
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Mar 2025 07:29:56 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1742826594; x=1743431394; darn=vger.kernel.org;
+        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=bd/MIbN3zOnWWraUbjfQLEjmGOyrVvJEqzQcTOxjP+U=;
+        b=DCUk7B39s6u+kMm8IJ6ZvDU4ol6BkAdmaPX/K/QlGEgimDqr13nGEtDPqr0yd6FqsE
+         amV3Vu4+Z9g8ssDXCuqr9jIdBht9jhGQKRH335ilQofK8sHp6CvQ9rt6k/H9U4f+3t+F
+         yg+/taoHYnE67mAtdrFHCLeVerT6p212c0zvK+RYn9w7HwOhR2XfNKhCPWW7K2I0etn7
+         YIiKtTZu02WqySFY/WVJ82N1v/GL4g2zzvabZ8taFXRngZg7oDm+0+7hs/6tQMN1pfyb
+         F99pzSwnjdl13nqbJNNDz+qfk0hSpPCe1rEJs+3LoNfXEODZW/GOSVgci8emkI1M0+NF
+         PnoQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1742826594; x=1743431394;
+        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=bd/MIbN3zOnWWraUbjfQLEjmGOyrVvJEqzQcTOxjP+U=;
+        b=Klf2gcH97duvguYSQ66fWH7FW8LZVEP0BJF0h6wW7qUSEkiww41EK0B3nFmomx4kL+
+         OPJlJbpKnjXJfrkNgeroTa7z4AYFdd3vWEx/K0dLd5drG8brjWVNC+7xfISuEtDvjo8k
+         mTtzxjCiYlG3pouWMqlNnI1zpOURmRF9eqmluf0zRrUcnPKLofb+3XuhPqhpDlUwXfFE
+         niwfqjgocFhB/GzQ+8f73Aj8ARtrA6NTdjk/bwu+oGbQMD5rakM5bJIR+FW4m8DYlfBV
+         PjrTlXU4vuqChJCqquQDoHYqvcHpSww0UIrmwVV/YZDTXk77aMKOYE4vvD6hCUzm2gPh
+         5QbQ==
+X-Gm-Message-State: AOJu0YysnC5k4BO8uxj+GDSC8YBuYdvFrtlp4RIUQCT2gQAunBOJ2EEG
+	tgtbLJoYP/eKWm6GgWW1W+dF76JJu8+JRmG01caoMW1KHw0QFzLNtmA8LRrbtx01wOw6njQ4efh
+	+azN/cc5e/qvoUD+V9iM1o8W8sbRoBklD0pU=
+X-Gm-Gg: ASbGncvyC9Fi5pv9bTf+MfHQsBPyXQbsl4kIfk6pa28f6/nxKosMBX488aTpt+/GyTc
+	DJKuqs9kcoODCWyBOhzBJufC4n1KX2Qn9nwhCqaN51pn6wpVvzXy4WUCuGeJMgsUW1qVVKTlpZ0
+	e4fke2ZoZm6bB8R1dEkKwbfCeUpw==
+X-Google-Smtp-Source: AGHT+IGS9EB+EUD/I4daJULSQ1qUa9ywfxHR8pTklGTsMOGQ2s2CgLDqUBsAkQHfyOAvFhcXFpEYa8hOjm5TpE0FUj8=
+X-Received: by 2002:a17:907:72c2:b0:ac1:e53c:d13f with SMTP id
+ a640c23a62f3a-ac3f25318b8mr1340233966b.50.1742826593853; Mon, 24 Mar 2025
+ 07:29:53 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+From: Martin Wege <martin.l.wege@gmail.com>
+Date: Mon, 24 Mar 2025 15:29:17 +0100
+X-Gm-Features: AQ5f1JpRt9ygp_VYHMwKR0-w4AsGQyzGRoAo6U0ROL0V6cKCZENrmTcjC9RTQFs
+Message-ID: <CANH4o6NoWzPikoEtbVN1esw9d5KDgfOfds1iLfpUNeFcXzaA2w@mail.gmail.com>
+Subject: pynfs tests for NFSv4.1 OPENATTR / O_XATTR?
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 
+Hello!
 
-On Saturday, March 22nd, 2025 at 2:06 PM, Chuck Lever <chuck.lever@oracle.c=
-om> wrote:
+Does pynfs have tests for NFSv4.1 OPENATTR / O_XATTR?
 
-> If this is a "product" kernel then you should approach the distributor
-> first. I do not have the hardware, the binaries, the .config, or a
-> cross compiler for whatever "Hardware name: iKOOLCORE R2Max/R2Max" is
-> (guessing RPi ?)
-
-No, this is the vanilla kernel + OpenWrt project patches. No vendor involve=
-d. Also, both of the machines that are experiencing this bug are x86/64, no=
-t ARM.
-
-> This:
->=20
-> nfsd4_client_tracking_init+0x39/0x150 [nfsd]
->=20
-> suggests that your distributor (or LTS) might be missing a fix
-> for recent crashes that are due to incorrectly setting
-> CONFIG_NFSD_LEGACY_CLIENT_TRACKING. I'm thinking of perhaps
->=20
-> de71d4e211ed ("nfsd: fix legacy client tracking initialization")
->=20
-> in particular, which does not appear to have been applied to
-> v6.12.19.
-
-I applied this commit to my image build and found no bug upon starting nfsd=
- with 6.12.19. I will comment the bug report[1] with this info. Many thanks=
- for pointing this out, Chuck!
-
-1. https://bugzilla.kernel.org/show_bug.cgi?id=3D219911
+Thanks,
+Martin
