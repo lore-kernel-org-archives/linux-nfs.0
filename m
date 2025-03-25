@@ -1,38 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CFC77149C41
-	for <linux-nfs@vger.kernel.org>; Tue, 25 Mar 2025 00:46:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0EC6E149C6F
+	for <linux-nfs@vger.kernel.org>; Tue, 25 Mar 2025 00:46:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1742863602; cv=none; b=GWCI2gMrjb8mwLY45mSVQeasem2kgdCbbfxoycJZKO/A5M7ZQu1ThGuL7m1HS2AWoNdT+jGK076bELdxoePQmjuiy8BBX4REaxQRx6vUn7p7OTzCxTjMcGhFVuiQlirlSydwiqTCRw+Uc2waMwSHfimVrZJQVMe9BjBnonO++6c=
+	t=1742863603; cv=none; b=Zi/H3dh3A2iYWgOzE477CrVZ7IGJYNH5Vof3EOahpOSvVWFXob1jM4aji70U3+OASJ+mqnekJIPcWr9MDkn9Sy7h8ZE5FJYtFuItYPeokd2KLcIGwmDzZmgGBNcwGv1lsEEqme0fQSi8vstZJeyO7tIDzwAZYC1R54bTaPQsJy0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1742863602; c=relaxed/simple;
-	bh=MnAEOxXKb+Yv4shqe0+/v7Z2v9SG0rbYRhs3xsaLu4E=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=kaTNMt9MkYFi2m9tpbr7hHW0kTdm2zOFjd7uk23xRnl8TGvCdYiLDxWNwgw4t0SHfpeXvLmcyF7f5YRuHKOrVDEFoQIR4LkSBoo4iPTPaIyaX3tY+oyTVfxzmoHcgy1ZwR0KVQ+nvm7flKmfJ9v+dWg13CrdZ4coo/65AmsmBtE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gsNZruic; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1742863603; c=relaxed/simple;
+	bh=UFB3jUwcCxDUXVdknAFj4Uw6pT1TD0qSPXu/fNHud/0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=QdsYMPRNgNKGQ9Z+CuCF9JP0SCGPb3wc2EGP4a2ULNWCaWhbV20obg3/4eL//WPXUs981C5KptJCEqGBDRl9fOh9pYlJTwZcVMYMM0WPR14AIWPKWxBOCRe376tMwQC8ZrdJque/ld7QA/8zySwiu8lqvfyIZE0SV0V0v5QZG2M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OByzaeD3; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gsNZruic"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DF574C4CEE4;
-	Tue, 25 Mar 2025 00:46:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OByzaeD3"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 97DBEC4CEED;
+	Tue, 25 Mar 2025 00:46:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1742863601;
-	bh=MnAEOxXKb+Yv4shqe0+/v7Z2v9SG0rbYRhs3xsaLu4E=;
-	h=From:To:Cc:Subject:Date:From;
-	b=gsNZruics/idboLC+sRM+eOG3tzQYTI1R7Z8dkVVPR5F2xI0sUrv4FFGxMkmliJCs
-	 eUqMuL16xYoVZ8202ItyPT99IDPbk1pb1ThJl6W+3hcLwoU7aI+6vp9LjEQnWf8X8j
-	 jH/b2nPXeqfOqYkyr6CG6Amme8rmqDNmyNJqFXp70j5vHdXk8ccu0+b50ja7rCgq60
-	 41lb4WgJ/iFp4PWojsMryll0i5lD/WoNNrk5x3UQvM1b3dz1RET8/gWg0tZGG0ZaqV
-	 6mdDVBBdjhJQu2qW4+c2tmAzkbfzxTMAdGLtRBEcpcH+YYwx5Wwa7wFzVAkZ6LYMV/
-	 YPN11IXz4sEIg==
+	s=k20201202; t=1742863602;
+	bh=UFB3jUwcCxDUXVdknAFj4Uw6pT1TD0qSPXu/fNHud/0=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=OByzaeD30dSu668EhJGDCLwEIvtHzB2HXT0Onkp+Izmsi9vqeN1pMYHnOKnXX9r1g
+	 tXg4XGrCWjWJT2roHECf/XaxqfkeUEkJgaSA6WvFzN3F66OFNF5FzKWPrQ9gZi4qrM
+	 eSKjMPHRpxul5ZEzlIx6NDyEWL/A01SJwXjglKdZgGIBk9GahKUVWJPlx0GfzL3oew
+	 R2J8167bHweHvuZh2e19eVbS4IZol1FJfSJhq7o/3V0lynaEJMTo5Kw9clNplInNbC
+	 F2ViF/JdIepyC7Vzf1xqjqNowoBktWchJ95HZJ43ufGtD7aSkQwKUAeBmmL8hJYVcv
+	 HHOmmUkEkvZ7A==
 From: trondmy@kernel.org
 To: linux-nfs@vger.kernel.org
 Cc: Jeff Layton <jlayton@kernel.org>,
 	Josef Bacik <josef@toxicpanda.com>
-Subject: [PATCH 0/4] Ensure that ENETUNREACH terminates state recovery
-Date: Mon, 24 Mar 2025 20:46:35 -0400
-Message-ID: <cover.1742863168.git.trond.myklebust@hammerspace.com>
+Subject: [PATCH 3/4] NFSv4: clp->cl_cons_state < 0 signifies an invalid nfs_client
+Date: Mon, 24 Mar 2025 20:46:38 -0400
+Message-ID: <56bc4d7e614a6d9d0aa520c71bd0ffb102e3ef08.1742863168.git.trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.49.0
+In-Reply-To: <cover.1742863168.git.trond.myklebust@hammerspace.com>
+References: <cover.1742863168.git.trond.myklebust@hammerspace.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -43,22 +46,37 @@ Content-Transfer-Encoding: 8bit
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-With the recent patch series that caused containerised mounts which
-return ENETUNREACH or ENETDOWN errors to report fatal errors, we also
-want to ensure that the state manager thread also triggers fatal errors
-in the processes or threads that are waiting for recovery to complete.
+If someone calls nfs_mark_client_ready(clp, status) with a negative
+value for status, then that should signal that the nfs_client is no
+longer valid.
 
-Trond Myklebust (4):
-  SUNRPC: rpcbind should never reset the port to the value '0'
-  SUNRPC: rpc_clnt_set_transport() must not change the autobind setting
-  NFSv4: clp->cl_cons_state < 0 signifies an invalid nfs_client
-  NFSv4: Treat ENETUNREACH errors as fatal for state recovery
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ fs/nfs/nfs4state.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
- fs/nfs/nfs4state.c     | 14 +++++++++++---
- net/sunrpc/clnt.c      |  3 ---
- net/sunrpc/rpcb_clnt.c |  5 +++--
- 3 files changed, 14 insertions(+), 8 deletions(-)
-
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 542cdf71229f..738eb2789266 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1198,7 +1198,7 @@ void nfs4_schedule_state_manager(struct nfs_client *clp)
+ 	struct rpc_clnt *clnt = clp->cl_rpcclient;
+ 	bool swapon = false;
+ 
+-	if (clnt->cl_shutdown)
++	if (clnt->cl_shutdown || clp->cl_cons_state < 0)
+ 		return;
+ 
+ 	set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
+@@ -1403,7 +1403,7 @@ int nfs4_schedule_stateid_recovery(const struct nfs_server *server, struct nfs4_
+ 	dprintk("%s: scheduling stateid recovery for server %s\n", __func__,
+ 			clp->cl_hostname);
+ 	nfs4_schedule_state_manager(clp);
+-	return 0;
++	return clp->cl_cons_state < 0 ? clp->cl_cons_state : 0;
+ }
+ EXPORT_SYMBOL_GPL(nfs4_schedule_stateid_recovery);
+ 
 -- 
 2.49.0
 
