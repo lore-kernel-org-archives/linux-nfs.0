@@ -1,80 +1,81 @@
 Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 975B418C345
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Mar 2025 23:54:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 69B0F23AD
+	for <linux-nfs@vger.kernel.org>; Fri, 28 Mar 2025 00:08:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1743119659; cv=none; b=gjqvBQUIuiLvFKS8QUKscvXXWbVM/utLk+3XiM0IfhPUhJy1qszsxbbsWC1NBKgAWEjhLTQAXKsoJ/2neEMtUFuaRhOPsucH9ZqOVbqd8Cs1fsYNBHSuTrfER0zd4tUQwxjvT2gtijJYLcPUTc8rQon08Ab1AKu6ZQUULk+fP50=
+	t=1743120484; cv=none; b=JRAOEJ2MenWzsEGApKWaW3c2GipPLNzkSktb7b6zhtctObcnIvUTZXREtZvUiDN30dw2h1fDRaQveYQWIApEMDngXb4ANEbfKmxTmjsKvIXAPkHDYPH4I8Ti7KOFjvcex6iwDL31KNNGUFRVyxR+nJixH5Ih5VslQlt6QL7xTiA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1743119659; c=relaxed/simple;
-	bh=f2OvPW+VC60VX4XxNJnVyQ3+Fv5AfXZJtAWxm6lHWdU=;
+	s=arc-20240116; t=1743120484; c=relaxed/simple;
+	bh=3Bz+BViAAT9qL27+DxOqhquBs9fPKRjrbbw7gMa8+yw=;
 	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=MuEYGQxqkbk3oIylpYwxnuYP0SsID11nCm2iVpKJ1eDZ/N1UJ7GsFPy7zmBeCKJ+MDyRbXxrLcPuVkCkhyZCJvrMxBFcLK6V4O7F7cP2QkbzCX+csykN9EEbNU8htQvHkiWpp6G87IyT0uXP9cte/pSWgHY/VjKJNkxz0Pj2Wuc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=xowgWOrI; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=DaQKh6iT; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=xowgWOrI; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=DaQKh6iT; arc=none smtp.client-ip=195.135.223.131
+	 References:Date:Message-id; b=GCeX01bESL4BWK+Q4YrxJ0/cbAy7rCkRq9kia4+fgqMf7qVPfkXlvHs5j3Bm4xmmeUYeVtD/vQv7kBy+OYSlnBVqB94CwIgfYvrAHBqypRl8abtnaXbDJe8bPNzOtvx1W3L+X97yKXOo24neDgHxr/fVV1D3aO8NDQQL0vxvcqM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=jwurCCos; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=bWpUQ4dq; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=jwurCCos; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=bWpUQ4dq; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="xowgWOrI";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="DaQKh6iT";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="xowgWOrI";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="DaQKh6iT"
-Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="jwurCCos";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="bWpUQ4dq";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="jwurCCos";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="bWpUQ4dq"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 857B01F388;
-	Thu, 27 Mar 2025 23:54:13 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 279A71F388;
+	Fri, 28 Mar 2025 00:08:00 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1743119653; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1743120480; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=IGOTBfvzWKQRD24Pi3f+RERipMh+QDAhxuflcAg8GUs=;
-	b=xowgWOrIEZaNKjazZBLgeOPclchanXlXdg4ts75k4Go+PkZcnzx05Va6UMM4KT1QkrTGb2
-	q+uWZMKNQCc59BnO74687nBPAakOlX8Frw0ftEzbl1IIb7wXTDsShyHqOx46ARX7X+W/Mv
-	ZA/0KdfS9ju8Ju/MuYcj6La22rgS7+k=
+	bh=ZjnM0VqrBMrgQ0Y0a0SVmkjIvJPyYUGYEEPe8LVunNE=;
+	b=jwurCCosV7Jydr1xQg0BOdwcFdt1R93Inn17uTZsCmBvGWf/PQLoEywsCB/eKDRwwdP1H1
+	8nMSGUaVvVity+c/h8y8DNVSjEozvxxk4D/i15dSzbimmu3CahXSqMD6/Ij0UffKRXwCwD
+	BXNB1aMHcSeZOZaJfktNKoU6imgUxcM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1743119653;
+	s=susede2_ed25519; t=1743120480;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=IGOTBfvzWKQRD24Pi3f+RERipMh+QDAhxuflcAg8GUs=;
-	b=DaQKh6iTHEqy7CHzKt21/ThEyEibolSICXt+ekeoNgp8RFTPU/vOodj9DR4xrxudsR6QOF
-	orMUlcBuaIAewmDw==
+	bh=ZjnM0VqrBMrgQ0Y0a0SVmkjIvJPyYUGYEEPe8LVunNE=;
+	b=bWpUQ4dqTo2KZNAyl3ULo4S0GX3NmrfV7uca2Ma/1Ulz3iXqDGrffN9N6TtTXTZKjP9fb/
+	24xPhA4kGAoE9dCA==
 Authentication-Results: smtp-out2.suse.de;
-	none
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=jwurCCos;
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=bWpUQ4dq
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1743119653; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1743120480; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=IGOTBfvzWKQRD24Pi3f+RERipMh+QDAhxuflcAg8GUs=;
-	b=xowgWOrIEZaNKjazZBLgeOPclchanXlXdg4ts75k4Go+PkZcnzx05Va6UMM4KT1QkrTGb2
-	q+uWZMKNQCc59BnO74687nBPAakOlX8Frw0ftEzbl1IIb7wXTDsShyHqOx46ARX7X+W/Mv
-	ZA/0KdfS9ju8Ju/MuYcj6La22rgS7+k=
+	bh=ZjnM0VqrBMrgQ0Y0a0SVmkjIvJPyYUGYEEPe8LVunNE=;
+	b=jwurCCosV7Jydr1xQg0BOdwcFdt1R93Inn17uTZsCmBvGWf/PQLoEywsCB/eKDRwwdP1H1
+	8nMSGUaVvVity+c/h8y8DNVSjEozvxxk4D/i15dSzbimmu3CahXSqMD6/Ij0UffKRXwCwD
+	BXNB1aMHcSeZOZaJfktNKoU6imgUxcM=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1743119653;
+	s=susede2_ed25519; t=1743120480;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=IGOTBfvzWKQRD24Pi3f+RERipMh+QDAhxuflcAg8GUs=;
-	b=DaQKh6iTHEqy7CHzKt21/ThEyEibolSICXt+ekeoNgp8RFTPU/vOodj9DR4xrxudsR6QOF
-	orMUlcBuaIAewmDw==
+	bh=ZjnM0VqrBMrgQ0Y0a0SVmkjIvJPyYUGYEEPe8LVunNE=;
+	b=bWpUQ4dqTo2KZNAyl3ULo4S0GX3NmrfV7uca2Ma/1Ulz3iXqDGrffN9N6TtTXTZKjP9fb/
+	24xPhA4kGAoE9dCA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 770EA1376E;
-	Thu, 27 Mar 2025 23:54:11 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 14731139D4;
+	Fri, 28 Mar 2025 00:07:57 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id vq7FCyPl5Wd7fgAAD6G6ig
-	(envelope-from <neilb@suse.de>); Thu, 27 Mar 2025 23:54:11 +0000
+	id a6L9Ll3o5WfEAwAAD6G6ig
+	(envelope-from <neilb@suse.de>); Fri, 28 Mar 2025 00:07:57 +0000
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 7bit
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -85,85 +86,92 @@ From: "NeilBrown" <neilb@suse.de>
 To: "Olga Kornievskaia" <okorniev@redhat.com>
 Cc: chuck.lever@oracle.com, jlayton@kernel.org, linux-nfs@vger.kernel.org,
  Dai.Ngo@oracle.com, tom@talpey.com, "Olga Kornievskaia" <okorniev@redhat.com>
-Subject:
- Re: [PATCH 3/3] nfsd: reset access mask for NLM calls in nfsd_permission
-In-reply-to: <20250322001306.41666-4-okorniev@redhat.com>
-References: <20250322001306.41666-1-okorniev@redhat.com>,
- <20250322001306.41666-4-okorniev@redhat.com>
-Date: Fri, 28 Mar 2025 10:54:08 +1100
-Message-id: <174311964828.9342.15055420092560166796@noble.neil.brown.name>
-X-Spam-Level: 
-X-Spamd-Result: default: False [-4.30 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
+Subject: Re: [PATCH 0/3] access checking fixes for NLM under security policies
+In-reply-to: <20250322001306.41666-1-okorniev@redhat.com>
+References: <20250322001306.41666-1-okorniev@redhat.com>
+Date: Fri, 28 Mar 2025 11:07:54 +1100
+Message-id: <174312047480.9342.7103250290767163738@noble.neil.brown.name>
+X-Rspamd-Queue-Id: 279A71F388
+X-Spam-Score: -4.51
+X-Rspamd-Action: no action
+X-Spamd-Result: default: False [-4.51 / 50.00];
+	BAYES_HAM(-3.00)[99.99%];
 	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
 	NEURAL_HAM_SHORT(-0.20)[-1.000];
 	MIME_GOOD(-0.10)[text/plain];
-	ARC_NA(0.00)[];
+	MX_GOOD(-0.01)[];
 	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
 	MISSING_XM_UA(0.00)[];
-	MIME_TRACE(0.00)[0:+];
 	RCPT_COUNT_SEVEN(0.00)[7];
+	MIME_TRACE(0.00)[0:+];
+	FUZZY_BLOCKED(0.00)[rspamd.com];
 	RCVD_TLS_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
+	FROM_EQ_ENVFROM(0.00)[];
 	FROM_HAS_DN(0.00)[];
 	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	RCVD_COUNT_TWO(0.00)[2];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo]
-X-Spam-Score: -4.30
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.de:dkim];
+	DKIM_TRACE(0.00)[suse.de:+]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
 X-Spam-Flag: NO
+X-Spam-Level: 
 
 On Sat, 22 Mar 2025, Olga Kornievskaia wrote:
-> NLM locking calls need to pass thru file permission checking
-> and for that prior to calling inode_permission() we need
-> to set appropriate access mask.
->=20
-> Fixes: 4cc9b9f2bf4d ("nfsd: refine and rename NFSD_MAY_LOCK")
-> Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
-> ---
->  fs/nfsd/vfs.c | 7 +++++++
->  1 file changed, 7 insertions(+)
->=20
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 4021b047eb18..7928ae21509f 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -2582,6 +2582,13 @@ nfsd_permission(struct svc_cred *cred, struct svc_ex=
-port *exp,
->  	if ((acc & NFSD_MAY_TRUNC) && IS_APPEND(inode))
->  		return nfserr_perm;
-> =20
-> +	/*
-> +	 * For the purpose of permission checking of NLM requests,
-> +	 * the locker must have READ access or own the file
-> +	 */
-> +	if (acc & NFSD_MAY_NLM)
-> +		acc =3D NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE;
-> +
+> Since commit 4cc9b9f2bf4df ("nfsd: refine and rename NFSD_MAY_LOCK")
+> for export policies with "sec=krb5:..." or "xprtsec=tls:.." NLM
+> locking calls on v3 mounts fail. And for "sec=krb5" NLM calls it
+> also leads to out-of-bounds reference while in check_nfsd_access().
+> 
+> This patch series address 3 problems.
+> 
+> The first patch addresses a problem related to a TLS export
+> policy. NLM call dont come over TLS and thus dont pass the
+> TLS checks in check_nfsd_access() leading to access being
+> denied. Instead rely on may_bypass_gss to indicate NLM and
+> allow access checking to continue.
+> 
+> The other 2 patches are for problems related to sec=krb5.
+> The 2nd patch is because previously for NLM check_nfsd_access()
+> was never called and thus nfsd4_spo_must_allow() function wasn't
+> called. After the patch, this lead to NLM call which has no
+> compound state structure created trying to dereference it.
+> This patch instead moves the call to after may_bypass_gss
+> check which implies NLM and would return there and would
+> never get to calling nfsd4_spo_must_allow().
+> 
+> The last patch is fixing what "access" content is being passed
+> into the inode_permission(). Prior to 4cc9b9f2bf4df, the code would
+> explicitly set access to be read/ownership. And after is passes
+> access that's set in nlm_fopen but it's lacking read access.
+> 
+> Olga Kornievskaia (3):
+>   nfsd: fix access checking for NLM under XPRTSEC policies
+I agree with this patch
+  Reviewed-by: NeilBrown <neil@brown.name>
 
-I don't agree with this change.
-The only time that NFSD_MAY_NLM is set, NFSD_MAY_OWNER_OVERRIDE is also
-set.  So that part of the change adds no value.
+>   nfsd: adjust nfsd4_spo_must_allow checking order
+I don't disagree with this patch but I don't think it is the best fix.
+I've posted an alternate fix.  It would be OK for both to go in.
 
-This change only affects the case where a write lock is being requested.
-In that case acc will contains NFSD_MAY_WRITE but not NFSD_MAY_READ.
-This change will set NFSD_MAY_READ.  Is that really needed?
-
-Can you please describe the particular problem you saw that is fixed by
-this patch?  If there is a problem and we do need to add NFSD_MAY_READ,
-then I would rather it were done in nlm_fopen().
+>   nfsd: reset access mask for NLM calls in nfsd_permission
+I don't like this one.  I've explained why separately.
 
 Thanks,
 NeilBrown
 
 
->  	/*
->  	 * The file owner always gets access permission for accesses that
->  	 * would normally be checked at open time. This is to make
-> --=20
+> 
+>  fs/nfsd/export.c | 20 ++++++++++----------
+>  fs/nfsd/vfs.c    |  7 +++++++
+>  2 files changed, 17 insertions(+), 10 deletions(-)
+> 
+> -- 
 > 2.47.1
->=20
->=20
+> 
+> 
+> 
 
