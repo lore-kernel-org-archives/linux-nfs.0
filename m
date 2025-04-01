@@ -1,64 +1,72 @@
-Received: from mail-ej1-f43.google.com (mail-ej1-f43.google.com [209.85.218.43])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from icts-p-cavspool-1.kulnet.kuleuven.be (icts-p-cavspool-1.kulnet.kuleuven.be [134.58.240.194])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1F3834690
-	for <linux-nfs@vger.kernel.org>; Tue,  1 Apr 2025 12:05:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.43
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D95D202C38
+	for <linux-nfs@vger.kernel.org>; Tue,  1 Apr 2025 12:20:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=134.58.240.194
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1743509133; cv=none; b=EfXqC268ACDk7ZbcswedOD3psdKw+eRKj9TrQeOFtPFhPAXfSqUB7qndRL3vbqHgA4DctnCkCNRSvG//Rp+Wd6jzPYY1VwKnc0UzHgJ/uxGcsIf/JRBHOw+NePfm0v3je7jyHvXi5jLq/JDPKamXpiF5YPtE2ofNT6qX67n7qMw=
+	t=1743510024; cv=none; b=P6iuH+ma3iSftUr9kwkqXtSnmtufNizVn/EwppA1aMUzmn+0ULe/XlYUpfY10wmTFSEnX9K1RRrltuWbDdhAhScoQei+DVvMdbLU8ygMNdiZDuvjpJwXvl3RJ6vTwWDxij0YMEjff9mzJ5LOgeIHOoIZVlUfQNyFSzGxPVvQXJ8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1743509133; c=relaxed/simple;
-	bh=foR2673ynlw5mO5LAB6pNh0kpT1Cr51I5MCnMgd5cb4=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=kcVQXg7xsGVQM4eDESY7NCDb55u/SURahdkxNCcnzHCD2CleMPoqh+AihbROzKFss0q5yjd3vlvzPdUw3Wrj9X9PdxGLKHdyj08+SDbHZhb9BhKkJNiDypOIEXWcuP9dxLFyVbmgpUl+l8xup7RlZamvNQU7d3BvruJsh/OwMGw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=puzzle-itc.de; spf=pass smtp.mailfrom=puzzle-itc.de; dkim=pass (1024-bit key) header.d=puzzle-itc.de header.i=@puzzle-itc.de header.b=hg3P3GDu; arc=none smtp.client-ip=209.85.218.43
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=puzzle-itc.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=puzzle-itc.de
+	s=arc-20240116; t=1743510024; c=relaxed/simple;
+	bh=IrK5q3Gn+rmxdjmf2Ox6ptwRVpDBjWRkwHcTbG2haHk=;
+	h=Message-ID:Date:MIME-Version:Subject:From:To:References:
+	 In-Reply-To:Content-Type; b=ox4bk79CV3fkn4aMM4KBXsqXd+Ou3G+SkbO1wtQHthEz6FYADJYtfldLXhwqhk0LwCIcrIQzSxyR0pAafaVp0etee8rdxB5cyQ75VM9EVduV3s5Am2cwr8YRYglahh2DKEMzlX+XFWlg/MkbPkikGQ2FpRGoaZpGzaW4wN6pJ18=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=esat.kuleuven.be; spf=pass smtp.mailfrom=esat.kuleuven.be; dkim=pass (2048-bit key) header.d=kuleuven.be header.i=@kuleuven.be header.b=W6cy5Un0; dkim=pass (2048-bit key) header.d=esat.kuleuven.be header.i=@esat.kuleuven.be header.b=oXr7v0ID; arc=none smtp.client-ip=134.58.240.194
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=esat.kuleuven.be
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=esat.kuleuven.be
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=puzzle-itc.de header.i=@puzzle-itc.de header.b="hg3P3GDu"
-Received: by mail-ej1-f43.google.com with SMTP id a640c23a62f3a-ac3fcf5ab0dso881694866b.3
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Apr 2025 05:05:29 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=puzzle-itc.de; s=google; t=1743509128; x=1744113928; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-language:in-reply-to:organization
-         :autocrypt:from:references:to:subject:user-agent:mime-version:date
-         :message-id:from:to:cc:subject:date:message-id:reply-to;
-        bh=foR2673ynlw5mO5LAB6pNh0kpT1Cr51I5MCnMgd5cb4=;
-        b=hg3P3GDuU6ZHFa7yXyA1Jfn1hwV1zc6SVRjlKYkSNAUWMQjmB30OV+OmRSLf/+bNQ1
-         ICyey9cdwED8TrOdqMZ3LeYePQWTSTNjw2A3IBMSlBxfh7jIjrwGLNDXBWNn7hqCl1wi
-         E7dnO6DinQ0NWjeleqx3EPbKGOEnBzA21Nfxg=
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1743509128; x=1744113928;
-        h=content-transfer-encoding:content-language:in-reply-to:organization
-         :autocrypt:from:references:to:subject:user-agent:mime-version:date
-         :message-id:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=foR2673ynlw5mO5LAB6pNh0kpT1Cr51I5MCnMgd5cb4=;
-        b=YLKVkr522TuYBfSSmw4B3vNFeap/6RxkNZE3ly+haVSymCY/srHjMP4SFVAnOoMh0U
-         voH+2Sa1jybHK6LzazkE3Qd4Y0hv7JYoqOn2zsQ20EfS90SlpNNUbHZoHko8MxmfEfg5
-         JJFUfrkf8+frtBXdroTdGi/TH5SzloyIBepFotjPH/chnFg2FOe5ryR3GADuFAlS3cNU
-         NG402o9V+bVhe1bFbUbaEHWyY/W7K3ZIbhls/eBLPsWpnYHrRx2jRjkTqW4MylbWu7Tq
-         kZWCHRsYmZATrxFQpiANpys7lnfYtdXqgCQ5leHExpWv0kNVA4LM5SsqonrMuLSm4pxH
-         V1LQ==
-X-Forwarded-Encrypted: i=1; AJvYcCX73K8rNedON4A6zCg5XXE78Uuol8SzwkgWuIm+NK4wT0hYjK9RfW9etihhFDLVXo8h6mop4ubvr3k=@vger.kernel.org
-X-Gm-Message-State: AOJu0YxbwFMbMiTjK2nBfh+qTDvHjhB5Z5iSFQt3NarMMoqDAtjmr2K9
-	3+CO71R+z4qqM0F4aXP6YMiXnWxgUV4TFkoQQkkoW5/I3wo5ala7VwPvSciHFNi/IrhCCamAvkg
-	aL5lBDEcik4ojJ+q/ypgrlcfHkO0qDXaWhl6/80QHWqyruvnF/dC9SOug/wN+iJG3
-X-Gm-Gg: ASbGncuSTsvGiai2/+RnLnU8eChuoHBKrEevZITZhgGUZwjdDbmhfRUL8va2TuzhlGl
-	7baVEx15PGxF8t2Y3fXSGHP9b6/ApvKZ71CyKBIPBjA5HbIHKRCNjkn6bLsUhf1+tkxjYxoFukD
-	mzY8Xh9vAR3AKAMu91kqXYxS2YaNea3Zwh00QFRFGpMB+dtsDof5mzA68E5HZbagXyvNym3ydu5
-	FID7akjlwrTnwwYwovIzpJYiczRTeqsdvfsmJ24WMYQGmfNkJEwIeoQuxyaILe/T9cKDOv0Jke3
-	AVmRcgKo7XBl0BlskBxngh6Bmdb6sGf7WkkiBZMS9So8GlfhKOqdFuKGXZXqrMJugf0GiCf95Sl
-	48FemMEUinwA+YUBovA==
-X-Google-Smtp-Source: AGHT+IFkMJ9P3RGZlrJt3oXnwvzY0MHGvlljxcEJKagwAwVBzDE/Byi/j8ybfot63/DLOtbrF3NGGQ==
-X-Received: by 2002:a17:907:9482:b0:ac3:1b00:e17d with SMTP id a640c23a62f3a-ac738bae5f2mr1268480866b.54.1743509127906;
-        Tue, 01 Apr 2025 05:05:27 -0700 (PDT)
-Received: from ?IPV6:2a02:8070:8e81:94c0:9861:b823:e598:ab0? ([2a02:8070:8e81:94c0:9861:b823:e598:ab0])
-        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-ac71922bb65sm758544066b.34.2025.04.01.05.05.27
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Tue, 01 Apr 2025 05:05:27 -0700 (PDT)
-Message-ID: <2c1a60a7-051f-4952-84fe-c3a4b6b0327e@puzzle-itc.de>
-Date: Tue, 1 Apr 2025 14:05:26 +0200
+	dkim=pass (2048-bit key) header.d=kuleuven.be header.i=@kuleuven.be header.b="W6cy5Un0";
+	dkim=pass (2048-bit key) header.d=esat.kuleuven.be header.i=@esat.kuleuven.be header.b="oXr7v0ID"
+Received: from icts-p-cavuit-3.kulnet.kuleuven.be (icts-p-cavuit-3.kulnet.kuleuven.be [IPv6:2a02:2c40:0:c0::25:133])
+	by icts-p-cavspool-1.kulnet.kuleuven.be (Postfix) with ESMTP id 6DC426B49
+	for <linux-nfs@vger.kernel.org>; Tue,  1 Apr 2025 14:20:14 +0200 (CEST)
+X-KULeuven-Envelope-From: rik.theys@esat.kuleuven.be
+X-KULeuven-Scanned: Found to be clean
+X-KULeuven-ID: 47767200D9.A0B6A
+X-KULeuven-Information: Katholieke Universiteit Leuven
+Received: from icts-p-ceifnet-smtps-1.kuleuven.be (icts-p-ceifnet-smtps.service.icts.svcd [IPv6:2a02:2c40:0:51:133:242:ac11:25])
+	by icts-p-cavuit-3.kulnet.kuleuven.be (Postfix) with ESMTP id 47767200D9;
+	Tue,  1 Apr 2025 14:20:06 +0200 (CEST)
+BCmilterd-Mark-Subject: no
+BCmilterd-Errors: 
+BCmilterd-Report: SA-HVU#DKIM_VALID_AU#0.00,SA-HVU#DKIM_SIGNED#0.00,SA-HVU#DKIM_VALID#0.00,SA-HVU#OURIPS#-35.00
+X-CAV-Cluster: smtps
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kuleuven.be;
+	s=kuleuven-cav-1; t=1743510006;
+	bh=YrTJZJXG13FMCHQ8HUEEzJkbizH/EhnXvuxa5yJab9s=;
+	h=Date:Subject:From:To:References:In-Reply-To;
+	b=W6cy5Un0IM5Rd2ylXwMasm3cSJrSilcNSyVntk6AkkTK3R8crjmxqqpQmOvZT4IaC
+	 BB6GmABP+S2ED5hN1v6GwKlKOBCEUBHLpM86nu4+RmNYnquHvDp4gp+l+XcxU/yPkg
+	 /dCymSa7jii6adm3NYRbyskSN9A5hldBB09otjGT36FpJGo/W4qzvQK0CHCbkMWhyN
+	 ayoJRCuDD5Qr5woACj5E6Y5+Swc5v5PoflulXR1PC/aHdcrBwoV77tIUl2YgyczBH3
+	 jpH3PAywU1fiffG+sUDLSnVM8utW7RqFzarCzrt3995IZd7O5wyJuE4m7FxFjpiB/2
+	 9uMwVKW6IB3XA==
+Received: from hydrogen.esat.kuleuven.be (hydrogen.esat.kuleuven.be [134.58.56.153])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by icts-p-ceifnet-smtps-1.kuleuven.be (Postfix) with ESMTPS id 19222D4EB972B;
+	Tue,  1 Apr 2025 14:20:06 +0200 (CEST)
+X-KULeuven-ESAT-Envelope-Sender: rik.theys@esat.kuleuven.be
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=esat.kuleuven.be;
+	s=esat20220324; t=1743510006;
+	bh=YrTJZJXG13FMCHQ8HUEEzJkbizH/EhnXvuxa5yJab9s=;
+	h=Date:Subject:From:To:References:In-Reply-To:From;
+	b=oXr7v0ID4pDLQRRAjLB++vKZfbbFB3FrdsG1wsxlp9JhRmkppeaUAKHhELsnw/Ny6
+	 Wnk+AfZJbCNhiZJA4DiGeLJ863QF0WtoLdJpUlICEIBtwpaNPe5b/jftmvRZHn6KHE
+	 JL3iTyyLzNJQvzrEmY4sfd1a7/kNYKEeyQoP6QlK/aDRnbpXzv9DDvfPJT9vC/eusO
+	 KSrT1CUSnY//XHUOYhigKvQKYmBVemJDos26WIBWHJqM7enYrEUNNqlk3E0y9XcJjF
+	 JfsnFJk6oTZWEA/BzEFiST29Ms8TCv5HPmTu0TttkuN4Su0YuRleJ1wAcqWLBVk4yV
+	 5fwi0M0EK7cXw==
+X-KULeuven-ESAT-Envelope-Sender: rik.theys@esat.kuleuven.be
+Received: from [10.87.19.1] (lucifer.esat.kuleuven.be [10.87.19.1])
+	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
+	 key-exchange X25519 server-signature RSA-PSS (3072 bits) server-digest SHA256)
+	(No client certificate requested)
+	by hydrogen.esat.kuleuven.be (Postfix) with ESMTPSA id 07CFC6000E;
+	Tue,  1 Apr 2025 14:20:06 +0200 (CEST)
+Message-ID: <547c0dd0-21dc-4d60-80c6-d02c4ff4a97c@esat.kuleuven.be>
+Date: Tue, 1 Apr 2025 14:20:05 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -67,89 +75,79 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
 Subject: Re: non-stop kworker NFS/RPC write traffic even after unmount
-To: Rik Theys <Rik.Theys@esat.kuleuven.be>,
+Content-Language: en-US
+X-Kuleuven: This mail passed the K.U.Leuven mailcluster
+From: Rik Theys <Rik.Theys@esat.kuleuven.be>
+To: Daniel Kobras <kobras@puzzle-itc.de>,
  Linux Nfs <linux-nfs@vger.kernel.org>
 References: <79767ded-466f-44a5-b15a-fde5af1b03c7@esat.kuleuven.be>
-From: Daniel Kobras <kobras@puzzle-itc.de>
-Autocrypt: addr=kobras@puzzle-itc.de; keydata=
- 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
- p63U1j1sBdH4lyrWIu/HHjYDEL8+XTvqMCBEHuI=
-Organization: Puzzle ITC Deutschland GmbH
-In-Reply-To: <79767ded-466f-44a5-b15a-fde5af1b03c7@esat.kuleuven.be>
-Content-Language: en-US
-Content-Type: text/plain; charset="UTF-8"; format=flowed
-Content-Transfer-Encoding: quoted-printable
+ <2c1a60a7-051f-4952-84fe-c3a4b6b0327e@puzzle-itc.de>
+ <42c84eb6-ede0-4e68-ae70-334365e2ae7f@esat.kuleuven.be>
+Organization: KU Leuven - ESAT
+In-Reply-To: <42c84eb6-ede0-4e68-ae70-334365e2ae7f@esat.kuleuven.be>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Hi Rik!
+Hi,
 
-Am 15.12.24 um 13:38 schrieb Rik Theys:
-> Suddenly, a number of clients start to send an abnormal amount of NFS=20
-> traffic to the server that saturates their link and never seems to stop.=
-=20
-> Running iotop on the clients shows kworker-{rpciod,nfsiod,xprtiod}=20
-> processes generating the write traffic. On the server side, the system=20
-> seems to process the traffic as the disks are processing the write=20
-> requests.
->=20
-> This behavior continues even after stopping all user processes on the=20
-> clients and unmounting the NFS mount on the client. Is this normal? I=20
-> was under the impression that once the NFS mount is unmounted no further=
-=20
-> traffic to the server should be visible?
+On 4/1/25 2:15 PM, Rik Theys wrote:
+> Hi Daniel,
+>
+> On 4/1/25 2:05 PM, Daniel Kobras wrote:
+>> Hi Rik!
+>>
+>> Am 15.12.24 um 13:38 schrieb Rik Theys:
+>>> Suddenly, a number of clients start to send an abnormal amount of 
+>>> NFS traffic to the server that saturates their link and never seems 
+>>> to stop. Running iotop on the clients shows 
+>>> kworker-{rpciod,nfsiod,xprtiod} processes generating the write 
+>>> traffic. On the server side, the system seems to process the traffic 
+>>> as the disks are processing the write requests.
+>>>
+>>> This behavior continues even after stopping all user processes on 
+>>> the clients and unmounting the NFS mount on the client. Is this 
+>>> normal? I was under the impression that once the NFS mount is 
+>>> unmounted no further traffic to the server should be visible?
+>>
+>> I'm currently looking at an issue that resembles your description 
+>> above (excess traffic to the server for data that was already written 
+>> and committed), and part of the packet capture also looks roughly 
+>> similar to what you've sent in a followup. Before I dig any deeper: 
+>> Did you manage to pinpoint or resolve the problem in the meantime?
+>
+> Our server is currently running the 6.12 LTS kernel and we haven't had 
+> this specific issue any more. But we were never able to reproduce it, 
+> so unfortunately I can't say for sure if it's fixed, or what fixed it 
+> :-/.
+>
+>
+If I remember correctly the issue came back almost immediately if we 
+rebooted the server. Also rebooting the clients that seemed to take part 
+in the flood was not sufficient. It would almost immediately start again.
 
-I'm currently looking at an issue that resembles your description above=20
-(excess traffic to the server for data that was already written and=20
-committed), and part of the packet capture also looks roughly similar to=20
-what you've sent in a followup. Before I dig any deeper: Did you manage=20
-to pinpoint or resolve the problem in the meantime?
+In the end, I believe I:
 
-Kind regards,
+1. stopped NFS on the server,
 
-Daniel
---=20
-Daniel Kobras
-Principal Architect
-Puzzle ITC Deutschland
-+49 7071 14316 0
-www.puzzle-itc.de
+2. removed the state files from /var/lib/nfs on the server and
 
---=20
-Puzzle ITC Deutschland GmbH
-Sitz der Gesellschaft: Eisenbahnstra=C3=9Fe 1, 72072=20
-T=C3=BCbingen
+3. then rebooted the server. I waited 100s in the GRUB boot loader 
+before starting the OS to make sure this was longer than the 90s lease 
+delegation timeout.
 
-Eingetragen am Amtsgericht Stuttgart HRB 765802
-Gesch=C3=A4ftsf=C3=BChrer:=20
-Lukas Kallies, Daniel Kobras, Mark Pr=C3=B6hl
+Afterwards the issue stopped. But I'm not sure removing the state files 
+has any impact.
+
+Regards,
+
+Rik
+
+-- 
+Rik Theys
+System Engineer
+KU Leuven - Dept. Elektrotechniek (ESAT)
+Kasteelpark Arenberg 10 bus 2440  - B-3001 Leuven-Heverlee
++32(0)16/32.11.07
+----------------------------------------------------------------
+<<Any errors in spelling, tact or fact are transmission errors>>
 
