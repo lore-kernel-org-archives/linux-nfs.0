@@ -1,43 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FDEB204C11
-	for <linux-nfs@vger.kernel.org>; Mon,  7 Apr 2025 15:57:04 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D02B720370D
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Apr 2025 15:59:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1744041424; cv=none; b=OWZ8kxefUIvJFx64kbPpWqpe4EotVmskltKaHAcI4620iJI2eCCTF3yKuQuO6Nm2ICEFXoP4dbZidXqQ4FHxdLVHQakIdw4I+VkpBlEDIm5SsZxEoAiO7ZuuqUsuyKvf/gfCN5a5Zu5XVuQHXy7fJ3t060A7tRajm2AThXkHUP4=
+	t=1744041552; cv=none; b=ZbQzZZ520I8cMg8VoAK96QYxaFemvBNpJ2/OdGNGrcXOt5NGJ4yUUcCUpBeIbDJe5bxGcVW9zQS+btEh+vA9k6Xvy0EddvjkSrVYZ4sO1M4hs26EdZ14rht851ob9HR/CGZsUowvilv+ZxiJK6Y7rtob59EoC8d+dp1kds1XFSg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1744041424; c=relaxed/simple;
-	bh=GvnLxFVCucpFq9ze4iFhmBcV0Haop3zYLf33h+/SyU0=;
+	s=arc-20240116; t=1744041552; c=relaxed/simple;
+	bh=tov2HqkxS0wcWpaoBqG6xuFUEO4J1m1Xw8RhEE4BfVc=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=dmtDWmGi5lIp8twMRcMhGX/en4MhnaDrzVjuOJHeZ/V22VXze0q348BzqjrAESzVKMoVWNvJdQestoGz2HatN0TPtadGLTSwX1BStumiSTvCJZtM+dxIqUVvaGQ/pqk8mgJ28U7xe+mNRHyU+ILDO8Xok8JndpQi96oTeNsZwRI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VzWsFdVD; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:MIME-Version; b=RXEN0EicsN8kJRykMsbCzK+fwp7RMSnblnsquDfJmkC1TkhhiPXxrhr/YN940foUTXuqvV8WnfHokjKcVoAlPSLvxDVOd48suaRHZ2o9aIPQ1kI4UHItkLayzlRgbjL2jwZpyZoGFX2PUZrzu+AJnxUs6+8OxhuupZQG28rbCqE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HRL+5c+k; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VzWsFdVD"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8D76CC4CEDD;
-	Mon,  7 Apr 2025 15:57:03 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HRL+5c+k"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C61B4C4CEE9;
+	Mon,  7 Apr 2025 15:59:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1744041424;
-	bh=GvnLxFVCucpFq9ze4iFhmBcV0Haop3zYLf33h+/SyU0=;
+	s=k20201202; t=1744041552;
+	bh=tov2HqkxS0wcWpaoBqG6xuFUEO4J1m1Xw8RhEE4BfVc=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=VzWsFdVDt9EM/03/PUcFSKet4phtM15k8EoTCI2PzxPQIjqvIvxt/Zc7piD1Pns7y
-	 DeBwA856q5x81yBA+YYJD0kcAmA5CXo6j0KMRj9PdJ0WZ6jh+EwtDpuU6wyDCYJxGu
-	 awR+IS1tbSv1kfCoFEpiY5wNyT/sCHBNwK1rQzvHc299JNTTpdKY3m2BYg6GxvH+Sq
-	 ECNTcuxUlcEepblj5YJ7RWjzdWRhb/NMK7IIFYwMLHRUcSAVmLoh693WWx92xQXfH0
-	 HllD1SFZi1oPJx7ZrfVxvIb7ZyU/1HnvzFADVcA76RTI4LqeEqYMkmP0nUONfjEhHc
-	 0yMGJ8ZuIiAcg==
-Message-ID: <05336ea7be56be78db853a811bf740ff0d3ab1df.camel@kernel.org>
-Subject: Re: [PATCH 3/3] nfsd: reset access mask for NLM calls in
- nfsd_permission
+	b=HRL+5c+ko8H1qMaag8GHRqa8L1hkdmGizgei0OUDFi+1rvoStx20tgzVwZRYmi3V9
+	 XkCvYt56Mp2ckgLhWp/c7f4WvF7r+JlEc5AaGKstbBKAx3NCmYzk+CyWhnzoFQGKE7
+	 YyTuCZroIp7xlK2Mkm8uURUBMkUKXn36LM0rx/v+SSkZhoSN12yYe/4hO9Hz7nKa6z
+	 HDYLlgyk96Zy/1aFIVMrlmaNoL0gl1FdHtVTRsdT7/vqbEHYo5JFIohWyrvmTdAMvE
+	 lainS6MMbr1HxuUTX3uZphkadNBmh1UevjQiwHh3w9p/NTtwb24D3jqTL2ZdPJAgNp
+	 vSGNMOFaxN2mA==
+Message-ID: <3963da47314bfa375d46117b382c2fb2961177a1.camel@kernel.org>
+Subject: Re: [PATCH 2/3] nfsd: adjust nfsd4_spo_must_allow checking order
 From: Jeff Layton <jlayton@kernel.org>
-To: NeilBrown <neilb@suse.de>, Olga Kornievskaia <aglo@umich.edu>
-Cc: Olga Kornievskaia <okorniev@redhat.com>, chuck.lever@oracle.com, 
-	linux-nfs@vger.kernel.org, Dai.Ngo@oracle.com, tom@talpey.com
-Date: Mon, 07 Apr 2025 11:57:02 -0400
-In-Reply-To: <174319880848.9342.18353626790561074601@noble.neil.brown.name>
-References: <>
-	, <CAN-5tyHKrbL9DuFxvH6hnL4uwHDZ-d49X8DFBVReCvdh+Qh0XQ@mail.gmail.com>
-	 <174319880848.9342.18353626790561074601@noble.neil.brown.name>
+To: Olga Kornievskaia <okorniev@redhat.com>
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org, neilb@suse.de, 
+	Dai.Ngo@oracle.com, tom@talpey.com
+Date: Mon, 07 Apr 2025 11:59:10 -0400
+In-Reply-To: <CACSpFtBrJs8PbAbbBBybW_Gn7LR1r9vVSppGa4VVEWMBt_2osA@mail.gmail.com>
+References: <20250322001306.41666-1-okorniev@redhat.com>
+	 <20250322001306.41666-3-okorniev@redhat.com>
+	 <8556bbf14b11dcb29798374d93f6da27bd1735b7.camel@kernel.org>
+	 <CACSpFtBrJs8PbAbbBBybW_Gn7LR1r9vVSppGa4VVEWMBt_2osA@mail.gmail.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -122,188 +122,79 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 2025-03-29 at 08:53 +1100, NeilBrown wrote:
-> On Sat, 29 Mar 2025, Olga Kornievskaia wrote:
-> > On Thu, Mar 27, 2025 at 9:43=E2=80=AFPM NeilBrown <neilb@suse.de> wrote=
-:
-> > >=20
-> > > On Fri, 28 Mar 2025, Olga Kornievskaia wrote:
-> > > > On Thu, Mar 27, 2025 at 7:54=E2=80=AFPM NeilBrown <neilb@suse.de> w=
-rote:
-> > > > >=20
-> > > > > On Sat, 22 Mar 2025, Olga Kornievskaia wrote:
-> > > > > > NLM locking calls need to pass thru file permission checking
-> > > > > > and for that prior to calling inode_permission() we need
-> > > > > > to set appropriate access mask.
-> > > > > >=20
-> > > > > > Fixes: 4cc9b9f2bf4d ("nfsd: refine and rename NFSD_MAY_LOCK")
-> > > > > > Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
-> > > > > > ---
-> > > > > >  fs/nfsd/vfs.c | 7 +++++++
-> > > > > >  1 file changed, 7 insertions(+)
-> > > > > >=20
-> > > > > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > > > > > index 4021b047eb18..7928ae21509f 100644
-> > > > > > --- a/fs/nfsd/vfs.c
-> > > > > > +++ b/fs/nfsd/vfs.c
-> > > > > > @@ -2582,6 +2582,13 @@ nfsd_permission(struct svc_cred *cred, s=
-truct svc_export *exp,
-> > > > > >       if ((acc & NFSD_MAY_TRUNC) && IS_APPEND(inode))
-> > > > > >               return nfserr_perm;
-> > > > > >=20
-> > > > > > +     /*
-> > > > > > +      * For the purpose of permission checking of NLM requests=
-,
-> > > > > > +      * the locker must have READ access or own the file
-> > > > > > +      */
-> > > > > > +     if (acc & NFSD_MAY_NLM)
-> > > > > > +             acc =3D NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE;
-> > > > > > +
-> > > > >=20
-> > > > > I don't agree with this change.
-> > > > > The only time that NFSD_MAY_NLM is set, NFSD_MAY_OWNER_OVERRIDE i=
-s also
-> > > > > set.  So that part of the change adds no value.
-> > > > >=20
-> > > > > This change only affects the case where a write lock is being req=
-uested.
-> > > > > In that case acc will contains NFSD_MAY_WRITE but not NFSD_MAY_RE=
-AD.
-> > > > > This change will set NFSD_MAY_READ.  Is that really needed?
-> > > > >=20
-> > > > > Can you please describe the particular problem you saw that is fi=
-xed by
-> > > > > this patch?  If there is a problem and we do need to add NFSD_MAY=
-_READ,
-> > > > > then I would rather it were done in nlm_fopen().
-> > > >=20
-> > > > set export policy with (sec=3Dkrb5:...) then mount with sec=3Dkrb5,=
-vers=3D3,
-> > > > then ask for an exclusive flock(), it would fail.
-> > > >=20
-> > > > The reason it fails is because nlm_fopen() translates lock to open
-> > > > with WRITE. Prior to patch 4cc9b9f2bf4d, the access would be set to
-> > > > acc =3D NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE; before calling int=
-o
-> > > > inode_permission(). The patch changed it and lead to lock no longer
-> > > > being given out with sec=3Dkrb5 policy.
-> > >=20
-> > > And do you have WRITE access to the file?
-> > >=20
-> > > check_fmode_for_setlk() in fs/locks.c suggests that for F_WRLCK to be
-> > > granted the file must be open for FMODE_WRITE.
-> > > So when an exclusive lock request arrives via NLM, nlm_lookup_file()
-> > > calls nlm_do_fopen() with a mode of O_WRONLY and that causes
-> > > nfsd_permission() to check that the caller has write access to the fi=
-le.
-> > >=20
-> > > So if you are trying to get an exclusive lock to a file that you don'=
-t
-> > > have write access to, then it should fail.
-> > > If, however, you do have write access to the file - I cannot see why
-> > > asking for NFSD_MAY_READ instead of NFSD_MAY_WRITE would help.
+On Mon, 2025-04-07 at 11:56 -0400, Olga Kornievskaia wrote:
+> On Mon, Apr 7, 2025 at 11:36=E2=80=AFAM Jeff Layton <jlayton@kernel.org> =
+wrote:
 > >=20
-> > That's correct, the user doing flock() does NOT have write access to
-> > the file. Yet prior to the 4cc9b9f2bf4d, that access was allowed. If
-> > that was a bug then my bad. I assumed it was regression.
+> > On Fri, 2025-03-21 at 20:13 -0400, Olga Kornievskaia wrote:
+> > > Prior to this patch, some non-4.x NFS operations such as NLM
+> > > calls have to go thru export policy checking would end up
+> > > calling nfsd4_spo_must_allow() function and lead to an
+> > > out-of-bounds error because no compound state structures
+> > > needed by nfsd4_spo_must_allow() are present in the svc_rqst
+> > > request structure.
+> > >=20
+> > > Instead, do the nfsd4_spo_must_allow() checking after the
+> > > may_bypass_gss check which is geared towards allowing various
+> > > calls such as NLM while export policy is set with sec=3Dkrb5:...
+> > >=20
+> > > Fixes: 4cc9b9f2bf4d ("nfsd: refine and rename NFSD_MAY_LOCK")
+> > > Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
+> > > ---
+> > >  fs/nfsd/export.c | 17 ++++++++---------
+> > >  1 file changed, 8 insertions(+), 9 deletions(-)
+> > >=20
+> > > diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> > > index 88ae410b4113..02f26cbd59d0 100644
+> > > --- a/fs/nfsd/export.c
+> > > +++ b/fs/nfsd/export.c
+> > > @@ -1143,15 +1143,6 @@ __be32 check_nfsd_access(struct svc_export *ex=
+p, struct svc_rqst *rqstp,
+> > >                       return nfs_ok;
+> > >       }
+> > >=20
+> > > -     /* If the compound op contains a spo_must_allowed op,
+> > > -      * it will be sent with integrity/protection which
+> > > -      * will have to be expressly allowed on mounts that
+> > > -      * don't support it
+> > > -      */
+> > > -
+> > > -     if (nfsd4_spo_must_allow(rqstp))
+> > > -             return nfs_ok;
+> > > -
+> > >       /* Some calls may be processed without authentication
+> > >        * on GSS exports. For example NFS2/3 calls on root
+> > >        * directory, see section 2.3.2 of rfc 2623.
+> > > @@ -1168,6 +1159,14 @@ __be32 check_nfsd_access(struct svc_export *ex=
+p, struct svc_rqst *rqstp,
+> > >                               return 0;
+> > >               }
+> > >       }
+> > > +     /* If the compound op contains a spo_must_allowed op,
+> > > +      * it will be sent with integrity/protection which
+> > > +      * will have to be expressly allowed on mounts that
+> > > +      * don't support it
+> > > +      */
+> > > +     if (nfsd4_spo_must_allow(rqstp))
+> > > +             return nfs_ok;
+> > > +
+> > >=20
+> > >  denied:
+> > >       return nfserr_wrongsec;
 > >=20
-> > It's interesting to me that on an XFS file system, I can create a file
-> > owned by root (on a local filesystem) and then request an exclusive
-> > lock on it (as a user -- no write permissions).
+> > Is this enough to fully fix the OOB problem? It looks like you could
+> > still get past the may_bypass_gss if statement above this with a
+> > carefully crafted RPC.
 >=20
-> "flock" is the missing piece.  I always thought it was a little odd
-> implementing flock locks over NFS using byte-range locking.  Not
-> necessarily wrong, but definitely odd.
+> A crafted RPC can and thus Neil's patch that checks the version in
+> nfsd4_spo_must_allow is needed.
 >=20
+> I still feel changing the order would be beneficial as it would take
+> care of realistic requests.
 
-FWIW, Solaris set the precedent for that, and the NFS client eventually
-added it (back in the v2.4 days).
-
-> The man page for fcntl says=20
->=20
->    In order to place a read lock, fd must be open for reading.  In order
->    to place a write lock, fd must be open for writing.  To place both
->    types of lock, open a file read-write.
->=20
-> So byte-range locks require a consistent open mode.
->=20
-> The man page for flock says
->=20
->     A shared or exclusive lock can be placed on a file regardless of the
->     mode in which the file was opened.
->=20
-> Since the NFS client started using NLM (or v4 LOCK) for flock requests,
-> we cannot know if a request is flock or fcntl so we cannot check the
-> "correct" permissions.  We have to rely on the client doing the
-> permission checking.
-
-> So it isn't really correct to check for either READ or WRITE.
->=20
-> This is awkward because nfsd doesn't just check permissions.  It has to
-> open the file and say what mode it is opening for.  This is apparently
-> important when re-exporting NFS according to
->=20
-> Commit: 7f024fcd5c97 ("Keep read and write fds with each nlm_file")
->=20
-> So if you try an exclusive flock on a re-exported NFS file (reexported
-> over v3) that you have open for READ but do not have write permission
-> for, then the client will allow it, but the intermediate server will try
-> a O_WRITE open which the final server will reject.
-> (does re-export work over v3??)
->=20
-
-Locking with reexports is an iffy proposition at best. We don't have a
-way to "project" the grace period across the reexport, so if the
-reexporting server crashes, lock recovery is just broken (no grace
-period on the source server).
-
-This is detailed in Documentation/filesystems/nfs/reexport.rst
-
-I wouldn't worry overmuch about reexporting with this.
-
-> There is no way to make this "work".  As I said: sending flock requests
-> over NFS was an interesting choice.
-> For v4 re-export it isn't a problem because the intermediate server
-> knows what mode the file was opened for on the client.
->=20
-> So what do we do?  Whatever we do needs a comment explaining that flock
-> vs fcntl is the problem.
-> Possibly we should not require read or write access - and just trust the
-> client.  Alternately we could stick with the current practice of
-> requiring READ but not WRITE - it would be rare to lock a file which you
-> don't have read access to.
->=20
-> So yes: we do need a patch here.  I would suggest something like:
->=20
->  /* An NLM request may be from fcntl() which requires the open mode to
->   * match to lock mode or may be from flock() which allows any lock mode
->   * with any open mode.  "acc" here indicates the lock mode but we must
->   * do permission check reflecting the open mode which we cannot know.
->   * For simplicity and historical continuity, always only check for
->   * READ access
->   */
->  if (acc & NFSD_MAY_NLM)
-> 	acc =3D (acc & ~NFSD_MAY_WRITE) | NFSD_MAY_READ;
->=20
-> I'd prefer to leave the MAY_OWNER_OVERRIDE setting in nlm_fopen().
->=20
-
-Emulating flock locks over NFS locking is entirely a client-side
-endeavor. The server isn't aware of it. The job on the server side is
-to conform to the protocol.
-
-In this case, I think failing exclusive flock() locks when the client
-doesn't have the file open for write is the correct thing to do, as I
-think the protocol requires this.
-
-At one time, nfs_flock would reject those on the client, until this
-patch reverted that behavior:
-
-    fcfa447062b2 NFS: Revert "NFS: Move the flock open mode check into nfs_=
-flock()"
-
-I'm not sure that reverting that was the correct thing to do. NFS/NLM
-locking generally follows fcntl() semantics. ISTM that we shouldn't
-allow locks that fall outside of those semantics.
+No objection to changing the order if that makes sense, but I think we
+do need to guard against carefully crafted RPCs too. Can we have
+nfsd4_spo_must_allow() vet that the request is NFSv4 before checking
+the compound fields too?
 --=20
 Jeff Layton <jlayton@kernel.org>
