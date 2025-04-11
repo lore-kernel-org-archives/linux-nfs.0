@@ -1,69 +1,53 @@
-Received: from mail-pl1-f171.google.com (mail-pl1-f171.google.com [209.85.214.171])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp-o-3.desy.de (smtp-o-3.desy.de [131.169.56.156])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 479551E5B62
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Apr 2025 21:24:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.171
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 87BAD238C1A
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Apr 2025 11:27:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=131.169.56.156
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1744320271; cv=none; b=qrSaeyQHNHW+mlRZtFD1OJagfGHsY/Dl4HFP9Piuio0C9auKYra7rl2FLDxG/ZKT8ozw9ufJN+1dIutd/yb4TCaL2BFmcv2WXNA91B1jcnHbRA3FwWCIHID23mXqxMB78lxbJHJR6vU/XOuew0W34QnfHWpc8Jfko12flXi+S5I=
+	t=1744370884; cv=none; b=Pw8ubZYmf1CNyMbXrWTz1mtKtddSaeuOkrtJ5cFxfAUaC1MP22yEp6MNGRm6jw+i5DbRSIJZ+x6vbtt65YY5qL1vdIU1wV3Mp/yk7jSLvmm2xyvbXBzPjDiWrHYZUKlF/IYoKeMoVEgX+SVNs4zyi77TdzyX9b9o5L7WznAwfEI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1744320271; c=relaxed/simple;
-	bh=IojMl1jdb7uy4WQ76d+F7oIgf89viB2jTEN4w37rMYU=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=qvq8+p75tO/audLbdUCY+tbxHutkChtQHm0uKkP2gsHkHNmyFS0S+O+qoCjG15GHpbXCTe4GoXdnyXVqHAxFWZI2KqTVs4olAnbE+/JgsyV9Q+a3yfeRL5kR+mpBaKSa4y2jhKOZRCTJMeQROnGjaDHhJKrC9IVsTSsPkQNDCEk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=schmersal.org; spf=pass smtp.mailfrom=schmersal.org; dkim=pass (2048-bit key) header.d=schmersal.org header.i=@schmersal.org header.b=d6BEywer; arc=none smtp.client-ip=209.85.214.171
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=schmersal.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=schmersal.org
+	s=arc-20240116; t=1744370884; c=relaxed/simple;
+	bh=0IckNQmKdvYYuhyPuQljTcDizY1sJu3g1TrvMaqt0mg=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=A5JQZh/qyF/SI2ES0oH/JTeOCaoyYGuEUDgWUljOf3AEqp8TcA+cZ6Ro42G7T7PNZg1Tim2SiFY/dKYoxzPa0ZcwG6qJ/ykV3u16MpuVBL3KtRhTlH1OXA/Jz6gBjZDUzUrZFuhaH/to8RfdTaUdjaQHsHFxgyIKlnRzlDM3mKI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de; spf=pass smtp.mailfrom=desy.de; dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b=n+/IMJcs; arc=none smtp.client-ip=131.169.56.156
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=desy.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=schmersal.org header.i=@schmersal.org header.b="d6BEywer"
-Received: by mail-pl1-f171.google.com with SMTP id d9443c01a7336-22a976f3131so14790635ad.3
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Apr 2025 14:24:29 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=schmersal.org; s=google; t=1744320269; x=1744925069; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=ZlVkhn8FZGRuCTeFvLTtspT71x7oUKAB92TzK3Qtfi4=;
-        b=d6BEywerOpAAHEG7RaLeqGSWfmdIU3zpaCW/C6QUxilxqsoDstDaFR1wKx1QQ4fTx7
-         iVlOHZJiY7L9Cl3xJoPYZEVb7j/ny/N6Rbq2RmOjF/lOW3FGgMEkq8SajpeRhaVIgxn6
-         mIihtORHKM2GM/6wcX1V0B8kXXEzGoQaPtqZYnnjCvjfgUoNqw8aRb9ZlD92eEJ5miTS
-         31gk7VEqH+Dl5AXgYSN2HwjRPSs2hSWKrNAev/ICR4j3NYvGFsM/fbhdNfW6bmivxQKQ
-         qePq24WOrOXFOoEowJz2ZlKSuvBM0LCJuTBjxi4jpSeQbhp8MuKYFTlt0aKM0Xjoj+B9
-         FkSg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1744320269; x=1744925069;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-message-state:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=ZlVkhn8FZGRuCTeFvLTtspT71x7oUKAB92TzK3Qtfi4=;
-        b=ZadcVMPxrDb6krLSDIXwvMG13yh1MRIwFMwdYLbAF6RvvOX2LKc9sO2LVARpuu7yWr
-         DfWNo2eOwdYtuBhIwCRVutIB1jxnMes76Ym/pGquLzg2YoNX+2Mnfll5AxiZlT5gtM/+
-         Q5UgdBtPfriICZb+lXbiG1BuY0nqCPIsH58IEyp8joRlzcfUvavYHEGa0ab0F5OGgdNh
-         MnNUowrB5zmBvsiFKZEcmk54kMAP9B8Xjyb/AvdiOoRCpHgEo+rd1zLVfEmjUsKUQE4m
-         R0ihChdZf1ThTa3wjq1X5XNi14ajET5ziPHSbcd0ULI1G50owNH1mZ1avuV4RbvypQVP
-         E9Cw==
-X-Gm-Message-State: AOJu0YxMlExOIImC4/xC/1SaeWa9FfFzQm2IkZyrNHF2tMOcR3m0iA9c
-	AM1D0G257xgDrSvRFSiQOpmCTSq0wog7Ir79IrfbRsO6gSEogjZGjX8yFkwVvIzv/IZq3TZqmq7
-	u9Q8=
-X-Gm-Gg: ASbGncscigCCPI/4pYotJcR3YQvkFL9nmbsvL26oTgQGHgA3WLGqmfDWprHOY5X1xdH
-	YUWlTAG5s6MDV+1bxKYzDMHQGZ/woxzOS4ehTw+igbDcE6px+0Wc3wb9pz0q00FrEccLXm/ZDBf
-	cPRNC7//aiBqPiYqKcCVjrRtDdcDzeQsD9mulJHW/lP+E3Msf8lRLJW/2R7f7M7e6PyWohvR7SK
-	sJ+I8JS/XEa05ped2fx+IhbKDkRUj0HNlb7MPKGtBq/jrz4q7/xnS/6z+brGZ0EzwnP8x0Ufs0i
-	AIUALbdo5Lh8ULisqwtgnzmXi+5aTWO0GoQR+g2m6yxoV56NxJT6SoCRbURg5+NGzfN8H+fg/Ah
-	I7S8s7g9pBL96l1krdbcrci/6bQXE9GNZPRfmE+7NTOzpW2jfFQ==
-X-Google-Smtp-Source: AGHT+IFdss7hCxKlEKpjyrFivWxni2DNYEW8x/J23HfhpdUqGKHfVi10UAS67AZwSw9W/qQyc0aT/A==
-X-Received: by 2002:a17:902:f688:b0:224:c47:b6c3 with SMTP id d9443c01a7336-22bea4a3530mr3475375ad.6.1744320269523;
-        Thu, 10 Apr 2025 14:24:29 -0700 (PDT)
-Received: from bryan-ThinkStation-P520.tds.net (h69-129-150-238.mdsnwi.tisp.static.tds.net. [69.129.150.238])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-22ac7cb5047sm35489235ad.170.2025.04.10.14.24.28
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 10 Apr 2025 14:24:28 -0700 (PDT)
-From: bryan@schmersal.org
+	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="n+/IMJcs"
+Received: from smtp-o-2.desy.de (smtp-o-2.desy.de [IPv6:2001:638:700:1038::1:9b])
+	by smtp-o-3.desy.de (Postfix) with ESMTP id A3E9911F98B
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Apr 2025 13:19:24 +0200 (CEST)
+Received: from smtp-buf-2.desy.de (smtp-buf-2.desy.de [IPv6:2001:638:700:1038::1:a5])
+	by smtp-o-2.desy.de (Postfix) with ESMTP id 3BE5813F647
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Apr 2025 13:19:17 +0200 (CEST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-2.desy.de 3BE5813F647
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
+	t=1744370357; bh=FlEuR5qtGd1C7BjzKevauFx0CaAJosN3VqZ7bR3KOs4=;
+	h=From:To:Cc:Subject:Date:From;
+	b=n+/IMJcs3pkRYE50UKWPe2EED0GLQQMhPreYBF8p5HseHt/6F/zHLdHJQ4/jmCcdu
+	 KRK7G8vz7DUdz31sy46BQwwA5jhxdanicR8k8MS7cE+H4GGCFKSToLybUlvFsnvy5e
+	 lJ5vViiFCDeIseB9KJu3UkKCCq4dadDjrKInIMDs=
+Received: from smtp-m-2.desy.de (smtp-m-2.desy.de [131.169.56.130])
+	by smtp-buf-2.desy.de (Postfix) with ESMTP id 31129120043;
+	Fri, 11 Apr 2025 13:19:17 +0200 (CEST)
+Received: from a1722.mx.srv.dfn.de (a1722.mx.srv.dfn.de [IPv6:2001:638:d:c301:acdc:1979:2:e7])
+	by smtp-m-2.desy.de (Postfix) with ESMTP id 262A116003F;
+	Fri, 11 Apr 2025 13:19:17 +0200 (CEST)
+Received: from smtp-intra-1.desy.de (smtp-intra-1.desy.de [IPv6:2001:638:700:1038::1:52])
+	by a1722.mx.srv.dfn.de (Postfix) with ESMTP id 0931432008B;
+	Fri, 11 Apr 2025 13:19:16 +0200 (CEST)
+Received: from nairi.desy.de (zitpcx23514.desy.de [131.169.214.185])
+	by smtp-intra-1.desy.de (Postfix) with ESMTP id DFEB98004E;
+	Fri, 11 Apr 2025 13:19:15 +0200 (CEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: calum.mackay@oracle.com
 Cc: linux-nfs@vger.kernel.org,
-	Bryan Schmersal <bryan@schmersal.org>
-Subject: [PATCH pynfs] Allow max_retries and delay_time to be passed as arguments to compound()
-Date: Thu, 10 Apr 2025 14:22:57 -0700
-Message-Id: <20250410212256.480777-1-bryan@schmersal.org>
-X-Mailer: git-send-email 2.34.1
+	Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] pynfs: add test for read with delegation stateid after close
+Date: Fri, 11 Apr 2025 13:19:02 +0200
+Message-ID: <20250411111902.132591-1-tigran.mkrtchyan@desy.de>
+X-Mailer: git-send-email 2.49.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -72,30 +56,79 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Bryan Schmersal <bryan@schmersal.org>
+This test checks the independence of delegation stateid from open
+stateid.
 
-Signed-off-by: Bryan Schmersal <bryan@schmersal.org>
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 ---
- nfs4.1/nfs4client.py | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ nfs4.1/server41tests/st_delegation.py | 50 ++++++++++++++++++++++++++-
+ 1 file changed, 49 insertions(+), 1 deletion(-)
 
-diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
-index a180872..ba1e087 100644
---- a/nfs4.1/nfs4client.py
-+++ b/nfs4.1/nfs4client.py
-@@ -534,9 +534,9 @@ class SessionRecord(object):
-         res = self.remove_seq_op(res)
-         return res
+diff --git a/nfs4.1/server41tests/st_delegation.py b/nfs4.1/server41tests/st_delegation.py
+index f27e852..ea4c073 100644
+--- a/nfs4.1/server41tests/st_delegation.py
++++ b/nfs4.1/server41tests/st_delegation.py
+@@ -2,7 +2,7 @@ from .st_create_session import create_session
+ from .st_open import open_claim4
+ from xdrdef.nfs4_const import *
  
--    def compound(self, ops, **kwargs):
--        max_retries = 10
--        delay_time = 1
-+    def compound(self, ops, **kwargs):
-+        max_retries = kwargs.pop('max_retries', 10)
-+        delay_time = kwargs.pop('delay_time', 1)
-         handle_state_errors = kwargs.pop("handle_state_errors", True)
-         saved_kwargs = kwargs
-         do_prepare = True
+-from .environment import check, fail, create_file, open_file, close_file, do_getattrdict
++from .environment import check, fail, create_file, open_file, close_file, do_getattrdict, close_file, write_file, read_file
+ from xdrdef.nfs4_type import *
+ import nfs_ops
+ op = nfs_ops.NFS4ops()
+@@ -390,3 +390,51 @@ def testCbGetattrWithChange(t, env):
+     if FATTR4_TIME_DELEG_MODIFY in attrs2:
+         if attrs1[FATTR4_TIME_MODIFY] == attrs2[FATTR4_TIME_DELEG_MODIFY]:
+             fail("Bad modify time: ", attrs1[FATTR4_TIME_MODIFY], " == ", attrs2[FATTR4_TIME_DELEG_MODIFY])
++
++def testDelegReadAfterClose(t, env):
++    """Test read with delegation stateid after close
++
++    Create file with some data. Open the file for read, get delegation, close the file.
++    Tesr that reads with delegation stateid still works.
++
++    FLAGS: deleg all
++    CODE: DELEG26
++    """
++    sess1 = env.c1.new_client_session(b"%s_1" % env.testname(t))
++
++    name = env.testname(t)
++    owner = b"owner_%s" % name
++
++    # craete file with some data
++    res = create_file(sess1, owner)
++    check(res)
++
++    fh = res.resarray[-1].object
++    stateid = res.resarray[-2].stateid
++
++    res = write_file(sess1, fh, b'data', 0, stateid)
++    check(res)
++
++    res = close_file(sess1, fh, stateid=stateid)
++    check(res)
++
++
++    # open file, get delegation, close the file
++    access = OPEN4_SHARE_ACCESS_READ | OPEN4_SHARE_ACCESS_WANT_READ_DELEG;
++    res = open_file(sess1, owner, access = access)
++    check(res)
++
++    fh = res.resarray[-1].object
++    stateid = res.resarray[-2].stateid
++    delegstateid = res.resarray[-2].delegation.read.stateid
++
++    res = close_file(sess1, fh, stateid=stateid)
++    check(res)
++
++    # Issue READ with delegation sateid
++    res = read_file(sess1, fh, 0, 10, delegstateid)
++    check(res)
++
++    # cleanup: return delegation
++    res = sess1.compound([op.putfh(fh), op.delegreturn(delegstateid)])
++    check(res)
 -- 
-2.34.1
+2.49.0
 
