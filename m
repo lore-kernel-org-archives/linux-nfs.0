@@ -1,30 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7018C20FA9D
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Apr 2025 15:28:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C5072080DB
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Apr 2025 15:28:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1744817338; cv=none; b=TIDtgqMaTwlLApJb1jXCvWY/horCrfLItsBWWKK4TgfhoYktTWy7m++BGixIu6E9p7n48Phx6Z4Rkcf8BWb+S/Y+k8aPyA+hZPX5ElZS5mo4HLnOQzICHzWfW/VpgJMKkaZ1sn1S+YLsIadRI3xnDKDvmyuxEmidKEK7H1EiIQM=
+	t=1744817339; cv=none; b=T1y4r3EOZ/V1tREQzeHJG0Ca1h0YwBJZH8LEGb09LjtA7EmE7GQgM+TJSEZT26WBHs7GvgvYavN/l9/Wcdt1udsuOcu835WfqcudR8ABDy/GfAD9YuqXiolfTxaN0BgAJHg6saAWU9A9AbCC0LhEpKQWMciMkVlp4sDKwIYmr2w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1744817338; c=relaxed/simple;
-	bh=a7c24YskoRhrOlXLdcYdq2jSomg4IxSlDhQRW3N0SfU=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=cHhwX4C68FUPEZT9HIc3GHCkA3dT7szyfUO4aI44p1vjYFkKU6WsxpMsEkiui8cnnJ45Pkrtvwt1I4iv9JGdC3+ylHwwcdNcVIBs1gVCymXsFtrJ7XjVn2dPKrFxYMDhqHHsor2ECeaUMpAq991/+AUotN6hZthKo0AzfEacl2c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nylwrd3F; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1744817339; c=relaxed/simple;
+	bh=cCJQXTL4g18PQ9Q7cI4mJ71WzF5rruMcQyqcExY9Y50=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=p+fxOFXno2Po0KG5vpU7Z/UyE258Z0YJ28DqoFVQgNkz6UgtCT9p60DZ8w+cManbAu5DUkJUSglc/s/KL5Pk2dYQOXdaWALxf8GPsE/etqbzMtS19c4Vs/zwUBnT0FQ8vfoBX9B/FBCfmaWz+OOk+7fuvjXS6Gx4ZkeSUaIACgo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NGJgFp3l; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nylwrd3F"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6E6B5C4CEE4;
-	Wed, 16 Apr 2025 15:28:56 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NGJgFp3l"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4E353C4CEF1;
+	Wed, 16 Apr 2025 15:28:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1744817337;
-	bh=a7c24YskoRhrOlXLdcYdq2jSomg4IxSlDhQRW3N0SfU=;
-	h=From:To:Cc:Subject:Date:From;
-	b=nylwrd3FkiZiR+BM4JkQFpZU906nWB1/mhMANhmSIPNvwTYwX1gpva1E4rIUAeLDl
-	 bGtNdCNzkkAd/Tr8pdf3G+aTXYRAWi8CSOg+sj4NHNkghis1L9ReztZJen3fXzo69w
-	 9L/XQwR5sHJGMLbRLrkoKRh44BI0J3w5QNW05xCN2YJUAPPnOQ9GqS6rQzk0nCrlnm
-	 9uqVlo9UJoBFIueQ7//opt3npWKyI+7JfhveJ3E9oQFJ2LhCjq5+YCYQ02jvhFMxFF
-	 olUvOpPtnGl2ZMJy90qYn0YfpWtcWAzJqA6CnsrVKZBe/IzTpCuCfLFOhvNrywsl1y
-	 13VIuQQ6dJ57w==
+	s=k20201202; t=1744817339;
+	bh=cCJQXTL4g18PQ9Q7cI4mJ71WzF5rruMcQyqcExY9Y50=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=NGJgFp3lMEeOO+fYonnh0qxVh7gWhq3uZJGzfiZIkWLxfmLPwbhh0k5wWL8f+306y
+	 bLDl5W5/MvXmfLYJ9Oi35TjL5NX2PggjMwhptJNxUDIXeJ3XVwtD4dBW+osuSXzlfV
+	 2KYPUIt2XZg/Fyl6EatRjnGYHLTwar9WiWapK8ctogToPw4ur+wuouAG1yO5dX69Wg
+	 DiokDQzin2MHm5eGAp7FS6CUE7A5JUreqMhVW25NNQLhJVOasWNfH3iKUas1CYQNiH
+	 oqMpBfiqfbFbrkupC7iodl9qR5w8BKqL9GeLgcnpeAE+/eKo4faCBNc4CdpNg/TZcK
+	 /3NuG8o4/+8lQ==
 From: cel@kernel.org
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,10 +34,12 @@ To: NeilBrown <neil@brown.name>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>
-Subject: [RFC PATCH 0/2] Move rq_vec[] and rq_bvec[] out of svc_rqst
-Date: Wed, 16 Apr 2025 11:28:52 -0400
-Message-ID: <20250416152854.15269-1-cel@kernel.org>
+Subject: [RFC PATCH 2/2] sunrpc: Replace the rq_vec array with dynamically-allocated memory
+Date: Wed, 16 Apr 2025 11:28:54 -0400
+Message-ID: <20250416152854.15269-3-cel@kernel.org>
 X-Mailer: git-send-email 2.49.0
+In-Reply-To: <20250416152854.15269-1-cel@kernel.org>
+References: <20250416152854.15269-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -47,35 +50,94 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-In order to make RPCSVC_MAXPAYLOAD larger (or variable in size), we
-need to do something clever with the payload arrays embedded in
-struct svc_rqst. Here's one way of dealing with two of them.
+As a step towards making NFSD's maximum rsize and wsize variable,
+replace the fixed-size rq_vec[] array in struct svc_rqst with a
+chunk of dynamically-allocated memory.
 
-My preference is to keep these arrays allocated all the time because
-allocating them on demand increases the risk of a memory allocation
-failure during a large I/O. This is a quick-and-dirty approach that
-might be replaced once NFSD is converted to use large folios.
+On a system with 8-byte pointers and 4KB pages, pahole reports that
+the rq_vec[] array is 4144 bytes. Replacing it with a single
+pointer reduces the size of struct svc_rqst to about 3300 bytes.
 
-The downside of this design choice is that it pins a few pages per
-NFSD thread (and that's the current situation already). But note
-that because RPCSVC_MAXPAGES is 259, each array is just over a page
-in size, making the allocation waste quite a bit of memory beyond
-the end of the array due to power-of-2 allocator round up. This gets
-worse as the MAXPAGES value is doubled or quadrupled.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfsd/nfs4proc.c         | 2 +-
+ fs/nfsd/vfs.c              | 2 +-
+ include/linux/sunrpc/svc.h | 2 +-
+ net/sunrpc/svc.c           | 8 +++++++-
+ 4 files changed, 10 insertions(+), 4 deletions(-)
 
-I plan to look at rq_pages[] next.
-
-Chuck Lever (2):
-  sunrpc: Replace the rq_bvec array with dynamically-allocated memory
-  sunrpc: Replace the rq_vec array with dynamically-allocated memory
-
- fs/nfsd/nfs4proc.c         |  2 +-
- fs/nfsd/vfs.c              |  2 +-
- include/linux/sunrpc/svc.h |  4 ++--
- net/sunrpc/svc.c           | 14 +++++++++++++-
- net/sunrpc/svcsock.c       |  7 +++----
- 5 files changed, 20 insertions(+), 9 deletions(-)
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index b397246dae7b..79ee58202396 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1228,7 +1228,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	write->wr_how_written = write->wr_stable_how;
+ 
+ 	nvecs = svc_fill_write_vector(rqstp, &write->wr_payload);
+-	WARN_ON_ONCE(nvecs > ARRAY_SIZE(rqstp->rq_vec));
++	/* WARN_ON_ONCE(nvecs > ARRAY_SIZE(rqstp->rq_vec)); */
+ 
+ 	status = nfsd_vfs_write(rqstp, &cstate->current_fh, nf,
+ 				write->wr_offset, rqstp->rq_vec, nvecs, &cnt,
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 9abdc4b75813..ae0901d6db1a 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1094,7 +1094,7 @@ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		++v;
+ 		base = 0;
+ 	}
+-	WARN_ON_ONCE(v > ARRAY_SIZE(rqstp->rq_vec));
++	WARN_ON_ONCE(v > RPCSVC_MAXPAGES);
+ 
+ 	trace_nfsd_read_vector(rqstp, fhp, offset, *count);
+ 	iov_iter_kvec(&iter, ITER_DEST, rqstp->rq_vec, v, *count);
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 225c385085c3..13b6d0753bc0 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -194,7 +194,7 @@ struct svc_rqst {
+ 	struct page *		*rq_page_end;  /* one past the last page */
+ 
+ 	struct folio_batch	rq_fbatch;
+-	struct kvec		rq_vec[RPCSVC_MAXPAGES]; /* generally useful.. */
++	struct kvec		*rq_vec;
+ 	struct bio_vec		*rq_bvec;
+ 
+ 	__be32			rq_xid;		/* transmission id */
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index db29819716b8..8d28aeb74e1b 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -674,6 +674,7 @@ svc_rqst_free(struct svc_rqst *rqstp)
+ {
+ 	folio_batch_release(&rqstp->rq_fbatch);
+ 	kfree(rqstp->rq_bvec);
++	kfree(rqstp->rq_vec);
+ 	svc_release_buffer(rqstp);
+ 	if (rqstp->rq_scratch_page)
+ 		put_page(rqstp->rq_scratch_page);
+@@ -712,6 +713,11 @@ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
+ 	if (!svc_init_buffer(rqstp, serv->sv_max_mesg, node))
+ 		goto out_enomem;
+ 
++	rqstp->rq_vec = kcalloc_node(RPCSVC_MAXPAGES, sizeof(struct kvec),
++				      GFP_KERNEL, node);
++	if (!rqstp->rq_vec)
++		goto out_enomem;
++
+ 	rqstp->rq_bvec = kcalloc_node(RPCSVC_MAXPAGES, sizeof(struct bio_vec),
+ 				      GFP_KERNEL, node);
+ 	if (!rqstp->rq_bvec)
+@@ -1754,7 +1760,7 @@ unsigned int svc_fill_write_vector(struct svc_rqst *rqstp,
+ 		++pages;
+ 	}
+ 
+-	WARN_ON_ONCE(i > ARRAY_SIZE(rqstp->rq_vec));
++	WARN_ON_ONCE(i > RPCSVC_MAXPAGES);
+ 	return i;
+ }
+ EXPORT_SYMBOL_GPL(svc_fill_write_vector);
 -- 
 2.49.0
 
