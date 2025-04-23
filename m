@@ -1,270 +1,99 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48766253F3F
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2025 00:33:08 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0584128F1;
+	Wed, 23 Apr 2025 04:25:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1745368390; cv=none; b=PJaN82purm2RqYvvvTMC7xckj09wqO1rxWWaSllD207dVHXSljCo4G4ZXF+5j3Cssx2qq+s9tJc0pSeBQTMdIW+UT89jO2YOJS86Wg3ULDENl/JvhHY06tTHSa+jtZMOI6X3DIi+AJMnF73ANV2ziXXoW0Yt+fokeLbeTDiAX9g=
+	t=1745382335; cv=none; b=lNJ6UrdQxPgyo8tWCYujkCT1Y2w8V0WIN/O5Bx+twVqyRT6ToiRxVNhgb/WT6x1dEW75+7zPEouhg48qPAD17dRZfxJauq7CNOPX3B22fxfoCrZ9wH9nEEBGRENt3155kc4eOCb3wXFqZ7yw4hP0VUvrpE5YoDVAdMH47i7MMvI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1745368390; c=relaxed/simple;
-	bh=pcMlxXW4qRyOfKV0OTHd1U7Mb8eQ3cyGfJvitC4tQyg=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=SWIXLTLLoghYetJkEeBKGwr9uaOvj4vSRb0U7dy0AgcN0RLpX6Vn7WtwGdqKML5Cm9Hq1LO7Qy4KtcBpxMD4Go6zKlooLdyOglP65N2/+VmUe5TU242WiAcHiQVSDWtSXwlt06ThawiFmqd5GAMazJnSu30ANUoLZ6HFOTyx89M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=sm5zoA6z; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=qL/AUoTH; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=sm5zoA6z; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=qL/AUoTH; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+	s=arc-20240116; t=1745382335; c=relaxed/simple;
+	bh=5FHKJHeEbixqLbnO4ZuMe6ujdSNBN9ix/KEG8tocq48=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=bBATl9sKCxV9AVErSWzeUrtEoFBfJ4MN/aDTv2HqVRhD668/8yy8cWVqX4c9lJvEcDa/brAq27z+liMIRW6pDCrxeAEsFC+6Q/x4HIQg7mROOXoelNlerkGArF5WyObu+e17tZ9XsczQwG0GENhQmdS7mY++KFzXfHUWRp17x5Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jArP88ke; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="sm5zoA6z";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="qL/AUoTH";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="sm5zoA6z";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="qL/AUoTH"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 3672C1F38D;
-	Wed, 23 Apr 2025 00:33:06 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1745368386; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=h9XLSCT4+yqNTQL95u0OTpVhHb+OCn5IsCUFGofNj+s=;
-	b=sm5zoA6zLGxvKNxhmSqXkRKanZUUiVHR+mfks28j8BAo7l4/s86rcG/9F5pWUNy7D1dQxk
-	bv8WIKZd3LM2ldJN3OuhJxlXFsipvOkxtZP5rEOPAbYy+HNk8vHqJElkg4Vh+nE4d3IpBa
-	SfypjQTppMpOrnPqm/KffsZdxb2JAdE=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1745368386;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=h9XLSCT4+yqNTQL95u0OTpVhHb+OCn5IsCUFGofNj+s=;
-	b=qL/AUoTH56R5AtgSxFvqQjnALgwhiFFJZMATl0kS5DZ24p9vY3HI/cL6Nz8rPvC1qJnY7K
-	ZXUxY+MGyoHV9ICQ==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=sm5zoA6z;
-	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b="qL/AUoTH"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1745368386; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=h9XLSCT4+yqNTQL95u0OTpVhHb+OCn5IsCUFGofNj+s=;
-	b=sm5zoA6zLGxvKNxhmSqXkRKanZUUiVHR+mfks28j8BAo7l4/s86rcG/9F5pWUNy7D1dQxk
-	bv8WIKZd3LM2ldJN3OuhJxlXFsipvOkxtZP5rEOPAbYy+HNk8vHqJElkg4Vh+nE4d3IpBa
-	SfypjQTppMpOrnPqm/KffsZdxb2JAdE=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1745368386;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=h9XLSCT4+yqNTQL95u0OTpVhHb+OCn5IsCUFGofNj+s=;
-	b=qL/AUoTH56R5AtgSxFvqQjnALgwhiFFJZMATl0kS5DZ24p9vY3HI/cL6Nz8rPvC1qJnY7K
-	ZXUxY+MGyoHV9ICQ==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id B5756137CF;
-	Wed, 23 Apr 2025 00:33:01 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 4xqlGj01CGhSdQAAD6G6ig
-	(envelope-from <neilb@suse.de>); Wed, 23 Apr 2025 00:33:01 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jArP88ke"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7A189C4CEEC;
+	Wed, 23 Apr 2025 04:25:34 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1745382334;
+	bh=5FHKJHeEbixqLbnO4ZuMe6ujdSNBN9ix/KEG8tocq48=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=jArP88keLw/3C3KciZTof3fGvk5786pJKsABiejF51rPZc1VwN+FjFtXnOqxZdHA/
+	 fYzyAe9mgWxdXHjrQdrWoz66UTcZjyMzt5vHFZgrc9q7lgYaZOAmZN11aDP7zISsUR
+	 PMck36yrYT/4KSyO11XrvL5rU8NZM+2vAQgR9GQZn3mpLg2Mnk+4ZeGCihxgmMiOXn
+	 phpkDHeOpO9nax635m9v0AKUcI5ljkfGVwflxktkDqeSlS1TvarGVaY1eSi+akpI+f
+	 +EhIsEgi0OBkrNkA6BmJx8P5ITmjI/bPmfa+cEDlMV4fvr/YuHj6IAzEPw0QKn46cH
+	 PlPzJZYWvasKA==
+From: trondmy@kernel.org
+To: linux-nfs@vger.kernel.org
+Cc: linux-mm@kvack.org,
+	linux-fsdevel@vger.kernel.org
+Subject: [RFC PATCH 1/3] filemap: Add a helper for filesystems implementing dropbehind
+Date: Wed, 23 Apr 2025 00:25:30 -0400
+Message-ID: <5588a06f6d5a2cf6746828e2d36e7ada668b1739.1745381692.git.trond.myklebust@hammerspace.com>
+X-Mailer: git-send-email 2.49.0
+In-Reply-To: <cover.1745381692.git.trond.myklebust@hammerspace.com>
+References: <cover.1745381692.git.trond.myklebust@hammerspace.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: "NeilBrown" <neilb@suse.de>
-To: Pali =?utf-8?q?Roh=C3=A1r?= <pali@kernel.org>
-Cc: "Mike Snitzer" <snitzer@kernel.org>,
- "Chuck Lever" <chuck.lever@oracle.com>,
- "Trond Myklebust" <trond.myklebust@hammerspace.com>,
- "Vincent Mailhol" <mailhol.vincent@wanadoo.fr>,
- "Anna Schumaker" <anna.schumaker@oracle.com>, linux-nfs@vger.kernel.org,
- "Jeff Johnson" <jeff.johnson@oss.qualcomm.com>,
- "Jeff Layton" <jlayton@kernel.org>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>
-Subject: Re: [PATCH v2] nfs: add dummy definition for nfsd_file
-In-reply-to: <20250422220200.otabh5q7efh63rjh@pali>
-References: <>, <20250422220200.otabh5q7efh63rjh@pali>
-Date: Wed, 23 Apr 2025 10:32:54 +1000
-Message-id: <174536837419.500591.6789771877874461689@noble.neil.brown.name>
-X-Rspamd-Queue-Id: 3672C1F38D
-X-Spam-Score: -4.51
-X-Rspamd-Action: no action
-X-Spamd-Result: default: False [-4.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	FUZZY_BLOCKED(0.00)[rspamd.com];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[14];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	MIME_TRACE(0.00)[0:+];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FREEMAIL_ENVRCPT(0.00)[wanadoo.fr];
-	RCVD_TLS_ALL(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCVD_COUNT_TWO(0.00)[2];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from,2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[kernel.org,oracle.com,hammerspace.com,wanadoo.fr,vger.kernel.org,oss.qualcomm.com,redhat.com,talpey.com];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	DKIM_TRACE(0.00)[suse.de:+];
-	R_RATELIMIT(0.00)[from(RLewrxuus8mos16izbn)];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.de:dkim]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Flag: NO
-X-Spam-Level: 
+Content-Transfer-Encoding: 8bit
 
-On Wed, 23 Apr 2025, Pali Roh=C3=A1r wrote:
-> On Wednesday 23 April 2025 07:54:40 NeilBrown wrote:
-> > On Wed, 23 Apr 2025, Pali Roh=C3=A1r wrote:
-> > > On Sunday 20 April 2025 12:12:22 Mike Snitzer wrote:
-> > > > On Sat, Apr 19, 2025 at 01:52:31PM -0400, Chuck Lever wrote:
-> > > > > On 4/18/25 5:34 PM, Mike Snitzer wrote:
-> > > > > > On Wed, Apr 16, 2025 at 09:31:55AM -0400, Chuck Lever wrote:
-> > > > > >> On 4/15/25 10:41 PM, Vincent Mailhol wrote:
-> > > > > >>> +CC: Neil Brown
-> > > > > >>> +CC: Olga Kornievskaia
-> > > > > >>> +CC: Dai Ngo
-> > > > > >>> +CC: Tom Talpey
-> > > > > >>> +CC: Trond Myklebust
-> > > > > >>> +CC: Anna Schumaker
-> > > > > >>>
-> > > > > >>> (just to make sure that anyone listed in
-> > > > > >>>
-> > > > > >>>   ./scripts/get_maintainer.pl fs/nfs_common/nfslocalio.c
-> > > > > >>>
-> > > > > >>> get copied).
-> > > > > >>>
-> > > > > >>> Here is the link to the full thread:
-> > > > > >>>
-> > > > > >>>   https://lore.kernel.org/all/Z_coQbSdvMWD92IA@kernel.org/
-> > > > > >>>
-> > > > > >>>
-> > > > > >>> On 10/04/2025 at 11:09, Mike Snitzer:
-> > > > > >>>> Add dummy definition for nfsd_file in both nfslocalio.c and lo=
-calio.c
-> > > > > >>>> so various compilers (e.g. gcc 8.5.0 and 9.5.0) can be used. O=
-therwise
-> > > > > >>>> RCU code (rcu_dereference and rcu_access_pointer) will derefer=
-ence
-> > > > > >>>> what should just be an opaque pointer (by using typeof(*ptr)).
-> > > > > >>>>
-> > > > > >>>> Fixes: 86e00412254a ("nfs: cache all open LOCALIO nfsd_file(s)=
- in client")
-> > > > > >>>> Cc: stable@vger.kernel.org
-> > > > > >>>> Tested-by: Jeff Johnson <jeff.johnson@oss.qualcomm.com>
-> > > > > >>>> Tested-by: Pali Roh=C3=A1r <pali@kernel.org>
-> > > > > >>>> Tested-by: Vincent Mailhol <mailhol.vincent@wanadoo.fr>
-> > > > > >>>> Signed-off-by: Mike Snitzer <snitzer@kernel.org>
-> > > > > >>>
-> > > > > >>> Hi everyone,
-> > > > > >>>
-> > > > > >>> The build has been broken for several weeks already. Does anyon=
-e have
-> > > > > >>> intention to pick-up this patch?
-> > > > > >>>
-> > > > > >>> (please ignore if someone already picked it up and if it is alr=
-eady on
-> > > > > >>> its way to Linus's tree).
-> > > > > >>
-> > > > > >> I assumed that, like all LOCALIO-related changes, this fix would=
- go
-> > > > > >> in through the NFS client tree. Let me know if it needs to go vi=
-a NFSD.
-> > > > > >=20
-> > > > > > Since we haven't heard from Trond or Anna about it, I think you'd=
- be
-> > > > > > perfectly fine to pick it up.  It is a compiler fixup associated =
-with
-> > > > > > nfd_file being kept opaque to the client -- but given it is "stru=
-ct
-> > > > > > nfsd_file" that gives you full license to grab it (IMO).
-> > > > > >=20
-> > > > > > I'm also unaware of any conflicting changes in the NFS client tre=
-e.
-> > > > >=20
-> > > > > Hi Mike -
-> > > > >=20
-> > > > > I just looked at this one again. The patch's diffstat is:
-> > > > >=20
-> > > > >  fs/nfs/localio.c           | 8 ++++++++
-> > > > >  fs/nfs_common/nfslocalio.c | 8 ++++++++
-> > > > >=20
-> > > > > Although fs/nfs_common/ is part of both trees, fs/nfs/localio.c is
-> > > > > definitely a client file. I'm still happy to pick it up, but techni=
-cally
-> > > > > I would need an Acked-by: from one of the NFS client maintainers.
-> > > > >=20
-> > > > > My impression is that Trond is managing the NFS client pulls for v6=
-.15.
-> > > >=20
-> > > > Sure, that's my understanding too.  Feel free to offer your Acked-by
-> > > > (for fs/nfs_common/) and hopefully it'll get picked up.  I can
-> > > > followup with Trond later this coming week if/as needed.
-> > > >=20
-> > > > Thanks,
-> > > > Mike
-> > >=20
-> > > Can we move forward here? The compilation of kernel is broken for at
-> > > least 2 months. Also I have tried to contact Trond for more months but
-> > > has not responded to my emails.
-> > >=20
-> > > Could be this change picked with a slightly higher priority than just
-> > > waiting another two months? Note that nobody objected this particular
-> > > fix and there are 3+ Tested-by lines. And it is not a good image if some
-> > > kernel component does not compile...
-> > >=20
-> >=20
-> > Actually I do object to this fix (though I've been busy and hadn't had
-> > much change to look at it properly).
-> > The fix is ugly.  At the very least it should be wrapping in an=20
-> >    #if  GCC_VERSION  < whatever
->=20
-> The problem is that this compile issue happens also with some builds of
-> gcc 13.3.0 as was discussed in the email thread.
->=20
-> So is not clear what is that "whatever". For me it looks like that it
-> would be more than the version, probably also some build characteristics
-> of gcc. But I have not been investigating it deeper.
+From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Fair enough - let's skip that idea then.
+Add a helper to allow filesystems to attempt to free the 'dropbehind'
+folio.
 
-I'm finding a few different races in this code.  They are subtle and
-unlikely but should be fixed.  So I'd really rather it did continue to
-fail to compile until the various problems are fixed.
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+---
+ include/linux/pagemap.h |  1 +
+ mm/filemap.c            | 16 ++++++++++++++++
+ 2 files changed, 17 insertions(+)
 
-For example nfs_close_local_fh() can be called either from
-nfs_uuid_put() or from a couple of places in nfs code such=20
-as __put_nfs_open_context().  These can race.  We really need the files
-to be closed before either completes, but there is no interlock to
-ensure this.  So e.g. nfs_uuid_put() could module_put(nfs_mod) while
-the other caller is still inside nfsd code trying to put the file.
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 26baa78f1ca7..63e2bee9f46b 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -1225,6 +1225,7 @@ void folio_wait_writeback(struct folio *folio);
+ int folio_wait_writeback_killable(struct folio *folio);
+ void end_page_writeback(struct page *page);
+ void folio_end_writeback(struct folio *folio);
++void folio_end_dropbehind(struct folio *folio);
+ void folio_wait_stable(struct folio *folio);
+ void __folio_mark_dirty(struct folio *folio, struct address_space *, int warn);
+ void folio_account_cleaned(struct folio *folio, struct bdi_writeback *wb);
+diff --git a/mm/filemap.c b/mm/filemap.c
+index b5e784f34d98..12f694880bb8 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1589,6 +1589,22 @@ int folio_wait_private_2_killable(struct folio *folio)
+ }
+ EXPORT_SYMBOL(folio_wait_private_2_killable);
+ 
++/*
++ * Helper for filesystems that want to implement dropbehind, and that
++ * need to keep the folio around after folio_end_writeback, e.g. due to
++ * the need to first commit NFS stable writes.
++ */
++void folio_end_dropbehind(struct folio *folio)
++{
++	if (folio_trylock(folio)) {
++		if (folio->mapping && !folio_test_dirty(folio) &&
++		    !folio_test_writeback(folio))
++			folio_unmap_invalidate(folio->mapping, folio, 0);
++		folio_unlock(folio);
++	}
++}
++EXPORT_SYMBOL(folio_end_dropbehind);
++
+ /*
+  * If folio was marked as dropbehind, then pages should be dropped when writeback
+  * completes. Do that now. If we fail, it's likely because of a big folio -
+-- 
+2.49.0
 
-Also nfs_uuid_put() moves the list of files onto a private list which is
-no protected by any spinlock, and nfs_close_local_fh() could remove it
-from that list asynchronously (thinking it is removing it from the
-original lock-protected list) which could cause list corruption.
-
-So thanks for reporting this problem!!
-
-NeilBrown
