@@ -1,67 +1,50 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from outgoing.selfhost.de (mordac.selfhost.de [82.98.82.6])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13F471C36;
-	Sat, 26 Apr 2025 16:05:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C0531A08DB
+	for <linux-nfs@vger.kernel.org>; Sat, 26 Apr 2025 16:44:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=82.98.82.6
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1745683533; cv=none; b=OM3PY+jtV1ciG22msTEW5cFQMCEaUQys9ffSkXL5T8ZLOx0ufd/sTGvlUvvAcKhtdjIUsUULSm+xYxyBMUpPgB5Qh6/4BXRjKsaMf8rh5VdZEQEC9ylTi1oe0gteCLz0i10NGW9San1QjS/rAyG+Q3F1Tn7uKoAvQuk6AGAujQk=
+	t=1745685899; cv=none; b=i8szsOBGAk9pbOeHq9wPVoFhrRokHmV9pvkCsjP6edhPPJh3wQ569Jmfjy7Zz+q5t0LY5oS2kFo7f2un+kU8EExXbIHim7BN+uIuxAeB6p2C6vJahY0flRnjOa4uXUszO7ulewyM5nkIMJ+HWb9MOh9Iu2v3L4NiUmZnZ0NEjVE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1745683533; c=relaxed/simple;
-	bh=xan2qxjdMJOzG0gyDi5jgCZcUJJpvz5TZiWFb+2Jl6Y=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=afWo2vwcp7uWhomTR472iDL/QYO/Ezzaeg1ZIWAcN5bdSZIML5EVbtjqtmqojqEp/EWC5Vy8Q+900LHnldeFUB9mVpq+uBfkXk1elLeLJKeEAgEh2rwzdNUFAmIh62jljjyBfzHSi9UAEFfLcwSlfgZtlUAncYx0XuP/Nscdasc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZZTAI6dr; arc=none smtp.client-ip=10.30.226.201
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZZTAI6dr"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 58998C4CEE2;
-	Sat, 26 Apr 2025 16:05:32 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1745683532;
-	bh=xan2qxjdMJOzG0gyDi5jgCZcUJJpvz5TZiWFb+2Jl6Y=;
-	h=From:To:Cc:Subject:Date:From;
-	b=ZZTAI6dr0oYRwNxa9VlMkNKahV92b91AsYYyPjPgiIFUMC3KCRQZB6RJlJxbK2Or/
-	 plKqr/o07Fdyi2wvAs2HzCKnhVpug1U1oZm1n3nLhikQZ1AoeiJyW91rFhl9C3413Q
-	 9ixlDQqVZX7MPmK4PUnFhQjSZPjCrdYzYdahfCuvd4I5rd4HwIU+4C5j+50FAlAda4
-	 6OodNijLgtc2j9B5QlsyDRtfK1TVxqzTNSrFEpeplyfDPRCk9yxgbfzRrJbgQovYYD
-	 DnMRoA0hB0HJGm+leK6Kwnasz7kL0Y+lPfDuKy7C2MryksP3WvQ8Sqn86YsYUAIYIv
-	 aU2ok0zFGpOQQ==
-From: cel@kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: <linux-nfs@vger.kernel.org>,
-	<linux-kernel@vger.kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
-Subject: [GIT PULL] 2nd round of NFSD fixes for v6.15
-Date: Sat, 26 Apr 2025 12:05:31 -0400
-Message-ID: <20250426160531.5466-1-cel@kernel.org>
-X-Mailer: git-send-email 2.49.0
+	s=arc-20240116; t=1745685899; c=relaxed/simple;
+	bh=fH/ZYvYo0f1GHut97hWbZfO562AtTjFjFXnVMQuplaA=;
+	h=Subject:From:To:References:Message-ID:Date:MIME-Version:
+	 In-Reply-To:Content-Type; b=lacm5XC/20wVGcnbfrMDQ7QlGeQiFsiAhjGL67bm9ZxKhmAunAcO2TlZX/ljDE9qLqXvKHcp1fXwm93xPyKOdauvLvRo4OggxJ+F0cfoF6CkLyMHA3iU2E05w9fXn46N+hIDI1v/S+l9HWcsDd00xgW9IQrupJfvVYaN13MxIBo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=afaics.de; spf=none smtp.mailfrom=afaics.de; arc=none smtp.client-ip=82.98.82.6
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=afaics.de
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=afaics.de
+Received: (qmail 4452 invoked from network); 26 Apr 2025 16:44:50 -0000
+Received: from unknown (HELO mailhost.afaics.de) (postmaster@xqrsonfo.mail.selfhost.de@62.158.99.252)
+  by mailout.selfhost.de with ESMTPA; 26 Apr 2025 16:44:50 -0000
+X-Spam-Level: 
+X-Spam-Report: 
+	*  0.0 SPF_HELO_NONE SPF: HELO does not publish an SPF Record
+	* -1.7 NICE_REPLY_A Looks like a legit reply (A)
+	*  0.0 DMARC_MISSING Missing DMARC policy
+	*  0.4 KHOP_HELO_FCRDNS Relay HELO differs from its IP's reverse DNS
+Received: from cecil.afaics.de (p200300e31f37680268fdfffffe6f0e76.dip0.t-ipconnect.de [2003:e3:1f37:6802:68fd:ffff:fe6f:e76])
+	by marvin.afaics.de (OpenSMTPD) with ESMTP id 8b1acb0c;
+	Sat, 26 Apr 2025 18:44:50 +0200 (CEST)
+Subject: Re: rpc-statd.service: State 'stop-sigterm' timed out. Killing.
+From: Harald Dunkel <harri@afaics.de>
+To: linux-nfs@vger.kernel.org
+References: <506d5e52-87dd-038e-7a52-7dcc1b8c3427@afaics.de>
+Message-ID: <35f8aa38-5f09-312a-86f5-0d07aded4c5c@afaics.de>
+Date: Sat, 26 Apr 2025 18:44:50 +0200
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101
+ Firefox/128.0 SeaMonkey/2.53.20
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+In-Reply-To: <506d5e52-87dd-038e-7a52-7dcc1b8c3427@afaics.de>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-The following changes since commit a1d14d931bf700c1025db8c46d6731aa5cf440f9:
+PS: I missed to include the list of restarted services
 
-  nfsd: decrease sc_count directly if fail to queue dl_recall (2025-04-13 16:39:42 -0400)
+  systemctl restart avahi-daemon.service mdmonitor.service nfs-blkmap.service nfsdcld.service rpcbind.service rpc-statd.service rsyslog.service smartmontools.service ssh.service systemd-journald.service systemd-timesyncd.service systemd-udevd.service
 
-are available in the Git repository at:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-6.15-2
-
-for you to fetch changes up to 831e3f545b0771f91fa94cdb8aa569a73b9ec580:
-
-  Revert "sunrpc: clean cache_detail immediately when flush is written frequently" (2025-04-26 12:00:43 -0400)
-
-----------------------------------------------------------------
-nfsd-6.15 fixes:
-
-- Revert a v6.15 patch due to a report of SELinux test failures
-
-----------------------------------------------------------------
-Chuck Lever (1):
-      Revert "sunrpc: clean cache_detail immediately when flush is written frequently"
-
- net/sunrpc/cache.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
