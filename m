@@ -1,70 +1,63 @@
-Received: from outgoing.selfhost.de (mordac.selfhost.de [82.98.82.6])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 643822628D
-	for <linux-nfs@vger.kernel.org>; Sat, 26 Apr 2025 16:46:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=82.98.82.6
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA3041A08DB;
+	Sat, 26 Apr 2025 17:53:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1745685971; cv=none; b=LaB/AgzZG6JQiPqtxM+6B73toC835/M+DJTvGYVF1xgff5z2eDSUHmDq5lbmky9JXxRXY3oh+D5XgDXWp4Db7MHUFfR9PAapln1HTQLibqkazEW6cOXveuFNtVJHr3aymSV2ajgwR492mle4+G+AvjzfZbpVWmLgqX4jr33DWj8=
+	t=1745690022; cv=none; b=osdJQUwIYV6152YUKceJdR0mdyaaVfjoyObaeo49ae3UATwTGgCrWAhsN6Gw8ozbqMp+plVeeFZx10YLEUs0bkEqwWuVcpWYUzeFeNbO5YpPTkMI0eozWOJJu4B227nvuLknrRA9oGAxXgAH6WL1zD+URvwWoMRw8btCz+GVrJ0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1745685971; c=relaxed/simple;
-	bh=lEjaKtgUKg6eVqHfBbDBbBg270OpNTl2g7WtKotxR3s=;
-	h=To:From:Subject:Message-ID:Date:MIME-Version:Content-Type; b=iODzse8yIApsn6hWqfOqyTdbwKmax4CSN2jrbE2SxBIDydiqDY8PU8JhXk2Mnf4rpikLsFxFzceMTagQBd+3oQOGl45PaMgJoT9a5ZQfx1nS0picJ+TJzNPh0txl0I2YQuQLJJROeuTZTs7Gm+6CXcuAJirJAhMgxyePK7Je2qw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=afaics.de; spf=none smtp.mailfrom=afaics.de; arc=none smtp.client-ip=82.98.82.6
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=afaics.de
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=afaics.de
-Received: (qmail 11974 invoked from network); 26 Apr 2025 16:39:24 -0000
-Received: from unknown (HELO mailhost.afaics.de) (postmaster@xqrsonfo.mail.selfhost.de@62.158.99.252)
-  by mailout.selfhost.de with ESMTPA; 26 Apr 2025 16:39:24 -0000
-X-Spam-Level: 
-X-Spam-Report: 
-	*  0.0 SPF_HELO_NONE SPF: HELO does not publish an SPF Record
-	*  0.0 DMARC_MISSING Missing DMARC policy
-	*  0.4 KHOP_HELO_FCRDNS Relay HELO differs from its IP's reverse DNS
-Received: from cecil.afaics.de (p200300e31f37680268fdfffffe6f0e76.dip0.t-ipconnect.de [2003:e3:1f37:6802:68fd:ffff:fe6f:e76])
-	by marvin.afaics.de (OpenSMTPD) with ESMTP id 77240c1a;
-	Sat, 26 Apr 2025 18:39:20 +0200 (CEST)
-To: linux-nfs@vger.kernel.org
-From: Harald Dunkel <harri@afaics.de>
-Subject: rpc-statd.service: State 'stop-sigterm' timed out. Killing.
-Message-ID: <506d5e52-87dd-038e-7a52-7dcc1b8c3427@afaics.de>
-Date: Sat, 26 Apr 2025 18:39:20 +0200
-User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101
- Firefox/128.0 SeaMonkey/2.53.20
+	s=arc-20240116; t=1745690022; c=relaxed/simple;
+	bh=NDeC8ZcZ1RRIJPeHaGlEK5rMTcxDItZqFEb0E5ghCps=;
+	h=Subject:From:In-Reply-To:References:Message-Id:Date:To:Cc; b=MUBwmFeaJ+s0hsLS+9dVsK3zgMR165PwRDtPauJakHPxWD4qPCBl9uIin6DgmjT1ou2ja9l+FRZ1Eju3n0//HzfkR04bKGKX64Bc2ghXq35Dn4QTWrES1kKaRiAcqbIT+gaR7BQSq4YRf8J6QVjgqQl1D9l9ehitnYzMidVMzbc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fUFVHLMs; arc=none smtp.client-ip=10.30.226.201
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fUFVHLMs"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 40B48C4CEE2;
+	Sat, 26 Apr 2025 17:53:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1745690021;
+	bh=NDeC8ZcZ1RRIJPeHaGlEK5rMTcxDItZqFEb0E5ghCps=;
+	h=Subject:From:In-Reply-To:References:Date:To:Cc:From;
+	b=fUFVHLMsh0byRby2mZZbs90jMBwCZFD3jXPC8cxxzCxd9lhrvzAGOL9oscVI3x1wn
+	 7BM0qaFMm/fXWbdtQmAhL1EnIBb7SM7jWyXFsr7nAKwxweH2pHza3FRL8E3yQMgRpN
+	 LYLjpD67xhzKBgFho+tejATqpW6Mv9hQhHecGIlFydJ4zn+iQXQdxdVGY8f0u3kjUn
+	 o6brEj/LyAol2VkX42wl5ZsQQKFsgoj+wXCXx2cambwoVlmq9/RTpIUYnFvecSnKnF
+	 XL8H5c86uikqLwYpp2lqIp8vWHJnLXqBNkKcrDohX0eUcrqtYCzs+DVLH9t8jkIYv6
+	 n9bhlVIXwuUtg==
+Received: from [10.30.226.235] (localhost [IPv6:::1])
+	by aws-us-west-2-korg-oddjob-rhel9-1.codeaurora.org (Postfix) with ESMTP id 345D938111CC;
+	Sat, 26 Apr 2025 17:54:21 +0000 (UTC)
+Subject: Re: [GIT PULL] 2nd round of NFSD fixes for v6.15
+From: pr-tracker-bot@kernel.org
+In-Reply-To: <20250426160531.5466-1-cel@kernel.org>
+References: <20250426160531.5466-1-cel@kernel.org>
+X-PR-Tracked-List-Id: <linux-nfs.vger.kernel.org>
+X-PR-Tracked-Message-Id: <20250426160531.5466-1-cel@kernel.org>
+X-PR-Tracked-Remote: https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-6.15-2
+X-PR-Tracked-Commit-Id: 831e3f545b0771f91fa94cdb8aa569a73b9ec580
+X-PR-Merge-Tree: torvalds/linux.git
+X-PR-Merge-Refname: refs/heads/master
+X-PR-Merge-Commit-Id: d22aad29de2a7b13f43ccb9b55cfd5daf793ead4
+Message-Id: <174569005973.4037932.7521780680972977613.pr-tracker-bot@kernel.org>
+Date: Sat, 26 Apr 2025 17:54:19 +0000
+To: cel@kernel.org
+Cc: Linus Torvalds <torvalds@linux-foundation.org>, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Hi folks,
+The pull request you sent on Sat, 26 Apr 2025 12:05:31 -0400:
 
-Sometimes restarting rpc-statd.service runs into a timeout:
+> https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git tags/nfsd-6.15-2
 
-:
-Apr 26 18:18:22 lola.afaics.de systemd[1]: Stopping rpc-statd.service - NFS status monitor for NFSv2/3 locking....
-Apr 26 18:19:52 lola.afaics.de systemd[1]: rpc-statd.service: State 'stop-sigterm' timed out. Killing.
-Apr 26 18:19:52 lola.afaics.de systemd[1]: rpc-statd.service: Killing process 1688 (rpc.statd) with signal SIGKILL.
-Apr 26 18:19:52 lola.afaics.de systemd[1]: rpc-statd.service: Main process exited, code=killed, status=9/KILL
-Apr 26 18:19:52 lola.afaics.de systemd[1]: rpc-statd.service: Failed with result 'timeout'.
-Apr 26 18:19:52 lola.afaics.de systemd[1]: Stopped rpc-statd.service - NFS status monitor for NFSv2/3 locking..
-Apr 26 18:19:52 lola.afaics.de systemd[1]: Starting rpcbind.service - RPC bind portmap service...
-Apr 26 18:19:52 lola.afaics.de systemd[1]: Started rpcbind.service - RPC bind portmap service.
-Apr 26 18:19:52 lola.afaics.de systemd[1]: Starting rpc-statd.service - NFS status monitor for NFSv2/3 locking....
-Apr 26 18:19:52 lola.afaics.de rpc.statd[26501]: Version 2.8.3 starting
-Apr 26 18:19:52 lola.afaics.de rpc.statd[26501]: Flags: TI-RPC
-Apr 26 18:19:52 lola.afaics.de systemd[1]: Started rpc-statd.service - NFS status monitor for NFSv2/3 locking..
-:
+has been merged into torvalds/linux.git:
+https://git.kernel.org/torvalds/c/d22aad29de2a7b13f43ccb9b55cfd5daf793ead4
 
-nfs-utils is version 2.8.3, as provided in Debian Sid. Restart
-is done by a tool "needrestart", which might restart several
-services in parallel.
+Thank you!
 
-Is this a known problem? I had reported this initially on the Debian
-bug tracker, see https://bugs.debian.org/1067006
-
-Regards
-Harri
+-- 
+Deet-doot-dot, I am a bot.
+https://korg.docs.kernel.org/prtracker.html
