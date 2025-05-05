@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3EB322F2C50;
-	Mon,  5 May 2025 23:13:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3296B2F2C51;
+	Mon,  5 May 2025 23:13:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746486822; cv=none; b=LpPvATkVDMU4IE9GZZOx9W81ivfBqL4Xz1+N85CaQ4Mea7JqnIaBa4SojQ8hxqo3x6kWAC5GdWIch5ocW/V0UlcltopT17ol6aznBndOgu4q9tohufFFGACa482Fj2De4LKCA2U3oj4JHDmP8QR9BOQ9Jyuu9T/jMi/5yIG9cvQ=
+	t=1746486825; cv=none; b=B8g6dEZkwX+uruo+KE/83P7xGT3ZDuDPvRsxceqcbuR2jbfSwA2Z6m3OjjovLdXaPt759C6AjVu/0Ko/5xMA87YdlJbBUIUa8Nx97jqq87GnZaXjx3MSdLaMIStyMnsk2ilx+W4cDrTRAXyKblLygmYzA7VB6P9AyTIqxMw9u4E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746486822; c=relaxed/simple;
-	bh=ispatKRpWlb5wfrhSPJHXYIpR4sWJYMrjMX2BIsRmNo=;
+	s=arc-20240116; t=1746486825; c=relaxed/simple;
+	bh=IgM49T9ksnvRHRuSeR0og7Jw/nAXyFhvqciGhoiWpq0=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=XEyFjJ2KoRAPuZd7PX6VWR9HWqjJMvKT6zuN0na5IRZivs2Bt1hsFxPHfRHza7UR2AwX6cLCIApHZSQaMKgNOnCo4QFbGwYMeb3MjNKIS1NJcLzKI5CF3qLOYKF8TUbNJiuoKo0yysW3Py/kkfkDf/edeLaZ7dwKaK/xZ4LFGgY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CY8aU0no; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=io1MWKRPlxOOQW02tHi1/G/VHNJQedK6/MHznlJpKlaxd1+ckEl6anstUhoSY2bSQ+yh2RpLq10A0hB0wBgbI5Q5WOKPGYjkBx0Caa/dN9p28ehb44Jv0VWd0hkgBppJRJlc1qQBLLHYN90FK1K2QV0anCSCcpN5b5YyjoBg4TI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Q9Y9U0/C; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CY8aU0no"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 26294C4CEE4;
-	Mon,  5 May 2025 23:13:41 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Q9Y9U0/C"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 800C0C4CEE4;
+	Mon,  5 May 2025 23:13:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1746486822;
-	bh=ispatKRpWlb5wfrhSPJHXYIpR4sWJYMrjMX2BIsRmNo=;
+	s=k20201202; t=1746486824;
+	bh=IgM49T9ksnvRHRuSeR0og7Jw/nAXyFhvqciGhoiWpq0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=CY8aU0no5bSkunUbHlkHAEW/YSrnKhspmmBKFnyKYWFpoh5fCwMWrpWBG36AxX9G+
-	 +dPbiNQandXD0jy7l7t1O+Syr2vYrtZIhoZJ1cmUWJkOsLmF/mi5y2t35OU+LFoTvV
-	 DCcpJssXlG8dawqo4q0wGEWYKn9v+hTiLB52WzA4yXd9p61OL2cOubffC+RYAh8OsV
-	 u2wQI5o55AbB+V97zDC2xt3Vx7GFphVC4/SXtfjDrhQWZsVyPf4M9gk2qeokzsIMTe
-	 Hgwo0ve7PJ9Gk3f8UHZpLLiHhvkPHLQ3XhB0wDK0cHsCKG/Pqd8l9uplddQA8fSSs0
-	 FG11lWpnaBMNw==
+	b=Q9Y9U0/CSq5T4vxjkYK/oIKDxxkCG/5eCBi7E35qOuBT4H70yzMWkTj/WbZW+a6JR
+	 6N6cjbhXRNAjDKvtEN+VRryjrzvGwjU3BPtpn9yYoCdQPjfLREEnJtR7EXwM55Zusq
+	 shQGusD27xQrqZ684f5EFnjbk/m8t4B0YnklQ5a8NWL99VZl1Gt0fRe4ko+EV9iYLM
+	 w0NObSEwJ+0KzjzxMvNF/hWAItSIBXHzlFysBXfbgJNIUzb4hqhhlBSvfYXzZDi6JW
+	 QuLbcqJgU9s2s+j22bSVFvR7ksUbwqNiIUHRL5biJFdndWX14LZ9x00BQ1dZ1CeByZ
+	 Xy9qAAfP4jBZA==
 From: Sasha Levin <sashal@kernel.org>
 To: linux-kernel@vger.kernel.org,
 	stable@vger.kernel.org
@@ -35,10 +35,16 @@ Cc: Trond Myklebust <trond.myklebust@hammerspace.com>,
 	Sasha Levin <sashal@kernel.org>,
 	trondmy@kernel.org,
 	anna@kernel.org,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.15 008/153] NFSv4: Treat ENETUNREACH errors as fatal for state recovery
-Date: Mon,  5 May 2025 19:10:55 -0400
-Message-Id: <20250505231320.2695319-8-sashal@kernel.org>
+	chuck.lever@oracle.com,
+	davem@davemloft.net,
+	edumazet@google.com,
+	kuba@kernel.org,
+	pabeni@redhat.com,
+	linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 5.15 009/153] SUNRPC: rpc_clnt_set_transport() must not change the autobind setting
+Date: Mon,  5 May 2025 19:10:56 -0400
+Message-Id: <20250505231320.2695319-9-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.5
 In-Reply-To: <20250505231320.2695319-1-sashal@kernel.org>
 References: <20250505231320.2695319-1-sashal@kernel.org>
@@ -55,42 +61,34 @@ Content-Transfer-Encoding: 8bit
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit 0af5fb5ed3d2fd9e110c6112271f022b744a849a ]
+[ Upstream commit bf9be373b830a3e48117da5d89bb6145a575f880 ]
 
-If a containerised process is killed and causes an ENETUNREACH or
-ENETDOWN error to be propagated to the state manager, then mark the
-nfs_client as being dead so that we don't loop in functions that are
-expecting recovery to succeed.
+The autobind setting was supposed to be determined in rpc_create(),
+since commit c2866763b402 ("SUNRPC: use sockaddr + size when creating
+remote transport endpoints").
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4state.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+ net/sunrpc/clnt.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 76e2cdddf95c1..b1dec7a9bd723 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -2726,7 +2726,15 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 	pr_warn_ratelimited("NFS: state manager%s%s failed on NFSv4 server %s"
- 			" with error %d\n", section_sep, section,
- 			clp->cl_hostname, -status);
--	ssleep(1);
-+	switch (status) {
-+	case -ENETDOWN:
-+	case -ENETUNREACH:
-+		nfs_mark_client_ready(clp, -EIO);
-+		break;
-+	default:
-+		ssleep(1);
-+		break;
-+	}
- out_drain:
- 	memalloc_nofs_restore(memflags);
- 	nfs4_end_drain_session(clp);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 5de2fc7af268a..48ffdd4192538 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -275,9 +275,6 @@ static struct rpc_xprt *rpc_clnt_set_transport(struct rpc_clnt *clnt,
+ 	old = rcu_dereference_protected(clnt->cl_xprt,
+ 			lockdep_is_held(&clnt->cl_lock));
+ 
+-	if (!xprt_bound(xprt))
+-		clnt->cl_autobind = 1;
+-
+ 	clnt->cl_timeout = timeout;
+ 	rcu_assign_pointer(clnt->cl_xprt, xprt);
+ 	spin_unlock(&clnt->cl_lock);
 -- 
 2.39.5
 
