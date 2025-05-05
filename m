@@ -1,49 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BF05336BA4B;
-	Mon,  5 May 2025 22:56:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0EED936BA47;
+	Mon,  5 May 2025 22:56:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746485812; cv=none; b=eQJuWlR7xNUW1zzrB3AeDf4rzsL4CUWthVsMOvsRolyHUK9bAIeFloIDCprX5zXGWWnugnnDHqv2cZ/khWFYr0tR41JnyNU/B5zPCPx31IvlBnNMeS4Jo4WJBBfz3Sp3Bp0iCGJJMRMMw5RNfAIYiFab9yN2kFZ0RB/f6PyOvGI=
+	t=1746485810; cv=none; b=Zge+PqP6nRHna2yeJjwQLirzyFWr4kTxdDowMWLpvOrBqz4XMgUPdzilZ0vDXmej39AGPONH6IFYfoS/O76UDwJa/6Sj9hQG02PkZbF1gCivxuu04ht7i6BtFbLoLT05FdjVkTHrAIpQQcNCQYIO/BGaBbYyBhNEYYYZ2fnSNoY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746485812; c=relaxed/simple;
-	bh=qHENiOabmT77UFCXK7h2Oxu5/iLS0ySjclWVOhKY/ws=;
+	s=arc-20240116; t=1746485810; c=relaxed/simple;
+	bh=HzdditQjkwur0Bv5K9IZW5bJPDXO6F1EM/S7XQ66tCA=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=JD2vU+N9h0vWaMmNJH7LFz/Kn4eEyVgQ7vnFmXeuKIfuqWXvccywSkt3btv6EGwFUtMTS2RxKlBAXkl1r/CGdURF2tsp3RDfBMYTXPEzM5Hwx/HljwXXVVDby74YSlXgM3ZSnfDgjmbiHe4rfEjQuD0y2normFgH9cxBwXOTnzo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cdZ134uX; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=JeBAiPW0+zr7kiOGn7onjoSlbEZ3zMoE/RwbqDGR6XR9+jZDnwg6pq04szhCUj6V+DZQThXlNWzpUBBA3asSZ2oiH0O4+TG6kELMuQldthA+VpqcYBkD7tKPx0feWnGGtcC+vr19RTFceGAc/F1eR3UyB1ROpFKtGIBG2WaP5jY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hlS2O6xn; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cdZ134uX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BDAD0C4CEEF;
-	Mon,  5 May 2025 22:56:50 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hlS2O6xn"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 240E9C4CEEE;
+	Mon,  5 May 2025 22:56:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1746485812;
-	bh=qHENiOabmT77UFCXK7h2Oxu5/iLS0ySjclWVOhKY/ws=;
+	s=k20201202; t=1746485808;
+	bh=HzdditQjkwur0Bv5K9IZW5bJPDXO6F1EM/S7XQ66tCA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=cdZ134uXiFi0SbiEdQwK6kGVwm7pFES8bCzpe4aWkpNCYchsM7ZrGdIq2K3+sz5fR
-	 tPSd7hO+fw4Hgp/5nhxDXoJgT6vQ+357x3RZJd7HO1gZQ6jxs81gzSYLD/THY2j0IM
-	 veZEvEZoLyQ1+2nyiwYTvlh6IJHr9TPPl8v1hPH0f/pNbhafc7AjXRe2/L42j3/XQt
-	 1OWMk3SRNaJWN6uDmtK4GLNuZRZso3P3RAitE3L0+mZ+LY91uGvUXpWYm8RFiZQR5I
-	 h3Ahi/5S26o4sQTsoYsf9bohvm5HbRfi2Q8iA3uZqU5suJvUTWqgjpD8p25NMhniz9
-	 bpiYBQyTLWM+g==
+	b=hlS2O6xnAhBlxjO+fVeWgat903Iaa8peiPWGyGLFIRx84A57RXJeRDHf9yECq7ZXF
+	 LrXpMGy2s05WocbmiJeqpXFNuDXqV87qkTbdaTBx5MUXhHjyZJhFyCWfEI7/FqhiTn
+	 gAe5xMd0kfBrl4B8V9dXmm0UXlw3LZCJn3OtEjufgYI3toq+Vp89oOviN9XSzzoqqH
+	 3CuIRwFyBrrpx3Q4A4PMdwm7QuYEwPGiqhYWMjIxph0L9cGBOCABMNPO7SoJn76MJf
+	 4gZngtYASNFoysoH3jCf6vzrgtOuTpeFdpikwFGxnhHHmW7OKu36fShwQ94I1Ho8EO
+	 Z11jjTDQuXg8Q==
 From: Sasha Levin <sashal@kernel.org>
 To: linux-kernel@vger.kernel.org,
 	stable@vger.kernel.org
 Cc: Trond Myklebust <trond.myklebust@hammerspace.com>,
-	Jeff Layton <jlayton@kernel.org>,
 	Sasha Levin <sashal@kernel.org>,
-	chuck.lever@oracle.com,
 	trondmy@kernel.org,
 	anna@kernel.org,
-	davem@davemloft.net,
-	edumazet@google.com,
-	kuba@kernel.org,
-	pabeni@redhat.com,
-	linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org
-Subject: [PATCH AUTOSEL 6.6 010/294] SUNRPC: Don't allow waiting for exiting tasks
-Date: Mon,  5 May 2025 18:51:50 -0400
-Message-Id: <20250505225634.2688578-10-sashal@kernel.org>
+	linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 6.6 008/294] NFSv4: Check for delegation validity in nfs_start_delegation_return_locked()
+Date: Mon,  5 May 2025 18:51:48 -0400
+Message-Id: <20250505225634.2688578-8-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.5
 In-Reply-To: <20250505225634.2688578-1-sashal@kernel.org>
 References: <20250505225634.2688578-1-sashal@kernel.org>
@@ -60,31 +53,31 @@ Content-Transfer-Encoding: 8bit
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit 14e41b16e8cb677bb440dca2edba8b041646c742 ]
+[ Upstream commit 9e8f324bd44c1fe026b582b75213de4eccfa1163 ]
 
-Once a task calls exit_signals() it can no longer be signalled. So do
-not allow it to do killable waits.
+Check that the delegation is still attached after taking the spin lock
+in nfs_start_delegation_return_locked().
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- net/sunrpc/sched.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfs/delegation.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 9b45fbdc90cab..73bc39281ef5f 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -276,6 +276,8 @@ EXPORT_SYMBOL_GPL(rpc_destroy_wait_queue);
- 
- static int rpc_wait_bit_killable(struct wait_bit_key *key, int mode)
- {
-+	if (unlikely(current->flags & PF_EXITING))
-+		return -EINTR;
- 	schedule();
- 	if (signal_pending_state(mode, current))
- 		return -ERESTARTSYS;
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 55cfa1c4e0a65..bbd582d8a7dc9 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -297,7 +297,8 @@ nfs_start_delegation_return_locked(struct nfs_inode *nfsi)
+ 	if (delegation == NULL)
+ 		goto out;
+ 	spin_lock(&delegation->lock);
+-	if (!test_and_set_bit(NFS_DELEGATION_RETURNING, &delegation->flags)) {
++	if (delegation->inode &&
++	    !test_and_set_bit(NFS_DELEGATION_RETURNING, &delegation->flags)) {
+ 		clear_bit(NFS_DELEGATION_RETURN_DELAYED, &delegation->flags);
+ 		/* Refcount matched in nfs_end_delegation_return() */
+ 		ret = nfs_get_delegation(delegation);
 -- 
 2.39.5
 
