@@ -1,47 +1,52 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48AB03B96ED;
-	Mon,  5 May 2025 23:22:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BF05336BA4B;
+	Mon,  5 May 2025 22:56:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746487323; cv=none; b=gPPfTg/l2ZbE0pjBiDu6XjVAygaKUH3vkyako8KxGbVqoQhX7NTCiwgZFmFpCxYaLyqlGcJxtnTdYyDUEbHsBI6uznwlg2XDWfqFoCkeP9nigtvwpJUCpEJnpuzbyoGOW2Qx15xytG2Ufgx7Qa8IHLqvfpHZTGPH1eIP7TXn8Do=
+	t=1746485812; cv=none; b=eQJuWlR7xNUW1zzrB3AeDf4rzsL4CUWthVsMOvsRolyHUK9bAIeFloIDCprX5zXGWWnugnnDHqv2cZ/khWFYr0tR41JnyNU/B5zPCPx31IvlBnNMeS4Jo4WJBBfz3Sp3Bp0iCGJJMRMMw5RNfAIYiFab9yN2kFZ0RB/f6PyOvGI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746487323; c=relaxed/simple;
-	bh=0ykm/0vK3HhFGgPGriruaUJgrWRvgzXlTZAKnX0DZnk=;
+	s=arc-20240116; t=1746485812; c=relaxed/simple;
+	bh=qHENiOabmT77UFCXK7h2Oxu5/iLS0ySjclWVOhKY/ws=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=UuPxEBBcScXJcgkmkG6A7A1swctj963guZ3jW6H2OwX4ksSV79CG+t6MNAD/bH7tieRwPNi8Cm2zAn6yurK7iKIsh1mNSx+b5w+T/7Gcldq5QCtemXzphAdiOh2vOOQKy/bUHAMOL1rnYFtUqbH6xWGLKSRYOtwDKeSBgKJV/Yg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=achvxy+T; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=JD2vU+N9h0vWaMmNJH7LFz/Kn4eEyVgQ7vnFmXeuKIfuqWXvccywSkt3btv6EGwFUtMTS2RxKlBAXkl1r/CGdURF2tsp3RDfBMYTXPEzM5Hwx/HljwXXVVDby74YSlXgM3ZSnfDgjmbiHe4rfEjQuD0y2normFgH9cxBwXOTnzo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cdZ134uX; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="achvxy+T"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2F4EFC4CEF1;
-	Mon,  5 May 2025 23:22:01 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cdZ134uX"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BDAD0C4CEEF;
+	Mon,  5 May 2025 22:56:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1746487322;
-	bh=0ykm/0vK3HhFGgPGriruaUJgrWRvgzXlTZAKnX0DZnk=;
+	s=k20201202; t=1746485812;
+	bh=qHENiOabmT77UFCXK7h2Oxu5/iLS0ySjclWVOhKY/ws=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=achvxy+TRKPz10bFXeJTAUE53bFh3xFBD/C44elSHRoQ25KqLDk2Kpl7+9c+vhfgt
-	 ZcR/1zZIjZePrVKgwy++vaBKLmeYeTuS9XM9rZD49R7QGI1ddwpIqFOjf0PwZSyc7L
-	 K4wbKdiZLnU3sG3Th7Sz1nwdjuDR0m/cOXwMWY+rp9o5CXVWJD0OteOFPxTRkPfc3W
-	 tA2yhICYySvCjGyl+pfYe0UpmlK588iZgEL1BRmzVkhZg563lSQsCUNUFwJlQkEXCO
-	 r91rov3qqtgX+plKuuUPNUkhGmIg/cKIRS5WBeUJoHXVVOWZNnXwe8uB4XSLTrUeVS
-	 z58YcvODjW4jw==
+	b=cdZ134uXiFi0SbiEdQwK6kGVwm7pFES8bCzpe4aWkpNCYchsM7ZrGdIq2K3+sz5fR
+	 tPSd7hO+fw4Hgp/5nhxDXoJgT6vQ+357x3RZJd7HO1gZQ6jxs81gzSYLD/THY2j0IM
+	 veZEvEZoLyQ1+2nyiwYTvlh6IJHr9TPPl8v1hPH0f/pNbhafc7AjXRe2/L42j3/XQt
+	 1OWMk3SRNaJWN6uDmtK4GLNuZRZso3P3RAitE3L0+mZ+LY91uGvUXpWYm8RFiZQR5I
+	 h3Ahi/5S26o4sQTsoYsf9bohvm5HbRfi2Q8iA3uZqU5suJvUTWqgjpD8p25NMhniz9
+	 bpiYBQyTLWM+g==
 From: Sasha Levin <sashal@kernel.org>
 To: linux-kernel@vger.kernel.org,
 	stable@vger.kernel.org
 Cc: Trond Myklebust <trond.myklebust@hammerspace.com>,
 	Jeff Layton <jlayton@kernel.org>,
-	Benjamin Coddington <bcodding@redhat.com>,
 	Sasha Levin <sashal@kernel.org>,
+	chuck.lever@oracle.com,
 	trondmy@kernel.org,
 	anna@kernel.org,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.4 05/79] NFSv4: Treat ENETUNREACH errors as fatal for state recovery
-Date: Mon,  5 May 2025 19:20:37 -0400
-Message-Id: <20250505232151.2698893-5-sashal@kernel.org>
+	davem@davemloft.net,
+	edumazet@google.com,
+	kuba@kernel.org,
+	pabeni@redhat.com,
+	linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org
+Subject: [PATCH AUTOSEL 6.6 010/294] SUNRPC: Don't allow waiting for exiting tasks
+Date: Mon,  5 May 2025 18:51:50 -0400
+Message-Id: <20250505225634.2688578-10-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.5
-In-Reply-To: <20250505232151.2698893-1-sashal@kernel.org>
-References: <20250505232151.2698893-1-sashal@kernel.org>
+In-Reply-To: <20250505225634.2688578-1-sashal@kernel.org>
+References: <20250505225634.2688578-1-sashal@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -50,47 +55,36 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
-X-stable-base: Linux 5.4.293
+X-stable-base: Linux 6.6.89
 Content-Transfer-Encoding: 8bit
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-[ Upstream commit 0af5fb5ed3d2fd9e110c6112271f022b744a849a ]
+[ Upstream commit 14e41b16e8cb677bb440dca2edba8b041646c742 ]
 
-If a containerised process is killed and causes an ENETUNREACH or
-ENETDOWN error to be propagated to the state manager, then mark the
-nfs_client as being dead so that we don't loop in functions that are
-expecting recovery to succeed.
+Once a task calls exit_signals() it can no longer be signalled. So do
+not allow it to do killable waits.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/nfs4state.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+ net/sunrpc/sched.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 1d38484e0a53b..b64a3751c3e4a 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -2655,7 +2655,15 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 	pr_warn_ratelimited("NFS: state manager%s%s failed on NFSv4 server %s"
- 			" with error %d\n", section_sep, section,
- 			clp->cl_hostname, -status);
--	ssleep(1);
-+	switch (status) {
-+	case -ENETDOWN:
-+	case -ENETUNREACH:
-+		nfs_mark_client_ready(clp, -EIO);
-+		break;
-+	default:
-+		ssleep(1);
-+		break;
-+	}
- out_drain:
- 	memalloc_nofs_restore(memflags);
- 	nfs4_end_drain_session(clp);
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 9b45fbdc90cab..73bc39281ef5f 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -276,6 +276,8 @@ EXPORT_SYMBOL_GPL(rpc_destroy_wait_queue);
+ 
+ static int rpc_wait_bit_killable(struct wait_bit_key *key, int mode)
+ {
++	if (unlikely(current->flags & PF_EXITING))
++		return -EINTR;
+ 	schedule();
+ 	if (signal_pending_state(mode, current))
+ 		return -ERESTARTSYS;
 -- 
 2.39.5
 
