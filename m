@@ -1,175 +1,179 @@
-Received: from tiger.tulip.relay.mailchannels.net (tiger.tulip.relay.mailchannels.net [23.83.218.248])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC3D4283FCC
-	for <linux-nfs@vger.kernel.org>; Tue,  6 May 2025 16:37:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=23.83.218.248
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746549471; cv=pass; b=p3Rx8u7zamy/7PVnOb/pcc5gwS/HVri1rsXkYlAOFziMEYBxIEkkcHV+6lj7yiqiGqz63DY9WlxVEgJanjWRUNglcl6H9Pyip1hIst9FJzy9pQNNaMI/7QDWgC+u9DIfLQsgSLQK81wzQMLbeDT2TIHR9l/nP63Ust3Nmgn4q20=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746549471; c=relaxed/simple;
-	bh=BWCujVjU3ZDGSrzpIci52fk2TpJHFA0QNdoybgrb7xo=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Content-Type; b=bMSUThGhfD4pA0PZ6mVMT5MmglY2hSbJ8qxDLegLBfVsdovU3+9aPfAfoMWEmgXcbeCXfEF4nRSTXBHj58mRAOH7eLRzYTm0qK2gCcLW3FaC1IqSVdqKeUsv2jEq6D6vpKDF7qTnJWgaHlCl6fcoV+fQI4JEMKo8htDI8ik7xE4=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nrubsig.org; spf=pass smtp.mailfrom=nrubsig.org; dkim=pass (2048-bit key) header.d=nrubsig.org header.i=@nrubsig.org header.b=kP9DmpqJ; arc=pass smtp.client-ip=23.83.218.248
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nrubsig.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=nrubsig.org
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3C9D2857D5;
+	Tue,  6 May 2025 17:40:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1746553237; cv=none; b=Est+ZLbNz3HX84Xj//SfL/RzOAzNoM8DujyuH4ybdh61CnvpLVyr/v00AUbb0wgwXRvWZSGBoJUGadMFdJdVcFkF27BwXZ9cu+swUGCPqybTlt8ftOj2svEcGNG45kPUmgr73WQQsXY2ca6RjSi/69KwmkoJGic5VQmghLxcoKo=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1746553237; c=relaxed/simple;
+	bh=h9XuZ1xhYzE1KM9SZa4s375E1QtL5TdMDJJnXBefZ/A=;
+	h=Message-ID:Subject:From:To:Cc:Date:Content-Type:MIME-Version; b=iLxQm/O4m+nsnqhsw6o7saIX9X9c2nVfHSrusPBqApw6gIwEzZVkX6DJmz6qoYn8s7XfbUN+7Keh3Sp5KI2k6c2p/yNCQyqiO6nucIY81xrVWITSgjB4ouqLztMNcJqLLl7OglKkViBxIHxDItg7XWkrP7rr1yB2l5DdnDIQdO0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Q/dF5YiQ; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nrubsig.org header.i=@nrubsig.org header.b="kP9DmpqJ"
-X-Sender-Id: dreamhost|x-authsender|gisburn@nrubsig.org
-Received: from relay.mailchannels.net (localhost [127.0.0.1])
-	by relay.mailchannels.net (Postfix) with ESMTP id D24C481526
-	for <linux-nfs@vger.kernel.org>; Tue,  6 May 2025 15:11:17 +0000 (UTC)
-Received: from pdx1-sub0-mail-a296.dreamhost.com (trex-6.trex.outbound.svc.cluster.local [100.106.221.95])
-	(Authenticated sender: dreamhost)
-	by relay.mailchannels.net (Postfix) with ESMTPA id 809FF83CD8
-	for <linux-nfs@vger.kernel.org>; Tue,  6 May 2025 15:11:17 +0000 (UTC)
-ARC-Seal: i=1; s=arc-2022; d=mailchannels.net; t=1746544277; a=rsa-sha256;
-	cv=none;
-	b=4mfve0GlhkzsXR60Xbbn6laN459keTZp+sSFiTmZla6qbHBJGANU5nyqKy5tqEgruPGYxi
-	gJu43HB8mgbxZoUTa5Y6NkMQdeZ+Pjd+I4eMryZExiZI+TJl/f7D51c5SWVmK+ubkLkYOJ
-	PVRzu4k+Gt1de45pSIf5pSYGdH4l3kYh1TcyHoR0oB9Hj6H6thcihx/T1JJWauad1K2UWl
-	lp6l/sV6Xg230RAE1UG9v7qbyYCu5jy9yUcvA+njK5EWaDHEeRsRvFAbeSeZYXkYUenAIz
-	aSMXDRE+Acv6BbfkOQ8by3uaWW1nb05Bj3RkoItDNNoXNaMRLaoOppR7pNbx1A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed;
- d=mailchannels.net;
-	s=arc-2022; t=1746544277;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references:dkim-signature;
-	bh=6TRxSjfeJM0ZA871Fsc/CGXXTvzJM6CyHDWup/G2ImI=;
-	b=amH4aRG21A5wW47AHA7mVm0de0hOd/4zMUxzAB2Evff4t5hIxuCvXtCpYWiKFGIaNYjlFw
-	v5BkLeWv9D+LIgwTDUE9p+Fhd/i9XJHGO3LFlnK0fO+r2r7qbJGpwimPfYW7Uxu/KBTymw
-	d5/6OWRMghU+0nxFEZUEfhs/0yhah6oDcwv/H30cmylGz70sxrzCdWf6seQ8/xG59bIIYv
-	YkpEkA5xZVOsFpm3GgcU7IIMu+DnKGN1yDxj2MoNOqoaR1O5yHlnuCDPT7HveKABrsSDqY
-	rkLKZEyx4Dp85bPuMWN7VcnS0SrY0UoHfSTdNSgZyuwYl2VSySuNCwnyt7inhA==
-ARC-Authentication-Results: i=1;
-	rspamd-5bd676bfcd-lbch5;
-	auth=pass smtp.auth=dreamhost smtp.mailfrom=roland.mainz@nrubsig.org
-X-Sender-Id: dreamhost|x-authsender|gisburn@nrubsig.org
-X-MC-Relay: Neutral
-X-MailChannels-SenderId: dreamhost|x-authsender|gisburn@nrubsig.org
-X-MailChannels-Auth-Id: dreamhost
-X-Snatch-Bored: 3cbd265e2ef030dd_1746544277730_1014760053
-X-MC-Loop-Signature: 1746544277730:2123283733
-X-MC-Ingress-Time: 1746544277730
-Received: from pdx1-sub0-mail-a296.dreamhost.com (pop.dreamhost.com
- [64.90.62.162])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384)
-	by 100.106.221.95 (trex/7.0.3);
-	Tue, 06 May 2025 15:11:17 +0000
-Received: from mail-wr1-f48.google.com (mail-wr1-f48.google.com [209.85.221.48])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	(Authenticated sender: gisburn@nrubsig.org)
-	by pdx1-sub0-mail-a296.dreamhost.com (Postfix) with ESMTPSA id 4ZsMKx1mx3zQp
-	for <linux-nfs@vger.kernel.org>; Tue,  6 May 2025 08:11:17 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nrubsig.org;
-	s=dreamhost; t=1746544277;
-	bh=6TRxSjfeJM0ZA871Fsc/CGXXTvzJM6CyHDWup/G2ImI=;
-	h=From:Date:Subject:To:Content-Type:Content-Transfer-Encoding;
-	b=kP9DmpqJD+Z257/LnXNarvV3OQBcAWwjhbevkt/Uxnr+fEhwVgRldPqGI1/uidcGN
-	 8kCAdgbEt7ObXeIC7IP25Q+b2FWCpACwbl3AecZK+v8TQIhcB8pF8QiVXDHVhS3nfc
-	 2gPHY06eY4oIY0mBq41lGWn440Q5nu80WZbkculg0qm/57BTzwPydqzlURTkpNsUo6
-	 vQSOVp+58TTN2/FGoiT/7fDieZrb1O5xMPaV9hYCArTLSXpXcv7yL9LqTO6qpYWJrf
-	 eRNfItIOwO3+n1xA/h27Akl2LZ5MKFecGa5RDun8cCDxP+PNCkBEPWcum4RlMnY34f
-	 pIBgxB904wCbQ==
-Received: by mail-wr1-f48.google.com with SMTP id ffacd0b85a97d-3a0af41faa5so426171f8f.2
-        for <linux-nfs@vger.kernel.org>; Tue, 06 May 2025 08:11:17 -0700 (PDT)
-X-Gm-Message-State: AOJu0YyV7gX5urkIGijyaBcWKDZHyYUpUrKRVl17G4KgbznZoTP6ZKLv
-	gDwNFTq5L1emgEZ6NTtkSeiRsWERBWFr7B8LxxWyLyvYBB4Ev1ioC3g84ZdJiV6YcDV7n8QOiNF
-	Yds9oUSaUM23BtVNyd7Ubztx9Jac=
-X-Google-Smtp-Source: AGHT+IEvuPKRP8mwNDCjF3SWCF/lAkA1M/jV1dqiQ5YcNSxVQnZpbo5WLsNykGBZ5PXRCsqaXcNc07TYKx8A5IFC2ss=
-X-Received: by 2002:a05:6000:250d:b0:3a0:b448:e654 with SMTP id
- ffacd0b85a97d-3a0b448e769mr74940f8f.47.1746544275612; Tue, 06 May 2025
- 08:11:15 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Q/dF5YiQ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 931E1C4CEEF;
+	Tue,  6 May 2025 17:40:36 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1746553237;
+	bh=h9XuZ1xhYzE1KM9SZa4s375E1QtL5TdMDJJnXBefZ/A=;
+	h=Subject:From:To:Cc:Date:From;
+	b=Q/dF5YiQYZY8TOstGtIrUVJzfBF23eRASxuIA8DmG5JWbBY3Y2+7+zg+F6RGW3+dS
+	 esdVIz4xWfc8TkL6L/+GA94BN2ZZ3guJAv/4DIvRHkeNbA1znRZOs+gx7LIxJsrcP1
+	 eBz9U1LMU0uq53W0CM1+8Y+5Po65F0/JrjHuPFWj9uETOEswPU+j1YxFihRKzpjyvC
+	 0zuV/b/N5YWYrJwmqm+3Iakw0J2sCCjtkhf/HHkMmui89PMLADBCdPK0EvtaXi/U67
+	 m66C9GWyak7iag0QNMSgr1ETE3cxUqwuUQRCUHkuWXIqhnbsphMCklgGJVZdgVPu9Y
+	 Z0LH2IEh7PNWA==
+Message-ID: <370dd4ae06d44f852342b7ee2b969fc544bd1213.camel@kernel.org>
+Subject: performance r nfsd with RWF_DONTCACHE and larger wsizes
+From: Jeff Layton <jlayton@kernel.org>
+To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>, Mike Snitzer <snitzer@kernel.org>,
+  Trond Myklebust <trondmy@hammerspace.com>, Jens Axboe <axboe@kernel.dk>,
+ Chris Mason <clm@meta.com>, Anna Schumaker	 <anna@kernel.org>
+Date: Tue, 06 May 2025 13:40:35 -0400
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.56.1 (3.56.1-1.fc42) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20250506150105.11874-1-cel@kernel.org>
-In-Reply-To: <20250506150105.11874-1-cel@kernel.org>
-From: Roland Mainz <roland.mainz@nrubsig.org>
-Date: Tue, 6 May 2025 17:10:39 +0200
-X-Gmail-Original-Message-ID: <CAKAoaQ=2F+_-s_yCTgxbCZALB2J-gjVGP7roU5DfrBP-dtZ0aQ@mail.gmail.com>
-X-Gm-Features: ATxdqUGSuFFx1u2F0oBL7Cbkl4lcr92nIDuVWszWM0DVps8AMa71IcH6MVCreUg
-Message-ID: <CAKAoaQ=2F+_-s_yCTgxbCZALB2J-gjVGP7roU5DfrBP-dtZ0aQ@mail.gmail.com>
-Subject: Re: [PATCH v2] NFSD: Implement FATTR4_CLONE_BLKSIZE attribute
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-On Tue, May 6, 2025 at 5:01=E2=80=AFPM <cel@kernel.org> wrote:
->
-> From: Chuck Lever <chuck.lever@oracle.com>
->
-> RFC 7862 states that if an NFS server implements a CLONE operation,
-> it MUST also implement FATTR4_CLONE_BLKSIZE. NFSD implements CLONE,
-> but does not implement FATTR4_CLONE_BLKSIZE.
->
-> Note that in Section 12.2, RFC 7862 claims that
-> FATTR4_CLONE_BLKSIZE is RECOMMENDED, not REQUIRED. Likely this is
-> because a minor version is not permitted to add a REQUIRED
-> attribute. Confusing.
->
-> We assume this attribute reports a block size as a count of bytes,
-> as RFC 7862 does not specify a unit.
->
-> Reported-by: Roland Mainz <roland.mainz@nrubsig.org>
-> Suggested-by: Christoph Hellwig <hch@infradead.org>
-> X-Cc: stable@vger.kernel.org # v6.7+
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  fs/nfsd/nfs4xdr.c | 10 +++++++++-
->  1 file changed, 9 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index e67420729ecd..59d186ea11dc 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3391,6 +3391,14 @@ static __be32 nfsd4_encode_fattr4_suppattr_exclcre=
-at(struct xdr_stream *xdr,
->         return nfsd4_encode_bitmap4(xdr, supp[0], supp[1], supp[2]);
->  }
->
-> +static __be32 nfsd4_encode_fattr4_clone_blksize(struct xdr_stream *xdr,
-> +                                               const struct nfsd4_fattr_=
-args *args)
-> +{
-> +       struct inode *inode =3D d_inode(args->dentry);
-> +
-> +       return nfsd4_encode_uint32_t(xdr, inode->i_sb->s_blocksize);
-> +}
-> +
->  #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->  static __be32 nfsd4_encode_fattr4_sec_label(struct xdr_stream *xdr,
->                                             const struct nfsd4_fattr_args=
- *args)
-> @@ -3545,7 +3553,7 @@ static const nfsd4_enc_attr nfsd4_enc_fattr4_encode=
-_ops[] =3D {
->         [FATTR4_MODE_SET_MASKED]        =3D nfsd4_encode_fattr4__noop,
->         [FATTR4_SUPPATTR_EXCLCREAT]     =3D nfsd4_encode_fattr4_suppattr_=
-exclcreat,
->         [FATTR4_FS_CHARSET_CAP]         =3D nfsd4_encode_fattr4__noop,
-> -       [FATTR4_CLONE_BLKSIZE]          =3D nfsd4_encode_fattr4__noop,
-> +       [FATTR4_CLONE_BLKSIZE]          =3D nfsd4_encode_fattr4_clone_blk=
-size,
->         [FATTR4_SPACE_FREED]            =3D nfsd4_encode_fattr4__noop,
->         [FATTR4_CHANGE_ATTR_TYPE]       =3D nfsd4_encode_fattr4__noop,
+FYI I decided to try and get some numbers with Mike's RWF_DONTCACHE
+patches for nfsd [1]. Those add a module param that make all reads and
+writes use RWF_DONTCACHE.
 
-Looks good to me -  Reviewed-by: Roland Mainz <roland.mainz@nrubsig.org>
+I had one host that was running knfsd with an XFS export, and a second
+that was acting as NFS client. Both machines have tons of memory, so
+pagecache utilization is irrelevant for this test.
 
-----
+I tested sequential writes using the fio-seq_write.fio test, both with
+and without the module param enabled.
 
-Bye,
-Roland
+These numbers are from one run each, but they were pretty stable over
+several runs:
+
+# fio /usr/share/doc/fio/examples/fio-seq-write.fio
+
+wsize=3D1M:
+
+Normal:      WRITE: bw=3D1034MiB/s (1084MB/s), 1034MiB/s-1034MiB/s (1084MB/=
+s-1084MB/s), io=3D910GiB (977GB), run=3D901326-901326msec
+DONTCACHE:   WRITE: bw=3D649MiB/s (681MB/s), 649MiB/s-649MiB/s (681MB/s-681=
+MB/s), io=3D571GiB (613GB), run=3D900001-900001msec
+
+DONTCACHE with a 1M wsize vs. recent (v6.14-ish) knfsd was about 30%
+slower. Memory consumption was down, but these boxes have oodles of
+memory, so I didn't notice much change there.
+
+Chris suggested that the write sizes were too small in this test, so I
+grabbed Chuck's patches to increase the max RPC payload size [2] to 4M,
+and patched the client to allow a wsize that big:
+
+wsize=3D4M:
+
+Normal:       WRITE: bw=3D1053MiB/s (1104MB/s), 1053MiB/s-1053MiB/s (1104MB=
+/s-1104MB/s), io=3D930GiB (999GB), run=3D904526-904526msec
+DONTCACHE:    WRITE: bw=3D1191MiB/s (1249MB/s), 1191MiB/s-1191MiB/s (1249MB=
+/s-1249MB/s), io=3D1050GiB (1127GB), run=3D902781-902781msec
+
+Not much change with normal buffered I/O here, but DONTCACHE is faster
+with a 4M wsize. My suspicion (unconfirmed) is that the dropbehind flag
+ends up causing partially-written large folios in the pagecache to get
+written back too early, and that slows down later writes to the same
+folios.
+
+I wonder if we need some heuristic that makes generic_write_sync() only
+kick off writeback immediately if the whole folio is dirty so we have
+more time to gather writes before kicking off writeback?
+
+This might also be a good reason to think about a larger rsize/wsize
+limit in the client.
+
+I'd like to also test reads with this flag, but I'm currently getting
+back that EOPNOTSUPP error when I try to test them.
+
+[1]: https://lore.kernel.org/linux-nfs/20250220171205.12092-1-
+snitzer@kernel.org/
+[2]: https://lore.kernel.org/linux-nfs/20250428193702.5186-15-
+cel@kernel.org/
 --=20
-  __ .  . __
- (o.\ \/ /.o) roland.mainz@nrubsig.org
-  \__\/\/__/  MPEG specialist, C&&JAVA&&Sun&&Unix programmer
-  /O /=3D=3D\ O\  TEL +49 641 3992797
- (;O/ \/ \O;)
+Jeff Layton <jlayton@kernel.org>
