@@ -1,112 +1,79 @@
-Received: from mail-qk1-f174.google.com (mail-qk1-f174.google.com [209.85.222.174])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from out203-205-221-173.mail.qq.com (out203-205-221-173.mail.qq.com [203.205.221.173])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 93AC3281503
-	for <linux-nfs@vger.kernel.org>; Tue,  6 May 2025 14:22:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.174
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1401C1A9B5B
+	for <linux-nfs@vger.kernel.org>; Tue,  6 May 2025 14:24:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746541326; cv=none; b=lLtDM6nwG2QFhaii+LE60P3DFUmrdWftphD1DKdLm5uYsvT6dlTg+Ffud+rqlnEC9/3WcoSfWC8fJsZBZeMaoD9Vkdx3aC9QMNx9byAOojif68Kq7QEZr1krp091TA7zOcqmU14emqF4D60Q1jBEhQ02QeVawgWgk7ss39AkqwE=
+	t=1746541455; cv=none; b=cZOz7F+NJLRa8Cn8GF7O5cYb+ExcTQ0GASe6tfmS7XZrHTUV2gHsoBBpXUY8Xma/UZiAGT+dJhjPXw4VrmU5WS1JpFr+XcDuMwcqCnMyzuG1kdwhaQe5mP17BZPuZeiuX/3/ES9VpaGIgCbl5/+2MTl0VlJ0qDcrN2DCFXwT8lA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746541326; c=relaxed/simple;
-	bh=J+mg6cEpXyQQIWs6kbcnPXhgAhiUqyGZFrGo/eaz0PM=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ie+Am24N7O/0yIUO2yV6zCxue9EVKej1jYb//VAXAlr0/TmPa/ZyvevQDO8lziP0y716ozZSx4Ns1nKRK/WzeqYyySzqtPbcukuB3SozeaUrYchuX0WFQllPFVCHY3G04hHSu8fSNpXzJABFtUPKRx/zPHL7nSs329BG/PVMPoI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=ziepe.ca; spf=pass smtp.mailfrom=ziepe.ca; dkim=pass (2048-bit key) header.d=ziepe.ca header.i=@ziepe.ca header.b=ZOhMnslr; arc=none smtp.client-ip=209.85.222.174
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=ziepe.ca
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ziepe.ca
+	s=arc-20240116; t=1746541455; c=relaxed/simple;
+	bh=YH0pp7xcsev6MKyTamDozGymR2GfAkED7nYW/37/hIM=;
+	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=jKIS9jc6B0e7iCrTqrkHKL0S8HjD83/hvvd5EJOgkVZBBXI5SuGZ9hnMyZAax1633i/Q8+owtbr0VgV0wYVmf82HUceqNR8GCVw9dZrN9Bul4C6sNwQhJBzMBg+22gurxFhLDhpNt8tMUqHeCs+k4DJmdtp+3XjMn6g0D64WEgg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=Xy/7w8jR; arc=none smtp.client-ip=203.205.221.173
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ziepe.ca header.i=@ziepe.ca header.b="ZOhMnslr"
-Received: by mail-qk1-f174.google.com with SMTP id af79cd13be357-7cadd46eb07so391565485a.3
-        for <linux-nfs@vger.kernel.org>; Tue, 06 May 2025 07:22:04 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=ziepe.ca; s=google; t=1746541323; x=1747146123; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:from:to:cc:subject:date:message-id:reply-to;
-        bh=jdO/xzSRxYVpKMGXriepq+O9+XVFu9E8u5yhtKyYDnI=;
-        b=ZOhMnslr9UmXEj/zb5CyM+Uv09zHyn8EmKr/L2E+LZLycY48L/BlzLVK66560wI6n/
-         jmn1jAYwnMS2b/pWIUlYJCfqeF3tbBKly/taq1pNZVyyB1sxujvdE+TA1HXKMh6kl7fk
-         UI0ny2OcCAINk0gvoQ0Rqt8Cg04tVa3hmaqYLr/WI731yYoLVSkrKghItYw7GNVz7+ol
-         vgNXJQnRAlW92dWwsLdPfkdfnBmNb7VKQr7sPtF0yH5dX/A6leN4BMWfEWVzCDISPYmv
-         dfFoB/ilC/hIDHmvL5mtD7QbJiSAybjePMjZN7OwWp26CKxqA7d8jtzrxPsyztDtsObn
-         FwFQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1746541323; x=1747146123;
-        h=in-reply-to:content-disposition:mime-version:references:message-id
-         :subject:cc:to:from:date:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=jdO/xzSRxYVpKMGXriepq+O9+XVFu9E8u5yhtKyYDnI=;
-        b=q9Wz1/hMeUfvIEfHDcga145Wbg8RJKP2KPh7ry203hWYauUTIvNLzxfd1ZmpibUAGp
-         ZgkCLi6Jx4Y6qHBJSdNNTE23n9H/AwsuubRoetphWmgafoElwKqzDflgu0rU7UH/82y5
-         aJG5X/5nFcTUPtoQntNKq+DtRDLORBteW8DLwO6iZSUUwq4kd2r6kc5UYdnB61upUwWY
-         NaVKQdEEvqn0tXScyW23lY3R/tvlD8CoWrjoeD4H1xYO7kjyCJM6xIACfqdpm5uUJlXv
-         Tl3SFBIGN6j1/gFy0qkxSjjfFEukio9QnrKtyj8gH0aPb3ae18JfcUvt4yTxdh5PXRUa
-         J6sQ==
-X-Forwarded-Encrypted: i=1; AJvYcCWGOK6E8O1x6o1p0wCO21jotfFPOcyNSzSkuVpx8DbTb+sUSFLy6j/2iAO7dHy4dxdQ0N2bDl4jLyo=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yxi1AEdKObRCTpdYz7EYAE+b8qJKxcjp0PWbTcfOhAHMeFcng1i
-	c7pWPEKPeBb1GUQdyczauo+1gqo9r5mpt7Lw3OWIcgun7WsCMQFGJJQ8IjaXkG8=
-X-Gm-Gg: ASbGncvrVAsusDlmIj4jZsKobR3ORJvKHtseAUmVKLxkQN0hm6KogTUSdXe2h68Rgr9
-	PbKjgqhGwXdGgrCJpwGYhSL+E/QyINRK0nGgH3NwvZuvoWRSGQA8tjTfyd+upOTrRSEfKMNpifw
-	j7fIBrDwWY9vO9A6pgFhEZt5lEwlF0jKlb7dTiK5nB4M1AcG1hlJ96lcWYB+/2d7aLq4g4gPobD
-	xUImIu4gn1ZR3YlW0Co6UnyE+FQpDu+xaIeug5gb8u8D4vEQInr4O9x+ysCsMrnm+iqH7CfLaJc
-	SkCmLGuWJ18Ty6Np71rUg7tFRNwxcLM6Aht3GOHxhqPVKp49tPH0TwDDq6zj4K3EhoDL1sc5Hkr
-	Q9JaysYZ9Ws++FqVgQGQ=
-X-Google-Smtp-Source: AGHT+IEf9c6kwoiIpN+a2MZ0HbS9Mmr9K12+N98aGW0tMtHt4ybp37bnK02L8TRsbNfmOUe+ef7j0w==
-X-Received: by 2002:a05:620a:2953:b0:7c5:3c0a:ab7e with SMTP id af79cd13be357-7cad5b20805mr2276438785a.5.1746541323354;
-        Tue, 06 May 2025 07:22:03 -0700 (PDT)
-Received: from ziepe.ca (hlfxns017vw-142-167-219-86.dhcp-dynamic.fibreop.ns.bellaliant.net. [142.167.219.86])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-7cad243f477sm715703285a.96.2025.05.06.07.22.02
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 06 May 2025 07:22:02 -0700 (PDT)
-Received: from jgg by wakko with local (Exim 4.97)
-	(envelope-from <jgg@ziepe.ca>)
-	id 1uCJBK-000000006iP-1U2Q;
-	Tue, 06 May 2025 11:22:02 -0300
-Date: Tue, 6 May 2025 11:22:02 -0300
-From: Jason Gunthorpe <jgg@ziepe.ca>
-To: Chuck Lever <cel@kernel.org>
-Cc: Christoph Hellwig <hch@infradead.org>, NeilBrown <neil@brown.name>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
-	linux-rdma@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-	Leon Romanovsky <leon@kernel.org>
-Subject: Re: [PATCH v4 01/14] svcrdma: Reduce the number of rdma_rw contexts
- per-QP
-Message-ID: <20250506142202.GJ2260621@ziepe.ca>
-References: <20250428193702.5186-1-cel@kernel.org>
- <20250428193702.5186-2-cel@kernel.org>
- <aBoJ64qDSp7U3twh@infradead.org>
- <20250506131722.GG2260621@ziepe.ca>
- <aBoRSeERzax5lTvH@infradead.org>
- <20250506135536.GH2260621@ziepe.ca>
- <be740f28-8d68-400c-85bc-81cc4e48ccc6@kernel.org>
- <20250506141705.GI2260621@ziepe.ca>
- <d7115cd7-c34c-4212-b244-e5247ac68fcc@kernel.org>
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="Xy/7w8jR"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1746541139; bh=5v04AZ2TtxIffc1jiqe3kUu1qgrpQB8oPCLtS8ZkItA=;
+	h=From:To:Cc:Subject:Date;
+	b=Xy/7w8jRttbA1m4qojt7mSl/UcQWz7NCHsQLpO0C+xPOvB5nLufIok0kV+eJ4lf+V
+	 B3TKjpt3Z6OZw99+WSg65MqncezygQNq14y6OPJGGqCSNp+tzr2nnORmCAkOHF1P8C
+	 +2130hlXO/YyJqrxFXVl80oJkqFSQgAE1u9RfehE=
+Received: from localhost.localdomain ([115.60.183.182])
+	by newxmesmtplogicsvrszgpua8-1.qq.com (NewEsmtp) with SMTP
+	id 4BA2DC30; Tue, 06 May 2025 22:18:58 +0800
+X-QQ-mid: xmsmtpt1746541138tlmkwcss8
+Message-ID: <tencent_86CDAF841D6F5657A618E706DD1CAAD95E05@qq.com>
+X-QQ-XMAILINFO: Mdc3TkmnJyI/gMPwy6PT9tKusv7N/hf0p/j5yKuNwNyZbLUhA2RK6Sh4JK9R1z
+	 DQvR7gzwzESppotpHQF/TtbNR5HZDCcjo2bDPryrXklnNLpdEZQtrshO3gP025KRJdYr2XPW/gfq
+	 aZyEY0djwBfwtigSyzdobuOxeTOwzjNf6Vv1+zYCZhLeAEn8a9myf81vOVpMVY0zIHnqVYVCx17q
+	 dBs9lGVo07k3g8w+M90AI3diJsvMxRgkhrJZqB+9dO05xF58ZZWjVcfut3qy5W2A1JoJgP10kwhz
+	 j3g4+LEZQ8FHmo4e6IpLubXXldlgtdowUgCdLD0pcAEgk4+C0Z6mXzEbKdF8vIcNR2blhHd1DAiw
+	 +I/Ycnwi+qhZPxDrdJexwPAWSsfLXLQPb55eDKPPGxa6nnIalrr3soiK/PvIL5KvmmGS9F333aTI
+	 Se6tZKTKGlo74PhK84rlLMTKCJtcLk1mTzb0zSKUmsR7fwJGbQlH8jMGzutogqMM7E5+J1uQx1xf
+	 A7kflkSx/hZ6s+1T65UXmxWfNgfk5aCbbGuML9ZoSlOWf8UbTCjgW50e6Jfv6wQ8dOM42OnlQa++
+	 QZXk731YkmdDyX+LcmW/5LgbCfeOxG97NYCeBgT6Z01Gmcg5LyrNRrEv8vj4TgSJJULMUhJ7gxMl
+	 YltqrC8qGm0PmU1DQQ8rPYw/7PaS+/s6N9VclNt1YqNMZiDYtYjbylhI13qL3I/CGbX44RiKO/Mt
+	 pDhof09MNGS5REW52xzGExAx1j7O+yQ9lBKR0IC+Hco6jn2v4EThC2y4ioEbvbUl/Puzo54hIh5p
+	 AdWxYOsVJHmczvMz4aNFfgerFnRqBElsUeL1NYErsbmccPBvKRLpsqL52d//Y7Qt9077iklZs8Lw
+	 XRcNqoEbAB01ajuPtBBW4XtYf2CmU0diDEXAIRCHKJwkCjRUReyJQ=
+X-QQ-XMRINFO: NyFYKkN4Ny6FSmKK/uo/jdU=
+From: 597607025@qq.com
+To: linux-nfs@vger.kernel.org
+Cc: zhangyaqi@kylinos.cn
+Subject: [PATCH] gssd:fix the possible buffer overflow in get_full_hostname
+Date: Tue,  6 May 2025 22:17:50 +0800
+X-OQ-MSGID: <20250506141750.32879-1-597607025@qq.com>
+X-Mailer: git-send-email 2.27.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <d7115cd7-c34c-4212-b244-e5247ac68fcc@kernel.org>
+Content-Transfer-Encoding: 8bit
 
-On Tue, May 06, 2025 at 10:19:06AM -0400, Chuck Lever wrote:
-> >> In this patch I'm trying to include the reg/inv multiplier in the
-> >> calculation, but that doesn't seem to be enough to make "accept"
-> >> reliable, IMO due to this extra calculation in calc_sq_size().
-> > 
-> > Did ib_create_qp get called with more than max_qp_wr ?
-> 
-> The request was for, like, 9300 SQEs. max_qp_wr is 32K on my systems.
+From: zhangyaqi <zhangyaqi@kylinos.cn>
 
-Sounds like it is broken then..
+Signed-off-by: zhangyaqi <zhangyaqi@kylinos.cn>
+---
+ utils/gssd/krb5_util.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-	props->max_qp_wr	   = 1 << MLX5_CAP_GEN(mdev, log_max_qp_sz);
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 560e8be1..09625fb9 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -619,6 +619,7 @@ get_full_hostname(const char *inhost, char *outhost, int outhostlen)
+ 		goto out;
+ 	}
+ 	strncpy(outhost, addrs->ai_canonname, outhostlen);
++	outhost[outhostlen - 1] = '\0';
+ 	nfs_freeaddrinfo(addrs);
+ 	for (c = outhost; *c != '\0'; c++)
+ 	    *c = tolower(*c);
+-- 
+2.27.0
 
-So it is ignoring the wqe_size adustment.. It should adjust by the worst
-case result of calc_send_wqe() for the device..
-
-Jason
