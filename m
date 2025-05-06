@@ -1,79 +1,100 @@
-Received: from out203-205-221-173.mail.qq.com (out203-205-221-173.mail.qq.com [203.205.221.173])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wr1-f47.google.com (mail-wr1-f47.google.com [209.85.221.47])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1401C1A9B5B
-	for <linux-nfs@vger.kernel.org>; Tue,  6 May 2025 14:24:07 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F62C25229A
+	for <linux-nfs@vger.kernel.org>; Tue,  6 May 2025 14:25:04 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.47
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746541455; cv=none; b=cZOz7F+NJLRa8Cn8GF7O5cYb+ExcTQ0GASe6tfmS7XZrHTUV2gHsoBBpXUY8Xma/UZiAGT+dJhjPXw4VrmU5WS1JpFr+XcDuMwcqCnMyzuG1kdwhaQe5mP17BZPuZeiuX/3/ES9VpaGIgCbl5/+2MTl0VlJ0qDcrN2DCFXwT8lA=
+	t=1746541506; cv=none; b=kk9piwQnMhEN5Xkwh004S83zY8CdAv3PwaO61vSnsJ3hhBSRwH5IRRdqnWVSGHtxYYheoEPmYk/xqq+JMcAUc2Tn+IDMl46TcrY391ofA52s0efhVi75q97tSVqAbWFIHo9unGmKUxB+SyiUnAF1/PSI19I6CYp7aU9IIAQScN8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746541455; c=relaxed/simple;
-	bh=YH0pp7xcsev6MKyTamDozGymR2GfAkED7nYW/37/hIM=;
-	h=Message-ID:From:To:Cc:Subject:Date:MIME-Version; b=jKIS9jc6B0e7iCrTqrkHKL0S8HjD83/hvvd5EJOgkVZBBXI5SuGZ9hnMyZAax1633i/Q8+owtbr0VgV0wYVmf82HUceqNR8GCVw9dZrN9Bul4C6sNwQhJBzMBg+22gurxFhLDhpNt8tMUqHeCs+k4DJmdtp+3XjMn6g0D64WEgg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=Xy/7w8jR; arc=none smtp.client-ip=203.205.221.173
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="Xy/7w8jR"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
-	t=1746541139; bh=5v04AZ2TtxIffc1jiqe3kUu1qgrpQB8oPCLtS8ZkItA=;
-	h=From:To:Cc:Subject:Date;
-	b=Xy/7w8jRttbA1m4qojt7mSl/UcQWz7NCHsQLpO0C+xPOvB5nLufIok0kV+eJ4lf+V
-	 B3TKjpt3Z6OZw99+WSg65MqncezygQNq14y6OPJGGqCSNp+tzr2nnORmCAkOHF1P8C
-	 +2130hlXO/YyJqrxFXVl80oJkqFSQgAE1u9RfehE=
-Received: from localhost.localdomain ([115.60.183.182])
-	by newxmesmtplogicsvrszgpua8-1.qq.com (NewEsmtp) with SMTP
-	id 4BA2DC30; Tue, 06 May 2025 22:18:58 +0800
-X-QQ-mid: xmsmtpt1746541138tlmkwcss8
-Message-ID: <tencent_86CDAF841D6F5657A618E706DD1CAAD95E05@qq.com>
-X-QQ-XMAILINFO: Mdc3TkmnJyI/gMPwy6PT9tKusv7N/hf0p/j5yKuNwNyZbLUhA2RK6Sh4JK9R1z
-	 DQvR7gzwzESppotpHQF/TtbNR5HZDCcjo2bDPryrXklnNLpdEZQtrshO3gP025KRJdYr2XPW/gfq
-	 aZyEY0djwBfwtigSyzdobuOxeTOwzjNf6Vv1+zYCZhLeAEn8a9myf81vOVpMVY0zIHnqVYVCx17q
-	 dBs9lGVo07k3g8w+M90AI3diJsvMxRgkhrJZqB+9dO05xF58ZZWjVcfut3qy5W2A1JoJgP10kwhz
-	 j3g4+LEZQ8FHmo4e6IpLubXXldlgtdowUgCdLD0pcAEgk4+C0Z6mXzEbKdF8vIcNR2blhHd1DAiw
-	 +I/Ycnwi+qhZPxDrdJexwPAWSsfLXLQPb55eDKPPGxa6nnIalrr3soiK/PvIL5KvmmGS9F333aTI
-	 Se6tZKTKGlo74PhK84rlLMTKCJtcLk1mTzb0zSKUmsR7fwJGbQlH8jMGzutogqMM7E5+J1uQx1xf
-	 A7kflkSx/hZ6s+1T65UXmxWfNgfk5aCbbGuML9ZoSlOWf8UbTCjgW50e6Jfv6wQ8dOM42OnlQa++
-	 QZXk731YkmdDyX+LcmW/5LgbCfeOxG97NYCeBgT6Z01Gmcg5LyrNRrEv8vj4TgSJJULMUhJ7gxMl
-	 YltqrC8qGm0PmU1DQQ8rPYw/7PaS+/s6N9VclNt1YqNMZiDYtYjbylhI13qL3I/CGbX44RiKO/Mt
-	 pDhof09MNGS5REW52xzGExAx1j7O+yQ9lBKR0IC+Hco6jn2v4EThC2y4ioEbvbUl/Puzo54hIh5p
-	 AdWxYOsVJHmczvMz4aNFfgerFnRqBElsUeL1NYErsbmccPBvKRLpsqL52d//Y7Qt9077iklZs8Lw
-	 XRcNqoEbAB01ajuPtBBW4XtYf2CmU0diDEXAIRCHKJwkCjRUReyJQ=
-X-QQ-XMRINFO: NyFYKkN4Ny6FSmKK/uo/jdU=
-From: 597607025@qq.com
-To: linux-nfs@vger.kernel.org
-Cc: zhangyaqi@kylinos.cn
-Subject: [PATCH] gssd:fix the possible buffer overflow in get_full_hostname
-Date: Tue,  6 May 2025 22:17:50 +0800
-X-OQ-MSGID: <20250506141750.32879-1-597607025@qq.com>
-X-Mailer: git-send-email 2.27.0
+	s=arc-20240116; t=1746541506; c=relaxed/simple;
+	bh=YkW7k8DL877S9Z+krLGfLAMcqy64yXdy3WGZocsuYBY=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=ruRHfvPorZwJo0SOkNhRmH6fiINYfXrqpOvxBoogJYdBYGrclB8kiRIs2FJEJsRnNMFH85HkqY/dm7IgDBsLh9uRze2RV/2oikTLLFGjwWKKt/naRjOYtPA5Rg/0gBjsV0kqCm6g7F4/m3ue+nNlRIpyDfq1pnsn7I09xnz/h9I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=grimberg.me; spf=pass smtp.mailfrom=gmail.com; arc=none smtp.client-ip=209.85.221.47
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=grimberg.me
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Received: by mail-wr1-f47.google.com with SMTP id ffacd0b85a97d-39149bccb69so4488216f8f.2
+        for <linux-nfs@vger.kernel.org>; Tue, 06 May 2025 07:25:04 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1746541503; x=1747146303;
+        h=content-transfer-encoding:in-reply-to:from:content-language
+         :references:cc:to:subject:user-agent:mime-version:date:message-id
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=vvsXPRjapGX+pKhWFSd2fnU9w6GIHChDgJN5j2nseIw=;
+        b=a1v5W78/EYY+s/VkX7PgAuR4V8eeqMp5e2RmwfDzXtmXyerAlQ26Ib4rp36DelG0lg
+         mh5qwekJlzEatYD927UnvJI9wJrebBRjZ4OqwVb8a7vxhvwpC9f464gZBMxVOCqxVRE5
+         wU8TcMY/5eJPZYWccnjsNs2oK306ZZKiEYo97SUnyvFBfHQS8pWuZnqirDpP9Mgp4MwQ
+         VlENKdou1wd28UpE2pMeQqabQxe3+gWd02LiY5styi0skgPedkSg3/bn6M48p+4bJAca
+         uNpugJ2NcF4/gBTiuyILZ15B4LIdgISZ5tWbi6IC9ucBHCsb7aGc++KLW1DPaUCFRRMd
+         8qqw==
+X-Forwarded-Encrypted: i=1; AJvYcCUaCVdl5tmmgS69GQHLA/m64sJSWMZwf8tK+y2T7ueWp4vO7f6eFNNi1gTXLLrRqcNX6OjqSojM71k=@vger.kernel.org
+X-Gm-Message-State: AOJu0YxyFJjTdnuaGCUj8QW1k3kTbAw5bayhQPwBbdrK3nmHeX8oG9DU
+	dhHwdsWBNMB1TjYSF2Vm1n7dLD+JFFvUMgEZkqWyO0WUfjkMj96X
+X-Gm-Gg: ASbGnctBUsar7XjSIW3M9gOSpoXxhzj7Wa+OGicDlVp83Hon2lDm9cKOBhKh4s2Krw9
+	9Yp1iezMLK7eKVWnNXCINIpqFenyHF2Ql6dGJGkOhcRM5g98MDXHwOIQj9OQOcJrCbt5mq/7Oke
+	sbX/oJD+vwrBmGNGTyEzeBr1zmK8qZknCgKqIXMbSPIGpZmPICYPxVHS31vvr6bK4KipCvnVQu7
+	wDLWboFucssEkxn/r8ZODpQMJjDHCj7JUBn28LHOHRx6Et81EaQsrQmiHkJa3PWw2DEnnGeGbsx
+	lvLDWobHq1aoZ58GJZZjiI+8Ln++bUquDD5n874PcUTUIqRsIbU5Jgxj5gJxieXNsV5eLzRNCPd
+	v06MUbg==
+X-Google-Smtp-Source: AGHT+IGKmeZAQSypyqZW/ALp5mTKeLZEf84qATnpNete3X8pOOEiO0723FFVg68oNTOIlqEiebM/kg==
+X-Received: by 2002:a05:6000:2a7:b0:38d:badf:9df5 with SMTP id ffacd0b85a97d-3a0ac0da1femr2555157f8f.17.1746541503222;
+        Tue, 06 May 2025 07:25:03 -0700 (PDT)
+Received: from [10.50.5.11] (bzq-84-110-32-226.static-ip.bezeqint.net. [84.110.32.226])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-3a099ae7a46sm13650438f8f.44.2025.05.06.07.25.02
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 06 May 2025 07:25:02 -0700 (PDT)
+Message-ID: <44220569-ce61-4bc9-ab38-e2116e7b5da6@grimberg.me>
+Date: Tue, 6 May 2025 17:25:01 +0300
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH] NFSv4.2: fix setattr caching of TIME_[MODIFY|ACCESS]_SET
+ when timestamps are delegated
+To: Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trondmy@kernel.org>,
+ Anna Schumaker <Anna.Schumaker@netapp.com>, Thomas Haynes <loghyr@gmail.com>
+References: <20250425124919.1727838-1-sagi@grimberg.me>
+ <67a837dbebdbc6bb457998b1f61358970f31a4ed.camel@kernel.org>
+ <f66fd307-c5d6-40b5-87b7-fc6450cc09f1@grimberg.me>
+ <6843f5bd39e7a9237c44c4b8e0099bb234b3a732.camel@kernel.org>
+Content-Language: en-US
+From: Sagi Grimberg <sagi@grimberg.me>
+In-Reply-To: <6843f5bd39e7a9237c44c4b8e0099bb234b3a732.camel@kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-From: zhangyaqi <zhangyaqi@kylinos.cn>
 
-Signed-off-by: zhangyaqi <zhangyaqi@kylinos.cn>
----
- utils/gssd/krb5_util.c | 1 +
- 1 file changed, 1 insertion(+)
+>>>>    
+>>> FWIW, we've been chasing some problems with the git regression
+>>> testsuite when attribute delegation is enabled. It would be interesting
+>>> to test this patch to see if it changes that behavior.
+>> Can you elaborate? didn't notice that git uses the times ATTR_*_SET
+>> variant too often.
+>>
+> Unfortunately, not much.
+>
+> If you turn on attribute delegation, and then run the git regression
+> suite in a highly-threaded configuration, some of the tests fail. I've
+> made a couple of stabs at trying to narrow down a the reproducer, but
+> no luck so far.
+>
+> My guess is that it's a client-side bug:
+>
+> The server is fairly simple here -- if there is an outstanding
+> delegation, it asks the delegation holder for attributes via CB_GETATTR
+> and then passes those along to the client.
+>
+> The client however has traditionally relied on the server to provide
+> updated attributes, rather than handling timestamps itself, and it
+> wouldn't surprise me if it just didn't get all of those places right.
 
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 560e8be1..09625fb9 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -619,6 +619,7 @@ get_full_hostname(const char *inhost, char *outhost, int outhostlen)
- 		goto out;
- 	}
- 	strncpy(outhost, addrs->ai_canonname, outhostlen);
-+	outhost[outhostlen - 1] = '\0';
- 	nfs_freeaddrinfo(addrs);
- 	for (c = outhost; *c != '\0'; c++)
- 	    *c = tolower(*c);
--- 
-2.27.0
+It's running, not failing yet... Which test cases fail?
+
+>
+> FWIW, I did try your patch with that test and it didn't help.
 
