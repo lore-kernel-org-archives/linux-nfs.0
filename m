@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EEA1A213E8B
-	for <linux-nfs@vger.kernel.org>; Thu,  8 May 2025 17:37:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E73F283FDB
+	for <linux-nfs@vger.kernel.org>; Thu,  8 May 2025 17:37:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1746725864; cv=none; b=iDxHoeQTFM90nkL5ERs77HkQ/+r52ccWuRU/HwuWr3BhB7kvkSmm6zr3fn7+tnaNf9X8NPvRTTZ9y76ooazi7rSTyeAl/Y30l/M8uK4FPgKCH0sEQuF+M1L22EeDtNIYGqtR4iWSAxn6RWOL6gVyjW1NQRfLBTLpsAwMgEsH4N0=
+	t=1746725865; cv=none; b=algziWoxnNzM0VECW42YXBb2s+3UHuQOY16/uY1FwSo9ITG/rttacK3Vs+wKz/skI4GAl+SeCwwGgcflbBkIkv89jNgmbtjRVO5jpNHV/12QVJT+cKrvG3mCLXTew0GIaPKC6yKtlji1/uFnWoEBh1MDvwoanRN1QGOi8b2r7eI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1746725864; c=relaxed/simple;
-	bh=mC7txgzqvC4mHEYa2I90JjaCeywya+h19AS+HqaGBEI=;
+	s=arc-20240116; t=1746725865; c=relaxed/simple;
+	bh=lT6tb/kD0CZL1NJf1Wsf3Eb2TQu9M30kw4YTvpeJRag=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=e0eAZLSZ9FJfUtYPLi7A/uIn2dmW7HlIvWKk3F+nEWuU+ccbOLq7DP71RAn9cFxEanuqPKHs6XzetcZ8TfJhzOzLLjwWg30TgzC87psDVdt4c/gi3GJCikn5Q65CTKoqt8MWjcdFr7gyxQi8Qa/Cg+LOrFH/F0NtSPMGA/tXPZU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Dx9N6Usa; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=tTRqWpoFQtQkijlfC9NXCcLlxBqnjlIxDRQz8v4YlSTd0zGEGzssRSluisPn3CrL9gAW2Wxord4i+fRiOOOVM8+5nDM+uOnudoKmAe8P1f1hQ3+4qTLQ68ZNmgYe9fkHLuuCnGGbL51jb/be+BfFf8Fiexr45xQlF1YuiHB2Nqg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EvBsPXQK; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Dx9N6Usa"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CDD42C4CEEE;
-	Thu,  8 May 2025 17:37:42 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EvBsPXQK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9E58DC4CEF0;
+	Thu,  8 May 2025 17:37:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1746725863;
-	bh=mC7txgzqvC4mHEYa2I90JjaCeywya+h19AS+HqaGBEI=;
+	s=k20201202; t=1746725864;
+	bh=lT6tb/kD0CZL1NJf1Wsf3Eb2TQu9M30kw4YTvpeJRag=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=Dx9N6UsaTP6oUEeXNp5+3tsfoUa3wLvaVUrbGErFTdBDZhHp8CY9OTvVN0Ak3OHhd
-	 9l17j/wBcImLu4EDFYZIHvXfUDEMt/PAXiKuVqgwb6uOAnDhXW64wfH+y8PuuI08gw
-	 2f+PmZj9ZVhOKre9Vj7gbmqhRi1kACPRxnwocdPrLdMcnNRgqk+q/NCv+0TdxK9Y/c
-	 T2DH3if0CyGJvULshZMPH7iGgm5vgkxiC6V+SxgCya27vi3yg5GPsTh627OPh7P94A
-	 4Sk+qlcFp7m4iU2Ll0tZz2rER5MJ5Jd0brkvlb8EsxJW0rhc0EWz2RZMULhKFo2v5Z
-	 zdstYKsLo5blA==
+	b=EvBsPXQKKK/9KL496kul7RoIJCrIweWNyiLrsU6BuB1KDAjBLbsbMzn4fxV/A3Kj8
+	 xhHN9RU0zvGo5jYhgM7qtXlPDhfZTA40fCJIEWXAbQS6mGSAUh2kMri6AW6OKho5fe
+	 fGrlwU/2WaTnye2uBMXLzKcan/5NS6z52u0AvnukwAwyUsYsWmsRQccyAeYmmjGOS+
+	 v3HX9f987IH0h6oNGwv61U8X4EoP47hV4+wXwBeTvYQ4Gdm/DpRdHB+sXTaASKdjeA
+	 dI6SwlZyjaxIvLaotc88ED+XDpJ6pQHoA4bdDd6GWag6uhTBkoN8kVvAdzp81rWleM
+	 8K1vSlgiaGafQ==
 From: cel@kernel.org
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,11 +33,10 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH v2 1/6] NFSD: Use rqstp->rq_bvec in nfsd_iter_read()
-Date: Thu,  8 May 2025 13:37:35 -0400
-Message-ID: <20250508173740.5475-2-cel@kernel.org>
+	Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v2 2/6] SUNRPC: Export xdr_buf_to_bvec()
+Date: Thu,  8 May 2025 13:37:36 -0400
+Message-ID: <20250508173740.5475-3-cel@kernel.org>
 X-Mailer: git-send-email 2.49.0
 In-Reply-To: <20250508173740.5475-1-cel@kernel.org>
 References: <20250508173740.5475-1-cel@kernel.org>
@@ -51,50 +50,26 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-If we can get rid of all uses of rq_vec, then it can be removed.
-Replace one use of rqstp::rq_vec with rqstp::rq_bvec.
+Prepare xdr_buf_to_bvec() to be invoked from upper layer protocol
+code.
 
-Suggested-by: Christoph Hellwig <hch@infradead.org>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/vfs.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ net/sunrpc/xdr.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index c5370d14cbfc..f964fd393f8a 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1083,23 +1083,23 @@ __be32 nfsd_iter_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	unsigned long v, total;
- 	struct iov_iter iter;
- 	loff_t ppos = offset;
--	struct page *page;
- 	ssize_t host_err;
-+	size_t len;
- 
- 	v = 0;
- 	total = *count;
- 	while (total) {
--		page = *(rqstp->rq_next_page++);
--		rqstp->rq_vec[v].iov_base = page_address(page) + base;
--		rqstp->rq_vec[v].iov_len = min_t(size_t, total, PAGE_SIZE - base);
--		total -= rqstp->rq_vec[v].iov_len;
-+		len = min_t(size_t, total, PAGE_SIZE - base);
-+		bvec_set_page(&rqstp->rq_bvec[v], *(rqstp->rq_next_page++),
-+			      len, base);
-+		total -= len;
- 		++v;
- 		base = 0;
- 	}
- 	WARN_ON_ONCE(v > rqstp->rq_maxpages);
- 
- 	trace_nfsd_read_vector(rqstp, fhp, offset, *count);
--	iov_iter_kvec(&iter, ITER_DEST, rqstp->rq_vec, v, *count);
-+	iov_iter_bvec(&iter, ITER_DEST, rqstp->rq_bvec, v, *count);
- 	host_err = vfs_iter_read(file, &iter, &ppos, 0);
- 	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err);
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 4e003cb516fe..2ea00e354ba6 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -213,6 +213,7 @@ unsigned int xdr_buf_to_bvec(struct bio_vec *bvec, unsigned int bvec_size,
+ 	pr_warn_once("%s: bio_vec array overflow\n", __func__);
+ 	return count - 1;
  }
++EXPORT_SYMBOL_GPL(xdr_buf_to_bvec);
+ 
+ /**
+  * xdr_inline_pages - Prepare receive buffer for a large reply
 -- 
 2.49.0
 
