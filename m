@@ -1,144 +1,136 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0493A14A8B
-	for <linux-nfs@vger.kernel.org>; Tue, 13 May 2025 16:08:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC1CE2BE7BD
+	for <linux-nfs@vger.kernel.org>; Tue, 13 May 2025 16:10:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.177.32
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747152513; cv=none; b=OvNyoXDBkXmJQrfLVnpozbVkInmYIIHbv1EoMtVTsI2Lg21MArD/8L4EqOAwyiuknROIKxOZQzmJmdag4kP1h91zpRQFT10TDctEBEfODv9Wb9/1oNgM6tG0elOXXQ2n/taLB9Ug2yP3ZMz60KJGgq7n+hUf3+XCk32R2Np2ddM=
+	t=1747152603; cv=none; b=MB5UnTNYUjLDi4EDFWG0aqRxf4a6y9Ri6/j0fTahPxWRyVOmxPbIFCmgqPccyrV/knF+J9axMmasezr9J/G0TjexukorsJhDwKSau6d2ib0seeBv8OCU+7yzyKEQKU/RGPIZs8IFr2J5MJgKLwtafuRvKeAFROGQlKdg140BPYE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747152513; c=relaxed/simple;
-	bh=37sJthC8Beru//pr+IQheG69RNByOl/NV12JIrbsZ3w=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ZGzcgdZAhUdBdyTtXaxPjpXgneFzlaN89gGdqxRxnrwwzgvqzhh3MIISiNmv2BWal13iJa/d+AZHuBQfQkbCCmLxMtnA4Vf5zajBp9fxq4on0TC6psrUcVC1+pcmuzLSX1FfM1PfZzLXbuBp3C4RJtkbA2gk8FTtR+mkb8WMCsE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gVzAoj8v; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1747152603; c=relaxed/simple;
+	bh=wDr0703dTOsZz2Nrv+2Z8ZKs/Onizp1XSP1dgUjImiM=;
+	h=From:To:Cc:Subject:Date:Message-Id; b=UPYif6lm6eZMMzdy+VyjVM1jiaIUW7qAVK7dtdoLiwC0xtSJK0CiLtS14bd0xplZNMrj/CuxQnU6fTHVDQJUd6uc7JN/tfA+OS6N8IUx5ZWDP2xN/sMm4evV1y9hvFXpaSEVFM3dp4RvoI132HIl8cSDp63aCW/j3UeF/bMv2Zw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=iJiXgiN4; arc=none smtp.client-ip=205.220.177.32
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gVzAoj8v"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 51422C4CEEF;
-	Tue, 13 May 2025 16:08:32 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1747152512;
-	bh=37sJthC8Beru//pr+IQheG69RNByOl/NV12JIrbsZ3w=;
-	h=From:To:Cc:Subject:Date:From;
-	b=gVzAoj8v8oLV0ytZ0SYV39J5O5qQLU24eAfnx8eMyr9qdgVLB3/93Vpxo3OT58vXj
-	 DFR+dWW+HFCIKzb38dl1f8rnjDG4EC9lhu8MGmHqtstdvb68h7bMUc9g3Qx14LZYdM
-	 +O85JhWkGLtGyntgLmwAcy6OQn/3LcPvljLvz3XI1G3UkEPjyJrjZN6o1qI8ROFvx8
-	 Lr4yMmC2En/8hWIG5Gxh2dV9+h1FxeOIlt35MDIJkHrHSmK0dLzaBc9ObjGV3gcE11
-	 9P30dfsCdvZkNqljiD9EEQgxpUmPbqmQDuB0nWRPnySSLhuPu5Uu3hpTko5RHQ51Ax
-	 5CxPD45+0VPrA==
-From: Mike Snitzer <snitzer@kernel.org>
-To: Trond Myklebust <trondmy@hammerspace.com>,
-	anna@kernel.org
-Cc: jlayton@kernel.org,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: always probe for LOCALIO support asynchronously
-Date: Tue, 13 May 2025 12:08:31 -0400
-Message-ID: <20250513160831.19997-1-snitzer@kernel.org>
-X-Mailer: git-send-email 2.44.0
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="iJiXgiN4"
+Received: from pps.filterd (m0246630.ppops.net [127.0.0.1])
+	by mx0b-00069f02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 54DCHMrk018233;
+	Tue, 13 May 2025 16:09:44 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
+	:date:from:message-id:subject:to; s=corp-2025-04-25; bh=X9OttEs5
+	Ov28LUVZSDeppcTClwOJddCs/vJVnn3h8cw=; b=iJiXgiN4qYEShnFy/F2PmTpa
+	1RrxllFNov/W3z/Jyu+efVhZa7+fMH/hauDwhlHS3mJ35DEEF+XPgqLbw7FYjySk
+	Ii6898YXlZdfZPmntjccuYDYbG47kj33hj8vBXanVmgkOvQI2WWW9fuYOhETq1AT
+	OVSZdtkvr+NR0dpb8zVmTA24a9crm8jSzb2FpMJsZq1sanDs+EfpbEw/Vos9KZPd
+	WHf4yph9UBGiFoXv1azj0q5NTjzzjop336HlOq+S+nO8t/R+WHyxotuvoViavKOQ
+	O7Fp9T6hSj1vgus09WTTRkcDnJDMfEsX7P8YVgStUY7f5T2hxVcfN2xKlVg3rA==
+Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.appoci.oracle.com [130.35.100.223])
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 46j11c53h9-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Tue, 13 May 2025 16:09:43 +0000 (GMT)
+Received: from pps.filterd (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 54DFDQ05004534;
+	Tue, 13 May 2025 16:09:43 GMT
+Received: from pps.reinject (localhost [127.0.0.1])
+	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 46m7d8xe5t-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Tue, 13 May 2025 16:09:43 +0000
+Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+	by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 54DG9gha025807;
+	Tue, 13 May 2025 16:09:42 GMT
+Received: from ca-common-sca.us.oracle.com (ca-common-sca.us.oracle.com [10.132.20.202])
+	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 46m7d8xe4t-1;
+	Tue, 13 May 2025 16:09:42 +0000
+From: Dai Ngo <dai.ngo@oracle.com>
+To: chuck.lever@oracle.com, jlayton@kernel.org, neilb@suse.de,
+        okorniev@redhat.com, tom@talpey.com
+Cc: linux-nfs@vger.kernel.org, sagi@grimberg.me
+Subject: [PATCH V6 0/1] NFSD: offer write delegation for OPEN with OPEN4_SHARE_ACCESS only
+Date: Tue, 13 May 2025 09:08:27 -0700
+Message-Id: <1747152508-22656-1-git-send-email-dai.ngo@oracle.com>
+X-Mailer: git-send-email 1.8.3.1
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1099,Hydra:6.0.736,FMLib:17.12.80.40
+ definitions=2025-05-13_03,2025-05-09_01,2025-02-21_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 phishscore=0 bulkscore=0 spamscore=0
+ adultscore=0 suspectscore=0 mlxscore=0 malwarescore=0 mlxlogscore=999
+ classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2504070000
+ definitions=main-2505130153
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjUwNTEzMDE1MyBTYWx0ZWRfXzxVCbbY9hMjV Qa8dHjGSiZecnA2oV3DmgcKwzr45SBNUF+cJxf+Iy2pA2kL+oJaqkbtYrwVO1vRis44o21YeHbs C+hx11snhirob2EpEA2tZe3VR9qWrNLds0/lugMaj0ofTXLhgzGHmC/7Q//SL19E2eZRJESY7mu
+ lOzVUw1Yt6TImPGimlKYkPJcEKhQeBiEnwWazKEaVQRfxraDgMl9L7h/YjKGkMo8cwbX6g9HRHi pqe7ZZE2no6N5vZRI/DDYW1KifJ7UWlfxvKKoXCiM9EebN7PgjIk6+Qm5lvcAhj9QlghGuziGro kA9qmObO1H3zJWIKmyFKgc7SNRtk3ppdewIVN7Cap2PPFRyXNAQ0Y970o/Y8l5v6AC3eEdFRMO0
+ AEejMVpqMeQuUClDMGLdJNK11Fo8vLIuEXNLmfwLu3nek3TWwr+MT5ROcaIZolYQOPHRDQSI
+X-Authority-Analysis: v=2.4 cv=YJ2fyQGx c=1 sm=1 tr=0 ts=68236ec8 b=1 cx=c_pps a=zPCbziy225d3KhSqZt3L1A==:117 a=zPCbziy225d3KhSqZt3L1A==:17 a=dt9VzEwgFbYA:10 a=sbfVIj92kYCz5HpZM4AA:9 cc=ntf awl=host:13185
+X-Proofpoint-GUID: LQCQS6jvSA8zvDpEosWOOk3SI6rHIsCG
+X-Proofpoint-ORIG-GUID: LQCQS6jvSA8zvDpEosWOOk3SI6rHIsCG
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-It was reported that NFS client mounts of AWS Elastic File System
-(EFS) volumes is slow, this is because the AWS firewall disallows
-LOCALIO (because it doesn't consider the use of NFS_LOCALIO_PROGRAM
-valid), see: https://bugzilla.redhat.com/show_bug.cgi?id=2335129
+This is a resend of the v6 version of the patch that was reviewed
+by Jeff.
 
-Switch to performing the LOCALIO probe asynchronously to address the
-potential for the NFS LOCALIO protocol being disallowed and/or slowed
-by the remote server's response.
+I will send the fix for the nfsd_file leak problem that Jeff discovered
+in the subsequent patch.
 
-While at it, fix nfs_local_probe_async() to always take/put a
-reference on the nfs_client that is using the LOCALIO protocol.
-Also, unexport the nfs_local_probe() symbol and make it private to
-fs/nfs/localio.c
+-------------------------------------------------------------------
+From RFC8881 does not explicitly state that server must grant write
+delegation to OPEN with OPEN4_SHARE_ACCESS_WRITE only. However there
+are text in the RFC that implies it is up to the server implementation
+to offer write delegation for OPEN with OPEN4_SHARE_ACCESS_WRITE only.
 
-This change has the side-effect of initially issuing reads, writes and
-commits over the wire via SUNRPC until the LOCALIO probe completes.
+Section 9.1.2:
 
-Suggested-by: Jeff Layton <jlayton@kernel.org> # to always probe async
-Fixes: 76d4cb6345da ("nfs: probe for LOCALIO when v4 client reconnects to server")
-Cc: stable@vger.kernel.org # 6.14+
-Signed-off-by: Mike Snitzer <snitzer@kernel.org>
----
- fs/nfs/client.c                           | 2 +-
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 2 +-
- fs/nfs/internal.h                         | 1 -
- fs/nfs/localio.c                          | 6 ++++--
- 4 files changed, 6 insertions(+), 5 deletions(-)
+  "In the case of READ, the server may perform the corresponding
+   check on the access mode, or it may choose to allow READ for
+   OPEN4_SHARE_ACCESS_WRITE, to accommodate clients whose WRITE
+   implementation may unavoidably do reads (e.g., due to buffer
+   cache constraints)."
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 6d63b958c4bb..d8fe7c0e7e05 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -439,7 +439,7 @@ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
- 			spin_unlock(&nn->nfs_client_lock);
- 			new = rpc_ops->init_client(new, cl_init);
- 			if (!IS_ERR(new))
--				 nfs_local_probe(new);
-+				 nfs_local_probe_async(new);
- 			return new;
- 		}
- 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 4a304cf17c4b..656d5c50bbce 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -400,7 +400,7 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg,
- 		 * keep ds_clp even if DS is local, so that if local IO cannot
- 		 * proceed somehow, we can fall back to NFS whenever we want.
- 		 */
--		nfs_local_probe(ds->ds_clp);
-+		nfs_local_probe_async(ds->ds_clp);
- 		max_payload =
- 			nfs_block_size(rpc_max_payload(ds->ds_clp->cl_rpcclient),
- 				       NULL);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 6655e5f32ec6..69c2c10ee658 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -455,7 +455,6 @@ extern int nfs_wait_bit_killable(struct wait_bit_key *key, int mode);
- 
- #if IS_ENABLED(CONFIG_NFS_LOCALIO)
- /* localio.c */
--extern void nfs_local_probe(struct nfs_client *);
- extern void nfs_local_probe_async(struct nfs_client *);
- extern void nfs_local_probe_async_work(struct work_struct *);
- extern struct nfsd_file *nfs_local_open_fh(struct nfs_client *,
-diff --git a/fs/nfs/localio.c b/fs/nfs/localio.c
-index 4ec952f9f47d..a4bacd9a5052 100644
---- a/fs/nfs/localio.c
-+++ b/fs/nfs/localio.c
-@@ -171,7 +171,7 @@ static bool nfs_server_uuid_is_local(struct nfs_client *clp)
-  * - called after alloc_client and init_client (so cl_rpcclient exists)
-  * - this function is idempotent, it can be called for old or new clients
-  */
--void nfs_local_probe(struct nfs_client *clp)
-+static void nfs_local_probe(struct nfs_client *clp)
- {
- 	/* Disallow localio if disabled via sysfs or AUTH_SYS isn't used */
- 	if (!localio_enabled ||
-@@ -191,14 +191,16 @@ void nfs_local_probe(struct nfs_client *clp)
- 		nfs_localio_enable_client(clp);
- 	nfs_uuid_end(&clp->cl_uuid);
- }
--EXPORT_SYMBOL_GPL(nfs_local_probe);
- 
- void nfs_local_probe_async_work(struct work_struct *work)
- {
- 	struct nfs_client *clp =
- 		container_of(work, struct nfs_client, cl_local_probe_work);
- 
-+	if (!refcount_inc_not_zero(&clp->cl_count))
-+		return;
- 	nfs_local_probe(clp);
-+	nfs_put_client(clp);
- }
- 
- void nfs_local_probe_async(struct nfs_client *clp)
--- 
-2.44.0
+Also in section 10.4.1
+
+  "Similarly, when closing a file opened for OPEN4_SHARE_ACCESS_WRITE/
+   OPEN4_SHARE_ACCESS_BOTH and if an OPEN_DELEGATE_WRITE delegation
+   is in effect"
+
+When a write delegation is granted for OPEN with OPEN4_SHARE_ACCESS_WRITE,
+a new pair of nfsd_file and struct file are allocated with read access
+and added to nfs4_file's fi_fds[]. This is to allow the client to use
+the delegation stateid to do reads.
+
+No additional actions is needed when the delegation is returned. The
+nfsd_file for read remains attached to the nfs4_file and is freed when
+the open stateid is closed.
+
+The use of separate nfsd_file for read was suggested by Chuck.
+
+I also tried the suggestion by Jeff which is to "acquire a R/W open from
+the get-go instead when you intend to grant a delegation". To implement
+this approach, in nfs4_get_vfs_file OPEN4_SHARE_ACCESS_READ was added to
+op_share_access before computing the 'oflag' and 'access' flag. This
+forces the rest of the code to process the OPEN as if it was sent with
+access mode OPEN4_SHARE_ACCESS_WRITE|OPEN4_SHARE_ACCESS_READ.
+
+This mostly works except a case where the file was created with 0222
+permission and the user credential of OPEN is not the same as the owner
+of the file. In this case the OPEN fails with NFS4ERR_ACCESS. This is
+because nfsd_permission was called with (MAY_READ | MAY_WRITE) mask
+and the file permission is 0222.
+
+I don't see any simple fix for this nfsd_permission issue. Basically
+the access mode has to be rdwr when creating the nfsd_file but the access
+mode passed to nfsd_permission to check should be rdonly (the original
+OPEN's op_share_access).
+
+v4: reacted to Jeff's comment
+v5: merged both patches into one to avoid potential bisect problem.
+    fixed some nits from Jeff's comments
+v6: Fix deny_mode issue by not setting the read access in st_access_bmap
+    when adding read access to write delegation.
+
+ fs/nfsd/nfs4state.c | 75 ++++++++++++++++++++++++++++++------------------
+ 1 file changed, 47 insertions(+), 28 deletions(-)
 
