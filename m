@@ -1,32 +1,33 @@
 Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21DA91991DD;
-	Wed, 14 May 2025 17:13:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43F8327703E;
+	Wed, 14 May 2025 17:13:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747242800; cv=none; b=QWEIvtxaOHfNemQAIPUdvqs6X4Oyp0cXAHqxxZUEdqBC0XKmUWsT3Lf27OFf6JXgDF2ChWEnPIrzprZNJqaQw5E2m/8heWYcwRMsqtH5JdJ3E7C48StVUv1RuRe0QF+Bx5AKhwnVKZ+/0p2HZcydbcczJa8ppgy/U5GwYswZkSQ=
+	t=1747242800; cv=none; b=Wnh6q5O7KRj42hPjtbhoOpCmhV052tg/h005blIyM3WSAsT2PDPT4NtueIraMM2l91Bz41wqS+E2V05qhf8wAPzeBIISOQWD7AQfd6Q8az0UT21w8/4g+AHPfQD4Qe4+GJKchDhRLWzG1Koj1zrreCOFDwTU9eQSORDBKGqfG2g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1747242800; c=relaxed/simple;
-	bh=enA6D7FBN9/BT6cSuEnSaPqLSg83ibA3ObXGUIyQ5n4=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=bLR3wL+rBytEyZaX9M95+nh/iDXFgQ11MgKY/cMkhRbTOi1bgyu/USIanIlSE0eEKJNgwprDgh+R98y59TojtbBdZrHqZk3gSwEZaZ7JJwvrmQ8aN3Cxh9Hvd0K74ZAXqcTUCemUbLWlSRlc2jeZr7G7VGpHzzeSYQPj8TabhkU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=hwX8VH8g; arc=none smtp.client-ip=90.155.50.34
+	bh=1Zw/VAwJiJhekem58x0jPUc8ssifiueBteQ5XHc0qw8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=eHqUsrnjaBlobjQk91H9dM+Kgb1ZTd5umTPZSQ2+hR/hFnwInKFcT5fP0nI8V7X6L8P7Qq3E5JeJN+uQAeFXHJTBOTrEttNZMioKrXA0vrc9NC8RWFBBwpVm3o1WqZHuSWUTuKcCX33ndmLAvEJWnq9dIe0lcRDNzTaBV53k6v0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=s8T9onjz; arc=none smtp.client-ip=90.155.50.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="hwX8VH8g"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="s8T9onjz"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-	Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:
-	Content-Description:In-Reply-To:References;
-	bh=+273IOvShaKNM026nVUVqQx7SwpKST0yxcxx7ye9MVs=; b=hwX8VH8gFAHxnSsYitle7oa0Dm
-	l2KecbC1UWDqBPE3mHwVfluMBTKgv6YblQ/dRo/OPxrgVvbKAaovC4YTn66J0CGBDkqluEb3TFVQ+
-	jDmSO8KNauWHHiYQXFfZ6E5CoAkLz5mpBZgMILOvTlotjxQQeYz3OWkNxKoSe/7jNPRUxa7YD2LfU
-	fOedLeLksFqyJi22ZAFkkuEZJWJwL0EWxFP2YIsHqFBLzZyBWfn+hcSV0Ikl7BPRCZWde6jRZOBNb
-	6h/WrbbTu28rUgYTZy6FFgtnc3KLNVqWvsuSIeag+je+wIMgx56aLcu2mzjDarE7S5TVmsNFitXfH
-	Meqk8GnQ==;
+	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
+	Content-Type:Content-ID:Content-Description;
+	bh=QnNgoY4uculrq/ANJIPIZTZJUA1KZFWSKlB0fR9q+Jg=; b=s8T9onjzVoQU29j6FYFfHUqgys
+	1/RIBSJThwqh7DhoX5L50fwVmDnEp1VLPekSl7XeS5A7tOwEMKBzxGzpDymCaCTXx4SifxuHZUOkq
+	jhPoVkhovF0To1+SToEs4v3VW+WdPhGzcb9A3bPZow4ICE1wkcGHFRCN9eTM1qoLVCmW4Gkve08x5
+	yCMJ4yid4LO917dlQY7g4IV9mWmOz+DKCOisS59JP237OChh1IYbg5vlce3rJFkFADkUiSDTuEVI/
+	oXFKfRiBKny2R2nIat6k3Z1abmyGPded43AzYe5YNfZFt8bkDrH1t3GnS7totNGnZXbYy/5nSukbx
+	6oZw2pbA==;
 Received: from willy by casper.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1uFFfR-0000000CbCb-1NOD;
+	id 1uFFfR-0000000CbCk-2YgY;
 	Wed, 14 May 2025 17:13:17 +0000
 From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To: Christian Brauner <brauner@kernel.org>
@@ -34,10 +35,12 @@ Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
 	Alexander Viro <viro@zeniv.linux.org.uk>,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] Use folios for symlinks in the page cache
-Date: Wed, 14 May 2025 18:13:11 +0100
-Message-ID: <20250514171316.3002934-1-willy@infradead.org>
+Subject: [PATCH 2/3] nfs: Use a folio in nfs_get_link()
+Date: Wed, 14 May 2025 18:13:13 +0100
+Message-ID: <20250514171316.3002934-3-willy@infradead.org>
 X-Mailer: git-send-email 2.49.0
+In-Reply-To: <20250514171316.3002934-1-willy@infradead.org>
+References: <20250514171316.3002934-1-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -46,24 +49,61 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-FUSE already uses folios for its symlinks.  Mirror that conversion in
-the generic code and the NFS code.  That lets us get rid of a few
-folio->page->folio conversions in this path, and some of the few
-remaining users of read_cache_page() / read_mapping_page().
+Mirror the changes to __page_get_link() by retrieving a folio from
+the page cache instead of a page.  Removes two hidden calls to
+compound_head().
 
-If anyone's concerned about all the extra lines in the diffstat, it's
-documentation that I've added.
-
-Matthew Wilcox (Oracle) (3):
-  fs: Convert __page_get_link() to use a folio
-  nfs: Use a folio in nfs_get_link()
-  fs: Pass a folio to page_put_link()
-
- fs/fuse/dir.c    |  2 +-
- fs/namei.c       | 48 ++++++++++++++++++++++++++++++++++++------------
+Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
+---
  fs/nfs/symlink.c | 20 ++++++++++----------
- 3 files changed, 47 insertions(+), 23 deletions(-)
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfs/symlink.c b/fs/nfs/symlink.c
+index 1c62a5a9f51d..004a8f6c568e 100644
+--- a/fs/nfs/symlink.c
++++ b/fs/nfs/symlink.c
+@@ -40,31 +40,31 @@ static const char *nfs_get_link(struct dentry *dentry,
+ 				struct inode *inode,
+ 				struct delayed_call *done)
+ {
+-	struct page *page;
++	struct folio *folio;
+ 	void *err;
+ 
+ 	if (!dentry) {
+ 		err = ERR_PTR(nfs_revalidate_mapping_rcu(inode));
+ 		if (err)
+ 			return err;
+-		page = find_get_page(inode->i_mapping, 0);
+-		if (!page)
++		folio = filemap_get_folio(inode->i_mapping, 0);
++		if (IS_ERR(folio))
+ 			return ERR_PTR(-ECHILD);
+-		if (!PageUptodate(page)) {
+-			put_page(page);
++		if (!folio_test_uptodate(folio)) {
++			folio_put(folio);
+ 			return ERR_PTR(-ECHILD);
+ 		}
+ 	} else {
+ 		err = ERR_PTR(nfs_revalidate_mapping(inode, inode->i_mapping));
+ 		if (err)
+ 			return err;
+-		page = read_cache_page(&inode->i_data, 0, nfs_symlink_filler,
++		folio = read_cache_folio(&inode->i_data, 0, nfs_symlink_filler,
+ 				NULL);
+-		if (IS_ERR(page))
+-			return ERR_CAST(page);
++		if (IS_ERR(folio))
++			return ERR_CAST(folio);
+ 	}
+-	set_delayed_call(done, page_put_link, page);
+-	return page_address(page);
++	set_delayed_call(done, page_put_link, &folio->page);
++	return folio_address(folio);
+ }
+ 
+ /*
 -- 
 2.47.2
 
