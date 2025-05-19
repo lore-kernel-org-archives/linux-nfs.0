@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C43124290E;
-	Mon, 19 May 2025 21:23:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51A6D2459E0;
+	Mon, 19 May 2025 21:23:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747689805; cv=none; b=O0UDqpCB9UTk6MF1WQ8u3QbAzwmxxW/6gx0BrqkyokiIXyl/iNzyPRP8zOK8zmss1ZD+RNSY/0yg3siyPmkqwDL7Rk5rTg1svE2K8HPjaDHmn9abjbY+b9NnkaMLFbitSorCirXBDujdT7eEN0zGwV2/uC4F47ku3Hf33F+uofs=
+	t=1747689815; cv=none; b=aqjJfLsX48K56yK1d+a6q/aUdkew2ifq+pEFQAEnE6UZvV3jGk4548izSUnZx77RyrMEmhwHhRjs9/hP5Z5YyNqYmqeIM3Tjee8JgRFYMKI10HKT8DtSN9XOCFkWmI/XabBpBxIMh9JziwgClOrfjF508aSimO2mVBD9xDXausA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747689805; c=relaxed/simple;
-	bh=sSdC6lcOfasrwYFisTaklWi7gIOTsyja7XvtG+qCxq4=;
+	s=arc-20240116; t=1747689815; c=relaxed/simple;
+	bh=uP9UgC02hn6qmbiczDBUbBXOmhkkOC3BNHf9VGvqYMM=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=JcDQfaQ3p533J0HunNGlC8LnvU0w1XvHF3eTLowBQa2qxTMeplyAsvMlDOkWykTVK11in6JzbwROuEavFODNTNpn/u/Dd2lkPeLW4i4E2vwJmhLMgtux/W7cUPKT+MUGzvGEk+4GLrytutcSKkBsyGFokPKEs918UMZXM/Sob4w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KM9ANOXP; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=dcjFjp++o7LeYmPNRTmhI4/KykNmpWncZ0RTorLdHFyMBntV0MLaGDHSakaeDNw+yLYT+a2pDovUjBMlARXvH5hoyCEp8WztKLAZfY8tRH4pqNi7KDSsMyK4GhVffazUTwLqMsdbg3MRStjNQ9ysgIXCMr9jWqa2xEMVKvcvers=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Bk+9B6pU; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KM9ANOXP"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 83D6EC4CEE4;
-	Mon, 19 May 2025 21:23:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Bk+9B6pU"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0B61EC4CEEB;
+	Mon, 19 May 2025 21:23:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1747689804;
-	bh=sSdC6lcOfasrwYFisTaklWi7gIOTsyja7XvtG+qCxq4=;
+	s=k20201202; t=1747689815;
+	bh=uP9UgC02hn6qmbiczDBUbBXOmhkkOC3BNHf9VGvqYMM=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=KM9ANOXPItaGdf6RFh+NmBr9Flxo1C1MeX4SeoVcospgEejMNMKln/5L6HouXNVto
-	 +xYygctHkHS5jWYDTsLzNXsef+IEElA47pLjR8KYdqOeD2PD+nsdnwHGCqbZk10v24
-	 y8fGR+kTiPfBFjF73/8T+MBlyySx0Wvdmy8LdN/im/YM3ptmRYwcmCUfwgemakD09j
-	 4QsnBhZ0TKl3TngBcIhYgg+66O1Dm+n7GQTm9JG9t2qQqfDrC7Xcr5pWpWfUZv7Tde
-	 eR3whh81+C0gUVXJkm1yCZEusc5jFbCxyi8Zi5XjNUpMz2MiCJItQRCjRzplmJGrjH
-	 hcMNXnCml9RmQ==
+	b=Bk+9B6pUZxn0y6AA4x5mAJT2s2RBdb9C0a3BjlLy6YmsfmGMkV7xe1IazQhTfimNf
+	 NrgBSBzH2aGlNa/7JVO2WAFgx7x8iTiXulQwMgm6WxYE+fI5c6Uabw79W28S5DG+be
+	 9VF+XHzO2zcHCozmL+n7djb7e//7s3TACD34KCgE5vN4sksROtxyGzSpn29dVW8nby
+	 owSYT/+F8jojbE8w4QrZ8gutNzQN4aurgsZpTf22i9UHY3wDlIQjTOQosfYKVk0bMI
+	 0sPyaALza53rtb+uhBN/6vPPCehSRJRo6d7Vs4jey4UJCqYwGNIxoHTr0+9O+FdvbR
+	 DJRySTeaNPWJQ==
 From: Sasha Levin <sashal@kernel.org>
 To: patches@lists.linux.dev,
 	stable@vger.kernel.org
@@ -38,12 +38,12 @@ Cc: Jeff Layton <jlayton@kernel.org>,
 	anna.schumaker@netapp.com,
 	linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH AUTOSEL 5.10 2/6] nfs: don't share pNFS DS connections between net namespaces
-Date: Mon, 19 May 2025 17:23:16 -0400
-Message-Id: <20250519212320.1986749-2-sashal@kernel.org>
+Subject: [PATCH AUTOSEL 5.4 2/5] nfs: don't share pNFS DS connections between net namespaces
+Date: Mon, 19 May 2025 17:23:28 -0400
+Message-Id: <20250519212331.1986865-2-sashal@kernel.org>
 X-Mailer: git-send-email 2.39.5
-In-Reply-To: <20250519212320.1986749-1-sashal@kernel.org>
-References: <20250519212320.1986749-1-sashal@kernel.org>
+In-Reply-To: <20250519212331.1986865-1-sashal@kernel.org>
+References: <20250519212331.1986865-1-sashal@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -52,7 +52,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 X-stable: review
 X-Patchwork-Hint: Ignore
-X-stable-base: Linux 5.10.237
+X-stable-base: Linux 5.4.293
 Content-Transfer-Encoding: 8bit
 
 From: Jeff Layton <jlayton@kernel.org>
@@ -86,7 +86,7 @@ Signed-off-by: Sasha Levin <sashal@kernel.org>
  4 files changed, 14 insertions(+), 11 deletions(-)
 
 diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
-index 86c3f7e69ec42..e6bf55e37521f 100644
+index d913e818858f3..82bba1ede717c 100644
 --- a/fs/nfs/filelayout/filelayoutdev.c
 +++ b/fs/nfs/filelayout/filelayoutdev.c
 @@ -75,6 +75,7 @@ nfs4_fl_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
@@ -117,7 +117,7 @@ index 86c3f7e69ec42..e6bf55e37521f 100644
  			goto out_err_drain_dsaddrs;
  
 diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index bfa7202ca7be1..4b0cdddce6eb3 100644
+index 1f12297109b41..e6d7473e1a32a 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
 @@ -49,6 +49,7 @@ nfs4_ff_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
@@ -148,7 +148,7 @@ index bfa7202ca7be1..4b0cdddce6eb3 100644
  		goto out_err_drain_dsaddrs;
  
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index a7cf84a6673bf..f88b0cf00f21e 100644
+index 68339680bb7d1..a73566d365028 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
 @@ -57,6 +57,7 @@ struct nfs4_pnfs_ds {
@@ -159,7 +159,7 @@ index a7cf84a6673bf..f88b0cf00f21e 100644
  	struct nfs_client	*ds_clp;
  	refcount_t		ds_count;
  	unsigned long		ds_state;
-@@ -405,7 +406,8 @@ int pnfs_generic_commit_pagelist(struct inode *inode,
+@@ -377,7 +378,8 @@ int pnfs_generic_commit_pagelist(struct inode *inode,
  int pnfs_generic_scan_commit_lists(struct nfs_commit_info *cinfo, int max);
  void pnfs_generic_write_commit_done(struct rpc_task *task, void *data);
  void nfs4_pnfs_ds_put(struct nfs4_pnfs_ds *ds);
@@ -170,10 +170,10 @@ index a7cf84a6673bf..f88b0cf00f21e 100644
  void nfs4_pnfs_v3_ds_connect_unload(void);
  int nfs4_pnfs_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds,
 diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index a2ad8bb87e2db..461c00c1338c2 100644
+index aff44a7b98f86..e2d90239d042d 100644
 --- a/fs/nfs/pnfs_nfs.c
 +++ b/fs/nfs/pnfs_nfs.c
-@@ -651,12 +651,12 @@ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
+@@ -414,12 +414,12 @@ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
   * Lookup DS by addresses.  nfs4_ds_cache_lock is held
   */
  static struct nfs4_pnfs_ds *
@@ -188,7 +188,7 @@ index a2ad8bb87e2db..461c00c1338c2 100644
  			return ds;
  	return NULL;
  }
-@@ -749,7 +749,7 @@ nfs4_pnfs_remotestr(struct list_head *dsaddrs, gfp_t gfp_flags)
+@@ -512,7 +512,7 @@ nfs4_pnfs_remotestr(struct list_head *dsaddrs, gfp_t gfp_flags)
   * uncached and return cached struct nfs4_pnfs_ds.
   */
  struct nfs4_pnfs_ds *
@@ -197,7 +197,7 @@ index a2ad8bb87e2db..461c00c1338c2 100644
  {
  	struct nfs4_pnfs_ds *tmp_ds, *ds = NULL;
  	char *remotestr;
-@@ -767,13 +767,14 @@ nfs4_pnfs_ds_add(struct list_head *dsaddrs, gfp_t gfp_flags)
+@@ -530,13 +530,14 @@ nfs4_pnfs_ds_add(struct list_head *dsaddrs, gfp_t gfp_flags)
  	remotestr = nfs4_pnfs_remotestr(dsaddrs, gfp_flags);
  
  	spin_lock(&nfs4_ds_cache_lock);
