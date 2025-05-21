@@ -1,108 +1,122 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from smtp-fw-6002.amazon.com (smtp-fw-6002.amazon.com [52.95.49.90])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0C07218EA2;
-	Tue, 20 May 2025 23:34:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E4B5C17E;
+	Wed, 21 May 2025 00:32:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=52.95.49.90
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747784088; cv=none; b=FLY1na3URfmI9DgwMRXLJk8A/k3myW9JniFYxFinZUyX19WTroicN1aEFFtYLjMqUteONkrk/80hhodh+pM6//a5h8kLkptnCtPwtLFvNeVwAuoS6+98eXaDu6KpiGDlKDL5BCP4cxMXKv8JaBUbgPOmLw6zH03J09/qmAeRGnk=
+	t=1747787551; cv=none; b=s2Me1q3jiPl+tir0NvoXWmLxAhVXMryXvdME79i7Kj/SrhqhDSIfx2GeSNOH5uE21spvlHUVK1tOLkhzNAiYJpfusb7dAaaChr5E+g2+Ilfj7pyrraQV/HulLQrcIFJAKX3CJ33a+WIQXGUHhrevqgnhO4F1ZnLzFxyKK1yiLbM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747784088; c=relaxed/simple;
-	bh=nk5kiEmG5q6Z6ly3rI2SSY3NQLP58Venst00SAF/F60=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=pQSQWaEXNJtCwCmnjx7/+ErlYXG4iIHELhG788Jr4BwetBC7T6/ctVePbyyGYmBPcnwWHpeTjdd/WtMBOkCcdWwcfvuPZzf5i7viPcCMsznO0ReS0gETCI/IhQcvnB73z2URerOE67V218EtmZ7jh0Qy/9pU4WxQrIL2bvC+UUc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Y5yQRu5L; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1747787551; c=relaxed/simple;
+	bh=fGWSogIpp3TKjPGsD6G2U2naE/ASQSOoM2byNJmS9SA=;
+	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=MEVh1lpuRZ7OtduetdGQAWFKYYByT42+jSCxZB3ZxaYgfE3iSeBVj0qxqm6ZoAiz1RmlpFkBlOXmc2XE6TjwLguzptejeOfiu7tnfEWQdKDS+WixBVCBDg9FhR5jya0Z/7OoBauoWZOE689+zJyOMI06rgpC+0+ni//2sFyroyA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.com; spf=pass smtp.mailfrom=amazon.co.jp; dkim=pass (2048-bit key) header.d=amazon.com header.i=@amazon.com header.b=FlL6H96v; arc=none smtp.client-ip=52.95.49.90
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=amazon.co.jp
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Y5yQRu5L"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id ED200C4CEE9;
-	Tue, 20 May 2025 23:34:47 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1747784088;
-	bh=nk5kiEmG5q6Z6ly3rI2SSY3NQLP58Venst00SAF/F60=;
-	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=Y5yQRu5LByw0qmZ43NOxThhQtuMUYw/+ZdxT7XSL2GD0uPrryMrYvF7hrXlwb+LxR
-	 ZAfYA8jueqxHLuIGfSEGpdB03PxUdHOD91p18u+8CGqSnWfc9/soxQeMhxcRYBBBP+
-	 o41IY6fqHnI7Oi9ai33uTiKQyuy/T7f/w8Q49UeG//f1O73giDmS8Ze/DVf8TBo2Aa
-	 6TPSC1h85fHcC96Hk2lzl8/29drA/WjeXSfevV9r9NApvmOgTavSSP+ow+/oLOE4my
-	 oiGZgeNaci6l6nx2iuJRl+1kBOLp9aHH5LMm4NLiMyC8W4Rd7mV5+Jzq+T7yfudl0m
-	 ihhDCVTGozBlw==
-Date: Tue, 20 May 2025 19:34:46 -0400
-From: Mike Snitzer <snitzer@kernel.org>
-To: cel@kernel.org
-Cc: Thomas Haynes <loghyr@hammerspace.com>, linux-nfs@vger.kernel.org,
-	netdev@vger.kernel.org, kernel-tls-handshake@lists.linux.dev,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Steve Sears <sjs@hammerspace.com>, Jakub Kacinski <kuba@kernel.org>
-Subject: Re: [PATCH v1] SUNRPC: Prevent hang on NFS mount with xprtsec=[m]tls
-Message-ID: <aC0RlqfuilOj51kT@kernel.org>
-References: <20250520195916.676511-1-cel@kernel.org>
+	dkim=pass (2048-bit key) header.d=amazon.com header.i=@amazon.com header.b="FlL6H96v"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazoncorp2;
+  t=1747787551; x=1779323551;
+  h=from:to:cc:subject:date:message-id:in-reply-to:
+   references:mime-version:content-transfer-encoding;
+  bh=xEI+3cw+m02lVsLKZ/U/Cq3BXMtRGmsEPyJIbqzNDXo=;
+  b=FlL6H96vTSwPcHCOlHJTb2ER9EtMAhLtUv1aZG16YzhtZQWj+vwjoWcQ
+   vmVyJZ98s6F63xzqv1SjH6C9mJ5+azViUike2eQvOX2K+Q0r2ehoehcWv
+   FyATtm00h0gSneREIIqZ/XUQCHZXpbaKIH7/soHZuDwksIN49T0TxAzYY
+   UcXlUl/Vkpc3bayD6kEM/rWlQa1gjeq0FaJITC2XO7N1G80wePmgalqfo
+   vUy6CC52QpWf6QaXldfDfckoOAnb/rdSKlwdcArrolKZFyW6hueH6AMli
+   RRznZcNJFsiYrvphha5ntbsManVYEqtohxlMYhr777DjsqQJuWqMQxI3I
+   A==;
+X-IronPort-AV: E=Sophos;i="6.15,303,1739836800"; 
+   d="scan'208";a="500790503"
+Received: from iad12-co-svc-p1-lb1-vlan3.amazon.com (HELO smtpout.prod.us-west-2.prod.farcaster.email.amazon.dev) ([10.43.8.6])
+  by smtp-border-fw-6002.iad6.amazon.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 21 May 2025 00:32:26 +0000
+Received: from EX19MTAUWB001.ant.amazon.com [10.0.7.35:46847]
+ by smtpin.naws.us-west-2.prod.farcaster.email.amazon.dev [10.0.55.122:2525] with esmtp (Farcaster)
+ id 8fe77178-6a7e-4a39-aa1b-6b78976c9145; Wed, 21 May 2025 00:32:25 +0000 (UTC)
+X-Farcaster-Flow-ID: 8fe77178-6a7e-4a39-aa1b-6b78976c9145
+Received: from EX19D004ANA001.ant.amazon.com (10.37.240.138) by
+ EX19MTAUWB001.ant.amazon.com (10.250.64.248) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.1544.14;
+ Wed, 21 May 2025 00:32:24 +0000
+Received: from 6c7e67bfbae3.amazon.com (10.187.171.41) by
+ EX19D004ANA001.ant.amazon.com (10.37.240.138) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.1544.14;
+ Wed, 21 May 2025 00:32:20 +0000
+From: Kuniyuki Iwashima <kuniyu@amazon.com>
+To: <stephen.smalley.work@gmail.com>
+CC: <anna@kernel.org>, <brauner@kernel.org>, <casey@schaufler-ca.com>,
+	<davem@davemloft.net>, <edumazet@google.com>, <horms@kernel.org>,
+	<jack@suse.cz>, <jmorris@namei.org>, <kuba@kernel.org>, <kuniyu@amazon.com>,
+	<linux-fsdevel@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	<linux-nfs@vger.kernel.org>, <linux-security-module@vger.kernel.org>,
+	<netdev@vger.kernel.org>, <omosnace@redhat.com>, <pabeni@redhat.com>,
+	<paul@paul-moore.com>, <selinux@vger.kernel.org>, <serge@hallyn.com>,
+	<trondmy@kernel.org>, <viro@zeniv.linux.org.uk>, <willemb@google.com>
+Subject: Re: [PATCH v2] security,fs,nfs,net: update security_inode_listsecurity() interface
+Date: Tue, 20 May 2025 17:31:49 -0700
+Message-ID: <20250521003211.8847-1-kuniyu@amazon.com>
+X-Mailer: git-send-email 2.49.0
+In-Reply-To: <20250428195022.24587-2-stephen.smalley.work@gmail.com>
+References: <20250428195022.24587-2-stephen.smalley.work@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20250520195916.676511-1-cel@kernel.org>
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: EX19D043UWC001.ant.amazon.com (10.13.139.202) To
+ EX19D004ANA001.ant.amazon.com (10.37.240.138)
 
-On Tue, May 20, 2025 at 03:59:16PM -0400, cel@kernel.org wrote:
-> From: Chuck Lever <chuck.lever@oracle.com>
+From: Stephen Smalley <stephen.smalley.work@gmail.com>
+Date: Mon, 28 Apr 2025 15:50:19 -0400
+> Update the security_inode_listsecurity() interface to allow
+> use of the xattr_list_one() helper and update the hook
+> implementations.
 > 
-> Engineers at Hammerspace noticed that sometimes mounting with
-> "xprtsec=tls" hangs for a minute or so, and then times out, even
-> when the NFS server is reachable and responsive.
+> Link: https://lore.kernel.org/selinux/20250424152822.2719-1-stephen.smalley.work@gmail.com/
 > 
-> kTLS shuts off data_ready callbacks if strp->msg_ready is set to
-> mitigate data_ready callbacks when a full TLS record is not yet
-> ready to be read from the socket.
-> 
-> Normally msg_ready is clear when the first TLS record arrives on
-> a socket. However, I observed that sometimes tls_setsockopt() sets
-> strp->msg_ready, and that prevents forward progress because
-> tls_data_ready() becomes a no-op.
-> 
-> Moreover, Jakub says: "If there's a full record queued at the time
-> when [tlshd] passes the socket back to the kernel, it's up to the
-> reader to read the already queued data out." So SunRPC cannot
-> expect a data_ready call when ingress data is already waiting.
-> 
-> Add an explicit poll after SunRPC's upper transport is set up to
-> pick up any data that arrived after the TLS handshake but before
-> transport set-up is complete.
-> 
-> Reported-by: Steve Sears <sjs@hammerspace.com>
-> Suggested-by: Jakub Kacinski <kuba@kernel.org>
-> Fixes: 75eb6af7acdf ("SUNRPC: Add a TCP-with-TLS RPC transport class")
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/xprtsock.c | 5 +++++
->  1 file changed, 5 insertions(+)
-> 
-> Mike, can you try this out?
+> Signed-off-by: Stephen Smalley <stephen.smalley.work@gmail.com>
+[...]
+> diff --git a/net/socket.c b/net/socket.c
+> index 9a0e720f0859..bbcaa3371fcd 100644
+> --- a/net/socket.c
+> +++ b/net/socket.c
+> @@ -560,17 +560,14 @@ static ssize_t sockfs_listxattr(struct dentry *dentry, char *buffer,
+>  				size_t size)
+>  {
+>  	ssize_t len;
+> -	ssize_t used = 0;
+> +	ssize_t used, remaining;
+> +	int err;
 
-Works well, thanks to you and Jakub for seeing this through!
+Paul: Could you sort this in the reverse xmas tree order before merging ?
+https://docs.kernel.org/process/maintainer-netdev.html#local-variable-ordering-reverse-xmas-tree-rcs
 
-Tested-by: Mike Snitzer <snitzer@kernel.org>
-Reviewed-by: Mike Snitzer <snitzer@kernel.org>
+otherwise the socket part looks good to me:
 
-> 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 83cc095846d3..4b10ecf4c265 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -2740,6 +2740,11 @@ static void xs_tcp_tls_setup_socket(struct work_struct *work)
->  	}
->  	rpc_shutdown_client(lower_clnt);
+Reviewed-by: Kuniyuki Iwashima <kuniyu@amazon.com>
+
+
 >  
-> +	/* Check for ingress data that arrived before the socket's
-> +	 * ->data_ready callback was set up.
-> +	 */
-> +	xs_poll_check_readable(upper_transport);
-> +
->  out_unlock:
->  	current_restore_flags(pflags, PF_MEMALLOC);
->  	upper_transport->clnt = NULL;
-> -- 
-> 2.49.0
-> 
+> -	len = security_inode_listsecurity(d_inode(dentry), buffer, size);
+> -	if (len < 0)
+> -		return len;
+> -	used += len;
+> -	if (buffer) {
+> -		if (size < used)
+> -			return -ERANGE;
+> -		buffer += len;
+> -	}
+> +	err = security_inode_listsecurity(d_inode(dentry), &buffer,
+> +					  &remaining);
+> +	if (err)
+> +		return err;
+> +	used = size - remaining;
+>  
+>  	len = (XATTR_NAME_SOCKPROTONAME_LEN + 1);
+>  	used += len;
