@@ -1,132 +1,153 @@
-Received: from sonic307-16.consmr.mail.ne1.yahoo.com (sonic307-16.consmr.mail.ne1.yahoo.com [66.163.190.39])
+Received: from mail-ej1-f53.google.com (mail-ej1-f53.google.com [209.85.218.53])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0FE67632
-	for <linux-nfs@vger.kernel.org>; Wed, 21 May 2025 00:32:52 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=66.163.190.39
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF9C923504C
+	for <linux-nfs@vger.kernel.org>; Wed, 21 May 2025 07:07:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.53
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1747787574; cv=none; b=npctFdNQXbBkwd2P82MFj5tcy0LknOqoEL5EoJCOu84KKt1X9GRGJHTlDnTgQ5+nxqtCfG4nV8dOCmO5t1DOuSQKsEIod/q9RkX0O2fl3YF3+vwwMh8+1EWcCR6JDLwO61xeNzYVZYzmumDYxJDWLCNsd7JG8MPMwMCSu4STkGs=
+	t=1747811275; cv=none; b=sCURjwMiHahTaSxC6B9fWsi64hkDZvxqM3ZfDuur/5ZZx7mXRYf2fJKiZTQ3TeAO2xMPCC7EUpdtHkFeq81hEHHqFFrlt6fYxG0wN/4eAMfqFmSs/0M/9UzpC82yStaO59UkO2cJSk8ULUHyvqtqqux+Wuj4OUSQpliQ2UMhAVk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1747787574; c=relaxed/simple;
-	bh=T0RbOaBwczPSyR6MtoU31hIYUwk641zg+6X5zZah544=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=SvaxlvmD19owdFif599NaaVi9VYRT55zhpaLxgA4GW33lTxn4zjbPFY66HCJ664hoWSLtrgXVPMy4JnrhB3Xtnd0mzHkSwWi7SK5PjzzGp753yQnATUM0aNZD9E5C/4WvjrhdQto0GNauBBVyXyRb2HFCqHUBQps2wiGTFlyb0M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=schaufler-ca.com; spf=none smtp.mailfrom=schaufler-ca.com; dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.b=rFaV/nR/; arc=none smtp.client-ip=66.163.190.39
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=schaufler-ca.com
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=schaufler-ca.com
+	s=arc-20240116; t=1747811275; c=relaxed/simple;
+	bh=ApLr7RdL+5vXBcFm9sJLZKE3UvHwmS3uJmHsS0dbah4=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Content-Type; b=Kg/uUJMDmneRob4oVjuKCKBiBOzDTjGzn9cRMHI5u0AakI1SzsLx0WQ9kQVEIr9P0Psxo1MN3ewqOarfPXkNrvp2I/+2UHqMOADwSShUUxuFwxmAZuxDW9unA3Xg7/U5THSTksEui4ebPeRwUoCyDtTQE/VhO9LgCgfGOkaO0DA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=UW25oxAp; arc=none smtp.client-ip=209.85.218.53
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=yahoo.com header.i=@yahoo.com header.b="rFaV/nR/"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1747787572; bh=cx3YGvuPA+vDPKU0fnjGtN1JBtOZiqAYEf/p/WyoWqc=; h=Date:Subject:To:Cc:References:From:In-Reply-To:From:Subject:Reply-To; b=rFaV/nR/9tR/VJ9dlBKmcXFaM+rBCHQm8As1ww2BcQa7HrmQeOJdYgOdduWEp+gVsrgyec4zlnC3yP7ArsuEsHdpJ5hbk+41W7DsQLsc8zpUEtMXjnOGqoTpxpSxY5LgtN+Xi96dhMkjU9KRtpaBHF6wHHdPaXSEdAlR2lc5kBk355N41Kk61npl1kClXco3jWV99KcO7ig8IzZChrDthICz3aH4PsKXUcZxwdKyKz1cnjUhesZ2iKHnJpa9jdg4LUZgRYJK0l3cWZzAWMPtsNTGjALUycKyfHFWao8ypxi/bqN83dk/XmgWb1PET+FBbLfjslO6mkWozQtYGhfuQQ==
-X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1747787572; bh=P6mhyPWDWUF8GubZawJPhGpr9uPfJd4GHsxXFw3mr/8=; h=X-Sonic-MF:Date:Subject:To:From:From:Subject; b=Ra0E499uybDQ6EXY2s8/kGDFG7tj9xYNPYCzg/WMVj2dQZOa8wH63B8HBUlNE3ZQLJhUEbp1TDORdxlbmedLY1TvtTit1EUmPdEnsah3DerpsXxXmW/D4exAqzoFLa8lUp4TPt6Px4x3t7GDPOw4qTvlqValeu/SFtJWMzhyCDOQSxWAEFlzuh5KUTLIz2ZxV1te5NSvVt6l5dCLWDzeK1CbNFWayr0BMkDywFhspl4uw6eQa8+sK+Zy2TUxlaHSuBFCEBcV6padnFkvQxl3N+1Vwq36yDk26q5SzA/rpYlpx+iwhuafk8OMWpU/Rc7UxaokKjM/Fo3OPVVpd0AZwA==
-X-YMail-OSG: oJxqVeIVM1kG4i3jzx86a6TgdP.0sTad.diCSsPSpVtwno5YOcf4L8zlUdZEOX3
- 8A0thCmq_VigcvCdJvgaCkckZOOYvUdKewrkAPP9aJk_p0xPyf.jgIizuH685NVoGGEsZXLdFdug
- KsfNyN6u27wSgiw3EA5NT7LiZYqzGRdq8MvhtXvWJH2GTrywTeQi5mpHSTIF9O4.lueZUO8G_yCB
- GimCgBre7Pq4hh.Tix3Db25Mz558v8DjALQKQPjYGb3y3bOObaQGrYhlQbd_YzYTOLHbffbFa1h.
- VdUS7oeb3_W4v7kW8uf3MMgikkLUPy5_N3NTcw.vXv.vcpoBno2jD6PC6pAArBx5LrniAONVF5NL
- DNZ0lbX8RFTB3abN4z.nTduuzKkvxe2l3BVnJRQNjJKTU1LFybufTbbMEDwu5baGKA958c_lo6jl
- Ki_Jyn0rD1.JYTtnoIx96NHid4bqeOGjoluxMzSGcOH4e2mF_eyHTOuHE.GVwW.MGjBGrL7Mn4OF
- EroLwnRvazI2LY23GfsrCi1PeEYCF8axRd.0_VRs9TTJpaaA4nYaxO4m9F19ZCezmQTdCrzLkKWR
- pHB5e53Uj_cUROztu93urkHbS3_YRBavUDhRgU0Ek7TPFMvHLQyXEaWP4e4Ws_RbFfREN93xNLos
- Kc9ZLb0PCg_u6eH99NHXjewZP2eUMo_86VIZpWX8NGQy7Lfk4YsbmFB5aUnIjyBq48PG_dTrKk5z
- AIcl72aBX1WgvRnc3a2sBEzK21PuEsJAw.fB27faktiFQjnVbeFuoMCHu0ILPa5_KBW1NaiTO8X8
- hkclaeaIGx.EQyLDm6mokUOUEjibE0RA2lb8hKRjkGd4mJZ1vFN5lCXmgcqv3CwxobcFqjXEQGGd
- eIFyISiS6t9k6_HDvzhqseZOZCOL_ZH78coh6bDqJRMDU1FLT1bYMsFJTSpgZZ_i72sY3Xt0wwzO
- ac9jVZzzRY_jHkMkZap.1.6sUZc_oQT7_Blgdr_XkwJF9CDdY08db7uqthjEdLm21rrPRpg.i02B
- 9UCyw0rKb7uKTcpI7iay83Ra.S3FxdZxYfQ4MG.nqQXOBF5AmysxwGThRwU3Qs1.lB_EEXhVBhIf
- o0pQcQFJhk_0EeWe7n2XI9Asjm4opRYMi6kgSMOH0wyHCgHUgAd6jsdoGx2opwPzfDbNRS82kt5W
- 8LLAwkv5aXfmymlYCEPSF5eIT8KjjGPuSKP8MZYrzCTyj.zICKHTcZz069JvMfHhuZfWUusHArIK
- F6faHelbx.nKw.w3hLLRGUw2bKZ_5jPcBiw4Rb8_Qp_CVrhX5GTTB0IhSrdtcvXrhXFf0QlQfZwH
- BPiiMFgERCzxMSPQcPMSN4Og7wB4eLnwwEvx2TLV9P5WFkHMbrveeHWcx1s2kEq4fmPdAnfzKFob
- UiD7eshjXza87WTGI1UQLG6JVAPIWUwx3B9iZgY2A.xc5GqLO6K4k.rA19yy5mL5v4xOq9P.C5WZ
- 4DSMxHUoMsHAGwI6dozCO9.lpwHSuodsKl6Pr5r93iBJUALbm_3mJaXVD03SJ7TPS68w8gZfyFup
- pwVB2QxpPhaF6Yf1PB.ovCH9q73ez77wvnCe50bi7AQAATJNXC_KaA8WWq_4cwcfp7iCyD6RaOmz
- X5U297wVCeTgwGBnUfEktpe8TUMwVhXECIHtvrGKdEdynadWwxb3nzP2X_vYppH7m4R86zYxopFe
- cZIJ7R1cehKHgf4JFUBM5XpArdLOJ9twLQOkPDhsVlTQ0wOPVDnhh8tFpfvZ44VqL6PB_gDo4XpY
- ztEy7mqEY_apSmXbbR_7YqfponqTx11ZCR2UXG8V3UdlDp8sdyuHEtmxlp7RIsFF0eLr1EwA.sCX
- pHTuKxJrhEtg5tVLifxeNsc3KwO5m0Q8AfATYhuiN8XFAXU9umYuKmeX34YIVBcDUvmazY10a5.u
- YILlbIcdhEPqdXcmT5sf13Swx_mWqG_WyPJAUAETwQuMK3FDaYw22i11vFSdcwLRV94ShbChwy3j
- vnIFzE_eiqSUz947iwzHYTofvN.O5yQ8kTsYH0sX1O_6o26G11NgQ8QNS9Uq1qfn23DNEaJ7dtxo
- NQPhXykgxXpt41pz94MSknLke9XTiYFenqiICsMFPItuw.3g0by6b3piWRUpv44IPi0rueVKqVya
- 7HhOBENFFJHsuaU0D8NRbui9XPywUHPkPofkB.UW20Df18q76w1jwNWVnrt574YMbGHpi22t01My
- ShhwmxybpA87YsB6Le3OIj8pKMxaCCxfzCCQ_W4s8TwbYjYk00qgdkk9Npz4tNAdJKHgEPsYtODB
- wjzcaWg--
-X-Sonic-MF: <casey@schaufler-ca.com>
-X-Sonic-ID: fa6019c4-8c81-48f7-9087-f9292112f967
-Received: from sonic.gate.mail.ne1.yahoo.com by sonic307.consmr.mail.ne1.yahoo.com with HTTP; Wed, 21 May 2025 00:32:52 +0000
-Received: by hermes--production-gq1-74d64bb7d7-5qmwx (Yahoo Inc. Hermes SMTP Server) with ESMTPA ID 22b51d61e1487a2ad2d4a72f676939f8;
-          Wed, 21 May 2025 00:22:40 +0000 (UTC)
-Message-ID: <f4842839-20e9-4ff3-8551-3e33d1c87e44@schaufler-ca.com>
-Date: Tue, 20 May 2025 17:22:38 -0700
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="UW25oxAp"
+Received: by mail-ej1-f53.google.com with SMTP id a640c23a62f3a-ad53a96baf9so722036366b.3
+        for <linux-nfs@vger.kernel.org>; Wed, 21 May 2025 00:07:53 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1747811272; x=1748416072; darn=vger.kernel.org;
+        h=content-transfer-encoding:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=ApLr7RdL+5vXBcFm9sJLZKE3UvHwmS3uJmHsS0dbah4=;
+        b=UW25oxApArwc2drBb0x1vuVgRP7KMpXPK6T17IHpBUT/ZnRMhroDMFqoCYISqLtJIb
+         wyxnkA8PMxzP/RTre9IC5ZvXA220/Jn9VcZEdI3431SArp0o1kAVS3f4O2Wh8xULcwHE
+         ne8vGfom421vSATWmaDzkI+1AsaNTJLzmRix1l1F5A3PPxbc0zIEP77umN1FbVrtyZH+
+         u3VRYYosQnlg8qeOZrcMdoJkBNNCl9Il8XDnrhkfrMaKR5y1OuOCN0/SbdHYvMf3Zxrt
+         MFPQ+s1VWJAL1MYhewxfsQ+su3JjtcaH0WjlWDXTeY1x8F9m7QP208DcN5PYnQBPVrB3
+         /i7w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1747811272; x=1748416072;
+        h=content-transfer-encoding:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=ApLr7RdL+5vXBcFm9sJLZKE3UvHwmS3uJmHsS0dbah4=;
+        b=ePDQZQqT2iz436SbmTMdCH872A+HltKfDvtfmSqqqffrI3ukHOgtzxXVRRCkhUTXIh
+         68hRIl1YGY9PSBfvlZ3v4HKpultmPF3OA5gjmqktDxeGycNg/kTVVTAhDYIryhg7YLe7
+         bWyinzvTxLnLrEh8ZkJOlykVfpFbCDcDJKqe1hwSFMJLaEyz844rMYaankpibz5dSXHY
+         kIv2ClkLPeNmK2p/3fWniC80ASonb16gaCY6/Htmd7V3vc1xvq3gA/ICnEpqUYk33R+k
+         3h4kgIWY0LyOVQxX8utUeMJQF5AG9o/aBvgtqtQ0KoF+wxPvenOlJE4zeJgsqJRd9KFr
+         p0ow==
+X-Forwarded-Encrypted: i=1; AJvYcCUIMusNihQQXAHtVj9nURwaNs+3y9knPGTjs5GaOee7wGStX3sK9NrBPfqbJovnodXr+OzzJenvzhM=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yxo8r+t2ldJSfQgFaQ+gT0MnNXi9gNL+OBHIrxaFJMxWPEa3J4p
+	AJYQO2/6te6sBrqjsWQmhGvi4MwQfgJL26WgetDKuw+rW7JsTrHrnYlY9gJrC3w2oHNO8g1cIdh
+	LIU+PX8uKQZ7saIe2wxnIb6KpKayZtlo=
+X-Gm-Gg: ASbGncsWDegczzMsvvaCuZ/7FVR/dRsu7lwQUmBP+1IszRBasjg9bPDEf56bBYa6Nm1
+	emb6rUACkLupGbZ1gef1Q64fX8DRfKMSEeiRqV6Qgl4zBRxC+JQYd/trcGepe6nh5buMsmYGBZJ
+	qBSby6+fLHxB6szX99bnRq9vq0a/mvn7c=
+X-Google-Smtp-Source: AGHT+IGAWJFRZHzHjrpJdEJkgNRuQDwQn2rrz677P0fKR2CrYyJ2S+k1xI+bTs9dcvNFCG7JO+eGN8i+tAQDhgkSeaE=
+X-Received: by 2002:a17:906:f593:b0:ad2:2569:696d with SMTP id
+ a640c23a62f3a-ad52d48c3efmr1880718666b.15.1747811271826; Wed, 21 May 2025
+ 00:07:51 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2] security,fs,nfs,net: update
- security_inode_listsecurity() interface
-To: Paul Moore <paul@paul-moore.com>, Trond Myklebust <trondmy@kernel.org>,
- Anna Schumaker <anna@kernel.org>, Jakub Kicinski <kuba@kernel.org>
-Cc: Stephen Smalley <stephen.smalley.work@gmail.com>,
- Alexander Viro <viro@zeniv.linux.org.uk>,
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
- James Morris <jmorris@namei.org>, "Serge E. Hallyn" <serge@hallyn.com>,
- Eric Dumazet <edumazet@google.com>, Kuniyuki Iwashima <kuniyu@amazon.com>,
- Paolo Abeni <pabeni@redhat.com>, Willem de Bruijn <willemb@google.com>,
- "David S. Miller" <davem@davemloft.net>, Simon Horman <horms@kernel.org>,
- Ondrej Mosnacek <omosnace@redhat.com>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- linux-security-module@vger.kernel.org, netdev@vger.kernel.org,
- selinux@vger.kernel.org, Casey Schaufler <casey@schaufler-ca.com>
-References: <20250428195022.24587-2-stephen.smalley.work@gmail.com>
- <CAHC9VhQfrMe7EY3_bvW6PcLdaW7tPMgv6WZuePxd1RrbhyZv-g@mail.gmail.com>
- <CAHC9VhQyDX+NgWipgm5DGMewfVTBe3DkLbe_AANRiuAj40bA1w@mail.gmail.com>
-Content-Language: en-US
-From: Casey Schaufler <casey@schaufler-ca.com>
-In-Reply-To: <CAHC9VhQyDX+NgWipgm5DGMewfVTBe3DkLbe_AANRiuAj40bA1w@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-Mailer: WebService/1.1.23840 mail.backend.jedi.jws.acl:role.jedi.acl.token.atz.jws.hermes.yahoo
+References: <CANH4o6Pvc7wuB0Yh8sEQDRg59_=rUNtnpgJizZ5mmmGNgY5Qrg@mail.gmail.com>
+ <CAM5tNy7MCKPgg7+fNJk3SkTp9Au6G=2XBK+8DfxKQQ8-GvaA=Q@mail.gmail.com>
+ <CAPJSo4VU8UP1bzT=FssnBU2EAtLmVoKg4icxLA6bXmNUNtVF_A@mail.gmail.com> <CAM5tNy61mcXY8LoP-Ve2L7Qpb8pmtb=+MyfC5Q=otq7_Bc19CA@mail.gmail.com>
+In-Reply-To: <CAM5tNy61mcXY8LoP-Ve2L7Qpb8pmtb=+MyfC5Q=otq7_Bc19CA@mail.gmail.com>
+From: Lionel Cons <lionelcons1972@gmail.com>
+Date: Wed, 21 May 2025 09:07:00 +0200
+X-Gm-Features: AX0GCFus8Z9vhZse1J6DJe37cjCY5cuvBa_t1pUcMrnBnJwbCWa0WCogurWYMNE
+Message-ID: <CAPJSo4UFPbwaO3=rwSOvG72EFrye8W3i3s+ztFJ8_DBY62zjjA@mail.gmail.com>
+Subject: Re: NFS/TLS situation on Windows - Re: Why TLS and Kerberos are not
+ useful for NFS security Re: [PATCH nfs-utils] exportfs: make "insecure" the
+ default for all exports
+To: Rick Macklem <rick.macklem@gmail.com>, 
+	Linux NFS Mailing List <linux-nfs@vger.kernel.org>, libtirpc-devel@lists.sourceforge.net, 
+	ms-nfs41-client-devel@lists.sourceforge.net
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On 5/20/2025 2:31 PM, Paul Moore wrote:
-> On Tue, Apr 29, 2025 at 7:34 PM Paul Moore <paul@paul-moore.com> wrote:
->> On Mon, Apr 28, 2025 at 4:15 PM Stephen Smalley
->> <stephen.smalley.work@gmail.com> wrote:
->>> Update the security_inode_listsecurity() interface to allow
->>> use of the xattr_list_one() helper and update the hook
->>> implementations.
->>>
->>> Link: https://lore.kernel.org/selinux/20250424152822.2719-1-stephen.smalley.work@gmail.com/
->>>
->>> Signed-off-by: Stephen Smalley <stephen.smalley.work@gmail.com>
-
-Acked-by: Casey Schaufler <casey@schaufler-ca.com>
-
-I haven't been able to test the change in Smack, but it appears reasonable.
-
->>> ---
->>> This patch is relative to the one linked above, which in theory is on
->>> vfs.fixes but doesn't appear to have been pushed when I looked.
->>>
->>>  fs/nfs/nfs4proc.c             | 10 ++++++----
->>>  fs/xattr.c                    | 19 +++++++------------
->>>  include/linux/lsm_hook_defs.h |  4 ++--
->>>  include/linux/security.h      |  5 +++--
->>>  net/socket.c                  | 17 +++++++----------
->>>  security/security.c           | 16 ++++++++--------
->>>  security/selinux/hooks.c      | 10 +++-------
->>>  security/smack/smack_lsm.c    | 13 ++++---------
->>>  8 files changed, 40 insertions(+), 54 deletions(-)
->> Thanks Stephen.  Once we get ACKs from the NFS, netdev, and Smack
->> folks I can pull this into the LSM tree.
-> Gentle ping for Trond, Anna, Jakub, and Casey ... can I get some ACKs
-> on this patch?  It's a little late for the upcoming merge window, but
-> I'd like to merge this via the LSM tree after the merge window closes.
+On Tue, 20 May 2025 at 03:38, Rick Macklem <rick.macklem@gmail.com> wrote:
 >
-> Link to the patch if you can't find it in your inbox:
-> https://lore.kernel.org/linux-security-module/20250428195022.24587-2-stephen.smalley.work@gmail.com/
+> On Mon, May 19, 2025 at 6:03=E2=80=AFAM Lionel Cons <lionelcons1972@gmail=
+.com> wrote:
+> >
+> > CAUTION: This email originated from outside of the University of Guelph=
+. Do not click links or open attachments unless you recognize the sender an=
+d know the content is safe. If in doubt, forward suspicious emails to IThel=
+p@uoguelph.ca.
+> >
+> >
+> > On Thu, 15 May 2025 at 04:09, Rick Macklem <rick.macklem@gmail.com> wro=
+te:
+> > >
+> > > On Wed, May 14, 2025 at 2:51=E2=80=AFPM Martin Wege <martin.l.wege@gm=
+ail.com> wrote:
+> > > What other clients are there out there? (Hummingbird's, now called
+> > > OpenText's NFSv4.0 client. I was surprised to see it was still possib=
+le
+> > > to buy it. And it probably can be put in the same category as the Mac=
+OS one.)
+> >
+> > Situation on Windows:
+> > 1. OpenText NFSv4 client: We've talked to Opentext about TLS support,
+> > and they do not know whether a market for NFS over TLS outside what
+> > they call the "Linux bubble" will ever martialise. There is also risk,
+> > both engineering and drastic performance degradation if the Windows
+> > native TLS is used (this is a kernel driver, so only the Windows
+> > native TLS can be used).
+> > So this is not going to happen unless someone pays, and the
+> > performance will not be great.
+> >
+> > 2. ms-nfs41-client NFSv4.2 client: I've talked to Roland Mainz, who is
+> > working with Tigran Mkrtchyan on ms-nfs41-client (Windows NFSv4.2
+> > client). Their RPC is based on libtirpc, and if steved-libtirpc gets
+> > TLS support, then this can be easily ported. But Roland (didn't ask
+> > Tigran yet) doesn't have time to implement TLS support in libtirpc.
+> >
+> > 3. Windows Server 20xx NFSv4.1 server: Other department went through a
+> > cycle of meetings with Microsoft in 2024/2025, so far Microsoft wants
+> > "market demand" (which doesn't seem to materialise), and cautions that
+> > the performance might be below 50% of a similar SMB configuration,
+> > because TLS is not considered to be a good match for network
+> > filesystems.
+> >
+> > Summary:
+> > Forget about NFS/TLS on Windows.
+> Well, for #1 and #3 I'm not surprised and would agree.
+> I would like to find a way forward for #2.
+> I will take a look at the libtirpc sources and try and cobble to-gether
+> a prototype using the OpenSSL libraries.
+
+That would be awesome
+
 >
-> --
-> paul-moore.com
+> I am not sure how helpful that will be for Roland, but it might be a
+> starting point. (It depends upon what Microsoft provides in the kernel
+> w.r.t. TLS and whether the driver uses a libtirpc library built from sour=
+ces.
+
+If it works with steved-libtirpc on Linux, then it should work with
+the libtirpc from ms-nfs41-client too.
+
+Question is whether the openssl license is compatible to LGPL used by
+ms-nfs41-client
+
 >
+> I do plan on posting to the mailing list for #2, since I did a short
+> test drive of the driver.
+
+Thank you
+
+
+
+Lionel
