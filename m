@@ -1,216 +1,180 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B99E21A445
-	for <linux-nfs@vger.kernel.org>; Thu, 29 May 2025 10:28:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C7AA818DF62
+	for <linux-nfs@vger.kernel.org>; Thu, 29 May 2025 10:45:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1748514537; cv=none; b=S2lLAJbDI2cHa8BPxjfTl6VX/bfrGjvanmNzU8d12ZYM5UjJ/6UZsKxsxAnu7JYKNX2bFV4OLIjZbCYRCaaIXfJ6+dN+I5aPnD1bVtKCO6bexUQEk9CHLIxeXJQ6tSiTgq/Sfv6NVJ9T7NaxNJIwdsdtWlviyQ/LIq14Oevxjtk=
+	t=1748515558; cv=none; b=L0V7RVhjF34oP+pHecq5FrzuVkvH9UAHxjvTuYS4UKTkWcpWe0oXeV4kJJnGDmzcKIOM6/rEewHi472DQaenJGcSN1w0E2jOZFYPHocGETAu50F9tQuWae0se0Xj3IpnwP4rtSbB+0PoGQGuXAnfhABM8hs9QKFEzpUCosfSee8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1748514537; c=relaxed/simple;
-	bh=jitP/Zz8abpPm2oIwUl1f7tIPTF2jZTuysc2osg1r0w=;
+	s=arc-20240116; t=1748515558; c=relaxed/simple;
+	bh=9Z2W8MxpxSveFi2xltFszE62caWBdPG/r+QyuO9aI2k=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ZvCqAkbo0770FLo1iPxWUQEoDGm8hL3VGD9hGtkFiGpsmDR/zygjnVy/4C6DNElDlaY1Pxh0ZJIrIqFIaeVYkqk2ZZO9/BfENJJrmtwXDni/i0NpDEaoqL9fBLk1taf6feR+/6M7ctb8yhIgoI8K+FVkvbx002Tnv+RNVkIAhkQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=YNs8IwfX; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=GOzdsu7WkySFtsuOvuwhYuzy2xrZc7l/LcXMYa9Pt0LXO9UFVxci2OuTJ3pD5qIkhGV4WBmfB69gchiaQamsDtX5oFEF+6ikl2ewxWIeebUyXLbuuAESrqCosUGF/uGbagNFhEtBX+hzxZLBxMehxEB+tLSvd3NUTqKjCBts+mg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=ZdpM/MRV; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="YNs8IwfX"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ZdpM/MRV"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1748514534;
+	s=mimecast20190719; t=1748515555;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=9DTO2kVK5nIUw4mALs9e/oZmT6L4ecHWx8YIdusa//U=;
-	b=YNs8IwfXQvKpFqsAc8UQXx8pcOdnPZF4tJe9fv+e8AIzCDeH83dv9noflSEzpjHlriqefH
-	DbFo96+wgWg3vwsAO6wnJOa2V1Z5giHEdk/IEInjJm67lgRnMyLQe/ya/WU33U58y6v2CR
-	/oOwgddQfTa9uX5Fj+SBPODFZ3TgZEA=
-Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
+	bh=Du69AYvqsz0LpC0UqVXiJ1nYpx1CQHYm+7a8g7meyTA=;
+	b=ZdpM/MRVVjWsDIY6/0LR/K8iz00jW7IQuZE8gcb4JzBnslh+YoJhkRdJHugu+aD0SHBpRR
+	O1p4qSYSeBuGI4yCzAggybGwAAsP/LcWDaw/Im8+Xm5HanzMm4NcV+jnpzSJOmr+wSnXph
+	elu8AmcPzExJFVBBKiNXs7/vj4Pt6PI=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
  (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-142-_MugXRzhMmWz0AD35_ddPA-1; Thu,
- 29 May 2025 06:28:51 -0400
-X-MC-Unique: _MugXRzhMmWz0AD35_ddPA-1
-X-Mimecast-MFC-AGG-ID: _MugXRzhMmWz0AD35_ddPA_1748514530
-Received: from mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.15])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-665-G9a2YC5-PJaIL-Mqy-GM0Q-1; Thu,
+ 29 May 2025 06:45:52 -0400
+X-MC-Unique: G9a2YC5-PJaIL-Mqy-GM0Q-1
+X-Mimecast-MFC-AGG-ID: G9a2YC5-PJaIL-Mqy-GM0Q_1748515551
+Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id C285718003FC;
-	Thu, 29 May 2025 10:28:49 +0000 (UTC)
-Received: from [192.168.37.1] (unknown [10.22.58.2])
-	by mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id EC31C1955D82;
-	Thu, 29 May 2025 10:28:47 +0000 (UTC)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id EC9EB1800570;
+	Thu, 29 May 2025 10:45:50 +0000 (UTC)
+Received: from bcodding.csb.redhat.com (unknown [10.22.58.2])
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id AA33630002C1;
+	Thu, 29 May 2025 10:45:49 +0000 (UTC)
 From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trondmy@kernel.org>, Jeff Layton <jlayton@kernel.org>
-Cc: Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
- Lance Shelton <lance.shelton@hammerspace.com>
-Subject: Re: [PATCH v2 2/3] nfs: Add timecreate to nfs inode
-Date: Thu, 29 May 2025 06:28:45 -0400
-Message-ID: <519E99B6-8B08-4DE2-9341-820F6F0E2F69@redhat.com>
-In-Reply-To: <291a926b2dd3aba5532c940a5dd18f38ab4c58e3.camel@kernel.org>
-References: <cover.1748436487.git.bcodding@redhat.com>
- <ee8d37a7b6495e95aa2875241e2962d41e57dc14.1748436487.git.bcodding@redhat.com>
- <a639fc978c9bdc54943301fad6618f8f068203ce.camel@kernel.org>
- <F0C8CB76-5A7E-45C2-A09B-C608F59A93DC@redhat.com>
- <d60ba979c9e2f762f1a4c48ede81e9a83682584b.camel@kernel.org>
- <291a926b2dd3aba5532c940a5dd18f38ab4c58e3.camel@kernel.org>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org,
+	Lance Shelton <lance.shelton@hammerspace.com>,
+	Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v3 1/3] Expand the type of nfs_fattr->valid
+Date: Thu, 29 May 2025 06:45:45 -0400
+Message-ID: <1e3405fca54efd0be7c91c1da77917b94f5dfcc4.1748515333.git.bcodding@redhat.com>
+In-Reply-To: <cover.1748515333.git.bcodding@redhat.com>
+References: <cover.1748515333.git.bcodding@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.15
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-On 28 May 2025, at 16:16, Trond Myklebust wrote:
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-> On Wed, 2025-05-28 at 11:27 -0400, Jeff Layton wrote:
->> On Wed, 2025-05-28 at 11:13 -0400, Benjamin Coddington wrote:
->>> On 28 May 2025, at 8:56, Jeff Layton wrote:
->>>
->>>> On Wed, 2025-05-28 at 08:50 -0400, Benjamin Coddington wrote:
->>>>> From: Anne Marie Merritt <annemarie.merritt@primarydata.com>
->>>>>
->>>>> Add tracking of the create time (a.k.a. btime) along with
->>>>> corresponding
->>>>> bitfields, request, and decode xdr routines.
->>>>>
->>>>> Signed-off-by: Anne Marie Merritt
->>>>> <annemarie.merritt@primarydata.com>
->>>>> Signed-off-by: Lance Shelton <lance.shelton@hammerspace.com>
->>>>> Signed-off-by: Trond Myklebust
->>>>> <trond.myklebust@hammerspace.com>
->>>>> ---
->>>>> =C2=A0fs/nfs/inode.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
-=C2=A0 | 28 ++++++++++++++++++++++------
->>>>> =C2=A0fs/nfs/nfs4proc.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 | 14 ++=
-+++++++++++-
->>>>> =C2=A0fs/nfs/nfs4xdr.c=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 | =
-24 ++++++++++++++++++++++++
->>>>> =C2=A0fs/nfs/nfstrace.h=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 |=C2=A0=
- 3 ++-
->>>>> =C2=A0include/linux/nfs_fs.h=C2=A0 |=C2=A0 7 +++++++
->>>>> =C2=A0include/linux/nfs_xdr.h |=C2=A0 3 +++
->>>>> =C2=A06 files changed, 71 insertions(+), 8 deletions(-)
->>>>>
->>>>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->>>>> index 160f3478a835..fd84c24963b3 100644
->>>>> --- a/fs/nfs/inode.c
->>>>> +++ b/fs/nfs/inode.c
->>>>> @@ -197,6 +197,7 @@ void nfs_set_cache_invalid(struct inode
->>>>> *inode, unsigned long flags)
->>>>> =C2=A0		if (!(flags & NFS_INO_REVAL_FORCED))
->>>>> =C2=A0			flags &=3D ~(NFS_INO_INVALID_MODE |
->>>>> =C2=A0				=C2=A0=C2=A0 NFS_INO_INVALID_OTHER |
->>>>> +				=C2=A0=C2=A0 NFS_INO_INVALID_BTIME |
->>>>> =C2=A0				=C2=A0=C2=A0 NFS_INO_INVALID_XATTR);
->>>>> =C2=A0		flags &=3D ~(NFS_INO_INVALID_CHANGE |
->>>>> NFS_INO_INVALID_SIZE);
->>>>> =C2=A0	}
->>>>> @@ -522,6 +523,7 @@ nfs_fhget(struct super_block *sb, struct
->>>>> nfs_fh *fh, struct nfs_fattr *fattr)
->>>>> =C2=A0		inode_set_atime(inode, 0, 0);
->>>>> =C2=A0		inode_set_mtime(inode, 0, 0);
->>>>> =C2=A0		inode_set_ctime(inode, 0, 0);
->>>>> +		memset(&nfsi->btime, 0, sizeof(nfsi->btime));
->>>>> =C2=A0		inode_set_iversion_raw(inode, 0);
->>>>> =C2=A0		inode->i_size =3D 0;
->>>>> =C2=A0		clear_nlink(inode);
->>>>> @@ -545,6 +547,10 @@ nfs_fhget(struct super_block *sb, struct
->>>>> nfs_fh *fh, struct nfs_fattr *fattr)
->>>>> =C2=A0			inode_set_ctime_to_ts(inode, fattr-
->>>>>> ctime);
->>>>> =C2=A0		else if (fattr_supported &
->>>>> NFS_ATTR_FATTR_CTIME)
->>>>> =C2=A0			nfs_set_cache_invalid(inode,
->>>>> NFS_INO_INVALID_CTIME);
->>>>> +		if (fattr->valid & NFS_ATTR_FATTR_BTIME)
->>>>> +			nfsi->btime =3D fattr->btime;
->>>>> +		else if (fattr_supported &
->>>>> NFS_ATTR_FATTR_BTIME)
->>>>> +			nfs_set_cache_invalid(inode,
->>>>> NFS_INO_INVALID_BTIME);
->>>>> =C2=A0		if (fattr->valid & NFS_ATTR_FATTR_CHANGE)
->>>>> =C2=A0			inode_set_iversion_raw(inode, fattr-
->>>>>> change_attr);
->>>>> =C2=A0		else
->>>>> @@ -1900,7 +1906,7 @@ static int
->>>>> nfs_inode_finish_partial_attr_update(const struct nfs_fattr
->>>>> *fattr,
->>>>> =C2=A0		NFS_INO_INVALID_ATIME | NFS_INO_INVALID_CTIME
->>>>> |
->>>>> =C2=A0		NFS_INO_INVALID_MTIME | NFS_INO_INVALID_SIZE |
->>>>> =C2=A0		NFS_INO_INVALID_BLOCKS | NFS_INO_INVALID_OTHER
->>>>> |
->>>>> -		NFS_INO_INVALID_NLINK;
->>>>> +		NFS_INO_INVALID_NLINK | NFS_INO_INVALID_BTIME;
->>>>> =C2=A0	unsigned long cache_validity =3D NFS_I(inode)-
->>>>>> cache_validity;
->>>>> =C2=A0	enum nfs4_change_attr_type ctype =3D NFS_SERVER(inode)-
->>>>>> change_attr_type;
->>>>>
->>>>> @@ -2219,10 +2225,13 @@ static int nfs_update_inode(struct
->>>>> inode *inode, struct nfs_fattr *fattr)
->>>>> =C2=A0	nfs_fattr_fixup_delegated(inode, fattr);
->>>>>
->>>>> =C2=A0	save_cache_validity =3D nfsi->cache_validity;
->>>>> -	nfsi->cache_validity &=3D ~(NFS_INO_INVALID_ATTR
->>>>> -			| NFS_INO_INVALID_ATIME
->>>>> -			| NFS_INO_REVAL_FORCED
->>>>> -			| NFS_INO_INVALID_BLOCKS);
->>>>> +	nfsi->cache_validity &=3D
->>>>> +		~(NFS_INO_INVALID_ATIME | NFS_INO_REVAL_FORCED
->>>>> |
->>>>> +		=C2=A0 NFS_INO_INVALID_CHANGE |
->>>>> NFS_INO_INVALID_CTIME |
->>>>> +		=C2=A0 NFS_INO_INVALID_MTIME | NFS_INO_INVALID_SIZE
->>>>> |
->>>>> +		=C2=A0 NFS_INO_INVALID_OTHER |
->>>>> NFS_INO_INVALID_BLOCKS |
->>>>> +		=C2=A0 NFS_INO_INVALID_NLINK | NFS_INO_INVALID_MODE
->>>>> |
->>>>> +		=C2=A0 NFS_INO_INVALID_BTIME);
->>>>>
->>>>
->>>> The delta above is a little curious. This patch is just adding
->>>> NFS_INO_INVALID_BTIME, but the patch above adds the clearing of
->>>> several
->>>> other bits as well. Why does this logic change?
->>>
->>> Good point, I wonder if it was based on other attribute work at the
->>> time,
->>> the original was here:
->>> https://lore.kernel.org/linux-nfs/20211227190504.309612-3-trondmy@ker=
-nel.org/
->>>
->>> So I think what we're doing here is clearing what we know we don't
->>> have to
->>> check/update - I think we can drop this entire hunk, its a minor
->>> optimization, but hopefully we can get some expert opinion.=C2=A0=C2=A0=
+We need to be able to track more than 32 attributes per inode.
 
->>> Trond, do you
->>> want me to test with this hunk removed?
->>
->> Looking little closer, I think what happened there is that
->> NFS_INO_INVALID_ATTR got unrolled into individual attr flags. So
->> there
->> may be no net change here (other than adding BTIME).
->>
->> Still, it'd be best to do that in a separate patch, IMO, esp. since
->> this is in nfs_update_inode(), which is already so "fiddly".
->
-> NFS_INO_INVALID_ATTR is a dinosaur that I'd like to see extinct. We
-> have fine grained attribute tracking these days, and so keeping the old=
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Lance Shelton <lance.shelton@hammerspace.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/inode.c            |  2 +-
+ include/linux/nfs_fs_sb.h |  2 +-
+ include/linux/nfs_xdr.h   | 54 +++++++++++++++++++--------------------
+ 3 files changed, 29 insertions(+), 29 deletions(-)
 
-> coarse grained one around is just confusing.
->
-> That said, I'm fine with this being a separate patch.
-
-Ok - I'll resend this on v3 adding BTIME to NFS_INO_INVALID_ATTR.
-
-Ben
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 119e447758b9..160f3478a835 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -2166,7 +2166,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 	bool attr_changed = false;
+ 	bool have_delegation;
+ 
+-	dfprintk(VFS, "NFS: %s(%s/%lu fh_crc=0x%08x ct=%d info=0x%x)\n",
++	dfprintk(VFS, "NFS: %s(%s/%lu fh_crc=0x%08x ct=%d info=0x%llx)\n",
+ 			__func__, inode->i_sb->s_id, inode->i_ino,
+ 			nfs_display_fhandle_hash(NFS_FH(inode)),
+ 			atomic_read(&inode->i_count), fattr->valid);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index ee03f3cef30c..4b38b8e709f8 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -171,8 +171,8 @@ struct nfs_server {
+ #define NFS_MOUNT_FORCE_RDIRPLUS	0x20000000
+ #define NFS_MOUNT_NETUNREACH_FATAL	0x40000000
+ 
+-	unsigned int		fattr_valid;	/* Valid attributes */
+ 	unsigned int		caps;		/* server capabilities */
++	__u64			fattr_valid;	/* Valid attributes */
+ 	unsigned int		rsize;		/* read size */
+ 	unsigned int		rpages;		/* read size (in pages) */
+ 	unsigned int		wsize;		/* write size */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 67f6632f723b..9cacbbd14787 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -45,7 +45,7 @@ struct nfs4_threshold {
+ };
+ 
+ struct nfs_fattr {
+-	unsigned int		valid;		/* which fields are valid */
++	__u64			valid;		/* which fields are valid */
+ 	umode_t			mode;
+ 	__u32			nlink;
+ 	kuid_t			uid;
+@@ -80,32 +80,32 @@ struct nfs_fattr {
+ 	struct nfs4_label	*label;
+ };
+ 
+-#define NFS_ATTR_FATTR_TYPE		(1U << 0)
+-#define NFS_ATTR_FATTR_MODE		(1U << 1)
+-#define NFS_ATTR_FATTR_NLINK		(1U << 2)
+-#define NFS_ATTR_FATTR_OWNER		(1U << 3)
+-#define NFS_ATTR_FATTR_GROUP		(1U << 4)
+-#define NFS_ATTR_FATTR_RDEV		(1U << 5)
+-#define NFS_ATTR_FATTR_SIZE		(1U << 6)
+-#define NFS_ATTR_FATTR_PRESIZE		(1U << 7)
+-#define NFS_ATTR_FATTR_BLOCKS_USED	(1U << 8)
+-#define NFS_ATTR_FATTR_SPACE_USED	(1U << 9)
+-#define NFS_ATTR_FATTR_FSID		(1U << 10)
+-#define NFS_ATTR_FATTR_FILEID		(1U << 11)
+-#define NFS_ATTR_FATTR_ATIME		(1U << 12)
+-#define NFS_ATTR_FATTR_MTIME		(1U << 13)
+-#define NFS_ATTR_FATTR_CTIME		(1U << 14)
+-#define NFS_ATTR_FATTR_PREMTIME		(1U << 15)
+-#define NFS_ATTR_FATTR_PRECTIME		(1U << 16)
+-#define NFS_ATTR_FATTR_CHANGE		(1U << 17)
+-#define NFS_ATTR_FATTR_PRECHANGE	(1U << 18)
+-#define NFS_ATTR_FATTR_V4_LOCATIONS	(1U << 19)
+-#define NFS_ATTR_FATTR_V4_REFERRAL	(1U << 20)
+-#define NFS_ATTR_FATTR_MOUNTPOINT	(1U << 21)
+-#define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
+-#define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
+-#define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
+-#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
++#define NFS_ATTR_FATTR_TYPE		BIT_ULL(0)
++#define NFS_ATTR_FATTR_MODE		BIT_ULL(1)
++#define NFS_ATTR_FATTR_NLINK		BIT_ULL(2)
++#define NFS_ATTR_FATTR_OWNER		BIT_ULL(3)
++#define NFS_ATTR_FATTR_GROUP		BIT_ULL(4)
++#define NFS_ATTR_FATTR_RDEV		BIT_ULL(5)
++#define NFS_ATTR_FATTR_SIZE		BIT_ULL(6)
++#define NFS_ATTR_FATTR_PRESIZE		BIT_ULL(7)
++#define NFS_ATTR_FATTR_BLOCKS_USED	BIT_ULL(8)
++#define NFS_ATTR_FATTR_SPACE_USED	BIT_ULL(9)
++#define NFS_ATTR_FATTR_FSID		BIT_ULL(10)
++#define NFS_ATTR_FATTR_FILEID		BIT_ULL(11)
++#define NFS_ATTR_FATTR_ATIME		BIT_ULL(12)
++#define NFS_ATTR_FATTR_MTIME		BIT_ULL(13)
++#define NFS_ATTR_FATTR_CTIME		BIT_ULL(14)
++#define NFS_ATTR_FATTR_PREMTIME		BIT_ULL(15)
++#define NFS_ATTR_FATTR_PRECTIME		BIT_ULL(16)
++#define NFS_ATTR_FATTR_CHANGE		BIT_ULL(17)
++#define NFS_ATTR_FATTR_PRECHANGE	BIT_ULL(18)
++#define NFS_ATTR_FATTR_V4_LOCATIONS	BIT_ULL(19)
++#define NFS_ATTR_FATTR_V4_REFERRAL	BIT_ULL(20)
++#define NFS_ATTR_FATTR_MOUNTPOINT	BIT_ULL(21)
++#define NFS_ATTR_FATTR_MOUNTED_ON_FILEID BIT_ULL(22)
++#define NFS_ATTR_FATTR_OWNER_NAME	BIT_ULL(23)
++#define NFS_ATTR_FATTR_GROUP_NAME	BIT_ULL(24)
++#define NFS_ATTR_FATTR_V4_SECURITY_LABEL BIT_ULL(25)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+-- 
+2.47.0
 
