@@ -1,23 +1,24 @@
 Received: from neil.brown.name (neil.brown.name [103.29.64.221])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C30ED258CDA;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C308B258CC0;
 	Wed, 11 Jun 2025 22:59:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.29.64.221
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1749682743; cv=none; b=eCp1nfUi0GafE+IoQgzv9L1sQAAJpfVcdOyFT/26KOA/czL8InMoubg175lVBuLzZV0rWV7+3WpNHR6ND+wiv0j+s19MThyS30ECXlRl7LjHRwat61A8cp/mJKIuGr4RhjFJG9z/nyrPFtlYLiApIDjEJx6otg3TRlu41kz+CVU=
+	t=1749682743; cv=none; b=PdLUSP3BPKr4ZxzP0UJYC7l9MwprkRVJqHEwz8IjFHH7JRzs38+ZGlUzoYMroypfZdOPiZWaKeC6wiLuW54T64kzPTGf/1tRwZLOHEXompt+YjVl3sshvQjoqBrmByNvG3KDEuNPhJP5i7kNuZvEBqTmuzE1uAWLyLbhNy7m++8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1749682743; c=relaxed/simple;
-	bh=KhfHCo03+BpyqIlVn0HQYSQXet3Sv21rJk1RCE0w+tM=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=o7l284W2rRTDlKn2Msb44DMm2vgS9Yh8KY8IvorocQDl27fNx71Lui7Fq/33xBZlVf9vIlfqmFrY8GlcP95hzd9AtrgjRpueay2DLnU6rWMjd6g1/UR9Gz6KIBinStXAup65HFFueDKn3HgRAIw5CfN0F+YB4JQXS/2t/d/Cmic=
+	bh=+p49bxglS6vHYuXD21Z8kmOqvXOmaEy3O23Z2TX/mtU=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=ELa+tHuAZPj6iw4PYm01oyBxYCerV6DdUYTDwl3IPXThMpngG2jAC9c1GvBlqGgH9iCM8WRZsRmQr1ZQQQTJrtI3xSpnVBUxw0VATmjnAiZYmyioxBSPTC+3KXzaucKLN+tUCvwrEae7UncrT+vsogFOC2AoQabL5DTEtylUy60=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name; spf=pass smtp.mailfrom=neil.brown.name; arc=none smtp.client-ip=103.29.64.221
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=neil.brown.name
 Received: from 196.186.233.220.static.exetel.com.au ([220.233.186.196] helo=home.neil.brown.name)
 	by neil.brown.name with esmtp (Exim 4.95)
 	(envelope-from <mr@neil.brown.name>)
-	id 1uPUPK-008OC2-0c;
-	Wed, 11 Jun 2025 22:58:58 +0000
+	id 1uPUPL-008OC6-AX;
+	Wed, 11 Jun 2025 22:58:59 +0000
 From: NeilBrown <neil@brown.name>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>,
@@ -40,10 +41,12 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-nfs@vger.kernel.org,
 	linux-unionfs@vger.kernel.org,
 	linux-cifs@vger.kernel.org
-Subject: [PATCH 0/2] Minor VFS-related cleanups
-Date: Thu, 12 Jun 2025 08:57:01 +1000
-Message-ID: <20250611225848.1374929-1-neil@brown.name>
+Subject: [PATCH 2/2] fs/proc: take rcu_read_lock() in proc_sys_compare()
+Date: Thu, 12 Jun 2025 08:57:03 +1000
+Message-ID: <20250611225848.1374929-3-neil@brown.name>
 X-Mailer: git-send-email 2.49.0
+In-Reply-To: <20250611225848.1374929-1-neil@brown.name>
+References: <20250611225848.1374929-1-neil@brown.name>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -52,11 +55,58 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-These are improvements that I think are generally useful which I
-developed as part of my work to change directory locking.
+proc_sys_compare() is the ->d_compare function for /proc/sys.
+It uses rcu_dereference() which assumes the RCU read lock is held and
+can complain if it isn't.
 
-Thanks,
-NeilBrown
+However there is no guarantee that this lock is held by d_same_name()
+(the caller of ->d_compare).  In particularly d_alloc_parallel() calls
+d_same_name() after rcu_read_unlock().
 
- [PATCH 1/2] VFS: change old_dir and new_dir in struct renamedata to
- [PATCH 2/2] fs/proc: take rcu_read_lock() in proc_sys_compare()
+So this patch calls rcu_read_lock() before accessing the inode (which
+seems to be the focus of RCU protection here), and drops it afterwards.
+
+Signed-off-by: NeilBrown <neil@brown.name>
+---
+ fs/proc/proc_sysctl.c | 20 ++++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/fs/proc/proc_sysctl.c b/fs/proc/proc_sysctl.c
+index cc9d74a06ff0..a4cdc0a189ef 100644
+--- a/fs/proc/proc_sysctl.c
++++ b/fs/proc/proc_sysctl.c
+@@ -917,19 +917,23 @@ static int proc_sys_compare(const struct dentry *dentry,
+ {
+ 	struct ctl_table_header *head;
+ 	struct inode *inode;
++	int ret;
+ 
+ 	/* Although proc doesn't have negative dentries, rcu-walk means
+ 	 * that inode here can be NULL */
+ 	/* AV: can it, indeed? */
++	rcu_read_lock();
+ 	inode = d_inode_rcu(dentry);
+-	if (!inode)
+-		return 1;
+-	if (name->len != len)
+-		return 1;
+-	if (memcmp(name->name, str, len))
+-		return 1;
+-	head = rcu_dereference(PROC_I(inode)->sysctl);
+-	return !head || !sysctl_is_seen(head);
++	if (!inode ||
++	    name->len != len ||
++	    memcmp(name->name, str, len)) {
++		ret = 1;
++	} else {
++		head = rcu_dereference(PROC_I(inode)->sysctl);
++		ret = !head || !sysctl_is_seen(head);
++	}
++	rcu_read_unlock();
++	return ret;
+ }
+ 
+ static const struct dentry_operations proc_sys_dentry_operations = {
+-- 
+2.49.0
+
