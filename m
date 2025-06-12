@@ -1,111 +1,144 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-io1-f78.google.com (mail-io1-f78.google.com [209.85.166.78])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 454B4170A26
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Jun 2025 20:38:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 708C72139B0
+	for <linux-nfs@vger.kernel.org>; Thu, 12 Jun 2025 21:08:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.166.78
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1749760687; cv=none; b=qNLeMTe+1uT7OarIe3WsfwRVC+EO2rC1vnzVhifm4jxveE6im6jUWewKx4bKEbheAPz1WX9kx5h9SV+4cxoXZNf5wCfQQpsnkbvxop295xt1IXukZwsovVtih6GaKp55LJBovtKlfCngAV9LcSqbHmQToIdUBQoodJBdwYtPpf0=
+	t=1749762514; cv=none; b=Tv73UF0TOShvcaZhay/d1dDpr3fsbJTI1BEXRhVFBgzGeoiHSDbuJ8Juuo6K1+VNE1X/mYpFqPlR5Mjz/Hd/4r9SKqgFIC7qn5yTH3zlJSXZjvOajyyKKaUghSn/e6m49TEmA5/ozyQuh/ctyBqv4wzmWFXVEMUR6QhAd0ye7Zc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1749760687; c=relaxed/simple;
-	bh=SAU5o2DQ0CfgLin1S8tnE5huEGqu4f6AQhBXhQIQYLU=;
-	h=From:In-Reply-To:References:To:Cc:Subject:MIME-Version:
-	 Content-Type:Date:Message-ID; b=a5hs3Ix8Q9UBFluPABZSVr5Kqz1eOTJxloLX4ZONHUVlmldnPb3taLfrmCn+6lytltCZnXOhYDdgbc28UMorXMOMY2l3Z603LAnqTlAn8hpjU6DXTPr2aWvsWSwNhRhLJgHSF0Jr+uUD+dj0e28XlVSAqAS7rPmrSbGZJe/oBvI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=jRybjXxv; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="jRybjXxv"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1749760685;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Gj8SQGLLh0rljui6jnNkQMA92RjfoZpiblWpalJC6vA=;
-	b=jRybjXxvPIdp4blIUWtIBTRMkTDklPh5+rmD5urSG4m9/yEcKk2QM6gZm7hKZq8bC+ivQh
-	2k7+nM0KxTTwnc5670X/4yessIN5T0ODhUl7t9QSWBat9hOEbGdlVE+/59HrcTOi/ibhtB
-	dPdOjgUWiCtYKph8O7CfzFM2cSo97zE=
-Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-589-yC1TTY1fOoaf_k-updd0AA-1; Thu,
- 12 Jun 2025 16:36:35 -0400
-X-MC-Unique: yC1TTY1fOoaf_k-updd0AA-1
-X-Mimecast-MFC-AGG-ID: yC1TTY1fOoaf_k-updd0AA_1749760593
-Received: from mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.15])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id E95CE180AB15;
-	Thu, 12 Jun 2025 20:36:29 +0000 (UTC)
-Received: from warthog.procyon.org.uk (unknown [10.42.28.18])
-	by mx-prod-int-02.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 84881195E340;
-	Thu, 12 Jun 2025 20:36:19 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-	Kingdom.
-	Registered in England and Wales under Company Registration No. 3798903
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <2dc7318d6c74b27a49b4c64b513f3da13d980473.camel@HansenPartnership.com>
-References: <2dc7318d6c74b27a49b4c64b513f3da13d980473.camel@HansenPartnership.com> <462886.1749731810@warthog.procyon.org.uk>
-To: James Bottomley <James.Bottomley@HansenPartnership.com>
-Cc: dhowells@redhat.com, keyrings@vger.kernel.org,
-    Jarkko Sakkinen <jarkko@kernel.org>,
-    Steve French <sfrench@samba.org>,
-    Chuck Lever <chuck.lever@oracle.com>,
-    Mimi Zohar <zohar@linux.ibm.com>, Paulo Alcantara <pc@manguebit.org>,
-    Herbert Xu <herbert@gondor.apana.org.au>,
-    Jeffrey Altman <jaltman@auristor.com>, hch@infradead.org,
-    linux-afs@lists.infradead.org, linux-nfs@vger.kernel.org,
-    linux-cifs@vger.kernel.org, linux-security-module@vger.kernel.org,
-    linux-fsdevel@vger.kernel.org, linux-crypto@vger.kernel.org,
-    netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [RFC] Keyrings: How to make them more useful
+	s=arc-20240116; t=1749762514; c=relaxed/simple;
+	bh=yuBTQ6WiTrDaU4CchSedx0qrGzFBNNBHaQ/8F3M6QTc=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=jKMaMxqii9Mw1yAZTzl51cwGj8ExtTgqK08JRYn/8Olx0N+nQ6poeu3IQuotPbO2UyWfL/kGVlSwz5Uiy0beeBhHBvWsUoGQdqG6cVzOgtJTArmsP7jtCwAU6wS4UWx8cVT/FiZ3BHWjJxYLjYYcIHpjjvCH/ZpYOSqS1JRiLE4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.166.78
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-io1-f78.google.com with SMTP id ca18e2360f4ac-86d01ff56ebso203478839f.1
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Jun 2025 14:08:32 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1749762511; x=1750367311;
+        h=to:from:subject:message-id:date:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=Gk29RHFC4M3kIeA0h8yMNCoYnyK1cf68Px8okUDLfg8=;
+        b=OnSFz15//mEdNSCGT973JIy2utvBX8GC73aWifyaQ2lDHc3bfFe/a+epWmkgbwjO54
+         qqi4Gqkqg2FQKKSgcJOnA3uU2WEY3plHKhj3zg/m1NZuxBxJ/ubsjMM+/n2Bcwu6sMRB
+         rnhYjkbv91430hWx05DesPK5y+lDAs7djJy/VgBIc0GtqzSycQOE2GipepSp4ZtD3gXR
+         lBpUiozPRk/b6D8K3VEWbVq/U604l0lD/lMwEnw8e8+NL0sTiMgAOxWNbXstzvtTiAdX
+         mPGm31UDMNF7YZLW8dZgxJ0auMD371437RRHhvOj4BULnANfZq8f5n6+qYE2wolscmEy
+         szpw==
+X-Forwarded-Encrypted: i=1; AJvYcCUZK3cLf3yOuLuOkKnJ7LqKAg68lmDfdJN5CzlHrSChriD5YoOeXNGmPFHJChqaTqt2sN2SuoxCBPA=@vger.kernel.org
+X-Gm-Message-State: AOJu0YzFplPpScZtnWgqsZL47alboZfxTclZWiWn+tiBJRT2lxrylJxk
+	Nfhk32FZA7ITUD/LE8Gkb3f1Sp/7kFCWjukfCgjsjRBKvWGswQ3F09LqHIXhvo2SHfYMVBMZIQx
+	Dn80qV5qinrgJL1jBaVfwwUr3Kz4RJpTqtJ4UsfZN0PAtkRKaYS+B3Uv1xdQ=
+X-Google-Smtp-Source: AGHT+IFpRSV+o0VdZ2ADjEv8JE9Vhcg9FBZTlorBv5/RMH8DkJw5J7xlEfMsvL2YQ9KhggeWJ6cmRI1zG7FfczeFGTz7wfOW7AZz
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <473710.1749760578.1@warthog.procyon.org.uk>
-Date: Thu, 12 Jun 2025 21:36:18 +0100
-Message-ID: <473711.1749760578@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.15
+X-Received: by 2002:a05:6e02:2782:b0:3dd:b7da:5256 with SMTP id
+ e9e14a558f8ab-3de00bce3e1mr5539445ab.19.1749762511554; Thu, 12 Jun 2025
+ 14:08:31 -0700 (PDT)
+Date: Thu, 12 Jun 2025 14:08:31 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <684b41cf.a00a0220.1eb5f5.0109.GAE@google.com>
+Subject: [syzbot] [net?] [nfs?] WARNING in remove_proc_entry (8)
+From: syzbot <syzbot+a4cc4ac22daa4a71b87c@syzkaller.appspotmail.com>
+To: Dai.Ngo@oracle.com, anna@kernel.org, chuck.lever@oracle.com, 
+	davem@davemloft.net, edumazet@google.com, horms@kernel.org, 
+	jlayton@kernel.org, kuba@kernel.org, linux-kernel@vger.kernel.org, 
+	linux-nfs@vger.kernel.org, neil@brown.name, netdev@vger.kernel.org, 
+	okorniev@redhat.com, pabeni@redhat.com, syzkaller-bugs@googlegroups.com, 
+	tom@talpey.com, trondmy@kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-James Bottomley <James.Bottomley@HansenPartnership.com> wrote:
+Hello,
 
-> One of the problems I keep tripping over is different special casing
-> for user keyrings (which are real struct key structures) and system
-> keyrings which are special values of the pointer in struct key *.
+syzbot found the following issue on:
 
-It's meant to be like that.  The trusted system keyrings are static within
-system_keyring.c and not so easily accessible by kernel modules for
-direct modification, bypassing the security checks.
+HEAD commit:    2c4a1f3fe03e Merge tag 'bpf-fixes' of git://git.kernel.org..
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=1432610c580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=c4c8362784bb7796
+dashboard link: https://syzkaller.appspot.com/bug?extid=a4cc4ac22daa4a71b87c
+compiler:       gcc (Debian 12.2.0-14) 12.2.0, GNU ld (GNU Binutils for Debian) 2.40
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=1126ed70580000
 
-Obviously this is merely a bit of obscurity and enforcement isn't possible
-against kernel code that is determined to modify those keyrings or otherwise
-interfere in the verification process.
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/cd1ec81a3ab8/disk-2c4a1f3f.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/992d9b6a25bf/vmlinux-2c4a1f3f.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/85a9bf583faa/bzImage-2c4a1f3f.xz
 
-> For examples of what this special handling does, just look at things
-> like bpf_trace.c:bpf_lookup_{user|system}_key
-> 
-> Since the serial allocation code has a hard coded not less than 3
-> (which looks for all the world like it was designed to mean the two
-> system keyring id's were never used as user serial numbers)
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+a4cc4ac22daa4a71b87c@syzkaller.appspotmail.com
 
-That's just a coincidence.  The <3 thing predates the advent of those system
-keyring magic pointers.
+WARNING: CPU: 0 PID: 6182 at fs/proc/generic.c:727 remove_proc_entry+0x45e/0x530 fs/proc/generic.c:727
+Modules linked in:
+CPU: 0 UID: 0 PID: 6182 Comm: syz.1.75 Not tainted 6.16.0-rc1-syzkaller-00010-g2c4a1f3fe03e #0 PREEMPT(full) 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 05/07/2025
+RIP: 0010:remove_proc_entry+0x45e/0x530 fs/proc/generic.c:727
+Code: 3c 02 00 0f 85 85 00 00 00 48 8b 93 d8 00 00 00 4d 89 f0 4c 89 e9 48 c7 c6 40 ba a2 8b 48 c7 c7 60 b9 a2 8b e8 33 81 1d ff 90 <0f> 0b 90 90 e9 5f fe ff ff e8 04 69 5e ff 90 48 b8 00 00 00 00 00
+RSP: 0018:ffffc90003e5fb08 EFLAGS: 00010282
+RAX: 0000000000000000 RBX: ffff88804e6568c0 RCX: ffffffff817a92c8
+RDX: ffff88803046da00 RSI: ffffffff817a92d5 RDI: 0000000000000001
+RBP: ffff8880353bde80 R08: 0000000000000001 R09: 0000000000000000
+R10: 0000000000000001 R11: 0000000000000001 R12: ffff8880353bddc0
+R13: ffff8880353bdea4 R14: ffff88802556cae4 R15: dffffc0000000000
+FS:  0000555562486500(0000) GS:ffff888124962000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 000000c0024fb070 CR3: 000000006b39a000 CR4: 00000000003526f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+Call Trace:
+ <TASK>
+ sunrpc_exit_net+0x46/0x90 net/sunrpc/sunrpc_syms.c:76
+ ops_exit_list net/core/net_namespace.c:200 [inline]
+ ops_undo_list+0x2eb/0xab0 net/core/net_namespace.c:253
+ setup_net+0x2e1/0x510 net/core/net_namespace.c:457
+ copy_net_ns+0x2a6/0x5f0 net/core/net_namespace.c:574
+ create_new_namespaces+0x3ea/0xa90 kernel/nsproxy.c:110
+ unshare_nsproxy_namespaces+0xc0/0x1f0 kernel/nsproxy.c:218
+ ksys_unshare+0x45b/0xa40 kernel/fork.c:3121
+ __do_sys_unshare kernel/fork.c:3192 [inline]
+ __se_sys_unshare kernel/fork.c:3190 [inline]
+ __x64_sys_unshare+0x31/0x40 kernel/fork.c:3190
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0xcd/0x490 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f239858e929
+Code: ff ff c3 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 40 00 48 89 f8 48 89 f7 48 89 d6 48 89 ca 4d 89 c2 4d 89 c8 4c 8b 4c 24 08 0f 05 <48> 3d 01 f0 ff ff 73 01 c3 48 c7 c1 a8 ff ff ff f7 d8 64 89 01 48
+RSP: 002b:00007ffd08ac9b18 EFLAGS: 00000246 ORIG_RAX: 0000000000000110
+RAX: ffffffffffffffda RBX: 00007f23987b5fa0 RCX: 00007f239858e929
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000040000080
+RBP: 00007f2398610b39 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007f23987b5fa0 R14: 00007f23987b5fa0 R15: 0000000000000001
+ </TASK>
 
-> I think we could simply allow the two system keyring ids to be passed into
-> lookup_user_key() (which now might be a bit misnamed) and special case not
-> freeing it in put_key().
 
-If you want to make lookup_user_key() provide access to specific keyrings like
-this, just use the next negative numbers - it's not like we're likely to run
-out soon.
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
 
-But I'd rather not let lookup_user_key() return pointers to these keyrings...
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
 
-David
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
 
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
