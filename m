@@ -1,48 +1,50 @@
 Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9A66DEAF6;
-	Thu, 12 Jun 2025 07:15:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A72D81442E8;
+	Thu, 12 Jun 2025 07:22:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1749712537; cv=none; b=bija9iGQmeNIeNLd+muTf7NR7CeS/DmEBGGM+H2DaWaP5kg6CMocqi0cKP4aJB06v1Nd3c89cZybT3pKuZtlHdmI6ZsIuL9sUJAzlynkaf+5baqrnQMeIrAK7CiXVmUmIDPBorFIof6fzvFxM8MuyseHTwKZfN1IuXPjWavLdxI=
+	t=1749712924; cv=none; b=nPms99ub0bHIgZ4vlaYkVsLOuV6JYqnIIZ+RRks/G6+74AOz6RfwPEkK3wCPtDop+ySfwTUMSsHiCBlkb0GFfTris4WqPLcn89iUb4tSAjx5WL2UUh0fvShUR1imdHnx8Is/TxnQum8DK83T73PULO+eavx4ltEQXrgP7KJwtms=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1749712537; c=relaxed/simple;
-	bh=8+9mtJ2NA8PZCC89dCo6YeV6IUAmCtNZZ2bW17drWWM=;
+	s=arc-20240116; t=1749712924; c=relaxed/simple;
+	bh=hQ25cRnQNAWRevQzrPt9gKJ5qCxiM9w5Fi5T+GEChPM=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=EBEUDokY0uRsuKdGiXubJhh1cSkVTfy3pPJOq/EY4FAchjW1dkTugGE3/qe8ZboPmppomBgFgvDWwMcYofUMGD+op5QptPgBJQhtsQO9sA9/XPOQe6LNqRceTIoyvGENkR2rWj/X/+yQX0ntfdwc5VZSe60H/f1TFV3jA+5TW3A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=m5M0wbZj; arc=none smtp.client-ip=198.137.202.133
+	 Content-Type:Content-Disposition:In-Reply-To; b=hbY4+sCfjac2SIKA2rSA9DH/u2xBr7xoTcYtR5QG4yVmOZu+iFamHxyx8kONUUeATe3gUNdHt/vinP45cFS8WQ+e2yL6Vz0HRIxsLfczRE9wKElWsBtgpDgwW58H9Ur37jGRwskhurIDnGe170vHLGhWj+EKKFMD3IqAI6hDt/M=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=GldLZfLm; arc=none smtp.client-ip=198.137.202.133
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="m5M0wbZj"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="GldLZfLm"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
 	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
 	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=ewRuv6VvLAYk9prVd3O6RNqayqhZuLPyPyakjWHldQU=; b=m5M0wbZjaiY1T66oREqXYKpAbt
-	J/i3DWUBFP7gM9pppIB45sHUTX0D5yP70MQfiabwkGV5xfRzCjkB1QSYvS+ync/BGyKvttsGOcUiG
-	uGUuSxAytdP58RsGhXmgRpG8SmSS8hYP6QpcHV9mMpn4y7YcxZtmbTXSFj0L20E5cAFhWLIzIV8Ts
-	6yCimxFxtC852VcmPAfbxh9NtybQY/0FXlEK86EzKLC8thKnIdyq5JI1yad37jL04JqkIKir2woIL
-	drxGIeCEnRWZXKj1tgZ22KDQ+zCVEz/DvLoWsgMw98D3HWJrFgT7gGQkxMF5OYphJnqrLKkweu8vG
-	Cr3JzjeA==;
+	bh=X5+TLzB0z+EuhDiEbuXwK1fgR7Wc+FyHi5TrihIUUPk=; b=GldLZfLmzR9A2YbyI7ZM266icX
+	FQ17dYWT+OlRWSnvp2GOjWpvdsJiHDCio+k99LEJqLIpn4a0T/YaWi1LI4CKSf7qjv/vGUo0tiJkZ
+	NiujjuVu7eXPAP0y/oBsKmHYAPL2uExf4tptmGJcKYVanwLEvqV+iT/p8rjtMxHot8QFY24PlNY/G
+	VaJIJkFuujWB6n3iyp6aeNQ3SudfMjF92/kFmvnkMeeFMehCtIRURm9+d2cyMXXgrgdDrirOEO7XY
+	OzOwIpRZCzUMDgde+48a29yMqVix/Fc2jUOkD4VN1wCEvK/halfZa6TMDSiHBdKfH8cND3fp1JhFL
+	r5BoM9Gg==;
 Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1uPc9w-0000000CPSW-03uj;
-	Thu, 12 Jun 2025 07:15:36 +0000
-Date: Thu, 12 Jun 2025 00:15:35 -0700
+	id 1uPcGB-0000000CQw4-10Gp;
+	Thu, 12 Jun 2025 07:22:03 +0000
+Date: Thu, 12 Jun 2025 00:22:03 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Mike Snitzer <snitzer@kernel.org>, Jeff Layton <jlayton@kernel.org>,
-	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Jens Axboe <axboe@kernel.dk>
-Subject: Re: [PATCH 4/6] fs: introduce RWF_DIRECT to allow using O_DIRECT on
- a per-IO basis
-Message-ID: <aEp-lwvJ08CxftBD@infradead.org>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: Mike Snitzer <snitzer@kernel.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, Jens Axboe <axboe@kernel.dk>,
+	Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 5/6] NFSD: leverage DIO alignment to selectively issue
+ O_DIRECT reads and writes
+Message-ID: <aEqAG0Y2xycKhETh@infradead.org>
 References: <20250610205737.63343-1-snitzer@kernel.org>
- <20250610205737.63343-5-snitzer@kernel.org>
- <aEkpEXIpr8aYNZ4k@infradead.org>
- <8c052438-7dcd-4215-b05c-795227d133d2@oracle.com>
+ <20250610205737.63343-6-snitzer@kernel.org>
+ <aEkpcmZG4rtAZk-3@infradead.org>
+ <aEl1RhqybSCAzv3H@kernel.org>
+ <b1accdad470f19614f9d3865bb3a4c69958e5800.camel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -51,27 +53,19 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <8c052438-7dcd-4215-b05c-795227d133d2@oracle.com>
+In-Reply-To: <b1accdad470f19614f9d3865bb3a4c69958e5800.camel@kernel.org>
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Wed, Jun 11, 2025 at 10:17:56AM -0400, Chuck Lever wrote:
-> On 6/11/25 2:58 AM, Christoph Hellwig wrote:
-> > On Tue, Jun 10, 2025 at 04:57:35PM -0400, Mike Snitzer wrote:
-> >> Avoids the need to open code do_iter_readv_writev() purely to request
-> >> that a sync iocb make use of IOCB_DIRECT.
-> >>
-> >> Care was taken to preserve the long-established value for IOCB_DIRECT
-> >> (1 << 17) when introducing RWF_DIRECT.
-> > 
-> > What is the problem with using vfs_iocb_iter_read instead of
-> > vfs_iter_read and passing the iocb directly?
+On Wed, Jun 11, 2025 at 09:30:54AM -0400, Jeff Layton wrote:
 > 
-> Christoph, are you suggesting that nfsd_iter_read() should always
-> call vfs_iocb_iter_read() instead of vfs_iter_read()? That might be
-> a nice clean up in general.
+> I'm concerned here too. Invalidation races can mean silent data
+> corruption. We'll need to ensure that this is safe.
+> 
+> Incidentally, is there a good testcase for this? Something that does
+> buffered and direct I/O from different tasks and looks for
+> inconsistencies?
 
-Yes.  I don't think it's such a big cleanup because the helper is a
-bit lower level.  But IFF we are going down the route of using
-direct I/O this will also allow to do asynchronous I/O instead of
-blocking the server threads as well.
+We have a few xfstets racing different kinds of I/O and triggers the
+failing invalidation warnings.  I'm not sure anything combines this
+with checks for data integrity.
 
