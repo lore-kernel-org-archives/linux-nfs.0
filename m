@@ -1,33 +1,33 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4640D2D877C;
-	Fri, 13 Jun 2025 07:34:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B76422D6633;
+	Fri, 13 Jun 2025 07:34:34 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1749800077; cv=none; b=llrnu5/U+TkO4k5Wih2qGVs0L+okpyCcs7Rh5212YCdy2OeOE4hS040vBw1G3njnuQT1GJdo+mXux80IAEfAq8/LtH7haDolJo9WY/R4UbvQtbPVz7k3nF/D8QhCsxI79M0VJKR3+eef+CtxfEZG2bxjRk9ZdAIg6qJZFDUtNz0=
+	t=1749800077; cv=none; b=tPPHyLZODlmvkxXWwdGyLlTyC7ZL+kcMTltB3BASrb65oWfnl3DlfRuBUgTyZrZIRfcwC1MqkrK2uYjWzyQhz6iDXA85lmZ1CGv5k2rLCMEXW+4KN+V+/odXlIM1Io06Whf9z1ijBSrpzKhNA/xoTm8nzRMRVvB03225cmIcJUc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1749800077; c=relaxed/simple;
-	bh=lkqzpEz5YjPhUa4ggLA3hs8e1o0VEw+At00NhXqCmSU=;
+	bh=2GRlbDzOSFS8GGdy++z8bSoBOZCJUPuEDjPSmsPQnLY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ibvjY/+PzgeLT0lpCzA7QMnVBRSBErfHyIJbIwn5KW0nW03jJwZfOnnRm3ya6OP6z+tmexONLdF+d3tXeOjWkbnpXofd7fHuupcP7VUi0Oz1plxO5uC06SooCNTeMUvHbWP21FFtCs76coQmqeEQT6zqiqBjN2Foe0Ijl/tJM/Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=s1QQeFCk; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=DH88TDxXTb0OY4I3Wi4iU2gJlJuc9ftid5RVE0AmofeGz+moBm1MqIKe0QXUgjXldxu7kFqnnS9nZfIugpo8tn5NQU403mj2qClil0tQIZexJutY675nXiIaOkBMBjqgfiT4XuhMX6qloJtjBOg96rok4iTtz60KbzJNAPCfGRY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=cG7ou85v; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="s1QQeFCk"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="cG7ou85v"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=Ie6EZz8DmgqI8Uw7/nlSoN+ZU43kNcGnpWi0x74r63Y=; b=s1QQeFCkSJlifJEaE+r3gvWGbR
-	RiCoW1+cu8vEYMY2rC0hQHJJ73P8cnxGRejJqsEyeAIUXhxNUn5EkZ9xh5F7mskXLGjghAce7aLUZ
-	frWS3zaMDHP9XaCkE50/U2nl+rRdvxGOl/eSiveqJmo2Xgxltlzgmw3JdejkP4WKeQcKGvzuKuvM7
-	PhnqLasF01+WMmzZVwxOYvxeQjmYUO2J5nR1Bogm/mAyRSrXgMRtZ00ts3IVKqtqs0677SZLVy/iT
-	iezV+G6wCL3XKgmXEiVArlkjwJcT2Iu3fXq40yG3amcMKg+d/AJwFWcXJkJj1fCDuA9Bu/RGOJoWP
-	uh1e2IWA==;
+	bh=F588zEM0h0U7uHwHc5wav0oR+hElK+Md0j8ACmYPDko=; b=cG7ou85v14YpidnvELYsEiTwTA
+	mf8em5/Zy0MfF32StrjwWFVOW4oYucrATyVBrY47+micAW0MiGK3COz/sUm5YFQMrb6ABL7R844gE
+	+JceEoHkAbkp5abaYQT8hI4RSQ1ulxi9wtymNfS6kpiEEkraCwJWTn5XdwOheMQtR1kqp56lvE4gA
+	36eQJ3k3q1eJbUkF1bptRXkar6eAv1pRvjVz3WEQj/nWQPoUvT8qeFGkukoYvKcIK0Pz/nHfxuFD4
+	ZSTGBxRujLvYOEL2wXSmgmwB8Cb/fYfva1uZDIgQYsIqMmMumAVXeuRThM5rfRvF1vgq1qMHdEZhO
+	mZUBG+pQ==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1uPyvp-00000007qpo-2Yjw;
+	id 1uPyvp-00000007qpM-0hg7;
 	Fri, 13 Jun 2025 07:34:33 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
@@ -37,9 +37,9 @@ Cc: chuck.lever@oracle.com,
 	neil@brown.name,
 	torvalds@linux-foundation.org,
 	trondmy@kernel.org
-Subject: [PATCH 06/17] rpc_populate(): lift cleanup into callers
-Date: Fri, 13 Jun 2025 08:34:21 +0100
-Message-ID: <20250613073432.1871345-6-viro@zeniv.linux.org.uk>
+Subject: [PATCH 03/17] rpc_pipe: clean failure exits in fill_super
+Date: Fri, 13 Jun 2025 08:34:18 +0100
+Message-ID: <20250613073432.1871345-3-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.49.0
 In-Reply-To: <20250613073432.1871345-1-viro@zeniv.linux.org.uk>
 References: <20250613073149.GI1647736@ZenIV>
@@ -53,134 +53,135 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-rpc_populate() is called either from fill_super (where we don't
-need to remove any files on failure - rpc_kill_sb() will take
-them all out anyway) or from rpc_mkdir_populate(), where we need
-to remove the directory we'd been trying to populate along with
-whatever we'd put into it before we failed.  Simpler to combine
-that into simple_recursive_removal() there.
-
-Note that rpc_pipe is overlocking directories quite a bit -
-locked parent is no obstacle to finding a child in dcache, so
-keeping it locked won't prevent userland observing a partially
-built subtree.
-
-All we need is to follow minimal VFS requirements; it's not
-as if clients used directory locking for exclusion - tree
-changes are serialized, but that's done on ->pipefs_sb_lock.
+->kill_sb() will be called immediately after a failure return
+anyway, so we don't need to bother with notifier chain and
+rpc_gssd_dummy_depopulate().  What's more, rpc_gssd_dummy_populate()
+failure exits do not need to bother with __rpc_depopulate() -
+anything added to the tree will be taken out by ->kill_sb().
 
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- net/sunrpc/rpc_pipe.c | 71 +++----------------------------------------
- 1 file changed, 5 insertions(+), 66 deletions(-)
+ net/sunrpc/rpc_pipe.c | 67 +++++++++++--------------------------------
+ 1 file changed, 16 insertions(+), 51 deletions(-)
 
 diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 67621a94f67b..46fa00ac5e0e 100644
+index 98f78cd55905..580e078e49a3 100644
 --- a/net/sunrpc/rpc_pipe.c
 +++ b/net/sunrpc/rpc_pipe.c
-@@ -594,32 +594,6 @@ static int __rpc_mkpipe_dentry(struct inode *dir, struct dentry *dentry,
- 	return 0;
- }
- 
--static int __rpc_rmdir(struct inode *dir, struct dentry *dentry)
--{
--	int ret;
--
--	dget(dentry);
--	ret = simple_rmdir(dir, dentry);
--	d_drop(dentry);
--	if (!ret)
--		fsnotify_rmdir(dir, dentry);
--	dput(dentry);
--	return ret;
--}
--
--static int __rpc_unlink(struct inode *dir, struct dentry *dentry)
--{
--	int ret;
--
--	dget(dentry);
--	ret = simple_unlink(dir, dentry);
--	d_drop(dentry);
--	if (!ret)
--		fsnotify_unlink(dir, dentry);
--	dput(dentry);
--	return ret;
--}
--
- static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
- 					  const char *name)
+@@ -1292,7 +1292,7 @@ static const struct rpc_filelist gssd_dummy_info_file[] = {
+  * Create a dummy set of directories and a pipe that gssd can hold open to
+  * indicate that it is up and running.
+  */
+-static struct dentry *
++static int
+ rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
  {
-@@ -636,41 +610,6 @@ static struct dentry *__rpc_lookup_create_exclusive(struct dentry *parent,
- 	return ERR_PTR(-EEXIST);
- }
+ 	int ret = 0;
+@@ -1303,58 +1303,37 @@ rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
+ 	/* We should never get this far if "gssd" doesn't exist */
+ 	gssd_dentry = try_lookup_noperm(&QSTR(files[RPCAUTH_gssd].name), root);
+ 	if (!gssd_dentry)
+-		return ERR_PTR(-ENOENT);
++		return -ENOENT;
  
--/*
-- * FIXME: This probably has races.
-- */
--static void __rpc_depopulate(struct dentry *parent,
--			     const struct rpc_filelist *files,
--			     int start, int eof)
--{
--	struct inode *dir = d_inode(parent);
--	struct dentry *dentry;
--	struct qstr name;
--	int i;
--
--	for (i = start; i < eof; i++) {
--		name.name = files[i].name;
--		name.len = strlen(files[i].name);
--		dentry = try_lookup_noperm(&name, parent);
--
--		if (dentry == NULL)
--			continue;
--		if (d_really_is_negative(dentry))
--			goto next;
--		switch (d_inode(dentry)->i_mode & S_IFMT) {
--			default:
--				BUG();
--			case S_IFREG:
--				__rpc_unlink(dir, dentry);
--				break;
--			case S_IFDIR:
--				__rpc_rmdir(dir, dentry);
--		}
--next:
--		dput(dentry);
+ 	ret = rpc_populate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1, NULL);
+ 	if (ret) {
+-		pipe_dentry = ERR_PTR(ret);
+-		goto out;
++		dput(gssd_dentry);
++		return ret;
+ 	}
+ 
+ 	clnt_dentry = try_lookup_noperm(&QSTR(gssd_dummy_clnt_dir[0].name),
+ 					  gssd_dentry);
+-	if (!clnt_dentry) {
+-		__rpc_depopulate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1);
+-		pipe_dentry = ERR_PTR(-ENOENT);
+-		goto out;
 -	}
++	dput(gssd_dentry);
++	if (!clnt_dentry)
++		return -ENOENT;
+ 
+ 	ret = rpc_populate(clnt_dentry, gssd_dummy_info_file, 0, 1, NULL);
+ 	if (ret) {
+-		__rpc_depopulate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1);
+-		pipe_dentry = ERR_PTR(ret);
+-		goto out;
++		dput(clnt_dentry);
++		return ret;
+ 	}
+-
+ 	pipe_dentry = rpc_mkpipe_dentry(clnt_dentry, "gssd", NULL, pipe_data);
+-	if (IS_ERR(pipe_dentry)) {
+-		__rpc_depopulate(clnt_dentry, gssd_dummy_info_file, 0, 1);
+-		__rpc_depopulate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1);
+-	}
+-out:
+ 	dput(clnt_dentry);
+-	dput(gssd_dentry);
+-	return pipe_dentry;
 -}
 -
- static int rpc_populate(struct dentry *parent,
- 			const struct rpc_filelist *files,
- 			int start, int eof,
-@@ -707,7 +646,6 @@ static int rpc_populate(struct dentry *parent,
- 	inode_unlock(dir);
- 	return 0;
- out_bad:
--	__rpc_depopulate(parent, files, start, eof);
- 	inode_unlock(dir);
- 	printk(KERN_WARNING "%s: %s failed to populate directory %pd\n",
- 			__FILE__, __func__, parent);
-@@ -731,14 +669,15 @@ static struct dentry *rpc_mkdir_populate(struct dentry *parent,
- 		goto out_err;
- 	if (populate != NULL) {
- 		error = populate(dentry, args_populate);
--		if (error)
--			goto err_rmdir;
-+		if (error) {
-+			inode_unlock(dir);
-+			simple_recursive_removal(dentry, NULL);
-+			return ERR_PTR(error);
-+		}
- 	}
- out:
- 	inode_unlock(dir);
- 	return dentry;
--err_rmdir:
--	__rpc_rmdir(dir, dentry);
- out_err:
- 	dentry = ERR_PTR(error);
- 	goto out;
+-static void
+-rpc_gssd_dummy_depopulate(struct dentry *pipe_dentry)
+-{
+-	struct dentry *clnt_dir = pipe_dentry->d_parent;
+-	struct dentry *gssd_dir = clnt_dir->d_parent;
+-
+-	dget(pipe_dentry);
+-	__rpc_rmpipe(d_inode(clnt_dir), pipe_dentry);
+-	__rpc_depopulate(clnt_dir, gssd_dummy_info_file, 0, 1);
+-	__rpc_depopulate(gssd_dir, gssd_dummy_clnt_dir, 0, 1);
+-	dput(pipe_dentry);
++	if (IS_ERR(pipe_dentry))
++		ret = PTR_ERR(pipe_dentry);
++	return ret;
+ }
+ 
+ static int
+ rpc_fill_super(struct super_block *sb, struct fs_context *fc)
+ {
+ 	struct inode *inode;
+-	struct dentry *root, *gssd_dentry;
++	struct dentry *root;
+ 	struct net *net = sb->s_fs_info;
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	int err;
+@@ -1373,11 +1352,9 @@ rpc_fill_super(struct super_block *sb, struct fs_context *fc)
+ 	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
+ 		return -ENOMEM;
+ 
+-	gssd_dentry = rpc_gssd_dummy_populate(root, sn->gssd_dummy);
+-	if (IS_ERR(gssd_dentry)) {
+-		__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
+-		return PTR_ERR(gssd_dentry);
+-	}
++	err = rpc_gssd_dummy_populate(root, sn->gssd_dummy);
++	if (err)
++		return err;
+ 
+ 	dprintk("RPC:       sending pipefs MOUNT notification for net %x%s\n",
+ 		net->ns.inum, NET_NAME(net));
+@@ -1386,18 +1363,6 @@ rpc_fill_super(struct super_block *sb, struct fs_context *fc)
+ 	err = blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_MOUNT,
+ 					   sb);
+-	if (err)
+-		goto err_depopulate;
+-	mutex_unlock(&sn->pipefs_sb_lock);
+-	return 0;
+-
+-err_depopulate:
+-	rpc_gssd_dummy_depopulate(gssd_dentry);
+-	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+-					   RPC_PIPEFS_UMOUNT,
+-					   sb);
+-	sn->pipefs_sb = NULL;
+-	__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
+ 	mutex_unlock(&sn->pipefs_sb_lock);
+ 	return err;
+ }
 -- 
 2.39.5
 
