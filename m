@@ -1,33 +1,33 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6770B2DFA2F;
-	Fri, 13 Jun 2025 07:34:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1FD0D2DECCC;
+	Fri, 13 Jun 2025 07:34:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1749800079; cv=none; b=baCNS7DfC/Tf0BQrZAE8y2Tt6+W/TRMlWljFZoAfhK9EyuBdPEeAvp9h7QpkDq/xTiHpw2GYtee/CEWdV76VCTtwTo3NTJb9aki1UjQiSzThu9FcOp2QOixFcTBDFuhF2HSZugkZCD2qEACDTP7+dQRvtHOo94xWkAdUk3YE3Zs=
+	t=1749800079; cv=none; b=LveKyxsp1mGc5aSiVvn1Jme5zmWohK3WNSKn5Vp28+3fd2UG6ET09edYHM5c3ckZoQO8nx+AvJSjXQFR7kldMhspSoTYQx5hlQ9M/dhlF1QIoVSAlMxQKej4hdJcwlvR+R1ODXpJNczVjcpKTWzEpHWajGDQ2M5JqQkfooHX2PU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1749800079; c=relaxed/simple;
-	bh=i1c9negjjog2ObOwuAbSlBkE9d+gtZxNrWV/iUaPuB4=;
+	bh=AJ/iBAARWg+hiQ5XuhDNoVEfdp/Rg7GrZuBckcuK9/4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=MF/kUbmjCARbfI6cQs5NnCtmVjYYGBuMVHBYvWVA9ySSzeeJII1uAeQJd1W0Ru+NSVRTQa6tqbGcDN3wUnSBHiLQpdXEHUPN5duZKbjLpNUK6ffvmaLvjf3TrUdBgmdXXzma1tiM/kPAJGbq6YocTOr28sP4f8sCuvPZJpqJW+0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=woyCBUL/; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=qO3ZbkAFKqYf27GjQtdWmKRflHXYGHJY4q4en9LZpaZ480CUnbZ1mKtjzICppdKNS7b0PMwgT1yj96dFvTpIGQtBwi2YNo+5lNIkMBcQthts4SRLe+bu4Sc3aV0fU5Lgv8PZubgxS/ruDU7HqOLRVPqD1nJgHCdJ6BjsAtVCIlI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=hj4H9CMH; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="woyCBUL/"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="hj4H9CMH"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=JpDo9zqmGYaF7XNm7AWN5s25JP3BqsWROKozDiwZfDM=; b=woyCBUL/waoEc3KQs3uS8J29LJ
-	ua8Km2GVVzF7AiTVlEimGUkaAXdrHJ2tzZLJ8sxK1tMKaNbabLFGlhbDtPjc09hr9emRPtNXlfQbR
-	1BT5yRcd5V9LOZcxpC8JxWk/+zxIUV3ggubHPVjA7S3IB4Go7CtYP5V49GNMCaljKTv7LjxB7ZQLT
-	LGgeC3Z5R0Qnj+Pu1GbB6gDo8Ms7Yp36h4z7f9kf2TN2wSBB9LKCIl8fmNTGvbZQ/+c5IMo+T3QLN
-	TjPKW7WWqc+EiwQ0j6+sAvC7txzJHIHUbjfGRUeN3t4dpe0gFDAuwhEa3LcWskIwZJ3D0fMUX+NJe
-	n2LG0lQQ==;
+	bh=WwU2MxvvT6viCDTE8lan9Z8XY4uaHgfShOqyFMlRjAU=; b=hj4H9CMH8lXq0NQ7B+l8gYldp8
+	C6/cOrXEiG21N7HSDjuryqhwiTcEEvzVttx4BXa+w4YC7aRgs8+zCqt4p8j+vHmS8yVjGcfdohyaU
+	KoyUqpkGMNZJQiC/RuF5thsUEMx+9rQouzDrZo2gqhUlybxZqCcOaBTJo9L/vsJVEdz5egq2oHumZ
+	Gob+XEFRdSMzhbH8IGrtLY9mBV8dClc04lGDlLXojNWo5rggFRLhho0/YbWTXb7GdAikXQujZbM9h
+	F/czhicZg6fi4ovlBJoGFjsO2fzGEbBbZL20AmrE8Wk2mCRBWdbFSABRtr6mE/KGjGK9k05DtFdV/
+	YK4aFJTQ==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1uPyvq-00000007qrF-3Rju;
+	id 1uPyvq-00000007qqZ-1N7q;
 	Fri, 13 Jun 2025 07:34:34 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
@@ -37,9 +37,9 @@ Cc: chuck.lever@oracle.com,
 	neil@brown.name,
 	torvalds@linux-foundation.org,
 	trondmy@kernel.org
-Subject: [PATCH 17/17] rpc_create_client_dir(): return 0 or -E...
-Date: Fri, 13 Jun 2025 08:34:32 +0100
-Message-ID: <20250613073432.1871345-17-viro@zeniv.linux.org.uk>
+Subject: [PATCH 12/17] rpc_mkpipe_dentry(): switch to start_creating()
+Date: Fri, 13 Jun 2025 08:34:27 +0100
+Message-ID: <20250613073432.1871345-12-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.49.0
 In-Reply-To: <20250613073432.1871345-1-viro@zeniv.linux.org.uk>
 References: <20250613073149.GI1647736@ZenIV>
@@ -53,150 +53,131 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-Callers couldn't care less which dentry did we get - anything
-valid is treated as success.
+... and make sure we set the rpc_pipe-private part of inode up before
+attaching it to dentry.
 
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |  2 +-
- net/sunrpc/clnt.c                  | 36 ++++++++++++------------------
- net/sunrpc/rpc_pipe.c              | 12 +++++-----
- 3 files changed, 21 insertions(+), 29 deletions(-)
+ net/sunrpc/rpc_pipe.c | 83 +++++++++++++++----------------------------
+ 1 file changed, 29 insertions(+), 54 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 8cc3a5df9801..2cb406f8ff4e 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -98,7 +98,7 @@ static inline bool rpc_msg_is_inflight(const struct rpc_pipe_msg *msg) {
- }
- 
- struct rpc_clnt;
--extern struct dentry *rpc_create_client_dir(struct dentry *, const char *, struct rpc_clnt *);
-+extern int rpc_create_client_dir(struct dentry *, const char *, struct rpc_clnt *);
- extern int rpc_remove_client_dir(struct rpc_clnt *);
- 
- extern void rpc_init_pipe_dir_head(struct rpc_pipe_dir_head *pdh);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 21426c3049d3..8ca354ecfd02 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -112,47 +112,46 @@ static void rpc_clnt_remove_pipedir(struct rpc_clnt *clnt)
- 	}
- }
- 
--static struct dentry *rpc_setup_pipedir_sb(struct super_block *sb,
-+static int rpc_setup_pipedir_sb(struct super_block *sb,
- 				    struct rpc_clnt *clnt)
- {
- 	static uint32_t clntid;
- 	const char *dir_name = clnt->cl_program->pipe_dir_name;
- 	char name[15];
--	struct dentry *dir, *dentry;
-+	struct dentry *dir;
-+	int err;
- 
- 	dir = rpc_d_lookup_sb(sb, dir_name);
- 	if (dir == NULL) {
- 		pr_info("RPC: pipefs directory doesn't exist: %s\n", dir_name);
--		return dir;
-+		return -ENOENT;
- 	}
- 	for (;;) {
- 		snprintf(name, sizeof(name), "clnt%x", (unsigned int)clntid++);
- 		name[sizeof(name) - 1] = '\0';
--		dentry = rpc_create_client_dir(dir, name, clnt);
--		if (!IS_ERR(dentry))
-+		err = rpc_create_client_dir(dir, name, clnt);
-+		if (!err)
- 			break;
--		if (dentry == ERR_PTR(-EEXIST))
-+		if (err == -EEXIST)
- 			continue;
- 		printk(KERN_INFO "RPC: Couldn't create pipefs entry"
--				" %s/%s, error %ld\n",
--				dir_name, name, PTR_ERR(dentry));
-+				" %s/%s, error %d\n",
-+				dir_name, name, err);
- 		break;
- 	}
- 	dput(dir);
--	return dentry;
-+	return err;
- }
- 
- static int
- rpc_setup_pipedir(struct super_block *pipefs_sb, struct rpc_clnt *clnt)
- {
--	struct dentry *dentry;
--
- 	clnt->pipefs_sb = pipefs_sb;
- 
- 	if (clnt->cl_program->pipe_dir_name != NULL) {
--		dentry = rpc_setup_pipedir_sb(pipefs_sb, clnt);
--		if (IS_ERR(dentry))
--			return PTR_ERR(dentry);
-+		int err = rpc_setup_pipedir_sb(pipefs_sb, clnt);
-+		if (err && err != -ENOENT)
-+			return err;
- 	}
- 	return 0;
- }
-@@ -180,16 +179,9 @@ static int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event)
- static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
- 				   struct super_block *sb)
- {
--	struct dentry *dentry;
--
- 	switch (event) {
- 	case RPC_PIPEFS_MOUNT:
--		dentry = rpc_setup_pipedir_sb(sb, clnt);
--		if (!dentry)
--			return -ENOENT;
--		if (IS_ERR(dentry))
--			return PTR_ERR(dentry);
--		break;
-+		return rpc_setup_pipedir_sb(sb, clnt);
- 	case RPC_PIPEFS_UMOUNT:
- 		__rpc_clnt_remove_pipedir(clnt);
- 		break;
 diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index e4b53530eb1b..a12ec709c445 100644
+index 8f88c75c9b30..a52fe3bbf9dc 100644
 --- a/net/sunrpc/rpc_pipe.c
 +++ b/net/sunrpc/rpc_pipe.c
-@@ -863,27 +863,27 @@ rpc_destroy_pipe_dir_objects(struct rpc_pipe_dir_head *pdh)
-  * information about the client, together with any "pipes" that may
-  * later be created using rpc_mkpipe().
-  */
--struct dentry *rpc_create_client_dir(struct dentry *dentry,
--				   const char *name,
--				   struct rpc_clnt *rpc_client)
-+int rpc_create_client_dir(struct dentry *dentry,
-+			   const char *name,
-+			   struct rpc_clnt *rpc_client)
- {
- 	struct dentry *ret;
- 	int err;
- 
- 	ret = rpc_new_dir(dentry, name, 0555);
- 	if (IS_ERR(ret))
--		return ret;
-+		return PTR_ERR(ret);
- 	err = rpc_new_file(ret, "info", S_IFREG | 0400,
- 			      &rpc_info_operations, rpc_client);
- 	if (err) {
- 		pr_warn("%s failed to populate directory %pd\n",
- 				__func__, ret);
- 		simple_recursive_removal(ret, NULL);
--		return ERR_PTR(err);
-+		return err;
- 	}
- 	rpc_client->cl_pipedir_objects.pdh_dentry = ret;
- 	rpc_create_pipe_dir_objects(&rpc_client->cl_pipedir_objects);
--	return ret;
-+	return 0;
+@@ -485,31 +485,6 @@ rpc_get_inode(struct super_block *sb, umode_t mode)
+ 	return inode;
  }
  
- /**
+-static int __rpc_create_common(struct inode *dir, struct dentry *dentry,
+-			       umode_t mode,
+-			       const struct file_operations *i_fop,
+-			       void *private)
+-{
+-	struct inode *inode;
+-
+-	d_drop(dentry);
+-	inode = rpc_get_inode(dir->i_sb, mode);
+-	if (!inode)
+-		goto out_err;
+-	inode->i_ino = iunique(dir->i_sb, 100);
+-	if (i_fop)
+-		inode->i_fop = i_fop;
+-	if (private)
+-		rpc_inode_setowner(inode, private);
+-	d_add(dentry, inode);
+-	return 0;
+-out_err:
+-	printk(KERN_WARNING "%s: %s failed to allocate inode for dentry %pd\n",
+-			__FILE__, __func__, dentry);
+-	dput(dentry);
+-	return -ENOMEM;
+-}
+-
+ static void
+ init_pipe(struct rpc_pipe *pipe)
+ {
+@@ -546,25 +521,6 @@ struct rpc_pipe *rpc_mkpipe_data(const struct rpc_pipe_ops *ops, int flags)
+ }
+ EXPORT_SYMBOL_GPL(rpc_mkpipe_data);
+ 
+-static int __rpc_mkpipe_dentry(struct inode *dir, struct dentry *dentry,
+-			       umode_t mode,
+-			       const struct file_operations *i_fop,
+-			       void *private,
+-			       struct rpc_pipe *pipe)
+-{
+-	struct rpc_inode *rpci;
+-	int err;
+-
+-	err = __rpc_create_common(dir, dentry, S_IFIFO | mode, i_fop, private);
+-	if (err)
+-		return err;
+-	rpci = RPC_I(d_inode(dentry));
+-	rpci->private = private;
+-	rpci->pipe = pipe;
+-	fsnotify_create(dir, dentry);
+-	return 0;
+-}
+-
+ static int rpc_new_file(struct dentry *parent,
+ 			   const char *name,
+ 			   umode_t mode,
+@@ -704,8 +660,10 @@ static struct dentry *rpc_mkdir_populate(struct dentry *parent,
+ int rpc_mkpipe_dentry(struct dentry *parent, const char *name,
+ 				 void *private, struct rpc_pipe *pipe)
+ {
+-	struct dentry *dentry;
+ 	struct inode *dir = d_inode(parent);
++	struct dentry *dentry;
++	struct inode *inode;
++	struct rpc_inode *rpci;
+ 	umode_t umode = S_IFIFO | 0600;
+ 	int err;
+ 
+@@ -715,16 +673,33 @@ int rpc_mkpipe_dentry(struct dentry *parent, const char *name,
+ 		umode &= ~0222;
+ 
+ 	dentry = simple_start_creating(parent, name);
+-	if (IS_ERR(dentry))
+-		return PTR_ERR(dentry);
+-	err = __rpc_mkpipe_dentry(dir, dentry, umode, &rpc_pipe_fops,
+-				  private, pipe);
+-	if (unlikely(err))
+-		pr_warn("%s() failed to create pipe %pd/%s (errno = %d)\n",
+-			__func__, parent, name, err);
+-	else
+-		pipe->dentry = dentry;
++	if (IS_ERR(dentry)) {
++		err = PTR_ERR(dentry);
++		goto failed;
++	}
++
++	inode = rpc_get_inode(dir->i_sb, umode);
++	if (unlikely(!inode)) {
++		dput(dentry);
++		inode_unlock(dir);
++		err = -ENOMEM;
++		goto failed;
++	}
++	inode->i_ino = iunique(dir->i_sb, 100);
++	inode->i_fop = &rpc_pipe_fops;
++	rpci = RPC_I(inode);
++	rpci->private = private;
++	rpci->pipe = pipe;
++	rpc_inode_setowner(inode, private);
++	d_instantiate(dentry, inode);
++	pipe->dentry = dentry;
++	fsnotify_create(dir, dentry);
+ 	inode_unlock(dir);
++	return 0;
++
++failed:
++	pr_warn("%s() failed to create pipe %pd/%s (errno = %d)\n",
++			__func__, parent, name, err);
+ 	return err;
+ }
+ EXPORT_SYMBOL_GPL(rpc_mkpipe_dentry);
 -- 
 2.39.5
 
