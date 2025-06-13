@@ -1,132 +1,119 @@
-Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej1-f46.google.com (mail-ej1-f46.google.com [209.85.218.46])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6BED32DFA3A;
-	Fri, 13 Jun 2025 07:34:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C0C14253935;
+	Fri, 13 Jun 2025 08:19:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.46
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1749800080; cv=none; b=YmjfiKgGxXjsDM05VZqYO4JXho9H9f5zxGmCdZ/+0U2s4WaZfLyLPHv0B5Wnu4izlW1IJXops8cfp2l1ss5WCswQelIbbHs1OXZoawJYnNuFKCbHyNAQPZPRD+5EUvFMGE+cfhNc8nphQSKNu4R+avyChP7KPKzBfgJ8qzlMYUA=
+	t=1749802781; cv=none; b=ST3rMLI4U45U76whf3Y7yV6vYSIrV4jC8TRyt2wgduIhbVgEMOcjlOozBzYt//HNIbqEdPcuj2BPF1F3KhkhORoJTPHMU6kPl7sbh/XBnPbBuNbtJoEeo9sCu1YvvkOxmn0b3yN5vY8LfJSjuVetZWKcAYnu0ebcqZ5cJrqw8gE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1749800080; c=relaxed/simple;
-	bh=uXO8i6Jf0BhVwN648AKjjTkDpojfyDupNGclRd4ddRs=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=FISIKbpl8wtjPaUekFvqoCS7d98cwj7mbSzTdsNSCNxLI3nwATPdFTuJqJSs88+CWBlJkqB3ukbAACrg//3J2XhnKA3Xb8ryJYauWz7wzFIgmB4U5mKvICs/23dF1VRlT9KPeQ/35wF+oTNTvVlVY517RsacjO79PfoHsyoAtkI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=miuwEzK4; arc=none smtp.client-ip=62.89.141.173
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
+	s=arc-20240116; t=1749802781; c=relaxed/simple;
+	bh=CpSS0Syu7W8trhVa61zPlq9ZdSivRbuhRztZE//GV/c=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=Uze03Jc9S28RBtavdFF4vVrSlFFm7eHWhzhBaI/sNEvGjHEmbIGt5vsI/Fuwjg0iK3UTCo15rGTAoUwQEddnVeX6Z35+vcf68RzsdqBDpB/qKjrWvYRAc4d1kI1dQcc8lQ+A7uRfrx59O+P0/oQS10gthDeDPyXjqFGKxDGnoz0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Cj4NJ0fB; arc=none smtp.client-ip=209.85.218.46
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="miuwEzK4"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
-	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
-	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=JlGoHs/DpJN7SdV5etwp+f4lQvsY2J+i+tkWlFmi+fk=; b=miuwEzK4HvmBvSgqYYETR/2dP9
-	wGN3QgBd/AbNJtPPc4+li03Zk96FGNQjU//f7bi/GmgfiTgYrqPoNXL0hFNOQUi2rPQoCk7lBQ4Po
-	O2MeZfaFDFI0ApG4JUBifw82AGm+4qTZloku4xvq6OEBeVEmy2AdukSQEyPckpvG++OzrjS1znlVv
-	i7X9Ey4yflH91/GTiQPZ1OLcAO3LfWCXRTiJrEeR0XHz52iQCyA449VfRrUEAEGJdfpxxfFsXdD78
-	LX9yFWnTVvQ6cNddNhAZeA1tjV6JuXLzzMh0nbO1DgAd5BGo3tDq2ZCiMIDOXdRp7qbGc4wGEzpaB
-	eRBeNA+w==;
-Received: from viro by zeniv.linux.org.uk with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1uPyvq-00000007qqx-2VIo;
-	Fri, 13 Jun 2025 07:34:34 +0000
-From: Al Viro <viro@zeniv.linux.org.uk>
-To: linux-fsdevel@vger.kernel.org
-Cc: chuck.lever@oracle.com,
-	jlayton@kernel.org,
-	linux-nfs@vger.kernel.org,
-	neil@brown.name,
-	torvalds@linux-foundation.org,
-	trondmy@kernel.org
-Subject: [PATCH 15/17] rpc_new_dir(): the last argument is always NULL
-Date: Fri, 13 Jun 2025 08:34:30 +0100
-Message-ID: <20250613073432.1871345-15-viro@zeniv.linux.org.uk>
-X-Mailer: git-send-email 2.49.0
-In-Reply-To: <20250613073432.1871345-1-viro@zeniv.linux.org.uk>
-References: <20250613073149.GI1647736@ZenIV>
- <20250613073432.1871345-1-viro@zeniv.linux.org.uk>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Cj4NJ0fB"
+Received: by mail-ej1-f46.google.com with SMTP id a640c23a62f3a-ad89333d603so371311766b.2;
+        Fri, 13 Jun 2025 01:19:39 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1749802778; x=1750407578; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=CSdo7wiN8uPVGA75+U4tG+qHxaxYIcltnib03CDwyUo=;
+        b=Cj4NJ0fBKHzs0+ayZtziZPzxl+F1dootglct3vePBKfcmdVLoVTr2yLRLv5cg5FLM5
+         eExdplfvpJ/weHgUig8AlBzn3dJcyLHniOWytRuyZzQHSaMWaXZFRkKm6cs7IGCIXa2p
+         oeKlJDJURaDv5KBK1l89+KmZ/lMYnyY6HufMJ2Gwx4aqjF3rwJUOEqvdYq5jeqc81Pxj
+         f43u5Nt4WDDwLHBh/Xin1g8ofMwRE6iMktsFkjR+qxYNbUKUZqriSUugVP8C8jP9Zxz1
+         Y3B7nk1WTcCsx+khOfnxzXqtYu2IEos541SRzCblWwTmgcD4Eqi359QZFl1igQW4Ejvt
+         pnSw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1749802778; x=1750407578;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to;
+        bh=CSdo7wiN8uPVGA75+U4tG+qHxaxYIcltnib03CDwyUo=;
+        b=RfYk1O1DN8Z0X1mUzQsmIwSPKaxLn8d+0HFCl0SGEi5QFyNrNR6qj2ir/7PnVYan/v
+         QTM2kHfrjlmOAsPipn7wUr5WwUR3ZagZzcdydjbgmVtzmBHsMV4ZUBSktsQM6ZOC4Hb5
+         4oUrbAqVHdyBLdYDlqqbJzaspZaAU985tjc8Sh7Vrpvn9YpFSqnbxnwlm7XVSJqHxFwd
+         BfSl74jqVk7zzC5T/O6evoJPsQuPGtDn1EoPwG82ki84ZXB19OrCaMZBMzHmqowdkMF9
+         6kW6NkkXQVr1uCPth5n9Rc9LEI6ufaQSHiEs6dHoqA0l+pAcrmOye7OOLlvqQXfjXlhd
+         pLww==
+X-Forwarded-Encrypted: i=1; AJvYcCWGkWnCXvd8vpXR/FdUvmvn0ljN/eVPbT6OouAkJ9TRE3zjngnu/7B+RsJ9LETZPX/0EryqKTI9BDc=@vger.kernel.org
+X-Gm-Message-State: AOJu0YwR4tJbVxZm/aqwl1w5BiyDEeRJabYmRcNpAMspKMVDs0YgKJc+
+	jwvKvWr3uVYGyhgytmmVrUvG/FXROVA6ohVQhbM1p/nAYUqYgNx7BxNpQcIVYulfqNLzeAHzlyd
+	Ksft5Se4/TM3QEFrqoA1Tu2USD2OT/8g=
+X-Gm-Gg: ASbGnct4+I0fdXrtV0auuLirskwpRiDyk6++DSEeLXUGZpvqy22+hfRI2rSQwdcTYcw
+	B2ihNlkrKKt4RH1vcO4Wxyc6/t28OyPkzygwEFJwyuGaaTjlSQcEXl74p+pXp2kDXH+PYxwrxGo
+	3W7sZXKYqRVLYkPtk9OqqOoIrqmi5JOehgy8gShKNONpI=
+X-Google-Smtp-Source: AGHT+IFIpt7nmUDhK7cuWbHgUetwkODhe0OGwcEcPAgnrvIg2tq1MIsqB9UTgfxOmwVNNkWcxFbY/X0Odpv7eEo3dwQ=
+X-Received: by 2002:a17:906:4fca:b0:ade:865f:481 with SMTP id
+ a640c23a62f3a-adec53e9a5fmr225644766b.12.1749802777547; Fri, 13 Jun 2025
+ 01:19:37 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-Sender: Al Viro <viro@ftp.linux.org.uk>
+References: <20250613073149.GI1647736@ZenIV> <20250613073432.1871345-1-viro@zeniv.linux.org.uk>
+In-Reply-To: <20250613073432.1871345-1-viro@zeniv.linux.org.uk>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Fri, 13 Jun 2025 10:19:25 +0200
+X-Gm-Features: AX0GCFtX5ZjHmJ5VFxV98lbX4BCxWiOEABu35bm7O-9KDL6CA_UNFHbZlAzkglI
+Message-ID: <CAOQ4uxhW3Hvicbb7Byi3_UbvBuS3-fpBOC8gmQ7d+Cns1wbWJg@mail.gmail.com>
+Subject: Re: [PATCH 01/17] simple_recursive_removal(): saner interaction with fsnotify
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, chuck.lever@oracle.com, jlayton@kernel.org, 
+	linux-nfs@vger.kernel.org, neil@brown.name, torvalds@linux-foundation.org, 
+	trondmy@kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-All callers except the one in rpc_populate() pass explicit NULL
-there; rpc_populate() passes its last argument ('private') instead,
-but in the only call of rpc_populate() that creates any subdirectories
-(when creating fixed subdirectories of root) private itself is NULL.
+On Fri, Jun 13, 2025 at 9:35=E2=80=AFAM Al Viro <viro@zeniv.linux.org.uk> w=
+rote:
+>
+> Make it match the real unlink(2)/rmdir(2) - notify *after* the
+> operation.  And use fsnotify_delete() instead of messing with
+> fsnotify_unlink()/fsnotify_rmdir().
+>
+> Currently the only caller that cares is the one in debugfs, and
+> there the order matching the normal syscalls makes more sense;
+> it'll get more serious for users introduced later in the series.
+>
+> Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 
-Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
----
- net/sunrpc/rpc_pipe.c | 15 ++++++---------
- 1 file changed, 6 insertions(+), 9 deletions(-)
+Makes sense.
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 15ec770bb7fb..c14425d2d0d3 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -552,8 +552,7 @@ static int rpc_new_file(struct dentry *parent,
- 
- static struct dentry *rpc_new_dir(struct dentry *parent,
- 				  const char *name,
--				  umode_t mode,
--				  void *private)
-+				  umode_t mode)
- {
- 	struct dentry *dentry = simple_start_creating(parent, name);
- 	struct inode *dir = parent->d_inode;
-@@ -570,7 +569,6 @@ static struct dentry *rpc_new_dir(struct dentry *parent,
- 	}
- 
- 	inode->i_ino = iunique(dir->i_sb, 100);
--	rpc_inode_setowner(inode, private);
- 	inc_nlink(dir);
- 	d_instantiate(dentry, inode);
- 	fsnotify_mkdir(dir, dentry);
-@@ -603,8 +601,7 @@ static int rpc_populate(struct dentry *parent,
- 			case S_IFDIR:
- 				dentry = rpc_new_dir(parent,
- 						files[i].name,
--						files[i].mode,
--						private);
-+						files[i].mode);
- 				if (IS_ERR(dentry)) {
- 					err = PTR_ERR(dentry);
- 					goto out_bad;
-@@ -886,7 +883,7 @@ struct dentry *rpc_create_client_dir(struct dentry *dentry,
- 	struct dentry *ret;
- 	int error;
- 
--	ret = rpc_new_dir(dentry, name, 0555, NULL);
-+	ret = rpc_new_dir(dentry, name, 0555);
- 	if (IS_ERR(ret))
- 		return ret;
- 	error = rpc_populate(ret, authfiles, RPCAUTH_info, RPCAUTH_EOF,
-@@ -939,7 +936,7 @@ struct dentry *rpc_create_cache_dir(struct dentry *parent, const char *name,
- {
- 	struct dentry *dentry;
- 
--	dentry = rpc_new_dir(parent, name, umode, NULL);
-+	dentry = rpc_new_dir(parent, name, umode);
- 	if (!IS_ERR(dentry)) {
- 		int error = rpc_populate(dentry, cache_pipefs_files, 0, 3, cd);
- 		if (error) {
-@@ -1115,11 +1112,11 @@ rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
- 	struct dentry *gssd_dentry, *clnt_dentry;
- 	int err;
- 
--	gssd_dentry = rpc_new_dir(root, "gssd", 0555, NULL);
-+	gssd_dentry = rpc_new_dir(root, "gssd", 0555);
- 	if (IS_ERR(gssd_dentry))
- 		return -ENOENT;
- 
--	clnt_dentry = rpc_new_dir(gssd_dentry, "clntXX", 0555, NULL);
-+	clnt_dentry = rpc_new_dir(gssd_dentry, "clntXX", 0555);
- 	if (IS_ERR(clnt_dentry))
- 		return -ENOENT;
- 
--- 
-2.39.5
-
+> ---
+>  fs/libfs.c | 5 +----
+>  1 file changed, 1 insertion(+), 4 deletions(-)
+>
+> diff --git a/fs/libfs.c b/fs/libfs.c
+> index 9ea0ecc325a8..42e226af6095 100644
+> --- a/fs/libfs.c
+> +++ b/fs/libfs.c
+> @@ -628,12 +628,9 @@ void simple_recursive_removal(struct dentry *dentry,
+>                         inode_lock(inode);
+>                         if (simple_positive(victim)) {
+>                                 d_invalidate(victim);   // avoid lost mou=
+nts
+> -                               if (d_is_dir(victim))
+> -                                       fsnotify_rmdir(inode, victim);
+> -                               else
+> -                                       fsnotify_unlink(inode, victim);
+>                                 if (callback)
+>                                         callback(victim);
+> +                               fsnotify_delete(inode, d_inode(victim), v=
+ictim);
+>                                 dput(victim);           // unpin it
+>                         }
+>                         if (victim =3D=3D dentry) {
+> --
+> 2.39.5
+>
+>
