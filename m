@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5596B2E54C5;
-	Wed, 18 Jun 2025 13:19:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3ABB2E92AA;
+	Wed, 18 Jun 2025 13:19:35 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1750252774; cv=none; b=nPj/jIXa1Y8RzJQbT4Z5WLlRf3+Z1FkyVl97o/6GX6yNR+xqsrsdppqPF526T35rP6ho5jFWvg+/qeLFdXjSTtwT/LJ4w1ixZyVF55yFG+TBAP0V7MogDb/TglHtv7nzaeFsh3spU0dopY7MbF23NlK+v1vX0wdIEK1YZTvyonE=
+	t=1750252775; cv=none; b=RTIafBVZpZc/tbUzjmu4VCLi13s7SC3H7HvJJ+YGEQ4qQ1isSSxMoADOj/dwRcf289PU4H4wz6Xvbbep9lBdQNDafCMZ+UnD9FDn/t4cJqmg0+MZLEsUjaYXjubr2X4esvEUNn5eL2X6PqlVUa/1vAmOq6q80ZQnVHHSXL4wBMc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1750252774; c=relaxed/simple;
-	bh=cEVNTymQyEoLW8LNl0dbE+EwAXQIKxWKTXC0FaiYbaU=;
+	s=arc-20240116; t=1750252775; c=relaxed/simple;
+	bh=cwCmH1wT+8CM+8/GoOJM2ceta//abzeWLzZBBxZrVDw=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=TRlOaqEIfAAV3NqnzSSCQUs099AoeIqzwtmvPUim6gFbJCmDvs98OUlQs0c8PvIl2pxRKjZwuKcUajVolnHN9fubkgfgEORGAeEpfXXiZ5d/bggfYZmF2iFfriEOjqwjWmFuW1P0BOqqtA0xidKwgM+do8qjirC7b5e/YixQnsc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gnX1nuFO; arc=none smtp.client-ip=10.30.226.201
+	 In-Reply-To:To:Cc; b=aKCE+iGbHp/ylYfyESucwbEIjEc1UapLDrJOwG+pN5cMxG67DnMsjN0FD3gGZFK7iRUqOUBE11NG8UyqDXZl2xvQOSRPICiY3ybllJ/J5k+CY3FjUhaS5QdZRlRrD7pP/39XhR7p/vz/Ul/2L9IivW17xZeNBr3GwRiwpsEbLXQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=I4lChnUW; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gnX1nuFO"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 78473C4CEF0;
-	Wed, 18 Jun 2025 13:19:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="I4lChnUW"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DC770C4CEEE;
+	Wed, 18 Jun 2025 13:19:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1750252774;
-	bh=cEVNTymQyEoLW8LNl0dbE+EwAXQIKxWKTXC0FaiYbaU=;
+	s=k20201202; t=1750252775;
+	bh=cwCmH1wT+8CM+8/GoOJM2ceta//abzeWLzZBBxZrVDw=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=gnX1nuFO3g/mGM54QpOM682oD66yFo+oegyo5UQ6u8aiJzOj77ZiAapTznVn0hKpq
-	 /uE6hNX6HHZDzfhGHhQG5lDtiHzGYTFA+8zFLhZbi4lAYbNkg7jQSR0cZr4WMH9Vev
-	 ijYnWBw86G3DhDG/iGmcNFBlLZfeZVb0F7YnA/iJPRqgzOhW98WZ6A67HQTh94Tvqx
-	 h7idIKMsZ7EF0Xn8vWnzjVADq5hU6+VMOZq0rLJ4n1TG9Pmzqzv/NeLamtpIqbjGo3
-	 pgpbGtOyqyqsOLCpIHLbB1dfGOnCra2KfQzgHEHQcfylfRZDttFLs3pmYyxjFqptOd
-	 qI+UYFFG32h1A==
+	b=I4lChnUWD84i2MRvP0Jpbq9Ub0X8h4tZu+28iRC/ZaExzqQS3eqNikiFHVUJYbJDx
+	 2y3hSiWeffVFEXcNbJH838jRJ3uFcN6Fh4vWM227YQVtp5ib4WMB0KMrwTNThHcRJg
+	 e9eI/S+HpIYNpQWg8d5qSU8FJOynybY0Hfn8A5BzGDlyciqaLlti0+AUE88EiqRIKZ
+	 jX+Cajci6AEkjudELJxYlYhgNSVbm4FT6XCBBwAfbYXrwfVV/esueBPmWzeFSTf8lY
+	 3gZJ/dcCWy8QBPQnQNsDieJvNEDXWdxv3nBc2KyOtwIistzbmvLr2PMQ1p/xAl0U3J
+	 GCeUd67/27EEA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Wed, 18 Jun 2025 09:19:12 -0400
-Subject: [PATCH v2 1/4] nfs: add cache_validity to the nfs_inode_event
- tracepoints
+Date: Wed, 18 Jun 2025 09:19:14 -0400
+Subject: [PATCH v2 3/4] nfs: new tracepoint in nfs_delegation_need_return
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,72 +37,118 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20250618-nfs-tracepoints-v2-1-540c9fb48da2@kernel.org>
+Message-Id: <20250618-nfs-tracepoints-v2-3-540c9fb48da2@kernel.org>
 References: <20250618-nfs-tracepoints-v2-0-540c9fb48da2@kernel.org>
 In-Reply-To: <20250618-nfs-tracepoints-v2-0-540c9fb48da2@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Benjamin Coddington <bcodding@redhat.com>, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1511; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=cEVNTymQyEoLW8LNl0dbE+EwAXQIKxWKTXC0FaiYbaU=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBoUrzjZURfKUsFTAqdCGO/ckimfh3RAZyMvrfud
- AhynZsPljSJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaFK84wAKCRAADmhBGVaC
- FRo4EACUs2E4eTW/GtfEj4fE6TFzFDdIkWzrQE46ahoT4c4vHXrTADNVxgiXdNnY4K+j7PW9B4a
- aX04jLGEDic+1ULS1iNZ+IA+iLwCs6hVz0i8FJT3irUlr+rh0Nxc710niZSzGxsfgiBUvq47Quv
- VCcVcwTRJRIFhTiSfv1NMyNUssAnypXU8o85HejDFi39tw/P5ZggN3H9TQJ/KNEqY0E5DvRop/v
- RaTLROqIDTnykS6ttYJq6nd57a3HqjHMLOXf10mTRTTYP9tE6ueBpIxm2g+ch9gG/dSFajBBm/L
- vHvvyA46pBgZyaQGIL2WxIsr1Okw7sf9Syy16l7t+eC8qKFMxYgDHaHG9ojzhSNO93/ttv4zdmV
- Nxa/X5GQTCO7O+1zbY5g34Ah2okJqteGd/GUz+v7f+dIiKPMR/zgLs3+if2k0gLvRZj3f2en0YM
- JCi2fsowu19RLi7C1T19Y9/c8JseyB1xIsJsALxq7uLuoXQY1Lt7RWIJi1vnaajKAkZUndg7Gk6
- ZSWlqdQAsavXlvSfLLGMRBatMT6wfrRu1MG7VIVf7pR5M90o8iejBp0l7aZATXvYTcv87z8WoZU
- sFqdUyxC7fclkS8bgLbisa5iP9U+BxvMWzfkrO4mph3r+OWdVd1EYp+hI5w3l+T9UYSlBHSJpTQ
- oRg2K5w1EIE2Weg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3106; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=cwCmH1wT+8CM+8/GoOJM2ceta//abzeWLzZBBxZrVDw=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBoUrzk4OHQdlsK4ySvKd1y/tGnkzQca3XSOBVo6
+ zjxkZCsHjKJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaFK85AAKCRAADmhBGVaC
+ FbqPEACy6NkjlK0wd8ZUWfksCGuzbcUO5sZIwNSfLVwB0uUpofepFBhLkmZRySMs20C/0LIrSYd
+ SrazdYVlzMD6aZpBSTivfGSfjegPIRWsnpEzL2s1w+ywyNEmJxYlV38MJ/Oj2CLUzqsEtFT9g88
+ f9M70tWuxpwEwSth5mgZFP/AnQ8Q1O+naS75tMGJG7ns7h97YI0ksn8NEGULWC63TuPXwbmK4ue
+ k+nvpJRzhAdj9YkaWpZlzUcUxTap6/GU2rsQlHsUADRHQWsn/YBQG+fM24L5hRIvDHIHfM+WDxV
+ gFQV1/faMzQN7KA8kW+xCf6yN87arN4sKv6Lfmb/iPbPP0RoidioWTaP9XYYv5uVEHVj61SxLwc
+ cJLKrnBr3FsUDmpfWarVqHMcFrXEEigUekL/mtyOVDVhsWL1QY5poTu+grIe2uk0tH3GC5CnivO
+ oztisDChXeGkEFdho+haN2ns77osU30Xjgd7xYOu26PEdpLth0JY5boT2LVJ/PLH9H/cFqyLcFr
+ gjCeVWSy8qoRdpzy6YhWRKgDRnosA51gajL6WzhMntJi93lYCsGAZqJd8lsmD5ObpldO7cqR9bm
+ 9At/sT2aO4tRgSKOdijCZ97M3+et7yxPe69EBxrNYRwb0UOO9xHrhbV+M5fvHQin1qni9HtenfC
+ ssFgkvgSFdsew1A==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Managing the cache_validity flags is the deep voodoo of NFS cache
-coherency. Let's have a little extra visibility into that value via the
-nfs_inode_event tracepoints.
+Add a tracepoint in the function that decides whether to return a
+delegation to the server.
 
 Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfs/nfstrace.h | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+ fs/nfs/delegation.c |  2 ++
+ fs/nfs/nfs4trace.h  | 47 +++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 49 insertions(+)
 
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index 7a058bd8c566e2976e24136e2901fbaa7070daac..55170cbf2ff115c85f56cbafb4fc0e06313918cf 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -56,6 +56,7 @@ DECLARE_EVENT_CLASS(nfs_inode_event,
- 			__field(u32, fhandle)
- 			__field(u64, fileid)
- 			__field(u64, version)
-+			__field(unsigned long, cache_validity)
- 		),
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 78a97d340bbd98390ca8302176c17caf08dcab4a..6f136c47eed7f1801af337f0e88f1a6bf477d0c6 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -594,6 +594,8 @@ static bool nfs_delegation_need_return(struct nfs_delegation *delegation)
+ {
+ 	bool ret = false;
  
- 		TP_fast_assign(
-@@ -64,14 +65,17 @@ DECLARE_EVENT_CLASS(nfs_inode_event,
- 			__entry->fileid = nfsi->fileid;
- 			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
- 			__entry->version = inode_peek_iversion_raw(inode);
-+			__entry->cache_validity = nfsi->cache_validity;
- 		),
++	trace_nfs_delegation_need_return(delegation);
++
+ 	if (test_and_clear_bit(NFS_DELEGATION_RETURN, &delegation->flags))
+ 		ret = true;
+ 	if (test_bit(NFS_DELEGATION_RETURNING, &delegation->flags) ||
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index 6e1c4590ef9bf60eac994e85be816e82f5e0c741..73a6b60a848066546c2ae98b4982b0ab36bb0f73 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -14,6 +14,8 @@
+ #include <trace/misc/fs.h>
+ #include <trace/misc/nfs.h>
  
- 		TP_printk(
--			"fileid=%02x:%02x:%llu fhandle=0x%08x version=%llu ",
-+			"fileid=%02x:%02x:%llu fhandle=0x%08x version=%llu cache_validity=0x%lx (%s)",
- 			MAJOR(__entry->dev), MINOR(__entry->dev),
- 			(unsigned long long)__entry->fileid,
- 			__entry->fhandle,
--			(unsigned long long)__entry->version
-+			(unsigned long long)__entry->version,
-+			__entry->cache_validity,
-+			nfs_show_cache_validity(__entry->cache_validity)
- 		)
- );
++#include "delegation.h"
++
+ #define show_nfs_fattr_flags(valid) \
+ 	__print_flags((unsigned long)valid, "|", \
+ 		{ NFS_ATTR_FATTR_TYPE, "TYPE" }, \
+@@ -958,6 +960,51 @@ DEFINE_NFS4_SET_DELEGATION_EVENT(nfs4_set_delegation);
+ DEFINE_NFS4_SET_DELEGATION_EVENT(nfs4_reclaim_delegation);
+ DEFINE_NFS4_SET_DELEGATION_EVENT(nfs4_detach_delegation);
  
++#define show_delegation_flags(flags) \
++	__print_flags(flags, "|", \
++		{ BIT(NFS_DELEGATION_NEED_RECLAIM), "NEED_RECLAIM" }, \
++		{ BIT(NFS_DELEGATION_RETURN), "RETURN" }, \
++		{ BIT(NFS_DELEGATION_RETURN_IF_CLOSED), "RETURN_IF_CLOSED" }, \
++		{ BIT(NFS_DELEGATION_REFERENCED), "REFERENCED" }, \
++		{ BIT(NFS_DELEGATION_RETURNING), "RETURNING" }, \
++		{ BIT(NFS_DELEGATION_REVOKED), "REVOKED" }, \
++		{ BIT(NFS_DELEGATION_TEST_EXPIRED), "TEST_EXPIRED" }, \
++		{ BIT(NFS_DELEGATION_INODE_FREEING), "INODE_FREEING" }, \
++		{ BIT(NFS_DELEGATION_RETURN_DELAYED), "RETURN_DELAYED" })
++
++DECLARE_EVENT_CLASS(nfs4_delegation_event,
++		TP_PROTO(
++			const struct nfs_delegation *delegation
++		),
++
++		TP_ARGS(delegation),
++
++		TP_STRUCT__entry(
++			__field(u32, fhandle)
++			__field(unsigned int, fmode)
++			__field(unsigned long, flags)
++		),
++
++		TP_fast_assign(
++			__entry->fhandle = nfs_fhandle_hash(NFS_FH(delegation->inode));
++			__entry->fmode = delegation->type;
++			__entry->flags = delegation->flags;
++		),
++
++		TP_printk(
++			"fhandle=0x%08x fmode=%s flags=%s",
++			__entry->fhandle, show_fs_fmode_flags(__entry->fmode),
++			show_delegation_flags(__entry->flags)
++		)
++);
++#define DEFINE_NFS4_DELEGATION_EVENT(name) \
++	DEFINE_EVENT(nfs4_delegation_event, name, \
++			TP_PROTO( \
++				const struct nfs_delegation *delegation \
++			), \
++			TP_ARGS(delegation))
++DEFINE_NFS4_DELEGATION_EVENT(nfs_delegation_need_return);
++
+ TRACE_EVENT(nfs4_delegreturn_exit,
+ 		TP_PROTO(
+ 			const struct nfs4_delegreturnargs *args,
 
 -- 
 2.49.0
