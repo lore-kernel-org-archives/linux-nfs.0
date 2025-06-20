@@ -1,30 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2A7C25F98E
-	for <linux-nfs@vger.kernel.org>; Fri, 20 Jun 2025 12:32:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2F91221FC0
+	for <linux-nfs@vger.kernel.org>; Fri, 20 Jun 2025 12:32:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1750422721; cv=none; b=VS/+d6PR+8UA+r1rGwnIArrm7/to/jtpTm/yaoEFgCN5qRM3vz+iF7fa4XAZygsexR1wvAKslFATKBgxtgKAB6ml2xgccNom/LHNBPwq7vxZkh3qLfAYP9pJFPghSwq+2ntlNwPhm1j/NI7Y3ZVgUVSCBFhj4hiEPVl+UmavwIg=
+	t=1750422722; cv=none; b=qODVyXKiJZ0m9NaRbMLzMJMarlEHeBDKnczf1c5PvSiEssYkWkp0HlB3aXiOdHtBwn1Zx25i3xsuX1848+4TwLwArA3seC3j83+/tfxOlAEiSk2c/g5qemXnLPu9rLF3iAmnNUQnyPB3BmI0gPxrJLQRFwHNqL3A7J5LtM9DSmU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1750422721; c=relaxed/simple;
-	bh=MM4pVsbHxM19XeQ4zCkyLRSZmVBPbWIP+ETqJ6aDnF8=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=uE+bRqAG0+R8gHIB7iPncHwLGONuy4oyaumaMG3763rSwsjJI9SCw8b0Z36RZBvHO5YNTwZhJyoea1CxYo8B0QhyVIjOgaRqiaSayb10ILbUEEyzAkHkaMznWLwGq+U8kanMcr31y7Xt3eVcu0cFtTtObTLdGrrWPI0CZE5+TV8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hd/BCmUP; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1750422722; c=relaxed/simple;
+	bh=6tcM5+MUwnRyUgk8+WCYBrfMJOSrT0lpOD6O54Q6+4Q=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=UyBNEEnC8zhi5e+nq2NEaNSYTZxBR0WTMCxKZmM0wsqTxbyHrUv4VP3VJby1J0M3M0i8fT+BpZVdmwJSaeaaEUEyTmESZUxbbXhBgfpwR3KVMNmH9kb6meRfvq2/swCanx4z3DqYOeWzYA4wS3CjH4WwCSVP3tEPpjR5YXo5AYQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=pbt/CC6F; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hd/BCmUP"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 51BBCC4CEE3;
-	Fri, 20 Jun 2025 12:31:59 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="pbt/CC6F"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 81E01C4CEF1;
+	Fri, 20 Jun 2025 12:32:01 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1750422720;
-	bh=MM4pVsbHxM19XeQ4zCkyLRSZmVBPbWIP+ETqJ6aDnF8=;
-	h=From:To:Cc:Subject:Date:From;
-	b=hd/BCmUPnGQlC9T/RHCAEwyb/EYQqCnMmGKg9Nzzt7mRjMcJAE+nCVORRpTVlZCj3
-	 kWcxqnk96orBkLoV6c/Cy5uN+7oOlAinFPX3AeAHpYwLYj1eTQydOg7kqSwj6A2cFx
-	 yU4ae8/5y7g3qRTXCM5K91qXAEmfRLlE3PZh/vxD36ZO/TxZm+XtHmS34JCGc3CoV+
-	 tzrmgNpWKQHuvNvVQHabPcNeJokvqQbnHu+LEUut2PP3evBnVZduRplZ61yQ5l99Hj
-	 efsYpd71N1yODtcdGsGfgLVuV/JdoklZ7TRFOhbLmec4nWcriC45/Vn9BoubaYmZhg
-	 QdqbVbxosQ/7A==
+	s=k20201202; t=1750422722;
+	bh=6tcM5+MUwnRyUgk8+WCYBrfMJOSrT0lpOD6O54Q6+4Q=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=pbt/CC6FPgn3/aTo9ONeReqnKJDtNdwF1qAoT0kj4XLv4Ho0TSX37f3uPH70e0y1n
+	 x4hQ2CaoqAXXXKWLq5/4Js28UCEHlg5UVk+FkzrI5isVeZPI54nKYAeyVbv4PIQeFB
+	 YvCAmMMUEUIV0Nlo9rspkMv4ycueYw65QPf7E9Eg63Y7k56MW256y6sqgYjqvXOcQO
+	 UEX+AbA3OUYeCXpvaai6aug+zEfFVzL/qtyYfRYCqI7NlYYH5ykGaqE1BH7z0puBiv
+	 Ri+byvOQIvbAtkRyrIipw4wEkciU7K9p7DMauNrMeamGqLyCvVRqEoMznehkATYTS1
+	 iC9lAhY30Tagg==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -34,10 +35,12 @@ To: NeilBrown <neil@brown.name>,
 Cc: <linux-nfs@vger.kernel.org>,
 	Christoph Hellwig <hch@lst.de>,
 	Chuck Lever <chuck.lever@oracle.com>
-Subject: [RFC PATCH 0/2] Remove union from struct knfsd_fh
-Date: Fri, 20 Jun 2025 08:31:53 -0400
-Message-ID: <20250620123155.271392-1-cel@kernel.org>
+Subject: [RFC PATCH 2/2] NFSD: Simplify struct knfsd_fh
+Date: Fri, 20 Jun 2025 08:31:55 -0400
+Message-ID: <20250620123155.271392-3-cel@kernel.org>
 X-Mailer: git-send-email 2.49.0
+In-Reply-To: <20250620123155.271392-1-cel@kernel.org>
+References: <20250620123155.271392-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -48,21 +51,46 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-This is a low-risk way to simplify the knfsd_fh struct, based on
-Christoph's suggestion of using array indices rather than u8
-fields.
+Compilers are allowed to insert padding and reorder the
+fields in a struct, so using a union of an array and a
+struct in struct knfsd_fh is not reliable.
 
-Compile-tested only.
+The position of elements in an array is more reliable.
 
-Chuck Lever (2):
-  NFSD: Access a knfsd_fh's fsid by pointer
-  NFSD: Simplify struct knfsd_fh
+Suggested-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfsd/nfsfh.h | 15 ++++++---------
+ 1 file changed, 6 insertions(+), 9 deletions(-)
 
- fs/nfsd/nfs4layouts.c |  4 ++--
- fs/nfsd/nfsfh.c       | 16 +++++++++-------
- fs/nfsd/nfsfh.h       | 26 +++++++++++++++-----------
- 3 files changed, 26 insertions(+), 20 deletions(-)
-
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index 4569b5950b55..1cf979722521 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -49,17 +49,14 @@ struct knfsd_fh {
+ 					 * Points to the current size while
+ 					 * building a new file handle.
+ 					 */
+-	union {
+-		char			fh_raw[NFS4_FHSIZE];
+-		struct {
+-			u8		fh_version;	/* == 1 */
+-			u8		fh_auth_type;	/* deprecated */
+-			u8		fh_fsid_type;
+-			u8		fh_fileid_type;
+-		};
+-	};
++	u8		fh_raw[NFS4_FHSIZE];
+ };
+ 
++#define fh_version		fh_raw[0]
++#define fh_auth_type		fh_raw[1]
++#define fh_fsid_type		fh_raw[2]
++#define fh_fileid_type		fh_raw[3]
++
+ static inline u32 *fh_fsid(const struct knfsd_fh *fh)
+ {
+ 	return (u32 *)&fh->fh_raw[4];
 -- 
 2.49.0
 
