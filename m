@@ -1,47 +1,47 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7C8BA2E2F1D
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2025 16:43:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B17302D6601
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2025 16:43:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1750869783; cv=none; b=NASpX7pxvlBFeRYG9M4Q6rGDCi9b0McaTrH/nd60O2OKSsuEUafJ+8oRrS6PQJuB/cp6LZ6NsyKX67lwR/xrP7wxRFDjZIv7lreCCBwNVcReafWuaqG9twjseN44WUsgL80fCIU26LguwjjjrektqJVcz3lXj5MVT26sDRocXNM=
+	t=1750869784; cv=none; b=Caa1YESo+aC7wu7eLARqKl02bnT5FcCIvHvTyGgmRRKDIJXA8olOj+kD7H9gkGZ1sVIKuQh1cLe4OimAY/Ek+OSQ2NlL8ElAHJQUD7Ig9tDhNnIJE1UQ3s07z6P8yrhfzlXiVXxN0EWwrfEXMEgCMfjt/wv7kUpaZvr+na/U0Jk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1750869783; c=relaxed/simple;
-	bh=Js8EE7ZHS9G60cdqqUwjPDnFmtgp21nKILvF8e5LANo=;
+	s=arc-20240116; t=1750869784; c=relaxed/simple;
+	bh=zttpQsblGMp7z07jk1lN8v6oW9ojloS7/vENaMxLw5A=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=siGTgA8i2FPtt2Lt3Ik0+RolXcmwIRlG6KRFgoDpTv4M4x0vZ1Qb7Zpstf//UX07W422dEymxTyWRBpYUyD5Z0AUNi+ebkq1iKwDoXcXq56vckBIQ0hBgQae8jfYTi0gayGlDnECnjvdlXi8KlLDbeCwbbDO6To/Vqltq0M9aqI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Eo5Zw4/3; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=jy0GqBCf29Y2yX2VGkps1V5bpJGg8jLIla3v7Jejr7DrTbu9bgsFY1yaxj5HCs/PoQkZL2IxJYojm/ywfK+fOTLEt/LiYbTa7nxSRkvRVKpjM+YWfRKV2I/FJZKXux45Bbtcmh+A2C5vvOTt2mouzTQFUHpROgrZGorEPcg/y4g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=CRne2fcG; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Eo5Zw4/3"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="CRne2fcG"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1750869780;
+	s=mimecast20190719; t=1750869779;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=RQ1ndNHNeoiyV90JjgbZyG68tyV9jF8afWehzUhxtFs=;
-	b=Eo5Zw4/3HMJe8C1DG3ggVA/sjsYMTILrx6YDiEX/k+l2kwjHiebVjSGYV4ZPCuFIzlvRrU
-	qbSYdHY9WqRACEqwKyhdA5DnQ03285P1H+AWPQLipxXI9SxxNBFbZnfnYVlvBWpdx23U9c
-	69XysvDTs79QINw3D3y5Qom984xdWWM=
-Received: from mx-prod-mc-04.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=hAkDWqWictGqLE9t+71XFB8sKg+zbKHb8YN2JrhliGE=;
+	b=CRne2fcGcnUrrZNmJqjJLOYEGKk2fixyiugo5+rDTYjT6CPL214hFP5wzxvRrS/rYAiM69
+	TfLdlqwMrwZJ7KABiSARmBweDziQviYPqp3V27VPspYph77Z+AXF4hgmoP/tr1Ed71yQW8
+	8mOOsqT60o6BQnevvMtItuAKro6j1U4=
+Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-650-uP2aV9EUNOqJfFuT0mlNBw-1; Wed,
- 25 Jun 2025 12:42:55 -0400
-X-MC-Unique: uP2aV9EUNOqJfFuT0mlNBw-1
-X-Mimecast-MFC-AGG-ID: uP2aV9EUNOqJfFuT0mlNBw_1750869773
-Received: from mx-prod-int-04.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-04.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.40])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-567-NgOqbqqsPT2t9PVpHtDdag-1; Wed,
+ 25 Jun 2025 12:42:56 -0400
+X-MC-Unique: NgOqbqqsPT2t9PVpHtDdag-1
+X-Mimecast-MFC-AGG-ID: NgOqbqqsPT2t9PVpHtDdag_1750869774
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-04.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id D96F919560B5;
-	Wed, 25 Jun 2025 16:42:52 +0000 (UTC)
+	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 2D6A41800287;
+	Wed, 25 Jun 2025 16:42:48 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.42.28.81])
-	by mx-prod-int-04.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 90120195607A;
-	Wed, 25 Jun 2025 16:42:49 +0000 (UTC)
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id DC15219560A3;
+	Wed, 25 Jun 2025 16:42:44 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Steve French <sfrench@samba.org>
@@ -56,9 +56,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	Paulo Alcantara <pc@manguebit.org>
-Subject: [PATCH v2 06/16] smb: client: set missing retry flag in smb2_writev_callback()
-Date: Wed, 25 Jun 2025 17:42:01 +0100
-Message-ID: <20250625164213.1408754-7-dhowells@redhat.com>
+Subject: [PATCH v2 05/16] netfs: Fix ref leak on inserted extra subreq in write retry
+Date: Wed, 25 Jun 2025 17:42:00 +0100
+Message-ID: <20250625164213.1408754-6-dhowells@redhat.com>
 In-Reply-To: <20250625164213.1408754-1-dhowells@redhat.com>
 References: <20250625164213.1408754-1-dhowells@redhat.com>
 Precedence: bulk
@@ -68,33 +68,39 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.40
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-From: Paulo Alcantara <pc@manguebit.org>
+The write-retry algorithm will insert extra subrequests into the list if it
+can't get sufficient capacity to split the range that needs to be retried
+into the sequence of subrequests it currently has (for instance, if the
+cifs credit pool has fewer credits available than it did when the range was
+originally divided).
 
-Set NETFS_SREQ_NEED_RETRY flag to tell netfslib that the subreq needs
-to be retried.
+However, the allocator furnishes each new subreq with 2 refs and then
+another is added for resubmission, causing one to be leaked.
 
-Fixes: ee4cdf7ba857 ("netfs: Speed up buffered reading")
-Signed-off-by: Paulo Alcantara (Red Hat) <pc@manguebit.org>
+Fix this by replacing the ref-getting line with a neutral trace line.
+
+Fixes: 288ace2f57c9 ("netfs: New writeback implementation")
 Signed-off-by: David Howells <dhowells@redhat.com>
-Cc: Steve French <sfrench@samba.org>
-Cc: linux-cifs@vger.kernel.org
-Cc: netfs@lists.linux.dev
+Reviewed-by: Paulo Alcantara <pc@manguebit.org>
+cc: netfs@lists.linux.dev
+cc: linux-fsdevel@vger.kernel.org
 ---
- fs/smb/client/smb2pdu.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/netfs/write_retry.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/smb/client/smb2pdu.c b/fs/smb/client/smb2pdu.c
-index a717be1626a3..084ee66e73fd 100644
---- a/fs/smb/client/smb2pdu.c
-+++ b/fs/smb/client/smb2pdu.c
-@@ -4862,6 +4862,7 @@ smb2_writev_callback(struct mid_q_entry *mid)
- 		break;
- 	case MID_REQUEST_SUBMITTED:
- 	case MID_RETRY_NEEDED:
-+		__set_bit(NETFS_SREQ_NEED_RETRY, &wdata->subreq.flags);
- 		result = -EAGAIN;
- 		break;
- 	case MID_RESPONSE_MALFORMED:
+diff --git a/fs/netfs/write_retry.c b/fs/netfs/write_retry.c
+index 9d1d8a8bab72..7158657061e9 100644
+--- a/fs/netfs/write_retry.c
++++ b/fs/netfs/write_retry.c
+@@ -153,7 +153,7 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 			trace_netfs_sreq_ref(wreq->debug_id, subreq->debug_index,
+ 					     refcount_read(&subreq->ref),
+ 					     netfs_sreq_trace_new);
+-			netfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);
++			trace_netfs_sreq(subreq, netfs_sreq_trace_split);
+ 
+ 			list_add(&subreq->rreq_link, &to->rreq_link);
+ 			to = list_next_entry(to, rreq_link);
 
