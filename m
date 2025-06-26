@@ -1,62 +1,37 @@
-Received: from esa12.hc1455-7.c3s2.iphmx.com (esa12.hc1455-7.c3s2.iphmx.com [139.138.37.100])
+Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 67E2C1C4A2D
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2025 08:04:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=139.138.37.100
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5D920288CBD;
+	Wed, 25 Jun 2025 08:47:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.35
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1750838666; cv=none; b=riR+bwktWZPJ/vQxAcLZKkKRIC3Ip+TiVwqAunZiMeX/JPuDlI0nN1YCPN1tuT0N6p4tYMjvQgf+KGMwn4T0fK1JwcobvneliER7ig1G9bj3Tfsx76C8se6X5MIXVIjT2cSkszwwEk2QbpdqBsQHVZC2QNO+oWtLgHbOAW1koaw=
+	t=1750841231; cv=none; b=ddlHHDnNBcDiMS7XLkjx275XREBZA7MozWnUfWw9NsmjNek7+i541UATGn+pCM95/mujHaPQeWQFKEy+uLBRPwLSLJaFPBXnoU/qHLe4x7557ytHLVSJiPbs80ul+CHsHpMgdWpWpAVSa0uOxQLJuAT+bw43JKCFCxXJDe+nVe4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1750838666; c=relaxed/simple;
-	bh=4RSlHf4vIOeNIBG5XB/aatEJBjRq8ejExCt0m/fcogk=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=AoZl7h/mN/NMwhl9AHn3eeR6z9yn6yD9d1bkOMC1AhVSB/3sbK0O5MPQkQTO9wKKJyLYS3WSzxmY4xbWYu3ZWhVQyMXLu4wJEcprQmZYSA+xaVkfLChOdm7GGlq391bDCTiXzf+F7Hb/4tM1SNnozHJShoZqIJSV/H24lzF5MIo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=fujitsu.com; spf=pass smtp.mailfrom=fujitsu.com; dkim=pass (2048-bit key) header.d=fujitsu.com header.i=@fujitsu.com header.b=fD4D+tQx; arc=none smtp.client-ip=139.138.37.100
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=fujitsu.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=fujitsu.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=fujitsu.com header.i=@fujitsu.com header.b="fD4D+tQx"
-DKIM-Signature: v=1; a=rsa-sha256; c=simple/simple;
-  d=fujitsu.com; i=@fujitsu.com; q=dns/txt; s=fj2;
-  t=1750838664; x=1782374664;
-  h=from:to:cc:subject:date:message-id:mime-version:
-   content-transfer-encoding;
-  bh=4RSlHf4vIOeNIBG5XB/aatEJBjRq8ejExCt0m/fcogk=;
-  b=fD4D+tQxFgRWV3EG+l00tXuHOoYVXPGBLa5Si6+EM9I3hmnX0aJvpi4b
-   rK83uyu/2qLPkJleJW+KpbFdpHnKsXLx6tgVoubYxRns4AopFxfsHiL5q
-   rxWF3QXGYSQ+g34uQ5++Yy93exZIqk9FfUKj3E/c0XZURe+KVaQBl6O1G
-   mapo7hSVNDCftvdmjphjv4EzeiJFEMRv8lXmz7W25ynHz/2NC/aTbdQdg
-   FFCBenc+LnoKGy4akO+9KDNZzllTKeo48pZGapd9JiPQ1YDvE3ClCqsZU
-   VCtFuIPY/6ExT+7Eqy0AIY1tXOtIrePfoQzRxWuSfU2+sYQn1dkWEK3Ek
-   g==;
-X-CSE-ConnectionGUID: NSfC5dpmR+aoO0Q0zC9WZQ==
-X-CSE-MsgGUID: 2G0DbSlDSM6PmlGh3JpBUQ==
-X-IronPort-AV: E=McAfee;i="6800,10657,11474"; a="182833329"
-X-IronPort-AV: E=Sophos;i="6.16,264,1744038000"; 
-   d="scan'208";a="182833329"
-Received: from unknown (HELO az2uksmgr3.o.css.fujitsu.com) ([52.151.125.19])
-  by esa12.hc1455-7.c3s2.iphmx.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 25 Jun 2025 17:03:14 +0900
-Received: from az2uksmgm2.o.css.fujitsu.com (unknown [10.151.22.199])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by az2uksmgr3.o.css.fujitsu.com (Postfix) with ESMTPS id 68DE81002BA4
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2025 08:03:14 +0000 (UTC)
-Received: from yto-m2.gw.nic.fujitsu.com (yto-m2.gw.nic.fujitsu.com [10.128.47.163])
-	by az2uksmgm2.o.css.fujitsu.com (Postfix) with ESMTP id C49D318001FF
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2025 08:03:13 +0000 (UTC)
-Received: from edo.cn.fujitsu.com (edo.cn.fujitsu.com [10.167.33.5])
-	by yto-m2.gw.nic.fujitsu.com (Postfix) with ESMTP id 3E6FBD35E4
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2025 17:03:12 +0900 (JST)
-Received: from G08XZGSD200059.g08.fujitsu.local (unknown [10.167.135.156])
-	by edo.cn.fujitsu.com (Postfix) with ESMTP id 9AB3C1A0074;
-	Wed, 25 Jun 2025 16:03:11 +0800 (CST)
-From: Chen Hanxiao <chenhx.fnst@fujitsu.com>
-To: calum.mackay@oracle.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] pynfs: Fix RuntimeError by increasing default ca_maxrequests from 8 to 16
-Date: Wed, 25 Jun 2025 16:00:59 +0800
-Message-ID: <20250625080208.1424-1-chenhx.fnst@fujitsu.com>
-X-Mailer: git-send-email 2.49.0.windows.1
+	s=arc-20240116; t=1750841231; c=relaxed/simple;
+	bh=xDezQu8rUpcvHFAGt+r8ic9Do8WqjCafJJfUU47daxg=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=KwhOwmzTUgkXJLbjZlfRJcBUeYutFyuFDyk9AbZNIoHWNe1GPC35b9kJc7acpbXmfEQ9WFaaT9OM7IfnLKWvZZZxnfsVAiNbiUZRRjxQDzg8OSosmvWBJODVrj9nj3f9spAa1OzwAjWMLsVlnddJaM6JzGg3d+ALgNYMzmq6FCU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.35
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+Received: from mail.maildlp.com (unknown [172.19.88.214])
+	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4bRwPf47x6z1QBp1;
+	Wed, 25 Jun 2025 16:45:26 +0800 (CST)
+Received: from kwepemp200004.china.huawei.com (unknown [7.202.195.99])
+	by mail.maildlp.com (Postfix) with ESMTPS id 7B6B01A016C;
+	Wed, 25 Jun 2025 16:47:04 +0800 (CST)
+Received: from huawei.com (10.175.124.27) by kwepemp200004.china.huawei.com
+ (7.202.195.99) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Wed, 25 Jun
+ 2025 16:47:03 +0800
+From: zhangjian <zhangjian496@huawei.com>
+To: <gregkh@linuxfoundation.org>, <darrick.wong@oracle.com>,
+	<dhowells@redhat.com>
+CC: <linux-kernel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+	<stable@vger.kernel.org>
+Subject: [PATCH] [5.10-LTS NFS] fix assert failure in __fscache_disable_cookie
+Date: Thu, 26 Jun 2025 10:00:35 +0800
+Message-ID: <20250626020035.1043638-1-zhangjian496@huawei.com>
+X-Mailer: git-send-email 2.33.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -64,32 +39,57 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: kwepems100002.china.huawei.com (7.221.188.206) To
+ kwepemp200004.china.huawei.com (7.202.195.99)
 
-Increased the default value of ca_maxrequests from 8 to 16 to address a
-RuntimeError encountered in DELEG8.
+Multi write opens will go into __fscache_disable_cookie and cookie->n_active
+may be zero for a short window. Move this assertion under locking to avoid
+assert failure for ASSERTCMP(atomic_read(&cookie->n_active), >, 0).
 
-This change resolves the issue where
-DELEG8 st_delegation.testDelegRevocation
-fails with a RuntimeError: "Out of slots".
+stack is as following:
 
-Signed-off-by: Chen Hanxiao <chenhx.fnst@fujitsu.com>
+ fscache_disable_cookie include/linux/fscache.h:854 [inline]
+ nfs_fscache_open_file+0x3ba/0x430 fs/nfs/fscache.c:319
+ nfs4_file_open+0x4ff/0x780 fs/nfs/nfs4file.c:90
+ do_dentry_open+0x6ea/0x1170 fs/open.c:826
+ do_open.isra.0+0x9dc/0xf50 fs/namei.c:3316
+ path_openat+0x336/0x810 fs/namei.c:3434
+ do_filp_open+0x1b9/0x290 fs/namei.c:3461
+ do_sys_openat2+0x5be/0x9b0 fs/open.c:1231
+ do_sys_open+0xc8/0x150 fs/open.c:1248
+ do_syscall_64+0x33/0x40 arch/x86/entry/common.c:46
+ entry_SYSCALL_64_after_hwframe+0x67/0xd1
+
+Signed-off-by: zhangjian <zhangjian496@huawei.com>
 ---
- nfs4.1/nfs4client.py | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/fscache/cookie.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
-index f4fabcc..fa31b34 100644
---- a/nfs4.1/nfs4client.py
-+++ b/nfs4.1/nfs4client.py
-@@ -390,7 +390,7 @@ class ClientRecord(object):
-                        fore_attrs=None, back_attrs=None, sec=None,
-                        prog=None,
-                        max_retries=1, delay_time=1):
--        chan_attrs = channel_attrs4(0,8192,8192,8192,128,8,[])
-+        chan_attrs = channel_attrs4(0,8192,8192,8192,128,16,[])
-         if fore_attrs is None:
-             fore_attrs = chan_attrs
-         if back_attrs is None:
+diff --git a/fs/fscache/cookie.c b/fs/fscache/cookie.c
+index 6104f627c..30f0e2b41 100644
+--- a/fs/fscache/cookie.c
++++ b/fs/fscache/cookie.c
+@@ -703,6 +703,9 @@ void __fscache_disable_cookie(struct fscache_cookie *cookie,
+ 
+ 	_enter("%p,%u", cookie, invalidate);
+ 
++	wait_on_bit_lock(&cookie->flags, FSCACHE_COOKIE_ENABLEMENT_LOCK,
++			 TASK_UNINTERRUPTIBLE);
++
+ 	trace_fscache_disable(cookie);
+ 
+ 	ASSERTCMP(atomic_read(&cookie->n_active), >, 0);
+@@ -713,9 +716,6 @@ void __fscache_disable_cookie(struct fscache_cookie *cookie,
+ 		BUG();
+ 	}
+ 
+-	wait_on_bit_lock(&cookie->flags, FSCACHE_COOKIE_ENABLEMENT_LOCK,
+-			 TASK_UNINTERRUPTIBLE);
+-
+ 	fscache_update_aux(cookie, aux_data);
+ 
+ 	if (!test_and_clear_bit(FSCACHE_COOKIE_ENABLED, &cookie->flags))
 -- 
-2.39.1
+2.33.0
 
