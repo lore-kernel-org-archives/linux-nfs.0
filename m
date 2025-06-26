@@ -1,80 +1,84 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from szxga07-in.huawei.com (szxga07-in.huawei.com [45.249.212.35])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 18EA9189B8C;
-	Wed, 25 Jun 2025 06:26:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 06C851DF273
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2025 07:06:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.35
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1750832777; cv=none; b=atgD0q6ID4H40qWungqX8QJL/AltxJY2d3BupH5Q5FWHBl6XOPfwXJeI22x2VebECJwIIAjznB2+7ZT0PU8+Alnyz0KqBAvAXGbjHAoKi7WtYuow2p7DQIB3Hp2oMCVCjuyPDPUlVXOw8JMMcC+xnj+N/qG7+3Htmvwwp8E2bSE=
+	t=1750835220; cv=none; b=WsemDysGW+wgAEeJy9oMmGrQ7JuS/Xoa29HtVWmFGd9NEWKdUxcng/QqQpAJN5daZBBu//Dv80ACY5THPMQe0qRZKWE+qlZDzB3oTwwW0zMjrgY/OS4aPl1b1BNxeZ3JWKU1oKLqN40bh1OxwiMub3xM1d21xUGR/eHybb9ExYA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1750832777; c=relaxed/simple;
-	bh=ZodBrEr46pf6hoElc4B7uA1dFN57Uv6t+cGsWYXR9X0=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=kzjC+7i1aoUYsUtb2kdvkgBomZFBF5ItGVdDWdAAugru/B40r5kk+ZbVmrR8PV9G3Vx4HLyfcul7Y6HICenv7I8c6K6EwsB4x+bqfnzK2eklO1w+vugU2tJaFJo6aZ/vrXHxW1SReCTct6sgsLHPR2nPfI1LlujBt+oN/5Wwsgg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=S7ZCT2KO; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="S7ZCT2KO"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=3XnnY6mYnsr+cZrq2WIhH2EnyI4e0J3kr1/WKamV2Oc=; b=S7ZCT2KOF1JLrcr+/vCrqCURxA
-	23StPBuy1slIcKX1GxPymKkGYWQQieRiGTVpNnYv2b7lbSJcg0/8K+TOD1iZlJZboa3GqrFKzIXYL
-	PTY6BJbsbdPDG1EVBiwEebUlzJgaOIo9uBZr3WrbUgPa1hsXsAl6+l5sy9RwN/YCwxGFxmNLqNryi
-	M7EZlS0z+vmELvnXbD+CV1jAohc9FrreexgIIhsuRHfiPHSBc2M/q7ZKYCAAFnRlMpSJ7K41HiJus
-	pYesNOLCI2AL5K3w6Gmgq8csF4gZJlSRYbaSqQqQyQcbK0yNmiG6UHXaYpNEtr3XO2VBYgTIIJWMF
-	/Cds1dXA==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1uUJaI-00000007ea5-1tFo;
-	Wed, 25 Jun 2025 06:26:14 +0000
-Date: Tue, 24 Jun 2025 23:26:14 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Joanne Koong <joannelkoong@gmail.com>
-Cc: Matthew Wilcox <willy@infradead.org>, Jeff Layton <jlayton@kernel.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	"Darrick J. Wong" <djwong@kernel.org>, miklos@szeredi.hu,
-	brauner@kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-xfs@vger.kernel.org, bernd.schubert@fastmail.fm,
-	kernel-team@meta.com, linux-mm@kvack.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 5/8] iomap: add iomap_writeback_dirty_folio()
-Message-ID: <aFuWhnjsKqo6ftit@infradead.org>
-References: <20250606233803.1421259-1-joannelkoong@gmail.com>
- <20250606233803.1421259-6-joannelkoong@gmail.com>
- <aEZoau3AuwoeqQgu@infradead.org>
- <20250609171444.GL6156@frogsfrogsfrogs>
- <aEetuahlyfHGTG7x@infradead.org>
- <aEkHarE9_LlxFTAi@casper.infradead.org>
- <ac1506958d4c260c8beb6b840809e1bc8167ba2a.camel@kernel.org>
- <aFWlW6SUI6t-i0dN@casper.infradead.org>
- <CAJnrk1b3HfGOAkxXrJuhm3sFfJDzzd=Z7vQbKk3HO_JkGAxVuQ@mail.gmail.com>
+	s=arc-20240116; t=1750835220; c=relaxed/simple;
+	bh=JkKRrjXW4u7N1q5p1D7xgAU9C0VPGkq/XLcMk0Gwf+0=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=Y6NxN/KUlLGpheXTo95rh5IZ8os+/R7sL3bf05q44VyXPJS5QPRpOUS3Gsx+3K+zGQsiY40VPqeEiCUn8md0TLDy+IrapIwjl0HIpb8rZ7ppAY17cZo/ITKs3Ad5wGg84Gha5Ms4chkNOcn+vcunxDOzOZGVsShJlX6DSDiWu+U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.35
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+Received: from mail.maildlp.com (unknown [172.19.88.163])
+	by szxga07-in.huawei.com (SkyGuard) with ESMTP id 4bRtB51fy2z1QBn2;
+	Wed, 25 Jun 2025 15:05:17 +0800 (CST)
+Received: from kwepemp200004.china.huawei.com (unknown [7.202.195.99])
+	by mail.maildlp.com (Postfix) with ESMTPS id 0FBAE180043;
+	Wed, 25 Jun 2025 15:06:55 +0800 (CST)
+Received: from huawei.com (10.175.124.27) by kwepemp200004.china.huawei.com
+ (7.202.195.99) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Wed, 25 Jun
+ 2025 15:06:54 +0800
+From: zhangjian <zhangjian496@huawei.com>
+To: <steved@redhat.com>, <joannelkoong@gmail.com>, <chuck.lever@oracle.com>,
+	<djwong@kernel.org>, <jlayton@kernel.org>, <okorniev@redhat.com>,
+	<kernel-team@meta.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfs:check for user input filehandle size
+Date: Thu, 26 Jun 2025 08:20:26 +0800
+Message-ID: <20250626002026.110999-1-zhangjian496@huawei.com>
+X-Mailer: git-send-email 2.33.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <CAJnrk1b3HfGOAkxXrJuhm3sFfJDzzd=Z7vQbKk3HO_JkGAxVuQ@mail.gmail.com>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: kwepems100002.china.huawei.com (7.221.188.206) To
+ kwepemp200004.china.huawei.com (7.202.195.99)
 
-On Tue, Jun 24, 2025 at 10:26:01PM -0700, Joanne Koong wrote:
-> > The question is whether this is acceptable for all the filesystem
-> > which implement ->launder_folio today.  Because we could just move the
-> > folio_test_dirty() to after the folio_lock() and remove all the testing
-> > of folio dirtiness from individual filesystems.
-> 
-> Or could the filesystems that implement ->launder_folio (from what I
-> see, there's only 4: fuse, nfs, btrfs, and orangefs) just move that
-> logic into their .release_folio implementation? I don't see why not.
-> In folio_unmap_invalidate(), we call:
+Syzkaller found an slab-out-of-bounds in nfs_fh_to_dentry when the memory
+of server_fh is not passed from user space. So I add a check for input size.
+---
+ fs/nfs/export.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-Without even looking into the details from the iomap POV that basically
-doesn't matter.  You'd still need the write back a single locked folio
-interface, which adds API surface, and because it only writes a single
-folio at a time is rather inefficient.  Not a deal breaker because
-the current version look ok, but it would still be preferable to not
-have an extra magic interface for it.
+diff --git a/fs/nfs/export.c b/fs/nfs/export.c
+index e9c233b6f..e0e77f8ca 100644
+--- a/fs/nfs/export.c
++++ b/fs/nfs/export.c
+@@ -65,8 +65,8 @@ nfs_fh_to_dentry(struct super_block *sb, struct fid *fid,
+ 		 int fh_len, int fh_type)
+ {
+ 	struct nfs_fattr *fattr = NULL;
+-	struct nfs_fh *server_fh = nfs_exp_embedfh(fid->raw);
+-	size_t fh_size = offsetof(struct nfs_fh, data) + server_fh->size;
++	struct nfs_fh *server_fh;
++	size_t fh_size;
+ 	const struct nfs_rpc_ops *rpc_ops;
+ 	struct dentry *dentry;
+ 	struct inode *inode;
+@@ -74,6 +74,14 @@ nfs_fh_to_dentry(struct super_block *sb, struct fid *fid,
+ 	u32 *p = fid->raw;
+ 	int ret;
+ 
++	/* check for user input size */
++	if ((char*)server_fh <= (char*)p 
++	    || (int)((u32*)server_fh - (u32*)p + 1) < fh_len)
++		return ERR_PTR(-EINVAL);	
++
++	fh_size = offsetof(struct nfs_fh, data) + server_fh->size;
++	len = EMBED_FH_OFF + XDR_QUADLEN(fh_size);
++
+ 	/* NULL translates to ESTALE */
+ 	if (fh_len < len || fh_type != len)
+ 		return NULL;
+-- 
+2.33.0
 
