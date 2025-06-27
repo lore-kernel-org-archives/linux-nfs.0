@@ -1,50 +1,50 @@
 Received: from smtp-o-1.desy.de (smtp-o-1.desy.de [131.169.56.154])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A9DFC18E750
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Jun 2025 06:49:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3908C33F6
+	for <linux-nfs@vger.kernel.org>; Fri, 27 Jun 2025 07:17:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=131.169.56.154
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1751006990; cv=none; b=tnH3h/U4duBAWQEhbZmffpdKZBCo/MBv6Nvg91jV8mr+kaiFa9BPzJKmlJgHoNDYWnScHPtMgSYRQaUh9KoJv/c4UuT2r9koSKruhA7+XnMhws4qGMDStIqFmp9z9lca+cBOM85qO8tOMssd5yu+UfitquYustH6DTeNm86Ao5E=
+	t=1751008678; cv=none; b=t7RV/DmHJg10NiPT7F+3tf+cvt+U0UlYDZFK3YLoz4SDkciIu0nOD5XHPd7eh30i/ieUZ086O/CtPLjUNbXeMR2ja6ZQU4rgsME75oOMyqher3tzaJmIOE04WqbeJbpGOYdzx2PUUfqle5a+I7QwRB7o9+DuELW55mNxN/eamsY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1751006990; c=relaxed/simple;
-	bh=s9Q0Sa1K05xk37ikDfhBJBcymyhnE4STatVHz1Ees5I=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=lkCcC+4kuQb4noDUbTrZS1blWWwsmTEk0+8pqJOLERIYUvhpuiXNDT2fbSOw8nt/quWsUzE25HMcDck/DUBxsgDUJlMe75JP8dcSopM18bMeTldIS+1G3N6J4VDz3A8A8D+RPT8C2/wwLNxREVIN7MmC/Lc0XZyq3oxou5K5lLA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de; spf=pass smtp.mailfrom=desy.de; dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b=pB4MZgOl; arc=none smtp.client-ip=131.169.56.154
+	s=arc-20240116; t=1751008678; c=relaxed/simple;
+	bh=CJYFslL0pUmI6QQ4JWTqlmbAOmVJX6DLW30CECgN+jM=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=fI5N+mLCj6IRkBzeqsCEDUcZ5wHHecRgb6+LQlQL2cozfX07Jq+kjQKIYj9mWKAUrhKezAXaa96r5T8hUZCZMwN2gw04ijLwBnpjsbBjBmvtoIa5O0AMkZtyAw2r4foiMMjnCdgg1m4qGQHFDOHWCnrd/4S6iL+lPK3+4JP0YQ4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de; spf=pass smtp.mailfrom=desy.de; dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b=YpkdL763; arc=none smtp.client-ip=131.169.56.154
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=desy.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=desy.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="pB4MZgOl"
-Received: from smtp-buf-1.desy.de (smtp-buf-1.desy.de [IPv6:2001:638:700:1038::1:a4])
-	by smtp-o-1.desy.de (Postfix) with ESMTP id 6C42C11F746
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Jun 2025 08:49:45 +0200 (CEST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-1.desy.de 6C42C11F746
+	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="YpkdL763"
+Received: from smtp-buf-1.desy.de (smtp-buf-1.desy.de [131.169.56.164])
+	by smtp-o-1.desy.de (Postfix) with ESMTP id 8A86311F746
+	for <linux-nfs@vger.kernel.org>; Fri, 27 Jun 2025 09:17:54 +0200 (CEST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-1.desy.de 8A86311F746
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-	t=1751006985; bh=vo1Kzf8E7l+iV4AEainLi566Kwjt8rDhnXk8My7XE3Y=;
+	t=1751008674; bh=WuFKHFqD6KwRi7XehDGBuvNSt7UnDE4MkFFxTRFn5/U=;
 	h=From:To:Cc:Subject:Date:From;
-	b=pB4MZgOlMqPNZEB0sQRUn+/Q5cTTOjbQWDytc6coFfq+DNz/LPpK24SXIVW8JYwUc
-	 92KTcdzMebcHtVULv2gwlY4XQ6iwsWANBqbluElCG+iFQ8KyLb46XNA0DWipJWuyBD
-	 jJbMnRmlhEA+ETVqANefu+tEnru1W/Aor2ry3lfI=
-Received: from smtp-m-1.desy.de (smtp-m-1.desy.de [131.169.56.129])
-	by smtp-buf-1.desy.de (Postfix) with ESMTP id 6038A20040;
-	Fri, 27 Jun 2025 08:49:45 +0200 (CEST)
-Received: from c1722.mx.srv.dfn.de (c1722.mx.srv.dfn.de [IPv6:2001:638:d:c303:acdc:1979:2:e7])
-	by smtp-m-1.desy.de (Postfix) with ESMTP id 5323740044;
-	Fri, 27 Jun 2025 08:49:45 +0200 (CEST)
-Received: from smtp-intra-1.desy.de (smtp-intra-1.desy.de [131.169.56.82])
-	by c1722.mx.srv.dfn.de (Postfix) with ESMTP id 822B710A3CC;
-	Fri, 27 Jun 2025 08:49:44 +0200 (CEST)
-Received: from nairi.fritz.box (VPN0104.desy.de [131.169.253.103])
-	by smtp-intra-1.desy.de (Postfix) with ESMTP id 10F4C80046;
-	Fri, 27 Jun 2025 08:49:44 +0200 (CEST)
+	b=YpkdL763BDjxN7P1W022FFWc8hTtEPBMl4xgjpAuQAgUfMQQcLxwT9bf3ecvUQm12
+	 yZWntZoP63c58k6geYrlPdbHX6hv7UG+p8TJJSbHqrRQnNyBpaPbUeeL91KSWJKVcB
+	 PhKNaHJgptDGklhF1PYeTgVJluGUcUT1VFMgQIs0=
+Received: from smtp-m-2.desy.de (smtp-m-2.desy.de [131.169.56.130])
+	by smtp-buf-1.desy.de (Postfix) with ESMTP id 7E89920040;
+	Fri, 27 Jun 2025 09:17:54 +0200 (CEST)
+Received: from c1722.mx.srv.dfn.de (c1722.mx.srv.dfn.de [194.95.239.47])
+	by smtp-m-2.desy.de (Postfix) with ESMTP id 7197C16003F;
+	Fri, 27 Jun 2025 09:17:54 +0200 (CEST)
+Received: from smtp-intra-2.desy.de (smtp-intra-2.desy.de [IPv6:2001:638:700:1038::1:53])
+	by c1722.mx.srv.dfn.de (Postfix) with ESMTP id 9F8C710A3CC;
+	Fri, 27 Jun 2025 09:17:53 +0200 (CEST)
+Received: from nairi.desy.de (zitpcx23514.desy.de [131.169.214.185])
+	by smtp-intra-2.desy.de (Postfix) with ESMTP id 6E49420044;
+	Fri, 27 Jun 2025 09:17:53 +0200 (CEST)
 From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 To: linux-nfs@vger.kernel.org
 Cc: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH v2] pNFS/flexfiles: don't attempt pnfs on fatal DS errors
-Date: Fri, 27 Jun 2025 08:49:42 +0200
-Message-ID: <20250627064942.187454-1-tigran.mkrtchyan@desy.de>
+Subject: [PATCH v3] pNFS/flexfiles: don't attempt pnfs on fatal DS errors
+Date: Fri, 27 Jun 2025 09:17:51 +0200
+Message-ID: <20250627071751.189663-1-tigran.mkrtchyan@desy.de>
 X-Mailer: git-send-email 2.50.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -190,7 +190,7 @@ index 708cbfbccea5..a67001b4dbdf 100644
  
  	ds_clnt = nfs4_ff_find_or_create_ds_client(mirror, ds->ds_clp,
 diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 4a304cf17c4b..533fef1826f4 100644
+index 4a304cf17c4b..ef535baeefb6 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
 @@ -370,11 +370,11 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg,
@@ -198,7 +198,7 @@ index 4a304cf17c4b..533fef1826f4 100644
  			  bool fail_return)
  {
 -	struct nfs4_pnfs_ds *ds = NULL;
-+	struct nfs4_pnfs_ds *ds = ERR_PTR(-EAGAIN);
++	struct nfs4_pnfs_ds *ds;
  	struct inode *ino = lseg->pls_layout->plh_inode;
  	struct nfs_server *s = NFS_SERVER(ino);
  	unsigned int max_payload;
