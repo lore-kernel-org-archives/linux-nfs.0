@@ -1,136 +1,115 @@
-Received: from mx01.omp.ru (mx01.omp.ru [90.154.21.10])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 38E58221F31
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Jun 2025 20:23:38 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.154.21.10
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 681FE1DA5F
+	for <linux-nfs@vger.kernel.org>; Sat, 28 Jun 2025 04:16:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1751055823; cv=none; b=P3h8wmpXwj2Afrcrgm+m7b1L46WHhGG+vclRxVwl9ScW1VlvxmalnXSQjlc+OvdvRisGD3yvJ2iIgmVBR1C9zKtKapUEUP6TFrxIPJp4YEJra7ZTmINusZD0rK7/qXkHle5fjS1eOrbOo+RmL/10Ay7TWxdwNvK7WUZeUd8wU+g=
+	t=1751084222; cv=none; b=X5IBh1lxC2U+F8GDUxUxZ2/n7Ga/XOraO9aFAQeHWEbHlrjcY+pjuzkjm1fXqcs2J3Efvm7GDQ+jAeyfvT0t5eX8pnA8INroo8tv9D0/AzNAtHnWpZvhWnHyVgvnXUj5XhZUlgkO/mHM6AqhhR3LcrQXLuwKFSU6ihO56m0PLvA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1751055823; c=relaxed/simple;
-	bh=ieCYx06r3guWCSz2kV6ZQqbtoJFgArp/xJbXkaOvFWs=;
-	h=Message-ID:Date:MIME-Version:Subject:From:To:References:
-	 In-Reply-To:Content-Type; b=Qt6351MsuitxS93hNNxOyHi/f1sgz5p9T1FKSrYrx/u3zHKOoyb1IQ1V/e0UcBEXwc4ntQcHRS64KG6U1funcUs77BlH0wBl27RadX2zydQOywmTxKwEHTY5zjxTCaSGLcCUVmlwOGGijT4GMyo2Hu+lxO5fKFtY7vtqjaEq6pw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=omp.ru; spf=pass smtp.mailfrom=omp.ru; arc=none smtp.client-ip=90.154.21.10
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=omp.ru
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=omp.ru
-Received: from [192.168.2.102] (213.87.153.12) by msexch01.omp.ru
- (10.188.4.12) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id 15.2.1258.12; Fri, 27 Jun
- 2025 23:23:21 +0300
-Message-ID: <f86e1071-8b7a-423b-b9e3-617ade534e42@omp.ru>
-Date: Fri, 27 Jun 2025 23:23:20 +0300
+	s=arc-20240116; t=1751084222; c=relaxed/simple;
+	bh=ux8qX3IPfPXXnlLSY//+ZKObFWX9eVVOV3/woEl1G5A=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=HVPoTky5NvsM1LtTNCztW+afONXN/DRCc2uXkj8K+PEz+AX09P8gISVvOh/7u8ZoSZh0NdWwrDfIYBrGrS8hzyYsz3VjS2WhvMe5UyHNeNErmBlA/UCXUq369cQEcSBBUFpXx5SFFsLRfrxU2EcoeVvOihq83ls0IVrc3XjqnmQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.187
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
+Received: from mail.maildlp.com (unknown [172.19.163.48])
+	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4bTfFY2M0yz13MbD;
+	Sat, 28 Jun 2025 12:14:25 +0800 (CST)
+Received: from kwepemp200004.china.huawei.com (unknown [7.202.195.99])
+	by mail.maildlp.com (Postfix) with ESMTPS id 93538180080;
+	Sat, 28 Jun 2025 12:16:49 +0800 (CST)
+Received: from huawei.com (10.175.124.27) by kwepemp200004.china.huawei.com
+ (7.202.195.99) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Sat, 28 Jun
+ 2025 12:16:48 +0800
+From: zhangjian <zhangjian496@huawei.com>
+To: <steved@redhat.com>, <joannelkoong@gmail.com>, <chuck.lever@oracle.com>,
+	<djwong@kernel.org>, <jlayton@kernel.org>, <okorniev@redhat.com>,
+	<lilingfeng3@huawei.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfs:check for user input filehandle size
+Date: Sun, 29 Jun 2025 05:30:17 +0800
+Message-ID: <20250628213017.2764770-1-zhangjian496@huawei.com>
+X-Mailer: git-send-email 2.33.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] NFSv4: prevent integer overflow while calling
- nfs4_set_lease_period()
-From: Sergey Shtylyov <s.shtylyov@omp.ru>
-To: <linux-nfs@vger.kernel.org>, Trond Myklebust <trondmy@kernel.org>, Anna
- Schumaker <anna@kernel.org>
-References: <4904f32e-a392-803b-9766-4aa2d5cee12b@omp.ru>
-Content-Language: en-US
-Organization: Open Mobile Platform
-In-Reply-To: <4904f32e-a392-803b-9766-4aa2d5cee12b@omp.ru>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: msexch01.omp.ru (10.188.4.12) To msexch01.omp.ru
- (10.188.4.12)
-X-KSE-ServerInfo: msexch01.omp.ru, 9
-X-KSE-AntiSpam-Interceptor-Info: scan successful
-X-KSE-AntiSpam-Version: 6.1.1, Database issued on: 06/27/2025 20:08:19
-X-KSE-AntiSpam-Status: KAS_STATUS_NOT_DETECTED
-X-KSE-AntiSpam-Method: none
-X-KSE-AntiSpam-Rate: 19
-X-KSE-AntiSpam-Info: Lua profiles 194401 [Jun 27 2025]
-X-KSE-AntiSpam-Info: Version: 6.1.1.11
-X-KSE-AntiSpam-Info: Envelope from: s.shtylyov@omp.ru
-X-KSE-AntiSpam-Info: LuaCore: 62 0.3.62
- e2af3448995f5f8a7fe71abf21bb23519d0f38c3
-X-KSE-AntiSpam-Info: {rep_avail}
-X-KSE-AntiSpam-Info: {Tracking_uf_ne_domains}
-X-KSE-AntiSpam-Info: {Tracking_from_domain_doesnt_match_to}
-X-KSE-AntiSpam-Info: {SMTP from is not routable}
-X-KSE-AntiSpam-Info: {Found in DNSBL: 213.87.153.12 in (user)
- b.barracudacentral.org}
-X-KSE-AntiSpam-Info:
-	127.0.0.199:7.1.2;d41d8cd98f00b204e9800998ecf8427e.com:7.1.1;omp.ru:7.1.1
-X-KSE-AntiSpam-Info: {Tracking_ip_hunter}
-X-KSE-AntiSpam-Info: FromAlignment: s
-X-KSE-AntiSpam-Info: ApMailHostAddress: 213.87.153.12
-X-KSE-AntiSpam-Info: {DNS response errors}
-X-KSE-AntiSpam-Info: Rate: 19
-X-KSE-AntiSpam-Info: Status: not_detected
-X-KSE-AntiSpam-Info: Method: none
-X-KSE-AntiSpam-Info: Auth:dmarc=temperror header.from=omp.ru;spf=temperror
- smtp.mailfrom=omp.ru;dkim=none
-X-KSE-Antiphishing-Info: Clean
-X-KSE-Antiphishing-ScanningType: Heuristic
-X-KSE-Antiphishing-Method: None
-X-KSE-Antiphishing-Bases: 06/27/2025 20:10:00
-X-KSE-Antivirus-Interceptor-Info: scan successful
-X-KSE-Antivirus-Info: Clean, bases: 6/27/2025 7:10:00 PM
-X-KSE-Attachment-Filter-Triggered-Rules: Clean
-X-KSE-Attachment-Filter-Triggered-Filters: Clean
-X-KSE-BulkMessagesFiltering-Scan-Result: InTheLimit
+Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: kwepems100002.china.huawei.com (7.221.188.206) To
+ kwepemp200004.china.huawei.com (7.202.195.99)
 
-On 8/23/24 11:32 PM, Sergey Shtylyov wrote:
+Syzkaller found an slab-out-of-bounds in nfs_fh_to_dentry when the memory
+of server_fh is not passed from user space. So I add a check for input size.
 
-> The nfs_client::cl_lease_time field (as well as the jiffies variable it's
-> used with) is declared as *unsigned long*, which is 32-bit type on 32-bit
-> arches and 64-bit type on 64-bit arches. When nfs4_set_lease_period() that
-> sets nfs_client::cl_lease_time is called, 32-bit nfs_fsinfo::lease_time
-> field is multiplied by HZ -- that might overflow *unsigned long* on 32-bit
-> arches.  Actually, there's no need to multiply by HZ at all the call sites
+Log is snipped as following:
 
-   As the multiplication by HZ is performed on 32-bit field, the overflow
-will occur regardless of 32/64-bitness...
+==================================================================
+BUG: KASAN: slab-out-of-bounds in nfs_fh_to_dentry+0x4ad/0x6d0 fs/nfs/
+export.c:70
+Read of size 2 at addr ffff888100b9ffd4 by task syz-executor301/755
 
-> of nfs4_set_lease_period() -- it makes more sense to do that once, inside
-> that function (using mul_u32_u32(), as it produces a better code on 32-bit
-> x86 arch), also checking for an overflow there and returning -ERANGE if it
-> does happen (we're also making that function *int* instead of *void* and
-> adding the result checks to its callers)...
-> 
-> Found by Linux Verification Center (linuxtesting.org) with the Svace static
-> analysis tool.
-> 
-> Signed-off-by: Sergey Shtylyov <s.shtylyov@omp.ru>
-> Cc: stable@vger.kernel.org
+CPU: 1 PID: 755 Comm: syz-executor301 Tainted: G        W
+5.10.0 #1
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS
+1.13.0-1ubuntu1.1 04/01/2014
+Call Trace:
+  __dump_stack lib/dump_stack.c:82 [inline]
+  dump_stack+0x107/0x167 lib/dump_stack.c:123
+  print_address_description.constprop.0+0x1e/0x280 mm/kasan/report.c:400
+  __kasan_report.cold+0x6c/0x84 mm/kasan/report.c:560
+  kasan_report+0x3a/0x50 mm/kasan/report.c:585
+  nfs_fh_to_dentry+0x4ad/0x6d0 fs/nfs/export.c:70
+  exportfs_decode_fh_raw+0x128/0x680 fs/exportfs/expfs.c:436
+  exportfs_decode_fh+0x3d/0x90 fs/exportfs/expfs.c:575
+  do_handle_to_path fs/fhandle.c:152 [inline]
+  handle_to_path fs/fhandle.c:207 [inline]
+  do_handle_open+0x2c3/0x8d0 fs/fhandle.c:223
+  do_syscall_64+0x33/0x40 arch/x86/entry/common.c:46
+  entry_SYSCALL_64_after_hwframe+0x67/0xd1
+==================================================================
 
-[...]
+V2:
+- Fix mistake: add back server_fh initialization and move len initialization
+  bellow user input size checking.
 
-> Index: linux-nfs/fs/nfs/nfs4renewd.c
-> ===================================================================
-> --- linux-nfs.orig/fs/nfs/nfs4renewd.c
-> +++ linux-nfs/fs/nfs/nfs4renewd.c
-> @@ -137,15 +137,22 @@ nfs4_kill_renewd(struct nfs_client *clp)
->   * nfs4_set_lease_period - Sets the lease period on a nfs_client
->   *
->   * @clp: pointer to nfs_client
-> - * @lease: new value for lease period
-> + * @period: new value for lease period (in seconds)
->   */
-> -void nfs4_set_lease_period(struct nfs_client *clp,
-> -		unsigned long lease)
-> +int nfs4_set_lease_period(struct nfs_client *clp, u32 period)
->  {
-> +	u64 result = mul_u32_u32(period, HZ);
-> +	unsigned long lease = result;
-> +
-> +	/* First see if period * HZ actually fits into unsigned long... */
-> +	if (result > ULONG_MAX)
-> +		return -ERANGE;
-> +
+Signed-off-by: zhangjian <zhangjian496@huawei.com>
+---
+ fs/nfs/export.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-   Now that I have discovered check_mul_overflow(), I think I'll have to
-rewrite this code using it instead...
-
-[...]
-
-MBR, Sergey
+diff --git a/fs/nfs/export.c b/fs/nfs/export.c
+index e9c233b6f..565e01788 100644
+--- a/fs/nfs/export.c
++++ b/fs/nfs/export.c
+@@ -66,14 +66,21 @@ nfs_fh_to_dentry(struct super_block *sb, struct fid *fid,
+ {
+ 	struct nfs_fattr *fattr = NULL;
+ 	struct nfs_fh *server_fh = nfs_exp_embedfh(fid->raw);
+-	size_t fh_size = offsetof(struct nfs_fh, data) + server_fh->size;
++	size_t fh_size;
+ 	const struct nfs_rpc_ops *rpc_ops;
+ 	struct dentry *dentry;
+ 	struct inode *inode;
+-	int len = EMBED_FH_OFF + XDR_QUADLEN(fh_size);
++	int len;
+ 	u32 *p = fid->raw;
+ 	int ret;
+ 
++	/* check for user input size */
++	if ((char*)server_fh <= (char*)p || (int)((u32*)server_fh - (u32*)p + 1) < fh_len)
++		return ERR_PTR(-EINVAL);
++
++	fh_size = offsetof(struct nfs_fh, data) + server_fh->size;
++	len = EMBED_FH_OFF + XDR_QUADLEN(fh_size);
++
+ 	/* NULL translates to ESTALE */
+ 	if (fh_len < len || fh_type != len)
+ 		return NULL;
+-- 
+2.33.0
 
