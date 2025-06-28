@@ -1,36 +1,36 @@
-Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
+Received: from szxga05-in.huawei.com (szxga05-in.huawei.com [45.249.212.191])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 681FE1DA5F
-	for <linux-nfs@vger.kernel.org>; Sat, 28 Jun 2025 04:16:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54DB01DA5F
+	for <linux-nfs@vger.kernel.org>; Sat, 28 Jun 2025 04:17:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.191
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1751084222; cv=none; b=X5IBh1lxC2U+F8GDUxUxZ2/n7Ga/XOraO9aFAQeHWEbHlrjcY+pjuzkjm1fXqcs2J3Efvm7GDQ+jAeyfvT0t5eX8pnA8INroo8tv9D0/AzNAtHnWpZvhWnHyVgvnXUj5XhZUlgkO/mHM6AqhhR3LcrQXLuwKFSU6ihO56m0PLvA=
+	t=1751084269; cv=none; b=Z4T1mtkqyW+Fjx3nBwULiQopC2F1Us3kIxp2BrLV33zfQjJiG7c/DkQ1hhV850TjGewoCY91nelDUm0clomD1d3vuwYYZ7giirckBAOhrwbKUbhZRK56gUWN9yi2AkYP9BPRhG1mkITdDhR7aLjEyG50dTgLNUC2Imud5slGTK4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1751084222; c=relaxed/simple;
+	s=arc-20240116; t=1751084269; c=relaxed/simple;
 	bh=ux8qX3IPfPXXnlLSY//+ZKObFWX9eVVOV3/woEl1G5A=;
-	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=HVPoTky5NvsM1LtTNCztW+afONXN/DRCc2uXkj8K+PEz+AX09P8gISVvOh/7u8ZoSZh0NdWwrDfIYBrGrS8hzyYsz3VjS2WhvMe5UyHNeNErmBlA/UCXUq369cQEcSBBUFpXx5SFFsLRfrxU2EcoeVvOihq83ls0IVrc3XjqnmQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.187
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=qR1dQaykvXHW1E/Utf2jXfDjIevBUP5pDAYwxU0zPy41zqKiHLAXtWTyG5N0jxounpg9y3of+7h8dDuG4chsWISw6NfibpcsLeJvnhJ69df3UORrGZ5Upicg7mIdyAqpjN1I+OqwuYT71eGJeihQWsfH/RKYeTe6Anxv8oR4gK4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; arc=none smtp.client-ip=45.249.212.191
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
-Received: from mail.maildlp.com (unknown [172.19.163.48])
-	by szxga01-in.huawei.com (SkyGuard) with ESMTP id 4bTfFY2M0yz13MbD;
-	Sat, 28 Jun 2025 12:14:25 +0800 (CST)
+Received: from mail.maildlp.com (unknown [172.19.88.234])
+	by szxga05-in.huawei.com (SkyGuard) with ESMTP id 4bTfGN3SyGz1W3RM;
+	Sat, 28 Jun 2025 12:15:08 +0800 (CST)
 Received: from kwepemp200004.china.huawei.com (unknown [7.202.195.99])
-	by mail.maildlp.com (Postfix) with ESMTPS id 93538180080;
-	Sat, 28 Jun 2025 12:16:49 +0800 (CST)
+	by mail.maildlp.com (Postfix) with ESMTPS id 95F2F140109;
+	Sat, 28 Jun 2025 12:17:37 +0800 (CST)
 Received: from huawei.com (10.175.124.27) by kwepemp200004.china.huawei.com
  (7.202.195.99) with Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Sat, 28 Jun
- 2025 12:16:48 +0800
+ 2025 12:17:36 +0800
 From: zhangjian <zhangjian496@huawei.com>
 To: <steved@redhat.com>, <joannelkoong@gmail.com>, <chuck.lever@oracle.com>,
 	<djwong@kernel.org>, <jlayton@kernel.org>, <okorniev@redhat.com>,
 	<lilingfeng3@huawei.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfs:check for user input filehandle size
-Date: Sun, 29 Jun 2025 05:30:17 +0800
-Message-ID: <20250628213017.2764770-1-zhangjian496@huawei.com>
+Subject: [PATCH V2] nfs:check for user input filehandle size
+Date: Sun, 29 Jun 2025 05:31:07 +0800
+Message-ID: <20250628213107.2765337-1-zhangjian496@huawei.com>
 X-Mailer: git-send-email 2.33.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
