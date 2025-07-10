@@ -1,47 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CFBE2203710;
-	Thu, 10 Jul 2025 07:32:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8FDE1227EB9
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2025 07:32:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1752132725; cv=none; b=ZeuoCD2akzoHC9APYSJq6yg4WNAZV/bIC36+pcF2xL9BP2RRlsvF00STUdB+lGJLRGCc11JZsuYgm+AlPys4zDeMBkKDmUFv/TzdtJDiJxhXtXek2584gLX+aikUucjPptdk9fbyilTl5HZJqG7mzbHACbsM0o75y+S6IIb2L+Y=
+	t=1752132776; cv=none; b=Y0aOKQhNPpRwmRST/RipNn4/UYxl5esKN/FCRFnBvULHFqyYN3Nleln790UcV3miiiwzw+2gDPmDWCEw6ZphxTdUHh07JA+6GCarPavSJsF4819Hn9ZPcXb8kPK0wRaXpASZZrcyiwMZtmtILHXYtNzoqDe1QYOxbIHnB3NNWNk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1752132725; c=relaxed/simple;
-	bh=Kt8CDH06LTAvD+rZvv3I8+BRWAIdHXw5BhgEf1OfxjI=;
+	s=arc-20240116; t=1752132776; c=relaxed/simple;
+	bh=qGPmS772EKrRnmCDTYrkdurlEKkSAXM7x9BAs9fC7YM=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=STho2gKC3AlgOMrk/LJfSHBkDz9UD9Ph2Jom3gMjuv6Qk0eQTWJqvGRBQYNWGT4gcq1v0V1YWMQDEMEA55lLqhSH771DO5L3z4V4HYjN1sfYY7AyAD3UJuV8hlK+1pQxpeSAZYXadBKkPUczaJPkasu2usI/7RWoVurzl4mptPA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=uM86voJZ; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=YGxic7Y78vHA2GACnDt+KIu6WHL8BeuzO0cDJr+6cfywxwNvAI/WlFIStQjIPB0fmPz/9korb38aZpDw+t8VzIf5YftnoiGZtrDY7UWravYNhuxnlSotCKu+hZPXQZbJJelwoM0hFn3pHic764ZPXe5DUm6hsR0y3vD/M/1D63o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dfLnXFOy; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="uM86voJZ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 182F2C4CEE3;
-	Thu, 10 Jul 2025 07:32:04 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dfLnXFOy"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EF0B2C4CEF4;
+	Thu, 10 Jul 2025 07:32:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1752132725;
-	bh=Kt8CDH06LTAvD+rZvv3I8+BRWAIdHXw5BhgEf1OfxjI=;
+	s=k20201202; t=1752132776;
+	bh=qGPmS772EKrRnmCDTYrkdurlEKkSAXM7x9BAs9fC7YM=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=uM86voJZO0HZZdICeHvK3HTTyV39spEV2FWYVY9Lqh58GmOW70Inkzy7zM58U5d4K
-	 zmCpsnQU0Mw0cdlChrtvP+5E/uTtXhFR4q72obbTDWrX7BGiJZ4Bk8r6EvXMy1YlCW
-	 mEv6ixE3V5zygpA4TAS7980JtkFru52m1+GQQ+8JaYBPQdPxrYzXAsYz7H/2I4g73b
-	 Ac+uOXpz/dkEIzcnnYyGwIxM79BQt68gWH6lh3iFJ3zjFxM38R6VGDtL0TNHP4ZPva
-	 vhXpLag+J30CyEPSYvHDkyJoJWFSOS3svssNkN/Al2XBwQPKUfxKWR0SiAzbkQR+va
-	 Ozp97paIdwGJA==
-Date: Thu, 10 Jul 2025 03:32:03 -0400
+	b=dfLnXFOy5oB6D+YRC5LXVp4DjavFQw04/UijHSA5R899PtGsuaLww87gLzM21oPEo
+	 kzhxAbecN0Gqu2pNu0Ah9/HDWGtRpQG9eBnfDJemHnZ5ZnlaCK3x7xFBeJ2USDt9TO
+	 C5SrVkTJ0VXMxdUCuUoIhqx5r2ymLhtWeBbFOVLkdSiNTjKrf4TVFnBIoFNivIv2CS
+	 DNdMzxseLl5ZoVM9e0TSqSZeelBj74dZQ9S2ARwkvAG6a2kxcDBbFvNERLqu98Lyd1
+	 1zq5/pVclBoUXIpDZicu0KWOuNUCeEsuv+sORIu8q4/Et2e8KQNHI0NMjyKIEW5gdL
+	 DbG3qdgKkhvuQ==
+Date: Thu, 10 Jul 2025 03:32:54 -0400
 From: Mike Snitzer <snitzer@kernel.org>
 To: Christoph Hellwig <hch@infradead.org>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [RFC PATCH v2 4/8] lib/iov_iter: remove piecewise bvec length
- checking in iov_iter_aligned_bvec
-Message-ID: <aG9scyDn-rxDnwn3@kernel.org>
-References: <20250708160619.64800-1-snitzer@kernel.org>
- <20250708160619.64800-5-snitzer@kernel.org>
- <aG9qtlHCmSztOsFo@infradead.org>
+Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+	linux-nfs@vger.kernel.org, Mike Snitzer <snitzer@hammerspace.com>
+Subject: Re: [RFC PATCH 5/6] nfs/localio: refactor iocb initialization
+Message-ID: <aG9splp24KjMMZES@kernel.org>
+References: <20250708162047.65017-1-snitzer@kernel.org>
+ <20250708162047.65017-6-snitzer@kernel.org>
+ <aG9qd8hwXpUlaqTS@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -50,18 +44,15 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <aG9qtlHCmSztOsFo@infradead.org>
+In-Reply-To: <aG9qd8hwXpUlaqTS@infradead.org>
 
-On Thu, Jul 10, 2025 at 12:24:38AM -0700, Christoph Hellwig wrote:
-> You'll really need to send this to the VFS mainers and especially
-> Al.  Also the best way to make things stand out is to either send
-> them separastely or the beginning of the series.
+On Thu, Jul 10, 2025 at 12:23:35AM -0700, Christoph Hellwig wrote:
+> > +	// FIXME: would do well to allocate memory based on NUMA node.
+> > +	iocb->bvec = kmalloc_array(hdr->page_array.npages,
+> > +				   sizeof(struct bio_vec), flags);
 > 
+> I don't think that's a "FIXME".  Either do it or leave it, but given
+> that memory is allocated on the local node by default I can't see why
+> that would be useful here for a short lived allocation. 
 
-Yeah, I had the linus-fsdevel typo which didn't help too.
-
-The first time I posted this series I did a better job of sending this
-patch to Andrew and Al iirc.  In any case, I can pull this fix out to
-front of series.  But also iov_iter_aligned_iovec() appear to have the
-same issue.
-
+Yeah, meant to remove that FIXME.. will do for v3.
