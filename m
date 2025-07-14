@@ -1,60 +1,73 @@
 Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9143A34545;
-	Mon, 14 Jul 2025 06:22:00 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3FDFB126F0A
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Jul 2025 06:24:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1752474122; cv=none; b=hC4HU9MNbksoi4mrC1VrSvvAPeUfmCPn39XB93f/Sio5nxn0QjCQQT6XyvgHu3Kq69P1336LVTlKhsTWIyAhFA4v0DlKgWgD2s3zrOif/sfv0Q4/n+41sVMrc7nBfG/SwQ2aEmzpJN8Rbdy1lAkLWafJIxhgWtDdcrsVlYc0SFI=
+	t=1752474297; cv=none; b=UfLyglTeAQtWRLPvTljrwCrSG7ybDQuoYft54IySu2Bza+WrVw6Ao844Rn8ieNXFtnMVn58cbFWBdbk4wuCULqJs8I1g9dCV2MGtqcO9sUSQnsQVWUBUaoGnVcji90I3w0yVQW5yoaF2WYabUJqH3Vlp8n1G491H71/DeKHfuOs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1752474122; c=relaxed/simple;
-	bh=htCJLYk97Hmo5KbFSpDERHO7vHcVVzOLr2OBK0FK8iY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=eZITas0GWFNirI1q5p78cS0Okgm4oVQR0Yc4Dx1ifnqiEaLUG6GhMtht60ocpr0PqcVoGU94Ct++b9NVq5ZmK83EQWJhVy7QAM0kNip2hUFBbHwWd8/W2QQozmcOFGwCd616fSipqByaQ1mQg6Y7TNetFJ7HYQuPkHdnBE4PGLo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=TAfp2lmk; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
+	s=arc-20240116; t=1752474297; c=relaxed/simple;
+	bh=W1kGcjE0oK8iie+UbnuO3lAmG7s0FTItfeCIP7xieA8=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=CWekEIxUXUHA8okTiF0JXVFyNHmb/LR00x8o3SWelFSXgH6U6PybTqcdwob/Cj8i1djrmiJem0/jpe42j3biJ2SJ+24MfsW5iZniC2y/zTwt276gBLAIZgHjHlUylLi7OnVBizpnqc+BqC7HeLgkTG31XQ3UVaefaCkc8kV8Dt8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=lst.de; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=xMdBQt/6; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=lst.de
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="TAfp2lmk"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="xMdBQt/6"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=htCJLYk97Hmo5KbFSpDERHO7vHcVVzOLr2OBK0FK8iY=; b=TAfp2lmklI8o+3A0unnD1pQNSq
-	8lqFPrx96zjaQF83ONVM/p9+UaCih6ANgYe246IcACJc3qxIsOOItURucS/OESGPaCs4kxllMuiR9
-	RJlQm1Hz8wunee2AtW/lallZC0wLCdUTWUYrumZtO305TTAzrfSo7vL0FSm+qRFYNp2krOzHJb1Tz
-	A2zxy4McZw8dd+6q92P7gqNgIE9w1Y0+9h1pWYSmIJEArk7MZplrw2xECsM+5RqwB0kMCab5ORMnt
-	5u/HEXUvoh47RRyaIqR1x+1Ey6cAgvbFOuwAGye2zPcrUY2lY0Pk6CSaKaRb5L8CXTgKOPZmjw8Yg
-	r6NY4aFA==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1ubCZc-00000001KgQ-0sd3;
-	Mon, 14 Jul 2025 06:22:00 +0000
-Date: Sun, 13 Jul 2025 23:22:00 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: trondmy@kernel.org
-Cc: linux-nfs@vger.kernel.org, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org
-Subject: Re: [RFC PATCH 0/3] Initial NFS client support for RWF_DONTCACHE
-Message-ID: <aHSiCH2kQllaH9dr@infradead.org>
-References: <cover.1745381692.git.trond.myklebust@hammerspace.com>
+	d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+	Content-Type:MIME-Version:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
+	Content-ID:Content-Description:In-Reply-To:References;
+	bh=dXYXZWXU1Ez/sF/9rdydTqWoV4UTTxn4NZLi3hNs+0o=; b=xMdBQt/6KmJzQPI2pSXuu3Epya
+	jzG44eBfx5JNBicjbAqIwWUy0xLGOE8SZRW+ok5S0njV5zIsADDqxfEhChgqHdd+AzF4LrsAsGJKG
+	sapDen5Nx8aLDShV0hKEoTKZcqYx7uqgaFznrqpuqjXc9mOhW3VEcczMySdqnLyAHmJ1146d6RQtA
+	LdG0BjHQFzkyy0HiJMbnNaykNA06dlKf2kqlsByjp3G3F2mL4fjNXJAZYHgchixdytkr5WxsNo16Q
+	mtjdo6zrbIhlwxZjXcXbkd+joDdak0pwtfBsv/9Vc270qrcs6WkyJqbTuQmTbavrIkRhL6x3TxNYw
+	4VsopDzA==;
+Received: from 2a02-8389-2341-5b80-d601-7564-c2e0-491c.cable.dynamic.v6.surfer.at ([2a02:8389:2341:5b80:d601:7564:c2e0:491c] helo=localhost)
+	by bombadil.infradead.org with esmtpsa (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1ubCcQ-00000001LAt-1fdm;
+	Mon, 14 Jul 2025 06:24:54 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: trondmy@kernel.org,
+	anna@kernel.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: drop __exit from nfs_exit_keyring
+Date: Mon, 14 Jul 2025 08:24:50 +0200
+Message-ID: <20250714062450.1468117-1-hch@lst.de>
+X-Mailer: git-send-email 2.47.2
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <cover.1745381692.git.trond.myklebust@hammerspace.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-I just noticed this RFC series in the nfs testing tree.
+Otherwise built-in NFS can lead to sectіon mismatches.
 
-Given that is not in linux-next I guess it really just is for testing,
-but if you are interestested in RWF_DONTCACHE support for NFS, please
-integrated with the series at:
+Fixes: 2c285621176c ("nfs: create a kernel keyring")
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/inode.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-https://lore.kernel.org/linux-fsdevel/20250710101404.362146-1-chentaotao@didiglobal.com/#r
-
-That adds full dontcache support for the write_begin based file systems.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 60fa0c8ff04e..338ef77ae423 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -2663,7 +2663,7 @@ static int __init nfs_init_keyring(void)
+ 	return PTR_ERR_OR_ZERO(nfs_keyring);
+ }
+ 
+-static void __exit nfs_exit_keyring(void)
++static void nfs_exit_keyring(void)
+ {
+ 	key_put(nfs_keyring);
+ }
+-- 
+2.47.2
 
