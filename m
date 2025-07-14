@@ -1,32 +1,32 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96DDB24887E
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Jul 2025 17:33:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C6412586EF;
+	Mon, 14 Jul 2025 17:46:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1752514419; cv=none; b=X45UvZ6YkMVn7QE7Pg0em+cwzeHzmKccM2YxYIbwyE2srxiOGPh8BiZc6KSCQKVdvJghYuY7bdXPp5kBk4JtyVWjF1bVsmRz1qcZeFYLk/S0neDEAxk+ybduUDw2C7as4Y9JjQkaiBof4yP4ot3PeoRdzMWKC9PBSaAmht7eeMs=
+	t=1752515194; cv=none; b=pUOUEvf+vK35yTdF7P6jWcoazrhTlyD+tCZWmeDkvsHd0K3f0rLXetCb0SQK14rOE6r9D8Cb9xyF6c/D92S/s9sj4pFKCOWsEfRpJd5rwW2KFVeLsKCC8SzOsh/um0vjgMcbe/J4fRNkMPF0k30fuT0ChcjVabX5gc0wjElXj2w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1752514419; c=relaxed/simple;
-	bh=jO1O3Cx7LnQFLAZ5dri49BbmBy9JcrK0ABz+GxGJEuo=;
+	s=arc-20240116; t=1752515194; c=relaxed/simple;
+	bh=5PE6/IBiSWRv1ULmZKm7V6xmwg8/qTq1E3BHbh9lJX0=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=XrJ8h/heknhIc1u4hvOQS67Cjifcj9FD8Wh6si4a7u+X+IhEImEiQKvhboKXz8boJAz9zUqpO4HWRrQN+CMcbFkYZ9/HjGp0qMxvN5zUC3dMZANpG0U7qkIhBvwp8H6sDiXSwSFlp+apIcHDEBh/KmHtRKekQx2uawUbRjoAWdQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jOOSjnzF; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=QEXlFZ9Y8+w7PK/1tR9hTvtHLd5/xHmb9+8sNqBeRGUErpI9aAXu0mGqjO/3jIKw/x5ADW9rQuONv5f+eEkpqEqCR5gbzaPlkPYzWHwqJVNTXsgVxm7kJDUv1rQHvkctDcw3wzIXx/TFyK3fBhUSuM8bUu1Akdmw3yKTWMeDtmc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CIhfGF/W; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jOOSjnzF"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E8451C4CEED;
-	Mon, 14 Jul 2025 17:33:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CIhfGF/W"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 89375C4CEED;
+	Mon, 14 Jul 2025 17:46:33 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1752514419;
-	bh=jO1O3Cx7LnQFLAZ5dri49BbmBy9JcrK0ABz+GxGJEuo=;
+	s=k20201202; t=1752515193;
+	bh=5PE6/IBiSWRv1ULmZKm7V6xmwg8/qTq1E3BHbh9lJX0=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=jOOSjnzFZofw2LW358ycXfRPOCQNnIQlea/OvNypKNkkLhO4uBCl8bkrYuX0fvb87
-	 kYuFkbJPbhO8+U3da+UZXZlBbVfjVy5Z2iX6hamF+a+ESIz9iABKaOaNSiwlMnECeN
-	 TQBzBfHK7kXiDZwOndpHvIIDzW9rCeGOaRL0Tla6RczlBieyJZRqRK1rEmC8tNOsHs
-	 DMRXo/lh6lqBlK+4JdCfQFJ0Woma3GW2AWTZa0y3tSqjv9xefOUgmuY4XJgLysOl9d
-	 3FfPW5RtRQIWXT1peYgqYKFFOwrbTh+icFKVv0AMYbUczXsPCOsq0WhyINPXfr1DLe
-	 17ARycdwLAPgw==
-Date: Mon, 14 Jul 2025 13:33:37 -0400
+	b=CIhfGF/WcV3IvhroaBY+lao5QWTelztEUk92CiJ4dfA/wJHxacVJU16Kmo7jgrAS+
+	 Xd42ZyElE+lo/Zi6YcG1FCTQ++qrzuYyZ/DSV8zCmFWS+FAcIJpDXo4FcENO6X0+jH
+	 2c/EK8ZpUAZJvo8d9n+9Jut3epql7gBgzA9L95HDxHyKIcDqQe+LdUEnjMskVQiYe6
+	 JVJ9MZdG63hm0xa2my2l/+fNbuUN0wATZ6EJtFQZU78ta8R5QkMwtIpLmDHGGE7Pxe
+	 zL+wR7jEySuSDs8xtB/fQ5imH4nP9DN9SFJlVw2qKrwF7h0bfiPFOFz50AOVJq+GwT
+	 5W8J6DiH+ufpA==
+Date: Mon, 14 Jul 2025 13:46:32 -0400
 From: Mike Snitzer <snitzer@kernel.org>
 To: Christoph Hellwig <hch@infradead.org>
 Cc: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>,
@@ -35,13 +35,13 @@ Cc: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>,
 	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
 	Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
-	linus-fsdevel@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [RFC PATCH v2 6/8] NFSD: add io_cache_read controls to debugfs
- interface
-Message-ID: <aHU_cdF5ifGttENy@kernel.org>
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [RFC PATCH v2 3/8] NFSD: filecache: add STATX_DIOALIGN and
+ STATX_DIO_READ_ALIGN support
+Message-ID: <aHVCeJ3_YbSheTr8@kernel.org>
 References: <20250708160619.64800-1-snitzer@kernel.org>
- <20250708160619.64800-7-snitzer@kernel.org>
- <aG9wH973C-8W2YWw@infradead.org>
+ <20250708160619.64800-4-snitzer@kernel.org>
+ <aG9vsPCSv0nQ5Bk8@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -50,41 +50,24 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <aG9wH973C-8W2YWw@infradead.org>
+In-Reply-To: <aG9vsPCSv0nQ5Bk8@infradead.org>
 
-On Thu, Jul 10, 2025 at 12:47:43AM -0700, Christoph Hellwig wrote:
-> On Tue, Jul 08, 2025 at 12:06:17PM -0400, Mike Snitzer wrote:
-> > Add 'io_cache_read' to NFSD's debugfs interface so that: Any data
-> > read by NFSD will either be:
-> > - cached using page cache (NFSD_IO_BUFFERED=0)
-> > - cached but removed from the page cache upon completion
-> >   (NFSD_IO_DONTCACHE=1).
-> > - not cached (NFSD_IO_DIRECT=2)
-> > 
-> > io_cache_read is 0 by default.  It may be set by writing to:
-> >   /sys/kernel/debug/nfsd/io_cache_read
-> > 
-> > If NFSD_IO_DONTCACHE is specified using 1, FOP_DONTCACHE must be
-> > advertised as supported by the underlying filesystem (e.g. XFS),
-> > otherwise all IO flagged with RWF_DONTCACHE will fail with
-> > -EOPNOTSUPP.
-> > 
-> > If NFSD_IO_DIRECT is specified using 2, the IO must be aligned
-> > relative to the underlying block device's logical_block_size. Also the
-> > memory buffer used to store the read must be aligned relative to the
-> > underlying block device's dma_alignment.
+On Thu, Jul 10, 2025 at 12:45:52AM -0700, Christoph Hellwig wrote:
+> On Tue, Jul 08, 2025 at 12:06:14PM -0400, Mike Snitzer wrote:
+> > Use STATX_DIOALIGN and STATX_DIO_READ_ALIGN to get and store DIO
+> > alignment attributes from underlying filesystem in associated
+> > nfsd_file.  This is done when the nfsd_file is first opened for
+> > a regular file.
 > 
-> Does this also need some kind of check that direct I/O is supported
-> at all by the file system / fops instance?
+> Just as a little warning: these are unfortunately only supported by
+> very few file systems right now.  For someone with a little bit of
+> time on their hand it would be nice to do a pass to set them for
+> all remaining direct I/O supporting file systems, which is only about
+> a dozen anyway.
 
-Long-term: definitely.  Near-term: not going to add it because it'd
-have to be checked on a per-IO basis (because this debugfs-based
-interface is a global setting so we don't have a specific export to
-check at the time the request to use O_DIRECT is made via debugfs).
-
-Once we graduate to having a per-export control interface in NFSD we
-can then verify export's underlying filesystem supports O_DIRECT.
-
-Hope this makes sense, thanks.
+That's a good point.  Meanwhile, I'll be sure to have the NFSD code
+(and NFS LOCALIO code later) be more defensive about the possibility
+of these attributes being 0 (due to lack of underlying filesystem
+support).
 
 Mike
