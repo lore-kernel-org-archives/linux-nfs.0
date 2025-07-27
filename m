@@ -1,160 +1,102 @@
-Received: from neil.brown.name (neil.brown.name [103.29.64.221])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0DCA20E6
-	for <linux-nfs@vger.kernel.org>; Sun, 27 Jul 2025 04:51:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.29.64.221
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CA7220B7FE
+	for <linux-nfs@vger.kernel.org>; Sun, 27 Jul 2025 12:29:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1753591865; cv=none; b=IowiG/VN+JOdhI9lhLjsBqifb0b45nsxi1b+zN5kUzLfOh/S0/eE0MPoBI6Cp47qeUxQwBZHV6vVD8MtwPcN+1Csw1pszC2TfDaGCmrtOAoxRYjIP65f3fe0AXmuRuVltcp3PMAB6B44HOGKwzNpcTzKFfAH0HGofhJPbdzBU2M=
+	t=1753619382; cv=none; b=m6UpCTxIcEdaAAYMCC/dthINB6g9H0iUiHIrHMVGRxgIr1lmPmqT7KHkl7Ngk3F7Mf5FRXv5HbP9JR9mN5BqDEkFcPj1niaw/lUInx3Fzy8z4pzdgNMrg7nl+M0YkMbBmRLEgb9Hql3pykIpBix2pgCWBt2fq1rpXjZ71UoXr2Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1753591865; c=relaxed/simple;
-	bh=FaElcyjfIxJBkb7B15WeFUn8G6/fTpZTiAhPSM6CWjM=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=ZCpsaa5QPcwYF94eQkjtubNGwPXheeYWhH1uHrupGKL8raahV6VkkNS9G4sJqW/5KQXobMuVllw3yhLH7HTi2W9GZL1bByZ91Fquddy1TLyX9A+DqVrifTeQFmHjidpK8mwM2ExCiMNS2D0gxktdmIPynSklgUIqaFJUGA18Mwg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name; spf=pass smtp.mailfrom=neil.brown.name; arc=none smtp.client-ip=103.29.64.221
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=neil.brown.name
-Received: from 196.186.233.220.static.exetel.com.au ([220.233.186.196] helo=home.neil.brown.name)
-	by neil.brown.name with esmtp (Exim 4.95)
-	(envelope-from <mr@neil.brown.name>)
-	id 1uftLU-003aFd-2A;
-	Sun, 27 Jul 2025 04:50:49 +0000
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	s=arc-20240116; t=1753619382; c=relaxed/simple;
+	bh=9RgZ4c0A1jwhqbJfZO4K5K2jFbG85pykJdcR+6p1O/w=;
+	h=Message-ID:Date:MIME-Version:From:Subject:To:Cc:Content-Type; b=Q40UCudBLMG8h77gQiA/eWBA+p1JuSB6hj3NpB6izEChCcvv/Szm40w4NjcV005RaZYhr4l3n9UGomd8Kl5hjFzEE8j5dAx0y6tc96DRBdCoput95Qv0O03xpCycI8nBBijov5HiF0qn3hGIBbHY2IbNIkpnLx8mFcsSwqURc0Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=XCnDFuMX; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="XCnDFuMX"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1753619379;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=xTtOU5sBjJweaBmskNdX/Q2AVfNzl4oGFuC+RoKRN0A=;
+	b=XCnDFuMXP780vQ8BZdwuggq6OmwuNwNMWEFgXzhj1VScKkTRfo+Js76K/Fy9Xfha+1ji97
+	UEQHa0gGr5wRejqaJMa3nKGe+JnC91ZHssaUbJF1XMl29GTErdygNpcnXk7Y6LzTA2lWzY
+	C8yFoM+C7fk8e3QpmPEKjPtj0ho+wpI=
+Received: from mail-qv1-f69.google.com (mail-qv1-f69.google.com
+ [209.85.219.69]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-657-ipy_G77SOBWeGL371axe8g-1; Sun, 27 Jul 2025 08:29:37 -0400
+X-MC-Unique: ipy_G77SOBWeGL371axe8g-1
+X-Mimecast-MFC-AGG-ID: ipy_G77SOBWeGL371axe8g_1753619377
+Received: by mail-qv1-f69.google.com with SMTP id 6a1803df08f44-70744318bdfso11303696d6.3
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Jul 2025 05:29:37 -0700 (PDT)
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1753619377; x=1754224177;
+        h=content-transfer-encoding:content-language:cc:to:subject:from
+         :user-agent:mime-version:date:message-id:x-gm-message-state:from:to
+         :cc:subject:date:message-id:reply-to;
+        bh=xTtOU5sBjJweaBmskNdX/Q2AVfNzl4oGFuC+RoKRN0A=;
+        b=W0s2o8trX5F64g2/cV3fvNac43WwiEIESqcU/93Yi3GDN2W+8Fqy5G+0Aw54BOvZCN
+         H+IhJ2UeusjNsigzJB2eI+9zmK0FN57Y3LS/biU19AOyAvGBs2s2JRYHKCls8EfFXocC
+         UbKUBCtxHPu+aInYcUX2mpIXTdcLZFNzcjRZoUqpatgPakqPWfQlEQlAEvjC/X9wTh1k
+         DE6Ky/JgmK2is8wx+6PiRB8lOAYFonCY7MiPXQkXaNmfHN3w/5lqMH+nsNvU9qQ+zmOV
+         yVhF+BkNnRAmV4AD9BBjcx7UOxBkvvmUqlQnLt/NgTLIA28oCBcV5qBF9T8eLsbWcxa8
+         8tOw==
+X-Gm-Message-State: AOJu0Yy9WAyzHo204+N4Rq2rWLbWnNZkfkYayXfqmLBs6Og91jStnoyN
+	499xGPT817SbpEu7RwG2E0UiAF7iTaHhRmFEZVygS2f2Jfpo4vo1xKqWovjv+YEbFqE5z9lopjG
+	le9ZrSDyWZSFRXq86Uj2Xd1XB9VhfxrT/Jo1Jnh8p4oyiXhLU9iulzE4ugqGBFQ==
+X-Gm-Gg: ASbGncsjfapsnlPf7mJ8dDpqqTLwghlNUN7HC1WJBIImSSYK9wlbCMcvl2NiR7WPqFb
+	FjAE4egaNCIrHn9hBdhbk3tIoWSwCVSRm43TzrzbuHlVZf8IMqYIHd62bMSVb3NJWc2vR3SV381
+	p9gKiORJvCWONw56xRvsLeu52vUqACAHQTk060ufXdDg9H/buQ+RpQWBoQ/iBFZXIJ/pNtAgSRs
+	FMEfykvKqNztoQ3Tw2MVwkYVF4MOFoY0T/dt/SytdUB+QsajyrkCj7Z2sWeRyzMWHhmYVHoccZH
+	wOWXd2xh0+60u0dOG89oW8IiRQ2ucC9D6cUrPAH/
+X-Received: by 2002:a05:6214:300c:b0:6e8:ddf6:d11e with SMTP id 6a1803df08f44-707205413ddmr123821906d6.21.1753619377050;
+        Sun, 27 Jul 2025 05:29:37 -0700 (PDT)
+X-Google-Smtp-Source: AGHT+IHkb5z1if33aqITQk0CzAjrA6ko0KBrEMPbJD4mvgvUc48qeCyPSh6JiCuSsCL3yGB+F1+WTw==
+X-Received: by 2002:a05:6214:300c:b0:6e8:ddf6:d11e with SMTP id 6a1803df08f44-707205413ddmr123821566d6.21.1753619376643;
+        Sun, 27 Jul 2025 05:29:36 -0700 (PDT)
+Received: from [172.31.1.136] ([70.105.240.227])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-70729ad99d0sm19894126d6.46.2025.07.27.05.29.35
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sun, 27 Jul 2025 05:29:35 -0700 (PDT)
+Message-ID: <b553cc5a-46eb-453b-80f0-cfe69ccb7b21@redhat.com>
+Date: Sun, 27 Jul 2025 08:29:34 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: "NeilBrown" <neil@brown.name>
-To: "Harshvardhan Jha" <harshvardhan.j.jha@oracle.com>
-Cc: "Mark Brown" <broonie@kernel.org>, trondmy@kernel.org,
- linux-nfs@vger.kernel.org, Aishwarya.TCV@arm.com, ltp@lists.linux.it,
- "Chuck Lever" <chuck.lever@oracle.com>, "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Anna Schumaker" <anna@kernel.org>
-Subject: Re: [PATCH 1/2] SUNRPC: Don't allow waiting for exiting tasks
-In-reply-to: <c5d1eb2b-2697-4413-983c-0650eab389e9@oracle.com>
-References: <>, <c5d1eb2b-2697-4413-983c-0650eab389e9@oracle.com>
-Date: Sun, 27 Jul 2025 14:50:48 +1000
-Message-id: <175359184844.2234665.17719114991555307336@noble.neil.brown.name>
+User-Agent: Mozilla Thunderbird
+From: Steve Dickson <steved@redhat.com>
+Subject: ANNOUNCE: rpcbind-1.2.8 released.
+To: libtirpc <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Language: en-US
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Fri, 25 Jul 2025, Harshvardhan Jha wrote:
-> On 23/07/25 1:37 PM, NeilBrown wrote:
-> > On Wed, 23 Jul 2025, Harshvardhan Jha wrote:
-> >> On 08/04/25 4:01 PM, Mark Brown wrote:
-> >>> On Fri, Mar 28, 2025 at 01:40:44PM -0400, trondmy@kernel.org wrote:
-> >>>> From: Trond Myklebust <trond.myklebust@hammerspace.com>
-> >>>>
-> >>>> Once a task calls exit_signals() it can no longer be signalled. So do
-> >>>> not allow it to do killable waits.
-> >>> We're seeing the LTP acct02 test failing in kernels with this patch
-> >>> applied, testing on systems with NFS root filesystems:
-> >>>
-> >>> 10271 05:03:09.064993  tst_test.c:1900: TINFO: LTP version: 20250130-1-=
-g60fe84aaf
-> >>> 10272 05:03:09.076425  tst_test.c:1904: TINFO: Tested kernel: 6.15.0-rc=
-1 #1 SMP PREEMPT Sun Apr  6 21:18:14 UTC 2025 aarch64
-> >>> 10273 05:03:09.076733  tst_kconfig.c:88: TINFO: Parsing kernel config '=
-/proc/config.gz'
-> >>> 10274 05:03:09.087803  tst_test.c:1722: TINFO: Overall timeout per run =
-is 0h 01m 30s
-> >>> 10275 05:03:09.088107  tst_kconfig.c:88: TINFO: Parsing kernel config '=
-/proc/config.gz'
-> >>> 10276 05:03:09.093097  acct02.c:63: TINFO: CONFIG_BSD_PROCESS_ACCT_V3=
-=3Dy
-> >>> 10277 05:03:09.093400  acct02.c:240: TINFO: Verifying using 'struct acc=
-t_v3'
-> >>> 10278 05:03:10.053504  <6>[   98.043143] Process accounting resumed
-> >>> 10279 05:03:10.053935  <6>[   98.043143] Process accounting resumed
-> >>> 10280 05:03:10.064653  acct02.c:193: TINFO: =3D=3D entry 1 =3D=3D
-> >>> 10281 05:03:10.064953  acct02.c:84: TINFO: ac_comm !=3D 'acct02_helper'=
- ('acct02')
-> >>> 10282 05:03:10.076029  acct02.c:133: TINFO: ac_exitcode !=3D 32768 (0)
-> >>> 10283 05:03:10.076331  acct02.c:141: TINFO: ac_ppid !=3D 2466 (2461)
-> > It seems that the acct02 process got logged..
-> > Maybe the vfork attempt (trying to run acct02_helper) got half way an
-> > aborted.
-> > It got far enough that accounting got interested.
-> > It didn't get far enough to update the ppid.
-> > I'd be surprised if that were even possible....
-> >
-> > If you would like to help debug this, changing the
-> >
-> > +       if (unlikely(current->flags & PF_EXITING))
-> >
-> > to
-> >
-> > +       if (unlikely(WARN_ON(current->flags & PF_EXITING)))
-> >
-> > would provide stack traces so we can wee where -EINTR is actually being
-> > returned.  That should provide some hints.
-> >
-> > NeilBrown
->=20
-> Hi Neil,
->=20
-> Upon this addition I got this in the logs
+This release contains:
+- Added in compile info to -v flag to show
+   what compile defines are set.
+- A number of systemd updates/bug fixes.
+- A number of manpage updates.
+- Moved rpcbind.lock and default configs to /run instead of /var/run
+- A couple of bug fixes
 
-Thanks for testing.  Was there anything new in the kernel logs?  I was
-expecting a WARNING message followed by a "Call Trace".
+Thanks to Petr Vorel <pvorel@suse.cz> for doing most
+of the work.
 
-If there wasn't, then this patch cannot have caused the problem.
-If there was, then I need to see it.
+Both the tarball and change log can be found at
+   http://sourceforge.net/projects/rpcbind
 
-Thanks,
-NeilBrown
+The git tree was moved to:
+    git://linux-nfs.org/~steved/rpcbind.git
 
+Please send comments/bugs to linux-nfs@vger.kernel.org and/or
+libtirpc-devel@lists.sourceforge.net
 
->=20
-> <<<test_start>>>
-> tag=3Dacct02 stime=3D1753444172
-> cmdline=3D"acct02"
-> contacts=3D""
-> analysis=3Dexit
-> <<<test_output>>>
-> tst_kconfig.c:88: TINFO: Parsing kernel config
-> '/lib/modules/6.15.8-1.bug38227970.el9.rc2.x86_64/config'
-> tst_tmpdir.c:316: TINFO: Using /tmpdir/ltp-w1ozKKlJ6n/LTP_acc4RRfLh as
-> tmpdir (nfs filesystem)
-> tst_test.c:2004: TINFO: LTP version: 20250530-105-gda73e1527
-> tst_test.c:2007: TINFO: Tested kernel:
-> 6.15.8-1.bug38227970.el9.rc2.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Jul 25
-> 02:03:04 PDT 2025 x86_64
-> tst_kconfig.c:88: TINFO: Parsing kernel config
-> '/lib/modules/6.15.8-1.bug38227970.el9.rc2.x86_64/config'
-> tst_test.c:1825: TINFO: Overall timeout per run is 0h 00m 30s
-> tst_kconfig.c:88: TINFO: Parsing kernel config
-> '/lib/modules/6.15.8-1.bug38227970.el9.rc2.x86_64/config'
-> acct02.c:61: TINFO: CONFIG_BSD_PROCESS_ACCT_V3=3Dy
-> acct02.c:238: TINFO: Verifying using 'struct acct_v3'
-> acct02.c:191: TINFO: =3D=3D entry 1 =3D=3D
-> acct02.c:82: TINFO: ac_comm !=3D 'acct02_helper' ('acct02')
-> acct02.c:131: TINFO: ac_exitcode !=3D 32768 (0)
-> acct02.c:139: TINFO: ac_ppid !=3D 88929 (88928)
-> acct02.c:181: TFAIL: end of file reached
->=20
-> HINT: You _MAY_ be missing kernel fixes:
->=20
-> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?=
-id=3D4d9570158b626
->=20
-> Summary:
-> passed=C2=A0 =C2=A00
-> failed=C2=A0 =C2=A01
-> broken=C2=A0 =C2=A00
-> skipped=C2=A0 0
-> warnings 0
-> incrementing stop
-> <<<execution_status>>>
-> initiation_status=3D"ok"
-> duration=3D1 termination_type=3Dexited termination_id=3D1 corefile=3Dno
-> cutime=3D0 cstime=3D20
->=20
-> <<<test_end>>>
->=20
->=20
-> Thanks & Regards,
->=20
-> Harshvardhan
+steved.
+
