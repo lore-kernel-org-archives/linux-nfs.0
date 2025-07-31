@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EA0227E1D0
-	for <linux-nfs@vger.kernel.org>; Thu, 31 Jul 2025 23:06:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8790E27A469
+	for <linux-nfs@vger.kernel.org>; Thu, 31 Jul 2025 23:06:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1754003199; cv=none; b=XOJMBG0ZeQABIKAe/3IrIZMmx9N48PsxNATx4DuTDhYfZWzgcyBxSBNC4slFu5Wcy4udcwpLWawSOBWvYUxq7233QGnw8BOt29ed0xsel9wLDJzYVYkPJimGWZ+/uMaG2B08BnrZdVs3z0hY/V1G24td1ZYgEIgFUqyiuOh1wiY=
+	t=1754003200; cv=none; b=MlbAhSAyPWeX0gUNXL14dXp4ZcfNwX1PK0+TbLx23S/onRLZf0QtVSl0eWBnyrO0qrFAo0RrEem/CpxNNc6DWxAWmTGhAOnIOTFkb7dHX5ZLSn9dPW35kHaUu9U71y9+32XheOCVOVVuEsK/DZX570jhIwB3R56wRFldOi4qwL0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1754003199; c=relaxed/simple;
-	bh=oPP4kHzzuG4ViNpSECWUincQ7pb870xxfg1fZN1+VUY=;
+	s=arc-20240116; t=1754003200; c=relaxed/simple;
+	bh=ttAh1V9ccl05165UNvMRcUepemPOsXQqRFQ5cLeLLnc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=leRpX8rPa0fGWVl7+Hg8C838kD34S0DzFHxW9PeT3nZQYVPaBjzsMYqjUhc9rZDACwmT4e2nhfC5zHnBtGY/3ymaTtiCH49JQtoc6S6d6lYYVOl8DSvg2iMnhTPpKZp237sOzXDhJnrOuVJfkxUqNv6BZRqCK+yfUXqwHIggP+U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gT7jXEdg; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=POwFl0Kapa+OOOHbmynxHpNJBzohCztphNpdVcSnags+uSzRfSk1qUKXZIvt1eVrSeHAcEtRxx8nzoYBZ8Ty9Ejqa/+XmE2Z0pHbMlmF6j91B79GSe0rviTWhtGK7Ds3nPxv2VwsFfAN/Ric79CdZwqUVaYeodlp/eAY2SFH2fI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=sdfeyfDi; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gT7jXEdg"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DD61EC4CEF4;
-	Thu, 31 Jul 2025 23:06:35 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="sdfeyfDi"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CE708C4CEF8;
+	Thu, 31 Jul 2025 23:06:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1754003196;
-	bh=oPP4kHzzuG4ViNpSECWUincQ7pb870xxfg1fZN1+VUY=;
+	s=k20201202; t=1754003200;
+	bh=ttAh1V9ccl05165UNvMRcUepemPOsXQqRFQ5cLeLLnc=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=gT7jXEdgvsPFjnOP+rb7CZs5xUjjSSwGRHciff+9n6DX8zOUpp9YynXhTbsegznqQ
-	 E5GJQH0kqLHMF7M71rzlB4OFvKbqzEYq6ddkk8SpozWBn80UP6aXpilxwXy6jGHzCs
-	 cmTuu3JKyrc9HoBNsEIXFQXTbr6rjZVyZcd4IADYAu6T5DJ9Aq70hOW+kfIl1x/QYp
-	 k+6fR61O2v6ZyR0jLlUY2kWMSsMBbUpu2LbOTUIdZvGQwE7GtWhkfNMs0S4blUo4Mh
-	 wGz3CUIzuWzuK4urIsYiFDks67gZmSmEdTfFKohrV/mhmthwTq739s8Jx451bcy8hV
-	 8qvhIifxOjYIA==
+	b=sdfeyfDiK3NuykmKoiwrsXcDCTlv5kSDH5Kc2owBI1eAhPxAvtgCm48I2vK6N6UtH
+	 cuswYXUG96dI7pFcIwwK8dcmbYAA9p0ggREaQSIRF3RJFJQd4NsLH8oF45viztFo4N
+	 BVPgoRZkTzVLlg1a1PHxEuKBbrXoAHoUbTVuB0pC1I7PdWR5W3ZRSNcIdY9kIdISQk
+	 HNhs37iku6tUU7tGI3YkWqwyJCmCmw6jItDgCB/xzcMdz6L/Hczh5jvacXmYsbjpfD
+	 I6bD+1iKtE8KqkgVfaYL0XhV3xljB2AgejkeDDZZTl9nshaxchW3dWZ5Ta7LzT/NrK
+	 16pg3O+3OdC2Q==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>,
 	Jeff Layton <jlayton@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 1/4] NFSD: refactor nfsd_read_vector_dio to EVENT_CLASS useful for READ and WRITE
-Date: Thu, 31 Jul 2025 19:06:30 -0400
-Message-ID: <20250731230633.89983-2-snitzer@kernel.org>
+Subject: [PATCH v3 4/4] NFSD: handle unaligned DIO for NFS reexport
+Date: Thu, 31 Jul 2025 19:06:33 -0400
+Message-ID: <20250731230633.89983-5-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20250731230633.89983-1-snitzer@kernel.org>
 References: <20250731230633.89983-1-snitzer@kernel.org>
@@ -44,134 +44,82 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Transform nfsd_read_vector_dio trace event into nfsd_analyze_dio_class
-and use it to create nfsd_analyze_read_dio and nfsd_analyze_write_dio
-trace events.
-
-This prepares for nfsd_vfs_write() to also make use of it when
-handling misaligned WRITEs.
+NFS doesn't have any DIO alignment constraints but it doesn't support
+STATX_DIOALIGN, so update NFSD such that it doesn't disable the use of
+NFSD_IO_DIRECT if it is reexporting NFS.
 
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/trace.h | 52 ++++++++++++++++++++++++++++++++++++-------------
- fs/nfsd/vfs.c   | 11 ++++++-----
- 2 files changed, 44 insertions(+), 19 deletions(-)
+ fs/nfs/export.c          |  3 ++-
+ fs/nfsd/filecache.c      | 11 +++++++++++
+ include/linux/exportfs.h | 13 +++++++++++++
+ 3 files changed, 26 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 55055482f8a84..4173bd9344b6b 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -473,25 +473,29 @@ DEFINE_NFSD_IO_EVENT(write_done);
- DEFINE_NFSD_IO_EVENT(commit_start);
- DEFINE_NFSD_IO_EVENT(commit_done);
+diff --git a/fs/nfs/export.c b/fs/nfs/export.c
+index e9c233b6fd209..2cae75ba6b35d 100644
+--- a/fs/nfs/export.c
++++ b/fs/nfs/export.c
+@@ -155,5 +155,6 @@ const struct export_operations nfs_export_ops = {
+ 		 EXPORT_OP_REMOTE_FS		|
+ 		 EXPORT_OP_NOATOMIC_ATTR	|
+ 		 EXPORT_OP_FLUSH_ON_CLOSE	|
+-		 EXPORT_OP_NOLOCKS,
++		 EXPORT_OP_NOLOCKS		|
++		 EXPORT_OP_NO_DIOALIGN_NEEDED,
+ };
+diff --git a/fs/nfsd/filecache.c b/fs/nfsd/filecache.c
+index 5601e839a72da..ea489dd44fd9a 100644
+--- a/fs/nfsd/filecache.c
++++ b/fs/nfsd/filecache.c
+@@ -1066,6 +1066,17 @@ nfsd_file_getattr(const struct svc_fh *fhp, struct nfsd_file *nf)
+ 	     nfsd_io_cache_write != NFSD_IO_DIRECT))
+ 		return nfs_ok;
  
--TRACE_EVENT(nfsd_read_vector_dio,
-+DECLARE_EVENT_CLASS(nfsd_analyze_dio_class,
- 	TP_PROTO(struct svc_rqst *rqstp,
- 		 struct svc_fh	*fhp,
- 		 u64		offset,
- 		 u32		len,
--		 loff_t         start,
--		 loff_t         start_extra,
--		 loff_t         end,
--		 loff_t         end_extra),
--	TP_ARGS(rqstp, fhp, offset, len, start, start_extra, end, end_extra),
-+		 loff_t		start,
-+		 ssize_t	start_len,
-+		 loff_t		middle,
-+		 ssize_t	middle_len,
-+		 loff_t		end,
-+		 ssize_t	end_len),
-+	TP_ARGS(rqstp, fhp, offset, len, start, start_len, middle, middle_len, end, end_len),
- 	TP_STRUCT__entry(
- 		__field(u32, xid)
- 		__field(u32, fh_hash)
- 		__field(u64, offset)
- 		__field(u32, len)
- 		__field(loff_t, start)
--		__field(loff_t, start_extra)
-+		__field(ssize_t, start_len)
-+		__field(loff_t, middle)
-+		__field(ssize_t, middle_len)
- 		__field(loff_t, end)
--		__field(loff_t, end_extra)
-+		__field(ssize_t, end_len)
- 	),
- 	TP_fast_assign(
- 		__entry->xid = be32_to_cpu(rqstp->rq_xid);
-@@ -499,16 +503,36 @@ TRACE_EVENT(nfsd_read_vector_dio,
- 		__entry->offset = offset;
- 		__entry->len = len;
- 		__entry->start = start;
--		__entry->start_extra = start_extra;
-+		__entry->start_len = start_len;
-+		__entry->middle = middle;
-+		__entry->middle_len = middle_len;
- 		__entry->end = end;
--		__entry->end_extra = end_extra;
-+		__entry->end_len = end_len;
- 	),
--	TP_printk("xid=0x%08x fh_hash=0x%08x offset=%llu len=%u start=%llu+%llu end=%llu-%llu",
-+	TP_printk("xid=0x%08x fh_hash=0x%08x offset=%llu len=%u start=%llu+%lu middle=%llu+%lu end=%llu+%lu",
- 		  __entry->xid, __entry->fh_hash,
- 		  __entry->offset, __entry->len,
--		  __entry->start, __entry->start_extra,
--		  __entry->end, __entry->end_extra)
--);
-+		  __entry->start, __entry->start_len,
-+		  __entry->middle, __entry->middle_len,
-+		  __entry->end, __entry->end_len)
-+)
++	if (exportfs_handles_unaligned_dio(nf->nf_file->f_path.mnt->mnt_sb->s_export_op)) {
++		/* Underlying filesystem doesn't support STATX_DIOALIGN
++		 * but it can handle all unaligned DIO, so establish
++		 * DIO alignment that is accommodating.
++		 */
++		nf->nf_dio_mem_align = 4;
++		nf->nf_dio_offset_align = PAGE_SIZE;
++		nf->nf_dio_read_offset_align = nf->nf_dio_offset_align;
++		return nfs_ok;
++	}
 +
-+#define DEFINE_NFSD_ANALYZE_DIO_EVENT(name)			\
-+DEFINE_EVENT(nfsd_analyze_dio_class, nfsd_analyze_##name##_dio,	\
-+	TP_PROTO(struct svc_rqst *rqstp,			\
-+		 struct svc_fh	*fhp,				\
-+		 u64		offset,				\
-+		 u32		len,				\
-+		 loff_t		start,				\
-+		 ssize_t	start_len,			\
-+		 loff_t		middle,				\
-+		 ssize_t	middle_len,			\
-+		 loff_t		end,				\
-+		 ssize_t	end_len),			\
-+	TP_ARGS(rqstp, fhp, offset, len, start, start_len, middle, middle_len, end, end_len))
-+
-+DEFINE_NFSD_ANALYZE_DIO_EVENT(read);
-+DEFINE_NFSD_ANALYZE_DIO_EVENT(write);
+ 	status = fh_getattr(fhp, &stat);
+ 	if (status != nfs_ok)
+ 		return status;
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index 9369a607224c1..626b8486dd985 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -247,6 +247,7 @@ struct export_operations {
+ 						*/
+ #define EXPORT_OP_FLUSH_ON_CLOSE	(0x20) /* fs flushes file data on close */
+ #define EXPORT_OP_NOLOCKS		(0x40) /* no file locking support */
++#define EXPORT_OP_NO_DIOALIGN_NEEDED	(0x80) /* fs can handle unaligned DIO */
+ 	unsigned long	flags;
+ };
  
- DECLARE_EVENT_CLASS(nfsd_err_class,
- 	TP_PROTO(struct svc_rqst *rqstp,
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 46189020172fb..35c29b8ade9c3 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1094,7 +1094,7 @@ static bool nfsd_analyze_read_dio(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				  struct nfsd_read_dio *read_dio)
- {
- 	const u32 dio_blocksize = nf->nf_dio_read_offset_align;
--	loff_t orig_end = offset + len;
-+	loff_t middle_end, orig_end = offset + len;
- 
- 	if (WARN_ONCE(!nf->nf_dio_mem_align || !nf->nf_dio_read_offset_align,
- 		      "%s: underlying filesystem has not provided DIO alignment info\n",
-@@ -1133,10 +1133,11 @@ static bool nfsd_analyze_read_dio(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	}
- 
- 	/* Show original offset and count, and how it was expanded for DIO */
--	trace_nfsd_read_vector_dio(rqstp, fhp, offset, len,
--				   read_dio->start, read_dio->start_extra,
--				   read_dio->end, read_dio->end_extra);
--
-+	middle_end = read_dio->end - read_dio->end_extra;
-+	trace_nfsd_analyze_read_dio(rqstp, fhp, offset, len,
-+				    read_dio->start, read_dio->start_extra,
-+				    offset, (middle_end - offset),
-+				    middle_end, read_dio->end_extra);
- 	return true;
+@@ -262,6 +263,18 @@ exportfs_cannot_lock(const struct export_operations *export_ops)
+ 	return export_ops->flags & EXPORT_OP_NOLOCKS;
  }
  
++/**
++ * exportfs_handles_unaligned_dio() - check if export can handle unaligned DIO
++ * @export_ops:	the nfs export operations to check
++ *
++ * Returns true if the export can handle unaligned DIO.
++ */
++static inline bool
++exportfs_handles_unaligned_dio(const struct export_operations *export_ops)
++{
++	return export_ops->flags & EXPORT_OP_NO_DIOALIGN_NEEDED;
++}
++
+ extern int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
+ 				    int *max_len, struct inode *parent,
+ 				    int flags);
 -- 
 2.44.0
 
