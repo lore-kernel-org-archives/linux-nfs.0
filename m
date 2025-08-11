@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C4F3A253920;
-	Mon, 11 Aug 2025 14:37:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8085C2C325B;
+	Mon, 11 Aug 2025 14:37:18 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1754923037; cv=none; b=fV+yTQ+9EhMv3XFowyoP6xVlEtYpF41ryNnt1Trl1Jmux48WK0cx7COyBy1UoVoqPnr0Omc31hGNSamkwcyzUm9P02HAaFR42PlHq5MZ0PxwcbFjto07u+hdw8SO4CBnIWDL/XnyhNW1y7Vg5QszeWJGUcLYRSNsQycf5Uz+Vqk=
+	t=1754923038; cv=none; b=HAovinpL8+q9ZHAriWis7UcnI2nSk6oUm/4+uAYTZM63wonVT7YjhraLgWebq/dUlo5h11nz4yfyociU28s0QnJFLTZnkpsooWRC6k/hHdyCSAGA3u5CGB1RgCygj9FLPZifd5oTvrDjlDSYEa5k8YW0NVdVr/meFReai4QDwMc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1754923037; c=relaxed/simple;
-	bh=0jqNQiltMl9SsNhCyAHVVgEBiwxnDq9kbpyYH1hhvH0=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=q6GX10TuKSZA9urRiBP/LlSc4gAXLZd6VMQ5dqIqHHPYnEvDFNP0UHebitqnp/XkYZXsnL6pbKT/ACtUltK3sApkg17Tguo8siI/ar6RCJCQBQ0EI/TCjgkk4TX3gjeA5aj/chi5psbVcHhvDmncW9CyGhd6u7RTKqo0WWUiu2o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=tLjtngQq; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1754923038; c=relaxed/simple;
+	bh=qR9vSCPotI30iKaZxd6uDACGqYOSSZxxGzGbK/JS7sw=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=RiAcdkDNumaOikVn5LN+whKDjgJ36arMdnwXl2xl1ECVAPcfXj/TTQsR4LzLpDRa0uvJdG9uq1JfmglY242uzjpHDGe01ExuuqipAYZmCpfvq3ymRZ+ZrhQWBZrdh9L8lS6tp5B7pi5dRRXzUblooywzexncVc7iXZB4nHnNusg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CU+/msgj; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="tLjtngQq"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9F512C4CEED;
-	Mon, 11 Aug 2025 14:37:15 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CU+/msgj"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9880CC4CEF8;
+	Mon, 11 Aug 2025 14:37:17 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1754923036;
-	bh=0jqNQiltMl9SsNhCyAHVVgEBiwxnDq9kbpyYH1hhvH0=;
-	h=From:Subject:Date:To:Cc:From;
-	b=tLjtngQquWmcwUodrjNrXZ3imprtiDBdWFrydeXpsPim8+Eghk3FOzi6ZLhg7zMqy
-	 CgwxO6epuqv7v6G9HXV1t4ej411iaMYkPaObLY4Dnw/d/zd1vTN9d9q3/2k0M3f6lP
-	 Wx6xLs0AzGThe9LYpvSsh8g4R3KNayjQV15DDXpn6Mc9s6JITpyMW8c4veUcKTgBZy
-	 doaEfjBx2IqAiGNkOjrx93eVbcLHTMGsF6cCyGHRG8ZxrXZGeE/GQ2UP8V6JSwNvAX
-	 jiy675mncw2tCHyOImdtqGh6jQ3/Bu9m9bGEmj7lBT+H3yRHeKWh+2qJ/YJktO8TzQ
-	 Pb5iWot5vfxrw==
+	s=k20201202; t=1754923038;
+	bh=qR9vSCPotI30iKaZxd6uDACGqYOSSZxxGzGbK/JS7sw=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
+	b=CU+/msgjW6L6PPyuIZbu7gsPz57APWxsWL4XOHMkNCiDUPpieddw+7X+bCSJltuV0
+	 OofLDJuns7vXgKOR69yNemeNk/EMRmYZZmZSRcP4TJ7yOW0lPbLzz7kRimSJur7Yqo
+	 GKC/7sQSnIu2zylfDV50jEJLqKAqkcx1F0WeCxbzWfQK7+oaGVo4PT1dIu6vh7e4FC
+	 fVf+Y1DFROkSZnocEmjmOu/2YQTmB6PbI61jBUqXhZ/gUjz5L/nDtn4ZIhu0jxy+Lz
+	 tp5nhzwMh9AdchgYbCBlqgR0lBXmArBEM43uleiDOkg+OXDlwTXL90IfJULaiZaFtj
+	 JwHFb0Jy7A/LQ==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 0/2] sunrpc: cleanup patches for svc_tcp_sendto() and
- svc_tcp_sendmsg()
-Date: Mon, 11 Aug 2025 10:37:06 -0400
-Message-Id: <20250811-nfsd-testing-v1-0-f9a21bbf238b@kernel.org>
+Date: Mon, 11 Aug 2025 10:37:08 -0400
+Subject: [PATCH 2/2] sunrpc: eliminate return pointer in svc_tcp_sendmsg()
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,10 +37,9 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIABIAmmgC/x3MTQqAIBBA4avIrBP8IYquEi2GHG02Fo5EEN49a
- fkt3ntBqDAJLOqFQjcLn7nDDgr2A3MizaEbnHGjma3VOUrQlaRyTtp4xBi89Tg56MlVKPLz79a
- ttQ/ye9O5XgAAAA==
-X-Change-ID: 20250811-nfsd-testing-03aafd313a72
+Message-Id: <20250811-nfsd-testing-v1-2-f9a21bbf238b@kernel.org>
+References: <20250811-nfsd-testing-v1-0-f9a21bbf238b@kernel.org>
+In-Reply-To: <20250811-nfsd-testing-v1-0-f9a21bbf238b@kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, 
@@ -49,40 +47,99 @@ To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=622; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=0jqNQiltMl9SsNhCyAHVVgEBiwxnDq9kbpyYH1hhvH0=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBomgAWnVTVgMc7hLR5gNXA3JtSHW0dBZWYRs+Bi
- yIykd89fxKJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaJoAFgAKCRAADmhBGVaC
- FVSjD/sGOwJgw+yLP6Q6fF2+T1T9nl4FZfAMQejFm/RmQudxx3bUT1mlnrtrmLNYfirKPE7JuPe
- XWH/cVITiB/BtbE/Vf5XhL7xZJaUZZEotZhPVvtMsCUbyYwrZBRrFXhj3cIuMJunl+6povMq+eh
- hN9A6LgKrGcI+1ZKXkZSpif64hC/JefwgGsnZbQMoCYNPq4UwlsGGkGoWqZumiqMcRA6wUJB83V
- RI0PGTp02W8ZQIdIyzvYj8VRl3bscP8Oh11xbwPayZNqWkpp3AUquip5Pgj0kqbu6wiFHZxA3JW
- lsOwJoYy0ez3ZH3UgkrWMpK/648soLjH3UBqgJud97bkrieLlbW7F1LXhjHva0/uh5xCMJ+B6Le
- AxgMPQ12COWx1pe9un3TfmlcpIIIHy/QzPlJiveKimxiyrFV90lvrYxMpKSLRISwwXh5VuUWqwJ
- /KSQexCFOnMrLSjtSsivB6htdbSjxgivcQ9dKn9YBOnpwH6wK/lSgCNHypd1xqZIpfa0XbAFMM8
- oYyyakyujJxOoJhZXcK85JMop1otY6ZMSMEVVbk837t9CvjzIdz9FNIEyyjW3BY+ArjGGi/fmRL
- zvkVqsQj3rhcK0adLs12W24+vhoZEwmRulgIGYWFW/gKqnqCqjtkDFr8xW4jTSvmgKKxzfNgnMr
- t04eILIBfwUFS4w==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2779; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=qR9vSCPotI30iKaZxd6uDACGqYOSSZxxGzGbK/JS7sw=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBomgAbO//eV2OR6//8krF8sKSjfC10hgEMvx167
+ CavYms5jH6JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaJoAGwAKCRAADmhBGVaC
+ FfrmD/wNHBuTP+P0JcS6i8FyZrAWhJeYt8nYYS9t4xgbBiE44tzTjy8LIl2ldW7HBrW3ioniFFX
+ CpdTEwTfOSPNdklH8aJnCJ51ZPHRTFYkcFMmitEKvdq/E/4wma/nSGqOfZdnaTbgDlEVluDw32s
+ Q8APsNBh0K0c7FWrGQd+AqeBsXYpf94xbl3FVuiwtdrZAgpzYjjLWG2nFtN+iivv56BMtKXF8Lg
+ tI0agFqR4rFQQWfhqpYM2jRSyyfwZ5Jw1u/iban8lamGHO8vfkqcWBveIpr0qXXyQrLL+Dn7y6I
+ kth6jVaOSkQdQLLFZwc8jnvZBlNR9hkyAsQVlsKDeBb2Dq38KF+hBAR+3ffq1+77auP6+8m6MTi
+ Kp+UD/TxW6lQlNMDzEBb9nTj9XF97es9ZHN3Vf15HnYB6BhAjYkqseMIHcfVEVV5VLNxZM/+FEU
+ YZZgWhl3CctuJ69/le43OSI7Ew0qgvTi3/9YGJx4ANaJZnqdGYQKMhzRdtpC3LxYTrZsVMLmQyr
+ V1c4Ue6STtYiGVTt0BiWUGbFs7Bx8fNTwulrWVmeYnM4KGrhEO1Jt/yVj3g3dj6i89m5n7VkQai
+ i5maT1peee05P3DqrS9/IowNfC39R6+JRQl8m2LUMlV26kdAallyMmQcH3U9IFcYBjOmSjVbNiT
+ 1fHHr5DEpZyckAQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-These patches fix a minor annoyance in a pr_notice() and clean up
-svc_tcp_sendmsg() to not require a return pointer. Please consider for
-v6.18.
+Return a positive value if something was sent, or a negative error code.
+Eliminate the "err" variable in the only caller as well.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Jeff Layton (2):
-      sunrpc: fix pr_notice in svc_tcp_sendto() to show correct length
-      sunrpc: eliminate return pointer in svc_tcp_sendmsg()
+ net/sunrpc/svcsock.c | 21 ++++++++-------------
+ 1 file changed, 8 insertions(+), 13 deletions(-)
 
- net/sunrpc/svcsock.c | 23 +++++++++--------------
- 1 file changed, 9 insertions(+), 14 deletions(-)
----
-base-commit: 8f5ae30d69d7543eee0d70083daf4de8fe15d585
-change-id: 20250811-nfsd-testing-03aafd313a72
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 22f59289fdcf17137fcac59e13975281ecf3e380..2b531d6d5edd92b2c2fe3b774f67e5ecaa9fd57f 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1197,7 +1197,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+  * that the pages backing @xdr are unchanging.
+  */
+ static int svc_tcp_sendmsg(struct svc_sock *svsk, struct svc_rqst *rqstp,
+-			   rpc_fraghdr marker, int *sentp)
++			   rpc_fraghdr marker)
+ {
+ 	struct msghdr msg = {
+ 		.msg_flags	= MSG_SPLICE_PAGES,
+@@ -1206,8 +1206,6 @@ static int svc_tcp_sendmsg(struct svc_sock *svsk, struct svc_rqst *rqstp,
+ 	void *buf;
+ 	int ret;
+ 
+-	*sentp = 0;
+-
+ 	/* The stream record marker is copied into a temporary page
+ 	 * fragment buffer so that it can be included in rq_bvec.
+ 	 */
+@@ -1225,10 +1223,7 @@ static int svc_tcp_sendmsg(struct svc_sock *svsk, struct svc_rqst *rqstp,
+ 		      1 + count, sizeof(marker) + rqstp->rq_res.len);
+ 	ret = sock_sendmsg(svsk->sk_sock, &msg);
+ 	page_frag_free(buf);
+-	if (ret < 0)
+-		return ret;
+-	*sentp += ret;
+-	return 0;
++	return ret;
+ }
+ 
+ /**
+@@ -1247,7 +1242,7 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	struct xdr_buf *xdr = &rqstp->rq_res;
+ 	rpc_fraghdr marker = cpu_to_be32(RPC_LAST_STREAM_FRAGMENT |
+ 					 (u32)xdr->len);
+-	int sent, err;
++	int sent;
+ 
+ 	svc_tcp_release_ctxt(xprt, rqstp->rq_xprt_ctxt);
+ 	rqstp->rq_xprt_ctxt = NULL;
+@@ -1255,9 +1250,9 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
+ 	mutex_lock(&xprt->xpt_mutex);
+ 	if (svc_xprt_is_dead(xprt))
+ 		goto out_notconn;
+-	err = svc_tcp_sendmsg(svsk, rqstp, marker, &sent);
+-	trace_svcsock_tcp_send(xprt, err < 0 ? (long)err : sent);
+-	if (err < 0 || sent != (xdr->len + sizeof(marker)))
++	sent = svc_tcp_sendmsg(svsk, rqstp, marker);
++	trace_svcsock_tcp_send(xprt, sent);
++	if (sent < 0 || sent != (xdr->len + sizeof(marker)))
+ 		goto out_close;
+ 	mutex_unlock(&xprt->xpt_mutex);
+ 	return sent;
+@@ -1268,8 +1263,8 @@ static int svc_tcp_sendto(struct svc_rqst *rqstp)
+ out_close:
+ 	pr_notice("rpc-srv/tcp: %s: %s %d when sending %zu bytes - shutting down socket\n",
+ 		  xprt->xpt_server->sv_name,
+-		  (err < 0) ? "got error" : "sent",
+-		  (err < 0) ? err : sent, xdr->len + sizeof(marker));
++		  (sent < 0) ? "got error" : "sent",
++		  sent, xdr->len + sizeof(marker));
+ 	svc_xprt_deferred_close(xprt);
+ 	mutex_unlock(&xprt->xpt_mutex);
+ 	return -EAGAIN;
 
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.50.1
 
