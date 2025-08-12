@@ -1,23 +1,24 @@
 Received: from neil.brown.name (neil.brown.name [103.29.64.221])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D46B2DAFCE;
-	Tue, 12 Aug 2025 23:53:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EDFE52D7381;
+	Tue, 12 Aug 2025 23:53:01 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.29.64.221
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755042784; cv=none; b=qaD+ynXvSLH3xtSxD0AEqeyO/GzZDmpIPFvgh64IUR86OXISxzaXxxJkUnFLoFC3UNxCdBxeYfiClfrCnGxjRKw6ISULmcsEUBWDxtdRM6ubXAoyj67nVS9hdvnAmrAz2kgfPhGcvHfhbfmtV/+CBCNCdUZrExu96/nIq9mts/A=
+	t=1755042784; cv=none; b=ccwmdm9jKNLcfzDJgZF5lUQv2oJV7v/+eFZ4suQkahlIeH4Nmd+bNH5C7apjo+epOHur+/wLsgQQDM+LqW+Z3R+ZSR2KzMUq7TpPP1sGm1ea+3R9bKWbR/yiMMFXzgqg3qM6Kr3oEL9bwXm2upG3It2MOdpW2nIcXj9jb6IA4fM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1755042784; c=relaxed/simple;
-	bh=gn54IA1/q/Cn2j1DUaCUAMg4l43QdpVX0r604C6RKaY=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=sCDw1VF2S9Abc2JQPlRxAHaZtQqIS8HoQm2Iav8kVbIFb4Ssio3zWCX1WvMMGEfRgj4/mHt5qJDVMhbKJtzzXTqulEjLs2e9a5/aaOPgggn7A0r7grVEbmbNDd5UOXFUHTWpd+rZJudamba+eYGim4VhUA/rVciF8KDX5IG5ubw=
+	bh=8H0TpV7kB+G3cWPZv8G4Hm2H3l6DX+JGvz2rgwlSirA=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=WY9Gmzt0p62BKOQThcSdgUfqy0QdeMsaXZ7xfpTPZOfpMzs7bl23Q6X+Ya+9DpUWnK7WQuWvvzOLd8WOhjUBmc4dnwFmB4DoM634k/hqyGhKFFiq1HjTgtp+v3aJth6BfwZN24rwi8w3d+yiHJt+thIGKg7tMQ9XlRUMcxQ4UOU=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name; spf=pass smtp.mailfrom=neil.brown.name; arc=none smtp.client-ip=103.29.64.221
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=brown.name
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=neil.brown.name
 Received: from 196.186.233.220.static.exetel.com.au ([220.233.186.196] helo=home.neil.brown.name)
 	by neil.brown.name with esmtp (Exim 4.95)
 	(envelope-from <mr@neil.brown.name>)
-	id 1ulynI-005Y1s-6o;
-	Tue, 12 Aug 2025 23:52:41 +0000
+	id 1ulynO-005Y29-KL;
+	Tue, 12 Aug 2025 23:52:48 +0000
 From: NeilBrown <neil@brown.name>
 To: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Christian Brauner <brauner@kernel.org>,
@@ -50,10 +51,12 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-cifs@vger.kernel.org,
 	linux-xfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH 00/11] VFS: prepare for changes to directory locking
-Date: Tue, 12 Aug 2025 12:25:03 +1000
-Message-ID: <20250812235228.3072318-1-neil@brown.name>
+Subject: [PATCH 08/11] VFS: allow d_splice_alias() and d_add() to work on hashed dentries.
+Date: Tue, 12 Aug 2025 12:25:11 +1000
+Message-ID: <20250812235228.3072318-9-neil@brown.name>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
+In-Reply-To: <20250812235228.3072318-1-neil@brown.name>
+References: <20250812235228.3072318-1-neil@brown.name>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -62,117 +65,186 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This is the first of 3 sets of patches which, together, allow
-filesystems to opt-out of having the directory inode lock held over
-directory operations (except readdir).
-- This set creates some new APIs in the VFS and makes a few changes in
-  callers either because they are trivial (patch 08) or because they
-  involve a flag-day change (patches 06, 07, and 09).
-- The second set rolls the new APIs out to all non-VFS code which 
-  invokes directory operations.
-- The third (which isn't yet bug-free) changes the implementation
-  of these APIs to make the use of inode_lock() optional.
+Proposed locking changes will require a dentry to remain hashed during
+all directory operations which are currently protected by i_rwsem, or
+for there to be a controlled transition from one hashed dentry to
+another which maintains the lock - which will then be on the dentry.
 
-I imagine these three set landing in three different merge windows,
-though some of the second set could get in the same window as the first.
+The current practice of dropping (unhashing) a dentry before calling
+d_splice_alias() and d_add() defeats this need.
 
-The patches are listed below and are available at 
-   https://github.com/neilbrown/linux
-in branch pdirops.
+This patch changes d_splice_alias() and d_add() to accept a hashed
+dentry and to only drop it when necessary immediately before an
+alternate dentry is hashed.  These functions will, in a subsequent patch,
+transfer the dentry locking across so that the name remains locked in
+the directory.
 
-This first set adds and updates APIs with three particular goals:
-1/ centralising all lookup and locking for directory ops.  This
-  includes a variety of dentry_lookup() calls with done_dentry_lookup(),
-  and rename_lookup() with done_rename_lookup().
-2/ Removing the use of d_drop() during a directory operation (it is
-   OK for d_drop to happen at the end).  As the goal is for locks
-   to be based on the dentry, a dropped dentry will no longer protect the name.
-   The only change in this patch set is 08 which changes d_splice_alias()
-   and d_add() to not require a preceding d_drop(), and then removes
-   the unnecessary d_drop()s.
-3/ No blocking in d_alloc_parallel() within readdir() (iterate_shared()) requests.
-   We will need to invert the ordering between d_alloc_parallel() and
-   inode_lock(), so blocking in d_alloc_parallel() to, e.g., prime the
-   dcache during readdir must be avoided.  The last patch introduces
-   new interfaces that can be used instead and explains them.
-   Patches 9 and 10 prepare for this.
+Signed-off-by: NeilBrown <neil@brown.name>
+---
+ Documentation/filesystems/vfs.rst | 4 ++--
+ fs/ceph/file.c                    | 2 --
+ fs/ceph/inode.c                   | 3 ---
+ fs/dcache.c                       | 8 +++++---
+ fs/fuse/dir.c                     | 1 -
+ fs/hostfs/hostfs_kern.c           | 1 -
+ fs/nfs/dir.c                      | 5 +----
+ fs/nfs/nfs4proc.c                 | 1 -
+ fs/smb/client/dir.c               | 1 -
+ 9 files changed, 8 insertions(+), 18 deletions(-)
 
-Please review and consider for 6.18.
-
-Thanks,
-NeilBrown
-
- [PATCH 01/11] VFS: discard err2 in filename_create()
- [PATCH 02/11] VFS: introduce dentry_lookup() and friends
- [PATCH 03/11] VFS: add dentry_lookup_killable()
- [PATCH 04/11] VFS: introduce dentry_lookup_continue()
- [PATCH 05/11] VFS: add rename_lookup()
- [PATCH 06/11] VFS: unify old_mnt_idmap and new_mnt_idmap in
- [PATCH 07/11] VFS: Change vfs_mkdir() to unlock on failure.
- [PATCH 08/11] VFS: allow d_splice_alias() and d_add() to work on
- [PATCH 09/11] VFS: use global wait-queue table for d_alloc_parallel()
- [PATCH 10/11] VFS: use d_alloc_parallel() in lookup_one_qstr_excl().
- [PATCH 11/11] VFS: introduce d_alloc_noblock() and d_alloc_locked()
-
-Future patches:
-
-set 2:
- devtmpfs: use new dentry locking APIs
- audit: use new dentry locking APIs
- debugfs: use new dentry locking APIs.
- binderfs: use new dentry locking APIs.
- binfmt_misc: use new dentry locking APIs.
- kernel/bpf: use new dentry locking APIs.
- devpts: use new dentry locking APIs.
- ipc/mqueue: use new dentry locking APIs.
- s390/hypfs: use new dentry locking APIs.
- security: use new dentry locking APIs.
- tracefs: use new dentry locking APIs.
-
- ecryptfs: use dentry_lookup_continue() in lock_parent()
- ecryptfs: use rename_lookup()
-
- fs/proc: Don't look root inode when creating "self" and "thread-self"
- proc: use d_alloc_locked() and lock_lookup()
-
- bcachefs: use new dentry locking APIs
- exfat: use d_splice_alias(), don't d_drop()
- coda: don't d_drop() early.
- smb/server: use new dentry locking APIs.
- nfsd: use new dentry locking APIs.
- cachefiles: use new dentry locking APIs.
- btrfs: use dentry_lookup_killable()
- fuse: use new dentry locking APIs.
- sunrpc/rpc_pipe: use new dentry locking APIs.
- xfs: use new dentry locking APIs.
-
- ovl: use is_subdir() for testing if one thing is a subdir of another
- ovl: introduce ovl_upper_dentry_lookup() and use it.
- ovl: switch from parent_lock() to dentry_lookup_continue() except for rename.
- ovl: use dentry_lookup_killable() in ovl_check_whiteouts()
- ovl: split ovl_tempname() out from ovl_lookup_temp().
- ovl: Change ovl_lookup_temp() to use ovl_upper_dentry_lookup()
- ovl: Change all rename code to use rename_lookup_noperm()
- ovl: don't dget_parent() in ovl_lookup_real_one()
- ovl: use new APIs in ovl_lookup_real_one()
- ovl: use new dir apis in ovl_cache_update()
-
- NFS: remove d_drop() from nfs_atomic_open()
- nfs: use d_alloc_noblock() in silly-rename
-
- afs: use d_splice_alias() in afs_vnode_new_inode()
- afs: use d_time instead of d_fsdata
- afs: don't unhash/rehash dentries during unlink/rename
- AFS: use new dir access APIs.
-
-set 3:
- VFS: make various namei.c functions static.
- VFS: Remove lookup_one() and lookup_noperm()
- VFS: Introduce S_DYING which warns that S_DEAD might follow.
- VFS: lift d_alloc_parallel above inode_lock
- VFS: provide alternative to s_vfs_rename_mutex
- VFS: Add ability to exclusively lock a dentry
- VFS: use new dentry locking for open/create/remove/rename
- VFS: allow a filesystem to opt out of directory locking.
- NFS: allow concurrent dir ops.
+diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
+index 486a91633474..642dd6afb139 100644
+--- a/Documentation/filesystems/vfs.rst
++++ b/Documentation/filesystems/vfs.rst
+@@ -580,8 +580,8 @@ otherwise noted.
+ 	dentry before the first mkdir returns.
+ 
+ 	If there is any chance this could happen, then the new inode
+-	should be d_drop()ed and attached with d_splice_alias().  The
+-	returned dentry (if any) should be returned by ->mkdir().
++	should be attached with d_splice_alias().  The returned dentry
++	(if any) should be returned by ->mkdir().
+ 
+ ``rmdir``
+ 	called by the rmdir(2) system call.  Only required if you want
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index c02f100f8552..27eb1ac06177 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -755,8 +755,6 @@ static int ceph_finish_async_create(struct inode *dir, struct inode *inode,
+ 			unlock_new_inode(inode);
+ 		}
+ 		if (d_in_lookup(dentry) || d_really_is_negative(dentry)) {
+-			if (!d_unhashed(dentry))
+-				d_drop(dentry);
+ 			dn = d_splice_alias(inode, dentry);
+ 			WARN_ON_ONCE(dn && dn != dentry);
+ 		}
+diff --git a/fs/ceph/inode.c b/fs/ceph/inode.c
+index fc543075b827..7acd6ac0d50f 100644
+--- a/fs/ceph/inode.c
++++ b/fs/ceph/inode.c
+@@ -1480,9 +1480,6 @@ static int splice_dentry(struct dentry **pdn, struct inode *in)
+ 		}
+ 	}
+ 
+-	/* dn must be unhashed */
+-	if (!d_unhashed(dn))
+-		d_drop(dn);
+ 	realdn = d_splice_alias(in, dn);
+ 	if (IS_ERR(realdn)) {
+ 		pr_err_client(cl, "error %ld %p inode %p ino %llx.%llx\n",
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 60046ae23d51..0db256098adb 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -2709,7 +2709,11 @@ static inline void __d_add(struct dentry *dentry, struct inode *inode,
+ 		raw_write_seqcount_end(&dentry->d_seq);
+ 		fsnotify_update_flags(dentry);
+ 	}
+-	__d_rehash(dentry);
++	if (d_unhashed(dentry))
++		__d_rehash(dentry);
++	else if (inode && (dentry->d_flags &
++			   (DCACHE_LRU_LIST|DCACHE_SHRINK_LIST)) == DCACHE_LRU_LIST)
++		this_cpu_dec(nr_dentry_negative);
+ 	if (dir)
+ 		end_dir_add(dir, n, d_wait);
+ 	spin_unlock(&dentry->d_lock);
+@@ -2990,8 +2994,6 @@ struct dentry *d_splice_alias_ops(struct inode *inode, struct dentry *dentry,
+ 	if (IS_ERR(inode))
+ 		return ERR_CAST(inode);
+ 
+-	BUG_ON(!d_unhashed(dentry));
+-
+ 	if (!inode)
+ 		goto out;
+ 
+diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
+index 2d817d7cab26..60e7763da8c8 100644
+--- a/fs/fuse/dir.c
++++ b/fs/fuse/dir.c
+@@ -834,7 +834,6 @@ static struct dentry *create_new_entry(struct mnt_idmap *idmap, struct fuse_moun
+ 	}
+ 	kfree(forget);
+ 
+-	d_drop(entry);
+ 	d = d_splice_alias(inode, entry);
+ 	if (IS_ERR(d))
+ 		return d;
+diff --git a/fs/hostfs/hostfs_kern.c b/fs/hostfs/hostfs_kern.c
+index 01e516175bcd..8e51fc623301 100644
+--- a/fs/hostfs/hostfs_kern.c
++++ b/fs/hostfs/hostfs_kern.c
+@@ -700,7 +700,6 @@ static struct dentry *hostfs_mkdir(struct mnt_idmap *idmap, struct inode *ino,
+ 		dentry = ERR_PTR(err);
+ 	} else {
+ 		inode = hostfs_iget(dentry->d_sb, file);
+-		d_drop(dentry);
+ 		dentry = d_splice_alias(inode, dentry);
+ 	}
+ 	__putname(file);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index d81217923936..250a826d5480 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2136,7 +2136,6 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
+ 		err = PTR_ERR(inode);
+ 		trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
+ 		put_nfs_open_context(ctx);
+-		d_drop(dentry);
+ 		switch (err) {
+ 		case -ENOENT:
+ 			d_splice_alias(NULL, dentry);
+@@ -2157,6 +2156,7 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
+ 		default:
+ 			break;
+ 		}
++		d_drop(dentry);
+ 		goto out;
+ 	}
+ 	file->f_mode |= FMODE_CAN_ODIRECT;
+@@ -2304,8 +2304,6 @@ nfs_add_or_obtain(struct dentry *dentry, struct nfs_fh *fhandle,
+ 	struct dentry *d;
+ 	int error;
+ 
+-	d_drop(dentry);
+-
+ 	if (fhandle->size == 0) {
+ 		error = NFS_PROTO(dir)->lookup(dir, dentry, &dentry->d_name,
+ 					       fhandle, fattr);
+@@ -2652,7 +2650,6 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
+ 		old_dentry, dentry);
+ 
+ 	trace_nfs_link_enter(inode, dir, dentry);
+-	d_drop(dentry);
+ 	if (S_ISREG(inode->i_mode))
+ 		nfs_sync_inode(inode);
+ 	error = NFS_PROTO(dir)->link(inode, dir, &dentry->d_name);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7d2b67e06cc3..d8739c286a99 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3175,7 +3175,6 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ 	dentry = opendata->dentry;
+ 	if (d_really_is_negative(dentry)) {
+ 		struct dentry *alias;
+-		d_drop(dentry);
+ 		alias = d_splice_alias(igrab(state->inode), dentry);
+ 		/* d_splice_alias() can't fail here - it's a non-directory */
+ 		if (alias) {
+diff --git a/fs/smb/client/dir.c b/fs/smb/client/dir.c
+index 5223edf6d11a..8cbc284c5005 100644
+--- a/fs/smb/client/dir.c
++++ b/fs/smb/client/dir.c
+@@ -439,7 +439,6 @@ static int cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned
+ 			goto out_err;
+ 		}
+ 
+-	d_drop(direntry);
+ 	d_add(direntry, newinode);
+ 
+ out:
+-- 
+2.50.0.107.gf914562f5916.dirty
 
