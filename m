@@ -1,53 +1,53 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2219524A067
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3733624A06B
 	for <linux-nfs@vger.kernel.org>; Mon, 18 Aug 2025 15:08:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755529724; cv=none; b=sB/BrPTdEnssNHk/2qnYKQmzVqUUpJPXfo4uqC5TpwLZ3sfQJrD8P4fSO4eS+8XRHKZDRYNtbYeP7thAhj9lPUaOAX/nQzx6KXBELClYR1eblK/n6F5YZwSfqpDcNLNJm3tmcD/xEYE8G498cut4TJBpqPJx+OSfTQb2ilZOKfQ=
+	t=1755529724; cv=none; b=gbyA6A+FHzVEL5NV5C97Fi+ifjO44ZHVrLLQNYaPsZbLoSWodjhLKlCgpZkvDWuk8lFT0m/cPRYk6Sh1MVNfIUFZu7SMjEg89Khy2/gxZFX/S/MShHyvY6pbOPf7Qq4Xrru6C8vAxygAkI8azAhQNcQOixGqE+yqI1O36nV/xRk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1755529724; c=relaxed/simple;
-	bh=zVDFq/2Bx6x/lMmuo5zCX360ifVX4S7iopDbNC4iw/o=;
+	bh=TMmJBgQuVOkxk5ZLpk0/ZAQBngeKQ0yTTcMBJ0DYzRs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=SDRK/mzX073BfxBMyLyaJgc7eYPujxSnjHTPFfFKAwHKyShDJcyHN83+FPdkTi8Kjp0LvqoI7zDtsZn3cWo1J1x/fnraDhKIcA77x+bvYn/b2mR7Xj7wpTAQcHFVr7LscMGaHnP1W+vPf9I+Z/EpuffkacyXJDCvGERTjfEbGpU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=GxrGBvHu; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=ZThLz1NwbMncM6LrV2hnY7f+/jKwP8ZV6kQjFgCqHRJfSc2w69palAP1EilNo2o2KaMZJoxK+43RWbrVbFIWhEjM/ivSZDYYbq20IOeyefDhpcCtvPMB73LsrXYK1YIniEhdRVdPCOS/kTdpvYozeXMnCrWF52vwpKnL8EtcMU0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=O/P/8Lz/; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="GxrGBvHu"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="O/P/8Lz/"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
 	s=mimecast20190719; t=1755529721;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=fGDOC7sMbdUIQTpv0vRfQR4wtbug7qDkKEBdPnHQ+30=;
-	b=GxrGBvHu4Gmn7vIW1dsw4ZT5Rx9lvxBQy5XRqjNUs1edBfWANpLsmAuzczt2qKnUOiVpLX
-	APomfEpVgVKLGBRUBA5JM/SgPTmTCax4l53xO8DU2k89GQlIh3nk3MOvs7uTwOegs5iXb5
-	x6BSK5jEa/vuttj4qquO/dceE3R0Phg=
-Received: from mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=ES9IVglS6W2jyNbTFKZDZDtjwfneH7MfMJB17PV7pLA=;
+	b=O/P/8Lz/BUvgPG6Z2JNNCvkwew704U64bX5tQAGi6MZV1TpgHSqttGOIZC4VRsTceLC8Cq
+	ddc/x6r8TLqhgnR4IOh83xcwR+N1/stSADJGxkW2Df3t3ahIXPxxsT1MZyhk8v90XOu44y
+	D8leFdE0D84eF6i/ePCIgrl66brg7L8=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-417-RezMbefmPg-bBBkVhcfeCw-1; Mon,
- 18 Aug 2025 11:08:39 -0400
-X-MC-Unique: RezMbefmPg-bBBkVhcfeCw-1
-X-Mimecast-MFC-AGG-ID: RezMbefmPg-bBBkVhcfeCw_1755529718
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-519-JPfcuVBLN0OB1JVq-YFgCA-1; Mon,
+ 18 Aug 2025 11:08:37 -0400
+X-MC-Unique: JPfcuVBLN0OB1JVq-YFgCA-1
+X-Mimecast-MFC-AGG-ID: JPfcuVBLN0OB1JVq-YFgCA_1755529716
 Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 9A679195F162;
-	Mon, 18 Aug 2025 15:08:38 +0000 (UTC)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 8C0EA18003FD;
+	Mon, 18 Aug 2025 15:08:36 +0000 (UTC)
 Received: from dobby.home.dicksonnet.net (unknown [10.22.64.4])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id E189730001A8;
-	Mon, 18 Aug 2025 15:08:37 +0000 (UTC)
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id D147430001A8;
+	Mon, 18 Aug 2025 15:08:35 +0000 (UTC)
 From: Steve Dickson <steved@redhat.com>
 To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 05/12] Convert old-style function definitions into modern-style definitions
-Date: Mon, 18 Aug 2025 11:08:22 -0400
-Message-ID: <20250818150829.1044948-6-steved@redhat.com>
+Subject: [PATCH 03/12] Convert old-style function definitions into modern-style definitions
+Date: Mon, 18 Aug 2025 11:08:20 -0400
+Message-ID: <20250818150829.1044948-4-steved@redhat.com>
 In-Reply-To: <20250818150829.1044948-1-steved@redhat.com>
 References: <20250818150829.1044948-1-steved@redhat.com>
 Precedence: bulk
@@ -70,734 +70,512 @@ function definitions into modern-style definitions
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- src/rpc_callmsg.c |   4 +-
- src/rpc_generic.c |  31 ++---
- src/rpc_prot.c    |  36 ++----
- src/rpc_soc.c     | 310 +++++++++++++++++++++++-----------------------
- 4 files changed, 180 insertions(+), 201 deletions(-)
+ src/rpcb_clnt.c   | 154 ++++++++++++++++++++++------------------------
+ src/rpcb_prot.c   |  48 +++++++--------
+ src/rpcb_st_xdr.c |  42 ++++++-------
+ 3 files changed, 119 insertions(+), 125 deletions(-)
 
-diff --git a/src/rpc_callmsg.c b/src/rpc_callmsg.c
-index d5f7d0c..190f34a 100644
---- a/src/rpc_callmsg.c
-+++ b/src/rpc_callmsg.c
-@@ -46,9 +46,7 @@
-  * XDR a call message
+diff --git a/src/rpcb_clnt.c b/src/rpcb_clnt.c
+index 32b6a47..826d685 100644
+--- a/src/rpcb_clnt.c
++++ b/src/rpcb_clnt.c
+@@ -99,8 +99,7 @@ static struct netbuf *got_entry(rpcb_entry_list_ptr, const struct netconfig *);
+  *
   */
- bool_t
--xdr_callmsg(xdrs, cmsg)
--	XDR *xdrs;
--	struct rpc_msg *cmsg;
-+xdr_callmsg(XDR *xdrs, struct rpc_msg *cmsg)
- {
- 	int32_t *buf;
- 	struct opaque_auth *oa;
-diff --git a/src/rpc_generic.c b/src/rpc_generic.c
-index ee44c8d..db21903 100644
---- a/src/rpc_generic.c
-+++ b/src/rpc_generic.c
-@@ -127,9 +127,10 @@ __rpc_dtbsize()
-  */
- u_int
- /*ARGSUSED*/
--__rpc_get_t_size(af, proto, size)
--	int af, proto;
--	int size;	/* Size requested */
-+__rpc_get_t_size(
-+	int af, 
-+	int proto,
-+	int size)	/* Size requested */
- {
- 	int maxsize, defsize;
- 
-@@ -156,8 +157,7 @@ __rpc_get_t_size(af, proto, size)
-  * Find the appropriate address buffer size
-  */
- u_int
--__rpc_get_a_size(af)
--	int af;
-+__rpc_get_a_size(int af)
- {
- 	switch (af) {
- 	case AF_INET:
-@@ -193,8 +193,7 @@ strlocase(p)
-  * If nettype is NULL, it defaults to NETPATH.
-  */
- static int
--getnettype(nettype)
--	const char *nettype;
-+getnettype(const char *nettype)
- {
- 	int i;
- 
-@@ -218,8 +217,7 @@ getnettype(nettype)
-  * This should be freed by calling freenetconfigent()
-  */
- struct netconfig *
--__rpc_getconfip(nettype)
--	const char *nettype;
-+__rpc_getconfip(const char *nettype)
- {
- 	char *netid;
- 	char *netid_tcp = (char *) NULL;
-@@ -287,8 +285,7 @@ __rpc_getconfip(nettype)
-  * __rpc_getconf().
-  */
- void *
--__rpc_setconf(nettype)
--	const char *nettype;
-+__rpc_setconf(const char *nettype)
- {
- 	struct handle *handle;
- 
-@@ -331,8 +328,7 @@ __rpc_setconf(nettype)
-  * __rpc_setconf() should have been called previously.
-  */
- struct netconfig *
--__rpc_getconf(vhandle)
--	void *vhandle;
-+__rpc_getconf(void *vhandle)
- {
- 	struct handle *handle;
- 	struct netconfig *nconf;
-@@ -408,8 +404,7 @@ __rpc_getconf(vhandle)
- }
- 
- void
--__rpc_endconf(vhandle)
--	void * vhandle;
-+__rpc_endconf(void * vhandle)
- {
- 	struct handle *handle;
- 
-@@ -430,8 +425,7 @@ __rpc_endconf(vhandle)
-  * Returns NULL if fails, else a non-NULL pointer.
-  */
- void *
--rpc_nullproc(clnt)
--	CLIENT *clnt;
-+rpc_nullproc(CLIENT *clnt)
- {
- 	struct timeval TIMEOUT = {25, 0};
- 
-@@ -447,8 +441,7 @@ rpc_nullproc(clnt)
-  * one succeeds in finding the netconf for the given fd.
-  */
- struct netconfig *
--__rpcgettp(fd)
--	int fd;
-+__rpcgettp(int fd)
- {
- 	const char *netid;
- 	struct __rpc_sockinfo si;
-diff --git a/src/rpc_prot.c b/src/rpc_prot.c
-index 5841e51..3516d65 100644
---- a/src/rpc_prot.c
-+++ b/src/rpc_prot.c
-@@ -57,9 +57,7 @@ extern struct opaque_auth _null_auth;
-  * (see auth.h)
-  */
- bool_t
--xdr_opaque_auth(xdrs, ap)
--	XDR *xdrs;
--	struct opaque_auth *ap;
-+xdr_opaque_auth(XDR *xdrs, struct opaque_auth *ap)
- {
- 
- 	assert(xdrs != NULL);
-@@ -75,9 +73,7 @@ xdr_opaque_auth(xdrs, ap)
-  * XDR a DES block
-  */
- bool_t
--xdr_des_block(xdrs, blkp)
--	XDR *xdrs;
--	des_block *blkp;
-+xdr_des_block(XDR *xdrs, des_block *blkp)
- {
- 
- 	assert(xdrs != NULL);
-@@ -92,9 +88,7 @@ xdr_des_block(xdrs, blkp)
-  * XDR the MSG_ACCEPTED part of a reply message union
-  */
- bool_t
--xdr_accepted_reply(xdrs, ar)
--	XDR *xdrs;   
--	struct accepted_reply *ar;
-+xdr_accepted_reply(XDR *xdrs, struct accepted_reply *ar)
- {
- 
- 	assert(xdrs != NULL);
-@@ -128,9 +122,7 @@ xdr_accepted_reply(xdrs, ar)
-  * XDR the MSG_DENIED part of a reply message union
-  */
- bool_t 
--xdr_rejected_reply(xdrs, rr)
--	XDR *xdrs;
--	struct rejected_reply *rr;
-+xdr_rejected_reply(XDR *xdrs, struct rejected_reply *rr)
- {
- 
- 	assert(xdrs != NULL);
-@@ -162,9 +154,7 @@ static const struct xdr_discrim reply_dscrm[3] = {
-  * XDR a reply message
-  */
- bool_t
--xdr_replymsg(xdrs, rmsg)
--	XDR *xdrs;
--	struct rpc_msg *rmsg;
-+xdr_replymsg(XDR *xdrs, struct rpc_msg *rmsg)
- {
- 	assert(xdrs != NULL);
- 	assert(rmsg != NULL);
-@@ -186,9 +176,7 @@ xdr_replymsg(xdrs, rmsg)
-  * The rm_xid is not really static, but the user can easily munge on the fly.
-  */
- bool_t
--xdr_callhdr(xdrs, cmsg)
--	XDR *xdrs;
--	struct rpc_msg *cmsg;
-+xdr_callhdr(XDR *xdrs, struct rpc_msg *cmsg)
- {
- 
- 	assert(xdrs != NULL);
-@@ -209,9 +197,7 @@ xdr_callhdr(xdrs, cmsg)
- /* ************************** Client utility routine ************* */
- 
  static void
--accepted(acpt_stat, error)
--	enum accept_stat acpt_stat;
--	struct rpc_err *error;
-+accepted(enum accept_stat acpt_stat, struct rpc_err *error)
+-destroy_addr(addr)
+-	struct address_cache *addr;
++destroy_addr(struct address_cache *addr)
  {
- 
- 	assert(error != NULL);
-@@ -250,9 +236,7 @@ accepted(acpt_stat, error)
- }
- 
- static void 
--rejected(rjct_stat, error)
--	enum reject_stat rjct_stat;
--	struct rpc_err *error;
-+rejected(enum reject_stat rjct_stat, struct rpc_err *error)
- {
- 
- 	assert(error != NULL);
-@@ -277,9 +261,7 @@ rejected(rjct_stat, error)
-  * given a reply message, fills in the error
+ 	if (addr == NULL)
+ 		return;
+@@ -133,8 +132,7 @@ destroy_addr(addr)
+  * or the new entry cannot be allocated then NULL is returned.
   */
- void
--_seterr_reply(msg, error)
--	struct rpc_msg *msg;
--	struct rpc_err *error;
-+_seterr_reply(struct rpc_msg *msg, struct rpc_err *error)
+ static struct address_cache *
+-copy_addr(addr)
+-	const struct address_cache *addr;
++copy_addr(const struct address_cache *addr)
  {
+ 	struct address_cache *copy;
  
- 	assert(msg != NULL);
-diff --git a/src/rpc_soc.c b/src/rpc_soc.c
-index c6c93b5..3102c85 100644
---- a/src/rpc_soc.c
-+++ b/src/rpc_soc.c
-@@ -80,15 +80,15 @@ static bool_t rpc_wrap_bcast(char *, struct netbuf *, struct netconfig *);
-  * A common clnt create routine
+@@ -188,9 +186,7 @@ err:
+  * These are private routines that may not be provided in future releases.
   */
- static CLIENT *
--clnt_com_create(raddr, prog, vers, sockp, sendsz, recvsz, tp, flags)
--	struct sockaddr_in *raddr;
--	rpcprog_t prog;
--	rpcvers_t vers;
--	int *sockp;
--	u_int sendsz;
--	u_int recvsz;
--	char *tp;
--	int flags;
-+clnt_com_create(
-+	struct sockaddr_in *raddr,
-+	rpcprog_t prog,
-+	rpcvers_t vers,
-+	int *sockp,
-+	u_int sendsz,
-+	u_int recvsz,
-+	char *tp,
-+	int flags)
+ bool_t
+-__rpc_control(request, info)
+-	int	request;
+-	void	*info;
++__rpc_control(int request, void	*info)
  {
- 	CLIENT *cl;
- 	int madefd = FALSE;
-@@ -174,15 +174,15 @@ err:	if (madefd == TRUE)
- }
- 
- CLIENT *
--__libc_clntudp_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz, flags)
--	struct sockaddr_in *raddr;
--	u_long prog;
--	u_long vers;
--	struct timeval wait;
--	int *sockp;
--	u_int sendsz;
--	u_int recvsz;
--	int flags;
-+__libc_clntudp_bufcreate(
-+	struct sockaddr_in *raddr,
-+	u_long prog,
-+	u_long vers,
-+	struct timeval wait,
-+	int *sockp,
-+	u_int sendsz,
-+	u_int recvsz,
-+	int flags)
- {
- 	CLIENT *cl;
- 
-@@ -196,14 +196,14 @@ __libc_clntudp_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz, flags)
- }
- 
- CLIENT *
--clntudp_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz)
--	struct sockaddr_in *raddr;
--	u_long prog;
--	u_long vers;
--	struct timeval wait;
--	int *sockp;
--	u_int sendsz;
--	u_int recvsz;
-+clntudp_bufcreate(
-+	struct sockaddr_in *raddr,
-+	u_long prog,
-+	u_long vers,
-+	struct timeval wait,
-+	int *sockp,
-+	u_int sendsz,
-+	u_int recvsz)
- {
- 	CLIENT *cl;
- 
-@@ -217,24 +217,24 @@ clntudp_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz)
- }
- 
- CLIENT *
--clntudp_create(raddr, program, version, wait, sockp)
--	struct sockaddr_in *raddr;
--	u_long program;
--	u_long version;
--	struct timeval wait;
--	int *sockp;
-+clntudp_create(
-+	struct sockaddr_in *raddr,
-+	u_long program,
-+	u_long version,
-+	struct timeval wait,
-+	int *sockp)
- {
- 	return clntudp_bufcreate(raddr, program, version, wait, sockp, UDPMSGSIZE, UDPMSGSIZE);
- }
- 
- CLIENT *
--clnttcp_create(raddr, prog, vers, sockp, sendsz, recvsz)
--	struct sockaddr_in *raddr;
--	u_long prog;
--	u_long vers;
--	int *sockp;
--	u_int sendsz;
--	u_int recvsz;
-+clnttcp_create(
-+	struct sockaddr_in *raddr,
-+	u_long prog,
-+	u_long vers,
-+	int *sockp,
-+	u_int sendsz,
-+	u_int recvsz)
- {
- 	return clnt_com_create(raddr, (rpcprog_t)prog, (rpcvers_t)vers, sockp,
- 	    sendsz, recvsz, "tcp", 0);
-@@ -245,14 +245,14 @@ clnttcp_create(raddr, prog, vers, sockp, sendsz, recvsz)
- #ifdef INET6_NOT_USED
- 
- CLIENT *
--clntudp6_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz)
--	struct sockaddr_in6 *raddr;
--	u_long prog;
--	u_long vers;
--	struct timeval wait;
--	int *sockp;
--	u_int sendsz;
--	u_int recvsz;
-+clntudp6_bufcreate(
-+	struct sockaddr_in6 *raddr,
-+	u_long prog,
-+	u_long vers,
-+	struct timeval wait,
-+	int *sockp,
-+	u_int sendsz,
-+	u_int recvsz)
- {
- 	CLIENT *cl;
- 
-@@ -266,24 +266,24 @@ clntudp6_bufcreate(raddr, prog, vers, wait, sockp, sendsz, recvsz)
- }
- 
- CLIENT *
--clntudp6_create(raddr, program, version, wait, sockp)
--	struct sockaddr_in6 *raddr;
--	u_long program;
--	u_long version;
--	struct timeval wait;
--	int *sockp;
-+clntudp6_create(
-+	struct sockaddr_in6 *raddr,
-+	u_long program,
-+	u_long version,
-+	struct timeval wait,
-+	int *sockp)
- {
- 	return clntudp6_bufcreate(raddr, program, version, wait, sockp, UDPMSGSIZE, UDPMSGSIZE);
- }
- 
- CLIENT *
--clnttcp6_create(raddr, prog, vers, sockp, sendsz, recvsz)
--	struct sockaddr_in6 *raddr;
--	u_long prog;
--	u_long vers;
--	int *sockp;
--	u_int sendsz;
--	u_int recvsz;
-+clnttcp6_create(
-+	struct sockaddr_in6 *raddr,
-+	u_long prog,
-+	u_long vers,
-+	int *sockp,
-+	u_int sendsz,
-+	u_int recvsz)
- {
- 	return clnt_com_create(raddr, (rpcprog_t)prog, (rpcvers_t)vers, sockp,
- 	    sendsz, recvsz, "tcp6", 0);
-@@ -292,9 +292,9 @@ clnttcp6_create(raddr, prog, vers, sockp, sendsz, recvsz)
- #endif
- 
- CLIENT *
--clntraw_create(prog, vers)
--	u_long prog;
--	u_long vers;
-+clntraw_create(
-+	u_long prog,
-+	u_long vers)
- {
- 	return clnt_raw_create((rpcprog_t)prog, (rpcvers_t)vers);
- }
-@@ -303,11 +303,11 @@ clntraw_create(prog, vers)
-  * A common server create routine
+ 	switch (request) {
+ 	case CLCR_GET_RPCB_TIMEOUT:
+@@ -231,9 +227,9 @@ extern pthread_mutex_t	rpcbaddr_cache_lock;
   */
- static SVCXPRT *
--svc_com_create(fd, sendsize, recvsize, netid)
--	int fd;
--	u_int sendsize;
--	u_int recvsize;
+ 
+ static struct address_cache *
+-copy_of_cached(host, netid)
+-	const char *host; 
 -	char *netid;
-+svc_com_create(
-+	int fd,
-+	u_int sendsize,
-+	u_int recvsize,
++copy_of_cached(
++	const char *host, 
 +	char *netid)
  {
- 	struct netconfig *nconf;
- 	SVCXPRT *svc;
-@@ -342,10 +342,10 @@ svc_com_create(fd, sendsize, recvsize, netid)
+ 	struct address_cache *cptr, *copy = NULL;
+ 
+@@ -252,8 +248,7 @@ copy_of_cached(host, netid)
  }
  
- SVCXPRT *
--svctcp_create(fd, sendsize, recvsize)
--	int fd;
--	u_int sendsize;
--	u_int recvsize;
-+svctcp_create(
-+	int fd,
-+	u_int sendsize,
-+	u_int recvsize)
+ static void
+-delete_cache(addr)
+-	struct netbuf *addr;
++delete_cache(struct netbuf *addr)
  {
+ 	struct address_cache *cptr = NULL, *prevptr = NULL;
  
- 	return svc_com_create(fd, sendsize, recvsize, "tcp");
-@@ -354,9 +354,10 @@ svctcp_create(fd, sendsize, recvsize)
- 
- 
- SVCXPRT *
--svcudp_bufcreate(fd, sendsz, recvsz)
--	int fd;
--	u_int sendsz, recvsz;
-+svcudp_bufcreate(
-+	int fd,
-+	u_int sendsz, 
-+	u_int recvsz)
- {
- 
- 	return svc_com_create(fd, sendsz, recvsz, "udp");
-@@ -365,10 +366,10 @@ svcudp_bufcreate(fd, sendsz, recvsz)
- 
- 
- SVCXPRT *
--svcfd_create(fd, sendsize, recvsize)
--	int fd;
--	u_int sendsize;
--	u_int recvsize;
-+svcfd_create(
-+	int fd,
-+	u_int sendsize,
-+	u_int recvsize)
- {
- 
- 	return svc_fd_create(fd, sendsize, recvsize);
-@@ -376,8 +377,7 @@ svcfd_create(fd, sendsize, recvsize)
- 
- 
- SVCXPRT *
--svcudp_create(fd)
--	int fd;
-+svcudp_create(int fd)
- {
- 
- 	return svc_com_create(fd, UDPMSGSIZE, UDPMSGSIZE, "udp");
-@@ -395,35 +395,34 @@ svcraw_create()
- /* IPV6 version */
- #ifdef INET6_NOT_USED
- SVCXPRT *
--svcudp6_bufcreate(fd, sendsz, recvsz)
--	int fd;
--	u_int sendsz, recvsz;
-+svcudp6_bufcreate(
-+	int fd,
-+	u_int sendsz, 
-+	u_int recvsz)
- {
- 	return svc_com_create(fd, sendsz, recvsz, "udp6");
+@@ -283,10 +278,11 @@ delete_cache(addr)
  }
  
- 
- SVCXPRT *
--svctcp6_create(fd, sendsize, recvsize)
--	int fd;
--	u_int sendsize;
--	u_int recvsize;
-+svctcp6_create(
-+	int fd,
-+	u_int sendsize,
-+	u_int recvsize)
+ static void
+-add_cache(host, netid, taddr, uaddr)
+-	const char *host, *netid;
+-	char *uaddr;
+-	struct netbuf *taddr;
++add_cache(
++	const char *host, 
++	const char *netid,
++	struct netbuf *taddr,
++	char *uaddr)
  {
- 	return svc_com_create(fd, sendsize, recvsize, "tcp6");
- }
+ 	struct address_cache  *ad_cache, *cptr, *prevptr;
  
- 
- SVCXPRT *
--svcudp6_create(fd)
--	int fd;
-+svcudp6_create(int fd)
- {
- 	return svc_com_create(fd, UDPMSGSIZE, UDPMSGSIZE, "udp6");
- }
- #endif
- 
- int
--get_myaddress(addr)
--	struct sockaddr_in *addr;
-+get_myaddress(struct sockaddr_in *addr)
- {
- 
- 	memset((void *) addr, 0, sizeof(*addr));
-@@ -437,11 +436,15 @@ get_myaddress(addr)
-  * For connectionless "udp" transport. Obsoleted by rpc_call().
+@@ -364,10 +360,10 @@ out_free:
+  * On error, returns NULL and free's everything.
   */
- int
--callrpc(host, prognum, versnum, procnum, inproc, in, outproc, out)
+ static CLIENT *
+-getclnthandle(host, nconf, targaddr)
 -	const char *host;
--	int prognum, versnum, procnum;
--	xdrproc_t inproc, outproc;
--	void *in, *out;
-+callrpc(
+-	const struct netconfig *nconf;
+-	char **targaddr;
++getclnthandle(
 +	const char *host,
-+	int prognum, 
-+	int versnum, 
-+	int procnum,
-+	xdrproc_t inproc,
-+	void *in,
-+	xdrproc_t outproc,
-+	void *out)
++	const struct netconfig *nconf,
++	char **targaddr)
  {
+ 	CLIENT *client;
+ 	struct netbuf taddr;
+@@ -497,10 +493,10 @@ out_err:
+  * Create a PMAP client handle.
+  */
+ static CLIENT *
+-getpmaphandle(nconf, hostname, tgtaddr)
+-	const struct netconfig *nconf;
+-	const char *hostname;
+-	char **tgtaddr;
++getpmaphandle(
++	const struct netconfig *nconf,
++	const char *hostname,
++	char **tgtaddr)
+ {
+ 	CLIENT *client = NULL;
+ 	rpcvers_t pmapvers = 2;
+@@ -537,8 +533,7 @@ getpmaphandle(nconf, hostname, tgtaddr)
+  * rpcbind. Returns NULL on error and free's everything.
+  */
+ static CLIENT *
+-local_rpcb(targaddr)
+-	char **targaddr;
++local_rpcb(char **targaddr)
+ {
+ 	CLIENT *client;
+ 	static struct netconfig *loopnconf;
+@@ -654,11 +649,11 @@ try_nconf:
+  * Calls the rpcbind service to do the mapping.
+  */
+ bool_t
+-rpcb_set(program, version, nconf, address)
+-	rpcprog_t program;
+-	rpcvers_t version;
+-	const struct netconfig *nconf;	/* Network structure of transport */
+-	const struct netbuf *address;		/* Services netconfig address */
++rpcb_set(
++	rpcprog_t program,
++	rpcvers_t version,
++	const struct netconfig *nconf,	/* Network structure of transport */
++	const struct netbuf *address)		/* Services netconfig address */
+ {
+ 	CLIENT *client;
+ 	bool_t rslt = FALSE;
+@@ -715,10 +710,10 @@ rpcb_set(program, version, nconf, address)
+  * only for the given transport.
+  */
+ bool_t
+-rpcb_unset(program, version, nconf)
+-	rpcprog_t program;
+-	rpcvers_t version;
+-	const struct netconfig *nconf;
++rpcb_unset(
++	rpcprog_t program,
++	rpcvers_t version,
++	const struct netconfig *nconf)
+ {
+ 	CLIENT *client;
+ 	bool_t rslt = FALSE;
+@@ -756,9 +751,9 @@ rpcb_unset(program, version, nconf)
+  * From the merged list, find the appropriate entry
+  */
+ static struct netbuf *
+-got_entry(relp, nconf)
+-	rpcb_entry_list_ptr relp;
+-	const struct netconfig *nconf;
++got_entry(
++	rpcb_entry_list_ptr relp,
++	const struct netconfig *nconf)
+ {
+ 	struct netbuf *na = NULL;
+ 	rpcb_entry_list_ptr sp;
+@@ -829,12 +824,12 @@ __rpcbind_is_up()
  
- 	return (int)rpc_call(host, (rpcprog_t)prognum, (rpcvers_t)versnum,
-@@ -452,10 +455,13 @@ callrpc(host, prognum, versnum, procnum, inproc, in, outproc, out)
-  * For connectionless kind of transport. Obsoleted by rpc_reg()
+ #ifdef PORTMAP
+ static struct netbuf *
+-__try_protocol_version_2(program, version, nconf, host, tp)
+-	rpcprog_t program;
+-	rpcvers_t version;
+-	const struct netconfig *nconf;
+-	const char *host;
+-	struct timeval *tp;
++__try_protocol_version_2(
++	rpcprog_t program,
++	rpcvers_t version,
++	const struct netconfig *nconf,
++	const char *host,
++	struct timeval *tp)
+ {
+ 	u_short port = 0;
+ 	struct netbuf remote;
+@@ -934,13 +929,13 @@ error:
+  * starts working properly.  Also look under clnt_vc.c.
+  */
+ struct netbuf *
+-__rpcb_findaddr_timed(program, version, nconf, host, clpp, tp)
+-	rpcprog_t program;
+-	rpcvers_t version;
+-	const struct netconfig *nconf;
+-	const char *host;
+-	CLIENT **clpp;
+-	struct timeval *tp;
++__rpcb_findaddr_timed(
++	rpcprog_t program,
++	rpcvers_t version,
++	const struct netconfig *nconf,
++	const char *host,
++	CLIENT **clpp,
++	struct timeval *tp)
+ {
+ #ifdef NOTUSED
+ 	static bool_t check_rpcbind = TRUE;
+@@ -1116,12 +1111,12 @@ done:
+  * Assuming that the address is all properly allocated
   */
  int
--registerrpc(prognum, versnum, procnum, progname, inproc, outproc)
--	int prognum, versnum, procnum;
--	char *(*progname)(char [UDPMSGSIZE]);
--	xdrproc_t inproc, outproc;
-+registerrpc(
-+	int prognum, 
-+	int versnum, 
-+	int procnum,
-+	char *(*progname)(char [UDPMSGSIZE]),
-+	xdrproc_t inproc, 
-+	xdrproc_t outproc)
+-rpcb_getaddr(program, version, nconf, address, host)
+-	rpcprog_t program;
+-	rpcvers_t version;
+-	const struct netconfig *nconf;
+-	struct netbuf *address;
+-	const char *host;
++rpcb_getaddr(
++	rpcprog_t program,
++	rpcvers_t version,
++	const struct netconfig *nconf,
++	struct netbuf *address,
++	const char *host)
  {
+ 	struct netbuf *na;
  
- 	return rpc_reg((rpcprog_t)prognum, (rpcvers_t)versnum,
-@@ -474,10 +480,10 @@ extern thread_key_t	clnt_broadcast_key;
+@@ -1152,9 +1147,9 @@ rpcb_getaddr(program, version, nconf, address, host)
+  * It returns NULL on failure.
   */
- /* ARGSUSED */
- static bool_t
--rpc_wrap_bcast(resultp, addr, nconf)
--	char *resultp;		/* results of the call */
--	struct netbuf *addr;	/* address of the guy who responded */
--	struct netconfig *nconf; /* Netconf of the transport */
-+rpc_wrap_bcast(
-+	char *resultp,		/* results of the call */
-+	struct netbuf *addr,	/* address of the guy who responded */
-+	struct netconfig *nconf) /* Netconf of the transport */
+ rpcblist *
+-rpcb_getmaps(nconf, host)
+-	const struct netconfig *nconf;
+-	const char *host;
++rpcb_getmaps(
++	const struct netconfig *nconf,
++	const char *host)
  {
- 	resultproc_t clnt_broadcast_result;
- 
-@@ -492,15 +498,15 @@ rpc_wrap_bcast(resultp, addr, nconf)
-  * Broadcasts on UDP transport. Obsoleted by rpc_broadcast().
-  */
+ 	rpcblist_ptr head = NULL;
+ 	CLIENT *client;
+@@ -1204,17 +1199,18 @@ done:
+  * programs to do a lookup and call in one step.
+ */
  enum clnt_stat
--clnt_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp, eachresult)
--	u_long		prog;		/* program number */
--	u_long		vers;		/* version number */
--	u_long		proc;		/* procedure number */
--	xdrproc_t	xargs;		/* xdr routine for args */
--	void	       *argsp;		/* pointer to args */
--	xdrproc_t	xresults;	/* xdr routine for results */
--	void	       *resultsp;	/* pointer to results */
--	resultproc_t	eachresult;	/* call with each result obtained */
-+clnt_broadcast(
-+	u_long		prog,		/* program number */
-+	u_long		vers,		/* version number */
-+	u_long		proc,		/* procedure number */
-+	xdrproc_t	xargs,		/* xdr routine for args */
-+	void	       *argsp,		/* pointer to args */
-+	xdrproc_t	xresults,	/* xdr routine for results */
-+	void	       *resultsp,	/* pointer to results */
-+	resultproc_t	eachresult)	/* call with each result obtained */
+-rpcb_rmtcall(nconf, host, prog, vers, proc, xdrargs, argsp,
+-		xdrres, resp, tout, addr_ptr)
+-	const struct netconfig *nconf;	/* Netconfig structure */
+-	const char *host;			/* Remote host name */
+-	rpcprog_t prog;
+-	rpcvers_t vers;
+-	rpcproc_t proc;			/* Remote proc identifiers */
+-	xdrproc_t xdrargs, xdrres;	/* XDR routines */
+-	caddr_t argsp, resp;		/* Argument and Result */
+-	struct timeval tout;		/* Timeout value for this call */
+-	const struct netbuf *addr_ptr;	/* Preallocated netbuf address */
++rpcb_rmtcall(
++	const struct netconfig *nconf,	/* Netconfig structure */
++	const char *host,			/* Remote host name */
++	rpcprog_t prog,
++	rpcvers_t vers,
++	rpcproc_t proc,			/* Remote proc identifiers */
++	xdrproc_t xdrargs,      /* In XDR routines */ 
++	caddr_t argsp,			/* In Argument */
++	xdrproc_t xdrres,		/* Out XDR routines */
++	caddr_t resp,			/* out Result */
++	struct timeval tout,		/* Timeout value for this call */
++	const struct netbuf *addr_ptr)	/* Preallocated netbuf address */
  {
- 	extern mutex_t tsd_lock;
- 
-@@ -522,11 +528,11 @@ clnt_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp, eachresult)
-  * authdes_seccreate().
+ 	CLIENT *client;
+ 	enum clnt_stat stat;
+@@ -1285,9 +1281,7 @@ error:
+  * Returns 1 if succeeds else 0.
   */
- AUTH *
--authdes_create(servername, window, syncaddr, ckey)
--	char *servername;		/* network name of server */
--	u_int window;			/* time to live */
--	struct sockaddr *syncaddr;	/* optional hostaddr to sync with */
--	des_block *ckey;		/* optional conversation key to use */
-+authdes_create(
-+	char *servername,		/* network name of server */
-+	u_int window,			/* time to live */
-+	struct sockaddr *syncaddr,	/* optional hostaddr to sync with */
-+	des_block *ckey)		/* optional conversation key to use */
+ bool_t
+-rpcb_gettime(host, timep)
+-	const char *host;
+-	time_t *timep;
++rpcb_gettime(const char *host, time_t *timep)
  {
- 	AUTH *nauth;
- 	char hostname[NI_MAXHOST];
-@@ -565,12 +571,12 @@ extern AUTH *authdes_pk_seccreate(const char *, netobj *, u_int, const char *,
-         const des_block *, nis_server *);
+ 	CLIENT *client = NULL;
+ 	void *handle;
+@@ -1345,9 +1339,9 @@ rpcb_gettime(host, timep)
+  * really be called because local n2a libraries are always provided.
+  */
+ char *
+-rpcb_taddr2uaddr(nconf, taddr)
+-	struct netconfig *nconf;
+-	struct netbuf *taddr;
++rpcb_taddr2uaddr(
++	struct netconfig *nconf,
++	struct netbuf *taddr)
+ {
+ 	CLIENT *client;
+ 	char *uaddr = NULL;
+@@ -1379,9 +1373,9 @@ rpcb_taddr2uaddr(nconf, taddr)
+  * really be called because local n2a libraries are always provided.
+  */
+ struct netbuf *
+-rpcb_uaddr2taddr(nconf, uaddr)
+-	struct netconfig *nconf;
+-	char *uaddr;
++rpcb_uaddr2taddr(
++	struct netconfig *nconf,
++	char *uaddr)
+ {
+ 	CLIENT *client;
+ 	struct netbuf *taddr;
+diff --git a/src/rpcb_prot.c b/src/rpcb_prot.c
+index a923c8e..809feb0 100644
+--- a/src/rpcb_prot.c
++++ b/src/rpcb_prot.c
+@@ -44,9 +44,9 @@
+ #include "rpc_com.h"
  
- AUTH *
--authdes_pk_create(servername, pkey, window, syncaddr, ckey)
--	char *servername;		/* network name of server */
--	netobj *pkey;			/* public key */
--	u_int window;			/* time to live */
--	struct sockaddr *syncaddr;	/* optional hostaddr to sync with */
--	des_block *ckey;		/* optional conversation key to use */
-+authdes_pk_create(
-+	char *servername,		/* network name of server */
-+	netobj *pkey,			/* public key */
-+	u_int window,			/* time to live */
-+	struct sockaddr *syncaddr,	/* optional hostaddr to sync with */
-+	des_block *ckey)		/* optional conversation key to use */
+ bool_t
+-xdr_rpcb(xdrs, objp)
+-	XDR *xdrs;
+-	RPCB *objp;
++xdr_rpcb(
++	XDR *xdrs,
++	RPCB *objp)
  {
- 	AUTH *nauth;
- 	char hostname[NI_MAXHOST];
-@@ -597,20 +603,20 @@ fallback:
+ 	if (!xdr_u_int32_t(xdrs, &objp->r_prog)) {
+ 		return (FALSE);
+@@ -90,9 +90,9 @@ xdr_rpcb(xdrs, objp)
+  */
+ 
+ bool_t
+-xdr_rpcblist_ptr(xdrs, rp)
+-	XDR *xdrs;
+-	rpcblist_ptr *rp;
++xdr_rpcblist_ptr(
++	XDR *xdrs,
++	rpcblist_ptr *rp)
+ {
+ 	/*
+ 	 * more_elements is pre-computed in case the direction is
+@@ -144,9 +144,9 @@ xdr_rpcblist_ptr(xdrs, rp)
+  * functionality to xdr_rpcblist_ptr().
+  */
+ bool_t
+-xdr_rpcblist(xdrs, rp)
+-	XDR *xdrs;
+-	RPCBLIST **rp;
++xdr_rpcblist(
++	XDR *xdrs,
++	RPCBLIST **rp)
+ {
+ 	bool_t	dummy;
+ 
+@@ -156,9 +156,9 @@ xdr_rpcblist(xdrs, rp)
+ 
+ 
+ bool_t
+-xdr_rpcb_entry(xdrs, objp)
+-	XDR *xdrs;
+-	rpcb_entry *objp;
++xdr_rpcb_entry(
++	XDR *xdrs,
++	rpcb_entry *objp)
+ {
+ 	if (!xdr_string(xdrs, &objp->r_maddr, RPC_MAXDATASIZE)) {
+ 		return (FALSE);
+@@ -179,9 +179,9 @@ xdr_rpcb_entry(xdrs, objp)
  }
- #else
- AUTH *
--authdes_create(servername, window, syncaddr, ckey)
--	char *servername;		/* network name of server */
--	u_int window;			/* time to live */
--	struct sockaddr *syncaddr;	/* optional hostaddr to sync with */
--	des_block *ckey;		/* optional conversation key to use */
-+authdes_create(
-+	char *servername,		/* network name of server */
-+	u_int window,			/* time to live */
-+	struct sockaddr *syncaddr,	/* optional hostaddr to sync with */
-+	des_block *ckey)		/* optional conversation key to use */
- { return (NULL); }
  
- AUTH *
--authdes_pk_create(servername, pkey, window, syncaddr, ckey)
--	char *servername;		/* network name of server */
--	netobj *pkey;			/* public key */
--	u_int window;			/* time to live */
--	struct sockaddr *syncaddr;	/* optional hostaddr to sync with */
--	des_block *ckey;		/* optional conversation key to use */
-+authdes_pk_create(
-+	char *servername,		/* network name of server */
-+	netobj *pkey,			/* public key */
-+	u_int window,			/* time to live */
-+	struct sockaddr *syncaddr,	/* optional hostaddr to sync with */
-+	des_block *ckey)		/* optional conversation key to use */
- { return (NULL); }
- 
- AUTH *
-@@ -627,13 +633,13 @@ authdes_seccreate(const char *servername, const u_int win,
-  * Create a client handle for a unix connection. Obsoleted by clnt_vc_create()
-  */
- CLIENT *
--clntunix_create(raddr, prog, vers, sockp, sendsz, recvsz)
--	struct sockaddr_un *raddr;
--	u_long prog;
--	u_long vers;
--	int *sockp;
--	u_int sendsz;
--	u_int recvsz;
-+clntunix_create(
-+	struct sockaddr_un *raddr,
-+	u_long prog,
-+	u_long vers,
-+	int *sockp,
-+	u_int sendsz,
-+	u_int recvsz)
+ bool_t
+-xdr_rpcb_entry_list_ptr(xdrs, rp)
+-	XDR *xdrs;
+-	rpcb_entry_list_ptr *rp;
++xdr_rpcb_entry_list_ptr(
++	XDR *xdrs,
++	rpcb_entry_list_ptr *rp)
  {
- 	struct netbuf svcaddr = {0, 0, NULL};
- 	CLIENT *cl = NULL;
-@@ -669,11 +675,11 @@ done:
-  * Obsoleted by svc_vc_create().
+ 	/*
+ 	 * more_elements is pre-computed in case the direction is
+@@ -234,9 +234,9 @@ xdr_rpcb_entry_list_ptr(xdrs, rp)
+  * written for XDR_ENCODE direction only
   */
- SVCXPRT *
--svcunix_create(sock, sendsize, recvsize, path)
--	int sock;
--	u_int sendsize;
--	u_int recvsize;
--	char *path;
-+svcunix_create(
-+	int sock,
-+	u_int sendsize,
-+	u_int recvsize,
-+	char *path)
+ bool_t
+-xdr_rpcb_rmtcallargs(xdrs, p)
+-	XDR *xdrs;
+-	struct rpcb_rmtcallargs *p;
++xdr_rpcb_rmtcallargs(
++	XDR *xdrs,
++	struct rpcb_rmtcallargs *p)
  {
- 	struct netconfig *nconf;
- 	void *localhandle;
-@@ -738,10 +744,10 @@ done:
-  * descriptor as its first input. Obsoleted by svc_fd_create();
+ 	struct r_rpcb_rmtcallargs *objp =
+ 	    (struct r_rpcb_rmtcallargs *)(void *)p;
+@@ -286,9 +286,9 @@ xdr_rpcb_rmtcallargs(xdrs, p)
+  * written for XDR_DECODE direction only
   */
- SVCXPRT *
--svcunixfd_create(fd, sendsize, recvsize)
--	int fd;
--	u_int sendsize;
--	u_int recvsize;
-+svcunixfd_create(
-+	int fd,
-+	u_int sendsize,
-+	u_int recvsize)
+ bool_t
+-xdr_rpcb_rmtcallres(xdrs, p)
+-	XDR *xdrs;
+-	struct rpcb_rmtcallres *p;
++xdr_rpcb_rmtcallres(
++	XDR *xdrs,
++	struct rpcb_rmtcallres *p)
  {
-  	return (svc_fd_create(fd, sendsize, recvsize));
+ 	bool_t dummy;
+ 	struct r_rpcb_rmtcallres *objp = (struct r_rpcb_rmtcallres *)(void *)p;
+@@ -304,9 +304,9 @@ xdr_rpcb_rmtcallres(xdrs, p)
  }
+ 
+ bool_t
+-xdr_netbuf(xdrs, objp)
+-	XDR *xdrs;
+-	struct netbuf *objp;
++xdr_netbuf(
++	XDR *xdrs,
++	struct netbuf *objp)
+ {
+ 	bool_t dummy;
+ 
+diff --git a/src/rpcb_st_xdr.c b/src/rpcb_st_xdr.c
+index 28e6a48..7ee23a8 100644
+--- a/src/rpcb_st_xdr.c
++++ b/src/rpcb_st_xdr.c
+@@ -42,9 +42,9 @@
+ /* Link list of all the stats about getport and getaddr */
+ 
+ bool_t
+-xdr_rpcbs_addrlist(xdrs, objp)
+-	XDR *xdrs;
+-	rpcbs_addrlist *objp;
++xdr_rpcbs_addrlist(
++	XDR *xdrs,
++	rpcbs_addrlist *objp)
+ {
+ 
+ 	    if (!xdr_u_int32_t(xdrs, &objp->prog)) {
+@@ -75,9 +75,9 @@ xdr_rpcbs_addrlist(xdrs, objp)
+ /* Link list of all the stats about rmtcall */
+ 
+ bool_t
+-xdr_rpcbs_rmtcalllist(xdrs, objp)
+-	XDR *xdrs;
+-	rpcbs_rmtcalllist *objp;
++xdr_rpcbs_rmtcalllist(
++	XDR *xdrs,
++	rpcbs_rmtcalllist *objp)
+ {
+ 	int32_t *buf;
+ 
+@@ -188,9 +188,9 @@ xdr_rpcbs_rmtcalllist(xdrs, objp)
+ }
+ 
+ bool_t
+-xdr_rpcbs_proc(xdrs, objp)
+-	XDR *xdrs;
+-	rpcbs_proc objp;
++xdr_rpcbs_proc(
++	XDR *xdrs,
++	rpcbs_proc objp)
+ {
+ 	if (!xdr_vector(xdrs, (char *)(void *)objp, RPCBSTAT_HIGHPROC,
+ 	    sizeof (int), (xdrproc_t)xdr_int)) {
+@@ -200,9 +200,9 @@ xdr_rpcbs_proc(xdrs, objp)
+ }
+ 
+ bool_t
+-xdr_rpcbs_addrlist_ptr(xdrs, objp)
+-	XDR *xdrs;
+-	rpcbs_addrlist_ptr *objp;
++xdr_rpcbs_addrlist_ptr(
++	XDR *xdrs,
++	rpcbs_addrlist_ptr *objp)
+ {
+ 	if (!xdr_pointer(xdrs, (char **)objp, sizeof (rpcbs_addrlist),
+ 			(xdrproc_t)xdr_rpcbs_addrlist)) {
+@@ -212,9 +212,9 @@ xdr_rpcbs_addrlist_ptr(xdrs, objp)
+ }
+ 
+ bool_t
+-xdr_rpcbs_rmtcalllist_ptr(xdrs, objp)
+-	XDR *xdrs;
+-	rpcbs_rmtcalllist_ptr *objp;
++xdr_rpcbs_rmtcalllist_ptr(
++	XDR *xdrs,
++	rpcbs_rmtcalllist_ptr *objp)
+ {
+ 	if (!xdr_pointer(xdrs, (char **)objp, sizeof (rpcbs_rmtcalllist),
+ 			(xdrproc_t)xdr_rpcbs_rmtcalllist)) {
+@@ -224,9 +224,9 @@ xdr_rpcbs_rmtcalllist_ptr(xdrs, objp)
+ }
+ 
+ bool_t
+-xdr_rpcb_stat(xdrs, objp)
+-	XDR *xdrs;
+-	rpcb_stat *objp;
++xdr_rpcb_stat(
++	XDR *xdrs,
++	rpcb_stat *objp)
+ {
+ 
+ 	if (!xdr_rpcbs_proc(xdrs, objp->info)) {
+@@ -252,9 +252,9 @@ xdr_rpcb_stat(xdrs, objp)
+  * being monitored.
+  */
+ bool_t
+-xdr_rpcb_stat_byvers(xdrs, objp)
+-    XDR *xdrs;
+-    rpcb_stat_byvers objp;
++xdr_rpcb_stat_byvers(
++    XDR *xdrs,
++    rpcb_stat_byvers objp)
+ {
+ 	if (!xdr_vector(xdrs, (char *)(void *)objp, RPCBVERS_STAT,
+ 	    sizeof (rpcb_stat), (xdrproc_t)xdr_rpcb_stat)) {
 -- 
 2.50.1
 
