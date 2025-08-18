@@ -1,93 +1,79 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 115B224C669
-	for <linux-nfs@vger.kernel.org>; Mon, 18 Aug 2025 15:08:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5FE4A2550D5;
+	Mon, 18 Aug 2025 15:21:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755529731; cv=none; b=LSBNo+4SIBKSSaFBhV1JVgoJic8WwWvhectNAx+4uSja3WDtCWmpjaZLZ0exczgWUZmvLY5EFByirYIQBtjGAjhs2GHHt+EB0kbPm8srj88RNCtS391XpDOz/mhWDs+8+qyTZghatmXdkpaBZgeauByjybi/0+9gEiDbX6p9KxE=
+	t=1755530489; cv=none; b=W9612T0OgyXQhkc2PvVfdDtEujw00QmR9vAQvy4SFrQ8M8YVgHbZwo6atrHaNu2HGEfUXOFSdZnu0O6i80FTidx5eBEAfpBM8CLxmNyKyb2/sJVWudC3vLx8uofWD0ZTegVx1K3zJY/LVUkqp4xK/j5tOsmG4lp9yhVYKZj5ChA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755529731; c=relaxed/simple;
-	bh=O1YAWCufhvLsd1kKEhBu4ul/+DBsqtVet1qk1D/mGUg=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=LdY1b8fVccQ2yYp5hd9nvgpkRt4CLjh1TVLeo6Tpwjd3zGFonbFSdvPQK+0+FFqprJJ3Exj1ipPpyMQR+s/upQ1zJ9yFSwZucSHjBK80Dc65HcYmxtcWOmUloZDg9KlaeFklgmuv8ZH9OgHXtp0UKlPJ9N8X/MKfY5TgeLfZ6gU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=WJ/cUm8M; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1755530489; c=relaxed/simple;
+	bh=ybT3elApIajWSCKl67U2LxsXVp/ZqEfe0e1Txum4w9w=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=qC0T/CYpIbbBGDmtoiW+qo9inkhgCrmKXQ5GYnUTSf9DjXGZOKM8/4AEv95gut6UbdKHiyJE9hRq8W4BlOa4j9NiSPw0/ODeehTHTk2jdBCUSoNB8Gc/EjrVba4nG4U5iXU7HAF46OZB/n+4KAEv8wQaVEwoKYq7KC3Xw63M3nI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=JycF+HWn; arc=none smtp.client-ip=90.155.50.34
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="WJ/cUm8M"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1755529729;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=MeAn+9dsAskv/ByqKxP9oUsqrPEtN3XawiNrbtKaNHs=;
-	b=WJ/cUm8MR9MvyVTDAkJ0OWxbPe7bnopH25po0zDuaS5BeWTLALfeOMBOISj++aHXKyFmqX
-	dBUaWkNbWE4ooxqcaT9xF6iLG304pcGqx0SFNzHrGyt/eq4aGCMnC5EQMM42PlnkaG9rM3
-	bux7R8jD/plfcWSKiUpXOcsYry2J1p0=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-204-zGONRgKYNIuVnWCFev-wEA-1; Mon,
- 18 Aug 2025 11:08:45 -0400
-X-MC-Unique: zGONRgKYNIuVnWCFev-wEA-1
-X-Mimecast-MFC-AGG-ID: zGONRgKYNIuVnWCFev-wEA_1755529724
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id C5A9F19775AD;
-	Mon, 18 Aug 2025 15:08:44 +0000 (UTC)
-Received: from dobby.home.dicksonnet.net (unknown [10.22.64.4])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 0D21030001A8;
-	Mon, 18 Aug 2025 15:08:43 +0000 (UTC)
-From: Steve Dickson <steved@redhat.com>
-To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 11/12] Convert old-style function definitions into modern-style definitions
-Date: Mon, 18 Aug 2025 11:08:28 -0400
-Message-ID: <20250818150829.1044948-12-steved@redhat.com>
-In-Reply-To: <20250818150829.1044948-1-steved@redhat.com>
-References: <20250818150829.1044948-1-steved@redhat.com>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="JycF+HWn"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=vr/RdZMhiaGI1ngCH3UQz2IFmEHsSacQUq/ySyRWpEI=; b=JycF+HWnFn1+yHSfiepZrxbO7r
+	nZWN2G9IiimTFw/8K9O7ddLHqtpmzBElB6Q5QnEMe2rPx+cakd39zSuJck2MjUpobrSTfR9Cnpi22
+	QTHquBYRuuqe+zmn95Im5MJCKJoQn7q9+dcw3lg6roHCm1uzxm90ScwCMDZGXho5fxL7Sz7BfwZA1
+	GxuB0IvuVYFBrGZ0xjvJU0a5a2KNJds5ZbUzBF4VpJXp1NeXOobx4xUO1vQz5bpdFgpiZa8GoBkKs
+	OwEfSci8t6xjXjcgvDXIN/YAPeP0l7G1pYRFwaCZjY9NZo8/u5MkXvbDhYsGhGHBV7ov7HFIlFFsY
+	rtIuygEA==;
+Received: from willy by casper.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1uo1fp-00000007kTX-1i95;
+	Mon, 18 Aug 2025 15:21:25 +0000
+Date: Mon, 18 Aug 2025 16:21:25 +0100
+From: Matthew Wilcox <willy@infradead.org>
+To: Trond Myklebust <trondmy@kernel.org>
+Cc: Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, Mike Snitzer <snitzer@kernel.org>
+Subject: Re: [PATCH v3 2/2] NFS: Enable the RWF_DONTCACHE flag for the NFS
+ client
+Message-ID: <aKNE9UnyBoaE_UzJ@casper.infradead.org>
+References: <cover.1755527537.git.trond.myklebust@hammerspace.com>
+ <001e5575d7ddbcdb925626151a7dcc7353445543.1755527537.git.trond.myklebust@hammerspace.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <001e5575d7ddbcdb925626151a7dcc7353445543.1755527537.git.trond.myklebust@hammerspace.com>
 
-With newer compilers (gcc 15.1.1) -Wold-style-definition
-flag is set by default which causes warnings for
-most of the functions in these files.
+On Mon, Aug 18, 2025 at 07:39:50AM -0700, Trond Myklebust wrote:
+> @@ -349,8 +349,12 @@ static void nfs_folio_end_writeback(struct folio *folio)
+>  static void nfs_page_end_writeback(struct nfs_page *req)
+>  {
+>  	if (nfs_page_group_sync_on_bit(req, PG_WB_END)) {
+> +		struct folio *folio = nfs_page_to_folio(req);
+> +
+> +		if (folio_test_clear_dropbehind(folio))
+> +			set_bit(PG_DROPBEHIND, &req->wb_head->wb_flags);
+>  		nfs_unlock_request(req);
+> @@ -787,8 +791,15 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+>  			clear_bit(PG_MAPPED, &req->wb_head->wb_flags);
+>  		}
+>  		spin_unlock(&mapping->i_private_lock);
+> -	}
+> -	nfs_page_group_unlock(req);
+> +		nfs_page_group_unlock(req);
+> +
+> +		if (test_and_clear_bit(PG_DROPBEHIND,
+> +				       &req->wb_head->wb_flags)) {
+> +			folio_set_dropbehind(folio);
+> +			folio_end_dropbehind(folio);
+> +		}
 
-    warning: old-style function definition [-Wold-style-definition]
-
-The warnings are remove by converting the old-style
-function definitions into modern-style definitions
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/bindresvport.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
-
-diff --git a/src/bindresvport.c b/src/bindresvport.c
-index efeb1cc..7b2056d 100644
---- a/src/bindresvport.c
-+++ b/src/bindresvport.c
-@@ -147,9 +147,7 @@ load_blacklist (void)
- }
- 
- int
--bindresvport_sa(sd, sa)
--        int sd;
--        struct sockaddr *sa;
-+bindresvport_sa(int sd, struct sockaddr *sa)
- {
-         int res, af;
-         struct sockaddr_storage myaddr;
--- 
-2.50.1
-
+I don't think this technique is "safe".  By clearing the flag early,
+the page cache can't see that a folio that was created by dropbehind
+has now been reused and should have its dropbehind flag cleared.  So we
+might see pages dropped from the cache that really should not be.
