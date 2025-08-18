@@ -1,53 +1,53 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 323F5248F7C
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3238F223337
 	for <linux-nfs@vger.kernel.org>; Mon, 18 Aug 2025 15:08:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755529728; cv=none; b=ZwYx8Ujy8wCkR2g9q5jRJD7I/29DoAvpsAzUTWJduVZoclSD7EspfJEJdQOcv0Gtcoajm65JdjyjMbYA2VcggdemtYLNoAbD0R3zMYR7gK7n60++jBuGQXLzE+213Ib4THT90LDgr1JlffT9v5J0eKxHjCcsiPQjKGzE5AV0N7E=
+	t=1755529729; cv=none; b=j+6qW1W4yCfsA40RgZUMi5KFS/LMiblRhNAhUygETGWzDF3kEbt/pwK314O8WPOzpWihcZzvOBZBv7Q3jAEEcEZhEmLPkvs1ZpnhRNOhCJoYc/kzssPL74Tx1t4dZx6Nt5/s6ri71CjW0sIBx95oUmA95xrdcnKQeTBOWC2WJBo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755529728; c=relaxed/simple;
-	bh=VsXOc1S4ap0B42nAyjWEeWqOQ+Gec9oY/uBK21jhEz4=;
+	s=arc-20240116; t=1755529729; c=relaxed/simple;
+	bh=U5OhrQUsXfIkGUp/t7kOzpAV+c6HIQT+sRQzzkp1qsI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=rdKrGvVD6KqV7Aw/HegOvsoFKSnsHoS/ogmc8Gg8m6SBvya0v6e+AMqtpAazSxNbt1BJ4eqZKb3U2zy+FKdPjsRP1CMVnCp03iv6Q+KVV0dd8R+KfJ/0pQDZgIizumqHaj0sIe6PnHYODmrTTPRDXTJoBsuPN3brVqCzstJHB/0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=X6b2Gt49; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=EZncidrCUQlU8shIP/5WAoGMW/bv7chy4YkDXzcBh3rSLnkeTpG+EMSehGRYbzUYeISiu9l/5vQessh3wRBHRwxFr5+sXT2TxVM9P7mfP4er/JMEnpyTHEdZcHIFSmXZLJKorY9lHJhv+6rtrr0GlWNcqpq9AgTR4cyLlV5D8ZQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=L1Eq3VTX; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="X6b2Gt49"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="L1Eq3VTX"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
 	s=mimecast20190719; t=1755529726;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=6jKrMmmjaF5f4Ut7LCPyvP+C7XbkD8LpIfSPKWAXHuY=;
-	b=X6b2Gt4997myudJWS7177NrGEG+N6I3TgTKeQVLSgFf6WO35+c13IdO3i1HhaOwtbM3uYj
-	oSOsuRnc4DLVmkHbdySRbecH/zVPsVJKqSdEyrCwQaVueTwp725U33t6Ck0usjMztNBCTC
-	F8R9oZ/NQPifFOMvNgDAW/W5bkjwAbY=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=uHytpWmfXBO8AIaPcan7uTzBOH59JhFv0vhwqjcntvc=;
+	b=L1Eq3VTXiVNn//i4C+vpWnRiLAts3kxNckYQN1ENLCxyHxfkz7MGZ5OqNX+XEJG1TrbBwH
+	6Ax1+F4T6Aqc38kJeogLRVxs8xtD0XPingbH7HXnzF6NWz96cKX+PqO5bvB8EB3A6B0S/L
+	qwTmE1uvKxn3GusKOEFRTXVetuJwIGA=
+Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-228-zfQAYFVUNRe_vKhA09d3Pg-1; Mon,
- 18 Aug 2025 11:08:42 -0400
-X-MC-Unique: zfQAYFVUNRe_vKhA09d3Pg-1
-X-Mimecast-MFC-AGG-ID: zfQAYFVUNRe_vKhA09d3Pg_1755529721
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-68-xPo6No9bOZepcr5GefQZxQ-1; Mon,
+ 18 Aug 2025 11:08:44 -0400
+X-MC-Unique: xPo6No9bOZepcr5GefQZxQ-1
+X-Mimecast-MFC-AGG-ID: xPo6No9bOZepcr5GefQZxQ_1755529723
 Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id AB07B19560A6;
-	Mon, 18 Aug 2025 15:08:41 +0000 (UTC)
+	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id D23031800294;
+	Mon, 18 Aug 2025 15:08:43 +0000 (UTC)
 Received: from dobby.home.dicksonnet.net (unknown [10.22.64.4])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id F2A6430001A8;
-	Mon, 18 Aug 2025 15:08:40 +0000 (UTC)
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 08E7C30001A8;
+	Mon, 18 Aug 2025 15:08:42 +0000 (UTC)
 From: Steve Dickson <steved@redhat.com>
 To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 08/12] Convert old-style function definitions into modern-style definitions
-Date: Mon, 18 Aug 2025 11:08:25 -0400
-Message-ID: <20250818150829.1044948-9-steved@redhat.com>
+Subject: [PATCH 10/12] Convert old-style function definitions into modern-style definitions
+Date: Mon, 18 Aug 2025 11:08:27 -0400
+Message-ID: <20250818150829.1044948-11-steved@redhat.com>
 In-Reply-To: <20250818150829.1044948-1-steved@redhat.com>
 References: <20250818150829.1044948-1-steved@redhat.com>
 Precedence: bulk
@@ -70,141 +70,540 @@ function definitions into modern-style definitions
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- src/key_call.c | 58 +++++++++++++++++++++++---------------------------
- 1 file changed, 27 insertions(+), 31 deletions(-)
+ src/clnt_bcast.c  | 46 ++++++++++++++---------------
+ src/clnt_dg.c     | 59 +++++++++++++++++--------------------
+ src/clnt_perror.c | 23 +++++----------
+ src/clnt_raw.c    | 46 +++++++++++++----------------
+ src/clnt_simple.c | 19 ++++++------
+ src/clnt_vc.c     | 75 ++++++++++++++++++++++-------------------------
+ 6 files changed, 121 insertions(+), 147 deletions(-)
 
-diff --git a/src/key_call.c b/src/key_call.c
-index 43f990e..e33e444 100644
---- a/src/key_call.c
-+++ b/src/key_call.c
-@@ -79,8 +79,7 @@ des_block *(*__key_gendes_LOCAL)(uid_t, char *) = 0;
- static int key_call( u_long, xdrproc_t, void *, xdrproc_t, void *);
- 
- int
--key_setsecret(secretkey)
--	const char *secretkey;
-+key_setsecret(const char *secretkey)
- {
- 	keystatus status;
- 
-@@ -122,10 +121,10 @@ key_secretkey_is_set(void)
+diff --git a/src/clnt_bcast.c b/src/clnt_bcast.c
+index 2ad6c89..1103b36 100644
+--- a/src/clnt_bcast.c
++++ b/src/clnt_bcast.c
+@@ -257,19 +257,18 @@ __ipv6v4_fixup(struct sockaddr_storage *ss, const char *uaddr)
  }
  
- int
--key_encryptsession_pk(remotename, remotekey, deskey)
--	char *remotename;
--	netobj *remotekey;
--	des_block *deskey;
-+key_encryptsession_pk(
-+	char *remotename,
-+	netobj *remotekey,
-+	des_block *deskey)
+ enum clnt_stat
+-rpc_broadcast_exp(prog, vers, proc, xargs, argsp, xresults, resultsp,
+-	eachresult, inittime, waittime, nettype)
+-	rpcprog_t	prog;		/* program number */
+-	rpcvers_t	vers;		/* version number */
+-	rpcproc_t	proc;		/* procedure number */
+-	xdrproc_t	xargs;		/* xdr routine for args */
+-	caddr_t		argsp;		/* pointer to args */
+-	xdrproc_t	xresults;	/* xdr routine for results */
+-	caddr_t		resultsp;	/* pointer to results */
+-	resultproc_t	eachresult;	/* call with each result obtained */
+-	int 		inittime;	/* how long to wait initially */
+-	int 		waittime;	/* maximum time to wait */
+-	const char		*nettype;	/* transport type */
++rpc_broadcast_exp(
++	rpcprog_t	prog,		/* program number */
++	rpcvers_t	vers,		/* version number */
++	rpcproc_t	proc,		/* procedure number */
++	xdrproc_t	xargs,		/* xdr routine for args */
++	caddr_t		argsp,		/* pointer to args */
++	xdrproc_t	xresults,	/* xdr routine for results */
++	caddr_t		resultsp,	/* pointer to results */
++	resultproc_t	eachresult,	/* call with each result obtained */
++	int 		inittime,	/* how long to wait initially */
++	int 		waittime,	/* maximum time to wait */
++	const char		*nettype)	/* transport type */
  {
- 	cryptkeyarg2 arg;
- 	cryptkeyres res;
-@@ -146,10 +145,10 @@ key_encryptsession_pk(remotename, remotekey, deskey)
- }
+ 	enum clnt_stat	stat = RPC_SUCCESS; /* Return status */
+ 	XDR 		xdr_stream; /* XDR stream */
+@@ -677,17 +676,16 @@ done_broad:
  
- int
--key_decryptsession_pk(remotename, remotekey, deskey)
--	char *remotename;
--	netobj *remotekey;
--	des_block *deskey;
-+key_decryptsession_pk(
-+	char *remotename,
-+	netobj *remotekey,
-+	des_block *deskey)
+ 
+ enum clnt_stat
+-rpc_broadcast(prog, vers, proc, xargs, argsp, xresults, resultsp,
+-			eachresult, nettype)
+-	rpcprog_t	prog;		/* program number */
+-	rpcvers_t	vers;		/* version number */
+-	rpcproc_t	proc;		/* procedure number */
+-	xdrproc_t	xargs;		/* xdr routine for args */
+-	caddr_t		argsp;		/* pointer to args */
+-	xdrproc_t	xresults;	/* xdr routine for results */
+-	caddr_t		resultsp;	/* pointer to results */
+-	resultproc_t	eachresult;	/* call with each result obtained */
+-	const char		*nettype;	/* transport type */
++rpc_broadcast(
++	rpcprog_t	prog,		/* program number */
++	rpcvers_t	vers,		/* version number */
++	rpcproc_t	proc,		/* procedure number */
++	xdrproc_t	xargs,		/* xdr routine for args */
++	caddr_t		argsp,		/* pointer to args */
++	xdrproc_t	xresults,	/* xdr routine for results */
++	caddr_t		resultsp,	/* pointer to results */
++	resultproc_t	eachresult,	/* call with each result obtained */
++	const char		*nettype)	/* transport type */
  {
- 	cryptkeyarg2 arg;
- 	cryptkeyres res;
-@@ -170,9 +169,9 @@ key_decryptsession_pk(remotename, remotekey, deskey)
- }
+ 	enum clnt_stat	dummy;
  
- int
--key_encryptsession(remotename, deskey)
--	const char *remotename;
--	des_block *deskey;
-+key_encryptsession(
-+	const char *remotename,
-+	des_block *deskey)
- {
- 	cryptkeyarg arg;
- 	cryptkeyres res;
-@@ -192,9 +191,9 @@ key_encryptsession(remotename, deskey)
- }
- 
- int
--key_decryptsession(remotename, deskey)
--	const char *remotename;
--	des_block *deskey;
-+key_decryptsession(
-+	const char *remotename,
-+	des_block *deskey)
- {
- 	cryptkeyarg arg;
- 	cryptkeyres res;
-@@ -214,8 +213,7 @@ key_decryptsession(remotename, deskey)
- }
- 
- int
--key_gendes(key)
--	des_block *key;
-+key_gendes(des_block *key)
- {
- 	if (!key_call((u_long)KEY_GEN, (xdrproc_t)xdr_void, NULL,
- 			(xdrproc_t)xdr_des_block, key)) {
-@@ -225,8 +223,7 @@ key_gendes(key)
- }
- 
- int
--key_setnet(arg)
--struct key_netstarg *arg;
-+key_setnet(struct key_netstarg *arg)
- {
- 	keystatus status;
- 
-@@ -245,9 +242,9 @@ struct key_netstarg *arg;
- 
- 
- int
--key_get_conv(pkey, deskey)
--	char *pkey;
--	des_block *deskey;
-+key_get_conv(
-+	char *pkey,
-+	des_block *deskey)
- {
- 	cryptkeyres res;
- 
-@@ -286,8 +283,7 @@ key_call_destroy(void *vp)
-  * Keep the handle cached.  This call may be made quite often.
+diff --git a/src/clnt_dg.c b/src/clnt_dg.c
+index 166af63..526a0b5 100644
+--- a/src/clnt_dg.c
++++ b/src/clnt_dg.c
+@@ -149,13 +149,13 @@ struct cu_data {
+  * If svcaddr is NULL, returns NULL.
   */
- static CLIENT *
--getkeyserv_handle(vers)
--int	vers;
-+getkeyserv_handle(int vers)
+ CLIENT *
+-clnt_dg_create(fd, svcaddr, program, version, sendsz, recvsz)
+-	int fd;				/* open file descriptor */
+-	const struct netbuf *svcaddr;	/* servers address */
+-	rpcprog_t program;		/* program number */
+-	rpcvers_t version;		/* version number */
+-	u_int sendsz;			/* buffer recv size */
+-	u_int recvsz;			/* buffer send size */
++clnt_dg_create(
++	int fd,				/* open file descriptor */
++	const struct netbuf *svcaddr,	/* servers address */
++	rpcprog_t program,		/* program number */
++	rpcvers_t version,		/* version number */
++	u_int sendsz,			/* buffer recv size */
++	u_int recvsz)			/* buffer send size */
  {
- 	void *localhandle;
- 	struct netconfig *nconf;
-@@ -396,12 +392,12 @@ int	vers;
- /* returns  0 on failure, 1 on success */
+ 	CLIENT *cl = NULL;		/* client handle */
+ 	struct cu_data *cu = NULL;	/* private data */
+@@ -282,14 +282,14 @@ err2:
+ }
+ 
+ static enum clnt_stat
+-clnt_dg_call(cl, proc, xargs, argsp, xresults, resultsp, utimeout)
+-	CLIENT	*cl;			/* client handle */
+-	rpcproc_t	proc;		/* procedure number */
+-	xdrproc_t	xargs;		/* xdr routine for args */
+-	void		*argsp;		/* pointer to args */
+-	xdrproc_t	xresults;	/* xdr routine for results */
+-	void		*resultsp;	/* pointer to results */
+-	struct timeval	utimeout;	/* seconds to wait before giving up */
++clnt_dg_call(
++	CLIENT	*cl,			/* client handle */
++	rpcproc_t	proc,		/* procedure number */
++	xdrproc_t	xargs,		/* xdr routine for args */
++	void		*argsp,		/* pointer to args */
++	xdrproc_t	xresults,	/* xdr routine for results */
++	void		*resultsp,	/* pointer to results */
++	struct timeval	utimeout)	/* seconds to wait before giving up */
+ {
+ 	struct cu_data *cu = (struct cu_data *)cl->cl_private;
+ 	XDR *xdrs;
+@@ -549,9 +549,7 @@ out:
+ }
+ 
+ static void
+-clnt_dg_geterr(cl, errp)
+-	CLIENT *cl;
+-	struct rpc_err *errp;
++clnt_dg_geterr(CLIENT *cl, struct rpc_err *errp)
+ {
+ 	struct cu_data *cu = (struct cu_data *)cl->cl_private;
+ 
+@@ -559,10 +557,10 @@ clnt_dg_geterr(cl, errp)
+ }
+ 
+ static bool_t
+-clnt_dg_freeres(cl, xdr_res, res_ptr)
+-	CLIENT *cl;
+-	xdrproc_t xdr_res;
+-	void *res_ptr;
++clnt_dg_freeres(
++	CLIENT *cl,
++	xdrproc_t xdr_res,
++	void *res_ptr)
+ {
+ 	struct cu_data *cu = (struct cu_data *)cl->cl_private;
+ 	XDR *xdrs = &(cu->cu_outxdrs);
+@@ -587,16 +585,15 @@ clnt_dg_freeres(cl, xdr_res, res_ptr)
+ 
+ /*ARGSUSED*/
+ static void
+-clnt_dg_abort(h)
+-	CLIENT *h;
++clnt_dg_abort(CLIENT *h)
+ {
+ }
+ 
+ static bool_t
+-clnt_dg_control(cl, request, info)
+-	CLIENT *cl;
+-	u_int request;
+-	void *info;
++clnt_dg_control(
++	CLIENT *cl,
++	u_int request,
++	void *info)
+ {
+ 	struct cu_data *cu = (struct cu_data *)cl->cl_private;
+ 	struct netbuf *addr;
+@@ -735,8 +732,7 @@ clnt_dg_control(cl, request, info)
+ }
+ 
+ static void
+-clnt_dg_destroy(cl)
+-	CLIENT *cl;
++clnt_dg_destroy(CLIENT *cl)
+ {
+ 	struct cu_data *cu = (struct cu_data *)cl->cl_private;
+ 	int cu_fd = cu->cu_fd;
+@@ -800,8 +796,7 @@ clnt_dg_ops()
+  * Make sure that the time is not garbage.  -1 value is allowed.
+  */
+ static bool_t
+-time_not_ok(t)
+-	struct timeval *t;
++time_not_ok(struct timeval *t)
+ {
+ 	return (t->tv_sec < -1 || t->tv_sec > 100000000 ||
+ 		t->tv_usec < -1 || t->tv_usec > 1000000);
+diff --git a/src/clnt_perror.c b/src/clnt_perror.c
+index fb7fb80..7c2ec21 100644
+--- a/src/clnt_perror.c
++++ b/src/clnt_perror.c
+@@ -60,9 +60,7 @@ _buf()
+  * Print reply error info
+  */
+ char *
+-clnt_sperror(rpch, s)
+-	CLIENT *rpch;
+-	const char *s;
++clnt_sperror(CLIENT *rpch, const char *s)
+ {
+ 	struct rpc_err e;
+ 	char *err;
+@@ -174,9 +172,7 @@ clnt_sperror(rpch, s)
+ }
+ 
+ void
+-clnt_perror(rpch, s)
+-	CLIENT *rpch;
+-	const char *s;
++clnt_perror(CLIENT *rpch, const char *s)
+ {
+ 
+ 	if (rpch == NULL || s == NULL)
+@@ -211,8 +207,7 @@ static const char *const rpc_errlist[] = {
+  * This interface for use by clntrpc
+  */
+ char *
+-clnt_sperrno(stat)
+-	enum clnt_stat stat;
++clnt_sperrno(enum clnt_stat stat)
+ {
+ 	unsigned int errnum = stat;
+ 
+@@ -224,16 +219,14 @@ clnt_sperrno(stat)
+ }
+ 
+ void
+-clnt_perrno(num)
+-	enum clnt_stat num;
++clnt_perrno(enum clnt_stat num)
+ {
+ 	(void) fprintf(stderr, "%s\n", clnt_sperrno(num));
+ }
+ 
+ 
+ char *
+-clnt_spcreateerror(s)
+-	const char *s;
++clnt_spcreateerror(const char *s)
+ {
+ 	char *str, *err;
+ 	size_t len, i;
+@@ -300,8 +293,7 @@ clnt_spcreateerror(s)
+ }
+ 
+ void
+-clnt_pcreateerror(s)
+-	const char *s;
++clnt_pcreateerror(const char *s)
+ {
+ 
+ 	if (s == NULL)
+@@ -322,8 +314,7 @@ static const char *const auth_errlist[] = {
+ };
+ 
+ static char *
+-auth_errmsg(stat)
+-	enum auth_stat stat;
++auth_errmsg(enum auth_stat stat)
+ {
+ 	unsigned int errnum = stat;
+ 
+diff --git a/src/clnt_raw.c b/src/clnt_raw.c
+index 03f839d..4e00a76 100644
+--- a/src/clnt_raw.c
++++ b/src/clnt_raw.c
+@@ -77,9 +77,7 @@ static struct clnt_ops *clnt_raw_ops(void);
+  * Create a client handle for memory based rpc.
+  */
+ CLIENT *
+-clnt_raw_create(prog, vers)
+-	rpcprog_t prog;
+-	rpcvers_t vers;
++clnt_raw_create(rpcprog_t prog, rpcvers_t vers)
+ {
+ 	struct clntraw_private *clp;
+ 	struct rpc_msg call_msg;
+@@ -132,14 +130,14 @@ clnt_raw_create(prog, vers)
+ 
+ /* ARGSUSED */
+ static enum clnt_stat 
+-clnt_raw_call(h, proc, xargs, argsp, xresults, resultsp, timeout)
+-	CLIENT *h;
+-	rpcproc_t proc;
+-	xdrproc_t xargs;
+-	void *argsp;
+-	xdrproc_t xresults;
+-	void *resultsp;
+-	struct timeval timeout;
++clnt_raw_call(
++	CLIENT *h,
++	rpcproc_t proc,
++	xdrproc_t xargs,
++	void *argsp,
++	xdrproc_t xresults,
++	void *resultsp,
++	struct timeval timeout)
+ {
+ 	struct clntraw_private *clp = clntraw_private;
+ 	XDR *xdrs;
+@@ -231,19 +229,17 @@ call_again:
+ 
+ /*ARGSUSED*/
+ static void
+-clnt_raw_geterr(cl, err)
+-	CLIENT *cl;
+-	struct rpc_err *err;
++clnt_raw_geterr(CLIENT *cl, struct rpc_err *err)
+ {
+ }
+ 
+ 
+ /* ARGSUSED */
+ static bool_t
+-clnt_raw_freeres(cl, xdr_res, res_ptr)
+-	CLIENT *cl;
+-	xdrproc_t xdr_res;
+-	void *res_ptr;
++clnt_raw_freeres(
++	CLIENT *cl,
++	xdrproc_t xdr_res,
++	void *res_ptr)
+ {
+ 	struct clntraw_private *clp = clntraw_private;
+ 	XDR *xdrs;
+@@ -263,25 +259,23 @@ clnt_raw_freeres(cl, xdr_res, res_ptr)
+ 
+ /*ARGSUSED*/
+ static void
+-clnt_raw_abort(cl)
+-	CLIENT *cl;
++clnt_raw_abort(CLIENT *cl)
+ {
+ }
+ 
+ /*ARGSUSED*/
+ static bool_t
+-clnt_raw_control(cl, ui, str)
+-	CLIENT *cl;
+-	u_int ui;
+-	void *str;
++clnt_raw_control(
++	CLIENT *cl,
++	u_int ui,
++	void *str)
+ {
+ 	return (FALSE);
+ }
+ 
+ /*ARGSUSED*/
+ static void
+-clnt_raw_destroy(cl)
+-	CLIENT *cl;
++clnt_raw_destroy(CLIENT *cl)
+ {
+ }
+ 
+diff --git a/src/clnt_simple.c b/src/clnt_simple.c
+index 1700060..b0e29ba 100644
+--- a/src/clnt_simple.c
++++ b/src/clnt_simple.c
+@@ -87,15 +87,16 @@ rpc_call_destroy(void *vp)
+  * The total time available is 25 seconds.
+  */
+ enum clnt_stat
+-rpc_call(host, prognum, versnum, procnum, inproc, in, outproc, out, nettype)
+-	const char *host;			/* host name */
+-	rpcprog_t prognum;			/* program number */
+-	rpcvers_t versnum;			/* version number */
+-	rpcproc_t procnum;			/* procedure number */
+-	xdrproc_t inproc, outproc;	/* in/out XDR procedures */
+-	const char *in;
+-	char  *out;			/* recv/send data */
+-	const char *nettype;			/* nettype */
++rpc_call(
++	const char *host,			/* host name */
++	rpcprog_t prognum,			/* program number */
++	rpcvers_t versnum,			/* version number */
++	rpcproc_t procnum,			/* procedure number */
++	xdrproc_t inproc,			/* recv data */
++	const char *in,				/* recv XDR data */
++	xdrproc_t outproc,			/* out XDR procedures */
++	char  *out,				/* send data */
++	const char *nettype)		/* nettype */
+ {
+   	struct rpc_call_private *rcp = (struct rpc_call_private *) 0;
+ 	enum clnt_stat clnt_stat;
+diff --git a/src/clnt_vc.c b/src/clnt_vc.c
+index 5bbc78b..e94313b 100644
+--- a/src/clnt_vc.c
++++ b/src/clnt_vc.c
+@@ -175,13 +175,13 @@ static const char __no_mem_str[] = "out of memory";
+  * fd should be an open socket
+  */
+ CLIENT *
+-clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
+-	int fd;				/* open file descriptor */
+-	const struct netbuf *raddr;	/* servers address */
+-	const rpcprog_t prog;			/* program number */
+-	const rpcvers_t vers;			/* version number */
+-	u_int sendsz;			/* buffer recv size */
+-	u_int recvsz;			/* buffer send size */
++clnt_vc_create(
++	int fd,				/* open file descriptor */
++	const struct netbuf *raddr,	/* servers address */
++	const rpcprog_t prog,			/* program number */
++	const rpcvers_t vers,			/* version number */
++	u_int sendsz,			/* buffer recv size */
++	u_int recvsz)			/* buffer send size */
+ {
+ 	CLIENT *cl;			/* client handle */
+ 	struct ct_data *ct = NULL;	/* client handle */
+@@ -335,14 +335,14 @@ err:
+ }
+ 
+ static enum clnt_stat
+-clnt_vc_call(cl, proc, xdr_args, args_ptr, xdr_results, results_ptr, timeout)
+-	CLIENT *cl;
+-	rpcproc_t proc;
+-	xdrproc_t xdr_args;
+-	void *args_ptr;
+-	xdrproc_t xdr_results;
+-	void *results_ptr;
+-	struct timeval timeout;
++clnt_vc_call(
++	CLIENT *cl,
++	rpcproc_t proc,
++	xdrproc_t xdr_args,
++	void *args_ptr,
++	xdrproc_t xdr_results,
++	void *results_ptr,
++	struct timeval timeout)
+ {
+ 	struct ct_data *ct = (struct ct_data *) cl->cl_private;
+ 	XDR *xdrs = &(ct->ct_xdrs);
+@@ -464,9 +464,7 @@ call_again:
+ }
+ 
+ static void
+-clnt_vc_geterr(cl, errp)
+-	CLIENT *cl;
+-	struct rpc_err *errp;
++clnt_vc_geterr(CLIENT *cl, struct rpc_err *errp)
+ {
+ 	struct ct_data *ct;
+ 
+@@ -478,10 +476,10 @@ clnt_vc_geterr(cl, errp)
+ }
+ 
+ static bool_t
+-clnt_vc_freeres(cl, xdr_res, res_ptr)
+-	CLIENT *cl;
+-	xdrproc_t xdr_res;
+-	void *res_ptr;
++clnt_vc_freeres(
++	CLIENT *cl,
++	xdrproc_t xdr_res,
++	void *res_ptr)
+ {
+ 	struct ct_data *ct;
+ 	XDR *xdrs;
+@@ -512,16 +510,15 @@ clnt_vc_freeres(cl, xdr_res, res_ptr)
+ 
+ /*ARGSUSED*/
+ static void
+-clnt_vc_abort(cl)
+-	CLIENT *cl;
++clnt_vc_abort(CLIENT *cl)
+ {
+ }
+ 
+ static bool_t
+-clnt_vc_control(cl, request, info)
+-	CLIENT *cl;
+-	u_int request;
+-	void *info;
++clnt_vc_control(
++	CLIENT *cl,
++	u_int request,
++	void *info)
+ {
+ 	struct ct_data *ct;
+ 	void *infop = info;
+@@ -647,8 +644,7 @@ clnt_vc_control(cl, request, info)
+ 
+ 
+ static void
+-clnt_vc_destroy(cl)
+-	CLIENT *cl;
++clnt_vc_destroy(CLIENT *cl)
+ {
+ 	assert(cl != NULL);
+ 	struct ct_data *ct = (struct ct_data *) cl->cl_private;
+@@ -692,10 +688,10 @@ clnt_vc_destroy(cl)
+  * around for the rpc level.
+  */
+ static int
+-read_vc(ctp, buf, len)
+-	void *ctp;
+-	void *buf;
+-	int len;
++read_vc(
++	void *ctp,
++	void *buf,
++	int len)
+ {
+ 	/*
+ 	struct sockaddr sa;
+@@ -745,10 +741,10 @@ read_vc(ctp, buf, len)
+ }
  
  static int
--key_call(proc, xdr_arg, arg, xdr_rslt, rslt)
--	u_long proc;
--	xdrproc_t xdr_arg;
--	void *arg;
--	xdrproc_t xdr_rslt;
--	void *rslt;
-+key_call(
-+	u_long proc,
-+	xdrproc_t xdr_arg,
-+	void *arg,
-+	xdrproc_t xdr_rslt,
-+	void *rslt)
+-write_vc(ctp, buf, len)
+-	void *ctp;
+-	void *buf;
+-	int len;
++write_vc(
++	void *ctp,
++	void *buf,
++	int len)
  {
- 	CLIENT *clnt;
- 	struct timeval wait_time;
+ 	struct ct_data *ct = (struct ct_data *)ctp;
+ 	int i = 0, cnt;
+@@ -793,8 +789,7 @@ clnt_vc_ops()
+  * Note this is different from time_not_ok in clnt_dg.c
+  */
+ static bool_t
+-time_not_ok(t)
+-	struct timeval *t;
++time_not_ok(struct timeval *t)
+ {
+ 	return (t->tv_sec <= -1 || t->tv_sec > 100000000 ||
+ 		t->tv_usec <= -1 || t->tv_usec > 1000000);
 -- 
 2.50.1
 
