@@ -1,40 +1,40 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F5E624BD03;
-	Tue, 19 Aug 2025 14:18:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3F63261B83;
+	Tue, 19 Aug 2025 14:18:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755613115; cv=none; b=t6SzpvBLcGoXYhHdPTYmURMItSnwRo+Dv1ceBU/iMV4aMXWsTMo/sOo27McqCqHo9WSwPB7IBl6XSRjmnxy2U9KPpjceZW4CPzMafYdakbaYlOzNMuyJ14p8/f3Q9MCPDbE8m4dhdjLaZJdeK9anzbs0E5hip6drCYeaOMPHU6o=
+	t=1755613116; cv=none; b=VUrxPmR61MsuOdW0uRROeZ0cySnE++FcKuoxvLi4wFEHoQENqU/f0yHHQB3g5uNKFwUXdHyH/7T3UsscnTL4TPmkpfHMjobiDSDgFt8eH2WBgRbX44/HRVO3uHv8B25hiPwToEyEWQTy9W+hzn65w8gPBSHd+OCJoTkU1dJtcCI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755613115; c=relaxed/simple;
-	bh=VnV09UydQ8FZpWhq40PrbUarjqe+Ux7VEXN5GKBvrus=;
+	s=arc-20240116; t=1755613116; c=relaxed/simple;
+	bh=mtm5HbCBd3FqFCroYpzH2HpC/bYgiBxPSPJwcCzl1Hk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=IQxXvWtYvFIw+5EE3XM0QlUTlud/eeYTRRfnA/i5knxtoGSXf0enUJmoj7DFv5NmZ1/KILf9MYuqiViygIlkRmJ7tKh2+olSFbza0Shx6twxwEE2kaC+aa19IeJspcMQaTwWpWiXf4nZ+8YbHhXVkaJa4zahMYPvfiO3LYn5QlY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nUgRHjhz; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=c2IXhxuAWV9hPpnirB6+Iml9EehiEEVP1Fygho7kTGDoEBJcu4AomPMi11+ijEnbUjxfGPVJGKu9jdHOO936wl+tYC2kczFYVEIIxKvBOlI9zJeO6w1OJfJqCGqDlYgFB6rsYIxh+EgWEyO+Ohfzk6uPEkjipUa1e8erH/s7aFQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EyWff3P3; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nUgRHjhz"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 76432C116D0;
-	Tue, 19 Aug 2025 14:18:34 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EyWff3P3"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B89FDC113CF;
+	Tue, 19 Aug 2025 14:18:35 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1755613114;
-	bh=VnV09UydQ8FZpWhq40PrbUarjqe+Ux7VEXN5GKBvrus=;
+	s=k20201202; t=1755613116;
+	bh=mtm5HbCBd3FqFCroYpzH2HpC/bYgiBxPSPJwcCzl1Hk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=nUgRHjhzM8CrbFTNsqDjvz1ulqEwzgRcrrzJfd5XyA7NlwIQGyg4iBgGVSVlri4SE
-	 4gvNMKvLIcF5svuLdmqqYxyzb0SJtGG9lQngDpodrsvTc3qLzpjWnjFi+r940QRgg5
-	 kG1daCEkPAuCTUq2WJ/vI9zslvz2KRb8/iUiW+1WQ3EPA1W7Ecmqxh9X/H8xvYmMzW
-	 INMZ6ee0qr1tbhhKw1In5eWYuUUEutjXtXE9UyF10vQjj927t8Z2VEzTQEJ/LUukD0
-	 BKjjz2hve3I4+SEfZvuzF1meEAk2G82NV8oYFU7Tt2KJXqZKV+7S1nRuxI6bud/ILD
-	 eqpLjOtBNmAOQ==
+	b=EyWff3P3C2+K8c1WfVlk2xebTiCMaxA3T+Txb6GXdeJDNNijHjxPAEbJEKSvBasCG
+	 nn+EkifpVtMyDNvEsGUvKhXRQmqZ0qcYKkNKoe9ey3N9WKellHb1HRNta7dU189IBS
+	 ueXNHsSyP9zmU8wzR4DGmFcK4HWLT5g/mdAJjifnYhq5vswD6qApmN8bHFAqF8/HU+
+	 zQ1RCtfI/cV/9hNBaF6lrYQ4QOYAs8P3Yxrt04I5x+WR1RUYZFpK8lcHLbcdGcmIET
+	 AzQSH3xYUh3waNyF4nOQj3MVgGusduyr3sm0btCTpEAcEqKKRWqDyf/uQQSj34YFpV
+	 WFcg1W/XvfYLw==
 From: Trond Myklebust <trondmy@kernel.org>
 To: Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org,
 	Mike Snitzer <snitzer@kernel.org>,
 	Matthew Wilcox <willy@infradead.org>
-Subject: [PATCH v4 1/3] filemap: Add a helper for filesystems implementing dropbehind
-Date: Tue, 19 Aug 2025 07:18:30 -0700
-Message-ID: <ee863d320994130efcccf132212ec0e23f4582ca.1755612705.git.trond.myklebust@hammerspace.com>
+Subject: [PATCH v4 3/3] NFS: Enable use of the RWF_DONTCACHE flag on the NFS client
+Date: Tue, 19 Aug 2025 07:18:32 -0700
+Message-ID: <4eaf9697341fc5970f27e2f8eb3d9c94d2c05d03.1755612705.git.trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.50.1
 In-Reply-To: <cover.1755612705.git.trond.myklebust@hammerspace.com>
 References: <cover.1755612705.git.trond.myklebust@hammerspace.com>
@@ -48,59 +48,99 @@ Content-Transfer-Encoding: 8bit
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Add a helper to allow filesystems to attempt to free the 'dropbehind'
-folio.
+The NFS client needs to defer dropbehind until after any writes to the
+folio have been persisted on the server. Since this may be a 2 step
+process, use folio_end_writeback_no_dropbehind() to allow release of the
+writeback flag, and then call folio_end_dropbehind() once the COMMIT is
+done.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
-Link: https://lore.kernel.org/all/5588a06f6d5a2cf6746828e2d36e7ada668b1739.1745381692.git.trond.myklebust@hammerspace.com/
-Reviewed-by: Mike Snitzer <snitzer@kernel.org>
 ---
- include/linux/pagemap.h | 1 +
- mm/filemap.c            | 5 +++--
- 2 files changed, 4 insertions(+), 2 deletions(-)
+ fs/nfs/file.c     | 9 +++++----
+ fs/nfs/nfs4file.c | 1 +
+ fs/nfs/write.c    | 4 +++-
+ 3 files changed, 9 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 12a12dae727d..201b7c6f6441 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -1221,6 +1221,7 @@ void folio_wait_writeback(struct folio *folio);
- int folio_wait_writeback_killable(struct folio *folio);
- void end_page_writeback(struct page *page);
- void folio_end_writeback(struct folio *folio);
-+void folio_end_dropbehind(struct folio *folio);
- void folio_wait_stable(struct folio *folio);
- void __folio_mark_dirty(struct folio *folio, struct address_space *, int warn);
- void folio_account_cleaned(struct folio *folio, struct bdi_writeback *wb);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 751838ef05e5..71209ebbcc36 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1608,7 +1608,7 @@ static void filemap_end_dropbehind(struct folio *folio)
-  * completes. Do that now. If we fail, it's likely because of a big folio -
-  * just reset dropbehind for that case and latter completions should invalidate.
-  */
--static void filemap_end_dropbehind_write(struct folio *folio)
-+void folio_end_dropbehind(struct folio *folio)
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 86e36c630f09..90610629862a 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -329,6 +329,8 @@ static bool nfs_want_read_modify_write(struct file *file, struct folio *folio,
+ 
+ 	if (pnfs_ld_read_whole_page(file_inode(file)))
+ 		return true;
++	if (folio_test_dropbehind(folio))
++		return false;
+ 	/* Open for reading too? */
+ 	if (file->f_mode & FMODE_READ)
+ 		return true;
+@@ -348,7 +350,6 @@ static int nfs_write_begin(const struct kiocb *iocb,
+ 			   loff_t pos, unsigned len, struct folio **foliop,
+ 			   void **fsdata)
  {
- 	if (!folio_test_dropbehind(folio))
- 		return;
-@@ -1625,6 +1625,7 @@ static void filemap_end_dropbehind_write(struct folio *folio)
- 		folio_unlock(folio);
+-	fgf_t fgp = FGP_WRITEBEGIN;
+ 	struct folio *folio;
+ 	struct file *file = iocb->ki_filp;
+ 	int once_thru = 0;
+@@ -357,10 +358,8 @@ static int nfs_write_begin(const struct kiocb *iocb,
+ 	dfprintk(PAGECACHE, "NFS: write_begin(%pD2(%lu), %u@%lld)\n",
+ 		file, mapping->host->i_ino, len, (long long) pos);
+ 
+-	fgp |= fgf_set_order(len);
+ start:
+-	folio = __filemap_get_folio(mapping, pos >> PAGE_SHIFT, fgp,
+-				    mapping_gfp_mask(mapping));
++	folio = write_begin_get_folio(iocb, mapping, pos >> PAGE_SHIFT, len);
+ 	if (IS_ERR(folio))
+ 		return PTR_ERR(folio);
+ 	*foliop = folio;
+@@ -372,6 +371,7 @@ static int nfs_write_begin(const struct kiocb *iocb,
+ 	} else if (!once_thru &&
+ 		   nfs_want_read_modify_write(file, folio, pos, len)) {
+ 		once_thru = 1;
++		folio_clear_dropbehind(folio);
+ 		ret = nfs_read_folio(file, folio);
+ 		folio_put(folio);
+ 		if (!ret)
+@@ -915,5 +915,6 @@ const struct file_operations nfs_file_operations = {
+ 	.splice_write	= iter_file_splice_write,
+ 	.check_flags	= nfs_check_flags,
+ 	.setlease	= simple_nosetlease,
++	.fop_flags	= FOP_DONTCACHE,
+ };
+ EXPORT_SYMBOL_GPL(nfs_file_operations);
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 1d6b5f4230c9..654fda6f362c 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -454,4 +454,5 @@ const struct file_operations nfs4_file_operations = {
+ #else
+ 	.llseek		= nfs_file_llseek,
+ #endif
++	.fop_flags	= FOP_DONTCACHE,
+ };
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 8b7c04737967..079fc1af928f 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -338,7 +338,7 @@ static void nfs_folio_end_writeback(struct folio *folio)
+ {
+ 	struct nfs_server *nfss = NFS_SERVER(folio->mapping->host);
+ 
+-	folio_end_writeback(folio);
++	folio_end_writeback_no_dropbehind(folio);
+ 	if (atomic_long_dec_return(&nfss->writeback) <
+ 	    NFS_CONGESTION_OFF_THRESH) {
+ 		nfss->write_congested = 0;
+@@ -787,6 +787,8 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 			clear_bit(PG_MAPPED, &req->wb_head->wb_flags);
+ 		}
+ 		spin_unlock(&mapping->i_private_lock);
++
++		folio_end_dropbehind(folio);
  	}
- }
-+EXPORT_SYMBOL(folio_end_dropbehind);
+ 	nfs_page_group_unlock(req);
  
- /**
-  * folio_end_writeback - End writeback against a folio.
-@@ -1660,7 +1661,7 @@ void folio_end_writeback(struct folio *folio)
- 	if (__folio_end_writeback(folio))
- 		folio_wake_bit(folio, PG_writeback);
- 
--	filemap_end_dropbehind_write(folio);
-+	folio_end_dropbehind(folio);
- 	acct_reclaim_writeback(folio);
- 	folio_put(folio);
- }
 -- 
 2.50.1
 
