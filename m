@@ -1,137 +1,59 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3EF224BD03;
-	Tue, 19 Aug 2025 14:18:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A97BC2110;
+	Tue, 19 Aug 2025 14:25:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755613116; cv=none; b=OOJUA1T0rcK+dEVY/IcRslBU8vwSN+Mo5CLNeAvGT636rKDI3ZMNjvrm8iYc/CXocBT1C0GlS0hxhmU+i8KC/sTbKfrvOQVT4H/F0CIJodXdja92CuZX8rhm3BxuuVvKFY0S5a0nGrMzdP/RcgOX96h63Y3UlvlEB/8D05X92rI=
+	t=1755613539; cv=none; b=sEPL3YymXZyjCdjYBG5PKrm797/LpbOoI04afmRCN3MZZWzk2gu4VF9wX6csBsDZp4J4A3vvFDMqEfNh2Zg2P70cWjgTYVmfh5BHa0CfhAszfaJIV7zmfRTtPXKUGqacvVMSNiJD69puoulEF2hB6Yr8jEhXtr7dvU6dCB9593A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755613116; c=relaxed/simple;
-	bh=KVsjEGJWGqVE5/nKYNCOY5h2mBt5VmM+qExcMUD44ag=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=MxNgeEnvvPiK9/YeJQJDQSw7/VPiiy4ttb8y6Rf14ArcprZPaWl1wrXITvVL0EwKbiv8kwbj84fEych+O5E7ukZ1UcYOhjuRViDsv+DlL6APUbMZTc4Re8+Z0CW759IbnOjHoAdv4/zIFbdR4nBiCpI1R6sbi1e65yV3xKKbd9c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CAVEgD20; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1755613539; c=relaxed/simple;
+	bh=j4Z59QeCV/XyKUb6V851SkSjQJMAdAo+zoOnV4rAbC4=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=jHClse+lRA/Bs6M/z5T3ECaJtTXMucZstdtYoVJ6Nbs8vHEuGC5UzKExu8TdgJ4jfOrOQwi3SAa51n4/AJUOeupBlTlyx8bcCcxQ+HnQjEBZCB/3lX9vy1LfBWWJFrhbEAY/6rDIgJA/UOdmnImoAk4vgLG+G6uXAE9eTZ7d3Wo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=5EEY9cHJ; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CAVEgD20"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1DC8BC4AF09;
-	Tue, 19 Aug 2025 14:18:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1755613115;
-	bh=KVsjEGJWGqVE5/nKYNCOY5h2mBt5VmM+qExcMUD44ag=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=CAVEgD20BaB/EBaB+LZILtO+ycP8ABmOVm2/SBRqOx6XYcTtROjU4qU6DIccBoMTT
-	 IKQ51BrLs/mtaJ9L1bdVuYDFR84VwVLY0ONEMoxSMu1Z9bhPyHU/eXph4BKhjKJYZA
-	 ne1kp/7/iHKzo3VhWsfxLUwPfo5Tnd5ZHJFCz369ZNp1iwY2vLaPpNzykK56W6gPlg
-	 ob8wqkD+Zok44MBFFnW9Wa9iIy+dfXcCMiHO3TSciw9rk7h8X3/eps85ijk7LTeV7p
-	 0Pl/rhv+xaFqcHO8ZowmpT6hDdlCdcYZgK/H9IGkd+RS+WTcvzSSIbYPA6PNnd5B0G
-	 gDcWEXUFAGKSw==
-From: Trond Myklebust <trondmy@kernel.org>
-To: Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org,
-	Mike Snitzer <snitzer@kernel.org>,
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="5EEY9cHJ"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=j4Z59QeCV/XyKUb6V851SkSjQJMAdAo+zoOnV4rAbC4=; b=5EEY9cHJuiylMR0XqEruFMryY3
+	8iq7JdDb1CpzKvPCA+kHrTPSaeRfBJBSN4jMSJ5k+CnrJHaIqcw8gdriPF0DcIYvsZuwO7Ck4daz0
+	Gf4E6nFM5Y08GkjcYgyeIti87FUHgpBESZLsKhbu3NZ0GtmjZOKL6NqzdnSL+uUM0WLL8fniTbaNw
+	1tUpYJO2Ii8Llc9kcoBhmB15KWoK5xOcY8mO7Inp2a0LE7pSWOnk3H/GtRmApttqEBYNfkwCBjmLA
+	Nj3y31YDBgih1BEOWN8sD8jiskDtr4UalnAFX+D+fU5Z8aFieBGyuNT/YrZuezubk0lUiC7l928Ln
+	v9Vh6A7w==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1uoNHN-0000000AkP9-0rrJ;
+	Tue, 19 Aug 2025 14:25:37 +0000
+Date: Tue, 19 Aug 2025 07:25:37 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <trondmy@kernel.org>
+Cc: Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, Mike Snitzer <snitzer@kernel.org>,
 	Matthew Wilcox <willy@infradead.org>
-Subject: [PATCH v4 2/3] filemap: Add a version of folio_end_writeback that ignores dropbehind
-Date: Tue, 19 Aug 2025 07:18:31 -0700
-Message-ID: <260859ca7da2036c8c3be39b198c78f9ef4d0e3b.1755612705.git.trond.myklebust@hammerspace.com>
-X-Mailer: git-send-email 2.50.1
-In-Reply-To: <cover.1755612705.git.trond.myklebust@hammerspace.com>
+Subject: Re: [PATCH v4 1/3] filemap: Add a helper for filesystems
+ implementing dropbehind
+Message-ID: <aKSJYTJdYHDgsHwx@infradead.org>
 References: <cover.1755612705.git.trond.myklebust@hammerspace.com>
+ <ee863d320994130efcccf132212ec0e23f4582ca.1755612705.git.trond.myklebust@hammerspace.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <ee863d320994130efcccf132212ec0e23f4582ca.1755612705.git.trond.myklebust@hammerspace.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
+On Tue, Aug 19, 2025 at 07:18:30AM -0700, Trond Myklebust wrote:
+> +EXPORT_SYMBOL(folio_end_dropbehind);
 
-Filesystems such as NFS may need to defer dropbehind until after their
-2-stage writes are done. This adds a helper
-folio_end_writeback_no_dropbehind() that allows them to release the
-writeback flag without immediately dropping the folio.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- include/linux/pagemap.h |  1 +
- mm/filemap.c            | 29 +++++++++++++++++++++++------
- 2 files changed, 24 insertions(+), 6 deletions(-)
-
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 201b7c6f6441..5b26465358ce 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -1221,6 +1221,7 @@ void folio_wait_writeback(struct folio *folio);
- int folio_wait_writeback_killable(struct folio *folio);
- void end_page_writeback(struct page *page);
- void folio_end_writeback(struct folio *folio);
-+void folio_end_writeback_no_dropbehind(struct folio *folio);
- void folio_end_dropbehind(struct folio *folio);
- void folio_wait_stable(struct folio *folio);
- void __folio_mark_dirty(struct folio *folio, struct address_space *, int warn);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 71209ebbcc36..0cf147ca7c16 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -1628,14 +1628,15 @@ void folio_end_dropbehind(struct folio *folio)
- EXPORT_SYMBOL(folio_end_dropbehind);
- 
- /**
-- * folio_end_writeback - End writeback against a folio.
-+ * folio_end_writeback_no_dropbehind - End writeback against a folio.
-  * @folio: The folio.
-  *
-  * The folio must actually be under writeback.
-+ * This call is intended for filesystems that need to defer dropbehind.
-  *
-  * Context: May be called from process or interrupt context.
-  */
--void folio_end_writeback(struct folio *folio)
-+void folio_end_writeback_no_dropbehind(struct folio *folio)
- {
- 	VM_BUG_ON_FOLIO(!folio_test_writeback(folio), folio);
- 
-@@ -1651,6 +1652,25 @@ void folio_end_writeback(struct folio *folio)
- 		folio_rotate_reclaimable(folio);
- 	}
- 
-+	if (__folio_end_writeback(folio))
-+		folio_wake_bit(folio, PG_writeback);
-+
-+	acct_reclaim_writeback(folio);
-+}
-+EXPORT_SYMBOL(folio_end_writeback_no_dropbehind);
-+
-+/**
-+ * folio_end_writeback - End writeback against a folio.
-+ * @folio: The folio.
-+ *
-+ * The folio must actually be under writeback.
-+ *
-+ * Context: May be called from process or interrupt context.
-+ */
-+void folio_end_writeback(struct folio *folio)
-+{
-+	VM_BUG_ON_FOLIO(!folio_test_writeback(folio), folio);
-+
- 	/*
- 	 * Writeback does not hold a folio reference of its own, relying
- 	 * on truncation to wait for the clearing of PG_writeback.
-@@ -1658,11 +1678,8 @@ void folio_end_writeback(struct folio *folio)
- 	 * reused before the folio_wake_bit().
- 	 */
- 	folio_get(folio);
--	if (__folio_end_writeback(folio))
--		folio_wake_bit(folio, PG_writeback);
--
-+	folio_end_writeback_no_dropbehind(folio);
- 	folio_end_dropbehind(folio);
--	acct_reclaim_writeback(folio);
- 	folio_put(folio);
- }
- EXPORT_SYMBOL(folio_end_writeback);
--- 
-2.50.1
+This really should be a EXPORT_SYMBOL_GPL like for any other linux-only
+functionality. Same for the next patch.
 
