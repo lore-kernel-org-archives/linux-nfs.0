@@ -1,53 +1,53 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11848311591
-	for <linux-nfs@vger.kernel.org>; Thu, 21 Aug 2025 11:15:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8756D30EF71
+	for <linux-nfs@vger.kernel.org>; Thu, 21 Aug 2025 11:15:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1755774944; cv=none; b=Ay/2ulnJ3icFqrOR2mEh/G0ot0lcpTDA4GmUlXbnPGeupjEoOyT+HJmYi1Ywny4fdoaz0qoKsrkI3sRQMmkzhqbpxGHtjsuK4gXBZynAZoUhXGS0pgMVJyGP2apq7kFcCssj5r6RQKsKKj6V4uwL9ZTm2RqSaTMLuUvmtH8p4cA=
+	t=1755774945; cv=none; b=LGZi+I2IYCaAqY443FW7BjHv1vn6U+O7RrfMcry+YLgkGpTCDJY+i9Y3pfTkKFKnh3xchCYd0zwxa7CPqaCmCnaai9U3HQM/Jz4PLdue8w9TLEqZUtRjKG6DFy/PG6UQQYSnRtbJrY/Z3e0XnPJDCtBl8A+uxava2/YqyDof0WE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1755774944; c=relaxed/simple;
-	bh=VsXOc1S4ap0B42nAyjWEeWqOQ+Gec9oY/uBK21jhEz4=;
+	s=arc-20240116; t=1755774945; c=relaxed/simple;
+	bh=uR1/HhoDYeFmP5nIUboqmsdt1zeR8R/NaLExwghmLOw=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=HGsKPfR3jv/Wd4T1a+ZB0tDC2LujRqYOerUjoC+sWVu+NwaSVI9UQAwildpr5SW/x6igidfDfQf5/Aw1eXnuHSSO/hTYq4TIgZB9Zo7xmmy+igw7c89XVR80sFCRUyke3ZHLOOAjY7HA8rqS8tAgub9d1b5V+Z05WHYNOH8ZJYs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=MQtsGxe+; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=QFrJYZvwrXoFwBploIfQmCljN+2G1umRoHAbK8yDwMFDvVN7tjP1DyKsh0e9AHscv2LAnJSkSQonDPIv0i49sQ2pFjFN+WXsqyGhiQIYmqqiJJkZlsLoUwISU00PLOR9sysjTfYPACO/GJJyEOMFW2bMp4e6CliV/j8qKe9L3RU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=LoAt9aVT; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="MQtsGxe+"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="LoAt9aVT"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
 	s=mimecast20190719; t=1755774942;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=6jKrMmmjaF5f4Ut7LCPyvP+C7XbkD8LpIfSPKWAXHuY=;
-	b=MQtsGxe+VOdcXwsJl6Y7LnW1XSPrTli7tkwkRNYBTkU0HmYZtqNapKBrO47ut2Ug9JO+vN
-	RqlLKgBhIiMryUBrRcxXOXowz7u/ms4yRYxcTVVTBMLC8WXVca3+EDfBIDosEhmD7y+VYN
-	i76kYCc5jDgVqBAhTbLUjWLlk3uAjSo=
-Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+	bh=uzuHkaiUgFOFNEV3OY/I9gEsVGOngRiBNxTVDWcdEuw=;
+	b=LoAt9aVT1qVV4VPYF188XhznPclA8g0nw2taiwLSaKDjxvSprPYU4/PDuUlGAgBLHd1Svo
+	lwxnPLWUQhjskVi/XXv4DNSQSqRcPVpt/76c+9LFT3fvKYRzH7ZEYILpdJ4aWN4Sd780tH
+	WHpx99vbOs58CSyCmW1YAo9DZAno+/I=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-183-cV2KJnnUPHmApk1gQlZsmA-1; Thu,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-12-CLijDnKMPfmDSsPiU1nGdA-1; Thu,
  21 Aug 2025 07:15:40 -0400
-X-MC-Unique: cV2KJnnUPHmApk1gQlZsmA-1
-X-Mimecast-MFC-AGG-ID: cV2KJnnUPHmApk1gQlZsmA_1755774939
+X-MC-Unique: CLijDnKMPfmDSsPiU1nGdA-1
+X-Mimecast-MFC-AGG-ID: CLijDnKMPfmDSsPiU1nGdA_1755774940
 Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 345B8180888A;
-	Thu, 21 Aug 2025 11:15:36 +0000 (UTC)
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 1A6EB19541BF;
+	Thu, 21 Aug 2025 11:15:40 +0000 (UTC)
 Received: from dobby.home.dicksonnet.net (unknown [10.22.80.72])
-	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 574B01977689;
-	Thu, 21 Aug 2025 11:15:35 +0000 (UTC)
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 67329197768A;
+	Thu, 21 Aug 2025 11:15:39 +0000 (UTC)
 From: Steve Dickson <steved@redhat.com>
 To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 08/12] Convert old-style function definitions into modern-style definitions
-Date: Thu, 21 Aug 2025 07:15:19 -0400
-Message-ID: <20250821111524.1379577-9-steved@redhat.com>
+Subject: [PATCH 12/12] Convert old-style function definitions into modern-style definitions
+Date: Thu, 21 Aug 2025 07:15:23 -0400
+Message-ID: <20250821111524.1379577-13-steved@redhat.com>
 In-Reply-To: <20250821111524.1379577-1-steved@redhat.com>
 References: <20250821111524.1379577-1-steved@redhat.com>
 Precedence: bulk
@@ -70,141 +70,180 @@ function definitions into modern-style definitions
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- src/key_call.c | 58 +++++++++++++++++++++++---------------------------
- 1 file changed, 27 insertions(+), 31 deletions(-)
+ src/auth_time.c     | 42 +++++++++++++++++++-----------------------
+ src/auth_unix.c     | 29 +++++++++++------------------
+ src/authunix_prot.c |  4 +---
+ 3 files changed, 31 insertions(+), 44 deletions(-)
 
-diff --git a/src/key_call.c b/src/key_call.c
-index 43f990e..e33e444 100644
---- a/src/key_call.c
-+++ b/src/key_call.c
-@@ -79,8 +79,7 @@ des_block *(*__key_gendes_LOCAL)(uid_t, char *) = 0;
- static int key_call( u_long, xdrproc_t, void *, xdrproc_t, void *);
+diff --git a/src/auth_time.c b/src/auth_time.c
+index c21b1df..16de1aa 100644
+--- a/src/auth_time.c
++++ b/src/auth_time.c
+@@ -58,8 +58,7 @@
+ static int saw_alarm = 0;
  
- int
--key_setsecret(secretkey)
--	const char *secretkey;
-+key_setsecret(const char *secretkey)
+ static void
+-alarm_hndler(s)
+-	int	s;
++alarm_hndler(int s)
  {
- 	keystatus status;
- 
-@@ -122,10 +121,10 @@ key_secretkey_is_set(void)
- }
- 
- int
--key_encryptsession_pk(remotename, remotekey, deskey)
--	char *remotename;
--	netobj *remotekey;
--	des_block *deskey;
-+key_encryptsession_pk(
-+	char *remotename,
-+	netobj *remotekey,
-+	des_block *deskey)
- {
- 	cryptkeyarg2 arg;
- 	cryptkeyres res;
-@@ -146,10 +145,10 @@ key_encryptsession_pk(remotename, remotekey, deskey)
- }
- 
- int
--key_decryptsession_pk(remotename, remotekey, deskey)
--	char *remotename;
--	netobj *remotekey;
--	des_block *deskey;
-+key_decryptsession_pk(
-+	char *remotename,
-+	netobj *remotekey,
-+	des_block *deskey)
- {
- 	cryptkeyarg2 arg;
- 	cryptkeyres res;
-@@ -170,9 +169,9 @@ key_decryptsession_pk(remotename, remotekey, deskey)
- }
- 
- int
--key_encryptsession(remotename, deskey)
--	const char *remotename;
--	des_block *deskey;
-+key_encryptsession(
-+	const char *remotename,
-+	des_block *deskey)
- {
- 	cryptkeyarg arg;
- 	cryptkeyres res;
-@@ -192,9 +191,9 @@ key_encryptsession(remotename, deskey)
- }
- 
- int
--key_decryptsession(remotename, deskey)
--	const char *remotename;
--	des_block *deskey;
-+key_decryptsession(
-+	const char *remotename,
-+	des_block *deskey)
- {
- 	cryptkeyarg arg;
- 	cryptkeyres res;
-@@ -214,8 +213,7 @@ key_decryptsession(remotename, deskey)
- }
- 
- int
--key_gendes(key)
--	des_block *key;
-+key_gendes(des_block *key)
- {
- 	if (!key_call((u_long)KEY_GEN, (xdrproc_t)xdr_void, NULL,
- 			(xdrproc_t)xdr_des_block, key)) {
-@@ -225,8 +223,7 @@ key_gendes(key)
- }
- 
- int
--key_setnet(arg)
--struct key_netstarg *arg;
-+key_setnet(struct key_netstarg *arg)
- {
- 	keystatus status;
- 
-@@ -245,9 +242,9 @@ struct key_netstarg *arg;
- 
- 
- int
--key_get_conv(pkey, deskey)
--	char *pkey;
--	des_block *deskey;
-+key_get_conv(
-+	char *pkey,
-+	des_block *deskey)
- {
- 	cryptkeyres res;
- 
-@@ -286,8 +283,7 @@ key_call_destroy(void *vp)
-  * Keep the handle cached.  This call may be made quite often.
+ 	saw_alarm = 1;
+ 	return;
+@@ -80,12 +79,9 @@ alarm_hndler(s)
+  * Turn a 'universal address' into a struct sockaddr_in.
+  * Bletch.
   */
- static CLIENT *
--getkeyserv_handle(vers)
--int	vers;
-+getkeyserv_handle(int vers)
+-static int uaddr_to_sockaddr(uaddr, sin)
+-#ifdef foo
+-	endpoint		*endpt;
+-#endif
+-	char			*uaddr;
+-	struct sockaddr_in	*sin;
++static int uaddr_to_sockaddr(
++	char *uaddr,
++	struct sockaddr_in *sin)
  {
- 	void *localhandle;
- 	struct netconfig *nconf;
-@@ -396,12 +392,12 @@ int	vers;
- /* returns  0 on failure, 1 on success */
+ 	unsigned char		p_bytes[2];
+ 	int			i;
+@@ -115,9 +111,9 @@ static int uaddr_to_sockaddr(uaddr, sin)
+  * Free the strings that were strduped into the eps structure.
+  */
+ static void
+-free_eps(eps, num)
+-	endpoint	eps[];
+-	int		num;
++free_eps(
++	endpoint	eps[],
++	int		num)
+ {
+ 	int		i;
  
- static int
--key_call(proc, xdr_arg, arg, xdr_rslt, rslt)
--	u_long proc;
--	xdrproc_t xdr_arg;
--	void *arg;
--	xdrproc_t xdr_rslt;
--	void *rslt;
-+key_call(
-+	u_long proc,
-+	xdrproc_t xdr_arg,
-+	void *arg,
-+	xdrproc_t xdr_rslt,
-+	void *rslt)
+@@ -141,12 +137,12 @@ free_eps(eps, num)
+  * structure already populated.
+  */
+ static nis_server *
+-get_server(sin, host, srv, eps, maxep)
+-	struct sockaddr_in *sin;
+-	char		*host;	/* name of the time host	*/
+-	nis_server	*srv;	/* nis_server struct to use.	*/
+-	endpoint	eps[];	/* array of endpoints		*/
+-	int		maxep;	/* max array size		*/
++get_server(
++	struct sockaddr_in *sin,
++	char		*host,	/* name of the time host	*/
++	nis_server	*srv,	/* nis_server struct to use.	*/
++	endpoint	eps[],	/* array of endpoints		*/
++	int		maxep)	/* max array size		*/
  {
- 	CLIENT *clnt;
- 	struct timeval wait_time;
+ 	char			hname[256];
+ 	int			num_ep = 0, i;
+@@ -226,12 +222,12 @@ get_server(sin, host, srv, eps, maxep)
+  * td = "server" - "client"
+  */
+ int
+-__rpc_get_time_offset(td, srv, thost, uaddr, netid)
+-	struct timeval	*td;	 /* Time difference			*/
+-	nis_server	*srv;	 /* NIS Server description 		*/
+-	char		*thost;	 /* if no server, this is the timehost	*/
+-	char		**uaddr; /* known universal address		*/
+-	struct sockaddr_in *netid; /* known network identifier		*/
++__rpc_get_time_offset(
++	struct timeval	*td,	 /* Time difference			*/
++	nis_server	*srv,	 /* NIS Server description 		*/
++	char		*thost,	 /* if no server, this is the timehost	*/
++	char		**uaddr, /* known universal address		*/
++	struct sockaddr_in *netid) /* known network identifier		*/
+ {
+ 	CLIENT			*clnt; 		/* Client handle 	*/
+ 	endpoint		*ep,		/* useful endpoints	*/
+diff --git a/src/auth_unix.c b/src/auth_unix.c
+index fc2be02..78a76b6 100644
+--- a/src/auth_unix.c
++++ b/src/auth_unix.c
+@@ -82,12 +82,12 @@ struct audata {
+  * Returns an auth handle with the given stuff in it.
+  */
+ AUTH *
+-authunix_create(machname, uid, gid, len, aup_gids)
+-	char *machname;
+-	uid_t uid;
+-	gid_t gid;
+-	int len;
+-	gid_t *aup_gids;
++authunix_create(
++	char *machname,
++	uid_t uid,
++	gid_t gid,
++	int len,
++	gid_t *aup_gids)
+ {
+ 	struct authunix_parms aup;
+ 	char mymem[MAX_AUTH_BYTES];
+@@ -251,16 +251,13 @@ out_err:
+ 
+ /* ARGSUSED */
+ static void
+-authunix_nextverf(auth)
+-	AUTH *auth;
++authunix_nextverf(AUTH *auth)
+ {
+ 	/* no action necessary */
+ }
+ 
+ static bool_t
+-authunix_marshal(auth, xdrs)
+-	AUTH *auth;
+-	XDR *xdrs;
++authunix_marshal(AUTH *auth, XDR *xdrs)
+ {
+ 	struct audata *au;
+ 
+@@ -272,9 +269,7 @@ authunix_marshal(auth, xdrs)
+ }
+ 
+ static bool_t
+-authunix_validate(auth, verf)
+-	AUTH *auth;
+-	struct opaque_auth *verf;
++authunix_validate(AUTH *auth, struct opaque_auth *verf)
+ {
+ 	struct audata *au;
+ 	XDR xdrs;
+@@ -350,8 +345,7 @@ done:
+ }
+ 
+ static void
+-authunix_destroy(auth)
+-	AUTH *auth;
++authunix_destroy(AUTH *auth)
+ {
+ 	struct audata *au;
+ 
+@@ -376,8 +370,7 @@ authunix_destroy(auth)
+  * sets private data, au_marshed and au_mpos
+  */
+ static void
+-marshal_new_auth(auth)
+-	AUTH *auth;
++marshal_new_auth(AUTH *auth)
+ {
+ 	XDR	xdr_stream;
+ 	XDR	*xdrs = &xdr_stream;
+diff --git a/src/authunix_prot.c b/src/authunix_prot.c
+index 0a04336..32e6f8b 100644
+--- a/src/authunix_prot.c
++++ b/src/authunix_prot.c
+@@ -45,9 +45,7 @@
+  * XDR for unix authentication parameters.
+  */
+ bool_t
+-xdr_authunix_parms(xdrs, p)
+-	XDR *xdrs;
+-	struct authunix_parms *p;
++xdr_authunix_parms(XDR *xdrs, struct authunix_parms *p)
+ {
+ 
+ 	assert(xdrs != NULL);
 -- 
 2.50.1
 
