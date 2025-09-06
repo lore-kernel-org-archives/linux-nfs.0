@@ -1,36 +1,36 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E535257AC8
-	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6D4BF2580CB
+	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757176941; cv=none; b=dWH/RJComLINXsBjzcGk9OvTyXWVTKVbQ824AhzP3gbs6vxbGwmBTFPwpCFCy0FSE5vjxqEYlpYcgfrGx8HqCV1gShIkPamjvh00B3WkmbFh8B3fIbaeHTx+QmU4vU6qAFIKZkxAuhDq9kQK7ocyba+TkVDFrtEupRdBC02AmvA=
+	t=1757176941; cv=none; b=VLKz3HlthQon1I5DjW1Rbo/PoP57TBcDmXbSEx5LM1Smkus3qJpWF0DYp2scsqNUpwnL5/85oAFfr4REk+ferDdjR2wgqeFY8RDX5jQgAIZxDisYdipl+7a9IbG/vyFqtaaM8OacPUuoJovz1M6ipO+glvOCDUIU1GQLnNo+D1E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1757176941; c=relaxed/simple;
-	bh=h8H9gL0ZP6FnB1ixJuOd+Mxh2wQcP/L4qvoYTDwWyu4=;
+	bh=CMGXWG+sZhSmZsAqoDTFnyzeO7lsKn7E6kOWxA3FOvI=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=pfGvacpt0r80qSM7xkwruUz9J+2jk0eFHuUy06ATJAnHAQ5JmCM1pJMgPwj4cf/7uNmAS0NO9IZn28+jNSyMUNgZq6hKUnoESYC9pn1HBRw8Cll+BQzAPaAl9wI7B6wuTt6udoLUzwxtU3DO8SGnhRPCJTxF9ivyz7ZtSVom6lY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KKXmh19M; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=dewfRMxjHMmCzie4hJuxS6ssjwGOoHG8ar70GIbYHe2T3411pAPH3DZoeisLzPN0yLC2yNdDqdv4XqtVjlLdj+ijU9+q1liwYCsT9Bxjaymlc5sdnE0h0Rcte/nqRzD/8ZU+sA5sCxBsiUfppaH31QAfuf+Dtma4/19zNWiOkcc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TL9drtYw; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KKXmh19M"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 10443C4CEFA
-	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:21 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TL9drtYw"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DD3AEC4CEE7
+	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1757176941;
-	bh=h8H9gL0ZP6FnB1ixJuOd+Mxh2wQcP/L4qvoYTDwWyu4=;
+	s=k20201202; t=1757176940;
+	bh=CMGXWG+sZhSmZsAqoDTFnyzeO7lsKn7E6kOWxA3FOvI=;
 	h=From:To:Subject:Date:In-Reply-To:References:From;
-	b=KKXmh19MZXZ0pIDPhQtxDGizzgGKCUw0TdduxhjC/zllpYJ5Mc/AXwLze0p28ivK6
-	 9ltA9pgUAr31a1/0QEPGRo8/ZNaxrzQ8mapBB8wIJyUtdivU0oYgvRo4jggVlSd7tC
-	 ANgy6Mh399jUDPAXYgAPyOk5Oul+1blg0Fv4VIzbyyFH/Jt+bgAubNtSJfvkaoFI9V
-	 f2yzSOHjyTwCL2jKKX762kHB5isxHxPkZBHY0KvNdWF3htZfI8sLZ06iWSAH/g8zjV
-	 4jJ81dXI5uMfkMz7vaGZ3XbaljtTdQbH+30CivA4xQLbXf+fnjkgq43YygwBuulBvD
-	 SQQ6Zlq9TvgQg==
+	b=TL9drtYw9e0iukls2QdPZmZQ3FWXd0Lv+kpNwQE6jpNWE4t/tWkYsUQNjgHurxjjc
+	 jDPPqEpiZL9ov/CSDgNR2IukFyQmJmxTJfMX0jaQ6YGcx3IB5sRgmfQ8/ilc/FwVA4
+	 /JIge5CvI/FprPWps6Hd8cDDrvZxnRioQUheWjHP6mP2bXWbrVY915LnehIMTa1agy
+	 i4EWBMShDA4jPu/Mn8ce45KbSlGUDhtTZReBXwt6RYZ8QQZFVVutRGN1J8Sf79FgKT
+	 cQdklaUG3kj2/QwBstXukIK/Y1Iogp5hshbfDRlq2YF6AOSJ8AKaGnuyYZDN33qiyd
+	 bShk2VxLAf7Jg==
 From: Trond Myklebust <trondmy@kernel.org>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 6/8] NFSv4.2: Serialise O_DIRECT i/o and copy range
-Date: Sat,  6 Sep 2025 12:42:14 -0400
-Message-ID: <b7aa4a0ebb7f8bd1901a9802d48de768f0afc9a6.1757176392.git.trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 3/8] NFS: Serialise O_DIRECT i/o and truncate()
+Date: Sat,  6 Sep 2025 12:42:11 -0400
+Message-ID: <aa8323e3e1b83094bb05100af030488a44276604.1757176392.git.trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <cover.1757176392.git.trond.myklebust@hammerspace.com>
 References: <cover.1757100278.git.trond.myklebust@hammerspace.com> <cover.1757176392.git.trond.myklebust@hammerspace.com>
@@ -44,27 +44,93 @@ Content-Transfer-Encoding: 8bit
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Ensure that all O_DIRECT reads and writes complete before copying a file
-range, so that the destination is up to date.
+Ensure that all O_DIRECT reads and writes are complete, and prevent the
+initiation of new i/o until the setattr operation that will truncate the
+file is complete.
 
 Fixes: a5864c999de6 ("NFS: Do not serialise O_DIRECT reads and writes")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs42proc.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/nfs/inode.c    |  4 +++-
+ fs/nfs/internal.h | 10 ++++++++++
+ fs/nfs/io.c       | 13 ++-----------
+ 3 files changed, 15 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 1a169372ca16..6a0b5871ba3b 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -445,6 +445,7 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 		return status;
- 	}
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 0b141feacc52..49df9debb1a6 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -768,8 +768,10 @@ nfs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 	trace_nfs_setattr_enter(inode);
  
-+	nfs_file_block_o_direct(NFS_I(dst_inode));
- 	status = nfs_sync_inode(dst_inode);
- 	if (status)
- 		return status;
+ 	/* Write all dirty data */
+-	if (S_ISREG(inode->i_mode))
++	if (S_ISREG(inode->i_mode)) {
++		nfs_file_block_o_direct(NFS_I(inode));
+ 		nfs_sync_inode(inode);
++	}
+ 
+ 	fattr = nfs_alloc_fattr_with_label(NFS_SERVER(inode));
+ 	if (fattr == NULL) {
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 1433ae13dba0..c0a44f389f8f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -532,6 +532,16 @@ static inline bool nfs_file_io_is_buffered(struct nfs_inode *nfsi)
+ 	return test_bit(NFS_INO_ODIRECT, &nfsi->flags) == 0;
+ }
+ 
++/* Must be called with exclusively locked inode->i_rwsem */
++static inline void nfs_file_block_o_direct(struct nfs_inode *nfsi)
++{
++	if (test_bit(NFS_INO_ODIRECT, &nfsi->flags)) {
++		clear_bit(NFS_INO_ODIRECT, &nfsi->flags);
++		inode_dio_wait(&nfsi->vfs_inode);
++	}
++}
++
++
+ /* namespace.c */
+ #define NFS_PATH_CANONICAL 1
+ extern char *nfs_path(char **p, struct dentry *dentry,
+diff --git a/fs/nfs/io.c b/fs/nfs/io.c
+index 3388faf2acb9..d275b0a250bf 100644
+--- a/fs/nfs/io.c
++++ b/fs/nfs/io.c
+@@ -14,15 +14,6 @@
+ 
+ #include "internal.h"
+ 
+-/* Call with exclusively locked inode->i_rwsem */
+-static void nfs_block_o_direct(struct nfs_inode *nfsi, struct inode *inode)
+-{
+-	if (test_bit(NFS_INO_ODIRECT, &nfsi->flags)) {
+-		clear_bit(NFS_INO_ODIRECT, &nfsi->flags);
+-		inode_dio_wait(inode);
+-	}
+-}
+-
+ /**
+  * nfs_start_io_read - declare the file is being used for buffered reads
+  * @inode: file inode
+@@ -57,7 +48,7 @@ nfs_start_io_read(struct inode *inode)
+ 	err = down_write_killable(&inode->i_rwsem);
+ 	if (err)
+ 		return err;
+-	nfs_block_o_direct(nfsi, inode);
++	nfs_file_block_o_direct(nfsi);
+ 	downgrade_write(&inode->i_rwsem);
+ 
+ 	return 0;
+@@ -90,7 +81,7 @@ nfs_start_io_write(struct inode *inode)
+ 
+ 	err = down_write_killable(&inode->i_rwsem);
+ 	if (!err)
+-		nfs_block_o_direct(NFS_I(inode), inode);
++		nfs_file_block_o_direct(NFS_I(inode));
+ 	return err;
+ }
+ 
 -- 
 2.51.0
 
