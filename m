@@ -1,36 +1,36 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6D4BF2580CB
-	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 09A14257AC8
+	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757176941; cv=none; b=VLKz3HlthQon1I5DjW1Rbo/PoP57TBcDmXbSEx5LM1Smkus3qJpWF0DYp2scsqNUpwnL5/85oAFfr4REk+ferDdjR2wgqeFY8RDX5jQgAIZxDisYdipl+7a9IbG/vyFqtaaM8OacPUuoJovz1M6ipO+glvOCDUIU1GQLnNo+D1E=
+	t=1757176942; cv=none; b=LdMURtXm2sDQu3QaJufX9rL/4+rqrZ/fpSgM0m7vpbwu5j9nTF6Ol/9LopAY+ZOKa7sVzj72KsSmTqCpedKonHd9YIDIslHymORkmHr2+gZDRhsNEnCxAHvDhEAPtZPXcNgX4HJXnJrqQCPkF4gV6VnNQ3b/e+7rksUEELfNn6k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1757176941; c=relaxed/simple;
-	bh=CMGXWG+sZhSmZsAqoDTFnyzeO7lsKn7E6kOWxA3FOvI=;
+	s=arc-20240116; t=1757176942; c=relaxed/simple;
+	bh=r4ixVD6X/jPjJSHHj+Y7iYx0agpyAlvmkSAYjzDind0=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=dewfRMxjHMmCzie4hJuxS6ssjwGOoHG8ar70GIbYHe2T3411pAPH3DZoeisLzPN0yLC2yNdDqdv4XqtVjlLdj+ijU9+q1liwYCsT9Bxjaymlc5sdnE0h0Rcte/nqRzD/8ZU+sA5sCxBsiUfppaH31QAfuf+Dtma4/19zNWiOkcc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TL9drtYw; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=bxclNfRQLG2qdT02xloEdF9mZ3kF5x8qR9d8rHB+GwCfX9YNNDcu3o58Bs3x/0sRDWuIBZlsuvIAPci+oYL+joyT0aBvpOtUkI2vdluwv09qmNEU78AlMW/37n3Ft+c/Bhz9w2OWO4s9iI2KWBdcP+K96kfE74luq5fQAKEbdBA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AHMM+PKq; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TL9drtYw"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DD3AEC4CEE7
-	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:19 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AHMM+PKq"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 755A7C4CEF8
+	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1757176940;
-	bh=CMGXWG+sZhSmZsAqoDTFnyzeO7lsKn7E6kOWxA3FOvI=;
+	s=k20201202; t=1757176941;
+	bh=r4ixVD6X/jPjJSHHj+Y7iYx0agpyAlvmkSAYjzDind0=;
 	h=From:To:Subject:Date:In-Reply-To:References:From;
-	b=TL9drtYw9e0iukls2QdPZmZQ3FWXd0Lv+kpNwQE6jpNWE4t/tWkYsUQNjgHurxjjc
-	 jDPPqEpiZL9ov/CSDgNR2IukFyQmJmxTJfMX0jaQ6YGcx3IB5sRgmfQ8/ilc/FwVA4
-	 /JIge5CvI/FprPWps6Hd8cDDrvZxnRioQUheWjHP6mP2bXWbrVY915LnehIMTa1agy
-	 i4EWBMShDA4jPu/Mn8ce45KbSlGUDhtTZReBXwt6RYZ8QQZFVVutRGN1J8Sf79FgKT
-	 cQdklaUG3kj2/QwBstXukIK/Y1Iogp5hshbfDRlq2YF6AOSJ8AKaGnuyYZDN33qiyd
-	 bShk2VxLAf7Jg==
+	b=AHMM+PKqpoU1SoIgwgwfi+v5oqiYZSzCOaYBjXDvUbjjN59jP/8ACXUl3JsUbSWVe
+	 /yD26BDJbExJG/tVuriUwiG0lp2WEBqiAPPuCZiZCcnE3u4wSqlDkySvT3wk7mVfQK
+	 ikja8BPwftC3mz8aKRpx2fy/oQA1SjZwvkWmUiFxVlETxgTwFxAhlHewKG9WsSU/vg
+	 Wci7BHAo3QzcEpYhKlrhaz5tmzqOy4Frzk1jk3viRt4bpz9amx4aYalev3sXcfSaPn
+	 kZl50IV6IJiABdemAcjwzIe2DZqXxfR717CFspKqspxRZQBKo19ohonSbh02cTqP2n
+	 Wrod4EHXkowlg==
 From: Trond Myklebust <trondmy@kernel.org>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/8] NFS: Serialise O_DIRECT i/o and truncate()
-Date: Sat,  6 Sep 2025 12:42:11 -0400
-Message-ID: <aa8323e3e1b83094bb05100af030488a44276604.1757176392.git.trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 7/8] NFS: nfs_invalidate_folio() must observe the offset and size arguments
+Date: Sat,  6 Sep 2025 12:42:15 -0400
+Message-ID: <89de884eefd2874274a1e4b163ab8abe3b0da0d4.1757176392.git.trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <cover.1757176392.git.trond.myklebust@hammerspace.com>
 References: <cover.1757100278.git.trond.myklebust@hammerspace.com> <cover.1757176392.git.trond.myklebust@hammerspace.com>
@@ -44,93 +44,47 @@ Content-Transfer-Encoding: 8bit
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Ensure that all O_DIRECT reads and writes are complete, and prevent the
-initiation of new i/o until the setattr operation that will truncate the
-file is complete.
+If we're truncating part of the folio, then we need to write out the
+data on the part that is not covered by the cancellation.
 
-Fixes: a5864c999de6 ("NFS: Do not serialise O_DIRECT reads and writes")
+Fixes: d47992f86b30 ("mm: change invalidatepage prototype to accept length")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/inode.c    |  4 +++-
- fs/nfs/internal.h | 10 ++++++++++
- fs/nfs/io.c       | 13 ++-----------
- 3 files changed, 15 insertions(+), 12 deletions(-)
+ fs/nfs/file.c  | 7 ++++---
+ fs/nfs/write.c | 1 +
+ 2 files changed, 5 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 0b141feacc52..49df9debb1a6 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -768,8 +768,10 @@ nfs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 	trace_nfs_setattr_enter(inode);
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index a3105f944a0e..8059ece82468 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -475,10 +475,11 @@ static void nfs_invalidate_folio(struct folio *folio, size_t offset,
+ 	dfprintk(PAGECACHE, "NFS: invalidate_folio(%lu, %zu, %zu)\n",
+ 		 folio->index, offset, length);
  
- 	/* Write all dirty data */
--	if (S_ISREG(inode->i_mode))
-+	if (S_ISREG(inode->i_mode)) {
-+		nfs_file_block_o_direct(NFS_I(inode));
- 		nfs_sync_inode(inode);
-+	}
- 
- 	fattr = nfs_alloc_fattr_with_label(NFS_SERVER(inode));
- 	if (fattr == NULL) {
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 1433ae13dba0..c0a44f389f8f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -532,6 +532,16 @@ static inline bool nfs_file_io_is_buffered(struct nfs_inode *nfsi)
- 	return test_bit(NFS_INO_ODIRECT, &nfsi->flags) == 0;
+-	if (offset != 0 || length < folio_size(folio))
+-		return;
+ 	/* Cancel any unstarted writes on this page */
+-	nfs_wb_folio_cancel(inode, folio);
++	if (offset != 0 || length < folio_size(folio))
++		nfs_wb_folio(inode, folio);
++	else
++		nfs_wb_folio_cancel(inode, folio);
+ 	folio_wait_private_2(folio); /* [DEPRECATED] */
+ 	trace_nfs_invalidate_folio(inode, folio_pos(folio) + offset, length);
  }
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 8b7c04737967..e359fbcdc8a0 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -2045,6 +2045,7 @@ int nfs_wb_folio_cancel(struct inode *inode, struct folio *folio)
+ 		 * release it */
+ 		nfs_inode_remove_request(req);
+ 		nfs_unlock_and_release_request(req);
++		folio_cancel_dirty(folio);
+ 	}
  
-+/* Must be called with exclusively locked inode->i_rwsem */
-+static inline void nfs_file_block_o_direct(struct nfs_inode *nfsi)
-+{
-+	if (test_bit(NFS_INO_ODIRECT, &nfsi->flags)) {
-+		clear_bit(NFS_INO_ODIRECT, &nfsi->flags);
-+		inode_dio_wait(&nfsi->vfs_inode);
-+	}
-+}
-+
-+
- /* namespace.c */
- #define NFS_PATH_CANONICAL 1
- extern char *nfs_path(char **p, struct dentry *dentry,
-diff --git a/fs/nfs/io.c b/fs/nfs/io.c
-index 3388faf2acb9..d275b0a250bf 100644
---- a/fs/nfs/io.c
-+++ b/fs/nfs/io.c
-@@ -14,15 +14,6 @@
- 
- #include "internal.h"
- 
--/* Call with exclusively locked inode->i_rwsem */
--static void nfs_block_o_direct(struct nfs_inode *nfsi, struct inode *inode)
--{
--	if (test_bit(NFS_INO_ODIRECT, &nfsi->flags)) {
--		clear_bit(NFS_INO_ODIRECT, &nfsi->flags);
--		inode_dio_wait(inode);
--	}
--}
--
- /**
-  * nfs_start_io_read - declare the file is being used for buffered reads
-  * @inode: file inode
-@@ -57,7 +48,7 @@ nfs_start_io_read(struct inode *inode)
- 	err = down_write_killable(&inode->i_rwsem);
- 	if (err)
- 		return err;
--	nfs_block_o_direct(nfsi, inode);
-+	nfs_file_block_o_direct(nfsi);
- 	downgrade_write(&inode->i_rwsem);
- 
- 	return 0;
-@@ -90,7 +81,7 @@ nfs_start_io_write(struct inode *inode)
- 
- 	err = down_write_killable(&inode->i_rwsem);
- 	if (!err)
--		nfs_block_o_direct(NFS_I(inode), inode);
-+		nfs_file_block_o_direct(NFS_I(inode));
- 	return err;
- }
- 
+ 	return ret;
 -- 
 2.51.0
 
