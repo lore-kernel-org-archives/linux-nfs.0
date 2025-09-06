@@ -1,36 +1,36 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B85172566D2
-	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 966FE2566D2
+	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757176939; cv=none; b=cXdPH92qcT2Dawyirt4BBvLHLfPTX+b3eUM1hmJEKb8EXcst0p+W37BCW0p66YCQVs4Wly3Zye7LsVzyb5OGAnTT7wiKdQe3ZV/IyFoX00duXvrSbA0Hxt1SMYm7QOsT89P1hCuJ6DqnAE3oGbAHyQmnQGThphpvyB7P5gDU0VM=
+	t=1757176940; cv=none; b=HEmlh/6Tgjg2fkdlLmhRVLwOM0fm57Z2xMbgAspn3+IbsFyDxjbP+sYOGxhhxRrMF2eVnfc7MYJxPeMEECt9C+lC2BYQHQe3ehG9pEhSaoCVRO8eMXdMyQwbYVeaaCnbPH+EqMl3AUVaUpZiMN3dZIAyR1oDLwRUvTl9B9GvbFo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1757176939; c=relaxed/simple;
-	bh=G1cQUR3ZPjNtognwlwKPNnd9NzXSS0ShchyQRWyg4Ec=;
+	s=arc-20240116; t=1757176940; c=relaxed/simple;
+	bh=f/FMjYMiTxAwQhvfGge/JXU+GTgRIYeqDA0d4FKKzJM=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=eHwREnbcv4OdonXvZF9E3GHQiXzHDB/2Ckofv5tifhO8/UNLqjEV3/DRXzumDf/ACkznZDbKud3u7HwBMZVNzk3XgQy5LlOefmZi+rixoZeuVm+xhiLKSJ2uHwic6P297XpkdNcy0ymAu31ynENTaJXsmUQk/OqklS+9eq0pgNQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=pLRppbyh; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=d3YyEI92XZMxjbnXrOA4De65llTZkYeIf70g9M7rEc/QJRsQXdDzf/uhD5qyAs7957+jwK+/uA5XGzjoddpAlHrb9mSxP83INbMin+ySEpMgNokXO85PswWaJLGPL2tge+ye+9ILDd9LCxVXVh8uoZaXCoJBX3WX+XWZowl93lc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=S8UgJzsM; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="pLRppbyh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2204CC4CEF8
-	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:19 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="S8UgJzsM"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 45038C4CEFA
+	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1757176939;
-	bh=G1cQUR3ZPjNtognwlwKPNnd9NzXSS0ShchyQRWyg4Ec=;
+	s=k20201202; t=1757176940;
+	bh=f/FMjYMiTxAwQhvfGge/JXU+GTgRIYeqDA0d4FKKzJM=;
 	h=From:To:Subject:Date:In-Reply-To:References:From;
-	b=pLRppbyhe33TtTEkNvgEI5Urlk7XTTiJGGJ8+sLiAVlmZcb1hsHm267ltoST5tkCu
-	 6jZNYj/Cr3b/YOASQB1XBBUb+jTHgmqbEu1CFotHOKGwOGX09+OHqy37E4fnpXdGKZ
-	 PlQaHGjrC3LMtCBuz0h4JVHwcR0+mFKLfigHYDdZWUmAKDEFoYoAdg97aYVR1+6uKh
-	 YLfSx03ObUEZPR+zko1pUz4x1oaOIx+C6p+wTuWcz/abfPTsU5PE2wzjb8Ah+3SBwi
-	 hgI5Ggr9gIqB04H6q1gIEO1W4X4i72DDf+kiha+3Xh9+Y/VPC8AMeza3aJ3Fd5rU18
-	 +EqVE/8wVMaLw==
+	b=S8UgJzsMKdnF9xZ+J2CJhS06Wjk9ypSdMPNQvUftgxCPij5pL9cQRQ2vLXsY0Ur74
+	 nWzEUgH6BeywLJKJjQajqaw+HoBqi2h1GKa44KhX8zd2PSccNIvjAJ226h6qyFaRlV
+	 HRHsx4OnEyxod1JaqKAuuEsN2Zs/LRdh8C3hYfa94yHHyccoqWFML8ChAxiGoWEMwN
+	 kk7/ELLnmbG7bzJB5Hnzs7HKaRW2HAimxFVoW50NdSgCTNNzJ2jGuLltbC5rmdAGw/
+	 8M/DfKs2y0wSs8ZqFpnZgCy31h16mM+vDs58LtsH3kxsCuiHubIxnfm3BvvpLZJwl6
+	 ZYm6qfgJ4npHQ==
 From: Trond Myklebust <trondmy@kernel.org>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/8] NFS: Protect against 'eof page pollution'
-Date: Sat,  6 Sep 2025 12:42:09 -0400
-Message-ID: <4e6f13c67bf08fceedad3082b9d9454baf981ae3.1757176392.git.trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 4/8] NFSv4.2: Serialise O_DIRECT i/o and fallocate()
+Date: Sat,  6 Sep 2025 12:42:12 -0400
+Message-ID: <9f6f5f460e6768992d61d91f1bd88fb9947a090f.1757176392.git.trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <cover.1757176392.git.trond.myklebust@hammerspace.com>
 References: <cover.1757100278.git.trond.myklebust@hammerspace.com> <cover.1757176392.git.trond.myklebust@hammerspace.com>
@@ -44,187 +44,27 @@ Content-Transfer-Encoding: 8bit
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-This commit fixes the failing xfstest 'generic/363'.
+Ensure that all O_DIRECT reads and writes complete before calling
+fallocate so that we don't race w.r.t. attribute updates.
 
-When the user mmaps() an area that extends beyond the end of file, and
-proceeds to write data into the folio that straddles that eof, we're
-required to discard that folio data if the user calls some function that
-extends the file length.
-
+Fixes: 99f237832243 ("NFSv4.2: Always flush out writes in nfs42_proc_fallocate()")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/file.c      | 33 +++++++++++++++++++++++++++++++++
- fs/nfs/inode.c     |  9 +++++++--
- fs/nfs/internal.h  |  2 ++
- fs/nfs/nfs42proc.c | 14 +++++++++++---
- fs/nfs/nfstrace.h  |  1 +
- 5 files changed, 54 insertions(+), 5 deletions(-)
+ fs/nfs/nfs42proc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 86e36c630f09..a3105f944a0e 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -28,6 +28,7 @@
- #include <linux/mm.h>
- #include <linux/pagemap.h>
- #include <linux/gfp.h>
-+#include <linux/rmap.h>
- #include <linux/swap.h>
- #include <linux/compaction.h>
- 
-@@ -280,6 +281,37 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
- }
- EXPORT_SYMBOL_GPL(nfs_file_fsync);
- 
-+void nfs_truncate_last_folio(struct address_space *mapping, loff_t from,
-+			     loff_t to)
-+{
-+	struct folio *folio;
-+
-+	if (from >= to)
-+		return;
-+
-+	folio = filemap_lock_folio(mapping, from >> PAGE_SHIFT);
-+	if (IS_ERR(folio))
-+		return;
-+
-+	if (folio_mkclean(folio))
-+		folio_mark_dirty(folio);
-+
-+	if (folio_test_uptodate(folio)) {
-+		loff_t fpos = folio_pos(folio);
-+		size_t offset = from - fpos;
-+		size_t end = folio_size(folio);
-+
-+		if (to - fpos < end)
-+			end = to - fpos;
-+		folio_zero_segment(folio, offset, end);
-+		trace_nfs_size_truncate_folio(mapping->host, to);
-+	}
-+
-+	folio_unlock(folio);
-+	folio_put(folio);
-+}
-+EXPORT_SYMBOL_GPL(nfs_truncate_last_folio);
-+
- /*
-  * Decide whether a read/modify/write cycle may be more efficient
-  * then a modify/write/read cycle when writing to a page in the
-@@ -356,6 +388,7 @@ static int nfs_write_begin(const struct kiocb *iocb,
- 
- 	dfprintk(PAGECACHE, "NFS: write_begin(%pD2(%lu), %u@%lld)\n",
- 		file, mapping->host->i_ino, len, (long long) pos);
-+	nfs_truncate_last_folio(mapping, i_size_read(mapping->host), pos);
- 
- 	fgp |= fgf_set_order(len);
- start:
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 338ef77ae423..0b141feacc52 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -716,6 +716,7 @@ nfs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- {
- 	struct inode *inode = d_inode(dentry);
- 	struct nfs_fattr *fattr;
-+	loff_t oldsize = i_size_read(inode);
- 	int error = 0;
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSSETATTR);
-@@ -731,7 +732,7 @@ nfs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 		if (error)
- 			return error;
- 
--		if (attr->ia_size == i_size_read(inode))
-+		if (attr->ia_size == oldsize)
- 			attr->ia_valid &= ~ATTR_SIZE;
- 	}
- 
-@@ -777,8 +778,12 @@ nfs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 	}
- 
- 	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
--	if (error == 0)
-+	if (error == 0) {
-+		if (attr->ia_valid & ATTR_SIZE)
-+			nfs_truncate_last_folio(inode->i_mapping, oldsize,
-+						attr->ia_size);
- 		error = nfs_refresh_inode(inode, fattr);
-+	}
- 	nfs_free_fattr(fattr);
- out:
- 	trace_nfs_setattr_exit(inode, error);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 74d712b58423..1433ae13dba0 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -437,6 +437,8 @@ int nfs_file_release(struct inode *, struct file *);
- int nfs_lock(struct file *, int, struct file_lock *);
- int nfs_flock(struct file *, int, struct file_lock *);
- int nfs_check_flags(int);
-+void nfs_truncate_last_folio(struct address_space *mapping, loff_t from,
-+			     loff_t to);
- 
- /* inode.c */
- extern struct workqueue_struct *nfsiod_workqueue;
 diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 01c01f45358b..4420b8740e2f 100644
+index e2fea37c5348..1a169372ca16 100644
 --- a/fs/nfs/nfs42proc.c
 +++ b/fs/nfs/nfs42proc.c
-@@ -137,6 +137,7 @@ int nfs42_proc_allocate(struct file *filep, loff_t offset, loff_t len)
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_ALLOCATE],
- 	};
- 	struct inode *inode = file_inode(filep);
-+	loff_t oldsize = i_size_read(inode);
- 	int err;
+@@ -114,6 +114,7 @@ static int nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
+ 	exception.inode = inode;
+ 	exception.state = lock->open_context->state;
  
- 	if (!nfs_server_capable(inode, NFS_CAP_ALLOCATE))
-@@ -145,7 +146,11 @@ int nfs42_proc_allocate(struct file *filep, loff_t offset, loff_t len)
- 	inode_lock(inode);
- 
- 	err = nfs42_proc_fallocate(&msg, filep, offset, len);
--	if (err == -EOPNOTSUPP)
-+
-+	if (err == 0)
-+		nfs_truncate_last_folio(inode->i_mapping, oldsize,
-+					offset + len);
-+	else if (err == -EOPNOTSUPP)
- 		NFS_SERVER(inode)->caps &= ~(NFS_CAP_ALLOCATE |
- 					     NFS_CAP_ZERO_RANGE);
- 
-@@ -183,6 +188,7 @@ int nfs42_proc_zero_range(struct file *filep, loff_t offset, loff_t len)
- 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_ZERO_RANGE],
- 	};
- 	struct inode *inode = file_inode(filep);
-+	loff_t oldsize = i_size_read(inode);
- 	int err;
- 
- 	if (!nfs_server_capable(inode, NFS_CAP_ZERO_RANGE))
-@@ -191,9 +197,11 @@ int nfs42_proc_zero_range(struct file *filep, loff_t offset, loff_t len)
- 	inode_lock(inode);
- 
- 	err = nfs42_proc_fallocate(&msg, filep, offset, len);
--	if (err == 0)
-+	if (err == 0) {
-+		nfs_truncate_last_folio(inode->i_mapping, oldsize,
-+					offset + len);
- 		truncate_pagecache_range(inode, offset, (offset + len) -1);
--	if (err == -EOPNOTSUPP)
-+	} else if (err == -EOPNOTSUPP)
- 		NFS_SERVER(inode)->caps &= ~NFS_CAP_ZERO_RANGE;
- 
- 	inode_unlock(inode);
-diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
-index 96b1323318c2..627115179795 100644
---- a/fs/nfs/nfstrace.h
-+++ b/fs/nfs/nfstrace.h
-@@ -272,6 +272,7 @@ DECLARE_EVENT_CLASS(nfs_update_size_class,
- 			TP_ARGS(inode, new_size))
- 
- DEFINE_NFS_UPDATE_SIZE_EVENT(truncate);
-+DEFINE_NFS_UPDATE_SIZE_EVENT(truncate_folio);
- DEFINE_NFS_UPDATE_SIZE_EVENT(wcc);
- DEFINE_NFS_UPDATE_SIZE_EVENT(update);
- DEFINE_NFS_UPDATE_SIZE_EVENT(grow);
++	nfs_file_block_o_direct(NFS_I(inode));
+ 	err = nfs_sync_inode(inode);
+ 	if (err)
+ 		goto out;
 -- 
 2.51.0
 
