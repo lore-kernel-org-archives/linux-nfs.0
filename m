@@ -1,36 +1,36 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EED82257831
-	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 077D9257837
+	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757176941; cv=none; b=MJHB3hLmDEP+kggiUlBDdfnsI6GukYyEGz9IVbpcL5FS4RUE7ZEKTUiWr/5zN9Z5fxOQhD9w0ZHIgigyA3Ll8ehNgWInnGnSjfIxX6NNBGZZ2eRU7BUOqUxbI3qKSGON3xH8EnWCx8C/pZMnW0KoVz1Rez0LkOPVk2DJOD6u/Iw=
+	t=1757176941; cv=none; b=Buv6N4irY31IuoGv1AeQ1dKZA0blwe1fZvKnKCsN/cpicvlicaMEQkfgI5ht8j/yTvkOIoYZzZp5715l2ckAwpi6jBdaCgPpYCeE1DUIPy7fULVjjL1KLymnAi6apCaKdg5SDlzUNkfj5hQt6prOMN/qzBwEScgNR9uQwYXEw20=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1757176941; c=relaxed/simple;
-	bh=Kn/KTChfymEdZ7e11OEPg9I5yx3H/pAAslTQNxDC0Bc=;
+	bh=36OU2ow5ZVHW/uxyF9K0UCX8insygABB50j7pai09OU=;
 	h=From:To:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=nW5h2+ZiWGRtRXlFtb18Kv2XvFcUqhBcvLLU+Cx1QrEAbDQXuBb8Hy8D/dE2jVXF2rcXPqr0ax6WnhWRnDUhOUFYckLSQpF4LkKLWJ3ObTt+S/e1cweJqEj4dXbsVm81yC34j91som1/GS9Y/zFCcZWz9hujX5aGmdoJHtqMO3c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Zuk1poC4; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=CPJwJUAQwYIYELPEm4AIdUbyZqQfhEc7qLowMGeKAuQkKHZyNxBq42G8231jpnGQ6JuxxzdPFvBLtvu3h4tnnOHjbILgs727AM3RdAyj8kIaV6meP4Yhw6trc0fDsvACpOPHlpZgL8E8XJujq9pUdQsmEAuxJjEsM1f6qHwPp0c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bDNVRAOU; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Zuk1poC4"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A9994C4CEF9
-	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bDNVRAOU"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 80B25C4CEF7
+	for <linux-nfs@vger.kernel.org>; Sat,  6 Sep 2025 16:42:19 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1757176940;
-	bh=Kn/KTChfymEdZ7e11OEPg9I5yx3H/pAAslTQNxDC0Bc=;
+	s=k20201202; t=1757176939;
+	bh=36OU2ow5ZVHW/uxyF9K0UCX8insygABB50j7pai09OU=;
 	h=From:To:Subject:Date:In-Reply-To:References:From;
-	b=Zuk1poC4qxDWOIuWVTL8MTEdpWOuSQyhr3d98MKNklonZCb4hqyf2ZLOh+r3EY3ef
-	 V9+fLs4g7KFTbmMp3FeQIyWhPz3dw1d89LiRQVkcqMDhRe3ABZQub65CIH8HFkAMcP
-	 o9WI798sEaqhk9qUPJe+P5JFCYwvhJZIuyyhxC+ikFxS10gfA7cakdsqT4iyAMlcZb
-	 R+X/loBimQYyfaY27BWweXxVWLZkFZGF+Q9tH/VRMMFfyi1Z2siDxEomzYBIciIPMI
-	 twBJH41bjzhABsJYSEcVd81WlZfwD96Rftpdwh+/KFhGyQV2vYA0p7XKxqt1WnbhSN
-	 ldbEWjZmfn+qw==
+	b=bDNVRAOUDep8XSoZEQBtMPA+HDtN84vOlFduual5Owq32pFTEyj3r5XuFt5SN+RSb
+	 DwRH/6Ljl95TQUGT/4CUUz2gpEhL/m7LM/Vax4caRBn3HMhAeMPYqmjYKwwAMgi08J
+	 Pe+jHqWTyEAyNOcODBlrNJrJ9iMwWD1fpOPvjxWltX6OZrruHuItwNwpSvS0Yhvgno
+	 3KRE9SEdcxthiam5F40Df+AJb51hGPGTkgL2LiSjxYAPvc7pjDPBuEATEiqb4sadbi
+	 8qb4KnyEkWjJ+ZGd6QOGAOkHMuxRVx3/7ybXvgsBYWqiHteqXkza1bxHfns7eHgQ8V
+	 GzFrd7QCLPbzQ==
 From: Trond Myklebust <trondmy@kernel.org>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/8] NFSv4.2: Serialise O_DIRECT i/o and clone range
-Date: Sat,  6 Sep 2025 12:42:13 -0400
-Message-ID: <944b06a03cffa8b988ea648a2ba915a418ee853d.1757176392.git.trond.myklebust@hammerspace.com>
+Subject: [PATCH v2 2/8] NFSv4.2: Protect copy offload and clone against 'eof page pollution'
+Date: Sat,  6 Sep 2025 12:42:10 -0400
+Message-ID: <24f906a2f9b8858f30cc1796906e7bc3e1a2ca9c.1757176392.git.trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <cover.1757176392.git.trond.myklebust@hammerspace.com>
 References: <cover.1757100278.git.trond.myklebust@hammerspace.com> <cover.1757176392.git.trond.myklebust@hammerspace.com>
@@ -44,31 +44,86 @@ Content-Transfer-Encoding: 8bit
 
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
-Ensure that all O_DIRECT reads and writes complete before cloning a file
-range, so that both the source and destination are up to date.
+The NFSv4.2 copy offload and clone functions can also end up extending
+the size of the destination file, so they too need to call
+nfs_truncate_last_folio().
 
-Fixes: a5864c999de6 ("NFS: Do not serialise O_DIRECT reads and writes")
+Reported-by: Olga Kornievskaia <okorniev@redhat.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/nfs4file.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfs/nfs42proc.c | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 1d6b5f4230c9..c9a0d1e420c6 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -278,9 +278,11 @@ static loff_t nfs42_remap_file_range(struct file *src_file, loff_t src_off,
- 	lock_two_nondirectories(src_inode, dst_inode);
- 	/* flush all pending writes on both src and dst so that server
- 	 * has the latest data */
-+	nfs_file_block_o_direct(NFS_I(src_inode));
- 	ret = nfs_sync_inode(src_inode);
- 	if (ret)
- 		goto out_unlock;
-+	nfs_file_block_o_direct(NFS_I(dst_inode));
- 	ret = nfs_sync_inode(dst_inode);
- 	if (ret)
- 		goto out_unlock;
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 4420b8740e2f..e2fea37c5348 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -362,22 +362,27 @@ static int process_copy_commit(struct file *dst, loff_t pos_dst,
+ 
+ /**
+  * nfs42_copy_dest_done - perform inode cache updates after clone/copy offload
+- * @inode: pointer to destination inode
++ * @file: pointer to destination file
+  * @pos: destination offset
+  * @len: copy length
++ * @oldsize: length of the file prior to clone/copy
+  *
+  * Punch a hole in the inode page cache, so that the NFS client will
+  * know to retrieve new data.
+  * Update the file size if necessary, and then mark the inode as having
+  * invalid cached values for change attribute, ctime, mtime and space used.
+  */
+-static void nfs42_copy_dest_done(struct inode *inode, loff_t pos, loff_t len)
++static void nfs42_copy_dest_done(struct file *file, loff_t pos, loff_t len,
++				 loff_t oldsize)
+ {
++	struct inode *inode = file_inode(file);
++	struct address_space *mapping = file->f_mapping;
+ 	loff_t newsize = pos + len;
+ 	loff_t end = newsize - 1;
+ 
+-	WARN_ON_ONCE(invalidate_inode_pages2_range(inode->i_mapping,
+-				pos >> PAGE_SHIFT, end >> PAGE_SHIFT));
++	nfs_truncate_last_folio(mapping, oldsize, pos);
++	WARN_ON_ONCE(invalidate_inode_pages2_range(mapping, pos >> PAGE_SHIFT,
++						   end >> PAGE_SHIFT));
+ 
+ 	spin_lock(&inode->i_lock);
+ 	if (newsize > i_size_read(inode))
+@@ -410,6 +415,7 @@ static ssize_t _nfs42_proc_copy(struct file *src,
+ 	struct nfs_server *src_server = NFS_SERVER(src_inode);
+ 	loff_t pos_src = args->src_pos;
+ 	loff_t pos_dst = args->dst_pos;
++	loff_t oldsize_dst = i_size_read(dst_inode);
+ 	size_t count = args->count;
+ 	ssize_t status;
+ 
+@@ -483,7 +489,7 @@ static ssize_t _nfs42_proc_copy(struct file *src,
+ 			goto out;
+ 	}
+ 
+-	nfs42_copy_dest_done(dst_inode, pos_dst, res->write_res.count);
++	nfs42_copy_dest_done(dst, pos_dst, res->write_res.count, oldsize_dst);
+ 	nfs_invalidate_atime(src_inode);
+ 	status = res->write_res.count;
+ out:
+@@ -1250,6 +1256,7 @@ static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
+ 	struct nfs42_clone_res res = {
+ 		.server	= server,
+ 	};
++	loff_t oldsize_dst = i_size_read(dst_inode);
+ 	int status;
+ 
+ 	msg->rpc_argp = &args;
+@@ -1284,7 +1291,7 @@ static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
+ 		/* a zero-length count means clone to EOF in src */
+ 		if (count == 0 && res.dst_fattr->valid & NFS_ATTR_FATTR_SIZE)
+ 			count = nfs_size_to_loff_t(res.dst_fattr->size) - dst_offset;
+-		nfs42_copy_dest_done(dst_inode, dst_offset, count);
++		nfs42_copy_dest_done(dst_f, dst_offset, count, oldsize_dst);
+ 		status = nfs_post_op_update_inode(dst_inode, res.dst_fattr);
+ 	}
+ 
 -- 
 2.51.0
 
