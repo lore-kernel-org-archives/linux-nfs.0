@@ -1,230 +1,88 @@
-Received: from mail-pf1-f170.google.com (mail-pf1-f170.google.com [209.85.210.170])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from 003.mia.mailroute.net (003.mia.mailroute.net [199.89.3.6])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B74A325A350;
-	Wed, 10 Sep 2025 21:46:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.170
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1B43A25A350;
+	Wed, 10 Sep 2025 21:46:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=199.89.3.6
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757540803; cv=none; b=OPUg/G0+tW4y+jzroU8q2BbuhshziTwhYAyxR2V2IeGM5MBSI+TxzkDEk4/Dpk4UtDRxNlCWPD6dva6kKTosa/oOPd1FmOmnCRKGML7+NShxpROWAPj9ZCKypOwB3I9OEgC0qf0uT5H4bFPBNE0Ron5WQHjbZr3GORlphfoJ0SU=
+	t=1757540811; cv=none; b=e0w4oBHunlWJ2paFItohDi3Jve8T7IAOVez+RETZYldaS5JZA/y7hxnCcT/8woECEtX4GqFO6HsSTEVM1HzSKfL6XfrAlm6dV1HvYPuZ3nkCNRFqCbolVxKEBZvy5PCEvifewsVjeHTkLT4Al8O4CtAmAwNB1GudfcUI4uSPpo0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1757540803; c=relaxed/simple;
-	bh=gX9LM04WuGkmadDIeCCzsTULPHnflype1+UrWxWmNd4=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=jayzT+H0b50QFGtuyP+jUwY2hQFKmxDODP0I+tBK2lJoGMLbxWPgClruJFuu7bFdiP/aQeDYytCPXCpNoURu/TkUcLdfNliw89jDfN5RmQ/qf3XNx3Dk5qMG93ta5bKb0wy2zRwgP5viEc7ev8WAjye+IpaVT6aKujiCLwxWvZ4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Z1jaPyBW; arc=none smtp.client-ip=209.85.210.170
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1757540811; c=relaxed/simple;
+	bh=xI5dr2WLtU48h2vDzwYeGhyj45s9yfxwH9ivM8zY9+w=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=iKv6fqOWvsl4IZuQ5c3Pqh8LYAYRpB92U5iOx2YSZ4aDaK0mh3rSskQFohg8OpIeArA12xP9sJkYOHxH0KXrSWWCsOIgVQ81EE8QS1UQoSrC5yPNsyKEmJs39KZWtE4eCyNxOgxdxkX7yiL+82cp4mBhn1mdzSi47VClmBSoRXc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=acm.org; spf=pass smtp.mailfrom=acm.org; dkim=pass (2048-bit key) header.d=acm.org header.i=@acm.org header.b=jl66o85u; arc=none smtp.client-ip=199.89.3.6
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=acm.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=acm.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Z1jaPyBW"
-Received: by mail-pf1-f170.google.com with SMTP id d2e1a72fcca58-7726c7ff7e5so56684b3a.3;
-        Wed, 10 Sep 2025 14:46:41 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1757540801; x=1758145601; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=PkS1HpoO21kqYsaFddGIvi50oyb/ms3N1SDnlykzSp4=;
-        b=Z1jaPyBWAZlmSRjc1WZPyVj+p5A4Nzxnb/sH28lba8E9AQyB8scJU7OByRzdGzqVnL
-         Q8qHtqARaNt7mQOcLPyu8PtLJo2SgLELJPRQYBROhurezD2FX7f5QGJLMlkQn5pbvdaM
-         y0C/wdT06RS7lv0pIMrmJD8B2f+jPtZIYLSAh/f3IGf78u7ZjT9bGKPn5kZUdBiZ44k/
-         xhLdvskN3Ii9rlaNdn8PWWrrui23RYKaUGnOn0Lz2rSdZCuAoVTAA1iiwAUuuHuOWdHU
-         staeyaNWqkJMQ+DerJ3+H1LMufmmgMff1IIiY6MvQZWl6n7tuvpAPFTFdW7m/vUBz7Fo
-         XXFg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1757540801; x=1758145601;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-message-state:from:to:cc
-         :subject:date:message-id:reply-to;
-        bh=PkS1HpoO21kqYsaFddGIvi50oyb/ms3N1SDnlykzSp4=;
-        b=qU4ac84RTEJQFscJcjC9PgOkduMGerYR1SPxiTHyq2kHwCinfLdH5FCY/3PtSzxlYa
-         hkbV3np0cZECkh49ZBRifsURQYEn+6I+d6mogAEINQGCWPP28brBoqCuAsQOHt3RD+bh
-         KweTtRwJI7Pgcri4LYJeR0CFKi+MTVtH+7JbVrE7VgFu3gmhtpCcpsSGUgRi5glMJkvp
-         Yt2EWCNL0GGmgul3NyY3880z2NMHd3cHZpcx7CXUId/nxmVUb3Ckpe5HRMmYgAHqopcZ
-         D1pLOmnlKL5Dl5+2uhUK745m2eFQMgXi7EDCcRlpjTqPO315KG2FtJq5Szd+gCsgiw/w
-         la5A==
-X-Forwarded-Encrypted: i=1; AJvYcCUHNozOLF8jauwW5kLiy+xV2pKIZ7VjYVfHTxU8FAnAdtGElfCW4e1bY+3cRVzXxs4HMnihL1ff4c86@vger.kernel.org, AJvYcCWVBr5BUZ5XdSjMfAiefj21ks4hIJqTp3mnR9jU7Kck7nRMv8kmmNQWU8ZMSHxk9BF5jd9qdL+HYTh/GreO@vger.kernel.org
-X-Gm-Message-State: AOJu0YytTuZ4JHxs3tI5HyrVZPmSCZmxg6A/zIWHYER5K8WbDJZ4I6O7
-	4A2yib3YkSe3MNMUMjs7L9HVH+YGuVoRIE9vKSnCDXLNr9VCwHx2SO5V5XpjdbIU
-X-Gm-Gg: ASbGncu3Cgs13kzhRMFhyh2l1UEWFa8IFAUFrzeQ0ky/kT8l3UDhLBQXsWBXouR/9hx
-	FDL098q5VUNyT+m/9AUyPuFOOLallz/MnP7RbQaUbfWo2D0DClSC9FKd5kWT+LYq92wdBWRVN1D
-	JcXWUyjLeW5qK6/KQ9SRaVl5HnUWhKPDFjg6ldnMniL1P4e8yfNyRVeTN14E+c+tKEHKziypZ5u
-	I//WtT9sWe26vw6xQRbjvUwmlaWSMsFOnNLg0jaADeLjhkROVWiOpW7xv8IlD9vItoaI7ra+6yx
-	JnUNBLIwN0BiCq8qsW5LBwdBrAF2mR2iq3uiX1XcZMRcnjSiQRtzofACfTT5gqmc8TNVA1tFtaY
-	875bn3Wjce6v0A2Ctvn+l8yu/VRS+JeXI9Umz
-X-Google-Smtp-Source: AGHT+IH5ktDwuTmnkch6i7h+A0jQcHgCAyrrsdLod3ijbD7L8+zlT77gB9sP+OwQExloter2dqmF2g==
-X-Received: by 2002:a05:6a00:c94:b0:772:332c:7976 with SMTP id d2e1a72fcca58-7742db6308dmr19883386b3a.0.1757540800851;
-        Wed, 10 Sep 2025 14:46:40 -0700 (PDT)
-Received: from jicarita ([65.144.169.45])
-        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-775fbbc3251sm2422516b3a.103.2025.09.10.14.46.39
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 10 Sep 2025 14:46:40 -0700 (PDT)
-From: Thomas Bertschinger <tahbertschinger@gmail.com>
-To: io-uring@vger.kernel.org,
-	axboe@kernel.dk,
-	linux-fsdevel@vger.kernel.org,
-	viro@zeniv.linux.org.uk,
-	brauner@kernel.org,
-	linux-nfs@vger.kernel.org
-Cc: Thomas Bertschinger <tahbertschinger@gmail.com>
-Subject: [PATCH 02/10] io_uring: add support for IORING_OP_NAME_TO_HANDLE_AT
-Date: Wed, 10 Sep 2025 15:49:19 -0600
-Message-ID: <20250910214927.480316-3-tahbertschinger@gmail.com>
-X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20250910214927.480316-1-tahbertschinger@gmail.com>
-References: <20250910214927.480316-1-tahbertschinger@gmail.com>
+	dkim=pass (2048-bit key) header.d=acm.org header.i=@acm.org header.b="jl66o85u"
+Received: from localhost (localhost [127.0.0.1])
+	by 003.mia.mailroute.net (Postfix) with ESMTP id 4cMZ5h6MjrzlgqTy;
+	Wed, 10 Sep 2025 21:46:48 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=acm.org; h=
+	content-transfer-encoding:content-type:content-type:in-reply-to
+	:from:from:content-language:references:subject:subject
+	:user-agent:mime-version:date:date:message-id:received:received;
+	 s=mr01; t=1757540804; x=1760132805; bh=SblCa7b4/NTLO3n25U9sMwdZ
+	RzviXHPZ/qYAZnJLH+o=; b=jl66o85uqkGn0HhU8xIV8VJzDOn50wzA/PhwxG7y
+	83Eu311QE0FTDgG8Vfs5pcUIEB3I/PMqK1NA+f+F/CmhRyiYsbAfvgKI9NGeDbfA
+	oJgkcHG+363CIcJIrRIxkmA6QMB7Hbcg6bbk8iwjTGfvIGZ5yMlIhV2oUxk7Y/Lp
+	m+PR8mVloka1g9R9ADPdLGv8qtSaPtKhfQ9Sdojz8M5vz49Y4aftvaV79mvlf4dv
+	8uG1wzNP3j7mcX8/TZz2eBsFI1Fg9L89Ti2/Skn0SQZVLxQjnbZer+thswakrtTQ
+	sNm2OmK3oEqu6RxA0pfn+4DCcecegAif4i28pRwh3TfPNg==
+X-Virus-Scanned: by MailRoute
+Received: from 003.mia.mailroute.net ([127.0.0.1])
+ by localhost (003.mia [127.0.0.1]) (mroute_mailscanner, port 10029) with LMTP
+ id ynXkrDbBFREF; Wed, 10 Sep 2025 21:46:44 +0000 (UTC)
+Received: from [100.66.154.22] (unknown [104.135.204.82])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	(Authenticated sender: bvanassche@acm.org)
+	by 003.mia.mailroute.net (Postfix) with ESMTPSA id 4cMZ5F0NFBzlgn8k;
+	Wed, 10 Sep 2025 21:46:23 +0000 (UTC)
+Message-ID: <f65cf3ae-069d-4ade-9fc9-03f01c7e1649@acm.org>
+Date: Wed, 10 Sep 2025 14:46:21 -0700
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 32/32] selftests/namespaces: add file handle selftests
+To: Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+ Amir Goldstein <amir73il@gmail.com>, linux-fsdevel@vger.kernel.org
+Cc: Josef Bacik <josef@toxicpanda.com>, Jeff Layton <jlayton@kernel.org>,
+ Mike Yuan <me@yhndnzj.com>, =?UTF-8?Q?Zbigniew_J=C4=99drzejewski-Szmek?=
+ <zbyszek@in.waw.pl>, Lennart Poettering <mzxreary@0pointer.de>,
+ Daan De Meyer <daan.j.demeyer@gmail.com>, Aleksa Sarai <cyphar@cyphar.com>,
+ Alexander Viro <viro@zeniv.linux.org.uk>, Jens Axboe <axboe@kernel.dk>,
+ Tejun Heo <tj@kernel.org>, Johannes Weiner <hannes@cmpxchg.org>,
+ =?UTF-8?Q?Michal_Koutn=C3=BD?= <mkoutny@suse.com>,
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>,
+ Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+ linux-kselftest@vger.kernel.org, linux-block@vger.kernel.org,
+ linux-kernel@vger.kernel.org, cgroups@vger.kernel.org, netdev@vger.kernel.org
+References: <20250910-work-namespace-v1-0-4dd56e7359d8@kernel.org>
+ <20250910-work-namespace-v1-32-4dd56e7359d8@kernel.org>
+Content-Language: en-US
+From: Bart Van Assche <bvanassche@acm.org>
+In-Reply-To: <20250910-work-namespace-v1-32-4dd56e7359d8@kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Add support for name_to_handle_at(2) to io_uring.
+On 9/10/25 7:37 AM, Christian Brauner wrote:
+> +	snprintf(ns_path, sizeof(ns_path), "/proc/self/ns/net");
+> +	ns_fd = open(ns_path, O_RDONLY);
 
-Like openat*(), this tries to do a non-blocking lookup first and resorts
-to async lookup when that fails.
+Here and also in TEST(nsfs_uts_handle), ns_path is not modified. Does
+this mean that "/proc/self/ns/net" can be stored in a static const char
+array and also that the snprintf() call can be left out? In case I would
+have missed the reason why the path is copied, how about using
+asprintf() or strdup() instead of snprintf()?
 
-This uses sqe->addr for the path, ->addr2 for the file handle which is
-filled in by the kernel, and ->addr3 for the mouint_id which is filled
-in by the kernel.
+Thanks,
 
-Signed-off-by: Thomas Bertschinger <tahbertschinger@gmail.com>
----
- include/uapi/linux/io_uring.h |  2 ++
- io_uring/opdef.c              | 11 +++++++++
- io_uring/openclose.c          | 45 +++++++++++++++++++++++++++++++++++
- io_uring/openclose.h          |  5 ++++
- 4 files changed, 63 insertions(+)
-
-diff --git a/include/uapi/linux/io_uring.h b/include/uapi/linux/io_uring.h
-index 6957dc539d83..a4aa83ad9527 100644
---- a/include/uapi/linux/io_uring.h
-+++ b/include/uapi/linux/io_uring.h
-@@ -74,6 +74,7 @@ struct io_uring_sqe {
- 		__u32		install_fd_flags;
- 		__u32		nop_flags;
- 		__u32		pipe_flags;
-+		__u32		name_to_handle_flags;
- 	};
- 	__u64	user_data;	/* data to be passed back at completion time */
- 	/* pack this to avoid bogus arm OABI complaints */
-@@ -289,6 +290,7 @@ enum io_uring_op {
- 	IORING_OP_READV_FIXED,
- 	IORING_OP_WRITEV_FIXED,
- 	IORING_OP_PIPE,
-+	IORING_OP_NAME_TO_HANDLE_AT,
- 
- 	/* this goes last, obviously */
- 	IORING_OP_LAST,
-diff --git a/io_uring/opdef.c b/io_uring/opdef.c
-index 9568785810d9..76306c9e0ecd 100644
---- a/io_uring/opdef.c
-+++ b/io_uring/opdef.c
-@@ -574,6 +574,14 @@ const struct io_issue_def io_issue_defs[] = {
- 		.prep			= io_pipe_prep,
- 		.issue			= io_pipe,
- 	},
-+	[IORING_OP_NAME_TO_HANDLE_AT] = {
-+#if defined(CONFIG_FHANDLE)
-+		.prep			= io_name_to_handle_at_prep,
-+		.issue			= io_name_to_handle_at,
-+#else
-+		.prep			= io_eopnotsupp_prep,
-+#endif
-+	},
- };
- 
- const struct io_cold_def io_cold_defs[] = {
-@@ -824,6 +832,9 @@ const struct io_cold_def io_cold_defs[] = {
- 	[IORING_OP_PIPE] = {
- 		.name			= "PIPE",
- 	},
-+	[IORING_OP_NAME_TO_HANDLE_AT] = {
-+		.name			= "NAME_TO_HANDLE_AT",
-+	},
- };
- 
- const char *io_uring_get_opcode(u8 opcode)
-diff --git a/io_uring/openclose.c b/io_uring/openclose.c
-index d70700e5cef8..884a66e56643 100644
---- a/io_uring/openclose.c
-+++ b/io_uring/openclose.c
-@@ -27,6 +27,15 @@ struct io_open {
- 	unsigned long			nofile;
- };
- 
-+struct io_name_to_handle {
-+	struct file			*file;
-+	int				dfd;
-+	int				flags;
-+	struct file_handle __user	*ufh;
-+	char __user			*path;
-+	void __user			*mount_id;
-+};
-+
- struct io_close {
- 	struct file			*file;
- 	int				fd;
-@@ -187,6 +196,42 @@ void io_open_cleanup(struct io_kiocb *req)
- 		putname(open->filename);
- }
- 
-+#if defined(CONFIG_FHANDLE)
-+int io_name_to_handle_at_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)
-+{
-+	struct io_name_to_handle *nh = io_kiocb_to_cmd(req, struct io_name_to_handle);
-+
-+	nh->dfd = READ_ONCE(sqe->fd);
-+	nh->flags = READ_ONCE(sqe->name_to_handle_flags);
-+	nh->path = u64_to_user_ptr(READ_ONCE(sqe->addr));
-+	nh->ufh = u64_to_user_ptr(READ_ONCE(sqe->addr2));
-+	nh->mount_id = u64_to_user_ptr(READ_ONCE(sqe->addr3));
-+
-+	return 0;
-+}
-+
-+int io_name_to_handle_at(struct io_kiocb *req, unsigned int issue_flags)
-+{
-+	struct io_name_to_handle *nh = io_kiocb_to_cmd(req, struct io_name_to_handle);
-+	int lookup_flags = 0;
-+	long ret;
-+
-+	if (issue_flags & IO_URING_F_NONBLOCK)
-+		lookup_flags = LOOKUP_CACHED;
-+
-+	ret = do_sys_name_to_handle_at(nh->dfd, nh->path, nh->ufh, nh->mount_id,
-+				       nh->flags, lookup_flags);
-+
-+	if (ret == -EAGAIN && (issue_flags & IO_URING_F_NONBLOCK))
-+		return -EAGAIN;
-+
-+	if (ret < 0)
-+		req_set_fail(req);
-+	io_req_set_res(req, ret, 0);
-+	return IOU_COMPLETE;
-+}
-+#endif /* CONFIG_FHANDLE */
-+
- int __io_close_fixed(struct io_ring_ctx *ctx, unsigned int issue_flags,
- 		     unsigned int offset)
- {
-diff --git a/io_uring/openclose.h b/io_uring/openclose.h
-index 4ca2a9935abc..2fc1c8d35d0b 100644
---- a/io_uring/openclose.h
-+++ b/io_uring/openclose.h
-@@ -10,6 +10,11 @@ void io_open_cleanup(struct io_kiocb *req);
- int io_openat2_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);
- int io_openat2(struct io_kiocb *req, unsigned int issue_flags);
- 
-+#if defined(CONFIG_FHANDLE)
-+int io_name_to_handle_at_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);
-+int io_name_to_handle_at(struct io_kiocb *req, unsigned int issue_flags);
-+#endif /* CONFIG_FHANDLE */
-+
- int io_close_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe);
- int io_close(struct io_kiocb *req, unsigned int issue_flags);
- 
--- 
-2.51.0
-
+Bart.
