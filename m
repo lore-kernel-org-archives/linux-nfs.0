@@ -1,45 +1,46 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 14A462DC788;
-	Thu, 11 Sep 2025 22:46:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 82FAB23E34C;
+	Thu, 11 Sep 2025 22:46:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757630792; cv=none; b=tQMdmIH333zjzlN9t9Qcz7zpe0lqjGq36ziVZBm1Ui0mpr4U2GNCcjZasc8jv29a9/HwQBx8ybD6sNdY/kUP+i9ij38/lPrvhmY0eNF/MZdx0WfrbZZjJS/50LuLf9htX7iHlsIx/rwqOm2eLqUDEcn2+uMx/gxAoDSnytmPsIs=
+	t=1757630792; cv=none; b=gCRF9cQuv71akA/S/Q3XVVUT4+zKjgofs6ezIxxws6OtyRjmzHN+pXivBDtlpUz5zfACy2BtRqeQLVxe8LI3NwTv6LlwRFun5HSSJaHsx4G0V5hB/EU/JRETZJvLiDfCKY46y9wHvJ7qSJivExWQ4bwY6XVc9zG2+qy0THqeHI8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1757630792; c=relaxed/simple;
-	bh=m5/9UpkwJZaF3YJsFeSLKz9CtkPrXjXFV+OY4IAcx4o=;
+	bh=RZNDsVsGOGAXkrZfTTJuwdVi+QSAv9GH4uV9YlB0jZ0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=QoGUDhBThYxbYw2ZarNpD8sE3M3nzGmfUOvO60JVdSTg9o/PV1qvVn2vfY0lDdCcCkI6npeRWEaKO5zomq66GLc1eNCW6mR0lrhLGjvVAtoMFrYQ+fkiuiAiKoPeWgmUdZyJXZ/MXWoj9dIokjh8qSkgM0fHvqr/QnCxLsfqhO0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=r/zQgCWZ; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=E5pFgfaDlpICzc8m541cgXdLf+1lnXWGuOVJ8XYiMMdhKlaVT04wVtxQ8JjZrHLvhMldMGTiWGxH+96a6mZCORO9Tmc70EUbzrZsbTIOQ6V6l33O9VDNpLJUkhGFNddZrnPEcUnZEfRXZhEQwxz+gj0To6yfM2O/RMS/kKVEQZs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=wl+Y4M+N; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="r/zQgCWZ"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="wl+Y4M+N"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=MhgxfnkCz/kLzZdlx0jjex+3MgivGTL5/T6JYpE7Wec=; b=r/zQgCWZV2WwOpXnz8lv4pB9t4
-	1OCYqdGsBuM9PTcUH13o8bo5YdgEQeoD65jBQ3gXSaoufIo6IlAgVqiQZXPi0E2To8yD9aa7eOVMl
-	zPSJ057fcDbA8rUz+mF4k1pnFGVWq9rRuy37CU7qgcl0snek7kclcqqNu7KDCZzqyjArx1MHkh8yE
-	+NE+B6eDuxjgjmrC7P2FKyAfS5wXs6+sKpiMRnaHhiw9iBzTk/viHIkI8e/kXKiHK+8m+BZadLo9W
-	RTLR/elxa/Q8VoNq7h9rdzgT4lLhzC4PJtGkw0iURw2Q3m3PUzcJkV5nuRiF2lOSlKPzqXpJH2PCc
-	TXV9Sxxw==;
+	bh=9I9ogF6ckZjiOeaQ6tk1lYm9yI5JWNPHHidN4cgkQ9E=; b=wl+Y4M+Nq3KcaoAWHxKaK/x64x
+	XczvBWy5x85lghevUwenptv4KF2g6FvVSzGLTMDYstdxmce8gZC3cFTfEcUG7pwhXZTXFElasBmVz
+	w7CeCpavvC1KMWR6Bgm6G8PDPm47kg2CSZKZ6DD6omobZCkW0MA9mc37iMzhHoBTxSQdvnyJa9O6s
+	YiRd5++u6CN9fH4hpf2gqWAiiV52h0D7h7HFUC0r+17N1KPbtzAh5LdaH2gPQfbRIEsN2pDU2AHyd
+	fBxazQXKuxnXiTPegAs9rIBdhMVYF1Z3J7/xu/ziO58lBnidlljUYzttgyUE+pyYfe/VBW3OwaCD2
+	LnmUWcPQ==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1uwq3g-00000006g2b-2Gce;
-	Thu, 11 Sep 2025 22:46:28 +0000
+	id 1uwq3h-00000006g34-0GeC;
+	Thu, 11 Sep 2025 22:46:29 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org,
 	jlayton@kernel.org,
 	neil@brown.name
-Subject: [PATCH 1/5] nfsctl: symlink has no business bumping link count of parent directory
-Date: Thu, 11 Sep 2025 23:46:24 +0100
-Message-ID: <20250911224628.1591565-1-viro@zeniv.linux.org.uk>
+Subject: [PATCH 4/5] nfsdfs_create_files(): switch to simple_start_creating()
+Date: Thu, 11 Sep 2025 23:46:27 +0100
+Message-ID: <20250911224628.1591565-4-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.49.0
-In-Reply-To: <20250911224429.GX39973@ZenIV>
+In-Reply-To: <20250911224628.1591565-1-viro@zeniv.linux.org.uk>
 References: <20250911224429.GX39973@ZenIV>
+ <20250911224628.1591565-1-viro@zeniv.linux.org.uk>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -49,26 +50,68 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-mkdir should incrment the parent's refcount; symlink should not.
-
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfsd/nfsctl.c | 1 -
- 1 file changed, 1 deletion(-)
+ fs/nfsd/nfsctl.c | 30 ++++++++++++------------------
+ 1 file changed, 12 insertions(+), 18 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index bc6b776fc657..282b961d8788 100644
+index 1b5e417784f6..6deabe359a80 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -1181,7 +1181,6 @@ static int __nfsd_symlink(struct inode *dir, struct dentry *dentry,
- 	inode->i_size = strlen(content);
+@@ -1216,40 +1216,34 @@ struct nfsdfs_client *get_nfsdfs_client(struct inode *inode)
  
- 	d_add(dentry, inode);
--	inc_nlink(dir);
- 	fsnotify_create(dir, dentry);
+ /* XXX: cut'n'paste from simple_fill_super; figure out if we could share
+  * code instead. */
+-static  int nfsdfs_create_files(struct dentry *root,
++static int nfsdfs_create_files(struct dentry *root,
+ 				const struct tree_descr *files,
+ 				struct nfsdfs_client *ncl,
+ 				struct dentry **fdentries)
+ {
+ 	struct inode *dir = d_inode(root);
+-	struct inode *inode;
+ 	struct dentry *dentry;
+-	int i;
+ 
+-	inode_lock(dir);
+-	for (i = 0; files->name && files->name[0]; i++, files++) {
+-		dentry = d_alloc_name(root, files->name);
+-		if (!dentry)
+-			goto out;
+-		inode = nfsd_get_inode(d_inode(root)->i_sb,
+-					S_IFREG | files->mode);
+-		if (!inode) {
+-			dput(dentry);
+-			goto out;
++	for (int i = 0; files->name && files->name[0]; i++, files++) {
++		struct inode *inode = nfsd_get_inode(root->d_sb,
++						     S_IFREG | files->mode);
++		if (!inode)
++			return -ENOMEM;
++		dentry = simple_start_creating(root, files->name);
++		if (IS_ERR(dentry)) {
++			iput(inode);
++			return PTR_ERR(dentry);
+ 		}
+ 		kref_get(&ncl->cl_ref);
+ 		inode->i_fop = files->ops;
+ 		inode->i_private = ncl;
+-		d_add(dentry, inode);
++		d_instantiate(dentry, inode);
+ 		fsnotify_create(dir, dentry);
+ 		if (fdentries)
+ 			fdentries[i] = dentry;
++		inode_unlock(dir);
+ 	}
+-	inode_unlock(dir);
  	return 0;
+-out:
+-	inode_unlock(dir);
+-	return -ENOMEM;
  }
+ 
+ /* on success, returns positive number unique to that client. */
 -- 
 2.47.2
 
