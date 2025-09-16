@@ -1,162 +1,109 @@
-Received: from mail-pf1-f201.google.com (mail-pf1-f201.google.com [209.85.210.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E035225F7BF
-	for <linux-nfs@vger.kernel.org>; Tue, 16 Sep 2025 04:02:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1D1D322615;
+	Tue, 16 Sep 2025 04:46:52 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1757995338; cv=none; b=VgE19kkxyPXNmnKvXQoHZInt3BUFwm0wLCzBS4fihoOqX5efL3gGOqkhxjiEW/P3i8uWwjSMhSILlhUAPEZYsX//tLLoWnBfqtoknTBtJ5PF8+4v4wDjmlutYdKrzkQI/1spVwRSkFSd1lUT8HpSZhGnITEv3x2jTUA7xzozNwM=
+	t=1757998017; cv=none; b=S/vs6ZCPFwQ5W6dgFqa14Z7r27+i56ASBXyrxVk7C2+HAy0NhKvBOzVHbGFTtw2XBOfoNWGU8L5kxT/re7lY2H8fwuBvBCUx0twRgfIwsxnDfOza0m1f6+1cEl+aTfegGQdvTOlxwF0UonZEeKdVm8egI8/0yL9/quQxsXPorXI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1757995338; c=relaxed/simple;
-	bh=UUJdIvJCTZLFaiyRA8ErYNZ9FoXcRHi1uaHJ0g63rzA=;
-	h=Date:In-Reply-To:Mime-Version:References:Message-ID:Subject:From:
-	 To:Cc:Content-Type; b=ceEt1C04PlyuEaeOZ9XYYgbtUPnhzrHOoAl5NppQVZVGS4aLGcgdkncicNVjMp3Y3M/wUIsL6s57vLT8fFY2p6wXLiQzQQpGkHj/azvp9E25eUGjMDo1mwcaBhNYwkW9eJd9/NB9/J07Mr81qcVmbo50gWWf4v/2zMeDiJJd0gM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=flex--kuniyu.bounces.google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=K10hM/g1; arc=none smtp.client-ip=209.85.210.201
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--kuniyu.bounces.google.com
+	s=arc-20240116; t=1757998017; c=relaxed/simple;
+	bh=T74ZzuPspDPqp5WudzeQCOjSlkg1JjJh0e7aM3Wogno=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=GXaHBUyPO6MOvO7M+z+bo4SVO0HuoSRxkzXszbxxpyBeQFampwpJRWN7mPkgI8IH4Cxpg8RBbrkE/t2kN5mSWtTz862/pMWIta5XhNe4MfNAlmwgKSYY6OEfxyydck92wAXHQ0xU1IOp0BhwBuPlXbj0oRzgTd2Liiu7FeEKRI8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=ox9L+D4w; arc=none smtp.client-ip=62.89.141.173
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="K10hM/g1"
-Received: by mail-pf1-f201.google.com with SMTP id d2e1a72fcca58-77243618babso4643280b3a.0
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2025 21:02:16 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20230601; t=1757995336; x=1758600136; darn=vger.kernel.org;
-        h=cc:to:from:subject:message-id:references:mime-version:in-reply-to
-         :date:from:to:cc:subject:date:message-id:reply-to;
-        bh=1AiCn6Yf7MLJOGQicoAhP1FNLIRBZVRzRsXqjBBBRLc=;
-        b=K10hM/g1k1AvhzPxDF5uypFfT0DqOdenRIKNPlOu1fwz1/e7jg1md4eJpSy/4TcRXf
-         KYb6ZBCJdgtAwOTFgDcG93zkZQ0yHK+8SLG7H+xtMotDV3d+y+tEafIU8J+E4CgGukYS
-         hgUeFj5hqfRQbQwf909cIOj2ovV9tcAZnc6S9FekKO17ZKZVGd1MysKdluCbDbgvmOm4
-         rdlg1VLz6Qlh+e+2UfqWcOOLT2YLzuAMIVE0fy5ZRdT1GJKHrXB0PoW5V4u3CUQtO8Lg
-         XRpsEZo3PZ4KvAokR3QgRhm8hwiQXbFYfN8gONSpYVEzvEBJwGkjR3E/3ctLGmZfOIV3
-         6f2Q==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1757995336; x=1758600136;
-        h=cc:to:from:subject:message-id:references:mime-version:in-reply-to
-         :date:x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=1AiCn6Yf7MLJOGQicoAhP1FNLIRBZVRzRsXqjBBBRLc=;
-        b=usc/TXEJb33SGUJCycCK7Bluh24pwvUbZH0lh+Qa/Czsrb3tFfHNx7/fJHcZv+U4R7
-         FP0MFyOxOFDyuyIf3YO/x7xuUQ3zDWwtTf+UBxFllxGDDyjdjO1V13UvpsCqUFPYac3K
-         mrHcaoJRM6wPC/OXdH+adgR8XDDe45pcOlM6LjLU3+n2Z3ocaGOFSy99D5yliz+62olQ
-         y6ymWjp7UnptD0XG/JBoctKE4+bsdQ3s7Fs9WeYsaBd4r18NEHbW7VIZVuC4n5d8NlCi
-         jKgK+x5q+BZkXyd14UpB2ujMwS9dPftv1H7EbZipxrTb/WUefwzxgw2qE9jTJC0IIozU
-         ub+g==
-X-Forwarded-Encrypted: i=1; AJvYcCXW9Qv6PZqAunmeOmJcsHtVGo9biC8C6PJafL9gnYrlLVU9OWzoI/ikNyOmqCXoZF2dCltJ/LiHJYQ=@vger.kernel.org
-X-Gm-Message-State: AOJu0YwhGpU1+O9lUpytPQmm18EV0/Ca7hnjLmVThfIra7YYDwqzMeZ3
-	eIo6veTOoiBKg7wYN8xYU+345E0t9cpd/2tQROdbC08wzirodOuTrhnX/sgGeAf5TWl7a0DAjkH
-	X18FNTQ==
-X-Google-Smtp-Source: AGHT+IHvLTztZLDVxTI+gM0wu0lDoOjAwawu5SNGK91k8BlfCEFiK50xU/x2OHJPmawz0vgErtwtv7TKzRw=
-X-Received: from pffr10.prod.google.com ([2002:a05:6a00:216a:b0:772:3e53:6d20])
- (user=kuniyu job=prod-delivery.src-stubby-dispatcher) by 2002:a05:6a00:3e09:b0:76b:ec81:bcc9
- with SMTP id d2e1a72fcca58-77612168c6bmr15901933b3a.21.1757995335625; Mon, 15
- Sep 2025 21:02:15 -0700 (PDT)
-Date: Tue, 16 Sep 2025 03:59:34 +0000
-In-Reply-To: <20250912-work-namespace-v2-21-1a247645cef5@kernel.org>
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="ox9L+D4w"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
+	MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=zJKM8U9wCy2x6jEU9/NwYukpZ0MPjWkRmBpCq2d6jwc=; b=ox9L+D4w9ZzxQiIuAXM1mi0jo+
+	cpo4X3XUrxcCVbbybOIMHXV++lLyHSkYuzY6zrldFhpIHKroHTcHqn+4uvsO06MzSd09Wstynu3QI
+	ZLQTHvrztPXmZFd83ZDOOF+LklOXW4vKqmznuGXnDbkulwFPDcv2Q/ZK8BWICbufTK+Mg757vA379
+	/Kmkpw8+xQpAdRQDBQFf/jJEFIYBax9bhbP0ap9qjvNqCkvepSipkM7ff8o4c1AtcWvSgL4gP4V2y
+	M67uWR7GeK/WKuFr080DEOMuzrLCr5jStN+1NJ+K8kwcB1rIV7Vh2TA1rAq6J1GmZeBmzOjBYVyOw
+	G24wV40Q==;
+Received: from viro by zeniv.linux.org.uk with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1uyNaa-00000006Sju-3JxF;
+	Tue, 16 Sep 2025 04:46:48 +0000
+Date: Tue, 16 Sep 2025 05:46:48 +0100
+From: Al Viro <viro@zeniv.linux.org.uk>
+To: Christian Brauner <brauner@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, Amir Goldstein <amir73il@gmail.com>,
+	linux-fsdevel@vger.kernel.org, Josef Bacik <josef@toxicpanda.com>,
+	Jeff Layton <jlayton@kernel.org>, Mike Yuan <me@yhndnzj.com>,
+	Zbigniew =?utf-8?Q?J=C4=99drzejewski-Szmek?= <zbyszek@in.waw.pl>,
+	Lennart Poettering <mzxreary@0pointer.de>,
+	Daan De Meyer <daan.j.demeyer@gmail.com>,
+	Aleksa Sarai <cyphar@cyphar.com>, Jens Axboe <axboe@kernel.dk>,
+	Tejun Heo <tj@kernel.org>, Johannes Weiner <hannes@cmpxchg.org>,
+	Michal =?iso-8859-1?Q?Koutn=FD?= <mkoutny@suse.com>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+	linux-kselftest@vger.kernel.org, linux-block@vger.kernel.org,
+	linux-kernel@vger.kernel.org, cgroups@vger.kernel.org,
+	netdev@vger.kernel.org
+Subject: Re: [PATCH v2 18/33] mnt: support ns lookup
+Message-ID: <20250916044648.GP39973@ZenIV>
+References: <20250912-work-namespace-v2-0-1a247645cef5@kernel.org>
+ <20250912-work-namespace-v2-18-1a247645cef5@kernel.org>
+ <20250916035633.GM39973@ZenIV>
+ <20250916035949.GO39973@ZenIV>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-References: <20250912-work-namespace-v2-21-1a247645cef5@kernel.org>
-X-Mailer: git-send-email 2.51.0.384.g4c02a37b29-goog
-Message-ID: <20250916040214.319783-1-kuniyu@google.com>
-Subject: Re: [PATCH v2 21/33] net: support ns lookup
-From: Kuniyuki Iwashima <kuniyu@google.com>
-To: brauner@kernel.org
-Cc: amir73il@gmail.com, axboe@kernel.dk, cgroups@vger.kernel.org, 
-	chuck.lever@oracle.com, cyphar@cyphar.com, daan.j.demeyer@gmail.com, 
-	edumazet@google.com, hannes@cmpxchg.org, horms@kernel.org, jack@suse.cz, 
-	jlayton@kernel.org, josef@toxicpanda.com, kuba@kernel.org, 
-	linux-block@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-kselftest@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, me@yhndnzj.com, mkoutny@suse.com, 
-	mzxreary@0pointer.de, netdev@vger.kernel.org, pabeni@redhat.com, 
-	tj@kernel.org, viro@zeniv.linux.org.uk, zbyszek@in.waw.pl, kuniyu@google.com
-Content-Type: text/plain; charset="UTF-8"
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20250916035949.GO39973@ZenIV>
+Sender: Al Viro <viro@ftp.linux.org.uk>
 
-From: Christian Brauner <brauner@kernel.org>
-Date: Fri, 12 Sep 2025 13:52:44 +0200
-> Support the generic ns lookup infrastructure to support file handles for
-> namespaces.
+On Tue, Sep 16, 2025 at 04:59:49AM +0100, Al Viro wrote:
+> On Tue, Sep 16, 2025 at 04:56:33AM +0100, Al Viro wrote:
+> > 	if (!RB_EMPTY_NODE(to_ns_common(ns)->ns_tree_node))
 > 
-> The network namespace has a separate list with different lifetime rules
-> which we can just leave in tact. We have a similar concept for mount
-> namespaces as well where it is on two differenet lists for different
-> purposes.
+>  	if (!RB_EMPTY_NODE(&to_ns_common(ns)->ns_tree_node))
 > 
-> Signed-off-by: Christian Brauner <brauner@kernel.org>
-> ---
->  include/net/net_namespace.h | 1 +
->  net/core/net_namespace.c    | 8 ++++++--
->  2 files changed, 7 insertions(+), 2 deletions(-)
-> 
-> diff --git a/include/net/net_namespace.h b/include/net/net_namespace.h
-> index 025a7574b275..42075748dff1 100644
-> --- a/include/net/net_namespace.h
-> +++ b/include/net/net_namespace.h
-> @@ -11,6 +11,7 @@
->  #include <linux/list.h>
->  #include <linux/sysctl.h>
->  #include <linux/uidgid.h>
-> +#include <linux/nstree.h>
->  
->  #include <net/flow.h>
->  #include <net/netns/core.h>
-> diff --git a/net/core/net_namespace.c b/net/core/net_namespace.c
-> index 5fb7bd8ac45a..169ec22c4758 100644
-> --- a/net/core/net_namespace.c
-> +++ b/net/core/net_namespace.c
-> @@ -20,6 +20,7 @@
->  #include <linux/sched/task.h>
->  #include <linux/uidgid.h>
->  #include <linux/proc_fs.h>
-> +#include <linux/nstree.h>
->  
->  #include <net/aligned_data.h>
+> obviously...
 
-nit: This is no longer necessary.
+FWIW, how about the following - I put the commit below into never-rebased
+branch, pull it into #work.mount and you do the same to your branch
+just prior to 18/33?  The difference from one in #work.mount is that
+this variant checks RB_EMPTY_NODE(&ns->mnt_ns_tree_node) instead of
+list_empty(&ns->mnt_ns_list).  The reasons why it's safe lockless are
+pretty much the same...
 
+Objections?  Does vfs/vfs.git #no-rebases-mnt_ns_tree_remove look sane
+for you?
 
->  #include <net/sock.h>
-> @@ -445,7 +446,7 @@ static __net_init int setup_net(struct net *net)
->  	LIST_HEAD(net_exit_list);
->  	int error = 0;
->  
-> -	net->net_cookie = atomic64_inc_return(&net_aligned_data.net_cookie);
-> +	net->net_cookie = ns_tree_gen_id(&net->ns);
->  
->  	list_for_each_entry(ops, &pernet_list, list) {
->  		error = ops_init(ops, net);
-> @@ -455,6 +456,7 @@ static __net_init int setup_net(struct net *net)
->  	down_write(&net_rwsem);
->  	list_add_tail_rcu(&net->list, &net_namespace_list);
->  	up_write(&net_rwsem);
-> +	ns_tree_add_raw(net);
->  out:
->  	return error;
->  
-> @@ -674,8 +676,10 @@ static void cleanup_net(struct work_struct *work)
->  
->  	/* Don't let anyone else find us. */
->  	down_write(&net_rwsem);
-> -	llist_for_each_entry(net, net_kill_list, cleanup_list)
-> +	llist_for_each_entry(net, net_kill_list, cleanup_list) {
-> +		ns_tree_remove(net);
-
-Looking at refcount_inc_not_zero() in nsfs_fh_to_dentry(),
-I think ns_tree_remove() fits better in __put_net() which
-is called just after refcount_dec_and_test(&net->ns.count).
-
-cleanup_net() is single threaded work and somtimes takes long with
-too many netns and the netns may stay longer unnecessarily until
-next cleanup_net().
-
-
->  		list_del_rcu(&net->list);
-> +	}
->  	/* Cache last net. After we unlock rtnl, no one new net
->  	 * added to net_namespace_list can assign nsid pointer
->  	 * to a net from net_kill_list (see peernet2id_alloc()).
-> 
-> -- 
-> 2.47.3
+mnt_ns_tree_remove(): DTRT if mnt_ns had never been added to mnt_ns_list
+    
+Actual removal is done under the lock, but for checking if need to bother
+the lockless RB_EMPTY_NODE() is safe - either that namespace had never
+been added to mnt_ns_tree, in which case the the node will stay empty, or
+whoever had allocated it has called mnt_ns_tree_add() and it has already
+run to completion.  After that point RB_EMPTY_NODE() will become false and
+will remain false, no matter what we do with other nodes in the tree.
+    
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+---
+diff --git a/fs/namespace.c b/fs/namespace.c
+index ae6d1312b184..39afeb521a80 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -187,7 +187,7 @@ static void mnt_ns_release_rcu(struct rcu_head *rcu)
+ static void mnt_ns_tree_remove(struct mnt_namespace *ns)
+ {
+ 	/* remove from global mount namespace list */
+-	if (!is_anon_ns(ns)) {
++	if (!RB_EMPTY_NODE(&ns->mnt_ns_tree_node)) {
+ 		mnt_ns_tree_write_lock();
+ 		rb_erase(&ns->mnt_ns_tree_node, &mnt_ns_tree);
+ 		list_bidir_del_rcu(&ns->mnt_ns_list);
