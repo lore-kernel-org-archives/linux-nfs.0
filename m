@@ -1,34 +1,34 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5C377313540;
-	Wed, 17 Sep 2025 23:27:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 55073313D41;
+	Wed, 17 Sep 2025 23:27:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758151667; cv=none; b=HoXYCuT6qWjLaDhkLyHtu3JjY9T3wHYz2kVEFEyvCuz+Cew8wKZ11YLy9+3tfFUJS2rrTgWNOHT2jiZBhcfjCTgAGyGld3cBAtmxq5l4zUc9tQjdQLdUlIMQEy6Lcjsgik66GUxOROlq0QimsF9yOyePDYhjaO9YXzz0FzDIy6c=
+	t=1758151668; cv=none; b=SJPSrOI11QXz0jAHriIDX6vK8Mr0JL/qzwqPtdmi6UlKyK7aJ9FGoA+pzIc6K6xeeHux42Y1Wz9U01Iy4cgyCzf2/zFTzOB5KeAFhDiULF45yoLnIatimtzvEjBwWrSHxfA5yvuxS88U7AQr1zTfn9mYgxBVZNARQ+LClkX8+ls=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758151667; c=relaxed/simple;
-	bh=v0ORbOYTQuPC+Lk1UcrMbyUyyP2Sj8S5nGAxGAeua5o=;
+	s=arc-20240116; t=1758151668; c=relaxed/simple;
+	bh=SAL2g9XdbpStoo/2tv2TO4FxWiwoeZiXVO+35uIHtTo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=cajHey4BdrlELpsyPofS5ZWjNqfewVLYNpMCan3i0Eug9WzW2+U4KE76u/z62XUAMFshpO0ErjyBdMK7XrWUlJ0kpAvMtlS7J2eqeF9U4VpthoxW4h7E/9DXiG3DXnnLF/d1fSHfl1+HNhcWTCE5bjtosj4OpZFl6XYdESu8EWg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=CFE2DqPY; arc=none smtp.client-ip=62.89.141.173
+	 MIME-Version; b=TJb1kHmrpg6ZeYon7PTtw8Rp5zHu3HNHIAi5HLb2mxt9vnEerxnlrHfgWTChu6bwEX5gEBD9te4ZAWaaIXE19dxte2OdCIsHwdfX+Q+SQjSy8tR3nvHHYsqSuMCp/j8QerMzOGA4jU0aWTw5SVJB79/Uw3eFy5UEq38oj0iA91o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=Av6XsV48; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="CFE2DqPY"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="Av6XsV48"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
 	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
 	Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=9wTihei3CR8ifsWFMqxwRfG92M/T58JiLp+ifoDanQg=; b=CFE2DqPYNYofWjgsFkrcOJ9vtl
-	YHav2Ad84icp91CnKsx+bpo6ZVIxn0ysCgaFhBiF4cxTkZ5cWj6YTZBYadGP7k4WGQ+W5QjkiNZlg
-	o/2bV/GJy6vzVWX9gyUXpvkfwWajCppQkEJpEOf1weGiainW/DNaMZOy2XfKZJoVyNjrTtHRLk/wD
-	mCaNHzkBBebGFfgt2w8GxBbcwuQUGCN6x7AinAU4vQLAPN4ab+wT1A39N5yIGNbXq1aWVOrigMyxF
-	z1fIxRle670fy3oac1iYOxuWXqfM5DXHZRjxO0wCnRImd9zwZ6Hcvfr9Js3+kZ8sAoWFlcc3ajc0f
-	UToNWqZA==;
+	bh=88Qf5vmFOq52mGFZZBqLLkYiwaZwrmwoUe2SLAUb41o=; b=Av6XsV48u3Xpx8Z6d3/krbZhEM
+	/4u1LceZCVwe1/kEMyYUFi7JpzJGXipCOUFqn4TPepYYQjyh4KwAwvkyQ5Sc44q7akdYH60RiqfuS
+	kKUTthl9IyqfFJhEqu092RSmo/RoexvmXfE6lPpnOQ/cC+xnjAzhYXOlsXotoh89ZRdvwig1x5frV
+	2ks3tXqRRdPqLlY5rXnq6Onb+gukXU5gb6a2xtF7EHXJ0VLaOiuPJW5YYY6xzQb87/PsqeEj1XdVN
+	WzMkYCGOUtMsCKbBlqiq9yblY/HpTt0roBRZcQnPdSPkJ9yZZBkTSr2SM5TS80A9XfrxWhC60+/IH
+	yfNblMXA==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1uz1Yn-0000000Aj6r-3gti;
-	Wed, 17 Sep 2025 23:27:37 +0000
+	id 1uz1Ym-0000000Aj5Q-3WMp;
+	Wed, 17 Sep 2025 23:27:36 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
 Cc: v9fs@lists.linux.dev,
@@ -37,13 +37,12 @@ Cc: v9fs@lists.linux.dev,
 	linux-nfs@vger.kernel.org,
 	hansg@kernel.org,
 	linux-cifs@vger.kernel.org
-Subject: [PATCH 9/9] slightly simplify nfs_atomic_open()
-Date: Thu, 18 Sep 2025 00:27:36 +0100
-Message-ID: <20250917232736.2556586-9-viro@zeniv.linux.org.uk>
+Subject: [PATCH 1/9] allow finish_no_open(file, ERR_PTR(-E...))
+Date: Thu, 18 Sep 2025 00:27:28 +0100
+Message-ID: <20250917232736.2556586-1-viro@zeniv.linux.org.uk>
 X-Mailer: git-send-email 2.49.0
-In-Reply-To: <20250917232736.2556586-1-viro@zeniv.linux.org.uk>
+In-Reply-To: <20250917232416.GG39973@ZenIV>
 References: <20250917232416.GG39973@ZenIV>
- <20250917232736.2556586-1-viro@zeniv.linux.org.uk>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -53,25 +52,43 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
+... allowing any ->lookup() return value to be passed to it.
+
 Reviewed-by: NeilBrown <neil@brown.name>
 Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
 ---
- fs/nfs/dir.c | 2 --
- 1 file changed, 2 deletions(-)
+ fs/open.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index c8dd1d0b8d85..5f7d9be6f022 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2198,8 +2198,6 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
- 		else
- 			dput(dentry);
- 	}
--	if (IS_ERR(res))
--		return PTR_ERR(res);
- 	return finish_no_open(file, res);
+diff --git a/fs/open.c b/fs/open.c
+index 9655158c3885..4890b13461c7 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -1059,18 +1059,20 @@ EXPORT_SYMBOL(finish_open);
+  * finish_no_open - finish ->atomic_open() without opening the file
+  *
+  * @file: file pointer
+- * @dentry: dentry or NULL (as returned from ->lookup())
++ * @dentry: dentry, ERR_PTR(-E...) or NULL (as returned from ->lookup())
+  *
+- * This can be used to set the result of a successful lookup in ->atomic_open().
++ * This can be used to set the result of a lookup in ->atomic_open().
+  *
+  * NB: unlike finish_open() this function does consume the dentry reference and
+  * the caller need not dput() it.
+  *
+- * Returns "0" which must be the return value of ->atomic_open() after having
+- * called this function.
++ * Returns 0 or -E..., which must be the return value of ->atomic_open() after
++ * having called this function.
+  */
+ int finish_no_open(struct file *file, struct dentry *dentry)
+ {
++	if (IS_ERR(dentry))
++		return PTR_ERR(dentry);
+ 	file->f_path.dentry = dentry;
+ 	return 0;
  }
- EXPORT_SYMBOL_GPL(nfs_atomic_open);
 -- 
 2.47.3
 
