@@ -1,85 +1,107 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39C4B31159B;
-	Wed, 17 Sep 2025 23:24:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68E35312803;
+	Wed, 17 Sep 2025 23:27:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1758151462; cv=none; b=ezEgcgK0QaM/oSk4BXyEoniM7oBxdCbs1lehpY6GrF2i0egu9KzKcgQ01j4LCRAiasC+j/eFmTPlszVlTcgmTmsaV+GZLIpOWjPMObVu/SOGjVDcNpNv/xAqr4WkLTQEbesYKz9Cksx6yl27kwgKTZJO0AHjkkbV8yfys9Gns/U=
+	t=1758151662; cv=none; b=n09WDZD3IyZCd8vjTs1WJJDpE+n+J/ccsn1zmDZD0BrS01CIeboafkF3QFLnzsVdgYtlt8QBXu+L+iFw87+ZRajW5RNokyQPCbUl8drwI8Vk0f46GRYnT25bnsTjG5GnIMBcDl80lyNvr5WldIAnrQt8X3sLB4VCUNPtMVgI4/w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1758151462; c=relaxed/simple;
-	bh=YM3yM4l9IIzBxjoiCEQJhj1kpanbeywCkOJ4RX/KfrI=;
-	h=Date:From:To:Cc:Subject:Message-ID:MIME-Version:Content-Type:
-	 Content-Disposition; b=H2Yrnx3GQ3StqgmPAcZSSJo+TI0bjjE+UmWnFCpVsu90dvc7FPd8mrUaJeW14OuM1IXmSnNY93vY2LSjkw4cBo5cDCqoGcA4CMdBRTHY1jiI01NtzwvHDd6OttbVZBnfwwIZXX1/FVq16mwe1paPpRXuwUr5Jp7Aqn682eoIVYI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=WhCNIFG6; arc=none smtp.client-ip=62.89.141.173
+	s=arc-20240116; t=1758151662; c=relaxed/simple;
+	bh=OzaokaQr7jn1+gZvxIaCEFUYQYNRsFtBjipihfegmj8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=MgRIGkneXTRm8E2xyRddlVkYqCnXl9/hSmEXZGrFNJKSfQEtvY6oHlyhjK3gyt+3bIh1z/tY+eGmjoxDhHRk9XA7nOVwRExJoj+DFjiuLJ6ehpn/D2VbQrgi2NplIQTNFzkfEXqoGsNd1Tau6s3/gHdAOGhxWneN+G4NktqLLsc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=pocXeTWn; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="WhCNIFG6"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="pocXeTWn"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Type:MIME-Version:
-	Message-ID:Subject:Cc:To:From:Date:Reply-To:Content-Transfer-Encoding:
-	Content-ID:Content-Description:In-Reply-To:References;
-	bh=jWilkYe7g21NIHIHAtbQPOEBltqSw+Y7j7Ah85sQBEo=; b=WhCNIFG6FNRWmjjbeIaAlRSize
-	mEFtXr7zYgvhFggUgkafFM+7xHnRnQR4kG6idh0a3dmfKUwH1sYNGPkw5PUD7AFfrGeoVbwnUQzst
-	Vucg+04hBpZh1AZPlNFqmetqW5aO/lhTX+NwGg4b/9X/Rd1fqDFQC7XzaWpeeJN2Fox3m6MhNJUH6
-	OGVD9LwLtlWL4yqSjU9q+FwHXNyZUpnzCj+ARo2jF6N7cF8fIbyxfQAngVcIpgPG+3aS1HuRPSOPb
-	EAJ0/wFMmd7fzqDa8VynOWqsi37TJ5Xz/FUPy/5hMghpf6hGGZ/wQzYrgeyp0VMf70N4I/MNej30R
-	vII67SEQ==;
+	d=linux.org.uk; s=zeniv-20220401; h=Sender:Content-Transfer-Encoding:
+	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:
+	Reply-To:Content-Type:Content-ID:Content-Description;
+	bh=jPwu/KdpP5eXWXrzKuO6ODI0oWhZFngZTtwhZ1mY9o0=; b=pocXeTWnBh64qcJ+aC1vwXhowB
+	Tsg1ktmHLha7/pwU/u/o6R/fjMzSSeqcCJWqfqKNaMdHFVp5rvnex6LpmuZmJuZ7hRZonrVdN1309
+	rR32ubQDUh38LoMYneQ3YqOI8d/nzVvio70UW3qSoOlp1XVUu7+G77fmlA3Ioa68eGj94mfA0VXe8
+	AT5Q5hZRXVzEPy5Y+3bu5stwfy8hNJxsHu6w6q6tE5LqAr02UtZo3jap0QSVVn6yY78Kj5mUeC2tL
+	e40D3YX6/R1FD9AUvWrfv77prkpadGB/2ckQubzQVFSzjCA6FsTtZgdu9qBhyivr1tg5EOaL7bqwr
+	qhnaWlTQ==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1uz1VY-0000000AhYr-2WSg;
-	Wed, 17 Sep 2025 23:24:16 +0000
-Date: Thu, 18 Sep 2025 00:24:16 +0100
+	id 1uz1Yn-0000000Aj6F-2Zqj;
+	Wed, 17 Sep 2025 23:27:37 +0000
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: linux-fsdevel@vger.kernel.org
-Cc: v9fs@lists.linux.dev, Miklos Szeredi <miklos@szeredi.hu>,
-	Andreas Gruenbacher <agruenba@redhat.com>,
-	linux-nfs@vger.kernel.org, Hans de Goede <hansg@kernel.org>,
+Cc: v9fs@lists.linux.dev,
+	miklos@szeredi.hu,
+	agruenba@redhat.com,
+	linux-nfs@vger.kernel.org,
+	hansg@kernel.org,
 	linux-cifs@vger.kernel.org
-Subject: [PATCHES] finish_no_open() calling conventions change
-Message-ID: <20250917232416.GG39973@ZenIV>
+Subject: [PATCH 6/9] simplify nfs_atomic_open_v23()
+Date: Thu, 18 Sep 2025 00:27:33 +0100
+Message-ID: <20250917232736.2556586-6-viro@zeniv.linux.org.uk>
+X-Mailer: git-send-email 2.49.0
+In-Reply-To: <20250917232736.2556586-1-viro@zeniv.linux.org.uk>
+References: <20250917232416.GG39973@ZenIV>
+ <20250917232736.2556586-1-viro@zeniv.linux.org.uk>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-	finish_no_open() dentry argument has the same conventions as
-->lookup() return value - NULL for "use the dentry we expected to open",
-pointer to dentry - "consume a reference to this preexisting alias".
-What it does not accept is the third variant of ->lookup() - ERR_PTR(err).
-Making finish_no_open() accept that as well (returning err in that case)
-simplifies life in ->atomic_open(), especially since the "got a preexisting
-alias" is exactly the case when we end up with a positive dentry.
+1) finish_no_open() takes ERR_PTR() as dentry now.
+2) caller of ->atomic_open() will call d_lookup_done() itself, no
+need to do it here.
 
-	Branch (-rc5-based) is in
-git://git.kernel.org/pub/scm/linux/kernel/git/viro/vfs.git work.finish_no_open
-Individual patches in followups.
+Reviewed-by: NeilBrown <neil@brown.name>
+Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+---
+ fs/nfs/dir.c | 16 +++++-----------
+ 1 file changed, 5 insertions(+), 11 deletions(-)
 
-	Please, review - if there's no objections, to -next it goes.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index d81217923936..c8dd1d0b8d85 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2260,7 +2260,7 @@ int nfs_atomic_open_v23(struct inode *dir, struct dentry *dentry,
+ 			struct file *file, unsigned int open_flags,
+ 			umode_t mode)
+ {
+-
++	struct dentry *res = NULL;
+ 	/* Same as look+open from lookup_open(), but with different O_TRUNC
+ 	 * handling.
+ 	 */
+@@ -2275,21 +2275,15 @@ int nfs_atomic_open_v23(struct inode *dir, struct dentry *dentry,
+ 		if (error)
+ 			return error;
+ 		return finish_open(file, dentry, NULL);
+-	} else if (d_in_lookup(dentry)) {
++	}
++	if (d_in_lookup(dentry)) {
+ 		/* The only flags nfs_lookup considers are
+ 		 * LOOKUP_EXCL and LOOKUP_RENAME_TARGET, and
+ 		 * we want those to be zero so the lookup isn't skipped.
+ 		 */
+-		struct dentry *res = nfs_lookup(dir, dentry, 0);
+-
+-		d_lookup_done(dentry);
+-		if (unlikely(res)) {
+-			if (IS_ERR(res))
+-				return PTR_ERR(res);
+-			return finish_no_open(file, res);
+-		}
++		res = nfs_lookup(dir, dentry, 0);
+ 	}
+-	return finish_no_open(file, NULL);
++	return finish_no_open(file, res);
+ 
+ }
+ EXPORT_SYMBOL_GPL(nfs_atomic_open_v23);
+-- 
+2.47.3
 
-	Shortlog:
-allow finish_no_open(file, ERR_PTR(-E...))
-9p: simplify v9fs_vfs_atomic_open()
-9p: simplify v9fs_vfs_atomic_open_dotl()
-simplify cifs_atomic_open()
-simplify vboxsf_dir_atomic_open()
-simplify nfs_atomic_open_v23()
-simplify fuse_atomic_open()
-simplify gfs2_atomic_open()
-slightly simplify nfs_atomic_open()
-
-	Diffstat:
- fs/9p/vfs_inode.c      | 34 ++++++++++++----------------------
- fs/9p/vfs_inode_dotl.c | 15 +++++----------
- fs/fuse/dir.c          | 21 +++++++--------------
- fs/gfs2/inode.c        | 26 +++++++++-----------------
- fs/nfs/dir.c           | 18 +++++-------------
- fs/open.c              | 10 ++++++----
- fs/smb/client/dir.c    |  8 +-------
- fs/vboxsf/dir.c        | 25 +++++++++----------------
- 8 files changed, 54 insertions(+), 103 deletions(-)
