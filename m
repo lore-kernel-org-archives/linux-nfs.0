@@ -1,93 +1,98 @@
-Received: from mail-ed1-f49.google.com (mail-ed1-f49.google.com [209.85.208.49])
+Received: from mail-ed1-f43.google.com (mail-ed1-f43.google.com [209.85.208.43])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4FA6F2F83AC
-	for <linux-nfs@vger.kernel.org>; Thu,  2 Oct 2025 08:26:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.49
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF17533F6
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Oct 2025 08:27:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1759393571; cv=none; b=heIPC1wX+/ydrnvt3cY+SqbaqRd4mR7q50WWNRzYCUph9vXZLjzre7t3wxQvSJMdPoR5Z89Flw4MZcZHEsiZo1p0aIlRWLQDANBOHcPRexAsDJD2VdpAhhlbmVn8D9xTQuZ1sLeEpHFkqjWpI8GV4rZ4UA8hk72djUB0Yl8uqoE=
+	t=1759393650; cv=none; b=qsdPhQ3wvtXJhe2zs0FhSpLFOJMh6wj8P/mefkWsqaMUTDbcLvqMvBRgDDrjWOCwS7XD1B7IfTwh0asPoVwiO1RhDjc5DH16KFL7gV2x0mCT3Va+XA0N3JVc69pKzhGgo7JqXYez+toDDV3EG6eKTSfDY6pMUDNldJfnNDBwoJU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1759393571; c=relaxed/simple;
-	bh=T7kgcZjxtnlk74NBZ+bGpRlFIPd/zBehpPlFs5I+wwQ=;
+	s=arc-20240116; t=1759393650; c=relaxed/simple;
+	bh=+1qX25Mfe9rX2+ARH+VX4aG7yOVE6FKN1gPxA3Bud+k=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Content-Type; b=CQZe8KNarD6UH1V4FRhJqYGuiMsdzX1fW0SLUWNgt4Pxpi1/xPVG6h9eGb0+QhmqjJVDe+PZfYnuZJFh64g5TtCUN+Idqon9qwmeDonieuXJuaEAa+ssVIHgHnt2Mp1T1fN5xUrNWpGeXURMKJ75vYg5TYhAvlD47JGd3unoMAk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=jrgtw7Be; arc=none smtp.client-ip=209.85.208.49
+	 To:Content-Type; b=ojSdNdoSui2wZ/Xpt32hbFuNY5W2qONC+ynYYX3cj+6picOMeQWL4fkSNZG/9a90YOCdKSfO9QlaCRSiIbPhg7JL5gAjaHFxsKcMT2bELjNn/NU5XO58ZuqqeWASuKF4gG+YoZwPri9gqf7k46b+2QsHSJ7XbgfSPVp3QeNeOJA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=O7yqICd5; arc=none smtp.client-ip=209.85.208.43
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jrgtw7Be"
-Received: by mail-ed1-f49.google.com with SMTP id 4fb4d7f45d1cf-62fc89cd68bso1287450a12.0
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Oct 2025 01:26:09 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="O7yqICd5"
+Received: by mail-ed1-f43.google.com with SMTP id 4fb4d7f45d1cf-6318855a83fso1643139a12.2
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Oct 2025 01:27:28 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1759393567; x=1759998367; darn=vger.kernel.org;
+        d=gmail.com; s=20230601; t=1759393647; x=1759998447; darn=vger.kernel.org;
         h=content-transfer-encoding:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=T7kgcZjxtnlk74NBZ+bGpRlFIPd/zBehpPlFs5I+wwQ=;
-        b=jrgtw7BefpiLqCWQjjiT7KiAr9/qnSgM79Ikz7L5WUQEjICpH1NFiFxVlw4Cf6VC2/
-         0rkrhMvu1euTAYfOpa5NaNTyi4aZ45j5WPUN1jBEUSvcEXJV2mpk95ChO+ObP9WLqPDi
-         JENouMrEen+05l3D/zE2S9nGgnhMRvmgndf3IDww1hvsQK4bXGSuJCAoXskPd6qlEoM2
-         FCp3kVikq22krAJFuh6VDgERt+gHMAt5Px6DpZBOoBh55lY6ZP7pqGHi+oaw4wT+ILD5
-         XZWyfctjmQRNfJzdmDIO8OM6RdeJj3TtzkGc0hSBItOPSCirCfIAHqNDlWshTfkL6ssq
-         N9uw==
+        bh=3ZVj3pumt6+6tINltTA3cgcubn5aCLTSl+fYTeDcKPU=;
+        b=O7yqICd5A4WG8iYwW9YhS0SxB6hglpn1Fq6JCIxS6ipQDeHhZQaweD8AwwkR+e8631
+         Z7ZSWxe3hglRVnOLtIOLInVzNLk24aqu+FczOpLTmddBXXYPKrUVvyAwhdA32/a52EPF
+         A+Xc7e8btlByuNmuLEoy3Ns0riTzTwK5DWhk/J5zMfgnef1ApmmeKL3DuUIoP0RfJ4rs
+         D+0CTNHeOQNkmC6EorpXgNbiMwFe8sy07dqu+RWQAW8haVrwZZ/K+7xkPEIQMGnSRJKL
+         +LKlIgUEAmFlBsz8DoBXLHFkCkB8Ryv5JkGQtvKizFQuIu3ywGRkPV1eRG/e7BZEDXlt
+         g4cQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1759393567; x=1759998367;
+        d=1e100.net; s=20230601; t=1759393647; x=1759998447;
         h=content-transfer-encoding:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to;
-        bh=T7kgcZjxtnlk74NBZ+bGpRlFIPd/zBehpPlFs5I+wwQ=;
-        b=GXaV6OziM7lh0gX9vnvP3jZv5Wz5wJd7WoHIBLw9BlNFWSCWQ0QqQ4wtiEdLV0nwlS
-         46jYoze8GktBhR/hvyiHLsw7nUUjIgem5eMX1NUjcwSr1lL0FE3Awn/6Mex6nVOQy3EA
-         mq0Df+tmy23Q2TTIJvl8Wtq/6SfTttiVQLjzqLanfOWXeHlwrPvV/HG5z1olQ4bfJUny
-         g1v2Ac5GyayWwET0r/4eTgA86Gp0kDAZ7N2Nl79b3tXo+dZa4Xk7MULDR4SWm32JpqMQ
-         puwkyFKOKzggq/vzYkWg8A1PQokCRhtzO3pz9bbTZDWj/yfpv5gQSNikRjb8Rm3yLeLQ
-         g30w==
-X-Gm-Message-State: AOJu0YwK7V93TeBKEAgj1xyjJDHEo3LwqlGU/pqX3Or1SQm9RctUOSis
-	40WsCuz9OTp7xnHnqq4dp7ZAw3XNm36h201SRebu9Y6RTPdQ5W9a3cv5Ix1P924tUp2LB1rVvfq
-	8ThhfB0ri8z0ftDjIRCyCJQ9uJR80lbo0Bw==
-X-Gm-Gg: ASbGncujIKIfdGmqASetupoGzAkg2tWwMv87lds8cQo0dUXuaDF2/IY8SUKvEwdJM9J
-	yQpBjm8RxRDbOO+BHBpM8H3Au13aX6dOf1RztfR5elOsyB2C9FxtqRwD5espoKwaANHOo3rCqdB
-	CVUpuxJIfd9sYE6lshlCFUQaIYOaNFKPejNMu8sdbO4f/LVhRWbYCf/nGYWi0q1gb8mlGStMvRS
-	b/zjG6REROJQhXw/WN43kNU+oypQKk=
-X-Google-Smtp-Source: AGHT+IE8/LX/gv9wXjott91OHYV2+XgDg64SlLZjYbXiYxvT07NYvKopRcM/sw6LFFKE2T7FWqLjC7hsZjvd7+Gnfzw=
-X-Received: by 2002:a05:6402:2744:b0:634:ab0a:254e with SMTP id
- 4fb4d7f45d1cf-63678cb3f7emr7610245a12.24.1759393567298; Thu, 02 Oct 2025
- 01:26:07 -0700 (PDT)
+        bh=3ZVj3pumt6+6tINltTA3cgcubn5aCLTSl+fYTeDcKPU=;
+        b=uPo3splBghb7P9Q4gNvmkVpaKQyywj1/ku22E1MrLgKVslMf0m1+DD2u4BAa7Lc6qP
+         83bvcnObPl6uf0NnwptLSal1tbNMzbTkYO/2tZ6GkUDEMXkJgvRfQ4kbhbzjxMAPYpgT
+         /SmUPGEvqf32vB+rdo6aLg5L98Fnwj2KCnR0mMJkKYn0mQ3SAK5kFw+8fph/P87wftPG
+         1i+TC8kiw7JSi32y54+DlqT2wwLYcL1PNrpo32LE383d59supTWZtZw809JCriYaRbxb
+         BNB3twas7JGVSmDwBJbljKB51/hIleFADu1aaXlJ5NDy7HBZ/A2SGS0KEcdAr+FnoG6y
+         20IA==
+X-Gm-Message-State: AOJu0YxdPz/wE5JQsSV5M1hOv/YzZiAE4OIDb1w7TKIyKs8meGJCKsgc
+	y+Y8JvbIXTlwmllw0tgvJH+wqJAhDKyVOu/Qh+x9SHadZLuQwL1YKwBehDxBdoDtSHsfNu45ZWv
+	u+os464lnQFu8BGvh0W1+aipQtNV96hdcWD9H
+X-Gm-Gg: ASbGncuuB/055wjN9pApvWV02Boz+ew0O/YrNpKWMcz/BAQ0du1APHTUyWOlcCaC/7j
+	wU6wSH+tl8uT8pXKTH7ui93Loa4vfKWeDyvAcLUyjJdX5XLHgA8F60LlSf1pq8C8RiLlT6d12Mw
+	nZwf6oTXXFc2HPzr7xiwVvgp+uE2H7NReyK+UTajjgDxP3u9yq02Ugh+xWiYtQtU8SzQyxxWsSc
+	aIL/1qYxxNPcw0IjTmn8zmH+TeFdGY=
+X-Google-Smtp-Source: AGHT+IE1IdBQgc8C9wCZriBlU8yoUCIP4I+F5WwXTm/h3f4FMOHhUqVI3NrY5vxF7crJEeJertoi74GxA3x+zSaCdUI=
+X-Received: by 2002:a05:6402:518c:b0:634:bdb3:e63f with SMTP id
+ 4fb4d7f45d1cf-63678ce70c6mr7137955a12.20.1759393646791; Thu, 02 Oct 2025
+ 01:27:26 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <1759357733-64526-1-git-send-email-dai.ngo@oracle.com> <80f31f25d97a2942f7b4e47729e8333af8913663.camel@kernel.org>
-In-Reply-To: <80f31f25d97a2942f7b4e47729e8333af8913663.camel@kernel.org>
+References: <20230901083421.2139-1-chenhx.fnst@fujitsu.com>
+ <3461ADBE-EAD4-4EEF-B7B0-45348BCDB92C@redhat.com> <CA+1jF5pHpXHMOv_gRf_en2uX9jfwcCNhoDhYoq5butAFiiMsxg@mail.gmail.com>
+ <CA+1jF5pWue5xoRWWecTa95Fuk-qTtBCsTSrVqp6D=_6YSO8+rw@mail.gmail.com> <E0D9CF60-9BC4-4C04-A28F-844296EC61D5@redhat.com>
+In-Reply-To: <E0D9CF60-9BC4-4C04-A28F-844296EC61D5@redhat.com>
 From: =?UTF-8?Q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>
-Date: Thu, 2 Oct 2025 10:25:31 +0200
-X-Gm-Features: AS18NWB8mNoSoGsfmMZR1AZk9HdlT5zBiAT7vcTIMv35kbh2ZQGKtdYmmA9vQQo
-Message-ID: <CA+1jF5qRPBAfBuh4dMNJV5rFZb=gO=rbQ4s_wMqeAYz5MKr01g@mail.gmail.com>
-Subject: pahtconf() api to test for sparse file support? Re: [PATCH 1/1] DIO:
- add NFSv4.2 READ_PLUS support for nfstest_dio
+Date: Thu, 2 Oct 2025 10:26:50 +0200
+X-Gm-Features: AS18NWBYzUdUGaH7xYypbSXPQnyEo-r6PcA62Dp6ZODDR_sKXKl64cVKjTvp0eQ
+Message-ID: <CA+1jF5rnz+VQS9CeEcXcTHoSdG275KAAROzcsb31bpe2kkJsKg@mail.gmail.com>
+Subject: Re: [RFC PATCH v2] nfsv4: Add support for the birth time attribute
 To: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Oct 2, 2025 at 1:53=E2=80=AFAM Trond Myklebust <trondmy@kernel.org>=
- wrote:
+On Wed, Oct 1, 2025 at 8:47=E2=80=AFPM Benjamin Coddington <bcodding@redhat=
+.com> wrote:
 >
-> On Wed, 2025-10-01 at 15:28 -0700, Dai Ngo wrote:
-> > From: Oracle Public Cloud User
-> > <opc@dngo-nfstest-client.allregionaliads.osdevelopmeniad.oraclevcn.co
-> > m>
-> >
-> > Check for nfs_version >=3D 4.2 and use READ_PLUS instead of READ.
+> On 1 Oct 2025, at 11:42, Aur=C3=A9lien Couderc wrote:
 >
-> Hrmm... READ_PLUS is (like all NFSv4.2 features) optional to implement.
+> > What is the status of this patch? did it ever made it into the Linus
+> > mainline kernel?
+>
+> Hi Aur=C3=A9lien,
+>
+> It turns out that there was already posted (much earlier) work to impleme=
+nt
+> btime in the NFS client.  That work was refreshed:
+> https://lore.kernel.org/linux-nfs/cover.1748515333.git.bcodding@redhat.co=
+m/
+>
+> and has been accepted into v6.17.
 
-READ_PLUS is needed for sparse file support.
+Thanks.
 
-I am really starting to wonder whether there should be a pathconf()
-api to check whether sparse files are supported, i.e. NFSv4.2 SEEK and
-NFSv4.2 READ_PLUS are possible for a file.
+Where is the commit in Linus's git tree?
 
 Aur=C3=A9lien
 --=20
