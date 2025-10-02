@@ -1,17 +1,17 @@
-Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id BBB9030F80A;
-	Thu,  2 Oct 2025 08:14:03 +0000 (UTC)
+Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id E875730F529;
+	Thu,  2 Oct 2025 08:14:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1759392847; cv=none; b=VzibT19ksFu/8ExKjK9NgwujWk+u40f5PSI79VON7/yKZen4oSoSDaO2QzadL9DL32JV1zo8VbIHcv21clj3IE5cD5fHgBtGD5dPMnrtaY9KnVQcRsDOVT7sQN2jVZ/ZBNQjgsEOSDVo77aZDJ09dOXQF6qvjDgWDCizfW1+iis=
+	t=1759392847; cv=none; b=Z+HsmZ5c4yaQOpOD2t98PhvS7ZsyPdXg2bmUw/gWWYVlIWPN3B7ECyMKL0Xga700Axt59ENszmaPoCLVwz5s2VRPSTfsjs7nLX/JCZQlTYqZw7hC9aIgB2SxeoWljaZu8IekKznv9jilVwkaTczkRd/9ON8b7UxJblvfKAG8o9c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1759392847; c=relaxed/simple;
-	bh=314TpUAkZxMvbV2pk3wlciVKMbaC2tgJL1bvCZ48Y0A=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=HQ1a7cIw0mInAT1j3QPNuva6Bv2UkrIX/OkfVSwmVd5a4EFPezlC77gBSrzxks72+WHcTs7Mk83YW83ax2MptWK6jhTrtDhmfFxXiJL8nDU5i1ZAvd5zsorZIz1x2O4aiIWlq/KmxQvF1jozQQfL9rD+1k7b0SKh/HE00qvxW88=
+	bh=HQb+FieD5UTtfcyEdgT0lo4GMUWAEhmBX2C4Cisefmo=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=Ux5rCKrwDCHgOxJkaMOsPQu7RpLuZ9iYckmqDE3ZU9IDO7uQ1TrZ7ng1ZtDtZtrIMBHx2PIE22tOHG1Q6WsWZlQp+Cu1gATxOMxUujwPv9KRv2U7BHkfPLbTF32RguShyKbfwKN30iBkVP7n7ZOm9wT69RPYqj8/OI3dtqcnoQI=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-fc-68de34136438
+X-AuditID: a67dfc5b-c2dff70000001609-47-68de3412f98a
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -162,43 +162,45 @@ Cc: kernel_team@skhynix.com,
 	rcu@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
 	linux-rt-devel@lists.linux.dev
-Subject: [PATCH v17 37/47] completion, dept: introduce init_completion_dmap() API
-Date: Thu,  2 Oct 2025 17:12:37 +0900
-Message-Id: <20251002081247.51255-38-byungchul@sk.com>
+Subject: [PATCH v17 31/47] dept: assign dept map to mmu notifier invalidation synchronization
+Date: Thu,  2 Oct 2025 17:12:31 +0900
+Message-Id: <20251002081247.51255-32-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20251002081247.51255-1-byungchul@sk.com>
 References: <20251002081247.51255-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzXSaUiTcRgA8P7vtSkN35bg24UyKVPKTFc8QUZE1EsfwojEstCRb201p21m
-	2kEWTs3SVlJaRk6bZmp5rJxhM68s8c4DrZkapoVHaWuhebQpfnn48ZxfHj4u1JCr+TJFBKdU
-	SOQiyp6wH1ueudlR/EXq9drgAAklD0gwT33mwbyxDsHvojkKRmomEYz1lZOQMziHwWBlPIKM
-	LD0F/5pacMgc6MVhrO0RBtrrRhL6coYIaHxiImBeGwYvxlpIGBm6S4Ehpp8H5o4BDN4Y6wlI
-	mDUjqCv7isGtolcktFY2kFA43I2BvqkRh+fjWRQMdcZh8OqtGsGkzkLA+6RKDLLN4zjEfy+n
-	IE5XjEFHTzmCioR+DGoLDRjU/BnFIOWjloLp3jIS1LemeHBvJoGCm+r71pO1Fuvm2S4E4xoz
-	CenvvvB2e7F/1ckEm6cvxVj1x1mKLXhcgFi1xhqyG0YpdvpPJ8UaLVqCff2wl8fGVnzisdqS
-	86w+14P9NOLLluTdoFhT1xuKHW9u5vmtO2a/M4STyyI55ZZdwfbS7MJ0KtzoHlX7W4Ni0LRz
-	IrLjM7SY6cifQ0surtdSNlO0G9PdPYXb7Ei7MPqkIdJmnG5Yy3S1bbJ5JX2IKUytXpgl6PVM
-	1o/8hR4BvZ35oEvGF3c6M/lFlQu2s+bbBxoIm4X0Nkb9MxZb7MmwYwbSNix6FVOV201okECL
-	luUhoUwRGSqRycWe0miFLMrzZFhoCbL+Sc6VmcAyNNl6uBrRfCRaLmhd3ysVkpJIVXRoNWL4
-	uMhREJxrkgoFIZLoi5wyLEh5Xs6pqtEaPiFyEnhbLoQI6dOSCO4sx4VzyqUqxrdbHYPOuTpc
-	i9Md9T18MPjRmQlFl7gm0dxU8G3X06qKq4+DRsgDe/x/peyfVzgbXZxixa3up0JWMYaq2945
-	oZ4OcvWOsjtkYITfs+MBQXtLHyaXvtzYqdv30zI8E25w23QkqD3VObBWcTlghWEitSn2bVqP
-	wud6hFMMb9D1po/O19/08sQlEaGSSrZ64EqV5D/DMGjrIwMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzXSa0xScRQA8P73Xu5Firojl7ds2Sh7LTOX1lnvrQ/+q9V6fGhruWR5C+ar
-	oEzbWhqyXE+ioUu0yJIcaCLaw4pyWPYwZmRpD8hsplk+WmmlIgS1vpz9zmNn58MRkpIbgilC
-	Rdp+XpkmS5HSIkq0cZk6amLse/nCi1fnQ0tOHQWDA3kUFFWW05BnOy+A59csCNoG8xD8GjGQ
-	oKn1UzCqa2BgYOgdA357A4J8l46E8pocAn5YfTR8rf+OQN/eQUNBdw4F/aaTCAo7DQx0P4yH
-	3rY7AvB7ugho/dmDwNThI6Cj7hiC0fxkuFhSTcOIs4mEAv1zBJfaPSR8tgaaNQ3vEdjLjtLw
-	SXudhOaO8fBysJ+GJ/oTNPS6igjos9JgPGoXQLFBh0B9uZKG/GIbBbUfbjPg+uolwJ2vI8Bi
-	2wBtpk4KGrUlROC+wFRVGBgK1EQgfCZAX3GHgCGTmYFnl90UmLIjweBsFsDHskIGvO0x4Dem
-	Q4OliwHPGT0F13qbBKv1CP/SnKawufoGgTUvRmlcfqEc4ZFhHcIDpWoSa7SBtL6nn8S51Qdx
-	aWMPjYcHX9HY/tNI4aclHD7rjMK1hR4G5957y2xaul20PIlPUWTwyuiViSJ5aaWB3mufm/ng
-	hxZlo+GI4yhEyLGxXNUTIx00zc7mXr8eIoMOZadz1ac6BUGTbONUrsU1P+iJ7GaussCBgqbY
-	SK6k2/J3Rswu5h5fOU3+2xnBWax1fx0SqDe3N1JBS9g4TtOfS2iRyIjGmFGoIi0jVaZIiVug
-	SpZnpSkyF+xKT7WhwDeZDnvP3kIDzfEOxAqRdJzYFemRSwSyDFVWqgNxQlIaKk4sc8sl4iRZ
-	1iFemb5TeSCFVzlQuJCShonXbeMTJewe2X4+mef38sr/XUIYMiUbjd0Q/U0YPkP1Mjz6Q0Wr
-	8UhTws0R36Sbrc43C/eZ+yxhpebUNerM1b74SXBs+qyKCbcdw4v84qbJ0mLPzKgdR7y+rbE5
-	9c+u4BY2Zp3jyyP3rS3rE/LcK+Zg/9i7v21FkyOSlmyMc+4+k31y5dqumiT025y7tq9t1btz
-	xdbl3vvT1kgplVwWM49UqmR/AOk0IJhJAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxTH9zz3paXa7abidocumibEBYWJQXcSl7kPS7x+WLKNxMWhkWbc
+	2IZSXKFoTZbVABs63LCzEGk3QCZp6FUIBZzMIi9axAIWUdohrZQ4OoOsS9OWKRB2qfHLk9/z
+	P//zkpMjJRR/UmlSja6U1+tUWiUtI2UL65syN+QE1TtvDmVCPFZFgq1NoKGq4yIF3qsOBItL
+	VgJWzG4JxJ4/ksCqy42gdtxMgNB5GsP8YBSBJfSEhrqnp0mItFQjqJ+zir5AGIMv8QzBSm0h
+	LI3eI6DO4kXQFAoQ0OkOIvirpouAB/EIDcOWH2hYGLdh+KedhvLmNhquz/RIYLrWjMHR8Ql4
+	ai5hsQEN1rpyLD5/Y7Bc+QNDiykdrKMTFMza6yWwHMoGtyMsgcBPFhKGg5MUzM+ZabhmmhGH
+	fxDCIFTPEVDVEyfBNbUdmr77jYQbrmESqlZiCCZ6bDRUt3dREBRWKTBZF8UN9HkouO/wktAW
+	9mPwuO+QcNk3jiE046cg8eMm8J4/R31UwLU6uzEn/CogbumFGXGxy+UEV1kjfgefRQiuwnmC
+	exF/SHOuRCPJ3b3EctfrAxKuscPAVdxaoDinPYNrvvEUc03ROPVp1peyDwp4raaM17/3Yb5M
+	Pdbah4773j85NN1Am1Aw8yxKkbJMDjvVX0+94oD9XpJpZhvr9z8n1jiV2co6z80ldYLxbGYn
+	x3es8QbmCPuw90xSJ5l0tn/Em/TLmT3stcEGycuaW1hHe19STxH1iZCHXGMFs5utjFTgs0gm
+	eqwpbExoxy8T3mb77X6yBskb0WutSKHRlRWpNNqcLLVRpzmZ9VVxUQcSD67lm+W831HUmzuA
+	GClSrpd70wNqBaUqKzEWDSBWSihT5fn2abVCXqAynuL1xUf1Bi1fMoA2SUnlW/JdiRMFCuaY
+	qpQv5PnjvP5VFEtT0kxIWbeXmnzngou25w3+spD35qL08zd+HtUdODjrTXt9bF1Wv7GrtHl6
+	S88FpfF+xk7C+PHXT/69tXfq8JFTq/pc9nFk5Fvfxjxronf2s+7lL7ZpcXaO8K7vQPhQOFpc
+	ufnwVlv+lOe//UO5htuHLs73jlyNdhls+5ZXVYXCunzndkPD90qyRK3KziD0Jar/AcoK6aps
+	AwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSeUiTcRjH+73nHC1eptGLFtXI7LL7eOgigvAtqPwjsAPJVW9teLaVR6em
+	SzvVwZSc5jIaMs3ZZqs1jKW1DjOdq+zYPGJpoSaUM7yyafTPw+f5fB8enj8eAS62kMECecIJ
+	XpEgjZNQQkK4a0NmuHh1m2z5JWsgvM+wE+AbyCGg2FhJQY7pBgnNVRUI2n05CH6PaHFQWccJ
+	GFM7aBgY+kzDeK0DQYFTjUNlTQYGv6r/UNBT/xOBptNLQeH3DAL69VcRFHVpafj+LAL62m0k
+	jHu6MWgd7EWg9/7BwGvPRjBWEAulZWYKRhqbcCjUNCO41enB4Vu1P6xxtCGoLb9Awde8+zi4
+	vNPgra+fgpeaKxT0OYsx+FFNge5CLQklWjWCzNtGCgpKTARYOx7R4OwZxcBdoMagwrQT2vVd
+	BDTklWH++/xT92aAtjAT85dvGGju2jAY0htoeH3bTYA+PRS0jS4SvpQX0TDauQLGdYngqOim
+	wZOrIaCqr4ncokHcb9V1gjOYLRinahmjuMqblYgbGVYjbuBOJs6p8vxtfW8/zmWZU7g7Db0U
+	N+x7R3G1gzqCe1XGcvmN4Zy1yENzWY8/0ZHr9ws3HuHj5Mm8YtnmGKHsjcGOklrXpT53l1Lp
+	qC38MgoQsMxq1lPeRE4wxYSxHz4M4RMcxMxhzde6Jj3ONMxk3zuXTHAgE82+e3xp0hNMKPvk
+	dfPkvIhZyz6oL6X/7ZzNVlTbJ32A37s6G4gJFjNrWFV/FpaHhDo0xYCC5AnJ8VJ53JqlylhZ
+	WoI8denhxHgT8n+T/uxo/kM04IqoQ4wASaaKnKEemZiUJivT4usQK8AlQaKYcrdMLDoiTTvF
+	KxIPKk7G8co6FCIgJDNEO6L4GDFzTHqCj+X5JF7xP8UEAcHpaFaJ/VhSyPytTuJwGDR3sDZL
+	7qbwQ1ZPYLbF1hI0+HHevp5I80JjVNjui4Gti1uCu3Sy0W0j2Wlf9p6hUlOYHwbLhpXH64/X
+	RESdXOmaPW3VMDw94z0dct2tNW1P2WNzFK76SB7NzVd8HjzPRYcuOJBz1djdMb343NxnVb4X
+	0cadEkIpk65YhCuU0r+So2tVSQMAAA==
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -206,157 +208,217 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 
-Currently, dept uses dept's map embedded in task_struct to track
-dependencies related to wait_for_completion() and its family.  So it
-doesn't need an explicit map basically.
+Resolved the following false positive by introducing explicit dept map
+and annotations for dealing with this case:
 
-However, for those who want to set the maps with customized class or
-key, introduce a new API to use external maps.
+   *** DEADLOCK ***
+   context A
+       [S] (unknown)(<sched>:0)
+       [W] lock(&mm->mmap_lock:0)
+       [E] try_to_wake_up(<sched>:0)
+
+   context B
+       [S] lock(&mm->mmap_lock:0)
+       [W] mmu_interval_read_begin(<sched>:0)
+       [E] unlock(&mm->mmap_lock:0)
+
+   [S]: start of the event context
+   [W]: the wait blocked
+   [E]: the event not reachable
+
+dept already tracks dependencies between scheduler sleep and ttwu based
+on internal timestamp called wgen.  However, in case that more than one
+event contexts are overwrapped, dept has chance to wrongly guess the
+start of the event context like the following:
+
+   <before this patch>
+
+   context A: lock L
+   context A: mmu_notifier_invalidate_range_start()
+
+   context B: lock L'
+   context B: mmu_interval_read_begin() : wait
+   <- here is the start of the event context of C.
+   context B: unlock L'
+
+   context C: lock L''
+   context C: mmu_notifier_invalidate_range_start()
+
+   context A: mmu_notifier_invalidate_range_end()
+   context A: unlock L
+
+   context C: mmu_notifier_invalidate_range_end() : ttwu
+   <- here is the end of the event context of C.  dept observes a wait,
+      lock L'' within the event context of C.  Which causes a false
+      positive dept report.
+
+   context C: unlock L''
+
+By explicitly annotating the interesting event context range, make dept
+work with more precise information like:
+
+   <after this patch>
+
+   context A: lock L
+   context A: mmu_notifier_invalidate_range_start()
+
+   context B: lock L'
+   context B: mmu_interval_read_begin() : wait
+   context B: unlock L'
+
+   context C: lock L''
+   context C: mmu_notifier_invalidate_range_start()
+   <- here is the start of the event context of C.
+
+   context A: mmu_notifier_invalidate_range_end()
+   context A: unlock L
+
+   context C: mmu_notifier_invalidate_range_end() : ttwu
+   <- here is the end of the event context of C.  dept doesn't observe
+      the wait, lock L'' within the event context of C.  context C is
+      responsible only for the range delimited by
+      mmu_notifier_invalidate_range_{start,end}().
+
+   context C: unlock L''
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/completion.h | 40 +++++++++++++++++++++-----------------
- 1 file changed, 22 insertions(+), 18 deletions(-)
+ include/linux/mmu_notifier.h | 26 ++++++++++++++++++++++++++
+ mm/mmu_notifier.c            | 31 +++++++++++++++++++++++++++++--
+ 2 files changed, 55 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/completion.h b/include/linux/completion.h
-index 4d8fb1d95c0a..e50f7d9b4b97 100644
---- a/include/linux/completion.h
-+++ b/include/linux/completion.h
-@@ -27,17 +27,15 @@
- struct completion {
- 	unsigned int done;
- 	struct swait_queue_head wait;
-+	struct dept_map *dmap;
- };
+diff --git a/include/linux/mmu_notifier.h b/include/linux/mmu_notifier.h
+index d1094c2d5fb6..2b70dce149f0 100644
+--- a/include/linux/mmu_notifier.h
++++ b/include/linux/mmu_notifier.h
+@@ -428,6 +428,14 @@ static inline int mmu_notifier_test_young(struct mm_struct *mm,
+ 	return 0;
+ }
  
--#define init_completion(x)				\
--do {							\
--	__init_completion(x);				\
--} while (0)
-+#define init_completion(x) init_completion_dmap(x, NULL)
++#ifdef CONFIG_DEPT
++void mmu_notifier_invalidate_dept_ecxt_start(struct mmu_notifier_range *range);
++void mmu_notifier_invalidate_dept_ecxt_end(struct mmu_notifier_range *range);
++#else
++static inline void mmu_notifier_invalidate_dept_ecxt_start(struct mmu_notifier_range *range) {}
++static inline void mmu_notifier_invalidate_dept_ecxt_end(struct mmu_notifier_range *range) {}
++#endif
++
+ static inline void
+ mmu_notifier_invalidate_range_start(struct mmu_notifier_range *range)
+ {
+@@ -439,6 +447,12 @@ mmu_notifier_invalidate_range_start(struct mmu_notifier_range *range)
+ 		__mmu_notifier_invalidate_range_start(range);
+ 	}
+ 	lock_map_release(&__mmu_notifier_invalidate_range_start_map);
++
++	/*
++	 * From now on, waiters could be there by this start until
++	 * mmu_notifier_invalidate_range_end().
++	 */
++	mmu_notifier_invalidate_dept_ecxt_start(range);
+ }
  
  /*
-- * XXX: No use cases for now. Fill the body when needed.
-+ * XXX: This usage using lockdep's map should be deprecated.
-  */
--#define init_completion_map(x, m) init_completion(x)
-+#define init_completion_map(x, m) init_completion_dmap(x, NULL)
- 
- static inline void complete_acquire(struct completion *x, long timeout)
- {
-@@ -48,8 +46,11 @@ static inline void complete_release(struct completion *x)
+@@ -459,6 +473,12 @@ mmu_notifier_invalidate_range_start_nonblock(struct mmu_notifier_range *range)
+ 		ret = __mmu_notifier_invalidate_range_start(range);
+ 	}
+ 	lock_map_release(&__mmu_notifier_invalidate_range_start_map);
++
++	/*
++	 * From now on, waiters could be there by this start until
++	 * mmu_notifier_invalidate_range_end().
++	 */
++	mmu_notifier_invalidate_dept_ecxt_start(range);
+ 	return ret;
  }
  
- #define COMPLETION_INITIALIZER(work) \
--	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), }
-+	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), .dmap = NULL, }
+@@ -470,6 +490,12 @@ mmu_notifier_invalidate_range_end(struct mmu_notifier_range *range)
  
-+/*
-+ * XXX: This usage using lockdep's map should be deprecated.
-+ */
- #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
- 	(*({ init_completion_map(&(work), &(map)); &(work); }))
+ 	if (mm_has_notifiers(range->mm))
+ 		__mmu_notifier_invalidate_range_end(range);
++
++	/*
++	 * The event context that has been started by
++	 * mmu_notifier_invalidate_range_start() ends.
++	 */
++	mmu_notifier_invalidate_dept_ecxt_end(range);
+ }
  
-@@ -90,15 +91,18 @@ static inline void complete_release(struct completion *x)
- #endif
+ static inline void mmu_notifier_arch_invalidate_secondary_tlbs(struct mm_struct *mm,
+diff --git a/mm/mmu_notifier.c b/mm/mmu_notifier.c
+index 8e0125dc0522..31af5ea54a0c 100644
+--- a/mm/mmu_notifier.c
++++ b/mm/mmu_notifier.c
+@@ -46,6 +46,7 @@ struct mmu_notifier_subscriptions {
+ 	unsigned long active_invalidate_ranges;
+ 	struct rb_root_cached itree;
+ 	wait_queue_head_t wq;
++	struct dept_map dmap;
+ 	struct hlist_head deferred_list;
+ };
  
+@@ -165,6 +166,25 @@ static void mn_itree_inv_end(struct mmu_notifier_subscriptions *subscriptions)
+ 	wake_up_all(&subscriptions->wq);
+ }
+ 
++#ifdef CONFIG_DEPT
++void mmu_notifier_invalidate_dept_ecxt_start(struct mmu_notifier_range *range)
++{
++	struct mmu_notifier_subscriptions *subscriptions =
++		range->mm->notifier_subscriptions;
++
++	if (subscriptions)
++		sdt_ecxt_enter(&subscriptions->dmap);
++}
++void mmu_notifier_invalidate_dept_ecxt_end(struct mmu_notifier_range *range)
++{
++	struct mmu_notifier_subscriptions *subscriptions =
++		range->mm->notifier_subscriptions;
++
++	if (subscriptions)
++		sdt_ecxt_exit(&subscriptions->dmap);
++}
++#endif
++
  /**
-- * __init_completion - Initialize a dynamically allocated completion
-+ * init_completion_dmap - Initialize a dynamically allocated completion
-  * @x:  pointer to completion structure that is to be initialized
-+ * @dmap:  pointer to external dept's map to be used as a separated map
-  *
-  * This inline function will initialize a dynamically created completion
-  * structure.
-  */
--static inline void __init_completion(struct completion *x)
-+static inline void init_completion_dmap(struct completion *x,
-+		struct dept_map *dmap)
- {
- 	x->done = 0;
-+	x->dmap = dmap;
- 	init_swait_queue_head(&x->wait);
- }
+  * mmu_interval_read_begin - Begin a read side critical section against a VA
+  *                           range
+@@ -246,9 +266,12 @@ mmu_interval_read_begin(struct mmu_interval_notifier *interval_sub)
+ 	 */
+ 	lock_map_acquire(&__mmu_notifier_invalidate_range_start_map);
+ 	lock_map_release(&__mmu_notifier_invalidate_range_start_map);
+-	if (is_invalidating)
++	if (is_invalidating) {
++		sdt_might_sleep_start(&subscriptions->dmap);
+ 		wait_event(subscriptions->wq,
+ 			   READ_ONCE(subscriptions->invalidate_seq) != seq);
++		sdt_might_sleep_end();
++	}
  
-@@ -136,13 +140,13 @@ extern void complete_all(struct completion *);
+ 	/*
+ 	 * Notice that mmu_interval_read_retry() can already be true at this
+@@ -625,6 +648,7 @@ int __mmu_notifier_register(struct mmu_notifier *subscription,
  
- #define wait_for_completion(x)						\
- ({									\
--	sdt_might_sleep_start_timeout(NULL, -1L);			\
-+	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
- 	__wait_for_completion(x);					\
- 	sdt_might_sleep_end();						\
- })
- #define wait_for_completion_io(x)					\
- ({									\
--	sdt_might_sleep_start_timeout(NULL, -1L);			\
-+	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
- 	__wait_for_completion_io(x);					\
- 	sdt_might_sleep_end();						\
- })
-@@ -150,7 +154,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	int __ret;							\
- 									\
--	sdt_might_sleep_start_timeout(NULL, -1L);			\
-+	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
- 	__ret = __wait_for_completion_interruptible(x);			\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -159,7 +163,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	int __ret;							\
- 									\
--	sdt_might_sleep_start_timeout(NULL, -1L);			\
-+	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
- 	__ret = __wait_for_completion_killable(x);			\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -168,7 +172,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	int __ret;							\
- 									\
--	sdt_might_sleep_start_timeout(NULL, -1L);			\
-+	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
- 	__ret = __wait_for_completion_state(x, s);			\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -177,7 +181,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	unsigned long __ret;						\
- 									\
--	sdt_might_sleep_start_timeout(NULL, t);				\
-+	sdt_might_sleep_start_timeout((x)->dmap, t);			\
- 	__ret = __wait_for_completion_timeout(x, t);			\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -186,7 +190,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	unsigned long __ret;						\
- 									\
--	sdt_might_sleep_start_timeout(NULL, t);				\
-+	sdt_might_sleep_start_timeout((x)->dmap, t);			\
- 	__ret = __wait_for_completion_io_timeout(x, t);			\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -195,7 +199,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	long __ret;							\
- 									\
--	sdt_might_sleep_start_timeout(NULL, t);				\
-+	sdt_might_sleep_start_timeout((x)->dmap, t);			\
- 	__ret = __wait_for_completion_interruptible_timeout(x, t);	\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -204,7 +208,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	long __ret;							\
- 									\
--	sdt_might_sleep_start_timeout(NULL, t);				\
-+	sdt_might_sleep_start_timeout((x)->dmap, t);			\
- 	__ret = __wait_for_completion_killable_timeout(x, t);		\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
+ 		INIT_HLIST_HEAD(&subscriptions->list);
+ 		spin_lock_init(&subscriptions->lock);
++		sdt_map_init(&subscriptions->dmap);
+ 		subscriptions->invalidate_seq = 2;
+ 		subscriptions->itree = RB_ROOT_CACHED;
+ 		init_waitqueue_head(&subscriptions->wq);
+@@ -1070,9 +1094,12 @@ void mmu_interval_notifier_remove(struct mmu_interval_notifier *interval_sub)
+ 	 */
+ 	lock_map_acquire(&__mmu_notifier_invalidate_range_start_map);
+ 	lock_map_release(&__mmu_notifier_invalidate_range_start_map);
+-	if (seq)
++	if (seq) {
++		sdt_might_sleep_start(&subscriptions->dmap);
+ 		wait_event(subscriptions->wq,
+ 			   mmu_interval_seq_released(subscriptions, seq));
++		sdt_might_sleep_end();
++	}
+ 
+ 	/* pairs with mmgrab in mmu_interval_notifier_insert() */
+ 	mmdrop(mm);
 -- 
 2.17.1
 
