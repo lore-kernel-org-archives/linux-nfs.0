@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 6A1CF2EC0A3;
-	Thu,  2 Oct 2025 08:13:28 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 09F5C2EA475;
+	Thu,  2 Oct 2025 08:13:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1759392811; cv=none; b=uFxbmEijGLzMmQ13m+zJpufNrnOVKsAhITbLlNHXnTf/a5BLJ26FBLIPsLsIYiXK7eZRuJMVktDUlg/gK9czVeG9HVzszGa1x36aK0fkhZfCFuHh0mHuKto2Waqb207HHLF/8epKVxB5Ev/StQT3XXNb17Mv4eqM7qmT5AO3aeQ=
+	t=1759392813; cv=none; b=ZxrY7Z5NheMbTjteFYZdm2BulDv/lk2kRrP2199ct0b8mLKUNoJjWSpdOEfN0UZeloDBa9yd+r02Hp9xg3gtqudaeKQxJJ0Z73OAERrjyjBaoMBfAJ0SFcqxuer2b68E7Z+gp41AjDQcox8GFyrclqwGBK9MBdygn3MJEUQL+bw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1759392811; c=relaxed/simple;
-	bh=ARgkPBXeh3Qqcqmd0S+vaMsLgXB5DnOPrEodx89W1JU=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=r6BpLbnuC7QMUKRPwKJI3N67w9ktrq6uwJdelXCrE4MJIs71ibDUcxOLGk4SYPLnElOQjh1lAVc7OwFCl+5sDJuL314nTWLV2DOH8UEWghyXGYf/YLKFpRirecy+ny7fAt+AQSgeNTk0z/wDKKyQgG9JSw388JsIIyxQ4srPgbI=
+	s=arc-20240116; t=1759392813; c=relaxed/simple;
+	bh=OrmCL7AMrlriaPZyremlA931PaCPQXdxGExlE/vjDx8=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=t9DZ8jbQEpPm7rsMWRRnLn8097djGEukSS5MqWYh1X9BdxTIstrwWRyvjP19DPl8x4hBRzGMxcn7B2pAOeM9++pe8P2v5McieClsJ5Dqx/pVJTP6I31IGENE2nrkoW1lCr1sjnTjJ8WTuC+fmrBizy9S2on8hwpFCDccVvUMllQ=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c2dff70000001609-52-68de340d2012
+X-AuditID: a67dfc5b-c45ff70000001609-9c-68de340db706
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -162,44 +162,43 @@ Cc: kernel_team@skhynix.com,
 	rcu@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
 	linux-rt-devel@lists.linux.dev
-Subject: [PATCH v17 10/47] dept: distinguish each work from another
-Date: Thu,  2 Oct 2025 17:12:10 +0900
-Message-Id: <20251002081247.51255-11-byungchul@sk.com>
+Subject: [PATCH v17 12/47] dept: record the latest one out of consecutive waits of the same class
+Date: Thu,  2 Oct 2025 17:12:12 +0900
+Message-Id: <20251002081247.51255-13-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20251002081247.51255-1-byungchul@sk.com>
 References: <20251002081247.51255-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTdxjF97/3f+9tG2vuKnN3atQ1kmVEnC7gni2L0Zi46z6ZbIsJTqWx
-	N7bhzbRaZNEFhTrUogUHNa3WWrQgLdBQNb6AQSIYRaTgps2k1M6uQEhrNlsMDKi3GL/9cs5z
-	zvnySEjFM2qJRFu8X9AVqwqVtAzLYgsuZstzRjRrba25kExUYTjX5qHB3+pGEEpWITDeTGFI
-	TD1n4LV3joa6cIQGy/gRDK9cJgTWqI2B8Z7vIBa6TYErMkdApOs3BLP1BXDB6aPh//4BEi6G
-	gySMeUX9au8Igs6mozQ8iSyE2OA5AuJeGhxHOyk4b6tFUNHQRkP9+XYMgxMzBAzX1xIQckUx
-	9JmdhDhMg80yRsCUq5mBRw3DGFzlmTATXgcpRwn0ukcZCJ6uw9AaG6DgwchTCiaitTSE7h+j
-	IPFHmACPKUpC1a0khvaXols1m0DQe+NvAkzeaxSMeFIU+Lv6xKz1CoaBWy0UhF8EKJg8tRT8
-	NdUUBMz/IGiJO2k4E48imJh0kRvV/BvjKcw3+64TvHFoluY9dg/iE5crSN5oFqnSV8p3Tjow
-	/9DJ8TX92fxNa5DhK+/8xfCO9gN85b0YxfuasviGjnFi2+d5sm/VQqHWIOi+2JAv00Ru36X3
-	xZmDx0x2phx10CeQVMKxOVy07l/iPQ/NtqE00+xnXCAwRaY5g13J+aqjVJpJtm8Z93RwdZoX
-	sZu557+n5nswm8k5emxMmuXseu5h6Cx+17mCc3u75nukov4k3DevK9hczviqUtyViTc2KXfZ
-	/5h5F/iEu9sUwGYkd6APmpFCW2woUmkLc9Zoyoq1B9fsKSlqR+K7uQ7P7LiB/vP/0I1YCVIu
-	kPszgxoFpTLoy4q6ESchlRny/KZhjUKuVpX9IuhKdusOFAr6brRUgpUfy7+cLFUr2L2q/UKB
-	IOwTdO9dQiJdUo4Miy3c+g9XZngOQcPh46YXV86UNUpf6/1j21u+qQmbp1ND2YaFF7Y0ancf
-	sW7q/3n6ozc78jTW6qTl5adb81u4rK/zyCFhm10fP7HcWbDl151fXbWMJX8MCp7t7uAudWP/
-	1opnozPTPX92zlXLv+/IPZRpmLMHu346aR9dNeC+VNqhxHqNal0WqdOr3gJ6jgCjagMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUhTcRTG+99797/baHVZQheLipUVYS9CxbEieoNuRRF9KSrIUZe2nBpb
-	WUaSb0upLB1O05u1lIa5paZl6VrZwlEtyWnvOpexNNFlpBambm1GXw6/8zznPJwPR0zK60WR
-	YnXiCV6bqNQosJSS7lqbuVS2sku1wtUsg3fpTRSMDOdQcK3aiiGntlgErVUWBN6RHAS/xwQS
-	9A1BCiYMThqGRztoCNqdCArdBhKs99IJGKoJYOh/9hOBsduHoagvnYJB8yUEJT0CDX3NW8Hv
-	tYkg6Okl4P2vAQRmX4AAX1M2gonCeLhRVodhrOU1CUXGVgQ3uz0kfKsJmfecXQjsFRkYvubd
-	J6HdNw3ejAxieGG8iMHvvkbA9xoMpgy7CEoFA4LM8moMhaW1FDR8bqTB3T9OQGehgQBL7U7w
-	mnsocOWVEaH7QlN3Z4JQlEmEyjcCjHdsBIyaK2l4Vd5JgTktCoSWdhF8qSihYbw7BoKmJHBa
-	emnwXDFSUOV/LdpgRNxv/WWKq6yrJzh92wTmrNetiBv7Y0Dc8K1MktPnhdpnA4Mkl1V3irvl
-	GsDcn5G3mLP/MlHcyzKWy29ZyjWUeGgu6/Enevea/dJ1R3iNOpnXLl8fJ1X5bE/x8e/06fOX
-	rtNp6BG+gCRillnJtk1UozBjZhH74cMoGeYIZh5bl9sjCjPJuGaz79zRYZ7BbGY7CoKTuxQT
-	xZqaBTrMMmY1+9J7lfqXOZe11DRN5khCenu3a1KXM6tY/WAWkYekJjSlEkWoE5MTlGrNqmW6
-	eFVKovr0ssNJCbUo9E3m1PH8h2i4fasDMWKkmCpzR3lUcpEyWZeS4ECsmFREyOIqOlVy2RFl
-	yhlem3RIe1LD6xxolphSzJRt38vHyZmjyhN8PM8f57X/XUIsiUxDh/mOB1FnHZskuv5T+X6y
-	6Llv+tX7e7Y1OlxO4es5Z0zpDv9zx8edkhw7J3xJjaX3WS1Zqi0FHfho9OwHT4VIZmFr6fyN
-	Tz4XrCmO4zdWxV6x9QcCrkMSY5eKppgVgYPRP1Lb6g8UaOYcWxBL3m70qm1Nlt7s8r4tQ8WL
-	c3uNCkqnUsYsIbU65V94koK6SQMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0hTcRTH++3+7mOzxW0Z3TQoBhJEWonJIUp6ENyoKIgiel/cpY18xDRz
+	haS1qQ0te6ilKbN0LYswTTJzaJaVWrJpmdAerMwKndKmEx9F0/Cfw4fP+Z7z15chFPlkGKNJ
+	ShW1SUKCkpJhmXd+ReSCGJd6bd6thTA2mothfKqUgNGJLzQU2a8T4K/5S0HxrywMI+Y8BF73
+	CxL6W3IQ/Ck6BcWFNgQVHicBT9+4EAzXUGC6aCWhqKwWg31wWgIT5moapj3roN3VS0JFdiWG
+	Jms7hp7GOxRklo6TYGvpJKH7oQ1D3Yf3BNwYHkAwGDATkPXyHgbL72ISBj5lS6BGX0KDrzKA
+	Idv/l4TsyicSqLJ4SXg1NiSBDqefhhvdJgomnQ0k+MqCEUPeBA2F07kU1LeN05DldyPQO9ZD
+	aZuL3ryWHzdcwbyh+w/FPyp/hHhDQXDo687yVZ1DFG8NmDDfcZfjn5c4ad5Ue4bXv/aS/L2m
+	XxK+tvoyxRu9HyW8o7eJ4oe7uui9YYdkG1VigiZN1K6JOyFTv3CX4dPfQ9Jdpmt0JnotNSIp
+	w7ExnPVbI5pj19UKcoYpdiXX1zdBzHAou4Kryx+Y9QTbuYzrta82IoZZxArcWK5uRmM2grO/
+	K5iNyNlYzjVQQvx/uZx7WNMyy9Kg7/F04hlWsOs5w4heYkSyYOa+lGvp/0H/P1jKvbT04QIk
+	N6F51UihSUpLFDQJMVFqXZImPSo+ObEWBUtizpg+3IB8tn2tiGWQcr7cFuFUK0ghLUWX2Io4
+	hlCGyk9YHGqFXCXozona5OPaMwliSisKZ7ByiTw6cFalYE8KqeIpUTwtaue2EkYalol2+BsD
+	9scOvHXP48tbjox+vZn+2Zizuzd29OjhxQcfvJuimiPTQ/eH16sPiEOb43w686erk8dGhMLo
+	t+6QjktxF27vHD6f4RwcGZs8Wt482fymvS1k6ro7pE8VrrEti3RsOJeTV3Wxy9PouevbtK1D
+	64vPiYh1sttZ67Py5l0qy08lTlEL61YR2hThHy0cNHggAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSfUhTexjH+51zds7ZvKvD0jy9QDWQICqLUh6ucrn3n/pxvUV/BEEQOezQ
+	hrrJpiuDQtN1pZfbXGyWy+syHKaWy2lky5DNzDJz02q9uC1rrTdtl64rfMum0T8Pn+f7/fLw
+	/eNhSVm7aBmrUhcKWrUiT05LKMmOjLL10i1B5caHrlR4UtpFQWy8goILLc00VLSeF4H3ahOC
+	UKwCwdcpKwmGjlkKZkw9DIxPvGBgtrMHgcVnIqG5rZSA/x3faPjo+YzAPBKmoep9KQVR+ykE
+	1RErA+/vbIOxkEsEs4G3BPi/jCKwh78REO76G8GMJRdq65w0TPUPkFBl9iK4OBIg4Z0jbrb1
+	BBF0Nhyj4Y2xnYSh8EJ4FIvScM98koYx3wUCPjlosB3rFEGN1YSg7FILDZaaVgo6Xt5kwPdx
+	moBhi4mAptbtELJHKOgz1hHxfvHUtWSwVpUR8fGOAPMVFwET9kYGHlwapsBekgLW/iERvGqo
+	ZmB6ZBPM2jTQ0/SWgcAZMwVXxwZEv5sR/mr4h8KNzusENgzO0Lj532aEpyZNCI/Xl5HYYIyv
+	ntEoicudB3F93yiNJ2OPadz5xUbh+3U8ruxfjzuqAwwuv/2c2fnrHknmfiFPpRe0qb9lS5Su
+	UA1V8CbhUNBWyZSgbvEJJGZ5bgsfPHNRNMc0t4Z/+nSCnONEbhXvPB2Z10mubwX/xLfuBGLZ
+	xZyCj1UUz8kUl8L7eo3zESmXzgcj1eSPkyv5JkfXPIvj+tBIHzXHMi6NN0TLCSOS2NCCRpSo
+	UuvzFaq8tA26XGWxWnVoQ44mvxXFn8l+ZLryBhof2uZGHIvkv0h9KQGlTKTQ64rz3YhnSXmi
+	NLthWCmT7lcUHxa0mn3aojxB50bLWUqeLP1zt5At4w4oCoVcQSgQtD9dghUvK0E54tys20kZ
+	gt5vntTcfE1vfOhOCK30FI56/EXbT9Wu3rV16Uvbdc+HrCODJ7uPe5M/ec8NhNPPPovqlnj9
+	WXs//MFeySyPZKoS4PIgdvylb6/3HsXdbSVJS6ZL7973E5b0ImeGGzarC5KqbqFFut7/JtNe
+	rFteq6k9KnPF7tyTUzqlYtNaUqtTfAeSC7G1SAMAAA==
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -207,38 +206,54 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 
-Workqueue already provides concurrency control.  By that, any wait in a
-work doesn't prevents events in other works with the control enabled.
-Thus, each work would better be considered a different context.
+The current code records all the waits for later use to track relation
+between waits and events within each context.  However, since the same
+class is handled the same way, it'd be okay to record only one on behalf
+of the others if they all have the same class.
 
-So let dept assign a different context id to each work.
+Even though it's the ideal to search the whole history buffer for that,
+since it'd cost too high, alternatively, let's keep the latest one when
+the same class'ed waits consecutively appear.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- kernel/workqueue.c | 3 +++
- 1 file changed, 3 insertions(+)
+ kernel/dependency/dept.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
 
-diff --git a/kernel/workqueue.c b/kernel/workqueue.c
-index c6b79b3675c3..0e05648b4501 100644
---- a/kernel/workqueue.c
-+++ b/kernel/workqueue.c
-@@ -55,6 +55,7 @@
- #include <linux/kvm_para.h>
- #include <linux/delay.h>
- #include <linux/irq_work.h>
-+#include <linux/dept.h>
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index 1b16a6095b3c..f4c08758f8db 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -1486,9 +1486,28 @@ static struct dept_wait_hist *new_hist(void)
+ 	return wh;
+ }
  
- #include "workqueue_internal.h"
- 
-@@ -3153,6 +3154,8 @@ __acquires(&pool->lock)
- 
- 	lockdep_copy_map(&lockdep_map, &work->lockdep_map);
- #endif
-+	dept_update_cxt();
++static struct dept_wait_hist *last_hist(void)
++{
++	int pos_n = hist_pos_next();
++	struct dept_wait_hist *wh_n = hist(pos_n);
 +
- 	/* ensure we're on the correct CPU */
- 	WARN_ON_ONCE(!(pool->flags & POOL_DISASSOCIATED) &&
- 		     raw_smp_processor_id() != pool->cpu);
++	/*
++	 * This is the first try.
++	 */
++	if (!pos_n && !wh_n->wait)
++		return NULL;
++
++	return hist(pos_n + DEPT_MAX_WAIT_HIST - 1);
++}
++
+ static void add_hist(struct dept_wait *w, unsigned int wg, unsigned int ctxt_id)
+ {
+-	struct dept_wait_hist *wh = new_hist();
++	struct dept_wait_hist *wh;
++
++	wh = last_hist();
++
++	if (!wh || wh->wait->class != w->class || wh->ctxt_id != ctxt_id)
++		wh = new_hist();
+ 
+ 	if (likely(wh->wait))
+ 		put_wait(wh->wait);
 -- 
 2.17.1
 
