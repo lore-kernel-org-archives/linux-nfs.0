@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 06AA71553AA
-	for <linux-nfs@vger.kernel.org>; Tue,  7 Oct 2025 16:04:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D7252E7199
+	for <linux-nfs@vger.kernel.org>; Tue,  7 Oct 2025 16:04:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1759853059; cv=none; b=mAQf4pAjS0ryJGX3dg2SkhtRz5PFOMjRMmd2WwhVdLxKeguYgNmjYj9m+voyAQ5yFEuAFuTJLjM1RsAnPeFr+UEVHgjPWc589F/F4sM+ba7a91uQIxxv98ES+ozoMHzzRvKW6z3sTpGAEVDu/RGvJPAHLBJVHDSfKs6ep900xRg=
+	t=1759853060; cv=none; b=Bq2VWJfmLJDCY4X28fQxQk75A4FpB2929tsM16UkeULlrxRf3hoZRLmpTmRNsoEE5isd7lZLli4z3CAheDg0+l1i0v8SyzLfO7kXnX0km4V4iNStiquU0zVpCEef/8XcSPI1fejzo6yI0RTM9ZEPR1y09W130sdDVx6j1He8Pzc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1759853059; c=relaxed/simple;
-	bh=zQHm3MHRAL97IlUmAj5Iv/2q8sXf/iXJXGWo1sBG7a0=;
+	s=arc-20240116; t=1759853060; c=relaxed/simple;
+	bh=vBlJjLZh86nBoitsUMcC2g4vqXmKkd6Nhd0AGqaCnpA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=n7fskHx4sSOM651ao3rAJVgP1WSwUeWfi6VyjMN38jh8WyJK79zP/v4bM2Sy4auB2dZTqioTHUp0KazHn8U4wCQXIDhr6JS2JoTh7Z06+9rjGlhOONYt1Oet8Pr6MiXVIYvJJFfTT2Dfz5gVxVZPtdzpnCu75vrxJ+XjckCyBjU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fGoMmPQH; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=oXon1offptP2aP7i34hDy9+IrS0v5eZe6HJ9i6id19w2fT4IxOCHTZqRgCWGym7g1RCq6pG4F+Px8jNs544kv96IYkZoaygObhUkUDSZKzxFuus0gH1wP15sZuHBZvljasQuO9seGWqKTefmYRSImxjTKoLgVXlYdZdbnPubIxY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ao6uugUz; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fGoMmPQH"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8F24FC4CEF7;
-	Tue,  7 Oct 2025 16:04:17 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ao6uugUz"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CD4CAC4CEFE;
+	Tue,  7 Oct 2025 16:04:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1759853058;
-	bh=zQHm3MHRAL97IlUmAj5Iv/2q8sXf/iXJXGWo1sBG7a0=;
+	s=k20201202; t=1759853059;
+	bh=vBlJjLZh86nBoitsUMcC2g4vqXmKkd6Nhd0AGqaCnpA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=fGoMmPQHlwg2h2H9vAqMJ67e8Cuo50El+A8nqEF8ohJgeFpOR1pjxcrhtPz1xQAiU
-	 zfLV5P5gqc46+SenMHNlZLxOAalL+ANsQVAXR2ifqgcD/r88NDy7/zE6RU5rzsrIlx
-	 BLq1eOl43tYYvfdFycL5pAb7hKvfHFIAf09zZ0AVNTCUXZNnAOo+PUjmiHRWkE5cjt
-	 BKTKRBr5hS6Gk5lPi9yv+h+46stARwHw9t/ci1ozBy7DNa8ehD22qgOyAGx+aXNVii
-	 edgaUM+/fY7YjdZJ5VXCg0xxiidiid9AvG2Vo9Bnq9/Vu6Vru3/i8QBk+qPBQqWORz
-	 zGZE10/G0AD0w==
+	b=ao6uugUzS73qPRdEmqF7QdS4+ALqr654VQvTcqFfw4NodkLoa6uxcw80ejpFWvHz0
+	 xYwyK9ZZ/gYkFXN/S8+ynD2LgbUJbiR1wlEQZfxVczzR/Q3vQjXrXwfs8dWqJLnzza
+	 emzHUqzZRa6NPO1qiTGWZp3FgVOPSrJ+o5+niJXVytmvYoOcDoHCU0F6tStIalSli6
+	 oqaeanLonwfviWzZFmZnjPoAMHUScGQBHS07pZw+WuYgrdqE+oZPSHgkF5WHh77fNR
+	 BiSoA5lZtAdzlIfoqb0g62KfrublxraNdD5rSHZT1Z0Ak7OdOCDf0zdC1w2jwbI1tT
+	 yBJAzDOmrF4Cg==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -35,9 +35,9 @@ To: NeilBrown <neil@brown.name>,
 Cc: <linux-nfs@vger.kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>,
 	rtm@csail.mit.edu
-Subject: [PATCH v2 1/4] NFSD: Skip close replay processing if XDR encoding fails
-Date: Tue,  7 Oct 2025 12:04:10 -0400
-Message-ID: <20251007160413.4953-2-cel@kernel.org>
+Subject: [PATCH v2 2/4] NFSD: Fix the "is this a solo SEQUENCE" predicate
+Date: Tue,  7 Oct 2025 12:04:11 -0400
+Message-ID: <20251007160413.4953-3-cel@kernel.org>
 X-Mailer: git-send-email 2.51.0
 In-Reply-To: <20251007160413.4953-1-cel@kernel.org>
 References: <20251007160413.4953-1-cel@kernel.org>
@@ -51,39 +51,53 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-The close replay logic added by commit 9411b1d4c7df ("nfsd4: cleanup
-handling of nfsv4.0 closed stateid's") cannot be done if encoding
-failed due to a short send buffer; there's no guarantee that the
-operation encoder has actually encoded the data that is being copied
-to the replay cache.
+RFC 8881 Section 2.10.6.4 says:
 
-I think there are deeper problems here. Is stateid sequencing
-screwed up if XDR encoding fails? Does NFSv4.1+ even need to care
-about this?
+> If sa_cachethis or csa_cachethis is TRUE, then the replier MUST
+> cache a reply except if an error is returned by the SEQUENCE or
+> CB_SEQUENCE operation (see Section 2.10.6.1.2).
+
+This text also appears in RFC 5661. Further, Section 2.10.6.1.2
+says:
+
+> Any time SEQUENCE or CB_SEQUENCE returns an error, the sequence ID
+> of the slot MUST NOT change. The replier MUST NOT modify the reply
+> cache entry for the slot whenever an error is returned from
+> SEQUENCE or CB_SEQUENCE.
+
+NFSD caches the result of solo SEQUENCE operations, but rtm's
+reproducer sends two operations in the failing COMPOUND. NFSD should
+not attempt to cache the reply.
+
+The logic in nfsd4_is_solo_sequence() is incorrect: it checks the
+current operation index, not the total count of operations in the
+COMPOUND. If the SEQUENCE operation, which is always operation 1,
+fails in a multi-operation compound, resp->opcnt is always 1. Thus
+when a SEQUENCE operation fails, nfsd4_is_solo_sequence() always
+returns true.
 
 Reported-by: <rtm@csail.mit.edu>
 Closes: https://lore.kernel.org/linux-nfs/c3628d57-94ae-48cf-8c9e-49087a28cec9@oracle.com/T/#t
-Fixes: 9411b1d4c7df ("nfsd4: cleanup handling of nfsv4.0 closed stateid's")
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Fixes: 468de9e54a90 ("nfsd41: expand solo sequence check")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ fs/nfsd/xdr4.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 230bf53e39f7..85b773a65670 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -5937,8 +5937,7 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 		 */
- 		warn_on_nonidempotent_op(op);
- 		xdr_truncate_encode(xdr, op_status_offset + XDR_UNIT);
--	}
--	if (so) {
-+	} else if (so) {
- 		int len = xdr->buf->len - (op_status_offset + XDR_UNIT);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index ee0570cbdd9e..d1837a10b0c2 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -926,7 +926,8 @@ struct nfsd4_compoundres {
+ static inline bool nfsd4_is_solo_sequence(struct nfsd4_compoundres *resp)
+ {
+ 	struct nfsd4_compoundargs *args = resp->rqstp->rq_argp;
+-	return resp->opcnt == 1 && args->ops[0].opnum == OP_SEQUENCE;
++
++	return args->opcnt == 1 && args->ops[0].opnum == OP_SEQUENCE;
+ }
  
- 		so->so_replay.rp_status = op->status;
+ /*
 -- 
 2.51.0
 
