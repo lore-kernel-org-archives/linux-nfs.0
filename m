@@ -1,47 +1,47 @@
 Received: from mailout1.samsung.com (mailout1.samsung.com [203.254.224.24])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7179728934F
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2025 12:11:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 09487312828
+	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2025 12:11:18 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.24
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1760443878; cv=none; b=YIBR6Oj9JVPR2HCAS2xRsRIaMhmYZzH0WiE9jSLRVDwZvCa/W24RERSdbXrn87wU40sO4kIOAEdB28WQMv6GzWfQ2vh/DfiMZorsVTI+n4rvs1h8fOAMWE9awMGXlbQiEt3eWvjFJU7ePvOp9YG3uJgljpBXFlaI4L61T+VAZ/w=
+	t=1760443880; cv=none; b=YC4ubj7PYJNFFWqhwp1ySBkVMkjQLLg8ZR52ETIQSozDyODyk6oteywJjnuGhnNZ/mGAjhK4PDVcvspFxuW3Io7oRhGTyaZ9z/mJcJ9iBNHcCV+3DHWUoxmQ0RA/hC9mmK+ZE0ZCxnAHwWwB8MeyVAgz7VicT2QQo+g/EQWbRyI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1760443878; c=relaxed/simple;
-	bh=zA89fVUoELPBJXQjoI+yLiAmmWb8MSEhVq5gZN+1ieA=;
+	s=arc-20240116; t=1760443880; c=relaxed/simple;
+	bh=Uk7cyyg2hd/H5uuhJfVC9nvlwg+NURLd9l/mAUcyV/g=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:MIME-Version:
-	 Content-Type:References; b=lQVigPn0+2HmAQW39qTfqIxRlnz660u18WRH+1cpvcEVzAM9PtJDJKzNhc5wtnOW/knYxkY9D+MYT2ksWFfWABq7RyWwS/JW1BzfWitIUJK7hMvcWnyg+MiTl/lL+lbjhXtBjDFs5/ghI1etJsN/yFfcZA9iPP4CSi681R1OCB4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=VWzGZvfi; arc=none smtp.client-ip=203.254.224.24
+	 Content-Type:References; b=IhZH1GvYpXsNSxLUYhm92eI7EzEXYFgipYj0LzivNTiquATupFkIYBkd+O3ajhAcsfSToqujgk0OkZx7vDoWZFxdbQ8WQqEBj5id55Rlne8MaYsSgMHOuXIkadHGbkyTAyRA/Wtf3wDvATZP/p88exV2ZnYzrzhPs+zKxWnnqiQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=oVP9IXio; arc=none smtp.client-ip=203.254.224.24
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="VWzGZvfi"
-Received: from epcas5p1.samsung.com (unknown [182.195.41.39])
-	by mailout1.samsung.com (KnoxPortal) with ESMTP id 20251014121104epoutp01eafcd573ef5468d002c5f8fe9a27747c~uWl4quZcz1126711267epoutp01j
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2025 12:11:04 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout1.samsung.com 20251014121104epoutp01eafcd573ef5468d002c5f8fe9a27747c~uWl4quZcz1126711267epoutp01j
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="oVP9IXio"
+Received: from epcas5p3.samsung.com (unknown [182.195.41.41])
+	by mailout1.samsung.com (KnoxPortal) with ESMTP id 20251014121115epoutp01219c9a33b19af2e1df27780176045a21~uWmCddbkF1126711267epoutp01n
+	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2025 12:11:15 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout1.samsung.com 20251014121115epoutp01219c9a33b19af2e1df27780176045a21~uWmCddbkF1126711267epoutp01n
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1760443864;
-	bh=9L9Dd+P57Nr9ie5r9Dy2BGUr0ErT9/3lAp5Du2+fgsc=;
+	s=mail20170921; t=1760443875;
+	bh=PXGKebblkuYyVq32XepqRXoghfCKJGEOOFxZca7FgOI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=VWzGZvfiHiU5Yz8K8MUBF/sznhrM9+sNgjg53fdyEgQwvRJICwiS7dfGfPgYSvCSE
-	 Tymm6YJMjuSzD80p3C5TV0qzpTpD3b/5G+fop71hg8uZbZo2J6z2RBVvyYgoY6Eq7V
-	 8qbcsIs6NS+JZaKd8csOvwhgE2lkkHX724BTgY2o=
-Received: from epsnrtp03.localdomain (unknown [182.195.42.155]) by
-	epcas5p2.samsung.com (KnoxPortal) with ESMTPS id
-	20251014121104epcas5p2bc15fe91af3f477ce59f23de07a762e7~uWl4GCzCQ2441424414epcas5p2z;
-	Tue, 14 Oct 2025 12:11:04 +0000 (GMT)
-Received: from epcas5p1.samsung.com (unknown [182.195.38.93]) by
-	epsnrtp03.localdomain (Postfix) with ESMTP id 4cmCjg1c1Qz3hhT7; Tue, 14 Oct
-	2025 12:11:03 +0000 (GMT)
+	b=oVP9IXiobPJGIbz9EacCOAHSnCKNKbX9TBtPASsWhoBdgEe0oMU+HrFuS4ReblZ0t
+	 dEPavhOeWgnqnMySP5yAQUtMsDeYs3csraClpoX6hpVmfRZTuVEcXZtA58eKuRbyi3
+	 vQV6rZpeJRg/A/Ne5ajjbCCqphVMA7fnmh4zVRfc=
+Received: from epsnrtp02.localdomain (unknown [182.195.42.154]) by
+	epcas5p4.samsung.com (KnoxPortal) with ESMTPS id
+	20251014121114epcas5p4d0d2a74508fa8c2ff7694bfcf2f9da2b~uWmBwq60C1326113261epcas5p4X;
+	Tue, 14 Oct 2025 12:11:14 +0000 (GMT)
+Received: from epcas5p1.samsung.com (unknown [182.195.38.91]) by
+	epsnrtp02.localdomain (Postfix) with ESMTP id 4cmCjs4c82z2SSKb; Tue, 14 Oct
+	2025 12:11:13 +0000 (GMT)
 Received: from epsmtip1.samsung.com (unknown [182.195.34.30]) by
 	epcas5p3.samsung.com (KnoxPortal) with ESMTPA id
-	20251014121102epcas5p3280cd3e6bf16a2fb6a7fe483751f07a7~uWl2mt8mp0753907539epcas5p3l;
-	Tue, 14 Oct 2025 12:11:02 +0000 (GMT)
+	20251014121113epcas5p3522dd553825deccfb9a1c9c12f071e3a~uWmAVF5dU1718117181epcas5p3R;
+	Tue, 14 Oct 2025 12:11:13 +0000 (GMT)
 Received: from localhost.localdomain (unknown [107.99.41.245]) by
 	epsmtip1.samsung.com (KnoxPortal) with ESMTPA id
-	20251014121056epsmtip121363f1d7a311e444423e431a609c5f4~uWlxNY78_1239712397epsmtip1d;
-	Tue, 14 Oct 2025 12:10:56 +0000 (GMT)
+	20251014121108epsmtip16a22dad80f2ca2c63d567898c2d48def~uWl78CnMv1256112561epsmtip1G;
+	Tue, 14 Oct 2025 12:11:08 +0000 (GMT)
 From: Kundan Kumar <kundan.kumar@samsung.com>
 To: jaegeuk@kernel.org, chao@kernel.org, viro@zeniv.linux.org.uk,
 	brauner@kernel.org, jack@suse.cz, miklos@szeredi.hu, agruenba@redhat.com,
@@ -53,10 +53,10 @@ Cc: linux-f2fs-devel@lists.sourceforge.net, linux-fsdevel@vger.kernel.org,
 	gfs2@lists.linux.dev, linux-nfs@vger.kernel.org, linux-mm@kvack.org,
 	gost.dev@samsung.com, kundan.kumar@samsung.com, anuj20.g@samsung.com,
 	vishak.g@samsung.com, joshi.k@samsung.com
-Subject: [PATCH v2 09/16] f2fs: add support in f2fs to handle multiple
+Subject: [PATCH v2 11/16] gfs2: add support in gfs2 to handle multiple
  writeback contexts
-Date: Tue, 14 Oct 2025 17:38:38 +0530
-Message-Id: <20251014120845.2361-10-kundan.kumar@samsung.com>
+Date: Tue, 14 Oct 2025 17:38:40 +0530
+Message-Id: <20251014120845.2361-12-kundan.kumar@samsung.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20251014120845.2361-1-kundan.kumar@samsung.com>
 Precedence: bulk
@@ -66,100 +66,38 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CMS-MailID: 20251014121102epcas5p3280cd3e6bf16a2fb6a7fe483751f07a7
+X-CMS-MailID: 20251014121113epcas5p3522dd553825deccfb9a1c9c12f071e3a
 X-Msg-Generator: CA
 Content-Type: text/plain; charset="utf-8"
 CMS-TYPE: 105P
 cpgsPolicy: CPGSC10-542,Y
 X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20251014121102epcas5p3280cd3e6bf16a2fb6a7fe483751f07a7
+X-CMS-RootMailID: 20251014121113epcas5p3522dd553825deccfb9a1c9c12f071e3a
 References: <20251014120845.2361-1-kundan.kumar@samsung.com>
-	<CGME20251014121102epcas5p3280cd3e6bf16a2fb6a7fe483751f07a7@epcas5p3.samsung.com>
+	<CGME20251014121113epcas5p3522dd553825deccfb9a1c9c12f071e3a@epcas5p3.samsung.com>
 
 Add support to handle multiple writeback contexts and check for
-dirty_exceeded across all the writeback contexts.
-
-Made a new helper for same.
+dirty_exceeded across all the writeback contexts
 
 Signed-off-by: Kundan Kumar <kundan.kumar@samsung.com>
 Signed-off-by: Anuj Gupta <anuj20.g@samsung.com>
 ---
- fs/f2fs/node.c              |  4 ++--
- fs/f2fs/segment.h           |  2 +-
- include/linux/backing-dev.h | 18 +++++++++++++++---
- 3 files changed, 18 insertions(+), 6 deletions(-)
+ fs/gfs2/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
-index 1693da9417f9..cd75aa98a1ca 100644
---- a/fs/f2fs/node.c
-+++ b/fs/f2fs/node.c
-@@ -73,7 +73,7 @@ bool f2fs_available_free_memory(struct f2fs_sb_info *sbi, int type)
- 		if (excess_cached_nats(sbi))
- 			res = false;
- 	} else if (type == DIRTY_DENTS) {
--		if (sbi->sb->s_bdi->wb_ctx[0]->wb.dirty_exceeded)
-+		if (bdi_wb_dirty_limit_exceeded(sbi->sb->s_bdi))
- 			return false;
- 		mem_size = get_pages(sbi, F2FS_DIRTY_DENTS);
- 		res = mem_size < ((avail_ram * nm_i->ram_thresh / 100) >> 1);
-@@ -114,7 +114,7 @@ bool f2fs_available_free_memory(struct f2fs_sb_info *sbi, int type)
- 		res = false;
- #endif
- 	} else {
--		if (!sbi->sb->s_bdi->wb_ctx[0]->wb.dirty_exceeded)
-+		if (!bdi_wb_dirty_limit_exceeded(sbi->sb->s_bdi))
- 			return true;
- 	}
- 	return res;
-diff --git a/fs/f2fs/segment.h b/fs/f2fs/segment.h
-index 7e5b7b1a5d2b..8487bd5d4394 100644
---- a/fs/f2fs/segment.h
-+++ b/fs/f2fs/segment.h
-@@ -993,7 +993,7 @@ static inline bool sec_usage_check(struct f2fs_sb_info *sbi, unsigned int secno)
-  */
- static inline int nr_pages_to_skip(struct f2fs_sb_info *sbi, int type)
- {
--	if (sbi->sb->s_bdi->wb_ctx[0]->wb.dirty_exceeded)
-+	if (bdi_wb_dirty_limit_exceeded(sbi->sb->s_bdi))
- 		return 0;
- 
- 	if (type == DATA)
-diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-index 59bbb69d300c..bb35f8fa4973 100644
---- a/include/linux/backing-dev.h
-+++ b/include/linux/backing-dev.h
-@@ -51,6 +51,21 @@ static inline bool wb_has_dirty_io(struct bdi_writeback *wb)
- 	return test_bit(WB_has_dirty_io, &wb->state);
- }
- 
-+#define for_each_bdi_wb_ctx(bdi, wbctx) \
-+	for (int __i = 0; __i < (bdi)->nr_wb_ctx \
-+		&& ((wbctx) = (bdi)->wb_ctx[__i]) != NULL; __i++)
-+
-+static inline bool bdi_wb_dirty_limit_exceeded(struct backing_dev_info *bdi)
-+{
-+	struct bdi_writeback_ctx *bdi_wb_ctx;
-+
-+	for_each_bdi_wb_ctx(bdi, bdi_wb_ctx) {
-+		if (bdi_wb_ctx->wb.dirty_exceeded)
-+			return true;
-+	}
-+	return false;
-+}
-+
- static inline bool bdi_has_dirty_io(struct backing_dev_info *bdi)
- {
- 	/*
-@@ -149,9 +164,6 @@ static inline bool mapping_can_writeback(struct address_space *mapping)
- }
- 
- #define DEFAULT_WB_CTX 0
--#define for_each_bdi_wb_ctx(bdi, wbctx) \
--	for (int __i = 0; __i < (bdi)->nr_wb_ctx \
--		&& ((wbctx) = (bdi)->wb_ctx[__i]) != NULL; __i++)
- 
- static inline struct bdi_writeback_ctx *
- fetch_bdi_writeback_ctx(struct inode *inode)
+diff --git a/fs/gfs2/super.c b/fs/gfs2/super.c
+index bd11d5e6cf63..b1e00a64e5ec 100644
+--- a/fs/gfs2/super.c
++++ b/fs/gfs2/super.c
+@@ -447,7 +447,7 @@ static int gfs2_write_inode(struct inode *inode, struct writeback_control *wbc)
+ 		gfs2_log_flush(GFS2_SB(inode), ip->i_gl,
+ 			       GFS2_LOG_HEAD_FLUSH_NORMAL |
+ 			       GFS2_LFC_WRITE_INODE);
+-	if (bdi->wb_ctx[0]->wb.dirty_exceeded)
++	if (bdi_wb_dirty_limit_exceeded(bdi))
+ 		gfs2_ail1_flush(sdp, wbc);
+ 	else
+ 		filemap_fdatawrite(metamapping);
 -- 
 2.25.1
 
