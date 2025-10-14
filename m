@@ -1,47 +1,47 @@
 Received: from mailout4.samsung.com (mailout4.samsung.com [203.254.224.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 737C2312831
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2025 12:11:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 033BF3126AC
+	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2025 12:11:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1760443870; cv=none; b=d2sblt28a5qeT4EK6xK8SiQ0nxTNrUs8hGpyfB+VMWQAnTbhfZy/5FU5WnAPL3GwbX0gDKY2SkYiHGkBX1325+aEi8TdVpzrlr0GChBg8YI+k+YSyaJ595Mrq6YIy+9CsFAo1D1B1HoCcJ47UhsaEqnn1Dkp8vkF/dgZoNGJD4Q=
+	t=1760443878; cv=none; b=Ai/5kCcKp/sEXxNTLVVcvm6eFMmWFx0wnzWj6nDQS8thX6nCCEx+eUR3kRmBYtdytlIPshx64W0YtGI7sPfwaEORTD3mGTfEOeHcoBENfXH2YyWpVWGDSm4uQ4Zt0trBrwOImFa6ozJoj+L/HZ42ETD2izvvAIh4+TcVeBKvnrI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1760443870; c=relaxed/simple;
-	bh=ApCzPWuqEIv8w5oR0HLgtv4+D/wwTnZTqBn4R3B/HRU=;
+	s=arc-20240116; t=1760443878; c=relaxed/simple;
+	bh=bpZkfr4SnXVSOLxQDPBa9KgBnuoAWvwoPHhqI97UVzw=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:MIME-Version:
-	 Content-Type:References; b=QxfbgqjTOij6n3siTJUW3CSTzqGbOOvH1y6zvNYeiMwhftI7fUzsk3vrCM9cmmuZPwa20K/BinqvdIJhwO1McZ1PIywZDBw2t0gb+ZPGc5y9NbtqnSCMFSMPLTZrW2K+C4XUNbnwCSAU6lMzMOH3X67mMl2H6X6mVleDOjrvS1s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=b3MP2PPQ; arc=none smtp.client-ip=203.254.224.34
+	 Content-Type:References; b=bi6u7JXiweNT7ljaXjucVLURxMgzpApzhgkbvCJmHRMGEHJ0YmCfa5JzVw7jzvmNaVFarixdPiWLJDhaUgETGqf3W5XLEJFdJ26yOcWi9wIx7ZjgwNHVqSB9pq/1MBnPDO93rVU6ZIWWSq1/KYWJzO/t1kyZ7CQD3vAs8Dln9QY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=KXVPMq6j; arc=none smtp.client-ip=203.254.224.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="b3MP2PPQ"
-Received: from epcas5p2.samsung.com (unknown [182.195.41.40])
-	by mailout4.samsung.com (KnoxPortal) with ESMTP id 20251014121059epoutp043d9b256f3bb9d211bca3ccfe3037d634~uWlzWHUAE0929009290epoutp04S
-	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2025 12:10:59 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout4.samsung.com 20251014121059epoutp043d9b256f3bb9d211bca3ccfe3037d634~uWlzWHUAE0929009290epoutp04S
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="KXVPMq6j"
+Received: from epcas5p4.samsung.com (unknown [182.195.41.42])
+	by mailout4.samsung.com (KnoxPortal) with ESMTP id 20251014121110epoutp04660758d96d27ab92ae460f140fab03a0~uWl9sezgE1160811608epoutp04f
+	for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2025 12:11:10 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout4.samsung.com 20251014121110epoutp04660758d96d27ab92ae460f140fab03a0~uWl9sezgE1160811608epoutp04f
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1760443859;
-	bh=gsFsMIu+qmP5Pk/U6/E+nZJ61/APVl3sjNSY2NmttmM=;
+	s=mail20170921; t=1760443870;
+	bh=C/LvlMlwmoGn4EEu6fl0YJvh1Z+uAYGGiSNYbvlUAoI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=b3MP2PPQADA0hrQOZsvNMk5IqyvoGROiAsnT/N0hTNdssHWHiaozpoXzdpcNl/4nY
-	 aK//QNWUQ2GADLe9sOhTiSothJkAzC/Y6IHX6jQBZo5oxpejhWhMkIHsNmMlyxWPl7
-	 hV5ajXmyC+3hwqX4nk9gxZZfX2spne9pdDHx46dM=
+	b=KXVPMq6jumEvwP9xqK7fm9mUMAbJiNK54aw0VeA0ye1OrdsNFmudi3+eNXjyAN9eg
+	 knmPQEJ8BSMV8cbjaas8eY15dU0ZsO3N1/+Zw7B2LCsMCXMK1LOOJ0Raw+uq5Vh7fJ
+	 Q9NCarmAfG2p6B70i8TY7JBDYb8+k/W2PwHFLh2c=
 Received: from epsnrtp04.localdomain (unknown [182.195.42.156]) by
-	epcas5p4.samsung.com (KnoxPortal) with ESMTPS id
-	20251014121058epcas5p4efc8532b88fe6f0919db6df3984eaab5~uWlyadOAm1326113261epcas5p4x;
-	Tue, 14 Oct 2025 12:10:58 +0000 (GMT)
-Received: from epcas5p1.samsung.com (unknown [182.195.38.90]) by
-	epsnrtp04.localdomain (Postfix) with ESMTP id 4cmCjY1B5gz6B9m6; Tue, 14 Oct
-	2025 12:10:57 +0000 (GMT)
+	epcas5p1.samsung.com (KnoxPortal) with ESMTPS id
+	20251014121109epcas5p1450a20b2fb1624046b50ace88f3a111f~uWl8-9sfY3122231222epcas5p1L;
+	Tue, 14 Oct 2025 12:11:09 +0000 (GMT)
+Received: from epcas5p2.samsung.com (unknown [182.195.38.95]) by
+	epsnrtp04.localdomain (Postfix) with ESMTP id 4cmCjm3nKMz6B9m6; Tue, 14 Oct
+	2025 12:11:08 +0000 (GMT)
 Received: from epsmtip1.samsung.com (unknown [182.195.34.30]) by
 	epcas5p1.samsung.com (KnoxPortal) with ESMTPA id
-	20251014121056epcas5p1cd2a7fde9f54633b5a331f4553f88735~uWlw9E8x81946619466epcas5p12;
-	Tue, 14 Oct 2025 12:10:56 +0000 (GMT)
+	20251014121108epcas5p1d68e41bdb1d51ae137b9bb22a7d16fd1~uWl7o_jJZ1447514475epcas5p1s;
+	Tue, 14 Oct 2025 12:11:08 +0000 (GMT)
 Received: from localhost.localdomain (unknown [107.99.41.245]) by
 	epsmtip1.samsung.com (KnoxPortal) with ESMTPA id
-	20251014121048epsmtip19b929dbb834131481e70a8aeb346f9bb~uWlpts_jW1309013090epsmtip1H;
-	Tue, 14 Oct 2025 12:10:48 +0000 (GMT)
+	20251014121102epsmtip1b866f23363f52d9d5531fb176e70bee4~uWl27p7SL1256112561epsmtip1F;
+	Tue, 14 Oct 2025 12:11:02 +0000 (GMT)
 From: Kundan Kumar <kundan.kumar@samsung.com>
 To: jaegeuk@kernel.org, chao@kernel.org, viro@zeniv.linux.org.uk,
 	brauner@kernel.org, jack@suse.cz, miklos@szeredi.hu, agruenba@redhat.com,
@@ -53,10 +53,10 @@ Cc: linux-f2fs-devel@lists.sourceforge.net, linux-fsdevel@vger.kernel.org,
 	gfs2@lists.linux.dev, linux-nfs@vger.kernel.org, linux-mm@kvack.org,
 	gost.dev@samsung.com, kundan.kumar@samsung.com, anuj20.g@samsung.com,
 	vishak.g@samsung.com, joshi.k@samsung.com
-Subject: [PATCH v2 08/16] writeback: add support to collect stats for all
- writeback ctxs
-Date: Tue, 14 Oct 2025 17:38:37 +0530
-Message-Id: <20251014120845.2361-9-kundan.kumar@samsung.com>
+Subject: [PATCH v2 10/16] fuse: add support for multiple writeback contexts
+ in fuse
+Date: Tue, 14 Oct 2025 17:38:39 +0530
+Message-Id: <20251014120845.2361-11-kundan.kumar@samsung.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20251014120845.2361-1-kundan.kumar@samsung.com>
 Precedence: bulk
@@ -66,152 +66,93 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CMS-MailID: 20251014121056epcas5p1cd2a7fde9f54633b5a331f4553f88735
+X-CMS-MailID: 20251014121108epcas5p1d68e41bdb1d51ae137b9bb22a7d16fd1
 X-Msg-Generator: CA
 Content-Type: text/plain; charset="utf-8"
 CMS-TYPE: 105P
 cpgsPolicy: CPGSC10-542,Y
 X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20251014121056epcas5p1cd2a7fde9f54633b5a331f4553f88735
+X-CMS-RootMailID: 20251014121108epcas5p1d68e41bdb1d51ae137b9bb22a7d16fd1
 References: <20251014120845.2361-1-kundan.kumar@samsung.com>
-	<CGME20251014121056epcas5p1cd2a7fde9f54633b5a331f4553f88735@epcas5p1.samsung.com>
+	<CGME20251014121108epcas5p1d68e41bdb1d51ae137b9bb22a7d16fd1@epcas5p1.samsung.com>
 
-Modified stats collection to collect stats for all the writeback
-contexts within a bdi.
+Made a helper to fetch writeback context to which an inode is affined.
+Use it to perform writeback related operations.
 
 Signed-off-by: Kundan Kumar <kundan.kumar@samsung.com>
 Signed-off-by: Anuj Gupta <anuj20.g@samsung.com>
 ---
- mm/backing-dev.c | 72 ++++++++++++++++++++++++++++--------------------
- 1 file changed, 42 insertions(+), 30 deletions(-)
+ fs/fuse/file.c              |  7 +++----
+ include/linux/backing-dev.h | 17 +++++++++++++++++
+ 2 files changed, 20 insertions(+), 4 deletions(-)
 
-diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-index 754f2f6c6d7c..0a772d984ecf 100644
---- a/mm/backing-dev.c
-+++ b/mm/backing-dev.c
-@@ -50,6 +50,7 @@ struct wb_stats {
- 	unsigned long nr_written;
- 	unsigned long dirty_thresh;
- 	unsigned long wb_thresh;
-+	unsigned long state;
- };
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index 8c823a661139..9c7f0e4b741f 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -1823,7 +1823,6 @@ static void fuse_writepage_finish(struct fuse_writepage_args *wpa)
+ 	struct fuse_args_pages *ap = &wpa->ia.ap;
+ 	struct inode *inode = wpa->inode;
+ 	struct fuse_inode *fi = get_fuse_inode(inode);
+-	struct backing_dev_info *bdi = inode_to_bdi(inode);
+ 	int i;
  
- static struct dentry *bdi_debug_root;
-@@ -81,6 +82,7 @@ static void collect_wb_stats(struct wb_stats *stats,
- 	stats->nr_dirtied += wb_stat(wb, WB_DIRTIED);
- 	stats->nr_written += wb_stat(wb, WB_WRITTEN);
- 	stats->wb_thresh += wb_calc_thresh(wb, stats->dirty_thresh);
-+	stats->state |= wb->state;
- }
- 
- #ifdef CONFIG_CGROUP_WRITEBACK
-@@ -89,22 +91,27 @@ static void bdi_collect_stats(struct backing_dev_info *bdi,
- 			      struct wb_stats *stats)
- {
- 	struct bdi_writeback *wb;
-+	struct bdi_writeback_ctx *bdi_wb_ctx;
- 
- 	rcu_read_lock();
--	list_for_each_entry_rcu(wb, &bdi->wb_ctx[0]->wb_list, bdi_node) {
--		if (!wb_tryget(wb))
--			continue;
-+	for_each_bdi_wb_ctx(bdi, bdi_wb_ctx)
-+		list_for_each_entry_rcu(wb, &bdi_wb_ctx->wb_list, bdi_node) {
-+			if (!wb_tryget(wb))
-+				continue;
- 
--		collect_wb_stats(stats, wb);
--		wb_put(wb);
--	}
-+			collect_wb_stats(stats, wb);
-+			wb_put(wb);
-+		}
- 	rcu_read_unlock();
- }
- #else
- static void bdi_collect_stats(struct backing_dev_info *bdi,
- 			      struct wb_stats *stats)
- {
--	collect_wb_stats(stats, &bdi->wb_ctx[0]->wb);
-+	struct bdi_writeback_ctx *bdi_wb_ctx;
-+
-+	for_each_bdi_wb_ctx(bdi, bdi_wb_ctx)
-+		collect_wb_stats(stats, &bdi_wb_ctx->wb);
- }
- #endif
- 
-@@ -150,7 +157,7 @@ static int bdi_debug_stats_show(struct seq_file *m, void *v)
- 		   stats.nr_io,
- 		   stats.nr_more_io,
- 		   stats.nr_dirty_time,
--		   !list_empty(&bdi->bdi_list), bdi->wb_ctx[0]->wb.state);
-+		   !list_empty(&bdi->bdi_list), stats.state);
- 
- 	return 0;
- }
-@@ -195,35 +202,40 @@ static int cgwb_debug_stats_show(struct seq_file *m, void *v)
- {
- 	struct backing_dev_info *bdi = m->private;
- 	struct bdi_writeback *wb;
-+	struct bdi_writeback_ctx *bdi_wb_ctx;
- 	unsigned long background_thresh;
- 	unsigned long dirty_thresh;
-+	struct wb_stats stats;
- 
- 	global_dirty_limits(&background_thresh, &dirty_thresh);
-+	stats.dirty_thresh = dirty_thresh;
- 
- 	rcu_read_lock();
--	list_for_each_entry_rcu(wb, &bdi->wb_ctx[0]->wb_list, bdi_node) {
--		struct wb_stats stats = { .dirty_thresh = dirty_thresh };
--
--		if (!wb_tryget(wb))
--			continue;
--
--		collect_wb_stats(&stats, wb);
--
--		/*
--		 * Calculate thresh of wb in writeback cgroup which is min of
--		 * thresh in global domain and thresh in cgroup domain. Drop
--		 * rcu lock because cgwb_calc_thresh may sleep in
--		 * cgroup_rstat_flush. We can do so here because we have a ref.
--		 */
--		if (mem_cgroup_wb_domain(wb)) {
--			rcu_read_unlock();
--			stats.wb_thresh = min(stats.wb_thresh, cgwb_calc_thresh(wb));
--			rcu_read_lock();
-+	for_each_bdi_wb_ctx(bdi, bdi_wb_ctx) {
-+		list_for_each_entry_rcu(wb, &bdi_wb_ctx->wb_list, bdi_node) {
-+			if (!wb_tryget(wb))
-+				continue;
-+
-+			collect_wb_stats(&stats, wb);
-+
-+			/*
-+			 * Calculate thresh of wb in writeback cgroup which is
-+			 * min of thresh in global domain and thresh in cgroup
-+			 * domain. Drop rcu lock because cgwb_calc_thresh may
-+			 * sleep in cgroup_rstat_flush. We can do so here
-+			 * because we have a ref.
-+			 */
-+			if (mem_cgroup_wb_domain(wb)) {
-+				rcu_read_unlock();
-+				stats.wb_thresh = min(stats.wb_thresh,
-+						      cgwb_calc_thresh(wb));
-+				rcu_read_lock();
-+			}
-+
-+			wb_stats_show(m, wb, &stats);
-+
-+			wb_put(wb);
- 		}
--
--		wb_stats_show(m, wb, &stats);
--
--		wb_put(wb);
+ 	for (i = 0; i < ap->num_folios; i++) {
+@@ -1833,8 +1832,8 @@ static void fuse_writepage_finish(struct fuse_writepage_args *wpa)
+ 		 * contention and noticeably improves performance.
+ 		 */
+ 		iomap_finish_folio_write(inode, ap->folios[i], 1);
+-		dec_wb_stat(&bdi->wb_ctx[0]->wb, WB_WRITEBACK);
+-		wb_writeout_inc(&bdi->wb_ctx[0]->wb);
++		bdi_wb_stat_mod(inode, -1);
++		bdi_wb_writeout_inc(inode);
  	}
- 	rcu_read_unlock();
  
+ 	wake_up(&fi->page_waitq);
+@@ -2017,7 +2016,7 @@ static void fuse_writepage_args_page_fill(struct fuse_writepage_args *wpa, struc
+ 	ap->descs[folio_index].offset = offset;
+ 	ap->descs[folio_index].length = len;
+ 
+-	inc_wb_stat(&inode_to_bdi(inode)->wb_ctx[0]->wb, WB_WRITEBACK);
++	bdi_wb_stat_mod(inode, 1);
+ }
+ 
+ static struct fuse_writepage_args *fuse_writepage_args_setup(struct folio *folio,
+diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+index bb35f8fa4973..fb042e593c16 100644
+--- a/include/linux/backing-dev.h
++++ b/include/linux/backing-dev.h
+@@ -46,6 +46,9 @@ extern struct list_head bdi_list;
+ 
+ extern struct workqueue_struct *bdi_wq;
+ 
++static inline struct bdi_writeback_ctx *
++fetch_bdi_writeback_ctx(struct inode *inode);
++
+ static inline bool wb_has_dirty_io(struct bdi_writeback *wb)
+ {
+ 	return test_bit(WB_has_dirty_io, &wb->state);
+@@ -103,6 +106,20 @@ static inline s64 wb_stat_sum(struct bdi_writeback *wb, enum wb_stat_item item)
+ 
+ extern void wb_writeout_inc(struct bdi_writeback *wb);
+ 
++static inline void bdi_wb_stat_mod(struct inode *inode, s64 amount)
++{
++	struct bdi_writeback_ctx *bdi_wb_ctx = fetch_bdi_writeback_ctx(inode);
++
++	wb_stat_mod(&bdi_wb_ctx->wb, WB_WRITEBACK, amount);
++}
++
++static inline void bdi_wb_writeout_inc(struct inode *inode)
++{
++	struct bdi_writeback_ctx *bdi_wb_ctx = fetch_bdi_writeback_ctx(inode);
++
++	wb_writeout_inc(&bdi_wb_ctx->wb);
++}
++
+ /*
+  * maximal error of a stat counter.
+  */
 -- 
 2.25.1
 
