@@ -1,126 +1,214 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58BB62D8377
-	for <linux-nfs@vger.kernel.org>; Mon, 27 Oct 2025 19:23:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF0051BBBE5;
+	Tue, 28 Oct 2025 00:39:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1761593017; cv=none; b=NHt/nyJoENwNCl7FNkJxkdww/jncaxR9hThikhbqUt1Hur+CKlEhCMKcJUVHLGvRubIVFr6yvu/BauXi1AT2mfaczQGBWyyVI1MAGCMpjRD7IdHN2LZEjeTSqPIRla2auLkd+y45YW3i2XsbFLq7YecaahIgQp8FWTEMvWdXlb4=
+	t=1761611985; cv=none; b=Tg2NRE3e1ly/eY+A/nKrP3NqaJhhYcJIqiz4oOg7DHeJx+iRxlq5OeB+MPeiJ/7Cfzf2ciXNGHthFYKtAY2XdA269U4vjxmsgNqqddmcbg9p9g5LC8+ixHF43Wc1g2LuPJM4ZmV5lCNoEcxv4snkcdNtKwkhfPZSjGz5UlJDWn0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1761593017; c=relaxed/simple;
-	bh=i0kHG/J0+E6y8y10HJ2FKRrr+Utx7tTSzBjSxkxGYM0=;
+	s=arc-20240116; t=1761611985; c=relaxed/simple;
+	bh=ZVXaPhzmEw0ZPzgy15ZACehDC+fhT4VJvZoXinvQZWg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=F5++dI/wKFynIRF69nRd/uPE3PSYy3135V70KsMc3eHEC7DeTzCGXrg9JdXJ9eB9+Bj4hBEBRH1HoiPTVZAzV69ACnIlVmvBBAJelwBExmIeQuGtQPoaWEtMAKJt7t6OI+CZyY/UPUs5JcCQDOYaigfL98kxhW80Lu+/7cx2rR0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=YHS1HHbD; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	 MIME-Version:Content-Type; b=M+/fSH5g6Dkh7D0EtaC1bjWVFJzO/iYbdmg2k13Hfo6RVjqkQAsIfNlvT0cBDXw+XmAOANSWN0VV93wCFuxSXIKPBHfltFxWT9SQlztANXKnbGnsooezZP2W9qk5mnzq6dtJ7wv/uTktKCnH1WmpiKX8xiTxtO2aT36efsjmkcM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OYWzFr5F; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="YHS1HHbD"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1761593013;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=saU9BKoY4uam2td03r40a3b0Q/3pC3WtZrqwh9S1bDg=;
-	b=YHS1HHbDw0GY4O8lRgH8tyksEcluUWao/rTKwhM7+dRRPFiAPNYYIGktNWtGgLq6aTL/92
-	jSzZJr93IUTpi9+TXeskNahOx4ihi4k7/tlRb7OZwfgAGzIQhMrYCWfQfSnJ6UqwFe7Yo+
-	xTo0JDcP/QxhWkqaOjTRBa5i+EetbxI=
-Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-608-v7HlZqSGPOOAv2WcmsKkAA-1; Mon,
- 27 Oct 2025 15:23:27 -0400
-X-MC-Unique: v7HlZqSGPOOAv2WcmsKkAA-1
-X-Mimecast-MFC-AGG-ID: v7HlZqSGPOOAv2WcmsKkAA_1761593001
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 551431800D86;
-	Mon, 27 Oct 2025 19:23:21 +0000 (UTC)
-Received: from okorniev-mac.redhat.com (unknown [10.22.89.72])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 5F30130001A7;
-	Mon, 27 Oct 2025 19:23:20 +0000 (UTC)
-From: Olga Kornievskaia <okorniev@redhat.com>
-To: trondmy@kernel.org,
-	anna@kernel.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 1/3] NFSv4.1: pass transport for callback shutdown
-Date: Mon, 27 Oct 2025 15:23:16 -0400
-Message-ID: <20251027192318.86366-2-okorniev@redhat.com>
-In-Reply-To: <20251027192318.86366-1-okorniev@redhat.com>
-References: <20251027192318.86366-1-okorniev@redhat.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OYWzFr5F"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 85B56C4CEFB;
+	Tue, 28 Oct 2025 00:39:43 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1761611984;
+	bh=ZVXaPhzmEw0ZPzgy15ZACehDC+fhT4VJvZoXinvQZWg=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=OYWzFr5FwTZeqyPQm+8LFJr2fFnfmTGXaPXmRjLyu8MbKRnSO8RN3pzzN5nquaU9O
+	 ibAFHPEqTMEcHYVsmFaF9+9Vb5rcsaA7OnCUWO1ACh7RfZM8qiofzvEo8z68lXdWAk
+	 i+vuIh8OF9Mzv9Ny1pYSXrBscpWPGYO3zDBN/oJzOuRO/Vf2a839kZ6yd3z3O3j+fK
+	 8JpM3lBVyGAmGoMOXpSygSl2NanrJRR8WOtEqrC3yWQ5iksyc2BPWU94vbPC5YSKmi
+	 pBkRm1/3a1Bxv3dWcQG4QCGwnofOqYZPrQUmqVVevfwK//vVMyTWXl8TcROI6FzhHb
+	 hMQc1QpAEBlag==
+From: Sasha Levin <sashal@kernel.org>
+To: patches@lists.linux.dev,
+	stable@vger.kernel.org
+Cc: Joshua Watt <jpewhacker@gmail.com>,
+	Anna Schumaker <anna.schumaker@oracle.com>,
+	Sasha Levin <sashal@kernel.org>,
+	trondmy@kernel.org,
+	anna@kernel.org,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH AUTOSEL 6.17-5.4] NFS4: Fix state renewals missing after boot
+Date: Mon, 27 Oct 2025 20:38:46 -0400
+Message-ID: <20251028003940.884625-2-sashal@kernel.org>
+X-Mailer: git-send-email 2.51.0
+In-Reply-To: <20251028003940.884625-1-sashal@kernel.org>
+References: <20251028003940.884625-1-sashal@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+X-stable: review
+X-Patchwork-Hint: Ignore
+X-stable-base: Linux 6.17.5
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-When we are setting up the 4.1 callback server, we pass in
-the appropriate rpc_xprt transport pointer with which to associate
-the callback server structure. Similarly, pass in the rpc_xprt
-pointer for when we are shutting down the callback. This will be
-used to make sure that we free the server structure and then clear
-the rpc_xprt's bc_server pointer in a safe manner.
+From: Joshua Watt <jpewhacker@gmail.com>
 
-Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
+[ Upstream commit 9bb3baa9d1604cd20f49ae7dac9306b4037a0e7a ]
+
+Since the last renewal time was initialized to 0 and jiffies start
+counting at -5 minutes, any clients connected in the first 5 minutes
+after a reboot would have their renewal timer set to a very long
+interval. If the connection was idle, this would result in the client
+state timing out on the server and the next call to the server would
+return NFS4ERR_BADSESSION.
+
+Fix this by initializing the last renewal time to the current jiffies
+instead of 0.
+
+Signed-off-by: Joshua Watt <jpewhacker@gmail.com>
+Signed-off-by: Anna Schumaker <anna.schumaker@oracle.com>
+Signed-off-by: Sasha Levin <sashal@kernel.org>
 ---
- fs/nfs/callback.c   | 2 +-
- fs/nfs/callback.h   | 3 ++-
- fs/nfs/nfs4client.c | 9 +++++++--
- 3 files changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index c8b837006bb2..8b674ee093a6 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -258,7 +258,7 @@ int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt)
- /*
-  * Kill the callback thread if it's no longer being used.
-  */
--void nfs_callback_down(int minorversion, struct net *net)
-+void nfs_callback_down(int minorversion, struct net *net, struct rpc_xprt *xprt)
- {
- 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
- 	struct svc_serv *serv;
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 154a6ed1299f..8809f93d82c0 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -188,7 +188,8 @@ extern __be32 nfs4_callback_recall(void *argp, void *resp,
- 				   struct cb_process_state *cps);
- #if IS_ENABLED(CONFIG_NFS_V4)
- extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
--extern void nfs_callback_down(int minorversion, struct net *net);
-+extern void nfs_callback_down(int minorversion, struct net *net,
-+			      struct rpc_xprt *xprt);
- #endif /* CONFIG_NFS_V4 */
- /*
-  * nfs41: Callbacks are expected to not cause substantial latency,
+LLM Generated explanations, may be completely bogus:
+
+Based on my comprehensive analysis using semantic code analysis tools
+and repository examination, here is my assessment:
+
+## **ANSWER: YES**
+
+This commit should **DEFINITELY** be backported to stable kernel trees.
+
+---
+
+## **DETAILED ANALYSIS**
+
+### **1. Semantic Code Analysis Performed**
+
+I used the following tools to analyze this commit:
+
+- **mcp__semcode__find_function**: Located `nfs4_alloc_client` function
+  definition and structure
+- **mcp__semcode__find_type**: Examined the `nfs_client` struct to
+  understand the `cl_last_renewal` field
+- **mcp__semcode__find_callers**: Found that
+  `nfs4_schedule_state_renewal` is called by 5 functions
+- **mcp__semcode__grep_functions**: Identified all 5 functions that use
+  `cl_last_renewal` field
+- **Git analysis**: Traced the field's history back to 2006 (kernel
+  v2.6.19)
+
+### **2. Code Changes Analysis**
+
+The fix is a **single line addition** in `fs/nfs/nfs4client.c:224`:
+```c
+clp->cl_last_renewal = jiffies;
+```
+
+This initialization occurs in `nfs4_alloc_client()`, which is called
+indirectly through the function pointer `.alloc_client` in the
+`nfs_subversion` operations structure (found at
+`fs/nfs/nfs4proc.c:11032`).
+
+### **3. Bug Impact Assessment**
+
+**How cl_last_renewal is Used:**
+
+The field is critical in `nfs4_schedule_state_renewal()`
+(fs/nfs/nfs4renewd.c:119-120):
+```c
+timeout = (2 * clp->cl_lease_time) / 3 + (long)clp->cl_last_renewal -
+(long)jiffies;
+```
+
+**The Bug:**
+- `jiffies` starts at `INITIAL_JIFFIES` (approximately -300*HZ, or -5
+  minutes)
+- `cl_last_renewal` was initialized to 0 (implicit, never explicitly
+  set)
+- During the first 5 minutes after boot: `timeout = (2*lease_time)/3 + 0
+  - (-300*HZ)`
+- This **adds an extra 5 minutes** to the renewal timeout
+
+**User Impact:**
+- Affects **all NFSv4 clients** created in the first 5 minutes after
+  system boot
+- If the connection is idle during this period, the client state **times
+  out on the server**
+- Next NFS operation returns **NFS4ERR_BADSESSION**
+- Users experience connection failures requiring session re-
+  establishment
+
+### **4. Scope and Risk Analysis**
+
+**Scope:**
+- **Extremely contained**: One line, one function, one subsystem
+- **No dependencies**: Doesn't rely on any new kernel features
+- **No API changes**: Internal field initialization only
+- **Pattern-consistent**: `nfs4_init_ds_session`
+  (fs/nfs/nfs4session.c:643) already uses the same initialization
+  pattern
+
+**Risk:**
+- **Minimal regression risk**: Just initializing a timestamp field
+  correctly
+- **Well-tested pattern**: Same initialization exists elsewhere in the
+  codebase
+
+### **5. Historical Context**
+
+- **Bug age**: Present since **2006** (kernel v2.6.19-rc1, commit
+  24c8dbbb5f777)
+- **Affects**: Nearly **20 years** of kernel releases
+- **Precedent**: Similar NFSv4 renewal bugs have been backported (e.g.,
+  commit 2c9d556d14bc8 from 2014 addressing another state renewal
+  regression)
+- **Missing tags**: No "Fixes:" or "Cc: stable@vger.kernel.org" tags
+  suggest the maintainer may not have considered stable backporting
+
+### **6. Stable Tree Compliance**
+
+✅ **Bug fix** (not a new feature)
+✅ **Important** (causes user-facing failures)
+✅ **Small and contained** (one line)
+✅ **No architectural changes**
+✅ **Low regression risk**
+✅ **Widely used subsystem** (NFSv4 is critical in enterprise
+environments)
+✅ **Long-standing bug** (affects many LTS kernels)
+
+---
+
+## **CONCLUSION**
+
+This is a **textbook example** of a commit that should be backported:
+- Fixes a real, user-facing bug (NFS4ERR_BADSESSION errors)
+- Extremely simple one-line fix with no dependencies
+- Affects a critical subsystem (NFSv4 client)
+- Bug has existed for ~20 years, affecting many stable releases
+- Minimal risk of regression
+- Follows established initialization patterns in the codebase
+
+The lack of explicit stable tags appears to be an oversight rather than
+an intentional decision to exclude it from stable trees.
+
+ fs/nfs/nfs4client.c | 1 +
+ 1 file changed, 1 insertion(+)
+
 diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 5998d6bd8a4f..ab38efd020b0 100644
+index 6fddf43d729c8..5998d6bd8a4f4 100644
 --- a/fs/nfs/nfs4client.c
 +++ b/fs/nfs/nfs4client.c
-@@ -280,8 +280,13 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
-  */
- static void nfs4_destroy_callback(struct nfs_client *clp)
- {
--	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
--		nfs_callback_down(clp->cl_mvops->minor_version, clp->cl_net);
-+	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state)) {
-+		struct rpc_xprt *xprt;
-+
-+		xprt = rcu_dereference_raw(clp->cl_rpcclient->cl_xprt);
-+		nfs_callback_down(clp->cl_mvops->minor_version, clp->cl_net,
-+				  xprt);
-+	}
- }
- 
- static void nfs4_shutdown_client(struct nfs_client *clp)
+@@ -222,6 +222,7 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ 	clp->cl_state = 1 << NFS4CLNT_LEASE_EXPIRED;
+ 	clp->cl_mvops = nfs_v4_minor_ops[cl_init->minorversion];
+ 	clp->cl_mig_gen = 1;
++	clp->cl_last_renewal = jiffies;
+ #if IS_ENABLED(CONFIG_NFS_V4_1)
+ 	init_waitqueue_head(&clp->cl_lock_waitq);
+ #endif
 -- 
-2.47.1
+2.51.0
 
