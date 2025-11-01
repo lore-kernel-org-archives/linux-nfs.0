@@ -1,58 +1,58 @@
 Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 756D82F99B5
-	for <linux-nfs@vger.kernel.org>; Sat,  1 Nov 2025 18:28:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 25B942FB963
+	for <linux-nfs@vger.kernel.org>; Sat,  1 Nov 2025 18:29:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.165.32
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762021740; cv=none; b=uoL6h0RalKNzZ14im/SMM0Uv3VFnIRnyPiNFO2ga0AhO54/IQF/T7heEoiS9IS7mc2uR5ngt+6+rKtPVp9ZEe3xBEIq1LOb+narTiQAHobYhaDUu/IhivhDZgZW7VHimj6UJFI5g+YSQfI96q5DZaQodTkmylLNuAhbSPn2GREg=
+	t=1762021756; cv=none; b=RrLG0WgYQon2Rb9gsg5PMlddbXKOv5lM+Cun/WGdz1QGEY8HDle/g2uDYo13HjzO4VW9bwkANWXw6JebKFelLgR5SIXCMExCClLOHN6Qa41x9VVqDQ5kTJEKCPNkdwprBaCdPEbeGwPpR4FQLEtwK7ERtday8UcgudFegYgQQRU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762021740; c=relaxed/simple;
-	bh=oFr/VtuuWbwN6qUQty3lE/dbyhA8mbdFi/Wh1kDJuL0=;
+	s=arc-20240116; t=1762021756; c=relaxed/simple;
+	bh=yzg29q6eqGg/DloI83uOvTew0wD+Sj/0/4fqLqSOBSA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Rve0f1g/pPsqbVh3PW/yy29Ov6b4VkBYAXhnERkbkaG30hN8+ohB52HRFH3prLrtv4DK22Mvcs6iGRjxtZZz0+KpFP6/XWpowYM/0ROMJPVOB7v89yjdA9JegvlxH6iqIr82bvn6NevLHBVc7e1AJNguzRZFT9EXwCcWzM0xVpU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=nvhAxYdd; arc=none smtp.client-ip=205.220.165.32
+	 MIME-Version; b=sOZYoXtd8TJIv8qDlXtJuXNqpW1RGEUz1JYsVAYue40OS5wG3vrqRHGO/ZvJ1jNfxLj2UHrJ4ifrTAiyVQ/Ygsanor8EwGqAK1b3g91KfNwjlumnxG1Jc+bkP6pA8J/ogUaSqc4+EDVC5ZLY4u68tQIF5iAb8guB8/uGYJN790Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=FFRBoIHW; arc=none smtp.client-ip=205.220.165.32
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="nvhAxYdd"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="FFRBoIHW"
 Received: from pps.filterd (m0246627.ppops.net [127.0.0.1])
-	by mx0b-00069f02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 5A1ISHc2002167;
-	Sat, 1 Nov 2025 18:28:43 GMT
+	by mx0b-00069f02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 5A1IPQLC031641;
+	Sat, 1 Nov 2025 18:28:40 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
 	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=corp-2025-04-25; bh=O9GUO
-	HUhkuuZtSUj8rksMJfn+0V0zeltThcsNlX5Ui4=; b=nvhAxYddoy+wDRxoqsZEQ
-	7QAYGUG7PyUVkxIQ2urZmGMPKbC543AuTssdF1cFj/8vmc2Jet3s+wc2a1AtdEMd
-	aabU6lu7vfDzBjrFyGGm+bTtkc7Dv3zC2TK828UrqUU6jpdah99YVZv5lfuz3yG3
-	A6alpstGqAEI9VyyOmaiXXdlL1yC1Zfy9wI0GJoVCZvgN08Ew9Xxm3JeSugZnEIf
-	J0GqridMeL4X2as/0qSkWX6UqTe7Hz9gu8PCUblHup5vcY7HKecP9or1HqOt14YA
-	3s5TcplXE5iCQQ8aL18S4XXByj5i8vH0k3Dn+CckDkL7mk64cShgBQcoZzCmhppp
-	g==
+	:mime-version:references:subject:to; s=corp-2025-04-25; bh=4tObf
+	pvv1lgjt7DNFMKrMoan7jpKoVQMElt/F4DJ+UY=; b=FFRBoIHWP0xZgLC+J4akv
+	r9NQLmS6A+Y2I+YtiiaBQH8vWO66zvnVysSAT+JxIzWypQ4/CNw63RwWHHCRmZ7p
+	ocqdVcq4LVl7wR8ijrhdGFNxd55erX4Q8H/yDKcnFwzuEIuB/lU2Ho6KgHajqQht
+	BN8y+Ltwx0qX86hj47HRFzwycJ7Jkh3bQPThtrtL4k8hiP2nUK5XhYxfGsnX5Pgh
+	uPj7XCptE8so/jveJsJ/dNG7EiZmEq0P5tXY3zrYADfiPUGTHQZupTKKk2uBO5h5
+	tMEZrTTxRcIE36DTX6PNq6w/by4eL/huo7zfSQRZXO/FK0ZATfAI40NpkyHSWMZ6
+	w==
 Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.appoci.oracle.com [130.35.100.223])
-	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4a5qf2r02p-1
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4a5qf2r02m-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Sat, 01 Nov 2025 18:28:42 +0000 (GMT)
+	Sat, 01 Nov 2025 18:28:40 +0000 (GMT)
 Received: from pps.filterd (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 5A1GVjQB007966;
-	Sat, 1 Nov 2025 18:28:41 GMT
+	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 5A1Gw9vx007975;
+	Sat, 1 Nov 2025 18:28:39 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 4a58na8cwr-1
+	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 4a58na8cwb-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Sat, 01 Nov 2025 18:28:41 +0000
+	Sat, 01 Nov 2025 18:28:39 +0000
 Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-	by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 5A1ISbNW035467;
-	Sat, 1 Nov 2025 18:28:41 GMT
+	by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 5A1ISbNS035467;
+	Sat, 1 Nov 2025 18:28:38 GMT
 Received: from labops-common-sca-01.us.oracle.com (labops-common-sca-01.us.oracle.com [10.132.26.161])
-	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 4a58na8cvp-4;
-	Sat, 01 Nov 2025 18:28:41 +0000
+	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 4a58na8cvp-2;
+	Sat, 01 Nov 2025 18:28:38 +0000
 From: Dai Ngo <dai.ngo@oracle.com>
 To: chuck.lever@oracle.com, jlayton@kernel.org, neilb@ownmail.net,
         okorniev@redhat.com, tom@talpey.com, hch@lst.de
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFSD: Add trace point for SCSI fencing operation.
-Date: Sat,  1 Nov 2025 11:25:20 -0700
-Message-ID: <20251101182819.651120-4-dai.ngo@oracle.com>
+Subject: [PATCH 1/3] NFSD: Fix problem with nfsd4_scsi_fence_client using the wrong reservation type
+Date: Sat,  1 Nov 2025 11:25:18 -0700
+Message-ID: <20251101182819.651120-2-dai.ngo@oracle.com>
 X-Mailer: git-send-email 2.47.3
 In-Reply-To: <20251101182819.651120-1-dai.ngo@oracle.com>
 References: <20251101182819.651120-1-dai.ngo@oracle.com>
@@ -70,101 +70,42 @@ X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 phishscore=0 malw
  mlxlogscore=999 mlxscore=0 adultscore=0 spamscore=0 bulkscore=0
  suspectscore=0 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.12.0-2510240000 definitions=main-2511010159
-X-Proofpoint-GUID: jVpu4TQIcpOcshss2G4OJB3dc8BwnLGS
-X-Authority-Analysis: v=2.4 cv=HODO14tv c=1 sm=1 tr=0 ts=6906515a b=1 cx=c_pps
+X-Proofpoint-GUID: U5KOoKxTfeAXlQiBC-GrKswa-STOcJtw
+X-Authority-Analysis: v=2.4 cv=HODO14tv c=1 sm=1 tr=0 ts=69065158 b=1 cx=c_pps
  a=zPCbziy225d3KhSqZt3L1A==:117 a=zPCbziy225d3KhSqZt3L1A==:17
  a=6UeiqGixMTsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=yPCof4ZbAAAA:8
- a=ro0K2ivkSJ57f8edTZkA:9 cc=ntf awl=host:12123
-X-Proofpoint-ORIG-GUID: jVpu4TQIcpOcshss2G4OJB3dc8BwnLGS
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjUxMTAxMDE1OCBTYWx0ZWRfX97KRLEXkSKKT
- JI99QQ9QFFhvYSwAgqwFZbr//S8Z5Jbtli6g2CH7qSSNJeyPj+/5qo0+wpVlUEOVN3SN9JXJeha
- F/G9C6o3U9mNjnnV+86IyfWbPe8pcXT2v44+hEgj0E5Phxhd3CNR9GWhYvrEGOiYXJYffEQ9ujA
- CybFdsaarbt4831ffhFuwIJYWANZVgnE3V38QbHa1IdkdF9bDPBkHgX3RqKceZRUFCleYWydKsl
- /Bz0SRHQAS8IL0ZsArbF4Mk8d2xpqthV8qWBdfxuPtXZftoQ4vjryDsFUoRi851LUjXpuGE/IoP
- DfqjC0w8UCjBVbEPPKfa06Q/vKKUfSkhzlMhapXUPkDkenE7S+mLgyiadUqAAalj6zn4Tyf1QLI
- 5IfvFWx54hJ5GbYM6OtecREo38ck8PbcorO/6lhnt4876xMoa6o=
+ a=mu5SI4wEB297gwYIvLwA:9 cc=ntf awl=host:12123
+X-Proofpoint-ORIG-GUID: U5KOoKxTfeAXlQiBC-GrKswa-STOcJtw
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjUxMTAxMDE1OCBTYWx0ZWRfX2wsWlxJqU0SM
+ qEpWZHsuO/aVe0nTPRyg+OcOiyLtbjMor5roX6ZAsR6ao9VGQTWVSoGxLOoHO+tmt2mGPt7yNVm
+ n7f4wc84vZErW88b6B7HiolNwSS2nVS90qEcwvrCBsghp8a9jI4XYZdyazzGfD5clN7uRWViftw
+ BYIOnjJJx3AOoYxqnhkVn79zi7CvQa70UXqkZrzrdKYPkiMWvhYzLGk+cq56GSmukE8T0CqOKZc
+ zOBQHXrEns+NHxAOPna8xQzhUuayV7v0nbDzyNoJAvEBF/QJNElFt+XStrEg2+SKpIZrVrO/t8J
+ DARaCCLhTLJ4LvfcVK5toKT6Or1awY+Yvvsh+9cApRYy9zD4sOr5SU9pyRanJCwHWLoN4+G9it6
+ GeXUyho4uIBXiI5AUUpFyy7Oo5GwurYvMKzQB1dCdT1iIUCIRu8=
 
-Add trace point to print client IP address, device name and
-status of SCSI pr_preempt command.
+The reservation type argument for the pr_preempt call should match the
+one used in nfsd4_block_get_device_info_scsi.
 
+Fixes: f99d4fbdae67 ("nfsd: add SCSI layout support")
 Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 ---
- fs/nfsd/blocklayout.c |  5 ++++-
- fs/nfsd/trace.h       | 36 ++++++++++++++++++++++++++++++++++++
- 2 files changed, 40 insertions(+), 1 deletion(-)
+ fs/nfsd/blocklayout.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index 13ff7f474190..5fb0b6d59fdc 100644
+index fde5539cf6a6..13ff7f474190 100644
 --- a/fs/nfsd/blocklayout.c
 +++ b/fs/nfsd/blocklayout.c
-@@ -13,6 +13,7 @@
- #include "pnfs.h"
- #include "filecache.h"
- #include "vfs.h"
-+#include "trace.h"
- 
- #define NFSDDBG_FACILITY	NFSDDBG_PNFS
- 
-@@ -340,9 +341,11 @@ nfsd4_scsi_fence_client(struct nfs4_layout_stateid *ls, struct nfsd_file *file)
- {
- 	struct nfs4_client *clp = ls->ls_stid.sc_client;
+@@ -342,7 +342,7 @@ nfsd4_scsi_fence_client(struct nfs4_layout_stateid *ls, struct nfsd_file *file)
  	struct block_device *bdev = file->nf_file->f_path.mnt->mnt_sb->s_bdev;
-+	int status;
  
--	bdev->bd_disk->fops->pr_ops->pr_preempt(bdev, NFSD_MDS_PR_KEY,
-+	status = bdev->bd_disk->fops->pr_ops->pr_preempt(bdev, NFSD_MDS_PR_KEY,
- 			nfsd4_scsi_pr_key(clp), PR_EXCLUSIVE_ACCESS_REG_ONLY, true);
-+	trace_nfsd_pnfs_fence(clp, bdev->bd_disk->disk_name, status);
+ 	bdev->bd_disk->fops->pr_ops->pr_preempt(bdev, NFSD_MDS_PR_KEY,
+-			nfsd4_scsi_pr_key(clp), 0, true);
++			nfsd4_scsi_pr_key(clp), PR_EXCLUSIVE_ACCESS_REG_ONLY, true);
  }
  
  const struct nfsd4_layout_ops scsi_layout_ops = {
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 6e2c8e2aab10..6a8c840bcf2a 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -2613,6 +2613,42 @@ DEFINE_EVENT(nfsd_vfs_getattr_class, __name,		\
- DEFINE_NFSD_VFS_GETATTR_EVENT(nfsd_vfs_getattr);
- DEFINE_NFSD_VFS_GETATTR_EVENT(nfsd_vfs_statfs);
- 
-+DECLARE_EVENT_CLASS(nfsd_pnfs_class,
-+	TP_PROTO(
-+		const struct nfs4_client *clp,
-+		const char *dev,
-+		int error
-+	),
-+	TP_ARGS(clp, dev, error),
-+	TP_STRUCT__entry(
-+		__string(dev, dev)
-+		__array(unsigned char, addr, sizeof(struct sockaddr_in6))
-+		__field(u32, error)
-+	),
-+	TP_fast_assign(
-+		memcpy(__entry->addr, &clp->cl_addr,
-+			sizeof(struct sockaddr_in6));
-+		__assign_str(dev);
-+		__entry->error = error;
-+	),
-+	TP_printk("client=%pISpc dev=%s error=%d",
-+		__entry->addr,
-+		__get_str(dev),
-+		__entry->error
-+	)
-+);
-+
-+#define DEFINE_NFSD_PNFS_ERR_EVENT(name)		\
-+DEFINE_EVENT(nfsd_pnfs_class, nfsd_pnfs_##name,	\
-+	TP_PROTO(					\
-+		const struct nfs4_client *clp,		\
-+		const char *dev,				\
-+		int error				\
-+	),						\
-+	TP_ARGS(clp, dev, error))
-+
-+DEFINE_NFSD_PNFS_ERR_EVENT(fence);
-+
- #endif /* _NFSD_TRACE_H */
- 
- #undef TRACE_INCLUDE_PATH
 -- 
 2.47.3
 
