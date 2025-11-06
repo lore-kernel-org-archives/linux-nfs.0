@@ -1,188 +1,761 @@
-Received: from fhigh-b1-smtp.messagingengine.com (fhigh-b1-smtp.messagingengine.com [202.12.124.152])
+Received: from flow-b4-smtp.messagingengine.com (flow-b4-smtp.messagingengine.com [202.12.124.139])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DA7CC21CC44;
-	Thu,  6 Nov 2025 00:55:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.152
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 844CB1C862D;
+	Thu,  6 Nov 2025 00:56:05 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.139
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762390553; cv=none; b=hIcBWydy2AemqdcEp3U2HtbeobL4NbxaeBjT6EMJ4GbLVabr+BqFz5DKRGS++vMThrOYKUtc54ceBnMK/d9oRBHGmNDN2k7aGPr9JMOvt08EZAx2fggMKw9MUiqG5ZA9Uw7M9h/f9E8+FDOIJOVsEeBMKpm4M0AYbtUu3Sfar5k=
+	t=1762390567; cv=none; b=DB5CqgBvhTZ7s1qJmMgaXQd8dCLMyWFgop3wVFxs1HjFHVObJ+9gi++4sF0MdjYoi7mWkq1sVhcMU3Q/0Pil2rEOP7sxi7xS3mmyesvk9DboXqweVYiIGksfYQV7snOr5GezT3xRreKLGCPZQjw1/BScpahWTtSsh4LVTvkWa3E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762390553; c=relaxed/simple;
-	bh=7H7QGaWvft+luniqx0UKd/bXeFRFlhwP/Jl882o/Zbc=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=SrYqBOgqw4NvSoiV/hVJjsXZETwaYe5/lXXPltcGqavQYKW5xNDetxVegqvvlMk5V1AxFM0vHsveRNBkkOPTVrT6GKkFVXN+55zTE/B3y/FRDM403AVG0155t+5++RuFODDUYN7Ij7gyVO5DMfvop/TWXhtb/NpxxG2gms5l8l8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=AYdp/zuE; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=mXCjJ22k; arc=none smtp.client-ip=202.12.124.152
+	s=arc-20240116; t=1762390567; c=relaxed/simple;
+	bh=KLe8I8s3oLGbtckFu+23hfRHg8rPWAvFBllhLA0WLbs=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=VlmSUA1x5CEddGGjbN2ot2WBMNzc/W/pE0T7PAVI/RHv4JWgjXEPaAdpcd6/QtJCFVPaVn3XQdw8kSUmOwtYDZh5ns2EMPLSFMaZHDE6IGzsrYTplYbazM/8f1wyTOif0NZFMO6WYmOACTYME46n4YtBrx1Nj9b3OABcOmThmOk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=Z3uKUAO/; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=DDF3XZ3x; arc=none smtp.client-ip=202.12.124.139
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="AYdp/zuE";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="mXCjJ22k"
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="Z3uKUAO/";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="DDF3XZ3x"
 Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id B60AC7A01B8;
-	Wed,  5 Nov 2025 19:55:50 -0500 (EST)
-Received: from phl-mailfrontend-01 ([10.202.2.162])
-  by phl-compute-04.internal (MEProxy); Wed, 05 Nov 2025 19:55:50 -0500
+	by mailflow.stl.internal (Postfix) with ESMTP id 015171300C4B;
+	Wed,  5 Nov 2025 19:56:03 -0500 (EST)
+Received: from phl-mailfrontend-02 ([10.202.2.163])
+  by phl-compute-04.internal (MEProxy); Wed, 05 Nov 2025 19:56:04 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
-	1762390550; x=1762476950; bh=6bwaOUosHeKjBD7IF9WTD2fjiqBFStNKmf8
-	+KkU1Rdk=; b=AYdp/zuEdSIxpGxEhvYzTECQjriorRNJh+Sy4gXHFGYQm8y10gR
-	LSzy6doeSKART4BdLSqMSQOZ8s2aLbsQnkjFkGCsnvRSqspmaDtXOSMR2V5JcP5O
-	kyJBCTHynVqRnsSPRYg6Qx8w05bAHpTsO3YLHj597ifQfLtluoci3DEBZg5OZQGu
-	1ABaDiKtL8ucy8sKwZdR/Dog4i5LnAJa+WMxMj+O155Dpf6n08DZfKYWeHYhH2y8
-	LtdxPpIZMMboKcUpiH2r37FiAt9xfSwSZ22EJPPN53WHTtyl3pTiUdCT/Qvcvt1s
-	lR/bbmv+Nzz/JtwE9rEsi9zI536Ns+msdkA==
+	cc:cc:content-transfer-encoding:content-type:date:date:from:from
+	:in-reply-to:in-reply-to:message-id:mime-version:references
+	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1762390563;
+	 x=1762397763; bh=mZN4W8cFkFhngHOKJMryTIcdBxwmXSZJ4ayFDNyGbHU=; b=
+	Z3uKUAO/tekelwM1WYeIg77pslGkIVua3aGl1zAKmc7BifsZXmpYA58b/er4PViq
+	nGYc9iP7NLHGfdR5fU7oMew8fBC9MJxB5ZsUUCVnAnqQ9dRPiYPWZVPd2nH8WFs/
+	vvfqAA9dKOTsl+MLE8S9foWmHIsn1cf2M0R1+IrJ4C89y+Z/UFrNM0HK7atatF68
+	huZhf8uYBPLL24oaPhjD3OUnS3OtC54rPyEidv5bNXUGatQC1Gm0fboAJfjXogEc
+	6+PHcCfXuj48iOinAaUX8Z2BJhxJigW6hu/Z0YRuuA1x0x5mev5mXmelv++6C/m+
+	Dw+A2+2WBBrnqhPkGNgvsg==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1762390550; x=
-	1762476950; bh=6bwaOUosHeKjBD7IF9WTD2fjiqBFStNKmf8+KkU1Rdk=; b=m
-	XCjJ22kJUH0chM64i4cS5/vOnJsTBqUBQNq6aOhVt02Eo/gOUbWwXJlpBjhWyudg
-	+IEp/sN3Bq2jQl6+5/Foeysb3Msbgx9yspn8oWn89H6eGUi5T/2ozOJ2n7eYxROB
-	dDwlzqBZf+C13LfvCOXLq3vgA2v/pFRkeV2KrlZRT3hJYO6duDOHc71Z1MBF7YVB
-	B53ZiOtFa7oZ0ZsXky3NtNIdenAXEOq4WWSoMHFs7wGOfFnWiQ8+6PHvSDHNvG4l
-	6EQ7iWQYtZcTJNSBP/KLeAbdQANsRqNaZWYSeYLLjFK+2+tqBIuVZUtEnS2uYs5w
-	otwHiAomEKCmSXTiISIzA==
-X-ME-Sender: <xms:FvILaWLVncfdkaMWdk73246nbmHv_psnaAR4Fwvtqd8fS8JDEqiTLQ>
-    <xme:FvILaTGczouEstYRRNZOKJB0Kv2FEh1Vhw2t6IHdO_J1gULxOmiiRHI3apnjnZz0_
-    xZxAC83pliYcrcb0ohkSIhy2IS2zTM-O08hc78oRcrerJwYow>
-X-ME-Received: <xmr:FvILaa-2-CNMz2dNBzre1pRBv_QKfT2lf0EF7ReRZugNUeXLZgKqUDyPanVkd1qIijZwpTFmX2_E1fKNJQr1majN7-DcXfbhiNdEbotgYUqb>
+	:content-type:date:date:feedback-id:feedback-id:from:from
+	:in-reply-to:in-reply-to:message-id:mime-version:references
+	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
+	:x-me-sender:x-sasl-enc; s=fm3; t=1762390563; x=1762397763; bh=m
+	ZN4W8cFkFhngHOKJMryTIcdBxwmXSZJ4ayFDNyGbHU=; b=DDF3XZ3xaucTXicG5
+	u/gwRsPMX6JsXOMhcTOWZk8qdtMp51LIiG0s5G0NW6SHVwvgQmWJxXdphLn9EoXy
+	DeXKddNEsMIt21t1XY6RSxONTkytV7G4HcSlvYIkv6ntpwcOz/htyI+rkZmY4jdH
+	0UtyM0NPlrimdNZur/MOLN5aJS/lX1P0PARIfEPnunJpvoFI4o6K7sASORiGeKiz
+	JE5WBr9VJCGNrrIR9DP2Ijl1RrlJ7DIB2rzCbf9gViHJ0y7iz3JTzE+CcelVji0q
+	9hPhBXRVtsH6mh7OniK/d+ZaWLspb/5KAPovQ6EKWAhZbV2a968yf11LbAyiJtsu
+	1j56A==
+X-ME-Sender: <xms:I_ILaSTaPRzszRFGP48Tz-3frwwUI8I-QtDe-F-G9MvecZWHEsFENg>
+    <xme:I_ILac0HhNag4_KajWBJ2RRVz8P9s0g1qgC6Azi9p8yBBBMeFhrOgaVhIdX7WxGXC
+    1q1TAl9CvfpAPWjIOu6BfRyGYDVGbxc8Yi0GX2xpDCSfvYH1A>
+X-ME-Received: <xmr:I_ILac3FW9eCAh8NgKju6dDdkpTlCGWTBsT6Nb-YXj8Y_6Iub7tw_ypOn5kYPMf79VOiASBHBeLM-h1QWJMGyDTEC7m9Qrj3U44ZJ3R836cE>
 X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeeffedrtdeggddukeehgedtucetufdoteggodetrf
     dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
     rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
-    gurheptgfgggfhvfevufgjfhffkfhrsehtqhertddttdejnecuhfhrohhmpefpvghilheu
+    gurhephffvvefufffkofgjfhhrggfgsedtkeertdertddtnecuhfhrohhmpefpvghilheu
     rhhofihnuceonhgvihhlsgesohifnhhmrghilhdrnhgvtheqnecuggftrfgrthhtvghrnh
-    epvdeuteelkeejkeevteetvedtkeegleduieeftdeftefgtddtleejgfelgfevffeinecu
-    ffhomhgrihhnpehkvghrnhgvlhdrohhrghenucevlhhushhtvghrufhiiigvpedtnecurf
-    grrhgrmhepmhgrihhlfhhrohhmpehnvghilhgssehofihnmhgrihhlrdhnvghtpdhnsggp
-    rhgtphhtthhopeelpdhmohguvgepshhmthhpohhuthdprhgtphhtthhopehsthgrsghlvg
-    esvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehlihhnuhigqdhnfhhssehv
-    ghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtohepthhomhesthgrlhhpvgihrdgtoh
-    hmpdhrtghpthhtohepohhkohhrnhhivghvsehrvgguhhgrthdrtghomhdprhgtphhtthho
-    pegurghirdhnghhosehorhgrtghlvgdrtghomhdprhgtphhtthhopegthhhutghkrdhlvg
-    hvvghrsehorhgrtghlvgdrtghomhdprhgtphhtthhopehsnhhithiivghrsehkvghrnhgv
-    lhdrohhrghdprhgtphhtthhopehjlhgrhihtohhnsehkvghrnhgvlhdrohhrghdprhgtph
-    htthhopegtvghlsehkvghrnhgvlhdrohhrgh
-X-ME-Proxy: <xmx:FvILabK4_AFB466RbnYVeDiuZmkDo9o5yn3mZSgAt3SRwTUfYhQ0yA>
-    <xmx:FvILaQuMqU8dtPLUSk5R8XOiRLNnctF8Smox9s_CPXNECyJj8VG1Ig>
-    <xmx:FvILaaBp8lrZEhZxXruy4lKmZKhSDP8IKesN1wRYuPtLOR6Hlq6c4g>
-    <xmx:FvILaQPyQhc5QHsBMVdXSVyqSAAkFHatPPD5XO-stuLkGpk5gqmWlA>
-    <xmx:FvILabo4z7WKdpBB_GveH2GUXd020-LvXYYTVWubVmRU7J0eItj-bGZM>
+    epveevkeffudeuvefhieeghffgudektdelkeejiedtjedugfeukedvkeffvdefvddunecu
+    vehluhhsthgvrhfuihiivgepvdenucfrrghrrghmpehmrghilhhfrhhomhepnhgvihhlsg
+    esohifnhhmrghilhdrnhgvthdpnhgspghrtghpthhtohepgedtpdhmohguvgepshhmthhp
+    ohhuthdprhgtphhtthhopehvihhrohesiigvnhhivhdrlhhinhhugidrohhrghdruhhkpd
+    hrtghpthhtohepshgvlhhinhhugiesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphht
+    thhopehlihhnuhigqdigfhhssehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtoh
+    eplhhinhhugidquhhnihhonhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphht
+    thhopehlihhnuhigqdhsvggtuhhrihhthidqmhhoughulhgvsehvghgvrhdrkhgvrhhnvg
+    hlrdhorhhgpdhrtghpthhtoheplhhinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdr
+    ohhrghdprhgtphhtthhopehlihhnuhigqdhkvghrnhgvlhesvhhgvghrrdhkvghrnhgvlh
+    drohhrghdprhgtphhtthhopehlihhnuhigqdhfshguvghvvghlsehvghgvrhdrkhgvrhhn
+    vghlrdhorhhgpdhrtghpthhtoheplhhinhhugidqtghifhhssehvghgvrhdrkhgvrhhnvg
+    hlrdhorhhg
+X-ME-Proxy: <xmx:I_ILabsH9LmS8XvMU7lJGazFqHsH_geuOk-HxEHohQZ8xu92xJl1Ew>
+    <xmx:I_ILadDjzXEgxW_8keDP-iDDC4fwLCs9XOs0SvCw4rSGrpksqWs1fQ>
+    <xmx:I_ILaf_t8ybrh_u71Z5_EOcHHamfOvfWuKoofw9o-P2rqUSEelGA8Q>
+    <xmx:I_ILaT6E_CIUQfIYZvZyZRXz0CXobhfaqGBfDlBGdHp312DFDhnLxQ>
+    <xmx:I_ILacyJxRk3L9OU_xFL8gnObjykfHPkCR8zUYWwjNgyRD2Ng3ukqze4>
 Feedback-ID: iab3e480c:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 5 Nov 2025 19:55:47 -0500 (EST)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+ 5 Nov 2025 19:55:53 -0500 (EST)
+From: NeilBrown <neilb@ownmail.net>
+To: "Alexander Viro" <viro@zeniv.linux.org.uk>,
+	"Christian Brauner" <brauner@kernel.org>,
+	"Amir Goldstein" <amir73il@gmail.com>
+Cc: "Jan Kara" <jack@suse.cz>,	linux-fsdevel@vger.kernel.org,
+	Jeff Layton <jlayton@kernel.org>,	Chris Mason <clm@fb.com>,
+	David Sterba <dsterba@suse.com>,	David Howells <dhowells@redhat.com>,
+	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+	"Rafael J. Wysocki" <rafael@kernel.org>,
+	Danilo Krummrich <dakr@kernel.org>,	Tyler Hicks <code@tyhicks.com>,
+	Miklos Szeredi <miklos@szeredi.hu>,	Chuck Lever <chuck.lever@oracle.com>,
+	Olga Kornievskaia <okorniev@redhat.com>,	Dai Ngo <Dai.Ngo@oracle.com>,
+	Namjae Jeon <linkinjeon@kernel.org>,	Steve French <smfrench@gmail.com>,
+	Sergey Senozhatsky <senozhatsky@chromium.org>,
+	Carlos Maiolino <cem@kernel.org>,
+	John Johansen <john.johansen@canonical.com>,
+	Paul Moore <paul@paul-moore.com>,	James Morris <jmorris@namei.org>,
+	"Serge E. Hallyn" <serge@hallyn.com>,
+	Stephen Smalley <stephen.smalley.work@gmail.com>,
+	Ondrej Mosnacek <omosnace@redhat.com>,	Mateusz Guzik <mjguzik@gmail.com>,
+	Lorenzo Stoakes <lorenzo.stoakes@oracle.com>,
+	Stefan Berger <stefanb@linux.ibm.com>,
+	"Darrick J. Wong" <djwong@kernel.org>,	linux-kernel@vger.kernel.org,
+	netfs@lists.linux.dev,	ecryptfs@vger.kernel.org,
+	linux-nfs@vger.kernel.org,	linux-unionfs@vger.kernel.org,
+	linux-cifs@vger.kernel.org,	linux-xfs@vger.kernel.org,
+	linux-security-module@vger.kernel.org,	selinux@vger.kernel.org
+Subject: [PATCH v5 09/14] VFS/nfsd/ovl: introduce start_renaming() and end_renaming()
+Date: Thu,  6 Nov 2025 11:50:53 +1100
+Message-ID: <20251106005333.956321-10-neilb@ownmail.net>
+X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
+In-Reply-To: <20251106005333.956321-1-neilb@ownmail.net>
+References: <20251106005333.956321-1-neilb@ownmail.net>
+Reply-To: NeilBrown <neil@brown.name>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
- "Chuck Lever" <chuck.lever@oracle.com>, "Mike Snitzer" <snitzer@kernel.org>,
- stable@vger.kernel.org
-Subject: Re: [PATCH v10 2/5] NFSD: Make FILE_SYNC WRITEs comply with spec
-In-reply-to: <20251105192806.77093-3-cel@kernel.org>
-References: <20251105192806.77093-1-cel@kernel.org>,
- <20251105192806.77093-3-cel@kernel.org>
-Date: Thu, 06 Nov 2025 11:55:45 +1100
-Message-id: <176239054580.634289.78476170437073732@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+Content-Transfer-Encoding: 8bit
 
-On Thu, 06 Nov 2025, Chuck Lever wrote:
-> From: Chuck Lever <chuck.lever@oracle.com>
->=20
-> Mike noted that when NFSD responds to an NFS_FILE_SYNC WRITE, it
-> does not also persist file time stamps. To wit, Section 18.32.3
-> of RFC 8881 mandates:
->=20
-> > The client specifies with the stable parameter the method of how
-> > the data is to be processed by the server. If stable is
-> > FILE_SYNC4, the server MUST commit the data written plus all file
-> > system metadata to stable storage before returning results. This
-> > corresponds to the NFSv2 protocol semantics. Any other behavior
-> > constitutes a protocol violation. If stable is DATA_SYNC4, then
-> > the server MUST commit all of the data to stable storage and
-> > enough of the metadata to retrieve the data before returning.
->=20
-> Commit 3f3503adb332 ("NFSD: Use vfs_iocb_iter_write()") replaced:
->=20
-> -		flags |=3D RWF_SYNC;
->=20
-> with:
->=20
-> +		kiocb.ki_flags |=3D IOCB_DSYNC;
->=20
-> which appears to be correct given:
->=20
-> 	if (flags & RWF_SYNC)
-> 		kiocb_flags |=3D IOCB_DSYNC;
->=20
-> in kiocb_set_rw_flags(). However the author of that commit did not
+From: NeilBrown <neil@brown.name>
 
-"the author and reviewers of that commit"
+start_renaming() combines name lookup and locking to prepare for rename.
+It is used when two names need to be looked up as in nfsd and overlayfs -
+cases where one or both dentries are already available will be handled
+separately.
 
-Reviewed-by: NeilBrown <neil@brown.name>
+__start_renaming() avoids the inode_permission check and hash
+calculation and is suitable after filename_parentat() in do_renameat2().
+It subsumes quite a bit of code from that function.
 
-Thanks,
-NeilBrown
+start_renaming() does calculate the hash and check X permission and is
+suitable elsewhere:
+- nfsd_rename()
+- ovl_rename()
 
+In ovl, ovl_do_rename_rd() is factored out of ovl_do_rename(), which
+itself will be gone by the end of the series.
 
-> appreciate that the previous line in kiocb_set_rw_flags() results
-> in IOCB_SYNC also being set:
->=20
-> 	kiocb_flags |=3D (__force int) (flags & RWF_SUPPORTED);
->=20
-> RWF_SUPPORTED contains RWF_SYNC, and RWF_SYNC is the same bit as
-> IOCB_SYNC. Reviewers at the time did not catch the omission.
->=20
-> Reported-by: Mike Snitzer <snitzer@kernel.org>
-> Closes: https://lore.kernel.org/linux-nfs/20251018005431.3403-1-cel@kernel.=
-org/T/#t
-> Reviewed-by: Jeff Layton <jlayton@kernel.org>
-> Fixes: 3f3503adb332 ("NFSD: Use vfs_iocb_iter_write()")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  fs/nfsd/vfs.c | 14 ++++++++++++--
->  1 file changed, 12 insertions(+), 2 deletions(-)
->=20
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index f537a7b4ee01..5333d49910d9 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1314,8 +1314,18 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh=
- *fhp,
->  		stable =3D NFS_UNSTABLE;
->  	init_sync_kiocb(&kiocb, file);
->  	kiocb.ki_pos =3D offset;
-> -	if (stable && !fhp->fh_use_wgather)
-> -		kiocb.ki_flags |=3D IOCB_DSYNC;
-> +	if (likely(!fhp->fh_use_wgather)) {
-> +		switch (stable) {
-> +		case NFS_FILE_SYNC:
-> +			/* persist data and timestamps */
-> +			kiocb.ki_flags |=3D IOCB_DSYNC | IOCB_SYNC;
-> +			break;
-> +		case NFS_DATA_SYNC:
-> +			/* persist data only */
-> +			kiocb.ki_flags |=3D IOCB_DSYNC;
-> +			break;
-> +		}
-> +	}
-> =20
->  	nvecs =3D xdr_buf_to_bvec(rqstp->rq_bvec, rqstp->rq_maxpages, payload);
->  	iov_iter_bvec(&iter, ITER_SOURCE, rqstp->rq_bvec, nvecs, *cnt);
-> --=20
-> 2.51.0
->=20
->=20
+Acked-by: Chuck Lever <chuck.lever@oracle.com> (for nfsd parts)
+Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+Signed-off-by: NeilBrown <neil@brown.name>
+
+--
+Changes since v3:
+ - added missig dput() in ovl_rename when "whiteout" is not-NULL.
+
+Changes since v2:
+ - in __start_renaming() some label have been renamed, and err
+   is always set before a "goto out_foo" rather than passing the
+   error in a dentry*.
+ - ovl_do_rename() changed to call the new ovl_do_rename_rd() rather
+   than keeping duplicate code
+ - code around ovl_cleanup() call in ovl_rename() restructured.
+---
+ fs/namei.c               | 197 ++++++++++++++++++++++++++++-----------
+ fs/nfsd/vfs.c            |  73 +++++----------
+ fs/overlayfs/dir.c       |  74 +++++++--------
+ fs/overlayfs/overlayfs.h |  23 +++--
+ include/linux/namei.h    |   3 +
+ 5 files changed, 218 insertions(+), 152 deletions(-)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index e70d056b9543..bad6c9d540f9 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3667,6 +3667,129 @@ void unlock_rename(struct dentry *p1, struct dentry *p2)
+ }
+ EXPORT_SYMBOL(unlock_rename);
+ 
++/**
++ * __start_renaming - lookup and lock names for rename
++ * @rd:           rename data containing parent and flags, and
++ *                for receiving found dentries
++ * @lookup_flags: extra flags to pass to ->lookup (e.g. LOOKUP_REVAL,
++ *                LOOKUP_NO_SYMLINKS etc).
++ * @old_last:     name of object in @rd.old_parent
++ * @new_last:     name of object in @rd.new_parent
++ *
++ * Look up two names and ensure locks are in place for
++ * rename.
++ *
++ * On success the found dentries are stored in @rd.old_dentry,
++ * @rd.new_dentry.  These references and the lock are dropped by
++ * end_renaming().
++ *
++ * The passed in qstrs must have the hash calculated, and no permission
++ * checking is performed.
++ *
++ * Returns: zero or an error.
++ */
++static int
++__start_renaming(struct renamedata *rd, int lookup_flags,
++		 struct qstr *old_last, struct qstr *new_last)
++{
++	struct dentry *trap;
++	struct dentry *d1, *d2;
++	int target_flags = LOOKUP_RENAME_TARGET | LOOKUP_CREATE;
++	int err;
++
++	if (rd->flags & RENAME_EXCHANGE)
++		target_flags = 0;
++	if (rd->flags & RENAME_NOREPLACE)
++		target_flags |= LOOKUP_EXCL;
++
++	trap = lock_rename(rd->old_parent, rd->new_parent);
++	if (IS_ERR(trap))
++		return PTR_ERR(trap);
++
++	d1 = lookup_one_qstr_excl(old_last, rd->old_parent,
++				  lookup_flags);
++	err = PTR_ERR(d1);
++	if (IS_ERR(d1))
++		goto out_unlock;
++
++	d2 = lookup_one_qstr_excl(new_last, rd->new_parent,
++				  lookup_flags | target_flags);
++	err = PTR_ERR(d2);
++	if (IS_ERR(d2))
++		goto out_dput_d1;
++
++	if (d1 == trap) {
++		/* source is an ancestor of target */
++		err = -EINVAL;
++		goto out_dput_d2;
++	}
++
++	if (d2 == trap) {
++		/* target is an ancestor of source */
++		if (rd->flags & RENAME_EXCHANGE)
++			err = -EINVAL;
++		else
++			err = -ENOTEMPTY;
++		goto out_dput_d2;
++	}
++
++	rd->old_dentry = d1;
++	rd->new_dentry = d2;
++	return 0;
++
++out_dput_d2:
++	dput(d2);
++out_dput_d1:
++	dput(d1);
++out_unlock:
++	unlock_rename(rd->old_parent, rd->new_parent);
++	return err;
++}
++
++/**
++ * start_renaming - lookup and lock names for rename with permission checking
++ * @rd:           rename data containing parent and flags, and
++ *                for receiving found dentries
++ * @lookup_flags: extra flags to pass to ->lookup (e.g. LOOKUP_REVAL,
++ *                LOOKUP_NO_SYMLINKS etc).
++ * @old_last:     name of object in @rd.old_parent
++ * @new_last:     name of object in @rd.new_parent
++ *
++ * Look up two names and ensure locks are in place for
++ * rename.
++ *
++ * On success the found dentries are stored in @rd.old_dentry,
++ * @rd.new_dentry.  These references and the lock are dropped by
++ * end_renaming().
++ *
++ * The passed in qstrs need not have the hash calculated, and basic
++ * eXecute permission checking is performed against @rd.mnt_idmap.
++ *
++ * Returns: zero or an error.
++ */
++int start_renaming(struct renamedata *rd, int lookup_flags,
++		   struct qstr *old_last, struct qstr *new_last)
++{
++	int err;
++
++	err = lookup_one_common(rd->mnt_idmap, old_last, rd->old_parent);
++	if (err)
++		return err;
++	err = lookup_one_common(rd->mnt_idmap, new_last, rd->new_parent);
++	if (err)
++		return err;
++	return __start_renaming(rd, lookup_flags, old_last, new_last);
++}
++EXPORT_SYMBOL(start_renaming);
++
++void end_renaming(struct renamedata *rd)
++{
++	unlock_rename(rd->old_parent, rd->new_parent);
++	dput(rd->old_dentry);
++	dput(rd->new_dentry);
++}
++EXPORT_SYMBOL(end_renaming);
++
+ /**
+  * vfs_prepare_mode - prepare the mode to be used for a new inode
+  * @idmap:	idmap of the mount the inode was found from
+@@ -5504,14 +5627,11 @@ int do_renameat2(int olddfd, struct filename *from, int newdfd,
+ 		 struct filename *to, unsigned int flags)
+ {
+ 	struct renamedata rd;
+-	struct dentry *old_dentry, *new_dentry;
+-	struct dentry *trap;
+ 	struct path old_path, new_path;
+ 	struct qstr old_last, new_last;
+ 	int old_type, new_type;
+ 	struct inode *delegated_inode = NULL;
+-	unsigned int lookup_flags = 0, target_flags =
+-		LOOKUP_RENAME_TARGET | LOOKUP_CREATE;
++	unsigned int lookup_flags = 0;
+ 	bool should_retry = false;
+ 	int error = -EINVAL;
+ 
+@@ -5522,11 +5642,6 @@ int do_renameat2(int olddfd, struct filename *from, int newdfd,
+ 	    (flags & RENAME_EXCHANGE))
+ 		goto put_names;
+ 
+-	if (flags & RENAME_EXCHANGE)
+-		target_flags = 0;
+-	if (flags & RENAME_NOREPLACE)
+-		target_flags |= LOOKUP_EXCL;
+-
+ retry:
+ 	error = filename_parentat(olddfd, from, lookup_flags, &old_path,
+ 				  &old_last, &old_type);
+@@ -5556,66 +5671,40 @@ int do_renameat2(int olddfd, struct filename *from, int newdfd,
+ 		goto exit2;
+ 
+ retry_deleg:
+-	trap = lock_rename(new_path.dentry, old_path.dentry);
+-	if (IS_ERR(trap)) {
+-		error = PTR_ERR(trap);
++	rd.old_parent	   = old_path.dentry;
++	rd.mnt_idmap	   = mnt_idmap(old_path.mnt);
++	rd.new_parent	   = new_path.dentry;
++	rd.delegated_inode = &delegated_inode;
++	rd.flags	   = flags;
++
++	error = __start_renaming(&rd, lookup_flags, &old_last, &new_last);
++	if (error)
+ 		goto exit_lock_rename;
+-	}
+ 
+-	old_dentry = lookup_one_qstr_excl(&old_last, old_path.dentry,
+-					  lookup_flags);
+-	error = PTR_ERR(old_dentry);
+-	if (IS_ERR(old_dentry))
+-		goto exit3;
+-	new_dentry = lookup_one_qstr_excl(&new_last, new_path.dentry,
+-					  lookup_flags | target_flags);
+-	error = PTR_ERR(new_dentry);
+-	if (IS_ERR(new_dentry))
+-		goto exit4;
+ 	if (flags & RENAME_EXCHANGE) {
+-		if (!d_is_dir(new_dentry)) {
++		if (!d_is_dir(rd.new_dentry)) {
+ 			error = -ENOTDIR;
+ 			if (new_last.name[new_last.len])
+-				goto exit5;
++				goto exit_unlock;
+ 		}
+ 	}
+ 	/* unless the source is a directory trailing slashes give -ENOTDIR */
+-	if (!d_is_dir(old_dentry)) {
++	if (!d_is_dir(rd.old_dentry)) {
+ 		error = -ENOTDIR;
+ 		if (old_last.name[old_last.len])
+-			goto exit5;
++			goto exit_unlock;
+ 		if (!(flags & RENAME_EXCHANGE) && new_last.name[new_last.len])
+-			goto exit5;
+-	}
+-	/* source should not be ancestor of target */
+-	error = -EINVAL;
+-	if (old_dentry == trap)
+-		goto exit5;
+-	/* target should not be an ancestor of source */
+-	if (!(flags & RENAME_EXCHANGE))
+-		error = -ENOTEMPTY;
+-	if (new_dentry == trap)
+-		goto exit5;
++			goto exit_unlock;
++	}
+ 
+-	error = security_path_rename(&old_path, old_dentry,
+-				     &new_path, new_dentry, flags);
++	error = security_path_rename(&old_path, rd.old_dentry,
++				     &new_path, rd.new_dentry, flags);
+ 	if (error)
+-		goto exit5;
++		goto exit_unlock;
+ 
+-	rd.old_parent	   = old_path.dentry;
+-	rd.old_dentry	   = old_dentry;
+-	rd.mnt_idmap	   = mnt_idmap(old_path.mnt);
+-	rd.new_parent	   = new_path.dentry;
+-	rd.new_dentry	   = new_dentry;
+-	rd.delegated_inode = &delegated_inode;
+-	rd.flags	   = flags;
+ 	error = vfs_rename(&rd);
+-exit5:
+-	dput(new_dentry);
+-exit4:
+-	dput(old_dentry);
+-exit3:
+-	unlock_rename(new_path.dentry, old_path.dentry);
++exit_unlock:
++	end_renaming(&rd);
+ exit_lock_rename:
+ 	if (delegated_inode) {
+ 		error = break_deleg_wait(&delegated_inode);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 6291c371caa7..a993f1e54182 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1885,11 +1885,12 @@ __be32
+ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 			    struct svc_fh *tfhp, char *tname, int tlen)
+ {
+-	struct dentry	*fdentry, *tdentry, *odentry, *ndentry, *trap;
++	struct dentry	*fdentry, *tdentry;
+ 	int		type = S_IFDIR;
++	struct renamedata rd = {};
+ 	__be32		err;
+ 	int		host_err;
+-	bool		close_cached = false;
++	struct dentry	*close_cached;
+ 
+ 	trace_nfsd_vfs_rename(rqstp, ffhp, tfhp, fname, flen, tname, tlen);
+ 
+@@ -1915,15 +1916,22 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 		goto out;
+ 
+ retry:
++	close_cached = NULL;
+ 	host_err = fh_want_write(ffhp);
+ 	if (host_err) {
+ 		err = nfserrno(host_err);
+ 		goto out;
+ 	}
+ 
+-	trap = lock_rename(tdentry, fdentry);
+-	if (IS_ERR(trap)) {
+-		err = nfserr_xdev;
++	rd.mnt_idmap	= &nop_mnt_idmap;
++	rd.old_parent	= fdentry;
++	rd.new_parent	= tdentry;
++
++	host_err = start_renaming(&rd, 0, &QSTR_LEN(fname, flen),
++				  &QSTR_LEN(tname, tlen));
++
++	if (host_err) {
++		err = nfserrno(host_err);
+ 		goto out_want_write;
+ 	}
+ 	err = fh_fill_pre_attrs(ffhp);
+@@ -1933,48 +1941,23 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 	if (err != nfs_ok)
+ 		goto out_unlock;
+ 
+-	odentry = lookup_one(&nop_mnt_idmap, &QSTR_LEN(fname, flen), fdentry);
+-	host_err = PTR_ERR(odentry);
+-	if (IS_ERR(odentry))
+-		goto out_nfserr;
++	type = d_inode(rd.old_dentry)->i_mode & S_IFMT;
++
++	if (d_inode(rd.new_dentry))
++		type = d_inode(rd.new_dentry)->i_mode & S_IFMT;
+ 
+-	host_err = -ENOENT;
+-	if (d_really_is_negative(odentry))
+-		goto out_dput_old;
+-	host_err = -EINVAL;
+-	if (odentry == trap)
+-		goto out_dput_old;
+-	type = d_inode(odentry)->i_mode & S_IFMT;
+-
+-	ndentry = lookup_one(&nop_mnt_idmap, &QSTR_LEN(tname, tlen), tdentry);
+-	host_err = PTR_ERR(ndentry);
+-	if (IS_ERR(ndentry))
+-		goto out_dput_old;
+-	if (d_inode(ndentry))
+-		type = d_inode(ndentry)->i_mode & S_IFMT;
+-	host_err = -ENOTEMPTY;
+-	if (ndentry == trap)
+-		goto out_dput_new;
+-
+-	if ((ndentry->d_sb->s_export_op->flags & EXPORT_OP_CLOSE_BEFORE_UNLINK) &&
+-	    nfsd_has_cached_files(ndentry)) {
+-		close_cached = true;
+-		goto out_dput_old;
++	if ((rd.new_dentry->d_sb->s_export_op->flags & EXPORT_OP_CLOSE_BEFORE_UNLINK) &&
++	    nfsd_has_cached_files(rd.new_dentry)) {
++		close_cached = dget(rd.new_dentry);
++		goto out_unlock;
+ 	} else {
+-		struct renamedata rd = {
+-			.mnt_idmap	= &nop_mnt_idmap,
+-			.old_parent	= fdentry,
+-			.old_dentry	= odentry,
+-			.new_parent	= tdentry,
+-			.new_dentry	= ndentry,
+-		};
+ 		int retries;
+ 
+ 		for (retries = 1;;) {
+ 			host_err = vfs_rename(&rd);
+ 			if (host_err != -EAGAIN || !retries--)
+ 				break;
+-			if (!nfsd_wait_for_delegreturn(rqstp, d_inode(odentry)))
++			if (!nfsd_wait_for_delegreturn(rqstp, d_inode(rd.old_dentry)))
+ 				break;
+ 		}
+ 		if (!host_err) {
+@@ -1983,11 +1966,6 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 				host_err = commit_metadata(ffhp);
+ 		}
+ 	}
+- out_dput_new:
+-	dput(ndentry);
+- out_dput_old:
+-	dput(odentry);
+- out_nfserr:
+ 	if (host_err == -EBUSY) {
+ 		/*
+ 		 * See RFC 8881 Section 18.26.4 para 1-3: NFSv4 RENAME
+@@ -2006,7 +1984,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 		fh_fill_post_attrs(tfhp);
+ 	}
+ out_unlock:
+-	unlock_rename(tdentry, fdentry);
++	end_renaming(&rd);
+ out_want_write:
+ 	fh_drop_write(ffhp);
+ 
+@@ -2017,9 +1995,8 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 	 * until this point and then reattempt the whole shebang.
+ 	 */
+ 	if (close_cached) {
+-		close_cached = false;
+-		nfsd_close_cached_files(ndentry);
+-		dput(ndentry);
++		nfsd_close_cached_files(close_cached);
++		dput(close_cached);
+ 		goto retry;
+ 	}
+ out:
+diff --git a/fs/overlayfs/dir.c b/fs/overlayfs/dir.c
+index 6d1d0e94e287..cf6fc48459f3 100644
+--- a/fs/overlayfs/dir.c
++++ b/fs/overlayfs/dir.c
+@@ -1124,9 +1124,7 @@ static int ovl_rename(struct mnt_idmap *idmap, struct inode *olddir,
+ 	int err;
+ 	struct dentry *old_upperdir;
+ 	struct dentry *new_upperdir;
+-	struct dentry *olddentry = NULL;
+-	struct dentry *newdentry = NULL;
+-	struct dentry *trap, *de;
++	struct renamedata rd = {};
+ 	bool old_opaque;
+ 	bool new_opaque;
+ 	bool cleanup_whiteout = false;
+@@ -1136,6 +1134,7 @@ static int ovl_rename(struct mnt_idmap *idmap, struct inode *olddir,
+ 	bool new_is_dir = d_is_dir(new);
+ 	bool samedir = olddir == newdir;
+ 	struct dentry *opaquedir = NULL;
++	struct dentry *whiteout = NULL;
+ 	const struct cred *old_cred = NULL;
+ 	struct ovl_fs *ofs = OVL_FS(old->d_sb);
+ 	LIST_HEAD(list);
+@@ -1233,29 +1232,21 @@ static int ovl_rename(struct mnt_idmap *idmap, struct inode *olddir,
+ 		}
+ 	}
+ 
+-	trap = lock_rename(new_upperdir, old_upperdir);
+-	if (IS_ERR(trap)) {
+-		err = PTR_ERR(trap);
+-		goto out_revert_creds;
+-	}
++	rd.mnt_idmap = ovl_upper_mnt_idmap(ofs);
++	rd.old_parent = old_upperdir;
++	rd.new_parent = new_upperdir;
++	rd.flags = flags;
+ 
+-	de = ovl_lookup_upper(ofs, old->d_name.name, old_upperdir,
+-			      old->d_name.len);
+-	err = PTR_ERR(de);
+-	if (IS_ERR(de))
+-		goto out_unlock;
+-	olddentry = de;
++	err = start_renaming(&rd, 0,
++			     &QSTR_LEN(old->d_name.name, old->d_name.len),
++			     &QSTR_LEN(new->d_name.name, new->d_name.len));
+ 
+-	err = -ESTALE;
+-	if (!ovl_matches_upper(old, olddentry))
+-		goto out_unlock;
++	if (err)
++		goto out_revert_creds;
+ 
+-	de = ovl_lookup_upper(ofs, new->d_name.name, new_upperdir,
+-			      new->d_name.len);
+-	err = PTR_ERR(de);
+-	if (IS_ERR(de))
++	err = -ESTALE;
++	if (!ovl_matches_upper(old, rd.old_dentry))
+ 		goto out_unlock;
+-	newdentry = de;
+ 
+ 	old_opaque = ovl_dentry_is_opaque(old);
+ 	new_opaque = ovl_dentry_is_opaque(new);
+@@ -1263,15 +1254,15 @@ static int ovl_rename(struct mnt_idmap *idmap, struct inode *olddir,
+ 	err = -ESTALE;
+ 	if (d_inode(new) && ovl_dentry_upper(new)) {
+ 		if (opaquedir) {
+-			if (newdentry != opaquedir)
++			if (rd.new_dentry != opaquedir)
+ 				goto out_unlock;
+ 		} else {
+-			if (!ovl_matches_upper(new, newdentry))
++			if (!ovl_matches_upper(new, rd.new_dentry))
+ 				goto out_unlock;
+ 		}
+ 	} else {
+-		if (!d_is_negative(newdentry)) {
+-			if (!new_opaque || !ovl_upper_is_whiteout(ofs, newdentry))
++		if (!d_is_negative(rd.new_dentry)) {
++			if (!new_opaque || !ovl_upper_is_whiteout(ofs, rd.new_dentry))
+ 				goto out_unlock;
+ 		} else {
+ 			if (flags & RENAME_EXCHANGE)
+@@ -1279,19 +1270,14 @@ static int ovl_rename(struct mnt_idmap *idmap, struct inode *olddir,
+ 		}
+ 	}
+ 
+-	if (olddentry == trap)
+-		goto out_unlock;
+-	if (newdentry == trap)
+-		goto out_unlock;
+-
+-	if (olddentry->d_inode == newdentry->d_inode)
++	if (rd.old_dentry->d_inode == rd.new_dentry->d_inode)
+ 		goto out_unlock;
+ 
+ 	err = 0;
+ 	if (ovl_type_merge_or_lower(old))
+ 		err = ovl_set_redirect(old, samedir);
+ 	else if (is_dir && !old_opaque && ovl_type_merge(new->d_parent))
+-		err = ovl_set_opaque_xerr(old, olddentry, -EXDEV);
++		err = ovl_set_opaque_xerr(old, rd.old_dentry, -EXDEV);
+ 	if (err)
+ 		goto out_unlock;
+ 
+@@ -1299,18 +1285,24 @@ static int ovl_rename(struct mnt_idmap *idmap, struct inode *olddir,
+ 		err = ovl_set_redirect(new, samedir);
+ 	else if (!overwrite && new_is_dir && !new_opaque &&
+ 		 ovl_type_merge(old->d_parent))
+-		err = ovl_set_opaque_xerr(new, newdentry, -EXDEV);
++		err = ovl_set_opaque_xerr(new, rd.new_dentry, -EXDEV);
+ 	if (err)
+ 		goto out_unlock;
+ 
+-	err = ovl_do_rename(ofs, old_upperdir, olddentry,
+-			    new_upperdir, newdentry, flags);
+-	unlock_rename(new_upperdir, old_upperdir);
++	err = ovl_do_rename_rd(&rd);
++
++	if (!err && cleanup_whiteout)
++		whiteout = dget(rd.new_dentry);
++
++	end_renaming(&rd);
++
+ 	if (err)
+ 		goto out_revert_creds;
+ 
+-	if (cleanup_whiteout)
+-		ovl_cleanup(ofs, old_upperdir, newdentry);
++	if (whiteout) {
++		ovl_cleanup(ofs, old_upperdir, whiteout);
++		dput(whiteout);
++	}
+ 
+ 	if (overwrite && d_inode(new)) {
+ 		if (new_is_dir)
+@@ -1336,14 +1328,12 @@ static int ovl_rename(struct mnt_idmap *idmap, struct inode *olddir,
+ 	else
+ 		ovl_drop_write(old);
+ out:
+-	dput(newdentry);
+-	dput(olddentry);
+ 	dput(opaquedir);
+ 	ovl_cache_free(&list);
+ 	return err;
+ 
+ out_unlock:
+-	unlock_rename(new_upperdir, old_upperdir);
++	end_renaming(&rd);
+ 	goto out_revert_creds;
+ }
+ 
+diff --git a/fs/overlayfs/overlayfs.h b/fs/overlayfs/overlayfs.h
+index 49ad65f829dc..3cc85a893b5c 100644
+--- a/fs/overlayfs/overlayfs.h
++++ b/fs/overlayfs/overlayfs.h
+@@ -355,11 +355,24 @@ static inline int ovl_do_remove_acl(struct ovl_fs *ofs, struct dentry *dentry,
+ 	return vfs_remove_acl(ovl_upper_mnt_idmap(ofs), dentry, acl_name);
+ }
+ 
++static inline int ovl_do_rename_rd(struct renamedata *rd)
++{
++	int err;
++
++	pr_debug("rename(%pd2, %pd2, 0x%x)\n", rd->old_dentry, rd->new_dentry,
++		 rd->flags);
++	err = vfs_rename(rd);
++	if (err) {
++		pr_debug("...rename(%pd2, %pd2, ...) = %i\n",
++			 rd->old_dentry, rd->new_dentry, err);
++	}
++	return err;
++}
++
+ static inline int ovl_do_rename(struct ovl_fs *ofs, struct dentry *olddir,
+ 				struct dentry *olddentry, struct dentry *newdir,
+ 				struct dentry *newdentry, unsigned int flags)
+ {
+-	int err;
+ 	struct renamedata rd = {
+ 		.mnt_idmap	= ovl_upper_mnt_idmap(ofs),
+ 		.old_parent	= olddir,
+@@ -369,13 +382,7 @@ static inline int ovl_do_rename(struct ovl_fs *ofs, struct dentry *olddir,
+ 		.flags		= flags,
+ 	};
+ 
+-	pr_debug("rename(%pd2, %pd2, 0x%x)\n", olddentry, newdentry, flags);
+-	err = vfs_rename(&rd);
+-	if (err) {
+-		pr_debug("...rename(%pd2, %pd2, ...) = %i\n",
+-			 olddentry, newdentry, err);
+-	}
+-	return err;
++	return ovl_do_rename_rd(&rd);
+ }
+ 
+ static inline int ovl_do_whiteout(struct ovl_fs *ofs,
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index 196c66156a8a..7fdd9fdcbd2b 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -157,6 +157,9 @@ extern int follow_up(struct path *);
+ extern struct dentry *lock_rename(struct dentry *, struct dentry *);
+ extern struct dentry *lock_rename_child(struct dentry *, struct dentry *);
+ extern void unlock_rename(struct dentry *, struct dentry *);
++int start_renaming(struct renamedata *rd, int lookup_flags,
++		   struct qstr *old_last, struct qstr *new_last);
++void end_renaming(struct renamedata *rd);
+ 
+ /**
+  * mode_strip_umask - handle vfs umask stripping
+-- 
+2.50.0.107.gf914562f5916.dirty
 
