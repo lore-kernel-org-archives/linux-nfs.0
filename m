@@ -1,367 +1,188 @@
-Received: from flow-b4-smtp.messagingengine.com (flow-b4-smtp.messagingengine.com [202.12.124.139])
+Received: from fhigh-b1-smtp.messagingengine.com (fhigh-b1-smtp.messagingengine.com [202.12.124.152])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CCB601E5724;
-	Thu,  6 Nov 2025 00:55:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.139
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DA7CC21CC44;
+	Thu,  6 Nov 2025 00:55:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.152
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762390548; cv=none; b=k+frv62oawycHzQMr4jzCzkXyxpiUk0/13X7+Rw7AeR3Wk/IvAlQs/gDANGE7VusZ6NTZXt5a3B8YsJrCLwY8+LQj3bdlT7Heoct9RrPt3jFMbwEXkOU/rR+7T+Y4v0DBZkPQCTcv2+czBErNOnMsHbCKrPQBQI2rKkMcoOD4jg=
+	t=1762390553; cv=none; b=hIcBWydy2AemqdcEp3U2HtbeobL4NbxaeBjT6EMJ4GbLVabr+BqFz5DKRGS++vMThrOYKUtc54ceBnMK/d9oRBHGmNDN2k7aGPr9JMOvt08EZAx2fggMKw9MUiqG5ZA9Uw7M9h/f9E8+FDOIJOVsEeBMKpm4M0AYbtUu3Sfar5k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762390548; c=relaxed/simple;
-	bh=047jfL6s61LZaEIBYmzfucfb0b84bJ21twF4SyUYhPI=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=NtjASyOQ0WEKMn7dOIv2horfJ58bGEXb+F5BYe7ymc+22aRw8fBTxr1+gNY68mpVQm5y+Ev+T+dKzcVFw5r7ocXwIkUQ4u/tkCoVCbig4Pw7Vu6TrFLrlne40hwpZ3jTtFIeafCAuHsfqxJcmBpCTxSZHPc0YxN25KY1MClzMTA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=XPJmGYK0; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=pbdtCLf9; arc=none smtp.client-ip=202.12.124.139
+	s=arc-20240116; t=1762390553; c=relaxed/simple;
+	bh=7H7QGaWvft+luniqx0UKd/bXeFRFlhwP/Jl882o/Zbc=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=SrYqBOgqw4NvSoiV/hVJjsXZETwaYe5/lXXPltcGqavQYKW5xNDetxVegqvvlMk5V1AxFM0vHsveRNBkkOPTVrT6GKkFVXN+55zTE/B3y/FRDM403AVG0155t+5++RuFODDUYN7Ij7gyVO5DMfvop/TWXhtb/NpxxG2gms5l8l8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=AYdp/zuE; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=mXCjJ22k; arc=none smtp.client-ip=202.12.124.152
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="XPJmGYK0";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="pbdtCLf9"
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="AYdp/zuE";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="mXCjJ22k"
 Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailflow.stl.internal (Postfix) with ESMTP id 30D1213005FE;
-	Wed,  5 Nov 2025 19:55:45 -0500 (EST)
-Received: from phl-mailfrontend-02 ([10.202.2.163])
-  by phl-compute-04.internal (MEProxy); Wed, 05 Nov 2025 19:55:46 -0500
+	by mailfhigh.stl.internal (Postfix) with ESMTP id B60AC7A01B8;
+	Wed,  5 Nov 2025 19:55:50 -0500 (EST)
+Received: from phl-mailfrontend-01 ([10.202.2.162])
+  by phl-compute-04.internal (MEProxy); Wed, 05 Nov 2025 19:55:50 -0500
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1762390545;
-	 x=1762397745; bh=6GxIRIn2Y+jgQEzm+nvqg4ydKhOE6rwcOntaL14shm0=; b=
-	XPJmGYK0Q55AWbSjy4sPS1BQNuq9p9M0HTsm/6Yciv8joS+TD4uLENU6wDu+5z0N
-	LjHu05jCju67OSnAF0M+GfkfDMzI3jiUpeRC5VxXHGC7YvoPaUc53+N+gojGNm2c
-	Y+qhrDOZ1Ot1ZqmE9hIaKUinm5vD9JB4j7REo81l92u/v3YKS7IenDpVWoPIJZhm
-	In+ftREaytuPokcxTn7oBHu09ZDCW5epNdkObjOgumztAQcMD/YXoZokXuxOjoQt
-	XQ7cuOdAh4lPl/v7+UTrc03MKkqa8QNtBhibGk3qI+FO7WQzAeQi79AzX3tokhln
-	NKpaoC+TAjsWc3x6dxQsZw==
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
+	1762390550; x=1762476950; bh=6bwaOUosHeKjBD7IF9WTD2fjiqBFStNKmf8
+	+KkU1Rdk=; b=AYdp/zuEdSIxpGxEhvYzTECQjriorRNJh+Sy4gXHFGYQm8y10gR
+	LSzy6doeSKART4BdLSqMSQOZ8s2aLbsQnkjFkGCsnvRSqspmaDtXOSMR2V5JcP5O
+	kyJBCTHynVqRnsSPRYg6Qx8w05bAHpTsO3YLHj597ifQfLtluoci3DEBZg5OZQGu
+	1ABaDiKtL8ucy8sKwZdR/Dog4i5LnAJa+WMxMj+O155Dpf6n08DZfKYWeHYhH2y8
+	LtdxPpIZMMboKcUpiH2r37FiAt9xfSwSZ22EJPPN53WHTtyl3pTiUdCT/Qvcvt1s
+	lR/bbmv+Nzz/JtwE9rEsi9zI536Ns+msdkA==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm3; t=1762390545; x=1762397745; bh=6
-	GxIRIn2Y+jgQEzm+nvqg4ydKhOE6rwcOntaL14shm0=; b=pbdtCLf96oRrEPxz2
-	08/9STwDJ5RmZlpiDaMOtchAvMif9s8Obm8Y04ypiuYq/yZSbnlzdAKGaGbR1R3w
-	lwgkWvj3axpV0L/nAeW9bWCep8fGZ9pzN/sMemicM9YpcSa55hHxp+XkW31y24ZN
-	CpCt3HcUPh8M37z0r6EK6iCx+WdvOkgvE+lLcZEzJG+alRmB870b48h6YbhMDmUb
-	z7LvF/y91b0ODvLwZTn4ovTxyizM4K68fy8BGQrTsnSBiUJh1QAw2gRo+B9tr13U
-	/YqwaJsWl96xNdLKxmZHnOs6S+SU5MuA0gN/G1fs9/d7jpHZBkaHpgEMAxQTQQFc
-	jNNCA==
-X-ME-Sender: <xms:EPILaVafYAc8UDvWm6XVSrQOryrarnbf5TzTioxmDwquCrzx-wHAUg>
-    <xme:EPILaSJhuVXEbj0F3Z1KtpiToqYqSY8wjCT4g_uW6vXSTJDtJuUImYp4ZsCPpzPOl
-    RRiVlUA5kmXFYjVl7UiIaV86CzhfYouisq2V6jQWBpkrS0naQ>
-X-ME-Received: <xmr:EPILaeyIuYkLXL3fdJ3iXsZCFZoRc_TP0zz8ML8L6rjeBgVs0WaK4X0x2LgaIygsDPwPKsiNkTU_iW6D2-B2u-VLgbp2ySLAPvqjsdyAvTUC>
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1762390550; x=
+	1762476950; bh=6bwaOUosHeKjBD7IF9WTD2fjiqBFStNKmf8+KkU1Rdk=; b=m
+	XCjJ22kJUH0chM64i4cS5/vOnJsTBqUBQNq6aOhVt02Eo/gOUbWwXJlpBjhWyudg
+	+IEp/sN3Bq2jQl6+5/Foeysb3Msbgx9yspn8oWn89H6eGUi5T/2ozOJ2n7eYxROB
+	dDwlzqBZf+C13LfvCOXLq3vgA2v/pFRkeV2KrlZRT3hJYO6duDOHc71Z1MBF7YVB
+	B53ZiOtFa7oZ0ZsXky3NtNIdenAXEOq4WWSoMHFs7wGOfFnWiQ8+6PHvSDHNvG4l
+	6EQ7iWQYtZcTJNSBP/KLeAbdQANsRqNaZWYSeYLLjFK+2+tqBIuVZUtEnS2uYs5w
+	otwHiAomEKCmSXTiISIzA==
+X-ME-Sender: <xms:FvILaWLVncfdkaMWdk73246nbmHv_psnaAR4Fwvtqd8fS8JDEqiTLQ>
+    <xme:FvILaTGczouEstYRRNZOKJB0Kv2FEh1Vhw2t6IHdO_J1gULxOmiiRHI3apnjnZz0_
+    xZxAC83pliYcrcb0ohkSIhy2IS2zTM-O08hc78oRcrerJwYow>
+X-ME-Received: <xmr:FvILaa-2-CNMz2dNBzre1pRBv_QKfT2lf0EF7ReRZugNUeXLZgKqUDyPanVkd1qIijZwpTFmX2_E1fKNJQr1majN7-DcXfbhiNdEbotgYUqb>
 X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeeffedrtdeggddukeehgedtucetufdoteggodetrf
     dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
     rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
-    gurhephffvvefufffkofgjfhhrggfgsedtkeertdertddtnecuhfhrohhmpefpvghilheu
+    gurheptgfgggfhvfevufgjfhffkfhrsehtqhertddttdejnecuhfhrohhmpefpvghilheu
     rhhofihnuceonhgvihhlsgesohifnhhmrghilhdrnhgvtheqnecuggftrfgrthhtvghrnh
-    epveevkeffudeuvefhieeghffgudektdelkeejiedtjedugfeukedvkeffvdefvddunecu
-    vehluhhsthgvrhfuihiivgepudenucfrrghrrghmpehmrghilhhfrhhomhepnhgvihhlsg
-    esohifnhhmrghilhdrnhgvthdpnhgspghrtghpthhtohepgedtpdhmohguvgepshhmthhp
-    ohhuthdprhgtphhtthhopehvihhrohesiigvnhhivhdrlhhinhhugidrohhrghdruhhkpd
-    hrtghpthhtohepshgvlhhinhhugiesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphht
-    thhopehlihhnuhigqdigfhhssehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtoh
-    eplhhinhhugidquhhnihhonhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphht
-    thhopehlihhnuhigqdhsvggtuhhrihhthidqmhhoughulhgvsehvghgvrhdrkhgvrhhnvg
-    hlrdhorhhgpdhrtghpthhtoheplhhinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdr
-    ohhrghdprhgtphhtthhopehlihhnuhigqdhkvghrnhgvlhesvhhgvghrrdhkvghrnhgvlh
-    drohhrghdprhgtphhtthhopehlihhnuhigqdhfshguvghvvghlsehvghgvrhdrkhgvrhhn
-    vghlrdhorhhgpdhrtghpthhtoheplhhinhhugidqtghifhhssehvghgvrhdrkhgvrhhnvg
-    hlrdhorhhg
-X-ME-Proxy: <xmx:EPILaa3rI_LDj4p_yQ-M1hr_svznEUNvjEoaK0rlqpy7aSVkxz1Icg>
-    <xmx:EPILaRjVYfyT7dmVCAWaIaN6NVVpsfbz-1wv12PDjRKNMj8-syPT_Q>
-    <xmx:EPILaeNfdHms9poIKTk528xn2F6Z-zp4rNjJ5R60oq0icEw1dLGTWg>
-    <xmx:EPILaZJxm2bP53gidS403QV4FYzFzPUaMdBoajvsQBCcsiwO48i7Sw>
-    <xmx:EfILaXwmAeu8KBbP0dmPzcYz_jjArrs-e5oJqVQlwOllp2O_z0z77iWE>
+    epvdeuteelkeejkeevteetvedtkeegleduieeftdeftefgtddtleejgfelgfevffeinecu
+    ffhomhgrihhnpehkvghrnhgvlhdrohhrghenucevlhhushhtvghrufhiiigvpedtnecurf
+    grrhgrmhepmhgrihhlfhhrohhmpehnvghilhgssehofihnmhgrihhlrdhnvghtpdhnsggp
+    rhgtphhtthhopeelpdhmohguvgepshhmthhpohhuthdprhgtphhtthhopehsthgrsghlvg
+    esvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehlihhnuhigqdhnfhhssehv
+    ghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtohepthhomhesthgrlhhpvgihrdgtoh
+    hmpdhrtghpthhtohepohhkohhrnhhivghvsehrvgguhhgrthdrtghomhdprhgtphhtthho
+    pegurghirdhnghhosehorhgrtghlvgdrtghomhdprhgtphhtthhopegthhhutghkrdhlvg
+    hvvghrsehorhgrtghlvgdrtghomhdprhgtphhtthhopehsnhhithiivghrsehkvghrnhgv
+    lhdrohhrghdprhgtphhtthhopehjlhgrhihtohhnsehkvghrnhgvlhdrohhrghdprhgtph
+    htthhopegtvghlsehkvghrnhgvlhdrohhrgh
+X-ME-Proxy: <xmx:FvILabK4_AFB466RbnYVeDiuZmkDo9o5yn3mZSgAt3SRwTUfYhQ0yA>
+    <xmx:FvILaQuMqU8dtPLUSk5R8XOiRLNnctF8Smox9s_CPXNECyJj8VG1Ig>
+    <xmx:FvILaaBp8lrZEhZxXruy4lKmZKhSDP8IKesN1wRYuPtLOR6Hlq6c4g>
+    <xmx:FvILaQPyQhc5QHsBMVdXSVyqSAAkFHatPPD5XO-stuLkGpk5gqmWlA>
+    <xmx:FvILabo4z7WKdpBB_GveH2GUXd020-LvXYYTVWubVmRU7J0eItj-bGZM>
 Feedback-ID: iab3e480c:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 5 Nov 2025 19:55:34 -0500 (EST)
-From: NeilBrown <neilb@ownmail.net>
-To: "Alexander Viro" <viro@zeniv.linux.org.uk>,
-	"Christian Brauner" <brauner@kernel.org>,
-	"Amir Goldstein" <amir73il@gmail.com>
-Cc: "Jan Kara" <jack@suse.cz>,	linux-fsdevel@vger.kernel.org,
-	Jeff Layton <jlayton@kernel.org>,	Chris Mason <clm@fb.com>,
-	David Sterba <dsterba@suse.com>,	David Howells <dhowells@redhat.com>,
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	"Rafael J. Wysocki" <rafael@kernel.org>,
-	Danilo Krummrich <dakr@kernel.org>,	Tyler Hicks <code@tyhicks.com>,
-	Miklos Szeredi <miklos@szeredi.hu>,	Chuck Lever <chuck.lever@oracle.com>,
-	Olga Kornievskaia <okorniev@redhat.com>,	Dai Ngo <Dai.Ngo@oracle.com>,
-	Namjae Jeon <linkinjeon@kernel.org>,	Steve French <smfrench@gmail.com>,
-	Sergey Senozhatsky <senozhatsky@chromium.org>,
-	Carlos Maiolino <cem@kernel.org>,
-	John Johansen <john.johansen@canonical.com>,
-	Paul Moore <paul@paul-moore.com>,	James Morris <jmorris@namei.org>,
-	"Serge E. Hallyn" <serge@hallyn.com>,
-	Stephen Smalley <stephen.smalley.work@gmail.com>,
-	Ondrej Mosnacek <omosnace@redhat.com>,	Mateusz Guzik <mjguzik@gmail.com>,
-	Lorenzo Stoakes <lorenzo.stoakes@oracle.com>,
-	Stefan Berger <stefanb@linux.ibm.com>,
-	"Darrick J. Wong" <djwong@kernel.org>,	linux-kernel@vger.kernel.org,
-	netfs@lists.linux.dev,	ecryptfs@vger.kernel.org,
-	linux-nfs@vger.kernel.org,	linux-unionfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org,	linux-xfs@vger.kernel.org,
-	linux-security-module@vger.kernel.org,	selinux@vger.kernel.org
-Subject: [PATCH v5 08/14] VFS: add start_creating_killable() and start_removing_killable()
-Date: Thu,  6 Nov 2025 11:50:52 +1100
-Message-ID: <20251106005333.956321-9-neilb@ownmail.net>
-X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
-In-Reply-To: <20251106005333.956321-1-neilb@ownmail.net>
-References: <20251106005333.956321-1-neilb@ownmail.net>
-Reply-To: NeilBrown <neil@brown.name>
+ 5 Nov 2025 19:55:47 -0500 (EST)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+From: NeilBrown <neilb@ownmail.net>
+To: "Chuck Lever" <cel@kernel.org>
+Cc: "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
+ "Chuck Lever" <chuck.lever@oracle.com>, "Mike Snitzer" <snitzer@kernel.org>,
+ stable@vger.kernel.org
+Subject: Re: [PATCH v10 2/5] NFSD: Make FILE_SYNC WRITEs comply with spec
+In-reply-to: <20251105192806.77093-3-cel@kernel.org>
+References: <20251105192806.77093-1-cel@kernel.org>,
+ <20251105192806.77093-3-cel@kernel.org>
+Date: Thu, 06 Nov 2025 11:55:45 +1100
+Message-id: <176239054580.634289.78476170437073732@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-From: NeilBrown <neil@brown.name>
+On Thu, 06 Nov 2025, Chuck Lever wrote:
+> From: Chuck Lever <chuck.lever@oracle.com>
+>=20
+> Mike noted that when NFSD responds to an NFS_FILE_SYNC WRITE, it
+> does not also persist file time stamps. To wit, Section 18.32.3
+> of RFC 8881 mandates:
+>=20
+> > The client specifies with the stable parameter the method of how
+> > the data is to be processed by the server. If stable is
+> > FILE_SYNC4, the server MUST commit the data written plus all file
+> > system metadata to stable storage before returning results. This
+> > corresponds to the NFSv2 protocol semantics. Any other behavior
+> > constitutes a protocol violation. If stable is DATA_SYNC4, then
+> > the server MUST commit all of the data to stable storage and
+> > enough of the metadata to retrieve the data before returning.
+>=20
+> Commit 3f3503adb332 ("NFSD: Use vfs_iocb_iter_write()") replaced:
+>=20
+> -		flags |=3D RWF_SYNC;
+>=20
+> with:
+>=20
+> +		kiocb.ki_flags |=3D IOCB_DSYNC;
+>=20
+> which appears to be correct given:
+>=20
+> 	if (flags & RWF_SYNC)
+> 		kiocb_flags |=3D IOCB_DSYNC;
+>=20
+> in kiocb_set_rw_flags(). However the author of that commit did not
 
-These are similar to start_creating() and start_removing(), but allow a
-fatal signal to abort waiting for the lock.
+"the author and reviewers of that commit"
 
-They are used in btrfs for subvol creation and removal.
+Reviewed-by: NeilBrown <neil@brown.name>
 
-btrfs_may_create() no longer needs IS_DEADDIR() and
-start_creating_killable() includes that check.
+Thanks,
+NeilBrown
 
-Reviewed-by: Amir Goldstein <amir73il@gmail.com>
-Signed-off-by: NeilBrown <neil@brown.name>
----
- fs/btrfs/ioctl.c      | 41 +++++++---------------
- fs/namei.c            | 80 +++++++++++++++++++++++++++++++++++++++++--
- include/linux/namei.h |  6 ++++
- 3 files changed, 95 insertions(+), 32 deletions(-)
 
-diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
-index 8cb7d5a462ef..d0c3bb0423bb 100644
---- a/fs/btrfs/ioctl.c
-+++ b/fs/btrfs/ioctl.c
-@@ -904,14 +904,9 @@ static noinline int btrfs_mksubvol(struct dentry *parent,
- 	struct fscrypt_str name_str = FSTR_INIT((char *)qname->name, qname->len);
- 	int ret;
- 
--	ret = down_write_killable_nested(&dir->i_rwsem, I_MUTEX_PARENT);
--	if (ret == -EINTR)
--		return ret;
--
--	dentry = lookup_one(idmap, qname, parent);
--	ret = PTR_ERR(dentry);
-+	dentry = start_creating_killable(idmap, parent, qname);
- 	if (IS_ERR(dentry))
--		goto out_unlock;
-+		return PTR_ERR(dentry);
- 
- 	ret = btrfs_may_create(idmap, dir, dentry);
- 	if (ret)
-@@ -940,9 +935,7 @@ static noinline int btrfs_mksubvol(struct dentry *parent,
- out_up_read:
- 	up_read(&fs_info->subvol_sem);
- out_dput:
--	dput(dentry);
--out_unlock:
--	btrfs_inode_unlock(BTRFS_I(dir), 0);
-+	end_creating(dentry, parent);
- 	return ret;
- }
- 
-@@ -2417,18 +2410,10 @@ static noinline int btrfs_ioctl_snap_destroy(struct file *file,
- 		goto free_subvol_name;
- 	}
- 
--	ret = down_write_killable_nested(&dir->i_rwsem, I_MUTEX_PARENT);
--	if (ret == -EINTR)
--		goto free_subvol_name;
--	dentry = lookup_one(idmap, &QSTR(subvol_name), parent);
-+	dentry = start_removing_killable(idmap, parent, &QSTR(subvol_name));
- 	if (IS_ERR(dentry)) {
- 		ret = PTR_ERR(dentry);
--		goto out_unlock_dir;
--	}
--
--	if (d_really_is_negative(dentry)) {
--		ret = -ENOENT;
--		goto out_dput;
-+		goto out_end_removing;
- 	}
- 
- 	inode = d_inode(dentry);
-@@ -2449,7 +2434,7 @@ static noinline int btrfs_ioctl_snap_destroy(struct file *file,
- 		 */
- 		ret = -EPERM;
- 		if (!btrfs_test_opt(fs_info, USER_SUBVOL_RM_ALLOWED))
--			goto out_dput;
-+			goto out_end_removing;
- 
- 		/*
- 		 * Do not allow deletion if the parent dir is the same
-@@ -2460,21 +2445,21 @@ static noinline int btrfs_ioctl_snap_destroy(struct file *file,
- 		 */
- 		ret = -EINVAL;
- 		if (root == dest)
--			goto out_dput;
-+			goto out_end_removing;
- 
- 		ret = inode_permission(idmap, inode, MAY_WRITE | MAY_EXEC);
- 		if (ret)
--			goto out_dput;
-+			goto out_end_removing;
- 	}
- 
- 	/* check if subvolume may be deleted by a user */
- 	ret = btrfs_may_delete(idmap, dir, dentry, 1);
- 	if (ret)
--		goto out_dput;
-+		goto out_end_removing;
- 
- 	if (btrfs_ino(BTRFS_I(inode)) != BTRFS_FIRST_FREE_OBJECTID) {
- 		ret = -EINVAL;
--		goto out_dput;
-+		goto out_end_removing;
- 	}
- 
- 	btrfs_inode_lock(BTRFS_I(inode), 0);
-@@ -2483,10 +2468,8 @@ static noinline int btrfs_ioctl_snap_destroy(struct file *file,
- 	if (!ret)
- 		d_delete_notify(dir, dentry);
- 
--out_dput:
--	dput(dentry);
--out_unlock_dir:
--	btrfs_inode_unlock(BTRFS_I(dir), 0);
-+out_end_removing:
-+	end_removing(dentry);
- free_subvol_name:
- 	kfree(subvol_name_ptr);
- free_parent:
-diff --git a/fs/namei.c b/fs/namei.c
-index 729b42fb143b..e70d056b9543 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2778,19 +2778,33 @@ static int filename_parentat(int dfd, struct filename *name,
-  * Returns: a locked dentry, or an error.
-  *
-  */
--struct dentry *start_dirop(struct dentry *parent, struct qstr *name,
--			   unsigned int lookup_flags)
-+static struct dentry *__start_dirop(struct dentry *parent, struct qstr *name,
-+				    unsigned int lookup_flags,
-+				    unsigned int state)
- {
- 	struct dentry *dentry;
- 	struct inode *dir = d_inode(parent);
- 
--	inode_lock_nested(dir, I_MUTEX_PARENT);
-+	if (state == TASK_KILLABLE) {
-+		int ret = down_write_killable_nested(&dir->i_rwsem,
-+						     I_MUTEX_PARENT);
-+		if (ret)
-+			return ERR_PTR(ret);
-+	} else {
-+		inode_lock_nested(dir, I_MUTEX_PARENT);
-+	}
- 	dentry = lookup_one_qstr_excl(name, parent, lookup_flags);
- 	if (IS_ERR(dentry))
- 		inode_unlock(dir);
- 	return dentry;
- }
- 
-+struct dentry *start_dirop(struct dentry *parent, struct qstr *name,
-+			   unsigned int lookup_flags)
-+{
-+	return __start_dirop(parent, name, lookup_flags, TASK_NORMAL);
-+}
-+
- /**
-  * end_dirop - signal completion of a dirop
-  * @de: the dentry which was returned by start_dirop or similar.
-@@ -3275,6 +3289,66 @@ struct dentry *start_removing(struct mnt_idmap *idmap, struct dentry *parent,
- }
- EXPORT_SYMBOL(start_removing);
- 
-+/**
-+ * start_creating_killable - prepare to create a given name with permission checking
-+ * @idmap:  idmap of the mount
-+ * @parent: directory in which to prepare to create the name
-+ * @name:   the name to be created
-+ *
-+ * Locks are taken and a lookup in performed prior to creating
-+ * an object in a directory.  Permission checking (MAY_EXEC) is performed
-+ * against @idmap.
-+ *
-+ * If the name already exists, a positive dentry is returned.
-+ *
-+ * If a signal is received or was already pending, the function aborts
-+ * with -EINTR;
-+ *
-+ * Returns: a negative or positive dentry, or an error.
-+ */
-+struct dentry *start_creating_killable(struct mnt_idmap *idmap,
-+				       struct dentry *parent,
-+				       struct qstr *name)
-+{
-+	int err = lookup_one_common(idmap, name, parent);
-+
-+	if (err)
-+		return ERR_PTR(err);
-+	return __start_dirop(parent, name, LOOKUP_CREATE, TASK_KILLABLE);
-+}
-+EXPORT_SYMBOL(start_creating_killable);
-+
-+/**
-+ * start_removing_killable - prepare to remove a given name with permission checking
-+ * @idmap:  idmap of the mount
-+ * @parent: directory in which to find the name
-+ * @name:   the name to be removed
-+ *
-+ * Locks are taken and a lookup in performed prior to removing
-+ * an object from a directory.  Permission checking (MAY_EXEC) is performed
-+ * against @idmap.
-+ *
-+ * If the name doesn't exist, an error is returned.
-+ *
-+ * end_removing() should be called when removal is complete, or aborted.
-+ *
-+ * If a signal is received or was already pending, the function aborts
-+ * with -EINTR;
-+ *
-+ * Returns: a positive dentry, or an error.
-+ */
-+struct dentry *start_removing_killable(struct mnt_idmap *idmap,
-+				       struct dentry *parent,
-+				       struct qstr *name)
-+{
-+	int err = lookup_one_common(idmap, name, parent);
-+
-+	if (err)
-+		return ERR_PTR(err);
-+	return __start_dirop(parent, name, 0, TASK_KILLABLE);
-+}
-+EXPORT_SYMBOL(start_removing_killable);
-+
- /**
-  * start_creating_noperm - prepare to create a given name without permission checking
-  * @parent: directory in which to prepare to create the name
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index d089e4e8fdd0..196c66156a8a 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -93,6 +93,12 @@ struct dentry *start_creating(struct mnt_idmap *idmap, struct dentry *parent,
- 			      struct qstr *name);
- struct dentry *start_removing(struct mnt_idmap *idmap, struct dentry *parent,
- 			      struct qstr *name);
-+struct dentry *start_creating_killable(struct mnt_idmap *idmap,
-+				       struct dentry *parent,
-+				       struct qstr *name);
-+struct dentry *start_removing_killable(struct mnt_idmap *idmap,
-+				       struct dentry *parent,
-+				       struct qstr *name);
- struct dentry *start_creating_noperm(struct dentry *parent, struct qstr *name);
- struct dentry *start_removing_noperm(struct dentry *parent, struct qstr *name);
- struct dentry *start_removing_dentry(struct dentry *parent,
--- 
-2.50.0.107.gf914562f5916.dirty
+> appreciate that the previous line in kiocb_set_rw_flags() results
+> in IOCB_SYNC also being set:
+>=20
+> 	kiocb_flags |=3D (__force int) (flags & RWF_SUPPORTED);
+>=20
+> RWF_SUPPORTED contains RWF_SYNC, and RWF_SYNC is the same bit as
+> IOCB_SYNC. Reviewers at the time did not catch the omission.
+>=20
+> Reported-by: Mike Snitzer <snitzer@kernel.org>
+> Closes: https://lore.kernel.org/linux-nfs/20251018005431.3403-1-cel@kernel.=
+org/T/#t
+> Reviewed-by: Jeff Layton <jlayton@kernel.org>
+> Fixes: 3f3503adb332 ("NFSD: Use vfs_iocb_iter_write()")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfsd/vfs.c | 14 ++++++++++++--
+>  1 file changed, 12 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index f537a7b4ee01..5333d49910d9 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1314,8 +1314,18 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh=
+ *fhp,
+>  		stable =3D NFS_UNSTABLE;
+>  	init_sync_kiocb(&kiocb, file);
+>  	kiocb.ki_pos =3D offset;
+> -	if (stable && !fhp->fh_use_wgather)
+> -		kiocb.ki_flags |=3D IOCB_DSYNC;
+> +	if (likely(!fhp->fh_use_wgather)) {
+> +		switch (stable) {
+> +		case NFS_FILE_SYNC:
+> +			/* persist data and timestamps */
+> +			kiocb.ki_flags |=3D IOCB_DSYNC | IOCB_SYNC;
+> +			break;
+> +		case NFS_DATA_SYNC:
+> +			/* persist data only */
+> +			kiocb.ki_flags |=3D IOCB_DSYNC;
+> +			break;
+> +		}
+> +	}
+> =20
+>  	nvecs =3D xdr_buf_to_bvec(rqstp->rq_bvec, rqstp->rq_maxpages, payload);
+>  	iov_iter_bvec(&iter, ITER_SOURCE, rqstp->rq_bvec, nvecs, *cnt);
+> --=20
+> 2.51.0
+>=20
+>=20
 
