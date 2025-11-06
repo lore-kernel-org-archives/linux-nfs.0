@@ -1,182 +1,320 @@
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 767D02C2377
-	for <linux-nfs@vger.kernel.org>; Thu,  6 Nov 2025 16:48:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.177.32
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 014FD226D1D
+	for <linux-nfs@vger.kernel.org>; Thu,  6 Nov 2025 16:48:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762447726; cv=none; b=tPyWkwZMOheNDrgENo0tdKaE7ruKGOJOAvOAlOJPIF4KIOdASqberQWk/AJbHE+VDpLN6uE0NLOqcPuUkOYToZl5X4dsGKb7tSMAHpJPcMFeCZhFcEUxZhL3ddD0lZFfH40TToge4Ua6EZD3PYTLa6xEi0IcSDTIZPu+dq8532Q=
+	t=1762447735; cv=none; b=EFmu58EaRlqr+syENlvB2U0TwOEYs4Z7Ih7/+091jXfK3aBHbiHHe6UnV6s63NstjLP9OmEi29w2jPHg4c6kcxR0j0vZnp68pzO45XLzWkGL/TjJAso5nT2G+tWsGyBg9OkQprTPWdkIKTYSoiv4rwRJZwr6y3gqtrgrdLC+XIU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762447726; c=relaxed/simple;
-	bh=YrCTfvsppb+Z0yj6vQ4Z4iLo0XmktOIVlHarsCvbeUc=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=vBzkUSbJP+GlTjFW9hAqUioZWOHHzuj28IqNJNLd3ocJY4cQVIXIG/h98GlzYzkyzL44dGGVFFSAFOBj7FEoqjInc/sVb6UDgmq1XVy+L88C+/GduCAp56CGIXSqzvuAj9b8lAZxoq7OcR7aFuMW2y4mhZWYU4VAIABaACavk84=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=F0B3onT8; arc=none smtp.client-ip=205.220.177.32
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
+	s=arc-20240116; t=1762447735; c=relaxed/simple;
+	bh=gBBMqcjAfgzDftnEyht7woQ2LwZg6GoGro+KgxCazsU=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=SMB5z30GaTfUGs7R6rEpkzbzy72lCIG9nqyPGKlF138azI89cly4SmctvobtaMxCj+bZzoqWxa1npRxAJix3i212ZyTTjWiHNhDk8j7XXtFqr4HXMHp7ONV8cGoRS+wY5A0/jH9VRziXENtGDxU2UgmBC+OtMHVjMr/FX7yP8xY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ORLVvnjY; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="F0B3onT8"
-Received: from pps.filterd (m0333520.ppops.net [127.0.0.1])
-	by mx0b-00069f02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 5A6Bj0c4001542;
-	Thu, 6 Nov 2025 16:48:28 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
-	:content-transfer-encoding:date:from:in-reply-to:message-id
-	:mime-version:references:subject:to; s=corp-2025-04-25; bh=ogTYW
-	XmchI1Tg5JKI2yyNa9kegdnnZOybJ40fGQpHDQ=; b=F0B3onT8uKMqxho+Sv0vA
-	Of4H/g7/QLcwqCUrxnWoi34mBPG6OGOWp1hGg/MOKgFhxhLJ3MAfdr7i7TELPbMb
-	B22wcKoN2Bn9pg6AYvHeMI45wTOPRgTHO+ueJ0mYjYtBW7awIG31IYhPP9pxSJmQ
-	JbjLVlLTFbWW7HUUNYyKgULaEPqsW/Zb0j07JZM+DB2RnHIPk2qyQVBH1MTB8yz2
-	zxUDzZlvyMMJtJE7i4mZlIc5Pw7ZUNO1gF8PD77RZBAvPPCxRPjjGA+OFx9a4YPJ
-	nGgm6Y6JV+rmw8JDPTWl/bHP0oQidVsoqZ0avpL8PRhmnKp1hHpOg+dEXpTUKgcs
-	A==
-Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.appoci.oracle.com [138.1.114.2])
-	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4a8aqwafjj-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Thu, 06 Nov 2025 16:48:28 +0000 (GMT)
-Received: from pps.filterd (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 5A6FwsYl039458;
-	Thu, 6 Nov 2025 16:48:27 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 4a58ncd4md-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Thu, 06 Nov 2025 16:48:27 +0000
-Received: from phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-	by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 5A6GmQjf021205;
-	Thu, 6 Nov 2025 16:48:27 GMT
-Received: from labops-common-sca-01.us.oracle.com (labops-common-sca-01.us.oracle.com [10.132.26.161])
-	by phxpaimrmta01.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 4a58ncd4kb-2;
-	Thu, 06 Nov 2025 16:48:27 +0000
-From: Dai Ngo <dai.ngo@oracle.com>
-To: chuck.lever@oracle.com, jlayton@kernel.org, neilb@ownmail.net,
-        okorniev@redhat.com, tom@talpey.com, hch@lst.de
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] locks: Introduce lm_breaker_timedout op to lease_manager_operations
-Date: Thu,  6 Nov 2025 08:47:38 -0800
-Message-ID: <20251106164821.300872-2-dai.ngo@oracle.com>
-X-Mailer: git-send-email 2.47.3
-In-Reply-To: <20251106164821.300872-1-dai.ngo@oracle.com>
-References: <20251106164821.300872-1-dai.ngo@oracle.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ORLVvnjY"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5C9A7C116B1;
+	Thu,  6 Nov 2025 16:48:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1762447734;
+	bh=gBBMqcjAfgzDftnEyht7woQ2LwZg6GoGro+KgxCazsU=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=ORLVvnjY+O6EOHvDKevOROQorWelCZ5zNt+rmxXDPAzbGmw/fvM2m3dYwVxS9FeeV
+	 tW8Uj+wVfZP2Zkb+a6Jqu/OTYkRHgXCkv8UlrA3Da7nRf5smQmb7j92PCgdWPO6ZYI
+	 EDwrVq5Y71J6JfKHqq5xBNxph2u/KuSgguyGMboalkX4SPpyJwfMO/kS4A+h2nyBdE
+	 gxFxY2pfgp9mIDcnYZOmUkKP1JOgGjs8IEmRzF4SGN8LfKMk4WlL4FxtcGugsa3gWY
+	 lj2LSYsOxcxJrFJUe3aL1eBTQQe7TMGu6YpCjumM2ArZE2/ysqm/IpgcsaehS42Dqj
+	 c7mo4Nw4zbM8g==
+Date: Thu, 6 Nov 2025 11:48:53 -0500
+From: Mike Snitzer <snitzer@kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: NeilBrown <neil@brown.name>, Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH v10 4/5] NFSD: Implement NFSD_IO_DIRECT for NFS WRITE
+Message-ID: <aQzRdTcyc2nhTWqj@kernel.org>
+References: <20251105192806.77093-1-cel@kernel.org>
+ <20251105192806.77093-5-cel@kernel.org>
+ <176242391124.634289.8771352649615589358@noble.neil.brown.name>
+ <aQyfgfWu8kPfe1uA@infradead.org>
+ <aQyn-_GSL_z3a9to@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1121,Hydra:6.1.9,FMLib:17.12.100.49
- definitions=2025-11-06_03,2025-11-06_01,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 bulkscore=0 mlxscore=0 suspectscore=0
- mlxlogscore=999 malwarescore=0 spamscore=0 adultscore=0 phishscore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2510240000
- definitions=main-2511060134
-X-Authority-Analysis: v=2.4 cv=NajrFmD4 c=1 sm=1 tr=0 ts=690cd15c cx=c_pps
- a=XiAAW1AwiKB2Y8Wsi+sD2Q==:117 a=XiAAW1AwiKB2Y8Wsi+sD2Q==:17
- a=6UeiqGixMTsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=yPCof4ZbAAAA:8
- a=S97X5fav3GynFx1AP6AA:9 a=cPQSjfK2_nFv0Q5t_7PE:22
-X-Proofpoint-ORIG-GUID: QfjYy6JA570HQDR_BaPJdKpllIX6XAGd
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjUxMTA1MDEzMyBTYWx0ZWRfX85qEVS/qUsGa
- zjgmTudddBUy92CXWmC819Ez6sL5jJ5dcCQY53qaw0sqvfR++aVlA/7vTQh+ueB2CGQrgMOqAFi
- fLmJmS8Xis4Km6o1O+yWT6SikY4k5eecMwjskTv+yhkqfRit34hXBRSwGZJeiQhGM++U8l0psnF
- TYZfCA/Q8c7cySrtLq7FGf/cUBsi4TDkIL5i/VhdfT1dpUdF/qtS/IjhhFTQbe6lz5RcxbR+8YD
- 8F2SxG2JR0QkHhKrkjf25fFaGaqdTqqsig/nkva9kOH4/j4cICbyAzTsZeUO0e5vDSXJ7/rpJoc
- 5Qn3gtcMMSauYfGFFhDzYxdhAL85MJZzCWnN5lbqH6sQLOvgWcGQPcusl26fRib58v1HBskQ2DO
- hmTDEMY3/jlhS70Hno/fOzo8BUx4dw==
-X-Proofpoint-GUID: QfjYy6JA570HQDR_BaPJdKpllIX6XAGd
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <aQyn-_GSL_z3a9to@infradead.org>
 
-Some consumers of the lease_manager_operations need to perform additional
-actions when a lease break, triggered by a conflict, times out.
+On Thu, Nov 06, 2025 at 05:51:55AM -0800, Christoph Hellwig wrote:
+> On Thu, Nov 06, 2025 at 05:15:45AM -0800, Christoph Hellwig wrote:
+> > On Thu, Nov 06, 2025 at 09:11:51PM +1100, NeilBrown wrote:
+> > > > +struct nfsd_write_dio_seg {
+> > > > +	struct iov_iter			iter;
+> > > > +	bool				use_dio;
+> > > 
+> > > This is only used to choose which flags to use.
+> > > I think it would be neater the have 'flags' here explicitly.
+> > 
+> > Actually, looking at the grand unified patch now (thanks, this is so
+> > much easier to review!), we can just do away with the struct entirely.
+> > Just have nfsd_write_dio_iters_init return if direct I/O is possible
+> > or not, and do a single vfs_iocb_iter_write on the origin kiocb/iter
+> > if not.
+> 
+> That didn't work out too well, and indeed having flags here seems
+> saner.
+> 
+> Chuck, below is an untested incremental patch I did while reviewing
+> it.  Besides this flags thing, it adds the actual NFSD_IO_DIRECT
+> definition that was missing, but otherwise mostly just folds things
+> so that we don't need the extra args structure and thus simplifies
+> things quite a bit.
+> 
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index ea87b42894dd..bdb60ee1f1a4 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -157,6 +157,7 @@ enum {
+>  	/* Any new NFSD_IO enum value must be added at the end */
+>  	NFSD_IO_BUFFERED,
+>  	NFSD_IO_DONTCACHE,
+> +	NFSD_IO_DIRECT,
+>  };
+>  
+>  extern u64 nfsd_io_cache_read __read_mostly;
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index bb94da333d50..8038d8d038f3 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -1170,56 +1170,38 @@ static int wait_for_concurrent_writes(struct file *file)
+>  
+>  struct nfsd_write_dio_seg {
+>  	struct iov_iter			iter;
+> -	bool				use_dio;
+> +	int				flags;
+>  };
+>  
+> -struct nfsd_write_dio_args {
+> -	struct nfsd_file		*nf;
+> -	int				flags_buffered;
+> -	int				flags_direct;
+> -	unsigned int			nsegs;
+> -	struct nfsd_write_dio_seg	segment[3];
+> -};
+> -
+> -/*
+> - * Check if the bvec iterator is aligned for direct I/O.
+> - *
+> - * bvecs generated from RPC receive buffers are contiguous: After the first
+> - * bvec, all subsequent bvecs start at bv_offset zero (page-aligned).
+> - * Therefore, only the first bvec is checked.
+> - */
+> -static bool
+> -nfsd_iov_iter_aligned_bvec(const struct nfsd_file *nf, const struct iov_iter *i)
+> +static unsigned long iov_iter_bvec_offset(const struct iov_iter *iter)
+>  {
+> -	unsigned int addr_mask = nf->nf_dio_mem_align - 1;
+> -	const struct bio_vec *bvec = i->bvec;
+> -
+> -	return ((unsigned long)(bvec->bv_offset + i->iov_offset) & addr_mask) == 0;
+> +	return (unsigned long)(iter->bvec->bv_offset + iter->iov_offset);
+>  }
+>  
 
-The NFS server is the first consumer of this operation.
+This ^ being factored out and documented like was before is better
+than the result of this patch, which then spreads the associated
+documentation into the caller.
 
-When a pNFS layout conflict occurs, and the lease break times out -
-resulting in the layout being revoked and its file_lease beeing removed
-from the flc_lease list, the NFS server must issue a fence operation.
-This ensures that the client is prevented from accessing the data
-server after the layout is revoked.
+>  static void
+>  nfsd_write_dio_seg_init(struct nfsd_write_dio_seg *segment,
+>  			struct bio_vec *bvec, unsigned int nvecs,
+> -			unsigned long total, size_t start, size_t len)
+> +			unsigned long total, size_t start, size_t len,
+> +			struct kiocb *iocb)
+>  {
+>  	iov_iter_bvec(&segment->iter, ITER_SOURCE, bvec, nvecs, total);
+>  	if (start)
+>  		iov_iter_advance(&segment->iter, start);
+>  	iov_iter_truncate(&segment->iter, len);
+> -	segment->use_dio = false;
+> +	segment->flags = iocb->ki_flags;
+>  }
+>  
+> -static void
+> -nfsd_write_dio_iters_init(struct bio_vec *bvec, unsigned int nvecs,
+> -			  loff_t offset, unsigned long total,
+> -			  struct nfsd_write_dio_args *args)
+> +static unsigned int
+> +nfsd_write_dio_iters_init(struct nfsd_file *nf, struct bio_vec *bvec,
+> +		unsigned int nvecs, struct kiocb *iocb, unsigned long total,
+> +		struct nfsd_write_dio_seg segments[3])
+>  {
+> -	u32 offset_align = args->nf->nf_dio_offset_align;
+> -	u32 mem_align = args->nf->nf_dio_mem_align;
+> +	u32 offset_align = nf->nf_dio_offset_align;
+> +	u32 mem_align = nf->nf_dio_mem_align;
+> +	loff_t offset = iocb->ki_pos;
+>  	loff_t prefix_end, orig_end, middle_end;
+>  	size_t prefix, middle, suffix;
+> -
+> -	args->nsegs = 0;
+> +	unsigned int nsegs = 0;
+>  
+>  	/*
+>  	 * Check if direct I/O is feasible for this write request.
+> @@ -1242,87 +1224,80 @@ nfsd_write_dio_iters_init(struct bio_vec *bvec, unsigned int nvecs,
+>  	if (!middle)
+>  		goto no_dio;
+>  
+> -	if (prefix) {
+> -		nfsd_write_dio_seg_init(&args->segment[args->nsegs], bvec,
+> -					nvecs, total, 0, prefix);
+> -		++args->nsegs;
+> -	}
+> +	if (prefix)
+> +		nfsd_write_dio_seg_init(&segments[nsegs++], bvec,
+> +					nvecs, total, 0, prefix, iocb);
+>  
+> -	nfsd_write_dio_seg_init(&args->segment[args->nsegs], bvec, nvecs,
+> -				total, prefix, middle);
+> -	if (!nfsd_iov_iter_aligned_bvec(args->nf,
+> -					&args->segment[args->nsegs].iter))
+> +	nfsd_write_dio_seg_init(&segments[nsegs], bvec, nvecs,
+> +				total, prefix, middle, iocb);
+> +
+> +	/*
+> +	 * Check if the bvec iterator is aligned for direct I/O.
+> +	 *
+> +	 * bvecs generated from RPC receive buffers are contiguous: After the
+> +	 * first bvec, all subsequent bvecs start at bv_offset zero
+> +	 * (page-aligned).
+> +	 * Therefore, only the first bvec is checked.
+> +	 */
+> +	if (iov_iter_bvec_offset(&segments[nsegs].iter) & (mem_align - 1))
+>  		goto no_dio;
+> -	args->segment[args->nsegs].use_dio = true;
+> -	++args->nsegs;
+> +	segments[nsegs].flags |= IOCB_DIRECT;
+> +	nsegs++;
+>  
+> -	if (suffix) {
+> -		nfsd_write_dio_seg_init(&args->segment[args->nsegs], bvec,
+> -					nvecs, total, prefix + middle, suffix);
+> -		++args->nsegs;
+> -	}
+> +	if (suffix)
+> +		nfsd_write_dio_seg_init(&segments[nsegs++], bvec,
+> +					nvecs, total, prefix + middle, suffix,
+> +					iocb);
+>  
+> -	return;
+> +	return nsegs;
+>  
+>  no_dio:
+>  	/*
+>  	 * No DIO alignment possible - pack into single non-DIO segment.
+> -	 * IOCB_DONTCACHE preserves the intent of NFSD_IO_DIRECT.
+>  	 */
+> -	if (args->nf->nf_file->f_op->fop_flags & FOP_DONTCACHE)
+> -		args->flags_buffered |= IOCB_DONTCACHE;
+> -	nfsd_write_dio_seg_init(&args->segment[0], bvec, nvecs, total,
+> -				0, total);
+> -	args->nsegs = 1;
+> +	nfsd_write_dio_seg_init(&segments[0], bvec, nvecs, total,
+> +				0, total, iocb);
+> +	return 1;
+>  }
 
-Fixes: f99d4fbdae67 ("nfsd: add SCSI layout support")
-Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
----
- Documentation/filesystems/locking.rst |  2 ++
- fs/locks.c                            | 14 +++++++++++---
- include/linux/filelock.h              |  2 ++
- 3 files changed, 15 insertions(+), 3 deletions(-)
+Selectively pushing the flag twiddling out to nfsd_direct_write()
+ignores that we don't want to use DONTCACHE for the unaligned
+prefix/suffix. Chuck and I discussed this a fair bit 1-2 days ago.
 
-diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-index 77704fde9845..cd600db6c4b9 100644
---- a/Documentation/filesystems/locking.rst
-+++ b/Documentation/filesystems/locking.rst
-@@ -403,6 +403,7 @@ prototypes::
- 	bool (*lm_breaker_owns_lease)(struct file_lock *);
-         bool (*lm_lock_expirable)(struct file_lock *);
-         void (*lm_expire_lock)(void);
-+        void (*lm_breaker_timedout)(struct file_lease *);
- 
- locking rules:
- 
-@@ -416,6 +417,7 @@ lm_change		yes		no			no
- lm_breaker_owns_lease:	yes     	no			no
- lm_lock_expirable	yes		no			no
- lm_expire_lock		no		no			yes
-+lm_breaker_timedout     no              no                      yes
- ======================	=============	=================	=========
- 
- buffer_head
-diff --git a/fs/locks.c b/fs/locks.c
-index 04a3f0e20724..1f254e0cd398 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -369,9 +369,15 @@ locks_dispose_list(struct list_head *dispose)
- 	while (!list_empty(dispose)) {
- 		flc = list_first_entry(dispose, struct file_lock_core, flc_list);
- 		list_del_init(&flc->flc_list);
--		if (flc->flc_flags & (FL_LEASE|FL_DELEG|FL_LAYOUT))
-+		if (flc->flc_flags & (FL_LEASE|FL_DELEG|FL_LAYOUT)) {
-+			if (flc->flc_flags & FL_BREAKER_TIMEDOUT) {
-+				struct file_lease *fl = file_lease(flc);
-+
-+				if (fl->fl_lmops->lm_breaker_timedout)
-+					fl->fl_lmops->lm_breaker_timedout(fl);
-+			}
- 			locks_free_lease(file_lease(flc));
--		else
-+		} else
- 			locks_free_lock(file_lock(flc));
- 	}
- }
-@@ -1482,8 +1488,10 @@ static void time_out_leases(struct inode *inode, struct list_head *dispose)
- 		trace_time_out_leases(inode, fl);
- 		if (past_time(fl->fl_downgrade_time))
- 			lease_modify(fl, F_RDLCK, dispose);
--		if (past_time(fl->fl_break_time))
-+		if (past_time(fl->fl_break_time)) {
- 			lease_modify(fl, F_UNLCK, dispose);
-+			fl->c.flc_flags |= FL_BREAKER_TIMEDOUT;
-+		}
- 	}
- }
- 
-diff --git a/include/linux/filelock.h b/include/linux/filelock.h
-index c2ce8ba05d06..06ccd6b66012 100644
---- a/include/linux/filelock.h
-+++ b/include/linux/filelock.h
-@@ -17,6 +17,7 @@
- #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
- #define FL_LAYOUT	2048	/* outstanding pNFS layout */
- #define FL_RECLAIM	4096	/* reclaiming from a reboot server */
-+#define	FL_BREAKER_TIMEDOUT	8192	/* lease breaker timed out */
- 
- #define FL_CLOSE_POSIX (FL_POSIX | FL_CLOSE)
- 
-@@ -49,6 +50,7 @@ struct lease_manager_operations {
- 	int (*lm_change)(struct file_lease *, int, struct list_head *);
- 	void (*lm_setup)(struct file_lease *, void **);
- 	bool (*lm_breaker_owns_lease)(struct file_lease *);
-+	void (*lm_breaker_timedout)(struct file_lease *fl);
- };
- 
- struct lock_manager {
--- 
-2.47.3
+> -static int
+> -nfsd_issue_dio_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> -		     struct kiocb *kiocb, unsigned int nvecs,
+> -		     unsigned long *cnt, struct nfsd_write_dio_args *args)
+> +static noinline_for_stack int
+> +nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> +		  struct nfsd_file *nf, unsigned int nvecs,
+> +		  unsigned long *cnt, struct kiocb *kiocb)
+>  {
+> -	struct file *file = args->nf->nf_file;
+> +	struct file *file = nf->nf_file;
+> +	struct nfsd_write_dio_seg segments[3];
+> +	unsigned int nsegs = 0, i;
+>  	ssize_t host_err;
+> -	unsigned int i;
+>  
+> -	nfsd_write_dio_iters_init(rqstp->rq_bvec, nvecs, kiocb->ki_pos,
+> -				  *cnt, args);
+> +	nsegs = nfsd_write_dio_iters_init(nf, rqstp->rq_bvec, nvecs,
+> +			kiocb, *cnt, segments);
+>  
+>  	*cnt = 0;
+> -	for (i = 0; i < args->nsegs; i++) {
+> -		if (args->segment[i].use_dio) {
+> -			kiocb->ki_flags = args->flags_direct;
+> +	for (i = 0; i < nsegs; i++) {
+> +		kiocb->ki_flags = segments[i].flags;
+> +		if (kiocb->ki_flags & IOCB_DIRECT) {
+>  			trace_nfsd_write_direct(rqstp, fhp, kiocb->ki_pos,
+> -						args->segment[i].iter.count);
+> -		} else
+> -			kiocb->ki_flags = args->flags_buffered;
+> +						segments[i].iter.count);
+> +		} else if (nf->nf_file->f_op->fop_flags & FOP_DONTCACHE) {
+> +			/*
+> +			 * IOCB_DONTCACHE preserves the intent of
+> +			 * NFSD_IO_DIRECT.
+> +			 */
+> +			kiocb->ki_flags |= IOCB_DONTCACHE;
+> +		}
 
+So this FOP_DONTCACHE branch needs to stay in
+nfsd_write_dio_iters_init() no_dio: section.
+
+>  
+> -		host_err = vfs_iocb_iter_write(file, kiocb,
+> -					       &args->segment[i].iter);
+> +		host_err = vfs_iocb_iter_write(file, kiocb, &segments[i].iter);
+>  		if (host_err < 0)
+>  			return host_err;
+>  		*cnt += host_err;
+> -		if (host_err < args->segment[i].iter.count)
+> +		if (host_err < segments[i].iter.count)
+>  			break;	/* partial write */
+>  	}
+>  
+>  	return 0;
+>  }
+>  
+> -static noinline_for_stack int
+> -nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> -		  struct nfsd_file *nf, unsigned int nvecs,
+> -		  unsigned long *cnt, struct kiocb *kiocb)
+> -{
+> -	struct nfsd_write_dio_args args;
+> -
+> -	args.flags_direct = kiocb->ki_flags | IOCB_DIRECT;
+> -	args.flags_buffered = kiocb->ki_flags;
+> -	args.nf = nf;
+> -
+> -	return nfsd_issue_dio_write(rqstp, fhp, kiocb, nvecs, cnt, &args);
+> -}
+> -
+>  /**
+>   * nfsd_vfs_write - write data to an already-open file
+>   * @rqstp: RPC execution context
+
+Combining nfsd_direct_write and nfsd_issue_dio_write is good.  And I
+like the intent of removing args but this first attempt has issues
+that can be resolved by keeping the flags setup in
+nfsd_write_dio_iters_init().
+
+Mike
