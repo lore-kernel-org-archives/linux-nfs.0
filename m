@@ -1,46 +1,51 @@
 Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C301C2D373F
-	for <linux-nfs@vger.kernel.org>; Fri,  7 Nov 2025 15:39:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1277B1E0DD9
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Nov 2025 15:40:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762529971; cv=none; b=D3qXzV6ZMCwFzXO+BZFTWL8FIFtjq3lRxxIxLRDmlSTUuwIGnM7EtlJhoUtZxhOGIAI1kCfykkiD9J0tE3ah1+xdM+BnrFU8JVdQu/TyxLoRPJ63iat5CZ/M4CBh28HbuWyu8Ke8NOxn3LuAuSvJpLq0ZvNV6P0GFkIzds8/ar8=
+	t=1762530013; cv=none; b=WTVp6ObIo9yq/VizLgfI9Go98PjFs2oxMkJArXzc/HE8okeT+ag17VLqeOSPQUTn2BGBCaqJ57z/u7D8aldfeZVp4h9lqPmOgfeAkjMzgvWxFMT7Oux8GOZu3TenVOjpV/rXJAeb1Vqoty15BTD3K+wypi9n/bTdP9r5kkdiWVg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762529971; c=relaxed/simple;
-	bh=/1BQZ5eBZShmt6K2XU9LlKiuhcxHmxwWEhD4UWVtSRM=;
+	s=arc-20240116; t=1762530013; c=relaxed/simple;
+	bh=J6u1rzw6Q+m9vVsWYik2lrZD6Q8raYqrGFLtgeps3EI=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=C4qyYM7HjfwNjA1G/udOeEHkeUm6v6BxA/xx3TiCue6q103Ww7+O8sEDEJBGMt9HMrNQ19CEAQtNd507Q3RPTSX9TELf7CAPKk8rFMzLuwS2AcRtSLw3v0DZ2gv28fn9ReJ2hm3HelV+RMp9MpCoBpIk+Db8sgVIOKY45I2DoeY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=s6lK+y4J; arc=none smtp.client-ip=198.137.202.133
+	 Content-Type:Content-Disposition:In-Reply-To; b=Kld8CNVRVDwSxhaD3tEIaoeBw2A+KIhZDCE5gElMdExM8KXJ2DYVkDfeDPXFTh7EB/VNMMBYxVVG5OAiB1UacKxmWw7itEkxtAEHRQzs9VbTy09fQ8fDgRSDWzjoGo/vS5ppUFsAQwaIAhIWK305aYfN+h56m9n6Ajz8rggiF/c=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=TfOsekXH; arc=none smtp.client-ip=198.137.202.133
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="s6lK+y4J"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="TfOsekXH"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
 	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
 	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=ByXNYdELe2aXmuAJj9FyoNtHXYsSl3jWrQxouy5AWnY=; b=s6lK+y4JFNEKivLSNX5a/Q6e1P
-	gIKvcc8X/xbAU62qBhV6YUGAxNyieoTfjrBiJG77fLB17JM4Qa8Z9mtRAfDmQ6XVE3bKdkyPKanL9
-	ZQzN8kTDTPBEo40Ki/Qh7szbEInwvPzR4W2AOcprKJrUI9Sjwif3Dc1O2ENJmlxPqhUgG0fECgpOG
-	dkVuOYCcE46VQZVsHrEKS4eMeDg3kMyzBkebnQrhhQKFr9GJi2GpiYm74Ptf3ziGUsfnbCP+PXS5F
-	vJZ3saJ+7viaXihUyp7afWV/TJMgyCESLx/u/sFgPCSGHpwj9vpvbnNCfUPGxpxH0j3P47pnbyhXC
-	tMuFL8hg==;
+	bh=0IkrYGTxpC+vmQ3LYlIz56Ri3Z/xo4gfZagZY/7BA2A=; b=TfOsekXHSw4Vh4ns0gFXe+6rTm
+	3Ulr+xqi5NOzkywmuxg1qKMrtSwG170dyXAq+GUwLSbpi7krBSdARM/onS6Ttz7Yg2qJaHJBcz72m
+	p724c1DxB7nJcHyN2PK72kxKsTq92Uh8EkwAdgwq2Dw6fu9JwZvkkJ5TL8WY2ZYIo9MAPS0c1gZjz
+	/9ay0ylUt8KgDflIlTYWoSxN2U58P+12qUegyo4Ur+Q4R9PrV3Tc1R70TrOPMzKyBrTypnVn3rO8o
+	SC0bhTF2+kgg7x0T06CUUxoLWQZu9kOVQongELieKK2WhSCwqdu4YKDJl3VwyzdKpt6MI3K/tE1Iz
+	yaqvpYIg==;
 Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1vHOYh-0000000Havk-06Jq;
-	Fri, 07 Nov 2025 15:39:27 +0000
-Date: Fri, 7 Nov 2025 07:39:27 -0800
+	id 1vHOZP-0000000HayF-1suB;
+	Fri, 07 Nov 2025 15:40:11 +0000
+Date: Fri, 7 Nov 2025 07:40:11 -0800
 From: Christoph Hellwig <hch@infradead.org>
-To: Chuck Lever <cel@kernel.org>
-Cc: NeilBrown <neil@brown.name>, Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	linux-nfs@vger.kernel.org, Mike Snitzer <snitzer@kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v11 2/3] NFSD: Implement NFSD_IO_DIRECT for NFS WRITE
-Message-ID: <aQ4Sr5M9dk2jGS0D@infradead.org>
-References: <20251107153422.4373-1-cel@kernel.org>
- <20251107153422.4373-3-cel@kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Mike Snitzer <snitzer@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 2/3] NFSD: add new NFSD_IO_DIRECT variants that may
+ override stable_how
+Message-ID: <aQ4S2z0wSfeqq1pQ@infradead.org>
+References: <20251105174210.54023-1-snitzer@kernel.org>
+ <20251105174210.54023-3-snitzer@kernel.org>
+ <c1f4d144-826e-4c27-821c-47652a7b67d2@oracle.com>
+ <aQ0CUPcYYg6-5IJ1@kernel.org>
+ <7d9bcc0c-d997-4fb9-aa0c-831b8f08a9b0@oracle.com>
+ <aQ0noN473a-QFqpz@kernel.org>
+ <aQ4RftwuYIxwvLgb@infradead.org>
+ <543c9183-40eb-459b-81bd-078e6ecb7687@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -49,29 +54,19 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20251107153422.4373-3-cel@kernel.org>
+In-Reply-To: <543c9183-40eb-459b-81bd-078e6ecb7687@oracle.com>
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Fri, Nov 07, 2025 at 10:34:21AM -0500, Chuck Lever wrote:
-> +no_dio:
-> +	/*
-> +	 * No DIO alignment possible - pack into single non-DIO segment.
-> +	 * IOCB_DONTCACHE preserves the intent of NFSD_IO_DIRECT.
-> +	 */
-> +	nfsd_write_dio_seg_init(&segments[0], bvec, nvecs, total, 0,
-> +				total, iocb);
+On Fri, Nov 07, 2025 at 10:35:52AM -0500, Chuck Lever wrote:
+> > Yes, BDI congestion is gone, mostly because it didn't really work.
+> > I'm also not sure how it could have solved deadlocks.
+> > 
+> > I feel a little out of the loops, though - what are the NFS-level
+> > write throttling needs to start with?
+> > 
+> 
+> Let's not go down this path right now. I'd like to stay focused on
+> getting the direct WRITE work merged.
 
-I'd like to sort out the discussion on why to set IOCB_DONTCACHE when
-nothing is aligned, but not for the non-aligned parts as that is
-extremely counter-intuitive.  From the other thread it might be because
-the test case used to justify it is very unaligned and caching partial
-pages is helpful, but if that is indeed the case the right check would
-be for writes that are file offset unaligned vs the page or max folio
-size and not about being able to do parts of it as direct I/O.
-
-Either way a tweak to suddenly use cached buffered I/O when the mode
-asks for direct should have a comment explaining the justification
-and explain the rationale instead of rushing it in.
-
-The rest of the patch looks good to me.
+I'm just curious what the discussion is about at all.
 
