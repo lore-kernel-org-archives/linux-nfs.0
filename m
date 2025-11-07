@@ -1,102 +1,68 @@
-Received: from mail-06.mail-europe.com (mail-06.mail-europe.com [85.9.210.45])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2EC43271EF
-	for <linux-nfs@vger.kernel.org>; Fri,  7 Nov 2025 15:28:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=85.9.210.45
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E43E532B9A1
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Nov 2025 15:29:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762529304; cv=none; b=Df4Q1KXsYnh9qGc8L/DPCDLnsqxvz+I1REkuMt+Sv2RXeO6GwJtyTRNQCmKM7PJk2UJIbgC0JPrEegcbxhrGlcFflSsbzelDxIhOdxFcQpFUkqmCfIIkTgFM0We1RNmxx5HjcXakok2nisPd0lVuQ06yJ36sBZ+GNK/701josmI=
+	t=1762529392; cv=none; b=b0Nb8j8dYqq1jZLWalJeSAftJTmTSR3c5f9HKtYeqU6sYMfgXliXbddwzYDNSkBvJv9+xDOrBIKLJLVdPiGKopqZSS1unh4xaUeiwni+walghqXhYHgJ8mt4EVM0OCWdRdSyVhUy+vaMBxMxRQwdhDC4AYhBAGsA5KQKNNMPStw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762529304; c=relaxed/simple;
-	bh=hJzS02rP0AnAnJ60/YAmGtiQoi39f08YIZAT89xXNec=;
-	h=Date:To:From:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=oTr+H20CgbU+DuVhdrlTJixHVbtF1TAjTMycrxfShEMVrxYMFsHBFuUGFRKRe+999BxrCS06cKCzsOTDxgM0XatzFx4rUQac/lxfyYQzzJKD7fFuS2YJvN5qA/eTXGKF2TEOM6urCHVDAWdNXQqBT/XoKRCGan83fPBIi+7cNb8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=joshua.hu; spf=pass smtp.mailfrom=joshua.hu; dkim=pass (2048-bit key) header.d=joshua.hu header.i=@joshua.hu header.b=i8d+q1qi; arc=none smtp.client-ip=85.9.210.45
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=joshua.hu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=joshua.hu
+	s=arc-20240116; t=1762529392; c=relaxed/simple;
+	bh=gZPlPSTv4vUyBBKISFo8sFZRf2QEvSnaZwZGnwk9Sc8=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=G3iGQ9c9fJWY6QKLQxlw1iK39S6mKg5RWHC4P75lgXGbDVVIYlw9wZaxKx0jzk73JssAIwyOosbjexqMSMlq2KWvOOoagefv/Qx3PIB/ZPIDYM7iM8Qx+LGjvKZbKto30lwzMEYxlxdixe7pmNPe7Tcknair/Ya2ApeLMVJSALQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=C7t2i4LI; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=joshua.hu header.i=@joshua.hu header.b="i8d+q1qi"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=joshua.hu;
-	s=protonmail2; t=1762528993; x=1762788193;
-	bh=hJzS02rP0AnAnJ60/YAmGtiQoi39f08YIZAT89xXNec=;
-	h=Date:To:From:Cc:Subject:Message-ID:In-Reply-To:References:
-	 Feedback-ID:From:To:Cc:Date:Subject:Reply-To:Feedback-ID:
-	 Message-ID:BIMI-Selector;
-	b=i8d+q1qiIRpbZCv40S650IAOS12bBYlDFmd1VwB0OTrSwFsPkbDAAULwC0vh8JHbk
-	 wCoIyXLZkxQ6iA9immHHXgMzuxd3bd389tWHKu4/+m7GEKYD9DFrcz+CW4IqRVMNKa
-	 OJuWSLX2VXgANyMDhCR74lscGNAUvRTSEQI8Y5XLS0mIZP+/OjRo0VORi9/nL18EA6
-	 S1wLreb71snEWtZYASxoBTL1LDE0LtR1F1Kmn57R1UQjB+xzfoBnuQzgn6cJI7pNki
-	 vQ7m3p7Q48tfmar6HvyP0ja02iADilF8HKGeQF4SZnF9LxRIfc8w7Ky+4giNNhiU9F
-	 BRAFFVKW0+l5Q==
-Date: Fri, 07 Nov 2025 15:23:06 +0000
-To: Chuck Lever <cel@kernel.org>
-From: Joshua Rogers <reszta@joshua.hu>
-Cc: NeilBrown <neil@brown.name>, Jeff Layton <jlayton@kernel.org>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>, Joshua Rogers <linux@joshua.hu>
-Subject: Re: [PATCH 1/3] svcrdma: use rc_pageoff for memcpy byte offset
-Message-ID: <fxcda7FkdbPG_fttyXlSupjn11fncefYSlmcpQVVhEqZtDujhBlOxPADG_Havmcju29ZqPMXVwmMI980FtUVWs9jDUYiy-JWbaClISNNwQk=@joshua.hu>
-In-Reply-To: <20251107150949.3808-1-cel@kernel.org>
-References: <20251107150949.3808-1-cel@kernel.org>
-Feedback-ID: 126372902:user:proton
-X-Pm-Message-ID: b8c332fb05f9bf71f35e34d3d2e7a48fc888e7f1
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="C7t2i4LI"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=3Mftqoo7XND7Ve8PKUbtrIiDL8rjATRc0VLCfWEb4ds=; b=C7t2i4LIMt8vsLmy+2K+AZ65HV
+	I2dwCtwNsOwwFX33KFlhgLSib0hmRNpZmCqEXSBTsyr+SN14wnGW99QcV0JlkVT6URlMgSuG/2uMs
+	G1YYe9e599MwjiMRTH85ytbMwTHZGllaHVYQMvZHaDqx5L7ekkQcHCNDn6DbK0+Va6h4rZ6x+PEVA
+	EVljb5O0RBgiSS5TzFW46KAVOYIwiFF5Jwp6qHsEtj+29DHBWpYotD3X9LYdv37atBHL2dCbUz+Dg
+	KyWg74ZfvCwNWx84zn7oKenSOm2MDeBHjx+IwBsWYeQn17ztugtMqkteXjIyoIf4loZkKS77XQq90
+	RdBx1cZA==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1vHOPO-0000000HaP7-29Jo;
+	Fri, 07 Nov 2025 15:29:50 +0000
+Date: Fri, 7 Nov 2025 07:29:50 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Mike Snitzer <snitzer@kernel.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 1/3] NFSD: avoid DONTCACHE for misaligned ends of
+ misaligned DIO WRITE
+Message-ID: <aQ4Qbn5ViHnrVz07@infradead.org>
+References: <20251105174210.54023-1-snitzer@kernel.org>
+ <20251105174210.54023-2-snitzer@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20251105174210.54023-2-snitzer@kernel.org>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-Apologies: is it possible to slightly change the commit msg to include "Fou=
-nd with ZeroPath"? As this bug was, indeed, found with a tool called ZeroPa=
-th. If not, it's OK, thought I'd ask.
+On Wed, Nov 05, 2025 at 12:42:08PM -0500, Mike Snitzer wrote:
+> NFSD_IO_DIRECT can easily improve streaming misaligned WRITE
+> performance if it uses buffered IO (without DONTCACHE) for the
+> misaligned end segment(s) and O_DIRECT for the aligned middle
+> segment's IO.
+> 
+> On one capable testbed, this commit improved streaming 47008 byte
+> write performance from 0.3433 GB/s to 1.26 GB/s.
 
-Thank you.
+When you say "improved streaming 47008 byte write performance" do you
+mean the application on the client doing writes of 47008 bytes for
+each syscall, probably synchronous?  Why is a workload that matters?
+How do the numbers look for normal writes that are aligned to a power
+of two, and especially the preferred write size exposed by the client
+in st_blksize?
 
-
-On Friday, 7 November 2025 at 23:09, Chuck Lever <cel@kernel.org> wrote:
-
->=20
->=20
-> From: Joshua Rogers linux@joshua.hu
->=20
->=20
-> svc_rdma_copy_inline_range added rc_curpage (page index) to the page
-> base instead of the byte offset rc_pageoff. Use rc_pageoff so copies
-> land within the current page.
->=20
-> Fixes: 8e122582680c ("svcrdma: Move svc_rdma_read_info::ri_pageno to stru=
-ct svc_rdma_recv_ctxt")
-> X-Cc: stable@vger.kernel.org
-> Signed-off-by: Joshua Rogers linux@joshua.hu
->=20
-> Signed-off-by: Chuck Lever chuck.lever@oracle.com
->=20
-> ---
-> net/sunrpc/xprtrdma/svc_rdma_rw.c | 2 +-
-> 1 file changed, 1 insertion(+), 1 deletion(-)
->=20
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_=
-rdma_rw.c
-> index 661b3fe2779f..945fbb374331 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-> @@ -848,7 +848,7 @@ static int svc_rdma_copy_inline_range(struct svc_rqst=
- *rqstp,
-> head->rc_page_count++;
->=20
->=20
-> dst =3D page_address(rqstp->rq_pages[head->rc_curpage]);
->=20
-> - memcpy(dst + head->rc_curpage, src + offset, page_len);
->=20
-> + memcpy((unsigned char *)dst + head->rc_pageoff, src + offset, page_len)=
-;
->=20
->=20
-> head->rc_readbytes +=3D page_len;
->=20
-> head->rc_pageoff +=3D page_len;
->=20
-> --
-> 2.51.0
