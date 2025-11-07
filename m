@@ -1,87 +1,102 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from mail-06.mail-europe.com (mail-06.mail-europe.com [85.9.210.45])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2AD532D94A1
-	for <linux-nfs@vger.kernel.org>; Fri,  7 Nov 2025 15:26:55 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C2EC43271EF
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Nov 2025 15:28:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=85.9.210.45
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762529216; cv=none; b=VO4qYKsxV+4oARFB1CuaEKmJP5Nxlzm3n6AXwOqYrq7VVOLhwCdJqjnMenVWwCUu6vUxKP08drBKC2DREoMHqtYeVu58tY69IWBL3IdK/MvgErbqU73iap+usWrf3VPfHzpUxhPXYrnCBUDqL8k+tc4ogoDrHsudiwEynp1Z8YI=
+	t=1762529304; cv=none; b=Df4Q1KXsYnh9qGc8L/DPCDLnsqxvz+I1REkuMt+Sv2RXeO6GwJtyTRNQCmKM7PJk2UJIbgC0JPrEegcbxhrGlcFflSsbzelDxIhOdxFcQpFUkqmCfIIkTgFM0We1RNmxx5HjcXakok2nisPd0lVuQ06yJ36sBZ+GNK/701josmI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762529216; c=relaxed/simple;
-	bh=RINEgM1G9tEhRThvr9S/6QMuGzkULoSRYMeMDElL+14=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=QZcvLAvP4izdjt1egcZtDmxHemaZsQ+W9OGSVLL0dEurIMdvBWzNrRU3VpadwvMDojCv5P6lE/KMRCaUM3qMwNy8Bcw+0ymx+w67UznbltUaq+l4l9Ym12ptXs4gXEPO6j5n05FegmO6frOh7Y5QTI5K7x9mOwG4/IrU2sNkTyg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ceV8qkL6; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1762529304; c=relaxed/simple;
+	bh=hJzS02rP0AnAnJ60/YAmGtiQoi39f08YIZAT89xXNec=;
+	h=Date:To:From:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=oTr+H20CgbU+DuVhdrlTJixHVbtF1TAjTMycrxfShEMVrxYMFsHBFuUGFRKRe+999BxrCS06cKCzsOTDxgM0XatzFx4rUQac/lxfyYQzzJKD7fFuS2YJvN5qA/eTXGKF2TEOM6urCHVDAWdNXQqBT/XoKRCGan83fPBIi+7cNb8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=joshua.hu; spf=pass smtp.mailfrom=joshua.hu; dkim=pass (2048-bit key) header.d=joshua.hu header.i=@joshua.hu header.b=i8d+q1qi; arc=none smtp.client-ip=85.9.210.45
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=joshua.hu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=joshua.hu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ceV8qkL6"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EDF9BC19421;
-	Fri,  7 Nov 2025 15:26:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1762529215;
-	bh=RINEgM1G9tEhRThvr9S/6QMuGzkULoSRYMeMDElL+14=;
-	h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
-	b=ceV8qkL6EV94LqOJmmCZCIJrjiMeR7m/cv1WX0ZcQtqjnQfYrdvek2PlVVKGpNPYr
-	 wrWYA5lvyypQHrYFNaI8NgUmcY+9y07XmGrNvXk2WCfE2brbLhtEP2gy6L+pVs7RVl
-	 G+hO3l5WPcfGH0PyuACpDW+bm1TarRs4tTd7lffyMy74Bd9lsFhr/vaLQb+H+A+qAx
-	 Bi0ZA/6trhcfqrof4Z29K21zPOGDPnk52KReISB1WBaru9gCdoQNC9NAPPcwgPoSuX
-	 E1rvegorBaXvG982Xxewl4wC6hoR4YeghgG1bKpAeqFAgbwSKqC1OCXBzbY4E6Gvag
-	 yTnqVYRJAuVHA==
-Message-ID: <a3eb79b8-f301-45a6-a3de-ea251cc6a72b@kernel.org>
-Date: Fri, 7 Nov 2025 10:26:53 -0500
+	dkim=pass (2048-bit key) header.d=joshua.hu header.i=@joshua.hu header.b="i8d+q1qi"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=joshua.hu;
+	s=protonmail2; t=1762528993; x=1762788193;
+	bh=hJzS02rP0AnAnJ60/YAmGtiQoi39f08YIZAT89xXNec=;
+	h=Date:To:From:Cc:Subject:Message-ID:In-Reply-To:References:
+	 Feedback-ID:From:To:Cc:Date:Subject:Reply-To:Feedback-ID:
+	 Message-ID:BIMI-Selector;
+	b=i8d+q1qiIRpbZCv40S650IAOS12bBYlDFmd1VwB0OTrSwFsPkbDAAULwC0vh8JHbk
+	 wCoIyXLZkxQ6iA9immHHXgMzuxd3bd389tWHKu4/+m7GEKYD9DFrcz+CW4IqRVMNKa
+	 OJuWSLX2VXgANyMDhCR74lscGNAUvRTSEQI8Y5XLS0mIZP+/OjRo0VORi9/nL18EA6
+	 S1wLreb71snEWtZYASxoBTL1LDE0LtR1F1Kmn57R1UQjB+xzfoBnuQzgn6cJI7pNki
+	 vQ7m3p7Q48tfmar6HvyP0ja02iADilF8HKGeQF4SZnF9LxRIfc8w7Ky+4giNNhiU9F
+	 BRAFFVKW0+l5Q==
+Date: Fri, 07 Nov 2025 15:23:06 +0000
+To: Chuck Lever <cel@kernel.org>
+From: Joshua Rogers <reszta@joshua.hu>
+Cc: NeilBrown <neil@brown.name>, Jeff Layton <jlayton@kernel.org>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>, Joshua Rogers <linux@joshua.hu>
+Subject: Re: [PATCH 1/3] svcrdma: use rc_pageoff for memcpy byte offset
+Message-ID: <fxcda7FkdbPG_fttyXlSupjn11fncefYSlmcpQVVhEqZtDujhBlOxPADG_Havmcju29ZqPMXVwmMI980FtUVWs9jDUYiy-JWbaClISNNwQk=@joshua.hu>
+In-Reply-To: <20251107150949.3808-1-cel@kernel.org>
+References: <20251107150949.3808-1-cel@kernel.org>
+Feedback-ID: 126372902:user:proton
+X-Pm-Message-ID: b8c332fb05f9bf71f35e34d3d2e7a48fc888e7f1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v10 4/5] NFSD: Implement NFSD_IO_DIRECT for NFS WRITE
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Mike Snitzer <snitzer@kernel.org>, NeilBrown <neil@brown.name>,
- Jeff Layton <jlayton@kernel.org>, Olga Kornievskaia <okorniev@redhat.com>,
- Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
- linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-References: <20251105192806.77093-1-cel@kernel.org>
- <20251105192806.77093-5-cel@kernel.org>
- <176242391124.634289.8771352649615589358@noble.neil.brown.name>
- <aQyfgfWu8kPfe1uA@infradead.org> <aQyn-_GSL_z3a9to@infradead.org>
- <aQzRdTcyc2nhTWqj@kernel.org>
- <e0723227-6984-4c04-be7c-c3be852a8607@kernel.org>
- <aQzwvqlD0xiYjMCW@kernel.org> <aQ3zFRizxIa-Hk6F@infradead.org>
- <60402263-4336-42e0-acfc-7f1cab6c1742@kernel.org>
- <aQ4PIT0ixuSkvk6X@infradead.org>
-Content-Language: en-US
-From: Chuck Lever <cel@kernel.org>
-Organization: kernel.org
-In-Reply-To: <aQ4PIT0ixuSkvk6X@infradead.org>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-On 11/7/25 10:24 AM, Christoph Hellwig wrote:
-> On Fri, Nov 07, 2025 at 09:38:43AM -0500, Chuck Lever wrote:
->> On 11/7/25 8:24 AM, Christoph Hellwig wrote:
->>> On Thu, Nov 06, 2025 at 02:02:22PM -0500, Mike Snitzer wrote:
->>>>>> Selectively pushing the flag twiddling out to nfsd_direct_write()
->>>>>> ignores that we don't want to use DONTCACHE for the unaligned
->>>>>> prefix/suffix. Chuck and I discussed this a fair bit 1-2 days ago.
->>>
->>> Please document why.  Because honestly it makes zero sense to do that.
->>
->> There is a slow-down. But it's not like using DONTCACHE on the unaligned
->> ends results in a regression, technically, since this is a brand new
->> feature.
->>
->> So for an UNSTABLE unaligned WRITE in NFSD_IO_DIRECT mode, the unaligned
->> ends would go through the page cache, and would not be durable until
->> the subsequent COMMIT. Using DONTCACHE for the end segments adds a
->> penalty, and no durability; but what is the value we get for that?
-> 
-> Less cache pollution, and especially less conflicts with other direct
-> I/O writes.  Do you have a link to results with the slowdown?  How much
-> is it?
-> 
+Apologies: is it possible to slightly change the commit msg to include "Fou=
+nd with ZeroPath"? As this bug was, indeed, found with a tool called ZeroPa=
+th. If not, it's OK, thought I'd ask.
 
-https://lore.kernel.org/linux-nfs/aQrsWnHK1ny3Md9g@kernel.org/
+Thank you.
 
--- 
-Chuck Lever
+
+On Friday, 7 November 2025 at 23:09, Chuck Lever <cel@kernel.org> wrote:
+
+>=20
+>=20
+> From: Joshua Rogers linux@joshua.hu
+>=20
+>=20
+> svc_rdma_copy_inline_range added rc_curpage (page index) to the page
+> base instead of the byte offset rc_pageoff. Use rc_pageoff so copies
+> land within the current page.
+>=20
+> Fixes: 8e122582680c ("svcrdma: Move svc_rdma_read_info::ri_pageno to stru=
+ct svc_rdma_recv_ctxt")
+> X-Cc: stable@vger.kernel.org
+> Signed-off-by: Joshua Rogers linux@joshua.hu
+>=20
+> Signed-off-by: Chuck Lever chuck.lever@oracle.com
+>=20
+> ---
+> net/sunrpc/xprtrdma/svc_rdma_rw.c | 2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
+>=20
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_=
+rdma_rw.c
+> index 661b3fe2779f..945fbb374331 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
+> @@ -848,7 +848,7 @@ static int svc_rdma_copy_inline_range(struct svc_rqst=
+ *rqstp,
+> head->rc_page_count++;
+>=20
+>=20
+> dst =3D page_address(rqstp->rq_pages[head->rc_curpage]);
+>=20
+> - memcpy(dst + head->rc_curpage, src + offset, page_len);
+>=20
+> + memcpy((unsigned char *)dst + head->rc_pageoff, src + offset, page_len)=
+;
+>=20
+>=20
+> head->rc_readbytes +=3D page_len;
+>=20
+> head->rc_pageoff +=3D page_len;
+>=20
+> --
+> 2.51.0
