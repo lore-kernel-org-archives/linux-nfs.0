@@ -1,43 +1,48 @@
-Received: from mail-05.mail-europe.com (mail-05.mail-europe.com [85.9.206.169])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E4B7C2DF143;
-	Fri,  7 Nov 2025 15:33:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=85.9.206.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A6083239E7F
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Nov 2025 15:34:22 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762529608; cv=none; b=iYOIHDr7XuMjsZ3NFesDyozqD9mm5O8KTk8Lb4mpF8UFDqQYcaRB/yfBenO1YaWJe6sQ/la2YAJFqDVbhdKCHZCAYx8SjgtcMQ8AkkESkhESjhIjeGD85APBZym3sRvVG6N7HRwEcn0zAWpIQU4+r8y794kQe+Tm80r54ZqSBZU=
+	t=1762529663; cv=none; b=NS5UYmeWWb9/UAL9WzngCpUp66/CI1cOYZ7T4oIcJ/A1UOds12rZaOrvG5H6+AtnVW8c79CNx513zOvLQbt9GvudVYNSTKd2L37+RDWHMlTAYiFfKs2fVe6Rvvir8eYzkmGggEKBhpmPjijVuF9O6SwXbbrTeA+K8MwtCosbnBE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762529608; c=relaxed/simple;
-	bh=kjg383YF4V5gMKJkRMwdf6DMCJZdUCNBnKqt93sK2ao=;
-	h=Date:To:From:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=gydnd6xzuacd7kjJL8OuP8ifYepAN17JpDj+cm34LvwIcZPj//QolgyByxfBO1YW7X0QHdg3FPcUC4PmgHzQ1M8IkXC1DCo1RD3gPJjGw9QwCUVnR+8S0QHhXylLYPn5LRejaoF4fZXMKxAN6XCVGpTNgcxxIgQC3UVB7OG+jjk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=joshua.hu; spf=pass smtp.mailfrom=joshua.hu; dkim=pass (2048-bit key) header.d=joshua.hu header.i=@joshua.hu header.b=F1yQAeD0; arc=none smtp.client-ip=85.9.206.169
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=joshua.hu
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=joshua.hu
+	s=arc-20240116; t=1762529663; c=relaxed/simple;
+	bh=ZRAN9WR3nmo7Yux21d6jdeXWTmDTo4DSRVgbFAWCK5c=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=dLOV0lhmx/733yaCZxokU2eGljIaOXB2l4PxJ2e64TCDwWzk9PDbgoCtBPwCFSGjDR8zzOptESC7S4MejLijGnuz1Mv0UnWbESzY3qL5/ym9LfYljJF4F70QrvD8a0rpheQ2qE04vl6rLR6EIcpHlMXsGxsfWKyWrp9HqZThVLo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=syXZWE7f; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=joshua.hu header.i=@joshua.hu header.b="F1yQAeD0"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=joshua.hu;
-	s=protonmail2; t=1762529591; x=1762788791;
-	bh=kjg383YF4V5gMKJkRMwdf6DMCJZdUCNBnKqt93sK2ao=;
-	h=Date:To:From:Cc:Subject:Message-ID:In-Reply-To:References:
-	 Feedback-ID:From:To:Cc:Date:Subject:Reply-To:Feedback-ID:
-	 Message-ID:BIMI-Selector;
-	b=F1yQAeD050Bkaz5EIV8HsIHdiGqDeXgGGGCJTXiV+kpWIbJc9/vWT2i/+OPCZsyJK
-	 SmrbHf2NfgO/4rRM44KMyRa2UsEhNOM0gtA+U3jYujTmvFKP6C6kzqaArZOUvLF3kc
-	 8oc0ArWMX/1HHTX4EegART3LWs/TkC28qa+WEoYRWwZsLICVMWxnk4uRXNRO164kMI
-	 usRxPm8JtO7B3qQe5xbw8URqeDEi3XFX2arnIsE16O6yOu2Mzk9fNHO3lexy8GHpgp
-	 kzL5HRUGrMBJMq4VPaZeg7P92ZXKCuKpJjeJ9fwTwgodCsw3brmtw3QW6+dJxVtCyr
-	 QB/vSuV40bcyQ==
-Date: Fri, 07 Nov 2025 15:33:05 +0000
-To: Chuck Lever <cel@kernel.org>
-From: Joshua Rogers <reszta@joshua.hu>
-Cc: NeilBrown <neil@brown.name>, Jeff Layton <jlayton@kernel.org>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org, Linus Torvalds <torvalds@linux-foundation.org>, Joshua Rogers <linux@joshua.hu>
-Subject: Re: [PATCH 1/3] svcrdma: use rc_pageoff for memcpy byte offset
-Message-ID: <XGrEQAquPtPkXsfrTIl7DWn7XiZ60-155zIIzZHtUshCNeOd8eeAMcm4NgGu8PQK03PLynLPzfc33pEpGN3f2lzGuFBOocvb_YFo1y4WuJA=@joshua.hu>
-In-Reply-To: <5bbbbf82-a44b-4093-9119-c221f9e8f9a1@kernel.org>
-References: <20251107150949.3808-1-cel@kernel.org> <fxcda7FkdbPG_fttyXlSupjn11fncefYSlmcpQVVhEqZtDujhBlOxPADG_Havmcju29ZqPMXVwmMI980FtUVWs9jDUYiy-JWbaClISNNwQk=@joshua.hu> <5bbbbf82-a44b-4093-9119-c221f9e8f9a1@kernel.org>
-Feedback-ID: 126372902:user:proton
-X-Pm-Message-ID: d58b71d5e95144e7ed5713ba9a57fd9ae6b37508
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="syXZWE7f"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Transfer-Encoding
+	:Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
+	Sender:Reply-To:Content-ID:Content-Description;
+	bh=C6nxKiJN5pT7zjAnlNh5+VFog+ut8PTN99yD9f6CCck=; b=syXZWE7fxNEP4W4scGj2PcjyuR
+	2hvUDovIz5AbNvxmFfE9HnhzQnEshUnSWWOtvAwUeVEFDOshKlnMqj5E8n/3nfz5GHSMUsMr3Gz2s
+	BvQB+UwmK8rLY147cvE+C+ZZvVSK0dYjazt8YbG4gemgpBVH0D/ze5q+3eJRDDBRSWGALBDToN+QD
+	FqvgONXTd0E3juzhMRhH2Vj2EK0InG07GdcNYyHqQUnpKSCJUCRht2kFentHO4GS+GWYRWF0phsPr
+	1hAkaZ+h9+vR+1LQyrq7bGJBU6q5dNLtka26NcoRNSN83JAP0xUsSADNTgF1fUPuZ9aAOaiROK04g
+	h0vCVmrw==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1vHOTm-0000000Habn-0bSw;
+	Fri, 07 Nov 2025 15:34:22 +0000
+Date: Fri, 7 Nov 2025 07:34:22 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Mike Snitzer <snitzer@kernel.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 2/3] NFSD: add new NFSD_IO_DIRECT variants that may
+ override stable_how
+Message-ID: <aQ4RftwuYIxwvLgb@infradead.org>
+References: <20251105174210.54023-1-snitzer@kernel.org>
+ <20251105174210.54023-3-snitzer@kernel.org>
+ <c1f4d144-826e-4c27-821c-47652a7b67d2@oracle.com>
+ <aQ0CUPcYYg6-5IJ1@kernel.org>
+ <7d9bcc0c-d997-4fb9-aa0c-831b8f08a9b0@oracle.com>
+ <aQ0noN473a-QFqpz@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -45,81 +50,35 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <aQ0noN473a-QFqpz@kernel.org>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-Sounds reasonable, or "Found by Joshua Rogers with ZeroPath(https://zeropat=
-h.com)", but I have no problem with either.
+On Thu, Nov 06, 2025 at 05:56:32PM -0500, Mike Snitzer wrote:
+> OK, I'll take a closer look at NFS client controls for stable_how,
+> because NFSD clearly handles NFS_DATA_SYNC and NFS_FILE_SYNC so I just
+> assumed its because the client does actually send them.
 
-thx
+Asking for NFS_DATA_SYNC / NFS_FILE_SYNC for O_ЅYNC/O_SYNC writes or
+even fdatasync/fsync calls that translate to a single on the write write
+request would be a valuable client additoon that should speed things up
+with most if not all servers.
 
-On Friday, 7 November 2025 at 23:30, Chuck Lever <cel@kernel.org> wrote:
+> > And as I said above, "no plan to merge it for now," meaning it's still
+> > on the table for sometime down the road. I have some other ideas I'm
+> > cooking up, such as using BDI congestion to control NFS WRITE
+> > throttling.
+> 
+> Hmm, I thought the BDI congestion infra got killed (by Jan Kara and
+> others).. which made me sad because when it was first introduced it
+> was amazing at solving some complex deadlocks (but we're talking 20
+> years ago now).  So I haven't kept my finger on the pulse of what is
+> still available to us relative to BDI congestion.
 
->=20
->=20
-> On 11/7/25 10:23 AM, Joshua Rogers wrote:
->=20
-> > Apologies: is it possible to slightly change the commit msg to include =
-"Found with ZeroPath"? As this bug was, indeed, found with a tool called Ze=
-roPath. If not, it's OK, thought I'd ask.
-> >=20
-> > Thank you.
->=20
->=20
-> Patch description in my tree now reads:
->=20
-> svcrdma: use rc_pageoff for memcpy byte offset
->=20
-> svc_rdma_copy_inline_range added rc_curpage (page index) to the page
-> base instead of the byte offset rc_pageoff. Use rc_pageoff so copies
-> land within the current page.
->=20
-> Found by ZeroPath (https://zeropath.com)
->=20
->=20
->=20
-> > On Friday, 7 November 2025 at 23:09, Chuck Lever cel@kernel.org wrote:
-> >=20
-> > > From: Joshua Rogers linux@joshua.hu
-> > >=20
-> > > svc_rdma_copy_inline_range added rc_curpage (page index) to the page
-> > > base instead of the byte offset rc_pageoff. Use rc_pageoff so copies
-> > > land within the current page.
-> > >=20
-> > > Fixes: 8e122582680c ("svcrdma: Move svc_rdma_read_info::ri_pageno to =
-struct svc_rdma_recv_ctxt")
-> > > X-Cc: stable@vger.kernel.org
-> > > Signed-off-by: Joshua Rogers linux@joshua.hu
-> > >=20
-> > > Signed-off-by: Chuck Lever chuck.lever@oracle.com
-> > >=20
-> > > ---
-> > > net/sunrpc/xprtrdma/svc_rdma_rw.c | 2 +-
-> > > 1 file changed, 1 insertion(+), 1 deletion(-)
-> > >=20
-> > > diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/=
-svc_rdma_rw.c
-> > > index 661b3fe2779f..945fbb374331 100644
-> > > --- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-> > > +++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-> > > @@ -848,7 +848,7 @@ static int svc_rdma_copy_inline_range(struct svc_=
-rqst *rqstp,
-> > > head->rc_page_count++;
-> > >=20
-> > > dst =3D page_address(rqstp->rq_pages[head->rc_curpage]);
-> > >=20
-> > > - memcpy(dst + head->rc_curpage, src + offset, page_len);
-> > >=20
-> > > + memcpy((unsigned char *)dst + head->rc_pageoff, src + offset, page_=
-len);
-> > >=20
-> > > head->rc_readbytes +=3D page_len;
-> > >=20
-> > > head->rc_pageoff +=3D page_len;
-> > >=20
-> > > --
-> > > 2.51.0
->=20
->=20
->=20
-> --
-> Chuck Lever
+Yes, BDI congestion is gone, mostly because it didn't really work.
+I'm also not sure how it could have solved deadlocks.
+
+I feel a little out of the loops, though - what are the NFS-level
+write throttling needs to start with?
+
