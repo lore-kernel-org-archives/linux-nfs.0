@@ -1,225 +1,471 @@
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 592FA2C0266;
-	Wed, 12 Nov 2025 14:39:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.177.32
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1762958347; cv=fail; b=Bx8I2V1+dvJZOP99wKGlDH/NeObmwf0eBEbjKaKoVYQ17yEQTKsOyo4NZB0vQgR01769OoKB39HM8rSF07AOdYMJ0s0aE/S5BfzZZopZF7rIdmGYqccAqyPxuNKcddy5lrwyMPiipZ9CvHxXYMiGOk5DaoRW6jlvApcONoOJefY=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1762958347; c=relaxed/simple;
-	bh=SLeYb5zLTqKQLTcnUubJUxm8Tgd69eVKfEXSiDVgKr8=;
-	h=Message-ID:Date:Subject:To:Cc:References:From:In-Reply-To:
-	 Content-Type:MIME-Version; b=UPEol9aDJLsdzpk8A9vbcVeCjrz2aAd0UdEYbi+LyS3uWKicKQsE7RFx0IEtcSeJtYIfQx1VvbNwjq48UMiiqpja7uX91CG2rGrKBxUCTx+rM1RrsssuvAazD+mwKgwNTUQ35uvy9VTOzUbfV/r6odFeZAt4DdUmCZPQK0gYFmM=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=aCLa6vLp; dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b=hKICn7YU; arc=fail smtp.client-ip=205.220.177.32
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F33D4345757;
+	Wed, 12 Nov 2025 14:46:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1762958793; cv=none; b=Hkbl/5VMPuuKSD0BcbG74ZqWOOQwzXt8DL+R1SWsssvH4y998GljXUWko/4Xgupd5IEzcRHa7CWKqHKV17Sc9siHCgs0X6BIDiBHQXW18kIfmm2NdYI4EdFZDFNiNl3xQALnYMUhQxAd611BHUQsbd+8S+L4Ojra917XrIDb/Fs=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1762958793; c=relaxed/simple;
+	bh=W09oq+HYxVgVN/kosChQDcZ+ebdWtAbR+9uFU7ZwbLc=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=QT7hXbcgd7Iget85biBwR1ENfTXqV5goRml2q88sW+FDNZBPs8lpTGXG6TQsPqXKppFBQYXf+JN91bbGaYnnZR/XXWO9LguiHau+wonBqkokxDXjSlcsJnChmgZVOrFTx1mBgK5uPVVYqJBWF6J9BQuXnrC5VTP039U1Vble1dY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=daaqerkF; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="aCLa6vLp";
-	dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b="hKICn7YU"
-Received: from pps.filterd (m0333520.ppops.net [127.0.0.1])
-	by mx0b-00069f02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 5ACEYVNS010079;
-	Wed, 12 Nov 2025 14:38:43 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
-	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=
-	corp-2025-04-25; bh=yqZYi500rZkF8oZ88ObVhF/QmRPqQmDjGz0KU6yXrq4=; b=
-	aCLa6vLpf6//9EjRRpc3AL0YR7krPNDfEXBZKZ4f5kf9NL73nD4LdzWcYvdf8GbB
-	xCCZqRkWqVymMRdPhD0z4FJ/+h0ukAMjnSzCpo9js/0OOcfMIoogop9gF0Z/reRF
-	inPks1eEiwsDf7qr4UyVm5V+iP7XVKj7nXL2w8dm/k44rQyobTeNJritYmaKHOKv
-	YpU2tOkb/HHbZZx/3q3YCklke0/TaLJ8FqwPMSLJpZmXpakm2ML9XyJK1tuukMkc
-	szpyKBxorIYehuDAh7Fvxy9mVHglAZQtmrXIcljH9gAssdZBGSv/nhvVvtxVHRyY
-	I78l7inNtpbfuCDXPg0vOg==
-Received: from iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta03.appoci.oracle.com [130.35.103.27])
-	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4acu650601-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Wed, 12 Nov 2025 14:38:43 +0000 (GMT)
-Received: from pps.filterd (iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-	by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 5ACEG4xo032419;
-	Wed, 12 Nov 2025 14:38:43 GMT
-Received: from ch4pr04cu002.outbound.protection.outlook.com (mail-northcentralusazon11013071.outbound.protection.outlook.com [40.107.201.71])
-	by iadpaimrmta03.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 4a9vamher6-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Wed, 12 Nov 2025 14:38:42 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=kMgAvz1EjmJfvRQ4iwzgIKUPg6HvJyFmzPxWmXOvMQ0WRe/slOXYtTA+WpUo68w4oQc15WD+S7mm9aIVCrmS5G29ddmHRiqT5LdbyB1X80lgK/6fqocC6R4izxcJXjR4rfUcqp9DlJw9q3KSQxxOnHide57eCGpJIsFMMqd/Y8psGpbkOoiPOJkIylWgojdn/sPDZqDFo60jGxEdBbEmWgfNHLni74JV4AcznMGUno5fPDQLfRL8aTcb/h/glGPQ848fCdf0/f6wwDPGBg+JkhE/vS2l0BWNA9uL5LORPHvvCb/QNZl9Ay36ueZ+JQE2nVJmyxWWHqI8oz5mmBY5Yg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=yqZYi500rZkF8oZ88ObVhF/QmRPqQmDjGz0KU6yXrq4=;
- b=L6+bhgAEUKVm+NDNmapR2EYKmc9cSGiyLKHY1tXXtpmXsbSAOgMBFuWah9NPMv5WCRHs+F5Kw/E2qT8mOwzyARtBsZcebhFajKSjVZUoUXdw1w+APlZy6u30QTwy57vdzoSZVoeH7v0u6vF52wzeQLYBm4dUo8jdK3AWi5MlkUhc7tUWKdtAuLC323yiBjU83XnXA4YXMvIPNdDtMM3ZaZk+kWBDWZ5x5pscTxnXKnddd0ihSpoWjIC5jeWCX8p1rEu3C8gmfhC8gdMFO0QMBzACxFcx86KjS9+cuBMuzHryYyfFoNA6gzL7hpS8jC5+0xh/Pb7k1ijysKWiwQNFNA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=yqZYi500rZkF8oZ88ObVhF/QmRPqQmDjGz0KU6yXrq4=;
- b=hKICn7YU2Nv4t0rZ5VjN51a3Cgsus0kFGEEgi0obX4pKtJYzq1U9aneBB+Gob1dRPy+xVbptflEjBvv3zPnrH703Rd3XcdUlTA27jSo/+t4Ci/ugX7Mscse6FAqrhfIVUdCnRY1syMyyCRqtJG4xCV/tNwxb+PibVNnTbpmnEKc=
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
- by BY5PR10MB4353.namprd10.prod.outlook.com (2603:10b6:a03:201::7) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9320.17; Wed, 12 Nov
- 2025 14:38:38 +0000
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::743a:3154:40da:cf90]) by BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::743a:3154:40da:cf90%4]) with mapi id 15.20.9298.010; Wed, 12 Nov 2025
- 14:38:38 +0000
-Message-ID: <74bfc555-7ae3-4d2c-bf53-c06bacab5caa@oracle.com>
-Date: Wed, 12 Nov 2025 09:38:36 -0500
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v5 5/6] nvme-tcp: Support KeyUpdate
-To: Christoph Hellwig <hch@lst.de>
-Cc: alistair23@gmail.com, hare@kernel.org,
-        kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-doc@vger.kernel.org,
-        linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org,
-        kbusch@kernel.org, axboe@kernel.dk, sagi@grimberg.me, kch@nvidia.com,
-        hare@suse.de, Alistair Francis <alistair.francis@wdc.com>
-References: <20251112042720.3695972-1-alistair.francis@wdc.com>
- <20251112042720.3695972-6-alistair.francis@wdc.com>
- <20251112065925.GF4873@lst.de>
- <f7dd4e03-352f-48ba-8a0d-ab9e793ef385@oracle.com>
- <20251112143804.GB2831@lst.de>
-Content-Language: en-US
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20251112143804.GB2831@lst.de>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: CH0PR03CA0432.namprd03.prod.outlook.com
- (2603:10b6:610:10e::20) To BN0PR10MB5128.namprd10.prod.outlook.com
- (2603:10b6:408:117::24)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="daaqerkF"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8509AC4CEF5;
+	Wed, 12 Nov 2025 14:46:28 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1762958791;
+	bh=W09oq+HYxVgVN/kosChQDcZ+ebdWtAbR+9uFU7ZwbLc=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+	b=daaqerkF6xj5TaEr/77ce8B3DNX8JX+Dus7t1apkIl0GhPUei/291tbqIexB+BB0p
+	 /KyoISnE0t4xdRZpcMs2CoZOiudDrK3GHCcgq2yTHfzHeln2cpGxm/+npJ6AOX/yDA
+	 opHo54wDKao8o8/BwHwKA3SJkdsD2N/5bCmm21v7zgrRNps5sj4UsJ5U7rhh1VrE0R
+	 +GPXdxqc/Y7ui4Bh0kd0DS1ZceyVKxs4UX2f9XcTV6++mn1yYXr9t9x7Ng0VW3r09u
+	 A7YTdwC64Tkume+ZmW0WRawFCOwySmDmjGb7G3zZJRsCWEL9ZZ5m6Gc+U8yWq8ble0
+	 ys72mKLOArnPg==
+Message-ID: <32e65149e7678ac3cbc7f8dbed26429fd9c7ae78.camel@kernel.org>
+Subject: Re: [PATCH v5 02/14] VFS: introduce start_dirop() and end_dirop()
+From: Jeff Layton <jlayton@kernel.org>
+To: NeilBrown <neil@brown.name>, Alexander Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner
+	 <brauner@kernel.org>, Amir Goldstein <amir73il@gmail.com>
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org, Chris Mason	
+ <clm@fb.com>, David Sterba <dsterba@suse.com>, David Howells
+ <dhowells@redhat.com>,  Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+ "Rafael J. Wysocki" <rafael@kernel.org>, Danilo Krummrich	
+ <dakr@kernel.org>, Tyler Hicks <code@tyhicks.com>, Miklos Szeredi	
+ <miklos@szeredi.hu>, Chuck Lever <chuck.lever@oracle.com>, Olga
+ Kornievskaia	 <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Namjae
+ Jeon	 <linkinjeon@kernel.org>, Steve French <smfrench@gmail.com>, Sergey
+ Senozhatsky	 <senozhatsky@chromium.org>, Carlos Maiolino <cem@kernel.org>,
+ John Johansen	 <john.johansen@canonical.com>, Paul Moore
+ <paul@paul-moore.com>, James Morris	 <jmorris@namei.org>, "Serge E. Hallyn"
+ <serge@hallyn.com>, Stephen Smalley	 <stephen.smalley.work@gmail.com>,
+ Ondrej Mosnacek <omosnace@redhat.com>,  Mateusz Guzik <mjguzik@gmail.com>,
+ Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, Stefan Berger	
+ <stefanb@linux.ibm.com>, "Darrick J. Wong" <djwong@kernel.org>, 
+	linux-kernel@vger.kernel.org, netfs@lists.linux.dev,
+ ecryptfs@vger.kernel.org, 	linux-nfs@vger.kernel.org,
+ linux-unionfs@vger.kernel.org, 	linux-cifs@vger.kernel.org,
+ linux-xfs@vger.kernel.org, 	linux-security-module@vger.kernel.org,
+ selinux@vger.kernel.org
+Date: Wed, 12 Nov 2025 09:46:27 -0500
+In-Reply-To: <20251106005333.956321-3-neilb@ownmail.net>
+References: <20251106005333.956321-1-neilb@ownmail.net>
+	 <20251106005333.956321-3-neilb@ownmail.net>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.58.1 (3.58.1-1.fc43) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: BN0PR10MB5128:EE_|BY5PR10MB4353:EE_
-X-MS-Office365-Filtering-Correlation-Id: c59c84ef-6162-4e96-76b9-08de21f92af4
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;ARA:13230040|7416014|376014|366016|1800799024;
-X-Microsoft-Antispam-Message-Info:
-	=?utf-8?B?alFYdnN3em9HQTRNZ2czNEVVTyt5V005SFBRMStIellkalk0RXVtQ1VDdU5X?=
- =?utf-8?B?M0g3RGRLRHBnZTRWRGlqaVlmQytWczlKcnIxMDFBNHdUM3lwRjdQNUlJUGpL?=
- =?utf-8?B?L2ZFQUxlUjg4eWU3RWtNNzBwOWtDT1RyYmV5WUs3b1A2SmFzcXc4enJhUkhJ?=
- =?utf-8?B?VlhsS0NobGZlUnF6Q0kwL29KeTNWV2hnSnpQNnU0cmdDWUtkRktya1NOakRp?=
- =?utf-8?B?b1ZMbkpBSG9ydDdJT0JmeVozWStyZ1lSSFdmQ1JERklmdjBJejRUVkg4UmVQ?=
- =?utf-8?B?U2dselFvN0wwT3JKb2p0RWo1VVVMQ1VDVksrM2JuMFhwdGxzUm50cXZVZGsx?=
- =?utf-8?B?S3hXdDdCU2ZhOEhva3NjN1JDbG9EUXEvV0VuVjZ2RjJqRkJvUTE2Njg1aEZx?=
- =?utf-8?B?VWhtcDJLT3pOdFpZaGVGOGdCY2l0RVlrZ3lMV1JzVGN6WCtubVRBdy8wMDJS?=
- =?utf-8?B?L0NidlZaUG05akRFQ0I0bWpVa2tCK0RtODVzOTRKRXRlL0VzRUhRTFV1R1Y3?=
- =?utf-8?B?bjdFN2hocVp5R25rWDQ3NnRnRWxPOUhTOFV6VVBkR0o3MytRTWp6bUVFY2F3?=
- =?utf-8?B?d2cvZENyRVdiclhIZ3ZHT0pLaW8va0c2Y0JvQTBFaDZYOS82OVRTbm1OcEsw?=
- =?utf-8?B?WXJIeTNvUXRMSlpSQlhiTFpEUm9pM0M0OE5ZcTRJWnU0dnJsdzA1eXlpREgx?=
- =?utf-8?B?Z1BJVmR2Y3ZpN3VUc1lsNjkrVTQ5VHBKeGhvUGdybU1zcGZJNnJaL3B0SjIv?=
- =?utf-8?B?NktuZkJwcUczbyt4NUFBN0gzWG5HRWEwQmNLNzA1ZGFtRkkvOWdydURCeFBC?=
- =?utf-8?B?MmVKQ05zR1dhZzJhdnl2a05keHEzWXBSdXpzY25kTURHRnB1RjhsWlFzL2ph?=
- =?utf-8?B?cituSDBJeGxuZVBnOUprZXdtMC90YzhDUEtDc3hUQlRWa1RHNGpnVmZ5S3pG?=
- =?utf-8?B?a21vRzVKL0ZaOEVaOUUwQjNFNXVaMEF1TVBQcWVISVhmekhpYzkxMHAxcW5G?=
- =?utf-8?B?ZDloVUFvQ0ZCNnA3U1hZcG9heGxEZktSWUdxMVFDYllhRXBYT3lMWG9UYmY2?=
- =?utf-8?B?VHVDbnhFN0NpWHVTZnVJTXl2R21nTm5pL2N6MVJNZjVYQjlXTzhJbGc1Ri9L?=
- =?utf-8?B?L3U5WTh6WTUrb21udlF1M3h5UlVMd2l4anFlb2Y1T1NRMHlJck0yT2h3aE5i?=
- =?utf-8?B?QktySk1KQzhOaHFEQVJBK2hHWVpKdVZYTWZQbllVSXNEQlJxSUtuaXpRbGtu?=
- =?utf-8?B?aXcyUFRyYklXK1ZnME5JQTJ4Z3B0YmRONEJoZEhLZXpvd1F4VmordEs3TmNO?=
- =?utf-8?B?K0hzWGl2OEFnTzNjZkFPem5tL2ZTa3JYS1J6OXRlb3pHOGw2Y1UwMTBsc2dH?=
- =?utf-8?B?Mlc5dnN1aHMxNEJDd05Zdk1oRm8wQ3k4eFVvS1Q5b2NCVzVtMzNGUkZnTVM1?=
- =?utf-8?B?MWovTWtXOVF2NEhIRW9rNWRjd2cwcDhjV0lDRUFSbnI1VVd0MldTY2VmK2Jp?=
- =?utf-8?B?RmdYVHdwNkE0cjdaV2ZsWGJmVTB2VWcwSnhrUFpkVlhVRGFQeHg3Z3VvazV4?=
- =?utf-8?B?YVZPNlorZ3FjQW82WU5sYmtmODRTcVczZGNIdXUrRmVNVXNjaE10Q1IydExH?=
- =?utf-8?B?U2M4RFlXa25SOEZmN3NXcGVFR3NJS1AzRHZUekJKY0ZsbzU5VW9SNGQ0SDMx?=
- =?utf-8?B?bGNzY3VxRTMrK0VFS3ZvYjMyWEJRY1A4THhncmtnUHIxTlFMSGY0a3RSb2hQ?=
- =?utf-8?B?R3pISS9MS1daaGtsR3dDRXBGbjlEdU8raFFXWndodDBmL0RoWUJqTkp5aDZm?=
- =?utf-8?B?QmlCV0QyM3pkZEcwS0lBM0NuMkJwUi9jM1BKR3Q4cjN4SjVBNWUwajFjRHhR?=
- =?utf-8?B?OXYxRTIzbGt0SkVCcERSTmdZTEpJb0ZVcjJGVTY2Zm1xM0lWNXVLbnRKSmNi?=
- =?utf-8?Q?x7LRjjak+nWdnJqg0e0rn14iNxlVGIN5?=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(7416014)(376014)(366016)(1800799024);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?utf-8?B?NnpCMGdaSkhXZ3l3WC9waFpNenBaaGp0azl1SW9GNmtYVzNDaXRyK2NOamZH?=
- =?utf-8?B?b2xZRk5QNWhFRHA4UUpTaUpwT2tsK21LWUR1OGw2QXF3Y1pmcVVVa2t5d1ZM?=
- =?utf-8?B?bnpLQll1SHFJZGM2c2xrUHBBdTYvYkpQNG9xMytiQlZTME9UYVhiVnpSVkRP?=
- =?utf-8?B?WXN1S0tqNFNiWmgyVFZVbUsybElFN3U1VW9YT1J3QnZYL1Fxb0NiRmNQWG40?=
- =?utf-8?B?aDJKVm82OWNrUVZoeC85eU9ETzluVzlnTXFGbkdnWnMyc1hadEJGcTZhU29m?=
- =?utf-8?B?UUlpMHpMMlc0UVphZWtKVjVtTHNDeHhjQW1aUnhkODUwWjZISjRCWGxZeGpJ?=
- =?utf-8?B?VGJyamsrNmEwV0NSeFN2cHJjUjI4UVZCYktuR1FlcFU2VkZVOEdraUJ5KzZ2?=
- =?utf-8?B?ZDlzNC9yVU9TVERHL1BPOTljU2VPeUpQSzBFcFJmQTdpWUthc2k3eUhjdFN1?=
- =?utf-8?B?TGpRODlWNUF5UUV3UFJVb1RMRGhGcVNMWldIWCtqU3FBOUdkQm9xdjhxMDVQ?=
- =?utf-8?B?UXM1YW5GczRId1lqR1I5eGRwRUtQS3diWTNIbTA0ZFZQN3pqc2h2cmpjMVBm?=
- =?utf-8?B?Z2loVHhmZ3ZRUTZSeDRGaW1MWHU3M3prdFhDT0prZ2JLVXJNMVVYejZvSFlm?=
- =?utf-8?B?MGVZV25sa29BcCs2ZEJQSWtlTU5KUVB0L2ZuVGlTb25EQTI0ZFE0MmE3eFQw?=
- =?utf-8?B?NkJnYTRZS2pZZVRYQzYxRW5GamUvVmtsZkRuQmd0Tmw0RW9kbFl0OCtrbTQv?=
- =?utf-8?B?c2hYdFlXb0xVckRpWTBaRVEwSk5CdDlOejEyUFZ3czV5SXlSUTJmSTFRWktL?=
- =?utf-8?B?MUxuQjZELzFCR04yc3NyUnhaTU00YTVnbnlpN0xtOUcydjE4Z1hxbU0wUVV4?=
- =?utf-8?B?VXZLZnlVSFFWWTJmMWpBbEFYUERSUkZnOHFWd0xIeWxSTEMvMGp2WFlINmFk?=
- =?utf-8?B?RnQ1RVdiOThIUG40bDJIbGNmNmZRdmI2ekwvRjBGdlhrT3c1Z091NlJLQzI0?=
- =?utf-8?B?aHF6TklkK0NmMEdIc0dPcThTSmtyeTZIcHpMMDZ1YXV2VFNQbTM4K3UzaC8z?=
- =?utf-8?B?MDVyVkRIWDRmY0V5R3pJd3dtY210ZERORytyMm0yRjlBQnRYNDhaSFlFcitp?=
- =?utf-8?B?MVhtaS9nSzBKSTBlb1U1cFo4SHZYR3p1YlRSRm5oSjlwNFU1NUF5Qlc3WXhV?=
- =?utf-8?B?aTYvM3BwUUZ5WHpSZGhicXRCaU5zYk5qTnBQbXlBUmVaVEpBMDBVUjBocU5q?=
- =?utf-8?B?d0NHZFhubWNjSWkrNGhCRVI5UzZwMVhSLzJMa2trNkpESldaSzZvaEFCZmFX?=
- =?utf-8?B?eWp6dFZVUWh1NFQ3QlBQS2ZiQzZnWk5weWVvOG9tc0dIRk85ekI3NTVQTWtN?=
- =?utf-8?B?cmRkMkw1dGlKdUV4QVQ0QzRvbENzR2VIU2dQY1BvUGtoRHNZQkhXMFZweldB?=
- =?utf-8?B?L0hjNFN2QmtuT1YwNmNHV0VKVVU3OVBoT3dRZm1Ub2FhQS9ZRmNjNUZ6Zk4z?=
- =?utf-8?B?QWRkaUp6d016blgya2YrZGl6YlBJT216YnA4cVk3d3QzcW0xWE5iZ3lyWU5D?=
- =?utf-8?B?SzlkOGgzNmFMTGpWdGd4YmRZMzk5Vmo4SVVpVnJxSjFBTHRKODRjQ3BZL2pq?=
- =?utf-8?B?czRjR0FSRFRqVjF0dnZMdXg3VnVrRFlEWGFvRStNVjJEUjg5NlhmcHByOHpK?=
- =?utf-8?B?Sk1ib2R5azVkMlIrRy9TanV5T212UEY4Yks4bE5sUldMb2RvRkwzNFI3YUFw?=
- =?utf-8?B?bHdLN3RVendOQi9sWDF3TGExd0hKYmN1eGhGRE5paWNtdGc1Z29iL2wxenF1?=
- =?utf-8?B?TzcwRnpoV2FLOWw5UXhFU3lXcU5QZHBYamlPbkhFODZPVEVvTm54MkJpbmhV?=
- =?utf-8?B?QzlxVDNCbmRwL2F6Q3lLMlA1MmM5OUw3WkVnbWtKVWNQa25hemp3Z1ZVb0RF?=
- =?utf-8?B?OHhraHNHT2V0MTduTFRTanBVTXFWLzc1SzRIMjg5VDRsdFVndUhDN0xPYi82?=
- =?utf-8?B?bHE3eHZVclNISVQ2K3d2MTJINmtqWHl2OEREaC9oLzlIbEU5ekdVRy9iZ01O?=
- =?utf-8?B?MXNxRUZNVTdrR2JUK2NOTmpjd0pYRTdFVW01MnV5QXliMlpMQ0dhdFgyMlJW?=
- =?utf-8?Q?oz1JVRRjTmyL7kZQe/s6GL9aA?=
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
-	p+XhRld6gdq/krtdt2E1PzhEGGFQ7R3lisY+rDB2UjgHOPKQnELfBiNf0s13G0Iip2jAkUM9xk6HTjQ4K7Ltz8qJp59cmfkjGjM7QgjrcMeNc7o4Le7YYVn2om0AZPR1LnW6j5LtJt5ZPhC4pI238260kzc18sf3dYPYF29fojgKft2tB5emlrqiDu2p3eYfRgZh2rdpxvifK1eLBSQzmjXqPxUnNriXcv6f1rM2UozTOATiOrQBdOrvvRPGu7rORjxmkXijQRg5Avo2CMzzUVlP5J3qOEOoFzQkmBmdJ+2b/keqikwbo3RdIAZmpO1yO95oiVdHgNKcpq5y5MIrADB1jRhoXd2K35BDyeQHQ5pg4z+SLYd2odj3PNz9VG/Gv+wlfl6DtpenL7Df3DDrPdG2agDE6kMgEyMKdISjsOb9DCh2ZVA1qortYh0wBYnSMAFVeDFpHBHwlMGLE2UU3fKh5vFszgW6xcNDeqQdl2D/aCyEzTTKLxAiU6kkEf5wsrc/+TpBww6JWD0hic7NsmQoVlnUGGPbiXhtjjYYkkB2KHrcx4LAGQYePbRBNQETZOvqjHc7gasJdkGyFSMw4kKVVHwD9JSi/DaLOYcnf0w=
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: c59c84ef-6162-4e96-76b9-08de21f92af4
-X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 12 Nov 2025 14:38:38.7052
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: MBsS2deAZzYbAouPupHaJy/cq1n/zEYYJKmHeaFQq9LWb4HI9fAz/gCZ0Tg4L7hnZBv+566JRfvBhXpLIQ0rVQ==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: BY5PR10MB4353
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1121,Hydra:6.1.9,FMLib:17.12.100.49
- definitions=2025-11-12_04,2025-11-11_03,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 suspectscore=0 mlxscore=0
- phishscore=0 mlxlogscore=866 spamscore=0 bulkscore=0 malwarescore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2510240000
- definitions=main-2511120118
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjUxMTEyMDEwOSBTYWx0ZWRfXy5vclSji7gHz
- 9PzmgYg4OK6HlQrjwhBlJTXt5XEOqjeDyCZpzWwIDYSrtwAusKnEMsqCyutxfIKFNVPPC5Nfabm
- x75yebfBqxnZlXPtbEgHPJH2oXCpoPwngYXjBT5cPSpmrwglYJAjPpLMCoXZE0ZP6HNp+1lKzzd
- 5HWYNTwdbXZMfDeErxbVWPTuJDKmw5fNANnvn5b2LL1aqXW7QHoD0RrRGhbKh16KxcgU57jOAaZ
- pKHC0Sll3JVRJ3AvZUgdOdxsrfbmCGDR+HoDbFr/HF2s2gWjoLchMTMIlSSn+GzLLVulTXrat+U
- FlNk1Ncz6U/yxdU1ufvhkNGIcFJ+edfg9qp9qOPM82DTdeZqhuV0xF2CSGMRuzgqJSTTAgAeB+k
- zik3nm7UhiLSAiOl3N+RWfRb8XZ1FqgBhuiY4DHzNHSZ7QIWCS0=
-X-Authority-Analysis: v=2.4 cv=UvFu9uwB c=1 sm=1 tr=0 ts=69149bf3 b=1 cx=c_pps
- a=qoll8+KPOyaMroiJ2sR5sw==:117 a=qoll8+KPOyaMroiJ2sR5sw==:17
- a=6eWqkTHjU83fiwn7nKZWdM+Sl24=:19 a=z/mQ4Ysz8XfWz/Q5cLBRGdckG28=:19
- a=lCpzRmAYbLLaTzLvsPZ7Mbvzbb8=:19 a=xqWC_Br6kY4A:10 a=IkcTkHD0fZMA:10
- a=6UeiqGixMTsA:10 a=GoEa3M9JfhUA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=vX5-pKDpQXTfG0k8p2EA:9 a=QEXdDO2ut3YA:10 cc=ntf awl=host:12100
-X-Proofpoint-ORIG-GUID: QGtroLYNo885vNrn3PpNxGWZzewVIYj_
-X-Proofpoint-GUID: QGtroLYNo885vNrn3PpNxGWZzewVIYj_
 
-On 11/12/25 9:38 AM, Christoph Hellwig wrote:
-> On Wed, Nov 12, 2025 at 09:31:35AM -0500, Chuck Lever wrote:
->> But it is correct style for net/ .
-> 
-> Maybe.  But why would non-net/ code care about their odd preference?
+On Thu, 2025-11-06 at 11:50 +1100, NeilBrown wrote:
+> From: NeilBrown <neil@brown.name>
+>=20
+> The fact that directory operations (create,remove,rename) are protected
+> by a lock on the parent is known widely throughout the kernel.
+> In order to change this - to instead lock the target dentry  - it is
+> best to centralise this knowledge so it can be changed in one place.
+>=20
+> This patch introduces start_dirop() which is local to VFS code.
+> It performs the required locking for create and remove.  Rename
+> will be handled separately.
+>=20
+> Various functions with names like start_creating() or start_removing_path=
+(),
+> some of which already exist, will export this functionality beyond the VF=
+S.
+>=20
+> end_dirop() is the partner of start_dirop().  It drops the lock and
+> releases the reference on the dentry.
+> It *is* exported so that various end_creating etc functions can be inline=
+.
+>=20
+> As vfs_mkdir() drops the dentry on error we cannot use end_dirop() as
+> that won't unlock when the dentry IS_ERR().  For now we need an explicit
+> unlock when dentry IS_ERR().  I hope to change vfs_mkdir() to unlock
+> when it drops a dentry so that explicit unlock can go away.
+>=20
+> end_dirop() can always be called on the result of start_dirop(), but not
+> after vfs_mkdir().  After a vfs_mkdir() we still may need the explicit
+> unlock as seen in end_creating_path().
+>=20
+> As well as adding start_dirop() and end_dirop()
+> this patch uses them in:
+>  - simple_start_creating (which requires sharing lookup_noperm_common()
+>         with libfs.c)
+>  - start_removing_path / start_removing_user_path_at
+>  - filename_create / end_creating_path()
+>  - do_rmdir(), do_unlinkat()
+>=20
+> Reviewed-by: Amir Goldstein <amir73il@gmail.com>
+> Signed-off-by: NeilBrown <neil@brown.name>
+> ---
+>  fs/internal.h      |  3 ++
+>  fs/libfs.c         | 36 ++++++++---------
+>  fs/namei.c         | 98 ++++++++++++++++++++++++++++++++++------------
+>  include/linux/fs.h |  2 +
+>  4 files changed, 95 insertions(+), 44 deletions(-)
+>=20
+> diff --git a/fs/internal.h b/fs/internal.h
+> index 9b2b4d116880..d08d5e2235e9 100644
+> --- a/fs/internal.h
+> +++ b/fs/internal.h
+> @@ -67,6 +67,9 @@ int vfs_tmpfile(struct mnt_idmap *idmap,
+>  		const struct path *parentpath,
+>  		struct file *file, umode_t mode);
+>  struct dentry *d_hash_and_lookup(struct dentry *, struct qstr *);
+> +struct dentry *start_dirop(struct dentry *parent, struct qstr *name,
+> +			   unsigned int lookup_flags);
+> +int lookup_noperm_common(struct qstr *qname, struct dentry *base);
+> =20
+>  /*
+>   * namespace.c
+> diff --git a/fs/libfs.c b/fs/libfs.c
+> index 1661dcb7d983..2d6657947abd 100644
+> --- a/fs/libfs.c
+> +++ b/fs/libfs.c
+> @@ -2290,27 +2290,25 @@ void stashed_dentry_prune(struct dentry *dentry)
+>  	cmpxchg(stashed, dentry, NULL);
+>  }
+> =20
+> -/* parent must be held exclusive */
+> +/**
+> + * simple_start_creating - prepare to create a given name
+> + * @parent: directory in which to prepare to create the name
+> + * @name:   the name to be created
+> + *
+> + * Required lock is taken and a lookup in performed prior to creating an
+> + * object in a directory.  No permission checking is performed.
+> + *
+> + * Returns: a negative dentry on which vfs_create() or similar may
+> + *  be attempted, or an error.
+> + */
+>  struct dentry *simple_start_creating(struct dentry *parent, const char *=
+name)
+>  {
+> -	struct dentry *dentry;
+> -	struct inode *dir =3D d_inode(parent);
+> +	struct qstr qname =3D QSTR(name);
+> +	int err;
+> =20
+> -	inode_lock(dir);
+> -	if (unlikely(IS_DEADDIR(dir))) {
+> -		inode_unlock(dir);
+> -		return ERR_PTR(-ENOENT);
+> -	}
+> -	dentry =3D lookup_noperm(&QSTR(name), parent);
+> -	if (IS_ERR(dentry)) {
+> -		inode_unlock(dir);
+> -		return dentry;
+> -	}
+> -	if (dentry->d_inode) {
+> -		dput(dentry);
+> -		inode_unlock(dir);
+> -		return ERR_PTR(-EEXIST);
+> -	}
+> -	return dentry;
+> +	err =3D lookup_noperm_common(&qname, parent);
+> +	if (err)
+> +		return ERR_PTR(err);
+> +	return start_dirop(parent, &qname, LOOKUP_CREATE | LOOKUP_EXCL);
+>  }
+>  EXPORT_SYMBOL(simple_start_creating);
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 39c4d52f5b54..231e1ffd4b8d 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -2765,6 +2765,48 @@ static int filename_parentat(int dfd, struct filen=
+ame *name,
+>  	return __filename_parentat(dfd, name, flags, parent, last, type, NULL);
+>  }
+> =20
+> +/**
+> + * start_dirop - begin a create or remove dirop, performing locking and =
+lookup
+> + * @parent:       the dentry of the parent in which the operation will o=
+ccur
+> + * @name:         a qstr holding the name within that parent
+> + * @lookup_flags: intent and other lookup flags.
+> + *
+> + * The lookup is performed and necessary locks are taken so that, on suc=
+cess,
+> + * the returned dentry can be operated on safely.
+> + * The qstr must already have the hash value calculated.
+> + *
+> + * Returns: a locked dentry, or an error.
+> + *
+> + */
+> +struct dentry *start_dirop(struct dentry *parent, struct qstr *name,
+> +			   unsigned int lookup_flags)
+> +{
+> +	struct dentry *dentry;
+> +	struct inode *dir =3D d_inode(parent);
+> +
+> +	inode_lock_nested(dir, I_MUTEX_PARENT);
+> +	dentry =3D lookup_one_qstr_excl(name, parent, lookup_flags);
+> +	if (IS_ERR(dentry))
+> +		inode_unlock(dir);
+> +	return dentry;
+> +}
+> +
+> +/**
+> + * end_dirop - signal completion of a dirop
+> + * @de: the dentry which was returned by start_dirop or similar.
+> + *
+> + * If the de is an error, nothing happens. Otherwise any lock taken to
+> + * protect the dentry is dropped and the dentry itself is release (dput(=
+)).
+> + */
+> +void end_dirop(struct dentry *de)
+> +{
+> +	if (!IS_ERR(de)) {
+> +		inode_unlock(de->d_parent->d_inode);
+> +		dput(de);
+> +	}
+> +}
+> +EXPORT_SYMBOL(end_dirop);
+> +
+>  /* does lookup, returns the object with parent locked */
+>  static struct dentry *__start_removing_path(int dfd, struct filename *na=
+me,
+>  					   struct path *path)
+> @@ -2781,10 +2823,9 @@ static struct dentry *__start_removing_path(int df=
+d, struct filename *name,
+>  		return ERR_PTR(-EINVAL);
+>  	/* don't fail immediately if it's r/o, at least try to report other err=
+ors */
+>  	error =3D mnt_want_write(parent_path.mnt);
+> -	inode_lock_nested(parent_path.dentry->d_inode, I_MUTEX_PARENT);
+> -	d =3D lookup_one_qstr_excl(&last, parent_path.dentry, 0);
+> +	d =3D start_dirop(parent_path.dentry, &last, 0);
+>  	if (IS_ERR(d))
+> -		goto unlock;
+> +		goto drop;
+>  	if (error)
+>  		goto fail;
+>  	path->dentry =3D no_free_ptr(parent_path.dentry);
+> @@ -2792,10 +2833,9 @@ static struct dentry *__start_removing_path(int df=
+d, struct filename *name,
+>  	return d;
+> =20
+>  fail:
+> -	dput(d);
+> +	end_dirop(d);
+>  	d =3D ERR_PTR(error);
+> -unlock:
+> -	inode_unlock(parent_path.dentry->d_inode);
+> +drop:
+>  	if (!error)
+>  		mnt_drop_write(parent_path.mnt);
+>  	return d;
+> @@ -2910,7 +2950,7 @@ int vfs_path_lookup(struct dentry *dentry, struct v=
+fsmount *mnt,
+>  }
+>  EXPORT_SYMBOL(vfs_path_lookup);
+> =20
+> -static int lookup_noperm_common(struct qstr *qname, struct dentry *base)
+> +int lookup_noperm_common(struct qstr *qname, struct dentry *base)
+>  {
+>  	const char *name =3D qname->name;
+>  	u32 len =3D qname->len;
+> @@ -4223,21 +4263,18 @@ static struct dentry *filename_create(int dfd, st=
+ruct filename *name,
+>  	 */
+>  	if (last.name[last.len] && !want_dir)
+>  		create_flags &=3D ~LOOKUP_CREATE;
+> -	inode_lock_nested(path->dentry->d_inode, I_MUTEX_PARENT);
+> -	dentry =3D lookup_one_qstr_excl(&last, path->dentry,
+> -				      reval_flag | create_flags);
+> +	dentry =3D start_dirop(path->dentry, &last, reval_flag | create_flags);
+>  	if (IS_ERR(dentry))
+> -		goto unlock;
+> +		goto out_drop_write;
+> =20
+>  	if (unlikely(error))
+>  		goto fail;
+> =20
+>  	return dentry;
+>  fail:
+> -	dput(dentry);
+> +	end_dirop(dentry);
+>  	dentry =3D ERR_PTR(error);
+> -unlock:
+> -	inode_unlock(path->dentry->d_inode);
+> +out_drop_write:
+>  	if (!error)
+>  		mnt_drop_write(path->mnt);
+>  out:
+> @@ -4256,11 +4293,26 @@ struct dentry *start_creating_path(int dfd, const=
+ char *pathname,
+>  }
+>  EXPORT_SYMBOL(start_creating_path);
+> =20
+> +/**
+> + * end_creating_path - finish a code section started by start_creating_p=
+ath()
+> + * @path: the path instantiated by start_creating_path()
+> + * @dentry: the dentry returned by start_creating_path()
+> + *
+> + * end_creating_path() will unlock and locks taken by start_creating_pat=
+h()
+> + * and drop an references that were taken.  It should only be called
+> + * if start_creating_path() returned a non-error.
+> + * If vfs_mkdir() was called and it returned an error, that error *shoul=
+d*
+> + * be passed to end_creating_path() together with the path.
+> + */
+>  void end_creating_path(const struct path *path, struct dentry *dentry)
+>  {
+> -	if (!IS_ERR(dentry))
+> -		dput(dentry);
+> -	inode_unlock(path->dentry->d_inode);
+> +	if (IS_ERR(dentry))
+> +		/* The parent is still locked despite the error from
+> +		 * vfs_mkdir() - must unlock it.
+> +		 */
+> +		inode_unlock(path->dentry->d_inode);
+> +	else
+> +		end_dirop(dentry);
+>  	mnt_drop_write(path->mnt);
+>  	path_put(path);
+>  }
+> @@ -4592,8 +4644,7 @@ int do_rmdir(int dfd, struct filename *name)
+>  	if (error)
+>  		goto exit2;
+> =20
+> -	inode_lock_nested(path.dentry->d_inode, I_MUTEX_PARENT);
+> -	dentry =3D lookup_one_qstr_excl(&last, path.dentry, lookup_flags);
+> +	dentry =3D start_dirop(path.dentry, &last, lookup_flags);
+>  	error =3D PTR_ERR(dentry);
+>  	if (IS_ERR(dentry))
+>  		goto exit3;
+> @@ -4602,9 +4653,8 @@ int do_rmdir(int dfd, struct filename *name)
+>  		goto exit4;
+>  	error =3D vfs_rmdir(mnt_idmap(path.mnt), path.dentry->d_inode, dentry);
+>  exit4:
+> -	dput(dentry);
+> +	end_dirop(dentry);
+>  exit3:
+> -	inode_unlock(path.dentry->d_inode);
+>  	mnt_drop_write(path.mnt);
+>  exit2:
+>  	path_put(&path);
+> @@ -4721,8 +4771,7 @@ int do_unlinkat(int dfd, struct filename *name)
+>  	if (error)
+>  		goto exit2;
+>  retry_deleg:
+> -	inode_lock_nested(path.dentry->d_inode, I_MUTEX_PARENT);
+> -	dentry =3D lookup_one_qstr_excl(&last, path.dentry, lookup_flags);
+> +	dentry =3D start_dirop(path.dentry, &last, lookup_flags);
+>  	error =3D PTR_ERR(dentry);
+>  	if (!IS_ERR(dentry)) {
+> =20
+> @@ -4737,9 +4786,8 @@ int do_unlinkat(int dfd, struct filename *name)
+>  		error =3D vfs_unlink(mnt_idmap(path.mnt), path.dentry->d_inode,
+>  				   dentry, &delegated_inode);
+>  exit3:
+> -		dput(dentry);
+> +		end_dirop(dentry);
+>  	}
+> -	inode_unlock(path.dentry->d_inode);
+>  	if (inode)
+>  		iput(inode);	/* truncate the inode here */
+>  	inode =3D NULL;
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 03e450dd5211..9e7556e79d19 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -3196,6 +3196,8 @@ extern void iterate_supers_type(struct file_system_=
+type *,
+>  void filesystems_freeze(void);
+>  void filesystems_thaw(void);
+> =20
+> +void end_dirop(struct dentry *de);
+> +
+>  extern int dcache_dir_open(struct inode *, struct file *);
+>  extern int dcache_dir_close(struct inode *, struct file *);
+>  extern loff_t dcache_dir_lseek(struct file *, loff_t, int);
 
-Yes. My bad. Carry on!
-
-
--- 
-Chuck Lever
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
