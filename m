@@ -1,59 +1,59 @@
 Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C6D8222584;
-	Sat, 15 Nov 2025 19:39:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F50B222584;
+	Sat, 15 Nov 2025 19:39:37 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.165.32
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763235568; cv=none; b=t/Kch/yZG9LVsAdc65tzQG6oUzzbC7v0P/5Yxxir47jJZ1GpTjqgxktmCfggY5fuksrN/D5EYpWTWV9IbA0hL/AWNhZRWIZR9WVRsALXQ6NiITYkg0mhPHnxfJNyB2gbOEvCk92NVrZ8/sWyDu3wwnRSAkVCz5emLpCwmiLjR30=
+	t=1763235579; cv=none; b=sxij0vl1Ma5cLqUm5N/iq+cw1JQURWMQ1H+ccHXjIUypZ3xE8WQqrjs3qicPsj5/G6CoxoL2PkHXToh5+SSUBM3ULa+oKId9VviKMFN1FjKBlywtuU7Odrwxt64CATXf6Ziipae9OyKrjxFbWevHmrgIhVzN/CQxokQXQ0RHZXg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763235568; c=relaxed/simple;
-	bh=dY8R29ngQR1QkG4zlqiOF7jYHIJKeBuRuHA/g9Ym/b4=;
+	s=arc-20240116; t=1763235579; c=relaxed/simple;
+	bh=mtjJ6d5xWcz/tGV1mqXnRjgmimNDR8pj//50yJOyJPk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=n1lhYbww3CE2uGjEKtO7tsQe51Fv+jDKyaHCrB9hs3aIQgaLDJXc0D+UKdsVhEvDcksHbKybx/7dv7314bn2V1jJjHqRg6jG9+wgqqTYkFiHqmxlqCqiXEEzdR/LPwmb3CfZOvIwLRKNDHghABbAD1e0pIOMbPmTlt847bcoy5E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=U12B8JIf; arc=none smtp.client-ip=205.220.165.32
+	 MIME-Version; b=RnPHxgy7w+ZZQFDdbGJgXu1Wv+pL/djUtC0OvsR0qgGFy9fHmte9StAcYV9v6cGT2O3N5jm1cifiKSJM87w0fYrMCvDalJ+urCFsd+JXDDSG7+3sG+5iF1vygyckTJ2y2yyjQVVDLQGLniEvLXEfTitPm6cTXYVBG9X50ZSy2yk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=jR+RK3D6; arc=none smtp.client-ip=205.220.165.32
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="U12B8JIf"
-Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
-	by mx0b-00069f02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 5AFJ3htg027081;
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="jR+RK3D6"
+Received: from pps.filterd (m0246629.ppops.net [127.0.0.1])
+	by mx0b-00069f02.pphosted.com (8.18.1.2/8.18.1.2) with ESMTP id 5AFJVwIi024838;
 	Sat, 15 Nov 2025 19:39:12 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
-	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=
-	corp-2025-04-25; bh=gV3nJ0sh6lr7o1xcg8xHONBaTTubVkriyRpjj8c25VY=; b=
-	U12B8JIfuLG/uxPU+91GyTRnXjkF64Wg1FAKAOB+Z1UViqkSBQPHvrJCVH+7TJZW
-	magyUjLVeDTgUnJmko4bwRzJmTkMqD6XtA0ntcl5m9uA6XSSpt5vt9qNp+YZkuIa
-	NL6szLPkTNmuo6gxi1Wj/nVnV76VzOyCSV7JORwyHSGgqg7CPzjmivGaLe26q3Yb
-	kYggNben1cu8V8eXErHvgh2kXMCpqNeIfPbA9hJ6ApDycWf2Xl4hTnD6lYCPQ2Vy
-	BzR7MLAKNfT0n90F2i/fptpqbpNVnL5D8mty94xvgieOVXt0oOncXxnklhsLHxVy
-	g3yD04OVXVAeTgKR4H+p4w==
+	:content-transfer-encoding:date:from:in-reply-to:message-id
+	:mime-version:references:subject:to; s=corp-2025-04-25; bh=llsUB
+	9SAOpUFsh00LzqKkjuc/c4i0N+/vrynF3ht0PQ=; b=jR+RK3D6GbIGoJamxFbMO
+	GzHn79cqzKbRIHGky75Sj954yqMfdFPAyeKItfJfTV3mBwxuuRn/gQeeW+4bnCmY
+	n+W+hxaC0dmyGqNxQe4f1GnMHp0Er3F2F5/cGkDLAIsXD+2tNHZu/PddKHuXnsOp
+	kGq0yeOsct+VZyNQsS6pSFZUaAx3WAlEdJTScK6mxeJkeAa2kSEmSYJlnDCajnlv
+	ujtcD4pwWtZdFoOSjET8SZS+d4xk7JL1XOBZw+9H8jwniriaro503bxOxd2qitf6
+	5dJstm4hm1O6GV6xtAcJh90AN4UPkGJBXp36vpY7ngQAN271g4PC+01WqP7qmEXy
+	A==
 Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.appoci.oracle.com [138.1.37.129])
-	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4aej960eyr-1
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4aejbugesa-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
 	Sat, 15 Nov 2025 19:39:11 +0000 (GMT)
 Received: from pps.filterd (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-	by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 5AFIaCXl002532;
-	Sat, 15 Nov 2025 19:17:26 GMT
+	by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 5AFIpVgo002704;
+	Sat, 15 Nov 2025 19:17:28 GMT
 Received: from pps.reinject (localhost [127.0.0.1])
-	by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 4aefy68kft-1
+	by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 4aefy68kg6-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Sat, 15 Nov 2025 19:17:26 +0000
+	Sat, 15 Nov 2025 19:17:28 +0000
 Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-	by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 5AFJHPj2012081;
-	Sat, 15 Nov 2025 19:17:26 GMT
+	by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 5AFJHPj6012081;
+	Sat, 15 Nov 2025 19:17:27 GMT
 Received: from labops-common-sca-01.us.oracle.com (labops-common-sca-01.us.oracle.com [10.132.26.161])
-	by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 4aefy68kff-2;
-	Sat, 15 Nov 2025 19:17:26 +0000
+	by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 4aefy68kff-4;
+	Sat, 15 Nov 2025 19:17:27 +0000
 From: Dai Ngo <dai.ngo@oracle.com>
 To: chuck.lever@oracle.com, jlayton@kernel.org, neilb@ownmail.net,
         okorniev@redhat.com, tom@talpey.com, hch@lst.de, alex.aring@gmail.com,
         viro@zeniv.linux.org.uk, brauner@kernel.org, jack@suse.cz
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v4 1/3] locks: Introduce lm_breaker_timedout operation to lease_manager_operations
-Date: Sat, 15 Nov 2025 11:16:37 -0800
-Message-ID: <20251115191722.3739234-2-dai.ngo@oracle.com>
+Subject: [PATCH v4 3/3] FSD: Fix NFS server hang when there are multiple layout conflicts
+Date: Sat, 15 Nov 2025 11:16:39 -0800
+Message-ID: <20251115191722.3739234-4-dai.ngo@oracle.com>
 X-Mailer: git-send-email 2.47.3
 In-Reply-To: <20251115191722.3739234-1-dai.ngo@oracle.com>
 References: <20251115191722.3739234-1-dai.ngo@oracle.com>
@@ -63,7 +63,6 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1121,Hydra:6.1.9,FMLib:17.12.100.49
@@ -72,115 +71,92 @@ X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 phis
  malwarescore=0 suspectscore=0 bulkscore=0 spamscore=0 mlxlogscore=999
  mlxscore=0 classifier=spam adjust=0 reason=mlx scancount=1
  engine=8.12.0-2510240000 definitions=main-2511150159
-X-Authority-Analysis: v=2.4 cv=DYoaa/tW c=1 sm=1 tr=0 ts=6918d6df b=1 cx=c_pps
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjUxMTE1MDAzMiBTYWx0ZWRfX5pq1jNG1lS63
+ BkaXRALl7y9tXsgTdCS/a5YpRyE8GgC6urYNsJO+IroFnZB2lwNeeXig7lQE/FESvON7HFgc0JD
+ S2WLptLicnAL/5uk0CQqSZFs/eK9S1PTBliLeVFSj/QtpcOjrlvpTPt5uepkilMAZhJZcs8WbvW
+ x+hC386OO3esZvoA1wohRhG7xlTE3s9eQiZwXX1hh+OYgVzhukFuumZ94rY1IH+EIcDsdfqAgwC
+ mhH9VMs1Pf3x50vCEiGxGPCiS3Fj2pIlJzHfdFgqHabOWQKO9ALxTv5nN1mW6zCEcKP4uTixWkP
+ atcgX5BxUmWEXN6kgommdAUQukYqJ7Wu9F20YM98oOc3CwgD9rWIly4Jro8xEADMbqf4H3RzkSL
+ OHwKgERPJxoorEWes5blRUbUT96BFQ==
+X-Proofpoint-GUID: U0HeJ1rGX--INy-CSGASrNNB_cLucFZ1
+X-Proofpoint-ORIG-GUID: U0HeJ1rGX--INy-CSGASrNNB_cLucFZ1
+X-Authority-Analysis: v=2.4 cv=Rdydyltv c=1 sm=1 tr=0 ts=6918d6df b=1 cx=c_pps
  a=WeWmnZmh0fydH62SvGsd2A==:117 a=WeWmnZmh0fydH62SvGsd2A==:17
- a=IkcTkHD0fZMA:10 a=6UeiqGixMTsA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=yPCof4ZbAAAA:8 a=S97X5fav3GynFx1AP6AA:9 a=3ZKOabzyN94A:10 a=QEXdDO2ut3YA:10
-X-Proofpoint-GUID: geiWuntRGZDE4IJpe-Oum554BKkj-vOa
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjUxMTE1MDAzMSBTYWx0ZWRfX93b4Zv6pAvvu
- F00T8GuqKfhZ67CYA/gFSrg+Dxsw8iAVdv2sBHkhc+OPInSzCNQ8nEmPZbPyztwNqt4EtesUC2N
- dMDlWH/S3EkzanoQDVL8obBx/++xggADmA92w7xQZOE11uqNEc1FlNyHum66LE3ggVIfmP86cA9
- CfXkbqstYuLzC5uSz+W3ap48DVniEZ/PQTu9DQV3URdLTXshJqzsxhB/sYMxrfivxjQa1ohzoRB
- C7w3nJw0Ax4ojhfXvy1m1HqXc1zsasj0ekoEimJOBww8VH77IKQXKP9Y2kHb4WF7Z2lRNH1Env5
- QHHTHv/YLJOfkmykneYIzXSmxft4rwaHuFSUo5d8vJuU8yEofTSagrSf954emTATv62395nziUl
- zK6SM6rZd13uGoGgrJjB6B4Ks6UANg==
-X-Proofpoint-ORIG-GUID: geiWuntRGZDE4IJpe-Oum554BKkj-vOa
+ a=6UeiqGixMTsA:10 a=VkNPw1HP01LnGYTKEx00:22 a=yPCof4ZbAAAA:8
+ a=57DVBpu5xdd1SRTCfJcA:9
 
-Some consumers of the lease_manager_operations structure need
-to perform additional actions when a lease break, triggered by
-a conflict, times out.
+When a layout conflict triggers a call to __break_lease, the function
+nfsd4_layout_lm_break clears the fl_break_time timeout before sending
+the CB_LAYOUTRECALL. As a result, __break_lease repeatedly restarts
+its loop, waiting indefinitely for the conflicting file lease to be
+released.
 
-The NFS server is the first consumer of this operation.
+If the number of lease conflicts matches the number of NFSD threads
+(which defaults to 8), all available NFSD threads become occupied.
+Consequently, there are no threads left to handle incoming requests
+or callback replies, leading to a total hang of the NFSD server.
 
-When a pNFS layout conflict occurs and the lease break times
-out — resulting in the layout being revoked and its file lease
-removed from the flc_lease list — the NFS server must issue a
-fence operation. This operation ensures that the client is
-prevented from accessing the data server after the layout
-revocation.
+This issue is reliably reproducible by running the Git test suite
+on a configuration using the SCSI layout.
+
+This patch addresses the problem by using the break lease timeout
+and ensures that the unresponsive client is fenced, preventing it
+from accessing the data server directly.
 
 Fixes: f99d4fbdae67 ("nfsd: add SCSI layout support")
 Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 ---
- Documentation/filesystems/locking.rst |  2 ++
- fs/locks.c                            | 14 +++++++++++---
- include/linux/filelock.h              |  2 ++
- 3 files changed, 15 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4layouts.c | 26 ++++++++++++++++++++++----
+ 1 file changed, 22 insertions(+), 4 deletions(-)
 
-diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-index 77704fde9845..cd600db6c4b9 100644
---- a/Documentation/filesystems/locking.rst
-+++ b/Documentation/filesystems/locking.rst
-@@ -403,6 +403,7 @@ prototypes::
- 	bool (*lm_breaker_owns_lease)(struct file_lock *);
-         bool (*lm_lock_expirable)(struct file_lock *);
-         void (*lm_expire_lock)(void);
-+        void (*lm_breaker_timedout)(struct file_lease *);
+diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+index 683bd1130afe..6321fc187825 100644
+--- a/fs/nfsd/nfs4layouts.c
++++ b/fs/nfsd/nfs4layouts.c
+@@ -747,11 +747,10 @@ static bool
+ nfsd4_layout_lm_break(struct file_lease *fl)
+ {
+ 	/*
+-	 * We don't want the locks code to timeout the lease for us;
+-	 * we'll remove it ourself if a layout isn't returned
+-	 * in time:
++	 * Enforce break lease timeout to prevent starvation of
++	 * NFSD threads in __break_lease that causes server to
++	 * hang.
+ 	 */
+-	fl->fl_break_time = 0;
+ 	nfsd4_recall_file_layout(fl->c.flc_owner);
+ 	return false;
+ }
+@@ -764,9 +763,28 @@ nfsd4_layout_lm_change(struct file_lease *onlist, int arg,
+ 	return lease_modify(onlist, arg, dispose);
+ }
  
- locking rules:
- 
-@@ -416,6 +417,7 @@ lm_change		yes		no			no
- lm_breaker_owns_lease:	yes     	no			no
- lm_lock_expirable	yes		no			no
- lm_expire_lock		no		no			yes
-+lm_breaker_timedout     no              no                      yes
- ======================	=============	=================	=========
- 
- buffer_head
-diff --git a/fs/locks.c b/fs/locks.c
-index 04a3f0e20724..1f254e0cd398 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -369,9 +369,15 @@ locks_dispose_list(struct list_head *dispose)
- 	while (!list_empty(dispose)) {
- 		flc = list_first_entry(dispose, struct file_lock_core, flc_list);
- 		list_del_init(&flc->flc_list);
--		if (flc->flc_flags & (FL_LEASE|FL_DELEG|FL_LAYOUT))
-+		if (flc->flc_flags & (FL_LEASE|FL_DELEG|FL_LAYOUT)) {
-+			if (flc->flc_flags & FL_BREAKER_TIMEDOUT) {
-+				struct file_lease *fl = file_lease(flc);
++static void
++nfsd_layout_breaker_timedout(struct file_lease *fl)
++{
++	struct nfs4_layout_stateid *ls = fl->c.flc_owner;
++	struct nfsd_file *nf;
 +
-+				if (fl->fl_lmops->lm_breaker_timedout)
-+					fl->fl_lmops->lm_breaker_timedout(fl);
-+			}
- 			locks_free_lease(file_lease(flc));
--		else
-+		} else
- 			locks_free_lock(file_lock(flc));
- 	}
- }
-@@ -1482,8 +1488,10 @@ static void time_out_leases(struct inode *inode, struct list_head *dispose)
- 		trace_time_out_leases(inode, fl);
- 		if (past_time(fl->fl_downgrade_time))
- 			lease_modify(fl, F_RDLCK, dispose);
--		if (past_time(fl->fl_break_time))
-+		if (past_time(fl->fl_break_time)) {
- 			lease_modify(fl, F_UNLCK, dispose);
-+			fl->c.flc_flags |= FL_BREAKER_TIMEDOUT;
-+		}
- 	}
- }
- 
-diff --git a/include/linux/filelock.h b/include/linux/filelock.h
-index c2ce8ba05d06..06ccd6b66012 100644
---- a/include/linux/filelock.h
-+++ b/include/linux/filelock.h
-@@ -17,6 +17,7 @@
- #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
- #define FL_LAYOUT	2048	/* outstanding pNFS layout */
- #define FL_RECLAIM	4096	/* reclaiming from a reboot server */
-+#define	FL_BREAKER_TIMEDOUT	8192	/* lease breaker timed out */
- 
- #define FL_CLOSE_POSIX (FL_POSIX | FL_CLOSE)
- 
-@@ -49,6 +50,7 @@ struct lease_manager_operations {
- 	int (*lm_change)(struct file_lease *, int, struct list_head *);
- 	void (*lm_setup)(struct file_lease *, void **);
- 	bool (*lm_breaker_owns_lease)(struct file_lease *);
-+	void (*lm_breaker_timedout)(struct file_lease *fl);
++	rcu_read_lock();
++	nf = nfsd_file_get(ls->ls_file);
++	rcu_read_unlock();
++	if (nf) {
++		u32 type = ls->ls_layout_type;
++
++		if (nfsd4_layout_ops[type]->fence_client)
++			nfsd4_layout_ops[type]->fence_client(ls, nf);
++		nfsd_file_put(nf);
++	}
++}
++
+ static const struct lease_manager_operations nfsd4_layouts_lm_ops = {
+ 	.lm_break	= nfsd4_layout_lm_break,
+ 	.lm_change	= nfsd4_layout_lm_change,
++	.lm_breaker_timedout	= nfsd_layout_breaker_timedout,
  };
  
- struct lock_manager {
+ int
 -- 
 2.47.3
 
