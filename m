@@ -1,37 +1,37 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 97F0D361DCC
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Nov 2025 13:58:29 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DC59363C6E
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Nov 2025 13:58:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763560709; cv=none; b=kX79p05SkeNhngsqH5HdOs1IS5OR3NaFc18eQf+6Og93DSlmDps4bhulQeEgRRMLxwEybZ69F+W0ugzKlxZfKZYk4Xboyh6hrfv47gdWy1y86/+UTkL0Tm0PoE913YF7vRgLqBFWNpGAUoOEAA92GgpF6ipyo08T1OJlmLqr2lo=
+	t=1763560710; cv=none; b=mgNtEOCgtpObv5y2N/J5sDDUoCV4ATw0sZh09xkh7YSlUPtyuAvhSeYZf+5IOvup4dCjxwJwl4mbkPgLX8PySY+6vOIupDbpQIYnzWS3MZLlrAOO7rqDTjEIxAvwH0zk85GP5W2rBrOkAE9yeHA+5LXLYYi1KitwjvVRyoYXdOM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763560709; c=relaxed/simple;
-	bh=WADlRR0SUWGIeL5SG2D5OVRMkRIgZ53RQD4lEEehnvY=;
+	s=arc-20240116; t=1763560710; c=relaxed/simple;
+	bh=mFWmAViUrImBciBqffKt97F5kH4mfg5ZWN89A1nq3ko=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=iImHTicsZyNYMeTexC8r5u2mTAy3oV/W9ZWi42b911uYefc9OFc5zNP6Ksw4HifzVcUmkJoV8S22e7MH4KzEiOtlF24V6Wa/x/9rAMsNM+jpW0/R5kPsho3L6b7AftxsOorlR4D3ReSAhK05LEOYTJFQTjBWtdSnW/kNUf+zazc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TWxFn37s; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=ROmsXopI+fwjufK23gOGTlDXKkVhYUQVFsRc+plKy9V4ap6BlTwOFa09QFNz+gLhUjPgaLXDlvSufjPLqlQxrESQkbjVMYDkrmZb/03AMXcftpys/54uqP8PSE1w6GHTAF9xhBFcOTWBja2hn/8JZay/l4j2+qCrjPxq4ETllPU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=k8Shoq26; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TWxFn37s"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BACA0C116C6;
-	Wed, 19 Nov 2025 13:58:28 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="k8Shoq26"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D93E3C4AF0D;
+	Wed, 19 Nov 2025 13:58:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1763560709;
-	bh=WADlRR0SUWGIeL5SG2D5OVRMkRIgZ53RQD4lEEehnvY=;
+	s=k20201202; t=1763560710;
+	bh=mFWmAViUrImBciBqffKt97F5kH4mfg5ZWN89A1nq3ko=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=TWxFn37so0fCjd91A7go6ZqXEHOv1OcnE9m1ymirL+8ri98TGyANge0eroEbbBFVu
-	 jdfmwt/5FFM5R6hNmKQluiVkchIIn0joaY4fIeoQUGwRN0SLdLdGQMf9Zhq4o2aIrS
-	 qY1JUr2dY4bUx0uyls76Glw8w5CP5SFnQnXSfXC9K6FHQzetlsNp2subVyH/LBF07/
-	 J4nMK6icNVTesh8R2j6rled+rz9u1H0qvcDcokPWNSzT4bPuSzO0nxMJo8twi/jtzB
-	 /tERTv3boC9oZBSDzLa5sjKnrs6Rn+7Sj3/S9HaZ/LzFNNBlJfgZ4PNgxwKNO6Zayf
-	 Q51f4ifakJ94Q==
+	b=k8Shoq26tpRnWcf2tOKHTdN8drqja+a4crv/RlC3A9GqOhpMipJGD2DH0l9/DE/eo
+	 CxuqGJGpHQiVgRegTNiQdNEnyJiuob8NEsFQ6s5HdBprm0Z2mNqhzejbjagKYfF9yQ
+	 KzgkSyc4n9OZAJF8D8KuhpxRn/3NWpqSJZvvvpPw8ggRJ7IsQHUmGBwf03Yj0+zMQM
+	 y6JHOuFf67ase+uaEPkqrlAYdZM8Cx2U5D8+85b+BN/y3GKMO7r9YOQF0cjZ10ms9f
+	 NBFNNmvVL3qKx5wkOrsv95TaO0Ok1VEnIPY63kh7cHSmONgl7hUF1YETf8lpUHYcGg
+	 Voa6isPC+594w==
 From: Trond Myklebust <trondmy@kernel.org>
 To: Michael Stoler <michael.stoler@vastdata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] NFS: Initialise verifiers for visible dentries in readdir and lookup
-Date: Wed, 19 Nov 2025 08:58:24 -0500
-Message-ID: <9bd545539b233725a3416801f7c374bff0327d6e.1763560328.git.trond.myklebust@hammerspace.com>
+Subject: [PATCH 3/3] NFS: Initialise verifiers for visible dentries in _nfs4_open_and_get_state
+Date: Wed, 19 Nov 2025 08:58:26 -0500
+Message-ID: <4c4b51c67f7b38e4df4cb389007058e37ade0d14.1763560328.git.trond.myklebust@hammerspace.com>
 X-Mailer: git-send-email 2.51.1
 In-Reply-To: <cover.1763560328.git.trond.myklebust@hammerspace.com>
 References: <53bc46637bdc4b267a318c74fb4c97cb382f29d1.camel@kernel.org> <cover.1763560328.git.trond.myklebust@hammerspace.com>
@@ -46,54 +46,60 @@ Content-Transfer-Encoding: 8bit
 From: Trond Myklebust <trond.myklebust@hammerspace.com>
 
 Ensure that the verifiers are initialised before calling
-d_splice_alias() in both nfs_prime_dcache() and nfs_lookup().
+d_splice_alias() in _nfs4_open_and_get_state().
 
 Reported-by: Michael Stoler <michael.stoler@vastdata.com>
-Fixes: a1147b8281bd ("NFS: Fix up directory verifier races")
+Fixes: cf5b4059ba71 ("NFSv4: Fix races between open and dentry revalidation")
 Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
 ---
- fs/nfs/dir.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c | 27 ++++++++++++++-------------
+ 1 file changed, 14 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index d557b0443e8b..2eead7e85be5 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -789,16 +789,17 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry,
- 		goto out;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 93c6ce04332b..54595983525d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3174,18 +3174,6 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ 	if (opendata->o_res.rflags & NFS4_OPEN_RESULT_PRESERVE_UNLINKED)
+ 		set_bit(NFS_INO_PRESERVE_UNLINKED, &NFS_I(state->inode)->flags);
+ 
+-	dentry = opendata->dentry;
+-	if (d_really_is_negative(dentry)) {
+-		struct dentry *alias;
+-		d_drop(dentry);
+-		alias = d_splice_alias(igrab(state->inode), dentry);
+-		/* d_splice_alias() can't fail here - it's a non-directory */
+-		if (alias) {
+-			dput(ctx->dentry);
+-			ctx->dentry = dentry = alias;
+-		}
+-	}
+-
+ 	switch(opendata->o_arg.claim) {
+ 	default:
+ 		break;
+@@ -3196,7 +3184,20 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ 			break;
+ 		if (opendata->o_res.delegation.type != 0)
+ 			dir_verifier = nfs_save_change_attribute(dir);
+-		nfs_set_verifier(dentry, dir_verifier);
++	}
++	nfs_set_verifier(dentry, dir_verifier);
++
++	dentry = opendata->dentry;
++	if (d_really_is_negative(dentry)) {
++		struct dentry *alias;
++		d_drop(dentry);
++		alias = d_splice_alias(igrab(state->inode), dentry);
++		/* d_splice_alias() can't fail here - it's a non-directory */
++		if (alias) {
++			dput(ctx->dentry);
++			nfs_set_verifier(alias, dir_verifier);
++			ctx->dentry = dentry = alias;
++		}
  	}
  
-+	nfs_set_verifier(dentry, dir_verifier);
- 	inode = nfs_fhget(dentry->d_sb, entry->fh, entry->fattr);
- 	alias = d_splice_alias(inode, dentry);
- 	d_lookup_done(dentry);
- 	if (alias) {
- 		if (IS_ERR(alias))
- 			goto out;
-+		nfs_set_verifier(alias, dir_verifier);
- 		dput(dentry);
- 		dentry = alias;
- 	}
--	nfs_set_verifier(dentry, dir_verifier);
- 	trace_nfs_readdir_lookup(d_inode(parent), dentry, 0);
- out:
- 	dput(dentry);
-@@ -1994,13 +1995,14 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 	nfs_lookup_advise_force_readdirplus(dir, flags);
- 
- no_entry:
-+	nfs_set_verifier(dentry, dir_verifier);
- 	res = d_splice_alias(inode, dentry);
- 	if (res != NULL) {
- 		if (IS_ERR(res))
- 			goto out;
-+		nfs_set_verifier(res, dir_verifier);
- 		dentry = res;
- 	}
--	nfs_set_verifier(dentry, dir_verifier);
- out:
- 	trace_nfs_lookup_exit(dir, dentry, flags, PTR_ERR_OR_ZERO(res));
- 	nfs_free_fattr(fattr);
+ 	/* Parse layoutget results before we check for access */
 -- 
 2.51.1
 
