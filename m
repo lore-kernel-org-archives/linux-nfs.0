@@ -1,194 +1,240 @@
-Received: from mx01.omp.ru (mx01.omp.ru [90.154.21.10])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
+Received: from fout-a5-smtp.messagingengine.com (fout-a5-smtp.messagingengine.com [103.168.172.148])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DF5B346E7B;
-	Wed, 19 Nov 2025 20:39:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.154.21.10
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 925802F49FB
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Nov 2025 21:14:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.148
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763584754; cv=none; b=Lr2WYI/sOLGxLGkcmjRQrs+Tm/bnjdOtURUgjMQwBcNUVaVnCsssYvnILZiDKHF8Lgv0EDvpffzYgmbAH3oUTNd28HgjjiaYfzhu3ErbTsEFNK4UBvg1AUBBNH+dxeatS9a1UTL0qhT59zp9P71Kj5X6O4tmx0eLo0pYqVSjDpo=
+	t=1763586850; cv=none; b=lq6nUxZomqAdzMz0DbnMeia/Paw87tiQxGtvsN3/21g8eaNwN4kKzGSRsu4Hq4MZNSdFXQ6x0PprP0rsvBth6U2UzZdPYPGMsoc7H+2pYet5l/yahWMb+sRAm6nC4IjFtGgXd40Rr45fKGx45u+UpAieQKOQnjOqURXAHzpy1s0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763584754; c=relaxed/simple;
-	bh=fysP4yoeBEjt0oYSau8ftv9SqqyS2KWK/NVkKPTFEI4=;
-	h=Message-ID:Date:MIME-Version:Subject:To:CC:References:From:
-	 In-Reply-To:Content-Type; b=MDs8H4gq8mUapTJdqLyEEVX42Miqf3DHP2vw9PpVsNIO/zDCD70L6gtpzBriUErnTCHHPOWcgLreSoYECsl2q8wlrMClrHpcWmuauLx+FFembKV8qVsKbxkXH/YnTsYYWqFE2xpY2eFca5RVVu3x1hvKChmm7hIi/5i/+H9i6vU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=omp.ru; spf=pass smtp.mailfrom=omp.ru; arc=none smtp.client-ip=90.154.21.10
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=omp.ru
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=omp.ru
-Received: from [192.168.2.104] (213.87.137.245) by msexch01.omp.ru
- (10.188.4.12) with Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id 15.2.1258.12; Wed, 19 Nov
- 2025 23:38:49 +0300
-Message-ID: <b2d209d8-9ea2-43bd-bd95-9fcf9f553a1c@omp.ru>
-Date: Wed, 19 Nov 2025 23:38:48 +0300
+	s=arc-20240116; t=1763586850; c=relaxed/simple;
+	bh=IR6uRqVOLwxuS9iPUYyQIJ0PfbunP/zm4D63VsnhyS8=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=e5w+dta+z2gTkKSInaTHE9SU/HPtS7YoBwv/K1RQpaISuNAm/YLo05g4JNVYh0/MSwoL5+KXxXjoLnDMHQT9KunhGRBpVqgIoNdkc6pO6QLP4QhJ/MIYqH9qqLTFSc95NsdwYXFq501eLGrmuVHJo2EAmhIwiuOWUClRvsEvekY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=h28+Mw9j; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=iW/B+q3J; arc=none smtp.client-ip=103.168.172.148
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="h28+Mw9j";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="iW/B+q3J"
+Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
+	by mailfout.phl.internal (Postfix) with ESMTP id 8FE2AEC04EA;
+	Wed, 19 Nov 2025 16:14:06 -0500 (EST)
+Received: from phl-mailfrontend-02 ([10.202.2.163])
+  by phl-compute-06.internal (MEProxy); Wed, 19 Nov 2025 16:14:06 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
+	1763586846; x=1763673246; bh=sLmhOebjcGdiBIXUAebqRFmIAXu5XesduRf
+	L7U5wI10=; b=h28+Mw9jTM6OEW1ECo0iWvNzQiiEErdoxoiirMTiBziavq5bsa7
+	pc/yTjik18rFuIkUCT/JBH6uVXOdoAkudIi30XXVbG+d2BH6A4HIKI+4JLsZDO/1
+	Wg3Po/cdXAvMFVBpUMhSNY8tVbrATejJkhuhIVTy557Qh+1hG6Y3FfKo2lj/5d8k
+	psLMuHLLGj5q05lgW1m8+7rQG5nbp+95VZ+mF7Uy6ZJ5jTeQ84FFC171TqmjZabd
+	LMvvwJUEpYuYZvwDbAeCbGhCGv4/xb7dLbDmaVVRO8LG1GMbzWrGsdyLmUiW4HvK
+	kBK9ObodsNszY3yDmPwzcn/0j3FwF2H1nUQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1763586846; x=
+	1763673246; bh=sLmhOebjcGdiBIXUAebqRFmIAXu5XesduRfL7U5wI10=; b=i
+	W/B+q3JarDRq1nJDIxSDUyqDCgawBO9kaJi4DnFxdq7hs+ILDOQhZ914z+tvQ7Xh
+	a00H7I2oidbqbzC7SD+ra7KdfYDljNu4tRUWqXBgY3O7WFw+8UvoMqH8lhg64HaC
+	2AXp1/X4vHDxI1S1FQGPxX25rCQNLt6KamVbnJN4Hvqz59JX0Q831VMGtAJpSmML
+	r07DtANBqb6s1g85dWunfXgqhf0tvGU7jU8mljeh05RCGKQEeGka5MYFLBJ8616K
+	3b3+FREPOEHTph7bZTqFb4dqtQWQs3gjRrBKFluh+qWzu33lP/4Tt7c8peknu5Kj
+	KLq/oW6Pe2Xw5WMWn9HbA==
+X-ME-Sender: <xms:HjMeaalNNo2nfI-VCiPTQW1sWVcdafmbSe-_6029uskcpBIplhoeAQ>
+    <xme:HjMeaVgoIge_UJZUDyV7p33rg9DbQwIzGa9bBLiQtoliByANVHdGd6nQF45hsviFo
+    gMW6qDEaHLYR3zR0Y7ooJeAkkO3YJcRi4JJ64iVZ3eoboJ8wQ>
+X-ME-Received: <xmr:HjMeaSeYrYMdpTuzOPdewe_TupBBiuTAgjDN8QGh-6wzfWElxtUr72P1LoXy-z52rF1bkffn33D_gLl5hIB9zzWG7WpGitMoBktErAvUeVbc>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeeffedrtdeggddvvdehvdehucetufdoteggodetrf
+    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
+    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
+    gurheptgfgggfhvfevufgjfhffkfhrsehtqhertddttdejnecuhfhrohhmpefpvghilheu
+    rhhofihnuceonhgvihhlsgesohifnhhmrghilhdrnhgvtheqnecuggftrfgrthhtvghrnh
+    epleejtdefgeeukeeiteduveehudevfeffvedutefgteduhfegvdfgtdeigeeuudejnecu
+    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomhepnhgvihhlsg
+    esohifnhhmrghilhdrnhgvthdpnhgspghrtghpthhtohepiedpmhhouggvpehsmhhtphho
+    uhhtpdhrtghpthhtoheplhhinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrgh
+    dprhgtphhtthhopehtohhmsehtrghlphgvhidrtghomhdprhgtphhtthhopehokhhorhhn
+    ihgvvhesrhgvughhrghtrdgtohhmpdhrtghpthhtoheptghhuhgtkhdrlhgvvhgvrhesoh
+    hrrggtlhgvrdgtohhmpdhrtghpthhtohepuggrihdrnhhgohesohhrrggtlhgvrdgtohhm
+    pdhrtghpthhtohepjhhlrgihthhonheskhgvrhhnvghlrdhorhhg
+X-ME-Proxy: <xmx:HjMeaVhCfgFnvA1CkeoRQsT0XQ-bU2UMg3LoM1MLJfkkwISRSCk-7A>
+    <xmx:HjMeaawe8_EsXtnSoEp6SSF6Aw1P8s1-e3FLaiCazI4rcqCZtELh0w>
+    <xmx:HjMeaRO20m9_3wgJPwG4Ucmh5fBvYZEJK_JJBtqMzvx_B5H9b1sOSQ>
+    <xmx:HjMeabUO2U2ae7HrAh5rpSDCGBN1d8sji3DUYpSI6GeR3cquf3NPew>
+    <xmx:HjMeaQFsH8m1DUHp4mhqInZPFW_hWlnZBMCT9jie9lw_Ia3uOaddUyqG>
+Feedback-ID: iab3e480c:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
+ 19 Nov 2025 16:14:04 -0500 (EST)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v3] NFSv4: prevent integer overflow while calling
- nfs4_set_lease_period()
-To: David Laight <david.laight.linux@gmail.com>
-CC: <linux-nfs@vger.kernel.org>, Trond Myklebust <trondmy@kernel.org>, Anna
- Schumaker <anna@kernel.org>, <linux-kernel@vger.kernel.org>
-References: <e0d1a313-f359-4ad0-bee3-3fcf0ffc0cda@omp.ru>
- <20251113224113.4f752ccc@pumpkin>
- <f89eaa5c-886e-4dc1-ac69-27ff6fdcff6e@omp.ru>
- <20251118211719.14879eaf@pumpkin>
-Content-Language: en-US
-From: Sergey Shtylyov <s.shtylyov@omp.ru>
-Organization: Open Mobile Platform
-In-Reply-To: <20251118211719.14879eaf@pumpkin>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: msexch01.omp.ru (10.188.4.12) To msexch01.omp.ru
- (10.188.4.12)
-X-KSE-ServerInfo: msexch01.omp.ru, 9
-X-KSE-AntiSpam-Interceptor-Info: scan successful
-X-KSE-AntiSpam-Version: 6.1.1, Database issued on: 11/19/2025 20:26:05
-X-KSE-AntiSpam-Status: KAS_STATUS_NOT_DETECTED
-X-KSE-AntiSpam-Method: none
-X-KSE-AntiSpam-Rate: 19
-X-KSE-AntiSpam-Info: Lua profiles 198236 [Nov 19 2025]
-X-KSE-AntiSpam-Info: Version: 6.1.1.20
-X-KSE-AntiSpam-Info: Envelope from: s.shtylyov@omp.ru
-X-KSE-AntiSpam-Info: LuaCore: 78 0.3.78
- 468114d1894f8bd8bd24fc93d92b1fa7ecfbc0f3
-X-KSE-AntiSpam-Info: {rep_avail}
-X-KSE-AntiSpam-Info: {Tracking_uf_ne_domains}
-X-KSE-AntiSpam-Info: {Tracking_from_domain_doesnt_match_to}
-X-KSE-AntiSpam-Info: {SMTP from is not routable}
-X-KSE-AntiSpam-Info: {Found in DNSBL: 213.87.137.245 in (user)
- b.barracudacentral.org}
-X-KSE-AntiSpam-Info: {Found in DNSBL: 213.87.137.245 in (user)
- dbl.spamhaus.org}
-X-KSE-AntiSpam-Info:
-	127.0.0.199:7.1.2;d41d8cd98f00b204e9800998ecf8427e.com:7.1.1;omp.ru:7.1.1
-X-KSE-AntiSpam-Info: {Tracking_ip_hunter}
-X-KSE-AntiSpam-Info: FromAlignment: s
-X-KSE-AntiSpam-Info: ApMailHostAddress: 213.87.137.245
-X-KSE-AntiSpam-Info: {DNS response errors}
-X-KSE-AntiSpam-Info: Rate: 19
-X-KSE-AntiSpam-Info: Status: not_detected
-X-KSE-AntiSpam-Info: Method: none
-X-KSE-AntiSpam-Info: Auth:dmarc=temperror header.from=omp.ru;spf=temperror
- smtp.mailfrom=omp.ru;dkim=none
-X-KSE-Antiphishing-Info: Clean
-X-KSE-Antiphishing-ScanningType: Heuristic
-X-KSE-Antiphishing-Method: None
-X-KSE-Antiphishing-Bases: 11/19/2025 20:27:00
-X-KSE-Antivirus-Interceptor-Info: scan successful
-X-KSE-Antivirus-Info: Clean, bases: 11/19/2025 7:36:00 PM
-X-KSE-Attachment-Filter-Triggered-Rules: Clean
-X-KSE-Attachment-Filter-Triggered-Filters: Clean
-X-KSE-BulkMessagesFiltering-Scan-Result: InTheLimit
+From: NeilBrown <neilb@ownmail.net>
+To: "Chuck Lever" <chuck.lever@oracle.com>
+Cc: "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 01/11] nfsd: rename ALLOWED_WITHOUT_FH to
+ ALLOWED_WITHOUT_LOCAL_FH and revise use
+In-reply-to: <a27cc4b9-20c2-4065-97d5-81683f686195@oracle.com>
+References: <20251119033204.360415-1-neilb@ownmail.net>,
+ <20251119033204.360415-2-neilb@ownmail.net>,
+ <a27cc4b9-20c2-4065-97d5-81683f686195@oracle.com>
+Date: Thu, 20 Nov 2025 08:13:56 +1100
+Message-id: <176358683631.634289.10050977529867026252@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-On 11/19/25 12:17 AM, David Laight wrote:
-[...]
+On Thu, 20 Nov 2025, Chuck Lever wrote:
+> On 11/18/25 10:28 PM, NeilBrown wrote:
+> > From: NeilBrown <neil@brown.name>
+> >=20
+> > nfsdv4 ops which do not have ALLOWED_WITHOUT_FH can assume that a PUTFH
+> > has been called and may assume that current_fh->fh_dentry is non-NULL.
+> > nfsd4_setattr(), for example, assumes fh_dentry !=3D NULL.
+> >=20
+> > However the possibility of foreign filehandles (needed for v4.2 COPY)
+> > means that there maybe a filehandle present while fh_dentry is NULL.
+> >=20
+> > Sending a COMPOUND containing:
+> >    SEQUENCE
+> >    PUTFH - foreign filehandle
+> >    SETATTR - new mode
+> >    SAVEFH
+> >    COPY - with non-empty server list
+> >=20
+> > to an NFS server with inter-server copy enabled will cause a NULL
+> > pointer dereference when nfsd4_setattr() calls fh_want_write().
+> >=20
+> > Most NFSv4 ops actually want a "local" filehandle, not just any
+> > filehandle.  So this patch renames ALLOWED_WITHOUT_FH to
+> > ALLOWED_WITHOUT_LOCAL_FH and sets it on those which don't require a local
+> > filehandle.  That is all that don't require any filehandle together with
+> > SAVEFH, which is the only OP which needs to handle a foreign current_fh.
+> > (COPY must handle a foreign save_fh, but all ops which access save_fh
+> > already do any required validity tests themselves).
+> >=20
+> > nfsd4_savefh() is changed to validate the filehandle itself as the
+> > caller no longer validates it.
+> >=20
+> > nfsd4_proc_compound no longer allows ops without
+> > ALLOWED_WITHOUT_LOCAL_FH to be called with a foreign fh - current_fh
+> > must be local and ->fh_dentry must be non-NULL.  This protects
+> > nfsd4_setattr() and any others that might use ->fh_dentry without
+> > checking.
+> >=20
+> > The
+> >        current_fh->fh_export &&
+> > test is removed from an "else if" because that condition is now only
+> > tested when current_fh->fh_dentry is not NULL, and in that case
+> > current_fh->fh_export is also guaranteed to not be NULL.
+> >=20
+> > Fixes: b9e8638e3d9e ("NFSD: allow inter server COPY to have a STALE sourc=
+e server fh")
+>=20
+> Shall we mark this one with Cc: stable?
 
->>>> The nfs_client::cl_lease_time field (as well as the jiffies variable it's
->>>> used with) is declared as *unsigned long*, which is 32-bit type on 32-bit
->>>> arches and 64-bit type on 64-bit arches. When nfs4_set_lease_period() that
->>>> sets nfs_client::cl_lease_time is called, 32-bit nfs_fsinfo::lease_time
->>>> field is multiplied by HZ -- that might overflow before being implicitly
->>>> cast to *unsigned long*. Actually, there's no need to multiply by HZ at all
->>>> the call sites of nfs4_set_lease_period() -- it makes more sense to do that
->>>> once, inside that function, calling check_mul_overflow() and falling back
->>>> to 1 hour on an actual overflow...
->>>>
->>>> Found by Linux Verification Center (linuxtesting.org) with the Svace static
->>>> analysis tool.
->>>>
->>>> Signed-off-by: Sergey Shtylyov <s.shtylyov@omp.ru>
->>>> Cc: stable@vger.kernel.org  
->>
-[...]
->>>> Index: linux-nfs/fs/nfs/nfs4renewd.c
->>>> ===================================================================
->>>> --- linux-nfs.orig/fs/nfs/nfs4renewd.c
->>>> +++ linux-nfs/fs/nfs/nfs4renewd.c
->>>> @@ -137,11 +137,15 @@ nfs4_kill_renewd(struct nfs_client *clp)
->>>>   * nfs4_set_lease_period - Sets the lease period on a nfs_client
->>>>   *
->>>>   * @clp: pointer to nfs_client
->>>> - * @lease: new value for lease period
->>>> + * @period: new value for lease period (in seconds)
->>>>   */
->>>> -void nfs4_set_lease_period(struct nfs_client *clp,
->>>> -		unsigned long lease)
->>>> +void nfs4_set_lease_period(struct nfs_client *clp, u32 period)
->>>>  {
->>>> +	unsigned long lease;
->>>> +
->>>> +	if (check_mul_overflow(period, HZ, &lease))
->>>> +		lease = 60UL * 60UL * HZ; /* one hour */  
->>>
->>> That isn't good enough, just a few lines higher there is:
->>> 	timeout = (2 * clp->cl_lease_time) / 3 + (long)clp->cl_last_renewal
->>> 		- (long)jiffies;  
->>    Indeed, I should have probably capped period at 3600 secs as well...
+That would be appropriate I think.
 
-   That's one hour.
 
->>> So the value has to be multipliable by 2 without overflowing.
->>> I also suspect the modulo arithmetic also only works if the values
->>> are 'much smaller than long'.
->>
->>    You mean the jiffies-relative math? I think it should work with any
->> values, with either 32- or 64-bit *unsigned long*...
-> 
-> There might be tests of the form (signed long)(jiffies - value) > 0.
-> They only work if the interval is less than half (the time) of jiffies.
-> Such values are insane - but you are applying a cap that isn't strong enough.
+>=20
+>=20
+> > Signed-off-by: NeilBrown <neil@brown.name>
+> > ---
+> >  fs/nfsd/nfs4proc.c | 58 ++++++++++++++++++++++++++--------------------
+> >  fs/nfsd/xdr4.h     |  2 +-
+> >  2 files changed, 34 insertions(+), 26 deletions(-)
+> >=20
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index dcad50846a97..e5871e861dce 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+> > @@ -729,6 +729,15 @@ static __be32
+> >  nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	     union nfsd4_op_u *u)
+> >  {
+> > +	/*
+> > +	 * SAVEFH is "ALLOWED_WITHOUT_LOCAL_FH" in that current_fh.fh_dentry
+> > +	 * is not required, but fh_handle *is*.  Thus a foreign fh
+> > +	 * can be saved as needed for inter-server COPY.
+> > +	 */
+> > +	if (!current_fh->fh_dentry &&
+> > +	    !HAS_FH_FLAG(current_fh, NFSD4_FH_FOREIGN))
+> > +		return nfserr_nofilehandle;
+> > +
+> >  	fh_dup2(&cstate->save_fh, &cstate->current_fh);
+> >  	if (HAS_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG)) {
+> >  		memcpy(&cstate->save_stateid, &cstate->current_stateid, sizeof(stateid=
+_t));
+>=20
+>   CC [M]  fs/nfsd/nfs4proc.o
+> /home/cel/src/linux/for-korg/fs/nfsd/nfs4proc.c: In function =E2=80=98nfsd4=
+_savefh=E2=80=99:
+> /home/cel/src/linux/for-korg/fs/nfsd/nfs4proc.c:737:14: error:
+> =E2=80=98current_fh=E2=80=99 undeclared (first use in this function); did y=
+ou mean
+> =E2=80=98current_uid=E2=80=99?
+>   737 |         if (!current_fh->fh_dentry &&
+>       |              ^~~~~~~~~~
+>       |              current_uid
 
-*   3600 seconds, you mean?
+Both.  I did lots of test compiles, but obviously missed this point
+in the series.
 
->>> With HZ = 1000 and a requested period of 1000 hours the multiply (just)
->>> fits in 32 bits - but none of the code is going to work at all.
->>>
->>> It would be simpler and safer to just put a sanity upper limit on period.  
->>
->>    Yes.
->>
->>> I've no idea what normal/sane values are (lower as well as upper).  
->>
->>    The RFCs don't have any, it seems...
+>=20
+> Perhaps we want:
+>=20
+> -	if (!current_fh->fh_dentry &&
+> -	    !HAS_FH_FLAG(current_fh, NFSD4_FH_FOREIGN))
+> +	if (!cstate->current_fh.fh_dentry &&
+> +	    !HAS_FH_FLAG(&cstate->current_fh, NFSD4_FH_FOREIGN))
+>  		return nfserr_nofilehandle;
 
-   Nether max nor min. It's on;y said that lease_time is a 32-bit unsigned
-value...
+yep.
 
->>> But perhaps you want:
->>> 	/* For sanity clamp between 10 mins and 100 hours */
->>> 	lease = clamp(period, 10 * 60, 100 * 60 * 60) * HZ;  
->>
->>    Trond was talking about 1-hour period... And I don't think we need the
->> lower bound (except maybe 1 second?)...
-> 
-> If 1 hour might be a reasonable value, then clamp to something much bigger
-> that won't break the code.
+> > --- a/fs/nfsd/xdr4.h
+> > +++ b/fs/nfsd/xdr4.h
+> > @@ -1006,7 +1006,7 @@ extern __be32 nfsd4_free_stateid(struct svc_rqst *r=
+qstp,
+> >  extern void nfsd4_bump_seqid(struct nfsd4_compound_state *, __be32 nfser=
+r);
+> > =20
+> >  enum nfsd4_op_flags {
+> > -	ALLOWED_WITHOUT_FH =3D 1 << 0,    /* No current filehandle required */
+> > +	ALLOWED_WITHOUT_LOCAL_FH =3D 1 << 0,    /* No current filehandle fh_den=
+try required */
+>=20
+> The new comment is unclear to me. Is there missing punctuation?
+>=20
 
-   Trond said that even that seems too much for the file lock lease period...
++	ALLOWED_WITHOUT_LOCAL_FH =3D 1 << 0,    /* No "current filehandle fh_dentry=
+" required */
+??
 
-[...]
+I've made it:
++	ALLOWED_WITHOUT_LOCAL_FH =3D 1 << 0,    /* No fh_dentry needed in current f=
+ilehandle */
 
->>>> +
->>>>  	spin_lock(&clp->cl_lock);
->>>>  	clp->cl_lease_time = lease;
->>>>  	spin_unlock(&clp->cl_lock);  
->>>
->>> Do I see a lock that doesn't?  
->>
->>    Doesn't do anything useful, you mean? :-)
-> 
-> You can think of a 'lock' as something that locks two or more
-> operations together - often just a compare and update.
-> 
-> That one is (at most) a WRITE_ONCE().
+Thanks,
+NeilBrown
 
-   Yes, probably... :-)
 
-[..]
-
-MBR, Sergey
+>=20
+> >  	ALLOWED_ON_ABSENT_FS =3D 1 << 1,  /* ops processed on absent fs */
+> >  	ALLOWED_AS_FIRST_OP =3D 1 << 2,   /* ops reqired first in compound */
+> >  	/* For rfc 5661 section 2.6.3.1.1: */
+>=20
+>=20
+> --=20
+> Chuck Lever
+>=20
 
