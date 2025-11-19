@@ -1,150 +1,191 @@
-Received: from uggla.sjd.se (uggla.sjd.se [178.174.241.107])
+Received: from fout-a5-smtp.messagingengine.com (fout-a5-smtp.messagingengine.com [103.168.172.148])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BB231E51EB;
-	Wed, 19 Nov 2025 21:15:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=178.174.241.107
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C430C2F49F1
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Nov 2025 21:25:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.148
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763586948; cv=none; b=ceqAWE24HNECLAQ61AJqP9hott7kWjcjR5naolyVpcpmq7uCru73zyTzHoelxTuvBWxI2Mv0dvKymJ6uZGRFl+WSk09Uik5UNO5Vl74oFuqbATsXa0irH7dobn0GlglvV2XjBK1YXlVqJlo0+TmPlUvM9UzX0NRXNrFOXoy3d0w=
+	t=1763587543; cv=none; b=hZB6MEPMuzO6pr/63/tNjb7FLBbnsVk3nLip2g1F9MPt0iDbKZ1eH9trhlTx43swCkGeVWZcyRz3X7Rkqc3izbisSij0MThXTS+v42YRRl5Gm1o+w/PXMpyANxTU2gsspJ06Eiq78Pjz7egZ6UPAcXN16FFDGIY59pwALjp2kmY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763586948; c=relaxed/simple;
-	bh=GIr4vRAAS1PLeNG+QkQOZ7UvqLM0gVWU0sbKhNT32S8=;
-	h=From:To:Cc:Subject:In-Reply-To:References:Date:Message-ID:
-	 MIME-Version:Content-Type; b=F6EoixBHCafzVYN0QWcIhqQ0HP7o8xsF/naIZEyqPD0E4V93ZmovNKyrUn2/dBx6Vf5DArMO7dWFJVEVfB3vg8Fh+FWVDwc9lV2+2reAX4O7YlsPyd6/brkTeI5pO67D5ejs+dad/4nEivvJv2XDtorK40GFn0z+3WfVCV9ZxZQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=josefsson.org; spf=pass smtp.mailfrom=josefsson.org; dkim=permerror (0-bit key) header.d=josefsson.org header.i=@josefsson.org header.b=DZm2fwOC; dkim=temperror (0-bit key) header.d=josefsson.org header.i=@josefsson.org header.b=hWnKnpfN; arc=none smtp.client-ip=178.174.241.107
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=josefsson.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=josefsson.org
+	s=arc-20240116; t=1763587543; c=relaxed/simple;
+	bh=ZelXA5CvwW2M8jk4ygRQwX6KgGESJMnF6MMqUo30JEs=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=MNiGxBQ3+uMNflxSQCLEhm+2Ac0zjV4o2jGG5VuqOPHzkhQhc4k+w0bN7IuxkiVgMAPKjm5ewTM/jFI+ag1gmj+Kbwy0meQ4M47+fP7u5l2m9ihPMfUWL2Eqzr9KHpvxXM0POfcpgUcj9Zd3QPWdodyBmrZ0Qdfb1QB/JQLuF3w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=HJN1uCDN; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=TUtncdDc; arc=none smtp.client-ip=103.168.172.148
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=permerror (0-bit key) header.d=josefsson.org header.i=@josefsson.org header.b="DZm2fwOC";
-	dkim=temperror (0-bit key) header.d=josefsson.org header.i=@josefsson.org header.b="hWnKnpfN"
-DKIM-Signature: v=1; a=ed25519-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=josefsson.org; s=ed2303; h=Content-Type:MIME-Version:Message-ID:Date:
-	References:In-Reply-To:Subject:Cc:To:From:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=B+Swd9IW3Ur70d4A0fUsNwU2I4T+3RUbUfGRWxlZvNk=; t=1763586936; x=1764796536; 
-	b=DZm2fwOCF8DPXdLP8ZfYqNHFKGsVUb0Q6jXsqlGfV1KgHWokUyrmC0pLVOalB7dflPqLiOTwkb0
-	nJ6p+LhI8Cw==;
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=josefsson.org; s=rsa2303; h=Content-Type:MIME-Version:Message-ID:Date:
-	References:In-Reply-To:Subject:Cc:To:From:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=B+Swd9IW3Ur70d4A0fUsNwU2I4T+3RUbUfGRWxlZvNk=; t=1763586936; x=1764796536; 
-	b=hWnKnpfN/34Jzs3WKWIqBbfBCnENVqQSPiXhgDrGWRO9evpPZwMwyx6peqkjWOrpK8AptYIhOwE
-	bnxgeEkuRTCQEyqgVaS1ok8ji1tg81GJkU5bUwcBOXzceohI+VMZbn4FTGhL/C1Q2QPVUAkWWJMHN
-	I/8oXXOw37v9TCxy2KJKrFybg4yQuKMeUJvw8eHbMqecPoxZD6Ii42gsYRNTJNXKo/pNtxa68WG89
-	ykBklCxKHNRprHnzqjcn88ySDUkElfnkIJecQuPHgi5HKjBNNgY+dqQZCF+5IddXhuH76eRiCLjh5
-	Dbs2c2piNG9HSa1heNu0S6njWI+b8t6S8Y+w0pLAAZdKyeHaVUygMaLJqOAaEZbufIcBztOSnLz8H
-	xG3S2jHk46vKvewYhmjCFPL2bsr3zvp8HADWyOxaHwWHQNbcKQN9XcHix8uJLjXQLDUBrRgcj;
-Received: from [2001:9b1:41ac:ff00:4544:2a2d:5da8:7fae] (port=54284 helo=kaka)
-	by uggla.sjd.se with esmtpsa  (TLS1.3) tls TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-	(Exim 4.95)
-	(envelope-from <simon@josefsson.org>)
-	id 1vLpDw-008nl9-Ui;
-	Wed, 19 Nov 2025 20:56:21 +0000
-From: Simon Josefsson <simon@josefsson.org>
-To: Salvatore Bonaccorso <carnil@debian.org>
-Cc: "Tyler W. Ross" <TWR@tylerwross.com>,  Scott Mayhew
- <smayhew@redhat.com>,  Trond Myklebust <trondmy@kernel.org>,  Chuck Lever
- <chuck.lever@oracle.com>,  Anna Schumaker <anna@kernel.org>,
-  "1120598@bugs.debian.org" <1120598@bugs.debian.org>,  Jeff Layton
- <jlayton@kernel.org>,  NeilBrown <neil@brown.name>,  Steve Dickson
- <steved@redhat.com>,  Olga Kornievskaia <okorniev@redhat.com>,  Dai Ngo
- <Dai.Ngo@oracle.com>,  Tom Talpey <tom@talpey.com>,
-  linux-nfs@vger.kernel.org,  linux-kernel@vger.kernel.org
-Subject: Re: ls input/output error ("NFS: readdir(/) returns -5") on krb5
- NFSv4 client using SHA2
-In-Reply-To: <aR1MiaZYVc4kR8Yf@eldamar.lan> (Salvatore Bonaccorso's message of
-	"Wed, 19 Nov 2025 05:50:17 +0100")
-References: <aRZL8kbmfbssOwKF@eldamar.lan>
-	<fVv3cF7Ulh3cKUP17C98gh_uOv9BcMlMpsIh1Nv5_0tdw-75PKiPJgIEP5o2jBVry7orwz7jeiGQenfCbuUxyj5JFstbx3RTFYr223qDmV0=@tylerwross.com>
-	<a6d1435b-f507-49eb-b80c-4322dc7e1157@oracle.com>
-	<Y79HV0VGpScPYqI_dDxeItkX2UZwSdReaUOpIeMeZXq2HLsHf5J_PTQqr7HrBYygICRsn-OB89QPrxPzjgv2smuzTThUPy_3fq_N1NprlUg=@tylerwross.com>
-	<4a63ad3d-b53a-4eab-8ffb-dd206f52c20e@oracle.com>
-	<902ff4995d8e75ad1cd2196bf7d8da42932fba35.camel@kernel.org>
-	<aRunktdq8sJ7Eecj@aion>
-	<db8b1ef4-afbb-4c23-b7f1-9ae688cef363@TylerWRoss.com>
-	<aRyyWy6hO1ueKf5_@aion>
-	<85cd9202-dc22-41b8-8a20-e82cd118215f@TylerWRoss.com>
-	<aR1MiaZYVc4kR8Yf@eldamar.lan>
-OpenPGP: id=B1D2BD1375BECB784CF4F8C4D73CF638C53C06BE;
- url=https://josefsson.org/key-20190320.txt
-X-Hashcash: 1:23:251119:smayhew@redhat.com::FNOVbgLI6PxeA/En:h3H
-X-Hashcash: 1:23:251119:neil@brown.name::6XDduMDcNU+G7B6H:3SlT
-X-Hashcash: 1:23:251119:dai.ngo@oracle.com::Nkv+UhdnkwoRHzeA:6flR
-X-Hashcash: 1:23:251119:carnil@debian.org::VJ51ojdR4pzekZvA:8oEJ
-X-Hashcash: 1:23:251119:1120598@bugs.debian.org::Q1zArJXh8NI87x/O:3G7V
-X-Hashcash: 1:23:251119:trondmy@kernel.org::qH0UajHQRMd8Nw+v:9WBc
-X-Hashcash: 1:23:251119:steved@redhat.com::mISrfmJvQ9joaRrY:D0o7
-X-Hashcash: 1:23:251119:anna@kernel.org::Oxq/2qySBAICMaax:BNVg
-X-Hashcash: 1:23:251119:twr@tylerwross.com::WcNRGQw/b4rF5Eui:ExLv
-X-Hashcash: 1:23:251119:tom@talpey.com::wpk0SFKHD5VO9APM:Ii6l
-X-Hashcash: 1:23:251119:chuck.lever@oracle.com::FSCNwBW1aiEAxJTl:9uCO
-X-Hashcash: 1:23:251119:okorniev@redhat.com::JlJjqr9jkXq7jFo3:Xf2u
-X-Hashcash: 1:23:251119:jlayton@kernel.org::PFl2/V6siTm5OrOR:dTD6
-X-Hashcash: 1:23:251119:linux-kernel@vger.kernel.org::S6xmp5A1+YrOLo/B:01vxb
-X-Hashcash: 1:23:251119:linux-nfs@vger.kernel.org::beGq0C3eaV5QWACU:1ps6n
-Date: Wed, 19 Nov 2025 21:54:42 +0100
-Message-ID: <87zf8hhhf1.fsf@josefsson.org>
-User-Agent: Gnus/5.13 (Gnus v5.13)
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="HJN1uCDN";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="TUtncdDc"
+Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
+	by mailfout.phl.internal (Postfix) with ESMTP id D425EEC01C6;
+	Wed, 19 Nov 2025 16:25:40 -0500 (EST)
+Received: from phl-mailfrontend-02 ([10.202.2.163])
+  by phl-compute-06.internal (MEProxy); Wed, 19 Nov 2025 16:25:40 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
+	1763587540; x=1763673940; bh=sdrO+staQ6j+0bnpThxibrK2iagCxDaL1MO
+	DXodze5M=; b=HJN1uCDNwkVrX3aDGkm5rUAC5zh0Kp4hnOow3BrC//gss2LHSp6
+	TvE1ZDJea/SgorQlN6Lv1BdCveRy2ooxth1FTorvw1UJ/3/xEDpRaeKhERL7HMA7
+	qopy7dQu/fNq9pG697mij17zNI/U7NYu2BhIpTgkd1WnF11dX6PEGJMIbe05Uh+F
+	xcZnBBPCRNsRoYySfZKYmFzcqQX1ZZL0RSMEflgkGqzPlPxhDcsqZiYqFoBwyJxk
+	aJxY1s/oJECkXyxo7MywtUewGt4WcI8XGu4smaH1ju2fs6nv6J+vg8YCC9PdN3/c
+	zGZxiexa/41Xf+zNDDOLt9MdHsuM/iFAZJw==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1763587540; x=
+	1763673940; bh=sdrO+staQ6j+0bnpThxibrK2iagCxDaL1MODXodze5M=; b=T
+	UtncdDcxZB4VtTxsgQlgSKliANCz2ATPZ6tGjje+jHYe5jM2Hr1XGx1wzfx9hOSw
+	9T/lu9b5IwECmXngOUSYuK6wpZ+/oQQggCDmMn55X1jxBlEPqRFQVUdA7lW+g2PQ
+	rzGSpwerNbjrqwRmG2McjtHW1285q6/FTtpucEXpSu+NacL/3A5BtPvnGeAb2H0b
+	nm6DEMJ4H8IgDtsKhNtcOo55+WHZJF6m7rfwcE3PyzVHAj/gVbwmSxlpTSyL4ftl
+	AYA1jw81J7pUB/U25crAJcMfXXkiV/a3/oK+9xvhOFqPOzHrbVvGmnoRkw+X5kRQ
+	2x86W74phJhmI3ypc6IjA==
+X-ME-Sender: <xms:1DUeaQNjGlCDlY99mbo5XCt0Up2LzZngi5Q1WRhI4gZxx9V3l0BDow>
+    <xme:1DUeaaobZqgP8mMPwb4eeBkPvnxeOPQK_ITJ-gwHBMeCaPK6MVdZhbBpqfkRuUiIS
+    GMnspYzM6YWS3dL6FFRU5U_wfGqy7l6fkbF-pidlLus1dILwsk>
+X-ME-Received: <xmr:1DUeaRHez6XJV8uzmShr10cIAjgHv2Pc7XX-cPLSV1PwtznNVBZOQZg7UWhZMwp8rrilSSRP8U3k6Gs7rDj4e8vNQ7EYv_-0XSk7ihR5UqP3>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeeffedrtdeggddvvdehvdejucetufdoteggodetrf
+    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
+    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
+    gurheptgfgggfhvfevufgjfhffkfhrsehtqhertddttdejnecuhfhrohhmpefpvghilheu
+    rhhofihnuceonhgvihhlsgesohifnhhmrghilhdrnhgvtheqnecuggftrfgrthhtvghrnh
+    epleejtdefgeeukeeiteduveehudevfeffvedutefgteduhfegvdfgtdeigeeuudejnecu
+    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomhepnhgvihhlsg
+    esohifnhhmrghilhdrnhgvthdpnhgspghrtghpthhtohepiedpmhhouggvpehsmhhtphho
+    uhhtpdhrtghpthhtoheplhhinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrgh
+    dprhgtphhtthhopehtohhmsehtrghlphgvhidrtghomhdprhgtphhtthhopehokhhorhhn
+    ihgvvhesrhgvughhrghtrdgtohhmpdhrtghpthhtoheptghhuhgtkhdrlhgvvhgvrhesoh
+    hrrggtlhgvrdgtohhmpdhrtghpthhtohepuggrihdrnhhgohesohhrrggtlhgvrdgtohhm
+    pdhrtghpthhtohepjhhlrgihthhonheskhgvrhhnvghlrdhorhhg
+X-ME-Proxy: <xmx:1DUeafpCnrRn7xN6FKTLL-mn9U5ZGbEIhqFfKylgd5fRKTs3uQ1mzw>
+    <xmx:1DUeaabvfAho0MnduDFOqvMW_jcCGWDDTL1eVu-tYto2x3C6iyvFoQ>
+    <xmx:1DUeaYVMuUxkgRbSfTAtZytlw44rYV0TWLemgF6NmS-XUs1Fu2HYVA>
+    <xmx:1DUeaT-JSRSlmQ2j4J_DMAmJKqlWJS4M6WukhGgoe7R2ADWThV2AlQ>
+    <xmx:1DUeadv1V6j8MFpDmX2hZ7T7-QfgEyBZYjVV0xdYqpZGUhq377VjHw9h>
+Feedback-ID: iab3e480c:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
+ 19 Nov 2025 16:25:38 -0500 (EST)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha256; protocol="application/pgp-signature"
+From: NeilBrown <neilb@ownmail.net>
+To: "Chuck Lever" <chuck.lever@oracle.com>
+Cc: "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 02/11] nfsd: discard NFSD4_FH_FOREIGN
+In-reply-to: <0958c74f-afef-4063-9c91-d78462af2315@oracle.com>
+References: <20251119033204.360415-1-neilb@ownmail.net>,
+ <20251119033204.360415-3-neilb@ownmail.net>,
+ <0958c74f-afef-4063-9c91-d78462af2315@oracle.com>
+Date: Thu, 20 Nov 2025 08:25:37 +1100
+Message-id: <176358753703.634289.8281726516847858029@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
---=-=-=
-Content-Type: text/plain
+On Thu, 20 Nov 2025, Chuck Lever wrote:
+> On 11/18/25 10:28 PM, NeilBrown wrote:
+> > From: NeilBrown <neil@brown.name>
+> >=20
+> > NFSD4_FH_FOREIGN is not needed as the same information is elsewhere.
+> >=20
+> > If fh_handle.fh_len is 0 then there is no filehandle
+>=20
+> s/fh_len/fh_size
+>=20
+> I think to make this new mechanism bullet-proof, maybe fh_put() needs to
+> set fh_handle.fh_size to zero?
+>=20
+> An NFS client can do something crazy like { SECINFO, SAVEFH }. The new
+> "fh_size =3D=3D 0" check would pass because fh_put doesn't clear fh_size,
+> and then NFSD would proceed to save this no-longer-valid handle. The
+> current check catches this by seeing !fh_dentry without FOREIGN flag
+> set.
 
-Salvatore Bonaccorso <carnil@debian.org> writes:
+I didn't know that about SECINFO.  I agree that clearing fh_size in
+fh_put() is needed.
 
-> I'm looping in here the gssproxy maintainer as well. Simon, this is
-> about https://bugs.debian.org/1120598 . I assume there is nothing on
-> gssroxy side which can be done to warn about the situation, quoting
-> again:
->
->> The actual issue at hand then seems to be that gssproxy is requesting (and
->> receiving) a service ticket with an unusable (for the NFS mount) enctype,
->> when performing constrained delegation/S4U2Proxy.
->
-> ?
+Thanks,
+NeilBrown
 
-It isn't clear to me if the gssproxy behaviour is buggy or just
-sub-optimal, but it seems like gssproxy upstream could develop some
-patch to make the enctypes match.  I'm not sure if that is generally a
-safe thing, even if it would fix the problem.  Anyway, I think this
-looks definitely beyond any Debian-specific concern about gssproxy so I
-think some upstream recommendation is needed here, and I don't have a
-working NFSv4 gss setup available to debug this.
 
-/Simon
+>=20
+>=20
+> > else if fh_dentry is NULL then the filehandle is foreign
+> > else the filehandle is local.
+> >=20
+> > So we can discard NFSD4_FH_FOREIGN and the related struct field,
+> > and code.
+> >=20
+> > Signed-off-by: NeilBrown <neil@brown.name>
+> > ---
+> >  fs/nfsd/nfs4proc.c | 7 ++-----
+> >  fs/nfsd/nfsfh.h    | 4 ----
+> >  2 files changed, 2 insertions(+), 9 deletions(-)
+> >=20
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index e5871e861dce..3160e899a5da 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+> > @@ -693,10 +693,8 @@ nfsd4_putfh(struct svc_rqst *rqstp, struct nfsd4_com=
+pound_state *cstate,
+> >  	       putfh->pf_fhlen);
+> >  	ret =3D fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
+> >  #ifdef CONFIG_NFSD_V4_2_INTER_SSC
+> > -	if (ret =3D=3D nfserr_stale && putfh->no_verify) {
+> > -		SET_FH_FLAG(&cstate->current_fh, NFSD4_FH_FOREIGN);
+> > +	if (ret =3D=3D nfserr_stale && putfh->no_verify)
+> >  		ret =3D 0;
+> > -	}
+> >  #endif
+> >  	return ret;
+> >  }
+> > @@ -734,8 +732,7 @@ nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_com=
+pound_state *cstate,
+> >  	 * is not required, but fh_handle *is*.  Thus a foreign fh
+> >  	 * can be saved as needed for inter-server COPY.
+> >  	 */
+> > -	if (!current_fh->fh_dentry &&
+> > -	    !HAS_FH_FLAG(current_fh, NFSD4_FH_FOREIGN))
+> > +	if (cstate->current_fh.fh_handle.fh_size =3D=3D 0)
+> >  		return nfserr_nofilehandle;
+> > =20
+> >  	fh_dup2(&cstate->save_fh, &cstate->current_fh);
+> > diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+> > index 5ef7191f8ad8..43fcc1dcf69a 100644
+> > --- a/fs/nfsd/nfsfh.h
+> > +++ b/fs/nfsd/nfsfh.h
+> > @@ -93,7 +93,6 @@ typedef struct svc_fh {
+> >  						 */
+> >  	bool			fh_use_wgather;	/* NFSv2 wgather option */
+> >  	bool			fh_64bit_cookies;/* readdir cookie size */
+> > -	int			fh_flags;	/* FH flags */
+> >  	bool			fh_post_saved;	/* post-op attrs saved */
+> >  	bool			fh_pre_saved;	/* pre-op attrs saved */
+> > =20
+> > @@ -111,9 +110,6 @@ typedef struct svc_fh {
+> >  	struct kstat		fh_post_attr;	/* full attrs after operation */
+> >  	u64			fh_post_change; /* nfsv4 change; see above */
+> >  } svc_fh;
+> > -#define NFSD4_FH_FOREIGN (1<<0)
+> > -#define SET_FH_FLAG(c, f) ((c)->fh_flags |=3D (f))
+> > -#define HAS_FH_FLAG(c, f) ((c)->fh_flags & (f))
+> > =20
+> >  enum nfsd_fsid {
+> >  	FSID_DEV =3D 0,
+>=20
+>=20
+> --=20
+> Chuck Lever
+>=20
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQNoBAEWCAMQFiEEo8ychwudMQq61M8vUXIrCP5HRaIFAmkeLpIUHHNpbW9uQGpv
-c2Vmc3Nvbi5vcmfCHCYAmDMEXJLOtBYJKwYBBAHaRw8BAQdACIcrZIvhrxDBkK9f
-V+QlTmXxo2naObDuGtw58YaxlOu0JVNpbW9uIEpvc2Vmc3NvbiA8c2ltb25Aam9z
-ZWZzc29uLm9yZz6IlgQTFggAPgIbAwULCQgHAgYVCAkKCwIEFgIDAQIeAQIXgBYh
-BLHSvRN1vst4TPT4xNc89jjFPAa+BQJn0XQkBQkNZGbwAAoJENc89jjFPAa+BtIA
-/iR73CfBurG9y8pASh3cbGOMHpDZfMAtosu6jbpO69GHAP4p7l57d+iVty2VQMsx
-+3TCSAvZkpr4P/FuTzZ8JZe8BrgzBFySz4EWCSsGAQQB2kcPAQEHQOxTCIOaeXAx
-I2hIX4HK9bQTpNVei708oNr1Klm8qCGKiPUEGBYIACYCGwIWIQSx0r0Tdb7LeEz0
-+MTXPPY4xTwGvgUCZ9F0SgUJDWRmSQCBdiAEGRYIAB0WIQSjzJyHC50xCrrUzy9R
-cisI/kdFogUCXJLPgQAKCRBRcisI/kdFoqdMAQCgH45aseZgIrwKOvUOA9QfsmeE
-8GZHYNuFHmM9FEQS6AD6A4x5aYvoY6lo98pgtw2HPDhmcCXFItjXCrV4A0GmJA4J
-ENc89jjFPAa+wUUBAO64fbZek6FPlRK0DrlWsrjCXuLi6PUxyzCAY6lG2nhUAQC6
-qobB9mkZlZ0qihy1x4JRtflqFcqqT9n7iUZkCDIiDbg4BFySz2oSCisGAQQBl1UB
-BQEBB0AxlRumDW6nZY7A+VCfek9VpEx6PJmdJyYPt3lNHMd6HAMBCAeIfgQYFggA
-JgIbDBYhBLHSvRN1vst4TPT4xNc89jjFPAa+BQJn0XTSBQkNZGboAAoJENc89jjF
-PAa+0M0BAPPRq73kLnHYNDMniVBOzUdi2XeF32idjEWWfjvyIJUOAP4wZ+ALxIeh
-is3Uw2BzGZE6ttXQ2Q+DeCJO3TPpIqaXDAAKCRBRcisI/kdForoiAP43U7TSUdfe
-r2VnOefzgRorLcwk+b2DfRZ+Nq9VEv2/wQEAmrZbYfdt2eJGAqfAVEkQbbHgolb1
-rroSP3CheBFq2gE=
-=tJ2r
------END PGP SIGNATURE-----
---=-=-=--
