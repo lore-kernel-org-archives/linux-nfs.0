@@ -1,63 +1,186 @@
-Received: from verein.lst.de (verein.lst.de [213.95.11.211])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15B7B303CA1;
-	Thu, 20 Nov 2025 06:51:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.95.11.211
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 768A9304BBD;
+	Thu, 20 Nov 2025 06:51:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763621469; cv=none; b=fUqtaHubyMZRgl555pQlTwRLsvBwMZMnW1WpZ+phrG7tpLOCi59bM2tZwhHwRtyglQUlqx9PRGvX9mqMgkUG4imLck4yS8Q6iuGrOPJbCatCa/UoIjoTPXGazVLwPwiW7QYDKF9SGUOTbpVmP/0UpcfdNzP7k+0greaFxLIteDk=
+	t=1763621471; cv=none; b=qO/qagTHAy8kuej4A2xv/HRdPA4duDtoPZsO1Fqg+8iEabJjLOaBrSPzdU6NCkPf3LIP5Bv/7Uj71ECrys2OFydMaTQXLsD15LbhtXI00+lCIQYR2c6rh0gBcbHiINRfBZUikIkyiFZMeeJPltn2M/lcohjdIwnKhj5RauA8uNM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763621469; c=relaxed/simple;
-	bh=x4/N5cjY0tOYij8FoUIDfAVD884eFP2ZulZRiTo10dI=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=eTVPLdJ6dlJen9OhBtit+tV2TTfjS8TXmQSoTGdc98c2COpob8/11kLNsEAqMnvrE2VZdUoFcSnp9wzIwjhH+dOgLs8ULyXkb3YpQD8qzdzTQbXsKzrWBGrt/6WQ6SixGNACJ59cvqWd3bUMYcDTYojUuD8O2yhnQzRHHTaGKNQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de; spf=pass smtp.mailfrom=lst.de; arc=none smtp.client-ip=213.95.11.211
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
-Received: by verein.lst.de (Postfix, from userid 2407)
-	id 0AC82227A88; Thu, 20 Nov 2025 07:51:00 +0100 (CET)
-Date: Thu, 20 Nov 2025 07:50:59 +0100
+	s=arc-20240116; t=1763621471; c=relaxed/simple;
+	bh=19q68EHogM82UeTMNBDGn2F5Gwkf2Vw3G0103YH6Ba0=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=JexP75QTOM57hXhqbc4YRA2kqJA42BZvUoHvmeNS4h8adbgLKonMBAkz0bqbF61hln6kIW6Ti33cxI0Wwzj++e/IoCAD1BU2A/zrzMpa8BF8j+cYrm1EHDrcmQuiaj0zHQT3Ifa+KNOa2/kcGJZ2/SztDfEW2H9GJ9rkZOmvbZU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=lst.de; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=WmIfMXFh; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=lst.de
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="WmIfMXFh"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
+	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender
+	:Reply-To:Content-Type:Content-ID:Content-Description;
+	bh=Xdr8t0pgQn0fMenmTNQClFxCV0ZWOGY6pkY70dZOg1o=; b=WmIfMXFhola4G+Kju5ErWy0+GS
+	gu5vDUvxmMn/+DDFHlxoTP3k6FzNwIH9ad4v1y821idJQKlxc2hAQS8QWJej318+HFV3ftJIsiNu/
+	6JcuXaEF3jvvgTgBNRjoBzK8QYKE9l14J6FoiMdt94iJ91R7u/byDAwR361UgwvDKzBuvYPtZ7fhz
+	iJMFPUuJurHQ1yMjmGMI0JlzsPkqLIeDEzOOpaI6Sh1vbukoj8Ozfrki73/mMOdudyHq8NJpM22HO
+	AatsTEXPEtbGzzHeyQy5pPqDzBNwnjGsJbVItJUTjaGIPa2ao206zUbah6i3kg054xOtlJFSzNcFS
+	JnuMIeFg==;
+Received: from 2a02-8389-2341-5b80-d601-7564-c2e0-491c.cable.dynamic.v6.surfer.at ([2a02:8389:2341:5b80:d601:7564:c2e0:491c] helo=localhost)
+	by bombadil.infradead.org with esmtpsa (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1vLyVO-00000006FSk-3XdL;
+	Thu, 20 Nov 2025 06:50:59 +0000
 From: Christoph Hellwig <hch@lst.de>
-To: Dai Ngo <dai.ngo@oracle.com>
-Cc: Christoph Hellwig <hch@lst.de>,
-	Benjamin Coddington <bcodding@hammerspace.com>,
-	Chuck Lever <chuck.lever@oracle.com>, jlayton@kernel.org,
-	neilb@ownmail.net, okorniev@redhat.com, tom@talpey.com,
-	alex.aring@gmail.com, viro@zeniv.linux.org.uk, brauner@kernel.org,
-	jack@suse.cz, linux-fsdevel@vger.kernel.org,
+To: Christian Brauner <brauner@kernel.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+	David Sterba <dsterba@suse.com>,
+	Jan Kara <jack@suse.cz>,
+	Mike Marshall <hubcap@omnibond.com>,
+	Martin Brandenburg <martin@omnibond.com>,
+	Carlos Maiolino <cem@kernel.org>,
+	Stefan Roesch <shr@fb.com>,
+	Jeff Layton <jlayton@kernel.org>,
+	linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	gfs2@lists.linux.dev,
+	io-uring@vger.kernel.org,
+	devel@lists.orangefs.org,
+	linux-unionfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org,
+	linux-xfs@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 3/3] FSD: Fix NFS server hang when there are
- multiple layout conflicts
-Message-ID: <20251120065059.GB30432@lst.de>
-References: <20251115191722.3739234-1-dai.ngo@oracle.com> <20251115191722.3739234-4-dai.ngo@oracle.com> <d7888dd6-c238-45e0-94c0-ac82fb90d6b6@oracle.com> <18135047-8695-4190-b7ca-b7575d9e4c6c@oracle.com> <09209CBD-6BEE-4BCE-8A13-D62F96A5BD87@hammerspace.com> <aeb05ba9-83c5-45a4-a75b-f76fc4686e7c@oracle.com> <20251119100800.GB25962@lst.de> <8f7653b4-deef-4bda-bf17-e06c2f208135@oracle.com>
+Subject: [PATCH 15/16] xfs: implement ->sync_lazytime
+Date: Thu, 20 Nov 2025 07:47:36 +0100
+Message-ID: <20251120064859.2911749-16-hch@lst.de>
+X-Mailer: git-send-email 2.47.3
+In-Reply-To: <20251120064859.2911749-1-hch@lst.de>
+References: <20251120064859.2911749-1-hch@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <8f7653b4-deef-4bda-bf17-e06c2f208135@oracle.com>
-User-Agent: Mutt/1.5.17 (2007-11-01)
+Content-Transfer-Encoding: 8bit
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Wed, Nov 19, 2025 at 08:52:25AM -0800, Dai Ngo wrote:
->
-> On 11/19/25 2:08 AM, Christoph Hellwig wrote:
->> On Mon, Nov 17, 2025 at 02:00:07PM -0800, Dai Ngo wrote:
->>> Perhaps I overstated the severity of the risk. The real issue is, in the
->>> current state, SCSI layout recall has no timeout and if there are enough
->>> activities on the server that results in lots of layout conflicts then the
->>> server can hang.
->> All this is really caused by the synchronous waiting.  I'm not against
->> the workaround here, but I think we need to address that.  There's
->> really no reason to consumer threads for this waiting activity and
->> we'll need to stop doing it.
->
-> Yes, I think __break_lease needs to work asynchronously. But I'm concerned
-> about touching a bunch of other callers.
+Switch to the new explicit lazytime syncing method instead of trying
+to second guess what could be a lazytime update in ->dirty_inode.
 
-You really don't need to touch other callers, keep the existing semantics
-for them.  Just like we don't force all file I/O to be asynchronous,
-just because we also offer that.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
+---
+ fs/xfs/xfs_iops.c  | 20 ++++++++++++++++++++
+ fs/xfs/xfs_super.c | 29 -----------------------------
+ 2 files changed, 20 insertions(+), 29 deletions(-)
+
+diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+index da055dade25f..bd0b7e81f6ab 100644
+--- a/fs/xfs/xfs_iops.c
++++ b/fs/xfs/xfs_iops.c
+@@ -1227,6 +1227,22 @@ xfs_vn_update_time(
+ 	return xfs_trans_commit(tp);
+ }
+ 
++static void
++xfs_vn_sync_lazytime(
++	struct inode		*inode)
++{
++	struct xfs_inode	*ip = XFS_I(inode);
++	struct xfs_mount	*mp = ip->i_mount;
++	struct xfs_trans	*tp;
++
++	if (xfs_trans_alloc(mp, &M_RES(mp)->tr_fsyncts, 0, 0, 0, &tp))
++		return;
++	xfs_ilock(ip, XFS_ILOCK_EXCL);
++	xfs_trans_ijoin(tp, ip, XFS_ILOCK_EXCL);
++	xfs_trans_log_inode(tp, ip, XFS_ILOG_TIMESTAMP);
++	xfs_trans_commit(tp);
++}
++
+ STATIC int
+ xfs_vn_fiemap(
+ 	struct inode		*inode,
+@@ -1270,6 +1286,7 @@ static const struct inode_operations xfs_inode_operations = {
+ 	.listxattr		= xfs_vn_listxattr,
+ 	.fiemap			= xfs_vn_fiemap,
+ 	.update_time		= xfs_vn_update_time,
++	.sync_lazytime		= xfs_vn_sync_lazytime,
+ 	.fileattr_get		= xfs_fileattr_get,
+ 	.fileattr_set		= xfs_fileattr_set,
+ };
+@@ -1296,6 +1313,7 @@ static const struct inode_operations xfs_dir_inode_operations = {
+ 	.setattr		= xfs_vn_setattr,
+ 	.listxattr		= xfs_vn_listxattr,
+ 	.update_time		= xfs_vn_update_time,
++	.sync_lazytime		= xfs_vn_sync_lazytime,
+ 	.tmpfile		= xfs_vn_tmpfile,
+ 	.fileattr_get		= xfs_fileattr_get,
+ 	.fileattr_set		= xfs_fileattr_set,
+@@ -1323,6 +1341,7 @@ static const struct inode_operations xfs_dir_ci_inode_operations = {
+ 	.setattr		= xfs_vn_setattr,
+ 	.listxattr		= xfs_vn_listxattr,
+ 	.update_time		= xfs_vn_update_time,
++	.sync_lazytime		= xfs_vn_sync_lazytime,
+ 	.tmpfile		= xfs_vn_tmpfile,
+ 	.fileattr_get		= xfs_fileattr_get,
+ 	.fileattr_set		= xfs_fileattr_set,
+@@ -1334,6 +1353,7 @@ static const struct inode_operations xfs_symlink_inode_operations = {
+ 	.setattr		= xfs_vn_setattr,
+ 	.listxattr		= xfs_vn_listxattr,
+ 	.update_time		= xfs_vn_update_time,
++	.sync_lazytime		= xfs_vn_sync_lazytime,
+ 	.fileattr_get		= xfs_fileattr_get,
+ 	.fileattr_set		= xfs_fileattr_set,
+ };
+diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+index bc71aa9dcee8..094f257eff15 100644
+--- a/fs/xfs/xfs_super.c
++++ b/fs/xfs/xfs_super.c
+@@ -712,34 +712,6 @@ xfs_fs_destroy_inode(
+ 	xfs_inode_mark_reclaimable(ip);
+ }
+ 
+-static void
+-xfs_fs_dirty_inode(
+-	struct inode			*inode,
+-	int				flags)
+-{
+-	struct xfs_inode		*ip = XFS_I(inode);
+-	struct xfs_mount		*mp = ip->i_mount;
+-	struct xfs_trans		*tp;
+-
+-	if (!(inode->i_sb->s_flags & SB_LAZYTIME))
+-		return;
+-
+-	/*
+-	 * Only do the timestamp update if the inode is dirty (I_DIRTY_SYNC)
+-	 * and has dirty timestamp (I_DIRTY_TIME). I_DIRTY_TIME can be passed
+-	 * in flags possibly together with I_DIRTY_SYNC.
+-	 */
+-	if ((flags & ~I_DIRTY_TIME) != I_DIRTY_SYNC || !(flags & I_DIRTY_TIME))
+-		return;
+-
+-	if (xfs_trans_alloc(mp, &M_RES(mp)->tr_fsyncts, 0, 0, 0, &tp))
+-		return;
+-	xfs_ilock(ip, XFS_ILOCK_EXCL);
+-	xfs_trans_ijoin(tp, ip, XFS_ILOCK_EXCL);
+-	xfs_trans_log_inode(tp, ip, XFS_ILOG_TIMESTAMP);
+-	xfs_trans_commit(tp);
+-}
+-
+ /*
+  * Slab object creation initialisation for the XFS inode.
+  * This covers only the idempotent fields in the XFS inode;
+@@ -1304,7 +1276,6 @@ xfs_fs_show_stats(
+ static const struct super_operations xfs_super_operations = {
+ 	.alloc_inode		= xfs_fs_alloc_inode,
+ 	.destroy_inode		= xfs_fs_destroy_inode,
+-	.dirty_inode		= xfs_fs_dirty_inode,
+ 	.drop_inode		= xfs_fs_drop_inode,
+ 	.evict_inode		= xfs_fs_evict_inode,
+ 	.put_super		= xfs_fs_put_super,
+-- 
+2.47.3
 
