@@ -1,214 +1,175 @@
-Received: from mail1.fiberby.net (mail1.fiberby.net [193.104.135.124])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DEA832F60D8;
-	Thu, 20 Nov 2025 17:47:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=193.104.135.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B7FE22EAD09
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Nov 2025 17:48:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1763660882; cv=none; b=SrOUTcl4klVrJSykFAumysY8cGudnEvvyx0GTsR4/TvrBu4U+WhmRcKUWv9xMPc+c+biTJc+9mAUGgjBcBJWUORfWUdb4O1WLoQZeeP82Q4SPmNsADmwJK9A65NV1QLuklicvYKRUspIiJ+GNMqFWU5xKZ3vlDT+Omv6Lx8G8Z8=
+	t=1763660914; cv=none; b=SEeUXkx/uajCWtLn26y4bzHwr6YmJRUg0skw++nMoE+chsgXbELNH42vtnDoaIk00sxsIqsco+YGA5dJr9rLR67DgBCTtnNjeDE3AJ77PglzPwhQdVMDKEUEjnK+UL5ZXpDizFWgdlwsIHTRmKMdbKE0Z8j16CtFsdl9YWKVlDo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1763660882; c=relaxed/simple;
-	bh=7Hii1fepSYb2R2xAPHJoYXk4k8Ps7RQqJ8Ba8lBX0ks=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=ZItXDGz81GPmU5qxsDdEsh5u/YUp73Xr5rxt24NAb3fLjLgYaHpTAx1axvA1cOZCr8UzMxzgBHE9fp03vWdECu0+VQR1VOvHDusWrJFcZnaU2sONccHC3YUoRUN4GT1ZXnDA3TkEatZvKMqg0FtNAwNv6caX+FEWZGxqPR/PCFY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=fiberby.net; spf=pass smtp.mailfrom=fiberby.net; dkim=pass (2048-bit key) header.d=fiberby.net header.i=@fiberby.net header.b=mgQAyN0J; arc=none smtp.client-ip=193.104.135.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=fiberby.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=fiberby.net
+	s=arc-20240116; t=1763660914; c=relaxed/simple;
+	bh=fj14PL3pYedUd0UFXySYNYCX6sCf9YQyPk9TDH1WH/Q=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=k1yN+Ovp5afCnQ1DJMp5oX5zsBe4c79zSjTv4yR85ts6TW+cpNbf4N6UfICz25dj2bxNE2nHJNXf5+infDobeL1QH0PQNuOuq9mxlJHN0+gaVcdSOiDA7p0eaqCo4dxU7Wz0ZFrGpjMapH7jq757REGHr7tJqxBU6TrmqzQgjAY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=D5UzvSNB; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=fiberby.net header.i=@fiberby.net header.b="mgQAyN0J"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=fiberby.net;
-	s=202008; t=1763660872;
-	bh=7Hii1fepSYb2R2xAPHJoYXk4k8Ps7RQqJ8Ba8lBX0ks=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=mgQAyN0JxSO6T6Wp5PMGr0h69W2XRKcuK8ZRopawNJa1H7NO/c34ySjzfjfkW9CZ2
-	 yzqWf7WugthCmQ7v/3QeQa/1WXV4b8yKU6mZmsZDyRDLPHwPhTLyaMaokFm9oC9ghj
-	 uL5WMJgNzAUTbCw9x/0P4m9fJu/b9poMf5twrXMU679J/v0Q6hikFJGRc0lFk63Rer
-	 PAHjWP+xfX9ABUmGPJEG+gYG0Qc5DpDbELZyCamW4oXLxsjBwbIcqinQfHmmIswSGo
-	 tLmgI/2KlmksbDBV12YsvWUe60rihOmF9CJV73fwrCNGFRjSK7QUMD0hQ0E2czoUZG
-	 2UqVIKQaguBZQ==
-Received: from x201s (193-104-135-243.ip4.fiberby.net [193.104.135.243])
-	by mail1.fiberby.net (Postfix) with ESMTPSA id 6A0AC60103;
-	Thu, 20 Nov 2025 17:46:25 +0000 (UTC)
-Received: by x201s (Postfix, from userid 1000)
-	id D1CB8203EA5; Thu, 20 Nov 2025 17:45:07 +0000 (UTC)
-From: =?UTF-8?q?Asbj=C3=B8rn=20Sloth=20T=C3=B8nnesen?= <ast@fiberby.net>
-To: Donald Hunter <donald.hunter@gmail.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	"Jason A. Donenfeld" <Jason@zx2c4.com>
-Cc: =?UTF-8?q?Asbj=C3=B8rn=20Sloth=20T=C3=B8nnesen?= <ast@fiberby.net>,
-	Andrew Lunn <andrew+netdev@lunn.ch>,
-	Anna Schumaker <anna@kernel.org>,
-	Antonio Quartulli <antonio@openvpn.net>,
-	Arkadiusz Kubalewski <arkadiusz.kubalewski@intel.com>,
-	=?UTF-8?q?Arve=20Hj=C3=B8nnev=C3=A5g?= <arve@android.com>,
-	Carlos Llamas <cmllamas@google.com>,
-	Christian Brauner <brauner@kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Daniel Zahka <daniel.zahka@gmail.com>,
-	David Ahern <dsahern@kernel.org>,
-	"David S. Miller" <davem@davemloft.net>,
-	David Wei <dw@davidwei.uk>,
-	Eric Dumazet <edumazet@google.com>,
-	Geliang Tang <geliang@kernel.org>,
-	Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-	Hannes Reinecke <hare@kernel.org>,
-	Jacob Keller <jacob.e.keller@intel.com>,
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="D5UzvSNB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 60A72C4CEF1;
+	Thu, 20 Nov 2025 17:48:33 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1763660913;
+	bh=fj14PL3pYedUd0UFXySYNYCX6sCf9YQyPk9TDH1WH/Q=;
+	h=From:To:Cc:Subject:Date:From;
+	b=D5UzvSNBJfWcN8rh4oxDNX3MoMmA1D2JFF+m/6Z/D926rGTVpwm8BAFKQfwNpoYZ5
+	 YWVNXvGMR5FkIRCNsoxEFDgDkCLX7bFVr9De/a4pR7LmSftV16eTYPWkh8LnKD2/Jn
+	 qVQa30SK5nAyLm3aePollX8mLnewjbMlM1wiQW7B8+ob1MMCbtCl61VPeVh6ndNI8w
+	 Sc8Rjg6/NUq5o5ZsC0tC4tSBPL+KOCxO21gBZjSKxj6eIZq2zyA1uGZhmsYFmPLHa4
+	 dzt2tkglnpa+qrDzrB3z40uxsMRyvpOzt049fA4s4DQTAMNKPmH0JRhaCSs/PtHK4O
+	 FmyX6IE2PI3kw==
+From: Chuck Lever <cel@kernel.org>
+To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
-	Jiri Pirko <jiri@resnulli.us>,
-	Joe Damato <jdamato@fastly.com>,
-	Joel Fernandes <joelagnelf@nvidia.com>,
-	kernel-tls-handshake@lists.linux.dev,
-	Li Li <dualli@google.com>,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	Martijn Coenen <maco@android.com>,
-	Mat Martineau <martineau@kernel.org>,
-	Matthieu Baerts <matttbe@kernel.org>,
-	Mina Almasry <almasrymina@google.com>,
-	mptcp@lists.linux.dev,
-	NeilBrown <neil@brown.name>,
-	netdev@vger.kernel.org,
 	Olga Kornievskaia <okorniev@redhat.com>,
-	Paolo Abeni <pabeni@redhat.com>,
-	Sabrina Dubroca <sd@queasysnail.net>,
-	Samiullah Khawaja <skhawaja@google.com>,
-	Simon Horman <horms@kernel.org>,
-	Stanislav Fomichev <sdf@fomichev.me>,
-	Suren Baghdasaryan <surenb@google.com>,
-	Todd Kjos <tkjos@android.com>,
-	Tom Talpey <tom@talpey.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Vadim Fedorenko <vadim.fedorenko@linux.dev>,
-	Willem de Bruijn <willemb@google.com>
-Subject: [PATCH net-next 1/2] tools: ynl-gen: add function prefix argument
-Date: Thu, 20 Nov 2025 17:44:26 +0000
-Message-ID: <20251120174429.390574-2-ast@fiberby.net>
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: <linux-nfs@vger.kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>
+Subject: [RFC PATCH] locks: Add lm_would_deadlock callback to prevent NFSD hangs
+Date: Thu, 20 Nov 2025 12:48:31 -0500
+Message-ID: <20251120174831.5860-1-cel@kernel.org>
 X-Mailer: git-send-email 2.51.0
-In-Reply-To: <20251120174429.390574-1-ast@fiberby.net>
-References: <20251120174429.390574-1-ast@fiberby.net>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-This patch adds a new CLI argument for overriding the default
-function prefix, as used for naming the doit/dumpit functions
-in the generated kernel code.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-When not specified the default "$(FAMILY)-nl" is used.
+When multiple pNFS layout conflicts occur on an NFS server, the NFSD
+thread pool can become exhausted while threads are waiting in
+__break_lease for clients to return their layouts. If all NFSD
+threads are blocked, none are available to process incoming
+LAYOUTRETURNs, creating a deadlock.
 
-This can also be specified persistently in generated files:
-  /* YNL-ARG --function-prefix wg */
+The approach proposed here, although somewhat expedient, avoids
+fencing responsive clients.
 
-In the above example it causes the following changes:
-  wireguard_nl_get_device_dumpit() -> wg_get_device_dumpit()
-  wireguard_nl_get_device_doit()   -> wg_get_device_doit()
-
-The variable name fn_prefix, was chosen as it relates to op_prefix
-which is used to prefix the UAPI commands enum entries.
-
-Link: https://lore.kernel.org/r/aRvWzC8qz3iXDAb3@zx2c4.com/
-Suggested-by: Jason A. Donenfeld <Jason@zx2c4.com>
-Signed-off-by: Asbjørn Sloth Tønnesen <ast@fiberby.net>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- tools/net/ynl/pyynl/ynl_gen_c.py | 25 ++++++++++++++++---------
- 1 file changed, 16 insertions(+), 9 deletions(-)
+ Documentation/filesystems/locking.rst |  2 ++
+ fs/locks.c                            | 12 ++++++++++
+ fs/nfsd/nfs4layouts.c                 | 33 +++++++++++++++++++++++++++
+ include/linux/filelock.h              |  1 +
+ 4 files changed, 48 insertions(+)
 
-diff --git a/tools/net/ynl/pyynl/ynl_gen_c.py b/tools/net/ynl/pyynl/ynl_gen_c.py
-index aadeb3abcad8..0dd589e502cb 100755
---- a/tools/net/ynl/pyynl/ynl_gen_c.py
-+++ b/tools/net/ynl/pyynl/ynl_gen_c.py
-@@ -1205,7 +1205,7 @@ class SubMessage(SpecSubMessage):
+This is 100% untested and falls squarely in the "crazy ideas"
+category. I'm posting to provide an alternative and encourage some
+creative thinking about this sticky problem.
+
+diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
+index 77704fde9845..6b0cb5fd03fd 100644
+--- a/Documentation/filesystems/locking.rst
++++ b/Documentation/filesystems/locking.rst
+@@ -403,6 +403,7 @@ prototypes::
+ 	bool (*lm_breaker_owns_lease)(struct file_lock *);
+         bool (*lm_lock_expirable)(struct file_lock *);
+         void (*lm_expire_lock)(void);
++        bool (*lm_would_deadlock)(struct file_lock *);
  
+ locking rules:
  
- class Family(SpecFamily):
--    def __init__(self, file_name, exclude_ops):
-+    def __init__(self, file_name, exclude_ops, fn_prefix):
-         # Added by resolve:
-         self.c_name = None
-         delattr(self, "c_name")
-@@ -1237,6 +1237,8 @@ class Family(SpecFamily):
-         else:
-             self.uapi_header_name = self.ident_name
+@@ -416,6 +417,7 @@ lm_change		yes		no			no
+ lm_breaker_owns_lease:	yes     	no			no
+ lm_lock_expirable	yes		no			no
+ lm_expire_lock		no		no			yes
++lm_would_deadlock	yes		no			no
+ ======================	=============	=================	=========
  
-+        self.fn_prefix = fn_prefix if fn_prefix else f'{self.ident_name}-nl'
+ buffer_head
+diff --git a/fs/locks.c b/fs/locks.c
+index 04a3f0e20724..4ea473c885a8 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1615,6 +1615,18 @@ int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ 	percpu_up_read(&file_rwsem);
+ 
+ 	locks_dispose_list(&dispose);
 +
-     def resolve(self):
-         self.resolve_up(super())
++	/* Check if lease manager predicts a deadlock situation */
++	if (fl->fl_lmops && fl->fl_lmops->lm_would_deadlock &&
++	    fl->fl_lmops->lm_would_deadlock(fl)) {
++		trace_break_lease_noblock(inode, new_fl);
++		error = -EWOULDBLOCK;
++		percpu_down_read(&file_rwsem);
++		spin_lock(&ctx->flc_lock);
++		__locks_delete_block(&new_fl->c);
++		goto out;
++	}
++
+ 	error = wait_event_interruptible_timeout(new_fl->c.flc_wait,
+ 						 list_empty(&new_fl->c.flc_blocked_member),
+ 						 break_time);
+diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
+index 683bd1130afe..748a1b1b0626 100644
+--- a/fs/nfsd/nfs4layouts.c
++++ b/fs/nfsd/nfs4layouts.c
+@@ -764,9 +764,42 @@ nfsd4_layout_lm_change(struct file_lease *onlist, int arg,
+ 	return lease_modify(onlist, arg, dispose);
+ }
  
-@@ -2911,12 +2913,12 @@ def print_kernel_op_table_fwd(family, cw, terminate):
-             continue
++static bool
++nfsd4_layout_lm_would_deadlock(struct file_lease *fl)
++{
++	struct svc_rqst *rqstp;
++	struct svc_pool *pool;
++	struct llist_node *idle;
++
++	/*
++	 * Check if we're running in an NFSD thread context.
++	 * If not, we can't cause an NFSD deadlock.
++	 */
++	rqstp = nfsd_current_rqst();
++	if (!rqstp)
++		return false;
++
++	pool = rqstp->rq_pool;
++
++	/*
++	 * Check the number of idle threads in the pool. We use
++	 * READ_ONCE as sp_idle_threads is a lockless list.
++	 * If we have 0 or 1 idle threads remaining and the current
++	 * thread is about to block, we risk deadlock as there may
++	 * not be enough threads available to process the LAYOUTRETURN
++	 * RPCs needed to unblock.
++	 */
++	idle = READ_ONCE(pool->sp_idle_threads.first);
++	if (!idle || !READ_ONCE(idle->next))
++		return true;
++
++	return false;
++}
++
+ static const struct lease_manager_operations nfsd4_layouts_lm_ops = {
+ 	.lm_break	= nfsd4_layout_lm_break,
+ 	.lm_change	= nfsd4_layout_lm_change,
++	.lm_would_deadlock = nfsd4_layout_lm_would_deadlock,
+ };
  
-         if 'do' in op:
--            name = c_lower(f"{family.ident_name}-nl-{op_name}-doit")
-+            name = c_lower(f"{family.fn_prefix}-{op_name}-doit")
-             cw.write_func_prot('int', name,
-                                ['struct sk_buff *skb', 'struct genl_info *info'], suffix=';')
+ int
+diff --git a/include/linux/filelock.h b/include/linux/filelock.h
+index c2ce8ba05d06..7c46444a3d50 100644
+--- a/include/linux/filelock.h
++++ b/include/linux/filelock.h
+@@ -49,6 +49,7 @@ struct lease_manager_operations {
+ 	int (*lm_change)(struct file_lease *, int, struct list_head *);
+ 	void (*lm_setup)(struct file_lease *, void **);
+ 	bool (*lm_breaker_owns_lease)(struct file_lease *);
++	bool (*lm_would_deadlock)(struct file_lease *);
+ };
  
-         if 'dump' in op:
--            name = c_lower(f"{family.ident_name}-nl-{op_name}-dumpit")
-+            name = c_lower(f"{family.fn_prefix}-{op_name}-dumpit")
-             cw.write_func_prot('int', name,
-                                ['struct sk_buff *skb', 'struct netlink_callback *cb'], suffix=';')
-     cw.nl()
-@@ -2942,7 +2944,7 @@ def print_kernel_op_table(family, cw):
-                                             for x in op['dont-validate']])), )
-             for op_mode in ['do', 'dump']:
-                 if op_mode in op:
--                    name = c_lower(f"{family.ident_name}-nl-{op_name}-{op_mode}it")
-+                    name = c_lower(f"{family.fn_prefix}-{op_name}-{op_mode}it")
-                     members.append((op_mode + 'it', name))
-             if family.kernel_policy == 'per-op':
-                 struct = Struct(family, op['attribute-set'],
-@@ -2980,7 +2982,7 @@ def print_kernel_op_table(family, cw):
-                         members.append(('validate',
-                                         ' | '.join([c_upper('genl-dont-validate-' + x)
-                                                     for x in dont_validate])), )
--                name = c_lower(f"{family.ident_name}-nl-{op_name}-{op_mode}it")
-+                name = c_lower(f"{family.fn_prefix}-{op_name}-{op_mode}it")
-                 if 'pre' in op[op_mode]:
-                     members.append((cb_names[op_mode]['pre'], c_lower(op[op_mode]['pre'])))
-                 members.append((op_mode + 'it', name))
-@@ -3402,6 +3404,7 @@ def main():
-                         help='Do not overwrite the output file if the new output is identical to the old')
-     parser.add_argument('--exclude-op', action='append', default=[])
-     parser.add_argument('-o', dest='out_file', type=str, default=None)
-+    parser.add_argument('--function-prefix', dest='fn_prefix', type=str)
-     args = parser.parse_args()
- 
-     if args.header is None:
-@@ -3410,7 +3413,7 @@ def main():
-     exclude_ops = [re.compile(expr) for expr in args.exclude_op]
- 
-     try:
--        parsed = Family(args.spec, exclude_ops)
-+        parsed = Family(args.spec, exclude_ops, args.fn_prefix)
-         if parsed.license != '((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-Clause)':
-             print('Spec license:', parsed.license)
-             print('License must be: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-Clause)')
-@@ -3430,10 +3433,14 @@ def main():
-     cw.p("/* Do not edit directly, auto-generated from: */")
-     cw.p(f"/*\t{spec_kernel} */")
-     cw.p(f"/* YNL-GEN {args.mode} {'header' if args.header else 'source'} */")
--    if args.exclude_op or args.user_header:
-+    if args.exclude_op or args.user_header or args.fn_prefix:
-         line = ''
--        line += ' --user-header '.join([''] + args.user_header)
--        line += ' --exclude-op '.join([''] + args.exclude_op)
-+        if args.user_header:
-+            line += ' --user-header '.join([''] + args.user_header)
-+        if args.exclude_op:
-+            line += ' --exclude-op '.join([''] + args.exclude_op)
-+        if args.fn_prefix:
-+            line += f' --function-prefix {args.fn_prefix}'
-         cw.p(f'/* YNL-ARG{line} */')
-     cw.nl()
- 
+ struct lock_manager {
 -- 
 2.51.0
 
