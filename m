@@ -1,211 +1,197 @@
-Received: from PH8PR06CU001.outbound.protection.outlook.com (mail-westus3azon11022090.outbound.protection.outlook.com [40.107.209.90])
+Received: from fout-b4-smtp.messagingengine.com (fout-b4-smtp.messagingengine.com [202.12.124.147])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C9FED303CB7;
-	Wed, 26 Nov 2025 14:31:49 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=40.107.209.90
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764167511; cv=fail; b=WS6uoHNQ4On0SCjANEYiY6oDdqXNCBwpFeuSbpPEHutkss6seWM3udiFKYxQ44qeUh6+scSrNEYp3VsYHfIhtojlbl5P8zzEfnxLa1/ECNK4CnasGUn25UqdOtLdE5wTmEKvEOKpXpqLVWa4bzpCJLGfCkieeLX+fGllF1+UT48=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764167511; c=relaxed/simple;
-	bh=tcMk80bIwgXGhIK+0n/fjeT9iszU+KR2GjSwshe+CR0=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=X/uWgxc2AE0KZIS73340koZwe0PqYUMAWpMHgbl5fX1YFhZNrE6sf8XDikYpoVunb8XYfL/VF6gcf7mvEhEXw2ZLjhhxqkAc0XavmS3pYHlwm0X13jUE+xzXDOuECwA7sRfd8VE2rQTXMceKnOM70vHShJO6VkifQKfccPtr3d4=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=c9nrXOUD; arc=fail smtp.client-ip=40.107.209.90
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 125122F83AC;
+	Wed, 26 Nov 2025 20:51:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.147
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1764190293; cv=none; b=l2d1VHwSmfAf6ICmdTkmAOszPsRbHYJFdliq5U7Tf+QtxFAQrPYN+/rjLGsXDqFfSkdYoHIeHo+1Ib4eSEIDV98fJtuIfFkaZ2BGKWKNVvpjWDG4BV4KJHQXQstqnIwlTBcaF8d4uL0V4AT6wjtNkI8tGIB0LKxT6j6jWOhnZgQ=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1764190293; c=relaxed/simple;
+	bh=AKpy2VI1xw8KKWkaVooHuxoKcUKA0T55/4LqDmNkEBg=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=H6SPdr95FCnVxXjF3aJgip4yVKWpHmxun0jgN2+zqFuxwnXNLGyLciKVhmPmeQHDrWvrcLOcgZ73HPVzard0q0DfWZeJHZZqXfF77xoWgOQTprMxLgPYT3lpf4bA5FRNf2QhOCBEckSHJ2eu1opbYtO1xmwUC0imlQJZcAVLjyM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=VVpB0lSc; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=vnalrjlR; arc=none smtp.client-ip=202.12.124.147
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="c9nrXOUD"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=jAf5TnBv0Sa+cs1iCvM01raHxaQiwoj16XvS8qj8vglwFEMuXhZGCUsggtd0JvqoQQXggcYD8ujBuHVtVxjNK+arln0B0RJV3+f9lUNRyt9fTA6D+ZXNhmPweskPU48xObOrMsYUzMOomB9w3pTpMxnq4Cx+bQU6blEQ+QXIBSUvgFkfATGdgyihd3XgbRYB6j96YAMmtjL3BIjOM4U0HTbUxmXqaHFrpkef0GA+jdpwvjTJBcV+Afe3mL5osrMvWGcdQsxGy34+zauef2Z4YWCByH12Yu4dmmh7ADBZHAsCNrMlAyJoDInYVJDARlTW353fHf2EdnYq2Md0lOXv9A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=V2WUDHPIQMU1UZXDJl81Hi3Eu8QFmg+9QAVvWH2BjLU=;
- b=hwgGOZV4CrOVJgwPlcEZr2gNX11yYTpwyRRCMhXrUpGKsDTC3XN3Guej1ZKXLeqpYuDE1u/5iT6Ngkr85c/tkq73LPaLzDKdisPyGsnKZ/nEAAajpggLq0V+Hv6IQzBj6/J9QU8IHbcRlMTEaHWwyOVgSiQdYqi3N+l1a7gfaGcgvVVOpiMCJi+cOm9SUKna4l1BUzGQqDw2/JLFiA3jgezhr/uY/IOJwqWiff5wdYyUBeGHv3SfLQaT7hRxCS8f5qIoV+lI7588F7jo1GgAlduTG9/w8Z1CUUUDJJZaJw7sNlMpF/8SRUk0lu67Z4UrzjUkid9ibSBPfjK+La17OA==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=V2WUDHPIQMU1UZXDJl81Hi3Eu8QFmg+9QAVvWH2BjLU=;
- b=c9nrXOUDM7+JiQF8/akzC5ldGwEa7/kUB2Uwf/nrd0t8J+a1lz5EmxEF52Z4zUqJxnNQvjDPLdF3BcRBfLn7nZXwYuhJHNE+dHW2EZIL2lUOA1KkXH1IsFHnCVyLSdUXOpC+6wTA7LBAnkyUKxZ+QJ6hTOiBP5N9YtPeZQOCUYc=
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=hammerspace.com;
-Received: from SN6PR13MB2365.namprd13.prod.outlook.com (2603:10b6:805:5a::14)
- by IA1PR13MB7519.namprd13.prod.outlook.com (2603:10b6:208:59e::19) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9366.13; Wed, 26 Nov
- 2025 14:31:43 +0000
-Received: from SN6PR13MB2365.namprd13.prod.outlook.com
- ([fe80::9127:c65a:b5c5:a9d]) by SN6PR13MB2365.namprd13.prod.outlook.com
- ([fe80::9127:c65a:b5c5:a9d%7]) with mapi id 15.20.9366.009; Wed, 26 Nov 2025
- 14:31:43 +0000
-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>,
-	Jan Kara <jack@suse.cz>,
-	Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Mike Snitzer <snitzer@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH v3 2/3] VFS: Prepare atomic_open() for dentry_create()
-Date: Wed, 26 Nov 2025 09:31:35 -0500
-Message-ID: <e8c1d2ca28de4a972d37e78599502108148fe17d.1764167204.git.bcodding@hammerspace.com>
-X-Mailer: git-send-email 2.50.1
-In-Reply-To: <cover.1764167204.git.bcodding@hammerspace.com>
-References: <cover.1764167204.git.bcodding@hammerspace.com>
-Content-Transfer-Encoding: 8bit
-Content-Type: text/plain
-X-ClientProxiedBy: PH7PR17CA0041.namprd17.prod.outlook.com
- (2603:10b6:510:323::24) To SN6PR13MB2365.namprd13.prod.outlook.com
- (2603:10b6:805:5a::14)
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="VVpB0lSc";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="vnalrjlR"
+Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
+	by mailfout.stl.internal (Postfix) with ESMTP id 116781D0008E;
+	Wed, 26 Nov 2025 15:51:30 -0500 (EST)
+Received: from phl-mailfrontend-01 ([10.202.2.162])
+  by phl-compute-01.internal (MEProxy); Wed, 26 Nov 2025 15:51:30 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
+	1764190289; x=1764276689; bh=yl+eQEMN8QMEUq91pZnkP+ILRrdhioI3CRA
+	AUiLxEfM=; b=VVpB0lScxy+qrjv9V6gfyM2sQ0S+3nYKq5BIbAkyaoMCUYKUJMx
+	Lq5KpC+ERZlk6l7cGURBQZfTGXSw4udnUj5JZ5UOKNe9VsbVIsJGg2+/fy/WWSCz
+	SdjHAVNxQpPEx96awjSiQ8yxnN8ysTxN8i9wIp650idZBcaXH6jItsgnStGLrowG
+	QJez7XtGlXXLsMO/J6PX10pBb6cZrzznu6zxGkMOdMM8qqRlWQo9hgg/bxE0CctR
+	ziQvXYYCGsQhcxmywD/xsTaom8Ybdbt2Kzlkl41CHud0lF99vrHls34yXLdpuAGH
+	pUIx0H2LkzbF/G1gh5eJXUiUQquBSjRqlPQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1764190289; x=
+	1764276689; bh=yl+eQEMN8QMEUq91pZnkP+ILRrdhioI3CRAAUiLxEfM=; b=v
+	nalrjlR9nF9tPOR1PqZ7mXTBJYGT7jK7VBOodSS7XwhCul+mh7qO1F1zKWHFaVEA
+	y/iqYnPOR5cTKdHJc34lDXdJCMRhUL+B4n8xq0uP7X4fTrHyNMUzbPnnyb1lvsRV
+	SIK+pAJgZhMCLie+7MUc3Ek8FjzFnRaa6UtQlWsQ+UJ3aX09aN2kg7MnR4UaCJI9
+	vnXnbbA2aFfivd6efyZJ/ySODMFJ/FEwnqjgC6CQxfeDZY0EHGt2VY5789GWjdC5
+	qJSZfQ10CsH/C6KRfxiBIDWm3VFVmg6Cd9NSMYlDrLRGVSorOatJkkn5hAn2oEfq
+	QbFq/Cr1aV40gzvKW0Q/g==
+X-ME-Sender: <xms:UWgnaXm-qG30pr1bf-e7n_GuhlhVB2zdd8IqqdlredIwiAmubkvJwA>
+    <xme:UWgnaS-hhPzNaz5wEOvtsR8INmIlCJ4tfeSYIP9RMOD9HUwSlNL7AREq4vU7qqthZ
+    sXwyQ_5iVJhBZsM-tgduX3js5Wl6tWt4DBhZhwxnwhmbMWZ9w>
+X-ME-Received: <xmr:UWgnadLoNdBAzYTvl1LECQuXGEQda_kA3omadsadRHUczaHfNIo-EfSYzTReMfskzhSNYl3OTi06QN7LMxpEiTWuHfWoIKeNJvc5EZlRfzDd>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeeffedrtdeggddvgeehfeehucetufdoteggodetrf
+    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
+    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
+    gurheptgfgggfhvfevufgjfhffkfhrsehtqhertddttdejnecuhfhrohhmpefpvghilheu
+    rhhofihnuceonhgvihhlsgesohifnhhmrghilhdrnhgvtheqnecuggftrfgrthhtvghrnh
+    epvdeuteelkeejkeevteetvedtkeegleduieeftdeftefgtddtleejgfelgfevffeinecu
+    ffhomhgrihhnpehkvghrnhgvlhdrohhrghenucevlhhushhtvghrufhiiigvpedtnecurf
+    grrhgrmhepmhgrihhlfhhrohhmpehnvghilhgssehofihnmhgrihhlrdhnvghtpdhnsggp
+    rhgtphhtthhopeduuddpmhhouggvpehsmhhtphhouhhtpdhrtghpthhtoheplhhinhhugi
+    dquhhnihhonhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehlihhn
+    uhigqdhnfhhssehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtoheplhhinhhugi
+    dqkhgvrhhnvghlsehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtoheplhhinhhu
+    gidqfhhsuggvvhgvlhesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehovg
+    dqlhhkpheslhhishhtshdrlhhinhhugidruggvvhdprhgtphhtthhopehnvghtfhhssehl
+    ihhsthhsrdhlihhnuhigrdguvghvpdhrtghpthhtohepjhhlrgihthhonheskhgvrhhnvg
+    hlrdhorhhgpdhrtghpthhtohepsghrrghunhgvrheskhgvrhhnvghlrdhorhhgpdhrtghp
+    thhtohepohhlihhvvghrrdhsrghnghesihhnthgvlhdrtghomh
+X-ME-Proxy: <xmx:UWgnafhLIyYo-qt4Ew6KgmiVuZA-bQhJG6dDfUn5Uj6v_pJD0KEtQg>
+    <xmx:UWgnaR9K2IgAvytgn9_q0VtN3YIa4sOw88anH0BElMIGrJc49URaFw>
+    <xmx:UWgnacMIsTKdiu5fb4TaB5X6rXlDAcfiCqNPxiHAP9XSnq_VUv4Wdg>
+    <xmx:UWgnadD37WkBza8NleHzBpQvjJf6k2G2e8HWzgn516kMUKlLHRg7dQ>
+    <xmx:UWgnaVTG0esH90Mvi84aoRci8-WbsHUjgp5sHliwd7s5zbZaawHb-W4G>
+Feedback-ID: iab3e480c:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
+ 26 Nov 2025 15:51:26 -0500 (EST)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: SN6PR13MB2365:EE_|IA1PR13MB7519:EE_
-X-MS-Office365-Filtering-Correlation-Id: eacabaa8-5fe9-4f6a-f690-08de2cf8857e
-X-MS-Exchange-AtpMessageProperties: SA
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam:
-	BCL:0;ARA:13230040|7416014|376014|1800799024|366016|921020;
-X-Microsoft-Antispam-Message-Info:
-	=?us-ascii?Q?nwuRPYU7ZwEwH3knMQ57KThGse78SpGElEVOpVy8Lx2dns7mFPE+Sfo/Lbb5?=
- =?us-ascii?Q?VQiachSjb//X+Y58aVriiPjP2CwpgTW8AOhc83fhmQmaOfYRTwqAu+/SiqDP?=
- =?us-ascii?Q?2QpxJ90OTtnqmadUzVtkAwp2cSs4+KlirS7YUK1N4ndXDmqPlDA9DMQ+XSYM?=
- =?us-ascii?Q?klbD1y9u39aTaR7LJ7a6kAU8SAqbzDV5TKWncXLop7bAZ9h1tRdeq8LNW/bG?=
- =?us-ascii?Q?Ov/jocKzudHAiwt/BM7pX4sY48ZMbVPLfzJ9VjUAySqDCDMOdYMKlHNPXSqz?=
- =?us-ascii?Q?CrNdPPLK8yp9tpC9kE/EwuZvXM/h0lP7nF/gr89jQGAqrkiVym63ZKKb55jW?=
- =?us-ascii?Q?h5juRR/If0CdvYMHUfyAUe5AKcEGdTqCNJOektgVNp3FK5GJarhAGHyORfWS?=
- =?us-ascii?Q?mS0DSPCRhMHgy65bRbbzz13Yt0ToOM3taoB0hBuIQa3lnm6Cb54rNavNMWHh?=
- =?us-ascii?Q?oi4usTdVC8MFlV35pmCdUsMtBSycQTBOBPTLEBNqxsZUHaUiVqzx7+lEhObB?=
- =?us-ascii?Q?UL4OqtWpr0pkf+IMjaJITTBu21YtXNK6dMt1B7A/ju2yuLXY7QFHs/TRbimJ?=
- =?us-ascii?Q?2o9HsIEtTUR+XdvzgtPQJiBbrGZA1QH51Dri6iVZ+hSqjyo4VZzAKic5ifKt?=
- =?us-ascii?Q?lgxjpqXm+GADH0afv9Dx5YQI+7zRf4zBlXyofOT+6xan1Mb2OPb0YfMl85o4?=
- =?us-ascii?Q?Gkq29Yrq9YCUm2PtxhlsOCXrMYxi3WzLu+Y2+OACrvqepMbjFQdoUxFCaWAx?=
- =?us-ascii?Q?84H/ZS0Jr9LsTtXok38BjxAabsQ0gD9Dx9wENkPRz5xG1mGbX+1EdiCE3lqt?=
- =?us-ascii?Q?UVrQbtwOGRmGQiQ4zwx6VxYrL1fZASRfj0JdWqOFNG0Q6P4bQfxRe6xdCs2K?=
- =?us-ascii?Q?qXs9SPGhQI3CBHTOG7AsdpGK8awxF7V2cc47emenJNeK6uPYBCHku6zVNx77?=
- =?us-ascii?Q?MVfECyIgre6jAFZkWvosdaW83joqBZoXbukhqVPCZBXrqspOo6cpVAyAoBZ2?=
- =?us-ascii?Q?LZUr03lK4AU5TZMLplZRPnpiFAigKSF3/Cz/WVBB5LIXGQg09bkcnYqxGTSM?=
- =?us-ascii?Q?qy4g5h/ut6E1AwScmI7BKnhXolT0AwX5t5CziA0Iiqji7KD3GjknboBYzxnj?=
- =?us-ascii?Q?61prIaSD1Ac6Ce9R3W6fiCMv8ycdBpegs+UY+m7EjSvIG2Gji+KMm2CzaPuD?=
- =?us-ascii?Q?HHTdY5CfUKX9nckTYVTFtOx0m2/D7Qa0li3WhK0yJuTL0eLHhd+l/KKlWkNV?=
- =?us-ascii?Q?fbflODILk/rq6Yw0ff+lBLQzPMgU+R6iPLMZqwgGjN/PZRIk+iLTxkq5e7pm?=
- =?us-ascii?Q?jV/Zwh7cOV/rTbOA15HboguLDvr57eEyK4MVoXealvyqifqqQyJi229X2fzW?=
- =?us-ascii?Q?BYhRkyV8HKx2GMko6iqRPWekQGSNPc3TL3o0u0gd2fVAiK89YQoTQ+SuMO9R?=
- =?us-ascii?Q?SUuMmV2KtO/5/WI3SvubtKlqpPUdlXziTgvtE8hkoKDv51oNzrpfzTxrBNxB?=
- =?us-ascii?Q?OpxEcuKF7WS2+yw=3D?=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:SN6PR13MB2365.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(7416014)(376014)(1800799024)(366016)(921020);DIR:OUT;SFP:1102;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?us-ascii?Q?ByBXen6mlJVFqXgpFOLKS9Mvoh5m8W1G/a98Khg/IxWrB9Elm/uw/ZfMgDjH?=
- =?us-ascii?Q?ydDzOwHs+/N95Qn54Czx4gFDs1DuxeNyaFeXyyIaGjrubkqMJppleV6Ce4WP?=
- =?us-ascii?Q?jhGTcWbS0t/GE0AJ4t3GOmK5l/iF8PKfNly4H8QXBpXhmUoYOoc9x0s1oA2s?=
- =?us-ascii?Q?oSk17tJ1NrTWyXr23RrOcyutoT0rnUY+rEJQ2mRkN+Xp2hBfaFjoTCtalayO?=
- =?us-ascii?Q?7tvGExaPhW/ITZyaVyYSwaI1ealomqE+oAmvnXQiAn/GjQa/p3iqmhgNwuhR?=
- =?us-ascii?Q?3Dg21FjoilYxUCXkxpwaY2gpOj7mK9/uzklEZe7013yhy5RwnKVgh2A4Jkmw?=
- =?us-ascii?Q?LF5eqVjvxo+pH+pVM99yme1IKMeS5ImTDiF3vyygwh+lDJ+gMHUYNAHPyhBl?=
- =?us-ascii?Q?kxcjiTVbd1vwGZPxnrlpVRtrtnSkl9br4g7KJFnfdv/htcgwuPOKywGB69x3?=
- =?us-ascii?Q?Pafpi+HO4AdtEpqHF2/78ywbRf+6Sfkj/yRL9fiqYnBNdKp5iq3W4kUc2/JQ?=
- =?us-ascii?Q?erjx2VijB6SqzibxKM/qMmZrhnGnMVn3sPWf2Vy5N5gGQuuM6TmKn6S7B5Xx?=
- =?us-ascii?Q?TSkcAzlyrh/Wgwi+ABJKFoxqIOJq/iLqfnLRo2suorcAbO7/yWwQWrdupELM?=
- =?us-ascii?Q?DE+1bubTTQC/1lepxWYuoWoqKm/cJn3CVEkb4CPLohmY2M4Or5Is4mkDsAiz?=
- =?us-ascii?Q?lhNfVsK48GK826wZX0wonHpqnBwwCMm8yt+vHPiylVYtmm0LujtMo5WiJz1O?=
- =?us-ascii?Q?Yc9/S2MizJcYtpv9C+ws5IFW84MTFN7/2aN+DALqlnv1uaRmXnoZjeDQvJHp?=
- =?us-ascii?Q?ujS1TZPmP/VQOCP5BkJXy013KfRXyJQxutQsmFJ4lIi4kO/sDqdFtYJLS4pP?=
- =?us-ascii?Q?8++wK+u9h+APo5OnIZqH6QHGwouWU6+M4pAf1p2t23TRmvThib/0sFAFo1TQ?=
- =?us-ascii?Q?R1M1uz+PGRF2uzL7tuppBuboqZnm4hvfSfat+GpNHN//MA+9T9r5P3ubAcUv?=
- =?us-ascii?Q?LCgGd47wRVf1PaQQ8xVMG6/XY+elehWeke/YMbwVaBGLrpEUmfLww6fV8hLX?=
- =?us-ascii?Q?TQCCFoRL+OxqYaqY0Z8IJiMZphBQJPzj2SpkRCcOcMVs7NA/2SlJzs/4FEzt?=
- =?us-ascii?Q?97BfaVJeOtB3fCrWzTFZjZIEEHOBl8WMnIGfIyBYpENECyjrKMPfwtmw73Rr?=
- =?us-ascii?Q?rK076JKilYQMzk00KpA59nCQxFf1Pt8PjAcmsl9DQCRwFadoVxTYUF6sNBYs?=
- =?us-ascii?Q?piOpYY/O+d0KFopL/Toikrl7EujOERk/UbXzBG0gSHCA0QY2A8EGF1A+FIxk?=
- =?us-ascii?Q?t4IF9uoWa3C1mqmSU1P+IQxnFPFqG7vafVvwSwx7C96mLfOLvkNHYjA124en?=
- =?us-ascii?Q?5Xcmcx1JuWnsoSwfVApfyyHdTPfamfjEPjinS85uA87R0gEU0ixsePZCPbQ5?=
- =?us-ascii?Q?/aIlzaWMaFJ3xbXmhmsAR8M1q6pOaqXcjAHIYNgPttugeXC/Xu4k9Gh0nFWk?=
- =?us-ascii?Q?AzuL9Kv0NxcmIFcPS2jJf9w9HWjS4HYYMZrC2ubLVd9P+yXxQsmCo7kQv3ZP?=
- =?us-ascii?Q?FHjKx3j70LnwOR5YWutFVKtLan410Vw+tKVUY8FZtGN352r7LB/V8bH3nzGS?=
- =?us-ascii?Q?Vw=3D=3D?=
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: eacabaa8-5fe9-4f6a-f690-08de2cf8857e
-X-MS-Exchange-CrossTenant-AuthSource: SN6PR13MB2365.namprd13.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 26 Nov 2025 14:31:43.8005
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: CXMEZjY+yn6RyiEmsimO+LDfENe4R6ShTAAG5w4Q135UyNtr5O6vI8lCefyqWh7SRVsHWN1ZFsx89h27iDtxD+Jki+wHtEPy+X9lAm6CfFg=
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: IA1PR13MB7519
+From: NeilBrown <neilb@ownmail.net>
+To: "Amir Goldstein" <amir73il@gmail.com>
+Cc: "Christian Brauner" <brauner@kernel.org>,
+ "Jeff Layton" <jlayton@kernel.org>,
+ "kernel test robot" <oliver.sang@intel.com>, oe-lkp@lists.linux.dev,
+ lkp@intel.com, netfs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+Subject: Re: [linux-next:master] [VFS/nfsd/cachefiles/ovl] 7ab96df840:
+ WARNING:at_fs/dcache.c:#umount_check
+In-reply-to:
+ <CAOQ4uxgHqKyaRfXAugnCP4sozgwiOGTGDYvx2A-XJdxfswo-Ug@mail.gmail.com>
+References: <202511252132.2c621407-lkp@intel.com>,
+ <20251126-beerdigen-spanplatten-d86d4e9eaaa7@brauner>,
+ <CAOQ4uxgHqKyaRfXAugnCP4sozgwiOGTGDYvx2A-XJdxfswo-Ug@mail.gmail.com>
+Date: Thu, 27 Nov 2025 07:51:18 +1100
+Message-id: <176419027888.634289.8284458326359928729@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-The next patch allows dentry_create() to call atomic_open(), but it does
-not have fabricated nameidata.  Let atomic_open() take a path instead.
+On Wed, 26 Nov 2025, Amir Goldstein wrote:
+> On Wed, Nov 26, 2025 at 11:42=E2=80=AFAM Christian Brauner <brauner@kernel.=
+org> wrote:
+> >
+> > On Tue, Nov 25, 2025 at 09:48:18PM +0800, kernel test robot wrote:
+> > >
+> > > Hello,
+> > >
+> > > kernel test robot noticed "WARNING:at_fs/dcache.c:#umount_check" on:
+> > >
+> > > commit: 7ab96df840e60eb933abfe65fc5fe44e72f16dc0 ("VFS/nfsd/cachefiles/=
+ovl: add start_creating() and end_creating()")
+> > > https://git.kernel.org/cgit/linux/kernel/git/next/linux-next.git master
+> > >
+> > > [test failed on linux-next/master d724c6f85e80a23ed46b7ebc6e38b527c09d6=
+4f5]
+> >
+> > Neil, can you please take a look at this soon?
+> > I plan on sending the batch of PRs for this cycle on Friday.
+> >
+> > >
+> > > in testcase: filebench
+> > > version: filebench-x86_64-22620e6-1_20251009
+> > > with following parameters:
+> > >
+> > >       disk: 1SSD
+> > >       fs: ext4
+> > >       fs2: nfsv4
+> > >       test: ratelimcopyfiles.f
+> > >       cpufreq_governor: performance
+> > >
+>=20
+> Test is copying to nfsv4 so that's the immediate suspect.
+> WARN_ON is in unmount of ext4, but I suspect that nfs
+> was loop mounted for the test.
+>=20
+> FWIW, nfsd_proc_create() looks very suspicious.
+>=20
+> nfsd_create_locked() does end_creating() internally (internal API change)
+> but nfsd_create_locked() still does end_creating() regardless.
 
-Since atomic_open() currently takes a nameidata of which it only uses the
-path and the flags, and flags are only used to update open_flags, then the
-flag update can happen before calling atomic_open(). Then, only the path
-needs be passed to atomic_open() rather than the whole nameidata.  This
-makes it easier for dentry_create() To call atomic_open().
+Thanks for looking at this Amir.  That omission in nfsproc.c is
+certainly part of the problem but not all of it.
+By skipping the end_creating() there, we avoid a duplicate unlock, but
+also lose a dput() which we need.  Both callers of nfsd_create_locked()
+have the same problem.
+I think this should fix it.  The resulting code is a bit ugly but I can
+fix that with the nfsd team once this gets upstream.
 
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
----
- fs/namei.c | 13 ++++++-------
- 1 file changed, 6 insertions(+), 7 deletions(-)
+(FYI nfsd_proc_create() is only used for NFSv2 and as it was an nfsv4 test,
+ that could wouldn't have been run)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 88f82cb5f7a0..389f91a4d121 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3640,19 +3640,16 @@ static int may_o_create(struct mnt_idmap *idmap,
-  *
-  * Returns an error code otherwise.
-  */
--static struct dentry *atomic_open(struct nameidata *nd, struct dentry *dentry,
-+static struct dentry *atomic_open(const struct path *path, struct dentry *dentry,
- 				  struct file *file,
- 				  int open_flag, umode_t mode)
- {
- 	struct dentry *const DENTRY_NOT_SET = (void *) -1UL;
--	struct inode *dir =  nd->path.dentry->d_inode;
-+	struct inode *dir =  path->dentry->d_inode;
- 	int error;
- 
--	if (nd->flags & LOOKUP_DIRECTORY)
--		open_flag |= O_DIRECTORY;
--
- 	file->__f_path.dentry = DENTRY_NOT_SET;
--	file->__f_path.mnt = nd->path.mnt;
-+	file->__f_path.mnt = path->mnt;
- 	error = dir->i_op->atomic_open(dir, dentry, file,
- 				       open_to_namei_flags(open_flag), mode);
- 	d_lookup_done(dentry);
-@@ -3764,7 +3761,9 @@ static struct dentry *lookup_open(struct nameidata *nd, struct file *file,
- 	if (create_error)
- 		open_flag &= ~O_CREAT;
- 	if (dir_inode->i_op->atomic_open) {
--		dentry = atomic_open(nd, dentry, file, open_flag, mode);
-+		if (nd->flags & LOOKUP_DIRECTORY)
-+			open_flag |= O_DIRECTORY;
-+		dentry = atomic_open(&nd->path, dentry, file, open_flag, mode);
- 		if (unlikely(create_error) && dentry == ERR_PTR(-ENOENT))
- 			dentry = ERR_PTR(create_error);
- 		return dentry;
--- 
-2.50.1
+Thanks,
+NeilBrown
 
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 28f03a6a3cc3..481e789a7697 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -407,6 +407,9 @@ nfsd_proc_create(struct svc_rqst *rqstp)
+ 		/* File doesn't exist. Create it and set attrs */
+ 		resp->status =3D nfsd_create_locked(rqstp, dirfhp, &attrs, type,
+ 						  rdev, newfhp);
++		/* nfsd_create_locked() unlocked the parent */
++		dput(dchild);
++		goto out_write;
+ 	} else if (type =3D=3D S_IFREG) {
+ 		dprintk("nfsd:   existing %s, valid=3D%x, size=3D%ld\n",
+ 			argp->name, attr->ia_valid, (long) attr->ia_size);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 145f1c8d124d..4688f3fd59e2 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1633,16 +1633,14 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fh=
+p,
+ 		return nfserrno(host_err);
+=20
+ 	err =3D fh_compose(resfhp, fhp->fh_export, dchild, fhp);
+-	/*
+-	 * We unconditionally drop our ref to dchild as fh_compose will have
+-	 * already grabbed its own ref for it.
+-	 */
+ 	if (err)
+ 		goto out_unlock;
+ 	err =3D fh_fill_pre_attrs(fhp);
+ 	if (err !=3D nfs_ok)
+ 		goto out_unlock;
+ 	err =3D nfsd_create_locked(rqstp, fhp, attrs, type, rdev, resfhp);
++	/* nfsd_create_locked() unlocked the parent */
++	dput(dchild);
+ 	return err;
+=20
+ out_unlock:
