@@ -1,164 +1,136 @@
-Received: from mail-pf1-f172.google.com (mail-pf1-f172.google.com [209.85.210.172])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37430233722
-	for <linux-nfs@vger.kernel.org>; Wed,  3 Dec 2025 01:09:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.172
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37DFE21ADA7
+	for <linux-nfs@vger.kernel.org>; Wed,  3 Dec 2025 01:44:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764724173; cv=none; b=Vb4KgesdgAtUF+lv7Xr9rn//MKz7FJ05NDHujPBSH2rZ29AZwXt1ITq0UmGdx0ceeXQ6yh+llXJH22uK5nq5mAn82ilvC/xn7eTdl9i6FefiCkEbR6PlUq51Vv9ALhDjKOMBE+RvEvyhjw84Zc7rEArqSnPNqcrQmF8jpReKlpc=
+	t=1764726276; cv=none; b=cBCnqwqi6hvzk7c4qMDKo6II2/yZRRV2SEmbUwOAL5aHKHciwTAkNg00GL/d7PvJWkySngpSHRzHTbpk5JU3l9MM/fSM7puXlnNOm7pCi7bUmMTHCC5wl7Ed4s9RjvyTWxG5/6Oag1mdqq4T7ArPh3Dtrngnrcb6NKy9cqc4/l0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764724173; c=relaxed/simple;
-	bh=OnkMzhtWftClORfQtq4pVFAPUxLwrZMkgpnvY4knDco=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=XNNcTDtwxAi3wm7QJgQvPIjR5QxSmxA+yFPxbXhZVYgRIZm4WgUOy58paC9yw5WEJ5UHs5zitWSEWcvmwMwgOtn7xL+KDVKTQGLCDkNfNKNL93GPvDNd3nlBXCUJwnNosbiPrh4l00mSb+V6hFQN3WXN1LwdvbbWuBrtc5Cog4c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=M4GkNpkQ; arc=none smtp.client-ip=209.85.210.172
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1764726276; c=relaxed/simple;
+	bh=isx2lUYQrVaRfu50CefVB6RyWVxeM+cogSel2psbI9Q=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=ahjPUnyct7IOeEQXf0bCJSfVge8Arn7aKDVgAiYXj3b2RRpfRMldaW4xsTgY1TMA9d72VOFn7ulJ5OEDTXEo3wyW2Lhap+3RQxgUbmdKopEUz3L8HBaZ23EW5m5PrL7j4zlpVny8k+uSjSKTMY3SAR6MAe2BtNgDLmD0ps1PM4s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=t/jEtV7r; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="M4GkNpkQ"
-Received: by mail-pf1-f172.google.com with SMTP id d2e1a72fcca58-7acd9a03ba9so6741695b3a.1
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Dec 2025 17:09:32 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1764724171; x=1765328971; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=pMQ8vHmUy2M1e+AWep/BaUFVNkwfbE6reMg+lneA/lE=;
-        b=M4GkNpkQ8hyBzf2xcSmAz9Th6YPOVugxO9SOs69B0L7zOmHGsIIWcvZsPtTgfBj71/
-         DsHjVsAad1kzNtXha5C9W8TuSRllfZf8gSVYqKy0rl8lBEQdGKijaVOEVqDJtG1Qx7Sk
-         YlMmMAHQ/D9aq3p0FIJjddz3Ucy4y885k3OulLwYjHaKaO6BwZwqr9rTbDiPPNUgRrCl
-         ufWa03r5pAKnjks6gwJhnjLeHs5BzUA5TphR6/4HrYFiRaBxCBh6qBXmH5wpab2v5cdR
-         JDpYA1tRBP/6WIrGk3OHXDvzF9wwwXT0Ydf3b7ZoOx0lX4njkqfjPe8G5ZBW5fvL5RBL
-         sXAQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1764724171; x=1765328971;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=pMQ8vHmUy2M1e+AWep/BaUFVNkwfbE6reMg+lneA/lE=;
-        b=GRLo1scfLHC8KNpaapJaOs8kQgbJMRKn+sbYrEXgZ1HSR8p/IUlKDaxftvKP7O48F5
-         N25n6wDF1adZ+7DHmhOC90ikdebJJDyjWuGK0stsm5yEx4LGgLkebqluQs08nAQFUHnv
-         Xctj4A9HwkK9Z/is/4Bct0lw9vYtzcwCfDHq+FpQ5qdVAXNoTYTr5lHWyOM120dLolK5
-         A29h5Rws/RzkssqXbIHsDu04JCKAX2aApfwcQc3dzPwjbkvfE+FADPg7lr5zmJd/wpe2
-         9ujKp8Zh5guJqSN+pKvC541OZ6Y+mQYtk+RdZwK3mXj8gGTAHgOycInIBPZNI/BbDn5h
-         Q30g==
-X-Forwarded-Encrypted: i=1; AJvYcCUr5FNYq4SxsizyQpq2VrvJxXAUZpC7RH6zq5bCQN5lLCL/cWdhm2OACOkic7bA7CPA/q1tw1CUaR0=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yy8xqxgI/HVkBgTDBq/FlvJomSTkgUuT4tro4hBh+WV2bBLO3t4
-	9U6NqyROLdgJl2wLK4H7oaAuDQ0/oN64c5hbdbeCNLgUsLfUg8Ia/xxM
-X-Gm-Gg: ASbGnctn3yBjKsSwUKrdkRPEcvTwTyGUwVKglS4A8eNplY6BEoNO+CTaEMQKgtjj5RK
-	ka5XNxOcVg6pkLYRBTzV6mkOKYMVhPKRgMqvsSM8ZyfmbzExSf8xp+/3GWTQ0Jvy5u3wiPksWLw
-	FKpZPJXa7TNzOn4z57T1bPO4c7SfPfvJ+WQMIFuVWOfMQKz7agRnAkLaSmTe1LpP3/kGVJOvRoy
-	dOupeqCX6QCSNrsZ9cvamWJOdRPTojxNOkcTadfpqqrgP4DRQfkQ99mP6m0f1cQ4irYss86wtDe
-	ETcUvWffLqU1TSL+Zu9epEyBHLON9V+6CEKOyAYOxalZ+WBOH8Y17EfUbR4HaIfcHIot27HYcxO
-	NTxxUz1fZ+v3pyXpCzjwh28NCfmeJop/KoMUVugr17kWH2ycJcr2sqZ0ceJTPH+PypY/4LDYVea
-	tyGrcmh9FSKUw=
-X-Google-Smtp-Source: AGHT+IF5UeBvVePda2KFWkC3k94/grAajsZo74APZmau4X7uYv0fD/GG5eh2o/bcLlRLAJhvCuZwoQ==
-X-Received: by 2002:a05:6a20:431e:b0:361:4ca3:e17d with SMTP id adf61e73a8af0-363f5d61e52mr820140637.13.1764724171524;
-        Tue, 02 Dec 2025 17:09:31 -0800 (PST)
-Received: from archie.me ([210.87.74.117])
-        by smtp.gmail.com with ESMTPSA id 41be03b00d2f7-be5e7485b1esm15317306a12.20.2025.12.02.17.09.24
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 02 Dec 2025 17:09:26 -0800 (PST)
-Received: by archie.me (Postfix, from userid 1000)
-	id 9A0B74353263; Wed, 03 Dec 2025 08:09:21 +0700 (WIB)
-From: Bagas Sanjaya <bagasdotme@gmail.com>
-To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Linux Documentation <linux-doc@vger.kernel.org>,
-	Linux NFS <linux-nfs@vger.kernel.org>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Mike Snitzer <snitzer@kernel.org>,
-	Bagas Sanjaya <bagasdotme@gmail.com>,
-	Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: [PATCH 2/3] NFSD: nfsd-io-modes: Wrap shell snippets in literal code blocks
-Date: Wed,  3 Dec 2025 08:09:10 +0700
-Message-ID: <20251203010911.14234-3-bagasdotme@gmail.com>
-X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20251203010911.14234-1-bagasdotme@gmail.com>
-References: <20251203010911.14234-1-bagasdotme@gmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="t/jEtV7r"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8A003C4CEF1;
+	Wed,  3 Dec 2025 01:44:35 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1764726275;
+	bh=isx2lUYQrVaRfu50CefVB6RyWVxeM+cogSel2psbI9Q=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
+	b=t/jEtV7rCJxitmviH08hPC0yXBoiEYG+OKL9OKdtNDtSxFW7DQWqzviLSv9aAf5Qv
+	 411kXMNAz7zezCi35Ephk89n9pbJK9WXEC0ymHS82Hw/+3S7onzyVN0RVZSXbatAE9
+	 KRGIO5ay1T/rJtMzxI3Mwx2ISRs1CJ4aNkyYLSCoReb9IDw89VoD7GPrwgcDoop1c1
+	 kFl0E8A2F198zJTr3jaQ0Kfdo+2wOGzaNrc8D7nwyejfNOdtvdc6jyWOf9I8gskqCJ
+	 iZQ196G0//lH/IptrED3GDcAfPBl1crhKhoVnuMjtxkjkYcQHEO3LQO0UdXS/NSLzQ
+	 +6Pzz9p35BTkA==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id AAAC1F40079;
+	Tue,  2 Dec 2025 20:44:34 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Tue, 02 Dec 2025 20:44:34 -0500
+X-ME-Sender: <xms:ApYvaUQ56U6KzLj1R2CbCBLuN4RGOdAKrGg2iGfI0Zqdbgydw2iaWA>
+    <xme:ApYvaclN_8BLdt4MB5qrkEv28SY1VFcxEnFu0ZBQ3geAIJLeO64PCdavDOkpdCv7g
+    HTXAR-hA6d1We1BmoUIpgzqXsEfJNAbPz4NstHVOqDtCCurtotc4Rgx>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdduheelucetufdoteggodetrfdotf
+    fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceurghi
+    lhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujfgurh
+    epofggfffhvfevkfgjfhfutgfgsehtqhertdertdejnecuhfhrohhmpedfvehhuhgtkhcu
+    nfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrhhnpe
+    fghfeguedtieeiveeugfevtdejfedukeevgfeggfeugfetgfeltdetueelleelteenucev
+    lhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutghklh
+    gvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleelleeh
+    ledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrghilh
+    drtghomhdpnhgspghrtghpthhtohepjedpmhhouggvpehsmhhtphhouhhtpdhrtghpthht
+    ohepnhgvihhlsegsrhhofihnrdhnrghmvgdprhgtphhtthhopehjlhgrhihtohhnsehkvg
+    hrnhgvlhdrohhrghdprhgtphhtthhopegthhhutghkrdhlvghvvghrsehorhgrtghlvgdr
+    tghomhdprhgtphhtthhopegurghirdhnghhosehorhgrtghlvgdrtghomhdprhgtphhtth
+    hopehokhhorhhnihgvvhesrhgvughhrghtrdgtohhmpdhrtghpthhtohepthhomhesthgr
+    lhhpvgihrdgtohhmpdhrtghpthhtoheplhhinhhugidqnhhfshesvhhgvghrrdhkvghrnh
+    gvlhdrohhrgh
+X-ME-Proxy: <xmx:ApYvaTLMvmBcNvbFwkUsVeQDezHrkzIHsLOWzhstxmHDqEuOXFgnVw>
+    <xmx:ApYvaX1LecWjTubQ9SqiD9u8jIxUD_7iRuUlqSjwWMQZa_dh1mQyVg>
+    <xmx:ApYvaZ5GaFPrylXsYi_J86caCtObY9at-uThhc7mdlwebKzDQlyWqA>
+    <xmx:ApYvaQ9lzaLf6Y_qMBEkkVpnECpXD4nYJRY4pvBXm9G0PaJEd--IBw>
+    <xmx:ApYvaQXd7XnpaPX4MdklAB0ls32STs_UL-Ktrqs5yLySOTmKt-Ia956z>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 69D33780054; Tue,  2 Dec 2025 20:44:34 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3455; i=bagasdotme@gmail.com; h=from:subject; bh=OnkMzhtWftClORfQtq4pVFAPUxLwrZMkgpnvY4knDco=; b=owGbwMvMwCX2bWenZ2ig32LG02pJDJn6Pe+Trd/L7dn9ftEi90Mr7M9wBZaILSl4auJntCl3U dGj6JSEjlIWBjEuBlkxRZZJiXxNp3cZiVxoX+sIM4eVCWQIAxenAEykdiXD/+xvP9W2P7s9v++n ge85xzQPzq++x7//s/diFg9t+TLNJIHhnwYHs1Y780yu1SvLODRyn73q6Kr4cjmp5GTY95WNPwQ WcAAA
-X-Developer-Key: i=bagasdotme@gmail.com; a=openpgp; fpr=701B806FDCA5D3A58FFB8F7D7C276C64A5E44A1D
-Content-Transfer-Encoding: 8bit
+X-ThreadId: AW-f6n96Aybc
+Date: Tue, 02 Dec 2025 20:43:48 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: NeilBrown <neil@brown.name>
+Cc: "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
+ "Chuck Lever" <chuck.lever@oracle.com>
+Message-Id: <dc25626e-fae0-401b-93ed-1c4fdf34186c@app.fastmail.com>
+In-Reply-To: <176471811359.16766.18131279195615642514@noble.neil.brown.name>
+References: <20251202224208.4449-1-cel@kernel.org>
+ <176471811359.16766.18131279195615642514@noble.neil.brown.name>
+Subject: Re: [PATCH v2 1/2] nfsd: prevent write delegations when client has existing
+ opens
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-Sphinx reports htmldocs indentation warnings:
 
-Documentation/filesystems/nfs/nfsd-io-modes.rst:29: ERROR: Unexpected indentation. [docutils]
-Documentation/filesystems/nfs/nfsd-io-modes.rst:34: ERROR: Unexpected indentation. [docutils]
 
-Fix these by wrapping shell snippets in literal code blocks.
+On Tue, Dec 2, 2025, at 6:28 PM, NeilBrown wrote:
+> On Wed, 03 Dec 2025, Chuck Lever wrote:
+>> From: Chuck Lever <chuck.lever@oracle.com>
+>>=20
+>> When a client holds an existing OPEN stateid for a file and then
+>> requests a new OPEN that could receive a write delegation, the
+>> server must not grant that delegation. A write delegation promises
+>> the client it can handle "all opens" locally, but this promise is
+>> violated when the server is already tracking open state for that
+>> same client.
+>
+> Can you please spell out how the promise is violated?
+> Where RFC 8881, section 10.4 says
+>
+>    An OPEN_DELEGATE_WRITE delegation allows the client to handle, on i=
+ts
+>    own, all opens.=20
+>
+> I interpret that to mean that all open *requests* from the application=
+ can
+> now be handled without reference to the server.
+> I don't think that "all opens" can reasonably refer to "all existing or
+> future open state for the file".  Is that how you interpret it?
 
-Fixes: fa8d4e6784d1b6 ("NFSD: add Documentation/filesystems/nfs/nfsd-io-modes.rst")
-Reported-by: Stephen Rothwell <sfr@canb.auug.org.au>
-Closes: https://lore.kernel.org/linux-next/20251202152506.7a2d2d41@canb.auug.org.au/
-Signed-off-by: Bagas Sanjaya <bagasdotme@gmail.com>
----
- .../filesystems/nfs/nfsd-io-modes.rst         | 28 +++++++++++--------
- 1 file changed, 16 insertions(+), 12 deletions(-)
+It is: as long as a client holds a write delegation stateid, that=E2=80=99=
+s a
+promise that the server will inform that client when any other client
+wants to open that file. In other words, an NFS server can=E2=80=99t off=
+er a
+write delegation to a client if there is another OPEN on that file.
 
-diff --git a/Documentation/filesystems/nfs/nfsd-io-modes.rst b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-index e3a522d097666b..fa47c4d3dfb95d 100644
---- a/Documentation/filesystems/nfs/nfsd-io-modes.rst
-+++ b/Documentation/filesystems/nfs/nfsd-io-modes.rst
-@@ -25,12 +25,14 @@ Based on the configured settings, NFSD's IO will either be:
- - not cached stable_how=NFS_UNSTABLE (NFSD_IO_DIRECT=2)
- 
- To set an NFSD IO mode, write a supported value (0 - 2) to the
--corresponding IO operation's debugfs interface, e.g.:
-+corresponding IO operation's debugfs interface, e.g.::
-+
-   echo 2 > /sys/kernel/debug/nfsd/io_cache_read
-   echo 2 > /sys/kernel/debug/nfsd/io_cache_write
- 
- To check which IO mode NFSD is using for READ or WRITE, simply read the
--corresponding IO operation's debugfs interface, e.g.:
-+corresponding IO operation's debugfs interface, e.g.::
-+
-   cat /sys/kernel/debug/nfsd/io_cache_read
-   cat /sys/kernel/debug/nfsd/io_cache_write
- 
-@@ -128,17 +130,19 @@ Tracing:
-     misaligned READ to the next DIO-aligned block (on either end of the
-     original READ, as needed).
- 
--    This combination of trace events is useful for READs:
--    echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_read_vector/enable
--    echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_read_direct/enable
--    echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_read_io_done/enable
--    echo 1 > /sys/kernel/tracing/events/xfs/xfs_file_direct_read/enable
-+    This combination of trace events is useful for READs::
-+
-+      echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_read_vector/enable
-+      echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_read_direct/enable
-+      echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_read_io_done/enable
-+      echo 1 > /sys/kernel/tracing/events/xfs/xfs_file_direct_read/enable
- 
-     The nfsd_write_direct trace event shows how NFSD splits a given
-     misaligned WRITE into a DIO-aligned middle segment.
- 
--    This combination of trace events is useful for WRITEs:
--    echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_opened/enable
--    echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_direct/enable
--    echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_io_done/enable
--    echo 1 > /sys/kernel/tracing/events/xfs/xfs_file_direct_write/enable
-+    This combination of trace events is useful for WRITEs::
-+
-+      echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_opened/enable
-+      echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_direct/enable
-+      echo 1 > /sys/kernel/tracing/events/nfsd/nfsd_write_io_done/enable
-+      echo 1 > /sys/kernel/tracing/events/xfs/xfs_file_direct_write/enable
--- 
-An old man doll... just what I always wanted! - Clara
+The issue here is about an OPEN that occurred in the past and is still
+active, not a future OPEN. NFSD was checking for OPENs that other
+clients had for a file before offering a write delegation, but it does n=
+ot
+currently check if the /requesting client/ itself has an OPEN stateid for
+that file.
 
+The scenario I observed is that the requesting client held an OPEN
+for SHARED_ACCESS_READ on the file. The code in
+nfsd4_add_rdaccess_to_wrdeleg() assumes that if NFSD is about
+to set up a write delegation, the pointer in fi_fds[O_RDONLY] is NULL.
+That assumption isn=E2=80=99t true if that client still holds the S_A_R =
+OPEN
+state id, and fi_fds[O_RDONLY] for that file then gets overwritten and
+the nfsd_file it previously referenced is orphaned.
+
+
+--=20
+Chuck Lever
