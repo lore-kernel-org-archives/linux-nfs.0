@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 279B3331A75;
-	Fri,  5 Dec 2025 07:21:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id A2F28327200;
+	Fri,  5 Dec 2025 07:20:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764919287; cv=none; b=u+6aGNmoIg1Rx7b8wo29XtAPDVQxzaer8VbqquufA/QnDrdCUmuna/xh0M5HTfMP+UNbobdS7/9npbc7wTKGJgKVuownex70Zv4k9IZd7WdzkGiQR1URaQKTp/dQQiDh0Fw21zU6/gUHgalw27bJfFWjVZofhmh5gHlhA6qTy5k=
+	t=1764919286; cv=none; b=TNXO3rycqoty0Ov8JRERIHcfZY/f+UmWgjy8fBI1wqJwnHQvvER1QMs9a44BWNO+/pEVBhi+HsMvBNX/4Et9UCD8vHZF+7/c+7HxGfL+c7fHEhWLpsykzEZx0iqBO/FrqoIivos2QjsNF0lbP29Hvz7fTKeh5ihfghOKstIQ/1s=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764919287; c=relaxed/simple;
-	bh=WkwOYApaGg3/M39sydY8TnrOsGAaoUUQ67vebZbS0wQ=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=UqDX1dqzlqkmd9szA44Rt06rUQ3EGEn2+BNP6XvPduEe2FF40JQXFUZzV3eEFEHkTOOq9TUjwmn8TXhgFEf+gnwP9zEXqeBD/bMznqYDd/G570HVZgSIRjvLbtUXpFpZznL8DA3h+GmxEsdPqA2kBFsZPo+lfZ3FVBsOOOLIe3k=
+	s=arc-20240116; t=1764919286; c=relaxed/simple;
+	bh=314TpUAkZxMvbV2pk3wlciVKMbaC2tgJL1bvCZ48Y0A=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=K/ZXH7TPhy13IvsmzFwY3FnmoFxG26nPQ4UBjfgsN0s1FXjQF6VLaCKTI7/hJvAsRz4XTf/V6Q1stWN4wmOtd4sEA3lWXQ8Z3wWEJ6/OQwKS9iHsvI37qUheTw8kq3rYZeFnNeW3ma9Ix2Wiz83hJeVbLek7EtTJQ7dnJb3w3rs=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c2dff70000001609-42-69328773e512
+X-AuditID: a67dfc5b-c45ff70000001609-c6-6932877297a9
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -178,45 +178,45 @@ Cc: kernel_team@skhynix.com,
 	aliceryhl@google.com,
 	tmgross@umich.edu,
 	rust-for-linux@vger.kernel.org
-Subject: [PATCH v18 36/42] dept: implement a basic unit test for dept
-Date: Fri,  5 Dec 2025 16:18:49 +0900
-Message-Id: <20251205071855.72743-37-byungchul@sk.com>
+Subject: [PATCH v18 32/42] completion, dept: introduce init_completion_dmap() API
+Date: Fri,  5 Dec 2025 16:18:45 +0900
+Message-Id: <20251205071855.72743-33-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20251205071855.72743-1-byungchul@sk.com>
 References: <20251205071855.72743-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzXSa0xTZxgHcN9zeU9pbHZWSTiyGE2ncdHAxFue6CKYTHm/bDFRE8d02siZ
-	NJaLLaCYEAFFCvFSqwUVtWhnQVoVj5igICI3jWioJdaKYCtilXsEqiDiBNRvv/z/z/N8emS0
-	8jkbKtMkJIu6BLVWheWMvG/6+bDknMWaRW86aDBk74M2bycL3oABwYexQhqGR59zYM5EkP/Y
-	RIPHeYcGR3kmBT11gwjMLzsxDNgOIehqiIY+byULlgvXMYw9aqahwOxEUN74AsHZQhMCf+tt
-	CvZbr2LIPysxcNN3iwO79Ad4bX4G8q+FQGHBWwrMlyspeGhtY8CWMQ96/CYM0rMGBI5Dfhqk
-	V24WbrcuhFPn2jA0VnRQ0HLrDIYXjv9ZcNY0seCyOxloarzPwEufZyI7dpiF4/1+BM8Kejmw
-	BQY4cNUUUZB518qA/8lBCi5ZihHkvK3EUG3wUXCxpI+FukAvBQ/ahzj42F7BgttkwWB/zID5
-	kwFD2btiDJlDXgQjZa9Y6DcOs1FRJNs1jonjnAOR4Yv7aZJtnFBd7wBNHlwQyLFHYeTm6XaO
-	HKhu5UiRlEIO1PexxFrVRZHzgwGWSKW5mEiDJo60uavwOlWM/LdYUatJFXW/rtomj+u2jdFJ
-	J6L3XGn20RmoYWUeCpIJ/FKhq2kIf7c03sNNGvPzBY9nlJ50MD9HuH7Yz+YhuYzmW2YLOaNH
-	pooZ/BqhoPU1O2mGnyd03HMxk1bwywVH1udvR2cL9rKaqfmgidz89OOUlfwywZL3YeqowFuC
-	hPobZu7rwkzhbomHMSJFEZpWipSahNR4tUa7NDwuLUGzJ3x7YryEJl7Olv7p7wo06Fxfi3gZ
-	Uk1X1OyO0ChZdao+Lb4WCTJaFazo1S7SKBWx6rS9oi5xqy5FK+pr0U8yRhWiWPx+d6yS36FO
-	FneKYpKo+95SsqDQDJReHbWkfUn0wcAPQ90t7hmR1o148/ENrvTUiD9zk8OpbSm/j/V7fVmn
-	fZEkpbR5JCvxL/dKfdLc8X+4zorA2ku1Mc3V8VuO2kfK/9ucFLwp9JeYk5XGzyHRluVh9i2x
-	//pGSqxUx4KqUbLOnB6Zu8sQ+XP3jwHj3PqT3cWr6Vmz3CtUjD5OHbGA1unVXwCy08hbbgMA
-	AA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0iTcRTG+7+3zdHiZQm9GJKMIggqtYwTVhiRvhRl5YfIL7rqpQ2nxZa3
-	IErX8tZFR5vkKs1ylS612U1tJdPMNMmppWi2GXNlzgxTl1vTptGXw++c5zkP58Ph46LnZBBf
-	lnKaU6RI5GJKQAj2R6rWK3PCZaGPrgZDrvocfLI5SPiY1UTA9FQuATdqjBT49M94kGu6TkJb
-	XzYBXdVVCGzTuQjcXj0O6vp5AnyaVh5MzQ7yQJuFYN7cikBn1eDQ3/UKB+PjLAx+1c5RMNY8
-	iUA77KCgeDSLgAnDJQQlTj0PRl/HwLitkYT5oa8Y9M24EBgccxg4mnIQ+HRJUFpe51/X/aTA
-	2/keh2JtF4Lbw0M4TI7aETxu/YzAfD+bgpHCJzj0OJZB7/QEBW+1BRSMW29g8KOWgrJsMwnW
-	d2MIbuo1CJwDZgxUd2oo0N00EVBvb+CBdewPBp90GgyqTPvAZnAS0FFYjvnP9bserQB9sQrz
-	l28YaB82YjBrqORFVSDWrb5CsJV1TzFW3e2jWOMtI2K9Hg1ipypUOKsu9LfNrgmcvVCXzlZ0
-	uCjWM/2BYs0zZQTbXs6wd/M8GFvUuZ6tLxniHdgZL9h2nJPL0jjFxh2JAul3gxc/dS0mo/q9
-	HT+PXkfmowA+Q29mTL4x3gJT9Fqmv38WX+BAOoSpu+wk85GAj9M9q5ic2SuLwnJ6N1M8MEIu
-	MEGvYb686SYWWEhvYYzZc9S/0FVMVW3Toj/AP9f2eRZZREcwpflushAJytCSShQoS0lLlsjk
-	ERuUSdLMFFnGhmMnk03I/0+Gs3+KnqOpnhgLovlIvFTYlB4mE5GSNGVmsgUxfFwcKHTJQ2Ui
-	4XFJ5hlOcTJBkSrnlBa0kk+IVwj3HOYSRfQJyWkuieNOcYr/KsYPCDqPSowZMfFtR4PO9TVq
-	HDlzNULVxWB7EX31d4E0YfJQ+B3HcFt/nG2v27W8RHhpbcvq+yPt1W9NEW40E5p6tAHt6UJS
-	Z+rB2MjWn3pHwomIe7HWhryM+FhvHDXYe+zljmUqz64DO6NfGEMCLFH2Zx2qBy2W6Hp92vZd
-	sDW9pvLIJjGhlErC1uEKpeQvv2O8gEsDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0xTZxjH955bTytNTioZZ7qFrQuZ01DBiHk+LNPEXV4zjVO3fdAls5ET
+	OaEgaS2XMZPWiVydTU2L0o2b2jE4AjlgJkK1A+xwiBY10k0Bi4wNC2NWLqHIXGHz2y/P//n/
+	ni8PS2ru06tYMfOwYMzUG7SMilJNxtQmmgo3iEnDo0q4Z/VSMDNdRMG3TRIDi64fFVAkn6Gh
+	Z+AoBf7GBgTDM0UI5hZcJCzafQqYnr+vAIcVwXOPD4Gz305CwH+VBKnVSkCoK4zAERxloHzc
+	SsGUuwzB5HA7DQOzEwjco/8QMOotRBBy/s3AQt8tEsodfgQ1wUESwuMPEbT6hhD8brtIwl/N
+	DPTfCCH4+mwTA87vZAraHl5WQH/oGQEPnHYCGuQd0GurJaK3GHBcaCdg3l2vALclAUbqKhQw
+	eNJBQePkLRquD92jITRmZ0D+9RqC6btBAqSyMRLkR9HA89s6qDl+joIzlQ8Y6PBcp8B3aYSA
+	suaLNAxJz2mwuOZo8Ht7aWj6I0BAr6+H2pKKC24vMliqlBBeiNgRLrBFqWtiisTHWnKwZ7aa
+	wr/U8vhccYTAbRWDClwtm3FL3Vp8tmOcwDXhGRrL9cUMlsN2xceJe1XvpAoGMVswrn93vyrt
+	fJOLyfK8ndv91IYsKBJfgpQsz23kT7eeoF5wsDeMlpjh3uIDgXlyiWO51/mWE2N0CVKxJHcn
+	ni+c/yYasOxKbhf/+GTK0g7FJfDlQfdyV81t4mfLuv93xvMNzd5ljzI6dwxEllnDpfBVJXPL
+	Tp77XslfqW5F/xVe4X+qC1A2pK5GL9UjjZiZnaEXDRt1aXmZYq7uwKEMGUVfzn3k2b5LKOzf
+	04k4Fmlj1N6cZFFD67NNeRmdiGdJbax6wpAkatSp+rwvBeOhL4xmg2DqRKtZShun3jCbk6rh
+	DuoPC+mCkCUYX6QEq1xlQSuclwcMTz4yp5jvVuYX19HmI7oE6dPGN2ML8O6afMtW70pN0aAu
+	uXT3nkef3Jz+ak3G/sdJ78esiSRU0duPVb3286b2bX3pI5+Xfmh8ujkrd1/LTsn1cofId74X
+	t/jEl6/R9um24kBp/A8TPfZTf5oPbpmq+CC9Szr6KhR/9oZ1rj1JS5nS9MlrSaNJ/y8NsqoD
+	bgMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzVSbUxTZxT2vV+9NFZuKgl3LgtLE2NmgoKh5sw5Hf4Yb7bMaMziNBqp80Yu
+	lI+0CpQELWADotParK1aFWTSGKiCrQ5QG7Boo2MEGCr4gUDSsVVAFmhLWqisYPxz8pzzfOT5
+	cVhS3kKvYsW8I4ImT6VWMFJKuv2rimRN5QYxpdX4GVQZjsPrYR8Nz8s6KAgGqii41ORgIGpr
+	kUCV8wINjwfKKei92YhgOFiFYHbORoKhbYGCqMkrgUD4lQTMZQgW3F4Elj4TCYO97SQ4bpcR
+	MNP8noHxzmkE5lEfA1Z/GQVT9tMILo7ZJOB/lAGTw/doWBj6h4CB0AQCu+89Ab6OSgRRSw7U
+	1Llidst/DMx195BgNfciuDo6RMK0fwTBbe8bBO7r5Qz8bbxDQr9vBTwNTjHwxHyKgcm+SwS8
+	a2agttxNQ9+f4wgu20wIxl66Caj4rYkBy2UnBW0jdyXQNz5PwGuLiYBG5w8wbB+joMtYR8Tq
+	xlS3EsFmrSBi418CzDfuERC2N0i+qUd41nCGwg2u3wls+CvKYMcVB8JzERPCgfoKEhuMsbVz
+	YorEJ1xFuL5rgsGR4DMGu0O1FP6jjsfXTkYIfK47GbddHJLsSN8r3XxIUIuFgmb9lkxpVn2T
+	jSlwf1H8cMaI9CiSVI3iWJ5L40e7ptEiZrg1/OBgmFzECdznvOuXMboaSVmS60/iK8NnYgTL
+	ruR28m/PKhc1FLeat47al7wybiMfOv2Q+pCZxDc2dyzlxMXu5oHIEpZzSr6mepY2ImktWtaA
+	EsS8wlyVqFau0+Zk6fLE4nU/5+c6Ueyd7KXz51pRoD/DgzgWKZbLOopSRTmtKtTqcj2IZ0lF
+	gmxCnSLKZYdUuhJBk39Ac1QtaD3oU5ZSJMq+2y1kyrnDqiNCjiAUCJqPLMHGrdKj4/md0/s3
+	WnhdyX1vaFw4tvqqN/vr3LMuPx0OvTp/YVt556Zfv9WXlkhd4OH2rHek1/I9p5KzD2ZHrDjJ
+	v4tVzswlNBpbdJOYOJ8RMKS074j/XnTqg/a0lfplax37hn5892Bhq3JXfOikhyh6Ef3kJ++X
+	baU1L05sl8TTTYZMBaXNUqWuJTVa1f8LVNtlSgMAAA==
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -224,350 +224,157 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 
-Implement CONFIG_DEPT_UNIT_TEST introducing a kernel module that runs
-basic unit test for dept.
+Currently, dept uses dept's map embedded in task_struct to track
+dependencies related to wait_for_completion() and its family.  So it
+doesn't need an explicit map basically.
+
+However, for those who want to set the maps with customized class or
+key, introduce a new API to use external maps.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/dept_unit_test.h     |  67 +++++++++++
- kernel/dependency/Makefile         |   1 +
- kernel/dependency/dept.c           |  12 ++
- kernel/dependency/dept_unit_test.c | 173 +++++++++++++++++++++++++++++
- lib/Kconfig.debug                  |  12 ++
- 5 files changed, 265 insertions(+)
- create mode 100644 include/linux/dept_unit_test.h
- create mode 100644 kernel/dependency/dept_unit_test.c
+ include/linux/completion.h | 40 +++++++++++++++++++++-----------------
+ 1 file changed, 22 insertions(+), 18 deletions(-)
 
-diff --git a/include/linux/dept_unit_test.h b/include/linux/dept_unit_test.h
-new file mode 100644
-index 000000000000..7612b4e97e69
---- /dev/null
-+++ b/include/linux/dept_unit_test.h
-@@ -0,0 +1,67 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * DEPT unit test
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (c) 2025 SK hynix, Inc., Byungchul Park
-+ */
-+
-+#ifndef __LINUX_DEPT_UNIT_TEST_H
-+#define __LINUX_DEPT_UNIT_TEST_H
-+
-+#if defined(CONFIG_DEPT_UNIT_TEST) || defined(CONFIG_DEPT_UNIT_TEST_MODULE)
-+struct dept_ut {
-+	bool circle_detected;
-+	bool recover_circle_detected;
-+
-+	int ecxt_stack_total_cnt;
-+	int wait_stack_total_cnt;
-+	int evnt_stack_total_cnt;
-+	int ecxt_stack_valid_cnt;
-+	int wait_stack_valid_cnt;
-+	int evnt_stack_valid_cnt;
-+};
-+
-+extern struct dept_ut dept_ut_results;
-+
-+static inline void dept_ut_circle_detect(void)
-+{
-+	dept_ut_results.circle_detected = true;
-+}
-+static inline void dept_ut_recover_circle_detect(void)
-+{
-+	dept_ut_results.recover_circle_detected = true;
-+}
-+static inline void dept_ut_ecxt_stack_account(bool valid)
-+{
-+	dept_ut_results.ecxt_stack_total_cnt++;
-+
-+	if (valid)
-+		dept_ut_results.ecxt_stack_valid_cnt++;
-+}
-+static inline void dept_ut_wait_stack_account(bool valid)
-+{
-+	dept_ut_results.wait_stack_total_cnt++;
-+
-+	if (valid)
-+		dept_ut_results.wait_stack_valid_cnt++;
-+}
-+static inline void dept_ut_evnt_stack_account(bool valid)
-+{
-+	dept_ut_results.evnt_stack_total_cnt++;
-+
-+	if (valid)
-+		dept_ut_results.evnt_stack_valid_cnt++;
-+}
-+#else
-+struct dept_ut {};
-+
-+#define dept_ut_circle_detect() do { } while (0)
-+#define dept_ut_recover_circle_detect() do { } while (0)
-+#define dept_ut_ecxt_stack_account(v) do { } while (0)
-+#define dept_ut_wait_stack_account(v) do { } while (0)
-+#define dept_ut_evnt_stack_account(v) do { } while (0)
-+
-+#endif
-+#endif /* __LINUX_DEPT_UNIT_TEST_H */
-diff --git a/kernel/dependency/Makefile b/kernel/dependency/Makefile
-index 92f165400187..fc584ca87124 100644
---- a/kernel/dependency/Makefile
-+++ b/kernel/dependency/Makefile
-@@ -2,3 +2,4 @@
+diff --git a/include/linux/completion.h b/include/linux/completion.h
+index 4d8fb1d95c0a..e50f7d9b4b97 100644
+--- a/include/linux/completion.h
++++ b/include/linux/completion.h
+@@ -27,17 +27,15 @@
+ struct completion {
+ 	unsigned int done;
+ 	struct swait_queue_head wait;
++	struct dept_map *dmap;
+ };
  
- obj-$(CONFIG_DEPT) += dept.o
- obj-$(CONFIG_DEPT) += dept_proc.o
-+obj-$(CONFIG_DEPT_UNIT_TEST) += dept_unit_test.o
-diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
-index 3c3ec2701bd6..0f4464657288 100644
---- a/kernel/dependency/dept.c
-+++ b/kernel/dependency/dept.c
-@@ -78,8 +78,12 @@
- #include <linux/workqueue.h>
- #include <linux/irq_work.h>
- #include <linux/vmalloc.h>
-+#include <linux/dept_unit_test.h>
- #include "dept_internal.h"
- 
-+struct dept_ut dept_ut_results;
-+EXPORT_SYMBOL_GPL(dept_ut_results);
-+
- static int dept_stop;
- static int dept_per_cpu_ready;
- 
-@@ -826,6 +830,10 @@ static void print_dep(struct dept_dep *d)
- 			pr_warn("(wait to wake up)\n");
- 			print_ip_stack(0, e->ewait_stack);
- 		}
-+
-+		dept_ut_ecxt_stack_account(valid_stack(e->ecxt_stack));
-+		dept_ut_wait_stack_account(valid_stack(w->wait_stack));
-+		dept_ut_evnt_stack_account(valid_stack(e->event_stack));
- 	}
- }
- 
-@@ -920,6 +928,8 @@ static void print_circle(struct dept_class *c)
- 	dump_stack();
- 
- 	dept_outworld_exit();
-+
-+	dept_ut_circle_detect();
- }
+-#define init_completion(x)				\
+-do {							\
+-	__init_completion(x);				\
+-} while (0)
++#define init_completion(x) init_completion_dmap(x, NULL)
  
  /*
-@@ -1021,6 +1031,8 @@ static void print_recover_circle(struct dept_event_site *es)
- 	dump_stack();
+- * XXX: No use cases for now. Fill the body when needed.
++ * XXX: This usage using lockdep's map should be deprecated.
+  */
+-#define init_completion_map(x, m) init_completion(x)
++#define init_completion_map(x, m) init_completion_dmap(x, NULL)
  
- 	dept_outworld_exit();
-+
-+	dept_ut_recover_circle_detect();
+ static inline void complete_acquire(struct completion *x, long timeout)
+ {
+@@ -48,8 +46,11 @@ static inline void complete_release(struct completion *x)
  }
  
- static void bfs_init_recover(void *node, void *in, void **out)
-diff --git a/kernel/dependency/dept_unit_test.c b/kernel/dependency/dept_unit_test.c
-new file mode 100644
-index 000000000000..88e846b9f876
---- /dev/null
-+++ b/kernel/dependency/dept_unit_test.c
-@@ -0,0 +1,173 @@
-+// SPDX-License-Identifier: GPL-2.0+
-+/*
-+ * DEPT unit test
-+ *
-+ * Started by Byungchul Park <max.byungchul.park@gmail.com>:
-+ *
-+ *  Copyright (c) 2025 SK hynix, Inc., Byungchul Park
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/spinlock.h>
-+#include <linux/mutex.h>
-+#include <linux/dept.h>
-+#include <linux/dept_unit_test.h>
-+
-+MODULE_DESCRIPTION("DEPT unit test");
-+MODULE_LICENSE("GPL");
-+MODULE_AUTHOR("Byungchul Park <max.byungchul.park@sk.com>");
-+
-+struct unit {
-+	const char *name;
-+	bool (*func)(void);
-+	bool result;
-+};
-+
-+static DEFINE_SPINLOCK(s1);
-+static DEFINE_SPINLOCK(s2);
-+static bool test_spin_lock_deadlock(void)
-+{
-+	dept_ut_results.circle_detected = false;
-+
-+	spin_lock(&s1);
-+	spin_lock(&s2);
-+	spin_unlock(&s2);
-+	spin_unlock(&s1);
-+
-+	spin_lock(&s2);
-+	spin_lock(&s1);
-+	spin_unlock(&s1);
-+	spin_unlock(&s2);
-+
-+	return dept_ut_results.circle_detected;
-+}
-+
-+static DEFINE_MUTEX(m1);
-+static DEFINE_MUTEX(m2);
-+static bool test_mutex_lock_deadlock(void)
-+{
-+	dept_ut_results.circle_detected = false;
-+
-+	mutex_lock(&m1);
-+	mutex_lock(&m2);
-+	mutex_unlock(&m2);
-+	mutex_unlock(&m1);
-+
-+	mutex_lock(&m2);
-+	mutex_lock(&m1);
-+	mutex_unlock(&m1);
-+	mutex_unlock(&m2);
-+
-+	return dept_ut_results.circle_detected;
-+}
-+
-+static bool test_wait_event_deadlock(void)
-+{
-+	struct dept_map dmap1;
-+	struct dept_map dmap2;
-+
-+	sdt_map_init(&dmap1);
-+	sdt_map_init(&dmap2);
-+
-+	dept_ut_results.circle_detected = false;
-+
-+	sdt_request_event(&dmap1); /* [S] */
-+	sdt_wait(&dmap2); /* [W] */
-+	sdt_event(&dmap1); /* [E] */
-+
-+	sdt_request_event(&dmap2); /* [S] */
-+	sdt_wait(&dmap1); /* [W] */
-+	sdt_event(&dmap2); /* [E] */
-+
-+	return dept_ut_results.circle_detected;
-+}
-+
-+static void dummy_event(void)
-+{
-+	/* Do nothing. */
-+}
-+
-+static DEFINE_DEPT_EVENT_SITE(es1);
-+static DEFINE_DEPT_EVENT_SITE(es2);
-+static bool test_recover_deadlock(void)
-+{
-+	dept_ut_results.recover_circle_detected = false;
-+
-+	dept_recover_event(&es1, &es2);
-+	dept_recover_event(&es2, &es1);
-+
-+	event_site(&es1, dummy_event);
-+	event_site(&es2, dummy_event);
-+
-+	return dept_ut_results.recover_circle_detected;
-+}
-+
-+static struct unit units[] = {
-+	{
-+		.name = "spin lock deadlock test",
-+		.func = test_spin_lock_deadlock,
-+	},
-+	{
-+		.name = "mutex lock deadlock test",
-+		.func = test_mutex_lock_deadlock,
-+	},
-+	{
-+		.name = "wait event deadlock test",
-+		.func = test_wait_event_deadlock,
-+	},
-+	{
-+		.name = "event recover deadlock test",
-+		.func = test_recover_deadlock,
-+	},
-+};
-+
-+static int __init dept_ut_init(void)
-+{
-+	int i;
-+
-+	lockdep_off();
-+
-+	dept_ut_results.ecxt_stack_valid_cnt = 0;
-+	dept_ut_results.ecxt_stack_total_cnt = 0;
-+	dept_ut_results.wait_stack_valid_cnt = 0;
-+	dept_ut_results.wait_stack_total_cnt = 0;
-+	dept_ut_results.evnt_stack_valid_cnt = 0;
-+	dept_ut_results.evnt_stack_total_cnt = 0;
-+
-+	for (i = 0; i < ARRAY_SIZE(units); i++)
-+		units[i].result = units[i].func();
-+
-+	pr_info("\n");
-+	pr_info("******************************************\n");
-+	pr_info("DEPT unit test results\n");
-+	pr_info("******************************************\n");
-+	for (i = 0; i < ARRAY_SIZE(units); i++) {
-+		pr_info("(%s) %s\n", units[i].result ? "pass" : "fail",
-+				units[i].name);
-+	}
-+	pr_info("ecxt stack valid count = %d/%d\n",
-+			dept_ut_results.ecxt_stack_valid_cnt,
-+			dept_ut_results.ecxt_stack_total_cnt);
-+	pr_info("wait stack valid count = %d/%d\n",
-+			dept_ut_results.wait_stack_valid_cnt,
-+			dept_ut_results.wait_stack_total_cnt);
-+	pr_info("event stack valid count = %d/%d\n",
-+			dept_ut_results.evnt_stack_valid_cnt,
-+			dept_ut_results.evnt_stack_total_cnt);
-+	pr_info("******************************************\n");
-+	pr_info("\n");
-+
-+	lockdep_on();
-+
-+	return 0;
-+}
-+
-+static void dept_ut_cleanup(void)
-+{
-+	/*
-+	 * Do nothing for now.
-+	 */
-+}
-+
-+module_init(dept_ut_init);
-+module_exit(dept_ut_cleanup);
-diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index 540583425d8e..86e26b9708fa 100644
---- a/lib/Kconfig.debug
-+++ b/lib/Kconfig.debug
-@@ -1404,6 +1404,18 @@ config DEPT_AGGRESSIVE_TIMEOUT_WAIT
- 	  that timeout is used to avoid a deadlock. Say N if you'd like
- 	  to avoid verbose reports.
+ #define COMPLETION_INITIALIZER(work) \
+-	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), }
++	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), .dmap = NULL, }
  
-+config DEPT_UNIT_TEST
-+	tristate "unit test for DEPT"
-+	depends on DEBUG_KERNEL && DEPT
-+	default n
-+	help
-+	  This option provides a kernel module that runs unit test for
-+	  DEPT.
-+
-+	  Say Y if you want DEPT unit test to be built into the kernel.
-+	  Say M if you want DEPT unit test to build as a module.
-+	  Say N if you are unsure.
-+
- config LOCK_DEBUGGING_SUPPORT
- 	bool
- 	depends on TRACE_IRQFLAGS_SUPPORT && STACKTRACE_SUPPORT && LOCKDEP_SUPPORT
++/*
++ * XXX: This usage using lockdep's map should be deprecated.
++ */
+ #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
+ 	(*({ init_completion_map(&(work), &(map)); &(work); }))
+ 
+@@ -90,15 +91,18 @@ static inline void complete_release(struct completion *x)
+ #endif
+ 
+ /**
+- * __init_completion - Initialize a dynamically allocated completion
++ * init_completion_dmap - Initialize a dynamically allocated completion
+  * @x:  pointer to completion structure that is to be initialized
++ * @dmap:  pointer to external dept's map to be used as a separated map
+  *
+  * This inline function will initialize a dynamically created completion
+  * structure.
+  */
+-static inline void __init_completion(struct completion *x)
++static inline void init_completion_dmap(struct completion *x,
++		struct dept_map *dmap)
+ {
+ 	x->done = 0;
++	x->dmap = dmap;
+ 	init_swait_queue_head(&x->wait);
+ }
+ 
+@@ -136,13 +140,13 @@ extern void complete_all(struct completion *);
+ 
+ #define wait_for_completion(x)						\
+ ({									\
+-	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
+ 	__wait_for_completion(x);					\
+ 	sdt_might_sleep_end();						\
+ })
+ #define wait_for_completion_io(x)					\
+ ({									\
+-	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
+ 	__wait_for_completion_io(x);					\
+ 	sdt_might_sleep_end();						\
+ })
+@@ -150,7 +154,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	int __ret;							\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
+ 	__ret = __wait_for_completion_interruptible(x);			\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -159,7 +163,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	int __ret;							\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
+ 	__ret = __wait_for_completion_killable(x);			\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -168,7 +172,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	int __ret;							\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, -1L);			\
++	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
+ 	__ret = __wait_for_completion_state(x, s);			\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -177,7 +181,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	unsigned long __ret;						\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, t);				\
++	sdt_might_sleep_start_timeout((x)->dmap, t);			\
+ 	__ret = __wait_for_completion_timeout(x, t);			\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -186,7 +190,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	unsigned long __ret;						\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, t);				\
++	sdt_might_sleep_start_timeout((x)->dmap, t);			\
+ 	__ret = __wait_for_completion_io_timeout(x, t);			\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -195,7 +199,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	long __ret;							\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, t);				\
++	sdt_might_sleep_start_timeout((x)->dmap, t);			\
+ 	__ret = __wait_for_completion_interruptible_timeout(x, t);	\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
+@@ -204,7 +208,7 @@ extern void complete_all(struct completion *);
+ ({									\
+ 	long __ret;							\
+ 									\
+-	sdt_might_sleep_start_timeout(NULL, t);				\
++	sdt_might_sleep_start_timeout((x)->dmap, t);			\
+ 	__ret = __wait_for_completion_killable_timeout(x, t);		\
+ 	sdt_might_sleep_end();						\
+ 	__ret;								\
 -- 
 2.17.1
 
