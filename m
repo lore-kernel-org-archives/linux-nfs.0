@@ -1,17 +1,17 @@
 Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id A2F28327200;
-	Fri,  5 Dec 2025 07:20:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 1CC1F332EDE;
+	Fri,  5 Dec 2025 07:21:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764919286; cv=none; b=TNXO3rycqoty0Ov8JRERIHcfZY/f+UmWgjy8fBI1wqJwnHQvvER1QMs9a44BWNO+/pEVBhi+HsMvBNX/4Et9UCD8vHZF+7/c+7HxGfL+c7fHEhWLpsykzEZx0iqBO/FrqoIivos2QjsNF0lbP29Hvz7fTKeh5ihfghOKstIQ/1s=
+	t=1764919282; cv=none; b=aDsS5/OhkfSOdx8mYleUumNy6pHYkzPiOQSu50mYaxpqdZphyojBE8AS2Uluc5nB5yqT71sy2syL3JozGbrUoJzlDjXiWvNcl+VeYjW0xYdzwUKekjAy+V7DBxkJ72j/7Uy7N5rI/+HlvEQhyTfLxPMnhiJpt+cyadjjDdzHwkU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764919286; c=relaxed/simple;
-	bh=314TpUAkZxMvbV2pk3wlciVKMbaC2tgJL1bvCZ48Y0A=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=K/ZXH7TPhy13IvsmzFwY3FnmoFxG26nPQ4UBjfgsN0s1FXjQF6VLaCKTI7/hJvAsRz4XTf/V6Q1stWN4wmOtd4sEA3lWXQ8Z3wWEJ6/OQwKS9iHsvI37qUheTw8kq3rYZeFnNeW3ma9Ix2Wiz83hJeVbLek7EtTJQ7dnJb3w3rs=
+	s=arc-20240116; t=1764919282; c=relaxed/simple;
+	bh=AaEy5ZLg/iuY0kANSq4E0z3GYTuvShw7zb+zRcBRAcs=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=qb2Cw/o278h1aVS23G7iv2pZ/BRUAvtLAHnnTQwe80n83tzUdSsbVOuaquZKyY4kPuOJfLh0oH8MNMwRwjlhoF41oRP/FzqyfC2gRWflkDZcDkAKwQLOMcwdUvyevJ0ByxZAWibpaXYiyN2/B0xZ+l6KQdnn3D+9T8uXOOwX5wg=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-c6-6932877297a9
+X-AuditID: a67dfc5b-c2dff70000001609-82-69328775d3b1
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -178,45 +178,44 @@ Cc: kernel_team@skhynix.com,
 	aliceryhl@google.com,
 	tmgross@umich.edu,
 	rust-for-linux@vger.kernel.org
-Subject: [PATCH v18 32/42] completion, dept: introduce init_completion_dmap() API
-Date: Fri,  5 Dec 2025 16:18:45 +0900
-Message-Id: <20251205071855.72743-33-byungchul@sk.com>
+Subject: [PATCH v18 38/42] rcu/update: fix same dept key collision between various types of RCU
+Date: Fri,  5 Dec 2025 16:18:51 +0900
+Message-Id: <20251205071855.72743-39-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20251205071855.72743-1-byungchul@sk.com>
 References: <20251205071855.72743-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0xTZxjH955bTytNTioZZ7qFrQuZ01DBiHk+LNPEXV4zjVO3fdAls5ET
-	OaEgaS2XMZPWiVydTU2L0o2b2jE4AjlgJkK1A+xwiBY10k0Bi4wNC2NWLqHIXGHz2y/P//n/
-	ni8PS2ru06tYMfOwYMzUG7SMilJNxtQmmgo3iEnDo0q4Z/VSMDNdRMG3TRIDi64fFVAkn6Gh
-	Z+AoBf7GBgTDM0UI5hZcJCzafQqYnr+vAIcVwXOPD4Gz305CwH+VBKnVSkCoK4zAERxloHzc
-	SsGUuwzB5HA7DQOzEwjco/8QMOotRBBy/s3AQt8tEsodfgQ1wUESwuMPEbT6hhD8brtIwl/N
-	DPTfCCH4+mwTA87vZAraHl5WQH/oGQEPnHYCGuQd0GurJaK3GHBcaCdg3l2vALclAUbqKhQw
-	eNJBQePkLRquD92jITRmZ0D+9RqC6btBAqSyMRLkR9HA89s6qDl+joIzlQ8Y6PBcp8B3aYSA
-	suaLNAxJz2mwuOZo8Ht7aWj6I0BAr6+H2pKKC24vMliqlBBeiNgRLrBFqWtiisTHWnKwZ7aa
-	wr/U8vhccYTAbRWDClwtm3FL3Vp8tmOcwDXhGRrL9cUMlsN2xceJe1XvpAoGMVswrn93vyrt
-	fJOLyfK8ndv91IYsKBJfgpQsz23kT7eeoF5wsDeMlpjh3uIDgXlyiWO51/mWE2N0CVKxJHcn
-	ni+c/yYasOxKbhf/+GTK0g7FJfDlQfdyV81t4mfLuv93xvMNzd5ljzI6dwxEllnDpfBVJXPL
-	Tp77XslfqW5F/xVe4X+qC1A2pK5GL9UjjZiZnaEXDRt1aXmZYq7uwKEMGUVfzn3k2b5LKOzf
-	04k4Fmlj1N6cZFFD67NNeRmdiGdJbax6wpAkatSp+rwvBeOhL4xmg2DqRKtZShun3jCbk6rh
-	DuoPC+mCkCUYX6QEq1xlQSuclwcMTz4yp5jvVuYX19HmI7oE6dPGN2ML8O6afMtW70pN0aAu
-	uXT3nkef3Jz+ak3G/sdJ78esiSRU0duPVb3286b2bX3pI5+Xfmh8ujkrd1/LTsn1cofId74X
-	t/jEl6/R9um24kBp/A8TPfZTf5oPbpmq+CC9Szr6KhR/9oZ1rj1JS5nS9MlrSaNJ/y8NsqoD
-	bgMAAA==
-X-Brightmail-Tracker: H4sIAAAAAAAAAzVSbUxTZxT2vV+9NFZuKgl3LgtLE2NmgoKh5sw5Hf4Yb7bMaMziNBqp80Yu
-	lI+0CpQELWADotParK1aFWTSGKiCrQ5QG7Boo2MEGCr4gUDSsVVAFmhLWqisYPxz8pzzfOT5
-	cVhS3kKvYsW8I4ImT6VWMFJKuv2rimRN5QYxpdX4GVQZjsPrYR8Nz8s6KAgGqii41ORgIGpr
-	kUCV8wINjwfKKei92YhgOFiFYHbORoKhbYGCqMkrgUD4lQTMZQgW3F4Elj4TCYO97SQ4bpcR
-	MNP8noHxzmkE5lEfA1Z/GQVT9tMILo7ZJOB/lAGTw/doWBj6h4CB0AQCu+89Ab6OSgRRSw7U
-	1Llidst/DMx195BgNfciuDo6RMK0fwTBbe8bBO7r5Qz8bbxDQr9vBTwNTjHwxHyKgcm+SwS8
-	a2agttxNQ9+f4wgu20wIxl66Caj4rYkBy2UnBW0jdyXQNz5PwGuLiYBG5w8wbB+joMtYR8Tq
-	xlS3EsFmrSBi418CzDfuERC2N0i+qUd41nCGwg2u3wls+CvKYMcVB8JzERPCgfoKEhuMsbVz
-	YorEJ1xFuL5rgsGR4DMGu0O1FP6jjsfXTkYIfK47GbddHJLsSN8r3XxIUIuFgmb9lkxpVn2T
-	jSlwf1H8cMaI9CiSVI3iWJ5L40e7ptEiZrg1/OBgmFzECdznvOuXMboaSVmS60/iK8NnYgTL
-	ruR28m/PKhc1FLeat47al7wybiMfOv2Q+pCZxDc2dyzlxMXu5oHIEpZzSr6mepY2ImktWtaA
-	EsS8wlyVqFau0+Zk6fLE4nU/5+c6Ueyd7KXz51pRoD/DgzgWKZbLOopSRTmtKtTqcj2IZ0lF
-	gmxCnSLKZYdUuhJBk39Ac1QtaD3oU5ZSJMq+2y1kyrnDqiNCjiAUCJqPLMHGrdKj4/md0/s3
-	WnhdyX1vaFw4tvqqN/vr3LMuPx0OvTp/YVt556Zfv9WXlkhd4OH2rHek1/I9p5KzD2ZHrDjJ
-	v4tVzswlNBpbdJOYOJ8RMKS074j/XnTqg/a0lfplax37hn5892Bhq3JXfOikhyh6Ef3kJ++X
-	baU1L05sl8TTTYZMBaXNUqWuJTVa1f8LVNtlSgMAAA==
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSW0xTdxzH9z+X/zlUi2ediUd9QJuoCXMITs1vybw8uHFeZkiWzHjZXCMn
+	42gB1xYUMxeIYTjGzZp2GYPRCgq0TASEqdClNsIUBytCSpVW7IZFUopaS0epzhWMb598b09f
+	llS46VWslKMTNTkqtRLLKFlwqfm9vJLNUqrdvBFcRXYKalpbMDgvWRGMz55BEI6OMWAoQvDK
+	1ofAOKQnweCbwPDjVBEF1f6fGZjqTYfgeDcNo5FpBBP2EgR15zswBIxP4zGDE4HZ5yXhSt8D
+	BI+qOkkYnkiEkdknGIJDNQScrm/FYKxtp+Daw+sMDAVeEOAx6gn4s95DwcXCdfDKlAveSgMF
+	tx+4aAj49Rhs99+FMy/DCMoud9LgtN+hYWygkoELo0MEuKseITg340fQbBvA0FzXiEDvDzEQ
+	aohQ8Ee5nYCSx90YvmtoI+BCU5CGfu9zBs7dNWGY916lwaWvw9A/30/A3xXBeK32PxqKy6IM
+	xOZqMFQMpkNtOA3CVguGmaowvWuXYOnoIoTiuy+x0PJLCxJsERMl9J/nhWvVXkYwtecJHU3J
+	Qn3PFCGYQ7O0cD+wXWi3fI8Fc+wxKZQGRwjB4+rBwszgIJOxdr/sw0xRLeWLmk07vpRlzc1f
+	Yo6N7DjxLJJYiP5KLUUJLM9t4Ysa7+E3XNbmpBcYcxt4tztKLvBybg3fUe6P6zKW5IaT+JJo
+	xaLxDneIt3huoQWmuHV8b3d1nFlWzm3jrWPfvt5M4q2X7YvxhLhsGJ1fZAW3la8r/Xdxk+fq
+	E/jpwkbmdWElf6PJTVUhuQm9ZUEKKSc/WyWpt6RkFeRIJ1IO52a3o/jfLp56ceAqCjk/dSCO
+	RcqlcvvxNElBq/K1BdkOxLOkcrl8Wp0qKeSZqoKToib3kCZPLWodaDVLKVfIN0eOZyq4r1Q6
+	8agoHhM1b1yCTVhViE4enKR8sbVXYrd1A1//tm9nZeIHyU/GP+/a6P1i90/aTwzLbNrVulu+
+	UxHFnfSjv8M/e9iZtqSP3fizyd7Z8NmnxEcZuh/o0FzGr/v2bm94P9p1Q1w/fDB28/qSSWNz
+	Oui3Hih+PuHp2aR0tFa+HdhzxMX5+qzf7IzsTnF0lkuewxVKSpulSksmNVrV/1uhCitrAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUhTcRTG+997d+91NL0soZt9qAZRBJlFxYFMDHq5Fb1AbxBRjrzlcJux
+	laWQNW1pZTFHm+QqdeaKaeVLWSarpWSWWTOrWWkqLF9wZdmmbrbsavTl8DvP85zD+XBoXFoj
+	iqIV6qO8Ri1XykgxId66KmvxsexlipjR59MhR38KOro8IvigcxLg9+UQcPVuOQkhywMKcqqu
+	iKDJnUmA604Zgi5/DoLRcQsO+toJAkLGRgp8gc8UmHQIJhyNCMytRhzaXU9wKL+nw+BXxR8S
+	BhuGEZh6PCTkD+gIGLLlIijotVAw8GwDfOuqE8FEZx8G7hEvApvnDwYeZzaCkDkZCq3Vwrj5
+	BwnjLW9wyDe5EBT3dOIwPNCN4F7jFwSOW5kkfDXcx6HNEw7v/EMkvDBdIOFb61UMvleQUJTp
+	EEHrq0EE1yxGBL2fHBhkldwlwXytioDa7kcUtA7+xqDDbMSgrGoLdNl6CWg2WDHhXCFVORMs
+	+VmYUPoxMN2uwyBgs1PxpYgb1V8iOHt1Dcbp34ZIrvx6OeLGg0bE+UqzcE5vENoG7xDOnak+
+	zpU2e0ku6H9Pco6RIoJ7aWW5G+eCGJfXspirLeiktq/ZK45N5JWKVF6zJC5BnDQWvEMdeRd3
+	4udI+Gn0JuY8CqNZZjmbW+kSTTLJLGDb2wP4JEcyc9nqi72CLqZxpm0Omx24NGXMYA6w9o4m
+	NMkEM599VlcgME1LmJVs2eeMfzvnsGUVzql4mCCb3MEpljIr2MLzoyIDEhehaXYUqVCnquQK
+	5YpobXJSmlpxIvpgiqoKCd9kO/k77yHytW2oRwyNZNMlzuNLFVKRPFWbpqpHLI3LIiVeZYxC
+	KkmUp6XzmpQDmmNKXluPZtOEbKZk0x4+Qcoclh/lk3n+CK/572J0WNRp9LRvy6sWkyN9s7Rv
+	7ay+1Y9vmfE4dbJV4nbVDE87tWm/lBnbvMMYEb7GsHDb5YW3x/iP0XnuWEnHoTNNexfIXhz2
+	Xdbpetqw/bPiI/YtL1mnyldtPEet25nNFjfgduv8wUwmN4X8Htj1pb95d/cu3vk6kc7I8M6L
+	jV8fezPkP9ssI7RJ8qWLcI1W/heZU/cPSQMAAA==
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -224,157 +223,230 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 
-Currently, dept uses dept's map embedded in task_struct to track
-dependencies related to wait_for_completion() and its family.  So it
-doesn't need an explicit map basically.
+From: Yunseong Kim <ysk@kzalloc.com>
 
-However, for those who want to set the maps with customized class or
-key, introduce a new API to use external maps.
+The current implementation shares the same dept key for multiple
+synchronization points, which can lead to false positive reports in
+dependency tracking and potential confusion in debugging.  For example,
+both normal RCU and tasks trace RCU synchronization points use the same
+dept key.  Specifically:
 
+   1. synchronize_rcu() uses a dept key embedded in __wait_rcu_gp():
+
+      synchronize_rcu()
+         synchronize_rcu_normal()
+            _wait_rcu_gp()
+               __wait_rcu_gp() <- the key as static variable
+
+   2. synchronize_rcu_tasks_trace() uses the dept key, too:
+
+      synchronize_rcu_tasks_trace()
+         synchronize_rcu_tasks_generic()
+            _wait_rcu_gp()
+               __wait_rcu_gp() <- the key as static variable
+
+Since the both rely on the same dept key, dept may report false positive
+circular dependency.  To resolve this, separate dept keys and maps
+should be assigned to each struct rcu_synchronize.
+
+   ===================================================
+   DEPT: Circular dependency has been detected.
+   6.15.0-rc6-00042-ged94bafc6405 #2 Not tainted
+   ---------------------------------------------------
+   summary
+   ---------------------------------------------------
+   *** DEADLOCK ***
+
+   context A
+      [S] lock(cpu_hotplug_lock:0)
+      [W] __wait_rcu_gp(<sched>:0)
+      [E] unlock(cpu_hotplug_lock:0)
+
+   context B
+      [S] (unknown)(<sched>:0)
+      [W] lock(cpu_hotplug_lock:0)
+      [E] try_to_wake_up(<sched>:0)
+
+   [S]: start of the event context
+   [W]: the wait blocked
+   [E]: the event not reachable
+   ---------------------------------------------------
+   context A's detail
+   ---------------------------------------------------
+   context A
+      [S] lock(cpu_hotplug_lock:0)
+      [W] __wait_rcu_gp(<sched>:0)
+      [E] unlock(cpu_hotplug_lock:0)
+
+   [S] lock(cpu_hotplug_lock:0):
+   [<ffff8000802ce964>] cpus_read_lock+0x14/0x20
+   stacktrace:
+         percpu_down_read.constprop.0+0x88/0x2ec
+         cpus_read_lock+0x14/0x20
+         cgroup_procs_write_start+0x164/0x634
+         __cgroup_procs_write+0xdc/0x4d0
+         cgroup_procs_write+0x34/0x74
+         cgroup_file_write+0x25c/0x670
+         kernfs_fop_write_iter+0x2ec/0x498
+         vfs_write+0x574/0xc30
+         ksys_write+0x124/0x244
+         __arm64_sys_write+0x70/0xa4
+         invoke_syscall+0x88/0x2e0
+         el0_svc_common.constprop.0+0xe8/0x2e0
+         do_el0_svc+0x44/0x60
+         el0_svc+0x50/0x188
+         el0t_64_sync_handler+0x10c/0x140
+         el0t_64_sync+0x198/0x19c
+
+   [W] __wait_rcu_gp(<sched>:0):
+   [<ffff8000804ce88c>] __wait_rcu_gp+0x324/0x498
+   stacktrace:
+         schedule+0xcc/0x348
+         schedule_timeout+0x1a4/0x268
+         __wait_for_common+0x1c4/0x3f0
+         __wait_for_completion_state+0x20/0x38
+         __wait_rcu_gp+0x35c/0x498
+         synchronize_rcu_normal+0x200/0x218
+         synchronize_rcu+0x234/0x2a0
+         rcu_sync_enter+0x11c/0x300
+         percpu_down_write+0xb4/0x3e0
+         cgroup_procs_write_start+0x174/0x634
+         __cgroup_procs_write+0xdc/0x4d0
+         cgroup_procs_write+0x34/0x74
+         cgroup_file_write+0x25c/0x670
+         kernfs_fop_write_iter+0x2ec/0x498
+         vfs_write+0x574/0xc30
+         ksys_write+0x124/0x244
+
+   [E] unlock(cpu_hotplug_lock:0):
+   (N/A)
+   ---------------------------------------------------
+   context B's detail
+   ---------------------------------------------------
+   context B
+      [S] (unknown)(<sched>:0)
+      [W] lock(cpu_hotplug_lock:0)
+      [E] try_to_wake_up(<sched>:0)
+
+   [S] (unknown)(<sched>:0):
+   (N/A)
+
+   [W] lock(cpu_hotplug_lock:0):
+   [<ffff8000802ce964>] cpus_read_lock+0x14/0x20
+   stacktrace:
+         percpu_down_read.constprop.0+0x6c/0x2ec
+         cpus_read_lock+0x14/0x20
+         check_all_holdout_tasks_trace+0x90/0xa30
+         rcu_tasks_wait_gp+0x47c/0x938
+         rcu_tasks_one_gp+0x75c/0xef8
+         rcu_tasks_kthread+0x180/0x1dc
+         kthread+0x3ac/0x74c
+         ret_from_fork+0x10/0x20
+
+   [E] try_to_wake_up(<sched>:0):
+   [<ffff8000804233b8>] complete+0xb8/0x1e8
+   stacktrace:
+         try_to_wake_up+0x374/0x1164
+         complete+0xb8/0x1e8
+         wakeme_after_rcu+0x14/0x20
+         rcu_tasks_invoke_cbs+0x218/0xaa8
+         rcu_tasks_one_gp+0x834/0xef8
+         rcu_tasks_kthread+0x180/0x1dc
+         kthread+0x3ac/0x74c
+         ret_from_fork+0x10/0x20
+   (wait to wake up)
+   stacktrace:
+         __schedule+0xf64/0x3614
+         schedule+0xcc/0x348
+         schedule_timeout+0x1a4/0x268
+         __wait_for_common+0x1c4/0x3f0
+         __wait_for_completion_state+0x20/0x38
+         __wait_rcu_gp+0x35c/0x498
+         synchronize_rcu_tasks_generic+0x14c/0x220
+         synchronize_rcu_tasks_trace+0x24/0x8c
+         rcu_init_tasks_generic+0x168/0x194
+         do_one_initcall+0x174/0xa00
+         kernel_init_freeable+0x744/0x7dc
+         kernel_init+0x78/0x220
+         ret_from_fork+0x10/0x20
+
+Separating the dept key and map for each of struct rcu_synchronize,
+ensuring proper tracking for each execution context.
+
+Signed-off-by: Yunseong Kim <ysk@kzalloc.com>
+[ Rewrote the changelog. ]
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/completion.h | 40 +++++++++++++++++++++-----------------
- 1 file changed, 22 insertions(+), 18 deletions(-)
+ include/linux/rcupdate_wait.h | 13 ++++++++-----
+ kernel/rcu/rcu.h              |  1 +
+ kernel/rcu/update.c           |  5 +++--
+ 3 files changed, 12 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/completion.h b/include/linux/completion.h
-index 4d8fb1d95c0a..e50f7d9b4b97 100644
---- a/include/linux/completion.h
-+++ b/include/linux/completion.h
-@@ -27,17 +27,15 @@
- struct completion {
- 	unsigned int done;
- 	struct swait_queue_head wait;
-+	struct dept_map *dmap;
- };
+diff --git a/include/linux/rcupdate_wait.h b/include/linux/rcupdate_wait.h
+index 4c92d4291cce..ee598e70b4bc 100644
+--- a/include/linux/rcupdate_wait.h
++++ b/include/linux/rcupdate_wait.h
+@@ -19,17 +19,20 @@ struct rcu_synchronize {
  
--#define init_completion(x)				\
--do {							\
--	__init_completion(x);				\
--} while (0)
-+#define init_completion(x) init_completion_dmap(x, NULL)
+ 	/* This is for debugging. */
+ 	struct rcu_gp_oldstate oldstate;
++	struct dept_map dmap;
++	struct dept_key dkey;
+ };
+ void wakeme_after_rcu(struct rcu_head *head);
+ 
+ void __wait_rcu_gp(bool checktiny, unsigned int state, int n, call_rcu_func_t *crcu_array,
+-		   struct rcu_synchronize *rs_array);
++		   struct rcu_synchronize *rs_array, struct dept_key *dkey);
+ 
+ #define _wait_rcu_gp(checktiny, state, ...) \
+-do {												\
+-	call_rcu_func_t __crcu_array[] = { __VA_ARGS__ };					\
+-	struct rcu_synchronize __rs_array[ARRAY_SIZE(__crcu_array)];				\
+-	__wait_rcu_gp(checktiny, state, ARRAY_SIZE(__crcu_array), __crcu_array, __rs_array);	\
++do {													\
++	call_rcu_func_t __crcu_array[] = { __VA_ARGS__ };						\
++	static struct dept_key __key;									\
++	struct rcu_synchronize __rs_array[ARRAY_SIZE(__crcu_array)];					\
++	__wait_rcu_gp(checktiny, state, ARRAY_SIZE(__crcu_array), __crcu_array, __rs_array, &__key);	\
+ } while (0)
+ 
+ #define wait_rcu_gp(...) _wait_rcu_gp(false, TASK_UNINTERRUPTIBLE, __VA_ARGS__)
+diff --git a/kernel/rcu/rcu.h b/kernel/rcu/rcu.h
+index 9cf01832a6c3..c0d8ea139596 100644
+--- a/kernel/rcu/rcu.h
++++ b/kernel/rcu/rcu.h
+@@ -12,6 +12,7 @@
+ 
+ #include <linux/slab.h>
+ #include <trace/events/rcu.h>
++#include <linux/dept_sdt.h>
  
  /*
-- * XXX: No use cases for now. Fill the body when needed.
-+ * XXX: This usage using lockdep's map should be deprecated.
-  */
--#define init_completion_map(x, m) init_completion(x)
-+#define init_completion_map(x, m) init_completion_dmap(x, NULL)
+  * Grace-period counter management.
+diff --git a/kernel/rcu/update.c b/kernel/rcu/update.c
+index dfeba9b35395..6b7ede219433 100644
+--- a/kernel/rcu/update.c
++++ b/kernel/rcu/update.c
+@@ -409,7 +409,7 @@ void wakeme_after_rcu(struct rcu_head *head)
+ EXPORT_SYMBOL_GPL(wakeme_after_rcu);
  
- static inline void complete_acquire(struct completion *x, long timeout)
+ void __wait_rcu_gp(bool checktiny, unsigned int state, int n, call_rcu_func_t *crcu_array,
+-		   struct rcu_synchronize *rs_array)
++		   struct rcu_synchronize *rs_array, struct dept_key *dkey)
  {
-@@ -48,8 +46,11 @@ static inline void complete_release(struct completion *x)
- }
- 
- #define COMPLETION_INITIALIZER(work) \
--	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), }
-+	{ 0, __SWAIT_QUEUE_HEAD_INITIALIZER((work).wait), .dmap = NULL, }
- 
-+/*
-+ * XXX: This usage using lockdep's map should be deprecated.
-+ */
- #define COMPLETION_INITIALIZER_ONSTACK_MAP(work, map) \
- 	(*({ init_completion_map(&(work), &(map)); &(work); }))
- 
-@@ -90,15 +91,18 @@ static inline void complete_release(struct completion *x)
- #endif
- 
- /**
-- * __init_completion - Initialize a dynamically allocated completion
-+ * init_completion_dmap - Initialize a dynamically allocated completion
-  * @x:  pointer to completion structure that is to be initialized
-+ * @dmap:  pointer to external dept's map to be used as a separated map
-  *
-  * This inline function will initialize a dynamically created completion
-  * structure.
-  */
--static inline void __init_completion(struct completion *x)
-+static inline void init_completion_dmap(struct completion *x,
-+		struct dept_map *dmap)
- {
- 	x->done = 0;
-+	x->dmap = dmap;
- 	init_swait_queue_head(&x->wait);
- }
- 
-@@ -136,13 +140,13 @@ extern void complete_all(struct completion *);
- 
- #define wait_for_completion(x)						\
- ({									\
--	sdt_might_sleep_start_timeout(NULL, -1L);			\
-+	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
- 	__wait_for_completion(x);					\
- 	sdt_might_sleep_end();						\
- })
- #define wait_for_completion_io(x)					\
- ({									\
--	sdt_might_sleep_start_timeout(NULL, -1L);			\
-+	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
- 	__wait_for_completion_io(x);					\
- 	sdt_might_sleep_end();						\
- })
-@@ -150,7 +154,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	int __ret;							\
- 									\
--	sdt_might_sleep_start_timeout(NULL, -1L);			\
-+	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
- 	__ret = __wait_for_completion_interruptible(x);			\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -159,7 +163,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	int __ret;							\
- 									\
--	sdt_might_sleep_start_timeout(NULL, -1L);			\
-+	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
- 	__ret = __wait_for_completion_killable(x);			\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -168,7 +172,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	int __ret;							\
- 									\
--	sdt_might_sleep_start_timeout(NULL, -1L);			\
-+	sdt_might_sleep_start_timeout((x)->dmap, -1L);			\
- 	__ret = __wait_for_completion_state(x, s);			\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -177,7 +181,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	unsigned long __ret;						\
- 									\
--	sdt_might_sleep_start_timeout(NULL, t);				\
-+	sdt_might_sleep_start_timeout((x)->dmap, t);			\
- 	__ret = __wait_for_completion_timeout(x, t);			\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -186,7 +190,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	unsigned long __ret;						\
- 									\
--	sdt_might_sleep_start_timeout(NULL, t);				\
-+	sdt_might_sleep_start_timeout((x)->dmap, t);			\
- 	__ret = __wait_for_completion_io_timeout(x, t);			\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -195,7 +199,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	long __ret;							\
- 									\
--	sdt_might_sleep_start_timeout(NULL, t);				\
-+	sdt_might_sleep_start_timeout((x)->dmap, t);			\
- 	__ret = __wait_for_completion_interruptible_timeout(x, t);	\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
-@@ -204,7 +208,7 @@ extern void complete_all(struct completion *);
- ({									\
- 	long __ret;							\
- 									\
--	sdt_might_sleep_start_timeout(NULL, t);				\
-+	sdt_might_sleep_start_timeout((x)->dmap, t);			\
- 	__ret = __wait_for_completion_killable_timeout(x, t);		\
- 	sdt_might_sleep_end();						\
- 	__ret;								\
+ 	int i;
+ 	int j;
+@@ -426,7 +426,8 @@ void __wait_rcu_gp(bool checktiny, unsigned int state, int n, call_rcu_func_t *c
+ 				break;
+ 		if (j == i) {
+ 			init_rcu_head_on_stack(&rs_array[i].head);
+-			init_completion(&rs_array[i].completion);
++			sdt_map_init_key(&rs_array[i].dmap, dkey);
++			init_completion_dmap(&rs_array[i].completion, &rs_array[i].dmap);
+ 			(crcu_array[i])(&rs_array[i].head, wakeme_after_rcu);
+ 		}
+ 	}
 -- 
 2.17.1
 
