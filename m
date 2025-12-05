@@ -1,17 +1,17 @@
-Received: from invmail4.hynix.com (exvmail4.hynix.com [166.125.252.92])
-	by smtp.subspace.kernel.org (Postfix) with ESMTP id 10DC92DF137;
-	Fri,  5 Dec 2025 07:20:50 +0000 (UTC)
+Received: from invmail4.hynix.com (exvmail4.skhynix.com [166.125.252.92])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id 1077A32939F;
+	Fri,  5 Dec 2025 07:20:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=166.125.252.92
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1764919275; cv=none; b=E83YwJp7UMSYfbJhgkE16Z4V+lRr5TXJ9m+zvg6mldd2cwcKeH2WvNciFxSCK+b05t7g9Ey2jFbHDHpw377dcMhH2xgqMk4ZjnyGXibYsa6W54os5s6AsIF7Ad5nBA6dZObEokdRjIuuLVnNoHf4JXOHdLxlj+1CS3wXGhkOpMQ=
+	t=1764919286; cv=none; b=mZkmTJtT2gUYEHYy+4/T32aNoGcEBKi/egsPtJL04yHf3z661Ly8E5akTv5XvcwjqzsiYZ3I/tpME8Hh6foaQ0fXroKxubvFtstm+ae8z7G/AUkjKNEn5yqp6wVbDx3esLFlFRsHGWHjYZoyjpoSjiz4iGqvEuqyvUDMxjY8FoU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1764919275; c=relaxed/simple;
-	bh=HQb+FieD5UTtfcyEdgT0lo4GMUWAEhmBX2C4Cisefmo=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=GpDG69VHZ8SvaUOG5CSi+rb2TjGh+XRD3/FR+YrQtb+kFfa4o4AWBsF/ONNd7tK6OrgZHrg2CBFP17NBFRd/FDIJjcNG+dfBrIGe6rk+/PDKprVSatMWDjjOAlAxAYBI9LTqrhj2uFUwU1t5sfG13uBbEb0v5AJUiMtJdkd0jdY=
+	s=arc-20240116; t=1764919286; c=relaxed/simple;
+	bh=Vj5gFQhrZ6G/CwdWvsAMyxS9WmcbVQk6wQ8WAinYldk=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References; b=gRTu1x8YHMw2ZCY/vuqLvIBq3VCWRYCzuTbYx7SarvhvwE/KlTQsOuZB4UpCRnz35x0BNRCOpfHfvY/oTOjVSMDREx1alU4SgL5Jr+D1FC7gWNwsHVZCOu+UV2UUpV9cUkFINvA+P4J2tZ6utxaQDiCXFXgjNX120S7JkjiXnwI=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com; spf=pass smtp.mailfrom=sk.com; arc=none smtp.client-ip=166.125.252.92
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=sk.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=sk.com
-X-AuditID: a67dfc5b-c45ff70000001609-2d-693287717bab
+X-AuditID: a67dfc5b-c2dff70000001609-24-69328773c470
 From: Byungchul Park <byungchul@sk.com>
 To: linux-kernel@vger.kernel.org
 Cc: kernel_team@skhynix.com,
@@ -178,45 +178,44 @@ Cc: kernel_team@skhynix.com,
 	aliceryhl@google.com,
 	tmgross@umich.edu,
 	rust-for-linux@vger.kernel.org
-Subject: [PATCH v18 27/42] dept: assign dept map to mmu notifier invalidation synchronization
-Date: Fri,  5 Dec 2025 16:18:40 +0900
-Message-Id: <20251205071855.72743-28-byungchul@sk.com>
+Subject: [PATCH v18 35/42] dept: introduce event_site() to disable event tracking if it's recoverable
+Date: Fri,  5 Dec 2025 16:18:48 +0900
+Message-Id: <20251205071855.72743-36-byungchul@sk.com>
 X-Mailer: git-send-email 2.17.1
 In-Reply-To: <20251205071855.72743-1-byungchul@sk.com>
 References: <20251205071855.72743-1-byungchul@sk.com>
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbUxTZxTHfe597gudXS6d2R7dErXGmEhgSNx2NIvZsjjvzBKXGP3gskAz
-	buTG8rKivGwxvAiDIQ5kqx+AyKsVSysEcAhSveIoIjDasdAOCsjW1ZiKGEIhpRBWa/z2O+d3
-	zj85yeFpzSSzjZfTzkqGNJ1ey6qwan5zQ+x3JQlyvNd1EEqL88Az62VgokDBEFgqxVDbZmFh
-	vaabg4euQgyOm60IZgOlCFZCNTQU92xgWK+yc7AUnOLAWIBgw2ZHcMVZRYOlq4AC/4NFBMY5
-	LwsLpnIETweOgFcpQeC/8oKF0OgYDQ1z0zR02WcQ2FoKWRj3vgl/BRZYGDJeZGHeWUvB83YW
-	nCN+BBea2sLkX6Ng1uTDYLTeoSBoMnMw0uTBYMrfDf+0VHNgb33CwXSFEcPN+TEG/L4qFmYH
-	f2Sg4+8BBKW9AQy2yRjosw1hGO+tZaG8/RYDM5YNBvJrVhhwKMMMDNsfYhiqvoFharSCg7Fe
-	KwNzj90MdI6O0OCu/A/BL8994UOWTfQnyaK58zdKtFy1IDG0WoXEpWsXaLG4MlwWdWaL14af
-	saJtuR6LjxqJ2PzTKiX2VE9zYtHdSU6s7zgnFv0+z4hNfU8psWExwHy155Tq42RJL2dJhvcP
-	JalS/jArKMP1Uc6gp47NRzOxZSiKJ8J+MlA4xb7m1TUH/ZJZYQ9xu4MR3iLsIJ2XfEwZUvG0
-	ML6dlAR/joi3hG+I4ukOC57Hwm7iac55iWrhQ+L7F7+K3E5a25XIdFS4bXStRlgjfEDqylYi
-	kUSoiyJNwRD3amErud/ixpVIXY82mZFGTstK1cn6/XEpuWlyTty36akdKPxxpvNrX99Gi47j
-	/UjgkXazWsneJ2sYXVZmbmo/Ijyt3aJ+po+XNepkXe73kiE90XBOL2X2o3d5rH1HnbCcnawR
-	TuvOSmckKUMyvLYUH7UtH5mP3eKSknYNfrZQYbF2BR4byTGq4Orn1rzytx/lLTbmPDh/VJfo
-	9n9qztu7c2zmiSNkPezxVATl65ti3vAmSida4389Cve+jKOVQ8GL77VFp59aOhDvdu7o+7P2
-	pOsuuTx1fOcPOGN9SGG7Y2/EtDkTQhNd0a7oiS8mHRO25Z5mLc5M0e3bSxsydf8D3Z7qXW0D
-	AAA=
-X-Brightmail-Tracker: H4sIAAAAAAAAAzWSbWxLcRTG/e+9vb0rlasWrpKgMhOy2cTmBPH2wW4ImS+YeCu72Zp1Q8t0
-	QqyrZjUvmUa7UGxqa6Qbm+6FkUZtDJuyKdbQqZcqy8aEzrTrNjXx5eR3zvOcJ+fDoXBRA09M
-	yXL2c4ocqVxCCgjB+iWauH2FC2QJbdVRoNMeBY/Xx4NXagcB/QEdAReqq0gYMt3kg852jgeP
-	OgsIaL9eicDbr0MwMGjCQds4QsCQvoUPgeAbPhjUCEbsLQiMHXoc3O13caiqU2Pws2aYhJ7m
-	HwgM730klHSrCeiznERw3m/iQ/eDFPjqvcODka7PGHT+6kVg8Q1j4HMUIhgyZkGpuTaybvxO
-	wqDzGQ4lhnYEl9934fCj+x2Cupa3COxXC0j4VFyPg8s3Hl7095Hw2HCChK8dFzD4VkNCWYGd
-	Bx1PehBcNOkR+F/bMdBcqSbBeNFGQOO723zo6Alj4DHqMai0rQOvxU9AW7EZi5wbcd2YDKYS
-	DRYpXzAwXLuDQdBi5a+oQOyA9jTBWmsbMFb7fIhkqy5VIXYwpEdsoEKDs9riSNvc24ezx2oP
-	shVtvSQb6n9JsvZfZQTbambY8uMhjD3jjGMbz3fxU1duESxN5+SyXE4xf9lOQeZTqwPt7Vyk
-	eugpJfPR27giFEUx9EImFG7H/zJJxzJud3CUo+kZTO0pP68ICSicdk1nCoOnR4WJ9DbG4bkZ
-	ESiKoGMYT7nqLwrpZMb/kfgXOZ2prHGMuqMiY0NnaJRFdBJTWjTAK0aCMjTGiqJlObnZUpk8
-	KV6ZlZmXI1PF796TbUORb7IcCZ+5hQKulCZEU0gyTug4mCgT8aS5yrzsJsRQuCRa2CtPkImE
-	6dK8Q5xizw7FATmnbEJTKUIyWbhmE7dTRGdI93NZHLeXU/xXMSpKnI/ikz+Yr4rLVcsnZYjn
-	TE07Xna/dcLqkHfK4iezUw8NhrfrhrepVc76fKO1PmlgGtpqnXcv+1Hu7Gazxh1ucs90f451
-	DGvH2sR9rWdTsMOr1m4Onmp4ecSnr2y0WgNxydPymt/EuxPTahI2uFy7nHUxv+t+L97YVaAR
-	0/xZcudSrYRQZkoT5+IKpfQPavH1GEkDAAA=
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSa0xTdxjG/Z9r21lzUrycqRmuC9GgKDidr4tZDGo4H5ZsifGDmxs0cCIn
+	K5e0yGUZsWYr18EQpQYR26qUroWFlchNKxUHKKbITYvKraMBpCBKAC3IWK3h2y+/J8/zfnlF
+	uMxFbhYJiSm8KlGhlFMSQjK91himzt4rhI8thcPAsIeE5bJ6GnJspSRoG1cImPM9p6HkHIIV
+	exuC/q5mHLz3ZhGUuD0UzJh+R/CiNQpWBscxcC1MIdBfq6XAq3tFgdE9iEOvZx30zc9QUF5W
+	jEBXbiOgcaSJhodF1zDQ/b0JfCYLDSZNCLxzR0CbdZwG71gxBcPtWSTUa0ZosD1tRTDX58bA
+	NvqEBPuznXDb/oCAtoZ/MehyPCThufMPGh41VZNQ4erGwLtgwqHHYcBg7HEWBn/anRS0GTbC
+	zWYtgvYCBwbZE7coGCicJKDCPE3ChR4DBYuDDSQ8Kdb7qdJ/0FnXQUPHYgcG1m4C8rU6Ampe
+	V1Lw28B+KOyMgjmrhYKy1iH68GGu6moV4uYqfsU5bZGf7AsGgjvvDOMaLw/SnMF2hqs1h3LX
+	b7/AOOPsPMnZLLkUZ1yawLmXnZ001+g+yHn6LvlDTQn+7affSQ7F8UohlVft+SpGEt+7vEgm
+	j36SPjNUQGhQBZuHxCKW2cd6pkuJVa7OvUq/Z4rZzvb3+/D3vJ7ZxtYWjJF5SCLCmd5gNttX
+	GAiCGJ69cnEyUCCYEHbe5Q14KfMF+7ryGfVhNJi11jgCXuz3Ja7FAMuY/aw+701glGX0Yva+
+	Xoc+FD5m75r7iSIkNaA1FiQTElMTFIJy3+74jEQhfXdsUoIN+d/NlPnu+wY023W8BTEiJF8r
+	daRFCDJSkarOSGhBrAiXr5dOKcMFmTROkfEzr0qKVp1R8uoWtEVEyDdJ9y6kxcmY04oU/iee
+	T+ZVqykmEm/WoBuZa5S6V0tZW3O+iZ0JwXdFdhtvHT1SMPF08pdHO86W+Zqiq0/uErojg2Nc
+	J0au/LXkndr2gyR0PvP8dF2h+ejndfX/pZVrOsY3dGkPrnPnJP2oNH/50bGhY+nRzpTyqilF
+	tjhkuDThs/yqrXdOJkUdyL832v522Rv7tuZC7tdBb/45JZET6nhFRCiuUiv+B9GMYdJqAwAA
+X-Brightmail-Tracker: H4sIAAAAAAAAAzWSe0hTcRTH+93XrqPlZQldCixGkfS0JweSyCi6BEX0TyH0GHbJi5vKZj6i
+	h9OGZvlotWlOzayt8FGmVpqMhpFkZW6tmlhLpWXZNMuctum0teifw/d8vud7OH8cGpe2kAtp
+	ISmVVyXJFTJKTIj3bslZrc5dL0R/tc6DPO1Z+NDnJuGdxkqAdzyPgPK7dRQEjA9FkNd4lYRn
+	zmwCbHdqEfR58xBMThlx0LbOEhDQdYhg3PdeBHoNgllLBwKDXYdDj+0xDnXNGgx+NcxQ4Hky
+	hkA/4KagZEhDwKj5IoKyQaMIhp7ugpG+NhJmXV8wcE4MIzC7ZzBwW3MRBAyJcK26KRg3/KBg
+	qqsbhxK9DcH1ARcOY0P9CJo7PiKw3M6m4HPxfRwc7nnwxjtKQaf+AgUj9nIMvjdQUJVtIcH+
+	0oOgwqhDMNhrwSDnxl0KDBWNBLT2PxKB3TONwQeDDoPaxj3QZx4k4EVxNRY8Nzh1bwEYS3Kw
+	YPmKgb6+DQOfuUa0zYS4SW0hwdU0PcA47esAxdVV1iFuyq9D3LgpB+e0xcH2yfAozp1rSudM
+	L4Ypzu99S3GWiSqCe17NcjfP+zHuUtdqrrXMJdoXGyeOOcYrhDRetXbrUXGCI+AnUz5FZox+
+	LCCykInNR2E0y2xk689Xiv5qilnO9vT48L86glnCNhUMkvlITOOMYzGb6ysMGfMZni2/8i0U
+	IJhlrNfpCXEJs5n9eauX+rd0MVvbYA3xsCDXO/0hLWU2sdfyJ8liJK5Cc2pQhJCUppQLik1r
+	1IkJmUlCxpr4ZGUjCv6T+fT0pRY07tjVjhgayeZKrOnrBCkpT1NnKtsRS+OyCMmwIlqQSo7J
+	M0/yquQjqhMKXt2OFtGEbIFk9wH+qJQ5Lk/lE3k+hVf9dzE6bGEWshzOmLDEHhcKpk/cj+l+
+	WFi2YYcp+/ISl+9df1T4mbiE3wM7iqoziravOjIWV7T0YvNkVn1vvG95aaTnW+erzfG/04Sd
+	j1qe3oq64kgdGslvO5B50KSMfnNopsu0Ni71qnlamRxT2qI2O7u9tm7XfqMmnV6199TKiMdE
+	zA17abgtUUaoE+TrVuAqtfwPz1lkY0sDAAA=
 X-CFilter-Loop: Reflected
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -224,217 +223,128 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 
-Resolved the following false positive by introducing explicit dept map
-and annotations for dealing with this case:
+With multi event sites for a single wait, dept allows to skip tracking
+an event that is recoverable by other recover paths.
 
-   *** DEADLOCK ***
-   context A
-       [S] (unknown)(<sched>:0)
-       [W] lock(&mm->mmap_lock:0)
-       [E] try_to_wake_up(<sched>:0)
-
-   context B
-       [S] lock(&mm->mmap_lock:0)
-       [W] mmu_interval_read_begin(<sched>:0)
-       [E] unlock(&mm->mmap_lock:0)
-
-   [S]: start of the event context
-   [W]: the wait blocked
-   [E]: the event not reachable
-
-dept already tracks dependencies between scheduler sleep and ttwu based
-on internal timestamp called wgen.  However, in case that more than one
-event contexts are overwrapped, dept has chance to wrongly guess the
-start of the event context like the following:
-
-   <before this patch>
-
-   context A: lock L
-   context A: mmu_notifier_invalidate_range_start()
-
-   context B: lock L'
-   context B: mmu_interval_read_begin() : wait
-   <- here is the start of the event context of C.
-   context B: unlock L'
-
-   context C: lock L''
-   context C: mmu_notifier_invalidate_range_start()
-
-   context A: mmu_notifier_invalidate_range_end()
-   context A: unlock L
-
-   context C: mmu_notifier_invalidate_range_end() : ttwu
-   <- here is the end of the event context of C.  dept observes a wait,
-      lock L'' within the event context of C.  Which causes a false
-      positive dept report.
-
-   context C: unlock L''
-
-By explicitly annotating the interesting event context range, make dept
-work with more precise information like:
-
-   <after this patch>
-
-   context A: lock L
-   context A: mmu_notifier_invalidate_range_start()
-
-   context B: lock L'
-   context B: mmu_interval_read_begin() : wait
-   context B: unlock L'
-
-   context C: lock L''
-   context C: mmu_notifier_invalidate_range_start()
-   <- here is the start of the event context of C.
-
-   context A: mmu_notifier_invalidate_range_end()
-   context A: unlock L
-
-   context C: mmu_notifier_invalidate_range_end() : ttwu
-   <- here is the end of the event context of C.  dept doesn't observe
-      the wait, lock L'' within the event context of C.  context C is
-      responsible only for the range delimited by
-      mmu_notifier_invalidate_range_{start,end}().
-
-   context C: unlock L''
+Introduce an API, event_site(), to skip tracking the event in the case.
 
 Signed-off-by: Byungchul Park <byungchul@sk.com>
 ---
- include/linux/mmu_notifier.h | 26 ++++++++++++++++++++++++++
- mm/mmu_notifier.c            | 31 +++++++++++++++++++++++++++++--
- 2 files changed, 55 insertions(+), 2 deletions(-)
+ include/linux/dept.h     | 30 ++++++++++++++++++++++++++++++
+ include/linux/sched.h    |  6 ++++++
+ kernel/dependency/dept.c | 20 ++++++++++++++++++++
+ 3 files changed, 56 insertions(+)
 
-diff --git a/include/linux/mmu_notifier.h b/include/linux/mmu_notifier.h
-index d1094c2d5fb6..2b70dce149f0 100644
---- a/include/linux/mmu_notifier.h
-+++ b/include/linux/mmu_notifier.h
-@@ -428,6 +428,14 @@ static inline int mmu_notifier_test_young(struct mm_struct *mm,
- 	return 0;
- }
+diff --git a/include/linux/dept.h b/include/linux/dept.h
+index c796cdceb04e..7b822caee874 100644
+--- a/include/linux/dept.h
++++ b/include/linux/dept.h
+@@ -239,6 +239,31 @@ extern void dept_task_exit(struct task_struct *t);
+ extern void dept_free_range(void *start, unsigned int sz);
+ extern void dept_mark_event_site_used(void *start, void *end);
  
-+#ifdef CONFIG_DEPT
-+void mmu_notifier_invalidate_dept_ecxt_start(struct mmu_notifier_range *range);
-+void mmu_notifier_invalidate_dept_ecxt_end(struct mmu_notifier_range *range);
-+#else
-+static inline void mmu_notifier_invalidate_dept_ecxt_start(struct mmu_notifier_range *range) {}
-+static inline void mmu_notifier_invalidate_dept_ecxt_end(struct mmu_notifier_range *range) {}
-+#endif
++extern void disable_event_track(void);
++extern void enable_event_track(void);
 +
- static inline void
- mmu_notifier_invalidate_range_start(struct mmu_notifier_range *range)
- {
-@@ -439,6 +447,12 @@ mmu_notifier_invalidate_range_start(struct mmu_notifier_range *range)
- 		__mmu_notifier_invalidate_range_start(range);
- 	}
- 	lock_map_release(&__mmu_notifier_invalidate_range_start_map);
++#define event_site(es, evt_func, ...)					\
++do {									\
++	unsigned long _flags;						\
++	bool _disable;							\
++									\
++	local_irq_save(_flags);						\
++	dept_event_site_used(es);					\
++	/*								\
++	 * If !list_empty(&(es)->dept_head), the event site can be	\
++	 * recovered by others.  Do not track event dependency if so.	\
++	 */								\
++	_disable = !list_empty(&(es)->dep_head);			\
++	if (_disable)							\
++		disable_event_track();					\
++									\
++	evt_func(__VA_ARGS__);						\
++									\
++	if (_disable)							\
++		enable_event_track();					\
++	local_irq_restore(_flags);					\
++} while (0)
 +
-+	/*
-+	 * From now on, waiters could be there by this start until
-+	 * mmu_notifier_invalidate_range_end().
-+	 */
-+	mmu_notifier_invalidate_dept_ecxt_start(range);
- }
+ extern void dept_map_init(struct dept_map *m, struct dept_key *k, int sub_u, const char *n);
+ extern void dept_map_reinit(struct dept_map *m, struct dept_key *k, int sub_u, const char *n);
+ extern void dept_ext_wgen_init(struct dept_ext_wgen *ewg);
+@@ -302,6 +327,11 @@ struct dept_event_site { };
+ #define dept_task_exit(t)				do { } while (0)
+ #define dept_free_range(s, sz)				do { } while (0)
+ #define dept_mark_event_site_used(s, e)			do { } while (0)
++#define event_site(es, evt_func, ...)					\
++do {									\
++	(void)(es);							\
++	evt_func(__VA_ARGS__);						\
++} while (0)
  
- /*
-@@ -459,6 +473,12 @@ mmu_notifier_invalidate_range_start_nonblock(struct mmu_notifier_range *range)
- 		ret = __mmu_notifier_invalidate_range_start(range);
- 	}
- 	lock_map_release(&__mmu_notifier_invalidate_range_start_map);
-+
-+	/*
-+	 * From now on, waiters could be there by this start until
-+	 * mmu_notifier_invalidate_range_end().
-+	 */
-+	mmu_notifier_invalidate_dept_ecxt_start(range);
- 	return ret;
- }
- 
-@@ -470,6 +490,12 @@ mmu_notifier_invalidate_range_end(struct mmu_notifier_range *range)
- 
- 	if (mm_has_notifiers(range->mm))
- 		__mmu_notifier_invalidate_range_end(range);
-+
-+	/*
-+	 * The event context that has been started by
-+	 * mmu_notifier_invalidate_range_start() ends.
-+	 */
-+	mmu_notifier_invalidate_dept_ecxt_end(range);
- }
- 
- static inline void mmu_notifier_arch_invalidate_secondary_tlbs(struct mm_struct *mm,
-diff --git a/mm/mmu_notifier.c b/mm/mmu_notifier.c
-index 8e0125dc0522..31af5ea54a0c 100644
---- a/mm/mmu_notifier.c
-+++ b/mm/mmu_notifier.c
-@@ -46,6 +46,7 @@ struct mmu_notifier_subscriptions {
- 	unsigned long active_invalidate_ranges;
- 	struct rb_root_cached itree;
- 	wait_queue_head_t wq;
-+	struct dept_map dmap;
- 	struct hlist_head deferred_list;
- };
- 
-@@ -165,6 +166,25 @@ static void mn_itree_inv_end(struct mmu_notifier_subscriptions *subscriptions)
- 	wake_up_all(&subscriptions->wq);
- }
- 
-+#ifdef CONFIG_DEPT
-+void mmu_notifier_invalidate_dept_ecxt_start(struct mmu_notifier_range *range)
-+{
-+	struct mmu_notifier_subscriptions *subscriptions =
-+		range->mm->notifier_subscriptions;
-+
-+	if (subscriptions)
-+		sdt_ecxt_enter(&subscriptions->dmap);
-+}
-+void mmu_notifier_invalidate_dept_ecxt_end(struct mmu_notifier_range *range)
-+{
-+	struct mmu_notifier_subscriptions *subscriptions =
-+		range->mm->notifier_subscriptions;
-+
-+	if (subscriptions)
-+		sdt_ecxt_exit(&subscriptions->dmap);
-+}
-+#endif
-+
- /**
-  * mmu_interval_read_begin - Begin a read side critical section against a VA
-  *                           range
-@@ -246,9 +266,12 @@ mmu_interval_read_begin(struct mmu_interval_notifier *interval_sub)
+ #define dept_map_init(m, k, su, n)			do { (void)(n); (void)(k); } while (0)
+ #define dept_map_reinit(m, k, su, n)			do { (void)(n); (void)(k); } while (0)
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index 5834555a3d09..a1737631ff54 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -879,6 +879,11 @@ struct dept_task {
  	 */
- 	lock_map_acquire(&__mmu_notifier_invalidate_range_start_map);
- 	lock_map_release(&__mmu_notifier_invalidate_range_start_map);
--	if (is_invalidating)
-+	if (is_invalidating) {
-+		sdt_might_sleep_start(&subscriptions->dmap);
- 		wait_event(subscriptions->wq,
- 			   READ_ONCE(subscriptions->invalidate_seq) != seq);
-+		sdt_might_sleep_end();
-+	}
+ 	int				missing_ecxt;
  
++	/*
++	 * not to track events
++	 */
++	int				disable_event_track_cnt;
++
  	/*
- 	 * Notice that mmu_interval_read_retry() can already be true at this
-@@ -625,6 +648,7 @@ int __mmu_notifier_register(struct mmu_notifier *subscription,
- 
- 		INIT_HLIST_HEAD(&subscriptions->list);
- 		spin_lock_init(&subscriptions->lock);
-+		sdt_map_init(&subscriptions->dmap);
- 		subscriptions->invalidate_seq = 2;
- 		subscriptions->itree = RB_ROOT_CACHED;
- 		init_waitqueue_head(&subscriptions->wq);
-@@ -1070,9 +1094,12 @@ void mmu_interval_notifier_remove(struct mmu_interval_notifier *interval_sub)
+ 	 * for tracking IRQ-enable state
  	 */
- 	lock_map_acquire(&__mmu_notifier_invalidate_range_start_map);
- 	lock_map_release(&__mmu_notifier_invalidate_range_start_map);
--	if (seq)
-+	if (seq) {
-+		sdt_might_sleep_start(&subscriptions->dmap);
- 		wait_event(subscriptions->wq,
- 			   mmu_interval_seq_released(subscriptions, seq));
-+		sdt_might_sleep_end();
-+	}
+@@ -916,6 +921,7 @@ struct dept_task {
+ 	.stage_wait_stack = NULL,				\
+ 	.stage_lock = (arch_spinlock_t)__ARCH_SPIN_LOCK_UNLOCKED,\
+ 	.missing_ecxt = 0,					\
++	.disable_event_track_cnt = 0,				\
+ 	.hardirqs_enabled = false,				\
+ 	.softirqs_enabled = false,				\
+ 	.task_exit = false,					\
+diff --git a/kernel/dependency/dept.c b/kernel/dependency/dept.c
+index 07d883579269..3c3ec2701bd6 100644
+--- a/kernel/dependency/dept.c
++++ b/kernel/dependency/dept.c
+@@ -2573,6 +2573,23 @@ static void __dept_wait(struct dept_map *m, unsigned long w_f,
+ 	}
+ }
  
- 	/* pairs with mmgrab in mmu_interval_notifier_insert() */
- 	mmdrop(mm);
++void disable_event_track(void)
++{
++	dept_task()->disable_event_track_cnt++;
++}
++EXPORT_SYMBOL_GPL(disable_event_track);
++
++void enable_event_track(void)
++{
++	dept_task()->disable_event_track_cnt--;
++}
++EXPORT_SYMBOL_GPL(enable_event_track);
++
++static bool event_track_disabled(void)
++{
++	return !!dept_task()->disable_event_track_cnt;
++}
++
+ /*
+  * Called between dept_enter() and dept_exit().
+  */
+@@ -2585,6 +2602,9 @@ static void __dept_event(struct dept_map *m, struct dept_map *real_m,
+ 	struct dept_key *k;
+ 	int e;
+ 
++	if (event_track_disabled())
++		return;
++
+ 	e = find_first_bit(&e_f, DEPT_MAX_SUBCLASSES_EVT);
+ 
+ 	if (DEPT_WARN_ON(e >= DEPT_MAX_SUBCLASSES_EVT))
 -- 
 2.17.1
 
