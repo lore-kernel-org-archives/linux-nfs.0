@@ -1,33 +1,30 @@
 Received: from mx01.omp.ru (mx01.omp.ru [90.154.21.10])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 291EF246333
-	for <linux-nfs@vger.kernel.org>; Mon,  8 Dec 2025 20:15:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ED0C52236E3
+	for <linux-nfs@vger.kernel.org>; Mon,  8 Dec 2025 20:19:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.154.21.10
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1765224944; cv=none; b=T1b31xnt0ZaG/wMmK4bjr7UXAY6jMIIvg4Zif8QnWCLMd3Kqga4CA+tf0LpAsX0OT1/pAMPZUTaJv/B1xROgSDPqXOn2veUD8eAhc9sgg02137EAHpovWHzZvCZq2MFa0C80gY0FctmQBtdQnPR6TihEC+y3SZ8nA0oSiudcJc8=
+	t=1765225169; cv=none; b=JS1MFqy1+p2RmE0VBc6s0C9CPjl+LiIwH761uqq9LY4X5kij0GAcG6szFihEm2ejKJhK9NfdGplCjoyTR9qIdC+xqFo+cDP3LSD9l4ZfaRla4U94NvHQfB/ntVkwbRI8XEtHPKlIJkF8/3y2k85bEyXTQ2zy1IoMqjUSTnBskJs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1765224944; c=relaxed/simple;
-	bh=dT1wIW9NCgFNFBS8ApIE067jcZcHdWLCvrILKVEvMww=;
-	h=From:To:CC:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=OuDEYf3PDW87Jii1Box3sPbO8yihw3er8+TtO9PE4L9UZjTpd7RTyeX4stRDtlmrKAbH4UPQPcMt2oc0qf9R/UzHO/r1poWQC0xyZw2ZmP2XnNnC6fBroV2KfO451P1e6EVVYJthudOTokTJTguQysMqSaKxKTPVud8jNL8IFuo=
+	s=arc-20240116; t=1765225169; c=relaxed/simple;
+	bh=wgMhRdNndt5ihz00iqNKaO5TlxeMFRbubpfs0Xmhzx4=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=XhMCcubOmHX0aQjqHNsysdhf+JfWk0PCb8piz5hWZv3HviJ4hYOWFffb7YnDLYf4zibsDmLDglgIELVlQUjPwBKb11lKWDsSdj2E7u6Cmz4lucV7BpH8F5xy4R4k44gMbsSEFIaGrBu3P5AAJaN9I7ANdVolSgZev5QU5OluMfk=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=omp.ru; spf=pass smtp.mailfrom=omp.ru; arc=none smtp.client-ip=90.154.21.10
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=omp.ru
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=omp.ru
 Received: from wasted (213.87.153.35) by msexch01.omp.ru (10.188.4.12) with
  Microsoft SMTP Server (version=TLS1_2,
  cipher=TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384) id 15.2.1258.12; Mon, 8 Dec
- 2025 23:15:33 +0300
+ 2025 23:04:10 +0300
 From: Sergey Shtylyov <s.shtylyov@omp.ru>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
 	<linux-nfs@vger.kernel.org>
 CC: Sergey Shtylyov <s.shtylyov@omp.ru>
-Subject: [PATCH RESEND 2/2] NFSv4: limit lease period in nfs4_set_lease_period()
-Date: Mon, 8 Dec 2025 23:15:04 +0300
-Message-ID: <20251208201506.20880-3-s.shtylyov@omp.ru>
+Subject: [PATCH 0/2] 
+Date: Mon, 8 Dec 2025 23:03:35 +0300
+Message-ID: <20251208200345.20414-1-s.shtylyov@omp.ru>
 X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20251208201506.20880-1-s.shtylyov@omp.ru>
-References: <20251208201506.20880-1-s.shtylyov@omp.ru>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -40,7 +37,7 @@ X-ClientProxiedBy: msexch01.omp.ru (10.188.4.12) To msexch01.omp.ru
  (10.188.4.12)
 X-KSE-ServerInfo: msexch01.omp.ru, 9
 X-KSE-AntiSpam-Interceptor-Info: scan successful
-X-KSE-AntiSpam-Version: 6.1.1, Database issued on: 12/08/2025 20:05:15
+X-KSE-AntiSpam-Version: 6.1.1, Database issued on: 12/08/2025 19:47:10
 X-KSE-AntiSpam-Status: KAS_STATUS_NOT_DETECTED
 X-KSE-AntiSpam-Method: none
 X-KSE-AntiSpam-Rate: 19
@@ -58,7 +55,7 @@ X-KSE-AntiSpam-Info: {Found in DNSBL: 213.87.153.35 in (user)
 X-KSE-AntiSpam-Info: {Found in DNSBL: 213.87.153.35 in (user)
  dbl.spamhaus.org}
 X-KSE-AntiSpam-Info:
-	d41d8cd98f00b204e9800998ecf8427e.com:7.1.1;omp.ru:7.1.1;127.0.0.199:7.1.2
+	omp.ru:7.1.1;d41d8cd98f00b204e9800998ecf8427e.com:7.1.1;127.0.0.199:7.1.2
 X-KSE-AntiSpam-Info: {Tracking_ip_hunter}
 X-KSE-AntiSpam-Info: FromAlignment: s
 X-KSE-AntiSpam-Info: ApMailHostAddress: 213.87.153.35
@@ -71,56 +68,35 @@ X-KSE-AntiSpam-Info: Auth:dmarc=temperror header.from=omp.ru;spf=temperror
 X-KSE-Antiphishing-Info: Clean
 X-KSE-Antiphishing-ScanningType: Heuristic
 X-KSE-Antiphishing-Method: None
-X-KSE-Antiphishing-Bases: 12/08/2025 20:08:00
+X-KSE-Antiphishing-Bases: 12/08/2025 19:48:00
 X-KSE-Antivirus-Interceptor-Info: scan successful
 X-KSE-Antivirus-Info: Clean, bases: 12/8/2025 6:46:00 PM
 X-KSE-Attachment-Filter-Triggered-Rules: Clean
 X-KSE-Attachment-Filter-Triggered-Filters: Clean
 X-KSE-BulkMessagesFiltering-Scan-Result: InTheLimit
 
-In nfs4_set_lease_period(), the passed 32-bit lease period in seconds is
-multiplied by HZ -- that might overflow before being implicitly cast to
-*unsigned long* (32/64-bit type), while initializing the lease variable.
-Cap the lease period at MAX_LEASE_PERIOD (#define'd to 1 hour for now),
-before multipying to avoid such overflow...
+The nfs_client::cl_lease_time field (as well as the jiffies variable it's
+used with) is declared as *unsigned long*, which is 32-bit type on 32-bit
+arches and 64-bit type on 64-bit arches. When nfs4_set_lease_period() that
+sets nfs_client::cl_lease_time is called, 32-bit nfs_fsinfo::lease_time
+field is multiplied by HZ -- that might overflow before being implicitly
+cast to *unsigned long*.  Actually, there's no need to multiply by HZ at
+all the call sites of nfs4_set_lease_period() -- it makes more sense to do
+that once, inside that function.  That way, we can avoid such overflow by
+capping the lease period at e.g. 1 hour before multipying it by HZ...
 
-Found by Linux Verification Center (linuxtesting.org) with the Svace static
-analysis tool.
+The patches below are against the linux-next branch of Trond Myklebust's
+linux-nfs.git repo.
 
-Signed-off-by: Sergey Shtylyov <s.shtylyov@omp.ru>
-Suggested-by: Trond Myklebust <trondmy@kernel.org>
----
- fs/nfs/nfs4renewd.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+Sergey Shtylyov (2):
+  NFSv4: pass lease period in seconds to nfs4_set_lease_period()
+  NFSv4: limit lease period in nfs4_set_lease_period()
 
-diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
-index 043b2de8d416..30065df1482e 100644
---- a/fs/nfs/nfs4renewd.c
-+++ b/fs/nfs/nfs4renewd.c
-@@ -133,6 +133,8 @@ nfs4_kill_renewd(struct nfs_client *clp)
- 	cancel_delayed_work_sync(&clp->cl_renewd);
- }
- 
-+#define MAX_LEASE_PERIOD (60 * 60)	/* 1 hour */
-+
- /**
-  * nfs4_set_lease_period - Sets the lease period on a nfs_client
-  *
-@@ -141,7 +143,13 @@ nfs4_kill_renewd(struct nfs_client *clp)
-  */
- void nfs4_set_lease_period(struct nfs_client *clp, u32 period)
- {
--	unsigned long lease = period * HZ;
-+	unsigned long lease;
-+
-+	/* Limit the lease period */
-+	if (period < MAX_LEASE_PERIOD)
-+		lease = period * HZ;
-+	else
-+		lease = MAX_LEASE_PERIOD * HZ;
- 
- 	spin_lock(&clp->cl_lock);
- 	clp->cl_lease_time = lease;
+ fs/nfs/nfs4_fs.h    |  3 +--
+ fs/nfs/nfs4proc.c   |  2 +-
+ fs/nfs/nfs4renewd.c | 15 ++++++++++++---
+ fs/nfs/nfs4state.c  |  2 +-
+ 4 files changed, 15 insertions(+), 7 deletions(-)
+
 -- 
 2.52.0
-
