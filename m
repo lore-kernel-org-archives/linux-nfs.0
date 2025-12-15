@@ -1,380 +1,193 @@
-Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A100324B1E
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Dec 2025 18:14:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.165.32
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9FBAF26462E
+	for <linux-nfs@vger.kernel.org>; Mon, 15 Dec 2025 18:59:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1765822492; cv=none; b=BTlkTXnMf2qGciwEloM82LV/jnNsc6Er+Pey9zCwxgjeCsDodg3jFsYDUsMIpXiNB99eE1zBRptuRuFCMkjV8gEfdtdQd/nyDuETvKjnSrmdQEQvZXS4HgMWvogbztpAV/eXV8mo8QWsUZ3w5n2fjRpBt47PwlDdR9aZs9dFE00=
+	t=1765825151; cv=none; b=dQdQ6mlzWgwq8S/yxzFUe8nMzYYGeCOGgug3Nqwo21FHKvIyPvHTNwsEPesuIOwQzKpxUbfgaSaA+2KwUbyW/PPTfguSkj0ugwSR1huaKzML0GcQGKoIsJhk73cIxJR30YSAOQp6wrYyNvRZAPl/IkjTC/bAkdCLPR58HySsgc4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1765822492; c=relaxed/simple;
-	bh=CVvAttq0bLLA3SDVEb6qkWlFDsLWxcGfsx59CZO514M=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=D0yiWu9C10ULF5Pu+jjdqSh7TDL+e/NAPt1U9tioPiNMqAA2sjs1ZpgnIX7IKu0PnDX9aCwqjYW96LWz5zws6/UuhTd6SzbUQaC8p87Xmr0SSJ0qVZqmoTdTJ7/C80BF6WEe32q80rYRU0GyBxMnMEfTwjQXrxpBcCa+PvNgVY0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=EuFgzQPT; arc=none smtp.client-ip=205.220.165.32
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
+	s=arc-20240116; t=1765825151; c=relaxed/simple;
+	bh=ANU4TMH/meE0YQ/m/UWEINZvjQGpl5VXmoBd0nO1VJY=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=XFzLQcHEj54i7LDtqxWb8KL35ORSrpdN55fjERSHHxZDh+JXwU09A7WoPtyKXtN1SXKY09e+eFBPTsB8kxaUmLgNPviqRAadOezlF1SoDiwF4kJtbH1w1aqyMjo85D/xLlFf/Ln1//7w9nTGg6dP38BLAMj6sOli+qFrwiH7Vt8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GSGb39cU; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="EuFgzQPT"
-Received: from pps.filterd (m0246627.ppops.net [127.0.0.1])
-	by mx0b-00069f02.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 5BFFNZBS2330570;
-	Mon, 15 Dec 2025 18:14:26 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
-	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=
-	corp-2025-04-25; bh=I4em+02+rD6cv0MKrGC1+yM3r/WQXJfqbMQ1AhFts7w=; b=
-	EuFgzQPTh/NLhF7CARMbQY/uWuBRwBprkEc4CyC+k2IlGqZV5WBLT1b7iIiHePJy
-	xRtn9GS5BglUGUkgLA16Sqr4MvHP6l50Pi91QjOjbFwYMz9jUeqaRkOMGSef/gL3
-	UvIAzY8CyR38k9Ki76hx+1bZtrQoQzfLrTKdNUQa2zc6GVqqR+95eu7BSuatObAM
-	b3aQRZP2lMtwhxE7LJucYTBpw7CNkxxH9lxH2vCuw77VqZLu4XPqGSqCyFE6GeZo
-	grAPzFl3lCeb34jaG8ReZJn4BSujDBklfIYjsEoxrTn3HVcY+Ccf1kgVV+rRfx0N
-	GU6IpfQiiDx7nMLvy/i2KA==
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.appoci.oracle.com [138.1.37.129])
-	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4b0xqxtm22-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 15 Dec 2025 18:14:26 +0000 (GMT)
-Received: from pps.filterd (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-	by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 5BFI154m024951;
-	Mon, 15 Dec 2025 18:14:26 GMT
-Received: from pps.reinject (localhost [127.0.0.1])
-	by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTPS id 4b0xk98b99-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Mon, 15 Dec 2025 18:14:25 +0000
-Received: from phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com [127.0.0.1])
-	by pps.reinject (8.17.1.5/8.17.1.5) with ESMTP id 5BFIEOYK011653;
-	Mon, 15 Dec 2025 18:14:25 GMT
-Received: from labops-common-sca-01.us.oracle.com (labops-common-sca-01.us.oracle.com [10.132.26.161])
-	by phxpaimrmta03.imrmtpd1.prodappphxaev1.oraclevcn.com (PPS) with ESMTP id 4b0xk98b7y-3;
-	Mon, 15 Dec 2025 18:14:25 +0000
-From: Dai Ngo <dai.ngo@oracle.com>
-To: chuck.lever@oracle.com, jlayton@kernel.org, neilb@ownmail.net,
-        okorniev@redhat.com, tom@talpey.com, hch@lst.de
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] NFSD: Add infrastructure for tracking persistent SCSI registration keys
-Date: Mon, 15 Dec 2025 10:13:34 -0800
-Message-ID: <20251215181418.2201035-3-dai.ngo@oracle.com>
-X-Mailer: git-send-email 2.47.3
-In-Reply-To: <20251215181418.2201035-1-dai.ngo@oracle.com>
-References: <20251215181418.2201035-1-dai.ngo@oracle.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GSGb39cU"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2B3D6C116B1;
+	Mon, 15 Dec 2025 18:59:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1765825151;
+	bh=ANU4TMH/meE0YQ/m/UWEINZvjQGpl5VXmoBd0nO1VJY=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
+	b=GSGb39cUHo973zAsyhZGXeQbLt57byyJ9JUOCdyHoz3tdr1qUa126B7/5/fVtz6hh
+	 5mawABjThuY4wcS4QpqDOvnaFzNFTXAuLABSE6NMWgaf1SxYt1JUa8deaVD4jvP7TH
+	 mFMDWThQQDLCzoQiiNsUE1OAS1VTKlGRxUvkSaUqihTFRuTApHjsVkmX74kXflxdL/
+	 UcXTNOklFfHjW6WxX1+xPvpm1VT7YZL4Of095B5wyg4eV6K/WS5o1Mpzux2VH14OHZ
+	 X/vsYtkHIqKCV5mqWxVD6X2mPuNvzLBcRvLgC1wKzESWHYQp3dNwCQHLlAC22K4v3x
+	 okIYpNouRAH6Q==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 3A0F0F4008A;
+	Mon, 15 Dec 2025 13:59:10 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Mon, 15 Dec 2025 13:59:10 -0500
+X-ME-Sender: <xms:flpAaUPBxeiVYVpPhIRUvUlaeBuSybq8J6ddIHc6zkMtKbbr-I1jcw>
+    <xme:flpAaVxPKOe1ZK0As9bb4l9A5D4NmvzxNWbULXOV4X2V3IXg2ClrfdwLG0sV6WiFC
+    UGrsm9uF0PmAeoz4S-_eHXsQ6HXgGDW1m7FgxBemfOxnLl_Dd8I>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdefjeehlecutefuodetggdotefrod
+    ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpuffrtefokffrpgfnqfghnecuuegr
+    ihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjug
+    hrpefoggffhffvvefkjghfufgtgfesthhqredtredtjeenucfhrhhomhepfdevhhhutghk
+    ucfnvghvvghrfdcuoegtvghlsehkvghrnhgvlhdrohhrgheqnecuggftrfgrthhtvghrnh
+    epgffhgeeutdeiieevuefgvedtjeefudekvefggefguefgtefgledtteeuleelleetnecu
+    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomheptghhuhgtkh
+    hlvghvvghrodhmvghsmhhtphgruhhthhhpvghrshhonhgrlhhithihqdduieefgeelleel
+    heelqdefvdelkeeggedvfedqtggvlheppehkvghrnhgvlhdrohhrghesfhgrshhtmhgrih
+    hlrdgtohhmpdhnsggprhgtphhtthhopeekpdhmohguvgepshhmthhpohhuthdprhgtphht
+    thhopehjlhgrhihtohhnsehkvghrnhgvlhdrohhrghdprhgtphhtthhopehhtghhsehlsh
+    htrdguvgdprhgtphhtthhopegthhhutghkrdhlvghvvghrsehorhgrtghlvgdrtghomhdp
+    rhgtphhtthhopegurghirdhnghhosehorhgrtghlvgdrtghomhdprhgtphhtthhopehnvg
+    hilhgssehofihnmhgrihhlrdhnvghtpdhrtghpthhtohepohhkohhrnhhivghvsehrvggu
+    hhgrthdrtghomhdprhgtphhtthhopehtohhmsehtrghlphgvhidrtghomhdprhgtphhtth
+    hopehlihhnuhigqdhnfhhssehvghgvrhdrkhgvrhhnvghlrdhorhhg
+X-ME-Proxy: <xmx:flpAadi8SEK6MX6iaB1aVyMSrlRUnGrUrw6KHJ92uMlTTcw3E_quQg>
+    <xmx:flpAacCVq26mfh7mgpOWyf1yQcSfnpPN4l4Xim7ce14kvcRci1Ypsg>
+    <xmx:flpAaTvR1_zSPZLFcAyAGeZQa9BKUsTrBoSNQfv8f9ie_cHtY-4DAw>
+    <xmx:flpAaQcW-3oT10S1JJZ9rb4xx52BkShqUwtXAHJLwdO8XAGsTg52Pw>
+    <xmx:flpAaY_76dXXphV7EiCLELvKlt0ygGiXliLV81u2ywthig9fYIZXqca6>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 14E57780054; Mon, 15 Dec 2025 13:59:10 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1121,Hydra:6.1.9,FMLib:17.12.100.49
- definitions=2025-12-15_04,2025-12-15_02,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 mlxscore=0 spamscore=0
- bulkscore=0 suspectscore=0 phishscore=0 mlxlogscore=999 malwarescore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2510240000
- definitions=main-2512150158
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjUxMjE1MDE1OCBTYWx0ZWRfX1OsemFfr7YwB
- A6YDwYVx02P1gi2dDDynzD9qwwSkuZ+awZ1qZEN6Kaa1fTlWEQrzIEoCOof3hoQnNAB1ahtNUHp
- MmXdbHgm9o/TPDmS7UV//UbfD3bNWTekRyBeGzCSj0vBlBED8GfDv9/VyzzaT6Nqd+/lK8I+Q3p
- hZhMYJ3xqUBmU0nIJ730xkp1ODECEX5N1CE8fUgWuYlSpxgcXpX+zokXtglcp6KF33yC0yGqe4a
- CCvg7AWsi4DmWPYIx+AdXI8ewru9VmScLS5WnC4Lb1tadb45QjpoxBlWCMH9GxRDj5jx4xLkb22
- 0DY8hGpt9Ol1QAArgu+mfSrqkpr4qi/52w3nbO22ZQ724i/XY1sgb+X9CwqG/jBcnbZ3kKUIkeZ
- yu+zrN2AHH/IehVsSsGVLK83l80uSA==
-X-Proofpoint-GUID: dXvWNosmahI_UiGPXijAotusyREXV1dE
-X-Proofpoint-ORIG-GUID: dXvWNosmahI_UiGPXijAotusyREXV1dE
-X-Authority-Analysis: v=2.4 cv=BYDVE7t2 c=1 sm=1 tr=0 ts=69405002 b=1 cx=c_pps
- a=WeWmnZmh0fydH62SvGsd2A==:117 a=WeWmnZmh0fydH62SvGsd2A==:17
- a=IkcTkHD0fZMA:10 a=wP3pNCr1ah4A:10 a=VkNPw1HP01LnGYTKEx00:22
- a=yPCof4ZbAAAA:8 a=-T7NtEw7ogVVi_X37dUA:9 a=3ZKOabzyN94A:10 a=QEXdDO2ut3YA:10
+X-ThreadId: AEa6kMrq8Ft3
+Date: Mon, 15 Dec 2025 13:58:49 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: "Dai Ngo" <dai.ngo@oracle.com>, "Chuck Lever" <chuck.lever@oracle.com>,
+ "Jeff Layton" <jlayton@kernel.org>, neilb@ownmail.net,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Tom Talpey" <tom@talpey.com>,
+ "Christoph Hellwig" <hch@lst.de>
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <f8b4865f-044c-4a5c-b4a6-6e1ea9e756e4@app.fastmail.com>
+In-Reply-To: <20251215181418.2201035-2-dai.ngo@oracle.com>
+References: <20251215181418.2201035-1-dai.ngo@oracle.com>
+ <20251215181418.2201035-2-dai.ngo@oracle.com>
+Subject: Re: [PATCH 1/3] NFSD: Move clientid_hashval and same_clid to header files
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-Introduce a per-net namespace hash table to maintain records of
-NFSv4 clients that have been assigned persistent registration
-keys for accessing SCSI block devices. Each entry in this table
-consists of the client’s ID, the associated SCSI block device
-(dev_t), and a fenced status flag.
 
-This infrastructure is used to prevent duplicate fencing operations.
 
-Implementation details:
+On Mon, Dec 15, 2025, at 1:13 PM, Dai Ngo wrote:
+> As preparation for introducing infrastructure to track SCSI fencing ev=
+ents,
+> relocate the clientid_hashval function from nfs4state.c to nfsd.h and =
+the
+> same_clid function from nfs4state.c to state.h.
+>
+> No functional changes are introduced in this commit=E2=80=94only movem=
+ent of code
+> to improve accessibility for forthcoming enhancements.
+>
+> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+> ---
+>  fs/nfsd/nfs4state.c | 15 ---------------
+>  fs/nfsd/nfsd.h      |  5 +++++
+>  fs/nfsd/state.h     |  5 +++++
+>  3 files changed, 10 insertions(+), 15 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 35004568d43e..13b4dc89b1e8 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1423,15 +1423,6 @@ static void revoke_delegation(struct nfs4_deleg=
+ation *dp)
+>  	destroy_unhashed_deleg(dp);
+>  }
+>=20
+> -/*
+> - * SETCLIENTID state
+> - */
+> -
+> -static unsigned int clientid_hashval(u32 id)
+> -{
+> -	return id & CLIENT_HASH_MASK;
+> -}
+> -
+>  static unsigned int clientstr_hashval(struct xdr_netobj name)
+>  {
+>  	return opaque_hashval(name.data, 8) & CLIENT_HASH_MASK;
+> @@ -2621,12 +2612,6 @@ same_verf(nfs4_verifier *v1, nfs4_verifier *v2)
+>  	return 0 =3D=3D memcmp(v1->data, v2->data, sizeof(v1->data));
+>  }
+>=20
+> -static int
+> -same_clid(clientid_t *cl1, clientid_t *cl2)
+> -{
+> -	return (cl1->cl_boot =3D=3D cl2->cl_boot) && (cl1->cl_id =3D=3D cl2-=
+>cl_id);
+> -}
+> -
+>  static bool groups_equal(struct group_info *g1, struct group_info *g2)
+>  {
+>  	int i;
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 50be785f1d2c..369efe6ed665 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -510,6 +510,11 @@ static inline bool nfsd_attrs_supported(u32=20
+> minorversion, const u32 *bmval)
+>  	return bmval_is_subset(bmval, nfsd_suppattrs[minorversion]);
+>  }
+>=20
+> +static inline unsigned int clientid_hashval(u32 id)
+> +{
+> +	return id & CLIENT_HASH_MASK;
+> +}
+> +
 
-When a client receives a persistent registration key for a SCSI
-device the server creates a new record (with the ‘fenced’ flag set
-to false) and inserts it into the hash table for the corresponding
-network namespace.
+I can't comment on the overall purpose of this series yet, but
+there are one or two mechanical issues that I see already.
 
-When the server needs to perform a fencing operation, it consults
-the client’s record to check the existing fenced status and avoids
-issuing redundant fencing operations if the client is already
-fenced.
+Let's not add NFSv4- or pNFS-specific functions to fs/nfsd/nfsd.h.
+Same comment applies to the function declarations this series moves
+in a subsequent patch.
 
-Whenever a client issues a GETDEVINFO call to obtain a new layout,
-the server resets the client’s fenced flag to false, allowing for
-new fencing actions as appropriate.
+Why can't clientid_hashval() go into fs/nfsd/state.h instead?
 
-Upon client unmount or session teardown, all records belonging to
-that client are cleaned up in __destroy_client. The entire hash table
-and all contained client records are freed when the corresponding
-network namespace is shut down.
+Also, when a function becomes accessible outside of one source
+file (like a "static inline" function or a callback function),
+it needs to get a kdoc comment that documents its API contract.
 
-Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
----
- fs/nfsd/blocklayout.c | 129 ++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/netns.h       |   2 +
- fs/nfsd/nfs4state.c   |   1 +
- fs/nfsd/nfsd.h        |  16 ++++++
- fs/nfsd/nfssvc.c      |   9 ++-
- fs/nfsd/pnfs.h        |  11 ++++
- 6 files changed, 166 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index afa16d7a8013..f2ab264af88e 100644
---- a/fs/nfsd/blocklayout.c
-+++ b/fs/nfsd/blocklayout.c
-@@ -426,4 +426,133 @@ const struct nfsd4_layout_ops scsi_layout_ops = {
- 	.proc_layoutcommit	= nfsd4_scsi_proc_layoutcommit,
- 	.fence_client		= nfsd4_scsi_fence_client,
- };
-+
-+int
-+nfsd4_scsi_pr_init_hashtbl(struct nfsd_net *nn)
-+{
-+	int ix;
-+
-+	nn->client_pr_record_hashtbl = kmalloc_array(CLIENT_HASH_SIZE,
-+					sizeof(struct list_head),
-+					GFP_KERNEL);
-+	if (!nn->client_pr_record_hashtbl)
-+		return -ENOMEM;
-+	spin_lock_init(&nn->client_pr_record_hashtbl_lock);
-+	for (ix = 0; ix < CLIENT_HASH_SIZE; ix++)
-+		INIT_LIST_HEAD(&nn->client_pr_record_hashtbl[ix]);
-+	return 0;
-+}
-+
-+static struct scsi_pr_record *
-+nfsd4_pr_find_client(struct nfs4_client *clp, struct block_device *blkdev)
-+{
-+	struct scsi_pr_record *pr_rec = NULL;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+	unsigned int idhashval;
-+	dev_t bdev = blkdev->bd_dev;
-+
-+	assert_spin_locked(&nn->client_pr_record_hashtbl_lock);
-+	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
-+	list_for_each_entry(pr_rec, &nn->client_pr_record_hashtbl[idhashval],
-+					spr_hash) {
-+		if (same_clid(&pr_rec->spr_clid, &clp->cl_clientid) &&
-+				pr_rec->spr_bdev == bdev) {
-+			return pr_rec;
-+		}
-+	}
-+	return NULL;
-+}
-+
-+static int
-+nfsd4_scsi_pr_add_client(struct nfs4_client *clp, struct block_device *blkdev)
-+{
-+	unsigned int idhashval;
-+	struct scsi_pr_record *pr_rec = NULL;
-+	struct scsi_pr_record *rec;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+	dev_t bdev = blkdev->bd_dev;
-+
-+	spin_lock(&nn->client_pr_record_hashtbl_lock);
-+	rec = nfsd4_pr_find_client(clp, blkdev);
-+	if (rec) {
-+		rec->spr_fenced = false;
-+		spin_unlock(&nn->client_pr_record_hashtbl_lock);
-+		return 0;
-+	}
-+	spin_unlock(&nn->client_pr_record_hashtbl_lock);
-+
-+	pr_rec = kzalloc(sizeof(struct scsi_pr_record), GFP_KERNEL);
-+	if (!pr_rec)
-+		return -ENOMEM;
-+	pr_rec->spr_clid = clp->cl_clientid;
-+	pr_rec->spr_bdev = bdev;
-+	pr_rec->spr_fenced = false;
-+
-+	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
-+	spin_lock(&nn->client_pr_record_hashtbl_lock);
-+	rec = nfsd4_pr_find_client(clp, blkdev);
-+	if (rec) {
-+		rec->spr_fenced = false;
-+		spin_unlock(&nn->client_pr_record_hashtbl_lock);
-+		kfree(pr_rec);
-+		return 0;
-+	}
-+	list_add(&pr_rec->spr_hash, &nn->client_pr_record_hashtbl[idhashval]);
-+	spin_unlock(&nn->client_pr_record_hashtbl_lock);
-+	return 0;
-+
-+}
-+
-+bool
-+nfsd4_scsi_pr_fence(struct nfs4_client *clp, struct block_device *blkdev)
-+{
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+	struct scsi_pr_record *rec;
-+
-+	assert_spin_locked(&nn->client_pr_record_hashtbl_lock);
-+	rec = nfsd4_pr_find_client(clp, blkdev);
-+	if (rec && !rec->spr_fenced) {
-+		rec->spr_fenced = true;
-+		return true;
-+	}
-+	return false;
-+}
-+
-+void
-+nfsd4_scsi_pr_del_client(struct nfs4_client *clp)
-+{
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+	struct scsi_pr_record *entry, *tmp;
-+	unsigned int idhashval;
-+
-+	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
-+	spin_lock(&nn->client_pr_record_hashtbl_lock);
-+	list_for_each_entry_safe(entry, tmp,
-+			&nn->client_pr_record_hashtbl[idhashval], spr_hash) {
-+		if (same_clid(&entry->spr_clid, &clp->cl_clientid)) {
-+			list_del(&entry->spr_hash);
-+			kfree(entry);
-+		}
-+	}
-+	spin_unlock(&nn->client_pr_record_hashtbl_lock);
-+}
-+
-+void
-+nfsd4_scsi_pr_shutdown(struct nfsd_net *nn)
-+{
-+	int ix;
-+	struct scsi_pr_record *entry;
-+
-+	spin_lock(&nn->client_pr_record_hashtbl_lock);
-+	for (ix = 0; ix < CLIENT_HASH_SIZE; ix++) {
-+		while (!list_empty(&nn->client_pr_record_hashtbl[ix])) {
-+			entry = list_entry(nn->client_pr_record_hashtbl[ix].next,
-+					struct scsi_pr_record, spr_hash);
-+			list_del(&entry->spr_hash);
-+			kfree(entry);
-+		}
-+	}
-+	spin_unlock(&nn->client_pr_record_hashtbl_lock);
-+	kfree(nn->client_pr_record_hashtbl);
-+}
- #endif /* CONFIG_NFSD_SCSILAYOUT */
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 3e2d0fde80a7..466f8478d8f3 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -217,6 +217,8 @@ struct nfsd_net {
- 	spinlock_t              local_clients_lock;
- 	struct list_head	local_clients;
- #endif
-+	spinlock_t		client_pr_record_hashtbl_lock;
-+	struct list_head	*client_pr_record_hashtbl;
- };
- 
- /* Simple check to find out if a given net was properly initialized */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 13b4dc89b1e8..70009e882a4a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2528,6 +2528,7 @@ __destroy_client(struct nfs4_client *clp)
- 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
- 	atomic_add_unless(&nn->nfs4_client_count, -1, 0);
- 	nfsd4_dec_courtesy_client_count(nn, clp);
-+	nfsd4_scsi_pr_del_client(clp);
- 	free_client(clp);
- 	wake_up_all(&expiry_wq);
- }
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 369efe6ed665..4572daa94a79 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -570,6 +570,15 @@ extern void nfsd4_ssc_init_umount_work(struct nfsd_net *nn);
- 
- extern void nfsd4_init_leases_net(struct nfsd_net *nn);
- 
-+extern int nfsd4_scsi_pr_init_hashtbl(struct nfsd_net *net);
-+extern void nfsd4_scsi_pr_shutdown(struct nfsd_net *net);
-+struct nfs4_client;
-+extern void nfsd4_scsi_pr_del_client(struct nfs4_client *clp);
-+extern int nfsd4_scsi_pr_add_client(struct nfs4_client *clp,
-+		struct block_device *blkdev);
-+extern bool nfsd4_scsi_pr_fence(struct nfs4_client *clp,
-+		struct block_device *blkdev);
-+
- #else /* CONFIG_NFSD_V4 */
- static inline int nfsd4_is_junction(struct dentry *dentry)
- {
-@@ -578,6 +587,13 @@ static inline int nfsd4_is_junction(struct dentry *dentry)
- 
- static inline void nfsd4_init_leases_net(struct nfsd_net *nn) { };
- 
-+extern inline int nfsd4_scsi_pr_init_hashtbl(struct nfsd_net *nn)
-+{
-+	return 0;
-+}
-+
-+extern inline void nfsd4_scsi_pr_shutdown(struct nfsd_net *nn) {};
-+
- #define register_cld_notifier() 0
- #define unregister_cld_notifier() do { } while(0)
- 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index f6cae4430ba4..d4f96291b4b5 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -381,13 +381,17 @@ static int nfsd_startup_net(struct net *net, const struct cred *cred)
- #ifdef CONFIG_NFSD_V4_2_INTER_SSC
- 	nfsd4_ssc_init_umount_work(nn);
- #endif
--	ret = nfs4_state_start_net(net);
-+	ret = nfsd4_scsi_pr_init_hashtbl(nn);
- 	if (ret)
- 		goto out_reply_cache;
--
-+	ret = nfs4_state_start_net(net);
-+	if (ret)
-+		goto out_pr_client;
- 	nn->nfsd_net_up = true;
- 	return 0;
- 
-+out_pr_client:
-+	nfsd4_scsi_pr_shutdown(nn);
- out_reply_cache:
- 	nfsd_reply_cache_shutdown(nn);
- out_filecache:
-@@ -423,6 +427,7 @@ static void nfsd_shutdown_net(struct net *net)
- 
- 	wait_for_completion(&nn->nfsd_net_free_done);
- 	percpu_ref_exit(&nn->nfsd_net_ref);
-+	nfsd4_scsi_pr_shutdown(nn);
- 
- 	nn->nfsd_net_up = false;
- 	nfsd_shutdown_generic();
-diff --git a/fs/nfsd/pnfs.h b/fs/nfsd/pnfs.h
-index db9af780438b..9ae02b6d922d 100644
---- a/fs/nfsd/pnfs.h
-+++ b/fs/nfsd/pnfs.h
-@@ -67,6 +67,17 @@ __be32 nfsd4_return_client_layouts(struct svc_rqst *rqstp,
- int nfsd4_set_deviceid(struct nfsd4_deviceid *id, const struct svc_fh *fhp,
- 		u32 device_generation);
- struct nfsd4_deviceid_map *nfsd4_find_devid_map(int idx);
-+
-+int nfsd4_scsi_pr_init_hashtbl(struct nfsd_net *nn);
-+void nfsd4_scsi_pr_shutdown(struct nfsd_net *nn);
-+void nfsd4_scsi_pr_del_client(struct nfs4_client *clp);
-+
-+struct scsi_pr_record {
-+	struct list_head spr_hash;
-+	clientid_t spr_clid;
-+	dev_t spr_bdev;
-+	bool spr_fenced;
-+};
- #endif /* CONFIG_NFSD_V4 */
- 
- #ifdef CONFIG_NFSD_PNFS
--- 
-2.47.3
+>  /* These will return ERR_INVAL if specified in GETATTR or READDIR. */
+>  #define NFSD_WRITEONLY_ATTRS_WORD1 \
+>  	(FATTR4_WORD1_TIME_ACCESS_SET   | FATTR4_WORD1_TIME_MODIFY_SET)
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 1e736f402426..b737e8cfe6d5 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -865,6 +865,11 @@ static inline bool try_to_expire_client(struct=20
+> nfs4_client *clp)
+>  	return clp->cl_state =3D=3D NFSD4_EXPIRABLE;
+>  }
+>=20
+> +static inline int same_clid(clientid_t *cl1, clientid_t *cl2)
+> +{
+> +	return (cl1->cl_boot =3D=3D cl2->cl_boot) && (cl1->cl_id =3D=3D cl2-=
+>cl_id);
+> +}
+> +
+>  extern __be32 nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp,
+>  		struct dentry *dentry, struct nfs4_delegation **pdp);
+>  #endif   /* NFSD4_STATE_H */
+> --=20
+> 2.47.3
 
+--=20
+Chuck Lever
