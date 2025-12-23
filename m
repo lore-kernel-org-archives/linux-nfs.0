@@ -1,124 +1,105 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from verein.lst.de (verein.lst.de [213.95.11.211])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 81CA82EB5A9
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2025 19:48:14 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B5B711DFF7;
+	Tue, 23 Dec 2025 22:53:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.95.11.211
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1766519294; cv=none; b=L3ndPrJgri1FBjXnSv6s8WuCxWxmf/+kOgBQ1VeOOrRMk4E106RTIVdy9/IA6NH0WoCxVmh3PB752yVxYTa0yvCt3wG7CR/ZEaL/4Ye+Jmoj+CnMcgzGC/nLrxbhz1fqPfyxH1fs99np9MorOPm9yoUrlB5AnQ6imjyjvTcvGT0=
+	t=1766530410; cv=none; b=XX0mJYAA3wPsRdOAU1WqiH8r331mEulKjKIqu1Z4Xy8RMyAHSmxKUWFoqcdnrCmNezjaGFujAZOrOTziNgOpo/E3HWyZC3Z2AOaI+lS3AlSitmpLfnB1SzvX+9ZYqUnD72vH3I4ZDzcxLuOrUWOWo86BEqEzmeRBC33RsNjZS78=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1766519294; c=relaxed/simple;
-	bh=I53gyTaePCf6S1jOkGTOCr2K3hj8YGxS/GVWcvVyg7M=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=NMHjzW30xwHV0EFRkt7970gSCPaSs5iyFJHqUhnzcKRAIvd6MNDjitT6HFUz7QHdI3bhpX9CfHeLN0a8/Gm7N10dfwZrs+FwCX39lsiCuxotUSEqj0kRqQm+xdKKCgCjQ2gJLKEMkpajJ6frxPzPtTtdx6qwQlKvj+UDhKb8JXY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=sPXJpxG1; arc=none smtp.client-ip=10.30.226.201
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="sPXJpxG1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0B7B9C116B1
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Dec 2025 19:48:13 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1766519294;
-	bh=I53gyTaePCf6S1jOkGTOCr2K3hj8YGxS/GVWcvVyg7M=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-	b=sPXJpxG1ytCNnrQQdctRC3AovEILU7YZ8bKLa7C+UEkDxRbbGrjNU2EHgOHxPA+co
-	 SidYFEBPBT/gW5Tkmecvyk38/TwYB6CCn1whpOcAzLISgQ0XqAR1MCYUj8gNYfehCm
-	 1uEdGzHJMYiB6pfqqhCcdv3BdU9KCei0JTDrc9NpKFGouohVYPiAWUoJpWYtg5Sf/L
-	 cZ0J4JC5rTmWjXwsC3DId/YY1NqMVkWY4mdfsgScMYu7WVPMxcAqigOdDrpHERnQk8
-	 p2FW70OrGbfVQHl6eTIlZ4q7PeqVTgrbkogU1WMzzBT/VDCg9PKnFFb6091Kjy//ux
-	 /NR+TeloacQxA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 179B2F40068;
-	Tue, 23 Dec 2025 14:48:13 -0500 (EST)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 23 Dec 2025 14:48:13 -0500
-X-ME-Sender: <xms:_fFKaZBZSZG2ACyR5plaSSmRXwDt-3qRkvNSNcKjIUaQ5mTbIQjEvA>
-    <xme:_fFKaSVWAQ_OcyzOA-wdga2cw3SdCrxQrfmiBFQMSSZjDdFhhfMbc_hVwRlyWjb4X
-    s1dP2D9I32zOc-Ml-rCpz4wcxVN9Uwivtd_qsn2C51s_azd0dan4eQ>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdeitdejtdcutefuodetggdotefrod
-    ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpuffrtefokffrpgfnqfghnecuuegr
-    ihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjug
-    hrpefoggffhffvvefkjghfufgtgfesthejredtredttdenucfhrhhomhepfdevhhhutghk
-    ucfnvghvvghrfdcuoegtvghlsehkvghrnhgvlhdrohhrgheqnecuggftrfgrthhtvghrnh
-    ephfffkefffedtgfehieevkeduuefhvdejvdefvdeuuddvgeelkeegtefgudfhfeelnecu
-    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomheptghhuhgtkh
-    hlvghvvghrodhmvghsmhhtphgruhhthhhpvghrshhonhgrlhhithihqdduieefgeelleel
-    heelqdefvdelkeeggedvfedqtggvlheppehkvghrnhgvlhdrohhrghesfhgrshhtmhgrih
-    hlrdgtohhmpdhnsggprhgtphhtthhopeekpdhmohguvgepshhmthhpohhuthdprhgtphht
-    thhopehjlhgrhihtohhnsehkvghrnhgvlhdrohhrghdprhgtphhtthhopehhtghhsehlsh
-    htrdguvgdprhgtphhtthhopegthhhutghkrdhlvghvvghrsehorhgrtghlvgdrtghomhdp
-    rhgtphhtthhopegurghirdhnghhosehorhgrtghlvgdrtghomhdprhgtphhtthhopehnvg
-    hilhgssehofihnmhgrihhlrdhnvghtpdhrtghpthhtohepohhkohhrnhhivghvsehrvggu
-    hhgrthdrtghomhdprhgtphhtthhopehtohhmsehtrghlphgvhidrtghomhdprhgtphhtth
-    hopehlihhnuhigqdhnfhhssehvghgvrhdrkhgvrhhnvghlrdhorhhg
-X-ME-Proxy: <xmx:_fFKabWgoytfv0hl2Ueb-HBFwfZ4axr5Y0pbGVqnFMYF9ORI-3TMgw>
-    <xmx:_fFKadko0yi6FhtYwqAe5-jVVHqWVM5UGSMRijlzXW-IGqWn8yDwEQ>
-    <xmx:_fFKaeDo5RZOG5b_Z2LCQulzit406i8NpS-k1iNiwhsdeVn8rqPS8A>
-    <xmx:_fFKaUhlVR5FaYuDQWB0A2ZnnBenDVHRjJovCUbIhq0tw_NND8Nruw>
-    <xmx:_fFKaTwgfvQtgIPq2V3nW48rB0oo7uS1xVrzfUyz40YdBTwKEzqrlLpa>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id E6645780054; Tue, 23 Dec 2025 14:48:12 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=arc-20240116; t=1766530410; c=relaxed/simple;
+	bh=1LPbsoM7pLMPQQedIWbt8mP12TcgBuK/MV8HZi+GMFc=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=LSqFOCpZiWLP9jImc8TyvzaPRf2xe4L0posDI7jruIgWdQWbYSY95KnSQvy6Iy4BffBC8b3raFf1QxS5/xww/2oTl0NISZiZufD/T2LGdJxMX9sln+8ZHJBV+6nrHEh/xy48W9eZhe7EBwxD9rDJf+v2Mn0djkyZPIOMa06g8oA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de; spf=pass smtp.mailfrom=lst.de; arc=none smtp.client-ip=213.95.11.211
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
+Received: by verein.lst.de (Postfix, from userid 2407)
+	id 98B7D227A87; Tue, 23 Dec 2025 23:53:16 +0100 (CET)
+Date: Tue, 23 Dec 2025 23:53:16 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Christian Brauner <brauner@kernel.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, David Sterba <dsterba@suse.com>,
+	Jan Kara <jack@suse.cz>, Mike Marshall <hubcap@omnibond.com>,
+	Martin Brandenburg <martin@omnibond.com>,
+	Carlos Maiolino <cem@kernel.org>, Stefan Roesch <shr@fb.com>,
+	Jeff Layton <jlayton@kernel.org>, linux-kernel@vger.kernel.org,
+	linux-btrfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	gfs2@lists.linux.dev, io-uring@vger.kernel.org,
+	devel@lists.orangefs.org, linux-unionfs@vger.kernel.org,
+	linux-mtd@lists.infradead.org, linux-xfs@vger.kernel.org,
+	linux-nfs@vger.kernel.org
+Subject: Re: re-enable IOCB_NOWAIT writes to files v4
+Message-ID: <20251223225316.GA26676@lst.de>
+References: <20251223003756.409543-1-hch@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AqDldx0SSSOk
-Date: Tue, 23 Dec 2025 14:47:49 -0500
-From: "Chuck Lever" <cel@kernel.org>
-To: "Dai Ngo" <dai.ngo@oracle.com>, "Chuck Lever" <chuck.lever@oracle.com>,
- "Jeff Layton" <jlayton@kernel.org>, neilb@ownmail.net,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Tom Talpey" <tom@talpey.com>,
- "Christoph Hellwig" <hch@lst.de>
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <c55508e3-4167-4439-8663-5dd782404893@app.fastmail.com>
-In-Reply-To: <f1448227-ddd8-47cf-9fe3-3e1983520de0@oracle.com>
-References: <20251222190735.307006-1-dai.ngo@oracle.com>
- <6ffa2b50-c0fc-4532-908e-951b224fcb10@app.fastmail.com>
- <f1448227-ddd8-47cf-9fe3-3e1983520de0@oracle.com>
-Subject: Re: [PATCH v3 1/1] NFSD: Track SCSI Persistent Registration Fencing per Client
- with xarray
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20251223003756.409543-1-hch@lst.de>
+User-Agent: Mutt/1.5.17 (2007-11-01)
 
+Julia found a nice little typo in the new changes, which really
+wants me to split the atime from c/mtime update path badly.  So
+don't feel rushed to review this version and enjoy the holidays,
+there will be a new one soon.
 
-
-On Tue, Dec 23, 2025, at 1:54 PM, Dai Ngo wrote:
-> On 12/23/25 8:31 AM, Chuck Lever wrote:
->>
->> On Mon, Dec 22, 2025, at 2:07 PM, Dai Ngo wrote:
-
->>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->>> index b052c1effdc5..8dd6f82e57de 100644
->>> --- a/fs/nfsd/state.h
->>> +++ b/fs/nfsd/state.h
->>> @@ -527,6 +527,8 @@ struct nfs4_client {
->>>
->>>   	struct nfsd4_cb_recall_any	*cl_ra;
->>>   	time64_t		cl_ra_time;
->>> +
->>> +	struct xarray		cl_fenced_devs;
->>>   };
->>>
->>>   /* struct nfs4_client_reset
->>> -- 
->>> 2.47.3
->> Another question is: Can cl_fenced_devs grow without bounds?
->
-> I think it has the same limitation for any xarray. The hard limit
-> is the availability of memory in the system.
-
-My question isn't about how much can any xarray hold, it's how
-much will NFSD ask /cl_fenced_devs/ to hold. IIUC, the upper
-bound for each nfs4_client's cl_fenced_devs will be the number
-of exported block devices, and no more than that.
-
-I want to avoid a potential denial of service vector -- NFSD
-should not be able to create an unlimited number of items
-in cl_fenced_devs... but sounds like there is a natural limit.
-
-
--- 
-Chuck Lever
+On Tue, Dec 23, 2025 at 09:37:43AM +0900, Christoph Hellwig wrote:
+> Hi all,
+> 
+> commit 66fa3cedf16a ("fs: Add async write file modification handling.")
+> effectively disabled IOCB_NOWAIT writes as timestamp updates currently
+> always require blocking, and the modern timestamp resolution means we
+> always update timestamps.  This leads to a lot of context switches from
+> applications using io_uring to submit file writes, making it often worse
+> than using the legacy aio code that is not using IOCB_NOWAIT.
+> 
+> This series allows non-blocking updates for lazytime if the file system
+> supports it, and adds that support for XFS.
+> 
+> Changes since v3:
+>  - fix was_dirty_time handling in __mark_inode_dirty for the racy flag
+>    update case
+>  - refactor inode_update_timestamps to make the lazytime vs blocking
+>    logical more clear
+>  - allow non-blocking timestamp updates for fat
+> 
+> Changes since v2:
+>  - drop patches merged upstream
+>  - adjust for the inode state accesors
+>  - keep a check in __writeback_single_inode instead of exercising
+>    potentially undefined behavior
+>  - more spelling fixes
+> 
+> Changes since v1:
+>  - more regular numbering of the S_* flags
+>  - fix XFS to actually not block
+>  - don't ignore the generic_update_time return value in
+>    file_update_time_flags
+>  - fix the sync_lazytime return value
+>  - fix an out of data comment in btrfs
+>  - fix a race that would update i_version before returning -EAGAIN in XFS
+> 
+> Diffstat:
+>  Documentation/filesystems/locking.rst |    2 
+>  Documentation/filesystems/vfs.rst     |    6 +
+>  fs/btrfs/inode.c                      |    8 +-
+>  fs/fs-writeback.c                     |   33 +++++++---
+>  fs/gfs2/inode.c                       |    6 +
+>  fs/inode.c                            |  111 +++++++++++++++++++++-------------
+>  fs/internal.h                         |    3 
+>  fs/nfs/inode.c                        |    4 -
+>  fs/orangefs/inode.c                   |    5 +
+>  fs/overlayfs/inode.c                  |    2 
+>  fs/sync.c                             |    4 -
+>  fs/ubifs/file.c                       |   13 ++-
+>  fs/xfs/xfs_iops.c                     |   34 +++++++++-
+>  fs/xfs/xfs_super.c                    |   29 --------
+>  include/linux/fs.h                    |   27 ++++++--
+>  include/trace/events/writeback.h      |    6 -
+>  16 files changed, 182 insertions(+), 111 deletions(-)
+---end quoted text---
