@@ -1,59 +1,60 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 837D134D394
-	for <linux-nfs@vger.kernel.org>; Wed,  7 Jan 2026 15:14:44 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0D53A376BE2
+	for <linux-nfs@vger.kernel.org>; Wed,  7 Jan 2026 15:18:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1767798884; cv=none; b=j+tZhm7YJApsQyYspAgnBef/L9+keP1+UI+Zidit8e/0Gd5lM9ktBMrgn4wVQe2+s0PMbTqYkcnNqpISFWbBluk4NKcWsu0KSKMYJk8oQX+vgdwHo6gmNT97ccq5CGMOQLTlPGtrcNMcJPJOq+9XXuthNixsbd4xxnyyZGIdmDc=
+	t=1767799106; cv=none; b=FGAQW2q29/Inzco/XZAq6TnL1RDy36qFE+ZuQFL2NrKED8OOdcS8dYJTleNY5Rk848JYOA4oJ5Ow48BpFWi0SPTeNlmKuLC+I5PQ76liA9qrBgJ+DfxZpZFnW2syJVpdj5wMckcBTZyZKxevkq7vuODBPaiyw30weziO1MeQdWk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1767798884; c=relaxed/simple;
-	bh=LZu0VjM09rQ+PpAAlTkTeRoEnhfmcr/o3Od9ck+Xc4s=;
+	s=arc-20240116; t=1767799106; c=relaxed/simple;
+	bh=NrBCNmNdGbigwTOQ3lWrohk2DdXWhhFBrA46fhHZLHc=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=ekbitQlN1UcJtnd4xhE+pQgf73mPmwoJbHMzj/W9vaslhFmibfYyhKprPEvBUcqRWnnRBQOXSR2p6OwK+p2totUzbjXFtj+qxDIHyuBLo3uyvu43QFspIh8beYlVNe1aAzHQB3PJM4b4vvhzIyV5u/Ys1h9uarCv3O/gGznVQ24=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nU7J+3Mg; arc=none smtp.client-ip=10.30.226.201
+	 Subject:Content-Type; b=PZvA5N2f3v+eQKsqgNlw35HDue/uW9+m46g+CGM7/LCF6HGtewRVM101/SabM2SaSRWgCO2fdJY0kxz4pKdnS8tIIlOk5hDcYsDYrhf85ENabzLTFzquvRXI89vCuHLN7WALDVDYO/vbhgQomt8ekJ8eLfDqum/nRrSNlj0/z8w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Pd5NVeVc; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nU7J+3Mg"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E3C96C4CEF1;
-	Wed,  7 Jan 2026 15:14:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Pd5NVeVc"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 67B1FC4CEF7;
+	Wed,  7 Jan 2026 15:18:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1767798884;
-	bh=LZu0VjM09rQ+PpAAlTkTeRoEnhfmcr/o3Od9ck+Xc4s=;
+	s=k20201202; t=1767799105;
+	bh=NrBCNmNdGbigwTOQ3lWrohk2DdXWhhFBrA46fhHZLHc=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-	b=nU7J+3MgPYcD6NtK+8bsijrwjoKYPgmZrlQ12UjYiU6yNxuwXqtV0r4y8HjPeekgl
-	 RYH4TbIWMx4WOXhg7cKlN4eTxbZOtQ2ubTSdBsZuzluRWgMHcQh2HLICebVzKLozjU
-	 mThN0PU+kZT6C63gTscn8HBqLsbN9Tr3Y12IsfvBXjpN9h+M4MI+IALZTZRlU6MpVS
-	 LWozCkuzjaYcPjRfHV0hwi5gZ5SFk/nRTHu5rBvWljBRmdTeUqSxHRY3bjTZlsZa8M
-	 qG+c8+RE/WM5GvPI/59KulX8mb80RR9J/oql8bJfdSgslvxYZ88kUh0UDx2t+Tj7zr
-	 mP9bZI5nDWuXg==
+	b=Pd5NVeVcFURjAxcn6T3DlJTIVAn5xQ2osrF5fkL763oOV8xKeVjIVOJkCsQTLIPdw
+	 mWp3RJ+Trh1C8Tu493VbfCxMnaIin46U8RAk+zR5ibzY53lexwHiGYPTGTfqy1M5vc
+	 4srfz9DTPMiW7zTjBl2vDgfTEMOO6tcWPig8imvl1dXBslkH1LGqwNXGtGzrpuZN6R
+	 32P3ayUfBhJr/1E1Wedk/w1tKEF/48RnFBb75SwhGxJgtxXpya4HXVkWGPigy7uGWR
+	 Im9w23YLGbkGsDTupW2s8NvxD35LjzaaRqWEphdHMcPR339ehOerU+7OGsejdVWMvN
+	 Udej8AXjoz2xw==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 1122DF4006A;
-	Wed,  7 Jan 2026 10:14:43 -0500 (EST)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 978FBF4006A;
+	Wed,  7 Jan 2026 10:18:24 -0500 (EST)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 07 Jan 2026 10:14:43 -0500
-X-ME-Sender: <xms:Y3heaUHES1SNr3abGZWzomJ_Gq34ZP0gu28qOS3Xq2mwR83UUgR_Gg>
-    <xme:Y3heaYLJDxyPFBbTZuOCKqYEOhNdctVuJ83LefnKaJ4nfEgQcQCZC6JrffxsBZhx_
-    uHIS7We_7midoObJsAxPVUOhZwoB7137z5j6nJW-xC3-D6iu1aG_O5w>
+  by phl-compute-10.internal (MEProxy); Wed, 07 Jan 2026 10:18:24 -0500
+X-ME-Sender: <xms:QHleaRvIHtp8rfQRoM8jucO1fkuN4nn1xde1WU8y3pciTm9oKyjSNw>
+    <xme:QHleaVRJVkVyQTguIEuhEdeLyIjNs646nWfHr82iuXW8d0N5Jo4Z-jEbN_FrcCX70
+    Bx823uYtU86ME7D4SpFrkHsdPsjekPzkfpom_knO1dnRYYhHgmqF97A>
 X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgddutdefgedtucetufdoteggodetrf
     dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
     rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
-    gurhepofggfffhvfevkfgjfhfutgfgsehtqhertdertdejnecuhfhrohhmpedfvehhuhgt
+    gurhepofggfffhvfevkfgjfhfutgfgsehtjeertdertddtnecuhfhrohhmpedfvehhuhgt
     khcunfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrh
-    hnpefghfeguedtieeiveeugfevtdejfedukeevgfeggfeugfetgfeltdetueelleelteen
+    hnpefhffekffeftdfgheeiveekudeuhfdvjedvfedvueduvdegleekgeetgfduhfefleen
     ucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutg
     hklhgvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleel
     leehledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrg
-    hilhdrtghomhdpnhgspghrtghpthhtohepvddpmhhouggvpehsmhhtphhouhhtpdhrtghp
-    thhtoheprhhitghkrdhmrggtkhhlvghmsehgmhgrihhlrdgtohhmpdhrtghpthhtoheplh
-    hinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrgh
-X-ME-Proxy: <xmx:Y3heaay9g0eNPJn2X2MUJz4fpD_INeFh9sK8HIFg6VRFfWaeHyqcBQ>
-    <xmx:Y3heaUOT6vlhwur7v1QmdxBng69k8tCuTXHEsT2wsYIm5iiUqTBGSA>
-    <xmx:Y3heaT5jue7skyggy7rOCRqNIouLcXaAGLjx1oBtJ1AmpvBnWDyZ3g>
-    <xmx:Y3headPg2BI-f7Ui0jtxG6J-EmMkOQf4he9x1PFSAKEBssY9cGM27A>
-    <xmx:Y3heaZn-bfiONw1ZHIXq7t4_HVePmGN6fURIa5z0rZeJeRaroNg20y60>
+    hilhdrtghomhdpnhgspghrtghpthhtohepgedpmhhouggvpehsmhhtphhouhhtpdhrtghp
+    thhtoheprghnnhgrsehkvghrnhgvlhdrohhrghdprhgtphhtthhopehtrhhonhgumhihse
+    hkvghrnhgvlhdrohhrghdprhgtphhtthhopehhtghhsehlshhtrdguvgdprhgtphhtthho
+    pehlihhnuhigqdhnfhhssehvghgvrhdrkhgvrhhnvghlrdhorhhg
+X-ME-Proxy: <xmx:QHleaZWz6xlvl7aYbcCjVQjUsnu-k8qRnbBydAXxKwc9eN9-lFrIxA>
+    <xmx:QHleaXZiL2nZ4khBvwWEkJTe_nMk-KkH1dn7fp6DrH-Q2ByhqkfVkQ>
+    <xmx:QHleaf0lrCGHnykLzxgwGCSGHzJPx3uDdSktZWhVgbL4mQictWjQSA>
+    <xmx:QHleaZjIP7r_7qPj9J3LYxLmYp5aoxJYSRe3ZmmTR1hezbgWPZovSw>
+    <xmx:QHleaTYMbN9Pc88q0Slx0P6GmLlmtrOg1cRvC3r16fxGyOluPuZMsIfm>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id E9352780054; Wed,  7 Jan 2026 10:14:42 -0500 (EST)
+	id 7D6AC780054; Wed,  7 Jan 2026 10:18:24 -0500 (EST)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -61,91 +62,42 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AOkYyh3N-hyZ
-Date: Wed, 07 Jan 2026 10:13:17 -0500
+X-ThreadId: ASCMS0S-oO03
+Date: Wed, 07 Jan 2026 10:18:04 -0500
 From: "Chuck Lever" <cel@kernel.org>
-To: "Rick Macklem" <rick.macklem@gmail.com>
-Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Message-Id: <31d5bce8-c4df-42e1-a1a7-37c5b9fc8078@app.fastmail.com>
-In-Reply-To: 
- <CAM5tNy5KjQSgRxiOiFHe_3ZCu5v8-ibQ8GfDkscVohLNjgnABA@mail.gmail.com>
-References: 
- <CAM5tNy4Waqfaqu7kgtnSNrdyR0jBSzJ76tMTbGJPq4HGbBKHiQ@mail.gmail.com>
- <679b3c2a-b70c-4364-a362-fa5eefbf3af3@app.fastmail.com>
- <CAM5tNy5KjQSgRxiOiFHe_3ZCu5v8-ibQ8GfDkscVohLNjgnABA@mail.gmail.com>
-Subject: Re: Limit on # of ACEs in a POSIX draft ACL
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+To: "Christoph Hellwig" <hch@lst.de>, "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <0b0b21c1-0bfd-4e2e-9deb-f368a66f5e9c@app.fastmail.com>
+In-Reply-To: <20260107072720.1744129-1-hch@lst.de>
+References: <20260107072720.1744129-1-hch@lst.de>
+Subject: Re: add a LRU for delegations
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
 
 
-On Tue, Jan 6, 2026, at 6:44 PM, Rick Macklem wrote:
-> On Tue, Jan 6, 2026 at 8:37=E2=80=AFAM Chuck Lever <cel@kernel.org> wr=
-ote:
->>
->>
->>
->> On Tue, Jan 6, 2026, at 11:02 AM, Rick Macklem wrote:
->> > Hi,
->> >
->> > When I did the POSIX draft ACL patches, I mistakenly
->> > thought that NFS_MAX_ACL_ENTRIES was a generic
->> > limit that the code should follow.
->> > Chuck informed me that it is the limit for the NFS_ACL
->> > protocol.
->> >
->> > For the server side, the limit seems to be whatever the
->> > server file system can handle, which is detected
->> > later when a setting the ACL is done.
->> > For encoding, there is the generic limit, which is
->> > the maximum size an RPC messages can be (for NFSv4.2).
->> >
->> > For the client, the limit is more important, since it sets
->> > the number of pages to allocate for a large ACL which
->> > cannot be encoded inline.
->> >
->> > So, I think having a sanity limit is needed, at least for
->> > the client.
->>
->> The Linux client does something special with ACL operations:
->> the transport/XDR layer allocates the pages as the reply is
->> read from the transport. It already does this for both
->> NFS_ACL and NFSv4.
->>
->> I don't think there's anything different needed for this case.
-> There may be a better way (and I coded this some time ago),
-> but I needed an array for the page references, so I could free
-> them.
-
-Again, that problem should already be solved in the current
-code, although it's possible I'm missing your point.
-
-
-> If you take a look for NFS4_ACL_MAXPAGES in patch #8
-> for the client stuff, you'll see what I mean.
+On Wed, Jan 7, 2026, at 2:26 AM, Christoph Hellwig wrote:
+> Hi all,
 >
-> NFS4_ACL_MAXPAGES is calculated from NFS_ACL_MAX_ENTRIES
-> and IDMAP_NAMESZ in patch #3.
+> currently the NFS client is rather inefficient at managing delegations
+> not associated with an open file.  If the number of delegations is above
+> the watermark, the delegation for a free file is immediately returned,
+> even if delegations that were unused for much longer would be available.
+> Also the periodic freeing marks delegations as not referenced for return,
+> even if the file was open and thus force the return on close.
+>
+> This series reworks the code to introduce an LRU and return the least
+> used delegations instead.
 
-NFS_ACL_MAX_ENTRIES is an NFS_ACL protocol constant, it's not
-related to any sort of implementation limit. So it is, IMHO,
-not appropriate to apply to either NFSv4 ACLs or NFSv4.2 POSIX
-draft ACLs. That's just me with my architect's hat on.
-
-The thing that is new about NFSv4 is that NFS_ACL ACEs are fixed
-in size because they encode "who" identities as UID/GID numbers.
-In NFSv4, "who" identities are variable-length strings. It's
-really quite impossible for receivers to guess how large these
-things are before they land in memory. (It might be better for
-the NFS layers to treat ACLs like directories, whose XDR
-representation has similar characteristics).
-
-As you pointed out, the file systems where the ACLs are stored
-are going to hit their storage limits far sooner than the wire
-protocol will become a bottleneck. We just don't have any good
-ways for the NFS layers to bound and sanity check incoming ACL
-streams though.
+I'm curious if you tried other methodologies like LFU to decide which
+delegation to return?
 
 
---=20
+> For a workload simulating repeated runs of a python program importing a
+> lot of modules, this leads to a 97% reduction of on-the-wire operations,
+> and ~40% speedup even for a fast local NFS server.  A reproducer script
+> is attached.
+
+-- 
 Chuck Lever
