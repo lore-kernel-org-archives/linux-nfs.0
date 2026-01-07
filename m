@@ -1,78 +1,92 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03C38390CC1
-	for <linux-nfs@vger.kernel.org>; Wed,  7 Jan 2026 16:09:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56D40345CDF
+	for <linux-nfs@vger.kernel.org>; Wed,  7 Jan 2026 16:17:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1767802147; cv=none; b=aAqPsHR48LC+n0xPJ7c02gtSfm7rucnnx/GVOesX6d9NRAsZGF9hK2e9IJ5keAYm5c/OU+mcVj9k5/TmfCLV8k6TH6yXzxR+OcngY1tKgQWzitOjkwuXod/hUyZ0w7xgIzaFvmPuSvs8k7hc6hLLZ/vrBPOElyFw79kCWtIYIr0=
+	t=1767802667; cv=none; b=LJVpL1Gips253lK050Y/Ukgdwi3wPcXTVemO59PpFyw4jbxs5xBOeV3bGNPKz+swYFIrnLwb37VdOr/ERc1+j1eLD6L8l7RHUdrgksshcTGYiAsY/iE5nFLCstnJ4RAJwg99zCaFIX1IwakVdfEQLUzzep0B0bdeGSl1qSwqFIw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1767802147; c=relaxed/simple;
-	bh=Z7/GQU/lYZ5nSIUU/OyVImD/CkOETzR+4gzn3pwUMDA=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ZBCMUqQwCZeI0IZKXg7j08Wo72QcV9a1lDKvjipVM/6/tbUoa17zjp1MpR+AF2hOowBObWBPFP7eSEzVgkNG0ooWzGPDbA9TjBJAo6H4iNPj06+rkJbe46+YKMPsIAvRmRccV8sS/mB9vdfsScf33kfk2U+zaxT1Y1LdKoDuiXU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hlWVnIf8; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1767802667; c=relaxed/simple;
+	bh=c5acPMwF/D8Irfog9QC7AVrgkqO2pLNEL4U+95gRuZw=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=HkGbbFubloDTiESprhl8hlscCGCFfe4zijSRm9bgyzT1e0IgqAIapNIKIOiZs6/dZvD2wiuNHO0KtNczEOjRCv9FTQtvRp5GnZoAGPRSJRBGVrVEviHdzJlgVsD5u1Ny5C1M3HCC7bXXzxeoUofhHA5fW+cAZ17gN+TWyMAu1QM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=W00jzTOF; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hlWVnIf8"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 238EAC4CEF7;
-	Wed,  7 Jan 2026 16:09:04 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1767802144;
-	bh=Z7/GQU/lYZ5nSIUU/OyVImD/CkOETzR+4gzn3pwUMDA=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=hlWVnIf8+kLOrCAZa5BQidbXZ1TTsXM9iObtpw+omhA1gPBS5ybSReGhptp96qSS4
-	 0Xwa8zqq2cfii6XoToTaz40Pl2Wj3ZhEHMCOf4hwa1Ba+7dMhSzhcBUNllOG7+iGIN
-	 MIsxCbuabH44LD8GzkjHRQnpBq5JQN1Hbr7VRB3aEntb0tzUmywpbytvVpitbPSqMt
-	 E5501lT1o3IhHsng3g3G87vM/8Pplqg2g+FgHgYNv7Z38bzfTW2hWG8eoM85NsdVgW
-	 OrEZIpdzvLRMGJy0+SCfp+0tvFUlHLPxoeYRp8Ikt6PBkTRwtGPQfOcaKnISa9NXck
-	 UmklF3kgn5jFA==
-From: Mike Snitzer <snitzer@kernel.org>
-To: Trond Myklebust <trond.myklebust@hammerspace.com>,
-	Anna Schumaker <anna.schumaker@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] NFS/localio: remove -EAGAIN handling in nfs_local_doio()
-Date: Wed,  7 Jan 2026 11:08:57 -0500
-Message-ID: <20260107160858.6847-4-snitzer@kernel.org>
-X-Mailer: git-send-email 2.44.0
-In-Reply-To: <20260107160858.6847-1-snitzer@kernel.org>
-References: <20260107160858.6847-1-snitzer@kernel.org>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="W00jzTOF"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=FNEgP/QsTak0PEo56FIoLf7eoVQOnJn62tsn7Ep12TQ=; b=W00jzTOF842l7L5timrWz6skj8
+	CkumLuktT9mfpB/0fLsLl1+pjRVZq8/K2qNM2EBQWUPcyX5LHJhmENJ4UJm/+RcxSMto1uW3ljYCc
+	63Vdmx5Xds/VUldYkLbcLZ/HQ4BC511/ngvXARWHIvl0iwYLOZg6/QYNhxwFUwew5WDWu3ZIu+rkv
+	KwmkST09wU9gEatUP8c2tZzX30YFlLwh8zyRLCj2Dr6WzKViYgBSva43VSQiWly28Abrlic0s1CTz
+	YK/elriIuYVSabLhRZLbGPLNA4t0KGeLniSBn2op8nvjchvj7T9Y4XlnJ+UWIJosER5DFKxakS38G
+	zdk1tc4w==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1vdWE3-0000000FFER-2gKv;
+	Wed, 07 Jan 2026 16:17:35 +0000
+Date: Wed, 7 Jan 2026 08:17:35 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: NeilBrown <neilb@ownmail.net>, Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org, Matthew Wilcox <willy@infradead.org>
+Subject: Re: [PATCH v5] NFSD: Track SCSI Persistent Registration Fencing per
+ Client with xarray
+Message-ID: <aV6HHwrkoR4OE5qc@infradead.org>
+References: <20251227042437.671409-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20251227042437.671409-1-cel@kernel.org>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-Handling -EAGAIN in nfs_local_doio() was introduced with commit
-0978e5b85fc08 (nfs_do_local_{read,write} were made to have negative
-checks for correspoding iter method) but commit e43e9a3a3d66
-since eliminated the possibility for this -EAGAIN early return.
+On Fri, Dec 26, 2025 at 11:24:37PM -0500, Chuck Lever wrote:
+> When the server issues a persistent registration key to a client, it
+> creates a new xarray entry at the dev_t index with the fenced flag
+> initialized to 0.
 
-So remove nfs_local_doio()'s -EAGAIN handling that calls
-nfs_localio_disable_client() -- while it should never happen from
-nfs_do_local_{read,write} this particular -EAGAIN handling is now
-"dead" and so it has become a liability.
+Hmm, using an xarray only for values is creative.  But I guess it should
+work.
 
-Fixes: e43e9a3a3d66 ("nfs/localio: refactor iocb initialization")
-Signed-off-by: Mike Snitzer <snitzer@kernel.org>
----
- fs/nfs/localio.c | 2 --
- 1 file changed, 2 deletions(-)
+That being said, I'm not sure that is the right direction.  Right now
+the nfsd code has no object for pNFS device, mostly because:
 
-diff --git a/fs/nfs/localio.c b/fs/nfs/localio.c
-index 9ec1652cc5369..fa37425c5784b 100644
---- a/fs/nfs/localio.c
-+++ b/fs/nfs/localio.c
-@@ -989,8 +989,6 @@ int nfs_local_doio(struct nfs_client *clp, struct nfsd_file *localio,
- 	}
- 
- 	if (status != 0) {
--		if (status == -EAGAIN)
--			nfs_localio_disable_client(clp);
- 		nfs_local_iocb_release(iocb);
- 		hdr->task.tk_status = status;
- 		nfs_local_hdr_release(hdr, call_ops);
--- 
-2.44.0
+ a) there can only be one per file system and thus export
+ b) there is no per-device state managed by nfsd
+
+This patch changes b).  But I guess for now this works, so I should
+demand too much.  But I guess in the long run having a per-device
+object, and then tracking fenced clients in that would seem more
+natural.
+
+But with all the effort already invested it probably makes sense to
+go with it to fix the bug.  Just trying to think about the data
+structures in the long run.
+
+> @@ -342,6 +343,20 @@ nfsd4_block_get_device_info_scsi(struct super_block *sb,
+>  		goto out_free_dev;
+>  	}
+>  
+> +	/*
+> +	 * xa_store() is idempotent -- the device is added exactly once
+> +	 * to a client's cl_dev_fences no matter how many times
+> +	 * nfsd4_block_get_device_info_scsi() is invoked. This prevents
+> +	 * adding more entries to cl_dev_fences than there are devices on
+> +	 * the server. XA_MARK_0 tracks whether the device has been fenced.
+> +	 */
+
+Only in the most abstract way, xa_store actually stores the new
+entry/value and returns the old one.  In other words, this does
+quite a bit of work for the non-initial GETDEVICEINFO.
 
