@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 122F431B81C;
-	Wed,  7 Jan 2026 14:20:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C1291337686;
+	Wed,  7 Jan 2026 14:20:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1767795638; cv=none; b=FSL3RwrFtnC2SFHGc52Y4DrWvmYPXXaBpC8IuN2jskFSlMPnnYeL8OiL/seuuhRt2x7eQ6LVhPOkGu7bioR4JjiUmKEZsZyd2nMAg/WdjpXYehip5XKCWiNculmpvolBsy2+36jU1n7HZyqoflxespLQIZhsWm25a7h/c0Kb8k8=
+	t=1767795640; cv=none; b=aFSnDuFCG32ptQvX9ly945G0HZl7h9TsnwMZvrMiuKXkLiPlu8aR8+x1gQLnoZA5Shvx70oNZzo8+0O69UnL/+xv89WC/ZqxwXmmJsPSeC/6TvJotzfWc6tzbVfU9rRd4WfOX4lOzEOiYiu/snRcwDXKFLMsQdfsCsnu4b4gl4w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1767795638; c=relaxed/simple;
-	bh=pS9yyXCuYMf7+KI6SO4u/vUJdTQQPT4ls4okttVSWaE=;
+	s=arc-20240116; t=1767795640; c=relaxed/simple;
+	bh=kEkvQ9NQX8PYeQ1rYCmj8d2YBAwnJXpHvKctygKYYLE=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=QaFu1UG/J9tFNiVNDcTd1plssb0b21I/2M3erSMHGWXviFjzEUTpisP5StuvAqcahhrLBnmlIvvcECchdG2PqwoGNO1WdjhdF2nPA1rReD5sUYZnxVmTNHmdm+0XkfcD6PUgxNzMjGa767edwdXwXj7odCV+fHtlpruqX2C36jI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cA+jkYKy; arc=none smtp.client-ip=10.30.226.201
+	 In-Reply-To:To:Cc; b=RlKZHnTKjHDQ3k8wjwphXY+zubDxqADSjAN7UzTl2wFC139KSX/HzQleaoOvGbXp0nv/U6KhJLs2hyl3LAtMw++WwD5geaxaQR0alDMNPG60Gmk/G9+8PuIED8mfmPI3uSVSp9m8evQe/KLcpip8NRLZCgSOpbkTM9jshQY0GzA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=tMaMO7WG; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cA+jkYKy"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 39E71C4CEF1;
-	Wed,  7 Jan 2026 14:20:35 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="tMaMO7WG"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E4211C19421;
+	Wed,  7 Jan 2026 14:20:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1767795637;
-	bh=pS9yyXCuYMf7+KI6SO4u/vUJdTQQPT4ls4okttVSWaE=;
+	s=k20201202; t=1767795640;
+	bh=kEkvQ9NQX8PYeQ1rYCmj8d2YBAwnJXpHvKctygKYYLE=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=cA+jkYKyIk9GTNT/RIbyJ9+oKweiiJOPVQCV7mks0aWjroSOLgyr8NLfelO+dq/eT
-	 tGcBFxnITdlA3YUwDbY02hxwKrWVId2eHezILAMkPjIrQ7TQDYEyhGgR3LYdRG7KBj
-	 my+DRpKBaHOOqBrZSB9du2hQPSCpR3iuL+pnPeS5KmJFKSAFfnMvlstBnNCyr0/uol
-	 RaLURmzRTHfr/7jKY0wRcFvR6Zlw0/AQV+IfhkzSJph2a6+2424ezAWL+djjqJRu0V
-	 Nkc/d4zOjIgbTfqQtGXE7hAEctSbGVMbuu5+P1ZG7HPzP6zqMoyZDLUT8OEDZ4lfZt
-	 3zCQr7PD6PLww==
+	b=tMaMO7WG6JQhtw/hjE2heFOQVqZg8m9u5mOJk8GHSYuYqtLXGFT+QUckJbHV9GTXF
+	 l1+IH9jE2kxotMlq1CFMLvL2S25sDzp3RZt+YMmAXgRz4TcNIKLlJBXPQoVjUwJHtq
+	 dfdr8JNozaLjMuivAvuKpg4DY14hkbMXeB88vuHJB1RiJqGCCfnWy2u9D6Gc7NYj21
+	 2Pf2No971PU+wx5L4w1tPzsWIx9TS0cZRGxFcdIxPakokvkm5+I5PGCqDoaaq1bFW9
+	 XuVxHaNAqOkASACOpIW7FDhKCIjqatsbuzvfse+v6YsX4Qp8Ixx9gfrQyPxG34gewd
+	 63LbQMsYkLMTQ==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Wed, 07 Jan 2026 09:20:10 -0500
-Subject: [PATCH 2/6] smb/client: properly disallow delegations on
- directories
+Date: Wed, 07 Jan 2026 09:20:11 -0500
+Subject: [PATCH 3/6] 9p: don't allow delegations to be set on directories
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260107-setlease-6-19-v1-2-85f034abcc57@kernel.org>
+Message-Id: <20260107-setlease-6-19-v1-3-85f034abcc57@kernel.org>
 References: <20260107-setlease-6-19-v1-0-85f034abcc57@kernel.org>
 In-Reply-To: <20260107-setlease-6-19-v1-0-85f034abcc57@kernel.org>
 To: Christian Brauner <brauner@kernel.org>, 
@@ -60,56 +59,50 @@ Cc: Christoph Hellwig <hch@infradead.org>, linux-cifs@vger.kernel.org,
  ceph-devel@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1365; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=pS9yyXCuYMf7+KI6SO4u/vUJdTQQPT4ls4okttVSWaE=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBpXmusiT+Zo4rGBFj36gZGzZezqsdQ5jMDN7570
- +X3LnovMQ6JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaV5rrAAKCRAADmhBGVaC
- FQyMD/9Yn2ldQZofv33ljyPfw1HKZHxfV9g/4IXvDS0coXZV6btn300rZiiHijlDiQL22qszkfB
- /O5PtQ1peH2IuYCsNFIVCGWPjk6v1RJQ5Laeekscv207sRvr5nppbivyGjDLQ26gBSxZ08hmyMR
- Nl6WavAO7n/mTPxDgtfZNRjQur9yv2xVTZsN/nnO3ZCH7hL9kakZEpaXpgXLr7y00ToeMt6EU9l
- Sdo2kgGbG/83S7eNy8Lr+F8aYFgbPE72ftaxhTcOMfWt9tGgtefRlXQORqlppSRKBKb1T0l8wmJ
- 0dWUV6cweW4Cg1/ITOkHrp79vgFzL1km9I1yH092pUxCz5gzTkpy4Zl3rkzUnlLziVOfXrpuqrd
- w/OPxT8+Dw+ALUDRs7NvJdESsYzb6njiUWrO93vRdPNf9FNXxThSdRQFbqCidSfhKUyvStDYFQi
- lcgBKOXwxRmHVzOBjQ/axpCrQy5KVBprSIuXFBzXqkIzd5siyyiJT+0wQwfSACU537xUx43faEK
- lDnmDlcpCWS8WgyESuaIKTIOd2Y7oZc7qT2kSV/NtUb5f2Tuc2DzqggxrSdFWsd97LL4Aus78WE
- bIyQGskKVTfRSBzNzO1nbaXG6wVlTBLAa3WUVnRuaK2XtH3poGnHCEf33B9r8ujY2TOo0asLeub
- OnlAv+OtROjS4Nw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1032; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=kEkvQ9NQX8PYeQ1rYCmj8d2YBAwnJXpHvKctygKYYLE=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBpXmusFABXCuzBzy1mQmp7JWrenTQAfrgA1JQp8
+ OqxhqtVIYKJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaV5rrAAKCRAADmhBGVaC
+ FTfjD/wNogu8cq8DRl9tjq+zSkAMYAM++zEaDaPvKxwfExuQJ4iUCAvP+ZMG14K799qKk6rnzyD
+ GGcpO7zJtgg5d3Ae2B/4I8tXitDrgsiiBUsisxdmWzkG3QT344FwzDRaLCpAndlEjvew4rc6jwg
+ 5hog3xLPo+RJv9f9D9Q+YiHP6G0hkn3uI1P+Kh2MAErNM1w2F0EjOGKoFbW+WWCkGVTYo6hiE6Y
+ VWXWVY359KrHGq9TYZAPJO3kBWGxwqtvTkV8OA3nAiP2a4trCbFxgi/Cn1lsfF2vrl7HuEGXvlI
+ J9JEOD2ZUy3l9xajY89qg6Us3nS/E6S/9BL3AR6YTslqBc3g4TWd7u8E4OXDajuyZNS5WPfbtES
+ cGl76WgXitBQ6ScvKAz7I3/op6aeqZnwl+vWGPGkku5BEMP/9u/Pns/4BW38JGmd9rJv6fgpw75
+ l4noDgGaBUZjPbvhtpCNu266GcIuZjREGxHbT42mbJcQCf9BhH4QjebrGYFc4XiTLtiL12sG2Lb
+ wiH2A/Fkb2GgRXQnVd2oTcEpx0aPAu09Mqn0E3yNJzghCU3QTKYyFy/ILBaVyuvOujsdc39z/Pl
+ UGcD39cVDUmjcL4fYoti+ZQL6IKnhUk7iTWzkzSor+aGy7ihb0B4sAOhHlGDXXsqeJuePcbfp/v
+ ACInyCk/xwIXBGA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-The check for S_ISREG() in cifs_setlease() is incorrect since that
-operation doesn't get called for directories. The correct way to prevent
-delegations on directories is to set the ->setlease() method in directory
-file_operations to simple_nosetlease().
+With the advent of directory leases, it's necessary to set the
+->setlease() handler in directory file_operations to properly deny them.
 
 Fixes: e6d28ebc17eb ("filelock: push the S_ISREG check down to ->setlease handlers")
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/smb/client/cifsfs.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ fs/9p/vfs_dir.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/smb/client/cifsfs.c b/fs/smb/client/cifsfs.c
-index d9664634144d3ebba5cdd659f651d6e6e8f975fa..a3dc7cb1ab541d35c2e43eefb7a2d2d23ad88bb3 100644
---- a/fs/smb/client/cifsfs.c
-+++ b/fs/smb/client/cifsfs.c
-@@ -1149,9 +1149,6 @@ cifs_setlease(struct file *file, int arg, struct file_lease **lease, void **priv
- 	struct inode *inode = file_inode(file);
- 	struct cifsFileInfo *cfile = file->private_data;
- 
--	if (!S_ISREG(inode->i_mode))
--		return -EINVAL;
--
- 	/* Check if file is oplocked if this is request for new lease */
- 	if (arg == F_UNLCK ||
- 	    ((arg == F_RDLCK) && CIFS_CACHE_READ(CIFS_I(inode))) ||
-@@ -1712,6 +1709,7 @@ const struct file_operations cifs_dir_ops = {
- 	.remap_file_range = cifs_remap_file_range,
- 	.llseek = generic_file_llseek,
- 	.fsync = cifs_dir_fsync,
+diff --git a/fs/9p/vfs_dir.c b/fs/9p/vfs_dir.c
+index e0d34e4e9076e3b1a6c5ed07a3e009a50c9fa2a9..af7f72abbb76aaff934b80d4002f32e3b0d17b6d 100644
+--- a/fs/9p/vfs_dir.c
++++ b/fs/9p/vfs_dir.c
+@@ -242,6 +242,7 @@ const struct file_operations v9fs_dir_operations = {
+ 	.iterate_shared = v9fs_dir_readdir,
+ 	.open = v9fs_file_open,
+ 	.release = v9fs_dir_release,
 +	.setlease = simple_nosetlease,
  };
  
- static void
+ const struct file_operations v9fs_dir_operations_dotl = {
+@@ -251,4 +252,5 @@ const struct file_operations v9fs_dir_operations_dotl = {
+ 	.open = v9fs_file_open,
+ 	.release = v9fs_dir_release,
+ 	.fsync = v9fs_file_fsync_dotl,
++	.setlease = simple_nosetlease,
+ };
 
 -- 
 2.52.0
