@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64AAD2737FC
-	for <linux-nfs@vger.kernel.org>; Wed,  7 Jan 2026 16:09:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03C38390CC1
+	for <linux-nfs@vger.kernel.org>; Wed,  7 Jan 2026 16:09:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1767802144; cv=none; b=gy5oDAUxKvXN/F+01Dxqr/11fo0X4fUc+J/fMPixLqn3YNLWxmlxhnhHoNf/Gc0n5ahjC5XaW0naVBxX3cxPFBJYGQGo6S1f7dzpw4snyL6gTWc8H+RpOKBpIbFpJ0JAxLV2dzowCtAk5JPA9yOf3NQPVL8wHLZnvU+AoPgAW6g=
+	t=1767802147; cv=none; b=aAqPsHR48LC+n0xPJ7c02gtSfm7rucnnx/GVOesX6d9NRAsZGF9hK2e9IJ5keAYm5c/OU+mcVj9k5/TmfCLV8k6TH6yXzxR+OcngY1tKgQWzitOjkwuXod/hUyZ0w7xgIzaFvmPuSvs8k7hc6hLLZ/vrBPOElyFw79kCWtIYIr0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1767802144; c=relaxed/simple;
-	bh=HraiImluaigZ3E5aQN+gDenzr7g+L4U7Y9Q1MMBbgb8=;
+	s=arc-20240116; t=1767802147; c=relaxed/simple;
+	bh=Z7/GQU/lYZ5nSIUU/OyVImD/CkOETzR+4gzn3pwUMDA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=YTegysjUpjs9yRVer0RRbX2X5hyGLEMyfIs7bHI6a4eIFzUm6SBYCLCVlmg+V6BzC57+Uq8eo1IzImHr1esofWjnls50lo5145qGmztaEAQh3Ny/r3Opq0WNq1WOHM+LlZPOC9YxmvKHDhrGMZRtbOTMVFq9seWIouL1rLWZe1M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HFCwITW3; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=ZBCMUqQwCZeI0IZKXg7j08Wo72QcV9a1lDKvjipVM/6/tbUoa17zjp1MpR+AF2hOowBObWBPFP7eSEzVgkNG0ooWzGPDbA9TjBJAo6H4iNPj06+rkJbe46+YKMPsIAvRmRccV8sS/mB9vdfsScf33kfk2U+zaxT1Y1LdKoDuiXU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hlWVnIf8; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HFCwITW3"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3AD25C4CEF1;
-	Wed,  7 Jan 2026 16:09:01 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hlWVnIf8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 238EAC4CEF7;
+	Wed,  7 Jan 2026 16:09:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1767802141;
-	bh=HraiImluaigZ3E5aQN+gDenzr7g+L4U7Y9Q1MMBbgb8=;
+	s=k20201202; t=1767802144;
+	bh=Z7/GQU/lYZ5nSIUU/OyVImD/CkOETzR+4gzn3pwUMDA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=HFCwITW3F0uiMFWvf49H/DfF09qEUPFkRFUxooHxOj0vEErhO4ohiG3BvSHTnkqzU
-	 lANPy5DqEPN46xQP0Fb22hjUoal57ylXkf7nXkW/nQQBcmTHweqf9+SFYSSUW335mr
-	 +ej4SRTvLqpkP5GmxwIARPkJbB17AqNjIM5s6eoo0WyzjHLqqrISZlvc3pzJiaaKY9
-	 8KH/McrZiRhV87fpnPWtE5ayHiM7QXuA2yqifw3RysCm6cLsAWOq+BaPw4MZ1xNt+X
-	 C0J+LAMf9GRAJUQ+KUyHIYi1coKn5Yd3iMXtzDRCWZkfsElLK07n9YL9XHlFkbDHKj
-	 g8NUDY4RKV8bA==
+	b=hlWVnIf8+kLOrCAZa5BQidbXZ1TTsXM9iObtpw+omhA1gPBS5ybSReGhptp96qSS4
+	 0Xwa8zqq2cfii6XoToTaz40Pl2Wj3ZhEHMCOf4hwa1Ba+7dMhSzhcBUNllOG7+iGIN
+	 MIsxCbuabH44LD8GzkjHRQnpBq5JQN1Hbr7VRB3aEntb0tzUmywpbytvVpitbPSqMt
+	 E5501lT1o3IhHsng3g3G87vM/8Pplqg2g+FgHgYNv7Z38bzfTW2hWG8eoM85NsdVgW
+	 OrEZIpdzvLRMGJy0+SCfp+0tvFUlHLPxoeYRp8Ikt6PBkTRwtGPQfOcaKnISa9NXck
+	 UmklF3kgn5jFA==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Trond Myklebust <trond.myklebust@hammerspace.com>,
 	Anna Schumaker <anna.schumaker@oracle.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] NFS/localio: prevent direct reclaim recursion into NFS via nfs_writepages
-Date: Wed,  7 Jan 2026 11:08:55 -0500
-Message-ID: <20260107160858.6847-2-snitzer@kernel.org>
+Subject: [PATCH 3/4] NFS/localio: remove -EAGAIN handling in nfs_local_doio()
+Date: Wed,  7 Jan 2026 11:08:57 -0500
+Message-ID: <20260107160858.6847-4-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20260107160858.6847-1-snitzer@kernel.org>
 References: <20260107160858.6847-1-snitzer@kernel.org>
@@ -44,70 +44,35 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Mike Snitzer <snitzer@hammerspace.com>
+Handling -EAGAIN in nfs_local_doio() was introduced with commit
+0978e5b85fc08 (nfs_do_local_{read,write} were made to have negative
+checks for correspoding iter method) but commit e43e9a3a3d66
+since eliminated the possibility for this -EAGAIN early return.
 
-LOCALIO is an NFS loopback mount optimization that avoids using the
-network for READ, WRITE and COMMIT if the NFS client and server are
-determined to be on the same system. But because LOCALIO is still
-fundamentally "just NFS loopback mount" it is susceptible to recursion
-deadlock via direct reclaim, e.g.: NFS LOCALIO down to XFS and then
-back into NFS via nfs_writepages.
+So remove nfs_local_doio()'s -EAGAIN handling that calls
+nfs_localio_disable_client() -- while it should never happen from
+nfs_do_local_{read,write} this particular -EAGAIN handling is now
+"dead" and so it has become a liability.
 
-Fix LOCALIO's potential for direct reclaim deadlock by ensuring that
-all its page cache allocations are done from GFP_NOFS context.
-
-Thanks to Ben Coddington for pointing out commit ad22c7a043c2 ("xfs:
-prevent stack overflows from page cache allocation").
-
-Reported-by: John Cagle <john.cagle@hammerspace.com>
-Tested-by: Allen Lu <allen.lu@hammerspace.com>
-Suggested-by: Benjamin Coddington <bcodding@hammerspace.com>
-Fixes: 70ba381e1a43 ("nfs: add LOCALIO support")
-Signed-off-by: Mike Snitzer <snitzer@hammerspace.com>
+Fixes: e43e9a3a3d66 ("nfs/localio: refactor iocb initialization")
+Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 ---
- fs/nfs/localio.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
+ fs/nfs/localio.c | 2 --
+ 1 file changed, 2 deletions(-)
 
 diff --git a/fs/nfs/localio.c b/fs/nfs/localio.c
-index d21047f7e4528..c38e7d4685e2f 100644
+index 9ec1652cc5369..fa37425c5784b 100644
 --- a/fs/nfs/localio.c
 +++ b/fs/nfs/localio.c
-@@ -291,6 +291,18 @@ nfs_local_open_fh(struct nfs_client *clp, const struct cred *cred,
- }
- EXPORT_SYMBOL_GPL(nfs_local_open_fh);
- 
-+/*
-+ * Ensure all page cache allocations are done from GFP_NOFS context to
-+ * prevent direct reclaim recursion back into NFS via nfs_writepages.
-+ */
-+static void
-+nfs_local_mapping_set_gfp_nofs_context(struct address_space *m)
-+{
-+	gfp_t gfp_mask = mapping_gfp_mask(m);
-+
-+	mapping_set_gfp_mask(m, (gfp_mask & ~(__GFP_FS)));
-+}
-+
- static void
- nfs_local_iocb_free(struct nfs_local_kiocb *iocb)
- {
-@@ -315,6 +327,7 @@ nfs_local_iocb_alloc(struct nfs_pgio_header *hdr,
- 		return NULL;
+@@ -989,8 +989,6 @@ int nfs_local_doio(struct nfs_client *clp, struct nfsd_file *localio,
  	}
  
-+	nfs_local_mapping_set_gfp_nofs_context(file->f_mapping);
- 	init_sync_kiocb(&iocb->kiocb, file);
- 
- 	iocb->hdr = hdr;
-@@ -1004,6 +1017,8 @@ nfs_local_run_commit(struct file *filp, struct nfs_commit_data *data)
- 			end = LLONG_MAX;
- 	}
- 
-+	nfs_local_mapping_set_gfp_nofs_context(filp->f_mapping);
-+
- 	dprintk("%s: commit %llu - %llu\n", __func__, start, end);
- 	return vfs_fsync_range(filp, start, end, 0);
- }
+ 	if (status != 0) {
+-		if (status == -EAGAIN)
+-			nfs_localio_disable_client(clp);
+ 		nfs_local_iocb_release(iocb);
+ 		hdr->task.tk_status = status;
+ 		nfs_local_hdr_release(hdr, call_ops);
 -- 
 2.44.0
 
