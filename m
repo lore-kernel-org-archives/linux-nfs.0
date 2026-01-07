@@ -1,186 +1,151 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8502927991E
-	for <linux-nfs@vger.kernel.org>; Wed,  7 Jan 2026 15:07:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 837D134D394
+	for <linux-nfs@vger.kernel.org>; Wed,  7 Jan 2026 15:14:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1767798477; cv=none; b=Jtv7Mq7Ur7yJiXz3Aui5C7ytQuNcIlfdIlK0PcKLaxG7ffu5nrxKaLTRpycHSlT53Ok1J0HoLa0A66ijOSEMhohlrHj7J69nJGHhl2iAhGEZNxVYZK3+tOfOKjBd3jEwksvs6rSzucm1HmY82ZdW2+rFuqYyDjzGthV4CGoURfM=
+	t=1767798884; cv=none; b=j+tZhm7YJApsQyYspAgnBef/L9+keP1+UI+Zidit8e/0Gd5lM9ktBMrgn4wVQe2+s0PMbTqYkcnNqpISFWbBluk4NKcWsu0KSKMYJk8oQX+vgdwHo6gmNT97ccq5CGMOQLTlPGtrcNMcJPJOq+9XXuthNixsbd4xxnyyZGIdmDc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1767798477; c=relaxed/simple;
-	bh=sYLvV3EeHfiY0NoBAs21p/wcWRferPjqy29TNZlDS4A=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=lBk4chbHTO6CilQT9jJWm0MDyhzXRQ0TXqIkwykF7GhZJ9Q6h18tMdfmWPtKHKNqzl6dkiZf+JagAQ6V6F0MUoncpBppDBp9QX208dXirAbzOVQW2o9vnni2eCwIBRYt4/zva6e3czK19QHc3QBKU4m5QAvsEl7sNJh3cX+vG5s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mf3tdAz5; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1767798884; c=relaxed/simple;
+	bh=LZu0VjM09rQ+PpAAlTkTeRoEnhfmcr/o3Od9ck+Xc4s=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=ekbitQlN1UcJtnd4xhE+pQgf73mPmwoJbHMzj/W9vaslhFmibfYyhKprPEvBUcqRWnnRBQOXSR2p6OwK+p2totUzbjXFtj+qxDIHyuBLo3uyvu43QFspIh8beYlVNe1aAzHQB3PJM4b4vvhzIyV5u/Ys1h9uarCv3O/gGznVQ24=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nU7J+3Mg; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mf3tdAz5"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BC945C4CEF1;
-	Wed,  7 Jan 2026 15:07:56 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nU7J+3Mg"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E3C96C4CEF1;
+	Wed,  7 Jan 2026 15:14:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1767798477;
-	bh=sYLvV3EeHfiY0NoBAs21p/wcWRferPjqy29TNZlDS4A=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=mf3tdAz5yIrMVaGgo14V1jGOG8ZO93tE1Jvtduld55Ngf6pEEbIIon7VlAZOAML+K
-	 g5TV+LrNF9cHwl4PMoPUKAR6Q/hJnqgJMOqS5Sh8fPyUa0EEeSKvdodzydIJ6EWGg/
-	 u8lcqSlDClFnsJ3ov2S/IcyhJBQPgFw4+Uehnt6jaTC9TKdj5EnZRuPsjirEp7q4jo
-	 ntZWpHqGnLvaL1nT1nVaHbreIt03QRD0qsu/FCQOTRPIjNQaBqhCFZxErtqp7GHA/r
-	 ppIq4suDyx6f2pfeYZ4/q+wLNooaP/z2OhBbWWHt+Un3+1RTSSR1fr1suV5dfiJO7A
-	 XOMSZmmJIlpMA==
-Message-ID: <d8ddd23a18985ae360855931f185d0e24c466310.camel@kernel.org>
-Subject: Re: [PATCH] NFS: Fix directory delegation verifier checks
-From: Trond Myklebust <trondmy@kernel.org>
-To: "hch@infradead.ori" <hch@infradead.org>
-Cc: "anna@kernel.org" <anna@kernel.org>, "linux-nfs@vger.kernel.org"
-	 <linux-nfs@vger.kernel.org>
-Date: Wed, 07 Jan 2026 10:07:55 -0500
-In-Reply-To: <aV3ttYmT2vAtPDws@infradead.org>
-References: <20251219201344.380279-1-anna@kernel.org>
-	 <aUnHnlnDtwMJGP3u@infradead.org> <aUnq_d93Wo9e-oUD@infradead.org>
-	 <53d40f4781783f9b79196bb30975b788be8bb969.camel@hammerspace.com>
-	 <aVyp3SIddHB5sMhp@infradead.org>
-	 <1df4bb7ff3e6fd607c1811d75fcd6dcb860e320e.camel@kernel.org>
-	 <aV3ttYmT2vAtPDws@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.58.2 (3.58.2-1.fc43) 
+	s=k20201202; t=1767798884;
+	bh=LZu0VjM09rQ+PpAAlTkTeRoEnhfmcr/o3Od9ck+Xc4s=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
+	b=nU7J+3MgPYcD6NtK+8bsijrwjoKYPgmZrlQ12UjYiU6yNxuwXqtV0r4y8HjPeekgl
+	 RYH4TbIWMx4WOXhg7cKlN4eTxbZOtQ2ubTSdBsZuzluRWgMHcQh2HLICebVzKLozjU
+	 mThN0PU+kZT6C63gTscn8HBqLsbN9Tr3Y12IsfvBXjpN9h+M4MI+IALZTZRlU6MpVS
+	 LWozCkuzjaYcPjRfHV0hwi5gZ5SFk/nRTHu5rBvWljBRmdTeUqSxHRY3bjTZlsZa8M
+	 qG+c8+RE/WM5GvPI/59KulX8mb80RR9J/oql8bJfdSgslvxYZ88kUh0UDx2t+Tj7zr
+	 mP9bZI5nDWuXg==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 1122DF4006A;
+	Wed,  7 Jan 2026 10:14:43 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Wed, 07 Jan 2026 10:14:43 -0500
+X-ME-Sender: <xms:Y3heaUHES1SNr3abGZWzomJ_Gq34ZP0gu28qOS3Xq2mwR83UUgR_Gg>
+    <xme:Y3heaYLJDxyPFBbTZuOCKqYEOhNdctVuJ83LefnKaJ4nfEgQcQCZC6JrffxsBZhx_
+    uHIS7We_7midoObJsAxPVUOhZwoB7137z5j6nJW-xC3-D6iu1aG_O5w>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgddutdefgedtucetufdoteggodetrf
+    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
+    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
+    gurhepofggfffhvfevkfgjfhfutgfgsehtqhertdertdejnecuhfhrohhmpedfvehhuhgt
+    khcunfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrh
+    hnpefghfeguedtieeiveeugfevtdejfedukeevgfeggfeugfetgfeltdetueelleelteen
+    ucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutg
+    hklhgvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleel
+    leehledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrg
+    hilhdrtghomhdpnhgspghrtghpthhtohepvddpmhhouggvpehsmhhtphhouhhtpdhrtghp
+    thhtoheprhhitghkrdhmrggtkhhlvghmsehgmhgrihhlrdgtohhmpdhrtghpthhtoheplh
+    hinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrgh
+X-ME-Proxy: <xmx:Y3heaay9g0eNPJn2X2MUJz4fpD_INeFh9sK8HIFg6VRFfWaeHyqcBQ>
+    <xmx:Y3heaUOT6vlhwur7v1QmdxBng69k8tCuTXHEsT2wsYIm5iiUqTBGSA>
+    <xmx:Y3heaT5jue7skyggy7rOCRqNIouLcXaAGLjx1oBtJ1AmpvBnWDyZ3g>
+    <xmx:Y3headPg2BI-f7Ui0jtxG6J-EmMkOQf4he9x1PFSAKEBssY9cGM27A>
+    <xmx:Y3heaZn-bfiONw1ZHIXq7t4_HVePmGN6fURIa5z0rZeJeRaroNg20y60>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id E9352780054; Wed,  7 Jan 2026 10:14:42 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+X-ThreadId: AOkYyh3N-hyZ
+Date: Wed, 07 Jan 2026 10:13:17 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: "Rick Macklem" <rick.macklem@gmail.com>
+Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Message-Id: <31d5bce8-c4df-42e1-a1a7-37c5b9fc8078@app.fastmail.com>
+In-Reply-To: 
+ <CAM5tNy5KjQSgRxiOiFHe_3ZCu5v8-ibQ8GfDkscVohLNjgnABA@mail.gmail.com>
+References: 
+ <CAM5tNy4Waqfaqu7kgtnSNrdyR0jBSzJ76tMTbGJPq4HGbBKHiQ@mail.gmail.com>
+ <679b3c2a-b70c-4364-a362-fa5eefbf3af3@app.fastmail.com>
+ <CAM5tNy5KjQSgRxiOiFHe_3ZCu5v8-ibQ8GfDkscVohLNjgnABA@mail.gmail.com>
+Subject: Re: Limit on # of ACEs in a POSIX draft ACL
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-On Tue, 2026-01-06 at 21:23 -0800, hch@infradead.ori wrote:
-> On Tue, Jan 06, 2026 at 01:32:54PM -0500, Trond Myklebust wrote:
-> > Sigh... One last patch on top of all the previous ones, but if we
-> > hit
-> > another issue I think we need to consider just disabling directory
-> > delegations on the client until all the remaining issues can be
-> > fixed
-> > in the next release.
->=20
-> This still crashe=D1=95 generic/633:
->=20
-> generic/633=C2=A0 4s ... [=C2=A0=C2=A0 73.075526] run fstests generic/633=
- at 2026-
-> 01-07 05:21:37
-> [=C2=A0=C2=A0 73.286318] process 'vfstest' launched '/dev/fd/4/file1' wit=
-h NULL
-> argv: empty string added
-> [=C2=A0=C2=A0 73.314625] Oops: general protection fault, probably for non=
--
-> canonical address 0xcccccccccccccd50: 0000 [#1] SMP NOPTI
-> [=C2=A0=C2=A0 73.315391] CPU: 1 UID: 0 PID: 100 Comm: kworker/u8:3 Tainte=
-d:
-> G=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0=
-=C2=A0=C2=A0=C2=A0=C2=A0 N=C2=A0 6.19.0-rc4+ #4540 PREEMPT(full)=20
-> [=C2=A0=C2=A0 73.316043] Tainted: [N]=3DTEST
-> [=C2=A0=C2=A0 73.316229] Hardware name: QEMU Standard PC (i440FX + PIIX, =
-1996),
-> BIOS 1.16.3-debian-1.16.3-2 04/01/2014
-> [=C2=A0=C2=A0 73.316786] Workqueue: rpciod rpc_async_schedule
-> [=C2=A0=C2=A0 73.317066] RIP: 0010:nfs_inode_find_state_and_recover+0x9c/=
-0x260
-> [=C2=A0=C2=A0 73.317430] Code: 01 0f 85 83 00 00 00 49 8b 84 24 80 00 00 =
-00 4c
-> 8d 60 80 48 39 c3 0f 84 68 01 00 00 4d 8b 7c 24 60 4d 85 ff 74 e1 48
-> 8b 7d 00 <49> 39 bf 84 00 00 00 75 af 8b 4d 08 41 39 8f 8c 00 00 00
-> 75 a3 48
-> [=C2=A0=C2=A0 73.318513] RSP: 0018:ffffc900001bfd00 EFLAGS: 00010286
-> [=C2=A0=C2=A0 73.318868] RAX: ffff88810cfb98e0 RBX: ffff8881d68d8c50 RCX:
-> 0000000000000000
-> [=C2=A0=C2=A0 73.319354] RDX: ffff88810330a0c0 RSI: ffff88811a86d914 RDI:
-> b6162427695ded30
-> [=C2=A0=C2=A0 73.319832] RBP: ffff88811a86d918 R08: ffff88810c685100 R09:
-> ffff88810c685130
-> [=C2=A0=C2=A0 73.320270] R10: 0000000000000003 R11: fefefefefefefeff R12:
-> ffff88810cfb9860
-> [=C2=A0=C2=A0 73.320698] R13: ffff8881179b2800 R14: 0000000000000000 R15:
-> cccccccccccccccc
-> [=C2=A0=C2=A0 73.321135] FS:=C2=A0 0000000000000000(0000) GS:ffff8882b363=
-d000(0000)
-> knlGS:0000000000000000
-> [=C2=A0=C2=A0 73.321640] CS:=C2=A0 0010 DS: 0000 ES: 0000 CR0: 0000000080=
-050033
-> [=C2=A0=C2=A0 73.321994] CR2: 0000559277cef238 CR3: 0000000161792002 CR4:
-> 0000000000772ef0
-> [=C2=A0=C2=A0 73.322422] PKRU: 55555554
-> [=C2=A0=C2=A0 73.322592] Call Trace:
-> [=C2=A0=C2=A0 73.322749]=C2=A0 <TASK>
-> [=C2=A0=C2=A0 73.322889]=C2=A0 nfs4_delegreturn_done+0x1b7/0x380
-> [=C2=A0=C2=A0 73.323173]=C2=A0 ? __pfx_rpc_exit_task+0x10/0x10
-> [=C2=A0=C2=A0 73.323475]=C2=A0 rpc_exit_task+0x5c/0x170
-> [=C2=A0=C2=A0 73.323755]=C2=A0 __rpc_execute+0xb1/0x490
-> [=C2=A0=C2=A0 73.324000]=C2=A0 rpc_async_schedule+0x2a/0x40
-> [=C2=A0=C2=A0 73.324257]=C2=A0 process_one_work+0x16c/0x330
-> [=C2=A0=C2=A0 73.324515]=C2=A0 worker_thread+0x254/0x3a0
-> [=C2=A0=C2=A0 73.324762]=C2=A0 ? __pfx_worker_thread+0x10/0x10
-> [=C2=A0=C2=A0 73.325042]=C2=A0 kthread+0x117/0x230
-> [=C2=A0=C2=A0 73.325303]=C2=A0 ? __pfx_kthread+0x10/0x10
-> [=C2=A0=C2=A0 73.325557]=C2=A0 ? __pfx_kthread+0x10/0x10
-> [=C2=A0=C2=A0 73.325812]=C2=A0 ret_from_fork+0x1b6/0x200
-> [=C2=A0=C2=A0 73.326045]=C2=A0 ? __pfx_kthread+0x10/0x10
-> [=C2=A0=C2=A0 73.326278]=C2=A0 ret_from_fork_asm+0x1a/0x30
-> [=C2=A0=C2=A0 73.326535]=C2=A0 </TASK>
-> [=C2=A0=C2=A0 73.326681] Modules linked in: kvm_intel kvm irqbypass
-> [=C2=A0=C2=A0 73.327046] ---[ end trace 0000000000000000 ]---
 
-Thanks for doing all this testing, Christoph. I really appreciate it.
-The previous patch was incomplete. This is incremental to yesterday's
-patch, but I'll squash them together in the testing branch, since
-they're both about blocking state recovery in the non-regular file
-case.
 
-8<-----------------------------------------------------------------
-From 534676d290af6fae6ad1b067b81c13523340bc83 Mon Sep 17 00:00:00 2001
-Message-ID: <534676d290af6fae6ad1b067b81c13523340bc83.1767798220.git.trond.=
-myklebust@hammerspace.com>
-From: Trond Myklebust <trond.myklebust@hammerspace.com>
-Date: Wed, 7 Jan 2026 10:01:58 -0500
-Subject: [PATCH] NFSv4.x: Directory delegations don't require any state
- recovery (part 2)
+On Tue, Jan 6, 2026, at 6:44 PM, Rick Macklem wrote:
+> On Tue, Jan 6, 2026 at 8:37=E2=80=AFAM Chuck Lever <cel@kernel.org> wr=
+ote:
+>>
+>>
+>>
+>> On Tue, Jan 6, 2026, at 11:02 AM, Rick Macklem wrote:
+>> > Hi,
+>> >
+>> > When I did the POSIX draft ACL patches, I mistakenly
+>> > thought that NFS_MAX_ACL_ENTRIES was a generic
+>> > limit that the code should follow.
+>> > Chuck informed me that it is the limit for the NFS_ACL
+>> > protocol.
+>> >
+>> > For the server side, the limit seems to be whatever the
+>> > server file system can handle, which is detected
+>> > later when a setting the ACL is done.
+>> > For encoding, there is the generic limit, which is
+>> > the maximum size an RPC messages can be (for NFSv4.2).
+>> >
+>> > For the client, the limit is more important, since it sets
+>> > the number of pages to allocate for a large ACL which
+>> > cannot be encoded inline.
+>> >
+>> > So, I think having a sanity limit is needed, at least for
+>> > the client.
+>>
+>> The Linux client does something special with ACL operations:
+>> the transport/XDR layer allocates the pages as the reply is
+>> read from the transport. It already does this for both
+>> NFS_ACL and NFSv4.
+>>
+>> I don't think there's anything different needed for this case.
+> There may be a better way (and I coded this some time ago),
+> but I needed an array for the page references, so I could free
+> them.
 
-This patch will be squashed with part 1.
+Again, that problem should already be solved in the current
+code, although it's possible I'm missing your point.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@hammerspace.com>
----
- fs/nfs/nfs4state.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 01179f7de322..dba51c622cf3 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1445,6 +1445,8 @@ void nfs_inode_find_state_and_recover(struct inode *i=
-node,
- 	struct nfs4_state *state;
- 	bool found =3D false;
-=20
-+	if (!S_ISREG(inode->i_mode))
-+		goto out;
- 	rcu_read_lock();
- 	list_for_each_entry_rcu(ctx, &nfsi->open_files, list) {
- 		state =3D ctx->state;
-@@ -1466,7 +1468,7 @@ void nfs_inode_find_state_and_recover(struct inode *i=
-node,
- 			found =3D true;
- 	}
- 	rcu_read_unlock();
--
-+out:
- 	nfs_inode_find_delegation_state_and_recover(inode, stateid);
- 	if (found)
- 		nfs4_schedule_state_manager(clp);
-@@ -1478,6 +1480,8 @@ static void nfs4_state_mark_open_context_bad(struct n=
-fs4_state *state, int err)
- 	struct nfs_inode *nfsi =3D NFS_I(inode);
- 	struct nfs_open_context *ctx;
-=20
-+	if (!S_ISREG(inode->i_mode))
-+		return;
- 	rcu_read_lock();
- 	list_for_each_entry_rcu(ctx, &nfsi->open_files, list) {
- 		if (ctx->state !=3D state)
+> If you take a look for NFS4_ACL_MAXPAGES in patch #8
+> for the client stuff, you'll see what I mean.
+>
+> NFS4_ACL_MAXPAGES is calculated from NFS_ACL_MAX_ENTRIES
+> and IDMAP_NAMESZ in patch #3.
+
+NFS_ACL_MAX_ENTRIES is an NFS_ACL protocol constant, it's not
+related to any sort of implementation limit. So it is, IMHO,
+not appropriate to apply to either NFSv4 ACLs or NFSv4.2 POSIX
+draft ACLs. That's just me with my architect's hat on.
+
+The thing that is new about NFSv4 is that NFS_ACL ACEs are fixed
+in size because they encode "who" identities as UID/GID numbers.
+In NFSv4, "who" identities are variable-length strings. It's
+really quite impossible for receivers to guess how large these
+things are before they land in memory. (It might be better for
+the NFS layers to treat ACLs like directories, whose XDR
+representation has similar characteristics).
+
+As you pointed out, the file systems where the ACLs are stored
+are going to hit their storage limits far sooner than the wire
+protocol will become a bottleneck. We just don't have any good
+ways for the NFS layers to bound and sanity check incoming ACL
+streams though.
+
+
 --=20
-2.52.0
-
+Chuck Lever
