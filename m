@@ -1,214 +1,826 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C489B500961
-	for <linux-nfs@vger.kernel.org>; Thu,  8 Jan 2026 14:44:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9DBDF32C306
+	for <linux-nfs@vger.kernel.org>; Thu,  8 Jan 2026 15:20:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1767883464; cv=none; b=KL3rhjjk+ztFEJthnpBAfgu4Xp901QSWp/6zDBDodIW92OL2II4MvwwBXsD5L5Mt9EhRUZJ0I/UR4SaO65dBetltopMy7qKbx6fQ0cZqx/k6p0L5q3Z/ZZTvcExucgxiMzORr/3xxkpoQSWo1UsVSfT7tR3oSIW8694o0MAGJBQ=
+	t=1767885668; cv=none; b=oqLIV8j8mSOeTAr+XbnB8llJv/opCO4sHYQlFW1LBBqCRFQKK6KPeCp1dphDzGPR8GM/OOaZRz6vlsZnhJjnC41OHzE+Ui1fSdMjMRT99DLP33o1Y1oo9usK5szI4ZKeA5HYzhW2bAaz90y469tzAwg/RMHnqJgn+vbStjCnX4Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1767883464; c=relaxed/simple;
-	bh=VJeEFmpZNhv2EX88xBOz4tOU0XosAYVCS5rY2c11gAg=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=awp1a7+exHvrZYH4ynPbfOBk8oQz5Pp4RsEv0MCxMRy3igDob1IVsDr7eU5ZHDVfcNrksrEFDaZ+GTq3hJK1TIod0K6mgwFWwCyB/Yvh7GO+H5DO/TyfEkt5gSP0xz5c3Q4Wl/4KXLEmnQbpKrI8oCBdtF/XUgkJerFKvEzNm3c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hBe/68IQ; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1767885668; c=relaxed/simple;
+	bh=XxsdSOgQc2IDXM1vH0ztAYCPVlCSFiCCszvGUR5Tv5k=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ZQhshMri72Zmh4Hm5R9ZABzKa+CM/UFSoF+q5H3yAyUeO91aIjFRibJjxhDGzulPCucw5WoMKfkSeNwuvj67hqO78sp+RXPmsDiFOXPQ/o9d66Cd6z5TdztlSCR0J49Mr7jny1liem7aEP6pocBCsO1Mx4oDP/zA+r1QdabzJnQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=h4fRbLSI; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Aw34SwKC; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=h4fRbLSI; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Aw34SwKC; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hBe/68IQ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AD466C116C6;
-	Thu,  8 Jan 2026 14:44:23 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1767883464;
-	bh=VJeEFmpZNhv2EX88xBOz4tOU0XosAYVCS5rY2c11gAg=;
-	h=From:To:Cc:Subject:Date:From;
-	b=hBe/68IQ9LqFPvIXRfAcasjSF/j1VGD7QVpPO6xPD4Ij4BMZ5uZtcIGqS/xgdqDH4
-	 bzBjwzx+h7DXef1ggZz+oEEMfwRxPvPvqh4IzkhEuUj/kMXmEqAiwJ0ngzjTan8Oll
-	 OfZ4RP4g7S1ppgebqp5dMMpijlyCDFN/R12nEbww3hDBmg5w68VnUQX1D5orHA8Eqf
-	 iHWiHdpqwvu9aJRLX7hym5QXwD55J2PVepvcJQXV4r4ZGZz3ObaHOxQABK35XTiJJO
-	 pqeqmt7jts3JCEC7cwpj4mkcpmqowTFGNNIVSR6FaWejc8a6P1CiaodyqwEkooyHUs
-	 9nvu97IXkGahA==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neilb@ownmail.net>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Christoph Hellwig <hch@lst.de>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6] NFSD: Track SCSI Persistent Registration Fencing per Client with xarray
-Date: Thu,  8 Jan 2026 09:44:21 -0500
-Message-ID: <20260108144421.3955020-1-cel@kernel.org>
-X-Mailer: git-send-email 2.52.0
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="h4fRbLSI";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Aw34SwKC";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="h4fRbLSI";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Aw34SwKC"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 6DDA35C894;
+	Thu,  8 Jan 2026 15:20:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1767885656; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=+ylC4BbezKOg/v6QxlNAtFKvCjQu+BeDsLwqfteTncQ=;
+	b=h4fRbLSIa+zeAxIJg0j4RtnfxuCECyKVjH1r8BsSsGlTPLAZcmunCK18kpBOtre0PosVxP
+	/fSxXclLH9vbXYS7FIdh6hHnFdl8FoRsVCBxYKXePVSQIri3ELmGQkuVgALNM4wjWeX1mb
+	Vrlbikm2qE2NTD3CE8OXksbCKBbOHkM=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1767885656;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=+ylC4BbezKOg/v6QxlNAtFKvCjQu+BeDsLwqfteTncQ=;
+	b=Aw34SwKCjNNKEPN/hAE4wLh+m6UPKOmbjNhQcx7eztpH7KJOG8yQKADctP5UA+hEfRNWhe
+	2dcfJnYfZkB0gkBg==
+Authentication-Results: smtp-out2.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=h4fRbLSI;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=Aw34SwKC
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1767885656; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=+ylC4BbezKOg/v6QxlNAtFKvCjQu+BeDsLwqfteTncQ=;
+	b=h4fRbLSIa+zeAxIJg0j4RtnfxuCECyKVjH1r8BsSsGlTPLAZcmunCK18kpBOtre0PosVxP
+	/fSxXclLH9vbXYS7FIdh6hHnFdl8FoRsVCBxYKXePVSQIri3ELmGQkuVgALNM4wjWeX1mb
+	Vrlbikm2qE2NTD3CE8OXksbCKBbOHkM=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1767885656;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=+ylC4BbezKOg/v6QxlNAtFKvCjQu+BeDsLwqfteTncQ=;
+	b=Aw34SwKCjNNKEPN/hAE4wLh+m6UPKOmbjNhQcx7eztpH7KJOG8yQKADctP5UA+hEfRNWhe
+	2dcfJnYfZkB0gkBg==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 5D3973EA63;
+	Thu,  8 Jan 2026 15:20:56 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id eWK8FljLX2mUdwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Thu, 08 Jan 2026 15:20:56 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 19BF6A09CF; Thu,  8 Jan 2026 16:20:56 +0100 (CET)
+Date: Thu, 8 Jan 2026 16:20:56 +0100
+From: Jan Kara <jack@suse.cz>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Christian Brauner <brauner@kernel.org>, 
+	Al Viro <viro@zeniv.linux.org.uk>, David Sterba <dsterba@suse.com>, Jan Kara <jack@suse.cz>, 
+	Mike Marshall <hubcap@omnibond.com>, Martin Brandenburg <martin@omnibond.com>, 
+	Carlos Maiolino <cem@kernel.org>, Stefan Roesch <shr@fb.com>, Jeff Layton <jlayton@kernel.org>, 
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>, Trond Myklebust <trondmy@kernel.org>, 
+	Anna Schumaker <anna@kernel.org>, linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, gfs2@lists.linux.dev, io-uring@vger.kernel.org, 
+	devel@lists.orangefs.org, linux-unionfs@vger.kernel.org, linux-mtd@lists.infradead.org, 
+	linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 05/11] fs: refactor ->update_time handling
+Message-ID: <ljaucvi236sejlfeswafnjhc4twoje6zayghjhktnywjdxcepr@jzfkqffnngxq>
+References: <20260108141934.2052404-1-hch@lst.de>
+ <20260108141934.2052404-6-hch@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260108141934.2052404-6-hch@lst.de>
+X-Spam-Score: -4.01
+X-Spamd-Result: default: False [-4.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	ARC_NA(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCPT_COUNT_TWELVE(0.00)[23];
+	TO_DN_SOME(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email,lst.de:email];
+	RCVD_COUNT_THREE(0.00)[3];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DKIM_TRACE(0.00)[suse.cz:+]
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: 6DDA35C894
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Flag: NO
 
-From: Dai Ngo <dai.ngo@oracle.com>
+On Thu 08-01-26 15:19:05, Christoph Hellwig wrote:
+> Pass the type of update (atime vs c/mtime plus version) as an enum
+> instead of a set of flags that caused all kinds of confusion.
+> Because inode_update_timestamps now can't return a modified version
+> of those flags, return the I_DIRTY_* flags needed to persist the
+> update, which is what the main caller in generic_update_time wants
+> anyway, and which is suitable for the other callers that only want
+> to know if an update happened.
+> 
+> The whole update_time path keeps the flags argument, which will be used
+> to support non-blocking updates soon even if it is unused, and (the
+> slightly renamed) inode_update_time also gains the possibility to return
+> a negative errno to support this.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-When a client holding pNFS SCSI layouts becomes unresponsive, the
-server revokes access by preempting the client's SCSI persistent
-reservation key. A layout recall is issued for each layout the
-client holds; if the client fails to respond, each recall triggers
-a fence operation. The first preempt for a given device succeeds
-and removes the client's key registration. Subsequent preempts for
-the same device fail because the key is no longer registered.
+Looks good. Feel free to add:
 
-Update the NFS server to handle SCSI persistent registration
-fencing on a per-client and per-device basis by utilizing an
-xarray associated with the nfs4_client structure.
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Each xarray entry is indexed by the dev_t of a block device
-registered by the client. The entry maintains a flag indicating
-whether this device has already been fenced for the corresponding
-client.
+								Honza
 
-When the server issues a persistent registration key to a client,
-it creates a new xarray entry at the dev_t index with the fenced
-flag initialized to 0.
-
-Before performing a fence via nfsd4_scsi_fence_client, the server
-checks the corresponding entry using the device's dev_t. If the
-fenced flag is already set, the fence operation is skipped;
-otherwise, the flag is set to 1 and fencing proceeds.
-
-The xarray is destroyed when the nfs4_client is released in
-__destroy_client.
-
-Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfsd/blocklayout.c | 41 +++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4state.c   |  6 ++++++
- fs/nfsd/state.h       |  3 +++
- 3 files changed, 50 insertions(+)
-
-V2:
-   . Replace xa_store with xas_set_mark and xas_get_mark to avoid
-     memory allocation in nfsd4_scsi_fence_client.
-   . Remove cl_fence_lock, use xa_lock instead.
-V3:
-   . handle xa_store error.
-   . add xa_lock and xa_unlock when calling xas_clear_mark
-V4:
-   . rename cl_fenced_devs to cl_dev_fences
-   . add comment in nfsd4_block_get_device_info_scsi
-
-V5:
-   . Take a stab at a proper problem statement
-   . Handle failures of pr_register / pr_reserve correctly
-   . Remove usage of possibly stale xa_state data
-   . Avoid looping when pr_preempt fails
-   . Fix usage of #ifdef CONFIG_SCSILAYOUT
-
-V6:
-   . Use xa_insert() instead of xa_store()
-   . Add check for PR_STS_RETRY_PATH_FAILURE
-
-
-diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index afa16d7a8013..60304bca1bb6 100644
---- a/fs/nfsd/blocklayout.c
-+++ b/fs/nfsd/blocklayout.c
-@@ -342,6 +342,17 @@ nfsd4_block_get_device_info_scsi(struct super_block *sb,
- 		goto out_free_dev;
- 	}
- 
-+	/*
-+	 * Add the device if it does not already exist in the xarray. This
-+	 * logic prevents adding more entries to cl_dev_fences than there
-+	 * are exported devices on the server. XA_MARK_0 tracks whether the
-+	 * device has been fenced.
-+	 */
-+	ret = xa_insert(&clp->cl_dev_fences, sb->s_bdev->bd_dev,
-+			XA_ZERO_ENTRY, GFP_KERNEL);
-+	if (ret < 0 && ret != -EBUSY)
-+		goto out_free_dev;
-+
- 	ret = ops->pr_register(sb->s_bdev, 0, NFSD_MDS_PR_KEY, true);
- 	if (ret) {
- 		pr_err("pNFS: failed to register key for device %s.\n",
-@@ -399,11 +410,41 @@ nfsd4_scsi_fence_client(struct nfs4_layout_stateid *ls, struct nfsd_file *file)
- {
- 	struct nfs4_client *clp = ls->ls_stid.sc_client;
- 	struct block_device *bdev = file->nf_file->f_path.mnt->mnt_sb->s_bdev;
-+	struct xarray *xa = &clp->cl_dev_fences;
- 	int status;
-+	bool skip;
-+
-+	xa_lock(xa);
-+	skip = xa_get_mark(xa, bdev->bd_dev, XA_MARK_0);
-+	if (!skip)
-+		__xa_set_mark(xa, bdev->bd_dev, XA_MARK_0);
-+	xa_unlock(xa);
-+	if (skip)
-+		return;
- 
- 	status = bdev->bd_disk->fops->pr_ops->pr_preempt(bdev, NFSD_MDS_PR_KEY,
- 			nfsd4_scsi_pr_key(clp),
- 			PR_EXCLUSIVE_ACCESS_REG_ONLY, true);
-+	/*
-+	 * Reset to allow retry only when the command could not have
-+	 * reached the device. Negative status means a local error
-+	 * (e.g., -ENOMEM) prevented the command from being sent.
-+	 * PR_STS_PATH_FAILED, PR_STS_PATH_FAST_FAILED, and
-+	 * PR_STS_RETRY_PATH_FAILURE indicate transport path failures
-+	 * before device delivery.
-+	 *
-+	 * For all other errors, the command may have reached the device
-+	 * and the preempt may have succeeded. Avoid resetting, since
-+	 * retrying a successful preempt returns PR_STS_IOERR or
-+	 * PR_STS_RESERVATION_CONFLICT, which would cause an infinite
-+	 * retry loop.
-+	 */
-+	if (status < 0 ||
-+	    status == PR_STS_PATH_FAILED ||
-+	    status == PR_STS_PATH_FAST_FAILED ||
-+	    status == PR_STS_RETRY_PATH_FAILURE)
-+		xa_clear_mark(xa, bdev->bd_dev, XA_MARK_0);
-+
- 	trace_nfsd_pnfs_fence(clp, bdev->bd_disk->disk_name, status);
- }
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ea4d6eff0d2f..4fc94f2de7ba 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2382,6 +2382,9 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name,
- 	INIT_LIST_HEAD(&clp->cl_revoked);
- #ifdef CONFIG_NFSD_PNFS
- 	INIT_LIST_HEAD(&clp->cl_lo_states);
-+#endif
-+#ifdef CONFIG_NFSD_SCSILAYOUT
-+	xa_init(&clp->cl_dev_fences);
- #endif
- 	INIT_LIST_HEAD(&clp->async_copies);
- 	spin_lock_init(&clp->async_lock);
-@@ -2538,6 +2541,9 @@ __destroy_client(struct nfs4_client *clp)
- 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
- 	atomic_add_unless(&nn->nfs4_client_count, -1, 0);
- 	nfsd4_dec_courtesy_client_count(nn, clp);
-+#ifdef CONFIG_NFSD_SCSILAYOUT
-+	xa_destroy(&clp->cl_dev_fences);
-+#endif
- 	free_client(clp);
- 	wake_up_all(&expiry_wq);
- }
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 508b7e36d846..037f4ccd2e87 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -527,6 +527,9 @@ struct nfs4_client {
- 
- 	struct nfsd4_cb_recall_any	*cl_ra;
- 	time64_t		cl_ra_time;
-+#ifdef CONFIG_NFSD_SCSILAYOUT
-+	struct xarray		cl_dev_fences;
-+#endif
- };
- 
- /* struct nfs4_client_reset
+> ---
+>  Documentation/filesystems/locking.rst |   3 +-
+>  Documentation/filesystems/vfs.rst     |   3 +-
+>  fs/bad_inode.c                        |   3 +-
+>  fs/btrfs/inode.c                      |  11 ++-
+>  fs/fat/fat.h                          |   3 +-
+>  fs/fat/misc.c                         |  26 ++---
+>  fs/gfs2/inode.c                       |   5 +-
+>  fs/inode.c                            | 134 ++++++++++++++------------
+>  fs/nfs/inode.c                        |  10 +-
+>  fs/orangefs/inode.c                   |  28 +++---
+>  fs/orangefs/orangefs-kernel.h         |   3 +-
+>  fs/overlayfs/inode.c                  |   5 +-
+>  fs/overlayfs/overlayfs.h              |   3 +-
+>  fs/ubifs/file.c                       |  21 ++--
+>  fs/ubifs/ubifs.h                      |   3 +-
+>  fs/xfs/xfs_iops.c                     |  22 ++---
+>  include/linux/fs.h                    |  28 ++++--
+>  17 files changed, 157 insertions(+), 154 deletions(-)
+> 
+> diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
+> index 77704fde9845..37a4a7fa8094 100644
+> --- a/Documentation/filesystems/locking.rst
+> +++ b/Documentation/filesystems/locking.rst
+> @@ -80,7 +80,8 @@ prototypes::
+>  	int (*getattr) (struct mnt_idmap *, const struct path *, struct kstat *, u32, unsigned int);
+>  	ssize_t (*listxattr) (struct dentry *, char *, size_t);
+>  	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start, u64 len);
+> -	void (*update_time)(struct inode *, struct timespec *, int);
+> +	void (*update_time)(struct inode *inode, enum fs_update_time type,
+> +			    int flags);
+>  	int (*atomic_open)(struct inode *, struct dentry *,
+>  				struct file *, unsigned open_flag,
+>  				umode_t create_mode);
+> diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
+> index 670ba66b60e4..51aa9db64784 100644
+> --- a/Documentation/filesystems/vfs.rst
+> +++ b/Documentation/filesystems/vfs.rst
+> @@ -485,7 +485,8 @@ As of kernel 2.6.22, the following members are defined:
+>  		int (*setattr) (struct mnt_idmap *, struct dentry *, struct iattr *);
+>  		int (*getattr) (struct mnt_idmap *, const struct path *, struct kstat *, u32, unsigned int);
+>  		ssize_t (*listxattr) (struct dentry *, char *, size_t);
+> -		void (*update_time)(struct inode *, struct timespec *, int);
+> +		void (*update_time)(struct inode *inode, enum fs_update_time type,
+> +				    int flags);
+>  		int (*atomic_open)(struct inode *, struct dentry *, struct file *,
+>  				   unsigned open_flag, umode_t create_mode);
+>  		int (*tmpfile) (struct mnt_idmap *, struct inode *, struct file *, umode_t);
+> diff --git a/fs/bad_inode.c b/fs/bad_inode.c
+> index 0ef9bcb744dd..acf8613f5e36 100644
+> --- a/fs/bad_inode.c
+> +++ b/fs/bad_inode.c
+> @@ -133,7 +133,8 @@ static int bad_inode_fiemap(struct inode *inode,
+>  	return -EIO;
+>  }
+>  
+> -static int bad_inode_update_time(struct inode *inode, int flags)
+> +static int bad_inode_update_time(struct inode *inode, enum fs_update_time type,
+> +				 unsigned int flags)
+>  {
+>  	return -EIO;
+>  }
+> diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+> index 599c03a1c573..23fc38de9be5 100644
+> --- a/fs/btrfs/inode.c
+> +++ b/fs/btrfs/inode.c
+> @@ -6354,16 +6354,19 @@ static int btrfs_dirty_inode(struct btrfs_inode *inode)
+>   * We need our own ->update_time so that we can return error on ENOSPC for
+>   * updating the inode in the case of file write and mmap writes.
+>   */
+> -static int btrfs_update_time(struct inode *inode, int flags)
+> +static int btrfs_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags)
+>  {
+>  	struct btrfs_root *root = BTRFS_I(inode)->root;
+> -	bool dirty;
+> +	int dirty;
+>  
+>  	if (btrfs_root_readonly(root))
+>  		return -EROFS;
+>  
+> -	dirty = inode_update_timestamps(inode, flags);
+> -	return dirty ? btrfs_dirty_inode(BTRFS_I(inode)) : 0;
+> +	dirty = inode_update_time(inode, type, flags);
+> +	if (dirty <= 0)
+> +		return dirty;
+> +	return btrfs_dirty_inode(BTRFS_I(inode));
+>  }
+>  
+>  /*
+> diff --git a/fs/fat/fat.h b/fs/fat/fat.h
+> index 767b566b1cab..0d269dba897b 100644
+> --- a/fs/fat/fat.h
+> +++ b/fs/fat/fat.h
+> @@ -472,7 +472,8 @@ extern struct timespec64 fat_truncate_atime(const struct msdos_sb_info *sbi,
+>  #define FAT_UPDATE_CMTIME	(1u << 1)
+>  void fat_truncate_time(struct inode *inode, struct timespec64 *now,
+>  		unsigned int flags);
+> -extern int fat_update_time(struct inode *inode, int flags);
+> +int fat_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags);
+>  extern int fat_sync_bhs(struct buffer_head **bhs, int nr_bhs);
+>  
+>  int fat_cache_init(void);
+> diff --git a/fs/fat/misc.c b/fs/fat/misc.c
+> index 78c620e9b3fd..b154a5162764 100644
+> --- a/fs/fat/misc.c
+> +++ b/fs/fat/misc.c
+> @@ -332,28 +332,14 @@ void fat_truncate_time(struct inode *inode, struct timespec64 *now,
+>  }
+>  EXPORT_SYMBOL_GPL(fat_truncate_time);
+>  
+> -int fat_update_time(struct inode *inode, int flags)
+> +int fat_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags)
+>  {
+> -	unsigned int fat_flags = 0;
+> -	int dirty_flags = 0;
+> -
+> -	if (inode->i_ino == MSDOS_ROOT_INO)
+> -		return 0;
+> -
+> -	if (flags & S_ATIME)
+> -		fat_flags |= FAT_UPDATE_ATIME;
+> -	if (flags & (S_CTIME | S_MTIME))
+> -		fat_flags |= FAT_UPDATE_CMTIME;
+> -
+> -	if (fat_flags) {
+> -		fat_truncate_time(inode, NULL, flags);
+> -		if (inode->i_sb->s_flags & SB_LAZYTIME)
+> -			dirty_flags |= I_DIRTY_TIME;
+> -		else
+> -			dirty_flags |= I_DIRTY_SYNC;
+> +	if (inode->i_ino != MSDOS_ROOT_INO) {
+> +		fat_truncate_time(inode, NULL, type == FS_UPD_ATIME ?
+> +				FAT_UPDATE_ATIME : FAT_UPDATE_CMTIME);
+> +		__mark_inode_dirty(inode, inode_time_dirty_flag(inode));
+>  	}
+> -
+> -	__mark_inode_dirty(inode, dirty_flags);
+>  	return 0;
+>  }
+>  EXPORT_SYMBOL_GPL(fat_update_time);
+> diff --git a/fs/gfs2/inode.c b/fs/gfs2/inode.c
+> index e08eb419347c..4ef39ff6889d 100644
+> --- a/fs/gfs2/inode.c
+> +++ b/fs/gfs2/inode.c
+> @@ -2242,7 +2242,8 @@ loff_t gfs2_seek_hole(struct file *file, loff_t offset)
+>  	return vfs_setpos(file, ret, inode->i_sb->s_maxbytes);
+>  }
+>  
+> -static int gfs2_update_time(struct inode *inode, int flags)
+> +static int gfs2_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags)
+>  {
+>  	struct gfs2_inode *ip = GFS2_I(inode);
+>  	struct gfs2_glock *gl = ip->i_gl;
+> @@ -2257,7 +2258,7 @@ static int gfs2_update_time(struct inode *inode, int flags)
+>  		if (error)
+>  			return error;
+>  	}
+> -	return generic_update_time(inode, flags);
+> +	return generic_update_time(inode, type, flags);
+>  }
+>  
+>  static const struct inode_operations gfs2_file_iops = {
+> diff --git a/fs/inode.c b/fs/inode.c
+> index 7eb28dd45a5a..a0dd11a05473 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -2081,78 +2081,84 @@ static bool relatime_need_update(struct vfsmount *mnt, struct inode *inode,
+>  	return false;
+>  }
+>  
+> +static int inode_update_atime(struct inode *inode)
+> +{
+> +	struct timespec64 atime = inode_get_atime(inode);
+> +	struct timespec64 now = current_time(inode);
+> +
+> +	if (timespec64_equal(&now, &atime))
+> +		return 0;
+> +
+> +	inode_set_atime_to_ts(inode, now);
+> +	return inode_time_dirty_flag(inode);
+> +}
+> +
+> +static int inode_update_cmtime(struct inode *inode)
+> +{
+> +	struct timespec64 ctime = inode_get_ctime(inode);
+> +	struct timespec64 mtime = inode_get_mtime(inode);
+> +	struct timespec64 now = inode_set_ctime_current(inode);
+> +	unsigned int dirty = 0;
+> +	bool mtime_changed;
+> +
+> +	mtime_changed = !timespec64_equal(&now, &mtime);
+> +	if (mtime_changed || !timespec64_equal(&now, &ctime))
+> +		dirty = inode_time_dirty_flag(inode);
+> +	if (mtime_changed)
+> +		inode_set_mtime_to_ts(inode, now);
+> +
+> +	if (IS_I_VERSION(inode) && inode_maybe_inc_iversion(inode, !!dirty))
+> +		dirty |= I_DIRTY_SYNC;
+> +
+> +	return dirty;
+> +}
+> +
+>  /**
+> - * inode_update_timestamps - update the timestamps on the inode
+> + * inode_update_time - update either atime or c/mtime and i_version on the inode
+>   * @inode: inode to be updated
+> - * @flags: S_* flags that needed to be updated
+> + * @type: timestamp to be updated
+> + * @flags: flags for the update
+>   *
+> - * The update_time function is called when an inode's timestamps need to be
+> - * updated for a read or write operation. This function handles updating the
+> - * actual timestamps. It's up to the caller to ensure that the inode is marked
+> - * dirty appropriately.
+> + * Update either atime or c/mtime and version in a inode if needed for a file
+> + * access or modification.  It is up to the caller to mark the inode dirty
+> + * appropriately.
+>   *
+> - * In the case where any of S_MTIME, S_CTIME, or S_VERSION need to be updated,
+> - * attempt to update all three of them. S_ATIME updates can be handled
+> - * independently of the rest.
+> - *
+> - * Returns a set of S_* flags indicating which values changed.
+> + * Returns the positive I_DIRTY_* flags for __mark_inode_dirty() if the inode
+> + * needs to be marked dirty, 0 if it did not, or a negative errno if an error
+> + * happened.
+>   */
+> -int inode_update_timestamps(struct inode *inode, int flags)
+> +int inode_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags)
+>  {
+> -	int updated = 0;
+> -	struct timespec64 now;
+> -
+> -	if (flags & (S_MTIME|S_CTIME|S_VERSION)) {
+> -		struct timespec64 ctime = inode_get_ctime(inode);
+> -		struct timespec64 mtime = inode_get_mtime(inode);
+> -
+> -		now = inode_set_ctime_current(inode);
+> -		if (!timespec64_equal(&now, &ctime))
+> -			updated |= S_CTIME;
+> -		if (!timespec64_equal(&now, &mtime)) {
+> -			inode_set_mtime_to_ts(inode, now);
+> -			updated |= S_MTIME;
+> -		}
+> -		if (IS_I_VERSION(inode) && inode_maybe_inc_iversion(inode, updated))
+> -			updated |= S_VERSION;
+> -	} else {
+> -		now = current_time(inode);
+> -	}
+> -
+> -	if (flags & S_ATIME) {
+> -		struct timespec64 atime = inode_get_atime(inode);
+> -
+> -		if (!timespec64_equal(&now, &atime)) {
+> -			inode_set_atime_to_ts(inode, now);
+> -			updated |= S_ATIME;
+> -		}
+> +	switch (type) {
+> +	case FS_UPD_ATIME:
+> +		return inode_update_atime(inode);
+> +	case FS_UPD_CMTIME:
+> +		return inode_update_cmtime(inode);
+> +	default:
+> +		WARN_ON_ONCE(1);
+> +		return -EIO;
+>  	}
+> -	return updated;
+>  }
+> -EXPORT_SYMBOL(inode_update_timestamps);
+> +EXPORT_SYMBOL(inode_update_time);
+>  
+>  /**
+>   * generic_update_time - update the timestamps on the inode
+>   * @inode: inode to be updated
+> - * @flags: S_* flags that needed to be updated
+> - *
+> - * The update_time function is called when an inode's timestamps need to be
+> - * updated for a read or write operation. In the case where any of S_MTIME, S_CTIME,
+> - * or S_VERSION need to be updated we attempt to update all three of them. S_ATIME
+> - * updates can be handled done independently of the rest.
+> + * @type: timestamp to be updated
+> + * @flags: flags for the update
+>   *
+>   * Returns a negative error value on error, else 0.
+>   */
+> -int generic_update_time(struct inode *inode, int flags)
+> +int generic_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags)
+>  {
+> -	int updated = inode_update_timestamps(inode, flags);
+> -	int dirty_flags = 0;
+> +	int dirty;
+>  
+> -	if (updated & (S_ATIME|S_MTIME|S_CTIME))
+> -		dirty_flags = inode->i_sb->s_flags & SB_LAZYTIME ? I_DIRTY_TIME : I_DIRTY_SYNC;
+> -	if (updated & S_VERSION)
+> -		dirty_flags |= I_DIRTY_SYNC;
+> -	__mark_inode_dirty(inode, dirty_flags);
+> +	dirty = inode_update_time(inode, type, flags);
+> +	if (dirty <= 0)
+> +		return dirty;
+> +	__mark_inode_dirty(inode, dirty);
+>  	return 0;
+>  }
+>  EXPORT_SYMBOL(generic_update_time);
+> @@ -2225,9 +2231,9 @@ void touch_atime(const struct path *path)
+>  	 * of the fs read only, e.g. subvolumes in Btrfs.
+>  	 */
+>  	if (inode->i_op->update_time)
+> -		inode->i_op->update_time(inode, S_ATIME);
+> +		inode->i_op->update_time(inode, FS_UPD_ATIME, 0);
+>  	else
+> -		generic_update_time(inode, S_ATIME);
+> +		generic_update_time(inode, FS_UPD_ATIME, 0);
+>  	mnt_put_write_access(mnt);
+>  skip_update:
+>  	sb_end_write(inode->i_sb);
+> @@ -2354,7 +2360,7 @@ static int file_update_time_flags(struct file *file, unsigned int flags)
+>  {
+>  	struct inode *inode = file_inode(file);
+>  	struct timespec64 now, ts;
+> -	int sync_mode = 0;
+> +	bool need_update = false;
+>  	int ret = 0;
+>  
+>  	/* First try to exhaust all avenues to not sync */
+> @@ -2367,14 +2373,14 @@ static int file_update_time_flags(struct file *file, unsigned int flags)
+>  
+>  	ts = inode_get_mtime(inode);
+>  	if (!timespec64_equal(&ts, &now))
+> -		sync_mode |= S_MTIME;
+> +		need_update = true;
+>  	ts = inode_get_ctime(inode);
+>  	if (!timespec64_equal(&ts, &now))
+> -		sync_mode |= S_CTIME;
+> +		need_update = true;
+>  	if (IS_I_VERSION(inode) && inode_iversion_need_inc(inode))
+> -		sync_mode |= S_VERSION;
+> +		need_update = true;
+>  
+> -	if (!sync_mode)
+> +	if (!need_update)
+>  		return 0;
+>  
+>  	if (flags & IOCB_NOWAIT)
+> @@ -2383,9 +2389,9 @@ static int file_update_time_flags(struct file *file, unsigned int flags)
+>  	if (mnt_get_write_access_file(file))
+>  		return 0;
+>  	if (inode->i_op->update_time)
+> -		ret = inode->i_op->update_time(inode, sync_mode);
+> +		ret = inode->i_op->update_time(inode, FS_UPD_CMTIME, 0);
+>  	else
+> -		ret = generic_update_time(inode, sync_mode);
+> +		ret = generic_update_time(inode, FS_UPD_CMTIME, 0);
+>  	mnt_put_write_access_file(file);
+>  	return ret;
+>  }
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 3be8ba7b98c5..cd6d7c6e1237 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -649,15 +649,15 @@ static void nfs_set_timestamps_to_ts(struct inode *inode, struct iattr *attr)
+>  		struct timespec64 ctime = inode_get_ctime(inode);
+>  		struct timespec64 mtime = inode_get_mtime(inode);
+>  		struct timespec64 now;
+> -		int updated = 0;
+> +		bool updated = false;
+>  
+>  		now = inode_set_ctime_current(inode);
+>  		if (!timespec64_equal(&now, &ctime))
+> -			updated |= S_CTIME;
+> +			updated = true;
+>  
+>  		inode_set_mtime_to_ts(inode, attr->ia_mtime);
+>  		if (!timespec64_equal(&now, &mtime))
+> -			updated |= S_MTIME;
+> +			updated = true;
+>  
+>  		inode_maybe_inc_iversion(inode, updated);
+>  		cache_flags |= NFS_INO_INVALID_CTIME | NFS_INO_INVALID_MTIME;
+> @@ -671,13 +671,13 @@ static void nfs_set_timestamps_to_ts(struct inode *inode, struct iattr *attr)
+>  
+>  static void nfs_update_atime(struct inode *inode)
+>  {
+> -	inode_update_timestamps(inode, S_ATIME);
+> +	inode_update_time(inode, FS_UPD_ATIME, 0);
+>  	NFS_I(inode)->cache_validity &= ~NFS_INO_INVALID_ATIME;
+>  }
+>  
+>  static void nfs_update_mtime(struct inode *inode)
+>  {
+> -	inode_update_timestamps(inode, S_MTIME | S_CTIME);
+> +	inode_update_time(inode, FS_UPD_CMTIME, 0);
+>  	NFS_I(inode)->cache_validity &=
+>  		~(NFS_INO_INVALID_CTIME | NFS_INO_INVALID_MTIME);
+>  }
+> diff --git a/fs/orangefs/inode.c b/fs/orangefs/inode.c
+> index d7275990ffa4..eab16afb5b8a 100644
+> --- a/fs/orangefs/inode.c
+> +++ b/fs/orangefs/inode.c
+> @@ -872,22 +872,24 @@ int orangefs_permission(struct mnt_idmap *idmap,
+>  	return generic_permission(&nop_mnt_idmap, inode, mask);
+>  }
+>  
+> -int orangefs_update_time(struct inode *inode, int flags)
+> +int orangefs_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags)
+>  {
+> -	struct iattr iattr;
+> +	struct iattr iattr = { };
+> +	int dirty;
+>  
+> -	gossip_debug(GOSSIP_INODE_DEBUG, "orangefs_update_time: %pU\n",
+> -	    get_khandle_from_ino(inode));
+> -
+> -	flags = inode_update_timestamps(inode, flags);
+> +	switch (type) {
+> +	case FS_UPD_ATIME:
+> +		iattr.ia_valid = ATTR_ATIME;
+> +		break;
+> +	case FS_UPD_CMTIME:
+> +		iattr.ia_valid = ATTR_CTIME | ATTR_MTIME;
+> +		break;
+> +	}
+>  
+> -	memset(&iattr, 0, sizeof iattr);
+> -        if (flags & S_ATIME)
+> -		iattr.ia_valid |= ATTR_ATIME;
+> -	if (flags & S_CTIME)
+> -		iattr.ia_valid |= ATTR_CTIME;
+> -	if (flags & S_MTIME)
+> -		iattr.ia_valid |= ATTR_MTIME;
+> +	dirty = inode_update_time(inode, type, flags);
+> +	if (dirty <= 0)
+> +		return dirty;
+>  	return __orangefs_setattr(inode, &iattr);
+>  }
+>  
+> diff --git a/fs/orangefs/orangefs-kernel.h b/fs/orangefs/orangefs-kernel.h
+> index 29c6da43e396..1451fc2c1917 100644
+> --- a/fs/orangefs/orangefs-kernel.h
+> +++ b/fs/orangefs/orangefs-kernel.h
+> @@ -360,7 +360,8 @@ int orangefs_getattr(struct mnt_idmap *idmap, const struct path *path,
+>  int orangefs_permission(struct mnt_idmap *idmap,
+>  			struct inode *inode, int mask);
+>  
+> -int orangefs_update_time(struct inode *, int);
+> +int orangefs_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags);
+>  
+>  /*
+>   * defined in xattr.c
+> diff --git a/fs/overlayfs/inode.c b/fs/overlayfs/inode.c
+> index bdbf86b56a9b..c0ce3519e4af 100644
+> --- a/fs/overlayfs/inode.c
+> +++ b/fs/overlayfs/inode.c
+> @@ -555,9 +555,10 @@ int ovl_set_acl(struct mnt_idmap *idmap, struct dentry *dentry,
+>  }
+>  #endif
+>  
+> -int ovl_update_time(struct inode *inode, int flags)
+> +int ovl_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags)
+>  {
+> -	if (flags & S_ATIME) {
+> +	if (type == FS_UPD_ATIME) {
+>  		struct ovl_fs *ofs = OVL_FS(inode->i_sb);
+>  		struct path upperpath = {
+>  			.mnt = ovl_upper_mnt(ofs),
+> diff --git a/fs/overlayfs/overlayfs.h b/fs/overlayfs/overlayfs.h
+> index f9ac9bdde830..315882a360ce 100644
+> --- a/fs/overlayfs/overlayfs.h
+> +++ b/fs/overlayfs/overlayfs.h
+> @@ -820,7 +820,8 @@ static inline struct posix_acl *ovl_get_acl_path(const struct path *path,
+>  }
+>  #endif
+>  
+> -int ovl_update_time(struct inode *inode, int flags);
+> +int ovl_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags);
+>  bool ovl_is_private_xattr(struct super_block *sb, const char *name);
+>  
+>  struct ovl_inode_params {
+> diff --git a/fs/ubifs/file.c b/fs/ubifs/file.c
+> index ec1bb9f43acc..0cc44ad142de 100644
+> --- a/fs/ubifs/file.c
+> +++ b/fs/ubifs/file.c
+> @@ -1361,17 +1361,8 @@ static inline int mctime_update_needed(const struct inode *inode,
+>  	return 0;
+>  }
+>  
+> -/**
+> - * ubifs_update_time - update time of inode.
+> - * @inode: inode to update
+> - * @flags: time updating control flag determines updating
+> - *	    which time fields of @inode
+> - *
+> - * This function updates time of the inode.
+> - *
+> - * Returns: %0 for success or a negative error code otherwise.
+> - */
+> -int ubifs_update_time(struct inode *inode, int flags)
+> +int ubifs_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags)
+>  {
+>  	struct ubifs_inode *ui = ubifs_inode(inode);
+>  	struct ubifs_info *c = inode->i_sb->s_fs_info;
+> @@ -1379,15 +1370,19 @@ int ubifs_update_time(struct inode *inode, int flags)
+>  			.dirtied_ino_d = ALIGN(ui->data_len, 8) };
+>  	int err, release;
+>  
+> +	/* ubifs sets S_NOCMTIME on all inodes, this should not happen. */
+> +	if (WARN_ON_ONCE(type != FS_UPD_ATIME))
+> +		return -EIO;
+> +
+>  	if (!IS_ENABLED(CONFIG_UBIFS_ATIME_SUPPORT))
+> -		return generic_update_time(inode, flags);
+> +		return generic_update_time(inode, type, flags);
+>  
+>  	err = ubifs_budget_space(c, &req);
+>  	if (err)
+>  		return err;
+>  
+>  	mutex_lock(&ui->ui_mutex);
+> -	inode_update_timestamps(inode, flags);
+> +	inode_update_time(inode, type, flags);
+>  	release = ui->dirty;
+>  	__mark_inode_dirty(inode, I_DIRTY_SYNC);
+>  	mutex_unlock(&ui->ui_mutex);
+> diff --git a/fs/ubifs/ubifs.h b/fs/ubifs/ubifs.h
+> index 118392aa9f2a..b62a154c7bd4 100644
+> --- a/fs/ubifs/ubifs.h
+> +++ b/fs/ubifs/ubifs.h
+> @@ -2018,7 +2018,8 @@ int ubifs_calc_dark(const struct ubifs_info *c, int spc);
+>  int ubifs_fsync(struct file *file, loff_t start, loff_t end, int datasync);
+>  int ubifs_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+>  		  struct iattr *attr);
+> -int ubifs_update_time(struct inode *inode, int flags);
+> +int ubifs_update_time(struct inode *inode, enum fs_update_time type,
+> +		      unsigned int flags);
+>  
+>  /* dir.c */
+>  struct inode *ubifs_new_inode(struct ubifs_info *c, struct inode *dir,
+> diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+> index 9dedb54e3cb0..d9eae1af14a8 100644
+> --- a/fs/xfs/xfs_iops.c
+> +++ b/fs/xfs/xfs_iops.c
+> @@ -1184,21 +1184,21 @@ xfs_vn_setattr(
+>  STATIC int
+>  xfs_vn_update_time(
+>  	struct inode		*inode,
+> -	int			flags)
+> +	enum fs_update_time	type,
+> +	unsigned int		flags)
+>  {
+>  	struct xfs_inode	*ip = XFS_I(inode);
+>  	struct xfs_mount	*mp = ip->i_mount;
+>  	int			log_flags = XFS_ILOG_TIMESTAMP;
+>  	struct xfs_trans	*tp;
+>  	int			error;
+> -	struct timespec64	now;
+>  
+>  	trace_xfs_update_time(ip);
+>  
+>  	if (inode->i_sb->s_flags & SB_LAZYTIME) {
+> -		if (!((flags & S_VERSION) &&
+> -		      inode_maybe_inc_iversion(inode, false)))
+> -			return generic_update_time(inode, flags);
+> +		if (type == FS_UPD_ATIME ||
+> +		    !inode_maybe_inc_iversion(inode, false))
+> +			return generic_update_time(inode, type, flags);
+>  
+>  		/* Capture the iversion update that just occurred */
+>  		log_flags |= XFS_ILOG_CORE;
+> @@ -1209,16 +1209,10 @@ xfs_vn_update_time(
+>  		return error;
+>  
+>  	xfs_ilock(ip, XFS_ILOCK_EXCL);
+> -	if (flags & (S_CTIME|S_MTIME))
+> -		now = inode_set_ctime_current(inode);
+> +	if (type == FS_UPD_ATIME)
+> +		inode_set_atime_to_ts(inode, current_time(inode));
+>  	else
+> -		now = current_time(inode);
+> -
+> -	if (flags & S_MTIME)
+> -		inode_set_mtime_to_ts(inode, now);
+> -	if (flags & S_ATIME)
+> -		inode_set_atime_to_ts(inode, now);
+> -
+> +		inode_set_mtime_to_ts(inode, inode_set_ctime_current(inode));
+>  	xfs_trans_ijoin(tp, ip, XFS_ILOCK_EXCL);
+>  	xfs_trans_log_inode(tp, ip, log_flags);
+>  	return xfs_trans_commit(tp);
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index fccb0a38cb74..35b3e6c6b084 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -1717,6 +1717,13 @@ static inline struct timespec64 inode_set_ctime(struct inode *inode,
+>  
+>  struct timespec64 simple_inode_init_ts(struct inode *inode);
+>  
+> +static inline int inode_time_dirty_flag(struct inode *inode)
+> +{
+> +	if (inode->i_sb->s_flags & SB_LAZYTIME)
+> +		return I_DIRTY_TIME;
+> +	return I_DIRTY_SYNC;
+> +}
+> +
+>  /*
+>   * Snapshotting support.
+>   */
+> @@ -1983,6 +1990,11 @@ int wrap_directory_iterator(struct file *, struct dir_context *,
+>  	static int shared_##x(struct file *file , struct dir_context *ctx) \
+>  	{ return wrap_directory_iterator(file, ctx, x); }
+>  
+> +enum fs_update_time {
+> +	FS_UPD_ATIME,
+> +	FS_UPD_CMTIME,
+> +};
+> +
+>  struct inode_operations {
+>  	struct dentry * (*lookup) (struct inode *,struct dentry *, unsigned int);
+>  	const char * (*get_link) (struct dentry *, struct inode *, struct delayed_call *);
+> @@ -2010,7 +2022,8 @@ struct inode_operations {
+>  	ssize_t (*listxattr) (struct dentry *, char *, size_t);
+>  	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
+>  		      u64 len);
+> -	int (*update_time)(struct inode *, int);
+> +	int (*update_time)(struct inode *inode, enum fs_update_time type,
+> +			   unsigned int flags);
+>  	int (*atomic_open)(struct inode *, struct dentry *,
+>  			   struct file *, unsigned open_flag,
+>  			   umode_t create_mode);
+> @@ -2237,13 +2250,6 @@ static inline void inode_dec_link_count(struct inode *inode)
+>  	mark_inode_dirty(inode);
+>  }
+>  
+> -enum file_time_flags {
+> -	S_ATIME = 1,
+> -	S_MTIME = 2,
+> -	S_CTIME = 4,
+> -	S_VERSION = 8,
+> -};
+> -
+>  extern bool atime_needs_update(const struct path *, struct inode *);
+>  extern void touch_atime(const struct path *);
+>  
+> @@ -2398,8 +2404,10 @@ static inline void super_set_sysfs_name_generic(struct super_block *sb, const ch
+>  extern void ihold(struct inode * inode);
+>  extern void iput(struct inode *);
+>  void iput_not_last(struct inode *);
+> -int inode_update_timestamps(struct inode *inode, int flags);
+> -int generic_update_time(struct inode *inode, int flags);
+> +int inode_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags);
+> +int generic_update_time(struct inode *inode, enum fs_update_time type,
+> +		unsigned int flags);
+>  
+>  /* /sys/fs */
+>  extern struct kobject *fs_kobj;
+> -- 
+> 2.47.3
+> 
 -- 
-2.52.0
-
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
