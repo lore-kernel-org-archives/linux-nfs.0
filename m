@@ -1,30 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 008F91D5CFE;
-	Thu,  8 Jan 2026 00:40:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3BC681D88AC;
+	Thu,  8 Jan 2026 00:40:23 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1767832823; cv=none; b=L4vtnWMri5J1BY65ZKPnfrxBjhA+AuIxdbAEPhiLA+BDAbtlYj1ktDQrUooVRd0s+4zO6VKtY+gn3K60o4i/pn8nhKxG7MV2ZmqDScyID8uHA8j+2BE2TgFSa7PvjIB7gv2W0WsRt77puFVH6ZJmRe2hRNOwFFFNpORpAsTGFDM=
+	t=1767832823; cv=none; b=FC6b61U3k1QlSxOIt/uDd40HnwQviAocXQGmbo175SUrbByzFe+nHrtTb/AFun4dQomoHzE/qwdUtTn87AhLv5D1kSgXlHC0OCLSjKOFsMAvpvaYN1Bhabv1ieH7R7IGsXmIfsRBnMlC+jgQQl2p53YcmH+ktIRN/bpj+OaJBwM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1767832823; c=relaxed/simple;
-	bh=lCr25JyiroJH9anX4xgULqRLmslXynO4tD06DKJ6+m4=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Wdw1yNoTsohKMpoiIer0zg5dEIRPAApZuA5QCqgEvzU5TYT7Z34KCT7KwKaaBt5Lfpwc4PDCq98jeSJDcBp/wJoCqGtTfxmAgZU8FleoQsgfWxkc7Et7J2ECPRBJwkcyP0cCpvyD8kpZN+rgiTH/ugiKgxwPIaJlxFA2IsV6MSI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=l8R8efoU; arc=none smtp.client-ip=10.30.226.201
+	bh=ufX26wPcT9h8u+917a2WeyPNlD+S3MRAy3DvI7S8pjg=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=nxctK9U5ydlejroXwLB0BoTcz9oaYb3uxnVu+5kesAz4VV8OLlL9UXq/oP+k0GLTaeNoONPQMB/0ev9dq/BkhxwYkuM5Rgy+nCCIuvSmXjK+FUjLOfGfo6lid43hN0pt5a9Gd7yOv30F2Q8mVBWi5D9E7sQp4v09aOBB/joi2JI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=tpkLMg67; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="l8R8efoU"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7177AC4CEF1;
-	Thu,  8 Jan 2026 00:40:20 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="tpkLMg67"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5743FC19422;
+	Thu,  8 Jan 2026 00:40:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1767832821;
-	bh=lCr25JyiroJH9anX4xgULqRLmslXynO4tD06DKJ6+m4=;
-	h=From:To:Cc:Subject:Date:From;
-	b=l8R8efoUE8nGyhbuO8Umg4YjMmNgZeYb5NwJjC3xSR5IaBfva/SjiFHTzY+c/5OIT
-	 ZfqVrT6S1yJ4H4P03DAYc/NK834Ocl9U3Zgd1SPf6NUXI9H4iBK0rp2EJsGoyImHpT
-	 l5Kj7s8/GbuqXd0W18mO++/6TpqMzEPs6OxnMLBLdYEcPKlsjPUx9A+vM3OQL9YRvm
-	 rMEc5VB32dQDFUDcPpSl0ATe7GkBcSTTuP9/SOPb59qSVm0DpnevMBghED1nsR1d2c
-	 hDb4vpwiz4Hpe+ypDNApdPj2dBuxOzOBOeYtnC90uy38g4JMmbwtoXkhDslsWkWUwp
-	 nAG8rVG1sJeWA==
+	s=k20201202; t=1767832823;
+	bh=ufX26wPcT9h8u+917a2WeyPNlD+S3MRAy3DvI7S8pjg=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=tpkLMg67u/m3m+PxVAvAwnfTeFKXdtI8bZcHTGlqT6jDUayXDNNwTUHcjg1Zd51jO
+	 K/skWDrS8yhVh3XZ+Ym9a4jURkdCElgWpeafWYgwyhuo1yUoxRW2PtZYWqDBiRNPTU
+	 MG9zVU6NJjlgPSy04Q9Xaabm/KRB8SL2meUhlLo6rseZY1W7EoodLLagtfm0swHcZP
+	 BDl6FxFR423uuvdLOObToqk5zZHTD2Cl7+kXM/lJj4KC+utkpwsyJ+mfRi65vyjhho
+	 wjHimNzyBN5Z6wyeV0zM8/HJ16aTFZbQ0ghipA6KtaLwv9UoDo7Sx1SGtN/V0R097l
+	 EUfCTDU7iVZtg==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neilb@ownmail.net>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,11 +34,14 @@ To: NeilBrown <neilb@ownmail.net>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>,
 	<linux-fsdevel@vger.kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2 0/6] Automatic NFSv4 state revocation on filesystem unmount
-Date: Wed,  7 Jan 2026 19:40:10 -0500
-Message-ID: <20260108004016.3907158-1-cel@kernel.org>
+	Chuck Lever <chuck.lever@oracle.com>,
+	NeilBrown <neil@brown.name>
+Subject: [PATCH v2 2/6] fs: export pin_insert and pin_remove for modular filesystems
+Date: Wed,  7 Jan 2026 19:40:12 -0500
+Message-ID: <20260108004016.3907158-3-cel@kernel.org>
 X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260108004016.3907158-1-cel@kernel.org>
+References: <20260108004016.3907158-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -48,69 +52,83 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-When an NFS server exports a filesystem and clients hold NFSv4 state
-(opens, locks, delegations), unmounting the underlying filesystem
-fails with EBUSY. The /proc/fs/nfsd/unlock_fs interface exists for
-administrators to manually revoke state before retrying the unmount,
-but this approach has significant operational drawbacks.
+Modular filesystems currently have no notification mechanism for
+mount teardown. When an NFS export is unexported then unmounted,
+NFSD cannot detect this event to revoke associated state, state
+which holds open file references that pin the mount.
 
-Manual intervention breaks automation workflows. Containerized NFS
-servers, orchestration systems, and unattended maintenance scripts
-cannot reliably unmount exported filesystems without implementing
-custom logic to detect the failure and invoke unlock_fs. System
-administrators managing many exports face tedious, error-prone
-procedures when decommissioning storage.
+The existing fs_pin infrastructure provides unmount callbacks, but
+pin_insert() and pin_remove() lack EXPORT_SYMBOL_GPL(), restricting
+this facility to built-in subsystems. This restriction appears
+historical rather than intentional; fs_pin.h is already a public
+header, and the mechanism's purpose (coordinating mount lifetimes
+with filesystem state) applies equally to modular subsystems.
 
-This series enables the NFS server to detect filesystem unmount
-events and automatically revoke associated state. The mechanism
-uses the kernel's existing fs_pin infrastructure, which provides
-callbacks during mount lifecycle transitions. When a filesystem
-is unmounted, all NFSv4 opens, locks, and delegations referencing
-it are revoked, async COPY operations are cancelled with
-NFS4ERR_ADMIN_REVOKED sent to clients, NLM locks are released,
-and cached file handles are closed.
+Export both symbols with EXPORT_SYMBOL_GPL() to permit modular
+filesystems to register fs_pin callbacks. NFSD requires this to
+revoke NFSv4 delegations, layouts, and open state when the
+underlying filesystem is unmounted, preventing use-after-free
+conditions in the state tracking layer.
 
-With automatic revocation, unmount operations complete without
-administrator intervention once the brief state cleanup finishes.
-Clients receive immediate notification of state loss through
-standard NFSv4 error codes, allowing applications to handle the
-situation appropriately rather than encountering silent failures.
+Reviewed-by: NeilBrown <neil@brown.name>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/fs_pin.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-Based on the nfsd-testing branch of:
-
-  https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git/
-
-Changes since v1:
-- Explain why drop_client() is being renamed
-- Finish implementing revocation on umount
-- Rename pin_insert_group
-- Clarified log output and code comments
-- Hold nfsd_mutex while closing nfsd_files
-
-Chuck Lever (6):
-  nfsd: cancel async COPY operations when admin revokes filesystem state
-  fs: export pin_insert and pin_remove for modular filesystems
-  fs: add pin_insert_sb() for superblock-only pins
-  fs: invoke group_pin_kill() during mount teardown
-  nfsd: revoke NFSv4 state when filesystem is unmounted
-  nfsd: close cached files on filesystem unmount
-
- fs/fs_pin.c            |  50 ++++++++
- fs/namespace.c         |   2 +
- fs/nfsd/Makefile       |   2 +-
- fs/nfsd/filecache.c    |  44 +++++++
- fs/nfsd/filecache.h    |   1 +
- fs/nfsd/netns.h        |   4 +
- fs/nfsd/nfs4proc.c     | 124 +++++++++++++++++--
- fs/nfsd/nfs4state.c    |  46 +++++--
- fs/nfsd/nfsctl.c       |  11 +-
- fs/nfsd/pin.c          | 274 +++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/state.h        |   9 ++
- fs/nfsd/xdr4.h         |   1 +
- include/linux/fs_pin.h |   1 +
- 13 files changed, 548 insertions(+), 21 deletions(-)
- create mode 100644 fs/nfsd/pin.c
-
+diff --git a/fs/fs_pin.c b/fs/fs_pin.c
+index 47ef3c71ce90..972f34558b97 100644
+--- a/fs/fs_pin.c
++++ b/fs/fs_pin.c
+@@ -1,4 +1,5 @@
+ // SPDX-License-Identifier: GPL-2.0
++#include <linux/export.h>
+ #include <linux/fs.h>
+ #include <linux/sched.h>
+ #include <linux/slab.h>
+@@ -7,6 +8,15 @@
+ 
+ static DEFINE_SPINLOCK(pin_lock);
+ 
++/**
++ * pin_remove - detach an fs_pin from its mount and superblock
++ * @pin: the pin to remove
++ *
++ * Removes @pin from the mount and superblock pin lists and marks it
++ * done. Must be called from the pin's kill callback before returning.
++ * The caller must keep @pin valid until this function returns; after
++ * that, VFS will not reference @pin again.
++ */
+ void pin_remove(struct fs_pin *pin)
+ {
+ 	spin_lock(&pin_lock);
+@@ -18,7 +28,17 @@ void pin_remove(struct fs_pin *pin)
+ 	wake_up_locked(&pin->wait);
+ 	spin_unlock_irq(&pin->wait.lock);
+ }
++EXPORT_SYMBOL_GPL(pin_remove);
+ 
++/**
++ * pin_insert - register an fs_pin for unmount notification
++ * @pin: the pin to register (must be initialized with init_fs_pin())
++ * @m: the vfsmount to monitor
++ *
++ * Registers @pin to receive notification when @m is unmounted. When
++ * unmount occurs, the pin's kill callback is invoked with the RCU
++ * read lock held. The callback must call pin_remove() before returning.
++ */
+ void pin_insert(struct fs_pin *pin, struct vfsmount *m)
+ {
+ 	spin_lock(&pin_lock);
+@@ -26,6 +46,7 @@ void pin_insert(struct fs_pin *pin, struct vfsmount *m)
+ 	hlist_add_head(&pin->m_list, &real_mount(m)->mnt_pins);
+ 	spin_unlock(&pin_lock);
+ }
++EXPORT_SYMBOL_GPL(pin_insert);
+ 
+ void pin_kill(struct fs_pin *p)
+ {
 -- 
 2.52.0
 
