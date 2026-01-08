@@ -1,36 +1,36 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AE83F48706B;
-	Thu,  8 Jan 2026 11:03:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6685C461DC9;
+	Thu,  8 Jan 2026 12:33:41 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1767870208; cv=none; b=oDuB6FX+B2YM0VB8G5hon3aPuGDXRgVx7/hrUKN0uano30tz53bukZV7/4JMc6kDq1B+UkUsXjKufWvkdojP3EBUSGSy7BsVYdPLlsCoMHKkiV16giIhCWWvOB85yLFgSWANuHTwjS6NIzl4YSBsnd/ANZiVhxJhzkCgwomPnH0=
+	t=1767875621; cv=none; b=DOyGX9dGIObFwRNBbCcBsr5w4pKLeIDl5d37rlf785gNgcK7O0kVrgCJIuz8wFiT59BQ0kEuOv6VcJ6gnYzbDblzR/GQ6HJhzRMPP39gyQ0B1VKkiMGyfJ3e/ZHJAyX6MDE0LpTdhMTg6qKvDQqRyVHW75t1t9QusCTOx7zhbhw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1767870208; c=relaxed/simple;
-	bh=rqzETUbD7ysEXZoY6JGtOLcYN6py/e4yeShXFBNHpKk=;
+	s=arc-20240116; t=1767875621; c=relaxed/simple;
+	bh=cJFaIr4HGB3WP3VVwcBCTmnx7s1FJJHpbeS1/rfSLpQ=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=W3VICt0aogDeT4r4umyIuiBtF1EYc8nZWwaGLbyp4YCj56wTlQ9nchrvY1UguMxQ4LhALnzJq66Agiw21to7mm7Fi9L0ul730xYA9PzZeCqF7wOnK3A/AqIyPehmDyxMTXMHJ+pXbGaINZ63fz4XyJSCXXnCTkudGOIosvXTsAc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b=SNjb1E8i; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:Content-Disposition:In-Reply-To; b=Tx+Dav6rriS1/VrmD6p12tU4yuof4J71K7SmXlyuGakFXtdgD/BQ+g5tL7NMfzvzcezqBoPG1/18EKHMBMJ0f2Ub7abxpOaZ4yaAWNsAMRHhlyfkq2k1bwA9NVFBRoWkrM8jvSbf27zHaiui7S7R/ud25n3e115E0IicNh++/jw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b=WtBzGRd4; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="SNjb1E8i"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E8904C116C6;
-	Thu,  8 Jan 2026 11:03:25 +0000 (UTC)
+	dkim=pass (1024-bit key) header.d=linuxfoundation.org header.i=@linuxfoundation.org header.b="WtBzGRd4"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B5091C116C6;
+	Thu,  8 Jan 2026 12:33:40 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=linuxfoundation.org;
-	s=korg; t=1767870206;
-	bh=rqzETUbD7ysEXZoY6JGtOLcYN6py/e4yeShXFBNHpKk=;
+	s=korg; t=1767875621;
+	bh=cJFaIr4HGB3WP3VVwcBCTmnx7s1FJJHpbeS1/rfSLpQ=;
 	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
-	b=SNjb1E8iEzPRFTo6pXEScPFwTOD01i7m2fs106YuhUlEeULzdnAV+vVa595cE8aBs
-	 2aoMTkhuIhU8sj+mBe8zXYDml9Uuti1YHIdjvQqAt2LNakxuNXE0on0IHA6B34WvkG
-	 8W3Esagb+HgTYZ4ZmW+7th0HR9OJvlkNsadYO+cs=
-Date: Thu, 8 Jan 2026 12:03:23 +0100
+	b=WtBzGRd4GkpAfxa0Ap64aeGxR6W3E95s+gm86vHz5c9Ded+kZCwFgqtyKhuOhglwg
+	 4IUO8llzJxZXXRWB12Ve+Z65OmOteDKaJ354a1V6uLxA7VIHwyJne1I5aJ8uYkM9i1
+	 W5zwQSOd2VuqUAkKIHxLVDVD6THFrzQGZW6LlMv8=
+Date: Thu, 8 Jan 2026 13:33:38 +0100
 From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
 To: Chuck Lever <cel@kernel.org>
 Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
 	Sasha Levin <sashal@kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH 6.6.y 1/4] nfsd: convert to new timestamp accessors
-Message-ID: <2026010808-subwoofer-diabetic-e54e@gregkh>
+Message-ID: <2026010810-obsessed-superior-9b56@gregkh>
 References: <20260103193854.2954342-1-cel@kernel.org>
  <20260103193854.2954342-2-cel@kernel.org>
 Precedence: bulk
@@ -47,9 +47,15 @@ On Sat, Jan 03, 2026 at 02:38:51PM -0500, Chuck Lever wrote:
 > From: Chuck Lever <chuck.lever@oracle.com>
 > 
 > [ Upstream commit 335a7be84b526861f3deb4fdd5d5c2a48cf1feef ]
+> 
+> [ cel: adjust to the 6.6.y version of fs/nfsd/blocklayout.c ]
+> Stable-dep-of: 24d92de9186e ("nfsd: Fix NFSv3 atomicity bugs in nfsd_setattr()")
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 
-I don't see this git id anywhere in Linus's tree, are you sure it is
-correct?
+Is this really commit 11fec9b9fb04 ("nfsd: convert to new timestamp
+accessors")?  if so, what happened to the original authorship and other
+signed-off-by lines?
 
 thanks,
 
