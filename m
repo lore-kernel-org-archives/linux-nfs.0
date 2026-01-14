@@ -1,223 +1,173 @@
-Received: from BL0PR03CU003.outbound.protection.outlook.com (mail-eastusazon11022117.outbound.protection.outlook.com [52.101.53.117])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A404535965
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2026 12:40:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.101.53.117
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1768394403; cv=fail; b=l3KWlbC1z+9PxMdRmT0GD6VqeDz/XHupP733Ne0KVfAKEkQQx+RIMDv8O96iLlLlLg7N1JR6HSTs02xDKdNiHEVaS2+ISbFziy1MN4cUgK4a9OeVfx1Bj7XtD0dtp6UECcfnXUfWWJeRkQpGdjbwZElxzlhwt3nW0x2tt+s5pXs=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1768394403; c=relaxed/simple;
-	bh=uKN6zigKt8qhu/dw6hGxgM1yyZGIiXBlSPD1ZxTiBFk=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=aTcLa+nxnz/CIbQ8tvQTE9JKnB8dVceh0WaIQC//ZlHmii2xoYkPRoZcsjy7o11LhitLidPBXvOOA3LYjRjSbDM2VutmwYf36O6xdJhVS2Yq2ZgJ61RfVlqmyNm1C78HRPXcmduM97jCd0xjWPXRUVOAU54ck1Dpac9gQhlBh8Q=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=PbewZ9Jt; arc=fail smtp.client-ip=52.101.53.117
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E7BDA34A771;
+	Wed, 14 Jan 2026 13:06:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1768396021; cv=none; b=fzNvVPesYt9XS9IybPaICM1kOX7KDxqaf6inXgmqj36dGl1eghSnGvtqKRO81wl8KV0g3ozBemNTX9YyMndtUI50IoS/xlJiY3/Me2OGxbjscUBUFk3v8tqBgRoUWcgBnfQXJpIGMiNTzIyTt/Cnqk6V+YBqCtkVN+wtUAgT8JE=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1768396021; c=relaxed/simple;
+	bh=swA2Z+cvI7i5nnmNw9LviIKuh4fmhAEhMcaz35sVbIE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=UlJDm21/lq0s/5RKvuUEVZSKxvNE+lqDEW5S3AMXWdNj/e1Hq2gQvx+FxM19ij8w4aj7q8QpoL3vRxcnY3vm7G/N4iinQo7wKmR13wJnhFFei1LNYu+j5F8p50sgMRFSaUZJdjpomlVH8vSpm4qhk7AaWNrvo3mKyFRcgQqjOaY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=CsUTToet; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="PbewZ9Jt"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=c6zwVSNbYtDcByOUDdbJrBKTa9fvxEceuvEz1xqIxasSGr+S8rmnh/b0dBDE9WlxnNbUt+7PF1wD+xH1wbsU4uvqr5+nb782gPyNx0MpxDFColAbpXUtBNLd1ILe0d9y3tgB1cZG2NYhOHZOdl9TGmbGeEATBpCIfCXeG4el+8mQfy2DFyi03spPi/PJS0TpYoJ3zq8ihyJD4MU3lgEEK0+36cTKxT0oRHeXkCzWOiDKFPS8DRrYhkOW2mfGq0ASRWpuc2CtBaXVp2v7ck3Xu5MzYxIaGlBWiJzUCr74maMDCf3auLcxXgxFxwgg5ZDL/mHN1LrdIfEz2qZlZMx33A==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=UrSj2JSGDopHnhw09kbjGkGVEICtMffQVVDdz6v6YF4=;
- b=ofClFPVljqmwQs0xlkGygI7o/wW3VguzXlPKFMjEJC2zp1CYpSD3p2NG867UYH95dFQdwDdSJFYU0173J6aNPKqu4m8UVsSPOSKx11zeYMekuMgPUlbYJoiixzcSh8GoIb4SnWhsObe4H4yx8Wkz4bPWuRDlH2dwO2YyJQNaHJ+IX8Ukd4f3AWWzf2oPGtl176XK59yOXf31FUu9nhAn2IrE6xWktddg9HdBELxda0qJtHzT6Gv5YChxvyfJJ1m0L9CIyupCERs+81JWMikyRuA9dxS/kpK2hZqZkflvF8CAVcagcsXRGHJVpifLBbcTG4BMD21V2pOK7kFSqjN0ig==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=UrSj2JSGDopHnhw09kbjGkGVEICtMffQVVDdz6v6YF4=;
- b=PbewZ9JtwbG9DUse9ub/h+Hg9/HcK9cmSExF5k8oLf2lwvzoPXeiGUP1iFLp7UFBhd7fbsyKZe+VX3iGf2ylLMKaEE2a8QQWE1rFpqPIuwtBb24RkbbkuK4v0ZUOl00+7r9v+tze/ckUElPGBlduZKFK39r7Ce3C+1VqR0L9STQ=
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=hammerspace.com;
-Received: from DM8PR13MB5239.namprd13.prod.outlook.com (2603:10b6:5:314::5) by
- CO6PR13MB6045.namprd13.prod.outlook.com (2603:10b6:303:149::10) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9520.5; Wed, 14 Jan
- 2026 12:39:58 +0000
-Received: from DM8PR13MB5239.namprd13.prod.outlook.com
- ([fe80::fa6e:7b5:d1ec:92f3]) by DM8PR13MB5239.namprd13.prod.outlook.com
- ([fe80::fa6e:7b5:d1ec:92f3%4]) with mapi id 15.20.9520.005; Wed, 14 Jan 2026
- 12:39:58 +0000
-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: Eric Biggers <ebiggers@kernel.org>
-Cc: Chuck Lever <cel@kernel.org>, Chuck Lever <chuck.lever@oracle.com>,
- Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
- linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 0/7] kNFSD Encrypted Filehandles
-Date: Wed, 14 Jan 2026 07:39:54 -0500
-X-Mailer: MailMate (2.0r6272)
-Message-ID: <834DBCBA-1CD8-4BA9-81E8-09E621B3F176@hammerspace.com>
-In-Reply-To: <20260114004205.GC2178@quark>
-References: <1e92e144-d436-44dd-956f-3125403dfdc8@kernel.org>
- <ECE1341F-BA8A-4DC7-BC9D-BDD6F10F6013@hammerspace.com>
- <dc3d8ff3-f68f-4200-a546-605f0f2e3611@kernel.org>
- <A3F6E0BB-523F-4B99-B583-D6D80E9D7BFB@hammerspace.com>
- <bf09e1e1-d397-405b-aef8-38c44e6c2840@kernel.org>
- <BCFA2167-C883-40C8-A718-10B481533943@hammerspace.com>
- <1c5569bd-fcac-4b55-8e84-3fbc096cdff3@kernel.org>
- <86B6E978-C67B-4C78-9E5F-6F171FD62F3E@hammerspace.com>
- <e711e1cb-eb8a-4723-a9af-39ce7d9658dd@app.fastmail.com>
- <C79886E5-3064-4202-9813-0D79091F78DF@hammerspace.com>
- <20260114004205.GC2178@quark>
-Content-Type: text/plain
-X-ClientProxiedBy: PH8PR07CA0008.namprd07.prod.outlook.com
- (2603:10b6:510:2cd::16) To DM8PR13MB5239.namprd13.prod.outlook.com
- (2603:10b6:5:314::5)
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="CsUTToet"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Transfer-Encoding
+	:Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
+	Sender:Reply-To:Content-ID:Content-Description;
+	bh=frpDmmp1i4r1AZelS3CVor2fKx/lP0Tq5j8/mhEG/8s=; b=CsUTToetKF+Id6BSRt8PfLBnAS
+	Y0ul3yOPNvK2EqLosGUY3uqxb0rBGjpkb3pFkF+nzL0tn0KOBAl2xhlehcW9SbJloDYCaYos/fI+R
+	/3mikrJStWJrWeOJzR2PeycF0eBRtBI6m7fleAVeDpZJmAWb5/mhUGXdyVHOSGGKP+FgMpRotCkGe
+	U4rxrSW9vdcoJ/4xvbYl6nQLLy/pVnBBXwulC6bpAsoSvSw4Aw1pxxyPY2C1RxEdi/vm7DGCPqLOa
+	XPJH2SpQwhbv/9XjUm+ADr7Kr9Po4kKl3x0XMHBhpwdVI/FJYFR2ISU4AMVB1IFKkKKX1rv/bPqoF
+	Uf0wlX6w==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1vg0Zb-00000009Gnt-0ut4;
+	Wed, 14 Jan 2026 13:06:07 +0000
+Date: Wed, 14 Jan 2026 05:06:07 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Amir Goldstein <amir73il@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Jeff Layton <jlayton@kernel.org>,
+	Christian Brauner <brauner@kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>, Jan Kara <jack@suse.cz>,
+	Luis de Bethencourt <luisbg@kernel.org>,
+	Salah Triki <salah.triki@gmail.com>,
+	Nicolas Pitre <nico@fluxnic.net>, Anders Larsen <al@alarsen.net>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	David Sterba <dsterba@suse.com>, Chris Mason <clm@fb.com>,
+	Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>,
+	Yue Hu <zbestahu@gmail.com>, Jeffle Xu <jefflexu@linux.alibaba.com>,
+	Sandeep Dhavale <dhavale@google.com>,
+	Hongbo Li <lihongbo22@huawei.com>,
+	Chunhai Guo <guochunhai@vivo.com>, Jan Kara <jack@suse.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	David Woodhouse <dwmw2@infradead.org>,
+	Richard Weinberger <richard@nod.at>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+	Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>,
+	Joseph Qi <joseph.qi@linux.alibaba.com>,
+	Mike Marshall <hubcap@omnibond.com>,
+	Martin Brandenburg <martin@omnibond.com>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Phillip Lougher <phillip@squashfs.org.uk>,
+	Carlos Maiolino <cem@kernel.org>, Hugh Dickins <hughd@google.com>,
+	Baolin Wang <baolin.wang@linux.alibaba.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Sungjong Seo <sj1557.seo@samsung.com>,
+	Yuezhang Mo <yuezhang.mo@sony.com>,
+	Alexander Aring <alex.aring@gmail.com>,
+	Andreas Gruenbacher <agruenba@redhat.com>,
+	Jonathan Corbet <corbet@lwn.net>,
+	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Latchesar Ionkov <lucho@ionkov.net>,
+	Dominique Martinet <asmadeus@codewreck.org>,
+	Christian Schoenebeck <linux_oss@crudebyte.com>,
+	Xiubo Li <xiubli@redhat.com>, Ilya Dryomov <idryomov@gmail.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>, Steve French <sfrench@samba.org>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Ronnie Sahlberg <ronniesahlberg@gmail.com>,
+	Shyam Prasad N <sprasad@microsoft.com>, Tom Talpey <tom@talpey.com>,
+	Bharath SM <bharathsm@microsoft.com>,
+	Hans de Goede <hansg@kernel.org>, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-mtd@lists.infradead.org, jfs-discussion@lists.sourceforge.net,
+	linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
+	ocfs2-devel@lists.linux.dev, devel@lists.orangefs.org,
+	linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-mm@kvack.org, gfs2@lists.linux.dev, linux-doc@vger.kernel.org,
+	v9fs@lists.linux.dev, ceph-devel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+	samba-technical@lists.samba.org
+Subject: Re: [PATCH 00/24] vfs: require filesystems to explicitly opt-in to
+ lease support
+Message-ID: <aWeUv2UUJ_NdgozS@infradead.org>
+References: <8af369636c32b868f83669c49aea708ca3b894ac.camel@kernel.org>
+ <CAOQ4uxgD+Sgbbg9K2U0SF9TyUOBb==Z6auShUWc4FfPaDCQ=rg@mail.gmail.com>
+ <ec78bf021fa1f6243798945943541ba171e337e7.camel@kernel.org>
+ <cb5d2da6-2090-4639-ad96-138342bba56d@oracle.com>
+ <ce700ee20834631eceededc8cd15fc5d00fee28e.camel@kernel.org>
+ <20260113-mondlicht-raven-82fc4eb70e9d@brauner>
+ <aWZcoyQLvbJKUxDU@infradead.org>
+ <ce418800f06aa61a7f47f0d19394988f87a3da07.camel@kernel.org>
+ <aWc3mwBNs8LNFN4W@infradead.org>
+ <CAOQ4uxhMjitW_DC9WK9eku51gE1Ft+ENhD=qq3uehwrHO=RByA@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: DM8PR13MB5239:EE_|CO6PR13MB6045:EE_
-X-MS-Office365-Filtering-Correlation-Id: cc3cd418-8160-4a09-eb2f-08de536a06f2
-X-MS-Exchange-AtpMessageProperties: SA
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;ARA:13230040|366016|376014|1800799024|7142099003;
-X-Microsoft-Antispam-Message-Info:
-	=?us-ascii?Q?vg5OUMvNibD0zNTubr1jDAVEmFWqvU7MNr9pPjhd3FWX29u9PqtON4d8E6nD?=
- =?us-ascii?Q?IhK2Yt/KCjg0e4ChJB/Y2y2q2tPpDcQS+ft6PqcdfM/Ctp5ygimsvpL+3Nvs?=
- =?us-ascii?Q?kILXfXSEJG4tsvaVlkn3d3vxR0P7edARKrcDVuQk3eYZl9sTGsbis+Hl9MJn?=
- =?us-ascii?Q?Tv/5kpiecTwYI8p+1238Q5SNilMSez4Ry1MxRPq7Hhvik1detXath4tvvs6D?=
- =?us-ascii?Q?XOzqkZnV8eNbznXEJOvXym3EOIru7fv/RnHpsvuq5a5Ii0YZ0Xzy27778wKB?=
- =?us-ascii?Q?3Lc9RQrsLhGhOeGHO2aF/07m7jOPvQvADtuLpOKn3366nIYePR+SMspDY33P?=
- =?us-ascii?Q?0e2oSf/hsVfByRVuDjc6d/GAZXaJSXsqMETz7/PtlFCS8DgA2/2WCCCmnNQT?=
- =?us-ascii?Q?UzSw2LSR2zDjUNxDMvZDVhQx/zzGTbjkAALYtgann1xM+L+cdj63IvvDkYbd?=
- =?us-ascii?Q?znRwKAIuYf61unuhd+NZKIj3WnvYv9YlSW6m8u0QyJZtE8AQTAG9tjl1ZqVH?=
- =?us-ascii?Q?IBEJlDueF0BII4Jl3zbIAKEnzhK/PFXAS4GSXYnkGTt4/ej8W6LmFFrD8Yp6?=
- =?us-ascii?Q?M7ibxOENvSHMVJu4B42Tqb6I31SHcxJRm7l1//+1vniC7xFaog0NiEa9q1eM?=
- =?us-ascii?Q?+Y97pA3HCJlHqMqhtITnQwXDUWpJFBXL9rkMVqFAd0RiOybjePV07VxxYPOM?=
- =?us-ascii?Q?xboix3ibYK0bp9gY9AVbSC2+q+LvXG212xT2oGzolMBXX0Ij8k8MzKKwYhtu?=
- =?us-ascii?Q?lkYVJ65Sqwewwb1OQ8I7CZNt4aFYTZQbg2qfchyIXuHpnbQFO0MlTk7pp9OH?=
- =?us-ascii?Q?rZ17JnD5f1A0xcLxBBrMZGDIzal89QRIz56QFJCrAMRneSWdJSemEcnHolr2?=
- =?us-ascii?Q?0sbE26M7PqakBUaalCC/6mhti5+b6lnKQIP1ARZgmrrTunSPzDaETnPO96MB?=
- =?us-ascii?Q?7qtanzRdSxc21U+DcDY7dgUny1wak344mqVF5350Hy/Nj6vVicuoDDH101uP?=
- =?us-ascii?Q?ZZr3oAW2cTMlFsG45cYUotvzizjaSmAZqX/rd5VdsrhRS1G23hJy5Kpxelaj?=
- =?us-ascii?Q?xUTpvhCN7n0dR73DjVjPj4lCLhK48EN1VTMc28ZNZmUZPrhaTS3iJ4o+sNN/?=
- =?us-ascii?Q?BRUK+Stb/aDrCIjUq1XlLKiSqOQZF6YywH//2wt1zMeL2wmuIpAkPLAPJYKK?=
- =?us-ascii?Q?8q8V9jFQFFkmcoC+Tn5gWF0fgD67NMk610367Xj52ZumDJzxG1hDKDktDK+e?=
- =?us-ascii?Q?wX9gn3N9nFlafFC/SYwgDPKeJbDxtWJ+ynyac0wpsSB22u6mgbgoP8kBIQg9?=
- =?us-ascii?Q?Qb8554e+WArSVmWCAMFMfcfr63ExEb9uzfpm1bP9aLQIaMO5uZlxqqRYypro?=
- =?us-ascii?Q?K+rSbXGB3m2vrtNNjyfr5ThZYVbfStIpQe12q97P6/vHrjwpDZiaBD915G43?=
- =?us-ascii?Q?iHgFmBOgjDgvy5zM53lb0aE+JRKYKKYbfa9PQI3zkZ4LbypgLI7PFnAbh6hi?=
- =?us-ascii?Q?aVBnKUpK0i14y012Z/7Zzo+ysH6isZWGOp6cuPlf8g1nEFr/MtDxAK24NE9P?=
- =?us-ascii?Q?YK5ie5+YNeZtLG5tH08=3D?=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM8PR13MB5239.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(366016)(376014)(1800799024)(7142099003);DIR:OUT;SFP:1102;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?us-ascii?Q?bNX1zXhmVGXS2zhrlRoVI2NEZmoPSlHbQfRgLh/JAA/wcOG1iUxx24MR1Kew?=
- =?us-ascii?Q?crZN29ceAZwtcJGb0HYtRoewC94E01n6XApHA8iAaWoIc7lhwXt5NSKlh7mY?=
- =?us-ascii?Q?zhU1s6f4rSwC5plmlsXD1k/BKRVZBi+HFlvV8dgXYQ95Mzu5/uNjtm7BiYZG?=
- =?us-ascii?Q?0xv5ffzEDIEpjGUA+FS5UeGlMRoPu9fWuKwut31TeN69+hJu1MDcfZw3eaJv?=
- =?us-ascii?Q?hzGGBdrlYkbBvzPl6LDffecDH8jSahoW99E4q4U83duF35vnOcqJxHbl+eWx?=
- =?us-ascii?Q?srFZy3lFRK1bUFnbjm9H0zjjSs1Dh4C6DdqKKTAElktE6o2lzSJcEluGoly/?=
- =?us-ascii?Q?PHyb+MfaXuA2MYjzTPW5pba3sPCw/q+YYFBYfU2cy8OCWnC7ErbI7NCrCofH?=
- =?us-ascii?Q?SpyrWn+bjcOtC0tRrc+8S/oXoTpxUS+3I4AevoSlq1lp3Qwwhwrk6nED8t4J?=
- =?us-ascii?Q?HRHrpt8jo5Mkh3eD6p1nGWPye/TdJbW0xTXMyVmx9pTTQ1y0X8iL5Cxi/7Mv?=
- =?us-ascii?Q?u0PKfHhwrdX545j1CQbRUPqG2/kMfn8G8Ik17tb5ocs6y8U512zvgiOL93+y?=
- =?us-ascii?Q?Hh2jWZfsVmqkjfPU65QxYcsyosRkbtMaG1feoq6K/nubTSvwzDHG/KlA/rRG?=
- =?us-ascii?Q?ltZU3K0rMdoX0zek0afS19RGsT2vA6j2JBzs5b+OEtyke/ankdF7CDsFZVqc?=
- =?us-ascii?Q?xVnID+lV2UKBVhKcg8DrESGbU9DEOPW1bMi6KBXs/z6RZ8UA4aHqso32ckzX?=
- =?us-ascii?Q?RSynaaM7+Ck/ulHVE3duE+sM29dgUWkOuB2awrhGq2bP1O88PBpKra1byAzO?=
- =?us-ascii?Q?QhZ4TCCqBbCnaEuA5TWJeQ4OBW89u5e79vGKin6A4ouLN4+Ll3xm6stardwN?=
- =?us-ascii?Q?3QGLvBpCmtiskgir/s/FKR7YSYPM135fB8AOajSYxwtmqpcFZRvipefL5G6B?=
- =?us-ascii?Q?I3jNyaTtECcb7TjDNsyVsKuuUmlHxJNO5qwx0Kb91AEY9DfBv8lyXYI5JWw4?=
- =?us-ascii?Q?aEmFrr5Cgwq7QYauRw54FNndPolYeR2mvFapIU2PbVlL+E/30jiodCOa4y1j?=
- =?us-ascii?Q?J9TI7/CcH2UDCyL15aVas9v1iM42nM/002oMmF24XjG5Nj2juJllZeSp+Sk7?=
- =?us-ascii?Q?hRNBgh+dhbeoiSEPfwE8PxRIfiNgDCJjobcVgANL6lblINWXVwxuhZ707X73?=
- =?us-ascii?Q?ggLfRAGzOp4F5iyIY7Oa/rXR5BUgviTYjkaZmY+fpxJDDzyxkcbdMwY0/sZ1?=
- =?us-ascii?Q?zK91e8dR1USZ1KGtg9obNFiV9P3OtqPnRy93Q6NHuBHcGJqBuz5rCAu6aLE2?=
- =?us-ascii?Q?xYerigWpr26XC6FimEAeA10v76wbk2qsOeuRw6Pxsp8cGgRtdqQ2mHezACjJ?=
- =?us-ascii?Q?f6i2EEOVJ//jMDJ/slQivCGW37jO1J8OBisAJNxFdRdqLx43809zV1Xsdeqn?=
- =?us-ascii?Q?CgifKK0972ZotTjDRr28kmZsqk0XE3e5pT2XTWhHQgdVcCtPrJ7hvtw/MSB+?=
- =?us-ascii?Q?hlHD/JYuOI8PV6Cthc6JAKH+loM18eHeEsBbrhPbJ7FukIDz/uIFsXF5NlJ/?=
- =?us-ascii?Q?H8CfcFmKs9/ARCSffrWIZGiNIuHuM5kOotnRqV2T56ja/ppXEijI0ExzTvif?=
- =?us-ascii?Q?Cx2KGdNQVoURgQRgPjgecwoDwQaWeFqdrdQx3thAOUyMqFwgnH/70TpLGB75?=
- =?us-ascii?Q?aF9/hByCTLTjnw1EXRjhZALedluRoatVxvOs4sg8lrmSP8MAcx4AZm/54vua?=
- =?us-ascii?Q?6RORUl9HnAnfd4rqoFG6ggGSoCYJsuo=3D?=
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: cc3cd418-8160-4a09-eb2f-08de536a06f2
-X-MS-Exchange-CrossTenant-AuthSource: DM8PR13MB5239.namprd13.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 14 Jan 2026 12:39:58.3200
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: MrYr+8HCDAjT4Kcy52O1CIwK7mbG/V43MGxZ0Cfo5oCpL5vpYRfsSRSkitQ3tijRG40kZgPMytQ9kyiP12ldw1c7j+28a/s2jvZD33MnC4s=
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: CO6PR13MB6045
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAOQ4uxhMjitW_DC9WK9eku51gE1Ft+ENhD=qq3uehwrHO=RByA@mail.gmail.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On 13 Jan 2026, at 19:42, Eric Biggers wrote:
+On Wed, Jan 14, 2026 at 10:34:04AM +0100, Amir Goldstein wrote:
+> On Wed, Jan 14, 2026 at 7:28 AM Christoph Hellwig <hch@infradead.org> wrote:
+> >
+> > On Tue, Jan 13, 2026 at 12:06:42PM -0500, Jeff Layton wrote:
+> > > Fair point, but it's not that hard to conceive of a situation where
+> > > someone inadvertantly exports cgroupfs or some similar filesystem:
+> >
+> > Sure.  But how is this worse than accidentally exporting private data
+> > or any other misconfiguration?
+> >
+> 
+> My POV is that it is less about security (as your question implies), and
+> more about correctness.
 
-> On Tue, Jan 13, 2026 at 05:33:37PM -0500, Benjamin Coddington wrote:
->>> - Individual filehandles are small, on the order of 32- or 64-bytes
->>>
->>> - But there are a lot of filehandles, perhaps billions, that would
->>>   be encrypted or signed by the same key
->>>
->>> - The filehandle plaintext is predictable
->>
->> Mostly, yes.  I think a strength of the AES-CBC implementation is that each
->> 16-byte block is hashed with the results of the previous block.  So, by
->> starting with the fileid (unique per-file) and then proceeding to the less
->> unique block (fsid + fileid again), the total entropy for each encrypted
->> filehandle is increased.
->
-> This sort of comment shows that the choice of AES-CBC still isn't well
-> motivated.  AES-CBC is an unauthenticated encryption algorithm that
-> protects a message's confidentiality.  It isn't a hash function, it
-> isn't a MAC, and it doesn't protect a message's authenticity.  AES-CBC
-> will successfully decrypt any ciphertext, even one tampered with by an
-> attacker, into some plaintext.  You may be confusing AES-CBC with
-> AES-CBC-MAC.
+I was just replying to Jeff.
 
-I'm not confusing them, and you're absolutely correct - if an encrypted
-filehandle were tampered with we'd be relying on the decoded filehandle
-being garbage - the routines to decode the fsid and fileid would return
-errors, because a filehandle's data is meaningful and well-structured.
+> The special thing about NFS export, as opposed to, say, ksmbd, is
+> open by file handle, IOW, the export_operations.
+> 
+> I perceive this as a very strange and undesired situation when NFS
+> file handles do not behave as persistent file handles.
 
-That's a big difference from what using a MAC would provide - immediate
-knowledge the filehandle had been modified.
+That is not just very strange, but actually broken (discounting the
+obscure volatile file handles features not implemented in Linux NFS
+and NFSD).  And the export ops always worked under the assumption
+that these file handles are indeed persistent.  If they're not we
+do have a problem.
 
->>> There are plenty of other kmalloc / alloc_page call sites in the
->>> request path, and the server is designed around permitting synchronous
->>> waits for memory allocated with GFP_KERNEL. If you don't want to wait
->>> for memory reclaim, use GFP_NOFS or even GFP_ATOMIC but for such small
->>> allocations, it's highly unlikely that an allocation request will fail.
->>
->> I'm ok doing the allocation dance for every filehandle, but I think its an
->> easy optimization to keep the buffers around if you know you're going to be
->> using them - same way we do for RPC buffers.
->
-> In the kernel, several MACs (such as HMAC-SHA256, HMAC-SHA512, BLAKE2s,
-> and SipHash-2-4) have clean APIs that don't require dynamic memory
-> allocation, scatterlists, or CONFIG_CRYPTO.  If you do need a MAC, you
-> probably should use one of those algorithms and APIs.
->
-> I see that FIPS 140-3 got mentioned.  In the case where the kernel is
-> certified as a FIPS 140-3 module, I don't know whether this feature
-> would actually be considered a security function for FIPS purposes or
-> not.  That would determine whether it would actually be required to use
-> a FIPS-approved algorithm.  If you're choosing a MAC and want to use a
-> FIPS-approved one to be safe, you could choose HMAC-SHA256.
->
-> However, as I said before, the first thing to do is actually to evaluate
-> what security guarantees you need.  To me it seems like you want to
-> ensure that for a given client, only file handles that it was sent by
-> the server will be accepted by the server (provided that it can't snoop
-> on handles sent to other clients).  An unauthenticated encryption mode
-> like AES-CBC doesn't solve that problem.  I think a MAC is sufficient to
-> solve that problem.  An AEAD would too and would add confidentiality
-> protection, but that seems overkill / unnecessary here.
+> 
+> cgroupfs, pidfs, nsfs, all gained open_by_handle_at() capability for
+> a known reason, which was NOT NFS export.
+> 
+> If the author of open_by_handle_at() support (i.e. brauner) does not
+> wish to imply that those fs should be exported to NFS, why object?
 
-Thanks Eric, much appreciate your advice here.
+Because "want to export" is a stupid category.
 
-Ben
+OTOH "NFS exporting doesn't actually properly work because someone
+overloaded export_ops with different semantics" is a valid category.
+
+> We could have the opt-in/out of NFS export fixes per EXPORT_OP_
+> flags and we could even think of allowing admin to make this decision
+> per vfsmount (e.g. for cgroupfs).
+> 
+> In any case, I fail to see how objecting to the possibility of NFS export
+> opt-out serves anyone.
+
+You're still think of it the wrong way.  If we do have file systems
+that break the original exportfs semantics we need to fix that, and
+something like a "stable handles" flag will work well for that.  But
+a totally arbitrary "is exportable" flag is total nonsense.
+
