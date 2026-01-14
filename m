@@ -1,158 +1,137 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC3D530F54B
-	for <linux-nfs@vger.kernel.org>; Wed, 14 Jan 2026 14:54:43 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E94C92550A3;
+	Wed, 14 Jan 2026 15:05:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1768402487; cv=none; b=k7LqqSHrLb+nKQpuRYuXJSMC12ugINsS4ECUYzA9xPQV9zQJPAAxmD07NP/4pCy/tMciD2lS5/EkeZr8eA8rSxTRokkvmKrRGuJu8Dj1DwAlMJXTT5Qi2b2OJZJxvD5DZ3vuxx9ostZZdQYl/kvlnvOoVIbjDnBY6se4PKZkGnQ=
+	t=1768403159; cv=none; b=c2qvk+fuUVL5eKapVnw7SZM+axGX0E39ewGrMhCoyDbk8hxm0M/CFKU9sHEeCVX1zdOcRa/OzKt564SmY3lsfb3fDaaFy67effjMfu9g93x/cERvZWAkjsBZzcuFxiI25KdirLI9LSyCzuiWKl/+5dheWiPkzFK2JOWDvZeTGC0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1768402487; c=relaxed/simple;
-	bh=YikR99JuZ8NfFZTNIbnoT2pa0ihyo6QC/W1aH65ig8o=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=s8c9iM1zKmWh2Zbp52B+K/PLi05MlALcz/6x4C8qulywUfviGvkdMAlxTfjKA3IQRukaPQln7uu0oP67PIIHtXR2HVu8ywJTC0AGTgfMC/4baUUIdJjKoEvVtzgV2K6+rhV5RD8IFKj0J+GzoCp0d0C7MvwsIxw5wEY7MmuA6/0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=A3DPuXnT; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1768403159; c=relaxed/simple;
+	bh=FHu9QC6aUntevDtu9b89ECBHcIAGyW7+M4M/0IVXo6w=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=d5lo4y5b5xR703tUpNw6g8vwbXExavFEH1n3/uPEEu+QW79+cJYb0zowmQpvy7XudnlUswuCEdc8+lVDBFXst2x8C4alV0dB0QjFqOWGA8mVIaJ/PBVxhc73nSlm/CJWBZY+htRn3fW8xHU2A18zCJe0saA164NRy0hi9N7E1O0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=2aGkR9+G; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="A3DPuXnT"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1768402482;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=pWXjoI3UYL6UVuKotKriH0XXjQ4jpWrGaPtN9ypvv+Y=;
-	b=A3DPuXnTkKVGqVSTdQCdr/JTE1dstzQJoclexGgYUPcqXYY9JdE15kCrp5P52XJ99iaNgF
-	r68G967L2IJDYnXS9mu0N6unk0vZ38HLCDTR0prqxLvrMV0WvjqlyesJAw6Umm3Hg0qaqV
-	Z43HG2Mxf0Z2yi/1n8zQONRj1ZNUeAE=
-Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-186-vA1gA3AvNGOpe4zv53X1rA-1; Wed,
- 14 Jan 2026 09:54:39 -0500
-X-MC-Unique: vA1gA3AvNGOpe4zv53X1rA-1
-X-Mimecast-MFC-AGG-ID: vA1gA3AvNGOpe4zv53X1rA_1768402478
-Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id C29681955F3F;
-	Wed, 14 Jan 2026 14:54:37 +0000 (UTC)
-Received: from aion.redhat.com (unknown [10.22.64.190])
-	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 88BD71956053;
-	Wed, 14 Jan 2026 14:54:37 +0000 (UTC)
-Received: from aion.redhat.com (localhost [IPv6:::1])
-	by aion.redhat.com (Postfix) with ESMTP id D46DF5C63A4;
-	Wed, 14 Jan 2026 09:54:35 -0500 (EST)
-From: Scott Mayhew <smayhew@redhat.com>
-To: steved@redhat.com
-Cc: hch@infradead.org,
-	carnil@debian.org,
-	linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH] Rename CONFIG_NFSV41 to CONFIG_BLKMAPD and disable by default
-Date: Wed, 14 Jan 2026 09:54:35 -0500
-Message-ID: <20260114145435.826165-1-smayhew@redhat.com>
-In-Reply-To: <aWc5dO3fP4J67x0H@infradead.org>
-References: <aWc5dO3fP4J67x0H@infradead.org>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="2aGkR9+G"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=p/1eVpMenCIWXkmi+LWs4qBDeJZQRhQ1Mo2xBG1d6m0=; b=2aGkR9+Gq07Pqsr81YJxBM46lt
+	pC2tFopI1k2CQN/EQyBvUMbN685on8x5U4CpdjMpkFZFWeBtSU1OM84Ciw+y3szFcelfmqTyyg3Vm
+	y2DbB7FtxibRk5XBq6sH9x7jaP/v3yPQ2Ob6mTE3lbJs+jMPsrwoZFGtqfkkexkKI90sVyqCbvrKN
+	zpFbi2ZET+fTj2fii5dhkiKqKWNVPeKcG3n8jccbhPTVNNeRCqGKQRlyNUdLbE0ua8zYfilMENTNi
+	ksLGJd1DFd0SiHbXxA8bZhed6Je0ZmYu3Fr0+QZKywruGLSgXGNe8uS3svWfCZcAVQ+74djzH6mhe
+	QKhXyQqw==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
+	id 1vg2Qx-00000009cKq-2YJq;
+	Wed, 14 Jan 2026 15:05:19 +0000
+Date: Wed, 14 Jan 2026 07:05:19 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Amir Goldstein <amir73il@gmail.com>
+Cc: Jeff Layton <jlayton@kernel.org>, Christoph Hellwig <hch@infradead.org>,
+	Christian Brauner <brauner@kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>, Jan Kara <jack@suse.cz>,
+	Luis de Bethencourt <luisbg@kernel.org>,
+	Salah Triki <salah.triki@gmail.com>,
+	Nicolas Pitre <nico@fluxnic.net>, Anders Larsen <al@alarsen.net>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	David Sterba <dsterba@suse.com>, Chris Mason <clm@fb.com>,
+	Gao Xiang <xiang@kernel.org>, Chao Yu <chao@kernel.org>,
+	Yue Hu <zbestahu@gmail.com>, Jeffle Xu <jefflexu@linux.alibaba.com>,
+	Sandeep Dhavale <dhavale@google.com>,
+	Hongbo Li <lihongbo22@huawei.com>,
+	Chunhai Guo <guochunhai@vivo.com>, Jan Kara <jack@suse.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Andreas Dilger <adilger.kernel@dilger.ca>,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+	David Woodhouse <dwmw2@infradead.org>,
+	Richard Weinberger <richard@nod.at>,
+	Dave Kleikamp <shaggy@kernel.org>,
+	Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	Konstantin Komarov <almaz.alexandrovich@paragon-software.com>,
+	Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>,
+	Joseph Qi <joseph.qi@linux.alibaba.com>,
+	Mike Marshall <hubcap@omnibond.com>,
+	Martin Brandenburg <martin@omnibond.com>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Phillip Lougher <phillip@squashfs.org.uk>,
+	Carlos Maiolino <cem@kernel.org>, Hugh Dickins <hughd@google.com>,
+	Baolin Wang <baolin.wang@linux.alibaba.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Namjae Jeon <linkinjeon@kernel.org>,
+	Sungjong Seo <sj1557.seo@samsung.com>,
+	Yuezhang Mo <yuezhang.mo@sony.com>,
+	Alexander Aring <alex.aring@gmail.com>,
+	Andreas Gruenbacher <agruenba@redhat.com>,
+	Jonathan Corbet <corbet@lwn.net>,
+	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Latchesar Ionkov <lucho@ionkov.net>,
+	Dominique Martinet <asmadeus@codewreck.org>,
+	Christian Schoenebeck <linux_oss@crudebyte.com>,
+	Xiubo Li <xiubli@redhat.com>, Ilya Dryomov <idryomov@gmail.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>, Steve French <sfrench@samba.org>,
+	Paulo Alcantara <pc@manguebit.org>,
+	Ronnie Sahlberg <ronniesahlberg@gmail.com>,
+	Shyam Prasad N <sprasad@microsoft.com>, Tom Talpey <tom@talpey.com>,
+	Bharath SM <bharathsm@microsoft.com>,
+	Hans de Goede <hansg@kernel.org>, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+	linux-erofs@lists.ozlabs.org, linux-ext4@vger.kernel.org,
+	linux-f2fs-devel@lists.sourceforge.net,
+	linux-mtd@lists.infradead.org, jfs-discussion@lists.sourceforge.net,
+	linux-nilfs@vger.kernel.org, ntfs3@lists.linux.dev,
+	ocfs2-devel@lists.linux.dev, devel@lists.orangefs.org,
+	linux-unionfs@vger.kernel.org, linux-xfs@vger.kernel.org,
+	linux-mm@kvack.org, gfs2@lists.linux.dev, linux-doc@vger.kernel.org,
+	v9fs@lists.linux.dev, ceph-devel@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+	samba-technical@lists.samba.org
+Subject: Re: [PATCH 00/24] vfs: require filesystems to explicitly opt-in to
+ lease support
+Message-ID: <aWewryHrESHgXGoL@infradead.org>
+References: <cb5d2da6-2090-4639-ad96-138342bba56d@oracle.com>
+ <ce700ee20834631eceededc8cd15fc5d00fee28e.camel@kernel.org>
+ <20260113-mondlicht-raven-82fc4eb70e9d@brauner>
+ <aWZcoyQLvbJKUxDU@infradead.org>
+ <ce418800f06aa61a7f47f0d19394988f87a3da07.camel@kernel.org>
+ <aWc3mwBNs8LNFN4W@infradead.org>
+ <CAOQ4uxhMjitW_DC9WK9eku51gE1Ft+ENhD=qq3uehwrHO=RByA@mail.gmail.com>
+ <aWeUv2UUJ_NdgozS@infradead.org>
+ <c40862cd65a059ad45fa88f5473722ea5c5f70a5.camel@kernel.org>
+ <CAOQ4uxhDwR7dteLaqURX+9CooGM1hA7PL6KnVmSwX11ZdKxZTA@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <CAOQ4uxhDwR7dteLaqURX+9CooGM1hA7PL6KnVmSwX11ZdKxZTA@mail.gmail.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-pNFS block layout is deprecated in favor of pNFS SCSI layout, which
-doesn't require the use of blkmapd.
+On Wed, Jan 14, 2026 at 03:14:13PM +0100, Amir Goldstein wrote:
+> Very well then.
+> How about EXPORT_OP_PERSISTENT_HANDLES?
 
-Since CONFIG_NFSV41 (enabled by default, but can be disabled via
---disable-nfsv41) is only used to enable blkmapd, let's rename it to
-CONFIG_BLKMAPD and change the default to disabled.
+Sure.
 
-Distributions that wish to continue to include blkmapd can do so by
-adding --enable-blkmapd to their configure script invocation.
+> > The problem there is that we very much do want to keep tmpfs
+> > exportable, but it doesn't have stable handles (per-se).
+> 
+> Thinking out loud -
+> It would be misguided to declare tmpfs as
+> EXPORT_OP_PERSISTENT_HANDLES
+> and regressing exports of tmpfs will surely not go unnoticed.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- configure.ac        | 22 +++++++++++-----------
- systemd/Makefile.am |  2 +-
- utils/Makefile.am   |  2 +-
- 3 files changed, 13 insertions(+), 13 deletions(-)
-
-diff --git a/configure.ac b/configure.ac
-index 6da23915..bcbf0d69 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -85,22 +85,22 @@ AC_ARG_ENABLE(nfsv4,
- 	AC_SUBST(enable_nfsv4)
- 	AM_CONDITIONAL(CONFIG_NFSV4, [test "$enable_nfsv4" = "yes"])
- 
--AC_ARG_ENABLE(nfsv41,
--	[AS_HELP_STRING([--disable-nfsv41],[disable support for NFSv41 @<:@default=no@:>@])],
--	enable_nfsv41=$enableval,
--	enable_nfsv41=yes)
--	if test "$enable_nfsv41" = yes; then
-+AC_ARG_ENABLE(blkmapd,
-+	[AS_HELP_STRING([--enable-blkmapd],[enable support for blkmapd @<:@default=no@:>@])],
-+	enable_blkmapd=$enableval,
-+	enable_blkmapd=no)
-+	if test "$enable_blkmapd" = yes; then
- 		if test "$enable_nfsv4" != yes; then
--			AC_MSG_WARN([NFS v4 is not enabled. Disabling NFS v4.1])
--			enable_nfsv41=no
-+			AC_MSG_WARN([NFS v4 is not enabled. Disabling blkmapd.])
-+			enable_blkmapd=no
- 		fi
- 		BLKMAPD=blkmapd
- 	else
--		enable_nfsv41=
-+		enable_blkmapd=
- 		BLKMAPD=
- 	fi
--	AC_SUBST(enable_nfsv41)
--	AM_CONDITIONAL(CONFIG_NFSV41, [test "$enable_nfsv41" = "yes"])
-+	AC_SUBST(enable_blkmapd)
-+	AM_CONDITIONAL(CONFIG_BLKMAPD, [test "$enable_blkmapd" = "yes"])
- 
- AC_ARG_ENABLE(gss,
- 	[AS_HELP_STRING([--disable-gss],[disable client support for rpcsec_gss @<:@default=no@:>@])],
-@@ -398,7 +398,7 @@ else
-   enable_nfsdcltrack="no"
- fi
- 
--if test "$enable_nfsv41" = yes; then
-+if test "$enable_blkmapd" = yes; then
-   AC_CHECK_LIB([devmapper], [dm_task_create], [LIBDEVMAPPER="-ldevmapper"], AC_MSG_ERROR([libdevmapper needed]))
-   AC_CHECK_HEADER(libdevmapper.h, , AC_MSG_ERROR([Cannot find devmapper header file libdevmapper.h]))
-   AC_CHECK_HEADER(sys/inotify.h, , AC_MSG_ERROR([Cannot find header file sys/inotify.h]))
-diff --git a/systemd/Makefile.am b/systemd/Makefile.am
-index 5e481421..9cc940dc 100644
---- a/systemd/Makefile.am
-+++ b/systemd/Makefile.am
-@@ -32,7 +32,7 @@ unit_files += \
-     nfsv4-server.service
- endif
- 
--if CONFIG_NFSV41
-+if CONFIG_BLKMAPD
- unit_files += \
-     nfs-blkmap.service
- endif
-diff --git a/utils/Makefile.am b/utils/Makefile.am
-index e5cb81e7..bfa12081 100644
---- a/utils/Makefile.am
-+++ b/utils/Makefile.am
-@@ -11,7 +11,7 @@ if CONFIG_NFSV4SERVER
- OPTDIRS += exportd
- endif
- 
--if CONFIG_NFSV41
-+if CONFIG_BLKMAPD
- OPTDIRS += blkmapd
- endif
- 
--- 
-2.52.0
+tmpfs handles are stable.  It's the tmpfs files that don't survive an
+unmount or reboot..
 
