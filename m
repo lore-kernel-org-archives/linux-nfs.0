@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1BF4330B528
-	for <linux-nfs@vger.kernel.org>; Fri, 16 Jan 2026 21:51:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF3742FDC3D
+	for <linux-nfs@vger.kernel.org>; Fri, 16 Jan 2026 21:51:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1768600302; cv=none; b=fdaevlBsIiu103mw0HNMP284ME5i0MmQ0gi73X9JI9BafeP0WH9n7RdHpI6yHjQ183HAYcFNErtK66/gDK3sY8ySL727rpxRv9EqZzZt8JwpystFEndWFL3hf26Eg4y2rTbrBA+sdKF7mgElM1xtJeeqKzkFYgW1ZBZYy1pYoSw=
+	t=1768600302; cv=none; b=pJhVIVt7paUCtFzbIW7J4UuKsNXYFqsrsHVFJtj7qRC9u9KubEkTXX1Hpc98Kmsl8uMyg1oHM7USciKNCg+VPTbcODWzneUR5m9e1BMWEs/2BO2kTbtI8SQQExPmySuu2HfPnpwx3PblxJXfbPqeD1lc84Rijwz4Ht055ugNkzg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1768600302; c=relaxed/simple;
-	bh=F0pZPilCdTYcYY+Wjt4vMmT3t2Kif+FSqMxSLDp5T8o=;
+	bh=2TUvtcuaXkieoqrgHhlug8jvBOMQkvMwydzWcJwk/eA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ePr17wkDAXZsKvPl5RgoTUa86Z0Cn8Bo34x7c10lGbnpvVgms3TTDB76TARN2VMdY76illptl2kdKjXa9YmBK5o04Rwomka0Is2C8UUHLBR6zAydV35VCrAREgod8XU1a+w8+eN2W5V/1JKYjG91bVxfiui8gUIViIXcWqefhz0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HQdJS74f; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=L9iWCPeK8ZybrgGL+CQACocCJg5MPyh1pW0pFZQtxFDMGCBc7Yd9UN/xHcprFRvCbBby40kRT7Gmb77aL1GJ15k7mSvGO3s0nA/XuEHBUIMGS/g0IE+YHHndelVJTelsyL984/ylWwsSOkT4NLOM97IPWK+y+t+T52RpGtc+gWo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MrLZDDzQ; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HQdJS74f"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 85CE4C19423;
-	Fri, 16 Jan 2026 21:51:41 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MrLZDDzQ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 84414C19424;
+	Fri, 16 Jan 2026 21:51:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1768600301;
-	bh=F0pZPilCdTYcYY+Wjt4vMmT3t2Kif+FSqMxSLDp5T8o=;
+	s=k20201202; t=1768600302;
+	bh=2TUvtcuaXkieoqrgHhlug8jvBOMQkvMwydzWcJwk/eA=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=HQdJS74fTWKx4LvBoJDhQsa0VFHEOn14vmr9g3STtKXF8Y5xavjDaXzVmlrvLEW9/
-	 rUx5zJRIYNFegyaTfEwlfSDGWoy2qLRZfuzpYZX1VHiEqI7gZ/9scQln4d/vsqjLz7
-	 7pFuLhGeqzDGMm7UDcUY3WfVVa0jpiG3hA39ub/Psj2y5gnbh6ZYzrHnxQlIZ+Yl3y
-	 9ZoWcRw4ssLsYkBhDGNiWTFteYenaYzdtNjQugVGyILK3eSsxo2Si09w1UgAbSX7fm
-	 RRMTRgoZy6+PNgRRGbAab/UrryQwdc7cakIuay4Jrkvww3NsLmNZyqj2i1X+jsWTRW
-	 4pfAbwH4SrWMw==
+	b=MrLZDDzQZwRht0AODt6lN4TawsArCWMHgXElMJCy+3fp+WRjAFxFbX7JBYKI/gmEp
+	 0YSIOXh71VLuK7TcofXsIO7FQ6vyrY5rc0CugkVsa26RTeMDS99oC6bwX8qXGYn7ay
+	 Y3z7wumMxNBzb/Rka3I9Ki7b+hWpdY3mw0U5x7yJ9mJ9H7toEEKKKQtQLWxNvp3SM4
+	 esSzYXWI9OjUO7A5nRk5f32vg0ma3ZXPaAATrN46hdNqXX1y9o52w1adQTimQleWGN
+	 J7AZOwcPNhOFtTk+KbVQwz+CZUMjTe1hcnJbDAeSk0K/jHJhgb9gBZN+WFDATObP8K
+	 NefYo0ZnEfFYg==
 From: Anna Schumaker <anna@kernel.org>
 To: linux-nfs@vger.kernel.org,
 	trond.myklebust@hammerspace.com
 Cc: anna@kernel.org
-Subject: [PATCH v1 10/14] NFS: Move NFS v4.0 pathdown recovery into nfs40client.c
-Date: Fri, 16 Jan 2026 16:51:31 -0500
-Message-ID: <20260116215135.846062-11-anna@kernel.org>
+Subject: [PATCH v1 12/14] NFS: Move sequence slot operations into minorversion operations
+Date: Fri, 16 Jan 2026 16:51:33 -0500
+Message-ID: <20260116215135.846062-13-anna@kernel.org>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260116215135.846062-1-anna@kernel.org>
 References: <20260116215135.846062-1-anna@kernel.org>
@@ -46,107 +46,287 @@ Content-Transfer-Encoding: 8bit
 
 From: Anna Schumaker <anna.schumaker@oracle.com>
 
+At the same time, I move the NFS v4.0 functions into nfs40proc.c to keep
+v4.0 features together in their own files.
+
 Signed-off-by: Anna Schumaker <anna.schumaker@oracle.com>
 ---
- fs/nfs/nfs40.h       |  1 +
- fs/nfs/nfs40client.c | 23 +++++++++++++++++++++++
- fs/nfs/nfs4state.c   | 23 +----------------------
- 3 files changed, 25 insertions(+), 22 deletions(-)
+ fs/nfs/nfs40proc.c      |  30 ++++++++++++
+ fs/nfs/nfs4_fs.h        |   8 +++-
+ fs/nfs/nfs4proc.c       | 103 +++++++++++++---------------------------
+ include/linux/nfs_xdr.h |   1 +
+ 4 files changed, 70 insertions(+), 72 deletions(-)
 
-diff --git a/fs/nfs/nfs40.h b/fs/nfs/nfs40.h
-index 5a9c5d367b12..ee09aac738c8 100644
---- a/fs/nfs/nfs40.h
-+++ b/fs/nfs/nfs40.h
+diff --git a/fs/nfs/nfs40proc.c b/fs/nfs/nfs40proc.c
+index 9b5b57170471..32a2a1a2b216 100644
+--- a/fs/nfs/nfs40proc.c
++++ b/fs/nfs/nfs40proc.c
 @@ -6,6 +6,7 @@
- /* nfs40client.c */
- void nfs40_shutdown_client(struct nfs_client *);
- int nfs40_init_client(struct nfs_client *);
-+void nfs40_handle_cb_pathdown(struct nfs_client *clp);
- 
- /* nfs40proc.c */
- extern const struct nfs4_minor_version_ops nfs_v4_0_minor_ops;
-diff --git a/fs/nfs/nfs40client.c b/fs/nfs/nfs40client.c
-index b0719403495d..0f88e7cbdc5e 100644
---- a/fs/nfs/nfs40client.c
-+++ b/fs/nfs/nfs40client.c
-@@ -3,6 +3,7 @@
- #include "nfs4_fs.h"
- #include "nfs4session.h"
- #include "callback.h"
-+#include "delegation.h"
  #include "internal.h"
- #include "netns.h"
+ #include "nfs4_fs.h"
  #include "nfs40.h"
-@@ -80,6 +81,28 @@ int nfs40_init_client(struct nfs_client *clp)
- 	return 0;
++#include "nfs4session.h"
+ #include "nfs4trace.h"
+ 
+ static void nfs40_call_sync_prepare(struct rpc_task *task, void *calldata)
+@@ -21,6 +22,28 @@ static void nfs40_call_sync_done(struct rpc_task *task, void *calldata)
+ 	nfs4_sequence_done(task, data->seq_res);
  }
  
-+/*
-+ * nfs40_handle_cb_pathdown - return all delegations after NFS4ERR_CB_PATH_DOWN
-+ * @clp: client to process
-+ *
-+ * Set the NFS4CLNT_LEASE_EXPIRED state in order to force a
-+ * resend of the SETCLIENTID and hence re-establish the
-+ * callback channel. Then return all existing delegations.
-+ */
-+void nfs40_handle_cb_pathdown(struct nfs_client *clp)
++static void nfs40_sequence_free_slot(struct nfs4_sequence_res *res)
 +{
-+	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
-+	nfs_expire_all_delegations(clp);
-+	dprintk("%s: handling CB_PATHDOWN recovery for server %s\n", __func__,
-+			clp->cl_hostname);
++	struct nfs4_slot *slot = res->sr_slot;
++	struct nfs4_slot_table *tbl;
++
++	tbl = slot->table;
++	spin_lock(&tbl->slot_tbl_lock);
++	if (!nfs41_wake_and_assign_slot(tbl, slot))
++		nfs4_free_slot(tbl, slot);
++	spin_unlock(&tbl->slot_tbl_lock);
++
++	res->sr_slot = NULL;
 +}
 +
-+void nfs4_schedule_path_down_recovery(struct nfs_client *clp)
++static int nfs40_sequence_done(struct rpc_task *task,
++			       struct nfs4_sequence_res *res)
 +{
-+	nfs40_handle_cb_pathdown(clp);
-+	nfs4_schedule_state_manager(clp);
++	if (res->sr_slot != NULL)
++		nfs40_sequence_free_slot(res);
++	return 1;
 +}
 +
- /**
-  * nfs40_walk_client_list - Find server that recognizes a client ID
-  *
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 5eaa45fd69ea..c7ee5318b660 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -54,6 +54,7 @@
- #include <linux/sunrpc/clnt.h>
- 
- #include "nfs4_fs.h"
-+#include "nfs40.h"
- #include "callback.h"
- #include "delegation.h"
- #include "internal.h"
-@@ -1294,28 +1295,6 @@ int nfs4_client_recover_expired_lease(struct nfs_client *clp)
- 	return ret;
- }
- 
--/*
-- * nfs40_handle_cb_pathdown - return all delegations after NFS4ERR_CB_PATH_DOWN
-- * @clp: client to process
-- *
-- * Set the NFS4CLNT_LEASE_EXPIRED state in order to force a
-- * resend of the SETCLIENTID and hence re-establish the
-- * callback channel. Then return all existing delegations.
-- */
--static void nfs40_handle_cb_pathdown(struct nfs_client *clp)
--{
--	set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
--	nfs_expire_all_delegations(clp);
--	dprintk("%s: handling CB_PATHDOWN recovery for server %s\n", __func__,
--			clp->cl_hostname);
--}
--
--void nfs4_schedule_path_down_recovery(struct nfs_client *clp)
--{
--	nfs40_handle_cb_pathdown(clp);
--	nfs4_schedule_state_manager(clp);
--}
--
- static int nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_state *state)
+ static void nfs40_clear_delegation_stateid(struct nfs4_state *state)
  {
+ 	if (rcu_access_pointer(NFS_I(state->inode)->delegation) != NULL)
+@@ -317,6 +340,12 @@ static const struct rpc_call_ops nfs40_call_sync_ops = {
+ 	.rpc_call_done = nfs40_call_sync_done,
+ };
  
++static const struct nfs4_sequence_slot_ops nfs40_sequence_slot_ops = {
++	.process = nfs40_sequence_done,
++	.done = nfs40_sequence_done,
++	.free_slot = nfs40_sequence_free_slot,
++};
++
+ static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
+ 	.owner_flag_bit = NFS_OWNER_RECLAIM_REBOOT,
+ 	.state_flag_bit	= NFS_STATE_RECLAIM_REBOOT,
+@@ -358,6 +387,7 @@ const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
+ 	.test_and_free_expired = nfs40_test_and_free_expired_stateid,
+ 	.alloc_seqid = nfs_alloc_seqid,
+ 	.call_sync_ops = &nfs40_call_sync_ops,
++	.sequence_slot_ops = &nfs40_sequence_slot_ops,
+ 	.reboot_recovery_ops = &nfs40_reboot_recovery_ops,
+ 	.nograce_recovery_ops = &nfs40_nograce_recovery_ops,
+ 	.state_renewal_ops = &nfs40_state_renewal_ops,
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 34cdbf42b865..a5dd4a837769 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -73,6 +73,7 @@ struct nfs4_minor_version_ops {
+ 	void	(*session_trunk)(struct rpc_clnt *clnt,
+ 			struct rpc_xprt *xprt, void *data);
+ 	const struct rpc_call_ops *call_sync_ops;
++	const struct nfs4_sequence_slot_ops *sequence_slot_ops;
+ 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
+ 	const struct nfs4_state_recovery_ops *nograce_recovery_ops;
+ 	const struct nfs4_state_maintenance_ops *state_renewal_ops;
+@@ -256,6 +257,12 @@ struct nfs4_add_xprt_data {
+ 	const struct cred	*cred;
+ };
+ 
++struct nfs4_sequence_slot_ops {
++	int (*process)(struct rpc_task *, struct nfs4_sequence_res *);
++	int (*done)(struct rpc_task *, struct nfs4_sequence_res *);
++	void (*free_slot)(struct nfs4_sequence_res *);
++};
++
+ struct nfs4_state_maintenance_ops {
+ 	int (*sched_state_renewal)(struct nfs_client *, const struct cred *, unsigned);
+ 	const struct cred * (*get_state_renewal_cred)(struct nfs_client *);
+@@ -311,7 +318,6 @@ extern int nfs4_call_sync_sequence(struct rpc_clnt *clnt,
+ 				   struct nfs4_sequence_res *res);
+ extern void nfs4_init_sequence(struct nfs_client *clp, struct nfs4_sequence_args *,
+ 			       struct nfs4_sequence_res *, int, int);
+-extern int nfs40_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res);
+ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, const struct cred *, struct nfs4_setclientid_res *);
+ extern int nfs4_proc_setclientid_confirm(struct nfs_client *, struct nfs4_setclientid_res *arg, const struct cred *);
+ extern void renew_lease(const struct nfs_server *server, unsigned long timestamp);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 27ed07c5f669..ae14e9d65e1b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -780,28 +780,7 @@ void nfs4_init_sequence(struct nfs_client *clp,
+ 	args->sa_privileged = privileged;
+ 
+ 	res->sr_slot = NULL;
+-}
+-
+-static void nfs40_sequence_free_slot(struct nfs4_sequence_res *res)
+-{
+-	struct nfs4_slot *slot = res->sr_slot;
+-	struct nfs4_slot_table *tbl;
+-
+-	tbl = slot->table;
+-	spin_lock(&tbl->slot_tbl_lock);
+-	if (!nfs41_wake_and_assign_slot(tbl, slot))
+-		nfs4_free_slot(tbl, slot);
+-	spin_unlock(&tbl->slot_tbl_lock);
+-
+-	res->sr_slot = NULL;
+-}
+-
+-int nfs40_sequence_done(struct rpc_task *task,
+-			struct nfs4_sequence_res *res)
+-{
+-	if (res->sr_slot != NULL)
+-		nfs40_sequence_free_slot(res);
+-	return 1;
++	res->sr_slot_ops = clp->cl_mvops->sequence_slot_ops;
+ }
+ 
+ #if defined(CONFIG_NFS_V4_1)
+@@ -1020,35 +999,6 @@ int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
+ }
+ EXPORT_SYMBOL_GPL(nfs41_sequence_done);
+ 
+-static int nfs4_sequence_process(struct rpc_task *task, struct nfs4_sequence_res *res)
+-{
+-	if (res->sr_slot == NULL)
+-		return 1;
+-	if (res->sr_slot->table->session != NULL)
+-		return nfs41_sequence_process(task, res);
+-	return nfs40_sequence_done(task, res);
+-}
+-
+-static void nfs4_sequence_free_slot(struct nfs4_sequence_res *res)
+-{
+-	if (res->sr_slot != NULL) {
+-		if (res->sr_slot->table->session != NULL)
+-			nfs41_sequence_free_slot(res);
+-		else
+-			nfs40_sequence_free_slot(res);
+-	}
+-}
+-
+-int nfs4_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
+-{
+-	if (res->sr_slot == NULL)
+-		return 1;
+-	if (!res->sr_slot->table->session)
+-		return nfs40_sequence_done(task, res);
+-	return nfs41_sequence_done(task, res);
+-}
+-EXPORT_SYMBOL_GPL(nfs4_sequence_done);
+-
+ static void nfs41_call_sync_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_call_sync_data *data = calldata;
+@@ -1071,25 +1021,6 @@ static const struct rpc_call_ops nfs41_call_sync_ops = {
+ 	.rpc_call_done = nfs41_call_sync_done,
+ };
+ 
+-#else	/* !CONFIG_NFS_V4_1 */
+-
+-static int nfs4_sequence_process(struct rpc_task *task, struct nfs4_sequence_res *res)
+-{
+-	return nfs40_sequence_done(task, res);
+-}
+-
+-static void nfs4_sequence_free_slot(struct nfs4_sequence_res *res)
+-{
+-	if (res->sr_slot != NULL)
+-		nfs40_sequence_free_slot(res);
+-}
+-
+-int nfs4_sequence_done(struct rpc_task *task,
+-		       struct nfs4_sequence_res *res)
+-{
+-	return nfs40_sequence_done(task, res);
+-}
+-EXPORT_SYMBOL_GPL(nfs4_sequence_done);
+ 
+ #endif	/* !CONFIG_NFS_V4_1 */
+ 
+@@ -1113,6 +1044,28 @@ void nfs4_sequence_attach_slot(struct nfs4_sequence_args *args,
+ 	res->sr_slot = slot;
+ }
+ 
++static void nfs4_sequence_free_slot(struct nfs4_sequence_res *res)
++{
++	if (res->sr_slot != NULL)
++		res->sr_slot_ops->free_slot(res);
++}
++
++static int nfs4_sequence_process(struct rpc_task *task, struct nfs4_sequence_res *res)
++{
++	if (res->sr_slot == NULL)
++		return 1;
++	return res->sr_slot_ops->process(task, res);
++}
++
++int nfs4_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
++{
++	if (res->sr_slot == NULL)
++		return 1;
++	return res->sr_slot_ops->done(task, res);
++}
++EXPORT_SYMBOL_GPL(nfs4_sequence_done);
++
++
+ int nfs4_setup_sequence(struct nfs_client *client,
+ 			struct nfs4_sequence_args *args,
+ 			struct nfs4_sequence_res *res,
+@@ -2443,7 +2396,7 @@ static void nfs4_open_confirm_done(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs4_opendata *data = calldata;
+ 
+-	nfs40_sequence_done(task, &data->c_res.seq_res);
++	data->c_res.seq_res.sr_slot_ops->done(task, &data->c_res.seq_res);
+ 
+ 	data->rpc_status = task->tk_status;
+ 	if (data->rpc_status == 0) {
+@@ -10498,6 +10451,12 @@ bool nfs4_match_stateid(const nfs4_stateid *s1,
+ 
+ 
+ #if defined(CONFIG_NFS_V4_1)
++static const struct nfs4_sequence_slot_ops nfs41_sequence_slot_ops = {
++	.process = nfs41_sequence_process,
++	.done = nfs41_sequence_done,
++	.free_slot = nfs41_sequence_free_slot,
++};
++
+ static const struct nfs4_state_recovery_ops nfs41_reboot_recovery_ops = {
+ 	.owner_flag_bit = NFS_OWNER_RECLAIM_REBOOT,
+ 	.state_flag_bit	= NFS_STATE_RECLAIM_REBOOT,
+@@ -10552,6 +10511,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+ 	.alloc_seqid = nfs_alloc_no_seqid,
+ 	.session_trunk = nfs4_test_session_trunk,
+ 	.call_sync_ops = &nfs41_call_sync_ops,
++	.sequence_slot_ops = &nfs41_sequence_slot_ops,
+ 	.reboot_recovery_ops = &nfs41_reboot_recovery_ops,
+ 	.nograce_recovery_ops = &nfs41_nograce_recovery_ops,
+ 	.state_renewal_ops = &nfs41_state_renewal_ops,
+@@ -10588,6 +10548,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
+ 	.find_root_sec = nfs41_find_root_sec,
+ 	.free_lock_state = nfs41_free_lock_state,
+ 	.call_sync_ops = &nfs41_call_sync_ops,
++	.sequence_slot_ops = &nfs41_sequence_slot_ops,
+ 	.test_and_free_expired = nfs41_test_and_free_expired_stateid,
+ 	.alloc_seqid = nfs_alloc_no_seqid,
+ 	.session_trunk = nfs4_test_session_trunk,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 79fe2dfb470f..2aa4e38af57a 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -209,6 +209,7 @@ struct nfs4_sequence_args {
+ };
+ 
+ struct nfs4_sequence_res {
++	const struct nfs4_sequence_slot_ops *sr_slot_ops;
+ 	struct nfs4_slot	*sr_slot;	/* slot used to send request */
+ 	unsigned long		sr_timestamp;
+ 	int			sr_status;	/* sequence operation status */
 -- 
 2.52.0
 
