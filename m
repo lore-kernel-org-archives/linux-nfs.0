@@ -1,362 +1,219 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A471444A726;
-	Tue, 20 Jan 2026 14:31:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B6AEF41760;
+	Tue, 20 Jan 2026 14:35:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1768919493; cv=none; b=T5kDybdkiu43u7HLCo88wgLcy7jmKhIK/WBjsfMiRs9hNpUz1CsqGlrLwi6Ik8qNI8HfB+Vhjru/fWrEYgCXXMtoVv80H/+9KvgvuZ2WrFMAcscR8aThLpXncnzdwn6KnS1kA5mNWDlpkJvsb8KvPqduBIayq2Ua+ywzqjuaUjM=
+	t=1768919757; cv=none; b=KWNo29C9PgCkXpJxVEbtUHgb+CDZGdA+v52sTnvNBDlCLbB3E6qELfY6rFmCWsoCOIupnly+sRL5AZZovAcQNGmDtOKY+DSGv427PswciCnbWcOXADwmDM3HpxAOwbEdLdyIjxcnB2DntZgOqBEx5CxX9t2c3KbI6ErHYj0vQho=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1768919493; c=relaxed/simple;
-	bh=QPP+jBhrNsuUrYpOi6RycvIhGoZN2vYfgrcbZPp87/4=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=kchihx2VQ7UgfEqNVJYVWY6ti76znESVNt2ypbr6rEUarBRXLOVVM0yB05iYPKagrfyHcfsb5fQbg4Va3abQpHyKfjvAuwO4ZtFBDTMzA/ASPFXYpQjMJwIrzaDB719utUZz6xt1ADjH3qOWMMZpFNcsx/2YxIB4bI0dDmSl9Fk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=qMf2/b/J; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1768919757; c=relaxed/simple;
+	bh=dpS+PxEHDbPvZHdk4rsi82HgYDznM+Ad7e2Y2GUOqM0=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=l3ROzX5hO9aVu9HYfQFvjpY+usvZpRiH73716KcAt19Wl1LROIOiP09lrpGHAvXMBmba40XMwQ3tcedHWV2Js8s7BjpOQTaLV/jVQPTEH6anyJ3srIWIupeCRMgX7tlzzVgtQpx8gDc2GFzzuGD5HOed0fuyQXG7/n2ydfeM8X8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=c0Yb6Fai; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="qMf2/b/J"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 60E32C19425;
-	Tue, 20 Jan 2026 14:31:32 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="c0Yb6Fai"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C1E02C16AAE;
+	Tue, 20 Jan 2026 14:35:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1768919493;
-	bh=QPP+jBhrNsuUrYpOi6RycvIhGoZN2vYfgrcbZPp87/4=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=qMf2/b/JI9jPt7PG16m1ooc7lHNdmuNu0b8ABi0enQd35ToEV30xwW5ZjoKJovMga
-	 tCnOizzDvbUk/nwgT+cAggcIpEk/2yxLi+8+3YhOqJqw0GFwaRNr2qN4HQBrbIuF76
-	 1xTYrP78Rv0TPHQ1EUKA78jsiZkzXbNbL6y0wgsLk4l99Q0f3UVa1baNDXeOBsXwY8
-	 Fx2ScdW655O1C9EQdhI/ocZJUL1cKUYJzPNEpwOHsct9rTMCWzAZzthoSYc/Kuduxg
-	 GrxLujAGyOwkQKdVmhg52CZQyGWKjEej0BqLJ6JHixiVKofRvH/EKEpn1vpllfK2bq
-	 iuefgr0UXkiqQ==
-From: Chuck Lever <cel@kernel.org>
-To: Jason Gunthorpe <jgg@nvidia.com>,
-	Leon Romanovsky <leon@kernel.org>,
-	Christoph Hellwig <hch@lst.de>
-Cc: NeilBrown <neilb@ownmail.net>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	<linux-rdma@vger.kernel.org>,
-	<linux-nfs@vger.kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2 4/4] svcrdma: use bvec-based RDMA read/write API
-Date: Tue, 20 Jan 2026 09:31:24 -0500
-Message-ID: <20260120143124.1822121-5-cel@kernel.org>
-X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20260120143124.1822121-1-cel@kernel.org>
-References: <20260120143124.1822121-1-cel@kernel.org>
+	s=k20201202; t=1768919756;
+	bh=dpS+PxEHDbPvZHdk4rsi82HgYDznM+Ad7e2Y2GUOqM0=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+	b=c0Yb6FaiYwLqlqQz3OwDA/IDqUxyfXBp9KbKpjmBBfSeVXvxXUbg9q9NdfGgmZWgW
+	 LBb/OzfIa5D1/ur6fI8X1Vk7TdmXZKRMcEbjf9JlXnfEB9MYhrugESVBOALo3dfsJN
+	 c3kyXsUItLSCJTQSL1vvZL/3HJKK84XphEQiwTOn6YtKVhBnj9QBGOT4f0CwrcGO8u
+	 yGALNKq6Knah/9QOmKYxcHJkuuYwydE3ayRFjpzgUGf4tYVBIXe6uQ3AjWXvBoJsWL
+	 PgAgzCMENAMM68Vji4VPbqanPmS2G1JSuw16TDRDByd2ZHk+IW8jbpd/hMVDkrbbE8
+	 vt/1AfPD2XjbQ==
+Message-ID: <2ed97731c54ef130ea58861a91c80dacd785de9a.camel@kernel.org>
+Subject: Re: [PATCH v2 01/31] Documentation: document EXPORT_OP_NOLOCKS
+From: Jeff Layton <jlayton@kernel.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Christian Brauner <brauner@kernel.org>, Alexander Viro	
+ <viro@zeniv.linux.org.uk>, Chuck Lever <chuck.lever@oracle.com>, NeilBrown	
+ <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo	
+ <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Amir Goldstein	
+ <amir73il@gmail.com>, Hugh Dickins <hughd@google.com>, Baolin Wang	
+ <baolin.wang@linux.alibaba.com>, Andrew Morton <akpm@linux-foundation.org>,
+  Theodore Ts'o	 <tytso@mit.edu>, Andreas Dilger <adilger.kernel@dilger.ca>,
+ Jan Kara	 <jack@suse.com>, Gao Xiang <xiang@kernel.org>, Chao Yu
+ <chao@kernel.org>, Yue Hu	 <zbestahu@gmail.com>, Jeffle Xu
+ <jefflexu@linux.alibaba.com>, Sandeep Dhavale	 <dhavale@google.com>, Hongbo
+ Li <lihongbo22@huawei.com>, Chunhai Guo	 <guochunhai@vivo.com>, Carlos
+ Maiolino <cem@kernel.org>, Ilya Dryomov	 <idryomov@gmail.com>, Alex Markuze
+ <amarkuze@redhat.com>, Viacheslav Dubeyko	 <slava@dubeyko.com>, Chris Mason
+ <clm@fb.com>, David Sterba <dsterba@suse.com>,  Luis de Bethencourt	
+ <luisbg@kernel.org>, Salah Triki <salah.triki@gmail.com>, Phillip Lougher	
+ <phillip@squashfs.org.uk>, Steve French <sfrench@samba.org>, Paulo
+ Alcantara	 <pc@manguebit.org>, Ronnie Sahlberg <ronniesahlberg@gmail.com>,
+ Shyam Prasad N	 <sprasad@microsoft.com>, Bharath SM
+ <bharathsm@microsoft.com>, Miklos Szeredi	 <miklos@szeredi.hu>, Mike
+ Marshall <hubcap@omnibond.com>, Martin Brandenburg	 <martin@omnibond.com>,
+ Mark Fasheh <mark@fasheh.com>, Joel Becker	 <jlbec@evilplan.org>, Joseph Qi
+ <joseph.qi@linux.alibaba.com>, Konstantin Komarov
+ <almaz.alexandrovich@paragon-software.com>, Ryusuke Konishi
+ <konishi.ryusuke@gmail.com>,  Trond Myklebust <trondmy@kernel.org>, Anna
+ Schumaker <anna@kernel.org>, Dave Kleikamp <shaggy@kernel.org>, David
+ Woodhouse <dwmw2@infradead.org>, Richard Weinberger <richard@nod.at>, Jan
+ Kara <jack@suse.cz>,  Andreas Gruenbacher	 <agruenba@redhat.com>, OGAWA
+ Hirofumi <hirofumi@mail.parknet.co.jp>, Jaegeuk Kim <jaegeuk@kernel.org>,
+ Jonathan Corbet <corbet@lwn.net>, David Laight	
+ <david.laight.linux@gmail.com>, Dave Chinner <david@fromorbit.com>, 
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+ linux-ext4@vger.kernel.org, 	linux-erofs@lists.ozlabs.org,
+ linux-xfs@vger.kernel.org, 	ceph-devel@vger.kernel.org,
+ linux-btrfs@vger.kernel.org, 	linux-cifs@vger.kernel.org,
+ samba-technical@lists.samba.org, 	linux-unionfs@vger.kernel.org,
+ devel@lists.orangefs.org, 	ocfs2-devel@lists.linux.dev,
+ ntfs3@lists.linux.dev, linux-nilfs@vger.kernel.org, 
+	jfs-discussion@lists.sourceforge.net, linux-mtd@lists.infradead.org, 
+	gfs2@lists.linux.dev, linux-f2fs-devel@lists.sourceforge.net, 
+	linux-doc@vger.kernel.org
+Date: Tue, 20 Jan 2026 09:35:48 -0500
+In-Reply-To: <707f08e114bf603caf7de020bb630d5477e86bca.camel@kernel.org>
+References: <20260119-exportfs-nfsd-v2-0-d93368f903bd@kernel.org>
+			 <20260119-exportfs-nfsd-v2-1-d93368f903bd@kernel.org>
+			 <aW8yV6v8ZDiynOUm@infradead.org>
+		 <9b64bed72e43d0bf24e9b1e3bc770c4a87082762.camel@kernel.org>
+	 <707f08e114bf603caf7de020bb630d5477e86bca.camel@kernel.org>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.58.2 (3.58.2-1.fc43) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
 
-From: Chuck Lever <chuck.lever@oracle.com>
+On Tue, 2026-01-20 at 09:12 -0500, Jeff Layton wrote:
+> On Tue, 2026-01-20 at 08:20 -0500, Jeff Layton wrote:
+> > On Mon, 2026-01-19 at 23:44 -0800, Christoph Hellwig wrote:
+> > > On Mon, Jan 19, 2026 at 11:26:18AM -0500, Jeff Layton wrote:
+> > > > +  EXPORT_OP_NOLOCKS - Disable file locking on this filesystem. Som=
+e
+> > > > +    filesystems cannot properly support file locking as implemente=
+d by
+> > > > +    nfsd. A case in point is reexport of NFS itself, which can't b=
+e done
+> > > > +    safely without coordinating the grace period handling. Other c=
+lustered
+> > > > +    and networked filesystems can be problematic here as well.
+> > >=20
+> > > I'm not sure this is very useful.  It really needs to document what
+> > > locking semantics nfs expects, because otherwise no reader will know
+> > > if they set this or not.
+> >=20
+> > Fair point. I'll see if I can draft something better. Suggestions
+> > welcome.
+>=20
+> How about this?
+>=20
+> +  EXPORT_OP_NOLOCKS - Disable file locking on this filesystem. Filesyste=
+ms
+> +    that want to support locking over NFS must support POSIX file lockin=
+g
+> +    semantics and must handle lock recovery requests from clients after =
+a
+> +    reboot. Most local disk, RAM, or pseudo-filesystems use the generic =
+POSIX
+> +    locking support in the kernel and naturally provide this capability.=
+ Network
+> +    or clustered filesystems usually need special handling to do this pr=
+operly.
 
-Convert svcrdma to the bvec-based RDMA API introduced earlier in
-this series.
+Even better, I think?
 
-The bvec-based RDMA API eliminates the intermediate scatterlist
-conversion step, allowing direct DMA mapping from bio_vec arrays.
-This simplifies the svc_rdma_rw_ctxt structure by removing the
-chained SG table management.
-
-The structure retains an inline array approach similar to the
-previous scatterlist implementation: an inline bvec array sized
-to max_send_sge handles most I/O operations without additional
-allocation. Larger requests fall back to dynamic allocation.
-This preserves the allocation-free fast path for typical NFS
-operations while supporting arbitrarily large transfers.
-
-The bvec API handles all device types internally, including iWARP
-devices which require memory registration. No explicit fallback
-path is needed.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/svc_rdma_rw.c | 136 ++++++++++++++++--------------
- 1 file changed, 74 insertions(+), 62 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 310de7a80be5..33c1c0ac4e79 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -5,6 +5,8 @@
-  * Use the core R/W API to move RPC-over-RDMA Read and Write chunks.
-  */
- 
-+#include <linux/bvec.h>
-+#include <linux/overflow.h>
- #include <rdma/rw.h>
- 
- #include <linux/sunrpc/xdr.h>
-@@ -20,30 +22,33 @@ static void svc_rdma_wc_read_done(struct ib_cq *cq, struct ib_wc *wc);
- /* Each R/W context contains state for one chain of RDMA Read or
-  * Write Work Requests.
-  *
-- * Each WR chain handles a single contiguous server-side buffer,
-- * because scatterlist entries after the first have to start on
-- * page alignment. xdr_buf iovecs cannot guarantee alignment.
-+ * Each WR chain handles a single contiguous server-side buffer.
-+ * - each xdr_buf iovec is a single contiguous buffer
-+ * - the xdr_buf pages array is a single contiguous buffer because the
-+ *   second through the last element always start on a page boundary
-  *
-  * Each WR chain handles only one R_key. Each RPC-over-RDMA segment
-  * from a client may contain a unique R_key, so each WR chain moves
-  * up to one segment at a time.
-  *
-- * The scatterlist makes this data structure over 4KB in size. To
-- * make it less likely to fail, and to handle the allocation for
-- * smaller I/O requests without disabling bottom-halves, these
-- * contexts are created on demand, but cached and reused until the
-- * controlling svcxprt_rdma is destroyed.
-+ * The inline bvec array is sized to handle most I/O requests without
-+ * additional allocation. Larger requests fall back to dynamic allocation.
-+ * These contexts are created on demand, but cached and reused until
-+ * the controlling svcxprt_rdma is destroyed.
-  */
- struct svc_rdma_rw_ctxt {
- 	struct llist_node	rw_node;
- 	struct list_head	rw_list;
- 	struct rdma_rw_ctx	rw_ctx;
- 	unsigned int		rw_nents;
--	unsigned int		rw_first_sgl_nents;
--	struct sg_table		rw_sg_table;
--	struct scatterlist	rw_first_sgl[];
-+	unsigned int		rw_first_bvec_nents;
-+	struct bio_vec		*rw_bvec;
-+	struct bio_vec		rw_first_bvec[];
- };
- 
-+static void svc_rdma_put_rw_ctxt(struct svcxprt_rdma *rdma,
-+				 struct svc_rdma_rw_ctxt *ctxt);
 +
- static inline struct svc_rdma_rw_ctxt *
- svc_rdma_next_ctxt(struct list_head *list)
- {
-@@ -52,10 +57,10 @@ svc_rdma_next_ctxt(struct list_head *list)
- }
- 
- static struct svc_rdma_rw_ctxt *
--svc_rdma_get_rw_ctxt(struct svcxprt_rdma *rdma, unsigned int sges)
-+svc_rdma_get_rw_ctxt(struct svcxprt_rdma *rdma, unsigned int nr_bvec)
- {
- 	struct ib_device *dev = rdma->sc_cm_id->device;
--	unsigned int first_sgl_nents = dev->attrs.max_send_sge;
-+	unsigned int first_bvec_nents = dev->attrs.max_send_sge;
- 	struct svc_rdma_rw_ctxt *ctxt;
- 	struct llist_node *node;
- 
-@@ -65,33 +70,44 @@ svc_rdma_get_rw_ctxt(struct svcxprt_rdma *rdma, unsigned int sges)
- 	if (node) {
- 		ctxt = llist_entry(node, struct svc_rdma_rw_ctxt, rw_node);
- 	} else {
--		ctxt = kmalloc_node(struct_size(ctxt, rw_first_sgl, first_sgl_nents),
-+		ctxt = kmalloc_node(struct_size(ctxt, rw_first_bvec,
-+						first_bvec_nents),
- 				    GFP_KERNEL, ibdev_to_node(dev));
- 		if (!ctxt)
- 			goto out_noctx;
- 
- 		INIT_LIST_HEAD(&ctxt->rw_list);
--		ctxt->rw_first_sgl_nents = first_sgl_nents;
-+		ctxt->rw_first_bvec_nents = first_bvec_nents;
- 	}
- 
--	ctxt->rw_sg_table.sgl = ctxt->rw_first_sgl;
--	if (sg_alloc_table_chained(&ctxt->rw_sg_table, sges,
--				   ctxt->rw_sg_table.sgl,
--				   first_sgl_nents))
--		goto out_free;
-+	if (nr_bvec <= ctxt->rw_first_bvec_nents) {
-+		ctxt->rw_bvec = ctxt->rw_first_bvec;
-+	} else {
-+		ctxt->rw_bvec = kmalloc_array_node(nr_bvec,
-+						   sizeof(*ctxt->rw_bvec),
-+						   GFP_KERNEL,
-+						   ibdev_to_node(dev));
-+		if (!ctxt->rw_bvec)
-+			goto out_free;
-+	}
- 	return ctxt;
- 
- out_free:
--	kfree(ctxt);
-+	/* Return cached contexts to cache; free freshly allocated ones */
-+	if (node)
-+		svc_rdma_put_rw_ctxt(rdma, ctxt);
-+	else
-+		kfree(ctxt);
- out_noctx:
--	trace_svcrdma_rwctx_empty(rdma, sges);
-+	trace_svcrdma_rwctx_empty(rdma, nr_bvec);
- 	return NULL;
- }
- 
- static void __svc_rdma_put_rw_ctxt(struct svc_rdma_rw_ctxt *ctxt,
- 				   struct llist_head *list)
- {
--	sg_free_table_chained(&ctxt->rw_sg_table, ctxt->rw_first_sgl_nents);
-+	if (ctxt->rw_bvec != ctxt->rw_first_bvec)
-+		kfree(ctxt->rw_bvec);
- 	llist_add(&ctxt->rw_node, list);
- }
- 
-@@ -135,9 +151,10 @@ static int svc_rdma_rw_ctx_init(struct svcxprt_rdma *rdma,
- {
- 	int ret;
- 
--	ret = rdma_rw_ctx_init(&ctxt->rw_ctx, rdma->sc_qp, rdma->sc_port_num,
--			       ctxt->rw_sg_table.sgl, ctxt->rw_nents,
--			       0, offset, handle, direction);
-+	ret = rdma_rw_ctx_init_bvec(&ctxt->rw_ctx, rdma->sc_qp,
-+				    rdma->sc_port_num,
-+				    ctxt->rw_bvec, ctxt->rw_nents,
-+				    0, offset, handle, direction);
- 	if (unlikely(ret < 0)) {
- 		trace_svcrdma_dma_map_rw_err(rdma, offset, handle,
- 					     ctxt->rw_nents, ret);
-@@ -183,9 +200,9 @@ void svc_rdma_cc_release(struct svcxprt_rdma *rdma,
- 	while ((ctxt = svc_rdma_next_ctxt(&cc->cc_rwctxts)) != NULL) {
- 		list_del(&ctxt->rw_list);
- 
--		rdma_rw_ctx_destroy(&ctxt->rw_ctx, rdma->sc_qp,
--				    rdma->sc_port_num, ctxt->rw_sg_table.sgl,
--				    ctxt->rw_nents, dir);
-+		rdma_rw_ctx_destroy_bvec(&ctxt->rw_ctx, rdma->sc_qp,
-+					 rdma->sc_port_num,
-+					 ctxt->rw_bvec, ctxt->rw_nents, dir);
- 		__svc_rdma_put_rw_ctxt(ctxt, &free);
- 
- 		ctxt->rw_node.next = first;
-@@ -414,29 +431,25 @@ static int svc_rdma_post_chunk_ctxt(struct svcxprt_rdma *rdma,
- 	return -ENOTCONN;
- }
- 
--/* Build and DMA-map an SGL that covers one kvec in an xdr_buf
-+/* Build a bvec that covers one kvec in an xdr_buf.
-  */
--static void svc_rdma_vec_to_sg(struct svc_rdma_write_info *info,
--			       unsigned int len,
--			       struct svc_rdma_rw_ctxt *ctxt)
-+static void svc_rdma_vec_to_bvec(struct svc_rdma_write_info *info,
-+				 unsigned int len,
-+				 struct svc_rdma_rw_ctxt *ctxt)
- {
--	struct scatterlist *sg = ctxt->rw_sg_table.sgl;
--
--	sg_set_buf(&sg[0], info->wi_base, len);
-+	bvec_set_virt(&ctxt->rw_bvec[0], info->wi_base, len);
- 	info->wi_base += len;
--
- 	ctxt->rw_nents = 1;
- }
- 
--/* Build and DMA-map an SGL that covers part of an xdr_buf's pagelist.
-+/* Build a bvec array that covers part of an xdr_buf's pagelist.
-  */
--static void svc_rdma_pagelist_to_sg(struct svc_rdma_write_info *info,
--				    unsigned int remaining,
--				    struct svc_rdma_rw_ctxt *ctxt)
-+static void svc_rdma_pagelist_to_bvec(struct svc_rdma_write_info *info,
-+				      unsigned int remaining,
-+				      struct svc_rdma_rw_ctxt *ctxt)
- {
--	unsigned int sge_no, sge_bytes, page_off, page_no;
-+	unsigned int bvec_idx, sge_bytes, page_off, page_no;
- 	const struct xdr_buf *xdr = info->wi_xdr;
--	struct scatterlist *sg;
- 	struct page **page;
- 
- 	page_off = info->wi_next_off + xdr->page_base;
-@@ -444,21 +457,19 @@ static void svc_rdma_pagelist_to_sg(struct svc_rdma_write_info *info,
- 	page_off = offset_in_page(page_off);
- 	page = xdr->pages + page_no;
- 	info->wi_next_off += remaining;
--	sg = ctxt->rw_sg_table.sgl;
--	sge_no = 0;
-+	bvec_idx = 0;
- 	do {
- 		sge_bytes = min_t(unsigned int, remaining,
- 				  PAGE_SIZE - page_off);
--		sg_set_page(sg, *page, sge_bytes, page_off);
--
-+		bvec_set_page(&ctxt->rw_bvec[bvec_idx], *page, sge_bytes,
-+			      page_off);
- 		remaining -= sge_bytes;
--		sg = sg_next(sg);
- 		page_off = 0;
--		sge_no++;
-+		bvec_idx++;
- 		page++;
- 	} while (remaining);
- 
--	ctxt->rw_nents = sge_no;
-+	ctxt->rw_nents = bvec_idx;
- }
- 
- /* Construct RDMA Write WRs to send a portion of an xdr_buf containing
-@@ -535,7 +546,7 @@ static int svc_rdma_iov_write(struct svc_rdma_write_info *info,
- 			      const struct kvec *iov)
- {
- 	info->wi_base = iov->iov_base;
--	return svc_rdma_build_writes(info, svc_rdma_vec_to_sg,
-+	return svc_rdma_build_writes(info, svc_rdma_vec_to_bvec,
- 				     iov->iov_len);
- }
- 
-@@ -559,7 +570,7 @@ static int svc_rdma_pages_write(struct svc_rdma_write_info *info,
- {
- 	info->wi_xdr = xdr;
- 	info->wi_next_off = offset - xdr->head[0].iov_len;
--	return svc_rdma_build_writes(info, svc_rdma_pagelist_to_sg,
-+	return svc_rdma_build_writes(info, svc_rdma_pagelist_to_bvec,
- 				     length);
- }
- 
-@@ -734,29 +745,30 @@ static int svc_rdma_build_read_segment(struct svc_rqst *rqstp,
- {
- 	struct svcxprt_rdma *rdma = svc_rdma_rqst_rdma(rqstp);
- 	struct svc_rdma_chunk_ctxt *cc = &head->rc_cc;
--	unsigned int sge_no, seg_len, len;
-+	unsigned int bvec_idx, nr_bvec, seg_len, len;
- 	struct svc_rdma_rw_ctxt *ctxt;
--	struct scatterlist *sg;
- 	int ret;
- 
- 	len = segment->rs_length;
--	sge_no = PAGE_ALIGN(head->rc_pageoff + len) >> PAGE_SHIFT;
--	ctxt = svc_rdma_get_rw_ctxt(rdma, sge_no);
-+	if (check_add_overflow(head->rc_pageoff, len, &len))
-+		return -EINVAL;
-+	nr_bvec = PAGE_ALIGN(len) >> PAGE_SHIFT;
-+	len = segment->rs_length;
-+	ctxt = svc_rdma_get_rw_ctxt(rdma, nr_bvec);
- 	if (!ctxt)
- 		return -ENOMEM;
--	ctxt->rw_nents = sge_no;
-+	ctxt->rw_nents = nr_bvec;
- 
--	sg = ctxt->rw_sg_table.sgl;
--	for (sge_no = 0; sge_no < ctxt->rw_nents; sge_no++) {
-+	for (bvec_idx = 0; bvec_idx < ctxt->rw_nents; bvec_idx++) {
- 		seg_len = min_t(unsigned int, len,
- 				PAGE_SIZE - head->rc_pageoff);
- 
- 		if (!head->rc_pageoff)
- 			head->rc_page_count++;
- 
--		sg_set_page(sg, rqstp->rq_pages[head->rc_curpage],
--			    seg_len, head->rc_pageoff);
--		sg = sg_next(sg);
-+		bvec_set_page(&ctxt->rw_bvec[bvec_idx],
-+			      rqstp->rq_pages[head->rc_curpage],
-+			      seg_len, head->rc_pageoff);
- 
- 		head->rc_pageoff += seg_len;
- 		if (head->rc_pageoff == PAGE_SIZE) {
--- 
-2.52.0
++  EXPORT_OP_NOLOCKS - Disable file locking on this filesystem. Filesystems
++    that want to support locking over NFS must support POSIX file locking
++    semantics. When the server reboots, the clients will issue requests to
++    recover their locks, which nfsd will issue to the filesystem as new lo=
+ck
++    requests. Those must succeed in order for lock recovery to work. Most
++    local disk, RAM, or pseudo-filesystems use the generic POSIX locking
++    support in the kernel and naturally provide this capability. Network o=
+r
++    clustered filesystems usually need special handling to do this properl=
+y.
++    Set this flag on filesystems that can't guarantee the proper semantics
++    (e.g. reexported NFS).
 
+--=20
+Jeff Layton <jlayton@kernel.org>
