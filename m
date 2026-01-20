@@ -1,69 +1,46 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 81ABC44BC96;
-	Tue, 20 Jan 2026 14:25:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 36ADC4418EB;
+	Tue, 20 Jan 2026 14:31:28 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1768919122; cv=none; b=NJx/vqNgxIWkZMtdyg6o06pyargeX4eeIM1zp/WSSNbgehyPCZ1JgT0XFAJ/zaCBH7VMFakYCovWek/qeTaJbLLOE0/8VwLL/K0pVp7d8ZLFnh4TzU4i6ICVWVmB8ZbrEqgfo94m3/byNWdDGggGBhNYLe62wBAH0ZJzTvjYvEg=
+	t=1768919489; cv=none; b=l1Z/Jo/jo8USVZ3tRoKwoY6Wze1Q4lvPYY3VhNyVt6QDQ0EnJrnT/KqkMfO+R6g2hwwLqVaMXnBS77UamYRAsMC8ashgkLzUQsSdAMIvH4IysTXbf2iNxOLMQr1HSoVmhVcuECpgc1K9ykEKLfkItnUOiaPHnzpHdfh0PDmYpTE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1768919122; c=relaxed/simple;
-	bh=cWXqjiYSCBw218vhYxZFFr2kBXjHfrbsfjhWPCfq4hM=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=V1+onuDmUsi5OCNdyVmw1evJ6nUFe5HX+pHp+KU9qYYnWWhHxbf7qLxbJfXxzs/vxqSUDULgx4y/gVv0KQbZJUVGzyVTENjiHjUaenTgRL3cYAWrPHenuGz0OPJ9ZkKRcT8KY6TZp8yr/kD4PBVBXn4XK7wr4avL6BhGNY7qJa0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=iJ6Fblv2; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1768919489; c=relaxed/simple;
+	bh=yWe2BiAKmz1nnP+ELvTTO/qvhoUwBLk1saPmV7jBgmA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=DGI389qSRVmKQWivJdeBmqHFPUOQnKamI4i1D21GPDbdvP1N41sfEe+UnmExfnVSkkv2hICDhjogcLz1ZSB6jnP7POlsCRYcl+cM8n88M9im56xMgbzcmkk55YRE5e60ctL1d2gyPssomWFBIs7mndV+Jvppi9uZRTw1VOKwQVQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=m0kjyW6g; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="iJ6Fblv2"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id CD91BC16AAE;
-	Tue, 20 Jan 2026 14:25:19 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="m0kjyW6g"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D5447C16AAE;
+	Tue, 20 Jan 2026 14:31:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1768919122;
-	bh=cWXqjiYSCBw218vhYxZFFr2kBXjHfrbsfjhWPCfq4hM=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=iJ6Fblv2qO5UvJg1OEulK5ftXItW8uXaGc2NMLqyGH1Wl4uYXjDvIzxIyCIW34me7
-	 roQstI1W1kQzW7f/voI3HkNp5c05XXFXyur1WMkblF2oh3xGAffuaMQ4PfJ03mmw6I
-	 CanZVoQGsc6x6BFOz2JYbeUSIo/rXcSpghB+BeevOvHclZMR89pammzN7/rQfpJROY
-	 /SkpwKqF+5NzyeSMMOL83xhvsVaezUhewsHQTjtEDC3KX+R84zoOKZZEjAE302tvMU
-	 GQMdObB2scsDnVC8URrNofXM3cMi3DTl4stLNOiueoVuFKJmOTTonWRRkN8kgUS9vu
-	 QFPTMmm8c5+rw==
+	s=k20201202; t=1768919488;
+	bh=yWe2BiAKmz1nnP+ELvTTO/qvhoUwBLk1saPmV7jBgmA=;
+	h=From:To:Cc:Subject:Date:From;
+	b=m0kjyW6gRdBJr8dpzKP3BqDIOSmIP15IkWuwG0z8y6UHtdmeuXQSn8n+C01uUcrMx
+	 L6CpFzRy8taZXwhkn6AHML9BqZka+Pm+lnnc6ciZ/m48gK1+Y6GKMUne6aOQi1tr94
+	 iisX44WCrzHz3LAuJ98ds/JUfRDu2mtkdxXG8m1tLVMmyNHF9mS7fxi8xw8NSprGVH
+	 eqZH/23TyIgihjHic5TVW9tHneUHO2ofL85CHS//amj+TwOByCk89s4jG4DJrU5Jfm
+	 5VPRkL9VzQnlU9XQKlud54iikf9akMSX3UOTfl/Z6SvYJ6Smk/LxMxIJNprKK271bR
+	 XONU/ouAW5C+g==
 From: Chuck Lever <cel@kernel.org>
-To: Al Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>,
-	Jan Kara <jack@suse.cz>
-Cc: <linux-fsdevel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	linux-xfs@vger.kernel.org,
-	linux-cifs@vger.kernel.org,
+To: Jason Gunthorpe <jgg@nvidia.com>,
+	Leon Romanovsky <leon@kernel.org>,
+	Christoph Hellwig <hch@lst.de>
+Cc: NeilBrown <neilb@ownmail.net>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	<linux-rdma@vger.kernel.org>,
 	<linux-nfs@vger.kernel.org>,
-	linux-f2fs-devel@lists.sourceforge.net,
-	hirofumi@mail.parknet.co.jp,
-	linkinjeon@kernel.org,
-	sj1557.seo@samsung.com,
-	yuezhang.mo@sony.com,
-	almaz.alexandrovich@paragon-software.com,
-	slava@dubeyko.com,
-	glaubitz@physik.fu-berlin.de,
-	frank.li@vivo.com,
-	tytso@mit.edu,
-	adilger.kernel@dilger.ca,
-	cem@kernel.org,
-	sfrench@samba.org,
-	pc@manguebit.org,
-	ronniesahlberg@gmail.com,
-	sprasad@microsoft.com,
-	trondmy@kernel.org,
-	anna@kernel.org,
-	jaegeuk@kernel.org,
-	chao@kernel.org,
-	hansg@kernel.org,
-	senozhatsky@chromium.org,
 	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v6 16/16] ksmbd: Report filesystem case sensitivity via FS_ATTRIBUTE_INFORMATION
-Date: Tue, 20 Jan 2026 09:24:39 -0500
-Message-ID: <20260120142439.1821554-17-cel@kernel.org>
+Subject: [PATCH v2 0/4] Add a bio_vec based API to core/rw.c
+Date: Tue, 20 Jan 2026 09:31:20 -0500
+Message-ID: <20260120143124.1822121-1-cel@kernel.org>
 X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20260120142439.1821554-1-cel@kernel.org>
-References: <20260120142439.1821554-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -74,73 +51,50 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-ksmbd hard-codes FILE_CASE_SENSITIVE_SEARCH and
-FILE_CASE_PRESERVED_NAMES in FS_ATTRIBUTE_INFORMATION responses,
-incorrectly indicating all exports are case-sensitive. This breaks
-clients accessing case-insensitive filesystems like exFAT or
-ext4/f2fs directories with casefold enabled.
+This series introduces a bio_vec based API for RDMA read and write
+operations in the RDMA core, eliminating unnecessary scatterlist
+conversions for callers that already work with bvecs.
 
-Query actual case behavior via vfs_fileattr_get() and report accurate
-attributes to SMB clients. Filesystems without ->fileattr_get continue
-reporting default POSIX behavior (case-sensitive, case-preserving).
+Current users of rdma_rw_ctx_init() must convert their native data
+structures into scatterlists. For subsystems like svcrdma that
+maintain data in bvec format, this conversion adds overhead both in
+CPU cycles and memory footprint. The new API accepts bvec arrays
+directly.
 
-SMB's FS_ATTRIBUTE_INFORMATION reports per-share attributes from the
-share root, not per-file. Shares mixing casefold and non-casefold
-directories report the root directory's behavior.
+For hardware RDMA devices, the implementation uses the IOVA-based
+DMA mapping API to reduce IOTLB synchronization overhead from O(n)
+per-page syncs to a single O(1) sync after all mappings complete.
+Software RDMA devices (rxe, siw) continue using virtual addressing.
 
-Acked-by: Namjae Jeon <linkinjeon@kernel.org>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+The series includes MR registration support for bvec arrays,
+enabling iWARP devices and the force_mr debug parameter. The MR
+path reuses existing ib_map_mr_sg() infrastructure by constructing
+a synthetic scatterlist from the bvec DMA addresses.
+
+The final patch adds the first consumer for the new API: svcrdma.
+
+Based on v6.19-rc6.
+
 ---
- fs/smb/server/smb2pdu.c | 25 +++++++++++++++++++------
- 1 file changed, 19 insertions(+), 6 deletions(-)
 
-diff --git a/fs/smb/server/smb2pdu.c b/fs/smb/server/smb2pdu.c
-index 2fcd0d4d1fb0..257da9282bcf 100644
---- a/fs/smb/server/smb2pdu.c
-+++ b/fs/smb/server/smb2pdu.c
-@@ -13,6 +13,7 @@
- #include <linux/falloc.h>
- #include <linux/mount.h>
- #include <linux/filelock.h>
-+#include <linux/fileattr.h>
- 
- #include "glob.h"
- #include "smbfsctl.h"
-@@ -5486,16 +5487,28 @@ static int smb2_get_info_filesystem(struct ksmbd_work *work,
- 	case FS_ATTRIBUTE_INFORMATION:
- 	{
- 		FILE_SYSTEM_ATTRIBUTE_INFO *info;
-+		struct file_kattr fa = {};
- 		size_t sz;
-+		u32 attrs;
-+		int err;
- 
- 		info = (FILE_SYSTEM_ATTRIBUTE_INFO *)rsp->Buffer;
--		info->Attributes = cpu_to_le32(FILE_SUPPORTS_OBJECT_IDS |
--					       FILE_PERSISTENT_ACLS |
--					       FILE_UNICODE_ON_DISK |
--					       FILE_CASE_PRESERVED_NAMES |
--					       FILE_CASE_SENSITIVE_SEARCH |
--					       FILE_SUPPORTS_BLOCK_REFCOUNTING);
-+		attrs = FILE_SUPPORTS_OBJECT_IDS |
-+			FILE_PERSISTENT_ACLS |
-+			FILE_UNICODE_ON_DISK |
-+			FILE_SUPPORTS_BLOCK_REFCOUNTING;
- 
-+		err = vfs_fileattr_get(path.dentry, &fa);
-+		if (err && err != -ENOIOCTLCMD) {
-+			path_put(&path);
-+			return err;
-+		}
-+		if (!(fa.fsx_xflags & FS_XFLAG_CASEFOLD))
-+			attrs |= FILE_CASE_SENSITIVE_SEARCH;
-+		if (!(fa.fsx_xflags & FS_XFLAG_CASENONPRESERVING))
-+			attrs |= FILE_CASE_PRESERVED_NAMES;
-+
-+		info->Attributes = cpu_to_le32(attrs);
- 		info->Attributes |= cpu_to_le32(server_conf.share_fake_fscaps);
- 
- 		if (test_share_config_flag(work->tcon->share_conf,
+Changes since v1:
+- Simplify rw.c by using bvec iters internally
+- IOVA mapping produces a contiguous DMA address range
+- Clarify the comment that documents struct svc_rdma_rw_ctxt
+- svcrdma now uses pre-allocated bio_vec arrays
+
+Chuck Lever (4):
+  RDMA/core: add bio_vec based RDMA read/write API
+  RDMA/core: use IOVA-based DMA mapping for bvec RDMA operations
+  RDMA/core: add MR support for bvec-based RDMA operations
+  svcrdma: use bvec-based RDMA read/write API
+
+ drivers/infiniband/core/rw.c      | 463 ++++++++++++++++++++++++++++++
+ include/rdma/ib_verbs.h           |  42 +++
+ include/rdma/rw.h                 |  26 ++
+ net/sunrpc/xprtrdma/svc_rdma_rw.c | 136 +++++----
+ 4 files changed, 605 insertions(+), 62 deletions(-)
+
 -- 
 2.52.0
 
