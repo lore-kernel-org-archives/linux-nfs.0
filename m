@@ -1,120 +1,110 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6AF4F3AA1A9
-	for <linux-nfs@vger.kernel.org>; Thu, 22 Jan 2026 21:13:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8072E34D3AC;
+	Thu, 22 Jan 2026 22:04:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769116438; cv=none; b=ExYxLXwl00EqUuLUpe9LqplkdzCb3883vcidpOVIaS2R5Ca5rCw9p4+RuiRXJ6UImRLziZRdf6/4mqOIKNsTnqPuR+kyC9hgEsOuXrw1a0AS/cP4zDtuvxVlqRztO2y6ZrJua15Q/adIqjasE/V/G17Wga13BeHYLYP1B/h2pYI=
+	t=1769119446; cv=none; b=d8isuZWY8TgJyMfCCW+ml8FzxD1F9VCLxsubESkf7qO0jbV03RPZhfYlIbZ6wK7d1R37YWrM06ibuVOf1E3ecIHcyCVH4bBq3R8WrjW77gBDqTfSzxq/me0VOv5EfGp870X3rsuK2tt2ViDSIcQjF2LyRNepVuExJwkBJPfFgw0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769116438; c=relaxed/simple;
-	bh=QqdqOxEF1IZ1ZVO+IuF2xGK0+FICnSXkcrRDUwG9UEE=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=Q+9GOTUcuE6NbqZfqDlpHMuZX+pN2ZdU1z4hXYCxWoWwM+dR5qpURfEObW3NO7YFeBt6figxT5QKSC9F5j43unXkhvM5REnj9xs2Oka1RsQkogpjDxlbnwMjFCx3Nex8B0mt+ZT6STCq2RJ6Vg1n1HVEkFsJe0Oc97YDTdgKb68=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hj6uYYTX; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1769119446; c=relaxed/simple;
+	bh=La/utEg2+SlsH0nglhZtrlUVcEjYN6fiQtrD7kayTZE=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=BVA/oZqOBO/41elyHBUYbrZ+rHirLTkDTgrJp10yojLS9HVtchD3BZslF8GLFfNRcYb2RpqFhgJGiqQCfhx5apd44lIlIxuUpmVHixFaOSsknU+ZlsujTxCEZq+kV2irYTUYoXuflVJDukEgfeSNX8GI8UG3GBXRlHvw6CO4gzM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aIbVT8VY; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hj6uYYTX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 76D44C116C6;
-	Thu, 22 Jan 2026 21:13:56 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aIbVT8VY"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A18D6C116C6;
+	Thu, 22 Jan 2026 22:04:04 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1769116436;
-	bh=QqdqOxEF1IZ1ZVO+IuF2xGK0+FICnSXkcrRDUwG9UEE=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=hj6uYYTXfRznuD51MgJkjbbupkHDGq8cgrKtDZXH/TDd+vrWceZMpCsKN5xsRAw3T
-	 fP7UVzhwYgLYclKbbwq6w6OEbMYfEJG0Gbc/AApdm+2HrxiOmDh8Vss9PvZZljQBt9
-	 UUm/gdipq/eVGiI1dZT5Yey4KIyH6Ox7LZgliGvjk4yjEdCMqhAMW1fI3XiZq1PZlH
-	 IQPTW6dn8iKZgrk2NQ+YANiUOo8XZidBs9/slrRfdijri79TkrpOJdFGDtO5NUJ4XV
-	 nB5ZsoS7PxTU8RvSyXKwkkTtDNMogReu7W4lenCVgUCWspFGvUwtids/lRdoBIuCoE
-	 HNlrSanOfZKiQ==
-Message-ID: <48d4e00bd1e37b95e21f2afac15e8fc96c06b868.camel@kernel.org>
-Subject: Re: Possible regression after NFS eof page pollution fix (ext4
- checksum errors)
-From: Trond Myklebust <trondmy@kernel.org>
-To: Mark Bloch <mbloch@nvidia.com>
-Cc: Linoy Ganti <lganti@nvidia.com>, Bar Friedman <bfriedman@nvidia.com>, 
-	linux-nfs@vger.kernel.org, Maor Gottlieb <maorg@nvidia.com>
-Date: Thu, 22 Jan 2026 16:13:55 -0500
-In-Reply-To: <9871411e-8272-4f95-80f0-2b86e55231b8@nvidia.com>
-References: <447f41f0-f3ab-462a-8b59-e27bb2dfcbc0@nvidia.com>
-	 <43278ef7e260f46de5a7130331f30e12b916f89a.camel@kernel.org>
-	 <3e7d4222-9326-4761-819f-114831919c80@nvidia.com>
-	 <d6419d6b1e24c2a704a44f6347bfcfa59fa195c2.camel@kernel.org>
-	 <211e07b8129353fbec59b44f4859ce22947f222b.camel@kernel.org>
-	 <391d9e32-afef-4b1c-adf9-422204360c77@nvidia.com>
-	 <9871411e-8272-4f95-80f0-2b86e55231b8@nvidia.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.58.2 (3.58.2-1.fc43) 
+	s=k20201202; t=1769119445;
+	bh=La/utEg2+SlsH0nglhZtrlUVcEjYN6fiQtrD7kayTZE=;
+	h=From:To:Cc:Subject:Date:From;
+	b=aIbVT8VYOQh7fjMRI83odMIMlzLqM6OUHohyYoyObD66JF62Fztjeuqd8/mMaSn6z
+	 5cuvvlOiIDbHKXVnLJglrAFLjanRhbD0NETBnnYAdFGZnhKiwazyJDHGaPaRywF4qy
+	 3Xg7slNQ1lCSURSBxGpugmHhyKmo4n9vsELhoUjj72evD5IsYjl0msklxCszZQt/kA
+	 Doc7PMf9zoAfpSqvbqOrEE/ffCE4H3swA8imRQXy4rXuUHm9zFwa/lLkzp7LwQbRaK
+	 tzI/wVtjbXx8lvJKv62ytr6hOt/H+gkxYQHU1rVpVKq0b9h1v807CoupLeZaeBGVtq
+	 zvLaXNAjTlnHg==
+From: Chuck Lever <cel@kernel.org>
+To: Jason Gunthorpe <jgg@nvidia.com>,
+	Leon Romanovsky <leon@kernel.org>,
+	Christoph Hellwig <hch@lst.de>
+Cc: NeilBrown <neilb@ownmail.net>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	<linux-rdma@vger.kernel.org>,
+	<linux-nfs@vger.kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 0/5] Add a bio_vec based API to core/rw.c
+Date: Thu, 22 Jan 2026 17:03:56 -0500
+Message-ID: <20260122220401.1143331-1-cel@kernel.org>
+X-Mailer: git-send-email 2.52.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-On Thu, 2026-01-22 at 12:00 +0200, Mark Bloch wrote:
->=20
->=20
-> On 11/01/2026 9:03, Mark Bloch wrote:
-> > Hi Trond,
-> >=20
-> > On 11/01/2026 2:24, Trond Myklebust wrote:
-> > > Hi Mark,
-> > >=20
-> > > On Mon, 2026-01-05 at 10:20 -0500, Trond Myklebust wrote:
-> > > >=20
-> > > > OK so if I'm understanding correctly, this is organised as ext4
-> > > > partitions that are stored in qcow2 images that are again
-> > > > stored on a
-> > > > NFSv4.2 partition.
-> > > >=20
-> > > > Do these qcow2 images have a file size that is fixed at
-> > > > creation
-> > > > time,
-> > > > or is the file size dynamic?
-> >=20
-> > The file size is dynamic (with a fixed maximum of 35 GB).
-> >=20
-> > > > Also, does changing the "discard" option from "unmap" to
-> > > > "ignore"
-> > > > make
-> > > > any difference to the outcome?
-> >=20
-> > The discard option is already set to "ignore" in the image.
-> > Do you want us to test the other options just to see if it makes
-> > a difference?
-> >=20
-> > >=20
-> > > I've been staring at this for several days now, and the only
-> > > candidate
-> > > for a bug in the NFS client that I can see is this one. Can you
-> > > please
-> > > check if the following patch helps?
-> >=20
-> > Thanks for the patch, I'll let the team dealing with the issue know
-> > and let them test the patch.
-> > I'll update once I know anything.
->=20
-> We've been testing your patch for some time now and didn't hit the
-> issue.
-> Feel free to add Bar's tested by tag as she was the one
-> that actually tested the fix. Thanks for looking into this.
->=20
-> Tested-by: Bar Friedman <bfriedman@nvidia.com>
->=20
-> Mark
->=20
+From: Chuck Lever <chuck.lever@oracle.com>
 
+This series introduces a bio_vec based API for RDMA read and write
+operations in the RDMA core, eliminating unnecessary scatterlist
+conversions for callers that already work with bvecs.
 
-Thank you very much for testing, Bar! I unfortunately already sent the
-patch upstream as it was clearly a necessary fix (even though it was
-not obvious to me that it would be sufficient to fix your reported
-problem). I'm therefore hoping it will hit the 6.18.x stable kernels
-soon.
+Current users of rdma_rw_ctx_init() must convert their native data
+structures into scatterlists. For subsystems like svcrdma that
+maintain data in bvec format, this conversion adds overhead both in
+CPU cycles and memory footprint. The new API accepts bvec arrays
+directly.
 
->=20
+For hardware RDMA devices, the implementation uses the IOVA-based
+DMA mapping API to reduce IOTLB synchronization overhead from O(n)
+per-page syncs to a single O(1) sync after all mappings complete.
+Software RDMA devices (rxe, siw) continue using virtual addressing.
 
---=20
-Trond Myklebust
-Linux NFS client maintainer, Hammerspace
-trondmy@kernel.org, trond.myklebust@hammerspace.com
+The series includes MR registration support for bvec arrays,
+enabling iWARP devices and the force_mr debug parameter. The MR
+path reuses existing ib_map_mr_sg() infrastructure by constructing
+a synthetic scatterlist from the bvec DMA addresses.
+
+The final patch adds the first consumer for the new API: svcrdma.
+
+Based on v6.19-rc6.
+
+---
+
+Changes since v2:
+- Add bvec iter arguments to the new API
+- Add a synthetic SGL in the MR mapping function
+- Try IOVA coalescing before max_sgl_rd triggers MR in bvec path
+- Attempt once again to address SQ/CQ/max_rdma_ctxs sizing issues
+
+Changes since v1:
+- Simplify rw.c by using bvec iters internally
+- IOVA mapping produces a contiguous DMA address range
+- Clarify the comment that documents struct svc_rdma_rw_ctxt
+- svcrdma now uses pre-allocated bio_vec arrays
+
+Chuck Lever (5):
+  RDMA/core: add bio_vec based RDMA read/write API
+  RDMA/core: use IOVA-based DMA mapping for bvec RDMA operations
+  RDMA/core: add MR support for bvec-based RDMA operations
+  RDMA/core: add rdma_rw_max_sge() helper for SQ sizing
+  svcrdma: use bvec-based RDMA read/write API
+
+ drivers/infiniband/core/rw.c             | 591 ++++++++++++++++++++---
+ drivers/infiniband/ulp/isert/ib_isert.c  |   4 +-
+ drivers/nvme/target/rdma.c               |   4 +-
+ include/rdma/ib_verbs.h                  |  42 ++
+ include/rdma/rw.h                        |  36 +-
+ net/sunrpc/xprtrdma/svc_rdma_rw.c        | 155 +++---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   8 +-
+ 7 files changed, 699 insertions(+), 141 deletions(-)
+
+-- 
+2.52.0
+
