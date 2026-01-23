@@ -1,242 +1,109 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+Received: from mail-ua1-f50.google.com (mail-ua1-f50.google.com [209.85.222.50])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B4548286425
-	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2026 12:51:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769172687; cv=none; b=a+i3/ReTxW8W3j1rqnrX/o+UXLKMqeMsIAbVwvNJVbaiJhDdwcFi8sAXyUJ2G/ykvIxrp8Rwc3M9J5ffeTKxFFG2HYIrABaxrsKUzeXfT2ug2hDorM6hZ1BUleH6SEmTRihUfARK7xjUTmBvlbRUhlX586Hfp9fdx1nrQo8NWT4=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769172687; c=relaxed/simple;
-	bh=YxiBAp1aybQ3KpokstzIHj4mGvi6GVfk/cR7VmFjLEQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=T5TKh/nDjJmukgMo8zLm6m6xH6tm/lMBwYc9WcRS5z2S5uOdBFzUyrh+A4SzkhIdX53/o6ioOn1Oy413A+vAjye/LBcFFmrIzkrgpNuOA4CNhpooUH6U+fwhDuuB0C85pjHpvrFqWpQnXP5TGl0OpBkkMB3Q173srS6hiEZDsLk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fpTdwRbq; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=bDOzmcRj; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fpTdwRbq; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=bDOzmcRj; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4DADD2DC32E
+	for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2026 13:23:20 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.222.50
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1769174602; cv=pass; b=PjUP36e3nFLQHqqUz0Avg1la51rjzreLQ27RbbLTnk6/Non5GS3b1fARC6PbI+U+KAS2So4Eaa5oDLKLo37n7JEx6vQOYHaINPbbGuSl0ehYmfryeWFvvs/Mb56RVK6MUG9VeTEpy+oQ9Tl+5/JHfyoFemynkv1zWKZ/fQHt4LE=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1769174602; c=relaxed/simple;
+	bh=2yMX4KMIacTi5G1FaT6jVtT+6BVY1UFvsXDRT1eQCDg=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Content-Type; b=MWQOoQqUS9gE7/J4rleJrBwWaZSpr63rO83Sc7hwJ0OXwzzPqrt76odrAiiLKqrtkzt2y3IVqr6AhApFYx2avFteVynHqWttHX2Kq6koELdhlwhuZPyQ5I12fw51u0lvjYkWxEVRMjH8c6S2K6zGSrAB3Avj7o5yPT4bnsUfSkU=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=NkoyQRiZ; arc=pass smtp.client-ip=209.85.222.50
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fpTdwRbq";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="bDOzmcRj";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fpTdwRbq";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="bDOzmcRj"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id 91FF85BCD3;
-	Fri, 23 Jan 2026 12:51:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1769172682; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=1QBsGPkrJit1kf9T7yuiKHKiU/20fvt+4sxaGfiykE8=;
-	b=fpTdwRbqvOQna99fTNRXOFSn568clx9HGjKoKu2cyLdfnlPD0WU2lwZwX+0v7MCeeah1ly
-	bzVrdOkBEPZs8/jIDx9Ap0CrTyPOIkFuqxy1wwwXbe+eLGL3jrvEzhacFuSTpIe4p0TUDv
-	DUtOFiqfwdauAgDuMsl7MliiZWxyskg=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1769172682;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=1QBsGPkrJit1kf9T7yuiKHKiU/20fvt+4sxaGfiykE8=;
-	b=bDOzmcRjS5FFeWvpRPxz/W3ac1luOvr6dDzoMzVRMPwJ5yXVC+7S1h8/TKBczsWfb6Okl9
-	FpGN8I7pQBixKSAg==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=fpTdwRbq;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=bDOzmcRj
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1769172682; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=1QBsGPkrJit1kf9T7yuiKHKiU/20fvt+4sxaGfiykE8=;
-	b=fpTdwRbqvOQna99fTNRXOFSn568clx9HGjKoKu2cyLdfnlPD0WU2lwZwX+0v7MCeeah1ly
-	bzVrdOkBEPZs8/jIDx9Ap0CrTyPOIkFuqxy1wwwXbe+eLGL3jrvEzhacFuSTpIe4p0TUDv
-	DUtOFiqfwdauAgDuMsl7MliiZWxyskg=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1769172682;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=1QBsGPkrJit1kf9T7yuiKHKiU/20fvt+4sxaGfiykE8=;
-	b=bDOzmcRjS5FFeWvpRPxz/W3ac1luOvr6dDzoMzVRMPwJ5yXVC+7S1h8/TKBczsWfb6Okl9
-	FpGN8I7pQBixKSAg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 4CC22136AA;
-	Fri, 23 Jan 2026 12:51:22 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id PHu6Espuc2lHRQAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 23 Jan 2026 12:51:22 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 0F5E4A0A1B; Fri, 23 Jan 2026 13:51:22 +0100 (CET)
-Date: Fri, 23 Jan 2026 13:51:22 +0100
-From: Jan Kara <jack@suse.cz>
-To: Chuck Lever <cel@kernel.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, 
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org, 
-	linux-ext4@vger.kernel.org, linux-xfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, linux-api@vger.kernel.org, 
-	linux-f2fs-devel@lists.sourceforge.net, hirofumi@mail.parknet.co.jp, linkinjeon@kernel.org, 
-	sj1557.seo@samsung.com, yuezhang.mo@sony.com, almaz.alexandrovich@paragon-software.com, 
-	slava@dubeyko.com, glaubitz@physik.fu-berlin.de, frank.li@vivo.com, tytso@mit.edu, 
-	adilger.kernel@dilger.ca, cem@kernel.org, sfrench@samba.org, pc@manguebit.org, 
-	ronniesahlberg@gmail.com, sprasad@microsoft.com, trondmy@kernel.org, anna@kernel.org, 
-	jaegeuk@kernel.org, chao@kernel.org, hansg@kernel.org, senozhatsky@chromium.org, 
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v7 01/16] fs: Add case sensitivity flags to file_kattr
-Message-ID: <3drnol5zeenodg22c26yswnsk3pzn4csnwdbkgmicfmk4rrpkk@neidpou4eqgb>
-References: <20260122160311.1117669-1-cel@kernel.org>
- <20260122160311.1117669-2-cel@kernel.org>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="NkoyQRiZ"
+Received: by mail-ua1-f50.google.com with SMTP id a1e0cc1a2514c-93f5b804d4aso748155241.3
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Jan 2026 05:23:20 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1769174599; cv=none;
+        d=google.com; s=arc-20240605;
+        b=QK0j2QsLxcfqgWJsEscobsCa5pMfJxxnvhinkVwxIUs5J8O4dOmx1IPkF3ZNCjZIIh
+         H+FkNsT8TTpGwlsqMf5cJo0M599T+JHN6mZmVkoE8QiJQnOMwoO18g9/B5e9kFrtTg6X
+         b8lDwT/y95D+d+SM4rn65SYqfuK+rOUYjuZ0HlV9k5MR4NUPitnj/c2aTawXhKF4bVKL
+         mOwzmQEvJzZQo8IgLNzfIp6n1tFznUNdBotK9WtnjPyCeCGrkiBhZNQtgzFmYzsW0FDs
+         9d7Ranh9PhOtIu5rYt+5tv7sm3bAxxG6FoI/XBpOAZLBt7ikeXPkKYcAoQRRy6oFVpvw
+         VGaA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :dkim-signature;
+        bh=an5pupjXgIQPeCf/UmDnIpSea/cRkdaOPzIbp8qXmEc=;
+        fh=w8UQRupxOmgIu8Aa8g3qojjqqRmKVmWwIWFDV1GUiKg=;
+        b=icwsSHYAsoxExSqTYAL6DFLYsoxDQSGYKc0Iwx9UWYv/jE/I/S4Pr8CdSwEhTkxzG7
+         Qr3++772ZrePrf7L2DDgyPnkQSWxZBoCec3fEh2MtYnojd6mzRrnVCOFmJyQ6wnmsDG1
+         R1rzxyZV0d+3Yh7lbSOx+O17RmKX1iu6UHehKUhoxZ/q00c7LQMwkZcDih56yCupMRL/
+         zsUNzsf3F33HxRiZYFM9bUrrgJRrD0obnz6msOKsXzNmLD0eJ76o+MLUxr4D872m3qEM
+         MxWE0GxzYp0xWzDKbdwlocyCj8xrodnnFPHHHZroiXZ532t4fxrhqRXxO2dJ7YjCG1qM
+         ae2Q==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1769174599; x=1769779399; darn=vger.kernel.org;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=an5pupjXgIQPeCf/UmDnIpSea/cRkdaOPzIbp8qXmEc=;
+        b=NkoyQRiZO9++ahzHH1OJ5cCT3E2o0WVv3qA2Qem70FoCG8ghW61cHe4bSRBatgsOm5
+         A9UVv1hPLOdqS7Om0j7zlcMFFBFxVAx1uBlswhWJlXn3OASJqKNdFhdsiFhkTqg9kX7H
+         xjegM32LrT1LO+E+NmFwksOsoU/PioZNNfbxLms6YJ73QwTqql0xy6uHu8v6t5HbKdX1
+         i9yLP0dUZ+jNxtpqiNPKX3OTx+CZM48wY44I/D/1o6pVuDZ/7wY+Jlkug/UcX9Oi+mCW
+         OqBmRXD2GC/fp3HrUbK+h4svEPIprnXIEdwdawESvoKrh/ycipkVN9urALaU/ZPu6A9e
+         gyBw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1769174599; x=1769779399;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=an5pupjXgIQPeCf/UmDnIpSea/cRkdaOPzIbp8qXmEc=;
+        b=tMYbC1JoFE6cwKI+xdXVzjkgZxwyOisP5Jgr91TQ2yL6gwpbU6Z1crKKQhk0IO4Jr6
+         4Yn9xxFncrhRWstykgU0IqfE3cDtiEMF63UPfI+MZTjJmMqBQ1AYljeVRbEQO+ir1Xh3
+         zRcFXbopuVnBAeZ3S65sPNDr0qkO2+WvgKGexPa3BkQhB0E44hZieZt29HM/wEs790uG
+         0KFZCea3wIs/um8tmZndT92w1vzLN8039qDIu+QDQtnUhVJXFr7QhCkAIfLFRmRnstwS
+         eFO1FTPtdWXOFgyPm5B/mLPX6U9e7zNSuk/wiR6yHcSYyZBzbFcQnf+h7/C3nuBC4SOW
+         yAoQ==
+X-Forwarded-Encrypted: i=1; AJvYcCWI8CbH9aQ6Jx3mF5bwoUKMGc3QzqpNUCfwBypuo0Uud+5iYxUIp46Qv7g00tScu0uBjPt4u9bqWhc=@vger.kernel.org
+X-Gm-Message-State: AOJu0YwXSU1aAMvtl+w8OhMwDvdyKT7FgSgFSWdZZ03WT3L5qiF6OT1K
+	Du3sAqaCrshyYbD4+2h8P4iYXoeKMVemIXDoYnjxmPTDsSgLMEcOR+bzCr5aIW4sIp+8z8m1E5S
+	edzgh2lUzQoJAN8wgi+nzA0McZpfBV4ny7A==
+X-Gm-Gg: AZuq6aJiZHQ86LfMVRRjA5AukU7dlhgFw8+DTgxcj9sCOrYPxrPTrwY2opcd23La85q
+	vSaoVzQ85l5J0okbMmpQ4IN6Z8bDA9AO1BOCutES9j6CjWST59eOYPzjEY5fy40dSAJKVHquRc9
+	hG+b+wFxUANlu4MdyWNWNczqfKsygkp8IKigx/m3ZVErYh8muOHm7HSK+ulfn8mF11MxgyxShfk
+	ySNHCnSd1eA5XuJhoBiOZJWv7lPkxXh2Tm81cnDD+qF7rVrUWhkn4KJ4FeU049nOo8PB18=
+X-Received: by 2002:a05:6102:38cb:b0:5ef:7220:bca6 with SMTP id
+ ada2fe7eead31-5f54bcbc2c0mr848495137.33.1769174599222; Fri, 23 Jan 2026
+ 05:23:19 -0800 (PST)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260122160311.1117669-2-cel@kernel.org>
-X-Spam-Score: -4.01
-X-Spamd-Result: default: False [-4.01 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	ARC_NA(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[33];
-	MIME_TRACE(0.00)[0:+];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	RCVD_TLS_LAST(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	R_RATELIMIT(0.00)[to_ip_from(RLa77mm4gi8mw7uppieotozii3)];
-	MISSING_XM_UA(0.00)[];
-	FREEMAIL_CC(0.00)[zeniv.linux.org.uk,kernel.org,suse.cz,vger.kernel.org,lists.sourceforge.net,mail.parknet.co.jp,samsung.com,sony.com,paragon-software.com,dubeyko.com,physik.fu-berlin.de,vivo.com,mit.edu,dilger.ca,samba.org,manguebit.org,gmail.com,microsoft.com,chromium.org,oracle.com];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:dkim]
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: 91FF85BCD3
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Flag: NO
+References: <20260120142439.1821554-1-cel@kernel.org> <20260123-zwirn-verfassen-c93175b7a1ee@brauner>
+In-Reply-To: <20260123-zwirn-verfassen-c93175b7a1ee@brauner>
+From: Cedric Blancher <cedric.blancher@gmail.com>
+Date: Fri, 23 Jan 2026 14:22:43 +0100
+X-Gm-Features: AZwV_QjeaJNq0W-Cpcx_JErnCmrcMqvA53IgZ6NSy4KMyZ7YPDQ4CrxDdLy3saQ
+Message-ID: <CALXu0Uc3gkrCmFApP1xswew9AmfotgZXR4uZXr_RetyEtC2pPA@mail.gmail.com>
+Subject: Re: [PATCH v6 00/16] Exposing case folding behavior
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org, 
+	linux-xfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
+	linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-On Thu 22-01-26 11:02:56, Chuck Lever wrote:
-> From: Chuck Lever <chuck.lever@oracle.com>
-> 
-> Enable upper layers such as NFSD to retrieve case sensitivity
-> information from file systems by adding FS_XFLAG_CASEFOLD and
-> FS_XFLAG_CASENONPRESERVING flags.
-> 
-> Filesystems report case-insensitive or case-nonpreserving behavior
-> by setting these flags directly in fa->fsx_xflags. The default
-> (flags unset) indicates POSIX semantics: case-sensitive and
-> case-preserving. These flags are read-only; userspace cannot set
-> them via ioctl.
-> 
-> Remove struct file_kattr initialization from fileattr_fill_xflags()
-> and fileattr_fill_flags(). Callers at ioctl/syscall entry points
-> zero-initialize the struct themselves, which allows them to pass
-> hints (flags_valid, fsx_valid) to the filesystem's ->fileattr_get()
-> callback via the fa argument. Filesystem handlers that invoke these
-> fill functions can now set flags directly in fa->fsx_xflags before
-> calling them, without the fill functions zeroing those values.
-> 
-> Case sensitivity information is exported to userspace via the
-> fa_xflags field in the FS_IOC_FSGETXATTR ioctl and file_getattr()
-> system call.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+On Fri, 23 Jan 2026 at 13:12, Christian Brauner <brauner@kernel.org> wrote:
+>
+> > Series based on v6.19-rc5.
+>
+> We're starting to cut it close even with the announced -rc8.
+> So my current preference would be to wait for the 7.1 merge window.
 
-This scheme looks good. But AFAICT declared 'fa' needs to be zeroed-out
-also in file_getattr()? Otherwise the patch looks good to me.
+My preference would be to move forward with 6.19 as a target, as there
+are requests to have this in some distros using 6.x LTS kernels (Bosch
+for example).
 
-								Honza
-
-> @@ -323,7 +319,7 @@ int ioctl_setflags(struct file *file, unsigned int __user *argp)
->  {
->  	struct mnt_idmap *idmap = file_mnt_idmap(file);
->  	struct dentry *dentry = file->f_path.dentry;
-> -	struct file_kattr fa;
-> +	struct file_kattr fa = {};
->  	unsigned int flags;
->  	int err;
->  
-> @@ -355,7 +351,7 @@ int ioctl_fssetxattr(struct file *file, void __user *argp)
->  {
->  	struct mnt_idmap *idmap = file_mnt_idmap(file);
->  	struct dentry *dentry = file->f_path.dentry;
-> -	struct file_kattr fa;
-> +	struct file_kattr fa = {};
->  	int err;
->  
->  	err = copy_fsxattr_from_user(&fa, argp);
-> @@ -434,7 +430,7 @@ SYSCALL_DEFINE5(file_setattr, int, dfd, const char __user *, filename,
->  	struct filename *name __free(putname) = NULL;
->  	unsigned int lookup_flags = 0;
->  	struct file_attr fattr;
-> -	struct file_kattr fa;
-> +	struct file_kattr fa = {};
->  	int error;
->  
->  	BUILD_BUG_ON(sizeof(struct file_attr) < FILE_ATTR_SIZE_VER0);
-> diff --git a/fs/xfs/xfs_ioctl.c b/fs/xfs/xfs_ioctl.c
-> index 59eaad774371..f0417c4d1fca 100644
-> --- a/fs/xfs/xfs_ioctl.c
-> +++ b/fs/xfs/xfs_ioctl.c
-> @@ -496,7 +496,7 @@ xfs_ioc_fsgetxattra(
->  	xfs_inode_t		*ip,
->  	void			__user *arg)
->  {
-> -	struct file_kattr	fa;
-> +	struct file_kattr	fa = {};
->  
->  	xfs_ilock(ip, XFS_ILOCK_SHARED);
->  	xfs_fill_fsxattr(ip, XFS_ATTR_FORK, &fa);
-> diff --git a/include/linux/fileattr.h b/include/linux/fileattr.h
-> index f89dcfad3f8f..709de829659f 100644
-> --- a/include/linux/fileattr.h
-> +++ b/include/linux/fileattr.h
-> @@ -16,7 +16,8 @@
->  
->  /* Read-only inode flags */
->  #define FS_XFLAG_RDONLY_MASK \
-> -	(FS_XFLAG_PREALLOC | FS_XFLAG_HASATTR)
-> +	(FS_XFLAG_PREALLOC | FS_XFLAG_HASATTR | \
-> +	 FS_XFLAG_CASEFOLD | FS_XFLAG_CASENONPRESERVING)
->  
->  /* Flags to indicate valid value of fsx_ fields */
->  #define FS_XFLAG_VALUES_MASK \
-> diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-> index 66ca526cf786..919148beaa8c 100644
-> --- a/include/uapi/linux/fs.h
-> +++ b/include/uapi/linux/fs.h
-> @@ -253,6 +253,8 @@ struct file_attr {
->  #define FS_XFLAG_FILESTREAM	0x00004000	/* use filestream allocator */
->  #define FS_XFLAG_DAX		0x00008000	/* use DAX for IO */
->  #define FS_XFLAG_COWEXTSIZE	0x00010000	/* CoW extent size allocator hint */
-> +#define FS_XFLAG_CASEFOLD	0x00020000	/* case-insensitive lookups */
-> +#define FS_XFLAG_CASENONPRESERVING 0x00040000	/* case not preserved */
->  #define FS_XFLAG_HASATTR	0x80000000	/* no DIFLAG for this	*/
->  
->  /* the read-only stuff doesn't really belong here, but any other place is
-> -- 
-> 2.52.0
-> 
+Ced
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Cedric Blancher <cedric.blancher@gmail.com>
+[https://plus.google.com/u/0/+CedricBlancher/]
+Institute Pasteur
