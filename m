@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 03533288C81
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C06AC288C81
 	for <linux-nfs@vger.kernel.org>; Mon, 26 Jan 2026 19:55:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769457348; cv=none; b=tWOL/Bd+a4+xKqEn969TZGnALO5T1nrbpF+NanViRzqqwZeMMOv6PXijA2F9HFEh7Q6aBvbemlIde35f2pofBGNgkBSaTQBtwOrNccn4KqpiO8YZATfSkSCDiWuBHe02564atbkfAgAhkUyvnZ9wD18J/UW839EFave+jhnzozY=
+	t=1769457348; cv=none; b=OOp1d09yfY/Zd/5mGZO9KnCDLrIj9ImvbVzrMEradEDS2om+3Lw3+zt90d53srk0AAli6C0JLeCZrfdXkzp4xEd2+jQGNlU4uFdI9n5i1rw94eexrIoCUTW+eItA/uOUk54CLyozR8GwM7EzlS6GIPrYja0Vt4Xsx95PEyH3+lo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1769457348; c=relaxed/simple;
-	bh=2/2Xksq7Ur/hcMGl3/PVSCaqMPqbmRA7zkoleQQp0vM=;
+	bh=Ad8FsgEpD1m/K+VE1Lx0dz8EuBwymdZcOfhV8U02i50=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=KAWnfkKCDI8e3NVbgK8zirTAkrnB7gFKZ3tb32uKNYLrGZrppnISU2HgJgwwlke2WcxaFOtmEzkhKa1oLTdtyc44xZR3a4TQtWlRXsjtBCj+bMM+487nWsnoMtRNoYl5STXjc/tIh4Y/U53m357up3XoZzzFOtC8KehdpuVfZFg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JmBFUyBr; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=aLJwZ/RUAsPrdQ0QhkASxh9ecUtjdeExws40WqhndEg5zkGY4IkJaWE1MvIPvSZcPlqlDaM3QTJPCC9nxa+q7fQ16Xeksv5BsHd1wdOBQSQj0fYEkAugQK7KIWu7wlKOIPR1Q4dq99D/uDpA0UCb3zLZ393MRxJdCI+E7FeULjE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eM2iK4WI; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JmBFUyBr"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 55CA7C2BC86;
-	Mon, 26 Jan 2026 19:55:47 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eM2iK4WI"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1D495C116C6;
+	Mon, 26 Jan 2026 19:55:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1769457347;
-	bh=2/2Xksq7Ur/hcMGl3/PVSCaqMPqbmRA7zkoleQQp0vM=;
+	s=k20201202; t=1769457348;
+	bh=Ad8FsgEpD1m/K+VE1Lx0dz8EuBwymdZcOfhV8U02i50=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=JmBFUyBrgZ+gvWch56cbCVjpi1R9UhPWMgm+eSR6oZvf4wryA0A8B9fv8dzSxEkry
-	 C1OvlBEMwNIGJ4vR+Ji/PHyrlyVhisT9fbWDffaO0dFU9eIXXssFMPnYETJznrTdW5
-	 Zv51/IFqLEHbRLPctnTZrVOlbBQN6J6B/H/J2I+5OAYWbsBoiSfeFuc0SjSzr0LVRT
-	 MYWCLD5J1KRAFd8r6YtR4IFGm//3nc1wY4WdNcMGKW0Ss7EGqXtRWGgYGPGZPyRU7m
-	 6MoKanFIX2kSYJySftcD6nSAJQFVKHTOxbusH7MuiQBlS6Ah39MHIPuqVfTwzMea1j
-	 9YvlZpVpyom5g==
+	b=eM2iK4WIELpnllTGZsfKR8yVLWZSmY1lL6ZxkGdN8UxVS2Trj1g5ROua6JW0Hv7jM
+	 QZqwxvWFoLKOhqKG3HkywoavRa1YcG6d9LRUxBQ80ZdthFMYW+zTpq2HbDOJS7cJyC
+	 FqXw8GgWKinSvReyuTrSGJvIwg8jHQn7c5h4vpLnWgUFbn4GyHmy+wdY/im62WWBDQ
+	 MdYzHsayvWSHuCAYyHYSpcPBxaV9+ri/UBf3sZcDR+YiVieqDD4L7haCSsMbS3RVSv
+	 J+6T1Wy80cPb8UQzsw7eN+m/xHUvbXtdWSk3pAPtCxhmuhOTQyY5BoGfs9niPDzUxZ
+	 UeCkwq4yGBoFg==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neilb@ownmail.net>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -34,9 +34,9 @@ To: NeilBrown <neilb@ownmail.net>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v3 12/14] lockd: Make linux/lockd/nlm.h an internal header
-Date: Mon, 26 Jan 2026 14:55:33 -0500
-Message-ID: <20260126195535.154697-13-cel@kernel.org>
+Subject: [PATCH v3 13/14] lockd: Move nlm4svc_set_file_lock_range()
+Date: Mon, 26 Jan 2026 14:55:34 -0500
+Message-ID: <20260126195535.154697-14-cel@kernel.org>
 X-Mailer: git-send-email 2.52.0
 In-Reply-To: <20260126195535.154697-1-cel@kernel.org>
 References: <20260126195535.154697-1-cel@kernel.org>
@@ -50,95 +50,124 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-The NLM protocol constants and status codes in nlm.h are needed
-only by lockd's internal implementation. NFS client code and
-NFSD interact with lockd through the stable API in bind.h and
-have no direct use for protocol-level definitions.
+Both client-side and server-side NLMv4 code convert lock byte ranges
+from the wire format (start, length) to the kernel's file_lock format
+(start, end). The current nlm4svc_set_file_lock_range() performs this
+conversion, but the "svc" prefix incorrectly suggests server-only use,
+and client code must include server-internal headers to access it.
 
-Exposing these definitions globally via bind.h creates unnecessary
-coupling between lockd internals and its consumers. Moving nlm.h
-from include/linux/lockd/ to fs/lockd/ clarifies the API boundary:
-bind.h provides the lockd service interface, while nlm.h remains
-available only to code within fs/lockd/ that implements the
-protocol.
+Rename to lockd_set_file_lock_range4() and relocate to the shared
+lockd.h header, making it accessible to both client and server code.
+This eliminates the need for client code to include xdr4.h, reducing
+coupling between the XDR implementation files.
+
+While relocating the function, add input validation: clamp the
+starting offset to OFFSET_MAX before use. Without this, a malformed
+lock request with off > OFFSET_MAX results in fl_start > fl_end,
+violating file_lock invariants and potentially causing incorrect
+lock conflict detection.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/lockd/lockd.h                  | 1 +
- {include/linux => fs}/lockd/nlm.h | 8 +++-----
- fs/lockd/svclock.c                | 1 -
- include/linux/lockd/bind.h        | 2 --
- 4 files changed, 4 insertions(+), 8 deletions(-)
- rename {include/linux => fs}/lockd/nlm.h (91%)
+ fs/lockd/clnt4xdr.c |  2 +-
+ fs/lockd/lockd.h    | 25 +++++++++++++++++++++++++
+ fs/lockd/xdr4.c     | 13 +------------
+ fs/lockd/xdr4.h     |  1 -
+ 4 files changed, 27 insertions(+), 14 deletions(-)
 
+diff --git a/fs/lockd/clnt4xdr.c b/fs/lockd/clnt4xdr.c
+index 61ee5fa6dfa4..c09e67765cac 100644
+--- a/fs/lockd/clnt4xdr.c
++++ b/fs/lockd/clnt4xdr.c
+@@ -287,7 +287,7 @@ static int decode_nlm4_holder(struct xdr_stream *xdr, struct nlm_res *result)
+ 	fl->c.flc_type  = exclusive != 0 ? F_WRLCK : F_RDLCK;
+ 	p = xdr_decode_hyper(p, &l_offset);
+ 	xdr_decode_hyper(p, &l_len);
+-	nlm4svc_set_file_lock_range(fl, l_offset, l_len);
++	lockd_set_file_lock_range4(fl, l_offset, l_len);
+ 	error = 0;
+ out:
+ 	return error;
 diff --git a/fs/lockd/lockd.h b/fs/lockd/lockd.h
-index 6f83b9a7257f..e73c6b348154 100644
+index e73c6b348154..ef6431b4cac0 100644
 --- a/fs/lockd/lockd.h
 +++ b/fs/lockd/lockd.h
-@@ -14,6 +14,7 @@
- #include <linux/kref.h>
- #include <linux/refcount.h>
- #include <linux/utsname.h>
-+#include "nlm.h"
- #include <linux/lockd/bind.h>
- #include "xdr.h"
- #include <linux/sunrpc/debug.h>
-diff --git a/include/linux/lockd/nlm.h b/fs/lockd/nlm.h
-similarity index 91%
-rename from include/linux/lockd/nlm.h
-rename to fs/lockd/nlm.h
-index 6e343ef760dc..47be65d0111f 100644
---- a/include/linux/lockd/nlm.h
-+++ b/fs/lockd/nlm.h
-@@ -1,14 +1,12 @@
- /* SPDX-License-Identifier: GPL-2.0 */
- /*
-- * linux/include/linux/lockd/nlm.h
-- *
-  * Declarations for the Network Lock Manager protocol.
-  *
-  * Copyright (C) 1996, Olaf Kirch <okir@monad.swb.de>
-  */
+@@ -413,6 +413,31 @@ static inline int nlm_compare_locks(const struct file_lock *fl1,
+ 	     &&(fl1->c.flc_type  == fl2->c.flc_type || fl2->c.flc_type == F_UNLCK);
+ }
  
--#ifndef LINUX_LOCKD_NLM_H
--#define LINUX_LOCKD_NLM_H
-+#ifndef _LOCKD_NLM_H
-+#define _LOCKD_NLM_H
++/**
++ * lockd_set_file_lock_range4 - set the byte range of a file_lock
++ * @fl: file_lock whose length fields are to be initialized
++ * @off: starting offset of the lock, in bytes
++ * @len: length of the byte range, in bytes, or zero
++ *
++ * The NLMv4 protocol represents lock byte ranges as (start, length),
++ * where length zero means "lock to end of file." The kernel's file_lock
++ * structure uses (start, end) representation. Convert from NLMv4 format
++ * to file_lock format, clamping the starting offset and treating
++ * arithmetic overflow as "lock to EOF."
++ */
++static inline void
++lockd_set_file_lock_range4(struct file_lock *fl, u64 off, u64 len)
++{
++	u64 clamped_off = (off > OFFSET_MAX) ? OFFSET_MAX : off;
++	s64 end = clamped_off + len - 1;
++
++	fl->fl_start = clamped_off;
++	if (len == 0 || end < 0)
++		fl->fl_end = OFFSET_MAX;
++	else
++		fl->fl_end = end;
++}
++
+ extern const struct lock_manager_operations nlmsvc_lock_operations;
  
+ #endif /* _LOCKD_LOCKD_H */
+diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
+index f57d4881d5f1..dbbb2dfcb81b 100644
+--- a/fs/lockd/xdr4.c
++++ b/fs/lockd/xdr4.c
+@@ -34,17 +34,6 @@ loff_t_to_s64(loff_t offset)
+ 	return res;
+ }
  
- /* Maximum file offset in file_lock.fl_end */
-@@ -55,4 +53,4 @@ enum {
- #define NLMPROC_NM_LOCK		22
- #define NLMPROC_FREE_ALL	23
- 
--#endif /* LINUX_LOCKD_NLM_H */
-+#endif /* _LOCKD_NLM_H */
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 10e3937ad69f..572446113d35 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -28,7 +28,6 @@
- #include <linux/sched.h>
- #include <linux/sunrpc/clnt.h>
- #include <linux/sunrpc/svc_xprt.h>
--#include <linux/lockd/nlm.h>
- 
- #include "lockd.h"
- 
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index 38d69fe8dfd5..4572e8958a81 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -10,8 +10,6 @@
- #ifndef LINUX_LOCKD_BIND_H
- #define LINUX_LOCKD_BIND_H
- 
--#include <linux/lockd/nlm.h>
+-void nlm4svc_set_file_lock_range(struct file_lock *fl, u64 off, u64 len)
+-{
+-	s64 end = off + len - 1;
 -
- struct nfs_fh;
- struct svc_rqst;
- struct rpc_task;
+-	fl->fl_start = off;
+-	if (len == 0 || end < 0)
+-		fl->fl_end = OFFSET_MAX;
+-	else
+-		fl->fl_end = end;
+-}
+-
+ /*
+  * NLM file handles are defined by specification to be a variable-length
+  * XDR opaque no longer than 1024 bytes. However, this implementation
+@@ -91,7 +80,7 @@ svcxdr_decode_lock(struct xdr_stream *xdr, struct nlm_lock *lock)
+ 
+ 	locks_init_lock(fl);
+ 	fl->c.flc_type  = F_RDLCK;
+-	nlm4svc_set_file_lock_range(fl, lock->lock_start, lock->lock_len);
++	lockd_set_file_lock_range4(fl, lock->lock_start, lock->lock_len);
+ 	return true;
+ }
+ 
+diff --git a/fs/lockd/xdr4.h b/fs/lockd/xdr4.h
+index 7be318c0512b..4ddf51a2e0ea 100644
+--- a/fs/lockd/xdr4.h
++++ b/fs/lockd/xdr4.h
+@@ -15,7 +15,6 @@
+ #define	nlm4_fbig		cpu_to_be32(NLM_FBIG)
+ #define	nlm4_failed		cpu_to_be32(NLM_FAILED)
+ 
+-void	nlm4svc_set_file_lock_range(struct file_lock *fl, u64 off, u64 len);
+ bool	nlm4svc_decode_void(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool	nlm4svc_decode_testargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+ bool	nlm4svc_decode_lockargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
 -- 
 2.52.0
 
