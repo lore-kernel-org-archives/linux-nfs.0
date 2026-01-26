@@ -1,22 +1,22 @@
 Received: from verein.lst.de (verein.lst.de [213.95.11.211])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3F4E1F4C96;
-	Mon, 26 Jan 2026 06:16:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C23D21B196;
+	Mon, 26 Jan 2026 06:17:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=213.95.11.211
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769408199; cv=none; b=EpKI1xTPRjbw+qoydwaxxiIi0d+HacKcbE9XCT+N247krwq3xJBbRbHB6qAslhLCf+A3CYMFg+8Yy2DMojmRWH/0Jj7Jzqro1kmGBCW01WBy0zEIfJ/FTnBh63jkw4enuhRltFRePZnaD9aVv5QpbqrGT5xzvbUuQus8h60+qXg=
+	t=1769408276; cv=none; b=Xw88Zmz6L4GnK3qrak1P/5N9nQEmJjY6I+I9x5sS4i8gC9tjGm2i3/p1aHVxfaEaPR+XSFOijHGO9kPB3RzEpUwyYPn8Wzn9sFEKs+oO3/aJdz2yqECUwJoBpf5jorq+hNi3uAW1MnY97Wg54+p/ebfnVMoWv9NYu/PSo3BM+7Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769408199; c=relaxed/simple;
-	bh=H8usAyYShw9VZh93jk9hy5ByqZbJztMBu96NhNHXrqY=;
+	s=arc-20240116; t=1769408276; c=relaxed/simple;
+	bh=ZNAsFMwYdOscjhBC2JVjrGl3KU/m6pUXdnQViafuL5U=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=GWHHjaN6f1+/Kv3ISQe9JYZUn58TcfY29JiaQptWtRRkFRrwW7XDLrOUqsuotGTAB2CsozwbFTac+8aAuvbvU33ftpFpG1DB7H1hogJoS2N60W3DqhLTu4EkMn+1QK8bOWgQ3iC73nipwdEPRe6ng4ffHtM+Ta0gNnHh61hFbB8=
+	 Content-Type:Content-Disposition:In-Reply-To; b=qhWGtWuGCKwWnYz9pT+h1fT8ktYZjT99250hm4/1CyfrAUzt3QbIQPWb4i5aIDleRxellgd5GJasparipD66lm3artR+6EwVkrUEUP+IVSw5SL0YhIvxC4lTbITXX/cFCU4tSlkY/bcrOokJ5Qi9w9koEc2coTPOFcuhHfQX9bU=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de; spf=pass smtp.mailfrom=lst.de; arc=none smtp.client-ip=213.95.11.211
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lst.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lst.de
 Received: by verein.lst.de (Postfix, from userid 2407)
-	id 3FE1B227A88; Mon, 26 Jan 2026 07:16:32 +0100 (CET)
-Date: Mon, 26 Jan 2026 07:16:31 +0100
+	id 22E30227A8E; Mon, 26 Jan 2026 07:17:53 +0100 (CET)
+Date: Mon, 26 Jan 2026 07:17:52 +0100
 From: Christoph Hellwig <hch@lst.de>
 To: Chuck Lever <cel@kernel.org>
 Cc: Christoph Hellwig <hch@lst.de>, Jason Gunthorpe <jgg@nvidia.com>,
@@ -28,8 +28,8 @@ Cc: Christoph Hellwig <hch@lst.de>, Jason Gunthorpe <jgg@nvidia.com>,
 	Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: [PATCH v3 3/5] RDMA/core: add MR support for bvec-based RDMA
  operations
-Message-ID: <20260126061631.GB1638@lst.de>
-References: <20260122220401.1143331-1-cel@kernel.org> <20260122220401.1143331-4-cel@kernel.org> <20260123063622.GA26025@lst.de> <9a8a0671-29a2-4220-8d38-361a6718b7ea@app.fastmail.com>
+Message-ID: <20260126061752.GC1638@lst.de>
+References: <20260122220401.1143331-1-cel@kernel.org> <20260122220401.1143331-4-cel@kernel.org> <20260123063622.GA26025@lst.de> <d868e180-b6ed-4b3b-afc6-7f08083615c1@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,27 +38,28 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <9a8a0671-29a2-4220-8d38-361a6718b7ea@app.fastmail.com>
+In-Reply-To: <d868e180-b6ed-4b3b-afc6-7f08083615c1@app.fastmail.com>
 User-Agent: Mutt/1.5.17 (2007-11-01)
 
-On Fri, Jan 23, 2026 at 11:47:46AM -0500, Chuck Lever wrote:
-> On Fri, Jan 23, 2026, at 1:36 AM, Christoph Hellwig wrote:
-> >>  	for (i = 0; i < ctx->nr_ops; i++) {
-> >> -		struct rdma_rw_reg_ctx *reg = &ctx->reg[i];
+On Fri, Jan 23, 2026 at 10:06:36AM -0500, Chuck Lever wrote:
+> >> +	nents = ctx->reg.sgt.nents;
+> >> +	for (i = 0; i < ctx->nr_ops; i++) {
 > >> +		struct rdma_rw_reg_ctx *reg = &ctx->reg.ctx[i];
+> >> +		u32 sge_cnt = min(nents, pages_per_mr);
+> >> +
+> >> +		ret = rdma_rw_init_one_mr(qp, port_num, reg, sg, sge_cnt, 0);
 > >
-> > Jumping ahead here - why can't the sgtable be stored in ->reg
-> > without renaming?  Is there case where need it, but the rest of
-> > reg?   In 
+> > I guess you looked into that, but never replied, but this still
+> > looks like it duplicates most of rdma_rw_init_mr_wrs.  Is there something
+> > that prevents reusing that directly or with minor refactoring?
 > 
-> I think the answer is yes, with bvec, both fields are needed at
-> the same time. My preference is to go back to the early form of
-> the structure without a union, since there are API consumers who
-> access the reg field directly. Let me know your thoughts.
+> IIRC I interpreted your earlier review comment as "let's defer that clean-up".
+> I'll look at it again.
 
-What I don't understand is why it can't be added to
-struct rdma_rw_reg_ctx.  Are there any uses of the new fields that
-don't have that allocated?  If yes, just adding the new fields outside
-the union seems to cause the least churn for now, although I'd still
-want to clean it up later eventually.
+I was hoping we could just reuse the code instead of duplicating it.
+The one earlier comment was about sharing code where we actualy
+pass in the bvec and scatterlist, and that might or might not be useful.
+But for this case where we have to actually create a scatterlist first,
+not reusing the existing scatterlist code to then work on it feels
+wrong.
 
