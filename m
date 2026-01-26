@@ -1,38 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C84BD2D6E74
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Jan 2026 20:39:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A64F2D73AE
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Jan 2026 20:39:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769459979; cv=none; b=lolG3P8x/yavvZdMkOS1R5YSv9ViZt2JlxFubgJRSIZHrPt0txR3ydKdq/X4dx2ASA5NBW1RWnjCztRGLcwpyAz/JF4nU05LUqzUJl+aUY7mBfIlBAdjRe9sTSGGU0WkNhs+es9FcPDi8tun7v/2K74ySpFyN/cXAiU+O/vJhbw=
+	t=1769459980; cv=none; b=iznXDVnaWftENE2y98EsMjxRy5/Z9YTLgyNTA26hESRW6QjpM1nfkR11hGclPiGER3AgJUDJDw1yPUY10i3ihd0jhAqb7M/2sDloKJjXZsioCjOA878nhxpo6Z/nHld1oM0jErGZYbeLt37UsTdF0d1pYpDN8Z3//HUdu4zRg5A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769459979; c=relaxed/simple;
-	bh=8SSNIjeKTzQ69zineYmB6eT/Qi211qkToyRetrPZZzU=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=VDQnZoeGGdGu31inLG3i0un4hAPhAiz0PbYjWqjmEzfYwuI2d0C0inqIzO/ZR3xF1RPGMoqDGckvvviexr5gaBcjpahCEjSDF2kwtyZDjEDw1roIg/ooOyNW93dmmWTpXSN3H0bwo2TvPb6BH5e1vZQCfgySTkIRczgNHnw2xic=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=igZWyWk/; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1769459980; c=relaxed/simple;
+	bh=B2FrcvJMCfou6H77u6fLcgaAOVHmRfpYWhVB9YYSrlU=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=oBPtdkrI+BOTtOcPQpbNQ7FbNpT051+oAM4eqibPBGmDQrD/6cdXd5DlRCtY08UXg03GkRBgu1MOvANEPyyMOC0Z47/zoZmNY+AhrATJ7iTKfryb0Bfo4zw6VjQ0r1iFPLVGEdsFOeiwXA3iEHZPgVrpfvROfTqfzqtVr6dajTs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ngnhoUyY; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="igZWyWk/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2AEB1C116C6;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ngnhoUyY"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B209DC2BC87;
 	Mon, 26 Jan 2026 20:39:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1769459979;
-	bh=8SSNIjeKTzQ69zineYmB6eT/Qi211qkToyRetrPZZzU=;
-	h=From:To:Cc:Subject:Date:From;
-	b=igZWyWk/Fh7oy2epc2Wk9gFaF7KQBKtJW3Z87zogvQ6GF6hLpuxwdwdnpKqHceYsK
-	 KJOzXZy+sZxMIsEgs3pvUpHbCMx+zr0SNLR3jvU92binPzJFZhXxCtRQHyiVuM8PNX
-	 koqQ7khin2p1rq3UU+W+t80nlG5VhDi8T/Z5k66y6a4GAvIApEDbT+KGQzHjzLRD0p
-	 d5dxvdcErCJVa4ix+YQkLbMRzoVBBidYPeBI90ugRYSVBCG52tzOghsA2gW5EZXGFv
-	 uooXb8HoSNmP0of/O2p1S6JTbZdn+ari10LGddZFEqMMWZWkWGLwcHzDag7Y3VCbPn
-	 VrjQpgqyQ3yYA==
+	s=k20201202; t=1769459980;
+	bh=B2FrcvJMCfou6H77u6fLcgaAOVHmRfpYWhVB9YYSrlU=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=ngnhoUyYoKA2KEpLheJjv9tN4E9+WIvX9L28n9uWMx31UlcDvz74zFdFXuIThd/pQ
+	 Hnvi6MiPOvY6sreKk/yuyRWHjN/DDWtWRbuT5y6eYYhmkHCvzEJz5YZe9SgM9db1bz
+	 MM7mOQEyqfGJ32ZUreO18YuXr/ZCLOIYGTK5WVFE85RPlvFY15bSCYnIZAtOocZH+9
+	 PXlGB8rjEYc3QrTRqAUwACoAcu+A1GPNb3fEZRMlkxoemmVUC7HzlVEXgoM65/UXqM
+	 h5IpgMr0KAwsFHPmEqwc47DIDA7MXW9/YpfsfVA8YqpirCR3CBlZvD7Q+t4nzhbfxw
+	 q4rIHpKsET2yQ==
 From: Anna Schumaker <anna@kernel.org>
 To: linux-nfs@vger.kernel.org,
 	trond.myklebust@hammerspace.com
 Cc: anna@kernel.org
-Subject: [PATCH v2 00/14] NFS: Make NFS v4.0 KConfig-urable
-Date: Mon, 26 Jan 2026 15:39:24 -0500
-Message-ID: <20260126203938.450304-1-anna@kernel.org>
+Subject: [PATCH v2 01/14] NFS: Move nfs40_call_sync_ops into nfs40proc.c
+Date: Mon, 26 Jan 2026 15:39:25 -0500
+Message-ID: <20260126203938.450304-2-anna@kernel.org>
 X-Mailer: git-send-email 2.52.0
+In-Reply-To: <20260126203938.450304-1-anna@kernel.org>
+References: <20260126203938.450304-1-anna@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -43,74 +46,144 @@ Content-Transfer-Encoding: 8bit
 
 From: Anna Schumaker <anna.schumaker@oracle.com>
 
-A desire to deprecate NFS v4.0 came up as a discussion topic during the
-October Bake-a-thon last year. This patchset takes the first step by
-moving NFS v4.0 only code into new files prefixed with "nfs40" and
-introducing a KConfig option to compile without NFS v4.0 support.
+This is the first step in extracting NFS v4.0 into its own set of files
+that can be disabled through Kconfig.
 
-At the same time, I promote NFS v4.1 to be the default NFSv4
-minorversion included in the kernel to prevent the situation where we
-have NFS v4 enabled without any minor versions.
-
-Changes in v2:
-- KConfig-out NFS v4.0-only operations from nfs4xdr.c
-- Fix a kernel test robot build warning
-
-Thoughts?
-Anna
-
-
-Anna Schumaker (14):
-  NFS: Move nfs40_call_sync_ops into nfs40proc.c
-  NFS: Split out the nfs40_reboot_recovery_ops into nfs40client.c
-  NFS: Split out the nfs40_nograce_recovery_ops into nfs40proc.c
-  NFS: Split out the nfs40_state_renewal_ops into nfs40proc.c
-  NFS: Split out the nfs40_mig_recovery_ops to nfs40proc.c
-  NFS: Move the NFS v4.0 minor version ops into nfs40proc.c
-  NFS: Make the various NFS v4.0 operations static again
-  NFS: Move nfs40_shutdown_client into nfs40client.c
-  NFS: Move nfs40_init_client into nfs40client.c
-  NFS: Move NFS v4.0 pathdown recovery into nfs40client.c
-  NFS: Pass a struct nfs_client to nfs4_init_sequence()
-  NFS: Move sequence slot operations into minorversion operations
-  NFS: Add a way to disable NFS v4.0 via KConfig
-  NFS: Merge CONFIG_NFS_V4_1 with CONFIG_NFS_V4
-
- fs/nfs/Kconfig            |  26 +-
- fs/nfs/Makefile           |   4 +-
- fs/nfs/callback.c         |  13 +-
- fs/nfs/callback.h         |   3 -
- fs/nfs/callback_proc.c    |   3 -
- fs/nfs/callback_xdr.c     |  21 --
- fs/nfs/client.c           |   8 +-
- fs/nfs/fs_context.c       |   3 +-
- fs/nfs/internal.h         |  15 +-
- fs/nfs/netns.h            |   4 +-
- fs/nfs/nfs40.h            |  19 ++
- fs/nfs/nfs40client.c      | 247 ++++++++++++++
- fs/nfs/nfs40proc.c        | 395 ++++++++++++++++++++++
- fs/nfs/nfs42proc.c        |  13 +-
- fs/nfs/nfs4_fs.h          |  83 ++---
- fs/nfs/nfs4client.c       | 193 +----------
- fs/nfs/nfs4proc.c         | 682 +++++++-------------------------------
- fs/nfs/nfs4session.c      |   4 -
- fs/nfs/nfs4session.h      |  23 --
- fs/nfs/nfs4state.c        |  91 +----
- fs/nfs/nfs4trace.c        |   2 -
- fs/nfs/nfs4trace.h        |  16 -
- fs/nfs/nfs4xdr.c          | 109 ++----
- fs/nfs/pnfs.h             |   6 +-
- fs/nfs/read.c             |   4 +-
- fs/nfs/super.c            |  16 +-
- fs/nfs/sysfs.c            |  10 +-
- fs/nfs/write.c            |   2 +-
- include/linux/nfs_fs_sb.h |   2 -
- include/linux/nfs_xdr.h   |   7 +-
- 30 files changed, 902 insertions(+), 1122 deletions(-)
+Signed-off-by: Anna Schumaker <anna.schumaker@oracle.com>
+---
+ fs/nfs/Makefile    |  2 +-
+ fs/nfs/nfs40.h     |  8 ++++++++
+ fs/nfs/nfs40proc.c | 24 ++++++++++++++++++++++++
+ fs/nfs/nfs4_fs.h   |  6 ++++++
+ fs/nfs/nfs4proc.c  | 25 +------------------------
+ 5 files changed, 40 insertions(+), 25 deletions(-)
  create mode 100644 fs/nfs/nfs40.h
- create mode 100644 fs/nfs/nfs40client.c
  create mode 100644 fs/nfs/nfs40proc.c
 
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 9fb2f2cac87e..937c775a04a3 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -27,7 +27,7 @@ CFLAGS_nfs4trace.o += -I$(src)
+ nfsv4-y := nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o nfs4super.o nfs4file.o \
+ 	  delegation.o nfs4idmap.o callback.o callback_xdr.o callback_proc.o \
+ 	  nfs4namespace.o nfs4getroot.o nfs4client.o nfs4session.o \
+-	  dns_resolve.o nfs4trace.o
++	  dns_resolve.o nfs4trace.o nfs40proc.o
+ nfsv4-$(CONFIG_NFS_USE_LEGACY_DNS) += cache_lib.o
+ nfsv4-$(CONFIG_SYSCTL)	+= nfs4sysctl.o
+ nfsv4-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o pnfs_nfs.o
+diff --git a/fs/nfs/nfs40.h b/fs/nfs/nfs40.h
+new file mode 100644
+index 000000000000..58a59109987a
+--- /dev/null
++++ b/fs/nfs/nfs40.h
+@@ -0,0 +1,8 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef __LINUX_FS_NFS_NFS4_0_H
++#define __LINUX_FS_NFS_NFS4_0_H
++
++
++extern const struct rpc_call_ops nfs40_call_sync_ops;
++
++#endif /* __LINUX_FS_NFS_NFS4_0_H */
+diff --git a/fs/nfs/nfs40proc.c b/fs/nfs/nfs40proc.c
+new file mode 100644
+index 000000000000..6d27dedad055
+--- /dev/null
++++ b/fs/nfs/nfs40proc.c
+@@ -0,0 +1,24 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#include <linux/nfs4.h>
++#include <linux/nfs.h>
++#include <linux/sunrpc/sched.h>
++#include <linux/nfs_fs.h>
++#include "nfs4_fs.h"
++
++static void nfs40_call_sync_prepare(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_call_sync_data *data = calldata;
++	nfs4_setup_sequence(data->seq_server->nfs_client,
++				data->seq_args, data->seq_res, task);
++}
++
++static void nfs40_call_sync_done(struct rpc_task *task, void *calldata)
++{
++	struct nfs4_call_sync_data *data = calldata;
++	nfs4_sequence_done(task, data->seq_res);
++}
++
++const struct rpc_call_ops nfs40_call_sync_ops = {
++	.rpc_call_prepare = nfs40_call_sync_prepare,
++	.rpc_call_done = nfs40_call_sync_done,
++};
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 44cf167f65c6..1b4b32d1b0ef 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -286,6 +286,12 @@ int nfs4_replace_transport(struct nfs_server *server,
+ size_t nfs_parse_server_name(char *string, size_t len, struct sockaddr_storage *ss,
+ 			     size_t salen, struct net *net, int port);
+ /* nfs4proc.c */
++struct nfs4_call_sync_data {
++	const struct nfs_server *seq_server;
++	struct nfs4_sequence_args *seq_args;
++	struct nfs4_sequence_res *seq_res;
++};
++
+ extern int nfs4_handle_exception(struct nfs_server *, int, struct nfs4_exception *);
+ extern int nfs4_async_handle_error(struct rpc_task *task,
+ 				   struct nfs_server *server,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 85cf577cf957..0f9494eb02e6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -67,6 +67,7 @@
+ #include "nfs4idmap.h"
+ #include "nfs4session.h"
+ #include "fscache.h"
++#include "nfs40.h"
+ #include "nfs42.h"
+ 
+ #include "nfs4trace.h"
+@@ -769,12 +770,6 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
+ 		do_renew_lease(clp, timestamp);
+ }
+ 
+-struct nfs4_call_sync_data {
+-	const struct nfs_server *seq_server;
+-	struct nfs4_sequence_args *seq_args;
+-	struct nfs4_sequence_res *seq_res;
+-};
+-
+ void nfs4_init_sequence(struct nfs4_sequence_args *args,
+ 			struct nfs4_sequence_res *res, int cache_reply,
+ 			int privileged)
+@@ -1174,24 +1169,6 @@ int nfs4_setup_sequence(struct nfs_client *client,
+ }
+ EXPORT_SYMBOL_GPL(nfs4_setup_sequence);
+ 
+-static void nfs40_call_sync_prepare(struct rpc_task *task, void *calldata)
+-{
+-	struct nfs4_call_sync_data *data = calldata;
+-	nfs4_setup_sequence(data->seq_server->nfs_client,
+-				data->seq_args, data->seq_res, task);
+-}
+-
+-static void nfs40_call_sync_done(struct rpc_task *task, void *calldata)
+-{
+-	struct nfs4_call_sync_data *data = calldata;
+-	nfs4_sequence_done(task, data->seq_res);
+-}
+-
+-static const struct rpc_call_ops nfs40_call_sync_ops = {
+-	.rpc_call_prepare = nfs40_call_sync_prepare,
+-	.rpc_call_done = nfs40_call_sync_done,
+-};
+-
+ static int nfs4_call_sync_custom(struct rpc_task_setup *task_setup)
+ {
+ 	int ret;
 -- 
 2.52.0
 
