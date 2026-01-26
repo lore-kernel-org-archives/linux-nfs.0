@@ -1,40 +1,40 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A475E344D91
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Jan 2026 16:43:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3DFC348875
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Jan 2026 16:49:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769445829; cv=none; b=aENtBFr+zT6mzY7u8wd3mTgmnAAqNxIwjZp5JrgwthcsRrNkSbouszbp0BWRqCkvgBQe51o/XWG4Xqc1X0VaSaigF2rGy5PIxJ2fRwibpI/acFJ2eZNesCXCARv1F1EnoPFY/QGkmktZt7YjB4Pf8QeEhiIC451hoFRI6AKQzJs=
+	t=1769446158; cv=none; b=mE9t0u01N52yLXW8RPxPszaa6I3H+4mcLfSq/33pMO2Ved9tGtaa+KflwwrK34Ucp15ujmwew5pxsFkUlp9GQzI4UD1V6wbo92gBp/kFQ5eN6VN61lK+FvavnLZIOb5nUyReW43edOO8UFjQ/W0yYUwlnSbvltug4OIJcXQM4QA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769445829; c=relaxed/simple;
-	bh=3UWo939L6qAo1geRf3z+Q3XrV55NBiqDxtsdzDzUB6k=;
+	s=arc-20240116; t=1769446158; c=relaxed/simple;
+	bh=lxEueFMYkSMwYLewLmZXIIkwZXa9K0J/Gh1IkFpq6EQ=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=irDPpDj7wPFWmMBWKaaZX8SHbKV9SmNP+R0w9NPrGtrItM1YcVVqZSRatQ/pgwc8pn/cauUWCckG74uf7da8+YsqRZJsFAVQY5s59XSGW+d0vXvDmuyK075TYAYt96sPM/XFUXKe8GQrO9PRAhJlzl59T7T3QqlBq0iaII3UHoY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=qKtDcd4D; arc=none smtp.client-ip=10.30.226.201
+	 Subject:Content-Type; b=gX6MSXS1jwGL6Z2RJKNe+UHiPmeFtwuYaLCDoN7eIoXFscz+AHTCnXzf/lbmeTaLrbUQ8nXVeFi1QjnWN8/YU6dWDTVN9sf9vX9E0AN41omc4Wo8qb3b+pyZZC0j4Gn4vUL4adGE/pXTU6XKMS60bHGt3XAiajyiUL++N/uFtX8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dD8lnbFB; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="qKtDcd4D"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 122F0C116C6;
-	Mon, 26 Jan 2026 16:43:49 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dD8lnbFB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 06720C16AAE;
+	Mon, 26 Jan 2026 16:49:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1769445829;
-	bh=3UWo939L6qAo1geRf3z+Q3XrV55NBiqDxtsdzDzUB6k=;
+	s=k20201202; t=1769446157;
+	bh=lxEueFMYkSMwYLewLmZXIIkwZXa9K0J/Gh1IkFpq6EQ=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-	b=qKtDcd4DkHQQDVYgjbB3yh+iEJckhc4+eFnIZABjylnmieShF4BU7PWM6GBa2YSIB
-	 PER9KA6GLxWXwfAu2Sm40KZk18ub0YK/m4h/BH3yFJNfaqUtMBIQmZ7srJSxhCpxah
-	 SFIXeAYUdnShTBBSWC6IjycupLW7HsZZdBuKz0qvMKPJH5v0mpvtg13PWRJ2ueJV2E
-	 nbOVxD3lfJBRHICe/PrTZ1s71ZTkCsg4WVe/TK7SnHRqXTumbg5FAPHKn0qDyDU/P/
-	 VQ3jCFvlmyIGj11qA+BGjuZmaaIKebzhaH3xAGZXzEOZY9g4oETw0qlsC1FGw+F8oG
-	 SnaWmBusf/5zw==
+	b=dD8lnbFBxtBSvPYr6flgFFiO0aN7ZzPUto+vdSBYAqsfPTLtUZq2BkbuM+O8rvatf
+	 97WLFnd0NKFnhofpfsRDf10s0ke6cg05m12EJE28DcusIkI3EqWBf6FC5zoC5fweDH
+	 qGvpAprygmWeWLkCSOk06yArSDgK69HbZZwqsyWQ7TLYklDkfoIl8Ru3Jl2KRzPoE4
+	 tSSh8tVEs+sx67bmr7g21c07WxERF6+0/ohndvcPM0VS60zsSB3gCCUJ2+JN/kLd+E
+	 5R77aFRYFjomFCGLbBZQ5YodyBQlj73kkB8+a45g2o5rtdnnYTOzxjA0asqcfcAwEn
+	 fjXL73yJ7jbvQ==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 1D3E4F40068;
-	Mon, 26 Jan 2026 11:43:48 -0500 (EST)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 12B24F40068;
+	Mon, 26 Jan 2026 11:49:16 -0500 (EST)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Mon, 26 Jan 2026 11:43:48 -0500
-X-ME-Sender: <xms:xJl3aacQ0WAVnPG1svfKIfYFhSM4VDe9T--lNfvOeOdFYWWEHS2wKA>
-    <xme:xJl3afD0fBUbVs5ZoNje6daQN3CgVQRMJK1qtf-qWvL3gk5OqTT3_Le7E2OYY1X6K
-    kqC0l3viLRQWTbpXLK4Jvn4oPYIo9axtPBuBY93upnydAKC6H-Epy3z>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdduheekudekucetufdoteggodetrf
+  by phl-compute-10.internal (MEProxy); Mon, 26 Jan 2026 11:49:16 -0500
+X-ME-Sender: <xms:C5t3aQcVT_LjXfzRv8JlS4JCY-EVIGj2xMt6rabiROnYVKOLFvGJTw>
+    <xme:C5t3adARk4iVm1ot3R5hbXZeGKpEDhkh1AM1fX-KG3_84MU8fHJjyTJLEruGE76vD
+    FIthFQCVDBbd8qcem94p7edfxcAleH4YyJQshR3MnJuqd2Yud4Elp8>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdduheekudelucetufdoteggodetrf
     dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
     rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
     gurhepofggfffhvfevkfgjfhfutgfgsehtjeertdertddtnecuhfhrohhmpedfvehhuhgt
@@ -43,22 +43,22 @@ X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdduheekudekucetufdote
     ucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutg
     hklhgvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleel
     leehledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrg
-    hilhdrtghomhdpnhgspghrtghpthhtohepudehpdhmohguvgepshhmthhpohhuthdprhgt
-    phhtthhopegurghvvghmsegurghvvghmlhhofhhtrdhnvghtpdhrtghpthhtohepsghfih
-    gvlhgushesfhhivghlughsvghsrdhorhhgpdhrtghpthhtoheplhhlfhgrmhhsvggtsehg
-    mhgrihhlrdgtohhmpdhrtghpthhtohepvgguuhhmrgiivghtsehgohhoghhlvgdrtghomh
-    dprhgtphhtthhopehlihhhrghogihirghnghesihhsrhgtrdhishgtrghsrdgrtgdrtghn
-    pdhrtghpthhtoheprghnnhgrsehkvghrnhgvlhdrohhrghdprhgtphhtthhopehhohhrmh
-    hssehkvghrnhgvlhdrohhrghdprhgtphhtthhopehkuhgsrgeskhgvrhhnvghlrdhorhhg
-    pdhrtghpthhtohepthhrohhnughmhieskhgvrhhnvghlrdhorhhg
-X-ME-Proxy: <xmx:xJl3aeKkEI4SocJDGBRW4txsUaNP6moLnLr9BKe2seSDAIW3UQMbGw>
-    <xmx:xJl3aUp-F01NdIKcuDvs61M-BQEt1QOLbQrhgihchcFGWSkeFcJhJw>
-    <xmx:xJl3aVhdq_zubHyDkCCurqhW3bwbxuWGI-F7l9V3RH_eBOunsa4tXA>
-    <xmx:xJl3aTYaWrne4dpudBq2-Ho_HaiIrWPicM96W3FfYKImyUL__uD4eg>
-    <xmx:xJl3adnqsKxEyO6csg7-ZPbYI5m17qQn0BZ_MChYHYgJxlEtZ_0GX7MX>
+    hilhdrtghomhdpnhgspghrtghpthhtohepuddupdhmohguvgepshhmthhpohhuthdprhgt
+    phhtthhopehjlhgrhihtohhnsehkvghrnhgvlhdrohhrghdprhgtphhtthhopehlvghonh
+    eskhgvrhhnvghlrdhorhhgpdhrtghpthhtohephhgthheslhhsthdruggvpdhrtghpthht
+    ohepjhhgghesnhhvihguihgrrdgtohhmpdhrtghpthhtoheptghhuhgtkhdrlhgvvhgvrh
+    esohhrrggtlhgvrdgtohhmpdhrtghpthhtohepuggrihdrnhhgohesohhrrggtlhgvrdgt
+    ohhmpdhrtghpthhtohepnhgvihhlsgesohifnhhmrghilhdrnhgvthdprhgtphhtthhope
+    hokhhorhhnihgvvhesrhgvughhrghtrdgtohhmpdhrtghpthhtohepthhomhesthgrlhhp
+    vgihrdgtohhm
+X-ME-Proxy: <xmx:DJt3acCKKI6ZIXWsq86jw_b5JIfcGLYa6fLPYHCcSacMyqN244DK7g>
+    <xmx:DJt3aaZm0FMjduMWqAW74f-qfb-nddiOq_jgIbMZ6i3XVkKgKeMwAA>
+    <xmx:DJt3acnzx1D0T1lWt7nod3NyCSaHQptOVI5qol7hUXVAdJOFfhle0w>
+    <xmx:DJt3aXrNptLaANk1EXkWinT7duZCLQnHXWgsRlvLvqz6DNzkKB02Zg>
+    <xmx:DJt3aWBSao4zRtTGPoEt4Uekhx-0KCKWo1HOS6pNrqATU5DRfAIu27Kt>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id ED751780070; Mon, 26 Jan 2026 11:43:47 -0500 (EST)
+	id E6595780070; Mon, 26 Jan 2026 11:49:15 -0500 (EST)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -66,63 +66,54 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AhhugJyzaYCV
-Date: Mon, 26 Jan 2026 11:43:18 -0500
+X-ThreadId: Ayo69OWiNnSN
+Date: Mon, 26 Jan 2026 11:48:22 -0500
 From: "Chuck Lever" <cel@kernel.org>
-To: "Haoxiang Li" <lihaoxiang@isrc.iscas.ac.cn>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
- davem@davemloft.net, edumazet@google.com, "Jakub Kicinski" <kuba@kernel.org>,
- pabeni@redhat.com, "Simon Horman" <horms@kernel.org>, llfamsec@gmail.com,
- simo@redhat.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
- linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Message-Id: <9b028652-eb5b-4faf-bf9c-6d64f0ed7a9f@app.fastmail.com>
-In-Reply-To: <20260126021047.2478741-1-lihaoxiang@isrc.iscas.ac.cn>
-References: <20260126021047.2478741-1-lihaoxiang@isrc.iscas.ac.cn>
-Subject: Re: [PATCH] sunrpc: fix a resource leak in gss_proxy_save_rsc()
+To: "Christoph Hellwig" <hch@lst.de>
+Cc: "Jason Gunthorpe" <jgg@nvidia.com>, "Leon Romanovsky" <leon@kernel.org>,
+ NeilBrown <neilb@ownmail.net>, "Jeff Layton" <jlayton@kernel.org>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, linux-rdma@vger.kernel.org,
+ linux-nfs@vger.kernel.org, "Chuck Lever" <chuck.lever@oracle.com>
+Message-Id: <38f7282c-31a6-4edf-8d5c-0d08b401f1f5@app.fastmail.com>
+In-Reply-To: <20260126061752.GC1638@lst.de>
+References: <20260122220401.1143331-1-cel@kernel.org>
+ <20260122220401.1143331-4-cel@kernel.org> <20260123063622.GA26025@lst.de>
+ <d868e180-b6ed-4b3b-afc6-7f08083615c1@app.fastmail.com>
+ <20260126061752.GC1638@lst.de>
+Subject: Re: [PATCH v3 3/5] RDMA/core: add MR support for bvec-based RDMA operations
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
 
 
-On Sun, Jan 25, 2026, at 9:10 PM, Haoxiang Li wrote:
-> In gss_proxy_save_rsc(), if gss_import_sec_context() fails,
-> call gss_mech_put() to release the reources acquired by
-> gss_mech_get_by_OID().
+On Mon, Jan 26, 2026, at 1:17 AM, Christoph Hellwig wrote:
+> On Fri, Jan 23, 2026 at 10:06:36AM -0500, Chuck Lever wrote:
+>> >> +	nents = ctx->reg.sgt.nents;
+>> >> +	for (i = 0; i < ctx->nr_ops; i++) {
+>> >> +		struct rdma_rw_reg_ctx *reg = &ctx->reg.ctx[i];
+>> >> +		u32 sge_cnt = min(nents, pages_per_mr);
+>> >> +
+>> >> +		ret = rdma_rw_init_one_mr(qp, port_num, reg, sg, sge_cnt, 0);
+>> >
+>> > I guess you looked into that, but never replied, but this still
+>> > looks like it duplicates most of rdma_rw_init_mr_wrs.  Is there something
+>> > that prevents reusing that directly or with minor refactoring?
+>> 
+>> IIRC I interpreted your earlier review comment as "let's defer that clean-up".
+>> I'll look at it again.
 >
-> Fixes: 030d794bf498 ("SUNRPC: Use gssproxy upcall for server RPCGSS 
-> authentication.")
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Haoxiang Li <lihaoxiang@isrc.iscas.ac.cn>
-> ---
->  net/sunrpc/auth_gss/svcauth_gss.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
->
-> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c 
-> b/net/sunrpc/auth_gss/svcauth_gss.c
-> index a8ec30759a18..cdae1f23adfc 100644
-> --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> @@ -1268,8 +1268,10 @@ static int gss_proxy_save_rsc(struct 
-> cache_detail *cd,
->  						ud->out_handle.len,
->  						gm, &rsci.mechctx,
->  						&expiry, GFP_KERNEL);
-> -		if (status)
-> +		if (status) {
-> +			gss_mech_put(gm);
->  			goto out;
-> +		}
+> I was hoping we could just reuse the code instead of duplicating it.
+> The one earlier comment was about sharing code where we actualy
+> pass in the bvec and scatterlist, and that might or might not be useful.
+> But for this case where we have to actually create a scatterlist first,
+> not reusing the existing scatterlist code to then work on it feels
+> wrong.
 
-Is the reference already released via free_svc_cred() ? This
-change might introduce a double-free bug.
+I added a helper that refactors out the common logic. But I did
+that a few days ago and all of the context has dribbled out of
+my brain. I'll post a v4 soon, and we can continue from there.
 
-
-> 
->  		getboottime64(&boot);
->  		expiry -= boot.tv_sec;
-> -- 
-> 2.25.1
 
 -- 
 Chuck Lever
