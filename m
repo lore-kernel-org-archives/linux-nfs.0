@@ -1,173 +1,163 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7868936998A
-	for <linux-nfs@vger.kernel.org>; Wed, 28 Jan 2026 15:19:48 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2BEF730BBBC
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Jan 2026 16:10:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769613588; cv=none; b=isX+6UASXAQxWFzuRkCbe+OdCtCUymBTpvDcjJs7pjYUESqTk/W0JH0nivsA3a+LE+QBQfrCf5imuDdtX31YSONFtJ1KWxnhkuV37E4wURk0fs25RtKVn7N1g23bsgF8cawGr6c8OoFsMyzcoiaLZ1EJBCz40cXwRg6CEUpgAcY=
+	t=1769616629; cv=none; b=aod4YOZyyX0oBG4kNAuI76hh3W0gSXBDFIN8TkZPsoz8eegUcgWURFK04JeFH8nrGtblnj2lfWJvqJZ7i4PFOm/PxZMmIDN4Eaey+ow4bFbMekPbKdStmccTLTqPfM0lT9WjEhIJAh/ftTHQmEBrulVWY7zoIVORj8Oq51mm8Zk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769613588; c=relaxed/simple;
-	bh=Ad8FsgEpD1m/K+VE1Lx0dz8EuBwymdZcOfhV8U02i50=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=kKtl2yruBFfUE7qsjfbcCO6rmKWwRaV2oI7x/d2V3VKftuB3sfTBSOPX2ZEaD64Xf7zs8NTTdOW4vHHFgNP3uYPY9DTVj1fs3rao0lGNBvoDf9SEsAlQ7Bu3woF3AyjOxmdILJ7u2Nk2EAHcBoNAYQxqsqtIr1FTEhKhTunURw8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ioVmyBPf; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1769616629; c=relaxed/simple;
+	bh=09yykJGA09GAb6bXsIvujqOvg+rbtgLoyAWIF2nhBRE=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=iZ4vc7c6tIk6layQCHzbXIYlFj6N69Mrwn7ZUzMtJWsh9ORvVi2t3Mmn8lheeeQxgxQllqkNUeCxA5MohwxdHuxp5s/W0u9bD2d6B+yxex95zqel6Zn/Wnzuga8tT7wAuQAJuCEsuUfPPfAibwcMkdrI+RUw1WRiXNr2cRsqnSw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KmSQyHTe; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ioVmyBPf"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 54950C116C6;
-	Wed, 28 Jan 2026 15:19:47 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KmSQyHTe"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9F761C4AF0B;
+	Wed, 28 Jan 2026 16:10:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1769613587;
-	bh=Ad8FsgEpD1m/K+VE1Lx0dz8EuBwymdZcOfhV8U02i50=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=ioVmyBPfagpRkjAALPlHymqwGrpvlhWh0uTA1+CaskApx3WD+LQ9/229mmu4IHJ4j
-	 /QCChH0510uEw4oibursRFKLLfJ8/6d6Toxsldl1gusd1RdqJGJU3jWbg4uSxFgKga
-	 SLlo2evCwNeDIW+MePYwG1Kg28jCq2+T7FsQGJ9yXx/Qqq5hgsn00x3GByPQDYzrjo
-	 iG/RE4FFhbhZdiV/RdBr1Z3xobIPFCIzBSwJP120rLKQbnEEhmGIlmubLcEG62R5be
-	 UB9jUAT6u6ZBJWlTGDdNN3K/ml3Uiv+y/TjwGJueli4nl6U7AZpXjNaj5TJAY4zvyh
-	 q5gCGFANz72gQ==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neilb@ownmail.net>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 13/14] lockd: Move nlm4svc_set_file_lock_range()
-Date: Wed, 28 Jan 2026 10:19:34 -0500
-Message-ID: <20260128151935.1646063-14-cel@kernel.org>
-X-Mailer: git-send-email 2.52.0
-In-Reply-To: <20260128151935.1646063-1-cel@kernel.org>
-References: <20260128151935.1646063-1-cel@kernel.org>
+	s=k20201202; t=1769616628;
+	bh=09yykJGA09GAb6bXsIvujqOvg+rbtgLoyAWIF2nhBRE=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
+	b=KmSQyHTe7nSMAyKr9PM284BwbjbKByFMMG1IZvazqUnUA/ROv33wULbdrxDcVnx70
+	 xEH1u2X7AxNQpbMlIrRxuNmwYYnp5DM7mtVIO8NewfRxe7zxDmb3ny/uYMMZYeUN/F
+	 HM5BvDN/4Li4h2rLFQCM3gZ3a9vjur9/RTEi5sg23poEydNjcrV4QNcWDb7NcVMtbD
+	 fPIK1QKCGF009nzQAkTof5xM5YoH6XrCnYdTQHM5oNydkdXj0ZHlyO3pDkZ95oyBNI
+	 /wpldfR4yS2s/z5+bnjlJO0Y+1woQgrNW/9OwYxEKMe8eXwKC6ff8n5T0HSb32+s6u
+	 vg5pXBquM5XCQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 8D762F4006A;
+	Wed, 28 Jan 2026 11:10:27 -0500 (EST)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Wed, 28 Jan 2026 11:10:27 -0500
+X-ME-Sender: <xms:8zR6aZ2SisiSU0nau9c90FRXY5lA9QZxdMyBMOczCkCsrIlhuXXlVA>
+    <xme:8zR6aa5OBA2OO07_F1fMbqwO5hmc4DJ7ha6aRl_RCR7-zjwW6H14iRUOl1xx2mqlA
+    vtX3JGeAH8OSwe0I3FTlTXN-204EJ_l8aOtQ6roJoLPcAUbbuC_mPI>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdduieefjeejucetufdoteggodetrf
+    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
+    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
+    gurhepofggfffhvfevkfgjfhfutgfgsehtjeertdertddtnecuhfhrohhmpedfvehhuhgt
+    khcunfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrh
+    hnpefhffekffeftdfgheeiveekudeuhfdvjedvfedvueduvdegleekgeetgfduhfefleen
+    ucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutg
+    hklhgvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleel
+    leehledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrg
+    hilhdrtghomhdpnhgspghrtghpthhtohepledpmhhouggvpehsmhhtphhouhhtpdhrtghp
+    thhtohepnhgvihhlsegsrhhofihnrdhnrghmvgdprhgtphhtthhopegrmhhirhejfehilh
+    esghhmrghilhdrtghomhdprhgtphhtthhopegsrhgruhhnvghrsehkvghrnhgvlhdrohhr
+    ghdprhgtphhtthhopehjlhgrhihtohhnsehkvghrnhgvlhdrohhrghdprhgtphhtthhope
+    hhtghhsehlshhtrdguvgdprhgtphhtthhopegthhhutghkrdhlvghvvghrsehorhgrtghl
+    vgdrtghomhdprhgtphhtthhopehjrggtkhesshhushgvrdgtiidprhgtphhtthhopehlih
+    hnuhigqdhfshguvghvvghlsehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtohep
+    lhhinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrgh
+X-ME-Proxy: <xmx:8zR6aeHOWiJZyup8suq9aUf0W1YwzzgvdeRbZoLmx5IDIUXKun91Dw>
+    <xmx:8zR6afzxlR24oLzVamtn_fvj6uVL0upSPoGoePEh-UMjJRnwwQIjOQ>
+    <xmx:8zR6aY1sl7Vo39HXvsy3nPaTEBzGTPLCLirk6LQAlvpJngJ07-CUCw>
+    <xmx:8zR6afrMxyylhquCU70oMRdW0k-A3TdGwtG2YbuTYnU3mZMRDNwWrA>
+    <xmx:8zR6aVUbWck4LSAEsXy7jdZfFwXN3gMoJNn4hHe_GpH_HpNM64Te3Jn2>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 6C844780070; Wed, 28 Jan 2026 11:10:27 -0500 (EST)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-ThreadId: AyEaqJ85SK6V
+Date: Wed, 28 Jan 2026 11:09:56 -0500
+From: "Chuck Lever" <cel@kernel.org>
+To: "Amir Goldstein" <amir73il@gmail.com>,
+ "Christian Brauner" <brauner@kernel.org>
+Cc: "Chuck Lever" <chuck.lever@oracle.com>,
+ "Jeff Layton" <jlayton@kernel.org>, "Christoph Hellwig" <hch@lst.de>,
+ NeilBrown <neil@brown.name>, "Jan Kara" <jack@suse.cz>,
+ linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Message-Id: <34bda263-4b41-4388-b58a-6fdab6d1fb49@app.fastmail.com>
+In-Reply-To: <20260128111645.902932-2-amir73il@gmail.com>
+References: <20260128111645.902932-1-amir73il@gmail.com>
+ <20260128111645.902932-2-amir73il@gmail.com>
+Subject: Re: [PATCH v3 1/2] exportfs: clarify the documentation of open()/permission()
+ expotrfs ops
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-From: Chuck Lever <chuck.lever@oracle.com>
+Typo in Subject: s/expotrfs/exportfs
 
-Both client-side and server-side NLMv4 code convert lock byte ranges
-from the wire format (start, length) to the kernel's file_lock format
-(start, end). The current nlm4svc_set_file_lock_range() performs this
-conversion, but the "svc" prefix incorrectly suggests server-only use,
-and client code must include server-internal headers to access it.
 
-Rename to lockd_set_file_lock_range4() and relocate to the shared
-lockd.h header, making it accessible to both client and server code.
-This eliminates the need for client code to include xdr4.h, reducing
-coupling between the XDR implementation files.
+On Wed, Jan 28, 2026, at 6:16 AM, Amir Goldstein wrote:
+> pidfs and nsfs recently gained support for encode/decode of file handles
+> via name_to_handle_at(2)/opan_by_handle_at(2).
 
-While relocating the function, add input validation: clamp the
-starting offset to OFFSET_MAX before use. Without this, a malformed
-lock request with off > OFFSET_MAX results in fl_start > fl_end,
-violating file_lock invariants and potentially causing incorrect
-lock conflict detection.
+s/opan/open
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/lockd/clnt4xdr.c |  2 +-
- fs/lockd/lockd.h    | 25 +++++++++++++++++++++++++
- fs/lockd/xdr4.c     | 13 +------------
- fs/lockd/xdr4.h     |  1 -
- 4 files changed, 27 insertions(+), 14 deletions(-)
+And one more below:
 
-diff --git a/fs/lockd/clnt4xdr.c b/fs/lockd/clnt4xdr.c
-index 61ee5fa6dfa4..c09e67765cac 100644
---- a/fs/lockd/clnt4xdr.c
-+++ b/fs/lockd/clnt4xdr.c
-@@ -287,7 +287,7 @@ static int decode_nlm4_holder(struct xdr_stream *xdr, struct nlm_res *result)
- 	fl->c.flc_type  = exclusive != 0 ? F_WRLCK : F_RDLCK;
- 	p = xdr_decode_hyper(p, &l_offset);
- 	xdr_decode_hyper(p, &l_len);
--	nlm4svc_set_file_lock_range(fl, l_offset, l_len);
-+	lockd_set_file_lock_range4(fl, l_offset, l_len);
- 	error = 0;
- out:
- 	return error;
-diff --git a/fs/lockd/lockd.h b/fs/lockd/lockd.h
-index e73c6b348154..ef6431b4cac0 100644
---- a/fs/lockd/lockd.h
-+++ b/fs/lockd/lockd.h
-@@ -413,6 +413,31 @@ static inline int nlm_compare_locks(const struct file_lock *fl1,
- 	     &&(fl1->c.flc_type  == fl2->c.flc_type || fl2->c.flc_type == F_UNLCK);
- }
- 
-+/**
-+ * lockd_set_file_lock_range4 - set the byte range of a file_lock
-+ * @fl: file_lock whose length fields are to be initialized
-+ * @off: starting offset of the lock, in bytes
-+ * @len: length of the byte range, in bytes, or zero
-+ *
-+ * The NLMv4 protocol represents lock byte ranges as (start, length),
-+ * where length zero means "lock to end of file." The kernel's file_lock
-+ * structure uses (start, end) representation. Convert from NLMv4 format
-+ * to file_lock format, clamping the starting offset and treating
-+ * arithmetic overflow as "lock to EOF."
-+ */
-+static inline void
-+lockd_set_file_lock_range4(struct file_lock *fl, u64 off, u64 len)
-+{
-+	u64 clamped_off = (off > OFFSET_MAX) ? OFFSET_MAX : off;
-+	s64 end = clamped_off + len - 1;
-+
-+	fl->fl_start = clamped_off;
-+	if (len == 0 || end < 0)
-+		fl->fl_end = OFFSET_MAX;
-+	else
-+		fl->fl_end = end;
-+}
-+
- extern const struct lock_manager_operations nlmsvc_lock_operations;
- 
- #endif /* _LOCKD_LOCKD_H */
-diff --git a/fs/lockd/xdr4.c b/fs/lockd/xdr4.c
-index f57d4881d5f1..dbbb2dfcb81b 100644
---- a/fs/lockd/xdr4.c
-+++ b/fs/lockd/xdr4.c
-@@ -34,17 +34,6 @@ loff_t_to_s64(loff_t offset)
- 	return res;
- }
- 
--void nlm4svc_set_file_lock_range(struct file_lock *fl, u64 off, u64 len)
--{
--	s64 end = off + len - 1;
--
--	fl->fl_start = off;
--	if (len == 0 || end < 0)
--		fl->fl_end = OFFSET_MAX;
--	else
--		fl->fl_end = end;
--}
--
- /*
-  * NLM file handles are defined by specification to be a variable-length
-  * XDR opaque no longer than 1024 bytes. However, this implementation
-@@ -91,7 +80,7 @@ svcxdr_decode_lock(struct xdr_stream *xdr, struct nlm_lock *lock)
- 
- 	locks_init_lock(fl);
- 	fl->c.flc_type  = F_RDLCK;
--	nlm4svc_set_file_lock_range(fl, lock->lock_start, lock->lock_len);
-+	lockd_set_file_lock_range4(fl, lock->lock_start, lock->lock_len);
- 	return true;
- }
- 
-diff --git a/fs/lockd/xdr4.h b/fs/lockd/xdr4.h
-index 7be318c0512b..4ddf51a2e0ea 100644
---- a/fs/lockd/xdr4.h
-+++ b/fs/lockd/xdr4.h
-@@ -15,7 +15,6 @@
- #define	nlm4_fbig		cpu_to_be32(NLM_FBIG)
- #define	nlm4_failed		cpu_to_be32(NLM_FAILED)
- 
--void	nlm4svc_set_file_lock_range(struct file_lock *fl, u64 off, u64 len);
- bool	nlm4svc_decode_void(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool	nlm4svc_decode_testargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
- bool	nlm4svc_decode_lockargs(struct svc_rqst *rqstp, struct xdr_stream *xdr);
+
+> These special kernel filesystems have custom ->open() and ->permission()
+> export methods, which nfsd does not respect and it was never meant to be
+> used for exporting those filesystems by nfsd.
+>
+> Update kernel-doc comments to express the fact the those methods are for
+> open_by_handle(2) system only and not compatible with nfsd.
+>
+> Signed-off-by: Amir Goldstein <amir73il@gmail.com>
+> ---
+>  include/linux/exportfs.h | 16 +++++++++++++---
+>  1 file changed, 13 insertions(+), 3 deletions(-)
+>
+> diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+> index 262e24d833134..fafd22ed4c648 100644
+> --- a/include/linux/exportfs.h
+> +++ b/include/linux/exportfs.h
+> @@ -192,7 +192,9 @@ struct handle_to_path_ctx {
+>  #define FILEID_VALID_USER_FLAGS	(FILEID_IS_CONNECTABLE | FILEID_IS_DIR)
+> 
+>  /**
+> - * struct export_operations - for nfsd to communicate with file systems
+> + * struct export_operations
+> + *
+> + * Methods for nfsd to communicate with file systems:
+
+Let's not remove the brief description for the export_operations
+struct in the Doxygen output.
+
+
+>   * @encode_fh:      encode a file handle fragment from a dentry
+>   * @fh_to_dentry:   find the implied object and get a dentry for it
+>   * @fh_to_parent:   find the implied object's parent and get a dentry for it
+> @@ -200,6 +202,10 @@ struct handle_to_path_ctx {
+>   * @get_parent:     find the parent of a given directory
+>   * @commit_metadata: commit metadata changes to stable storage
+>   *
+> + * Methods for open_by_handle(2) syscall with special kernel file systems:
+> + * @permission:     custom permission for opening a file by handle
+> + * @open:           custom open routine for opening file by handle
+> + *
+>   * See Documentation/filesystems/nfs/exporting.rst for details on how to use
+>   * this interface correctly and the definition of the flags.
+>   *
+> @@ -244,10 +250,14 @@ struct handle_to_path_ctx {
+>   *    space cannot be allocated, a %ERR_PTR should be returned.
+>   *
+>   * @permission:
+> - *    Allow filesystems to specify a custom permission function.
+> + *    Allow filesystems to specify a custom permission function for the
+> + *    open_by_handle_at(2) syscall instead of the default permission check.
+> + *    This custom permission function is not respected by nfsd.
+>   *
+>   * @open:
+> - *    Allow filesystems to specify a custom open function.
+> + *    Allow filesystems to specify a custom open function for the
+> + *    open_by_handle_at(2) syscall instead of the default file_open_root().
+> + *    This custom open function is not respected by nfsd.
+>   *
+>   * @commit_metadata:
+>   *    @commit_metadata should commit metadata changes to stable storage.
+> -- 
+> 2.52.0
+
 -- 
-2.52.0
-
+Chuck Lever
