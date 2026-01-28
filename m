@@ -1,95 +1,94 @@
-Received: from mail-ej1-f41.google.com (mail-ej1-f41.google.com [209.85.218.41])
+Received: from mail-ed1-f51.google.com (mail-ed1-f51.google.com [209.85.208.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4CF33234964
-	for <linux-nfs@vger.kernel.org>; Wed, 28 Jan 2026 19:28:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7CA53234964
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Jan 2026 19:28:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.51
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769628485; cv=pass; b=EduugEAOtLjZsWB7UGMX1NKS/9Wchf4owb0tKYMHJCbwdY8EWxssMBnCMnKE3iBrUf4D4KNQyFJfZ0cp9GlwMosWQOhGsDPGS7aUSUfLCRvZu5I42dLtBdGGUxxUdR41ktaT5sOi7Ye+ucABIWE9JqAVhkXXFM3obWPDpxlfw0g=
+	t=1769628524; cv=pass; b=XG7PRAUOE/p2v9np9u+xQP2CrQYzVX58uq1HDrwd/bl7Jn8/+l/Yk30LPOj8AwJ5DR3I8Fgi8k5Xp1ZwqFvs0RvhiYE3k+CZLnoD8gC6RY0dIEGsdRywo5DofTl+GG5kfePrFfOD9ER2lcJ5baY9u9xXFD3sWRi6WP7bS4qUSqo=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769628485; c=relaxed/simple;
-	bh=hJeEAKiKD4yBbMJhZMhUaDnJz5O9vpsTRwVDafXrX6A=;
+	s=arc-20240116; t=1769628524; c=relaxed/simple;
+	bh=1VR64+xgk5sFrJfV+cOSAqG9s0CfJIAZvD+8VJYkD8A=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=JF41GbnbDndJzuhsudnpbZSBPgAGB02aMJS9unO62cIVrvZSb/0N8xxYOiO3FEuxzkAV1OVFrz4po+xIdzFIoll139CEStm18vB2EbO8eDiu7eCjqX/6gDH/BcMzaZ5+Qt8dDo2gk9HX8M4tlPGS+XYOP+blzEhHAxFbPR/WjsM=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ap7b+u1I; arc=pass smtp.client-ip=209.85.218.41
+	 To:Cc:Content-Type; b=rktJG/Uqoi03YT2/B/d+fpdnhYRWGT0mKyH/iGjXWun0Au0/97kK9RiVPqvJkJzqzi/fILgtb/CwfDhysE/fDBivtgYk8fmeONRGYdL4ZsoyBWVO906OPJrEDWe+pSkUj45m59AQqH363PPXoDjHnOH7VUg1irCbA5SckA9ovCk=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=OOWeo3z/; arc=pass smtp.client-ip=209.85.208.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ap7b+u1I"
-Received: by mail-ej1-f41.google.com with SMTP id a640c23a62f3a-b884d5c787bso44203966b.0
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Jan 2026 11:28:04 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1769628483; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="OOWeo3z/"
+Received: by mail-ed1-f51.google.com with SMTP id 4fb4d7f45d1cf-65808d08423so364454a12.1
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Jan 2026 11:28:42 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1769628521; cv=none;
         d=google.com; s=arc-20240605;
-        b=hlpeIrNALMrd+vW1hagjZg+tKRhKJMauuqCH05zssp33f8PRAmX+1xsoQ6KRFizMH9
-         Xl1LTZyBocfuCI+rYiY3uDndazIYsyFJVkkKtxQ+PL64jHaSBIQaQ7rRmh78/u1GSy3d
-         4xS6PetmGrYrpCFX00y6IoDewrP0L+63hYqTGqM2DEO/7SKOlfi/CKYfvii4DN3T6uar
-         e1/yvO2D7Pt9jRrUCR/6TjYWbIgB6CAGp28OvUII4hoLgfaHHe5eKfoDMecQKjY9nhdY
-         UKWa7BYNQj2gRTeiNiENRcovmAp66DEgrCP8rD09QzkBS6iyFfVGouI1PhC7poUQUEY4
-         EUTA==
+        b=FsmnXcZhd4vLrni21Ss+Svcb9ySO8b5namWY4F4RymLtEubUkbEMboRp5N4eHBQ8gH
+         Xq88NxHpOHf72DE5v8Y6sc2ZsKDz0OVBd5LltfGYEI1+S4z0MlxB32QMgckclXitiqjs
+         IUlkvvfnBYp8wdZjBO+GQVL0p3S8MjYKQCqsgO2efJEQ3GPP1nrRVGTBuml6pz25375Y
+         jVYHNt2Nt6ihE5C/Oin1TdhEsyjG3BuhJ1JKhgJ9uNhMY+WeR3JgEPhQkHc3jOgNYORq
+         AdGJAU3HIHpIW4bxZ7U6tAQ+WFFKeK3NCz+ead7+S1tW5wWSHwM5jdM3sPe2d4m8sM15
+         qGIA==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:dkim-signature;
-        bh=GePnCPMULS4ZH5+nWQOFHXb1cucdY2lNKyMwVx2+ph0=;
-        fh=EAhz/Mk3BgARmMK/wzqPOnT3rz8voXzrDfVBFdJ1aNE=;
-        b=NgA2SPzeE2moZz9aJXKxJcgP7dRVzPqkLnAR1lMk/3iGMbxLObqKSxFGkgQYSGElzQ
-         4Zp1uB6/WGoKMzMyjVbmgZbApJiwJjWW2k/ZvLEOo5ehNamirkO3FnoVW6QOhaHGdNst
-         LFJKM4XknInDgYWIwo4XaR3KW+6o8zp+bEKYT1W449t+tMiZz6faOnzD331QBGYmEdYO
-         c+/wwZodD/r9McLxL2+tNu7PTijMfbuLy+uyv8aC/RO2ghDQlBzwhAZMFz2kPPp6DW4L
-         8GnrWXVg16fiTHWaGsHJL4kjAHXTb4AGL3MFRfe/B/Ys9PWSDyWTQL+GM/RklJVOBsiW
-         DG5g==;
+        bh=27ro1TGJU4wnlvWapkLVQUt4YNL7CdjZ7mreSXMURlM=;
+        fh=f+aZUtnFFMNyGVvSe3+DPbFipeWMQgDULmp2F5Mm/j4=;
+        b=HnJ4GB1q4VGRqNzmlD6PY7rRWjZANqB9/4RG61F1qgz3v/N/yjfKPpnI/SrPfDoHvd
+         5lPIDC6XivIRmlc9JR1ss5yQR12fdBeqRA7ztzzW9stBb2lfEwK+jFj7mNqTGOC7LpZ+
+         N1J5UEjNAdsaUuHxQ1SpK56206t+m6ax6k+kbh7CAYoolNunUuPGKdeMcp0pA5cO1dWY
+         OUa9DoAF505IgiYLwrwhc+3/qXDDLHNfqJ8aA4MCV5SThTFMHG/CijgCTzxEMtSBVlln
+         pDeJy17ihcsYKwYSUF5DUye8Ydmg2cGfVlHcJxns1N5BzerHiCJeTF7UYNwXvhOR/wLO
+         cntw==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1769628483; x=1770233283; darn=vger.kernel.org;
+        d=gmail.com; s=20230601; t=1769628521; x=1770233321; darn=vger.kernel.org;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=GePnCPMULS4ZH5+nWQOFHXb1cucdY2lNKyMwVx2+ph0=;
-        b=ap7b+u1IgglPywgU7la4B1fIQpGSCTleF+P+Zuv73i1LoP+i0OA3i2KmngojsDIiaU
-         4VA/hfnongAJ+NIMmuZZtij9TX5WT4ErDXJ+StwwRMnUmEvcKmkeKUyXRJ5B0bf/9o1j
-         fqFcrpKUUQpudL487L7zOpAqXUe0oA9CgcsHe8Yuzr1w52B+jQkPr7zYB3T9B9O03OgH
-         988L+kl+qYcns1pTvbF3a5eKmH0YzyLu4xcwjv+Rdav6nbuunDiCQqWMsn5c+7NlF/k9
-         c8HlWuRvtAwN1odqk5e9gb1jz1RuKgeAZ6kvjMilcBUsL+U8i/wQdQfR9nv4QmUarZb8
-         9xnQ==
+        bh=27ro1TGJU4wnlvWapkLVQUt4YNL7CdjZ7mreSXMURlM=;
+        b=OOWeo3z/ZI46/7FRYbSkdTXI5sH9NTclsLbcBVn2HTRDwerehcQvXatk6VNEOtfIpb
+         zaGJ8Qpv+4pCuOielI5ulHk6fnt2Qj4d8yDHin2MDJsTkCjz1OWA9cALC7R8I069x0Yr
+         EJW6K5rvh6aHnT/XZxOcCtE4KE/+aVQ1rN2UF2/LKc9QvnbqzLZ1EaP38Pan4IjX4qS9
+         vpe22EYLBYzMYRoEiStPw5TB8rS0Z9uNdtUAA8jebWy95UWteH/kYWHuSxWMY3eS/C5P
+         IUaPseU9V3p9O1apPdonZFw87N95A68afcsc5VNBNQVNY0HZNcSefKnLX9U6DrCa4dba
+         NjOA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1769628483; x=1770233283;
+        d=1e100.net; s=20230601; t=1769628521; x=1770233321;
         h=content-transfer-encoding:cc:to:subject:message-id:date:from
          :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=GePnCPMULS4ZH5+nWQOFHXb1cucdY2lNKyMwVx2+ph0=;
-        b=U/AJ6i9VJXIi11bSswi1cvpc6Ou/X7wjaZXc3yTMmPgEMFBYjWRDFiIsi9+HWdGjmd
-         MSH3KfV7Oy5jxBk1WBkhVGVrTOXHZd7pi1CAhBC6PhbJbta4WRzkynqfnFCExjHhcRIa
-         7SKeOTdar7LluWqZ6Aykmrm7Jt8NmgU+gD6Hj7XSxasirOy5V5nYCEQhijIrtCz6Rrl1
-         S0osRJaGGNHij557F+Qr6LId2yiZ7oEUKltu9GyU5g2KKukRF6tS7jorwjwOX4zTg2A9
-         pd8jfRZvrlsg+uG276ajhrGJ+tmzY/h9Uw1NGiWam/2IPH8r/BgGHjpONgwdthQZ2Xz1
-         b8tw==
-X-Forwarded-Encrypted: i=1; AJvYcCXxwwv168czGJJlfOeurnYpg7G3gM1tznvNy5vUjHdMQkMehOkEDyne/PzP5Pll9eb8v3vnp+XAnok=@vger.kernel.org
-X-Gm-Message-State: AOJu0YzoLrO3isTwUsmD15znKTFjzk40/ZpYW7Y0vLNYdY1N/G8HKaf8
-	kKNv0g+9rEO0zRyeHNRL+YCM6reUr7/XJ74Itdg0orWMhePcWZkGkrr06UblQRykUgsaqs4KYMB
-	3PCpNqlSjQit397F3wuIm/WreZ+cZRbE=
-X-Gm-Gg: AZuq6aIpTgnJRMk4DKZZcMxQ13WmMqk8R0uqeZD2LVZkC+jjseTcSct3FXoldFuufVt
-	fFRa12SeBTlP3UckL4aL9JwgQcheqnRVMhsKDU2yxGdxh0PwwVHyjwCPWcbItRfPTCl/qV6HTxR
-	HFsQMo5z0HTcSIY5TSGm/+0CevXafBxUVSUzU1UMzNgqbfO6XCd/Xk1ShGm5sZ0y3ccIkuJ7iFP
-	plyG5zck9KiQt29N8XBwXuqHuki/fHDsMBhgzDk1E+LsZrtCGXPp9eeQaSfntz7v5BkoWJ1F1PB
-	vhIPgpHFiSqnFMLKbqW4rLTgEjFZ6g==
-X-Received: by 2002:a17:906:6a25:b0:b87:6b9a:3016 with SMTP id
- a640c23a62f3a-b8dab4128b3mr438177266b.60.1769628482187; Wed, 28 Jan 2026
- 11:28:02 -0800 (PST)
+        bh=27ro1TGJU4wnlvWapkLVQUt4YNL7CdjZ7mreSXMURlM=;
+        b=b7S7V6IBFgUCexomGHYEJtHS9qt5pxAlWFlDN9cKLrDCzhhBhvi1Z1UCXjTK19MHtf
+         wcCimZS3rourMKijqof/ocXk5BItJuFSe0TbSqM0OKLafcp+f5I3VoEwVdWhhvIv/B7F
+         /GYCujF2/pMfZXc3p3GezO7dUOp92qeegeBsgNvf5s1JPBCzemFA3RV/pz+xQoNRVLwA
+         BOpp1SSKRqSQXdUpoGzxVT+2Zz8oHz/R4wkBRFHhg1SDpi/3AvQd0ZTa1tmdhL5o9OQo
+         W4VAAzv0dUb4vb0h/xn4G9Oe5MIumU5puwpMmglSu7bAlG5nXo/iw4ls48keN9ORK5XK
+         TbXQ==
+X-Forwarded-Encrypted: i=1; AJvYcCVO4+UlqiDqPx4JbtbgWxLDLgoPXpM+x78O5W3RQ6MllYW2HZzTeCzzz21xcLx3h+UdXJB1aEiPFzg=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yx992XBPc5EzrUjxlt+tNRcOc9aEG1ZbCRccAiy52zEfn/GW07z
+	sSns52oLPsJmQVYY7zWb2ty4CCerUNyOueUYBr19Vy+Ht34J3I1312/W3C/6dHSrjJaK/CYJB0n
+	iQiua3zLuG8pGcj9RY+Qnds3Tj2KWSMM=
+X-Gm-Gg: AZuq6aKmXH7EAOtqt6x7yZr6qqWj8G8UiztUQV7OAKJAJ4mcf8k2Y79IxSskkIX7SPE
+	0KUqCurxvcfiAVWw5sZ7RWeOIccZBfU1XJfHYQeu1uESOHcqlUYnvSVhk1dgCqKxCASrCH0QKoi
+	/QKWSHMmNVmTFsRRpC891XZkFdth5FNlee+wzJpc+8/hGQ0/UoevlPOWkXsRNniv5zOMsqk6aTP
+	w/Z1/TOT2EhyIwHSDf8GvRVjKoYnInRTGYQEzJr9rzhbZu/Puw3UWZHaBE1fuGOcoKkMWjZm4Mh
+	+p//C3ihOkPxwTSNHlWZCoWY8AOspA==
+X-Received: by 2002:a17:906:6a1c:b0:b88:7093:3cac with SMTP id
+ a640c23a62f3a-b8dab48924amr465610966b.54.1769628520414; Wed, 28 Jan 2026
+ 11:28:40 -0800 (PST)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260128111645.902932-1-amir73il@gmail.com> <20260128111645.902932-2-amir73il@gmail.com>
- <34bda263-4b41-4388-b58a-6fdab6d1fb49@app.fastmail.com>
-In-Reply-To: <34bda263-4b41-4388-b58a-6fdab6d1fb49@app.fastmail.com>
+References: <20260128111645.902932-1-amir73il@gmail.com> <20260128111645.902932-3-amir73il@gmail.com>
+ <dce0e412-1a56-44b3-b910-29247ca23325@app.fastmail.com>
+In-Reply-To: <dce0e412-1a56-44b3-b910-29247ca23325@app.fastmail.com>
 From: Amir Goldstein <amir73il@gmail.com>
-Date: Wed, 28 Jan 2026 20:27:51 +0100
-X-Gm-Features: AZwV_QgreAtAH7FDuCqbPK5kltExclmyKfjvr3XllZoQUxupqijk5qdN7jwW7bI
-Message-ID: <CAOQ4uxgjxeLMv5d0BB=KrrzB64LMSoAo9HSkQZmP4Bu_De20Sg@mail.gmail.com>
-Subject: Re: [PATCH v3 1/2] exportfs: clarify the documentation of
- open()/permission() expotrfs ops
+Date: Wed, 28 Jan 2026 20:28:28 +0100
+X-Gm-Features: AZwV_QiUl-99zS-t8gDgOSYLXzRXaaSZXwfIn5ORyScIDynm1ZzvKFy0Z1UF39c
+Message-ID: <CAOQ4uxhNdzM2tjLOLF=OoLqEnW5Z=izk0MHR56XkTntsWfJONQ@mail.gmail.com>
+Subject: Re: [PATCH v3 2/2] nfsd: do not allow exporting of special kernel filesystems
 To: Chuck Lever <cel@kernel.org>
 Cc: Christian Brauner <brauner@kernel.org>, Chuck Lever <chuck.lever@oracle.com>, 
 	Jeff Layton <jlayton@kernel.org>, Christoph Hellwig <hch@lst.de>, NeilBrown <neil@brown.name>, 
@@ -97,9 +96,8 @@ Cc: Christian Brauner <brauner@kernel.org>, Chuck Lever <chuck.lever@oracle.com>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 
-On Wed, Jan 28, 2026 at 5:10=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
+On Wed, Jan 28, 2026 at 5:12=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
 >
-> Typo in Subject: s/expotrfs/exportfs
 >
 >
 > On Wed, Jan 28, 2026, at 6:16 AM, Amir Goldstein wrote:
@@ -109,7 +107,7 @@ s
 >
 > s/opan/open
 >
-> And one more below:
+> One more below:
 >
 >
 > > These special kernel filesystems have custom ->open() and ->permission(=
@@ -118,35 +116,71 @@ s
 e
 > > used for exporting those filesystems by nfsd.
 > >
-> > Update kernel-doc comments to express the fact the those methods are fo=
-r
-> > open_by_handle(2) system only and not compatible with nfsd.
+> > Therefore, do not allow nfsd to export filesystems with custom ->open()
+> > or ->permission() methods.
 > >
+> > Fixes: b3caba8f7a34a ("pidfs: implement file handle support")
+> > Fixes: 5222470b2fbb3 ("nsfs: support file handles")
 > > Signed-off-by: Amir Goldstein <amir73il@gmail.com>
 > > ---
-> >  include/linux/exportfs.h | 16 +++++++++++++---
-> >  1 file changed, 13 insertions(+), 3 deletions(-)
+> >  fs/nfsd/export.c         | 8 +++++---
+> >  include/linux/exportfs.h | 9 +++++++++
+> >  2 files changed, 14 insertions(+), 3 deletions(-)
+> >
+> > diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> > index 2a1499f2ad196..09fe268fe2c76 100644
+> > --- a/fs/nfsd/export.c
+> > +++ b/fs/nfsd/export.c
+> > @@ -427,7 +427,8 @@ static int check_export(const struct path *path,
+> > int *flags, unsigned char *uuid
+> >        *       either a device number (so FS_REQUIRES_DEV needed)
+> >        *       or an FSID number (so NFSEXP_FSID or ->uuid is needed).
+> >        * 2:  We must be able to find an inode from a filehandle.
+> > -      *       This means that s_export_op must be set.
+> > +      *       This means that s_export_op must be set and comply with
+> > +      *       the requirements for remote filesystem export.
+> >        * 3: We must not currently be on an idmapped mount.
+> >        */
+> >       if (!(inode->i_sb->s_type->fs_flags & FS_REQUIRES_DEV) &&
+> > @@ -437,8 +438,9 @@ static int check_export(const struct path *path,
+> > int *flags, unsigned char *uuid
+> >               return -EINVAL;
+> >       }
+> >
+> > -     if (!exportfs_can_decode_fh(inode->i_sb->s_export_op)) {
+> > -             dprintk("exp_export: export of invalid fs type.\n");
+> > +     if (!exportfs_may_export(inode->i_sb->s_export_op)) {
+> > +             dprintk("exp_export: export of invalid fs type (%s).\n",
+> > +                     inode->i_sb->s_type->name);
+> >               return -EINVAL;
+> >       }
 > >
 > > diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
-> > index 262e24d833134..fafd22ed4c648 100644
+> > index fafd22ed4c648..bf3dee2ad5f97 100644
 > > --- a/include/linux/exportfs.h
 > > +++ b/include/linux/exportfs.h
-> > @@ -192,7 +192,9 @@ struct handle_to_path_ctx {
-> >  #define FILEID_VALID_USER_FLAGS      (FILEID_IS_CONNECTABLE | FILEID_I=
-S_DIR)
+> > @@ -340,6 +340,15 @@ static inline bool exportfs_can_decode_fh(const
+> > struct export_operations *nop)
+> >       return nop && nop->fh_to_dentry;
+> >  }
 > >
-> >  /**
-> > - * struct export_operations - for nfsd to communicate with file system=
-s
-> > + * struct export_operations
-> > + *
-> > + * Methods for nfsd to communicate with file systems:
+> > +static inline bool exportfs_may_export(const struct export_operations =
+*nop)
+> > +{
+> > +     /*
+> > +      * Do not allow nfs export for filesystems with custom ->open() a=
+nd
+> > +      * ->permission() ops, which nfsd does not respect (e.g. pidfs, n=
+sfs).
+> > +      */
 >
-> Let's not remove the brief description for the export_operations
-> struct in the Doxygen output.
+> The comment says "with custom ->open() and ->permission() ops" but the
+> code blocks export if either one is set. The commit message correctly
+> says "or" - should the comment be updated to match?
 >
 
-OK. will fix for v4.
+Of course.
+Will fix for v4.
 
 Thanks,
 Amir.
