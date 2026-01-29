@@ -1,254 +1,202 @@
-Received: from mx0b-00069f02.pphosted.com (mx0b-00069f02.pphosted.com [205.220.177.32])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 47E0C19CCF5;
-	Thu, 29 Jan 2026 14:00:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=205.220.177.32
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769695251; cv=fail; b=dHINHia8qExGOjeViyq8StZLEI3SeMoo7ntZG5QGka5PBKFu/iNHOQHsyn4IaGGk35Zyj+DypTa77F7o68DK8UWaZhz/LwbLAjLPCehjPCZx42NmG1McCuu9I0MD4FnQ30HuZEyOycig5izweMEmx+lg100PEgq4z8NQKGsCmjo=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769695251; c=relaxed/simple;
-	bh=RBufz2LwHGu2xv4q5bUHNvqsrfXHmuQTxyTrnFpcrgg=;
-	h=Message-ID:Date:Subject:To:Cc:References:From:In-Reply-To:
-	 Content-Type:MIME-Version; b=HV6yE4JfmkpyWNdBP9pfx/79S2tMuPfrirvTVouaGCRb7oxrOxQawD2Ld+UQ8k+/PWVWNTchinXk2DWiRd1d/rINBzal0mdE8wF5+xEY5hsR0P1UjxUXUArSavS5hswald0RyHmjWAi5Ve6BL5PBEVDbG74t8CYnfQpz9/en1OE=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=ZQb4eZR5; dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b=z69bcQlO; arc=fail smtp.client-ip=205.220.177.32
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2CB401D5151;
+	Thu, 29 Jan 2026 14:36:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1769697417; cv=none; b=qbUOMtzZepQ1NUKAyCR3+wpmaqbbE7zXa3+FEOQTvIwsnKxSGbatCsFZa+yWL/Yxrw9nugcQeNt390X1VIJaIH1FA8q1Mh/uYYC3zj9fNdBvP4V6p4IuL241tkk2XfYwGVvShXOwpQZ8kFlTGNkoOzZftrvEGkksggaMELCXyZA=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1769697417; c=relaxed/simple;
+	bh=WAPkqVcktWNKHPYOyzWmWAwOC2J2vl/Ho/9F7ZSqjtw=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=bWU5e5uWPECGUGvzZ8ABpfRJae8/dk/td1fvDcnv+PiCtYP7gZcSH0Yp4cWai0sbq5VHj2ZuJYepMoVwtwkG5onb7VCq+LGLc/BeI0SfG5473i7KsnFdCAyQsanXnDNWApFjaMLiTh6OI9agVI6a3zQ13jzrVr0641qT2VBqifs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mi+YVOQ9; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="ZQb4eZR5";
-	dkim=pass (1024-bit key) header.d=oracle.onmicrosoft.com header.i=@oracle.onmicrosoft.com header.b="z69bcQlO"
-Received: from pps.filterd (m0246631.ppops.net [127.0.0.1])
-	by mx0b-00069f02.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 60TDgFTR448870;
-	Thu, 29 Jan 2026 14:00:38 GMT
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
-	:content-transfer-encoding:content-type:date:from:in-reply-to
-	:message-id:mime-version:references:subject:to; s=
-	corp-2025-04-25; bh=8gz5YY/4y23QoNLAk9vEVPBcxycxafi3j6m4EZQ4uv0=; b=
-	ZQb4eZR5ZHTTBVWvrJNcoq6RHLmfwdeLiNdlG7E180THUe7Byi6Hz7TnO1MmuB1P
-	BprvLnWcLGnbzCRV+IODs82SEDc4Gw/lw9b6Pg3NM3NzQN8HUmffVQqsAAKTTngi
-	mpUbdaTpTqFrryXWoIpK7X217/GNRaieV7niyUaUVJg6/8Vs+t/k+ji997rRfTsp
-	PSV9clzDxKR71zma56Hhjpgijs4Ns4km98uwx2D92OtIyFdupndlKfOh0HkkVOz7
-	zWG8q4n5UbzSt/C2MGjfZyHrKANdSumQX+4kyRPXGrhGupgsWAPeXjPsEhealS7q
-	aqAJxSyf3V3DTGEM0+WaRw==
-Received: from iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta01.appoci.oracle.com [130.35.100.223])
-	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4bxx09kxyd-1
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Thu, 29 Jan 2026 14:00:36 +0000 (GMT)
-Received: from pps.filterd (iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.2/8.18.1.2) with ESMTP id 60TCoSMo019779;
-	Thu, 29 Jan 2026 14:00:35 GMT
-Received: from ph0pr06cu001.outbound.protection.outlook.com (mail-westus3azon11011041.outbound.protection.outlook.com [40.107.208.41])
-	by iadpaimrmta01.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTPS id 4bvmhhnrcm-2
-	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Thu, 29 Jan 2026 14:00:35 +0000
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=JksiSNhialzXL6Cgzxb2SPhABN35M/hWQ4tjSU0foUzbnwN9BSnftKlp9zDMPo2yc0z8as1gvuoF9BeBlizspcgguNfUXa/hsRkVgqTiOpIopHXTNlchI+Yt/InB5irtvPrN9QVHMElT/MrL4kdtZvCRN0rQgmbwhptscQBCI0AybfFRRa4y0CHLNH2FOD668/dakpTnEQkL2oa1cL53AZV6TnTW6nyn6H22XJtPbzULA+VoeqczLo54vMeYxp1a4mC2lK7OgV7alhbNrmEptjeq7aZb+IhZx/pk0PHzGmHkMSL/TvjYN5WBLxMNVr05TDPD7wgyvB6KwrOFBys0YA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=8gz5YY/4y23QoNLAk9vEVPBcxycxafi3j6m4EZQ4uv0=;
- b=DG5YvQYPXnFovcf9j1cw0D6RMrvfMbvIX8xO3yNBjbxR1hV8/fn2RQkzaPL0CnyZo1jhkPewR0oOSn+zZkkZvPwCleF+0sTRm3BqfLCYw34MyFnor5P8aUK/Y3APStfIu7pAtzliX88h3wwGRi7dek9rH50Iot4t0BepDUI40B74zxp+In/OxIHECf5mOdcE1UQ+7bPgUdR4ywH6FzUEU69+qeUykIvFZzmMfARfhe/9LliivA41LvAzYfomNcJBiXXrcKa/uTCyyP+lELzflAbJkIw5LIKS6NT0GzYNhHYo1X99lxWC6qfZ+sy6NKHnoshKMx2X3HFJRLkPsNGLZg==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=oracle.com; dmarc=pass action=none header.from=oracle.com;
- dkim=pass header.d=oracle.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
- d=oracle.onmicrosoft.com; s=selector2-oracle-onmicrosoft-com;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=8gz5YY/4y23QoNLAk9vEVPBcxycxafi3j6m4EZQ4uv0=;
- b=z69bcQlO4Pf8lsRc/v3iNHPBSMGiLDz1sjiYzxcP7ieqyHGd2q9lw/ADhnxxcwDVcVTRQGfvzzz3I/kLDSsE8whE8u4WlMuwCr3tjTzvl52Cxem1W3LJjO5BBCS1+xVE6nSZwQEr4DCx5ixnoi3lpFaQOjurFj49yOFrMvA9vJA=
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com (2603:10b6:408:117::24)
- by MN2PR10MB4221.namprd10.prod.outlook.com (2603:10b6:208:1d7::18) with
- Microsoft SMTP Server (version=TLS1_2,
- cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.9564.10; Thu, 29 Jan
- 2026 14:00:31 +0000
-Received: from BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::4083:91ab:47a4:f244]) by BN0PR10MB5128.namprd10.prod.outlook.com
- ([fe80::4083:91ab:47a4:f244%4]) with mapi id 15.20.9520.010; Thu, 29 Jan 2026
- 14:00:31 +0000
-Message-ID: <3564cc91-9d19-468c-99de-06eb5d29523b@oracle.com>
-Date: Thu, 29 Jan 2026 09:00:16 -0500
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v4 0/2] nfsd and special kernel filesystems
-To: Amir Goldstein <amir73il@gmail.com>,
-        Christian Brauner <brauner@kernel.org>
-Cc: Jeff Layton <jlayton@kernel.org>, Christoph Hellwig <hch@lst.de>,
-        Neil Brown <neil@brown.name>, Jan Kara <jack@suse.cz>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-References: <20260129100212.49727-1-amir73il@gmail.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Language: en-US
-In-Reply-To: <20260129100212.49727-1-amir73il@gmail.com>
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-X-ClientProxiedBy: CH0PR03CA0248.namprd03.prod.outlook.com
- (2603:10b6:610:e5::13) To BN0PR10MB5128.namprd10.prod.outlook.com
- (2603:10b6:408:117::24)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mi+YVOQ9"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C3734C4CEF7;
+	Thu, 29 Jan 2026 14:36:55 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1769697416;
+	bh=WAPkqVcktWNKHPYOyzWmWAwOC2J2vl/Ho/9F7ZSqjtw=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
+	b=mi+YVOQ9JHZnA9Z7sVVYJ8t3UFl+pkBNB0mefkKKChqiHQ5llWoH4tuzcJ77DFHxq
+	 56w2hSfiivZSgTvfPkEry7jcUtzCH6ONv07GyBj1zOuzXR6uPnzrWJv0VdNGAcpCIr
+	 Kuk+KmH99OOhl4/KXObiPp10EJ4/RxsZDSyKu4n/cKbgyZOX+kZEUyeJxmf7Fmj/R5
+	 maZwbLXEcDKnglPL7FSRSfSJS55eKZJUqBjM0wSSJtDRhgdXNta5hAB71V2oyupp+B
+	 +24KSxYsyM+8oAnHsc0gs9cDU66VMb3oA9/p5EC8NzmbKwzG5qICd/wh41DIw9KjsA
+	 uM66qcLCHvuRQ==
+Message-ID: <b02d93c9cd1ccda04127031155ec9b4c29ee69d5.camel@kernel.org>
+Subject: Re: [PATCH] fs: don't allow non-init s_user_ns for filesystems
+ without FS_USERNS_MOUNT
+From: Jeff Layton <jlayton@kernel.org>
+To: "Seth Forshee (DigitalOcean)" <sforshee@kernel.org>, Alexander Viro	
+ <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, Jan Kara
+	 <jack@suse.cz>
+Cc: Amir Goldstein <amir73il@gmail.com>, Aleksa Sarai <cyphar@cyphar.com>, 
+ Alexander Mikhalitsyn <alexander@mihalicyn.com>,
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-nfs@vger.kernel.org
+Date: Thu, 29 Jan 2026 09:36:54 -0500
+In-Reply-To: <20240724-s_user_ns-fix-v1-1-895d07c94701@kernel.org>
+References: <20240724-s_user_ns-fix-v1-1-895d07c94701@kernel.org>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.58.2 (3.58.2-1.fc43) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: BN0PR10MB5128:EE_|MN2PR10MB4221:EE_
-X-MS-Office365-Filtering-Correlation-Id: 629b89a4-4ffe-4096-30f1-08de5f3ec3fe
-X-LD-Processed: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b,ExtAddr
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;ARA:13230040|1800799024|376014|366016;
-X-Microsoft-Antispam-Message-Info:
- =?utf-8?B?TmR0djJMRjE1R1FtK1p0SHE1NktyeW1sRWdFSWlZVFIzcWwwY0RRN08wM29I?=
- =?utf-8?B?b0lhVHR2STliaUZPMTYrQ3FRRklmc2FLNHpmTzJtWk5GNDY5VGs3Z2Rkakhz?=
- =?utf-8?B?WW1FdFJyRXhyOHBzSmpZbWY3S3JhVnZwS2I1RmhMSnlMMUZEaDlUcTNNcENT?=
- =?utf-8?B?VHh5bGdtTExHSG9MR2Fzd0dkUEFyNDZ6MEpHWWROL2V3aDYxanJLZUFIZFcv?=
- =?utf-8?B?a0NjQTk4Zi9Pdm1FM1lzZ0srQnRLQ09MdDVWYXdTUnZ1cUR0NGdMcmIzYUxC?=
- =?utf-8?B?SkV3R2VIb0I3Tk1RcmJpWnBtWWVtckR0alZGNGEzV25kdDFPUFlqUzU4N09n?=
- =?utf-8?B?UVVsTjRBd1JSTWxqMkpaVFlONGFyUmZlcFp6N2QrbTJpN29VWUIxUnB2dXZG?=
- =?utf-8?B?cUxjV0sxclE2L1ZQTlVzRUxFTXlvYWkvWkROWTh4d0ZLMFdySGVROFlEaDA4?=
- =?utf-8?B?eG5SOEhLTHF3dFhienRodG9PYWJKNm5lUU9GYTNBWUNWYlVyTWJDNVkyMFRL?=
- =?utf-8?B?aGJ6cXptWUxnd2x6LzB0THM5T1ZJelV2aXJqWFNnQUtRUUlFNVNmQllZd1R6?=
- =?utf-8?B?WUNYYzBOYXJoWk5ocEJpTFVUWUdtU1BtanBDdzdEUFg3YlhHYmJ4T3lJeUw0?=
- =?utf-8?B?VG90VzhLU0NKMmZud0VwSis0ZFJqNWlLWmRXdHNvaTViNTN6amFwME5WNTA1?=
- =?utf-8?B?Z0V6R3N0M3U1clgyRndqL3liTW91RVR6OWo0UGVLR3ZmYW1JRVZVTkRqbmR2?=
- =?utf-8?B?NG14UU8vWGFKVUtBak5BbHdCRGtjZUd1bzRhcWgyQmlSNUw3dFpqb1p3cjNn?=
- =?utf-8?B?ajdZckFQTWhDVHYwUDZYZklnSmtJYWlHODE1ZWRBV2JuSjVBRGNnSXEvNk4x?=
- =?utf-8?B?MGVoNzJuVERrNkoyOXlWVjUwK3F1QVlOaVNIcjNyMHI1bjFzTE9rRTZFVTgz?=
- =?utf-8?B?emJ3ZWJZSk9vbFlyb1NsOEV3Uk44Y0U0aEQxWDV6eE1TNVVpaVkvV2dlTmhP?=
- =?utf-8?B?T3VacTFHZUdCRXdqb2dWSjFsY0tXTnZ0dS9ZNHJETXFTVm42OWJ2REhxSGhs?=
- =?utf-8?B?dzkwNXhEN1BCUjU3TTBiTlR5RjRIRnVrVVdmOEFVVXh5b2JGN1hLYkNlRzRz?=
- =?utf-8?B?UDZqTnczdDgvbWdPRmlGVGs5aU5iQm96REJEQXBkcGxLdjl2eVFINlhrUjlu?=
- =?utf-8?B?Q1pLakxhMkVDc05RZTRQNzI3eEdUNU9uVGdveWlxRjhOR25vOXMxTUVkeGtq?=
- =?utf-8?B?STBaTUgweEh2VkxCdVdaTTN0WVp6ZEVpSnNKWm5CcGZmVnkrYmxnbGFCMk9U?=
- =?utf-8?B?YkcxVGJHY0Z2TFVTLzlOZnJKZzBkYUFJWnFsaXNzdWhoL2FmeW1JM0lDSXRI?=
- =?utf-8?B?NlBVYlV3YXVQME1WSnpwTm5ZUTNOTDgxdHF0OTZoL2V2UFBYUHdKV0JodjlM?=
- =?utf-8?B?NXdIcGtCaXluQTNyM0hpS2JvTld6M1pPRVZRSGZiWnVHaXcyanF2NHRwUDQx?=
- =?utf-8?B?R1JzakJqSHg2MGFXNW10YTJjaG1NOW82OExLdHZZa2o3ZHFDMzkwZk9YQVhk?=
- =?utf-8?B?MGRFVDdyTTR2SGZmejJtaGJWWXZ6bWJkYTBPbEllNUJWVWRUeTc1KzRqQjBt?=
- =?utf-8?B?ZXJWQ09CZ2NCS0crd3NYUTY4eVdiczRTdDJuWGhTWkpZWGxIZXBGV0o5Q2NF?=
- =?utf-8?B?Zko0d2tsaHZtaTZPWmR5UTFFd1RGalF6azdZQzN2V214RHJoeGd6c3AwaGxF?=
- =?utf-8?B?NklaYy9PSTlTQTloNU1tVFozS2tDeGg3N2gvRXRTTDg2SUFQNkczemhzNm00?=
- =?utf-8?B?Sm11aEJERXBVdEdUcWxaUGh5LzFtOTF3Qk9rZVU1cU5KZHVrTkErSGpLQjdR?=
- =?utf-8?B?MTBFLzVlamJZSHVwM0U5RWlkbGxVN1QyTEw2eGNSNWQ2b1dDTllmWk90MjZp?=
- =?utf-8?B?ZllPS0Y0ZE9PRjcwV0lLRUwwbVptbkRYbnd0Y1hMWC9GeHRRdW0rcHNSdFha?=
- =?utf-8?B?NmtIOEdxT1hnb0t1d0RDQnpUc3VQYVRhZzlFQVNBT0dOZXpsZDRzWGk0WjEy?=
- =?utf-8?B?VXNRVE85OWtPN3hxRVg5c0VHdEpUK21aS0V5VWU3NHBDaXFmVXR6LzUxcFBy?=
- =?utf-8?Q?DqZU=3D?=
-X-Forefront-Antispam-Report:
- CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:BN0PR10MB5128.namprd10.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(1800799024)(376014)(366016);DIR:OUT;SFP:1101;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
- =?utf-8?B?cE0yWmZFS0w5MDQwbDJOcnhicUF4TUdSY3J3dmtWRXZhQ2F6RGdjZDJJL0Fj?=
- =?utf-8?B?bnhiRzBJT1d2WmMyNUpDZjRrM2NXNUViL1U3RUprS0VLQlRQaWdDWDJHdUgz?=
- =?utf-8?B?bWdld1dmN1FvNGNPSmRoaURFLzNmaHQvc3lvdjA2WnZrZ2FyaFdVNkRvVjEy?=
- =?utf-8?B?VHh2aDZWSDg3a1N6R1VhS25hV2J5TVVUMEdHZElnMGtjZ3pmN0tsdXhZM3pw?=
- =?utf-8?B?MFd6eGtmYlEvS3hvVmhIR3NnT1AwOHQ0Sk16UmtDS0trVWVMR3N3ZTFqTGlk?=
- =?utf-8?B?ZkV0VUxxK3VoR2ZpMXBTa2xQWDhYRVlyb3YzRnYxb3lYaVN0TGM4c1IzaHVt?=
- =?utf-8?B?V3NlT3FSZkJ5OUdYLyt4dXJoNWpWZGErMU5CU0ZPUENBMENXWWVnZFFRZXpL?=
- =?utf-8?B?b0tBK09mK3JvbXVCYXF1VDNiY0Vlc2NoVFdSTVVZdXVrNFFYYXd1WTNFaFFh?=
- =?utf-8?B?a1ArMmV4QVJYUWgvdFloWHN5clZYRTgvT1IwRk0zMW9aMTZicjR2VDk1ZTFk?=
- =?utf-8?B?ZmVjSkpWTlNvWTRiRXYya2pIb1FENEFKSEh5ZWRRbEMzOXBzeHV4TmRRMWU2?=
- =?utf-8?B?UDlrQlJ6NUV1R0RBMFJwczFDNkxhK09ZaGZRR0czTUVSK09aTU1meEh4alZi?=
- =?utf-8?B?YUJ4T0FJZWFQRTU5VWFWRngxTHc4TUFzRUpCRzdRWWZxcEFMTDFFNWg5ZTFt?=
- =?utf-8?B?cDNuQW5reVBTZXFSY09nT1FuNUZyYTdJZHRvbW9xYlYvbTlUZ3dEaW5ISVlz?=
- =?utf-8?B?bUlMV1h1RGkwWVkxejJ0cUNPK1d5V2tkcS8zQWZrQWFKTXduRGgyMFhxdjRa?=
- =?utf-8?B?aVRSU0RwR25UdGhUbEdsOVpRbytXaTFOYWRaN1BHMXdhcGJ1eVdOTHlXc2xw?=
- =?utf-8?B?bXMvS1QwNmlmZWYySFVUaXJYUnJua20zejI4M1AranlhR1JIaGlQN2s0K0Q1?=
- =?utf-8?B?UVM0clNReHJZTDR2cGVhTEpnQko3TEtvbkIxWm9uczA1YllSUjduV2dCY2ZJ?=
- =?utf-8?B?VWg0S1l4NW94UTJTd3lKSnRjSWFRZkkxRnBydFI2dy9mOWlVMm5IT0Y5bDJa?=
- =?utf-8?B?QWpIWkRKbGQzNkxpYUxhVGsvNllheDNhTmhMYTB0c1FCZFU0c1daTHRlVnRh?=
- =?utf-8?B?a29kcEFuaXh1UTF3cFBMb2t4WFlrd0JWK3pwVmZ0MTRXM29HWUxNVUhsNVRQ?=
- =?utf-8?B?SDhtWVlpbk1FWlNyeVV6cW5MNm03OEU5cm84b29id0FLWE00RXhudER3L3p5?=
- =?utf-8?B?bnFOMyt4WHRZZUxYMWZLeHpXeE5EU2RHQzE0bE1Qamw2V1UySC9XWW4vZmVI?=
- =?utf-8?B?NHNOZGx5dTJXeFlHYXdwVWFkRXkvbGR3RHBEVUIwY1lWbWROaWN4WTZvdXBy?=
- =?utf-8?B?dDhmYUU4MzlOYTAxZjFOc2Y4RTN1ZlFFdyttam5vUkZaaDVpeFlQYStzVC90?=
- =?utf-8?B?T2pWaE1WVU82dmRLaUxEc1h5cE13U29jeDJwcFY4cTA0U3lwaU1tTDd3SmFE?=
- =?utf-8?B?UDc1b1NMbitLZ3B5ekpPeWpocHV1UHg0S2xmTWxYeGNheXJFTkNWaSt2UlBz?=
- =?utf-8?B?Tk5pdDY2aDRhMEcxQUJSd29ta0JWYkZUL05TR2o3MmkwVjh2NzJmbGtDcCtO?=
- =?utf-8?B?SDNvaWJOcUtsSHJZQzdDZ0tTR1U2dkVHaDkxZWt0SlpSLzk1RXYwQTRhWG03?=
- =?utf-8?B?SVRMR1BMRjFUMlcrVXM4YmpzS3lxVXc4TktiUStQUjBFQjNjT2RudWM0aVhk?=
- =?utf-8?B?QlpGNk5Ta3NEV0Vta3E5MUVJRFRDN3lZWUo4SFVISTlFRUVnTDF2Qlo0SVBM?=
- =?utf-8?B?Z29KQitjMzlkcnhWa3ZCcDRsNG1NcEhpWUZZSWlVMnRnY0JLZzhSOTZ0eEtP?=
- =?utf-8?B?U0p4cnFLK2lnaDlFQW5MSmltd0JqbXNRUXp4Q1NESVJUUitNNDlGeWtFVEJx?=
- =?utf-8?B?V2Fad0RzNHo2a0FFSnI1SEJVVTdQN3EybWp1c2pXZXI4a0F4S3NFZEh3Nmxr?=
- =?utf-8?B?K2I4eEpGZW4yeENjYU5IcTBYSFlXZ1kzalJpZllDdFBmaHZZSkg4aU0wUlM5?=
- =?utf-8?B?WjV4aGhFSWN1VXZwbzMwQzNzLy8yZnYxbFRwRjZMYjhQWDl1MXhxMVhiR1Va?=
- =?utf-8?B?RXYyUklyRGt5U0FkUkFtSzRiSjFRZ2ZkejRXR3JyM1NkbVRGK0tOQ0JCY1Ex?=
- =?utf-8?B?YlorMnFFUVdxRkgwL2xtS2x6R2FBSjJTdDhXNHA1VC95NkdqeDcxUTNoUHlP?=
- =?utf-8?B?cUhFS05kQ0M1d0hlclFxc3phcmo2K24zQWxNL2FvbUpBTkYzL1pIdk1aeUJZ?=
- =?utf-8?B?NGZXcWx6c1NJaCs4d2RMWHhSYzh1ekErUnVKNHFjUTh0OTRNdFh5dz09?=
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-ExternalHop-MessageData-0:
-	Bu4jcVlrJmr97t3puTta3zeLpLT2rXpwZnTYrk6zeBhTbJEh7+LblLwHffZVufEeBfXDPuIObGJLgGQ2ekuxKkIAFi5fRuqX/CSfxNqskFYdQ/WyUAriO9PW41V2FOIHYJICHQDUdq0XZsdKo0XN/iNkE+ZJnwSx+o6HYfQCBIi3r/iYbLMkWZcerK/gRCU2xGv6DKY2MD4BJt4kWjbbWzFWubmZo8B1SHbxNm61ah3HTJ8TVCu/Oawx45utqlDfzmaVFHkcn0vJRQbV4Y+rOCgxSvCx7TokmkMYvZB65dOjDe+8iIsGjekj45Yr8LEsEFoG9q5AI+/0nPT9q9WcIuN404aOe87IvQZ6ZyH3lLSre0akporhF/klBVBAGs2hmCYSL0ipgT6u4fdEZmtB9q7qys07tbAp5J8QqzF/qTEKWhlUKEjdhmaSOGFxr6UJddN59vELiiexHBp8aj58zeC4jziGXqVchQnnDQE1CwogC/P9SH04EaNawSRre56nmF6jjJfuRfOvuLOGubY4wvdPG6r0dDLo9ws1ykq4DqhnyYSMeneKiAO1XaWEe846oWIjZU7l8hAiZsrEWigfp3GcjD6363C1H4YrXDUSQLY=
-X-OriginatorOrg: oracle.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 629b89a4-4ffe-4096-30f1-08de5f3ec3fe
-X-MS-Exchange-CrossTenant-AuthSource: BN0PR10MB5128.namprd10.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 29 Jan 2026 14:00:31.5348
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 4e2c6054-71cb-48f1-bd6c-3a9705aca71b
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: wTcj7ymS0iiF24zSeZDchD3lzjfggVC/7CdIm3iVAMWZ8V6R8UM6tmu54n1CYfqByfFtm8qWp85zq39lMt8IMg==
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: MN2PR10MB4221
-X-Proofpoint-Virus-Version: vendor=baseguard
- engine=ICAP:2.0.293,Aquarius:18.0.1121,Hydra:6.1.51,FMLib:17.12.100.49
- definitions=2026-01-29_02,2026-01-28_03,2025-10-01_01
-X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 adultscore=0 bulkscore=0 phishscore=0
- mlxlogscore=999 mlxscore=0 spamscore=0 suspectscore=0 malwarescore=0
- classifier=spam adjust=0 reason=mlx scancount=1 engine=8.12.0-2601150000
- definitions=main-2601290095
-X-Proofpoint-ORIG-GUID: c1AHGnHmKIbHByG64PcvawshATmGQD4V
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwMTI5MDA5NSBTYWx0ZWRfX2xHXVZJ/Mc4t
- ElIgTfxzptMe3Fnv1HCMtCtyJfyqveO4ltQWi4GNArgR1BEl0q7LFWhLW0p3S350ssfM+H5tZr0
- YsPSdAtaRLgq/3GpKsiaYDyNVDUF8FiYBqf0exD8jFI7ktyWF4eaXBVRCqFiQmg/r+7Rbec31mT
- aJCuEbWJ4sd8DqSlTrMcHLq2gWTbywNRW7W9S+aNYe0sJWqQPQvPSpgtI4i+2TrHVCvn5uR54Nm
- LcKkD/q0zX4Zj4KHRza4xZAP1Gsuyfl+kYUuVA2kB2tWc5D/EBZ+7tlzr4G7l3iYsc81EhKVSY3
- FijoSPIznXIaDleHv1k1flY1f0MCYybWRTrUwwzPwDMjjqU3yLD737aAY0l+tMtH03SC22TtEg8
- aRtG5LhUDkS7v7uNctHYFB4Kk3McCTRuE3lU/YFR9eh61NHotDBJ6PQkagpZzqs4g2Xh19pO3Yq
- Aitr78d356Ja9bdaQ+z9ZKN6ClEyAP4AnubR0ge8=
-X-Authority-Analysis: v=2.4 cv=Qe5rf8bv c=1 sm=1 tr=0 ts=697b6805 b=1 cx=c_pps
- a=zPCbziy225d3KhSqZt3L1A==:117 a=zPCbziy225d3KhSqZt3L1A==:17
- a=6eWqkTHjU83fiwn7nKZWdM+Sl24=:19 a=z/mQ4Ysz8XfWz/Q5cLBRGdckG28=:19
- a=lCpzRmAYbLLaTzLvsPZ7Mbvzbb8=:19 a=xqWC_Br6kY4A:10 a=IkcTkHD0fZMA:10
- a=vUbySO9Y5rIA:10 a=GoEa3M9JfhUA:10 a=VkNPw1HP01LnGYTKEx00:22
- a=yPCof4ZbAAAA:8 a=Mpv7J8D6AfeNBrESBwgA:9 a=QEXdDO2ut3YA:10 cc=ntf
- awl=host:12103
-X-Proofpoint-GUID: c1AHGnHmKIbHByG64PcvawshATmGQD4V
 
-On 1/29/26 5:02 AM, Amir Goldstein wrote:
-> Christian,
-> 
-> This v4 addresses Chuck and Jeff's review on v3.
-> 
-> The first doc patch is applicable to the doc update in vfs-7.0.misc.
-> The 2nd fix patch is independent of the doc changes in vfs-7.0.misc,
-> so it should be easier to backport.
-> 
-> Thanks,
-> Amir.
-> 
-> Changes since v3:
-> - Fix typo and doc comments from Chunk
-> - Add RVB
-> 
-> Changes since v2:
-> - Rebase over vfs-7.0.misc
-> - Split to doc/fix patches
-> - Remove RVBs
-> 
-> Amir Goldstein (2):
->   exportfs: clarify the documentation of open()/permission() expotrfs
->     ops
->   nfsd: do not allow exporting of special kernel filesystems
-> 
->  fs/nfsd/export.c         |  8 +++++---
->  include/linux/exportfs.h | 21 +++++++++++++++++++--
->  2 files changed, 24 insertions(+), 5 deletions(-)
-> 
+On Wed, 2024-07-24 at 09:53 -0500, Seth Forshee (DigitalOcean) wrote:
+> Christian noticed that it is possible for a privileged user to mount
+> most filesystems with a non-initial user namespace in sb->s_user_ns.
+> When fsopen() is called in a non-init namespace the caller's namespace
+> is recorded in fs_context->user_ns. If the returned file descriptor is
+> then passed to a process priviliged in init_user_ns, that process can
+> call fsconfig(fd_fs, FSCONFIG_CMD_CREATE), creating a new superblock
+> with sb->s_user_ns set to the namespace of the process which called
+> fsopen().
+>=20
+> This is problematic. We cannot assume that any filesystem which does not
+> set FS_USERNS_MOUNT has been written with a non-initial s_user_ns in
+> mind, increasing the risk for bugs and security issues.
+>=20
+> Prevent this by returning EPERM from sget_fc() when FS_USERNS_MOUNT is
+> not set for the filesystem and a non-initial user namespace will be
+> used. sget() does not need to be updated as it always uses the user
+> namespace of the current context, or the initial user namespace if
+> SB_SUBMOUNT is set.
+>=20
+> Fixes: cb50b348c71f ("convenience helpers: vfs_get_super() and sget_fc()"=
+)
+> Reported-by: Christian Brauner <brauner@kernel.org>
+> Signed-off-by: Seth Forshee (DigitalOcean) <sforshee@kernel.org>
+> ---
+>  fs/super.c | 11 +++++++++++
+>  1 file changed, 11 insertions(+)
+>=20
+> diff --git a/fs/super.c b/fs/super.c
+> index 095ba793e10c..d681fb7698d8 100644
+> --- a/fs/super.c
+> +++ b/fs/super.c
+> @@ -736,6 +736,17 @@ struct super_block *sget_fc(struct fs_context *fc,
+>  	struct user_namespace *user_ns =3D fc->global ? &init_user_ns : fc->use=
+r_ns;
+>  	int err;
+> =20
+> +	/*
+> +	 * Never allow s_user_ns !=3D &init_user_ns when FS_USERNS_MOUNT is
+> +	 * not set, as the filesystem is likely unprepared to handle it.
+> +	 * This can happen when fsconfig() is called from init_user_ns with
+> +	 * an fs_fd opened in another user namespace.
+> +	 */
+> +	if (user_ns !=3D &init_user_ns && !(fc->fs_type->fs_flags & FS_USERNS_M=
+OUNT)) {
+> +		errorfc(fc, "mounting from non-initial user namespace is not allowed")=
+;
+> +		return ERR_PTR(-EPERM);
+> +	}
+> +
+>  retry:
+>  	spin_lock(&sb_lock);
+>  	if (test) {
+>=20
+> ---
+> base-commit: 256abd8e550ce977b728be79a74e1729438b4948
+> change-id: 20240723-s_user_ns-fix-b00c31de1cb8
+>=20
+> Best regards,
 
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+I sent an incorrect RFC patch for this yesterday, but this patch breaks
+NFS mounting in containers for us, as the prohibited activity is
+exactly the process we use to do them.
 
+We basically have a task in the container do an fsopen() and then pass
+the fd to a daemon in the init namespace via unix socket. The daemon
+vets the NFS mount parameters (ensuring that the mount options are
+sane, and that we trust the server), and then does the mount inside the
+container.
 
-
--- 
-Chuck Lever
+We don't want to set FS_USERNS_MOUNT on NFS, because that would give
+the container carte blanche to mount anything it likes, even a
+malicious server. Do we need to split that flag into two? Maybe
+FS_USERNS_SAFE and FS_USERNS_MOUNT?
+--
+Jeff Layton <jlayton@kernel.org>
