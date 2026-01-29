@@ -1,200 +1,120 @@
-Received: from DM1PR04CU001.outbound.protection.outlook.com (mail-centralusazon11020105.outbound.protection.outlook.com [52.101.61.105])
+Received: from canpmsgout05.his.huawei.com (canpmsgout05.his.huawei.com [113.46.200.220])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7E1CD36C58F;
-	Wed, 28 Jan 2026 21:24:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=fail smtp.client-ip=52.101.61.105
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769635485; cv=fail; b=buo0m1Q2BVK5cpPKUgs9bmAsKdUUwU4ol+12ag1kJrEtAzvjUnIOTWlyqnNDy5er3w0mVJsrhvik7x4c8s6sS3utOGQ1axYt/SEKu/1sBMtnp78IhhKvjAhuQdYSqbaZom0Xuzh33Sbbm/kmVjMqZA679QjyyTHMNIUVHlZhvKQ=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769635485; c=relaxed/simple;
-	bh=vOmdYxIpys1IewPZZ2tPjatGdm4n2HBSSn/gjouwD94=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=cemgrrliEjHLoaSot6IZjd+LszCpfBs9xSPbZgKF3sJHPaukT7UfpDs75lbZOypF4P3V+f9KNox9TIaJd9hmT6sUMxP9PBXVdxyiZeR3dKvoLdShakrFeT+isN2+2iA/KwYGY8lWA/rVa9hJOcuQ/z5FeWtYMyG9rf9YnDBiAM4=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=QT7gFl1v; arc=fail smtp.client-ip=52.101.61.105
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BD9F837A49F
+	for <linux-nfs@vger.kernel.org>; Thu, 29 Jan 2026 07:06:49 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=113.46.200.220
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1769670413; cv=none; b=NBIszAFcgNobd2Q0LydrnQSdvWLLEjNrOV1FA6qcGPOqj74Zv5FAu7nVM0j1NLM960oJ5O0BH4ypjqeLzyL3uPgBSOjecZXvzplKuy9EcxQxk4oCgNQ/WORBato6DjNKrDT5r7qWgnJUzhYRE8yxxHqHRgVrsso97oo0O154GEM=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1769670413; c=relaxed/simple;
+	bh=Aq6yNVPUZ2ySAfjwsJz0qYvL1TAfqyx7JBKHvD/oY68=;
+	h=Message-ID:Date:MIME-Version:Subject:To:CC:References:From:
+	 In-Reply-To:Content-Type; b=tl9NuipvQCUNlPDazVI3QVT+NmRReZjG03l4qOKenQDkdiyBqjUOr06ap4fbflcyU2gUQpoREgui4MiMZoHSrzfd0RyQUxAhhBHLwK1qFHRxVDBEQkZxo8XNl7CyWXtu0VtIQ3BEVuhDydqiJM7dvnJtWBfw8/k7kIh6JkgMnsM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=gnDR5WQG; arc=none smtp.client-ip=113.46.200.220
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="QT7gFl1v"
-ARC-Seal: i=1; a=rsa-sha256; s=arcselector10001; d=microsoft.com; cv=none;
- b=X3YfNqc2NATC78ZOjEZMTYmeJ3XDMU28gxKkRbxMSLPaSC6vIfdzl+J+A03/sZNjT9tYSFAsx7e4eNvNk5AvzvPNRqRBh8dr8PIRUNIhzjif7P+c14eaAifIzIdShcU+Cf6ukAyMQru7vbMmoxlrX6mfVbKDBfy+CvVJDu07UwWt5jFx9xZO5DwljX92GXF3ligPcGPlPdUdXxjLp9XwpR179NkLUcB6JqCU9isSvjBRdPw3STw/GHY4xrj7lPXYDst3d59UEHO2Wh6OzYSyacgaZ6sw9ulThPn3JdefzNQ7/JwMMKvRP0aJcVn48F0+HmMmG3PZ/otRtU1qk3XSgw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=microsoft.com;
- s=arcselector10001;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-AntiSpam-MessageData-ChunkCount:X-MS-Exchange-AntiSpam-MessageData-0:X-MS-Exchange-AntiSpam-MessageData-1;
- bh=TUXXjra1HfAfCgRzRLmI2MjpRkE724AXTJ43T9C0TEg=;
- b=GEPGzAp4YRqM4Y8B/z4EyBAvtvvSHvLnaLCLYomhcdnOJYB8Tgt1x4fnRzdvNwktNJb4XuTiYcQAjVpeGt4I6x4f8yRElVavDi72B76ZhRO1GzK7s3ByujD1J+codTnRFqiyyK8PxyT3FpacXbTyaZvQDQbgJMHIxB3YnPjHdixhneSEvffydpaVVKOUfu5s3mEVQFtVpSFm/4CA24nsmNRG5RpPW7H5gHWD/aJgcpLnrUCTgNBICOpuk5Q0IRDsJF7xUhbxSToYT85XdAdaCEwupIOiKMooJRWYn9C+qNw3q1gSR0thd4hoc3iryB4tJi77/oZrZvhJR2n4Lshghw==
-ARC-Authentication-Results: i=1; mx.microsoft.com 1; spf=pass
- smtp.mailfrom=hammerspace.com; dmarc=pass action=none
- header.from=hammerspace.com; dkim=pass header.d=hammerspace.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=hammerspace.com;
- s=selector2;
- h=From:Date:Subject:Message-ID:Content-Type:MIME-Version:X-MS-Exchange-SenderADCheck;
- bh=TUXXjra1HfAfCgRzRLmI2MjpRkE724AXTJ43T9C0TEg=;
- b=QT7gFl1vS+UW1CfxsSFW9WTb4u54HAsJjmNWJmhoOEksxuxdr8WWfcYKiGP40heBur3hK1CRI2hMBeMxpLe2s/G2GEMVZFjUYb7NJ8gNeE3/pCP16eSfFKXtwxr8ZyUWbZ9S0UBn8PFKkYLmJFVxa/xeScYEiVo2MdjxWgqaPMM=
-Authentication-Results: dkim=none (message not signed)
- header.d=none;dmarc=none action=none header.from=hammerspace.com;
-Received: from DM8PR13MB5239.namprd13.prod.outlook.com (2603:10b6:5:314::5) by
- PH0PR13MB4858.namprd13.prod.outlook.com (2603:10b6:510:98::7) with Microsoft
- SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
- 15.20.9564.7; Wed, 28 Jan 2026 21:24:39 +0000
-Received: from DM8PR13MB5239.namprd13.prod.outlook.com
- ([fe80::fa6e:7b5:d1ec:92f3]) by DM8PR13MB5239.namprd13.prod.outlook.com
- ([fe80::fa6e:7b5:d1ec:92f3%4]) with mapi id 15.20.9542.010; Wed, 28 Jan 2026
- 21:24:39 +0000
-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: Chuck Lever <cel@kernel.org>
-Cc: Trond Myklebust <trondmy@kernel.org>, NeilBrown <neil@brown.name>,
- Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>,
- Anna Schumaker <anna@kernel.org>, Eric Biggers <ebiggers@kernel.org>,
- Rick Macklem <rick.macklem@gmail.com>, linux-nfs@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-crypto@vger.kernel.org
-Subject: Re: [PATCH v2 3/3] NFSD: Sign filehandles
-Date: Wed, 28 Jan 2026 16:24:35 -0500
-X-Mailer: MailMate (2.0r6272)
-Message-ID: <5C6C8838-9244-476A-87CF-123F4822F459@hammerspace.com>
-In-Reply-To: <041a37d8-c114-4ac0-875d-022e9d07aac8@kernel.org>
-References: <> <e545c35e-31fc-4069-8d83-1f9585e82532@app.fastmail.com>
- <176921979948.16766.5458950508894093690@noble.neil.brown.name>
- <686CBEE5-D524-409D-8508-D3D48706CC02@hammerspace.com>
- <77e7a645-66bd-4ce2-b963-2a2488595b00@kernel.org>
- <8be0a065a84bed02735141b4333e9c49a2ab0c90.camel@kernel.org>
- <33c02e5a-03e7-42ef-8ccd-790a9b29a763@kernel.org>
- <D3263C1D-A15E-48EC-B05A-8DC6A0C2B37A@hammerspace.com>
- <041a37d8-c114-4ac0-875d-022e9d07aac8@kernel.org>
-Content-Type: text/plain
-X-ClientProxiedBy: PH8P221CA0055.NAMP221.PROD.OUTLOOK.COM
- (2603:10b6:510:349::8) To DM8PR13MB5239.namprd13.prod.outlook.com
- (2603:10b6:5:314::5)
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="gnDR5WQG"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=QPK2HRrQHIl0h9whx8a1sY0O1BgsMGMdj+gva95r28I=;
+	b=gnDR5WQGckkYLm/dCkVsOPiyG+UJnBRj51cBf5JDcu66ywBvmZ7BJsiz1udJoikfSidevwct5
+	Iy207fBclVynFOGZMB7ivuTzgf1bMX7qVf6nO+nJXH5MTmU6DDTz+92KJCDt4q9jOExf36rI0yF
+	clrov1KbzRJadGwbPY4Pano=
+Received: from mail.maildlp.com (unknown [172.19.162.144])
+	by canpmsgout05.his.huawei.com (SkyGuard) with ESMTPS id 4f1qpg6Kypz12LDG;
+	Thu, 29 Jan 2026 15:02:51 +0800 (CST)
+Received: from kwepemj200013.china.huawei.com (unknown [7.202.194.25])
+	by mail.maildlp.com (Postfix) with ESMTPS id 9939B40538;
+	Thu, 29 Jan 2026 15:06:45 +0800 (CST)
+Received: from [10.174.179.155] (10.174.179.155) by
+ kwepemj200013.china.huawei.com (7.202.194.25) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id
+ 15.2.1544.11; Thu, 29 Jan 2026 15:06:44 +0800
+Message-ID: <cb5cd472-8989-451d-9da7-7d250027c27e@huawei.com>
+Date: Thu, 29 Jan 2026 15:06:44 +0800
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-MS-PublicTrafficType: Email
-X-MS-TrafficTypeDiagnostic: DM8PR13MB5239:EE_|PH0PR13MB4858:EE_
-X-MS-Office365-Filtering-Correlation-Id: 9f509039-2416-4000-c921-08de5eb3a4cd
-X-MS-Exchange-AtpMessageProperties: SA
-X-MS-Exchange-SenderADCheck: 1
-X-MS-Exchange-AntiSpam-Relay: 0
-X-Microsoft-Antispam: BCL:0;ARA:13230040|7416014|376014|366016|1800799024;
-X-Microsoft-Antispam-Message-Info:
-	=?us-ascii?Q?+K3inGQT9A/Gbfu3hKxB1n8P2h7nVOoI2WlZQ2qSkfoi7YnY2bRLOyphiGGx?=
- =?us-ascii?Q?gNmsD4TdL/g5Dil1Qwch/ntQ8ful2LmZd6ZXIwMIgQILuJ7We+almATUi1DV?=
- =?us-ascii?Q?yNuRCLcZH8wY0fhgRhcP/bFUisxaFYdaVE3dD9FfHfNpMiaLdE0JqJW8gjvy?=
- =?us-ascii?Q?chhmW71xBQFmKeObUlDuayZ7ZmgelUKl6rGXmzJnde00a9PyZcl4Q7vSn6JI?=
- =?us-ascii?Q?ZTuMphLWgmzHf5piEOsn+FoDoyS8leSNFmMZRVRVFr4vkz/RswqGnI2IWxmZ?=
- =?us-ascii?Q?JCq4dJ6NW8GF6qMktqYVbpl3OLnSbFvrdP34NUpcXtlXRtELjBF8fa9kymkO?=
- =?us-ascii?Q?BpLEFO3MQOChZmwjbpxIlWi+mb36JiSg8RwIGY7dVOFyI1pzSWEVVimWHVvc?=
- =?us-ascii?Q?IriJeiNd0FN0bO+l50XI95Ea0q3VgG4+Zl+V2eeHpGYZpHTwtBTRljVKASqk?=
- =?us-ascii?Q?mfHXhucP8oVCnDl26W3SCwLS5hfx3OdmachxJxb2z9Pz4N8zBwBabeI7sqFB?=
- =?us-ascii?Q?dnQTyjTwvuJr5GpKiNJt86R/N6As5YTqloOobF5Hl6p8Z9yDLyXSP78I+DbG?=
- =?us-ascii?Q?FbTBcoI0VommnyP0Ty3OpbzVNLMIEx7l+9C6G7T5c14VPWObR+9fe7zuP+hh?=
- =?us-ascii?Q?vX5wwOiabdjL7gTRkh3TXjMfQ1yarE9GOigK9iGyLQtY1LtGnPOY+ElpUbf+?=
- =?us-ascii?Q?9vyaPNa8BH8hOlCJZBI/aLClZRXErLZxyagD1Qyc1/c/XTU3t352FmpA+L4N?=
- =?us-ascii?Q?xtVCb/1qQb6Hb2Tfm9sme+5UmjeVYdW9QPtOgTzBtrAttMQjd6WijG7jzUli?=
- =?us-ascii?Q?V7JqBGPjNf/mkSFpY8h5pe+cAoIe/4PE2I+hrDtLWfLszvzpVCWPbdhOj0Zx?=
- =?us-ascii?Q?20AW3Ue2SmY2d5R/HsCrdtVplLFBjCX4xSSQF1HP+9RAJKlCrabU4UkcUjP1?=
- =?us-ascii?Q?22COeJuSMXgBfKAj7kkiLk9pvMHgq/qcloraVzn8WozrJB8tiQ8tNvKbB67d?=
- =?us-ascii?Q?VqGrrzkU/8E+rzhWf1HMSyoHhi1Z6pIa3T91P2Km87Cp6yntzCfPBKJBKB7F?=
- =?us-ascii?Q?fRAe+GXzPMXolUD6+0QiyqoLNC0/W7SdH9/hmZrrosD09VsQjXRiDAsyL5Bv?=
- =?us-ascii?Q?wtX92c/jW8amXnh3y3kMV7b3DePss7fIRa7KS5XDS3V9C2XiSG2dqnA1n4kK?=
- =?us-ascii?Q?ymnBBtCDQiygtqZpDq4RoXJhUJ3iwusTWvFSXn9lJXQHlDJRUeMr2TZcZiLr?=
- =?us-ascii?Q?ioB5F6WV6rlMeAULG3caPRrsAfItB8/DO6nRpvMrFqEjK6pXxeJN7aMq2PGc?=
- =?us-ascii?Q?M5XgbkB7vRgEPbwI25/lvFWkcn7dNbZ2bSp43jbwGs7wcamUG7VbWNon5p7g?=
- =?us-ascii?Q?Esi4ENI+dXtNm5FOmhqTOZ4Gpf6TUwVGsHyUkDoIqBP6JdL8t5vy0NbT2JoA?=
- =?us-ascii?Q?91Xjjw8+RBvx4g7ymPr0eKVxyy9qNgXA4RCAcXX4A6a33MWc3Iqsw36Iaadj?=
- =?us-ascii?Q?YVu7R1OyPdFpSjZ2hLIwzaZW9ln4kUH2128knC78YppheMTjfz4cXT3WsSFr?=
- =?us-ascii?Q?Oe94gcY2Enr798dRI4s=3D?=
-X-Forefront-Antispam-Report:
-	CIP:255.255.255.255;CTRY:;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:DM8PR13MB5239.namprd13.prod.outlook.com;PTR:;CAT:NONE;SFS:(13230040)(7416014)(376014)(366016)(1800799024);DIR:OUT;SFP:1102;
-X-MS-Exchange-AntiSpam-MessageData-ChunkCount: 1
-X-MS-Exchange-AntiSpam-MessageData-0:
-	=?us-ascii?Q?Awx4Ax8x/jETQpdiAukVQ9q3zJKmAOoCNb5G+1ZlHCRhBL6qJzMj/HXxUivI?=
- =?us-ascii?Q?BF0gORH/O/x1oGG/0MAoUBBfW7iWuOfjELhn0vKFVP74b113hYJQxd10gkJN?=
- =?us-ascii?Q?XqMpdVJ7DBbZM38OAww9X8f3qNI7ltHlBpbgK/5Vx7RzCPfnFHqFn3zo6iKk?=
- =?us-ascii?Q?TCtje831LQ2AGDpFzBsSzr2NQtdS9y/Zsx4orEOXHZM57Tv/PJZYTMvXvFwG?=
- =?us-ascii?Q?rjLaU7GqMByZHHp9OealDKiER4OPYtk+qKUMg5BcXHKcx4dpgZp6btEa3Usn?=
- =?us-ascii?Q?xLNJ599HBk7eRxhm6+Xp4xCWV8C1BADAWsWRe6tLCQczODjhhPP9r3hMmBxc?=
- =?us-ascii?Q?vNWon3sGumW9/3emjKREKEpRERoNi8uwUwLC6CxEhlx/DrKfGVW3R1kLV8sW?=
- =?us-ascii?Q?JVo1+bp2VJGlEqjicJUpyxPK7f+Vp1tuJP/YB+46vSJcK+FHp08tnbK284zu?=
- =?us-ascii?Q?Ih1dDLiP5K6210ilmu8Cb1hFc6QjYgLGPT/AlRRXUnfebfVSpDpZ7Vb6Ay4L?=
- =?us-ascii?Q?HW3uJUttQVgCHXzpDVKpXNIWBDmzOZpXGM7raZELSSlIESV0WCWkwJG3OXoq?=
- =?us-ascii?Q?Nzf2HqlUC700q3LVwV8c52s5Ztf1/Cz8gXNaRwg3iAttQQFOL4bA+XdwsOd2?=
- =?us-ascii?Q?FJOM8H55AhpNjeCNieJE0ElaedP+D0Li3JxyYsGfEA3pp70q5ORq7ufzZQIV?=
- =?us-ascii?Q?sddl/nrSPIhPLq5WnPocdyRXkCNp+f0+zZejdVJGVXjNnEajJ1lYJn+lnnVV?=
- =?us-ascii?Q?dGAYADcy9K3pzsF3HM5kFnQyz1PnvN/mQCL7ArlijRURW2U4rw6sxXs0oMDY?=
- =?us-ascii?Q?C+eypaKWAMonZJjiqXB93xiybCKZen4wtDDJRC7oSEHlHmLjQ5IOcq1bOEWv?=
- =?us-ascii?Q?kr+jL/IjZH5EEZxu5E1Y7SM4ka/a2yTh3OXE7wkueFzA/VNEb9xP2emoXBCd?=
- =?us-ascii?Q?Eqf3U6kYli9suaIUp5/PQ631/J2jyssPQdDWneQlLcAsxwvq8i1yT9C0cH7B?=
- =?us-ascii?Q?etj+O+Dd8+XwDGgcJ2c5iGFwhzC2EEtpeCjyZzs53PRD6Du1zUr0AQmJVcXW?=
- =?us-ascii?Q?XFA2d4XTyjQDRhsnvv01GGEKds/zp4AZRBj5MakUwhjsoAmN+KZ6agVnqffs?=
- =?us-ascii?Q?HEczqqWHJcYF/tyDAWvhiebD7Suzr2MB/kIH0/9LxlOK4jmjAD+ZpjRy0ZNm?=
- =?us-ascii?Q?i66NBvBisnpkwzAaBmy4KivnDxzfHi0ysa3RpaoRoBPaLNcj7BF58fMuY2sg?=
- =?us-ascii?Q?bFG+SnsTS8r2FgyIM6lHqojb0CAU4JoKy1X25m7fOyfyursYFVny8J/QPG7L?=
- =?us-ascii?Q?P/sdmaeAKzV0hXbPbTuVFfMqxHWAVF4Rrkz53piaafaFPOqi0+GDZIoMYHtk?=
- =?us-ascii?Q?XToG5I2xcZVykAxaCX5suHAOVukcsFXhXVvm2CFUbqfsYt4thoKRusDikxIT?=
- =?us-ascii?Q?gMWwNXpSrwwNPm9DqxQZA9ACr8ucyaf+MmadrqD+EqzNz+uvop3+GwnWP7Dl?=
- =?us-ascii?Q?EEVPDwYYhNUR9MmQxGiv5SxrBLtdxVQtOQSoleOZVvgGgAJRPSRjUZfnpQu9?=
- =?us-ascii?Q?d4EDO7VAgEm5p+zPXcKhfjkI/tpIfkZ8FR71XEq2weIy8aCjQiBkVEV3k/KR?=
- =?us-ascii?Q?48NO2Vm9cSw95TZ4GF0p71PBpMMUmQHwkcrKdvrdnej4+OK09zoVSAqy6Sb2?=
- =?us-ascii?Q?meZTZ2HHD3giEVCVw3qJm/XwwaawWTtRSXbfLSe4Ez8jnxMGC323lGOV17k6?=
- =?us-ascii?Q?9DmOr1SkZ1BpdOhMRQkgmOy0CIWknYQ=3D?=
-X-OriginatorOrg: hammerspace.com
-X-MS-Exchange-CrossTenant-Network-Message-Id: 9f509039-2416-4000-c921-08de5eb3a4cd
-X-MS-Exchange-CrossTenant-AuthSource: DM8PR13MB5239.namprd13.prod.outlook.com
-X-MS-Exchange-CrossTenant-AuthAs: Internal
-X-MS-Exchange-CrossTenant-OriginalArrivalTime: 28 Jan 2026 21:24:39.2147
- (UTC)
-X-MS-Exchange-CrossTenant-FromEntityHeader: Hosted
-X-MS-Exchange-CrossTenant-Id: 0d4fed5c-3a70-46fe-9430-ece41741f59e
-X-MS-Exchange-CrossTenant-MailboxType: HOSTED
-X-MS-Exchange-CrossTenant-UserPrincipalName: in1nR9INICCYzhRgk25SXJeW0wwlfc1BVKRbmWTpQWRg2vIigxyjeWjPqG6lWuxHeRsPTjqwsXawSbAjhrAjD3349aSGhWmzYvEWfS7fkAA=
-X-MS-Exchange-Transport-CrossTenantHeadersStamped: PH0PR13MB4858
+User-Agent: =?UTF-8?B?TW96aWxsYSBUaHVuZGVyYmlyZCDmtYvor5XniYg=?=
+Subject: Re: [PATCH 0/6] Fix up NFS client mount option regressions
+To: Trond Myklebust <trondmy@kernel.org>, Alkis Georgopoulos
+	<alkisg@gmail.com>
+CC: <linux-nfs@vger.kernel.org>, yangerkun <yangerkun@huawei.com>,
+	"chengzhihao1@huawei.com" <chengzhihao1@huawei.com>, "zhangyi (F)"
+	<yi.zhang@huawei.com>, Hou Tao <houtao1@huawei.com>,
+	<wangzhaolong1@huawei.com>
+References: <cbd4d74d-21c4-42d6-9442-276fd98313ee@gmail.com>
+ <cover.1764388528.git.trond.myklebust@hammerspace.com>
+From: Li Lingfeng <lilingfeng3@huawei.com>
+In-Reply-To: <cover.1764388528.git.trond.myklebust@hammerspace.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Transfer-Encoding: 8bit
+X-ClientProxiedBy: kwepems100001.china.huawei.com (7.221.188.238) To
+ kwepemj200013.china.huawei.com (7.202.194.25)
 
-On 28 Jan 2026, at 9:41, Chuck Lever wrote:
+Hi Trond,
 
-> On 1/26/26 1:22 PM, Benjamin Coddington wrote:
->> On 24 Jan 2026, at 14:48, Chuck Lever wrote:
->>
->>> I can't recall if Wireshark is smart enough to introspect Linux NFSD
->>> file handles (I thought it could). It would be sensible to have some
->>> Wireshark update code in hand before making the final decision about
->>> keeping the new auth_type.
->>
->> I've gone digging and wireshark has a surprising amount of filehandle
->> dissection code - it currently can "Decode As:"
->>
->> dissect_fhandle_data_SVR4
->> dissect_fhandle_data_LINUX_KNFSD_LE
->> dissect_fhandle_data_LINUX_NFSD_LE
->> dissect_fhandle_data_NETAPP
->> dissect_fhandle_data_NETAPP_V4
->> dissect_fhandle_data_NETAPP_GX_v3
->> dissect_fhandle_data_LINUX_KNFSD_NEW
->> dissect_fhandle_data_GLUSTER
->> dissect_fhandle_data_DCACHE
->> dissect_fhandle_data_PRIMARY_DATA
->> dissect_fhandle_data_CELERRA_VNX
->> dissect_fhandle_data_unknown
->>
->> .. almost all with finer grained filehandle components.  I certainly can add
->> patches to parse FH_AT_MAC for the linux(s) decoders, but I admit I don't
->> have any use case.
->>
->> I'm completely neutral on keeping FH_AT_MAC at this point.
+在 2025/11/29 12:06, Trond Myklebust 写道:
+> From: Trond Myklebust <trond.myklebust@hammerspace.com>
 >
-> If we can't find a use case or need for something, the usual practice is
-> to remove it from your patches until we have one.
+> The recent changes to suppress the 'ro' and 'rw' mount options when
+> mounting the same NFS filesystem with different settings are causing
+> confusion with users, and are an unnecessary restriction. They represent
+> a functionality regression.
 >
-> Is anyone working on Wireshark patches to handle signed Linux file
-> handles in some kind of sensible way?
+> The following patch set reverts the regressions, before applying a
+> different set of fixes to address the original problem, which was one of
+> the NFSv4 mount automounter code failing to propagate the correct mount
+> options.
+>
+> Trond Myklebust (6):
+>    Revert "nfs: ignore SB_RDONLY when remounting nfs"
+>    Revert "nfs: clear SB_RDONLY before getting superblock"
+>    Revert "nfs: ignore SB_RDONLY when mounting nfs"
+>    NFS: Automounted filesystem should inherit ro,noexec,nodev,sync flags
+>    NFS: Fix inheritance of the block sizes when automounting
+>    NFS: Fix up the automount fs_context to use the correct cred
+>
+>   fs/nfs/client.c           | 21 +++++++++++++++++----
+>   fs/nfs/internal.h         |  3 +--
+>   fs/nfs/namespace.c        | 16 +++++++++++++++-
+>   fs/nfs/nfs4client.c       | 18 ++++++++++++++----
+>   fs/nfs/super.c            | 33 +++------------------------------
+>   include/linux/nfs_fs_sb.h |  5 +++++
+>   6 files changed, 55 insertions(+), 41 deletions(-)
+After this series of patches was merged, I found that the issue described
+in link [1] has appeared again.
 
-Well the other use-case might just be for those pynfs tests you were asking
-for.  Without FH_AT_MAC, its tricky for pynfs to know if its getting signed
-filehandles or not.
+[root@nfs-client1 ~]# mount /dev/sda /mnt2
+[root@nfs-client1 ~]# echo "/mnt2 *(rw,no_root_squash,fsid=0)" >/etc/exports
+[root@nfs-client1 ~]# systemctl restart nfs-server
+[root@nfs-client1 ~]# mount -t nfs -o ro,vers=4 127.0.0.1:/ /mnt/sdaa
+[root@nfs-client1 ~]# mount -t nfs -o rw,vers=4 127.0.0.1:/ /mnt/sdaa
+[root@nfs-client1 ~]# mount -t nfs -o ro,vers=4 127.0.0.1:/ /mnt/sdaa
+[root@nfs-client1 ~]# mount -t nfs -o rw,vers=4 127.0.0.1:/ /mnt/sdaa
+[root@nfs-client1 ~]# mount | grep nfs4
+127.0.0.1:/ on /mnt/sdaa type nfs4 
+(ro,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,fatal_neterrors=none,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
+127.0.0.1:/ on /mnt/sdaa type nfs4 
+(rw,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,fatal_neterrors=none,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
+127.0.0.1:/ on /mnt/sdaa type nfs4 
+(ro,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,fatal_neterrors=none,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
+127.0.0.1:/ on /mnt/sdaa type nfs4 
+(rw,relatime,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,fatal_neterrors=none,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=127.0.0.1,local_lock=none,addr=127.0.0.1)
+[root@nfs-client1 ~]# uname -a
+Linux nfs-client1 6.19.0-rc7+ #178 SMP PREEMPT_DYNAMIC Thu Jan 29 
+14:06:54 CST 2026 x86_64 x86_64 x86_64 GNU/Linux
+[root@nfs-client1 ~]#
 
-The other thing about those pynfs tests is that they get awfully linux
-specific - requiring new tooling to setup and change the export option.
+[1] 
+https://lore.kernel.org/all/20241114045303.1656426-1-lilingfeng3@huawei.com/
 
-Ben
+Thanks,
+Lingfeng.
+
