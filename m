@@ -1,61 +1,62 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A56FC324700;
-	Fri, 30 Jan 2026 14:45:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F0F7C2D7395
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Jan 2026 14:48:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1769784308; cv=none; b=tRkCsKC7kd7erlsSOjylFwEwODur16YW5hSGlJdDPZb2LQcm0IqPAJJhJf+ZsfVo043Ry/uBmgz7qwCtp3k6l3QtbCT2G4ei1gXeLo4lHjBkPB5dempVZ1IoOjEA1SjuQlNQjEO2/SUYkDLXetTbE02mJYDi+pCocji/A5BHgSc=
+	t=1769784532; cv=none; b=tkNPrnvGI0uMxHSnJZovcnJ+fiFTH36b1wx+zdRyvh1NEUiDe7HV04JX6lI1FHcr+7GL4fOEAVqcUxbjX+NSdcnFoEN9m/eug0HbUYJ9K/V2BOXuHWNdExUxZj4xttIpLO5VshYdQtNYol1uao7x3pfJbJlWYv4Aj2J1FszXLkc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1769784308; c=relaxed/simple;
-	bh=SbeIFy3aGm/yv9ATqXhsMJS7c0Yz2TFMRQZhyVjzOXw=;
-	h=MIME-Version:Date:From:To:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=HBAjGEXdo5psqv6DkI2d+iUfODXEBBMANjNW4SKPRSkxBy8/i/82ZvvHR+zEru1mro6eKtRkGFW67NrBo2KcCLpGL2oa+Q2v0B+BON3YtVHIjUXcNm3dIK9FVdnMgsVvd5ZKYW6ipfgyxRXc/AXjcHh5AkrLgLECq+duwJ/uQEc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K+PUyfqC; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1769784532; c=relaxed/simple;
+	bh=vPZvD5vu/bUixwHxgE82lw5IrKyUAf/x7/2ziu0XbYM=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=PikL7xJ/m8oQiDDJGSlkbBV6LEXzDhSGGkJu6/ppnApglRODsL32d0w44IxOokBywuV0+zcGR+5HONecH4YaiyV285vFZtfzJY/yJhm80Wm3DMwxpvTrkmZNONqnLp8ZkHGQ1FJL5/4veibPevZynXZrAV4Y0dDOhcasdtn4PeE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OGpQ2YCc; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K+PUyfqC"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 243FAC4CEF7;
-	Fri, 30 Jan 2026 14:45:08 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OGpQ2YCc"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7D141C4CEF7
+	for <linux-nfs@vger.kernel.org>; Fri, 30 Jan 2026 14:48:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1769784308;
-	bh=SbeIFy3aGm/yv9ATqXhsMJS7c0Yz2TFMRQZhyVjzOXw=;
-	h=Date:From:To:In-Reply-To:References:Subject:From;
-	b=K+PUyfqCWQTfvYXg2orBLGkVYmLXGYZfxNd2cRsb4Ss14EUNhiYDYAuobAa8EfCs4
-	 9jlc5boYoegQ5BqrdTwm2HQvR4CSTx85u66izsLzs3V0LfAM2aUMIWfI59gxS2STlh
-	 A56Ndh48SBSxjeKdbvdqEI612rUV/nTFAHlIy8vNp4iNpW/N2WomC5ZrYcjwRsJIPU
-	 qL3xchvlLh5EqJmpCJA0K1Z9m9Kbj3KyqMDrP925cQHcP6V5p0D03UBk77qygJXkIf
-	 MwSyl9f7hwsOOpqqcFmqj4gbh2i0eXW5atBxqZ0fwKQX5Kp+MRjrhlKQD5P1ArWR/5
-	 93QlG/CO426vw==
+	s=k20201202; t=1769784531;
+	bh=vPZvD5vu/bUixwHxgE82lw5IrKyUAf/x7/2ziu0XbYM=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
+	b=OGpQ2YCcWE1CwVl7UdBOgAqaOJah/4u+aCFwj4u0JN4f78cx0tK4xCACHvGP+6faW
+	 TvQzhwglms+BfzX5y+XixveAaHamF6ZcZe544v4iD9T3Gx45rCjJ0J2dRcLOeCBPMq
+	 ov9OcoZsjuixpQEpAUswjVDsyXD6p82xKuUb5Klm5qjgfVLZ/4G5E49psH7f0CW3jD
+	 o5FfdL5rp/MCpz5Oo472VrOEmeVkmWiLttBJNtQceBqbJJom9yqO+RRTJMN5cwt19Y
+	 nyc6HafGERL4doeR91T+f5K8mYm+kmFf46GtMThDjiB8kG5S+Wjz6UL5xr6bLc0XKD
+	 ci5tGiCW2vIPQ==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 25051F4007C;
-	Fri, 30 Jan 2026 09:45:07 -0500 (EST)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 7D58DF4007C;
+	Fri, 30 Jan 2026 09:48:50 -0500 (EST)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 30 Jan 2026 09:45:07 -0500
-X-ME-Sender: <xms:88N8ab6YVW1u_rS0LO5rEgPieAct4SnQB9vAvDncjYwrW5TjTfkykQ>
-    <xme:88N8abuQY-PtZzBFehdSgbaTH6njvkG1wt12LY7SB_olPmBSg_75dRHPN7SAKNlqg
-    Lb9pmvrMs0ydeaMK8h1eYcrpSa055esJ1WCsrXw8hreiQ9EYrAXXg>
+  by phl-compute-10.internal (MEProxy); Fri, 30 Jan 2026 09:48:50 -0500
+X-ME-Sender: <xms:0sR8afH9v6PnESB6t5CBCufydrZlEqJ5TF43iFz00g9y9U7-Gg-Amw>
+    <xme:0sR8aXJ5oCrPRAEvzihTYYPK8eJirBPzL5XsbkOZZED5eTxoyUHe0H2NlBfK8qtx0
+    6AO1GUWJJh9jBCklvl7IdwryYN-cP7ReQODQPUcY2IFTflmfuSwPg>
 X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgdduieelfedvucetufdoteggodetrf
     dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
     rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
-    gurhepofggfffhvffkjghfufgtgfesthejredtredttdenucfhrhhomhepfdevhhhutghk
-    ucfnvghvvghrfdcuoegtvghlsehkvghrnhgvlhdrohhrgheqnecuggftrfgrthhtvghrnh
-    epheehjeelgeffffeihfduudevudeghfehheefhffgueeluedufeetjeduhfdukeelnecu
-    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomheptghhuhgtkh
-    hlvghvvghrodhmvghsmhhtphgruhhthhhpvghrshhonhgrlhhithihqdduieefgeelleel
-    heelqdefvdelkeeggedvfedqtggvlheppehkvghrnhgvlhdrohhrghesfhgrshhtmhgrih
-    hlrdgtohhmpdhnsggprhgtphhtthhopeegpdhmohguvgepshhmthhpohhuthdprhgtphht
-    thhopehlihhonhgvlhgtohhnshduleejvdesghhmrghilhdrtghomhdprhgtphhtthhope
-    hlihhnuhigqdgtrhihphhtohesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthho
-    pehlihhnuhigqdhfshguvghvvghlsehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpth
-    htoheplhhinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrgh
-X-ME-Proxy: <xmx:88N8aVnqPhtUyuDj55XfgOw1HsPcug0GnG-FyNvvdFsQBUh1FEqaqQ>
-    <xmx:88N8aXukjnN7w33KFH2m1xCWjLq3eD4SpIwzA4YfLeHdKzRV0L7_KA>
-    <xmx:88N8aT8d-UkQNntusCuR7AVHRKybbLSZTB51n_aHpIyanAT1kGbtUQ>
-    <xmx:88N8aRM4DW1Vi8ZmUJiVYZynB58nBgRoAvgphL4Ncw0Ke9cHQT3ORQ>
-    <xmx:88N8aRGvm691w9Wxqa8_obbDiS-4hb7zOIMx21KA46elaBFqgoM0JG9O>
+    gurhepofggfffhvfevkfgjfhfutgfgsehtjeertdertddtnecuhfhrohhmpedfvehhuhgt
+    khcunfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrh
+    hnpefhffekffeftdfgheeiveekudeuhfdvjedvfedvueduvdegleekgeetgfduhfefleen
+    ucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutg
+    hklhgvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleel
+    leehledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrg
+    hilhdrtghomhdpnhgspghrtghpthhtohephedpmhhouggvpehsmhhtphhouhhtpdhrtghp
+    thhtoheplhhiohhnvghltghonhhsudeljedvsehgmhgrihhlrdgtohhmpdhrtghpthhtoh
+    epsggtohguughinhhgsehhrghmmhgvrhhsphgrtggvrdgtohhmpdhrtghpthhtoheplhhi
+    nhhugidqtghrhihpthhosehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtoheplh
+    hinhhugidqfhhsuggvvhgvlhesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthho
+    pehlihhnuhigqdhnfhhssehvghgvrhdrkhgvrhhnvghlrdhorhhg
+X-ME-Proxy: <xmx:0sR8aQb6d4iOMNdHsOWYf99fsF19xeWoQ_psz3jqLvArRI0-hbk0aQ>
+    <xmx:0sR8afEZsI5zEyXF-2P4s86HhjMDupDwx07Cyk9M_befj_fVJSqnzQ>
+    <xmx:0sR8aUzsOCm2hriJQs_hrif4qL9deP0Wxy71YaxUI3A3WENpVNw1OQ>
+    <xmx:0sR8aRlUhlPqKu5dgty5vznsdVADTkiCR3f91LggtEXIBn-Ynq0Ktw>
+    <xmx:0sR8adkTQtvmDI-u60REkEGoj19e58S6E0pOaRU25pEbwOi_fEQQmpdd>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id F30DB780077; Fri, 30 Jan 2026 09:45:06 -0500 (EST)
+	id 5F343780076; Fri, 30 Jan 2026 09:48:50 -0500 (EST)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -64,33 +65,32 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 X-ThreadId: AvBI4pOdhfek
-Date: Fri, 30 Jan 2026 09:43:42 -0500
+Date: Fri, 30 Jan 2026 09:47:50 -0500
 From: "Chuck Lever" <cel@kernel.org>
-To: "Lionel Cons" <lionelcons1972@gmail.com>, linux-nfs@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, linux-crypto@vger.kernel.org
-Message-Id: <263079d7-bed3-4417-8b7d-cb534da90a2c@app.fastmail.com>
-In-Reply-To: 
- <CAPJSo4XhEOGncxBRZcOL6KmyBRY+pERiCLUkWzN7Zw+8oUmXGg@mail.gmail.com>
+To: "Benjamin Coddington" <bcodding@hammerspace.com>,
+ "Lionel Cons" <lionelcons1972@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-crypto@vger.kernel.org
+Message-Id: <556aa156-7453-4567-8e36-0edef995dcc6@app.fastmail.com>
+In-Reply-To: <97207D44-31EC-474F-8D68-CBA50CA324AE@hammerspace.com>
 References: <cover.1769026777.git.bcodding@hammerspace.com>
  <0aaa9ca4fd3edc7e0d25433ad472cb873560bf7d.1769026777.git.bcodding@hammerspace.com>
  <CAPJSo4XhEOGncxBRZcOL6KmyBRY+pERiCLUkWzN7Zw+8oUmXGg@mail.gmail.com>
+ <97207D44-31EC-474F-8D68-CBA50CA324AE@hammerspace.com>
 Subject: Re: [PATCH v2 3/3] NFSD: Sign filehandles
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
 
-On Fri, Jan 30, 2026, at 7:58 AM, Lionel Cons wrote:
-> 1. CPU load: Linux NFSv4 servers consume LOTS of CPU time, which has
-> become a HUGE problem for hosting them on embedded hardware (so no
-> realistic NFSv4 server performance on an i.mx6 or RISC/V machine). And
-> this has become much worse in the last two years.
+On Fri, Jan 30, 2026, at 8:25 AM, Benjamin Coddington wrote:
+> I could, if it pleases everyone, do a function profile for fh_append_mac and
+> fh_verify_mac
 
-If this is a general concern, please take the time to collect some data
-and file a full regression report.
+Trond or Mike can demonstrate for you how to capture flame graphs
+to very graphically illustrate how much CPU utilization is introduced
+when using this feature. It would be valuable to confirm our expectation
+that the additional CPU consumption will essentially be in the noise.
 
-Also note that signed file handles are enabled by administrative settings
-that default "off". There will be little to no additional CPU load if you
-choose not to use them.
 
 -- 
 Chuck Lever
