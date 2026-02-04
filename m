@@ -1,172 +1,101 @@
-Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.10])
+Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.11])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 308CB42B75B;
-	Wed,  4 Feb 2026 20:24:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.10
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B14B42982B;
+	Wed,  4 Feb 2026 20:25:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.11
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770236690; cv=none; b=SMuMvIssbNB3x2tdUcUwT0s4yg852hwznK+PL+VraR9OZmCCORBrxr66K+wWFrQTUAVBXQBtIrvC3Na04F+n/CLqMb41M0vuozkDuJ8R+YeXdlRw7ncUl1ReNgCsIfl7W99YdwUOpKEzaRW7YkVValXpJInx52ENW5h2JFcr6nw=
+	t=1770236735; cv=none; b=jJVwOaHVX44gAwDBk9ZFGTOp7klPsRcSRqMX2QoaD9LcOi9FeoIniAbxVlmR1dSgW+tE+9fDCXWnEBOr2RQDpaRDZNzxCzXpJNNJzZ3aaYUhxiFRfnhMhZmhXGksbJXCiMYA37cfGu5VIbHX6JWgsu5Xy0FyVuYmj1tsPFgCEBU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1770236690; c=relaxed/simple;
-	bh=dmqGhAEEjvF2kzN6DSWhxs6/5RKAmacfK4jkDSNWMiA=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=dwH2sHv5BuMWQpFf4z08xIU63w95QoRo4pVXmHm4JqKiFuWVdXTKx2MtfVlwW6q9cJrms2VKlyA/Pmy+i5xXiXWNcqpw3LtGW1rfhU+30ECnRZohx4UGfUiyZIJ6XXB6Vmhow29OwtFi1HlapQhGqc9ZH40iqpRHhBqkDDKnfYc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com; spf=pass smtp.mailfrom=linux.intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=L/8YhKye; arc=none smtp.client-ip=198.175.65.10
+	s=arc-20240116; t=1770236735; c=relaxed/simple;
+	bh=Mu7rUnAG7sN1Zo07pAjayKdb+6XBVjosqS2rDV+LOGA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=K0dXB3BGBwGXg8kXUjWg+BzgvqYLpgH6pXfcE0J6tM3J3D/63+1BEvOuLl3A71MlBq5YO9gfpS7JMZakdBhEZhYU0/0CzdeRnIRshVuufKTJ1QVIOHXPWYXoMj6HQxbzPpeI4d+Z3ajgtx5KChkoAlIzW3QS3uHuT+x2BNtQI84=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com; spf=pass smtp.mailfrom=linux.intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=bKQTrs57; arc=none smtp.client-ip=192.198.163.11
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="L/8YhKye"
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="bKQTrs57"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1770236691; x=1801772691;
-  h=from:to:cc:subject:date:message-id:in-reply-to:
-   references:mime-version:content-transfer-encoding;
-  bh=dmqGhAEEjvF2kzN6DSWhxs6/5RKAmacfK4jkDSNWMiA=;
-  b=L/8YhKye2lVRTceLs88/AZrXo6W37rrl1soFUhAZd91SLEkoJxazdE/7
-   9fI/audasb/ZsulltsHzZLNToHFRr25/rxvAd8ykxfwvWbjbLDKpd9XE+
-   kDalk9ad24qtf81bdml8JY/psY7zcZrblQU81nWKMgTEc/jorqm7aEsC7
-   hm9GgpYgjhZueE7LxL4GeA8mvWwSAhw766qP7LdnVIOgO72TpbLrgad1+
-   oRQeimSdRyRq6kk94gwnWhSU5762fWirioNfVQnCC/OlNBWOujkBN1qiL
-   vxY/SJM7vHfoujtWK6yUbk3ZVSmMSCrekrGLZ3AejskFxh38vlYHhMefz
-   Q==;
-X-CSE-ConnectionGUID: rYDvZRrTS3yKcO3r6xxOOg==
-X-CSE-MsgGUID: bju1qxuoRISkpFUVCsC/4g==
-X-IronPort-AV: E=McAfee;i="6800,10657,11691"; a="88853940"
+  t=1770236736; x=1801772736;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=Mu7rUnAG7sN1Zo07pAjayKdb+6XBVjosqS2rDV+LOGA=;
+  b=bKQTrs57EaRoTZblV+kpfVionqTRZqaJF/x4YQSD5trux0QSZrrN36M/
+   ZfUJK6clttW2I+aP/7y6+1UiUoEd5k5Gn5r4UWu/yF9M7iXtiOO92N+hV
+   2iHDyEz7BhZZMWXgV64/tvugp2pPJt3MJnuTDWb1Yh7KGBPMjvv7OYzTp
+   wtod3H86xOjoCAdJyBfVenSXbJN9fq+yeWVvkywnb4wIM8vcRDv/+PEUX
+   nJ2vG5uJNMGtqpfpBSt50q2za3ryKN9hZr5E7Iy1rR358+kbQM2xmMFBP
+   R8qRH6qn/VZzs2q5zpNUZq5CooCS9PF+JgE4q5unWSDwq05ge2xvvsnAw
+   g==;
+X-CSE-ConnectionGUID: ZBsPG+tZSo2YhhlGn0mW8g==
+X-CSE-MsgGUID: iHDYbuofSt+EYwQ7yatvqg==
+X-IronPort-AV: E=McAfee;i="6800,10657,11691"; a="82064591"
 X-IronPort-AV: E=Sophos;i="6.21,273,1763452800"; 
-   d="scan'208";a="88853940"
-Received: from orviesa010.jf.intel.com ([10.64.159.150])
-  by orvoesa102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 Feb 2026 12:24:50 -0800
-X-CSE-ConnectionGUID: x+h0fAG4QPK0eHuzGvDJAA==
-X-CSE-MsgGUID: TWFc+xevSK6eAz+iEoq87g==
+   d="scan'208";a="82064591"
+Received: from orviesa008.jf.intel.com ([10.64.159.148])
+  by fmvoesa105.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 Feb 2026 12:25:35 -0800
+X-CSE-ConnectionGUID: jHmYirvsSl+AuzN3plx2qQ==
+X-CSE-MsgGUID: OeuJ0L8uQz+PHdJHGlAI5A==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="6.21,273,1763452800"; 
-   d="scan'208";a="209567817"
-Received: from black.igk.intel.com ([10.91.253.5])
-  by orviesa010.jf.intel.com with ESMTP; 04 Feb 2026 12:24:45 -0800
-Received: by black.igk.intel.com (Postfix, from userid 1003)
-	id 867CF9B; Wed, 04 Feb 2026 21:24:43 +0100 (CET)
+   d="scan'208";a="210308305"
+Received: from pgcooper-mobl3.ger.corp.intel.com (HELO localhost) ([10.245.245.188])
+  by orviesa008-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 Feb 2026 12:25:30 -0800
+Date: Wed, 4 Feb 2026 22:25:27 +0200
 From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To: Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Trond Myklebust <trond.myklebust@hammerspace.com>,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	netdev@vger.kernel.org,
-	llvm@lists.linux.dev
-Cc: Trond Myklebust <trondmy@kernel.org>,
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: NeilBrown <neil@brown.name>, Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+	netdev@vger.kernel.org, llvm@lists.linux.dev,
+	Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
 	"David S. Miller" <davem@davemloft.net>,
 	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>,
-	Paolo Abeni <pabeni@redhat.com>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
 	Simon Horman <horms@kernel.org>,
 	Nathan Chancellor <nathan@kernel.org>,
 	Nick Desaulniers <nick.desaulniers+lkml@gmail.com>,
 	Bill Wendling <morbo@google.com>,
 	Justin Stitt <justinstitt@google.com>,
-	Andy Shevchenko <andriy.shevchenko@linux.intel.com>,
 	Geert Uytterhoeven <geert+renesas@glider.be>
-Subject: [PATCH v3 3/3] sunrpc: Fix compilation error (`make W=1`) when dprintk() is no-op
-Date: Wed,  4 Feb 2026 21:21:51 +0100
-Message-ID: <20260204202437.2762161-4-andriy.shevchenko@linux.intel.com>
-X-Mailer: git-send-email 2.50.1
-In-Reply-To: <20260204202437.2762161-1-andriy.shevchenko@linux.intel.com>
-References: <20260204202437.2762161-1-andriy.shevchenko@linux.intel.com>
+Subject: Re: [PATCH v2 3/3] sunrpc: Fix compilation error (`make W=1`) when
+ dprintk() is no-op
+Message-ID: <aYOrN-C6R0Hniwxl@smile.fi.intel.com>
+References: <20260204094500.2443455-1-andriy.shevchenko@linux.intel.com>
+ <20260204094500.2443455-4-andriy.shevchenko@linux.intel.com>
+ <aYN35agQMKaIGZA0@smile.fi.intel.com>
+ <aYN6zA79q6yOLFmA@smile.fi.intel.com>
+ <c0af23c2-bdf1-456b-a82a-0f224d640473@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <c0af23c2-bdf1-456b-a82a-0f224d640473@oracle.com>
+Organization: Intel Finland Oy - BIC 0357606-4 - c/o Alberga Business Park, 6
+ krs, Bertel Jungin Aukio 5, 02600 Espoo
 
-Clang compiler is not happy about set but unused variables:
+On Wed, Feb 04, 2026 at 01:29:48PM -0500, Chuck Lever wrote:
+> On 2/4/26 11:58 AM, Andy Shevchenko wrote:
+> > On Wed, Feb 04, 2026 at 06:46:36PM +0200, Andy Shevchenko wrote:
 
-.../flexfilelayout/flexfilelayoutdev.c:56:9: error: variable 'ret' set but not used [-Werror,-Wunused-but-set-variable]
-.../flexfilelayout/flexfilelayout.c:1505:6: error: variable 'err' set but not used [-Werror,-Wunused-but-set-variable]
-.../nfs4proc.c:9244:12: error: variable 'ptr' set but not used [-Werror,-Wunused-but-set-variable]
+...
 
-Fix these by forwarding parameters of dprintk() to no_printk().
-The positive side-effect is a format-string checker enabled even for the cases
-when dprintk() is no-op.
+> > Otherwise I can send a new version.
+> 
+> Please send a full series respin, thanks.
 
-Fixes: d67ae825a59d ("pnfs/flexfiles: Add the FlexFile Layout Driver")
-Fixes: fc931582c260 ("nfs41: create_session operation")
-Acked-by: Geert Uytterhoeven <geert+renesas@glider.be>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
----
- fs/lockd/svclock.c           | 5 +++++
- include/linux/sunrpc/debug.h | 8 ++++++--
- include/linux/sunrpc/sched.h | 3 ---
- 3 files changed, 11 insertions(+), 5 deletions(-)
+v3 has been sent.
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 712df1e025d8..dcd3e0b4d997 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -80,6 +80,11 @@ static const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
- 
- 	return buf;
- }
-+#else
-+static inline const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
-+{
-+	return "???";
-+}
- #endif
- 
- /*
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index e947d668f7b7..82239d5c262e 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -40,6 +40,8 @@ extern unsigned int		nlm_debug;
- do {									\
- 	ifdebug(fac)							\
- 		__sunrpc_printk(fmt, ##__VA_ARGS__);			\
-+	else								\
-+		no_printk(fmt, ##__VA_ARGS__);				\
- } while (0)
- 
- # define dfprintk_rcu(fac, fmt, ...)					\
-@@ -48,13 +50,15 @@ do {									\
- 		rcu_read_lock();					\
- 		__sunrpc_printk(fmt, ##__VA_ARGS__);			\
- 		rcu_read_unlock();					\
-+	} else {							\
-+		no_printk(fmt, ##__VA_ARGS__);				\
- 	}								\
- } while (0)
- 
- #else
- # define ifdebug(fac)		if (0)
--# define dfprintk(fac, fmt, ...)	do {} while (0)
--# define dfprintk_rcu(fac, fmt, ...)	do {} while (0)
-+# define dfprintk(fac, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
-+# define dfprintk_rcu(fac, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
- #endif
- 
- /*
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index ccba79ebf893..0dbdf3722537 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -95,10 +95,7 @@ struct rpc_task {
- 	int			tk_rpc_status;	/* Result of last RPC operation */
- 	unsigned short		tk_flags;	/* misc flags */
- 	unsigned short		tk_timeouts;	/* maj timeouts */
--
--#if IS_ENABLED(CONFIG_SUNRPC_DEBUG) || IS_ENABLED(CONFIG_TRACEPOINTS)
- 	unsigned short		tk_pid;		/* debugging aid */
--#endif
- 	unsigned char		tk_priority : 2,/* Task priority */
- 				tk_garb_retry : 2,
- 				tk_cred_retry : 2;
 -- 
-2.50.1
+With Best Regards,
+Andy Shevchenko
+
 
