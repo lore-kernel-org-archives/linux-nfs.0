@@ -1,90 +1,109 @@
 Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.20])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 364E0295DA6;
-	Wed,  4 Feb 2026 09:41:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 197EE3B8BA6;
+	Wed,  4 Feb 2026 09:45:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.20
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770198112; cv=none; b=OYLrIMzW6SkY3hi1RSQzAmrtJ4zwH0fJ0NXCYwKfvtGJaaRFkvKOr9cJsCOfmfUW3uF0xDO5Z9AeqORCPOmFyLDaSx4SQEBIe+oHvHV+9SqwiLTl4gnfcq9LNkJHUNszRP4uPSbvLQN/nPJjvsDGQhFmXLywZjZgx/q2LhnipgI=
+	t=1770198317; cv=none; b=XOR6YB/ucUQlPB4uVvZQQ9DJHOZP2QPGXzfS41XCkg2bOQ7cB5CCVu6RAZjFoEvmWMv2YR6nrJ1XN8+pn4qBTaoRxVZBpHhmCYnJvMdoTHXnsbyqO3X9Cw6H1ccuNq7DyAa4rTRjohv9j7/PKwIzAtSCvTYdWYe+VTGaDbQyHrI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1770198112; c=relaxed/simple;
-	bh=G1sgpYrSgBlPHBRA1BVR65u2Da+Y0RYmuB1xl9FhI/c=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=BizfWmu6/r4egq/xG7cZjLyK/jUbLWEHYxWF6gOrIDc6Is+BDhYGzR7bbej0dNs6Z4iEf6JPAc/SIIB7cJbxr4/Tzkboc4PIdnKEHsUtfTtMNLP/7Rw1PJzqdKuUbMXunVrscyEaY+2IL03tPx3vfAjl7Gq9WCIZSKJczT79vUs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com; spf=pass smtp.mailfrom=linux.intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=nm0vpttK; arc=none smtp.client-ip=198.175.65.20
+	s=arc-20240116; t=1770198317; c=relaxed/simple;
+	bh=2e9s9fwPW3oN675uLAdbz6Qx4muyla7Q5cCEmFZSCqY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=gMMUG6p6Y5hv3bNO5ewC8uI5JJ0jyCkxEqYpBbApf8TtsUP5UKeqQZsDoQr8sbQdskrXTMrRTwvsFgxWTWbpw5XwOBy8XApRzy5CdxF+CyM84PBBCHdyTlARAlp/t/QeUcLwlOkJUeNcr0GxRZrNPNnS+f6pXnLLlk60ymt4NxE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com; spf=pass smtp.mailfrom=linux.intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=gIi3MIpf; arc=none smtp.client-ip=198.175.65.20
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.intel.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="nm0vpttK"
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="gIi3MIpf"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
   d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
-  t=1770198112; x=1801734112;
-  h=date:from:to:cc:subject:message-id:references:
-   mime-version:in-reply-to;
-  bh=G1sgpYrSgBlPHBRA1BVR65u2Da+Y0RYmuB1xl9FhI/c=;
-  b=nm0vpttKi82iI8f5LAO39RMdSUl9ADMLAdm0hzGb4yGATeJ4fcq1dfse
-   Xw8gBsf78Axk3iCQ+/+C8GJh1oOhSwton/AiqyvCGux/1phylfCHcyUB/
-   OupTCppBudcy4iYTxn2geaXr6oYQx4bCZotaabZT3rAOCAMX+sj1yUn0L
-   /xiGAXJwFU3XDdT2DXatccZptQD2yYrjtTqwxBFqy2hMuQNbP/CE+wzc4
-   XM+BpeFdGm1e2LFHryA5dgntdCz63d4hLE1oQjKG/MW5DkEJAnlp91XFy
-   RGuo7NFqtkfcirlaKtkn7aL+ise652kf7i7vDBZ4lMi+fta+atUNRwZoA
-   w==;
-X-CSE-ConnectionGUID: zWT0en0DRHiXRy3QNGkwEA==
-X-CSE-MsgGUID: KaK6Sv8uT8euLUAg8jXDlg==
-X-IronPort-AV: E=McAfee;i="6800,10657,11691"; a="71109788"
+  t=1770198317; x=1801734317;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=2e9s9fwPW3oN675uLAdbz6Qx4muyla7Q5cCEmFZSCqY=;
+  b=gIi3MIpfw1tElGsgscxsD394wxft9gN1B9lqMyFz6tTMc/WiIfFQAHGk
+   G0QmOg3f3jHKSqXQZ5upjb9XPwoIjUr/rsuNVzSwHBIHcJMXpTNFLvhnR
+   2c/6jwsnpKGz47HzrDcykyLEcZa0VeBnUDt9JToSSoi3eHgN33ecp5zsx
+   e/9M9UugQXvHu3vVOZ+I1P6QjaKNMjCYkQLz8pE8WVm1mbHs3T4hAVrje
+   6L+4mv49/O9O7MHH36OrKtVCc0//a6SwZLPybcSYTbg4R2+t6BKxNnhlC
+   rhkJgHkYGaa77cF3pmWO0N7xpDlHXaqDyaXJC537g/p2zyS8Y9UtYdNQS
+   Q==;
+X-CSE-ConnectionGUID: qX2/Fc/GSPGlBFN4ZTBGdw==
+X-CSE-MsgGUID: APc6AromRMmpWIW0El0C/Q==
+X-IronPort-AV: E=McAfee;i="6800,10657,11691"; a="71110482"
 X-IronPort-AV: E=Sophos;i="6.21,272,1763452800"; 
-   d="scan'208";a="71109788"
+   d="scan'208";a="71110482"
 Received: from fmviesa005.fm.intel.com ([10.60.135.145])
-  by orvoesa112.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 Feb 2026 01:41:52 -0800
-X-CSE-ConnectionGUID: u8kb2s1oS3mGJVU5bUNYFA==
-X-CSE-MsgGUID: qUeLMOUbTxeAePNsFoJNvQ==
+  by orvoesa112.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 Feb 2026 01:45:16 -0800
+X-CSE-ConnectionGUID: a2SnfuewQrm27diOooRnXA==
+X-CSE-MsgGUID: d4jwL7IhR9eToI60hx0RmQ==
 X-ExtLoop1: 1
 X-IronPort-AV: E=Sophos;i="6.21,272,1763452800"; 
-   d="scan'208";a="214596568"
-Received: from pgcooper-mobl3.ger.corp.intel.com (HELO localhost) ([10.245.245.188])
-  by fmviesa005-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 04 Feb 2026 01:41:49 -0800
-Date: Wed, 4 Feb 2026 11:41:47 +0200
+   d="scan'208";a="214597137"
+Received: from black.igk.intel.com ([10.91.253.5])
+  by fmviesa005.fm.intel.com with ESMTP; 04 Feb 2026 01:45:12 -0800
+Received: by black.igk.intel.com (Postfix, from userid 1003)
+	id 0F5B495; Wed, 04 Feb 2026 10:45:11 +0100 (CET)
 From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+To: Chuck Lever <chuck.lever@oracle.com>,
+	NeilBrown <neil@brown.name>,
+	Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	netdev@vger.kernel.org,
 	llvm@lists.linux.dev
-Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+Cc: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
 	Nathan Chancellor <nathan@kernel.org>,
 	Nick Desaulniers <nick.desaulniers+lkml@gmail.com>,
 	Bill Wendling <morbo@google.com>,
-	Justin Stitt <justinstitt@google.com>
-Subject: Re: [PATCH v1 1/1] nfs/blocklayout: Fix compilation error (`make
- W=1`) in bl_write_pagelist()
-Message-ID: <aYMUW07J-u9lpVBf@smile.fi.intel.com>
-References: <20260204010402.2149563-1-andriy.shevchenko@linux.intel.com>
- <aYKbteXxCp4ksGTI@smile.fi.intel.com>
+	Justin Stitt <justinstitt@google.com>,
+	Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Subject: [PATCH v2 0/3] sunrpc: Fix `make W=1` build issues
+Date: Wed,  4 Feb 2026 10:41:20 +0100
+Message-ID: <20260204094500.2443455-1-andriy.shevchenko@linux.intel.com>
+X-Mailer: git-send-email 2.50.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <aYKbteXxCp4ksGTI@smile.fi.intel.com>
-Organization: Intel Finland Oy - BIC 0357606-4 - c/o Alberga Business Park, 6
- krs, Bertel Jungin Aukio 5, 02600 Espoo
+Content-Transfer-Encoding: 8bit
 
-On Wed, Feb 04, 2026 at 03:07:05AM +0200, Andy Shevchenko wrote:
-> On Wed, Feb 04, 2026 at 02:04:02AM +0100, Andy Shevchenko wrote:
-> > Clang compiler is not happy about set but unused variable
-> > (when dprintk() is no-op):
-> > 
-> > .../blocklayout/blocklayout.c:384:9: error: variable 'count' set but not used [-Werror,-Wunused-but-set-variable]
-> > 
-> > Remove a leftover from the previous cleanup.
-> 
-> Note, if https://lore.kernel.org/r/20260204010415.2149607-1-andriy.shevchenko@linux.intel.com
-> is applied first, it will shadow the error here, this patch is needed anyway.
+Compiler is not happy about unused variables (especially when
+dprintk() call is defined as no-op). Here is the series to
+address the issues.
 
-Nevermind, I will send a v2 where it will be part of the series.
+Changelog v2:
+- added patch to kill RPC_IFDEBUG() macro (LKP, Geert)
+- united separate patches in the series
+- collected tags (Geert)
+
+v1: 20260204010402.2149563-1-andriy.shevchenko@linux.intel.com
+v1: 20260204010415.2149607-1-andriy.shevchenko@linux.intel.com
+
+Andy Shevchenko (3):
+  nfs/blocklayout: Fix compilation error (`make W=1`) in
+    bl_write_pagelist()
+  sunrpc: Kill RPC_IFDEBUG()
+  sunrpc: Fix compilation error (`make W=1`) when dprintk() is no-op
+
+ fs/lockd/svclock.c                       |  5 +++++
+ fs/nfs/blocklayout/blocklayout.c         |  4 +---
+ fs/nfsd/nfsfh.c                          |  9 +++++---
+ include/linux/sunrpc/debug.h             | 10 +++++----
+ net/sunrpc/xprtrdma/svc_rdma_transport.c | 27 ++++++++++++------------
+ 5 files changed, 32 insertions(+), 23 deletions(-)
 
 -- 
-With Best Regards,
-Andy Shevchenko
-
+2.50.1
 
