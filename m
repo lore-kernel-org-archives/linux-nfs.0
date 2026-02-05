@@ -1,51 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 498C83A7F51;
-	Thu,  5 Feb 2026 12:41:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23D193D4132
+	for <linux-nfs@vger.kernel.org>; Thu,  5 Feb 2026 12:55:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770295272; cv=none; b=j7FcbIlLtuqsIU12IbqtiA51c9egaC5LL/9/HzVQmUNhDf/DzsI+5OrzbKj9XGNBY4xUqXr4xtsbMusnOQXu/6PMQrbugEdGZVl5HemqEmdOTdiTcYZ4Fbtg8hh+E9/roJGnh/EC9UWGaM9LQmGYjiYpggOsKnLQbPNtlbijNpw=
+	t=1770296109; cv=none; b=ilbvAJ+N4wD2CRHxv/AQxuQNebhR9MQ/u6Qs7FGfsIwMsmH+XA/tVE1kU/dZAXa6w8/TdIaPPP3KQX/fkpOkXu6ToEvwUFGxzvVgs+7Zo2/l3LhvuoBJocmVtPsvGw1KGjzsS+gNmkUgCGP2hLITXQzTKPLcMdnITyIlb3vlAaY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1770295272; c=relaxed/simple;
-	bh=10eAJGMMlh2msWrD5lNiwhWZEbQLdS27Ko9J4kfQK+Q=;
+	s=arc-20240116; t=1770296109; c=relaxed/simple;
+	bh=FSCXgOjYN3G3oG3AorwWZ7r91s+XYeTKeAg7chckMXk=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=I7/JcLWhS7q2vtXd2NDwOV8sLyjPU9H78pPE3n2W6xvlABuZgtPqyZxff2Uw7BhJ3j5v2wMhEd1RxTfVuxZWoScpxGMgIkzfT5JHxup02a72nZfUNJMgi0sK3UoYzm4tGcsuhgHetT1flAddZ9xYlGOImYwmtJq8cHvpxVziOoU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dneZ39GP; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:MIME-Version; b=qWhQqxpz7dB0PDVRsFAsGj7ybMGJrzQq10kYbMB/OXtL7md7JFwuLOlYuL+QDfMSO4CzJGi6pAAEL6fZln7lfZXlvJ/cacwfTg+XjyKAv3JIrlPRbO3cVDbXOlcx9K0isWvbtwNPZbo4jk0iMNyltQt1GidhNPTgGpwzwoWSvc8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=pTEQ4UV3; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dneZ39GP"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F1615C4CEF7;
-	Thu,  5 Feb 2026 12:41:09 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="pTEQ4UV3"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 10FA6C4CEF7;
+	Thu,  5 Feb 2026 12:55:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1770295271;
-	bh=10eAJGMMlh2msWrD5lNiwhWZEbQLdS27Ko9J4kfQK+Q=;
+	s=k20201202; t=1770296108;
+	bh=FSCXgOjYN3G3oG3AorwWZ7r91s+XYeTKeAg7chckMXk=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=dneZ39GPuhzf31gcrpTN7Cl2LZ+TxQQ/ao5oPqvmPt4fhyzOnIr5MhcWr0/vdzPuj
-	 ve6frqT01HTU9e3cvYsM1FnuhoWotd21A6UC0f+uAdw9ajzhKI1zy1yYANPWHnPuUK
-	 bE55el8DPBP8HVZC5ShIoGLjS1xzpZw3WYvw4sEm6QPzDmhky943sa0aH0vQiQW0xz
-	 1Ogvc+0xIXseN6ajAVr+EP6dxMkooK9eACrwDjT6jm21+QmvGP2udgmvieRO6Tpl+u
-	 uC2lkK7yK5seTjqqy4Zd+1oHUvVwMpH2ikiik/xTVom2z7kv8bYEnUeA6rB3XCh/Qi
-	 iBSrV0iBInikw==
-Message-ID: <3e5726689975c3436ec134a299c538183f6763b1.camel@kernel.org>
-Subject: Re: [PATCH 13/13] VFS: unexport lock_rename(), lock_rename_child(),
- unlock_rename()
+	b=pTEQ4UV3aFXl2NUBWZ/6f2p++K6f0uVhpgwtbcbYeJ+jcZOo/sfuI3c85lh8LjOht
+	 7k/bdJ4VMu8xIzsr+Zj0DUQbbZvyIqh/Hk32DRwGwJaCTlyUD+SLjOP5PeyzJaePoh
+	 GZXUSfMFeQ1yLGw58/jAWbr3SK2Ve9j47rTmtYjkdk1/v2oJ4aiXfYr4jwRuud+4OT
+	 wMRRbR6d6WFdahOwakrLrliubkBcPYLgfdZAcbaKL7Nb2rUIuVYmZK+ijcXEAE/Si1
+	 D5qQdCIJxzMiPM2dCdwHBNQxdZ8Wp6mn4cI515lJ421eHU9L/ThPcFAiwsPKW91Umj
+	 Ot0wc8nkBc+JA==
+Message-ID: <5f9a6e139094ffedeec0dcfe0e41fa086e7b8f96.camel@kernel.org>
+Subject: Re: [PATCH 1/1] NFSD: fix nfs4_file access extra count in
+ nfsd4_add_rdaccess_to_wrdeleg
 From: Jeff Layton <jlayton@kernel.org>
-To: NeilBrown <neil@brown.name>, Christian Brauner <brauner@kernel.org>, 
- Alexander Viro <viro@zeniv.linux.org.uk>, David Howells
- <dhowells@redhat.com>, Jan Kara <jack@suse.cz>, Chuck Lever
- <chuck.lever@oracle.com>, Miklos Szeredi <miklos@szeredi.hu>, Amir
- Goldstein	 <amir73il@gmail.com>, John Johansen
- <john.johansen@canonical.com>, Paul Moore	 <paul@paul-moore.com>, James
- Morris <jmorris@namei.org>, "Serge E. Hallyn"	 <serge@hallyn.com>, Stephen
- Smalley <stephen.smalley.work@gmail.com>
-Cc: linux-kernel@vger.kernel.org, netfs@lists.linux.dev, 
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org, 
-	linux-unionfs@vger.kernel.org, apparmor@lists.ubuntu.com, 
-	linux-security-module@vger.kernel.org, selinux@vger.kernel.org
-Date: Thu, 05 Feb 2026 07:41:09 -0500
-In-Reply-To: <20260204050726.177283-14-neilb@ownmail.net>
-References: <20260204050726.177283-1-neilb@ownmail.net>
-	 <20260204050726.177283-14-neilb@ownmail.net>
+To: Dai Ngo <dai.ngo@oracle.com>, chuck.lever@oracle.com, neil@brown.name, 
+	okorniev@redhat.com, tom@talpey.com, hch@lst.de
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 05 Feb 2026 07:55:07 -0500
+In-Reply-To: <20260204210807.4134644-1-dai.ngo@oracle.com>
+References: <20260204210807.4134644-1-dai.ngo@oracle.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -130,101 +120,45 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2026-02-04 at 15:57 +1100, NeilBrown wrote:
-> From: NeilBrown <neil@brown.name>
+On Wed, 2026-02-04 at 13:07 -0800, Dai Ngo wrote:
+> In nfsd4_add_rdaccess_to_wrdeleg, when there is a race condition where
+> fp->fi_fds[O_RDONLY] is not NULL, __nfs4_file_get_access should not be
+> called to increment the access count nfs4_file since that was already
+> done by the thread that adds READ access to the file. The extra fi_access
+> count in nfs4_file can prevent the corresponding nfsd_file to be freed.
 >=20
-> These three function are now only used in namei.c, so they don't need to
-> be exported.
+> When stopping nfs-server service, these extra access counts trigger a
+> BUG in kmem_cache_destroy() that shows nfsd_file object remaining on
+> __kmem_cache_shutdown.
 >=20
-> Signed-off-by: NeilBrown <neil@brown.name>
+> This problem can be reproduced by running the git test.
+>=20
+> Fixes: 8072e34e1387 ("nfsd: fix nfsd_file reference leak in nfsd4_add_rda=
+ccess_to_wrdeleg()")
+> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
 > ---
->  Documentation/filesystems/porting.rst | 7 +++++++
->  fs/namei.c                            | 9 +++------
->  include/linux/namei.h                 | 3 ---
->  3 files changed, 10 insertions(+), 9 deletions(-)
+>  fs/nfsd/nfs4state.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 >=20
-> diff --git a/Documentation/filesystems/porting.rst b/Documentation/filesy=
-stems/porting.rst
-> index ed86c95d9d01..5f7008172f14 100644
-> --- a/Documentation/filesystems/porting.rst
-> +++ b/Documentation/filesystems/porting.rst
-> @@ -1347,3 +1347,10 @@ implementation should set it to generic_setlease()=
-.
-> =20
->  lookup_one_qstr_excl() is no longer exported - use start_creating() or
->  similar.
-> +---
-> +
-> +** mandatory**
-> +
-> +lock_rename(), lock_rename_child(), unlock_rename() are no
-> +longer available.  Use start_renaming() or similar.
-> +
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 307b4d0866b8..0bc82bf90adc 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -3713,7 +3713,7 @@ static struct dentry *lock_two_directories(struct d=
-entry *p1, struct dentry *p2)
->  /*
->   * p1 and p2 should be directories on the same fs.
->   */
-> -struct dentry *lock_rename(struct dentry *p1, struct dentry *p2)
-> +static struct dentry *lock_rename(struct dentry *p1, struct dentry *p2)
->  {
->  	if (p1 =3D=3D p2) {
->  		inode_lock_nested(p1->d_inode, I_MUTEX_PARENT);
-> @@ -3723,12 +3723,11 @@ struct dentry *lock_rename(struct dentry *p1, str=
-uct dentry *p2)
->  	mutex_lock(&p1->d_sb->s_vfs_rename_mutex);
->  	return lock_two_directories(p1, p2);
->  }
-> -EXPORT_SYMBOL(lock_rename);
-> =20
->  /*
->   * c1 and p2 should be on the same fs.
->   */
-> -struct dentry *lock_rename_child(struct dentry *c1, struct dentry *p2)
-> +static struct dentry *lock_rename_child(struct dentry *c1, struct dentry=
- *p2)
->  {
->  	if (READ_ONCE(c1->d_parent) =3D=3D p2) {
->  		/*
-> @@ -3765,9 +3764,8 @@ struct dentry *lock_rename_child(struct dentry *c1,=
- struct dentry *p2)
->  	mutex_unlock(&c1->d_sb->s_vfs_rename_mutex);
->  	return NULL;
->  }
-> -EXPORT_SYMBOL(lock_rename_child);
-> =20
-> -void unlock_rename(struct dentry *p1, struct dentry *p2)
-> +static void unlock_rename(struct dentry *p1, struct dentry *p2)
->  {
->  	inode_unlock(p1->d_inode);
->  	if (p1 !=3D p2) {
-> @@ -3775,7 +3773,6 @@ void unlock_rename(struct dentry *p1, struct dentry=
- *p2)
->  		mutex_unlock(&p1->d_sb->s_vfs_rename_mutex);
->  	}
->  }
-> -EXPORT_SYMBOL(unlock_rename);
-> =20
->  /**
->   * __start_renaming - lookup and lock names for rename
-> diff --git a/include/linux/namei.h b/include/linux/namei.h
-> index c7a7288cdd25..2ad6dd9987b9 100644
-> --- a/include/linux/namei.h
-> +++ b/include/linux/namei.h
-> @@ -165,9 +165,6 @@ extern int follow_down_one(struct path *);
->  extern int follow_down(struct path *path, unsigned int flags);
->  extern int follow_up(struct path *);
-> =20
-> -extern struct dentry *lock_rename(struct dentry *, struct dentry *);
-> -extern struct dentry *lock_rename_child(struct dentry *, struct dentry *=
-);
-> -extern void unlock_rename(struct dentry *, struct dentry *);
->  int start_renaming(struct renamedata *rd, int lookup_flags,
->  		   struct qstr *old_last, struct qstr *new_last);
->  int start_renaming_dentry(struct renamedata *rd, int lookup_flags,
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index d5e0f3a52d4f..66babf8fadcb 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -6252,12 +6252,12 @@ nfsd4_add_rdaccess_to_wrdeleg(struct svc_rqst *rq=
+stp, struct nfsd4_open *open,
+>  			return (false);
+>  		fp =3D stp->st_stid.sc_file;
+>  		spin_lock(&fp->fi_lock);
+> -		__nfs4_file_get_access(fp, NFS4_SHARE_ACCESS_READ);
+>  		if (!fp->fi_fds[O_RDONLY]) {
+> +			__nfs4_file_get_access(fp, NFS4_SHARE_ACCESS_READ);
+>  			fp->fi_fds[O_RDONLY] =3D nf;
+> +			fp->fi_rdeleg_file =3D nfsd_file_get(fp->fi_fds[O_RDONLY]);
+>  			nf =3D NULL;
+>  		}
+> -		fp->fi_rdeleg_file =3D nfsd_file_get(fp->fi_fds[O_RDONLY]);
+>  		spin_unlock(&fp->fi_lock);
+>  		if (nf)
+>  			nfsd_file_put(nf);
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
