@@ -1,57 +1,57 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 189B12673AA
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2026 22:40:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F65F27FD49
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2026 22:40:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771022418; cv=none; b=IzabV3K3218Xu1MmkGiIK+579wmuMafLO/l0qXP9X473jXq5/mu2kFZgWPWOkzB6ab2zcDKh6hAw2bXyQyOGPMAcUEG7CldJOWUrcSFHBtuT6NhWEWTYwAd6hXLuZK+LlUzBFF1ZLmbFKL3b1Unec79DdANm1Bi+mNGCzFcG0ho=
+	t=1771022418; cv=none; b=mYItQC5yqAJSSWhXxfj+plqdzyiefKyi7BoxWP95yjT0Iw0U30i2HQBrCyireR8+Z+JGPsh5Ut2rQYByr9H4By9mN4KdUtvr1nQi5TECI2+Kg4LTkKyz3MFOcqkEXzPpD04H+OpHwZuKURbozBRdVzI0Mcqr4opFz2wq98MmWdM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1771022418; c=relaxed/simple;
-	bh=dqIMtJCJ7GNMtXQY20HJXaVDru8S5bP/OPwIQ1Dw1+c=;
+	bh=sgPzHG7dImjRgqmyPcjJVOKlq1Ncuhgcz9f5Dj7ouew=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ScUhziAMAWg7GUGWHdkq+Fh7lK3YvFM/muJhIHXYe1eFukWeuO0g0ng8ZhOf3+da0hPXL2hZjpLom1JRC9J3RsHfUp1in1h0iCMtjP21q3w8DVOu4dvKi0vKK2QvWpkHTQ8tK3zdedK5HK8E6FACMcdKz9H1a4C6o3YzBcX1RRg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=P6dJDaqr; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=tz0twZcyFfWV4VUGhQX+sk6rlUtARbePPn+s96o31toaQAkNmMaL8Wapfjh90hgQr1JZD0S6Sv5NkMzSKT1LzyAmVKXo17K5dx2u2CSjTfewndjqUOQU8Zs2c99SLLHgMur9hoj5KTzVn+tHNVr8dtqFCvhdvPtYi/Au8O84xwM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=QXqGHq/+; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="P6dJDaqr"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="QXqGHq/+"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
 	s=mimecast20190719; t=1771022416;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=sGHkZcwYJ3wY2NQXx8vjqueFea2kvhdBYfWeTRlBnmU=;
-	b=P6dJDaqrX87ORjQBIAIdn7EBZemm7LmvtOK7Qh4rhonJCP25Hx7zBrccF4khZcM8iwG8KR
-	yajsUUrkcYIBfdrUgE5IymGSJJ3lTY5lOc4zY4PbAL5jvBxoGSsFiIwBf9t/BK8pS/Tz1v
-	0HW3IO9MaH/KFHN8pct3a8HHg0dzzmA=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+	bh=RIU74tPduPbvEmCTbjtNPkvjhXNiAn2wBH7VKHEdzjI=;
+	b=QXqGHq/+6xeya/SlVcfWKJElg/UO4pQCwD97+zCEVBmoDWwUawogkzd4VE7AOGd30/fmkf
+	Rg9K/4fNHgLzrOKcKohOQexftJsahPFStHW9/YOlW1pQ1eyQeP1xM66a7skLrnhFQa13e0
+	UkQJ11+ZisBE/F+uNmnKMq75/hS2gUs=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
  (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-534-_hLJDnfAPGq1Sg9_rzX2lw-1; Fri,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-536-viRFHN3yMGSu_co-YR4DCA-1; Fri,
  13 Feb 2026 17:40:14 -0500
-X-MC-Unique: _hLJDnfAPGq1Sg9_rzX2lw-1
-X-Mimecast-MFC-AGG-ID: _hLJDnfAPGq1Sg9_rzX2lw_1771022413
-Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+X-MC-Unique: viRFHN3yMGSu_co-YR4DCA-1
+X-Mimecast-MFC-AGG-ID: viRFHN3yMGSu_co-YR4DCA_1771022414
+Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id C5798195608A;
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id C99061956052;
 	Fri, 13 Feb 2026 22:40:13 +0000 (UTC)
 Received: from aion.redhat.com (unknown [10.22.88.127])
-	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 8AB771800286;
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 7F13430001B9;
 	Fri, 13 Feb 2026 22:40:13 +0000 (UTC)
 Received: from aion.redhat.com (localhost [IPv6:::1])
-	by aion.redhat.com (Postfix) with ESMTP id 587B26B69FD;
+	by aion.redhat.com (Postfix) with ESMTP id 3E3126B69FB;
 	Fri, 13 Feb 2026 17:40:12 -0500 (EST)
 From: Scott Mayhew <smayhew@redhat.com>
 To: steved@redhat.com
 Cc: =carnil@debian.org,
 	linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH RFC 3/4] gssd: get the permitted enctypes from the krb5 library on startup
-Date: Fri, 13 Feb 2026 17:40:11 -0500
-Message-ID: <20260213224012.2608126-4-smayhew@redhat.com>
+Subject: [nfs-utils PATCH RFC 1/4] gssd: remove the limit-to-legacy-enctypes option
+Date: Fri, 13 Feb 2026 17:40:09 -0500
+Message-ID: <20260213224012.2608126-2-smayhew@redhat.com>
 In-Reply-To: <20260213224012.2608126-1-smayhew@redhat.com>
 References: <20260213224012.2608126-1-smayhew@redhat.com>
 Precedence: bulk
@@ -61,122 +61,224 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-This will allow us to cross-reference the list of encryption types
-sent in the upcall from the kernel as well as the list of encryption
-types enabled via the allowed-enctypes option from nfs.conf with
-the list permitted by the krb5 library.
+This option allowed the admin to restrict the client to using single-DES
+encryption types, which were deprecated by RFC 6649 in July 2012.
+Support for single-DES encryption types was removed from the MIT KRB5
+library in May 2019, and from kernel's RPCSEC_GSS KRB5 mechanism in June
+2023.
 
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- utils/gssd/gssd.c      |  3 +++
- utils/gssd/krb5_util.c | 55 ++++++++++++++++++++++++++++++++++++++++++
- utils/gssd/krb5_util.h |  1 +
- 3 files changed, 59 insertions(+)
+ nfs.conf               |  1 -
+ systemd/nfs.conf.man   |  2 +-
+ utils/gssd/gssd.c      | 13 +------------
+ utils/gssd/gssd.man    | 30 +++++-------------------------
+ utils/gssd/krb5_util.c | 38 ++++++++++++++++----------------------
+ utils/gssd/krb5_util.h |  1 -
+ 6 files changed, 23 insertions(+), 62 deletions(-)
 
+diff --git a/nfs.conf b/nfs.conf
+index 3cca68c3..222447dd 100644
+--- a/nfs.conf
++++ b/nfs.conf
+@@ -22,7 +22,6 @@
+ # use-machine-creds=1
+ # use-gss-proxy=0
+ # avoid-dns=1
+-# limit-to-legacy-enctypes=0
+ # allowed-enctypes=aes256-cts-hmac-sha384-192,aes128-cts-hmac-sha256-128,camellia256-cts-cmac,camellia128-cts-cmac,aes256-cts-hmac-sha1-96,aes128-cts-hmac-sha1-96
+ # context-timeout=0
+ # rpc-timeout=5
+diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+index ecdc4fc9..80c4f34e 100644
+--- a/systemd/nfs.conf.man
++++ b/systemd/nfs.conf.man
+@@ -266,7 +266,7 @@ Recognized values:
+ .BR use-machine-creds ,
+ .BR use-gss-proxy ,
+ .BR avoid-dns ,
+-.BR limit-to-legacy-enctypes ,
++.BR allowed-enctypes ,
+ .BR context-timeout ,
+ .BR rpc-timeout ,
+ .BR keytab-file ,
 diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-index 8a894b2e..1c901991 100644
+index 01ce7d18..8a894b2e 100644
 --- a/utils/gssd/gssd.c
 +++ b/utils/gssd/gssd.c
-@@ -1222,6 +1222,9 @@ main(int argc, char *argv[])
- 	daemon_init(fg);
+@@ -1034,10 +1034,6 @@ read_gss_conf(void)
+ 	root_uses_machine_creds = conf_get_bool("gssd", "use-machine-creds",
+ 						root_uses_machine_creds);
+ 	avoid_dns = conf_get_bool("gssd", "avoid-dns", avoid_dns);
+-#ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+-	limit_to_legacy_enctypes = conf_get_bool("gssd", "limit-to-legacy-enctypes",
+-						 limit_to_legacy_enctypes);
+-#endif
+ 	context_timeout = conf_get_num("gssd", "context-timeout", context_timeout);
+ 	rpc_timeout = conf_get_num("gssd", "rpc-timeout", rpc_timeout);
+ 	upcall_timeout = conf_get_num("gssd", "upcall-timeout", upcall_timeout);
+@@ -1084,7 +1080,7 @@ main(int argc, char *argv[])
+ 	verbosity = conf_get_num("gssd", "verbosity", verbosity);
+ 	rpc_verbosity = conf_get_num("gssd", "rpc-verbosity", rpc_verbosity);
  
- #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
-+	rc = get_krb5_library_permitted_enctypes();
-+	if (rc)
-+		exit(EXIT_FAILURE);
- 	rc = get_allowed_enctypes();
- 	if (rc)
- 		exit(EXIT_FAILURE);
+-	while ((opt = getopt(argc, argv, "HDfvrlmnMp:k:d:t:T:R:U:C")) != -1) {
++	while ((opt = getopt(argc, argv, "HDfvrmnMp:k:d:t:T:R:U:C")) != -1) {
+ 		switch (opt) {
+ 			case 'f':
+ 				fg = 1;
+@@ -1123,13 +1119,6 @@ main(int argc, char *argv[])
+ 			case 'R':
+ 				preferred_realm = strdup(optarg);
+ 				break;
+-			case 'l':
+-#ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+-				limit_to_legacy_enctypes = 1;
+-#else 
+-				errx(1, "Encryption type limits not supported by Kerberos libraries.");
+-#endif
+-				break;
+ 			case 'D':
+ 				avoid_dns = false;
+ 				break;
+diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+index f81b24cd..57ad30cf 100644
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -165,23 +165,15 @@ no keytab), NFSv4 operations that require machine credentials will fail.
+ A realm administrator can choose to add keys encoded in a number of different
+ encryption types to the local system's keytab.
+ For instance, a host/ principal might have keys for the
+-.BR aes256-cts-hmac-sha1-96 ,
+-.BR aes128-cts-hmac-sha1-96 ,
+-.BR des3-cbc-sha1 ", and"
+-.BR arcfour-hmac " encryption types."
++.BR aes256-cts-hmac-sha384-192 ,
++.BR aes128-cts-hmac-sha256-128 ,
++.BR aes256-cts-hmac-sha1-96 ", and"
++.BR aes128-cts-hmac-sha1-96 " encryption types."
+ This permits
+ .B rpc.gssd
+ to choose an appropriate encryption type that the target NFS server
+ supports.
+-.P
+-These encryption types are stronger than legacy single-DES encryption types.
+-To interoperate in environments where servers support
+-only weak encryption types,
+-you can restrict your client to use only single-DES encryption types
+-by specifying the
+-.B -l
+-option when starting
+-.BR rpc.gssd .
++
+ .SH OPTIONS
+ .TP
+ .B \-D
+@@ -225,14 +217,6 @@ to obtain machine credentials.
+ The default value is
+ .IR /etc/krb5.keytab .
+ .TP
+-.B -l
+-When specified, restricts
+-.B rpc.gssd
+-to sessions to weak encryption types such as
+-.BR des-cbc-crc .
+-This option is available only when the local system's Kerberos library
+-supports settable encryption types.
+-.TP
+ .BI "-p " path
+ Tells
+ .B rpc.gssd
+@@ -342,10 +326,6 @@ is equivalent to providing the
+ .B -D
+ flag.
+ .TP
+-.B limit-to-legacy-enctypes
+-Equivalent to
+-.BR -l .
+-.TP
+ .B allowed-enctypes
+ Allows you to restrict
+ .B rpc.gssd
 diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 2b2925fb..bc07f852 100644
+index 137cffda..9c1016b3 100644
 --- a/utils/gssd/krb5_util.c
 +++ b/utils/gssd/krb5_util.c
-@@ -155,9 +155,15 @@ static struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
+@@ -155,7 +155,6 @@ static struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
  static pthread_mutex_t ple_lock = PTHREAD_MUTEX_INITIALIZER;
  
  #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
-+/* Encryption types specified in nfs.conf */
+-int limit_to_legacy_enctypes = 0;
  krb5_enctype *allowed_enctypes = NULL;
  int num_allowed_enctypes = 0;
- char *allowed_enctypes_string = NULL;
-+
-+/* Encryption types permitted by the krb5 library */
-+int num_lib_enctypes = 0;
-+krb5_enctype *lib_enctypes = NULL;
-+char *lib_enctypes_string = NULL;
  #endif
+@@ -1661,10 +1660,6 @@ int
+ limit_krb5_enctypes(struct rpc_gss_sec *sec)
+ {
+ 	u_int maj_stat, min_stat;
+-	krb5_enctype enctypes[] = { ENCTYPE_DES_CBC_CRC,
+-				    ENCTYPE_DES_CBC_MD5,
+-				    ENCTYPE_DES_CBC_MD4 };
+-	int num_enctypes = sizeof(enctypes) / sizeof(enctypes[0]);
+ 	extern int num_krb5_enctypes;
+ 	extern krb5_enctype *krb5_enctypes;
+ 	extern int num_allowed_enctypes;
+@@ -1679,26 +1674,25 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec)
+ 			return -1;
+ 	}
  
- /*==========================*/
-@@ -1676,6 +1682,55 @@ out:
- 	return ret;
- }
+-	/*
+-	 * If we failed for any reason to produce global
+-	 * list of supported enctypes, use local default here.
+-	 */
+-	if (krb5_enctypes == NULL || limit_to_legacy_enctypes ||
+-			allowed_enctypes) {
+-		if (allowed_enctypes) {
+-			printerr(2, "%s: using allowed enctypes from config\n",
+-				 __func__);
+-			num_set_enctypes = num_allowed_enctypes;
+-			set_enctypes = allowed_enctypes;
+-		} else {
+-			printerr(2, "%s: using legacy enctypes\n", __func__);
+-			num_set_enctypes = num_enctypes;
+-			set_enctypes = enctypes;
+-		}
+-	} else {
++	if (allowed_enctypes) {
++		printerr(2, "%s: using allowed enctypes from config\n",
++			 __func__);
++		num_set_enctypes = num_allowed_enctypes;
++		set_enctypes = allowed_enctypes;
++	} else if (krb5_enctypes) {
+ 		printerr(2, "%s: using enctypes from the kernel\n", __func__);
+ 		num_set_enctypes = num_krb5_enctypes;
+ 		set_enctypes = krb5_enctypes;
++	} else {
++		/*
++		 * If we didn't get a list of enctypes from the kernel, that
++		 * would mean it did a v0 upcall which is for older gssd's.
++		 * That would indicate a serious problem, so we shouldn't
++		 * continue.
++		 */
++		printerr(0, "%s: no enctypes received from the kernel, and "
++			 "allowed-enctypes not set in the config\n", __func__);
++		return -1;
+ 	}
  
-+int
-+get_krb5_library_permitted_enctypes(void)
-+{
-+	krb5_error_code code = 0;
-+	krb5_context context;
-+	char *k5err = NULL;
-+	int ret = 0;
-+
-+	code = krb5_init_context(&context);
-+	if (code) {
-+		k5err = gssd_k5_err_msg(NULL, code);
-+		printerr(2, "ERROR: %s: %s while initializing krb5 context\n",
-+			 __func__, k5err);
-+		ret = code;
-+		goto out;
-+	}
-+
-+	code = krb5_get_permitted_enctypes(context, &lib_enctypes);
-+	if (code) {
-+		k5err = gssd_k5_err_msg(context, code);
-+		printerr(2, "ERROR: %s: %s while getting permitted enctypes\n",
-+			 __func__, k5err);
-+		ret = code;
-+		goto out_free_context;
-+	}
-+
-+	if (lib_enctypes != NULL)
-+		while (lib_enctypes[num_lib_enctypes] != 0)
-+			num_lib_enctypes++;
-+
-+	if (num_lib_enctypes > 0) {
-+		if (enctypes_list_to_string(lib_enctypes, num_lib_enctypes,
-+					    &lib_enctypes_string) != 0) {
-+			printerr(2, "%s: warning: enctypes_list_to_string() failed\n",
-+				 __func__);
-+			goto out_free_context;
-+		}
-+		printerr(2, "krb5 library permitted enctypes: %s\n",
-+			 lib_enctypes_string);
-+	}
-+
-+out_free_context:
-+	krb5_free_context(context);
-+
-+out:
-+	free(k5err);
-+	return ret;
-+}
-+
- /*
-  * this routine obtains a credentials handle via gss_acquire_cred()
-  * then calls gss_krb5_set_allowable_enctypes() to limit the encryption
+ 	maj_stat = gss_set_allowable_enctypes(&min_stat, sec->cred,
 diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index a8e17ea2..e9d08567 100644
+index 40ad3233..af5f30be 100644
 --- a/utils/gssd/krb5_util.h
 +++ b/utils/gssd/krb5_util.h
-@@ -30,6 +30,7 @@ int enctypes_list_to_string(krb5_enctype *enctypes, int num_enctypes,
+@@ -25,7 +25,6 @@ int gssd_acquire_user_cred(gss_cred_id_t *gss_cred);
+ int gssd_k5_remove_bad_service_cred(char *srvname);
+ 
  #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+-extern int limit_to_legacy_enctypes;
  int limit_krb5_enctypes(struct rpc_gss_sec *sec);
  int get_allowed_enctypes(void);
-+int get_krb5_library_permitted_enctypes(void);
  #endif
- 
- /*
 -- 
 2.52.0
 
