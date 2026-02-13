@@ -1,141 +1,182 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C5AB81E1C11
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2026 21:03:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=170.10.129.124
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771016605; cv=pass; b=qdtZRLkGB8EbEAZRfpF/i4doWZqSzvpr7sq5ghNPJfsTfxiaka/yd6sZgwlGq1OXBdIFHehCltfBr4u/V78OFTk5Q/7u10Gzxh3bl0fuYrG0cvmLzCro6SQ041hRuMEJ3yrO7xFPXkiUIYY/QS17Wx+KcZk/9hJUlptySAtp7T0=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771016605; c=relaxed/simple;
-	bh=r38H8eLl4lKmz96ayMJg0B2RxOcVqxUeAat+Bqym31U=;
-	h=MIME-Version:From:Date:Message-ID:Subject:To:Cc:Content-Type; b=iAxaJIJEgBduHdKNrNoUs6f7/NxFnk3n19AMfKa4fPtYmqE+QHabzbyUAOE9UMA3pSMW1lS+48t+WWHHGxPnFbhDav8k5cjYg2rVgbf+VhNWnI4wRoQJlZbEtBKixKu7d2AVDSB2BIrcwfmStLoc39XOQAjECkQ24oaj2+gSEDY=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=D4ALWTm1; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=mj9PSPmV; arc=pass smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 189B12673AA
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2026 22:40:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1771022418; cv=none; b=IzabV3K3218Xu1MmkGiIK+579wmuMafLO/l0qXP9X473jXq5/mu2kFZgWPWOkzB6ab2zcDKh6hAw2bXyQyOGPMAcUEG7CldJOWUrcSFHBtuT6NhWEWTYwAd6hXLuZK+LlUzBFF1ZLmbFKL3b1Unec79DdANm1Bi+mNGCzFcG0ho=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1771022418; c=relaxed/simple;
+	bh=dqIMtJCJ7GNMtXQY20HJXaVDru8S5bP/OPwIQ1Dw1+c=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=ScUhziAMAWg7GUGWHdkq+Fh7lK3YvFM/muJhIHXYe1eFukWeuO0g0ng8ZhOf3+da0hPXL2hZjpLom1JRC9J3RsHfUp1in1h0iCMtjP21q3w8DVOu4dvKi0vKK2QvWpkHTQ8tK3zdedK5HK8E6FACMcdKz9H1a4C6o3YzBcX1RRg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=P6dJDaqr; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="D4ALWTm1";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="mj9PSPmV"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="P6dJDaqr"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1771016604;
+	s=mimecast20190719; t=1771022416;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type;
-	bh=r38H8eLl4lKmz96ayMJg0B2RxOcVqxUeAat+Bqym31U=;
-	b=D4ALWTm1aftRTZg1fwgNXSZjBo5e71hWPIU5f7hbSvdXkNTiGGgc22Ah0DmXIodIQy5aAN
-	/3P3fDK0gt68B7zuo6lPBg5UDxtPWTAe8NaA3WWp9XnNSq3yjmICihi9ur30B1iTxmgzaL
-	8Igz79bwFw5uBICD2086aYNMBecMzqs=
-Received: from mail-lf1-f70.google.com (mail-lf1-f70.google.com
- [209.85.167.70]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-453-uEvsVP-2Om6qU4sld-hfUQ-1; Fri, 13 Feb 2026 16:03:22 -0500
-X-MC-Unique: uEvsVP-2Om6qU4sld-hfUQ-1
-X-Mimecast-MFC-AGG-ID: uEvsVP-2Om6qU4sld-hfUQ_1771016600
-Received: by mail-lf1-f70.google.com with SMTP id 2adb3069b0e04-59f6db39e3dso128110e87.1
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2026 13:03:21 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1771016600; cv=none;
-        d=google.com; s=arc-20240605;
-        b=TAB1RvoajVAxG8v4K2+8nB6uRUK6EISi6TquUMs55zlow28wF99RvCDsDcVUzOVuLQ
-         QhZvfR3iMuPNwPJrIZO5pBJHlSVjrghHubFaOM5O4lLg+gJTc8nVrkxuM4wKQ7a9gSQH
-         DIrOX9gGiSEfgOTT5lzZ3f9u0riibC2UEHlNQu4/8oGF/haHtJCvv7+/LETk5eeBZt9X
-         +P7VZaS7/nvuKMQqh8X5O3g3zoPZWesbQmD6YseiQJCCjhVrxLAlqhkuV3Rpwj8SqbBY
-         JNyHCAr2v/nSiapz0cFnA2iF24GAaqLsismT4Bkp/hET5L1xYzkWtHCLgtbQWW63cC44
-         66RA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=cc:to:subject:message-id:date:from:mime-version:dkim-signature;
-        bh=r38H8eLl4lKmz96ayMJg0B2RxOcVqxUeAat+Bqym31U=;
-        fh=TzCNBP3hrCxbeH0ocNaTgg020iURiPEgFIVDKTKuJQ8=;
-        b=JvwgGOokQRShpqc88thpnntELLSxgb3G7WKy9bhAE5jLoL5a+4dFB7JqZHeYPKmVl5
-         Czldx4yCKp1aTU4ZITsLgEfHnkBNTUrZOEQ4ThwI6C914U4FbAptFc2W2N9HDS8XSbLb
-         wyWzIYv/+KTdIqp5GdWjoHLsvHraVbMNGMtpMjeLKoZ1txXajH9uImF6i8yuRjtHeUvK
-         6pS3PY0IbB/EAbSNYZne95rqHcEJWED+Hby96Uvf4/MqsqrtKYYHegPA+wxZKUJ+OIyL
-         Y335uDzSC1Bt410jWrrkjZSoEWFPWAwTDWq/loRcApVfApfKVhyosUAq08t1aRPC6mCw
-         A7WA==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1771016600; x=1771621400; darn=vger.kernel.org;
-        h=cc:to:subject:message-id:date:from:mime-version:from:to:cc:subject
-         :date:message-id:reply-to;
-        bh=r38H8eLl4lKmz96ayMJg0B2RxOcVqxUeAat+Bqym31U=;
-        b=mj9PSPmVvfhBhcWFsfykyZS6l3q2qWR+VR41Ta4u7QmZm78HGK3kloCAiXiP9S5NZj
-         Sp7p2D3fei7M3Io6FVcG5XvjmkxuFfwQB4x4Isse2npz3rx1F5TUPdH4CaDNJCrI7DWe
-         axMUobq9vjU58PYyaBiLnec8TY2FfYRIHOCourKSnjn+Bbbb50oYNuRzYCiHnIfbFWuY
-         F9fBXf9ptck4o77LK692SD9+egDCAmn2FJlYEZhiH9OqCNtfQDyha5jYncEFRaEKUdPO
-         gBthe657wiM3WvxOSCC+RHN+xJIc5MRNwORO2lgjMSi5F9dulsVj4U6hp+P5wBYlTqHo
-         jsVw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1771016600; x=1771621400;
-        h=cc:to:subject:message-id:date:from:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=r38H8eLl4lKmz96ayMJg0B2RxOcVqxUeAat+Bqym31U=;
-        b=c6HqBYqo5liIR2EN2FBHWRbjw2bprFq4dgyy91uJ0NCplo7YnPA/yje54ohwn7havy
-         2XopC/TADfsk8fpxrCdvy91EptZsPZ4vfqdPwWYGNHz3Q1z+icr/JZDmY2b5m7C/zF+j
-         VpBhk/2lF2Gk+wU7VusjCyznzd59l6aB6VPB9tNQc5r9MWVEiSu+xkOEBVgkPZf7a3pz
-         ej3hGb1CbJd4jeEiWC1/4SNSLr8Uyk40WH9kS5cSqvmtK1TZUX9veARyr7PkFG0gOn7R
-         mI3yD3kwqqz/KpW7IefHU9Q1KqtZ9UIf+gokwjRZ9Pijo+W8OHQSFuhaz817oiXs2/z4
-         KSsA==
-X-Forwarded-Encrypted: i=1; AJvYcCUVB1lF6l8dhha//nhxP5WLJdz5mgMCNNEfwFIa9eQKuu/GXRGUytlynym8lJ+t8fjAlttA9+Yypi0=@vger.kernel.org
-X-Gm-Message-State: AOJu0YxdSCI1pGNjpqZp7FQBNnsZqEUGRD7PtmNabsqnEO7XgGv9o+T0
-	R9U1QO+Fh/c+tgrMgg6PfndquQ6Zd0gtm5xgwxrSzird+iwFVINzmdBSNz/iMWUjGpDNRUREdJX
-	b25+sX+lwR7Zg+9LUSO4exn0tLJvpqruZpRs6VedZ19G01DYlq2T3/v7eaaobayiVJ2qOOuAbn1
-	GEjGE235xkrw2pFWyOtx3n/4Q1b9M6ibtTdImf
-X-Gm-Gg: AZuq6aJZMArwqze/SHANWUkHjkpnMT6m9HBR5ifTg9aQ3VmYmitwJ3HbJZAOmSa46P2
-	QRZpFJp03U8jIfTUQV1J34QpL/uo+N0NM/5rsLMAjOGmeC75fR7sPWSadsEgfXXYpS2SG6YWWtP
-	yV0hjbELakasR3a6OG4PDsbV0YOheXTM/Lp/m0n+gWe+NHZxt55Q99C6QwA0gADe5ZOYr2AUJjN
-	vHdqzTW/enA+aLhpSjKrTNlppbJoAhokVjA4MqL
-X-Received: by 2002:a05:6512:32c3:b0:59e:46c6:9081 with SMTP id 2adb3069b0e04-59f6d34c80dmr210940e87.2.1771016600014;
-        Fri, 13 Feb 2026 13:03:20 -0800 (PST)
-X-Received: by 2002:a05:6512:32c3:b0:59e:46c6:9081 with SMTP id
- 2adb3069b0e04-59f6d34c80dmr210929e87.2.1771016599486; Fri, 13 Feb 2026
- 13:03:19 -0800 (PST)
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=sGHkZcwYJ3wY2NQXx8vjqueFea2kvhdBYfWeTRlBnmU=;
+	b=P6dJDaqrX87ORjQBIAIdn7EBZemm7LmvtOK7Qh4rhonJCP25Hx7zBrccF4khZcM8iwG8KR
+	yajsUUrkcYIBfdrUgE5IymGSJJ3lTY5lOc4zY4PbAL5jvBxoGSsFiIwBf9t/BK8pS/Tz1v
+	0HW3IO9MaH/KFHN8pct3a8HHg0dzzmA=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-534-_hLJDnfAPGq1Sg9_rzX2lw-1; Fri,
+ 13 Feb 2026 17:40:14 -0500
+X-MC-Unique: _hLJDnfAPGq1Sg9_rzX2lw-1
+X-Mimecast-MFC-AGG-ID: _hLJDnfAPGq1Sg9_rzX2lw_1771022413
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id C5798195608A;
+	Fri, 13 Feb 2026 22:40:13 +0000 (UTC)
+Received: from aion.redhat.com (unknown [10.22.88.127])
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 8AB771800286;
+	Fri, 13 Feb 2026 22:40:13 +0000 (UTC)
+Received: from aion.redhat.com (localhost [IPv6:::1])
+	by aion.redhat.com (Postfix) with ESMTP id 587B26B69FD;
+	Fri, 13 Feb 2026 17:40:12 -0500 (EST)
+From: Scott Mayhew <smayhew@redhat.com>
+To: steved@redhat.com
+Cc: =carnil@debian.org,
+	linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH RFC 3/4] gssd: get the permitted enctypes from the krb5 library on startup
+Date: Fri, 13 Feb 2026 17:40:11 -0500
+Message-ID: <20260213224012.2608126-4-smayhew@redhat.com>
+In-Reply-To: <20260213224012.2608126-1-smayhew@redhat.com>
+References: <20260213224012.2608126-1-smayhew@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: Alexander Aring <aahringo@redhat.com>
-Date: Fri, 13 Feb 2026 16:03:08 -0500
-X-Gm-Features: AZwV_QgZDC4BMfr_62OBKQIGw1rPOpj8cinGnFyTwRxTcGMVGoVWq9ZzvvqAjuA
-Message-ID: <CAK-6q+gVhsKKPPax52nju8HXPApPyO9zE_jUygDxvhF8BT8P9Q@mail.gmail.com>
-Subject: [LSF/MM ATTEND] distributed file locking
-To: lsf-pc@lists.linux-foundation.org
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs <linux-nfs@vger.kernel.org>, 
-	gfs2 <gfs2@lists.linux.dev>
-Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
 
-Hi,
+This will allow us to cross-reference the list of encryption types
+sent in the upcall from the kernel as well as the list of encryption
+types enabled via the allowed-enctypes option from nfs.conf with
+the list permitted by the krb5 library.
 
-this proposal for LSF/MM aims to start an initial process to discuss
-improving the distributed file locking API in file_operations.
-Initially the file locking API, used from the user space via flock()
-or fcntl(), was not designed for distributed locking. There are known
-issues e.g. specifying a process id but missing additional information
-about the distributed entity where the process is running.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/gssd/gssd.c      |  3 +++
+ utils/gssd/krb5_util.c | 55 ++++++++++++++++++++++++++++++++++++++++++
+ utils/gssd/krb5_util.h |  1 +
+ 3 files changed, 59 insertions(+)
 
-There should be a way for users to opt into additional distributed
-locking extensions that provide specific distributed locking info or
-even introduce a new file ops distributed locking API. Designing such
-new behaviour requires community effort to become aware of all
-distributed locking use cases in the Linux kernel. Examples of those
-users include DLM, NFS or CIFS.
-
-A recent proposal [0] suggested offering the file locking API only to
-the user through a virtual filesystem, using DLM as the distributed
-lock manager backend for now. The filesystem's concept can be extended
-to offer other backends and allow experiments with new "distributed"
-file locking API extensions until the community agrees on and proposes
-a stable API.
-
-This proposal discusses an exotic and very specific topic: distributed
-file locking, which tries to map to the existing file locking API.
-Users working on distributed file systems are aware of the challenges
-involved. Solving those long-standing challenges will be a lengthy
-process. It might be time to start improving this situation.
-
-Please feel free to share your thoughts on this topic.
-
-- Alex
-
-[0] https://lore.kernel.org/linux-fsdevel/20260213180014.614646-1-aahringo@redhat.com
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 8a894b2e..1c901991 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -1222,6 +1222,9 @@ main(int argc, char *argv[])
+ 	daemon_init(fg);
+ 
+ #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
++	rc = get_krb5_library_permitted_enctypes();
++	if (rc)
++		exit(EXIT_FAILURE);
+ 	rc = get_allowed_enctypes();
+ 	if (rc)
+ 		exit(EXIT_FAILURE);
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 2b2925fb..bc07f852 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -155,9 +155,15 @@ static struct gssd_k5_kt_princ *gssd_k5_kt_princ_list = NULL;
+ static pthread_mutex_t ple_lock = PTHREAD_MUTEX_INITIALIZER;
+ 
+ #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
++/* Encryption types specified in nfs.conf */
+ krb5_enctype *allowed_enctypes = NULL;
+ int num_allowed_enctypes = 0;
+ char *allowed_enctypes_string = NULL;
++
++/* Encryption types permitted by the krb5 library */
++int num_lib_enctypes = 0;
++krb5_enctype *lib_enctypes = NULL;
++char *lib_enctypes_string = NULL;
+ #endif
+ 
+ /*==========================*/
+@@ -1676,6 +1682,55 @@ out:
+ 	return ret;
+ }
+ 
++int
++get_krb5_library_permitted_enctypes(void)
++{
++	krb5_error_code code = 0;
++	krb5_context context;
++	char *k5err = NULL;
++	int ret = 0;
++
++	code = krb5_init_context(&context);
++	if (code) {
++		k5err = gssd_k5_err_msg(NULL, code);
++		printerr(2, "ERROR: %s: %s while initializing krb5 context\n",
++			 __func__, k5err);
++		ret = code;
++		goto out;
++	}
++
++	code = krb5_get_permitted_enctypes(context, &lib_enctypes);
++	if (code) {
++		k5err = gssd_k5_err_msg(context, code);
++		printerr(2, "ERROR: %s: %s while getting permitted enctypes\n",
++			 __func__, k5err);
++		ret = code;
++		goto out_free_context;
++	}
++
++	if (lib_enctypes != NULL)
++		while (lib_enctypes[num_lib_enctypes] != 0)
++			num_lib_enctypes++;
++
++	if (num_lib_enctypes > 0) {
++		if (enctypes_list_to_string(lib_enctypes, num_lib_enctypes,
++					    &lib_enctypes_string) != 0) {
++			printerr(2, "%s: warning: enctypes_list_to_string() failed\n",
++				 __func__);
++			goto out_free_context;
++		}
++		printerr(2, "krb5 library permitted enctypes: %s\n",
++			 lib_enctypes_string);
++	}
++
++out_free_context:
++	krb5_free_context(context);
++
++out:
++	free(k5err);
++	return ret;
++}
++
+ /*
+  * this routine obtains a credentials handle via gss_acquire_cred()
+  * then calls gss_krb5_set_allowable_enctypes() to limit the encryption
+diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
+index a8e17ea2..e9d08567 100644
+--- a/utils/gssd/krb5_util.h
++++ b/utils/gssd/krb5_util.h
+@@ -30,6 +30,7 @@ int enctypes_list_to_string(krb5_enctype *enctypes, int num_enctypes,
+ #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+ int limit_krb5_enctypes(struct rpc_gss_sec *sec);
+ int get_allowed_enctypes(void);
++int get_krb5_library_permitted_enctypes(void);
+ #endif
+ 
+ /*
+-- 
+2.52.0
 
