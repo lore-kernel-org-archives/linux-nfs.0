@@ -1,47 +1,47 @@
-Received: from mailout1.samsung.com (mailout1.samsung.com [203.254.224.24])
+Received: from mailout2.samsung.com (mailout2.samsung.com [203.254.224.25])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C037B26D4C3
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C84AC26E173
 	for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2026 05:51:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.24
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.254.224.25
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1770961898; cv=none; b=h7Xnniu+XOXQw/xMJ6pW+ZDT4R0JNigTktVltfXjDDCyGHSq8YXV66jOkMWhWa+L2/9IXekALq2kv/x+IjMRT9clSLZCer2MUj+xQguGqB872BfID13CRjh+uGOcNBPoE24G16OY4GvrlLxMkhkiRqRquJXd+S0PlOs3ggqRFfQ=
+	t=1770961898; cv=none; b=Bz13STT13g7eG/S9REefRepaNXPJn+w9+wJjAwArHakv7+lVL//TDax9KO2bn38a0RZ1LEAzyBMCl7Z74RiynvEvn9ysg+mdGDXxE2VyQ4rjUz8ggPErIPO/ZAkVJPQafFlaJpA2DxNoAD0GteJmIVEsyyLEGMZxRKyc4VT4ypE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1770961898; c=relaxed/simple;
-	bh=8DkBz+LDe0vWcQaiQfjGq3gTPU8y8dyPEHcSrr7tb/0=;
+	bh=wQWIr+CWGB+z47NEiJyXgIVKlRtwG2/3Z60WkHTEQ2s=;
 	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:MIME-Version:
-	 Content-Type:References; b=cqRqYX/Hxadmvn3TBu+qyXdkaQih+PJ6tiSwQ3xMiEUINjnhlGLqLpNbQHaO+H2J5KUO3lEz2jVCnj1YhyO7AvcwY19Pr/ROBszI7I7KESgxBcxueeSxY6AXq7e3pwK0S643cAl5e/z2eL50XeWs8bniJHWdo4Qqf5U707oZoSE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=ItMoBkkq; arc=none smtp.client-ip=203.254.224.24
+	 Content-Type:References; b=iSih05bVp4nOG4WBEd+hRJzmWMyYyqtg4jRt6q9mkc8l2ZRDBPYIrl+8HMSLgalABkbEhKDFiTbLPgxdQDhrP4c2C8wZBsiArsTjySFazfF+N6QK4/hZ5tywjLNhtIazYXnIt5BA26OLMVE1fF017NVOpjoXL4E78npe1bg7X/w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com; spf=pass smtp.mailfrom=samsung.com; dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b=EN9aElZA; arc=none smtp.client-ip=203.254.224.25
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=samsung.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=samsung.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="ItMoBkkq"
-Received: from epcas5p2.samsung.com (unknown [182.195.41.40])
-	by mailout1.samsung.com (KnoxPortal) with ESMTP id 20260213055134epoutp015275c03544129c8417c17c2f190102e3~TuHWuy5M02707127071epoutp01W
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2026 05:51:34 +0000 (GMT)
-DKIM-Filter: OpenDKIM Filter v2.11.0 mailout1.samsung.com 20260213055134epoutp015275c03544129c8417c17c2f190102e3~TuHWuy5M02707127071epoutp01W
+	dkim=pass (1024-bit key) header.d=samsung.com header.i=@samsung.com header.b="EN9aElZA"
+Received: from epcas5p1.samsung.com (unknown [182.195.41.39])
+	by mailout2.samsung.com (KnoxPortal) with ESMTP id 20260213055133epoutp0242fcb325aa32f48f6feef4341885d4c1~TuHWd0FAz3182431824epoutp02y
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Feb 2026 05:51:33 +0000 (GMT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 mailout2.samsung.com 20260213055133epoutp0242fcb325aa32f48f6feef4341885d4c1~TuHWd0FAz3182431824epoutp02y
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=samsung.com;
-	s=mail20170921; t=1770961894;
-	bh=+fi7XhvBJA/4rcnBtM8yogDXj5mpCvXE4Mbm87A1wDE=;
+	s=mail20170921; t=1770961893;
+	bh=azX7HNGdMHPiAlnAiQeuCQh9Wq2SAgq9ch93GVn8UK8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=ItMoBkkq5IrA8Ex59WnNNdjgMr1vhmXjJ0IHxPwpReoGvK3Hdqko9ISywXs9RAO+0
-	 0vAwr/weEvNt+Eka+5v8rFFjs0HgPTAOvsk2lupNIASKeDJ9sEE4tVWTOuzr42e8PW
-	 1rc6F22RsvwcCXGDohpWKqM/WqUEPUJyiecY7bAg=
-Received: from epsnrtp03.localdomain (unknown [182.195.42.155]) by
-	epcas5p2.samsung.com (KnoxPortal) with ESMTPS id
-	20260213055133epcas5p2bc20a1e513af52dc8ccc5c79fd94f8ea~TuHV5j2sM2327923279epcas5p2E;
+	b=EN9aElZAQxIyB4n8Pa2DGWReaHupTLRwpMdNjzX2DHAxiQj9eD2Eb5PegbFcF7lPl
+	 eoddUb+xpO8B5rFKJBBsR6vKT8oTrssnbiRAxYRIMro7ktDiuMsRgX6J7WxzuqIAmW
+	 6CT5nfiEQKyShMv23YYmy5xVyHoDHIvfqTRGG3Mg=
+Received: from epsnrtp04.localdomain (unknown [182.195.42.156]) by
+	epcas5p1.samsung.com (KnoxPortal) with ESMTPS id
+	20260213055133epcas5p1a2d1507d8072b3f6d79ee3da36344158~TuHV1YxhF0793407934epcas5p1K;
 	Fri, 13 Feb 2026 05:51:33 +0000 (GMT)
-Received: from epcas5p3.samsung.com (unknown [182.195.38.90]) by
-	epsnrtp03.localdomain (Postfix) with ESMTP id 4fC1WS1V73z3hhT7; Fri, 13 Feb
-	2026 05:51:32 +0000 (GMT)
+Received: from epcas5p1.samsung.com (unknown [182.195.38.91]) by
+	epsnrtp04.localdomain (Postfix) with ESMTP id 4fC1WP1XTCz6B9mB; Fri, 13 Feb
+	2026 05:51:29 +0000 (GMT)
 Received: from epsmtip2.samsung.com (unknown [182.195.34.31]) by
-	epcas5p1.samsung.com (KnoxPortal) with ESMTPA id
-	20260213055131epcas5p1fdfcb9e38e3301e0f9f718a751a362f9~TuHUiimdv0793307933epcas5p1J;
-	Fri, 13 Feb 2026 05:51:31 +0000 (GMT)
+	epcas5p4.samsung.com (KnoxPortal) with ESMTPA id
+	20260213055128epcas5p485b1d6ad7d811fa71e0e61e6c0a608eb~TuHRc2CNu2345423454epcas5p4R;
+	Fri, 13 Feb 2026 05:51:28 +0000 (GMT)
 Received: from localhost.localdomain (unknown [107.99.41.245]) by
 	epsmtip2.samsung.com (KnoxPortal) with ESMTPA id
-	20260213055128epsmtip2f14b508cf8119d23c4449c8e45185d26~TuHRwQL8u2471724717epsmtip2Q;
-	Fri, 13 Feb 2026 05:51:28 +0000 (GMT)
+	20260213055124epsmtip2c23bb158484bad0746e1e08e0f3f6bb1~TuHNnkB8M2587625876epsmtip2p;
+	Fri, 13 Feb 2026 05:51:23 +0000 (GMT)
 From: Kundan Kumar <kundan.kumar@samsung.com>
 To: jaegeuk@kernel.org, chao@kernel.org, agruenba@redhat.com,
 	trondmy@kernel.org, anna@kernel.org, hch@lst.de, brauner@kernel.org,
@@ -50,10 +50,10 @@ Cc: linux-f2fs-devel@lists.sourceforge.net, linux-kernel@vger.kernel.org,
 	gfs2@lists.linux.dev, linux-nfs@vger.kernel.org, gost.dev@samsung.com,
 	anuj20.g@samsung.com, vishak.g@samsung.com, joshi.k@samsung.com, Kundan
 	Kumar <kundan.kumar@samsung.com>
-Subject: [PATCH v2 2/4] f2fs: stop using writeback internals for
- dirty_exceeded checks
-Date: Fri, 13 Feb 2026 11:16:32 +0530
-Message-Id: <20260213054634.79785-3-kundan.kumar@samsung.com>
+Subject: [PATCH v2 1/4] writeback: prep helpers for dirty-limit and
+ writeback accounting
+Date: Fri, 13 Feb 2026 11:16:31 +0530
+Message-Id: <20260213054634.79785-2-kundan.kumar@samsung.com>
 X-Mailer: git-send-email 2.25.1
 In-Reply-To: <20260213054634.79785-1-kundan.kumar@samsung.com>
 Precedence: bulk
@@ -63,65 +63,53 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CMS-MailID: 20260213055131epcas5p1fdfcb9e38e3301e0f9f718a751a362f9
+X-CMS-MailID: 20260213055128epcas5p485b1d6ad7d811fa71e0e61e6c0a608eb
 X-Msg-Generator: CA
 Content-Type: text/plain; charset="utf-8"
 CMS-TYPE: 105P
 cpgsPolicy: CPGSC10-542,Y
 X-CFilter-Loop: Reflected
-X-CMS-RootMailID: 20260213055131epcas5p1fdfcb9e38e3301e0f9f718a751a362f9
+X-CMS-RootMailID: 20260213055128epcas5p485b1d6ad7d811fa71e0e61e6c0a608eb
 References: <20260213054634.79785-1-kundan.kumar@samsung.com>
-	<CGME20260213055131epcas5p1fdfcb9e38e3301e0f9f718a751a362f9@epcas5p1.samsung.com>
+	<CGME20260213055128epcas5p485b1d6ad7d811fa71e0e61e6c0a608eb@epcas5p4.samsung.com>
 
-Replace direct dereferences of dirty_exceeded with the core helper
-bdi_wb_dirty_exceeded(), removing f2fs dependencies on writeback
+Add helper APIs needed by filesystems to avoid poking into writeback
 internals.
 
+Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Reviewed-by: Andreas Gruenbacher <agruenba@redhat.com>
 Suggested-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: Kundan Kumar <kundan.kumar@samsung.com>
 Signed-off-by: Anuj Gupta <anuj20.g@samsung.com>
 ---
- fs/f2fs/node.c    | 4 ++--
- fs/f2fs/segment.h | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ include/linux/backing-dev.h | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
-diff --git a/fs/f2fs/node.c b/fs/f2fs/node.c
-index 482a362f2625..d450b282cc55 100644
---- a/fs/f2fs/node.c
-+++ b/fs/f2fs/node.c
-@@ -78,7 +78,7 @@ bool f2fs_available_free_memory(struct f2fs_sb_info *sbi, int type)
- 		if (excess_cached_nats(sbi))
- 			res = false;
- 	} else if (type == DIRTY_DENTS) {
--		if (sbi->sb->s_bdi->wb.dirty_exceeded)
-+		if (bdi_wb_dirty_exceeded(sbi->sb->s_bdi))
- 			return false;
- 		mem_size = get_pages(sbi, F2FS_DIRTY_DENTS);
- 		res = mem_size < ((avail_ram * nm_i->ram_thresh / 100) >> 1);
-@@ -119,7 +119,7 @@ bool f2fs_available_free_memory(struct f2fs_sb_info *sbi, int type)
- 		res = false;
- #endif
- 	} else {
--		if (!sbi->sb->s_bdi->wb.dirty_exceeded)
-+		if (!bdi_wb_dirty_exceeded(sbi->sb->s_bdi))
- 			return true;
- 	}
- 	return res;
-diff --git a/fs/f2fs/segment.h b/fs/f2fs/segment.h
-index 07dcbcbeb7c6..d7166f1f000a 100644
---- a/fs/f2fs/segment.h
-+++ b/fs/f2fs/segment.h
-@@ -1000,7 +1000,7 @@ static inline bool sec_usage_check(struct f2fs_sb_info *sbi, unsigned int secno)
-  */
- static inline int nr_pages_to_skip(struct f2fs_sb_info *sbi, int type)
- {
--	if (sbi->sb->s_bdi->wb.dirty_exceeded)
-+	if (bdi_wb_dirty_exceeded(sbi->sb->s_bdi))
- 		return 0;
+diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
+index 0c8342747cab..5b7d12b40d5e 100644
+--- a/include/linux/backing-dev.h
++++ b/include/linux/backing-dev.h
+@@ -136,6 +136,19 @@ static inline bool mapping_can_writeback(struct address_space *mapping)
+ 	return inode_to_bdi(mapping->host)->capabilities & BDI_CAP_WRITEBACK;
+ }
  
- 	if (type == DATA)
++/* Must not be used by file systems that support cgroup writeback */
++static inline int bdi_wb_dirty_exceeded(struct backing_dev_info *bdi)
++{
++	return bdi->wb.dirty_exceeded;
++}
++
++/* Must not be used by file systems that support cgroup writeback */
++static inline void bdi_wb_stat_mod(struct inode *inode, enum wb_stat_item item,
++				   s64 amount)
++{
++	wb_stat_mod(&inode_to_bdi(inode)->wb, item, amount);
++}
++
+ #ifdef CONFIG_CGROUP_WRITEBACK
+ 
+ struct bdi_writeback *wb_get_lookup(struct backing_dev_info *bdi,
 -- 
 2.25.1
 
