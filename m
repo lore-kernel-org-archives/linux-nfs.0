@@ -1,78 +1,70 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 41937212F98
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Feb 2026 20:08:40 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B235F2D9EC2
+	for <linux-nfs@vger.kernel.org>; Thu, 19 Feb 2026 21:50:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771531721; cv=none; b=eyfDO2Uayu4bHoXPFntZ/8eSWnimqyqEOBuQHmUMcMul5qsBq7qfTk57zFD6teYjlmmBndvVdh+STXiLug51Zf6W6KhAWb5N5YTRHkd5h8tqqG26/+iJqs7Nc6LySs8OiFurckCiwSE+754lJWhFDmMQIk5MrCTiC6F+2iyH06A=
+	t=1771537821; cv=none; b=uWAng/EIAXle9BuZtyS7PXOG+9jPrP+qqtABKb7vq1aMr45vpyxopuW1/8yErdk4kBvuUYzveBuZtOoWnAklki8BTk4prMCLMqAR2023XRcmF8lX/k93FOWtAJJPz1tHjCTx24RGvP433THrEr4TSitbQH5M9sq/TqgiQd2GN14=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771531721; c=relaxed/simple;
-	bh=I/qLJ3Mi7FAHSplOjTZTwAMLoPz2pSt6JBmXwfP7bBM=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=HhOcfv7I/xbJsiUJ8PKCqi2HOrCVt7LQmztWZmRkk7NBYtvX1s21NRZXbuqD0wJ4xJbFt8GS/pZA3q7UIeq+JSdgFayBj14UAvAcWoWzLejk1Pv+kBG1X9zP1DMxVh4k/0RD2rZvbYre+k4i+ABxK53RNcC+LE2bkbjgITyj/uA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=K7PBT6IH; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1771537821; c=relaxed/simple;
+	bh=Yo0GkVwaNf6uUiyAu8h/g9xV07lovlb5WOjO3iEblJQ=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=PvrIE7e2kaEQgkKgnxHuogM7Uuncobl1hIllb4pK9mkAswHbbCkTOk9N5USrvcnQ3mCORPMd5zlNMTqqu8LCCoCFdq40hbGFc2PwhLg6K8B+ske1HifsyyMv8NIXRiF19HWOvze3oQEgbrLicVzYfnx6cigHL+BAvAodwyAZ+QE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MQJQl1lw; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="K7PBT6IH"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6CE60C19423;
-	Thu, 19 Feb 2026 20:08:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MQJQl1lw"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A7AA0C4CEF7;
+	Thu, 19 Feb 2026 21:50:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1771531720;
-	bh=I/qLJ3Mi7FAHSplOjTZTwAMLoPz2pSt6JBmXwfP7bBM=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=K7PBT6IHMyOg/pXc5DroOARyd2oZDMJRzWj5gCyrgFEmRwu4XFYKApYx7KFHqYRA9
-	 gyVI9YoAwJYs3fpJMbeJr0UhN4yXrC5wQMJXxfTUaUCXQ8sjJkoZnEnlpLwwRDYOhO
-	 1QGWyc8Gifv4UtOPQ2do0mbJK+TKgtyiVD8JYRaPoeENLCDjQNmDd27UdzkMWmq69+
-	 05BUItIXXL7EkhWnjFkw7mq8zxTK7GCIMdfLewqoVeUXjqMtR4T+kctAH/ds/e1XMO
-	 j9XRFYrrNXqQNGOpxIo5bghnlJ0ijacIy3DwCk8VjB63anfoQjFheeta21QQW/2YG1
-	 opMVHY3uhG+sw==
-Message-ID: <00f3d1fe8b61410ad2296d76f0603a51e8e9991b.camel@kernel.org>
-Subject: Re: [PATCH 1/1] pnfs: improve "Server wrote zero bytes" error
-From: Trond Myklebust <trondmy@kernel.org>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: "okorniev@redhat.com" <okorniev@redhat.com>, "anna@kernel.org"
-	 <anna@kernel.org>, "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 19 Feb 2026 15:08:39 -0500
-In-Reply-To: <CAN-5tyFec2nw1=1-wsGYj4TnXmSbw4p+qW_1v9sPD+nPKiP1Gg@mail.gmail.com>
-References: <20260219192327.34732-1-okorniev@redhat.com>
-	 <c6be70378ce90b3316c997bfc9443172eaa145c5.camel@hammerspace.com>
-	 <CAN-5tyFec2nw1=1-wsGYj4TnXmSbw4p+qW_1v9sPD+nPKiP1Gg@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.58.3 (3.58.3-1.fc43) 
+	s=k20201202; t=1771537821;
+	bh=Yo0GkVwaNf6uUiyAu8h/g9xV07lovlb5WOjO3iEblJQ=;
+	h=From:To:Cc:Subject:Date:From;
+	b=MQJQl1lwCZdywXi0zmNvHKegxqx5/QuX4ttEuz0nf1NZHrq/rFpU4vdXgoDfdbZc0
+	 r9CaPNQ9z+H8WSPFkAipvhE6zOCfhVJebwZrN32JX79WKQPBGc+avZ1vp/6rLXvo0m
+	 tDgSehQowEvrEOtlNVjtwjabh0obCCtAtvHPRumxGAjP7KOwcAOXd7s/afYAbGcOQz
+	 VHcFrh4Zro+yG+ir+WktOHZTPdgHzHiPeQ4/oXBicXOQSrHReXDRABP+sJzd30wmAL
+	 t6Fce7X7J9/9U8sfJW9XypV50iuKIbQ2UQFipDhezFNJw7xBwphbBxX3NWXfl65NP0
+	 5l1Gmey16HH7w==
+From: Chuck Lever <cel@kernel.org>
+To: misanjum@linux.ibm.com,
+	NeilBrown <neilb@ownmail.net>,
+	Jeff Layton <jlayton@kernel.org>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <dai.ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>
+Cc: <linux-nfs@vger.kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 0/2] Address UAF in sunrpc cache show callbacks
+Date: Thu, 19 Feb 2026 16:50:15 -0500
+Message-ID: <20260219215017.1769-1-cel@kernel.org>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-On Thu, 2026-02-19 at 14:44 -0500, Olga Kornievskaia wrote:
-> On Thu, Feb 19, 2026 at 2:40=E2=80=AFPM Trond Myklebust
-> <trondmy@hammerspace.com> wrote:
-> >=20
-> > Hmm... Is this needed? Shouldn't the test for task->tk_status < 0
-> > in
->=20
-> task_status is 0 when it gets to nfs_writeback_done because in
-> filelayout/filelayout.c in filelayout_reset_write() is doing this
->=20
-> task->tk_status =3D pnfs_write_done_resend_to_mds(hdr);
->=20
-> > nfs_pgio_result() ensure that we can't call nfs_writeback_result()
-> > in
-> > the above case?
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Oh... So isn't the hdr->pages list actually empty? Should we even
-bother entering the short write condition when that happens?
+Attempt to address three crashes reported here:
 
-IOW: Why not just change that test at the top of nfs_writeback_result()
-to read something like
+https://lore.kernel.org/linux-nfs/dcd371d3a95815a84ba7de52cef447b8@linux.ibm.com/
 
-	if (resp->count < argp->count && !list_empty(hdr->pages)) {
+These are compile-tested and regression-tested, but as I do not have
+a PowerPC system handy, I will need someone who has one to test
+whether they actually address the crashes.
 
+Chuck Lever (2):
+  NFSD: Defer sub-object cleanup in export put callbacks
+  NFSD: Hold net reference for the lifetime of /proc/fs/nfs/exports fd
 
---=20
-Trond Myklebust
-Linux NFS client maintainer, Hammerspace
-trondmy@kernel.org, trond.myklebust@hammerspace.com
+ fs/nfsd/export.c | 63 +++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfsd/export.h |  7 ++++--
+ fs/nfsd/nfsctl.c | 22 ++++++++++++++---
+ 3 files changed, 78 insertions(+), 14 deletions(-)
+
+-- 
+2.53.0
+
