@@ -1,188 +1,110 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f52.google.com (mail-wm1-f52.google.com [209.85.128.52])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 034E777F39
-	for <linux-nfs@vger.kernel.org>; Sat, 21 Feb 2026 22:57:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3C002246BC5
+	for <linux-nfs@vger.kernel.org>; Sat, 21 Feb 2026 23:46:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.52
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771714660; cv=none; b=Fs8//eNCgrC9Cq66W/zXqvmiEmDaLqfHMNgetUvr4J3Fz4wmuUxsNUSTBdCgNT6A2a/WtArV3YHfKcwObYmtN7Zq2OK3s0lAEDnf7ioBT1x7RsHf1hggeY4Vd8UKxKg8SGykx0tsZ7iWq2BYblDDLRi/ITMRqcoVS84oE82zKN8=
+	t=1771717567; cv=none; b=aavugq2bTOMVTXUu3couG1T0J/2hYun4lkJOC7nAtp4zr88TKQhgnVR9cMzjsknSoYCZFK5IgwDI0KT5MXS4qnU5GLwG4ybeiqYAir8AO7qyUW2jHJxQ7cOlSNNIU5cCd5mdFengQfOqDhJ7aMZId+47mfEwoSAzIYCqoxOEZQQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771714660; c=relaxed/simple;
-	bh=ZHFVUCEXcyfMaYhMtvwalfC5gW/yiPtZlV3Y8k7sNWA=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=ehRDZm+fXADrbLDMFQ9wyC1YuOuMcm6ITMQtqlc4W2gDHtp8oBlIf6VaeZfGwx2zWT/xspgevq9dmopJWIndq3GAaVjBHp5DUxGVXEv7yMo7QLSSs3sSXIRDn3sEHLNFq+lh01ld2Eg2l+2XZhAIBuF76ksZ/DSeQ7TRensXpl0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oCZb9zpH; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1771717567; c=relaxed/simple;
+	bh=D8wEA4P1R/wLC0WQ2gaxmvJV8Zid0j4uMfM8HtVxkhE=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=Txbe4BPIYiY4rEd06Io32cWgN/EVyCaGGpD2ehqwM4f2y2YBg7Etaw19yfLUeBIEkABybdgRNGURiHEwupLsNkUZ7liTPQih9sXzlRfs2/gGjFBFVLQ9xhCtxsFwhOkn2KMP4/bxuz05/9O+yH7moQkERCW7OsyK6kSDz96SDg4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=hxWuCmMl; arc=none smtp.client-ip=209.85.128.52
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oCZb9zpH"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6D5A0C19422;
-	Sat, 21 Feb 2026 22:57:39 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1771714659;
-	bh=ZHFVUCEXcyfMaYhMtvwalfC5gW/yiPtZlV3Y8k7sNWA=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-	b=oCZb9zpHwzel3i9so9IWX9wxx/jv3URb+lBRc/FU9wILNvqSaJtjuPp/v8dPwwrhT
-	 0NeYST+V7anzvBQI6fLsPOE3C80h/0o9dGmVSR2HGNr5CaaZaQBoNNSkzJZ/yeAgoD
-	 6nPnDnmtlPn7o/ou9Sm9VhFJLHg3t2gVrCk20c0kMCs8e+1RwPTTh4j+UVeLr8Ld0H
-	 7dIvjIr/ANAQuV2x6ig0Si0ctOXXN3z7c5uupGEjr9+AewSm1QqqoV4Ww/iyTyJVgG
-	 O8YI7XCVu3R4h+UjNKC1gy7HublfIUqiityNSu39H683DE1vzhiNM1JCvR4f9BRydn
-	 KGYWlq6Oagf3A==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 51965F4006C;
-	Sat, 21 Feb 2026 17:57:38 -0500 (EST)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Sat, 21 Feb 2026 17:57:38 -0500
-X-ME-Sender: <xms:Yjiaab7X0IOSXwSvjvRjv-tyXCaPGgA5_EBA2oYGzksEKI2FBO97Pw>
-    <xme:Yjiaabtjd0TzaGM42y9cnQyTnjck12oQrUz0wkWViHkIlUTLsnMbkadvaua49saOf
-    e0mm0rHNU_hbl6JuKKbFbKDUqaLxMAlnogxzTQwT2vuzUS-66AsL3UU>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgddvfedvieeiucetufdoteggodetrf
-    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
-    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
-    gurhepofggfffhvfevkfgjfhfutgfgsehtjeertdertddtnecuhfhrohhmpedfvehhuhgt
-    khcunfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrh
-    hnpefhffekffeftdfgheeiveekudeuhfdvjedvfedvueduvdegleekgeetgfduhfefleen
-    ucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutg
-    hklhgvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleel
-    leehledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrg
-    hilhdrtghomhdpnhgspghrtghpthhtohepkedpmhhouggvpehsmhhtphhouhhtpdhrtghp
-    thhtohepnhgvihhlsegsrhhofihnrdhnrghmvgdprhgtphhtthhopehjlhgrhihtohhnse
-    hkvghrnhgvlhdrohhrghdprhgtphhtthhopehhtghhsehlshhtrdguvgdprhgtphhtthho
-    pegthhhutghkrdhlvghvvghrsehorhgrtghlvgdrtghomhdprhgtphhtthhopegurghird
-    hnghhosehorhgrtghlvgdrtghomhdprhgtphhtthhopehokhhorhhnihgvvhesrhgvughh
-    rghtrdgtohhmpdhrtghpthhtohepthhomhesthgrlhhpvgihrdgtohhmpdhrtghpthhtoh
-    eplhhinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrgh
-X-ME-Proxy: <xmx:YjiaaUNSyxRuiCo7Ev-WY4BfYTswu4_Qr6SswnpStbDJNwpDQt0_tw>
-    <xmx:YjiaaU9WJ-vybux6_N8eqs_qjClBoIlXUh5cRtCTsUbOG2yRfrEZ2Q>
-    <xmx:YjiaaR5IXbIufnRAlSGXoPjjgiibUwPUXqLra2hskh6KROwC6vgVlw>
-    <xmx:Yjiaaa6m4iAb7TqONsqeZYlb-QXbBtV3lETMpV-iydmhBYckWSvsdQ>
-    <xmx:YjiaaaqcbLEwUE8fRs2Xl9QuuuFXpXbRmxfvAeCGysV7eQJfetTE-dR9>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 29A81780082; Sat, 21 Feb 2026 17:57:38 -0500 (EST)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hxWuCmMl"
+Received: by mail-wm1-f52.google.com with SMTP id 5b1f17b1804b1-4807068eacbso25584655e9.2
+        for <linux-nfs@vger.kernel.org>; Sat, 21 Feb 2026 15:46:06 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1771717564; x=1772322364; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=a6c+2c5A4IdcQR95bgfQZwtsMpRnSCzmv5kOunEAmnw=;
+        b=hxWuCmMlxuj3d20al60XWs0jh2KLvmk0/jpM7jG8sjLtUj+ARfwmScdZLER6DpfOAs
+         J8nWVO9IM04A+Qm71FNtsxpTM5ftoWYuG5CoE6iS+dCZ9RSZYYoP+pmhOyAgz70sC2iv
+         LDvuveFZpQZy2/IC/wLc5I7ZkcufMPCm48xDHV18rMz3EllbndGCICEYY+zKzP925M1P
+         L1j7TU5F2mxburUB6vGNMZfdQFHuZXWbh2ZEHD6D3l3MvO7SPXGiDAny7QDzYV1siVBQ
+         FXjjbYA1cLCF3c7I92iQNDo0U9X7Emu0pfWIOGTBeLkAV5YK+VPmQv02ynK/DYnajvGz
+         T9UA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1771717564; x=1772322364;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=a6c+2c5A4IdcQR95bgfQZwtsMpRnSCzmv5kOunEAmnw=;
+        b=t3HFThcreXK+NKl597eXLSTrPvu0Vt/azV7ODK5/Ha0JL7bZuTSFv8C2D5Rssk1Qw3
+         x0wd6RTbReE2PCBSeLJGFm5C8LpkVjadEikZrqIWGiVil1XgeIUsFDOZtBEiUIDJ1dFH
+         CYcucYmHnMk8XM8QGZDKexEiw8iTqoHQSCgzHQX4R+B4Ge7oA3HkIgJEBKOZ2CZGTzhM
+         KXhhjiDZKtth3DnT1orTFs470aKqTck50XFOWEA4F39tBYwkJrbPcVHMRElZ7TGpavR1
+         YjBP5R59j/BPdq/DOXdsSI6+uUtdIseSjZ6dQPSJ4seq+LAdjyuCi/w4h/zbwW7XEHcl
+         2/5w==
+X-Forwarded-Encrypted: i=1; AJvYcCU2VjED1FoXQpsDKIHdvzdmKrH2eOKZTdlYRJBFFe0BXBO15PfDwEQz4Id+NFFOdysaMZTvGCymv9o=@vger.kernel.org
+X-Gm-Message-State: AOJu0YyA5fQ5kPahiqa9tn7rRhOaZF0YauWKKiOgPqM6XugIdHSGgk7i
+	x3VtJO3ffNpxhUKkFyopBPRdGjuWvfqVo8l94UKI08x4+c7YH/xe1/qGWYiRzQ==
+X-Gm-Gg: AZuq6aK/iq8jgffDc9z8vbvC5AGK/ykgnGgC1a/M6NgJWugYiMWV5JswOs/+mNPbh4l
+	ltzyB/u/11hP3cUzZT7N/RckjsXSXhQ6h1izShOKnwgZhtlWcySIGr1gH3Yuj8/DNV8HmiyfQUX
+	Syt0BSNS6sWB6tJ10DmQEpUaAmciGK7iiaodumIbX1Gv3wNF9tEloUtN2LK1yYWhc7YXE5EWLj9
+	cOAPmQWKbWFoTIl91HS+469bTSxqVkpqVzjITivJmRbjS+BrTZ13KUfZC4LgCf39i5E85eqXyIU
+	82nFiGtGXfixGzt6df+95U2mA+p8GB9wuTy8wA/S4E+RNBI6kV7fiT28+jYamFtB+Et5TbhG1sv
+	GXKH7HC9NgTNwWB0m6GO9XchlwQmFhmqFVs00oWIrXEDn4Yor89QImLZ2f0D32Ot0S+LggF919h
+	StqPhfBgaqelm/5E62kS/p60GnLq353Q==
+X-Received: by 2002:a05:600c:4749:b0:480:69b6:dfed with SMTP id 5b1f17b1804b1-483a95e5ab8mr72338125e9.24.1771717564334;
+        Sat, 21 Feb 2026 15:46:04 -0800 (PST)
+Received: from localhost ([212.73.77.104])
+        by smtp.gmail.com with UTF8SMTPSA id 5b1f17b1804b1-483a31c56d8sm251620925e9.8.2026.02.21.15.46.02
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Sat, 21 Feb 2026 15:46:03 -0800 (PST)
+From: Askar Safin <safinaskar@gmail.com>
+To: dorjoychy111@gmail.com
+Cc: ceph-devel@vger.kernel.org,
+	gfs2@lists.linux.dev,
+	linux-cifs@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	linux-kselftest@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	v9fs@lists.linux.dev
+Subject: Re: [PATCH v4 0/4] OPENAT2_REGULAR flag support in openat2
+Date: Sun, 22 Feb 2026 02:45:53 +0300
+Message-ID: <20260221234553.2024832-1-safinaskar@gmail.com>
+X-Mailer: git-send-email 2.47.3
+In-Reply-To: <CAFfO_h7TJbB_170eoeobuanDKa2A+64o7-sb5Mpk3ts1oVUHtg@mail.gmail.com>
+References: <CAFfO_h7TJbB_170eoeobuanDKa2A+64o7-sb5Mpk3ts1oVUHtg@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AdIdnSnN9OJZ
-Date: Sat, 21 Feb 2026 17:57:17 -0500
-From: "Chuck Lever" <cel@kernel.org>
-To: "Dai Ngo" <dai.ngo@oracle.com>, "Chuck Lever" <chuck.lever@oracle.com>,
- "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Tom Talpey" <tom@talpey.com>,
- "Christoph Hellwig" <hch@lst.de>
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <8d11898b-9889-43b5-bb96-445870367949@app.fastmail.com>
-In-Reply-To: <20260221215733.3643669-1-dai.ngo@oracle.com>
-References: <20260221215733.3643669-1-dai.ngo@oracle.com>
-Subject: Re: [PATCH 1/1] NFSD: Expose callback statistics in /proc/net/rpc/nfsd
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-Hello Dai!
+Dorjoy Chowdhury <dorjoychy111@gmail.com>:
+> I am not sure if my patch series made it properly to the mailing
+> lists. https://lore.kernel.org/linux-fsdevel/  is showing a broken
+> series, only the 2/4, 3/4, 4/4 and I don't see cover-letter or 1/4.
+> The patch series does have a big cc list (what I got from
+> get_maintainers.pl excluding commit-signers) and I used git send-email
+> to send to everyone. It's also showing properly in my gmail inbox. Is
+> it just the website that's not showing it properly? Should I prune the
+> cc list and resend? is there any limitations to sending patches to
+> mailing lists with many cc-s via gmail?
 
-On Sat, Feb 21, 2026, at 4:57 PM, Dai Ngo wrote:
-> Extend /proc/net/rpc/nfsd output to report NFSv4 callback activity:
->
-> . Add system-wide counters for each callback operation.
-> . Add per-client callback operation statistics, similar to mountstats(8)
->   raw format.
+I see all 5 emails on
+https://lore.kernel.org/linux-fsdevel/CAFfO_h7TJbB_170eoeobuanDKa2A+64o7-sb5Mpk3ts1oVUHtg@mail.gmail.com/T/#t .
 
-The commit message needs to justify why you are modifying a legacy
-/proc interface. I assume it is because you want these metrics to
-appear in an existing NFS administrative tool like nfsstat ?
+So this was some temporary problem on lore.kernel.org .
 
+Sometimes gmail indeed rejects mails if you try to send too many emails
+to too many people. So I suggest adding "--batch-size=1 --relogin-delay=20"
+to your send-email invocation. I hope this will make probability of
+rejection by gmail less. I usually add these flags.
 
-> Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
-> ---
->  fs/nfsd/nfs4callback.c | 33 ++++++++++++++++++++++++++++++++-
->  fs/nfsd/nfsd.h         |  1 +
->  fs/nfsd/stats.c        |  2 ++
->  3 files changed, 35 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index e00b2aea8da2..5d6c91b2da24 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -36,6 +36,7 @@
->  #include <linux/sunrpc/xprt.h>
->  #include <linux/sunrpc/svc_xprt.h>
->  #include <linux/slab.h>
-> +#include <linux/sunrpc/metrics.h>
->  #include "nfsd.h"
->  #include "state.h"
->  #include "netns.h"
-> @@ -1016,7 +1017,7 @@ static int nfs4_xdr_dec_cb_offload(struct rpc_rqst *rqstp,
->  	.p_decode  = nfs4_xdr_dec_##restype,				\
->  	.p_arglen  = NFS4_enc_##argtype##_sz,				\
->  	.p_replen  = NFS4_dec_##restype##_sz,				\
-> -	.p_statidx = NFSPROC4_CB_##call,				\
-> +	.p_statidx = NFSPROC4_CLNT_##proc,				\
->  	.p_name    = #proc,						\
->  }
-> 
-> @@ -1786,3 +1787,33 @@ bool nfsd4_run_cb(struct nfsd4_callback *cb)
->  		nfsd41_cb_inflight_end(clp);
->  	return queued;
->  }
-> +
-> +void nfsd4_show_cb_stats(struct nfsd_net *nn, struct seq_file *seq)
-> +{
-> +	const struct rpc_procinfo *pinfo;
-> +	const struct rpc_version *ver;
-> +	struct nfs4_client *clp;
-> +	int ix;
-> +
-> +	/* display system-wide status, count per op */
-> +	ver = cb_program.version[1];
-> +	for (ix = 0; ix < ver->nrprocs; ix++) {
-> +		pinfo = &ver->procs[ix];
-> +		if (pinfo->p_name)
-> +			seq_printf(seq, "%s: %d\n",
-> +				pinfo->p_name, ver->counts[pinfo->p_statidx]);
-> +	}
-> +
-> +	/* display per-client status, similar to mountstats(8) in raw format */
-> +	spin_lock(&nn->client_lock);
-> +	for (ix = 0; ix < CLIENT_HASH_SIZE; ix++) {
-> +		list_for_each_entry(clp, &nn->conf_id_hashtbl[ix], cl_idhash) {
-> +			if (!clp->cl_cb_client)
-> +				continue;
-> +			seq_printf(seq, "\nClient[%pISpc]:\n",
-> +					(struct sockaddr *)&clp->cl_addr);
-> +			rpc_clnt_show_stats(seq, clp->cl_cb_client);
-> +		}
-> +	}
-> +	spin_unlock(&nn->client_lock);
-> +}
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 7c009f07c90b..cec0c6167ddb 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -591,6 +591,7 @@ extern void nfsd4_ssc_init_umount_work(struct nfsd_net *nn);
->  #endif
-> 
->  extern void nfsd4_init_leases_net(struct nfsd_net *nn);
-> +void nfsd4_show_cb_stats(struct nfsd_net *nn, struct seq_file *seq);
-> 
->  #else /* CONFIG_NFSD_V4 */
->  static inline int nfsd4_is_junction(struct dentry *dentry)
-> diff --git a/fs/nfsd/stats.c b/fs/nfsd/stats.c
-> index f7eaf95e20fc..cc601719ef26 100644
-> --- a/fs/nfsd/stats.c
-> +++ b/fs/nfsd/stats.c
-> @@ -66,6 +66,8 @@ static int nfsd_show(struct seq_file *seq, void *v)
->  		percpu_counter_sum_positive(&nn->counter[NFSD_STATS_WDELEG_GETATTR]));
-> 
->  	seq_putc(seq, '\n');
-> +
-> +	nfsd4_show_cb_stats(nn, seq);
->  #endif
-> 
->  	return 0;
-> -- 
-> 2.47.3
+If you still expirence some problems with gmail, then you may apply
+for linux.dev email (go to linux.dev). They are free for Linux contributors.
 
 -- 
-Chuck Lever
+Askar Safin
