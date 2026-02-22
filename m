@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E556A3D3B3
-	for <linux-nfs@vger.kernel.org>; Sun, 22 Feb 2026 16:20:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C752025F994
+	for <linux-nfs@vger.kernel.org>; Sun, 22 Feb 2026 16:20:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771777211; cv=none; b=rLEoaIGHU2udPuhHI4bM4LeqD3Zw2NyGtZUuFXclFj3RWxSRq5NWpLWD9U2UcyLi1GV3YgeYjiMNikaEksuW9CD2SkSZvVWnxFc9k2UYfERwWYIM8n88my9nP67nSntkTCjhChxhP41SkPyeqE4qdSOPPY2A3AFNLPLZrpPkyJU=
+	t=1771777211; cv=none; b=r5lE16ebtIG1KYV2pXckCiM/rHAJvnOSpMv5IIq85ki2kbIppWDg4nGy7VemCD3vQ8apStwMHSV0d2Oc7NwHWqOW0kvBtyWkqiU7Sk9x47Nzg3ru/Du1GTNPf/YxiIyTaeWoPn6kooHZFQsNMM3Zt98TdVsbMaykj39a55g6xbQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1771777211; c=relaxed/simple;
-	bh=C6IVUnCGEmdjlbMbMbDB99NkvMyR5R0D1nuagejGRxs=;
+	bh=vHB9blp+IHH8GWFcNLiUfN1bKw+tIqOCbQNV2sHZD5g=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=u5Q2RS25J6PNg1NrSj3CnE+qMoCn/UCO5uX5JA2jNqNf08Iz4/HXlkmA3PrxWsZ2eibwpag4D3hs/DW369WDL41l1282uV73t45hGMstb0Mtihoq8Z4LlbZQEcbT6WzfqiQSFDsuK7+V9gA8ncrt4NOuNrpjmIhn/kj2hGSqcrw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jS9e/Ts9; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=ORV/hHcck8kO2BXyehpJpJP10Up6W8pCTTTMv2V1pbsJx8/KfRPbhFldQ5cf5MDN5429YuBTf4LwGgmolzL5wYcO4Y3+qFNvlqxsoOPBoh/OkCn/gIIYG6Y8FXiv2YJ3xQM9BLphj84ZyVLYgG1/bJAnTcE7Lgj2jwVJd2D5DUw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Q9HPR9W6; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jS9e/Ts9"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 05A3AC116D0;
-	Sun, 22 Feb 2026 16:20:09 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Q9HPR9W6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CC9F7C19422;
+	Sun, 22 Feb 2026 16:20:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1771777210;
-	bh=C6IVUnCGEmdjlbMbMbDB99NkvMyR5R0D1nuagejGRxs=;
+	s=k20201202; t=1771777211;
+	bh=vHB9blp+IHH8GWFcNLiUfN1bKw+tIqOCbQNV2sHZD5g=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=jS9e/Ts9Uks//tKoy/P6EdMEhG3dJoGAKR6TDuWJbH7dZtpC6d1HDksQ1I4A5fO9C
-	 C3808GvyCO/TbQYMeqWWmSNKkYYVVYgBjOKpnCzB6T/rVHNUcxkxGHD0ZeWrjpQcls
-	 NwXOsaeX5ThZFgP6AwUaiXwbIIodRIurcKbcW6oRd/1YpyEJxzHlSgQI+7n+aKKb6m
-	 r0nUPMefEZfFlms9B/DYy5/JCP2goKhyqTBpYpNj4OyJIS9t+L2gzFsBfLO4QRSBmq
-	 lQX2+yWDokAJsFgTsopYzQ5Favbs5nWSQzj1lHwRaFDPWFNuEwcNheDJq2PvgmPuw1
-	 qlchnx6ja2/lw==
+	b=Q9HPR9W6AjZo/EIVL+7UBhiOHyNfhoqeXp6EyQjHVhgYpn58paqHh/3JVGz46nEMP
+	 yUgycNDke6r9fskY6ZRtw46aMIj22EpCzylFwOJhnYLum0oNsWmJD28C/Cvw4ZDIFh
+	 ZOB8hSVQ5ATMd8x4c5q4VNtVeyl/OuQNn5OMJGFW4OCbImL2ZdKC4ZKkufI9i0ZmBV
+	 pLrN1VdUo0sNt/EGp4oi1GhMl9CThUIivOmaIh6a7G2BzpiOuQng+dLAkV25s0xW1O
+	 y85hR2iFENKEG0ojGBqr+DVXkT1dxVC4JBrm5B3FKGfOCP2rTQgblfutR7LD9UzmqB
+	 zbkAMVyxunZQA==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neilb@ownmail.net>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -34,9 +34,9 @@ To: NeilBrown <neilb@ownmail.net>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>
-Subject: [RFC PATCH 5/6] sunrpc: Track consumed rq_pages entries
-Date: Sun, 22 Feb 2026 11:20:01 -0500
-Message-ID: <20260222162002.10613-6-cel@kernel.org>
+Subject: [RFC PATCH 6/6] sunrpc: Optimize rq_respages allocation in svc_alloc_arg
+Date: Sun, 22 Feb 2026 11:20:02 -0500
+Message-ID: <20260222162002.10613-7-cel@kernel.org>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20260222162002.10613-1-cel@kernel.org>
 References: <20260222162002.10613-1-cel@kernel.org>
@@ -50,120 +50,74 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Transports that consume pages from the rq_pages array --
-svc_tcp_save_pages() for TCP fragment reassembly and
-svc_rdma_clear_rqst_pages() for RDMA Read I/O -- NULL
-the consumed entries starting at rq_pages[0]. A new
-rq_pages_nfree field in struct svc_rqst records the
-count of entries consumed.
+svc_alloc_arg() invokes alloc_pages_bulk() with the full
+rq_maxpages count (~259 for 1MB messages) for the rq_respages
+array, causing a full-array scan despite most slots holding valid
+pages.
 
-svc_alloc_arg() uses rq_pages_nfree to refill only
-the consumed entries rather than scanning the full
-rq_pages array. In steady state, the transport consume
-path NULLs a handful of entries per RPC, so the
-allocator visits only those entries instead of the
-full ~259 slots (for 1MB messages).
+svc_rqst_release_pages() NULLs only the range
+[rq_respages, rq_next_page) after each RPC, so only that range
+contains NULL entries. Limit the rq_respages fill in svc_alloc_arg()
+to that range instead of scanning the full array.
 
-svc_init_buffer() initializes rq_pages_nfree to
-rq_maxpages so that the first svc_alloc_arg() call
-populates every entry.
+svc_init_buffer() initializes rq_next_page to span the entire
+rq_respages array, so the first svc_alloc_arg() call fills all
+slots.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc.h        |  8 ++++++++
- net/sunrpc/svc.c                  |  1 +
- net/sunrpc/svc_xprt.c             | 11 ++++++++---
- net/sunrpc/svcsock.c              |  1 +
- net/sunrpc/xprtrdma/svc_rdma_rw.c |  1 +
- 5 files changed, 19 insertions(+), 3 deletions(-)
+ include/linux/sunrpc/svc.h | 4 ++++
+ net/sunrpc/svc.c           | 1 +
+ net/sunrpc/svc_xprt.c      | 8 +++++++-
+ 3 files changed, 12 insertions(+), 1 deletion(-)
 
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index b1fb728724f5..bb2029e396db 100644
+index bb2029e396db..35e9b34e2190 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -143,6 +143,13 @@ extern u32 svc_max_payload(const struct svc_rqst *rqstp);
-  * server thread needs to allocate more to replace those used in
-  * sending.
+@@ -150,6 +150,10 @@ extern u32 svc_max_payload(const struct svc_rqst *rqstp);
+  * rq_pages[0] and set rq_pages_nfree to the count of entries
+  * consumed. svc_alloc_arg() refills only that many entries.
   *
-+ * Transport page-consumption contract:
-+ *
-+ * Transports that consume rq_pages entries (for TCP fragment
-+ * reassembly or RDMA Read I/O) NULL entries starting at
-+ * rq_pages[0] and set rq_pages_nfree to the count of entries
-+ * consumed. svc_alloc_arg() refills only that many entries.
++ * For rq_respages, svc_rqst_release_pages() NULLs entries in
++ * [rq_respages, rq_next_page) after each RPC. svc_alloc_arg()
++ * refills only that range.
 + *
   * xdr_buf holds responses; the structure fits NFS read responses
   * (header, data pages, optional tail) and enables sharing of
   * client-side routines.
-@@ -201,6 +208,7 @@ struct svc_rqst {
- 	struct folio		*rq_scratch_folio;
- 	struct xdr_buf		rq_res;
- 	unsigned long		rq_maxpages;	/* entries per page array */
-+	unsigned long		rq_pages_nfree;		/* NULL rq_pages to refill */
- 	struct page *		*rq_pages;
- 	struct page *		*rq_respages;	/* Reply buffer pages */
- 	struct page *		*rq_next_page; /* next reply page to use */
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 620de9abedbb..a8c26634ecf1 100644
+index a8c26634ecf1..ef18365c9d9a 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -654,6 +654,7 @@ svc_init_buffer(struct svc_rqst *rqstp, const struct svc_serv *serv, int node)
- 		return false;
+@@ -655,6 +655,7 @@ svc_init_buffer(struct svc_rqst *rqstp, const struct svc_serv *serv, int node)
  	}
  
-+	rqstp->rq_pages_nfree = rqstp->rq_maxpages;
+ 	rqstp->rq_pages_nfree = rqstp->rq_maxpages;
++	rqstp->rq_next_page = rqstp->rq_respages + rqstp->rq_maxpages;
  	return true;
  }
  
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index cd38f09c1803..9d8f6adcfe1f 100644
+index 9d8f6adcfe1f..9b3425f57068 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -675,12 +675,17 @@ static bool svc_fill_pages(struct svc_rqst *rqstp, struct page **pages,
- static bool svc_alloc_arg(struct svc_rqst *rqstp)
- {
- 	struct xdr_buf *arg = &rqstp->rq_arg;
--	unsigned long pages;
-+	unsigned long pages, nfree;
+@@ -686,8 +686,14 @@ static bool svc_alloc_arg(struct svc_rqst *rqstp)
+ 		rqstp->rq_pages_nfree = 0;
+ 	}
  
- 	pages = rqstp->rq_maxpages;
- 
--	if (!svc_fill_pages(rqstp, rqstp->rq_pages, pages))
--		return false;
-+	nfree = rqstp->rq_pages_nfree;
+-	if (!svc_fill_pages(rqstp, rqstp->rq_respages, pages))
++	if (WARN_ON_ONCE(rqstp->rq_next_page < rqstp->rq_respages))
+ 		return false;
++	nfree = rqstp->rq_next_page - rqstp->rq_respages;
 +	if (nfree) {
-+		if (!svc_fill_pages(rqstp, rqstp->rq_pages, nfree))
++		if (!svc_fill_pages(rqstp, rqstp->rq_respages, nfree))
 +			return false;
-+		rqstp->rq_pages_nfree = 0;
 +	}
 +
- 	if (!svc_fill_pages(rqstp, rqstp->rq_respages, pages))
- 		return false;
  	rqstp->rq_next_page = rqstp->rq_respages;
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 10a298f440cc..f9140ac8ed99 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1009,6 +1009,7 @@ static void svc_tcp_save_pages(struct svc_sock *svsk, struct svc_rqst *rqstp)
- 		svsk->sk_pages[i] = rqstp->rq_pages[i];
- 		rqstp->rq_pages[i] = NULL;
- 	}
-+	rqstp->rq_pages_nfree = npages;
- }
- 
- static void svc_tcp_clear_pages(struct svc_sock *svsk)
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 4ec2f9ae06aa..cf4a1762b629 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -1107,6 +1107,7 @@ static void svc_rdma_clear_rqst_pages(struct svc_rqst *rqstp,
- 		head->rc_pages[i] = rqstp->rq_pages[i];
- 		rqstp->rq_pages[i] = NULL;
- 	}
-+	rqstp->rq_pages_nfree = head->rc_page_count;
- }
- 
- /**
+ 	rqstp->rq_page_end = &rqstp->rq_respages[pages];
+ 	/* svc_rqst_replace_page() dereferences *rq_next_page even
 -- 
 2.53.0
 
