@@ -1,91 +1,79 @@
-Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3454E267B89;
-	Tue, 24 Feb 2026 17:11:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8D283E555;
+	Tue, 24 Feb 2026 17:41:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771953118; cv=none; b=tpPilPQ3+Ws9j5uV0PFEVWnBkTcVE6kMQ0ZwCnLzknjyOpWhDXB3Vn+Z/r1ZQD7wGSZdnCTF1GjhnV0t1LTwnTnMGuwc+zgEsLwHhY1oVZW+CmR5zl39a27T+YJk62lnTetfJovVbbbEk9qVj91NHRxvsnwYyj3iTO4LhdUUm/0=
+	t=1771954891; cv=none; b=B/JGki5rxYb09T58M1s4MrQ6U+HW7VjE7H9VS45PXqNroOQvIqXvOfa2V8aXwb3igPXaBf0y8ntDcEz+h//6MXE5t6eOIqBjHDQLupKMfqrF19TJW8toKp+jy0xWHT7oTIPD3LlRVsaaXyTZUYVRb6UaaXDgCYuA2xJR6Wh5gdo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771953118; c=relaxed/simple;
-	bh=fHefDfdm0n6JimB8n6xsWaDVbDBmBtXkjCmtt0Tpcts=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Ej3i4OtKVDsctl31XtbPZWarNxgxJuT5qT55SqTkiMnk64T2zYMwwzFp7idak1Q7qLb5XYA11VDN1X0CgpLTrdb7JpHIIZS0g3MKxah9umjcg6RZg14Q90LyntizsaWhq4xnvekZcIvEmIW2wOC+ybPuydFZobp7MLXWW8wvJQo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=h9zAcR4K; arc=none smtp.client-ip=62.89.141.173
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
+	s=arc-20240116; t=1771954891; c=relaxed/simple;
+	bh=gf7Ms95s1RgvWw9e47Pjz2QHDnBpYQUDuMoWY1tTWqc=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=NpyLju7iCfpL9Tcw5ys7Vek6olg5r2pd9+/9lKy4ehd2Dtk6fzEuYBFQk2G0kKxV9T2eEsAId+C11qBbKq021YY8cDszi+R7Ih9gxopN+fzDysfHgziPhFNVDJzFN+oMAikO02Ag2Tq2pa5ksfz0SYfpJAPVYcP6raj+arAIxbE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=To2WyFML; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="h9zAcR4K"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
-	MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=IoWLUMxYdlJU6EkJ9Y0ZgFZ/YyvMOxBV0g8GlXWHBXY=; b=h9zAcR4KbHgBJXJSCMotZHbKvH
-	x6wmXy5yb6U+f6Nb85Tcn36fPrf6PoqVyZ3MCk3widDxGuMDxyf9VIWTNQuuULWjumGBohwBEkM1y
-	XednYRTr0LHci8m2L7ln1vzXonzKuTf0+eK0/z+fId6sgD7mzb664lu52KDtgfejo/I2JlBYE8lqP
-	Ey+FvzbtBkR0QifQhx8kDIaYe08g+e4siR/ii2yTeJD8yiufESg2nsnxFh1zn+S+zZXYFK23Ew6nt
-	d8Vbg2yLP12EpwG1/0nFiOlen/fpL+APt8HfMM/2HfcGjDqAzTIDHu+1d1ex/ZHFTvbkOnkyGzvJw
-	Vl15qBfw==;
-Received: from viro by zeniv.linux.org.uk with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1vuvzM-0000000BMZq-0EVm;
-	Tue, 24 Feb 2026 17:14:24 +0000
-Date: Tue, 24 Feb 2026 17:14:24 +0000
-From: Al Viro <viro@zeniv.linux.org.uk>
-To: Chuck Lever <cel@kernel.org>
-Cc: NeilBrown <neilb@ownmail.net>, Jeff Layton <jlayton@kernel.org>,
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="To2WyFML"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 66E9BC116D0;
+	Tue, 24 Feb 2026 17:41:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1771954891;
+	bh=gf7Ms95s1RgvWw9e47Pjz2QHDnBpYQUDuMoWY1tTWqc=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=To2WyFMLVgXEvYTzatLMjiLn2ntdjEaFa6VDTh9i34kCKu66pEeo1N4feEUpUOfjc
+	 G86MsC8q04Y3+2bIc9tN92DIaKk2Fg5NtHBZtSgpjvwQIRRL/cu38CiiX42b6BbMFe
+	 ylNkc8aaeDMNj7ZcNJKIukCE2RkJ4BYRO/LmbBclmgyxQXKC5gi1NUwCATjmkyX3/r
+	 /ZIL0+0PE6Qgp92cgkv0vXXv7FrUdpObjywSUiJcWVfbk6JdaYP4L/Rdj8YUKVmbcF
+	 an7nok/o1mGSpKKPsfipYFICv5nQFdu8cWyQ3mB+mXRV2csevOjyxLm+Gg8gI3Busb
+	 e0p60gK6/bdaQ==
+From: Chuck Lever <cel@kernel.org>
+To: NeilBrown <neil@brown.name>,
 	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
-	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v3 0/3] Automatic NFSv4 state revocation on filesystem
- unmount
-Message-ID: <20260224171424.GC1762976@ZenIV>
-References: <20260224163908.44060-1-cel@kernel.org>
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	Jeff Layton <jlayton@kernel.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	security@vger.kernel.org,
+	Nicholas Carlini <npc@anthropic.com>
+Subject: Re: [PATCH] nfsd: fix heap overflow in NFSv4.0 LOCK replay cache
+Date: Tue, 24 Feb 2026 12:41:22 -0500
+Message-ID: <177195487508.52303.16513552497833226121.b4-ty@oracle.com>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260224-v4-0-lock-overflow-v1-1-22beeaf5cf6b@kernel.org>
+References: <20260224-v4-0-lock-overflow-v1-1-22beeaf5cf6b@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260224163908.44060-1-cel@kernel.org>
-Sender: Al Viro <viro@ftp.linux.org.uk>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-On Tue, Feb 24, 2026 at 11:39:05AM -0500, Chuck Lever wrote:
-> From: Chuck Lever <chuck.lever@oracle.com>
-> 
-> When an NFS server exports a filesystem and clients hold NFSv4 state
-> (opens, locks, delegations), unmounting the underlying filesystem
-> fails with EBUSY. The /proc/fs/nfsd/unlock_fs interface exists for
-> administrators to manually revoke state before retrying the unmount,
-> but this approach has significant operational drawbacks.
-> 
-> Manual intervention breaks automation workflows. Containerized NFS
-> servers, orchestration systems, and unattended maintenance scripts
-> cannot reliably unmount exported filesystems without implementing
-> custom logic to detect the failure and invoke unlock_fs. System
-> administrators managing many exports face tedious, error-prone
-> procedures when decommissioning storage.
-> 
-> This series enables the NFS server to detect filesystem unmount
-> events and automatically revoke associated state. The mechanism
-> registers with a new SRCU notifier chain in VFS that fires during
-> mount teardown, after processing stuck children but before
-> fsnotify_vfsmount_delete(), while SB_ACTIVE is still set. When a
-> filesystem is unmounted, all NFSv4 opens, locks, and delegations
-> referencing it are revoked, async COPY operations are cancelled
-> with NFS4ERR_ADMIN_REVOKED sent to clients, NLM locks are released,
-> and cached file handles are closed.
-> 
-> With automatic revocation, unmount operations complete without
-> administrator intervention once the brief state cleanup finishes.
-> Clients receive immediate notification of state loss through
-> standard NFSv4 error codes, allowing applications to handle the
-> situation appropriately rather than encountering silent failures.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-So anyone can force that just with unshare -U -m date?  Creates
-a new namespace, populated by clones of all mounts you see, runs
-date(1) in that, then exits, with namespace dissolved.  At that
-point all cloned mounts are released, each triggering your notifier
-chain...
+On Tue, 24 Feb 2026 11:33:35 -0500, Jeff Layton wrote:
+> The NFSv4.0 replay cache uses a fixed 112-byte inline buffer
+> (rp_ibuf[NFSD4_REPLAY_ISIZE]) to store encoded operation responses.
+> This size was calculated based on OPEN responses and does not account
+> for LOCK denied responses, which include the conflicting lock owner as
+> a variable-length field up to 1024 bytes (NFS4_OPAQUE_LIMIT).
+> 
+> When a LOCK operation is denied due to a conflict with an existing lock
+> that has a large owner, nfsd4_encode_operation() copies the full encoded
+> response into the undersized replay buffer via read_bytes_from_xdr_buf()
+> with no bounds check. This results in a slab-out-of-bounds write of up
+> to 944 bytes past the end of the buffer, corrupting adjacent heap memory.
+> 
+> [...]
+
+Applied to nfsd-testing, thanks!
+
+[1/1] nfsd: fix heap overflow in NFSv4.0 LOCK replay cache
+      commit: 1e8e9913672a31c6fdd0d237cd3cec88435bd66e
+
+--
+Chuck Lever
+
