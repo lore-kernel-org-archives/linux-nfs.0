@@ -1,206 +1,122 @@
-Received: from flow-a2-smtp.messagingengine.com (flow-a2-smtp.messagingengine.com [103.168.172.137])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f67.google.com (mail-pj1-f67.google.com [209.85.216.67])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68D5934E769;
-	Tue, 24 Feb 2026 22:28:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.137
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43C4B20E03F
+	for <linux-nfs@vger.kernel.org>; Wed, 25 Feb 2026 03:38:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.67
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1771972085; cv=none; b=jKgKQJaP/XNr3vZFyEKgktXUNvFmDhmvXVcuMPssGO3rboPJ78XziQRCpnIUir8Ix6d6bYoQnaJPZmP3w79lbxfgEJ9FEt25SED1KUxzpv6kgvdZeg052jUtz7AEOPF1slH43kLBJhR/HWW45GcAc4rA60uv25pleEHPXm70yrM=
+	t=1771990729; cv=none; b=JRBKzCcuJXUoREANN/nY+E4lJcTOuHpiRLNt1bZWlMPR3QEXh0uwMngknxHEpcFguM9j/8LMb3CpXZL1vTxPCjNlUEZm/PBPXiL0lLBIhenvQ469rsc/AeFiK2J+Jyhg5+ib39pkvH6PdxP8DJQtQ9Y/pJ2nJ2tIOMLSP0Rd86o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1771972085; c=relaxed/simple;
-	bh=ZN5XFPn7tUkfMGc5iwQB3ZTfDKP5sgGwhooynf+keDc=;
+	s=arc-20240116; t=1771990729; c=relaxed/simple;
+	bh=CgQkRKZi8n6qzzxkB9hjDn8pnf1PBXTxjcBXQQvQt6g=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Pt+buVsZVublxOsMOYAUoEHbflAvNSuvyz0HYwK3Z8bn0bwQhJFrt2QyxwKCb2m+leNjh/5BbhF33cSHg2gC8TGkLP4Nmmrw9Xr1+v/E5LKjhXq3zGAJTaMf3xXvUuAuOgB8jnRIepDI6LPvR6viCsnSi8jIkB51Srm/9glubaI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=Qsc1ePeS; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=JJyeWTwq; arc=none smtp.client-ip=103.168.172.137
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	 MIME-Version; b=KBtrig2fFJwpTN+TOFpPieo5lYMl61Zj4mzXirtxIZtBr4MT5hJM7+HB7t1LMATAvRcFRnvq3xQ8EsMHVL1YpYPtui4GEcHCaDG+rVCV7dVRiNyWu2yN0R2eQL+ioTpa8p+X1Y4LChnxC0JpC8rNQdJ7O+L5oGy8UrzUOYJrF9U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=XtIFK1Dn; arc=none smtp.client-ip=209.85.216.67
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="Qsc1ePeS";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="JJyeWTwq"
-Received: from phl-compute-09.internal (phl-compute-09.internal [10.202.2.49])
-	by mailflow.phl.internal (Postfix) with ESMTP id B1B5F138052C;
-	Tue, 24 Feb 2026 17:28:03 -0500 (EST)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-09.internal (MEProxy); Tue, 24 Feb 2026 17:28:03 -0500
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1771972083;
-	 x=1771979283; bh=wijvxZQWm9lKy/h3JSFEVjiYfslMBA04IhCaGLEm+aw=; b=
-	Qsc1ePeSEaLWi8BDrsD9vY2ogxq/J/OJ+6DtZSsY4kpbC630IqfzW2ELvRLbF0xH
-	n4n/hLKHJSnJiMVp1uNGG9Rlxq7ptH66Wbkf+bBs6qm42CnmQkbjQ5NXMMEBGMoH
-	h7PMEuKXYCi19HURgYdLP3S9jxRjkCqwMchfscEqtL3c4vBlqOlEUBAK97192xNf
-	6Ov/iwuTkTMx0yjx6vpVUsTSbCOyIXhOBPbDM6okDqghjBNbm+nEGNs8MDP1Uf7d
-	1ID2SjWug65BTZe73wsuY9EGSugYjl9IlHJ1k+IknPOIaYGQr90i6+2nvRg7L+0x
-	0cVwg5VLWo1u+dJo7qF0DQ==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm3; t=1771972083; x=1771979283; bh=w
-	ijvxZQWm9lKy/h3JSFEVjiYfslMBA04IhCaGLEm+aw=; b=JJyeWTwqbNVQ7ik2z
-	5xdf8bbM5zDUFVdjfpi/zzOa4qnkq62FeoQ/DA5Z+vQmEJZ3al1E1urqxtv4d0Ld
-	bE1ikLaQU7vA7bjRcHCKFDcGsJm16dhB6MypAhLDUFS4hyxWokG7yCbDgvKL9Q4e
-	05Tz8O9CuryBcvGdj330lyokQejeynz5uXNSrCFgFmWDYFqg9CSSPo8XTTnnC5iK
-	qWAUDw+Qd/WvQhLieYeLl20fh1gs7DZndVW7Ou9sCisHuObLPHB2NuZ2SkbwWMBb
-	zCtwpOmP25+0KbHOPRdBmp+0GApQWThdjOdVsVn+3Bu+0AordG3i6cFHx7kw67Rj
-	DiUcQ==
-X-ME-Sender: <xms:8yWeaV50ce2t6SX59updm27nWQp8eGTKxw3rAaNZjL4DXBBbZSebtw>
-    <xme:8yWeaW1HraDo8_99jFRL_aecm-h1fk4i_3OGtcuNhB--O_d9DxhUuRfSUi879bqbG
-    qKZB0631GoQG-wU0UrmkcXYrikooe74BWIE3MGcCFOrhPDz>
-X-ME-Received: <xmr:8yWeaU-XLL_iiElhQE7t7J8AyUG3uo0EVt7_NHMg2d7Fu4ruE0u3FtfmxMP3FVr3s10BZVC3OC719hMiadZwuRCKmukNcpVQa2t6ZnAr5kfs>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgddvgedufeekucetufdoteggodetrf
-    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
-    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
-    gurhephffvvefufffkofgjfhhrggfgsedtkeertdertddtnecuhfhrohhmpefpvghilheu
-    rhhofihnuceonhgvihhlsgesohifnhhmrghilhdrnhgvtheqnecuggftrfgrthhtvghrnh
-    epveevkeffudeuvefhieeghffgudektdelkeejiedtjedugfeukedvkeffvdefvddunecu
-    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomhepnhgvihhlsg
-    esohifnhhmrghilhdrnhgvthdpnhgspghrtghpthhtohepvddvpdhmohguvgepshhmthhp
-    ohhuthdprhgtphhtthhopehvihhrohesiigvnhhivhdrlhhinhhugidrohhrghdruhhkpd
-    hrtghpthhtohepshgvlhhinhhugiesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphht
-    thhopehlihhnuhigqdhunhhiohhnfhhssehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtg
-    hpthhtoheplhhinhhugidqshgvtghurhhithihqdhmohguuhhlvgesvhhgvghrrdhkvghr
-    nhgvlhdrohhrghdprhgtphhtthhopehlihhnuhigqdhnfhhssehvghgvrhdrkhgvrhhnvg
-    hlrdhorhhgpdhrtghpthhtoheplhhinhhugidqkhgvrhhnvghlsehvghgvrhdrkhgvrhhn
-    vghlrdhorhhgpdhrtghpthhtoheplhhinhhugidqfhhsuggvvhgvlhesvhhgvghrrdhkvg
-    hrnhgvlhdrohhrghdprhgtphhtthhopehmihhklhhoshesshiivghrvgguihdrhhhupdhr
-    tghpthhtohepjhgrtghksehsuhhsvgdrtgii
-X-ME-Proxy: <xmx:8yWeaXt3neb7aslKJKcFebjTHhwfQfaqArxLek_2NK9m5pOR6El_1Q>
-    <xmx:8yWeaQq0kEjtPws5Iv1mh25sJdoENaWIfgZyqM9V_JOnSEBMhRBEnQ>
-    <xmx:8yWeaSG23osBRWpmi-0jY49_lLWwSTQ7Jm6D4szgx_LxwBw-LjnaqA>
-    <xmx:8yWeaT5Y0nn_7QnsucvZuSrdnEqWFyMkR86WvQXCmZU-pM2CpKItwA>
-    <xmx:8yWeaexc3PiU1gq6QfAmp2yyI8lJDKi8Zck37lv-r0FJGHXHFn_25csr>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 24 Feb 2026 17:27:57 -0500 (EST)
-From: NeilBrown <neilb@ownmail.net>
-To: Christian Brauner <brauner@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	David Howells <dhowells@redhat.com>,
-	Jan Kara <jack@suse.cz>,
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="XtIFK1Dn"
+Received: by mail-pj1-f67.google.com with SMTP id 98e67ed59e1d1-354a18c48b5so5119714a91.1
+        for <linux-nfs@vger.kernel.org>; Tue, 24 Feb 2026 19:38:48 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1771990728; x=1772595528; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=bIBkt8Uip58Gmu/ZZcPFAEjJpU3JU8q0pJGlTo8qLYw=;
+        b=XtIFK1Dnt4tcqNGmpoj6BOeL3AIdwd4poBI5l7IyavqTLBsj10dNFs1bVW6HK0qhOf
+         j6K43QYC3yGBTjdYB9ARRLZeMXs2JepmT2vYkyVU59ENe03vsxX68FyeWtpIAwVjkCBh
+         ctb/wC/8y8rhN66p4KMAtWS/8KnBMni89vt0QnaAqUrDhYiEBpargcGRFmZ266yZpcT2
+         TMhalZYlKCvA5AmOhCgsB28A88wH8/KYe7riD5PtsYw/eWMotNQCZG4iyFY9Cda/9w7F
+         MveX3Vx7V5uJ2m7AVDMLoBgv7c2P3Q0ZKNuEkWHj1LcJxOyOztNFDxbo766whU+vyakB
+         8JlQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1771990728; x=1772595528;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=bIBkt8Uip58Gmu/ZZcPFAEjJpU3JU8q0pJGlTo8qLYw=;
+        b=ESv6KjMi8LJryC4F7WauPZ1SUYz0A3GJKl6Sw6seyRqV45tXVz61JXyYiwq7q3ihZ/
+         wPLggeojoSXfecVhqDICnBIfqhQ2liL877QTow7auu4DGC6OtGO+b2jbn2BNt9vjmLgD
+         1t6fer+DBAQYvhNq55c7omPRfu71pNGB/0D8EjUqQV5xNDLaYcCF86H83XMcW4Y8HegY
+         n4ui6yU9jr6rTBqzbhEGEUawhO828a6Xe9aHEE9TErMzdlhugfr+hMykbQlKoBIM4Ara
+         AfEpiWXGqjwZa48ekjJrPaT/NC9uMa0Ukw9/zcACKrro56z+5iVa8722LaMZ/N8J6oXA
+         2iWg==
+X-Forwarded-Encrypted: i=1; AJvYcCW8ylKbUPNyvPyA4kBxM5+rpMqF0bbZbjEcXtYoXHd9fI7x/oTttYtpidoNRmE6lc/6bk/ZTlvzMLU=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yz3kPoOeXpL0RT7QHg/+8RzM25gHycK0AvVADvwzCrHIW1NuYdk
+	Lj4Zn6jkaMfkdGxoC9LtrnYNslm/aPvymecRQWwfl5MZk9UIX3JDg7yW
+X-Gm-Gg: ATEYQzyU8GBUhBIyKCC3eS8ia+Dpf6NUEq58TSxe4CYxHClINURRglYhIqUN2qLUBEk
+	xBY1YJXhse5Wk5wZvQQLK9h59vTnjA2OBo4VYGUb2NesN6HrmpUsJdUVDm/hiImxljNb8dtJZ+q
+	dabffI5nJMqtK1YgBdp6fVRLf0csw1AEbXOhvc2/4ZZ1mkNNmSnyvH1FpKkQOYx8BhkE0BcDe/u
+	q/0rGE9YVSciIb+nZSK3kbysVcWWsBfJCb9h+2uwFC5HumbmCXYOfKGwKseNou12yZGu83PMPeY
+	bRMkA2qipz3DroRNrynKH4YNj1tk8PNdossrFfHAX/YWUHkuITO67A9S15IQTRcx+N5KHDuYA3w
+	Bi24KKp+AQRJPhkoFC5wo7w2S6TnNnsCbj5Z3USADT/RVXtVDOtjjR2ula3fywwVIlXSnLhHWbx
+	bQWFW8Fe25HSh7tw3efwp1I2kU1R5i8Wk9twMc3OJsps8Pe+NNAeG72bHP1HD1DWhHxcZoBQ==
+X-Received: by 2002:a17:90b:164e:b0:356:2c7b:c026 with SMTP id 98e67ed59e1d1-358ae8d80d0mr12854544a91.23.1771990727568;
+        Tue, 24 Feb 2026 19:38:47 -0800 (PST)
+Received: from localhost.localdomain ([138.199.21.245])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-359018838b2sm1161746a91.5.2026.02.24.19.38.44
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Tue, 24 Feb 2026 19:38:47 -0800 (PST)
+From: Eric-Terminal <ericterminal@gmail.com>
+To: Dominique Martinet <asmadeus@codewreck.org>,
+	Eric Van Hensbergen <ericvh@kernel.org>,
+	Latchesar Ionkov <lucho@ionkov.net>,
+	"David S . Miller" <davem@davemloft.net>,
+	Jakub Kicinski <kuba@kernel.org>
+Cc: v9fs@lists.linux.dev,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Nikolay Aleksandrov <razor@blackwall.org>,
+	bridge@lists.linux.dev,
+	Anna Schumaker <anna@kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>,
-	Miklos Szeredi <miklos@szeredi.hu>,
-	Amir Goldstein <amir73il@gmail.com>,
-	John Johansen <john.johansen@canonical.com>,
-	Paul Moore <paul@paul-moore.com>,
-	James Morris <jmorris@namei.org>,
-	"Serge E. Hallyn" <serge@hallyn.com>,
-	Stephen Smalley <stephen.smalley.work@gmail.com>,
-	"Darrick J. Wong" <djwong@kernel.org>
-Cc: linux-kernel@vger.kernel.org,
-	netfs@lists.linux.dev,
-	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org,
-	linux-unionfs@vger.kernel.org,
-	apparmor@lists.ubuntu.com,
-	linux-security-module@vger.kernel.org,
-	selinux@vger.kernel.org
-Subject: [PATCH v3 15/15] VFS: unexport lock_rename(), lock_rename_child(), unlock_rename()
-Date: Wed, 25 Feb 2026 09:17:00 +1100
-Message-ID: <20260224222542.3458677-16-neilb@ownmail.net>
-X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
-In-Reply-To: <20260224222542.3458677-1-neilb@ownmail.net>
-References: <20260224222542.3458677-1-neilb@ownmail.net>
-Reply-To: NeilBrown <neil@brown.name>
+	Yufan Chen <ericterminal@gmail.com>
+Subject: [PATCH v2 0/4] net: replace deprecated simple_strto* parsers with kstrto*
+Date: Wed, 25 Feb 2026 11:38:36 +0800
+Message-ID: <20260225033840.33000-1-ericterminal@gmail.com>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260225010853.15916-1-ericterminal@gmail.com>
+References: <20260225010853.15916-1-ericterminal@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1227; i=ericterminal@gmail.com; h=from:subject; bh=1tb3uAWyvMrtFX3Irq/HFgcUiWj8AVbAWEAlYdlN66k=; b=owGbwMvMwCXWM/dCzeS3H+sZT6slMWTOy5PjOL2xPl8orDiN9Vn/QSb/0BUXPKvm3L10KPZa0 znOjmuuHaUsDGJcDLJiiix3/++bm+t1a8517sO5MHNYmUCGMHBxCsBETn1i+O9fn/J4q9KXlT41 l/z2/fnWJGZ86GTOW+dJyx3eLk7MfLaM4Z+Ozll1w1OGChuc1/+1W/D54UbVPp8HRzkuSX/dd+p zfSQnAA==
+X-Developer-Key: i=ericterminal@gmail.com; a=openpgp; fpr=DDFFBE9D6D4ADA9CD70BC36D8C9DD07C93EDF17F
 Content-Transfer-Encoding: 8bit
 
-From: NeilBrown <neil@brown.name>
+From: Yufan Chen <ericterminal@gmail.com>
 
-These three function are now only used in namei.c, so they don't need to
-be exported.
+This series replaces deprecated simple_strto* parsers in net paths with
+kstrto* helpers and keeps parser behavior strict.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Signed-off-by: NeilBrown <neil@brown.name>
----
- Documentation/filesystems/porting.rst | 7 +++++++
- fs/namei.c                            | 9 +++------
- include/linux/namei.h                 | 3 ---
- 3 files changed, 10 insertions(+), 9 deletions(-)
+v2:
+Split the original large patch into a 4-patch series for easier review.
+Added a prerequisite fix for xen_9pfs dataring cleanup idempotency
+(Patch 1) to ensure safe error handling during the parser transition.
+Refined the xen_9pfs version parsing logic to use strsep() for better
+token handling.
 
-diff --git a/Documentation/filesystems/porting.rst b/Documentation/filesystems/porting.rst
-index 1dd31ab417a2..d02aa57e4477 100644
---- a/Documentation/filesystems/porting.rst
-+++ b/Documentation/filesystems/porting.rst
-@@ -1368,3 +1368,10 @@ lifetime, consider using inode_set_cached_link() instead.
- 
- lookup_one_qstr_excl() is no longer exported - use start_creating() or
- similar.
-+---
-+
-+** mandatory**
-+
-+lock_rename(), lock_rename_child(), unlock_rename() are no
-+longer available.  Use start_renaming() or similar.
-+
-diff --git a/fs/namei.c b/fs/namei.c
-index a5daa62399d7..77189335bbcc 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3775,7 +3775,7 @@ static struct dentry *lock_two_directories(struct dentry *p1, struct dentry *p2)
- /*
-  * p1 and p2 should be directories on the same fs.
-  */
--struct dentry *lock_rename(struct dentry *p1, struct dentry *p2)
-+static struct dentry *lock_rename(struct dentry *p1, struct dentry *p2)
- {
- 	if (p1 == p2) {
- 		inode_lock_nested(p1->d_inode, I_MUTEX_PARENT);
-@@ -3785,12 +3785,11 @@ struct dentry *lock_rename(struct dentry *p1, struct dentry *p2)
- 	mutex_lock(&p1->d_sb->s_vfs_rename_mutex);
- 	return lock_two_directories(p1, p2);
- }
--EXPORT_SYMBOL(lock_rename);
- 
- /*
-  * c1 and p2 should be on the same fs.
-  */
--struct dentry *lock_rename_child(struct dentry *c1, struct dentry *p2)
-+static struct dentry *lock_rename_child(struct dentry *c1, struct dentry *p2)
- {
- 	if (READ_ONCE(c1->d_parent) == p2) {
- 		/*
-@@ -3827,9 +3826,8 @@ struct dentry *lock_rename_child(struct dentry *c1, struct dentry *p2)
- 	mutex_unlock(&c1->d_sb->s_vfs_rename_mutex);
- 	return NULL;
- }
--EXPORT_SYMBOL(lock_rename_child);
- 
--void unlock_rename(struct dentry *p1, struct dentry *p2)
-+static void unlock_rename(struct dentry *p1, struct dentry *p2)
- {
- 	inode_unlock(p1->d_inode);
- 	if (p1 != p2) {
-@@ -3837,7 +3835,6 @@ void unlock_rename(struct dentry *p1, struct dentry *p2)
- 		mutex_unlock(&p1->d_sb->s_vfs_rename_mutex);
- 	}
- }
--EXPORT_SYMBOL(unlock_rename);
- 
- /**
-  * __start_renaming - lookup and lock names for rename
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index c7a7288cdd25..2ad6dd9987b9 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -165,9 +165,6 @@ extern int follow_down_one(struct path *);
- extern int follow_down(struct path *path, unsigned int flags);
- extern int follow_up(struct path *);
- 
--extern struct dentry *lock_rename(struct dentry *, struct dentry *);
--extern struct dentry *lock_rename_child(struct dentry *, struct dentry *);
--extern void unlock_rename(struct dentry *, struct dentry *);
- int start_renaming(struct renamedata *rd, int lookup_flags,
- 		   struct qstr *old_last, struct qstr *new_last);
- int start_renaming_dentry(struct renamedata *rd, int lookup_flags,
+Patch 1/4 fixes xen_9pfs dataring cleanup idempotency to avoid repeated
+resource teardown on init error paths.
+Patch 2/4 switches xen_9pfs backend version parsing to kstrtouint().
+Patch 3/4 updates bridge brport_store() to use kstrtoul().
+Patch 4/4 updates sunrpc proc_dodebug() to use kstrtouint().
+
+Yufan Chen (4):
+  9p/trans_xen: make cleanup idempotent after dataring alloc errors
+  9p/trans_xen: replace simple_strto* with kstrtouint
+  net: bridge: replace deprecated simple_strtoul with kstrtoul
+  sunrpc: sysctl: replace simple_strtol with kstrtouint
+
+ net/9p/trans_xen.c       | 77 +++++++++++++++++++++++++++-------------
+ net/bridge/br_sysfs_if.c |  5 ++-
+ net/sunrpc/sysctl.c      | 24 ++++++-------
+ 3 files changed, 67 insertions(+), 39 deletions(-)
+
 -- 
-2.50.0.107.gf914562f5916.dirty
-
+2.47.3
