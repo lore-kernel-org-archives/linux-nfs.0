@@ -1,76 +1,121 @@
-Received: from vps0.lunn.ch (vps0.lunn.ch [156.67.10.101])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f51.google.com (mail-wm1-f51.google.com [209.85.128.51])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 791B836E49F;
-	Fri, 27 Feb 2026 17:57:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=156.67.10.101
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 770CF36E46D
+	for <linux-nfs@vger.kernel.org>; Fri, 27 Feb 2026 18:15:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772215063; cv=none; b=C6wnnunA/uIxTVlFR1/xhe0rGmnllY5FPNFyaGwm77uo6mxTwVDK8EtddIh006iOjB6xHBJYM8AH7yt8iNHOs7zQoOHoKNpIo6Un2BhjkNmisD0XxjdyMkSGhyqKJ6opjtF5XeEtNVc541FVYtRsRq5lfejr39gEUrHNDpvA5jI=
+	t=1772216136; cv=none; b=JR4I1rV4BYa5LKDAO5pDqWgxk6ZuYYW06sQKRy4Q1HjYtslPUymgI+FwyAEL5Cf/9VM1fApT5UpgOm7PfdXA6XK6up/fc7gJOVK3aPNtQ1jzuP+EJmSm/L4V69wjEalpgnJDjyLvffjU3IStiz1jEnOKURtDDuZ4816tYlxXYs8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772215063; c=relaxed/simple;
-	bh=usi2T1T0YOcyvYYWRmpM5fXC2gZIndsaCukB3jZXCM8=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=AjevEjYRDwEFVXA8f5fNGxuLTT1SH3mJDxwb6VMtk5iNcDeo6wc7EvRPUYiKFOiZjE4pS9WP0iAzhHyL+7okU7TZMCl5Fc6tgYbpzVluwYB3SPFG7hJ5U/UuEG41Q2xSEUWaFilBN0QRfqIWvu4euUQPjrQUC7ORB+6xxdiPbG4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lunn.ch; spf=pass smtp.mailfrom=lunn.ch; dkim=pass (1024-bit key) header.d=lunn.ch header.i=@lunn.ch header.b=YCVfAgjx; arc=none smtp.client-ip=156.67.10.101
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=lunn.ch
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=lunn.ch
+	s=arc-20240116; t=1772216136; c=relaxed/simple;
+	bh=EIHCSnDQnPgzLOrkBSeiEeMSnqPciWc+HEYIcaNXe48=;
+	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=F8OJsCM7Z9WNTAdyCluNoo9dnZ3SX7GusRy8fuG/C5FI8uzvvOk5eqZR0d1/yDiK1XP0NIRcEgQakHUdq6dUl1ZqaKOHXls2l6ToHZWM1sukJzbutXRap9YNAOPNe4NX1HeTuZmtJYJvueaPfSKRawYeuG0yAKVJf3hJZ8uz5q4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=h6LVdD/G; arc=none smtp.client-ip=209.85.128.51
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=lunn.ch header.i=@lunn.ch header.b="YCVfAgjx"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=lunn.ch;
-	s=20171124; h=In-Reply-To:Content-Disposition:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:From:Sender:Reply-To:Subject:
-	Date:Message-ID:To:Cc:MIME-Version:Content-Type:Content-Transfer-Encoding:
-	Content-ID:Content-Description:Content-Disposition:In-Reply-To:References;
-	bh=xtNLhO3XR3oV2Dg8dW6Z6wAcwkVPtwzyNqvQOj//EJU=; b=YCVfAgjxNc3t8ZeB6o1p7V79Z/
-	jblSR+cvPHm8tbkd39xd22HfJ/dYamuSDFeNL55q6WWlaVofK4rn3zApyiKAaXc67rE3NWeUTeTHi
-	zUKMDW4sWHpWBDorfKUpX+bUCFDS/u3tDOxMPPbm36bX4iO90mhMXN70d7OZal40nAG4=;
-Received: from andrew by vps0.lunn.ch with local (Exim 4.94.2)
-	(envelope-from <andrew@lunn.ch>)
-	id 1vw25l-0096S6-K8; Fri, 27 Feb 2026 18:57:33 +0100
-Date: Fri, 27 Feb 2026 18:57:33 +0100
-From: Andrew Lunn <andrew@lunn.ch>
-To: David Laight <david.laight.linux@gmail.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="h6LVdD/G"
+Received: by mail-wm1-f51.google.com with SMTP id 5b1f17b1804b1-483abed83b6so19287495e9.0
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Feb 2026 10:15:35 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1772216134; x=1772820934; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=+vLtKfQfpUyImPgufwuUFBCxVkCuAbK5gi85kgZFI1o=;
+        b=h6LVdD/GZ4s3Hr4A2zQzkP4zWi17wlFecgS4tVhNz+dAjce1OQ27sPJHqP8Qm/NJ2Q
+         GzX7gNLydWx7M0Pnp7WTRQpuQR+s1z3V7Y7w5Gg1PtQImctmytNVD+vPwbh14IUhSAbQ
+         w5yW/7qliqcX8p82bDrHPfDt81/zU7ZcctW0iwVocEio1OzWGBquNwQqSmwWHpWuXhP8
+         Is6iVJ300Z08CS3ea0WrczFtTIwpmcOpe3O1vyd0EsuJK+pt3UEVmYFFD4fMbSffbrdU
+         FlIi0Dym+m9cXCXvFeotg0tIMGGPOoFxqiS8Hkz4USL9nYsVz/E81GgU4k9AEEhtZZ71
+         phRA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1772216134; x=1772820934;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=+vLtKfQfpUyImPgufwuUFBCxVkCuAbK5gi85kgZFI1o=;
+        b=Jhl+RCbW0nVnsVU4tGDOLAl9HHmPchMQY1pKuMlCoikiocXVfj+yzSOxYW8vdwRJla
+         sFThOSq5LVTU8yXqrc9U5LzVdEV9L+oi2hR+t3c/oTh9blY67/M1hImssxDrHtxly9By
+         B2Bg0TYlVcJLH8brIzklXavFMJ0mTJ4VLYCa5Spu3CHskbo29U1uegk78JBy/50PvUkK
+         kFzwfXO7VbAsHcmxOeGGA5NzmHhzREpE1TjlBAjzbqB8w2lWHGeLyD7eg8xS2QYWoj3h
+         KxZguJt7ZUY5WDqgNZK2Iahyc0RGvUfgHJVhjM0djaC9kywaDSIh0CEUm0e6kGRcQrMX
+         /4kA==
+X-Forwarded-Encrypted: i=1; AJvYcCUXOH00+AdcSA9PuexaUpUANn1BTqqRcaWVwcwjUwlJtXm4x46EjdXnqg8qF5x2qJjUhzqmcr/FJ4Y=@vger.kernel.org
+X-Gm-Message-State: AOJu0YwFqGQOSwtbOPGu/4tT7VSPXvSQ61QkTeCdIX7w4vS5TTo+S7kS
+	FPyavMnfGLbUTX5ThvaMBaSBrHtnT632YonFMSqyGjMTvbNG7yislz8S
+X-Gm-Gg: ATEYQzxM3o7QLoydTxKjzYb9NFeXJVOVTe5JWRVnvyFa6H3PzPdABTryAGpTy3fCfWa
+	jEdZgu5/yysIBxVlpZkwuaPdWfmx06YKwtagawVrdjP/AtpSpS+6D8f8wOU1dqAoldf+rFCsbq6
+	m3GIyRMkoTDiS/9mZD3fXU0EIGjq44vzN9HUBGkHHd2P2XxJuNU7wUskKEeB+ChxV5r//huSBEE
+	GaDjTcNRdV/yCvQhwyhpNIKG2VdCZQz0QFfq2pFNbey9MFFNd3ZbQnszMaR5lIrB8SXlTxBU8oU
+	Ruknsg61lXyOdjhKIKwZWbMMhJNQWnPmJH7cWNENUtIC6XC4J4Qu9YGVfBH/YQrBPkcZo40Ns9N
+	jT9YcBAV+iect4LOx9epAqXS+gEggSZDH4/BmLtt+NPYpPCQIgeZUsGIrrP12UOhrzOtpUmFtlz
+	7DtWNl5kmAWEG5QYusrJc8lOpW4YFTf0G+ye+GbQ2zdCDBJgE7sCSd5wHqHQO3Poqx
+X-Received: by 2002:a05:600c:3e16:b0:46e:32dd:1b1a with SMTP id 5b1f17b1804b1-483c9ba38damr64818595e9.7.1772216133739;
+        Fri, 27 Feb 2026 10:15:33 -0800 (PST)
+Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
+        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-483c3b770e7sm131066685e9.9.2026.02.27.10.15.33
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 27 Feb 2026 10:15:33 -0800 (PST)
+Date: Fri, 27 Feb 2026 18:15:32 +0000
+From: David Laight <david.laight.linux@gmail.com>
+To: Andrew Lunn <andrew@lunn.ch>
 Cc: Sean Chang <seanwascoding@gmail.com>, nicolas.ferre@microchip.com,
-	claudiu.beznea@tuxon.dev, trond.myklebust@hammerspace.com,
-	anna@kernel.org, netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
+ claudiu.beznea@tuxon.dev, trond.myklebust@hammerspace.com, anna@kernel.org,
+ netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org
 Subject: Re: [PATCH v4 1/2] sunrpc: fix unused variable warnings by using
  no_printk
-Message-ID: <c28cbfc2-208f-47db-9c5a-21b54b2be8c1@lunn.ch>
+Message-ID: <20260227181532.1616f720@pumpkin>
+In-Reply-To: <c28cbfc2-208f-47db-9c5a-21b54b2be8c1@lunn.ch>
 References: <20260227152624.164964-1-seanwascoding@gmail.com>
- <20260227152624.164964-2-seanwascoding@gmail.com>
- <20260227173814.2f928556@pumpkin>
+	<20260227152624.164964-2-seanwascoding@gmail.com>
+	<20260227173814.2f928556@pumpkin>
+	<c28cbfc2-208f-47db-9c5a-21b54b2be8c1@lunn.ch>
+X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260227173814.2f928556@pumpkin>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 
-> >  # define ifdebug(fac)		if (0)
-> > -# define dfprintk(fac, fmt, ...)	do {} while (0)
-> > -# define dfprintk_rcu(fac, fmt, ...)	do {} while (0)
-> > +# define dfprintk(fac, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
-> > +# define dfprintk_rcu(fac, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+On Fri, 27 Feb 2026 18:57:33 +0100
+Andrew Lunn <andrew@lunn.ch> wrote:
+
+> > >  # define ifdebug(fac)		if (0)
+> > > -# define dfprintk(fac, fmt, ...)	do {} while (0)
+> > > -# define dfprintk_rcu(fac, fmt, ...)	do {} while (0)
+> > > +# define dfprintk(fac, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)
+> > > +# define dfprintk_rcu(fac, fmt, ...)	no_printk(fmt, ##__VA_ARGS__)  
+> > 
+> > You can omit fmt, then you don't need the ##
+> > #define dfprintk(fac, ...)	no_printk(__VA_ARGS__)  
 > 
-> You can omit fmt, then you don't need the ##
-> #define dfprintk(fac, ...)	no_printk(__VA_ARGS__)
+> /*
+>  * Dummy printk for disabled debugging statements to use whilst maintaining
+>  * gcc's format checking.
+>  */
+> #define no_printk(fmt, ...)				\
+> ({							\
+> 	if (0)						\
+> 		_printk(fmt, ##__VA_ARGS__);		\
+> 	0;						\
+> })
+> 
+> Without fmt, gcc cannot do format checking. Or worse, it takes the
+> first member of __VA_ARGS__ as the format, and gives spurious errors?
 
-/*
- * Dummy printk for disabled debugging statements to use whilst maintaining
- * gcc's format checking.
- */
-#define no_printk(fmt, ...)				\
-({							\
-	if (0)						\
-		_printk(fmt, ##__VA_ARGS__);		\
-	0;						\
-})
+By the time the compiler looks at it the pre-processor has expanded
+__VA_ARGS__.
+So it doesn't matter that the format string is in the __VA_ARGS__
+list rather than preceding it.
 
-Without fmt, gcc cannot do format checking. Or worse, it takes the
-first member of __VA_ARGS__ as the format, and gives spurious errors?
+	David 
 
-      Andrew
+> 
+>       Andrew
+
