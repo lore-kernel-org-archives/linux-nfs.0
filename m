@@ -1,133 +1,115 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f42.google.com (mail-pj1-f42.google.com [209.85.216.42])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91C4C436356;
-	Fri, 27 Feb 2026 15:10:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B333E2DA74C
+	for <linux-nfs@vger.kernel.org>; Fri, 27 Feb 2026 15:26:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.42
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772205019; cv=none; b=LtUN3ENMjUkmtCQURPVupM16CLwZrLsFddq1NvxUM7xUxZ/Nn+Fy8Jg3egz6KBiYl3PII8sl7/cI6h7truOruk5z8cmy9zvI/gcyYmUtvItErDV0DaUvH+jPFR3b5MvxhQnl5lXwHHxFFp0SbLn21A6WrKqTAOxCQl3cfWRO9LE=
+	t=1772206004; cv=none; b=bvXGypNeOIw3LxynsuUhyFedvsXFUrLFB3wu4YSufxYCKYvI4Yz8AavafLvV+dqUdXSQ/Q5qtqwDIWBgGKXHUCCdHRpQqqsAyWDo3X0yuhkLGbBIAetd78WdHbGyjyw7lXZs7oySl8qNESURNHolwQStZonZ/Lf4xyShTi4qPKE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772205019; c=relaxed/simple;
-	bh=wnLzP+olm9LzrB34JLMNYVuHGs1RANXyxuRdPEAj4LM=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=n363D492KCQqxitck7QUIPD2gY/Db9pDeSEQc84mh5ZIb2jpfdlSGtH+8jvoq3HHfDV11x9hXJuqQ9fqhphyoGL0emDohKYFYS6Msr1VfxX1XDbZS0QEwdrgZUnWt2GEgSOZM0namwzaoTP8+4x+egCVJ84YDNe6Eh/VZnYUv/Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HYPB2qwQ; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1772206004; c=relaxed/simple;
+	bh=nB4dU5ro4rB0p1psB/tOgNtIOVTU8bVlg3/4Kp9rrRE=;
+	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=HYReXvwQAY2BuluAEQTn8BnE/EFhmewsiPPMoFJUgNP6D6ERVVvX3qZzRXo4pY3DW0qFUahC8NmJq8ojwHf5+JHqs7anVZyk6EgXRcK2WinMYKl7qhUF8T4y9p6U1Fl4CoKNHdBG8c9aGkihH9VlgNqZUOq2TVnQiAIMOicGFFU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=hihaAwzv; arc=none smtp.client-ip=209.85.216.42
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HYPB2qwQ"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 39F42C19422;
-	Fri, 27 Feb 2026 15:10:18 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1772205019;
-	bh=wnLzP+olm9LzrB34JLMNYVuHGs1RANXyxuRdPEAj4LM=;
-	h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
-	b=HYPB2qwQXLk2C8IL9q1I9HlqLtkGkDzdVHLjV6VE7hiTcQYK5LpnzpfnSjqmBio5w
-	 t20CAqX2rmwxVnwn+XIonnZdCPVLaacEUSH9NJdXmZNUmTmIruEmTRQHVTfS3zcdHO
-	 dqfBZtqMpozPxkhBK4PrEk3JY0rtvIga/Litj55UZ7PraiUzUCY2Sj/ASYppcgJwgp
-	 fjbIMSj3R/CnFINYsQDMf2zgehiJZAzz+z5M5eOV12A6yor0HeNeSHsLTZHoLMC3qn
-	 iZNrwOnIXh/zzmsuEdsUwUw7dpUp4UOk86QJmw8PGr9IH25Frt/gmrxDuzUJF8p31u
-	 YAZw3N6Jcu+uw==
-Message-ID: <3cff098e-74a8-4111-babb-9c13c7ba2344@kernel.org>
-Date: Fri, 27 Feb 2026 10:10:17 -0500
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="hihaAwzv"
+Received: by mail-pj1-f42.google.com with SMTP id 98e67ed59e1d1-3562e98d533so1159055a91.0
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Feb 2026 07:26:43 -0800 (PST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20230601; t=1772206003; x=1772810803; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to;
+        bh=UetmJfyt896bziHLm83oQ5Y9tswodav8qMkgJQV6wLA=;
+        b=hihaAwzvjQqo3nkDiM3b31Iv3mE5GEJwj5l/yTpAzoFQSbbccHT9cZPBmVuilOKrTR
+         hvzhYzNwq8/JdmWkkNKldR2BAiGXp5d7PYZSHNdQNBqr9mUizmtdIefp3JbTq2EwtCDl
+         S2lv68D8O5bDb6jnk7upw/9XFglHTn3jdAGgFF4apH0zN0HtE6W+jp3tI70MdsuyEibT
+         M51y8m3mCJN1Ky8uL/O/E3vtIptwNfG5d3FJNIUm3O9lJV0SvDji9fX8y/7UX6tGL1md
+         KtI8xGQDOPakcuH5qSVEFxATapfYf9KofmkF/Q2ENGtCLmKoHuoKJyKeEoZjNyVT8ZVe
+         g2gA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1772206003; x=1772810803;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=UetmJfyt896bziHLm83oQ5Y9tswodav8qMkgJQV6wLA=;
+        b=w/GzhFSXGNyqtInujzEEZw9bZuEV8Z8nKIM7KjRkwIO3PLfwZAnKYhifa484pE3WF8
+         E0stxaP6di3WvbkxxTc4VZu+RjyIx0fI0k2PDfNoyFeiZ7Wxb3GJ34WF8zaWdgnA4Bi1
+         lKz+qY/qsZZgPFKZndqnL/24/HjAEFqiLISREcWrDGj0Ug6euSOiKYrhmMHbV96dNYo+
+         ddK3FomG8ZBhOi3cktlju0Ws+rIxH41LILTkQF5FKqmihicecmp2jbZ/ewTNAVTO98vs
+         kVciYv8s+s19tUr1uDFkydY86HQ7E2kDU5JwcmXiSYdp/X3HniqddWseBR6OSM2df6mT
+         XaAQ==
+X-Forwarded-Encrypted: i=1; AJvYcCXvtX7RqvOZzKRkaMcx1dNfJ6UukaDzD7bnyh6dusC0Or3sLsIbpTxpjMnQFSfJOq2dfbN+INgFDes=@vger.kernel.org
+X-Gm-Message-State: AOJu0YwDB24ak3CPS1jetJQbUn14YrmT7XnV/QDFuflBsvL9FzdQYsQL
+	nZBQSTQWkTf3sMsGvAQmhOQ6f6Dcs3L0/YoGnMjs7i/o4PF/aCeh9C34
+X-Gm-Gg: ATEYQzxv4fkKpq5PEw706ZVzIh+oDosIdQndt38qs/srohXHPn/W4gC1DyV+msn+daA
+	fqt6D5E5ZO+G6n2gquOZnCeb+mc4BrEm+0dzBUnpUVa9I+OWaIXwd1BkUgoKqpkgDaWnxpwHVPp
+	IyP0ZKAGaDOfpnLmU/YoYWMog+Pd1LyrQqMNoR6PHhPd7zzJHWTohkz4sjYP+3rQqGCAldL9T9a
+	Bz3c+ptr5LuBWZuxXNdIv4azqBHn2xCjk97eFqMRSFFNpRaUEEfPOggzeMUGHQx0UpDmZcnLQ2c
+	ynCYCy3PndCJWE8hkD8Sw7zg/W2mAV4He7fJ+SS/dG2yEnuymaCNlX4r81UasFmrYitsiWRsLJg
+	yj0/YQktQIsYU1LJFM0Ou5aFJotdrkHsCREPaKhy6QlHW4VItkUQkOs0L8KD40YgtAGA/VeklfG
+	CU4IkK2CwxcCClFPQxFYv6XaYndvK/02ERyZu+qa3/z0AQSWDKCqTpdDkOc0GD8tWzVjq5RWNlR
+	33nEBA=
+X-Received: by 2002:a17:90b:3f10:b0:359:5a82:5f98 with SMTP id 98e67ed59e1d1-35965b2fec7mr3609795a91.0.1772206003011;
+        Fri, 27 Feb 2026 07:26:43 -0800 (PST)
+Received: from sean-All-Series.. (1-160-203-78.dynamic-ip.hinet.net. [1.160.203.78])
+        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-35900700e69sm9053211a91.0.2026.02.27.07.26.40
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 27 Feb 2026 07:26:42 -0800 (PST)
+From: Sean Chang <seanwascoding@gmail.com>
+To: Andrew Lunn <andrew@lunn.ch>,
+	nicolas.ferre@microchip.com,
+	claudiu.beznea@tuxon.dev,
+	trond.myklebust@hammerspace.com,
+	anna@kernel.org
+Cc: netdev@vger.kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Sean Chang <seanwascoding@gmail.com>
+Subject: [PATCH v4 0/2] Fix warnings for RISC-V builds
+Date: Fri, 27 Feb 2026 23:26:22 +0800
+Message-Id: <20260227152624.164964-1-seanwascoding@gmail.com>
+X-Mailer: git-send-email 2.34.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v3 1/3] fs: add umount notifier chain for filesystem
- unmount notification
-To: Jan Kara <jack@suse.cz>, Amir Goldstein <amir73il@gmail.com>,
- Christian Brauner <brauner@kernel.org>
-Cc: Jan Kara <jack@suse.com>, NeilBrown <neilb@ownmail.net>,
- Jeff Layton <jlayton@kernel.org>, Olga Kornievskaia <okorniev@redhat.com>,
- Dai Ngo <dai.ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
- linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
- Chuck Lever <chuck.lever@oracle.com>
-References: <20260224163908.44060-1-cel@kernel.org>
- <20260224163908.44060-2-cel@kernel.org>
- <20260226-alimente-kunst-fb9eae636deb@brauner>
- <CAOQ4uxhEpf1p3agEF7_HBrhUeKz1Fb_yKAQ0Pjo0zztTJfMoXA@mail.gmail.com>
- <1165a90b-acbf-4c0d-a7e3-3972eba0d35a@kernel.org>
- <jxyalrg3a2yjtjfmdylncg7fz63jstbq6pwhhqlaaxju5sk72f@55lb7mfucc5i>
-From: Chuck Lever <cel@kernel.org>
-Content-Language: en-US
-Organization: kernel.org
-In-Reply-To: <jxyalrg3a2yjtjfmdylncg7fz63jstbq6pwhhqlaaxju5sk72f@55lb7mfucc5i>
-Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
 
-On 2/26/26 8:32 AM, Jan Kara wrote:
-> On Thu 26-02-26 08:27:00, Chuck Lever wrote:
->> On 2/26/26 5:52 AM, Amir Goldstein wrote:
->>> On Thu, Feb 26, 2026 at 9:48 AM Christian Brauner <brauner@kernel.org> wrote:
->>>> Another thing: These ad-hoc notifiers are horrific. So I'm pitching
->>>> another idea and I hope that Jan and Amir can tell me that this is
->>>> doable...
->>>>
->>>> Can we extend fsnotify so that it's possible for a filesystem to
->>>> register "internal watches" on relevant objects such as mounts and
->>>> superblocks and get notified and execute blocking stuff if needed.
->>>>
->>>
->>> You mean like nfsd_file_fsnotify_group? ;)
->>>
->>>> Then we don't have to add another set of custom notification mechanisms
->>>> but have it available in a single subsystem and uniformely available.
->>>>
->>>
->>> I don't see a problem with nfsd registering for FS_UNMOUNT
->>> event on sb (once we add it).
->>>
->>> As a matter of fact, I think that nfsd can already add an inode
->>> mark on the export root path for FS_UNMOUNT event.
->>
->> There isn't much required here aside from getting a synchronous notice
->> that the final file system unmount is going on. I'm happy to try
->> whatever mechanism VFS maintainers are most comfortable with.
-> 
-> Yeah, then as Amir writes placing a mark with FS_UNMOUNT event on the
-> export root path and handling the event in
-> nfsd_file_fsnotify_handle_event() should do what you need?
+This series addresses several compiler warnings found when building the
+kernel for RISC-V.
 
-Turns out FS_UNMOUNT doesn't do what I need.
+The first patch fixes unused variable warnings in the NFS client (including
+nfs4proc and flexfilelayout) that occur in certain build configurations.
 
-1/3 here has a fatal flaw: the SRCU notifier does not fire until all
-files on the mount are closed. The problem is that NFSD holds files
-open when there is outstanding NFSv4 state. So the SRCU notifier will
-never fire, on umount, to release that state.
+The second patch fixes a format-truncation warning in the MACB ethernet
+driver by ensuring the snprintf output fits within the destination buffer.
 
-FS_UNMOUNT notifiers have the same issue.
+v4:
+- Refactor patch 1 to use no_printk() in sunrpc headers instead of marking
+  variables as __maybe_unused. This provides a cleaner, global fix and
+  enables compiler type checking.
 
-They fire from fsnotify_sb_delete() inside generic_shutdown_super(),
-which runs inside deactivate_locked_super(), which runs when s_active
-drops to 0. That requires all mounts to be freed, which requires all
-NFSD files to be closed: the same problem.
+v3:
+- Expand commit descriptions to include technical details regarding macro
+  expansion, as requested by Andrew Lunn.
+- Test the different platform, such as ARM, ARM64, X86_64.
 
-For any notification approach to actually do what is needed, it needs to
-fire during do_umount(), before propagate_mount_busy(). Something like:
+v2:
+- Split the original treewide patch into subsystem-specific commits.
+- Added more detailed commit descriptions to satisfy checkpatch.
 
-do_umount(mnt):
-    <- NEW: notify subsystems, allow them to release file refs
-    retval = propagate_mount_busy(mnt, 2)   // now passes
-    umount_tree(mnt, ...)
+Sean Chang (2):
+  sunrpc: fix unused variable warnings by using no_printk
+  net: macb: use ethtool_sprintf to fill ethtool stats strings
 
-This is what Christian's "internal watches... execute blocking stuff"
-would need to enable. The existing fsnotify plumbing (groups, marks,
-event dispatch) provides the infrastructure, but a new notification hook
-in do_umount() is required — neither fsnotify_vfsmount_delete() nor
-fsnotify_sb_delete() fires early enough.
-
-But a hook in do_umount() fires for every mount namespace teardown, not
-just admin-initiated unmounts. NFSD's callback would need to filter
-(e.g., only act when it's the last mount of a superblock that NFSD is
-exporting).
-
-This is why I originally went with fs_pin. Not saying the series should
-go back to that, but this is the basic requirement: NFSD needs
-notification of a umount request while files are still open on that
-mount, so that it can revoke the NFSv4 state and close those files.
-
+ drivers/net/ethernet/cadence/macb_main.c | 7 ++-----
+ include/linux/sunrpc/debug.h             | 4 ++--
+ 2 files changed, 4 insertions(+), 7 deletions(-)
 
 -- 
-Chuck Lever
+2.34.1
+
