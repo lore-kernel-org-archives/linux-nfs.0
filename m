@@ -1,137 +1,127 @@
-Received: from mail-vk1-f174.google.com (mail-vk1-f174.google.com [209.85.221.174])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mgamail.intel.com (mgamail.intel.com [198.175.65.10])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4C90241B344
-	for <linux-nfs@vger.kernel.org>; Mon,  2 Mar 2026 16:28:31 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.174
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772468914; cv=pass; b=G8fUbT0WyZroEvv5odqLjU1CxHj0AgQ3ENLHAn0v7QQDqIvENzWJS/0IRgjIOVYpDRuqSErm05WXHS4t1TeTc9jT6GivKLqPD5sO3P3qyhSYdzc8KLsnnKAs5P0GSqsp1Wu4WCXyhNc1+/iG4QeM3FPtZ45AbB26cEHBgeUvHJo=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772468914; c=relaxed/simple;
-	bh=dMHwqYxQisMntrA1NhfwmZ21wfBMDsPxJFujDbwlTqE=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=ctS9bB8YCIbhB7lTicxlHJI3HSilI13CcBRTTmhMVZ8KOdkRxuwJ46Aa2tgMjbdBcYGbBgYutT89RXL8GeDbL7h4b1xwkIBXgE/XBvwyfiigpPPfjGHrjHzilub2O3TD9c2zympAw9BgM9Iq6Lx0RoQvri6Rn5vMbmFrr6nkN3A=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=jTHu4mnk; arc=pass smtp.client-ip=209.85.221.174
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 43D44309F09;
+	Mon,  2 Mar 2026 16:51:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.175.65.10
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1772470292; cv=none; b=Nf56icYRnVEsU3g3IhLfAhQX8L3oPqLX3NPu8lNOdnq0z/TbjEmB7z8Umw7Sc54RUW8zFBBIqJiqgU8ztHVH3UuGF7/1VfhAtoKSipZx+3xarwX/5OwA3KDKobPuziQga8ieGizWwKr1rQx9xOGEeM1gRUAx8AiLfVMCSNoDm9k=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1772470292; c=relaxed/simple;
+	bh=G7s5Ca3WvbG9IlRb+qozWNbbm1yC6JvqcItIR66+piA=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=qlto9inkQD7SvNR40xB5GZkwXhXmllMJ0Xh4ETfIkoa8TzbupVi2BUmYrbnhVJ6b9Pv/bHRGIdtrMGhdknkmf08NLeDSwJwEARqmnMHzslGC/N0VP7LN6UqfwfzL4bnLLQfcHveSBPzrajm9BYzSsMp1ZAlsrSh9756UZK9TCj4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=Qo+ono/8; arc=none smtp.client-ip=198.175.65.10
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jTHu4mnk"
-Received: by mail-vk1-f174.google.com with SMTP id 71dfb90a1353d-567543b8989so1887101e0c.2
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Mar 2026 08:28:31 -0800 (PST)
-ARC-Seal: i=1; a=rsa-sha256; t=1772468910; cv=none;
-        d=google.com; s=arc-20240605;
-        b=MuAe9lvHYES+PAFUT6s6ZakADMDO2gakHxB+hYIRef3ZHYsUSf5ZlXAtU7DNxzVMgb
-         eLgk1fj52bQuql9F++P5SUC3SDlNSl6vDwIoBfKD+r2rd9Adp1ilwfu6hvZREet1dZ+r
-         HukLkzwPZ6NBNWF/mhPfszNlphPNwYAnmY4//nviQAfwguR7sDsSbS/6lObBcyQDhiG0
-         UWavl+u61vEpPgQFCoaKImLzRhMUoA0TJriNRiMWBf+kS+qlJv2KM3tF9uui983sXO6o
-         Y2YnhbXqvmhz3gygpHEiQgIKntJWL2eigXjxUHLZipORtU7drwLyViC8wgTZu2QU9Zaa
-         wnSA==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=DzhZQOue2L9j4aXZ4jUdotleq+eYfW6Yii7JRxHrKCk=;
-        fh=abZIHxHvPokSbSCUNqM52RV8UDsKYfW2beokaFLTrhA=;
-        b=RM9uv/B2jGItmqGKkhDh8Z9MOpE0XomgXdYkAyvS/7aclei59tacMOsXvcwNl0XAaw
-         NX5T14WozNgr+Q6cg5k53wn/X4oVzFKzb+prdr5/whPq19zte3s5YjapCy9MgVrOr3Nv
-         mZ3L24DO+U/Yrl9BRzkJJEenuVTeE0Xmg3vInuNhrLYGqV3s25suHARCo3/ab0paROVv
-         jBw+gCYrj9CUgUYy5AmyTXLDCZqDMtojFZi44iZZKg2iLyY3971ip3Rdt7GydDzQcbO8
-         +ZBk5eRvIaZVmQhArgDi71/G/FgLs/QdSPrglYQzRBbc+4R4x/AXP4AwnVorfVhxreXK
-         2GbQ==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1772468910; x=1773073710; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=DzhZQOue2L9j4aXZ4jUdotleq+eYfW6Yii7JRxHrKCk=;
-        b=jTHu4mnkdq4Mp0Wa+IUHaToBXRPHOla3hdUrd4M2LBO7vNEQ+CG8clGQ4QfXN06RT6
-         QYS4ap6JDWOGi/qhQMUX4sTZCIQ5FG5iPpA0ff5LHyTh7kxQqB1Z0qlGpnpHDfkb3GbF
-         S2E3hu7GtlzwV5XPZKS4VVShxQIfFVT0k9tJTWIir5Bm8tfaJayfFmUY2OUR8b1ZSkqB
-         NkxTIYJg02A6ipzkL0ZbR5OWMGEyeoXGgCIob+TtjNNXw9cl0CYXSGnnc+o3N3XvNKki
-         hPUyOdjVT3TdL14qdHkNDrcbVdGKgXGRt4eL/hUpZbCZotLS3gfyLTJHhFMQDChL+tpF
-         l/Pw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1772468910; x=1773073710;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=DzhZQOue2L9j4aXZ4jUdotleq+eYfW6Yii7JRxHrKCk=;
-        b=JXI9SyCKvto1GUWEurhgMiNXpSc1vGl1wxlIG12gYmN2TyZp9QJEfUaLBbK23QivA1
-         xO88407Q2Q0kUN6LwwrcKQIaB+KZfiWlATfNCIy6/qS6soVFPxV1PsKRV3gvBwqEd/4r
-         cldk9aiXfRTFMdd5U9seyE9JGds1Qss2YdvzQiC84vwhBILPAajabVyMZGCmFFby4vsq
-         UjVCwIcAZZHdUtFWFzHoty0pvu/RGWYcZeF/NuSSgJeyhzwLCyX6DygcaTh+h5p7JO6X
-         IxIo3CgjLDcl7InapzyhtfzqStIolbLRI9vy5iNy9oa3tPFcerbxlU3kfIa+PFpvSDax
-         1oKA==
-X-Forwarded-Encrypted: i=1; AJvYcCV6Q4lKFOIsBovazPcvJkacpnn0ofeN7wAHieD30KBzez7kOTi8in/YX+tQelmHWvtcEjvFYZT3NJc=@vger.kernel.org
-X-Gm-Message-State: AOJu0YyD1gRkCP0daJ2P87lHwf+Nl3YNUfsLMWIUuAPe846SnHxrjL/b
-	VQ3RMcovN7nfFle1/11tixGd+OiiBJwRlpN8UkVXtDHau+jeztEbHz/ZbYZ9Uejj3sKJv4CEKSv
-	JjA05PT/vye9HXwg0XdSUTdQqhczKDEY=
-X-Gm-Gg: ATEYQzzMODacLG9UVnN3nMCrAarQc2cBnkBlRnXyF5sNj1l4LUOWubMh/Je/rXVo9Pk
-	dvHMnOXmkfQqo3JQ3bVH0guMYqNSM+VdFRD3ivmyls+NW4AY1PzusNEKV5FnipklkCNt+22CIyp
-	o+kG2l9hZ6PR/glqIav1u0SZaG+NDxkupY2szGXd/cWq4DzupmZRhroLyNwiigs0TMwNOuVg4y4
-	pQN5b2BWQ1QW46Btau5wq9anP87qrgQxtg50BOA+AFm+vyNMFVCD0vX89c+MRtak9y8CBIMEjcG
-	cCKZkMYf3D3aG1O/
-X-Received: by 2002:a05:6102:b0f:b0:5ef:24aa:986f with SMTP id
- ada2fe7eead31-5ff32280163mr5192254137.2.1772468910139; Mon, 02 Mar 2026
- 08:28:30 -0800 (PST)
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="Qo+ono/8"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1772470291; x=1804006291;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=G7s5Ca3WvbG9IlRb+qozWNbbm1yC6JvqcItIR66+piA=;
+  b=Qo+ono/8ULuduDGNRBLD37oiFb/vee1M/HqxlqQGSOvZsq/WVEuozLdH
+   P/9CxHSiXpLPdWV/9Hy+3dXxeo3TJZkJJehtpEaTpDrSIxjoQtgXC5H/X
+   43HlYnHXJuoO59qGgoan7arY54R3SvVL6VXyG46zYqAKkg4M1RsC1HBoW
+   D+w2m0sT/V2bWj59T7mZWyx9vkTkfaPk/KOCZXLpJ0LSG8qF6+0hWX+6G
+   G7kHeaMnII3yLg/+c7adxXscLPMSuSSfu/uGw9Ekwp7450EWVCcLKw3US
+   rSoo/ScmEK66WBXimKetfQlt6gJSxZpHgrbsl8jFylzvmvAfyCn53+3Xd
+   A==;
+X-CSE-ConnectionGUID: AyT1rmKTTeKfHhrYbcBz0Q==
+X-CSE-MsgGUID: OYTyEbzRTomqxYPhpgtmgw==
+X-IronPort-AV: E=McAfee;i="6800,10657,11717"; a="90876708"
+X-IronPort-AV: E=Sophos;i="6.21,320,1763452800"; 
+   d="scan'208";a="90876708"
+Received: from fmviesa009.fm.intel.com ([10.60.135.149])
+  by orvoesa102.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 02 Mar 2026 08:51:29 -0800
+X-CSE-ConnectionGUID: M4VzmEXHSI2/9+WRpZtgkg==
+X-CSE-MsgGUID: PquzHs0xQfm031qLBqSD0w==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.21,320,1763452800"; 
+   d="scan'208";a="214149930"
+Received: from dalessan-mobl3.ger.corp.intel.com (HELO localhost) ([10.245.244.52])
+  by fmviesa009-auth.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 02 Mar 2026 08:51:26 -0800
+Date: Mon, 2 Mar 2026 18:51:24 +0200
+From: Andy Shevchenko <andriy.shevchenko@intel.com>
+To: Sean Chang <seanwascoding@gmail.com>
+Cc: Andrew Lunn <andrew@lunn.ch>, Chuck Lever <chuck.lever@oracle.com>,
+	David Laight <david.laight.linux@gmail.com>,
+	Anna Schumaker <anna@kernel.org>, netdev@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] sunrpc: simplify dprintk macros and cleanup redundant
+ debug guards
+Message-ID: <aaXADI1NWecG190C@ashevche-desk.local>
+References: <20260302161818.63651-1-seanwascoding@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260301161709.1365975-1-seanwascoding@gmail.com>
- <0a784056-f57f-4634-aa7a-fd0b5916f40a@lunn.ch> <aaWP88PplFTsAPg3@black.igk.intel.com>
-In-Reply-To: <aaWP88PplFTsAPg3@black.igk.intel.com>
-From: Sean Chang <seanwascoding@gmail.com>
-Date: Tue, 3 Mar 2026 00:28:19 +0800
-X-Gm-Features: AaiRm51MTuyaW8sCf46M4X9momxmkR1idtlRx24QnNR4DCFftyUCbovalbjZGjs
-Message-ID: <CAAb=EJU7QECk4Bs67=_q6aKbL+knRG6DBJa0AQRs_+014zZC0w@mail.gmail.com>
-Subject: Re: [PATCH v6 0/2] Fix compiler warnings/errors in SUNRPC and MACB
-To: Andy Shevchenko <andriy.shevchenko@intel.com>
-Cc: Andrew Lunn <andrew@lunn.ch>, Chuck Lever <chuck.lever@oracle.com>, 
-	David Laight <david.laight.linux@gmail.com>, nicolas.ferre@microchip.com, 
-	claudiu.beznea@tuxon.dev, trond.myklebust@hammerspace.com, anna@kernel.org, 
-	netdev@vger.kernel.org, linux-nfs@vger.kernel.org, 
-	linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260302161818.63651-1-seanwascoding@gmail.com>
+Organization: Intel Finland Oy - BIC 0357606-4 - c/o Alberga Business Park, 6
+ krs, Bertel Jungin Aukio 5, 02600 Espoo
 
-On Mon, Mar 2, 2026 at 9:26=E2=80=AFPM Andy Shevchenko
-<andriy.shevchenko@intel.com> wrote:
->
-> On Sun, Mar 01, 2026 at 06:39:44PM +0100, Andrew Lunn wrote:
-> > > - Verified via .lst and nm that both variables (buf) and helper funct=
-ions
-> > >   (nlmdbg_cookie2a) are fully optimized out by the compiler when
-> > >   CONFIG_SUNRPC_DEBUG is disabled.
-> >
-> > Thanks for doing this bit. It was needed to show my guess was correct.
-> >
-> > Reviewed-by: Andrew Lunn <andrew@lunn.ch>
->
-> It already has your tag. My Q in v5 still stands: Why is this a series an=
-d not
-> standalone changes?
->
-> Also I just gave a tag, please split these two and send individually.
->
+On Tue, Mar 03, 2026 at 12:18:18AM +0800, Sean Chang wrote:
 
-Hi Andy,
-Thanks for the suggestion. I have split these into two standalone patches
-as you requested:
-1. The SUNRPC/NFSD macro simplification [1]
-2. The Ethtool/macb redundant guard cleanup [2]
+In the Subject: dprintk --> dprintk()
 
-I've also verified the optimization again via .lst files to ensure everythi=
-ng
-is clean.
+> Following David Laight's suggestion, simplify the macro definitions by
+> removing the unnecessary 'fmt' argument and using no_printk(__VA_ARGS__)
+> directly.
 
-[1] https://lore.kernel.org/all/20260302142931.49108-1-seanwascoding@gmail.=
-com/
-[2] https://lore.kernel.org/all/20260302161818.63651-1-seanwascoding@gmail.=
-com/
----
-Best Regards,
-Sean
+> This ensures the compiler performs type checking
+
+This is already the case with the current code.
+
+> and "sees" the variables, silencing the warnings without emitting any code.
+
+Also, isn't it the current state of affairs?
+
+> Verification with .lst files under -O2 confirms that the compiler
+> successfully performs "dead code elimination". Even when variables
+> (like char buf[] in nfsfh.c) or static helper functions (like
+> nlmdbg_cookie2a in svclock.c) are declared without #ifdef, they are
+> completely optimized out (no stack allocation, no symbol references in
+> the final executable) as they are only referenced within no_printk().
+> 
+> This allows for significant cleanup:
+> - Remove redundant #if IS_ENABLED(CONFIG_SUNRPC_DEBUG) from
+>   fs/nfsd/nfsfh.c and net/sunrpc/xprtrdma/svc_rdma_transport.c
+> - Remove the #if IS_ENABLED(CONFIG_SUNRPC_DEBUG) guard around
+>   nlmdbg_cookie2a and stub function in fs/lockd/svclock.c
+
+nlmdbg_cookie2a()
+
+> - Consolidate the dprintk definition to be more idiomatic.
+
+dprintk()
+
+
+Isn't this list redundant in the commit message? We can see this from the code
+without much brain used.
+
+...
+
+>  	struct ib_qp_init_attr qp_attr;
+>  	struct ib_device *dev;
+>  	int ret = 0;
+> +	struct sockaddr *sap;
+
+Keep it in reversed xmas tree order.
+
+...
+
+Ideally it would be nice to have this patch squashed to the mine, but I think
+since it's part of nfsd-next, the rebasing is not an option. Since I am not
+the maintainer, just my 2c.
+
+-- 
+With Best Regards,
+Andy Shevchenko
+
+
