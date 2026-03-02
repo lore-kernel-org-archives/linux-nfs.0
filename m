@@ -1,222 +1,212 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from flow-a3-smtp.messagingengine.com (flow-a3-smtp.messagingengine.com [103.168.172.138])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27F20481FBE;
-	Mon,  2 Mar 2026 20:28:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C014C3E0C56;
+	Mon,  2 Mar 2026 20:28:28 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.138
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772483302; cv=none; b=tdH14ZiZ6FA7HVYtDacv3yHcHuLNz34ZEc5nKVjvFOaHSfppDQIUht0hYHV+ZZzotqfKDr9IpJP4Qn0buGl9RW1YIUns7FZkoja830d7z6MYjzGViLMJk3netwvi64LVxJzOYUc303KLvqLC1FnXWRJy5dMmUV2NeBSWZoIm8CM=
+	t=1772483311; cv=none; b=JcWXZ+XSgN8ws31UptU73dBVK7waXrJWt7eMjpV4jnGn7Ef047EWttuE3W0boeJ/lgIoReVdgxUz4RjKo1WvZc/EhOqEITbPWwJFpqIRffaeHOgrEBRgKh7jBZ0CfRtADf2WlvibE11iBkWYev6Lb9mLeZzCvMAwpiKN19EgdXI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772483302; c=relaxed/simple;
-	bh=ILNBX20XMm1WGYeu4fSbxc7i4uyu2mHUuuBgFEHaTLQ=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=ftHY47KGJtX79dYlz9FAlph2lr1MPdaciX9ra9yUp5lRLDqW2IdjWLny4cdKeuKWCg9x+9obw/M3H2bdUSsD6FrP8NWhERrsvQ5mJJ8Flt4lbQmWT3mFE/drAK7Ak1U9TDTwtZ3O8rpGiBfSb+0Sn4xY5+beh3xr6TtvTCMpFCQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=adORPXSh; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1772483311; c=relaxed/simple;
+	bh=c6YqrRFFIG57Nm7BKgEnOZWVnoX2J8Ac6s6y/FZAKqg=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=FJ8cOckemaRp9p8l5qdQwenaaEU0UviVrsQPgRzTdo7/wQnFZsijvWsCGomSrFG6qiVYNnIzkEKJrmUym+qRKyIIe4nlG4wXnlFJhNtMOiGZi7AteQo4FCWqZ86YPlDjV6Jf2zqfmkEH5do40sv6QMDZ3apJcEwioI9DJFkBWxo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=D0eLfEma; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=tAFci6MJ; arc=none smtp.client-ip=103.168.172.138
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="adORPXSh"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B6EF5C2BCB6;
-	Mon,  2 Mar 2026 20:28:07 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1772483301;
-	bh=ILNBX20XMm1WGYeu4fSbxc7i4uyu2mHUuuBgFEHaTLQ=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=adORPXShDJaWeQRCvSdSr3L2lXo65cAtKpYBCDaRHoy0MKNKUvrF7aMymnslSSs4B
-	 AMdjhjFRvGdybr+uMutunCNdot7V1s1CHUjy6TEuq079//WixBAim/+w7whDBK17Ql
-	 sd2diEDzU8ZI+CvgWovO3j6esT6DeAP5TRyjb1iQdmS1xVBNOR15bGyfPt63Xj6X6a
-	 UEZVKUYin8jropztKyWus6l9QY2MA6uXm0QunpThKHKrDotZZJ4pcvPlDw2DJnQI6R
-	 2TeAOGs/0VwH5i/Xm+KY62RmHm3kRHZwqDCzK04Ymq6OabPDu+qR14tIW4YzVWfMYm
-	 NiqS4oO3UXgFw==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 02 Mar 2026 15:23:58 -0500
-Subject: [PATCH v2 014/110] proc: use PRIino format for i_ino
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="D0eLfEma";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="tAFci6MJ"
+Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
+	by mailflow.phl.internal (Postfix) with ESMTP id E2C371380BB2;
+	Mon,  2 Mar 2026 15:28:27 -0500 (EST)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-06.internal (MEProxy); Mon, 02 Mar 2026 15:28:27 -0500
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm1; t=
+	1772483307; x=1772490507; bh=PGuwBdT/fi6I7xD4ofJxORaVZCjsED51iJF
+	HAxPkzm0=; b=D0eLfEmafy1DHEs3ecfMGa9SYgwJ/9KAoySk2AcXFiBYwVuCHdf
+	wlKN7gQsxxMEyi2M/XZl3H1JirKUUEak7rVSusoXBc2ExFGbWRl91PGNKrD7r1BM
+	tcD38hugO/0ju6D9M0vKfWAOcUt7p8mYe66lGNZns/ZGAyreVjIXQUh0d7IYRzBn
+	7fz9fCPr2TH0URqaOWQVc8IS+hIYdkKv9g3dutjoPYAI1ep+J0ZkN3yuU87vNknB
+	x/BEgI5PjfQAcEhHecVTCUbpz5Q9w7fIuoFAyOjqeZPuB/9TlvrtqqZ7WjuGUbEb
+	yhixnkuN7oO4S5hzKpfpVAkxmj0+Zo0kfZg==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm1; t=1772483307; x=
+	1772490507; bh=PGuwBdT/fi6I7xD4ofJxORaVZCjsED51iJFHAxPkzm0=; b=t
+	AFci6MJNoTqvVvOYewF6IF8CasVVsw5btRGe2wflqeQxnJDx0fVyyDgP9bCYWQOC
+	XkQJLwoCcabHfiFDQFPGrWGhbWkedbI9MpNm2NwsniQOwZjk++fCBuyyvo/qDj+9
+	MG16Gi+Q7RVWJG8g6pyCfVvl7oiIG0tsuDs/loDki67ozk2Zt0yXEIEG7yG68MeP
+	iK8dMG+C7NhRKDN7/qafBXo9x0wl9ALtVHmTIcspuXVPHDCBp1Yimi0WYUWZAG7i
+	epyZJDdyJwWX2QoUIqoRJyAZ+LcT13pTi8UgYKMpu0U/cVXHSrTFjZcjs+YL77AW
+	sWqfDYU88mol9V/JLIfpA==
+X-ME-Sender: <xms:6vKlac0S1uyHGmgu4rzTpxvRklQJfkHDrK5Uyumqmrz9mO-pjoT0hg>
+    <xme:6vKlaS9vw48XTdwyNBw_TTWTzQIEYGPNg8PzgxEf9buMAqE3tP8eNglHs-0M4XKAD
+    Z_W_4VqWLnoB4gyZnwcTpVoZ6vFSXlQzeHExnOqRzq0Ri99>
+X-ME-Received: <xmr:6vKladuhSn88PEMre-baego0jqJRKjSAqNOwOZ7LHpVWr1uWxlJYa9iuWMaOW4dPkkRCgXGiQ_hTiEK18TQiOyZbiIyOTTYMvvSm1NAr2A_G>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgddvheekieegucetufdoteggodetrf
+    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
+    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
+    gurheptgfgggfhvfevufgjfhffkfhrsehtqhertddttdejnecuhfhrohhmpefpvghilheu
+    rhhofihnuceonhgvihhlsgesohifnhhmrghilhdrnhgvtheqnecuggftrfgrthhtvghrnh
+    epvdeuteelkeejkeevteetvedtkeegleduieeftdeftefgtddtleejgfelgfevffeinecu
+    ffhomhgrihhnpehkvghrnhgvlhdrohhrghenucevlhhushhtvghrufhiiigvpedtnecurf
+    grrhgrmhepmhgrihhlfhhrohhmpehnvghilhgssehofihnmhgrihhlrdhnvghtpdhnsggp
+    rhgtphhtthhopedvvddpmhhouggvpehsmhhtphhouhhtpdhrtghpthhtohepvhhirhhose
+    iivghnihhvrdhlihhnuhigrdhorhhgrdhukhdprhgtphhtthhopehsvghlihhnuhigsehv
+    ghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtoheplhhinhhugidquhhnihhonhhfsh
+    esvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehlihhnuhigqdhsvggtuhhr
+    ihhthidqmhhoughulhgvsehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtoheplh
+    hinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehlihhn
+    uhigqdhkvghrnhgvlhesvhhgvghrrdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehlih
+    hnuhigqdhfshguvghvvghlsehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthhtohep
+    mhhikhhlohhssehsiigvrhgvughirdhhuhdprhgtphhtthhopehjrggtkhesshhushgvrd
+    gtii
+X-ME-Proxy: <xmx:6vKlaer-3S458tUTAG_YwUVW1B-PDTT6QrxdCqvTH81jAFwzgVLejg>
+    <xmx:6vKlaYHXjFI95JvsJ5sDXR4EQsc_ezb6i2NBU-UThLKlWj5M797Viw>
+    <xmx:6vKlaR7OcojddhkX0vMniSB_eYyPVO5IWHCHlGaDubNTm_k8Bs02aA>
+    <xmx:6vKlabDlWp6tFwsOUnRBQ3BBJkpO3XfCb-O0DTSU0LsvYYhgguvrsw>
+    <xmx:6_KlafqVeoDSAdo4Nz-SP4GdTUtKutApTdNYU344W0_DJ979o9abUHi->
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
+ 2 Mar 2026 15:28:20 -0500 (EST)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260302-iino-u64-v2-14-e5388800dae0@kernel.org>
-References: <20260302-iino-u64-v2-0-e5388800dae0@kernel.org>
-In-Reply-To: <20260302-iino-u64-v2-0-e5388800dae0@kernel.org>
-To: Alexander Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
- Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Dan Williams <dan.j.williams@intel.com>, 
- Matthew Wilcox <willy@infradead.org>, Eric Biggers <ebiggers@kernel.org>, 
- "Theodore Y. Ts'o" <tytso@mit.edu>, Muchun Song <muchun.song@linux.dev>, 
- Oscar Salvador <osalvador@suse.de>, David Hildenbrand <david@kernel.org>, 
- David Howells <dhowells@redhat.com>, Paulo Alcantara <pc@manguebit.org>, 
- Andreas Dilger <adilger.kernel@dilger.ca>, Jan Kara <jack@suse.com>, 
- Jaegeuk Kim <jaegeuk@kernel.org>, Chao Yu <chao@kernel.org>, 
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, Steve French <sfrench@samba.org>, 
- Ronnie Sahlberg <ronniesahlberg@gmail.com>, 
- Shyam Prasad N <sprasad@microsoft.com>, 
- Bharath SM <bharathsm@microsoft.com>, 
- Alexander Aring <alex.aring@gmail.com>, 
- Ryusuke Konishi <konishi.ryusuke@gmail.com>, 
- Viacheslav Dubeyko <slava@dubeyko.com>, 
- Eric Van Hensbergen <ericvh@kernel.org>, 
- Latchesar Ionkov <lucho@ionkov.net>, 
- Dominique Martinet <asmadeus@codewreck.org>, 
- Christian Schoenebeck <linux_oss@crudebyte.com>, 
- David Sterba <dsterba@suse.com>, Marc Dionne <marc.dionne@auristor.com>, 
- Ian Kent <raven@themaw.net>, Luis de Bethencourt <luisbg@kernel.org>, 
- Salah Triki <salah.triki@gmail.com>, 
- "Tigran A. Aivazian" <aivazian.tigran@gmail.com>, 
- Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
- Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu, 
- Nicolas Pitre <nico@fluxnic.net>, Tyler Hicks <code@tyhicks.com>, 
- Amir Goldstein <amir73il@gmail.com>, Christoph Hellwig <hch@infradead.org>, 
- John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>, 
- Yangtao Li <frank.li@vivo.com>, 
- Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>, 
- David Woodhouse <dwmw2@infradead.org>, Richard Weinberger <richard@nod.at>, 
- Dave Kleikamp <shaggy@kernel.org>, 
- Konstantin Komarov <almaz.alexandrovich@paragon-software.com>, 
- Mark Fasheh <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>, 
- Joseph Qi <joseph.qi@linux.alibaba.com>, 
- Mike Marshall <hubcap@omnibond.com>, 
- Martin Brandenburg <martin@omnibond.com>, 
- Miklos Szeredi <miklos@szeredi.hu>, Anders Larsen <al@alarsen.net>, 
- Zhihao Cheng <chengzhihao1@huawei.com>, Damien Le Moal <dlemoal@kernel.org>, 
- Naohiro Aota <naohiro.aota@wdc.com>, Johannes Thumshirn <jth@kernel.org>, 
- John Johansen <john.johansen@canonical.com>, 
- Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>, 
- "Serge E. Hallyn" <serge@hallyn.com>, Mimi Zohar <zohar@linux.ibm.com>, 
- Roberto Sassu <roberto.sassu@huawei.com>, 
- Dmitry Kasatkin <dmitry.kasatkin@gmail.com>, 
- Eric Snowberg <eric.snowberg@oracle.com>, Fan Wu <wufan@kernel.org>, 
- Stephen Smalley <stephen.smalley.work@gmail.com>, 
- Ondrej Mosnacek <omosnace@redhat.com>, 
- Casey Schaufler <casey@schaufler-ca.com>, 
- Alex Deucher <alexander.deucher@amd.com>, 
- =?utf-8?q?Christian_K=C3=B6nig?= <christian.koenig@amd.com>, 
- David Airlie <airlied@gmail.com>, Simona Vetter <simona@ffwll.ch>, 
- Sumit Semwal <sumit.semwal@linaro.org>, Eric Dumazet <edumazet@google.com>, 
- Kuniyuki Iwashima <kuniyu@google.com>, Paolo Abeni <pabeni@redhat.com>, 
- Willem de Bruijn <willemb@google.com>, 
- "David S. Miller" <davem@davemloft.net>, Jakub Kicinski <kuba@kernel.org>, 
- Simon Horman <horms@kernel.org>, Oleg Nesterov <oleg@redhat.com>, 
- Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>, 
- Arnaldo Carvalho de Melo <acme@kernel.org>, 
- Namhyung Kim <namhyung@kernel.org>, Mark Rutland <mark.rutland@arm.com>, 
- Alexander Shishkin <alexander.shishkin@linux.intel.com>, 
- Jiri Olsa <jolsa@kernel.org>, Ian Rogers <irogers@google.com>, 
- Adrian Hunter <adrian.hunter@intel.com>, 
- James Clark <james.clark@linaro.org>, "Darrick J. Wong" <djwong@kernel.org>, 
- Martin Schiller <ms@dev.tdt.de>, Eric Paris <eparis@redhat.com>, 
- Joerg Reuter <jreuter@yaina.de>, Marcel Holtmann <marcel@holtmann.org>, 
- Johan Hedberg <johan.hedberg@gmail.com>, 
- Luiz Augusto von Dentz <luiz.dentz@gmail.com>, 
- Oliver Hartkopp <socketcan@hartkopp.net>, 
- Marc Kleine-Budde <mkl@pengutronix.de>, David Ahern <dsahern@kernel.org>, 
- Neal Cardwell <ncardwell@google.com>, 
- Steffen Klassert <steffen.klassert@secunet.com>, 
- Herbert Xu <herbert@gondor.apana.org.au>, 
- Remi Denis-Courmont <courmisch@gmail.com>, 
- Marcelo Ricardo Leitner <marcelo.leitner@gmail.com>, 
- Xin Long <lucien.xin@gmail.com>, 
- Magnus Karlsson <magnus.karlsson@intel.com>, 
- Maciej Fijalkowski <maciej.fijalkowski@intel.com>, 
- Stanislav Fomichev <sdf@fomichev.me>, Alexei Starovoitov <ast@kernel.org>, 
- Daniel Borkmann <daniel@iogearbox.net>, 
- Jesper Dangaard Brouer <hawk@kernel.org>, 
- John Fastabend <john.fastabend@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
- linux-trace-kernel@vger.kernel.org, nvdimm@lists.linux.dev, 
- fsverity@lists.linux.dev, linux-mm@kvack.org, netfs@lists.linux.dev, 
- linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net, 
- linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
- samba-technical@lists.samba.org, linux-nilfs@vger.kernel.org, 
- v9fs@lists.linux.dev, linux-afs@lists.infradead.org, autofs@vger.kernel.org, 
- ceph-devel@vger.kernel.org, codalist@coda.cs.cmu.edu, 
- ecryptfs@vger.kernel.org, linux-mtd@lists.infradead.org, 
- jfs-discussion@lists.sourceforge.net, ntfs3@lists.linux.dev, 
- ocfs2-devel@lists.linux.dev, devel@lists.orangefs.org, 
- linux-unionfs@vger.kernel.org, apparmor@lists.ubuntu.com, 
- linux-security-module@vger.kernel.org, linux-integrity@vger.kernel.org, 
- selinux@vger.kernel.org, amd-gfx@lists.freedesktop.org, 
- dri-devel@lists.freedesktop.org, linux-media@vger.kernel.org, 
- linaro-mm-sig@lists.linaro.org, netdev@vger.kernel.org, 
- linux-perf-users@vger.kernel.org, linux-fscrypt@vger.kernel.org, 
- linux-xfs@vger.kernel.org, linux-hams@vger.kernel.org, 
- linux-x25@vger.kernel.org, audit@vger.kernel.org, 
- linux-bluetooth@vger.kernel.org, linux-can@vger.kernel.org, 
- linux-sctp@vger.kernel.org, bpf@vger.kernel.org, 
- Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.2
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1853; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=ILNBX20XMm1WGYeu4fSbxc7i4uyu2mHUuuBgFEHaTLQ=;
- b=kA0DAAoBAA5oQRlWghUByyZiAGml8fKhukipLxqLUFvO9iuDYAGOPry/2sA4SjKuNUK0omXcO
- okCMwQAAQoAHRYhBEvA17JEcbKhhOr10wAOaEEZVoIVBQJppfHyAAoJEAAOaEEZVoIVtoUP/R3e
- In/Btns6OtO77+sWMs3v1xqzUdt4DAPFPDwvgQ3x5gDTR9PmppRzZM33aV68PBKlwHXKMZxO7/V
- KmLhAIL0EMOzoOx4oVwoRmV2F5Gw5mMpRhTZOO5FsZv2WCle07tsqIXifbmkx8OgPQIB5wjlD/E
- YqqdFbIvbMnLqiPJnZdk6DC4DPRnZhVj+EDM04AaWnAImg6uwnAgAfaf0OSVnULRQjRb0bdjWad
- 7NOEkQH8pvNfiEF1ehH541oh1JzxjmRvzWJ4GzZXf+/hKptYyo1D5K6y/XzD4K31TehEcGgJGOn
- OJ3GBq4ovtNAlkjVawu/nHiS7VZy7DCdknM+nF32EXE1mn6R2JDGBi+hmCMlifzP1wU3lh4GLQC
- TfX70d8OPw+pAqWzvpZd5cxUJtZab6jpqaJnsurPw8kYnRAEHIvW7Ga6f7h3M4AdZAj+x3KiIam
- jA0RNbEbbRPl0M+91ZxAGncuHOdwHPCHt1zNtpRUGfVmgViUEjMcGQieyUpLcG/PoQ0Ljbn7miz
- aUqsyJCUqTyMcSvv5TBk068RoRkuiXb9wSbX/gcQ0EaqxmWyrD2jHcJPCFL6fm7i8IKDq4mcKAh
- avWiCOvFCb6F9ihaU6qIM2bsHjOee0SVqqRiazHpodnilhViUZ7MJ/zirvzO3KxKkWZ6aQGy9CT
- 2wGqM
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
+From: NeilBrown <neilb@ownmail.net>
+To: "Jeff Layton" <jlayton@kernel.org>
+Cc: "Christian Brauner" <brauner@kernel.org>,
+ "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "David Howells" <dhowells@redhat.com>, "Jan Kara" <jack@suse.cz>,
+ "Chuck Lever" <chuck.lever@oracle.com>, "Miklos Szeredi" <miklos@szeredi.hu>,
+ "Amir Goldstein" <amir73il@gmail.com>,
+ "John Johansen" <john.johansen@canonical.com>,
+ "Paul Moore" <paul@paul-moore.com>, "James Morris" <jmorris@namei.org>,
+ "Serge E. Hallyn" <serge@hallyn.com>,
+ "Stephen Smalley" <stephen.smalley.work@gmail.com>,
+ "Darrick J. Wong" <djwong@kernel.org>, linux-kernel@vger.kernel.org,
+ netfs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+ apparmor@lists.ubuntu.com, linux-security-module@vger.kernel.org,
+ selinux@vger.kernel.org
+Subject: Re: [PATCH v3 01/15] VFS: note error returns in documentation for
+ various lookup functions
+In-reply-to: <df3a0c1d7c2aa4653725a20401264de2ca1645b3.camel@kernel.org>
+References: <20260224222542.3458677-1-neilb@ownmail.net>,
+ <20260224222542.3458677-2-neilb@ownmail.net>,
+ <df3a0c1d7c2aa4653725a20401264de2ca1645b3.camel@kernel.org>
+Date: Tue, 03 Mar 2026 07:28:15 +1100
+Message-id: <177248329543.7472.6896694157211686467@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-Convert proc i_ino format strings to use the PRIino format
-macro in preparation for the widening of i_ino via kino_t.
+On Tue, 03 Mar 2026, Jeff Layton wrote:
+> On Wed, 2026-02-25 at 09:16 +1100, NeilBrown wrote:
+> > From: NeilBrown <neil@brown.name>
+> >=20
+> > Darrick recently noted that try_lookup_noperm() is documented as
+> > "Look up a dentry by name in the dcache, returning NULL if it does not
+> > currently exist." but it can in fact return an error.
+> >=20
+> > So update the documentation for that and related functions.
+> >=20
+> > Link: https://lore.kernel.org/all/20260218234917.GA6490@frogsfrogsfrogs/
+> > Cc: "Darrick J. Wong" <djwong@kernel.org>
+> > Signed-off-by: NeilBrown <neil@brown.name>
+> > ---
+> >  fs/namei.c | 29 ++++++++++++++++++++++++++++-
+> >  1 file changed, 28 insertions(+), 1 deletion(-)
+> >=20
+> > diff --git a/fs/namei.c b/fs/namei.c
+> > index 58f715f7657e..6f595f58acfe 100644
+> > --- a/fs/namei.c
+> > +++ b/fs/namei.c
+> > @@ -3124,7 +3124,8 @@ static int lookup_one_common(struct mnt_idmap *idma=
+p,
+> >   * @base:	base directory to lookup from
+> >   *
+> >   * Look up a dentry by name in the dcache, returning NULL if it does not
+> > - * currently exist.  The function does not try to create a dentry and if=
+ one
+> > + * currently exist or an error if there is a problem with the name.
+> > + * The function does not try to create a dentry and if one
+> >   * is found it doesn't try to revalidate it.
+> >   *
+> >   * Note that this routine is purely a helper for filesystem usage and sh=
+ould
+> > @@ -3132,6 +3133,11 @@ static int lookup_one_common(struct mnt_idmap *idm=
+ap,
+> >   *
+> >   * No locks need be held - only a counted reference to @base is needed.
+> >   *
+> > + * Returns:
+> > + *   - ref-counted dentry on success, or
+> > + *   - %NULL if name could not be found, or
+> > + *   - ERR_PTR(-EACCES) if name is dot or dotdot or contains a slash or =
+nul, or
+> > + *   - ERR_PTR() if fs provide ->d_hash, and this returned an error.
+> >   */
+> >  struct dentry *try_lookup_noperm(struct qstr *name, struct dentry *base)
+> >  {
+> > @@ -3208,6 +3214,11 @@ EXPORT_SYMBOL(lookup_one);
+> >   *
+> >   * Unlike lookup_one, it should be called without the parent
+> >   * i_rwsem held, and will take the i_rwsem itself if necessary.
+> > + *
+> > + * Returns: - A dentry, possibly negative, or
+> > + *	    - same errors as try_lookup_noperm() or
+> > + *	    - ERR_PTR(-ENOENT) if parent has been removed, or
+> > + *	    - ERR_PTR(-EACCES) if parent directory is not searchable.
+> >   */
+> >  struct dentry *lookup_one_unlocked(struct mnt_idmap *idmap, struct qstr =
+*name,
+> >  				   struct dentry *base)
+> > @@ -3244,6 +3255,10 @@ EXPORT_SYMBOL(lookup_one_unlocked);
+> >   * It should be called without the parent i_rwsem held, and will take
+> >   * the i_rwsem itself if necessary.  If a fatal signal is pending or
+> >   * delivered, it will return %-EINTR if the lock is needed.
+> > + *
+> > + * Returns: A dentry, possibly negative, or
+> > + *	   - same errors as lookup_one_unlocked() or
+> > + *	   - ERR_PTR(-EINTR) if a fatal signal is pending.
+> >   */
+> >  struct dentry *lookup_one_positive_killable(struct mnt_idmap *idmap,
+> >  					    struct qstr *name,
+>=20
+> Claude says:
+>=20
+>   lookup_one_positive_killable() documentation says "A dentry, possibly neg=
+ative" but the function
+>   explicitly converts negative dentries to ERR_PTR(-ENOENT). It should say =
+"A positive dentry" like
+>   the companion functions lookup_one_positive_unlocked() and lookup_noperm_=
+positive_unlocked().
 
-Update local variables and function parameters that hold i_ino
-values from unsigned long to kino_t.
+Thanks.  The top patch in my next batch contains a bunch of similar
+documentation cleanups.  I'll add this to that patch.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/proc/fd.c       | 2 +-
- fs/proc/task_mmu.c | 4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+>=20
+> ...but that seems to be the only "regression" it found.=20
+>=20
 
-diff --git a/fs/proc/fd.c b/fs/proc/fd.c
-index 9eeccff49b2abf57d766ce17fe47070c379ed2c8..936d0258d688be5fdc384ee5c4dfbb8fa0d19dff 100644
---- a/fs/proc/fd.c
-+++ b/fs/proc/fd.c
-@@ -54,7 +54,7 @@ static int seq_show(struct seq_file *m, void *v)
- 	if (ret)
- 		return ret;
- 
--	seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\nino:\t%lu\n",
-+	seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\nino:\t%" PRIino "u\n",
- 		   (long long)file->f_pos, f_flags,
- 		   real_mount(file->f_path.mnt)->mnt_id,
- 		   file_inode(file)->i_ino);
-diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index e091931d7ca19d71f31699913d177eec0821ca7b..702b0f0433f91077cd0d0af4a07e9d67d9fa9a45 100644
---- a/fs/proc/task_mmu.c
-+++ b/fs/proc/task_mmu.c
-@@ -442,7 +442,7 @@ static void get_vma_name(struct vm_area_struct *vma,
- static void show_vma_header_prefix(struct seq_file *m,
- 				   unsigned long start, unsigned long end,
- 				   vm_flags_t flags, unsigned long long pgoff,
--				   dev_t dev, unsigned long ino)
-+				   dev_t dev, kino_t ino)
- {
- 	seq_setwidth(m, 25 + sizeof(void *) * 6 - 1);
- 	seq_put_hex_ll(m, NULL, start, 8);
-@@ -465,7 +465,7 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma)
- 	const struct path *path;
- 	const char *name_fmt, *name;
- 	vm_flags_t flags = vma->vm_flags;
--	unsigned long ino = 0;
-+	kino_t ino = 0;
- 	unsigned long long pgoff = 0;
- 	unsigned long start, end;
- 	dev_t dev = 0;
+Good to know!
 
--- 
-2.53.0
+Thanks,
+NeilBrown
+
+>=20
+> Aside from that nit, this looks fine to me.
+>=20
+> Reviewed-by: Jeff Layton <jlayton@kernel.org>
+>=20
 
