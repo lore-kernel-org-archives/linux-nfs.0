@@ -1,139 +1,85 @@
-Received: from mail-wm1-f43.google.com (mail-wm1-f43.google.com [209.85.128.43])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from stravinsky.debian.org (stravinsky.debian.org [82.195.75.108])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F2EF33537D3
-	for <linux-nfs@vger.kernel.org>; Wed,  4 Mar 2026 09:30:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.43
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 40DF237FF79;
+	Wed,  4 Mar 2026 10:28:53 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=82.195.75.108
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772616641; cv=none; b=LyQtJvPw/5nvX4hkMPecwd/+hKc/uIjiNgkWQQxIBdwg3Jxt0lfFBL9g4oRUyRHimTaqrRwCq1S+s1hcjOfzALKUivaYtd9RX/hppYxhwcFAFFt3lenkFjGdsBVL2w0z9L1ay1tBuxXLRjDoQv72O6Scrf835IrMT3jaYAU5R5I=
+	t=1772620134; cv=none; b=sOSnTR26aJxDKyo3Llf34JulPrHopuJtSEhAsl396TXltugdZ4PKr2JcYqgkv05pIGeva/spuHxd1RM8MeVzw86t7T67wwgcymG4scvlb4Xk0nlRxiWwCPwsdSdS0IqAMOUp1ZCmRX6/iqtHUNLevuUGAuazkCH5NT7X7bMfwUk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772616641; c=relaxed/simple;
-	bh=qyvL/iXE6+TakoKVVxVCaopqm1BpX+f7Q05dx5gBHDE=;
-	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=HDPr1OfTBfEcrwDuczZC8CdfD0X5RNhHccT7x0TQK26K1nH92n70iWFqAbUtQ/XNwi1eBgSHHxpSGlmraDPEj8jygOCOGtB4txkkqXediCY6VOEx22t1lVZ337M+v47H2gLV4YQ+QwVPaUYociOSoH9tazQe+WVe62CEQ6s+elQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=b9sIRKFF; arc=none smtp.client-ip=209.85.128.43
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1772620134; c=relaxed/simple;
+	bh=d4bNtrNjDih07VzPz9I8qEt+Qp9zR9VO2epfFefT+lo=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=IAApl2IjA27xo8uY8qHnyWBwFEBLOUbZGLOYxBKyenJDM977COpeROkq/dRMgPfINLGKno/G9GZfLjjUvB/zcvFh9iPDIgjjCDZyPwX4y1riOQui72Dn3Uz8Z3/pDpGQRFrvB2hzYbsjuk9iXapmW8lGXgwaFfYjBwY3/uMJHRg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=debian.org; spf=none smtp.mailfrom=debian.org; dkim=pass (2048-bit key) header.d=debian.org header.i=@debian.org header.b=g9dMXaMz; arc=none smtp.client-ip=82.195.75.108
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=debian.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=debian.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="b9sIRKFF"
-Received: by mail-wm1-f43.google.com with SMTP id 5b1f17b1804b1-48371bb515eso99247655e9.1
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Mar 2026 01:30:37 -0800 (PST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1772616636; x=1773221436; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:subject:cc:to:from:date:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=BUzQoESoh9/PqMSFbMpuw4Pmh5IPXiGP/qvOjxX4wwo=;
-        b=b9sIRKFFaokgkSrgeWrbA/ViOpJjWP1ViLK9R1Hc1//m2coegBzgKtpFqwevCmiACZ
-         C7afbaacWCHtjdaHICcRaatb9x6ZEJn6NhG6Zj9DIWESFWJ1Wfs22M1hBHSvsJT6ov0y
-         u+gbatvToXFWw4Ws1z6B810aDtF2H+NtjWSzWUXjnH2Uagh4gEk5+S1nkLp8lVzxzopS
-         A1lgIkzEEAlqX7ANlEMButL3162rmrsjjiFCTqL06qEr4gqfcdGAwI6S5Z1yvtqPS7rR
-         QeMeyyLIZ4ZsiMHZmsjBPBW/Gjz82S/2K6mHxq88plnIdodtUPQPjzOSR2cd/SZiIcXY
-         bgtA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20230601; t=1772616636; x=1773221436;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:subject:cc:to:from:date:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=BUzQoESoh9/PqMSFbMpuw4Pmh5IPXiGP/qvOjxX4wwo=;
-        b=CN5A3GANzRPW3YNK6NRdh70M3O9k3wK2S5SiQLUIs/CQHnyWGIDgnuE2PF/CS5wm8X
-         Nig4Abw5IAOSyh15cb8b7oLx2qDfs7gZykrzjCX+4G8zjrwBQZUrkBQ2KYSSIfSzQj98
-         fraZSN5sNUag3lH3G03IadAO/VvxdSY/RPZT96zejcuZYVqJ7BO0jALslhXAk7aeI5Cv
-         +8dUsa4jOqBnk5Di7MNiB8EH0FVkiyrP246m10SsyKntt2Argp3Yf2u+EieIUM+iT3Qm
-         C2JwU5F2Y/2qGMBqv5wPd9s55mWpIboAn1fQxVDIfEQogQxb5O3vOuoFIlrgeWOKLXDI
-         diGg==
-X-Forwarded-Encrypted: i=1; AJvYcCUuWGoCKWDl5psMNaKI22zvVihd5gEi4s6atnshdssMangMhCND2R66WuaBVEmYTT/6ooQvL5yAwi0=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yx1K3oBllMfbGuAGDrjph/OLrQqJDXx51ed+uUeug1BS8LLfGWE
-	LR3bYopmPZ8zqivDQvgON1nHyKkvcp0W0mHbkbccpO508oKcvoPB168U
-X-Gm-Gg: ATEYQzwXokOYCHvYXzqZI67afjeyud97r8v8NtcCxdUnrekVXaZkaPE2bHcQI77MY7b
-	hhVH27h46wjr75TZ6Vf8MbuTgCXt05O/S3dD9pmsu9EmCXSTtE1KFca3x0HUXMGUMUi2NZF8sA0
-	bZTFd0v8CqLEFb9FZkfx4EIXGyUCLfzKE+kpbAGTe4NwGR1a2bhw2NdZZGp/iyU8dZ4rWVhFXWK
-	bArc6h2CUhk9rLlFHWvCIl9iQHJh3iY+OsoO+T6/0L+xR/f7EIxa6ZDsZmdtSEjEKKYlJzYTh2+
-	aUJ1psUWlAH/uPyWw0VSqxjelFJeRB8N5FKpz671oQkv5hf32ArhuIOvKFg1TIfH8Qy871Y1aOR
-	ekaaKOWBy8nZipKYec9c6Xga0sENi/w3Ko2r32qtAn+ryzAAtjN3T1HaBD336ERinKGye37/ZIg
-	2laXLIt/5X0/fGOYHKKXLe44C9vaEa9mYMpLYpG/TbcKTzHDQDEy0Sc8zGuTE4W0XV
-X-Received: by 2002:a05:600c:8b53:b0:483:498f:7963 with SMTP id 5b1f17b1804b1-4851989024emr19550785e9.26.1772616636117;
-        Wed, 04 Mar 2026 01:30:36 -0800 (PST)
-Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4851884225asm38972555e9.6.2026.03.04.01.30.35
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 04 Mar 2026 01:30:35 -0800 (PST)
-Date: Wed, 4 Mar 2026 09:30:33 +0000
-From: David Laight <david.laight.linux@gmail.com>
-To: NeilBrown <neilb@ownmail.net>
-Cc: "Jeff Layton" <jlayton@kernel.org>, linux-fsdevel@vger.kernel.org,
- linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org,
- nvdimm@lists.linux.dev, fsverity@lists.linux.dev, linux-mm@kvack.org,
- netfs@lists.linux.dev, linux-ext4@vger.kernel.org,
- linux-f2fs-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org,
- linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
- linux-nilfs@vger.kernel.org, v9fs@lists.linux.dev,
- linux-afs@lists.infradead.org, autofs@vger.kernel.org,
- ceph-devel@vger.kernel.org, codalist@coda.cs.cmu.edu,
- ecryptfs@vger.kernel.org, linux-mtd@lists.infradead.org,
- jfs-discussion@lists.sourceforge.net, ntfs3@lists.linux.dev,
- ocfs2-devel@lists.linux.dev, devel@lists.orangefs.org,
- linux-unionfs@vger.kernel.org, apparmor@lists.ubuntu.com,
- linux-security-module@vger.kernel.org, linux-integrity@vger.kernel.org,
- selinux@vger.kernel.org, amd-gfx@lists.freedesktop.org,
- dri-devel@lists.freedesktop.org, linux-media@vger.kernel.org,
- linaro-mm-sig@lists.linaro.org, netdev@vger.kernel.org,
- linux-perf-users@vger.kernel.org, linux-fscrypt@vger.kernel.org,
- linux-xfs@vger.kernel.org, linux-hams@vger.kernel.org,
- linux-x25@vger.kernel.org, audit@vger.kernel.org,
- linux-bluetooth@vger.kernel.org, linux-can@vger.kernel.org,
- linux-sctp@vger.kernel.org, bpf@vger.kernel.org
-Subject: Re: [PATCH v2 000/110] vfs: change inode->i_ino from unsigned long
- to u64
-Message-ID: <20260304092559.554ac9a9@pumpkin>
-In-Reply-To: <177260561903.7472.14075475865748618717@noble.neil.brown.name>
-References: <20260302-iino-u64-v2-0-e5388800dae0@kernel.org>
-	<1787281.1772535332@warthog.procyon.org.uk>
-	<1c28e34c7167acf4e20c3e201476504135aa44e8.camel@kernel.org>
-	<177260561903.7472.14075475865748618717@noble.neil.brown.name>
-X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
+	dkim=pass (2048-bit key) header.d=debian.org header.i=@debian.org header.b="g9dMXaMz"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=debian.org;
+	s=smtpauto.stravinsky; h=X-Debian-User:In-Reply-To:Content-Transfer-Encoding:
+	Content-Type:MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:
+	Reply-To:Content-ID:Content-Description;
+	bh=SNgwkX+bdpfdCJLmm7Ie55CAyRvvJujoCIUdEwsAyDY=; b=g9dMXaMznW8gQ4qICcT2K2H09Q
+	mqFyFr6LItWW8Qv15k/hBtWnIFd4u9xF63T41ugmehACeavXx+206h3+/x2bwVdISX9QqhAy7iqGr
+	uBIXfHMgdxFsFr66VaQCGUyNvgjyeGHtIdzdaej/i1d1S+tBB4WqBX/rm/54ObD2al991GitPYu8m
+	Nii0XOmjbD6x4iBAoXM4BX8BOZYoljQtJnRDob711E2f7kdF071pd4LCS2wu9x975YGLa1NuAVZyC
+	hXGsmuHK4sxUnCM79ke35Qn0elUz36LFO+01t6guG17LFEWGqannhE6PR7q3xHOfwM5fZPgJZuQm3
+	rPi8vE1A==;
+Received: from authenticated user
+	by stravinsky.debian.org with esmtpsa (TLS1.3:ECDHE_X25519__RSA_PSS_RSAE_SHA256__AES_256_GCM:256)
+	(Exim 4.94.2)
+	(envelope-from <carnil@debian.org>)
+	id 1vxjT1-00FtEt-Gm; Wed, 04 Mar 2026 10:28:35 +0000
+Received: by eldamar.lan (Postfix, from userid 1000)
+	id 3E297BE2DE0; Wed, 04 Mar 2026 11:28:34 +0100 (CET)
+Date: Wed, 4 Mar 2026 11:28:34 +0100
+From: Salvatore Bonaccorso <carnil@debian.org>
+To: Thorsten Leemhuis <regressions@leemhuis.info>, 1128861@bugs.debian.org
+Cc: Tj <tj.iam.tj@proton.me>, Neil Brown <neilb@suse.de>,
+	linux-nfs@vger.kernel.org, Olga Kornievskaia <okorniev@redhat.com>,
+	stable@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
+	Jeff Layton <jlayton@kernel.org>
+Subject: Re: Bug#1128861: Regression: Missing check in nfsd_permission()
+ causes -ENOLCK No locks available
+Message-ID: <aagJUlFIJkjgbEHQ@eldamar.lan>
+References: <c0f15088-3fc0-487a-9f24-cf89c158420d@proton.me>
+ <177187492815.425331.14320091315652332093.reportbug@nimble>
+ <418f30b5-06ae-471f-bf5f-f14f3f75deff@leemhuis.info>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <418f30b5-06ae-471f-bf5f-f14f3f75deff@leemhuis.info>
+X-Debian-User: carnil
 
-On Wed, 04 Mar 2026 17:26:59 +1100
-NeilBrown <neilb@ownmail.net> wrote:
+Control: found -1 6.19.5-1~exp1
+Hi,
 
-> On Tue, 03 Mar 2026, Jeff Layton wrote:
-> > On Tue, 2026-03-03 at 10:55 +0000, David Howells wrote:  
-> > > Jeff Layton <jlayton@kernel.org> wrote:
-> > >   
-> > > > This version splits the change up to be more bisectable. It first adds a
-> > > > new kino_t typedef and a new "PRIino" macro to hold the width specifier
-> > > > for format strings. The conversion is done, and then everything is
-> > > > changed to remove the new macro and typedef.  
-> > > 
-> > > Why remove the typedef?  It might be better to keep it.
-> > >   
+On Fri, Feb 27, 2026 at 10:54:13AM +0100, Thorsten Leemhuis wrote:
+> [CCing a few people and lists]
+> 
+> On 2/24/26 03:09, Tj wrote:
+> > Upstream commit 4cc9b9f2bf4dfe13fe573 "nfsd: refine and rename 
+> > NFSD_MAY_LOCK" and
+> >   stable v6.12.54 commit 18744bc56b0ec
+> 
+> In case anyone just like me is wondering: the latter is a backport of
+> the former.
+> 
+> >  (re)moves checks from  fs/nfsd/vfs.c::nfsd_permission().>   This causes NFS clients to see
 > > 
-> > Why? After this change, internel kernel inodes will be u64's -- full
-> > stop. I don't see what the macro or typedef will buy us at that point.  
+> > $ flock -e -w 4 /srv/NAS/test/debian-13.3.0-amd64-netinst.iso sleep 1
+> > flock: /srv/NAS/test/debian-13.3.0-amd64-netinst.iso: No locks available
 > 
-> Implicit documentation?
-> ktime_t is (now) always s64, but we still keep the typedef;
-> 
-> It would be cool if we could teach vsprintf to understand some new
-> specifier to mean "kinode_t" or "ktime_t" etc.  But that would trigger
-> gcc warnings.
+> Does this happen on mainline (e.g. 7.0-rc1) as well?
 
-A more interesting one would be something that made gcc re-write the
-format with the correct 'length modifier' for the parameter.
+Not tested 7.0-rc2, but the issue is reproducible still in 6.19.5.
 
-That would save a lot of effort!
-
-	David
-
-> 
-> NeilBrown
-> 
-
+Regards,
+Salvatore
