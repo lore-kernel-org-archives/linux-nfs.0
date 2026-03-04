@@ -1,82 +1,79 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5C53A30F932;
-	Wed,  4 Mar 2026 14:25:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CACCA37474D;
+	Wed,  4 Mar 2026 14:27:17 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1772634354; cv=none; b=heqsBz5RNxpift6qiPQnYsOePNZ1JDhaco+SzWyzrzBtG5W5iU+dqDR10AcmtPUj+VBBsulRhx5NT2Ww1ytOnk0Dvf4CHbYQLzp2VybeWsVUACyAOY1cOAJfl0JZxMvnuQCS2OBsX5opOm6pNFcawDwUI4gbyUnbfzwuLjntkUk=
+	t=1772634437; cv=none; b=n89HtrMUwJnwj4WJ3rElRaUd5SzXpgd4EDG6nC4wqdXpfFCpKkBQkyVMsbDsdkKcN2brUPRPLc/6U1Lz+o1VwUeAz67FgzfxmqDlQjSOU0FwyjM50OMz1CluILeAQgVJ/VNLZF7bcYFxG1Zf45A+jowbFV0BVbmQ+8FwIJEBiLI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1772634354; c=relaxed/simple;
-	bh=qdY5vaVJURTWs72EyZ8cPNPdS082XZvUtj3CCkb5nGE=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=GXG2TnEjhYNcO0dZSzVZiJ4EkoXNE+HGbDNlyiAXjJe1RFoVo8fbmvuX4tY7ly1R6L3KUU7Vn+HMovdt8dZVizXw66xsZTgJQeyYGRx8nYfGuVGIZzRx0wX17ntvJizHQjtMS0kl3lU70ne53YrhjzzQKecRFAdkTOLfSKanviU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=x27lCMff; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	s=arc-20240116; t=1772634437; c=relaxed/simple;
+	bh=JudY2E+RxzF6UxTLm0DE2MBtJYZZkh1AFdJTmpR1Zx4=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=HA3tXIFWh1n9uoR5ilpWYJXC04PL3Iz34MagDcPJkrraZxVUO/VycuhsXzCGrv1HTLcTNyILzk8enKoy55hlpeziJPw9ivTw9gJgsPUgt4UrK51lDcoIpOeN6hdoudgPwnCXp7U2sFr6KDtqHtaGTq/Ykymzv5tHJa4RXy3PnNk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Q9Pmz57O; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="x27lCMff"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
-	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=tQK7I2fIPyvq2g9xdz8S+f6AJpFhfFODuiVP1vyE7vM=; b=x27lCMffnHSJWh4uGGnQkxH63X
-	o4wIOlq4UCohr2v8YTNWk4Vh1pQMQ5GovXc3B/niDcwWQx+cdDmfkDblQbflWLIs14f5Owl8Ykijj
-	ZLgMcyfYJY3DwuxvJbt6axXqAN8aqVD0iYeS2TzFYKkO6ATLbbnS2WiN7R6iBMDznnhiCHQA6kmOY
-	QjybGzXwM0xgAGt5nv3EkMn07NNyh37uIozjIM8/OR0ohai+SNA9krqCSDloUkU6fKldmw+ifEwNy
-	cQmzlD609M8++/ZnQwZQE3gKC6QQPLC6RDRFxfUD+uC97jQiBC8r+a6Rb3MG0ukbdEV7lrsMCKGnz
-	vNy90w9w==;
-Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1vxnAc-0000000HOlV-39DX;
-	Wed, 04 Mar 2026 14:25:50 +0000
-Date: Wed, 4 Mar 2026 06:25:50 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: David Howells <dhowells@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Matthew Wilcox <willy@infradead.org>, Jens Axboe <axboe@kernel.dk>,
-	Leon Romanovsky <leon@kernel.org>,
-	Christian Brauner <christian@brauner.io>,
-	Paulo Alcantara <pc@manguebit.com>, netfs@lists.linux.dev,
-	linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
-	linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-	v9fs@lists.linux.dev, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, Paulo Alcantara <pc@manguebit.org>,
-	Steve French <sfrench@samba.org>,
-	Namjae Jeon <linkinjeon@kernel.org>, Tom Talpey <tom@talpey.com>,
-	Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC PATCH 02/17] vfs: Implement a FIEMAP callback
-Message-ID: <aahA7rQVf5liFYMv@infradead.org>
-References: <aag8fPUDCY_g-_LY@infradead.org>
- <20260304140328.112636-1-dhowells@redhat.com>
- <20260304140328.112636-3-dhowells@redhat.com>
- <114166.1772634114@warthog.procyon.org.uk>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Q9Pmz57O"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D847AC2BC9E;
+	Wed,  4 Mar 2026 14:27:16 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1772634437;
+	bh=JudY2E+RxzF6UxTLm0DE2MBtJYZZkh1AFdJTmpR1Zx4=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=Q9Pmz57Oo7szCV4iwPb1d/AzzRDY0vhawctaKUqBOKiJtAwVt6t3H1lOe45bA1xoO
+	 U3P7fX76qF876U+OBcf61YjrdjXVyTHeSVKRRDTvanq0wwWU3mIJX4L6DlveJ/w6Kf
+	 CxDL05WY9pA173w5ty/1XKu2T45lw1TGsJGSycrBBDxE6VnHb8QRkM83RhZ+8QOF8u
+	 TNKiBPVjtSnPwuxHnDcMNIX+Wf9avF+IZcS6VOh2ONll+zOEZExse4eDlVfBb4lrUu
+	 7IeJPNhEYmOCgC/+mPzDi2l3ZyRPmlWAD/Cz6pdtyPDJ316jDvnggEhDtHxhaaayJ8
+	 m8vXXwEnUGMyA==
+From: Chuck Lever <cel@kernel.org>
+To: linux-kernel@vger.kernel.org,
+	Randy Dunlap <rdunlap@infradead.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: xdr.h: fix all kernel-doc warnings
+Date: Wed,  4 Mar 2026 09:27:13 -0500
+Message-ID: <177263442643.249131.15665053279331005070.b4-ty@oracle.com>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260228220922.2982492-1-rdunlap@infradead.org>
+References: <20260228220922.2982492-1-rdunlap@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <114166.1772634114@warthog.procyon.org.uk>
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
-On Wed, Mar 04, 2026 at 02:21:54PM +0000, David Howells wrote:
-> Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> > On Wed, Mar 04, 2026 at 02:03:09PM +0000, David Howells wrote:
-> > > Implement a callback in the internal kernel FIEMAP API so that kernel users
-> > > can make use of it as the filler function expects to write to userspace.
-> > > This allows the FIEMAP data to be captured and parsed.  This is useful for
-> > > cachefiles and also potentially for knfsd and ksmbd to implement their
-> > > equivalents of FIEMAP remotely rather than using SEEK_DATA/SEEK_HOLE.
-> > 
-> > Hell no.  FIEMAP is purely a debugging toool and must not get anywhere
-> > near a data path.  NAK to all of this.
-> 
-> So I have to stick with SEEK_DATA/SEEK_HOLE for this?
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Yes.  Why do you even want to move away from that?  It's the far
-better API.  Of course like all other reporting APIs it still is
-racy, but has far less problems than fiemap.
+On Sat, 28 Feb 2026 14:09:22 -0800, Randy Dunlap wrote:
+> Correct a function parameter name (s/page/folio/) and add function
+> return value sections for multiple functions to eliminate
+> kernel-doc warnings:
+> 
+> Warning: include/linux/sunrpc/xdr.h:298 function parameter 'folio' not
+>  described in 'xdr_set_scratch_folio'
+> Warning: include/linux/sunrpc/xdr.h:337 No description found for return
+>  value of 'xdr_stream_remaining'
+> Warning: include/linux/sunrpc/xdr.h:357 No description found for return
+>  value of 'xdr_align_size'
+> Warning: include/linux/sunrpc/xdr.h:374 No description found for return
+>  value of 'xdr_pad_size'
+> Warning: include/linux/sunrpc/xdr.h:387 No description found for return
+>  value of 'xdr_stream_encode_item_present'
+> 
+> [...]
+
+Applied to nfsd-testing, thanks!
+
+[1/1] SUNRPC: xdr.h: fix all kernel-doc warnings
+      commit: fba9ddf80198d61673738d5118566250cfae936d
+
+--
+Chuck Lever
 
