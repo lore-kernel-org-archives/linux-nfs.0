@@ -1,44 +1,71 @@
 Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4CC531B83B
-	for <linux-nfs@vger.kernel.org>; Mon,  9 Mar 2026 15:34:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F0AC3D6488;
+	Mon,  9 Mar 2026 15:43:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773070501; cv=none; b=S10qxdfK4TcqYgXYFGUG447VuNx3rnJ0vkB2w7KE/fbWUPVkGAcOcI0OoMwoKgjzNVO34iSarqYTsMLncKsLdmvjO9V7hfNefv/AM/CoVCI2AewvaWAYLgBZIFjq5Odk/iWTLfmMd3sUw/LXQERIJt7mmCkLDX5IvtDbVWCentM=
+	t=1773071030; cv=none; b=rZcFkDrvntE5DPi1BhLAS2vnv9OIkWiG+lQeQClUYzMrRt1jktdAgmuYZQ8ILzKiNg/WaHvCdstyAFWYiibS5xSsFU7iYQI80cXP/4s36HdtDZ6nzcYa2NkAyEz30K6JGPKu6Ic0xMa5fSzI8l0lbGz4eB3nsNDGFo8SrnEf9eU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773070501; c=relaxed/simple;
-	bh=427ZvkUzVFFMvLThem11YuzJa7D/URZN2wzzZ2NA6rI=;
+	s=arc-20240116; t=1773071030; c=relaxed/simple;
+	bh=z5JIIR3l35H57ojW810ekNHpQRdUtfUvDV/Ck2UyYrY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=TISu6pd3Unx1yqf5zQ6bvLNVsHCenAmdCn26atb0YWVbQXjvFFB69ODUT0URyfR10heGhveYgKcIhsrXYvDfR7D4p4hOtr6ESXrhRuuBjNB9KL5GJdLns1l4gyKLqPwblzG8aHCXtDyz50/9A2hAOxS+4/PeUvCpkqCdEHX3Sqo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=aO+0eyf9; arc=none smtp.client-ip=198.137.202.133
+	 Content-Type:Content-Disposition:In-Reply-To; b=kBzUKa+0n79LBP4WJcN74PQQCyukjRdt7A8uFTd2wSGrB/47HusMb9STmrYOSdPBGKwkvkM0e+684OBAzFdmduaYp3qE1mXNiP1EI8eLbY9g+KNYlH/21JHlOC7VqgYMeiXZtBuLycpbj9AL0xVqWvCFxgERYpQRNRTymFUN3v8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=lHa7ArPq; arc=none smtp.client-ip=198.137.202.133
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="aO+0eyf9"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="lHa7ArPq"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
 	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
 	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=Wdnk2OX0s7DvB+szi06A6oToFWqEgGCa3+gaJdSwiPY=; b=aO+0eyf9NKRZFEf/3abap9ckzr
-	9axr3TwECFug2xq9K5tM/Meo13QxXNn3+APKB2YCMTG9OjxOSrOA+a4HBkzSEghO9TkgjRR3ZfoLy
-	Afe6kYfpPWKpXH4ZLrbPCcRr0I7VVNs/VSEwfpptHg9+Dbacjode2UKaTaT9+2dYkTe6aYAfCVCmZ
-	7k8JNcy1WIqopPKXAYyb4a2NQgUAddlh6NlJOdidoqX/OaES3evHzXBE+Hasngba/dWSPyWK2f96k
-	xsEN29wOESSQnRX3gYNjJi4YqMmUIQnmfTUmK1uFKwn6o9aXmBVVjNjp2K37NCr3H6zAE9x+JiLDh
-	OqyrTedw==;
+	bh=uPx63lp+sPMATIo9ouOevMaRufSI74blMCToYQqW7Ks=; b=lHa7ArPqVNC9cAmf9bVeDPgUy6
+	fiNXQt+Kqei8WgabS7/SuhMqAut39oVSCxKSdbI2BDwyOBE3FBlJM30SKvTlGP5FCjXO2Tfyb1T9p
+	abCNmmZfIHwFpWmhFZAhMOZ/V3w1VQN53k/pra2ptD4D/mD5Pkng923q2BDBizQGLdbjM3Aoqhe65
+	IHAiIq6qipjuux0c3AaE1wje02ZRaNC0SBVmBrIt4tzEYIaz/+QJsVINoH1MMHXP+SRc3CLYH0BXh
+	8KvQeN8SzhaFt7r6Y2ragdEJQKAG6hE7Z74ln5+Kc+roxv7snoqBtSW7Rm0LAf+JmXTyd0ue6zOdH
+	4FlESyuw==;
 Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1vzcdH-00000007cN2-1khe;
-	Mon, 09 Mar 2026 15:34:59 +0000
-Date: Mon, 9 Mar 2026 08:34:59 -0700
+	id 1vzclm-00000007dEu-3NvA;
+	Mon, 09 Mar 2026 15:43:46 +0000
+Date: Mon, 9 Mar 2026 08:43:46 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: Dai Ngo <dai.ngo@oracle.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-	Trond Myklebust <trondmy@kernel.org>, anna@kernel.org
-Subject: Re: [PATCH v3 1/1] pNFS: Serialize SCSI PR registration to avoid
- reservation conflicts
-Message-ID: <aa7oo3sOTe-WKjVl@infradead.org>
-References: <20260306162927.3276695-1-dai.ngo@oracle.com>
- <fc0a566a-9cba-4fd0-99a0-d7fb7043a77b@oracle.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Christian Brauner <brauner@kernel.org>,
+	linux-kernel@vger.kernel.org, linux-modules@vger.kernel.org,
+	linux-nfs@vger.kernel.org, bpf@vger.kernel.org,
+	linux-kselftest@vger.kernel.org, kunit-dev@googlegroups.com,
+	Luis Chamberlain <mcgrof@kernel.org>,
+	Petr Pavlu <petr.pavlu@suse.com>,
+	Daniel Gomez <da.gomez@kernel.org>,
+	Sami Tolvanen <samitolvanen@google.com>,
+	Aaron Tomlin <atomlin@atomlin.com>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Alexei Starovoitov <ast@kernel.org>,
+	Daniel Borkmann <daniel@iogearbox.net>,
+	John Fastabend <john.fastabend@gmail.com>,
+	Andrii Nakryiko <andrii@kernel.org>,
+	Martin KaFai Lau <martin.lau@linux.dev>,
+	Eduard Zingerman <eddyz87@gmail.com>, Song Liu <song@kernel.org>,
+	Yonghong Song <yonghong.song@linux.dev>,
+	KP Singh <kpsingh@kernel.org>, Stanislav Fomichev <sdf@fomichev.me>,
+	Hao Luo <haoluo@google.com>, Jiri Olsa <jolsa@kernel.org>,
+	Brendan Higgins <brendan.higgins@linux.dev>,
+	David Gow <davidgow@google.com>, Rae Moar <raemoar63@gmail.com>,
+	Christian Loehle <christian.loehle@arm.com>
+Subject: Re: [PATCH] kthread: remove kthread_exit()
+Message-ID: <aa7qson15uJpL-BL@infradead.org>
+References: <1ff1bce2-8bb4-463c-a631-16e14f4ea7e2@arm.com>
+ <20260306-work-kernel-exit-v1-1-8f871f6281cb@kernel.org>
+ <aaroReSCj1qXUeQb@infradead.org>
+ <CAHk-=whCiPr-cR3hVv=46Qo0Nw_vN422YUxqU0GmNai+KRtg2w@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -47,20 +74,30 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <fc0a566a-9cba-4fd0-99a0-d7fb7043a77b@oracle.com>
+In-Reply-To: <CAHk-=whCiPr-cR3hVv=46Qo0Nw_vN422YUxqU0GmNai+KRtg2w@mail.gmail.com>
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Fri, Mar 06, 2026 at 10:46:00AM -0800, Dai Ngo wrote:
-> Christoph,
+On Fri, Mar 06, 2026 at 10:27:26AM -0800, Linus Torvalds wrote:
+> On Fri, 6 Mar 2026 at 06:44, Christoph Hellwig <hch@infradead.org> wrote:
+> >
+> > More a comment on the previous patch, but I think exporting do_exit
+> > which can work on any task is a really bad idea.
 > 
-> The new mutex, pbd_registration_mutex, is initialized only for the
-> top-level pnfs_block_dev in this patch. The mutexes for child pnfs_block_dev
-> instances allocated by bl_parse_concat() and bl_parse_stripe() are not
-> initialized.
-> 
-> Should we initialize these child mutexes as well, in case we later want
-> to support concatenated and striped SCSI devices for pNFS?
+> What is the advantage of a module only being able to do
+> kthread_exit(), and not able to do a regular do_exit()?
 
-I don't think we need to, as the registration would happen on the
-actual SCSI devices, not the meta devices.
+Because it can't fuck up the state of random tasks.
+
+> I think the only real advantage of having a "kthread_exit()" is that
+> it's a nicer name.
+
+That's another one, but not the main point.
+
+> For example, I'm looking at kernel/vhost_task.c, and the only users
+> are things that *are* modules, and it's not hugely obvious that
+> there's a big advantage to saying "that task handling has to be
+> built-in for those modules".
+
+That's always built in for various good reasons.  As are other
+random do_exit callers.
 
