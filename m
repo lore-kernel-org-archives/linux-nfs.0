@@ -1,38 +1,38 @@
 Received: from mail.avm.de (mail.avm.de [212.42.244.120])
 	(using TLSv1.2 with cipher DHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8986F4C041C;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C3A74C041D;
 	Tue, 10 Mar 2026 11:55:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.42.244.120
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773143765; cv=none; b=gn8MS5o+e7uKQkKaVVXoGvgkCtrhxwGXgRV9oCKgNg+nrhMT9JfS/0nD8GJgbForomBxwI/m/m2t293B4CB6TwdnOEKBMSTQErURaFrekXWDQn2h+mk3tGH/w8dUUyqzz96erIxSWi+y8DJm6/IgpmZSpRTKOdrcGN045PJQ3Yg=
+	t=1773143766; cv=none; b=eNYgd1oWW7By0IZ69pfu5JB3MgYckysWTTL8yKiRzq4Y/11hNOmuN8HdnVEEtzeNLZWic7rRUZLrd1QX4z4T992MlO89GmJ2PqmEbQ7z2DQwRhNhXL/edznFZcin+HZWqQP67OIAWqCF8iiK9JZbtxf0PQCdxCP3YRODWyfCRi8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773143765; c=relaxed/simple;
-	bh=+XsCLvfG0yRq7Clc+S6vXeLkWzACx5pWWBTw1PU8u30=;
+	s=arc-20240116; t=1773143766; c=relaxed/simple;
+	bh=r2ZNUyu6wG+N08MfsdquggU1Q5xHuPu+4B/VYVv0t9Q=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=Tm9nAzp8oyRRoE7YhpucOK+vjBZclLf384BHeDuSSULVFsYrjnU9l+6dGeHt6L79sFUAoCJDccw3Lcp31eD92ZPlXcD0QzyYyYLMMZmA8o1AGkYUcGDb2e96dYiBTWovH2r03mpss2oy0pzPAgqcYMctkwYewHSZjF6N6MQq7zQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=NQWcwkCO; arc=none smtp.client-ip=212.42.244.120
+	 In-Reply-To:To:Cc; b=UmahpJWAUWYLPWIrUetH/k6Cs5+UJW8qAGgvUDkSY47ZHTUxfpygVGAjbJHOMtDM6AXDknm21vYgu0S7/bX3ossrgEZoUck+Qk/WZc/I7DDr/qxU1nvN0creh8W++MmIAIf8l5AaVisarBsMdWhtgzmDLElZWmdbtH7KvjCtIYY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de; spf=pass smtp.mailfrom=avm.de; dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b=YXGm2fdd; arc=none smtp.client-ip=212.42.244.120
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=avm.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=avm.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="NQWcwkCO"
+	dkim=pass (1024-bit key) header.d=avm.de header.i=@avm.de header.b="YXGm2fdd"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=avm.de; s=mail;
-	t=1773143727; bh=+XsCLvfG0yRq7Clc+S6vXeLkWzACx5pWWBTw1PU8u30=;
+	t=1773143727; bh=r2ZNUyu6wG+N08MfsdquggU1Q5xHuPu+4B/VYVv0t9Q=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=NQWcwkCO5Yf5aFU0Fr+hSnIE5j/fbQz1ZZ6kLAVpTNGfPh7umHqxt9pFFOy6bAroX
-	 RBLvd0qLA99dtqQiGKYjsTOTfTZlUhx6yNiXQHG8dQ5sdIeNL7CirLYAhT5AwBd36o
-	 YiESNxlbhaOWr4PVxOJfomk8wbeHNmFvrkSTOpuc=
-Received: from [2001:bf0:244:244::71] (helo=mail.avm.de)
+	b=YXGm2fddB0bD05XRQUo0zroBzSiXv55w6mXtnC3/rbyTRBzDlz9PWwan2loANEchz
+	 3nUHhdwioF2zPrdtj5GGDiz2/RlpAekCz2aZgV1toF9qbrEYEb5oV3jU7h9yUVsShF
+	 X4koU5bE7tqGGpl7IdLmkPqUNFFBIWSBlmjRRwMc=
+Received: from [212.42.244.71] (helo=mail.avm.de)
 	by mail.avm.de with ESMTP (eXpurgate 4.55.2)
 	(envelope-from <phahn-oss@avm.de>)
-	id 69b006af-b734-7f0000032729-7f0000019c1c-1
+	id 69b006af-b734-7f0000032729-7f0000019c66-1
 	for <multiple-recipients>; Tue, 10 Mar 2026 12:55:27 +0100
-Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [IPv6:2001:bf0:244:244::71])
+Received: from mail-auth.avm.de (dovecot-mx-01.avm.de [212.42.244.71])
 	by mail.avm.de (Postfix) with ESMTPS;
 	Tue, 10 Mar 2026 12:55:27 +0100 (CET)
 From: Philipp Hahn <phahn-oss@avm.de>
-Date: Tue, 10 Mar 2026 12:49:16 +0100
-Subject: [PATCH 50/61] iommu: Prefer IS_ERR_OR_NULL over manual NULL check
+Date: Tue, 10 Mar 2026 12:49:20 +0100
+Subject: [PATCH 54/61] aoe: Prefer IS_ERR_OR_NULL over manual NULL check
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,7 +41,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260310-b4-is_err_or_null-v1-50-bd63b656022d@avm.de>
+Message-Id: <20260310-b4-is_err_or_null-v1-54-bd63b656022d@avm.de>
 References: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 In-Reply-To: <20260310-b4-is_err_or_null-v1-0-bd63b656022d@avm.de>
 To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com, 
@@ -71,22 +71,21 @@ To: amd-gfx@lists.freedesktop.org, apparmor@lists.ubuntu.com,
  sched-ext@lists.linux.dev, target-devel@vger.kernel.org, 
  tipc-discussion@lists.sourceforge.net, v9fs@lists.linux.dev, 
  Philipp Hahn <phahn-oss@avm.de>
-Cc: Joerg Roedel <joro@8bytes.org>, Will Deacon <will@kernel.org>, 
- Robin Murphy <robin.murphy@arm.com>
-X-Developer-Signature: v=1; a=openpgp-sha256; l=934; i=phahn-oss@avm.de;
- h=from:subject:message-id; bh=+XsCLvfG0yRq7Clc+S6vXeLkWzACx5pWWBTw1PU8u30=;
- b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAaAP0a4MkqsRJ5x7o2AECAXDJXUcNnvcP2jL
- Fnncqolc+mJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGgAAKCRA0LQZT0ays
- 26BWCACZ2FsBOvK5vymJ4jNeheyMBLZmlutrR9jfimv19CKbp3wX0yqY0IgbC3+xiW+xz2CmiEu
- elpLzpFROPj+lHciOMtwniWl836Y8y3OBxdIzgp1Tcy3Ffv4iiDYZg6fn4s21C30sfDewBkZzM/
- oTShSXVQk2aaQji24A4tVvesTB1YCSJ0cdodFVu8ytRsCFbRhzUGEybOG9Bk1gp1pizhlUrevZe
- ky3pa8774nGDXRNTenO3QPi5eYmjmp3+jl22odQgRq4UYaTFuckuTj8ZjbSd3Db6Vvti4yjTzbj
- dPn6v3i40vUhGSdowNFCOZB8euyQhRspr8tJsS+hGDqM4vf7
+Cc: Justin Sanders <justin@coraid.com>, Jens Axboe <axboe@kernel.dk>
+X-Developer-Signature: v=1; a=openpgp-sha256; l=955; i=phahn-oss@avm.de;
+ h=from:subject:message-id; bh=r2ZNUyu6wG+N08MfsdquggU1Q5xHuPu+4B/VYVv0t9Q=;
+ b=owEBbQGS/pANAwAKATQtBlPRrKzbAcsmYgBpsAaNWcUAch/xMnI0wAbOgPf41K9NsP36Msk7P
+ Nki6xRL5YKJATMEAAEKAB0WIQQ5bPBtrWDUcDQCppg0LQZT0ays2wUCabAGjQAKCRA0LQZT0ays
+ 2xbWCACfzS98X1Mp5R5EwpIK0pTgqrssQIB840NNUj3GRa/d9D29Lch2JFjR2Yy+ldzvSmEDJYr
+ +FATwB8i4z+nArVkmYPgbG8vodjj8pep1H5lik7YhU3G9ClazVWr99T039Q+W8sEprULXLQ0dbA
+ 4Kpe3/L1QfxY1N+GchfqAHMv0rRJq1RvirATmISGmxTg7n0SEymJW83Bn4X8R0ZnvK6kohy5NEW
+ 2Ii5RKfTmBA8YgN2bfh5HrwrKAUrDiQU4qD40KTADcaRVC7Oxd160l9rFHE0+fB+GiDoct83TcC
+ /85+2RTmaR+Iva1VQ69ftJxFcgDmZC/vMk3mknKyTuNPcNM+
 X-Developer-Key: i=phahn-oss@avm.de; a=openpgp;
  fpr=58AF7C2E007CDBE62C59E078F50EFDCF8AD04B1A
-X-purgate-ID: 149429::1773143727-E15CBA3D-56C34FAB/0/0
+X-purgate-ID: 149429::1773143727-DADD8A3D-0ED39ACF/0/0
 X-purgate-type: clean
-X-purgate-size: 936
+X-purgate-size: 957
 X-purgate-Ad: Categorized by eleven eXpurgate (R) https://www.eleven.de
 X-purgate: This mail is considered clean (visit https://www.eleven.de for further information)
 X-purgate: clean
@@ -96,29 +95,28 @@ check.
 
 Change generated with coccinelle.
 
-To: Joerg Roedel <joro@8bytes.org>
-To: Will Deacon <will@kernel.org>
-To: Robin Murphy <robin.murphy@arm.com>
-Cc: iommu@lists.linux.dev
+To: Justin Sanders <justin@coraid.com>
+To: Jens Axboe <axboe@kernel.dk>
+Cc: linux-block@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Philipp Hahn <phahn-oss@avm.de>
 ---
- drivers/iommu/omap-iommu.c | 2 +-
+ drivers/block/aoe/aoecmd.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/drivers/iommu/omap-iommu.c b/drivers/iommu/omap-iommu.c
-index 8231d7d6bb6a9202025643639a6b28e6faa84659..500a42b57a997696ff37c76f028a717ab71d01f9 100644
---- a/drivers/iommu/omap-iommu.c
-+++ b/drivers/iommu/omap-iommu.c
-@@ -881,7 +881,7 @@ static int omap_iommu_attach(struct omap_iommu *obj, u32 *iopgd)
-  **/
- static void omap_iommu_detach(struct omap_iommu *obj)
- {
--	if (!obj || IS_ERR(obj))
-+	if (IS_ERR_OR_NULL(obj))
- 		return;
+diff --git a/drivers/block/aoe/aoecmd.c b/drivers/block/aoe/aoecmd.c
+index a4744a30a8af4ff05113f3234021eec728265b4f..b31e539a66433a0a5d6e81117a32d12735ffc1bc 100644
+--- a/drivers/block/aoe/aoecmd.c
++++ b/drivers/block/aoe/aoecmd.c
+@@ -1268,7 +1268,7 @@ aoe_ktstart(struct ktstate *k)
  
- 	spin_lock(&obj->iommu_lock);
+ 	init_completion(&k->rendez);
+ 	task = kthread_run(kthread, k, "%s", k->name);
+-	if (task == NULL || IS_ERR(task))
++	if (IS_ERR_OR_NULL(task))
+ 		return -ENOMEM;
+ 	k->task = task;
+ 	wait_for_completion(&k->rendez); /* allow kthread to start */
 
 -- 
 2.43.0
