@@ -1,134 +1,77 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BEF233EDABE
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Mar 2026 20:25:21 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B774035B64E;
+	Mon, 16 Mar 2026 20:56:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773692721; cv=none; b=rPqQYPz7k7raZB4TiBtO5022kaAB56qdsebnPKvSw8GcB3VX2U494/uHpYB5Cx2q2z/m+8NDON3K7zokhdaVLKJHdp9qJJuvBijSvwZgetdhUTVPKnA+9gAjVJVVUUs6owrNJBy0RbZTUCEGJebFKEfTgcWRhNWnAYGr4cg/98E=
+	t=1773694610; cv=none; b=F5jLFNYSLdARs1fsoH07eH6MjMu5nrvOlaG3m7ug9uUwQL66fgiNhD4eJ6EMleO/rR13ZgA4z+nR+oIxDi4fLBrZJVfNrn4tLZx26Ce2rZNwP4IPrgUiRFLHRDC/pMuh4wSg6Q6Jy0BfHy2VADqzzrOJ8UfLaOv7DKG0arkgw+c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773692721; c=relaxed/simple;
-	bh=9ZGH5oQMnbc7/pwZMzocx1eA3lbSRQ5KxKCyk8Lsnxk=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=RP8YRt+E3YWCf70Lul80WRV7w33ynNJts8Lcbl6/J053TsM5PmOQvpox6JAJESn4RQ3jFR+rILE5VqN6jM0ZzpvGb1X/FCDpzRV7ameEa3KG64OGixMdyWxn3hfnlQktebbfgwjShF5v9yHrGvx4StLlL/d50dmYIKVkjw6EVSE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QTo+N87m; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1773694610; c=relaxed/simple;
+	bh=qxlH5h5RsDpVAKKzooEbTyCw6wl38yRcEmCwAmeNLjk=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=e8QFYglmxKTl23pgeoDb0xypvW1wt7WKUaFTLNVlXvb5eXLRiOHVWphnCV/AR/moXg4F+lJIFj4B7cfwIPYT5e8EMfX+SNZfBlxFsCaQQ6zfaarHl+VFcd+UPcJ76qKtfbNVOI+nH9POZt2CWP7AKyptZryyNpUAZjSKG3ZE0i0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dlDfVP4h; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QTo+N87m"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 305D5C19421;
-	Mon, 16 Mar 2026 20:25:21 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dlDfVP4h"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 469D6C19421;
+	Mon, 16 Mar 2026 20:56:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1773692721;
-	bh=9ZGH5oQMnbc7/pwZMzocx1eA3lbSRQ5KxKCyk8Lsnxk=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-	b=QTo+N87mGdxwJY+/OE6YaVicKuJKBMT9HePsF/DV+HZO8/+lsAqztDNLzPreO87j9
-	 yrAWW7JebOVY+UYb/2NhEerm4tXYSL3TDKRPxr3roFUTAb2pPxSoGJpk4nA8vFNy+L
-	 aBN/wdOV+cfo6qFpG5dFv/YA5qBLtJxDwm0qW1UtsFg4jYRhuon0qt6+ptKxrUQMgc
-	 QfZK4UcmFC605w8QZSF1D3S+FZ02goXjHO04xtgYS6wkfozymKWVYFl2vJ498gsI5v
-	 Fz2ZydS5ah3sLy55ARdyndMIVMzOx5vzs7IYQYjVH1+STs8ZLLvy2SY+in5UYrRefG
-	 R2K6FNXL9mKVw==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 1C0F1F40078;
-	Mon, 16 Mar 2026 16:25:20 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Mon, 16 Mar 2026 16:25:20 -0400
-X-ME-Sender: <xms:MGe4ad0Qvi27CgFm63xloWZXqFQd-phWimr4HKBFjFfX_mE0xn_bZA>
-    <xme:MGe4ae6PXkqtRgMm7HoYD5wEzBik1mruHN_hwXaH-BHcNxPbHUANni-YsTRZZPf9Q
-    mnf8cuqxalvTeCCIYjo-I7RomS9o4j6hLwadQuhF6hP-IBZV1z5Fdo>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefgedrtddtgddvleelfeefucetufdoteggodetrf
-    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
-    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
-    gurhepofggfffhvfevkfgjfhfutgfgsehtjeertdertddtnecuhfhrohhmpedfvehhuhgt
-    khcunfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrh
-    hnpefhffekffeftdfgheeiveekudeuhfdvjedvfedvueduvdegleekgeetgfduhfefleen
-    ucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutg
-    hklhgvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleel
-    leehledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrg
-    hilhdrtghomhdpnhgspghrtghpthhtohepuddtpdhmohguvgepshhmthhpohhuthdprhgt
-    phhtthhopehjlhgrhihtohhnsehkvghrnhgvlhdrohhrghdprhgtphhtthhopehlvghonh
-    eskhgvrhhnvghlrdhorhhgpdhrtghpthhtohephhgthheslhhsthdruggvpdhrtghpthht
-    oheptghhuhgtkhdrlhgvvhgvrhesohhrrggtlhgvrdgtohhmpdhrtghpthhtohepuggrih
-    drnhhgohesohhrrggtlhgvrdgtohhmpdhrtghpthhtohepnhgvihhlsgesohifnhhmrghi
-    lhdrnhgvthdprhgtphhtthhopehokhhorhhnihgvvhesrhgvughhrghtrdgtohhmpdhrtg
-    hpthhtohepthhomhesthgrlhhpvgihrdgtohhmpdhrtghpthhtoheplhhinhhugidqnhhf
-    shesvhhgvghrrdhkvghrnhgvlhdrohhrgh
-X-ME-Proxy: <xmx:MGe4aQBx3nyj032nAXH05-YfaQtJMLW_zXvL_6x3d6jOauWwS9s5_g>
-    <xmx:MGe4aYiUPgnbsQGPjN7eoNIJ5tqx2iyhiipDGCn7NHvW_h_qozKrFQ>
-    <xmx:MGe4aebWN5qmjkGCmRPm7k7VEkRSSQdLP5ho7p70K8V8OofKFv217A>
-    <xmx:MGe4aZk0UycNbkvv7JALcZNM7snU-MTQ-NdoTVEp9GWdK-zLdM_SZw>
-    <xmx:MGe4aUidNTTa9pAr7Dmr_N3U1vhyeK6eN3Jpmlsx8eXewKKLc97gr1-b>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id E64AF780075; Mon, 16 Mar 2026 16:25:19 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20201202; t=1773694610;
+	bh=qxlH5h5RsDpVAKKzooEbTyCw6wl38yRcEmCwAmeNLjk=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
+	b=dlDfVP4hQVMmXLTOlNUTyYwgBSXkGYeJY7ZHe8ZO0eYPKj+GvX5OfYLl2jhAA5Qx+
+	 9OySuC/FlFVetDx8fjeAKjfFy+zxkZJW/JdOoeWdi1xtBvJxbtgLWG5I8t7QsW/8o4
+	 A7cHfJ9zGos0z8Lomq/lEIyeY/dA/l1jynjp2O1lIx5sQP1HQlKO2aaqa4wcxbtf+q
+	 l8eBXGrqed2Yps36lKMpuXCX6aOxrQWENBALFAYe6O3imS5f6naNPEbLrRE9R3OQ8k
+	 +e3QVL6ANXirTjnllkD4TSS2Fgq9U01KC2BlJJqXtesV7FjBRO0t8xfgBZZ7OxS14d
+	 Ek2v6u+xfJWEg==
+From: Chuck Lever <cel@kernel.org>
+To: Jeff Layton <jlayton@kernel.org>,
+	Joseph Salisbury <joseph.salisbury@oracle.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: fix comment typo in nfs3xdr
+Date: Mon, 16 Mar 2026 16:56:43 -0400
+Message-ID: <177369453346.774056.8240280459923640975.b4-ty@oracle.com>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260316182516.153940-1-joseph.salisbury@oracle.com>
+References: <20260316182516.153940-1-joseph.salisbury@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AwRJL3W4sQr7
-Date: Mon, 16 Mar 2026 16:24:59 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Leon Romanovsky" <leon@kernel.org>
-Cc: "Christoph Hellwig" <hch@lst.de>, NeilBrown <neilb@ownmail.net>,
- "Jeff Layton" <jlayton@kernel.org>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <dai.ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
- linux-rdma@vger.kernel.org, "Chuck Lever" <chuck.lever@oracle.com>
-Message-Id: <5b64e7d8-58fa-482a-9b9c-88eb203b3b9e@app.fastmail.com>
-In-Reply-To: <20260316201558.GM61385@unreal>
-References: <20260313194201.5818-1-cel@kernel.org>
- <20260316201558.GM61385@unreal>
-Subject: Re: [PATCH v3 0/4] RDMA/rw: Fix MR pool exhaustion in bvec RDMA READ path
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
+From: Chuck Lever <chuck.lever@oracle.com>
 
+On Mon, 16 Mar 2026 14:25:16 -0400, Joseph Salisbury wrote:
+> The file contains a spelling error in a source comment (occured).
+> 
+> Typos in comments reduce readability and make text searches less reliable
+> for developers and maintainers.
+> 
+> Replace 'occured' with 'occurred' in the affected comment. This is a
+> comment-only cleanup and does not change behavior.
+> 
+> [...]
 
-On Mon, Mar 16, 2026, at 4:15 PM, Leon Romanovsky wrote:
-> On Fri, Mar 13, 2026 at 03:41:57PM -0400, Chuck Lever wrote:
->> From: Chuck Lever <chuck.lever@oracle.com>
->> 
->> This series now carries two MR exhaustion fixes and a proposal for
->> using contiguous pages for RDMA Read sink buffers in svcrdma.
->> 
->> Fixes for the MR exhaustion issues should go into 7.0-rc and stable,
->> and the contiguous page patches can wait for the next merge window.
->> 
->> Base commit: v7.0-rc3
->> ---
->> Changes since v2:
->> - Fix similar exhaustion issue for SGL
->> - Add patch that introduces svc_rqst_page_release
->> 
->> Changes since v1:
->> - Clarify code comments
->> - Allocate contiguous pages for RDMA Read sink buffers
->> 
->> Chuck Lever (4):
->>   RDMA/rw: Fall back to direct SGE on MR pool exhaustion
->>   RDMA/rw: Fix MR pool exhaustion in bvec RDMA READ path
->
-> I applied these two to wip/leon-for-rc.
->
-> Thanks
+Applied to nfsd-testing, thanks!
 
-Thanks, Leon. I will apply the other two to nfsd-testing.
+Removed Fixes: and Cc: stable -- not appropriate for fixes to
+misspellings in code comments.
 
+[1/1] nfsd: fix comment typo in nfs3xdr
+      commit: d62daf7b8995e05cca3465a21139f619db860ccb
 
->>   SUNRPC: Add svc_rqst_page_release() helper
->>   svcrdma: Use contiguous pages for RDMA Read sink buffers
->> 
->>  drivers/infiniband/core/rw.c      |  43 ++++--
->>  include/linux/sunrpc/svc.h        |  15 ++
->>  net/sunrpc/svc.c                  |   7 +-
->>  net/sunrpc/svcsock.c              |   2 +-
->>  net/sunrpc/xprtrdma/svc_rdma_rw.c | 220 ++++++++++++++++++++++++++++++
->>  5 files changed, 268 insertions(+), 19 deletions(-)
->> 
->> -- 
->> 2.53.0
->>
-
--- 
+--
 Chuck Lever
+
