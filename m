@@ -1,147 +1,92 @@
-Received: from mail-pj1-f46.google.com (mail-pj1-f46.google.com [209.85.216.46])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from mgamail.intel.com (mgamail.intel.com [192.198.163.7])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F144B371046
-	for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2026 14:19:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.46
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 72F8A3A5E92;
+	Thu, 19 Mar 2026 14:41:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=192.198.163.7
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1773929947; cv=none; b=MXdI/lwmkH/up/2vCF5zFsXmpA38P1gat0iLayuKWCxEZE0g/9A5XWNf5Y/6JQloGz+qK0Rlu/8IHO4ma7TgQEeVyyDEUsqh9HYPYibCX8sxpCRzTZJtSwPefyqsxcHU1pIgrthwVUhXRfGv4OEaJOZXp4yT3wF4FFnscnkjdY0=
+	t=1773931294; cv=none; b=nQ91ihQLua84+7OZF9j5jvyyTH1KFcHJL31o8EQhvPhr3DCE9LrG+8vTsOlQWqyI3okrq/77t2Dfr5N5C+kz8/VC8Odwn1GL5bI3OTHlZIcVr35Ej0kedsADJ7/+PNTZLFKqLFLKpjHrW4t1A7vBz2kBplB3oQg9e8rPQsGKAwM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1773929947; c=relaxed/simple;
-	bh=LyOAcv8pOrNZtKwp9vpRm97qmAqdwUyyyBfIQEjIiu8=;
-	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
-	 MIME-Version; b=WlmlKu1qabkU/qMIUf0PG5HQpIPzN/tM0FsihAINhS98994z7ze8QlpfnCHSlZ7hH6/kVVAwQrHagS6fXvKfRrpV7vIGBxBTDX87GeNIZu36YF7RT7NpYkuZ79l9kxgEMmzM+wtmQ+1nJ7gi7zKDX1ihISjT2S/d/cr6oa4q9LA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=W82Arv4k; arc=none smtp.client-ip=209.85.216.46
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1773931294; c=relaxed/simple;
+	bh=PmOkxoRXCD8OlRMEJ8MSm5qTImPX/q3XBzALcAio7yY=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=qQrofhkc4zTp5kFmecdwUlRtMe99JEzCZogiYwHaexTlLPZZ05NNEuLWA33hu1ks3smyT50Lsgvd99R7gsGuOwFjxgXo5NcHvlQK8ig5LJRJciEIyePQDLrPKXeM2yrBJjIiX8IaC3MHyj9yACLcluqVjjypWtNWhUETeRczTq8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com; spf=pass smtp.mailfrom=intel.com; dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b=I1ajkPNZ; arc=none smtp.client-ip=192.198.163.7
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=intel.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=intel.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="W82Arv4k"
-Received: by mail-pj1-f46.google.com with SMTP id 98e67ed59e1d1-35a1f3f07ebso533397a91.3
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Mar 2026 07:19:05 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20230601; t=1773929945; x=1774534745; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=Juaqw75BGT6mprObL/AlBCbjvTBGCqm62mz9LEt4i84=;
-        b=W82Arv4kxLwqLKYHBB/lchtnVYurezipBWqBFyKDxSwo/HTQ51mxBuVe3Z0pzSPG4X
-         JfeYCRB9EGUuK3aZ6po5Ng/l/sgotiyxNtU7qoexZ6BW83PQN3/8rrwxC6XK5gZxkylx
-         Df7OBNFbqXATubwo/KvBpGliLe/0q6amFmc45DoWFlXEAgnNBP5djdnTc87N1zoXF3hg
-         OR9UyqDIGnABl8YwlJ/uBXoLcNdSzpGYYKldw5by9gDiiVNUIfTy6qEBMN4raf22C1LY
-         VJ8BLJaePMS3atG0szN1ZlZY9JVYKiu42GToApobB2i2LrdVkW421yxBP1DBgZFmBM58
-         W6dg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1773929945; x=1774534745;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=Juaqw75BGT6mprObL/AlBCbjvTBGCqm62mz9LEt4i84=;
-        b=MEFYH0dJnHnZ3NBUHOo+uCL3vfa246hsN4jg89qRPmmxSGlkUUfq+X2GbWNpNsLdWW
-         W3bhHDto4JQ4vp4I0ZMmo9MRBZbtDX1kBVFZcCXoJ8uFNtPaK18BvGkALhKck4b7RCmg
-         OhN2DJ/UC/fDyKJbMbpL5cBOsq+ZpVUToYE72CiwdAsGVOzXTxIuNq8zHs4xIcZsPzno
-         +sTZx//jyzIKymA6Su6URletSNfxr8K5paSOuGI0pUtx/mTn2nVnRmW5iA7XTD9vZzKl
-         k5dLxmI7bukV/CAx8d9EKqNMrs/djsRi2Gz5zEXMVA+Jy8j8Vx4+Q2UrrCPSV+UAyeNA
-         CuuQ==
-X-Forwarded-Encrypted: i=1; AJvYcCX7fBROv1uX49PKZGRGJtz9HcJCBLTxUPx6TPDDLmOsgbLGmjJ2rJ4RrMaMEFXD8hWYpE5ii6/pYKE=@vger.kernel.org
-X-Gm-Message-State: AOJu0YweJL8v/exdJ84IQNnBoHi+Bd4+XQNkagZ3i73nr/CPvc32xqgU
-	+x8tW+q4DWdrUCDzLDc8iUHC/oa9wz2JKxZ6c964tL2RBanWTW6g91K6
-X-Gm-Gg: ATEYQzyFIwaYYfJgm1KLtXzek37VynVEXFNMbRlJfJ38x3ZpDZGMr4H6CPCPT8OOnzv
-	NRZtEO4cWJlxYQgQcJGmbY2JyKdzhjqYfOT+BKWHKE095u7UZ+c1YjcS9V9rYIgYb5wl7fJb3bU
-	JMYcMmNfpjYRogs5DRtgqp8IEVzbL2mjtupwClAnTZMwzU0rmG8b/5WLpN/6uKtWydQsojqEMkB
-	Fuc8uGmX5naBawJ41vi8BXU5VDdQy0rrq9h2xeJ05aCJAGMz/j7jAXFykPBsRnvHnnao0LALKmA
-	qtoVFAfb+12FyrhEdBWp/8/13EPFSFDf9Bzz5jpzH1vKVJQZLkHCxk7A+3eKUQOFhdNtTPqzMrP
-	a08bQVzpWKNUiNADckIU6d11u6DonPo1q+CKFx/aOZz790g7KLU9Sy0sMJJZ5JyEuLOmtlizgup
-	liMYdgJCHzQBVw86OGDmVeU0pfViQIdUWH7tZDdgz2d+HhsgOudrXhuP7Y5DCttvHuoZQ/oHQ=
-X-Received: by 2002:a17:90b:3d8e:b0:359:f2e1:5906 with SMTP id 98e67ed59e1d1-35bb9e456a3mr6473615a91.4.1773929945118;
-        Thu, 19 Mar 2026 07:19:05 -0700 (PDT)
-Received: from sean-All-Series.. (1-160-226-215.dynamic-ip.hinet.net. [1.160.226.215])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-35bc63286ebsm2695321a91.17.2026.03.19.07.19.02
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 19 Mar 2026 07:19:04 -0700 (PDT)
-From: Sean Chang <seanwascoding@gmail.com>
-To: Andrew Lunn <andrew@lunn.ch>,
-	Chuck Lever <chuck.lever@oracle.com>,
+	dkim=pass (2048-bit key) header.d=intel.com header.i=@intel.com header.b="I1ajkPNZ"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple;
+  d=intel.com; i=@intel.com; q=dns/txt; s=Intel;
+  t=1773931292; x=1805467292;
+  h=date:from:to:cc:subject:message-id:references:
+   mime-version:in-reply-to;
+  bh=PmOkxoRXCD8OlRMEJ8MSm5qTImPX/q3XBzALcAio7yY=;
+  b=I1ajkPNZV8A7azBkfGE/IsdHw9g2KbWnnHL4iVAbXVeDA4lGjEuMZFEa
+   Bo9NCam8h5oNJeurCScPWkKEYWJ+0cKNMpRyMOHSdLtAip0qvQTQpRGtX
+   MseVycXp26m2Yrovjt1v0ZRiiAhDO5E0duwCKe2wvo9oWpe3Mwvp5weX3
+   SdeZXF7ubeVbsEJgRfaJ0HGKPpodYCeGCpfZ5sO8fgIxtDS8SMoJ4Fnhc
+   iu6Cm0VkOkWUcqVYaGs4aE1ydh124ecNkxHq5hD0aBAIGkcAiojjqFW4i
+   fSL9donY0sBAE/Wb5mR7BIU3RXt/Pn2B62Xdjlk6SZQOdQwVpO0LgdmVd
+   A==;
+X-CSE-ConnectionGUID: v4urBkQrTm+K3OOX+epvyQ==
+X-CSE-MsgGUID: kDO5wYKsR1KA9iAZJEOhvQ==
+X-IronPort-AV: E=McAfee;i="6800,10657,11734"; a="100464651"
+X-IronPort-AV: E=Sophos;i="6.23,129,1770624000"; 
+   d="scan'208";a="100464651"
+Received: from orviesa006.jf.intel.com ([10.64.159.146])
+  by fmvoesa101.fm.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 19 Mar 2026 07:41:31 -0700
+X-CSE-ConnectionGUID: hKKQslcBTvy3f3098oNEtQ==
+X-CSE-MsgGUID: UIuO1HIeTV2nuTbKtOLE6w==
+X-ExtLoop1: 1
+X-IronPort-AV: E=Sophos;i="6.23,129,1770624000"; 
+   d="scan'208";a="222083988"
+Received: from klitkey1-mobl1.ger.corp.intel.com (HELO localhost) ([10.245.244.120])
+  by orviesa006-auth.jf.intel.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 19 Mar 2026 07:41:29 -0700
+Date: Thu, 19 Mar 2026 16:41:26 +0200
+From: Andy Shevchenko <andriy.shevchenko@intel.com>
+To: Sean Chang <seanwascoding@gmail.com>
+Cc: Andrew Lunn <andrew@lunn.ch>, Chuck Lever <chuck.lever@oracle.com>,
 	David Laight <david.laight.linux@gmail.com>,
-	Anna Schumaker <anna@kernel.org>,
-	Andy Shevchenko <andriy.shevchenko@intel.com>
-Cc: netdev@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Sean Chang <seanwascoding@gmail.com>,
+	Anna Schumaker <anna@kernel.org>, netdev@vger.kernel.org,
+	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
 	kernel test robot <lkp@intel.com>
-Subject: [PATCH v3 3/3] nfs: refactor nfs_errorf macros and remove unused ones
-Date: Thu, 19 Mar 2026 22:18:46 +0800
-Message-Id: <20260319141846.78222-4-seanwascoding@gmail.com>
-X-Mailer: git-send-email 2.34.1
-In-Reply-To: <20260319141846.78222-1-seanwascoding@gmail.com>
+Subject: Re: [PATCH v3 3/3] nfs: refactor nfs_errorf macros and remove unused
+ ones
+Message-ID: <abwLFk0L_kCZqIiK@ashevche-desk.local>
 References: <20260319141846.78222-1-seanwascoding@gmail.com>
+ <20260319141846.78222-4-seanwascoding@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260319141846.78222-4-seanwascoding@gmail.com>
+Organization: Intel Finland Oy - BIC 0357606-4 - c/o Alberga Business Park, 6
+ krs, Bertel Jungin Aukio 5, 02600 Espoo
 
-refactor nfs_errorf() and nfs_ferrorf() to the standard do-while(0)
-pattern for safer macro expansion and kernel style compliance.
+On Thu, Mar 19, 2026 at 10:18:46PM +0800, Sean Chang wrote:
+> refactor nfs_errorf() and nfs_ferrorf() to the standard do-while(0)
+> pattern for safer macro expansion and kernel style compliance.
+> 
+> additionally, remove nfs_warnf() and nfs_fwarnf() as git grep
+> confirms they have no callers in the current tree.
 
-additionally, remove nfs_warnf() and nfs_fwarnf() as git grep
-confirms they have no callers in the current tree.
+...
 
-Reported-by: kernel test robot <lkp@intel.com>
-Closes: https://lore.kernel.org/oe-kbuild-all/202603110038.P6d14oxa-lkp@intel.com/
-Signed-off-by: Sean Chang <seanwascoding@gmail.com>
----
- fs/nfs/internal.h | 28 +++++++++++++---------------
- 1 file changed, 13 insertions(+), 15 deletions(-)
+>  #define nfs_invalf(fc, fmt, ...) ((fc)->log.log ?		\
+>  	invalf(fc, fmt, ## __VA_ARGS__) :			\
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 63e09dfc27a8..59ab43542390 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -161,13 +161,19 @@ enum nfs_lock_status {
- 	NFS_LOCK_NOLOCK		= 2,
- };
- 
--#define nfs_errorf(fc, fmt, ...) ((fc)->log.log ?		\
--	errorf(fc, fmt, ## __VA_ARGS__) :			\
--	({ dprintk(fmt "\n", ## __VA_ARGS__); }))
--
--#define nfs_ferrorf(fc, fac, fmt, ...) ((fc)->log.log ?		\
--	errorf(fc, fmt, ## __VA_ARGS__) :			\
--	({ dfprintk(fac, fmt "\n", ## __VA_ARGS__); }))
-+#define nfs_errorf(fc, fmt, ...) do { \
-+	if ((fc)->log.log) \
-+		errorf(fc, fmt, ## __VA_ARGS__); \
-+	else \
-+		dprintk(fmt "\n", ## __VA_ARGS__); \
-+} while (0)
-+
-+#define nfs_ferrorf(fc, fac, fmt, ...) do { \
-+	if ((fc)->log.log) \
-+		errorf(fc, fmt, ## __VA_ARGS__); \
-+	else \
-+		dfprintk(fac, fmt "\n", ## __VA_ARGS__); \
-+} while (0)
- 
- #define nfs_invalf(fc, fmt, ...) ((fc)->log.log ?		\
- 	invalf(fc, fmt, ## __VA_ARGS__) :			\
-@@ -177,14 +183,6 @@ enum nfs_lock_status {
- 	invalf(fc, fmt, ## __VA_ARGS__) :			\
- 	({ dfprintk(fac, fmt "\n", ## __VA_ARGS__);  -EINVAL; }))
- 
--#define nfs_warnf(fc, fmt, ...) ((fc)->log.log ?		\
--	warnf(fc, fmt, ## __VA_ARGS__) :			\
--	({ dprintk(fmt "\n", ## __VA_ARGS__); }))
--
--#define nfs_fwarnf(fc, fac, fmt, ...) ((fc)->log.log ?		\
--	warnf(fc, fmt, ## __VA_ARGS__) :			\
--	({ dfprintk(fac, fmt "\n", ## __VA_ARGS__); }))
--
- static inline struct nfs_fs_context *nfs_fc2context(const struct fs_context *fc)
- {
- 	return fc->fs_private;
+>  	invalf(fc, fmt, ## __VA_ARGS__) :			\
+>  	({ dfprintk(fac, fmt "\n", ## __VA_ARGS__);  -EINVAL; }))
+
+Why not all of them?
+
 -- 
-2.34.1
+With Best Regards,
+Andy Shevchenko
+
 
