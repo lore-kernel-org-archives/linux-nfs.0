@@ -1,188 +1,96 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+Received: from out-182.mta1.migadu.com (out-182.mta1.migadu.com [95.215.58.182])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACC0A26738B
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2026 18:21:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B0042F5A29
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2026 18:38:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774290118; cv=none; b=LD+W5PXnh56XkgtSrmn5rO7fKJBVUAVBqfbacGlJkI5L5NKeNGWPfaaEvcowwn/vTs1txt2Bq8kfuKD993WPcoCsej2OqvcUhjCY2sGdoUfPXWrwqhvikHfvNTvuFm8cB11UaJzhIkd3JMPX03XwnZhMBWZboJYPCiBsMAz0p0A=
+	t=1774291118; cv=none; b=mHo1gFbRdfwuZUXNR/nR01k1WUIu355Afsdm2hY9IXVJ7aSZFOw1Ij4S5t7hJ4zdIKrxj1haMEmIOrkU0llwegGPFE4Y44p5pO2LyZTs9n1Ovo54RXsGoFYAdcD22gG5n/8LqtzlJk3wIOc6NBznuChtLr2vtMz6uTTcN7UPu+Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774290118; c=relaxed/simple;
-	bh=kgL2fXdeEDYFWvHUbR8vlyNar7L8DphrAa2gTf3lVh8=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=YcEzLiOocqJkZkHZ+/IFfZEzVfK5TwfyX2WTyLc/krRClTW2fZuXhqrwQLgEd47CH4jT8TFJwmzu7KHAg4JhQkDYI3VKKS1VwfvTi6h8H39ilo0oR5NbwV9u1azfmebchmN7fFdM/uBDCCYgHjM/V0IvGsAzdyVMZg8LXajAgl4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=AG/yKfMS; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1774291118; c=relaxed/simple;
+	bh=9zAQOPPXZrLE9As8tHWODwXqS9OjumANAbv6fs3Mhnw=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=TST8803yeKKaJMLKjjgkdoBIDjXoP6NGbiezgTI52wcdPD4hqylbAloXew1+wWsB6iGu0S+TvDvCE+bT0pfYdXbWDCo/t1AWMiKlf8jUAWOdW7Q56r8sTZ8SOyLqzv/OkTKuQ5yZusY+4XSfwydqISAxS0ShYVOWrzbC7NZ1ztQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=chenxiaosong.com; spf=pass smtp.mailfrom=chenxiaosong.com; dkim=pass (2048-bit key) header.d=chenxiaosong.com header.i=@chenxiaosong.com header.b=ihR/iwj9; arc=none smtp.client-ip=95.215.58.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=chenxiaosong.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=chenxiaosong.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="AG/yKfMS"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1774290106;
+	dkim=pass (2048-bit key) header.d=chenxiaosong.com header.i=@chenxiaosong.com header.b="ihR/iwj9"
+Message-ID: <2d8ce118-2f7a-4b7f-8786-4581b29cb74e@chenxiaosong.com>
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=chenxiaosong.com;
+	s=key1; t=1774291104;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding;
-	bh=1HQFsfAF2g9WeMUzu6us32U9wC0hrcpgFCtz44CjCqQ=;
-	b=AG/yKfMSuDksQER8ZdHk2OT3Mk008MWN5uXHE1qN1BZtRsc4y9dS6YAwlo/BFK+BFQzRWt
-	o1tnR/JNspsAN0FMeDb9nv9jnbaOrfSptSlgS8g31/7ww6t7hClj8+V5NI1KZQpC1xerEC
-	7sDrf9osVyBDtf4cAP3Hyk7wd0HJWHM=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-380-SVGXJ9GNPaeMc4hsmlr_5A-1; Mon,
- 23 Mar 2026 14:21:45 -0400
-X-MC-Unique: SVGXJ9GNPaeMc4hsmlr_5A-1
-X-Mimecast-MFC-AGG-ID: SVGXJ9GNPaeMc4hsmlr_5A_1774290104
-Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 3DD3F195609F
-	for <linux-nfs@vger.kernel.org>; Mon, 23 Mar 2026 18:21:44 +0000 (UTC)
-Received: from okorniev-mac.redhat.com (unknown [10.22.65.38])
-	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id A098219560B1;
-	Mon, 23 Mar 2026 18:21:43 +0000 (UTC)
-From: Olga Kornievskaia <okorniev@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] nfsdctl: check for listeners before starting threads
-Date: Mon, 23 Mar 2026 14:21:42 -0400
-Message-ID: <20260323182142.79465-1-okorniev@redhat.com>
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=cr9/0LFyyYkqM0Pl3Rn47qpHPVg9ycKUoMlJD6pGGO8=;
+	b=ihR/iwj9opQaeC2aYOw/oDW4g6VvS0xc15eOo1h9NmBXhS7PQ3Y6TbVmve07OXXhbswZ5d
+	KV8v4hhNnyDvKhtuPIhhczStJwHvSMcbGHKHjbV0Kmm2+gJX3zSPXeel4drobTC8EAm99u
+	+gn4ki6o2knL38XpdrmHem1q50BIu7ymz8ZfrCr/hb0bm8YHHWYpjfqGRASgCxlpEsB8N6
+	CpnI4haCxZC5Qr+t1OIcWzTJ4cdAei6RZqJanVcl/47vkXEyc3RoLRSQsWL4LTFqeCEakZ
+	gbBXY6sPSaWG5WU54Nm70vLEl1W/eLU1cuIHRefQ7UX0kCe3O5Zqnkw5EIZFlQ==
+Date: Tue, 24 Mar 2026 02:37:27 +0800
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
+Subject: Re: [RFC PATCH 17/17] netfs: Combine prepare and issue ops and grab
+ the buffers on request
+To: David Howells <dhowells@redhat.com>, Matthew Wilcox
+ <willy@infradead.org>, Christoph Hellwig <hch@infradead.org>,
+ Jens Axboe <axboe@kernel.dk>, Leon Romanovsky <leon@kernel.org>,
+ Steve French <smfrench@gmail.com>
+Cc: Christian Brauner <christian@brauner.io>,
+ Paulo Alcantara <pc@manguebit.com>, netfs@lists.linux.dev,
+ linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
+ linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org, v9fs@lists.linux.dev,
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+ Paulo Alcantara <pc@manguebit.org>
+References: <20260304140328.112636-1-dhowells@redhat.com>
+ <20260304140328.112636-18-dhowells@redhat.com>
+Content-Language: en-US
+X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
+From: ChenXiaoSong <chenxiaosong@chenxiaosong.com>
+In-Reply-To: <20260304140328.112636-18-dhowells@redhat.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+X-Migadu-Flow: FLOW_OUT
 
-When a thread command is executed and yet no listeners have been
-added prior to it, instead of failing with EIO error print an
-informative error. Also, "thread 0" command should not error
-regardless of the listener status.
+Hi David,
 
-Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
----
- utils/nfsdctl/nfsdctl.c | 52 ++++++++++++++++++++++++++++++++---------
- 1 file changed, 41 insertions(+), 11 deletions(-)
+https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git/commit/?h=netfs-next&id=a99af9686490fa9a099679bcbfa1b56c839b8d98
 
-diff --git a/utils/nfsdctl/nfsdctl.c b/utils/nfsdctl/nfsdctl.c
-index 6a20d180..d03e2c9f 100644
---- a/utils/nfsdctl/nfsdctl.c
-+++ b/utils/nfsdctl/nfsdctl.c
-@@ -162,6 +162,9 @@ static const char *nfsd4_ops[] = {
- 	[OP_REMOVEXATTR]	= "OP_REMOVEXATTR",
- };
- 
-+static int fetch_current_listeners(struct nl_sock *sock);
-+static int print_listeners(int output);
-+
- static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
- 			 void *arg)
- {
-@@ -720,7 +723,7 @@ static int threads_func(struct nl_sock *sock, int argc, char **argv)
- 	uint8_t cmd = NFSD_CMD_THREADS_GET;
- 	int *pool_threads = NULL;
- 	int minthreads = -1;
--	int opt, pools = 0;
-+	int opt, pools = 0, zero_threads = 0;
- 
- 	optind = 1;
- 	while ((opt = getopt_long(argc, argv, "hm:", threads_options, NULL)) != -1) {
-@@ -762,12 +765,31 @@ static int threads_func(struct nl_sock *sock, int argc, char **argv)
- 			}
- 
- 			pool_threads[i] = strtol(targv[i], &endptr, 0);
-+			if (!pool_threads[i])
-+				zero_threads++;
- 			if (!endptr || *endptr != '\0') {
- 				xlog(L_ERROR, "Invalid threads value %s.", argv[1]);
- 				return 1;
- 			}
- 		}
- 	}
-+	/* check if there are listeners added */
-+	if (fetch_current_listeners(sock)) {
-+		xlog(L_ERROR, "Unable to determine if listeners were added\n");
-+		return 1;
-+	}
-+	if (!print_listeners(0)) {
-+		if (zero_threads && zero_threads == pools) {
-+			/* Note: we can never have a server with threads and no
-+			 * listeners. If we ever add functionality to remove
-+			 * listeners on an active server, we need to revisit this.
-+			 */
-+			return 0;
-+		}
-+		xlog(L_ERROR, "No listeners added, not starting threads\n");
-+		return 1;
-+	}
-+
- 	return threads_doit(sock, cmd, 0, 0, pools, pool_threads, NULL, minthreads);
- }
- 
-@@ -1077,9 +1099,9 @@ out:
- 	return ret;
- }
- 
--static void print_listeners(void)
-+static int print_listeners(int output)
- {
--	int i;
-+	int i, count = 0;
- 	const char *res;
- 
- 	for (i = 0; i < MAX_NFSD_SOCKETS; ++i) {
-@@ -1098,26 +1120,34 @@ static void print_listeners(void)
- 			res = inet_ntop(AF_INET, &((struct sockaddr_in *)(&sock->ss))->sin_addr,
- 					addr, INET6_ADDRSTRLEN);
- 			port = ((struct sockaddr_in *)(&sock->ss))->sin_port;
--			if (res == NULL)
-+			if (res == NULL && output)
- 				perror("inet_ntop");
--			else
--				printf("%s:%s:%hu\n", sock->name, addr, ntohs(port));
-+			else {
-+				count++;
-+				if (output)
-+					printf("%s:%s:%hu\n", sock->name, addr, ntohs(port));
-+			}
- 			break;
- 		case AF_INET6:
- 			res = inet_ntop(AF_INET6, &((struct sockaddr_in6 *)(&sock->ss))->sin6_addr,
- 					addr, INET6_ADDRSTRLEN);
- 			port = ((struct sockaddr_in6 *)(&sock->ss))->sin6_port;
--			if (res == NULL)
-+			if (res == NULL && output)
- 				perror("inet_ntop");
--			else
--				printf("%s:[%s]:%hu\n", sock->name, addr, ntohs(port));
-+			else {
-+				count++;
-+				if (output)
-+					printf("%s:[%s]:%hu\n", sock->name, addr, ntohs(port));
-+			}
- 			break;
- 		default:
--			snprintf(addr, INET6_ADDRSTRLEN, "Unknown address family: %d\n",
-+			if (output)
-+				snprintf(addr, INET6_ADDRSTRLEN, "Unknown address family: %d\n",
- 					sock->ss.ss_family);
- 			addr[INET6_ADDRSTRLEN - 1] = '\0';
- 		}
- 	}
-+	return count;
- }
- 
- static bool ipv6_is_enabled(void)
-@@ -1394,7 +1424,7 @@ static int listener_func(struct nl_sock *sock, int argc, char ** argv)
- 		return set_listeners(sock);
- 	}
- 
--	print_listeners();
-+	print_listeners(1);
- 	return 0;
- }
- 
--- 
-2.52.0
+I reviewed this patch in your repository's netfs-next branch (it looks 
+slightly different from the version posted to the mailing list) and 
+found two issues, the following additional changes are needed:
 
+```
+--- a/fs/netfs/direct_write.c
++++ b/fs/netfs/direct_write.c
+@@ -161,8 +161,8 @@ static int netfs_unbuffered_write(struct 
+netfs_io_request *wreq)
+                                         break;
+                                 }
+                                 netfs_put_subrequest(subreq, 
+netfs_sreq_trace_put_failed);
+-                               subreq = NULL;
+                                 ret = subreq->error;
++                               subreq = NULL;
+                                 goto failed;
+                         }
+                         break;
+diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c
+index 697a47e96d2a..112363f17a84 100644
+--- a/fs/netfs/write_issue.c
++++ b/fs/netfs/write_issue.c
+@@ -808,6 +808,7 @@ struct netfs_writethrough 
+*netfs_begin_writethrough(struct kiocb *iocb, size_t l
+         if (bvecq_buffer_init(&wreq->load_cursor, GFP_NOFS) < 0) {
+                 netfs_put_failed_request(wreq);
+                 mutex_unlock(&ictx->wb_lock);
++               kfree(wthru);
+                 return ERR_PTR(-ENOMEM);
+         }
+```
