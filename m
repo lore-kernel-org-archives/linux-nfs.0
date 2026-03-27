@@ -1,113 +1,98 @@
-Received: from mail-ed1-f49.google.com (mail-ed1-f49.google.com [209.85.208.49])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6EE5D3F8DED
-	for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2026 14:48:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.49
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774622885; cv=pass; b=ArXAZsNGs8e8YqjEE/4NhR0eh/SQLbSUs511kLPgqn2rZWsMH9sz5AnmRr5psokziZumHZebaGMdOtt4kIs1jkYyAKrjyS07V3hQADpS9OCj6vOYNncy5uVvzHWcQ67BFvSHomxtCLcurr0hfWeE6HoHOApl19+JolLa9H9qewo=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774622885; c=relaxed/simple;
-	bh=2udKmoaliA5wgd0o/d1RusehJ8ria/9U7sZoHzzPja8=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Content-Type; b=DriZujBKyN8Z7j+FJJ1jOJC8tE4PmSnwv7eyFwGsxzaOjSMAY5yf63TPFBCe0634bewkMHlRIqcls2zz5W6/DqILuqlMwmV+HQm6udO5v7rM4V8AyI96/JyNEup0Fx9T7d+frLIzxiIM/hkuaWJfkf7H3h/48JKWegoh0unzMPc=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=pTe75Hxs; arc=pass smtp.client-ip=209.85.208.49
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 63EA030F55B
+	for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2026 15:11:58 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1774624319; cv=none; b=jcTL4pOA0MYGo7YAOcTzLW291W6eagED4cprSJBGMm8dCRiFOO02/W09tAtYspoXJVekWA0BULXKsL+kRXRPW3DlUZVt0vesGnbveIgR2Cy7QBYurYrRx0T+TRqJovDibPyVD+JintVX6V/6/c1MreTwBwSCf2R9kojNEdH9D4U=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1774624319; c=relaxed/simple;
+	bh=2p3fD49wJzWiu/wtzycOYIdzBl3AWM31ZAZDLSOU6SY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=NgwT18hEq143ZWqQfsV8ufuoep48JMhYK2KldK6T6hScuMjMyH31a/CX+NxfdBPkSxGhEgNwOJaQbupFFs9WH36ESqE7JDMrvHd2Yod9uTX5tVEQxZQWtVsfuOcqIIvESPPLVrpylcrNly0K5xRYghPXzROTaZrvBUW0tGIAogI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=SzQMzEW0; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="pTe75Hxs"
-Received: by mail-ed1-f49.google.com with SMTP id 4fb4d7f45d1cf-66b51bfe5f3so802454a12.2
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Mar 2026 07:48:04 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1774622882; cv=none;
-        d=google.com; s=arc-20240605;
-        b=BPTHJctmhfXQBBwk4J70ZKImkO5hlntR0vodEGBUX2bOYf+DhwzOM1yfKAonSTcb5S
-         TvMX/L+tImPf6c0yqiPpFzsRoE3vcsNEtdyM7RmgCJh1aRnnOEGT7BlPwiSfKV6ctdLI
-         uqGXK1EHqBjpwNT7Dbo+7R8Wwl3kVDEAKu0Ki5We1H96JU2/sLw9TvUvqxJPZE6sW67d
-         +/ma/C7igBDIoTx059MtSspSMOR0qQec6oEJZn2Hmw3YVb0WQaPhdswVNG9H8ocdho/2
-         QX/eKOy/Uv3Wg7TYnWy91FJK72hYJd6XHh93zhO2eXnobAqg7u08itWgiw1912JJVQuh
-         b1bg==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=2udKmoaliA5wgd0o/d1RusehJ8ria/9U7sZoHzzPja8=;
-        fh=Mys3y4MwsHRytUQMpdfGBn3oGRYLcLloxNwkFYMYMmg=;
-        b=Trt5WZwwWLCvVwnc9kpuk1s4tU3s2c21ulFgUKGAZIWuuiept9RueDIwxw47MGMpn7
-         qq5d1W2I7op5b7ZIpNSYrhZ/X9dYsDCMHGvTFsbPkKinAwt+vcxyEFp+j/hAdthbDDq8
-         QziB+2OT23cl2RumlWb/I6N/LjgOGs3jvzJ7zGVFt16erlqu1bwFOxlTWojfzlVaGs03
-         PxkV/m4F2Oj/Je8fB4jDH7dX6M+bs1Wiwr97R2dHCjlBQM4rkaR/FMKqQa4nbmXEQhG2
-         kLONTnsTo3C8JCQ+CkcCmkcKQQkmuejn4gEEX1wWaR2kWq+HVZeSlf7gVBidKv3JSpyr
-         p42A==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1774622882; x=1775227682; darn=vger.kernel.org;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=2udKmoaliA5wgd0o/d1RusehJ8ria/9U7sZoHzzPja8=;
-        b=pTe75HxsuRoRtXQQtu5itZl3gkcXh0dBES0mRzHXVt/4i0gaGUhKRud2vBxCD1eupV
-         zF8X717tSXaxuVG8y9P9x1i2C6ymJ2FW4FGzAmJ3py7jCnTbIg3tSu98Qr25fftkeMqt
-         6lqkwWfGm3w7Mtg24PeipDS9mT/hVwJaSALUr0qbL4zF/OwECh4Z7VftBMsBFkSkp/PN
-         0YZyFTrkCSUyWJAoi/sMSw1LY2ekKIpGljoxR7oLRsFBeNyxWC3KNm5CYyvEDxhHXnyq
-         g0iIKffPa30EdTJRaTaXzyq+Hx6auJeSRjkkr07YlVrsOdq9+ZeSr0tdLQqQm8rz/znl
-         uwKg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1774622882; x=1775227682;
-        h=content-transfer-encoding:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=2udKmoaliA5wgd0o/d1RusehJ8ria/9U7sZoHzzPja8=;
-        b=bW45RS85s1HtJz3vZf058clbBVgMkFtD8FD8CffnXQLCwnxSuTPFCZo+tALaOF+q08
-         R37Y5L3+OFZFS85aUp1VTBHS17AqUPtA7tZdqtiFM6lP6S673znu00kPDx2OaEDS6/Ti
-         bX8pLtLp5uUmK47pow0Xy1zB77By0kC+111XY/mbsFwKLTzbd4pNBpyaL+Umkus1DuD9
-         5ucNfIjbSm8dFaRzCJtPU2oHp1ib9lhkXmziLnsxJZ7tt+utSgN2HaZNsXrj5QB0/Ypj
-         M0sD1O7UkosmcXo7Ov1z7mGHkKJis6AiriNjqCS3lSTT1mTCCVvW4pWmuEOq0YlNnCoF
-         Cm1g==
-X-Gm-Message-State: AOJu0Yy6apTfBCcvpO25oXSr8Mc3no6kPNK9zPmmZyDYhPsk6zdrE+Xh
-	hpp2y6sXgH5WQh7Xmx+ied8NI1Z4v/kCUYhCTtN/m9Fcl38jKkS2WfzeflLQeTX4nQSiBdhRvSo
-	9b93Bc3nfeoNJ7oLdiqEn9ROuU9C9Z41yOXcbyTc=
-X-Gm-Gg: ATEYQzyddBSI8+nYx6qCncwgPUys/iWwSVDATfc3iRwWVpRruVI7xKEaq5oYGQjoztH
-	Nait8Sb6tcWpo4nz5JCX1hebbXEWOTYyMF8bOXWxXIeKpIaUn95AnoNIXJlWMUcZw1u/DJpjplG
-	zdzE1oQXe9nnCQCpJkZBDvfz7Vo0SpnJEdbZDJLbF3MytkdPBnqAueJLKdBiSUlMQbz9uZk0cUi
-	m2VY82ycOBOi11oxoUPX7HFsWxA2efz7yOJMPxPwipjntbAv2leAW2chjL6lU8tHUiRFWDE90nB
-	0BPfsGKMPp6D6WIW1sH78TK5igkglVz2mYB9u52PqRSNNze1Ig==
-X-Received: by 2002:a05:6402:46db:b0:66a:199d:138 with SMTP id
- 4fb4d7f45d1cf-66b28c66cbemr1509307a12.20.1774622882479; Fri, 27 Mar 2026
- 07:48:02 -0700 (PDT)
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="SzQMzEW0"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1774624317;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=sMlbPnGV7wIwqOG5qjD7XaNTHjDBkMZBoc2Olh2FJwc=;
+	b=SzQMzEW0YZZM1D0jwjzmx5cyDgAdnVixx5VRD3BHN1i7UPfLiKmCn6X/KS5I76/+RwGUtU
+	WnsAf7j0L8/WkStXOJPiFhMiCp6hzCXDZeKd8Plkh9InAqmbkR84oGQ0t5eqJ6JbLgKM+f
+	bW91ms//952kXvbpxDkgINuhuJT4tdo=
+Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-122-agmjW8F3N1aqHCDXRuDN2w-1; Fri,
+ 27 Mar 2026 11:11:53 -0400
+X-MC-Unique: agmjW8F3N1aqHCDXRuDN2w-1
+X-Mimecast-MFC-AGG-ID: agmjW8F3N1aqHCDXRuDN2w_1774624312
+Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 7776518005B3;
+	Fri, 27 Mar 2026 15:11:52 +0000 (UTC)
+Received: from okorniev-mac.redhat.com (unknown [10.22.81.48])
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id BBFF330001A1;
+	Fri, 27 Mar 2026 15:11:51 +0000 (UTC)
+From: Olga Kornievskaia <okorniev@redhat.com>
+To: trond.myklebust@hammerspace.com,
+	anna@kernel.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] NFSv4.2: fix CLONE attrs in presence of delegated attributes
+Date: Fri, 27 Mar 2026 11:11:49 -0400
+Message-ID: <20260327151149.25317-1-okorniev@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <33de50bc-5cca-4071-ad32-05a82da89c77@oracle.com>
-In-Reply-To: <33de50bc-5cca-4071-ad32-05a82da89c77@oracle.com>
-From: =?UTF-8?Q?Aur=C3=A9lien_Couderc?= <aurelien.couderc2002@gmail.com>
-Date: Fri, 27 Mar 2026 15:47:24 +0100
-X-Gm-Features: AQROBzAGcg7-oxDezQo4wwuTpfofHTLKXIlYS0Glo9QJCs0RG-2wa7mn2HSOaIk
-Message-ID: <CA+1jF5rbEzKyvzvq7ATzGhy0xthL8baRLV-zDCe7r=e2OVh3og@mail.gmail.com>
-Subject: Re: pynfs-0.5 tagged and pushed
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-On Fri, Mar 27, 2026 at 3:57=E2=80=AFAM Calum Mackay <calum.mackay@oracle.c=
-om> wrote:
->
-> I've applied most of the outstanding pynfs patches, and tagged and
-> pushed pynfs-0.5
->
-> There were a couple of patches with which I'm having difficulties in
-> testing, and I've emailed the authors.
->
-> If you have submitted a pynfs patch which doesn't appear below, and I've
-> not contacted you, apologies, and would you please let me know.
+xfstest generic/407 is failing in 2 ways. It detects that after
+doing a clone the client does not update it's mtime and it's ctime.
+CLONE always sends a GETATTR operation and then calls
+nfs_post_op_update_inode() based on the returned attributes.
+Because of the delegated attributes the client ignores updating
+the mtime. Then also, when delegated attributes are present, for
+the change_attr the server replies with the same values as what
+the client cached before and thus the generic/407 would flag that.
+Instead, make sure we invalidate the blocks attr.
 
-@Chuck Lever wanted to contribute a test to set an ACL-on-file-create
-and ACL-on-dir-create.
-Was this never submitted?
+Fixes: e12912d94137 ("NFSv4: Add support for delegated atime and mtime attributes")
+Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
+---
+ fs/nfs/nfs42proc.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
-Aur=C3=A9lien
---=20
-Aur=C3=A9lien Couderc <aurelien.couderc2002@gmail.com>
-Big Data/Data mining expert, chess enthusiast
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 7e5c1172fc11..f6a7cfa12225 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -1306,7 +1306,15 @@ static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
+ 		if (count == 0 && res.dst_fattr->valid & NFS_ATTR_FATTR_SIZE)
+ 			count = nfs_size_to_loff_t(res.dst_fattr->size) - dst_offset;
+ 		nfs42_copy_dest_done(dst_f, dst_offset, count, oldsize_dst);
+-		status = nfs_post_op_update_inode(dst_inode, res.dst_fattr);
++		nfs_update_delegated_mtime(dst_inode);
++		if (!nfs_have_delegated_attributes(dst_inode))
++			status = nfs_post_op_update_inode(dst_inode,
++							  res.dst_fattr);
++		else {
++			spin_lock(&dst_inode->i_lock);
++			nfs_set_cache_invalid(dst_inode, NFS_INO_INVALID_BLOCKS);
++			spin_unlock(&dst_inode->i_lock);
++		}
+ 	}
+ 
+ 	kfree(res.dst_fattr);
+-- 
+2.52.0
+
