@@ -1,45 +1,45 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 35905155A5D
-	for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2026 05:42:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 282161A6807
+	for <linux-nfs@vger.kernel.org>; Sat, 28 Mar 2026 05:43:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1774676556; cv=none; b=O6iSSGRULhS/+bBnHzfOGjVS6bsWa1aZ/NjVXLKfcBaTgCNGSr6tM5n8eB/3EttjTfYVtS3Nr/z+mYcCIIJtBmMOez90NyL+8GFI1PLt9pqL3ouQxqwdwTCtCJrol2UeguX0PcM96fJJLbjmdWxF7hsmTI2nU/U1C/ujvAiTVMs=
+	t=1774676595; cv=none; b=Xh4asbSbymKaKahP8NiHQiP7twrZlinI3+wo8i61x5Q+/Tsolr7LezIGf6CAEDs7XFXFM5OOJnGczJtGsshwnyUpaBflnWFVp7HOKaf7sGiKAOL2LzSHDG57ZubueRpUrAefYhI4OiXyBrRqadlf0JrbDAq4VKsIRCPiKcE6h6g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1774676556; c=relaxed/simple;
+	s=arc-20240116; t=1774676595; c=relaxed/simple;
 	bh=0ZbJliIIt3ToHsqt8X+5oWWIaTNhEl61Hd0F7Xe1Sn8=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=NUMzTFU/E07WLA5URNxmGjUtaI6VLlJ5OYyxGRfRs61m2xeuY2xDALHK2Vn8hefZDCmG28SK15UKX8JFTKjF90EgAqXQSFRejn2Rv8Ex3Kl9jIaDUs7cUAazUBgRjwkMTHYMvE3YDESyxDC9Ts9edy9VbpTaWRQF15Jl9W7RFQk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=XYy3uQQI; arc=none smtp.client-ip=170.10.129.124
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Lf3AlpfmK924QVGoHX2fCk+R89Ukk5wj6RSGFMHFhuiGdbUvLsK6uZ+qM428mAUU0JKYHqTjyVjt/NWD/Cui+CxeG6bdE/MTigExf+lUEjuGXTAqWx9PB9VZb6cDJz1gGQaLpf2x7rZuanEBYPHqNLSuPKx57OLTbkXncBrlaR0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=h9gGZR6T; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="XYy3uQQI"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="h9gGZR6T"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1774676552;
+	s=mimecast20190719; t=1774676591;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding;
 	bh=m6bx3RZgPAzYdpPy4516+gH9bhtBOnMRZxU3HRjiIgY=;
-	b=XYy3uQQIl5EOd5HOmE0P/OaJG3Z0DhDSFKnUX+cirCLRSnJllspiUgLsQXgjEGgcHFxS+F
-	USd6P5lQJy0qa8EoNa+kc10dIWyM3np1bALovfD7BZxB8yhslw+9vKpwKVpD71E/QoMFwd
-	3XuToj6YArsGudGq0r1ySlzkpH3cSr0=
-Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+	b=h9gGZR6Tk7zbaFEPDd0A8bCJW22vPeziBHhLuMvJFFko4/LPbH52PtxLFz+ocHwkEzyVSz
+	rpxYs4K7wciDQIO2bk+urwcI7hImOdqnWSR5hhzpZaWeGydsWDYk6gI5qoze9ENVVOoa/D
+	I9/0fHdvVjXANBJTbBIwus58lVaywFA=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
  (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-619-YYrhJ7T6OL-JniZzaYT7Sw-1; Sat,
- 28 Mar 2026 01:42:26 -0400
-X-MC-Unique: YYrhJ7T6OL-JniZzaYT7Sw-1
-X-Mimecast-MFC-AGG-ID: YYrhJ7T6OL-JniZzaYT7Sw_1774676545
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-711-QYfNDuWgMpqZJip1ja1Kbg-1; Sat,
+ 28 Mar 2026 01:43:08 -0400
+X-MC-Unique: QYfNDuWgMpqZJip1ja1Kbg-1
+X-Mimecast-MFC-AGG-ID: QYfNDuWgMpqZJip1ja1Kbg_1774676587
 Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 7EED519560B4;
-	Sat, 28 Mar 2026 05:42:25 +0000 (UTC)
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id EDC7F195608B;
+	Sat, 28 Mar 2026 05:43:06 +0000 (UTC)
 Received: from localhost (dell-per660-10.rhts.eng.pek2.redhat.com [10.73.4.30])
-	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 9130E1955D84;
-	Sat, 28 Mar 2026 05:42:24 +0000 (UTC)
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id DA33D1955D84;
+	Sat, 28 Mar 2026 05:43:05 +0000 (UTC)
 From: Jianhong Yin <jiyin@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: calum.mackay@oracle.com,
@@ -47,9 +47,9 @@ Cc: calum.mackay@oracle.com,
 	bcodding@redhat.com,
 	smayhew@redhat.com,
 	jiyin@redhat.com
-Subject: [PATCH 1/4] pynfs: nfs4.1/nfs4server.py fixes
-Date: Sat, 28 Mar 2026 13:42:16 +0800
-Message-ID: <20260328054219.3072479-1-jiyin@redhat.com>
+Subject: [PATCH v3 1/4] pynfs: nfs4.1/nfs4server.py fixes
+Date: Sat, 28 Mar 2026 13:42:41 +0800
+Message-ID: <20260328054243.3072769-2-jiyin@redhat.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
