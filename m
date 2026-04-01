@@ -1,65 +1,64 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5794242882D
-	for <linux-nfs@vger.kernel.org>; Wed,  1 Apr 2026 13:34:28 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C02E943CEE3
+	for <linux-nfs@vger.kernel.org>; Wed,  1 Apr 2026 13:39:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775050468; cv=none; b=mwHFxiyK9Vt89ONIUE8QRUyrAeu945sPpWOWe4hHNtUJAnoQI8oyKikdc1Rv0+j/SNDlIcsUsjreBEDknWV3T+/7Ic7+eeSeCuhzxND/m13iww17nx8d2cUvik0Jam9AivvmXTqNNzYr8PS2hrF1W0CD404hAhV2QvDaUCokXZ0=
+	t=1775050791; cv=none; b=Dsmuca/P5BPRKzzywGZNBdAu5b4cauDQ3ZJaYujltH6EJxMycQW8H6sDXJguWMbjVD+R1Isyz4+KdBhD8Zn1KpYZAth9O7/LqS4HhY+y89gKnw+FPSv1wTfyVbxsx+innZ0WjFob7aiwzXbvM1j2tJUpBHVrw4BGUiRRMF9g0+k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775050468; c=relaxed/simple;
-	bh=ZgUeRnpR4DATl3Sbw883f5UTNjMmFhqtg9CURPQiQXM=;
+	s=arc-20240116; t=1775050791; c=relaxed/simple;
+	bh=CJDnYngsSZ5n1tU6NcHxkHmdD2lwVssaMMVh5DWEL/Q=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=sNUTj08kTd3KXxxYg524lLud+OhBmgYVnm3t7WvfOVXCtKFINDex8+6oDdjVsKjBONPoaGzzhw1Emo8heu/PAj3tA7ZiBOeGlFU57lQVQodSfW43Cyj9WPRl8oarb3/GSje4V0V7efGLTXub501rjQ3n63ZI+zYiNz9s5GHB0mw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZUrVP3HD; arc=none smtp.client-ip=10.30.226.201
+	 Subject:Content-Type; b=I0MwgUwejOlbctaBT0jDHJcC5K12lybAmG1H+ocY3Y0s1q+Fhc3up9QIF1+7cH7v4ZQ7WSXG7PJYZPS6RNOv6lrr5XQWRHYSg7MMa2Hp5z5wggxe4t5lrzXnO6ZIFZMJG0O8nliDZy3WDD3IK7YXWNptueAS314SHLAwCUKDUVY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ucJL/NR8; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZUrVP3HD"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BEA3CC4CEF7;
-	Wed,  1 Apr 2026 13:34:27 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ucJL/NR8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1972DC4CEF7;
+	Wed,  1 Apr 2026 13:39:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775050468;
-	bh=ZgUeRnpR4DATl3Sbw883f5UTNjMmFhqtg9CURPQiQXM=;
+	s=k20201202; t=1775050791;
+	bh=CJDnYngsSZ5n1tU6NcHxkHmdD2lwVssaMMVh5DWEL/Q=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-	b=ZUrVP3HDWATxjX+UNJxVTmHekvvRwtN9LN+JW++iezUbDfU2aV0ukICgXJaFimRq5
-	 Nlx5ojqFkVeSksxNi12dSpW00cU81KvcWXUE98/yOpZN47p0NleQJqKzEXmUjCcSVe
-	 4LXJU8FzZLTNcIkRN5s+Orx0HFlV8nYB0I8MZFvRuZIZePVKfNpNKq5u8VP+SVqbAp
-	 AKBNkfwWme8JuQh42wC9ag/2yJQtvmsPfWb/VJxR8XhpjMKiR962AHzF8kWfKrX42y
-	 QAXhq4V13YPRv7H6Idwee2zBmtu6DIbiuIYxMy7iogcR468Eau+9BOiX/j11fMH1js
-	 ZhQRQlKR1WIrQ==
+	b=ucJL/NR8LBHZVJG5lc+0BrAOF6csWetbWJNz1FuglYeQShFD4DbMar1DWU0VSSyuE
+	 j5zAVH50Bl2X6WTupEpIltdigzi6zpS82ZJ0Le38rCA3DtPbLGMHWbFo3LYkNcwVx4
+	 r42SfLLc4Zzp4pMPxxW0pXmOtcnxMeXDaIONLB9IbkwmJ63tdc9A9YSyc+E/qCnF2D
+	 NrznmTtkb5R7kRChVQt1kk86aSmBRY9u0RXawug25Z/eBX3Uu39GY8FodGilJOBQbZ
+	 gRX3+ZxRsYD1ER3bCgsT7Qp+lQPSuYLLVTWgDz75tCCkQwlUWNvkmP3uz0sYs3fkQA
+	 p8/37hAcwOqig==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id BF8E6F4007C;
-	Wed,  1 Apr 2026 09:34:26 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 2E536F40068;
+	Wed,  1 Apr 2026 09:39:50 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 01 Apr 2026 09:34:26 -0400
-X-ME-Sender: <xms:4h7Nafyx5c5Ox6zroyRUHQ79ixV3CoGkN-oMkA58x0jwtajmLJDvvg>
-    <xme:4h7NaSEElO1zezXPWvItF_AKHkm2g7r-nP_f2Mz_pcusaSeO9-x2Dr-BeboDXACrU
-    POjGyhgvy-ZeWUsSksNFoh6xAg7Benc-tKt2IjV9FRxD80EbIDxo8X2>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefhedrtddtgdefvdehucetufdoteggodetrfdotf
+  by phl-compute-10.internal (MEProxy); Wed, 01 Apr 2026 09:39:50 -0400
+X-ME-Sender: <xms:JiDNaWO7YGsZYgVmiGUsnwCLNaCW1r2FXSC-B-Tmn9IuKdbF_79a-w>
+    <xme:JiDNafyOXRVaY6aQO8GlQ5m81SncsKIm3yOCQ8PeGtOluwtQiQ0wOcb1L0W_pWy3M
+    2-B_xFxb-3NJW5cbOcimi3lhvTylOOgHO5RTnfflyMMV0PQWAcH2bax>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefhedrtddtgdefvdeiucetufdoteggodetrfdotf
     fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceurghi
     lhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujfgurh
-    epofggfffhvfevkfgjfhfutgfgsehtqhertdertdejnecuhfhrohhmpedfvehhuhgtkhcu
+    epofggfffhvfevkfgjfhfutgfgsehtjeertdertddtnecuhfhrohhmpedfvehhuhgtkhcu
     nfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrhhnpe
-    fghfeguedtieeiveeugfevtdejfedukeevgfeggfeugfetgfeltdetueelleelteenucev
+    fhffekffeftdfgheeiveekudeuhfdvjedvfedvueduvdegleekgeetgfduhfefleenucev
     lhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutghklh
     gvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleelleeh
     ledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrghilh
-    drtghomhdpnhgspghrtghpthhtohepledpmhhouggvpehsmhhtphhouhhtpdhrtghpthht
-    ohepnhgvihhlsegsrhhofihnrdhnrghmvgdprhgtphhtthhopeduuddvkeekiedusegsuh
-    hgshdruggvsghirghnrdhorhhgpdhrtghpthhtohepuhhklhgvihhnvghkseguvggsihgr
-    nhdrohhrghdprhgtphhtthhopehjlhgrhihtohhnsehkvghrnhgvlhdrohhrghdprhgtph
-    htthhopehrvghgrhgvshhsihhonhhssehlvggvmhhhuhhishdrihhnfhhopdhrtghpthht
-    ohepthhjrdhirghmrdhtjhesphhrohhtohhnrdhmvgdprhgtphhtthhopehokhhorhhnih
-    gvvhesrhgvughhrghtrdgtohhmpdhrtghpthhtoheplhhinhhugidqnhhfshesvhhgvghr
-    rdhkvghrnhgvlhdrohhrghdprhgtphhtthhopehsthgrsghlvgesvhhgvghrrdhkvghrnh
-    gvlhdrohhrgh
-X-ME-Proxy: <xmx:4h7NaRQeQ18NF5vaHjDbeNzkQv0yRp_-B-LRxxF-kWcpXnlwZp44gw>
-    <xmx:4h7NaXWt1WZdadTLftydoIAJ7HPjw54NayHtHUxu_9jQ5SPhCRrzAQ>
-    <xmx:4h7NabQxVJQd81L_-g6JtKYWl7JW0xARWpJIg3y6kTOVQE_ps9bf6A>
-    <xmx:4h7Naf3i5eaVv-evV5UsgFmtiwUN1yx9IT0zOq0VWkZn9X-0lIJKNA>
-    <xmx:4h7NabfLKt0WHosy2lNz-Ukix0U8MGuiwdJHl-HggqmI_Tg9DYBPoNo2>
+    drtghomhdpnhgspghrtghpthhtohepuddtpdhmohguvgepshhmthhpohhuthdprhgtphht
+    thhopehnvghilhessghrohifnhdrnhgrmhgvpdhrtghpthhtoheprghmihhrjeefihhlse
+    hgmhgrihhlrdgtohhmpdhrtghpthhtohepjhhlrgihthhonheskhgvrhhnvghlrdhorhhg
+    pdhrtghpthhtohephhgthheslhhsthdruggvpdhrtghpthhtohepuggrihdrnhhgohesoh
+    hrrggtlhgvrdgtohhmpdhrtghpthhtoheptghhuhgtkhdrlhgvvhgvrhesohhrrggtlhgv
+    rdgtohhmpdhrtghpthhtohepohhkohhrnhhivghvsehrvgguhhgrthdrtghomhdprhgtph
+    htthhopehtohhmsehtrghlphgvhidrtghomhdprhgtphhtthhopehlihhnuhigqdhfshgu
+    vghvvghlsehvghgvrhdrkhgvrhhnvghlrdhorhhg
+X-ME-Proxy: <xmx:JiDNafaDBA7_kepu7M5ypjgPHN-m4EqdnlqEzsMIflNcPWWk4THK-Q>
+    <xmx:JiDNaUarRdo8siXR_-RyMfOSeWrEJA3jrivrd6mPJD7NQEEsV9A_CQ>
+    <xmx:JiDNacw507NZKhPDL-u9heN49OwqgqTROJt55Spy_26GcvxPXVwTpA>
+    <xmx:JiDNaYf0XkkYLBS1EVsCAnvUk8VHLVhpg4WLA6dVvuuDqv-UhwtkdA>
+    <xmx:JiDNaZ4pDpV5zTlnN6uRW7iQKHjkhQAMsaAoJdPxt9E66dz_FKevNBBH>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 993CA780070; Wed,  1 Apr 2026 09:34:26 -0400 (EDT)
+	id 0D436780075; Wed,  1 Apr 2026 09:39:50 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -67,57 +66,40 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: A_jyC0Lb0WUR
-Date: Wed, 01 Apr 2026 09:34:06 -0400
+X-ThreadId: AoFadv7LPD5F
+Date: Wed, 01 Apr 2026 09:39:29 -0400
 From: "Chuck Lever" <cel@kernel.org>
-To: =?UTF-8?Q?Uwe_Kleine-K=C3=B6nig?= <ukleinek@debian.org>,
- 1128861@bugs.debian.org
-Cc: NeilBrown <neil@brown.name>, "Jeff Layton" <jlayton@kernel.org>,
- "Thorsten Leemhuis" <regressions@leemhuis.info>, Tj <tj.iam.tj@proton.me>,
- linux-nfs@vger.kernel.org, "Olga Kornievskaia" <okorniev@redhat.com>,
- stable@vger.kernel.org
-Message-Id: <856a0051-131e-4847-9b8c-2c377c375da7@app.fastmail.com>
-In-Reply-To: <ac0U4P92l-TkQvnh@monoceros>
-References: <177266540127.7472.3460090956713656639@noble.neil.brown.name>
- <6ba41798-9c69-44f5-9a4e-09336c75a4b9@leemhuis.info>
- <cf78feb7ffaee6ed478afb734d2ede149597de86.camel@kernel.org>
- <177434721528.7102.13514118512738778346@noble.neil.brown.name>
- <d4773958-5ae5-42d4-b785-6598b5c9b27a@app.fastmail.com>
- <177442248735.2237155.773724155681455344@noble.neil.brown.name>
- <a6e6a731-2885-4510-87dd-45e6a8f4fbd7@app.fastmail.com>
- <177456522377.1851489.16395975485525163031@noble.neil.brown.name>
- <177187492815.425331.14320091315652332093.reportbug@nimble>
- <465012d6-c824-4d8d-b6f6-8a2d85e30154@app.fastmail.com>
- <ac0U4P92l-TkQvnh@monoceros>
-Subject: Re: Bug#1128861: [PATCH v2] lockd: fix TEST handling when not all permissions
- are available.
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+To: "Christoph Hellwig" <hch@lst.de>
+Cc: NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
+ linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ "Chuck Lever" <chuck.lever@oracle.com>, "Jeff Layton" <jlayton@kernel.org>,
+ "Amir Goldstein" <amir73il@gmail.com>
+Message-Id: <e17dc8e1-1150-450b-b4d4-4ed5470d7511@app.fastmail.com>
+In-Reply-To: <20260401061904.GB24293@lst.de>
+References: <20260331153406.4049290-1-hch@lst.de>
+ <df21ae49-c763-43d6-bdb2-c492f349a6cb@app.fastmail.com>
+ <20260401061904.GB24293@lst.de>
+Subject: Re: cleanup block-style layouts exports
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
 
-On Wed, Apr 1, 2026, at 8:54 AM, Uwe Kleine-K=C3=B6nig wrote:
-> Hello Chuck,
+On Wed, Apr 1, 2026, at 2:19 AM, Christoph Hellwig wrote:
+> On Tue, Mar 31, 2026 at 01:33:11PM -0400, Chuck Lever wrote:
+>> 
+>> How do you see this getting merged? Do you want all of these
+>> patches to go through the NFS tree? Or do you want this to
+>> go through VFS?
 >
-> On Fri, Mar 27, 2026 at 09:56:38AM -0400, Chuck Lever wrote:
->> I think the stable folks will insist on this fix going into
->> upstream first. However, this version of the fix does not
->> apply to nfsd-testing because that branch has the NLMv4
->> xdrgen rewrite.
->
-> This is not the first time a bug is fixed by changes that are too
-> intrusive for backport. Usually the stable maintainers can be talked to
-> accept a small targeted fix even if it's not upstream. The discussion =
-is
-> simplified by people claiming to have tested the fix and confirm it
-> helps.
+> I don't really care.  But I traditionally see exportfs as a nfsd domain,
+> even despite the added other uses of it.
 
-Sorry I wasn't clear. Neil and I have also been down this road before
-so I wasn't explicit about my request.
+Right, and I'm happy to take this series because it appears directly
+related to pNFS. But recent exportfs changes have gone through one
+of Christian's trees. Plus this is a cross-subsystem change.
 
-I'd like Neil to provide a patch for upstream against nfsd-testing.
-Once that is merged, he can present the patch from this thread to
-the stable/LTS maintainers.
+(I'm not pushing back, I'd just like an above-board decision)
 
-
---=20
+-- 
 Chuck Lever
