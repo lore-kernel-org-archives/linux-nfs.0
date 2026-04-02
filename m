@@ -1,155 +1,144 @@
-Received: from mail-pj1-f50.google.com (mail-pj1-f50.google.com [209.85.216.50])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D612B366816
-	for <linux-nfs@vger.kernel.org>; Thu,  2 Apr 2026 12:52:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.50
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CD07634BA49
+	for <linux-nfs@vger.kernel.org>; Thu,  2 Apr 2026 13:11:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775134344; cv=none; b=Ir1EUKqNQWhsWGBwhoiDqysmQLWJAFUosRP+jjKlbeBBBMDq/SeWcsIwSmI1WoeZf7SWJ2cG8qc+UXC3cBzszgPOD5T0AjXcajd7kJ7tQ6PJF9CIuGJKyHclB3sZNc0dYgofzIjWkCf5orzDmDAmJ3bZuy6BuMh3trMU+juqlRc=
+	t=1775135486; cv=none; b=m/uILiUPHwEjMjAnwoYvGkXrEZ6mF8IcON9pn/JkeLgeK9G8UXRgHqLXmPTY8yCuU+zBitCzMnF4sEIZp5ggPftXCfdonnyoDLWUD14U3fLXJ75bAXbGTNSnzKT7JkVglz/cLcnuFplB2rKf/9/Pz3s+X3Z84zYPHvT5rU+KXTE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775134344; c=relaxed/simple;
-	bh=o1ZCYwcFc8lRBKP856YOVeSOHiTUCIiilJIC6oIentI=;
-	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References; b=eqwsK02SiydECx8zeISA/cow8crC5T2tOSNCekceSn15NDAhKZOw/o7irpZutPvC+YoTfCvF5+Cis6iHAvJYUstoNndQAqKftljyHqeyznsRY8/c12maI2ZDMSsZiArG/128QrANFmXWPq0FFQ1mJHSe9QvHD/frGlx40boe6OY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=s3oi11MO; arc=none smtp.client-ip=209.85.216.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1775135486; c=relaxed/simple;
+	bh=bS15XMo/9WRu57PhJD5kvXO+TdOi27oIRuDCZQ2t9YI=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=asfsDJC8JPdwVlyfdDPzx5amqwzb1wm1CeIRgSMntK7So0ssZFRx5FfwfwWzJtSd5xRTQQZZ673SFSa9yfNW8l8cqBrdQDnZ0DFdUqydNKu6Esc+1EBbIuZCQHARcR8qWxxavBlabvQC9h88Vq/3r2IAdCKAyKhx1NZ9imiHdpo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=soZ2xrrJ; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="s3oi11MO"
-Received: by mail-pj1-f50.google.com with SMTP id 98e67ed59e1d1-35da01fc0baso524488a91.2
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Apr 2026 05:52:20 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1775134339; x=1775739139; darn=vger.kernel.org;
-        h=references:message-id:date:in-reply-to:subject:cc:to:from:from:to
-         :cc:subject:date:message-id:reply-to;
-        bh=TQ3lrWVKO87z8vhsStJXZkDwRc6VLmdZN5o7clgXULk=;
-        b=s3oi11MOqnDG32fuaoFARK5ha79/g9zCsdwtFdWWCZWIHsSvBTQKJz+lE3UO8jhWAD
-         rKT1TDd0zuNlFDCgX4/hTDnx5OJ0HdNeXxQTkPZkP60W+/pnd47sLSht8Yy/nHD/NAkY
-         VBcB4qockof2HeEFkojTvsaDg9br6MfJoDmw40gjFgQs5aVc9Xyx8fegOQGLu2X/15B7
-         k4U3Kp4KqWLlRqUyIqq+CvxN/gen40shZHd8hJ/IWcxJSWJt86SebzPTnoqIcs2o2RQP
-         vwu57W2vCS9LBuB3M8qKuG3bH9QhNn0ELeUKyvlU5Bnen4r4EvNfts6PCWaMtVZbvXeC
-         RGWw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1775134339; x=1775739139;
-        h=references:message-id:date:in-reply-to:subject:cc:to:from:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=TQ3lrWVKO87z8vhsStJXZkDwRc6VLmdZN5o7clgXULk=;
-        b=N35TplAs+JB7nSDmnAS2pw3M7PilXN14AUBuOynFP9mJCjVhtBK7b5ezlgcXLcRtsT
-         dzkFaqc+eLCfCWHYUX4JKqsSpPkWOATU7VVLPB6BPM0NErWDP2kVxuAXNZnVdi4q7usd
-         bnjPGjaVNi1JBE9bvnVv0Bw4AtDquLiJ0cw0ePxgnOB1UwDrRR5OZ0mHIyT5f23HiUql
-         x31lOSXk/2lNtETAHEepmg1g9020/uFL/7bhn2BS3MkzSRz68PiyvBK6WALUzM4KtUp1
-         TDesY+Id6xcQqlOrMwK3+NG7lFtJNTdsoN8b2io0A4ffs7MDiy49WHtNkQQYhsKBnPzj
-         w78A==
-X-Forwarded-Encrypted: i=1; AJvYcCWzbvMZSrLHMpiPuMVAYOFBEqJQhxYJ0AU6DjFU2RN5Niv9mqVsz67kJvOVHsk6qdwIcJ7e/ZaDMfU=@vger.kernel.org
-X-Gm-Message-State: AOJu0YxWUwnLNbXKHMnXR2jijQCDd9sWDyxc+MdLqr0tYBkX37wsq9W8
-	0MxsUOQKV0Tdfv9w/Wj3IEd5CjWM3DeohU5bZNNKYwCHtENC5BgT489l
-X-Gm-Gg: AeBDieu6nauferlbJFdCbhHvtLo0PLdS59crrJXkJur7+7PIY7GlPRU0GNrWSjx2omC
-	E4aUSSgkbsVHZ3Jx14z1yxpVGSDWBukIsHRWlyo11UGypb0SyOhJ3p7NxyLakcthKUz1ll8k+Hw
-	X6C8HiujPrNyw6DCvnfGX+MvGj8avXIC8wNIRrXyndt73XhJzrq4283EwBAkdIaYj63j8O99QnH
-	bJFq5Vcc4ZBdtzXummCJeRiNw1xqKcaw64kwxcNJyqzEuqISuLWQZ523YCQo3/MBz49OmX24/3K
-	+JXIoiRiY2Fs3uU0loql8IS9a/RTNuR0wOzQU/ANPjKpOpTxnnZVuHgeUGD7pfOAkGWFfsPhuO6
-	7nMwTwFdIJC00zBQKafILlzZVHNhn+Jws6D8oGgXG1jNcXtaWk7qRlAMj43bRT2mEhCdwX6C8Z3
-	ZUCckc52aHKyUUOVKcQzwPpA==
-X-Received: by 2002:a17:90b:1850:b0:35d:9c39:4dc9 with SMTP id 98e67ed59e1d1-35dc6f8a3famr6709877a91.23.1775134339387;
-        Thu, 02 Apr 2026 05:52:19 -0700 (PDT)
-Received: from pve-server ([49.205.216.49])
-        by smtp.gmail.com with ESMTPSA id 98e67ed59e1d1-35dbb8932ecsm3838360a91.5.2026.04.02.05.52.13
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 02 Apr 2026 05:52:18 -0700 (PDT)
-From: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-To: Jeff Layton <jlayton@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, "Matthew Wilcox (Oracle)" <willy@infradead.org>, Andrew
- Morton <akpm@linux-foundation.org>, David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, "Liam R. Howlett" <Liam.Howlett@oracle.com>, Vlastimil Babka <vbabka@kernel.org>, Mike
- Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, Michal
- Hocko <mhocko@suse.com>, Mike Snitzer <snitzer@kernel.org>, Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 1/4] mm: fix IOCB_DONTCACHE write performance with rate-limited writeback
-In-Reply-To: <09672fa10c77d4fbfa1a13ea16aedf79d23fd8f8.camel@kernel.org>
-Date: Thu, 02 Apr 2026 18:10:32 +0530
-Message-ID: <h5ptmt6n.ritesh.list@gmail.com>
-References: <20260401-dontcache-v1-0-1f5746fab47a@kernel.org> <20260401-dontcache-v1-1-1f5746fab47a@kernel.org> <ikaam0ox.ritesh.list@gmail.com> <09672fa10c77d4fbfa1a13ea16aedf79d23fd8f8.camel@kernel.org>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="soZ2xrrJ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CBC56C19423;
+	Thu,  2 Apr 2026 13:11:25 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1775135486;
+	bh=bS15XMo/9WRu57PhJD5kvXO+TdOi27oIRuDCZQ2t9YI=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
+	b=soZ2xrrJBQw0JGVX++0BF4lX1h7yORUWY/AlLlcnKraN72iIYwyWlJwH/44Cai0cA
+	 1zHddRwyPY+Mc8UkTPmWLG+tcghl+d7ww//4JTA0/hFnyUtymZ1jlCodO9ehxHI1fJ
+	 1ksHG9gE5cueamMicHuHIkwOqZUCR4RFVP6S0gt2Vj4Jbqj1SP+Ya82mE1iKLVgapX
+	 d37zK5N41DQCPf9oq976ltW1n/NsHq5ZvAP9Pgm+3IrmkPZJk9X3mgoKZrOxnFHybO
+	 0pi0XJQrRwv2KqNsc+6A0MJZ5VoFuRAiaH48ju140A/UuBiumSPun0moDU20RuKTPQ
+	 t0qC3FOj3sZjQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id B3B1CF4007C;
+	Thu,  2 Apr 2026 09:11:24 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Thu, 02 Apr 2026 09:11:24 -0400
+X-ME-Sender: <xms:_GrOaeZE5FrY1QR8VLt7qOytmcT1yQYv5ReC6wD-d_zx_E_kI_xJnA>
+    <xme:_GrOacPNrpxjAYXwhRSVPtJy6CA65Daq4OGFaaU8wLhAPFbIbqq5LXD6iag5J0KMs
+    sSAgfeQz6Kjxe9MKC4UfJO0bAeNw_lQlsReYqQ7R1J5nrKkVvd9GmS6>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefhedrtddtgdeiuddvucetufdoteggodetrfdotf
+    fvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceurghi
+    lhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujfgurh
+    epofggfffhvfevkfgjfhfutgfgsehtjeertdertddtnecuhfhrohhmpedfvehhuhgtkhcu
+    nfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrhhnpe
+    fhffekffeftdfgheeiveekudeuhfdvjedvfedvueduvdegleekgeetgfduhfefleenucev
+    lhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutghklh
+    gvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleelleeh
+    ledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrghilh
+    drtghomhdpnhgspghrtghpthhtohepudehpdhmohguvgepshhmthhpohhuthdprhgtphht
+    thhopehnvghilhessghrohifnhdrnhgrmhgvpdhrtghpthhtohepuggrvhgvmhesuggrvh
+    gvmhhlohhfthdrnhgvthdprhgtphhtthhopegvughumhgriigvthesghhoohhglhgvrdgt
+    ohhmpdhrtghpthhtohepphhrrggrnhesghhoohhglhgvrdgtohhmpdhrtghpthhtohepth
+    hrohhnugdrmhihkhhlvggsuhhstheshhgrmhhmvghrshhprggtvgdrtghomhdprhgtphht
+    thhopegrnhhnrgeskhgvrhhnvghlrdhorhhgpdhrtghpthhtohepjhhlrgihthhonheskh
+    gvrhhnvghlrdhorhhgpdhrtghpthhtohepkhhusggrsehkvghrnhgvlhdrohhrghdprhgt
+    phhtthhopegthhhutghkrdhlvghvvghrsehorhgrtghlvgdrtghomh
+X-ME-Proxy: <xmx:_GrOaaWgZ-Z5pvBEcoaFVjOszvBmqvgog9Hx1JT0dfRqtpGtvL3eHA>
+    <xmx:_GrOaWDI9n041gvjfuTXfHbEajQZ2FtjfTr4251Son0qir2RO1yoZw>
+    <xmx:_GrOafeVxOaUz2ICQl4q8ZNrYBq-Huq8kBJAdFc5FGHlnX8So2WXug>
+    <xmx:_GrOaVo3zoWPbPr2gGXf10VINm2ol20xGh-IrtUFTwEDLTFwnWDEtA>
+    <xmx:_GrOaYTdY7Lg4sknk8ZuuKhh3I0tGQ_8TjKVZVuY8ab6SuXcY5ig8-Dt>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 88526780070; Thu,  2 Apr 2026 09:11:24 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
+MIME-Version: 1.0
+X-ThreadId: Ae78tHgonjNg
+Date: Thu, 02 Apr 2026 09:11:04 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Pranjal Shrivastava" <praan@google.com>,
+ "Trond Myklebust" <trond.myklebust@hammerspace.com>,
+ "Anna Schumaker" <anna@kernel.org>
+Cc: davem@davemloft.net, "Jakub Kicinski" <kuba@kernel.org>,
+ edumazet@google.com, "Paolo Abeni" <pabeni@redhat.com>,
+ "Chuck Lever" <chuck.lever@oracle.com>, "Jeff Layton" <jlayton@kernel.org>,
+ "Tom Talpey" <tom@talpey.com>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ NeilBrown <neil@brown.name>, "Dai Ngo" <dai.ngo@oracle.com>,
+ linux-nfs@vger.kernel.org, netdev@vger.kernel.org
+Message-Id: <791991c2-1e8c-4041-9674-94acb4fe483c@app.fastmail.com>
+In-Reply-To: <20260401194501.2269200-3-praan@google.com>
+References: <20260401194501.2269200-1-praan@google.com>
+ <20260401194501.2269200-3-praan@google.com>
+Subject: Re: [RFC PATCH 2/4] nfs: add NFS_CAP_P2PDMA and detect transport support
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-Jeff Layton <jlayton@kernel.org> writes:
 
-> On Thu, 2026-04-02 at 10:13 +0530, Ritesh Harjani wrote:
->> Jeff Layton <jlayton@kernel.org> writes:
->> 
->> > IOCB_DONTCACHE calls filemap_flush_range() with nr_to_write=LONG_MAX
->> > on every write, which flushes all dirty pages in the written range.
->> > Under concurrent writers this creates severe serialization on the
->> > writeback submission path, causing throughput to collapse to ~47% of
->> > buffered I/O with multi-second tail latency.
->> 
->> Yes, between concurrent writers, I agree with the theory.
->> 
->> 
->> > Even single-client
->> > sequential writes suffer: on a 512GB file with 256GB RAM, the
->> > aggressive flushing triggers dirty throttling that limits throughput
->> > to 575 MB/s vs 1442 MB/s with rate-limited writeback.
->> 
->> I am not sure if this 2.5x performance penalty in a "single" sequential
-
-Sorry my bad.. I mis-understood this 2.5x delta at first.
-
-So in a single sequential write case, what this patch is mainly
-improving is from unpatched RWF_DONTCACHE (1179 MB/s) to patched
-RWF_DONTCACHE (1453 MB/s) = ~23% improvement.
-
-So the below theory which I was talking about was from this delta
-perspective i.e. comparing unpatched v/s patched RWF_DONTCACHE mode.
-
->> writer is due to throttling logic. On giving it some thoughts, I suspect
->> if this is because, the submission side and the completion side both
->> takes the xa_lock and hence could be contending on that.
->> 
->> For e.g. since this patch skips doing the flush the second time, (note
->> that writeback is active when the same writer dirtied the page during
->> previous write), this allows the writer to do more work of writing data
->> to page cache pages, instead of waiting on the xa_lock which the
->> completion callback could be holding (folio_end_writeback() -> folio_end_dropbehind())
->> 
->> If I see Peak Dirty data from the link you shared [1] in single writer case...
->> 
->> Mode                    MB/s	p50 (ms)	p99 (ms)	p99.9 (ms)	Peak Dirty	Peak Cache
->> dontcache (unpatched)	1179	3.2	    103.3	    170.9	    14 MB	    4.7 GB
->> dontcache (patched)	1453	5.4	    43.8	    57.4	    36 GB	    45 GB
->> 
->> ... this too shows that the submission side is writing more dirty pages,
->> then the completion side able to write it... 
->> 
->> I suspect this contention (between submission and completion) could more
->> in IOCB_DONTCACHE case, since the completion side also removes the folio
->> from the page cache within the same xa_lock, which is not the same with
->> normal buffered writes.
->> 
->> Maybe a perf callgraph showing the contention would be nicer thing to add
->> here [1] ;). 
->> 
->> [1]: https://markdownpastebin.com/?id=96249deb897a401ba32acbce05312dcc
->> 
+On Wed, Apr 1, 2026, at 3:44 PM, Pranjal Shrivastava wrote:
+> The NFS server capabilities bitmask (server->caps) is currently full,
+> utilizing all 32 bits of the existing unsigned int. Expand the bitmask
+> to 64 bits (u64) to allow for new feature flags.
 >
-> That's an interesting point.
+> Introduce a new capability bit, NFS_CAP_P2PDMA, to indicate that the
+> local mount is backed by hardware and a transport capable of PCI
+> Peer-to-Peer DMA.
 >
-> The theory I've been operating on is that the flusher thread ends up
-> squatting on the xa_lock for a while when memory gets tight, and that
-> blocks other readers and writers. Staying ahead of the dirty limits and
-> limiting the amount of flush work that each writer does alleviates
-> contention for that lock and that's what improves the performance.
->
+> Update nfs_server_set_init_caps() to query the underlying SunRPC
+> transport for P2PDMA support during the mount process. If the transport
+> (e.g., RDMA) signals support, set the NFS_CAP_P2PDMA bit in the mount's
+> capabilities. This allows the high-performance Direct I/O path to
+> efficiently determine if it should allow P2P memory buffers.
 
-That's right for comparison between buffered write against RWF_DONTCACHE.
-But what I meant in above was for the improvement from 1179 MB/s to 1453
-MB/s could be accounted to less contention on xa_lock on patched version
-v/s unpatched version for single write sequential testcase.
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index be02bb227741..f177cf098d44 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
 
-> You're right though. I'll plan to play around with perf and see if I
-> can confirm the theory.
->
+> @@ -725,6 +727,12 @@ void nfs_server_set_init_caps(struct nfs_server *server)
+>  		nfs4_server_set_init_caps(server);
+>  		break;
+>  	}
+> +
+> +	rcu_read_lock();
+> +	xprt = rcu_dereference(server->client->cl_xprt);
+> +	if (xprt->ops->supports_p2pdma && xprt->ops->supports_p2pdma(xprt))
+> +		server->caps |= NFS_CAP_P2PDMA;
+> +	rcu_read_unlock();
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_server_set_init_caps);
 
-Yes, thanks, that will be nice to have!
+Is the transport even connected when the NFS client does this
+test? If it isn't, xprtrdma and the RDMA core have not chosen
+an underlying device yet.
 
--ritesh
+Note that, even if this logic /is/ correct, if the transport
+connection is lost the transport will reconnect automatically,
+doing the RDMA CM dance again and possibly resolving to a
+different device. The NFS client layer will be none-the-wiser
+and the NFS_CAP_P2PDMA flag setting will be stale at that point,
+and quite possibly incorrect if the new connection's device is
+not P2P-enabled.
+
+(Basically this is what happens when an RDMA device is removed).
+
+So this detection has to be done as part of xprtrdma's connection
+flow, and it needs to set a flag somewhere in the rpc_xprt. The
+NFS direct I/O code path then has to look for that flag before
+choosing the mechanism/flags it uses for each iov iter.
+
+
+-- 
+Chuck Lever
