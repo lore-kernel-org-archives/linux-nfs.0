@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 122A33644DD;
-	Thu,  2 Apr 2026 12:28:46 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CF2333BE656;
+	Thu,  2 Apr 2026 12:49:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775132927; cv=none; b=EliO+5ZWa8DERcmW1xIufNMShfviBgF9R1MuC/quw2OqZ2mGDDgxJgLnwEZvmaNwQWawTcC6yU52EG68/TvBa1FQ/NbNPf7Mr5wd+TjzqH2RyvhqTSstGMH0t8/+593CaMYYIGTG6DTURmBtuYF5PaadAhqSalhyWeN3dE/QJiE=
+	t=1775134190; cv=none; b=dmRI6PZwBswtiWqdQoDa9rPAlvIheJg57lgSCba6VSGh8xqsDZdZi/WaDRuCsLEF6qm4NZZBB5QNWRybI72a/upiLPfBvgjvrz24KYL4VOn++YGSYolRcXRMAqsyDeDwSpHemG6OqIkg1aSGdbZod8oKc9+wVNvgn14XYMdc7lY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775132927; c=relaxed/simple;
-	bh=oj2qEwc5mOw9EtSlQFU4+qMSh/gwET4w+kRIitFU0jQ=;
+	s=arc-20240116; t=1775134190; c=relaxed/simple;
+	bh=61yXAIYjKP3fTku3CSIpgYyU9uL4afIYti7gojKiY+o=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=JFu0FwDV9yTUeVsqapQ7WPmh/EJcoBhyjY5CUgzfML6fzc4z7QTqWggiE715G/33qw9WNWw3i0xZGCtTKJfMl1j//8DGFqsX3GXwrt1ZOr0VY6qbI+3WG7xv0WV0DxzMHIZ2ltfBLBL46A32RMHmuj8+bZ2ilROUEDa0lu1Mr5U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Pg5XhVg9; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:MIME-Version; b=PwYJlJdm5qVgW6rwSrVKDxwiDF9kVNAlwPMwZ7utOSHaV/GpXmlCmXRCnkK03v/RE0loiLb7SOQSOztkvKWUFXJHrBN5f9Zg+Go+ij0E89AkrXBMttUz7diEj/AhRf3owLcLcvOqIyuJjlx7OvoGwyLDyL0PvkQ3r4vvTUIe21g=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bcoN0v1Q; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Pg5XhVg9"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EC863C19423;
-	Thu,  2 Apr 2026 12:28:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bcoN0v1Q"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8B0C2C116C6;
+	Thu,  2 Apr 2026 12:49:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775132925;
-	bh=oj2qEwc5mOw9EtSlQFU4+qMSh/gwET4w+kRIitFU0jQ=;
+	s=k20201202; t=1775134189;
+	bh=61yXAIYjKP3fTku3CSIpgYyU9uL4afIYti7gojKiY+o=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=Pg5XhVg9B1QJA87QRzwW6q1oQLW6jfoauQkn3OPb9QnAqFHtSHjSH0xtDX0DQxORm
-	 0ljUM2cww2bTOpBATMH3jmV1oL99d8etySsqpUR2n1pYsvAw/mNA2IBUto9F8sdkDs
-	 jmiRRu3Sp30mWlcuz0si3tQm6ZwgmMu34bKSWNaS8Wh2X/za6TQRZcmK7ymCghoy+j
-	 TmpvqHNSBtnowTyiYjK1BjAvmfG2anXHOqzHRmDPhven3EnDe/NtKYT26WriP1NEMk
-	 Dm/LeAEeVvwn0rOhwJrrCPA/LDSUOqEWA57QhTnaP1p1e/32jpL6+S5fV0/SqSpgUo
-	 fAncf0nRVpNEQ==
-Message-ID: <01dd135adf38e35492d957a35e22c4ba5c2283d1.camel@kernel.org>
-Subject: Re: [PATCH 1/4] mm: fix IOCB_DONTCACHE write performance with
- rate-limited writeback
+	b=bcoN0v1QtmRJACQVelMuhNeYBDUZZTUvReGFUf/wg4VN67tQH3U9j/402yH+E1uJS
+	 aIqf+8asiSegoCERNov3KwgitwQ8OqGAWCs1TNxIzjRES9bfOt95pgFizKIMb1YiXW
+	 hnPuV5Kzk+FdI9Zij1RbKgvuaSn5U9ONVwRfzFzkYr9Q584s+04t6oA+Gu15FSEzzW
+	 zFBR9/Gdaa+saxNj0dSpaOaPRo4206ddiaXUth+4S7Eaz5pMoz6cxBEZCYQ+ZbAviF
+	 lS6ROKxXjB8NKrQxwXrJ4IIoRaJXsKk/JoTwXnIDvTqUZFNMdKnxdMRQMc3f4NhVv5
+	 yVs/+dINxZ78Q==
+Message-ID: <629f21c6591903512eb2f3f3c4d6b14a9ac7b91a.camel@kernel.org>
+Subject: Re: [PATCH 2/4] mm: add atomic flush guard for IOCB_DONTCACHE
+ writeback
 From: Jeff Layton <jlayton@kernel.org>
 To: Christoph Hellwig <hch@infradead.org>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner	
@@ -40,11 +40,11 @@ Cc: Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner
  Michal Hocko	 <mhocko@suse.com>, Mike Snitzer <snitzer@kernel.org>, Chuck
  Lever	 <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org, 
 	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-mm@kvack.org
-Date: Thu, 02 Apr 2026 08:28:42 -0400
-In-Reply-To: <ac385Il8l-krKEOQ@infradead.org>
+Date: Thu, 02 Apr 2026 08:49:45 -0400
+In-Reply-To: <ac3-SU7BElHJVCEL@infradead.org>
 References: <20260401-dontcache-v1-0-1f5746fab47a@kernel.org>
-	 <20260401-dontcache-v1-1-1f5746fab47a@kernel.org>
-	 <ac385Il8l-krKEOQ@infradead.org>
+	 <20260401-dontcache-v1-2-1f5746fab47a@kernel.org>
+	 <ac3-SU7BElHJVCEL@infradead.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -129,59 +129,51 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2026-04-01 at 22:21 -0700, Christoph Hellwig wrote:
-> On Wed, Apr 01, 2026 at 03:10:58PM -0400, Jeff Layton wrote:
-> > IOCB_DONTCACHE calls filemap_flush_range() with nr_to_write=3DLONG_MAX
-> > on every write, which flushes all dirty pages in the written range.
+On Wed, 2026-04-01 at 22:27 -0700, Christoph Hellwig wrote:
+> On Wed, Apr 01, 2026 at 03:10:59PM -0400, Jeff Layton wrote:
+> > When the PAGECACHE_TAG_WRITEBACK tag clears after a round of writeback
+> > completes, all concurrent IOCB_DONTCACHE writers see the tag clear
+> > simultaneously and submit proportional flushes at once =E2=80=94 a thun=
+dering
+> > herd that causes p99.9 tail latency spikes.
 > >=20
-> > Under concurrent writers this creates severe serialization on the
-> > writeback submission path, causing throughput to collapse to ~47% of
-> > buffered I/O with multi-second tail latency.  Even single-client
-> > sequential writes suffer: on a 512GB file with 256GB RAM, the
-> > aggressive flushing triggers dirty throttling that limits throughput
-> > to 575 MB/s vs 1442 MB/s with rate-limited writeback.
+> > Add an AS_DONTCACHE_FLUSHING flag to the address_space and use
+> > test_and_set_bit() to ensure at most one IOCB_DONTCACHE writer
+> > flushes at a time.  Other writers that find the bit set skip their
+> > flush entirely.  The bit is cleared when the flush completes.
 >=20
-> I'm not sure the first how you think the first paragraph relate to
-> the second.
+> This sounds like a bad reimplementation of the single writeback thread
+> :)
 >=20
+> Have you considered stopping to do in-caller writeback for
+> IOCB_DONTCACHE vs just leaving it to the writeback daeon?
+>=20
+> Either by totally disabling the writeback and just leaving the
+> dropbehind bit, or by queuing up wb_writeback_work instances for
+> the ranges, or by just increasing the pressure for the writeback
+> daemon.  Note that with all schemes including the one in this patch
+> we might eventually run into writeback scalability limits, which
+> will require multiple writeback workers.
 
-The belief is that under heavy parallel write workload on the same
-inode, the writers all end up stacking up on the mapping's xa_lock.
-However as Ritesh points out, I should probably confirm that with perf.
-=20
-> > Replace the filemap_flush_range() call in generic_write_sync() with a
-> > new filemap_dontcache_writeback_range() that uses two rate-limiting
-> > mechanisms:
-> >=20
-> >   1. Skip-if-busy: check mapping_tagged(PAGECACHE_TAG_WRITEBACK)
-> >      before flushing.  If writeback is already in progress on the
-> >      mapping, skip the flush entirely.  This eliminates writeback
-> >      submission contention between concurrent writers.
->=20
-> Makes sense.
->=20
-> >   2. Proportional cap: when flushing does occur, cap nr_to_write to
-> >      the number of pages just written.  This prevents any single
-> >      write from triggering a large flush that would starve concurrent
-> >      readers.
->=20
-> This doesn't make any sense at all.
-> filemap_flush_range/filemap_writeback always caps the number of written
-> pages to the range passed in.  What do you think is the change here?
->=20
+I did test a "dropbehind" mode that just set the dropbehind bit without
+doing the flush at the end of the write. It was better than stock
+dontcache but the tail latencies were still pretty bad.
 
-I had some earlier results that indicated that this did help. It's
-possible they were bogus though. I'll recheck that and get back to you.
+I think having each writer do some writeback submission work makes a
+lot of sense. It helps keep the dirty pages below the dirty thresholds
+and doesn't seem to tax each writing task _too_ much. The trick is
+avoiding lock contention while doing it.
 
-> > +	return filemap_writeback(mapping, start, end, WB_SYNC_NONE, &nr,
-> > +			WB_REASON_BACKGROUND);
->=20
-> filemap_writeback only has 5 arguments in any tree I've looked at
-> including linux-next.
->=20
+I think what would be ideal would be to have some (lockless) mechanism
+to say "there is enough data touched by the range just written to kick
+off a write that's a suitable size for the backing store". Each writer
+could check that and then kick off writeback for an approprite range.
 
-I think this was a bad merge on my part. Mea culpa. The version in the
-"dontcache" branch of my tree should be correct.
+I think this even could be beneficial in the normal buffered write
+codepath too.
+
+Anyway, I'll play around with this idea some more and come back with a
+v2.
 
 Thanks for the review!
 --=20
