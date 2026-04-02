@@ -1,35 +1,35 @@
 Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4E6E527FB35;
-	Thu,  2 Apr 2026 05:05:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7582D317176;
+	Thu,  2 Apr 2026 05:07:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775106344; cv=none; b=Uz7Qz8vWznmkqQ1O3TySKfoeHNFz3P0exmR7or+aCs0uExdOqfYy47kaMsGkRmjzERJ7VA23Bf/oXTtrodk2pVtXqK+vn0oDAPUqIy9SLKaIquajk1gEY/rwhPAFcbB5RQ4149n9sT2xd2Tm27Z719kGnTvTO6zmGSkMFtINuFk=
+	t=1775106452; cv=none; b=ZHQGAeb+p4cVtLwL2L7QtJjq0/AzzPYnfjgtgA/zADU59KmlnUlC3ThboK/Haxlh66zzdCPQwKt+9bLEubmeNbJPG57TyMK0WoszAZmRcN968obDMIpWoriFlZmoaajMI6xGwcKz5KhSPciLWRRfsX8AlazawRItEP8z1maOgyY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775106344; c=relaxed/simple;
-	bh=WrmP4xeitwaKkiK20UoChpSUaMTop6qzPNxEiPcXA7M=;
+	s=arc-20240116; t=1775106452; c=relaxed/simple;
+	bh=+Db5bhh91/Zn+M87MC/W3V4/XRdo0MEXCj34TdGQWik=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=BPIOmRv11ROW6xwBsOtDLfIgOtHz9ULIXT9TaCvvbpyEKqyjScOkGmGDhqczcps7dtWYGKAZgZOfeyIDEWif5vGtCujYCfaLsWvx8mxqTIfS6DzCTj9zXSxdeMDgHsgIb5B9olRtlNWh5bZLpFYfOpGagTBvkrLa+yuwVlJpsLY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=PGAw8ToE; arc=none smtp.client-ip=198.137.202.133
+	 Content-Type:Content-Disposition:In-Reply-To; b=NQE3m5b2MYLLzqCnv85wSUAhrHHzXsX6a2Xp32IneqhIuCPYQKIHSEA+59q++KC9OhR7ECZganyeeJcz96IvxF3Bcq0SAKIS40Ux5UkNCe848J94fD7Zbpufs04rXwb36faC7BfYs+RIMXE5E9C1tJlhOyA0uMfj6kT87Ri5vYk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=yFI9NrJF; arc=none smtp.client-ip=198.137.202.133
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="PGAw8ToE"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="yFI9NrJF"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
 	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
 	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=KHrQDLTxrZsF/4RAZbeKe9eCtH4wciflhWZFWGPkUH4=; b=PGAw8ToEYuMge9U2EGmcvROZ6g
-	iMSIKpljCOcbCdPTgWjkxQlXP9VgMWw1WPI8v6AMYPXZPY1TMpJlWT/obu8prrqvX81M+QSpAWgNk
-	aY5P6wvRrFfmliTvTE5s/0dx7YurnLmFHZBTO+umln+UXW/hJU6+kvO0vDJYrKiAiz4BcsqRoKyd0
-	4/bxOD1j5Wb5480eAuv4BbPYT2IUmmowbqTQVwSv7xHJWtikjYfjE5sWt68sl8A3cMCLCbNSn37jZ
-	X29rTpulNrUC2pKo6pFmIKdRpBlUL3bn+G0zXxJN2NZ5nSP1jdt1hXeNI86QOGissn5HlxTcBnGLa
-	bmG2t8OA==;
+	bh=VsyI3F3JLcKFaFeQA5wACxBqiWIPHJgFR3MY8SR+ei0=; b=yFI9NrJF03GGB9B9XacIKFVWab
+	3/E5KKWHZXWQoQdlX7Z51iLjcAnPSrpGGrLfaa2xnJOveiDbC8FV2Dv8V/4LcDhMIu1IRwr8LLMQB
+	HIFX0U0TWTNMyf6OgWpp6W3g5Grkjcyvlpf5rQrZNJ3NwdW51hDmmxcJgVqFBiNDJFD6aP2Yx4RmO
+	/s6zrNxTdk9rYQIgrbTMC1ZU+X80py/KYeEdJBhKcrEhwjwMB2dD/+uWrDz1vz0UDVXmjApK4WUJu
+	UayH1QBQzXKtWbSeYZW1+i6PdJg10Ex32atbVNcuhv2MG7hj/WjbuCAlf4GSfiCk9RHMDnokHVxAb
+	97FONsYQ==;
 Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1w8AFM-0000000Gn9Y-0yDk;
-	Thu, 02 Apr 2026 05:05:36 +0000
-Date: Wed, 1 Apr 2026 22:05:36 -0700
+	id 1w8AH6-0000000GnFy-0lCj;
+	Thu, 02 Apr 2026 05:07:25 +0000
+Date: Wed, 1 Apr 2026 22:07:24 -0700
 From: Christoph Hellwig <hch@infradead.org>
 To: Pranjal Shrivastava <praan@google.com>
 Cc: trond.myklebust@hammerspace.com, anna@kernel.org, davem@davemloft.net,
@@ -37,10 +37,9 @@ Cc: trond.myklebust@hammerspace.com, anna@kernel.org, davem@davemloft.net,
 	chuck.lever@oracle.com, jlayton@kernel.org, tom@talpey.com,
 	okorniev@redhat.com, neil@brown.name, dai.ngo@oracle.com,
 	linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Subject: Re: [RFC PATCH 4/4] nfs: allow P2PDMA in direct I/O path
-Message-ID: <ac35ICYHuw4lEOri@infradead.org>
+Subject: Re: [RFC PATCH 0/4] nfs: Enable PCI Peer-to-Peer DMA (P2PDMA) support
+Message-ID: <ac35jH0V38pZJqYD@infradead.org>
 References: <20260401194501.2269200-1-praan@google.com>
- <20260401194501.2269200-5-praan@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -49,20 +48,13 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260401194501.2269200-5-praan@google.com>
+In-Reply-To: <20260401194501.2269200-1-praan@google.com>
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Wed, Apr 01, 2026 at 07:45:00PM +0000, Pranjal Shrivastava wrote:
-> Migrate the NFS Direct I/O path from the legacy iov_iter_get_pages_alloc2()
-> API to the modern iov_iter_extract_pages() API. This migration enables
-> support for PCI Peer-to-Peer DMA (P2PDMA) by allowing the setting the
-> ITER_ALLOW_P2PDMA flag.
-> 
-> Pass ITER_ALLOW_P2PDMA to iov_iter_extract_pages() only if the local
-> mount indicates support via the NFS_CAP_P2PDMA capability bit (detected
-> at mount time for RDMA transports).
+Besides the point of splitting out the iov_iter_extract* conversion this
+seems to ignore pNFS.  You also need to check the layout driver for the
+current file range and propagate P2P support or lack of through that.
 
-Please split theconversion to iov_iter_extract_pages into a separate
-preparation patch, and even series.  That is a long overdue change
-that fixes potential data corruption in XFS.
+Note that the block-style layouts can also trivially support P2P and not
+just RPC-based ones.
 
