@@ -1,41 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E9243279DC2
-	for <linux-nfs@vger.kernel.org>; Fri,  3 Apr 2026 14:07:48 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DD982E173B
+	for <linux-nfs@vger.kernel.org>; Fri,  3 Apr 2026 14:25:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775225269; cv=none; b=b4BsvhFj+5DaW3RDVVk1cOmoSnR2qd0BnrxS1RQBk50XQUqa0qWRYrX+e731YsDVdYLSVXFbmVtLoR1yHlYy9nOFObmnxhcLeXG7wDCQDgf4A1xbyVSOGuprRgnKT4HJ4m+Ad/OvNr62S0X5NJuzKF0v64TSBsbg9wo2xEhCctI=
+	t=1775226330; cv=none; b=pzqceOpYZTiS+IG1/JudpThITR/2z+QCpsvlpjBXdrfGvGS66Of492Mutf5SDX5FhDFl4ys62wO/A7GaeqOUyR1+quwhOGpp2+VIIBUxamKvrB82cRKO/9NNqGKkqrONcBluPQCO+1SRLYSabfL9wIGl6iEud0PIEfWisl8mwC0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775225269; c=relaxed/simple;
-	bh=wH1i3nig5uCFrwQBHiYHH2s4c/dLf+DuVkh7PEy0vdg=;
+	s=arc-20240116; t=1775226330; c=relaxed/simple;
+	bh=34N99hQANwD/XmGmnB4Bj1eg6zdnMCCcgqhMqFfmji8=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=tGJAK96Ox43tqf+5MVT5Lwj7m10njmwOhMGjwXF01bwDBngR/JSWev/uI90lyRWTYOVbiZeEvkwPMvXoBOSyIVUv82vm0x12lpvHS4JB1nsa9T0p7f5hMtPadcMk7pNdWnKVgebVMX+SLtCceB1N9jsT6Z9apUn8Pr6ZEwZubxI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bAK3VYCz; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:MIME-Version; b=j0ccfJO90IdZ2LZwIcjylgt9eFrZjLJfl2Zspk1ki2/EziRVduccepr0z07bmhxSjQrlrQxJK3GVrSd71QxK3Ko9MD07fFEZ8Dczo9W5PNUPlsHv8FLcc9QVK2rRm36epBR4TvJhIEkIyeF/QqTtHbHae5F4gAjQNQGD6yMliwA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=YYjODexi; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bAK3VYCz"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 33BFDC4CEF7;
-	Fri,  3 Apr 2026 14:07:48 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="YYjODexi"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3B6C1C4CEF7;
+	Fri,  3 Apr 2026 14:25:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775225268;
-	bh=wH1i3nig5uCFrwQBHiYHH2s4c/dLf+DuVkh7PEy0vdg=;
+	s=k20201202; t=1775226330;
+	bh=34N99hQANwD/XmGmnB4Bj1eg6zdnMCCcgqhMqFfmji8=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=bAK3VYCzys63g6S0Hh/rPZg8M+Os1H7vsqElayih6N/pFx/OD1cvxC3ie/xEirIeZ
-	 NCa8GsLHCQocgJH/JVptsc9TS4sjVT1UwmDHLBCJqPi+q/6cVyja4PzBHgyy1b04K4
-	 T9e200NdZ2j6XRiUR0WjB8VoXF5ADyQ8CQaySCynQH85SuyMY6ZQSHM3WAbU2oCbBW
-	 yfNrlhsZ0uB78i1LaNmIPy3GylzTa6Lxw8p9m32rk9UN8uxa3vtkQJjC4Nv8DSKslO
-	 ezx36X16kYKeFPuttEoKvk0wWtpKCbvVor6n7YCGysFZE77xSBeWeHSxsGP6azQyv5
-	 p1ZTYN73E4c7g==
-Message-ID: <17bb7c756a76326640fdf287efb8850224a000a9.camel@kernel.org>
-Subject: Re: [PATCH 3/5] pynfs: remove erroneous test from DELEG24 and
- DELEG25
+	b=YYjODexiyV1k1uO4AnP2l/w09gjfTnBdHyeJPOe4tvipfL6mKP4Rcqr4HdjPZuFEG
+	 CwAzQWnnptndIxTxisF/XBe/sOYJcwyqUPIrpZ0s9z2AGnfD1Cm5h2hEsxZyuSuW5q
+	 rzWkvJAO1UpUlaLnS8rXmeTaPlSTg6IjwdVxRFUVFOfjjpT84et0tOQUoRwIfz5yZA
+	 98+xfXNrWanHF+2eEBF5w47E40fK1oGLzc/vc30ngTe6WYWga1aaAwueVkWiWXI2LK
+	 VVf0loDOpU8FkEdUiEU83vKcSUUMgf0nB7KnZp3oQK/7AFsDBFu9kR8lDr1xa5UJzR
+	 OqgUWryuJz4Yw==
+Message-ID: <ed256acbdea17162c21b089fedcc1ffb2d1b874e.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: fix file change detection in CB_GETATTR
 From: Jeff Layton <jlayton@kernel.org>
-To: Scott Mayhew <smayhew@redhat.com>, calum.mackay@oracle.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 03 Apr 2026 10:07:45 -0400
-In-Reply-To: <20260403132738.1482011-4-smayhew@redhat.com>
-References: <20260403132738.1482011-1-smayhew@redhat.com>
-	 <20260403132738.1482011-4-smayhew@redhat.com>
+To: Scott Mayhew <smayhew@redhat.com>, Chuck Lever <chuck.lever@oracle.com>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ linux-nfs@vger.kernel.org
+Date: Fri, 03 Apr 2026 10:25:26 -0400
+In-Reply-To: <20260403132209.1479385-1-smayhew@redhat.com>
+References: <20260403132209.1479385-1-smayhew@redhat.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -120,62 +120,129 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2026-04-03 at 09:27 -0400, Scott Mayhew wrote:
-> fattr4_time_deleg_modify is valid in CB_GETATTR and SETATTR.  attrs2
-> contains the attributes from a GETATTR reply, and will never contain the
-> fattr4_time_deleg_modify attribute.
+On Fri, 2026-04-03 at 09:22 -0400, Scott Mayhew wrote:
+> RFC 8881, section 10.4.3 doesn't say anything about caching the file
+> size in the delegation record, nor does it say anything about comparing
+> a cached file size with the size reported by the client in the
+> CB_GETATTR reply for the purpose of determining if the client holds
+> modified data for the file.
 >=20
-> Cc: Jeff Layton <jlayton@kernel.org>
+> What section 10.4.3 of RFC 8881 does say is that the server should
+> compare the *current* file size with size reported by the client holding
+> the delegation in the CB_GETATTR reply, and if they differ to treat it
+> as a modification regardless of the change attribute retrieved via the
+> CB_GETATTR.
+>=20
+> Doing otherwise would cause the server to believe the client holding the
+> delegation has a modified version of the file, even if the client
+> flushed the modifications to the server prior to the CB_GETATTR.  This
+> would have the added side effect of subsequent CB_GETATTRs causing
+> updates to the mtime, ctime, and change attribute even if the client
+> holding the delegation makes no further updates to the file.
+>=20
+> Modify nfsd4_deleg_getattr_conflict() to obtain the current file size
+> via vfs_getattr().  Retain the ncf_cur_fsize field, since it's a
+> convenient way to return the file size back to nfsd4_encode_fattr4(),
+> but don't use it for the purpose of detecting file changes.
+>=20
+> Fixes: c5967721e106 ("NFSD: handle GETATTR conflict with write delegation=
+")
 > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 > ---
-> Jeff - not sure what you want to do here.  We can compare the the
-> FATTR4_TIME_DELEG_MODIFY that we sent to the server with the
-> FATTR4_TIME_MODIFY in attrs1 and/or attrs2, we just need to return
-> it (or the whole cbattrs dictionary) from _testCbGetattr().
+> Note this patch is against Chuck's nfsd-next branch.
 >=20
-
-Doh! I don't know what I was thinking there.
-
-That should compare FATTR4_TIME_MODIFY on both sides since they're both
-GETATTR results.
-
-Nice catch!
-
->  nfs4.1/server41tests/st_delegation.py | 6 ------
->  1 file changed, 6 deletions(-)
+> Also, I have a pynfs test that illustrates the "bad" behavior.  See
+> "pynfs: add delegation test for CB_GETATTR after sync WRITE", which will
+> be sent shortly.
 >=20
-> diff --git a/nfs4.1/server41tests/st_delegation.py b/nfs4.1/server41tests=
-/st_delegation.py
-> index 934e558..6ed1f5d 100644
-> --- a/nfs4.1/server41tests/st_delegation.py
-> +++ b/nfs4.1/server41tests/st_delegation.py
-> @@ -400,9 +400,6 @@ def testCbGetattrNoChange(t, env):
->          fail("Bad size: %u !=3D %u" % (attrs1[FATTR4_SIZE], attrs2[FATTR=
-4_SIZE]))
->      if attrs1[FATTR4_CHANGE] !=3D attrs2[FATTR4_CHANGE]:
->          fail("Bad change attribute: %u !=3D %u" % (attrs1[FATTR4_CHANGE]=
-, attrs2[FATTR4_CHANGE]))
-> -    if FATTR4_TIME_DELEG_MODIFY in attrs2:
-> -        if attrs1[FATTR4_TIME_MODIFY] !=3D attrs2[FATTR4_TIME_DELEG_MODI=
-FY]:
-> -            fail("Bad modify time: ", attrs1[FATTR4_TIME_MODIFY], " !=3D=
- ", attrs2[FATTR4_TIME_DELEG_MODIFY])
+>  fs/nfsd/nfs4state.c | 17 +++++++++++------
+>  fs/nfsd/nfs4xdr.c   |  2 +-
+>  fs/nfsd/state.h     |  2 +-
+>  3 files changed, 13 insertions(+), 8 deletions(-)
+>=20
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index b4d0e82b2690..2c82438918f6 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -9372,7 +9372,7 @@ static int cb_getattr_update_times(struct dentry *d=
+entry, struct nfs4_delegation
+>   * caller must put the reference.
+>   */
+>  __be32
+> -nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct dentry *dent=
+ry,
+> +nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct path *path,
+>  			     struct nfs4_delegation **pdp)
+>  {
+>  	struct nfsd_net *nn =3D net_generic(SVC_NET(rqstp), nfsd_net_id);
+> @@ -9381,7 +9381,9 @@ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp=
+, struct dentry *dentry,
+>  	struct nfs4_delegation *dp =3D NULL;
+>  	struct file_lease *fl;
+>  	struct nfs4_cb_fattr *ncf;
+> -	struct inode *inode =3D d_inode(dentry);
+> +	struct inode *inode =3D d_inode(path->dentry);
+> +	struct kstat stat;
+> +	int err;
+>  	__be32 status;
 > =20
->  def testCbGetattrWithChange(t, env):
->      """Test CB_GETATTR with simulated changes to file
-> @@ -419,9 +416,6 @@ def testCbGetattrWithChange(t, env):
->          fail("Bad size: %u !=3D 5" % attrs2[FATTR4_SIZE])
->      if attrs1[FATTR4_CHANGE] =3D=3D attrs2[FATTR4_CHANGE]:
->          fail("Bad change attribute: %u =3D=3D %u" % (attrs1[FATTR4_CHANG=
-E], attrs2[FATTR4_CHANGE]))
-> -    if FATTR4_TIME_DELEG_MODIFY in attrs2:
-> -        if attrs1[FATTR4_TIME_MODIFY] =3D=3D attrs2[FATTR4_TIME_DELEG_MO=
-DIFY]:
-> -            fail("Bad modify time: ", attrs1[FATTR4_TIME_MODIFY], " =3D=
-=3D ", attrs2[FATTR4_TIME_DELEG_MODIFY])
+>  	ctx =3D locks_inode_context(inode);
+> @@ -9430,19 +9432,22 @@ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqs=
+tp, struct dentry *dentry,
+>  		    !nfsd_wait_for_delegreturn(rqstp, inode))
+>  			goto out_status;
+>  	}
+> +	err =3D vfs_getattr(path, &stat, STATX_SIZE, AT_STATX_SYNC_AS_STAT);
+> +	if (err) {
+> +		status =3D nfserrno(err);
+> +		goto out_status;
+> +	}
+>  	if (!ncf->ncf_file_modified &&
+>  	    (ncf->ncf_initial_cinfo !=3D ncf->ncf_cb_change ||
+> -	     ncf->ncf_cur_fsize !=3D ncf->ncf_cb_fsize))
+> +	     stat.size !=3D ncf->ncf_cb_fsize))
+>  		ncf->ncf_file_modified =3D true;
+>  	if (ncf->ncf_file_modified) {
+> -		int err;
+> -
+>  		/*
+>  		 * Per section 10.4.3 of RFC 8881, the server would
+>  		 * not update the file's metadata with the client's
+>  		 * modified size
+>  		 */
+> -		err =3D cb_getattr_update_times(dentry, dp);
+> +		err =3D cb_getattr_update_times(path->dentry, dp);
+>  		if (err) {
+>  			status =3D nfserrno(err);
+>  			goto out_status;
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 2a0946c630e1..b380c2545f6a 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3914,7 +3914,7 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct =
+xdr_stream *xdr,
+>  	    (attrmask[1] & (FATTR4_WORD1_TIME_ACCESS |
+>  			    FATTR4_WORD1_TIME_MODIFY |
+>  			    FATTR4_WORD1_TIME_METADATA))) {
+> -		status =3D nfsd4_deleg_getattr_conflict(rqstp, dentry, &dp);
+> +		status =3D nfsd4_deleg_getattr_conflict(rqstp, &path, &dp);
+>  		if (status)
+>  			goto out;
+>  	}
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 9b05462da4cc..edfb3402dfd2 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -889,7 +889,7 @@ static inline bool try_to_expire_client(struct nfs4_c=
+lient *clp)
+>  }
 > =20
->  def testDelegReadAfterClose(t, env):
->      """Test read with delegation stateid after close
+>  extern __be32 nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp,
+> -		struct dentry *dentry, struct nfs4_delegation **pdp);
+> +		struct path *path, struct nfs4_delegation **pdp);
+> =20
+>  struct nfsd4_get_dir_delegation;
+>  struct nfs4_delegation *nfsd_get_dir_deleg(struct nfsd4_compound_state *=
+cstate,
 
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
