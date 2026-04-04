@@ -1,56 +1,58 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4D4E3223DE5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C799022652D
 	for <linux-nfs@vger.kernel.org>; Sat,  4 Apr 2026 00:30:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775262656; cv=none; b=qdQTtWL8AAVqjB4KaPfdHK3X2GwUwCu91ZYIphxaJQcwFaLy0IhIoJRUuIfgWfP4RrUG6pfWx3aq3LaiS8lSMAiblvUJJT2ZfpAatTw5x7d+AYiP94xECwW50qrv+r4nm0lhS97USa34dAHsYN3LrehjU1ABaebbknXIDWx1iY0=
+	t=1775262657; cv=none; b=Q+Hq2sBYBu79Xns7lRmVO3xqG0vWPCw0LC5sssdYFRECkRVaVKfGMgKGOmMXdZ3dJIlVVcZUgeFLBEFCdJ+MMV14tool/9eE46yGg13bxQOAOSFcwXuf+T9cM/v00Z5/L+RLfDusl1DFe3oQ3k9NasfuTpUihMICXNL0P84i9j4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775262656; c=relaxed/simple;
-	bh=wWvKEPrrqOD/8I9pWLgczrqKjQ2cX5d0ZIPWRhhZhqQ=;
+	s=arc-20240116; t=1775262657; c=relaxed/simple;
+	bh=DTkf9p+IGlx6vKM8SHLnDpTuDQJTqGtOUmppcFFvUfs=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=UvzZCpZxEk/AQz1qX8FF0wwCA96QIYZ8Wc0yR5F0KVPUVJpFXx7RS4rvwkN+Q1d4He/1W5U6fXCQXlkfPMoLPFO9gOAMjL7V0VDoF0lIy1bPjnEiFFb0IaIJk1N3arlAUqUVcspct84a+rdWUnrflHhj/GcJh8FC5Y/ffjTFCdo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=JiwPK8OR; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=k+Q8OzzJpOspdAHOlTiMghFJyuq1qhhig/D5+F41rcIH9Cb2U305WGzZCo+fOePZSv3A2DM1FNk9EHfCi3s2KvSGpKNieCyuzAK+hL7+GaiwYmC1oOmorbHM8CVRw+Hj9wkdw9tLalqndcm/xXSgS0L1CQzWENmxUSgVzkcKQSk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=W0QWcMF2; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="JiwPK8OR"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="W0QWcMF2"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1775262654;
+	s=mimecast20190719; t=1775262655;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=QfQxVxcMjauUXCJ+0k8+KZnxQpiifo9CFqeX4zdZSXA=;
-	b=JiwPK8ORlS5NI5DGjkDDbaOrSy5rsuVhL/nXmtMr9Tty2JXWddnPO8bb7bxt1NFIt47aZq
-	zejHAcNIVjDNcLY879y/A6xAGVDgcWLD5Xd7RWEFa9sjd+7IlvPRmg51/xZy0P7mfm8yIM
-	S08wswawsl5aNKHGqveT+DR4J4t2Y7s=
-Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+	bh=MiCwDZstq5aJbe4LYzSx+3NktZ9S6qCBfqlln7xo4P8=;
+	b=W0QWcMF2Lgpd19gVrYuNHSeJKYLoEAP58gA4qWe8zySOTwJbYwoDbq8Tj+jR1s+TgrXYca
+	nYhUrRWiue8ExXT2+mYVflQa10cI54Zl5kTn7TA3fvuJzHTWQ4cUkRjCJqYxM42PzgGFg6
+	fdQnsxni2xBA2852oElFXX31T3/3jSE=
+Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-103-aw3Z0PGKOW6OjM-bK2c4NA-1; Fri,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-237-3LGtqm_HPjq4WwceI5KIqA-1; Fri,
  03 Apr 2026 20:30:53 -0400
-X-MC-Unique: aw3Z0PGKOW6OjM-bK2c4NA-1
-X-Mimecast-MFC-AGG-ID: aw3Z0PGKOW6OjM-bK2c4NA_1775262652
-Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
+X-MC-Unique: 3LGtqm_HPjq4WwceI5KIqA-1
+X-Mimecast-MFC-AGG-ID: 3LGtqm_HPjq4WwceI5KIqA_1775262652
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 3AD0C18002FD;
+	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 542871955F56;
 	Sat,  4 Apr 2026 00:30:52 +0000 (UTC)
 Received: from aion.redhat.com (unknown [10.22.88.38])
-	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 15DD01955D84;
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 2572A1800576;
 	Sat,  4 Apr 2026 00:30:52 +0000 (UTC)
 Received: from aion.redhat.com (localhost [IPv6:::1])
-	by aion.redhat.com (Postfix) with ESMTP id 059A9749EAE;
-	Fri, 03 Apr 2026 20:30:51 -0400 (EDT)
+	by aion.redhat.com (Postfix) with ESMTP id ED161749EAD;
+	Fri, 03 Apr 2026 20:30:50 -0400 (EDT)
 From: Scott Mayhew <smayhew@redhat.com>
 To: calum.mackay@oracle.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/5] pynfs: _testCbGetattr() should check the delegation that was received
-Date: Fri,  3 Apr 2026 20:30:48 -0400
-Message-ID: <20260404003050.1560149-4-smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org,
+	Chen Hanxiao <chenhx.fnst@fujitsu.com>,
+	Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v2 2/5] pynfs: fix the check for delegated attribute support
+Date: Fri,  3 Apr 2026 20:30:47 -0400
+Message-ID: <20260404003050.1560149-3-smayhew@redhat.com>
 In-Reply-To: <20260404003050.1560149-1-smayhew@redhat.com>
 References: <20260404003050.1560149-1-smayhew@redhat.com>
 Precedence: bulk
@@ -60,39 +62,39 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
 
-It currently assumes that if it requested an attribute delegation, then
-that's what it received.  Better to actually check it instead.
+The DELEG24 and DELEG25 tests should work regardless of whether the
+server supports delegated attributes or not.  fattr4_supported_attrs is
+a bitmap4, so FATTR4_OPEN_ARGUMENTS needs to be shifted when checking to
+see if that bit is set.  Fix it, and remove the now unnecessary check
+added by 3216fc3 ("pynfs: fix key error if FATTR4_OPEN_ARGUMENTS is not
+supported").
 
+Cc: Chen Hanxiao <chenhx.fnst@fujitsu.com>
+Cc: Jeff Layton <jlayton@kernel.org>
+Fixes: f684000 ("st_deleg: test delegated timestamps in CB_GETATTR")
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- nfs4.1/server41tests/st_delegation.py | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ nfs4.1/server41tests/st_delegation.py | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
 diff --git a/nfs4.1/server41tests/st_delegation.py b/nfs4.1/server41tests/st_delegation.py
-index 934e558..754b56c 100644
+index d41f12d..934e558 100644
 --- a/nfs4.1/server41tests/st_delegation.py
 +++ b/nfs4.1/server41tests/st_delegation.py
-@@ -351,6 +351,9 @@ def _testCbGetattr(t, env, change=0, size=0):
+@@ -345,10 +345,7 @@ def _testCbGetattr(t, env, change=0, size=0):
+                 OPEN4_SHARE_ACCESS_WRITE |
+                 OPEN4_SHARE_ACCESS_WANT_WRITE_DELEG)
  
-     fh, stateid, deleg = __create_file_with_deleg(sess1, env.testname(t), openmask)
-     print("__create_file_with_deleg: ", fh, stateid, deleg)
-+    delegtype = deleg.delegation_type
-+    if delegtype != OPEN_DELEGATE_WRITE_ATTRS_DELEG and delegtype != OPEN_DELEGATE_WRITE:
-+        fail("Didn't get a write delegation.")
-     attrs1 = do_getattrdict(sess1, fh, [FATTR4_CHANGE, FATTR4_SIZE,
-                                         FATTR4_TIME_ACCESS, FATTR4_TIME_MODIFY])
+-    if FATTR4_OPEN_ARGUMENTS not in caps:
+-        fail("FATTR4_OPEN_ARGUMENTS not supported")
+-
+-    if caps[FATTR4_SUPPORTED_ATTRS] & FATTR4_OPEN_ARGUMENTS:
++    if caps[FATTR4_SUPPORTED_ATTRS] & (1 << FATTR4_OPEN_ARGUMENTS):
+         if caps[FATTR4_OPEN_ARGUMENTS].oa_share_access_want & OPEN_ARGS_SHARE_ACCESS_WANT_DELEG_TIMESTAMPS:
+             openmask |= 1<<OPEN_ARGS_SHARE_ACCESS_WANT_DELEG_TIMESTAMPS
  
-@@ -362,7 +365,7 @@ def _testCbGetattr(t, env, change=0, size=0):
-         if size > 0:
-             cbattrs[FATTR4_SIZE] = size
- 
--    if openmask & 1<<OPEN_ARGS_SHARE_ACCESS_WANT_DELEG_TIMESTAMPS:
-+    if delegtype == OPEN_DELEGATE_WRITE_ATTRS_DELEG:
-         cbattrs[FATTR4_TIME_DELEG_ACCESS] = attrs1[FATTR4_TIME_ACCESS]
-         cbattrs[FATTR4_TIME_DELEG_MODIFY] = attrs1[FATTR4_TIME_MODIFY]
-         if change != 0:
 -- 
 2.53.0
 
