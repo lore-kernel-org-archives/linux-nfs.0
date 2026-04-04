@@ -1,56 +1,57 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64D41223DE5
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC8AC22652D
 	for <linux-nfs@vger.kernel.org>; Sat,  4 Apr 2026 00:30:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775262659; cv=none; b=L8SnEkxLqvvGnYlvMlv2QPIhYi1ZsRP9cDSBdLveosUgN7hbZWLK/qbQ8Tp1VTBkR345RU16LCHMZqAOB0/u5J/0wgwHjnWI5gRPCz2NSaCKIAP+0N0+FkTS3Ygx5F692SBA2OatepnaaVI4D2/coBp3MuoMIPMTbzbSLMH7mpk=
+	t=1775262660; cv=none; b=nx81J+GXmKJE6ssTgGHNu/TLEPIgaNqFlBPMOiiyqkfksgLBQL0NDGXbKRe9b4n4+FW/IshlNRbm08wOcd7MTkN2sgld7YrNUwCCQuV/Eo9zcZzpKmXSj3sVqR+tgRafIxTwFPsAZG1b5aFSjv3H3q3qIo4wtynojck5hL/bN44=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775262659; c=relaxed/simple;
-	bh=Za0E+SVPrZ6Eo+V80CJQ8fFA7ka2RCCw0GfftXFY8+M=;
+	s=arc-20240116; t=1775262660; c=relaxed/simple;
+	bh=og0BOEOuiqMaYCENtIYr3PnA97pUguGWgOsVGICeoVg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gnn1vzabsFrHV/YGIKWIRLmcGPGnyKr+1K0LZqUvkpdDEJCn9ti7g3hi6DgP+PQvp36POegvis1iakp7B2JEUmB6g0la3lQPAEuyXkH3WPRWkJDIIoyFBIcLAJsHF0V4Jda0qC73CKELOKSUmiyb05H0oHVV4AoPtHblwr7XKjE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=fg7Ep0uP; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=t+jvxtQu9KQRgJ+F9YeqdUZlivDqpqaMsz5I8nWmgeDYY5HHFkbS5MS6rKWO5l1CK9NfhfA6nhpE2OJ/u4iLBXJNgZReS6Dg43NG8sL0RAxl3NbnsoMVD0FrC23yn8NH33oUBgc8QG5Py5WGA1UYP80u1VHU1MqlShsEQst6XXU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=imboh27S; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="fg7Ep0uP"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="imboh27S"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
 	s=mimecast20190719; t=1775262656;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=DDdRNXMOoMQ6gb3iletDvmbl8i3dep8C4711GexKESQ=;
-	b=fg7Ep0uPQwyyLo14CmVGeVZv5fo8MH/sodBFCKnV5zSOXvCEIkoXZoXZSeROE1XFAEwm/Q
-	TB6Au1dSd0GNiNlnRhM8xu2eJd+oLAt81cyP/V74wdbbaNuPWTTvaVDUYEYvCCR6BwDnam
-	h3Ii1sydqGWwxTkK3JFvI0fc/w7yQNY=
-Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=w5MMgV6cLdcxFKyHOYlcDZskrfVF0gjS3TQtqQBYgwY=;
+	b=imboh27SNe4NUsuo6BIzdJJrmfbjAkmiDi5UGEWG22SLq9QmEt6GS7WvceW0eMfSp+jPf6
+	HZxMYm6QI0bOFIb1F6E9rU7keibc9cNB4TTJXHfFumQNozrQlmcvhHea6wbmJrZ2KF7pF1
+	TOffSKQKYtXDQw8g0cMcaFS4GbvkBuY=
+Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-237-dku5z49OO3i5Umpwg4Unyw-1; Fri,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-658-iGBylJDCO4mkKovob_9LYw-1; Fri,
  03 Apr 2026 20:30:53 -0400
-X-MC-Unique: dku5z49OO3i5Umpwg4Unyw-1
-X-Mimecast-MFC-AGG-ID: dku5z49OO3i5Umpwg4Unyw_1775262652
-Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+X-MC-Unique: iGBylJDCO4mkKovob_9LYw-1
+X-Mimecast-MFC-AGG-ID: iGBylJDCO4mkKovob_9LYw_1775262652
+Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 6583B1956060;
+	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 883641800624;
 	Sat,  4 Apr 2026 00:30:52 +0000 (UTC)
 Received: from aion.redhat.com (unknown [10.22.88.38])
-	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 1CDA8180075F;
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 3977C3000223;
 	Sat,  4 Apr 2026 00:30:52 +0000 (UTC)
 Received: from aion.redhat.com (localhost [IPv6:::1])
-	by aion.redhat.com (Postfix) with ESMTP id DF7CF749EAC;
-	Fri, 03 Apr 2026 20:30:50 -0400 (EDT)
+	by aion.redhat.com (Postfix) with ESMTP id 127DF749EAF;
+	Fri, 03 Apr 2026 20:30:51 -0400 (EDT)
 From: Scott Mayhew <smayhew@redhat.com>
 To: calum.mackay@oracle.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/5] pynfs: ensure tests clean up after themselves
-Date: Fri,  3 Apr 2026 20:30:46 -0400
-Message-ID: <20260404003050.1560149-2-smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org,
+	Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v2 4/5] pynfs: fix erroneous test in DELEG24 and DELEG25
+Date: Fri,  3 Apr 2026 20:30:49 -0400
+Message-ID: <20260404003050.1560149-5-smayhew@redhat.com>
 In-Reply-To: <20260404003050.1560149-1-smayhew@redhat.com>
 References: <20260404003050.1560149-1-smayhew@redhat.com>
 Precedence: bulk
@@ -60,306 +61,92 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-I noticed my server was taking longer to exit grace on restart after
-running pynfs.  The server was waiting for several clients (which have
-already gone away) to finish reclaim.  You can observe the client ids
-using 'nfsdclddb print' while the server is in grace (or prior to
-reboot):
+fattr4_time_deleg_modify is valid in CB_GETATTR and SETATTR.  attrs2
+contains the attributes from a GETATTR reply, and will never contain the
+fattr4_time_deleg_modify attribute.  Instead, we want to compare
+fattr4_time_modify from attrs1 and attrs2.
 
-$ sudo nfsdclddb print
-Schema version: 4 current epoch: 47 recovery epoch: 46
-Clients in current epoch:
-Clients in recovery epoch:
-id = COUR2_1774823970_2, princhash = (null)
-id = ALLOC1_1774823970, princhash = (null)
-id = ALLOC2_1774823970, princhash = (null)
-id = ALLOC3_1774823970, princhash = (null)
-id = DELEG9_1774823970_1, princhash = (null)
-id = DELEG9_1774823970_2, princhash = (null)
-id = DELEG2_1774823970_1, princhash = (null)
-id = DELEG23_1774823970_1, princhash = (null)
-id = DELEG1_1774823970_1, princhash = (null)
-id = DELEG4_1774823970_1, princhash = (null)
-id = DELEG8_1774823970_1, princhash = (null)
-id = DELEG8_1774823970_2, princhash = (null)
-id = DELEG25_1774823970_1, princhash = (null)
-id = DELEG24_1774823970_1, princhash = (null)
-id = DELEG6_1774823970_1, princhash = (null)
-id = DELEG7_1774823970_1, princhash = (null)
-id = DELEG5_1774823970_1, princhash = (null)
-id = DELEG3_1774823970_1, princhash = (null)
+Fixing that revealed a secondary issue.  In pynfs, these attributes are
+nfstime4 objects, so:
 
-These tests were all failing to close some of their open files, causing
-DESTROY_CLIENTID at the end of the test to return NFS4ERR_CLIENTID_BUSY.
+1. We need to be careful about how we initialize the timestamps in
+   cbattrs.  Otherwise we wind up indadvertently modifying the values in
+   attrs1 and causing the DELEG25 test to fail.
+2. We need compare the instance attributes (seconds, nseconds) rather
+   than the object references (environment.py already has a
+   compareTimes() function for this).
 
-On older servers these client ids would stick around for 1 lease period.
-With the newer courteous server they may stick around indefinitely, so
-it's important for the tests to clean up after themselves.
+Finally, since I'm in there anyway I decided to convert the messages
+from legacy printf-style formatting to f-strings.
 
+Cc: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- nfs4.1/server41tests/st_courtesy.py   |  2 +
- nfs4.1/server41tests/st_delegation.py | 59 +++++++++++++++++++++------
- nfs4.1/server41tests/st_sparse.py     | 10 ++++-
- 3 files changed, 58 insertions(+), 13 deletions(-)
+ nfs4.1/server41tests/st_delegation.py | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
 
-diff --git a/nfs4.1/server41tests/st_courtesy.py b/nfs4.1/server41tests/st_courtesy.py
-index 54cf17d..60089c9 100644
---- a/nfs4.1/server41tests/st_courtesy.py
-+++ b/nfs4.1/server41tests/st_courtesy.py
-@@ -84,6 +84,8 @@ def testLockSleepLock(t, env):
-     res = sess2.compound(cour_lockargs(fh, stateid))
-     check(res, NFS4_OK)
- 
-+    close_file(sess2, fh, stateid=stateid)
-+
- def testShareReservation00(t, env):
-     """Test OPEN file with OPEN4_SHARE_DENY_WRITE
-        1st client opens file with OPEN4_SHARE_DENY_WRITE
 diff --git a/nfs4.1/server41tests/st_delegation.py b/nfs4.1/server41tests/st_delegation.py
-index 41095b9..d41f12d 100644
+index 754b56c..bbf6925 100644
 --- a/nfs4.1/server41tests/st_delegation.py
 +++ b/nfs4.1/server41tests/st_delegation.py
-@@ -17,6 +17,7 @@ def __create_file_with_deleg(sess, name, access):
-     res = create_file(sess, name, access = access)
-     check(res)
-     fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
-     deleg = res.resarray[-2].delegation
-     if (not _got_deleg(deleg)):
-         res = open_file(sess, name, access = access)
-@@ -24,11 +25,11 @@ def __create_file_with_deleg(sess, name, access):
-         deleg = res.resarray[-2].delegation
-         if (not _got_deleg(deleg)):
-             fail("Could not get delegation")
--    return (fh, deleg)
-+    return (fh, stateid, deleg)
- 
- def _create_file_with_deleg(sess, name, access):
--    fh, deleg = __create_file_with_deleg(sess, name, access)
--    return fh
-+    fh, stateid, deleg = __create_file_with_deleg(sess, name, access)
-+    return (fh, stateid)
- 
- def _testDeleg(t, env, openaccess, want, breakaccess, sec = None, sec2 = None):
-     recall = threading.Event()
-@@ -43,7 +44,7 @@ def _testDeleg(t, env, openaccess, want, breakaccess, sec = None, sec2 = None):
-     sess1.client.cb_post_hook(OP_CB_RECALL, post_hook)
-     if sec2:
-         sess1.compound([op.backchannel_ctl(env.c1.prog, sec2)])
--    fh = _create_file_with_deleg(sess1, env.testname(t), openaccess | want)
-+    fh, stateid = _create_file_with_deleg(sess1, env.testname(t), openaccess | want)
-     sess2 = env.c1.new_client_session(b"%s_2" % env.testname(t))
-     claim = open_claim4(CLAIM_NULL, env.testname(t))
-     owner = open_owner4(0, b"My Open Owner 2")
-@@ -62,6 +63,7 @@ def _testDeleg(t, env, openaccess, want, breakaccess, sec = None, sec2 = None):
-     check(res, [NFS4_OK, NFS4ERR_DELAY])
-     if not completed:
-         fail("delegation break not received")
-+    close_file(sess1, fh, stateid=stateid)
-     return recall
- 
- def testReadDeleg(t, env):
-@@ -103,6 +105,7 @@ def testNoDeleg(t, env):
-                       OPEN4_SHARE_ACCESS_WANT_NO_DELEG)
-     check(res)
-     fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
-     deleg = res.resarray[-2].delegation
-     if deleg.delegation_type == OPEN_DELEGATE_NONE:
-         fail("Got no delegation, expected OPEN_DELEGATE_NONE_EXT")
-@@ -110,6 +113,7 @@ def testNoDeleg(t, env):
-         fail("Got a delegation (type "+str(deleg.delegation_type)+") despite asking for none")
-     if deleg.ond_why != WND4_NOT_WANTED:
-         fail("Wrong reason ("+str(deleg.ond_why)+") for giving no delegation")
-+    close_file(sess1, fh, stateid=stateid)
- 
- 
- def testCBSecParms(t, env):
-@@ -170,7 +174,7 @@ def testDelegRevocation(t, env):
-     """
- 
-     sess1 = env.c1.new_client_session(b"%s_1" % env.testname(t))
--    fh, deleg = __create_file_with_deleg(sess1, env.testname(t),
-+    fh, stateid, deleg = __create_file_with_deleg(sess1, env.testname(t),
-             OPEN4_SHARE_ACCESS_READ | OPEN4_SHARE_ACCESS_WANT_READ_DELEG)
-     delegstateid = deleg.read.stateid
-     sess2 = env.c1.new_client_session(b"%s_2" % env.testname(t))
-@@ -180,7 +184,7 @@ def testDelegRevocation(t, env):
-     open_op = op.open(0, OPEN4_SHARE_ACCESS_WRITE, OPEN4_SHARE_DENY_NONE,
-                         owner, how, claim)
-     while 1:
--        res = sess2.compound(env.home + [open_op])
-+        res = sess2.compound(env.home + [open_op, op.getfh()])
-         if res.status == NFS4_OK:
-             break;
-         check(res, [NFS4_OK, NFS4ERR_DELAY])
-@@ -188,6 +192,12 @@ def testDelegRevocation(t, env):
-         # depend on the above compound waiting no longer than the
-         # server's lease period:
-         res = sess1.compound([])
-+    if res.status == NFS4_OK:
-+        fh2 = res.resarray[-1].object
-+        stateid2 = res.resarray[-2].stateid
-+    else:
-+        fh2 = None
-+        stateid2 = None
-     res = sess1.compound([op.putfh(fh), op.read(delegstateid, 0, 1000)])
-     check(res, NFS4ERR_DELEG_REVOKED, "Read with a revoked delegation")
-     slot, seq_op = sess1._prepare_compound({})
-@@ -217,6 +227,10 @@ def testDelegRevocation(t, env):
-     if flags & ~SEQ4_STATUS_RECALLABLE_STATE_REVOKED:
-         print("WARNING: unexpected status flag(s) 0x%x set" % flags)
- 
-+    close_file(sess1, fh, stateid=stateid)
-+    if fh2 is not None and stateid2 is not None:
-+        close_file(sess2, fh2, stateid=stateid2)
-+
- def testWriteOpenvsReadDeleg(t, env):
-     """Ensure that a write open prevents granting a read delegation
- 
-@@ -228,20 +242,28 @@ def testWriteOpenvsReadDeleg(t, env):
-     owner = b"owner_%s" % env.testname(t)
-     res = create_file(sess1, owner, access=OPEN4_SHARE_ACCESS_WRITE)
-     check(res)
-+    fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
- 
-     sess2 = env.c1.new_client_session(b"%s_2" % env.testname(t))
-     access = OPEN4_SHARE_ACCESS_READ | OPEN4_SHARE_ACCESS_WANT_READ_DELEG;
-     res = open_file(sess2, owner, access = access)
-     check(res)
-+    fh2 = res.resarray[-1].object
-+    stateid2 = res.resarray[-2].stateid
- 
-     deleg = res.resarray[-2].delegation
-     if (not _got_deleg(deleg)):
-         res = open_file(sess2, owner, access = access)
--        fh = res.resarray[-1].object
-+        fh2 = res.resarray[-1].object
-+        stateid2 = res.resarray[-2].stateid
-         deleg = res.resarray[-2].delegation
-     if (_got_deleg(deleg)):
-         fail("Granted delegation to a file write-opened by another client")
- 
-+    close_file(sess1, fh, stateid=stateid)
-+    close_file(sess2, fh2, stateid=stateid2)
-+
- def testServerSelfConflict3(t, env):
-     """DELEGATION test
- 
-@@ -264,13 +286,15 @@ def testServerSelfConflict3(t, env):
-     sess1.client.cb_pre_hook(OP_CB_RECALL, pre_hook)
-     sess1.client.cb_post_hook(OP_CB_RECALL, post_hook)
- 
--    fh, deleg = __create_file_with_deleg(sess1, env.testname(t),
-+    fh, stateid, deleg = __create_file_with_deleg(sess1, env.testname(t),
-             OPEN4_SHARE_ACCESS_READ | OPEN4_SHARE_ACCESS_WANT_READ_DELEG)
--    print("__create_file_with_deleg: ", fh, deleg)
-+    print("__create_file_with_deleg: ", fh, stateid, deleg)
-     delegstateid = deleg.read.stateid
-     res = open_file(sess1, env.testname(t), access = OPEN4_SHARE_ACCESS_WRITE)
-     print("open_file res: ", res)
-     check(res)
-+    fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
- 
-     # XXX: cut-n-paste from _testDeleg; make helper instead:
-     sess2 = env.c1.new_client_session(b"%s_2" % env.testname(t))
-@@ -280,16 +304,26 @@ def testServerSelfConflict3(t, env):
-     how = openflag4(OPEN4_NOCREATE)
-     open_op = op.open(0, OPEN4_SHARE_ACCESS_WRITE,
-                       OPEN4_SHARE_DENY_NONE, owner, how, claim)
--    slot = sess2.compound_async(env.home + [open_op])
-+    slot = sess2.compound_async(env.home + [open_op, op.getfh()])
-     completed = recall.wait(2)
-     env.sleep(.1)
-     res = sess1.compound([op.putfh(fh), op.delegreturn(delegstateid)])
-     check(res)
-     res = sess2.listen(slot)
-     check(res, [NFS4_OK, NFS4ERR_DELAY])
-+    if res.status == NFS4_OK:
-+        fh2 = res.resarray[-1].object
-+        stateid2 = res.resarray[-2].stateid
-+    else:
-+        fh2 = None
-+        stateid2 = None
-     if not completed:
-         fail("delegation break not received")
- 
-+    close_file(sess1, fh, stateid=stateid)
-+    if fh2 is not None and stateid2 is not None:
-+        close_file(sess2, fh2, stateid=stateid2)
-+
- def _testCbGetattr(t, env, change=0, size=0):
-     cb = threading.Event()
-     cbattrs = {}
-@@ -318,8 +352,8 @@ def _testCbGetattr(t, env, change=0, size=0):
-         if caps[FATTR4_OPEN_ARGUMENTS].oa_share_access_want & OPEN_ARGS_SHARE_ACCESS_WANT_DELEG_TIMESTAMPS:
-             openmask |= 1<<OPEN_ARGS_SHARE_ACCESS_WANT_DELEG_TIMESTAMPS
- 
--    fh, deleg = __create_file_with_deleg(sess1, env.testname(t), openmask)
--    print("__create_file_with_deleg: ", fh, deleg)
-+    fh, stateid, deleg = __create_file_with_deleg(sess1, env.testname(t), openmask)
-+    print("__create_file_with_deleg: ", fh, stateid, deleg)
-     attrs1 = do_getattrdict(sess1, fh, [FATTR4_CHANGE, FATTR4_SIZE,
-                                         FATTR4_TIME_ACCESS, FATTR4_TIME_MODIFY])
- 
-@@ -351,6 +385,7 @@ def _testCbGetattr(t, env, change=0, size=0):
-     check(res, [NFS4_OK, NFS4ERR_DELAY])
-     if not completed:
-         fail("CB_GETATTR not received")
-+    close_file(sess1, fh, stateid=stateid)
-     return attrs1, attrs2
- 
- def testCbGetattrNoChange(t, env):
-diff --git a/nfs4.1/server41tests/st_sparse.py b/nfs4.1/server41tests/st_sparse.py
-index 960ed5a..0c05e44 100644
---- a/nfs4.1/server41tests/st_sparse.py
-+++ b/nfs4.1/server41tests/st_sparse.py
-@@ -1,6 +1,6 @@
- from .st_create_session import create_session
+@@ -2,7 +2,7 @@ from .st_create_session import create_session
+ from .st_open import open_claim4
  from xdrdef.nfs4_const import *
--from .environment import check, fail, create_file
-+from .environment import check, fail, create_file, close_file
+ 
+-from .environment import check, fail, create_file, open_file, close_file, do_getattrdict, close_file, write_file, read_file
++from .environment import check, fail, create_file, open_file, close_file, do_getattrdict, close_file, write_file, read_file, compareTimes
+ from xdrdef.nfs4_type import *
  import nfs_ops
  op = nfs_ops.NFS4ops()
- import nfs4lib
-@@ -21,6 +21,8 @@ def testAllocateSupported(t, env):
-     res = sess.compound([op.putfh(fh), op.allocate(stateid, 0, 1)])
-     check(res)
+@@ -366,8 +366,10 @@ def _testCbGetattr(t, env, change=0, size=0):
+             cbattrs[FATTR4_SIZE] = size
  
-+    close_file(sess, fh, stateid=stateid)
-+
- def testAllocateStateidZero(t, env):
-     """Do a simple ALLOCATE with all-zero stateid
+     if delegtype == OPEN_DELEGATE_WRITE_ATTRS_DELEG:
+-        cbattrs[FATTR4_TIME_DELEG_ACCESS] = attrs1[FATTR4_TIME_ACCESS]
+-        cbattrs[FATTR4_TIME_DELEG_MODIFY] = attrs1[FATTR4_TIME_MODIFY]
++        cbattrs[FATTR4_TIME_DELEG_ACCESS] = nfstime4(attrs1[FATTR4_TIME_ACCESS].seconds,
++                                                     attrs1[FATTR4_TIME_ACCESS].nseconds)
++        cbattrs[FATTR4_TIME_DELEG_MODIFY] = nfstime4(attrs1[FATTR4_TIME_MODIFY].seconds,
++                                                     attrs1[FATTR4_TIME_MODIFY].nseconds)
+         if change != 0:
+             cbattrs[FATTR4_TIME_DELEG_ACCESS].seconds += 1
+             cbattrs[FATTR4_TIME_DELEG_MODIFY].seconds += 1
+@@ -400,12 +402,11 @@ def testCbGetattrNoChange(t, env):
+     """
+     attrs1, attrs2 = _testCbGetattr(t, env)
+     if attrs1[FATTR4_SIZE] != attrs2[FATTR4_SIZE]:
+-        fail("Bad size: %u != %u" % (attrs1[FATTR4_SIZE], attrs2[FATTR4_SIZE]))
++        fail(f"Bad size: {attrs1[FATTR4_SIZE]} != {attrs2[FATTR4_SIZE]}")
+     if attrs1[FATTR4_CHANGE] != attrs2[FATTR4_CHANGE]:
+-        fail("Bad change attribute: %u != %u" % (attrs1[FATTR4_CHANGE], attrs2[FATTR4_CHANGE]))
+-    if FATTR4_TIME_DELEG_MODIFY in attrs2:
+-        if attrs1[FATTR4_TIME_MODIFY] != attrs2[FATTR4_TIME_DELEG_MODIFY]:
+-            fail("Bad modify time: ", attrs1[FATTR4_TIME_MODIFY], " != ", attrs2[FATTR4_TIME_DELEG_MODIFY])
++        fail(f"Bad change attribute: {attrs1[FATTR4_CHANGE]} != {attrs2[FATTR4_CHANGE]}")
++    if compareTimes(attrs1[FATTR4_TIME_MODIFY], attrs2[FATTR4_TIME_MODIFY]) != 0:
++        fail(f"Bad modify time: {attrs1[FATTR4_TIME_MODIFY]} != {attrs2[FATTR4_TIME_MODIFY]}")
  
-@@ -31,10 +33,13 @@ def testAllocateStateidZero(t, env):
-     sess = env.c1.new_client_session(env.testname(t))
-     res = create_file(sess, env.testname(t), access=OPEN4_SHARE_ACCESS_WRITE)
-     fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
+ def testCbGetattrWithChange(t, env):
+     """Test CB_GETATTR with simulated changes to file
+@@ -419,12 +420,11 @@ def testCbGetattrWithChange(t, env):
+     """
+     attrs1, attrs2 = _testCbGetattr(t, env, change=1, size=5)
+     if attrs2[FATTR4_SIZE] != 5:
+-        fail("Bad size: %u != 5" % attrs2[FATTR4_SIZE])
++        fail(f"Bad size: {attrs2[FATTR4_SIZE]} != 5")
+     if attrs1[FATTR4_CHANGE] == attrs2[FATTR4_CHANGE]:
+-        fail("Bad change attribute: %u == %u" % (attrs1[FATTR4_CHANGE], attrs2[FATTR4_CHANGE]))
+-    if FATTR4_TIME_DELEG_MODIFY in attrs2:
+-        if attrs1[FATTR4_TIME_MODIFY] == attrs2[FATTR4_TIME_DELEG_MODIFY]:
+-            fail("Bad modify time: ", attrs1[FATTR4_TIME_MODIFY], " == ", attrs2[FATTR4_TIME_DELEG_MODIFY])
++        fail(f"Bad change attribute: {attrs1[FATTR4_CHANGE]} == {attrs2[FATTR4_CHANGE]}")
++    if compareTimes(attrs1[FATTR4_TIME_MODIFY], attrs2[FATTR4_TIME_MODIFY]) == 0:
++        fail(f"Bad modify time: {attrs1[FATTR4_TIME_MODIFY]} == {attrs2[FATTR4_TIME_MODIFY]}")
  
-     res = sess.compound([op.putfh(fh), op.allocate(env.stateid0, 0, 1)])
-     check(res)
- 
-+    close_file(sess, fh, stateid=stateid)
-+
- def testAllocateStateidOne(t, env):
-     """Do a simple ALLOCATE with all-one stateid
- 
-@@ -45,6 +50,9 @@ def testAllocateStateidOne(t, env):
-     sess = env.c1.new_client_session(env.testname(t))
-     res = create_file(sess, env.testname(t), access=OPEN4_SHARE_ACCESS_WRITE)
-     fh = res.resarray[-1].object
-+    stateid = res.resarray[-2].stateid
- 
-     res = sess.compound([op.putfh(fh), op.allocate(env.stateid1, 0, 1)])
-     check(res)
-+
-+    close_file(sess, fh, stateid=stateid)
+ def testDelegReadAfterClose(t, env):
+     """Test read with delegation stateid after close
 -- 
 2.53.0
 
