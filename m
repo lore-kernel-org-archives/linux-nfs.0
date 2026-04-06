@@ -1,32 +1,32 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9BD6539183A
-	for <linux-nfs@vger.kernel.org>; Mon,  6 Apr 2026 18:13:20 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE3C52848A8
+	for <linux-nfs@vger.kernel.org>; Mon,  6 Apr 2026 18:48:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775499202; cv=none; b=Y6pQ4KrkwdhUvn19iouzmWEUd3rIseSi9Oj+yyfinEmhg0GXFl7pk8aex3ism+cVPClrM+BCLQMXT20v9pMZ+wV/Wt6bVQpST1Sb7at4WPK0a+3qwkyCWteIC21yjfKzEUfetMo0XwUQyrCJE6xm1Wy5f4BZSwB9JUpfsKMFcS4=
+	t=1775501289; cv=none; b=bjTSWLwGZ5mTQYgCZE+1/2Yvv1uUh/trK+bc/EtTZCFn5rmIGWDnXRMOBUqfutnJ3o/cqDWwHIZMh4hrgpUTx7dnEkOn2+GnRpVU+h942Oyd5DKtB66zXjAJopsb9zr8hZdssmPNUnQ51F0HPPko5c7ZY3RWtjyNTxc54LDASm8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775499202; c=relaxed/simple;
-	bh=PSKlzuiWfxjzVJuKL/8Ay8p7Fy0LTI0ZKtsKdTgOPeM=;
+	s=arc-20240116; t=1775501289; c=relaxed/simple;
+	bh=s1zHj/csgwvMDb+I5OZ8WUXrtB9wNjUZJXZFWlNis2Q=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=S4ud4xLeAxSNyD/Oz62+OG7v63sZaFbb6u+yQ/jzgYUik/v9+oh4vkrbfKJz0AjEde3JD0e8BlMBydBpBQx0xh7P9Gt15iPpVDJQBumwVCumW+m6oTsLI0eh12rtafmAYTRpid0jXo67WKKBBHtwiQmI833qhUoVawQ6ro5peho=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nt44byPn; arc=none smtp.client-ip=10.30.226.201
+	 Content-Type:MIME-Version; b=JEfGZq9Nh/mUIRL2WccBqrKSYMwWMLDDQs6Bxq52Gm3XTnVQ7AWajWFqTn81iID370K/YeOY0EzN6+BeQgD9zwxUuQYaWNNZ09IgAUBhYp/whu4nZvZd+2Z75sx66d6PhDE+Xafo4Q8w89RKwIT3n/AzvIZtpMBGAgyzxdqklXU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HZ/LWf+s; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nt44byPn"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 710D7C2BCB0;
-	Mon,  6 Apr 2026 18:13:19 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HZ/LWf+s"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 92DA6C4CEF7;
+	Mon,  6 Apr 2026 18:48:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775499200;
-	bh=PSKlzuiWfxjzVJuKL/8Ay8p7Fy0LTI0ZKtsKdTgOPeM=;
+	s=k20201202; t=1775501289;
+	bh=s1zHj/csgwvMDb+I5OZ8WUXrtB9wNjUZJXZFWlNis2Q=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References:From;
-	b=nt44byPn9kaf56jPBko+LJSq/vS4UTE0kDBbWAWO/PgbFn1Ytjo5tdug0wxUxzAsk
-	 5cINBBE/qBFt6yT4QFlx5UjYx13GB1v3obbQ/18RsKPolP9FDUkYgebc1VpyOMysme
-	 B4odVbWpNnnGuNFRd+POrJwIkP8VhdDrigLI+hLWNn8dIROtD43f52Qwrhn28kqvoy
-	 CLjMQiMZmR7HgwDPLIrbO3b/w0EY5URPiqLyH68am1l/dOW+nYmpnotJb/Z6n2Jw+K
-	 2dRixrC6KeUAKG6GPrLLjYToRruF9Yf25mAvj+QtZWMjZCr4TuuDpH9O9Ewzivi3Oa
-	 nSl6O/SrmnUYQ==
-Message-ID: <67a54e834a2625d0c31b19e22088d135f89c50b7.camel@kernel.org>
+	b=HZ/LWf+siVHaPmmBvsM/ZxA1A+frz7pJQCvjwOuETlx8JMyoV0Syaw5MLmdL4Hfwl
+	 9NKgihaNoDG87US2icurXbLykccLaLANhqo34bNoQczv91IAOVBPQIwYkg50Xyn9ri
+	 crZmaJraqBGggbshkqtocDPAcCYL1stN9S+XyYhsI7s41cK2FZEddSaNXIakvdS94p
+	 GaQ+XrE7IMEKj9qd/U3Jw6KFyZMwUp/O3rrrVBHt/zUCwRP0GY5BSjwqxdr08zKzOD
+	 kTlzNPPx6cYx2+bQVvkU/+cevfF/PP1iniKUE28TFafpv9E7HFJLtaL+Kv/lOVElml
+	 TvunfYJTcSl7A==
+Message-ID: <ca6076eba9248c39f8b95bed66cec5d907aa0ab7.camel@kernel.org>
 Subject: Re: [PATCH v2] nfsd: fix file change detection in CB_GETATTR
 From: Jeff Layton <jlayton@kernel.org>
 To: Scott Mayhew <smayhew@redhat.com>
@@ -34,7 +34,7 @@ Cc: Chuck Lever <cel@kernel.org>, Chuck Lever <chuck.lever@oracle.com>,
  NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai
  Ngo <Dai.Ngo@oracle.com>,  Tom Talpey <tom@talpey.com>,
  linux-nfs@vger.kernel.org
-Date: Mon, 06 Apr 2026 14:13:04 -0400
+Date: Mon, 06 Apr 2026 14:48:05 -0400
 In-Reply-To: <adPxsOl98imcKXeC@aion>
 References: <20260404005405.1565136-1-smayhew@redhat.com>
 	 <e03d3523-06e1-4414-b185-d349e7edbe54@app.fastmail.com>
@@ -328,17 +328,13 @@ s
 > the client is sending the original change attribute but a different
 > mtime than what the server has, wouldn't that be a client bug?
 >=20
-
-Not really. The change attr sent by the client is "special". It's
-usually just original change attr at time of delegation +1 iff
-something has been modified. I don't see that as a reliable indicator
-that there is still buffered write data on the client.
-
 > Plus, wouldn't it sort of be crossing into delegated timestamps
 > territory if we started checking the mtime?
 >=20
+>=20
 
-Good point.
-
+Should we be looking at extending the spec? Maybe we should add a "I
+have outstanding buffered data" attribute that the client could send to
+the server in a CB_GETATTR?
 --=20
 Jeff Layton <jlayton@kernel.org>
