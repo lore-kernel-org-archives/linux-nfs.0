@@ -1,47 +1,47 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4BB8D387350
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98916388E63
 	for <linux-nfs@vger.kernel.org>; Tue,  7 Apr 2026 23:50:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775605849; cv=none; b=JCHSwRQ+xu6Ym4VQJSknJikAzrs36JqW6ACBc6+x+jVZh3ApiAq7mafBcc9C1YD7s7IYbqsLvMTqeC8qn85Gdoh+eGpIB4Rbu7NIDnMzY7l+jaqei5bvaH2VvGQ6F6SrWCLwSK/s7NY9Gt6cPdj1oNHlYkRhPg/cRFOUiTjQd1A=
+	t=1775605849; cv=none; b=PLJlJHyOKX+qbpkViiAi4MbsuxMIm+VEBYmHyKjyAznsHPWis5AESMWbz3/T8jqKyuK6oLA16WwN+B/THJNMR80oP2wekKbBvQpu2ixQ1GovHGkFGapYDgCRTgiB4BOtk29qZy1Q61wuFxckdi3xDyiUKP744+hnsGa/ZNekn98=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1775605849; c=relaxed/simple;
-	bh=4B/5eMRrK/aB2AwxLI5b9eWHXAekIO6FpzhohAerXMU=;
+	bh=UPyi4ki8RPs695kIs0WLeJfc5CVhWELlmT/08YoKw3g=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=KppONf8ulwKRFoFX0UpVD67mRUO4A0NOQuMWEG2poM8MwJ4cDZz6CmJaiuQrm0Hpie+SCAbHsKT1fuUCzqK5Or+qzmC3TOQUjIXvQtlL9V5UnlhVEk+3UOUUdo8cKVKZYPRITRGAZyMOg9sGDyN0fMcuvovogQUYeLRDFbkuPtk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=F7D2U68p; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=jetePvMawS21vBfRd6rH0SM5OBwVDXRAqnMnW5Wsz5c+h4AyVCkB3NQz8fIKg9bpxNI9UWIRYBbHoyI3FKvxnIHyjMAA6oDz0UdXjASSZ83YygZqaqfL+H2sWIr7CbqiPemlYKrCqX+M6Kw7psf4tlhUDwnyhaEkqxVWLP4p0EE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=FgrU0AFh; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="F7D2U68p"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="FgrU0AFh"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
 	s=mimecast20190719; t=1775605847;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=7/WZTR2g8g2aXYQwXXpU5thnheKhESKMSB24kGqjfjM=;
-	b=F7D2U68phtrOUZ6gd3XbNd9ofpGDCaaNvTIFr2YX9gkmjSc8ihJ3SylMzClNCNc9W57ws1
-	5/8/w2K1edw1mas6H4UQ+we47rRM2cSzMnATDjFsT2TD+wX/o6NiBaHL/2AIxaaO1FNEu3
-	Y93Ijbh3B5eeNhn8/nUF8RXxAqlrgLk=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=TJn+7qO8Mj+w/C2lKW2WpIbL6/Bowh1/CgAWEHM1+UI=;
+	b=FgrU0AFhN8URY1zneNW+2ZOkutFqJm3GJQaxd3XKNQmw9BOziLx8Vbz5jNDY7Jmc9FMePx
+	zv9gMNLWZ0xqYUs8rx/qOE+kQ21DY6C2V0/yEKa18+MItfWbebuehS6dvYHlz/VVPgoy6x
+	QY9MPtxye9N1vJ1RJamTnkdwEtUpb8w=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-297-OLvZcdlnOm2Qsb3qqdShKQ-1; Tue,
- 07 Apr 2026 19:50:44 -0400
-X-MC-Unique: OLvZcdlnOm2Qsb3qqdShKQ-1
-X-Mimecast-MFC-AGG-ID: OLvZcdlnOm2Qsb3qqdShKQ_1775605842
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-657-sHkvNSOTPdiBIWUCA-OpEg-1; Tue,
+ 07 Apr 2026 19:50:46 -0400
+X-MC-Unique: sHkvNSOTPdiBIWUCA-OpEg-1
+X-Mimecast-MFC-AGG-ID: sHkvNSOTPdiBIWUCA-OpEg_1775605845
 Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 7C984195608B;
-	Tue,  7 Apr 2026 23:50:42 +0000 (UTC)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 3486D180049D;
+	Tue,  7 Apr 2026 23:50:45 +0000 (UTC)
 Received: from okorniev-mac.redhat.com (unknown [10.22.80.38])
-	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 4ECA81955D84;
-	Tue,  7 Apr 2026 23:50:41 +0000 (UTC)
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 1DE311955D84;
+	Tue,  7 Apr 2026 23:50:43 +0000 (UTC)
 From: Olga Kornievskaia <okorniev@redhat.com>
 To: chuck.lever@oracle.com,
 	jlayton@kernel.org
@@ -49,9 +49,9 @@ Cc: linux-nfs@vger.kernel.org,
 	neilb@brown.name,
 	Dai.Ngo@oracle.com,
 	tom@talpey.com
-Subject: [PATCH 1/3] nfsd: update mtime/ctime on CLONE in presense of delegated attributes
-Date: Tue,  7 Apr 2026 19:50:36 -0400
-Message-ID: <20260407235038.55749-2-okorniev@redhat.com>
+Subject: [PATCH 3/3] nfsd: update mtime/ctime on asynchronous COPY with delegated attributes
+Date: Tue,  7 Apr 2026 19:50:38 -0400
+Message-ID: <20260407235038.55749-4-okorniev@redhat.com>
 In-Reply-To: <20260407235038.55749-1-okorniev@redhat.com>
 References: <20260407235038.55749-1-okorniev@redhat.com>
 Precedence: bulk
@@ -63,49 +63,74 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
 
-When delegated attributes are given on open the file is opened with NOCMTIME
-and modifying operations do not update mtime/ctime as to not get out-of-sync
-with the client's delegated view. However, for CLONE operation, the server
-should update its view of mtime/ctime and reflect that in any GETATTR queries.
+Asynchronous COPY should update destination file's mtime/ctime upon
+completion of copy work (not COPY compound processing).
 
-Fixes: e5e9b24ab8fa ("nfsd: freeze c/mtime updates with outstanding WRITE_ATTRS delegation")
 Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
 ---
- fs/nfsd/nfs4proc.c | 14 ++++++++++++++
- 1 file changed, 14 insertions(+)
+ fs/nfsd/nfs4proc.c | 21 ++++++++++++++++++++-
+ fs/nfsd/xdr4.h     |  1 +
+ 2 files changed, 21 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 99b44b6ec056..fb891e35ebe9 100644
+index 04d8d0d1ca7d..d858a5b58a24 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -1396,6 +1396,17 @@ nfsd4_verify_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	goto out;
+@@ -2134,6 +2134,16 @@ static int nfsd4_do_async_copy(void *data)
+ 	trace_nfsd_copy_async_done(copy);
+ 	nfsd4_send_cb_offload(copy);
+ 	atomic_dec(&copy->cp_nn->pending_async_copies);
++	/* choosing to check for existence of set dentry pointer to indicate
++	 * that we need to update the attributes and do a dput because the
++	 * file flag could be cleared by a DELEGRETURN and then we'd lose
++	 * that copy was started with file opened with NOCMTIME and we gotten
++	 * a reference on the dentry.
++	 */
++	if (copy->d_dst) {
++		nfsd_update_cmtime_attr(copy->d_dst);
++		dput(copy->d_dst);
++	}
+ 	return 0;
  }
  
-+static void nfsd_update_cmtime_attr(struct dentry *dentry)
-+{
-+	struct iattr attr = {
-+		.ia_valid = ATTR_CTIME | ATTR_MTIME,
-+	};
-+
-+	inode_lock(d_inode(dentry));
-+	notify_change(&nop_mnt_idmap, dentry, &attr, NULL);
-+	inode_unlock(d_inode(dentry));
-+}
-+
- static __be32
- nfsd4_clone(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		union nfsd4_op_u *u)
-@@ -1413,6 +1424,9 @@ nfsd4_clone(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			dst, clone->cl_dst_pos, clone->cl_count,
- 			EX_ISSYNC(cstate->current_fh.fh_export));
+@@ -2193,6 +2203,11 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		memcpy(&result->cb_stateid, &copy->cp_stateid.cs_stid,
+ 			sizeof(result->cb_stateid));
+ 		dup_copy_fields(copy, async_copy);
++		if ((READ_ONCE(copy->nf_dst->nf_file->f_mode) &
++			       FMODE_NOCMTIME) != 0) {
++			async_copy->d_dst = cstate->current_fh.fh_dentry;
++			dget(cstate->current_fh.fh_dentry);
++		}
+ 		memcpy(async_copy->cp_cb_offload.co_referring_sessionid.data,
+ 		       cstate->session->se_sessionid.data,
+ 		       NFS4_MAX_SESSIONID_LEN);
+@@ -2220,8 +2235,12 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	release_copy_files(copy);
+ 	return status;
+ out_dec_async_copy_err:
+-	if (async_copy)
++	if (async_copy) {
+ 		atomic_dec(&nn->pending_async_copies);
++		if ((READ_ONCE(copy->nf_dst->nf_file->f_mode) &
++			       FMODE_NOCMTIME) != 0)
++			dput(cstate->current_fh.fh_dentry);
++	}
+ out_err:
+ 	if (nfsd4_ssc_is_inter(copy)) {
+ 		/*
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 417e9ad9fbb3..ddd6e005d3cf 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -752,6 +752,7 @@ struct nfsd4_copy {
  
-+	if ((READ_ONCE(dst->nf_file->f_mode) & FMODE_NOCMTIME) != 0)
-+		nfsd_update_cmtime_attr(cstate->current_fh.fh_dentry);
-+
- 	nfsd_file_put(dst);
- 	nfsd_file_put(src);
- out:
+ 	struct nfsd_file        *nf_src;
+ 	struct nfsd_file        *nf_dst;
++	struct dentry		*d_dst;
+ 
+ 	copy_stateid_t		cp_stateid;
+ 
 -- 
 2.52.0
 
