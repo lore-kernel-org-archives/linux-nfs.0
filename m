@@ -1,77 +1,77 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 69443370D6B
-	for <linux-nfs@vger.kernel.org>; Wed,  8 Apr 2026 13:51:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 817613939CE
+	for <linux-nfs@vger.kernel.org>; Wed,  8 Apr 2026 13:53:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775656273; cv=none; b=POVXtgRmyBgYae0EDAVOaAj1Y3F6s59lmT56X8MY5RFxPtASR2KSU4rxiNgbfOto0JNOsGEh7zEA1omwjwa7IUll/1w+V7plqERTr6MAC1pdrMuN4jdonLL/0ncjwjdsu++QN/aXhZkkoARWW4Ondj+DwQ4KxvOnHwwUjb5NfIY=
+	t=1775656406; cv=none; b=kbkUVaapXWLYY2pQWmzkJlR9s52b5IXobJ61ro6O46QL3YPuv7DgyEe6ptbdCGk8j4oceJkV3D0uFEd1P/8rwDeAt3FL43nWk+MwnJFFzkCCHRrjyBOzGdCaeQHt78mn1fP9NsBGuLtBc8TEkJt/DIGlPqNF9mg+5udPGfGQGLY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775656273; c=relaxed/simple;
-	bh=qP/5Jy0821X7NiLfTMYW9q5+T5u7GzsrTdIVEAPSyaw=;
+	s=arc-20240116; t=1775656406; c=relaxed/simple;
+	bh=P/W9FNxaT8oCl0C9P8gGMeoeXIMZOD0rzKXEA2zRV/o=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=Po1fMoV0jhqHKRTJhjTJVevOBwPJ0/uu4uM6GLIRL387H4QzrlxY4CD5vLlnU0zEBkYXZxdHh8xa1LEHkDeFKXHx0cjN5qoUomXQ+wFXLgjt0g0xs1k4koLwYg/hLFQ21R4W30KwDAVBz8Y1q164JNHnN654wUEV01YBlyB5A68=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=RfdJr19v; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=Q2FxjAx2; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=R1mMO9ol; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=vSOxa7sB; arc=none smtp.client-ip=195.135.223.130
+	 Content-Type:Content-Disposition:In-Reply-To; b=uya+2nLymFqmgQ2VPKwL+PY6eD1zOx6TJ6PbkhNRXrn/YBd1/hp77aNwfqQpPgHHJ/yADtQCYXyVtnhkN9svAaCqPxyzpJdf2XR2dtODx6Z0sWuUiBwc+42eQqi3Qd5cb4pkdeQnrrtehOwtIucTi3xfBDk2RIXEaUVtU+IQvBg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=rXEMWP6E; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=k34VD8+C; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=Ve+vNuMJ; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=QMbTuJas; arc=none smtp.client-ip=195.135.223.131
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="RfdJr19v";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="Q2FxjAx2";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="R1mMO9ol";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="vSOxa7sB"
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="rXEMWP6E";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="k34VD8+C";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="Ve+vNuMJ";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="QMbTuJas"
 Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id AE31B4E9F3;
-	Wed,  8 Apr 2026 13:51:09 +0000 (UTC)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id EAB215BCC1;
+	Wed,  8 Apr 2026 13:53:22 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1775656270; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1775656403; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=OJjUy2mQzfWSECJnXOQK+j29FfzvSNAP9nh+eOIWE80=;
-	b=RfdJr19vxqGAu7/hsy8A5W2Brvb7WMM4iy/3EPzP1PPz9SOV44z1lhj9YLc0G7Ca8RvBI3
-	8Ugq95DclEwNdr89Go0Aofbu9Zj5Hg+AQ+Bd3NJgAxDVnTcpPi5AOh68YjKxj7hskIQe2s
-	LDoa73AOSOGGushzw+UpukjWbhJJow8=
+	bh=dQ8uDr8vA7VVp6EukI8oWSdY8u+Kp1klfjdsLd4KFWc=;
+	b=rXEMWP6EQ/YOqrizw0bLvI2IDREP2fe27oQ4o49bzyudcqyFfwsAisDknX/PyUx8ipNsJZ
+	hQS2fodU+fHbWebWL8W/JRzt1jlMYdr+xL478BwUcNHpO34sel0JtNuDt5SGtxwOLdxdjo
+	iX3d1lQOz3mIKbky0Nz5FBOvfW5gvZY=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1775656270;
+	s=susede2_ed25519; t=1775656403;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=OJjUy2mQzfWSECJnXOQK+j29FfzvSNAP9nh+eOIWE80=;
-	b=Q2FxjAx26yvUEMgzP5iJJCn3r1jAHyuNdkR96RyaoyDi85kflBkDdOZZRxVkwtwai6/7kU
-	nFqjTZ9As/FKuoAA==
-Authentication-Results: smtp-out1.suse.de;
+	bh=dQ8uDr8vA7VVp6EukI8oWSdY8u+Kp1klfjdsLd4KFWc=;
+	b=k34VD8+CP9hd1ZPo06dmTqJv2U00vqXIXunkfMMTHWpDL0PfdInxuCpJDraVglMLkTB343
+	wAFq7VgDUUJmnzCQ==
+Authentication-Results: smtp-out2.suse.de;
 	none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1775656269; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	t=1775656402; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=OJjUy2mQzfWSECJnXOQK+j29FfzvSNAP9nh+eOIWE80=;
-	b=R1mMO9olSZpD1CG6ojN2VLVCLSw/XJyrfWJYm0r5A/iHxdU/P8OcRlErix8t9uj79GYpqa
-	CS/wzwjaeyT+8f0ZLJuKHNZip1hqecDo2Fv3oS8QjOK0FK3/qnsHPkfavJiFCN3MTm1LrO
-	aNro2nNkzSjfhnaPxzO55j3Tjh/hw6k=
+	bh=dQ8uDr8vA7VVp6EukI8oWSdY8u+Kp1klfjdsLd4KFWc=;
+	b=Ve+vNuMJoPClVjiuYaI5vJ+Gs4rxZE7QxcKCxWzxA6IP+QB8/F8b9VLeNA2xk+UbG3ocRr
+	mVkp2pO0TwlvLb7X81FmFkyt/cSWO2txvp9NLcwzmiMf7GwF0HML0YbQzRGbMDUMymsFNo
+	TGGsaujxauCiyP63p+1owdAiY/iMqpA=
 DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1775656269;
+	s=susede2_ed25519; t=1775656402;
 	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
 	 mime-version:mime-version:content-type:content-type:
 	 in-reply-to:in-reply-to:references:references;
-	bh=OJjUy2mQzfWSECJnXOQK+j29FfzvSNAP9nh+eOIWE80=;
-	b=vSOxa7sB7YO/+mD+v9SaNe3tKowuRPNXaa6N0a+lC7W/w5Y4LNidnFi6rOSKHQIIPcsPWF
-	pZiePj/vIV786TCw==
+	bh=dQ8uDr8vA7VVp6EukI8oWSdY8u+Kp1klfjdsLd4KFWc=;
+	b=QMbTuJasjO6W8JdjmNMTL6QrzUcFAHyOORzEy/tgtpZ/iemEwSqaqrSAEsDRlZZGl85QSL
+	vqJOat/XDq6mnlCA==
 Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
 	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A47794A0B3;
-	Wed,  8 Apr 2026 13:51:09 +0000 (UTC)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id DCB8F4A0B3;
+	Wed,  8 Apr 2026 13:53:22 +0000 (UTC)
 Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
 	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id NkwlKE1d1mkzPAAAD6G6ig
-	(envelope-from <jack@suse.cz>); Wed, 08 Apr 2026 13:51:09 +0000
+	id zjrhNdJd1mlrPgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 08 Apr 2026 13:53:22 +0000
 Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 67E59A0A7E; Wed,  8 Apr 2026 15:51:05 +0200 (CEST)
-Date: Wed, 8 Apr 2026 15:51:05 +0200
+	id A2ED5A0A7E; Wed,  8 Apr 2026 15:53:18 +0200 (CEST)
+Date: Wed, 8 Apr 2026 15:53:18 +0200
 From: Jan Kara <jack@suse.cz>
 To: Jeff Layton <jlayton@kernel.org>
 Cc: Alexander Viro <viro@zeniv.linux.org.uk>, 
@@ -85,10 +85,10 @@ Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
 	Amir Goldstein <amir73il@gmail.com>, Calum Mackay <calum.mackay@oracle.com>, 
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
 	linux-doc@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 07/24] vfs: add fsnotify_modify_mark_mask()
-Message-ID: <vds657qjz3ohsaj5dpaphix234d6z5unjo2m7euxrfaws4ibxh@bkaqqdjyuiwa>
+Subject: Re: [PATCH 03/24] filelock: add an inode_lease_ignore_mask helper
+Message-ID: <6gdexrbcrpe64sy6ojjzujh2kk4pc4u2caz2gdeuodi6hcfytl@rgkc6k7izss3>
 References: <20260407-dir-deleg-v1-0-aaf68c478abd@kernel.org>
- <20260407-dir-deleg-v1-7-aaf68c478abd@kernel.org>
+ <20260407-dir-deleg-v1-3-aaf68c478abd@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -97,9 +97,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260407-dir-deleg-v1-7-aaf68c478abd@kernel.org>
-X-Spam-Score: -2.30
-X-Spam-Level: 
+In-Reply-To: <20260407-dir-deleg-v1-3-aaf68c478abd@kernel.org>
 X-Spamd-Result: default: False [-2.30 / 50.00];
 	BAYES_HAM(-3.00)[100.00%];
 	SUSPICIOUS_RECIPS(1.50)[];
@@ -123,16 +121,16 @@ X-Spamd-Result: default: False [-2.30 / 50.00];
 	RCVD_TLS_LAST(0.00)[];
 	TO_MATCH_ENVRCPT_ALL(0.00)[];
 	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,suse.com:email,suse.cz:email]
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,imap1.dmz-prg2.suse.org:helo,suse.cz:email]
 X-Spam-Flag: NO
+X-Spam-Score: -2.30
+X-Spam-Level: 
 
-On Tue 07-04-26 09:21:20, Jeff Layton wrote:
-> nfsd needs to be able to modify the mask on an existing mark when new
-> directory delegations are set or unset. Add an exported function that
-> allows the caller to set and clear bits in the mark->mask, and does
-> the recalculation if something changed.
+On Tue 07-04-26 09:21:16, Jeff Layton wrote:
+> Add a new routine that returns a mask of all dir change events that are
+> currently ignored by any leases. nfsd will use this to determine how to
+> configure the fsnotify_mark mask.
 > 
-> Suggested-by: Jan Kara <jack@suse.cz>
 > Signed-off-by: Jeff Layton <jlayton@kernel.org>
 
 Looks good. Feel free to add:
@@ -141,64 +139,66 @@ Reviewed-by: Jan Kara <jack@suse.cz>
 
 								Honza
 
-
 > ---
->  fs/notify/mark.c                 | 29 +++++++++++++++++++++++++++++
->  include/linux/fsnotify_backend.h |  1 +
->  2 files changed, 30 insertions(+)
+>  fs/locks.c               | 32 ++++++++++++++++++++++++++++++++
+>  include/linux/filelock.h |  1 +
+>  2 files changed, 33 insertions(+)
 > 
-> diff --git a/fs/notify/mark.c b/fs/notify/mark.c
-> index c2ed5b11b0fe..b1e73c6fd382 100644
-> --- a/fs/notify/mark.c
-> +++ b/fs/notify/mark.c
-> @@ -310,6 +310,35 @@ void fsnotify_recalc_mask(struct fsnotify_mark_connector *conn)
->  		fsnotify_conn_set_children_dentry_flags(conn);
+> diff --git a/fs/locks.c b/fs/locks.c
+> index 5af6dca2d46c..04980b065734 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -1597,6 +1597,38 @@ any_leases_conflict(struct inode *inode, struct file_lease *breaker)
+>  	return false;
 >  }
 >  
+> +#define IGNORE_MASK	(FL_IGN_DIR_CREATE | FL_IGN_DIR_DELETE | FL_IGN_DIR_RENAME)
+> +
 > +/**
-> + * fsnotify_modify_mark_mask - set and/or clear flags in a mark's mask
-> + * @mark: mark to be modified
-> + * @set: bits to be set in mask
-> + * @clear: bits to be cleared in mask
+> + * inode_lease_ignore_mask - return union of all ignored inode events for this inode
+> + * @inode: inode of which to get ignore mask
 > + *
-> + * Modify a fsnotify_mark mask as directed, and update its associated conn.
-> + * The caller is expected to hold a reference to the mark.
+> + * Walk the list of leases, and return the result of all of
+> + * their FL_IGN_DIR_* bits or'ed together.
 > + */
-> +void fsnotify_modify_mark_mask(struct fsnotify_mark *mark, u32 set, u32 clear)
+> +u32
+> +inode_lease_ignore_mask(struct inode *inode)
 > +{
-> +	bool recalc = false;
-> +	u32 mask;
+> +	struct file_lock_context *ctx;
+> +	struct file_lock_core *flc;
+> +	u32 mask = 0;
 > +
-> +	WARN_ON_ONCE(clear & set);
+> +	ctx = locks_inode_context(inode);
+> +	if (!ctx)
+> +		return 0;
 > +
-> +	spin_lock(&mark->lock);
-> +	mask = mark->mask;
-> +	mark->mask |= set;
-> +	mark->mask &= ~clear;
-> +	if (mark->mask != mask)
-> +		recalc = true;
-> +	spin_unlock(&mark->lock);
-> +
-> +	if (recalc)
-> +		fsnotify_recalc_mask(mark->connector);
+> +	spin_lock(&ctx->flc_lock);
+> +	list_for_each_entry(flc, &ctx->flc_lease, flc_list) {
+> +		mask |= flc->flc_flags & IGNORE_MASK;
+> +		/* If we already have everything, we can stop */
+> +		if (mask == IGNORE_MASK)
+> +			break;
+> +	}
+> +	spin_unlock(&ctx->flc_lock);
+> +	return mask;
 > +}
-> +EXPORT_SYMBOL_GPL(fsnotify_modify_mark_mask);
+> +EXPORT_SYMBOL_GPL(inode_lease_ignore_mask);
 > +
->  /* Free all connectors queued for freeing once SRCU period ends */
->  static void fsnotify_connector_destroy_workfn(struct work_struct *work)
+>  static bool
+>  ignore_dir_deleg_break(struct file_lease *fl, unsigned int flags)
 >  {
-> diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
-> index 95985400d3d8..66e185bd1b1b 100644
-> --- a/include/linux/fsnotify_backend.h
-> +++ b/include/linux/fsnotify_backend.h
-> @@ -917,6 +917,7 @@ extern void fsnotify_get_mark(struct fsnotify_mark *mark);
->  extern void fsnotify_put_mark(struct fsnotify_mark *mark);
->  extern void fsnotify_finish_user_wait(struct fsnotify_iter_info *iter_info);
->  extern bool fsnotify_prepare_user_wait(struct fsnotify_iter_info *iter_info);
-> +extern void fsnotify_modify_mark_mask(struct fsnotify_mark *mark, u32 set, u32 clear);
+> diff --git a/include/linux/filelock.h b/include/linux/filelock.h
+> index 5a19cdb047da..416483b136f1 100644
+> --- a/include/linux/filelock.h
+> +++ b/include/linux/filelock.h
+> @@ -236,6 +236,7 @@ int generic_setlease(struct file *, int, struct file_lease **, void **priv);
+>  int kernel_setlease(struct file *, int, struct file_lease **, void **);
+>  int vfs_setlease(struct file *, int, struct file_lease **, void **);
+>  int lease_modify(struct file_lease *, int, struct list_head *);
+> +u32 inode_lease_ignore_mask(struct inode *inode);
 >  
->  static inline void fsnotify_init_event(struct fsnotify_event *event)
->  {
+>  struct notifier_block;
+>  int lease_register_notifier(struct notifier_block *);
 > 
 > -- 
 > 2.53.0
