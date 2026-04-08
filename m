@@ -1,39 +1,42 @@
 Received: from smtpcmd0756.aruba.it (smtpcmd0756.aruba.it [62.149.156.56])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECA612F39C2
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECB7F3D565F
 	for <linux-nfs@vger.kernel.org>; Wed,  8 Apr 2026 17:38:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.149.156.56
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775669927; cv=none; b=ewcCmzo8u1miVX1OSb+1fBO6nFq9pT4kGIJ+nqV23oO0+I6JDgChwi0hjDUlctqWSiRRgHpOKW+6McmfbnyexNLE5cIN89nQguR5Uv75/GQxQU/oiAof2Rp5Nup85iCmdX/s1DSwC/a42yTzcR+qIx2QY/tM2cmCOSikAJWvloA=
+	t=1775669928; cv=none; b=GjMkMlGN+9/vwjD/ltd8/UAfNB6qXdG3dBDTqht1TAzPpOkyANFdLzL5XOJiTzdcSC6aK+QJruH9qoGW1zfa/c8VoLZX0V9NRdS5i78kkHBDTWFNeIXf331xR6Nzxaix2qhRVwxn/wCju003zG4L+0JGqHL99QioKW1UabXee/g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775669927; c=relaxed/simple;
-	bh=g8wPaQIcVwtjW4TYlAhTcs8e09OK0Z4nLRpm4+WreBw=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=HMc594577maT1h37Ihiczrhek4jTFcKVPmLFddfkIcFpa70rJejUXupQhaXea+8A4V2xpUfGQJWgHwYH0XnKMAIzUOhJKfEpojB5tZyFI+QIiVrkIgJL74GYalS4ljjQGFbtE9BUbfswPZGnOA6t9vXdL7IAVsQKcytiNaHbauc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=benettiengineering.com; spf=pass smtp.mailfrom=benettiengineering.com; dkim=pass (2048-bit key) header.d=aruba.it header.i=@aruba.it header.b=hb8GxVsC; arc=none smtp.client-ip=62.149.156.56
+	s=arc-20240116; t=1775669928; c=relaxed/simple;
+	bh=OE4bGBsC/6m3rPeRKR9QkW5yZGvz2Tmkuk6fyZjTb8k=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=XE2m1GDGTDGZ8AcEQ4OKkF0RMXovrqf2nB4VU55TV8tjA228rWrJ+A6LKxYXPFZCPSAt8GUAKuIuxd2gQk8sj+k/GlnNkyfMMF+U0M/t4T/IB1be+ZIPsvBO97yyG17cDDHC4l5KLlBQAWyLVMc1DtdrOjm0ayj1QkdbvZD4Fos=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=benettiengineering.com; spf=pass smtp.mailfrom=benettiengineering.com; dkim=pass (2048-bit key) header.d=aruba.it header.i=@aruba.it header.b=hG/83mNo; arc=none smtp.client-ip=62.149.156.56
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=benettiengineering.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=benettiengineering.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=aruba.it header.i=@aruba.it header.b="hb8GxVsC"
+	dkim=pass (2048-bit key) header.d=aruba.it header.i=@aruba.it header.b="hG/83mNo"
 Received: from localhost.localdomain ([84.33.84.190])
 	by Aruba SMTP with ESMTPSA
-	id AWoRwcrFktpTfAWoSwriP9; Wed, 08 Apr 2026 19:35:36 +0200
+	id AWoRwcrFktpTfAWoSwriPH; Wed, 08 Apr 2026 19:35:36 +0200
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=aruba.it; s=a1;
-	t=1775669736; bh=g8wPaQIcVwtjW4TYlAhTcs8e09OK0Z4nLRpm4+WreBw=;
+	t=1775669736; bh=OE4bGBsC/6m3rPeRKR9QkW5yZGvz2Tmkuk6fyZjTb8k=;
 	h=From:To:Subject:Date:MIME-Version;
-	b=hb8GxVsCaS3mWxd4APMtBWCfLbEUY/s2kftimqAvWwSinEzT4uW18Sj2Uz8O8MWAs
-	 uLzFqMRbQVJnTJ2680Qh87KOMuefXUI2k/uQiyIuW4g+d1/gdsyyWnf76yhyDUbgeI
-	 UfhHroJYWLvXEsnpnSc8QFHWJXC1HGkQsNGfD2adkVqQhjGRs5if+w4fcLUYs8Tgi8
-	 1oiAbHLEM/hNlXkSmnsIe++7sMgTzL/T/MayBja3atWYtWag3R4HLkoU6Wbegcie2f
-	 kWxG4DcXLZ5lGFsQBmYGEmOreTyeCRK8SIrQb3EK1Dfg1FbHio2bvfm/nBunTFQC+j
-	 xv5bs8XqWhnLg==
+	b=hG/83mNozOsDP9P6uatbreG87llyvbiZ7erKi9HXKd4KXKX5GDEc11diYyULOhlz/
+	 Mm+M/3tXZi0z6kJKqvjXzP3bdkLCY2N0NqPOqh5RSUySPfewrMbtLwzNX3OrdAgkgT
+	 QvOMIc9oQo/bsxdzx3WKcR0ybW8VbYuXqK2+fcbckwmYIiusp2Xch5CGdnt3vzhiTQ
+	 SI4yV3XXpNPEQUSbrOZ5jJikR5yp0FZbRapJPYN+GYt6Ws6YFcoFltPeTFxW8HngjP
+	 d5MvTiyj9VZhkuWbfpiK941FZLiMjp/FenMxMvhuwqA47YVozknlNMSxV/rzWdm5ts
+	 I/xbFL/w/zGwQ==
 From: Giulio Benetti <giulio.benetti@benettiengineering.com>
 To: linux-nfs@vger.kernel.org
 Cc: Giulio Benetti <giulio.benetti@benettiengineering.com>
-Subject: [PATCH v2 1/3] fh_key_file: fix missing string.h inclusion
-Date: Wed,  8 Apr 2026 19:35:33 +0200
-Message-ID: <20260408173535.3992116-1-giulio.benetti@benettiengineering.com>
+Subject: [PATCH v2 2/3] Introduce compat.h file to deal with old Linux api and fix build failure due to missing NETLINK_EXT_ACK
+Date: Wed,  8 Apr 2026 19:35:34 +0200
+Message-ID: <20260408173535.3992116-2-giulio.benetti@benettiengineering.com>
 X-Mailer: git-send-email 2.47.3
+In-Reply-To: <20260408173535.3992116-1-giulio.benetti@benettiengineering.com>
+References: <20260408173535.3992116-1-giulio.benetti@benettiengineering.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -45,28 +48,76 @@ X-CMAE-Envelope: MS4xfAjrBg0BUJCKmUxMEiH5mL8ZtcXEoGQBwUT7zcvYngf+3AjddKmuTmX92KY
  wgNDRlrcgb0R9JT2oDJpXuJMkcv9aziBEg3KT2/kWX6Fw7vzN8ReTxUWvD9iUxgItmP5RDUD86L9T2ybsqSPXGfa4XdcK+wwJMYw+dMqxuA+KY6bT8xLsW82
  /cIIeHyOPAz0qFDfyxmTnZyj77xSy9vVLy0ApoZfxkHiAPL+643mys/uVDeXfag/
 
-Add #include <string.h> to fix build failure.
+In "compat.h" check if NETLINK_EXT_ACK exists, otherwise define it to fix
+build failure and where at the moment <linux/netlink.h> is included
+let's include "compat.h"
 
 Signed-off-by: Giulio Benetti <giulio.benetti@benettiengineering.com>
 ---
 V1->V2:
-* no changes
+* include "compat.h" in place of <linux/netlink.h>
 ---
- support/nfs/fh_key_file.c | 1 +
- 1 file changed, 1 insertion(+)
+ support/export/cache.c       |  2 +-
+ support/export/cache_flush.c |  2 ++
+ support/include/compat.h     | 10 ++++++++++
+ utils/nfsdctl/nfsdctl.c      |  1 +
+ 4 files changed, 14 insertions(+), 1 deletion(-)
+ create mode 100644 support/include/compat.h
 
-diff --git a/support/nfs/fh_key_file.c b/support/nfs/fh_key_file.c
-index 5f5eafc1..81ea1500 100644
---- a/support/nfs/fh_key_file.c
-+++ b/support/nfs/fh_key_file.c
-@@ -26,6 +26,7 @@
- #include <sys/types.h>
- #include <unistd.h>
- #include <errno.h>
-+#include <string.h>
- #include <uuid/uuid.h>
+diff --git a/support/export/cache.c b/support/export/cache.c
+index 2f128d7d..65008f51 100644
+--- a/support/export/cache.c
++++ b/support/export/cache.c
+@@ -40,7 +40,7 @@
+ #include <netlink/genl/ctrl.h>
+ #include <netlink/msg.h>
+ #include <netlink/attr.h>
+-#include <linux/netlink.h>
++#include "compat.h"
  
- #include "nfslib.h"
+ #ifdef USE_SYSTEM_NFSD_NETLINK_H
+ #include <linux/nfsd_netlink.h>
+diff --git a/support/export/cache_flush.c b/support/export/cache_flush.c
+index ed7b964f..2a24dec7 100644
+--- a/support/export/cache_flush.c
++++ b/support/export/cache_flush.c
+@@ -38,6 +38,8 @@ extern int no_netlink;
+ #include "sunrpc_netlink.h"
+ #endif
+ 
++#include "compat.h"
++
+ static int nl_send_flush(struct nl_sock *sock, int family, int cmd)
+ {
+ 	struct nl_msg *msg;
+diff --git a/support/include/compat.h b/support/include/compat.h
+new file mode 100644
+index 00000000..83229b65
+--- /dev/null
++++ b/support/include/compat.h
+@@ -0,0 +1,10 @@
++#ifndef COMPAT_H
++#define COMPAT_H
++
++#include <linux/netlink.h>
++
++#ifndef NETLINK_EXT_ACK
++#define NETLINK_EXT_ACK 11
++#endif
++
++#endif /* COMPAT_H */
+diff --git a/utils/nfsdctl/nfsdctl.c b/utils/nfsdctl/nfsdctl.c
+index 016dd2eb..c7126748 100644
+--- a/utils/nfsdctl/nfsdctl.c
++++ b/utils/nfsdctl/nfsdctl.c
+@@ -26,6 +26,7 @@
+ #include <netlink/msg.h>
+ #include <netlink/attr.h>
+ #include <linux/netlink.h>
++#include "compat.h"
+ 
+ #include <readline/readline.h>
+ #include <readline/history.h>
 -- 
 2.47.3
 
