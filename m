@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C3C473C9ECF;
-	Wed,  8 Apr 2026 12:30:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9F16C3C9452;
+	Wed,  8 Apr 2026 12:30:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775651410; cv=none; b=KEpQaDj+y0SFcZNZjLjvPVBTktoWeK69kmzw3yc8reRZZMDKlWsUSLjtlfjPjbH1pGW19/FvFfGk/P71XzNaFJhcEZMcX05AVNOKVdYX4muxiubv3WWIW6mESzJu89FnmpkdgnBW6nVjfXpJb6me8/73ktXDSZ/rRU7lGEMQUOc=
+	t=1775651411; cv=none; b=D/eE3gHXl2Z7gV4LiDv7S7dzipOHlHXFmm+CbjcbJy83KJ61qhq5/G+N8H75LXqjd+n9ZpOLBOcAQIwkxuVVrGM1Yz2qBa97cOyeRJriDY27AmY1pyPrN0450GptbMhnmNCHODleOm+hdr8yZt1EueZN+5Fj9UJVVVBIp2XrJro=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775651410; c=relaxed/simple;
-	bh=m55klBpWepGYNX/ySIq5sKbX+f4gXOFFZ/my2E5Ew4w=;
+	s=arc-20240116; t=1775651411; c=relaxed/simple;
+	bh=fmMmGRoByepE3LILVbKp5HYDpVUGyrYLXveQl4CCq9U=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=RMmxdCGGMSvH1zaojIoT0jq9vMpYDdNHnEJGdTc3RXlhH72UBWc7QcPfTjv+ZpoJgZuKOO2PS90r07HeV10xRpjJlXQzl5MuK/s8chraPH94msG5hQ2ogHKSEoG9HjAX1Oo8ffvflmkOQvNzfWt/gLrgjbUamGl83CNVbllHvaE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BerWL2Nn; arc=none smtp.client-ip=10.30.226.201
+	 In-Reply-To:To:Cc; b=rvU2uHzKPm8tqV0j05z1U+KETDGBEyrkkNmG1ACiBxMDl1jHHEdRDgD18m1o47H+ILZS0bzs9yqp7EoEyvaC9SSJ0oKofxTjenvLGe1kyCHSIdxG55Vn2SCxed8PV8gxr4miyXk3kB+Tnm9/s8IhSDo7qVOKQKGk3UyUOrPTIz4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ibQBJHZK; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BerWL2Nn"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D72EFC19421;
-	Wed,  8 Apr 2026 12:30:09 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ibQBJHZK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id ADD89C19424;
+	Wed,  8 Apr 2026 12:30:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775651410;
-	bh=m55klBpWepGYNX/ySIq5sKbX+f4gXOFFZ/my2E5Ew4w=;
+	s=k20201202; t=1775651411;
+	bh=fmMmGRoByepE3LILVbKp5HYDpVUGyrYLXveQl4CCq9U=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=BerWL2Nnz8oDgAeq/hb/E2YsKjdBwlumSB/ZWeOdBszY3LEJ6UTH/SmLt9ukMS1y2
-	 eJNa4PTgn9fXxXY7GTo4LKFctW3E4Zhp0bIsGZxl4DABO2BbFn8FW1lbuGQhf4IoQV
-	 zb31rUslve78+S9djvWqMRXj0aGiyIVyqcb+kOsmGirXgonz0Gn7qUsVhgHSqVoV6W
-	 Thu5a0Mbmh6SE532/NCyvwdmP2qZdYNApJZMGCjAUU1yXzfcyspFRkTfgXDrKMZXKX
-	 xxU2oZxhu1yLfTWDSeCEGrjnqtbXQoqtukFxDD4TKad1EP1UncARUx183lzWNR9sLU
-	 gLuWFus3IAzdA==
+	b=ibQBJHZKbOpwx93umJdXl7gwJcWJgESW+0NkDRGgj0eV6bdKzlbEcQlmBzbLiM5ym
+	 SLHAmVS6/jJ/Vkdft3b9GnynZGQgkNgW5KfqY/rZXT1gegkdfU9uRaQLikdeco1jA2
+	 3yJy6De+m3CcQdwmTmPVMj4AfFmpcadd6ubVKzo6gDZLAHbo75avrNZHlSG0hKJ9Oc
+	 lAzX5K2g1/r5JxETEHHktdjdHDoTW74Ma/CNfPPKAU8bQfKt19RQskmveoLuAgKtwX
+	 76u627bGxWr4YPyOUBRd5gbuPU4BcYPMoeFdcCu5tu2Q3rBBRKCqPVfxEfTwaexGqH
+	 yQZm/PdDY1Ngg==
 From: Chuck Lever <cel@kernel.org>
-Date: Wed, 08 Apr 2026 08:29:52 -0400
-Subject: [PATCH v8 2/9] NFSD: Handle layout stid in
- nfsd4_drop_revoked_stid()
+Date: Wed, 08 Apr 2026 08:29:53 -0400
+Subject: [PATCH v8 3/9] NFSD: Extract revoke_one_stid() utility function
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260408-umount-kills-nfsv4-state-v8-2-6e02a1d03d60@oracle.com>
+Message-Id: <20260408-umount-kills-nfsv4-state-v8-3-6e02a1d03d60@oracle.com>
 References: <20260408-umount-kills-nfsv4-state-v8-0-6e02a1d03d60@oracle.com>
 In-Reply-To: <20260408-umount-kills-nfsv4-state-v8-0-6e02a1d03d60@oracle.com>
 To: NeilBrown <neil@brown.name>, Jeff Layton <jlayton@kernel.org>, 
@@ -47,69 +46,217 @@ To: NeilBrown <neil@brown.name>, Jeff Layton <jlayton@kernel.org>,
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, 
  Chuck Lever <chuck.lever@oracle.com>
 X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1577;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=5985;
  i=chuck.lever@oracle.com; h=from:subject:message-id;
- bh=VFZzM4b70QL9NfjrBwUeg3hfegKPs1VQ1Ib7+4dQt60=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBp1kpPRWFzf8gZZC6hZ7zzPUjBJOGO+EOnbHzOa
- B9uXgLo6+CJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCadZKTwAKCRAzarMzb2Z/
- lyXVEADAM2NSbFMFEu/DWnQJ23kU/odMJbIH3UMc3NyAe4UyHTZB5RKa1oc2YUnyT8lOqR41ZHz
- N6EYHrugu6EagFGmKO2Fy7MaVizC6orBNCLbeVaEnGQIPjO/7kbL6vOU5ikv2TC5YrNfNiEjX+7
- AlwVhZQQ9IkP8Jl0oWerR1L/UjBls7wfOMLkb2Axlv9c9q3QZxZQoe6zntyJcdNqe1mKEKdosIk
- ffeTSXyVGyv1AB4+XyffB8/4243KYPvuzxz5rsCi2jyPpbtjcyActiG/z2RzoLKt7nSA6NO1AWY
- Ble1vbpjiRm1OijA3qJIqCSjJ7urkweAANpzRgqiJxKFGZoJpAMAio5sCS2FAqVnExkR8ns1P9u
- sWLobq7Uzh9gHo2x6SowvPlNyR5niQjV6Z077QXojdqzdS7bw+npULuOo7EHwPBcaNsjzZ7eL28
- RsFMNdIPeAh+3DZi6dsIOz2GUj+eW5jFqmLxf9F5rzw+IHWmcnWqkYkuCOxBGCA9Yj/nhmMkSPo
- R5BJYmfIoPCiD6U8vLcL9PI/3T3sqBWvPQxS3miIjPMHo/x3B8aZs83BCNRYNPPbkyTDCWvrDan
- RGp0Xhqe/mKmoj0W6FypOPugggdtNd8KCEn8FFWgT6FUcy/9uLyT+Z7uDKyT0XF7NaR4MdI6WeM
- wIp4EW0pxo9AD2Q==
+ bh=zSpZm8L3vzOBsnSfL/B/Lgz+xC6aals9joRrv0O7QGk=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBp1kpPF4wPT1nMG5mMmuktxD8ONajKMvyzCcpTd
+ Tx60QAC5tCJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCadZKTwAKCRAzarMzb2Z/
+ l7aUEACxTEECDlSwSqiIVydOLzRynOevKjDiIgM6R6hADhogZ0wJ1VOWWON1g+091b36R9eTEvn
+ CWxCr1PHi28ZDMrX4+i+rDLkF3tspM/BqNjZ0nbmbkvylEEHWhUxEil1O/kGu8XcKuukLJA00R4
+ PM9061SnwsI3sLTm/HIsZKj/o0lOM14Kv51czpj0DN1NQHgLiBhwjpFLaa1FOpo+8eRepm7elqE
+ 0k7gkyYuPsaekYd6Ei4YVELuHA/8Hahe7o7VJeqT+Xv1hMKoVYPHwU43l8U97eHq7D6gqggHprv
+ G/mMtIGcEOInkdENOPvofXU7xAl2js7Sg86bRf1EB2Xs+/b95wg24pglXDsy3I1khekJvAnKM4j
+ pKOH+ES6yVXHgmt5OYa4kNh0LpOtMvFAf5ZPhFAN3w13j1X2BjHXkZWEzLV7WSBQIYrh8dve3es
+ IKY3FAJ7YbftuIRGGbaPhISML6ef8dr2p+SsvkYfDqMuboIzWfvvONs26+5+zRbuMQtQ1UYN5m/
+ Npug2mVWcYGHOUiletBV36qiy1cOSCLRAN87XKRvFQOwgfNIw5jJfaW/5Q9AE5uak3f5pZrlE7H
+ 47tjnyLOJqyLW9DtNcI/3lZ0/BdIPqd9Lch1BEZaJJppMwlvH6w9XkbWCbhF5iR27uNg4U1aAlA
+ uXoL6EfgSqx78cg==
 X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-nfsd4_drop_revoked_stid() has no SC_TYPE_LAYOUT case, so when a
-client sends FREE_STATEID for an admin-revoked layout stid, the
-default branch releases cl_lock and returns without unhashing or
-releasing the stid.  The stid remains in the IDR and on the
-per-client list until the client is destroyed.
+The per-stateid revocation logic in nfsd4_revoke_states() handles
+four stateid types in a deeply nested switch. Extract two helpers:
 
-Remove the layout stid from the per-client list and call
-nfs4_put_stid() to drop the creation reference.  When the
-refcount reaches zero, nfsd4_free_layout_stateid() handles the
-remaining cleanup: cancelling the fence worker, removing from
-the per-file list, and freeing the slab object.
+revoke_ol_stid() performs admin-revocation of an open or lock
+stateid with st_mutex already held: marks the stateid as
+SC_STATUS_ADMIN_REVOKED, closes POSIX locks for lock stateids,
+and releases file access.
 
-Fixes: 1e33e1414bec ("nfsd: allow layout state to be admin-revoked.")
+revoke_one_stid() dispatches by sc_type, acquires st_mutex with
+the appropriate lockdep class for open and lock stateids, and
+handles delegation unhash and layout close inline.
+
+No functional change. Preparation for adding export-scoped state
+revocation which reuses revoke_one_stid().
+
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ fs/nfsd/nfs4state.c | 151 ++++++++++++++++++++++++++--------------------------
+ 1 file changed, 75 insertions(+), 76 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c6cb67cf02ad..ae5e1a20197c 100644
+index ae5e1a20197c..b095b1beaac0 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5070,6 +5070,7 @@ static void nfsd4_drop_revoked_stid(struct nfs4_stid *s)
- {
- 	struct nfs4_client *cl = s->sc_client;
- 	LIST_HEAD(reaplist);
-+	struct nfs4_layout_stateid *ls;
- 	struct nfs4_ol_stateid *stp;
- 	struct nfs4_delegation *dp;
- 	bool unhashed;
-@@ -5095,6 +5096,12 @@ static void nfsd4_drop_revoked_stid(struct nfs4_stid *s)
- 		spin_unlock(&cl->cl_lock);
- 		nfs4_put_stid(s);
- 		break;
-+	case SC_TYPE_LAYOUT:
-+		ls = layoutstateid(s);
-+		list_del_init(&ls->ls_perclnt);
-+		spin_unlock(&cl->cl_lock);
-+		nfs4_put_stid(s);
+@@ -1775,6 +1775,80 @@ static struct nfs4_stid *find_one_sb_stid(struct nfs4_client *clp,
+ 	return stid;
+ }
+ 
++static void revoke_ol_stid(struct nfs4_client *clp,
++			   struct nfs4_ol_stateid *stp)
++{
++	struct nfs4_stid *stid = &stp->st_stid;
++
++	lockdep_assert_held(&stp->st_mutex);
++	spin_lock(&clp->cl_lock);
++	if (stid->sc_status == 0) {
++		stid->sc_status |= SC_STATUS_ADMIN_REVOKED;
++		atomic_inc(&clp->cl_admin_revoked);
++		spin_unlock(&clp->cl_lock);
++		if (stid->sc_type == SC_TYPE_LOCK) {
++			struct nfs4_lockowner *lo =
++				lockowner(stp->st_stateowner);
++			struct nfsd_file *nf;
++
++			nf = find_any_file(stp->st_stid.sc_file);
++			if (nf) {
++				get_file(nf->nf_file);
++				filp_close(nf->nf_file, (fl_owner_t)lo);
++				nfsd_file_put(nf);
++			}
++		}
++		release_all_access(stp);
++	} else
++		spin_unlock(&clp->cl_lock);
++}
++
++static void revoke_one_stid(struct nfsd_net *nn, struct nfs4_client *clp,
++			    struct nfs4_stid *stid)
++{
++	struct nfs4_ol_stateid *stp;
++	struct nfs4_delegation *dp;
++
++	switch (stid->sc_type) {
++	case SC_TYPE_OPEN:
++		stp = openlockstateid(stid);
++		mutex_lock_nested(&stp->st_mutex, OPEN_STATEID_MUTEX);
++		revoke_ol_stid(clp, stp);
++		mutex_unlock(&stp->st_mutex);
 +		break;
- 	default:
- 		spin_unlock(&cl->cl_lock);
- 	}
++	case SC_TYPE_LOCK:
++		stp = openlockstateid(stid);
++		mutex_lock_nested(&stp->st_mutex, LOCK_STATEID_MUTEX);
++		revoke_ol_stid(clp, stp);
++		mutex_unlock(&stp->st_mutex);
++		break;
++	case SC_TYPE_DELEG:
++		/*
++		 * Extra reference guards against concurrent FREE_STATEID.
++		 */
++		refcount_inc(&stid->sc_count);
++		dp = delegstateid(stid);
++		spin_lock(&nn->deleg_lock);
++		if (!unhash_delegation_locked(dp, SC_STATUS_ADMIN_REVOKED))
++			dp = NULL;
++		spin_unlock(&nn->deleg_lock);
++		if (dp)
++			revoke_delegation(dp);
++		else
++			nfs4_put_stid(stid);
++		break;
++	case SC_TYPE_LAYOUT:
++		spin_lock(&clp->cl_lock);
++		if (stid->sc_status == 0) {
++			stid->sc_status |= SC_STATUS_ADMIN_REVOKED;
++			atomic_inc(&clp->cl_admin_revoked);
++		}
++		spin_unlock(&clp->cl_lock);
++		nfsd4_close_layout(layoutstateid(stid));
++		break;
++	}
++}
++
+ /**
+  * nfsd4_revoke_states - revoke all nfsv4 states associated with given filesystem
+  * @nn:   used to identify instance of nfsd (there is one per net namespace)
+@@ -1805,83 +1879,8 @@ void nfsd4_revoke_states(struct nfsd_net *nn, struct super_block *sb)
+ 			struct nfs4_stid *stid = find_one_sb_stid(clp, sb,
+ 								  sc_types);
+ 			if (stid) {
+-				struct nfs4_ol_stateid *stp;
+-				struct nfs4_delegation *dp;
+-				struct nfs4_layout_stateid *ls;
+-
+ 				spin_unlock(&nn->client_lock);
+-				switch (stid->sc_type) {
+-				case SC_TYPE_OPEN:
+-					stp = openlockstateid(stid);
+-					mutex_lock_nested(&stp->st_mutex,
+-							  OPEN_STATEID_MUTEX);
+-
+-					spin_lock(&clp->cl_lock);
+-					if (stid->sc_status == 0) {
+-						stid->sc_status |=
+-							SC_STATUS_ADMIN_REVOKED;
+-						atomic_inc(&clp->cl_admin_revoked);
+-						spin_unlock(&clp->cl_lock);
+-						release_all_access(stp);
+-					} else
+-						spin_unlock(&clp->cl_lock);
+-					mutex_unlock(&stp->st_mutex);
+-					break;
+-				case SC_TYPE_LOCK:
+-					stp = openlockstateid(stid);
+-					mutex_lock_nested(&stp->st_mutex,
+-							  LOCK_STATEID_MUTEX);
+-					spin_lock(&clp->cl_lock);
+-					if (stid->sc_status == 0) {
+-						struct nfs4_lockowner *lo =
+-							lockowner(stp->st_stateowner);
+-						struct nfsd_file *nf;
+-
+-						stid->sc_status |=
+-							SC_STATUS_ADMIN_REVOKED;
+-						atomic_inc(&clp->cl_admin_revoked);
+-						spin_unlock(&clp->cl_lock);
+-						nf = find_any_file(stp->st_stid.sc_file);
+-						if (nf) {
+-							get_file(nf->nf_file);
+-							filp_close(nf->nf_file,
+-								   (fl_owner_t)lo);
+-							nfsd_file_put(nf);
+-						}
+-						release_all_access(stp);
+-					} else
+-						spin_unlock(&clp->cl_lock);
+-					mutex_unlock(&stp->st_mutex);
+-					break;
+-				case SC_TYPE_DELEG:
+-					/* Extra reference guards against concurrent
+-					 * FREE_STATEID; revoke_delegation() consumes
+-					 * it, otherwise release it directly.
+-					 */
+-					refcount_inc(&stid->sc_count);
+-					dp = delegstateid(stid);
+-					spin_lock(&nn->deleg_lock);
+-					if (!unhash_delegation_locked(
+-						    dp, SC_STATUS_ADMIN_REVOKED))
+-						dp = NULL;
+-					spin_unlock(&nn->deleg_lock);
+-					if (dp)
+-						revoke_delegation(dp);
+-					else
+-						nfs4_put_stid(stid);
+-					break;
+-				case SC_TYPE_LAYOUT:
+-					ls = layoutstateid(stid);
+-					spin_lock(&clp->cl_lock);
+-					if (stid->sc_status == 0) {
+-						stid->sc_status |=
+-							SC_STATUS_ADMIN_REVOKED;
+-						atomic_inc(&clp->cl_admin_revoked);
+-					}
+-					spin_unlock(&clp->cl_lock);
+-					nfsd4_close_layout(ls);
+-					break;
+-				}
++				revoke_one_stid(nn, clp, stid);
+ 				nfs4_put_stid(stid);
+ 				spin_lock(&nn->client_lock);
+ 				if (clp->cl_minorversion == 0)
 
 -- 
 2.53.0
