@@ -1,142 +1,222 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EB8E12F3C3E
-	for <linux-nfs@vger.kernel.org>; Wed,  8 Apr 2026 13:53:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C31653D1707
+	for <linux-nfs@vger.kernel.org>; Wed,  8 Apr 2026 13:53:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775656416; cv=none; b=g71A54+INNhyoaKCr4tzVZLULe4jPDbrBVe8AKU49j8bBkAWqPN9/PeZ7PSsEFOn8fikPeBaHIhg3rnYoSpZO55tc5yH0U1y3qKsKXkq3/YqczZDk036y0WRs21qsYrkRrTdmDMPOiKMVENiyB/F6L7fY6Iu2qplfIvLg/OY54k=
+	t=1775656433; cv=none; b=Lkc+/WkZ2PHDjIfoZSTUyLAIQ4GI9tht7xDudqIldRjNR4Bbhr0cdalPvUw/rebyG/KstseCqM0y+W5h7H3AI7zVMOyJqYVWS3BAcy4Dz9ftAwnf0MJYZNFH7ZZ/qn0k032JfMYlBXumi87EiLyooW/O/34iJ5gXfdQz/osMFy0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775656416; c=relaxed/simple;
-	bh=rmKHoZShQl5f/YMBpBS98MDWiEkC8VcvLT3seCGstnc=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=kBc1O9Qg0Gv5zhvJwXJc67MqeFxNYhCQ/oH1uVj0hWaAAOSUESUF9DlSI/cvn89ux3BMDwIDa0+6BGbLVlXbuERpkgv4MigmbfDTlAIEQEcqL0Ftax26S5GMCD2J06HpCXQ1X6yuoPkkMloykKbJ/Y0ex7z1YVtTI3YpPBGFs6Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bqjImHZs; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1775656433; c=relaxed/simple;
+	bh=rroQmESzhV8c9DWd5tZkVVfrrupA+slILBR9VDG7oaM=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=K2KEhH/2oNENFN/3p/NkySp4U9Ljb3CyEe6/KqSrimuT5O8Tfm7ZmqaColIZQO9xBi+kEiTqhmFlafh+4Q5eeYu8GcVtmmaVxOYXjWmzAvnTB+AxN0nMdabIwnC3DEmvYVBFS5MjV7AjHGTuko1aKOkA7+Xx/0Tc4Um3vvfiASE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fZpqarNN; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=45S3zz8c; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=fZpqarNN; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=45S3zz8c; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bqjImHZs"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5799AC19421;
-	Wed,  8 Apr 2026 13:53:35 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1775656415;
-	bh=rmKHoZShQl5f/YMBpBS98MDWiEkC8VcvLT3seCGstnc=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-	b=bqjImHZswMmSmP/EYngjrGTLnSMvinhrYpaIBX5YrK8A5ujliac6HU+zvaq8Pj9mP
-	 FY1jnTPreDWaqwQM6WpBmF+g64iEUjnS+I+uJnMH2/OUry51V9yyBHa2zNXKJVQzr8
-	 a8T+XqXkS4tdo57oKnpi50+FMnshJTrcgM6DU+xweCAJL0V5lusjvKkdq6GVZZLNWH
-	 OQrZdhLbNo4qw2JZaR5KeAEd6ahcJZyKuliIjNaRzFUxnPKslNEtyvNQBv/+t9D9sc
-	 zr/XAs7+QUz9MFoI88g9Gef0MJ6kNEgDCIlbj7i0Y7m6nF+076P02pyO+HQsSbkUy+
-	 UKPyg64f1a+yA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 6ABD6F4006D;
-	Wed,  8 Apr 2026 09:53:34 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 08 Apr 2026 09:53:34 -0400
-X-ME-Sender: <xms:3l3WaZFZMMM02I0nT_iGGB6jUKjJyIFmHaFBOaB4toPJfd2OsDTy0A>
-    <xme:3l3WaZI8SbfnuEmiyWeDyk9bBDJXz9sBw5yi5EI9ZnnnOX4-dN_dTNI1RKnE8dm-2
-    WLyjF75hRpAWY9qKis7bxl6nqFP46qCsU9dYrgR04ary0DilgSy1OI>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefhedrtddtgddvfeejgecutefuodetggdotefrod
-    ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpuffrtefokffrpgfnqfghnecuuegr
-    ihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjug
-    hrpefoggffhffvvefkjghfufgtgfesthejredtredttdenucfhrhhomhepfdevhhhutghk
-    ucfnvghvvghrfdcuoegtvghlsehkvghrnhgvlhdrohhrgheqnecuggftrfgrthhtvghrnh
-    ephfffkefffedtgfehieevkeduuefhvdejvdefvdeuuddvgeelkeegtefgudfhfeelnecu
-    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomheptghhuhgtkh
-    hlvghvvghrodhmvghsmhhtphgruhhthhhpvghrshhonhgrlhhithihqdduieefgeelleel
-    heelqdefvdelkeeggedvfedqtggvlheppehkvghrnhgvlhdrohhrghesfhgrshhtmhgrih
-    hlrdgtohhmpdhnsggprhgtphhtthhopeejpdhmohguvgepshhmthhpohhuthdprhgtphht
-    thhopehnvghilhgssegsrhhofihnrdhnrghmvgdprhgtphhtthhopehjlhgrhihtohhnse
-    hkvghrnhgvlhdrohhrghdprhgtphhtthhopegurghirdhnghhosehorhgrtghlvgdrtgho
-    mhdprhgtphhtthhopegthhhutghkrdhlvghvvghrsehorhgrtghlvgdrtghomhdprhgtph
-    htthhopehokhhorhhnihgvvhesrhgvughhrghtrdgtohhmpdhrtghpthhtohepthhomhes
-    thgrlhhpvgihrdgtohhmpdhrtghpthhtoheplhhinhhugidqnhhfshesvhhgvghrrdhkvg
-    hrnhgvlhdrohhrgh
-X-ME-Proxy: <xmx:3l3WaTeQifcLJuwsSpf3WZmxUG6_4Ougdep0UIV5tmnyLYJTrxOOMQ>
-    <xmx:3l3WaZ4_hzDxVOgxJ0d9EsVFHk27VIli0eUZdC_IBUXoZNizJf7wow>
-    <xmx:3l3WaaveGh5aC67szIKOOTD0hBEZdObPlB_K3Ot8axqaH3hlT8Hfdg>
-    <xmx:3l3WaZjQb9f0Rd-dDMI1qZHKlVGmjSss-nsRfZYve-vvkodJleBKiA>
-    <xmx:3l3WaVq8_r8SAoCeW58xR8L7-4mC00M5p3c1pukjkUALlhcT4SD5GKM4>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 2AECA780070; Wed,  8 Apr 2026 09:53:34 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fZpqarNN";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="45S3zz8c";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="fZpqarNN";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="45S3zz8c"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id 09B844E9F5;
+	Wed,  8 Apr 2026 13:53:49 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1775656429; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=J8N6aXHtI40DfgX/faAcELwkLZiVOWJwDK9ISbaOf/Q=;
+	b=fZpqarNNGFv2EHZyBtHd+Wfngbz2xKdEBjOYvU6Oxqyf+Z8ux2gUYHsD+9X8ISeEfH0mSv
+	jPrIe0Y82Rr3wc+J+nbLI5K9njlRdRDvjz0wjPGCI8cd6jY8tpcZEMTzlDMCfa6hRnxQRx
+	kPElBJVOtfkEahWGVjAzj3r/QChlSvo=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1775656429;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=J8N6aXHtI40DfgX/faAcELwkLZiVOWJwDK9ISbaOf/Q=;
+	b=45S3zz8cToy6kS/Wppa9MPynSIOP7A693Bu0ZOI/9CT9U7VMf8GmyjXo750+JGsf2Mi2VH
+	ZV0nxIS5G4C7xuDw==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=fZpqarNN;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=45S3zz8c
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1775656429; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=J8N6aXHtI40DfgX/faAcELwkLZiVOWJwDK9ISbaOf/Q=;
+	b=fZpqarNNGFv2EHZyBtHd+Wfngbz2xKdEBjOYvU6Oxqyf+Z8ux2gUYHsD+9X8ISeEfH0mSv
+	jPrIe0Y82Rr3wc+J+nbLI5K9njlRdRDvjz0wjPGCI8cd6jY8tpcZEMTzlDMCfa6hRnxQRx
+	kPElBJVOtfkEahWGVjAzj3r/QChlSvo=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1775656429;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=J8N6aXHtI40DfgX/faAcELwkLZiVOWJwDK9ISbaOf/Q=;
+	b=45S3zz8cToy6kS/Wppa9MPynSIOP7A693Bu0ZOI/9CT9U7VMf8GmyjXo750+JGsf2Mi2VH
+	ZV0nxIS5G4C7xuDw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id F279A4A0B3;
+	Wed,  8 Apr 2026 13:53:48 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id Q0AwO+xd1mk7PwAAD6G6ig
+	(envelope-from <jack@suse.cz>); Wed, 08 Apr 2026 13:53:48 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id C0BF4A0A7E; Wed,  8 Apr 2026 15:53:48 +0200 (CEST)
+Date: Wed, 8 Apr 2026 15:53:48 +0200
+From: Jan Kara <jack@suse.cz>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>, 
+	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, Chuck Lever <chuck.lever@oracle.com>, 
+	Alexander Aring <alex.aring@gmail.com>, Steven Rostedt <rostedt@goodmis.org>, 
+	Masami Hiramatsu <mhiramat@kernel.org>, Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
+	Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
+	NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+	Amir Goldstein <amir73il@gmail.com>, Calum Mackay <calum.mackay@oracle.com>, 
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
+	linux-doc@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/24] nfsd: update the fsnotify mark when setting or
+ removing a dir delegation
+Message-ID: <3bxtqnifeutht7dmyp4svv5k2npk5e53ggegx7lzmj73vsspkx@icmnt57p7rhk>
+References: <20260407-dir-deleg-v1-0-aaf68c478abd@kernel.org>
+ <20260407-dir-deleg-v1-8-aaf68c478abd@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AcsP-Plei2ic
-Date: Wed, 08 Apr 2026 09:53:13 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Olga Kornievskaia" <okorniev@redhat.com>,
- "Chuck Lever" <chuck.lever@oracle.com>, "Jeff Layton" <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org, neilb@brown.name,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>
-Message-Id: <9a8cdd25-a3e6-4e4c-bfb3-bd8a7f90b077@app.fastmail.com>
-In-Reply-To: <20260407235038.55749-2-okorniev@redhat.com>
-References: <20260407235038.55749-1-okorniev@redhat.com>
- <20260407235038.55749-2-okorniev@redhat.com>
-Subject: Re: [PATCH 1/3] nfsd: update mtime/ctime on CLONE in presense of delegated
- attributes
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260407-dir-deleg-v1-8-aaf68c478abd@kernel.org>
+X-Spamd-Result: default: False [-2.51 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	RCPT_COUNT_TWELVE(0.00)[24];
+	RCVD_TLS_LAST(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	MIME_TRACE(0.00)[0:+];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	ARC_NA(0.00)[];
+	RCVD_COUNT_THREE(0.00)[3];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	FREEMAIL_CC(0.00)[zeniv.linux.org.uk,kernel.org,suse.cz,oracle.com,gmail.com,goodmis.org,efficios.com,lwn.net,linuxfoundation.org,brown.name,redhat.com,talpey.com,vger.kernel.org];
+	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received,2a07:de40:b281:104:10:150:64:97:from];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	TAGGED_RCPT(0.00)[];
+	DKIM_TRACE(0.00)[suse.cz:+];
+	MISSING_XM_UA(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns,suse.cz:dkim,suse.cz:email,suse.com:email]
+X-Rspamd-Action: no action
+X-Spam-Flag: NO
+X-Spam-Score: -2.51
+X-Spam-Level: 
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Rspamd-Queue-Id: 09B844E9F5
 
+On Tue 07-04-26 09:21:21, Jeff Layton wrote:
+> Add a new helper function that will update the mask on the nfsd_file's
+> fsnotify_mark to be a union of all current directory delegations on an
+> inode. Call that when directory delegations are added or removed.
+> 
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
 
-On Tue, Apr 7, 2026, at 7:50 PM, Olga Kornievskaia wrote:
-> When delegated attributes are given on open the file is opened with NOCMTIME
-> and modifying operations do not update mtime/ctime as to not get out-of-sync
-> with the client's delegated view. However, for CLONE operation, the server
-> should update its view of mtime/ctime and reflect that in any GETATTR queries.
->
-> Fixes: e5e9b24ab8fa ("nfsd: freeze c/mtime updates with outstanding 
-> WRITE_ATTRS delegation")
-> Signed-off-by: Olga Kornievskaia <okorniev@redhat.com>
+Looks good. Feel free to add:
+
+Reviewed-by: Jan Kara <jack@suse.cz>
+
+								Honza
+
 > ---
->  fs/nfsd/nfs4proc.c | 14 ++++++++++++++
->  1 file changed, 14 insertions(+)
->
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 99b44b6ec056..fb891e35ebe9 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1396,6 +1396,17 @@ nfsd4_verify_copy(struct svc_rqst *rqstp, struct 
-> nfsd4_compound_state *cstate,
->  	goto out;
+>  fs/nfsd/nfs4state.c | 33 +++++++++++++++++++++++++++++++++
+>  1 file changed, 33 insertions(+)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index c8fb84c38637..9a4cff08c67d 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1258,6 +1258,37 @@ static void nfsd4_finalize_deleg_timestamps(struct nfs4_delegation *dp, struct f
+>  	}
 >  }
-> 
-> +static void nfsd_update_cmtime_attr(struct dentry *dentry)
+>  
+> +static void nfsd_fsnotify_recalc_mask(struct nfsd_file *nf)
 > +{
-> +	struct iattr attr = {
-> +		.ia_valid = ATTR_CTIME | ATTR_MTIME,
-> +	};
+> +	struct fsnotify_mark *mark = &nf->nf_mark->nfm_mark;
+> +	struct inode *inode = file_inode(nf->nf_file);
+> +	u32 lease_mask, set = 0, clear = 0;
 > +
-> +	inode_lock(d_inode(dentry));
-> +	notify_change(&nop_mnt_idmap, dentry, &attr, NULL);
-> +	inode_unlock(d_inode(dentry));
+> +	/* This is only needed when adding or removing dir delegs */
+> +	if (!S_ISDIR(inode->i_mode))
+> +		return;
+> +
+> +	/* Set up notifications for any ignored delegation events */
+> +	lease_mask = inode_lease_ignore_mask(inode);
+> +
+> +	if (lease_mask & FL_IGN_DIR_CREATE)
+> +		set |= FS_CREATE;
+> +	else
+> +		clear |= FS_CREATE;
+> +
+> +	if (lease_mask & FL_IGN_DIR_DELETE)
+> +		set |= FS_DELETE;
+> +	else
+> +		clear |= FS_DELETE;
+> +
+> +	if (lease_mask & FL_IGN_DIR_RENAME)
+> +		set |= FS_RENAME;
+> +	else
+> +		clear |= FS_RENAME;
+> +
+> +	fsnotify_modify_mark_mask(mark, set, clear);
 > +}
-
-I think there is an active delegation here. Without ATTR_DELEG,
-notify_change() calls try_break_deleg(), which will return
--EWOULDBLOCK, causing the setattr to be silently skipped.
-Wouldn't it also initiate a CB_RECALL as well?
-
-
-> @@ -1413,6 +1424,9 @@ nfsd4_clone(struct svc_rqst *rqstp, struct 
-> nfsd4_compound_state *cstate,
->  			dst, clone->cl_dst_pos, clone->cl_count,
->  			EX_ISSYNC(cstate->current_fh.fh_export));
-> 
-> +	if ((READ_ONCE(dst->nf_file->f_mode) & FMODE_NOCMTIME) != 0)
-> +		nfsd_update_cmtime_attr(cstate->current_fh.fh_dentry);
 > +
->  	nfsd_file_put(dst);
->  	nfsd_file_put(src);
->  out:
-
-Should this check whether nfsd4_clone_file_range() succeeded before
-updating timestamps?  If the clone fails, the file content is not
-modified, so a timestamp update would be incorrect.
-
-
+>  static void nfs4_unlock_deleg_lease(struct nfs4_delegation *dp)
+>  {
+>  	struct nfs4_file *fp = dp->dl_stid.sc_file;
+> @@ -1266,6 +1297,7 @@ static void nfs4_unlock_deleg_lease(struct nfs4_delegation *dp)
+>  	WARN_ON_ONCE(!fp->fi_delegees);
+>  
+>  	nfsd4_finalize_deleg_timestamps(dp, nf->nf_file);
+> +	nfsd_fsnotify_recalc_mask(nf);
+>  	kernel_setlease(nf->nf_file, F_UNLCK, NULL, (void **)&dp);
+>  	put_deleg_file(fp);
+>  }
+> @@ -9652,6 +9684,7 @@ nfsd_get_dir_deleg(struct nfsd4_compound_state *cstate,
+>  
+>  	if (!status) {
+>  		put_nfs4_file(fp);
+> +		nfsd_fsnotify_recalc_mask(nf);
+>  		return dp;
+>  	}
+>  
+> 
+> -- 
+> 2.53.0
+> 
 -- 
-Chuck Lever
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
