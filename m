@@ -1,123 +1,141 @@
-Received: from smtpcmd0756.aruba.it (smtpcmd0756.aruba.it [62.149.156.56])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECB7F3D565F
-	for <linux-nfs@vger.kernel.org>; Wed,  8 Apr 2026 17:38:44 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.149.156.56
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B32EA3537FC;
+	Wed,  8 Apr 2026 18:16:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1775669928; cv=none; b=GjMkMlGN+9/vwjD/ltd8/UAfNB6qXdG3dBDTqht1TAzPpOkyANFdLzL5XOJiTzdcSC6aK+QJruH9qoGW1zfa/c8VoLZX0V9NRdS5i78kkHBDTWFNeIXf331xR6Nzxaix2qhRVwxn/wCju003zG4L+0JGqHL99QioKW1UabXee/g=
+	t=1775672214; cv=none; b=WRYTVNHw7LxKJ35DX4B5wC6JhtQtBP7UDuRfONliZRiXk9bCH28ueyuEZyavO7OzUrYMmxe3fxcWJJ/3YqPZCNON8ZiF9RnxbnWbk1thzW5/3GOmno8M2XrLDTexfhJYHUim5YD4BOCzzbwjSCDheisuheMlExITsjJuXcOFVns=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1775669928; c=relaxed/simple;
-	bh=OE4bGBsC/6m3rPeRKR9QkW5yZGvz2Tmkuk6fyZjTb8k=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=XE2m1GDGTDGZ8AcEQ4OKkF0RMXovrqf2nB4VU55TV8tjA228rWrJ+A6LKxYXPFZCPSAt8GUAKuIuxd2gQk8sj+k/GlnNkyfMMF+U0M/t4T/IB1be+ZIPsvBO97yyG17cDDHC4l5KLlBQAWyLVMc1DtdrOjm0ayj1QkdbvZD4Fos=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=benettiengineering.com; spf=pass smtp.mailfrom=benettiengineering.com; dkim=pass (2048-bit key) header.d=aruba.it header.i=@aruba.it header.b=hG/83mNo; arc=none smtp.client-ip=62.149.156.56
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=benettiengineering.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=benettiengineering.com
+	s=arc-20240116; t=1775672214; c=relaxed/simple;
+	bh=HKHxPoblaork2H0d6qRNs+Qxh9dmFv1KNw8j/ngGj2k=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=oijGH4/UxiwicBavlloExqjMDJoCkfKAudKEzW88VofMidFcZ6BSWs4wF9jx/pBX0+OT+HWmCo1EEB1kvDn8fb8zIWRPWhTtA3wnDz/DmpSEjCVmrNDiMi25cUvZHcwIZ4S9O+1vSLRvZzKUU9Gl9ZUFzMMQeuPyVCYj7Zt1xyo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=rrd3Vq+f; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=aruba.it header.i=@aruba.it header.b="hG/83mNo"
-Received: from localhost.localdomain ([84.33.84.190])
-	by Aruba SMTP with ESMTPSA
-	id AWoRwcrFktpTfAWoSwriPH; Wed, 08 Apr 2026 19:35:36 +0200
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=aruba.it; s=a1;
-	t=1775669736; bh=OE4bGBsC/6m3rPeRKR9QkW5yZGvz2Tmkuk6fyZjTb8k=;
-	h=From:To:Subject:Date:MIME-Version;
-	b=hG/83mNozOsDP9P6uatbreG87llyvbiZ7erKi9HXKd4KXKX5GDEc11diYyULOhlz/
-	 Mm+M/3tXZi0z6kJKqvjXzP3bdkLCY2N0NqPOqh5RSUySPfewrMbtLwzNX3OrdAgkgT
-	 QvOMIc9oQo/bsxdzx3WKcR0ybW8VbYuXqK2+fcbckwmYIiusp2Xch5CGdnt3vzhiTQ
-	 SI4yV3XXpNPEQUSbrOZ5jJikR5yp0FZbRapJPYN+GYt6Ws6YFcoFltPeTFxW8HngjP
-	 d5MvTiyj9VZhkuWbfpiK941FZLiMjp/FenMxMvhuwqA47YVozknlNMSxV/rzWdm5ts
-	 I/xbFL/w/zGwQ==
-From: Giulio Benetti <giulio.benetti@benettiengineering.com>
-To: linux-nfs@vger.kernel.org
-Cc: Giulio Benetti <giulio.benetti@benettiengineering.com>
-Subject: [PATCH v2 2/3] Introduce compat.h file to deal with old Linux api and fix build failure due to missing NETLINK_EXT_ACK
-Date: Wed,  8 Apr 2026 19:35:34 +0200
-Message-ID: <20260408173535.3992116-2-giulio.benetti@benettiengineering.com>
-X-Mailer: git-send-email 2.47.3
-In-Reply-To: <20260408173535.3992116-1-giulio.benetti@benettiengineering.com>
-References: <20260408173535.3992116-1-giulio.benetti@benettiengineering.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="rrd3Vq+f"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2F9D3C19425;
+	Wed,  8 Apr 2026 18:16:54 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
+	s=k20201202; t=1775672214;
+	bh=HKHxPoblaork2H0d6qRNs+Qxh9dmFv1KNw8j/ngGj2k=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
+	b=rrd3Vq+fpd2blfg6wopfmOudbeG4wNDSlpCfejvmvd9EMcoPsT5k51gL7CuUaYk8b
+	 CpHgEcnumiCYVsoUwEVKTzSkoA/DVcdCU+DX3KHP2lXzv4YXjSXHuElsMVzZ8VZNaF
+	 mnCA9VD3Q974qfsAM7/mh5BiUph3l8bViDzZ4Wt3RsjC9DHTgC0R++6fU7MAY3ViK8
+	 fep2ac1qhUEMg4BJqE/fnCyhwpxcEteOSOopRmtr0JdkXz4HaLZIWkW0zTlPiKWibw
+	 viZJiaSqhgue58xJCCwHiW3Zpv37EyeLmBL+v3mjOw7OWGvECH+WmbkdD6RXkg+GTx
+	 tDGbFufErBw8Q==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 036AEF4006C;
+	Wed,  8 Apr 2026 14:16:53 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Wed, 08 Apr 2026 14:16:53 -0400
+X-ME-Sender: <xms:lJvWaSvFhNZ43WDSF4xUIs6h7WSKhuTbM8ny4RZXenhN05SWE55zww>
+    <xme:lJvWaSRp34g1uyADOBSHkG683H72946qbjCgw08XMh_E942eiYKOwFFr73cJGcLzS
+    _ychiMARQA5cFpBaXc9AUgNy-tsOdFITn8Rpvv0lSPJ1udqMzygP8PH>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefhedrtddtgddvgedvjecutefuodetggdotefrod
+    ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpuffrtefokffrpgfnqfghnecuuegr
+    ihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjug
+    hrpefoggffhffvvefkjghfufgtgfesthejredtredttdenucfhrhhomhepfdevhhhutghk
+    ucfnvghvvghrfdcuoegtvghlsehkvghrnhgvlhdrohhrgheqnecuggftrfgrthhtvghrnh
+    ephfffkefffedtgfehieevkeduuefhvdejvdefvdeuuddvgeelkeegtefgudfhfeelnecu
+    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomheptghhuhgtkh
+    hlvghvvghrodhmvghsmhhtphgruhhthhhpvghrshhonhgrlhhithihqdduieefgeelleel
+    heelqdefvdelkeeggedvfedqtggvlheppehkvghrnhgvlhdrohhrghesfhgrshhtmhgrih
+    hlrdgtohhmpdhnsggprhgtphhtthhopedvgedpmhhouggvpehsmhhtphhouhhtpdhrtghp
+    thhtohepnhgvihhlsegsrhhofihnrdhnrghmvgdprhgtphhtthhopehmrghthhhivghurd
+    guvghsnhhohigvrhhssegvfhhfihgtihhoshdrtghomhdprhgtphhtthhopegrlhgvgidr
+    rghrihhnghesghhmrghilhdrtghomhdprhgtphhtthhopegrmhhirhejfehilhesghhmrg
+    hilhdrtghomhdprhgtphhtthhopehrohhsthgvughtsehgohhoughmihhsrdhorhhgpdhr
+    tghpthhtoheprghnnhgrsehkvghrnhgvlhdrohhrghdprhgtphhtthhopegsrhgruhhnvg
+    hrsehkvghrnhgvlhdrohhrghdprhgtphhtthhopehjlhgrhihtohhnsehkvghrnhgvlhdr
+    ohhrghdprhgtphhtthhopehmhhhirhgrmhgrtheskhgvrhhnvghlrdhorhhg
+X-ME-Proxy: <xmx:lJvWadfwdEbgHY50jIRm349uKUZoi4dIykahtitCUgzU-qDa0jnh-A>
+    <xmx:lJvWac5QvBsdH_8b0EyXVCQ53CXGlvAU2LZ3Dvd5A7hJOw-v281LXQ>
+    <xmx:lJvWaZ8srh66Ha6yOnd5dPMBZe86eMzFqX6S6cRH6t_Z_s4hH5_cvQ>
+    <xmx:lJvWaWzPQupnYV0SPbhEsvYqUN5lmSqjdY0QzIFVlPNh9gdBGgEVig>
+    <xmx:lJvWaQG2yajAQ8V64yXwD0sO-FDVUo7XOMuAJq6b2G-JRpJ3Lc7Krz8K>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id C882B780070; Wed,  8 Apr 2026 14:16:52 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CMAE-Envelope: MS4xfAjrBg0BUJCKmUxMEiH5mL8ZtcXEoGQBwUT7zcvYngf+3AjddKmuTmX92KYDd5zc7tW5vKgoa+Svv8Inx5dhr2cIov/N92tYSM6AiLfysDRpj4/6TQEJ
- wgNDRlrcgb0R9JT2oDJpXuJMkcv9aziBEg3KT2/kWX6Fw7vzN8ReTxUWvD9iUxgItmP5RDUD86L9T2ybsqSPXGfa4XdcK+wwJMYw+dMqxuA+KY6bT8xLsW82
- /cIIeHyOPAz0qFDfyxmTnZyj77xSy9vVLy0ApoZfxkHiAPL+643mys/uVDeXfag/
+X-ThreadId: A5DZmuaHBpig
+Date: Wed, 08 Apr 2026 14:16:32 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Jeff Layton" <jlayton@kernel.org>,
+ "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
+ "Chuck Lever" <chuck.lever@oracle.com>,
+ "Alexander Aring" <alex.aring@gmail.com>,
+ "Steven Rostedt" <rostedt@goodmis.org>,
+ "Masami Hiramatsu" <mhiramat@kernel.org>,
+ "Mathieu Desnoyers" <mathieu.desnoyers@efficios.com>,
+ "Jonathan Corbet" <corbet@lwn.net>, "Shuah Khan" <skhan@linuxfoundation.org>,
+ NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
+ "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
+ "Amir Goldstein" <amir73il@gmail.com>
+Cc: "Calum Mackay" <calum.mackay@oracle.com>, linux-fsdevel@vger.kernel.org,
+ linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org,
+ linux-doc@vger.kernel.org, linux-nfs@vger.kernel.org
+Message-Id: <bb4fc3da-765d-4284-9282-dd04d286f671@app.fastmail.com>
+In-Reply-To: <20260407-dir-deleg-v1-1-aaf68c478abd@kernel.org>
+References: <20260407-dir-deleg-v1-0-aaf68c478abd@kernel.org>
+ <20260407-dir-deleg-v1-1-aaf68c478abd@kernel.org>
+Subject: Re: [PATCH 01/24] filelock: add support for ignoring deleg breaks for dir
+ change events
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-In "compat.h" check if NETLINK_EXT_ACK exists, otherwise define it to fix
-build failure and where at the moment <linux/netlink.h> is included
-let's include "compat.h"
 
-Signed-off-by: Giulio Benetti <giulio.benetti@benettiengineering.com>
----
-V1->V2:
-* include "compat.h" in place of <linux/netlink.h>
----
- support/export/cache.c       |  2 +-
- support/export/cache_flush.c |  2 ++
- support/include/compat.h     | 10 ++++++++++
- utils/nfsdctl/nfsdctl.c      |  1 +
- 4 files changed, 14 insertions(+), 1 deletion(-)
- create mode 100644 support/include/compat.h
+On Tue, Apr 7, 2026, at 9:21 AM, Jeff Layton wrote:
+> If a NFS client requests a directory delegation with a notification
+> bitmask covering directory change events, the server shouldn't recall
+> the delegation. Instead the client will be notified of the change after
+> the fact.
+>
+> Add support for ignoring lease breaks on directory changes. Add a new
+> flags parameter to try_break_deleg() and teach __break_lease how to
+> ignore certain types of delegation break events.
+>
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
 
-diff --git a/support/export/cache.c b/support/export/cache.c
-index 2f128d7d..65008f51 100644
---- a/support/export/cache.c
-+++ b/support/export/cache.c
-@@ -40,7 +40,7 @@
- #include <netlink/genl/ctrl.h>
- #include <netlink/msg.h>
- #include <netlink/attr.h>
--#include <linux/netlink.h>
-+#include "compat.h"
- 
- #ifdef USE_SYSTEM_NFSD_NETLINK_H
- #include <linux/nfsd_netlink.h>
-diff --git a/support/export/cache_flush.c b/support/export/cache_flush.c
-index ed7b964f..2a24dec7 100644
---- a/support/export/cache_flush.c
-+++ b/support/export/cache_flush.c
-@@ -38,6 +38,8 @@ extern int no_netlink;
- #include "sunrpc_netlink.h"
- #endif
- 
-+#include "compat.h"
-+
- static int nl_send_flush(struct nl_sock *sock, int family, int cmd)
- {
- 	struct nl_msg *msg;
-diff --git a/support/include/compat.h b/support/include/compat.h
-new file mode 100644
-index 00000000..83229b65
---- /dev/null
-+++ b/support/include/compat.h
-@@ -0,0 +1,10 @@
-+#ifndef COMPAT_H
-+#define COMPAT_H
-+
-+#include <linux/netlink.h>
-+
-+#ifndef NETLINK_EXT_ACK
-+#define NETLINK_EXT_ACK 11
-+#endif
-+
-+#endif /* COMPAT_H */
-diff --git a/utils/nfsdctl/nfsdctl.c b/utils/nfsdctl/nfsdctl.c
-index 016dd2eb..c7126748 100644
---- a/utils/nfsdctl/nfsdctl.c
-+++ b/utils/nfsdctl/nfsdctl.c
-@@ -26,6 +26,7 @@
- #include <netlink/msg.h>
- #include <netlink/attr.h>
- #include <linux/netlink.h>
-+#include "compat.h"
- 
- #include <readline/readline.h>
- #include <readline/history.h>
+> diff --git a/fs/locks.c b/fs/locks.c
+> index 8e44b1f6c15a..dafa0752fdce 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+
+> @@ -1670,7 +1709,7 @@ int __break_lease(struct inode *inode, unsigned int flags)
+>  			locks_delete_lock_ctx(&fl->c, &dispose);
+>  	}
+> 
+> -	if (list_empty(&ctx->flc_lease))
+> +	if (!visible_leases_remaining(inode, flags))
+>  		goto out;
+> 
+>  	if (flags & LEASE_BREAK_NONBLOCK) {
+
+After breaking visible leases, the restart: label calls any_leases_conflict()
+which does not filter ignored dir-delegation leases. When only ignored leases
+remain, any_leases_conflict returns true, but visible_leases_remaining also
+returned true (triggering the wait). The code picks the first lease (possibly
+ignored), computes break_time = 1 jiffy, blocks, then loops.                                                     
+
+For example, suppose you have two directory delegations on a directory, one
+with FL_IGN_DIR_DELETE and one without. After the non-ignored one is broken
+and removed, the ignored one keeps any_leases_conflict returning true. The
+loop spins at 1-jiffy intervals until the ignored delegation is released.  
+
+Should the restart: block skip ignored leases?
+
+
 -- 
-2.47.3
-
+Chuck Lever
