@@ -1,141 +1,172 @@
-Received: from mout-p-101.mailbox.org (mout-p-101.mailbox.org [80.241.56.151])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-vs1-f48.google.com (mail-vs1-f48.google.com [209.85.217.48])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B1C13DE45C;
-	Thu, 16 Apr 2026 15:16:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=80.241.56.151
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776352585; cv=none; b=jlHrNVCvQ8noJhLYVrAiRNI/lnMDYK+CX5kP3YyDyVxBsYMEndk6QZGIeOq10sqSb6MRTNzKAJ9NOCZJjPowG4zdl4SqYwOhzpHzcSTJKX87Ms/YslB28lG27eF2GfGrGJu+1Dj1VTjEmMyxGuJfSc2sTV+3qUcaFu+kSg9eLl8=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776352585; c=relaxed/simple;
-	bh=XyF+E6gO478wOiq/pgMuvIN81fx+9yXqn/Vvu2aT0L4=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=tOofYZVZ2XdsaRVag0klVLF7jG2XIZtwpKMf0FrUtULvCvTL512zt27kuRCnfM3SXfv5O0rbH4Lxn3bb+1vOOy58JSIzw6kFv2oZGTVOkGZhKLqtMvlEeJjXvI7UVl2sXUHqeb6Xm+4oo5V/5a36a6A0z+XfvAFYP60uTXQFOl0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=cyphar.com; spf=pass smtp.mailfrom=cyphar.com; dkim=pass (2048-bit key) header.d=cyphar.com header.i=@cyphar.com header.b=Virv/0El; arc=none smtp.client-ip=80.241.56.151
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=cyphar.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=cyphar.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 817EF3E277A
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Apr 2026 15:22:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.217.48
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1776352939; cv=pass; b=gozBESEK9zIf/rJxmew2ltPoxZI1nxDN37v9nksaGu5FER8Jp+hCLxvuw18AybHfjoJJyQn6AS3NNmV6Mbz7asHTw2AgdrYD//woCNbAxLq112aAXHPGxKCSdk9Svd5SnX1gjKTlYrdP+Dsrp5haJk+4FH3NnzJOEIF05eA9dWY=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1776352939; c=relaxed/simple;
+	bh=d8h0wpCxAz5qr8QgJAWyo5NPmRw20h5MEF24J15IyVI=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=nppMNHPk41dyNGTamniaRxswWpT3KVxfcSmXFTSdUwotd7nlusiDB10NsgXwwVbsMvCD5lDVN9QaynCoZATJfPlIKxzBAPfHuSA6HI6mi0icejiW0y5YrSycTayXVdMTecllR6Heuba+ZPtmkSh4QDrEpocbtOohnaApVRVIQ10=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=g4lVbpH3; arc=pass smtp.client-ip=209.85.217.48
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=cyphar.com header.i=@cyphar.com header.b="Virv/0El"
-Received: from smtp1.mailbox.org (smtp1.mailbox.org [10.196.197.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mout-p-101.mailbox.org (Postfix) with ESMTPS id 4fxM6P2PZ5z9tSb;
-	Thu, 16 Apr 2026 17:16:13 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=cyphar.com; s=MBO0001;
-	t=1776352573;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=nhdCoiv/I0uxkoUrCPPG8rmJC6ZboD1OxA5S+uwKny8=;
-	b=Virv/0ElZ0qFnnPY/GhS5IhJ+h+GwbEprg/h6Z9gV2OljviLjkdVEwRZ+7X854ZIKSFeH0
-	hC4Niqhi7j9PLi4+x63KFfnDPt4RuFBqYxloFK25bI25vzvnHeqoJVXrIUJggjY/wyR6sU
-	RAg+Gmv9Q8pOXrv4JpVr7Wx/FZ1ibiwpX3fq5zPDnVBU8spo4050i3foBmWYOnB3d8Hz0d
-	zJQBpIWvwsnJqNPDc7mRLjs7ut2beQ15RsBmg4fBV07bQjFt69J5XLy6EZvGe9QHajdQDq
-	FFTKxD9BCwP255KkJ0kJ8owP3FVsOz/lVDwfI2wM+7QFoaGvhF8LuoZY6ew7SQ==
-Date: Fri, 17 Apr 2026 01:15:42 +1000
-From: Aleksa Sarai <cyphar@cyphar.com>
-To: Dorjoy Chowdhury <dorjoychy111@gmail.com>
-Cc: Jori Koolstra <jkoolstra@xs4all.nl>, linux-fsdevel@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, linux-api@vger.kernel.org, ceph-devel@vger.kernel.org, 
-	gfs2@lists.linux.dev, linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org, 
-	v9fs@lists.linux.dev, linux-kselftest@vger.kernel.org, viro@zeniv.linux.org.uk, 
-	brauner@kernel.org, jack@suse.cz, jlayton@kernel.org, chuck.lever@oracle.com, 
-	alex.aring@gmail.com, arnd@arndb.de, adilger@dilger.ca, mjguzik@gmail.com, 
-	smfrench@gmail.com, richard.henderson@linaro.org, mattst88@gmail.com, 
-	linmag7@gmail.com, tsbogend@alpha.franken.de, James.Bottomley@hansenpartnership.com, 
-	deller@gmx.de, davem@davemloft.net, andreas@gaisler.com, idryomov@gmail.com, 
-	amarkuze@redhat.com, slava@dubeyko.com, agruenba@redhat.com, trondmy@kernel.org, 
-	anna@kernel.org, sfrench@samba.org, pc@manguebit.org, ronniesahlberg@gmail.com, 
-	sprasad@microsoft.com, tom@talpey.com, bharathsm@microsoft.com, shuah@kernel.org, 
-	miklos@szeredi.hu, hansg@kernel.org
-Subject: Re: [PATCH v6 1/4] openat2: new OPENAT2_REGULAR flag support
-Message-ID: <2026-04-16-upstate-capable-deacon-petals-0l25lH@cyphar.com>
-References: <20260328172314.45807-1-dorjoychy111@gmail.com>
- <20260328172314.45807-2-dorjoychy111@gmail.com>
- <aeDpIgfDaIKEaBcL@lt-jori.localdomain>
- <CAFfO_h6pkyX=uN5uoXda6toTtT6KsahfBNBLom9i21HdZ7JOmQ@mail.gmail.com>
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="g4lVbpH3"
+Received: by mail-vs1-f48.google.com with SMTP id ada2fe7eead31-612d8a59cc0so712979137.3
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Apr 2026 08:22:16 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1776352935; cv=none;
+        d=google.com; s=arc-20240605;
+        b=c7GHso7Bk9c7UbLKjMe80OJiow8dDHEmjgCgrSiH5I5arQZ7s05hD6QKl/IYEZrYET
+         hNsMkVP/p+02cp+yuO1GJL0x6B9Rzh7XGBu+d9Ak9XWe+3N5ARLNb3NxrjIhUL3E3Osn
+         5w4lkjtpoWSBMNspfM2TIaLMDfj/cGEF4IyTX4e1nXhIG99WX/4DZK2GDyJjHi/kx80i
+         xr5VMIKFikDdK8x0qwwwmCliCRJlXo5Wr8oPq2uZqSOL1RPzrrAnyNDdNZ9KiWZjDMU4
+         4GQN7HkD9GaGbPx2FYGmKvBtQJnpmASKxp8n5hPOErEWAvQS5jo2Onpa57N/JHNbp4Sj
+         A3Mg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=ZrzbbPcScOB3YiJODipm6pYCq1GabErqB6lK+E1UuOI=;
+        fh=ULDSMEkNAd2WCwUZ1QOccgsmcAXS9+hWnExRug3jizw=;
+        b=d8eHzImJ9WXD/hbL+qgGIXgZKJBVPhcM2WxxKNEc7orozpce0pBJbwPiZVQGtPjWYj
+         eBPGwafJwGteTsOWv6duQQwqNv6Lm6oI5OwPBOf1q9Rnzn9yKVWc6c6uBFi2GDouuMeR
+         Xpprdu8DDMsHO52Ra+cAB5JW50FYCIBmmyBxp2XRpjmx5fFwab08KBB4pkVxQIaALrRR
+         AqtCIXq6JfQp6nlURTWglBN2/RAVEJ7q6WnFHcPyK9wYf3Zz2VqhTz2i4cReAZZQpmvD
+         k5aNcxE+6Nd5c6ml0ZCxknio6ZPHb3+XNI2tb8gRWhMKoRyh+zmsgNxU05dVjVBh2RsK
+         yYbQ==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1776352935; x=1776957735; darn=vger.kernel.org;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=ZrzbbPcScOB3YiJODipm6pYCq1GabErqB6lK+E1UuOI=;
+        b=g4lVbpH3NYuTwHK4zof4cI1R5F3IIOc7rqMOk/MWHpRmevLzRVb+qRlTlkjItjBIHx
+         c7M0jhqWfaQ2vMdmdCGZvAPwF+odTZ9kyd6p7sv+kuJPT06vFRz8sGzxEE+RDZyrNUPi
+         T43wkAslMCjJ0svGA08kUb5Gbx/3985K1GhQDZgh/+pTKuxWXmHDa0LxQ7N8Y6D+AdMV
+         pK9JcsBfafPuXYE4xQ1M0Bsj7zmPTRKj8Oqs1QY2itp7CaL3brWr7nECH3oyQEx2Fb50
+         mvvGzjXFjjCeXabKEm078u3WnFCD8fkfLKek/kSJSKQGUKyNJa4mEQC63tdpwccNytZ5
+         6URQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1776352935; x=1776957735;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=ZrzbbPcScOB3YiJODipm6pYCq1GabErqB6lK+E1UuOI=;
+        b=JdPJf3NemQZFTdvWFGS4q2j8PbAjhy1aZk/n9bpdZIFJTNSaGH6PUhbNFYd8/Hd2gK
+         Ln+MJ5qN4YmIc2V4IO3AzdtU8LdKWjaCjFPxPyH8rN6vTKJlCgX4rasXmATHr1AhokLN
+         f6Q04jKFESGgUkYEdBqCK/zRwulb6pWJQHKr6YOPkxcouXZtNlcQFd0wKVVGqpl+LQOB
+         IDgL/aDqb9vUuutlM9DtrtvTcJlq2LvopJFadmRoXQiaqWD2bRIb3GxjgWIclRLE0Ncj
+         YfvSOJScvcNj3hmEpZg7ISddybdU7u5rqmRxYz4fVpzlLFoZJPgeaKd6bf4XY8z0rrww
+         Xwdw==
+X-Forwarded-Encrypted: i=1; AFNElJ/154SBcvxNyMrJJF8R9GmiTY94kTxicumE20A45Fap0rlaBZMNIP8dOFOOERkSQs8nH/knCHbxAy0=@vger.kernel.org
+X-Gm-Message-State: AOJu0Ywyvy14Sp4oFbnTvcD1qHOax2ciolknYMoRwK3/yFfZU9w937q7
+	aDTntRNmKhn0bJ2aSmO12PiwDoMtrNbbTgbDMOZCBvf6Km13L9k9pxqrp552e4IAORq7LUVpFjW
+	dcjqcB+HWpwc8HDAsVYb2e7KjfDEb2/U=
+X-Gm-Gg: AeBDieulnvsdbgSBrwl3tXRQESfETCdrkKlhG+uvsilQxr8jw8NiFTLybzSKHLpuzii
+	a5RxeOU8lwsJ6EfAmuoc7AyLiufuAM638qrlXUogy1U8he/puYIK1F5v5b83Is/wqUvhzvwSLTL
+	RDkfbQH1E5UYeFFtxu5xmLfyolFCXTcILeqm64lAFC9JdDkKn1AItccA02ebpGvojo/WNgPOc6l
+	WYFBpNzG3R6yBo/1R9vnCLDTihDwazI8XR/FrQuVhKkNRHLsWsRQ0WXKa9eiMnaX3GelM255qu7
+	aEuTbR8pzsUrdjhSSNUEOOZYfm1KUp1DbLlOdabCBA==
+X-Received: by 2002:a05:6102:4194:b0:610:48e8:8c4a with SMTP id
+ ada2fe7eead31-61048e896d0mr7561251137.24.1776352934841; Thu, 16 Apr 2026
+ 08:22:14 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha512;
-	protocol="application/pgp-signature"; boundary="ms7kw7kvw4rfqdw6"
-Content-Disposition: inline
-In-Reply-To: <CAFfO_h6pkyX=uN5uoXda6toTtT6KsahfBNBLom9i21HdZ7JOmQ@mail.gmail.com>
-
-
---ms7kw7kvw4rfqdw6
-Content-Type: text/plain; protected-headers=v1; charset=utf-8
-Content-Disposition: inline
+References: <20260328172314.45807-1-dorjoychy111@gmail.com> <20260416-abgraben-seeweg-a44ce660957f@brauner>
+In-Reply-To: <20260416-abgraben-seeweg-a44ce660957f@brauner>
+From: Dorjoy Chowdhury <dorjoychy111@gmail.com>
+Date: Thu, 16 Apr 2026 21:22:03 +0600
+X-Gm-Features: AQROBzDwlhonUu0OdB2GZDkt71Qp2GPutRABZHn8dYTEqH0ntcAPsZO_it5641c
+Message-ID: <CAFfO_h5mORm0OuK-d4thzBWWySmyvLSVeVa7phZc4Df-8D=1Cg@mail.gmail.com>
+Subject: Re: [PATCH v6 0/4] OPENAT2_REGULAR flag support for openat2
+To: Christian Brauner <brauner@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	linux-api@vger.kernel.org, ceph-devel@vger.kernel.org, gfs2@lists.linux.dev, 
+	linux-nfs@vger.kernel.org, linux-cifs@vger.kernel.org, v9fs@lists.linux.dev, 
+	linux-kselftest@vger.kernel.org, viro@zeniv.linux.org.uk, jack@suse.cz, 
+	jlayton@kernel.org, chuck.lever@oracle.com, alex.aring@gmail.com, 
+	arnd@arndb.de, adilger@dilger.ca, mjguzik@gmail.com, smfrench@gmail.com, 
+	richard.henderson@linaro.org, mattst88@gmail.com, linmag7@gmail.com, 
+	tsbogend@alpha.franken.de, James.Bottomley@hansenpartnership.com, 
+	deller@gmx.de, davem@davemloft.net, andreas@gaisler.com, idryomov@gmail.com, 
+	amarkuze@redhat.com, slava@dubeyko.com, agruenba@redhat.com, 
+	trondmy@kernel.org, anna@kernel.org, sfrench@samba.org, pc@manguebit.org, 
+	ronniesahlberg@gmail.com, sprasad@microsoft.com, tom@talpey.com, 
+	bharathsm@microsoft.com, shuah@kernel.org, miklos@szeredi.hu, 
+	hansg@kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
-Subject: Re: [PATCH v6 1/4] openat2: new OPENAT2_REGULAR flag support
-MIME-Version: 1.0
 
-On 2026-04-16, Dorjoy Chowdhury <dorjoychy111@gmail.com> wrote:
-> On Thu, Apr 16, 2026 at 7:52=E2=80=AFPM Jori Koolstra <jkoolstra@xs4all.n=
-l> wrote:
+On Thu, Apr 16, 2026 at 7:07=E2=80=AFPM Christian Brauner <brauner@kernel.o=
+rg> wrote:
+>
+> On Sat, 28 Mar 2026 23:22:21 +0600, Dorjoy Chowdhury wrote:
+> > I came upon this "Ability to only open regular files" uapi feature sugg=
+estion
+> > from https://uapi-group.org/kernel-features/#ability-to-only-open-regul=
+ar-files
+> > and thought it would be something I could do as a first patch and get t=
+o
+> > know the kernel code a bit better.
 > >
-> > On Sat, Mar 28, 2026 at 11:22:22PM +0600, Dorjoy Chowdhury wrote:
-> > > diff --git a/arch/alpha/include/uapi/asm/fcntl.h b/arch/alpha/include=
-/uapi/asm/fcntl.h
-> > > index 50bdc8e8a271..fe488bf7c18e 100644
-> > > --- a/arch/alpha/include/uapi/asm/fcntl.h
-> > > +++ b/arch/alpha/include/uapi/asm/fcntl.h
-> > > @@ -34,6 +34,7 @@
-> > >
-> > >  #define O_PATH               040000000
-> > >  #define __O_TMPFILE  0100000000
-> > > +#define OPENAT2_REGULAR      0200000000
-> > >
+> > The following filesystems have been tested by building and booting the =
+kernel
+> > x86 bzImage in a Fedora 43 VM in QEMU. I have tested with OPENAT2_REGUL=
+AR that
+> > regular files can be successfully opened and non-regular files (directo=
+ry, fifo etc)
+> > return -EFTYPE.
+> > - btrfs
+> > - NFS (loopback)
+> > - SMB (loopback)
 > >
-> > I don't quite understand why we are adding OPENAT2_REGULAR inside the
-> > O_* flag range. Wasn't this supposed to be only supported for openat2()?
-> > If so, I don't see the need to waste an O_* flag bit. But maybe I am
-> > missing something.
-> >
->=20
-> Yes, OPENAT2_REGULAR is only supported for openat2. I am not sure if I
-> got a specific review to not add OPENAT2_REGULAR in the O_* flag 32
-> bit range. But as far as I understand, for the old open system calls
-> we can't easily add new O_* flags as the older codepaths don't strip
-> off unknown bits which openat2 does. It's not easy to add new O_*
-> flags for the old open system calls since that could break userspace
-> programs. So I guess it's okay to add OPENAT2_REGULAR in the 32 bits
-> range anyway? (Also lots of code paths take 32bit flags param right
-> now and those would need changing to take uint64_t instead but this is
-> of course not a reason to not add the new flag outside of the 32
-> bits).
+> > [...]
+>
+> - I've added an explanation why OPENAT2_REGULAR is only needed for some
+>   ->atomic_open() implementers but not others. What I don't like is that
+>   we need all that custom handling in there but it's managable.
+>
+> - I dropped the topmost style conversions. They really don't belong
+>   there and if we switch to something better we should use (1 << <nr>).
+>
+> - I split the EFTYPE errno introduction into a separate patch.
+>
+> ---
 
-Oh, I didn't notice that this wasn't mentioned here, we had a separate
-discussion about it in a thread with Jori and I must've assumed we
-discussed it in both. (My brain is also really not wired up to read
-large octal values easily.)
+Thanks for fixing up and picking this one up!
 
-While it is hard to add new O_* flags (hence OPENAT2_REGULAR), it's not
-/impossible/ (Jori has a patch for OPENAT2_EMPTY_PATH that is safe to
-add to O_* flags because of some fun historical coincidences).
+>
+> Applied to the vfs-7.2.openat.regular branch of the vfs/vfs.git tree.
+> Patches in the vfs-7.2.openat.regular branch should appear in linux-next =
+soon.
+>
 
-I would have a slight preference towards segregating the bits, ideally
-at the top end but even 1<<31 would've been nice. Then again, I'm not
-too fussed either way to be honest...
+I don't see a vfs-7.2.openat.regular branch in vfs/vfs.git tree in
+git.kernel.org.  Maybe this hasn't been pushed yet?
 
---=20
-Aleksa Sarai
-https://www.cyphar.com/
+> Please report any outstanding bugs that were missed during review in a
+> new review to the original patch series allowing us to drop it.
+>
+> It's encouraged to provide Acked-bys and Reviewed-bys even though the
+> patch has now been applied. If possible patch trailers will be updated.
+>
+> Note that commit hashes shown below are subject to change due to rebase,
+> trailer updates or similar. If in doubt, please check the listed branch.
+>
+> tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
+> branch: master
+>
 
---ms7kw7kvw4rfqdw6
-Content-Type: application/pgp-signature; name="signature.asc"
+I guess you wanted to mean vfs-7.2.openat.regular here?
 
------BEGIN PGP SIGNATURE-----
-
-iJEEABYKADkWIQS2TklVsp+j1GPyqQYol/rSt+lEbwUCaeD9HhsUgAAAAAAEAA5t
-YW51MiwyLjUrMS4xMiwyLDIACgkQKJf60rfpRG9xNAD/S5O3wWRTFXlfMtlEHV4H
-tBLno64cQT7NoYqdsUavC30BAL3p0Ba/trcO4rvoUwChjEeB5/aNYaoe0DC5i/3Y
-W2AO
-=6Jzu
------END PGP SIGNATURE-----
-
---ms7kw7kvw4rfqdw6--
+Regards,
+Dorjoy
