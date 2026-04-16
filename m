@@ -1,35 +1,35 @@
 Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 74D5723BF9F;
-	Thu, 16 Apr 2026 05:28:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E34F366806;
+	Thu, 16 Apr 2026 05:29:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776317328; cv=none; b=r8L6rP407cfMbtZLljZYoZyTytywemaulsDZIazx4t/yL6k/YGKAGGH9YZSNjVY0odKWcSkvNIGYh38G6+Zaikjmn2Q5l7VD+TXnLbiMgsoROqkFwoV25Eo10t/LV3bjicu/37usRwVgKKaGrTrgOAJGbnUPVbq0DluZQUTn8dc=
+	t=1776317367; cv=none; b=Igdd/S3ddp5G75WZgD8Ws5AxBZSzMWLTJhcv/oi3CMfFTpiU25SuI+/qT1gh50T3TDOyKYi82lcf/mjPSQn4Y0ldDDRbMuHOlRPatcpcRWxWpkDup7FChGbG4cQcrXhuvSfWRCaknnkgcODpGr+aeIUJxsY/MqqYDXHZ9HXt0eI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776317328; c=relaxed/simple;
-	bh=f2Bz74BP2pIsx7bwNgOtMkR7gs2kpsZ/mqcprBDxtV0=;
+	s=arc-20240116; t=1776317367; c=relaxed/simple;
+	bh=65csE4SJIyCmwZ8dOKasKEb0fxc9vZ5B0Nhgq+X83+c=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=siPqngCgSzCfX4AVmM0ashh8uhjLJ+Miw/LH22cDQgPXO6x8bNYDSOoTRNCHfxV8staYu+grfF1x+jsxmgklxnXYOsuvhcC4wZkq+u/W6werpBAvM9i72cOZCZkFljDxdUL19x8YOIwexgTdnI3p0CzVuMCwC+C+Qv0/45hk9MI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=vhp/HOv4; arc=none smtp.client-ip=198.137.202.133
+	 Content-Type:Content-Disposition:In-Reply-To; b=rGdwrTBZxne4qugV1N1imJN6LoH2jxfyD7J713j6EUDE9jGkXpOM0P/hao0Ab9JnpH5ZEIl6vlfREmW7JR4yO2yZER/Su2vSInzB3oKzCd1483LrYOLjFZ9p9ld+vISdkW4llaihgIoLflwYs5z21ypqJ0i2MRR3XZaHX1UWfsk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=uqg96YTR; arc=none smtp.client-ip=198.137.202.133
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="vhp/HOv4"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="uqg96YTR"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
 	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
 	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=SIkOAeDqR589cIp15aYU7JLk0xPA3K6/5hi1SlVRiiA=; b=vhp/HOv4iOOhl78LtmifEWmYv+
-	gUQjzQk17apUxTKcmxwJ3nAylslHKgJrs4KwXWvzeE6FlivFkOcVpEVUgTa8cf2Uw4FDlor2WUtb5
-	yDDfXjaqZf8eh61b8kVTFLg0N1oV2HENk3Kg7DappGTvmDjgyzYXX64A236mGRTA2dtRF8f6k1xj5
-	oHdorqDH9wQkOaIb1RbgU8jv+m8URt+e5FGeF8reSz3BTk25tvtYs742DuaeSN6GdZ1kSMnBK30Vi
-	4bIbMOiIqAHVXMm9HZGA+W3nNALREq+N87miKJULDJI9QRzajx6ncHGrk/gGpg3+5+080acO1MqA4
-	VqW7LMRg==;
+	bh=lIan6zHo4uwebu6y2FinLY6K38Ivl0WmlT9DFJMlJPU=; b=uqg96YTRFR4uE8Sw/DytpCxomn
+	DWJRnzzctG6teekvmOzs+RXN/6ttAC4R1KdyK4+E3ktUQLecw1ivtsqfa/a6smLGECzSL/o0488kE
+	VCS5gM4WvNGG+7cSzH8Ue1Kkliry5UVCHx6dvVJYOnr+ZaSha83Om3qAQ9G4MUv6ZryGjUTjb9a1s
+	bLm1jEA4h1xmYJ0KSlg8KbM6V6ammX89VyYEPMgqbIkiqzKHc4Bt8qRn+ToBdfxHvEI3eTziNHcuW
+	q4UtpRfr1sIcekupj1yzMriQSdg2xH502gX34yfbotVCU5IN11cFLnDF/xHf9fnQAki0e1trdJUVL
+	Y8jHROLQ==;
 Received: from hch by bombadil.infradead.org with local (Exim 4.98.2 #2 (Red Hat Linux))
-	id 1wDFHN-000000020IL-0KzZ;
-	Thu, 16 Apr 2026 05:28:41 +0000
-Date: Wed, 15 Apr 2026 22:28:41 -0700
+	id 1wDFI1-000000020Je-0k16;
+	Thu, 16 Apr 2026 05:29:21 +0000
+Date: Wed, 15 Apr 2026 22:29:21 -0700
 From: Christoph Hellwig <hch@infradead.org>
 To: Pranjal Shrivastava <praan@google.com>
 Cc: Christoph Hellwig <hch@infradead.org>, trond.myklebust@hammerspace.com,
@@ -38,12 +38,12 @@ Cc: Christoph Hellwig <hch@infradead.org>, trond.myklebust@hammerspace.com,
 	jlayton@kernel.org, tom@talpey.com, okorniev@redhat.com,
 	neil@brown.name, dai.ngo@oracle.com, linux-nfs@vger.kernel.org,
 	netdev@vger.kernel.org
-Subject: Re: [RFC PATCH 3/4] nfs: make nfs_page pin-aware
-Message-ID: <aeBziXT8zVVtfRVL@infradead.org>
+Subject: Re: [RFC PATCH 4/4] nfs: allow P2PDMA in direct I/O path
+Message-ID: <aeBzsd3fWKp6YnbL@infradead.org>
 References: <20260401194501.2269200-1-praan@google.com>
- <20260401194501.2269200-4-praan@google.com>
- <ac341x4RXKoShXsB@infradead.org>
- <ad6cVbDGy3alQ2uK@google.com>
+ <20260401194501.2269200-5-praan@google.com>
+ <ac35ICYHuw4lEOri@infradead.org>
+ <ad6c5fI0HsHkUbKH@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -52,20 +52,19 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <ad6cVbDGy3alQ2uK@google.com>
+In-Reply-To: <ad6c5fI0HsHkUbKH@google.com>
 X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-On Tue, Apr 14, 2026 at 07:58:13PM +0000, Pranjal Shrivastava wrote:
-> > > +			req = nfs_page_create_from_page(dreq->ctx, pagevec[i], false,
-> > >  							pgbase, pos, req_len);
-> > >
-> > 
-> > A lot of this code reads pretty odd as it's overflowing the lines.
+On Tue, Apr 14, 2026 at 08:00:37PM +0000, Pranjal Shrivastava wrote:
+> > Please split theconversion to iov_iter_extract_pages into a separate
+> > preparation patch, and even series.  That is a long overdue change
+> > that fixes potential data corruption in XFS.
 > > 
 > 
-> Ahh, my bad. For some reason even checkpatch didn't catch this, I'll fix
-> this here and everywhere else.
+> Sure, I'll send out a series with the migration to 
+> iov_iter_extract_pages, should I club this with the pin-aware + folios
+> for direct I/O or send it as a separate series?
 
-checkpatch is unfortunately completely broken :(  It misses lots of
-important bits, but at the same time has complete incoherent and crazy
-warnings.
+I think combining all this sounds find.  I'd just do the P2P separately
+as it is bound to get quite a bit more complicated.
+
