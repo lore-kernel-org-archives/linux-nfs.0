@@ -1,95 +1,62 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 22E65344030
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Apr 2026 11:57:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2130B3B47C0
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Apr 2026 14:31:25 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776427022; cv=none; b=EA9fhDzzMnjVaH9+1YahJY57Der8b3iI8+OgnRBrVbSpIA94YIm20iJtEcbBgUYaxhx8Bh4Sh7CMubO3gmfr/2BG2/BT28giMyrIPheAnC86anbF3zQqhhdJHmbB9HUo4ukAWaEs7DzTB45W2MSxnuNvLw1VdYLGiBbIU23l6cg=
+	t=1776436288; cv=none; b=S7eoCUl0uEdGJicnTRwPQmG4qV1nxUxzPy9VwR9cpgrSLg7jBRFxCxwHPW/APzmTAOqDNmEvBvEZDkIA+mqtviWIhdRdLhbKskCZojkN1Wf3mb3yyIJdp1aisP0BKB8dAenI37QOxyyibiWsLA6W7MZ8dcLHeZB+PjBu7nS7Jto=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776427022; c=relaxed/simple;
-	bh=/9hByDEs1tZsUl/bDPSgLnO/m2DCUNXsUDzm566x2cA=;
+	s=arc-20240116; t=1776436288; c=relaxed/simple;
+	bh=/jvh9KPO3EUDUN5JkbXDVglEQoDRIHijpyCh5swvEuE=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=PyS2uXfmwA8NuCUNVwFJsj46NnbMMlAI/jqUMBTrgfKfJ6qLNGJNQzP6emcA10UYnVqA4sjDsXdGnDKC5kZs7sN9EPZEhMDsxm8j0J8EHOFIUe+iVK/NaAtnVD2MJO3/tehLs9tDacccp9lUcK3WCnYjV3kFS2kTAl1FTSQcRM8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=JrY43o6X; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=m+x+5RrY; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=JVLsXN0E; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=IiAHLP/q; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	 Content-Type:Content-Disposition:In-Reply-To; b=QF858vtS+1ZMIleyBWkJsXuerjaT8JyRscrHHXh+OKcuXAyleh+fNeBaldnWRX9jQW3hgocrqFgclTobTt/6E29AhUL1/w7af8LwW1KxzqmdqeIqQ5bxPNTqrlslEP/Yz5KGiat8jd3WQRFnCyYw8Mrlj4xxFs4Yy/HgfVBg024=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=NAVDp8Kj; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="JrY43o6X";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="m+x+5RrY";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="JVLsXN0E";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="IiAHLP/q"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="NAVDp8Kj"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1776436285;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=8GEZDE8GZxKpOoTtyKx28XlgtTosah4Bsd5EpMwehZg=;
+	b=NAVDp8KjnXYKeU6YqkiBtdX8951snWc4V8R+g4R3dx6QpWsbLP9+p4SoB5LfMcUPtyZ8mz
+	HcLQsWxgVOBF0oYBeuXJXRdQjCiFQDdxwuh1zIZ37+xrA3Q+U6OKamdfw+Wt4+iP0O4uRk
+	8FFqoR1gd+ykLhf53ZtsK3i3vUqeSXY=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-214-4PqsSOhSMOeMeV8DcRfqug-1; Fri,
+ 17 Apr 2026 10:31:19 -0400
+X-MC-Unique: 4PqsSOhSMOeMeV8DcRfqug-1
+X-Mimecast-MFC-AGG-ID: 4PqsSOhSMOeMeV8DcRfqug_1776436278
+Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id 5BC286A9B2;
-	Fri, 17 Apr 2026 11:56:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1776427018; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GGB/8ndmkq0nQUxUya+Cz2jubXI4ei3cKlGky0eSZKE=;
-	b=JrY43o6Xe1ofNqWi4bvLBzThTEXmBrvj5V3MwYPNpvICe4DNVCt2qnUtLTs/4tzIjwuXmj
-	GDlfU4KhmPh1x7kKYpJRd7Ai/Cej3v/cL4CjD/TXZu5JgJbaFVj8ZKbkZ/EE5sEUTepDX+
-	vOVJEBV5zF7L+5RBJ1csivlWzDmrQMs=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1776427018;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GGB/8ndmkq0nQUxUya+Cz2jubXI4ei3cKlGky0eSZKE=;
-	b=m+x+5RrYcxeAH96bGN38/97b28DjQa4nIelb+rRiMRrHNy5Vxy7nPaMggllU050bL9+hdg
-	Dr/O37z373X7/2AA==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=JVLsXN0E;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b="IiAHLP/q"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1776427014; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GGB/8ndmkq0nQUxUya+Cz2jubXI4ei3cKlGky0eSZKE=;
-	b=JVLsXN0EPcZio2K42RMPet6VIJxxtGhRo3aUATTs3cOHrhVjKPwIyI5b+ua13mb0DGmtYq
-	5qy/LIF5vL4/lr4crEuy8E3tsx91iOLRpSbyFahjV2HR/596HVKHg01MO9M/bUcFZJlt+W
-	QgBJcRH6ntnpQSmu2UxOLGjERmW+bkQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1776427014;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=GGB/8ndmkq0nQUxUya+Cz2jubXI4ei3cKlGky0eSZKE=;
-	b=IiAHLP/qnnnxEzLkM4lqfzwmD9R4dBhIgE50hF/3FUm1y/Q+l/xrvk4BHxmZNbhjxOR4Gr
-	wumBQErEmRI4CYDg==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 41B8F593AE;
-	Fri, 17 Apr 2026 11:56:54 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id 6qsJEAYg4mmFDwAAD6G6ig
-	(envelope-from <jack@suse.cz>); Fri, 17 Apr 2026 11:56:54 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id B8434A0B77; Fri, 17 Apr 2026 13:56:45 +0200 (CEST)
-Date: Fri, 17 Apr 2026 13:56:45 +0200
-From: Jan Kara <jack@suse.cz>
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 2EAFC1800370;
+	Fri, 17 Apr 2026 14:31:18 +0000 (UTC)
+Received: from smayhew-thinkpadp1gen4i.remote.csb (unknown [10.22.81.44])
+	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id C807130001A5;
+	Fri, 17 Apr 2026 14:31:17 +0000 (UTC)
+Received: by smayhew-thinkpadp1gen4i.remote.csb (Postfix, from userid 13752)
+	id 2C35045E0497; Thu, 16 Apr 2026 20:40:10 -0400 (EDT)
+Date: Thu, 16 Apr 2026 20:40:10 -0400
+From: Scott Mayhew <smayhew@redhat.com>
 To: Jeff Layton <jlayton@kernel.org>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, 
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, Chuck Lever <chuck.lever@oracle.com>, 
-	Alexander Aring <alex.aring@gmail.com>, Steven Rostedt <rostedt@goodmis.org>, 
-	Masami Hiramatsu <mhiramat@kernel.org>, Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
-	Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>, 
-	NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
-	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
-	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
-	Amir Goldstein <amir73il@gmail.com>, Calum Mackay <calum.mackay@oracle.com>, 
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
-	linux-doc@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 07/28] fsnotify: add FSNOTIFY_EVENT_RENAME data type
-Message-ID: <njcjrskw4lfsjn7pjfan4xyqmk37jzlc5amgc7snbhpsrbsdnq@mawp7fdkczrk>
-References: <20260416-dir-deleg-v2-0-851426a550f6@kernel.org>
- <20260416-dir-deleg-v2-7-851426a550f6@kernel.org>
+Cc: Calum Mackay <calum.mackay@oracle.com>,
+	Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH pynfs v2 07/25] server41tests: test rename triggers dir
+ delegation recall
+Message-ID: <aeGBaphClApyoGE6@smayhew-thinkpadp1gen4i.remote.csb>
+References: <20260416-dir-deleg-v2-0-fad510db5941@kernel.org>
+ <20260416-dir-deleg-v2-7-fad510db5941@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -98,176 +65,69 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <20260416-dir-deleg-v2-7-851426a550f6@kernel.org>
-X-Spamd-Result: default: False [-2.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RCVD_COUNT_THREE(0.00)[3];
-	RCPT_COUNT_TWELVE(0.00)[24];
-	RCVD_TLS_LAST(0.00)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	MIME_TRACE(0.00)[0:+];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	ARC_NA(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	FREEMAIL_CC(0.00)[zeniv.linux.org.uk,kernel.org,suse.cz,oracle.com,gmail.com,goodmis.org,efficios.com,lwn.net,linuxfoundation.org,brown.name,redhat.com,talpey.com,vger.kernel.org];
-	SPAMHAUS_XBL(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received,2a07:de40:b281:104:10:150:64:97:from];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	DKIM_TRACE(0.00)[suse.cz:+];
-	MISSING_XM_UA(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:dkim,suse.cz:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns]
-X-Rspamd-Action: no action
-X-Spam-Flag: NO
-X-Spam-Score: -2.51
-X-Spam-Level: 
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Rspamd-Queue-Id: 5BC286A9B2
+In-Reply-To: <20260416-dir-deleg-v2-7-fad510db5941@kernel.org>
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
 
-On Thu 16-04-26 10:35:08, Jeff Layton wrote:
-> Add a new fsnotify_rename_data struct and FSNOTIFY_EVENT_RENAME data
-> type that carries both the moved dentry and the inode that was
-> overwritten by the rename (if any).
+On Thu, 16 Apr 2026, Jeff Layton wrote:
+
+> Get a dir delegation with no notification mask, create a file, then
+> rename it from a second client. Verify that the server issues a
+> CB_RECALL.
 > 
-> Update fsnotify_data_inode(), fsnotify_data_dentry(), and
-> fsnotify_data_sb() to handle the new type, and add a new
-> fsnotify_data_rename_target() helper for extracting the overwritten
-> target inode.
-> 
-> Update fsnotify_move() to use the new data type for FS_RENAME and
-> FS_MOVED_TO events, passing the overwritten target inode through the
-> event data. FS_MOVED_FROM is unchanged since the source directory
-> doesn't need overwrite information.
-> 
-> This is done so that fsnotify consumers like nfsd can atomically
-> observe the overwritten file when a rename replaces an existing entry,
-> without needing a separate FS_DELETE event.
-> 
-> Assisted-by: Claude (Anthropic Claude Code)
 > Signed-off-by: Jeff Layton <jlayton@kernel.org>
-
-Looks good. Feel free to add:
-
-Reviewed-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
 > ---
->  include/linux/fsnotify.h         |  8 ++++++--
->  include/linux/fsnotify_backend.h | 20 ++++++++++++++++++++
->  2 files changed, 26 insertions(+), 2 deletions(-)
+>  nfs4.1/server41tests/st_dir_deleg.py | 33 +++++++++++++++++++++++++++++++++
+>  1 file changed, 33 insertions(+)
 > 
-> diff --git a/include/linux/fsnotify.h b/include/linux/fsnotify.h
-> index 079c18bcdbde..bda798bc67bc 100644
-> --- a/include/linux/fsnotify.h
-> +++ b/include/linux/fsnotify.h
-> @@ -257,6 +257,10 @@ static inline void fsnotify_move(struct inode *old_dir, struct inode *new_dir,
->  	__u32 new_dir_mask = FS_MOVED_TO;
->  	__u32 rename_mask = FS_RENAME;
->  	const struct qstr *new_name = &moved->d_name;
-> +	struct fsnotify_rename_data rd = {
-> +		.moved = moved,
-> +		.target = target,
-> +	};
->  
->  	if (isdir) {
->  		old_dir_mask |= FS_ISDIR;
-> @@ -265,12 +269,12 @@ static inline void fsnotify_move(struct inode *old_dir, struct inode *new_dir,
->  	}
->  
->  	/* Event with information about both old and new parent+name */
-> -	fsnotify_name(rename_mask, moved, FSNOTIFY_EVENT_DENTRY,
-> +	fsnotify_name(rename_mask, &rd, FSNOTIFY_EVENT_RENAME,
->  		      old_dir, old_name, 0);
->  
->  	fsnotify_name(old_dir_mask, source, FSNOTIFY_EVENT_INODE,
->  		      old_dir, old_name, fs_cookie);
-> -	fsnotify_name(new_dir_mask, source, FSNOTIFY_EVENT_INODE,
-> +	fsnotify_name(new_dir_mask, &rd, FSNOTIFY_EVENT_RENAME,
->  		      new_dir, new_name, fs_cookie);
->  
->  	if (target)
-> diff --git a/include/linux/fsnotify_backend.h b/include/linux/fsnotify_backend.h
-> index 66e185bd1b1b..f8c8fb7f34ae 100644
-> --- a/include/linux/fsnotify_backend.h
-> +++ b/include/linux/fsnotify_backend.h
-> @@ -311,6 +311,7 @@ enum fsnotify_data_type {
->  	FSNOTIFY_EVENT_DENTRY,
->  	FSNOTIFY_EVENT_MNT,
->  	FSNOTIFY_EVENT_ERROR,
-> +	FSNOTIFY_EVENT_RENAME,
->  };
->  
->  struct fs_error_report {
-> @@ -335,6 +336,11 @@ struct fsnotify_mnt {
->  	u64 mnt_id;
->  };
->  
-> +struct fsnotify_rename_data {
-> +	struct dentry *moved;	/* the dentry that was renamed */
-> +	struct inode *target;	/* inode overwritten by rename, or NULL */
-> +};
+> diff --git a/nfs4.1/server41tests/st_dir_deleg.py b/nfs4.1/server41tests/st_dir_deleg.py
+> index f5265e8cf0ab..d8d09cd4bf7e 100644
+> --- a/nfs4.1/server41tests/st_dir_deleg.py
+> +++ b/nfs4.1/server41tests/st_dir_deleg.py
+> @@ -175,3 +175,36 @@ def testDirDelegRemoveRecall(t, env):
+>      ops = [ op.putfh(fh), op.delegreturn(deleg) ]
+>      res = sess1.compound(ops)
+>      check(res)
 > +
->  static inline struct inode *fsnotify_data_inode(const void *data, int data_type)
->  {
->  	switch (data_type) {
-> @@ -348,6 +354,8 @@ static inline struct inode *fsnotify_data_inode(const void *data, int data_type)
->  		return d_inode(file_range_path(data)->dentry);
->  	case FSNOTIFY_EVENT_ERROR:
->  		return ((struct fs_error_report *)data)->inode;
-> +	case FSNOTIFY_EVENT_RENAME:
-> +		return d_inode(((const struct fsnotify_rename_data *)data)->moved);
->  	default:
->  		return NULL;
->  	}
-> @@ -363,6 +371,8 @@ static inline struct dentry *fsnotify_data_dentry(const void *data, int data_typ
->  		return ((const struct path *)data)->dentry;
->  	case FSNOTIFY_EVENT_FILE_RANGE:
->  		return file_range_path(data)->dentry;
-> +	case FSNOTIFY_EVENT_RENAME:
-> +		return ((struct fsnotify_rename_data *)data)->moved;
->  	default:
->  		return NULL;
->  	}
-> @@ -395,6 +405,8 @@ static inline struct super_block *fsnotify_data_sb(const void *data,
->  		return file_range_path(data)->dentry->d_sb;
->  	case FSNOTIFY_EVENT_ERROR:
->  		return ((struct fs_error_report *) data)->sb;
-> +	case FSNOTIFY_EVENT_RENAME:
-> +		return ((const struct fsnotify_rename_data *)data)->moved->d_sb;
->  	default:
->  		return NULL;
->  	}
-> @@ -430,6 +442,14 @@ static inline struct fs_error_report *fsnotify_data_error_report(
->  	}
->  }
->  
-> +static inline struct inode *fsnotify_data_rename_target(const void *data,
-> +							int data_type)
-> +{
-> +	if (data_type == FSNOTIFY_EVENT_RENAME)
-> +		return ((const struct fsnotify_rename_data *)data)->target;
-> +	return NULL;
-> +}
+> +def testDirDelegRenameRecall(t, env):
+> +    """Verify rename triggers dir delegation recall
 > +
->  static inline const struct file_range *fsnotify_data_file_range(
->  							const void *data,
->  							int data_type)
+> +    FLAGS: dirdeleg all
+> +    CODE: DIRDELEG4
+> +    """
+> +    c = env.c1
+> +    recall = threading.Event()
+> +    sess1, fh, deleg = _getDirDeleg(t, env, [], recall)
+> +
+> +    # Create a file from sess1
+> +    claim = open_claim4(CLAIM_NULL, env.testname(t))
+> +    owner = open_owner4(0, b"owner")
+> +    how = openflag4(OPEN4_CREATE, createhow4(GUARDED4, {FATTR4_SIZE:0}))
+> +    open_op = [ op.putfh(fh), op.open(0,
+> +                                      OPEN4_SHARE_ACCESS_WRITE | OPEN4_SHARE_ACCESS_WANT_NO_DELEG,
+> +                                      OPEN4_SHARE_DENY_NONE, owner, how, claim) ]
+> +    res = sess1.compound(open_op)
+> +    check(res)
+
+You probably want to close this file at the end of the test so you're
+not leaving state behind on the server.
+
+-Scott
+> +
+> +    # Rename the file from sess2 -- should trigger recall
+> +    sess2 = c.new_client_session(b"%s_2" % env.testname(t))
+> +    rename_op = [ op.putfh(fh), op.savefh(),
+> +                  op.putfh(fh),
+> +                  op.rename(env.testname(t), b"%s_2" % env.testname(t)) ]
+> +    slot = sess2.compound_async(rename_op)
+> +    completed = recall.wait(2)
+> +    env.sleep(.1)
+> +
+> +    ops = [ op.putfh(fh), op.delegreturn(deleg) ]
+> +    res = sess1.compound(ops)
+> +    check(res)
 > 
 > -- 
 > 2.53.0
 > 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+> 
+
