@@ -1,196 +1,109 @@
-Received: from shrimp.cherry.relay.mailchannels.net (shrimp.cherry.relay.mailchannels.net [23.83.223.164])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej1-f48.google.com (mail-ej1-f48.google.com [209.85.218.48])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC2C8149C6F
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2026 17:01:24 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=23.83.223.164
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2726236DA0B
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2026 17:01:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.48
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776963686; cv=pass; b=YjItRyRfL19qvvd20ZMWq8+fjsp1Pz9A9VlQEXfc6aNMIYTH22H6tTNE7V12N094WjxBxOMlnouyHWqfBys/3r97YxHYpXwj1AoPXiadV1OaeVDD3A6uNnwJKeb9ZOp93Hw20ZfS0q30/QLa49PphiDG9FIQLA2bjYW+HPAONSg=
+	t=1776963711; cv=pass; b=Sq0TGwkTUg13Q9xGmbSnCs+5cYkMfwgG1EaC1nU+QJnuE5yhDe2IaJoFppYDRDYby/EM4SzhlTOa8lUbAycFqHlL3tNBYrEKZ/VIfE2uatGNzQSFgM8KXPIX3RgZsGSg9W2sOCrq9DWlHcyuIecz7UVMUuEA9wrT+xmVjCoiH94=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776963686; c=relaxed/simple;
-	bh=oMn+kRk8o7kF+WEVlXEJQi1RFS85r1y0N0ZDaiurol8=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=cS3wJHGhFqznDffAugJfinR9Q83EpR1N9SBg9SWnlwn+I/kynVd4HPrsknYkI5FDNz+wNhqVb2M9RoxAxQHz4VcqJDZUfWOROFnLz3w4GYJf/N+MO4R/K3lY8KXNE1QOdsWDT9D37PJ6RexYNob8eZzBZcXNNqEocf1RapZINmw=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nrubsig.org; spf=fail smtp.mailfrom=nrubsig.org; dkim=pass (2048-bit key) header.d=nrubsig.org header.i=@nrubsig.org header.b=PN8ns4gM; arc=pass smtp.client-ip=23.83.223.164
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=nrubsig.org
-Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=nrubsig.org
+	s=arc-20240116; t=1776963711; c=relaxed/simple;
+	bh=TOn7OaufpVFnTCngKERiD7517EOajGuL0SqpRc86qfg=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=Ec3w0+gVHMev0kGZlCEfP0BQPcnznwfGGPMD6D63VI60CrDkkclSj7WV3jXSXkcjXCLykhy9q0VWJDKy1PXurKVB7Q+tRZYmvASc8Vf1uOtHIJbUn1ZoR69X/zEZsD4t3bTBqEiFZkMIgx61uUc/PAl7ZfX2fqOtR4fK8vanFxg=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=PdF1PzMo; arc=pass smtp.client-ip=209.85.218.48
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=nrubsig.org header.i=@nrubsig.org header.b="PN8ns4gM"
-X-Sender-Id: dreamhost|x-authsender|gisburn@nrubsig.org
-Received: from relay.mailchannels.net (localhost [127.0.0.1])
-	by relay.mailchannels.net (Postfix) with ESMTP id 57001941DBD
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2026 14:40:01 +0000 (UTC)
-Received: from pdx1-sub0-mail-a261.dreamhost.com (100-97-142-198.trex-nlb.outbound.svc.cluster.local [100.97.142.198])
-	(Authenticated sender: dreamhost)
-	by relay.mailchannels.net (Postfix) with ESMTPA id 05E5E942610
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2026 14:40:01 +0000 (UTC)
-ARC-Seal: i=1; a=rsa-sha256; d=mailchannels.net; s=arc-2022; cv=none;
-	t=1776955201;
-	b=Nlw1dApfORUBh0+h3EFxlU8ql5S6cAuqV0ryy1ihRp6pvX82221L+fBZ8/yTHhm/mC8bso
-	uFrimwhOSWXIpz0Fy6TytE73SMBpzbntbNZmgUp7KwoR2qegXLtUPozFQrFGLITgaUr9kL
-	CrRp3tZQ7+Nacy0PKXjDyMD8QnZWhj4KWGMrCXdJIkrBXHAkkJ+5NFGkGyO9LDnat7wOiL
-	Zfst+r8ZLP7yhssvUEgVPt3BR+rD8G+Ozg9YNE+4i68DJqddtjMjc90rTt7xdHq6KS/nVz
-	Mlox/sXJd8PN4SopgtmTHSv4DHVAgx6P/+awZl8cYhRGRphRpioENmgegvsyuw==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed;
- d=mailchannels.net;
-	s=arc-2022; t=1776955201;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references:dkim-signature;
-	bh=CSMKb7zIELpkiDIk9dfUrRMZ9eQay4tUDcakEg7KvEw=;
-	b=P5ZoFNNjWJffneNFDAdZyM86d0k86g3kYR0wFWFl6RvxBhsu8xi8hkNVWQXRukek1HfKx7
-	zI7rtPgtbL/7ApoK3n2+lCflDd1HK3f+CzaehZZiQXS853k2DuEIaydNhcS73ma10rFbvD
-	MGqTZw//+B8O1+Zv2HgRx7iW6oGJLKbsNInMKCFS8Lw/UCnGaftXHEkMAuH6lWnJq0BAcY
-	rIjEzEIP2P/3rYrT2X/f6jorgEtgWwSzUGBlmkl3vtKJAXtTM8y/PMZzQrNttqEz3k5W87
-	iXXZfcVW8owtyv4LsY6stnlm5eeU0ZD0auJunNGIgbC08cCGaZqiRQIITuKzAQ==
-ARC-Authentication-Results: i=1;
-	rspamd-55bb47d7db-bflh6;
-	auth=pass smtp.auth=dreamhost smtp.mailfrom=roland.mainz@nrubsig.org
-X-Sender-Id: dreamhost|x-authsender|gisburn@nrubsig.org
-X-MC-Relay: Neutral
-X-MailChannels-SenderId: dreamhost|x-authsender|gisburn@nrubsig.org
-X-MailChannels-Auth-Id: dreamhost
-X-Snatch-Abaft: 0fc501a71ea257f7_1776955201223_2371732217
-X-MC-Loop-Signature: 1776955201223:1959084505
-X-MC-Ingress-Time: 1776955201223
-Received: from pdx1-sub0-mail-a261.dreamhost.com (pop.dreamhost.com
- [64.90.62.162])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384)
-	by 100.97.142.198 (trex/7.1.5);
-	Thu, 23 Apr 2026 14:40:01 +0000
-Received: from mail-wr1-f54.google.com (mail-wr1-f54.google.com [209.85.221.54])
-	(using TLSv1.3 with cipher TLS_AES_128_GCM_SHA256 (128/128 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	(Authenticated sender: gisburn@nrubsig.org)
-	by pdx1-sub0-mail-a261.dreamhost.com (Postfix) with ESMTPSA id 4g1dzN5rlPz106x
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2026 07:40:00 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=nrubsig.org;
-	s=dreamhost; t=1776955200;
-	bh=CSMKb7zIELpkiDIk9dfUrRMZ9eQay4tUDcakEg7KvEw=;
-	h=From:Date:Subject:To:Cc:Content-Type:Content-Transfer-Encoding;
-	b=PN8ns4gMoY3mm1C7DGUzdfHUTs+tHwH1LRze362ErR7/Z08jV+JkXvDpO3uP+gHoZ
-	 ClGR2y3jWIOba62tDh1U4iUK8NBbOViKFEMz1rbER2JSi1i7R+5XMAgTc2Y6eB1u+w
-	 wCbcsjjJVMhJYCs160C7mYTBF+yWtQDgsT+oES9yk7vh+6qSCOpYNsaIKgQvwNdwEx
-	 nt8wJ8FrLGZ1mDhP9X3SHcQNzIaRUtikd4QNB3rML0UUqbocjOYThaM31x7aC//tPN
-	 hgBTU6wqAUsFNxwsqa+Q1rjXseedYnZGjRJ4gDub030ONchSG9saYXbyFThJQ0+iC8
-	 ZtQYPiZ8A53lg==
-Received: by mail-wr1-f54.google.com with SMTP id ffacd0b85a97d-43fe3e22e33so4456246f8f.0
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2026 07:40:00 -0700 (PDT)
-X-Forwarded-Encrypted: i=1; AFNElJ+QdsWLSqi5AJmgzs+pwPDke3yiXTXTJUZfhgo8/1XppejgpzYrYfWZx4WDv9oXoHem1alXpGjuOPQ=@vger.kernel.org
-X-Gm-Message-State: AOJu0YyUalLJ994ylGnQ+/CseK6sztds9nrxuUyZd6PL7oXeUIgrj9GA
-	Q7bC5miBkwHJf9rANPwDCdr+rFuR20oOo6f7YNuzxh8JSEZ9B/CievUYkraWXSlAAs+WfIsykTr
-	jaSJ5HsNp/dnC0KaSkspVfW/cP/T6XLA=
-X-Received: by 2002:a05:6000:2c01:b0:43d:7af0:3a8a with SMTP id
- ffacd0b85a97d-43fe3e20a0fmr42750560f8f.46.1776955199806; Thu, 23 Apr 2026
- 07:39:59 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="PdF1PzMo"
+Received: by mail-ej1-f48.google.com with SMTP id a640c23a62f3a-ba36357195bso838945666b.0
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2026 10:01:49 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1776963708; cv=none;
+        d=google.com; s=arc-20240605;
+        b=eX73rTB41CS5ZsTqoNa0I8dqLAwzV4gTnp8/ajKUn6nxscP+DF9c2vJ6OwihAS6+91
+         PTOUeJn/KpUjEmnvP+2NUv6i8vxmEmYNLdvGCajpOcO4p3lJzm4bYDrZVv3QRZEm+iZP
+         krEoegAIZ8IWR52GJwPjfCRzel2o1b9Wqjzmu1QswBkS+YuldwuFHNCl5ZPINK1kAcbS
+         ADBdwsmyhwtHzKuDQ/+v2mZeqVLA8GiuHaSQ/PxZpYZTRDujvFMabU9TNQWuWN0t+YaY
+         WC9GGM3Bdm6DWWjp4MZfTkTANuNb3tMMq/mn5zBeq+mubMCd4HavZaVXa74eYE2RSX8c
+         wJFg==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=MR7Evo27Fb9n4uesCJvxrzmJyEK/vZpzgb8CmAsEAsY=;
+        fh=gHT4H9sPsZG/Cm2oJVlyB5NQcP7AL4XFsXHzwtd4CGA=;
+        b=CUVVPVNxYK0J7olFiYz6ohueNKR4z5xLKY/LWNEjcipZxGxCSWE1wL7rxv0PZMZlM1
+         OJMx0gp4aeF3fwB4JC7mcEGMiU831kVlzb+jX9ltX9jvWkGHqwCylaMLTP+nkLfbDp1E
+         bb9Aiwo2vDdpRFy9BJ9gHUtcU07GHP+zlDvFabI8pWvUgz1DfqVX3tg6BNpzV//AUWv+
+         +gy1Sv+49SQ27ZDA3nbubjC2xxK7c9veSkgQ9i/JyAvudZIGwYec5KryMvW9hH3EG1f1
+         ZQXA5kYjKVJch4x05yhP4R8AY20XCjEY7gTzDyR7GpG6Yau4PwTaYL+97XgWfk0kgUgs
+         SF9w==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1776963708; x=1777568508; darn=vger.kernel.org;
+        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=MR7Evo27Fb9n4uesCJvxrzmJyEK/vZpzgb8CmAsEAsY=;
+        b=PdF1PzMohNRn0isPMagJx9rrY/oepjF5joKh5Zol1v/7Yubwk47gLSdZK0Czm6GULO
+         pLOn93YoBenCX+K400L9WTJ53d+HxTuc2zm630KfpLiFwYOMezczStPEksFaCE1z6aPO
+         GSuvd0fJn7TY+bBUZBpFtRejchDJ3gRmkd8Gnsg+r3bVQIMQ3Wqt7WXENsUD8fLck773
+         85AWE9chzIs/auTrxMNobZEYiWW+7jy9Tm+sjp3d7LyCr2FSYzJtXATEdG1iFBqlX4O/
+         gE06LdyvSzfexIcQqrIw98lxjq1LHNVsO4bWGfVjfEvuhmQ5LYdLUoy8fgFJg1tuF7/3
+         bWZQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1776963708; x=1777568508;
+        h=to:subject:message-id:date:from:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
+        bh=MR7Evo27Fb9n4uesCJvxrzmJyEK/vZpzgb8CmAsEAsY=;
+        b=gH8eiqE7IvkdqYL95ulQ/1hOD5qFxNpmnUD0rNY4JUS5Ec9KSivagrTjLK+akBLkE2
+         ChaHLazpU4aMiOeXgmewbEhaUwmTsqlk7SM1XZrThCieWJM6kTtI0z2MDo/tKAw71v8O
+         pHMAaRB8UUoAAjSqZXP/UZ3ag/SAUrW3P5ucc6yc9nQEsZVQfwrGI7752/nv/nB/zbtf
+         869oI1iPXvSGKeUC5Ug+QnqAm4yRCKoXIN7zGZMZNLMMqFZatogATytFCaVhT2Fb0q09
+         TKptIkqy2r4itOeTSxitRjBEiC6mcqxMSdSCnHiZk1XKmZ9WitVsp2ysVjqkuhbLpqfU
+         iO+w==
+X-Forwarded-Encrypted: i=1; AFNElJ9e6S1AMsyJImJINaWMuzpWjoZmkp8AiNPGqsOU7befiErCM0m380K/F/lPoWuSIV8QoZaiW63npr4=@vger.kernel.org
+X-Gm-Message-State: AOJu0YymDjG6co5dD4B+jbTbcPNh+P2i9WPjHpY5fANYtXLoi+0LGxHe
+	P32yUe0v7Vmd5FkdQQgEJLAaJ43Y5tkT0pJ5taM4MGs0EtIP3/qsXeTFoGkm8h/epbhpxMurGWn
+	Hg4z+eufpjP7/170Qk79JQv2cwN6fSdE=
+X-Gm-Gg: AeBDiesAoaIbwvhkkfpGRx087GrGylHev3a0T93f5cE4YCyvMipp+kmZQucqSXRyw4D
+	t4MIRPahZ6SSAaKLQ5bizYW0OQIzLCRV9XByGwa2WDlJU5cNYV4MYYFvU7YXy4IOi7ulR2V1dPR
+	27wt4jdhZz6FbalbLdNmhq+FfqnAEft7jRQ4cXR96CAva3lW0cgbwd5IkzeF/08CW/kcVLZH5y3
+	ttHk4V3RfLoZVN2G0YCJt/OosD640WeNSvJuBKsnOo+njcnT99c2zfOGRMHd1YXCj+nIs/uAW0W
+	+bDZFc/to130mqR5
+X-Received: by 2002:a17:907:da7:b0:ba6:4e0f:e396 with SMTP id
+ a640c23a62f3a-ba64e0fe8fdmr1021131966b.12.1776963708142; Thu, 23 Apr 2026
+ 10:01:48 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260423-case-sensitivity-v10-0-c385d674a6cf@oracle.com>
-In-Reply-To: <20260423-case-sensitivity-v10-0-c385d674a6cf@oracle.com>
-From: Roland Mainz <roland.mainz@nrubsig.org>
-Date: Thu, 23 Apr 2026 16:39:21 +0200
-X-Gmail-Original-Message-ID: <CAKAoaQnfCVGHPx0RP8C8YkpqtPZZOU98kxKm=Nv0b1bMBWFn8w@mail.gmail.com>
-X-Gm-Features: AQROBzAEQMQBLMH8e_5RwKgwt68ChBFQWbVD9h1wV7ABf60ONeuwjPazJVpjv3Q
-Message-ID: <CAKAoaQnfCVGHPx0RP8C8YkpqtPZZOU98kxKm=Nv0b1bMBWFn8w@mail.gmail.com>
-Subject: Re: [PATCH v10 00/17] Exposing case folding behavior
-To: Chuck Lever <cel@kernel.org>, linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>
+From: Shyam Prasad N <nspmangalore@gmail.com>
+Date: Thu, 23 Apr 2026 22:31:37 +0530
+X-Gm-Features: AQROBzAXKGkL4wCrc7a7jqx_RwqEbMziZZLN-r7g3-kQL0OMGl7pH-QpRiQgpWw
+Message-ID: <CANT5p=oV8kcE6hXPoUVQAYGaiz+2OERoSRLAS6X+q9KJ_8w8YQ@mail.gmail.com>
+Subject: "Intent" of VFS lookups
+To: linux-fsdevel <linux-fsdevel@vger.kernel.org>, CIFS <linux-cifs@vger.kernel.org>, 
+	linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-On Thu, Apr 23, 2026 at 3:12=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
->
-> Following on from
->
-> https://lore.kernel.org/linux-nfs/20251021-zypressen-bazillus-545a44af57f=
-d@brauner/T/#m0ba197d75b7921d994cf284f3cef3a62abb11aaa
->
-> I'm attempting to implement enough support in the Linux VFS to
-> enable file services like NFSD and ksmbd (and user space
-> equivalents) to provide the actual status of case folding support
-> in local file systems. The default behavior for local file systems
-> not explicitly supported in this series is to reflect the usual
-> POSIX behaviors:
->
->   case-insensitive =3D false
->   case-nonpreserving =3D false
->
-> The case-insensitivity and case-nonpreserving booleans can be
-> consumed immediately by NFSD. These two attributes have been part of
-> the NFSv3 and NFSv4 protocols for decades, in order to support NFS
-> client implementations on non-POSIX systems.
->
-> Support for user space file servers is why this series exposes case
-> folding information via a user-space API. I don't know of any other
-> category of user-space application that requires access to case
-> folding info.
->
-> The Linux NFS community has a growing interest in supporting NFS
-> clients on Windows and MacOS platforms, where file name behavior does
-> not align with traditional POSIX semantics.
->
-> One example of a Windows-based NFS client is [1]. This client
-> implementation explicitly requires servers to report
-> FATTR4_WORD0_CASE_INSENSITIVE =3D TRUE for proper operation, a hard
-> requirement for Windows client interoperability because Windows
-> applications expect case-insensitive behavior. When an NFS client
-> knows the server is case-insensitive, it can avoid issuing multiple
-> LOOKUP/READDIR requests to search for case variants, and applications
-> like Win32 programs work correctly without manual workarounds or
-> code changes.
->
-> Even the Linux client can take advantage of this information. Trond
-> merged patches 4 years ago [2] that introduce support for case
-> insensitivity, in support of the Hammerspace NFS server. In
-> particular, when a client detects a case-insensitive NFS share,
-> negative dentry caching must be disabled (a lookup for "FILE.TXT"
-> failing shouldn't cache a negative entry when "file.txt" exists)
-> and directory change invalidation must clear all cached case-folded
-> file name variants.
->
-> Hammerspace servers and several other NFS server implementations
-> operate in multi-protocol environments, where a single file service
-> instance caters to both NFS and SMB clients. In those cases, things
-> work more smoothly for everyone when the NFS client can see and adapt
-> to the case folding behavior that SMB users rely on and expect. NFSD
-> needs to support the case-insensitivity and case-nonpreserving
-> booleans properly in order to participate as a first-class citizen
-> in such environments.
->
-> [1] https://github.com/kofemann/ms-nfs41-client
->
-> [2] https://patchwork.kernel.org/project/linux-nfs/cover/20211217203658.4=
-39352-1-trondmy@kernel.org/
->
-> ---
-> Changes since v9:
-> - nfs: always probe PATHCONF for case caps. Default to case-
->   preserving when the server does not report case_preserving
-> - nfsd, ksmbd: tolerate -ENOTTY from vfs_fileattr_get() so
->   overlayfs exports on backing filesystems without fileattr_get
->   do not fail the RPC
-> - xfs: map FS_XFLAG_CASEFOLD inside xfs_ip2xflags() so BULKSTAT
->   and FS_IOC_FSGETXATTR report the flag consistently
-> - vboxsf: reject a short host reply to SHFL_INFO_VOLUME before
->   trusting volinfo.properties.case_sensitive
+Hi all,
 
-Looks good to me.
-It also works with ms-nfs41-client, therefore:
-Reviewed-by: Roland Mainz <roland.mainz@nrubsig.org>
+Wanted to understand if this is a problem for other filesystems or if
+it is specific to SMB protocol?
+SMB2+ protocol mandate that open call specifies if the file being
+opened is a directory or not (regular file).
 
-----
+This means that during the VFS lookup callback, fs/smb/client needs to
+first try open as one type, check the return status and then possibly
+do the open as the other type.
 
-Bye,
-Roland
---=20
-  __ .  . __
- (o.\ \/ /.o) roland.mainz@nrubsig.org
-  \__\/\/__/  MPEG specialist, C&&JAVA&&Sun&&Unix programmer
-  /O /=3D=3D\ O\  TEL +49 641 3992797
- (;O/ \/ \O;)
+From SMB client POV, it would have been good to know from VFS lookup
+callback if the current dentry is intended to be a leaf or not. This
+would enable the SMB client to decide which type of open to make
+first.
+
+Or if there is a clever hack that I'm missing here, I'm open to ideas.
+
+-- 
+Regards,
+Shyam
