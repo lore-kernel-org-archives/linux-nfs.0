@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B2E01F099C
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2026 18:19:01 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 777DD1F099C
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Apr 2026 18:19:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1776968341; cv=none; b=rdYgYeOmurGFjUITFCZrYP54SiwUs4o0oCDu09wkvTjWfly4m6tIdJ+iHC/IUa8zwE0NzCw2QAF3EfaiP2Xjk9HpVYTJbeZzOsXjscIFWCHD+zXtS9GTxxRtfjMigLVZd08FFkL7TATGtSs9P0YeoSgKmydzfQXp9k1I3N2BHQc=
+	t=1776968343; cv=none; b=uB9nj6X6fMjIIi1pfjv0HAI3C0s54+wfvkbJmqHSQljjdAliL5zYZvorquyoAhytW5ZGz8hVmtUE1M1ID/zo3OGL6KH03LggPOTW3h6SJrSl74TbwZr4l7mm2vztBYHkStIrC9RcZ41K6UCk+YMqkhU8wuYXWQ+SVurd4TT5RV4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1776968341; c=relaxed/simple;
-	bh=/UmQAFSBbswT/Ryu4EDaN4Mj72kBgfupv+DLFwk4FvI=;
+	s=arc-20240116; t=1776968343; c=relaxed/simple;
+	bh=qJsDy4dcoP+jh17EKAWUoVKw1aSlTAJrnDPVpv/2REI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=sNuPAFyNwddEBV+geKPMRoIzAG/GZ7EmetSLGzU0UC4/j3rhUF0vPcVvA29RWyo42BQ4SiqIFiBK2JfGM+1sQZk0XNXwWs5TD3ss5+MfAAU5lCZZQTML5fYEcEaeLRzuxjdlJa8t9MKQy0O6RI0xtCefzSqh7/pyTKd6SibJxP0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Vn6bPNsL; arc=none smtp.client-ip=10.30.226.201
+	 MIME-Version; b=dEaQ40/eLNlm6B8cA4lsS6x33pwxVfQ5xK89V4RNQPeNM08kn9R60QovrJHNHbwv3teMHIy3T3ljT7PNbxLHXFLo9SiLClA2WVmCmogk08he+j9kOA3PYQoWz0ywq+H4LTVJMRiN7p7ysUaveoeXDaoGIpQWlPjVTWaLbfrRVro=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=f+os3zlY; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Vn6bPNsL"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 818C3C2BCB2;
-	Thu, 23 Apr 2026 18:19:00 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="f+os3zlY"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3E1F5C2BCB2;
+	Thu, 23 Apr 2026 18:19:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1776968341;
-	bh=/UmQAFSBbswT/Ryu4EDaN4Mj72kBgfupv+DLFwk4FvI=;
+	s=k20201202; t=1776968342;
+	bh=qJsDy4dcoP+jh17EKAWUoVKw1aSlTAJrnDPVpv/2REI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References:From;
-	b=Vn6bPNsLazDsMo7s7jqM1hNgQtKtonyiceK9AzSNf19xNHZhsRVxUKiFlY3+wucD6
-	 AffiIc1pgYVR3G6tVdDybA/q/7pi/UNrs4C4HBxBZIRUZaGBoeEfbs/kW8Hg0p/UL7
-	 9kG+SPyHOxfR1B54fpCw5tdbMGwYXgKo/eMEXvrjWkMgqCVwpfII+aaNp/auY81cl1
-	 v+LpTcy6PI2DExGfS3RJbtcwSyTvqJ4o7x1Z792A/rjlceCk0EK50Fopt6s1vcuKci
-	 j95iv7rcCWWp0TXVjbINvUo23H0peVXrxWVpD0MtBUCz5q4fJqCtmkCBA2EU44t6BO
-	 rf0gRKk83b+YA==
+	b=f+os3zlYR1kDGzKfZoAMogj057piLOE3MJohPu6Rx2F5QSdJ8aiTVo6gHSX+GvYtM
+	 J2+xgkPdiXwPUO9nHhKOpWWWFydhl5z/NkAtp6hnUZggHLGuzyKqL8zWZEAj6heds6
+	 e6L6/86mkDqFtFhtJguyZklUSE7c8bV/K0mrdQc0n3FsGOdEii7JYaLktVTpWw59K0
+	 YJu06CxNznJ/Po0HoAldGhvYb4agdZrUwqNbzScIyZuB0SIFb+jmdnhMof1AJKsTK1
+	 4jj/DELMqfRpqK2CMKseTYVStRAmJ9T0IZ+AMQOEtbNnAl/OlfCs8TiiGpHeTutNNC
+	 ziz4HdRg4NifQ==
 From: Chuck Lever <cel@kernel.org>
 To: Christian Brauner <brauner@kernel.org>
 Cc: NeilBrown <neilb@ownmail.net>,
@@ -35,9 +35,9 @@ Cc: NeilBrown <neilb@ownmail.net>,
 	Tom Talpey <tom@talpey.com>,
 	<linux-nfs@vger.kernel.org>,
 	Christoph Hellwig <hch@lst.de>
-Subject: [PATCH v3 1/4] nfsd/blocklayout: always ignore loca_time_modify
-Date: Thu, 23 Apr 2026 14:18:51 -0400
-Message-ID: <20260423181854.743150-2-cel@kernel.org>
+Subject: [PATCH v3 3/4] exportfs: don't pass struct iattr to ->commit_blocks
+Date: Thu, 23 Apr 2026 14:18:53 -0400
+Message-ID: <20260423181854.743150-4-cel@kernel.org>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <20260423181854.743150-1-cel@kernel.org>
 References: <20260423181854.743150-1-cel@kernel.org>
@@ -51,53 +51,121 @@ Content-Transfer-Encoding: 8bit
 
 From: Christoph Hellwig <hch@lst.de>
 
-RFC 8881 Section 18.42 makes it clear that the client provided timestamp
-is a "may" condition, and clients that want to force a specific timestamp
-should send a separate SETATTR in the compound.
-
-Since commit b82f92d5dd1a ("fs: have setattr_copy handle multigrain
-timestamps appropriately") the ia_mtime value is ignored by file
-systems using multi-grain timestamps like XFS, which is the only
-file system supporting blocklayout exports right now, so make that
-explicit in NFSD as well.
+The only thing ->commit_blocks really needs is the new size, with a magic
+-1 placeholder 0 for "do not change the size" because it only ever
+extends the size.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/blocklayout.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
+ fs/nfsd/blocklayout.c          | 12 ++----------
+ fs/xfs/xfs_pnfs.c              | 19 ++++++++++---------
+ include/linux/exportfs_block.h |  3 +--
+ 3 files changed, 13 insertions(+), 21 deletions(-)
 
 diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-index 9d829c84f374..24cc5025f649 100644
+index e612fcf8666a..5be7721c22c2 100644
 --- a/fs/nfsd/blocklayout.c
 +++ b/fs/nfsd/blocklayout.c
-@@ -179,15 +179,20 @@ static __be32
+@@ -179,7 +179,6 @@ static __be32
  nfsd4_block_commit_blocks(struct inode *inode, struct nfsd4_layoutcommit *lcp,
  		struct iomap *iomaps, int nr_iomaps)
  {
--	struct timespec64 mtime = inode_get_mtime(inode);
- 	struct iattr iattr = { .ia_valid = 0 };
+-	struct iattr iattr = { .ia_valid = 0 };
  	int error;
  
--	if (lcp->lc_mtime.tv_nsec == UTIME_NOW ||
--	    timespec64_compare(&lcp->lc_mtime, &mtime) < 0)
--		lcp->lc_mtime = current_time(inode);
-+	/*
-+	 * This ignores the client provided mtime in loca_time_modify, as a
-+	 * fully client specified mtime doesn't really fit into the Linux
-+	 * multi-grain timestamp architecture.
-+	 *
-+	 * RFC 8881 Section 18.42 makes it clear that the client provided
-+	 * timestamp is a "may" condition, and clients that want to force a
-+	 * specific timestamp should send a separate SETATTR in the compound.
-+	 */
- 	iattr.ia_valid |= ATTR_ATIME | ATTR_CTIME | ATTR_MTIME;
--	iattr.ia_atime = iattr.ia_ctime = iattr.ia_mtime = lcp->lc_mtime;
-+	iattr.ia_atime = iattr.ia_ctime = iattr.ia_mtime = current_time(inode);
+ 	/*
+@@ -191,16 +190,9 @@ nfsd4_block_commit_blocks(struct inode *inode, struct nfsd4_layoutcommit *lcp,
+ 	 * timestamp is a "may" condition, and clients that want to force a
+ 	 * specific timestamp should send a separate SETATTR in the compound.
+ 	 */
+-	iattr.ia_valid |= ATTR_ATIME | ATTR_CTIME | ATTR_MTIME;
+-	iattr.ia_atime = iattr.ia_ctime = iattr.ia_mtime = current_time(inode);
+-
+-	if (lcp->lc_size_chg) {
+-		iattr.ia_valid |= ATTR_SIZE;
+-		iattr.ia_size = lcp->lc_newsize;
+-	}
+-
+ 	error = inode->i_sb->s_export_op->block_ops->commit_blocks(inode,
+-			iomaps, nr_iomaps, &iattr);
++			iomaps, nr_iomaps,
++			lcp->lc_size_chg ? lcp->lc_newsize : 0);
+ 	kfree(iomaps);
+ 	return nfserrno(error);
+ }
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index 12e083f1b9ba..7d689bb2efd9 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -257,23 +257,22 @@ xfs_fs_commit_blocks(
+ 	struct inode		*inode,
+ 	struct iomap		*maps,
+ 	int			nr_maps,
+-	struct iattr		*iattr)
++	loff_t			new_size)
+ {
+ 	struct xfs_inode	*ip = XFS_I(inode);
+ 	struct xfs_mount	*mp = ip->i_mount;
+ 	struct xfs_trans	*tp;
++	struct timespec64	now;
+ 	bool			update_isize = false;
+ 	int			error, i;
+ 	loff_t			size;
  
- 	if (lcp->lc_size_chg) {
- 		iattr.ia_valid |= ATTR_SIZE;
+-	ASSERT(iattr->ia_valid & (ATTR_ATIME|ATTR_CTIME|ATTR_MTIME));
+-
+ 	xfs_ilock(ip, XFS_IOLOCK_EXCL);
+ 
+ 	size = i_size_read(inode);
+-	if ((iattr->ia_valid & ATTR_SIZE) && iattr->ia_size > size) {
++	if (new_size > size) {
+ 		update_isize = true;
+-		size = iattr->ia_size;
++		size = new_size;
+ 	}
+ 
+ 	for (i = 0; i < nr_maps; i++) {
+@@ -318,11 +317,13 @@ xfs_fs_commit_blocks(
+ 	xfs_trans_ijoin(tp, ip, XFS_ILOCK_EXCL);
+ 	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
+ 
+-	ASSERT(!(iattr->ia_valid & (ATTR_UID | ATTR_GID)));
+-	setattr_copy(&nop_mnt_idmap, inode, iattr);
++	now = inode_set_ctime_current(inode);
++	inode_set_atime_to_ts(inode, now);
++	inode_set_mtime_to_ts(inode, now);
++
+ 	if (update_isize) {
+-		i_size_write(inode, iattr->ia_size);
+-		ip->i_disk_size = iattr->ia_size;
++		i_size_write(inode, new_size);
++		ip->i_disk_size = new_size;
+ 	}
+ 
+ 	xfs_trans_set_sync(tp);
+diff --git a/include/linux/exportfs_block.h b/include/linux/exportfs_block.h
+index 1f52fea8e4dc..d1dec4689b14 100644
+--- a/include/linux/exportfs_block.h
++++ b/include/linux/exportfs_block.h
+@@ -9,7 +9,6 @@
+ 
+ #include <linux/types.h>
+ 
+-struct iattr;
+ struct inode;
+ struct iomap;
+ struct super_block;
+@@ -33,7 +32,7 @@ struct exportfs_block_ops {
+ 	 * the client.
+ 	 */
+ 	int (*commit_blocks)(struct inode *inode, struct iomap *iomaps,
+-			int nr_iomaps, struct iattr *iattr);
++			int nr_iomaps, loff_t new_size);
+ };
+ 
+ #endif /* LINUX_EXPORTFS_BLOCK_H */
 -- 
 2.53.0
 
