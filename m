@@ -1,100 +1,115 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8CCA6377EA5
-	for <linux-nfs@vger.kernel.org>; Mon, 27 Apr 2026 12:48:40 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1136E3C8723
+	for <linux-nfs@vger.kernel.org>; Mon, 27 Apr 2026 13:28:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777294120; cv=none; b=SX3K1+sZS0pZpNDOAMHkB7J/C13bk9SG5rzsraLsL6EXDuGEhD6zKLcaFP2Uqmbzud+DLBahlhCohfaNdvaCqhprkz7FvTSSIRUz36h9xsbz1dUA2EOuxsiYQiA3C4WpEl1blym+HgdmBqM86Gs0cY71yKuXdI9udfNExSJVF44=
+	t=1777296486; cv=none; b=JpEQ0yEDxBFovEiRwEYcYnWlmYCRid/c6FsFQA5B/FOLhgb7l1IHhDx9xnxu6G02z2IWBLWrSnxQcS5gTwF03VJuXmlvHEogIFaaWIU+xs1Dxllf6nhNiwABnsy9z1JqOzJB8zXx5yKaQ2wDBl71OTiGyczTZK1tQolF1A9ZaTw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777294120; c=relaxed/simple;
-	bh=S3qwtNv8NvdH8AHLfj//6YE5o/GvcpTEps1bmt+LgpM=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=rPbxAIT2HiloFadtynoufTre7Ka4725aumPbPyBzR3sTn/q/LkURAiOmvS0VTl+s8XNBQHa3HwEE5NbxkOepQP3LPw56lM9hjLdtRuj29Vaz3dOLxxuvU3QoF9XwTf2QO4woYisJ/ScRT6b+BSAvZXQ9V3Vsn8judg/K1IQKkS8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=tjjq6alC; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1777296486; c=relaxed/simple;
+	bh=bl50Ep5/p8ND33Uem3F9a2mCUjhFig1ZZdRelrFhzvs=;
+	h=From:To:Cc:Subject:In-Reply-To:References:Date:Message-ID:
+	 MIME-Version:Content-Type; b=jGoa5SmiZy+EE36PYU/ENNzeH8Hi+bx4aS9nnz9Y8Q/6I2LkySSV0YUijy8dqpkXaefwQchAurGX0HGSR65qFHTfvUvKXWpGp1UGKmNbtMSF6UHm1bWERlUfJNoSVr5PrgQpsJdCp+6WYIGA2fpmZaiuXsAnXwO37Ni0UV4AZFA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=f+Xu28RE; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="tjjq6alC"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D071FC19425;
-	Mon, 27 Apr 2026 12:48:39 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1777294120;
-	bh=S3qwtNv8NvdH8AHLfj//6YE5o/GvcpTEps1bmt+LgpM=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-	b=tjjq6alC9xZpv6dnxcRKUqsy9xw6fUliQ/lkt8kZ/aW3PMrlkA8Ad/QwxipONu46a
-	 Kk9MwxMMfbHAoYgBZA3X2pt50KayFRef2qlKrcSS36zAM0h4auOEx8zwB7pbGXLdqO
-	 HzyZsX63+Jzpe/WucDBfHj1pAKfreDWh5VmITErxiQa9Es/n2exxJZy6wKXL6MrJcZ
-	 CApaz1vGz46e9b+DX8RFa7AOoYO6yLLz6IIcYuaqXDLClq1PbjhmcuuYz8IgCMd3RF
-	 K91w4OixUrZR324d8nG1g32T8fQ0tW6ZdvbHQJrEdRa+WgCZjy8sBcyHByDt7nS35q
-	 j3W4vOSJZyDzA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id BB501F40069;
-	Mon, 27 Apr 2026 08:48:38 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Mon, 27 Apr 2026 08:48:38 -0400
-X-ME-Sender: <xms:Jlvvac234afOvjvObiFhfTvcUXrMyrAAo3YRuRU8vdLWzQna-6WK3g>
-    <xme:JlvvaR5EyFifMhIDV1yABxi4tI8GSjO-t_jPxUWO2ggPgK2plR6c4I3EI9FA3_FGk
-    D_0WLrivB9SqtyNKAd29DGJIsGNNDh3e1AYEdrTxGN4Mifexf1Yz7I>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefhedrtddtgdejkeejfecutefuodetggdotefrod
-    ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpuffrtefokffrpgfnqfghnecuuegr
-    ihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjug
-    hrpefoggffhffvvefkjghfufgtgfesthejredtredttdenucfhrhhomhepfdevhhhutghk
-    ucfnvghvvghrfdcuoegtvghlsehkvghrnhgvlhdrohhrgheqnecuggftrfgrthhtvghrnh
-    ephfffkefffedtgfehieevkeduuefhvdejvdefvdeuuddvgeelkeegtefgudfhfeelnecu
-    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomheptghhuhgtkh
-    hlvghvvghrodhmvghsmhhtphgruhhthhhpvghrshhonhgrlhhithihqdduieefgeelleel
-    heelqdefvdelkeeggedvfedqtggvlheppehkvghrnhgvlhdrohhrghesfhgrshhtmhgrih
-    hlrdgtohhmpdhnsggprhgtphhtthhopeeipdhmohguvgepshhmthhpohhuthdprhgtphht
-    thhopegthigsvgihohhnugesfhhogihmrghilhdrtghomhdprhgtphhtthhopegrnhhnrg
-    eskhgvrhhnvghlrdhorhhgpdhrtghpthhtohepthhrohhnughmhieskhgvrhhnvghlrdho
-    rhhgpdhrtghpthhtohephihinhhlvghivdeslhgvnhhovhhordgtohhmpdhrtghpthhtoh
-    eplhhinhhugidqkhgvrhhnvghlsehvghgvrhdrkhgvrhhnvghlrdhorhhgpdhrtghpthht
-    oheplhhinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrgh
-X-ME-Proxy: <xmx:JlvvaZWg5LliuGYHrcM-8EKvBtAkCRIaMjX5Al72z19NBvWO3Jv61g>
-    <xmx:JlvvaUhcKl1WoifSx74SVK9VNzJwK0RRArkl2jHpqUZAqNQy_8O1Wg>
-    <xmx:JlvvaUZxWkr5Nv0clrGHfh7M110pUKaRqv5pftlX_SkZ5mYzG8aDzg>
-    <xmx:JlvvaRojnQmC8RQTiJXVa8_SKAJW8fr5rKrj2ftmUBIO00ZX5ks-sA>
-    <xmx:JlvvaRMqrRi0ejqhwcdj8unpasJQAx7d6pSrISesy0S5h18yDolD4yDY>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 9A2C1780070; Mon, 27 Apr 2026 08:48:38 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="f+Xu28RE"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1777296481;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=eB5Kgu6P3tnZXGszhQUVKu+SbjuqgQqzL2PHunRJg4s=;
+	b=f+Xu28REtVzZTuUMFazq0EYzL+YBinNg4DF18uOv775xVgXSdvwtj4DZt0epG1LWXuUepq
+	XN7+caw6+ioiVyyEiQGs9errGNiUAKhHS5NZUcdqUGWvHq6SNYccnkQbJqd2s+TERVzTZP
+	j6u0rUpD0lZE9J2e4GuGOGr9PEgYZLU=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-358-xvuMkHvJNe-8r8RECjYy7g-1; Mon,
+ 27 Apr 2026 09:27:59 -0400
+X-MC-Unique: xvuMkHvJNe-8r8RECjYy7g-1
+X-Mimecast-MFC-AGG-ID: xvuMkHvJNe-8r8RECjYy7g_1777296475
+Received: from mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.93])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 66EE318002C6;
+	Mon, 27 Apr 2026 13:27:53 +0000 (UTC)
+Received: from fweimer-oldenburg.csb.redhat.com (unknown [10.44.48.4])
+	by mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 5C3B3180047F;
+	Mon, 27 Apr 2026 13:27:40 +0000 (UTC)
+From: Florian Weimer <fweimer@redhat.com>
+To: Dorjoy Chowdhury <dorjoychy111@gmail.com>
+Cc: linux-fsdevel@vger.kernel.org,  linux-kernel@vger.kernel.org,
+  linux-api@vger.kernel.org,  ceph-devel@vger.kernel.org,
+  gfs2@lists.linux.dev,  linux-nfs@vger.kernel.org,
+  linux-cifs@vger.kernel.org,  v9fs@lists.linux.dev,
+  linux-kselftest@vger.kernel.org,  viro@zeniv.linux.org.uk,
+  brauner@kernel.org,  jack@suse.cz,  jlayton@kernel.org,
+  chuck.lever@oracle.com,  alex.aring@gmail.com,  arnd@arndb.de,
+  adilger@dilger.ca,  mjguzik@gmail.com,  smfrench@gmail.com,
+  richard.henderson@linaro.org,  mattst88@gmail.com,  linmag7@gmail.com,
+  tsbogend@alpha.franken.de,  James.Bottomley@HansenPartnership.com,
+  deller@gmx.de,  davem@davemloft.net,  andreas@gaisler.com,
+  idryomov@gmail.com,  amarkuze@redhat.com,  slava@dubeyko.com,
+  agruenba@redhat.com,  trondmy@kernel.org,  anna@kernel.org,
+  sfrench@samba.org,  pc@manguebit.org,  ronniesahlberg@gmail.com,
+  sprasad@microsoft.com,  tom@talpey.com,  bharathsm@microsoft.com,
+  shuah@kernel.org,  miklos@szeredi.hu,  hansg@kernel.org
+Subject: Re: [PATCH v6 1/4] openat2: new OPENAT2_REGULAR flag support
+In-Reply-To: <20260328172314.45807-2-dorjoychy111@gmail.com> (Dorjoy
+	Chowdhury's message of "Sat, 28 Mar 2026 23:22:22 +0600")
+References: <20260328172314.45807-1-dorjoychy111@gmail.com>
+	<20260328172314.45807-2-dorjoychy111@gmail.com>
+Date: Mon, 27 Apr 2026 15:27:37 +0200
+Message-ID: <lhuzf2oy1me.fsf@oldenburg.str.redhat.com>
+User-Agent: Gnus/5.13 (Gnus v5.13)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: ALn38cAhjhoR
-Date: Mon, 27 Apr 2026 08:48:18 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Lei Yin" <cybeyond@foxmail.com>, "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
- yinlei2@lenovo.com
-Message-Id: <4bae2fbf-68d3-4585-8d2f-9b7081b619fe@app.fastmail.com>
-In-Reply-To: <tencent_C198D1548F26ACCF529CC312888839694E05@qq.com>
-References: <tencent_BF5118C8B480E6BFEF401CC2B287682FC905@qq.com>
- <tencent_C198D1548F26ACCF529CC312888839694E05@qq.com>
-Subject: Re: Question about "Not Applicable" status for [PATCH v2] NFSv4.1/pNFS: fix
- LAYOUTCOMMIT retry loop on OLD_STATEID
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.93
 
+* Dorjoy Chowdhury:
 
-On Mon, Apr 27, 2026, at 12:52 AM, Lei Yin wrote:
+> diff --git a/include/uapi/asm-generic/errno.h b/include/uapi/asm-generic/=
+errno.h
+> index 92e7ae493ee3..bd78e69e0a43 100644
+> --- a/include/uapi/asm-generic/errno.h
+> +++ b/include/uapi/asm-generic/errno.h
+> @@ -122,4 +122,6 @@
+>=20=20
+>  #define EHWPOISON	133	/* Memory page has hardware error */
+>=20=20
+> +#define EFTYPE		134	/* Wrong file type for the intended operation */
+> +
+>  #endif
 
-> Could you please let me know whether the Not Applicable status means:
->
-> 1. an equivalent fix is already present in the target tree,
-> 2. the patch was sent against the wrong tree or branch, or
-> 3. there is some issue with the problem analysis or the proposed fix?
->
-> If needed, I can resend the patch against the appropriate branch or adjust
-> the description accordingly.
+This is what POSIX says about EFTYPE, in the Rationale for System
+Interfaces:
 
-The linux-nfs patchworks is for NFSD only. "Not Applicable" means the
-patch is not an NFSD patch.
+=E2=80=9C
+[EFTYPE]
+    This error code was proposed in earlier proposals as "Inappropriate
+    operation for file type", meaning that the operation requested is
+    not appropriate for the file specified in the function call. This
+    code was proposed, although the same idea was covered by [ENOTTY],
+    because the connotations of the name would be misleading. It was
+    pointed out that the fcntl() function uses the error code [EINVAL]
+    for this notion, and hence all instances of [EFTYPE] were changed to
+    this code.
+=E2=80=9D
 
+So I'm not sure if reusing this name is a good idea.
 
--- 
-Chuck Lever
+Thanks,
+Florian
+
