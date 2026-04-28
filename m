@@ -1,223 +1,264 @@
-Received: from mail-pg1-f176.google.com (mail-pg1-f176.google.com [209.85.215.176])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from fout-b7-smtp.messagingengine.com (fout-b7-smtp.messagingengine.com [202.12.124.150])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D52BA3B7747
-	for <linux-nfs@vger.kernel.org>; Mon, 27 Apr 2026 23:55:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A1A6C1E9B35;
+	Tue, 28 Apr 2026 00:24:41 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.150
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777334138; cv=none; b=AnvRYt4+p4PpvRD1agvXe2w2zqrJquq9AGOc2+neUJr6ImisfsDe6eGG1VQiEJYe91XraHVXxIk2bNDarzLZDM4Zlf9fOGD6FusFsJoKcX4Z/MJKTG+6qFeEE4xYhER9fHDR3lzefKLhgJn0ESmp2HPVpdm2liwOVC4XmoHfGjE=
+	t=1777335883; cv=none; b=W14w61g5zoCf3gsZdUNUlIgWzaBRyB/Q0fhCBDeMgqXLvtYNte2H/Sj+DBHvv8PDCp470dh3ueSpArc1nRv729dAM0rXiRDko+BY6yb3kiu9h86XPaBsjGNu/FJXKgBcHFSXjAkaj4LG1bMGDGr37BZt2hwDaedZizkMYP3ysNE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777334138; c=relaxed/simple;
-	bh=6kXywhWGRAqfZcJnUKbUhCWuhKfcPlm4r7kE4iiYotc=;
-	h=From:To:Cc:Subject:In-Reply-To:Date:Message-ID:References:
-	 MIME-version:Content-type; b=Z73w/p0ZjEDRN0lAKcr7lE9Ocz6BXg8kKPpP8WzoiSynyhvBbfFZqjMkBEScH9cJW/u9bUoBGJVJvH+suHJp3R51FyqOYXvHC5O7z+a4yDSuhZSjncYvCeW9VlR0ZgxhzEgjw0aJX2ZOSwFi9PQI3Q8Vkklxji5G6jxsnDwmX6M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=LcuFY12v; arc=none smtp.client-ip=209.85.215.176
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1777335883; c=relaxed/simple;
+	bh=REv3CDVyau96mJCCHO0ASpVwwxehWFoaz66wrjUNGNg=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=j0bTtwIsxugmFnhzQKtBPov4+aR5JsZDQWc7N8JHFKTywuIr0MJ186HgWZCw/fCDrFRDEsvJvbtQwPmNdLdEMbCHzNMVetFaH5p7i47x8lCJ8Glw40HDKTFjSMnxXt488wq7h/NZiYhayhsxzb3KSTRnblONusaKxmr4zFs9d3s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=aaP0wG51; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=d61f4ZKX; arc=none smtp.client-ip=202.12.124.150
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="LcuFY12v"
-Received: by mail-pg1-f176.google.com with SMTP id 41be03b00d2f7-c798fc1a28cso3422621a12.3
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Apr 2026 16:55:36 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1777334136; x=1777938936; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:message-id:date
-         :in-reply-to:subject:cc:to:from:from:to:cc:subject:date:message-id
-         :reply-to;
-        bh=zgEWh+XI0SPB+PinHXs94gFrx3gTRtQhlrntWyMIEwk=;
-        b=LcuFY12vVWO7vqr/F2eC3lhWHJSOrNATLXKt11bZknSt/jmHAxsCa2fq2Ckhzgs7NQ
-         T8QpxY+aYZ3vCgmQb9W6CSCt2LA0PDBSio0kY8RaE7Sr6SW3O00EBhl3ZZ0J6pXuLEvR
-         swqpCtV80o4ODeBpHUah5QPL6PmX0/KH6vUG0Pep/7K4KlJNbBcSE2QlcHthpQdiYZ4w
-         0xpYVlAWQSWHB0YqA33sw6Taa2E+8uRo6+Z5cql+8zkAREGDa229fEbeIrn0V4h7d4xP
-         XhmHqtO7BENBYcmIGM7OkvSZNX6Y+jW1/Ai3jO87L3H68gl7+jpqeLKDqPpVSqLvaEfA
-         ZiwA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1777334136; x=1777938936;
-        h=content-transfer-encoding:mime-version:references:message-id:date
-         :in-reply-to:subject:cc:to:from:x-gm-gg:x-gm-message-state:from:to
-         :cc:subject:date:message-id:reply-to;
-        bh=zgEWh+XI0SPB+PinHXs94gFrx3gTRtQhlrntWyMIEwk=;
-        b=HN0tEoOrNQIcHSd0dvK6/GR3XA0UPxeZbHCNWaJWdys3IabxuNqGqkx/fTiu1a7O2G
-         ERmDDAnfjrAb7CIhaYxqBOvcKtpJO93X2ghCYXWmye336LwAZTtRFn0FKlVogNMIiOBV
-         zGYASMBf5UPTuxDHNq7UTmVkxcJkqmEfzBmUE08et4BSjB+YgqYXGvwPd1HJmBWQQ9k0
-         00BOXUjsoe7bQLP8R9w4yrz7qXoksqeT6x7d3T7VWHyDZWwhjvNDTLq9FvkDwD+gwBxm
-         sEvj2xn9AUPvDOpO3ZRonUXTkWBU8Rc/q3QTUBFi5lukAkXpj1+AJYnvpmmzKIlqKh8b
-         RPRg==
-X-Forwarded-Encrypted: i=1; AFNElJ9xFwF7FRc4Js2Di3gfuyDwlyQQ9DgdZShWuRLYjQisRBifB0hfOjyTNprTwMKbfzQEGd9FgqIzcOA=@vger.kernel.org
-X-Gm-Message-State: AOJu0YwO9sB7l7fygbqTFRwakDssZH7o6bMs+8hP1uW/eJQHF9OloxWp
-	Aw5fM3E0GuzvfF0VMIyeyBZZKBvwIE3LxIckB/Ef86A285aQalOR/Zmd
-X-Gm-Gg: AeBDievxSprvbzL4LNPPBYcXWzikvKrzV/sG0qHgrCMldQohB+gQrMN3Rk3uGJ0ykAW
-	5Ka6MZUKbxuvzt4wBwrTOoBO8ova1Yde5kyOpmZajvVusi8vXYBaXfkRGh82TBbc0SiK5KOCQIP
-	QHgMpIKkpOX6v+xAZOv35hA4sg6SSvwG6TZBO/TGlKZLdDm2Qi/alDOGmPN7buZkx6pK52CyJfv
-	TgHDWJtjOPrLxonyoQYzyuKkoIB6xEElxX5ahUHwLwgqQNxHfbpsMuwwOVz8+0JQQ0jynsQXh2/
-	qMosQTsBE6Ds90gKVj+vbLTK2jgZSdRmoIGvoC3XYYVttQS1GLBJPQkFPxZj4SI4vIIFHh5f0Zh
-	fi3MSaI3ZYY8NwtiGig2I+livLuaotMZSRkkgSK1SGpbJr8VpInWDa2nsLu9m5nXVSbZvpGmh0S
-	ZuUzi7bDv6Drs5/D6+Q0yM/DAxzI+vpdyU
-X-Received: by 2002:a17:902:76c3:b0:2ae:5eee:7a5 with SMTP id d9443c01a7336-2b97c43c746mr4936135ad.12.1777334136066;
-        Mon, 27 Apr 2026 16:55:36 -0700 (PDT)
-Received: from pve-server ([49.205.216.49])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2b97a96cc61sm6493415ad.0.2026.04.27.16.55.26
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 27 Apr 2026 16:55:35 -0700 (PDT)
-From: Ritesh Harjani (IBM) <ritesh.list@gmail.com>
-To: Jeff Layton <jlayton@kernel.org>, Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, "Matthew Wilcox (Oracle)" <willy@infradead.org>, Andrew
- Morton <akpm@linux-foundation.org>, David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>, "Liam R. Howlett" <Liam.Howlett@oracle.com>, Vlastimil Babka <vbabka@kernel.org>, Mike
- Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, Michal
- Hocko <mhocko@suse.com>, Mike Snitzer <snitzer@kernel.org>, Jens Axboe <axboe@kernel.dk>, Christoph Hellwig <hch@infradead.org>, Kairui Song <kasong@tencent.com>, Qi Zheng <qi.zheng@linux.dev>, Shakeel Butt <shakeel.butt@linux.dev>, Barry Song <baohua@kernel.org>, Axel Rasmussen <axelrasmussen@google.com>, Yuanchu Xie <yuanchu@google.com>, Wei Xu <weixugc@google.com>, Steven Rostedt <rostedt@goodmis.org>, Masami
- Hiramatsu <mhiramat@kernel.org>, Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, linux-mm@kvack.org, linux-trace-kernel@vger.kernel.org
-Subject: Re: [PATCH v3 2/4] mm: kick writeback flusher for IOCB_DONTCACHE with targeted dirty tracking
-In-Reply-To: <bb418f9a7bfcabc3070b412c745c5b6456d592b9.camel@kernel.org>
-Date: Tue, 28 Apr 2026 04:56:10 +0530
-Message-ID: <jytsrnn1.ritesh.list@gmail.com>
-References: <20260426-dontcache-v3-0-79eb37da9547@kernel.org> <20260426-dontcache-v3-2-79eb37da9547@kernel.org> <qzo1s6a4.ritesh.list@gmail.com> <bb418f9a7bfcabc3070b412c745c5b6456d592b9.camel@kernel.org>
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="aaP0wG51";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="d61f4ZKX"
+Received: from phl-compute-07.internal (phl-compute-07.internal [10.202.2.47])
+	by mailfout.stl.internal (Postfix) with ESMTP id 8A3C81D001A8;
+	Mon, 27 Apr 2026 20:24:40 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-07.internal (MEProxy); Mon, 27 Apr 2026 20:24:41 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm2; t=
+	1777335880; x=1777422280; bh=lw20G/Xq3f+4QmdtDcYNKNeP+/uFuFD+PMI
+	kxiuWaQw=; b=aaP0wG51gQS9HOjOp0WH3V5jIyQqDBtSc3+/4bR35hxeLm8+z0r
+	C5NmHx+DeYh8dbhnHE5dy8Q1JawceKlzuLmvsO7BB8ensCnWPtd65jWmdHpEKT8u
+	PxIsCiCEy6u+EW5vOptuzk90OTxYD0aOg2Wl2F8RENarSFKgO6phkCKP3sc+3qfS
+	ZTIfZpyGNAWwxd+mfki60+L4g8fEPCjFqH2EWw2hBGf631U7z2kq107z+n8cpnyu
+	rCvwDGXS1XEAoJ7hGK+rzXLtAMXyvS21b+y7hgaBtUbBe7Y31Sfw4E70jhYvciLc
+	Qms4XYGHgNRXui5VckzMlrfiFFQ3b2J2OdQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; t=1777335880; x=
+	1777422280; bh=lw20G/Xq3f+4QmdtDcYNKNeP+/uFuFD+PMIkxiuWaQw=; b=d
+	61f4ZKX37OKkF16uUiqu2Qf3HJZ+4k+WTUfY7NzxDC8BdQhOmWtbWHyOqO5IVNUr
+	EsCJMDd5MRuj80C/iaWVo0gxWTTYtZz4IQQhTAmPnpgRRh3HrpKfQwQxVhMtdKBT
+	fdfAEAmLZpAG4d49ZEyN6u5TiwQIdYdKSqeTcaqlv1s3fwgiDkE4x7wIXtAaITDM
+	nzEAQiqkYYGNfqc30ONSjA3vBnmga0KG2K28ykGhc50snUltGbizNcJbn7cqWr8N
+	VIokladTvKN0m+/i6xfZLotc2MYOWoGOKYw1O45N5iXlOg2dFhWl8z143L8lZ3e1
+	5c1oaP+5QdYk+LYA4khEw==
+X-ME-Sender: <xms:R_7vaY3pi-DgdhUVNwsELaQPTjATMQeQME_nWP2Ky8W-20Un5fI_kg>
+    <xme:R_7vaXPBWJ1Ju-I9X4pQFBW_paGsUEXh-GRerAyRcyl78luExPRxERYlWNBnTXLvd
+    oDfHigBtvmlUzSG3eUq5jk78MvhdB89QVR61x7VAAzf9dio4g>
+X-ME-Received: <xmr:R_7vad5u4BUn4iRT-jN_cJs4tvEynt2996aFfoG_sPzZiv3McrMGswH9tetfWIr1HkqycBjoEISu0INRRHvERtIQg9cKoWk>
+X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefhedrtddtgdektdduvdcutefuodetggdotefrod
+    ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpuffrtefokffrpgfnqfghnecuuegr
+    ihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjug
+    hrpegtgfgghffvvefujghffffkrhesthhqredttddtjeenucfhrhhomheppfgvihhluehr
+    ohifnhcuoehnvghilhgssehofihnmhgrihhlrdhnvghtqeenucggtffrrghtthgvrhhnpe
+    eljedtfeegueekieetudevheduveefffevudetgfetudfhgedvgfdtieeguedujeenucev
+    lhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpehnvghilhgsse
+    hofihnmhgrihhlrdhnvghtpdhnsggprhgtphhtthhopeduiedpmhhouggvpehsmhhtphho
+    uhhtpdhrtghpthhtohepvhhirhhoseiivghnihhvrdhlihhnuhigrdhorhhgrdhukhdprh
+    gtphhtthhopehlihhnuhigqdhunhhiohhnfhhssehvghgvrhdrkhgvrhhnvghlrdhorhhg
+    pdhrtghpthhtoheplhhinhhugidqnhhfshesvhhgvghrrdhkvghrnhgvlhdrohhrghdprh
+    gtphhtthhopehlihhnuhigqdhkvghrnhgvlhesvhhgvghrrdhkvghrnhgvlhdrohhrghdp
+    rhgtphhtthhopehlihhnuhigqdhfshguvghvvghlsehvghgvrhdrkhgvrhhnvghlrdhorh
+    hgpdhrtghpthhtoheplhhinhhugidqvghfihesvhhgvghrrdhkvghrnhgvlhdrohhrghdp
+    rhgtphhtthhopehmihhklhhoshesshiivghrvgguihdrhhhupdhrtghpthhtohepjhgrtg
+    hksehsuhhsvgdrtgiipdhrtghpthhtohepjhhksehoiihlrggsshdrohhrgh
+X-ME-Proxy: <xmx:R_7vacZEtG8QoZG5PRoaM6cBhoVEIbhg9rYuKE9YOUFhLFw0KVYhBg>
+    <xmx:R_7vaSEFucJXrpw5grQRXWzHhOESwgJAvfevhksHDoffLj1bRZccKQ>
+    <xmx:R_7vadmHjogBUoTikuVsjz5-Z-oF4XTTzxr5sz6uiZf0q2JQJx2B9w>
+    <xmx:R_7vaRlp8TlzPDpVQzE2iqggIZzbSjsLuErbn17BB8dNadstrR8lgA>
+    <xmx:SP7vaZLWRIRxAplg7fpxcTvRVXljectY5Vn0Ok49E2tqOsqjZfe4Phnb>
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
+ 27 Apr 2026 20:24:35 -0400 (EDT)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-MIME-version: 1.0
-Content-type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
+MIME-Version: 1.0
+From: NeilBrown <neilb@ownmail.net>
+To: "Amir Goldstein" <amir73il@gmail.com>
+Cc: "Linus Torvalds" <torvalds@linux-foundation.org>,
+ "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
+ "Jeff Layton" <jlayton@kernel.org>, "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>, "Miklos Szeredi" <miklos@szeredi.hu>,
+ "Jeremy Kerr" <jk@ozlabs.org>, "Ard Biesheuvel" <ardb@kernel.org>,
+ linux-efi@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, linux-unionfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v3 09/19] ovl: stop using lookup_one() in iterate_shared()
+ handling.
+In-reply-to:
+ <CAOQ4uxidCcGpABkCtkn94i3U_u3OWK16zeAVDG2xuhh5e+ws9g@mail.gmail.com>
+References: <20260427040517.828226-1-neilb@ownmail.net>
+  <20260427040517.828226-10-neilb@ownmail.net>
+  <CAOQ4uxidCcGpABkCtkn94i3U_u3OWK16zeAVDG2xuhh5e+ws9g@mail.gmail.com>
+Date: Tue, 28 Apr 2026 10:24:32 +1000
+Message-id: <177733587210.1474915.5770075726707338974@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-Jeff Layton <jlayton@kernel.org> writes:
+On Mon, 27 Apr 2026, Amir Goldstein wrote:
+> On Mon, Apr 27, 2026 at 6:07=E2=80=AFAM NeilBrown <neilb@ownmail.net> wrote:
+> >
+> > From: NeilBrown <neil@brown.name>
+> >
+> > lookup_one() is expected to be removed as it does not fit well with
+> > proposed changes to directory locking.
+> > Specifically d_alloc_parallel() will be ordered outside of i_rwsem
+> > and as iterate_shared() is called with i_rwsem held it is not safe
+> > to call d_alloc_parallel().
+> >
+> > We can instead call d_alloc_noblock() and then call the ->lookup, but
+> > that can fail if there is a lookup attempt concurrent with the
+> > readdir().
+> >
+> > ovl cannot afford for the lookup to fail as that could produce incorrect
+> > results, and it cannot safely drop i_rwsem temporarily and that could
+> > introduce races with handling of the directory cache.
+> >
+> > Instead we rely on the fact that ovl_iterate() has an exclusive lock on
+> > the directory, so any concurrent lookup will wait for the ovl_iterate()
+> > call to complete.  We allocate a separate dentry and if the lookup is
+> > successful, it is hashed with the result.
+> >
+> > When the concurrent lookup gets i_rwsem it mustn't do its own lookup -
+> > it must use the existing dentry.  This is found, if it exists, using
+> > try_lookup_noperm().
+>=20
+> Hi Niel,
+>=20
+> One nit about the subject -
+> Please change it to "ovl: stop using lookup_one() in ovl_iterate()"
 
->> 
->> Also should the following change be documented somewhere? Like in Man
->> page maybe? i.e.
->> Earlier RWF_DONTCACHE writes made sure that those dirty pages are
->> immediately submitted for writeback and completion would release those
->> pages. But now, in certain cases when there is a mixed buffered write in
->> the system, those dontcache dirty pages might be written back after a
->> delay (whenever the next time writeback kicks in).
->> However for RWF_DONTCACHE reads, it should not affect anything.
->> 
->
-> Looks like DONTCACHE is documented in the preadv/writev manpage. Here's
-> the current blurb about writes:
->
->     Additionally, any range dirtied by a write operation with RWF_DONT‐
->     CACHE  set  will  get kicked off for writeback.  This is similar to
->     calling  sync_file_range(2)  with  SYNC_FILE_RANGE_WRITE  to  start
->     writeback on the given range.  RWF_DONTCACHE is a hint, or best ef‐
->     fort,  where  no hard guarantees are given on the state of the page
->     cache once the operation completes.
->
-> I don't think this verbiage is invalid after this change. Kicking off
-> writeback is still just a hint, like it was before. We could mention
-> about how that I/O can compete with regular buffered I/O, but it seems
-> a bit like we're adding info that will just be confusing for users.
->
+That's reasonable.  And that for providing Claude's reflections.  All
+fixed.
 
-Make sense.
-
->> > dontcache-bench results on dual-socket Xeon Gold 6138 (80 CPUs, 256 GB
->> > RAM, Samsung MZ1LB1T9HALS 1.7 TB NVMe, local XFS, io_uring, file size
->> > ~503 GB, compared to a v6.19-ish baseline):
->> > 
->> 
->> Can we please also test parallel buffered writes and dontcache writes? 
->> Since this patch series definitely affects that.
->>
->> BTW - adding these numbers in the commit msg itself is much helpful.
->> 
->
-> To be clear, this only affects DONTCACHE, not normal buffered writes,
-> but I guess you're referring to the fact that DONTCACHE and buffered
-> writes can compete now.
->
-> Can you clarify specifically what you'd like me to test here? Are you
-> saying you want me to test parallel and buffered writes together at the
-> same time (i.e. make them compete?).
->
-> I should be able to do that for the local benchmarks, but nfsd's iomode
-> settings are global and that won't be possible there.
->
-
-The reason I am thinking of this is: dontcache marked pages, gets
-evicted from page cache after they are written back. But this patch
-series can now delay that from happening when there is a parallel
-buffered writer dirtying page cache pages. Because of the reasons we
-already discussed...
-
-Note that, this may not be a workload which matters in the real world,
-but I was thinking, it will be good to know the impact if any, of such
-workload with this patch series (parallel buffered and dontcache
-writers).
+Thanks,
+NeilBrown
 
 
->> >   Single-client sequential write (MB/s):
->> >                        baseline    patched     change
->> >   buffered              1449.8     1440.1      -0.7%
->> >   dontcache             1347.9     1461.5      +8.4%
->> >   direct                1450.0     1440.1      -0.7%
->> > 
->> >   Single-client sequential write latency (us):
->> >                        baseline    patched     change
->> >   dontcache p50         3031.0    10551.3    +248.1%
->> >   dontcache p99        74973.2    21626.9     -71.2%
->> >   dontcache p99.9      85459.0    23199.7     -72.9%
->> > 
->> >   Single-client random write (MB/s):
->> >                        baseline    patched     change
->> >   dontcache              284.2      295.4      +3.9%
->> > 
->> >   Single-client random write p99.9 latency (us):
->> >                        baseline    patched     change
->> >   dontcache             2277.4      872.4     -61.7%
->> > 
->> >   Multi-writer aggregate throughput (MB/s):
->> 
->> Can you please help describe this test scenario if possible.. In above
->> you mentioned we are writing file_size as 2x RAM_SIZE. But your
->> multi-client tests says something else..
->> 
->> local num_clients=4
->> +	mem_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
->> +	client_size="$(( mem_kb / 1024 / num_clients ))M"
->> 
+>=20
+> Apart from that, I let Claude do the review, because it has surpassed
+> my abilities in reviewing such subtle api changes.
+>=20
+> I will copy its output verbatim, if for nothing else, to encourage you
+> to start applying Claude review before sending out your patches...
+>=20
+> >
+> > Signed-off-by: NeilBrown <neil@brown.name>
+> > ---
+> >  fs/overlayfs/namei.c   | 12 ++++++++++++
+> >  fs/overlayfs/readdir.c | 24 ++++++++++++++++++++++--
+> >  2 files changed, 34 insertions(+), 2 deletions(-)
+> >
+> > diff --git a/fs/overlayfs/namei.c b/fs/overlayfs/namei.c
+> > index ca899fdfaafd..69032eb2b1e2 100644
+> > --- a/fs/overlayfs/namei.c
+> > +++ b/fs/overlayfs/namei.c
+> > @@ -1385,6 +1385,7 @@ struct dentry *ovl_lookup(struct inode *dir, struct=
+ dentry *dentry,
+> >         struct ovl_fs *ofs =3D OVL_FS(dentry->d_sb);
+> >         struct ovl_entry *poe =3D OVL_E(dentry->d_parent);
+> >         bool check_redirect =3D (ovl_redirect_follow(ofs) || ofs->numdata=
+layer);
+> > +       struct dentry *alias;
+> >         int err;
+> >         struct ovl_lookup_ctx ctx =3D {
+> >                 .dentry =3D dentry,
+> > @@ -1399,6 +1400,17 @@ struct dentry *ovl_lookup(struct inode *dir, struc=
+t dentry *dentry,
+> >         if (dentry->d_name.len > ofs->namelen)
+> >                 return ERR_PTR(-ENAMETOOLONG);
+> >
+> > +       /*
+> > +        * The existance of this in-lookup dentry might have forced
+>=20
+> "existance" should be "existence" in the namei.c comment
+>=20
+> > +        * readdir to do the lookup with a new dentry.  If so we must
+> > +        * return that one.
+> > +        */
+> > +       alias =3D try_lookup_noperm(&QSTR_LEN(dentry->d_name.name,
+> > +                                           dentry->d_name.len),
+> > +                                 dentry->d_parent);
+> > +       if (alias && !IS_ERR(alias))
+> > +               return alias;
+> > +
+> >         with_ovl_creds(dentry->d_sb)
+> >                 err =3D ovl_lookup_layers(&ctx, &d);
+> >
+> > diff --git a/fs/overlayfs/readdir.c b/fs/overlayfs/readdir.c
+> > index 1dcc75b3a90f..e03b32491941 100644
+> > --- a/fs/overlayfs/readdir.c
+> > +++ b/fs/overlayfs/readdir.c
+> > @@ -574,8 +574,28 @@ static int ovl_cache_update(const struct path *path,=
+ struct ovl_cache_entry *p,
+> >                 }
+> >         }
+> >         /* This checks also for xwhiteouts */
+> > -       this =3D lookup_one(mnt_idmap(path->mnt), &QSTR_LEN(p->name, p->l=
+en), dir);
+> > -       if (IS_ERR_OR_NULL(this) || !this->d_inode) {
+> > +       this =3D d_alloc_noblock(dir, &QSTR_LEN(p->name, p->len));
+> > +       if (this =3D=3D ERR_PTR(-EWOULDBLOCK)) {
+> > +               /*
+> > +                * Some other thead is looking up this name and will
+>=20
+> "thead" should be "thread" in the readdir.c comment
+>=20
+> > +                * block on i_rwsem before it can complete the lookup.
+> > +                * We will do the lookup in a new dentry and when that
+> > +                * lookup gets a turn it will find and return this
+> > +                * dentry.
+> > +                */
+> > +               this =3D d_alloc_name(dir, p->name);
+>=20
+> Claude suggests this as the simplest fix to NULL deref bug below:
+>                     if (!this)
+>                             this =3D ERR_PTR(-ENOMEM);
+>=20
+> > +       }
+> > +       if (!IS_ERR(this) && !d_unhashed(this)) {
+> > +               /* Either we got an in-lookup or we made our own unhashed=
+ */
+>=20
+> The condition should be d_unhashed(this) (without !), matching the comment
+> which says "Either we got an in-lookup or we made our own unhashed".
+>=20
+> d_alloc_name() calls d_alloc() which returns NULL on allocation failure.
+> The original code checked IS_ERR_OR_NULL(this), but the new code only
+> checks IS_ERR(this). A NULL this would pass the !IS_ERR(this) check and
+> then crash on !d_unhashed(this) (or d_unhashed(this) with the fix).
+>=20
+> > +               struct dentry *alias =3D ovl_lookup(dir->d_inode, this, 0=
+);
+> > +
+> > +               if (alias) {
+> > +                       d_lookup_done(this);
+> > +                       dput(this);
+> > +                       this =3D alias;
+> > +               }
+> > +       }
+> > +       if (IS_ERR(this) || !this->d_inode) {
+> >                 /* Mark a stale entry */
+> >                 p->is_whiteout =3D true;
+> >                 if (IS_ERR(this)) {
+> > --
+>=20
+> Claude (Opus 4.6) review summary:
+>=20
+> The patch has a critical condition inversion (!d_unhashed vs d_unhashed)
+> that would break impure readdir entirely and cause use-after-free corruption
+> in the dcache. It also has a missing NULL check for d_alloc_name() failure.
+>=20
+> Thanks,
+> Amir.
+>=20
 
-I guess you missed answering this. The reason why I was asking about this is....
-
->> >                        baseline    patched     change
->> >   buffered              1619.5     1611.2      -0.5%
->> >   dontcache             1281.1     1629.4     +27.2%
->> >   direct                1545.4     1609.4      +4.1%
->> > 
-
-... If we see the performace of buffered and dontcache in baseline case,
-then we don't see dontcache doing any good. Even the patched version is
-just slightly better compared to buffered case.
-
-But IIUC, dontcache should really shine in cases where we have buffered
-writers dirtying the page cache pages which can overflow the RAM size
-[1]. The reason why dontcache should show benefit there is, because we
-don't see any page cache pressure, since after writeback the pages gets
-evicted. Also earlier in the unpatched version, the I/O submission
-happens immediately in the same context.
-
-So, I guess, isn't it better to evaluate those scenarios as well with
-the patched version - since this series affects those code paths now?
-
-[1]: https://lore.kernel.org/all/20241110152906.1747545-11-axboe@kernel.dk/
-
->> 
->> Nice :)
->> Some explaination here of why 5x improvement with NFS compared to local
->> filesystems please?
->> (I am not much aware of NFS side, but a possible reasoning would help)
->> 
->
-> I suspect that it's because of the "scattered" nature of nfsd writes.
-> When the client sends a write to nfsd, we wake a nfsd thread to service
-> it. So, if there are a lot of writes operating in parallel, they all
-> get done in the context of different tasks.
->
-> My hunch is that this I/O pattern (writing to same file from a bunch of
-> different threads), particularly suffers from the DONTCACHE inline
-> write behavior. The threads all end up competing to submit jobs to the
-> queue and that causes the performance to fall off sharply.
->
-
-Thanks!
-
--ritesh
