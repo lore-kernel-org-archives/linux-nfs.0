@@ -1,122 +1,164 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 787E5425CD5;
-	Thu, 30 Apr 2026 13:38:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 78C9D364028;
+	Thu, 30 Apr 2026 14:01:31 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1777556317; cv=none; b=DYBHfSIAA1X3u9wNazGjtGYS4hdCzF4Uefr1dpBT+6Ce4VWEas3tn1eR0SZotYbzB6E7mgsS5Z1dNEiw0cijXFu07cjU5Mhb4e7pKGA0tzwml33wo8M5j8OFnau4uHXpiqqpmHtuGg07WhB7jBF2f+1H9gNOwmHNzmQFf+1eUtI=
+	t=1777557691; cv=none; b=uEsIJO7uJP/pOTILjNPweXyinriqkyuKWHiyRs2vyx/JCqxh5YWc5Mdu/UwBa1fTd69AxE6AQ+XzJPvIx7P3ZFpkL/QdZQIOEkoXZtcfuLKJxFUsXJm1Z9gybVVkJH+xYeXraJBcscw2qQMo77UKSG+BbFROOj5H5Ac5GN5kdfw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1777556317; c=relaxed/simple;
-	bh=JO+8obeirInH0eSNTrpSn62OIOprwjzghCneErFnGzE=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=Cg0oGuBNMs2Jq0/DE2spXVpPpBEKcMBG8ZiWv+8eYLmhRxmT8mmwoE5HtDSirjSZnPvJEqO7/glfvgRZdStjWozMpbB5ZN5Tk8lX+jsBIP94n+3aiAw7BTp4B1f9RCAOAqNy44dl6OmQIaz1GUcUJZ7UuwqBIG+gIbMIqQZQIBw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=r9cR27Gz; arc=none smtp.client-ip=10.30.226.201
+	s=arc-20240116; t=1777557691; c=relaxed/simple;
+	bh=tNrp1D3CtHv2mQWxtU+ukHKoE/X+FkZHstE+5Mc1gDk=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=UUlY3R3yn8IVd6l5FjRMgazWCekQtDsEi0ASehw5oidHja5W/MgX8q70wiOZDFo6ZXjCa8RxXAhHlh8Rm56uszXMf9ZyZGE662AHmJMtpUp23rgHuQCGsGItoASZGQORlZqBZ9UwfzTPqolYVBJewABn0gJmsf69EEGCDi3s5fE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nmX+75RE; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="r9cR27Gz"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E032AC2BCB8;
-	Thu, 30 Apr 2026 13:38:36 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nmX+75RE"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 96E5CC2BCB8;
+	Thu, 30 Apr 2026 14:01:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
-	s=k20201202; t=1777556317;
-	bh=JO+8obeirInH0eSNTrpSn62OIOprwjzghCneErFnGzE=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject:From;
-	b=r9cR27Gz77DrkLbdQ9m/OXSE77wP7cWjrs6gdD2IthGZnYkSPG2Rq/7HGKd4M74Hr
-	 Jhj2zmka/PQ9zc2RV0353uPOwPa6TvHL/MaFTh4N5hwEMdh3vaRoaiveX+BykjuAt/
-	 vo92aQZ4mFd/pXQbSE9/AioEzhtf/HJI6K1/YHOoQUtiOffLEP7+0eIzlnJhTKfGSK
-	 NGJ5zg5ecMwHkU+JqpV1O/0D4Yk1cas/PhE8lcuqO7Yz1uzK7lemrNkql45FCzMY1Y
-	 ByTbeuTba18qfownIMoHflcOkxlpxeCdV39Z+fqzcpLBJYxCVzMWgknaV5OGhcj+oP
-	 xQBYdOfwYpN7Q==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 02497F4007C;
-	Thu, 30 Apr 2026 09:38:36 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 30 Apr 2026 09:38:36 -0400
-X-ME-Sender: <xms:W1vzae8uRJExJTcy3BTo9OIDX_Z1jZu96xvJOxnzUDbRsKIbGIzJUw>
-    <xme:W1vzaZiJFX7Qw5vwLomBJZAr4nM0I68dMwec-5XZFPbQvzCkaVlpc5x3EQyLhxcjL
-    CuCqpyitjaPRPLJmNLqM8Z1-_eeor1eP7DcV9UhOFpUmIxeSqD8o2jZ>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefhedrtddtgdekjeegiecutefuodetggdotefrod
-    ftvfcurfhrohhfihhlvgemucfhrghsthforghilhdpuffrtefokffrpgfnqfghnecuuegr
-    ihhlohhuthemuceftddtnecusecvtfgvtghiphhivghnthhsucdlqddutddtmdenucfjug
-    hrpefoggffhffvvefkjghfufgtgfesthhqredtredtjeenucfhrhhomhepfdevhhhutghk
-    ucfnvghvvghrfdcuoegtvghlsehkvghrnhgvlhdrohhrgheqnecuggftrfgrthhtvghrnh
-    epgffhgeeutdeiieevuefgvedtjeefudekvefggefguefgtefgledtteeuleelleetnecu
-    vehluhhsthgvrhfuihiivgeptdenucfrrghrrghmpehmrghilhhfrhhomheptghhuhgtkh
-    hlvghvvghrodhmvghsmhhtphgruhhthhhpvghrshhonhgrlhhithihqdduieefgeelleel
-    heelqdefvdelkeeggedvfedqtggvlheppehkvghrnhgvlhdrohhrghesfhgrshhtmhgrih
-    hlrdgtohhmpdhnsggprhgtphhtthhopeehpdhmohguvgepshhmthhpohhuthdprhgtphht
-    thhopehsrghgihesghhrihhmsggvrhhgrdhmvgdprhgtphhtthhopehkvghrnhgvlhdqth
-    hlshdqhhgrnhgushhhrghkvgeslhhishhtshdrlhhinhhugidruggvvhdprhgtphhtthho
-    pegthhhutghkrdhlvghvvghrsehorhgrtghlvgdrtghomhdprhgtphhtthhopehsmhgrhi
-    hhvgifsehrvgguhhgrthdrtghomhdprhgtphhtthhopehlihhnuhigqdhnfhhssehvghgv
-    rhdrkhgvrhhnvghlrdhorhhg
-X-ME-Proxy: <xmx:W1vzadILAsVEPTaIGaAf7tK0ObJwZ7OiUoXsV7HmMoaKGZaHTkBXUg>
-    <xmx:W1vzaSEOEr5t5pgBP34elxD9-NeIOe_vT9YayNarabjdUP314hZ7QQ>
-    <xmx:W1vzaRTyBiFkG638Z-ntoOfpw6aUYCgCEIL3W84WSsuvVCPGw2UqyA>
-    <xmx:W1vzaedLVMfQbAphVV6MEoHW1ZXdoUxgAps1qBYrj5xhN3i_A7ve8g>
-    <xmx:W1vzaQo2zS4aJ1sUfYbQd2tPEYsXeJdaIEtU2yUK3SrLT2relD-5Ivj3>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id D8DF4780070; Thu, 30 Apr 2026 09:38:35 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20201202; t=1777557691;
+	bh=tNrp1D3CtHv2mQWxtU+ukHKoE/X+FkZHstE+5Mc1gDk=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=nmX+75RELzybgZKKEFxx5nl/CakoeuK/3Lf5HOLRPxHYC6/AgfhfYMWyjdvfIJCgQ
+	 Lv5N2/r6EtP6MjaFIjouvel4FIk+fPXvsInPUUU4NwaM0tpbY67D1PuWnAB/XWp52t
+	 S7gFo2XDGZevPFRSGHLtCnLrOBdbeq9ra/ohhaGukHQKjPU8riurDeElEngRVknyO3
+	 AZ/Y2P33oGv6Z98BHSaL05OSrnhB2u4TiUEIQ5yCdpnseh5A8FZVH5G6yQBKFo5w/f
+	 sUlHLVYNF+UcAkgbM1J7Xic1lnalFCopy5ml/e7ABSJDzVnDhOZDvYBVzsH+q/FPZQ
+	 axF9t7FUO0Lxw==
+Date: Thu, 30 Apr 2026 16:01:28 +0200
+From: Frederic Weisbecker <frederic@kernel.org>
+To: Chuck Lever <cel@kernel.org>
+Cc: Marco Crivellari <marco.crivellari@suse.com>,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org, Tejun Heo <tj@kernel.org>,
+	Lai Jiangshan <jiangshanlai@gmail.com>,
+	Sebastian Andrzej Siewior <bigeasy@linutronix.de>,
+	Michal Hocko <mhocko@suse.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	"David S . Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>
+Subject: Re: [RFC PATCH] xprtrdma: Move long delayed work on
+ system_dfl_long_wq
+Message-ID: <afNguCraI6AvmZrR@localhost.localdomain>
+References: <20260430085412.96961-1-marco.crivellari@suse.com>
+ <8d1eff7b-3712-4039-87d6-028a4118e210@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: Ak5ktnwSWV1c
-Date: Thu, 30 Apr 2026 09:38:15 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Sagi Grimberg" <sagi@grimberg.me>,
- "Chuck Lever" <chuck.lever@oracle.com>, "Scott Mayhew" <smayhew@redhat.com>
-Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
- kernel-tls-handshake@lists.linux.dev
-Message-Id: <92a53963-1e4b-42eb-af81-6be9f63f9e43@app.fastmail.com>
-In-Reply-To: <fd4aaf4e-b1b7-4ca2-bc93-955c31fab317@grimberg.me>
-References: <fd4aaf4e-b1b7-4ca2-bc93-955c31fab317@grimberg.me>
-Subject: Re: Breakage in ktls-utils with nfs keyring?
 Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <8d1eff7b-3712-4039-87d6-028a4118e210@app.fastmail.com>
 
-Cc'ing the ktls-utils development list.
+Le Thu, Apr 30, 2026 at 09:35:20AM -0400, Chuck Lever a écrit :
+> 
+> On Thu, Apr 30, 2026, at 4:54 AM, Marco Crivellari wrote:
+> > Currently the code enqueue work items using {queue|mod}_delayed_work(),
+> > using system_long_wq. This workqueue should be used when long works are
+> > expected, but it is a per-cpu workqueue.
+> >
+> > This is important because queue_delayed_work() queue the work using:
+> >
+> >    queue_delayed_work_on(WORK_CPU_UNBOUND, ...);
+> >
+> > Note that WORK_CPU_UNBOUND = NR_CPUS.
+> >
+> > This would end up calling __queue_delayed_work() that does:
+> >
+> >     if (housekeeping_enabled(HK_TYPE_TIMER)) {
+> >     //      [....]
+> >     } else {
+> >             if (likely(cpu == WORK_CPU_UNBOUND))
+> >                     add_timer_global(timer);
+> >             else
+> >                     add_timer_on(timer, cpu);
+> >     }
+> >
+> > So when cpu == WORK_CPU_UNBOUND the timer is global and is
+> > not using a specific CPU. Later, when __queue_work() is called:
+> >
+> >     if (req_cpu == WORK_CPU_UNBOUND) {
+> >             if (wq->flags & WQ_UNBOUND)
+> >                     cpu = wq_select_unbound_cpu(raw_smp_processor_id());
+> >             else
+> >                     cpu = raw_smp_processor_id();
+> >     }
+> >
+> > Because the wq is not unbound, it takes the CPU where the timer
+> > fired and enqueue the work on that CPU.
+> > The consequence of all of this is that the work can run anywhere,
+> > depending on where the timer fired.
+> >
+> > Recently, a new unbound workqueue specific for long running work has
+> > been added:
+> >
+> >    c116737e972e ("workqueue: Add system_dfl_long_wq for long unbound works")
+> >
+> > So change system_long_wq with system_dfl_long_wq so that the work may
+> > benefit from scheduler task placement.
+> 
+> The patch description confuses me.
+> 
+> The message ends with "the work can run anywhere, depending on where
+> the timer fired." Read literally, "can run anywhere" sounds like a
+> feature, not a bug
 
-On Thu, Apr 30, 2026, at 9:32 AM, Sagi Grimberg wrote:
-> Hey Chuck,
->
-> Upstream ktls-utils fails passing client certificate and private key=20
-> using the .nfs keyring.
-> Bisecting leads commit facd084e43fc ("tlshd: Client-side dual=20
-> certificate support").
->
-> I manually apply this (probably wrong) change and keyring works:
-> --
-> diff --git a/src/tlshd/client.c b/src/tlshd/client.c
-> index 2664ffb..a946797 100644
-> --- a/src/tlshd/client.c
-> +++ b/src/tlshd/client.c
-> @@ -327,7 +327,7 @@ tlshd_x509_retrieve_key_cb(gnutls_session_t sessio=
-n,
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 } else {
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 tlshd_log_deb=
-ug("%s: Selecting x509.certificate from=20
-> conf file", __func__);
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 *pcert_length=
- =3D tlshd_certs_len;
-> -=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0*pcert =3D tls=
-hd_certs + tlshd_pq_certs_len;
-> +=C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0*pcert =3D tls=
-hd_certs;
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 *privkey =3D =
-tlshd_privkey;
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 }
->  =C2=A0 =C2=A0 =C2=A0 =C2=A0 return 0;
-> --
->
-> But, I have a feeling its not the correct change...
+A feature, but incomplete :)
 
+> — and the proposed fix (WQ_UNBOUND) also lets it
+> run anywhere, just via a different selection path. Without a sentence
+> saying "and that anywhere includes isolated CPUs, which we don't want,"
+> the reader is left to fill in the gap.
 
-Scott, can you triage this?
+Not quite, global timers don't fire on isolated CPUs. And since it gets enqueued
+on the CPU where it fired, it won't be enqueued on an isolated CPU.
 
+> 
+> So, could the commit message lead with the motivation? My guess is that
+> this is about respecting HK_TYPE_TIMER housekeeping on isolated systems,
+> which system_long_wq cannot do because its per-CPU pool ignores the
+> housekeeping mask once the global timer fires. If that is the case,
+> please say so directly and the mechanism trace becomes a supporting
+> argument rather than the whole argument.
 
---=20
-Chuck Lever
+The purpose is explained on the last line:
+
+"""
+So change system_long_wq with system_dfl_long_wq so that the work may
+ benefit from scheduler task placement.
+"""
+
+Arguably this could be elaborated. For example we can change that:
+
+"""
+The consequence of all of this is that the work can run anywhere,
+depending on where the timer fired.
+"""
+
+into that:
+
+"""
+The consequence of all of this is that the work can run on any
+housekeeping CPU, irrespective of the scheduler that knows better
+about the best task placement, which would apply if the work were
+to be queued on an unbound workqueue.
+"""
+
+Would that help?
+
+Thanks.
+
+-- 
+Frederic Weisbecker
+SUSE Labs
