@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 11EC4371D10
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E57B2366831
 	for <linux-nfs@vger.kernel.org>; Tue, 12 May 2026 18:14:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1778609664; cv=none; b=JsBgESOeHXWsINDZJaRVcoohKG6ViPc6kj7XL9YfkuAXbuB0CICYT9rlobbF3R5JTuvXGIm8Z8Utzsz1Twa5CVrSR9b6Ih27q5CwP1smB7LdpVB0eeGhOVpB6uWQ102sC61GR9B/rOAylGB3JIy14D+ePpIP9KSX3HFO70YY6Bk=
+	t=1778609665; cv=none; b=oGVBD9n0bc9yRwnhpO+M4gzWabwON/Ev2hzdRG4QUMkSZWZ8Xy2WUMQ+p3IGNFmvnctzZBF25WKfRg/iF0nW3eat2MIzeQUxHJ1SwO4NpdGaSk+QMe6Wl8UBfKEixkHuDRZQgCU0pzvV9YbDjFAwwByRq85WcUC4W/3Ahalystc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1778609664; c=relaxed/simple;
-	bh=4kzgLPhpnjk/Gf1le2k2SBCMThlve08pcyuN4hRn2EE=;
+	s=arc-20240116; t=1778609665; c=relaxed/simple;
+	bh=4bvjNwVaSedjAYJU9deSBTasq+F33cL/J+2EnVRqxSg=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=KakrpwCtWPBM8Z3LAAv14ZzJPKsxq3enSGfy8lKFuJv6L7Xb2zev4kyS3FODckimn72eU/TWNYCdcLkDQRetubRpAmMh+pOnhajcbWOHlD1bv2JygzQAI4cQxGFqXijiCmuEWvMYcWR+toO+v6vFHzWA64KGHb3/g1EXHaZ66Ic=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UB8Bxh9t; arc=none smtp.client-ip=10.30.226.201
+	 In-Reply-To:To:Cc; b=AxopYSdyWnf2x0/yEuQfYUUf3KZX7AM3mmvjopCh/AzcXJ1HSXUyvMxAQ57aPGGIGEqVvy0qXql8oSL3Q3HRzQeBXnRblNkqtpMxO1gAVH//RdG6N83Xj6jpIOIda7+WCMklRjUFEyQK94gRzbSnubEJ6NNckYC4ZI2zA+gdRyc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=M7Uf62Es; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UB8Bxh9t"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4D8DEC2BCC7;
-	Tue, 12 May 2026 18:14:23 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="M7Uf62Es"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E044C2BCB0;
+	Tue, 12 May 2026 18:14:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=k20201202; t=1778609664;
-	bh=4kzgLPhpnjk/Gf1le2k2SBCMThlve08pcyuN4hRn2EE=;
+	bh=4bvjNwVaSedjAYJU9deSBTasq+F33cL/J+2EnVRqxSg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc:From;
-	b=UB8Bxh9tb0E677tNQnIA2/pBOxBtK6UUr9BA6UaHQG/qLw0QB1ZxP6hT/cKyRAwoF
-	 OFYj4hkzTKDNSb22owNJSqQcDVaVaaSWw2hOcrA14Qijy/F2PLooL8/1OQLcwWpfci
-	 E8bmsicEePSdPc3u4jF3Ur7udn33tE54FmWWdbrHv9E79EXqj13yZttHpaiucsJA+X
-	 m8EvpEKb8dE0zgMBEHVUZZ341iUjFrjHOY0yIj2zGbcIimB1/PISrIoDRPj7Nyolcs
-	 iPgYhhjAIfg3JqtS8MVRBEXc1CZiEhP+QCS6KmXmk5Nu0ZFZIJ971ec+5LPgd1uz+Z
-	 X6KO5fMX0zBww==
+	b=M7Uf62EsQJlg/L+quWSs3TnsT7NgddxWD2CHQlFTifviIKN8AD9G1SPAMA4mZY+Z1
+	 KVCAmjhZabBY9dav3PElkVGKaim6U3hAD4Ic4P0iypkZ5HMOSj+K50vU+8ue6MhJwb
+	 aGs/ifGqb2lgA7vJI7QfsoKjogogDjtwkXtnoMsWy8agGmtoocDT3WGe/L4u6cwXJg
+	 X3C6M0p5R0WdpE6piS75/a8Zhi3KOaAFfPXdo/GqNzGlMOD6M9GkfJltrFZyMt+YIj
+	 /apVmj/OSbWyhnEHFoqHTFjE3MiK9mnl7IGynLNcbaJJNZqHnYWt4MkWLgUR/VFyRv
+	 7bizeinRN7i0A==
 From: Chuck Lever <cel@kernel.org>
-Date: Tue, 12 May 2026 14:14:02 -0400
-Subject: [PATCH 27/38] lockd: Use xdrgen XDR functions for the NLMv3
- CANCEL_RES procedure
+Date: Tue, 12 May 2026 14:14:03 -0400
+Subject: [PATCH 28/38] lockd: Use xdrgen XDR functions for the NLMv3
+ UNLOCK_RES procedure
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260512-nlm4-xdrgen-v1-27-19d99b2634b4@oracle.com>
+Message-Id: <20260512-nlm4-xdrgen-v1-28-19d99b2634b4@oracle.com>
 References: <20260512-nlm4-xdrgen-v1-0-19d99b2634b4@oracle.com>
 In-Reply-To: <20260512-nlm4-xdrgen-v1-0-19d99b2634b4@oracle.com>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -47,28 +47,28 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
  Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1790;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1800;
  i=chuck.lever@oracle.com; h=from:subject:message-id;
- bh=xfs2k6XvoF7R3VuszwAJCe/8/GlTQTLz1auMsq94+j4=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqA23mu0pmkYX6oA0UWI+PqwtuzNrA5I5c4tsiS
- yR7URfFfqSJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCagNt5gAKCRAzarMzb2Z/
- l79bD/0f0XvLJtRWb49Lv0sRYKUCGtHLakpgX9uBxFlF0bPfkTL9a0+bwoAIORr+82fWHhpX5ES
- O4kkflQKXC4YTrNpH8RAPboyhFcGJOegyqPSgyyG2oahe+jKmMq5Gkc7iKXhi/6nUNmstADyCIp
- 89gNN+pt3XeoeW95dpTwUPlpWxBmgw8hB9G2CG90SUFt4a0G2Pv5B4XGBUiUMrwET2JTkhnyRn3
- I8hQ4kmUMamPxNs//HPiPVjA/TFInUpOehjOme892uVGYzQeRX1uiVCZjrjPkLVNcq0TsW7sWW7
- G8zAvBQ0zNz6ivDKb9y3iJn5BsCfl8s6MLrFT5YXHrQh5lZNJBMEjOR9gzklDk66tZF4iGT2a48
- 09P4QcCP7COdyuKeSAtFBW9rtS22tRYDHG/XtAD3KCfRspXWXVTYiiXbdTSckwpv8lQi38IHhvd
- raopECrFxsEaMKIJd/aoSqY01ydig4h9WOJHmQTSXocBz15nnlLVsX+zY+SOY4kYOkGGxZ45FFI
- B50b1B9lQxuy2Tjb8g66CJmFA/mrKMSkNJObO0NuVI/ZlHAZdxtZ42hAxKg/+p3DhuTzSWDZ25k
- 2UmiZkYxV0mb3zL0JbfZj4+Mznz26J2FBqoWWXMHnj9MI0Cnwk8gQbxqyNb4SGFMLpUdaPKmOKT
- 6nOWdQXnfqloWZA==
+ bh=+3EJXCnnJ8mKlDQcqvoxfqjeS9Xz/zTAaTuL6lIPNXw=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqA23mO6bT61JOUEDOx5Ersnebt3dbYqJeKc1BR
+ jlzyUsU2ASJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCagNt5gAKCRAzarMzb2Z/
+ lyByD/sGpDSM80XlbrNEHX7XSy/IWB/b+j7sBJoUYrltOiNrp+F+12Ve01Opf0zswBTAgBvxQWN
+ 9kWSrB3sDYHQBZ5BVldhGssbKRZoSBRiaaKnV6kAboKd83Q89VKSbo2FTnISUaBAqOCz9bGm09r
+ WKmqZsjcyB6quu3oCDvv4W82of4PXiG5+5HI2POSlMWAsOsgo2icswNQhgcYcwPz2AUB0iGWH0V
+ UoJO1cjouqg1Umc0C9iP3LDGkWgMDZKx8EMIIbC7Ir/c+coiOh/1avSVAjxCbn0Ip9k7xzjazoB
+ HFW2Jpax5VwuV0BMFtSUmNdM+qteiiHxcATCZWJ9UYT1CUyz6czbnori1sESb+SFfvzdrc8dAtE
+ ZdvjHRNQpsGJPujM8vRsvFXqIeZklEMQXRE4gJGsWmolTHyo6EZplNNOKejp2lHufttZ3ScQdDv
+ EpLFgK7UGu912/YzD4y8TIchzXOPFuDq5DJ/HsZRB+0ozhc5f/NqoG0RxU/bijO+hR21SVmV5CO
+ zy72+bxQs6AZRZfPG/QV4s9FdHDI/ZOdbw2f4AkHrKTu37HZHAnGpcf9qmfPCO1uVX+GP0nJbjr
+ GANEhd70X1FM+lyNJXComjpOqM+TgfFcWRvn5ChgQ9oIw5FmVSNAfY/gbmyZ14fhOR4N15uMO9U
+ VgtugnIw61cRFjw==
 X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Continue the xdrgen migration by converting NLMv3 CANCEL_RES,
-the callback that a remote NLM uses to return async CANCEL
+Continue the xdrgen migration by converting NLMv3 UNLOCK_RES,
+the callback that a remote NLM uses to return async UNLOCK
 results to this lockd.  The procedure now uses
 nlm_svc_decode_nlm_res and nlm_svc_encode_void, generated
 from the NLM version 3 protocol specification.
@@ -78,7 +78,7 @@ decoder fills the argp->xdrgen subfields before the procedure
 runs, so the zeroing memset performed by the dispatch layer
 is no longer needed.
 
-Setting pc_xdrressize to XDR_void reflects that CANCEL_RES, as
+Setting pc_xdrressize to XDR_void reflects that UNLOCK_RES, as
 a callback, returns no data; the previous value of St
 over-reserved a status word in the reply buffer.
 
@@ -88,14 +88,14 @@ Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
  1 file changed, 9 insertions(+), 9 deletions(-)
 
 diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
-index c86ba0b94793..e7d399afbe83 100644
+index e7d399afbe83..f17d3f8d85ec 100644
 --- a/fs/lockd/svcproc.c
 +++ b/fs/lockd/svcproc.c
-@@ -1290,15 +1290,15 @@ static const struct svc_procedure nlmsvc_procedures[24] = {
+@@ -1300,15 +1300,15 @@ static const struct svc_procedure nlmsvc_procedures[24] = {
  		.pc_xdrressize	= XDR_void,
- 		.pc_name	= "LOCK_RES",
+ 		.pc_name	= "CANCEL_RES",
  	},
--	[NLMPROC_CANCEL_RES] = {
+-	[NLMPROC_UNLOCK_RES] = {
 -		.pc_func = nlmsvc_proc_null,
 -		.pc_decode = nlmsvc_decode_void,
 -		.pc_encode = nlmsvc_encode_void,
@@ -103,8 +103,8 @@ index c86ba0b94793..e7d399afbe83 100644
 -		.pc_argzero = sizeof(struct lockd_res),
 -		.pc_ressize = sizeof(struct nlm_void),
 -		.pc_xdrressize = St,
--		.pc_name = "CANCEL_RES",
-+	[NLM_CANCEL_RES] = {
+-		.pc_name = "UNLOCK_RES",
++	[NLM_UNLOCK_RES] = {
 +		.pc_func	= nlmsvc_proc_null,
 +		.pc_decode	= nlm_svc_decode_nlm_res,
 +		.pc_encode	= nlm_svc_encode_void,
@@ -112,10 +112,10 @@ index c86ba0b94793..e7d399afbe83 100644
 +		.pc_argzero	= 0,
 +		.pc_ressize	= 0,
 +		.pc_xdrressize	= XDR_void,
-+		.pc_name	= "CANCEL_RES",
++		.pc_name	= "UNLOCK_RES",
  	},
- 	[NLMPROC_UNLOCK_RES] = {
- 		.pc_func = nlmsvc_proc_null,
+ 	[NLMPROC_GRANTED_RES] = {
+ 		.pc_func = nlmsvc_proc_granted_res,
 
 -- 
 2.54.0
