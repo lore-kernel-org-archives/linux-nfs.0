@@ -1,41 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44B463B3BE6;
-	Tue, 19 May 2026 19:48:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C8A543B7750;
+	Tue, 19 May 2026 20:01:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779220092; cv=none; b=d/iENR8Br0IeCHEuSr/QrqOy7yMe+W/sQsjq0fhEMS7wuUlbddKt+nc9Ue9m0TRm9dTwNkWL/6OWiChr8Ti2KCEJvPmaP95D6MIsj3Zw1BFT/A2cOu0blWXvNtPZsM9q6VYZzN6qcYlEI8LTCExNaPXVMpSeGbG5GpLQ1dbpnVg=
+	t=1779220887; cv=none; b=bmE87jZoG3FXapC0awCcD0p9HbdJl5njcfS1eJC/+AlIiKn9TfhUoVZGuCTCNoZlC1PTncabwOLpssmUWR3b+EBzq0r78EdeUXCAzZo+crgZWIXfEG85eBslB1e9+UcB0snfFlLvhOwOkRGrPVG947MM9FJvGMCsHxoBy7oKYdc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779220092; c=relaxed/simple;
-	bh=oAAiv7dsyLrOD7TrQBA9nXrlNg7a6FOhEAWcHYc3mTI=;
+	s=arc-20240116; t=1779220887; c=relaxed/simple;
+	bh=b/crx5yh7xkn+JKq7wogzjdl3eqzgy8JTq5J2zR+4SM=;
 	h=Message-ID:Subject:From:To:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=W0UyIklFFzVx3nCs72jIaWqckJ3Zt+CX46htxwRoO0wXTmmtIUNNhFS/lHwq2jXnm5rpdFtT0dSGseFP6IpPa4snwPQx5zDaqXbEVHRMlcJLSaHpXmzc9PauyNT+sDZfgsqP30iO7nMpzPn+xbWAl5j8+Gopx1MW8ECnmxZTR3U=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lXclhfV8; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=OAy3XratFv46pjJAsaZs7PuETFIj21Y3uj1dZQ1PuyftNUjyWZWeVrVHkIi2JLKXrIyUNk91Cwm5kpjCr2stVeObai8ppKzLQUGmRD4u4+bIbiJOsHrfHMFB1bcfM4lG2qajuVcu0LjIU89qlSXN1ap1TNB9+qFx2ZSBwsKZN+I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dzlzlm/d; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lXclhfV8"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8A3771F000E9;
-	Tue, 19 May 2026 19:48:10 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dzlzlm/d"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E6F331F000E9;
+	Tue, 19 May 2026 20:01:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1779220091;
-	bh=+xj246BjeMR4gpyNCKYmMvKUzygrVOsl2g5wW0XnK60=;
+	s=k20260515; t=1779220886;
+	bh=GKvrQ/Clf8zBEjLI3vsQ63MkWUGKxNdvEQDhobneyV8=;
 	h=Subject:From:To:Date:In-Reply-To:References;
-	b=lXclhfV8enBHu1wau81yAyhHEvWvHY819siEaGHVt9NvcVaVLEIo4PwDvKwtSIoo3
-	 txjcHHcXP19FzTcidv8UHe6RrJ5zz5tFwQ2SGHofUHEcVuJMmymhlLAusMrxGhV/CW
-	 H9UPl+gOc/AREU9s9U2HTw3WGAnN3ORGpdARjNwrofQfNMMtUToPT4ZVtvBU/XfWqP
-	 RC/4ji5+73fQjezpFKYtScpkQA37cW/MtA2yZHN3VhQNYncKp/8P17l26PJ+clFJmx
-	 zuFiiXVW97kjBcqUGs3G067Dx+c/p4T9gldufVMcjCY+FSjIpty6dUqMNUvgx+Do88
-	 lVnN1+PaHFYTg==
-Message-ID: <92813369f8e3e62960c21be4822b1b7c97b9729b.camel@kernel.org>
-Subject: Re: [PATCH 1/2] nfsd: clear cl_cb_session on DESTROY_SESSION
+	b=dzlzlm/dCLd/9ft/arExP2Ty/w4g71EMl21kN8649v6LsrP9vWHsAdO42wb5YXOE5
+	 Sl7AdgAfh4rRLRjmhklIDjrHTU3EkSJQ50HDQuPQpXjbDvkr1ZqnMSDPiQv1uhu2aN
+	 dRzSUNksHw/fGVeAJyMq5+DDUPp1aDl2iSdBy6FnAYHhX8vj/APn79q/Is79OgyEVq
+	 KDfrmKNxV79btGLp33ilCYhip01Nzurg7gmaGrKQ+FZ6IipTmoehKh/UZIo5TrJC2Q
+	 ifXoVlFUQGRzwkQkU7unEAvo771D1PmW2m1LdZHhVg774kAB0x5FiZAL4ggTW+V/VG
+	 j0oSpmaezYG6Q==
+Message-ID: <36129760a31644ac98678b1d77f3acd9f27f502f.camel@kernel.org>
+Subject: Re: [PATCH] nfsd: drain backchannel callbacks before freeing a
+ session
 From: Jeff Layton <jlayton@kernel.org>
 To: Chris Mason <clm@meta.com>, Chuck Lever <chuck.lever@oracle.com>, "J.
  Bruce Fields" <bfields@fieldses.org>, Trond Myklebust <trondmy@gmail.com>,
  linux-nfs@vger.kernel.org, 	linux-kernel@vger.kernel.org
-Date: Tue, 19 May 2026 15:48:07 -0400
-In-Reply-To: <20260519180032.1852793-3-clm@meta.com>
+Date: Tue, 19 May 2026 16:01:23 -0400
+In-Reply-To: <20260519180032.1852793-2-clm@meta.com>
 References: <20260519180032.1852793-2-clm@meta.com>
-	 <20260519180032.1852793-3-clm@meta.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -120,87 +120,19 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-Dueling agent review. Looks like both problems are valid:
+On Tue, 2026-05-19 at 10:49 -0700, Chris Mason wrote:
+> DESTROY_SESSION can free an nfsd4_session while a backchannel callback
+> for the same client is still live on rpciod, leaving clp->cl_cb_session
+> as a dangling pointer.
+>=20
+> The first patch waits on cl_cb_inflight, and the second hopes to make
+> things harder to regress in the future by dropping a NULL in there.
+>=20
+> Signed-off-by: Chris Mason <clm@meta.com>
 
-> The parent commit drains in-flight backchannel callbacks before
-> nfsd4_destroy_session() frees the session, which closes the primary
-> use-after-free.  clp->cl_cb_session still caches the freed pointer
-> though: no destroy, expire, or shutdown path clears it, so the
-> stale value survives until the next CREATE_SESSION overwrites it.
+Assuming you want to reverse the order, you can add this:
 
-The drain is added by the companion patch "nfsd: drain inflight
-callbacks in probe_callback_sync", which is patch 2/2 in this
-series and applied after this one.  Should "The parent commit
-drains" be rephrased, or should the series order be swapped so
-the drain lands first?
+    Reviewed-by: Jeff Layton <jlayton@kernel.org>
 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 50827405468d..8af2d0cc37c2 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-
-[ ... ]
-
-> @@ -1278,10 +1280,12 @@ static int grab_slot(struct nfsd4_session *ses)
->  static bool nfsd41_cb_get_slot(struct nfsd4_callback *cb, struct rpc_tas=
-k *task)
->  {
->  	struct nfs4_client *clp =3D cb->cb_clp;
-> -	struct nfsd4_session *ses =3D clp->cl_cb_session;
-> +	struct nfsd4_session *ses =3D READ_ONCE(clp->cl_cb_session);
->
->  	if (cb->cb_held_slot >=3D 0)
->  		return true;
-> +	if (!ses)
-> +		return false;
-
-When ses is NULL, this returns false without calling
-rpc_sleep_on().  The existing slot-unavailable path a few lines
-below sleeps the task on cl_cb_waitq before returning false:
-
-    rpc_sleep_on(&clp->cl_cb_waitq, task, NULL);
-    cb->cb_held_slot =3D grab_slot(ses);
-    if (cb->cb_held_slot < 0)
-        return false;
-
-nfsd41_cb_get_slot is the rpc_call_prepare callback, and
-rpc_init_task() sets tk_action to rpc_prepare_task when
-rpc_call_prepare is provided.  When prepare returns without
-calling rpc_call_start() and without sleeping the task,
-__rpc_execute() loops back and calls prepare again because
-tk_action is unchanged and the task is not queued:
-
-    __rpc_execute():
-    for (;;) {
-        do_action =3D task->tk_action; /* rpc_prepare_task */
-        ...
-        do_action(task);             /* nfsd4_cb_prepare */
-        if (!RPC_IS_QUEUED(task)) {  /* true, not sleeping */
-            cond_resched();
-            continue;                /* back to the top */
-        }
-
-Can a callback reach this path?  After nfsd4_destroy_session()
-clears cl_cb_session but before cl_cb_client is torn down,
-another client could trigger a delegation recall.
-nfsd4_run_cb() queues the work, nfsd4_run_cb_work() sees
-cl_cb_client is still set and calls rpc_call_async(), and the
-task enters the prepare loop above.
-
-Would something like the following avoid the spin?
-
-    if (!ses) {
-        task->tk_rpc_status =3D -EIO;
-        return false;
-    }
-
-That would route the task through rpc_exit_task ->
-nfsd4_cb_sequence_done (which already handles NULL session via
-goto requeue) and on to nfsd4_cb_release, breaking the loop.
-
->  	cb->cb_held_slot =3D grab_slot(ses);
->  	if (cb->cb_held_slot < 0) {
->  		rpc_sleep_on(&clp->cl_cb_waitq, task, NULL);
-
-[ ... ]
-
+The other review comment from Claude sounds reasonable too, but harder
+to hit in practice.
