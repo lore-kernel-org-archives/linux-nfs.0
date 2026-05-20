@@ -1,129 +1,120 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 96F4514A8B
-	for <linux-nfs@vger.kernel.org>; Wed, 20 May 2026 00:30:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 31400157A5A;
+	Wed, 20 May 2026 00:35:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.165.32
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779237007; cv=none; b=cICRZ0C/FWWSi+CzU1tfGXHtQKOW8YeaPUSD7xqyhVLuZX+YDuAPbdOdftBGczc/GPzyXNkHGoHE45yK9obHplaF5vXSsoE++uaZEHpkGOxN1Aci3Ps7v4v/lI1z/bGVoaSXb/PrFy5gc5/pV6NqH5OmvhOIVYBwRCRdNFCYWtE=
+	t=1779237312; cv=none; b=ccjJOKnaIoer0b+HzWb2217zizlwliDfAGGnxFOk0uZDj70e9y5VBKwjsk5nP3Ei22WDJ7BacqURUxd1tv43vxOyaEloFv7v5CPFyYi5ztxEzKjblPsrZfB6bcPdKUZijIqOBdr36OP4reBoPk2UdNZRp2jSd/nQO1CjA+EP9Uw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779237007; c=relaxed/simple;
-	bh=QfHEk4SH/oVxP2Sgw2J5T1jsfmlxADI+rwem5ZKoPao=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=MeJQvYBBu+i8BC+cq0l3Vkj3euWU8FQ4SIlFVtoyG512RzuaHEKzEp5z3La3iZyqWj+EnbwffpXGqLI0HWyYSFWCwG6yhXFpgu9HkBiAiz/+4+TNWxD+3Zc1txihC4D6H39J0HYqfvGHW9x6UQ2uiMu8SdaQnRUCMv4h+28rKYU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=n1KszHlb; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1779237312; c=relaxed/simple;
+	bh=KcgYRtkeGmAhJYgDJrMs1JgmX1hEmhj+mE0E+2y28T4=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=Q7A1vyLarVmav1gwsF9HAtLjj3gIi3vIPIcX95G51DgUpAYIx5I/Cgi8ME1TyurVV3pp/knWWOAtIppLaCvRKcpdbbM8uOwBAPrnEMfeyXsJE67Ddz3iBpvVO1yK/OQzI0CYHqLBTsx6hrSowdixJutPvH+D+/ePfaNhkpi+AvU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=J1I1i2SK; arc=none smtp.client-ip=205.220.165.32
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="n1KszHlb"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C4D541F00893;
-	Wed, 20 May 2026 00:30:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1779237006;
-	bh=kXr3aZpt0lqtneW6ycclYVc3wxNPXhKuZjSbOIURMPw=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=n1KszHlbyJCvRRNucV1tJir+6lp0hsuac6dlrXZV4sSes9Zr0pp0ecGFD37wFWyoy
-	 ho9dOc3m2Lswqf+h38pcmtyE0Gwm8JBSdjLSfhhSHWJVG3x3n22Ok2/H1siYKTZRRB
-	 BdlZyCFCWF45AscllWRXRaiQ2d3CmkFUCbqjH6pf1tjXREqHMBX4AySPqpL2e+SVtW
-	 mz/G/OTkNBjoluLHUETSJ3P7ro4iupEvkLU1A1oYywUgZ/i3tpXf+7t5aZlnr9nQDB
-	 LMMEMF1uOWbvtzkdYU+WEIL7qZ+ALVHwiL1vPXvD+C+9KDJsaEguZDsihmKtwHLUWf
-	 /vAvv9kWjPacA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id CF1F2F40068;
-	Tue, 19 May 2026 20:30:04 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 19 May 2026 20:30:04 -0400
-X-ME-Sender: <xms:jAANappNMZtEMLXP-7IJ8iPd_uy2kcZOu5pbZtYQ9YOyU9bqNUBV2Q>
-    <xme:jAANamc6PVFAT1liBLAdrVkvtWD-PPg99ypf60IqBnbzvc6RH3vFueo67nh-K3aqn
-    gU1wZlTOTnhx6jl5evys3wXMD2H_Up_KmcI92e8ezpdocFjT8ngmOh0>
-X-ME-Proxy-Cause: gggruggvucftvghtrhhoucdtuddrgeefhedrtddtgddugeefudelucetufdoteggodetrf
-    dotffvucfrrhhofhhilhgvmecuhfgrshhtofgrihhlpdfurfetoffkrfgpnffqhgenuceu
-    rghilhhouhhtmecufedttdenucesvcftvggtihhpihgvnhhtshculddquddttddmnecujf
-    gurhepofggfffhvfevkfgjfhfutgfgsehtqhertdertdejnecuhfhrohhmpedfvehhuhgt
-    khcunfgvvhgvrhdfuceotggvlheskhgvrhhnvghlrdhorhhgqeenucggtffrrghtthgvrh
-    hnpefghfeguedtieeiveeugfevtdejfedukeevgfeggfeugfetgfeltdetueelleelteen
-    ucevlhhushhtvghrufhiiigvpedtnecurfgrrhgrmhepmhgrihhlfhhrohhmpegthhhutg
-    hklhgvvhgvrhdomhgvshhmthhprghuthhhphgvrhhsohhnrghlihhthidqudeifeegleel
-    leehledqfedvleekgeegvdefqdgtvghlpeepkhgvrhhnvghlrdhorhhgsehfrghsthhmrg
-    hilhdrtghomhdpnhgspghrtghpthhtohepgedpmhhouggvpehsmhhtphhouhhtpdhrtghp
-    thhtohepsggvnhdrtghougguihhnghhtohhnsehhrghmmhgvrhhsphgrtggvrdgtohhmpd
-    hrtghpthhtohepjhhlrgihthhonheskhgvrhhnvghlrdhorhhgpdhrtghpthhtohepnhgv
-    ihhlsgesshhushgvrdguvgdprhgtphhtthhopehlihhnuhigqdhnfhhssehvghgvrhdrkh
-    gvrhhnvghlrdhorhhg
-X-ME-Proxy: <xmx:jAANaqRirEYKT9v-7fkU5PC6bkyKxh8RRpOyhuJjLoJtKqO5uuy7Og>
-    <xmx:jAANatllVfhZSllnWpDgApnQaAqap6_YHBN0ZmXwcft95NFp8V061w>
-    <xmx:jAANaiSJKjUKJKedbYA8PxWNgy3eXUpwpvROGueU_TRzB3YOi69u3g>
-    <xmx:jAANajMKGc5QM_WK6qy9uOJt969qv9sL6bXXtglsjSkh087e9m9jPQ>
-    <xmx:jAANajU9wmi-vGhYnGDVq9PyFSi9rOYb-lotif80LM-sR-T47qHe-kAK>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id A8092780075; Tue, 19 May 2026 20:30:04 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="J1I1i2SK"
+Received: from pps.filterd (m0246617.ppops.net [127.0.0.1])
+	by mx0b-00069f02.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 64JNgeKC954986;
+	Wed, 20 May 2026 00:35:09 GMT
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
+	:content-transfer-encoding:date:from:in-reply-to:message-id
+	:mime-version:references:subject:to; s=corp-2025-04-25; bh=7qNKF
+	EVvQh7s+6BHXsY3Zo1oqF8vVmV2yIJw5O/zhLI=; b=J1I1i2SKJ4njUmhFnN8zq
+	Qj6howRgoEyB9+QhJzbD8aTNYdZqovRvd6p/b7uWNUFRSmFkLFezbbp2UO4mIc1v
+	f8rTy5OK16tWdRbNK3PIKdHRE1m/2SrNLXGNUqGanS1t6yayHIS6ZXD//SeADuUd
+	12/0MeFCOoYWYLWlpaHC+Cuan6UW9cOi4wruniN6RlFJ3NWwebCOK378AY7zOLGO
+	Df0h4wZB2sQ0UNvDLctSrk4EcxhjbQUBxL7MCuomybeyHDwcyLsnOi1VkGhnbrc5
+	uK7gR5+JxXyJvIU4fIxlqUbhZSKawGhGaeXgURU0yxmUc27q17PvDSSsiPhuDOQW
+	A==
+Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4e6h4q6597-1
+	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
+	Wed, 20 May 2026 00:35:09 +0000 (GMT)
+Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
+	by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.7/8.18.1.7) with ESMTP id 64K0OsT0006236;
+	Wed, 20 May 2026 00:35:08 GMT
+Received: from labops-common-sca-01.us.oracle.com (labops-common-sca-01.us.oracle.com [10.132.26.161])
+	by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 4e84ecyhhb-2;
+	Wed, 20 May 2026 00:35:08 +0000 (GMT)
+From: Dai Ngo <dai.ngo@oracle.com>
+To: cem@kernel.org
+Cc: linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] xfs: fix use of uninitialized imap in xfs_fs_map_blocks error path
+Date: Tue, 19 May 2026 17:32:58 -0700
+Message-ID: <20260520003503.2399326-2-dai.ngo@oracle.com>
+X-Mailer: git-send-email 2.47.3
+In-Reply-To: <20260520003503.2399326-1-dai.ngo@oracle.com>
+References: <20260520003503.2399326-1-dai.ngo@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Date: Tue, 19 May 2026 20:29:41 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Benjamin Coddington" <ben.coddington@hammerspace.com>
-Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neilb@suse.de>,
- linux-nfs@vger.kernel.org
-Message-Id: <1a5c70d8-e7f4-4671-a29a-023be7c107fc@app.fastmail.com>
-In-Reply-To: <AED22AED-E97D-40E3-9839-BF8307EF8B65@hammerspace.com>
-References: <D33770A1-9098-4F1A-93EF-590E6C0B7638@hammerspace.com>
- <473e337b-fabc-4884-a6c4-0f04b6874d0b@app.fastmail.com>
- <3AB7EB6A-B207-4B91-A695-66C4704D0E31@hammerspace.com>
- <4c5dbb98-0209-4572-8eac-1578536bbd78@app.fastmail.com>
- <AED22AED-E97D-40E3-9839-BF8307EF8B65@hammerspace.com>
-Subject: Re: [RFC] knfsd: per-client fair scheduling to prevent single-client
- starvation
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
+X-Proofpoint-Virus-Version: vendor=baseguard
+ engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.51,FMLib:17.12.100.49
+ definitions=2026-05-19_06,2026-05-18_01,2025-10-01_01
+X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0
+ spamscore=0 adultscore=0 mlxlogscore=999 mlxscore=0 lowpriorityscore=0
+ bulkscore=0 phishscore=0 suspectscore=0 classifier=spam adjust=0 reason=mlx
+ scancount=1 engine=8.19.0-2605130000 definitions=main-2605200002
+X-Authority-Analysis: v=2.4 cv=NdnWEWD4 c=1 sm=1 tr=0 ts=6a0d01bd b=1 cx=c_pps
+ a=e1sVV491RgrpLwSTMOnk8w==:117 a=e1sVV491RgrpLwSTMOnk8w==:17
+ a=NGcC8JguVDcA:10 a=VkNPw1HP01LnGYTKEx00:22 a=jiCTI4zE5U7BLdzWsZGv:22
+ a=7Gl3-_t3PgB9XO-mQDs3:22 a=yPCof4ZbAAAA:8 a=0CBWd1vnmm2x7jB9DQsA:9
+ a=5yU3S35YU4bGjq-dph-N:22 a=Bho9c0fBagfJEIQBS7DQ:22 cc=ntf awl=host:13839
+X-Proofpoint-GUID: uQiPBovsh5UitQaypT7u93pG_kAHGwU0
+X-Proofpoint-ORIG-GUID: uQiPBovsh5UitQaypT7u93pG_kAHGwU0
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNTIwMDAwMyBTYWx0ZWRfXwbL+cf5zh37W
+ kecIau+r9gsxaInCgRFdfskxpAWUEQtuOhcSFN/6c2xj5XmPcZLW1qDnFXhgNOyccKh96+4jJCd
+ yNdtzhxdwob+90DlK5cJ2uvbZMWaVZxXttqh662pSiTzHuRlAwpuncU6U6wCJYfZbSR/VbQlt6i
+ z8kxxs7AWYgffUwW0xeGRsFn19uI387BC+8Ow9yoPm5eB853DQjdUgwYGW2qbF+IyK+GN7zn7J5
+ dG6Co20aCS7l7UddxLjICM1wnMogzcQidOgfGta2Sp9nOsL19RDlWrIuMtPOaiOwv3mKpg5z4R1
+ IIdu3/8LiwC3s6vUdIKffpPqOnPE7x5/eLuY1SvmiT+aDfNbDwKUCYQ+YF+JmhwyyGt8j7EfWOe
+ 6DPXfu83p8zoBJ1X7uPtCj+Lvf151peEhNkR9lIUeAlEr0WDezv1OgvGnrboKFoQsTd1KSTSN3V
+ ydlbvkYNJr8WMe/bdLoonV1uY98yk8RsbjDID7Qw=
 
+xfs_fs_map_blocks() acquires the data map lock and then calls
+xfs_bmapi_read(). If xfs_bmapi_read() fails, the function currently
+still falls through to xfs_bmbt_to_iomap(), which consumes an
+uninitialized imap record and may return invalid data to the caller.
 
+Fix this by releasing the data map lock and returning immediately when
+xfs_bmapi_read() reports an error. This prevents xfs_bmbt_to_iomap()
+from being called with an uninitialized xfs_bmbt_irec.
 
-On Tue, May 19, 2026, at 6:02 PM, Benjamin Coddington wrote:
-> On 19 May 2026, at 14:44, Chuck Lever wrote:
->
->> On Tue, May 19, 2026, at 5:08 PM, Benjamin Coddington wrote:
->>> Just to be clear - the issue I'm exploring isn't the same as when al=
-l the
->>> kNFSD threads are slow due to their workload.  This is very much a
->>> multi-client dynamic where one client (or a group of automated client
->>> instances) are able to easily starve another simply because they cre=
-ate the
->>> most connections.
->>>
->>> That's different from the other problem that we've discussed a bunch=
- at
->>> bakeathon and on the list previously.
->>>
->>> This is not so much a deadlock issue as it is an issue
->>> of per-client fairness.  I think this problem is in a different clas=
-s.
->>
->> Does dynamic svc thread creation have any impact?
->
-> I haven't tested it - I think it would just pin to max-threads for the
-> workload in question.
+Fixes: 527851124d10f ("xfs: implement pNFS export operations")
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/xfs/xfs_pnfs.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-If the aggregate workload consumes all the threads, then that doesn=E2=80=
-=99t
-sound like xprt scheduling is the bottleneck. But I should look at
-numbers instead of speculating.
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index 221e55887a2a..b792e066b403 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -174,12 +174,15 @@ xfs_fs_map_blocks(
+ 	lock_flags = xfs_ilock_data_map_shared(ip);
+ 	error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
+ 				&imap, &nimaps, bmapi_flags);
++	if (error) {
++		xfs_iunlock(ip, lock_flags);
++		goto out_unlock;
++	}
+ 	seq = xfs_iomap_inode_sequence(ip, 0);
+ 
+ 	ASSERT(!nimaps || imap.br_startblock != DELAYSTARTBLOCK);
+ 
+-	if (!error && write &&
+-	    (!nimaps || imap.br_startblock == HOLESTARTBLOCK)) {
++	if (write && (!nimaps || imap.br_startblock == HOLESTARTBLOCK)) {
+ 		if (offset + length > XFS_ISIZE(ip))
+ 			end_fsb = xfs_iomap_eof_align_last_fsb(ip, end_fsb);
+ 		else if (nimaps && imap.br_startblock == HOLESTARTBLOCK)
+-- 
+2.47.3
 
-Are you seeing connection loss in these scenarios?
-
-
-> I'm probably not understanding you here, because for the problem I'm
-> interested in fair would look like prioritizing each client's request
-> queue equally, no matter how many xprts each client has.
-
-Then for NFSv4.1 and later, NFSD might schedule work on the session, and
-manage each session=E2=80=99s workload by raising and lowering the numbe=
-r of slots
-in its slot table.
-
-
---=20
-Chuck Lever
