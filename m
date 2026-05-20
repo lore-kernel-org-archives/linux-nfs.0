@@ -1,49 +1,53 @@
 Received: from mx0a-00069f02.pphosted.com (mx0a-00069f02.pphosted.com [205.220.165.32])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1572222301;
-	Wed, 20 May 2026 00:35:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F44518FC97;
+	Wed, 20 May 2026 00:35:12 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=205.220.165.32
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779237312; cv=none; b=GTeT/L/8DGNHkzBZUQ8lPmWz/L7hhWzupPYf0IU2q1Z1GWfr0TApFs/s1ghUHAyGqUGgpHBSXdKxk+T7jifmeZDcVSZVV2drXwLW+7VKXSNWaGmst0Oe7v4kB6DGxlozi7DRmrxTE5hKfj3OcHeZ0M3nvlnXpr1hQxpoqT6NmvU=
+	t=1779237313; cv=none; b=q2T7kEW/7l4BCHEiveh2rBHGManO9qJwdGm3FpsY24W0at+IlMH5/Esa0zelTLkeCAd/uk/1jxkH4MrssX4kJ62J6s+camcsadzqKfV5WIkK4QSnh5gUTjuggwX09rg7UHRy6mwsRE81OaQjUbv4gYVafWU8g1s40IxGeFFRulI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779237312; c=relaxed/simple;
-	bh=gBBmIGIvvDcvzP/nykn4MU2HxGEz/zm2dRswjzzjfTc=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=qZ79GM3/xBxqsnQsEEEzQQxpoYsGjUPSNPjhVh10Ye8G9S9EyxnioyQ2Jxv2OjMWjnpXefnuxVxRLX9PWZUr0i/83vX5uBFuBpMYyP4Fv/DhdzFhnGXHAvs7nRlY3I0Fwr+F97OZ2r0NWPFQjfdyFvQHnnGYbwIIgrXhoSawzmw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=Tq8sJrEU; arc=none smtp.client-ip=205.220.165.32
+	s=arc-20240116; t=1779237313; c=relaxed/simple;
+	bh=PNoO9y/ZcBHK4htM/mvEgNKFJUK0T7x5sobpk/gxzRA=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=A58BCrayerDIo64xodJWumtK0y0BbimE3J5wTyAZhEOdmMITb+3I7ZFAIJohTtlsvvhyEd2KwQZdB8XwM1OGxjctmcsX/qDHdeDO7osVZSxSy5RcqWXj94u6y7gu2sSKSEuJSZR7bmDCHX1KobYg4ECSdsyGFcRw59iidEouT/U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com; spf=pass smtp.mailfrom=oracle.com; dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b=d2vlXCYB; arc=none smtp.client-ip=205.220.165.32
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=oracle.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oracle.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="Tq8sJrEU"
+	dkim=pass (2048-bit key) header.d=oracle.com header.i=@oracle.com header.b="d2vlXCYB"
 Received: from pps.filterd (m0246629.ppops.net [127.0.0.1])
-	by mx0b-00069f02.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 64JJcMko1518944;
-	Wed, 20 May 2026 00:35:09 GMT
+	by mx0b-00069f02.pphosted.com (8.18.1.11/8.18.1.11) with ESMTP id 64JNfqNT100895;
+	Wed, 20 May 2026 00:35:10 GMT
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=oracle.com; h=cc
-	:content-transfer-encoding:date:from:message-id:mime-version
-	:subject:to; s=corp-2025-04-25; bh=gBBmIGIvvDcvzP/nykn4MU2HxGEz/
-	zm2dRswjzzjfTc=; b=Tq8sJrEUbO7bv9vxT62GnWsV+Kj95p2vdQhKIXStOb52Q
-	U/Km2tKrV3YwOh2yqWwqL6q4uTjU8h53Pfayhrc56G/l8kZ84Y4iUoc0yIJeyDj0
-	KQ3VRgt1zY6vbQOGd/5eOk2Q2/BEb2oMl8Zl+e5ii5ctsNozAite2QVD9weIKHGy
-	AXwmVvR6oen1V+CjVIaJdDpbdReLRUphGdmSPblJmLlelPzL1kPdj0juO9f4Wd7L
-	yoT5jLhlLa//k1QSo6skzIGcETpOidCB62zvTyNEZ4i8wWOsuLhbKfSJXohLyK9r
-	6B31VWyz4wIb1TjpkhwHI825N/xUpp/NYg1h+7gqg==
+	:content-transfer-encoding:date:from:in-reply-to:message-id
+	:mime-version:references:subject:to; s=corp-2025-04-25; bh=k7C33
+	TcGWDi1Ou3bPN94FMIs10lMP+nZaEcern6EJJE=; b=d2vlXCYBaGXazDAc0rKmb
+	MKZ9TRdUwwIRdx2y13ZU0zBOMzPXj/nCz5wc+zDUIOsQZLSLQAvfQ6gP3+T9JJ6+
+	yGrpisA25Lr3G8vdwUV99rGhJk0IpoUcSCZ62NphiMsSqDBhCYFfLl4XvLt7Mdrf
+	iBVeqBiweQW4iOFCyIv8dxJ6Onlnywh7OIPszChr20oeXa4wOS1/IY0D91gfVMtl
+	ELR/kFiBg5EtJV27upONs5hu/Xag32S+IesPjYWSsL33X82TqorTBOIFoQJ6O86G
+	mK4xXtZBzXfazAH0tQisVRlMyqm2vTmz2beSUIKytd0TZGONzLWFYjuggwINaLOL
+	w==
 Received: from iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (iadpaimrmta02.appoci.oracle.com [147.154.18.20])
-	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4e6h2cp28m-1
+	by mx0b-00069f02.pphosted.com (PPS) with ESMTPS id 4e6h2cp28n-1
 	(version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK);
-	Wed, 20 May 2026 00:35:08 +0000 (GMT)
+	Wed, 20 May 2026 00:35:10 +0000 (GMT)
 Received: from pps.filterd (iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com [127.0.0.1])
-	by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.7/8.18.1.7) with ESMTP id 64K0OsSw006236;
-	Wed, 20 May 2026 00:35:07 GMT
+	by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (8.18.1.7/8.18.1.7) with ESMTP id 64K0OsT1006236;
+	Wed, 20 May 2026 00:35:09 GMT
 Received: from labops-common-sca-01.us.oracle.com (labops-common-sca-01.us.oracle.com [10.132.26.161])
-	by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 4e84ecyhhb-1;
-	Wed, 20 May 2026 00:35:07 +0000 (GMT)
+	by iadpaimrmta02.imrmtpd1.prodappiadaev1.oraclevcn.com (PPS) with ESMTP id 4e84ecyhhb-3;
+	Wed, 20 May 2026 00:35:09 +0000 (GMT)
 From: Dai Ngo <dai.ngo@oracle.com>
 To: cem@kernel.org
 Cc: linux-xfs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2] xfs: correct pNFS layout mappings
-Date: Tue, 19 May 2026 17:32:57 -0700
-Message-ID: <20260520003503.2399326-1-dai.ngo@oracle.com>
+Subject: [PATCH 2/2] xfs: fix overlapping extents returned for pNFS LAYOUTGET
+Date: Tue, 19 May 2026 17:32:59 -0700
+Message-ID: <20260520003503.2399326-3-dai.ngo@oracle.com>
 X-Mailer: git-send-email 2.47.3
+In-Reply-To: <20260520003503.2399326-1-dai.ngo@oracle.com>
+References: <20260520003503.2399326-1-dai.ngo@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -55,38 +59,75 @@ X-Proofpoint-Virus-Version: vendor=baseguard
  engine=ICAP:2.0.293,Aquarius:18.0.1143,Hydra:6.1.51,FMLib:17.12.100.49
  definitions=2026-05-19_06,2026-05-18_01,2025-10-01_01
 X-Proofpoint-Spam-Details: rule=notspam policy=default score=0 malwarescore=0
- spamscore=0 adultscore=0 mlxlogscore=616 mlxscore=0 lowpriorityscore=0
+ spamscore=0 adultscore=0 mlxlogscore=999 mlxscore=0 lowpriorityscore=0
  bulkscore=0 phishscore=0 suspectscore=0 classifier=spam adjust=0 reason=mlx
  scancount=1 engine=8.19.0-2605130000 definitions=main-2605200002
-X-Proofpoint-ORIG-GUID: 8SCuozDJZWavvrd8KbW4aO2vyY2lGVz9
-X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNTIwMDAwMyBTYWx0ZWRfXwnUBZsbEL3se
- fgQDZ+ZKY/ElipXFXsZBvn/QlkwV3gZIemApvGZEYfD9pwYTmUmfnVTlvC9QGq7uG+tH/ohdXZI
- qgC3bfDjKYjXt7njOftYMqe7QiYXaLH6ngDxOg3JWSvuh18gjWCtTW/driFQIyvPyRS3uKhaYkC
- dyJL7BA1zvM2Mdgv4D9jSQoj+comvIwg7l51f/mDDVBqZGWC5nV3mD1Mt3kNIq1JdiQ2N9D3fsA
- Q5KEtC/Ykv9sXOlWcHY5+bKLfssj+JyWVdTCHe4XVrv7tbg5hDVhvEMcdvNNxb+2Nzr5JwliEA5
- xGpVLANDdQGeqxtzi1+Mm5dGFObVs9bq0G8d0h9qzCa5Mxr7jFt6CE/2EUNe91WeGH1z+n7GRat
- flDBoM8VvjmmyDTZd7FUSwUOL9WUebMYzWiHSrrsbGOFZb/+UqrgiJ0VWuGbEIyj0El2NuaxAab
- F7VclO94KrgG0p7CJZQ9WxiIIjCLZFqwS3Kv9eU0=
-X-Authority-Analysis: v=2.4 cv=Ws4b99fv c=1 sm=1 tr=0 ts=6a0d01bc b=1 cx=c_pps
+X-Proofpoint-ORIG-GUID: J7tFo7mOv_7oUMUqr2m-XXmJT9qarifp
+X-Proofpoint-Spam-Details-Enc: AW1haW4tMjYwNTIwMDAwMyBTYWx0ZWRfX/7X7xP5abrxA
+ s581++f8ih4/yRQs9m8PVhObrRgGQKKLUAL4gaKh8B8n0MMq8fa4oJw02xvTnsSWX4+QDoVpsPI
+ rtJ30iOEyBk/2M5r0QYzbR06ih+q0abdmunxLX3gR+5/5IR38zoCvf41eXKHTHx4qFr1RQQaQh1
+ zHCcbyBt2hO4SfCpa5nuDvsB2cc3yGjBT3SXP/fA0DX0gDCGdCvMFgD1xjvkvNjdvdfkrV4iM8L
+ nW8fKWkaT+g4MOSmvdEZMfj2VOewk0S75tPYuKWS8G+42zrPX5yuWhPXiERxptOzI3w/nreXfpG
+ BFe85kUY2xcKr1FIo6jq3ookBv098F4KZwmrnOGwIcHaTPqaTM1dEk19rGnIedRLo6sFDNWJQVS
+ v5GLhqMUqiAa5r13EOYVJ27J33XGRCmVIwyk8zBx7Z37VmAZ9Wkp7O9QtI3ZNIhgW0vjsGyRv2L
+ aKdp95wFvXlzF09uX0RqoJalFWp6xAj5SNspQDPw=
+X-Authority-Analysis: v=2.4 cv=Ws4b99fv c=1 sm=1 tr=0 ts=6a0d01be b=1 cx=c_pps
  a=e1sVV491RgrpLwSTMOnk8w==:117 a=e1sVV491RgrpLwSTMOnk8w==:17
  a=NGcC8JguVDcA:10 a=VkNPw1HP01LnGYTKEx00:22 a=jiCTI4zE5U7BLdzWsZGv:22
- a=EIcjfB9IiI4px24ztqRk:22 a=NoKN66te_Ye6Xul4tnkA:9 a=5yU3S35YU4bGjq-dph-N:22
- a=Bho9c0fBagfJEIQBS7DQ:22 cc=ntf awl=host:13839
-X-Proofpoint-GUID: 8SCuozDJZWavvrd8KbW4aO2vyY2lGVz9
+ a=EIcjfB9IiI4px24ztqRk:22 a=yPCof4ZbAAAA:8 a=j2Z_DofEzOnLPWMZ71IA:9
+ a=5yU3S35YU4bGjq-dph-N:22 a=Bho9c0fBagfJEIQBS7DQ:22 cc=ntf awl=host:13839
+X-Proofpoint-GUID: J7tFo7mOv_7oUMUqr2m-XXmJT9qarifp
 
-This patch series fixes pNFS layout mapping issues exposed by running
-xfstests generic/075 against an NFSv4.2 block layout export. The first
-change stops xfs_fs_map_blocks() from propagating an uninitialized
-mapping record after xfs_bmapi_read() fails.
+xfs_fs_map_blocks() currently passes XFS_BMAPI_ENTIRE to xfs_bmapi_read(),
+which causes the bmap code to expand the mapping to cover the entire
+extent rather than the requested range.
 
-The second change removes the XFS_BMAPI_ENTIRE flag so each request
-only returns the range the client asked for, eliminating overlapping
-in LAYOUTGET replies.
+A single LAYOUTGET request from the client can cause the server to
+issue multiple calls to xfs_fs_map_blocks() for different offsets
+within the same extent. Because the use of XFS_BMAPI_ENTIRE flag,
+these calls can produce overlapping mappings.
 
-Dai Ngo (2):
+As a result, the LAYOUTGET reply sent to the NFS client may contain
+overlapping extents. This creates ambiguity in extent selection for a
+given file range, which can lead to incorrect device selection,
+inconsistent handling of datastate, and ultimately data corruption or
+protocol violations on the client side.
 
-xfs: fix use of uninitialized imap in xfs_fs_map_blocks error path
-xfs: fix overlapping extents returned for pNFS LAYOUTGET
+Problem discovered with xfstest generic/075 test using NFSv4.2 mount
+with SCSI layout.
 
-fs/xfs/xfs_pnfs.c | 11 +++++++----
-1 file changed, 7 insertions(+), 4 deletions(-)
+Fix this by replacing the XFS_BMAPI_ENTIRE flag with '0' so that
+xfs_bmapi_read() returns only the mapping for the requested range.
+
+Fixes: cc6c40e09d7b1 ("NFSD/blocklayout: Support multiple extents per LAYOUTGET").
+Signed-off-by: Dai Ngo <dai.ngo@oracle.com>
+---
+ fs/xfs/xfs_pnfs.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/xfs/xfs_pnfs.c b/fs/xfs/xfs_pnfs.c
+index b792e066b403..d92993367ab6 100644
+--- a/fs/xfs/xfs_pnfs.c
++++ b/fs/xfs/xfs_pnfs.c
+@@ -118,7 +118,6 @@ xfs_fs_map_blocks(
+ 	struct xfs_bmbt_irec	imap;
+ 	xfs_fileoff_t		offset_fsb, end_fsb;
+ 	loff_t			limit;
+-	int			bmapi_flags = XFS_BMAPI_ENTIRE;
+ 	int			nimaps = 1;
+ 	uint			lock_flags;
+ 	int			error = 0;
+@@ -172,8 +171,9 @@ xfs_fs_map_blocks(
+ 	offset_fsb = XFS_B_TO_FSBT(mp, offset);
+ 
+ 	lock_flags = xfs_ilock_data_map_shared(ip);
++	/* request mappings for the specified range only */
+ 	error = xfs_bmapi_read(ip, offset_fsb, end_fsb - offset_fsb,
+-				&imap, &nimaps, bmapi_flags);
++				&imap, &nimaps, 0);
+ 	if (error) {
+ 		xfs_iunlock(ip, lock_flags);
+ 		goto out_unlock;
+-- 
+2.47.3
+
