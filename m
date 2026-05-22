@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CC26C383C9E;
-	Fri, 22 May 2026 19:43:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 457D3389455;
+	Fri, 22 May 2026 19:43:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779478991; cv=none; b=SlIQ8Enlt9EYN0y9oMoXU7WWCeNiChdm2GGHkLktES/TQVrm70eV/tM2jizXifSWXk6n25eEstpyuWpxImoyfE/OzdPk9DcsekKed6dlNYblt+AZGAuA5amZH+XYjWMcLKBobAGg9P5ze94rtKB0V3xNH0YtR7N5wrf8NE3LIOw=
+	t=1779478995; cv=none; b=AgPfjgGodorLSR0HNIZSaCSaOokFzFDNuqDenafwT3c9ILCzFrjmKDZNJ4jn6WYYQ9YNQToaauRad+CxQXaqLS5hpiYNoPARNP0+hxY6zEKGsem+o4vyMm3940JJ+Y8zBXkBbWNcwzhkuGZJbWnGycn+ijAX2MyH3QaJbYNsrus=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779478991; c=relaxed/simple;
-	bh=Y50oSV6B/JehwRBE6ozp3wxwE6QnIRaFrxKuDBSJhao=;
+	s=arc-20240116; t=1779478995; c=relaxed/simple;
+	bh=hz3feZ94dD+Z906TmckXoxMlvgUvqfXskuJXRG4kv6U=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=jRlaMW3YVBvjsNSQRyuaXCrvYxo46N5TcRxJMrNjWxZ6Uu0vL9fxcPI954wUMsxDj7QVGji8m4CNUhxtFfqXIoSudeKNCJaQWq8dKz7nhcL6sAtdQd5lC8GE5FhNiQYpZOXqGspDCwowL6Xf4XbjTDQFTVdwgzO+rXr2zItwoLM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CZzFPWr7; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=TU/ZnrUEhS6GhtYLll3wlpSvydZcSIRFKL4pxqKsPU8I87Wz7giUgXg05Axj+cVy6DZbV9h67FRa+xqalsjk2spzA5wW8pWx5LVEqmvPR78pRoqcJzY9udJyDn+KY9ZwEmSa6dtTSSH4i45CQ5M8TRW3ylEMRCIkswCmUEvJv/4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=KEywnAun; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CZzFPWr7"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 43C8F1F00ADE;
-	Fri, 22 May 2026 19:43:03 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="KEywnAun"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 138F11F00A3D;
+	Fri, 22 May 2026 19:43:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1779478985;
-	bh=SNn+vri9RRR9gMRxnX7erNj8H9djqSG4aGq8GD9k76c=;
+	s=k20260515; t=1779478990;
+	bh=mys0ncIaAkG+9pCx8mZR+SvFBHBoSXG73vY0mMvfO2I=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=CZzFPWr7Lr58yG3gkaYoK8eH4kIKTi3mqmAalxEcoAy21k2VXC6l5s6iI9//wMk4N
-	 NxjfmDCvRFrfCz1jGNlEyxIrR1nR64Q1pPQr0C02YZuw+qAK12VEHQPzw8mMfizHf1
-	 OBEOaHBbOye9uVEUSA4voO1oMIZXZ3iHQmaCIH7yUVzAqAC1FBn8DKfSc2Pkf1II7F
-	 1TnuIKom0gnH7UlIEdcOcNcII7os//VP2O2SbGdfBy04hGdakliq5cWLR+MQAT6iSl
-	 8TY54opW13qkBNdrUjLNPSrUxDlx+jAsJTRlVdw7cd14ZqEKhMfORBCttKufE5x346
-	 kbakm9ZvIMmsA==
+	b=KEywnAunYTO1WaKuVfOj2fd4kfO8ZPiKlm3UK+aZXb97Q96CSplSfbdbbNMHPK+Vj
+	 b/r5JeAK3+xwYKc12uFHpfY/jIOqwl3tfs+07RgdMd9g2O08REFqpRVzDZ9ijc1rf6
+	 GGWRypf6FlY0rq+KeCWj86QrSOlDnHlpq41LhYz9pg0D7V9tksULiIMPZC2XyY9S1T
+	 a1CLI5mlXubI7jcu52S4BcBHfsGCIs6+H8vS+6DgpJY3HzU9YNcY9vaOmlFE9ytouG
+	 IY21QK9KvWtmfdxeQXkYKpICNtj9Tg/jguNehU6xvwG7OB3y2F//kZKJVf6rWMI9eh
+	 tLNEqbKFtgHtw==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 22 May 2026 15:42:23 -0400
-Subject: [PATCH v5 18/21] nfsd: add the filehandle to returned attributes
- in CB_NOTIFY
+Date: Fri, 22 May 2026 15:42:26 -0400
+Subject: [PATCH v5 21/21] nfsd: add support to CB_NOTIFY for dir attribute
+ changes
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260522-dir-deleg-v5-18-542cddfad576@kernel.org>
+Message-Id: <20260522-dir-deleg-v5-21-542cddfad576@kernel.org>
 References: <20260522-dir-deleg-v5-0-542cddfad576@kernel.org>
 In-Reply-To: <20260522-dir-deleg-v5-0-542cddfad576@kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, 
@@ -54,98 +54,199 @@ Cc: Steven Rostedt <rostedt@goodmis.org>,
  linux-doc@vger.kernel.org, linux-nfs@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2618; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=Y50oSV6B/JehwRBE6ozp3wxwE6QnIRaFrxKuDBSJhao=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqELGidRP4f2Dl0NdDmEbDbDRxOvVM/cm1wWYBG
- aRGlFTddbmJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCahCxogAKCRAADmhBGVaC
- FfpiD/0ai7GIttvby6Dhm4WScYzubfwm2RUzauT+o2CVq0JxS8i6c/XgL/Yrod7lvl9RVcr2MUO
- oX53wA1u3Y3duCXZHaaGPmVBxYnPzXjXIX2/ShiHYokNDpEqDi4SrE0v9DFZwwEaX4IBc7IeXgR
- Z3ylWlKLpc6MzR5Y9mvlEs7kn7agcpCYDEm2rq+F6S87UjAY8X/dp0iEasHD2aLYaU0Ukq8gdXi
- 1IReD7HHAXOt3ZiqFLHqNmYMKBVt2pD7pxzNe/rG9Cd0jiiORMGroPLAJJTdOEFpUWWTpb8/+h5
- qGMDD2clb1tvN8k1tPM9EXVCG6upsu1Caa+cn5fEne/wanDccHR6olLs8fOTKAW+pxyTNalXvTX
- NlN4Naq/gqZO9yh/r6N8AQa8JkEiPuyubqM5dYOZOpez9SxV94VQsBazUdcVsd2LV0JKxmYyYAN
- Fh35mrL2jsb5dogEVBQ1fo95ONMrVTSWDr/JX2mWjpqG3TLlfmKdm7/3Qd8l0gkG5uuN+CoUc1q
- QMABC08ZRl+XaCeH9dDj+wUgM9XUKq9pNWdsz1r+IaDrbJrTuEScGibqG54uzdQPJ8TCr+mPgqz
- i5khrCNf48V7YVV7qS7m3k9atLje+6kvZ8mlAnl2imgEoly//ZHKuOpI5Sj1tjNn6Qcchpzh9cO
- By1gayr6w/m39cw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6108; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=hz3feZ94dD+Z906TmckXoxMlvgUvqfXskuJXRG4kv6U=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqELGjy7/5pHWOj5QRrVXwM6vrl86D45JEKSE/B
+ u4vGfF7VHSJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCahCxowAKCRAADmhBGVaC
+ FXmLEADNVFLGkwMWaM3rSzrGEjwrfa80U8IEHUxva1NMhZrcdezYo/ZgifZBkhyZ0ZNZfOAsAJc
+ FuK69pC30Bd/MmKztoAsnssmJU4rLHq60OT6xAQwO6gcFFdcau9CRD44JR/hpk832llgN1m9yMV
+ Vy94qacJKRVhvXnaJkWE41VqGfomTskj8mB1mIMD/w0Bb2EtmB2v3u/MG62J8U56lDueNGJc96U
+ 37MF35cN+3ALs7vt2e08g9MgWn46FyR5nPWGFYHwcZJLv2ffAqYeOJY05o/PB+GuniVoaJUTOHw
+ +RWnwC/k4mBhOxarXtRfibLko+w37PA90s+nbEUwbgE+1W3tUbgujy7Bj8GyEn2fIXATJ2A21vI
+ HurLOChHabHYPicmFoqYJIHVYQXVniiWhdUD3At+lmJWQGXhv4Zl6tTYv71dXCy3mHrbWFb/Dj7
+ 6ia6C0J0X+pWyNwrQfuXa64d7R/uW5yxwXxde4pt4vGYbI8byldrfI1wKM1d8olucifsl49bVmD
+ P8TaDLg+8T9J7XC+bZefAVRzkZHN/aD/9VMw4C3upyDRjyDc5d2y8TMrylCfZALLoVcxRfAGzAf
+ nogGYwIkcuWMLxRjuim7L3FfJboVu/POJ5p86S4OkKYOFl2wXMLWFTvPeDPVtr4KkJA8jIKJCH2
+ GP7heR04e9yMOIQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfsd's usual fh_compose routine requires a svc_export and fills out a
-svc_fh. In the context of a CB_NOTIFY there is no such export to
-consult.
-
-Add a new routine that composes a filehandle with only a parent
-filehandle and nfs4_file. Use that to fill out the fhandle field in the
-nfsd4_fattr_args.
+If the client requested dir attribute change notifications, send those
+alongside any set of add/remove/rename events. Note that the server will
+still recall the delegation on a SETATTR, so these are only sent for
+changes to child dirents.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4xdr.c | 37 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 37 insertions(+)
+ fs/nfsd/nfs4state.c | 25 ++++++++++++++++++++--
+ fs/nfsd/nfs4xdr.c   | 61 +++++++++++++++++++++++++++++++++++++++++++++--------
+ fs/nfsd/xdr4.h      |  2 ++
+ 3 files changed, 77 insertions(+), 11 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6c808149f251..acddd55a99d8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3491,10 +3491,15 @@ nfsd4_cb_notify_prepare(struct nfsd4_callback *cb)
+ 	struct nfsd_notify_event *events[NOTIFY4_EVENT_QUEUE_SIZE];
+ 	struct xdr_buf xdr = { .buflen = PAGE_SIZE * NOTIFY4_PAGE_ARRAY_SIZE,
+ 			       .pages  = ncn->ncn_pages };
++	int limit = NOTIFY4_EVENT_QUEUE_SIZE;
+ 	struct xdr_stream stream;
+ 	struct nfsd_file *nf;
+-	int count, i;
+ 	bool error = false;
++	int count, i;
++
++	/* Save a slot for dir attr update if requested */
++	if (dp->dl_notify_mask & BIT(NOTIFY4_CHANGE_DIR_ATTRS))
++		--limit;
+ 
+ 	xdr_init_encode_pages(&stream, &xdr);
+ 
+@@ -3508,7 +3513,7 @@ nfsd4_cb_notify_prepare(struct nfsd4_callback *cb)
+ 	}
+ 
+ 	/* we can't keep up! */
+-	if (count > NOTIFY4_EVENT_QUEUE_SIZE) {
++	if (count > limit) {
+ 		spin_unlock(&ncn->ncn_lock);
+ 		goto out_recall;
+ 	}
+@@ -3555,6 +3560,22 @@ nfsd4_cb_notify_prepare(struct nfsd4_callback *cb)
+ 		nfsd_notify_event_put(nne);
+ 	}
+ 	if (!error) {
++		if (dp->dl_notify_mask & BIT(NOTIFY4_CHANGE_DIR_ATTRS)) {
++			u32 *maskp = (u32 *)xdr_reserve_space(&stream, sizeof(*maskp));
++
++			if (maskp) {
++				u8 *p = nfsd4_encode_dir_attr_change(&stream, dp, nf);
++
++				if (p) {
++					*maskp = BIT(NOTIFY4_CHANGE_DIR_ATTRS);
++					ncn->ncn_nf[count].notify_mask.count = 1;
++					ncn->ncn_nf[count].notify_mask.element = maskp;
++					ncn->ncn_nf[count].notify_vals.data = p;
++					ncn->ncn_nf[count].notify_vals.len = (u8 *)stream.p - p;
++					++count;
++				}
++			}
++		}
+ 		ncn->ncn_nf_cnt = count;
+ 		nfsd_file_put(nf);
+ 		return true;
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 33b6cd492e56..f8534288b2fc 100644
+index 4fe697bf34e7..2143fb6d5e3f 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -4184,6 +4184,39 @@ nfsd4_encode_fattr4(struct svc_rqst *rqstp, struct xdr_stream *xdr,
- 	goto out;
- }
- 
-+static bool
-+setup_notify_fhandle(struct dentry *dentry, struct nfs4_file *fi,
-+		     struct nfsd_file *nf, struct nfsd4_fattr_args *args)
-+{
-+	int fileid_type, fsid_len, maxsize, flags = 0;
-+	struct knfsd_fh *fhp = &args->fhandle;
-+	struct inode *inode = d_inode(dentry);
-+	struct inode *parent = NULL;
-+	struct fid *fid;
-+
-+	fsid_len = key_len(fi->fi_fhandle.fh_fsid_type);
-+	fhp->fh_size = 4 + fsid_len;
-+
-+	/* Copy first 4 bytes + fsid */
-+	memcpy(&fhp->fh_raw, &fi->fi_fhandle.fh_raw, fhp->fh_size);
-+
-+	fid = (struct fid *)(fh_fsid(fhp) + fsid_len/4);
-+	maxsize = (NFS4_FHSIZE - fhp->fh_size)/4;
-+
-+	if (fi->fi_connectable && !S_ISDIR(inode->i_mode)) {
-+		parent = d_inode(nf->nf_file->f_path.dentry);
-+		flags = EXPORT_FH_CONNECTABLE;
-+	}
-+
-+	fileid_type = exportfs_encode_inode_fh(inode, fid, &maxsize, parent, flags);
-+	if (fileid_type < 0)
-+		return false;
-+
-+	fhp->fh_fileid_type = fileid_type;
-+	fhp->fh_size += maxsize * 4;
-+	return true;
-+}
-+
- #define CB_NOTIFY_STATX_REQUEST_MASK (STATX_BASIC_STATS   | \
- 				      STATX_BTIME	  | \
- 				      STATX_CHANGE_COOKIE)
-@@ -4193,6 +4226,7 @@ nfsd4_setup_notify_entry4(struct notify_entry4 *ne, struct xdr_stream *xdr,
- 			  struct dentry *dentry, struct nfs4_delegation *dp,
+@@ -4227,11 +4227,11 @@ nfsd4_setup_notify_entry4(struct notify_entry4 *ne, struct xdr_stream *xdr,
  			  struct nfsd_file *nf, char *name, u32 namelen)
  {
-+	struct nfs4_file *fi = dp->dl_stid.sc_file;
- 	struct path path =  { .mnt = nf->nf_file->f_path.mnt,
- 			      .dentry = dentry };
+ 	struct nfs4_file *fi = dp->dl_stid.sc_file;
+-	struct path path =  { .mnt = nf->nf_file->f_path.mnt,
+-			      .dentry = dentry };
++	struct path path = nf->nf_file->f_path;
  	struct nfsd4_fattr_args args = { };
-@@ -4231,6 +4265,9 @@ nfsd4_setup_notify_entry4(struct notify_entry4 *ne, struct xdr_stream *xdr,
- 		      FATTR4_WORD1_TIME_METADATA | FATTR4_WORD1_TIME_MODIFY;
- 	attrmask[2] = 0;
+ 	uint32_t *attrmask;
+ 	__be32 status;
++	bool parent;
+ 	int ret;
  
-+	if (setup_notify_fhandle(dentry, fi, nf, &args))
-+		attrmask[0] |= FATTR4_WORD0_FILEHANDLE;
+ 	/* Reserve space for attrmask */
+@@ -4243,6 +4243,9 @@ nfsd4_setup_notify_entry4(struct notify_entry4 *ne, struct xdr_stream *xdr,
+ 	ne->ne_file.len = namelen;
+ 	ne->ne_attrs.attrmask.element = attrmask;
+ 
++	parent = (dentry == path.dentry);
++	path.dentry = dentry;
 +
- 	if (args.stat.result_mask & STATX_BTIME)
- 		attrmask[1] |= FATTR4_WORD1_TIME_CREATE;
+ 	/* FIXME: d_find_alias for inode ? */
+ 	if (!path.dentry || !d_inode(path.dentry))
+ 		goto noattrs;
+@@ -4258,15 +4261,20 @@ nfsd4_setup_notify_entry4(struct notify_entry4 *ne, struct xdr_stream *xdr,
  
+ 	args.change_attr = nfsd4_change_attribute(&args.stat);
+ 
+-	attrmask[0] = dp->dl_child_attrs[0];
+-	attrmask[1] = dp->dl_child_attrs[1];
+-	attrmask[2] = 0;
++	if (parent) {
++		attrmask[0] = dp->dl_dir_attrs[0];
++		attrmask[1] = dp->dl_dir_attrs[1];
++	} else {
++		attrmask[0] = dp->dl_child_attrs[0];
++		attrmask[1] = dp->dl_child_attrs[1];
+ 
+-	if (!setup_notify_fhandle(dentry, fi, nf, &args))
+-		attrmask[0] &= ~FATTR4_WORD0_FILEHANDLE;
++		if (!setup_notify_fhandle(dentry, fi, nf, &args))
++			attrmask[0] &= ~FATTR4_WORD0_FILEHANDLE;
+ 
+-	if (!(args.stat.result_mask & STATX_BTIME))
+-		attrmask[1] &= ~FATTR4_WORD1_TIME_CREATE;
++		if (!(args.stat.result_mask & STATX_BTIME))
++			attrmask[1] &= ~FATTR4_WORD1_TIME_CREATE;
++	}
++	attrmask[2] = 0;
+ 
+ 	ne->ne_attrs.attrmask.count = 2;
+ 	ne->ne_attrs.attr_vals.data = (u8 *)xdr->p;
+@@ -4383,6 +4391,41 @@ u8 *nfsd4_encode_notify_event(struct xdr_stream *xdr, struct nfsd_notify_event *
+ 	return NULL;
+ }
+ 
++/**
++ * nfsd4_encode_dir_attr_change
++ * @xdr: stream to which to encode the fattr4
++ * @dp: delegation where the event occurred
++ * @nf: nfsd_file opened on the directory
++ *
++ * Encode a dir attr change event.
++ */
++u8 *nfsd4_encode_dir_attr_change(struct xdr_stream *xdr, struct nfs4_delegation *dp,
++				 struct nfsd_file *nf)
++{
++	struct dentry *dentry = nf->nf_file->f_path.dentry;
++	struct notify_attr4 na = { };
++	struct name_snapshot n;
++	bool ret;
++	u8 *p = NULL;
++
++	if (!(dp->dl_notify_mask & BIT(NOTIFY4_CHANGE_DIR_ATTRS)))
++		return NULL;
++
++	take_dentry_name_snapshot(&n, dentry);
++	ret = nfsd4_setup_notify_entry4(&na.na_changed_entry, xdr,
++					dentry, dp, nf, (char *)n.name.name,
++					n.name.len);
++
++	/* Don't bother with the event if we're not encoding attrs */
++	if (ret && na.na_changed_entry.ne_attrs.attr_vals.len) {
++		p = (u8 *)xdr->p;
++		if (!xdrgen_encode_notify_attr4(xdr, &na))
++			p = NULL;
++	}
++	release_dentry_name_snapshot(&n);
++	return p;
++}
++
+ static void svcxdr_init_encode_from_buffer(struct xdr_stream *xdr,
+ 				struct xdr_buf *buf, __be32 *p, int bytes)
+ {
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 62ac790428be..805c7122eb93 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -973,6 +973,8 @@ __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
+ u8 *nfsd4_encode_notify_event(struct xdr_stream *xdr, struct nfsd_notify_event *nne,
+ 			      struct nfs4_delegation *dd, struct nfsd_file *nf,
+ 			      u32 *notify_mask);
++u8 *nfsd4_encode_dir_attr_change(struct xdr_stream *xdr, struct nfs4_delegation *dp,
++				 struct nfsd_file *nf);
+ extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, union nfsd4_op_u *u);
+ extern __be32 nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
 
 -- 
 2.54.0
