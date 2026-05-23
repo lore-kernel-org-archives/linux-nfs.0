@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4657D2EA754;
-	Sat, 23 May 2026 17:55:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 960932BB1D;
+	Sat, 23 May 2026 17:55:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779558911; cv=none; b=cI8TpjcSAAJxpv0l3Gm8ddlrb4wccLVlKV5j5Md64qGbjIVd2ppjkVqnMLz6JxhhkfOCZWfv64jZGUPw2ct95IHtOZ2Zr+ouks/drRC1uzge0kZsSfg70NpchTY+H0GEmPrAn0BKPxl3b04dRNqKCGqw+aYjTMw3JInYIhhCDec=
+	t=1779558918; cv=none; b=D5Yk0u2ixDcwBAQvavekfbdCFPwVAeeEVKRCgVVR46Nc539eMWY1fMdLF6PTf/Kcg8468KVzP1DOTabDtC5Mi5kQcyYmVGOH/EcX8G8KNJK3cLBmOY0tp5bhZ3AmWU7nV2l6MoJW2sKL102bw/lQHNcxtZOHudWesX8ceMuEQfE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779558911; c=relaxed/simple;
-	bh=V8MCTKePA3znEFy3ImfiLkTvdxvI3yL3376d2q7SQ5A=;
+	s=arc-20240116; t=1779558918; c=relaxed/simple;
+	bh=FrSccbbs0hyrfruPAQEdMfu5TavFD0FZc2PEdgCxv1o=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=R+zVWjBdifySdZ3FlCT4jRFGpbfCt209OefY97qwuLgCHAZesQVv49EXa/mdwRf9axhp5t3hHel24iVYbFCtUvC7z529vxqyIQlDUpy3veAAJF98jM8Spk7euAcJscuk47/hGfXA4ULh0tQ+KxHWwQZggEyha7+X9fy5TnnwrRs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IK+wo7hI; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=itaqZc5Hm+YH5oPgEUxe3N0PNYg910DPWHS39iuupv/xz5vK6qCLh/RTLykTH4uMY8KcyVsSn9yh8Ho+REhIiyN74J6+8aRvkXipOqfo7+iJgEGDG+8FdZaPkU8Ol/dyhp0gudiVCQTj5iZyXd4yXs3COl39fos/lOdcK7+ft5Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ATnUMplv; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IK+wo7hI"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D62951F000E9;
-	Sat, 23 May 2026 17:55:02 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ATnUMplv"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 587A61F00A3A;
+	Sat, 23 May 2026 17:55:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1779558909;
-	bh=v/3ZZK1cCDduXYXcxKeKlOpSrmrsqWH7N/ziUw2jSZ0=;
+	s=k20260515; t=1779558917;
+	bh=iuTtZ9uTCrL2gUy5rhFYUqVCvakrQG2oy3wSLfhPcVk=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=IK+wo7hIR3ThlZ8Syhumfwrnj90K3fG4pOcL68OF1GGVeRIyIE55lypaqrwhkPQBp
-	 TR7+D2SKUENtlQm1ZJfKj1rpPgJEwB2o46mX/TcXx2bMBEmBF/XeID3EiM7gWCjKBR
-	 6VXPIg75qWarkDd1bOPZvZO1/WArLxZZ1fXNQ+SNBWzFHWwoLDA2ghQliJUZaLG5yV
-	 RZU5VhCre+vUVnCKvEtvHsisSf4UJSscfwKHONUrvvD0yN4AbdKIMb0VKvCjZXjjzq
-	 xejc85BC4vEANUbQl625iHtC76mIYLb8lEerln76aSUcPnNP6oY8bi+TWI/w6zyA36
-	 vAq3u0qURaKMw==
+	b=ATnUMplvANtFqXnPMMG7NSH8t5x5kTr2rh2BxFK2/mVjIEx0Csre+Yxnx89gvCEvB
+	 uHhDVFvMFOGe5KELFWAxCXbgCTVrBKUMFRuF0LRLv78XqrCqluzw3rTHXpk0yXii4K
+	 fDJU8jmq2k/g/NjGNa5JSW+CPvvN53gcwu2ld51g061LrLeCS7I3OlrWU8/r17dOxF
+	 bJ5qv7tKsbMQ1Om/1fVqqTAJpam8n6zNmdQ1U/w3peqvRTGFGpN7qetPQI+JDlr74U
+	 +IrL/dYO28YRNMgTFDRp3h8h0WxOISk9xbTS2rZ8iV2rThE32PwWKlR2cNbCHn6/tO
+	 lPASwzWfCy/xA==
 From: "Mike Rapoport (Microsoft)" <rppt@kernel.org>
-Date: Sat, 23 May 2026 20:54:16 +0300
-Subject: [PATCH 04/17] nilfs2: replace get_zeroed_page() with kzalloc()
+Date: Sat, 23 May 2026 20:54:17 +0300
+Subject: [PATCH 05/17] NFS: replace __get_free_page() with kmalloc() in
+ nfs_show_devname()
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260523-b4-fs-v1-4-275e36a83f0e@kernel.org>
+Message-Id: <20260523-b4-fs-v1-5-275e36a83f0e@kernel.org>
 References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
 In-Reply-To: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
 To: Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>, 
@@ -62,41 +63,40 @@ Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
  "Mike Rapoport (Microsoft)" <rppt@kernel.org>
 X-Mailer: b4 0.15.2
 
-nilfs_ioctl_wrap_copy() allocates a temporary buffer with
-get_zeroed_page().
+nfs_show_devname() allocates a tmemporary buffer __get_free_page().
 
-kzalloc() is a better API for such use and it also provides better
+kmalloc() is a better API for such use and it also provides better
 scalability and more debugging possibilities.
 
-Replace use of get_zeroed_page() with kzalloc().
+Replace use of __get_free_page() with kmalloc().
 
 Signed-off-by: Mike Rapoport (Microsoft) <rppt@kernel.org>
 ---
- fs/nilfs2/ioctl.c | 4 ++--
+ fs/nfs/super.c | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nilfs2/ioctl.c b/fs/nilfs2/ioctl.c
-index e0a606643e87..b73f2c5d10f0 100644
---- a/fs/nilfs2/ioctl.c
-+++ b/fs/nilfs2/ioctl.c
-@@ -69,7 +69,7 @@ static int nilfs_ioctl_wrap_copy(struct the_nilfs *nilfs,
- 	if (argv->v_index > ~(__u64)0 - argv->v_nmembs)
- 		return -EINVAL;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 4cd420b14ce3..8f8a03a68d3d 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -623,7 +623,7 @@ static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
  
--	buf = (void *)get_zeroed_page(GFP_NOFS);
-+	buf = kzalloc(PAGE_SIZE, GFP_NOFS);
- 	if (unlikely(!buf))
- 		return -ENOMEM;
- 	maxmembs = PAGE_SIZE / argv->v_size;
-@@ -107,7 +107,7 @@ static int nilfs_ioctl_wrap_copy(struct the_nilfs *nilfs,
- 	}
- 	argv->v_nmembs = total;
- 
--	free_pages((unsigned long)buf, 0);
-+	kfree(buf);
- 	return ret;
+ int nfs_show_devname(struct seq_file *m, struct dentry *root)
+ {
+-	char *page = (char *) __get_free_page(GFP_KERNEL);
++	char *page = kmalloc(PAGE_SIZE, GFP_KERNEL);
+ 	char *devname, *dummy;
+ 	int err = 0;
+ 	if (!page)
+@@ -633,7 +633,7 @@ int nfs_show_devname(struct seq_file *m, struct dentry *root)
+ 		err = PTR_ERR(devname);
+ 	else
+ 		seq_escape(m, devname, " \t\n\\");
+-	free_page((unsigned long)page);
++	kfree(page);
+ 	return err;
  }
- 
+ EXPORT_SYMBOL_GPL(nfs_show_devname);
 
 -- 
 2.53.0
