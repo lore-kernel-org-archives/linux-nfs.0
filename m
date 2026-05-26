@@ -1,47 +1,46 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 62E3E40C5A4;
-	Tue, 26 May 2026 18:38:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3B54041C2FF;
+	Tue, 26 May 2026 18:39:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779820731; cv=none; b=nfRuYlGQlawA0E28dfcX/QGdoebWMH+F4RQfWAI49o4oh9GkFIcX1cot1fyVrCGgRF9VFjHMy9FJfEs3qSUVnOv76BFgSnLC+0VTzPQZ9y9wuyfZuEYy0kUvvRGLV/hhsu6KWwgU6MN5gu8DO/A+TCE88fWuvobTjqKBxkj8qUM=
+	t=1779820748; cv=none; b=NU3dxarBQMBTWdAe/daqI2okyFUAqI0UzAzVleRZa1mZLeyiWItdyUEDGEY1AYqPUQVSaG35zrA2uorbeFOE4hHhqupPNCQ/iH3ylJcaSFLfe8uJAlphV7X8RjyPgjEVSVU41wIXId4939LHh+yQlvocSZTseB7GptMe9zvCFjg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779820731; c=relaxed/simple;
-	bh=erYZUqo/eTepFOuNfy13V8LJMtRrrkCgcWYE7J1nhwQ=;
+	s=arc-20240116; t=1779820748; c=relaxed/simple;
+	bh=zoo1dZzT2TKaPFYd2Afv4DY5BGYpGjlGtbWt5lnQrEw=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=orx7iJNp6N2/Oyke3VqKY8qAuLH5/ACFBAQmgSY4khdQXR0oikjhHwEk4CetnLvd/U02KH84H+KDTNdfa37BgdqhS7lIdiTeTrgbMxXaoculb+37SwwSs6vCba6BvvWpUDsDSEszFQmS7w2GrCaDqmF3GehX1lgDqRG1ucCxZoQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lT9Lx0KN; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=VIbs5frFBN+lxHwiSCLGnhzJqKdBmMQVt0+6wNP/1CzyfzbOJGTxPgQYhvWNXTkbgal00ZgKSyjZKJDRe6atNvyxhx3JzNcze0gkAf+Js4OyLEZxgLONrU+XnABTDXJypphygJI2Di/4GuJvM61eH/WO8Wth5xfrBjf5MbQJn0I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EEF74yAC; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lT9Lx0KN"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 421F71F000E9;
-	Tue, 26 May 2026 18:38:49 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EEF74yAC"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E95F1F000E9;
+	Tue, 26 May 2026 18:39:06 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1779820730;
-	bh=Swvtg0dl0xuB0yIJKVmzrLc53jSkMaTVwk/eBhNdsOc=;
+	s=k20260515; t=1779820746;
+	bh=R3k5/oNTeSPUABKDky5qbmvUFNsQ30aZo6y/dTTH9D8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=lT9Lx0KN+3bepEsFRSXXKI/EVjjj/SGJ5iod79DCNwgJSzJkdqakm+xBrzCMx12EH
-	 7CPPT8ZIGz+/b96MkDxbgcxgzHk4xj67Cpi2QLACoxmfDoT6VfiWW+WQKnxKspAy91
-	 shTsfpdniuTUsNMfJDncLDChlV2zJnQrtaHzf3Ack6JaqrW/wVIu4un6aH9G9HY/Sa
-	 YjB5YfvNiDhiFhxc8xlF9AqBDcK5lZTyAU9KkwFENFOk/BQyiMq+FcjUapmEth9h2k
-	 cyeTqK7J55IzJuETbePiKwZh220CKsUVhd6ht0eakEmvcq/TiS6oaVpdphxRaiTqBK
-	 MVtU9hoenCLWQ==
+	b=EEF74yACAQvVyCVG5W1mEd5D70QQY6moNAXQ8TK5DxGtOELYQcx7S9WLLC40/ovAn
+	 Ei0KGp2dMKjX5h42X1gB6S09FKy3aATb5okqndFSU+OnF7Anx4i0Kdmtfz1v+mkELM
+	 PAvv3TEaXkWdwDkLiLgbci6qHyx6aIIwfooAjaUXLpdQJts//HYojbVTOlxlPIUNpD
+	 qpjQNMrwkDG7c15ye4awO0gpobWUXDq+ev6ugy8LHlWiobjF537XdiFhfn3t6iWtXB
+	 fTOrvZe10MisL7iMwqfcio/EVuc8s04qpHEx1ew9UQMsOUi+4fxN6jVBeQ11tAeCkh
+	 CFxQdnSvFUh3w==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>,
-	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
 Cc: Chuck Lever <chuck.lever@oracle.com>,
 	linux-nfs@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: don't free session slots that are still in use
-Date: Tue, 26 May 2026 14:38:45 -0400
-Message-ID: <177982071776.99111.17005396297864560686.b4-ty@b4>
+Subject: Re: [PATCH 0/2] nfsd: callback channel fixes
+Date: Tue, 26 May 2026 14:39:02 -0400
+Message-ID: <177982071777.99111.11306650283701065645.b4-ty@b4>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260526-nfsd4_sequence_shrink_uaf_on_loaded_slot-v2-1-74a89db0639e@kernel.org>
-References: <20260526-nfsd4_sequence_shrink_uaf_on_loaded_slot-v2-1-74a89db0639e@kernel.org>
+In-Reply-To: <20260526-cb_recall_any_callback_running_stuck-v1-0-310011a028f3@kernel.org>
+References: <20260526-cb_recall_any_callback_running_stuck-v1-0-310011a028f3@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -53,22 +52,16 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-On Tue, 26 May 2026 12:24:48 -0400, Jeff Layton wrote:
-> nfsd4_sequence() can free the very slot it is currently processing.
-> When the session shrinker has reduced se_target_maxslots below
-> se_fchannel.maxreqs, the shrink path checks three conditions before
-> calling free_session_slots():
-> 
->   1. se_target_maxslots < maxreqs  (shrink was advertised)
->   2. slot->sl_generation == se_slot_gen  (slot is up-to-date)
->   3. seq->maxslots <= se_target_maxslots  (client acknowledges)
-> 
-> [...]
+On Tue, 26 May 2026 12:38:44 -0400, Jeff Layton wrote:
+> Some fixes for the callback channel machinery. These problems were
+> mostly found via agentic scans.
 
 Applied to nfsd-testing, thanks!
 
-[1/1] nfsd: don't free session slots that are still in use
-      commit: 6085718398d83e16ccdc864c209493671f3c5998
+[1/2] nfsd: defer setting NFSD4_CALLBACK_RUNNING in deleg_reaper
+      commit: 02b9bb6ab68a77b1112d48411e4e08308a077ea0
+[2/2] nfsd: clear CALLBACK_RUNNING on failed delegation recall queue
+      commit: e02bd0e5a983b4d617dd2222c81c7f057132c211
 
 --
 Chuck Lever <chuck.lever@oracle.com>
