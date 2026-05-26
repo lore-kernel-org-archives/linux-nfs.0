@@ -1,95 +1,104 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oa1-f44.google.com (mail-oa1-f44.google.com [209.85.160.44])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 41420378D87
-	for <linux-nfs@vger.kernel.org>; Tue, 26 May 2026 15:37:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0C2773AEB35
+	for <linux-nfs@vger.kernel.org>; Tue, 26 May 2026 16:13:09 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.44
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779809855; cv=none; b=grSpjVrtktI+XeGn3hqRTwjgFifueAuswSlsGVlrw8J/T0/YC2QcXM/J1drXBaVwGsDB4unzj1vcVBpxDkoX+jbhu+SDinPHAPQEYsGud/Sd6dW4X34S5ruM7Yc8jewJDDNzSxWZO8cU50cZtQnT6ks0QbANva5CRx2TcXj2s3g=
+	t=1779811992; cv=none; b=NqLNvCCsKu7qsvpo5vtlEHQAPCYkt5bhb5b4ZDT3K7e+M/gM/2ghvmW6PJfBI7WrqfkhDytFwDxhiCmIoQvFnCEHAycOwe23h+4ngV0iXbhRLW3wB6QS0FGOPD92RNyjHii6g/oW63p+Xdd/v9qiCdWDt3nal7hpgfeE2Y/pmkg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779809855; c=relaxed/simple;
-	bh=e7Y7Pws88LWRCcsnVfoXZwfswVKY+7q4jhYMDNmA4hI=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=XTEuUeInD4Jm8gpcuYpO2ZnzVTGTvLUP9+FXD/cPtSBDKYfPKFBlD10d2xP8kbwSlguXmLKnyroDGeHGB5BUhu53/DrtR5InS/jV7tXPqNFQ30FzTVZGhsI/I6cu29sNrCJ83ryZ4ZMZW0zH2NLTXSSukMwhDbsO6iZ7XgUzFBw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VDG43kSr; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1779811992; c=relaxed/simple;
+	bh=q9OuikpD/Inp42vzTaQlKskrPH0X1jOg/4aXpBfaSTU=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=E5z/iDZwYFzcgs8vW9z8ZeC2eL551xHXy2YZVHEpB5QEk1DFekaNwYTT1hJGdPc6O4qNIXYUNM/BzZliw6Zc7WdrFE1RkNvUDM+mCzOqp+KdlJTxACjeL8PtfmGHpZ2yxmKdfxEpl9jgzNfwdAmkUopwMcYcd0r0hkFWQnOBhyo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=fail smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=O7zCQlUv; arc=none smtp.client-ip=209.85.160.44
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VDG43kSr"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF9251F00A3C
-	for <linux-nfs@vger.kernel.org>; Tue, 26 May 2026 15:37:33 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1779809853;
-	bh=L6tUc5KJw3xwaUHGg1rST6S7WKugcmkmvd4bfLMmdgM=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=VDG43kSrwBnEYohIjpoD9IjMHDJVSSFQkRpLr14v62Sx9BN6bZyl0PB5cN6a80rw7
-	 AU+jURIjRiE8fSez2l91aZv4iMPfLynugObDYKu0GzjgEUHIpdGCvcNhTtU1vQ+J08
-	 SCQCBRoE6dK+7yOICeo0KAxI47YKq1mxQkTLH54I3PNvUcYuAOS33MDIZqPZW8F6jv
-	 zpMQqAkIuMfH/GYpiTXaHq8z8bFGMTd50MZninDRdw1vZGucMJ7DPmCNk+Aq6unCqI
-	 DigZA7Ribgpj0VfXKwZM5gdXVsNtM8GyJUWA9MBwCtVzyVVkESnwIF7c41UQxChUea
-	 h9/M/dtH2ksZQ==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 14D0CF40068;
-	Tue, 26 May 2026 11:37:33 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 26 May 2026 11:37:33 -0400
-X-ME-Sender: <xms:Pb4VarmZXyE7THEgQftm3sIRJWaeEoHE9ClkFep6VCXICoRJeAxJLw>
-    <xme:Pb4Vapp96xm2go6EhZAIeSbefAo53PyXlssi0fh7Bno8uhehLWQR624r9DSNLPK6a
-    mOG3JEExHwAOzVQo01cFuEKfIFxYFKkP5jQEaqQsFsWtBFCYRemlw>
-X-ME-Proxy-Cause: dmFkZTGB8vCFbqclNcyUn2DoezFWoTW+PUFs82WDCpJaVtlEguAL1sOnPZ0hbCHv61Qpgs
-    y7bldPbW/yeVPPkIyQdonz8rge9y/grsbskzPgI1vuWFf5tu57+lbcGam4wJCrxQzlbHNH
-    F7Lc4/gdi9TyJMrOXH1i1b+9dxdGO9cUr/43C2G8INkxepA8F3JNVLJ3CWl1RZ1OKp4ujF
-    5SctnT0Xqhu27y18KlLLPDz8jrdXeBAoNV3LCrLRRkUBT421sHka72zODCqGH08leC8n/s
-    KqLM68rwcmGxvR5FDiyRhEu8qlIJgXp85LCgN3f9vU15WjGrTGm4PrtvCM6IctDDkcAEj9
-    A6SykL7gKp/Sw91kvacKQhDwcO8V+oXZVfvcX0XGuzz9o9vzeUAfLXdhkg/PX1pfSiaoSI
-    8Mc4yCVRiFC1foVoy9zyFjXYyEJr9pIKsOfY5Vfi4eEwAAT2Qv0OYQBOnFbUB22/kvT9z1
-    MqWODtus+dDK8S/be0IIOyFZ4WTixjLtstkC8AYVxVp8wAlcWBAAJnepxMgfuJ80a8zj46
-    ff/RZELK2JWRtjgo1gJE+vt90WGUl6yPfcGt1Tzny02/louo1m2bCXzjbujQmyhwAQckHo
-    UmgpHuotXqZjSKKwNKVyQj1expeTq8AwCZKd64BcrKKZ2C3N4npcFxnO/3WA
-X-ME-Proxy: <xmx:Pb4VarLHcZmxuzLLwBs3vM-Icf79iAb8qZnFA5lM1ILAtu_dez2ylw>
-    <xmx:Pb4VagodlYgJ4D9_EYLqlB5-4j6a0076l9BmDkxbmWdxOlENC2X-rQ>
-    <xmx:Pb4VajwW4sVAt_3KewbkVRd_WIrFinTS4ibKxRNomD_bqMFHLAR3Nw>
-    <xmx:Pb4VakO5iextErJMbPchkq0-zl89QWAipB8-DLyHUe33zuAhJ9Ontw>
-    <xmx:Pb4Vao5bE60eiZ9B0I5couyF6yZWp8R5xvXVfipaCmfIg6zCBL9eITtY>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id E76CA780078; Tue, 26 May 2026 11:37:32 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="O7zCQlUv"
+Received: by mail-oa1-f44.google.com with SMTP id 586e51a60fabf-43bfe055ffbso691884fac.1
+        for <linux-nfs@vger.kernel.org>; Tue, 26 May 2026 09:13:09 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1779811989; x=1780416789; darn=vger.kernel.org;
+        h=mime-version:references:in-reply-to:message-id:date:subject:cc:to
+         :from:from:to:cc:subject:date:message-id:reply-to;
+        bh=PHQm0c+L63bwLd4vnWq1Y5D6JzPfB9sA/CrtLUjqy6U=;
+        b=O7zCQlUvtkvhBHg3Md5Y4xoCyaALzH+AxW+R2pdQfM/955laqG4dO0ozgnvsGAkxRX
+         svvRjecln8D59oZUnylMvbJr1g3gcTkz1gOnvfijFsymF6r1W6mFp/rI1PgqZzYPXq4O
+         PrzC2hX4q5WuqIcOAjS8dWUodTNyFBjWl2XWegyMYrYTbc3ZuTTilyb40RfkoBp1zc7j
+         O3dAOVQyjMR8nEk0IID+ZDEctdpa3saCUPjFbQ6+spZIqBx5oQDagIBIFLS5TytEkcJS
+         G5eDOA3M5TAa9e3VnMkNKhvRTxISfmja7bCN0DmGj4wRk2gQP1gyvS5YIodm0Q9hCWOR
+         q7Rw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1779811989; x=1780416789;
+        h=mime-version:references:in-reply-to:message-id:date:subject:cc:to
+         :from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=PHQm0c+L63bwLd4vnWq1Y5D6JzPfB9sA/CrtLUjqy6U=;
+        b=MHTszm+H6u2zURXxMZGV6yQ+w3in39HcP42Xdm7pgGo+/Fxx/FYO72eSfjTc1bPfF0
+         pKazs/GEwUsX8M6MLvHyTqUEoV7RlsSWm0QhX9qhxjxdo15Lb5KYcwfHK+2/BVTHJVTd
+         fTw07ww0yY+vYi8L+1TKP4Z/EdL6iwjDRLzthySbkTEqMgwqeanEv16Az6lMKumPrpRH
+         G9wRi4NZEQ3koe2KArRZFDYzBNQbEfhSCg5eZfGiH/h7DzxvEjywM+7vc4Me3+1iBACI
+         rQStfA8azPYIfmDzdpfKlyyCTQgTyqYObad3WeDW9geMuzpe5wZlQ6qasH6usltqO9TM
+         ++zQ==
+X-Forwarded-Encrypted: i=1; AFNElJ+Zpt+/W7dU97C8jkcaqdvVb3N+VFTjNIL/fIewlEKaUDeUKmz5UBLNu842Q0YiyO8XCy0yhB0XSmc=@vger.kernel.org
+X-Gm-Message-State: AOJu0YxwU3mMoYLBMe03MPVEHtde/w7tbetjYfvpoK1c7ieapwmIycgc
+	XK8quY3P71OdsMn4Lc7NdEsYwfyIPEqRwmUj3jBkyORmF5rQGbp/qAfcyE7LFsVsUoY=
+X-Gm-Gg: Acq92OFRvhpZ/v40HZrkp2EuYJ8GYoxRKykq5KT/I9faOqzTLuCDyDfWyX4a02rSqMh
+	p4gJV3tVUVXWxhiQmnuaS30NnodF5rHiDywF3ozCe5ZSE4uicYqCLA4OxBlLc/lcVisezEmEz2q
+	T8JVJUYfQxyf+4S5suuazCQKzSN9E3i02ur3YXxPxhuN1qnGZRVxM8gEcJejf6Tr2F3FB0AnaEP
+	hR6Aoz5kTTtP56xRAkyHPvykncVe1FBE0uROXVlWOXuEVU19c2nt6HsJ3oN2hirUFcV/WUBjBjz
+	89oNJjxMKk5URc2q5BFqm0Z5jZT4Q3cJ9mIQgF3DpN2cKf3hajwrOwE13eZ+gE14Vi873wJsDCx
+	1+fMgRvMuwVrTsj6pT3oPA9cPRYA2y2KlZRThClu9SAQUCN930tWVLRZapVAH2JhYjrZRKLZv99
+	Ap/uNWmwiJfvK/IfXnE6iDoE48Noo3Z3E4gnco0Cg5wC3GDmdWhnYPNg==
+X-Received: by 2002:a05:6870:56a7:b0:41c:25b1:930f with SMTP id 586e51a60fabf-43b5ad58b18mr10721888fac.19.1779811988710;
+        Tue, 26 May 2026 09:13:08 -0700 (PDT)
+Received: from [192.168.254.51] ([66.97.168.37])
+        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-43b639725a5sm13595022fac.10.2026.05.26.09.13.07
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 26 May 2026 09:13:07 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: Chuck Lever <cel@kernel.org>
+Cc: Benjamin Coddington <ben.coddington@hammerspace.com>,
+ Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org,
+ Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>
+Subject: Re: [PATCH 0/1] nfs-utils: nfs-fh-verify signed filehandles
+Date: Tue, 26 May 2026 12:13:06 -0400
+X-Mailer: MailMate (2.0r6272)
+Message-ID: <AD463C85-473C-4205-9ACF-6573C908B078@hammerspace.com>
+In-Reply-To: <19045a48-ac02-4c05-be05-a88e7a129b6d@app.fastmail.com>
+References: <cover.1779805943.git.bcodding@hammerspace.com>
+ <19045a48-ac02-4c05-be05-a88e7a129b6d@app.fastmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AWi-yW1dnEww
-Date: Tue, 26 May 2026 11:37:12 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Benjamin Coddington" <ben.coddington@hammerspace.com>,
- "Steve Dickson" <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org, "Chuck Lever" <chuck.lever@oracle.com>,
- "Jeff Layton" <jlayton@kernel.org>
-Message-Id: <19045a48-ac02-4c05-be05-a88e7a129b6d@app.fastmail.com>
-In-Reply-To: <cover.1779805943.git.bcodding@hammerspace.com>
-References: <cover.1779805943.git.bcodding@hammerspace.com>
-Subject: Re: [PATCH 0/1] nfs-utils: nfs-fh-verify signed filehandles
 Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
 
+On 26 May 2026, at 11:37, Chuck Lever wrote:
 
+> On Tue, May 26, 2026, at 10:40 AM, Benjamin Coddington wrote:
+>> We've had a lot of folks configure signed filehandles, and then wonder "Is
+>> this thing actually working?".
+>
+> Do you know if wireshark might be able to handle this verification instead?
+> It might be quite useful to see a "FH Verified" on every RPC in a network
+> capture.
 
-On Tue, May 26, 2026, at 10:40 AM, Benjamin Coddington wrote:
-> We've had a lot of folks configure signed filehandles, and then wonder "Is
-> this thing actually working?".
+Great idea - I'm sure it would be able to do so.  If we ever change the way
+we hash the fh-key-file in nfs-utils, we'd have a wireshark drift problem.
+But, its unlikely we'd change it in nfs-utils and trash everyone's existing
+filehandles.
 
-Do you know if wireshark might be able to handle this verification instead?
-It might be quite useful to see a "FH Verified" on every RPC in a network
-capture.
+We'd have to build an interface to point it at the fh-key-file of course -
+would that constant reconfiguration in wireshark make it less useful than
+this utility?
 
+I have a slight preference for this tool in the near-term because it
+immediately solves my problem rather than having to wait for distros to
+downstream wireshark work.
 
-> Given the various filehandle lengths and
-> types, it can be pretty difficult to know if the kernel is actually
-> correctly signing its filehandles.  Claude and I wrote this tool that allows
-> anyone to verify the correct functioning of filehandle signing given the
-> original key and a list of filehandles.
-
-
--- 
-Chuck Lever
+Ben
