@@ -1,104 +1,135 @@
-Received: from mail-qt1-f179.google.com (mail-qt1-f179.google.com [209.85.160.179])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F1A4202C46
-	for <linux-nfs@vger.kernel.org>; Tue, 26 May 2026 13:58:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.179
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6516838F922;
+	Tue, 26 May 2026 14:14:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779803904; cv=none; b=KqaaC5rgKZBjWThbBQdvzE7/fX4TDZyN/T38RFr4J5WUo7NBapjij/dywXoK+OKGFnHYouF6Hpr7mT8PVlCt9aJX1Px4dgZ3IhunssBmuXrYHg1zV7kmVYGB7UTSbd5BJJ4lhDYRrWCum4sGKY6IHW7B2nJ9jlgQeJMSq3BulPg=
+	t=1779804851; cv=none; b=Bds2tYzvOr1eg1DCRvE5couMTT5TR63EOIYs1rg72j6GRSIxU8mIqn/kbv8Z6IWFPiIZz3LyqcVFVdsmAzB9XQbTRdAOMVAA4ZopIlcjpl1SHpG7VNbsuwMdX1gkna2kZZUfv1O1T55f9kBUtFbVD9+Fs9Q53CANmBSnmdC1otc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779803904; c=relaxed/simple;
-	bh=+dFASmDW5/VWwhmw+tJvrcW/sOB6oNqzhzp1PEb7+8o=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=BYuR4kCu6v3BWF/7xZsHMqAFgeZcDTuHG5EHUZtnHe6sEiiVqI9c45Sf2KfivP1rXaCta8XEAdHlMDK/JS3hTBTJkA3paca7wnEHL6XgTdg0dNrg4fTZi6oGnbWIHlpNtuiwUDADejwX/RjAy9LSku4H/MBc9keUX1s1fNcxS0Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=fail smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=bEY/auBQ; arc=none smtp.client-ip=209.85.160.179
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=hammerspace.com
+	s=arc-20240116; t=1779804851; c=relaxed/simple;
+	bh=MEgqZlaT0uBgRJfviNL43RZyBndLQaDFruUN0180uFE=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=MQ9onX0upJSFGemceOEAcAB8dNfHZshoUY1MxLurXzP8c4ZkjnuRNlUgaQrU7dkf9IsfPs7y/gQG/OzZxjKJWpVkQNEmLi0MyiJA39TLL9YeABgH6Zy0ZGn8ktgTlSUbmBGGZxyXkUXVE7lpFu4OnQM0r30OTA7CTLFa8bQwQ4I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eNY7hnq1; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="bEY/auBQ"
-Received: by mail-qt1-f179.google.com with SMTP id d75a77b69052e-516cc5471bdso72025901cf.2
-        for <linux-nfs@vger.kernel.org>; Tue, 26 May 2026 06:58:16 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1779803892; x=1780408692; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=8MJ5R003cXqmzmJ39uzsN5RS9P4Rd1uFfYLqHUPzpFE=;
-        b=bEY/auBQrPFxmhJTMo6Xz7JDHsb/MdFcyuVIbAfk9N25IHO0TsfhkCFqscTg9hvuc4
-         HrU+De7H327yGSbDXdYP4P4/TiCR9scatUVIJWNdTT20JiY+CH54mNQOkexGx74xdHW9
-         0xuM4AUNpTtvuDNVF6grbkknxBgUja9GGpcNsEdtzqa35RoYuywsh8kKb0WqAWEN+uTz
-         wsvnuDG+eltBeEbHsvATtEQbNW4O9U+/1Z68s2/ZD6OS6683TrW3+aEOQKycV5In73H9
-         qw8cLD7VnIs2H9Fz+76wnLdXETCbm1zhZ/gQBdn/Aa0rN+3u7T5MWZvjK7lktfdFX/3o
-         ew3A==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1779803892; x=1780408692;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=8MJ5R003cXqmzmJ39uzsN5RS9P4Rd1uFfYLqHUPzpFE=;
-        b=rQktIxtAsxniG7lNjkpTKxYQZSpTnX1b/6/Rmw/EuxWwhXeyLC8tnklPWdmPXb59F3
-         TqAD/9BAfQY/QL5/UuHsb6B2zS6FSn8a+uj1svDnsbV7tjhEUPIh+OJjUsIeiQNV79bq
-         XeKrhRPV6o45Y29wS6FtXIRPjin0u5cGaGvo7Y6qAl8deevPZ1XHHCHV7CzE8eKEU3ER
-         jAr6l1PTKxC31EJ/x8jyH0sKEFeDL/4EGRNhaFHd9D8At32BUj22pPvCuOlocdSVZugY
-         PKeVZM6zEnmhK/Lqn+i2f8GC/nJaut1TwhsNU/35cslb13xGyvTdWVARoc5DpK+mty+B
-         iqxw==
-X-Forwarded-Encrypted: i=1; AFNElJ9YysI1f856OGD6g3/U7dJPOz83d3AzkYRmGo9p2vN7XvEOkqbXqIa+g8gOHdx8bh/bYPgjPihftVo=@vger.kernel.org
-X-Gm-Message-State: AOJu0Ywv8FtMljOHRevFzEjkjHXxpDgHmiee7RIVuBF5ehSvibVLAoFA
-	/KCQNK1fck/xHt51qD4zzr69rxwRL6s3pgaJ8kXtJ5R9dHmUOkhiZaCkDgEeHI7VllY=
-X-Gm-Gg: Acq92OG3wxdL4YJPAKkiPD71LC40L19psy9YRxLxto0teDUVTZuHZu+2oAm2BY3iSRP
-	eP1SJtje5I6lDP9i2UbI1hWu9e/8Ry8ahLxUHZa38iUh9lIWqJ01UmyU3WO2+tDJhJFafAyaPcD
-	RhMq+dvSJrh6m7D0toUxgZdnLPNOZI/BaiEsDQwMK2AiYVqtyH1W4by+KsmZv0LR7IG5G2bmg6A
-	eeF7F+fxFtIgrraHnOWZL9jYDWFxYpUeZGc7h9HO2eZxvRoHLu23Ql3pi/K+2e3OtchDncKo7Zd
-	+z9Hu58jJKP29KEknzPXDfqUYWWzssWNsGMAagTBJCH3k9EUfgCS7yeCW0CuexDx3S7pouBEJ0t
-	mypxe+F9a9GAmJ+Mh/fxpEAwpPFoxSD8VYJ1LtlWhEDazI2TzR+O3fDWE4JUlVrzHN+q8DUj/NQ
-	lNq1R8EFZcQtn2F6HPAIDz+opeUnE3QPLXIcIIvlmE
-X-Received: by 2002:a05:622a:43:b0:516:ea00:2eb2 with SMTP id d75a77b69052e-516ea00353amr156007461cf.21.1779803892197;
-        Tue, 26 May 2026 06:58:12 -0700 (PDT)
-Received: from [192.168.37.1] ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id d75a77b69052e-51706adc9cfsm17729661cf.19.2026.05.26.06.58.11
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 26 May 2026 06:58:11 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: NeilBrown <neil@brown.name>
-Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
- linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 02/] nfsd: fix minor issues with atomic_create() use in
- dentry_create()
-Date: Tue, 26 May 2026 09:58:10 -0400
-X-Mailer: MailMate (2.0r6272)
-Message-ID: <B2DB156F-1BC2-4F43-8CB0-3795621C4A06@hammerspace.com>
-In-Reply-To: <20260526053004.4014491-1-neilb@ownmail.net>
-References: <20260526053004.4014491-1-neilb@ownmail.net>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eNY7hnq1"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A06E81F000E9;
+	Tue, 26 May 2026 14:14:09 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1779804850;
+	bh=u6bPZgukci/fYwrNaCPdkfWrKSd5H8v3df9otNrmCxc=;
+	h=From:To:Cc:Subject:Date;
+	b=eNY7hnq1AvzVknkzeBV2e3wvJHq1uQ9SqHUUQTbmQyULWbNPEDWAG+rmyGmFMFE7+
+	 XFSK2n2xDfzHpebEPZvWSSApFQOW90u7c74cA11bTm0j0kAs8eNDXxmIoSDFbxQL44
+	 P26pMG4bmJzW9BY5o45bAZw0DigYpDOiq5bWTuIREkrPgdiNiynK7c5HMldE0zhIHS
+	 RVJO8TqqiOUOoUbbKnlQu7noVYcw8NAHpAtFd1a3p1DV5MD3dnV5+nOtWBBrQXVX3n
+	 TgxROS4ACo/P9I1p3SYWrYfuTGg5tWlwSvCJwlVHnJ/2Y48tXA5UvT3IXMOnFcJE35
+	 pEJccMj6NGncw==
+From: Chuck Lever <cel@kernel.org>
+To: Anna Schumaker <anna@kernel.org>
+Cc: <linux-rdma@vger.kernel.org>,
+	<linux-nfs@vger.kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 0/5] xprtrdma: Decouple req recycling from RPC completion
+Date: Tue, 26 May 2026 10:14:00 -0400
+Message-ID: <20260526141405.39877-1-cel@kernel.org>
+X-Mailer: git-send-email 2.54.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On 26 May 2026, at 1:27, NeilBrown wrote:
+From: Chuck Lever <chuck.lever@oracle.com>
 
->     https://sashiko.dev/#/patchset/177969022571.3379282.164487446244283=
-23496@noble.neil.brown.name?part=3D1
->
->  reported a couple of edge-case problems with the use of atomic_open()
->  in dentry_create(), called from nfsd4_create_file.
->
->  These patches attempt to address those issues.
->
-> NeilBrown
->
->
->  [PATCH 1/2] nfsd: fix possible fh_compose of wrong dentry in
->  [PATCH 2/2] nfsd: ensure nfsd_file_to_acquire() does not use a
+rl_kref currently conflates two lifetimes through one refcount:
+it gates when a Reply can wake its RPC task, and it gates when
+an rpcrdma_req can return to its free pool. The marshal path
+takes the Send-side reference only when sc_unmap_count > 0, so
+a Send carrying only pre-registered buffers takes no Send-side
+reference. When the Reply for such an RPC arrives before its
+Send completes, the Reply handler drops rl_kref from 1 to 0
+and frees the req while the HCA may still be DMA-reading from
+its send buffer. A retransmission can put different bytes on
+the wire.
 
-Except for the subject in 2/2 ( _do_acquire), these look correct to me.  =
-Thanks Neil.
+This series narrows rl_kref's job. The RPC layer takes one
+reference at slot allocation; rpcrdma_prepare_send_sges() takes
+a Send-side reference unconditionally after WR prep succeeds.
+A req returns to its free pool only after both owners release.
+Replies complete the RPC directly, without atomic activity on
+rl_kref.
 
-For both:
-Reviewed-by: Benjamin Coddington <bcodding@hammerspace.com>
+Three design choices shape the series.
 
-Ben
+The Send-side reference is taken only on the success path of
+rpcrdma_prepare_send_sges(). Marshal failure runs
+rpcrdma_sendctx_cancel(), which unmaps the SGEs and clears
+sc_req without touching rl_kref. Sendctx ring walks in
+rpcrdma_sendctx_put_locked() and rpcrdma_sendctxs_destroy()
+skip entries whose sc_req is NULL, so a burst of -EIO marshal
+failures cannot hold reqs off rb_send_bufs.
+
+Connection teardown drains the sendctx ring against pre-reset
+reqs by ordering rpcrdma_sendctxs_destroy() ahead of
+rpcrdma_reqs_reset() in rpcrdma_xprt_disconnect(). The drain
+releases Send-side references whose unsignaled Sends never had
+a later signaled completion to walk the ring. On the
+backchannel, releasing a bc_prealloc req re-adds it to
+bc_pa_list, which xprt_destroy_backchannel() has already
+emptied; xprt_rdma_destroy() runs xprt_rdma_bc_destroy() a
+second time after the disconnect to reclaim those reqs.
+
+With recycling now gated on Send completion, completed RPCs
+can remain pinned by the sendctx ring until the next signaled
+Send completion. The headroom is bounded: re_send_batch is set
+to re_max_requests >> 3. The req pool gains max_reqs/8 slack
+(patch 3) so the recycle delay does not stall a slot
+allocation that the RPC/RDMA credit window would admit.
+
+Changes since v2:
+- While addressing sashiko review comments, substantially
+  reworked to simplify and better align the series with the
+  current architecture of xprtrdma
+
+Link to v2: https://lore.kernel.org/linux-nfs/20260523000252.465074-1-cel@kernel.org/#r
+
+Changes since v1:
+- Split into three patches. A prep patch converts the
+  Send-signaling test from a kref_read to sc_unmap_count, and
+  a separate patch names the request-pool slack at its
+  allocation site.
+- Wrap the bc_prealloc release branch in
+  CONFIG_SUNRPC_BACKCHANNEL (kernel test robot, build break on
+  configs without the backchannel).
+- Order rpcrdma_sendctxs_destroy() ahead of
+  rpcrdma_reqs_reset() in rpcrdma_xprt_disconnect() so the
+  drain runs against pre-reset reqs.
+- Run xprt_rdma_bc_destroy() a second time from
+  xprt_rdma_destroy() to reclaim bc_prealloc reqs returned by
+  the disconnect's drain.
+- Add rpcrdma_sendctx_cancel() for the marshal-failure path;
+  sendctx ring walkers skip entries with sc_req == NULL.
+
+Link to v1: https://lore.kernel.org/r/20260520175016.29480-1-cel@kernel.org
+
+Chuck Lever (5):
+  xprtrdma: Use sendctx DMA state for Send signaling
+  xprtrdma: Decouple req recycling from RPC completion
+  xprtrdma: Add request-pool slack for delayed recycling
+  xprtrdma: Clear receive-side ownership pointers on release
+  xprtrdma: Document and assert reply-handler invariants
+
+ net/sunrpc/xprtrdma/backchannel.c |   5 +-
+ net/sunrpc/xprtrdma/frwr_ops.c    |   2 +-
+ net/sunrpc/xprtrdma/rpc_rdma.c    | 134 ++++++++++++++++++++++--------
+ net/sunrpc/xprtrdma/transport.c   |  68 +++++++++++++--
+ net/sunrpc/xprtrdma/verbs.c       |  68 +++++++++++++--
+ net/sunrpc/xprtrdma/xprt_rdma.h   |   2 +-
+ 6 files changed, 225 insertions(+), 54 deletions(-)
+
+-- 
+2.54.0
+
