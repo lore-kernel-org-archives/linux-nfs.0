@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E057F3D47DE;
-	Wed, 27 May 2026 14:53:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 41D7A426685;
+	Wed, 27 May 2026 15:00:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1779893634; cv=none; b=O/b4knatriwHoPtK4XVUGJ4vPwo1JGm4fS5Z6xRB1ECXolMQx7z6/hkbeSt3+3VRPvRbMeCmVZ27v7b5LzDSthTgilvTAh/vc7nPuXoZUNH+5wLo/vX87HSz0GHTgwVttqGdsQUtYGYfX8dLnPXKyT1HV9EaZ7/kSz9TtDuHN4s=
+	t=1779894023; cv=none; b=uDofXx/CKbiXcmdWTuAijPjENjZiq8bWJoRcoB8E6OJSw8aZK7QsgKcVfE6AonHBvivpvVJnagW8obR2J3PxT7/uOfIqgSzGp07tPA86/6V1blD00Xr9CXNfbxlqRw83ADaBfwkJ4NUSBOFeYfbcwznJj2tVpRPqWrRMka9GZRs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1779893634; c=relaxed/simple;
-	bh=98MLjyvYrhzrQH4J5hiKb/zyKhZ8SpjtwX37jFESLtw=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=nXeqT4wEd9+Q2gRKdG9Cy33WQeahHBV20h0QLZFwvU5sp4BIG152RgzM6sEqKkNi+05Sy4rhdupE/K/583Sh3jJLpf5e8m+9NwaomkUietj4PqV8eOjAWKfEfOlwPB+u10oCH9iJDDsGbN5bethJHmh4tHMUZv7wzkY6H0tGEIE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dNGa8LlA; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1779894023; c=relaxed/simple;
+	bh=suZFFmVjLw0fekZJ2nMJzwOTmxsjSPf1W+iwq6xAudM=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=CKyl/x3hFaJqyN9BORa40YVjE1L2DA/Rfa0mAupHO4nRKmxR0T84MQmhWr5neYGIvWEqOsGtks1uacuHlJC3G34cEId0oiEw6VhYzsSSFdjWoYoyvFfNnsjj91INwLlWYnqoJ6EL59FPx/Byq85PTpWH1x6suI7mCsVx5UgcVsk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VAAOis8u; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dNGa8LlA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF7041F000E9;
-	Wed, 27 May 2026 14:53:51 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VAAOis8u"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 344061F000E9;
+	Wed, 27 May 2026 15:00:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1779893632;
-	bh=K2biNe7K+sWTnvQi5qsAYG5rVab2yt64WQhl+v7RAs4=;
-	h=From:Date:Subject:To:Cc;
-	b=dNGa8LlAcNL/O+ZAc8aVh0Uo9ca5dRMaN/s1sQtTdRPb2XcVGbxsBWO1fYts5UEvZ
-	 nLi0JhBjmD80dqE3lveZ8jWFmRomhIij9p0z+tUeDES/BmA/jiiyKF0QJ5jOmYinAz
-	 bnZHg8dU40PxG6S00TCc8odWkkBJkpB4//NRu4e7iXmUuNHXnDy8kbbYFUh9272T8z
-	 FyuPlOOyWCXyJnCU1lLG7lPPxKEbadLprFZaft4EbBsaNIottIMsj5MAU0i/R+i2I2
-	 E5yiHh17As5StRZbxlgQWiUNNJ8+3SYGzrHoNp6w5Yvi7LIIePpjLhKQ6GeH556voW
-	 rQ5EbpJNDuIjA==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Wed, 27 May 2026 10:53:37 -0400
-Subject: [PATCH] nfsd: block non-SAVEFH ops after FOREIGN PUTFH to prevent
- NULL deref
+	s=k20260515; t=1779894021;
+	bh=c2gJU04MIg2HU5/t08CF5fBe7NOaONIgH0Q7NYG03wc=;
+	h=From:Subject:Date:To:Cc;
+	b=VAAOis8uMCmsdqrQMlBQNUoYKTClrX1E7b/ULie06VfuTRXpoHqTPM3cvPtzhJvBS
+	 v/aJTmzSVsJ9kCrKSGurVAUftuKubhclr9gfZmCWPE2/DfHJwwMAbtMwStV7B5IB9F
+	 HYXMEqvCjt+UVBPehhBAzdSjaSw5jqjmeckxt/I2cB1+fQLPsseqNjsWTyfbVuboAz
+	 thnKu4MoSjYSuB6FItnlEPkelhK4/5VWVDFNKAr4xPTGsq88GUE1gS67WAV22CaDn5
+	 IEuFiUf1MoKvkNnghvXBIqXxCIpI3h7AssEglf5iUGb5dIPapiHSoDm2zaqinJv0YW
+	 V+NxhDRqyZnqw==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH 0/5] Fix resource lifecycle bugs in svcrdma transport setup
+ and teardown
+Date: Wed, 27 May 2026 11:00:10 -0400
+Message-Id: <20260527-rdma-follow-on-v1-0-1b09bd87b6cd@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,100 +38,79 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260527-putfh_foreign_fh_null_deref_consumers-v1-1-1b8a5aa28c59@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/x2N0QqDMAxFf0XyvELtcI79yhhFa6oBl0qyjoH47
- 4a9ncOBe3dQFEKFR7OD4JeUCpu0lwbSMvCMjiZzCD7cfBd6t9VPXmIugjRzNOS6rnFCwRxTYa1
- vFHX+fh1S34acuhFsa7NMv//P83UcJ1YRc/R3AAAA
-X-Change-ID: 20260527-putfh_foreign_fh_null_deref_consumers-083ac712fc5b
-To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, 
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMSw7CMAwFr1J5jaU2UJC4CmKRj9MaFQfF4SNVv
+ TsJLOfpzayglJkUzt0KmV6snKTCsOvAz1YmQg6VwfTm2I/mhDncLca0LOmNSdDR6MNgDntLDqr
+ 0yBT58wtern/Wp7uRL63SHs4qoctW/NwmiRqwkBaWCbbtC/nsqRCRAAAA
+X-Change-ID: 20260527-rdma-follow-on-be5cd1243aeb
+To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, Calum Mackay <calum.mackay@oracle.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2823; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=98MLjyvYrhzrQH4J5hiKb/zyKhZ8SpjtwX37jFESLtw=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqFwV7CnjvpNzYHJu0CTvduIdn0V0p1aQzQWuqh
- YfrJIGIC22JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCahcFewAKCRAADmhBGVaC
- FYhsD/0Z6a1teyZ+wsk4BurCfUEE4u/JAnp18E9HmH1KtKD+GltDfgs4NnSi2RPhl4Kl95R/975
- 03JsvPqSQXREkuwF66I8l4TPuWdacm3lMXnuzKcdySTEMcgvReDnRDW0BQ06947dx4zax1/ERJ4
- V4VYgwv9ZfucZE3tRZZkaGAlipLx9wYdAXW0/jlOFLKOyuS+vxGLZds0dO2E2nwkaA7G+SO5x06
- FljH9Xx1dVwGwBe/XWtWCeqPQvOYTjO71w1iILQ85I+gfVOIP4AhdFJyBIzAPaKX7RXcvAzlRPx
- 1DRBmMjUCOZfTpt/Is/bK4shknLn4sTOspiC0ZsUAvQBLQK+wnFFp7D00jA/d50rjkyPfUx1xk7
- eUEGX8btRKJcfrEaveOhu+TW+EY5eB3OghfdLNzYaxeJmEFx8ctYqVfN/TD/bD3EtTeImYA3KPp
- u4XxbOy4qbVl0VheICrIyhvIuoCDMyn/VxZVf042SYhncrH6h6DRcZVJ3TUEIEawSPy6Qb4c5qK
- 7WCFk6T6EVwMg3h0IZt9tszmMroiCLQNlDop/qOV5xs53nBBpJG24qaHuRr+o6steVF+Z941I9x
- P5OHohLVvgKgQRdmlhWYvPYLo8a7p3N/xhT7ZVIyuZPKdAU58QUICjEbXom+wP8h087aM/pi1rC
- PhpfwQcCv+GfOcA==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
+ Tom Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org, 
+ Chris Mason <clm@meta.com>, Chuck Lever <chuck.lever@oracle.com>
+X-Mailer: b4 0.16-dev-da966
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2238;
+ i=chuck.lever@oracle.com; h=from:subject:message-id;
+ bh=suZFFmVjLw0fekZJ2nMJzwOTmxsjSPf1W+iwq6xAudM=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqFwb9hcQdCR3rcud+ZmspiLwnd9y3NCD/mbnrg
+ NDpOpD+UC2JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCahcG/QAKCRAzarMzb2Z/
+ l5IAD/94unkZowZRiZ4vlfjzCueW6KIUbaekPungxA+1yPpMKtjzUobWTKlz9gPQh/A+B1zJoUW
+ F10X3YOpWIjVXAUBoeL8I+EBiVaZ8Vn5Uh9e1bEKfSYbuXIGo3khneUOwv2tfOtjNaxmhXGijDb
+ phR4KTHdLuNRsXJgX3Dwu+83LT9NHgvIQ/PGbIUFvQHKtswXkyFHgK+YK6SuqloKz0zNxaBnqpZ
+ +zKKkDIgfO/WJnkO8cLq8G5G9uoS5JFnBED9/EhO/rwEkjhQ6YnquqYvOAY7OHQp3RXo/b5oWng
+ Xi278MJG9ipXNEz05dm/gGTTrI5qyDne2+LQbd1qfO7EzMjG1YQQnfbTynxd+tlOcuJD3dF08Ep
+ zGfqrsHDGGzAIKXXrT2F5RBTADa6QjtWapfYK4lFx9R5e6uHDxXarJ4MSOEBikE4Mzskq200dq2
+ FM/U6hEhhYgoHE1iFkdg1QDqFe20FBkXNEvAr+NySIW5AI9oADNYJwcYP6qsSXjjxwHwEx0Qgk6
+ jifXi+Gm+e1bIz5E7pHSfYdbZ179uZ3VpODLJumgys4Z4SLWPUVkiFvwHsxDdI/X3NWLuWEd9L4
+ 5a0iK968wjNaPmSiZ2/z/+U9r7lofWVHB/Ek1NSSfTKvhoPxQMxC2nkgvKbNQLsPrqFSQyNZO1K
+ D6WL3KVrZc6phiA==
+X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-When CONFIG_NFSD_V4_2_INTER_SSC is enabled, nfsd4_putfh() can return
-success with fh_dentry and fh_export both NULL if fh_verify() returns
-nfserr_stale and putfh->no_verify is true. The NFSD4_FH_FOREIGN flag
-is set, but the compound dispatch loop only uses this flag to bypass
-the nfserr_nofilehandle check -- it does not prevent subsequent ops
-from running with a NULL fh_dentry.
+Several resource lifecycle bugs lurk in svcrdma's transport
+creation, acceptance, and teardown paths. This series addresses
+those bugs. Two design choices span the series:
 
-A remote client can exploit this by crafting a COMPOUND that includes
-an inter-SSC COPY (which causes check_if_stalefh_allowed() to set
-no_verify=true on the saved PUTFH) with an additional op inserted
-between the source PUTFH and SAVEFH. For example, SETATTR calls
-fh_want_write() which dereferences fh_export->ex_path.mnt without
-calling fh_verify() first, causing a NULL pointer dereference in the
-nfsd kthread.
+The first is the rn_done sentinel. rpcrdma_rn_register() assigns
+rn->rn_done only after xa_alloc() and kref_get() have both
+succeeded, making rn_done == NULL a natural "never registered"
+marker. Adding an early-return guard in rpcrdma_rn_unregister()
+turns it into an idempotent operation -- callers no longer need to
+track whether registration completed before calling unregister.
+The accept error path, the reordered free path, and any future
+partially-constructed transport that reaches svc_rdma_free() all
+rely on this single mechanism rather than separate boolean flags.
 
-Fix this by gating the dispatch loop: when NFSD4_FH_FOREIGN is set
-and fh_dentry is NULL, only OP_SAVEFH (needed for the inter-SSC flow)
-and ops with ALLOWED_WITHOUT_FH (which don't need a resolved
-filehandle) may proceed. All other ops receive nfserr_stale, per
-RFC 7862 Section 15.2.3 which specifies that foreign filehandle
-validation is deferred to the consuming operation and NFS4ERR_STALE
-returned at that point.
+The second is routing error-path teardown through svc_xprt_put()
+instead of inline cleanup. The accept error path previously did
+manual ib_destroy_qp / rdma_destroy_id / rpcrdma_rn_unregister
+sequences and then leaked the svcxprt_rdma; the listener create
+path called kfree() directly, bypassing svc_xprt_free()'s net
+namespace release. Both now drop the kref_init() birth reference
+via svc_xprt_put(), which dispatches svc_rdma_free() where the
+existing NULL/IS_ERR guards (plus the new rn_done sentinel) handle
+partially-constructed state. A consequence is that svc_xprt_free()
+drops a module reference, but each caller's failure path also puts
+one, so a compensating __module_get() is taken before the
+svc_xprt_put().
 
-Fixes: 3ad685d73ed8 ("NFSD: allow inter server COPY to have a STALE source server fh")
-Assisted-by: Claude:claude-opus-4-6
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4proc.c | 19 ++++++++++++++++---
- 1 file changed, 16 insertions(+), 3 deletions(-)
+Chris Mason (1):
+      svcrdma: Fix unmatched rn_unregister on failed accept
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 34f2921e4ef8..00cd8dd460fc 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -3138,9 +3138,22 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- 				op->status = nfsd4_open_omfg(rqstp, cstate, op);
- 			goto encode_op;
- 		}
--		if (!current_fh->fh_dentry &&
--				!HAS_FH_FLAG(current_fh, NFSD4_FH_FOREIGN)) {
--			if (!(op->opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
-+		if (!current_fh->fh_dentry) {
-+			if (HAS_FH_FLAG(current_fh, NFSD4_FH_FOREIGN)) {
-+				/*
-+				 * FOREIGN fh from inter-SSC PUTFH: only
-+				 * SAVEFH may proceed with a NULL fh_dentry.
-+				 * Per RFC 7862 S15.2.3, validation of a
-+				 * foreign fh is deferred to the operation
-+				 * that consumes it, and NFS4ERR_STALE is
-+				 * returned at that point.
-+				 */
-+				if (op->opnum != OP_SAVEFH &&
-+				    !(op->opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
-+					op->status = nfserr_stale;
-+					goto encode_op;
-+				}
-+			} else if (!(op->opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
- 				op->status = nfserr_nofilehandle;
- 				goto encode_op;
- 			}
+Chuck Lever (4):
+      svcrdma: Reorder rpcrdma_rn_unregister before rdma_destroy_id
+      svcrdma: Use svc_xprt_put to free listener on create failure
+      svcrdma: Reject connection when transport allocation fails
+      svcrdma: Clear sc_cm_id when ADDR_CHANGE replacement fails
 
+ net/sunrpc/xprtrdma/ib_client.c          | 24 ++++++++++-
+ net/sunrpc/xprtrdma/svc_rdma_transport.c | 69 +++++++++++++++++++++++---------
+ 2 files changed, 74 insertions(+), 19 deletions(-)
 ---
 base-commit: b69fc3eaa867d0caa904634ea7a1b4569411b163
-change-id: 20260527-putfh_foreign_fh_null_deref_consumers-083ac712fc5b
+change-id: 20260527-rdma-follow-on-be5cd1243aeb
 
 Best regards,
--- 
-Jeff Layton <jlayton@kernel.org>
+--  
+Chuck Lever <chuck.lever@oracle.com>
 
