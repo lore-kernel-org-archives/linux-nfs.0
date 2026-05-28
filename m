@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 10051367B61;
-	Thu, 28 May 2026 21:55:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5D52367B8C;
+	Thu, 28 May 2026 21:55:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780005341; cv=none; b=AIBwjNjQqlsBRBYEZKoxZ1mY5BduEbjDVdVVSNdy1va9GPugzMIQ9FEeP0B4iKWIUkTJmL+jNTQm58mL3MocGUuMENQ2+HXNre+GH3S+lZG0xTLOj3zjIwj/kenLA7Cvx9rhah07qKJ3Yq6XP3ICzD+kEf8IG4HgYQYSTXstBm4=
+	t=1780005342; cv=none; b=RQzbfpripX3iwmZVEcpDO8/a9Se2GbLcsByYit/7+RmRQcHZ+GKwtX/V8SCzr9tgVWRCzriWruQilqX8497Ll5AXFw9nuAvCoQIXT9uQXmWe146WbOUhysk9aj395OMhqSUJLCzE0k82FiAlmyHhmesWkWhNUG+q4TCdOYsQcR0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780005341; c=relaxed/simple;
-	bh=jgYcUIiphYc8dlvt0fojriSWgHKg3YiGXZh7FqNN5XA=;
+	s=arc-20240116; t=1780005342; c=relaxed/simple;
+	bh=14ZvczbnLPmszix02zJpjBn510ZrCpD9uZ8yHxb0h+A=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=CPawOCRk5JmNpTEoFTr1B8TX+5/Sp1dd2pKINEz5ZX4m85VZqeGgCdH3b9lRunRnLijdZZvOg5SHM78fjVf4JuOIQRF/XP3hQ5eM9WBHhKYj9syo7lpxDit0kIv0090zZ1Qo3Rcit48ZRvFn5bibHUQYy/TMMOJ9tSgaj7Sbe3A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Xf0LkbbK; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=irYPawnxrLcEmVwujApl1NjI0rY5ImM26kMjBYsgD0kojfUBbb9EmsrfonYO19fWp7d91sjt5FxjRA3BfxBQ654f+ODO0vdHqbz0rJHADD9LuxWDooiDqM+BYDbEQu7CbyqdWC9CAtG9wVjpfdvPV1HBSBLzREbM6fGcprjcoJc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=O0thdS0T; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Xf0LkbbK"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0D9B01F00A3E;
-	Thu, 28 May 2026 21:55:34 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="O0thdS0T"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 901AA1F000E9;
+	Thu, 28 May 2026 21:55:39 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780005336;
-	bh=wcZk3CrZ4fiHMhIJQ2nzC7yu+rHDdCAtsGvzEQSLHn8=;
+	s=k20260515; t=1780005340;
+	bh=6/t4f0OHFqr8Avxv8F1KCmoMLWiMdtXQ8guYxaB+nnc=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Xf0LkbbKRT9M/sfmxF4TR0SLbPdpW+uGYAPNGlpVLovZP4PbI6ZqVlGmtVy9nyIA4
-	 SLlgCaf3eoiwS/pWBrdxaP7rwD/shUFTyeT0UeQd5nC0ytnPjipzmex7XhzBjTGbCg
-	 U97KxGgTe7cXXP6omh8aq8ExvFbc6WprZJjWWCtHb1QiQ+is+Mc+KOvDhTPdOGiomh
-	 uwkjjxfB7hkWt1Pvg9Vu0p6oiooWO4aylcd1DVWaTVOxrZ7xc2t0arU83kfDZmDZ3L
-	 XTKS8M+hTpCITe+uj6yOg8xftBwa+IPVY0/U4lXmQPTbU3xIgCwjYTCW1+7EcF783M
-	 EmKMzhNkran8A==
+	b=O0thdS0TkMiKTV5OIJvwf6frMukeGG1bIT3owEnQrtT9DXusY4g1A+bzreUc3VBd1
+	 aSsfkgNw8mOZoczIYASdZzCbD7ZX1ZzCiLfxePyagF8QcQaW4nDRh39+2KYKBNYA8s
+	 yIqrqY54ZpzdYB8QSQKDBtlyNiDUFcSm9wzBL3JcpjzX5OhCGNl53xlf9kRCQUlk9L
+	 buZw/oTYt/93X2dSnYi6XDfUy1yN0pH+9Mp0CQsC5MvGxOHlgWM+DstfjIJHWEUXwM
+	 Ql+E6jK4OWmd0h4+OHBvdHKUqV4imcolkHE6CH35gVbV1g9nmkUinT2x+2hEbewjAo
+	 6FC0Uv7wOor7g==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 28 May 2026 17:55:18 -0400
-Subject: [PATCH 07/10] NFSD: check truncate permission under inode lock
+Date: Thu, 28 May 2026 17:55:21 -0400
+Subject: [PATCH 10/10] nfsd: validate symlink target length in NFSv4 CREATE
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260528-nfsd-fixes-v1-7-e78708eff77d@kernel.org>
+Message-Id: <20260528-nfsd-fixes-v1-10-e78708eff77d@kernel.org>
 References: <20260528-nfsd-fixes-v1-0-e78708eff77d@kernel.org>
 In-Reply-To: <20260528-nfsd-fixes-v1-0-e78708eff77d@kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, 
@@ -50,109 +50,54 @@ To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
 Cc: Chris Mason <clm@meta.com>, linux-nfs@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2981; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=AAlZJXNIsMumJGVH4o3U3ITTLWLG40+qhCg1DeCr/QE=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqGLnLUyeTBR8LsM8bq3p47OlijSdiqUwP2TZd/
- lXrOZJYLFqJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCahi5ywAKCRAADmhBGVaC
- FZ2TD/wI5YCrGR0FmHEqiTBEINokaWC0GgQvWfWm7ImYyGO8SfaugHDdsk6sim//Xdun+rKui49
- o8IK7uJM46d1pW64GnP81x0VQqRVXltmWwN5bKJdNNrDyMJb228ZbyAhLvp1uOYgRkE4A0JFLFH
- wUENTDexbdeaQe8tq5FVKgGyjikkOYentf9ZMduZHJ+BwQL0ohsYoLK7K0QLwIikYcjXdORDeOl
- qAzdNe+yWpO6i+j3IZ2HEwMge3/TztcyTNWMh+9shZg332W0+QyEG0tflwbJVA1M3vBJDof/7ou
- cEky72dnf/nCBtkBIUGtoaH0dV9p1GZz59UDab9xEWl6WJ1NFCOopi2BYOPYIopCRc/I2v5EySq
- 1xsROyuDKWeXACmqSD3zkSinDUTHekE90kHPAoiI3iLotjXrcklFyCnQ69+NvGHxkMW+fhC8CyJ
- ztIBl4X8cGqhXDfnBsbgA1yda4cFu9tEj6SF0cVBcQMcCQklK86WpFjwNWLx7yaAp4tQbiNRn3x
- EFoVC7C2kZFv1Ir4A8ccb8LlxHrJNu5NznB434E1mX9RVkcU0jWFM642rwMxku/xigejA9TVdTZ
- Sglh39mcovR1KOTBKOGw0X2mbOabLORenne29G8T6OrF0yeMT+aiu0Q/yRlG79ZLyGcZdx+x5Qu
- ibnXizXlOa3K+Cw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1223; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=14ZvczbnLPmszix02zJpjBn510ZrCpD9uZ8yHxb0h+A=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqGLnM+6gs3ykB2WslLr7jJHyxmfP7Hp0ovRyjO
+ wBDuwynIAmJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCahi5zAAKCRAADmhBGVaC
+ FYk8D/9QaA/L0TFoD0GsRdaA4q3ZgNaceFWDnHqD9PitbZef8wU/185jRhoNN4UM6G2NI5mhB85
+ lH8cF0XK79z5K3qLEvpasMm6eJmx1sLzrutxWqffADwvcliiOKr4qSpjzsj9i3WAIHzA5c5BD2y
+ c0bGmek6DCs7nB4QaLronjoS16peezdN1Y6WyB94YYfh0DwVGUNzjtjenRzB+uRgv751vStEPcG
+ gDoBD6e2QbaoEHQNylvj+JVfH8hrnmHnuWerCtSrlg9pTtT0OL+Ig8RQ79LZIFgUoDuq9drgZg1
+ OH1GEiEf3jfWa42jIeujmpQPo5WHIoSHySfhmyriLD6hfLpx4St4vomgxq2wpah8CF4AJ1l6hBa
+ j+J/bcvMgoknVnwz7C/L1rm8Q4fzbMhN/ycWt1Uc2DI8lThxU2WjBf3NqBIxht0J7MO4y2avkrH
+ JiC0GFDWmkqqzda78E7C3WxUDfthwI5a29fbKgdDtuf46pDEgp5NhJpYXYsxkmaAv141D5i5CQY
+ 1UHGjWTKtOEA9+vU6UANauh29uH7649ig0eWFa+CEpJr1rqMs37dsR32ONHWSItO0BL9DgXhBzA
+ SRmR3/ZKI09CDsAbA3bPKeDFig9Z989ZEvyclj3Kn+drVk/KOpUi3ZgSSk+VqA6bUKyVbBUUifM
+ 1eLk1e4vMdzmTDw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-From: Chuck Lever <chuck.lever@oracle.com>
+nfsd4_decode_create() accepts an unbounded cr_datalen from the wire for
+NF4LNK symlink targets, allowing a client to force a kmalloc of up to
+the RPC-max size (~1 MiB) per COMPOUND op that persists until compound
+teardown.  The VFS rejects oversized targets with ENAMETOOLONG, but the
+allocation has already occurred.
 
-nfsd_setattr() checks whether a size update needs NFSD_MAY_TRUNC
-before it takes inode_lock(). The comparison uses the file size sampled
-by that unlocked read, but the actual ATTR_SIZE update is applied later
-under inode_lock() by notify_change().
+Reject cr_datalen == 0 or cr_datalen >= PATH_MAX early with
+nfserr_nametoolong to bound the allocation.
 
-This leaves a TOCTOU window for append-only files. If a client sends a
-SETATTR that does not shrink the file at the time of the unlocked
-sample, a concurrent append can extend the file before nfsd_setattr()
-takes inode_lock(). notify_change() then applies a real truncation
-without the NFSD_MAY_TRUNC check that rejects IS_APPEND(inode). The VFS
-truncate syscall paths perform their own append-only checks before
-calling notify_change(), so NFSD must make this decision against the
-locked size it is about to change.
-
-Split the write-count acquisition from the truncation permission check.
-Keep get_write_access() before the locked setattr work, then recheck
-whether the requested size is below i_size_read(inode) after inode_lock()
-has been acquired and before notify_change(ATTR_SIZE). This also avoids
-the plain unlocked inode->i_size load.
-
+Fixes: 1da177e4c3f4 ("Linux-2.6.12-rc2")
 Assisted-by: kres:claude-opus-4-7
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/vfs.c | 30 ++++++++++++++++++------------
- 1 file changed, 18 insertions(+), 12 deletions(-)
+ fs/nfsd/nfs4xdr.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 7f07292d1569..980217f755b7 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -419,21 +419,22 @@ nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
- }
- 
- static __be32
--nfsd_get_write_access(struct svc_rqst *rqstp, struct svc_fh *fhp,
--		struct iattr *iap)
-+nfsd_may_truncate(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+		  struct iattr *iap)
- {
- 	struct inode *inode = d_inode(fhp->fh_dentry);
- 
--	if (iap->ia_size < inode->i_size) {
--		__be32 err;
-+	if (iap->ia_size >= i_size_read(inode))
-+		return nfs_ok;
- 
--		err = nfsd_permission(&rqstp->rq_cred,
--				      fhp->fh_export, fhp->fh_dentry,
--				      NFSD_MAY_TRUNC | NFSD_MAY_OWNER_OVERRIDE);
--		if (err)
--			return err;
--	}
--	return nfserrno(get_write_access(inode));
-+	return nfsd_permission(&rqstp->rq_cred, fhp->fh_export, fhp->fh_dentry,
-+			       NFSD_MAY_TRUNC | NFSD_MAY_OWNER_OVERRIDE);
-+}
-+
-+static __be32
-+nfsd_get_write_access(struct svc_fh *fhp)
-+{
-+	return nfserrno(get_write_access(d_inode(fhp->fh_dentry)));
- }
- 
- static int __nfsd_setattr(struct dentry *dentry, struct iattr *iap)
-@@ -560,12 +561,17 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	 * setattr call.
- 	 */
- 	if (size_change) {
--		err = nfsd_get_write_access(rqstp, fhp, iap);
-+		err = nfsd_get_write_access(fhp);
- 		if (err)
- 			return err;
- 	}
- 
- 	inode_lock(inode);
-+	if (size_change) {
-+		err = nfsd_may_truncate(rqstp, fhp, iap);
-+		if (err)
-+			goto out_unlock;
-+	}
- 	err = fh_fill_pre_attrs(fhp);
- 	if (err)
- 		goto out_unlock;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 5469c6c207ba..1f5e49f50f3a 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -957,6 +957,10 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, union nfsd4_op_u *u)
+ 	case NF4LNK:
+ 		if (xdr_stream_decode_u32(argp->xdr, &create->cr_datalen) < 0)
+ 			return nfserr_bad_xdr;
++		if (create->cr_datalen == 0)
++			return nfserr_inval;
++		if (create->cr_datalen >= PATH_MAX)
++			return nfserr_nametoolong;
+ 		p = xdr_inline_decode(argp->xdr, create->cr_datalen);
+ 		if (!p)
+ 			return nfserr_bad_xdr;
 
 -- 
 2.54.0
