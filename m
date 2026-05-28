@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98968368D42;
-	Thu, 28 May 2026 21:55:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 10051367B61;
+	Thu, 28 May 2026 21:55:36 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780005340; cv=none; b=eQqNFfJ1FB5u0ign/75Q3LHFH1hIcr+s2ovGc0jVkxQiOrh652lOxo6c8PnQDNyK2JDf8/a9DbSRpZ2c4ubcfqaj93RqNWlYwsdgXiEgS3fNLAQQ+guRfcr5cvLKsW4X1cT2JRIOyffC3nH8n0er4xILEIMLVRGTLr6neNEGeOg=
+	t=1780005341; cv=none; b=AIBwjNjQqlsBRBYEZKoxZ1mY5BduEbjDVdVVSNdy1va9GPugzMIQ9FEeP0B4iKWIUkTJmL+jNTQm58mL3MocGUuMENQ2+HXNre+GH3S+lZG0xTLOj3zjIwj/kenLA7Cvx9rhah07qKJ3Yq6XP3ICzD+kEf8IG4HgYQYSTXstBm4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780005340; c=relaxed/simple;
-	bh=tpPyldF1ng/UAup0IEjon7uOB3/Il45nXDpJmy2eEsI=;
+	s=arc-20240116; t=1780005341; c=relaxed/simple;
+	bh=jgYcUIiphYc8dlvt0fojriSWgHKg3YiGXZh7FqNN5XA=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=TmsQ+Nt9cB2pgIBlWpIOISDEA8a0k0IABU6r0K6yRGnLb7ROv9SzUTZ/b5+fYQm/wnelUtzxCTnjjgTNldTpo+Vy4bkL0ROZha8vAO9Kms7Lc1pyfdmcRb8IpV1FOSYF+rNTc5o19EXo/wqky0/slmZEGOLCFM0FJVktZys9ZQk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BapTHcxX; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=CPawOCRk5JmNpTEoFTr1B8TX+5/Sp1dd2pKINEz5ZX4m85VZqeGgCdH3b9lRunRnLijdZZvOg5SHM78fjVf4JuOIQRF/XP3hQ5eM9WBHhKYj9syo7lpxDit0kIv0090zZ1Qo3Rcit48ZRvFn5bibHUQYy/TMMOJ9tSgaj7Sbe3A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Xf0LkbbK; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BapTHcxX"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1364E1F00ACA;
-	Thu, 28 May 2026 21:55:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Xf0LkbbK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0D9B01F00A3E;
+	Thu, 28 May 2026 21:55:34 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780005339;
-	bh=JryY+lk+CVXnYXPbEYkvEZd9RAwO1QGurng0FR2GFkk=;
+	s=k20260515; t=1780005336;
+	bh=wcZk3CrZ4fiHMhIJQ2nzC7yu+rHDdCAtsGvzEQSLHn8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=BapTHcxXNN8XYX88rror0PQxwV2RCVfUBc6kkFrIPz7E6cIv+4P41doDr6EsJ74zg
-	 kl5Z2+zfkU65CZURYw6W7fHYmM6svU+vVJBKHTGcdPC9OQ48kZtV4KjySNKxOOHnOu
-	 IYB2inuz6hcuYDd6e3Fe7UfyVcmWhwi1wkYIPAaogubxUc+LjFmpyaer32fPYJLDbg
-	 ZfIX2+en2WwpLMToHmgi1+UxL/TI+BTMPcS72zMek3koaHJLaJ/QWMDDFfFqRY4KY1
-	 /K2mBvGt2zqYnbtgLHme33h0dUykgS/aXS5DOKzBGwx4u42STWcnyf3juZwnWNB5jJ
-	 etACUxBo7tXZg==
+	b=Xf0LkbbKRT9M/sfmxF4TR0SLbPdpW+uGYAPNGlpVLovZP4PbI6ZqVlGmtVy9nyIA4
+	 SLlgCaf3eoiwS/pWBrdxaP7rwD/shUFTyeT0UeQd5nC0ytnPjipzmex7XhzBjTGbCg
+	 U97KxGgTe7cXXP6omh8aq8ExvFbc6WprZJjWWCtHb1QiQ+is+Mc+KOvDhTPdOGiomh
+	 uwkjjxfB7hkWt1Pvg9Vu0p6oiooWO4aylcd1DVWaTVOxrZ7xc2t0arU83kfDZmDZ3L
+	 XTKS8M+hTpCITe+uj6yOg8xftBwa+IPVY0/U4lXmQPTbU3xIgCwjYTCW1+7EcF783M
+	 EmKMzhNkran8A==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 28 May 2026 17:55:20 -0400
-Subject: [PATCH 09/10] nfsd: cap decoded POSIX ACL count to bound sort cost
+Date: Thu, 28 May 2026 17:55:18 -0400
+Subject: [PATCH 07/10] NFSD: check truncate permission under inode lock
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260528-nfsd-fixes-v1-9-e78708eff77d@kernel.org>
+Message-Id: <20260528-nfsd-fixes-v1-7-e78708eff77d@kernel.org>
 References: <20260528-nfsd-fixes-v1-0-e78708eff77d@kernel.org>
 In-Reply-To: <20260528-nfsd-fixes-v1-0-e78708eff77d@kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, 
@@ -50,64 +50,109 @@ To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
 Cc: Chris Mason <clm@meta.com>, linux-nfs@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1573; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=DnOXwDcgGRU7CosVARw/tloWNLDBt7bWuhRiCqiYRb0=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqGLnLrNmWDEt0F7v/L92MWKqm9U6732ZAwULpH
- 5FG4+J634mJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCahi5ywAKCRAADmhBGVaC
- FRS0EACu97meKx3iF96dDwt3L8AQ4VnejoH4F+UlwXdbHsncN7AQHHR7dYtI/suEP5WLeQFSleN
- M2DXPpoe08RwwVCrBQTS4YQCJDiSIOSvnhNLPCLDbTS8HMNS1gu/B0yWqHR/WYTcNXNH8/CHpmA
- bpihukXw5kSMZxayi1JQSv3lCKjmrtsSamN/x7EAKx3Idi6usk9sfafY9uVBppPujTW0AJSrn6W
- bcaEYMV+GinTegqThDQEDla8cwoqacz6xDEQPWS7GMvEw8pzYrtPl4uD0OUODOljhngO8e2DODR
- HKzsC+JQY1qnckSBczaUSy4DSBNFL35ybTWpHZmdD/6BJPU2dHL7na7TWONhQpMQt9lBgwtHc5v
- /vNcqkgiM0STRBGkGBY1nVZoqzckqipVPGxlSn2pDV+i6lt7ekHoXoNfYcvOAKuw9a1/1oC2i1B
- a93lkgxaOR8P52VMcigEpzkWd7wLPD6M8mxm4zju20FQRxGujO4ZReK3gz9bjecmPTyRxuefSoW
- 48iBjCudY0d49cZaNWeJ50zRKsLKIs8drd0Pa7At9jFxCymS+bV+oJiAZZlp1YEHkq6WAGeMnXu
- y9ybkzvjX11R/YTvsvwAT+rTZrEBKE05IscaLxw1vH1y2DP1FJ0CGS+agc4bUxuUqIrTdm/hKZe
- TIBOM2IqfH3eN8g==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2981; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=AAlZJXNIsMumJGVH4o3U3ITTLWLG40+qhCg1DeCr/QE=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqGLnLUyeTBR8LsM8bq3p47OlijSdiqUwP2TZd/
+ lXrOZJYLFqJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCahi5ywAKCRAADmhBGVaC
+ FZ2TD/wI5YCrGR0FmHEqiTBEINokaWC0GgQvWfWm7ImYyGO8SfaugHDdsk6sim//Xdun+rKui49
+ o8IK7uJM46d1pW64GnP81x0VQqRVXltmWwN5bKJdNNrDyMJb228ZbyAhLvp1uOYgRkE4A0JFLFH
+ wUENTDexbdeaQe8tq5FVKgGyjikkOYentf9ZMduZHJ+BwQL0ohsYoLK7K0QLwIikYcjXdORDeOl
+ qAzdNe+yWpO6i+j3IZ2HEwMge3/TztcyTNWMh+9shZg332W0+QyEG0tflwbJVA1M3vBJDof/7ou
+ cEky72dnf/nCBtkBIUGtoaH0dV9p1GZz59UDab9xEWl6WJ1NFCOopi2BYOPYIopCRc/I2v5EySq
+ 1xsROyuDKWeXACmqSD3zkSinDUTHekE90kHPAoiI3iLotjXrcklFyCnQ69+NvGHxkMW+fhC8CyJ
+ ztIBl4X8cGqhXDfnBsbgA1yda4cFu9tEj6SF0cVBcQMcCQklK86WpFjwNWLx7yaAp4tQbiNRn3x
+ EFoVC7C2kZFv1Ir4A8ccb8LlxHrJNu5NznB434E1mX9RVkcU0jWFM642rwMxku/xigejA9TVdTZ
+ Sglh39mcovR1KOTBKOGw0X2mbOabLORenne29G8T6OrF0yeMT+aiu0Q/yRlG79ZLyGcZdx+x5Qu
+ ibnXizXlOa3K+Cw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-From: Chris Mason <clm@meta.com>
+From: Chuck Lever <chuck.lever@oracle.com>
 
-nfsd4_decode_posixacl() reads a u32 entry count off the wire and passes
-it straight to posix_acl_alloc() and sort_pacl_range(). The latter is
-an O(n^2) bubble sort, so a client-chosen count drives unbounded CPU in
-the server's compound processing path.
+nfsd_setattr() checks whether a size update needs NFSD_MAY_TRUNC
+before it takes inode_lock(). The comparison uses the file size sampled
+by that unlocked read, but the actual ATTR_SIZE update is applied later
+under inode_lock() by notify_change().
 
-    nfsd4_decode_posixacl()
-      xdr_stream_decode_u32(&count)       /* uncapped u32 */
-      posix_acl_alloc(count, GFP_KERNEL)
-      sort_pacl_range(*acl, 0, count - 1) /* O(n^2) bubble sort */
+This leaves a TOCTOU window for append-only files. If a client sends a
+SETATTR that does not shrink the file at the time of the unlocked
+sample, a concurrent append can extend the file before nfsd_setattr()
+takes inode_lock(). notify_change() then applies a real truncation
+without the NFSD_MAY_TRUNC check that rejects IS_APPEND(inode). The VFS
+truncate syscall paths perform their own append-only checks before
+calling notify_change(), so NFSD must make this decision against the
+locked size it is about to change.
 
-The encoder side in the same file already rejects ACLs whose a_count
-exceeds NFS_ACL_MAX_ENTRIES, but the decoder introduced in commit
-5fc51dfc2eb1 ("NFSD: Add support for XDR decoding POSIX draft ACLs")
-omitted the symmetric check.
+Split the write-count acquisition from the truncation permission check.
+Keep get_write_access() before the locked setattr work, then recheck
+whether the requested size is below i_size_read(inode) after inode_lock()
+has been acquired and before notify_change(ATTR_SIZE). This also avoids
+the plain unlocked inode->i_size load.
 
-Fix by rejecting a wire count greater than NFS_ACL_MAX_ENTRIES with
-nfserr_resource, before any allocation, so the sort is bounded by
-NFS_ACL_MAX_ENTRIES^2 comparisons.
-
-Fixes: 5fc51dfc2eb1 ("NFSD: Add support for XDR decoding POSIX draft ACLs")
 Assisted-by: kres:claude-opus-4-7
-Signed-off-by: Chris Mason <clm@meta.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4xdr.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfsd/vfs.c | 30 ++++++++++++++++++------------
+ 1 file changed, 18 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c6c50c376b23..5469c6c207ba 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -448,6 +448,8 @@ nfsd4_decode_posixacl(struct nfsd4_compoundargs *argp, struct posix_acl **acl)
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 7f07292d1569..980217f755b7 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -419,21 +419,22 @@ nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
+ }
  
- 	if (xdr_stream_decode_u32(argp->xdr, &count) < 0)
- 		return nfserr_bad_xdr;
-+	if (count > NFS_ACL_MAX_ENTRIES)
-+		return nfserr_resource;
+ static __be32
+-nfsd_get_write_access(struct svc_rqst *rqstp, struct svc_fh *fhp,
+-		struct iattr *iap)
++nfsd_may_truncate(struct svc_rqst *rqstp, struct svc_fh *fhp,
++		  struct iattr *iap)
+ {
+ 	struct inode *inode = d_inode(fhp->fh_dentry);
  
- 	*acl = posix_acl_alloc(count, GFP_KERNEL);
- 	if (*acl == NULL)
+-	if (iap->ia_size < inode->i_size) {
+-		__be32 err;
++	if (iap->ia_size >= i_size_read(inode))
++		return nfs_ok;
+ 
+-		err = nfsd_permission(&rqstp->rq_cred,
+-				      fhp->fh_export, fhp->fh_dentry,
+-				      NFSD_MAY_TRUNC | NFSD_MAY_OWNER_OVERRIDE);
+-		if (err)
+-			return err;
+-	}
+-	return nfserrno(get_write_access(inode));
++	return nfsd_permission(&rqstp->rq_cred, fhp->fh_export, fhp->fh_dentry,
++			       NFSD_MAY_TRUNC | NFSD_MAY_OWNER_OVERRIDE);
++}
++
++static __be32
++nfsd_get_write_access(struct svc_fh *fhp)
++{
++	return nfserrno(get_write_access(d_inode(fhp->fh_dentry)));
+ }
+ 
+ static int __nfsd_setattr(struct dentry *dentry, struct iattr *iap)
+@@ -560,12 +561,17 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	 * setattr call.
+ 	 */
+ 	if (size_change) {
+-		err = nfsd_get_write_access(rqstp, fhp, iap);
++		err = nfsd_get_write_access(fhp);
+ 		if (err)
+ 			return err;
+ 	}
+ 
+ 	inode_lock(inode);
++	if (size_change) {
++		err = nfsd_may_truncate(rqstp, fhp, iap);
++		if (err)
++			goto out_unlock;
++	}
+ 	err = fh_fill_pre_attrs(fhp);
+ 	if (err)
+ 		goto out_unlock;
 
 -- 
 2.54.0
