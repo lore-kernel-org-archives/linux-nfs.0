@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 100DB367B81;
-	Thu, 28 May 2026 21:55:34 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 98968368D42;
+	Thu, 28 May 2026 21:55:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780005339; cv=none; b=gl0IUQJ/tviowEhiQHdv9myHCVirHVsG4WFmPFIoD3fRAcnsu3EHMia4lMrhHg0+mGoTjK8Pns42o7zDOogub9giM8ww00WebWPgYBl+c3Wv5P/xoYfs3emWr2YmcA9cKrbypMYdbqmubUG9Gj2nrZWmidJzvRUm2spAAHj8Sjo=
+	t=1780005340; cv=none; b=eQqNFfJ1FB5u0ign/75Q3LHFH1hIcr+s2ovGc0jVkxQiOrh652lOxo6c8PnQDNyK2JDf8/a9DbSRpZ2c4ubcfqaj93RqNWlYwsdgXiEgS3fNLAQQ+guRfcr5cvLKsW4X1cT2JRIOyffC3nH8n0er4xILEIMLVRGTLr6neNEGeOg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780005339; c=relaxed/simple;
-	bh=mGJVvZo9pTZBX+sMN/JjmrBkf4z2jBAjKn61+R0qI6E=;
+	s=arc-20240116; t=1780005340; c=relaxed/simple;
+	bh=tpPyldF1ng/UAup0IEjon7uOB3/Il45nXDpJmy2eEsI=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=F1oRJQmP1eeiolqFujqO8Wbl0LJUJFQ6PIOWhZBqZhj23rCxfMCKXKkYhIel0BteHDjtwzF5Xyi/SIj1lac2KioF/rZEzaOJKq3jM6pMCNAcF1C6TTKsK40TBKqBjMO7kJkVLqTqr9N7aM+dEPSMdXAovS+MkmAQ7lksLZl6iFA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SodWuNrt; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=TmsQ+Nt9cB2pgIBlWpIOISDEA8a0k0IABU6r0K6yRGnLb7ROv9SzUTZ/b5+fYQm/wnelUtzxCTnjjgTNldTpo+Vy4bkL0ROZha8vAO9Kms7Lc1pyfdmcRb8IpV1FOSYF+rNTc5o19EXo/wqky0/slmZEGOLCFM0FJVktZys9ZQk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BapTHcxX; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SodWuNrt"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 847CD1F00A3D;
-	Thu, 28 May 2026 21:55:33 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BapTHcxX"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1364E1F00ACA;
+	Thu, 28 May 2026 21:55:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780005334;
-	bh=kXcChEzVlnxyp0TLNxJmodA24yVV9lKapnt3Z+Taqp8=;
+	s=k20260515; t=1780005339;
+	bh=JryY+lk+CVXnYXPbEYkvEZd9RAwO1QGurng0FR2GFkk=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=SodWuNrt+p0jGlkC5+Zsp06dRyODq4bp6XGfLz8CYZEtKetdIC7C+4cxoSU1y4r9E
-	 hWBbw2WnVKWh/cfTVeqrJ89679N+jE1sbkj9E+HnKi6XMvgRrFN0egp3ZZI86u/82b
-	 CJhwH6Vh2n9D5LPdEyuVyPPkpAGwprTteoNQ8FA20lxlMfzO11+WIhCjDt8jXbDXqa
-	 EgWMAZGsd398POsk/xsMFzKCI4RdsGpowvZzylNOhN352zND+vq8fm2QP1XNfuPdnY
-	 SCVSgSbwpchaO/GYQulHZd1Li7WocxG/Tr8i35PuDr98AHGxTt+xrmz50OZ/JZIpTg
-	 F6UrUS+5GgS2Q==
+	b=BapTHcxXNN8XYX88rror0PQxwV2RCVfUBc6kkFrIPz7E6cIv+4P41doDr6EsJ74zg
+	 kl5Z2+zfkU65CZURYw6W7fHYmM6svU+vVJBKHTGcdPC9OQ48kZtV4KjySNKxOOHnOu
+	 IYB2inuz6hcuYDd6e3Fe7UfyVcmWhwi1wkYIPAaogubxUc+LjFmpyaer32fPYJLDbg
+	 ZfIX2+en2WwpLMToHmgi1+UxL/TI+BTMPcS72zMek3koaHJLaJ/QWMDDFfFqRY4KY1
+	 /K2mBvGt2zqYnbtgLHme33h0dUykgS/aXS5DOKzBGwx4u42STWcnyf3juZwnWNB5jJ
+	 etACUxBo7tXZg==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 28 May 2026 17:55:17 -0400
-Subject: [PATCH 06/10] NFSD: Enable return of an updated stable_how to NFS
- clients
+Date: Thu, 28 May 2026 17:55:20 -0400
+Subject: [PATCH 09/10] nfsd: cap decoded POSIX ACL count to bound sort cost
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260528-nfsd-fixes-v1-6-e78708eff77d@kernel.org>
+Message-Id: <20260528-nfsd-fixes-v1-9-e78708eff77d@kernel.org>
 References: <20260528-nfsd-fixes-v1-0-e78708eff77d@kernel.org>
 In-Reply-To: <20260528-nfsd-fixes-v1-0-e78708eff77d@kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, 
@@ -51,181 +50,64 @@ To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
 Cc: Chris Mason <clm@meta.com>, linux-nfs@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6219; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=D2zRN4G1nHhfU/M0zPTKcCcUcIm2L9GJqomla9PCqvI=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqGLnLbYWRie82+AbNz+9KrirVA2dFJKeMRvESg
- r77+WatiX6JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCahi5ywAKCRAADmhBGVaC
- FVfCEACph1B7Y4nm1fqSJ5PfOq2YosITIwruGzxX/YdwaE6uki8zKDQ5hyyPKYEEQdbVkn2w6PA
- J9TZ0hh/Mm7uqoYUEEg7JhfijgcBcRxRbnWf8jRTlubjSdsn39HdXYyLCZSqvFeiccoehckRN0i
- qlXSZ2sp01OZxc8PbpuGLaLoopaEbun9GpKmwVdbSzLpUY9/9WU9a5sdU0WJjyYOjiYgzA8Z0Pt
- //cL74XYSa8DqmQQ46I/YW0GnKhMDnVD+2UyXtUDjz19Vc1RBH1poF4QmwpzZ6jo/jtPF0TAkjU
- awI3OvirOr1ajT4pumuLSKaJLJK0AXGn23U+GhFj4zAGiQjXC6QjVoLJd5kTUpXutMh4jQQ9D6/
- Mnu6iHuU4tWuyMzZmHB15puKpSIN3/7fRzVtXmq4HwKoGejAKg40f4I/37o3p8FUBpivBfZ4DRl
- H1CVnHlNbal0bOvMtz59aGdQ0RwBAlConFIC09TQ0DuWq8JhhERO0kESqh2KmnCewG+BJNM18uW
- tYB0UQkYJkNHg7saOfa3WgW/X5ZafPUBQl0Wnh8+STRZlicjqyEUgEquK3qE9aUnTjCj+xfIdsj
- 9Yd43pRHHpYbIYeHr1l1cvj0z4LwcWxc7qacwp0j0OyWtz+826gHFMxGLsHSk+TxHc1XgJcO2vI
- c3xXmKecceU4Esg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1573; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=DnOXwDcgGRU7CosVARw/tloWNLDBt7bWuhRiCqiYRb0=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqGLnLrNmWDEt0F7v/L92MWKqm9U6732ZAwULpH
+ 5FG4+J634mJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCahi5ywAKCRAADmhBGVaC
+ FRS0EACu97meKx3iF96dDwt3L8AQ4VnejoH4F+UlwXdbHsncN7AQHHR7dYtI/suEP5WLeQFSleN
+ M2DXPpoe08RwwVCrBQTS4YQCJDiSIOSvnhNLPCLDbTS8HMNS1gu/B0yWqHR/WYTcNXNH8/CHpmA
+ bpihukXw5kSMZxayi1JQSv3lCKjmrtsSamN/x7EAKx3Idi6usk9sfafY9uVBppPujTW0AJSrn6W
+ bcaEYMV+GinTegqThDQEDla8cwoqacz6xDEQPWS7GMvEw8pzYrtPl4uD0OUODOljhngO8e2DODR
+ HKzsC+JQY1qnckSBczaUSy4DSBNFL35ybTWpHZmdD/6BJPU2dHL7na7TWONhQpMQt9lBgwtHc5v
+ /vNcqkgiM0STRBGkGBY1nVZoqzckqipVPGxlSn2pDV+i6lt7ekHoXoNfYcvOAKuw9a1/1oC2i1B
+ a93lkgxaOR8P52VMcigEpzkWd7wLPD6M8mxm4zju20FQRxGujO4ZReK3gz9bjecmPTyRxuefSoW
+ 48iBjCudY0d49cZaNWeJ50zRKsLKIs8drd0Pa7At9jFxCymS+bV+oJiAZZlp1YEHkq6WAGeMnXu
+ y9ybkzvjX11R/YTvsvwAT+rTZrEBKE05IscaLxw1vH1y2DP1FJ0CGS+agc4bUxuUqIrTdm/hKZe
+ TIBOM2IqfH3eN8g==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-From: Chuck Lever <chuck.lever@oracle.com>
+From: Chris Mason <clm@meta.com>
 
-In a subsequent patch, nfsd_vfs_write() will promote an UNSTABLE
-WRITE to be a FILE_SYNC WRITE. This indicates that the client does
-not need a subsequent COMMIT operation, saving a round trip and
-allowing the client to dispense with cached dirty data as soon as
-it receives the server's WRITE response.
+nfsd4_decode_posixacl() reads a u32 entry count off the wire and passes
+it straight to posix_acl_alloc() and sort_pacl_range(). The latter is
+an O(n^2) bubble sort, so a client-chosen count drives unbounded CPU in
+the server's compound processing path.
 
-This patch refactors nfsd_vfs_write() to return a possibly modified
-stable_how value to its callers. No behavior change is expected.
+    nfsd4_decode_posixacl()
+      xdr_stream_decode_u32(&count)       /* uncapped u32 */
+      posix_acl_alloc(count, GFP_KERNEL)
+      sort_pacl_range(*acl, 0, count - 1) /* O(n^2) bubble sort */
 
-Reviewed-by: NeilBrown <neil@brown.name>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
-Fixes: 3f3503adb332 ("NFSD: Use vfs_iocb_iter_write()")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+The encoder side in the same file already rejects ACLs whose a_count
+exceeds NFS_ACL_MAX_ENTRIES, but the decoder introduced in commit
+5fc51dfc2eb1 ("NFSD: Add support for XDR decoding POSIX draft ACLs")
+omitted the symmetric check.
+
+Fix by rejecting a wire count greater than NFS_ACL_MAX_ENTRIES with
+nfserr_resource, before any allocation, so the sort is bounded by
+NFS_ACL_MAX_ENTRIES^2 comparisons.
+
+Fixes: 5fc51dfc2eb1 ("NFSD: Add support for XDR decoding POSIX draft ACLs")
+Assisted-by: kres:claude-opus-4-7
+Signed-off-by: Chris Mason <clm@meta.com>
 ---
- fs/nfsd/nfs3proc.c |  2 +-
- fs/nfsd/nfs4proc.c |  2 +-
- fs/nfsd/nfsproc.c  |  3 ++-
- fs/nfsd/vfs.c      | 11 ++++++-----
- fs/nfsd/vfs.h      |  6 ++++--
- fs/nfsd/xdr3.h     |  2 +-
- 6 files changed, 15 insertions(+), 11 deletions(-)
+ fs/nfsd/nfs4xdr.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index aeda7a802bdf..dd5ac59e87d6 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -236,7 +236,7 @@ nfsd3_proc_write(struct svc_rqst *rqstp)
- 	resp->committed = argp->stable;
- 	resp->status = nfsd_write(rqstp, &resp->fh, argp->offset,
- 				  &argp->payload, &cnt,
--				  resp->committed, resp->verf);
-+				  &resp->committed, resp->verf);
- 	resp->count = cnt;
- 	resp->status = nfsd3_map_status(resp->status);
- 	return rpc_success;
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 5f2b9bfc3a84..ac03f9d89288 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1355,7 +1355,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	write->wr_how_written = write->wr_stable_how;
- 	status = nfsd_vfs_write(rqstp, &cstate->current_fh, nf,
- 				write->wr_offset, &write->wr_payload,
--				&cnt, write->wr_how_written,
-+				&cnt, &write->wr_how_written,
- 				(__be32 *)write->wr_verifier.data);
- 	nfsd_file_put(nf);
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index c6c50c376b23..5469c6c207ba 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -448,6 +448,8 @@ nfsd4_decode_posixacl(struct nfsd4_compoundargs *argp, struct posix_acl **acl)
  
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 8873033d1e82..d0a7316f00a5 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -251,6 +251,7 @@ nfsd_proc_write(struct svc_rqst *rqstp)
- 	struct nfsd_writeargs *argp = rqstp->rq_argp;
- 	struct nfsd_attrstat *resp = rqstp->rq_resp;
- 	unsigned long cnt = argp->len;
-+	u32 committed = NFS_DATA_SYNC;
+ 	if (xdr_stream_decode_u32(argp->xdr, &count) < 0)
+ 		return nfserr_bad_xdr;
++	if (count > NFS_ACL_MAX_ENTRIES)
++		return nfserr_resource;
  
- 	dprintk("nfsd: WRITE    %s %u bytes at %d\n",
- 		SVCFH_fmt(&argp->fh),
-@@ -258,7 +259,7 @@ nfsd_proc_write(struct svc_rqst *rqstp)
- 
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->status = nfsd_write(rqstp, &resp->fh, argp->offset,
--				  &argp->payload, &cnt, NFS_DATA_SYNC, NULL);
-+				  &argp->payload, &cnt, &committed, NULL);
- 	if (resp->status == nfs_ok)
- 		resp->status = fh_getattr(&resp->fh, &resp->stat);
- 	else if (resp->status == nfserr_jukebox)
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 1e89c7ff9493..7f07292d1569 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1414,7 +1414,7 @@ nfsd_direct_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  * @offset: Byte offset of start
-  * @payload: xdr_buf containing the write payload
-  * @cnt: IN: number of bytes to write, OUT: number of bytes actually written
-- * @stable: An NFS stable_how value
-+ * @stable_how: IN: Client's requested stable_how, OUT: Actual stable_how
-  * @verf: NFS WRITE verifier
-  *
-  * Upon return, caller must invoke fh_put on @fhp.
-@@ -1426,11 +1426,12 @@ __be32
- nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	       struct nfsd_file *nf, loff_t offset,
- 	       const struct xdr_buf *payload, unsigned long *cnt,
--	       int stable, __be32 *verf)
-+	       u32 *stable_how, __be32 *verf)
- {
- 	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 	struct file		*file = nf->nf_file;
- 	struct super_block	*sb = file_inode(file)->i_sb;
-+	u32			stable = *stable_how;
- 	struct kiocb		kiocb;
- 	struct svc_export	*exp;
- 	struct iov_iter		iter;
-@@ -1609,7 +1610,7 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  * @offset: Byte offset of start
-  * @payload: xdr_buf containing the write payload
-  * @cnt: IN: number of bytes to write, OUT: number of bytes actually written
-- * @stable: An NFS stable_how value
-+ * @stable_how: IN: Client's requested stable_how, OUT: Actual stable_how
-  * @verf: NFS WRITE verifier
-  *
-  * Upon return, caller must invoke fh_put on @fhp.
-@@ -1619,7 +1620,7 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  */
- __be32
- nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
--	   const struct xdr_buf *payload, unsigned long *cnt, int stable,
-+	   const struct xdr_buf *payload, unsigned long *cnt, u32 *stable_how,
- 	   __be32 *verf)
- {
- 	struct nfsd_file *nf;
-@@ -1632,7 +1633,7 @@ nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp, loff_t offset,
- 		goto out;
- 
- 	err = nfsd_vfs_write(rqstp, fhp, nf, offset, payload, cnt,
--			     stable, verf);
-+			     stable_how, verf);
- 	nfsd_file_put(nf);
- out:
- 	trace_nfsd_write_done(rqstp, fhp, offset, *cnt);
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index e09ea04a51b9..36cd9f6edd8b 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -132,11 +132,13 @@ __be32		nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				u32 *eof);
- __be32		nfsd_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				loff_t offset, const struct xdr_buf *payload,
--				unsigned long *cnt, int stable, __be32 *verf);
-+				unsigned long *cnt, u32 *stable_how,
-+				__be32 *verf);
- __be32		nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				struct nfsd_file *nf, loff_t offset,
- 				const struct xdr_buf *payload,
--				unsigned long *cnt, int stable, __be32 *verf);
-+				unsigned long *cnt, u32 *stable_how,
-+				__be32 *verf);
- __be32		nfsd_readlink(struct svc_rqst *, struct svc_fh *,
- 				char *, int *);
- __be32		nfsd_symlink(struct svc_rqst *, struct svc_fh *,
-diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index a7c9714b0b0e..1ff7b11c397c 100644
---- a/fs/nfsd/xdr3.h
-+++ b/fs/nfsd/xdr3.h
-@@ -152,7 +152,7 @@ struct nfsd3_writeres {
- 	__be32			status;
- 	struct svc_fh		fh;
- 	unsigned long		count;
--	int			committed;
-+	u32			committed;
- 	__be32			verf[2];
- };
- 
+ 	*acl = posix_acl_alloc(count, GFP_KERNEL);
+ 	if (*acl == NULL)
 
 -- 
 2.54.0
