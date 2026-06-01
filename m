@@ -1,39 +1,39 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B4047334C1D;
-	Mon,  1 Jun 2026 17:54:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 869193314B7;
+	Mon,  1 Jun 2026 17:54:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780336459; cv=none; b=NHn8PMeW5R8wS7kGBqmLwZhgYOF38OyG+gOxw4gXC+cM9Kh9JDq1fB2kTiGd8KhNlk8bG9kAg5/v8LAhSW7G1bZ5kZXNpGl97zKDtA3RDUcY/ST+IDbQxDXSYX1TeTBZ1ucOPkX/f+Yz/gm1mPo7NvV1bCYoNUtYhOut+kIFQBE=
+	t=1780336460; cv=none; b=fCdmKDB3NH7jTH+iiKqo3IAWGF4QFOFloLQ4AS1S62g39nJiRVOjiQ+mGWW0fNQW8e2nuaEjmQ3xemWfAj8iWf73cVt9KmCzWEqHV1RwVhWcKFJb6Nzt+NeNQumcpf7Z0hBCN+3jjzqlmRaIe4CA5Y/mv3e8907hfncjDz5Rp8w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780336459; c=relaxed/simple;
-	bh=A+iJVdyBVouJvvMqLfFzbsbjcD59NNtL8iLZVqVfBSY=;
+	s=arc-20240116; t=1780336460; c=relaxed/simple;
+	bh=Df+fYzQqMI1GeA45P6JsTCTJmOrcAu4SR0z2gpGCea4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Sg3injnWmY7x1wrrAb8lvPk6gALRoqxH2W6lyvhlIU6vrAYFhAype71ytBwGjPobgJ81AKMX2jFIEpHZakn6vGSh5k9xeuteRRRkLSDYhMXv6UI77dEL21Ugr0p5jlbtdSzx32+Px+q+/ev/kxd7qAI9ignuzmL/KCFyP3Htul0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hUCeixsN; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=FsFmH9WXaTw33x7IC6c9ijL+raNmQDiQGTzouhpnqsH1nU8EvPBydvKKQol7rHWydeurlQIJiF6KJzWJKi3MS0YHTFv/fZFhQYdO56AcweDBO3/1cZOWmqlVrFABR2T4SHHVo8ziGEMapIJUq31Szd1tBCg8t63lVriREfOJkzs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=d0LJcgbl; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hUCeixsN"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E59831F00898;
-	Mon,  1 Jun 2026 17:54:17 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="d0LJcgbl"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 04EED1F00893;
+	Mon,  1 Jun 2026 17:54:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780336458;
-	bh=PnV4r/9POe7xnftfC6rg8TY7Mei2xAgFIN7H/7T/4u4=;
+	s=k20260515; t=1780336459;
+	bh=n67+QMBasbqZL2nolv5f53FlukG25uE1k5+NU1mtaHI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=hUCeixsNGdc9oMudYeXMyBFgxNvL5B1mSerVvoahmg6ObjMovO+Q0ZIyXbm4H+1V8
-	 puPhS35WwCeuVN8W/51iosIs+JPIu7u6d+D6/TAHd7R864p1Nr4i9bQ4VQmQIX5hxJ
-	 b3jhTnpq3TIf9z2iNZ/Bcz3m//cdoaGjDMxCgd5ykI5eKXcCGnPdLaMcvRvZU8bMzC
-	 GkFJLQxl98oRq7jJhlruNrEOImm0uWpP4ES2sUNKjxphPTSzaRvYW/qEgXT185XZ+i
-	 bXQNlNVyRMhm6fNPqoWobtkME1YvUQUleDq/M+90PcU15j19SsXcr6cM20mwCfA986
-	 u+ObdFW+C8yaQ==
+	b=d0LJcgblHKikjbLANLFLreCi5bYhQywXj6XO6lQQRkFyOI63GepCJ8ilJxvlYBV0y
+	 jr2FTJIa0b5BUAOTzRNiGfl/kNP+g7ROKF0y1R55/BlE3tbGOcXgGA0NpBVTt0Be7m
+	 /Y61s34g8CumOQI+pKG9tV67D24CNdLKPcJxWfPCldRmHdqgA8tczlpbmvQ7jUEX83
+	 it4nPnMlqdykyTP7UJPqf5toxNZeyvRrbafVgQOvNrsoxhRjML5OXf6QzyIkrugO9b
+	 0HQVw3EDLGV54tjmaJ0Xv2gnDhkm+psZPKmuMdIAEv6cEH/lh5ZaGF9lH0qEMILXxt
+	 mMMIgH56vaZDQ==
 From: Chuck Lever <cel@kernel.org>
 To: Anna Schumaker <anna@kernel.org>
 Cc: <linux-nfs@vger.kernel.org>,
 	<linux-rdma@vger.kernel.org>,
 	Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] xprtrdma: Fix I3 invariant comment in rpcrdma_complete_rqst
-Date: Mon,  1 Jun 2026 13:54:12 -0400
-Message-ID: <20260601175413.29544-2-cel@kernel.org>
+Subject: [PATCH 2/2] xprtrdma: Remove tautological I2 assertion in rpcrdma_reply_put
+Date: Mon,  1 Jun 2026 13:54:13 -0400
+Message-ID: <20260601175413.29544-3-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260601175413.29544-1-cel@kernel.org>
 References: <20260601175413.29544-1-cel@kernel.org>
@@ -47,33 +47,33 @@ Content-Transfer-Encoding: 8bit
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-frwr_unmap_sync() and frwr_unmap_async() drain rl_registered via
-rpcrdma_mr_pop() before posting invalidation Work Requests to
-hardware.  The WARN_ON_ONCE verifies that the list-drain step
-has occurred, not that hardware unmapping has completed.
+rpcrdma_reply_put() sets req->rl_reply to NULL when it is
+non-NULL, and skips the block when it is already NULL.  The
+WARN_ON_ONCE(req->rl_reply) that follows can never fire
+because both paths leave rl_reply NULL.
 
-Reword the comment to match what the assertion actually checks.
+Remove the dead assertion and its comment.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 626cadec4555..f115baba6d56 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1336,8 +1336,8 @@ void rpcrdma_complete_rqst(struct rpcrdma_rep *rep)
- 	struct rpc_rqst *rqst = rep->rr_rqst;
- 	int status;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index da2c6fa44154..92c691d2521f 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1259,10 +1259,6 @@ void rpcrdma_reply_put(struct rpcrdma_buffer *buffers, struct rpcrdma_req *req)
+ 		req->rl_reply = NULL;
+ 		rpcrdma_rep_put(buffers, rep);
+ 	}
+-	/* I2: rl_reply NULL after the put closes the
+-	 * 'rep on rb_free_reps still referenced by req' window.
+-	 */
+-	WARN_ON_ONCE(req->rl_reply);
+ }
  
--	/* I3: every registered MR has been invalidated and
--	 * ib_dma_unmap_sg()'d before complete_rqst runs.
-+	/* I3: rl_registered has been drained by frwr_unmap before
-+	 * complete_rqst runs.
- 	 */
- 	WARN_ON_ONCE(!list_empty(&rpcr_to_rdmar(rqst)->rl_registered));
- 
+ /**
 -- 
 2.54.0
 
