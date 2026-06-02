@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F2B073019C8;
-	Tue,  2 Jun 2026 16:23:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A8F63672B1;
+	Tue,  2 Jun 2026 16:23:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780417408; cv=none; b=qlvS6POxJRqcQAee20OfAUZTO+KcuL1v8ON1+u7FO3Vw03//lz7H4GNL8aEov2xDkrAeyeuejweTq00qiKkWNfxg4Mkqzks0hYfJXcygmexwYQ+lx2nYrgBvzWG4K5Bq+lCSyrzEW9hGMEFIcB3PqtqxuNFsNZT3hBUv9Qaid08=
+	t=1780417410; cv=none; b=spdEVcOGMc3c1vsHFx3h06C2YERiFT49fibzaI4mtSt/wr1HNDZ+5ufPoYeglTSohCqKP2LSa1zj3XLZF2MtRTK6YHHDWtnqU/k23IMVhEX7wbXC3JG7GOpCIjYw5Y40hSp8d/H2xFzAFC/d8yP2H14MtJDYvMgI56UrAIDHiFE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780417408; c=relaxed/simple;
-	bh=vuYEpJJOGtjuvv4cnVwxiWWNBECDLvmCTPU4mt3Kzds=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=g9RAi07yJxVeGQJmrzJY8ZeZAz7Ww7kzww97QSInUNVLfvDrhLAGoUgBm6D1VxfWPUre/qROsfwiuM6vHZrcTgMldX3++HejSVDEiEmAqIFFIKOGzMdv6lbuZl12BcLHpWd3ze+4pFljBlCas4paEnxuO0rib5TXLcqHKu8IoPU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=n/BskQOT; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1780417410; c=relaxed/simple;
+	bh=8gmVfN3NJAp5KEcLS1LfYVQdzKCLVErpphQJ2oZvgRc=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=m8XI5sKXXAppUnT5u+c9tvLWYL6zwLPGmkeIYyo6+b3c1ECurmxWs2hiGFPUHlEBsYt3hvUss99YIxG+Lw95gVHWukYp4DpJ2Min08sIBaRGyAIehGXUT/dOrAzBvDJ+TzKjbW8fvKDufGvjdR+AUDmGtkap1Mb+zOlD/51W73Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Rk6rteS7; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="n/BskQOT"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 326AF1F00893;
-	Tue,  2 Jun 2026 16:23:26 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Rk6rteS7"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D054E1F0089A;
+	Tue,  2 Jun 2026 16:23:27 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780417407;
-	bh=WIEV5sVFxSJwTMmvxp3SldQ8HifstGpFzIjIQcXd/+0=;
-	h=From:Subject:Date:To:Cc;
-	b=n/BskQOTSih2SKOiqmA6OZzDO1Bkqi/HmwoEpyQ3IpY1TOTvo87ujdFEDQJqfOisI
-	 XSPo12wTC/ePNIHAufvNQ10Y3yBny6VEXYGWeP9CPEGWexPTcNVzQiUC4dsFNyMOjB
-	 R5AC118tHjFRcNYdGwIDTjIP3yk3QC4QHIdivAuC3tfZ548x0zkx4z9nQ8If5/2IRF
-	 Gn4q4taqlZ+bp+RCA6975SLLPqYcouM6cOWfAvo8Qv2WoAVb3YnMsCI7UKCYUGWCN+
-	 0Jy33l5DGpDiTkv0kzeVah2K3BiTM2XQ7VSdMixtcreud21PEktnMiwmbpd8q1MCcc
-	 i+JWd9bz05fig==
+	s=k20260515; t=1780417409;
+	bh=RL0SDFOGPEfr5cBoJJZ1vB2wDljK98S1sH8InkqDb60=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=Rk6rteS7JEbcuZa6EiITg1q0KOSeNJrabLyCriRrAMrB44+i7DkyAX3gi75IyGJ1l
+	 1gKifr7BSB3A5qv1sfByT4MAZzwpDb1KSxvzcnaqE4ek/hOA3uClaAUKBxrSiCQzNZ
+	 tCr2aZGL0u5ton43ntbGP1pApRmiUnhmEdLKUmIve0aTpYQ5m+VUNjYAhpYt4zYavY
+	 XuCr3OKYbc1TljqF32BdTmQM1oR4p55QhwrhsyeoHr43z6KxH9SNeHsFktXlL3JdxP
+	 dcPyjVrB8TNYcwVWlt+jr3t72OBjfUIx0TmggEG3PYb8Yb8r9UFsfITMfhZifmTWdv
+	 gPEP5RZVY1Bww==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v2 0/9] nfsd: fixes for locally-triggerable bugs
-Date: Tue, 02 Jun 2026 12:23:12 -0400
-Message-Id: <20260602-nfsd-testing-v2-0-e4ea62e3cd5c@kernel.org>
+Date: Tue, 02 Jun 2026 12:23:13 -0400
+Subject: [PATCH v2 1/9] nfsd: defer vfree of compound ops to fix rpc_status
+ UAF
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -36,11 +37,10 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XMwQoCIRSF4VcZ7jrjqijVqvcYZhF5dS6FhooUg
- ++ezb7lf+B8GxTKTAUu0waZGhdOcYQ6THBfbzGQYDcaFCqLFqWIvjhRqVSOQZA2eHaGUBuCcXl
- l8vzeuXkZvXKpKX92vcnf+gdqUqBw6K0ko63zp+uDcqTnMeUAS+/9C004h8KpAAAA
-X-Change-ID: 20260601-nfsd-testing-e3509d5e035e
+Content-Transfer-Encoding: 8bit
+Message-Id: <20260602-nfsd-testing-v2-1-e4ea62e3cd5c@kernel.org>
+References: <20260602-nfsd-testing-v2-0-e4ea62e3cd5c@kernel.org>
+In-Reply-To: <20260602-nfsd-testing-v2-0-e4ea62e3cd5c@kernel.org>
 To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, Lorenzo Bianconi <lorenzo@kernel.org>, 
@@ -52,73 +52,67 @@ Cc: Al Viro <viro@zeniv.linux.org.uk>, Chris Mason <clm@meta.com>,
  Trond Myklebust <trond.myklebust@hammerspace.com>, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2054; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=vuYEpJJOGtjuvv4cnVwxiWWNBECDLvmCTPU4mt3Kzds=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqHwN3Tn/fQ0Cq3QfWIvw2kxmYdMs9rEG8kTmPs
- 9Rr/TAWdRiJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCah8DdwAKCRAADmhBGVaC
- FRPBEACH8I+aL0Oo5CfqdAcOR99bZPRPgfsJT3ZpeR5MwYrAA9nX48rXg5cdckX0hQi1fX4at9h
- HkdtMXeAYsUlnU6dv4bIFfLEyNkt3drFENRNarji4rFwTYVkvqW9FVERTKjj/gAZeQ44VsrInDO
- wtMTtEpUVsokimtNKkdcxOSDuvQgJ9OOPRypEitpY8ELrQNsedmyT09ZoNdu5mVtytLlaVzQMNq
- GVno0zfcoze+El1V+eV86DG2iQdw6spFJtQj/9E3vTwETPTo2evtf1fV4NFoF1ZGaOBTuCG6Gb7
- pzzdVCYv3R8Gen8EmaGRk/hkcd1BAnV037TUns1Xcku5VbJGYMCNBaYfW1/P6mW7+LMT6OVvuy9
- Cz8GZY++Pll1ZMoX73Jh5+L87565WOSxUFjKRQc+LYtvlzEKAoktQzvZM0OuqBFlafaFm87uy8w
- 9IyCsc6EUqBU2aVCq9PxQ3Y33NZy74WAInf/t/Yvl64ZzqBGuYmkBCaUQ87FJShrQ+As3hqJk/f
- ImrmV3/KTcNi+N5+jB7SXiHGdBLxqcw4J0BnhtfJDXcM1u/8rj6kgxQQIvhXrlaSRxsb97CSsai
- O6YSSFuEtV1w4mHgqkefORQPIcBQ85cgCp0wG8sASvtQtVVUJ8K127w9QF/YSwB00VER2arxBs4
- LtAoNqDFr4MTBwQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1858; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=8gmVfN3NJAp5KEcLS1LfYVQdzKCLVErpphQJ2oZvgRc=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqHwN8myL5xm+TtumeR50TKFtNaKBYLMhTOgiNt
+ hy2fj+OybeJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCah8DfAAKCRAADmhBGVaC
+ FerAEAC1XGeX5v9BcT7lZaVu3i0b40fZdmmzM530cXn4RsKS0Q8X/sECpX4sIJpboTtLiq8NkVG
+ TYlKKA5holp4fQvdIpfXDbyzRehZE/4K/mlbVMfaMngppWsFofzRlCxO++e71LE2carqD8W3ZTh
+ 1numu9CKqb63ShiiG0wtePyGNzr4mlaea4fWWxQeJNB/Kcnl+scdXVWEPKqeXDI4dha+UlgLVT2
+ U3mh6rI2Ihm6eun96OFpIIwlNFcDbwoI2a0hMpkRYt0QdElFxeLmgdmXRbvUw0n37GP3BYFM7Vw
+ wt8Rd4tIYZDeEX4AiUUO5WNyQmiEcFjpxYJc0U2oH+sbjJ6PzChJ6Xi6v8mYiNIPR2z+S58b+/o
+ DEGt148y+e520cR4Wm+3K8Nkn2C4tssh2LicyeksRaIkRsEL2/DE5UNVi1LTCqOKuxwBd1runnH
+ oNGywgMBvjzsDfW9By2hlO85XKPs6KWYxjxEWe2RQONeJlbaLHZFH5AF5/hxFiMfrexcerJpVn6
+ 27JbAvw/ob07idTxGMrzjLFyzixSyHRvpcuFxGxJBYhqTACly7qJIxOYNVvpSzeRRvDHcki0zYG
+ YrcYSa71XPT/hD7GY+cNubGhzZZqJPK+hm/1aHdb2n4cExollNOqI1uwkEvcuvJB2BZljYcfqEQ
+ 1A3WOtq9UbPb9zA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Just some minor changes in this version, plus a cleanup patch from Al.
+The rpc_status netlink dumpit walks every in-flight svc_rqst under
+rcu_read_lock and, for NFSv4 requests, reads opnums out of
+args->ops[]. But args->ops is a separate vmalloc buffer freed
+synchronously by vfree() in nfsd4_release_compoundargs() at the end
+of every compound. The dumpit's rcu_read_lock pins the svc_rqst
+struct itself (freed via kfree_rcu), but nothing defers the vfree
+of the ops buffer across the RCU grace period. A concurrent compound
+completion can therefore free the buffer while the dumpit is reading
+it — a use-after-free on vmalloc memory.
 
-These are bugs that Claude classified as locally-triggerable. A couple
-can be triggered by an unprivileged user, but the rest require admin
-access.
+The trailing seqcount recheck (smp_load_acquire of rq_status_counter)
+cannot undo a load that already retired against freed memory.
 
-The last 3 patches fix one bug. I originally had a more targeted fix
-that kres generated, but I think it's better to simplify the filecache
-disposal mechanism to get rid of the bug rather than add more
-complexity.
+Fix by replacing vfree(args->ops) with kvfree_rcu_mightsleep(), which
+defers the free until after an RCU grace period. This makes the
+existing rcu_read_lock in the dumpit sufficient to protect the read.
+The tradeoff is that completed compound ops buffers (up to
+200 * sizeof(struct nfsd4_op)) persist in memory slightly longer,
+across one grace period, before being reclaimed.
 
+Fixes: bd9d6a3efa97 ("NFSD: add rpc_status netlink support")
+Assisted-by: Claude:claude-opus-4-6
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Changes in v2:
-- rework filecache patch to only take net ref at disposal time
-- fix ordering of operations in nfsd4_release_compoundargs()
-- add Al's patch to simplify nfsd_cross_mnt() cleanup
-- Link to v1: https://lore.kernel.org/r/20260601-nfsd-testing-v1-0-d0f61e536df8@kernel.org
+ fs/nfsd/nfs4xdr.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
----
-Al Viro (1):
-      nfsd: unify cleanups in nfsd_cross_mnt() exits
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 487a1f62ce15..6680e9e1e5b4 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -6686,8 +6686,10 @@ void nfsd4_release_compoundargs(struct svc_rqst *rqstp)
+ 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+ 
+ 	if (args->ops != args->iops) {
+-		vfree(args->ops);
++		void *old_ops = args->ops;
++
+ 		args->ops = args->iops;
++		kvfree_rcu_mightsleep(old_ops);
+ 	}
+ 	while (args->to_free) {
+ 		struct svcxdr_tmpbuf *tb = args->to_free;
 
-Chris Mason (3):
-      nfsd: hold rcu across localio cmpxchg retry
-      nfs/localio: fix ref leak on nfs_uuid_add_file failure
-      nfsd: guard nfsd_serv deref in nfsd_file_net_dispose
-
-Jeff Layton (5):
-      nfsd: defer vfree of compound ops to fix rpc_status UAF
-      nfsd: widen nfsd_genl_rqstp address fields to sockaddr_storage
-      nfsd: fix refcount leak in nfsd_file_lru_add on insertion failure
-      nfsd: fix fcache_disposal UAF by inlining dispose state into nfsd_net
-      nfsd: hold net namespace reference for delayed-dispose nfsd_files
-
- fs/nfs_common/nfslocalio.c |  14 ++++-
- fs/nfsd/filecache.c        | 130 ++++++++++++++++++++-------------------------
- fs/nfsd/filecache.h        |   3 +-
- fs/nfsd/localio.c          |  12 +++--
- fs/nfsd/netns.h            |   3 +-
- fs/nfsd/nfs4xdr.c          |   4 +-
- fs/nfsd/nfsctl.c           |  12 ++---
- fs/nfsd/vfs.c              |  17 +++---
- include/linux/nfslocalio.h |   9 +---
- 9 files changed, 101 insertions(+), 103 deletions(-)
----
-base-commit: e7ca66ba17f1b5e4ecbb29b9c3c4a31aa062bed0
-change-id: 20260601-nfsd-testing-e3509d5e035e
-
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.54.0
 
