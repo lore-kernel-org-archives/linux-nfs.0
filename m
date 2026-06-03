@@ -1,105 +1,82 @@
-Received: from mail-qt1-f176.google.com (mail-qt1-f176.google.com [209.85.160.176])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8CA827BF93
-	for <linux-nfs@vger.kernel.org>; Wed,  3 Jun 2026 11:02:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.176
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 70CD9319617;
+	Wed,  3 Jun 2026 13:42:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780484537; cv=none; b=NzzER5JzZ/jjCuZgjAcTnet8qIL1CIZM9ynFE4cOCsVjrb7UK/FaLQDr1LDguU4IztIkPvgVBBCoZcjY/wCKHZL6/sbon9Yh8Dlf6lFpXjBMMYYTdqb8T5ru6crntMLQMILmbHeGFyqRM1dk9YlNXwdm2QozhbmHPNdYKzbRSlU=
+	t=1780494172; cv=none; b=ubSe//griQwprc9xvb5Tmail7bsLRFIeElir/vn+OwYAfhcHqy05psG2BIcwzL+cG76izJ40PudKPUJuvyRu4EpCHn4w3jURpulc8y1xkDlnULQYo+JsUmWAnKCyDTsT4b9XxurW0ZumhCQg6PY+8UpZNXJnhgqJsIl/iEfQtIw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780484537; c=relaxed/simple;
-	bh=u5g5DwSt5q9TvN8+oJgpOjZm4wjKuGhymyxIlp6JDHg=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=hn1TpohAfgBzy2kZAhln3DRnO8c9EzoP3sAU/q3GY1w1OnuwbiO+co3sMVmH2cpItEgQ1XCitVCcWMd9Al6Qao9xOMJBpxFDIkc8o6gAfdGR8M+gOEhGDVmtVIoVECEmWBia3m8VVuGL4d5p9XcMg1DxLl/S6WdYKGybENw37HE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=fail smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=ZbVo80zb; arc=none smtp.client-ip=209.85.160.176
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=hammerspace.com
+	s=arc-20240116; t=1780494172; c=relaxed/simple;
+	bh=iFe1WYbCxcFuXahK7sPo09FPJtlLBCULH5KmxcAQnCQ=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=c3SUUt+eJZKxarey5GXunPioMqHB/10VVNjDM7X9z8q4eLPa8pzn9Sg3RX13YIfSQJEGEvk3Ma4X0gr/rluQIvHHktZC/qx6kQ6Mew+HX9m+KkvpTgpV6wff7qOQa/tfNLXRthezVCYWz+R/918JSEslqFGjZq1ubyZlCeF0ejA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lmmDKal3; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="ZbVo80zb"
-Received: by mail-qt1-f176.google.com with SMTP id d75a77b69052e-5177945a22eso5161761cf.1
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Jun 2026 04:02:15 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1780484534; x=1781089334; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=u5g5DwSt5q9TvN8+oJgpOjZm4wjKuGhymyxIlp6JDHg=;
-        b=ZbVo80zbeH81BSai/7lLu0HwTkw7+tyk9pxgO8SFXfzbzTQ9+01RyzDKkUfCEzs1kD
-         snrOkoUHaTaKH7oFPiwT2Q+Cx/uMXJanGyFl2Yvt7s77m6WFaDzXahFwyeqNnerJGGuJ
-         tsb94Cu+Uz/6EjSj67/Ny+0Tp9voIAca432QpO7JlyykA2kmElqQZQRMS4V79ZyGtHac
-         nuwfxYApqnHmstTIbq4Yp8tIhL3hTcM5jlx4lRml4JIX8AhEFnkQhK9bluhXsXKO1pF+
-         tCfgVJ1ju1ybgN78bWysQx0xsA/61fvzch9WJaK6FMGLxvamadsxks5O685qhn7+XDjm
-         uBZA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780484534; x=1781089334;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=u5g5DwSt5q9TvN8+oJgpOjZm4wjKuGhymyxIlp6JDHg=;
-        b=T3W2ZU6Vbej56o74em/MYQk2Pn5S00UK6XazGnUPLC1EKlyYvyQ+4rcoFH/dLdGfIY
-         H8oSGGmSdeBiZ0c/EJSazmynjvo6aBiaaUpB9/mhIpEpNzRK9y42EQm7KKT+62mTtIHZ
-         eZ0bk5Qlv8JxVD1pvB7nm0+4G+FB/TpJ3SKwMH8RTHMLxbtfAYq5aQctZlmYkD4bchi3
-         CAOJhdUA3CiSmTJ4Ezk0Ne6XNh8EWow9oDHRuxSCNG1j8L2BH/XHHXAg6lxAHi8Jqlwk
-         fV8rbet2L2VGT5Vee3cRhtt9cuwiuNi1cQW3jCBDaPhsmol55c1k9L+ffFtm3e2YiPys
-         +4jw==
-X-Forwarded-Encrypted: i=1; AFNElJ8hrzYgiUjw6IQIej/WKN+CpRxD+NIZ8wUsBWC+/XbposFaXn0eEOIRN8FqnyDAU05wbAlM/w/+nd8=@vger.kernel.org
-X-Gm-Message-State: AOJu0YzacoYbEJr7JmzQZWf9TN1I69TvRo2u2X+ve1rlD5G3saebr4F9
-	5mhr7qg/Ev7ngm7vkc/rcSayGU1XABhIqp1FSMtdeLtxtEUXgrwy9iwZygZF0xlwOQftjTHMPZv
-	AgGY2
-X-Gm-Gg: Acq92OGViKnEmAdRw8g/Lu3Bt1kLEpKTRaMdWc+nwQKEVsiATYmATImRO/A42E2wWcZ
-	MZ7/BSS0K4OohBifpBuptkD1kf4rZXuKDsTXmZD+rM9/0CswAkhnIdJfFF6OXx7kfZV9+cLg6fC
-	rLQIDOnlPX8QTA2T3jQkGG9DCn1JaqovxNNwMi7ZTS8y+x0YBiytoZajgrK/jHK8v2jssf93z4y
-	ul5oHzcATRdgJJ6xzK6x1wMkwA/iXp5URTLZCHTMAAzwtff/n5FLzOZXZD7Y2J/iBO6Szv+eojg
-	isKaEOspN8kTTEeIi0QoDV7EnZG2DYy+7cTwbgVJ/Vj/F7DiUi+hDsJeAeLCA8tXeDvc+te/Y+w
-	cQG6DZ7NGktzpcsVlA7LJ6rO6bPh28sPH36LXd+/DpMAbMLnIH0Ef5e9c3Q0kN/qC2F5GPDj7DT
-	AyJldyeqHCyK7Kq9b+sN8E5Ka8xY2ABxNWcCb0Q6L6p8BS/dJze+M=
-X-Received: by 2002:ac8:5d94:0:b0:517:6642:e8e0 with SMTP id d75a77b69052e-5177868353fmr40570641cf.30.1780484533921;
-        Wed, 03 Jun 2026 04:02:13 -0700 (PDT)
-Received: from [192.168.37.1] ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id d75a77b69052e-51775c60dedsm20404121cf.13.2026.06.03.04.02.12
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 03 Jun 2026 04:02:12 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: Chuck Lever <cel@kernel.org>
-Cc: NeilBrown <neil@brown.name>,
- Benjamin Coddington <ben.coddington@hammerspace.com>,
- Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
-Subject: Re: [RFC] knfsd: per-client fair scheduling to prevent single-client
- starvation
-Date: Wed, 03 Jun 2026 07:02:11 -0400
-X-Mailer: MailMate (2.0r6272)
-Message-ID: <20555E8B-0E49-4328-8B31-0F73C3D286FE@hammerspace.com>
-In-Reply-To: <561e9ac6-348f-4d6d-b896-38dbe5ede3bc@app.fastmail.com>
-References: <D33770A1-9098-4F1A-93EF-590E6C0B7638@hammerspace.com>
- <473e337b-fabc-4884-a6c4-0f04b6874d0b@app.fastmail.com>
- <3AB7EB6A-B207-4B91-A695-66C4704D0E31@hammerspace.com>
- <4c5dbb98-0209-4572-8eac-1578536bbd78@app.fastmail.com>
- <AED22AED-E97D-40E3-9839-BF8307EF8B65@hammerspace.com>
- <1a5c70d8-e7f4-4671-a29a-023be7c107fc@app.fastmail.com>
- <178044079821.2082204.6117918610145832039@noble.neil.brown.name>
- <561e9ac6-348f-4d6d-b896-38dbe5ede3bc@app.fastmail.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lmmDKal3"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DA8CD1F00898;
+	Wed,  3 Jun 2026 13:42:50 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1780494171;
+	bh=c1s3wYbkURqhM7qkvJRBzhJenXV+nbjO4FcCfUvzTI0=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=lmmDKal3j5juWoavef85dcQUeUs+HB448UiSj9bp43A2WeRYvNXS4A8q1QaMXMnD8
+	 03NYxRzIKwaZ8yKdBSCAsmwGbPdHk8J1XUYivek+WREcdTrAoSvxoTCT8oVg7sNjsU
+	 UxVWsTyvgB5I+zXGy7OUb8NabqNFk7oVBO0Obx9Vn21a0cSxSYWGyOFJxZffclTRPo
+	 VZHQaMX1+XFowxETj7fNtwkOg8kFtVQIqYajjaP1LqBwyqsO+uuSDiK+Gb3m6oZdDX
+	 +AHyZt1ebA7L+8PpMLdE6Wah/uvaNsH0rsTik1wm17uNxWmDRUrdh/t1JgHZpZ4nMx
+	 DfZDg3QzWzkUg==
+Date: Wed, 3 Jun 2026 09:42:49 -0400
+From: Mike Snitzer <snitzer@kernel.org>
+To: Christian Brauner <brauner@kernel.org>
+Cc: Jeff Layton <jlayton@kernel.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>, Jan Kara <jack@suse.cz>,
+	"Matthew Wilcox (Oracle)" <willy@infradead.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	David Hildenbrand <david@kernel.org>,
+	Lorenzo Stoakes <ljs@kernel.org>,
+	"Liam R. Howlett" <Liam.Howlett@oracle.com>,
+	Vlastimil Babka <vbabka@kernel.org>,
+	Mike Rapoport <rppt@kernel.org>,
+	Suren Baghdasaryan <surenb@google.com>,
+	Michal Hocko <mhocko@suse.com>, Jens Axboe <axboe@kernel.dk>,
+	Ritesh Harjani <ritesh.list@gmail.com>,
+	Chuck Lever <chuck.lever@oracle.com>, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-mm@kvack.org
+Subject: Re: [PATCH v7 3/3] mm: kick writeback flusher for IOCB_DONTCACHE
+ with targeted dirty tracking
+Message-ID: <aiAvWRr_3Y07Ba0V@kernel.org>
+References: <20260511-dontcache-v7-0-2848ddce8090@kernel.org>
+ <20260511-dontcache-v7-3-2848ddce8090@kernel.org>
+ <20260511-zusieht-amputation-efe8b5058cb7@brauner>
+ <7c0880ee25b13f64f71319203fcd7105f54e5ad0.camel@kernel.org>
+ <20260511-caravan-behaupten-0402c454c22d@brauner>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260511-caravan-behaupten-0402c454c22d@brauner>
 
-On 2 Jun 2026, at 23:44, Chuck Lever wrote:
+On Mon, May 11, 2026 at 04:06:42PM +0200, Christian Brauner wrote:
+> On Mon, May 11, 2026 at 09:53:21AM -0400, Jeff Layton wrote:
+> > 
+> > That does look much cleaner. Do you want to just make that change or
+> > would you rather I resend?
+> 
+> I'll just fold it. I already have 1157 mails. I don't need more. :D
+> 
 
-> On Tue, Jun 2, 2026, at 3:53 PM, NeilBrown wrote:
+Hey Christian,
 
->> Idle clients will get pushed back to 1 slot, active client will tend
->> towards a "fair" share based on how comparatively busy they are.
->>
->> This wouldn't help for v3 of course but I don't think we need these
->> advanced features for v3.
->
-> Ben’s employer might disagree with that :-)
+Did you happen to pick this series up from Jeff?  Not seeing it in any
+of your vfs-7.2 topic branches.
 
-Yes - v3 is pretty important to us here.
+I could easily just not be looking in the correct place.
 
-Ben
+Thanks,
+Mike
