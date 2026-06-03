@@ -1,35 +1,35 @@
 Received: from zeniv.linux.org.uk (zeniv.linux.org.uk [62.89.141.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 722DB477E53;
-	Wed,  3 Jun 2026 18:50:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 85DAF477E53;
+	Wed,  3 Jun 2026 18:53:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=62.89.141.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780512619; cv=none; b=rWl1WfdDgtPe4YY642hKGNxa6/JQ+GYcJomBFFvurSjn8AvkAb6ZIO5/FP7fshKTQFl0KsVESHAE+Euz5nLcjTwIi33KnYJWtoSVanwT8dC28tuOUh6mgSDroT0dluiVbc8SszAitc6376sS5YQdpGyhS/2w6k6UYHw5DJJ2sWc=
+	t=1780512808; cv=none; b=Dat67gsoXsXL3GXMd8JkpR63Kj977I58K7AoJD4YygMIUQFsr1oOBoRURXRsa5hFlvkwxeQU9y/k48vKi5+/L5SI2bhXkLGLpsDhO36fSlzhIEQSi9KIldkdqrBG69vZyeW1YR28igE2Y5ytzc+5i4iXSLfFs26Ph0krDiDrSCc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780512619; c=relaxed/simple;
-	bh=SOlEDK8Sh9S2cMXhhYkWYasiHpYHLpJKORMAEbz9zyo=;
+	s=arc-20240116; t=1780512808; c=relaxed/simple;
+	bh=K2DEgpRpwOJi+UD5qGXHaG4TcMBVOTr+6U/sjZHEEkM=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=NU84O7mFiPUiiB4TrpOY8JcAj+1BFmeNT0TorqxnPQkrXMb1SD+Tsx/LTP861qmlOPZwLLvKwn+fWBisbYFOfpWBb2ZerI6BtoA3KWIg+e4E64J7+aIWi/GbK3oE7Jv+LPdU1w6691quxU1cpWMO3o3FZP9UqPFgjuq/y5tmyD0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=SoillID1; arc=none smtp.client-ip=62.89.141.173
+	 Content-Type:Content-Disposition:In-Reply-To; b=aY8DHTmwPYdoLksUvO2RmY0wtgucjRNZpkuC1lO+wdhncXtCdF9WdIbTDY34apM/Q8nc2dB/92HqIEE0COXt7EAHHEwnq0op0p6RH6DusqwdW6y/2vD1Uojm+aRMd0hElXl0xAZQ1rh+9OANKxZprZx9bcfRTFGxP/orj4yS5+U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk; spf=none smtp.mailfrom=ftp.linux.org.uk; dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b=lGDtasK6; arc=none smtp.client-ip=62.89.141.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=zeniv.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=ftp.linux.org.uk
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="SoillID1"
+	dkim=pass (2048-bit key) header.d=linux.org.uk header.i=@linux.org.uk header.b="lGDtasK6"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:Content-Type:
-	MIME-Version:References:Message-ID:Subject:Cc:To:From:Date:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=HQV8SMIS7Y3ZO98u+aiPCRRGt8QfOs3Rmxeaom911Yk=; b=SoillID1fearalSiq+aJ5RD241
-	H8yqIqX4OiMpcxANNHIZPvR6XdNBHvA1mUMM+G9qpBwyUP8YCr7tiE4QxfjMzhtzZ3guxLIKIjgBv
-	sDKpjV56h8JtXuBhiMW5RUmyq+NEB/0FtX3uf/lsMX9GQRaqjrDPN3CzgH0WgLrNAJNsLqowT3Fj/
-	xCG2c/RhVi6dB3sr089gkLt6/ZL+k96vaEtsdEMEb4YrWd78s8rrp+qOE6S4Bge4GMnbvU36Ye/b2
-	440ZzgstzY1UxelZ1S+LgYKtDIyR/wYTZalxy8cXzF3djXE/exINiZV5UIHmg0s5Td37S9FsTLbOD
-	OybePIHw==;
+	d=linux.org.uk; s=zeniv-20220401; h=Sender:In-Reply-To:
+	Content-Transfer-Encoding:Content-Type:MIME-Version:References:Message-ID:
+	Subject:Cc:To:From:Date:Reply-To:Content-ID:Content-Description;
+	bh=BnV94cT53Rbz4Slhp0utYBCUS9p15JXjHvFb5MlM7Qs=; b=lGDtasK6I0razSv00WGBuIB2SX
+	n3RjjNTXMsJ2apU8LPUu5e9RvPFj31fnfwECExgqEDRNjadGf/nGk6XbcJiATqLmqSOlpMXUC+SUE
+	e8jw9cvmO0JLqBgTmxITScCg3mPFDjgFQ7eFafkq/zuVMr01KEI0shvSJvU1YKiYgFHqOssJgDiiD
+	LlXma5ZzF+Yg6hfjOteeiGj39Cvipzz1d/XDfIgEv9gAFl5GqtPZkXbRJgLgDfAxLsfU8opPk0y61
+	zgt9eVyQbHP4TKM18uVW3VXRZYdzkMUoXfRUlD/v8Qlk0XW0LpdtZYtuc8sOUncwd6rYaQ1ad8Iwx
+	iLXLAoaw==;
 Received: from viro by zeniv.linux.org.uk with local (Exim 4.99.2 #2 (Red Hat Linux))
-	id 1wUqfN-0000000FC3C-2Z3m;
-	Wed, 03 Jun 2026 18:50:14 +0000
-Date: Wed, 3 Jun 2026 19:50:13 +0100
+	id 1wUqiS-0000000FCms-1mmu;
+	Wed, 03 Jun 2026 18:53:24 +0000
+Date: Wed, 3 Jun 2026 19:53:24 +0100
 From: Al Viro <viro@zeniv.linux.org.uk>
 To: Jann Horn <jannh@google.com>
 Cc: Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
@@ -40,35 +40,57 @@ Cc: Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
 	stable@vger.kernel.org
 Subject: Re: [PATCH] fhandle: fix UAF due to unlocked ->mnt_ns read in
  may_decode_fh()
-Message-ID: <20260603185013.GZ2636677@ZenIV>
+Message-ID: <20260603185324.GA2636677@ZenIV>
 References: <20260603-vfs-fhandle-uaf-fix-v1-1-ff64ee367e4d@google.com>
  <20260603181523.GW2636677@ZenIV>
- <CAG48ez1DGQ8MbFWWi+n0Br84cBF_wSrNgPqd+NSxAcbAK7WR7g@mail.gmail.com>
- <20260603184151.GY2636677@ZenIV>
+ <20260603182454.GX2636677@ZenIV>
+ <CAG48ez0Jte3UE8wn9Ljs3o2uVDFB24Zbp9zBdaj+D5c4R0+TSQ@mail.gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Content-Disposition: inline
-In-Reply-To: <20260603184151.GY2636677@ZenIV>
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <CAG48ez0Jte3UE8wn9Ljs3o2uVDFB24Zbp9zBdaj+D5c4R0+TSQ@mail.gmail.com>
 Sender: Al Viro <viro@ftp.linux.org.uk>
 
-On Wed, Jun 03, 2026 at 07:41:51PM +0100, Al Viro wrote:
+On Wed, Jun 03, 2026 at 08:46:07PM +0200, Jann Horn wrote:
+> On Wed, Jun 3, 2026 at 8:24 PM Al Viro <viro@zeniv.linux.org.uk> wrote:
+> > On Wed, Jun 03, 2026 at 07:15:23PM +0100, Al Viro wrote:
+> > > On Wed, Jun 03, 2026 at 07:38:06PM +0200, Jann Horn wrote:
+> > >
+> > > > Fix it by taking rcu_read_lock() around the mount::mnt_ns access, like
+> > > > in __prepend_path().
+> > >
+> > > > +   /*
+> > > > +    * Containing namespace.
+> > > > +    * Normally protected by namespace_sem, but there are also lockless
+> > > > +    * readers (which must use RCU to guard against the namespace being
+> > > > +    * freed).
+> > > > +    */
+> > > > +   struct mnt_namespace *mnt_ns;
+> > >
+> > > Umm...  It's somewhat subtle - at the very least you need to explain why
+> > > there will be an RCU delay between umount_tree() clearing that and
+> > > having the sucker freed.
+> >
+> > Something along the lines of "removals from namespace are serialized on
+> > namespace_sem and guaranteed to happen no later than the active
+> > refcount on namespace reaches zero; freeing of namespace happens only
+> > after the passive refcount hitting zero and there's an RCU delay between
+> > dropping the last active ref and dropping the passive one that had been
+> > implicitly held by the fact of having actives", perhaps?  Only in
+> > more readable form than that, please...
+> 
+> Hm, like this?
+> 
+> Containing namespace (active).
 
-> Basically, the store that cleared ->mnt_ns has been done in namespace_sem
-> scope and that scope is either no later than the scope in put_mnt_ns()
+Umm...  That's actually "active or has _just_ dropped the last active
+reference and didn't get around to scheduling decrement of passive refcount
+yet", unfortunately.
 
-argh...  s/either//
-
-> that has dropped the active refcount of ns to zero.  At the beginning
-> of that scope in put_mnt_ns() we are guaranteed to have the passive
-> refcount positive.  Dropping the passive reference happens after an
-> rcu delay started in later in the same namespace_sem scope and namespace
-> is not freed until the passive refcount reaches zero.
-
-TL;DR: your fix is correct, but needs a better explanation of correctness.
-If nothing else, I'd like to have the above findable on lore - I've way
-too many pieces of half-baked docs sitting around in local notes as it is ;-/
+Hell knows - "active or deactivating", perhaps?
