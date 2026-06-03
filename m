@@ -1,172 +1,195 @@
-Received: from mail-ed1-f42.google.com (mail-ed1-f42.google.com [209.85.208.42])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3FDAE3502A3
-	for <linux-nfs@vger.kernel.org>; Wed,  3 Jun 2026 19:09:05 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.208.42
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780513746; cv=pass; b=C7K2k2D31tynx7LFZfTNPyx/ez65J6e4E6LW2PSLt4PCacOP4fY+Bvra8FppbGhC+ZTdEjOJ1F4TRZ8a75r/aCdg4hE5r7jfzXhoQxtqM8PWdgWsHYgjbIMoHeF/A7y8UFGwAJX0wmk3oVGPbuJ996aIVx6CLOth6CpH4jC3pyI=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780513746; c=relaxed/simple;
-	bh=KoIqLl9ia/cQ3vvTGufqzPvmoTqJlnriFaNn4bzxdYg=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=OrHbZHv1e3S937J4AisFB5mLoEcI8pjd6tw2Tw6AvUX6tZzmVRoLXT5BC154OS40KVtrIxcL+5FSW0C8i6gkVmE052+oJaI2yCpRgcAXgI8ReDOcFSU8Mz0KA6/yV07FRFW/lpbp4ZMRlvl0U0eM88rF6CtpHoT2b7Qt4IAwUhU=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=euU2EJvP; arc=pass smtp.client-ip=209.85.208.42
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8671C301704
+	for <linux-nfs@vger.kernel.org>; Wed,  3 Jun 2026 19:14:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1780514098; cv=none; b=Xj2EV5wbGifV3+vANbrvIMOR7h3RCevOBEJejfsLv/uyogqUSVPM3stKMJxMakjgUgvRuoJ1hPymUx+hZY6a8B6wChk5+I33eGEFo71QJ5xetJrbDRWBqGKD7i8T8ha5dCHVLNKgOUJCjJq7jX655CWZT+Rdz9RySq/lQR0YULA=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1780514098; c=relaxed/simple;
+	bh=KlraIHoO9dT7uQixZ1PcG6ChAwDAZ0OPlciMZSGCqQ4=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=arbIcHpwEnMnDLnhz0Ia+y4gMi0Dw+AmdJplKBVymr35zz1akvF+utO2DONXLPGJQ8zI4SByj9sfZbb/WEtPRXBBj3TlvOKAUDg1awCaPN42AnZqvMTIG56s1m1Tb4pgekTVGrlqd1gQ5KMnX/7TaY7eBmJBNCadZLIiVQ7O2ls=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eXA2MGoC; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="euU2EJvP"
-Received: by mail-ed1-f42.google.com with SMTP id 4fb4d7f45d1cf-68bd7ec2371so1620a12.1
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Jun 2026 12:09:05 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1780513744; cv=none;
-        d=google.com; s=arc-20240605;
-        b=jnWaYHuIE0XwRvHsMsPSAGzO3uP9aHi1HP3ytY9Ct97/LoJ+nCaGzCG3YREPpUqc2a
-         eWfa9J12Z6Ne/B1XmAMpgPOm1TxNvXtGwBhiJw/YpzpN1XQ7FoRdt7NzOriId/nO1HKS
-         6Zs7sgano9NjcmTuojBXh0CAUqTLeAty13RbTVjIR0CEzNCn5qsIb6571TcQHxSVsetB
-         JraI9ySedBqhEdP2+r97DjBvWGMzeQHbTDL+EaKTLDWSVYN6KCB+JOE6PFjb8zGRSkkD
-         CafQG7+hEaVUcvz64+H5SmeoIQxJ99HuSDNGRkoH8XCHPqYHOkajuSiZVEhNBtwFai4j
-         xeNQ==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=3BTBjbh7gzisLP+SJ/i8ZyWlLdf3Qeg+7FNqKvmHqeM=;
-        fh=RR3mVOHweUxgKOtNp4R+k0XzbgVlzALrpiHOV2D2AwI=;
-        b=Fx4le+NeEqC6uyUhWmGCkNAxYwym8J8nWWfvGfW7BLvSAPHC4nZKJtPwuOj8AIEeWr
-         ukWhI+aMUx/eJxstiAMi9xy2l2bicEimHbMZ+PoNpHLV2jU6a6FvNb6Oz8ybDneSudsl
-         b7FSEj7jzZJjmv0usYQW4TiHz+muxSzi0b5hR7IpiZcLSdTk65NehBvmTvJJtIfHoG1I
-         oJNG0bt8Kibicrponjte/FP5fKndilV4zX3ItynTwqE2e9PMdKnFiI2B7ayHQZT/aXtF
-         6Xo1JogzSUbH8TXpIz8XCkOE+ePCjsVRBQ5eKoIOxZI/VhVOAUVpKwXj0MKSd8wyLCHR
-         UH5A==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1780513744; x=1781118544; darn=vger.kernel.org;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=3BTBjbh7gzisLP+SJ/i8ZyWlLdf3Qeg+7FNqKvmHqeM=;
-        b=euU2EJvPIcSobslZIDTlm+KwhLhzm6mgfDMMta+3eb2yKyjbYfepdHd3kR0Ot4BcFy
-         eIxT3OepTnUat/zOspR105lTPURT1d8qChCGwOIoQ1EH1ZJlcRoudFcpnZmbGS+Uz5dv
-         5ieFUy7zCxM82v9AeayWk8mi4nvDz2Z8WD19zdeNAWnFBR2uM5k5JbG5ApBUfcs2za+J
-         6pfGO0Q/TNMQyak3vLNzXEM0/5jx2JWmj2nP3Bc/xZAZVbl14PnI3xuZmwNsCC0O1C78
-         lGouqM0Ex6saVn7EPFJc78vZBzffYCLOCyGAhuCtQutiQG7/AqvOO/KK+crCM+GO69X/
-         YTXg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1780513744; x=1781118544;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to;
-        bh=3BTBjbh7gzisLP+SJ/i8ZyWlLdf3Qeg+7FNqKvmHqeM=;
-        b=EpPE9QwNR5dKYE7JVZRfn3bL3m1+9C57MkGMwPh0FCA/TjzidXe7KI9xF5VOEFY1Qo
-         GxGoMzawqCxmXHUQNv8NtvwPt383iJdXI+lGhoxzJiQMx7V42bRCSJW8YUUDHYwyFRKn
-         PAluEkp1jQHL5QW/rmZmSMTNa2buvA3VvnE/V5Z8x6E8L87bqKkpPuf84O+19w2lRiyy
-         7TTvl3bPXsRRikStWjrgoc445+zAU0qkUdzves6dZQFrX7eNXLd+NOg8qW18qr70Bds3
-         H5dFlAunjbxT0QyXms+avGBpHYDAZBZXBjQceV4z2vk52BPq8A3NjEdb9QzBbEDGC3lg
-         O0Dg==
-X-Forwarded-Encrypted: i=1; AFNElJ8h8TRc/gtj/WFWjVK1jYhl7vSuYE2VgFATGTIYlGD7LHCMynPDIM/voeAA06HKc+AsUBWFCFGdMFM=@vger.kernel.org
-X-Gm-Message-State: AOJu0YwEzOT8s9M6Zr05Up6EjPMmXHQve0jmR4vBu/NpigRS0LGM+s4e
-	Kn3utZNtS5wFM1vcz45nCCLuNMgZ0ZTI/gwyEmFjQNudTmqAbtK4+OBujRQs+wfnGqGgE54cHHW
-	hXQfqjbM+Uyx7uCCBEyOsnlcW17qaOqWQnIHr80Tr
-X-Gm-Gg: Acq92OHXOJcyAfFi0KqGKTPtWiKl18vSKTRgtYW5flZIKxRMQYBsfey3/42EQULQ3+f
-	YlNsl3MzTkDmCBLAnbkgquJMiFYaC6Axlu6n+Mxpdoq1h8bPyVPL3yz+I1Opil4ki8mO19xw6UB
-	8+SXFUMbDIHJdomG8v0RuX14we9BCZfy0IsxIRXi7ai4bd5xaIV5t4k+j31APZUngwr3rotHQsk
-	5ULHv2yBJz/UEofueNwVnuEoca48fZtJlys5SVQmiYToX/iWUj5a3qEcItdzZ6womVzK1qVG3Od
-	xFfuZpDFuIWuFZtiDoTRocSL3zXUzzF3lR5qy+9Xg9xKU2jr
-X-Received: by 2002:aa7:d294:0:b0:668:c2b6:9fa2 with SMTP id
- 4fb4d7f45d1cf-68f12dc72c7mr5570a12.7.1780513743150; Wed, 03 Jun 2026 12:09:03
- -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eXA2MGoC"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F278D1F00898;
+	Wed,  3 Jun 2026 19:14:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1780514097;
+	bh=zRiAvnR4/QeSXm7p6R5pu7S/hlCFjtD18rrCTstWfD8=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=eXA2MGoCuJYE5miKpYjCHdpKEKeGAjNsc334Blil8qVtK3DsBHt8qguN/tuW7LOcl
+	 DO3WeIkjFAKU9ef9bcuX9Un7yiS82SOJusdFywpyclWXXClb5XSb6qenHouSP1G5vs
+	 gugT54KpkFxyE8cqktqDEPFfqReW0BHhEsafxtOe75MCa6NV+tw5pfmm88Rt+uTwVE
+	 gMKfx6feWn2v31Qo2QzoDPllztQ45j6mLCx9MS2uQuGr2GulU42fwUpuGTgevOmoSf
+	 rxTCYnfDjprRj8aTqkPg08YBliTcu5rWaRDVglNqKd8m/vXWBDRR5ajBQkv40ZxEYf
+	 OVPRL1kW7VC4w==
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 28ACFF4006C;
+	Wed,  3 Jun 2026 15:14:56 -0400 (EDT)
+Received: from phl-imap-04 ([10.202.2.82])
+  by phl-compute-02.internal (MEProxy); Wed, 03 Jun 2026 15:14:56 -0400
+X-ME-Sender: <xms:MH0gan8ie9l47aKaEqO_h67JR1KsxSmJjMA4EZNhn4YC1Eb_5W68pw>
+    <xme:MH0gauidDgX9-af4clJP-yPeUBzOcTNUnJlpxsB0vyhgAU8Yf45BBU1p-CSlsetFf
+    5NKYUmRNlfJy9JMO--gZKuSHX3y8BsWIp05I122FPKLTZJgf3Q9DR4>
+X-ME-Proxy-Cause: dmFkZTF4B7mJMt3lRrh6wQMVI8cdziCIeAKm30NpqgaNQgENFV8NB97khw/2Hn2Sn+jeeb
+    JFhi+EmGgl9OZSTWDXSJrkm5aHJt22L8jaNUnFYdKn5tLHDZlJ4zkg+sqizEFkSuBUGabr
+    JinbF2LQRjwVtWrGJ9KTFDClbX0pMB/y2/+4oqaWTPIiCjSBj/DPLNwYDXCN5KpWkqFfqE
+    XMkqXFa83en0J3fXhV/F2WxKq8B9Af96uyfxYrZyZWvWRqIDsvbvH81xE7FdFNv3d7TSIO
+    oZQr1SSAJqH6YBJmrYUxwu81GeEL94aMAMWcSB/ZHBv2neyw7d9eooBRWr2Wtxkjx4z7ic
+    E5SYjvbVJqv5AkuIUpCLQ9NKEjP50c4AJFlNqUE9XM8sALm6b2z7ezK64d9NlxsR9UH490
+    /KANSxo35NBiaDXz6wzzbaxRqKtCydWycqhdxpx0d/I2tRZ3zaIQ72tRWtbkP+TNUje6ly
+    dPPezlrQr1x6VorvYzdedy4dKD7BAy05j57QKKSypFCkXo7Y6/tKo95lkFnOqTB13CPBWx
+    XXFcbelytCIqq+OQSwYIo4QQjU85lAU07gvijk1P0dke5ZqBx3UHMRTXFzn7/I1uYPjcZW
+    D3P678kOzvBtRu1HJ2KMjz+012RlagTtw/2r1TM4ZOHy69HbA3ynSNvJKD+Q
+X-ME-Proxy: <xmx:MH0gahmOUHf-Su8FuyttV8u-2Ouv2qCSLzrtEe-EWe7pDJNxt7tBCw>
+    <xmx:MH0gam5WUCyeGgR5lhBHkiKLvV2odkY5ntDeWCV81yCttE4Y-bIe9w>
+    <xmx:MH0ganj8HZG__L-l_fIRwWfzknc7WzeRN2OR29V4jtxwd8h-T-UN2w>
+    <xmx:MH0gajFKoRfBnYjk5-bJ_EUIxEb0xj6HJrYxXQNN_mUD6_60BQKrqQ>
+    <xmx:MH0gatRaDW_U9RNeJbb5qc99IdLBCU77_NnV66fxxy2lgmW4c4n5AjUA>
+Feedback-ID: i20964851:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 01256B6006F; Wed,  3 Jun 2026 15:14:55 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260603-vfs-fhandle-uaf-fix-v1-1-ff64ee367e4d@google.com>
- <20260603181523.GW2636677@ZenIV> <20260603182454.GX2636677@ZenIV>
- <CAG48ez0Jte3UE8wn9Ljs3o2uVDFB24Zbp9zBdaj+D5c4R0+TSQ@mail.gmail.com>
- <20260603185324.GA2636677@ZenIV> <20260603190225.GB2636677@ZenIV>
-In-Reply-To: <20260603190225.GB2636677@ZenIV>
-From: Jann Horn <jannh@google.com>
-Date: Wed, 3 Jun 2026 21:08:26 +0200
-X-Gm-Features: AVHnY4IxxlNTB4Lk88aYUMiy55vdsorSgUlDA_6cJFrKOhsQwOKgMzOyo629T00
-Message-ID: <CAG48ez34NaE5DCdC=VQWFRPds6JHwGq2YJDF5e6XUtGPNfQq+g@mail.gmail.com>
-Subject: Re: [PATCH] fhandle: fix UAF due to unlocked ->mnt_ns read in may_decode_fh()
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
-	Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@kernel.org>, 
-	Amir Goldstein <amir73il@gmail.com>, linux-fsdevel@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	stable@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+X-ThreadId: AuoKuaWt7G2w
+Date: Wed, 03 Jun 2026 15:14:35 -0400
+From: "Anna Schumaker" <anna@kernel.org>
+To: "Pranjal Shrivastava" <praan@google.com>, linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+Cc: "Trond Myklebust" <trondmy@kernel.org>, "Christoph Hellwig" <hch@lst.de>,
+ "Christoph Hellwig" <hch@infradead.org>,
+ "Shivaji Kant" <shivajikant@google.com>
+Message-Id: <29a0511d-5216-46f2-a7e4-9c04ae9b1890@app.fastmail.com>
+In-Reply-To: <20260603053033.3300318-7-praan@google.com>
+References: <20260603053033.3300318-1-praan@google.com>
+ <20260603053033.3300318-7-praan@google.com>
+Subject: Re: [PATCH v1 6/7] nfs: Optimize direct I/O to use folios for requests
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On Wed, Jun 3, 2026 at 9:02=E2=80=AFPM Al Viro <viro@zeniv.linux.org.uk> wr=
-ote:
-> On Wed, Jun 03, 2026 at 07:53:24PM +0100, Al Viro wrote:
-> > On Wed, Jun 03, 2026 at 08:46:07PM +0200, Jann Horn wrote:
-> > > On Wed, Jun 3, 2026 at 8:24=E2=80=AFPM Al Viro <viro@zeniv.linux.org.=
-uk> wrote:
-> > > > On Wed, Jun 03, 2026 at 07:15:23PM +0100, Al Viro wrote:
-> > > > > On Wed, Jun 03, 2026 at 07:38:06PM +0200, Jann Horn wrote:
-> > > > >
-> > > > > > Fix it by taking rcu_read_lock() around the mount::mnt_ns acces=
-s, like
-> > > > > > in __prepend_path().
-> > > > >
-> > > > > > +   /*
-> > > > > > +    * Containing namespace.
-> > > > > > +    * Normally protected by namespace_sem, but there are also =
-lockless
-> > > > > > +    * readers (which must use RCU to guard against the namespa=
-ce being
-> > > > > > +    * freed).
-> > > > > > +    */
-> > > > > > +   struct mnt_namespace *mnt_ns;
-> > > > >
-> > > > > Umm...  It's somewhat subtle - at the very least you need to expl=
-ain why
-> > > > > there will be an RCU delay between umount_tree() clearing that an=
-d
-> > > > > having the sucker freed.
-> > > >
-> > > > Something along the lines of "removals from namespace are serialize=
-d on
-> > > > namespace_sem and guaranteed to happen no later than the active
-> > > > refcount on namespace reaches zero; freeing of namespace happens on=
-ly
-> > > > after the passive refcount hitting zero and there's an RCU delay be=
-tween
-> > > > dropping the last active ref and dropping the passive one that had =
-been
-> > > > implicitly held by the fact of having actives", perhaps?  Only in
-> > > > more readable form than that, please...
-> > >
-> > > Hm, like this?
-> > >
-> > > Containing namespace (active).
-> >
-> > Umm...  That's actually "active or has _just_ dropped the last active
-> > reference and didn't get around to scheduling decrement of passive refc=
-ount
-> > yet", unfortunately.
+Hi Pranjal,
 
-Ah, right, I see, because the mounts of non-anonymous namespaces are
-only cleared in put_mnt_ns() after the active reference drop.
-
-> > Hell knows - "active or deactivating", perhaps?
+On Wed, Jun 3, 2026, at 1:30 AM, Pranjal Shrivastava wrote:
+> Optimize nfs_direct_extract_pages() to group contiguous pages from the
+> same folio into single nfs_page structures. This effectively migrates
+> NFS Direct I/O from being page-based to being folio-based.
 >
-> Note that "active" in such context is easy to mistake for "active referen=
-ce",
-> which it definitely isn't - it does not contribute to active refcount.
-> Mounts within a namespace do not pin it - it's the other way round; they
-> are guaranteed to stay live until they leave the sucker.  Anything that
-> hasn't left by the time the active refcount of namespace drops to zero
-> will get pushed out (and killed off unless there are other references to
-> any such mounts)
+> Reduce the number of nfs_page allocations and subsequent iterations
+> by utilizing nfs_page_create_from_folio() to create aggregated
+> requests.
 
-(And there's also that weird detail of how, for anonymous namespaces,
-the active refcount isn't used and AFAICS never actually drops to
-zero...)
+I am seeing a LOT of failing xfstests after applying this patch (testing
+against various NFS versions over TCP with AUTH_SYS):
 
-So I guess I'll write "Containing namespace (active or deactivating,
-non-refcounted)."?
++-------------+-----------+-------------+-------------+-------------+
+|    testcase | tcp-sys-3 | tcp-sys-4.0 | tcp-sys-4.1 | tcp-sys-4.2 |
++-------------+-----------+-------------+-------------+-------------+
+| generic/091 | failure   | failure     | failure     | failure     |
+| generic/130 | failure   | failure     | failure     | failure     |
+| generic/139 | skipped   | skipped     | skipped     | failure     |
+| generic/143 | skipped   | skipped     | skipped     | failure     |
+| generic/154 | skipped   | skipped     | skipped     | failure     |
+| generic/155 | skipped   | skipped     | skipped     | failure     |
+| generic/183 | skipped   | skipped     | skipped     | failure     |
+| generic/188 | skipped   | skipped     | skipped     | failure     |
+| generic/190 | skipped   | skipped     | skipped     | failure     |
+| generic/196 | skipped   | skipped     | skipped     | failure     |
+| generic/198 | failure   | failure     | failure     | failure     |
+| generic/203 | skipped   | skipped     | skipped     | failure     |
+| generic/214 | skipped   | skipped     | skipped     | failure     |
+| generic/240 | failure   | failure     | failure     | failure     |
+| generic/263 | failure   | failure     | failure     | failure     |
+| generic/287 | skipped   | skipped     | skipped     | failure     |
+| generic/290 | skipped   | skipped     | skipped     | failure     |
+| generic/292 | skipped   | skipped     | skipped     | failure     |
+| generic/330 | skipped   | skipped     | skipped     | failure     |
+| generic/444 | failure   | skipped     | skipped     | skipped     |
+| generic/450 | failure   | failure     | failure     | failure     |
+| generic/451 | failure   | failure     | failure     | failure     |
+| generic/586 | skipped   | skipped     | skipped     | failure     |
+| generic/647 | failure   | failure     | failure     | failure     |
+| generic/708 | failure   | failure     | failure     | failure     |
+| generic/729 | failure   | failure     | failure     | failure     |
+| generic/760 | failure   | failure     | failure     | failure     |
++-------------+-----------+-------------+-------------+-------------+
+
+I'm curious if you've run xfstests against your changes, and if you
+see the same failures?
+
+Thanks,
+Anna
+
+>
+> Signed-off-by: Pranjal Shrivastava <praan@google.com>
+> ---
+>  fs/nfs/direct.c | 36 +++++++++++++++++++++++++++++-------
+>  1 file changed, 29 insertions(+), 7 deletions(-)
+>
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 59002c150f23..93e1af9ec36b 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -194,23 +194,45 @@ static ssize_t nfs_direct_extract_pages(struct 
+> nfs_direct_req *dreq,
+>  		return result;
+> 
+>  	npages = (result + pgbase + PAGE_SIZE - 1) >> PAGE_SHIFT;
+> -	for (i = 0; i < npages; i++) {
+> +	for (i = 0; i < npages; ) {
+> +		unsigned int chunk_len, folio_offset;
+> +		unsigned int nr_to_add = 1;
+>  		struct nfs_page *req;
+> -		unsigned int req_len = min_t(size_t, result - bytes, PAGE_SIZE - pgbase);
+> +		struct folio *folio;
+> 
+> -		req = nfs_page_create_from_page(dreq->ctx, pagevec[i],
+> -						pinned, pgbase, *pos,
+> -						req_len);
+> +		folio = page_folio(pagevec[i]);
+> +		folio_offset = (folio_page_idx(folio, pagevec[i]) << PAGE_SHIFT) + pgbase;
+> +		chunk_len = min_t(size_t, result - bytes, PAGE_SIZE - pgbase);
+> +
+> +		while (i + nr_to_add < npages) {
+> +			struct page *next_page = pagevec[i + nr_to_add];
+> +			struct page *prev_page = pagevec[i + nr_to_add - 1];
+> +
+> +			if (page_folio(next_page) != folio ||
+> +			    next_page != prev_page + 1)
+> +				break;
+> +
+> +			chunk_len += min_t(size_t, result - bytes - chunk_len, PAGE_SIZE);
+> +			nr_to_add++;
+> +		}
+> +
+> +		req = nfs_page_create_from_folio(dreq->ctx, folio,
+> +						  pinned, folio_offset,
+> +						  chunk_len);
+>  		if (IS_ERR(req)) {
+>  			if (!bytes)
+>  				bytes = PTR_ERR(req);
+>  			break;
+>  		}
+> 
+> +		req->wb_index = *pos >> PAGE_SHIFT;
+> +		req->wb_offset = *pos;
+> +
+>  		list_add_tail(&req->wb_list, list);
+>  		pgbase = 0;
+> -		bytes += req_len;
+> -		*pos += req_len;
+> +		bytes += chunk_len;
+> +		*pos += chunk_len;
+> +		i += nr_to_add;
+>  	}
+> 
+>  	if (i < npages) {
+> -- 
+> 2.54.0.1013.g208068f2d8-goog
