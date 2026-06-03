@@ -1,164 +1,164 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f74.google.com (mail-pj1-f74.google.com [209.85.216.74])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E07142F3621
-	for <linux-nfs@vger.kernel.org>; Wed,  3 Jun 2026 03:44:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 798B878F4A
+	for <linux-nfs@vger.kernel.org>; Wed,  3 Jun 2026 05:30:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.74
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780458271; cv=none; b=p5prvQtqjHnxiH20+3zFR4bbuNBWH/FPdqVT0fXmhFfrCjv7Rd2Um/1QahMTym2ssIrSqwwYZfMnswousEDxlzm6S+Masf0sMBlX5EpKwI0v3urBkf5YC8AiMxJgoa303bgKSaaurIPtqDw04OD/mt5ymmibt7w7TOofXz2ucw4=
+	t=1780464638; cv=none; b=CS1SaEY8Z+1UZDdZiVyxrzEb68je8nIY32TJ/oAecuz79BSMjrQQw/CBFRx+KXK7JoS9JpBH0tSfnM1IRWjsKlPC8mIf3ddgN0XarsOIOaP18qzptaJU2mu2mnyCp2rAiJNCWpAj/p6j8v9NZVmsNpSZuBw3i4FOwS3b+C7FQvE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780458271; c=relaxed/simple;
-	bh=Ma6VQUT0hT3gkiRh3qstlFZLI8nW0YY/8No5v3c0AAg=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=Rk190dANzMN2zqzYptcNelLnYIgXbriOSgUdHM58z3W/w/vhsQliFPD4HqjKHzfw7RpFAX+YrF42AV7arRTcLDfLKAFD8vriVWndsswb1JdyOANMQ9fx2OGIx+0LdUPPl5OaMVmWyLUcVB0KOkF03GZwkRMnX8kb0VXD6DiLJOE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=R8grUZnO; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1780464638; c=relaxed/simple;
+	bh=Q0D8jDrRcRHDJM37OlpFYuTE9Um5+/MQvZUeKQkrNhs=;
+	h=Date:Mime-Version:Message-ID:Subject:From:To:Cc:Content-Type; b=nQzxKrPKjtRc3NVpx67ZWf5bxoKCbFquARo8Y7oIGpuvUaJrKjOkxWtmgoQRLzMNvx2szohP5U5rkrx3U30Yem93kglnjKTFSAxYf0QQac2E0JXRerfXzeVsm9NtEdMygnlijYPHoyQ9rAfYROZQK3YhvJfor8mjzVoGzhlRjCw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=flex--praan.bounces.google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=K7n8LFwI; arc=none smtp.client-ip=209.85.216.74
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--praan.bounces.google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="R8grUZnO"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 528261F00893
-	for <linux-nfs@vger.kernel.org>; Wed,  3 Jun 2026 03:44:30 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780458270;
-	bh=9Vd/tR93h1LyQtueJWJsxfuFwPgzBMwt7CI/UBlbxxo=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=R8grUZnOsAonJdvV6KiSTyRTmZ4kFA3TvtnwSXMl+Vwl9b5RGy/Mh3F6Vb33wXfx6
-	 ozL3KN9rAOIcJyX1Loc/ZOkXQKTt9hXUnSCpa+QY79jKjWZz9daJGFwR/aEPc1BC7X
-	 BlovyRuAmsE28jiad0W8KmgjVBwzy0RjqQDCpjipp/zEE0vIZhgTFEtokFK9HbXWL/
-	 Uemf5/fgSQv800jbq6gCVPHgxQuk3NpnzhGNX+UTieaFFd8E+ae2dvtcXEICEWjP0q
-	 Zj3ep0akuvK1o6ekg9kcJnjkkNNYP4/wnnI/53KfXFtbEm+9v06H/ncfKqlBsIIJdj
-	 DyKdtXU+wMGKw==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 678B6F40075;
-	Tue,  2 Jun 2026 23:44:29 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Tue, 02 Jun 2026 23:44:29 -0400
-X-ME-Sender: <xms:HaMfal6mz0xzxjuAibpjYeYA84MQfEnY6jD0ZCf3nkG4DVbSYqj9SQ>
-    <xme:HaMfatsdGQIMmLfcDWTEiGtGZO-czfrtMYtUDL8dydklhrtR2Ia2k2B9jxaVGVa8I
-    WfFPEClXKycWTEylCgqh44hepR9ofF9w6AywNKiCFVgtwVGXTFDsg>
-X-ME-Proxy-Cause: dmFkZTGMY/+llDb7sTQoF++aWRVQKmIchezE6Amfq3M580XZh4aKvBbKjir3ghn1XBjo2j
-    VJtCKL/y1fQnBmpEENB0gtxTCAQtLre+hR0csT+rQqwHerygtD7/mnpq79KveQD5P4Ek3s
-    RKN7BUm3Zoj594ZoIq69Y0+O0XW8SysYw9AHDXZS+9e/Zk8kWQXq14IAr05j4c/CJTgtPQ
-    8usnBGZAgctRGUQsspPK54OVm5kchMncYzophGO7akvMn8uGkHiaZSRTDayqdINmIUyzP8
-    L+2w6McwwgRl0S0taRLUUxZiTRXsdFVxQxPbG96RJ02T55z4ys+jODBrrLP8KC/ZATnHE1
-    cWR9AhrTC7d9G6/KEFhRwoo61LjaKTqJnGgqUWeXxmHh46v0Ap7JGaockub2WU/+KoXTra
-    8vuJQ+zQe8ZiCxU6+zNeTKs+GWd784MA/oprKTbGgvhMPNzHDJr1EO79/sZQ/2AfqbuLi4
-    DRZjkt2RUUu1sLYE++J6+z8MXrVyxCax0MQvF0iH+zO8qAtf61whH/hmmEP3hF1EaW/ACX
-    ern2KdkvkPfTTaC6UzNeY4AeGQ7wG9Dl3scBPvBqxW8hOvai5nph4dyftXSBAtdDZUT/3s
-    7mF1Mes547NBX+QIy/bwLnJFI1d12NzQqvFHkhvtNUHzmwN4O75YGv8BpZlw
-X-ME-Proxy: <xmx:HaMfaigJ1cjBS5zd2O2WkA7CCh0hjEuciZjFhgW3SpzGjkgCnLNO4g>
-    <xmx:HaMfag3k7uJCy6xx8rrEbg2PlIRnaNmaWygfxxFCDLjg1frF5UZpGA>
-    <xmx:HaMfakj912-wZjDUXH0Ae9M0k4vv9hb0q8UsUNUBVS8ZBPOKRNy1Iw>
-    <xmx:HaMfaofVe-mLLgdVyvPxZDafSLHrP1SPam45NZHCML9AEG6iStISzQ>
-    <xmx:HaMfavlH8B12D0KxDMqaI6BtSn1xLirWG2tiT1X8wk02q3VR-l74Rjx3>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 4767D780070; Tue,  2 Jun 2026 23:44:29 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="K7n8LFwI"
+Received: by mail-pj1-f74.google.com with SMTP id 98e67ed59e1d1-36b7f696b40so5165642a91.1
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Jun 2026 22:30:37 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20251104; t=1780464637; x=1781069437; darn=vger.kernel.org;
+        h=cc:to:from:subject:message-id:mime-version:date:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=zvYVhLCrvwQ19orwR9RfHUVycxN5Xiji++Ju2gKa2bM=;
+        b=K7n8LFwIxfvk8fhqCaP/7BmJa9y03iO7hKyv5JLnF9HmSKg3lH1MvYdGj5A8aUdk6E
+         kOmVZPEEPDFP2EEwH8mfGW8xqJ3CjwR4qwL0bkWbEMnNYL6jiXTx4eDoj4/QrIRLwjRt
+         avGX7I/0yVNOxwUNTo38cGgsqXiyLfVCwX+kXg2iEf03wDTrYMJxaWGECeAo0SL2vr5o
+         Oe2tSY4MZ3rZ+2YFV+KP1wyPPwgoL9AlhDamuGw6oqHqYXZY7Li1aDJxfqodgWn+A46l
+         HSQfUk1y2djCGVtcApsK19xs0RR4JdlFRREAHkna5j9Qt5ASXeQzLq8+5URX0mhbKNWa
+         kNSw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1780464637; x=1781069437;
+        h=cc:to:from:subject:message-id:mime-version:date:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=zvYVhLCrvwQ19orwR9RfHUVycxN5Xiji++Ju2gKa2bM=;
+        b=WkpEP0jd3E4jK59tFiIVnhDV/aX2uCku/16UZzasuFNWOUUD1Yqx2+g5h6GI+EpQSb
+         p2ICV6Nt2dRN9pLnWltrofLV0uaXpv8NwP0rChhRNNE/Jsm9yCOCDN2aE1d7I0sicmNr
+         DtBea0WqgR68I52GNzlOgsROLlJCgG1HTdemifdmP5YSHu93giGLcmfD949xGp1QjHNG
+         70p50jy+bYfJjgLjqAjorDe1qRVR3Uvy4DFpO75vfv5vPQINHjj4GFQY6QO8NtTgV99U
+         Ant4Dd6nAGnOHltk3SFykpDPGmGietUWRhllxug/NojzbwCyAMGkT619lgmmB1Ww0Ygz
+         m0aA==
+X-Gm-Message-State: AOJu0Yw8hCLdAlr4epKCoNeRfEZF1TGnM8i9sLlONlNahuD1lzEV/Cs2
+	mCHcEBvnTtzT5dItQUrvIV5AzMdqpx2A4armY/aX/DGC2qgWcgdDAh/FBGJ70SYmgVFJ4/xaZ1S
+	oxTXqdUzjVkLos3g2d2rW6/eGcg8mP40cMONLFYj3z62Hk5nDax8738JAh+KGTB7WMkqVDLCTCs
+	y8cYwAFxDV+A+z1/C4ic6ZLrSmyMePYkKSX2E=
+X-Received: from pjbgc16.prod.google.com ([2002:a17:90b:3110:b0:367:f83b:97d])
+ (user=praan job=prod-delivery.src-stubby-dispatcher) by 2002:a17:90a:c2c5:b0:35c:cba:3453
+ with SMTP id 98e67ed59e1d1-36e33105750mr2104272a91.22.1780464636449; Tue, 02
+ Jun 2026 22:30:36 -0700 (PDT)
+Date: Wed,  3 Jun 2026 05:30:26 +0000
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-MIME-Version: 1.0
-Date: Tue, 02 Jun 2026 20:44:08 -0700
-From: "Chuck Lever" <cel@kernel.org>
-To: NeilBrown <neil@brown.name>
-Cc: "Benjamin Coddington" <ben.coddington@hammerspace.com>,
- "Jeff Layton" <jlayton@kernel.org>, linux-nfs@vger.kernel.org
-Message-Id: <561e9ac6-348f-4d6d-b896-38dbe5ede3bc@app.fastmail.com>
-In-Reply-To: <178044079821.2082204.6117918610145832039@noble.neil.brown.name>
-References: <D33770A1-9098-4F1A-93EF-590E6C0B7638@hammerspace.com>
- <473e337b-fabc-4884-a6c4-0f04b6874d0b@app.fastmail.com>
- <3AB7EB6A-B207-4B91-A695-66C4704D0E31@hammerspace.com>
- <4c5dbb98-0209-4572-8eac-1578536bbd78@app.fastmail.com>
- <AED22AED-E97D-40E3-9839-BF8307EF8B65@hammerspace.com>
- <1a5c70d8-e7f4-4671-a29a-023be7c107fc@app.fastmail.com>
- <178044079821.2082204.6117918610145832039@noble.neil.brown.name>
-Subject: Re: [RFC] knfsd: per-client fair scheduling to prevent single-client
- starvation
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Mime-Version: 1.0
+X-Mailer: git-send-email 2.54.0.1013.g208068f2d8-goog
+Message-ID: <20260603053033.3300318-1-praan@google.com>
+Subject: [PATCH v1 0/7] nfs: Modernize Direct I/O path
+From: Pranjal Shrivastava <praan@google.com>
+To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, Christoph Hellwig <hch@lst.de>, 
+	Christoph Hellwig <hch@infradead.org>, Shivaji Kant <shivajikant@google.com>, 
+	Pranjal Shrivastava <praan@google.com>
+Content-Type: text/plain; charset="UTF-8"
 
+Modernize the NFS Direct I/O path as a preparatory step to enable PCI
+Peer-to-Peer DMA (P2PDMA) support. Following feedback on the initial
+RFC [1], the modernization and architectural changes are split into
+this standalone series.
 
+Currently, NFS O_DIRECT relies on the legacy iov_iter_get_pages_alloc2()
+API which does not support the pinning requirements for P2P memory.
+The implementation moves NFS to the modern iov_iter_extract_pages() API
+and migrates NFS direct I/O away from pages to use folios.
 
-On Tue, Jun 2, 2026, at 3:53 PM, NeilBrown wrote:
-> On Wed, 20 May 2026, Chuck Lever wrote:
->>=20
->> On Tue, May 19, 2026, at 6:02 PM, Benjamin Coddington wrote:
->> > On 19 May 2026, at 14:44, Chuck Lever wrote:
->> >
->> >> On Tue, May 19, 2026, at 5:08 PM, Benjamin Coddington wrote:
->> >>> Just to be clear - the issue I'm exploring isn't the same as when=
- all the
->> >>> kNFSD threads are slow due to their workload.  This is very much a
->> >>> multi-client dynamic where one client (or a group of automated cl=
-ient
->> >>> instances) are able to easily starve another simply because they =
-create the
->> >>> most connections.
->> >>>
->> >>> That's different from the other problem that we've discussed a bu=
-nch at
->> >>> bakeathon and on the list previously.
->> >>>
->> >>> This is not so much a deadlock issue as it is an issue
->> >>> of per-client fairness.  I think this problem is in a different c=
-lass.
->> >>
->> >> Does dynamic svc thread creation have any impact?
->> >
->> > I haven't tested it - I think it would just pin to max-threads for =
-the
->> > workload in question.
->>=20
->> If the aggregate workload consumes all the threads, then that doesn=E2=
-=80=99t
->> sound like xprt scheduling is the bottleneck. But I should look at
->> numbers instead of speculating.
->>=20
->> Are you seeing connection loss in these scenarios?
->>=20
->>=20
->> > I'm probably not understanding you here, because for the problem I'm
->> > interested in fair would look like prioritizing each client's reque=
-st
->> > queue equally, no matter how many xprts each client has.
->>=20
->> Then for NFSv4.1 and later, NFSD might schedule work on the session, =
-and
->> manage each session=E2=80=99s workload by raising and lowering the nu=
-mber of slots
->> in its slot table.
->
-> I agree that managing slot numbers is likely to be a good approach.
-> It doesn't make much sense to allocate to any client more slots than t=
-he
-> maximum number of threads - does it?
->
-> We already have code to reduce slots numbers based on memory pressure.
-> We could extend that to reduce based on demand compared to number of
-> threads.
->
-> e.g. let every client have a least one unused slot until the total slo=
-ts
-> across all clients reaches the maximum number of threads.  Then apply
-> pressure evenly like we do for memory shortage.
+Design
+======
 
-Sensible!
+1. Pin-Awareness
+Standard NFS requests use get_page() and put_page() for memory
+management. However, memory extracted via iov_iter_extract_pages()
+requires explicit pinning.
 
-But these days the number of threads isn=E2=80=99t fixed. As load goes u=
-p the
-number of threads increases.
+Introduce a PG_PINNED flag and a wb_nr_pinned count to struct nfs_page.
+This allows the request lifecycle to track ownership of physical pins
+and ensure that unpinning is performed only when the I/O is complete.
 
+2. API Migration
+Migrate the Direct I/O path to the modern iov_iter_extract_pages()
+API. This aligns NFS with the modern extraction model and serves as
+the foundation for passing ITER_ALLOW_P2PDMA in a follow-up series.
 
-> Idle clients will get pushed back to 1 slot, active client will tend
-> towards a "fair" share based on how comparatively busy they are.
->
-> This wouldn't help for v3 of course but I don't think we need these
-> advanced features for v3.
+3. Extraction Helper and Folio Support
+Introduce a new extraction helper in direct.c to group contiguous
+pages from the same folio into a single struct nfs_page. This
+effectively migrates the Direct I/O path from being page-based to being
+folio-based.
 
-Ben=E2=80=99s employer might disagree with that :-)
+Note: zone_device_pages_have_same_pgmap() checks are intentionally
+omitted in the extraction helper since P2PDMA enablement will be
+introduced in a follow-up series.
 
-I think NFSD might also need to consider LOCALIO workloads.
+Bisectability
+=============
+The series attempts to remain bisectable. 
 
---=20
-Chuck Lever
+[Patches 1-2] Introduce pin-aware infrastructure and accounting.
+[Patch 3] Adds a centralized request release helper.
+[Patch 4] Migrates the Direct I/O path to iov_iter_extract_pages().
+[Patches 5-6] Implement the extraction helper and folio-based grouping.
+[Patch 7] Removes orphaned page-based helpers.
+
+Testing
+=======
+The series lightly tested using fio (bs=1M, size=1G) on a small
+(non-server) machine running Linux 7.1-rc6. Some test logs from a run:
+
+nfs-test: (g=0): rw=read, bs=(R) 1024KiB-1024KiB, (W) 1024KiB-1024KiB, (T) 1024KiB-1024KiB, ioengine=libaio, iodepth=1
+fio-3.42-37-g5b47
+Starting 1 process
+
+nfs-test: (groupid=0, jobs=1): err= 0: pid=33264: Tue Jun  2 23:50:15 2026
+  read: IOPS=5145, BW=5146MiB/s (5396MB/s)(1024MiB/199msec)
+    slat (usec): min=8, max=168, avg=11.12, stdev= 5.16
+    clat (usec): min=153, max=628, avg=182.20, stdev=24.15
+     lat (usec): min=165, max=796, avg=193.33, stdev=27.64
+    clat percentiles (usec):
+     |  1.00th=[  159],  5.00th=[  163], 10.00th=[  165], 20.00th=[  169],
+     | 30.00th=[  172], 40.00th=[  176], 50.00th=[  178], 60.00th=[  182],
+     | 70.00th=[  186], 80.00th=[  194], 90.00th=[  202], 95.00th=[  215],
+     | 99.00th=[  229], 99.50th=[  334], 99.90th=[  408], 99.95th=[  627],
+     | 99.99th=[  627]
+  lat (usec)   : 250=99.32%, 500=0.59%, 750=0.10%
+  cpu          : usr=1.01%, sys=5.56%, ctx=1025, majf=0, minf=265
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=1024,0,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0.00ns, window=0.00ns, percentile=100.00%, depth=1
+
+Run status group 0 (all jobs):
+   READ: bw=5146MiB/s (5396MB/s), 5146MiB/s-5146MiB/s (5396MB/s-5396MB/s), io=1024MiB (1074MB), run=199-199msec
+
+Pranjal Shrivastava (7):
+  nfs: make nfs_page pin-aware
+  nfs: Track number of pinned pages in nfs_page
+  nfs: Introduce nfs_release_request_list helper
+  nfs: migrate direct I/O to iov_iter_extract_pages
+  nfs: introduce nfs_direct_extract_pages helper
+  nfs: Optimize direct I/O to use folios for requests
+  nfs: Cleanup the nfs_page_create_from_page helper
+
+ fs/nfs/direct.c          | 160 ++++++++++++++++++++++-----------------
+ fs/nfs/pagelist.c        |  86 +++++++++++----------
+ fs/nfs/read.c            |   2 +-
+ fs/nfs/write.c           |   2 +-
+ include/linux/nfs_page.h |  12 ++-
+ 5 files changed, 144 insertions(+), 118 deletions(-)
+
+base-commit: 2c9eb6f2c18bff4cf3ddeab96db5137cc2b2572b
+-- 
+2.54.0.1013.g208068f2d8-goog
+
