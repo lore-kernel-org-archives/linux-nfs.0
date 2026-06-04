@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 278B7495506;
-	Thu,  4 Jun 2026 17:06:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C65B9494A07;
+	Thu,  4 Jun 2026 17:06:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780592810; cv=none; b=DIJPein59lHCaRvBrdeUzaaX+AiVc3QOY75N7jiKFSNr2PiYBNO14p+8jMZK+5vbwoqpORfHWZ9vl7rGv5zAPXaJJ8uYWLOt/BXrBdhOvpkkEz0RL8TFJ8HUbissSVl5qrpIv37tmuUlcCZExfTKctkJEwMmLbkQdRuQ6pC9emw=
+	t=1780592810; cv=none; b=jd0QnFIbkZxINhlBLaxssp08lKDE8uin+TTS7r4S7BhmcKa3OQTmo5EwKb8Qh2KPGWO9GXnI+2Mu3iSISbYEr5tHndAuswYBqi9MG2lUP/1pxxBKGwyp027FKg+b4rIe/93jfMdYgTDe5ul0trU7+e2aPBGDlySBKrxHrnqXUVs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1780592810; c=relaxed/simple;
-	bh=XYVLyAOgKNoBxrNZdMaFQroynLzEBdUCTDGVKAkjLW4=;
+	bh=WSt37mqLg4T/lpAoJ2+IxZNJCQyq4ptxzIeH7vtI66Q=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=Zc5zdJIrYFlTM/+xN1ppOVR1N7peSxcJkZXOEH1nrwtB4feIEFpzfx3GUNnPxKtkuxMM7kIZu8yxhuOwgpswi/l7nwR4YokvYOpW6sa7kWG3yZrxye5pb57+H0k6sDXMq/5c0snmVMo8B84Lq7BZ+66VdI8BwsQYRMb4l6owISw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=asZQxmJI; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=shFO8ZyRKGI7FvW5FrTWVWK5ioGTfJM2pT8NHu/3Rb6g2oDUct9JPxYYmJist9ub9Q3RFvCznVEDRiF4SzDjlVH4/I5jY17+PHQQyHrcKoamu8nhqzOW9rJkocEF4+DDC20Wi5VRewCAxh+3pLGbOk8lKb+KyE+cv9+WSGk+VBo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oxAli7J2; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="asZQxmJI"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5C8161F0089D;
-	Thu,  4 Jun 2026 17:06:48 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oxAli7J2"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C1D761F00899;
+	Thu,  4 Jun 2026 17:06:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780592808;
-	bh=GzVXmQBXbXNJdUcl2ivNzB2hxUdWoq7gIQ22NP6MJRI=;
+	s=k20260515; t=1780592807;
+	bh=g4NRllA3XT6u6W1+IYioyO9GYcM9STt7Pby46vN7Jd8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=asZQxmJIGVzdwLqhNWEMnpL7E7EEgANmjULUq52W6gZeIgm6+FcN+8qRfG/d2eQCK
-	 8cP7kRTO847VrLnC68bQmw9LnaQ1YWzTctxEwNIK6CimdXkTHN/nurwPnb6OcmPPsB
-	 bflc2o6rZU0kGFaCz1mhfmCTCFkFTcKexAjyPpaGhki+CCx0J+tEDgrtSBihWf91fF
-	 KtOAEDAZoN+b1XO+eUn3bW+a+Q1Od+le0hVqpOu9jC4GHiwzCAxzCVbqZ/vQq24bfY
-	 qocwwJenkIc5A5xkSmSJXfA9jCsFKK2iKgJG0MqjFF1ivBzUhCn9W4QFCOEl6YS8fI
-	 b0+MRFMqZHE/A==
+	b=oxAli7J2ldHbL9z1TkJZx+rT9Iqu17hnBFZcL0np4oLCNasr3jTjEu8Xb5q5tuFB6
+	 9K3x22W8J+oVS3/WVp0g5ii3mEibuNOSKf4Zez+LRmgVuydodUpEKBCPQYNd0TiyAC
+	 GjLEUMoUDhXE6JTnkRxQ0Qa0TLrGwdneXc+BiqBO2M4KAmcAVcMqIdpLFFGF3um11C
+	 zGjCTHUnqd4n35dxQEaamduQD33j5YpsWLY6zmsZIUXOCe3IUv/y2U/B2Zli7IWwcf
+	 OeuvpYSIh5H7nWR1oeiZ1uWvHnIQmBxK3GnSyfdOw5gG554YUNmQR37I0GPGkOlwx2
+	 /NTUWYW2pDnxA==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 04 Jun 2026 13:06:38 -0400
-Subject: [PATCH 6/8] xprtrdma: Sanitize the reply credit grant after
- parsing
+Date: Thu, 04 Jun 2026 13:06:36 -0400
+Subject: [PATCH 4/8] xprtrdma: Resize reply buffers before reposting
+ receives
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,84 +38,142 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260604-xprtrdma-refcount-v1-6-f74553f461e9@oracle.com>
+Message-Id: <20260604-xprtrdma-refcount-v1-4-f74553f461e9@oracle.com>
 References: <20260604-xprtrdma-refcount-v1-0-f74553f461e9@oracle.com>
 In-Reply-To: <20260604-xprtrdma-refcount-v1-0-f74553f461e9@oracle.com>
 To: Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org, 
  Chuck Lever <chuck.lever@oracle.com>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2077;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4656;
  i=chuck.lever@oracle.com; h=from:subject:message-id;
- bh=++oY3pKCugxl9QCRR5HpHthsN/KvO9lG3F+V861oiSc=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqIbCmTWeNOiLmoif/ciLQodBgmz/aj3tCFO9td
- oHQPm9SfaKJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaiGwpgAKCRAzarMzb2Z/
- lwZND/9j59Q+2KIcyg0rjnoNvxHygmkyVnaIFCMmhLwMxOmuR19CQ4VuV6OZwfcfFs2j1ztLycD
- UyE6VPGRVR2fOS0G2CqKdYpOYzKkizmrdnvGo6jAS2q1UxbB+wrMtUXQFvATMNbLoCkWY7w7lBJ
- hGi1Gzs+V3v4HZKsK5M57bAOJDx10VFXlrHlvRCUP8rn4yq87wwi0WkDh8q6G/GEyuJLxWw881p
- z20YX+oQWU/+3VvI5hN1wl4XqAjCKU1Yn9sQ7zRazD+W0gPYADnbhaiOYzyjj9ZCg47q3pT7d4H
- VYzwKiCztONWWgHAT53U1p+DT3BhhQmw+IWzfT34pctLU8xl4LpN9S1zkYxjyAV36keoESW/aai
- MR4xg3UmX5Jz/sX8ANBbo/Jy/gt89IqciG7dvHnPlXK0OMf6osuoXtxkED3HwLhZJQjX8jJs88v
- yULFO0ySw92t9IhN2Lw9hP+rUCat4LXof7mfd3LCAFLmm6/xzOyr1yYbmj1pGX6/XJS+PBiyMwv
- CzqaLtmBg0V/VCRW4VDl8YmWN1X7US+l/fQeA26MsdNiQaUSeOMycjr1mN0ACMviKQo+JJUasOb
- QyVF85zkhLQS55UZdKHcfZgrVgN8cwHL6zwv+lZXALuTEGO3kF0pIWQJ5y/8P1GNp49WBH9Pz7+
- IAS92ejE1xeZYHQ==
+ bh=Ma9g3Hu8VaQQXVI1XexKA5+0me9Ipx8+UfQ6g2osfuA=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqIbCmBnnGTOlAl3Ey9flnXf1VdugT9Ks+yGMeT
+ NjNk1G9zV+JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaiGwpgAKCRAzarMzb2Z/
+ l1G3D/0X5d4+TwwGNU1rblJx4osJ4YdigvGJAL1pjVlydFrGpDrpGnVhnEn3HWPaEsmrgY9WS+i
+ ZyTV49piZIc4rPYKQjjLuCjxBbhYS77pGJcasijiIRAB1n5VFLFyVR+qeaZsNJpwxGl9gSy88VT
+ Z6ZFnlJBalvxSG05TYGS6/7J+4aCRlppyMjH3LeBQdjv/Nax/68YOZPMk7k8Eb5K+S2T8vDQYxm
+ oX4t/nDAIehDxXL4Y2/qGBgDv+Js6huuKRXgwd9ZP6KAh6ChVrxFY0TiJtiXgs90whSiVNbe7vA
+ XywFYZgyDwv8UkSL10ahoTfUtoX6+qXjo3I4PNJqew6fRnPDv31d8t+T+ISqkDFLAnBHcOuNlBH
+ 9dHY19ki2I+0Xbuyx/s2XlHZ8LN8fKPAfCMPcqBiNGqyRBuPoCA9kQGFPPhdo3Hkk/5D9i8krl5
+ 7wioMsgfZWy77ci3QyD0FzBXTkEAWpccI3QsecFtw9HfOxZY03NgBjKCJ0abDxawlWeqdXK8wjC
+ u1jv3mGAELAy+E0iF5jb7ceZCzJR9cgUYmO7GMbGIPBa275Xl/c6yrLKa+/Y6K2ljoJKka9va5Z
+ 5RwpL3783mYljppFWvZL43nEsUp4af/WCHNqqJH0ZzLNGqkH+TKpptWJmzXKzaes90i2IbbbMZp
+ KvXXnKDj4lOuTuQ==
 X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-The out_norqst exit in rpcrdma_reply_handler() branches away before
-the credit clamp, so a reply that matches no pending request reaches
-out_post carrying the raw credit value parsed from the wire.
-rpcrdma_post_recvs() does not bound its @needed argument: the refill
-loop allocates and chains Receive WRs until the count is satisfied or
-allocation fails. A peer that sends a well-formed reply carrying an
-unknown XID and an inflated credit grant therefore drives rep
-allocation and Receive posting past re_max_requests on every such
-reply.
+Commit 0e13dd9ea8be ("xprtrdma: Remove temp allocation of
+rpcrdma_rep objects") made rpcrdma_rep objects survive disconnects.
+That is normally fine, but it also means their receive regbufs keep
+the size they had when they were first allocated.
 
-Move the clamp to immediately after the credit field is parsed,
-ahead of the first branch that can reach out_post, so every later
-consumer sees a sanitized value. The cwnd update stays on the
-matched-request path.
+Each rep's receive buffer is sized to ep->re_inline_recv when the rep
+is created. rpcrdma_ep_create() resets that threshold to the
+rdma_max_inline_read ceiling for every new endpoint, and the connect
+handshake then shrinks it to the peer's advertised inline send size.
+A rep allocated under a smaller negotiated threshold keeps that size:
+on disconnect, rpcrdma_xprt_disconnect() drains and DMA-unmaps the
+surviving reps but does not free or resize them.
 
-Fixes: 704f3f640f72 ("xprtrdma: Post receive buffers after RPC completion")
+The threshold can come back larger on the next connection. The first
+peer may supply no RPC-over-RDMA CM private data, defaulting its send
+size to 1024, while the reconnect target is an ordinary server
+offering 4096; or, with rdma_max_inline_read raised above its default,
+the reconnect target may advertise a larger svcrdma_max_req_size than
+the first. rpcrdma_post_recvs() then reposts a surviving rep whose SGE
+length is still the old, smaller value, and a larger inline Reply hits
+a receive length error and forces another disconnect.
+
+The undersized rep returns to the free list when its failed Receive
+flushes, so the following reconnect reposts the same rep and fails the
+same way. The transport flaps without making forward progress for as
+long as the peer keeps advertising the larger inline size.
+
+This is local/admin-triggerable rather than remote-triggerable: a local
+administrator must create and maintain the NFS/RDMA mount, while the
+server or reconnect target has to advertise a larger inline send size
+and return a reply that uses it.
+
+Fix this by checking each rep before it is reposted. If the receive
+regbuf is smaller than the current endpoint's inline receive size,
+reallocate it on the current RDMA device's NUMA node and reinitialize
+the rep's xdr_buf before DMA-mapping and posting the Receive WR.
+
+Fixes: 0e13dd9ea8be ("xprtrdma: Remove temp allocation of rpcrdma_rep objects")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c | 31 ++++++++++++++++++++++++++++++-
+ 1 file changed, 30 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 63e64d53e289..5ff086ccd259 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1472,6 +1472,14 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 	credits = be32_to_cpu(*p++);
- 	rep->rr_proc = *p++;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 04b4b0b40a3b..4f763961547b 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -81,6 +81,8 @@ rpcrdma_regbuf_alloc_node(size_t size, enum dma_data_direction direction,
+ 			  int node);
+ static struct rpcrdma_regbuf *
+ rpcrdma_regbuf_alloc(size_t size, enum dma_data_direction direction);
++static bool rpcrdma_regbuf_realloc_node(struct rpcrdma_regbuf *rb,
++					size_t size, gfp_t flags, int node);
+ static void rpcrdma_regbuf_dma_unmap(struct rpcrdma_regbuf *rb);
+ static void rpcrdma_regbuf_free(struct rpcrdma_regbuf *rb);
  
-+	/* The credit grant from the wire is not trustworthy;
-+	 * sanitize it before any code path consumes it.
-+	 */
-+	if (credits == 0)
-+		credits = 1;	/* don't deadlock */
-+	else if (credits > r_xprt->rx_ep->re_max_requests)
-+		credits = r_xprt->rx_ep->re_max_requests;
+@@ -1357,10 +1359,16 @@ rpcrdma_regbuf_alloc(size_t size, enum dma_data_direction direction)
+  * returned, @rb is left untouched.
+  */
+ bool rpcrdma_regbuf_realloc(struct rpcrdma_regbuf *rb, size_t size, gfp_t flags)
++{
++	return rpcrdma_regbuf_realloc_node(rb, size, flags, NUMA_NO_NODE);
++}
 +
- 	if (rep->rr_vers != rpcrdma_version)
- 		goto out_badversion;
++static bool rpcrdma_regbuf_realloc_node(struct rpcrdma_regbuf *rb,
++					size_t size, gfp_t flags, int node)
+ {
+ 	void *buf;
  
-@@ -1488,10 +1496,6 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 	xprt_pin_rqst(rqst);
- 	spin_unlock(&xprt->queue_lock);
+-	buf = kmalloc(size, flags);
++	buf = kmalloc_node(size, flags, node);
+ 	if (!buf)
+ 		return false;
  
--	if (credits == 0)
--		credits = 1;	/* don't deadlock */
--	else if (credits > r_xprt->rx_ep->re_max_requests)
--		credits = r_xprt->rx_ep->re_max_requests;
- 	if (buf->rb_credits != credits)
- 		rpcrdma_update_cwnd(r_xprt, credits);
+@@ -1372,6 +1380,23 @@ bool rpcrdma_regbuf_realloc(struct rpcrdma_regbuf *rb, size_t size, gfp_t flags)
+ 	return true;
+ }
  
++static bool rpcrdma_rep_resize(struct rpcrdma_xprt *r_xprt,
++			       struct rpcrdma_rep *rep)
++{
++	struct rpcrdma_regbuf *rb = rep->rr_rdmabuf;
++	struct rpcrdma_ep *ep = r_xprt->rx_ep;
++	size_t size = ep->re_inline_recv;
++
++	if (likely(rdmab_length(rb) >= size))
++		return true;
++	if (!rpcrdma_regbuf_realloc_node(rb, size, XPRTRDMA_GFP_FLAGS,
++					 ibdev_to_node(ep->re_id->device)))
++		return false;
++
++	xdr_buf_init(&rep->rr_hdrbuf, rdmab_data(rb), rdmab_length(rb));
++	return true;
++}
++
+ /**
+  * __rpcrdma_regbuf_dma_map - DMA-map a regbuf
+  * @r_xprt: controlling transport instance
+@@ -1455,6 +1480,10 @@ void rpcrdma_post_recvs(struct rpcrdma_xprt *r_xprt, int needed)
+ 			break;
+ 		/* I1: a rep on rb_free_reps must carry no rqst pointer. */
+ 		WARN_ON_ONCE(rep->rr_rqst);
++		if (!rpcrdma_rep_resize(r_xprt, rep)) {
++			rpcrdma_rep_put(buf, rep);
++			break;
++		}
+ 		if (!rpcrdma_regbuf_dma_map(r_xprt, rep->rr_rdmabuf)) {
+ 			rpcrdma_rep_put(buf, rep);
+ 			break;
 
 -- 
 2.54.0
