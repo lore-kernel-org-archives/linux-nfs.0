@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D176A494A0F;
-	Thu,  4 Jun 2026 17:06:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 278B7495506;
+	Thu,  4 Jun 2026 17:06:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780592809; cv=none; b=eevFHx7OZQgaRuM1J/grEwDFZmu3E94wBq/1mmHzHU2vs4XG1ChxY0SOFmJ77VgsCpQ52Ih421eJ32XPDHm1PEgBU99CXsvNAFQ/M3T/PLjklXCq5EZUV+rhanajsFH+wYMKJN61FoDNGeJulSMAkztJBvwP7Agn4kPv4khnIG8=
+	t=1780592810; cv=none; b=DIJPein59lHCaRvBrdeUzaaX+AiVc3QOY75N7jiKFSNr2PiYBNO14p+8jMZK+5vbwoqpORfHWZ9vl7rGv5zAPXaJJ8uYWLOt/BXrBdhOvpkkEz0RL8TFJ8HUbissSVl5qrpIv37tmuUlcCZExfTKctkJEwMmLbkQdRuQ6pC9emw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780592809; c=relaxed/simple;
-	bh=gl5u9T/WLsv9NTBax558oFwZ21E9wEI7/d37tIqkhUE=;
+	s=arc-20240116; t=1780592810; c=relaxed/simple;
+	bh=XYVLyAOgKNoBxrNZdMaFQroynLzEBdUCTDGVKAkjLW4=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=mBVqZPI7/uimeEeqQB/wvYTh7y1b3sKyP26FA6Eee6ryjWjeV8Xx2uFiMXD/57ooYKAC51QM6pKMxCWtIGex7qvmqgsqC8z7zw64YQavX7cTKWgeUbCFo4NjWBPMHSTIRf9qfV51fFBqY6UEix6A2+SZwzHm8WTvjWKJ3KCZ0S8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ov6I12f3; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=Zc5zdJIrYFlTM/+xN1ppOVR1N7peSxcJkZXOEH1nrwtB4feIEFpzfx3GUNnPxKtkuxMM7kIZu8yxhuOwgpswi/l7nwR4YokvYOpW6sa7kWG3yZrxye5pb57+H0k6sDXMq/5c0snmVMo8B84Lq7BZ+66VdI8BwsQYRMb4l6owISw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=asZQxmJI; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ov6I12f3"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 832501F0089B;
-	Thu,  4 Jun 2026 17:06:47 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="asZQxmJI"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5C8161F0089D;
+	Thu,  4 Jun 2026 17:06:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780592807;
-	bh=6Q+6ltYCCo2mDT/WucqCnba4SUIQ8Iu39pG0SvFlirY=;
+	s=k20260515; t=1780592808;
+	bh=GzVXmQBXbXNJdUcl2ivNzB2hxUdWoq7gIQ22NP6MJRI=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ov6I12f3LQZKnWLTVy5xfL+FIPgAdCv0SdlVGaRjMs+A/jK7xzSYVMnElTR8ZB2jZ
-	 D6VVpaMuWhC8ORa2rIVNIUNPeuienneYqByTFIenlu2Sq4K0LBuiarsrYgFw0R/Owd
-	 pw6hXyuDcq6wMDVjeHvYeUOsp/46ynqwxsTWKekPz1HT0wtIQ8bGXKgVyHAP8KB3/6
-	 5kXxEOOOdwn8dmCXLtVxLliZlNNwb+z9MvKIAQMxXS1y2kNDxeatzLYzM+p+NPOYzI
-	 Q0l1RCayq9ffL0WfBulO1G/rFxVDslGsFzPOjt2TA7JjoAbIMmuqFgML9+8mLid90u
-	 rV7F9rFKlLTmA==
+	b=asZQxmJIGVzdwLqhNWEMnpL7E7EEgANmjULUq52W6gZeIgm6+FcN+8qRfG/d2eQCK
+	 8cP7kRTO847VrLnC68bQmw9LnaQ1YWzTctxEwNIK6CimdXkTHN/nurwPnb6OcmPPsB
+	 bflc2o6rZU0kGFaCz1mhfmCTCFkFTcKexAjyPpaGhki+CCx0J+tEDgrtSBihWf91fF
+	 KtOAEDAZoN+b1XO+eUn3bW+a+Q1Od+le0hVqpOu9jC4GHiwzCAxzCVbqZ/vQq24bfY
+	 qocwwJenkIc5A5xkSmSJXfA9jCsFKK2iKgJG0MqjFF1ivBzUhCn9W4QFCOEl6YS8fI
+	 b0+MRFMqZHE/A==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 04 Jun 2026 13:06:35 -0400
-Subject: [PATCH 3/8] xprtrdma: Check frwr_wp_create() during connect
+Date: Thu, 04 Jun 2026 13:06:38 -0400
+Subject: [PATCH 6/8] xprtrdma: Sanitize the reply credit grant after
+ parsing
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,82 +38,84 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260604-xprtrdma-refcount-v1-3-f74553f461e9@oracle.com>
+Message-Id: <20260604-xprtrdma-refcount-v1-6-f74553f461e9@oracle.com>
 References: <20260604-xprtrdma-refcount-v1-0-f74553f461e9@oracle.com>
 In-Reply-To: <20260604-xprtrdma-refcount-v1-0-f74553f461e9@oracle.com>
 To: Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org, 
  Chuck Lever <chuck.lever@oracle.com>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1958;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2077;
  i=chuck.lever@oracle.com; h=from:subject:message-id;
- bh=cmYagXODy/yqCft5L24NlmwNLE3KSuDltPN21XJngD8=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqIbCm2N5tJFkWM56VjQjuilO0jCY7YvN+0rQyj
- RUZYHU9y2yJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaiGwpgAKCRAzarMzb2Z/
- l5CZEACneNamZeYhF0hds66EDFP1sRqXIysYcGLa9iKf6U6cvGptGZlTClcmVpJtYzbDVd+6ono
- ax+TcsSuqscaX5zOnV34fkuOT3KaBp4AZHJiPgzRtE+/maBPvbbLS9mfuLFRaQZemxdCo+PEcI+
- Zo0LvUGb+JLgYpFP92zW0geskpGPON1PTugpHu4JCCL50U+3W6/3Im8hMhCf4SGIsbKcm5Y/18k
- 6es96OAXKR7ZYNhwqnrH8Pgj2WbSkJSfnzPSPh7xnC2LjNjiYiYjDj+rGJDHW9vhKkDVZqniIuZ
- tho3ci8QNe7NC3+wCP9+lTDYRxlIJTFknWOFDeTrGk4hYJFa5K2+IIOt4tvb1eOXXodIwTb+I3h
- yJ8esK9PE9gqtjzvEm3DKeFpJgusTT4YIwwdRUNkTdSAxvnLoBvRdYvPQWK8+B7Ny2e5L9/qLFS
- a6OsYVaiI8Oqds/Su8JGUbfTf+NdSi6PLPHp0JHp8mlK3Krde1UFQahhvBHCuiyMAn9FOGqZC+2
- BoHZB/M3dmWbUx/S2Ytw0gpNLLIaLCXAOZB9eHLQ5kj4Remnf1f/OHvCPL6fyJrjiPwnAHxRAZl
- Kelh1ZMDMumJUuT8m67UObnNguKDGSJeohUOi2OUhlR9yOJ91AouWjWblS6nFRGxKGSb3pbcQPE
- LEk2pFpQqrbS1Pg==
+ bh=++oY3pKCugxl9QCRR5HpHthsN/KvO9lG3F+V861oiSc=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqIbCmTWeNOiLmoif/ciLQodBgmz/aj3tCFO9td
+ oHQPm9SfaKJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaiGwpgAKCRAzarMzb2Z/
+ lwZND/9j59Q+2KIcyg0rjnoNvxHygmkyVnaIFCMmhLwMxOmuR19CQ4VuV6OZwfcfFs2j1ztLycD
+ UyE6VPGRVR2fOS0G2CqKdYpOYzKkizmrdnvGo6jAS2q1UxbB+wrMtUXQFvATMNbLoCkWY7w7lBJ
+ hGi1Gzs+V3v4HZKsK5M57bAOJDx10VFXlrHlvRCUP8rn4yq87wwi0WkDh8q6G/GEyuJLxWw881p
+ z20YX+oQWU/+3VvI5hN1wl4XqAjCKU1Yn9sQ7zRazD+W0gPYADnbhaiOYzyjj9ZCg47q3pT7d4H
+ VYzwKiCztONWWgHAT53U1p+DT3BhhQmw+IWzfT34pctLU8xl4LpN9S1zkYxjyAV36keoESW/aai
+ MR4xg3UmX5Jz/sX8ANBbo/Jy/gt89IqciG7dvHnPlXK0OMf6osuoXtxkED3HwLhZJQjX8jJs88v
+ yULFO0ySw92t9IhN2Lw9hP+rUCat4LXof7mfd3LCAFLmm6/xzOyr1yYbmj1pGX6/XJS+PBiyMwv
+ CzqaLtmBg0V/VCRW4VDl8YmWN1X7US+l/fQeA26MsdNiQaUSeOMycjr1mN0ACMviKQo+JJUasOb
+ QyVF85zkhLQS55UZdKHcfZgrVgN8cwHL6zwv+lZXALuTEGO3kF0pIWQJ5y/8P1GNp49WBH9Pz7+
+ IAS92ejE1xeZYHQ==
 X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-frwr_wp_create() creates the singleton Memory Region used to encode
-padding for Write chunks whose payload length is not XDR-aligned. Its
-failure paths return a negative errno and leave ep->re_write_pad_mr set
-to NULL.
+The out_norqst exit in rpcrdma_reply_handler() branches away before
+the credit clamp, so a reply that matches no pending request reaches
+out_post carrying the raw credit value parsed from the wire.
+rpcrdma_post_recvs() does not bound its @needed argument: the refill
+loop allocates and chains Receive WRs until the count is satisfied or
+allocation fails. A peer that sends a well-formed reply carrying an
+unknown XID and an inflated credit grant therefore drives rep
+allocation and Receive posting past re_max_requests on every such
+reply.
 
-rpcrdma_xprt_connect() currently ignores that return value. If
-frwr_wp_create() fails after the rest of the connection setup succeeds,
-xprt_rdma_connect_worker() treats the connection attempt as successful
-and sets XPRT_CONNECTED. A later NFS/RDMA read with a non-4-byte-aligned
-receive page length reaches rpcrdma_encode_write_list(), passes the NULL
-write-pad MR to encode_rdma_segment(), and dereferences it.
+Move the clamp to immediately after the credit field is parsed,
+ahead of the first branch that can reach out_post, so every later
+consumer sees a sanitized value. The cwnd update stays on the
+matched-request path.
 
-This is locally triggerable on an NFS/RDMA client after a connect or
-reconnect hits a local MR allocation, DMA-map, MR-map, or post-send
-failure; a remote peer alone cannot force the local MR setup failure.
-
-Check the return value and fail the connect as -ENOTCONN, matching the
-adjacent setup failures. This keeps XPRT_CONNECTED clear and lets the
-normal reconnect path retry.
-
-Fixes: 21037b8c2258 ("xprtrdma: Provide a buffer to pad Write chunks of unaligned length")
+Fixes: 704f3f640f72 ("xprtrdma: Post receive buffers after RPC completion")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c | 12 +++++++++++-
- 1 file changed, 11 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c | 12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index ea78f82ec4d3..04b4b0b40a3b 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -549,7 +549,17 @@ int rpcrdma_xprt_connect(struct rpcrdma_xprt *r_xprt)
- 		goto out;
- 	}
- 	rpcrdma_mrs_create(r_xprt);
--	frwr_wp_create(r_xprt);
-+
-+	/*
-+	 * rpcrdma_encode_write_list() dereferences the write-pad
-+	 * MR with no NULL check, so fail the connect rather than
-+	 * publish a transport whose write-pad MR is NULL.
-+	 */
-+	rc = frwr_wp_create(r_xprt);
-+	if (rc) {
-+		rc = -ENOTCONN;
-+		goto out;
-+	}
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 63e64d53e289..5ff086ccd259 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -1472,6 +1472,14 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	credits = be32_to_cpu(*p++);
+ 	rep->rr_proc = *p++;
  
- out:
- 	trace_xprtrdma_connect(r_xprt, rc);
++	/* The credit grant from the wire is not trustworthy;
++	 * sanitize it before any code path consumes it.
++	 */
++	if (credits == 0)
++		credits = 1;	/* don't deadlock */
++	else if (credits > r_xprt->rx_ep->re_max_requests)
++		credits = r_xprt->rx_ep->re_max_requests;
++
+ 	if (rep->rr_vers != rpcrdma_version)
+ 		goto out_badversion;
+ 
+@@ -1488,10 +1496,6 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	xprt_pin_rqst(rqst);
+ 	spin_unlock(&xprt->queue_lock);
+ 
+-	if (credits == 0)
+-		credits = 1;	/* don't deadlock */
+-	else if (credits > r_xprt->rx_ep->re_max_requests)
+-		credits = r_xprt->rx_ep->re_max_requests;
+ 	if (buf->rb_credits != credits)
+ 		rpcrdma_update_cwnd(r_xprt, credits);
+ 
 
 -- 
 2.54.0
