@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B70483939A6;
-	Fri,  5 Jun 2026 17:34:53 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 093D63955C2;
+	Fri,  5 Jun 2026 17:34:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780680899; cv=none; b=Xybs0jYoTjqctBKWCpfJ0znl6shp7xDssPfq6M6Z8rSGr9sN9fh45QX1jKLT2hszKF1d0HCm31UgKKXZRBmzrFgkljseDB8sTnwECkEnsz4rPNM+WdQSGAMCL/I0LU2RiqUQuR4JCd6O3VKpr6yIowsu6+/+MUqTUQ+eHyk8NJk=
+	t=1780680900; cv=none; b=RFg2RkQm5rtdAEM2iSJNd9tsXxJ/XUNjHkjUw0pjqRL5a5Yhq8lGw0ON1HxcH2Jb5TnFtqso+L2JA1ffahbI2WL3DyTQeMrt+OR5aIgosEC5SmZwfQ0AuZW2vBcYfEkQBN0dVX2s4l/2TP7El2vSucmcwzaFw1iNV3/QqZny0zI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780680899; c=relaxed/simple;
-	bh=xWRQbnt+CbREWWd/JeVlyE+DmVpyST9DLEbgrEei0/w=;
+	s=arc-20240116; t=1780680900; c=relaxed/simple;
+	bh=HglIQ44p1JzkW1OqmDE1lRj49/YnGPGkbvZzp5Eibe4=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=V2gIAFlGzp82Q00i8T+9FCaPNA0wkobzWJlhtRVtcumNuIddxKw0sjmtfg+1xdQCm5UVEE4vskBA7avuumTWUajqpRuW2Xmu5+8C8xls90EaYbxrYhYQVh9hkbZr+u8kx8rtUiF0RVE46dTd0TMhMHw8h/98BcIKj8y/nlA2Tjw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bS/abJK3; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=EPQaPYddJrAFesh4h5QHouk2HU4qzwE8/oEreB7l1CK2PaBGGIMZiu20ONAUrb6YO97ilT2XIe9UZjX2ZIJkqG3T137JJ+9VPKx/zYBBPQdcxHgm2zceG8EYgSDpIeqgrQbVgGtMAdqG3EmJvx9eHUKtPdb1d/s7hbp5mH3RoyA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LkO2tZUl; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bS/abJK3"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 929591F00893;
-	Fri,  5 Jun 2026 17:34:52 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LkO2tZUl"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 12A541F008A3;
+	Fri,  5 Jun 2026 17:34:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1780680893;
-	bh=S8NVT3n+DweLg9Rp9IYbrAlVDuzEAGo6ikCfN4z9l48=;
+	s=k20260515; t=1780680896;
+	bh=oZKcraY4fYn3iL2WHNgFlTxWUm2e+tse+u94FQr20p0=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=bS/abJK3/EQH758AAy8FW2SKDIVUKuC0eYrtld246gBP+a+TFyNrORnWWUnhkNhac
-	 ZCgBgfTjuIrK2IuLKu7TtBsPO9ynCD5bCmnxxo5sEh/RHmmXQuTyN46aDPUMBAZZYz
-	 i1EmFSezf+g5z4VeAF+Ndon5Vx5qQRjDkPNLVkRr924NUlwQ9RsuMEY9XA7tdwMHl6
-	 SNVgRJn/oeJaJqAUB8YiEnTqr18SWtdNqAWD64i/ylvtewhUhQPgyvPDasVDn4SBuf
-	 S6Izw7uGbqMsUsGC7nHt3pydr2ShZ5xK3KMMCfo2DiF06mx8T+aBldCM98QNk7tMNN
-	 PeoJB2sw5KvJw==
+	b=LkO2tZUlT3zq3SjHqemsziwAl5v+69o+TMgQZZnw/TXLIEKZ2Wy5NMM3I3/bGrhWs
+	 /oxBEq+b1elB2rFgPZk708R3YgabQ7xbQ69n4fZOERmrFwlGrqSJ4471s49CDCgMFL
+	 6wuOtH0i5Jt1iftK9vzrl/yWfHw8Kgdo/kZTmXOmVzCYGJtI2dDYwV7T35ycfUYoeO
+	 A9NlRAq65KGZq85UgoKzZP1h+BPE+OL71MgVFk+gg72n5kEn6gI6z8O9edPeXjSFU1
+	 wA1FxJ1iSkfN0ZojiJNhG+iYsy+nDhWh8JsZIGncpUj9HZGXV5MqYRYZtDdpmmYCsr
+	 THIOjfhq0T4sQ==
 From: Chuck Lever <cel@kernel.org>
-Date: Fri, 05 Jun 2026 13:34:38 -0400
-Subject: [PATCH 4/9] handshake: Pick up session tags passed during the DONE
- downcall
+Date: Fri, 05 Jun 2026 13:34:42 -0400
+Subject: [PATCH 8/9] NFSD: Implement export tagging
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260605-tls-session-tags-v1-4-47bd1d94d552@oracle.com>
+Message-Id: <20260605-tls-session-tags-v1-8-47bd1d94d552@oracle.com>
 References: <20260605-tls-session-tags-v1-0-47bd1d94d552@oracle.com>
 In-Reply-To: <20260605-tls-session-tags-v1-0-47bd1d94d552@oracle.com>
 To: Donald Hunter <donald.hunter@gmail.com>, 
@@ -59,563 +58,292 @@ Cc: kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org,
  linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org, 
  Chuck Lever <chuck.lever@oracle.com>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=20590;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=8660;
  i=chuck.lever@oracle.com; h=from:subject:message-id;
- bh=8YNJPgqohKIpWPKyqoRsZhuhz9Bl90i2LRAkaZSXs8U=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqIwi47+Dh1C80GkL/+wcN6T4/VblscRT8ylrwH
- GX5Sb5s1bKJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaiMIuAAKCRAzarMzb2Z/
- l9lED/0Tyw3JzGduvpjJ4cNBqVndHr2YzoD0flUj2hwURJC3++RpTi38fx2EjOoBNMQIamteM4/
- ewRl0Pr9mOFSvcMhgjGbZHA3wTfbCZ22eogDI4EAR9DBytG1Tmi0/Tzp6yWINHninsenQwdalo+
- 7tRE4uCp2HQf2hfIoLv7n+MsdxjthBrC1hdt4TMCgV3wB6zOHxy7Z2+1MTVYxrMUqh+brH8nql0
- mOE887ebGhfq571AhHcq2/jcR4DHweiX2o4mj/62TiXV4s4d3tjFO8J2Wyi1Z3mgHarTPaqz930
- WD0kKCrTcFZJmGix7cA2cXt4UmOwtXihPrgWCmgixsNV2F0vmMwLlNjDXxEqUzOxx6mwpj4pHpC
- gwnXi9EVjS+TVYchr7tKlaYZ2JNvrFHCo0aV4iRAONEzeHRNtrVulDdrOOPhcrl3b/Gb3b8zsPT
- RPHYvkvMlByjos+BuPXF2vzyEupI9FX9EPsR38hs09277HiTytVpmhULNFHrDyP7BRhjcFDXu39
- iDPRy6VyVvqLvew3/nU8AS1qjX/v2Y26IZvFB45uhIqBULTzNTUz/tAdIcKtZeC+mCY21d5NqO6
- G0gIMxBjk2rXshRbj6bpjEYsHxLMTwXJqSwZOiFGVEue0+x4kEEWQjIgdb0xwHBF7dTyRnfk3QR
- hidaB4KRp1oEyow==
+ bh=Z75fXKsUCBZJlp5fCL7NzCAaYRegS68EyPjbIYJwBig=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqIwi4OvmlCP7Vn3va2SYgyCbWSYdaDK3VvGP+K
+ lv6OPkRVZ2JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaiMIuAAKCRAzarMzb2Z/
+ lwZhEACb0EOdUZ6XEuzudfS4S0GxC56MqZ+6GUAeOElrZlj5iXW+3QU/bRewGyEWYfDdSj0wI6Q
+ C0N/iHLG2UCQUr9IdOyldlUWSpqIk+Xn7AndVus80SH+hntOH/9giBChz+TjzTgzLR2J5hu7dRW
+ bhLzkB1SiyYsIwGS8prfgaXBfIM7jWjfutQODmzj+ZdhF3i3iSDMf5DijEoS4dFcs+nZcM0h+hM
+ KppfMtM5QlrNmSSIcMEs9SGM7NnnuDH+k3farNgpEb2JY/IR3tMifghByHdpg5UBYlplyu1/CBd
+ Yb6raSXkkXOhSxSeVGVYqrkBOpQCuuRo2nPoQG1TDoC0YQPS+FWp4PZH/W5RpA8afwq36C83Oiv
+ w9M81h9n4EJCmkrcNygcr8BblYab1k5SfICxzs/C0S3qpLpRmCq9ZT1HrCQOHLkOT96RIl6e8GX
+ lIPBTP2XSA+vqIbR9zw6IXhI958QakZaTK7bycjacgmxGC2avsvra9amNNpV0Er8ufZD/bXihcv
+ Lq+fNZRDT6PxfQC0JcOyZQOVv1NgIl9yoKj3GPsPFLUs+jqb7uvII3RDJ5m58H/X7+yvhXPU25p
+ di7bEaufLTnI1sDUUI9Wv71dZLrU48cmZvq/bZu5qL32/Z1nO+I4huMb9J+1vG1rCoQYOTLa0uF
+ ve7Ttq+Tcwd8Hiw==
 X-Developer-Key: i=chuck.lever@oracle.com; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
 From: Chuck Lever <chuck.lever@oracle.com>
 
-Upper Layer Protocols such as NFS require access control based on
-TLS certificate characteristics. Parsing x.509 in the kernel
-duplicates work mature userspace libraries already do. The tlshd
-daemon can evaluate certificates against administrator-defined
-policies and assign tags indicating which policies a certificate
-satisfies.
+Today NFSD treats TLS client peer identity as a boolean: either a
+peer is identified (authenticated) or it is not. Some deployments
+need finer authorization than that. A single certificate may
+authenticate several distinct actors, and an administrator may
+wish to grant different levels of access to different peers
+presenting the same certificate.
 
-This change collects session tags from the DONE netlink downcall
-and passes them to handshake consumers via their completion
-callback. Consumers can then make authorization decisions based on
-tag membership without certificate parsing. For example, NFSD can
-restrict export access to connections whose certificate earned a
-particular tag, delegating certificate policy to tlshd
-configuration.
+Once a TLS handshake completes, tlshd hands the kernel a list of
+tags associated with the session. For exports with an allow_tags
+list configured, NFSD tests the handshake tags against that list
+and grants access only when the session carries at least one
+matching tag. Exports with no allow_tags list continue to grant
+access to any authenticated peer, preserving existing behavior.
 
-The tagset is populated by iterating HANDSHAKE_A_DONE_TAG attributes
-from the netlink message and finalized before delivery to consumers.
+Tags accompany only mTLS sessions, so allow_tags is meaningful
+only when xprtsec resolves to mtls alone. svc_export_parse()
+rejects an allow_tags list paired with any other xprtsec mode,
+making the administrator state the combination explicitly rather
+than allowing a default xprtsec setting to silently expose the
+export to plaintext or anonymous-TLS peers.
 
-The genl family runs DONE with parallel_ops, so duplicate or
-concurrent DONE downcalls for the same socket can both reach the
-same handshake_req. Each handler collects into a private local
-tagset, takes a one-completion gate, and on winning publishes the
-set into req->hr_tags by struct assignment. Keeping the gate
-region free of GFP_KERNEL allocations preserves the cancel
-contract: handshake_req_cancel() returning false means the
-consumer callback has run or is about to, with no sleeping work
-remaining. Otherwise a concurrent svc_sock_free() observing the
-gate as taken would free callback data while the delayed callback
-is still pending. Split handshake_complete() into a try/finish
-pair so the netlink handler can collect tags before the gate and
-publish them after winning, refusing duplicates with -EBUSY.
-
-When the count exceeds HANDSHAKE_MAX_SESSIONTAGS, the handler
-truncates the list, logs a single pr_warn_once(), and returns
-success. Failing the DONE with -E2BIG would signal the daemon
-definitively but would also tear down a handshake the operator
-almost certainly wants to keep; the trade-off favors session
-continuity and treats overrun as a misconfiguration to fix in
-tlshd. A subsequent patch advertises the cap on every ACCEPT
-reply so tlshd can avoid overrunning in the first place.
+Tags are parsed from exportfs during cache fill and freed when
+the export cache entry is released. Tagset ownership transfers
+to the cache entry on update so memory is managed correctly
+across the cache lifecycle.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- Documentation/networking/tls-handshake.rst |  56 ++++++++++++++-
- drivers/nvme/host/tcp.c                    |   3 +-
- drivers/nvme/target/tcp.c                  |   3 +-
- include/net/handshake.h                    |  26 ++++++-
- net/handshake/handshake.h                  |   6 ++
- net/handshake/netlink.c                    | 109 ++++++++++++++++++++++++++++-
- net/handshake/request.c                    |  66 ++++++++++++++---
- net/handshake/tlshd.c                      |   5 +-
- net/sunrpc/svcsock.c                       |   5 +-
- net/sunrpc/xprtsock.c                      |   5 +-
- 10 files changed, 266 insertions(+), 18 deletions(-)
+ fs/nfsd/export.c        | 73 +++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfsd/export.h        | 11 ++++++++
+ fs/nfsd/trace.h         | 19 +++++++++++++
+ include/net/handshake.h |  4 +++
+ 4 files changed, 105 insertions(+), 2 deletions(-)
 
-diff --git a/Documentation/networking/tls-handshake.rst b/Documentation/networking/tls-handshake.rst
-index 4f7bc1087df9..352842a74e6b 100644
---- a/Documentation/networking/tls-handshake.rst
-+++ b/Documentation/networking/tls-handshake.rst
-@@ -169,7 +169,8 @@ The synopsis of this function is:
- .. code-block:: c
- 
-   typedef void	(*tls_done_func_t)(void *data, int status,
--                                   key_serial_t peerid);
-+                                   key_serial_t peerid,
-+                                   const struct tagset *tags);
- 
- The consumer provides a cookie in the @ta_data field of the
- tls_handshake_args structure that is returned in the @data parameter of
-@@ -200,6 +201,10 @@ The @peerid parameter contains the serial number of a key containing the
- remote peer's identity or the value TLS_NO_PEERID if the session is not
- authenticated.
- 
-+The @tags parameter points to a tagset containing session metadata
-+assigned by the handshake agent. See the "Session Tags" section
-+below for details on lifetime and safe access patterns.
-+
- A best practice is to close and destroy the socket immediately if the
- handshake failed.
- 
-@@ -220,3 +225,52 @@ received message data is TLS record data or session metadata.
- See tls.rst for details on how a kTLS consumer recognizes incoming
- (decrypted) application data, alerts, and handshake packets once the
- socket has been promoted to use the TLS ULP.
-+
-+
-+Session Tags
-+============
-+
-+When a TLS handshake completes successfully, the handshake agent may
-+assign metadata tags to the session. These tags enable kernel consumers
-+to make authorization decisions based on certificate characteristics
-+without parsing x.509 certificates directly.
-+
-+The handshake agent evaluates the peer's certificate against
-+administrator-defined policies and assigns tags indicating which
-+policies the certificate satisfies. For example, an administrator
-+might configure the agent to assign an "internal-servers" tag when a
-+certificate's Issuer DN matches a particular corporate CA.
-+
-+Tags are delivered to the consumer via the @tags parameter of the
-+completion callback. The tagset is valid only for the duration of the
-+callback. Consumers needing persistent access must copy the tagset
-+using tagset_copy() before returning.
-+
-+To check whether a session has a particular tag:
-+
-+.. code-block:: c
-+
-+  if (tagset_is_member(tags, "internal-servers")) {
-+          /* Certificate matched the internal-servers policy */
-+  }
-+
-+To check whether a session has any tag from a small fixed set:
-+
-+.. code-block:: c
-+
-+  if (tagset_is_member(tags, "admin") ||
-+      tagset_is_member(tags, "operator")) {
-+          /* Certificate matched admin or operator policy */
-+  }
-+
-+When the required set is dynamic (e.g., parsed from an export option),
-+construct a tagset and use tagset_intersection() to test for any
-+overlap. See Documentation/core-api/tagset.rst for the
-+initialization, add, and finalize sequence.
-+
-+If the handshake failed or no tags were assigned, the tagset is
-+empty. The handshake layer always delivers a finalized tagset to
-+the callback, so consumers may call tagset_is_member() and
-+tagset_intersection() unconditionally without a separate guard.
-+
-+See Documentation/core-api/tagset.rst for the complete tagset API.
-diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
-index 15d36d6a728e..d08c03f89661 100644
---- a/drivers/nvme/host/tcp.c
-+++ b/drivers/nvme/host/tcp.c
-@@ -1691,7 +1691,8 @@ static void nvme_tcp_set_queue_io_cpu(struct nvme_tcp_queue *queue)
- 		qid, queue->io_cpu);
- }
- 
--static void nvme_tcp_tls_done(void *data, int status, key_serial_t pskid)
-+static void nvme_tcp_tls_done(void *data, int status, key_serial_t pskid,
-+			      const struct tagset *tags)
- {
- 	struct nvme_tcp_queue *queue = data;
- 	struct nvme_tcp_ctrl *ctrl = queue->ctrl;
-diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
-index 20f150d17a96..7e0132b8ac93 100644
---- a/drivers/nvme/target/tcp.c
-+++ b/drivers/nvme/target/tcp.c
-@@ -1821,7 +1821,8 @@ static int nvmet_tcp_tls_key_lookup(struct nvmet_tcp_queue *queue,
- }
- 
- static void nvmet_tcp_tls_handshake_done(void *data, int status,
--					 key_serial_t peerid)
-+					 key_serial_t peerid,
-+					 const struct tagset *tags)
- {
- 	struct nvmet_tcp_queue *queue = data;
- 
-diff --git a/include/net/handshake.h b/include/net/handshake.h
-index 8ebd4f9ed26e..fa43b108c2a8 100644
---- a/include/net/handshake.h
-+++ b/include/net/handshake.h
-@@ -10,6 +10,14 @@
- #ifndef _NET_HANDSHAKE_H
- #define _NET_HANDSHAKE_H
- 
-+#include <linux/tagset.h>
-+
-+/*
-+ * Per-handshake cap on session tags. Bounds the cost of
-+ * tagset_intersection() in consumer authorization checks.
-+ */
-+#define HANDSHAKE_MAX_SESSIONTAGS	64
-+
- enum {
- 	TLS_NO_KEYRING = 0,
- 	TLS_NO_PEERID = 0,
-@@ -17,8 +25,24 @@ enum {
- 	TLS_NO_PRIVKEY = 0,
- };
- 
-+/**
-+ * typedef tls_done_func_t - TLS handshake completion callback
-+ * @data: opaque context pointer set via tls_handshake_args.ta_data
-+ * @status: zero on success, otherwise a negative errno
-+ * @peerid: serial number of peer identity key, or TLS_NO_PEERID
-+ * @tags: session tags assigned by the handshake agent
-+ *
-+ * Invoked when a TLS handshake completes, either successfully or with
-+ * an error. The @tags parameter points to session metadata assigned
-+ * by the handshake agent based on certificate policy evaluation. The
-+ * tagset is empty when the handshake failed or no policies matched.
-+ *
-+ * The @tags pointer is valid only for the duration of this callback.
-+ * Callers requiring persistent access must copy via tagset_copy().
-+ */
- typedef void	(*tls_done_func_t)(void *data, int status,
--				   key_serial_t peerid);
-+				   key_serial_t peerid,
-+				   const struct tagset *tags);
- 
- struct tls_handshake_args {
- 	struct socket		*ta_sock;
-diff --git a/net/handshake/handshake.h b/net/handshake/handshake.h
-index a48163765a7a..3b32c7971682 100644
---- a/net/handshake/handshake.h
-+++ b/net/handshake/handshake.h
-@@ -10,6 +10,8 @@
- #ifndef _INTERNAL_HANDSHAKE_H
- #define _INTERNAL_HANDSHAKE_H
- 
-+#include <linux/tagset.h>
-+
- /* Per-net namespace context */
- struct handshake_net {
- 	spinlock_t		hn_lock;	/* protects next 3 fields */
-@@ -34,6 +36,7 @@ struct handshake_req {
- 	const struct handshake_proto	*hr_proto;
- 	struct sock			*hr_sk;
- 	void				(*hr_odestruct)(struct sock *sk);
-+	struct tagset			hr_tags;
- 
- 	/* Always the last field */
- 	char				hr_priv[];
-@@ -86,6 +89,9 @@ struct handshake_req *handshake_req_hash_lookup(struct sock *sk);
- struct handshake_req *handshake_req_next(struct handshake_net *hn, int class);
- int handshake_req_submit(struct socket *sock, struct handshake_req *req,
- 			 gfp_t flags);
-+bool handshake_try_complete(struct handshake_req *req);
-+void handshake_finish_complete(struct handshake_req *req, unsigned int status,
-+			       struct genl_info *info);
- void handshake_complete(struct handshake_req *req, unsigned int status,
- 			struct genl_info *info);
- bool handshake_req_cancel(struct sock *sk);
-diff --git a/net/handshake/netlink.c b/net/handshake/netlink.c
-index b989456fc4c5..0c2e68360a73 100644
---- a/net/handshake/netlink.c
-+++ b/net/handshake/netlink.c
-@@ -16,6 +16,7 @@
- 
- #include <net/sock.h>
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index a47c90f40422..a2aaa3cd6c52 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -18,6 +18,7 @@
+ #include <linux/exportfs.h>
+ #include <linux/sunrpc/svc_xprt.h>
  #include <net/genetlink.h>
 +#include <net/handshake.h>
- #include <net/netns/generic.h>
+ #include <uapi/linux/nfsd_netlink.h>
  
- #include <kunit/visibility.h>
-@@ -133,11 +134,83 @@ int handshake_nl_accept_doit(struct sk_buff *skb, struct genl_info *info)
- 	return err;
+ #include "nfsd.h"
+@@ -627,6 +628,7 @@ static void svc_export_release(struct rcu_head *rcu_head)
+ 	struct svc_export *exp = container_of(rcu_head, struct svc_export,
+ 			ex_rcu);
+ 
++	tagset_destroy(&exp->ex_allow_tags);
+ 	nfsd4_fslocs_free(&exp->ex_fslocs);
+ 	export_stats_destroy(exp->ex_stats);
+ 	kfree(exp->ex_stats);
+@@ -1285,6 +1287,55 @@ static int xprtsec_parse(char **mesg, char *buf, struct svc_export *exp)
+ 	return 0;
  }
  
-+/*
-+ * Pick up session tags from the DONE downcall payload into a
-+ * caller-owned tagset. No handshake_req fields are mutated here:
-+ * concurrent DONE handlers each populate a private tagset, and
-+ * the winner of the completion gate publishes its set into
-+ * req->hr_tags by struct assignment.
-+ *
-+ * Return: 0 if tags were processed (some may have been dropped on
-+ * per-tag or bulk allocation pressure, or truncated at
-+ * HANDSHAKE_MAX_SESSIONTAGS); a negative errno if the payload was
-+ * rejected and no tags collected.
-+ */
-+static int handshake_get_sessiontags(struct tagset *tags,
-+				     struct genl_info *info)
++static int tags_parse(char **mesg, char *buf, struct tagset *tags)
 +{
-+	unsigned int count = 0;
-+	struct nlattr *nla;
-+	int rem;
++	unsigned int i, listsize;
++	int err;
 +
-+	/*
-+	 * Reject embedded NUL bytes only. NLA_STRING payloads may
-+	 * arrive with or without a trailing NUL, and nla_strdup()
-+	 * appends the terminator when copying into the tagset.
-+	 * NLA_NUL_STRING would accept a NUL at any offset, and the
-+	 * YAML schema cannot express "no NUL except as terminator,"
-+	 * so the check belongs here.
-+	 */
-+	nlmsg_for_each_attr_type(nla, HANDSHAKE_A_DONE_TAG, info->nlhdr,
-+				 GENL_HDRLEN, rem) {
-+		const char *src = nla_data(nla);
-+		size_t srclen = nla_len(nla);
++	/* more than one allow_tags */
++	if (tags->ts_finalized)
++		return -EINVAL;
 +
-+		if (srclen > 0 && src[srclen - 1] == '\0')
-+			srclen--;
-+		if (srclen == 0 || memchr(src, '\0', srclen))
++	err = get_uint(mesg, &listsize);
++	if (err)
++		return -EINVAL;
++	if (listsize == 0 || listsize > NFSD_MAX_ALLOW_TAGS)
++		return -EINVAL;
++	if (!tagset_alloc(tags, listsize, GFP_KERNEL))
++		return -ENOMEM;
++
++	for (i = 0; i < listsize; i++) {
++		int len;
++
++		len = qword_get(mesg, buf, PAGE_SIZE);
++		if (len <= 0 || len > HANDSHAKE_SESSION_TAG_MAX_LEN)
 +			return -EINVAL;
-+		count++;
++		if (strlen(buf) != len)
++			return -EINVAL;
++		if (!tagset_add_dup(tags, buf, GFP_KERNEL))
++			return -ENOMEM;
 +	}
-+	if (count == 0)
-+		return 0;
-+	if (count > HANDSHAKE_MAX_SESSIONTAGS) {
-+		pr_warn_once("handshake: too many session tags (%u > %u)\n",
-+			     count, HANDSHAKE_MAX_SESSIONTAGS);
-+		count = HANDSHAKE_MAX_SESSIONTAGS;
-+	}
-+	if (!tagset_alloc(tags, count, GFP_KERNEL)) {
-+		pr_warn_once("handshake: dropping session tags under memory pressure\n");
-+		return 0;
-+	}
++	tagset_finalize(tags);
 +
-+	nlmsg_for_each_attr_type(nla, HANDSHAKE_A_DONE_TAG, info->nlhdr,
-+				 GENL_HDRLEN, rem) {
-+		char *tag;
-+
-+		/*
-+		 * The first pass may have clamped count to
-+		 * HANDSHAKE_MAX_SESSIONTAGS. Stop here to avoid
-+		 * alloc/free churn on excess attributes.
-+		 */
-+		if (tagset_count(tags) >= count)
-+			break;
-+
-+		tag = nla_strdup(nla, GFP_KERNEL);
-+		if (!tag)
-+			continue;
-+		if (!tagset_add(tags, tag))
-+			kfree(tag);
-+	}
 +	return 0;
 +}
 +
- int handshake_nl_done_doit(struct sk_buff *skb, struct genl_info *info)
++/*
++ * Session tags are issued only with an mTLS handshake, so an
++ * allow_tags list is meaningful only when xprtsec resolves to
++ * mtls alone. Reject combinations that would otherwise let
++ * plaintext or anonymous-TLS peers reach the export without
++ * ever consulting the tag list. Every producer of a svc_export
++ * must apply this check after it has resolved both fields.
++ */
++static int check_allow_tags(const struct svc_export *exp)
++{
++	if (!tagset_is_empty(&exp->ex_allow_tags) &&
++	    exp->ex_xprtsec_modes != NFSEXP_XPRTSEC_MTLS)
++		return -EINVAL;
++	return 0;
++}
++
+ static inline int
+ nfsd_uuid_parse(char **mesg, char *buf, unsigned char **puuid)
  {
- 	struct net *net = sock_net(skb->sk);
- 	struct handshake_req *req;
- 	struct socket *sock;
-+	DEFINE_TAGSET(tags);
- 	int fd, status, err;
+@@ -1346,6 +1397,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 	exp.cd = cd;
+ 	exp.ex_devid_map = NULL;
+ 	exp.ex_xprtsec_modes = NFSEXP_XPRTSEC_ALL;
++	tagset_init(&exp.ex_allow_tags);
  
- 	if (GENL_REQ_ATTR_CHECK(info, HANDSHAKE_A_DONE_SOCKFD))
-@@ -161,10 +234,42 @@ int handshake_nl_done_doit(struct sk_buff *skb, struct genl_info *info)
- 	status = -EIO;
- 	if (info->attrs[HANDSHAKE_A_DONE_STATUS])
- 		status = nla_get_u32(info->attrs[HANDSHAKE_A_DONE_STATUS]);
-+	err = 0;
-+	if (!status) {
-+		int ret = handshake_get_sessiontags(&tags, info);
+ 	/* expiry */
+ 	err = get_expiry(&mesg, &exp.h.expiry_time);
+@@ -1389,6 +1441,8 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 				err = secinfo_parse(&mesg, buf, &exp);
+ 			else if (strcmp(buf, "xprtsec") == 0)
+ 				err = xprtsec_parse(&mesg, buf, &exp);
++			else if (strcmp(buf, "allow_tags") == 0)
++				err = tags_parse(&mesg, buf, &exp.ex_allow_tags);
+ 			else
+ 				/* quietly ignore unknown words and anything
+ 				 * following. Newer user-space can try to set
+@@ -1399,6 +1453,10 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 				goto out4;
+ 		}
  
--	handshake_complete(req, status, info);
-+		if (ret < 0) {
-+			err = ret;
-+			trace_handshake_cmd_done_err(net, req, sock->sk, err);
-+			status = -EIO;
-+		}
-+	}
++		err = check_allow_tags(&exp);
++		if (err)
++			goto out4;
 +
-+	/*
-+	 * Take the unique-completer gate after collection so the gate
-+	 * region contains no GFP_KERNEL allocations. handshake_req_cancel()
-+	 * observers must not see the gate as taken while sleeping work
-+	 * remains here, or they will free callback data while the consumer
-+	 * callback is still pending.
-+	 */
-+	if (!handshake_try_complete(req)) {
-+		trace_handshake_cmd_done_err(net, req, sock->sk, -EBUSY);
-+		tagset_destroy(&tags);
-+		sockfd_put(sock);
-+		return -EBUSY;
-+	}
-+
-+	/*
-+	 * Publish the locally-collected tagset. req->hr_tags was
-+	 * initialized empty by handshake_req_alloc() and no other writer
-+	 * can reach it past the gate, so a struct assignment cleanly
-+	 * transfers ownership of the heap-allocated tag array.
-+	 */
-+	req->hr_tags = tags;
-+
-+	handshake_finish_complete(req, status, info);
- 	sockfd_put(sock);
--	return 0;
-+	return err;
+ 		err = check_export(&exp.ex_path, &exp.ex_flags, exp.ex_uuid);
+ 		if (err)
+ 			goto out4;
+@@ -1441,6 +1499,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 	} else
+ 		err = -ENOMEM;
+ out4:
++	tagset_destroy(&exp.ex_allow_tags);
+ 	nfsd4_fslocs_free(&exp.ex_fslocs);
+ 	kfree(exp.ex_uuid);
+ out3:
+@@ -1568,6 +1627,8 @@ static void export_update(struct cache_head *cnew, struct cache_head *citem)
+ 		new->ex_flavors[i] = item->ex_flavors[i];
+ 	}
+ 	new->ex_xprtsec_modes = item->ex_xprtsec_modes;
++	new->ex_allow_tags = item->ex_allow_tags;
++	tagset_init(&item->ex_allow_tags);
  }
  
- static unsigned int handshake_net_id;
-diff --git a/net/handshake/request.c b/net/handshake/request.c
-index 2829adbeb149..2215a9916727 100644
---- a/net/handshake/request.c
-+++ b/net/handshake/request.c
-@@ -79,6 +79,7 @@ static void handshake_req_destroy(struct handshake_req *req)
- 		req->hr_proto->hp_destroy(req);
- 	rhashtable_remove_fast(&handshake_rhashtbl, &req->hr_rhash,
- 			       handshake_rhash_params);
-+	tagset_destroy(&req->hr_tags);
- 	kfree(req);
- }
- 
-@@ -124,6 +125,7 @@ struct handshake_req *handshake_req_alloc(const struct handshake_proto *proto,
+ static struct cache_head *svc_export_alloc(void)
+@@ -1588,6 +1649,8 @@ static struct cache_head *svc_export_alloc(void)
  		return NULL;
+ 	}
  
- 	INIT_LIST_HEAD(&req->hr_list);
-+	tagset_init(&req->hr_tags);
- 	req->hr_proto = proto;
- 	return req;
- }
-@@ -284,19 +286,67 @@ int handshake_req_submit(struct socket *sock, struct handshake_req *req,
- }
- EXPORT_SYMBOL(handshake_req_submit);
- 
--void handshake_complete(struct handshake_req *req, unsigned int status,
--			struct genl_info *info)
-+/**
-+ * handshake_try_complete - Take the unique-completer gate
-+ * @req: handshake request being completed
-+ *
-+ * The DONE netlink op runs with parallel_ops, so duplicate or
-+ * concurrent DONE downcalls for the same socket can both reach
-+ * the same @req. The gate ensures that exactly one caller drives
-+ * completion to the consumer.
-+ *
-+ * The gate is also observable via handshake_req_cancel(): once
-+ * taken, cancel returns %false to indicate completion is in
-+ * flight. Callers must therefore not perform sleeping work
-+ * between handshake_try_complete() and handshake_finish_complete(),
-+ * or a concurrent cancel will see the gate taken while the
-+ * consumer callback has not yet run, and may free callback data
-+ * out from under it.
-+ *
-+ * Return: %true if the caller has won the gate and is now
-+ * responsible for calling handshake_finish_complete(); %false
-+ * otherwise.
-+ */
-+bool handshake_try_complete(struct handshake_req *req)
-+{
-+	return !test_and_set_bit(HANDSHAKE_F_REQ_COMPLETED, &req->hr_flags);
-+}
++	tagset_init(&i->ex_allow_tags);
 +
-+/**
-+ * handshake_finish_complete - Deliver completion to the consumer
-+ * @req: handshake request being completed
-+ * @status: completion status to deliver
-+ * @info: netlink message context, or NULL
-+ *
-+ * Caller must have won the gate via handshake_try_complete().
-+ * Finalizes hr_tags, invokes the consumer's done callback, and
-+ * drops the sock reference taken at submit.
+ 	return &i->h;
+ }
+ 
+@@ -1815,8 +1878,14 @@ __be32 check_xprtsec_policy(struct svc_export *exp, struct svc_rqst *rqstp)
+ 	}
+ 	if (exp->ex_xprtsec_modes & NFSEXP_XPRTSEC_MTLS) {
+ 		if (test_bit(XPT_TLS_SESSION, &xprt->xpt_flags) &&
+-		    test_bit(XPT_PEER_AUTH, &xprt->xpt_flags))
+-			return nfs_ok;
++		    test_bit(XPT_PEER_AUTH, &xprt->xpt_flags)) {
++			if (tagset_is_empty(&exp->ex_allow_tags))
++				return nfs_ok;
++			if (tagset_intersection(&xprt->xpt_handshake_tags,
++						&exp->ex_allow_tags))
++				return nfs_ok;
++			trace_nfsd_export_tags_denied(exp);
++		}
+ 	}
+ 	return nfserr_wrongsec;
+ }
+diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+index d2b09cd76145..c315cb4f0538 100644
+--- a/fs/nfsd/export.h
++++ b/fs/nfsd/export.h
+@@ -7,6 +7,7 @@
+ 
+ #include <linux/sunrpc/cache.h>
+ #include <linux/percpu_counter.h>
++#include <linux/tagset.h>
+ #include <uapi/linux/nfsd/export.h>
+ #include <linux/nfs4.h>
+ 
+@@ -47,6 +48,15 @@ struct exp_flavor_info {
+ 	u32	flags;
+ };
+ 
++/*
++ * Cap on the number of tags in an export's allow_tags list. This
++ * is an export policy limit, independent of the per-handshake cap
++ * on session tags (HANDSHAKE_MAX_SESSIONTAGS). It bounds the cost
++ * of the tagset_intersection() that check_xprtsec_policy() runs
++ * per request against a tagged export.
 + */
-+void handshake_finish_complete(struct handshake_req *req, unsigned int status,
-+			       struct genl_info *info)
- {
- 	struct sock *sk = req->hr_sk;
- 	struct net *net = sock_net(sk);
- 
--	if (!test_and_set_bit(HANDSHAKE_F_REQ_COMPLETED, &req->hr_flags)) {
--		trace_handshake_complete(net, req, sk, status);
--		req->hr_proto->hp_done(req, status, info);
-+	trace_handshake_complete(net, req, sk, status);
-+	/*
-+	 * Finalize unconditionally so consumers may call
-+	 * tagset_is_member() and tagset_intersection() without
-+	 * tripping the !ts_finalized WARN on paths where no DONE
-+	 * tags were collected.
-+	 */
-+	tagset_finalize(&req->hr_tags);
-+	req->hr_proto->hp_done(req, status, info);
- 
--		/* Handshake request is no longer pending */
--		sock_put(sk);
--	}
-+	/* Handshake request is no longer pending */
-+	sock_put(sk);
-+}
++#define NFSD_MAX_ALLOW_TAGS	64
 +
-+void handshake_complete(struct handshake_req *req, unsigned int status,
-+			struct genl_info *info)
-+{
-+	if (handshake_try_complete(req))
-+		handshake_finish_complete(req, status, info);
- }
- EXPORT_SYMBOL_IF_KUNIT(handshake_complete);
+ /* Per-export stats */
+ enum {
+ 	EXP_STATS_FH_STALE,
+@@ -78,6 +88,7 @@ struct svc_export {
+ 	struct rcu_head		ex_rcu;
+ 	unsigned long		ex_xprtsec_modes;
+ 	struct export_stats	*ex_stats;
++	struct tagset		ex_allow_tags;
+ };
  
-diff --git a/net/handshake/tlshd.c b/net/handshake/tlshd.c
-index 8f9532a15f43..9bcaeba74f8c 100644
---- a/net/handshake/tlshd.c
-+++ b/net/handshake/tlshd.c
-@@ -26,7 +26,8 @@
+ /* an "export key" (expkey) maps a filehandlefragement to an
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index d01496aa3cf8..a426da9efebf 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -467,6 +467,25 @@ TRACE_EVENT(nfsd_export_update,
+ 	)
+ );
  
- struct tls_handshake_req {
- 	void			(*th_consumer_done)(void *data, int status,
--						    key_serial_t peerid);
-+						    key_serial_t peerid,
-+						    const struct tagset *tags);
- 	void			*th_consumer_data;
++TRACE_EVENT(nfsd_export_tags_denied,
++	TP_PROTO(
++		const struct svc_export *exp
++	),
++	TP_ARGS(exp),
++	TP_STRUCT__entry(
++		__string(path, exp->ex_path.dentry->d_name.name)
++		__string(auth_domain, exp->ex_client->name)
++	),
++	TP_fast_assign(
++		__assign_str(path);
++		__assign_str(auth_domain);
++	),
++	TP_printk("path=%s domain=%s",
++		__get_str(path),
++		__get_str(auth_domain)
++	)
++);
++
+ DECLARE_EVENT_CLASS(nfsd_io_class,
+ 	TP_PROTO(struct svc_rqst *rqstp,
+ 		 struct svc_fh	*fhp,
+diff --git a/include/net/handshake.h b/include/net/handshake.h
+index fa43b108c2a8..d7411dbf5253 100644
+--- a/include/net/handshake.h
++++ b/include/net/handshake.h
+@@ -11,10 +11,14 @@
+ #define _NET_HANDSHAKE_H
  
- 	int			th_type;
-@@ -105,7 +106,7 @@ static void tls_handshake_done(struct handshake_req *req,
- 		set_bit(HANDSHAKE_F_REQ_SESSION, &req->hr_flags);
+ #include <linux/tagset.h>
++#include <uapi/linux/handshake.h>
  
- 	treq->th_consumer_done(treq->th_consumer_data, -status,
--			       treq->th_peerid[0]);
-+			       treq->th_peerid[0], &req->hr_tags);
- }
- 
- #if IS_ENABLED(CONFIG_KEYS)
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 50e5e7f5b762..b4ad84910687 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -453,13 +453,16 @@ static void svc_tcp_kill_temp_xprt(struct svc_xprt *xprt)
-  * @data: address of xprt to wake
-  * @status: status of handshake
-  * @peerid: serial number of key containing the remote peer's identity
-+ * @tags: session tags assigned by the handshake agent; valid only for
-+ *        the duration of this callback
-  *
-  * If a security policy is specified as an export option, we don't
-  * have a specific export here to check. So we set a "TLS session
-  * is present" flag on the xprt and let an upper layer enforce local
-  * security policy.
+ /*
+  * Per-handshake cap on session tags. Bounds the cost of
+  * tagset_intersection() in consumer authorization checks.
++ * The per-tag byte limit is HANDSHAKE_SESSION_TAG_MAX_LEN,
++ * generated from Documentation/netlink/specs/handshake.yaml
++ * and enforced by the netlink policy at the kernel boundary.
   */
--static void svc_tcp_handshake_done(void *data, int status, key_serial_t peerid)
-+static void svc_tcp_handshake_done(void *data, int status, key_serial_t peerid,
-+				   const struct tagset *tags)
- {
- 	struct svc_xprt *xprt = data;
- 	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 2e1fe6013361..b5e88ad64d63 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2590,9 +2590,12 @@ static int xs_tcp_tls_finish_connecting(struct rpc_xprt *lower_xprt,
-  * @data: address of xprt to wake
-  * @status: status of handshake
-  * @peerid: serial number of key containing the remote's identity
-+ * @tags: session tags assigned by the handshake agent; valid only for
-+ *        the duration of this callback
-  *
-  */
--static void xs_tls_handshake_done(void *data, int status, key_serial_t peerid)
-+static void xs_tls_handshake_done(void *data, int status, key_serial_t peerid,
-+				  const struct tagset *tags)
- {
- 	struct rpc_xprt *lower_xprt = data;
- 	struct sock_xprt *lower_transport =
+ #define HANDSHAKE_MAX_SESSIONTAGS	64
+ 
 
 -- 
 2.54.0
