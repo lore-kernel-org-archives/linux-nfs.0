@@ -1,241 +1,85 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9269730BB8D
-	for <linux-nfs@vger.kernel.org>; Sat,  6 Jun 2026 06:50:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+Received: from linux.microsoft.com (linux.microsoft.com [13.77.154.182])
+	by smtp.subspace.kernel.org (Postfix) with ESMTP id DC607279792;
+	Sat,  6 Jun 2026 06:50:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=13.77.154.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780728632; cv=none; b=i2iz7UOZ+NUkAN0xXUltmJHcZdR6waYyj5kM7xnOSFQ8lJatVA2yKM6qmBnQu8IioSfnSq3uF22gQeC55oVavt0O9PZ+LXWO/AR4EwdiMpnFqYuUqVSyzOUju9r8OWT/TCD3FokmNBLven6uHbEphqmu7F3xErjaRSKTw7Fj0no=
+	t=1780728636; cv=none; b=pt2goQqdwv0fjPwuq+FSLnhegUbeefZXbX2lxc2EYXyDjtcEOoLWDlsrsjbjF2K5zkgnBnTjnOmwGQRDtEzXV5HBGGcg7+/J1odONGY6F0rTRHIPr3BVMUlfWLmLjo1aVv9gbvpEGdSGpOv3+KNzkO5I4mSrNhx0ePZqiiA0xy4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780728632; c=relaxed/simple;
-	bh=mZ6n5uJ1ZteVItGvTIrv7pLcH69uIZzyeNkeLWt+Q74=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=IC+iVJBVMT5HM4KfPQ5YIe+w8jmgI/vfBUzrtvC5wMQSDK4YGY/sd1wnQbdVAt/N4XxtJT9C/Er9pjSiR4kTjckPEa0bKqVCLhdmzQKqowF3e26fRM9jXIg0Ml+WjHyRHwxZ/ZdUcGEeOM1P6tk/ju7pKW9EwGO4H89gwGh3UUw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=gPfDus5E; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=rPqUY4Xe; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=gPfDus5E; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=rPqUY4Xe; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+	s=arc-20240116; t=1780728636; c=relaxed/simple;
+	bh=ASMxGY4gAKSv+Sd0n3ZxR7MzaocXG9g17duQbi24vfE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=huMcXgsP+8wGscazLKPP6kwBabOsFKMX52R+0hxPRMkHwyOoT0qsZSvh598lZ1tHvVht6yYI10G3r1ZDnJCByMQJjJsnFiKD+dpADK167hQ2izlFtgMpv926rHup3htPjkDThO3UQNjY74UMiaIZfDdaws7HsWm6PZcOpvjI74A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com; spf=pass smtp.mailfrom=linux.microsoft.com; dkim=pass (1024-bit key) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.b=KEzT5ARs; arc=none smtp.client-ip=13.77.154.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.microsoft.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.microsoft.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="gPfDus5E";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="rPqUY4Xe";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="gPfDus5E";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="rPqUY4Xe"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id C296F7597D;
-	Sat,  6 Jun 2026 06:50:28 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1780728628; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=rvt2vGx4S/k0PWl6Och5u/xCveJMdLesOxSs5tDhidI=;
-	b=gPfDus5E16B/NKoAxuPGz0NuotfDYmI1mKsStTw7l9cjRHQRV9Jp8s1Iqq0/pbOmT1Qt3H
-	dWMckhftiYWKmEMFVjwqp6nytS7i5N9CvjToiTuMCgYkA2ZTrfJ1CoHOP+z0gck3Z28BLB
-	+0czm7plvVpZnuGuR6yn+i8N7DvjrNA=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1780728628;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=rvt2vGx4S/k0PWl6Och5u/xCveJMdLesOxSs5tDhidI=;
-	b=rPqUY4XeHXenaJZZaX4MOzr6MTGx+3vUomaJPYy5q7heVoTJ5zVilSMVB3+AZBXU8UZg20
-	lXbdhNFu0Wxpx7BA==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=gPfDus5E;
-	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=rPqUY4Xe
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1780728628; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=rvt2vGx4S/k0PWl6Och5u/xCveJMdLesOxSs5tDhidI=;
-	b=gPfDus5E16B/NKoAxuPGz0NuotfDYmI1mKsStTw7l9cjRHQRV9Jp8s1Iqq0/pbOmT1Qt3H
-	dWMckhftiYWKmEMFVjwqp6nytS7i5N9CvjToiTuMCgYkA2ZTrfJ1CoHOP+z0gck3Z28BLB
-	+0czm7plvVpZnuGuR6yn+i8N7DvjrNA=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1780728628;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=rvt2vGx4S/k0PWl6Och5u/xCveJMdLesOxSs5tDhidI=;
-	b=rPqUY4XeHXenaJZZaX4MOzr6MTGx+3vUomaJPYy5q7heVoTJ5zVilSMVB3+AZBXU8UZg20
-	lXbdhNFu0Wxpx7BA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 988CC779A7;
-	Sat,  6 Jun 2026 06:50:22 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id OIgXBS7DI2o4aAAAD6G6ig
-	(envelope-from <hare@suse.de>); Sat, 06 Jun 2026 06:50:22 +0000
-Message-ID: <b6a45225-a189-4fa4-ba75-ef47d71839fc@suse.de>
-Date: Sat, 6 Jun 2026 08:50:17 +0200
+	dkim=pass (1024-bit key) header.d=linux.microsoft.com header.i=@linux.microsoft.com header.b="KEzT5ARs"
+Received: by linux.microsoft.com (Postfix, from userid 1173)
+	id 2E00E20B7168; Fri,  5 Jun 2026 23:50:20 -0700 (PDT)
+DKIM-Filter: OpenDKIM Filter v2.11.0 linux.microsoft.com 2E00E20B7168
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.microsoft.com;
+	s=default; t=1780728620;
+	bh=tH653NbSmWShhrqHO75KERtMHsrIkCDX+cA3uzofLOg=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To:From;
+	b=KEzT5ARsTUjn6reKkrwdJaP7fkQibLP6EKL9DaShkDrim6pD7moeJVUPAXAFqlZiQ
+	 OnfLBe62DFRgqYAS5Yd48xXb3yUZCG/vEiTDp6IzwMs+lyR4jmyZXx4wy/jztlHm0R
+	 gddWF2Cgp+XOPCA6cSrjf9I2QsnfupBBairNheVA=
+Date: Fri, 5 Jun 2026 23:50:20 -0700
+From: Erni Sri Satya Vennela <ernis@linux.microsoft.com>
+To: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: Bart Van Assche <bvanassche@acm.org>, mkalderon@marvell.com,
+	Jason Gunthorpe <jgg@ziepe.ca>, Leon Romanovsky <leon@kernel.org>,
+	zyjzyj2000@gmail.com, sagi@grimberg.me, mgurtovoy@nvidia.com,
+	haris.iqbal@ionos.com, jinpu.wang@ionos.com, kbusch@kernel.org,
+	Jens Axboe <axboe@kernel.dk>, Christoph Hellwig <hch@lst.de>,
+	kch@nvidia.com, smfrench@gmail.com, linkinjeon@kernel.org,
+	metze@samba.org, tom@talpey.com, chuck.lever@oracle.com,
+	jlayton@kernel.org, neil@brown.name, okorniev@redhat.com,
+	Dai.Ngo@oracle.com, trondmy@kernel.org, anna@kernel.org,
+	achender@kernel.org, davem@davemloft.net, edumazet@google.com,
+	kuba@kernel.org, pabeni@redhat.com, horms@kernel.org,
+	kees@kernel.org, ebadger@purestorage.com,
+	linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org,
+	target-devel@vger.kernel.org, linux-nvme@lists.infradead.org,
+	linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+	linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+	rds-devel@oss.oracle.com, Jason Gunthorpe <jgg@nvidia.com>
+Subject: Re: [PATCH rdma-next v6] RDMA: Change capability fields in
+ ib_device_attr from int to u32
+Message-ID: <aiPDLFM0xYlDYQFc@linuxonhyperv3.guj3yctzbm1etfxqx2vob5hsef.xx.internal.cloudapp.net>
+References: <20260601092534.1764560-1-ernis@linux.microsoft.com>
+ <5d3cac2b-4011-49c5-a142-55c85d38e90f@acm.org>
+ <ah6gtquGDMvEXjcb@ashevche-desk.local>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [RFC] NFS: named client identities for mTLS mounts and a
- per-namespace .nfs keyring
-To: Sagi Grimberg <sagi@grimberg.me>, Chuck Lever <cel@kernel.org>,
- linux-nfs@vger.kernel.org
-Cc: keyrings@vger.kernel.org, kernel-tls-handshake@lists.linux.dev,
- netdev@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
- Anna Schumaker <anna@kernel.org>, Christoph Hellwig <hch@lst.de>,
- David Howells <dhowells@redhat.com>, Jarkko Sakkinen <jarkko@kernel.org>
-References: <20260602154740.49861-1-cel@kernel.org>
- <24407ad6-9462-47ca-a9bc-53f6a8680c00@grimberg.me>
-Content-Language: en-US
-From: Hannes Reinecke <hare@suse.de>
-In-Reply-To: <24407ad6-9462-47ca-a9bc-53f6a8680c00@grimberg.me>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: C296F7597D
-X-Spam-Flag: NO
-X-Spam-Score: -4.51
-X-Spam-Level: 
-X-Spamd-Result: default: False [-4.51 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-0.984];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	ARC_NA(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	MIME_TRACE(0.00)[0:+];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	RCPT_COUNT_SEVEN(0.00)[11];
-	RCVD_TLS_ALL(0.00)[];
-	TO_DN_SOME(0.00)[];
-	RCVD_COUNT_TWO(0.00)[2];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	MID_RHS_MATCH_FROM(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.de:dkim,suse.de:email,suse.de:mid];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	DKIM_TRACE(0.00)[suse.de:+]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <ah6gtquGDMvEXjcb@ashevche-desk.local>
 
-On 6/5/26 23:44, Sagi Grimberg wrote:
+On Tue, Jun 02, 2026 at 12:21:58PM +0300, Andy Shevchenko wrote:
+> On Mon, Jun 01, 2026 at 08:51:40AM -0700, Bart Van Assche wrote:
+> > On 6/1/26 2:25 AM, Erni Sri Satya Vennela wrote:
 > 
+> ...
 > 
-> On 02/06/2026 18:47, Chuck Lever wrote:
->> Today, exactly one x.509 certificate and private key pair can be
->> used at a time for all NFS mounts. The location of that pair is
->> set in /etc/tlshd/config.
->>
->> We currently have an awkward experimental mechanism for specifying
->> an alternative x.509 certificate and private key for an xprtsec=mtls
->> NFS mount, but it needs to be completed so it can be documented and
->> advertised for use.
->>
->> I asked Claude to write a rough draft of a design document that
->> outlines what needs to be done to finish the work. I would like
->> input on the kernel-side mechanism in particular for the
->> per-network-namespace keyring and the way userspace reaches it.
->>
->>
->> Problem
->> =======
->>
->> NFS mutual-TLS mounts (xprtsec=mtls) need the client to present an
->> x.509 certificate and prove possession of its private key. The
->> handshake runs in userspace in tlshd; the kernel hands tlshd the
->> credentials by keyring serial number over the handshake genetlink
->> upcall.
->>
->> The only front end today is two undocumented integer mount options:
->>
->>      mount -o xprtsec=mtls,cert_serial=723847,privkey_serial=723848 \
->>            server:/export /mnt
->>
->> The administrator must load the cert and key into the keyring out of
->> band, discover the integer serials, and paste them onto the command
->> line. Serials are opaque, non-reproducible across boots, and easy to
->> transpose. There is also no isolation: nfs_tls_key_verify() does a
->> global key_lookup() on the serial, and the .nfs keyring created in
->> fs/nfs/inode.c is module-global and never referenced again -- any tlshd
->> that learns a serial can read the key.
->>
->> This RFC proposes a named, per-mount client-identity interface backed
->> by a provisioning CLI, and fixes the keyring to isolate credentials per
->> network namespace. The kernel handshake ABI (integer serials over
->> genetlink) does not change.
->>
->>
->> The cross-subsystem ask: a per-netns .nfs keyring
->> =================================================
->>
->> Network namespace is the correct isolation domain. tlshd is bound to a
->> network namespace, not a user namespace: it services sockets passed up
->> from the kernel over the per-netns handshake genetlink socket, and one
->> tlshd runs per network namespace that needs TLS-protected mounts.
->>
->>    - Replace the dead module-global .nfs keyring with one keyring per
->>      network namespace, held in struct nfs_net (fs/nfs/netns.h) and
->>      allocated at nfs_net_init(). The keys subsystem otherwise
->>      namespaces on user_namespace, so this is a kernel-held object
->>      referenced from nfs_net (like today's global keyring, but one per
->>      netns). The DNS resolver's per-netns key scoping (net->key_domain,
->>      request_key_net()) is precedent that netns-scoped key handling is
->>      acceptable.
+> > > -	sdev->srq_size = min(srpt_srq_size, sdev->device->attrs.max_srq_wr);
+> > > +	sdev->srq_size = min_t(u32, srpt_srq_size, sdev->device->attrs.max_srq_wr);
+> > 
+> > min_t() shouldn't be used if there is an alternative available. For the
+> > SRP drivers, please make sure that both arguments of min() are unsigned
+> > instead of using min_t().
 > 
-> Should we consider unifying .nfs and .nvme to a single one? that is handled
-> the same way? maybe .tlshd? That is where the keys stored are directed 
-> to...
-> 
-Not sure if that buys us anything. I already have a patchset pending to
-move the NVMe DH-HMAC-CHAP keys into the kernel keyring, and that will
-also use the .nvme keyring without having any relationship with tlshd.
+> Ah, I just answered in similar way against v5. I also mentioned clamp() there.
 
-Also NVMe and NFS are using fundamentally different keys (PSK for NVMe,
-X.509 certificates for NFS), so I don't think we get much benefit from 
-there.
+Yes. I'll be incorporating those changes in the next version.
 
-_If_ NVMe would be moving to X.509 things might be different, but there
-is no interest in that and the TPAR for that got shelved.
-
->>
->>    - tlshd attaches at handshake time, not at launch. This matters: the
->>      keyring may be empty or freshly created when tlshd starts, so
->>      linking it by name at startup is the wrong model. Instead NFS sets
->>      ta_keyring to the netns .nfs keyring serial in
->>      xs_tls_handshake_sync(), the kernel sends it as
->>      HANDSHAKE_A_ACCEPT_KEYRING, and tlshd links that serial into its
->>      session keyring per handshake -- the path tlshd already implements.
->>      Linking grants tlshd possession of the keyring and, through it, of
->>      the possessor-scoped cert and privkey keys.
->>
->>    - Credential keys are created possessor-readable only (no
->>      KEY_USR_READ). That is what makes isolation enforceable rather
->>      than advisory: a key provisioned in namespace A is absent from B's
->>      keyring and unreadable by B's tlshd even if its serial leaks.
+- Vennela
 > 
-> tlshd on ns-A should be able to read it though right?
+> -- 
+> With Best Regards,
+> Andy Shevchenko
 > 
-Why? Reading is all tlshd will ever do, so granting read access to all 
-keys irrespective of the namespace just brings us back to the current 
-situation.
-
-Cheers,
-
-Hannes
--- 
-Dr. Hannes Reinecke                  Kernel Storage Architect
-hare@suse.de                                +49 911 74053 688
-SUSE Software Solutions GmbH, Frankenstr. 146, 90461 Nürnberg
-HRB 36809 (AG Nürnberg), GF: I. Totev, A. McDonald, W. Knoblich
