@@ -1,44 +1,33 @@
-Received: from mailtransmit05.runbox.com (mailtransmit05.runbox.com [185.226.149.38])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A3FD63672BF;
-	Mon,  8 Jun 2026 21:21:19 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.226.149.38
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 02F541DCB24;
+	Tue,  9 Jun 2026 00:33:44 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780953686; cv=none; b=nrNepnP6TVAxouF5jcjjiWT6BEsgPistg7ro20E1/RHcVPt4ug+csJ3vxozBsMQxWFk0B+kN1Jh/v55ywxVTDG4MAo/fToty3qoPW7J5Qn6h6EESirJHQ2XtOhnITazXLPhk4fxUoH+aEW8RulyNmQ04iJxvY4gAX8yjPUs5Lxk=
+	t=1780965225; cv=none; b=fojRQamG05HY9ewZOdgpWWYuFBm0s/9vMPQYmxqg4GvpLJ+SU4fMhN/TATJlz4GcAPWVfUJKWRXGj9nvBXAk+BddfXgoR091tN2mtu3Yl7VpQYV1n9ywGJ0GBlp0D2nYR1r1z9OX4Edh6YNblNbo9WTjmaA4peaRXoofCYjsSvQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780953686; c=relaxed/simple;
-	bh=egWOoaaqXt1+UVcxIEhP1EitYptOww9/tWrFG0vvRD4=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=KC3mKgcfu3w1GKOAco/o/RnS27FO5/+SdrV3HsPMtUyBLYApIpILjIfAMb+REIffa7oVhmEUPzKdQW0GXcBg0JB3pYWT8VX9pto+kIyksyRQ5BFFkSOwHYWgvqRT9JhYMQWxpHQbEtxKeTLueNgeNNCYWnvI1+PIwOgnAptA8oc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=runbox.com; dkim=pass (2048-bit key) header.d=runbox.com header.i=@runbox.com header.b=TvvOk6f7; arc=none smtp.client-ip=185.226.149.38
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=runbox.com
+	s=arc-20240116; t=1780965225; c=relaxed/simple;
+	bh=8RuU++UwisR5fPXlzSFXkEWmO/woXKh12mt3rGjxlKc=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=mzwGO0dDSYsm1WeeWRGEDjApqy6rQbDCdcWaQqMQt6FQkWFM1eFZgxQ93dmcQMk2+ztyTa4w7dsiU08yuuant7hoAvye82huzh89Y1dI/Pgr7i7ViBFLclwXMD4uUoSWSOKmljtKwcPMcFhG3KV+Z2h3qXxiF4OXoksj9KWu1SA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dmTUDU2Z; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=runbox.com header.i=@runbox.com header.b="TvvOk6f7"
-Received: from mailtransmit02.runbox ([10.9.9.162] helo=aibo.runbox.com)
-	by mailtransmit05.runbox.com with esmtps  (TLS1.2) tls TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-	(Exim 4.93)
-	(envelope-from <david.laight.linux_spam@runbox.com>)
-	id 1wWhPA-00DHid-Pb; Mon, 08 Jun 2026 23:21:08 +0200
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=runbox.com;
-	 s=selector1; h=Content-Transfer-Encoding:MIME-Version:Message-Id:Date:
-	Subject:Cc:To:From; bh=9AH+JyauRLTOH+85B17AQVXc5O2GdDHQvow28dcMLG4=; b=TvvOk6
-	f7szFsQtmKotAJ6gVq1GRj29e8Q9rQKHL2DEtNtyvMh2p656fzoArOw/8nOPP9qhFys4NLrNfjCpb
-	pGTzzjCzH50oCnVul8r+LjeKLuTIY60lKvI6YOC+q3hiEce3gcMPq8m05B0HfQRyD84UAenq4p+l4
-	enTz+Sn+NCvVGfWYI1FTIvzOCtQq8OCCRc1qJH6KBf1GJv2Df6n6a8t/uUvjstFuDyO92sJ+iXEI7
-	14PmztXzMINK7ca+Tx0pGZgzLNTgvJnoVgZzm4qVj/b6xF2A6fPtA42Cx3Kkqaqlec/T5U8h2niQn
-	f9vdBUsMm8PNLAVQg3rlU+6o/G4Q==;
-Received: from [10.9.9.72] (helo=submission01.runbox)
-	by mailtransmit02.runbox with esmtp (Exim 4.86_2)
-	(envelope-from <david.laight.linux_spam@runbox.com>)
-	id 1wWhP5-0000mA-0F; Mon, 08 Jun 2026 23:21:03 +0200
-Received: by submission01.runbox with esmtpsa  [Authenticated ID (1493616)]  (TLS1.2:ECDHE_SECP256R1__RSA_PSS_RSAE_SHA256__AES_256_GCM:256)
-	(Exim 4.95)
-	id 1wWhOw-00BdAe-5r;
-	Mon, 08 Jun 2026 23:20:54 +0200
-From: David Laight <david.laight.linux@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>,
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dmTUDU2Z"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 99C081F00893;
+	Tue,  9 Jun 2026 00:33:43 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1780965224;
+	bh=rPhf1brFQBHAvLs45E4bbHeOYrSE211UYIuxCAmTF1g=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=dmTUDU2ZlUO4gwkiZWtliHtXJGzfrAshvkbRmyeUnycw+K4qztRaSxRmSTVmwePrY
+	 96DZ9UpOX+PiuMqMXJN4x13AK7P9HbSP8fcgh5R0J9Xkm80Kn6MZ8PdOub62USFoeX
+	 6P7yL15zFbDDpfpduYQIxPAO1cimmfrrhTfW4vh/muN7m7CulRrbDMcOP35x04cyaf
+	 gWsb5ik+DVd/tUn1iQVPlt4wQPDDPOJTvoQ7HflkIcKgB9U/DgHyHGBZl8RGe2eIg/
+	 Kd3m4Z+VLULeCWPwsiUPdFrBIAXwJ4/9PEpPgQV7h2hOTek53VRYS2Uz099sk3dYYd
+	 6iZXruyrOaGcg==
+From: Chuck Lever <cel@kernel.org>
+To: Jeff Layton <jlayton@kernel.org>,
 	NeilBrown <neil@brown.name>,
 	Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
@@ -46,109 +35,43 @@ To: Chuck Lever <chuck.lever@oracle.com>,
 	Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>,
 	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Cc: David Laight <david.laight.linux@gmail.com>,
+	linux-kernel@vger.kernel.org,
+	David Laight <david.laight.linux@gmail.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
 	Geert Uytterhoeven <geert+renesas@glider.be>,
 	Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Subject: [PATCH 1/1] sunrpc: Use "%*phN" to dprintk() a cookie
-Date: Mon,  8 Jun 2026 22:20:42 +0100
-Message-Id: <20260608212042.25476-1-david.laight.linux@gmail.com>
-X-Mailer: git-send-email 2.39.5
+Subject: Re: [PATCH 1/1] sunrpc: Use "%*phN" to dprintk() a cookie
+Date: Mon,  8 Jun 2026 20:33:37 -0400
+Message-ID: <178096512225.86595.10611807401110857204.b4-ty@b4>
+X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20260608212042.25476-1-david.laight.linux@gmail.com>
+References: <20260608212042.25476-1-david.laight.linux@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
 
-Simplifies the code and removes a 'not obviously bounded' strcpy().
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Delete the local function nlmdbg_cookie2a() that did the equivalent.
+On Mon, 08 Jun 2026 22:20:42 +0100, David Laight wrote:
+> Simplifies the code and removes a 'not obviously bounded' strcpy().
+> 
+> Delete the local function nlmdbg_cookie2a() that did the equivalent.
+> 
+> There is no need to worry about cookie->len being more than
+> NLM_MAXCOOKIELEN (32), the buffer holding it is only that long.
+> The existing length checks must pre-date this code being added in 2.4.26.
+> 
+> [...]
 
-There is no need to worry about cookie->len being more than
-NLM_MAXCOOKIELEN (32), the buffer holding it is only that long.
-The existing length checks must pre-date this code being added in 2.4.26.
+Applied to nfsd-testing, thanks!
 
-Signed-off-by: David Laight <david.laight.linux@gmail.com>
----
+[1/1] lockd: Use "%*phN" to dprintk() a cookie
+      commit: 926ef0ef7994232faab29e6b13270d5c88b058f3
 
-Found by a local build that errors strcpy() unless a constant string
-is being written into an array.
-
- fs/lockd/svclock.c | 42 +++++-------------------------------------
- 1 file changed, 5 insertions(+), 37 deletions(-)
-
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index b98b1d0ada35..bcf261078aba 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -47,40 +47,6 @@ static const struct rpc_call_ops nlmsvc_grant_ops;
- static LIST_HEAD(nlm_blocked);
- static DEFINE_SPINLOCK(nlm_blocked_lock);
- 
--#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
--static const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
--{
--	/*
--	 * We can get away with a static buffer because this is only called
--	 * from lockd, which is single-threaded.
--	 */
--	static char buf[2*NLM_MAXCOOKIELEN+1];
--	unsigned int i, len = sizeof(buf);
--	char *p = buf;
--
--	len--;	/* allow for trailing \0 */
--	if (len < 3)
--		return "???";
--	for (i = 0 ; i < cookie->len ; i++) {
--		if (len < 2) {
--			strcpy(p-3, "...");
--			break;
--		}
--		sprintf(p, "%02x", cookie->data[i]);
--		p += 2;
--		len -= 2;
--	}
--	*p = '\0';
--
--	return buf;
--}
--#else
--static inline const char *nlmdbg_cookie2a(const struct nlm_cookie *cookie)
--{
--	return "???";
--}
--#endif
--
- /*
-  * Insert a blocked lock into the global list
-  */
-@@ -155,11 +121,12 @@ nlmsvc_lookup_block(struct nlm_file *file, struct nlm_lock *lock)
- 	spin_lock(&nlm_blocked_lock);
- 	list_for_each_entry(block, &nlm_blocked, b_list) {
- 		fl = &block->b_call->a_args.lock.fl;
--		dprintk("lockd: check f=%p pd=%d %Ld-%Ld ty=%d cookie=%s\n",
-+		dprintk("lockd: check f=%p pd=%d %Ld-%Ld ty=%d cookie=%*phN\n",
- 				block->b_file, fl->c.flc_pid,
- 				(long long)fl->fl_start,
- 				(long long)fl->fl_end, fl->c.flc_type,
--				nlmdbg_cookie2a(&block->b_call->a_args.cookie));
-+				block->b_call->a_args.cookie.len,
-+				block->b_call->a_args.cookie.data);
- 		if (block->b_file == file && nlm_compare_locks(fl, &lock->fl)) {
- 			kref_get(&block->b_count);
- 			spin_unlock(&nlm_blocked_lock);
-@@ -198,7 +165,8 @@ nlmsvc_find_block(struct nlm_cookie *cookie)
- 	return NULL;
- 
- found:
--	dprintk("nlmsvc_find_block(%s): block=%p\n", nlmdbg_cookie2a(cookie), block);
-+	dprintk("nlmsvc_find_block(%*phN): block=%p\n",
-+		cookie->len, cookie->data, block);
- 	kref_get(&block->b_count);
- 	spin_unlock(&nlm_blocked_lock);
- 	return block;
--- 
-2.39.5
-
+--
+Chuck Lever <chuck.lever@oracle.com>
