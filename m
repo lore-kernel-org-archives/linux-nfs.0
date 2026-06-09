@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B7A474D90CE;
-	Tue,  9 Jun 2026 17:47:48 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EF3604D9914;
+	Tue,  9 Jun 2026 17:47:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781027269; cv=none; b=JYudY/b8QRO4B1JNFdBF4tjiPXVT+U1XjundOgB4OokRcT1lAo6WMtWFXx4ztwbn91H3q4NULaJNYcspsK9vkDYLA7A0hEhIBqnNZNpcHunuUVI/bhyXPK0jnrTQbX54ECEujnqWy6rFmzsd/CqN5kOC9xeY8fjs97Pszeq0Oe4=
+	t=1781027272; cv=none; b=Fy2rBavOcF80OGC7zHHW1EoDB3nRGEEWAGkEFl43lPaprU4W75YMKN09YBZRyeqE2k9sge9YqyHjttDv2H24aLSyWMkWkBw/VA4ra7M8BflMTJXfRFDqGngKHl1W/Puz94yWUYLZDTtXxGM2FBG/ZtXomP/Yn/cnROj4VeivN2o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781027269; c=relaxed/simple;
-	bh=0zVSMKuIenVnVpy2Q3C9APLyKF0iawqJthV9fr+HXKA=;
+	s=arc-20240116; t=1781027272; c=relaxed/simple;
+	bh=CcG6OUziAhXqUtWJhTOO5mRk4TUJphs0RXifnfi5mtM=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=O4cYpkhPanAek6pvAtlYyWafuqQy4F+allYZsh5nhGmmkIJ2REcMiL5BmldD1mqsTkYhP/hdPHXYz3bdXaQCq8woMu4sWQYDAB1d0lvq8cu8Y7W/T8Aym0iwH/vPfuzB72/WIFKbUxxw5Ih1yml5hWHj8uIWS61Bsb9MnYyEhwA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TQmaKb4F; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=isZ3hIlED4onCSxYrbsdfo1vmylg+A6XqJOJg3YyCAvpoEf2oChXvAUC5irDL4UYgncYWeuvkvVduQt/phhB/QpcmypRd5cjjQXaGPfH2xIYKBs7JatkuYzQHcRVrlnrz8+Eu9h2Tt1n/CKs1k0VFJ8p9Krk4PNaSRcGuWx2/OA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hR2teKm2; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TQmaKb4F"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8FE3D1F00898;
-	Tue,  9 Jun 2026 17:47:46 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hR2teKm2"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B03EB1F00893;
+	Tue,  9 Jun 2026 17:47:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781027268;
-	bh=dGIYHSoSgcfqdopVWrafKZi9HKgDYhLdhUGzfdrh3FI=;
+	s=k20260515; t=1781027270;
+	bh=mAEqiA37affUSLRyClOuNhJ6p7CdJTTrjpVPa02VrCg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=TQmaKb4F6d3S7/KdkrF7HhzUv0YYSXzrXIq7gTlNx+hBdd0v+4IZERF6p53PLFuHp
-	 TxX9lukhz6ixaxeK50M7nQt9O/LVzeQkZsfUFE0zb/82hQv1ZK6luhvl78wD0+wa9g
-	 VWcuvTwBR2hWnJWOOJeZMdQoR/l/BDeQq+vaSEjXbzEh5GPDOkXtn6RmhUsSzsuTJB
-	 Pqdtfc1QqmOtI0ep4MpAnglUSnKS6h/qbQ0AovYdhSWKbA5HEplwaqLlNFVSn7c/UH
-	 /Hj9cxNczN5eBDeFCR29AceXDR0NOtqnqkn7fBoy81tUp+aonjcrYZJqeoyQtzRri/
-	 VD8tVXq0039rQ==
+	b=hR2teKm2pfU2sI/cZ3IpUj1odAOCe9FIRJKDyccr0SeB6WmSHyOPB0/xKU3hAY2Sa
+	 CsQOdr6eKOKCHeFOIlRcod9+RYrAlq8DaUPJ4hq++xOAtdKKUi7NSV8oLuqlEbxrpN
+	 twxU72fbJ8UYB/UD/HGQjmIzYjQA56QC1sJJlcYjVWmmIj1CuUM4uLbNPYD0ngY65F
+	 LEhen2EkxEqQY6dhT5uwpos1y7A4FMh2PLnGCfd6IjxdyBirQfsOrkUxe9xDXxfQ0V
+	 VYEh6UY2MwpQR9hP6elALPhNeHIhtJS5YUdAWwXQRWGGO/zXUahpLrDTfAFLB4XXzE
+	 H5UmwOIRsMuGA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 09 Jun 2026 13:47:23 -0400
-Subject: [PATCH 02/19] nfsd: clear opcnt on compound arg release to prevent
- OOB read
+Date: Tue, 09 Jun 2026 13:47:24 -0400
+Subject: [PATCH 03/19] nfsd: add missing read barrier to rpc_status_get
+ dumpit seqcount retry
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260609-nfsd-testing-v1-2-e83acead2ae8@kernel.org>
+Message-Id: <20260609-nfsd-testing-v1-3-e83acead2ae8@kernel.org>
 References: <20260609-nfsd-testing-v1-0-e83acead2ae8@kernel.org>
 In-Reply-To: <20260609-nfsd-testing-v1-0-e83acead2ae8@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -56,57 +56,61 @@ To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  netdev@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1391; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=0zVSMKuIenVnVpy2Q3C9APLyKF0iawqJthV9fr+HXKA=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKFG5S6dtjpizvsFDrRNB9RxXiSmbL+KhO2vOC
- VYyINGpwk2JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaihRuQAKCRAADmhBGVaC
- FdVZD/48gn1c0m7IMvBQU6zIQviFzF/Zvcc/0/xD2EaDNCG0/af6WMDlmjGgS76sZO2t5eRfbjE
- zD0xvp5q/8gjpbC4pdFNYSAkaKD0k1Bqn42cuOkKnMmEr2WEO/0VctKlwRgK2fSibUf/HqQ9Z8+
- 1SXx4AIdji5UrA66iWGyvgaAKA9r5rmOtWCTubCPnAuWBvlo+hxW12HPdesy1dJ7HyhX8Lxg/L/
- +DegBn6rixN3E4ofedc0gVdSqL154LyUKso2MYHL/Carbb/at/nuHMOnc7msRy/SFJuENLmEThZ
- hTolzovvKX94QmB9sMcY0NJQG9oPCxJq7hb7NRB/vDtzBP7V7T1I3F885pawk8sCW/6dnGJ02VQ
- anokTHuxPYOi3e2GW3/x4j2wXODvIEhRdLlzNPk1nYtnm2H8TWRew6vGMquqc+Cc0HFMOcJcc9C
- cRV3gFZSWsewvkZGTli4jXE58/nbXFblMA+1Vj8cIq5cPiJg+vZEJKdsextQxiT4p6cqL63bHTg
- F0IYWxITsabOUQ1opZr7mch1W1P1HvmSyHKTxzJPuAkE9WOpKNxWEPx2n/j6kyazQcVJh50TPId
- tjGu1dJWtB/9wQXWbcbORBHi5Xabgcxvs/RdW2Ibe+Q7Co9hr58ZpsFQ9Ig0WNmHq6TuXVk9zvl
- BRc/LKCWcciF5sQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1600; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=CcG6OUziAhXqUtWJhTOO5mRk4TUJphs0RXifnfi5mtM=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKFG6QE+VYKL4s8C728nVerRFRvjf/XqSIhhAu
+ CvkO102XSaJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaihRugAKCRAADmhBGVaC
+ FavpD/442jb8bVS1WV4SHduy51TU3TcrzHpcwGuFby9Diy3kYWl34S6vu0M8Uha22JkdQ+0KpIw
+ QcgTSztMK8f72ZZPTK4waR/HOCcH7QlMZJMgfAcWfhjE1+u/2ugv0A3SW1DkAHWv0LoyLnLQYy5
+ 4ZozHX4fvcRj7XVCYu59OFT2GiMJv/c/jBlxNGtDmWS2N4h+1xNPL7kA1Q9NJSokpewtUXkiQDm
+ jr+Y8Zl74KWea6nbRZZl/AD0ABrCrFOPwIwtuAB8wLmzfrUl+wZp+aGyPHkzHl6vXcEiKyb07cs
+ VPeCD7FsrJsg9lf1aBK26CUf1xWYdhnqoNBBHwVQYqK1SNkLuqkNUxEP+Wmax7pkQRyC7jmrw6i
+ xzg4iKHf29WF0UXT1kIrubnh1aGTsso0h8/IXrQkQ0yy6KE7RJTOQo3ofz9h/xofKj3krAlQmgc
+ oeR3fHMWIUzMCBhUwIBfe/iFCNMoKwfscKSfNSlGqY3wX3utU3Fs+ADCl0JJNcvZeH3AhsO8Vcd
+ EjjHMi2rX9E/60at+wl/aQL8D8ribdFARVTqY/c2oWnG3M6Cg3DZfiyhheMJa3q5Qa++NKO+Xt3
+ qdjEbjjP/y9GfNEcoyJ/SnAoeGqrgNlcvPOiNEtlwCpGH/PsZ6D0M9YeI6UahfYwQyNzrEfMDaF
+ Uou4Yz++zaCabWw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfsd4_release_compoundargs() resets args->ops to the inline iops[8]
-array when the dynamically-allocated ops buffer is freed, but leaves
-args->opcnt at its original value (which can be up to 200 for NFSv4.1+
-compounds).
+The hand-rolled seqcount-like protocol in nfsd_nl_rpc_status_get_dumpit()
+is missing a read memory barrier (smp_rmb) before its second counter
+check.  The standard kernel read_seqcount_retry() includes smp_rmb()
+to ensure that all data reads complete before the counter is re-checked.
 
-If rq_status_counter is stuck at an odd value (which can happen when
-nfsd_dispatch() hits an error path after setting it odd), the RPC
-status dumpit handler reads min(opcnt, 16) entries from args->ops[].
-Since iops only has 8 elements and is the last field in struct
-nfsd4_compoundargs, reading indices 8-15 accesses adjacent slab memory
-and leaks it to userspace via netlink.
+Without this barrier, on weakly-ordered architectures (ARM, POWER),
+the CPU may reorder field reads past the second counter check, making
+the retry logic ineffective: it could observe a consistent counter pair
+while reading fields that have been concurrently modified by the writer.
 
-Zero opcnt unconditionally in nfsd4_release_compoundargs() so stale
-compound metadata is never exposed through the status interface.
+Add smp_rmb() before the second smp_load_acquire() to match the
+barrier semantics of the standard seqcount read-side.
 
-Fixes: bd9d6a3efa97 ("NFSD: add rpc_status netlink support")
+Fixes: ac18892ea3f7 ("NFSD: add rpc_status netlink support")
 Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4xdr.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/nfsd/nfsctl.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index b9037d99b564..1e4a51926910 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -6440,6 +6440,7 @@ void nfsd4_release_compoundargs(struct svc_rqst *rqstp)
- 		args->ops = args->iops;
- 		kvfree_rcu_mightsleep(old_ops);
- 	}
-+	args->opcnt = 0;
- 	while (args->to_free) {
- 		struct svcxdr_tmpbuf *tb = args->to_free;
- 		args->to_free = tb->next;
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index c06d25c06f06..a4b5b1467fe2 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1576,9 +1576,11 @@ int nfsd_nl_rpc_status_get_dumpit(struct sk_buff *skb,
+ #endif /* CONFIG_NFSD_V4 */
+ 
+ 			/*
+-			 * Acquire rq_status_counter before reporting the rqst
+-			 * fields to the user.
++			 * Ensure all field reads complete before re-checking
++			 * the status counter. Pairs with the smp_store_release
++			 * in nfsd_dispatch to form a seq-lock like protocol.
+ 			 */
++			smp_rmb();
+ 			if (smp_load_acquire(&rqstp->rq_status_counter) !=
+ 			    status_counter)
+ 				continue;
 
 -- 
 2.54.0
