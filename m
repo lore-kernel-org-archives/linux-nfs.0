@@ -1,81 +1,55 @@
-Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from relay.yourmailgateway.de (relay.yourmailgateway.de [188.68.61.103])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51F203A9D9D
-	for <linux-nfs@vger.kernel.org>; Tue,  9 Jun 2026 06:45:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2D3702E7396;
+	Tue,  9 Jun 2026 10:05:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=188.68.61.103
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1780987548; cv=none; b=iMk/GOiD80HNvnKN7kaRdaPk9UYeepwLW+ZNM8RdU2axan06e9rz25ZBxZ8nEtUW1skaQAEOiyGt26IXqTxB6o1zxLFpWlwi064l/FPqdURTyE+APmRrYufCkfNjfyNSbawH6QzEmc5i32Z/uqpPErktLIc6FC736XYdk6ING3E=
+	t=1780999514; cv=none; b=GMGXw73fUGJmEyJBhdeW0hcSX1RHhqH8w2QFrswLTsGFDV/tRxQDUNsy0VZxPNmQa+F1fpf8FfDK1DcwQu49+L4qHnxXT0zDGZg4yMp6x10Nbo8/aOtgktdwZ8Fv6HaFYXsmZB6l9HwChHFdvJ6xRF8kpz3BePAE/zH8CxT4Ks4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1780987548; c=relaxed/simple;
-	bh=TZHij+sHzxWRaLcax1yKJ12Z6RCZ0MzJXnnSo4nJHzg=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=WBQFnWjCpLfmT/x8viovAXlrHiaVAUeRJwIvdSo4VS49CKxRDxV0TVz4UrUNIF3OfqLEaEUjmAAgm0XbHL6Zcuh8XrkuOU5ZakK7T6y6cP7oyeysoUmj2NtNpXGdUzk+jUPDyDf0PcSg4lbkf4FwyWQ8/WtwaWn80D9yDByWeX4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=SKiLIrZq; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=ZRrSLdzZ; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=SKiLIrZq; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=ZRrSLdzZ; arc=none smtp.client-ip=195.135.223.131
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
+	s=arc-20240116; t=1780999514; c=relaxed/simple;
+	bh=QFWyBeqeXsXODEh72YQTER2tbPIg1Y7V0Lk+AAPpN5k=;
+	h=Message-ID:Date:MIME-Version:Subject:From:To:Cc:References:
+	 In-Reply-To:Content-Type; b=n6ij6oam/0b1pJd7csYbfvKYFxDxqSpOUCtzyT9LJST4Is+O/Qrq7ET4xK4G0qqqRrDO9yZAx7/hi2RGdPxaEfR9oXnkzfDH0rYi2+2+j+6LIt0/gOTxTF1luNv6Xk6QG8qWxZUBCmlqkzrfcKumBamUO7Cm4zFWsoJtTj5l7HU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=leemhuis.info; spf=pass smtp.mailfrom=leemhuis.info; dkim=pass (2048-bit key) header.d=leemhuis.info header.i=@leemhuis.info header.b=Hmtsl0zj; arc=none smtp.client-ip=188.68.61.103
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=leemhuis.info
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=leemhuis.info
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="SKiLIrZq";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="ZRrSLdzZ";
-	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="SKiLIrZq";
-	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="ZRrSLdzZ"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	dkim=pass (2048-bit key) header.d=leemhuis.info header.i=@leemhuis.info header.b="Hmtsl0zj"
+Received: from mors-relay-8403.netcup.net (localhost [127.0.0.1])
+	by mors-relay-8403.netcup.net (Postfix) with ESMTPS id 4gZPfY4nJlz8CSR;
+	Tue,  9 Jun 2026 12:05:09 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=leemhuis.info;
+	s=key2; t=1780999509;
+	bh=QFWyBeqeXsXODEh72YQTER2tbPIg1Y7V0Lk+AAPpN5k=;
+	h=Date:Subject:From:To:Cc:References:In-Reply-To:From;
+	b=Hmtsl0zjZJ04zsZoHoHnHUpdL3e1xT+qdq+SxPxaAOnrfmRgAilEQH6v5oKEFPsQN
+	 n1B0qnqDxuE5Emq4OfBYs7VyGlRAsK/BNeaPWjx0lVk6TMxwQcEIMfdAEqO5EWqAu+
+	 KqVQotgz1ju+Hhj9hMU7jvZGzmzRCwaVHh6iy/YHe9JJwRFPODKRdB1fk0WYsPh7iu
+	 Na9vKAfnGRwMQoXhu8zCmPheVlePzUMBA2hLwfe9/Rao2SGxtfj9hIRvpd6vPtUYEH
+	 5rnRW/cfmUuXjldLgrSz45mgAC3qC0yi30AxegOBhatuT77KaHBp2Z9PMqwOUiBIDO
+	 6qxKc5VqL6SQA==
+Received: from policy01-mors.netcup.net (unknown [46.38.225.35])
+	by mors-relay-8403.netcup.net (Postfix) with ESMTPS id 4gZPfY447dz8Bgj;
+	Tue,  9 Jun 2026 12:05:09 +0200 (CEST)
+X-Virus-Scanned: Debian amavisd-new at policy01-mors.netcup.net
+X-Spam-Flag: NO
+X-Spam-Score: -2.898
+X-Spam-Level: 
+Received: from mxe9fb.netcup.net (unknown [10.243.12.53])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	 key-exchange ECDHE (P-256) server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by smtp-out2.suse.de (Postfix) with ESMTPS id A09B97597E;
-	Tue,  9 Jun 2026 06:45:45 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1780987545; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=pLICxNOop1LCTkqezsKIYOVdjWbIGVWX4I0nXjFhOOQ=;
-	b=SKiLIrZqKZ7cl3NhV1T1ZFB1nf6K1bTDwcgMw5bP9zdDz4U3QHIGJwtyiymR9GaxTXOXcj
-	bWpfICz3AgD9M1QwXjB8rkE8IAhzjpGT/JWtg3o8IKnukUQ2zLOTLXwzbb6gqN8B4TgA7I
-	g6H6/DzgsZswKdIrDSOEBHH1xjmevbQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1780987545;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=pLICxNOop1LCTkqezsKIYOVdjWbIGVWX4I0nXjFhOOQ=;
-	b=ZRrSLdzZBf+cg6ETdaqDWLO1Qt/DOwrFD/JCpocPaSIsiR0MdttvwkQa/ClzWUnuppgDQU
-	v1ndNBoKv0lxsTAA==
-Authentication-Results: smtp-out2.suse.de;
-	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=SKiLIrZq;
-	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=ZRrSLdzZ
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
-	t=1780987545; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=pLICxNOop1LCTkqezsKIYOVdjWbIGVWX4I0nXjFhOOQ=;
-	b=SKiLIrZqKZ7cl3NhV1T1ZFB1nf6K1bTDwcgMw5bP9zdDz4U3QHIGJwtyiymR9GaxTXOXcj
-	bWpfICz3AgD9M1QwXjB8rkE8IAhzjpGT/JWtg3o8IKnukUQ2zLOTLXwzbb6gqN8B4TgA7I
-	g6H6/DzgsZswKdIrDSOEBHH1xjmevbQ=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
-	s=susede2_ed25519; t=1780987545;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=pLICxNOop1LCTkqezsKIYOVdjWbIGVWX4I0nXjFhOOQ=;
-	b=ZRrSLdzZBf+cg6ETdaqDWLO1Qt/DOwrFD/JCpocPaSIsiR0MdttvwkQa/ClzWUnuppgDQU
-	v1ndNBoKv0lxsTAA==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id A07A6779A7;
-	Tue,  9 Jun 2026 06:45:44 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id BTS6JZi2J2rFcwAAD6G6ig
-	(envelope-from <hare@suse.de>); Tue, 09 Jun 2026 06:45:44 +0000
-Message-ID: <922040b0-f87e-484d-9f7b-78098024ad04@suse.de>
-Date: Tue, 9 Jun 2026 08:45:44 +0200
+	by policy01-mors.netcup.net (Postfix) with ESMTPS id 4gZPfX4HwNz8t4T;
+	Tue,  9 Jun 2026 12:05:08 +0200 (CEST)
+Received: from [IPV6:2a02:8108:8984:1d00:a0cf:1912:4be:477f] (unknown [IPv6:2a02:8108:8984:1d00:a0cf:1912:4be:477f])
+	by mxe9fb.netcup.net (Postfix) with ESMTPSA id C18135F96B;
+	Tue,  9 Jun 2026 12:05:07 +0200 (CEST)
+Authentication-Results: mxe9fb;
+        spf=pass (sender IP is 2a02:8108:8984:1d00:a0cf:1912:4be:477f) smtp.mailfrom=regressions@leemhuis.info smtp.helo=[IPV6:2a02:8108:8984:1d00:a0cf:1912:4be:477f]
+Received-SPF: pass (mxe9fb: connection is authenticated)
+Message-ID: <5cbf8431-e3c4-41d9-afcd-fb121dc12395@leemhuis.info>
+Date: Tue, 9 Jun 2026 12:05:06 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -83,103 +57,110 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 3/9] lib: Add a "tagset" data structure
-To: Chuck Lever <cel@kernel.org>, Donald Hunter <donald.hunter@gmail.com>,
- Jakub Kicinski <kuba@kernel.org>, "David S. Miller" <davem@davemloft.net>,
- Eric Dumazet <edumazet@google.com>, Paolo Abeni <pabeni@redhat.com>,
- Simon Horman <horms@kernel.org>, Jonathan Corbet <corbet@lwn.net>,
- Shuah Khan <skhan@linuxfoundation.org>,
- Andrew Morton <akpm@linux-foundation.org>,
- John Fastabend <john.fastabend@gmail.com>,
- Sabrina Dubroca <sd@queasysnail.net>, Keith Busch <kbusch@kernel.org>,
- Jens Axboe <axboe@kernel.dk>, Christoph Hellwig <hch@lst.de>,
- Sagi Grimberg <sagi@grimberg.me>, Chaitanya Kulkarni <kch@nvidia.com>,
- Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>,
- Tom Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>,
- Anna Schumaker <anna@kernel.org>
-Cc: kernel-tls-handshake@lists.linux.dev, netdev@vger.kernel.org,
- linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org,
- Chuck Lever <chuck.lever@oracle.com>
-References: <20260605-tls-session-tags-v1-0-47bd1d94d552@oracle.com>
- <20260605-tls-session-tags-v1-3-47bd1d94d552@oracle.com>
-Content-Language: en-US
-From: Hannes Reinecke <hare@suse.de>
-In-Reply-To: <20260605-tls-session-tags-v1-3-47bd1d94d552@oracle.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Subject: Re: [PATCH] NFSv4: clear exception state on successful mkdir retry
+From: Thorsten Leemhuis <regressions@leemhuis.info>
+To: Trond Myklebust <trondmy@kernel.org>, NeilBrown <neil@brown.name>,
+ Anna Schumaker <anna@kernel.org>, Igor Raits <igor.raits@gmail.com>
+Cc: =?UTF-8?B?SmFuIMSMw61wYQ==?= <jan.cipa@gooddata.com>,
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+ stable@vger.kernel.org,
+ Linux kernel regressions list <regressions@lists.linux.dev>
+References: <177745671692.1474915.5018486129724109553@noble.neil.brown.name>
+ <20260429104938.1776671-1-igor.raits@gmail.com>
+ <971ecb6c-2687-429f-af86-fc980c2d04f9@leemhuis.info>
+Content-Language: de-DE, en-US
+In-Reply-To: <971ecb6c-2687-429f-af86-fc980c2d04f9@leemhuis.info>
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: A09B97597E
-X-Spam-Flag: NO
-X-Spam-Score: -3.01
-X-Spam-Level: 
-X-Spamd-Result: default: False [-3.01 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	SUSPICIOUS_RECIPS(1.50)[];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	URIBL_BLOCKED(0.00)[oracle.com:email,suse.de:dkim,suse.de:email,suse.de:mid,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
-	FREEMAIL_TO(0.00)[kernel.org,gmail.com,davemloft.net,google.com,redhat.com,lwn.net,linuxfoundation.org,linux-foundation.org,queasysnail.net,kernel.dk,lst.de,grimberg.me,nvidia.com,brown.name,oracle.com,talpey.com];
-	FUZZY_RATELIMITED(0.00)[rspamd.com];
-	RCPT_COUNT_TWELVE(0.00)[29];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	MIME_TRACE(0.00)[0:+];
-	ARC_NA(0.00)[];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	RCVD_TLS_ALL(0.00)[];
-	DKIM_TRACE(0.00)[suse.de:+];
-	RCVD_COUNT_TWO(0.00)[2];
-	DNSWL_BLOCKED(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	TO_DN_SOME(0.00)[];
-	MID_RHS_MATCH_FROM(0.00)[];
-	TAGGED_RCPT(0.00)[];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	R_RATELIMIT(0.00)[to_ip_from(RLhu34id7c3duw89qhx7eswje4)];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[oracle.com:email,imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.de:dkim,suse.de:email,suse.de:mid]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-PPP-Message-ID: 
+ <178099950819.2754868.10331645572987338434@mxe9fb.netcup.net>
+X-NC-CID: hk1XyinkLA2SwZHbK5SCpGsD7vDqiQfNWsmxs+25BdLmQbHAp7Y=
 
-On 6/5/26 19:34, Chuck Lever wrote:
-> From: Chuck Lever <chuck.lever@oracle.com>
+On 5/13/26 09:18, Thorsten Leemhuis wrote:
+> [top-posting to facilitate processing]
 > 
-> Access control mechanisms sometimes need to match metadata tags
-> between a session and a resource. A tagset provides efficient
-> membership testing and set intersection operations for this purpose.
+> @NFSv4 maintainers, just wondering, did this patch maybe fall through
+> the cracks? It fixes a regression, that's why it's on my radar. Or was
+> there some progress and I missed it?
+
+Still no progress afaics. Feels like I'm missing something obvious or
+like I'm totally of track.
+
+Igor, Neil, is that the case? Or are you also waiting for the fix to
+make progress?
+
+Ciao, Thorsten
+
+> On 4/29/26 12:49, Igor Raits wrote:
+>> After a server returns NFS4ERR_DELAY for an NFSv4 CREATE issued by
+>> mkdir(2), the client correctly waits and retries.  When the retry
+>> succeeds, however, mkdir(2) can still surface -EEXIST to userspace
+>> even though the directory was just created on the server.
+>>
+>> Reproducer (random 16-hex names so collisions are not the cause)
+>> against an in-kernel Linux nfsd; reproduces under both NFSv4.0 and
+>> NFSv4.2:
+>>
+>>   N=2000000; base=/var/gdc/export
+>>   for ((i=1; i<=N; i++)); do
+>>       d=$base/$(openssl rand -hex 8)
+>>       mkdir "$d" 2>/dev/null || echo "$(date +%T) failed loop=$i $d"
+>>       rmdir "$d" 2>/dev/null
+>>   done
+>>
+>> Failures cluster at the cadence at which the server-side auth/export
+>> cache refresh path causes nfsd to return NFS4ERR_DELAY for CREATE.
+>>
+>> A wire trace of one failure (the three CREATE RPCs all come from a
+>> single mkdir(2), generated by the do-while in nfs4_proc_mkdir()):
+>>
+>>   client -> server  CREATE name=...  -> NFS4ERR_DELAY
+>>   ~100 ms later
+>>   client -> server  CREATE name=...  -> NFS4_OK         (dir created)
+>>   ~80 us later
+>>   client -> server  CREATE name=...  -> NFS4ERR_EXIST   (correct)
+>>
+>> Since commit dd862da61e91 ("nfs: fix incorrect handling of large-number
+>> NFS errors in nfs4_do_mkdir()"), nfs4_handle_exception() is called only
+>> when _nfs4_proc_mkdir() returned an error.  That gate breaks retry-state
+>> hygiene: nfs4_do_handle_exception() resets exception.{delay,recovering,
+>> retry} to 0 on entry, so calling it on success is what previously
+>> cleared the retry flag set by the preceding NFS4ERR_DELAY iteration.
+>> With the gate in place, exception.retry stays at 1 after the successful
+>> retry, the loop runs once more, and the resulting CREATE for an
+>> already-created name yields NFS4ERR_EXIST -> -EEXIST to userspace.
+>>
+>> Drop the conditional and call nfs4_handle_exception() unconditionally,
+>> matching every other do-while in fs/nfs/nfs4proc.c (nfs4_proc_symlink(),
+>> nfs4_proc_link(), etc.).  The dentry/status separation introduced by
+>> that commit is preserved.
+>>
+>> Fixes: dd862da61e91 ("nfs: fix incorrect handling of large-number NFS errors in nfs4_do_mkdir()")
+>> Reported-and-tested-by: Jan Čípa <jan.cipa@gooddata.com>
+>> Closes: https://lore.kernel.org/linux-nfs/CA+9S74hSp_tJu2Ffe2BPNC2T25gfkhgjjDkdgSsF5c2rnJq_wA@mail.gmail.com/
+>> Reviewed-by: NeilBrown <neil@brown.name>
+>> Cc: stable@vger.kernel.org
+>> Signed-off-by: Igor Raits <igor.raits@gmail.com>
+>> ---
+>>  fs/nfs/nfs4proc.c | 5 ++---
+>>  1 file changed, 2 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index a0885ae55abc..ffd14141ea1d 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -5393,10 +5393,9 @@ static struct dentry *nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
+>>  	do {
+>>  		alias = _nfs4_proc_mkdir(dir, dentry, sattr, label, &err);
+>>  		trace_nfs4_mkdir(dir, &dentry->d_name, err);
+>> +		err = nfs4_handle_exception(NFS_SERVER(dir), err, &exception);
+>>  		if (err)
+>> -			alias = ERR_PTR(nfs4_handle_exception(NFS_SERVER(dir),
+>> -							      err,
+>> -							      &exception));
+>> +			alias = ERR_PTR(err);
+>>  	} while (exception.retry);
+>>  	nfs4_label_release_security(label);
+>>  
 > 
-> The implementation uses a sorted array of string pointers. Unlike
-> hash tables, sorted arrays support efficient intersection without
-> needing to iterate one set and probe the other. Unlike rbtrees,
-> they require no per-element node allocation, minimizing memory
-> overhead for small sets typical of resource tagging.
-> 
-[ .. ]
 
-
-Isn't this overcomplicating matters?
-In the end, this a list of strings.
-Wouldn't a simple rbtree holding the strings be sufficient?
-(And quicker to lookup :-)
-
-Also see my comment in the previous patch. I really would make
-'tags' a nested attribute, and then parsing the 'tags' attribute
-would be simple iteration over the tags.
-
-(And don't name it tagset. That will be confusing the hell of out
-of any storage folks, where a tagset is something completely
-different.)
-
-Cheers,
-
-Hannes
--- 
-Dr. Hannes Reinecke                  Kernel Storage Architect
-hare@suse.de                                +49 911 74053 688
-SUSE Software Solutions GmbH, Frankenstr. 146, 90461 Nürnberg
-HRB 36809 (AG Nürnberg), GF: I. Totev, A. McDonald, W. Knoblich
