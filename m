@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 41BDF4DA533;
-	Tue,  9 Jun 2026 17:48:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 551EF4F7971;
+	Tue,  9 Jun 2026 17:48:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781027293; cv=none; b=qTx1mNz9dbWFTJEcwgguknFb13doaM+n2hO0GfFtZI/czJaOhN3Yr3Oba7gyHkklgO/RxXDEF5d6ZyuRsu7BJwFChZPYuJATpqbSYjzh1BWR39JLdn9mHsrggtNX8jwuGpbZVpPllklqSvvIQpc3yD3hfZoK52dFuPVREKaeRxM=
+	t=1781027295; cv=none; b=afc0vKITUTZGgC85i0j4MWEoM4nbC/K5qaYXnsEO4juUorFDsXc8T0q2mhU+b9DBIX6dSVbNcLjQVznAXGfIlByZIFh9ATdTh7Nm0HTg0v6sOokMg3vLqitEk8sRRPvW8HgHDxE/enNid3S0TNssr6oR7WOXdOjpel9c6xeqVxQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781027293; c=relaxed/simple;
-	bh=9bzrezfA6Ma4c32urrrfsk6vf1UDwOQz63H5nfZ8NCk=;
+	s=arc-20240116; t=1781027295; c=relaxed/simple;
+	bh=OYisog8Kx3y4MnJjV/foiQQqsloh/a8MHBJXRKT5rFQ=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=cfCaew6Z6c1xQnMSRkbD9y97diURvGlqTGh9V44ywRpd2p17SpAD7pGK3DSswx+rt672QDCv/HOs+oGJjdn2TPFYuBN/9XVxJjyan5uTtKabt7Z1GAWRGcFBwz+RMgpmJFIsY5ErezRh3ZRwXhSgw0doJ7Px8KI1dbUF/VvNzAo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Ht+8nEeI; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=WyBNLSiP6sbdGjnqJ/KQvmQjPLflKaWUzj8GqUuL4kSLf8v9jihyMGNZLEc/7+lGMin5gkdw0tgFX8QDlu2sZtKa/1lPIKZ0FgAc5As7nbSOwY4QaCua3GNPR3RLuZotGYJdSwMo2MTuMIHJw+d7oeWce+hY4jaS7AVB5AZZAmA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eT0tezs9; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Ht+8nEeI"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 057BD1F00893;
-	Tue,  9 Jun 2026 17:48:09 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eT0tezs9"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 268A11F00898;
+	Tue,  9 Jun 2026 17:48:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781027291;
-	bh=gjSgs6WFqgMs5cL5JwykWl2BGIvehQY0ZgYd3xWYpOA=;
+	s=k20260515; t=1781027294;
+	bh=gAqfHUM127N+azYQA54XtiqTmulZM8PTFlQDj7h6rT8=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Ht+8nEeILA2PmyKgvt31/UtMVjVcjf+JAN1RiHNLJOCyo3Dd0AKQDlniE+zNQZ4Ie
-	 0bseZPmqTKA5Zl7ne1Mwce/OuJ4WhgXhQnIm86i1QGdjE2/mHdsaLYEgq37yzmsDEn
-	 o0kWpwbiarjbE2rS3CxTphtZUpR2P3QdULNrw/oPZdZu7abyeblm7E2EwTvzJEAA75
-	 fcqBK6J9MvNpPNCkwKH1RxNjGYJ6zCggB1uN//B9cECY+MjLYrfLYyBvnwu0en/jlT
-	 iVA2lsabijHtCkZJg5R35tJgkAB7zimWX8BKL650aMEcUAsmp7cxdfTMWor/Qm/n0B
-	 yXfhl3PqINE9Q==
+	b=eT0tezs9k5LdD/YyEgs/XM7UySCplyxuwg+j+4WnnfyPLmnhtohZHNn5qTczMKGZS
+	 q0XrjFEM7MExDP89Ri6wXBXDFjTZkbaFsALsyYJZzwFqYrCLkiXuqXgUq1Y8C42fDA
+	 4Z3CML7GJ2H8mF5TfVyR4yu03pSCW6MHthjUq/6qZdWMK4Ci/ISIlhHc8QDvTX2SQn
+	 ux/ILimyJcVu8uwzGwhr/CyOI2JfqofelrN6bhu61wZCcHp4EOKn/3IVK50XobxNF9
+	 WRyR1lgSrDOG8kb77Gp9MkNCtBxLBh2CnrEKoIZDCwNDDSP5wvHmz7/l4PobySf9Jq
+	 6+XcCwiRdgVwg==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 09 Jun 2026 13:47:34 -0400
-Subject: [PATCH 13/19] nfsd: fix clock domain mismatch in
- clients_still_reclaiming()
+Date: Tue, 09 Jun 2026 13:47:35 -0400
+Subject: [PATCH 14/19] nfsd: use test_and_clear_bit for somebody_reclaimed
+ to prevent lost update
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,8 +37,8 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260609-nfsd-testing-v1-13-e83acead2ae8@kernel.org>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260609-nfsd-testing-v1-14-e83acead2ae8@kernel.org>
 References: <20260609-nfsd-testing-v1-0-e83acead2ae8@kernel.org>
 In-Reply-To: <20260609-nfsd-testing-v1-0-e83acead2ae8@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -56,78 +56,53 @@ To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  netdev@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2200; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=9bzrezfA6Ma4c32urrrfsk6vf1UDwOQz63H5nfZ8NCk=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKFG8EGUh9bDkLuzmMGD/yWhH6cVR2srehIMuf
- yeEXYjAprqJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaihRvAAKCRAADmhBGVaC
- FZHHEAC10vRKqWD+H9HLALEq+QdxgIMXqfrpdbjbsRoBrkadU6Ohf3e6KonqwqhJ9TCXVaIDqM5
- 9fmRGPizOAmRYCkFXSmCww+WaiDoRoB33W0kACpkyEeDWSfzGjqND6H/V5XXzAP0725aCstmyZJ
- cKKprfvTznHUfiAJssUNg5XZd2fTN8+vDMlECjw4EHZQvqeni2Oibv9Zz/yFqazmnaH7NugT5sK
- X2P4kcXHxkFrE6StMUpsL3C/6gT79NewFX+gNdu2TwgIRKFD46QXKyoUYgkSXztFG64/5pUpvq8
- 0L/XhOOuYWWCtsAwsTFJFE6SytvwSy1B1F8jl/j26U1LVlK3EjrfItnkLBGdOfhoaF/BXvqCWDD
- D2ZXDOCD0awIMMU8AZw9pmRJM5ijwx83QpIALTekt1SrzgjiuYxwEu99mQph011VfzEBUNRsiwo
- Qngwqp8nmXMvCZL48gDloW+NDhI/IXWKBy9ntlcplwNRsUBFRoKLaY8k1IgagfZnZS2RZ4wYcAM
- 8OclsDQDBE67utGW63Cc7c3DUkPXYaJ316XlYEwBA56X46RjTuIoqwNTPT5Spe4Kgfm1YVGYjSY
- znDBUsjnw0/cEzz9BnbU95cf+t0qOec1Lk/GzHjEfD8f/b4G9/W8J617yfsnGnpRu0W+pPAtE6E
- a6p2onAH4pva1NA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1250; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=OYisog8Kx3y4MnJjV/foiQQqsloh/a8MHBJXRKT5rFQ=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKFG8FOL1b8Xh0QF0PK4yx7nJCQpJkGmX5tnWH
+ ueXsBASK3CJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaihRvAAKCRAADmhBGVaC
+ FaAxD/4p+C9KcrmdQ9jwhRqyXwHF4FS5f7oDGSFqYkbkaIbnHaj8vWnnKVfKSY0d7FJUEH6N10I
+ kOb//N5SBwCCcklRsltMpd+ey8fUvDQ2zzW/pkCmCh1uMVFx28oUIf7zGD9PzuBkpGKiv19i1Pi
+ cmmKfqnjJZ6sx59vcuVxKb+IFbqWBr6UcQ9hd4WHzjH8QHIJDx6cKZ7J4cxZ7F6ete5EqVy8KdT
+ HjdbFBvoecFOZ6eDlio4oIStjTeYT/4xjnmk0E93iz5rAn7Ebb6AdfHId9/RiwfjMcHjFzic7mE
+ vTSl2CoAhr8Gad4Y9uDbgvGx6zinOf3I2PSqe5pISKTpWfLcDvHtUPxM1JHZ2PjjJUuyRqYUM/Y
+ yv47d3a0+RNZCd8r5hJz0tQj2BSNtdsISz50wPd/SR4slSb84FNdWa0R3KHcT3x40HrNbolSjAT
+ Gjln7+Zu8wyfDjddxGrnpK+LZPoiJ/4GOzlm79qiOk2mqqhX+N+l9+aDGWqd7JV25MCmXEdnczp
+ oDgDdaF4MDpFGXJosTnnFuU4+EMowywj6PEsfJZwB1DvrXsRjNZpc11OXcJZ/2JTllQ+8lW9YOP
+ j+kwTKDcvzQSRgWnYSg3lEt3rn5fhxMGSnkp6CB9uZn7A1LYRpCe8Cp/fmEdMeUGjsw9u8dBBOH
+ 1s9uCNAQ7fixuKQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-clients_still_reclaiming() computes a deadline from nn->boot_time
-(CLOCK_REALTIME, ~1.7 billion) but compares it against
-ktime_get_boottime_seconds() (CLOCK_BOOTTIME, seconds since boot).
-The comparison is always false — it would take ~54 years of uptime
-for BOOTTIME to exceed the REALTIME-derived deadline.
+clients_still_reclaiming() uses separate test_bit() and clear_bit()
+calls on NFSD_NET_SOMEBODY_RECLAIMED. A concurrent set_bit() from
+the OPEN or LOCK reclaim path arriving between the test and clear
+is silently lost, causing the next laundromat tick to end grace
+prematurely.
 
-This means any client can hold the server in grace indefinitely by
-sending CLAIM_PREVIOUS OPEN requests, blocking all non-reclaim
-operations for all other clients.
+Replace with test_and_clear_bit() to make the read-and-clear atomic.
 
-Add boot_time_bt (CLOCK_BOOTTIME) alongside the existing boot_time
-and use it for the deadline computation. boot_time (CLOCK_REALTIME)
-is preserved for its cl_boot clientid-nonce role.
-
-Fixes: 20b7d86f29d3 ("nfsd: use boottime for lease expiry calculation")
+Fixes: 8c67a210c90c ("nfsd: convert nfsd_net boolean flags to unsigned long flags word")
 Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/netns.h     | 1 +
- fs/nfsd/nfs4state.c | 3 ++-
- 2 files changed, 3 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 5c33c96da28e..03724bef10a7 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -78,6 +78,7 @@ struct nfsd_net {
- 	struct lock_manager nfsd4_manager;
- 	unsigned long flags;
- 	time64_t boot_time;
-+	time64_t boot_time_bt;	/* same instant in CLOCK_BOOTTIME */
- 
- 	struct dentry *nfsd_client_dir;
- 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8c714001c116..6e47330c6365 100644
+index 6e47330c6365..fddef6f8db7c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -6823,7 +6823,7 @@ bool nfsd4_force_end_grace(struct nfsd_net *nn)
-  */
- static bool clients_still_reclaiming(struct nfsd_net *nn)
- {
--	time64_t double_grace_period_end = nn->boot_time +
-+	time64_t double_grace_period_end = nn->boot_time_bt +
- 					   2 * nn->nfsd4_lease;
- 
- 	if (test_bit(NFSD_NET_GRACE_END_FORCED, &nn->flags))
-@@ -9198,6 +9198,7 @@ static int nfs4_state_create_net(struct net *net)
- 	nn->conf_name_tree = RB_ROOT;
- 	nn->unconf_name_tree = RB_ROOT;
- 	nn->boot_time = ktime_get_real_seconds();
-+	nn->boot_time_bt = ktime_get_boottime_seconds();
- 	clear_bit(NFSD_NET_GRACE_ENDED, &nn->flags);
- 	clear_bit(NFSD_NET_GRACE_END_FORCED, &nn->flags);
- 	nn->nfsd4_manager.block_opens = true;
+@@ -6837,9 +6837,8 @@ static bool clients_still_reclaiming(struct nfsd_net *nn)
+ 		if (atomic_read(&nn->nr_reclaim_complete) == size)
+ 			return false;
+ 	}
+-	if (!test_bit(NFSD_NET_SOMEBODY_RECLAIMED, &nn->flags))
++	if (!test_and_clear_bit(NFSD_NET_SOMEBODY_RECLAIMED, &nn->flags))
+ 		return false;
+-	clear_bit(NFSD_NET_SOMEBODY_RECLAIMED, &nn->flags);
+ 	/*
+ 	 * If we've given them *two* lease times to reclaim, and they're
+ 	 * still not done, give up:
 
 -- 
 2.54.0
