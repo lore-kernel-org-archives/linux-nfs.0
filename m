@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 767F14D98F9;
-	Tue,  9 Jun 2026 17:48:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 954394D9907;
+	Tue,  9 Jun 2026 17:48:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781027284; cv=none; b=qGh0aWqDTqpDLHeEA3EihdUyCFWVEZZUANLnFsMuSN4MOxbsvH3oWRRKbLWDv0oolo6WQ9iG+t072vyFrdYp464CDq2I/bhM04a7jv0V9XoKvJIqY3QYl+sz2ToLgl5H1ziEhc5AWpifjYQ3dwnJjR05etkgUSfKq47gGeDZ/fY=
+	t=1781027286; cv=none; b=tuCsMv8UzX7vmi0896PdH+GQDBhvVfIVCrzxN1+HxUztYAekify1jH8K674tNp8WGa24BvrCi7wADGD7lV1GSCjpIQxSb0m5W+KN2YG8w9H01d2tKz6MqJskOiutzRojU+naNhfa4jKtc7Ur+BcYIombSoz7/L2a5+mxcJjwNag=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781027284; c=relaxed/simple;
-	bh=KVrLhX9lsnQb1vW4B3vqrncGKobnyg/dgPHZxa0IyTk=;
+	s=arc-20240116; t=1781027286; c=relaxed/simple;
+	bh=RC8Q4o+sDN8hiJL73YQ7jLVzuohRzOZJ8N9lyw2U7ps=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=j23sxxiX4rN8X167UEwqpTO2nDVbXSYq5UbolGU49CXUdjzfjxk6xnoC4kc0tXr+4jZzLNCo4ea2/p4Zohhi5bMkGctzISowSCZnZXq10Az82/8nwLNQzhymE5B5SeaNc4KfuLI7eqxnyQ/EW3o2fJMJVcz33tHDXjfUtDh2w8A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gCkfE2cD; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=iTL//7yXX+oTtcD8yJqze/AHSyWBZ6Viea/AqudhX4+LWWysCKMRqwOVGgKL0dAOBrhZmqjBWhnJOJApK19MO+Lh93GFRrnDVR+DfgcX2Gx+QKLGOC5WeUNntAnZhjwmbfn4SrLu4PbAPYcjmS7TXH/xOzyAihpxML1+oAC6Rjo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QZcFyb5h; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gCkfE2cD"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7A4911F00898;
-	Tue,  9 Jun 2026 17:48:01 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QZcFyb5h"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 99FA31F0089B;
+	Tue,  9 Jun 2026 17:48:03 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781027283;
-	bh=VGQgLYYOesAWY4AaR21R8wLs+Xwa63VsdpGz6sz3/hs=;
+	s=k20260515; t=1781027285;
+	bh=HSirJ20UxaqRcpZdu1nDFRKAQBeJk3ozVY/Zdp8wQ5o=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=gCkfE2cDJ2ILmVjb4KUhgsXlzSh/hRwI5mpHIs/fbPiZI/+OS5Y6/jiGNe6uMt3ee
-	 3llMqy3inQDc7RcVoqPdmRYq7o8zSygdItBjPk7gMuFRFBOqBAKH+cs90sZ4erdqXN
-	 0ANnr8Dqiw+CGnPgmA0oU89NwFq/O+96zpsRi6OtoMyvMa9j8vKk14ZgESY+GkFMnx
-	 cp4SSZcnA5GWd+EVQOj1NjEEGmnd3osVInTZPti1JZciET64IClA2XYCX7AGIKpoOp
-	 zd8zo/+zy+xKdg2oNNYut92ctsJvIJN41kUR9ftoO2ROQMAUcF9AfLGMParzWzQicr
-	 hc0NlkGUJg2Ew==
+	b=QZcFyb5hVF+JBrWhQ08y7DnolBC3RL2Le4mwljdEk4TVP2ssk1ajyJ2jUCWXcgLpv
+	 z6dJ+zIqccxLKADJNUM99k9JNHwecqDHD6xptizZyyFwKZPY/XIf3R76CJRLZHi6Vu
+	 CHslL+ovMkIhaMoLJnJKyC9lx6n6Bm0YhPIaQh58EvaCFYTiBN1yoQ5HlGjrVEangV
+	 Rofsbeehp06AqEJo5Arg41+bY16tZpk1NlikmWAqQe+zUPvrgrJVErg8ci67yeoeuq
+	 JmOiYIucij0+AojV+f/QXKD1Q6cFw451kMsxcwndy9WNwEluk4gh4p7c2cRr6XmUqm
+	 R8161xDNYggYg==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 09 Jun 2026 13:47:30 -0400
-Subject: [PATCH 09/19] nfsd: remove premature NFS4_OO_CONFIRMED in
- CLAIM_PREVIOUS path
+Date: Tue, 09 Jun 2026 13:47:31 -0400
+Subject: [PATCH 10/19] nfsd: fix version mismatch loops in
+ nfsd_acl_init_request()
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260609-nfsd-testing-v1-9-e83acead2ae8@kernel.org>
+Message-Id: <20260609-nfsd-testing-v1-10-e83acead2ae8@kernel.org>
 References: <20260609-nfsd-testing-v1-0-e83acead2ae8@kernel.org>
 In-Reply-To: <20260609-nfsd-testing-v1-0-e83acead2ae8@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -56,50 +56,60 @@ To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  netdev@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1050; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=KVrLhX9lsnQb1vW4B3vqrncGKobnyg/dgPHZxa0IyTk=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKFG7STSaX6KxdI5j88333BiJi5gyEyp3Jpqgt
- 9CgpDfo0WuJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaihRuwAKCRAADmhBGVaC
- FQQrD/9Y+/TFwm3Q9ENanUHkdGitNqSoHgyRH3x4YyBBmVFyX9tZollaGl0MPV29ehA+eRYwfF5
- QeRoSerlwataKeb8x2LnVb4NFczIbdCuPNK7G9QPJShxH0UPKKN1YkrxU+bLt8ilGblipKiZnto
- ctq4w0DfbpeOLOU+Og4sYM7Zy1vH6K+t5TQqBGu5hDvuXUtwNGA1+nNOgU0UkUcHcVywsKupvYy
- 8kCEblui2y03XnSNRQ/apjT2jywwqZ7Mulppgxyt97jrPfl2FUtDggYPDItftG0F6aTQ8PplMtH
- PSiRTOek/Qf9aNXHr4VGlvY3jkSKzde025PFyDPMgt33q6GNdzAmHm9Qvm8wq/DJBA6phuB1IHh
- e1Kw82jU+uEExtjBQvNpq/kTyVUk9km6se9QYYmYlEYiBwJsj4c05+03Uo47yzApD4RqGoQCXQA
- U8VQwoYs8YZucpzQfr8JD0giYZjk+vfjEKu8sA8vu7Ii5lo8IjGmiLKBvyz+2DgEWP63aacSy5M
- xWdb/utf2CUmYMEwOhncAZ9S0VjYIX4qVzOP28DvJCn/7O5DCYigOrJXHzQLNWsbsf/Bto48+o/
- Nq9fr0iWxa01DB9JIRdb0hGxksOSw4xIpBIyhoLnuVVtm2B+3/9yNpyRHcFBvudSen0W1zCjoyT
- sqde/SMC4bKdlLw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1505; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=RC8Q4o+sDN8hiJL73YQ7jLVzuohRzOZJ8N9lyw2U7ps=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKFG7Ypt7h3bBjgUXMmI25+K+18OAyePwvm24M
+ geLStpTye+JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaihRuwAKCRAADmhBGVaC
+ FUgzD/oCLrs+nvJfbPzIZM12pL7DStKlv9rXwFsKSWpMX7fOpTZtqvmAzIIffcIHZ+GyJbWFhvu
+ CLmI86K15mgqqyHa4uq9NbSfghIbVn9PeTMYP15v+O3mUm4qY7J9FCWc06UihLoDu2jM+JGUqRc
+ ZG1OZ+I5lFwp8DY1lZDpPSReGHUjdrtTKhx+fpaHv1MiweKs0M6XGraZaVoW1m6c1Mgi9Lg0wvM
+ yXgjeEWG9yFbypXbi7yiW1eymfbh2GS/OXUfRb5/q2O8uqSzeWv0xHfuuiTZAcGHJfwEjN5KzCs
+ VeatppLQXhGbDITCKMUKs8te2Cj3gSIbynWNQpVnSwAvMrBXR9gKJQqKpoacnAHoTfwnHYgjH1q
+ ExYrOzSDnI8LP8B4+kXa44QiZJczbfNifv+LOp1xBKHvWIUFVouktF68O5myiGsb02eUpeLH45D
+ Q3DWLcNtwkjCJLrzUZ5s1qmrVui8TIkGXKQN9uZqMNv3XTpEmFBumY2/s4gOFOuhtnFCloPRy+9
+ c4b4TOH7lFnI2d/V4DNx8m3gL1HUJc2Yjz9nFirDZOahvNoX6FaSEyCAiLcPMb4DLlEJO+j5+07
+ 66E0znCI56zXRBhPuvxcv36jinvgt+kK/BNnDFqQhozmWbgl/AAAQimUzwqDv0NJsBaMtaNLXjy
+ +WoY8ud0PvH4gUg==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfsd4_open() sets NFS4_OO_CONFIRMED on the openowner before calling
-do_open_fhandle(), which can fail. If it fails, the openowner stays
-permanently confirmed despite the OPEN failing. The correct
-success-path setter already exists in init_open_stateid().
+The loops that compute the supported version range for PROG_MISMATCH
+test nfsd_support_acl_version(rqstp->rq_vers) instead of
+nfsd_support_acl_version(i), so every iteration fails and the
+function returns rpc_prog_unavail instead of rpc_prog_mismatch.
 
-Remove the premature setter. NFSv4.1+ is unaffected as sessions
-always confirm at creation time.
+Replace rqstp->rq_vers with the loop variable i, matching the
+pattern used by the sibling nfsd_init_request() function.
 
-Fixes: a525825df152 ("[PATCH] nfsd4: handle replays of failed open reclaims")
+Fixes: e333f3bbefe3 ("nfsd: Allow containers to set supported nfs versions")
 Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4proc.c | 1 -
- 1 file changed, 1 deletion(-)
+ fs/nfsd/nfssvc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 69fee481581d..4fe46996c8ed 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -643,7 +643,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfs4_check_open_reclaim(cstate->clp);
- 		if (status)
- 			goto out;
--		open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
- 		reclaim = true;
- 		fallthrough;
- 	case NFS4_OPEN_CLAIM_FH:
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index e45d46089959..d47451125761 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -815,7 +815,7 @@ nfsd_acl_init_request(struct svc_rqst *rqstp,
+ 
+ 	ret->mismatch.lovers = NFSD_ACL_NRVERS;
+ 	for (i = NFSD_ACL_MINVERS; i < NFSD_ACL_NRVERS; i++) {
+-		if (nfsd_support_acl_version(rqstp->rq_vers) &&
++		if (nfsd_support_acl_version(i) &&
+ 		    nfsd_vers(nn, i, NFSD_TEST)) {
+ 			ret->mismatch.lovers = i;
+ 			break;
+@@ -825,7 +825,7 @@ nfsd_acl_init_request(struct svc_rqst *rqstp,
+ 		return rpc_prog_unavail;
+ 	ret->mismatch.hivers = NFSD_ACL_MINVERS;
+ 	for (i = NFSD_ACL_NRVERS - 1; i >= NFSD_ACL_MINVERS; i--) {
+-		if (nfsd_support_acl_version(rqstp->rq_vers) &&
++		if (nfsd_support_acl_version(i) &&
+ 		    nfsd_vers(nn, i, NFSD_TEST)) {
+ 			ret->mismatch.hivers = i;
+ 			break;
 
 -- 
 2.54.0
