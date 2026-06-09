@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 09F9C4E378B;
-	Tue,  9 Jun 2026 17:48:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13D004EA367;
+	Tue,  9 Jun 2026 17:48:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781027289; cv=none; b=pbRhCRIJPajfv/QDz1i5q75477eTrr95lcwniiOb00o75aCXiP58PSs6vSFqO5kMO4IPbb/xwnlP8p7+YFh5TC7Drlt8rasIBYTYBoC+KpHTeRb9KrBHoh3LoJhTCEG4cqyKS6rXcU4WCYdNYeVKA0WupNA43VKlnWt3gjbKRjY=
+	t=1781027291; cv=none; b=QK4d7tIpkNVPOUMXTuErJYlYzuhEmW5jiNxqidTV7RxXsvyZEBnXH4m5eSgENmVGxnxBG+pel4pT7U9uvqMkFDoqE5uoxCooKdHV0zULOmxRqk27XsePAMcczRSYUYiG1zzMbsRFPUh591ACyHYRpa6giraDasxwyhbwIrAxRH8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781027289; c=relaxed/simple;
-	bh=IvN2zlHfIARbpsOFsJGDFUSqx8LtU530Le2fcUaJhSM=;
+	s=arc-20240116; t=1781027291; c=relaxed/simple;
+	bh=hRhpof256WQKvwovAWbRm1MWiOD2BnEzRGWngsNI+JE=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=R9VZ/av1nEtPH0IhaZ41go58htZOprS2+FVtWPX1LMoUo4zontFvmYk7/a6kFQX+NjztoyYADH6CyXZpLDJjyqJw0rP3U/mCcH0HUgKvU7LWXRb91t9EeHkkcALxgYfiTJ1YgyVmVjx0P9LSnqp29qsn/omTu06LkomUXHWx7Cw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=B8OYMgMn; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=tWbPAwBgqqQart2xwm8NpClj1H3ZqCGnYTBvwezb1+L1YiawmUYputpdvpIdX4wpQ6d5pXye2a53CT1k6kKdtbfwyyRkXdg97UtJwgPP8HrYhVDc5IH27LJgamui33tWB5PPe+hRY7dR2zG2AH8eJgo2VXKWcooZ22+jGx8S4Pk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LU05ovkq; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="B8OYMgMn"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B982E1F00898;
-	Tue,  9 Jun 2026 17:48:05 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LU05ovkq"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DAA491F00899;
+	Tue,  9 Jun 2026 17:48:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781027287;
-	bh=76QSvTFrWccX2/RPGoLN0iB0eJf1tfF3NmxaGj9q8rI=;
+	s=k20260515; t=1781027289;
+	bh=/VBdGVg26zQKWyJI8yfnf2xCXui05mQvSa45bIwcNzA=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=B8OYMgMnn6RYKdLw5WDu9iA96SlelnDuB9lzZ+CIpnlyrdSgV33qA3EFhWmc40N/Q
-	 SIjVbVTLPOf6vcPYdthe94RkcT2611eYrhpXdGZk0whsyK2WMt2Vq+h1Usa+SKJxe4
-	 b6f1H8s6OWQM/WfM9mo0zlezGi6LgV7j0xCSNHOyZTNX0d2zkbcAhV3glT2Y/PH4RX
-	 8hiqjmDgeKiClLIHL16KJ3roKqUESSfGLBbn6MSnHB62f41shM85aSe2hw2uIxR9yQ
-	 wnK7vY31uU+uWroQCSs6FocLgzjfp3fX5Ihbsa1u2vq2nOvIo6r/fXnTa/hhnoaGuy
-	 fQMXulfesRsvA==
+	b=LU05ovkqpLA14pLPGSbnqIs+99r1EAo9hBgQSVYKf9woMNEhi40X6JpAAQz72Ri4u
+	 1fFHrY/eefesyFsMbg8qyijalR4u2lWoYYPvEJSzTFj1s/dafREKvVb8j+uaMgkhKr
+	 hoSWMj4nB4L6CFn2F9HCB2ZOoxW5mXxHyDCO+dE1HekXaioxtSggK2QxvVQas3HZcs
+	 v+psq5ESY/HrhivwY3A6F71f2sd7eySWRmsP9wFKEUsV+TZXjuKnucNBTHYE8vAEju
+	 UEazM6eaMJVITuNFSApHXhQlli80dKGdioK2Sqcmg0iw6xrpplscK3Ar3RfRerGAsD
+	 kxMAxWy3WFT3g==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 09 Jun 2026 13:47:32 -0400
-Subject: [PATCH 11/19] nfsd: fix FL_SLEEP being set unconditionally for all
- LOCK types
+Date: Tue, 09 Jun 2026 13:47:33 -0400
+Subject: [PATCH 12/19] nfsd: add fh_want_write() for early-verified SETATTR
+ in nfsd_proc_setattr()
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260609-nfsd-testing-v1-11-e83acead2ae8@kernel.org>
+Message-Id: <20260609-nfsd-testing-v1-12-e83acead2ae8@kernel.org>
 References: <20260609-nfsd-testing-v1-0-e83acead2ae8@kernel.org>
 In-Reply-To: <20260609-nfsd-testing-v1-0-e83acead2ae8@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -56,58 +56,62 @@ To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  netdev@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1366; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=IvN2zlHfIARbpsOFsJGDFUSqx8LtU530Le2fcUaJhSM=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKFG7e7dBXC1TY3o7y6r7kiBrttEu+RWrfBg7o
- 1AefvQw/f+JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaihRuwAKCRAADmhBGVaC
- FaebD/9s8bwwN/uC/Vjot3XqgUHAQ6CzOcGv8sng4dO17gs3b8pval/8jcdtGw593Z0hX4JP2ym
- NWmZaUHDgdqDIt77140jMayuodIN2ueDQrNsE/wB6kJll3gy3U0MRXdGO5j+jE50tCX1NayaGWL
- JPP/7oHYfHbJUZuuZqPNEA3TVnXAMOW/krvkv61gYH9pPz6t9dbYXSnqjDZZqHK3r+8n/S7G4xw
- wdcGXxY2qowc9Gytk8hvg/eqT4w5kSju6nxxT9wqwHBBZbfvDpYjmLc6MAL3iWVaZuE4CyAgi4I
- J2SyjKBRCAPVZPlqmERWwQRXKT2pTmCfCIQCDeDcaK15aWkki7YPiKGAJ1ik4SScMq8fcWlDcdX
- 5MZbz1+WAcPI4jaZH0FPM5A9mRqrg4tNwntAVkoju2iz2QwZFEx5V9TD5G33KcjpE+F3MOAmja8
- yZeXXrdttU2CY/JIMVmqw2DuZiNjR58xslt85eHOYhsaU1eFHqc7JCmYYHl3BHLur3hANpSsiF3
- 0dI6saQpUqP9EjeB+ZoUmDpZvhJF8ZCpP2+JwCDWOmYcizJ/stMChJFhNv/xsbQRp2qszy1o0Hh
- 5uwSNpF0N1u3Tt5bWQv27LY/GqV/UmkuflVnBaqh078fAgQq16CnJ8aYvK5Q3yV9121B6UiO0zg
- qGMtenQLS6U2/9A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1192; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=hRhpof256WQKvwovAWbRm1MWiOD2BnEzRGWngsNI+JE=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKFG80QOEnXx9LKgofwY2TbK8Wb3WnhA80ooMD
+ 3EOsw/lCByJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaihRvAAKCRAADmhBGVaC
+ FewtEACmtY4axz/R+MEukW5LnRHHP3k0WsosoFh660ezMVBLqkr4UjS9g5IBH7Ly3k1j+e4dZA3
+ TLrjZyMq5us4H+KCtNYSMlvnELGUejh7ECKKZ3NBAiWSYJ6xne4YfydiqtYzpbndltQe3krBh97
+ oQjrQBUkOZ1tPo2UBbvRx8TVMi9EGUSzGzlpe8xV59ebYEELhTwwNQhAs2O1XVg2T41ffpXd82z
+ Q6j/pZZj15NRHVMuhOessQXybwwXwt3owejv7FLXLTKw3i9AMuEQSgP+dKfmYvMctocizsmRmKW
+ ov662ejP1FwEQ+6mQkUoFlS0Cs+BwRby/w3/8F2icXQTcqUgjdB7KLMPhNTJuB5H7Tvsm65bnRt
+ y2uxu6Wa8iiFeiLMshOF3IL6NJ8ZawXBfpHipDT3h3me2K70bA2GYo7+jn0UhqN2/sh8z8Mmk+x
+ smsdoGHUJ5p+DfM6m3wpfFrk6AVp8DZ3TZz5Uljy3cP/r4KHvQ6qRgLbXMLFk9HPV+TxDiXKUbt
+ kbf+589FBx0xurchEaCaDoeMoY+via6jadlZxWLrwdAo3tfO1zgBVky9YkNlM2XaM+M/cx/IRR0
+ Y0VQEnfM86XR4Vw5p5TVFnimfQYwrOk+VKEsQz8xjl4zQho4NlotNcC7/eHqmNuQ1chrWJWOEdO
+ hOe3vOW+bY85iGA==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-The FL_SLEEP guard uses lk_type & (NFS4_READW_LT | NFS4_WRITEW_LT) which
-computes lk_type & 7, non-zero for all valid lock types including
-non-blocking ones. This was introduced by commit 7e64c5bc497c
-("NLM/NFSD: Fix lock notifications for async-capable filesystems") when
-refactoring from per-case switch arms.
+The BOTH_TIME_SET branch calls fh_verify() early so setattr_prepare()
+can inspect the dentry. This causes nfsd_setattr() to skip
+fh_want_write(), so notify_change() runs without a mount write
+reference.
 
-Replace the bitmask test with explicit equality checks.
+Add the missing fh_want_write() call after the early fh_verify().
 
-Fixes: 7e64c5bc497c ("NLM/NFSD: Fix lock notifications for async-capable filesystems")
+Fixes: cc265089ce1b ("nfsd: Disable NFSv2 timestamp workaround for NFSv3+")
 Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+ fs/nfsd/nfsproc.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 19aab4c52548..8c714001c116 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -8589,10 +8589,11 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		goto out;
- 	}
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 8873033d1e82..a73d5c259cd9 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -82,6 +82,7 @@ nfsd_proc_setattr(struct svc_rqst *rqstp)
+ 		.na_iattr	= iap,
+ 	};
+ 	struct svc_fh *fhp;
++	int hosterr;
  
--	if (lock->lk_type & (NFS4_READW_LT | NFS4_WRITEW_LT) &&
--		nfsd4_has_session(cstate) &&
--		locks_can_async_lock(nf->nf_file->f_op))
--			flags |= FL_SLEEP;
-+	if ((lock->lk_type == NFS4_READW_LT ||
-+	     lock->lk_type == NFS4_WRITEW_LT) &&
-+	    nfsd4_has_session(cstate) &&
-+	    locks_can_async_lock(nf->nf_file->f_op))
-+		flags |= FL_SLEEP;
+ 	dprintk("nfsd: SETATTR  %s, valid=%x, size=%ld\n",
+ 		SVCFH_fmt(&argp->fh),
+@@ -117,6 +118,12 @@ nfsd_proc_setattr(struct svc_rqst *rqstp)
+ 		if (resp->status != nfs_ok)
+ 			goto out;
  
- 	nbl = find_or_allocate_block(lock_sop, &fp->fi_fhandle, nn);
- 	if (!nbl) {
++		hosterr = fh_want_write(fhp);
++		if (hosterr) {
++			resp->status = nfserrno(hosterr);
++			goto out;
++		}
++
+ 		if (delta < 0)
+ 			delta = -delta;
+ 		if (delta < MAX_TOUCH_TIME_ERROR &&
 
 -- 
 2.54.0
