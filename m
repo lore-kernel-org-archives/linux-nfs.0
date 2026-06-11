@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D0F5836D9FA;
-	Thu, 11 Jun 2026 20:01:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C13C8385D67;
+	Thu, 11 Jun 2026 20:01:09 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781208069; cv=none; b=S/OdEGzJfcMFl1Jz/AOOGy4fhEiqO+yj7hjJXBxueNeMZUXfpayqWPs1FOUclSmMN9O/cJOCrDzTSMDgdn4ItbBHstdX0TEHKjKjE2LG7xlaEW9w8dMQ+FyNG4it3RbLarHstctUK93JtPXCXK0LxElYG4oMIVfEJn4MQ4L1NpI=
+	t=1781208070; cv=none; b=py9j9YKTeycYKPr+dzWqbJW8VF8YS0x5S0Ldv+JNwQ7zghDBvGMDAoJAtxMzsbxDBhSOLAAmoZOQEsGdCgbvDDypRNesLNbqp32EKy345MiZLhqOJpL67W8aIgoCanpmvl+dawZKreS6hgaFjmnKvxhiJiZToxYA4i5w8RfukrQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781208069; c=relaxed/simple;
-	bh=CcG6OUziAhXqUtWJhTOO5mRk4TUJphs0RXifnfi5mtM=;
+	s=arc-20240116; t=1781208070; c=relaxed/simple;
+	bh=7i/jygUOjgBpSsR1sXXG7rsXOsu30p4zyydQ3gZHiCs=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=eJKh2u31J4tAtiiXityRnfD9PN2KL3o79sKJb4Kc0DH+2zjzKmtbkvlggS4InRzSAKSIwVAvChAR6wgdzIOx18uopPd/9hy/KSkmPnf3a1d9VenHF5+rA4yK2fBb/dDkmVQD5owpxh8dQfhtLlB30fOWtS9abpd4Ftb8SN0tsmg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=id8wcOA7; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=o4sP5k+OkUKDPMxreKGu1AIGAH3gnAP+TRC2e3faKOGYzYpR6KKr9X4wBs/1+Z/9qCYlrZW2NQ0K5PIvvIPruahchuPQMP/RpjSA8u1XcTRLwAVC+vniOwMzmevoDiF0DLsegvtQkLn1X7C+vdclcB9uRZv8yukjZrgoMvEn1YM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=c35puhwJ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="id8wcOA7"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D1D581F00A3A;
-	Thu, 11 Jun 2026 20:01:07 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="c35puhwJ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D47831F000E9;
+	Thu, 11 Jun 2026 20:01:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781208068;
-	bh=mAEqiA37affUSLRyClOuNhJ6p7CdJTTrjpVPa02VrCg=;
+	s=k20260515; t=1781208069;
+	bh=sYS0pOY3O5FJffkpguiMcujriyVX10KqbFnMWYew9gg=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=id8wcOA78nqa0YvKvw+pwKUyPpVGEry6C4ObzXHXoN/49vr7FIH/S5c7+BOK6wwvs
-	 HtCnchKEO6kmkVabyp5NFO/EUJrgmA+lVtRGBZME5OzyhSZNVdb4LXz4V0ED7wWSE2
-	 biKzF5r0ROKKNSbV0YIcSo32q7hflXWzv7KqyoiHfmbrNvFyNqaPXvThlOLTx7Fjtw
-	 cIPpAI1jHR70olYYLZ26K7KoOhslHz66l73yVftpNqR3rvCusXdqGeEiZwPxwObIbU
-	 NNtsz/7Pel6ueSUzt/BB6QqcISwontngiY9YnkRk2GDMlV8lxE7skkbLPJtSgASupl
-	 5+Q20SEanlxxQ==
+	b=c35puhwJ+fVejfdvndOpBBWIx12bnCkmjYr4BApNuEL2tqJ6P8XyPAqk5Z5UMSgY2
+	 zmDOZBJjHTky2vJXlXN27F5dhJNR6lLOJ7f+Y53SRtCWGdRPPY7YMcEnQ1oO/pwdos
+	 o22K2GvGv/mAzfdfW4s9dlaQkTOQN+XyttMzm/InI9hp0qlyk4IaVZ7oNVu3qaTki0
+	 mBA8ZYVXdZwmIqfNy6miJtuLnpE4zNWANNN9DPhL4VFvrFaXCBRQttEzDNVFYRX5Qr
+	 CqoTLlJfV4gXkYaNzSMTXYorB7eejeN2jFn6NYMUxMGf2ozV8tQ8E061zEAECx8KQv
+	 pLmVX7P2ms4SQ==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 11 Jun 2026 16:00:45 -0400
-Subject: [PATCH v2 02/21] nfsd: add missing read barrier to rpc_status_get
- dumpit seqcount retry
+Date: Thu, 11 Jun 2026 16:00:46 -0400
+Subject: [PATCH v2 03/21] nfsd: fix netlink dumpit error handling for
+ rpc_status_get
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260611-nfsd-testing-v2-2-5b90e276f2d9@kernel.org>
+Message-Id: <20260611-nfsd-testing-v2-3-5b90e276f2d9@kernel.org>
 References: <20260611-nfsd-testing-v2-0-5b90e276f2d9@kernel.org>
 In-Reply-To: <20260611-nfsd-testing-v2-0-5b90e276f2d9@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -47,61 +47,108 @@ To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: Chris Mason <clm@meta.com>, linux-nfs@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1600; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=CcG6OUziAhXqUtWJhTOO5mRk4TUJphs0RXifnfi5mtM=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKxP8EfYEkRICYfz9k+OJBE5sNBKEbqnlkSyOi
- ccCcj04T5+JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaisT/AAKCRAADmhBGVaC
- FSArD/wKy51MVStKB8MUeMof8vO1Ug2VgFG/ei7vwtdFFbf5LEp14lTxMYU+430q+PyBjEDCaGp
- iMrUQKcwYi36rjRpQcbETnIBd9bPZH8+phZGC58i3w2xjUuzd0Gqcpaxc0CHdPOAFkX8xwK0BXg
- anQUsAa1Ie0UBY/Xdm7X7b+OTEi/0PGbDQoV87ieeCWxy1obPm8GHxSfhp5sASUr4myU3UV2fji
- 8KKMm/E2XuEdZBIAA+rmli7rfrfrcW+p8d/Ux7OlT9STcj6qQ+0xlHg35ynlPVeShdSng1zvT2V
- TN++VA/uZuOVrSY20hM5nVCco5aX3s7cTgBXimVw5hupusAdhnMOOPBr8+7HYDs0Ms6M+b4TVIe
- 1kWnhA1W4Yye7o4IX3isFCNT4ibqzUz/aiT1dpzBwPaR+k8HMgjIsuHZpZt76yudCI8haQwL/I4
- TueMhDI2/hEmCZU0GRhcKVUUt00FmlswNxzpNsNWflGiA4fhRpwXdEAEbWfETdjWaE04fGe5ujf
- CJlpB5PFbhj7K507LVvnlucEGhGoAxStAJ2GcBxYdRG+g2rgtul5OeVGOwkJUVD896pdIV1G+xx
- Zq+ys6NmR7R5Lj4/pPACPivNeYkVIGBt1ZbxazYy+SwurlmbZRVWwC6wsxTVfnsqH60cO/+yZqa
- WN6ZXu0gr3sA8sg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2724; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=7i/jygUOjgBpSsR1sXXG7rsXOsu30p4zyydQ3gZHiCs=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKxP92kHPK+qKwHuhxbkgmm0sPpdqHSqEmmPH/
+ JSziv6K8HuJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaisT/QAKCRAADmhBGVaC
+ FawrD/4rzNrPZP/45iW/3ZthO6bd09TmGzIoUOaWKtoHKE9lMGY+iNlMGaakZnD9l02ylgcqpSy
+ YND/r4Ifi9Z1H0bQ3YeJgDJSUZQzhmfkc09QFUO03r21TDKsUGwMOtgp6PQaz8yqL8UtHkW0a/h
+ 5mDTKmRLEMFfeT6vDmuPVxPwqcREv4Er0oSOHhlDR1EPlXyyIVDkeqWjmzhybjP63Oe06RxgSuZ
+ jZNFnMSlWpFXHgtKYTb051UeWmWta+0kMIIXYZ0vCnLRXG9FFl0nEW7+JzVvwQ2YjhCrLu/jqlI
+ g/XVJStyGdcDawFQ7pWKCfzcoWvMN/pIW0/XA7lPMpM5kEbeRmGN6MpB4u1o3c4FewCimuxM3Cv
+ OMYNkZExdJmrS3VzHtgYm21liyd5HxeItAz9YHVcavWFyvIfvy4sp0Of6FtRMOnrXltDRkTullZ
+ 0MUnwbiWKS0Wa1NWe6BwWdShqc5T9V0pkVioibMd6Zda9FNB6R4nbQeSz6jOhSGz7VInPwgcau9
+ l4N/Le0wzh4EV+SrXR8wVldUaWRvlODu62aG7ZgTtAQgvaBQFh271aFdLLvXiGxL1UHpL9WoFqz
+ vOpneqMGnVkXoUTwvKWs7VjgsyEQXnRJC9P0gtq8qtwSrWqVkX2kSiNNXQpF/2KB8Ftvwslwefd
+ 8PB0omCStxC74ug==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-The hand-rolled seqcount-like protocol in nfsd_nl_rpc_status_get_dumpit()
-is missing a read memory barrier (smp_rmb) before its second counter
-check.  The standard kernel read_seqcount_retry() includes smp_rmb()
-to ensure that all data reads complete before the counter is re-checked.
+nfsd_genl_rpc_status_compose_msg() returns -ENOBUFS on nla_put failure
+without calling genlmsg_cancel(), leaving a partial message in the skb.
+The caller then propagates -ENOBUFS directly, which the netlink dump
+infrastructure treats as a fatal error, aborting the entire dump.
 
-Without this barrier, on weakly-ordered architectures (ARM, POWER),
-the CPU may reorder field reads past the second counter check, making
-the retry logic ineffective: it could observe a consistent counter pair
-while reading fields that have been concurrently modified by the writer.
+The correct netlink dump convention is:
+ - Cancel any partial message with genlmsg_cancel()
+ - If prior messages were added to the skb (skb->len > 0), save the
+   current iterator position and return skb->len to paginate
+ - Only return a negative errno when no messages fit at all
 
-Add smp_rmb() before the second smp_load_acquire() to match the
-barrier semantics of the standard seqcount read-side.
+Fix compose_msg to cancel the partial message on all nla_put failure
+paths, and fix the caller to paginate when possible rather than
+returning a fatal error.
 
 Fixes: ac18892ea3f7 ("NFSD: add rpc_status netlink support")
 Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfsctl.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/nfsd/nfsctl.c | 20 +++++++++++++++-----
+ 1 file changed, 15 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index c06d25c06f06..a4b5b1467fe2 100644
+index a4b5b1467fe2..ab10692ee937 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -1576,9 +1576,11 @@ int nfsd_nl_rpc_status_get_dumpit(struct sk_buff *skb,
- #endif /* CONFIG_NFSD_V4 */
+@@ -1452,7 +1452,7 @@ static int nfsd_genl_rpc_status_compose_msg(struct sk_buff *skb,
+ 	    nla_put_s64(skb, NFSD_A_RPC_STATUS_SERVICE_TIME,
+ 			ktime_to_us(genl_rqstp->rq_stime),
+ 			NFSD_A_RPC_STATUS_PAD))
+-		return -ENOBUFS;
++		goto out_cancel;
  
- 			/*
--			 * Acquire rq_status_counter before reporting the rqst
--			 * fields to the user.
-+			 * Ensure all field reads complete before re-checking
-+			 * the status counter. Pairs with the smp_store_release
-+			 * in nfsd_dispatch to form a seq-lock like protocol.
- 			 */
-+			smp_rmb();
- 			if (smp_load_acquire(&rqstp->rq_status_counter) !=
- 			    status_counter)
- 				continue;
+ 	switch (genl_rqstp->rq_saddr.ss_family) {
+ 	case AF_INET: {
+@@ -1468,7 +1468,7 @@ static int nfsd_genl_rpc_status_compose_msg(struct sk_buff *skb,
+ 				 s_in->sin_port) ||
+ 		    nla_put_be16(skb, NFSD_A_RPC_STATUS_DPORT,
+ 				 d_in->sin_port))
+-			return -ENOBUFS;
++			goto out_cancel;
+ 		break;
+ 	}
+ 	case AF_INET6: {
+@@ -1484,7 +1484,7 @@ static int nfsd_genl_rpc_status_compose_msg(struct sk_buff *skb,
+ 				 s_in->sin6_port) ||
+ 		    nla_put_be16(skb, NFSD_A_RPC_STATUS_DPORT,
+ 				 d_in->sin6_port))
+-			return -ENOBUFS;
++			goto out_cancel;
+ 		break;
+ 	}
+ 	}
+@@ -1492,10 +1492,14 @@ static int nfsd_genl_rpc_status_compose_msg(struct sk_buff *skb,
+ 	for (i = 0; i < genl_rqstp->rq_opcnt; i++)
+ 		if (nla_put_u32(skb, NFSD_A_RPC_STATUS_COMPOUND_OPS,
+ 				genl_rqstp->rq_opnum[i]))
+-			return -ENOBUFS;
++			goto out_cancel;
+ 
+ 	genlmsg_end(skb, hdr);
+ 	return 0;
++
++out_cancel:
++	genlmsg_cancel(skb, hdr);
++	return -ENOBUFS;
+ }
+ 
+ /**
+@@ -1587,8 +1591,14 @@ int nfsd_nl_rpc_status_get_dumpit(struct sk_buff *skb,
+ 
+ 			ret = nfsd_genl_rpc_status_compose_msg(skb, cb,
+ 							       &genl_rqstp);
+-			if (ret)
++			if (ret) {
++				if (skb->len) {
++					cb->args[0] = i;
++					cb->args[1] = rqstp_index - 1;
++					ret = skb->len;
++				}
+ 				goto out;
++			}
+ 		}
+ 	}
+ 
 
 -- 
 2.54.0
