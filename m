@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BC02D38F653;
-	Thu, 11 Jun 2026 20:01:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BE7EC391842;
+	Thu, 11 Jun 2026 20:01:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781208074; cv=none; b=KlMSFYeIn6nNBZdpIKsPGvij22aXUUf49KBtJUInF5UImmXnh4llM7RdSMwdjlcTYLNieGOv+Cbn4Zb/1V3i5wnyM+vpqNJY/nPTvAvFNeijJmpKJVafDHq8y/a6suuI7ix7PTuDsVBIMDUgI8li6BGY6j7ZuY5kBENGYuipYyU=
+	t=1781208075; cv=none; b=oI47nd/Ec2pcCD33OI7gjSxD0gruX4hOGSpwWGqwxRGVkFQKkr343IicJIVyFuYCHxfzV7GOjjsF1Rsw8Ax3zpTi8dbJWfKm7U8M3/TKxEIu2YdslB/j6HsPdI9D1IMlQJfoAjOCvGuMeTugpYOyW1lHuuFXi2ySBLpqd6VN6KA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781208074; c=relaxed/simple;
-	bh=+rxPQ6oAE0p/Q4OGK6v8FZlkDtkd3fH11hIexGCDKI4=;
+	s=arc-20240116; t=1781208075; c=relaxed/simple;
+	bh=KVrLhX9lsnQb1vW4B3vqrncGKobnyg/dgPHZxa0IyTk=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=dcl3pbv13ee93JPwb3ET31geEtpOlrrX9vsvKz25IGSAlgpe71l/C1e66RPf5i85EuhFOt1n4FODx3cHeBJLJDkcGhqePENvcJzEtqzDX4qUiQnsNKvBOewKJc72GwPtiQjgve+5bKVWHwdVPdec+NR36Q5nwROChRX5ShAONwo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jELbhejk; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=H3dp35Z9a4wcKG6bUk5d0+CWfHYjA3q706Q103OupbzlP7I/fXhrWB4hiBSeEKqZD4LH2xcp8JO8pUyY4REL2c0DlZp40AfZBW9MY2c+7hX0NoKcJVG8Vb+oqQ3qqbvv75VwBemZOPy0486SN2oxnI7JJKo8vNUyH4DF6d6M4w8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=URcSr7Ov; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jELbhejk"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DF0FA1F00A3E;
-	Thu, 11 Jun 2026 20:01:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="URcSr7Ov"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id E1EBB1F000E9;
+	Thu, 11 Jun 2026 20:01:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781208073;
-	bh=DnDZp+b6bsA0t2dC0iM15A3EwgkBFB7/zFfve8bdYNc=;
+	s=k20260515; t=1781208074;
+	bh=VGQgLYYOesAWY4AaR21R8wLs+Xwa63VsdpGz6sz3/hs=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=jELbhejkuOatkbBHLeKX4GfWtqQY9ih23jGSreA8+xdBX+7iNrnKharkMy3bvkrDJ
-	 bSOehEHOzx4FPETh0+971nyMxh/gGiNmYrthpUPkJH3YZgBlCYY8juM7mxse9GKK50
-	 s6uBjXY/pDc8hzb7dq2kvVrmNhClKnfyejlzxtaiHaKNdZMN/6CFKGNCodjvNihlXm
-	 ovGfYLB5CBQWR8ilG5XB+GJPlv2nyAfXs5q+AQZfSVgbOwFZ7d1yAVxGO/UB66W/Sr
-	 kK0Df6UY1BtaUuBeRsT+JAQvE0bztyI/A0SOWlvgUWZmwBNQ/Fz1TeihBAlaZewtv3
-	 2FwkPIBghSv2Q==
+	b=URcSr7Ov0mEtXhKyMmUFAvjFJR5DhY7Csyx6C6HOQm7ZCrK7Hsdo+CUMe2Dh7ZxvP
+	 YzkfqjxKXVPVREllKykzQHQ5cWcOgLclGsmS8lOAHnSZOLaUiA/XeGM0M02YG2Xn+H
+	 he32kjq20M+S/xL9IKP5UdWEgG/2WmQqR3SDt/i/satxJMJtuvAqTr/NJNmJMwLe9x
+	 gJioOxfef2IpI7bkm5U8kcYtbVx8mebAEi1T6EviX1UvEc+lgwD83gV0a8itY0jl8o
+	 6lIrOLMZUMATXeWPW+XchlqwukZlZE/BZhcY5bnOpQ1515Fp0QHW3N9bpTBoDBc1ok
+	 3jiac8TZ1a2kw==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 11 Jun 2026 16:00:50 -0400
-Subject: [PATCH v2 07/21] nfsd: validate nseconds in TIME_DELEG decode
- paths
+Date: Thu, 11 Jun 2026 16:00:51 -0400
+Subject: [PATCH v2 08/21] nfsd: remove premature NFS4_OO_CONFIRMED in
+ CLAIM_PREVIOUS path
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260611-nfsd-testing-v2-7-5b90e276f2d9@kernel.org>
+Message-Id: <20260611-nfsd-testing-v2-8-5b90e276f2d9@kernel.org>
 References: <20260611-nfsd-testing-v2-0-5b90e276f2d9@kernel.org>
 In-Reply-To: <20260611-nfsd-testing-v2-0-5b90e276f2d9@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -47,84 +47,50 @@ To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>,
 Cc: Chris Mason <clm@meta.com>, linux-nfs@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2493; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=+rxPQ6oAE0p/Q4OGK6v8FZlkDtkd3fH11hIexGCDKI4=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKxP+UeEYyagFphfkjXi/l/unPqPsA3AFSkHSz
- fjhJh1BQC+JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaisT/gAKCRAADmhBGVaC
- FWSzD/9Au53jORKthHQ9pVstjiKaujgyjGi7T3xzmR0WH/Zy8mIYA2HixbP2kIax6zH2leesH7v
- hszR5Z+F0yZkP9hyOTxSz2f4H6kJ6pkjWD5RX14S/a7KdL6TF2W7x14D9yGBF6coC0XKLrR8DKS
- uKSOLBAmQ3JpA9haFDe8xzi/tlG+hyXD5MJHxJgKd+W6ydCj8ePch6H55SiZIxB7QPKgKiGLucx
- utSAU4Kku1n9X/hb8NDasNQEhHOmUU8deL8uYPqh2Z3HzbJDPJSX2aHkAos/D0ClswmIrS3NTCL
- aioH9b+K6LuDL/XqhLqc71vA2pFYPC9II4O8y3NnNsVpM1EXCjkO7ZunJFXlMhh/C6Y6ZNiRYYx
- owBBUSl1dnlHrxSCQAg/h6NgA9eZWkmM638tNRbJ1n2AWrKm5CDOVQel4PJDcNnOXTwI9JM4YQV
- 3o420zAnL6+wQ0gkGqWPWDah/9muZzW8VMve4UcF4Htmh8yyzNwy9E5ivYxiI6H2UCsqLNkBZgq
- oL/V2oeUMGzXkXEFsNtXQ9z1LWt7n1sf82TmUBN1StUKis2qfreAsLmxzqmABo+UigaOelpUUsv
- wP+TnDCs6LYwljRu+m1CdeCFYbHmUnxF7giDPCptoEuJtFd2Pk08dksbSZRdjq3FOhJ9v/Eae0i
- dxiC3rrCEIe0axA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1050; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=KVrLhX9lsnQb1vW4B3vqrncGKobnyg/dgPHZxa0IyTk=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqKxP+ijHh3wMXBwdRhhmNb14rDf5Mw5AEJPITM
+ Fr6R4QfsKuJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaisT/gAKCRAADmhBGVaC
+ FdK4D/wNLWtsFiiqsMKyaeHO6eWnjEkVTwCozJZbLEB0KwI1Vv3P1THBELBKC+Jj2t8//gEC1EL
+ kAnsb4eb2rTZ7O41z99UUamujTaaXRy3lK0i7E/7qYdun2tl0QeusVzsPTA8wvzNsHYqoN1pAYp
+ SZ8JbjognOoybPwwVtGSo2djYr7tdIweLkTu2SCvRZKGyHoxiEUj328wJyeMR9IhMAwq4K4XwO5
+ IkiN6P4Qwi+h9avmLfUN0nG4CmgcddBDoFkEgi0+vJAoH1X4mfFkuhWgiINFqDlPbHTvQh9+OPC
+ JhpO3mQkCJPht94ygtVaFzW6XAs1aqBApSCdD6ilUIBj4VvFObq1SgG7jmXPSfMsdwoBycB9TcN
+ 1vHOrn734wLpzaOLnVsvL+LAM9U+BHJYLmuS3opRXb2zS0gnF0OrzXfkCHZq49Ph3/i2fWlqvso
+ LeDvSNH4hvA2s7/hlaPIC/C9S+EhhPc6RiI/Hf9iQMvTsxxoE9VBoucXHAck/zkWCT9S9Z9jlJz
+ uV2D+KZ5QoXU8uheGXDXc1bsLNj2sxE3jt8ZJZUOxY6X1+mbAaSegKT3WMCWjZGgPnasaDzrF2C
+ o36hleurxJA7T2YHd8cZn5sYiC7Srttr5ZCQTJeGlQ5Q2/7wV0xyKAb1YvsB78T9W55qEbcMY6A
+ cgf328qITpsYFfw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-The xdrgen-based TIME_DELEG_ACCESS and TIME_DELEG_MODIFY decode arms
-store a raw uint32_t nseconds directly into tv_nsec without enforcing
-nseconds < NSEC_PER_SEC. The legacy nfsd4_decode_nfstime4 has this
-check but the TIME_DELEG paths do not. A malformed timespec can
-propagate through notify_change() to disk.
+nfsd4_open() sets NFS4_OO_CONFIRMED on the openowner before calling
+do_open_fhandle(), which can fail. If it fails, the openowner stays
+permanently confirmed despite the OPEN failing. The correct
+success-path setter already exists in init_open_stateid().
 
-Add range checks in both nfs4xdr.c (SETATTR path) and
-nfs4callback.c (CB_GETATTR path).
+Remove the premature setter. NFSv4.1+ is unaffected as sessions
+always confirm at creation time.
 
-Fixes: 6ae30d6eb26b ("nfsd: add support for delegated timestamps")
+Fixes: a525825df152 ("[PATCH] nfsd4: handle replays of failed open reclaims")
 Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4callback.c | 4 ++++
- fs/nfsd/nfs4xdr.c      | 4 ++++
- 2 files changed, 8 insertions(+)
+ fs/nfsd/nfs4proc.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 1628bb9ef9dd..7c868afc329e 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -108,6 +108,8 @@ static int decode_cb_fattr4(struct xdr_stream *xdr, uint32_t *bitmap,
- 
- 		if (!xdrgen_decode_fattr4_time_deleg_access(xdr, &access))
- 			return -EIO;
-+		if (access.nseconds >= NSEC_PER_SEC)
-+			return -EIO;
- 		fattr->ncf_cb_atime.tv_sec = access.seconds;
- 		fattr->ncf_cb_atime.tv_nsec = access.nseconds;
- 
-@@ -117,6 +119,8 @@ static int decode_cb_fattr4(struct xdr_stream *xdr, uint32_t *bitmap,
- 
- 		if (!xdrgen_decode_fattr4_time_deleg_modify(xdr, &modify))
- 			return -EIO;
-+		if (modify.nseconds >= NSEC_PER_SEC)
-+			return -EIO;
- 		fattr->ncf_cb_mtime.tv_sec = modify.seconds;
- 		fattr->ncf_cb_mtime.tv_nsec = modify.nseconds;
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 1e4a51926910..056a8df3fd50 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -637,6 +637,8 @@ nfsd4_decode_fattr4(struct nfsd4_compoundargs *argp, u32 *bmval, u32 bmlen,
- 
- 		if (!xdrgen_decode_fattr4_time_deleg_access(argp->xdr, &access))
- 			return nfserr_bad_xdr;
-+		if (access.nseconds >= NSEC_PER_SEC)
-+			return nfserr_inval;
- 		iattr->ia_atime.tv_sec = access.seconds;
- 		iattr->ia_atime.tv_nsec = access.nseconds;
- 		iattr->ia_valid |= ATTR_ATIME | ATTR_ATIME_SET | ATTR_DELEG;
-@@ -646,6 +648,8 @@ nfsd4_decode_fattr4(struct nfsd4_compoundargs *argp, u32 *bmval, u32 bmlen,
- 
- 		if (!xdrgen_decode_fattr4_time_deleg_modify(argp->xdr, &modify))
- 			return nfserr_bad_xdr;
-+		if (modify.nseconds >= NSEC_PER_SEC)
-+			return nfserr_inval;
- 		iattr->ia_mtime.tv_sec = modify.seconds;
- 		iattr->ia_mtime.tv_nsec = modify.nseconds;
- 		iattr->ia_ctime.tv_sec = modify.seconds;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 69fee481581d..4fe46996c8ed 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -643,7 +643,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfs4_check_open_reclaim(cstate->clp);
+ 		if (status)
+ 			goto out;
+-		open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
+ 		reclaim = true;
+ 		fallthrough;
+ 	case NFS4_OPEN_CLAIM_FH:
 
 -- 
 2.54.0
