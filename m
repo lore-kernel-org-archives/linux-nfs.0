@@ -1,31 +1,43 @@
 Received: from cstnet.cn (smtp25.cstnet.cn [159.226.251.25])
 	(using TLSv1.2 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DE40C3EFFDC;
-	Thu, 11 Jun 2026 15:03:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7C7FC40B394;
+	Thu, 11 Jun 2026 15:17:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=159.226.251.25
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781190242; cv=none; b=fMT116XcTAfGD1KdE4r1M2dlUiu1FvYIoIz3WTR/k6qbF+5u4YEHpv6ZtDL0wELwvAok0IPhZjuE24GBvywEUkcsE3uFHeVeyWL+E+VKAZQcmLinCWxLiGJetj7aHUA7vByHq9ZuEk6aFtiQ+UpoIlixU6IdwXacyu5/3a43uas=
+	t=1781191071; cv=none; b=EjH8LORhUqU/OLYzn+kEWoS5oqtwLVRSahBcewvWe1wY7uUWcg9ByWlFZIggxRu09CwzIZlTKBSVcVeN+iiOdSFCefvuipwHVrhzQe3XP/VDUyC5oIPEKMYiWcJdN6LurBKBvMDCRQVk5duu4/mwle+NpPIriXFNI+j+6a09HvA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781190242; c=relaxed/simple;
-	bh=E/L9NW3Sj8d3/sowxE/wcEU8GspbVJT0M3nxIyY9t1U=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=a1CGpd7uQnIwFA9NwLAURnGUN8wdhS2nGrksAHCN4S7FCYBIBItKUStf9QgMtXSBTWzlsE6cDMbQ2cBp/AVpaulg1JG13PuIpCDY6cnC6+mwqli6iVUm/ikgXrbD07MvuBsjcQ7XtH3XBadUEgjVopozMIN1OpJrVvoUryrZ4rE=
+	s=arc-20240116; t=1781191071; c=relaxed/simple;
+	bh=dSUt8JvY3OeC89mGtyPEnI9tz7ueHmVY11ipk+zAJFc=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=hlw68UasgqY1YVLtrEydaQNOg0LM9Vm9D49akSXPrkqqdj11d9BCfk9qvzD54TUYrzajA6vjlZBQGOsc5gJlYGpKfF2H3GTVGxxR8VvQsC9vQ6uJcNFczE/DTVrArVkkAAxOcpkxospY5fWx7nmyLjoITccGs0Ou9yNDGOyvfxc=
 ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn; spf=pass smtp.mailfrom=iscas.ac.cn; arc=none smtp.client-ip=159.226.251.25
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=iscas.ac.cn
 Received: from localhost.localdomain (unknown [117.182.75.76])
-	by APP-05 (Coremail) with SMTP id zQCowACnCt5czipqHSAYEw--.25148S2;
-	Thu, 11 Jun 2026 23:03:57 +0800 (CST)
+	by APP-05 (Coremail) with SMTP id zQCowAC3Gt6I0SpqVGoYEw--.1282S2;
+	Thu, 11 Jun 2026 23:17:31 +0800 (CST)
 From: WenTao Liang <vulab@iscas.ac.cn>
 To: trondmy@kernel.org,
-	anna@kernel.org
-Cc: linux-nfs@vger.kernel.org,
+	anna@kernel.org,
+	chuck.lever@oracle.com,
+	jlayton@kernel.org,
+	davem@davemloft.net,
+	edumazet@google.com,
+	kuba@kernel.org,
+	pabeni@redhat.com
+Cc: neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com,
+	horms@kernel.org,
+	linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org,
 	linux-kernel@vger.kernel.org,
 	WenTao Liang <vulab@iscas.ac.cn>,
 	stable@vger.kernel.org
-Subject: [PATCH] NFS: fix refcount leak in nfs_direct_write_schedule_iovec()
-Date: Thu, 11 Jun 2026 23:03:54 +0800
-Message-ID: <20260611150354.90801-1-vulab@iscas.ac.cn>
+Subject: [PATCH] nfs: fix refcount leak in nfs_swap_activate()
+Date: Thu, 11 Jun 2026 23:17:26 +0800
+Message-ID: <20260611151726.92210-1-vulab@iscas.ac.cn>
 X-Mailer: git-send-email 2.50.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -34,55 +46,66 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:zQCowACnCt5czipqHSAYEw--.25148S2
-X-Coremail-Antispam: 1UD129KBjvJXoW7JF1xAFy7uF47Zr13Cw18uFg_yoW8JrW7pr
-	W09ry7KFn5ArWxtr97ZF1xZw17uFZ2vrW3Jr48Aw4xZrn5GF13ZFyjqa45XF1Ykrs5JFWU
-	Zrs8K3W7A3WjvaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUkG14x267AKxVWUJVW8JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+X-CM-TRANSID:zQCowAC3Gt6I0SpqVGoYEw--.1282S2
+X-Coremail-Antispam: 1UD129KBjvJXoWxJrW5Xw47KFW7ur43trWUurg_yoW8WFyrpr
+	yUur9xAr1v934fJ3y2yF4Dta4fArn5Ga1rKr40yw1rAw12kr48Aa4IkFyjgFWxJFZ8JFy5
+	Zw4Ykay3AF1qvF7anT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUU9014x267AKxVW5JVWrJwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
 	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
 	1l84ACjcxK6xIIjxv20xvE14v26r4j6ryUM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4j
 	6F4UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s
 	0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xII
 	jxv20xvE14v26r106r15McIj6I8E87Iv67AKxVW8JVWxJwAm72CE4IkC6x0Yz7v_Jr0_Gr
-	1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7MxkF7I0En4kS14v26r12
-	6r1DMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI
-	0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y
-	0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxV
-	W8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1l
-	IxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUfsqAUUU
-	UU=
-X-CM-SenderInfo: pyxotu46lvutnvoduhdfq/1tbiDAgPA2oqh3jZWAAAs2
+	1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7M4IIrI8v6xkF7I0E8cxa
+	n2IY04v7MxkF7I0En4kS14v26r4a6rW5MxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4
+	AY6r1j6r4UMI8I3I0E5I8CrVAFwI0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE
+	17CEb7AF67AKxVW8ZVWrXwCIc40Y0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMI
+	IF0xvE2Ix0cI8IcVCY1x0267AKxVW8JVWxJwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4l
+	IxAIcVC2z280aVAFwI0_Gr0_Cr1lIxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIda
+	VFxhVjvjDU0xZFpf9x0pRBuWLUUUUU=
+X-CM-SenderInfo: pyxotu46lvutnvoduhdfq/1tbiDAcPA2oqzuYF6wABsA
 
-When nfs_direct_write_schedule_iovec() fails to start any write
-operations (requested_bytes == 0), it bails out after calling
-inode_dio_end() but before releasing the dreq->io_count reference
-that was unconditionally acquired by get_dreq().  The normal
-success path balances that via put_dreq(), which decrements the
-io_count and eventually calls nfs_direct_write_complete().  The
-leaked reference prevents proper cleanup of the direct write request.
+nfs_swap_activate() calls rpc_clnt_swap_activate(), which
+unconditionally increments the cl_swapper refcount via
+atomic_inc_return().  If the subsequent call to
+rpc_clnt_iterate_for_each_xprt() fails (e.g. the callback
+xprt_enable_swap() returns an error), rpc_clnt_swap_activate()
+returns the error without decrementing the refcount.  Back in
+nfs_swap_activate(), a nonzero return value is treated as a
+fatal error and causes an immediate return, so the elevated
+cl_swapper count is never released.
 
-Add the missing put_dreq() in the early exit path before calling
-nfs_direct_req_release().
+Fix this by adding an atomic_dec() in the error path of
+rpc_clnt_swap_activate() before returning the error code, so
+that a failed activation properly cleans up the refcount.
 
 Cc: stable@vger.kernel.org
-Fixes: 65caafd0d214 ("SUNRPC reverting d03727b248d0 ("NFSv4 fix CLOSE not waiting for direct IO compeletion")")
+Fixes: 15001e5a7e1e ("SUNRPC: Make NFS swap work with multipath")
 Signed-off-by: WenTao Liang <vulab@iscas.ac.cn>
 ---
- fs/nfs/direct.c | 1 +
- 1 file changed, 1 insertion(+)
+ net/sunrpc/clnt.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 41a6cabb0592..99bd72a4601c 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -956,6 +956,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 	 */
- 	if (requested_bytes == 0) {
- 		inode_dio_end(inode);
-+		put_dreq(dreq);
- 		nfs_direct_req_release(dreq);
- 		return result < 0 ? result : -EIO;
- 	}
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index bc8ca470718b..97ab7aa71997 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -3396,9 +3396,13 @@ rpc_clnt_swap_activate(struct rpc_clnt *clnt)
+ {
+ 	while (clnt != clnt->cl_parent)
+ 		clnt = clnt->cl_parent;
+-	if (atomic_inc_return(&clnt->cl_swapper) == 1)
+-		return rpc_clnt_iterate_for_each_xprt(clnt,
++	if (atomic_inc_return(&clnt->cl_swapper) == 1) {
++		int ret = rpc_clnt_iterate_for_each_xprt(clnt,
+ 				rpc_clnt_swap_activate_callback, NULL);
++		if (ret)
++			atomic_dec(&clnt->cl_swapper);
++		return ret;
++	}
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(rpc_clnt_swap_activate);
 -- 
 2.50.1 (Apple Git-155)
 
