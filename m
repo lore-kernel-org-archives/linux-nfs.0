@@ -1,94 +1,96 @@
-Received: from cstnet.cn (smtp25.cstnet.cn [159.226.251.25])
-	(using TLSv1.2 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+Received: from mail-ej1-f45.google.com (mail-ej1-f45.google.com [209.85.218.45])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E93712580F2;
-	Thu, 11 Jun 2026 15:47:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=159.226.251.25
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781192877; cv=none; b=dfV0PfzDLGo7vCoPub07bsZHQhjZy1cIqMu0QYC6ZbaAm9HJgBI0sY8IUKWjfg7jlKzqkQnQARRCWvy873mAxtunx+CgEaeZ5ZGETpkiGpeqeqt8Umt6IRP3yMT12mTKa4X5vfi4CDXj49enGy69jZaPFXHhoHFAcxXBYocpNpA=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781192877; c=relaxed/simple;
-	bh=kNrKk5l1Gt8OvBbcZPhYp+2wcuU0yVvLXqJKt2RWbIU=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=g3E0m7rZS58alxVLpriWZeLVOTwAkbHXRU5W0I9e9UOBBSqNUVXAp3kdEig4/J2eSaWn4yUkldFsTnmUCqsdALye+PBmoTFAZO2H5bHgP5JxBZwx6HlhO1dgmHBRuB5aCfN3CpYj96iwORFhUU4mS82L0F2gBkdl7nI6w48gKX8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn; spf=pass smtp.mailfrom=iscas.ac.cn; arc=none smtp.client-ip=159.226.251.25
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=iscas.ac.cn
-Received: from localhost.localdomain (unknown [117.182.75.76])
-	by APP-05 (Coremail) with SMTP id zQCowACXCOyl2CpqzgQZEw--.1470S2;
-	Thu, 11 Jun 2026 23:47:51 +0800 (CST)
-From: WenTao Liang <vulab@iscas.ac.cn>
-To: trondmy@kernel.org,
-	anna@kernel.org
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	WenTao Liang <vulab@iscas.ac.cn>,
-	stable@vger.kernel.org
-Subject: [PATCH] pnfs: fix refcount leak in pnfs_report_layoutstat()
-Date: Thu, 11 Jun 2026 23:47:47 +0800
-Message-ID: <20260611154747.94154-1-vulab@iscas.ac.cn>
-X-Mailer: git-send-email 2.50.1
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 99B8433B6D1
+	for <linux-nfs@vger.kernel.org>; Thu, 11 Jun 2026 16:01:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.45
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1781193719; cv=pass; b=hPPgrXuJbEGVfwqQWg96+FmDET98vQ0Bv60kvIqN7XA3xGwKI0E6vnaT0l2t/zxh9o1aGPwH58kzr/Pb43UpL4wNfmJBlXA+J3hYpR6KqR2g1Oi6Ym1XjXU600gQz+R7UOxEYsDPHa6eXM+zuaF0dUp7mGLMWMowx43Q08KMT4M=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1781193719; c=relaxed/simple;
+	bh=MwoxlNsxEc66k8Qw60ikOAaH8UrKznqfoSbN0fMrKA8=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=bZPcxZWuoBAsLLlvzNY9vQpszdtKivRVsAUK/AHIsxQgD1nUlsF+17idq6Fii8c1EGGyFsisegLT2KqxfIznZr8UnU2hjq+dNuajiXyECX7TckwZ6Mem576F2n/TbF5nKBz730fnEFNoMeCMzTPbsDq/PIM2O6l38qoHN0GvGnM=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=jiXk8Twz; arc=pass smtp.client-ip=209.85.218.45
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="jiXk8Twz"
+Received: by mail-ej1-f45.google.com with SMTP id a640c23a62f3a-bec43ee8ff0so6032666b.1
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Jun 2026 09:01:57 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1781193716; cv=none;
+        d=google.com; s=arc-20240605;
+        b=lKEyW1ScaBY03pWEffMhRZrh69Lp/U5Kwx1rSUWdglj1lWs5ZZQgEXPWu+EF7oCe2G
+         Az7Kgm5Od32kvpgcAOcyO6dVSGzVI7C1NyFJ/8l16RDcJRILUZtJxscszsGvlgphzl1t
+         y7VeKqKkLbZNYuLwvjcy/7MlbuWUyY4o/chAvlozzMjKbka5vGI5tMKrKfteEWfgFsqm
+         mTowngFoaD7KwHBxDjyyzo4VhhA+jHnmNOh3wwsZ3ZiWc1f0Hc1VohS8JHjC1w29cKmt
+         Z8lYksL81p5BtrLzeoDbq0B8MVKQltLwboSyyZfCDHSmR64HhIeBZU/CP5JRxjdtsLHF
+         iDhQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=content-transfer-encoding:to:subject:message-id:date:from
+         :mime-version:dkim-signature;
+        bh=MwoxlNsxEc66k8Qw60ikOAaH8UrKznqfoSbN0fMrKA8=;
+        fh=A3pMOUK00huGibGCZBFsLekFLVbB5hHGKjUNNKwO+5E=;
+        b=XRJsMzvAXfzOzcoKIQScviSCuZtRgl5aVN/3P8IEJjYVFZYM2Qn5npV6h+ItLM/laC
+         qNcoNUnhKqLxHMw3yMiN4Anby9bBxo2iz1kU0cxHXszlFPHBhAqPC+k/DNpRNqSDk144
+         5svkPIdAgVi5CVEOcdDmtk4HndbaNo/XBUVAimOymr4YOWC/RngIVBi02q5U4unL/rb8
+         Zxl8DBADL3h1HSxiktngqBJuqqNnclq6AHU8YkEqOp1AHwKeWjA3VY/xUxdQll5a4b+m
+         5n76mJHgctypxMRaqaF/w+gbWXD47kRwNUY1cj5gsPy0pUwAwbaREnRCkNya1jj2f6v1
+         RPIg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1781193716; x=1781798516; darn=vger.kernel.org;
+        h=content-transfer-encoding:to:subject:message-id:date:from
+         :mime-version:from:to:cc:subject:date:message-id:reply-to;
+        bh=MwoxlNsxEc66k8Qw60ikOAaH8UrKznqfoSbN0fMrKA8=;
+        b=jiXk8TwzXQkQ7xjE88PcuHOahc866lrMRAd7DoSApj5Y8uYX/HVhqCuO3HBzii4PYB
+         TAHSWj7XphuLfVQSrI6aPaj4Kkbotuo+y5Z7Nf5gi7w+zuKuGeyW0Xb34QRRMpK778GC
+         XYGdqdy9Y1A+HkJaOT9FcmvRMcTUype2vruNUuxoxIaIADaQFFvuV2EsPyiVFK0cePo5
+         sbjRMEYeeA0+BdGnEA19wxwzyEg9bQdxbM5T/hL3CSYkOdqzlboXi2LsZAN/DSGuhD3Z
+         FNejW+/iyifqbfMHyaDp59TAPWj/+XZLkMJn/VADOV+gsCytvT48O18kO8H8phOyfZ+e
+         Uw6A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1781193716; x=1781798516;
+        h=content-transfer-encoding:to:subject:message-id:date:from
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=MwoxlNsxEc66k8Qw60ikOAaH8UrKznqfoSbN0fMrKA8=;
+        b=qlNXxEImIaX+qAGhsk0PVDdztb8LetavjsXLhOeCS4JCvOlr4IxwAWpdTPTECcq3XO
+         DQxg8AXvi3arh5oXXvEKFvh9Mf9yvDZlticVUKJHz+SaN87Y9Zvqdt+nbQo9c17ZHXw7
+         KzaivXfhInZ+EB2PibeKLMQCyhQzNvUK3EedF0HEPHR6iUKkwfOYsu0Y7d/EkGmT8W9P
+         FJsPpWud9eLDPdskGiNcCtYeGZOTiCQYHTEO4SD2lnuFWBNd3mxXwiTu60mS4Hi3NrCe
+         hZfSMFSwi8a5u5TSsdKKPw8gUEVgeqWdFq5QK1yU/3+hll8TW5Zk36Jk702HQZAtCQsp
+         c0KQ==
+X-Gm-Message-State: AOJu0YzixJGhUDH675WS7QyP5GLsfy8WpM0T0ctcdkcVxYSZhWmu9pj4
+	+oSqPdJUwq+ADl20IibUaWufuQGKIPKFC+oCCdK7SnW7nS7+0S3KVBkDC5HtswWsq93OFjSGGnC
+	xh1Cdz+U6mx5wa4Q65g5EbJ1LS0YyK+moXY44
+X-Gm-Gg: Acq92OFgMSJC0S1NbwW47qSsB8kQz8WjuSPGwzfHQpP6Dg3L4YNMn7GjXoxmE8zwRKu
+	bspPsocPB+cA/0/VqPjv2rVUKNLIenmQ19RnFCGzfFVJO5fMEx8syHGPAj32xP1eMru02px0yAc
+	tC3E2CTTtJUWIJyN2ibImAmFa+S19radJaHV03u+EEn6P0e8u3oyZs6RDGvxnbmm6KDKTVL5kNM
+	LJVsNXhkJERq2safkNAbzHr8hXA0DWehd9PTu+hDIsgRVhvkES9W9wx3qcVIhYh1JY4RrvvS7Ue
+	Ns/iytYew9LEhz4bHQ==
+X-Received: by 2002:a17:907:94c7:b0:bd2:15b5:bf60 with SMTP id
+ a640c23a62f3a-bfc7ec3c6demr165347166b.3.1781193715702; Thu, 11 Jun 2026
+ 09:01:55 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-CM-TRANSID:zQCowACXCOyl2CpqzgQZEw--.1470S2
-X-Coremail-Antispam: 1UD129KBjvJXoW7CF4UJry3KryUGw1rGF15Arb_yoW8Xr15pr
-	Wruw4Y9F98Xr10yr9Fyws3Zw1I9Fs3Xw4UCrn7Kr1293WrJw1SqFWFv340qr10yF48Z3Wj
-	g3y5KFWI9a4DZrJanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
-	9KBjDU0xBIdaVrnRJUUUkG14x267AKxVWUJVW8JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
-	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
-	1l84ACjcxK6xIIjxv20xvE14v26r4j6ryUM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4j
-	6F4UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s
-	0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xII
-	jxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVW8JVWxJwAm72CE4IkC6x0Yz7v_Jr0_Gr
-	1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7MxkF7I0En4kS14v26r12
-	6r1DMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI
-	0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y
-	0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxV
-	WUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1l
-	IxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUcBMtUUU
-	UU=
-X-CM-SenderInfo: pyxotu46lvutnvoduhdfq/1tbiBwoPA2oqzu4deAAAsE
+From: Takeshi Nishimura <takeshi.nishimura.linux@gmail.com>
+Date: Thu, 11 Jun 2026 18:01:19 +0200
+X-Gm-Features: AVVi8CeOCQPjHXnruenkM_yRZ8WA5MomrhSCyeoVOjkKbuW_iqqtQFWfUI1Et34
+Message-ID: <CALWcw=HsVbqgnBE+fW=qO9ULPww8_0amGjgw-f11FuoV2=ftOA@mail.gmail.com>
+Subject: NFS swap with RDMA?
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-When pnfs_report_layoutstat() calls pnfs_get_layout_hdr() and passes
-the reference through the inode field of the layoutstats data to
-nfs42_proc_layoutstats_generic(), if rpc_run_task() in that function
-fails (IS_ERR), nfs42_proc_layoutstats_generic() returns immediately
-without releasing the reference.  This leaks the layout header
-reference, leaks the allocated data, and leaves the
-NFS_INO_LAYOUTSTATS flag stuck on the inode, preventing further
-layoutstat reporting.
+Dear list,
 
-Fix by calling nfs42_layoutstat_release(data) before returning on
-rpc_run_task() error, matching the existing error handling for a
-missing inode.
-
-Cc: stable@vger.kernel.org
-Fixes: be3a5d233922 ("NFSv.2/pnfs Add a LAYOUTSTATS rpc function")
-Signed-off-by: WenTao Liang <vulab@iscas.ac.cn>
----
- fs/nfs/nfs42proc.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 7602ede6f75f..7637ad894563 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -1076,8 +1076,10 @@ int nfs42_proc_layoutstats_generic(struct nfs_server *server,
- 	nfs4_init_sequence(server->nfs_client, &data->args.seq_args,
- 			   &data->res.seq_res, 0, 0);
- 	task = rpc_run_task(&task_setup);
--	if (IS_ERR(task))
-+	if (IS_ERR(task)) {
-+		nfs42_layoutstat_release(data);
- 		return PTR_ERR(task);
-+	}
- 	rpc_put_task(task);
- 	return 0;
- }
--- 
-2.50.1 (Apple Git-155)
-
+does Linux swap over NFS file work with RDMA transports?
+--=20
+Internationalization&localization dev / =E5=A4=A7=E9=98=AA=E5=A4=A7=E5=AD=
+=A6
+Takeshi Nishimura <takeshi.nishimura.linux@gmail.com>
