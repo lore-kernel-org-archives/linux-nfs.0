@@ -1,161 +1,95 @@
-Received: from mail-m49198.qiye.163.com (mail-m49198.qiye.163.com [45.254.49.198])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2AED426CE1E;
-	Thu, 11 Jun 2026 05:41:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.254.49.198
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 872F039B489;
+	Thu, 11 Jun 2026 09:10:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781156478; cv=none; b=rq71CRvX5agPgXFNIYAgc0agETUpl0MP6wcqQrgNEsXZkWHyJZzNfpOwaNzGNPge+CF+LUvHe2O55TmZpUFg5oocR5zNHO7cRow9aw8ojV57ONPlZMFW0JZXoKsF4HBdSLHP13aff6OzHFSfnvRoWzlNBWFSB9QTUH61dsqmlUQ=
+	t=1781169009; cv=none; b=ndaWSLbxLAb8VL2FfjUxmUkxS2AAxJgkjckpAG+q4U6q07Q7zQRH0DIjKjohJsovhKAPkLEt9wczt9QaPrREKVViab+4pajUVDM5A6WGG/+q7tqd2Unu1E9xHA3uRNL9eRU9tbzlZ93gzgCb05YGe5UlcTGOA9L1YizhkV/edLg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781156478; c=relaxed/simple;
-	bh=Y4LY/B8jP3E5C8ecFySMZOBAenR4mfBNCsURgNi5TE0=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=R3kFOVFpB+O1vLl+4WgM44GH3cLBH0yRdOCq28yQiWt3YTCvH2P5ACvxaw/ypRWvFT/8v2cbn5FFCdHyxS2LVhE7nOFE4YjyJZSz8B6e/YED35aXjb6NrQlao+F3lGZL9cL7Vl2aqhq6Rs7ztogzcIOHa+K/yg0VKk/wK8C/uR0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=seu.edu.cn; spf=pass smtp.mailfrom=seu.edu.cn; dkim=pass (1024-bit key) header.d=seu.edu.cn header.i=@seu.edu.cn header.b=DjjP1DSk; arc=none smtp.client-ip=45.254.49.198
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=seu.edu.cn
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=seu.edu.cn
+	s=arc-20240116; t=1781169009; c=relaxed/simple;
+	bh=7ro/wNC2XlBxgc1ytrPdZWWhEcQ86baWNS7lObN8Wsc=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=C1n0el5nPp8Zbe01MJ8tGT/kQTLPg/hM1hYuhgHmD8xX0IYSVzskizNQWJsya71VDnC0YtMTv3pVYukoee6+ylp0TQF/6S0rgh/FtNMpMC1+hi9xXpv8o9tMdx7UfeAT4ZJb6nNwmAuy21WCDZtdcXn9icnpxpUg1FcHzfLtJDs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fPtzfzGE; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=seu.edu.cn header.i=@seu.edu.cn header.b="DjjP1DSk"
-Received: from PC-202605011814.localdomain (unknown [222.191.246.242])
-	by smtp.qiye.163.com (Hmail) with ESMTP id 41f34cbfd;
-	Thu, 11 Jun 2026 13:36:02 +0800 (GMT+08:00)
-From: Runyu Xiao <runyu.xiao@seu.edu.cn>
-To: chuck.lever@oracle.com,
-	trondmy@kernel.org,
-	linux-nfs@vger.kernel.org
-Cc: jlayton@kernel.org,
-	neil@brown.name,
-	okorniev@redhat.com,
-	Dai.Ngo@oracle.com,
-	tom@talpey.com,
-	anna@kernel.org,
-	davem@davemloft.net,
-	edumazet@google.com,
-	kuba@kernel.org,
-	pabeni@redhat.com,
-	horms@kernel.org,
-	netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	jianhao.xu@seu.edu.cn,
-	runyu.xiao@seu.edu.cn
-Subject: [PATCH net] sunrpc: xprtsock: annotate shared socket callbacks with READ_ONCE/WRITE_ONCE
-Date: Thu, 11 Jun 2026 13:35:56 +0800
-Message-Id: <20260611053556.2432448-1-runyu.xiao@seu.edu.cn>
-X-Mailer: git-send-email 2.34.1
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fPtzfzGE"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B91A51F00898;
+	Thu, 11 Jun 2026 09:09:59 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1781169008;
+	bh=RfIkCcdblNK9CftEwDsBO/uWm7/F942mXwD6xGSPOQ8=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=fPtzfzGEJFYZ4r9C5JW6EWJJCF584zY5w6oMBp8rYhkTyeCSNXVG8Au+IV1+dNDdd
+	 OjTWGscPWvBqdZ2tNbDWg6h50AIHpzelD59trF8BEIcIwr4MI/4QXCMCKdGAoI94Mn
+	 DugjFq5FMnmZqKZPntfDEJFgYqGK3JTCO0wYhoV4XfSAmCg3LoL4s0NCbSY87SXGdd
+	 lIoNbEwaIZQdNTNTGkOHSesk6vni01mQ1c/DuaI8Tr2NMd3SDxgiZM0D7hfNAI8V41
+	 N527kBZlZDF9Rbrm1FBVIptR07rwTfzgG4mPebsS1Q5UonPhpGxzx6OV+FU+aSKQfb
+	 0xc5VjaRAgPkQ==
+Date: Thu, 11 Jun 2026 12:09:55 +0300
+From: Mike Rapoport <rppt@kernel.org>
+To: Zi Yan <ziy@nvidia.com>
+Cc: Jan Kara <jack@suse.com>, Mark Fasheh <mark@fasheh.com>,
+	Joel Becker <jlbec@evilplan.org>,
+	Joseph Qi <joseph.qi@linux.alibaba.com>,
+	Ryusuke Konishi <konishi.ryusuke@gmail.com>,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Chuck Lever <chuck.lever@oracle.com>,
+	Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+	Dave Kleikamp <shaggy@kernel.org>, Theodore Ts'o <tytso@mit.edu>,
+	Miklos Szeredi <miklos@szeredi.hu>,
+	Andreas Hindborg <a.hindborg@kernel.org>,
+	Breno Leitao <leitao@debian.org>, Kees Cook <kees@kernel.org>,
+	"Tigran A. Aivazian" <aivazian.tigran@gmail.com>,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	ocfs2-devel@lists.linux.dev, linux-nilfs@vger.kernel.org,
+	linux-nfs@vger.kernel.org, jfs-discussion@lists.sourceforge.net,
+	linux-ext4@vger.kernel.org, linux-mm@kvack.org
+Subject: Re: [PATCH 00/17] replace __get_free_pages() call with kmalloc()
+Message-ID: <aip7Y3UHmXsdX8OH@kernel.org>
+References: <20260523-b4-fs-v1-0-275e36a83f0e@kernel.org>
+ <3FD8E1FD-6E18-46D9-AE93-00FA1A66C775@nvidia.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-HM-Tid: 0a9eb52e29ba03a1kunmeb62097c151664
-X-HM-MType: 10
-X-HM-Spam-Status: e1kfGhgUHx5ZQUpXWQgPGg8OCBgUHx5ZQUlOS1dZFg8aDwILHllBWSg2Ly
-	tZV1koWUFITzdXWRgWCB1ZQUpXWS1ZQUlXWQ8JGhUIEh9ZQVkZT0xPVkNPHUMaSk5NTEkeSFYeHw
-	5VEwETFhoSFyQUDg9ZV1kYEgtZQVlJSUlVSkJKVUlPTVVJT0lZV1kWGg8SFR0UWUFZT0tIVUpLSU
-	hOQ0NVSktLVUtZBg++
-DKIM-Signature: a=rsa-sha256;
-	b=DjjP1DSk187qWxAt/pZPky6kI6/coRoplu9xjzdFiOWShl9gTzH9SFAwy86fDTAacVmZ3QD6vA1XiwVEFcLb09cN6piDqx018man/T5smnuoP7zgtJwjni7QnOZOX+owDHjq7PdvdoyuPUa58U0IzznytpGTONbPg2HV4O1vK94=; s=default; c=relaxed/relaxed; d=seu.edu.cn; v=1;
-	bh=e0yRTbTsjEGgxguzv/AJcLiM3TClLwRrtdJVF0K9LZ4=;
-	h=date:mime-version:subject:message-id:from;
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <3FD8E1FD-6E18-46D9-AE93-00FA1A66C775@nvidia.com>
 
-xprtsock replaces and restores sk->sk_data_ready and
-sk->sk_write_space on live sockets with plain stores, and
-xs_udp_do_set_buffer_size() invokes sk->sk_write_space via a plain
-load. These callback pointers are shared with generic socket and
-protocol paths that may read or invoke them concurrently, so xprtsock
-needs the same READ_ONCE()/WRITE_ONCE() callback visibility contract
-that the validated 4022 family applied elsewhere.
+On Fri, Jun 05, 2026 at 04:00:33PM -0400, Zi Yan wrote:
+> On 23 May 2026, at 13:54, Mike Rapoport (Microsoft) wrote:
+> 
+> > This is a (small) part of larger work of replacing page allocator calls
+> > with kmalloc.
+> 
+> Is the goal to get rid of __get_free_page(s)()?
 
-When SUNRPC takes over an AF_LOCAL, UDP, or TCP socket and later
-restores the lower-socket callbacks during teardown, another CPU may
-still hold an earlier callback snapshot. The plain replace/restore
-pattern leaves the same visibility hole as the validated 4022 family,
-so a stale snapshot can still invoke xs_data_ready() or
-xs_udp_write_space() after the live callback fields have already been
-restored to the lower-socket handlers.
+Yes, eventually.
 
-Use WRITE_ONCE() for the shared sk_data_ready and sk_write_space
-stores in xs_local_finish_connecting(), xs_udp_finish_connecting(),
-xs_tcp_finish_connecting(), and xs_restore_old_callbacks(). Use
-READ_ONCE() for the direct sk_write_space invocation in
-xs_udp_do_set_buffer_size(). This matches the required callback
-visibility contract while leaving adjacent sk_state_change and
-sk_error_report handling unchanged.
+My initial intention a few month ago was to remove the ugly casts [1], but
+then willy pointed out that Linus objected to something like this [2] and
+it looks like more than a decade old technical debt.
 
-Fixes: a246b0105bbd ("[PATCH] RPC: introduce client-side transport switch")
-Signed-off-by: Runyu Xiao <runyu.xiao@seu.edu.cn>
----
- net/sunrpc/xprtsock.c | 20 +++++++++++---------
- 1 file changed, 11 insertions(+), 9 deletions(-)
+Since there are more than 600 or those it will take a while to convert
+suitable gfp calls to kmalloc.
+Afterwards we can re-evaluate what APIs we want to provide for allocations
+that must have actual pages.
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 3aa987e7f072..325cb81cf937 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1202,9 +1202,9 @@ static void xs_save_old_callbacks(struct sock_xprt *transport, struct sock *sk)
+[1] https://lore.kernel.org/all/20251018093002.3660549-1-rppt@kernel.org/
+[2] https://lore.kernel.org/all/CA+55aFwp4iy4rtX2gE2WjBGFL=NxMVnoFeHqYa2j1dYOMMGqxg@mail.gmail.com/ 
+
  
- static void xs_restore_old_callbacks(struct sock_xprt *transport, struct sock *sk)
- {
--	sk->sk_data_ready = transport->old_data_ready;
-+	WRITE_ONCE(sk->sk_data_ready, transport->old_data_ready);
- 	sk->sk_state_change = transport->old_state_change;
--	sk->sk_write_space = transport->old_write_space;
-+	WRITE_ONCE(sk->sk_write_space, transport->old_write_space);
- 	sk->sk_error_report = transport->old_error_report;
- }
- 
-@@ -1664,6 +1664,7 @@ static void xs_udp_do_set_buffer_size(struct rpc_xprt *xprt)
- {
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
- 	struct sock *sk = transport->inet;
-+	void (*write_space)(struct sock *sock);
- 
- 	if (transport->rcvsize) {
- 		sk->sk_userlocks |= SOCK_RCVBUF_LOCK;
-@@ -1672,7 +1673,8 @@ static void xs_udp_do_set_buffer_size(struct rpc_xprt *xprt)
- 	if (transport->sndsize) {
- 		sk->sk_userlocks |= SOCK_SNDBUF_LOCK;
- 		sk->sk_sndbuf = transport->sndsize * xprt->max_reqs * 2;
--		sk->sk_write_space(sk);
-+		write_space = READ_ONCE(sk->sk_write_space);
-+		write_space(sk);
- 	}
- }
- 
-@@ -1988,8 +1990,8 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
- 		xs_save_old_callbacks(transport, sk);
- 
- 		sk->sk_user_data = xprt;
--		sk->sk_data_ready = xs_data_ready;
--		sk->sk_write_space = xs_udp_write_space;
-+		WRITE_ONCE(sk->sk_data_ready, xs_data_ready);
-+		WRITE_ONCE(sk->sk_write_space, xs_udp_write_space);
- 		sk->sk_state_change = xs_local_state_change;
- 		sk->sk_error_report = xs_error_report;
- 		sk->sk_use_task_frag = false;
-@@ -2191,8 +2193,8 @@ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- 		xs_save_old_callbacks(transport, sk);
- 
- 		sk->sk_user_data = xprt;
--		sk->sk_data_ready = xs_data_ready;
--		sk->sk_write_space = xs_udp_write_space;
-+		WRITE_ONCE(sk->sk_data_ready, xs_data_ready);
-+		WRITE_ONCE(sk->sk_write_space, xs_udp_write_space);
- 		sk->sk_use_task_frag = false;
- 
- 		xprt_set_connected(xprt);
-@@ -2378,9 +2380,9 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
- 		xs_save_old_callbacks(transport, sk);
- 
- 		sk->sk_user_data = xprt;
--		sk->sk_data_ready = xs_data_ready;
-+		WRITE_ONCE(sk->sk_data_ready, xs_data_ready);
- 		sk->sk_state_change = xs_tcp_state_change;
--		sk->sk_write_space = xs_tcp_write_space;
-+		WRITE_ONCE(sk->sk_write_space, xs_tcp_write_space);
- 		sk->sk_error_report = xs_error_report;
- 		sk->sk_use_task_frag = false;
- 
+> Thanks.
+
 -- 
-2.34.1
+Sincerely yours,
+Mike.
