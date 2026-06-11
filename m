@@ -1,167 +1,91 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from cstnet.cn (smtp25.cstnet.cn [159.226.251.25])
+	(using TLSv1.2 with cipher DHE-RSA-AES256-SHA (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 55EBB3537C8
-	for <linux-nfs@vger.kernel.org>; Thu, 11 Jun 2026 13:34:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CBD83304BCB;
+	Thu, 11 Jun 2026 15:00:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=159.226.251.25
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781184848; cv=none; b=Z6Ft9HJSezynxK0Eq2zbYQYLX1boTEImouhfwujQ483nG5dgaBNxzG3uFS6mOJcOmQRguNi9B8NHGjlmTSMWJ2xc7MR2w+IzW5GGP0+axkzttNHyAKi9rqfeyDFKbJFdk0FhLWFXJveZpd2Mh+33oVWJ6nhdOG3bvUl39K8+DyQ=
+	t=1781190005; cv=none; b=drm3jhfA3gBwoEli9Qyn0UwmrXC1qOwSgC3UPpFZBhjYdXfQjpa3b6mxcUhxyjhz6gnos4fW7wxnkj1ZKJBliQ/7PKyeGxpAyUv98ZkzN8RbqQiwbFTU1wGJa7mUe+ru3R/67f1sWJDXByswI5Pj5yAL2RzDwJlt8jYfwxxjZ3I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781184848; c=relaxed/simple;
-	bh=Zh5Lq5SIdBw8uswK/awBUg+R6JWgir7BRFs4wXffPu8=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=J7frwce1z8SEWmbfGguNxxDijZF+9WGS51BpUNiLQ1ZPqc22ld6InoBjjOJJZZq4IG60asQIjHzntlM4xQP72xfNQ0Xgv9LFt9ztwMt9RJku3dWxGpsAVYkQg2Ypkvorsl6U8U0jyUcL1QqEWJhNlFOgBSLEkHGRRNhrt64JDmo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kA2ymodR; arc=none smtp.client-ip=100.103.45.18
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kA2ymodR"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 26EB31F00893;
-	Thu, 11 Jun 2026 13:34:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781184845;
-	bh=YrCaXLRjMbPT/r0saqerFdBuaSUjjExOi7v0xlzL/sk=;
-	h=Date:Subject:To:Cc:References:From:In-Reply-To;
-	b=kA2ymodROs2MRharD4HtUd00ISGEg0sLs8LkD7r8xJqC3Soc6hynFeIu080+F352Q
-	 gorXnraKP5B/Ed8XFjEhVcI4Pyn2VEw8C8l0uv84dPpZBIn8OHhAlBSpKm/qz0MQbt
-	 4iaHw2KWh/+7CvsLn35bhjBc9J3+/28DhJwSluJnJZLBkxAhyMDuUWo47808DF2wjM
-	 RFtYE6bdh66qOrmmnwz1WWplvD5wGw7ctJnQ7JFhP9pKMpCAvLsElFAYgx4fRKm9sv
-	 GdOMd01wkVKQUfO34RCy1UTXs+xDaX7T72sp4SOny3nEGpNAyQkUVO4JylrpR8yGSU
-	 0V+Ox19PpLHNQ==
-Message-ID: <3ee10d50-d6e2-40a5-86f8-915e1a17656d@kernel.org>
-Date: Thu, 11 Jun 2026 09:34:04 -0400
+	s=arc-20240116; t=1781190005; c=relaxed/simple;
+	bh=du8BpUZ+F7Kv67ckLTr3vZYuPRS1w5nKj+rf6KIhMQM=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=FZlXntVv6muhUfaJLCecqPKrl870pujeoKRAg8Rv2uxMQ0Vi7QUMqjlqS3aijkJfZ0O8tViRZzS0dSXYhS+aSVAFwLyOp4/9xW9wLHFDsea0mH2iW5PL9Rp4hmZfaToMk2l9QXzIEN6EOJYWDzjgZzW37YFOJelcGDtFY/lgiFQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn; spf=pass smtp.mailfrom=iscas.ac.cn; arc=none smtp.client-ip=159.226.251.25
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=iscas.ac.cn
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=iscas.ac.cn
+Received: from localhost.localdomain (unknown [117.182.75.76])
+	by APP-05 (Coremail) with SMTP id zQCowAD3Z+tuzSpqTQcYEw--.25433S2;
+	Thu, 11 Jun 2026 23:00:00 +0800 (CST)
+From: WenTao Liang <vulab@iscas.ac.cn>
+To: trondmy@kernel.org,
+	anna@kernel.org
+Cc: linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	WenTao Liang <vulab@iscas.ac.cn>,
+	stable@vger.kernel.org
+Subject: [PATCH] nfs: fix refcount leak in nfs_direct_read_schedule_iovec()
+Date: Thu, 11 Jun 2026 22:59:56 +0800
+Message-ID: <20260611145956.90270-1-vulab@iscas.ac.cn>
+X-Mailer: git-send-email 2.50.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH 4/5] NFSD: Document and rename the NFSv4.1 session slot
- shrinker callbacks
-To: NeilBrown <neil@brown.name>
-Cc: Jeff Layton <jlayton@kernel.org>, Olga Kornievskaia
- <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>,
- Tom Talpey <tom@talpey.com>, Benjamin Coddington <bcodding@hammerspace.com>,
- Jonathan Flynn <jonathan.flynn@hammerspace.com>, linux-nfs@vger.kernel.org,
- Chuck Lever <chuck.lever@oracle.com>
-References: <20260610-nfsd-slot-growth-clamp-v1-0-7b966700df0b@kernel.org>
- <20260610-nfsd-slot-growth-clamp-v1-4-7b966700df0b@kernel.org>
- <178114882392.3002522.3941860594407359120@noble.neil.brown.name>
-From: Chuck Lever <cel@kernel.org>
-Content-Language: en-US
-Organization: kernel.org
-In-Reply-To: <178114882392.3002522.3941860594407359120@noble.neil.brown.name>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+X-CM-TRANSID:zQCowAD3Z+tuzSpqTQcYEw--.25433S2
+X-Coremail-Antispam: 1UD129KBjvJXoW7Zr17tr4xGFW5CF47XF4fKrg_yoW8Gr1Upr
+	Wrur9xKrn5ArWxtrZruF40vw17ZFZrAFW5Kr18Aw4xCwn5G3W3XFyUKFy5uFnIkr4rCF47
+	Zrs0gw13G3Z0vaDanT9S1TB71UUUUU7qnTZGkaVYY2UrUUUUjbIjqfuFe4nvWSU5nxnvy2
+	9KBjDU0xBIdaVrnRJUUUkG14x267AKxVWUJVW8JwAFc2x0x2IEx4CE42xK8VAvwI8IcIk0
+	rVWrJVCq3wAFIxvE14AKwVWUJVWUGwA2ocxC64kIII0Yj41l84x0c7CEw4AK67xGY2AK02
+	1l84ACjcxK6xIIjxv20xvE14v26r4j6ryUM28EF7xvwVC0I7IYx2IY6xkF7I0E14v26r4j
+	6F4UM28EF7xvwVC2z280aVAFwI0_GcCE3s1l84ACjcxK6I8E87Iv6xkF7I0E14v26rxl6s
+	0DM2AIxVAIcxkEcVAq07x20xvEncxIr21l5I8CrVACY4xI64kE6c02F40Ex7xfMcIj6xII
+	jxv20xvE14v26r1j6r18McIj6I8E87Iv67AKxVW8JVWxJwAm72CE4IkC6x0Yz7v_Jr0_Gr
+	1lF7xvr2IYc2Ij64vIr41lF7I21c0EjII2zVCS5cI20VAGYxC7MxkF7I0En4kS14v26r12
+	6r1DMxAIw28IcxkI7VAKI48JMxC20s026xCaFVCjc4AY6r1j6r4UMI8I3I0E5I8CrVAFwI
+	0_Jr0_Jr4lx2IqxVCjr7xvwVAFwI0_JrI_JrWlx4CE17CEb7AF67AKxVWUAVWUtwCIc40Y
+	0x0EwIxGrwCI42IY6xIIjxv20xvE14v26r1j6r1xMIIF0xvE2Ix0cI8IcVCY1x0267AKxV
+	WUJVW8JwCI42IY6xAIw20EY4v20xvaj40_Jr0_JF4lIxAIcVC2z280aVAFwI0_Gr0_Cr1l
+	IxAIcVC2z280aVCY1x0267AKxVW8Jr0_Cr1UYxBIdaVFxhVjvjDU0xZFpf9x0JUcBMtUUU
+	UU=
+X-CM-SenderInfo: pyxotu46lvutnvoduhdfq/1tbiDAYPA2oqh3jWrQAAsC
 
-On 6/10/26 8:33 PM, NeilBrown wrote:
-> On Thu, 11 Jun 2026, Chuck Lever wrote:
->> Clean up: To prevent their reuse by generic code, rename the NFSv4.1
->> session slot shrinker's callback functions to make it clear they are
->> for use only by the shrinker.
->>
->> Though they are static, callbacks are invoked from outside nfsd.ko,
->> so they need appropriate kdoc comments that document their API
->> contracts.
->>
->> Signed-off-by: Chuck Lever <cel@kernel.org>
->> ---
->>  fs/nfsd/nfs4state.c | 36 ++++++++++++++++++++++++++++++++----
->>  1 file changed, 32 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 9735e9a59f0e..7ce8462e3697 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -2196,22 +2196,50 @@ static void free_session(struct nfsd4_session *ses)
->>  	__free_session(ses);
->>  }
->>  
->> +/**
->> + * nfsd_slot_shrinker_count - report reclaimable DRC slots
->> + * @s: shrinker descriptor (unused)
->> + * @sc: shrink control (unused)
->> + *
->> + * Return: a positive count of reclaimable slots, or SHRINK_EMPTY when
->> + * there is nothing to reclaim.
-> 
-> I would add to this comment and note that slot zero is not reclaimable,
-> so that the subtraction of nfsd_total_sessions is explained.
-> 
-> But either way:
-> 
-> Reviewed-by: NeilBrown <neil@brown.name>
-> 
-> and you can add that to all patches in series.  A definite improvement!
+When nfs_direct_read_schedule_iovec() encounters an error after
+get_dreq(dreq) increments the io_count but fails to start any I/O
+(requested_bytes == 0), it falls through to the error path. That
+path calls nfs_direct_req_release() to drop the I/O path’s kref,
+but it never calls put_dreq() to balance the io_count. This leaves
+the request’s io_count permanently elevated, a reference counting
+violation that corrupts the teardown logic once the object is
+freed via the remaining kref.
 
-Thanks for the look. I'll address your specific comments before
-applying these to nfsd-testing.
+Fix the leak by calling put_dreq(dreq) before
+nfs_direct_req_release() in the zero-bytes error path, so the
+io_count is properly balanced.
 
+Cc: stable@vger.kernel.org
+Fixes: 65caafd0d214 ("SUNRPC reverting d03727b248d0 ("NFSv4 fix CLOSE not waiting for direct IO compeletion")")
+Signed-off-by: WenTao Liang <vulab@iscas.ac.cn>
+---
+ fs/nfs/direct.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-> Thanks,
-> NeilBrown
-> 
-> 
->> + */
->>  static unsigned long
->> -nfsd_slot_count(struct shrinker *s, struct shrink_control *sc)
->> +nfsd_slot_shrinker_count(struct shrinker *s, struct shrink_control *sc)
->>  {
->>  	int cnt = atomic_read(&nfsd_total_target_slots) -
->>  		  atomic_read(&nfsd_total_sessions);
->>  
->> +	/*
->> +	 * To prevent deadlock, one slot of each session (slot 0) is
->> +	 * not reclaimable while the session is active. Thus the
->> +	 * number of sessions is subtracted from the total number of
->> +	 * target slots.
->> +	 */
->>  	return cnt > 0 ? cnt : SHRINK_EMPTY;
->>  }
->>  
->> +/**
->> + * nfsd_slot_shrinker_scan - reclaim DRC slots under memory pressure
->> + * @s: shrinker descriptor (unused)
->> + * @sc: shrink control; @sc->nr_to_scan bounds the sessions visited,
->> + *      @sc->nr_scanned reports how many were visited
->> + *
->> + * Return: the number of session slots NFSD will release.
->> + */
->>  static unsigned long
->> -nfsd_slot_scan(struct shrinker *s, struct shrink_control *sc)
->> +nfsd_slot_shrinker_scan(struct shrinker *s, struct shrink_control *sc)
->>  {
->>  	struct nfsd4_session *ses;
->>  	unsigned long scanned = 0;
->>  	unsigned long freed = 0;
->>  
->> +	/*
->> +	 * Each visited session releases at most one slot. After
->> +	 * nr_to_scan sessions have been visited, the list head is
->> +	 * rotated past the last visited session so the next scan
->> +	 * resumes from there.
->> +	 */
->>  	spin_lock(&nfsd_session_list_lock);
->>  	list_for_each_entry(ses, &nfsd_session_list, se_all_sessions) {
->>  		freed += reduce_session_slots(ses, 1);
->> @@ -9120,8 +9148,8 @@ nfs4_state_start(void)
->>  		rhltable_destroy(&nfs4_file_rhltable);
->>  		return -ENOMEM;
->>  	}
->> -	nfsd_slot_shrinker->count_objects = nfsd_slot_count;
->> -	nfsd_slot_shrinker->scan_objects = nfsd_slot_scan;
->> +	nfsd_slot_shrinker->count_objects = nfsd_slot_shrinker_count;
->> +	nfsd_slot_shrinker->scan_objects = nfsd_slot_shrinker_scan;
->>  	shrinker_register(nfsd_slot_shrinker);
->>  
->>  	set_max_delegations();
->>
->> -- 
->> 2.54.0
->>
->>
->>
-> 
-
-
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 48d89716193a..41a6cabb0592 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -400,6 +400,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 	 */
+ 	if (requested_bytes == 0) {
+ 		inode_dio_end(inode);
++		put_dreq(dreq);
+ 		nfs_direct_req_release(dreq);
+ 		return result < 0 ? result : -EIO;
+ 	}
 -- 
-Chuck Lever
+2.50.1 (Apple Git-155)
+
