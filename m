@@ -1,44 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EF1C1E2606;
-	Fri, 12 Jun 2026 13:36:23 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 123F3391E59;
+	Fri, 12 Jun 2026 13:37:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781271384; cv=none; b=UZfObJ1/uyVb9LJ/NW3bZmLBHVEAuxL3H0OyTRSomT4jY9kXyqIhV/yUQD7S8g60bPuQZCj0FtRZ0mLzumCoprz7HVksXwjx+bGEOqxYli/qywNVZFE2JRtjS+cjUeG0QB16GOGyrnuhGWdW3IHzN9K5rbG8PcHVmkLBYN4aXp8=
+	t=1781271469; cv=none; b=X6URqouZNOz05XOwUV1Ttsmj1/0syn6XShImS2ldzR7pulikpp7wRTA+lOUk93/G6tFwgf1jmDoEVcHVC4I0swf8oUPhOaTWwNur7UXIZ9RXbMqPgSAx60HyIuXxXWmd9VrDWAbuPByQ0mnXoJ/V4cVeGmpXQ8EZlq1dEvaCOEY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781271384; c=relaxed/simple;
-	bh=/yrPIPmCvLtSFlDLdSFVvT2LU+aehNEmxrKDZeY7FYU=;
+	s=arc-20240116; t=1781271469; c=relaxed/simple;
+	bh=8xHaDodoBZCC7iQjVFkUhno452EbTk8XS34uSq81f9M=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=N/0wvhIaeQ5QNuFIa29ZyVXWHBiOSt+UXZp46I5xI/Mx1QU6bZDZxbay/qNhDp6TNoC/btq9MRKwQXpqL0oPd2fJSY+qKSrRLaVidViq0enbCbzzknoPFnf7xvvwsScBWCd6KDOMHJPQWs4aofqx+F7YO25X8ia1sttJgPQ33qo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cm5P+a08; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=QTJSiSvD8t1ph7q/l8oontgaNet1PVOQTwlUNR6wbB8VWS55aO75zqZ2tHyHAuMP83vKxmPvBuUDzWFLzykrNoOpuioW31Fq4mfkprrVsWB1h3Dj02BRyTBEcG7EBN9gEwkoU2q7raxYmWiz6+APOYcNrhoJa94hnoKlAKwCNWg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GO8wQA5Q; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cm5P+a08"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6289A1F000E9;
-	Fri, 12 Jun 2026 13:36:22 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GO8wQA5Q"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 455261F00A3A;
+	Fri, 12 Jun 2026 13:37:47 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781271383;
-	bh=aIRiVAwCHe6XKGRZzK546yY5FwQNf++HCXjV8crLFGQ=;
+	s=k20260515; t=1781271468;
+	bh=8tol5F4Al0rEBV8usRwIGeeY4X/HKey0W2n0cxj983U=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=cm5P+a08961SXd2LXzePqaZQw2iTPWeX+tD1IzsrIaNJyQ9RJDL2NNHw97bXmIjAU
-	 d0G6LBoCnhsja1XJ9XBAvCA3EfEN2zie7cKlg/EH1YhYUb8/OiHcHBuwvnL8XC4P9Q
-	 pLskWWqV/YxzjVQuNePNApys2q38J5AAELVws41rybZ2kdkc3DvYp7wB871bMoRJop
-	 RNdwzWAV5jpGIfkj3lEk8FhDyRAPLstESRnMTmWrDf69hy+BI9vcf2Kx3IrKY0sBZ4
-	 Mjk99N7QwdScOWLxxgUhApjY5sOyHNEZzs5nBI+L5485atEP8wQ4Rcm5ZN3ij0g0Oo
-	 jg0WrS1TISIOQ==
-Message-ID: <51600a1f48983a8ee09f24d94eb974a70cf88957.camel@kernel.org>
-Subject: Re: [PATCH v2 08/21] nfsd: remove premature NFS4_OO_CONFIRMED in
- CLAIM_PREVIOUS path
+	b=GO8wQA5QzHZLTtGPodC69jnfdWZxVcrA0e5y+4JYe0HHG9eMxYTSIudFlTgXHKITh
+	 YU4gWmuv9pyJNpcMoSHrC3uw6YplGQ7KM9iYSnRWEnmzgl4RAdoNnsTR3lVRP8OE0J
+	 9lJ8wtHVdyqYPeG/FUxTPMBpK1muQEPks0Dt1pa7PrH4oi3dAXHLRZWuI63a0mB+R3
+	 U/exZU9lktUw69y/DtgyVv36CqFvEqX8oBVgMzRgHVjp4pimKx52wc3pSzugVoUtwf
+	 scXBoeevv6cn9WWyffB4GYQ2Uk/zVWmQ5b6FUQDuOGTfy+ur0UA4CyHixP8CgNDJ/E
+	 mtBPsJnHZ874w==
+Message-ID: <296694ccd427fec43eabebd10f56c0b0d5ad9a45.camel@kernel.org>
+Subject: Re: [PATCH v2 15/21] nfsd: validate sockaddr length per family in
+ listener_set
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
 Cc: Chris Mason <clm@meta.com>, linux-nfs@vger.kernel.org, 
 	linux-kernel@vger.kernel.org
-Date: Fri, 12 Jun 2026 09:36:20 -0400
-In-Reply-To: <20260611-nfsd-testing-v2-8-5b90e276f2d9@kernel.org>
+Date: Fri, 12 Jun 2026 09:37:45 -0400
+In-Reply-To: <20260611-nfsd-testing-v2-15-5b90e276f2d9@kernel.org>
 References: <20260611-nfsd-testing-v2-0-5b90e276f2d9@kernel.org>
-	 <20260611-nfsd-testing-v2-8-5b90e276f2d9@kernel.org>
+	 <20260611-nfsd-testing-v2-15-5b90e276f2d9@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -124,36 +124,111 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
 On Thu, 2026-06-11 at 16:00 -0400, Jeff Layton wrote:
-> nfsd4_open() sets NFS4_OO_CONFIRMED on the openowner before calling
-> do_open_fhandle(), which can fail. If it fails, the openowner stays
-> permanently confirmed despite the OPEN failing. The correct
-> success-path setter already exists in init_open_stateid().
+> nfsd_sock_nl_policy declares NFSD_A_SOCK_ADDR as bare NLA_BINARY
+> with no minimum length. A CAP_NET_ADMIN caller can send a 16-byte
+> NFSD_A_SOCK_ADDR with sa_family=3DAF_INET6, causing a 12-byte OOB
+> read across three consumers (rpc_cmp_addr_port, svc_find_listener,
+> kernel_bind).
 >=20
-> Remove the premature setter. NFSv4.1+ is unaffected as sessions
-> always confirm at creation time.
+> Tighten the policy to NLA_POLICY_MIN_LEN(16) and add per-family
+> length validation in both nlmsg_for_each_attr_type loops.
 >=20
-> Fixes: a525825df152 ("[PATCH] nfsd4: handle replays of failed open reclai=
-ms")
+> Fixes: 16a471177496 ("NFSD: add listener-{set,get} netlink command")
 > Assisted-by: Claude:claude-opus-4-8
 > Signed-off-by: Jeff Layton <jlayton@kernel.org>
 > ---
->  fs/nfsd/nfs4proc.c | 1 -
->  1 file changed, 1 deletion(-)
+>  Documentation/netlink/specs/nfsd.yaml |  4 ++++
+>  fs/nfsd/netlink.c                     |  2 +-
+>  fs/nfsd/nfsctl.c                      | 30 +++++++++++++++++++++++++++++=
++
+>  3 files changed, 35 insertions(+), 1 deletion(-)
 >=20
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 69fee481581d..4fe46996c8ed 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -643,7 +643,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compo=
-und_state *cstate,
->  		status =3D nfs4_check_open_reclaim(cstate->clp);
->  		if (status)
->  			goto out;
-> -		open->op_openowner->oo_flags |=3D NFS4_OO_CONFIRMED;
->  		reclaim =3D true;
->  		fallthrough;
->  	case NFS4_OPEN_CLAIM_FH:
+> diff --git a/Documentation/netlink/specs/nfsd.yaml b/Documentation/netlin=
+k/specs/nfsd.yaml
+> index 8f36fadd68f7..9677ba19ffcd 100644
+> --- a/Documentation/netlink/specs/nfsd.yaml
+> +++ b/Documentation/netlink/specs/nfsd.yaml
+> @@ -156,6 +156,10 @@ attribute-sets:
+>        -
+>          name: addr
+>          type: binary
+> +        # 16 =3D=3D sizeof(struct sockaddr_in); AF_INET6 callers
+> +        # validate the full sockaddr_in6 length in nfsctl.c.
+> +        checks:
+> +          min-len: 16
+>        -
+>          name: transport-name
+>          type: string
+> diff --git a/fs/nfsd/netlink.c b/fs/nfsd/netlink.c
+> index fbee3676d253..6570960034f1 100644
+> --- a/fs/nfsd/netlink.c
+> +++ b/fs/nfsd/netlink.c
+> @@ -37,7 +37,7 @@ const struct nla_policy nfsd_fslocations_nl_policy[NFSD=
+_A_FSLOCATIONS_LOCATION +
+>  };
+> =20
+>  const struct nla_policy nfsd_sock_nl_policy[NFSD_A_SOCK_TRANSPORT_NAME +=
+ 1] =3D {
+> -	[NFSD_A_SOCK_ADDR] =3D { .type =3D NLA_BINARY, },
+> +	[NFSD_A_SOCK_ADDR] =3D NLA_POLICY_MIN_LEN(16),
+>  	[NFSD_A_SOCK_TRANSPORT_NAME] =3D { .type =3D NLA_NUL_STRING, },
+>  };
+> =20
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index ab10692ee937..f3b3154b16c5 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -2016,6 +2016,21 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb,=
+ struct genl_info *info)
+>  		xcl_name =3D nla_data(tb[NFSD_A_SOCK_TRANSPORT_NAME]);
+>  		sa =3D nla_data(tb[NFSD_A_SOCK_ADDR]);
+> =20
+> +		switch (sa->sa_family) {
+> +		case AF_INET:
+> +			if (nla_len(tb[NFSD_A_SOCK_ADDR]) <
+> +			    sizeof(struct sockaddr_in))
+> +				continue;
+> +			break;
+> +		case AF_INET6:
+> +			if (nla_len(tb[NFSD_A_SOCK_ADDR]) <
+> +			    sizeof(struct sockaddr_in6))
+> +				continue;
+> +			break;
+> +		default:
+> +			continue;
+> +		}
+> +
+>  		/* Put back any matching sockets */
+>  		list_for_each_entry_safe(xprt, tmp, &permsocks, xpt_list) {
+>  			/* This shouldn't be possible */
+> @@ -2077,6 +2092,21 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb,=
+ struct genl_info *info)
+>  		xcl_name =3D nla_data(tb[NFSD_A_SOCK_TRANSPORT_NAME]);
+>  		sa =3D nla_data(tb[NFSD_A_SOCK_ADDR]);
+> =20
+> +		switch (sa->sa_family) {
+> +		case AF_INET:
+> +			if (nla_len(tb[NFSD_A_SOCK_ADDR]) <
+> +			    sizeof(struct sockaddr_in))
+> +				continue;
+> +			break;
+> +		case AF_INET6:
+> +			if (nla_len(tb[NFSD_A_SOCK_ADDR]) <
+> +			    sizeof(struct sockaddr_in6))
+> +				continue;
+> +			break;
+> +		default:
+> +			continue;
+> +		}
+> +
 
-My apologies. I meant to drop this one from the series yesterday.
---
+Sashiko flagged a problem above that we should probably fix. If we get
+an invalid address here, we should return an error instead of ignoring
+it. I'm working on an updated patch now.
+
+>  		xprt =3D svc_find_listener(serv, xcl_name, net, sa);
+>  		if (xprt) {
+>  			if (delete)
+
+--=20
 Jeff Layton <jlayton@kernel.org>
