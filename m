@@ -1,80 +1,112 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9DFA233F59E
-	for <linux-nfs@vger.kernel.org>; Fri, 12 Jun 2026 19:14:11 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 001DD35E948
+	for <linux-nfs@vger.kernel.org>; Fri, 12 Jun 2026 19:18:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781291652; cv=none; b=uiStJWgIeWD8NS+YiWXKPOfd93YlRpgmiK81AHThD1/z67uHsYrnFL2PA5q/U9E4cSrX3Sy5qkX/+u2jvAc7qP6N2eNBKjf7mFqueE8ZtxZ1tfwc6iDh9rBX3JUpZWW14efIH6XdWikJ2asn4JeJoFI1dj76nPYoCFa3O2T4AXM=
+	t=1781291913; cv=none; b=J2GorECxCb7SOceZHDVpJk1+TeYYQ7pnRpgrbMsCno04z879D2CgHR3SVkQOQdqBqZ3YNIo30rgd3Z7ZGqqATqqcwcrydJjott50w3HrApqnku3EcnW1M057taiBHF+RUUn/ezi9oEzmVf02AxROooLAh5HIw/xd3WasGK0k62E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781291652; c=relaxed/simple;
-	bh=GpsgL42x4woccR9ZI/hZNDf8zixr14xD10XuvH+Uxt8=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=dXtXsda9yw+5jIJcT0JdC0wt3tybsbfvjim9aoEzZ6bDHhk5c6oGNQa+LlvpGcVSr6+0oOgKW3q9XwfK4DtYQwNM2887ZTRqQAoxjjEd6usdQNPmQv8wtIPamTQng13ztMQa+dH0ePcnC9AoGqYl3ZTSBB/7csPFxbG1LPw9tUs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Mg6BGEcr; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1781291913; c=relaxed/simple;
+	bh=88CznP89OPfh0nx/a4fmeyIxV7J/CnpK9Cztntq25Hk=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=jzBkrvKT3smLoNxps8jh8a+Gsv4T/pQFthl9F0Mc4CuT1QNBiZc00vvabTF2NDtjOQOwajqCnK4PngwYcw4Rxdxx/KBA7CbEX/gzzqza7EQ61VHCk904eLBlCOWj3VIg5zspcMQHOJuie1MA2qlVxubFTrPfjrWhu9wQT6Xi5N0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WxDIYOg1; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Mg6BGEcr"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0277C1F000E9;
-	Fri, 12 Jun 2026 19:14:10 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WxDIYOg1"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7A4861F00A3A;
+	Fri, 12 Jun 2026 19:18:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781291651;
-	bh=50wfDHEeJTRsYtFTTPOhbp+tLr/JhzR0LqmBGp4RRf0=;
-	h=From:To:Cc:Subject:Date;
-	b=Mg6BGEcrZ3llMZ3NEODKa/YFvbw4viTuLfDk8Yn/DHy4VUgHDhxVT7t87yU9wgDwR
-	 vchbCK9UgvFEu+ZvYPpWQBBgwI2yg68GgOHeY9cP6EH1Rr/PA1GCvoRfoNGAdznTZO
-	 9IiB3cqhV2q9AdRAM5+w1TqGu6A1vOULvGxyCwzvs2IklK18URchisk9TDxUKK93Gv
-	 md8nM7dqzgYhtxblsjNLO2KlodAMnBwya4A9o/gvvNjfGZ67gJNHii2jMmX0bcSXDT
-	 amY8g1kaULZazEMnVZmLtKMNxZ/1kSXEPof6piImulcaVJMJCz/fspv/MZJkbfLrtM
-	 qq7pyudKuwdJQ==
-From: Mike Snitzer <snitzer@kernel.org>
-To: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSD: remove flawed WARN_ON_ONCE from nfsd_mode_check
-Date: Fri, 12 Jun 2026 15:14:10 -0400
-Message-ID: <20260612191410.50177-1-snitzer@kernel.org>
-X-Mailer: git-send-email 2.44.0
+	s=k20260515; t=1781291912;
+	bh=zwQCSTw89WPYHnhN55Nj2O1IYQvWYTQvbh232mJ0G9o=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=WxDIYOg15PqhsW2Xuk0iurVbr3wmoPGhMz6QATCRVNC0oWfh0b46KUBaZURPzKLpB
+	 sgJMkpi+MsyOsss8xFVg1cohjfYgcvvszJE8qnZyIH3pMFPUZAnE/bl31D+aSepWo8
+	 6XY0EiYPhUL2hv3LPrwryIDZyVDPfDF7Xi43EyVDsXwAVwjs9MjhYvIQM0gltk6ELI
+	 SG5xNWLGMp90U9TP83qMNHyeO60Ll5ORbNRfVRdDl9pc8Tb1lu9lmCbhxTYLM0M4AY
+	 FN45UNZUm1Ym5DhTaDPLBglPL8B0cntgsmVf9rQdfS3tcPB5xhE12GKHrPeVeXDjyP
+	 RCYE+XBaAu1zg==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 8552DF40071;
+	Fri, 12 Jun 2026 15:18:31 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 12 Jun 2026 15:18:31 -0400
+X-ME-Sender: <xms:h1ssamIUolYl9cjt8BFZ5h9QJ3FGvwdCN2FgjBWfn7WAF3fv6xgagg>
+    <xme:h1ssao-NOSMf-fVjuzehuURw5GlyPkWEVnQYzwpFglMjyk5YT0QK7n7brE4EQIYPK
+    S5Wim66vKV0bKSwMIT3bSOdrFcZq_1WzsPFSOb5FYkgdcsjeKwKCStd>
+X-ME-Proxy-Cause: dmFkZTF7NItPVs42p0VQdAX0yaqJ+MYLlOpr/quZNqISK1VUlKZcn1pnmcIa+91qTHDpXq
+    XC7Clkjb/K4Af3SxFDxSiYXg3X94LUavwAP4XvbemAVLkVgcKHriUBduGwHYkCv8ctPeRq
+    f9Obss60LW/Il1ghOsnzXEKUiON5JcZiaINCBvd+XvjeIf0i0B8ACxDtVWOI2UNwPdmNyf
+    UMgismEx9BfztCsmSuW13OvG6nVPhs6UrLthtDrtx7gP6t+35H73hdlczaNx44Ck/dT4BH
+    Jk7u6gKA49G3VGYLoChWtha3FObjguNdmee3c8ZNj1E3R1NTRma/A/n+1GrJs0ArKGmSNG
+    TVN372sVSrR4fPPAG6vXLSDJESnG78AxGeH8MqvDghMBp1NsYVePe9BkwlGeYrurVSUTRX
+    AMSXYwgdikcO+cV05JZ1RV5DAdvYW650WOPokASLfji6PxgzMOGph3lFGUfDq/iGpLlNjZ
+    3dj207JTVPI3qEFGRSccu3c1HPamnDJqODU3wRiBqNlV/t1qX4+T0+SzBHh2LherMUPXyy
+    eOyCQPLasmxVlS1G2S9jD4BVzH+2p1gbVkH4+C6qd6JSamvzARX9zbUF0BtOytQGwW10jp
+    rn96B52YOcZLa7KZ87Pt6IOAHUja6S280NWkaEc1ivV+5WItlZY16k7HGtBg
+X-ME-Proxy: <xmx:h1ssaoOtjKlKrRnncdw6tLI5A4CP1bZuUu8pJzYWs2Ya7V5i6_R5MQ>
+    <xmx:h1ssage9LqlQsvUKMOhPg6MfjM5qU5Jx_N4QKCQIL1kDY49pbtEPEw>
+    <xmx:h1ssavWCRJBp9Nvd1MmFFD0cOPeV34cpQ6BdVhdevzooKOauCyVFag>
+    <xmx:h1ssagg6rC4JC7tRmRrLMBFuMi5YynCTOMac0PQq6mmQA0JwZWiAkA>
+    <xmx:h1ssam8tEWF9Jg28Rg8AjP27u82H9GEY21MjE7eLxUY_VW_KW2uSuTj->
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 64D0A780070; Fri, 12 Jun 2026 15:18:31 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-ThreadId: AX6p6lkWayPV
+Date: Fri, 12 Jun 2026 15:18:11 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Nikol Kuklev" <nikolk202@gmail.com>
+Cc: security@kernel.org, linux-nfs@vger.kernel.org,
+ "Chuck Lever" <chuck.lever@oracle.com>, "Jeff Layton" <jlayton@kernel.org>
+Message-Id: <9b3bf3c9-c2c7-4db1-b722-d440ffd8d9a1@app.fastmail.com>
+In-Reply-To: 
+ <CAM4XWym=NREGQ67b-ypADfJwemnF61dNyHp2LVMpkxphE_+dvQ@mail.gmail.com>
+References: 
+ <CAM4XWym=NREGQ67b-ypADfJwemnF61dNyHp2LVMpkxphE_+dvQ@mail.gmail.com>
+Subject: Re: [SECURITY] nfsd: fix null dereference in nfsd4_setattr for deleg timestamp
+ attrs
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-The header for commit e75b23f9e323 ("nfsd: check d_can_lookup in
-fh_verify of directories") details the assumption that justified
-adding the WARN_ON_ONCE to nfsd_mode_check(), that assumption is
-invalid (in the case of NFS reexport).
 
-When NFSD exports an NFS filesystem it is very possible for
-nfsd_mode_check() to encounter a @dentry that doesn't have
-i_op->lookup (see nfs_fhget()'s NFS_ATTR_FATTR_MOUNTPOINT and
-NFS_ATTR_FATTR_V4_REFERRAL handling, and d_flags_for_inode()).
 
-So remove nfsd_mode_check()'s WARN_ON_ONCE().
+On Fri, Jun 12, 2026, at 2:37 PM, Nikol Kuklev wrote:
+> I would like to report a remotely triggerable null pointer dereference=
+ in
+> nfsd4_setattr(),
+> introduced by commit 7e13f4f8d27d ("nfsd: handle delegated timestamps =
+in
+> SETATTR").
 
-Fixes: e75b23f9e323 ("nfsd: check d_can_lookup in fh_verify of directories")
-Signed-off-by: Mike Snitzer <snitzer@kernel.org>
----
- fs/nfsd/nfsfh.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+Thank you for the bug report. Unfortunately the attachment does
+not apply using "git apply". Please resend the patch inline. See:
 
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index bce8784aa92e4..ffe7f22693edf 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -70,10 +70,8 @@ nfsd_mode_check(struct dentry *dentry, umode_t requested)
- 	if (requested == 0) /* the caller doesn't care */
- 		return nfs_ok;
- 	if (mode == requested) {
--		if (mode == S_IFDIR && !d_can_lookup(dentry)) {
--			WARN_ON_ONCE(1);
-+		if (mode == S_IFDIR && !d_can_lookup(dentry))
- 			return nfserr_notdir;
--		}
- 		return nfs_ok;
- 	}
- 	if (mode == S_IFLNK) {
--- 
-2.44.0
+Documentation/process/email-clients.rst =E2=80=94 "Email clients info fo=
+r Linux."
 
+Lines 21-26 state: patches are submitted via email "preferably as inline
+text in the body of the email." Attachments are "generally frowned upon
+because it makes quoting portions of the patch more difficult in the pat=
+ch
+review process," and where accepted must use content-type text/plain.
+ =20
+This doc then covers per-client configuration (Mutt, Alpine, Claws,
+Evolution, Kmail, Thunderbird, etc.) to send patches inline without
+mangling whitespace.
+
+Related companion docs:
+  - Documentation/process/submitting-patches.rst =E2=80=94 overall patch=
+ submission guidance
+  - Documentation/process/applying-patches.rst =E2=80=94 the receiving e=
+nd
+
+
+--=20
+Chuck Lever
