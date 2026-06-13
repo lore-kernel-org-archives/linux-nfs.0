@@ -1,122 +1,117 @@
-Received: from smtp.smtpout.orange.fr (smtp-19.smtpout.orange.fr [80.12.242.19])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C6D2C32B111;
-	Sat, 13 Jun 2026 20:33:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=80.12.242.19
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8C2EE257845
+	for <linux-nfs@vger.kernel.org>; Sat, 13 Jun 2026 22:16:46 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781382814; cv=none; b=kkTHnjVENWnaZ0qN3R323nRsaIpBi0Y9flpJXdHaOp+N9s1c6ItU5fGTRkqtT270x0Bq9YW1gErwDtq7JhdWmCWbQmdqo+cZpVXfLHKtCPH4uFTkLGE2NGiKM+8G4fivukAmQ2ggQU149hjLZI35wMGD9bIZep8JZEYrBmNKBKo=
+	t=1781389007; cv=none; b=KOYRte2WNq39JWECIWBp+LUm9h2Ylqm5nG0Ky2tE+HV890qyBuJ6y/6rLZE83aMUxDNQvm7cnhs5I1cCGJ+gNweenkzzmAsMfA+JbbXK3jWOFXFl8l/42XQSbKiQn88T/quCTRuA1E0i6h1eCNGE+sB5SYA8m6z3frHDlZ4dz9M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781382814; c=relaxed/simple;
-	bh=s+RIUfmjQ+kw+0Y/ld0ezMtUVvuWPlH9NCe31EoWS8U=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=nxpg5ztcU3OuctmUWobGFeQAxZlL1byAYrXiJuOpUt3RE6Aqn02BCfkpkKQMVGnpQjfuL1Zh8YmOaJHHHCjG19uxuxvNeyN0IPPvXFaKePlYjmySMrozbA3NpQbGV5kilFE2tUOlI+THbEFAdx5t1H6I5dW/K9jQeq8sm0e4o0E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=wanadoo.fr; spf=pass smtp.mailfrom=wanadoo.fr; dkim=pass (2048-bit key) header.d=wanadoo.fr header.i=@wanadoo.fr header.b=NaWZOXfS; arc=none smtp.client-ip=80.12.242.19
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=wanadoo.fr
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=wanadoo.fr
+	s=arc-20240116; t=1781389007; c=relaxed/simple;
+	bh=dSZVqqZK+wzjQqLxHShwg64UsD5cGG3X5gZ2D/WdOKk=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=Vlv3VHkJB0QwfIeUMEO+vXAOj4anxKrBouO0WBUp17GE6Q5A7rgc+UpwI/oQinr/OL24sfbOTV9rPQpXmeAwnoOL+uGhc4GYhfbPClIQU/lkJROJ/3RKBEuvj+4OAN69et1hZZ+S4pyW+mNx/kkssB2AipdQUiwq7L1m49Il6M4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IB0J+5zH; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=wanadoo.fr header.i=@wanadoo.fr header.b="NaWZOXfS"
-Received: from [IPV6:2a01:cb10:785:b00:8347:f260:7456:7662] ([10.64.95.111])
-	by smtp.orange.fr with ESMTP
-	id YUuKwMjwU8HACYUuKwHwLq; Sat, 13 Jun 2026 22:24:44 +0200
-Received: from [IPV6:2a01:cb10:785:b00:8347:f260:7456:7662]
- ([IPv6:2a01:cb10:785:b00:8347:f260:7456:7662])
-	by smtp.orange.fr with ESMTPSA
-	id YUuBwnQnHUNPnYUuCwDWzm; Sat, 13 Jun 2026 22:24:37 +0200
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=wanadoo.fr;
-	s=t20230301; t=1781382277;
-	bh=T53gq3dU53YvAa/eX9/b169DvQ27KdVJWE91zst97qw=;
-	h=Message-ID:Date:MIME-Version:Subject:To:From;
-	b=NaWZOXfSZB9xI3PKEsCFJ/SvmhWfbrf9acmXp7Q7bmd1zWPVYGpow2SGAlEu5s2Ix
-	 Ihr/lhPIJR+/8aZ88fvqxJCJ9cZPvyFgINMFehGwWWdd7qceA8ON3L1tytss4hD2Ya
-	 RCMgAShturqI0DofnKk8ErwT2tTE7yPv0Rm4hqBrQGbJKO1zMPvcyoVOurxK7YfeKP
-	 bhrc6WPMNxL43nHN52u1/k2ALaA/wecNyilDHYHv5prqS3/JuV6VwockwhBXehcClk
-	 aMpClHhGczV4L/B9y5IktgoYVow79Z5ygg3EdCK8vaFpqGYEQHya4qdK4RhY1FMz7c
-	 nzAzWPjxHHBNw==
-X-ME-Helo: [IPV6:2a01:cb10:785:b00:8347:f260:7456:7662]
-X-ME-Auth: Y2hyaXN0b3BoZS5qYWlsbGV0QHdhbmFkb28uZnI=
-X-ME-Date: Sat, 13 Jun 2026 22:24:37 +0200
-X-ME-IP: 2a01:cb10:785:b00:8347:f260:7456:7662
-Message-ID: <1c8e10c9-def7-4f0d-8aa1-23c8035a38c8@wanadoo.fr>
-Date: Sat, 13 Jun 2026 22:24:35 +0200
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IB0J+5zH"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8DAF81F000E9;
+	Sat, 13 Jun 2026 22:16:45 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1781389006;
+	bh=0+fLI91pa/Xv3FD1+RFHBdOmEDeulJXtr3rw3jCfjvU=;
+	h=From:Subject:Date:To:Cc;
+	b=IB0J+5zHNaROe2nUKJIMcgj5G+c4Mf5SU1bnfEL5f9mWC4BUb00ImbvHEeMErfFBC
+	 ynrFvU4K1UmjqopaTSBJ/gi8xXpwiwXIQLT0QA1+kBnT0AOA4lDE+goo+8K/ki0Flh
+	 TelUF6UFotmGqKIlsk/qy3nQJAiQ+13Nxxrad77DSCiZu/QfsmTw4uHpzOqlCKfPHm
+	 8tQEZJEAfvFb0NnPUmcY56kPi6px0NYb32oXYjPWfxNvVzJdUGuTkBrw95WaAG2ntv
+	 DssFBAdUHUikTzRQ/22pSK7T7OXyuWuSHXCHE73yFC3Qk65s/CS35LnAxd62/gbF3D
+	 H4DgXHcESA1fg==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH 0/3] Fix NFSD post-shutdown use-after-free in the
+ unlock_filesystem paths
+Date: Sat, 13 Jun 2026 18:16:31 -0400
+Message-Id: <20260613-unlock-filesystem-uaf-v1-0-462b9bec8c84@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] NFS: Use common error handling code in nfs_alloc_server()
-To: Markus Elfring <Markus.Elfring@web.de>, anna@kernel.org,
- brauner@kernel.org, chuck.lever@oracle.com, hch@lst.de, trondmy@kernel.org
-Cc: kernel-janitors@vger.kernel.org, linux-kernel@vger.kernel.org,
- linux-nfs@vger.kernel.org
-References: <0d2d7158-45c3-4c8b-8ca5-33a5b3445343@web.de>
-Content-Language: en-US, fr-FR
-From: Christophe JAILLET <christophe.jaillet@wanadoo.fr>
-In-Reply-To: <0d2d7158-45c3-4c8b-8ca5-33a5b3445343@web.de>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWMQQ6CMBBFr0Jm7USokQavYlwMZQqjWEinNRrC3
+ QVdvp//3gLKUVjhUiwQ+SUqU9igOhTgBgo9o3QbgylNXdbVCXMYJ/dALyPrRxM/MZPHpiF7ttY
+ Rk4HNnSN7ef+619ufNbd3dmmP7Y+WlLGNFNywT47HY/DaYWJNEnpY1y/cTSv0nAAAAA==
+X-Change-ID: 20260613-unlock-filesystem-uaf-99a7577caea2
+To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>
+Cc: Musaab Khan <musaab.khan@protonmail.com>, linux-nfs@vger.kernel.org, 
+ Chuck Lever <cel@kernel.org>
+X-Mailer: b4 0.16-dev
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2300; i=cel@kernel.org;
+ h=from:subject:message-id; bh=dSZVqqZK+wzjQqLxHShwg64UsD5cGG3X5gZ2D/WdOKk=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqLdbEgMzxwztgqp05hGDEeVGbvbc+WoZJuSkBd
+ 1PNosZjbmOJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCai3WxAAKCRAzarMzb2Z/
+ lxYTD/48T248W5RdNWjdPuXpFqghQotZXLmxo2RkedwM7LzIhzp+MV7U/r85V9JUyl2qOkrCHrN
+ pstTkiHe1aXfM9DiSFh5bIyLk+BelJGQxJYAJvkoKyphvX284guJiJvMMU/DrqZfYQbQjhM4X18
+ E50MztWMGr+zaZztUnBMx8LpT03oDCtQ5801fyoRjpOVZetfOFRskB8rQKcA0WGh/XDvvAEyrC+
+ 14KdsBLWR23b81U67MtrtihH1NKoqziXRpcJmT5SZqPX/KJvdW3ZFv3s4J5gNejJqyX/8hoqx37
+ kt39nH+pYucxGNCEDLMkJb/qPKtDg41NnsxIYn4+QfRDCovxja+/6TmoEpDUIanN04uB+bQZ21m
+ R6CuhmsyOSfMq32vN0b/yEsIqYwiTJaVuiOPhU5hob5506cLhZ07QYThcNY3A+DFzsdclS75L95
+ LxR2BlZ0ppAnQm/ZFxDeKIQdY47NndNsakzCzoicrTHzOBg17KGhniQP3TblqLN4wDfhLdUDJ+z
+ olAzfvH0UvEJ2N3C5YdhSPsfjZHnoFXqJ3rgyrwmEwQ7vnZV6aFUk3Tv1bpo9Gnl89HmTdykkd3
+ Dhw0cnyNYth8mwNfBN6xuqzO9uPzsBQCmOPLkfeeo4hULEaB4XbsCosqXT26jlNIGP9iUudFsUy
+ eyMHqeg0GY8rKcQ==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Le 10/06/2026 à 18:35, Markus Elfring a écrit :
-> From: Markus Elfring <elfring-Rn4VEauK+AKRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
-> Date: Wed, 10 Jun 2026 18:28:17 +0200
-> 
-> Use an additional label so that a bit of exception handling can be better
-> reused at the end of this function implementation.
-> 
-> This issue was detected by using the Coccinelle software.
-> 
-> Signed-off-by: Markus Elfring <elfring-Rn4VEauK+AKRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
-> ---
->   fs/nfs/client.c | 16 ++++++++--------
->   1 file changed, 8 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 73b95318ba48..50482257667d 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -1063,10 +1063,8 @@ struct nfs_server *nfs_alloc_server(void)
->   		return NULL;
->   
->   	server->s_sysfs_id = ida_alloc(&s_sysfs_ids, GFP_KERNEL);
+Musaab Khan reported that a local administrator holding CAP_SYS_ADMIN
+can trigger a use-after-free in nfsd by writing a filesystem path to
+/proc/fs/nfsd/unlock_filesystem after the server has been stopped.
 
-If an error occurs after a successful ida_alloc(), then ida_free() needs 
-to be called in the error handling path.
+write_unlock_fs() calls nfsd4_cancel_copy_by_sb() before it takes
+nfsd_mutex and before it confirms that nn->nfsd_serv is set. Once nfsd
+has shut down, nfs4_state_destroy_net() has freed nn->conf_id_hashtbl
+but left the pointer intact, so the cancel helper walks freed slab
+memory as an array of struct list_head and then dereferences a
+bogus nfs4_client when it takes clp->async_lock. KASAN reports a
+slab-use-after-free read in nfsd4_cancel_copy_by_sb().
 
-CJ
+nfsd4_revoke_states() walks the same state tables and for that reason
+already runs only under nfsd_mutex with nn->nfsd_serv confirmed
+present. The async COPY cancel was added ahead of that protected
+section, so it escaped the guard. The first two patches move the cancel
+inside the protected section on both the procfs unlock_filesystem path
+and the NFSD_CMD_UNLOCK_FILESYSTEM netlink path. Async copies exist
+only while the server runs, so gating the cancel on nn->nfsd_serv loses
+nothing.
 
-> -	if (server->s_sysfs_id < 0) {
-> -		kfree(server);
-> -		return NULL;
-> -	}
-> +	if (server->s_sysfs_id < 0)
-> +		goto free_server;
->   
->   	server->client = server->client_acl = ERR_PTR(-EINVAL);
->   
-> @@ -1087,10 +1085,8 @@ struct nfs_server *nfs_alloc_server(void)
->   	atomic_long_set(&server->nr_active_delegations, 0);
->   
->   	server->io_stats = nfs_alloc_iostats();
-> -	if (!server->io_stats) {
-> -		kfree(server);
-> -		return NULL;
-> -	}
-> +	if (!server->io_stats)
-> +		goto free_server;
->   
->   	server->change_attr_type = NFS4_CHANGE_TYPE_IS_UNDEFINED;
->   
-> @@ -1103,6 +1099,10 @@ struct nfs_server *nfs_alloc_server(void)
->   	rpc_init_wait_queue(&server->uoc_rpcwaitq, "NFS UOC");
->   
->   	return server;
-> +
-> +free_server:
-> +	kfree(server);
-> +	return NULL;
->   }
->   EXPORT_SYMBOL_GPL(nfs_alloc_server);
->   
+The netlink command that patch 2 corrects, 327c5168eff2 ("NFSD: Add
+NFSD_CMD_UNLOCK_FILESYSTEM netlink command"), has not yet reached
+mainline; it sits in nfsd-next, destined for v7.2. Patch 2 therefore
+applies to nfsd-next, not to a released kernel, and needs no stable
+backport.
+
+The last patch adds lockdep_assert_held(&nfsd_mutex) to the state-table
+walkers and documents the nfsd_mutex / nn->nfsd_serv precondition in
+a Context: kdoc section, so a future caller added to this path cannot
+silently reintroduce the same use-after-free.
+
+---
+Chuck Lever (3):
+      NFSD: Prevent post-shutdown use-after-free in unlock_filesystem
+      NFSD: Prevent post-shutdown use-after-free in NFSD_CMD_UNLOCK_FILESYSTEM
+      NFSD: Annotate caller preconditions for the state-table walkers
+
+ fs/nfsd/nfs4proc.c  |  6 ++++++
+ fs/nfsd/nfs4state.c | 16 +++++++++++++++-
+ fs/nfsd/nfsctl.c    | 14 ++++++++------
+ 3 files changed, 29 insertions(+), 7 deletions(-)
+---
+base-commit: 56d6b74e37708005739ef00bb59db34bffac15a8
+change-id: 20260613-unlock-filesystem-uaf-99a7577caea2
+
+Best regards,
+--  
+Chuck Lever
 
