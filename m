@@ -1,158 +1,167 @@
-Received: from mail-ot1-f52.google.com (mail-ot1-f52.google.com [209.85.210.52])
+Received: from mail-ot1-f46.google.com (mail-ot1-f46.google.com [209.85.210.46])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A4D440BCCE
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Jun 2026 16:31:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.52
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDFD72EA171
+	for <linux-nfs@vger.kernel.org>; Mon, 15 Jun 2026 18:12:08 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.46
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781541073; cv=none; b=gLhj9e7imIgpTfinv2c8MZ90P85Xfy5JxYUgazmmJzlgGe1SzG3V+Hq9X5uT8vMbchLv6Yd2VNT0e80o3zpYaTl7XCzkJmGzSVauTJPuBPjrmyjOFthrDnFg8mKHxQitxv//kZ6rpXOE93pYicMlGOL5oM+e9EQXOVCkvj/OVcs=
+	t=1781547130; cv=none; b=FxTySB05+w9mf9jelwZ3qjz3bRYAAkKzrjmtMQ+H9YH5VNkbZJph3ygl1jzcg/EPoh5JMHCKEyPsx6sKiYDc2lu4JI85+mmINOalLIo6LgQ8kRvFoaGvXxmppN4aWPX4L/wl79+AspL7nAfRFOp2518sVm5CsyFV7TJCcfpvm0k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781541073; c=relaxed/simple;
-	bh=cVDmYfEGVssheWJhSWK27re/UJwlUSsyp4HfA5hfVZo=;
+	s=arc-20240116; t=1781547130; c=relaxed/simple;
+	bh=FnPXZb0OG3NNS/wAluhv7FOJCeBstFRvxB3OuI04YUA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=qwGoHOkMimg+pqRMnll4j9SKzI7VaKA0tiP3APAQIlHTztI07WSw6TPw+gOVb3D71YF8uwTlpDC1vn0KxTvZnj2KkFHpe/bJIkx0vSPsGmSqsNAgdDHohvxswAxELZELA807NEujX4qWjvGLjqS5mgyCS+SUu5R0l3zevTm5GfA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=fail smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=EYnOf7Im; arc=none smtp.client-ip=209.85.210.52
+	 MIME-Version:Content-Type; b=knYe87nFoBSpsT2Vid0D2CEHnGS2tWlTC3qbIxzGEt/qH6hPeOoWJORcx706nJD/OzMOZhQlY+jRwQSbOYOvmROV8U4w7tz77zoVS/nWFRMvqfl6jjxu12nyQPB+U3BgLjU4G6ZjYFPmAVEwJOXQz34h60Pd+MgSPQwkka/PlI0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=fail smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=D+/+jKSw; arc=none smtp.client-ip=209.85.210.46
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=fail smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="EYnOf7Im"
-Received: by mail-ot1-f52.google.com with SMTP id 46e09a7af769-7e701435806so3180279a34.0
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Jun 2026 09:31:11 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="D+/+jKSw"
+Received: by mail-ot1-f46.google.com with SMTP id 46e09a7af769-7e6128bd9b3so2076555a34.1
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Jun 2026 11:12:08 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1781541070; x=1782145870; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1781547128; x=1782151928; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=tOLT+Cx7rygGAhn5fXHgsIZ/7VbjcLS51e8cpTmCJU4=;
-        b=EYnOf7ImRSIeVOob09eya/512O40q+YTOTJJySghw8ajbFgHUjGUsPbaY6QPJETmyp
-         JpZL82wU1Ac7/ekeczyPUS/+nkProPfj3IPJFjTnBuObcqrJrT9tYWlwf2aS3y92x5ex
-         GGc9Dog7SemCOdS8jXz75jvz09VksXbVMesOTN7mmGGf6qupaAEtV2oowhqTo37tUokc
-         LZO17zNuqYOFNZ9aFGVwGSxiqTu39IewuRWHZgcWplFaz+Ic3iwTGb2naauQmVj36eeR
-         LWtOSlUpNdHyAIWKtpvMoaaANDfpIC1PrS7M/MIAM5O87zokoFetcYBMYtAuoj+6WZmM
-         15IQ==
+        bh=MCZ9F0XatAHNhxx9t9AaM4naxkoCtLahKtP/MNalTv8=;
+        b=D+/+jKSwAzZ49gAdejrOMKndCrTHBaJGm1ca1G6NCpy3jZysHeOB/tdIXqOFTVQOeq
+         BIaD7tXWy4gLXvNZfFzXUfZlAHVP82nsl6S1AFJ+kecRnCAFQh8HHv7TNhRkO1RK7zEX
+         ZCdyr9nOaKYu+TltIWw8Cgzae+2WPyZ7v8TwTf59CvxxA5gHvCUgwn1Zs13KzamjiEIS
+         9lQwH/RSe73R6pqAAR+0p+ezFSZ+vKDSv7IPf3LXIIF9CeIJQogZdK0JDDHxvM3jBtQr
+         haOJ4RgB2UHDgO9PkmSsnmTCQpu5djBceLDNV0emXWL3noWNwwOeJsmUXyBdwXPe17Ek
+         ihyw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781541070; x=1782145870;
+        d=1e100.net; s=20251104; t=1781547128; x=1782151928;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to;
-        bh=tOLT+Cx7rygGAhn5fXHgsIZ/7VbjcLS51e8cpTmCJU4=;
-        b=CsvR+RtnwptCc/tsPoXVUY6vQEfjfA2GLrL5OGhB7JDNcCT7SWKzh8LQMNX5aC6bk2
-         xCC9IHOfYqSWp+rzrMENUq/OKD7v/baA2+7o5n0akcVAf4ETMP8y7CSZEs/Wn0PHomGq
-         QG2qPPnwaLDt00hlqmngs4OW4fUfp7LQ9bNS2wWF3j+MaqoEt33XMdok/pWTG1k+yUtH
-         /SxB90VfSMT3XnzZSG2xW5JAQAA/9ZWSxkYHGjCGrPTaMTCLYsVZ6v1Gp4odHPU4S0KL
-         M4oGRagzKJAp9yy0tYm9YdvOAjtvYlSQNcJH6H872Dw027EPHNJuMZ62ahbu0qMhTnK+
-         yRwg==
-X-Forwarded-Encrypted: i=1; AFNElJ+AbMw0Dw4D006Tb4OZUepyOJDUrJFo2EWc+jv51OwHNEBw+h5IZn0DaRnDdUiQ7ySTl8KnkM4t478=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yx1Vwvs6grr5xar0rg7YQGwipY2ZIPV2HYt0v3kapLISCsIQ9/t
-	FpRSuR2PopLbcYGe4newLzps+LThLOoywkaRSMgU14FjDHnaMnLiWXtjs8QKp+qEw7Y=
-X-Gm-Gg: Acq92OHwjUv/rMhIspXM0gSBefzcFAX+13AI+ayPEUfAsYrzOd5yn07EfAIaYBv58Wa
-	ODa4fqi/vs8CIGRsbBEEOsq+FGQ4mJ2e54QGh1tCmMoPl/YyHwFB46QPjb4No56JP/nW3wrP5EO
-	AbBp+dUzBB7MMVD18BJKieunzTKqSUnyA+bt2sjqht6mXn6ZvYBBrEkpTiD79986WQLaq6UIM8j
-	pbkM8Zo4a1IKvQcRGze95gMcYG+Op4u8QaqTFsUMEWcxKVQxHK/qDkSPYRU1kfxJsgEV5/6cm2s
-	bNId+tmJI6fYGsPhUHHM8KQXhzLSr7wGvet4TzyNnj56F6DdzNceR1jE8QzwRjr8U+gR2fO331X
-	QmDrDOxQYK5st8DQWQ4JvEhB97WdTVZHEQxVhGhuzdX0LqWqfafS60hx7gJloHXh/4c+X6N2+TG
-	dr37IHUCBGsdSWGV6Yy1VIipPg5nFSoRmPDq7hUeXbhBjLUrK8o14=
-X-Received: by 2002:a05:6830:3808:b0:7dc:3db6:f02 with SMTP id 46e09a7af769-7e78476a104mr10198138a34.9.1781541069904;
-        Mon, 15 Jun 2026 09:31:09 -0700 (PDT)
+        bh=MCZ9F0XatAHNhxx9t9AaM4naxkoCtLahKtP/MNalTv8=;
+        b=oUylUUc/Z6IJZwyt4kOFQDmIK1AF/10BDcqBc4TT5D9ybCVsx0F5EFg+lILZyR5EjG
+         j8ZbJCaddHgUwnGiUka5G0vrSTNy4joiZ+HPz+xiKMTPzEEaiZ5RRfFdDYFvkKemV7Qi
+         1PzCHUJWX2WCG/DEJ1EmvqBZqpdjg6pvh3IeGT/2g0pSO8L5vVZD+fNZYTEWkq+Tvts1
+         jBYYjkjr5EgcRCp/ocE6vnrzR1U+Ik4GmcGZWfrgKZrDWlsZCO8Gacjt+JZkPpCcSz7z
+         GqyqROxx+TbdHOXyW46KcIL4hixGbjxjEXX7EwefvCoSRQvrMOdrbGZMEL5BrpQLlfj9
+         oMEA==
+X-Forwarded-Encrypted: i=1; AFNElJ9dc5VH6HJb/e5ak7tfBx+1UO/g1hNIg5OvzakHyY1riropFB8nOxfATWa2r0CWw/4As31KMbpv2Tw=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yz6xIZl3MOe9twCVxKFopNAzZ+goLPQXW8vajWeplcm9503f3bx
+	Rnz6199przX34G0NA42GcGwyWAEpC1rqQeDvkU028Ibkb4ql7c3ImE9PwQDddddNyns=
+X-Gm-Gg: Acq92OEQy1bF/3G83cxf5jfxbr29aJR4F8guifT0EewvsUBUjcrausM+u/99M9aVU2j
+	ZdtT/XNg8uXf/Oss1/Wps6evVAiz1y4n6ggKKzIWV0wkCikFP/2/vPvUgQl8TDFDAtXBCByCV/T
+	xBgZTGPeG/3p4Fcp3di4JLJqLTGAzAvdf+CX88NtVeuBg9Zgsbu9PtFNIqH0KP9DNZ58lESIOmn
+	8nPiW9Ue+QDo9adKzqVk+8nkiGs3/5u4v/5empCpoqtEuQDZTGmgltXOgD3py1p1j2746xKGL+P
+	3z4XuhBSJQCevGT1yZ+m46ZbuUx0ah41+mHKrhXUP3qRl5I7IzIeMcFNxfZq5H8DA8/X7uTEDiN
+	vKkRk1NE7d1/wkOR1GFzf/m6O5YsQo+0ar+tahr560zMxo7XkbwPmxpIX9ot43lthZXny1kESdP
+	BAluG/Ntr3fhgCUQcZvciEhUiAAel0njvd2RxahXOg3REkzA==
+X-Received: by 2002:a05:6830:7318:b0:7e6:ce35:4b11 with SMTP id 46e09a7af769-7e78e7cb8b0mr7888977a34.20.1781547127617;
+        Mon, 15 Jun 2026 11:12:07 -0700 (PDT)
 Received: from [192.168.37.1] ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-7e79f5a11efsm4416100a34.1.2026.06.15.09.31.08
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-7e79f6dfaf4sm4788299a34.21.2026.06.15.11.12.06
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 15 Jun 2026 09:31:09 -0700 (PDT)
+        Mon, 15 Jun 2026 11:12:06 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: NeilBrown <neil@brown.name>
-Cc: Benjamin Coddington <ben.coddington@hammerspace.com>,
- Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
- linux-nfs@vger.kernel.org
-Subject: Re: [RFC] knfsd: per-client fair scheduling to prevent single-client
- starvation
-Date: Mon, 15 Jun 2026 12:31:07 -0400
+To: Chuck Lever <cel@kernel.org>
+Cc: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>,
+ Tom Talpey <tom@talpey.com>, Jonathan Flynn <jonathan.flynn@hammerspace.com>,
+ linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 0/5] RFC: Stop NFSv4.1 slot-growth heuristic from
+ rewarding busy clients
+Date: Mon, 15 Jun 2026 14:12:05 -0400
 X-Mailer: MailMate (2.0r6272)
-Message-ID: <2B9A7409-C154-4F2D-B7C2-D31CAD795388@hammerspace.com>
-In-Reply-To: <178131214982.3002522.3853010351245262459@noble.neil.brown.name>
-References: <D33770A1-9098-4F1A-93EF-590E6C0B7638@hammerspace.com>
- <473e337b-fabc-4884-a6c4-0f04b6874d0b@app.fastmail.com>
- <3AB7EB6A-B207-4B91-A695-66C4704D0E31@hammerspace.com>
- <4c5dbb98-0209-4572-8eac-1578536bbd78@app.fastmail.com>
- <AED22AED-E97D-40E3-9839-BF8307EF8B65@hammerspace.com>
- <1a5c70d8-e7f4-4671-a29a-023be7c107fc@app.fastmail.com>
- <178044079821.2082204.6117918610145832039@noble.neil.brown.name>
- <561e9ac6-348f-4d6d-b896-38dbe5ede3bc@app.fastmail.com>
- <20555E8B-0E49-4328-8B31-0F73C3D286FE@hammerspace.com>
- <178060780940.3392745.3574880233025675236@noble.neil.brown.name>
- <83C74302-2A2B-48B6-B0F0-D5E8CB487BBC@hammerspace.com>
- <178131214982.3002522.3853010351245262459@noble.neil.brown.name>
+Message-ID: <D17494D7-20C8-4763-84B1-9B587B180A7A@hammerspace.com>
+In-Reply-To: <20260610-nfsd-slot-growth-clamp-v1-0-7b966700df0b@kernel.org>
+References: <20260610-nfsd-slot-growth-clamp-v1-0-7b966700df0b@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-On 12 Jun 2026, at 20:55, NeilBrown wrote:
+On 10 Jun 2026, at 21:58, Chuck Lever wrote:
 
-> On Fri, 05 Jun 2026, Benjamin Coddington wrote:
->> On 4 Jun 2026, at 17:16, NeilBrown wrote:
->>
->>> On Wed, 03 Jun 2026, Benjamin Coddington wrote:
->>>> On 2 Jun 2026, at 23:44, Chuck Lever wrote:
->>>>
->>>>> On Tue, Jun 2, 2026, at 3:53 PM, NeilBrown wrote:
->>>>
->>>>>> Idle clients will get pushed back to 1 slot, active client will tend
->>>>>> towards a "fair" share based on how comparatively busy they are.
->>>>>>
->>>>>> This wouldn't help for v3 of course but I don't think we need these
->>>>>> advanced features for v3.
->>>>>
->>>>> Ben’s employer might disagree with that :-)
->>>>
->>>> Yes - v3 is pretty important to us here.
->>>
->>> Can you remind me why v3 is important for you?  Is it the lower
->>> state-management overhead, or something else?
->>
->> Flexfiles uses v3 in its data plane, and..
->>
->>> Is there some way would could improve the v4 implementation or protocol
->>> to make it comparable to v3 for your use case?
->>
->> I don't think so - the stateless nature of v3 gives it distinct advantages
->> (and disadvantages) over v4 for some use cases.  That property can't be
->> added to v4.
+> This series grew out of Ben Coddington's fair-queueing RFC and the
+> discussion it prompted with Neil Brown: a single busy NFSv4.1 client,
+> opening many connections against a large slot table, can keep enough
+> requests in flight to monopolize the nfsd thread pool and starve its
+> peers [1]. Where fair queueing itself belongs is still being worked
+> out. One change, though, holds no matter which design wins -- the
+> server should not actively widen the gap, and today it does.
 >
-> v4 already has the anonymous stateid which seems perfect for a data
-> plane.
-> You can read/write with it just like v3 (i.e.  access check on every IO
-> etc), but there is no state to recover.
-> You still get client-state and session-state when can be used for flow
-> control, but these don't need to be recovered so they don't impose the
-> same costs as open state.
+> nfsd4_sequence() grows a session's slot table by 20% every time the
+> client reaches its highest slot, so it hands the client already
+> keeping the most threads busy a still larger table; one session can
+> climb toward 2048 slots on a server with far fewer threads to run
+> them. This series caps that growth where added slots stop buying
+> concurrency, and leaves the dynamic-slot machinery otherwise intact.
 >
-> I wonder if flex-files can be updated to allow v4 with anonymous stateid.
-> We would have to enhance the Linux NFS client to have a "stateless"
-> mount option, or similar.
+> Two design points are worth checking against the diffs.
 >
->>
->> Also, because knfsd doesn't have different resource pools for each version
->> we're going to want to continue to balance the pool for all versions
->> exported.
+> The cap is per session, not per namespace, and deliberately so. A
+> budget shared across a namespace's sessions breaks at the floor:
+> every active session permanently holds slot 0, which the shrinker
+> never reclaims, so once the session count alone reaches the thread
+> ceiling those floors exhaust a shared budget and pin the one busy
+> client small while the pool sits idle. Making that floor explicit is
+> a self-contained accounting cleanup -- nfsd_total_target_slots gains
+> the full-target meaning its name implies, and the never-reclaim-slot-0
+> correction moves to the one place that reads it, the shrinker's count
+> callback. Since a session cannot use another's slots, capping each
+> independently against the ceiling is the natural choice.
 >
-> But it could if we wanted it to and had a coherent model of how that
-> would work.  We could parse out the RPC program and version before
-> queuing for a thread, much like we already parse out the TCP message
-> size.
+> The ceiling is a sunrpc-owned quantity. Maximum sustainable
+> concurrency is a property of svc_serv and svc_pool, so
+> svc_serv_maxthreads() lives in sunrpc, and nfsd_nrthreads()'s
+> open-coded sum is converted to it rather than nfsd carrying a second
+> copy. It sums each pool's configured maximum, not the running thread
+> count: nfsd sizes its pool dynamically, and gating on the live count
+> would deny a client resuming from idle the slots it needs before the
+> pool scales back up.
 >
-> We could even do that today: create a separate net-namespace for the
-> separate pool, and add some iptables rules to redirect select traffic to
-> that namespace.  iptables cannot switch on RPC version, but it could
-> switch on source-IP if we knew which clients used v3 and which didn't.
+> This removes a perverse incentive; it is not slot admission control.
+> A client still sizes its sessions at CREATE_SESSION, and per-client
+> fairness against thread starvation belongs in the dispatch layer,
+> where the larger discussion continues.
+>
+> [1] https://lore.kernel.org/linux-nfs/cover.1780498019.git.bcodding@ham=
+merspace.com/
+>
+> ---
+> Chuck Lever (5):
+>       SUNRPC: Add svc_serv_maxthreads() to report the thread ceiling
+>       NFSD: Count slot 0 in nfsd_total_target_slots
+>       NFSD: Clean up documenting comment for reduce_session_slots()
+>       NFSD: Document and rename the NFSv4.1 session slot shrinker callb=
+acks
+>       NFSD: Bound on-demand DRC slot growth by the thread ceiling
+>
+>  fs/nfsd/nfs4state.c        | 115 +++++++++++++++++++++++++++++++------=
+--------
+>  fs/nfsd/nfssvc.c           |  12 +++--
+>  include/linux/sunrpc/svc.h |   1 +
+>  net/sunrpc/svc.c           |  23 +++++++++
+>  4 files changed, 113 insertions(+), 38 deletions(-)
+> ---
+> base-commit: 4549871118cf616eecdd2d939f78e3b9e1dddc48
+> change-id: 20260610-nfsd-slot-growth-clamp-ca03e338678c
 
-Doable, but I'd rather not split the pool by version: the point for us is
-that one shared pool stays fair regardless of which version a client
-speaks.  Per-version pools just relocate the unfairness from "client with
-N connections" to "version with N connections."
+Nice!
+
+Reviewed-by: Benjamin Coddington <bcodding@hammerspace.com>
+
+I'm pretty late to review this, especially as it lands right in the same
+zone I was exploring.  Sorry about that..
+
+Do you want me to rebase the fair-queue series on top of this once it's i=
+n
+nfsd-testing and re-run the A/B through the harness with this as the
+baseline?  Happy to follow up with a Tested-by.
+
+The work I have yet to do on the fair-queue series is to show a prototype=
+d
+burst-allowance.
 
 Ben
