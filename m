@@ -1,47 +1,47 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD37E42847B
-	for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2026 10:12:27 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 434D14534A4
+	for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2026 10:12:28 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781604749; cv=none; b=neKRJqSABWtAmd/09wNVrv/DfOZAPGEnjM6B318XKGAeYEBvV9ujGfQyi88ZnP4GsMH9Yt6cMwbplX8TRrLLfaHOloi5tkAvsaBApzrbjFjxaT/NP7qeKiwiD64pw4fQcZ9D6GOfjoO/icGeQHAgZZAE9uzyUoBfRoAEULx3HV0=
+	t=1781604750; cv=none; b=HDdzBF22I4nYcoiwm6RZgyXYi+N1HNTqRtND4r7HCOlGZyAJHmLXbO/lHYVBnv6e3ZOnUIv87ow56LwNmaTRSRbAhaIUBefyz2ZjoYLNHufEfa2Ybmew3ppRe4hhC3Gov4GYcuwuiuYCmkzPQ++nfJwzjafM2DRP4DGcHlpmHvE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781604749; c=relaxed/simple;
-	bh=LCDwARGFxaKGBy6W871lUHjlSWTOA1I7+IYTMKrtbGI=;
+	s=arc-20240116; t=1781604750; c=relaxed/simple;
+	bh=HLoxeFhghYgcnPTyOszlBWDi3KZJSiCbsQEjzraQKRI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=L6DyS90XBmcHljc9ip2rDTMX+4lwvYmp9rYHGwU5wVjpotxQ2JWYLIqDTu744yE/jgy+wfPQcaJTP8zNppzO/wR6thbXS0SRNl5dJ7jmA1uVS+eOgnKX/cJjM5pOHduZmIxxi0+8v3u0gzrLcbKjKMTBufzNh0T3ZvU1cYDpVRc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=ZddQDUVd; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=klzLoHH0TdYuLNdhOPnnG9niPqnc+xcjwVpanj3ts60maGDUSuWBrrpWcntD/5uSRjkesB5UdOZzyhP6Sef9Kgv75mHnmwOOlGrO9Lud/mIhfrCB1nzg7+Ln2SApBwzSvgjHL/NCLcIhQQ3FtXvQN7pT6c/P4EbCdELo30WarLk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=Qz5cVACW; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ZddQDUVd"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="Qz5cVACW"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
 	s=mimecast20190719; t=1781604747;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=f97ABxHjRNMpwCISt1swTvlPaBA4vicFtsj/v71c+y4=;
-	b=ZddQDUVdzUo/hv4EG/HjeCwz1VPUTDWXteA/nwAI22xAFoLb+PEznD4KGuy9PqwPQkyHua
-	dazcRoLH1ueXgOCfv0q8E2tZW/NmQqQhQpin37/OXKCtC4Sw6PKsepHvRJpq3kysZN672t
-	pWSiGbhu7k9uBlnmlvSAZWkijqG04gE=
-Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=HfX4hKOxHGk+bf7dAxE3qPG38R5aFPeh/NdzY9CtdfI=;
+	b=Qz5cVACWqh78uQGiKyu92r/g1TH3qSI5w510sjYalTipgNw9z9ODNn7wa9YAmuiIJAEYmp
+	7QQf+DuVCoMKBbEzK/Na/aunj6NVVsmE4sE4TIwrmHq/x4gk8b6JGFLAkm/YfKN3x7NmAl
+	cwYAEzqhoXWmeTmFq+aQUYjrTUExhJU=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-220-E0TD0ZO-MaSWI_Dt2BS9YQ-1; Tue,
- 16 Jun 2026 06:12:23 -0400
-X-MC-Unique: E0TD0ZO-MaSWI_Dt2BS9YQ-1
-X-Mimecast-MFC-AGG-ID: E0TD0ZO-MaSWI_Dt2BS9YQ_1781604741
-Received: from mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.93])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-454-jgW8GiYSNzSI7PbtLwwkgg-1; Tue,
+ 16 Jun 2026 06:12:21 -0400
+X-MC-Unique: jgW8GiYSNzSI7PbtLwwkgg-1
+X-Mimecast-MFC-AGG-ID: jgW8GiYSNzSI7PbtLwwkgg_1781604736
+Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id DE9AF1955D99;
-	Tue, 16 Jun 2026 10:12:20 +0000 (UTC)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 5A4EB180ACE5;
+	Tue, 16 Jun 2026 10:12:13 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.44.50.44])
-	by mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 06FBE1800348;
-	Tue, 16 Jun 2026 10:12:14 +0000 (UTC)
+	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 7A773180034F;
+	Tue, 16 Jun 2026 10:12:07 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Matthew Wilcox <willy@infradead.org>,
@@ -65,9 +65,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-erofs@lists.ozlabs.org,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v4 28/30] netfs: Limit the minimum trigger for progress reporting
-Date: Tue, 16 Jun 2026 11:08:17 +0100
-Message-ID: <20260616100821.2062304-29-dhowells@redhat.com>
+Subject: [PATCH v4 27/30] netfs: Check for too much data being read
+Date: Tue, 16 Jun 2026 11:08:16 +0100
+Message-ID: <20260616100821.2062304-28-dhowells@redhat.com>
 In-Reply-To: <20260616100821.2062304-1-dhowells@redhat.com>
 References: <20260616100821.2062304-1-dhowells@redhat.com>
 Precedence: bulk
@@ -77,54 +77,49 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.93
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
 
-For really big read RPC ops that span multiple folios, netfslib allows the
-filesystem to give progress notifications to wake up the collector thread
-to do a collection of folios that have now been fetched, even if the RPC is
-still ongoing, thereby allowing the application to make progress.
-
-The trigger for this is that at least one folio has been downloaded since
-the clean point.  If, however, the folios are small, this means the
-collector thread is constantly being woken up - which has a negative
-performance impact on the system.
-
-Set a minimum trigger of 256KiB or the size of the folio at the front of
-the queue, whichever is larger.
-
-Also, fix the base to be the stream collection point, not the point at
-which the collector has cleaned up to (which is currently 0 until something
-has been collected).
+Put in a check in read subreq termination to detect more data being read
+for a subrequest than was requested.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Paulo Alcantara <pc@manguebit.org>
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/netfs/read_collect.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/netfs/read_collect.c      | 8 ++++++++
+ include/trace/events/netfs.h | 1 +
+ 2 files changed, 9 insertions(+)
 
 diff --git a/fs/netfs/read_collect.c b/fs/netfs/read_collect.c
-index 9efcc0e63a96..fdb6aebc0a7b 100644
+index 802d1c40cce5..9efcc0e63a96 100644
 --- a/fs/netfs/read_collect.c
 +++ b/fs/netfs/read_collect.c
-@@ -492,15 +492,15 @@ void netfs_read_collection_worker(struct work_struct *work)
- void netfs_read_subreq_progress(struct netfs_io_subrequest *subreq)
- {
- 	struct netfs_io_request *rreq = subreq->rreq;
--	struct netfs_io_stream *stream = &rreq->io_streams[0];
--	size_t fsize = PAGE_SIZE << rreq->front_folio_order;
-+	struct netfs_io_stream *stream = &rreq->io_streams[subreq->stream_nr];
-+	size_t fsize = umax(PAGE_SIZE << rreq->front_folio_order, 256 * 1024);
+@@ -543,6 +543,14 @@ void netfs_read_subreq_terminated(struct netfs_io_subrequest *subreq)
+ 		break;
+ 	}
  
- 	trace_netfs_sreq(subreq, netfs_sreq_trace_progress);
- 
- 	/* If we are at the head of the queue, wake up the collector,
- 	 * getting a ref to it if we were the ones to do so.
++	if (subreq->transferred > subreq->len) {
++		subreq->transferred = 0;
++		__set_bit(NETFS_SREQ_FAILED, &subreq->flags);
++		__clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags);
++		trace_netfs_sreq(subreq, netfs_sreq_trace_too_much);
++		subreq->error = -EIO;
++	}
++
+ 	/* Deal with retry requests, short reads and errors.  If we retry
+ 	 * but don't make progress, we abandon the attempt.
  	 */
--	if (subreq->start + subreq->transferred > rreq->cleaned_to + fsize &&
-+	if (subreq->start + subreq->transferred >= stream->collected_to + fsize &&
- 	    (rreq->origin == NETFS_READAHEAD ||
- 	     rreq->origin == NETFS_READPAGE ||
- 	     rreq->origin == NETFS_READ_FOR_WRITE) &&
+diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
+index 59f330003d02..cc29582f6245 100644
+--- a/include/trace/events/netfs.h
++++ b/include/trace/events/netfs.h
+@@ -134,6 +134,7 @@
+ 	EM(netfs_sreq_trace_submit,		"SUBMT")	\
+ 	EM(netfs_sreq_trace_superfluous,	"SPRFL")	\
+ 	EM(netfs_sreq_trace_terminated,		"TERM ")	\
++	EM(netfs_sreq_trace_too_much,		"!TOOM")	\
+ 	EM(netfs_sreq_trace_wait_for,		"_WAIT")	\
+ 	EM(netfs_sreq_trace_write,		"WRITE")	\
+ 	EM(netfs_sreq_trace_write_skip,		"SKIP ")	\
 
