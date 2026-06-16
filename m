@@ -1,47 +1,47 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7745D426D14
-	for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2026 10:09:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C958E42847B
+	for <linux-nfs@vger.kernel.org>; Tue, 16 Jun 2026 10:09:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781604543; cv=none; b=ganeOZJ8OSqgJ4TGqD0g80xunz7PLHhDEF9upQ9Nxu79dHXkYqh7YMF3FHarwXJgtiCk/GbnEY4LQHVIFw/MkpkqzlrSVMxDNROOqbsox3p/Hk0KAwB9VHrnmJSyKlY5TgrZpFfEYiskqiJYzjLIXYVoRUrAMIVzTzRgHC+DoSs=
+	t=1781604552; cv=none; b=EWvRPUSPqzZsxDRkADgNUtXlv+xwU9OYng2jc869NFN4VSrempuQYYoIzwn/fLzIH6a8boKLPZJ2W+Ek0rswclzMDEjv3RmjMPePK3OrPARcWG1rDNByBoyB7jQZ2xvfdToAyMICTPfRWPEVJlb8/WcUxil2HyhXVq1s+iiSyFE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781604543; c=relaxed/simple;
-	bh=/VMGqRXj2H1ZoJ9Len4yDIgpZpvQtbhJDErO1fIajO8=;
+	s=arc-20240116; t=1781604552; c=relaxed/simple;
+	bh=AgT5FKbi7XMZS+3rhWehSP6ysiNHrsl+8NitUhTTQDY=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=n//B0mcZSuDAnrtcMNvNsRtzQKluYPqcTTZkvM6rgCWNhwlohvpqT/0A0fDtCA3CeO5T6kFVXXxo2HRkX/8UUnUCoJaEBsLaGNcxVoCun/2seYZ5Dv+DD1cNp/wf7N+0xTdIMI0wwscx5t+TM9ivoQLNgGaOFnQqQt4aYl2uw9c=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=bGQaSZmU; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=SSDKjYfgvYC8WpaG22JQxSqSaBYbUa+aBnNVOsIy8PhD8jCBMmQb5P3zcVTuqur9Qo7NhaUjDciKTdE5+vnXP04d/a5ICVlTxxBsuSGA/YMgBQvNiGcp3+tsy2/r50craN8kYIQ7cE23Nf+MR8y5EpC4kSa+zA714GG+jqY+jVA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=aHiyzfS3; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="bGQaSZmU"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="aHiyzfS3"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1781604539;
+	s=mimecast20190719; t=1781604550;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=6xzr+Qi6ZDs+0Riq2AVSQ7VxUd6HCUSx75f0+qxBdXU=;
-	b=bGQaSZmUywKZpt5AJeK50NEcgLEFqNLKFHLLDsT9WNr+tnrsvvL4IcuQsxTfJ2FteG2e6D
-	syT0zxZ3uRsJhWb5Ea5z7RZCxKQNphzN5E1QQEc1F605ockEp/nZXKVTxhsJX610NCMd2F
-	eiJ1iJqsrfrzh0X7+/r4PWY0YyfpcL8=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=AMrtitnL/aErCYJ1pJsAB/iWkHhwedFft/Iv1UJKIeg=;
+	b=aHiyzfS3DUs0CIe5YWkuEPPWYU4CtzyZlkTAz41Ckf47rKZFXQcpKkkx7Ds3gw3CAcnwCx
+	c5hBSBRez6VmPYWkLU7f+eZjxKKbTbXvS7KZM/OlhmQHCkvDvEtIdwIpNTzBoJNNplgHp/
+	jMAC6CWCxUZN7NgWiEW6zlq+TtDBxmI=
+Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-159-Qj7_fXm2OlK3_pmFP6or6Q-1; Tue,
- 16 Jun 2026 06:08:56 -0400
-X-MC-Unique: Qj7_fXm2OlK3_pmFP6or6Q-1
-X-Mimecast-MFC-AGG-ID: Qj7_fXm2OlK3_pmFP6or6Q_1781604534
-Received: from mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.4])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-482-Lx9QAI5SNyOJFYk2Q9E_Ag-1; Tue,
+ 16 Jun 2026 06:09:04 -0400
+X-MC-Unique: Lx9QAI5SNyOJFYk2Q9E_Ag-1
+X-Mimecast-MFC-AGG-ID: Lx9QAI5SNyOJFYk2Q9E_Ag_1781604542
+Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 2E18F1955E98;
-	Tue, 16 Jun 2026 10:08:52 +0000 (UTC)
+	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id EDD4B1800597;
+	Tue, 16 Jun 2026 10:09:00 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.44.50.44])
-	by mx-prod-int-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 66FD43008B37;
-	Tue, 16 Jun 2026 10:08:44 +0000 (UTC)
+	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id DF2591954112;
+	Tue, 16 Jun 2026 10:08:53 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Matthew Wilcox <willy@infradead.org>,
@@ -64,10 +64,11 @@ Cc: David Howells <dhowells@redhat.com>,
 	v9fs@lists.linux.dev,
 	linux-erofs@lists.ozlabs.org,
 	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v4 02/30] cachefiles: Fix double fput
-Date: Tue, 16 Jun 2026 11:07:51 +0100
-Message-ID: <20260616100821.2062304-3-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org,
+	Mike Marshall <hubcap@omnibond.com>
+Subject: [PATCH v4 03/30] iov_iter: Fix potential underflow in iov_iter_extract_xarray_pages()
+Date: Tue, 16 Jun 2026 11:07:52 +0100
+Message-ID: <20260616100821.2062304-4-dhowells@redhat.com>
 In-Reply-To: <20260616100821.2062304-1-dhowells@redhat.com>
 References: <20260616100821.2062304-1-dhowells@redhat.com>
 Precedence: bulk
@@ -77,29 +78,45 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.4
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
 
-Fix a double fput() in error handling in cachefiles_create_tmpfile().
+In iov_iter_extract_xarray_pages(), if no pages are extracted because
+there's a hole (or something otherwise unextractable) in the xarray, then
+the calculation of maxsize at the end can go wrong if the starting offset
+is not zero.
 
+Fix this by setting maxsize to 0 if nr is 0.
+
+Note that in the near future, ITER_XARRAY should be removed.
+
+Fixes: 7d58fe731028 ("iov_iter: Add a function to extract a page list from an iterator")
 Link: https://sashiko.dev/#/patchset/20260608145432.681865-1-dhowells%40redhat.com
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Paulo Alcantara <pc@manguebit.org>
+cc: Matthew Wilcox <willy@infradead.org>
+cc: Christoph Hellwig <hch@infradead.org>
+cc: Jens Axboe <axboe@kernel.dk>
+cc: Mike Marshall <hubcap@omnibond.com>
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/cachefiles/namei.c | 1 -
- 1 file changed, 1 deletion(-)
+ lib/iov_iter.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 2937db690b40..a464c4646c04 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -467,7 +467,6 @@ struct file *cachefiles_create_tmpfile(struct cachefiles_object *object)
- 	ret = -EINVAL;
- 	if (unlikely(!file->f_op->read_iter) ||
- 	    unlikely(!file->f_op->write_iter)) {
--		fput(file);
- 		pr_notice("Cache does not support read_iter and write_iter\n");
- 		goto err_unuse;
+diff --git a/lib/iov_iter.c b/lib/iov_iter.c
+index 243662af1af7..dc9c6eb21bdb 100644
+--- a/lib/iov_iter.c
++++ b/lib/iov_iter.c
+@@ -1595,7 +1595,10 @@ static ssize_t iov_iter_extract_xarray_pages(struct iov_iter *i,
  	}
+ 	rcu_read_unlock();
+ 
+-	maxsize = min_t(size_t, nr * PAGE_SIZE - offset, maxsize);
++	if (nr > 0)
++		maxsize = min_t(size_t, nr * PAGE_SIZE - offset, maxsize);
++	else
++		maxsize = 0;
+ 	iov_iter_advance(i, maxsize);
+ 	return maxsize;
+ }
 
