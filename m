@@ -1,166 +1,67 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 226F33BA24F
-	for <linux-nfs@vger.kernel.org>; Wed, 17 Jun 2026 13:18:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8DA2839E191
+	for <linux-nfs@vger.kernel.org>; Wed, 17 Jun 2026 13:38:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781702339; cv=none; b=ME7vxKq4C8UcjWdff+5IPhF4xIXu9ObayW9fqdCaPUIPKbPQxNFTv5/Jv7vyXNU2GWQsMm/6u1TU7OGL2+3TGkft77mqPxROsrPhWV7djr3XyUxGA2qBfHkddey7MRJwQWq0atX66YSC1DTvanPPDHQXmsY6z5dkcK7RRaUIzIg=
+	t=1781703508; cv=none; b=qP5ZNU8JibPGYnVloT5VSIHNeWBhXRRKEb3QvhJPtNl1X6mEmRwzTu0NANYh81q1nLaNCYrf0SONzQ5rL0r4KaBjjTH4Rc6219OefxQpmtazKfKLS0uAGewYMFHzPoq5272jrj0VFXmqrAfij1ZueiKsuf6ofX+n5nLZ7Ws7gnA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781702339; c=relaxed/simple;
-	bh=MCAypqSEWPXsEFXPz2qoNnRNhvNTfkLMsLZZUXXySf4=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=OoUoDAPbX04zIo7H5Q7jpM0HUQaQP3edlH+suU+KIdz3bo2fRfR3qOYsdO1j7sZmJxY0lT0SwfXc8Zl+a9Y2GAHJaGZKu5I1PsSQNV+2em5EUOq2LX8rHjqw96KmK/fw48bfEVe59Qz1CgA08xgzLYA1Ru/HuOeMHh2GR+9MwJ0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cfi4KGDj; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1781703508; c=relaxed/simple;
+	bh=7MPv5E+z+UaFdS262rpQHJcc6n6yM8XtnDfhyqBA2ac=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=FNtgGBb369rqO7xZBlPTD5zqkBkYWGzmi5oWlzkq75//J7ktKknAXjlETqWHQwugp4Edzuqxh3vHlKMpB2XFl2OscfGU7DuePtWcmQBTRBODTMhuNVsSQRfu6pf2bMFzKF/5ka3vfL2OY5dkPrMJXMFryXV2kSNKAuOk8R2hD/4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=d+Jt3Dn+; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cfi4KGDj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AA09C1F00A3A
-	for <linux-nfs@vger.kernel.org>; Wed, 17 Jun 2026 13:18:57 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="d+Jt3Dn+"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id EC0741F000E9;
+	Wed, 17 Jun 2026 13:38:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781702337;
-	bh=MVhbRcdA1xDXlsYG/sfXr+FrevoalaWtFswAD9w8/90=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=cfi4KGDjG21HBOArkfImfsPKz+ylxW3yVHEsJ2NCk2grV1hulcHDL5ZUYd/UN+khk
-	 0ZqnJzqovOUOWfFuDUdkDssxXSHNAIJRTOoudN5mywVfOu/9ko2XZko9dJANqM4xp1
-	 fqCcd5I4RzQ9THi05OKAV3hhZv4eENr7Za6josLzOC7UrHuMhBqxLCw7j1w9QZKSpS
-	 4UT1dFjHJlPnW6/GfkZ0Gn2Fv2Ck2UT2CL+6u6RvcKNuLmRHA6ioETmSxUsM2XiCT4
-	 JfQHqb6YMhslCd6yKI+LouRH4i+vPZCqaPMoRdSKtKz88z3g5WKFsg8WQsCTEnFKnd
-	 QOhloOGU4n7mw==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id DBE3DF4006C;
-	Wed, 17 Jun 2026 09:18:56 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 17 Jun 2026 09:18:56 -0400
-X-ME-Sender: <xms:wJ4yahmRj1T6wfTflJuu2JhVE-BV4rhi-HuWZhiFcNiWNwyGmc7OXA>
-    <xme:wJ4yanoRGEo5EliYVHsX6IU3XWkNTLzfDqG5YN_qK8R4Rq1mg5HiulHvYi_3L0ESE
-    OF5Hh-X14bNaZLbHUEoMk7Gaj3yA7vyTP8l-p-MDaerUVs7jzSzlbQ>
-X-ME-Proxy-Cause: dmFkZTGqhwF8qMmJc8Pnm7GyfiDyBvTp8NUSsmtxVtJaaP5imxaSlN6PUQFlwhEuQ/Ilnr
-    XRzkAiXMZbVCCK98Dpru9I5Z2Rh/GJxNocKYjsG39dkDeS3Hr6ZGZckB76CFAXQegcN34y
-    DCdBw00lL5sxvIHtOoS7SjkRT4SYp1xBpzj6KZhcpu5/h8TM3cfskK44uprE2pZo63EXFO
-    5UjfRX/3q++MEP4xmnDCeT6c0Nk6LaCug5+thGKo0WnICHnY5bfcn009qs+Ln+cfFy9kXq
-    9+5jZlsBa2mICLCeO3GKbydklMj8RmeEf9Ik2djQqrnpEVplz9lflpMLTB1fnNdjyrF3Ye
-    NDCOCXKLNS2IZEXCmROXRl2TM12gIcA/iZSQyMbPUh0potckK1nv8ZCAISDIGHliQt0Dm9
-    F5DGFlolQx0eCikSd5xoleztpdqQo2BUZNbu3w5Lh8VXBlEIKZ6m4dUgg9J8iernkmOGHS
-    +K8oEFFs3eU13KDYatdQrhcpzJT7ydVtQfK/n/pXbhjg6amGfGlnj+7SSJdukJu1Q9VL61
-    ORe5X3B+DWc5dcgREz3xLAHgHgae3FrOUkIzGBdMOE0msjBuW6VMduJS48u9sLmFgfQGwu
-    jJi4yzMv70J2fea4aEiAW56x/oFrrI6pgStRSpMW5l1XXWT8wYPrJ5l4CtnQ
-X-ME-Proxy: <xmx:wJ4yapxdxoRoZAlIzFty1M8UJqSnWfMhSIIJ5wV97Cy_Vo6W1Ly2lA>
-    <xmx:wJ4yavR6Yi0xnT0Olo8OO3QrtOUUgNuL8gAgsifUBHqBYiiQDWLCOA>
-    <xmx:wJ4yauL6FVK4_TA5_k47JtVkNYJIS1MlNGc5hlxzRxWH71TP3cmWqw>
-    <xmx:wJ4yauXujLk9hY8U0Y_mPOfZZZsfIRig94C3-PHDfmfxCIU46HnzHA>
-    <xmx:wJ4yaqQ3OvrEARWG1aXULQKYDR4Vacd-PzB3IqnwITqSNQfN09cNDHfN>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id B56DC780075; Wed, 17 Jun 2026 09:18:56 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1781703507;
+	bh=PkLUDAefJCEDfLfM1Nbes++7zE9nYNU0bAMKUKrJzLg=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=d+Jt3Dn+9Gg66wwgrgMPxW4sCILV+KjSl1M0WGDpKbT/JdMBdDeDUNWVUtKV+dzfG
+	 P8Pnx5w25dGihF3KFrrnvApK2gipQ0sFw+MFWytZvZwxwkND4hLWYLMd9Yx3ulU2Ks
+	 u8PpVJdBzf4HocEbJExUhaV/SjA+LIvIPV9q3tpUmwdYrcR3Ril15xcfwdsprIr1VY
+	 6tSvzdI423VbiwdjJYQtve1CAdFHMH8I5nwRS8sfRRS8DQ7w5/n1o34BnbnVef7gMB
+	 7W3YjwaeaJ0vv8qQ5wf22hLTU4CvGP/ZZlHCnnu/23FZdwIR2TiDka/+XiIYi4FyZc
+	 BWzG837KXoPiw==
+From: Chuck Lever <cel@kernel.org>
+To: jlayton@kernel.org,
+	Chuck Lever <cel@kernel.org>,
+	Oscar Ou <oscarou@synology.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] lockd: fix swapped arguments in nlmsvc_match_ip()
+Date: Wed, 17 Jun 2026 09:38:23 -0400
+Message-ID: <178170349726.1539549.17398579325429557639.b4-ty@b4>
+X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20260617075738.1151797-1-oscarou@synology.com>
+References: <20260617075738.1151797-1-oscarou@synology.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AX6cWk2i3Rrw
-Date: Wed, 17 Jun 2026 09:18:36 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>
-Cc: "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>, "Steve Dickson" <steved@redhat.com>,
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Message-Id: <c62cacac-dc7e-4203-b83e-000d04f797fb@app.fastmail.com>
-In-Reply-To: <657f71a2c6dc1e817be57e40431a6578281ea823.camel@kernel.org>
-References: <20260616-exportd-netlink-v4-0-03505aee3883@kernel.org>
- <20260616-exportd-netlink-v4-3-03505aee3883@kernel.org>
- <e55738ec-80a5-4e74-85e3-29c17d4f67c9@app.fastmail.com>
- <657f71a2c6dc1e817be57e40431a6578281ea823.camel@kernel.org>
-Subject: Re: [PATCH v4 3/4] nfsd: implement server-stats-get netlink handler
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
 
+On Wed, 17 Jun 2026 15:57:38 +0800, Oscar Ou wrote:
+> When releasing locks by server IP address via /proc/fs/nfsd/unlock_ip,
+> nlmsvc_unlock_all_by_ip() calls nlm_traverse_files() with the server
+> sockaddr as the opaque @data argument:
+> 
+> 	nlm_traverse_files(server_addr, nlmsvc_match_ip, NULL);
+> 
+> The match callback is later invoked from nlm_traverse_locks() as:
+> 
+> [...]
 
+Applied to nfsd-testing, thanks!
 
-On Wed, Jun 17, 2026, at 7:07 AM, Jeff Layton wrote:
-> On Tue, 2026-06-16 at 20:57 -0400, Chuck Lever wrote:
->> Hey Jeff -
->> 
->> On Tue, Jun 16, 2026, at 8:45 AM, Jeff Layton wrote:
->> > Implement nfsd_nl_server_stats_get_dumpit() which exposes the
->> > NFS server statistics currently available via /proc/net/rpc/nfsd
->> > through the nfsd generic netlink family.
->> > 
->> > The handler uses a dump operation to stream statistics across
->> > multiple netlink messages:
->> > 
->> >   - First message: all scalar stats (reply cache, filehandle,
->> >     IO, network, RPC) plus per-version procedure counts
->> >     (proc2/3/4-ops) using per-netns vs_count arrays.
->> > 
->> >   - Subsequent messages: NFSv4 per-operation counts
->> >     (proc4ops-ops), one entry per message, using cb->args[0]
->> >     to track the current operation index across dump calls.
->> > 
->> > This allows nfsstat to retrieve server statistics via netlink
->> > with a procfs fallback for older kernels.
->> > 
->> > Assisted-by: Claude:claude-opus-4-6
->> > Signed-off-by: Jeff Layton <jlayton@kernel.org>
->> > ---
->> >  Documentation/netlink/specs/nfsd.yaml | 105 +++++++++++++++++
->> >  fs/nfsd/netlink.c                     |   5 +
->> >  fs/nfsd/netlink.h                     |   2 +
->> >  fs/nfsd/nfsctl.c                      | 206 ++++++++++++++++++++++++++++++++++
->> >  include/uapi/linux/nfsd_netlink.h     |  35 ++++++
->> >  5 files changed, 353 insertions(+)
->> 
->> The procfs output in nfsd_show() emits one more counter that this dump
->> handler drops: wdeleg_getattr (NFSD_STATS_WDELEG_GETATTR), printed at
->> the end of the CONFIG_NFSD_V4 block in fs/nfsd/stats.c, right after
->> proc4ops. The netlink dump stops after proc4ops-ops and sets
->> cb->args[0] = -1, so the write-delegation GETATTR-conflict counter never
->> goes out on the wire.
->> 
->> There's no schema slot for it either: the server-stats attribute-set
->> ends at proc4ops-ops, so a consumer that prefers netlink and only falls
->> back to procfs on an old kernel loses this counter on every kernel new
->> enough to support server-stats-get.
->> 
->> I Suggest:
->> 
->> - add a wdeleg-getattr (u64) attribute to the server-stats
->>   attribute-set in nfsd.yaml and list it under the dump reply
->>   attributes;
->> 
->> - add NFSD_A_SERVER_STATS_WDELEG_GETATTR to the uapi enum, after
->>   PROC4OPS_OPS and before __NFSD_A_SERVER_STATS_MAX so existing
->>   values don't shift;
->> 
->> - emit it as a single scalar in the start == 0 message, wrapped in
->>   CONFIG_NFSD_V4 to match the procfs side.
->> 
->
-> This omission was intentional. The stated purpose of this patchset was
-> to convert nfsstat to use netlink. nfsstat does not access or display
-> this field today. Without something that consumes this stat, I don't
-> see the point of adding it here. We can always add it later when/if it
-> becomes useful to userland.
+[1/1] lockd: fix swapped arguments in nlmsvc_match_ip()
+      commit: 80e05cc8a30aec76f4457a9c163b222e9ff5a671
 
-If we were adding a greenfield kernel-userspace API, I would agree.
-However, this API is meant to be compatible with the existing
-procfs API, so it should match to prevent a regression (I'm not
-aware of a consumer, this is only a general guideline).
-
-For future reference: since a missing feature cannot be expressed
-in a patch's diff body, your intention to exclude this field could
-be mentioned in the commit message.
-
-
-> Is there something that accesses this today that I'm not aware of? If
-> not, is there some future intent to add this to nfsstat?
-
-I think nfsstat should display the wdeleg-getattr field. It has simply
-been forgotten.
-
-
--- 
+--
 Chuck Lever
+
