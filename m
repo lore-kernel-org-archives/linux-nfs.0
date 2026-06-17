@@ -1,32 +1,32 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D532548A2CA;
-	Wed, 17 Jun 2026 15:25:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A1AF633B6EF;
+	Wed, 17 Jun 2026 17:52:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781709908; cv=none; b=iMbgBS80X4laKoeypsOmRm/oLUh7iFAFmZMfMSFdmLwnnVGxBrkoSabq4VaQoo7gNkUNZV3LAfii20A4P1kERgtYRUKsAX7jpxzT7qsXGhiCRl0te0WWrvUlt0g9DM/zdSXhiMPJBtjE4YC3hlj/JFZpStV6jE6TnvMp0ffsL9c=
+	t=1781718729; cv=none; b=ZTU6H+OLKZ7HxZ7KazsRUAEwUY7HlIYt5x9Bck53rMEH+6vafQMGD37GTDC8MuwwuD6CxN7V9DMJ1EtKSgERmX1kbZo7kEAQ0UHb4ROZ79iczhQR4Qaxf6W2TjK5AugpANSk53E3/CxzkSESwmthyqSKZmfv29gsIxL+iWF1K58=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781709908; c=relaxed/simple;
-	bh=G3nsRbRYDgcR4h3AU7P9KmhT57vxPb/5l1bzRXRNwvk=;
+	s=arc-20240116; t=1781718729; c=relaxed/simple;
+	bh=XcsEsYuC5IjBoeQB9kFaT60PaKTexf7ipilsyeDd934=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=Lcg0MgQPgvZl8tU+oI7Er6DtKfAxXjj7a4Ng8y/y+9VtwfUbE/e9+UPi3Q9lwuay3Xvf85L5/mZolV8BH4AptQ/qXrM7JUF8uYobec8eGmS43yuWlkeImPAOEUiwEeDEAN13Dgy3bDxOZvwu6z8spoW8oxA+V4loe8wuwl9K6fY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=W3wNTDV3; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=AwuuWeXgDhD4w7jXgOIsixSN3FEftwd92dt7Vn37lCAODQ8+rmORUT72wCaW5LgXoxcXKMyxPju1++gcQmSuZCJ9naUm+zDhGO6zB5FaE10g5eUe6gf1ZRYOtZ8pZW7ul8km5/52RmQAAH5BH0iSKeiNj4Q405JzcCkYovVOe+s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PUUVs96N; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="W3wNTDV3"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3A4671F000E9;
-	Wed, 17 Jun 2026 15:25:04 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PUUVs96N"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 40C161F000E9;
+	Wed, 17 Jun 2026 17:52:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781709905;
-	bh=IJK14lF7duaEy/Or+GjFZVXYYC018pYwcPVnlxHKMMY=;
+	s=k20260515; t=1781718728;
+	bh=jG/hFys+OjDHPtdCDJolsJMquuQVjJ+9n08pKI5B2e4=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=W3wNTDV3b9ehPVis4Z0WKzW0DW/sY63QwoPY8lXBZVGNMB57QalzifTPoIOfNeQKm
-	 zYuDOdgBJcR1O6lxM8jkPjhyF4IvQ09lqDTlnT7sxelQgkRN/fmcsZYYGN6Wic1JHb
-	 Z8dueI9Me4A+/xYeHWiXbEqye+kBZUh0M5bB0ULhQaP3hYaDOSKSavdWKhE1BZdTEs
-	 JhMT6Yb0W0ug8ez5HeQEdX9YbdDpxQseS8kIx3lybTty1tHH2Hg7qOC9ex51Q+kaaP
-	 inKmj6g8Htk8MZf7Dag9thYX5Qun2piNBsMXXgiSzDhv6hed9csQ9LgjLxiOZiQT5I
-	 YYsGkHzBfjX1A==
-Message-ID: <ea1230d947d8bcdf5dc25f8f90fb46d4c0b155c5.camel@kernel.org>
+	b=PUUVs96Nfp0F7sAHD3iPaIQ6kLkVHGFOYYUX7bh18EzE+3KYr3gXi+/MXss/I0a4m
+	 FhfLOfkau4V/fghVzu4X7U8AEz8RxPBWnoGK1FcXzhyUV7JjJsbN4kwsQT4vBA+kh0
+	 Kl6Sv5gK5tsdxpfSeKIkV+FZTgIAXsEPN2SOUwEAMTe+paZ88to4Io8zLfBMD1Ar8L
+	 J8chRcIZDb8nojbgntJZ71B4EtJw8S04ECxb7B6SwcBuir2SrPVBAyNd6PYhW6CGyH
+	 NP6RtWkCzygQk6kBNBtpJJRPYPvg/ON2ipu2O+FXK0xINFpD58XtHq3cBenC62Wgrk
+	 NW+I19QcH73Aw==
+Message-ID: <9dc8568569c5f169f8cdf5fe379809fd94a154aa.camel@kernel.org>
 Subject: Re: [PATCH v4 3/4] nfsd: implement server-stats-get netlink handler
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
@@ -35,13 +35,14 @@ To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
 Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
  Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org,
  linux-kernel@vger.kernel.org
-Date: Wed, 17 Jun 2026 11:25:02 -0400
-In-Reply-To: <c62cacac-dc7e-4203-b83e-000d04f797fb@app.fastmail.com>
+Date: Wed, 17 Jun 2026 13:52:05 -0400
+In-Reply-To: <ea1230d947d8bcdf5dc25f8f90fb46d4c0b155c5.camel@kernel.org>
 References: <20260616-exportd-netlink-v4-0-03505aee3883@kernel.org>
-	 <20260616-exportd-netlink-v4-3-03505aee3883@kernel.org>
-	 <e55738ec-80a5-4e74-85e3-29c17d4f67c9@app.fastmail.com>
-	 <657f71a2c6dc1e817be57e40431a6578281ea823.camel@kernel.org>
-	 <c62cacac-dc7e-4203-b83e-000d04f797fb@app.fastmail.com>
+		 <20260616-exportd-netlink-v4-3-03505aee3883@kernel.org>
+		 <e55738ec-80a5-4e74-85e3-29c17d4f67c9@app.fastmail.com>
+		 <657f71a2c6dc1e817be57e40431a6578281ea823.camel@kernel.org>
+		 <c62cacac-dc7e-4203-b83e-000d04f797fb@app.fastmail.com>
+	 <ea1230d947d8bcdf5dc25f8f90fb46d4c0b155c5.camel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -126,98 +127,114 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2026-06-17 at 09:18 -0400, Chuck Lever wrote:
->=20
-> On Wed, Jun 17, 2026, at 7:07 AM, Jeff Layton wrote:
-> > On Tue, 2026-06-16 at 20:57 -0400, Chuck Lever wrote:
-> > > Hey Jeff -
-> > >=20
-> > > On Tue, Jun 16, 2026, at 8:45 AM, Jeff Layton wrote:
-> > > > Implement nfsd_nl_server_stats_get_dumpit() which exposes the
-> > > > NFS server statistics currently available via /proc/net/rpc/nfsd
-> > > > through the nfsd generic netlink family.
-> > > >=20
-> > > > The handler uses a dump operation to stream statistics across
-> > > > multiple netlink messages:
-> > > >=20
-> > > >   - First message: all scalar stats (reply cache, filehandle,
-> > > >     IO, network, RPC) plus per-version procedure counts
-> > > >     (proc2/3/4-ops) using per-netns vs_count arrays.
-> > > >=20
-> > > >   - Subsequent messages: NFSv4 per-operation counts
-> > > >     (proc4ops-ops), one entry per message, using cb->args[0]
-> > > >     to track the current operation index across dump calls.
-> > > >=20
-> > > > This allows nfsstat to retrieve server statistics via netlink
-> > > > with a procfs fallback for older kernels.
-> > > >=20
-> > > > Assisted-by: Claude:claude-opus-4-6
-> > > > Signed-off-by: Jeff Layton <jlayton@kernel.org>
-> > > > ---
-> > > >  Documentation/netlink/specs/nfsd.yaml | 105 +++++++++++++++++
-> > > >  fs/nfsd/netlink.c                     |   5 +
-> > > >  fs/nfsd/netlink.h                     |   2 +
-> > > >  fs/nfsd/nfsctl.c                      | 206 ++++++++++++++++++++++=
-++++++++++++
-> > > >  include/uapi/linux/nfsd_netlink.h     |  35 ++++++
-> > > >  5 files changed, 353 insertions(+)
-> > >=20
-> > > The procfs output in nfsd_show() emits one more counter that this dum=
-p
-> > > handler drops: wdeleg_getattr (NFSD_STATS_WDELEG_GETATTR), printed at
-> > > the end of the CONFIG_NFSD_V4 block in fs/nfsd/stats.c, right after
-> > > proc4ops. The netlink dump stops after proc4ops-ops and sets
-> > > cb->args[0] =3D -1, so the write-delegation GETATTR-conflict counter =
-never
-> > > goes out on the wire.
-> > >=20
-> > > There's no schema slot for it either: the server-stats attribute-set
-> > > ends at proc4ops-ops, so a consumer that prefers netlink and only fal=
-ls
-> > > back to procfs on an old kernel loses this counter on every kernel ne=
-w
-> > > enough to support server-stats-get.
-> > >=20
-> > > I Suggest:
-> > >=20
-> > > - add a wdeleg-getattr (u64) attribute to the server-stats
-> > >   attribute-set in nfsd.yaml and list it under the dump reply
-> > >   attributes;
-> > >=20
-> > > - add NFSD_A_SERVER_STATS_WDELEG_GETATTR to the uapi enum, after
-> > >   PROC4OPS_OPS and before __NFSD_A_SERVER_STATS_MAX so existing
-> > >   values don't shift;
-> > >=20
-> > > - emit it as a single scalar in the start =3D=3D 0 message, wrapped i=
-n
-> > >   CONFIG_NFSD_V4 to match the procfs side.
-> > >=20
+On Wed, 2026-06-17 at 11:25 -0400, Jeff Layton wrote:
+> On Wed, 2026-06-17 at 09:18 -0400, Chuck Lever wrote:
 > >=20
-> > This omission was intentional. The stated purpose of this patchset was
-> > to convert nfsstat to use netlink. nfsstat does not access or display
-> > this field today. Without something that consumes this stat, I don't
-> > see the point of adding it here. We can always add it later when/if it
-> > becomes useful to userland.
+> > On Wed, Jun 17, 2026, at 7:07 AM, Jeff Layton wrote:
+> > > On Tue, 2026-06-16 at 20:57 -0400, Chuck Lever wrote:
+> > > > Hey Jeff -
+> > > >=20
+> > > > On Tue, Jun 16, 2026, at 8:45 AM, Jeff Layton wrote:
+> > > > > Implement nfsd_nl_server_stats_get_dumpit() which exposes the
+> > > > > NFS server statistics currently available via /proc/net/rpc/nfsd
+> > > > > through the nfsd generic netlink family.
+> > > > >=20
+> > > > > The handler uses a dump operation to stream statistics across
+> > > > > multiple netlink messages:
+> > > > >=20
+> > > > >   - First message: all scalar stats (reply cache, filehandle,
+> > > > >     IO, network, RPC) plus per-version procedure counts
+> > > > >     (proc2/3/4-ops) using per-netns vs_count arrays.
+> > > > >=20
+> > > > >   - Subsequent messages: NFSv4 per-operation counts
+> > > > >     (proc4ops-ops), one entry per message, using cb->args[0]
+> > > > >     to track the current operation index across dump calls.
+> > > > >=20
+> > > > > This allows nfsstat to retrieve server statistics via netlink
+> > > > > with a procfs fallback for older kernels.
+> > > > >=20
+> > > > > Assisted-by: Claude:claude-opus-4-6
+> > > > > Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> > > > > ---
+> > > > >  Documentation/netlink/specs/nfsd.yaml | 105 +++++++++++++++++
+> > > > >  fs/nfsd/netlink.c                     |   5 +
+> > > > >  fs/nfsd/netlink.h                     |   2 +
+> > > > >  fs/nfsd/nfsctl.c                      | 206 ++++++++++++++++++++=
+++++++++++++++
+> > > > >  include/uapi/linux/nfsd_netlink.h     |  35 ++++++
+> > > > >  5 files changed, 353 insertions(+)
+> > > >=20
+> > > > The procfs output in nfsd_show() emits one more counter that this d=
+ump
+> > > > handler drops: wdeleg_getattr (NFSD_STATS_WDELEG_GETATTR), printed =
+at
+> > > > the end of the CONFIG_NFSD_V4 block in fs/nfsd/stats.c, right after
+> > > > proc4ops. The netlink dump stops after proc4ops-ops and sets
+> > > > cb->args[0] =3D -1, so the write-delegation GETATTR-conflict counte=
+r never
+> > > > goes out on the wire.
+> > > >=20
+> > > > There's no schema slot for it either: the server-stats attribute-se=
+t
+> > > > ends at proc4ops-ops, so a consumer that prefers netlink and only f=
+alls
+> > > > back to procfs on an old kernel loses this counter on every kernel =
+new
+> > > > enough to support server-stats-get.
+> > > >=20
+> > > > I Suggest:
+> > > >=20
+> > > > - add a wdeleg-getattr (u64) attribute to the server-stats
+> > > >   attribute-set in nfsd.yaml and list it under the dump reply
+> > > >   attributes;
+> > > >=20
+> > > > - add NFSD_A_SERVER_STATS_WDELEG_GETATTR to the uapi enum, after
+> > > >   PROC4OPS_OPS and before __NFSD_A_SERVER_STATS_MAX so existing
+> > > >   values don't shift;
+> > > >=20
+> > > > - emit it as a single scalar in the start =3D=3D 0 message, wrapped=
+ in
+> > > >   CONFIG_NFSD_V4 to match the procfs side.
+> > > >=20
+> > >=20
+> > > This omission was intentional. The stated purpose of this patchset wa=
+s
+> > > to convert nfsstat to use netlink. nfsstat does not access or display
+> > > this field today. Without something that consumes this stat, I don't
+> > > see the point of adding it here. We can always add it later when/if i=
+t
+> > > becomes useful to userland.
+> >=20
+> > If we were adding a greenfield kernel-userspace API, I would agree.
+> > However, this API is meant to be compatible with the existing
+> > procfs API, so it should match to prevent a regression (I'm not
+> > aware of a consumer, this is only a general guideline).
+> >=20
+> > For future reference: since a missing feature cannot be expressed
+> > in a patch's diff body, your intention to exclude this field could
+> > be mentioned in the commit message.
+> >=20
+> >=20
+> > > Is there something that accesses this today that I'm not aware of? If
+> > > not, is there some future intent to add this to nfsstat?
+> >=20
+> > I think nfsstat should display the wdeleg-getattr field. It has simply
+> > been forgotten.
+> >=20
 >=20
-> If we were adding a greenfield kernel-userspace API, I would agree.
-> However, this API is meant to be compatible with the existing
-> procfs API, so it should match to prevent a regression (I'm not
-> aware of a consumer, this is only a general guideline).
->=20
-> For future reference: since a missing feature cannot be expressed
-> in a patch's diff body, your intention to exclude this field could
-> be mentioned in the commit message.
->=20
->=20
-> > Is there something that accesses this today that I'm not aware of? If
-> > not, is there some future intent to add this to nfsstat?
->=20
-> I think nfsstat should display the wdeleg-getattr field. It has simply
-> been forgotten.
->=20
+> Ok. I'll plan to add it to the interface and send it in v5. nfs-utils
+> will need a follow-on patch to display the value. No promises on when
+> I'll do that, but it shouldn't be too hard.
 
-Ok. I'll plan to add it to the interface and send it in v5. nfs-utils
-will need a follow-on patch to display the value. No promises on when
-I'll do that, but it shouldn't be too hard.
+I have a drafted patch, but I'm not thrilled with it. wdeleg_getattr is
+weird in that it's not a statistic about server-side protocol
+operations. So, it ends up sort of sitting off on its own in nfsstat.
+
+What would you (and Dai) think about instead keeping and exposing
+server-side callback call counts? Then we could just add a new section
+to nfsstat server-side output with all of the callback operation counts
+in it. wdeleg_getattr would just be the count for CB_GETATTRs.
+
+Thoughts?
 --=20
 Jeff Layton <jlayton@kernel.org>
