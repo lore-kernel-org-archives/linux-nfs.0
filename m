@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E62F9345CBF
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 82481343D7B
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:48 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781896975; cv=none; b=DVZqTUnlmqnO3pbqKJywqVlZicvCYU9WF24fIRrZZvPEcN92NvPC9ofqtOncwLsbX33aEta54omQ8r8gChSmG8fU/mqwjbjGKsRsJuEZMKYxoaE9wZU0wznCAd7qgCVAvnFGfkqgYZpbtFQWwKFHGm2UAvZJol8Ogcw7SoPc44c=
+	t=1781896977; cv=none; b=unL03XggRWI03ldaxrmO61tSrGVXkwqxC/WRMcnClYmGPrcRL1w3YDLDjxifubhkjK5XZQ5WDZJn/2E0NDli+Ycxk3zk8di1mhnD8ICeTUoWmJTe+0NVU1pNHFT64HAps+IO8Rld8l2niOM6bcyD3bPsvjWhjA0ogCQXNG/spBs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781896975; c=relaxed/simple;
-	bh=uRofFB4Prf7mjZ4oMeahaIY9KLObU9TLXtJkHDL0/NE=;
+	s=arc-20240116; t=1781896977; c=relaxed/simple;
+	bh=ox5LyQmELRlskUVv5OHVVCj1Ji/pkbSQrDkERtP37eo=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=AGdtcVbLmNeewqJdYrFBnDGf1xliOa2e8+ApRDQ+FxKKJSp55aDUkkW9xIAlaEq3q3b5KDgO8WXlVI+uDY6eLLvU1xfAGqcdC3WrR+j0RYJl3J6abCT9iJB5a3WDhr8USiLp+JrjzZCgmYixPDEL5CMV2hM1qDLXB+p33miXL+s=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hntN5lf9; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=jsN9KsVCqu/taScX4mmu5KjGqKSRQTNYbG56JzaUpXHudb/rbSKxo916kSXuTrQs4YNbALgurM7FJSx1SXjeCLmL/O0sNzclkgJpmS+UJTvGD5NzhFEiMDY+YqSEmKp9TmuuArMf7p/1tqNEJcIaQoTQw0zQMaAol6hrTqMM/Lo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FL/ywmm2; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hntN5lf9"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 700FF1F00AC4;
-	Fri, 19 Jun 2026 19:22:49 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FL/ywmm2"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 124E41F00A3A;
+	Fri, 19 Jun 2026 19:22:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781896970;
-	bh=VW6SQuVrO0rjFprztUCQwZ7xcxgfqwW4QC4JF995nkk=;
+	s=k20260515; t=1781896968;
+	bh=iTM19ddU10+cnckqwAlS2v2iqOm2FngyxUgjnMSJvZw=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=hntN5lf9SZwlUoDFZBM/p0ck7T0IF5yWXSiEgHm4LJq4JeKTnDfFyXox5jm0dBGD8
-	 lhm6WcWTdJqPjqkyvOCKI8fbIKjJd0lPonx3FLYtNsNH8EoC7ptcH2cA+6Sea5lliL
-	 8WnjtKJZt8NUC61cdbtTZ8pH1SslBCU42XhR8IN7qJqAlquOi09qqn4zHxkOWqCW0v
-	 9dEiXgTvwbFHXWVRsvLLxOKpnAA0Y4uqs2BJC2q8A1NMK9GXkoeh5gPnQndOlsRuYl
-	 VoyIZ28PUw2amvYoXBsQG8+wxYGKdOxdaXixtgGzO3Hwe+c/sSbhmdkmu5G0h8RS60
-	 jLTIhHuOgnd0A==
+	b=FL/ywmm2oiuoRsSXSE+Ilqg336PD4k/+oF670Ukh/4BRtM4r49yQv8EAICMK9QA2k
+	 VeVM9aPFGX3ngIQAnNm0S3gH2bJ9VR9gILllPIW8FFuC1YeUEPTPEB8va8P99mcVdf
+	 VnScA3Pv24Ogi58h7bP2V52SY8qztOWhI05pisvI+8/kwNvQFs2vaNbojUM/T21IbH
+	 Pr1CfQ349zBugUlv8TkU4ktM93Xb6qvYSBzS5E7V4BpsLyFrx9TUBBHJa0M2+2frg5
+	 ZmyM2rqW2riwoXBGgwUpMZFAZ85NxMHgnosZpGyMzNHDAgETQSP2UgHolfaNIsZTI/
+	 IhuALuhsk8cvA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 19 Jun 2026 15:22:28 -0400
-Subject: [PATCH pynfs v3 09/26] server41tests: test link triggers dir
+Date: Fri, 19 Jun 2026 15:22:26 -0400
+Subject: [PATCH pynfs v3 07/26] server41tests: test rename triggers dir
  delegation recall
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-dir-deleg-v3-9-1077ce8aab1b@kernel.org>
+Message-Id: <20260619-dir-deleg-v3-7-1077ce8aab1b@kernel.org>
 References: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 In-Reply-To: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 To: Calum Mackay <calum.mackay@oracle.com>
@@ -48,46 +48,46 @@ Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
  Anna Schumaker <anna@kernel.org>, Scott Mayhew <smayhew@redhat.com>, 
  linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2109; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=uRofFB4Prf7mjZ4oMeahaIY9KLObU9TLXtJkHDL0/NE=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb6/6jIXibtYO1MyF/ckqQitx1aOU0rEBCCU
- Oyjpwf8aaSJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW+gAKCRAADmhBGVaC
- FfDmD/9Kp4XoqUTrapmE9MClR2MG1IVoaa6WDu6u2Q/spVV/9NOOJJmQN2Ppdq5veNDybu7PoPm
- qUal5/0PsIaxQ6XmY8V0cOnU0t1z38xHxOaF3RaMX+2MVepLpPGO3laqheeoFhnp4YL/wKspLto
- D/FkVI99cfwlqDi//e0i5M+c3RWknjlVnrmQ9Xgp9FbJthV15FTFoAQWoqCyYotog6+87JQJJho
- Q+PsSGfs5GBB6q6SVlKVg/qn8X7YVERE66CVslwq7lkhnSCkRfvR75FFjuOERhYwGm0I+ff/YAw
- oK5zlXEZedjfLvk7/tdTAxjgqIgT6nQVMaIUp6MfXyxnchYXbZz0s+559bjr/x4cDyCmzgx37lN
- tWsmBUt7Q92+peIKFKZBlZ0tK3yzwLoz1fk5pfuM639RTylJyY7oPXPyFAoS2+ToBxSGnpVMqJO
- 6yWjHXBLZvD6knKXuCtGdhTBqW2ER7YI0fHHZd46uDFMkp8V/0y2hALpzcLJY2l71YuL0cMuLZc
- gj2PkFAzuAOj9i08f3ZINJJFg0ummvPFD7dXipJiJPYUFu+1zFznYGYL7yf3+YGcQBoGXtfrpWN
- YZCiy9oY1bl4HDGmRQIOhZVG8FqrMwN+FspvtL8fn+KE9FT4mH9/VULmGoYv9szscUJqvZKVy95
- 8USCq8Iw3awkpJQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2107; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=ox5LyQmELRlskUVv5OHVVCj1Ji/pkbSQrDkERtP37eo=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb6/hCBpf8ulqyImtS4V01DKvbitWyNg/ENg
+ YEM7SsxGduJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW+gAKCRAADmhBGVaC
+ Fd98EACHcxYophham8GK71aSOsYDj0Ni/lq3n87YBJahC2KR7RGGgqKnD/lRwUW7iIqqfXzQf5Q
+ EPW3qpgH8ESlVSNRQq47nA3IhpmJA3pBuZTcMxeci3Qr0xC3hhnpF+PVybWpIGsTN31qxv4fVwV
+ /GbyHb/Da+oyOZYmBH9BDa4imMO5PQanGSVt2Tsw7DAriMF8iArcsQeZbK08dIdIBY8v/g/mkK1
+ AAt5jygD+WhoqUrcI9BM8RiDP+vUoBGFmkayuAtKLeIUjxTrQzy1AA3BdKMhp2Q9USNYDakvVjP
+ A+RT+TeFvOXJOzK/OygStwgExmuDHd1m+JnR8ZEzXWkLl/6JQESUItcEQWUnXttbiSFUNQh7HHl
+ nJTsR+B7Swku+kclvrJ++q61JtqgAm3rFhq3Z2deR3jlUiS6x/OHuLbYQt6Bw+2qDxlu3lPH1Mv
+ GQ+/YfxIgJdkH6KPlq4yyaJPNO8QWC9sdK2FvNHMYrvRFi3APq1L0NiZohjWPpjdwcfhKWmQGkj
+ 781vvcTepRxkrQD60RCkShU31wpuTabvbpXSXBQOvSpZlWyLgkQ4EGQVoFl6tO49fOab3hwwpa1
+ ywmV1gPa44Lj91iCb7mq7ezOa7l/8PqXNoJffvjA6PDWgYZM5Gx/LMhjXLsznalpeQodc4aY/3+
+ DbPK7QIop0JeCgQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
 Get a dir delegation with no notification mask, create a file, then
-hard-link it to a new name from a second client. Verify that the
-server issues a CB_RECALL.
+rename it from a second client. Verify that the server issues a
+CB_RECALL.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- nfs4.1/server41tests/st_dir_deleg.py | 36 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 36 insertions(+)
+ nfs4.1/server41tests/st_dir_deleg.py | 37 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
 
 diff --git a/nfs4.1/server41tests/st_dir_deleg.py b/nfs4.1/server41tests/st_dir_deleg.py
-index b27e68eea5f6..008e45d4cf64 100644
+index b2afc7cccb01..b968035d0446 100644
 --- a/nfs4.1/server41tests/st_dir_deleg.py
 +++ b/nfs4.1/server41tests/st_dir_deleg.py
-@@ -242,3 +242,39 @@ def testDirDelegMkdirRecall(t, env):
+@@ -182,3 +182,40 @@ def testDirDelegRemoveRecall(t, env):
      ops = [ op.putfh(fh), op.delegreturn(deleg) ]
      res = sess1.compound(ops)
      check(res)
 +
-+def testDirDelegLinkRecall(t, env):
-+    """Verify link triggers dir delegation recall
++def testDirDelegRenameRecall(t, env):
++    """Verify rename triggers dir delegation recall
 +
 +    FLAGS: dirdeleg all
-+    CODE: DIRDELEG6
++    CODE: DIRDELEG4
 +    """
 +    c = env.c1
 +    recall = threading.Event()
@@ -104,20 +104,21 @@ index b27e68eea5f6..008e45d4cf64 100644
 +    check(res)
 +    open_stateid = res.resarray[-2].stateid
 +    file_fh = res.resarray[-1].object
-+    close_file(sess1, file_fh, stateid=open_stateid)
 +
-+    # Link the file to a new name from sess2 -- should trigger recall
++    # Rename the file from sess2 -- should trigger recall
 +    sess2 = c.new_client_session(b"%s_2" % env.testname(t))
-+    link_op = [ op.putfh(file_fh), op.savefh(),
-+                op.putfh(fh),
-+                op.link(b"%s_link" % env.testname(t)) ]
-+    slot = sess2.compound_async(link_op)
++    rename_op = [ op.putfh(fh), op.savefh(),
++                  op.putfh(fh),
++                  op.rename(env.testname(t), b"%s_2" % env.testname(t)) ]
++    slot = sess2.compound_async(rename_op)
 +    completed = recall.wait(2)
 +    env.sleep(.1)
 +
 +    ops = [ op.putfh(fh), op.delegreturn(deleg) ]
 +    res = sess1.compound(ops)
 +    check(res)
++
++    close_file(sess1, file_fh, stateid=open_stateid)
 
 -- 
 2.54.0
