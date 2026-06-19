@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2642433F8B7
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:39 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51CF53451A9
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781896971; cv=none; b=jZKIJavI70axVlT9yRXhZ0caIHZzekG1nJmTcRL9MaxANCArqkHBw7qNVw2XGhLc4TOPDD2N0uHEvDOj8gQe7iYJad3OLhdFNcscfRmfsYAp/VPu9U+Va4h95IYxyBuIc7IolYX5LHlngkSRS+Ey/7/PKgHB0clhseH6qjFAC1Q=
+	t=1781896973; cv=none; b=POj3Q7d4SYKUtWPJD4WthxTmaPAOYD/FPKjxykgbVz1NITrHmjL6Hdx09PL68ygvLsOSq2JhqjJ6t2ooDtE6sQbIWip9HQ6fxu1Bm8pgybatUVlFYRRavbmThiKcJ26wS437CzAdrC0nJWU1FUny6sHkYbXVMPtqS7d1EMgy8f0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781896971; c=relaxed/simple;
-	bh=z8jx2zpFCG2NB80pAo0IqGjGWIZPZwjQ4ZDKXPcx+oo=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=CL5715rthHK1RoZX2yO/v/EjwNBmNQGnr/kGH07f+3lIMUOjfr6HTxoNKnO2XL/GxWXnN8s4wmzSl3sBEAgzrShBxloG3tpCnUplDl+IUk+n151P+ExOYUJfuWBcxZoC3CXxV/DidD0QdPT3ksCD4j6C/aPxuhEuGgz4XkUl1ts=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HeKRCDcN; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1781896973; c=relaxed/simple;
+	bh=E+6qzYdKgS4YqznItLOjUhSzAn+xgzN0iqHfwsmM4cY=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=DRFT+H/CSnaW3JinNOB/sTLevNqr1B3sk4WOBvSy5tO893Ark++uQq0OIJQtyyjogwlx00HFLwxiZwSJtZK+BqkiD9EdLPPn81eHSnTO8Hj5ctINA/CYS66o69U4UWRqCM4n/jMGPVSE+MAoelfzwU/M1wdHmVzmx2/RCYF9Nv4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nlqmNqvB; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HeKRCDcN"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id AFAAF1F000E9;
-	Fri, 19 Jun 2026 19:22:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nlqmNqvB"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 414591F00ACF;
+	Fri, 19 Jun 2026 19:22:48 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781896959;
-	bh=DJTotpZhoblzjMQvl/lF1p8iFX7lPlYNbL6OBuJcLgI=;
-	h=From:Subject:Date:To:Cc;
-	b=HeKRCDcN+YLPiVdFCd98XYeDxsIrUiNcciKHtioMi7oE2rDqdAdpn09XNI5yRkCPh
-	 XuJQe1fuIr7UwHUdbUb8CWSM8CrwZWNJJA7rSvIch5X4vOhe5xufQhUZB2WczEQiIR
-	 ISpG06XpVWX63jaFlIWVNrfzOYzkfCy9rhqtE1Im/mtKn8zKiJB6sNhabnrag55drk
-	 DalsNhdr3c+jXZv+ecEvhuPC/Dvrk/l9dLZN1r8Y5HdU+5a9QuBQ5DN8JAMJHj/N/t
-	 PhD20vxMwM2mEnCn+W3rWXLKU4LoGchakVDEPb8bs5l2ReoimeS2sjaLHgMISKCh6L
-	 II2g5codJl02Q==
+	s=k20260515; t=1781896969;
+	bh=70bIAjAcLi1mcmGVPHJ0Ji+ghCc/93HMxPaHTeC4AiQ=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=nlqmNqvB1ZjCKaDBuxEcLnHWhYtDJhKfF1XheAnPPqyXZxQpI5Ey1K/ZfoZBPVj6Y
+	 QJhU2GNlqo0LkohalznvP0w4YuZH9zJyeNKR0T/U5h3HIyf1vllcxLPcnPCiKwnh/v
+	 fLp4DStL5TD7YJQOJG36Kcfb3IqpyHfLZSNyPo/j0d0qWfdZ3Q44stmkfXNRXsHFQp
+	 VI6CNPHiOHs4l+3yGmnkAmwUouZUmVDwvX0ExeQM3ftSmGqkh53yzqslWQrU5Enbzn
+	 +ygDXLeMYk245zdVaYF4EnOU3Q6fcsyhsxzQ5Wk/PvmW1FvYlCe/O/My2tNbiP90XT
+	 lsv7HKK6CWv1w==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH pynfs v3 00/26] nfs4.1: add some directory delegation
- testcases
-Date: Fri, 19 Jun 2026 15:22:19 -0400
-Message-Id: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
+Date: Fri, 19 Jun 2026 15:22:27 -0400
+Subject: [PATCH pynfs v3 08/26] server41tests: test mkdir triggers dir
+ delegation recall
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,11 +38,9 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNyw7CIBBFf8XMWgzPPlz5H8YFlKElNrQBQ2ya/
- ruEVV3euXPO3SFh9JjgftkhYvbJL6EEcb3AMOkwIvG2ZOCUN1QIRqyPxOKMI9HMCNkq14lOQfl
- fIzr/ra4nrFtwCV7lPPn0WeJWFzKrZZVJ2p5kmRFKlBz6vkNtWm4eb4wB59sSx6rJ/ISy5ozyg
- jptFaPWqF6yP/Q4jh/IqnOi5QAAAA==
-X-Change-ID: 20260331-dir-deleg-a1b3475f8385
+Message-Id: <20260619-dir-deleg-v3-8-1077ce8aab1b@kernel.org>
+References: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
+In-Reply-To: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 To: Calum Mackay <calum.mackay@oracle.com>
 Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
@@ -50,95 +48,64 @@ Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
  Anna Schumaker <anna@kernel.org>, Scott Mayhew <smayhew@redhat.com>, 
  linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3483; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=z8jx2zpFCG2NB80pAo0IqGjGWIZPZwjQ4ZDKXPcx+oo=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb07zF1eUp+mHLLI0tTyCRib8g6Mk/PP9Vzd
- enYeAoHjiiJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW9AAKCRAADmhBGVaC
- FSgcD/9n2VxkJdas0yfasJVJ7hrY5CqkGWWjWP2rD7EZ7YIJ8Dpg1YJwevxKMLzB1L/S05M/Xlv
- Xl2PsRgP1JzvUGajB8PmJ4yivkfox+DicLx7eM3vKhubBgfCWDeHnZOzUbQ2WJOe7Uif2QcHaDM
- XeQI9FTSiIUZRD01eO6RjSubm0yI2u8FRnoJTC6LuSdwaucmcrjeyCkfSyfWyFxV6fTFVXE95N7
- vSLZKKRzhyHDF76QtY5iOUBSJ6keNj043uVBH1wOsfC+du84TdqOjhaRI7OpdHPumxaYZf1I6mf
- 4K8u8wKO2n07eSMO/wDRPgBA0H5oTRzCpOTw/Uo+HWzzYwC/A1LFjF1eGyeAb/iWOIdlNz3W1dL
- Bzm42DEfDIkDRqliRVZbB7fhoQymn0cjHBrySR6rtcARYLa5CReWOaHzPhuT/SNo3sTLTMrwVwH
- 7mPfZEVhbxnRTpz5AHk5/G1TeQP4xp7C9QjA+BadVtzFxY/WZdGqZv1KvPLwSAuBs7MCviQyHdK
- eaJaG91UNr14YXFzHkIUBfYpSkLW3XRRoY5BDJcTkXq1OtuCEAi/zGAoi32Lt3qjL4/jc7wYice
- 5Fx3Dm7GH+a+C8UQpmIFYzQM8PT35R9+fEA7Y1fvPFt7s3wZItXYFuIb3ySzncgt9l5o9y7JUrb
- LFhmYIU0w1TcD4w==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1426; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=E+6qzYdKgS4YqznItLOjUhSzAn+xgzN0iqHfwsmM4cY=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb660NqrGoM1ZtuWG/NE1cURkzOoSY1e1V9d
+ rEqSMUfr82JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW+gAKCRAADmhBGVaC
+ FVJoD/93f9N28RyTwf6gQLZ2efBBUBhFJacr3EYhOchrQPyQUUMEWF15PL1XNMB4fOOzhonF2HX
+ eWV2GIVNR5kzunTe4JmXYbc7K12CENqh/PbwOYgBWZR+4br/0WETmc/bHfowK1JdmOwVnAA9ivP
+ RYX6QZWmOv8yFCpyd0Jfmd2F3hlFIX5UR/eMZm7VqXHSwVLVQAX1lfKjWRF586oZ1mS+lcORFkL
+ 0PbwBljNUyJp+SfjTL/6l+qZ4jLzEKMcbSxGNG0gVIbTZ+mQy0PIgYOf5d6Aq2Tgmr7Q9lgC00g
+ LUMMGYkJRajHSNsenawGIK70tNIz9aUG4zk0zwKTFXr53o2c16AAgFFLQ+8s34fWVJoGRB1/gqA
+ Ne3JiQePg5HgPQy7nOZ1iFUW1hewIcqTqTkR9g6CNkKvCB8EWebFilIJe2W2kjaI2jOSDbwQUVY
+ Pf3g4ZCetu96nuQ/vfUPD4GGYM3Vgmpj0QDICnttvJ3X9RK/5RzAwcTU/ZIs7y7X4nmzTX/z8GE
+ V+hHobMxYzBH0hEE04JfiF9neU/g6Ak5tu6WX/EbKwzkaCQY9AWAjrJPJyD1E4iFHJJ4b4Ve/ib
+ RwpxU6MNk8qDx7FSWfzNYtIyCTVIUV7B3IzFuBeWgagWl4h15IqppYltSaABgFoSLeY6c+YPMNJ
+ e+Gjf1dAikSUtzg==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Long delay since v2, but the CB_NOTIFY patches only recently got merged
-into Chuck's nfsd-testing branch. They're currently slated to make v7.3.
-This version of the series fixes some potential state leaks that Scott
-pointed out, and adds a patch to make the output a bit less chatty with
-normal settings.
-
-Original cover letter follows:
-
----------------------8<-------------------
-
-This patchset adds some new testcases for directory delegations.
-
-DIRDELEG1-7 should pass on current mainline kernels, with recall-only
-support. The rest require CB_NOTIFY support. If the server doesn't
-offer notifications, then the tests pass_warn (so there should be no
-failures in those cases):
-
-    https://lore.kernel.org/linux-nfs/20260416-dir-deleg-v2-0-851426a550f6@kernel.org/
+Get a dir delegation with no notification mask, then create a
+subdirectory from a second client. Verify that the server issues
+a CB_RECALL.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
-
 ---
-Changes in v3:
-- Ensure we clean up state after tests
-- Demote some extra-chatty messages to debug level
-- Link to v2: https://lore.kernel.org/r/20260416-dir-deleg-v2-0-fad510db5941@kernel.org
+ nfs4.1/server41tests/st_dir_deleg.py | 23 +++++++++++++++++++++++
+ 1 file changed, 23 insertions(+)
 
-Changes in v2:
-- Added more tests for CB_NOTIFY behavior
-- Link to v1: https://lore.kernel.org/r/20260407-dir-deleg-v1-0-54c998eab72b@kernel.org
+diff --git a/nfs4.1/server41tests/st_dir_deleg.py b/nfs4.1/server41tests/st_dir_deleg.py
+index b968035d0446..b27e68eea5f6 100644
+--- a/nfs4.1/server41tests/st_dir_deleg.py
++++ b/nfs4.1/server41tests/st_dir_deleg.py
+@@ -219,3 +219,26 @@ def testDirDelegRenameRecall(t, env):
+     check(res)
+ 
+     close_file(sess1, file_fh, stateid=open_stateid)
++
++def testDirDelegMkdirRecall(t, env):
++    """Verify mkdir triggers dir delegation recall
++
++    FLAGS: dirdeleg all
++    CODE: DIRDELEG5
++    """
++    c = env.c1
++    recall = threading.Event()
++    sess1, fh, deleg = _getDirDeleg(t, env, [], recall)
++
++    # Create a subdirectory from sess2 -- should trigger recall
++    sess2 = c.new_client_session(b"%s_2" % env.testname(t))
++    create_op = [ op.putfh(fh),
++                  op.create(createtype4(NF4DIR), env.testname(t),
++                            {FATTR4_MODE: 0o755}) ]
++    slot = sess2.compound_async(create_op)
++    completed = recall.wait(2)
++    env.sleep(.1)
++
++    ops = [ op.putfh(fh), op.delegreturn(deleg) ]
++    res = sess1.compound(ops)
++    check(res)
 
----
-Jeff Layton (26):
-      nfs4.1: add proposed NOTIFY4_GFLAG_EXTEND flag
-      nfs4.1: add a getfh() to the end of create_obj() compound
-      server41tests: add a basic GET_DIR_DELEGATION test
-      server41tests: add a test for duplicate GET_DIR_DELEGATION requests
-      server41tests: pass_warn() when server doesn't support dir delegations
-      server41tests: test remove triggers dir delegation recall
-      server41tests: test rename triggers dir delegation recall
-      server41tests: test mkdir triggers dir delegation recall
-      server41tests: test link triggers dir delegation recall
-      server41tests: test no notifications without GFLAG_EXTEND
-      server41tests: test unrequested notification type triggers recall
-      server41tests: add a test for removal from dir with dir delegation
-      server41tests: add a test for directory add notifications
-      server41tests: add test for RENAME event notifications
-      server41tests: verify child attributes in ADD notification
-      server41tests: test CHANGE_DIR_ATTRS notification
-      server41tests: test mkdir triggers ADD notification
-      server41tests: test DELEGRETURN stops notifications
-      server41tests: verify filehandle in ADD notification
-      server41tests: test cross-directory rename REMOVE notification
-      server41tests: test cross-directory rename ADD notification on target
-      server41tests: test link triggers ADD notification
-      server41tests: test same-client changes don't trigger notifications
-      server41tests: test cross-directory rename-over nad_old_entry
-      server41tests: test within-directory rename-over nad_old_entry
-      nfs4.1: move a lot of log/log_cb.info messages to log/log_cb.debug
-
- nfs4.1/nfs4client.py                  |   42 +-
- nfs4.1/server41tests/__init__.py      |    1 +
- nfs4.1/server41tests/environment.py   |    6 +-
- nfs4.1/server41tests/st_delegation.py |    3 -
- nfs4.1/server41tests/st_dir_deleg.py  | 1117 +++++++++++++++++++++++++++++++++
- nfs4.1/xdrdef/nfs4.x                  |    3 +-
- 6 files changed, 1147 insertions(+), 25 deletions(-)
----
-base-commit: cd4701827a8261fedbfb4c6e39029fb9671321a6
-change-id: 20260331-dir-deleg-a1b3475f8385
-
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.54.0
 
