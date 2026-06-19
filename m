@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8CBA533E360
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2642433F8B7
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781896971; cv=none; b=WtlrH7UyfBZ01XFQi+Qrh/ueiX+ySOJ5Zkg7dz5lJ+FK8yyhI3a+v4ur6+bH09qW8435heGZatvAMRHVzjNhAEtvIMbynoVnGEfbw8yW37FW4tLXl08/c8n0P1NeUQ4yvo/Xk9wm88YR39GuoQLBHA2ZZFFncZ5NzsJo9YLQ+nQ=
+	t=1781896971; cv=none; b=jZKIJavI70axVlT9yRXhZ0caIHZzekG1nJmTcRL9MaxANCArqkHBw7qNVw2XGhLc4TOPDD2N0uHEvDOj8gQe7iYJad3OLhdFNcscfRmfsYAp/VPu9U+Va4h95IYxyBuIc7IolYX5LHlngkSRS+Ey/7/PKgHB0clhseH6qjFAC1Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1781896971; c=relaxed/simple;
-	bh=B1vu1ivcqpEpDECFzvkfHeqjMYDunsfnCWnsv8v33b0=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=RjG0G+PKLjNKwKp9/YChbx8iqwt8vf6hpylvIOYJ/nm7p2X6hLWAO7voj8JIyVZhzwDrROLletqZZhw270Y7WtB1yoHO7/DzgPMqRo56/Xyta5AtszVK3FhRbhNyLg8q9IXHqOAj1xPVfKoF0iF4jBawlASO+mk7IdV02GbD008=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JH6lgsBA; arc=none smtp.client-ip=100.103.45.18
+	bh=z8jx2zpFCG2NB80pAo0IqGjGWIZPZwjQ4ZDKXPcx+oo=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=CL5715rthHK1RoZX2yO/v/EjwNBmNQGnr/kGH07f+3lIMUOjfr6HTxoNKnO2XL/GxWXnN8s4wmzSl3sBEAgzrShBxloG3tpCnUplDl+IUk+n151P+ExOYUJfuWBcxZoC3CXxV/DidD0QdPT3ksCD4j6C/aPxuhEuGgz4XkUl1ts=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=HeKRCDcN; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JH6lgsBA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4AE281F00A3D;
-	Fri, 19 Jun 2026 19:22:42 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="HeKRCDcN"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AFAAF1F000E9;
+	Fri, 19 Jun 2026 19:22:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781896963;
-	bh=8ZJHCSKqW+HFYukf7vMFNlzL9NwBW4TOqym6TmI1M6w=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=JH6lgsBAZxfgVGdPO6/ruPsuNW4s4YYkHsvRNW3704RlsAAbFp4lF1vzwlu64fOBh
-	 wyR0U1Y6McWAXqux8yqCU30r9k3n3nf2isgjos9WMZrg+qYJNPT4FmwdZeIjpLP+wj
-	 3z88d+9GBMxlVffYy4Dgs13U/jRVpIdAajR3+FB4f3Ay+CBsmqcD9lSn051etEgYH7
-	 0QvDgv9b167bmPeDa72L4sEbCoHKT6bBWwPJfMxHfLom7jEXBvv544BL7C25TE7gjI
-	 RUo5VTraRtmSzLpxvx8l/T7622rs0A0d/tGDshho8gpqjY6BkF8IXqpmUqfLKAinFe
-	 zgh3KspHCzoEA==
+	s=k20260515; t=1781896959;
+	bh=DJTotpZhoblzjMQvl/lF1p8iFX7lPlYNbL6OBuJcLgI=;
+	h=From:Subject:Date:To:Cc;
+	b=HeKRCDcN+YLPiVdFCd98XYeDxsIrUiNcciKHtioMi7oE2rDqdAdpn09XNI5yRkCPh
+	 XuJQe1fuIr7UwHUdbUb8CWSM8CrwZWNJJA7rSvIch5X4vOhe5xufQhUZB2WczEQiIR
+	 ISpG06XpVWX63jaFlIWVNrfzOYzkfCy9rhqtE1Im/mtKn8zKiJB6sNhabnrag55drk
+	 DalsNhdr3c+jXZv+ecEvhuPC/Dvrk/l9dLZN1r8Y5HdU+5a9QuBQ5DN8JAMJHj/N/t
+	 PhD20vxMwM2mEnCn+W3rWXLKU4LoGchakVDEPb8bs5l2ReoimeS2sjaLHgMISKCh6L
+	 II2g5codJl02Q==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 19 Jun 2026 15:22:22 -0400
-Subject: [PATCH pynfs v3 03/26] server41tests: add a basic
- GET_DIR_DELEGATION test
+Subject: [PATCH pynfs v3 00/26] nfs4.1: add some directory delegation
+ testcases
+Date: Fri, 19 Jun 2026 15:22:19 -0400
+Message-Id: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,9 +38,11 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-dir-deleg-v3-3-1077ce8aab1b@kernel.org>
-References: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
-In-Reply-To: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/1WNyw7CIBBFf8XMWgzPPlz5H8YFlKElNrQBQ2ya/
+ ruEVV3euXPO3SFh9JjgftkhYvbJL6EEcb3AMOkwIvG2ZOCUN1QIRqyPxOKMI9HMCNkq14lOQfl
+ fIzr/ra4nrFtwCV7lPPn0WeJWFzKrZZVJ2p5kmRFKlBz6vkNtWm4eb4wB59sSx6rJ/ISy5ozyg
+ jptFaPWqF6yP/Q4jh/IqnOi5QAAAA==
+X-Change-ID: 20260331-dir-deleg-a1b3475f8385
 To: Calum Mackay <calum.mackay@oracle.com>
 Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
@@ -48,175 +50,95 @@ Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
  Anna Schumaker <anna@kernel.org>, Scott Mayhew <smayhew@redhat.com>, 
  linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=5877; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=B1vu1ivcqpEpDECFzvkfHeqjMYDunsfnCWnsv8v33b0=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb5ZbmpUij6ji7wVDg0UVC8L+8ni74WedQ4G
- UK/TDroKKGJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW+QAKCRAADmhBGVaC
- FTZ4D/9QKM8lfHYJZ0k8lIEhxUpnCdu5JVOZYI3DaAfkZPnizqUqfooWlKvRsFsJ+5C274aWChp
- 6IZhnosMKpXhXIxDMZ2FDb1eFgcLl3dlrLXW2eOPP/q4bFDdDDxlZ54bgSCBRmWcENhTT9miB51
- GISNrWwzjOXxa4fqWRnZfhTLtbmYyXG6dvluA0i/ofpFu27sHG61WxxOsBWQ/Kk5nGcyOrr3qPh
- 7/yMVYN0IZ4qNnyVYGww/uBuxya5GOb1AwD953vm/8MkwJebMnQmpeHConzW9ipzyYh+rkMMPLG
- XR7tRRZfYlyea9s6XouQo0I9aOmdkIKZfkMzedEtIs4wckZKlumrNDbguymTjvlfS99eSFBsEqE
- EbwJP67YRRdb6UOkHgxG4cBfzo3A+E8MlkezZlmyDCyA/1yGPgLrf6Mm0Hi8vrvOfX3Swreo/Ot
- 3A2Q7rQaDpVNR2LBGTZ4bk5aPV+fHfIMFk8d28lsk791heemTrUn5KI8pM8umrN34QWeJmqph5H
- axLXoh8FuIA4YezZXjtZ/DyhpAHo6x1rjC51jCPV9iKFS7YbjOEXCDg1tY3SXRP3C/tjcJ4mDrP
- Fd/riGGcMgCOUq5A6Sj8F8RLeIpkewUPvXR7srXacS7Iz5O4KW7dMw/ikrwB9ZDdizlJWEltIBP
- RmONg0X9jzJLnfA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3483; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=z8jx2zpFCG2NB80pAo0IqGjGWIZPZwjQ4ZDKXPcx+oo=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb07zF1eUp+mHLLI0tTyCRib8g6Mk/PP9Vzd
+ enYeAoHjiiJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW9AAKCRAADmhBGVaC
+ FSgcD/9n2VxkJdas0yfasJVJ7hrY5CqkGWWjWP2rD7EZ7YIJ8Dpg1YJwevxKMLzB1L/S05M/Xlv
+ Xl2PsRgP1JzvUGajB8PmJ4yivkfox+DicLx7eM3vKhubBgfCWDeHnZOzUbQ2WJOe7Uif2QcHaDM
+ XeQI9FTSiIUZRD01eO6RjSubm0yI2u8FRnoJTC6LuSdwaucmcrjeyCkfSyfWyFxV6fTFVXE95N7
+ vSLZKKRzhyHDF76QtY5iOUBSJ6keNj043uVBH1wOsfC+du84TdqOjhaRI7OpdHPumxaYZf1I6mf
+ 4K8u8wKO2n07eSMO/wDRPgBA0H5oTRzCpOTw/Uo+HWzzYwC/A1LFjF1eGyeAb/iWOIdlNz3W1dL
+ Bzm42DEfDIkDRqliRVZbB7fhoQymn0cjHBrySR6rtcARYLa5CReWOaHzPhuT/SNo3sTLTMrwVwH
+ 7mPfZEVhbxnRTpz5AHk5/G1TeQP4xp7C9QjA+BadVtzFxY/WZdGqZv1KvPLwSAuBs7MCviQyHdK
+ eaJaG91UNr14YXFzHkIUBfYpSkLW3XRRoY5BDJcTkXq1OtuCEAi/zGAoi32Lt3qjL4/jc7wYice
+ 5Fx3Dm7GH+a+C8UQpmIFYzQM8PT35R9+fEA7Y1fvPFt7s3wZItXYFuIb3ySzncgt9l5o9y7JUrb
+ LFhmYIU0w1TcD4w==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Test basic dir delegation handout, recall and return
+Long delay since v2, but the CB_NOTIFY patches only recently got merged
+into Chuck's nfsd-testing branch. They're currently slated to make v7.3.
+This version of the series fixes some potential state leaks that Scott
+pointed out, and adds a patch to make the output a bit less chatty with
+normal settings.
+
+Original cover letter follows:
+
+---------------------8<-------------------
+
+This patchset adds some new testcases for directory delegations.
+
+DIRDELEG1-7 should pass on current mainline kernels, with recall-only
+support. The rest require CB_NOTIFY support. If the server doesn't
+offer notifications, then the tests pass_warn (so there should be no
+failures in those cases):
+
+    https://lore.kernel.org/linux-nfs/20260416-dir-deleg-v2-0-851426a550f6@kernel.org/
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
+
 ---
- nfs4.1/nfs4client.py                 |   6 ++
- nfs4.1/server41tests/__init__.py     |   1 +
- nfs4.1/server41tests/st_dir_deleg.py | 109 +++++++++++++++++++++++++++++++++++
- 3 files changed, 116 insertions(+)
+Changes in v3:
+- Ensure we clean up state after tests
+- Demote some extra-chatty messages to debug level
+- Link to v2: https://lore.kernel.org/r/20260416-dir-deleg-v2-0-fad510db5941@kernel.org
 
-diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
-index 25d7fd16f12b..dbe7af761f16 100644
---- a/nfs4.1/nfs4client.py
-+++ b/nfs4.1/nfs4client.py
-@@ -283,6 +283,12 @@ class NFS4Client(rpc.Client, rpc.Server):
-         res = self.posthook(arg, env, res=NFS4_OK)
-         return encode_status(res)
- 
-+    def op_cb_notify(self, arg, env):
-+        log_cb.info("In CB_NOTIFY")
-+        self.prehook(arg, env)
-+        res = self.posthook(arg, env, res=NFS4_OK)
-+        return encode_status(res)
-+
-     def op_cb_notify_lock(self, arg, env):
-         log_cb.info("In CB_NOTIFY_LOCK")
-         self.prehook(arg, env)
-diff --git a/nfs4.1/server41tests/__init__.py b/nfs4.1/server41tests/__init__.py
-index 156c5e3082eb..c654212c617e 100644
---- a/nfs4.1/server41tests/__init__.py
-+++ b/nfs4.1/server41tests/__init__.py
-@@ -28,4 +28,5 @@ __all__ = ["st_exchange_id.py", # draft 21
-            "st_xattr.py",
-            "st_courtesy.py",
-            "st_callback.py",
-+           "st_dir_deleg.py",
-            ]
-diff --git a/nfs4.1/server41tests/st_dir_deleg.py b/nfs4.1/server41tests/st_dir_deleg.py
-new file mode 100644
-index 000000000000..99768389cfa8
---- /dev/null
-+++ b/nfs4.1/server41tests/st_dir_deleg.py
-@@ -0,0 +1,109 @@
-+from .st_create_session import create_session
-+from .st_open import open_claim4
-+from xdrdef.nfs4_const import *
-+from xdrdef.nfs4_pack import NFS4Unpacker
-+
-+from .environment import check, fail, create_obj, use_obj
-+from xdrdef.nfs4_type import *
-+import nfs_ops
-+op = nfs_ops.NFS4ops()
-+import nfs4lib
-+import threading
-+
-+zerotime = nfstime4(seconds=0, nseconds=0)
-+
-+def decode_notify_event(change):
-+    """Decode a notify4 into its typed event structure."""
-+    mask = nfs4lib.bitmap2list(change.notify_mask)
-+    unpacker = NFS4Unpacker(change.notify_vals)
-+    if NOTIFY4_REMOVE_ENTRY in mask:
-+        return (NOTIFY4_REMOVE_ENTRY, unpacker.unpack_notify_remove4())
-+    elif NOTIFY4_ADD_ENTRY in mask:
-+        return (NOTIFY4_ADD_ENTRY, unpacker.unpack_notify_add4())
-+    elif NOTIFY4_RENAME_ENTRY in mask:
-+        return (NOTIFY4_RENAME_ENTRY, unpacker.unpack_notify_rename4())
-+    elif NOTIFY4_CHANGE_DIR_ATTRS in mask:
-+        return (NOTIFY4_CHANGE_DIR_ATTRS, unpacker.unpack_notify_attr4())
-+    return (None, None)
-+
-+def bitmap4_to_int(bitmap):
-+    """Convert a bitmap4 (list of uint32 words) to a single integer."""
-+    result = 0
-+    for i, word in enumerate(bitmap):
-+        result |= word << (32 * i)
-+    return result
-+
-+def _getDirDeleg(t, env, notify_mask, cb):
-+    def recall_pre_hook(arg, env):
-+        cb.stateid = arg.stateid # NOTE this must be done before set()
-+        cb.cred = env.cred.raw_cred
-+        cb.got_recall = True
-+        env.notify = cb.set # This is called after compound sent to queue
-+    def recall_post_hook(arg, env, res):
-+        return res
-+    def notify_pre_hook(arg, env):
-+        cb.stateid = arg.cna_stateid
-+        cb.fh = arg.cna_fh
-+        cb.changes = arg.cna_changes
-+        cb.got_notify = True
-+        env.notify = cb.set # This is called after compound sent to queue
-+    def notify_post_hook(arg, env, res):
-+        return res
-+
-+    cb.got_recall = False
-+    cb.got_notify = False
-+
-+    c = env.c1
-+    sess1 = c.new_client_session(b"%s_1" % env.testname(t))
-+    sess1.client.cb_pre_hook(OP_CB_RECALL, recall_pre_hook)
-+    sess1.client.cb_post_hook(OP_CB_RECALL, recall_post_hook)
-+    sess1.client.cb_pre_hook(OP_CB_NOTIFY, notify_pre_hook)
-+    sess1.client.cb_post_hook(OP_CB_NOTIFY, notify_post_hook)
-+
-+    topdir = c.homedir + [t.code.encode('utf8')]
-+    res = create_obj(sess1, topdir)
-+    check(res)
-+    fh = res.resarray[-1].object
-+
-+    ops = [ op.putfh(fh), op.get_dir_delegation(False,
-+                                                nfs4lib.list2bitmap(notify_mask),
-+                                                zerotime, zerotime,
-+                                                nfs4lib.list2bitmap([]),
-+                                                nfs4lib.list2bitmap([]))]
-+    res = sess1.compound(ops)
-+    check(res)
-+    deleg = res.resarray[-1].gddrnf_resok4.gddr_stateid
-+    return (sess1, fh, deleg)
-+
-+def testDirDelegSimple(t, env):
-+    """Test basic dir delegation handout, recall and return
-+
-+    FLAGS: dirdeleg all
-+    CODE: DIRDELEG1
-+    """
-+    c = env.c1
-+    recall = threading.Event()
-+    sess1, fh, deleg = _getDirDeleg(t, env, [], recall)
-+
-+    # new client -- create a file in the dir
-+    sess2 = c.new_client_session(b"%s_2" % env.testname(t))
-+    claim = open_claim4(CLAIM_NULL, env.testname(t))
-+    owner = open_owner4(0, b"owner")
-+    how = openflag4(OPEN4_CREATE, createhow4(GUARDED4, {FATTR4_SIZE:0}))
-+    open_op = [ op.putfh(fh), op.open(0,
-+                                      OPEN4_SHARE_ACCESS_WRITE | OPEN4_SHARE_ACCESS_WANT_NO_DELEG,
-+                                      OPEN4_SHARE_DENY_NONE, owner, how, claim), op.getfh() ]
-+    slot = sess2.compound_async(open_op)
-+    completed = recall.wait(2)
-+    env.sleep(.1)
-+
-+    ops = [ op.putfh(fh), op.delegreturn(deleg) ]
-+    res = sess1.compound(ops)
-+    check(res)
-+
-+    # Reap the async open and close any file it created
-+    res = sess2.listen(slot)
-+    if res.status == NFS4_OK:
-+        open_stateid = res.resarray[-2].stateid
-+        file_fh = res.resarray[-1].object
-+        close_file(sess2, file_fh, stateid=open_stateid)
+Changes in v2:
+- Added more tests for CB_NOTIFY behavior
+- Link to v1: https://lore.kernel.org/r/20260407-dir-deleg-v1-0-54c998eab72b@kernel.org
 
+---
+Jeff Layton (26):
+      nfs4.1: add proposed NOTIFY4_GFLAG_EXTEND flag
+      nfs4.1: add a getfh() to the end of create_obj() compound
+      server41tests: add a basic GET_DIR_DELEGATION test
+      server41tests: add a test for duplicate GET_DIR_DELEGATION requests
+      server41tests: pass_warn() when server doesn't support dir delegations
+      server41tests: test remove triggers dir delegation recall
+      server41tests: test rename triggers dir delegation recall
+      server41tests: test mkdir triggers dir delegation recall
+      server41tests: test link triggers dir delegation recall
+      server41tests: test no notifications without GFLAG_EXTEND
+      server41tests: test unrequested notification type triggers recall
+      server41tests: add a test for removal from dir with dir delegation
+      server41tests: add a test for directory add notifications
+      server41tests: add test for RENAME event notifications
+      server41tests: verify child attributes in ADD notification
+      server41tests: test CHANGE_DIR_ATTRS notification
+      server41tests: test mkdir triggers ADD notification
+      server41tests: test DELEGRETURN stops notifications
+      server41tests: verify filehandle in ADD notification
+      server41tests: test cross-directory rename REMOVE notification
+      server41tests: test cross-directory rename ADD notification on target
+      server41tests: test link triggers ADD notification
+      server41tests: test same-client changes don't trigger notifications
+      server41tests: test cross-directory rename-over nad_old_entry
+      server41tests: test within-directory rename-over nad_old_entry
+      nfs4.1: move a lot of log/log_cb.info messages to log/log_cb.debug
+
+ nfs4.1/nfs4client.py                  |   42 +-
+ nfs4.1/server41tests/__init__.py      |    1 +
+ nfs4.1/server41tests/environment.py   |    6 +-
+ nfs4.1/server41tests/st_delegation.py |    3 -
+ nfs4.1/server41tests/st_dir_deleg.py  | 1117 +++++++++++++++++++++++++++++++++
+ nfs4.1/xdrdef/nfs4.x                  |    3 +-
+ 6 files changed, 1147 insertions(+), 25 deletions(-)
+---
+base-commit: cd4701827a8261fedbfb4c6e39029fb9671321a6
+change-id: 20260331-dir-deleg-a1b3475f8385
+
+Best regards,
 -- 
-2.54.0
+Jeff Layton <jlayton@kernel.org>
 
