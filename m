@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 032753451DA
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:23:06 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61996345CCA
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:23:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781896989; cv=none; b=mVuHVZEZFAgZJph9PMWv81ZklsGNdBUuuFICcLyGOYdVP1t4t2HH/QYGsGN68y63R03F+CpjwiskkJiBe2SuXIfKRuSP53gQ7xvm+/VRTP/9xSUmlwXTucV1E6ZXjNW+Y2G9oqYKkXIWPfgK2GBatXZ1CavIciGUh7AIz3zgrWQ=
+	t=1781896990; cv=none; b=YOCwwZqEZ2vI/NVWE4Bvt9SSGgvB1uRbwc9cVt0q8NbGoovw5X6GH8drIBNCnIg/5Oh3f5iKWZyXpShyX/CwgLbElTFno2xq2IUb9DyNqol/6uYCJZPM8m1R9kYcE/N3GY/KWVYGQWSnx2WnqqnwdnOLDHkgg6kcbn+FCV4sFwY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781896989; c=relaxed/simple;
-	bh=vwWJCFYnR3FOqOShcUo6IPuvyH1Oq4y0pHf3CeTfed0=;
+	s=arc-20240116; t=1781896990; c=relaxed/simple;
+	bh=QxVcOnqNBG0kA34Up6SyrAi1MkZLPpd3OrTv7ghHGw4=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=R0nElTD70WalPq0e8ZSz37hdudbLF0EUmLkDuNEn0ykWV5kur7ZlGLtk5QTP+0YPh/iUUtdxaUve+/jm2qTfap4YUyZLCGrtJs7ePjlG1PwtwaeyG71q7ODIRKlNpKWPtZ+DJO54IS/1K32s31aRCPbrCaWLwMx4tZsY8rR5SvM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=IigF7grl; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=ZeNqS8xFAOQ7lJ3cOE/WbG/P6HGPBggvhuzbwrjxeZ1/WKCOdCdnx9ctXkjiWWA3sjkheVvoXN+w9MNa+sfWjo5e++bMsg5++WVxzkLfnGpj7Jzt+1NGbhHmBdv0PVCiYgWNy5VuixEKqTm/k3YnMSUy7uotqEZT1mAev9/eFmU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UdAFoRGN; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="IigF7grl"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E9F3E1F00ACA;
-	Fri, 19 Jun 2026 19:23:04 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UdAFoRGN"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 542531F00A3A;
+	Fri, 19 Jun 2026 19:23:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781896985;
-	bh=7qT5k+9cs5ZBL/56OZWhBerJ8Da2BXynf6lxWPfSzE4=;
+	s=k20260515; t=1781896988;
+	bh=LGgudBmyulwnWJQDOV0u3nFa0A/rb9xsmtdkqXhektE=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=IigF7grl6D9y4Ckks97Ae1lt0OMlVDWGjUNP/rguQDnu94b/DocUJxOh3DOBI/Dky
-	 z1VUoeUDHFTWqeXd/MeFxP+mX61k6muqY0DgKRRROU48LPemREehm4MGCiOUEPFFRu
-	 OlYQU4V86rGO61L3H+EsMrLjvc0M2kzutUAvTgnVH93EwFaB/H5DrjXVM+fNyCa+yo
-	 NxXN/VKVaW6DGOoL+f9s/SWbBisSiryt5iKy4h3dit5l0hu1c+OSxxno3IoatqiBAA
-	 PM3aW5IgfKfMQWgoGkT5oShx/9xfbhnMo0liYy1VMK9ilNwTw9g2IGLrPCXL2zwcxc
-	 DibJBXQWfQM+w==
+	b=UdAFoRGN/H0B3b28l24G2t1TwkQ1HSgKY3zqKjEWcvxYfCfDkL5m26uzOVxXMSrpP
+	 y+NY6qWvbvPsA0k65Bh9mvA3Pr5R3poHAc40oSdn2LXUDtWS6JlcQwX4E2PQnqGPWo
+	 PjmVFsz5HkJcPWkqBpDX4xdQoA3ITD+ReayVtW2/Pzh59Qchef0c4pp+8Qm9+Yqx0U
+	 gaC4+p/mKbbEZH8pKhd47gZbZVvxbgUgcr1mEdSRyNE0/1ti7J91Pi0MAUi3psZANK
+	 7LDlJVyBJ9dc9DPjCSNpb5+OJE2siMVg8SVhh/B0x6Nikot1Jn6rx/GyGdrJ1dnNSj
+	 oMFKBMfPx2Hew==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 19 Jun 2026 15:22:41 -0400
-Subject: [PATCH pynfs v3 22/26] server41tests: test link triggers ADD
- notification
+Date: Fri, 19 Jun 2026 15:22:43 -0400
+Subject: [PATCH pynfs v3 24/26] server41tests: test cross-directory
+ rename-over nad_old_entry
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-dir-deleg-v3-22-1077ce8aab1b@kernel.org>
+Message-Id: <20260619-dir-deleg-v3-24-1077ce8aab1b@kernel.org>
 References: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 In-Reply-To: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 To: Calum Mackay <calum.mackay@oracle.com>
@@ -48,57 +48,94 @@ Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
  Anna Schumaker <anna@kernel.org>, Scott Mayhew <smayhew@redhat.com>, 
  linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2940; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=vwWJCFYnR3FOqOShcUo6IPuvyH1Oq4y0pHf3CeTfed0=;
- b=kA0DAAoBAA5oQRlWghUByyZiAGo1lv3IDAT/XrEY6Q5jFzB4tdYFAVYhYubKKDMuF2G9F5eqt
- 4kCMwQAAQoAHRYhBEvA17JEcbKhhOr10wAOaEEZVoIVBQJqNZb9AAoJEAAOaEEZVoIV98YP/3zi
- sPpRJqZN+qR+VAH4IeEMF8Zb/iJRfvEczAyyzpFqRG2/wOq/Cu7/7XTuiHURr3po8b4oCw8cKDs
- 5uzJcVLsG3IJcM2csQZDy7VHsYdd39GxuAzvs3si1TBiVTLatQ6umNhuUbO3fjI7v3G5xwev6MG
- IVyxow5ISxNCKko9ffK3WoXIPVcf9P6sHfJEYmglYDfkJS9m1Y9FQjC+Tgn5z0Pa1UnGnV0kYMp
- wO39YQOoTAwLU3bLWqO1KA6x927CczZCC4J0TqJD/PTvU4pceK4ndQ0RexrA8j8bJBcPUaB1tOJ
- X9BITNzqp/TJQIiR4egHzCCll++Gyln5EKFScJNO9ttUElQxp3m0M3sKpDFuGC4wd2eWeDg2/ga
- qe35JBuMEbDwE94dV1N8GN8wbeeeRb3fkRv2/0QtyXKzbUBwHu/4MiWmrklazUDMCwQzs54vzvT
- PI7yrs2MPJNKnkK3H5d91hViudz+KvBPRay2fP06ERkqbEr9lum+dM/gVr6qd5s7kfZ6lAnobCV
- I/jDFvQxes1FOwJL7BsArKFU7rgpsyUP+fohle14Pf43IRm3RNYPci4BnrbTcC/JeCjHLSiut93
- x5oBcLjsTF4rmzZA9gMm0ELlmaWQHc/YnLjJ3c+6cE8ruORk3hMnsetovhoF/8eaACIJJ1tRcpx
- y32cE
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6015; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=QxVcOnqNBG0kA34Up6SyrAi1MkZLPpd3OrTv7ghHGw4=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb9s/vOkwgmEqUS+Gi0yN1eIIPGU+lgDWHI7
+ gqhSj464GWJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW/QAKCRAADmhBGVaC
+ FSjuD/9PDOMByH16CvHtPtgfiz1eS5n+QRRJvZKOwP6YXGZ4cHrNfElb6qMKakHW8e5ySLI/e4A
+ SuI7UZC4xFPZghezvHkBiV76WNOMgb1r9U4zdV90FxyLwUqSouoHhTCncuVxP5xXRyxpZyeQX1C
+ kxR/WrZMkvHS/MUYoK8+gBCKClxF0qcQxnvJ7NYo0QKj+sYcXii+07E0uvorSebOyBBcqMcHQ+b
+ Nl4xkhfTSfQYdeKr/ZbLXEXxJ2BYsVAKrbIJiU9wZTxAfuq/K+HjHvrHk2ychXZy4w684Bn7aX2
+ ApGaes3LDfF809JomLmoqwI4t14iUoqsy+ellijsbTx5mPR1NW9IFs9EAKdXBPQ/uz/alnv1TV/
+ NmFYxMyxCs/nG8eoKK4a+ANHxMa5kW1ypd2+tnwmttZpw4IQAqsPE3i6jYnOY+Fy29UDoaQvy2a
+ NhNBzvVSFUVtNyRXQImsmNCZHfNv/cUGbdaZ7JYfy3T/s7thCRhh0K6ESSr7diD7MYGsT6L7y8r
+ ezwSgW/ZAIAdYkT6jEvSAe/j6ZiZWRaULbSayH+JIEheqIBNNk1GWfeYU0I7QOVP196cbRzUFax
+ JgGC1LKGwP/1q9+pbzpJMnajGMeOWUXMVg0ZBCDsoH3DVm9y3qirwCkpW14037EpFhxbQSOSFzq
+ l+1tg6fPJI67POQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Verify that creating a hard link triggers a NOTIFY4_ADD_ENTRY
-notification on the directory's delegation.
+Test that when a cross-directory rename overwrites an existing file in
+a delegated directory, the server reports the overwritten entry via
+nad_old_entry in the NOTIFY4_ADD_ENTRY notification rather than
+generating a separate NOTIFY4_REMOVE_ENTRY notification.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
+Per RFC 8881 Section 18.26.4, when the removal is done atomically with
+the rename, a separate NOTIFY4_REMOVE_ENTRY notification will not be
+generated. Instead, the deletion of the file will be reported as part
+of the NOTIFY4_ADD_ENTRY notification via nad_old_entry.
+
+Also fix _getDirDeleg to initialize cb.changes as a list and use
+extend() to accumulate notifications, so tests that receive multiple
+CB_NOTIFY callbacks can see all notifications.
 ---
- nfs4.1/server41tests/st_dir_deleg.py | 56 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 56 insertions(+)
+ nfs4.1/server41tests/st_dir_deleg.py | 100 ++++++++++++++++++++++++++++++++++-
+ 1 file changed, 99 insertions(+), 1 deletion(-)
 
 diff --git a/nfs4.1/server41tests/st_dir_deleg.py b/nfs4.1/server41tests/st_dir_deleg.py
-index 43e9ce4cb4d2..973ac5b8f934 100644
+index 8da51bb53cd6..36873675cedd 100644
 --- a/nfs4.1/server41tests/st_dir_deleg.py
 +++ b/nfs4.1/server41tests/st_dir_deleg.py
-@@ -855,3 +855,59 @@ def testDirDelegCrossRenameTarget(t, env):
-         fail("Expected ADD notification for cross-dir rename target, got %d" % evt_type)
-     if evt.nad_new_entry.ne_file != env.testname(t):
-         fail("Wrong entry name in ADD notification")
+@@ -44,7 +44,7 @@ def _getDirDeleg(t, env, notify_mask, cb):
+     def notify_pre_hook(arg, env):
+         cb.stateid = arg.cna_stateid
+         cb.fh = arg.cna_fh
+-        cb.changes = arg.cna_changes
++        cb.changes.extend(arg.cna_changes)
+         cb.got_notify = True
+         env.notify = cb.set # This is called after compound sent to queue
+     def notify_post_hook(arg, env, res):
+@@ -52,6 +52,7 @@ def _getDirDeleg(t, env, notify_mask, cb):
+ 
+     cb.got_recall = False
+     cb.got_notify = False
++    cb.changes = []
+ 
+     c = env.c1
+     sess1 = c.new_client_session(b"%s_1" % env.testname(t))
+@@ -952,3 +953,100 @@ def testDirDelegSameClientNoNotify(t, env):
+         fail("Got CB_NOTIFY for delegation holder's own change")
+     if cb.got_recall:
+         fail("Got CB_RECALL for delegation holder's own change")
 +
-+def testDirDelegLinkNotify(t, env):
-+    """Verify hard link triggers ADD notification
++def testDirDelegCrossRenameOver(t, env):
++    """Verify cross-directory rename-over reports overwritten entry in nad_old_entry
 +
-+    Per RFC 8881bis Section 27.4.4, the server sends an ADD notification
-+    when a hard link is being created to an existing file.
++    Per RFC 8881 Section 18.26.4, when a cross-directory rename
++    overwrites an existing file in the target directory, a
++    NOTIFY4_ADD_ENTRY is generated.  When the removal is done
++    atomically with the rename, a separate NOTIFY4_REMOVE_ENTRY
++    notification will not be generated.  Instead, the deletion of the
++    file will be reported as part of the NOTIFY4_ADD_ENTRY notification
++    via nad_old_entry.
 +
 +    FLAGS: dirdeleg all
-+    CODE: DIRDELEG19
++    CODE: DIRDELEG21
 +    """
 +    c = env.c1
 +    cb = threading.Event()
++
++    # Get a dir delegation on the target directory
 +    sess1, fh, deleg = _getDirDeleg(t, env,
 +                                     [NOTIFY4_ADD_ENTRY,
++                                      NOTIFY4_REMOVE_ENTRY,
 +                                      NOTIFY4_GFLAG_EXTEND], cb)
 +
-+    # Create a file in the delegated directory from sess1
-+    claim = open_claim4(CLAIM_NULL, env.testname(t))
++    topdir = c.homedir + [t.code.encode('utf8')]
++
++    # Create a file in the delegated directory (will be renamed over)
++    victim_name = b"%s_victim" % env.testname(t)
++    claim = open_claim4(CLAIM_NULL, victim_name)
 +    owner = open_owner4(0, b"owner")
 +    how = openflag4(OPEN4_CREATE, createhow4(GUARDED4, {FATTR4_SIZE:0}))
 +    open_op = [ op.putfh(fh), op.open(0,
@@ -110,20 +147,40 @@ index 43e9ce4cb4d2..973ac5b8f934 100644
 +    file_fh = res.resarray[-1].object
 +    close_file(sess1, file_fh, stateid=open_stateid)
 +
-+    # Clear the notification state from the create
++    # Create a source directory and a file in it
++    srcdir = c.homedir + [b"%s_src" % t.code.encode('utf8')]
++    res = create_obj(sess1, srcdir)
++    check(res)
++    src_fh = res.resarray[-1].object
++
++    src_name = env.testname(t)
++    claim2 = open_claim4(CLAIM_NULL, src_name)
++    owner2 = open_owner4(0, b"owner2")
++    how2 = openflag4(OPEN4_CREATE, createhow4(GUARDED4, {FATTR4_SIZE:0}))
++    open_op = [ op.putfh(src_fh), op.open(0,
++                                      OPEN4_SHARE_ACCESS_WRITE | OPEN4_SHARE_ACCESS_WANT_NO_DELEG,
++                                      OPEN4_SHARE_DENY_NONE, owner2, how2, claim2), op.getfh() ]
++    res = sess1.compound(open_op)
++    check(res)
++    open_stateid2 = res.resarray[-2].stateid
++    file_fh2 = res.resarray[-1].object
++    close_file(sess1, file_fh2, stateid=open_stateid2)
++
++    # Clear notification state from creates above
 +    cb.clear()
 +    cb.got_notify = False
 +
-+    # Link the file to a new name from sess2
-+    link_name = b"%s_link" % env.testname(t)
++    # Rename the source file over the victim in the delegated dir from sess2
 +    sess2 = c.new_client_session(b"%s_2" % env.testname(t))
-+    link_op = [ op.putfh(file_fh), op.savefh(),
-+                op.putfh(fh),
-+                op.link(link_name) ]
-+    res = sess2.compound(link_op)
++    oldpath = srcdir + [src_name]
++    newpath = topdir + [victim_name]
++    res = rename_obj(sess2, oldpath, newpath)
 +    check(res)
 +
 +    completed = cb.wait(2)
++    if completed:
++        cb.clear()
++        cb.wait(1)
 +
 +    delegreturn_op = [ op.putfh(fh), op.delegreturn(deleg) ]
 +    res = sess1.compound(delegreturn_op)
@@ -132,11 +189,21 @@ index 43e9ce4cb4d2..973ac5b8f934 100644
 +    if (not completed or not cb.got_notify):
 +        fail("Didn't receive a CB_NOTIFY from the server!")
 +
-+    evt_type, evt = decode_notify_event(cb.changes[0])
-+    if evt_type != NOTIFY4_ADD_ENTRY:
-+        fail("Expected ADD notification for link, got %d" % evt_type)
-+    if evt.nad_new_entry.ne_file != link_name:
-+        fail("Wrong entry name in ADD notification")
++    # Look for ADD notification with nad_old_entry for the overwritten file
++    got_add = False
++    for change in cb.changes:
++        evt_type, evt = decode_notify_event(change)
++        if evt_type == NOTIFY4_ADD_ENTRY:
++            got_add = True
++            if evt.nad_new_entry.ne_file != victim_name:
++                fail("Wrong entry name in ADD notification")
++            if len(evt.nad_old_entry) != 1:
++                fail("Expected nad_old_entry to contain the overwritten entry")
++            if evt.nad_old_entry[0].nrm_old_entry.ne_file != victim_name:
++                fail("Wrong overwritten entry name in nad_old_entry")
++
++    if not got_add:
++        fail("Missing ADD notification for cross-dir rename-over")
 
 -- 
 2.54.0
