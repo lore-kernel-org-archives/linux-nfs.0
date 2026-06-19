@@ -1,118 +1,364 @@
-Received: from mail-ua1-f49.google.com (mail-ua1-f49.google.com [209.85.222.49])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6FA55332601
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 14:20:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.49
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 27700266576
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 14:26:18 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781878849; cv=none; b=gFLRm5MECkp24YNTKaJZT0mRR0Nz80viO9RMiqXWW3mcG3Sh0C5TYTkjC4xL4Qb20jusfgnSODnfy5EWUdMqSAS3a77LnkOUrC5i4yO0Azhj5X9QfIkesS2j15qV5yNsDB8yYNECoWbKw/2TSnKs8KbV7xEZsE4qQ+NMAI0Pnvc=
+	t=1781879180; cv=none; b=BL0+WgllCIArZkN5ymhMsXeCAQj8wtqz7OX6ow119MBZcYnB37insCptrFAPe7mM5FHPrpkvHrdbhUu/NWGB52D2v1EGzYgr4z04R+6JWoTf0IaF/F1YcSFb89KHbzVOVGBMH2ThWBqUcO7TG+bgZow0tjSRLuNd7sUgVkJueQc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781878849; c=relaxed/simple;
-	bh=2FQMD8bu684nEsU/UXL7vfxW6vXPsGHz9C/bJbOPhZo=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=VMkGlaqb6/zwfAYyZk4cBPbfasWQMcwjdyQ3+rqNbC7H1nj4V1Xm9vASM22UJQB8fVIhpqkOKtdjyVWJQScx6kbxGMiZI9jeDTUpqL/qTRxmY064CFkoIuiU9xdBkvy0b0Cis3rIgQWdylAPF1dUYACFATV2pfEhZKbmo/3Owcc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=s033ai/8; arc=none smtp.client-ip=209.85.222.49
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1781879180; c=relaxed/simple;
+	bh=uwBFbYJFqeJW57ZnlHL1CpeJZLG0JtLzBzjahWGkvHI=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=HP2FCLdZkJ0C7FXAXw2Iv1OBI38nXf4YbXYdK/xlDMEbboYB3x/BhT3vb4+5jWjmL2IMrbslsns+eqcH9imtuERo+sXh67SwsdXJZotkRu+tZLhl3fCARmBnuW+3VDOhwMWlxpUzwkTU8MArjiPJwBi3W3wQ4soE6BauIZOfgjE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ao7k+VkA; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="s033ai/8"
-Received: by mail-ua1-f49.google.com with SMTP id a1e0cc1a2514c-966eabad303so440471241.1
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 07:20:48 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1781878847; x=1782483647; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to;
-        bh=oTK64FZoF89IvutywaKW9AaCpbwlqYnBXZ0qeFcwR1o=;
-        b=s033ai/8du0j6leIbHuLlxOJYI5xeNG9hgYq8qaqXALedHj9kq+2u84lFNV81s2FLb
-         JGk4wDATGcvd2XJ8469i5AwpgkVWmTBplg8AeidwO9d6huH7E90+kVmMOTawpBItmApb
-         ubiAMSET6AadVvA8COufajVZcqVJoVp4EdSpwHIWp0hkyE5ak//9sA7XrVD6STFMOmh3
-         IRFXIdecBegaManci/OK/RDYHlQc4WKZDYo77oO9gQ9mJA8QUJnvVBR/GdEFA04p83ht
-         qQtkkyFkvJU6oXHei2lkHzj+l+9Rfk5Bek6cheHLBxLpvzV4DxBe1ipn9184lDYAH1+M
-         8VtA==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1781878847; x=1782483647;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to;
-        bh=oTK64FZoF89IvutywaKW9AaCpbwlqYnBXZ0qeFcwR1o=;
-        b=BHNxQhzGcJ8b7W4UF4kAG9hOnvdETAmpqL/qJpRxzq/7PJ7ivJSIGzzLwrTuwexKlk
-         nnlfZbZmbzadSxqYQnulPQfqbMbS/41mUBVVRbXjlNj6fbpmNSwOpCZCJ88uSDy8cwba
-         AGnF0UxRQcPFxUTHNSkvCuz7BJEl7CQJ8a5wh637eOMmoZ5FPIrqD39CW6B8EZw1pNwm
-         Gv/oElX7BKa//Xw6RjtPMkdRvVUaoM+jyCJzzYEN0qfEEwuR3o96LKCi7rSJQU8xyQdb
-         pmfm1ip8HX61bYYO/R9h5yiYPqvpk1EdnK8qD5qimPF9pREbbes0ZaxyZkahcR0N5V+p
-         BlbQ==
-X-Gm-Message-State: AOJu0YxzMWAysO8eSB1MzwrgCmNzxRVSERcT6Q+xHynOyW/TkbBGtAPn
-	pKn/4vbTZ5STVG6ETq1rBe9+qqkmjBLTbKrduxxPB+MNHlzEPm+ZZbBh8EKPfSSMJg3D/g==
-X-Gm-Gg: AfdE7ckIHa6T3t9Ofj0YnHwNH92RxWztBdKEm/YVXSk7TKQUIwn1NeDyKF2ntm1IoK3
-	FtAR8IcW0zo4/KnR2knRFGE1+Xc4mMKmSYVF+XdBE9FPf/hp24LPOzS7nITkFrof393cE+AmYEZ
-	6p5E0CXldkp4ZoDsiJlgx4QqI59BJB8TZ4ZvGrFUnh3u9zwP24vg816d/C1Gzdbxy/reZQLMcYc
-	Nv65d8MrUrgYJacuRdk569kqn0aAOuWpuGS5h+G+uHPUobdVzg0t7cbC8Q5+PvKDvliIIBwRhLK
-	vXmXH9O8rKmD+OgNjTXZcTCz+bLhNwGhygE4KkqBmYrPE/pomAJxpCmMHct5fEqf3l6+C6Gbrie
-	RipEJ8mHdpi9n6DqI7Ifn44tIDaR1tlhMhisnpUvV8XjIfGFzJultAPzaV6+YIRONQy2eSbuI3O
-	TSG6w=
-X-Received: by 2002:a05:6102:5491:b0:720:81d5:92dd with SMTP id ada2fe7eead31-72a78a86867mr1255462137.22.1781878847023;
-        Fri, 19 Jun 2026 07:20:47 -0700 (PDT)
-Received: from houminxi ([101.90.5.50])
-        by smtp.gmail.com with ESMTPSA id ada2fe7eead31-72a34712e0fsm1689034137.4.2026.06.19.07.20.43
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 19 Jun 2026 07:20:46 -0700 (PDT)
-From: Minxi Hou <houminxi@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: trondmy@kernel.org,
-	anna@kernel.org,
-	cel@kernel.org,
-	jlayton@kernel.org,
-	linux-doc@vger.kernel.org,
-	Minxi Hou <houminxi@gmail.com>
-Subject: [PATCH] NFS: pnfs: fix stale references in pnfs.rst
-Date: Fri, 19 Jun 2026 22:20:40 +0800
-Message-ID: <20260619142040.3970345-1-houminxi@gmail.com>
-X-Mailer: git-send-email 2.54.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ao7k+VkA"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 73FC51F000E9;
+	Fri, 19 Jun 2026 14:26:18 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1781879178;
+	bh=qhf7vMAcxY+L3SOlP92n/fPlg6HBqNkzu136NgrH26Q=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=ao7k+VkAElgGdOe19FqgoDnt5h3sfdx7VvB+aR16Iiq2r360bZebxANFpRlu69wtS
+	 7d9n1Wr8hjUBr+wV23op+e8dX8rkPrGnRV7l8Ze3HLmttZtNEGdvCacnq2r0JTfVTg
+	 hMBGsTiaOW/aWMFBd2lcTf9JUoqCKBtAiSzfme90Y0h27YlE1bsZXcSbQtRxGerR2r
+	 UtfbY8DbywyvnPpDnbSLgm5IPXVaSs6H+9xWob5ZdWgIk5Vc6yAICb2+TFceZVWm1Z
+	 tvdtc3zcSZZiKFs+uIowEdXUqr6arhIbpEmB6UbRhb6hmRO31vt6CxC9fB6jEpiuC4
+	 x1c8qHnJwguLg==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 9B535F4006F;
+	Fri, 19 Jun 2026 10:26:17 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 19 Jun 2026 10:26:17 -0400
+X-ME-Sender: <xms:iVE1auJC48BDeK4HzXB3qR4H7oH327IIH1ePVqQc9yHQpdgse8wk9w>
+    <xme:iVE1ag9awc7ppwrCXYQ4JwZrNMakd82FAI41AHS0m0bgdJRfGkJWj3CAhYNjVEi0r
+    vewyUGhNcXKP7PLzvfhziqUno9mj34GqTU_Fd4RgpOZEjUklPhmpVU>
+X-ME-Proxy-Cause: dmFkZTGsg01ta4QOX1s6rAAQZv7hDKnjiZQtoBCI1YnPrmitGOUH31nUtCizt48kLUYZAy
+    Gzyz/3XpfOkKI6mvua+9f2khX/2ZZIFCtaHzHmGY9uxo/ApnaxNakWlCvHVxRxJryi2OQk
+    u0XoQwgxnb3MhavSRCayb/bJRXrRlOIiTRAxjr6zadxszkC+iIEtOBxemOIOsQgRtO/Zj6
+    BTy4U82Wjtcsa3qg2eJu5+xd4UPA8obhCA6J62hQVVdPF9ETUxkR5PrcE2k7sT5HnCmo6H
+    floUid7OMKQGDtwveFXFhZs7rGYACYHMVMJqqrCtdGaDDGDUVcfGIjwB6rTnoN19advtgQ
+    s46euab3r4fpZVdlCEbXF7l0BYeboxyy7sWGqhOt6NfnQsObtgwWlrdfPOa4Xb3oIAL+fs
+    CIbvMEPPkTIqwNjG/Lu0ygrpALU99t2GWe++pkyFKpvj7QHuhK5UX+SCwT7pTgf5EKAg+G
+    haST/nsv/gU1jM4JxYy1h82AvCTzWMqcQsxLA6O55DRakWJomTt4EOizVjJe/63iuiySYx
+    47qeklvFvsCKz4Zg5S5ampyG1+9r31/8e0LWgXiIqqVZsi+19drGmSlbStn/NuxEdNdylq
+    VyALACjkxniR6m9fTpgAPeEgfbyMhIUM/s3gqO4KETCNB68oVkyqq78Oa0ew
+X-ME-Proxy: <xmx:iVE1anFcykRJ-58WhDwgFISzQDuqOOK_Y1ypB80h1jCBBsxOtLgEeg>
+    <xmx:iVE1apSX71z-7pCja82yUNQ3lQggX2bcl8mbzgUEbWd4MlzQHuzpEQ>
+    <xmx:iVE1ataxImqzyDIkqf5SMz91R6BtT-9n5LUOsBEI4f9SNlSwnCV9NQ>
+    <xmx:iVE1ak2ydfMCOhEWU37eLBwj5aedPXkr0jF1SdmA0FMcN-UVDHnR9g>
+    <xmx:iVE1agoVUVWjBAAqS8jgQty0s2slF07uPnGmMQVr1KusPTp5KqrjzSjU>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 5EFA7780AB8; Fri, 19 Jun 2026 10:26:17 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-ThreadId: ALiCYJP0Nqoo
+Date: Fri, 19 Jun 2026 10:25:57 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Vjaceslavs Klimovs" <vklimovs@gmail.com>,
+ "Chuck Lever" <chuck.lever@oracle.com>, "Jeff Layton" <jlayton@kernel.org>
+Cc: NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
+ "Nikhil Jha" <njha@janestreet.com>, linux-nfs@vger.kernel.org
+Message-Id: <99fbd31e-0827-413a-a0d9-e39765de79a7@app.fastmail.com>
+In-Reply-To: 
+ <CAC_j7i1WXvMS6Q66w7-EGxZYFrdJ9R_DzA26xweP5=7z05KWzg@mail.gmail.com>
+References: 
+ <CAC_j7i1WXvMS6Q66w7-EGxZYFrdJ9R_DzA26xweP5=7z05KWzg@mail.gmail.com>
+Subject: Re: [PATCH] nfsd: bound GSS session fore-channel slots to the GSS replay
+ window
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-The layout header list was moved from struct nfs_client (cl_layouts) to
-struct nfs_server (layouts) in commit 6382a44138e7 ("NFS: move pnfs
-layouts to nfs_server structure"), but the documentation was not updated.
 
-Also update the layout driver description to reflect that the objects
-layout driver was removed in commit 6d22323b2e9f ("nfs: remove the
-objlayout driver"), leaving 3 layout types implemented in the kernel
-client: files, blocks, and flexfiles.
+On Thu, Jun 18, 2026, at 9:35 PM, Vjaceslavs Klimovs wrote:
+> An RPCSEC_GSS context authenticates each RPC with a per-context
+> sequence number, and the server enforces a fixed 128-entry
+> replay/reorder window per context (GSS_SEQ_WIN,
+> net/sunrpc/auth_gss/svcauth_gss.c).  A client mounting with nconnect
+>> 1 round-robins a single context's sequence numbers across several
+> TCP connections that drain at different rates, and every retransmit
+> consumes a fresh sequence number.  The spread between the oldest
+> in-flight and the newest issued sequence number can therefore exceed
+> the number of in-flight RPCs; once it passes the window the server
+> drops the lagging request, the hard mount retransmits, and a krb5p
+> streaming write collapses into a retransmit storm (a stall to ~0 in
+> the field; an EIO under the krb5-nfs-perf reproducer).
+>
+> The NFSv4.1 fore-channel slot count caps how many RPCs the client
+> keeps in flight, so it is the effective ceiling on the
+> sequence-number spread.  The default Linux client negotiates 64
+> fore-channel slots (NFS4_DEF_SLOT_TABLE_SIZE), and commit
+> 60aa6564317d ("nfsd: allocate new session-based DRC slots on demand.")
+> lets the server grow the table far beyond that -- both exceed the
+> 128-entry window once nconnect reordering and retransmits are
+> accounted for.
+>
+> Bound a GSS-authenticated session's fore-channel slots to a quarter
+> of the window, at both the initial CREATE_SESSION grant and on-demand
+> growth, so the sequence-number spread stays inside the replay window.
+> A quarter (32) keeps a 4x margin against overrun yet still allows
+> enough in-flight RPCs to keep the per-byte krb5p crypto (AES plus
+> HMAC) saturated across many server CPUs, so it does not cap
+> streaming-write throughput on large machines.  sec=3Dsys has no
+> per-context sequence window and keeps the full
+> NFSD_MAX_SLOTS_PER_SESSION table.
+>
+> Signed-off-by: Vjaceslavs Klimovs <vklimovs@gmail.com>
+> ---
+>
+> Symptom / impact
+>   A production krb5p NFSv4.2 mount (vers=3D4.2, rsize=3Dwsize=3D1M, pr=
+oto=3Dtcp,
+>   nconnect=3D8, sec=3Dkrb5p, enctype aes256-cts-hmac-sha384-192) that =
+used to
+>   sustain ~1 GB/s on a 10 GbE link began stalling to ~0 after a 6.12 -=
+> 6.18
+>   upgrade.  sec=3Dsys over the same path is unaffected, and nconnect=3D=
+1 does not
+>   trigger it.
+>
+> Bisect
+>   Onset is 60aa6564317d ("nfsd: allocate new session-based DRC slots on
+>   demand.", v6.14).  Its parent caps the session slot table; the commi=
+t lets
+>   it grow on demand, so in-flight RPCs (already 64 from the client def=
+ault)
+>   climb past the 128-entry GSS window and storm.
+>
+> Reproduction / validation
+>   Two-VM QEMU harness (one VM a KDC + nfsd server, the other a krb5p c=
+lient;
+>   nconnect=3D8; sequential write to a tmpfs-backed export):
+>     unpatched 6.18.x : retransmit storm (hundreds of retransmits) -> E=
+IO
+>     patched          : clean, retrans 0
+>   Confirmed at both 2 and 16 vCPU per VM.
+>
+> Why the cap is 32 (and why a server-side cap at all)
+>   The krb5p throughput ceiling here is GSS crypto, not the slot count:=
+ under
+>   load ~7-9 cores sit ~99% in-kernel on both ends (AES-NI plus HMAC-SH=
+A384
+>   over every byte), and throughput scales with cores (~0.6 GB/s at 2 v=
+CPU ->
+>   ~2.0 GB/s at 16).  The slot count is a *secondary* lever, because it=
+ caps
+>   how many RPCs are in flight to feed that parallel crypto.  Measured =
+at
+>   16 vCPU, varying only the cap:
+>     16 slots -> ~1.7 GB/s    32 -> ~2.0 GB/s    40 -> ~2.15 GB/s    sy=
+s -> ~2.3
+>   40 starts to graze the window again; 32 was the largest value that s=
+tayed
+>   clean (retrans 0) across the sweep, so it keeps a 4x window margin w=
+ithout
+>   throttling streaming writes on many-core servers.  (16 only looked "=
+free"
+>   at a 2-vCPU test point, where cores -- not slots -- were the bottlen=
+eck.)
+>
+> Possible client-side follow-ups (not addressed by this patch)
+>   This is a server-side defensive bound.  Two client behaviors look wo=
+rth a
+>   separate look:
+>    - the default of 64 GSS fore-channel slots already over-commits a s=
+ingle
+>      128-entry context window once spread across nconnect links; and
+>    - the v6.16 RFC2203 seqno cache (08d6ee6d8a10 "sunrpc: implement rf=
+c2203
+>      rpcsec_gss seqnum cache", plus follow-ups) -- the intended mitiga=
+tion
+>      for this storm -- in our testing converts a recoverable window gr=
+aze
+>      into a hard EIO at the 64-slot floor rather than recovering.  Cc =
+Nikhil
+>      Jha, who wrote it for the same workload.
+>
+>  fs/nfsd/nfs4state.c | 4 ++++
+>  fs/nfsd/state.h     | 8 ++++++++
+>  2 files changed, 12 insertions(+)
+>
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index c5dba49c9035..f077f1b8a780 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3998,6 +3998,9 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>         status =3D check_forechannel_attrs(&cr_ses->fore_channel, nn);
+>         if (status)
+>                 return status;
+> +       if (rqstp->rq_authop->flavour =3D=3D RPC_AUTH_GSS &&
+> +           cr_ses->fore_channel.maxreqs > NFSD_GSS_MAX_SLOTS_PER_SESS=
+ION)
+> +               cr_ses->fore_channel.maxreqs =3D NFSD_GSS_MAX_SLOTS_PE=
+R_SESSION;
+>         status =3D check_backchannel_attrs(&cr_ses->back_channel);
+>         if (status)
+>                 goto out_err;
+> @@ -4511,6 +4514,7 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct
+> nfsd4_compound_state *cstate,
+>          */
+>         if (seq->slotid =3D=3D session->se_fchannel.maxreqs - 1 &&
+>             session->se_target_maxslots >=3D session->se_fchannel.maxr=
+eqs &&
+> +           rqstp->rq_authop->flavour !=3D RPC_AUTH_GSS &&
+>             session->se_fchannel.maxreqs < NFSD_MAX_SLOTS_PER_SESSION)=
+ {
+>                 int s =3D session->se_fchannel.maxreqs;
+>                 int cnt =3D DIV_ROUND_UP(s, 5);
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index aaf513ed9104..4bec489ed26b 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -278,6 +278,14 @@ static inline struct nfs4_delegation
+> *delegstateid(struct nfs4_stid *s)
+>   * A large number can be needed to get good throughput on high-latenc=
+y servers.
+>   */
+>  #define NFSD_MAX_SLOTS_PER_SESSION     2048
+> +/*
+> + * Bound GSS sessions to a quarter of the 128-entry RPCSEC_GSS replay=
+ window
+> + * (GSS_SEQ_WIN): nconnect spreads one context seqno space across lin=
+ks and
+> + * each retransmit burns another, so cap both the initial grant and g=
+rowth.
+> + * 32 keeps a 4x margin against window overrun while still allowing e=
+nough
+> + * in-flight RPCs to saturate the per-byte GSS crypto across many CPU=
+s.
+> + */
+> +#define NFSD_GSS_MAX_SLOTS_PER_SESSION 32
+>  /* Maximum  session per slot cache size */
+>  #define NFSD_SLOT_CACHE_SIZE           2048
+>  /* Maximum number of NFSD_SLOT_CACHE_SIZE slots per session */
 
-Signed-off-by: Minxi Hou <houminxi@gmail.com>
+First, a few process-related notes.
+
+- The diff body is mangled and cannot be applied with the usual
+  automated tool chains. You should consult the material under
+  Documentation/process/ to see how to configure your email
+  client so that patch content is preserved when you post.
+
+- There is already a set of fixes in nfsd-testing that hopes
+  to manage session slot table growth better, though it does
+  not directly target GSS request reordering.
+
+- The patch applies to linux-6.18.y, not to upstream, and not
+  to nfsd-testing. So I'm assuming you are looking for review
+  comments rather than asking for this to be merged.
+
+Now, second, why I'm responding: krb5p request reordering is a
+well-known issue, and the nconnect configuration you are using
+is common. The combination of these two settings is going to
+make things worse, so it deserves some discussion.
+
+But to be blunt, the proposed approach is an operational hack,
+not a long-term solution that closes the re-ordering window.
+
+- krb5i is also affected, but since it's not as compute-
+  intensive, it's not as frequent a problem.
+
+- Other NFS versions are affected when nconnect > 1, but they
+  don't have a session slot table so the proposed solution
+  can't help them.
+
+- Even when nconnect =3D=3D 1 there is a non-zero chance that
+  one request is delayed until it falls outside the GSS
+  sequence number window. (More on this below)
+
+- The cap should be relative to the GSS window size, not
+  a fixed constant. It could be set at CREATE_SESSION
+  time, but the server doesn't know how many transport
+  connections the client might make at that time.
+
+- The selection of 32 is arbitrary. My own studies of the
+  reordering issue shows that there is no limit (other than
+  1) that can make re-ordering impossible. (My testing
+  increased the GSS window instead of limiting it).
+
+The reason for that is structural: the GSS window bounds
+relative lag, not concurrency, but the NFSv4.1 session slot
+count controls concurrency.
+
+Those are different quantities, which is why no ratio can
+close that gap and prevent reordering.
+
+The server window in svcauth_gss is a sliding bound: it
+tracks sd_max, the highest GSS seqno it has accepted, and
+rejects anything below (sd_max - GSS_SEQ_WIN). sd_max
+advances every time any request makes forward progress. So
+the quantity that kills a request is how far its seqno
+has fallen behind the leading edge (its lag), not how many
+requests are in flight.
+
+Now hold one request still (slow link, queued behind a busy
+nfsd thread, a dropped segment awaiting retransmit) and let
+the other M-1 slots keep cycling. Each reuse issues a fresh,
+higher seqno; the server accepts them; sd_max climbs. The
+stalled request's seqno doesn't move. Its lag grows without
+bound for as long as it stays stalled... until it crosses
+128 and is dropped. This happens for any M =E2=89=A5 2. The only
+genuinely safe value is M =3D 1 (strict serialization, lag is
+always 0), which is useless. So there is no useful ratio,
+exactly as you found.
+
+What M actually buys is the rate the leading edge advances:
+with M-1 slots cycling at ~one completion per RTT, the edge
+moves ~(M-1) seqnos per RTT, so a stalled request survives
+~128/(M-1) RTTs before it's fatal.
+
+  Smaller M =3D slower edge =3D longer grace period =3D
+     lower steady-state spread under systematic reorder.
+
+That's all the 32 does: it widens the grace window and lowers
+the typical spread enough that drops become rare under the
+reproducer's reorder pattern. It is a probability knob, not
+an invariant. "4x margin" is margin against the spread the
+reproducer happens to produce, not against reordering.
+
 ---
- Documentation/filesystems/nfs/pnfs.rst | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/filesystems/nfs/pnfs.rst b/Documentation/filesystems/nfs/pnfs.rst
-index 7c470ecdc3a9..ea3d15cc4549 100644
---- a/Documentation/filesystems/nfs/pnfs.rst
-+++ b/Documentation/filesystems/nfs/pnfs.rst
-@@ -22,7 +22,7 @@ outstanding RPC call that references it (LAYOUTGET, LAYOUTRETURN,
- LAYOUTCOMMIT), and for each lseg held within.
- 
- Each header is also (when non-empty) put on a list associated with
--struct nfs_client (cl_layouts).  Being put on this list does not bump
-+struct nfs_server (layouts).  Being put on this list does not bump
- the reference count, as the layout is kept around by the lseg that
- keeps it in the list.
- 
-@@ -62,8 +62,8 @@ bit is set, preventing any new lsegs from being added.
- layout drivers
- ==============
- 
--PNFS utilizes what is called layout drivers. The STD defines 4 basic
--layout types: "files", "objects", "blocks", and "flexfiles". For each
-+PNFS utilizes what is called layout drivers. The Linux NFS client
-+implements 3 layout types: "files", "blocks", and "flexfiles". For each
- of these types there is a layout-driver with a common function-vectors
- table which are called by the nfs-client pnfs-core to implement the
- different layout types.
--- 
-2.54.0
+Now I'm speaking generally here, not proposing a specific
+fix.
 
+Since lag is the controlled variable, only something that
+bounds lag directly fixes it:
+
+- Client-side spread throttling: the client knows the
+  oldest unacked seqno and the newest issued; it can
+  refuse to issue a seqno more than (GSS_SEQ_WIN - margin)
+  ahead of the oldest outstanding. That bounds lag at the
+  source regardless of nconnect or slot count. This is the
+  structurally correct fix, and it's on the side that has
+  the information.
+
+- Per-connection (or per-slot) GSS contexts: give each
+  transport its own seqno space so connections draining at
+  different rates don't share one window. Removes the
+  cross-connection reorder entirely; costs more context
+  state and a spec/implementation change.
+
+- Negotiated window size: make GSS_SEQ_WIN scale with the
+  advertised slot count rather than being a fixed=C2=A0128. The
+  server can't shrink replay protection safely, but a
+  larger window for high-slot sessions trades memory for
+  headroom. Still not a guarantee (lag is unbounded), but it
+  moves the knob to where the slots actually are.
+
+The server slot cap is defensible as a stopgap the server
+might deploy unilaterally without trusting clients... but
+it's treating the symptom (spread) one step removed from
+the cause (unbounded lag, controllable only where seqnos are
+issued).
+
+
+--=20
+Chuck Lever
