@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5C4A934107F
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E62F9345CBF
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781896973; cv=none; b=rrlk5j3Nj0GDDzU37RoBeLhl0f52C0iGMxNicHvZeyO3yQkhxKEfQchqp2uMu7SV4rF0Mm8PwEeKtatqbJZd0Dpfyw6IX460J34t7dsipDFmOvMPPPNeZIyLtYsq4Q5bIOLBS0kKHwEOF7f0k8/kAp8IfwBFDFz+OtpZBcSEd+k=
+	t=1781896975; cv=none; b=DVZqTUnlmqnO3pbqKJywqVlZicvCYU9WF24fIRrZZvPEcN92NvPC9ofqtOncwLsbX33aEta54omQ8r8gChSmG8fU/mqwjbjGKsRsJuEZMKYxoaE9wZU0wznCAd7qgCVAvnFGfkqgYZpbtFQWwKFHGm2UAvZJol8Ogcw7SoPc44c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781896973; c=relaxed/simple;
-	bh=9Y5wyPNM9nHmW0uxevgrqDPhGyreqSTj1VA0oF6muDs=;
+	s=arc-20240116; t=1781896975; c=relaxed/simple;
+	bh=uRofFB4Prf7mjZ4oMeahaIY9KLObU9TLXtJkHDL0/NE=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=CuK4zcczfpgG3xgmAmlt14jwG2lUr2zc9TyXUSxGGaIh2pIhJi7kuEeahVTAiWv0/PTItazMrkTzqAhY7K7VWyfRaXX4Cd6mQ2A2kl1NKZqZ1T7br9ZAMqclc89tZJEjrsfozXNs7oJRH/jqaakB8JrEY1HZDp2VvoGJKcT5Lpw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Djq+J5Fi; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=AGdtcVbLmNeewqJdYrFBnDGf1xliOa2e8+ApRDQ+FxKKJSp55aDUkkW9xIAlaEq3q3b5KDgO8WXlVI+uDY6eLLvU1xfAGqcdC3WrR+j0RYJl3J6abCT9iJB5a3WDhr8USiLp+JrjzZCgmYixPDEL5CMV2hM1qDLXB+p33miXL+s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hntN5lf9; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Djq+J5Fi"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D72171F00A3F;
-	Fri, 19 Jun 2026 19:22:45 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hntN5lf9"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 700FF1F00AC4;
+	Fri, 19 Jun 2026 19:22:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781896966;
-	bh=6dIcBSYYEPfBNbKWL/c+x/Su5RKHbkO08JW/G3SiRYk=;
+	s=k20260515; t=1781896970;
+	bh=VW6SQuVrO0rjFprztUCQwZ7xcxgfqwW4QC4JF995nkk=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=Djq+J5Fi9FxhC+2/IGrDBT8HlKKkpaYuyiRLssWkfUA/TNdh1K9VM/N+0LACZMD9m
-	 hoATKNvAH0PFyBuSJl90NRNDcNLJYGceCybaUTn4SAjWZ6BvFEmFX+GQWhUCvgzzRW
-	 mnJqqP2Q69d5qnsnxZ4Ne1sz4Wi0GaKOTBjoZf1XaA7QC4DNpfXKjV1r2DjuIC7ZA0
-	 zjli+LI3XWRzLkLYjMqD4jEp7FvqEkQKLfTfd5+pE4NJw9q0Ng8VPK6yfCl5s+5LCt
-	 IoPx+f5AwwoZOIQHBqKyORo61W5WcCGkfu6yo0bM/OizbhpE1z2BvthhJBbqFLebNe
-	 gUk1wCwuPTg8w==
+	b=hntN5lf9SZwlUoDFZBM/p0ck7T0IF5yWXSiEgHm4LJq4JeKTnDfFyXox5jm0dBGD8
+	 lhm6WcWTdJqPjqkyvOCKI8fbIKjJd0lPonx3FLYtNsNH8EoC7ptcH2cA+6Sea5lliL
+	 8WnjtKJZt8NUC61cdbtTZ8pH1SslBCU42XhR8IN7qJqAlquOi09qqn4zHxkOWqCW0v
+	 9dEiXgTvwbFHXWVRsvLLxOKpnAA0Y4uqs2BJC2q8A1NMK9GXkoeh5gPnQndOlsRuYl
+	 VoyIZ28PUw2amvYoXBsQG8+wxYGKdOxdaXixtgGzO3Hwe+c/sSbhmdkmu5G0h8RS60
+	 jLTIhHuOgnd0A==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 19 Jun 2026 15:22:25 -0400
-Subject: [PATCH pynfs v3 06/26] server41tests: test remove triggers dir
+Date: Fri, 19 Jun 2026 15:22:28 -0400
+Subject: [PATCH pynfs v3 09/26] server41tests: test link triggers dir
  delegation recall
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-dir-deleg-v3-6-1077ce8aab1b@kernel.org>
+Message-Id: <20260619-dir-deleg-v3-9-1077ce8aab1b@kernel.org>
 References: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 In-Reply-To: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 To: Calum Mackay <calum.mackay@oracle.com>
@@ -48,55 +48,46 @@ Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
  Anna Schumaker <anna@kernel.org>, Scott Mayhew <smayhew@redhat.com>, 
  linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2372; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=9Y5wyPNM9nHmW0uxevgrqDPhGyreqSTj1VA0oF6muDs=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb5NepOl9FgPorWJuBDJGum52aj9y8FHP3na
- 7Xxyu6WheWJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW+QAKCRAADmhBGVaC
- FTg5D/9VypdPsPtSbtw5VFbOjj3yYtAdZGbgViecbh2XG3H2sDem4iMrjNNaSs0FNRo681WddTK
- 2/JGHNZjA23/yhnxSO1SKF42HQrjQy2lgOE7MR7gXEBUPWlQH+3k7SjuiDDJKU4fNKIbJc1vc1v
- qWPdvGSmcY9w8MgHFuVIK129XPBWd0So0Sv2N27OwfnSDkRM0RB+rgI38EsnULdqG4vODIqdMKV
- /eDgGd7hsEoOXy7lnY1sMHxz0x0Mwlhykbc+u9HwpU/SmSKiMtrBflaNdqPW7OQTRNVYJU8R+bG
- QVZ9rbugXK88AXTnDymkoQJkv6+i80eEQlQwIFFKTeaOhvNW8sytzU8OFtGo/XsmcIC6sf1mHZb
- NWOZXuZJ5wAT23yZRhhTcc9KPFYuwQbwVRZQyw+MXHt0ydW4QJupGZgQt5723rS1GYdhU0bb6dW
- yMmFNjS0/OJYL2pzVnzfRB0AJVZnkOqGSYz7uFhaeZ1za3vnihwHFEEgICfSkvu3r2lun85TYm3
- T000kA6Rz7WLNge2/SdOhBGZAnhubEysphqjecNN35yQLLlusLv/0OR//wM9Nic3s9klcB8flqX
- pSFhdxpV3cy+r2ExSeFX6loOMKNElgFevcXV9Mij4sWH/lSCnZN9WyMwNWeem8A9GWmrwdiX3kb
- 2RzAjVpnslr3Xaw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2109; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=uRofFB4Prf7mjZ4oMeahaIY9KLObU9TLXtJkHDL0/NE=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb6/6jIXibtYO1MyF/ckqQitx1aOU0rEBCCU
+ Oyjpwf8aaSJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW+gAKCRAADmhBGVaC
+ FfDmD/9Kp4XoqUTrapmE9MClR2MG1IVoaa6WDu6u2Q/spVV/9NOOJJmQN2Ppdq5veNDybu7PoPm
+ qUal5/0PsIaxQ6XmY8V0cOnU0t1z38xHxOaF3RaMX+2MVepLpPGO3laqheeoFhnp4YL/wKspLto
+ D/FkVI99cfwlqDi//e0i5M+c3RWknjlVnrmQ9Xgp9FbJthV15FTFoAQWoqCyYotog6+87JQJJho
+ Q+PsSGfs5GBB6q6SVlKVg/qn8X7YVERE66CVslwq7lkhnSCkRfvR75FFjuOERhYwGm0I+ff/YAw
+ oK5zlXEZedjfLvk7/tdTAxjgqIgT6nQVMaIUp6MfXyxnchYXbZz0s+559bjr/x4cDyCmzgx37lN
+ tWsmBUt7Q92+peIKFKZBlZ0tK3yzwLoz1fk5pfuM639RTylJyY7oPXPyFAoS2+ToBxSGnpVMqJO
+ 6yWjHXBLZvD6knKXuCtGdhTBqW2ER7YI0fHHZd46uDFMkp8V/0y2hALpzcLJY2l71YuL0cMuLZc
+ gj2PkFAzuAOj9i08f3ZINJJFg0ummvPFD7dXipJiJPYUFu+1zFznYGYL7yf3+YGcQBoGXtfrpWN
+ YZCiy9oY1bl4HDGmRQIOhZVG8FqrMwN+FspvtL8fn+KE9FT4mH9/VULmGoYv9szscUJqvZKVy95
+ 8USCq8Iw3awkpJQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
 Get a dir delegation with no notification mask, create a file, then
-remove it from a second client. Verify that the server issues a
-CB_RECALL.
+hard-link it to a new name from a second client. Verify that the
+server issues a CB_RECALL.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- nfs4.1/server41tests/st_dir_deleg.py | 36 +++++++++++++++++++++++++++++++++++-
- 1 file changed, 35 insertions(+), 1 deletion(-)
+ nfs4.1/server41tests/st_dir_deleg.py | 36 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
 
 diff --git a/nfs4.1/server41tests/st_dir_deleg.py b/nfs4.1/server41tests/st_dir_deleg.py
-index 5f46c08316e3..b2afc7cccb01 100644
+index b27e68eea5f6..008e45d4cf64 100644
 --- a/nfs4.1/server41tests/st_dir_deleg.py
 +++ b/nfs4.1/server41tests/st_dir_deleg.py
-@@ -3,7 +3,7 @@ from .st_open import open_claim4
- from xdrdef.nfs4_const import *
- from xdrdef.nfs4_pack import NFS4Unpacker
- 
--from .environment import check, fail, create_obj, use_obj
-+from .environment import check, fail, create_obj, use_obj, close_file, rename_obj
- from xdrdef.nfs4_type import *
- import nfs_ops
- op = nfs_ops.NFS4ops()
-@@ -148,3 +148,37 @@ def testDirDelegDuplicate(t, env):
+@@ -242,3 +242,39 @@ def testDirDelegMkdirRecall(t, env):
      ops = [ op.putfh(fh), op.delegreturn(deleg) ]
      res = sess1.compound(ops)
      check(res)
 +
-+def testDirDelegRemoveRecall(t, env):
-+    """Verify remove triggers dir delegation recall
++def testDirDelegLinkRecall(t, env):
++    """Verify link triggers dir delegation recall
 +
 +    FLAGS: dirdeleg all
-+    CODE: DIRDELEG3
++    CODE: DIRDELEG6
 +    """
 +    c = env.c1
 +    recall = threading.Event()
@@ -115,10 +106,12 @@ index 5f46c08316e3..b2afc7cccb01 100644
 +    file_fh = res.resarray[-1].object
 +    close_file(sess1, file_fh, stateid=open_stateid)
 +
-+    # Remove the file from sess2 -- should trigger recall
++    # Link the file to a new name from sess2 -- should trigger recall
 +    sess2 = c.new_client_session(b"%s_2" % env.testname(t))
-+    remove_op = [ op.putfh(fh), op.remove(env.testname(t)) ]
-+    slot = sess2.compound_async(remove_op)
++    link_op = [ op.putfh(file_fh), op.savefh(),
++                op.putfh(fh),
++                op.link(b"%s_link" % env.testname(t)) ]
++    slot = sess2.compound_async(link_op)
 +    completed = recall.wait(2)
 +    env.sleep(.1)
 +
