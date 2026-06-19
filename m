@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2208D33F5B1
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3E782345CBF
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:45 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781896966; cv=none; b=h1b5CfI8nydsyoVAiTv8Z8WGnEWylibRCJ9ptlP+i0Fxe8hxK7PoIMb1dCE5W3PXMZL/04teTYjx19DwJ+Wq0zgzKadokVS89Wl+oqsztJ7oE5ZejTPlNcEx9jGtcuVautAI7efdXJJZlBgbPq8NP+/QDXKGe40iiwKCG/ud3tg=
+	t=1781896969; cv=none; b=TPD+VxU+jUk+pnZWQZROJ8aGrQDz12DP3AwhXwoJ2ly1WKI82RwEmAhzg4HOmz3tkyhL9GKbZDyCe12TIqd2Rj8U32LWc42jPIFu/JwyBCXd/RP8c3bpCrYwfehAT8XuXpsDYQ4C9dQNm3NPv5h0lJjIrkDOimIjOrht+DA/qR0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781896966; c=relaxed/simple;
-	bh=2MRzBSnBEI/i391jncWiqh+/Y6Ze4OYAUy+Y9+I+EK0=;
+	s=arc-20240116; t=1781896969; c=relaxed/simple;
+	bh=GExISphd7E0rAvfC1eos9tvRQAemQlo/NCkmDYsHfGE=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=fWr5aJ+DUWIiV6BuSAl2oVJRWvZLlSCyvx3IFQz8m8UJ2aWL4ZtcCJuSdfkMdAlK+fL13HDq2CQ7QCQC9VF+nB3NPsmaeR7G455eQayh3oo76w05uZfiZFKglP/Tl0PfzmB12vy4PFbnm8hVwgBRHGn3Na8rfRQJwHuoguz70M4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aMoOhbyA; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=UIU8qGuPPzU+w+oAiI/tdSt++DvnPi5EhtdUMR5FXB4adm834tcoKKeDEBehp7dZeZQ/C9Aw11oO+9LJAunhnqiPCn6rSxbBgwCIZn9W0ZWFX2c+0hBbYhDcoZi/ImTF2DngtFX47E11nRjquPc40sKE7b+mB/53Q/glvBpsO2Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=kGJpCPaO; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aMoOhbyA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E030A1F00A3A;
-	Fri, 19 Jun 2026 19:22:39 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="kGJpCPaO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A8A291F00ACA;
+	Fri, 19 Jun 2026 19:22:44 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781896960;
-	bh=B4YpVedY36tpoXIRX+fw80QizEK8IcG+ieKj4MS4dDA=;
+	s=k20260515; t=1781896965;
+	bh=EY6xmh+N1xxBGxZJWiD6wnDTCuWzIm23OrQGbn9aD5A=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=aMoOhbyABuk8oWazljOemRiiptbUO9LCZMQVlnjTIq6r24rTRHs6B5RQQuhPZdGkG
-	 W7avHLoajWTyKm1YTHE7Ul5I4R3QSs/p2i6stcxGmc7Ux+IPkOILeampXYYTvud4CL
-	 yVOigc30qMm4pCh/jjiX0R8vItAXk/Bv0VkxZfCjV3SD/uAaT2oSdDNZzIeuRmOyer
-	 CUCdCMy6B9zVIqTsR2+qz4sRjxGNs6RBRRdZ6TIxoIpVZkcjalonyDY3jBdr/316Hi
-	 rmZsZYfvU9prTaNoagdxK4HlGWzp+yoRJZI6XoBavtaQmb51iKUMxQse1DX4X2D1KU
-	 K1jsSbNMGpsqw==
+	b=kGJpCPaOR1up//ZiQnrNRDYS9HdeiHCghYsg1SVMX5j9eXIBuARjCpAtDnrBZtaWP
+	 9awakdO4mA4/fp5G4DNPaMp2LWoJsbdq1jrCQDlC/ThCWrPb2vTx3pd/9Rj2p+C9/G
+	 0+xAQCQzwVH+TWwmqZhC1RpfSROMPsWJKu8kLKLfsx+3sL1Iqel8UcIp2tA4oeYQlt
+	 7zyHmMvb7vTGWBKoizvIMKKASc+neDai/cUBSM9aS0XpcwoR5h5LyZGkDRZDRSgamU
+	 n+19NaU6F0Nd3quAO6JptP4y+f/eaGd6Rbif/iEyggkluyMzko38W3Xh043OGDmb8Z
+	 l2EF8hCtqAJTQ==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 19 Jun 2026 15:22:20 -0400
-Subject: [PATCH pynfs v3 01/26] nfs4.1: add proposed NOTIFY4_GFLAG_EXTEND
- flag
+Date: Fri, 19 Jun 2026 15:22:24 -0400
+Subject: [PATCH pynfs v3 05/26] server41tests: pass_warn() when server
+ doesn't support dir delegations
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-dir-deleg-v3-1-1077ce8aab1b@kernel.org>
+Message-Id: <20260619-dir-deleg-v3-5-1077ce8aab1b@kernel.org>
 References: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 In-Reply-To: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 To: Calum Mackay <calum.mackay@oracle.com>
@@ -48,49 +48,73 @@ Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
  Anna Schumaker <anna@kernel.org>, Scott Mayhew <smayhew@redhat.com>, 
  linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=968; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=2MRzBSnBEI/i391jncWiqh+/Y6Ze4OYAUy+Y9+I+EK0=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb4C8q52kw7PTXaWRz0I+SzEUrNLPEDvG8Qu
- TmOfMHabXmJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW+AAKCRAADmhBGVaC
- FVSxD/4oFJC2SZQA97MItW6eckkfa4oo0MEFNgEujWXE/f/0Lo4oFUioS2NCFeEe1O0VZ/mNSug
- DPgjGJxasWkxq3/p/GCpp8ykmwQ5FmFX28fNaXDaJHmkDWtvtua5csJ5hVKfggmEPfXqAcMSXxx
- IpqDeSiYKi6aTC48TqmnWJPFDnEGnUKem8nNIaW9QkVAPfmNfTjfFnn5Q0G3a3ZMLaeJUMdVUDP
- YQSHfhJ3gtwbphOipvNPSDVi2qz+aRoOPBBPwf4Hl9i0BgtQfX2qolk5Yb1Lc6AA8WwlRF1W2ns
- gEsTCDrXohTxOTD6fyMLW4lp7/5Lh3eITsUGjvRVAMjkWTf/dJOuZpT14hHHbf+6gizBM2R/bgW
- CCxhvikZN0KTPhx5+DKo+tm6py6bhVjtuv5VpaNWGetm2qDsy6a6OzbhC50B8Fo2Sm3nYyq9h2/
- 2bZR6+FSGUdCFTqF9DMY/RNLffR5gw0efq4/+k2r1N4l3Xkk0hgGZ/tuQ86B0356stNtFAUYbk3
- CYynRTAK5r2vrR4um55BzPCYX0ACu3q3n+BpIiRZqAO5GLolGlZUl5zathFz+jdr81Sh5o9yc36
- g6YpdB0RFaNWKFJBvimzqnKCg1GdYC3eBdxUgSRmGM3LLIbTENNSmAcysYyQGHEm/eECQG40fmk
- 5I9dL/SqDEcUIxg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2326; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=GExISphd7E0rAvfC1eos9tvRQAemQlo/NCkmDYsHfGE=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb5SAB9+o0TK4CcIyxBfWVj5chMPS/BQtMiv
+ 7J4BuIrHVaJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW+QAKCRAADmhBGVaC
+ Ff+nEAClDg+wcDhbCQFG9j6mzpzQaYQ2JQPqUSj06wfh9S0JiVrSKHFKsmwgUtsBbmzax2PYJtp
+ nw0D1wFc57pYri1+wR1kZYnMZk54Nh1/+ADZ3h8vWk4a4lnnM0HRk2QyPz/YTkG5aLqJjEoZni3
+ nTXU5j+XEKjn/jhyblQwnRECMyu+x3A4QPUTBRQfQa8o2/2Z8Z/9gutd7qcF/nFGqNdrun0epHt
+ M1ymbW0KcISzmJbf6BntuV8LLTEyFHKNgvTyALjFv9c7B0yezMrA2ffUyxtRIM52KBJlH7Qgy71
+ XY9RUclBQQPDsGaQJQihKe/ASJJ+cTxFaOiMLUM5wooi47KpkjwZ6tza6eASIgnC90DqG8Ok/zT
+ cfaUavweF/7AC3LctuTBn+N7LIMoemDQav5Bm5OdpVDh0ZDrxtBQa16fDBVJX1UtCeazYwTGDBC
+ hrdiuRt17gn6Jn5SCQa3Zc8XzjnL1EtMsW0YKOvvrcNkjXy+BZ1g0aW4wRnf90Een1S4d/2H5+l
+ yDC2QzYx0b6CrklaMx3djQu3opH3cTVa2bGB2jtK18sRj30u0mbUnxfi19CeXlHUB+8/ZiuEkpJ
+ Hdp4vex3+WaYIow9P8h0sQ7u4KLlygGvRB78+UbqlFtgFjRzvIuUtKgbFEIA1iXaJ5/+tbdmpFW
+ pJOtLEEwYcmxUHQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-This flag has been proposed as part of RFC8881bis. This flag is used to
-negotiate extensions to the original directory delegations originally
-specified in RFC8881.
+Instead of just failing the test when GET_DIR_DELEGATION isn't supported
+or the server doesn't hand out a directory delegation, have it pass with
+a warning instead. This should make it safe to keep the directory
+delegation tests in the "all" group.
 
-In practice, the Linux nfs server requires that the client support this
-flag if it's requesting anything other than a recall-only delegation.
+Also, when receiving a directory delegation, vet that it got the
+requested notifications. Just pass_warn() if it didn't.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- nfs4.1/xdrdef/nfs4.x | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ nfs4.1/server41tests/st_dir_deleg.py | 21 ++++++++++++++++++---
+ 1 file changed, 18 insertions(+), 3 deletions(-)
 
-diff --git a/nfs4.1/xdrdef/nfs4.x b/nfs4.1/xdrdef/nfs4.x
-index ee3da8aa7a34..f03eb538a298 100644
---- a/nfs4.1/xdrdef/nfs4.x
-+++ b/nfs4.1/xdrdef/nfs4.x
-@@ -3611,7 +3611,8 @@ enum notify_type4 {
-         NOTIFY4_REMOVE_ENTRY = 2,
-         NOTIFY4_ADD_ENTRY = 3,
-         NOTIFY4_RENAME_ENTRY = 4,
--        NOTIFY4_CHANGE_COOKIE_VERIFIER = 5
-+        NOTIFY4_CHANGE_COOKIE_VERIFIER = 5,
-+        NOTIFY4_GFLAG_EXTEND = 6 /* proposed in rfc8881bis */
- };
+diff --git a/nfs4.1/server41tests/st_dir_deleg.py b/nfs4.1/server41tests/st_dir_deleg.py
+index f47d1f6ac053..5f46c08316e3 100644
+--- a/nfs4.1/server41tests/st_dir_deleg.py
++++ b/nfs4.1/server41tests/st_dir_deleg.py
+@@ -65,14 +65,29 @@ def _getDirDeleg(t, env, notify_mask, cb):
+     check(res)
+     fh = res.resarray[-1].object
  
- /* Changed entry information.  */
+-    ops = [ op.putfh(fh), op.get_dir_delegation(False,
+-                                                nfs4lib.list2bitmap(notify_mask),
++    mask_bm = nfs4lib.list2bitmap(notify_mask)
++    ops = [ op.putfh(fh), op.get_dir_delegation(False, nfs4lib.list2bitmap(notify_mask),
+                                                 zerotime, zerotime,
+                                                 nfs4lib.list2bitmap([]),
+                                                 nfs4lib.list2bitmap([]))]
+     res = sess1.compound(ops)
+-    check(res)
++    check(res, [NFS4_OK, NFS4ERR_NOTSUPP])
++    if (res.status == NFS4ERR_NOTSUPP):
++        t.pass_warn("Server doesn't support GET_DIR_DELEGATION")
++
++    nf = res.resarray[-1].gddr_res_non_fatal4
++    if nf.gddrnf_status == GDD4_UNAVAIL:
++        t.pass_warn("Server reported that delegation on new dir was unavailable.")
++    elif nf.gddrnf_status != GDD4_OK:
++        t.fail("Server returned unknown non-fatal status code.")
++
+     deleg = res.resarray[-1].gddrnf_resok4.gddr_stateid
++    if NOTIFY4_GFLAG_EXTEND in notify_mask and \
++       nf.gddrnf_resok4.gddr_notification != mask_bm:
++        ops = [ op.putfh(fh), op.delegreturn(deleg) ]
++        res = sess1.compound(ops)
++        t.pass_warn("Server didn't offer the necessary directory notifications for this test")
++
+     return (sess1, fh, deleg)
+ 
+ def testDirDelegSimple(t, env):
 
 -- 
 2.54.0
