@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2D6B347BD7
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7FD59346FB0
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Jun 2026 19:22:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1781896982; cv=none; b=BEm2wwglQoUPg+1fm36lnHMIauVjx/1Wsz8fhMb6k/hb32fpYt0x0ofp9W12YkLJvS2fG5qJhNt0t11HTYGFz2olhmGXSTQVlgAh0l0lky5jZsPjlUHBMuXFhmk3LuyqFjCR/2p74Sx5smo7DpdP0Km2Ff7R26vQaX6JE8RFgRk=
+	t=1781896983; cv=none; b=t4ZzrdobPqt08llNR8jK01Y7aM1NcuOTRRQsvW/617o2+P6AlO5NomqtQGaQrH7rD/SdGQjNjUGbEaYBinvZZu0Ve+YoTI0Lyl5J37FAZk5tFWBAuj84mdBnms+BQixx8Soq46XwLnyQElYo7xcybQEolossoAWeV39P1PvZzkY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1781896982; c=relaxed/simple;
-	bh=RbtajG/WZG8CKZYfodNUheLiBp63+C8qreMDFJOqKE4=;
+	s=arc-20240116; t=1781896983; c=relaxed/simple;
+	bh=2pQKEYc1lb3SqhyV3uLNCd2AECVLcbbxNlugeLptFCU=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=Bcq9l5VMrBxO+zla57APkrrJ2aLUU2wMuOVa5J25ozP0SJl3dWI47Ms8h54DYk0Lqq0nSQNZ+aJxmznUhpGZSqSq1IGpZaJzD7khx3lNofHtevS/DnwHze9Pg3jRbZExPWgmV27xNI7XlZoQFiKZ60RcHeCAhDTtULoo6Z57SMU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CYpwGiqy; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=LPTqbbIYuR+vJhOa4oKAd4CHJsEdFhUIyjO9UDQyxdq0AEfCzP31cvtWbOR1lZ6tArxUcTqLny2CVNFoCxAh1P+6eWIpRLbUiPdfFVbl25xksr17ZETNotAgK/wFTmtd9y5ODKNx9N6acMBtujZtRL4yogCNFKvfyVVChRxKRIs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Qi+NdrWZ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CYpwGiqy"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 968E91F00A3E;
-	Fri, 19 Jun 2026 19:22:56 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Qi+NdrWZ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3891E1F00A3D;
+	Fri, 19 Jun 2026 19:22:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1781896977;
-	bh=OojuOIHTCVCAVO0KKBEZXhl0Otwgdu89czd6BOVWJSM=;
+	s=k20260515; t=1781896975;
+	bh=ADL+FvBuVbyPesj4XcCHvTsPgOhNit0SwHGTW/2uG14=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=CYpwGiqyIHKPBV7eyd1sAXTQE+Lpl7EIcvkp5cTDpd6tboj2KpbfaTyIOoTw16f3H
-	 ZurPxX+dxkB+VBWi3n0qKmVIo4sBPaHWF/dpL5SRnZgzh0JGcNk+/r+bweVt/3/3tf
-	 WPYpmHvUk1GLbNIMosMmXWcpx4b8HJZv+6CACAkSDlmjGwDq2E6s4s8jH1MfbUMlu1
-	 zmT4bCI1JcVBvGDJpHmYpemC61OaQm6tv+DfStikXLd71jtN+Zj5dTrRu3s5BzgJ1E
-	 QW2OC3YFTDlFayXv/KXFzaTQUMxPAVmjCGtBG21t+FG8WR/H5ggS1XsE6mwNL/x4eV
-	 wmaLGtGdAE32g==
+	b=Qi+NdrWZtvBh/3dDcNhzI+JXZNBzUFQxWnRUHcR59ue4GzHGKeZd2Gg5xLd1FZ3Uk
+	 oaW6x/PC7cGFj9GLgSISXH9qTfZMYdHwREz4TfDFCY874S6o/zWO/FrKYiUyDYk7GW
+	 JdXo79GBO49bLB18Z159+zFE7/UCRbt0uyCbTDBJpVz0fH8QMJ2XBb/aLqLYN1P+6n
+	 QDBdlUmUH+f6rRTNPAIHYhXP2mHpQ9p/ym7UndxJCCdLPpKPXgnJ2PO5L+rLiQePf/
+	 a0j8uFORdsov5IQAVGspVWNCM8pHvAFGg4YP29gsu4jF79SMzhyIwCD7QLxvE16VpJ
+	 ngvDsBFMHq75g==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 19 Jun 2026 15:22:34 -0400
-Subject: [PATCH pynfs v3 15/26] server41tests: verify child attributes in
- ADD notification
+Date: Fri, 19 Jun 2026 15:22:32 -0400
+Subject: [PATCH pynfs v3 13/26] server41tests: add a test for directory add
+ notifications
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260619-dir-deleg-v3-15-1077ce8aab1b@kernel.org>
+Message-Id: <20260619-dir-deleg-v3-13-1077ce8aab1b@kernel.org>
 References: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 In-Reply-To: <20260619-dir-deleg-v3-0-1077ce8aab1b@kernel.org>
 To: Calum Mackay <calum.mackay@oracle.com>
@@ -48,46 +48,46 @@ Cc: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neil@brown.name>,
  Anna Schumaker <anna@kernel.org>, Scott Mayhew <smayhew@redhat.com>, 
  linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2820; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=RbtajG/WZG8CKZYfodNUheLiBp63+C8qreMDFJOqKE4=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb7sJn85WhpVfloD94xYQT2N98cPobDZwU66
- fC8jhMH8TeJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW+wAKCRAADmhBGVaC
- FeILEACRoCmnWwPKZXD754fSrfinJPCGLtXE6k4FXlAge+apw/ply95le6nL8JyMdiVhHbOVeCb
- He/zzUAx2hz5bFI2kcenhQj6B9UJRx9Pj/5cHH31Q9Qyt64sigWe2p5rmyzdxRBPe0TDj6FCQGl
- VCwpG8dq/Afp7V7rHY+orA1NP4yWpxaE4zeyxvJIv3rtFiQJykks3gxhEkPa8ZidQn6qFZe+bIH
- 4ChQQPMkMjS9HCnRkD5jZS6w6NsRYJYGWu52uAiAkTyMiarJ2Bfbp8QR9KULbelVXmm1o33HG1o
- OME2psi8ntLiQCCX30B8OW50O7zlUcY0R0PyiOLwu3VIL5XIF/buL2Z2qQhr51neRuYdkxOCJ6V
- 4YsH5aiCt16w4JtqUxJzcnBvIO0V5OMrw/72lsU20f+9chCkCXfijyy7Ke6kO1ui3CzcgQGVVnE
- mrC1+PeEWkndaPwAAmr0XomN+kLc7fj/EUsGnn76B+4yf35AtDWfRmd2/hD0Bci/J9oXdk4cL/B
- Q96LGieqwwCSRtv1d5A/h68Ai7qnkBz61DOKilgxCE0d1E5KT6o+NK6LPAIq1vLZaJ22bEPglru
- 4t68++1dT/cSJ2eOGHPQZqNaZQHxzMjYhi2NzpqgXIzRM+vYMnpi8/7Z2ZnwY730X3HmDbtvUAK
- 3OgB51ZYsKmcRCw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2516; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=2pQKEYc1lb3SqhyV3uLNCd2AECVLcbbxNlugeLptFCU=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqNZb783bLeAJMlG20wl+D2U06oKnmW/GMYWaND
+ 3l5ErBReBeJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCajWW+wAKCRAADmhBGVaC
+ FX8AEAC2Im2BkCfSLwJubwMe28lU4XVRy9o/40TizDNE4ogwnA9sU5JLdsDWwqlBJ4pG5hqCKg1
+ qnRnrRau3e9x1rOKG3/X7RgVUB0hotGVxN5zNSS6RA44R6X2hyLWwrDlfC+dqzVOVHre0bvSsIr
+ Pdt2L+MgoR5Zb4b4G0rR7MVWZ1cMRvg1aP13bv2jNlaY5ilWmeCU10GOgf0xxWv8qnsGi7romy3
+ 59QUWPBntHwpzSlKRlxZYYd5mq1ser4U4lAvvTYuem2xRS4lAlHomSKNIgq2uH8oNAIUBIxhvMH
+ oosc5Jk2bOV5UmD3BoglXdR/IVqVVn3SWPYq1sCAYpG/k3J/+zq765XITZwzAgkM9dQWBx2m/Lt
+ wX5Jgw/7VnmP9mSF5W8nQ+vmt7dYL9AIONNIDG8uP8C1JhjD2bPJHbKT/Nu8JeE1x5z9Hw8FPw+
+ fpMJ9/0DwGjRHZdlrl/pFfPN+2O5VXZJ0ZKG+ly5hU138GivpuBcMm5E0QFbnOj4CSwm4M8UnnN
+ BN2O0BVHwROWj1eDJ90IM22jB2era9+gzQsioYxS+fOYSEKzhqnOf2VzHsi1gwnCkiVal01kqaf
+ ykGyBDbdI7pkHhTmcpWw1CpkXkONVqNKT97SggE9e7f++SuU948k16Qy54jgx/sTHYgr4IZZtNX
+ SJjCi4La7EgGnxg==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
 Request a dir delegation with ADD_ENTRY notifications. Create a file
-from a second client. Verify the ADD notification includes child
-attributes with a correct size.
+from a second client. Verify the server sends a CB_NOTIFY with the
+correct ADD event.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- nfs4.1/server41tests/st_dir_deleg.py | 51 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 51 insertions(+)
+ nfs4.1/server41tests/st_dir_deleg.py | 45 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 45 insertions(+)
 
 diff --git a/nfs4.1/server41tests/st_dir_deleg.py b/nfs4.1/server41tests/st_dir_deleg.py
-index 00d74b2c7300..a12fa13878e4 100644
+index 5b39f38a478c..e906633a7972 100644
 --- a/nfs4.1/server41tests/st_dir_deleg.py
 +++ b/nfs4.1/server41tests/st_dir_deleg.py
-@@ -507,3 +507,54 @@ def testDirDelegRename(t, env):
-         fail("Expected RENAME notification, got %d" % evt_type)
-     if evt.nrn_old_entry.nrm_old_entry.ne_file != env.testname(t):
-         fail("Wrong old entry name in RENAME notification")
+@@ -415,3 +415,48 @@ def testDirDelegRemove(t, env):
+         fail("Expected REMOVE notification, got %d" % evt_type)
+     if evt.nrm_old_entry.ne_file != env.testname(t):
+         fail("Wrong entry name in REMOVE notification")
 +
-+def testDirDelegChildAttrs(t, env):
-+    """Verify child attributes are present in ADD notification
++def testDirDelegAdd(t, env):
++    """Create a dir_deleg that accepts notification of ADD events
 +
 +    FLAGS: dirdeleg all
-+    CODE: DIRDELEG12
++    CODE: DIRDELEG10
 +    """
 +    c = env.c1
 +    cb = threading.Event()
@@ -125,14 +125,8 @@ index 00d74b2c7300..a12fa13878e4 100644
 +    evt_type, evt = decode_notify_event(cb.changes[0])
 +    if evt_type != NOTIFY4_ADD_ENTRY:
 +        fail("Expected ADD notification, got %d" % evt_type)
-+
-+    attrs = evt.nad_new_entry.ne_attrs
-+    if not any(attrs.attrmask):
-+        fail("No child attributes in ADD notification")
-+    attrs.attrmask = bitmap4_to_int(attrs.attrmask)
-+    attr_dict = nfs4lib.fattr2dict(attrs)
-+    if FATTR4_SIZE in attr_dict and attr_dict[FATTR4_SIZE] != 0:
-+        fail("Expected size 0 for new file, got %d" % attr_dict[FATTR4_SIZE])
++    if evt.nad_new_entry.ne_file != env.testname(t):
++        fail("Wrong entry name in ADD notification")
 
 -- 
 2.54.0
