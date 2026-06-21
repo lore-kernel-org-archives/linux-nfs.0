@@ -1,106 +1,134 @@
-Received: from relay.hostedemail.com (smtprelay0013.hostedemail.com [216.40.44.13])
+Received: from out203-205-221-202.mail.qq.com (out203-205-221-202.mail.qq.com [203.205.221.202])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 664EA74BE1;
-	Sun, 21 Jun 2026 10:39:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=216.40.44.13
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 95B661B4223
+	for <linux-nfs@vger.kernel.org>; Sun, 21 Jun 2026 11:08:00 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=203.205.221.202
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782038355; cv=none; b=VbgtBVqJ1l6tMSan5tH3KZjP6Jj5W66NQwDI08U5eZO+TNUxWGJTJKHKGP6GBk0WRAd4vEPITWDaBgneHpMWCNMKZlyEIUGKqRt+0sZZB38FYzhFUnbAnKqQoChdsgOu10smHklERHOPj+Td344KsLqtUgRKDF3wjxOSh3QdAuY=
+	t=1782040083; cv=none; b=A5u9WE8KpSoyMFupnhZCP4zJa9E03wVFb9P8WQ0Atrxcx71zRiIaoov3n28+tDXWVps6dnbe7flsmnvHK1UkFMHMd1VIUDeUabIhUBXbvdkpunibGeMPcgX9Nho+PL6u2H91v73L6bNwKGe8Exj7GLlQyg1hVy6MQrgY0hLyBkI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782038355; c=relaxed/simple;
-	bh=vG8e9limOnj0jrCGh5nGVxswyihBpxRX/4JwXlAAtP4=;
-	h=Date:From:To:CC:Subject:In-Reply-To:References:Message-ID:
-	 MIME-Version:Content-Type; b=AbQoSgQPGMGaEYn07z1GhB8n9P6YE3OEfdUDhXs1LoyPeVG6t8exqvYWsPQek3pxdQEeYL/yoDHzFbN6fcODYVSI5LomLMatLJZwmIVc1GbKm4ggEXm+0g93Qm83eYKeEONoMVCI3PjdCpV925c6F78nqLkWgLOMBTaXrCPvmrE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=goodmis.org; spf=pass smtp.mailfrom=goodmis.org; arc=none smtp.client-ip=216.40.44.13
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=goodmis.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=goodmis.org
-Received: from omf15.hostedemail.com (lb01a-stub [10.200.18.249])
-	by unirelay05.hostedemail.com (Postfix) with ESMTP id A4F80403B5;
-	Sun, 21 Jun 2026 10:39:03 +0000 (UTC)
-Received: from [HIDDEN] (Authenticated sender: rostedt@goodmis.org) by omf15.hostedemail.com (Postfix) with ESMTPA id A063517;
-	Sun, 21 Jun 2026 10:38:58 +0000 (UTC)
-Date: Sun, 21 Jun 2026 11:38:55 +0100
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Thomas Gleixner <tglx@kernel.org>, Steven Rostedt <rostedt@kernel.org>,
- linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org
-CC: Masami Hiramatsu <mhiramat@kernel.org>, Mark Rutland <mark.rutland@arm.com>,
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
- Andrew Morton <akpm@linux-foundation.org>,
- Linus Torvalds <torvalds@linux-foundation.org>,
- Sebastian Andrzej Siewior <bigeasy@linutronix.de>,
- John Ogness <john.ogness@linutronix.de>,
- Peter Zijlstra <peterz@infradead.org>, Julia Lawall <julia.lawall@inria.fr>,
- Yury Norov <yury.norov@gmail.com>, linux-doc@vger.kernel.org,
- linux-kbuild@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
- dri-devel@lists.freedesktop.org, linux-stm32@st-md-mailman.stormreply.com,
- linux-arm-kernel@lists.infradead.org, linux-rdma@vger.kernel.org,
- linux-usb@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-nfs@vger.kernel.org, kvm@vger.kernel.org,
- intel-gfx@lists.freedesktop.org
-Subject: =?US-ASCII?Q?Re=3A_=5BPATCH_2/2=5D_tracing=3A_Add_CONFIG=5FTRA?=
- =?US-ASCII?Q?CE=5FPRINTK=5FDEBUGGING_to_clean_up_kernel=2Eh?=
-User-Agent: K-9 Mail for Android
-In-Reply-To: <87ik7cmcb7.ffs@fw13>
-References: <20260621093430.264983361@kernel.org> <20260621093811.168514984@kernel.org> <87ik7cmcb7.ffs@fw13>
-Message-ID: <65FD4729-3DEB-44BF-B085-1F72A0B7BF3A@goodmis.org>
+	s=arc-20240116; t=1782040083; c=relaxed/simple;
+	bh=wQkY7Ijq+XfY+3Qp92kQkGFCps/T7vh1Eb5Fe3/3pbY=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=nZVjvmXvb8QEpy+yHq59EH2ZbeUOEKYQHI4Pc9N5s/mLPO0PwlXKQMNEoFentHhFbBBMUH+VXGZweoaIskXTafEneaJ7JuLkWAHUJV0IP8XkX/teWxaotvoTmmcLqoQQSOIstwjie3KJ5wtqU0Jh845zKQjxhTRWBYJESasL/Tw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com; spf=pass smtp.mailfrom=qq.com; dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b=aZkRnzDd; arc=none smtp.client-ip=203.205.221.202
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=qq.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=qq.com
+Authentication-Results: smtp.subspace.kernel.org;
+	dkim=pass (1024-bit key) header.d=qq.com header.i=@qq.com header.b="aZkRnzDd"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1782040072; bh=SIzBWfCGvZZ506+bVmddWKFp8q2yW+3HA55xMUGvWq8=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To;
+	b=aZkRnzDdHL/pgDJbUybuKbIp5Gt7XU4v3ht3R2000tiaDbTtbaYAaJILlPp77S4oU
+	 7ajRVdFI6l9po2ETLo2PcTXAQwEH4yUPwFiFkfXmf2IyRUkehxbWKKZXBUnZGcPnL6
+	 2yI9UEpEEGYRHs8ETaIWKRqVecYb5tazH9+lu2O4=
+Received: from [192.168.3.157] ([115.156.144.140])
+	by newxmesmtplogicsvrszb43-0.qq.com (NewEsmtp) with SMTP
+	id 1F18C6E9; Sun, 21 Jun 2026 19:07:49 +0800
+X-QQ-mid: xmsmtpt1782040069trko198w1
+Message-ID: <tencent_7C446FB89D462E14FD321DDEB9E47B640A07@qq.com>
+X-QQ-XMAILINFO: M3jS6eb8GJX6HqaTpA0JUjK3ATmUtm77/uXmUYS+Qo1vnfHXEHjlzOv/ph/rTz
+	 QgqcIsDg2aWSHpHg3f5MZrWxWLIoYE250EQDj97cTMO3sKFcVsxco4rm5tfQIaHZxyZmkYzzeTVo
+	 x9vlv4NpPmxkoZ8m0bolbEfb8ytfHAAFZqiJMULBQN04GuCi9m3Jwtzourb9aXjTQ+pbs7ks42Nv
+	 8Wm7Ouqv6MU6ZfJzrTvXCrRWo+tKTQihzkfuH9suwDraVIMMyG8Rwl1Pz/H5B+RXUN3zShHgPu19
+	 HxOksYsHL9M6Q8cZeMKb3fcXWb3e0JJg1rdJXR4q67SLNzo+hcZSbEErJzTXe9zKuq30ljda6JMo
+	 1FBLo8d2AsVakSJwbZpseyaMxySrp1nx4DE6cz5k8nc9Q/Ckxc+wNg/btP71Lem75EChkl1/2FDz
+	 T6JFovvfzK0U/TsZKf0e3DyIDk2X+L0hpfWjx9c0DzSX5wuHpbiZQQ79FGbr+7VvtRWGnU+1g/Og
+	 YvtBoYfvYrRm2QvlF8JnXDanszcbV41PrawhBNs91Hq5UwSHYLKTfwSEEiObxxshMuoQOQKypjN+
+	 aMGJxBSw3eBotKrnApjd+mxu9jvJBqrN0cIlXBjiMklyyYbSyNT0SnOD6MUTRRSt1l9qxuqx+u1m
+	 WxUzART0Y5PAUWnWOLrbSPc/FhFoWOGy65Tzsbe8JvwbTcFhPGf1Aqft3rDVS2GIF7+rHWAnTE3i
+	 DFCBOyKdFc4+iyltT9nhfUG/DILiPy6DUBgBkKLPmpqhigCDHmJ6Cy9SgrvLPyFILp3S/8J1EogP
+	 YoemZgGZOV8y7bibSBdgP3l8Ys6PbhLJSy2ds/WDdKbW49TbebKnqfDa4bRk0NdnBLjLnuCA83+Y
+	 /Cozlu5st5FaCwEG9s4Vz6/vm39nLL0+/3TQ1t80ClJPX1wGe+1uhueXdxpt3vdx9xKgj+C5USmS
+	 9R3Z/BEjpOcoQE+MTx8jQl6taJvA262WxdVn20u47HFfm3jUwsle5e18aN4/I54gGcU4kShx1sD6
+	 Ksv6FaCLBN7gjqLOVHUXbo6HzkQYWpQW9Q2xds11UMM8N52ckeqCJbkJNz9TPAFfAnhR98Jcrwm1
+	 1FWXWmoUys7IYtDukrrDjrvQy33V4/WNHOWe0yycmYynLSHPAE9rthKoyFvA==
+X-QQ-XMRINFO: NI4Ajvh11aEjEMj13RCX7UuhPEoou2bs1g==
+X-OQ-MSGID: <587f7c95-4c6b-4d42-b73b-f008afb3fa22@qq.com>
+Date: Sun, 21 Jun 2026 19:07:47 +0800
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain;
- charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-X-Stat-Signature: 1rpq566iuu696tbe6de19udoqya4ijdw
-X-Rspamd-Server: rspamout02
-X-Rspamd-Queue-Id: A063517
-X-Session-Marker: 726F737465647440676F6F646D69732E6F7267
-X-Session-ID: U2FsdGVkX1+altd1Yz9Y3NVTA4Q+RMlDrpJ2CoeKO4s=
-X-HE-Tag: 1782038338-801961
-X-HE-Meta: U2FsdGVkX1+UIJ7kmLtbV5k3wlv8csQwDalYtg7WqKufnOv7be+VuRDa3ft8H3X3zzwfr+uJaQZNz0sDC4oyI98+t0mZe8z4QM7YVjOJ7k9IvaQO5X/gwLzm/T/snIDf9B1tqJjVQMbg/Fnqr36PDksXLybxk5Wk4szMxT0dI7RGk8YrmbCkpbiPzakXtErPJu/4LvGLwyxtHWX9zek973SlOgxvLlgqkXDRAT2+DqJr5WMtzWdQf68LXDneXrIH36GLwhtQHs9JqXlxGiQxIii+hAq+RQvxokuLaf3ukb8Kl6fOR60wgmpjUFzbMjevVHTotC5pRIjw762yNXa4cwdML3kSKjmj+IzsGxPuo8Puez99eB9siQ==
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/3] NFSD: Prevent post-shutdown use-after-free in
+ unlock_filesystem
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: Musaab Khan <musaab.khan@protonmail.com>, linux-nfs@vger.kernel.org
+References: <20260613-unlock-filesystem-uaf-v1-0-462b9bec8c84@kernel.org>
+ <20260613-unlock-filesystem-uaf-v1-1-462b9bec8c84@kernel.org>
+From: XIAO WU <xiaowu.417@qq.com>
+In-Reply-To: <20260613-unlock-filesystem-uaf-v1-1-462b9bec8c84@kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
+
+Hi Chuck,
+
+I came across a Sashiko AI code review [1] that flagged a remaining
+issue in `write_unlock_fs()` — the `nn->nfsd_serv` check is not
+sufficient to guarantee that `nfsd_startup_net()` has run and
+allocated the state tables.
+
+I was able to trigger it in QEMU with KASAN: creating an NFSD listener
+via portlist sets `nn->nfsd_serv`, but without starting any threads,
+`nfsd_startup_net()` never runs.  Writing to unlock_filesystem then
+calls `nfsd4_cancel_copy_by_sb()` which dereferences the uninitialized
+`nfs4_client` hashtable → NULL pointer dereference.
+
+On Tue, Jun 13, 2026 at 03:26:33PM -0400, Chuck Lever wrote:
+ > Writing a filesystem path to /proc/fs/nfsd/unlock_filesystem runs
+ > nfsd4_cancel_copy_by_sb() before nfsd_mutex is held. This commit moves
+ > the async COPY cancel into the nfsd_mutex protected section after
+ > checking nn->nfsd_serv to prevent a use-after-free.
+
+This correctly protects against the post-shutdown UAF, but
+`nn->nfsd_serv` can be non-NULL while `nfsd_startup_net()` has not
+yet been called.  The sequence is:
+
+   echo 2049 > /proc/fs/nfsd/portlist    # sets nn->nfsd_serv
+   # threads are still 0 — nfsd_startup_net() never ran
+   echo /mnt > /proc/fs/nfsd/unlock_filesystem  # passes nn->nfsd_serv check
+
+`nfsd4_cancel_copy_by_sb()` then iterates `nn->nfs4_client_hashtbl`,
+which was allocated by `nfsd_startup_net()` and is still NULL.
+
+[Reproduction]
+
+Create a listener without starting threads, then write to
+unlock_filesystem:
+
+   echo 2049 > /proc/fs/nfsd/portlist
+   mount -t nfsd nfsd /proc/fs/nfsd
+   echo /mnt > /proc/fs/nfsd/unlock_filesystem
+
+[KASAN report — kernel 7.1.0-rc7-next-20260612, CONFIG_KASAN=y]
+
+   Oops: general protection fault, probably for non-canonical address
+   0xdffffc0000000000: 0000 [#1] SMP KASAN NOPTI
+   KASAN: null-ptr-deref in range [0x0000000000000000-0x0000000000000007]
+
+   RIP: 0010:nfsd4_cancel_copy_by_sb+0x184/0xa70
+   Call Trace:
+    <TASK>
+    write_unlock_fs+0x3ab/0x4f0
+    nfsctl_transaction_write+0xfd/0x180
+    vfs_write+0x2a5/0x11b0
+    ksys_write+0x12f/0x250
+    do_syscall_64+0x129/0x880
+    entry_SYSCALL_64_after_hwframe+0x77/0x7f
+
+The crash is at offset 0x184 inside `nfsd4_cancel_copy_by_sb()`,
+dereferencing a NULL hashtable pointer (`RAX: 0x0000000000000000`).
+
+[1] 
+https://sashiko.dev/#/patchset/20260613-unlock-filesystem-uaf-v1-0-462b9bec8c84%40kernel.org
+     (Sashiko AI code review — "Null Pointer Dereference", Severity: High)
+
+Thanks,
+XIAO
 
 
-
-On June 21, 2026 11:13:00 AM GMT+01:00, Thomas Gleixner <tglx@kernel=2Eorg=
-> wrote:
->On Sun, Jun 21 2026 at 05:34, Steven Rostedt wrote:
->> Instead of having trace_printk=2Eh included in kernel=2Eh, create a con=
-fig
->> TRACE_PRINTK_DEBUGGING that when set will update the CFLAGS in the
->> Makefile to allow developers to add trace_printk() without the need to =
-add
->> the include for it=2E Having it included in the Makefile keeps it from =
-being
->> in the dependency chain and it will not waste extra CPU cycles for thos=
-e
->> building the kernel without using trace_printk=2E
->
->IOW, you make it worse just because=2E
->
->With the header being separate I add the three trace_printk()s and the
->include to the source file I'm investigating=2E The recompile will build
->exactly this source file=2E
->
->Having to enable the config knob will result in a full kernel rebuild
->for no value=2E
->
->Seriously?
-
-Like having lockdep enabled, this would always be set in the development e=
-nvironment=2E It's not something to only enable when you need to add a trac=
-e_printk=2E If you don't want to rebuild everything, by all means add the i=
-nclude file by file=2E There's nothing preventing you to do that with this =
-solution=2E
-
--- Steve=20
-
-P=2ES=2E I'm replying on my phone as I'm in the London Tube=2E Thus why I'=
-m not trimming my email=2E
-
-
->
->Thanks,
->
->        tglx
->
