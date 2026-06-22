@@ -1,42 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49E292DA76C
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Jun 2026 11:57:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24E38274B2A
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Jun 2026 11:59:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782129451; cv=none; b=Ukns7gtYP0xfZp8PMQ63gJQakLhUQUmfRw6FOrjHuuIjxtBTbahEJm2hveWVMJ1N+ZK/taQ1xQ2wXe62x11Z1uqpRNW+Wwcy6r7k0buTHT8MRh0ugiAcT4uCnjYRzl+Q8TT6xLYuKeWXX7RpNhTwW73SGa6cHAbWHski725UD20=
+	t=1782129562; cv=none; b=Nn7KrFDiP6UFM0c28/ONsaM/kr6BJWJ24uafaAKuUVD46J1PTzb9plPNOVkZf1dolsqvcAvAGIWjDD2RUV2eu4JCOoS9oow6t121Y4dz9asGncNQg+bW2uCJqy9olwv2QaP0HZaSAvANSW57lPB4zGabIZr2udTZjmKLXnxTTG0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782129451; c=relaxed/simple;
-	bh=gqoXvT9Ga1ujwXhFEG1W2meKIw7oqtlcq9PGjREkPwM=;
+	s=arc-20240116; t=1782129562; c=relaxed/simple;
+	bh=hmRC8uh3q6fb50i8kvzlJ4O/7QwrmHfO9GGzohpmH2Q=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=gN1MLIwSZsAqFKL6uusppvHD6U1C+E6qDY8a9BKFHYZ4WEnrJLGvKknJs3NUQPkGqleO5Nnlx6JAWhOlH9rPS0d2+tG9m4Teu+vHOcUedc6mJyDNoiGhdEtyZFLPIx8rUC7VPZzOyoNwjbb/TlSiJ6vcSFIlECKrpqcjRpdZeUE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gOfOcHnA; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=fARYcyrvKG9YbK8bIRsvYZAAPyF+YT4VXaF6VWyhAWIqYtCEzr/6pn+0lm/DhNFYASIXyXp/xjUHRU1jtxVZWJKEoIRlvYFsvAcfiewn6fmOb2LYnrf3BufowaLUfpK0apiKXPc2V4/QXCPdKaO5Xp9+fiA+sEZgE7+sP4pXiSo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JGa1AVG6; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gOfOcHnA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5AC621F000E9;
-	Mon, 22 Jun 2026 11:57:29 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JGa1AVG6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2C23E1F000E9;
+	Mon, 22 Jun 2026 11:59:20 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782129450;
-	bh=XTPT6WVdFpwzrDH/wIA9jOcn5qNg/Y3DyfurGGZDh0U=;
+	s=k20260515; t=1782129560;
+	bh=J0VwTXkX2nxC9TXW9DQd2MSgNFm7D3wtEbZqHrjGtoY=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=gOfOcHnAmAgmI/5AxIBRV5LYv5GMy4Tdf4j8dOjuFul7m4X9ZJF+OmqhGIM4rxP7D
-	 jBWaJRv9qns7iuhCgyYNuRP5NYGm/IBTcE7a2Bx0fw9Tkgt1CyGSHIC9ca++jX+Kz9
-	 Em2myXFgW0DaUdgdVUxJ/FwGhxV4jde/T5+2buKdBFogzlATnfrbzHV7srN7L1GWTz
-	 a1EMT0swxUkdVQSf9qcymV3I1GXg6EkcQ+f4tbBLz/UOYUsM+BTE9DzYoxSVkJ5fAB
-	 EcHthPlkcxznwxZ25pKn2rh0Z4JjibUW2aYxsX+bNZuep2GtpOAb8Y9xt8L+TPnlJT
-	 3Vx/spfyoVafA==
-Message-ID: <8369948d3e01471c64d37182ddc6a2f1cdb0c473.camel@kernel.org>
-Subject: Re: [PATCH] NFSD: Guard admin state-revocation walks with
- NFSD_NET_UP
+	b=JGa1AVG6nSOgoUx7mi+2K6TDDFYvm7QpfvQ3VEwERTQejlgp/eUi7qzUjVpNdRIZZ
+	 jo039PH1lGtnlBlMIYcO16dNGiy7+zPEnNFLoLIoIodYPKjtvVhjUbO3kvsaLIKKM+
+	 f9oxmbHBjxbescuaacw9d8JHjNED7TaN+BN1U1nDK+RS/HOrJnqCOuHX8eWOburSdL
+	 PcBc9ooxReLj6Ht4XGokWj5MO24nRPbE1+BSvTIS+GteW17ugulQ0PNhPiK1KkeeVB
+	 g4oVVxLdubNr3WEbDLdISp1jDVXLEPVsyWFkpP3CI/RXMqu1RY0PSzyHx/zc6cllhh
+	 BMiVP2CGYKQww==
+Message-ID: <de822160263e860b3b85589372712cd5e9deabca.camel@kernel.org>
+Subject: Re: [PATCH] NFSD: Replace isdotent() macro
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neilb@ownmail.net>, Olga
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, XIAO WU <xiaowu.417@qq.com>
-Date: Mon, 22 Jun 2026 07:57:27 -0400
-In-Reply-To: <20260621162551.2469460-1-cel@kernel.org>
-References: <20260621162551.2469460-1-cel@kernel.org>
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 22 Jun 2026 07:59:18 -0400
+In-Reply-To: <20260621213535.539450-1-cel@kernel.org>
+References: <20260621213535.539450-1-cel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,62 +120,185 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2026-06-21 at 12:25 -0400, Chuck Lever wrote:
+On Sun, 2026-06-21 at 17:35 -0400, Chuck Lever wrote:
+> The VFS provides name_is_dot_dotdot() as the canonical helper for
+> recognizing the "." and ".." directory entries, and fs/ already uses
+> it widely. nfsd has instead carried its own open-coded isdotent()
+> macro that computes the same predicate for non-empty names, a needless
+> duplicate of shared functionality. The macro reads the first name byte
+> without first confirming the name is non-empty; name_is_dot_dotdot()
+> tests the length first, so it never touches a zero-length buffer.
+> Convert every isdotent() call site to the generic helper and remove the
+> macro.
+>=20
+> Signed-off-by: Chuck Lever <cel@kernel.org>
+> ---
+>  fs/nfsd/nfs3proc.c |  2 +-
+>  fs/nfsd/nfs3xdr.c  |  2 +-
+>  fs/nfsd/nfs4proc.c |  2 +-
+>  fs/nfsd/nfs4xdr.c  |  4 ++--
+>  fs/nfsd/nfsd.h     |  3 ---
+>  fs/nfsd/nfsproc.c  |  2 +-
+>  fs/nfsd/vfs.c      | 13 +++++++------
+>  7 files changed, 13 insertions(+), 15 deletions(-)
+>=20
+> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+> index 42adc5461db0..a14827cfeeb8 100644
+> --- a/fs/nfsd/nfs3proc.c
+> +++ b/fs/nfsd/nfs3proc.c
+> @@ -265,7 +265,7 @@ nfsd3_create_file(struct svc_rqst *rqstp, struct svc_=
+fh *fhp,
+> =20
+>  	trace_nfsd_vfs_create(rqstp, fhp, S_IFREG, argp->name, argp->len);
+> =20
+> -	if (isdotent(argp->name, argp->len))
+> +	if (name_is_dot_dotdot(argp->name, argp->len))
+>  		return nfserr_exist;
+>  	if (!(iap->ia_valid & ATTR_MODE))
+>  		iap->ia_mode =3D 0;
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index 2ff9a991a8fb..e481804bb120 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -987,7 +987,7 @@ compose_entry_fh(struct nfsd3_readdirres *cd, struct =
+svc_fh *fhp,
+>  	dparent =3D cd->fh.fh_dentry;
+>  	exp  =3D cd->fh.fh_export;
+> =20
+> -	if (isdotent(name, namlen)) {
+> +	if (name_is_dot_dotdot(name, namlen)) {
+>  		if (namlen =3D=3D 2) {
+>  			dchild =3D dget_parent(dparent);
+>  			/*
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 907b899a90da..654705d1dd37 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -259,7 +259,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
+fh *fhp,
+>  	__be32 status;
+>  	int host_err;
+> =20
+> -	if (isdotent(open->op_fname, open->op_fnamelen))
+> +	if (name_is_dot_dotdot(open->op_fname, open->op_fnamelen))
+>  		return nfserr_exist;
+>  	if (!(iap->ia_valid & ATTR_MODE))
+>  		iap->ia_mode =3D 0;
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 2a0946c630e1..8db16a30d971 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -98,7 +98,7 @@ check_filename(char *str, int len)
+>  		return nfserr_inval;
+>  	if (len > NFS4_MAXNAMLEN)
+>  		return nfserr_nametoolong;
+> -	if (isdotent(str, len))
+> +	if (name_is_dot_dotdot(str, len))
+>  		return nfserr_badname;
+>  	for (i =3D 0; i < len; i++)
+>  		if (str[i] =3D=3D '/')
+> @@ -4241,7 +4241,7 @@ nfsd4_encode_entry4(void *ccdv, const char *name, i=
+nt namlen,
+>  	__be32 nfserr =3D nfserr_toosmall;
+> =20
+>  	/* In nfsv4, "." and ".." never make it onto the wire.. */
+> -	if (name && isdotent(name, namlen)) {
+> +	if (name && name_is_dot_dotdot(name, namlen)) {
+>  		cd->common.err =3D nfs_ok;
+>  		return 0;
+>  	}
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index 7c009f07c90b..faf5c1dafa42 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -372,9 +372,6 @@ enum {
+>  #define	nfserr_symlink_not_dir	cpu_to_be32(NFSERR_SYMLINK_NOT_DIR)
+>  };
+> =20
+> -/* Check for dir entries '.' and '..' */
+> -#define isdotent(n, l)	(l < 3 && n[0] =3D=3D '.' && (l =3D=3D 1 || n[1] =
+=3D=3D '.'))
+> -
+>  #ifdef CONFIG_NFSD_V4
+> =20
+>  /* before processing a COMPOUND operation, we have to check that there
+> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+> index 8873033d1e82..846506445ff9 100644
+> --- a/fs/nfsd/nfsproc.c
+> +++ b/fs/nfsd/nfsproc.c
+> @@ -298,7 +298,7 @@ nfsd_proc_create(struct svc_rqst *rqstp)
+>  	/* Check for NFSD_MAY_WRITE in nfsd_create if necessary */
+> =20
+>  	resp->status =3D nfserr_exist;
+> -	if (isdotent(argp->name, argp->len))
+> +	if (name_is_dot_dotdot(argp->name, argp->len))
+>  		goto done;
+>  	hosterr =3D fh_want_write(dirfhp);
+>  	if (hosterr) {
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index eafdf7b7890f..73506e924dc3 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -255,7 +255,7 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc=
+_fh *fhp,
+>  	exp =3D exp_get(fhp->fh_export);
+> =20
+>  	/* Lookup the name, but don't follow links */
+> -	if (isdotent(name, len)) {
+> +	if (name_is_dot_dotdot(name, len)) {
+>  		if (len=3D=3D1)
+>  			dentry =3D dget(dparent);
+>  		else if (dparent !=3D exp->ex_path.dentry)
+> @@ -1867,7 +1867,7 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *=
+fhp,
+> =20
+>  	trace_nfsd_vfs_create(rqstp, fhp, type, fname, flen);
+> =20
+> -	if (isdotent(fname, flen))
+> +	if (name_is_dot_dotdot(fname, flen))
+>  		return nfserr_exist;
+> =20
+>  	err =3D fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_NOP);
+> @@ -1969,7 +1969,7 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh =
+*fhp,
+>  	if (!flen || path[0] =3D=3D '\0')
+>  		goto out;
+>  	err =3D nfserr_exist;
+> -	if (isdotent(fname, flen))
+> +	if (name_is_dot_dotdot(fname, flen))
+>  		goto out;
+> =20
+>  	err =3D fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
+> @@ -2046,7 +2046,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ff=
+hp,
+>  	if (!len)
+>  		goto out;
+>  	err =3D nfserr_exist;
+> -	if (isdotent(name, len))
+> +	if (name_is_dot_dotdot(name, len))
+>  		goto out;
+> =20
+>  	err =3D nfs_ok;
+> @@ -2157,7 +2157,8 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *=
+ffhp, char *fname, int flen,
+>  	tdentry =3D tfhp->fh_dentry;
+> =20
+>  	err =3D nfserr_perm;
+> -	if (!flen || isdotent(fname, flen) || !tlen || isdotent(tname, tlen))
+> +	if (!flen || name_is_dot_dotdot(fname, flen) ||
+> +	    !tlen || name_is_dot_dotdot(tname, tlen))
+>  		goto out;
+> =20
+>  	err =3D nfserr_xdev;
+> @@ -2279,7 +2280,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *=
+fhp, int type,
+>  	trace_nfsd_vfs_unlink(rqstp, fhp, fname, flen);
+> =20
+>  	err =3D nfserr_acces;
+> -	if (!flen || isdotent(fname, flen))
+> +	if (!flen || name_is_dot_dotdot(fname, flen))
+>  		goto out;
+>  	err =3D fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_REMOVE);
+>  	if (err)
 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 11bbc7e8210c..29d68abfa5c8 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -296,14 +296,15 @@ static ssize_t write_unlock_fs(struct file *file, c=
-har *buf, size_t size)
->  	 * 2.  Is that directory a mount point, or
->  	 * 3.  Is that directory the root of an exported file system?
->  	 */
-> -	nfsd4_cancel_copy_by_sb(netns(file), path.dentry->d_sb);
->  	error =3D nlmsvc_unlock_all_by_sb(path.dentry->d_sb);
->  	mutex_lock(&nfsd_mutex);
->  	nn =3D net_generic(netns(file), nfsd_net_id);
-> -	if (nn->nfsd_serv)
-> +	if (nn->nfsd_serv) {
-> +		nfsd4_cancel_copy_by_sb(netns(file), path.dentry->d_sb);
->  		nfsd4_revoke_states(nn, path.dentry->d_sb);
-> -	else
-> +	} else {
->  		error =3D -EINVAL;
-> +	}
->  	mutex_unlock(&nfsd_mutex);
-
-Can nn->nfsd_serv be non-NULL while the NFSv4 state tables are still
-NULL? Looking at nfsd_create_serv() in nfssvc.c, it sets nn->nfsd_serv
-when a listener is added via portlist or netlink, and that path does not
-run nfsd_startup_net().
-
-nfsd_startup_net() is what calls nfs4_state_start_net() which allocates
-nn->conf_id_hashtbl in nfs4_state_create_net(). Until threads are started,
-nn->nfsd_net_up stays false and the hashtables stay NULL.
-
-In that startup window, write_unlock_fs() would pass the nn->nfsd_serv
-check and then call nfsd4_cancel_copy_by_sb():
-
-fs/nfsd/nfs4proc.c:nfsd4_cancel_copy_by_sb() {
-    ...
-    spin_lock(&nn->client_lock);
-    for (idhashval =3D 0; idhashval < CLIENT_HASH_SIZE; idhashval++) {
-        struct list_head *head =3D &nn->conf_id_hashtbl[idhashval];
-        ...
-
-Would this dereference a NULL conf_id_hashtbl and trigger the null-ptr-dere=
-f
-reported in the thread? The KASAN trace shows RIP in nfsd4_cancel_copy_by_s=
-b
-at offset 0x184 with RAX 0, which matches the head pointer load.
-
-The same pattern applies to nfsd4_revoke_states() which walks the same
-table, and to nfsd_nl_unlock_filesystem_doit() in the netlink path.
-
-Would checking nn->nfsd_net_up instead of nn->nfsd_serv be more accurate
-here, since nfsd_net_up is set at the tail of nfsd_startup_net() exactly
-when the state tables become valid?
-
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
