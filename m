@@ -1,93 +1,99 @@
-Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ot1-f50.google.com (mail-ot1-f50.google.com [209.85.210.50])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EEC840D596;
-	Mon, 22 Jun 2026 08:54:12 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13B383998AE
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Jun 2026 11:23:48 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.50
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782118454; cv=none; b=tV2P8WECAXZbyl/5HlOSVgPbqttOdeL8CKbw7P17BpFxwPSinyd/f9DHckxKkaco2V+VNOkjGE3cDIpqsiShiJBL/cM+HFFx4HtKT35dgraYPB+PhXd3hiqLZYKaQ7GILVl5icPH3ZNeurEu4S4hzGAKbi9UJaXvTv4UFKurY9w=
+	t=1782127430; cv=none; b=NwCfOH8+TBrNWo/1kVLNUEfLNKFbu9w9t4GBJrcQ1GAqVEhPhVKME323OXTBmpuBk3iHCaaBFtQG3ADZQD8FTwQaGCdxRwZR2Dj42Kb40tHzMFXCEL39yy1bmjTLda5tInoryfCR7pSua4yyQJw6gFdXblyOtBL+ySZXze4xZM0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782118454; c=relaxed/simple;
-	bh=OAWmV8skIxMVw/WDm7TlekxPmF8xJMXvHUg1xzxkcD0=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=OjWViWBEWY75Dib0nocssY8HZ0CJB8m/hrsROFYW8Sf4dP2guecWBadIQJa4MR4ds/C9Wm6Bfd0hQt6KzYgd8HBkH4gBBq2LjXfzoTK1Pv91XV1Rwag8YNs39JK1gcr1XWfRpggsnAUdhRpQuyV+IIlY/F1DjFjzL3Qsypw8mVk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=TuPlTRCU; arc=none smtp.client-ip=90.155.50.34
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
+	s=arc-20240116; t=1782127430; c=relaxed/simple;
+	bh=cO02jLM/sX3PxApH0smnLkC73bA09isiSv76kmh21do=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version:Content-Type; b=Zg5wO65SqllKALwyKNm+WIscSWGqIkq88/kbAUPNhGdry3g4VveZK9BgyoCloodrx5TFdPANr8DtK6uHnK2UPAspxP6rS2WTEdT2FYAzIwcDFiVVg4sQo1DWgwDLiJlLkc9NIJmW1vdFZznHnM1X7ygFxoqjS1nv8FnInYJDpdw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=KblrSsBX; arc=none smtp.client-ip=209.85.210.50
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="TuPlTRCU"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=y2+mOP/j6lYd9qVyAamBJsy1djQW4CKGJJUDwRnuyXs=; b=TuPlTRCUatJuuJgUUAwvzHwMKv
-	dWwVfsTqUjTJh9SX5fPBCQGdiQcrZu7Ws4gSZKgN7rA0kNKxui7b5LEtKWEEQDe4V7j5A8N0jYuRY
-	uas/iKoJjFjR3gKpo0uOWWxjsbSNbU4N4b8MGJpMvU190ZELYDlzfAoftHa96t+aSCVqbpoMUbpfL
-	uOWtb+WeGCTtTYOdcuf3kQ/LcfWhZsQK+C/ri3C/zOHCtiyE1n8uDvDi3TDA+Xy225DqvitJuIeN0
-	RneapmfngTU0PhOUCG9gkRpGwiGc3BAbq6jkG1ZvAJCnP1chuakPaLn4PyoFg+CyhHRv/kOJ0Ywl3
-	cXoCNRYg==;
-Received: from 77-249-17-252.cable.dynamic.v4.ziggo.nl ([77.249.17.252] helo=noisy.programming.kicks-ass.net)
-	by casper.infradead.org with esmtpsa (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wba77-00000003u7U-1iUV;
-	Mon, 22 Jun 2026 08:34:42 +0000
-Received: by noisy.programming.kicks-ass.net (Postfix, from userid 1000)
-	id 52395300B5F; Mon, 22 Jun 2026 10:34:40 +0200 (CEST)
-Date: Mon, 22 Jun 2026 10:34:40 +0200
-From: Peter Zijlstra <peterz@infradead.org>
-To: Steven Rostedt <rostedt@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org,
-	Masami Hiramatsu <mhiramat@kernel.org>,
-	Mark Rutland <mark.rutland@arm.com>,
-	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Sebastian Andrzej Siewior <bigeasy@linutronix.de>,
-	John Ogness <john.ogness@linutronix.de>,
-	Thomas Gleixner <tglx@kernel.org>,
-	Julia Lawall <julia.lawall@inria.fr>,
-	Yury Norov <yury.norov@gmail.com>, linux-doc@vger.kernel.org,
-	linux-kbuild@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
-	dri-devel@lists.freedesktop.org,
-	linux-stm32@st-md-mailman.stormreply.com,
-	linux-arm-kernel@lists.infradead.org, linux-rdma@vger.kernel.org,
-	linux-usb@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-nfs@vger.kernel.org, kvm@vger.kernel.org,
-	intel-gfx@lists.freedesktop.org
-Subject: Re: [PATCH 0/2] tracing: Move trace_printk.h out of kernel.h
-Message-ID: <20260622083440.GX49951@noisy.programming.kicks-ass.net>
-References: <20260621093430.264983361@kernel.org>
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="KblrSsBX"
+Received: by mail-ot1-f50.google.com with SMTP id 46e09a7af769-7e93e0a3364so2013185a34.3
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Jun 2026 04:23:48 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1782127428; x=1782732228; darn=vger.kernel.org;
+        h=mime-version:references:in-reply-to:message-id:date:subject:cc:to
+         :from:from:to:cc:subject:date:message-id:reply-to;
+        bh=cO02jLM/sX3PxApH0smnLkC73bA09isiSv76kmh21do=;
+        b=KblrSsBXtafZ1DBp8YYJIPsqO89QH+yxCrcaFuxVjXq23msNMPqpIugz9OoGNZ6twO
+         xHc/MO79RKMKyqGzgBey1AO+xzSxDo0fT0pSYnikmIMdfMlvW8cYEMGKF2yNP5qjSBbe
+         sRNd01qcZTp08aN04bJW6bTfNGfcnUs/YLUYfpq9aezuOegZ1KLY73Lyp8UVWbnRRJlS
+         l6HZR8HHjyNHM2Rjk3Mfa0UTaUoKkKwnwwb7lK4gh4llNcSHjTobynHr4sUzIViUFCMH
+         yLZsDjI+I4IM6FI92lvI6arIjjO8Zv9hj7LXQ/u+TnFhfPxVo7tObmrjFJAgjjPNpOLW
+         Pl7A==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1782127428; x=1782732228;
+        h=mime-version:references:in-reply-to:message-id:date:subject:cc:to
+         :from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date:message-id
+         :reply-to;
+        bh=cO02jLM/sX3PxApH0smnLkC73bA09isiSv76kmh21do=;
+        b=BTpgiQli5vdUNhpijgHjt+Wbg9wJ1n2IwCinht6n3wF2pbuy06sHQFugFWwX1Hk6Q2
+         aKPkI/ZO3nMh9cNPKDlbh+iorMEQaFcQoaVyi8IkiBR08F6REWxJGBUMQJY4xKzzTwiY
+         1xqW+MzU7Sh4kM6nFMQB2E2PnGtOuZGki2mZC00QXwTM1jbMiQVRredPC+thB1/4460U
+         bq4pv7zuuZBN3iS2xDuuorv+/16anSb/D79gYwHU0pszbaOKdFmfu3scTa2aDPJW43Gx
+         AunMt54G0pAzuArIKcSpTWtPo209zF3Cm+w2LjgNzmEaSs2Gu9EMafds6U+/4OA/bbXE
+         PYFw==
+X-Forwarded-Encrypted: i=1; AFNElJ8a7oBEnRNeEWEmf8Hhol3Op36HPVSSjNNHqYkw5NSwCwFXDxZ1qPjp9P/oXcD30FgZlpbX3O/iVIY=@vger.kernel.org
+X-Gm-Message-State: AOJu0YzAFRV5AUNV57NTi4rW4qUH4Ps43w6cOMWIUhipC3d4y2SGmnEw
+	upO4Hp/ZJ/bQTUDjew6KmVI5aQncNqYPf778qnaF/zmarLpDHHKNPMCc7XB3S2qBATA=
+X-Gm-Gg: AfdE7cnnqs2jEeUakuObrUL3/GslBsdUC4pLiD1sywsARML8cMAabCE4ZIxiI6Bvrpp
+	kJNkk43CZfXAp3PLgUZTwHgGqMmfAXsHHIvwNMwibwXQ5MFeFrAhWG/Wf/BdusoZPk1TtkKFpz7
+	4fpHFJ6Y06XmPunbasdrXbwvjG3EWHPDP97mCn9I5h3VTTJzPOabMTwhSRw9v+O5OZq719yhiIY
+	+BYlkFrOzFgP4Pm3bk0vP0Wt3uICk5SacWK0YzdrPAE2cqLn6lyNnCJCyEXz1Hy8zSG91ETyhA/
+	ZsarpR/E8Qx7irUYxdSRY+vxYgDW4sIWWvfgpoKaCgD7WlbsGLzbKewJ0DqncXxFIV29DEfSWhz
+	fhhRMjqyHltcvk+nuujzB90yPtPtTItZadVIjzqscsjsoQXjDEcC7gcCaXjYgavHYs7xj0AO8tf
+	Pn8CqPUzrmwC9prQps/+OQCWuC51U4899KsYaOKkL2IDc=
+X-Received: by 2002:a05:6808:1717:b0:48b:1e49:24a8 with SMTP id 5614622812f47-48b1e493095mr7671785b6e.11.1782127427953;
+        Mon, 22 Jun 2026 04:23:47 -0700 (PDT)
+Received: from [192.168.254.51] ([66.97.168.37])
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-48aec0e5e53sm4403466b6e.8.2026.06.22.04.23.46
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 22 Jun 2026 04:23:46 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>,
+ linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+ linux-doc@vger.kernel.org
+Subject: Re: [PATCH 0/4] nfs: remove the fileid field from struct nfs_inode
+Date: Mon, 22 Jun 2026 07:23:44 -0400
+X-Mailer: MailMate (2.0r6272)
+Message-ID: <343F5ECC-7662-4301-8D89-ED039594EFF0@hammerspace.com>
+In-Reply-To: <20260512-nfsino-v1-0-284720522f4c@kernel.org>
+References: <20260512-nfsino-v1-0-284720522f4c@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260621093430.264983361@kernel.org>
+Content-Type: text/plain
 
-On Sun, Jun 21, 2026 at 05:34:30AM -0400, Steven Rostedt wrote:
-> There's been complaints about trace_printk() being defined in kernel.h as it
-> can increase the compilation time. As it is only used by some developers for
-> debugging purposes, it should not be in kernel.h causing lots of wasted CPU
-> cycles for those that do not ever care about it.
-> 
-> Instead, add a CONFIG_TRACE_PRINTK_DEBUGGING option that developers that do
-> use it can set and not have to always remember to add #include <linux/trace_printk.h>
-> to the files they add trace_printk() while debugging. It also means that
-> those that do not have that config set will not have to worry about wasted
-> CPU cycles as it is only include in the CFLAGS when the option is set, and
-> its completely ignored otherwise.
+On 12 May 2026, at 12:12, Jeff Layton wrote:
 
-Did you forget your C 101 class? If you use a function, you gotta
-include the relevant header.
+> v7.1-rc1 contains patches to make inode->i_ino to be a u64. With this
+> change, there is no need to keep a separate "fileid" field in struct
+> nfs_inode.
+>
+> This patchset eliminiates that field, and the inode number hashing
+> machinery that is no longer needed. This shaves 8 bytes off of each
+> nfs_inode.
+>
+> Trond/Anna: please consider this for v7.2.
+>
+> Assisted-by: Claude:claude-opus-4-6
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
 
-You don't see userspace saying: 'Hey, you know what, perhaps we should
-add stdio.h to every other header, just in case someone wants to
-printf()' either.
+Looks good,
+Reviewed-by: Benjamin Coddington <bcodding@hammerspace.com>
 
-I really don't understand your argument. Yes, maybe someone will forget
-and then either their editor (if they have a halfway modern setup with
-LSP enabled) or their build will complain, but so what? This is all
-trivial stuff, surely we have more pressing matters to concern outselves
-with?
+Ben
