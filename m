@@ -1,78 +1,191 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from 2.mo560.mail-out.ovh.net (2.mo560.mail-out.ovh.net [188.165.53.149])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B8E733CEA2;
-	Mon, 22 Jun 2026 16:52:04 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B4FA42BEC4E
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Jun 2026 18:03:38 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=188.165.53.149
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782147125; cv=none; b=m7duQFja7eQHu4lW779ji7JgVH5TgtlQcj8WbybBHd8/8cZ3rBWlKt+9G1rVixO4zEPipVhkbFeqcQSrZ8reMChMhBS0taleu8jmMNt8HtS+1y/dZvryrGPNE8X8UQA9k0FZlfkcypGvWkr+/yXpzb2G7pblqcpSbLirgwl82ks=
+	t=1782151424; cv=none; b=CuxVOOBGT+NtzFXWNd8P7oTp75Zz/N0llXF7NuGExkPqzr4Q56YUz2gbYW4nC2P6AlceYLsytNFBQ7gACmJcPmwZQZIdGJarQ50nguGnT1KwZ5UJHffszXW0BxvQX1FDvY0HKTFRZpZ+v3WZriZq9DPtKpP+OiKuH7CcUON+BhQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782147125; c=relaxed/simple;
-	bh=6+P9pSwfaRh/FJ2Ae5JWmxAni7SXDOgYmFtpbfKSAtY=;
-	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=gPkpG1A6L6WLr8KWB1r6iY2fmfDeVx30ixsSRN58DUXcA1a/XkmG+Mi5AL5XnnBjwsD+pOkrrlyqHvQO1MaXb3i2aoLRoZsYkql6QPDsF60/m99eFthU7idN6zAgqozv/+SA0Df+51SQLmeG4YYt7ACjO+iQAKD6j9BUX08ates=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=C4kpffoq; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1782151424; c=relaxed/simple;
+	bh=nwulTDzi+Eo0CIuDO5yxVG+mlsVeJZY6Ue1ApKi52ig=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=XVZoYozOV6kgsqjud2hUO982Li2JzIcVPzSrT+ynAmXxUIQwNYYPE6tLM5o+UoFLQNLY4JFC2BmoXz3xa/pF/NJa0b2IbR39jbNpI2anKiJHJb03igYPqUZGUJtAXjAsBsYva4sLXT2y7EmUq4ZfYHp3whv2HvJMg6WlnNgKGP4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=medichon.fr; spf=pass smtp.mailfrom=medichon.fr; dkim=pass (2048-bit key) header.d=medichon.fr header.i=@medichon.fr header.b=aoBnTfFo; arc=none smtp.client-ip=188.165.53.149
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=medichon.fr
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=medichon.fr
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="C4kpffoq"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BF0041F000E9;
-	Mon, 22 Jun 2026 16:51:58 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782147124;
-	bh=KXhjFgbhEvwE+7GGBfh7My0VIVq6OjTLQwMtEz0hufY=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References;
-	b=C4kpffoqKELHy6h2iIonBbM+lwHOlkqgrFXueJXDfdgl75fDx8nTrSA+oGiGyoeAm
-	 8CCy0uyoOREJUge4zC6mq+dv0w+QL43toIPSNlcNAZyZKDjugsy6al/c7V2Nxly4Pl
-	 B3u0wZw90AH5q2Vforbc/8novl4n4De9d7hKEY2j9fwmOHjRuuHlA8HYlkPOQSxTMr
-	 w8OjFxrmzo3xN9JG3zdPXZhL02HItS9kysxEXgHLRRSGAVfOqOYr/WF7zxLGK20H2R
-	 AQhZ61uSQFpPSM+xdZ5/Wi01z1P5qKOyIveeDb+LOtEbWIs/Vdg1dtFfhX3DZ+GRC2
-	 IABQXBNVHhFSA==
-Date: Mon, 22 Jun 2026 12:51:54 -0400
-From: Steven Rostedt <rostedt@kernel.org>
-To: Randy Dunlap <rdunlap@infradead.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, linux-kernel@vger.kernel.org,
- linux-trace-kernel@vger.kernel.org, Masami Hiramatsu <mhiramat@kernel.org>,
- Mark Rutland <mark.rutland@arm.com>, Mathieu Desnoyers
- <mathieu.desnoyers@efficios.com>, Andrew Morton
- <akpm@linux-foundation.org>, Linus Torvalds
- <torvalds@linux-foundation.org>, Sebastian Andrzej Siewior
- <bigeasy@linutronix.de>, John Ogness <john.ogness@linutronix.de>, Thomas
- Gleixner <tglx@kernel.org>, Julia Lawall <julia.lawall@inria.fr>, Yury
- Norov <yury.norov@gmail.com>, linux-doc@vger.kernel.org,
- linux-kbuild@vger.kernel.org, linuxppc-dev@lists.ozlabs.org,
- dri-devel@lists.freedesktop.org, linux-stm32@st-md-mailman.stormreply.com,
- linux-arm-kernel@lists.infradead.org, linux-rdma@vger.kernel.org,
- linux-usb@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-nfs@vger.kernel.org, kvm@vger.kernel.org,
- intel-gfx@lists.freedesktop.org
-Subject: Re: [PATCH 0/2] tracing: Move trace_printk.h out of kernel.h
-Message-ID: <20260622125154.6f5b9b33@fedora>
-In-Reply-To: <08b3c961-18bb-43d9-8d7f-8a87bcad0afa@infradead.org>
-References: <20260621093430.264983361@kernel.org>
-	<20260622083440.GX49951@noisy.programming.kicks-ass.net>
-	<08b3c961-18bb-43d9-8d7f-8a87bcad0afa@infradead.org>
-X-Mailer: Claws Mail 4.4.0 (GTK 3.24.52; x86_64-redhat-linux-gnu)
+	dkim=pass (2048-bit key) header.d=medichon.fr header.i=@medichon.fr header.b="aoBnTfFo"
+Received: from director6.ghost.mail-out.ovh.net (unknown [10.110.0.178])
+	by mo560.mail-out.ovh.net (Postfix) with ESMTP id 4gkbW852vHzB9SY
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Jun 2026 17:57:08 +0000 (UTC)
+Received: from ghost-submission-7d8d68f679-ghq26 (unknown [10.110.188.223])
+	by director6.ghost.mail-out.ovh.net (Postfix) with ESMTPS id 72CC2801BD;
+	Mon, 22 Jun 2026 17:57:08 +0000 (UTC)
+Received: from medichon.fr ([37.59.142.101])
+	by ghost-submission-7d8d68f679-ghq26 with ESMTPSA
+	id evTZOl53OWrOIhsAiGv3aQ:T3
+	(envelope-from <abo@medichon.fr>); Mon, 22 Jun 2026 17:57:08 +0000
+Authentication-Results:garm.ovh; auth=pass (GARM-101G0048659a29e-a52b-4aa1-93ee-e3dc34bb6b13,
+                    7290A200C2C875F1DE80999D0334B60B5F55D5D1) smtp.auth=abo@medichon.fr
+X-OVh-ClientIp:88.190.90.129
+From: Arnaud Bonnet <abo@medichon.fr>
+To: trondmy@kernel.org,
+	anna@kernel.org
+Cc: linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	code@agatha.dev,
+	skhan@linuxfoundation.org,
+	me@brighamcampbell.com,
+	jkoolstra@xs4all.nl,
+	Arnaud Bonnet <abo@medichon.fr>
+Subject: [PATCH 2/2] nfs: refactor pNFS functions using clear_and_wake_up_bit
+Date: Mon, 22 Jun 2026 19:55:11 +0200
+Message-ID: <929ff54c0c212b22620d10e6d8bef2a01bc6fa30.1782148639.git.abo@medichon.fr>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <cover.1782148639.git.abo@medichon.fr>
+References: <cover.1782148639.git.abo@medichon.fr>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
+x-ovh-tracer-id: 8607504791617429086
+X-VR-SPAMSTATE: OK
+X-VR-SPAMSCORE: 0
+X-VR-SPAMCAUSE: dmFkZTEY6vVJqlsQ7805Av3UYlFmpVf0/jjD4WlfKU2L/XZIZkKnREVk33dSjev8frkzfuTED3MeqGVaXd1O2msw2GthCjbQ6ql/hUS10gUF4Pd0HXx1+aqL/HFwmYxAhTa8br3myS5JCeffUGh6ab6T/8VmZjSjgKWQPS6+Mm9fX/KIBuuTrYPhrhprYwYRqqCo3rQBOiR0B4d3YQpCF0iZtlssx81HqnZo40ShlrW45toMoHolN9SCwCKg8s07mReFtwcSiHgL5zueCidvUCCb699i7QfrSf/CgWjrF1ffcdctbVaazLqELkuw89buEXf+pR+Pv4rBGIsGQ9jhYQ5A5iCnbh7YketIYLj8LbSthXkzrNlMvkh4DiderIjjeCnAtdFUT0gE1G0kBd15gLjXvg7CwBMR7EaexVeGiWD07kyeUX5Uc2tm+MBBj5sR/SyJif8NPtnYOIfOltnEChfOY2Dmh4zk0XbeBRK7wez7X1hvdG9uxdjz2jSE7jnJbAzMSq5jJhjhgPHtpdbkmErZFwJEYi8SZl/anN/N0iqtwB6BXdz0wBt/1qEXnStxaTbodaBGe4vyJK2++Tn20b5Kq2GpObPoc6YwgxecTWZlUHfzTkZKH8i9pMDRUTbAR3Zo38VHFVyQi2QOHQXK1INF41zdWRFEL6fpFQu2cUkPxiwhRQ
+DKIM-Signature: a=rsa-sha256; bh=akmQC6Fqv9/jp8JQRHX0+7MKf1Fh9g8lAkcmkuiXV4c=;
+ c=relaxed/relaxed; d=medichon.fr; h=From; s=ovhmo3801317-selector1;
+ t=1782151028; v=1;
+ b=aoBnTfFoKXRR30GxEyFGtyDZHSuwpELAClX72XEsi0jwNyqkUDrZhNol8QhzmLjDBmVrnwZf
+ 5bMgYq7Zy9Izlx3UYSAYBIdrbZqU549iL04MqvxJzzSdSgzJ2XaSQNwA+SLPxdTjSvmjlFNgjIn
+ p/TYiJT2wZdrkKeSrKYei+Gyb2TsbBkwq5yjIKh0Xr3CWJIcEfRLOtyzqlt+jqQ2hLubQxfob51
+ 2oq2d1NGaRrxtMKN4dW7GC3P6r9b6hubpiJ0mbK1NgmhHvHpFEwQ32AHfqjUXJK7wq6htTzs3/e
+ SdVYA7E8zCiYro30jdCJlC1xcdyiiJMSZTW+ZRV1DQ65g==
 
-On Mon, 22 Jun 2026 09:40:45 -0700
-Randy Dunlap <rdunlap@infradead.org> wrote:
+Commit 8236b0ae31c83 ("bdi: wake up concurrent wb_shutdown() callers.")
+introduces the clear_and_wake_up_bit() helper as a wrapper for the
+common clear -> barrier -> wake up bitops sequence.
 
-> > Did you forget your C 101 class? If you use a function, you gotta
-> > include the relevant header.  
-> 
-> Also item #1 in Documentation/process/submit-checklist.rst.
+The file pnfs.c has several helpers with identical contents. Thus they
+are replaced with the more recent clean_and_wake_up_bit() global helper
+which describes accurately its effects at the call and still specifies
+the cleared bit. This also homogenizes the code with other subsystems.
 
-What is that? Remove all trace_printk()s before you submit?
+Since the helpers are no longer used after this, they can be safely
+removed.
 
-Because that is what you should do. But now you also need to remember
-to remove the include <linux/trace_printk.h> too. Or, I guess if
-someone uses it a lot, they may just keep it in their files without the
-trace_printk()s.
+Suggested-by: Agatha Isabelle Moreira <code@agatha.dev>
+Link: https://kernelnewbies.org/Beginner%20Cleanup%20and%20Refactor%20Tasks%20by%20Agatha%20Isabelle%20Moreira#task_007
+Signed-off-by: Arnaud Bonnet <abo@medichon.fr>
+---
+ fs/nfs/pnfs.c | 35 ++++++++++-------------------------
+ 1 file changed, 10 insertions(+), 25 deletions(-)
 
--- Steve
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 743467e9ba20..96ee18af1ebf 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2100,15 +2100,6 @@ static bool pnfs_is_first_layoutget(struct pnfs_layout_hdr *lo)
+ 	return test_bit(NFS_LAYOUT_FIRST_LAYOUTGET, &lo->plh_flags);
+ }
+ 
+-static void pnfs_clear_first_layoutget(struct pnfs_layout_hdr *lo)
+-{
+-	unsigned long *bitlock = &lo->plh_flags;
+-
+-	clear_bit_unlock(NFS_LAYOUT_FIRST_LAYOUTGET, bitlock);
+-	smp_mb__after_atomic();
+-	wake_up_bit(bitlock, NFS_LAYOUT_FIRST_LAYOUTGET);
+-}
+-
+ static void _add_to_server_list(struct pnfs_layout_hdr *lo,
+ 				struct nfs_server *server)
+ {
+@@ -2284,7 +2275,8 @@ pnfs_update_layout(struct inode *ino,
+ 					iomode, lo, lseg,
+ 					PNFS_UPDATE_LAYOUT_INVALID_OPEN);
+ 			nfs4_schedule_stateid_recovery(server, ctx->state);
+-			pnfs_clear_first_layoutget(lo);
++			clear_and_wake_up_bit(NFS_LAYOUT_FIRST_LAYOUTGET,
++				&lo->plh_flags);
+ 			pnfs_put_layout_hdr(lo);
+ 			goto lookup_again;
+ 		}
+@@ -2353,7 +2345,8 @@ pnfs_update_layout(struct inode *ino,
+ 			if (!exception.retry)
+ 				goto out_put_layout_hdr;
+ 			if (first)
+-				pnfs_clear_first_layoutget(lo);
++				clear_and_wake_up_bit(NFS_LAYOUT_FIRST_LAYOUTGET,
++					&lo->plh_flags);
+ 			trace_pnfs_update_layout(ino, pos, count,
+ 				iomode, lo, lseg, PNFS_UPDATE_LAYOUT_RETRY);
+ 			pnfs_put_layout_hdr(lo);
+@@ -2365,7 +2358,7 @@ pnfs_update_layout(struct inode *ino,
+ 
+ out_put_layout_hdr:
+ 	if (first)
+-		pnfs_clear_first_layoutget(lo);
++		clear_and_wake_up_bit(NFS_LAYOUT_FIRST_LAYOUTGET, &lo->plh_flags);
+ 	trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
+ 				 PNFS_UPDATE_LAYOUT_EXIT);
+ 	pnfs_put_layout_hdr(lo);
+@@ -2457,7 +2450,7 @@ static void _lgopen_prepare_attached(struct nfs4_opendata *data,
+ 	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid, &rng,
+ 					     nfs_io_gfp_mask());
+ 	if (!lgp) {
+-		pnfs_clear_first_layoutget(lo);
++		clear_and_wake_up_bit(NFS_LAYOUT_FIRST_LAYOUTGET, &lo->plh_flags);
+ 		nfs_layoutget_end(lo);
+ 		pnfs_put_layout_hdr(lo);
+ 		return;
+@@ -2561,7 +2554,8 @@ void nfs4_lgopen_release(struct nfs4_layoutget *lgp)
+ {
+ 	if (lgp != NULL) {
+ 		if (lgp->lo) {
+-			pnfs_clear_first_layoutget(lgp->lo);
++			clear_and_wake_up_bit(NFS_LAYOUT_FIRST_LAYOUTGET,
++				&lgp->lo->plh_flags);
+ 			nfs_layoutget_end(lgp->lo);
+ 		}
+ 		pnfs_layoutget_free(lgp);
+@@ -3273,15 +3267,6 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_readpages);
+ 
+-static void pnfs_clear_layoutcommitting(struct inode *inode)
+-{
+-	unsigned long *bitlock = &NFS_I(inode)->flags;
+-
+-	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
+-	smp_mb__after_atomic();
+-	wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
+-}
+-
+ /*
+  * There can be multiple RW segments.
+  */
+@@ -3306,7 +3291,7 @@ static void pnfs_list_write_lseg_done(struct inode *inode, struct list_head *lis
+ 		pnfs_put_lseg(lseg);
+ 	}
+ 
+-	pnfs_clear_layoutcommitting(inode);
++	clear_and_wake_up_bit(NFS_INO_LAYOUTCOMMITTING, &NFS_I(inode)->flags);
+ }
+ 
+ void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg)
+@@ -3446,7 +3431,7 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	spin_unlock(&inode->i_lock);
+ 	kfree(data);
+ clear_layoutcommitting:
+-	pnfs_clear_layoutcommitting(inode);
++	clear_and_wake_up_bit(NFS_INO_LAYOUTCOMMITTING, &NFS_I(inode)->flags);
+ 	goto out;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_layoutcommit_inode);
+-- 
+2.53.0
+
