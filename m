@@ -1,57 +1,57 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CDB925785C
-	for <linux-nfs@vger.kernel.org>; Thu, 25 Jun 2026 18:59:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 67A532D77F5
+	for <linux-nfs@vger.kernel.org>; Thu, 25 Jun 2026 19:32:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782413976; cv=none; b=GlgcK6XCfkwRkwpxO5SLfFZ9ixmEvrIBrI9iw9eLMVe4WHEa1oULT2jEP3XvmApA4VWeqOoXIFQB/yGbf6Xjf1cq3AYA0uQ2J/Q+ZziVGr5a5ouHXnXjCrgjbZGaJYoLcnXIA20M5zC+ISbN3xqZpO0CXEjovWZsGo3OJZ6V7AU=
+	t=1782415965; cv=none; b=GB/y72csIiIwA89VREnW1vTsJPATExjl8K0vvYmweu0sQpDJ0C1Crji+vRaVOAOI3hbNLc1TmzIWIIhMFDEAquKVBSg9iYKHc9HqVZQagbDaPJoJ5pNTCV+7wyqBajk4UVWGOUMI7ZUHIVA+swci5Rdsony2nrL2zx/+45jo+0A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782413976; c=relaxed/simple;
-	bh=C2NnYeLtn5hVbXjhlWLGRka8aq6wm5GlJhpnYylhTi0=;
+	s=arc-20240116; t=1782415965; c=relaxed/simple;
+	bh=TPtzp0jnzJodeHRwKQDZj4cMHooabhPlZGZ0bpRKwXo=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=mWrbllwKJXvoqXYt4A3+jKa3yex+aCv3I/bISeyUjQGZFnpklNHApxNS+tJtlGq0AZnDhH8jjTayU/933jcFXa4pEqwT4rCNRdzyegbOuOOCD+2PFmym244ZPEc7tbCIUe59o4/yMGM3v1e43Q9P0MXGP48RpuAmc/qaKE/Lm/o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NDD3ESPt; arc=none smtp.client-ip=100.103.45.18
+	 Subject:Content-Type; b=MW6ycOpwQGelSHABEMiDgsB0LS6V3O/sjibIt1e+aP+R2QeYwmRGJ3Gyl3upm8OUqOHhrjNd4UdEzNJW3+6pzm2e6qC2HnP2NRBsGJ3nV5Hh/6MbwrpQACmmy5vvMcWVOTGO2r7wBcUA44qBQ+lBbHplu176ndG5Pb7TSYihTW8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ncwdqUvG; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NDD3ESPt"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 656041F000E9;
-	Thu, 25 Jun 2026 18:59:34 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ncwdqUvG"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0401F1F00A3D;
+	Thu, 25 Jun 2026 19:32:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782413974;
-	bh=WBu3AQjpnToMa9C6xzFcjDP8qbwcEEjFOo1R5Hz2tkQ=;
+	s=k20260515; t=1782415964;
+	bh=z+d3Rqr8TBl9aAE0AJeZRoccjpGJQ0DyfdaCOK1gNBw=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=NDD3ESPtZSM0MDVjqpliT/ga17fUdhKlpT+g6Rro3Vg+tO1ZLbYogXoKNx3+0heg9
-	 AaXQClN5w94EsiF57UiM7FB7vWv9Efa4hWQAqMoW0xXZFmu9vdymKAEmo6BeVOKW+B
-	 zuz5HD+8sZBqC09gG43m0WHPejeHc5jjSATBttq3G+0s30dg2xtGf90XfTZ5PDbsTA
-	 AmictHana10wYHIcaiJD3ACxpsnRpIEY78ukKLZ3rarrs8P94txoq6A4uTyInavT2F
-	 JM48aXbKfwvv4HNADQ2i1bNf6OIBZ55KQ6DARfAD4tO64RIpm7z/0G6mNQbwH59rnU
-	 sMr0DtSgrdQ1w==
+	b=ncwdqUvGYllfSkYRna3EUnIkEGJoxpSiURwC31lR681t6hJKF03fWYjmCwm0RXRd9
+	 r/8mrlRugDXm/ITkx3ZMQCccQAP3o3EHliuGQ5t3RgitVLeipyA4HCKL2+ZYi67ZYc
+	 pa/CF2G8h+vwpzlbepSMPEuOU+lVSFDA/EalD7uJglg51yUqZvlFpRI2aGIQe0ep9b
+	 LjbJeYpmt4gIGERLV1PHVvtpJjj1GHMd+BPWYq7p6a8GRF+mhpg0AH20rZ2hQsU4sL
+	 CTH176yvVYiRdD2qEKKzZFg8zWfjCaC7VWc/+jzdWSWQMw9IcOgiZrlc86OntSi2f4
+	 bSdc0TtYl6uRA==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id A6751F40083;
-	Thu, 25 Jun 2026 14:59:33 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id 144B0F40087;
+	Thu, 25 Jun 2026 15:32:43 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 25 Jun 2026 14:59:33 -0400
-X-ME-Sender: <xms:lXo9auwKcU7N3glfI61Hhrd7EBDBp1YpwdN5RA8Y5oSjAhn9viulqw>
-    <xme:lXo9alGCEItPpWdwjGfM57QGo-630QT2kmz5vgJ48BLqZ0tO90o3bjhX8T2bIIOwf
-    xOr9Cn-VQpxKgbUo9DtJ_pUQT4tB53nb2kfoxQlbSY8vJvbJJvRLw>
-X-ME-Proxy-Cause: dmFkZTF9L/bMTjNT0pajOtF7vn/f95FppebJB7Y2LB4TC0UZgKePFRmF0rXpVGIrRTpa5n
-    gCXVqfRvk+uYbmeZEQ3xVpnuoKoUCPbu+ZsQJl0YHwmhOzrh20x7p1pZmD33kHbHw3s7EE
-    RVbaRTEucUgJh9zY919sU1xqW6MopBYWEt3QBvBTEfIZG8XOAw8NNVbwq+KDsM8KwOERlT
-    ocTEAf81yN05V58RX9m0y4ngk4xDVB2VXQ6n9ZE6xRE0aj7mRePJbc4ROd00+FfZ025FmJ
-    GfUcUOlVKW+OmIe77c4ljNIkfPQHjoL/U2S9m+TyCRxsTQVBAH8CbTQXZTVwMUTkn7PpI5
-    AlNOScGt7ZMRAALQZiiA0cE0/nLSB6B4tUkwFBUgM2NqDdRGYUrcySfSMtlDvTjkXSSmpU
-    S7UTEU+dLtMbZfJTqSkJWWVwLd/H2mTQHztjrKBnM7m1AwTyheh6aVIvijafQaUbfS91Mr
-    mzOKOqmcZNq4Armb/dIe0hMJZEQDNwCM9sPQ6YoWgHN4WC06syaFB0J2Yn9lhiY5ztbrMs
-    XEGnr9plM2mzyXV7294lV9iqsY17b6b1eDtWX/zncrWvO39BZH9hwdS79hoOYfd1QjGVJI
-    5jaKulaJ1+B6m2lCA+aggPb44a4jWSjMisRJVpuNMdX1Uuz6/5qp/IcfG66Q
-X-ME-Proxy: <xmx:lXo9aqT6eUEBW4ButCyfosfKRsYwclnb39YA14UfRU0O60dzd0tAhA>
-    <xmx:lXo9ai0RxO9YhaGk6tHm7g_MXWSf69FuY9oBMDlQ7J5uWHFliuNAUQ>
-    <xmx:lXo9aieWg3X5C6IMcEBIC-heD6SlvW_Z9euMFm2bSL5YTGFbY2uOCA>
-    <xmx:lXo9aiNw5FjnOqj1Z01yM4y1mM_7H_0HkSKw6c7UhBxEukvVexG85w>
-    <xmx:lXo9auWZB2T6Lz-hGxBBPdi9x5U7Q4111zbkcYtjlcoRj6r2MYv43qUs>
+  by phl-compute-10.internal (MEProxy); Thu, 25 Jun 2026 15:32:43 -0400
+X-ME-Sender: <xms:WoI9apkxqZi4zsxZgNxejZRkYLGR2EAr9sXNOZ-lOKvrsEyymaAMZQ>
+    <xme:WoI9avpnNEXesPpelAkz_f9lfBip89UD9OSpiIJ9VctsW_OvBbpZTrbhRQzPls0uD
+    7Ka6jc2lYqSqfsaiuy9Q6b7ZN-4C275g6mFVW0-rwmnAzkRJ55tfQ>
+X-ME-Proxy-Cause: dmFkZTGRs0JqEpM6dUaP9y5sujc7/m0DhbnMZl5pb6S6ZyFeWp4P6yWAU2y6Hvx9PaHARy
+    MXXM0e1HLYqXkNsatA9hfxg1stRh25P4WB+2x6SdkLHf5iBJZtwyKc3Bb0jOGARzeeFEbJ
+    JOPLXmp3oStx59FVs8Scld8d6aaVCl+0SeWqHYy2dbyJjGdNjlGQAU3Qa1+tAnh29rkP8n
+    h6zkjeEKhfK2nmSy+VU8PoM4UR8+QotbYOUGwCtKNh+WgSfvSCbaZFMw3psVbj2/SCQygb
+    xMJ/MnhkS14W00ARQP0XtplIHjT5jwof/vbwwbSNw2jtVODw/4q67fyyq2E9P/HNtC2PUS
+    kn/Dxudc30kfz39e2Dv1SAVD9LC4S/1krseHkVz+5C1t7rkYCIbYthAa3vpNxmdp7/nVAH
+    9arKTWuCQb3t7wpYh9Pe0WoYYVvSlrNBtGA/KMr/Eujq9VKnb3YJx9W5yLtYIUU+pD133y
+    WthWKaM/W6Lrdph/pYg+8InsPESFtIZE3xqeWfyLrFZ8y0oaCpNK20jYgZQ4BJoPFjRj4J
+    sETZZJwtQuofM0vZmDdLqSKsNRj1VYPilB46c2Ptntw7VZMAJKDBLFYB44tgYBiAzIePci
+    LCyLh74mCx+51e/TssOalgLLuvhB1piKAnO3WQFw14IN0T6VQUZ0m+W2k6cQ
+X-ME-Proxy: <xmx:W4I9ah1Sq8mnR3g6kx0_83k9rXtdMXSmj9Vhzz0ZXkCqeQ99zb8bJQ>
+    <xmx:W4I9aoi6FbQRwxmIVnM9wrKjrICDrvahcC0DTu8FpGm4Pldp32DL3w>
+    <xmx:W4I9aimYPeEsT8ebFmD3lj-hHDb8uBSMsMMnlJ2Q52vlAdeLv_lRXQ>
+    <xmx:W4I9amaGhokljLVVf5nGirOvssQ2ZjFTgcHOYH76MeIouXMDAXVAqQ>
+    <xmx:W4I9alEWtTjlCrdHpYzgNG_f-DSzboYCmSjoRwQUPj0gSQw_ox3ajPwj>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 82B16780AB9; Thu, 25 Jun 2026 14:59:33 -0400 (EDT)
+	id E4E1C780ABD; Thu, 25 Jun 2026 15:32:42 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -59,85 +59,122 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AEhg0xB2aOJ7
-Date: Thu, 25 Jun 2026 14:59:13 -0400
+X-ThreadId: AWid7F4iEUkZ
+Date: Thu, 25 Jun 2026 15:32:22 -0400
 From: "Chuck Lever" <cel@kernel.org>
-To: "Benjamin Coddington" <ben.coddington@hammerspace.com>,
- "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neilb@ownmail.net>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Trond Myklebust" <trondmy@kernel.org>,
- "Anna Schumaker" <anna@kernel.org>
-Cc: "Daire Byrne" <daire@dneg.com>, linux-nfs@vger.kernel.org
-Message-Id: <d8efb4f7-fd91-453e-a6fd-1427bdab1cc0@app.fastmail.com>
-In-Reply-To: <cover.1782314746.git.bcodding@hammerspace.com>
-References: <cover.1782314746.git.bcodding@hammerspace.com>
-Subject: Re: [PATCH RFC 0/3] SUNRPC: a latency floor for interactive clients via
- sparse-flow dispatch
+To: "Jeff Layton" <jlayton@kernel.org>,
+ "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
+ NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
+ "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <d50169fe-8deb-481b-83f4-a082af190ca4@app.fastmail.com>
+In-Reply-To: <20260625-sunrpc-pool-mode-v2-1-4f512b6e1ee8@kernel.org>
+References: <20260625-sunrpc-pool-mode-v2-1-4f512b6e1ee8@kernel.org>
+Subject: Re: [PATCH v2] sunrpc: hardcode pool_mode to pernode, remove other modes
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
 
-> an idle->active transport is granted a budget of 64 high-priority
-> dispatches [...] refilled only when the transport next idles.
-[...]
-> Open questions for the list: is the budget (64 here) the right
-> shape [...] And does the cooperative framing hold[?]
 
-Before the budget shape, I wanted to pin down the re-arm trigger
-itself, since the whole floor rests on it.  Traced through, the grant
-is gated on a true zero-crossing: svc_xprt_enqueue() refills the
-credit only when atomic_read(&xprt->xpt_nr_rqsts) == 0 at the instant
-new data arrives -- i.e. every earlier request on that transport has
-already passed svc_xprt_release().  Not a low-watermark; exact zero.
+On Thu, Jun 25, 2026, at 11:59 AM, Jeff Layton wrote:
+> The SVC_POOL_AUTO/GLOBAL/PERCPU/PERNODE pool mode selection machinery
+> was added when NUMA was new and the right default was unclear.  Today,
+> pernode is the right choice everywhere:
 
-My worry was that a sustained interactive flow (a tree walk holding a
-couple of RPCs in flight) never reaches zero, spends its 64 once, and
-then rides the normal queue.  The measurements push back on that.  I
-put a kprobe on the in-flight depth at each committed enqueue and ran
-a cold v4.2 loopback walk of a 7500-file tree (~15.5k server RPCs):
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index dd80a2eaaa74..6e3d509bf95a 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -38,19 +38,6 @@
+> 
+>  static void svc_unregister(const struct svc_serv *serv, struct net *net);
+> 
+> -#define SVC_POOL_DEFAULT	SVC_POOL_GLOBAL
+> -
+> -/*
+> - * Mode for mapping cpus to pools.
+> - */
+> -enum {
+> -	SVC_POOL_AUTO = -1,	/* choose one of the others */
+> -	SVC_POOL_GLOBAL,	/* no mapping, just a single global pool
+> -				 * (legacy & UP mode) */
+> -	SVC_POOL_PERCPU,	/* one pool per cpu */
+> -	SVC_POOL_PERNODE	/* one pool per numa node */
+> -};
+> -
+>  /*
+>   * Structure for mapping cpus to pools and vice versa.
+>   * Setup once during sunrpc initialisation.
 
-    depth 0 : 25.6%   <- re-arms the 64-credit budget
-    depth 1 : 62.3%
-    depth 2 : 12.2%
-    depth 3 : ~0
+The commit message should call out the change in the default setting.
 
-So zero recurs about every fourth enqueue.  ~3 credits spent between
-refills against a budget of 64 -- the credit never approaches zero and
-the flow stays high-priority for the whole walk.  Uncontended, the
-"== 0" trigger is far from one-shot.
 
-The catch: this can't reach the case the series exists for.  Loopback
-nfsd keeps up, so depth collapses on its own.  The demotion risk is
-under pool contention -- aggressor saturating the threads, the
-interactive flow's replies delayed, depth staying elevated, the
-zero-crossings that refill credits becoming rare.  I couldn't build
-that window without your per-op service-time hook.
+> @@ -299,22 +166,11 @@ svc_pool_map_get(void)
+>  		return m->npools;
+>  	}
+>
+> -	if (m->mode == SVC_POOL_AUTO)
+> -		m->mode = svc_pool_map_choose_mode();
+> -
+> -	switch (m->mode) {
+> -	case SVC_POOL_PERCPU:
+> -		npools = svc_pool_map_init_percpu(m);
+> -		break;
+> -	case SVC_POOL_PERNODE:
+> -		npools = svc_pool_map_init_pernode(m);
+> -		break;
+> -	}
+> -
+> +	npools = svc_pool_map_init_pernode(m);
 
-Could you run the same probe under your aggressor + 10ms hook?  Keyed
-by transport it separates the interactive flow from the aggressor in
-one histogram:
+With one pool per node now mandatory, can a server end up with pools
+that have no threads?  svc_set_num_threads() spreads nrservs evenly
+across the pools:
 
-    T=/sys/kernel/tracing
-    echo 'p:svcenq svc_xprt_enqueue depth=+76($arg1):s32 \
-        flags=+56($arg1):x64 xprt=$arg1:x64' >> $T/dynamic_events
-    echo '!(flags & 1)' > $T/events/kprobes/svcenq/filter
-    echo 'hist:keys=xprt,depth:sort=xprt,depth' \
-        > $T/events/kprobes/svcenq/trigger
-    echo 1 > $T/events/kprobes/svcenq/enable
+net/sunrpc/svc.c:svc_set_num_threads() {
+	unsigned int base = nrservs / serv->sv_nrpools;
+	unsigned int remain = nrservs % serv->sv_nrpools;
+	...
+}
 
-(+76 = offsetof(svc_xprt, xpt_nr_rqsts), +56 = xpt_flags, x86_64;
-unchanged by the series since xpt_hi_credit lands after it.
-depth=$arg1->xpt_nr_rqsts.counter:s32 might be a cleaner approach.
- filter !(flags & 1) keeps only committed enqueues -- XPT_BUSY
-clear at entry.)
+so when nrservs is smaller than the number of NUMA nodes with CPUs,
+base is 0 and the trailing pools get zero threads.
 
-The question that settles it: for the interactive xprt under load,
-does the depth==0 fraction hold up, or do you see depth>=1 runs longer
-than 64?  If it holds, the trigger is fine and the uncovered tail is
-just the N>64 knee you already document.  If it collapses, that's the
-argument for a low-watermark refill rather than exact-zero -- and it
-belongs in the cover letter, which currently asserts "idle" without
-showing an interactive flow reaches it under contention.
+Work is still routed to the per-node pool selected from the running
+CPU:
+
+net/sunrpc/svc_xprt.c:svc_xprt_enqueue() {
+	pool = svc_pool_for_cpu(xprt->xpt_server);
+	...
+	lwq_enqueue(&xprt->xpt_ready, &pool->sp_xprts);
+	svc_pool_wake_idle_thread(pool);
+}
+
+and svc_pool_wake_idle_thread() only consults that one pool's idle
+list, with no fallback to a sibling pool.  If a connection lands on a
+node whose pool has no threads, does its transport sit on sp_xprts and
+never get serviced?
+
+The old global default kept a single pool, so this configuration could
+not arise without an explicit pernode/percpu selection.  With global
+mode removed, is there a way left for an admin to avoid empty pools on
+a server that runs fewer threads than it has NUMA nodes, or should the
+thread distribution or the enqueue path guarantee work only reaches a
+populated pool?
+
+Separately, the pool_mode knob is preserved but every accepted value
+now behaves as pernode.  Documentation/admin-guide/kernel-parameters.txt
+still presents the four modes as distinct:
+
+	auto	    the server chooses an appropriate mode
+		    automatically using heuristics
+	global	    a single global pool contains all CPUs
+	percpu	    one pool for each CPU
+	pernode	    one pool for each NUMA node (equivalent
+		    to global on non-NUMA machines)
+
+and states the option "will affect which CPUs will do NFS serving."
+The patch should update this documentation.
 
 
 -- 
