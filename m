@@ -1,98 +1,179 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qk1-f181.google.com (mail-qk1-f181.google.com [209.85.222.181])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DDC903E3DAB;
-	Fri, 26 Jun 2026 08:51:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9A89030D411
+	for <linux-nfs@vger.kernel.org>; Fri, 26 Jun 2026 11:18:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.181
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782463887; cv=none; b=OTd11UIZpvmCNVNUzzMXj6oCtpU4gRRQKuwXUnGTF/KaCh0ryE2pr4Z0mYVYJld9v9+L856+uC/f8SPR9FFwAIenswL9MUc3vHNPlZ68qa3A9Easa01HMZ3PlC9ml5dy1fv60jpGAbfeFnxLY1HeKBoB5Dcq5svG+XRJgip29no=
+	t=1782472738; cv=none; b=s9gFfgFWT34z71SUeqVkjUbkkGZWtOEqjiSMOpoH8nwCUa4Sd/9nXxHbvKBEwJOlBOp/wRlW7JnyGO4IXCVeVD67YgY/cBOv2G8+kxT07Y0X2KqdNYcqdl57jXmc1wunpYcLKGMnz816xdzocyvAk3GXSmPzN9VEsPH4k59Qca0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782463887; c=relaxed/simple;
-	bh=72LW1Sqy+CyJluT8dJ+TRAWGIYqhMfoj0D3AB5ay3hw=;
-	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=EqOoRqSNcWYnhnT9yQRZjaV08cPeRk7nSijS+easOoLCIpkZO5ydHJzsmT32rxIHXTjTbyJAqxPpUnJSr5KqlIKkq2WXS7rn79IOk+/KxtkVexSIJ0v6oxfQ3Ci8tlacvSD6G75y+qK7AXN41huxj1mNcTrjjxfWF9qCDwvWpzk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZuN86shS; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1782472738; c=relaxed/simple;
+	bh=j8tXvhVXl5VsjZ4EPOXEppaVIITYED/956UvnbMvBWs=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=XaH777398UCT5SA1hC7pSspVMjTc2deRGcrfZExybzfvenf5rolGVc8RjNBhUzKqZcuLa5LwG4YClbu+YhrZcI5FrodDjDIhp5E8lsS3gzUs43vok07iczyI+RgqUDkVP3SKclZNCI7bCwZ3vAg7LIlIZP4NzZ08lBbTx3TFBbo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=nCSmY/08; arc=none smtp.client-ip=209.85.222.181
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZuN86shS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 55C131F000E9;
-	Fri, 26 Jun 2026 08:51:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1782463886;
-	bh=dczgg0EG8SzCmQOx10ra7Wu7tyi/QlMQ5W656css9gI=;
-	h=Date:From:To:Cc:Subject:In-Reply-To:References;
-	b=ZuN86shSSyy0XeJHxDjAleAAh3O8h5DItrYs4TSav34bAuZW0MAx9ZBBE9S3nKp+q
-	 JUucAqzuWIOp1XCgdpd9P3oFXnLbWNeWduuAN7d3BLmln+qoARZNZxKF2O06nPeYv4
-	 1dAdVGA0JDyuC0sJVCZD2wvL+fK7VqCql7n7upa+dFP/qqyZ8tCeX05jqkcgPFDC5w
-	 tFX0+2mg/DvZd1BW9undZCZbfHnid5R0fV0ghRYpjUgkCITPyYbrNbnJWUD3Su88Bu
-	 iGHlEwHR4XUomu86ZdOshDLSTLNHrTMNbY7gs9BX+9uYtxaMeTpyySj/HlKZUt2HrK
-	 5/RKab/63CQEw==
-Date: Fri, 26 Jun 2026 04:51:19 -0400
-From: Steven Rostedt <rostedt@kernel.org>
-To: Nathan Chancellor <nathan@kernel.org>
-Cc: linux-kernel@vger.kernel.org, linux-trace-kernel@vger.kernel.org, Masami
- Hiramatsu <mhiramat@kernel.org>, Mark Rutland <mark.rutland@arm.com>,
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, Andrew Morton
- <akpm@linux-foundation.org>, Linus Torvalds
- <torvalds@linux-foundation.org>, Sebastian Andrzej Siewior
- <bigeasy@linutronix.de>, John Ogness <john.ogness@linutronix.de>, Thomas
- Gleixner <tglx@kernel.org>, Peter Zijlstra <peterz@infradead.org>, Julia
- Lawall <julia.lawall@inria.fr>, Yury Norov <yury.norov@gmail.com>,
- linux-doc@vger.kernel.org, linux-kbuild@vger.kernel.org,
- linuxppc-dev@lists.ozlabs.org, dri-devel@lists.freedesktop.org,
- linux-stm32@st-md-mailman.stormreply.com,
- linux-arm-kernel@lists.infradead.org, linux-rdma@vger.kernel.org,
- linux-usb@vger.kernel.org, linux-ext4@vger.kernel.org,
- linux-nfs@vger.kernel.org, kvm@vger.kernel.org,
- intel-gfx@lists.freedesktop.org
-Subject: Re: [PATCH v4 2/2] tracing: Remove trace_printk.h from kernel.h
-Message-ID: <20260626045119.659d1e6b@fedora>
-In-Reply-To: <20260625234158.GA261868@ax162>
-References: <20260625104007.041432666@kernel.org>
-	<20260625104402.210473477@kernel.org>
-	<20260625234158.GA261868@ax162>
-X-Mailer: Claws Mail 4.4.0 (GTK 3.24.52; x86_64-redhat-linux-gnu)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nCSmY/08"
+Received: by mail-qk1-f181.google.com with SMTP id af79cd13be357-9157ec935c5so128632985a.2
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Jun 2026 04:18:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1782472736; x=1783077536; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to;
+        bh=kxJIvq+g7H6el8NcBfAoJLykiMZ4bnApj4YAS7qHipM=;
+        b=nCSmY/08+O/ECzr9b4ieIyPUXNJIjP5IDNb1ayXy7D3/Y7ino17MctNdICYVqR74F9
+         k+IKgsEML6qf/vr/DnBQQpeWdOiMHzOndKjCj2eqngSMSvfehOyk97Ij886EbON8Sjti
+         ztibI5kmI4/aUToUXKLlGdFzCX/d3hkKM041IeEgbzKnyVXsDsVzWitVQoHqCMC0adl0
+         dy8ehsGLlyO5yxdXkSrzVcZtwLU159NYV1TmfGgVNJGxkoD47EbqrHYs83T7tX1x0GLW
+         n4J/qp/EGOSKvKg017ryjYaaaARhjN0QnpCZyNwFHQpxLyjWjtE1OEBRAkH8KBmQq57k
+         +3+g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1782472736; x=1783077536;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to;
+        bh=kxJIvq+g7H6el8NcBfAoJLykiMZ4bnApj4YAS7qHipM=;
+        b=nS52GDkG/xvN9JYn9s008NBACnp/rBH7Z+c+UmRmKsLlegFa8Yhaz3fJVSRfa6aynC
+         zJlWj/rGCyfjEjCO/keGFiaPTo4UTRJEmGVzIl7lUQzezVWdkw7RHekh5FPs6E61+iW4
+         menKH8S//TVWneug15er0XG/+LHvu82QGKP9ubw88my2gMBi4COWdL47jd2qx8XpOpUi
+         mRvW7XkpNZ+ehbX6iFQTNsCzzepPOfYwpivUYyKxzwyYJmBsqImT5SA160sVAmc+Ey9Y
+         Hd9LX7421axSIBx5DdtKOJaa9I3Y0T3SCSjcvJaoHow1I/o3ymENb7W8UquboFE5XjKD
+         C1vQ==
+X-Forwarded-Encrypted: i=1; AFNElJ+x5B7d7IAL9EJKQAlTHyezlUASKqHQZbfKtSp7btaLdflHwq7lNOg8302/5o4bbhVtipWTq7LjPYA=@vger.kernel.org
+X-Gm-Message-State: AOJu0YzvCGHr96hg5bQxVOR3TonYG7q5BFK30/lL33zpmNvEwIuABHVk
+	hf8YJDOpcP23fuG1PDdqzTKPUcINvmsxJHQZqLMH+eWJrwwZSUNNdulW
+X-Gm-Gg: AfdE7ckjHUQtAWIUoNUHDmuDbXTTeoC6f6z0vI1Dx4HNZsFeUZAInmDEN6+ZzFS53GQ
+	cmaM2ci9SDbt8KHI0x1dhAWuICvopzhFJ0NyPvtCV3A99xFINmwhil1q7ysTPfpgYD0FozleYsW
+	EnrRQ8At5ZU9ZLwghVrHS5VpOLFow4XGcT51g+wxu90iWT52+12U3m78o13GsRYAmHF5aD8KuI0
+	usaYnINrK1zJfsC/sWSdrmFDZN3vBdDSgHDflSq9ib4+Qln3jUndkd2d2atLjamemzRXEZ3nckE
+	/vfQw5PZczezNmXHJQfdNl1x/a7pnMSZK+kWMK37lKrI3eGk85Bmt+mWzec7RBIaosX2kBTG9kk
+	T1f87k7HPhduk2H8kB+52JGl1I4m68lj9gqE18hDj5528VwJp4/F9w95odapze93D+K0vm9e2wf
+	GrMPeEB4rirhWcXc+lg9939Sssjp6JQAFHMcS/M9Ud3RgZfgihWm/nsaOvvZ+HR0OdwW9CEo2Uq
+	ZcBfFpM477j0tCQoybsoAdZcQQWrRyD
+X-Received: by 2002:a05:620a:1720:b0:915:9a1b:83df with SMTP id af79cd13be357-9293e6e089bmr949718185a.57.1782472736504;
+        Fri, 26 Jun 2026 04:18:56 -0700 (PDT)
+Received: from server0.tail6e7dd.ts.net (c-68-48-65-54.hsd1.mi.comcast.net. [68.48.65.54])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-926000c3257sm1154325385a.29.2026.06.26.04.18.55
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 26 Jun 2026 04:18:55 -0700 (PDT)
+From: Michael Bommarito <michael.bommarito@gmail.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: Jeff Layton <jlayton@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v2] NFSv4.1/pnfs: bound layout-type count in decode_pnfs_layout_types
+Date: Fri, 26 Jun 2026 07:18:52 -0400
+Message-ID: <20260626111853.801493-1-michael.bommarito@gmail.com>
+X-Mailer: git-send-email 2.53.0
+In-Reply-To: <20260622124836.1696330-1-michael.bommarito@gmail.com>
+References: <20260622124836.1696330-1-michael.bommarito@gmail.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 
-On Thu, 25 Jun 2026 16:41:58 -0700
-Nathan Chancellor <nathan@kernel.org> wrote:
+decode_pnfs_layout_types() reads a server-controlled u32 count and then
+hand-decodes that many layout types, reserving 4 * count bytes:
 
+	fsinfo->nlayouttypes = be32_to_cpup(p);
+	...
+	p = xdr_inline_decode(xdr, fsinfo->nlayouttypes * 4);
 
-> The following diff resolves it for me, should I send it as a separate
-> patch or do you want to just fold it in with a note?
-> 
-> diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-> index 621566345406..2301a701ffbb 100644
-> --- a/include/linux/lockdep.h
-> +++ b/include/linux/lockdep.h
-> @@ -10,6 +10,7 @@
->  #ifndef __LINUX_LOCKDEP_H
->  #define __LINUX_LOCKDEP_H
->  
-> +#include <linux/instruction_pointer.h>
+The multiplication is u32, so a count >= 0x40000000 wraps and
+xdr_inline_decode() reserves too few bytes; the NFS_MAX_LAYOUT_TYPES cap
+is applied only afterwards, so the subsequent reads run past the short
+reservation.
 
-Ah, so the reason for this breakage is because lockdep was relying on
-instruction_pointer.h, that just happened to be included in kernel.h
-via trace_printk.h.
+This open-codes xdr_stream_decode_uint32_array(), which reads the count,
+rejects a length that would overflow the size calculation, decodes the
+array, zero-fills the remainder, and bounds the result against the
+destination size. Use it. A server advertising more than
+NFS_MAX_LAYOUT_TYPES stays non-fatal as before by treating -EMSGSIZE as
+a cap.
 
-This is a separate issue, so it should be a separate patch. I'll add it
-as patch 1 of this series.
+A malicious NFSv4.1+ server returning a crafted FATTR4_FS_LAYOUT_TYPES
+attribute triggers the original overflow on the client during FSINFO
+decode.
 
-Can you send me the config you used. This didn't trigger in my tests.
+Fixes: ca440c383a58 ("pnfs: add a new mechanism to select a layout driver according to an ordered list")
+Cc: stable@vger.kernel.org
+Assisted-by: Claude:claude-opus-4-8
+Signed-off-by: Michael Bommarito <michael.bommarito@gmail.com>
+---
+v2: use xdr_stream_decode_uint32_array() instead of an open-coded count
+    read and manual bound, per Trond Myklebust's review of v1
+    (https://lore.kernel.org/all/20260622124836.1696330-1-michael.bommarito@gmail.com/).
+    v1 added a hand-rolled U32_MAX guard; the helper already does the
+    overflow-safe count read, array decode, and destination bound.
 
-Thanks,
+Reproduced on a UML KASAN build: a crafted FATTR4_FS_LAYOUT_TYPES with
+nlayouttypes=0x40000001 made the v1/original u32 multiply wrap and the
+decode read past xdr->end (KASAN slab-out-of-bounds read). With this
+patch xdr_stream_decode_uint32_array() rejects the length (-EBADMSG ->
+-EIO) before any over-read; a valid small count still decodes, and a
+count > NFS_MAX_LAYOUT_TYPES is capped as before. Before/after logs
+available on request.
 
--- Steve
+ fs/nfs/nfs4xdr.c | 34 +++++++++++-----------------------
+ 1 file changed, 11 insertions(+), 23 deletions(-)
 
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c23c2eee1b5c4..4c1beef30522a 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -4891,32 +4891,20 @@ static int decode_getfattr(struct xdr_stream *xdr, struct nfs_fattr *fattr,
+ static int decode_pnfs_layout_types(struct xdr_stream *xdr,
+ 				    struct nfs_fsinfo *fsinfo)
+ {
+-	__be32 *p;
+-	uint32_t i;
+-
+-	p = xdr_inline_decode(xdr, 4);
+-	if (unlikely(!p))
+-		return -EIO;
+-	fsinfo->nlayouttypes = be32_to_cpup(p);
+-
+-	/* pNFS is not supported by the underlying file system */
+-	if (fsinfo->nlayouttypes == 0)
+-		return 0;
+-
+-	/* Decode and set first layout type, move xdr->p past unused types */
+-	p = xdr_inline_decode(xdr, fsinfo->nlayouttypes * 4);
+-	if (unlikely(!p))
+-		return -EIO;
++	ssize_t ret;
+ 
+-	/* If we get too many, then just cap it at the max */
+-	if (fsinfo->nlayouttypes > NFS_MAX_LAYOUT_TYPES) {
+-		printk(KERN_INFO "NFS: %s: Warning: Too many (%u) pNFS layout types\n",
+-			__func__, fsinfo->nlayouttypes);
++	ret = xdr_stream_decode_uint32_array(xdr, fsinfo->layouttype,
++					     NFS_MAX_LAYOUT_TYPES);
++	if (ret == -EMSGSIZE) {
++		/* Server listed more types than we support; keep the first
++		 * NFS_MAX_LAYOUT_TYPES, as before.
++		 */
+ 		fsinfo->nlayouttypes = NFS_MAX_LAYOUT_TYPES;
++		return 0;
+ 	}
+-
+-	for(i = 0; i < fsinfo->nlayouttypes; ++i)
+-		fsinfo->layouttype[i] = be32_to_cpup(p++);
++	if (ret < 0)
++		return -EIO;
++	fsinfo->nlayouttypes = ret;
+ 	return 0;
+ }
+ 
 
-
->  #include <linux/lockdep_types.h>
->  #include <linux/smp.h>
->  #include <asm/percpu.h>
+base-commit: ef0c9f75a19532d7675384708fc8621e10850104
+-- 
+2.53.0
 
