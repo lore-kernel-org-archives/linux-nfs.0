@@ -1,64 +1,64 @@
-Received: from mail-qk1-f169.google.com (mail-qk1-f169.google.com [209.85.222.169])
+Received: from mail-qk1-f179.google.com (mail-qk1-f179.google.com [209.85.222.179])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B01CC3A5422
-	for <linux-nfs@vger.kernel.org>; Wed,  1 Jul 2026 20:43:42 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DA560349CC2
+	for <linux-nfs@vger.kernel.org>; Wed,  1 Jul 2026 20:43:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.179
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1782938624; cv=none; b=S8NltqiiYGimG5LDIlIqN8Q1J/ZC+Q2pOjVPVPETGiNfj90h86/o/0IrA4VZjoFcyitZer4XfJAJVWIpY/0ojWbBbK4ahw5i3n2jAz88N5uKI4IabpLF+RqRucQ8QtT3s2bDmDqAxmrlg81lAUgtchVDJqBYf56yDydz9oWu55M=
+	t=1782938625; cv=none; b=KE8x+f9LpcF5/gyRSK+JHAatKFbNi+Fi2hN4KwtsDmPKo4dxFScq9L4ddihlEeAuCejE65U2So+P7PBcoUmyN1Z42eoYyPt4K+9bxSWveaKZHuopNKI/KZgfMiY4HiKEXd1ZEJP2V1SSi3UE0qhigYUmRfmRjcR5XnHoREcV0uw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1782938624; c=relaxed/simple;
-	bh=GWCOViPw8GAHxBEIdt7oqj0KESgJZT5nBrrwnsUi4V8=;
+	s=arc-20240116; t=1782938625; c=relaxed/simple;
+	bh=nda0CbvlHctsA9zSNcKhtAYAJc2BzqepRUIo9IocYRM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Xp7K/OxySKZ1JjfAdJWjC3GNFl32xmv/jBuxLiz79U+SDu9xG3F2oK7/+hYMnl34PqUFzRIty560I0TmXuiHtPXkVI9ZuWqIF6YMASMt3p8qBx9Qzd+qgKqFclHceXTrGrzvS867nFxyI5C1nMzYv5eB0F+Iy0mlEVbjtTh8AoY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=H0tC6dWH; arc=none smtp.client-ip=209.85.222.169
+	 MIME-Version; b=ChA7zbvQD7Eb0vU/FfTHg4IkGqRhBoNyBtI8iD3/5aOIq7C9hdGWeAikLANJdvUY2/GLHSX1VWd+S1sO6mcs6W8w2fNtcxQKoOq96W6lyeWAs/zBCuymrbQLsY2ed5BOKwfaAqg+/OHD62GRS7/uvJCuxDCJGBCwxR1fE8jSrRA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=Sd4WldOG; arc=none smtp.client-ip=209.85.222.179
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="H0tC6dWH"
-Received: by mail-qk1-f169.google.com with SMTP id af79cd13be357-92e54f8c051so56618285a.3
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jul 2026 13:43:42 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Sd4WldOG"
+Received: by mail-qk1-f179.google.com with SMTP id af79cd13be357-920f33347f5so63243985a.3
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Jul 2026 13:43:43 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1782938621; x=1783543421; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1782938623; x=1783543423; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:sender:from:to:cc:subject:date
          :message-id:reply-to;
-        bh=6GotUsygMNdOaBXRsCZhol7+3hqsFNxl8cEm4hrCWhE=;
-        b=H0tC6dWHvn/o6C7lMmCfujw1qgRgrJrdts3+NlCylpoboh+0B3BOTZDZUiLAqP3vbZ
-         9FaO+3vv8lAlFaMz1uQhlmly9UVbPYk9Wml/t6Iv8R0GT5+w2BsY3k6phVK5hHBAAMJV
-         jdLBjuXBg2RAtsnF7VDxvVHqC5/OscrMmffltOBhUym2ipdjknBH1HOtofUEWm4qUbwb
-         pxbVfns4bEE9CdndxP0SDKGeK+Qh13WPDd/MaaNW+46rbKW25EJf4VvDUD/vx2x09BwT
-         /iu+awVKREQVocA7kt/z5WR4wPrGhvg9zse/p4z1dOPWUti0W/P/cG7Y2FFKHLj/Eu9z
-         AFig==
+        bh=TmDv8as+Wrz9bGw5yoXAXWgLir9Tdr/BU1ivmzH0STU=;
+        b=Sd4WldOG4ySeZG6j/V6zgsqs20XyCfiBryDRiYaQykgXXtiRWaxBKjyqMb4/GTzC9d
+         u+qU4NGaAdcln4yBNzhCZphFyXlJPfgfYJxuzBfPG1rY8LgFZA5CsU79gva/1oSG/SPz
+         c9/KRiDQ6W9qQ7Ig5mNLt5ZTVEXi/JkAyjEwnKvc9pGifcj4YfkLhaju7B5Hka+vAGo5
+         92ViB8D7htXGtaJxGDXOGlxhVQXxgpIhZu3axF7rtcI3UQKpHmTIhvyotHcVZ7eizmMw
+         hKXFMFpXXO7Nzi8tw+C981ltdba5c35ed+reR2nnhn6Cep3GxybNS7036MHJUFkm2ktH
+         LjRQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1782938622; x=1783543422;
+        d=1e100.net; s=20251104; t=1782938623; x=1783543423;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:sender:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to;
-        bh=6GotUsygMNdOaBXRsCZhol7+3hqsFNxl8cEm4hrCWhE=;
-        b=ReYmANEBUC0KvkosyQbtcoasjVcN+7KdvMsHlSdG9nt0qMVH0vIriGNBiRiiQNi7vl
-         VoiEHhRQoPMC9UaQ6g14ySyAYanWKDIaiHzPA8iMbz4sz/IPx3topbERIQsHm8HKNx7g
-         zaWs4YU48gQ6KzElj9cH9cw8japwTdAjHEE0iU4F9kixEAcpfScrQclCfMqFtqvYVSEp
-         ZKx1PhMctorYx7sqTKrfshOEPTmDkfA2imSn8lRclXMtBY5O+i5CHod/QY14hSNEIjyv
-         jntZPnTNphIYnzsg3J/S3amRiCy4OuCssnY/CpdRo+OqFuVKgUykAQR6rEzGr+I8mPaR
-         de0g==
-X-Forwarded-Encrypted: i=1; AFNElJ/O0r7SvjSXURepDP/fxq7MDTzGN5XEm+5V2RglYJ/pkg5AOloM1+OzCjBayKmzOXAw+epPxcLnTGM=@vger.kernel.org
-X-Gm-Message-State: AOJu0YwuV2NzUujsnV2r9a7cqTImMx5nD3Z+yLitwiIhZHdxaAqKvzFj
-	tAT22/sGkV0faqOpQqJyO+Zz4+ME24qrrEaKDcIgyj3kmJ8VkZaHmaAxwv0nPEp+lBo=
-X-Gm-Gg: AfdE7ckfShnv5y1I1uzTfviQQLhVqhjUNCQkjBUWQCV4x0lKTXVYp1fiqKnC+lOM5IX
-	FFqgjr4ofbZD2eZYAxbhfVjVX6GBb7VcPgYQYd4XoC5r4cYzf+TyzNsdnWTkYBjRjL/lbKxTsFf
-	p6Hsrgwa9tnf5r47GAcCBoNcMXfD8nxDAYmt4msNBTlgbwLezOfLc+giZv6PZgeUM72vLty39JQ
-	GwisSe3HWCa2XTjho/8hG5zhTK1si7SHVkT0vBbqzOOhn2iQgiPcjs6tGUtqM3R7w5MsmjjSmLS
-	QW2tQsjqFw6Ivbf9aovlyzDt051QGf4mkID0ojMeP0p5D7CBpSEIOHXfWCaeHKuDL51jWe/oUnG
-	cTPNOTTGfwpXzGSsZxrPl0IILAeGa9eCDf0pOzkeTVXHdNN7Nc48KA86c4DtJxYfAiea1VRC/Kb
-	eqUF5NNQNiKwLI+M+ySKEG7E3rvokVHFoXzfMW7B9k9qp7VcLbzRA6tvGeDg5phIMPV24Qug/jf
-	iVadw==
-X-Received: by 2002:a05:620a:d88:b0:92e:6533:26ef with SMTP id af79cd13be357-92e784cd85fmr517898285a.46.1782938621282;
-        Wed, 01 Jul 2026 13:43:41 -0700 (PDT)
+        bh=TmDv8as+Wrz9bGw5yoXAXWgLir9Tdr/BU1ivmzH0STU=;
+        b=Bxx4X6RRfGvMt+9UY0BtP9683gmtiWb5RMmfb9qibo4p1n0Eo+5A7f7IK3ytS09MpL
+         Jku2y+ws9XR4fdsaysm9DPDvDjRRAtDnWADVhlQ9lSCuLCzXNx4820RQaauVYTCddcBO
+         0YEI/CrpR8C5vNBGeTSGs4M5MM3Do3LZ5mRp0dR7p0Z2kdKViM+HXhPxZ2ydH0yP2m+z
+         uBJunMJnEFW4wWJSikisVfcnpunQb4mkl5YZZD7XXtEejM5URk5+96xLUK3x2UUtGejz
+         sHLWXpMDXzPZoQDtobcouZyfJKb1utlUt1z6VC4Fdhkg+jE8kUSjR8TCglWzzTkqGjYH
+         W6Iw==
+X-Forwarded-Encrypted: i=1; AFNElJ9S0VHfk2kreP+0V/v+GOdtg38ubWKFpfLqssO0Nw/qcfc6PK7PI6x02HKl9tVaPTZkz9W9PFve7iI=@vger.kernel.org
+X-Gm-Message-State: AOJu0YzMLrruU53WMN+948DGso6B2JvpS7Pr5Rze0dv51pdTIHs0T7lv
+	c0aroJM+6U+5TkfZYwz/c1oLAiZ4hw4wDo+fO+xWlI8cxDE4d7HnkOhKt/14oRu1Wl4=
+X-Gm-Gg: AfdE7cmWwX/QBwvBzTgpEbNqcq8vvcaGBn03spDy+3g/GKwV/XpAaGOAnyh+Pz+ZF3h
+	kQqEqfza+k4Jrbj/zV5f2bK3ivC7QYpe0fzliEjkIww6Ygkzr8czQqdzz7ZfNcfqzjxV0cC8NyP
+	50VSWNTBos2uhqCCrkI+f28GCYMNy3v3woPh0i+nwh03bj58QJeQsf1piyDOIu/MnmYNEsOV1Yj
+	U++JSNASAQoxZeW/3ARriDEVPQK6xYdAX28X+T3IB31bR7ftGaxKsIOGMmtkwRvWDKrRsy3+FFv
+	OyynTee477/IHVQry/BtUYXZgnoTsA8yVHn69Fm9kcLvlC6+AkFFN/GpVh2kHOkKOabDa6kBukE
+	EZWVz6lHtbjjT31KPkSf5YKv3sPx9P7EB9dp3DCcwdDC8dDjYpT2c+vzZbqAJMwjh72MBk/is8M
+	+qkCAZGt+H5Ff18S21VBwwtAdbitiGU6gZAGJ5BUurWU8cCLDLy4UsFQYrboobGum6qu+YhvoUk
+	5Z0rw==
+X-Received: by 2002:a05:620a:284e:b0:915:a894:1b43 with SMTP id af79cd13be357-92e7824311emr487657085a.28.1782938622688;
+        Wed, 01 Jul 2026 13:43:42 -0700 (PDT)
 Received: from localhost (pool-68-160-167-46.bstnma.fios.verizon.net. [68.160.167.46])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-92e80161816sm37549885a.22.2026.07.01.13.43.40
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-92e7ffdd84esm40427185a.10.2026.07.01.13.43.42
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Wed, 01 Jul 2026 13:43:40 -0700 (PDT)
+        Wed, 01 Jul 2026 13:43:42 -0700 (PDT)
 Sender: Mike Snitzer <mike.snitzer@hammerspace.com>
 From: Mike Snitzer <snitzer@hammerspace.com>
 X-Google-Original-From: Mike Snitzer <snitzer@kernel.org>
@@ -67,9 +67,9 @@ To: Trond Myklebust <trondmy@kernel.org>,
 Cc: Tom Haynes <loghyr@hammerspace.com>,
 	Chuck Lever <cel@kernel.org>,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v3 2/6] nfs4.2: request UNCACHEABLE_FILE_DATA only for regular files
-Date: Wed,  1 Jul 2026 16:43:33 -0400
-Message-ID: <20260701204337.54314-3-snitzer@kernel.org>
+Subject: [PATCH v3 3/6] nfs4.2: open UNCACHEABLE_FILE_DATA files with O_DIRECT
+Date: Wed,  1 Jul 2026 16:43:34 -0400
+Message-ID: <20260701204337.54314-4-snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <20260701204337.54314-1-snitzer@kernel.org>
 References: <20260701204337.54314-1-snitzer@kernel.org>
@@ -81,158 +81,122 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The UNCACHEABLE_FILE_DATA attribute applies only to regular files
-(NF4REG); per draft-ietf-nfsv4-uncacheable-files a server MUST reject a
-query of it on any other object type with NFS4ERR_INVAL.  The previous
-commit decodes and tracks the attribute but does not gate it: the bit
-rides in the per-server attribute bitmask (server->attr_bitmask) and in
-the generic getattr request bitmap (nfs4_fattr_bitmap), so it would be
-requested for non-regular objects too -- e.g. a plain directory GETATTR,
-a LOOKUP that resolves to a directory, or a CREATE (which only ever makes
-non-regular objects).  A strict server would fail those compounds.
+Honor the per-file UNCACHEABLE_FILE_DATA attribute by transparently
+opening such regular files with O_DIRECT, so reads and writes bypass the
+page cache as the attribute requires, without the application having to
+request O_DIRECT itself.
 
-Gate the client accordingly:
+This follows the model the specification describes: the attribute is
+"similar in intent to O_DIRECT" and clients "retain flexibility in how
+they satisfy the requirements" (draft-ietf-nfsv4-uncacheable-files
+Section 4.4, "Relationship to Direct I/O"), and its Implementation
+Status (Section 6) describes a prototype Linux client that "treats the
+attribute as an indication to use O_DIRECT-like behavior for file
+access".
 
- - Only set NFS_INO_INVALID_UNCACHEABLE_FILE_DATA on regular-file inodes,
-   so the attribute is never (re)requested for directories or other
-   non-regular objects via the delegation GETATTR or nfs4_bitmask_set()
-   refresh paths.
+Introduce an NFS_CONTEXT_O_DIRECT open-context flag: nfs4_atomic_open()
+sets it when the resolved inode has uncacheable_file_data set (and the
+open is not O_APPEND), and the open paths nfs_atomic_open() and
+nfs4_file_open() apply O_DIRECT to the file when the flag is set.
 
- - Gate the request by object type at the single choke point
-   nfs4_bitmap_copy_adjust(), which clears
-   FATTR4_WORD2_UNCACHEABLE_FILE_DATA unless the target inode is a
-   regular file (a NULL inode -- unknown object type -- clears it too).
-   This already covers GETATTR, SETATTR and LINK; route LOOKUP, LOOKUPP
-   and CREATE through it as well.
+The I/O mode is thus selected at open time and is not changed for an
+already-open file: a later change to the attribute takes effect on the
+next open.  The specification permits this -- a client that has already
+opened a file MAY continue with its existing caching behavior and apply
+the updated attribute to subsequent operations (Section 5).
 
-The bit is kept in server->attr_bitmask (it is server-supported, and OPEN
-still requests it via its regular-file-only open_bitmap), so no bespoke
-per-data-file bitmask plumbing is needed.  The remaining getattr-bearing
-compounds are already safe: ACCESS, DELEGRETURN, WRITE, CLOSE and
-LAYOUTCOMMIT use server->cache_consistency_bitmask (no word2 attributes)
-or operate on regular files; READDIR does not encode the bit; and
-LOOKUP_ROOT, FSINFO, STATFS and PATHCONF use fixed bitmaps without it.
+The delegation interaction in Section 4.3 was considered: it permits read
+caching to remain when another NFSv4.2 mechanism, such as a delegation,
+already ensures a consistent view of the file.  That relaxation is
+optional ("may remain appropriate") and read-only -- it does not relax
+write-behind suppression (Section 4.1) or the WRITE durability invariant
+(Section 4.2).  This implementation deliberately does not take it: an
+uncacheable file is opened O_DIRECT regardless of any delegation held,
+which is compliant (read caching is simply suppressed more aggressively
+than the Section 4.3 minimum) and avoids decoupling read vs write caching
+behind a single open flag.  Relaxing reads under a delegation is left as
+a possible future optimization.
+
+Section 6 observes the benefit holds "for applications that issue
+well-formed I/O requests".  That alignment caveat does not constrain the
+Linux NFS client's over-the-wire path: the client readily issues
+misaligned I/O using O_DIRECT over SunRPC to the remote NFS server.  The
+only place a fallback from O_DIRECT to buffered I/O for misaligned I/O
+applies is NFS LOCALIO (fs/nfs/localio.c), which detects non-DIO-aligned
+I/O and falls back internally; that path is unaffected by this change.
+
+See: https://datatracker.ietf.org/doc/draft-ietf-nfsv4-uncacheable-files/
 
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 Assisted-by: Claude:claude-opus-4-8
 ---
- fs/nfs/inode.c    |  6 ++++--
- fs/nfs/nfs4proc.c | 37 ++++++++++++++++++++++++++++++++++---
- 2 files changed, 38 insertions(+), 5 deletions(-)
+ fs/nfs/dir.c           |  4 ++++
+ fs/nfs/nfs4file.c      |  2 ++
+ fs/nfs/nfs4proc.c      | 10 ++++++++++
+ include/linux/nfs_fs.h |  1 +
+ 4 files changed, 17 insertions(+)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 68a1d97d9560..bb6e58123341 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -565,7 +565,8 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr)
- 		if (fattr->valid & NFS_ATTR_FATTR_UNCACHEABLE_FILE_DATA)
- 			nfsi->uncacheable_file_data =
- 				fattr->aux_flags & NFS_AUX_UNCACHEABLE_FILE_DATA;
--		else if (fattr_supported & NFS_ATTR_FATTR_UNCACHEABLE_FILE_DATA)
-+		else if (S_ISREG(inode->i_mode) &&
-+			 (fattr_supported & NFS_ATTR_FATTR_UNCACHEABLE_FILE_DATA))
- 			nfs_set_cache_invalid(inode, NFS_INO_INVALID_UNCACHEABLE_FILE_DATA);
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index c7b723c18620..6b07abf272b1 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2208,6 +2208,10 @@ int nfs_atomic_open(struct inode *dir, struct dentry *dentry,
+ 		goto out;
+ 	}
+ 	file->f_mode |= FMODE_CAN_ODIRECT;
++	if (test_bit(NFS_CONTEXT_O_DIRECT, &ctx->flags)) {
++		file->f_flags |= O_DIRECT;
++		open_flags |= O_DIRECT;
++	}
  
- 		nfs_setsecurity(inode, fattr);
-@@ -2473,7 +2474,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	if (fattr->valid & NFS_ATTR_FATTR_UNCACHEABLE_FILE_DATA)
- 		nfsi->uncacheable_file_data =
- 				fattr->aux_flags & NFS_AUX_UNCACHEABLE_FILE_DATA;
--	else if (fattr_supported & NFS_ATTR_FATTR_UNCACHEABLE_FILE_DATA)
-+	else if (S_ISREG(inode->i_mode) &&
-+		 (fattr_supported & NFS_ATTR_FATTR_UNCACHEABLE_FILE_DATA))
- 		nfsi->cache_validity |=
- 			save_cache_validity & NFS_INO_INVALID_UNCACHEABLE_FILE_DATA;
+ 	err = nfs_finish_open(ctx, ctx->dentry, file, open_flags);
+ 	trace_nfs_atomic_open_exit(dir, ctx, open_flags, err);
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index be40e126c539..6401f6363f75 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -91,6 +91,8 @@ nfs4_file_open(struct inode *inode, struct file *filp)
+ 	nfs_fscache_open_file(inode, filp);
+ 	err = 0;
+ 	filp->f_mode |= FMODE_CAN_ODIRECT;
++	if (test_bit(NFS_CONTEXT_O_DIRECT, &ctx->flags))
++		filp->f_flags |= O_DIRECT;
  
+ out_put_ctx:
+ 	put_nfs_open_context(ctx);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ad03b8518c14..a0d088cd47ac 100644
+index a0d088cd47ac..3903d613f3eb 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -308,6 +308,15 @@ static void nfs4_bitmap_copy_adjust(__u32 *dst, const __u32 *src,
- 	unsigned long cache_validity;
+@@ -3853,6 +3853,16 @@ nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx,
  
- 	memcpy(dst, src, NFS4_BITMASK_SZ*sizeof(*dst));
+ 	if (IS_ERR(state))
+ 		return ERR_CAST(state);
++
 +	/*
-+	 * The uncacheable_file_data attribute applies only to regular files
-+	 * (NF4REG); a server must reject a query of it on any other object
-+	 * type with NFS4ERR_INVAL.  Never request it unless the target is
-+	 * known to be a regular file (callers with an unknown object type,
-+	 * e.g. LOOKUP, pass a NULL inode).
++	 * Use O_DIRECT if file was marked as Uncacheable, see:
++	 * https://datatracker.ietf.org/doc/draft-ietf-nfsv4-uncacheable-files/
 +	 */
-+	if (!inode || !S_ISREG(inode->i_mode))
-+		dst[2] &= ~FATTR4_WORD2_UNCACHEABLE_FILE_DATA;
- 	if (!inode || !nfs_have_read_or_write_delegation(inode))
- 		return;
++	if (!(open_flags & O_DIRECT) && NFS_I(state->inode)->uncacheable_file_data) {
++		if (!(open_flags & O_APPEND))
++			set_bit(NFS_CONTEXT_O_DIRECT, &ctx->flags);
++	}
++
+ 	return state->inode;
+ }
  
-@@ -4598,6 +4607,7 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
- 		.rpc_resp = &res,
- 	};
- 	unsigned short task_flags = 0;
-+	__u32 bitmask[NFS4_BITMASK_SZ];
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 8552a0d778d9..48b806aa3a2f 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -110,6 +110,7 @@ struct nfs_open_context {
+ #define NFS_CONTEXT_UNLOCK	(3)
+ #define NFS_CONTEXT_FILE_OPEN		(4)
+ #define NFS_CONTEXT_WRITE_SYNC		(5)
++#define NFS_CONTEXT_O_DIRECT		(6)
  
- 	if (nfs_server_capable(dir, NFS_CAP_MOVEABLE))
- 		task_flags = RPC_TASK_MOVEABLE;
-@@ -4606,7 +4616,13 @@ static int _nfs4_proc_lookup(struct rpc_clnt *clnt, struct inode *dir,
- 	if (nfs_lookup_is_soft_revalidate(dentry))
- 		task_flags |= RPC_TASK_TIMEOUT;
- 
--	args.bitmask = nfs4_bitmask(server, fattr->label);
-+	/*
-+	 * The looked-up object's type is unknown here, so gate out the
-+	 * regular-file-only uncacheable_file_data attribute (NULL inode).
-+	 */
-+	nfs4_bitmap_copy_adjust(bitmask, nfs4_bitmask(server, fattr->label),
-+				NULL, 0);
-+	args.bitmask = bitmask;
- 
- 	nfs_fattr_init(fattr);
- 
-@@ -4720,13 +4736,20 @@ static int _nfs4_proc_lookupp(struct inode *inode,
- 		.rpc_resp = &res,
- 	};
- 	unsigned short task_flags = 0;
-+	__u32 bitmask[NFS4_BITMASK_SZ];
- 
- 	if (server->flags & NFS_MOUNT_SOFTREVAL)
- 		task_flags |= RPC_TASK_TIMEOUT;
- 	if (server->caps & NFS_CAP_MOVEABLE)
- 		task_flags |= RPC_TASK_MOVEABLE;
- 
--	args.bitmask = nfs4_bitmask(server, fattr->label);
-+	/*
-+	 * The looked-up object's type is unknown here, so gate out the
-+	 * regular-file-only uncacheable_file_data attribute (NULL inode).
-+	 */
-+	nfs4_bitmap_copy_adjust(bitmask, nfs4_bitmask(server, fattr->label),
-+				NULL, 0);
-+	args.bitmask = bitmask;
- 
- 	nfs_fattr_init(fattr);
- 	nfs4_init_sequence(server->nfs_client, &args.seq_args, &res.seq_res, 0, 0);
-@@ -5141,6 +5164,7 @@ struct nfs4_createdata {
- 	struct nfs4_create_res res;
- 	struct nfs_fh fh;
- 	struct nfs_fattr fattr;
-+	u32 bitmask[NFS4_BITMASK_SZ];
- };
- 
- static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
-@@ -5164,7 +5188,14 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 		data->arg.name = name;
- 		data->arg.attrs = sattr;
- 		data->arg.ftype = ftype;
--		data->arg.bitmask = nfs4_bitmask(server, data->fattr.label);
-+		/*
-+		 * CREATE only makes non-regular objects, so gate out the
-+		 * regular-file-only uncacheable_file_data attribute (NULL inode).
-+		 */
-+		nfs4_bitmap_copy_adjust(data->bitmask,
-+					nfs4_bitmask(server, data->fattr.label),
-+					NULL, 0);
-+		data->arg.bitmask = data->bitmask;
- 		data->arg.umask = current_umask();
- 		data->res.server = server;
- 		data->res.fh = &data->fh;
+ 	struct nfs4_threshold	*mdsthreshold;
+ 	struct list_head list;
 -- 
 2.47.3
 
