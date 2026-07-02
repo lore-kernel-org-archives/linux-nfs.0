@@ -1,41 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4922B35E929;
-	Thu,  2 Jul 2026 20:24:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5ABFB230BD5;
+	Thu,  2 Jul 2026 20:27:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783023854; cv=none; b=Ayt9dg+TUn0VslHvo2mT7Fu5p1bgYGeK0knyDF4Bd56Kgn/b5RVUi3mar6YrJzf5GwXv7zUh0vdOVYJK+bySC5QX0554Tc/wKvU5oU0271O8JOn663cJTjaDKOBazfdH1QNYbItb1LdFMwhdknWiie1IALGLbZQ38NXT0yONcUY=
+	t=1783024073; cv=none; b=FoGUTmC5iSivNuB7CDUwY5VpiyRu4VL32w5qvsCMZ57myIjLLE/nbgLMibdtHkN4rv2Mjgcz6if+AnSRcxX17Ps1B/qFXwryg1B5GMpqs7geFyn8SpCJGHFkGx618hYPCNX10odZirwx+dbbPQCSwtSrJlpu7sF5aM+Vjgr1yNo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783023854; c=relaxed/simple;
-	bh=JAmux79vK/x3zIBRw7nbAGO5uthnwlOzMl012oRQgs4=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gsBzV/TASgB6pMoqIX4MRJahSUuk98LV1t2tcLWwv6FYEkuhrbcnbLP9wrEZ/d7BwdpplDMEQG2XxVt4+suaDcq+Ix2UrJku67q4BlCpfEXbD5018AWxJKg67F85QAnLw8VVMjem9f5GbYX6ngen0qOylFoimT+RKEGnh203e+w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CLoq75nt; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1783024073; c=relaxed/simple;
+	bh=2MZhzQUcpUAFJ1uTEsvBezeJgNP5m7hMZepcIWvqRyI=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Vc4WqW+lBTAGRmmgBWExQZTbm0EHJSqnqy3CZZ1Nlx1WOIGguk+hXKCkAABAdLpjZ6+oV/b7UxowY4XyF0PZyITq2hGwiMtP37ejHHkRz4WVGidwk5Ze0bzJAgLaOHeKe/DD/RAHM4iPFpqcAkzHSkkMoM6ZUivAoIY/Yugdydo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UjxokLHJ; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CLoq75nt"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B52571F00A3D;
-	Thu,  2 Jul 2026 20:24:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UjxokLHJ"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id BA4701F000E9;
+	Thu,  2 Jul 2026 20:27:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783023853;
-	bh=KoXkQDKRgHRYLYlqKF1aOxYpobnYihowBP+MERmUeDo=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=CLoq75ntJIFauox5ln06Sv54to0Uyez0I/yMi15c+mrQgJUXLsbk1Mk51PvsOSLul
-	 wCkpEbHXtnG64XuxqmYF67HIkTVKivgVeo7DXuayNXUYgD24t1zaSOKb5urODO3qTt
-	 Y28UztrFK73Fg1GzqZOosYirGUDV8YRKzqOO4YTmZ0mKtAjYW9nJpllLb9bHKVWe4T
-	 pvSgPwAauWQIyjPwDER15y5uPcmYoO2T9Opya6C60GFhyeoYdfR1Rrxe/8MPUAvbMX
-	 VQQ4wZgeiug/2bgd760FAcHhsUkq36W1Fj7OaKxpebXS76KBf7GIzDUKOykWYCcU6n
-	 Frw/aph1E68BQ==
+	s=k20260515; t=1783024072;
+	bh=IH4BeaYTSkDPAfmCv7pI/j3z0eaRPyPqOgEH3MQKdJI=;
+	h=From:To:Cc:Subject:Date;
+	b=UjxokLHJyOkjh0fyIlKWt1a3rsQy/eabCuruualCwND135R7Mpcs1GtFH+JnGGJOX
+	 j4REXeLrvd0UYHb7oVllW8zK9ndjYF2Igzhw6OEQuuReN3mnYU/YokNLfW+45uijnc
+	 B2nsy/i8RJNPmLMocC9v+3D8S9N+SkgmyDsaB5YoRzd3atVibG69dHuiM0JGPRol3i
+	 0KVVVxwUe11DmmWJj+4qZA4Se7M0gEu10tcpAaGRM5+93kiAAxWmqKpMNgfca+WG3m
+	 +ETs46RUqST6vTLKJN8n4P+4NHC4BRflUBj0VNTgLUg4H5+AayUk6yFnKCmES9XvO7
+	 KOCqQ1OjtrKSA==
 From: Chuck Lever <cel@kernel.org>
 To: <stable@vger.kernel.org>
 Cc: <linux-nfs@vger.kernel.org>,
-	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 6.18.y 3/3] nfsd: release layout stid on setlease failure
-Date: Thu,  2 Jul 2026 16:24:09 -0400
-Message-ID: <20260702202409.1583677-3-cel@kernel.org>
+	Scott Mayhew <smayhew@redhat.com>
+Subject: [PATCH 6.12.y 1/2] nfsd: fix file change detection in CB_GETATTR
+Date: Thu,  2 Jul 2026 16:27:48 -0400
+Message-ID: <20260702202749.1618630-1-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260702202409.1583677-1-cel@kernel.org>
-References: <20260702202409.1583677-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -44,69 +41,80 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-commit 30d55c8aabb261bc3f427d6b9aae7ef6206063f9 upstream.
+From: Scott Mayhew <smayhew@redhat.com>
 
-nfs4_alloc_stid() publishes the new stid into cl->cl_stateids via
-idr_alloc_cyclic() under cl_lock before returning to
-nfsd4_alloc_layout_stateid(). When nfsd4_layout_setlease() then
-fails, the error path frees the layout stateid directly with
-kmem_cache_free() without ever calling idr_remove(), leaving the
-IDR slot pointing at freed slab memory. Any subsequent IDR walker
-(states_show, client teardown) dereferences the dangling pointer.
+commit 304d81a2fbf2b454def4debcb38ea173911b72cd upstream.
 
-The correct teardown for an IDR-published stid is nfs4_put_stid(),
-which removes the IDR slot under cl_lock, dispatches sc_free
-(nfsd4_free_layout_stateid) to release ls->ls_file via
-nfsd4_close_layout(), and drops the nfs4_file reference in its
-tail.
+RFC 8881, section 10.4.3 doesn't say anything about caching the file
+size in the delegation record, nor does it say anything about comparing
+a cached file size with the size reported by the client in the
+CB_GETATTR reply for the purpose of determining if the client holds
+modified data for the file.
 
-A second issue blocks that switch: nfsd4_free_layout_stateid()
-unconditionally inspects ls->ls_fence_work via
-delayed_work_pending() under ls_lock, but
-INIT_DELAYED_WORK(&ls->ls_fence_work, ...) currently runs only
-after the setlease call. On the setlease-failure path the
-destructor would touch an uninitialized delayed_work.
+What section 10.4.3 of RFC 8881 does say is that the server should
+compare the *current* file size with the size reported by the client
+holding the delegation in the CB_GETATTR reply, and if they differ to
+treat it as a modification regardless of the change attribute retrieved
+via the CB_GETATTR.
 
-    nfsd4_alloc_layout_stateid()
-      nfs4_alloc_stid()           /* idr_alloc_cyclic under cl_lock */
-      nfsd4_layout_setlease()     /* fails */
-        nfs4_put_stid()
-          nfsd4_free_layout_stateid()
-            delayed_work_pending(&ls->ls_fence_work)  /* needs INIT */
-            nfsd4_close_layout()  /* nfsd_file_put(ls->ls_file) */
-          put_nfs4_file()
+Doing otherwise would cause the server to believe the client holding the
+delegation has a modified version of the file, even if the client
+flushed the modifications to the server prior to the CB_GETATTR.  This
+would have the added side effect of subsequent CB_GETATTRs causing
+updates to the mtime, ctime, and change attribute even if the client
+holding the delegation makes no further updates to the file.
 
-Fix by hoisting the ls_fenced / ls_fence_delay / INIT_DELAYED_WORK
-initialization above the nfsd4_layout_setlease() call, and replace
-the manual nfsd_file_put + put_nfs4_file + kmem_cache_free cleanup
-with a single nfs4_put_stid(stp).
+Modify nfsd4_deleg_getattr_conflict() to obtain the current file size
+via i_size_read().  Retain the ncf_cur_fsize field, since it's a
+convenient way to return the file size back to nfsd4_encode_fattr4(),
+but don't use it for the purpose of detecting file changes.  Remove the
+unnecessary initialization of ncf_cur_fsize in nfs4_open_delegation().
 
-Fixes: c5c707f96fc9 ("nfsd: implement pNFS layout recalls")
+Also, if we recall the delegation (because the client didn't respond to
+the CB_GETATTR), then skip the logic that checks the nfs4_cb_fattr
+fields.
+
+Fixes: c5967721e106 ("NFSD: handle GETATTR conflict with write delegation")
 Cc: stable@vger.kernel.org
-Assisted-by: kres (claude-opus-4-7)
-Signed-off-by: Chris Mason <clm@meta.com>
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-[ cel: drop fence_work init hoist absent from 6.18.y ]
+[ cel: no deleg_ts in 6.12.y; dropped the now-dead ncf_cur_fsize init ]
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfs4layouts.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4layouts.c b/fs/nfsd/nfs4layouts.c
-index 683bd1130afe..62762e43f810 100644
---- a/fs/nfsd/nfs4layouts.c
-+++ b/fs/nfsd/nfs4layouts.c
-@@ -256,9 +256,7 @@ nfsd4_alloc_layout_stateid(struct nfsd4_compound_state *cstate,
- 	BUG_ON(!ls->ls_file);
- 
- 	if (nfsd4_layout_setlease(ls)) {
--		nfsd_file_put(ls->ls_file);
--		put_nfs4_file(fp);
--		kmem_cache_free(nfs4_layout_stateid_cache, ls);
-+		nfs4_put_stid(stp);
- 		return NULL;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2d9174729782..33102bc65b7c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6085,7 +6085,6 @@ nfs4_open_delegation(struct nfsd4_open *open, struct nfs4_ol_stateid *stp,
+ 			goto out_no_deleg;
+ 		}
+ 		open->op_delegate_type = NFS4_OPEN_DELEGATE_WRITE;
+-		dp->dl_cb_fattr.ncf_cur_fsize = stat.size;
+ 		dp->dl_cb_fattr.ncf_initial_cinfo = nfsd4_change_attribute(&stat);
+ 		trace_nfsd_deleg_write(&dp->dl_stid.sc_stateid);
+ 	} else {
+@@ -9039,11 +9038,15 @@ nfsd4_deleg_getattr_conflict(struct svc_rqst *rqstp, struct dentry *dentry,
+ 		if (status != nfserr_jukebox ||
+ 		    !nfsd_wait_for_delegreturn(rqstp, inode))
+ 			goto out_status;
++		status = nfs_ok;
++		goto out_status;
++	}
++	if (!ncf->ncf_file_modified) {
++		if (ncf->ncf_initial_cinfo != ncf->ncf_cb_change)
++			ncf->ncf_file_modified = true;
++		else if (i_size_read(inode) != ncf->ncf_cb_fsize)
++			ncf->ncf_file_modified = true;
  	}
+-	if (!ncf->ncf_file_modified &&
+-	    (ncf->ncf_initial_cinfo != ncf->ncf_cb_change ||
+-	     ncf->ncf_cur_fsize != ncf->ncf_cb_fsize))
+-		ncf->ncf_file_modified = true;
+ 	if (ncf->ncf_file_modified) {
+ 		int err;
  
 -- 
 2.54.0
