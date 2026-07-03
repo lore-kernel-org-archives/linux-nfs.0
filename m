@@ -1,42 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7B3D312834;
-	Thu,  2 Jul 2026 21:41:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 974253148DA;
+	Fri,  3 Jul 2026 03:32:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783028499; cv=none; b=WHMehhJ9x9+QJBVxhjpk0iGtATQpjZQdsxD5pNg/gBjENnVTWFN1zYR0IKX6xBtvkFadMiExhCvLJrZkiA4KgSdiGaTmS0eI1VMeIYsG5JYMYd+RMuTMiUGbTxiFi7pZCX+L8X9NtbV2xIB8ukbXtDYI1tNy4acvU5fgj6+1L0k=
+	t=1783049580; cv=none; b=qCrGK+SWx9SV0xB8Rwge7HSUumn6HgFKwroh1BuIS1Sk7tFIpxPTNfU0kRUNlXLEnwADI5uF+zj62NwJNBjjKO3IHVTGzzt/EZaJd9xnetqN6j7JoXfsL75Lt1htHEqyv9+tyDhPfyvXrWovSp4bEyfnOSTGsIEWNDJI6vriPbg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783028499; c=relaxed/simple;
-	bh=tT/3omg3PNgIoOIavzQkCy5itycSAAr2+yb/AXr4bSU=;
+	s=arc-20240116; t=1783049580; c=relaxed/simple;
+	bh=UyVKHl44V9oblhGbFz3Nt2ly+SeUjgUCGBMkhPzd/yo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=RcIe+TGSCzOeSpZEZpggEneN9kRJcr6Gm0M3nYCnNzmrdxgupSHr/iZ03bkUjwWER+PchtKetoHq8x1aWcvTYg+Z8nF7aPrjUs1v4IbtlRng8+srv/Avvs3eRm98eT1SG2TkWP22dybNkrS9M1Xp3h86I9RhAXmcOBvxuVmPue0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=C1nmlsUK; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=EdtozdG9S3SAhuGVgDa0sTUDDr7mLaYAo0ovHeiMTp4oefi24b4aZIaYsiF0WtHh3sp0t950WU4TFMfNoLz3Ow0YgWDthYwcWZKtg4LST0oDyD51kEQ1ELxnU0UB77tJgCJye9IdpN8aiqBazrDpu0zUWN5tj//y36+p8OFpk5o=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WvEGIbeu; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="C1nmlsUK"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 27A951F00A3D;
-	Thu,  2 Jul 2026 21:41:38 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WvEGIbeu"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B45281F00A3A;
+	Fri,  3 Jul 2026 03:32:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783028498;
-	bh=D0+XDJ0DE8l6O8P0lzGa5SSgmMFTY4bNO+D7PkidL6Q=;
+	s=k20260515; t=1783049567;
+	bh=l5TPp3rc00ZF15B3XLumzanSxaqs36Mi+WEr8CXXg6I=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=C1nmlsUKN46VHIwEmYuqu3Jl0dnrNR8rgh0agHtBrr6mGwEOq0NyVrPWP1PXsxfMj
-	 XEB+dZ0vBwRMOzPICy+02qlePQ6qa9uzlAVe5rCVZTxsZhkpmGQUqOS3tZSjCMACvc
-	 lvQwq9gpGxJ17eyILgagegP1alDY3DxqQM+u3dxhfF9lj+oJ042+wOruRM1k+Morjw
-	 oOzhiRsguWHlljZhT5ZTfDfIBoGypu4GlWldb3k0+o1RlfXYR1fBml2lw3icjHo+/N
-	 tlmkTIJQbRzQ2+zq7mOlDlYCGN4AhYkh4+6HnPgl5tDEFx1hWQL9BTYDpVZbpY1PlO
-	 dCvmSAUqoif0A==
+	b=WvEGIbeu6I519kOOSH7q9qsLcEVT04XYa8ISPefpWFT8BzqyIqgUnNFaa3O1cYr9W
+	 Ab1/5+8JJX6rqTR1cwflU/FFgpN/o1CUgfWdqi5Dq/On0YSRKOQJYoHRKcbC9KpxhU
+	 EH29euyWxsFQ8vxD0P++goB13CuV1XWQicbz4BUZhB1WRKBJ0DpPnRVKZkQ5xCCTXE
+	 IgcgQgUNe7dCPiIYhrSZE0/44Jv0T1YTfLNyPYAjM8ZhqUY1krC30VqWkZgOiRo+AW
+	 6l23I68DdeNOkcisNfAwj26s6QyrLTeWsyCYKR8Bxq9xKVCalauthD+gdQethchvcN
+	 /6kMPKQcMXh3A==
 From: Chuck Lever <cel@kernel.org>
 To: <stable@vger.kernel.org>
 Cc: <linux-nfs@vger.kernel.org>,
 	Jeff Layton <jlayton@kernel.org>,
 	Chris Mason <clm@meta.com>
-Subject: [PATCH 6.6.y 2/2] nfsd: reset write verifier on deferred writeback errors
-Date: Thu,  2 Jul 2026 17:41:35 -0400
-Message-ID: <20260702214135.533354-2-cel@kernel.org>
+Subject: [PATCH 6.1.y 2/2] nfsd: reset write verifier on deferred writeback errors
+Date: Thu,  2 Jul 2026 23:32:43 -0400
+Message-ID: <20260703033243.1539871-2-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260702214135.533354-1-cel@kernel.org>
-References: <20260702214135.533354-1-cel@kernel.org>
+In-Reply-To: <20260703033243.1539871-1-cel@kernel.org>
+References: <20260703033243.1539871-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -73,19 +73,17 @@ Cc: stable@vger.kernel.org
 Assisted-by: kres:claude-opus-4-6
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-[ cel: 6.6.y predates the commit_reset_write_verifier() helper (v6.7);
-  open-coded nfsd_reset_write_verifier() and the reset tracepoint at
-  both sites, matching the other reset paths in these functions ]
+[ cel: open-code the reset; commit_reset_write_verifier() is v6.7 ]
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
  fs/nfsd/vfs.c | 9 ++++++++-
  1 file changed, 8 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index ae1f43eb515a..6658c92340f2 100644
+index 87a596fc6654..c40b2a706691 100644
 --- a/fs/nfsd/vfs.c
 +++ b/fs/nfsd/vfs.c
-@@ -1185,8 +1185,11 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
+@@ -1134,8 +1134,11 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
  	nfsd_stats_io_write_add(nn, exp, *cnt);
  	fsnotify_modify(file);
  	host_err = filemap_check_wb_err(file->f_mapping, since);
@@ -98,7 +96,7 @@ index ae1f43eb515a..6658c92340f2 100644
  
  	if (stable && use_wgather) {
  		host_err = wait_for_concurrent_writes(file);
-@@ -1330,6 +1333,10 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
+@@ -1271,6 +1274,10 @@ nfsd_commit(struct svc_rqst *rqstp, struct svc_fh *fhp, struct nfsd_file *nf,
  			nfsd_copy_write_verifier(verf, nn);
  			err2 = filemap_check_wb_err(nf->nf_file->f_mapping,
  						    since);
