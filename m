@@ -1,42 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4F32B30C178;
-	Fri,  3 Jul 2026 03:38:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 570F131960B;
+	Fri,  3 Jul 2026 03:39:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783049910; cv=none; b=SoPeKwHHcvaf41SByWr9h8Cbo6+JrXwEdUnC3HnMWkAzVfSJ5pTC0Umo9c7sMj03VUELCSmddhkkRAgSPMYI7JUbKDXxD2HGtWOIMrWYFR5sUkHCBTd11RR8yXMsKWKBARiqozzfe8y8gWXB0q7rwwubpLNkgjttodFUBwcEva8=
+	t=1783050009; cv=none; b=sBIDsqRnslmrytRhkIENHhs9wCp8MDVADiHdjGiLKxOnE09sQ4ydycobHhbbqHvpZNzQ466mF3FvjAlOs2C1jwvRz6zThq4DlExHfWffmX/0Y+f2Nr2ZtW8/9rnp/MU7hGXHiz7oZm6QpmsMxtFYDWGLXoR7py6A1KHkVTJpBOw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783049910; c=relaxed/simple;
-	bh=d2mTwY3vPT9q0uXQW/glaf5ntHryN0h6VHMEFjf3WwA=;
+	s=arc-20240116; t=1783050009; c=relaxed/simple;
+	bh=VINqarf7hOIseguRgK+ggb/uw32Diisf1elEGJDEhq0=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=IfTomzuGqG9Uv4LProLYxz4OP0dUOlHU9ob+yADFOF4tLAtiWETVPq99xnLVln1tZSc7OvwgigGGdJVNBZYmy0aYbd2+CkL/6u5IIjpnLcuq2GW6LHxcJpxW909MbBAiK1cniawcpH6kvKyh+/XVMVPnuvh4I66fxLe022DgP4g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Tr0PU0fY; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=hgGRqMEs+kSNvi/00Mh8NjEmocCRLJsggwIasVl4QyFL5xKmSaJ5mAlGhQavtsqbykw+4kkC1M8VK+8eSlTqaT+BJWIvjaZyn05oQgttNMkT3lf0PMGx/oklsvPMKOQjQrZjKnZocmUGeh8ZZcAPI41OnsRIOw8cihPul3aQNds=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UTz99996; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Tr0PU0fY"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C132C1F000E9;
-	Fri,  3 Jul 2026 03:38:17 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UTz99996"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7F1331F000E9;
+	Fri,  3 Jul 2026 03:39:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783049898;
-	bh=gJfTVIipOLwRm/OjXccUYhVkVz3G5zg319vn9f3homQ=;
+	s=k20260515; t=1783049996;
+	bh=UNLcNnOxl71CB0YGFzVQszjVzHIH+/7q2lDPqivIgHk=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Tr0PU0fYrDbSVgGHcuAKevcU+SkSDr60xo2UdZp/EzZxYS8wES9zNJawmuyWmVByb
-	 fUfdqtpO7REWJYp/r6+YpfHp3odrRsSfpIE74Mnnr41wZ/nnfasJT7acPDfRaWY/ec
-	 ZD4UAZiVpU3cYZbq+m6DH1y0i7CRSRauZpKJujK+t9ihweAMX96xlNsx4QlqWgJhH4
-	 14q3+ZoqN9tObm60M4KRCJNnkS6oFIbF9odjxTi4NMOsDW3cYeQZU1nruAgxLVkYhi
-	 ssBj1aHSQcQHErI9Yr3VGyj2wEDoBaLZaJFBLSmTxg0oEdzNYJPvYgxmXmqbplbZ55
-	 gqO8FWsXa5zZQ==
+	b=UTz99996E82+REkpDIqygstU2ayBAY9Hw2OanbJR/DY+6VIWT/0aAO2OqG9CZKT8u
+	 uz89NGaX1YEZNKdMxxYk74OEuIkYn8X+QjHn/WUVPw07AP9tBdrGACM/qxtD+qkb6o
+	 ql9Hq5L+A42MPbFo62Heg1hnDH/jSNX23Tc09/qWImEbjiUW1EJmNnNMKGYo9ob1Lr
+	 N9kAGBqutEpvwGuPOftRX1i+b7AHOiVrnKvvc8ag6cex6N/v5lD8zgfp1mxBogvFZe
+	 dEdZ9VO534xk0ckUlL4e9V2mDOXGN5/kAhSJ7Up70WX0TljFU9ChNIcR5i5HSXUiya
+	 5ZLpEAGXrKULQ==
 From: Chuck Lever <cel@kernel.org>
 To: <stable@vger.kernel.org>
 Cc: <linux-nfs@vger.kernel.org>,
 	Chris Mason <clm@meta.com>,
 	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 5.15.y] nfsd: release layout stid on setlease failure
-Date: Thu,  2 Jul 2026 23:38:15 -0400
-Message-ID: <20260703033815.1573400-1-cel@kernel.org>
+Subject: [PATCH 5.10.y] nfsd: release layout stid on setlease failure
+Date: Thu,  2 Jul 2026 23:39:54 -0400
+Message-ID: <20260703033954.1602126-1-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <2026070228-deny-tattered-d0df@gregkh>
-References: <2026070228-deny-tattered-d0df@gregkh>
+In-Reply-To: <2026070228-repeater-synthesis-1c1b@gregkh>
+References: <2026070228-repeater-synthesis-1c1b@gregkh>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -90,7 +90,7 @@ Assisted-by: kres (claude-opus-4-7)
 Signed-off-by: Chris Mason <clm@meta.com>
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-[ cel: no ls_fence_work in 5.15.y; dropped INIT_DELAYED_WORK hunk ]
+[ cel: no ls_fence_work in 5.10.y; dropped INIT_DELAYED_WORK hunk ]
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
  fs/nfsd/nfs4layouts.c | 4 +---
