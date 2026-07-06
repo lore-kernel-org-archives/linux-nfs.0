@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83DDF3314B9
-	for <linux-nfs@vger.kernel.org>; Mon,  6 Jul 2026 01:25:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 219B7322B6D
+	for <linux-nfs@vger.kernel.org>; Mon,  6 Jul 2026 01:26:00 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783301160; cv=none; b=GvHYXW0mjTsnLyA6kKDkYqovAIzxkaK7iVAAXtKskDoqkQsO8xEeES8RyrZrYpfuAz7v/5voZoaRyEB2LFGOszmBlnTtDswN23jGS6fgYDe6S3/k3kxA0QdnzwG+YRWsHaxm8JCW/AW9/yMK8y7tQou6jzZHEELWlDxsAHyzBLc=
+	t=1783301161; cv=none; b=NlQZIXv8q3nToq5x0EPxjaQjQ1yfzu0VZNOpVGZiXeTTXtOUVn+sL+qfIQx8SYFJDGNlqwsWCBCmjFusDDsjDSqrRIz72wgPJxRY6LY2ojogUmJ1UggacDaFinM7l0rxnEhy56zA5WYpZK9goF3+78vYjKfgRsNcrLorgrmSY8M=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783301160; c=relaxed/simple;
-	bh=swX1AkbhmhRZRH3AnkbByYaquXBWoxhZgGeo6Si6MIg=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=hRePVp0OWmD8Zrh137QopkO8Ddk0CWXqLBddJuTJbV8DxRK8N97uQ6ct7toV8pIY+Oe7Qj2FT173FpCnErSKLVszGglia1T1GiuWl1g75tmpSTBDF0KCctF2SWf788GcjJFxnjF7kH6bFCeLQ1b0lUXpSSW/qtCW+8kTlqxInPg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=esotjwRo; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1783301161; c=relaxed/simple;
+	bh=sPMlGAlzQOTdelgvYO7D1q5J5d/f4LL5dBKYxTxtb+I=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=c4KB44oLWdE94U5tXXZdSpstBCXwUAx8FaukiupUeDWnqoC2M4c6L7KGXrAXXWdLmDDdGkuEPfgBdyn923btknHiqLr+2R+SLQCDaE96M1WxQZNb7R4Sogw0PbOVMieVJJxPA5zze8xAW+aKKCNiN4yTewQq5aiDSHTUSk115OY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QRTsbDxs; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="esotjwRo"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8FFF51F000E9;
-	Mon,  6 Jul 2026 01:25:58 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QRTsbDxs"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5BA021F00A3D;
+	Mon,  6 Jul 2026 01:25:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1783301159;
-	bh=vZ4nn2h42RK9iAFKMX9gMFgz4E8WEtaS91PPcUZe8KI=;
-	h=From:Subject:Date:To:Cc;
-	b=esotjwRovDJRLMYLgeQrn468h4ZtgV8abbApyNRypmbv4siAvoHd9jkEih4Efk05H
-	 qZZclhkqddARJVWF+5n75G+CblXgheROV8DF0SnhiP58W8DB317YTG0E9GE8XPGBxx
-	 AKlF2RTMEbGqJH1Bcehe2g35CxPg8Nnb6lHU3tC9KlTQYIuWDGuZzmw24rZ6Wqs8lO
-	 w8nA+GtdZGRIagdtWEi05rmfzC3Q1W7RwrpvEgQ6F90ppISqomUievw5g32i9kpQ2T
-	 fMMae1f8f8qo7iDzzXK+XC8NRdqZpiySK9OKAoBsgXCCQ2y32VLAm3Yu79nXE9LwIj
-	 dBNJBH0yHjf2w==
+	bh=SxQAcatazlWzfE478KoxuXqy+jBGuzlZirS+OSd96Fg=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=QRTsbDxsHMM17ujp4YETmzK+dd0IbpFFzrTqWEdU/UBDjXMcYVlP8qwpCAcRkJj8k
+	 aS0Fj6dyF1J1hc2Tjizn5aMEqu5skHIirqq+i2+JeWsADMf309SBSh0rWOOcIpg81v
+	 vLpiOgSjS3MbIX8/ClECln1ev5mLIWnYoleFGNrRcSBSOzvatJ08DkGORmFWgJAuJf
+	 iz5mab5I7S/J+N4xBYVGogsk6OQEBqfnJGTU/QLtw1hvtdmtWhWwsjD/d0mKx0nDb8
+	 uAjpBLuoVlI9vKJ7rfLRWYQhHrR8tRRed77Hd8lkNCRYfvEnBq8Gf6oaHKKLf77mSi
+	 am6P1DVX19DtQ==
 From: Chuck Lever <cel@kernel.org>
-Subject: [PATCH v2 0/6] NFSD: Fix UAFs in client teardown and state
- revocation
-Date: Sun, 05 Jul 2026 21:25:36 -0400
-Message-Id: <20260705-cel-v2-0-d88c3b68e8bc@kernel.org>
+Date: Sun, 05 Jul 2026 21:25:37 -0400
+Subject: [PATCH v2 1/6] NFSD: Prevent lock owner use-after-free during
+ client teardown
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,72 +38,98 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/yWM0QrCMAxFf2Xk2UBXcQN/RXxIs2yLSJSmijD27
- 7b6eC7n3A1csorDudsgy1tdH1YhHjrglWwR1KkyxBCHMIYTstxx6LnnMTBROEI1n1lm/fxeLtc
- /+yvdhEtLm5HIBVMm47VNNvuERbyoLbDvXy+u7HGGAAAA
-X-Change-ID: 20260705-cel-61c1c70caa03
+Message-Id: <20260705-cel-v2-1-d88c3b68e8bc@kernel.org>
+References: <20260705-cel-v2-0-d88c3b68e8bc@kernel.org>
+In-Reply-To: <20260705-cel-v2-0-d88c3b68e8bc@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org, Wolfgang Walter <linux@stwm.de>, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1863; i=cel@kernel.org;
- h=from:subject:message-id; bh=swX1AkbhmhRZRH3AnkbByYaquXBWoxhZgGeo6Si6MIg=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqSwQb1ZN4XOlfERMtr49QIZu1In33CpU4CCGKe
- L/heQP9ji2JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaksEGwAKCRAzarMzb2Z/
- l6nQEACzYYUprGrHALz6Il93D5y10832B3Y1A8bySi692hA3ukZpiXg+a5pBXcZ9ky1ZFIEfWZW
- 9N7GvhJk8nhtdFPLC69nts65iVPYjUm0RrilZktd7DVengYBVcaaA5Ux00hI2CVvUK0FWoS/6zd
- jzgQKTvvkBnNJn1WEIyHnjoQ6trCoVd8sDFd6qzNhQNuqSBO3XP0n9NOXCEnl44XjQ1OrK6FT3p
- HKDy9YSvASnH6PcGJ/FXvgf3kfx8BIKvqDZAmL3ADCEasc7qcIK+3CB9eBN6iV0JBy4mnemBxJB
- IAst5Eo2G7MPunEZ6DJ3y9mg4gStM82mdOW3LOPSEYxx5kPnoTD6foLixCUEaja8E++qPwWoVeZ
- XMC/Uc4sk9R5oDjSu7DJ1UuYnDzQ4jkWhXfqa3CJ7KoRwIl7fI9jExzA8XThwHF8Jk8Dz0WPdzc
- 2Hj/zPYpjsAToLhaB/TYdX9BBUTRNQ8IPpw9eZnaMWdXJRu4I2O6wMXI6Cc5+EL4Eye2ckoLCgR
- IUw9OIvHklUeejcfKDZBKvoH+A2/AlEvv0DEIilCcVE+JLh/BQ0oX5fAYf0orh421//S2KX5Xf5
- iY2Gs8QnsiUMj3EBcGOQyuntiyimqaDfmQGlEpYf/Y9LmY6V7m8fhXzRkuNcKYBIYyd8uwEiODj
- b/qMqgY9SPZc+lA==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2880; i=cel@kernel.org;
+ h=from:subject:message-id; bh=sPMlGAlzQOTdelgvYO7D1q5J5d/f4LL5dBKYxTxtb+I=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqSwQl3sNXs7J4L+Rv6JSHojjlvjSvGrpuaWEIb
+ Kolqky7AWaJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaksEJQAKCRAzarMzb2Z/
+ l1jOEACNNettdty9q6gUE3EoZn1qy/IyZ85Ko67WTZHbGElUhsPhD8qCloJxvbZkkQNZpKHAgAw
+ 5fhBA1gfZUoHPYX8jv3oASPwYY9ronNxNcqWUJnlm9BbbaVH/bynvNJOurRnSYKSHDvfQKytCZn
+ 6EwAYIrZHbM1F3y4jvZfQBGrex0q76SS5afR/JQT0RsYIY7RDP3xmQUaU5uO8zdpSn1Aje+hLg2
+ qK7F5eafHYCCcy2KmM7D17FKkMn6U7HVdAq4bUsXqwe1Gk0QEWq0mn7hSJIJ0bJyRCRl8whZxO9
+ dolHWeTuWgu8RXZOX3cePMxmxnqFRoofhsggm0U5EJ7rU9Ba0cQdbqISsFxrx2k8SvSMwAoFrC7
+ 8l3AmHF63WnLe+X7T/+0AKe9SCKlsoVETwI6yhtJrWJQyjp/vYWjulARXpnxPqSV0xoIei3LDqG
+ 11A1hHtBex3aB54NLHSem/FZOyVnJEg3Uulsm5B3ra7pzke4lUR0KULMFAl5zZKODMAMHmvpqJP
+ +u4EJmkDgTQEdgLuWlTMr75iTuaHxICvqCzz5rcOC8d9cnq1jpq3sZYZMxfVSypapMxWzvih5Y8
+ 6EMk8SVzLXMv7/q5G4njqGCtTyRcpuYF8d1kqdJE5zKmYFeYEkzV3lJ1kHh0ZhnvYN7HnmuzlyO
+ VuvUKYy5hC4EsYg==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-A NULL-pointer dereference reported during NFSv4 client teardown
-(patch 1) proved to be one instance of a broader lifetime bug in
-NFSD's state-revocation machinery. This series fixes the reported
-crash and the sibling races found by auditing the same pattern, then
-consolidates the fixes.
+After __destroy_client() releases a client's open owners, a lock owner
+whose only remaining reference is a blocked lock (nbl) is left on
+cl_ownerstr_hashtbl.  client_has_state() does not account for a bare
+lock owner, so DESTROY_CLIENTID can reach __destroy_client() with these
+lock owners still present.
 
-A stateid, and a bare lock owner reachable through the client's owner
-hash, hold only a raw pointer to the owning nfs4_client; a reference
-on the stateid or owner does not keep the client alive. The client
-outlives its state solely because __destroy_client() drains that state
-before free_client() runs. Several paths break that invariant. The
-laundromat unhashes an expired delegation before revoke_delegation()
-re-links it, leaving it momentarily on no client-reachable list
-(patch 2). nfsd4_revoke_states() and its export and NFSv4.0
-admin-revoke siblings drop nn->client_lock and then dereference the
-client again (patches 3-5). __destroy_client() walks the owner hash
-and frees blocked locks with no reference held (patch 1).
+__destroy_client() then walks cl_ownerstr_hashtbl and calls
+remove_blocked_locks() on each lock owner without holding a reference.
+Freeing a blocked lock drops the lock owner reference held through the
+file_lock's flc_owner, so the per-net laundromat, which reaps timed-out
+blocked locks from nn->blocked_locks_lru independently of client state,
+can free the same lock owner concurrently.  The two paths serialize on
+blocked_locks_lock for the list splice only, not for the lock owner's
+lifetime.  The laundromat can therefore free the lock owner while
+__destroy_client() is about to dereference it, and the freed, zeroed
+slab object produces a NULL dereference in remove_blocked_locks().
 
+nfsd4_release_lockowner() holds a reference across the same call;
+__destroy_client() does not.  Hold cl_lock across the walk, and
+take a reference and unhash each lock owner before dropping the
+lock, so the laundromat cannot reap a blocked lock and free the
+lock owner underneath this loop.  cl_lock is released before
+remove_blocked_locks() and nfs4_put_stateowner(), which take
+blocked_locks_lock and cl_lock respectively.
+
+Reported-by: Wolfgang Walter <linux@stwm.de>
+Closes: https://lore.kernel.org/linux-nfs/6eccafaaaa60651ef091257c3439c46b@stwm.de/
+Fixes: 68ef3bc31664 ("nfsd: remove blocked locks on client teardown")
+Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
-Changes since v1:
-- Add matching UAF fixes in several other paths
+ fs/nfsd/nfs4state.c | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
 
----
-Chuck Lever (6):
-      NFSD: Prevent lock owner use-after-free during client teardown
-      NFSD: Prevent client use-after-free during delegation revoke
-      NFSD: Prevent client use-after-free during admin state revocation
-      NFSD: Prevent client use-after-free during export state revocation
-      NFSD: Prevent client use-after-free during NFSv4.0 revoked-state cleanup
-      NFSD: Consolidate the revocation-path client unpin
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a4398dc861a5..e000ed3e96e9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2758,14 +2758,24 @@ __destroy_client(struct nfs4_client *clp)
+ 		release_openowner(oo);
+ 	}
+ 	for (i = 0; i < OWNER_HASH_SIZE; i++) {
+-		struct nfs4_stateowner *so, *tmp;
++		struct nfs4_stateowner *so;
+ 
+-		list_for_each_entry_safe(so, tmp, &clp->cl_ownerstr_hashtbl[i],
+-					 so_strhash) {
++		spin_lock(&clp->cl_lock);
++		while (!list_empty(&clp->cl_ownerstr_hashtbl[i])) {
++			so = list_first_entry(&clp->cl_ownerstr_hashtbl[i],
++					      struct nfs4_stateowner, so_strhash);
+ 			/* Should be no openowners at this point */
+ 			WARN_ON_ONCE(so->so_is_open_owner);
++			nfs4_get_stateowner(so);
++			unhash_lockowner_locked(lockowner(so));
++			spin_unlock(&clp->cl_lock);
++
+ 			remove_blocked_locks(lockowner(so));
++			nfs4_put_stateowner(so);
++
++			spin_lock(&clp->cl_lock);
+ 		}
++		spin_unlock(&clp->cl_lock);
+ 	}
+ 	nfsd4_return_all_client_layouts(clp);
+ 	nfsd4_shutdown_copy(clp);
 
- fs/nfsd/netns.h     |   6 ++-
- fs/nfsd/nfs4state.c | 108 +++++++++++++++++++++++++++++++++++++++++++---------
- 2 files changed, 94 insertions(+), 20 deletions(-)
----
-base-commit: ee6ae4a6bf3565b880dfb420017337475dfbc9ea
-change-id: 20260705-cel-61c1c70caa03
-
-Best regards,
---  
-Chuck Lever
+-- 
+2.54.0
 
