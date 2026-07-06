@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E752A3A2540;
-	Mon,  6 Jul 2026 13:29:30 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E286D41612A;
+	Mon,  6 Jul 2026 13:29:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783344575; cv=none; b=L05uerQ9V58WhyCBidfs4r2YoMVtuUCri2KD9mQdIwDw5nlm+I+dh114X2Rr80LtdiWcfAh5ZQk8oNni2hsHhuilw+CKZLd7unAyXMNXTtz+gdih6JbUW03WllSN1K+49Ea5dtxdNb47WKy/civTWqoq/zKOKQdo5E3UzEJA5pE=
+	t=1783344575; cv=none; b=m71kLZxtlud0OqJelrJ1elckQA/8MtGKikUj54qsoayWHfddwyoTZ8PL8QipPox6QJQyrJpWr+cg96Y3M02z1yXMiy3+mADSanCVk5p8FyV6WS2nCzoNQyMkP6+umqG25ZSHP7hfloUg/4JfxEKjxxF3VVDZEEDZPx2CoGhfA4A=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1783344575; c=relaxed/simple;
-	bh=OjRCDaP0crKo4Q3h/rZzIsdP+YJdjSxja76A7wiJ3dg=;
+	bh=SaO89ZTbP0RWEomBSvJPZOazDpv9h6NbFJRWVvyGKWU=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=C83suXQ1l1nsKJ6dvOCwZCigApEcHEckvP8OVULZhj+o+NP6Ju6CbA5YQIZYU7kqV1Q1I349Aa0oDbGC+c6CtQNv8sj5iPnvRs4ow0lzHI8mNRd8mgVPI+j/erzdaxkeYlSc4mIHtuS13TxhKmRftpElG1qLR7CHmGfQzWibnpc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=C4ra4jd4; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=GquYPKyYxl+Slm+mSpqKZfallBPv0yK3h/fbrnvDZqPao1vPtWt7V00eYICwRLvi1z8mVPWYs2pgd/i1xXbE9s1XIbF+RAhSqRIpSqnoouzcWTUV0GOyfqrcT5QEdBX6kcp+iu6Ki636fQEb0t0cc70m6n39wYpKIZJcaROQwXA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lmPLvf+y; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="C4ra4jd4"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D7B001F00A3A;
-	Mon,  6 Jul 2026 13:29:28 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lmPLvf+y"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DBE981F00A3D;
+	Mon,  6 Jul 2026 13:29:30 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783344569;
-	bh=XJ0UxmnZfTpc1zuIbl4X7PuBWJwf584NlFDez9+is7c=;
+	s=k20260515; t=1783344571;
+	bh=gKqFNXUflmab9SYwoLwTqiTtKKgGz8fwrb8BvmgNfVQ=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=C4ra4jd47OBDnJbWhJni6bb54OfLFQ/X5ZPrNGZLUw4LTQ0G8GMQSwImy6G+vJLnW
-	 eraSQb4UR0olOdom8hGQja2rcX7wHk8hA6dQ5Izfl1sv2Ylw4ToTeEdGJ4UgqvC+5v
-	 Uqy5W9QmtDjCB/V+NUhFSXLUR8VEj0zC5RPqPgYNlYhP2VH/NshawKdwFbiIp3Vyz+
-	 WBZTtFf/24qDoNsSYvxrFNQ1jVMurru0eO2Juy8Y+YIDjAHYphmpPdRqmx+kkN7p7E
-	 gFss6zIB3NanJKZ9qHX3U/y6jQc/VEGKzmeGS5lujs35pgfK9ElrjaWmpmtT6eyfbu
-	 MZ3aMwLW6PVRA==
+	b=lmPLvf+yMNCiOflatmfOEyS1DOEiju+OqttiNsnd+T/DYkdaVU2mhGXd2fdC8jiyR
+	 ADxW+I/hlkEA+8mUNt9D1wGg5GHp/LpE6v7e+QgBoZFm3SqWBQKa7fYfN4k0xUnjpU
+	 zYPequNs8jTiE4mMUkTg6PSa6suvCHGvFdJQF/i0QNjXPI6TD7/shs97eEsvLsF6Fo
+	 2039xwWATRzx8kxTF0Pk/94uMFY/ikEkIZyNfD2sjbYRd3rsPZI8JwpsXYBDmwqZ6a
+	 cMaH8xmkIuuBhMIwp2mY5l6VoNviZ3lIYj7d//ThPnkbom1z6hqD1yo6oCwWw9ctEi
+	 26ckWFhv9XQJg==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 06 Jul 2026 09:29:21 -0400
-Subject: [PATCH v5 1/5] sunrpc: route to a populated pool in
- svc_pool_for_cpu()
+Date: Mon, 06 Jul 2026 09:29:23 -0400
+Subject: [PATCH v5 3/5] sunrpc: guarantee a thread per pool when
+ auto-distributing
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260706-sunrpc-pool-mode-v5-1-6c4ee7cd89aa@kernel.org>
+Message-Id: <20260706-sunrpc-pool-mode-v5-3-6c4ee7cd89aa@kernel.org>
 References: <20260706-sunrpc-pool-mode-v5-0-6c4ee7cd89aa@kernel.org>
 In-Reply-To: <20260706-sunrpc-pool-mode-v5-0-6c4ee7cd89aa@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -48,95 +48,81 @@ To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2947; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=OjRCDaP0crKo4Q3h/rZzIsdP+YJdjSxja76A7wiJ3dg=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqS622rRC9uH5ZK0isxItmhTSsISBizO9WJlo0l
- Odblf07JS+JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCakuttgAKCRAADmhBGVaC
- FTLUEAC27yrX+R0YfLzabML/H1LnKM8wfMKzMsV4IpPSiU3w4pJMDfpSdRWr3LZw/irKzThMNPF
- 50ZHIrresxOkrqr84UJ8ddOl/XDRQq+KfghoDKIfN4KFzh4jSO08QA/ve635gCkpqNB50a2SyMq
- wvY24osgSQ5EipuFxa2gMjsDaeQtp3Kff2kC1c7dbzvDDeUjRttEcEpjIdLq8LhYi3MObTqu88I
- ab2FBh9gMAeWJEfAxgBxDodtW8ZVs7mY9GLNOBf5YSKGPoTGhfCey+hqMywfSyz2wqunNZKdmzl
- UyiPKY7HUFvURXOCutLX/tqxYFMCNspYAo8dmOjNonDOX950a624PT8I3dYssBFQDtWD5hdbT25
- +pCRIjrJYCJIrFUOzDyYJcRhF/ul5vKPvH6U4t69XSnIsO2wRK3GOYlUpS+WoiJzUVXqi1+dqaL
- FuMpn5H+6ZDCd+CAOcDdzPmqjX1431+6vaLl3OmGRu6xaym8fPVTa8wcoVqysIYxYMm8u+nVpX8
- FgjHIedC5c0hWNA23ZHSF4eFPcHXsdhkDA/sXM/0XuQgv040nZZiadNlqHmRFLn6b1us6o1m+B3
- ONJSozvz41iVm6rJsWKUhOPp5b4m7OfiaXgwPwiPgKnH8uZvAAMzTqFanHCNQ0yHn72pftrX5qh
- Zhad0FXN9CaHUKQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2586; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=SaO89ZTbP0RWEomBSvJPZOazDpv9h6NbFJRWVvyGKWU=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqS623lv6qooAFOnjAc6Ucq1V/az2miA8zeSUx+
+ LF4r4EZq+2JAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCakuttwAKCRAADmhBGVaC
+ FfdkD/4hC9gpPOBLvkxwhtNzJ16wyvSFPvCjDBFMQIiY6bc2k/a3Dcg/KWtmOIUHsLK94WN/dZo
+ 1Dztq8d3K3QYWxo3E+yZ46gP1bqzxnLZVwMFKfc3rF5+QwjGgPb2+iTQLAc6aO5CjnPTtsgpwyI
+ z5k5puWaMR1QM5NwS6cnbLUUWq4dUFtg9dg1VupLfmwznBnhPFX1sNDpaCMDPEns/3iZVJSU1jL
+ AmKqdC4ynzaaC1PCaU0gcE7OHOJVjkSl1+ynjgYp9t1WSqrOUphuie0OwVuzBYbbn0hWUytTU0/
+ 2xhZKZBsDAQ6t8cCU8gw5A2m9CZXW89+U4pTShikosvAs/VdHPix8wosHHZSroFzct5DWwt1Ot4
+ hWSRt/7ohJ5kl7PgFoZoefFaHhoFTLWIUVjrihERYvsxDzk24ZyIosIkuyTXTo903pvANh0ky4s
+ 3f44GIISFalzQ6lMTXrsdjZHNuRKnYfygaZjyT/tGGLEjeoz5umakEaEF0NxXSdo7/IdB8lMrnM
+ IJA3wUtv+ZzTf3v6AyUTLDOXr1SgZ6hbHvexyJt/gUGw3NwQh4GkYM8vFKmvkuepk8bHFPq7l6y
+ pd4k0GagP0yxJkdA9fahiy/65ebYavpiA6sxJHWm2kfOa8IDhhCEzSp8jEvmLD3xh/fG5rJYdOh
+ N9QxR/28uj+gfug==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-svc_set_num_threads() spreads the requested threads evenly across the
-service's pools (base = nrservs / sv_nrpools).  When a service runs
-fewer threads than it has pools -- e.g. an nfsd configured with fewer
-threads than the host has NUMA nodes while running in "pernode" or
-"percpu" mode -- the trailing pools are left with no threads at all.
+svc_set_num_threads() spreads the requested thread count evenly across
+the service's pools. In pernode mode each pool maps to a NUMA node, and
+svc_pool_for_cpu() steers an incoming transport to the pool for the node
+it arrived on. When fewer threads than pools are requested, even
+distribution leaves some pools empty, and a transport steered to an
+empty pool has no thread to service it.
 
-svc_xprt_enqueue() selects a pool from the CPU servicing the transport,
-queues the transport on that pool's sp_xprts, and only wakes a thread
-from the same pool.  Each thread services exclusively its own pool, so a
-transport that lands on a threadless pool is enqueued on sp_xprts and
-never picked up: the connection hangs indefinitely.
+Floor each pool at one thread when auto-distributing a non-zero count,
+so no pool is left empty. Every pool maps to a node that had CPUs when
+the pool map was built (svc_pool_map_init_pernode() only creates pools
+for nodes returned by for_each_node_with_cpus()), so there is no pool
+that should be left threadless. The resulting total may exceed the
+requested count. This only affects the auto-distribute path (a
+single-value array, i.e. svc_set_num_threads()); callers that set
+per-pool counts explicitly via svc_set_pool_threads() are unchanged and
+may still set a pool to zero.
 
-Have svc_pool_for_cpu() skip pools that currently have no threads,
-falling back to the next populated pool.  This trades NUMA locality for
-a guarantee that the work is actually serviced.  sp_nrthreads is only
-updated under the service mutex; the lockless read here is a best-effort
-routing hint, so annotate it with data_race().
-
-Fixes: bfd241600a3b ("[PATCH] knfsd: make rpc threads pools numa aware")
+Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
+Reviewed-by: NeilBrown <neil@brown.name>
 ---
- net/sunrpc/svc.c | 29 ++++++++++++++++++++++++++++-
- 1 file changed, 28 insertions(+), 1 deletion(-)
+ net/sunrpc/svc.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index dd80a2eaaa74..fa8056fb0b4d 100644
+index b942845f82a3..2d1cdf55c561 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -402,6 +402,7 @@ struct svc_pool *svc_pool_for_cpu(struct svc_serv *serv)
- 	struct svc_pool_map *m = &svc_pool_map;
- 	int cpu = raw_smp_processor_id();
- 	unsigned int pidx = 0;
-+	unsigned int i;
+@@ -840,6 +840,12 @@ EXPORT_SYMBOL_GPL(svc_set_pool_threads);
+  * are multiple pools then the new threads or victims will be distributed
+  * evenly among them.
+  *
++ * When @nrservs is non-zero but smaller than the number of pools, even
++ * distribution would leave some pools empty. Since each pool maps to a
++ * NUMA node and only services transports steered to that node, every
++ * pool is instead guaranteed at least one thread. The resulting total
++ * may therefore exceed @nrservs.
++ *
+  * Caller must ensure mutual exclusion between this and server startup or
+  * shutdown.
+  *
+@@ -855,6 +861,16 @@ svc_set_num_threads(struct svc_serv *serv, unsigned int min_threads,
+ 	unsigned int remain = nrservs % serv->sv_nrpools;
+ 	int i, err = 0;
  
- 	if (serv->sv_nrpools <= 1)
- 		return serv->sv_pools;
-@@ -414,8 +415,34 @@ struct svc_pool *svc_pool_for_cpu(struct svc_serv *serv)
- 		pidx = m->to_pool[cpu_to_node(cpu)];
- 		break;
- 	}
-+	pidx %= serv->sv_nrpools;
-+
 +	/*
-+	 * It's possible to have a pool with no threads. Userland can just set
-+	 * things up this way directly. Also, when threads are autodistributed
-+	 * they are spread evenly across the pools, but when there are fewer
-+	 * threads than pools some pools can end up with none.
-+	 *
-+	 * A transport enqueued on a threadless pool would never be picked up,
-+	 * since each thread only services its own pool. Fall back to the next
-+	 * populated pool, trading NUMA locality for a guarantee that the
-+	 * transport is serviced.
++	 * Don't let a pool sit empty while threads are being
++	 * auto-distributed: a transport steered to its node would have
++	 * nothing to service it. Every pool maps to a CPU-bearing node,
++	 * so hand each one a thread. This may push the total above
++	 * @nrservs.
 +	 */
-+	for (i = 0; i < serv->sv_nrpools; i++) {
-+		struct svc_pool *pool = &serv->sv_pools[pidx];
++	if (base == 0 && nrservs != 0)
++		remain = serv->sv_nrpools;
 +
-+		/* This is set under the sp_mutex and rarely ever changes. A
-+		 * data race here is harmless.
-+		 */
-+		if (data_race(pool->sp_nrthreads))
-+			return pool;
-+
-+		if (++pidx >= serv->sv_nrpools)
-+			pidx = 0;
-+	}
- 
--	return &serv->sv_pools[pidx % serv->sv_nrpools];
-+	/* No pool has any threads; nothing can service the transport. */
-+	return &serv->sv_pools[pidx];
- }
- 
- static int svc_rpcb_setup(struct svc_serv *serv, struct net *net)
+ 	for (i = 0; i < serv->sv_nrpools; ++i) {
+ 		struct svc_pool *pool = &serv->sv_pools[i];
+ 		int threads = base;
 
 -- 
 2.55.0
