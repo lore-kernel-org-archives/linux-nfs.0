@@ -1,80 +1,67 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mxout5.mail.janestreet.com (mxout5.mail.janestreet.com [64.215.233.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 331CF3C3C0C;
-	Mon,  6 Jul 2026 20:50:51 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 604C73DCDA7
+	for <linux-nfs@vger.kernel.org>; Mon,  6 Jul 2026 21:34:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=64.215.233.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783371053; cv=none; b=pQWEKPfqiP1sZv41QxagZUaE19zocpDDarfqlgb/GoX1V8Y5defEbuLxpwMgcNuu26kNMIvxz6mrAWvbA2NktYYy2yuEffIQvGIka0vArMTF1Fl7xlYx6WTkdAkrnpxRABzhWTvTvrWEzFd/Oski0RaSlsJdfbE83gpQDFIcSr4=
+	t=1783373684; cv=none; b=YCNXryLtaqvAUZECrfmz2IdRh4QwuNcxTFh4tFvhsvPADWbqV86GQQ+/RPqi4cdsmtOXRhP/fevBundykxW5GGXxpxVwpMw9iN8nCHIt/azSyZDNnVehvhKJfVDhQ4cT5PSib5pvJIYD03FwTJqhopRZ8JfBlaJnmo6u6is9yk8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783371053; c=relaxed/simple;
-	bh=ttXfcZcqzRmqdNi99/dP+I/JEJS6UuTKJ97SyR1AdHs=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=fB1c4PJlUeVW9JDLX1jUT80D5bF4yEhfgF17v+Fs9CKwk1BoajoGj41PU5izzTJJ2xt7UMWzJHKjJhAbyzXpeWGdy5OVdrdL5g74Lopv0M45JZVit+O+fy0wTlyUUB/MdJAofuqQjv7Q+BCLhXC44VhWpMbpwicPGQWbU9uFkSE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=R3q2v8Ni; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1783373684; c=relaxed/simple;
+	bh=ku/tCkJmgHTK/gVPKoZiukqbluLKMPYDczFXjMrlI34=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=FkRTEmh9cR3qUd0Kii3opY1gFTWZZ6m4xRDKugecy6hinqvgUNOGYpFqdBTHKcF8xY50Ixk6UHdhqj6BZXrtvQZgQ0WH9yi8aKGJ8x2LTWmo9ELk3qjmRO/tf65PQiKWIGZx9VnAsoDLC1glKUV7zAtt7DPricnbOVMlIC6tuzA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=janestreet.com; spf=pass smtp.mailfrom=janestreet.com; dkim=pass (2048-bit key) header.d=janestreet.com header.i=@janestreet.com header.b=m9egatQ7; arc=none smtp.client-ip=64.215.233.18
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=janestreet.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=janestreet.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="R3q2v8Ni"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 12C151F000E9;
-	Mon,  6 Jul 2026 20:50:51 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783371051;
-	bh=66d8tsxlbloJEBgmrcausbM+o2xvg8AHk4c1SBMMT9I=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=R3q2v8NiyCcquyZ4kQQn8pH8tB4CFWI/qV4T3y7TvpXTeDRdWsFVdkoOAAEghRx6F
-	 LJLC79blykxMh1YDHX8aJKM6OHHFYawFMzbRoGHdFSnpLhdOYtM56J11ND/QlzftvL
-	 kvh0/PL9C2VXDNIsvooXKvYPgHUgEHC3jBtplzkIOQKG1c6V1SDq6a16pOcGrr0T7e
-	 j0A2oxGfs+GKeSRgVxNb4qCcVK5EtYNxVqzivfcPcRjbYXv7zmy4W/2czSel6mufFL
-	 VrcjAwg/40phj+Pq/GdJXv934Y3H3dy0VNZyK7vkX1mW1pnyxQseQ8b6jAJ9QMXgGZ
-	 6VmVg+C2ilYoA==
-From: Chuck Lever <cel@kernel.org>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>,
-	NeilBrown <neil@brown.name>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	NeilBrown <neilb@ownmail.net>
-Subject: Re: [PATCH v5 0/5] sunrpc: hardcode pool_mode to pernode, remove other modes
-Date: Mon,  6 Jul 2026 16:50:47 -0400
-Message-ID: <178337103119.1752692.17102361450604849930.b4-ty@b4>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260706-sunrpc-pool-mode-v5-0-6c4ee7cd89aa@kernel.org>
-References: <20260706-sunrpc-pool-mode-v5-0-6c4ee7cd89aa@kernel.org>
+	dkim=pass (2048-bit key) header.d=janestreet.com header.i=@janestreet.com header.b="m9egatQ7"
+From: Tian Lan <tilan@janestreet.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trondmy@kernel.org>,
+ 	Anna Schumaker <anna@kernel.org>
+Subject: nfs: opening a file with O_WRONLY|O_CREAT flags can result in permission denied error
+Date: Mon,  6 Jul 2026 17:34:22 -0400
+Message-ID: <20260706213435.659381-1-tilan@janestreet.com>
+X-Mailer: git-send-email 2.43.7
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=janestreet.com;
+  s=waixah; t=1783373676;
+  bh=+IwGXdTBTPPtTq1VN+XfB3huDHiso0Tjv3DZ/Igins0=;
+  h=From:To:Cc:Subject:Date;
+  b=m9egatQ7vFBZQZqEd5+HAWshNe4tAil6PhI0Lvr0CsxNAYelmyPIfWks7WgVxbVTY
+  MQUKCBbEJw9FXz16Oi7K4KJJeVeYrF1Z7TbOZwyGyU8XsLCyyEZ6WckHWHn70iraN1
+  Np78xRkgjSrRziOZaB9HJKZ07YBE/jf+zHfWefUoDI4cZgpOvv/hDRwzegXcJ6nqPI
+  Ztj54weH5dy1tgdRYXEpWTjw0ENR0eaRtIciIUFIJN2bvlXTKI0siqKZkEQKWNbbKb
+  LSzAXGee51TSqZGim3ezsU3CX5Vlp7h4YXmyyKvu7qbQ2CvaGrMCaR2joBXAw246Mk
+  H29+uB0jlo6eg==
 
-On Mon, 06 Jul 2026 09:29:20 -0400, Jeff Layton wrote:
-> This has a few small fixes and comment cleanups and also implements
-> Neil's suggestion to remove serv.sv_nrpools:
-> 
-> Patches #1 and #3 address what is a shortcoming of the existing code --
-> namely that the server can be configured to schedule RPCs to pools with
-> no threads in them.
-> 
-> [...]
+Hello,
 
-Applied to nfsd-testing, thanks!
+We recently noticed there is a behavior change w.r.t opening a file 
+with the O_WRONLY|O_CREAT flags over the NFSv3 protocol after upgrading
+the kernel from 6.1 LTS to 6.12 LTS. From the packets capturing, it seems
+like the kernel would now issue an additional CREATE rpc call to the
+remote NFS server regardless if the target file pre-exists or not.
+The CREATE rpc request could return an EACCES error if the client only has 
+the write permission to the pre-existing file but no write permission on 
+the directory containing the pre-existing file. This causes the openat 
+syscall to fail with permission denied error which is not expected.
 
-[1/5] sunrpc: route to a populated pool in svc_pool_for_cpu()
-      commit: abf002b5412b282ce825cf0ada22f0278ae7f408
-[2/5] sunrpc: hardcode pool_mode to pernode, remove other modes
-      commit: cb4ab2c71e09f8c958ecc7bf07270ae78584f85a
-[3/5] sunrpc: guarantee a thread per pool when auto-distributing
-      commit: c972bef38717f27c282592bca22890f49233ec0a
-[4/5] sunrpc: tear down pool counters before dropping the pool map reference
-      commit: 9b6f69571d09627b8b4303be0f257c0e36d9d3fd
-[5/5] sunrpc: derive the pool count instead of caching it in sv_nrpools
-      commit: 9435623ac560654825a62ee4b628ae4bbaa87920
+After doing some code tracing, it seems like the new behavior was
+introduced as part of 7c6c5249f061 ("NFS: add atomic_open for NFSv3 to
+handle O_TRUNC correctly."). We would like to confirm if the current 
+behavior that we are observing with the 6.12 kernel is expected given 
+that the new behavior breaks existing user's application code. We 
+currently have a workaround by explicitly remove the O_CREAT flag when 
+opening a pre-existing file for write, but would still prefer not have
+to apply this workaround when upgrading to the newer kernel.
 
---
-Chuck Lever
 
+Best,
+Tian
