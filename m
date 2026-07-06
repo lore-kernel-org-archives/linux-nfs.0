@@ -1,42 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D130B39A4D6
-	for <linux-nfs@vger.kernel.org>; Mon,  6 Jul 2026 16:23:35 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 51992433BD9
+	for <linux-nfs@vger.kernel.org>; Mon,  6 Jul 2026 16:42:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783355016; cv=none; b=WlpSX6dR5oluJROho/j5Pg9QlaCM2fO9H6YtYRA9dW0RrJ9y5yM6An35GRc6Y7KptAy9mVuX5mNcsTXWA8dK5BjpQRY+YGcBhtCSfN7yMMP7Qses3OIy/eY6vSvFBGE/NvezZyLGNEN0DlhQS0tjyJtJaixgdkeNlWjYMjSbtCE=
+	t=1783356163; cv=none; b=nXbVtoOEwabhzHfOvbUxE/Fn7Nxsh1hWDao+1PDmz9j0/WCGuV/WldnHjTSe3wrfEA6f5tKaGZUXPgaVSdDss8J1OxNAjV1rJEMKZl6WrjEmbwAY/47gqlLN0/uB25Stimcc6iWbdnzRp4Ain2nNIo/5K7wZav8YThUCNuGzGME=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783355016; c=relaxed/simple;
-	bh=K88Kt0VSlc95PmphciGxO30cqpKZP0+jzVLCx/uS70w=;
+	s=arc-20240116; t=1783356163; c=relaxed/simple;
+	bh=qtIOqaAJHMa4A53CVdpcwsWAy8/uVyBlSlv45hoArJc=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=A7X47SCLPXVe63GWBAZn1r9XJ9rhu10YU3knDRwbLdkhgBoU1PU9CrX6axoFVfMUUil1gMZduWYjDPXaNOEevZemxnEXFcin7FOpQl7C4uFenJekTQXgZB+YutEeo7RlMFqw9a4hTL/ExXMhGqZ357C1dlLDw5UsQUjTFSUiSFo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=o2X3U6Si; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=XbSf9bW/Y5bpjzEuLO27xK5zUzW9AMfVpXLm4egAjYqEknQjwS3oiWFfvIUA7H2OGzygaOx0TLbPNh9mtcJPjBEOWAjN59J1Bl5Hjv0PlAAQeS+OxBuxim6ELgjJk3108IPHUIKhUkBwkDHLlakOEdA1RtpfAUGvCx/UPrsTJEA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mrMIBx2r; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="o2X3U6Si"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 002E61F00A3A;
-	Mon,  6 Jul 2026 16:23:34 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mrMIBx2r"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 67CB71F000E9;
+	Mon,  6 Jul 2026 16:42:41 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783355015;
-	bh=hD77htBFwkGlp4uR2YSQNOxCIioHr8DGx602Irich/k=;
+	s=k20260515; t=1783356161;
+	bh=NYydbcbPM/VOBT1Glw32q3dbXT8li6fMQVtHaCxsFbg=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=o2X3U6SiJsM1oU9U4bwkFjPEB2F4Zc6agjy/gmg78iQe3K72tHIB3/FtlGnI+NQ+1
-	 j2virOCONTzu9Xy6jJTIXysteB72SoJU202wXRYKniVvFglvOPSzM0/0azA63Ttfz4
-	 /1bp/iZyDjYJc35xEBz6VRKWpK0vI0CVWFpyBq1Kz/YUwEDnLEbESrEbLQmKbliNbw
-	 DQ2QYnaZu0YsiNU98/D8LaCAspTSViHuWkgD8dQHRQLqkcJworVsUFUGtBn4QahnU7
-	 OPHio6M8u7OEcCRZekIHtF1lVgU47X/DBgdpV1kkjDEhvtRWcKVVmvo+fe08R2gG4D
-	 9lFDBKL8MG3Rg==
-Message-ID: <6a7f54a0a872af82f31899a6ae074c203162e427.camel@kernel.org>
-Subject: Re: [PATCH v2 11/14] nfsd: move some code out of the
- d_really_is_negative() branch in nfsd4_create_file()
+	b=mrMIBx2rKjrPIMA9suY3uAH7eXYOZsRX47q/EkCdL7CcPHVyG4i8d6gaXCQ86gJ9F
+	 j0DVL/0Np3fBgGJFzEbVkIJiE6ytyTrg7wMCs7hYTAc2H/eYdCA9GQSgeawh/odxEr
+	 WJffpwrZDt4Q+n+nw4P3LzNTMkthBKBub81uXHSKqZYayRuDkpyrh1wQca7KjcxpuX
+	 Vsb/KSRNqlpYdHDUCo7g1caX8kdA0oo+iutx2QsFs5SRVWw7GSlDZoT9S0tdTLrBsE
+	 tXNl90LFPfoIUfv0lceTkQLle+lU7RnW4txDC1VaHCVWhGQ0rY4sINNbTEE66vaftg
+	 o1jfMDlvc85Hg==
+Message-ID: <e23f733abb0274d8ecb0404478e5fec8ebe849a2.camel@kernel.org>
+Subject: Re: [PATCH v2 0/6] NFSD: Fix UAFs in client teardown and state
+ revocation
 From: Jeff Layton <jlayton@kernel.org>
-To: NeilBrown <neil@brown.name>, Chuck Lever <chuck.lever@oracle.com>
-Cc: Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org
-Date: Mon, 06 Jul 2026 12:23:33 -0400
-In-Reply-To: <20260705222032.1240057-12-neilb@ownmail.net>
-References: <20260705222032.1240057-1-neilb@ownmail.net>
-	 <20260705222032.1240057-12-neilb@ownmail.net>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, Wolfgang Walter <linux@stwm.de>
+Date: Mon, 06 Jul 2026 12:42:40 -0400
+In-Reply-To: <20260705-cel-v2-0-d88c3b68e8bc@kernel.org>
+References: <20260705-cel-v2-0-d88c3b68e8bc@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,19 +121,54 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2026-07-06 at 08:19 +1000, NeilBrown wrote:
-> From: NeilBrown <neil@brown.name>
+On Sun, 2026-07-05 at 21:25 -0400, Chuck Lever wrote:
+> A NULL-pointer dereference reported during NFSv4 client teardown
+> (patch 1) proved to be one instance of a broader lifetime bug in
+> NFSD's state-revocation machinery. This series fixes the reported
+> crash and the sibling races found by auditing the same pattern, then
+> consolidates the fixes.
 >=20
-> The benefit of this code movement isn't immediately obvious, but it will
-> make it easier to switch to using vfs_lookup_open().
+> A stateid, and a bare lock owner reachable through the client's owner
+> hash, hold only a raw pointer to the owning nfs4_client; a reference
+> on the stateid or owner does not keep the client alive. The client
+> outlives its state solely because __destroy_client() drains that state
+> before free_client() runs. Several paths break that invariant. The
+> laundromat unhashes an expired delegation before revoke_delegation()
+> re-links it, leaving it momentarily on no client-reachable list
+> (patch 2). nfsd4_revoke_states() and its export and NFSv4.0
+> admin-revoke siblings drop nn->client_lock and then dereference the
+> client again (patches 3-5). __destroy_client() walks the owner hash
+> and frees blocked locks with no reference held (patch 1).
 >=20
-> One immediate benefit is that common code in the d_is_positive() branch
-> can be discarded.
->=20
-> Signed-off-by: NeilBrown <neil@brown.name>
 > ---
->  fs/nfsd/nfs4proc.c | 73 ++++++++++++++++++----------------------------
->  1 file changed, 28 insertions(+), 45 deletions(-)
+> Changes since v1:
+> - Add matching UAF fixes in several other paths
 >=20
+> ---
+> Chuck Lever (6):
+>       NFSD: Prevent lock owner use-after-free during client teardown
+>       NFSD: Prevent client use-after-free during delegation revoke
+>       NFSD: Prevent client use-after-free during admin state revocation
+>       NFSD: Prevent client use-after-free during export state revocation
+>       NFSD: Prevent client use-after-free during NFSv4.0 revoked-state cl=
+eanup
+>       NFSD: Consolidate the revocation-path client unpin
+>=20
+>  fs/nfsd/netns.h     |   6 ++-
+>  fs/nfsd/nfs4state.c | 108 +++++++++++++++++++++++++++++++++++++++++++---=
+------
+>  2 files changed, 94 insertions(+), 20 deletions(-)
+> ---
+> base-commit: ee6ae4a6bf3565b880dfb420017337475dfbc9ea
+> change-id: 20260705-cel-61c1c70caa03
+>=20
+> Best regards,
+> -- =20
+> Chuck Lever
+
+This all looks pretty good, aside from patch #2 which seems like it
+might cause an ABBA deadlock (according to Sashiko).
+
+You can add this to patches 1 and 3-5 though:
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
