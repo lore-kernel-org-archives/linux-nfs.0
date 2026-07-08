@@ -1,114 +1,95 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7A595423A63;
-	Wed,  8 Jul 2026 12:00:52 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DF5947A0B7;
+	Wed,  8 Jul 2026 12:58:25 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783512053; cv=none; b=mJSK8bTT/bJLB/Hm5I2NAVgpFG1tykAd+luuGW4vI+biJvTmjnN3nrlmshRdRslCpMcE7qxUOw20y4SNvl+l20k/62QLBYfc0fdYSRfvcAXrSMVAjmLfgKLvAF0kU3XFrwqfTrh21gHhDL6cmdtQMy+xIwxlWgHi72Cmp1/pYmw=
+	t=1783515506; cv=none; b=EmSF0e3XyEiItf+RMRZ7AjTHQLnT2acSOd5aFaKqXzIX5rpAaIuMlofg5cnEuESNognN+vGmX4HT6NyqLy9Yf//95tAkQGzjYKn6bVM/SoLsKj4Xj5iBhAAL94f7tTA6xSb6jz15KdghsN2/Yp69hvj61pxCWrsHlpZ1m0Qz6kE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783512053; c=relaxed/simple;
-	bh=b/AbzeQoexgmoq7XYciNSWtkPOPv1wBY2uMOQqWCqNs=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=H2dddTWt38FlbsP6oEK32WeqRUIirUq0kdZ4G/dDKcQTCc1ZZbtE/5KcevSRJOJkpuw723KUdELvGUoDmKtev8xbRn841dgcVYW5st8Iauv/6JNBUObGxW837XZoX188rpwHrGZ5ABAxEtzhum6J8uDGG63WXlohLGVDsithqD4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=lwJnXufL; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1783515506; c=relaxed/simple;
+	bh=YNlbfMe7IjLEtrnfl3yeMzxTsmPJmaEGZXA4hkPj/rI=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=gg/VmX/Vfa7n/JZao5y5DSgAGTmpnmQq4otKCd6fkoTuHx/I9s6rQf2O4WprKIuPMNvSxm6Yur8PquCL7VpcBlpLyCBc03P3p/0M/Vq1b9Hr52MLk1LtSY5yVVUF0ReS4Ts8PGP3+4xk2gx1F6MA1qLlBNlqs6+Y4IvQhkHaIMA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hJ3SD2b/; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="lwJnXufL"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 556B91F000E9;
-	Wed,  8 Jul 2026 12:00:51 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hJ3SD2b/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id CE9451F00A3A;
+	Wed,  8 Jul 2026 12:58:24 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783512052;
-	bh=6Dt1bbqReDzkwzcN0sJtDGn5HBkCvFNhTbdFtvl5U7A=;
-	h=From:Date:Subject:To:Cc;
-	b=lwJnXufLcxLxdNnmrQu0e7JZhMVzEob/7wVSRmbM63DX3OrlGt2t5Y83w+v84LeJq
-	 5LozoLw/CrGak8jf5TRFREMF+mNE5FFYcxtdBAbOV3V+CeTgMqPywUme5mwfB/j+CG
-	 FEpq+8nmrnl2vh0etyNFZyvEtMgWniqZ1EDrTJtwgUlzz9znDcX9k2lY8xuPvWXAEZ
-	 B+3xvecgwvgdh93nWNY1cvuLiSa5h+PE48k6WSyrjdjprIMQK7HR26ail7/aIvBNfl
-	 1mEtK54HuBhasORE+NXJfmWEaevdEsDEb7X0Dkq0AiRGuw2OZ4b3p4At3m7rbhjyle
-	 f8fae0UjFbGmA==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Wed, 08 Jul 2026 08:00:26 -0400
-Subject: [PATCH] sunrpc: drop unneeded nrpools check in svc_pool_for_cpu()
+	s=k20260515; t=1783515505;
+	bh=xm3xg4KWA1ldRv7EorYZDzsMgM35ZrzU+YdCvPgOFGY=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=hJ3SD2b/zeZr/ealheQUI4XBstv9gf2KSjh64zYam7oKqcN64bn9MM1wxw0Qbqs6s
+	 amDTANx5UKbbRcYKyUN5MVwUu+0iCz6Q/ezP2m4IV+IA+0+cMiVFuUZ/qfHVizY/py
+	 Cj3uaiOFmpMA/nArfflCxH9m2KLLLJFTFGrPP+OW62n0/oO+NyGFEM8rRjKJgyrX+F
+	 k8RUNPuBjMAtqezLtT7lEH61oOIwvoKBPdhZ2vOOO857Q6i3v6/K3WhV36ik0yzeJ+
+	 OOByY9xmthR/MgisEV2VDbiAstIo5iNZ3EItGHYsRKOXTCSH3H2QYPnUL50/Ba2hbE
+	 9LgXFqJFIPBXQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id B2D93F40069;
+	Wed,  8 Jul 2026 08:58:23 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Wed, 08 Jul 2026 08:58:23 -0400
+X-ME-Sender: <xms:b0lOaqHi9Lxe18lZ3VY_zh0u-EQypuOBTGdE3WqAorteygB9EZtF0g>
+    <xme:b0lOamL4291PhJx4ihnf43pLgvftK-QIYeLHwXkZy2ODXwJBcPsp1sMUYmorv943X
+    lAS7XCCmDVVV3iGqdoRqxN4z3H_IhghNurt_HnCaLUo19yQAJr1if_e>
+X-ME-Proxy-Cause: dmFkZTEy4qbe4+qGdVa99u5/9ySaOJls65jRaaw5i3YdzHfiedbgOXMgxuAtiIHWZ+uqE2
+    iUTXP/GHpOpKNAC6XbzoQKLcNxhFPOmDOMxDw6SyuEiIoFlDGHhfxiRJ63xiax/ODyZAfm
+    XyuJUD6QugluSPJfky2aAfZqh5ti5PYmSiZ4WKwgJxrRLxw8OqLAXe6YZTZujQL/++o1f/
+    p5WfNhaw33ZuNOYTQNWCNh8nCwv0S6/HqaITVynPZjwaiILlcmG5Xsao1LAFcEVePPq4wC
+    MkyMmlEMKEF6LOxg+M+ArWQyDCX8513CVA2f+knpPfKIozzsLcAwpS1JvzYfKiKw7PR0jL
+    w1uDA67H5WSQIoMPOaC3onOwTC993g4sBT70JTMJueARCknIS6uIDHHGuA1U9tik2wJgU4
+    ISbNhVn2299qoOdVSb3IzrgSUoPmQfeYvMKpYkOtSaG0BUN5ewlqBO1CO+giqnbMW5qLNw
+    rNjY+uddxk9SRTiiAH1glQW+lMlTdh7Q5JuM893ei9HQtD47LvUyZ/pcQk6JNmLjwwEm+S
+    zHu7itczD4UPF2TkbjEjvDpN4haOJgO25QYcOmLJIIIFPJTEeaSe+t86Z9JAm4Yiq4qo/n
+    DQDS1jZWak4FXVODLKQ+6k/JIGl0qL6PZ/JiuqKzu+OdAQESlXu61ksv27xg
+X-ME-Proxy: <xmx:b0lOaqVKCdesnQ7-xXOz36Ht7Hr8-ylwY7VxDpy5-jHU6-8EKdprAQ>
+    <xmx:b0lOanC8wt8povs8NMbbQL1KOI8cswZZ4PBoj4c587-MpYKbrLnBeA>
+    <xmx:b0lOavHXfdtZ-8kcDLB8XJa9patJmln0BviMS0F-ZGsKr8g-lIe8eA>
+    <xmx:b0lOao5ejwwoLtl8-zXsbPAJVeZuDKgvwPoT1wWtX5pjOXZcCAKKmA>
+    <xmx:b0lOalkPjeryNxQwBxLhI2Kj7NAetKJE-inDRoS2eRUpEF0T8cI8SjzF>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 8F88A780AB9; Wed,  8 Jul 2026 08:58:23 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+X-ThreadId: A-vGNRBYFzmF
+Date: Wed, 08 Jul 2026 08:58:03 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <6e5e956d-4a6a-4548-8d9b-3ca3628a018c@app.fastmail.com>
+In-Reply-To: <20260708-pool-mode-v1-1-98e9e106ebf3@kernel.org>
+References: <20260708-pool-mode-v1-1-98e9e106ebf3@kernel.org>
+Subject: Re: [PATCH] sunrpc: drop unneeded nrpools check in svc_pool_for_cpu()
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260708-pool-mode-v1-1-98e9e106ebf3@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDcwML3YL8/Bzd3PyUVF2jNLNUoxQzUyNDcxMloPqCotS0zAqwWdGxtbU
- AW8Q301sAAAA=
-X-Change-ID: 20260708-pool-mode-2f6e2d652174
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, 
- Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=1470; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=b/AbzeQoexgmoq7XYciNSWtkPOPv1wBY2uMOQqWCqNs=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqTjvm5YtnZOY+LrnYagneoYlmJi/h6mEHS4SK9
- Wbm/meRh2GJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCak475gAKCRAADmhBGVaC
- Fc/pEACGMsRYjSNnANfgA7qNfQ3UnnK0rVkfGtAbnQfFy1+DXKM2k10QN+q1J6WDlQTzEpBFwgW
- ArbrYhHxn+GYxnP5Q4LGtNhwwoqyTWRaghepGq3/blzdqo3BELw8zeyH5sDnBc1/OSFCA/I+nim
- 0wd0ygfx2RRKxK57aFAPsaFbcB3q2c6E1yUHilSzIeeOD2O9JDp78RhDHX8UdoJAIP1ZMAAzVx0
- 3z9dF/FPNM0c1yrqzbdq4zvmcRnqp0bBrIw4GYK/E4iwteL3ryaCm23B2COu2p6IY6Rv71PPXe+
- uFM9gSiCMc/XuE7LOHO7EG90LM/hEOYhANE9FTA54G6Wg+7e9O5VPUf3z0Re105J5tK5zlnAlP+
- mQ7+ZC4CoGqMDGOk7TmfwM2PbXOCzh+uzK6d0qCcnqza05r/4Hf9/baBLoxB487MC8SFrLIhGeK
- Vlzonokx3rwskrBl03XBy3CT/Xwd/dtIh0CokhbWik531fCPoes3poYL+SQecUvOmXmWlWoSDCN
- uBTlTcGrD6Cflol6n/vRPQIngbhcAvrWVECAZNCFxJhNdpfi+acuc+roLNw4sq2ipyLuFy6Gf0b
- Srow99RvZzKWUPy8EqymU8Y68WZiKHI+kwky98TI++uYwKs/ukMtGKjogydHv2sLqNQAbi4PI/V
- Rw2XKzsNHpKgtZg==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-As Neil pointed out in review:
 
-"The values stored in svc_pool_map.to_pool are all less than
- svc_pool_map.npools.  So that if() condition cannot be true."
 
-Drop the useless check from this hotpath.
+On Wed, Jul 8, 2026, at 8:00 AM, Jeff Layton wrote:
+> As Neil pointed out in review:
+>
+> "The values stored in svc_pool_map.to_pool are all less than
+>  svc_pool_map.npools.  So that if() condition cannot be true."
+>
+> Drop the useless check from this hotpath.
+>
+> Suggested-by: NeilBrown <neil@brown.name>
+> Signed-off-by: Jeff Layton <jlayton@kernel.org>
+> ---
+> Chuck, feel free to fold this into 5/5 of the pool_mode series.
 
-Suggested-by: NeilBrown <neil@brown.name>
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
-Chuck, feel free to fold this into 5/5 of the pool_mode series.
----
- net/sunrpc/svc.c | 5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
+Folded in to 5/5 and pushed out to nfsd-testing.
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 13d63f6b1d88..a098e1c13ca3 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -269,10 +269,6 @@ struct svc_pool *svc_pool_for_cpu(struct svc_serv *serv)
- 	if (nrpools <= 1)
- 		return serv->sv_pools;
- 
--	pidx = m->to_pool[cpu_to_node(raw_smp_processor_id())];
--	if (pidx >= nrpools)
--		pidx = 0;
--
- 	/*
- 	 * It's possible to have a pool with no threads. Userland can just set
- 	 * things up this way directly. Also, when threads are autodistributed
-@@ -284,6 +280,7 @@ struct svc_pool *svc_pool_for_cpu(struct svc_serv *serv)
- 	 * populated pool, trading NUMA locality for a guarantee that the
- 	 * transport is serviced.
- 	 */
-+	pidx = m->to_pool[cpu_to_node(raw_smp_processor_id())];
- 	for (i = 0; i < nrpools; i++) {
- 		struct svc_pool *pool = &serv->sv_pools[pidx];
- 
-
----
-base-commit: 9435623ac560654825a62ee4b628ae4bbaa87920
-change-id: 20260708-pool-mode-2f6e2d652174
-
-Best regards,
 -- 
-Jeff Layton <jlayton@kernel.org>
-
+Chuck Lever
