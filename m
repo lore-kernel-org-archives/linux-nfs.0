@@ -1,43 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6F38440E8DC
-	for <linux-nfs@vger.kernel.org>; Thu,  9 Jul 2026 18:37:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 85D79437452
+	for <linux-nfs@vger.kernel.org>; Thu,  9 Jul 2026 18:40:38 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783622246; cv=none; b=GaWUzV3iEVeJQTqF8GmOyDQoykOmyRF3z2gjSvfWOTdABstscynzoZ4wF1uy2Bgn+Q4XnAzhxfEDHPobDncv++XlvOLLrch278jAZeT+2A1b04kZ1jZ84+L9R+PcXh8AjWxkjhxcNBbpYN3UDjb+ptI4OM8zWH8cpnJ5MwZstko=
+	t=1783622439; cv=none; b=N4eNgpbVYaq75f7Env4QUWUgkQdRGdSGhIItv5Vi/BI+lvrbAIYW7UmcRsIANoXOujsvjUFg+5NZmI+qE9cNBzha6GoCV63HpqusO0HZi+y/HdN1Bj8ccvuRYJbvxUJtFbp3gIB7BqUtcXgtiU2sfgQdlS4jrhQsTsbKYPMEut4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783622246; c=relaxed/simple;
-	bh=JSnDgLhDDcjlYNAbai4x2LTFexgDyuaepZ+2zi6HlmA=;
+	s=arc-20240116; t=1783622439; c=relaxed/simple;
+	bh=bP2LwmJXuNdd+WfSfvqGzi2n7sRpjuhumdWTYMyGPlU=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=XHHSvu7rUSLTkpVfqOA7sjJF9Vbc1zVx4Dx7Xk51YknngYXPpWXlSn6GkPlSboXAdwG1+BR0cixUfPgHfwfJ4RK80hhzr5MYabW3pQd17UdzeRjXTLVeRkdcwi8zSfCMN9qLp8eV89xXBRuW5Tg2NRwk09Ft2OWOl9QVKajb9Bg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AlH1uucA; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=AHNXhFmMInxz6eYd+4Rhqaid9w21HnpxJml8pc8AknO6PBj6q/yKoZKSwoR++WKiWC49tiV0RM7PzaUuRkUd/uW0ZbLGnft43WeGx/e2j+KZwfJ7es5hj3HLE9yc5Yn/8VUyPX4TLT957cVPRbgOi9Gd7qTKEojZ03eDSuuYbok=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=JtJrNelT; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AlH1uucA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BFE611F000E9;
-	Thu,  9 Jul 2026 18:37:24 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="JtJrNelT"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D05371F00A3D;
+	Thu,  9 Jul 2026 18:40:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783622245;
-	bh=rSx3kfXf/C7SWeMKejuO0YqWV33sYBERJ0Ev11Tl/tI=;
+	s=k20260515; t=1783622438;
+	bh=npdPDB+UdM6WBw/JSp0wV79GzHOXaRb03yB9XUmb2Wo=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=AlH1uucA+UHEZDFtKmC6hGVuXtOP1e16WxrwRULX2CybZh9qQ52i+oIMPVsEQie7X
-	 BsqDJxBWWbDWjfSWM/+WWgbDnynaj6/HE+ty+7DmAFN00WaBSLi14RV3T4lOFM1A+Z
-	 i/CXfSluzacmI3cNG3srSygq3BxVBzq0nBnyMx5Nk9CXLW/KlpNcee0k6/ohrs88Tt
-	 zks1pR8ROXkxqiGpLdkii2GxibVPs2FTpv3ZMThiPaLb8OYCVso2cXqvHeU77aeOTt
-	 jF+zNa7NHt7r/9tFSlbc6uGHqIGK25Vqc6mCKLZqtaj95BwigRihDWTzlx/cIn8vtV
-	 5fc4udat9qIRg==
-Message-ID: <ada73c77322ddc803836c42699478d27ed49dcf6.camel@kernel.org>
-Subject: Re: [PATCH v4 8/9] NFSD: Prevent client use-after-free during
- close_lru reaping
+	b=JtJrNelTcrmgtlQ2KavdiEEeJ2Gd/dkxiuCIbRQTy9DiDUZu1HSPGvdbfVr+k7iEo
+	 2QRs2VXT/EXh8Clq/MEQcBRLryPkm0/E/CeTK4INOMpPkCkKgXvOz6FZD5TpoVU1Oe
+	 O6bLU2tR9zoabHRwXcBVBIO9uYgAtVlP8dmTPMgDPVTPFv+urunpxaddkPVw6M1Wua
+	 MNLSBtwzcNZzDAEyZ9kGrs6Y5zPRploLPw7+yqui8Y0fTT46hl2VBn+wMjVwzNy5+F
+	 oqVvO2Zg72X5UKqYH4VnrmfOKy10oN7EgwX89kIPlCtCcG9LdTtco1xq6wJF9aiA4Q
+	 fvpk/npopVs1Q==
+Message-ID: <62b35e8e3073f16c7ffc514fc30f23c788d25486.camel@kernel.org>
+Subject: Re: [PATCH v4 9/9] NFSD: Release the export reference when reaping
+ open stateids
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 09 Jul 2026 14:37:23 -0400
-In-Reply-To: <20260709-cel-v4-8-1d519d9be0cb@kernel.org>
+Cc: linux-nfs@vger.kernel.org, sashiko-bot <sashiko-bot@kernel.org>
+Date: Thu, 09 Jul 2026 14:40:36 -0400
+In-Reply-To: <20260709-cel-v4-9-1d519d9be0cb@kernel.org>
 References: <20260709-cel-v4-0-1d519d9be0cb@kernel.org>
-	 <20260709-cel-v4-8-1d519d9be0cb@kernel.org>
+	 <20260709-cel-v4-9-1d519d9be0cb@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -123,47 +123,91 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
 On Thu, 2026-07-09 at 13:40 -0400, Chuck Lever wrote:
-> An nfs4_openowner left on nn->close_lru after its final CLOSE keeps
-> its last closed stateid in oo_last_closed_stid, holding only a raw
-> pointer to its nfs4_client. The laundromat reaps timed-out entries,
-> drops nn->client_lock, and calls nfs4_put_stid(), which dereferences
-> the client through cl_lock. Nothing pins the client across that
-> window, so a concurrent force_expire_client() can free it and
-> nfs4_put_stid() reads freed memory. __destroy_client() hits the same
-> race, walking clp->cl_openowners without cl_lock.
+> nfs4_put_stid() releases the svc_export tracked in
+> nfs4_stid.sc_export, but free_ol_stateid_reaplist() frees open and
+> lock stateids by calling ->sc_free() directly, bypassing that path.
+> An open stateid takes an sc_export reference in nfs4_open() and a
+> lock stateid takes its own in init_lock_stateid(); both reach
+> free_ol_stateid_reaplist() through their normal teardown, the open
+> stateid via release_open_stateid() and the lock stateid via
+> nfsd4_release_lockowner(), each through put_ol_stateid_locked().
+> The reference is therefore never dropped, pinning the export and
+> blocking unmount for the lifetime of the stateid.
 >=20
-> Pin the client with cl_rpc_users before dropping client_lock, and
-> skip clients already expiring. __destroy_client() then cleans up its
-> own close_lru entries through release_last_closed_stateid(), so
-> teardown no longer races the laundromat.
+> Release sc_export in free_ol_stateid_reaplist() the way
+> nfs4_put_stid() does. ->sc_free() runs once per stateid, and a
+> stateid reaches free_ol_stateid_reaplist() or nfs4_put_stid() but
+> never both, so the reference is dropped exactly once. Revoked
+> stateids reach this path with sc_export already cleared by
+> drop_stid_export(), so they are skipped rather than double-freed.
 >=20
-> Fixes: 217526e7ecc9 ("nfsd: protect the close_lru list and oo_last_closed=
-_stid with client_lock")
+> nfs4_put_stid() itself read sc_export before acquiring cl_lock.
+> drop_stid_export() clears that field and releases the reference
+> under cl_lock, so a concurrent revocation could drop the export in
+> the window between the read and the final put, releasing the same
+> reference twice. Read sc_export while cl_lock is held so the two
+> paths serialize and the reference is released exactly once.
+>=20
+> Fixes: ba0cde5dc81d ("NFSD: Track svc_export in nfs4_stid")
+> Reported-by: sashiko-bot <sashiko-bot@kernel.org>
+> Closes: https://sashiko.dev/#/patchset/20260707-cel-v3-0-7c0cc16fd54f@ker=
+nel.org?part=3D9
 > Signed-off-by: Chuck Lever <cel@kernel.org>
 > ---
->  fs/nfsd/nfs4state.c | 5 +++++
->  1 file changed, 5 insertions(+)
+>  fs/nfsd/nfs4state.c | 8 +++++++-
+>  1 file changed, 7 insertions(+), 1 deletion(-)
 >=20
 > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 4acd02f1642c..20556b8f186a 100644
+> index 20556b8f186a..e988dfebf75e 100644
 > --- a/fs/nfsd/nfs4state.c
 > +++ b/fs/nfsd/nfs4state.c
-> @@ -7581,11 +7581,16 @@ nfs4_laundromat(struct nfsd_net *nn)
->  		if (!state_expired(&lt, oo->oo_time))
->  			break;
->  		list_del_init(&oo->oo_close_lru);
-> +		clp =3D oo->oo_owner.so_client;
-> +		if (is_client_expired(clp))
-> +			continue;
->  		stp =3D oo->oo_last_closed_stid;
->  		oo->oo_last_closed_stid =3D NULL;
-> +		atomic_inc(&clp->cl_rpc_users);
->  		spin_unlock(&nn->client_lock);
->  		nfs4_put_stid(&stp->st_stid);
->  		spin_lock(&nn->client_lock);
-> +		put_client_no_renew_locked(clp);
+> @@ -1272,9 +1272,9 @@ alloc_init_dir_deleg(struct nfs4_client *clp, struc=
+t nfs4_file *fp)
+>  void
+>  nfs4_put_stid(struct nfs4_stid *s)
+>  {
+> -	struct svc_export *exp =3D s->sc_export;
+>  	struct nfs4_file *fp =3D s->sc_file;
+>  	struct nfs4_client *clp =3D s->sc_client;
+> +	struct svc_export *exp;
+> =20
+>  	might_lock(&clp->cl_lock);
+> =20
+> @@ -1285,6 +1285,8 @@ nfs4_put_stid(struct nfs4_stid *s)
+>  	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
+>  	if (s->sc_status & SC_STATUS_ADMIN_REVOKED)
+>  		atomic_dec(&s->sc_client->cl_admin_revoked);
+> +	/* Read under cl_lock to serialize with drop_stid_export(). */
+> +	exp =3D s->sc_export;
+>  	nfs4_free_cpntf_statelist(clp->net, s);
+>  	spin_unlock(&clp->cl_lock);
+>  	s->sc_free(s);
+> @@ -1744,6 +1746,7 @@ static void
+>  free_ol_stateid_reaplist(struct list_head *reaplist)
+>  {
+>  	struct nfs4_ol_stateid *stp;
+> +	struct svc_export *exp;
+>  	struct nfs4_file *fp;
+> =20
+>  	might_sleep();
+> @@ -1753,9 +1756,12 @@ free_ol_stateid_reaplist(struct list_head *reaplis=
+t)
+>  				       st_locks);
+>  		list_del(&stp->st_locks);
+>  		fp =3D stp->st_stid.sc_file;
+> +		exp =3D stp->st_stid.sc_export;
+>  		stp->st_stid.sc_free(&stp->st_stid);
+>  		if (fp)
+>  			put_nfs4_file(fp);
+> +		if (exp)
+> +			exp_put(exp);
+
+nit: nfs4_put_stid() does this in the reverse order. It doesn't
+actually matter, but it looks a bit weird if you want to fix it up
+before merging.
+
 >  	}
->  	spin_unlock(&nn->client_lock);
+>  }
 > =20
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
