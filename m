@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB0B543F8D2
-	for <linux-nfs@vger.kernel.org>; Thu,  9 Jul 2026 19:02:48 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2399C44160A
+	for <linux-nfs@vger.kernel.org>; Thu,  9 Jul 2026 19:02:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783623770; cv=none; b=FTVqL1lf2sM8nDVHznJX8SGmHR9m895dFAfowUbpZ5QcRieoMt5TtvIPvpgDQ8Isz89j1DZDdpCpgBP5ntkRCajZD+1NoKnTh7PkusuKO8kv0d8akF1cxZwDBGUQfHwAGiS5fpGMyoJPDBTFkp8NIeVX9wsG7oEyBa/RhV2Ljxg=
+	t=1783623771; cv=none; b=D/2jPS6YRS0PCB5G8yt2jnaoF8I02Jyvlg4NdnhexAtdwORrPpZi/yffhrI8M6vUkGL8HYm8we/AtysNlXv/060plyJ2jqwtrvhUEraG0HAZVSgvpgrOJ9rpmMyGps6++9xJ+86vIA2qXFBHRoachZd+ezB5GHeRlWtxzk3MHIc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783623770; c=relaxed/simple;
-	bh=hl5tMB0HvJUzoF1zWiBoiE1lRdGxxavPe0HX2e8yYv8=;
+	s=arc-20240116; t=1783623771; c=relaxed/simple;
+	bh=GXNYm7uSz0giHj43Rp0tsCBNhC0jsHG1m1ICSzqNNaQ=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=DcKQ6f+GNwl/TSHLD/i9ICVBBFE95CYYjhcEqmgKhCCvddAABr3Jh8Z9us5rPga4lay0LzoAzsrlcoc1Zu6y4kHAJDaDE7mWEF3OiL61DB3NhiC0RevMJaxKv4n3lT1cwouNlvy/W+HyWC6ZsM1Pf8wqo0FStsfMiBjF5HJ5x8g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cJwVqDjU; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=bvDaSjqXTwMIyLnny1pWb1Y9q/z7yfNSKlCRPGqNI9yIdCHQ5ULdF0NPEFNqzs94uBQ1MyuHmDWJGlCqL2vSIT2/SBR3NrHbmIXakx47JXNKszk2qWGZbt0Hj4YGPjtdZxf1o45eFKy9B14Fgpigw4aftEtulG3W6ariKnvOBIM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CccjQa8+; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cJwVqDjU"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9AB301F01559;
-	Thu,  9 Jul 2026 19:02:47 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CccjQa8+"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 40C0B1F00A3E;
+	Thu,  9 Jul 2026 19:02:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783623768;
-	bh=D45gswM01ehnsftlxsKjS1g5Y535eWWDWaIbPHELRrc=;
+	s=k20260515; t=1783623769;
+	bh=/iCffZUhw0pjOsubncxmeSJG4aDbhA2pkUh1haf+8fw=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=cJwVqDjUb243WrM/u5zIml0a0+b7UZG2OTwLbghx48YYlIw3EeP2HMxV4Qk+JLXD0
-	 BkFKpNChikyg4YYNxxX/0protDtmhcSZQFEpzRfLQsCNzo8tNhjfYScksBxjnCOQef
-	 zP0kUoH9BZsEKx1ipoN3N1zBZKArAauCPDjw4ygIQAmCyIAiSyUA5nUw6AQ3B1rJKb
-	 XBl0MGAaUOBeN/cWgJcOrHyU2ZY6A9jq/5lSfmUbU+0Dwn10/p16aAY0AyYfPhF9d2
-	 E0aBOrr4M9JUDpS1KJGOI7X9E3VKpC6H0JwvMXER7amAxjsFZ5IsA+c7SAfQ36q9gp
-	 Q/F+eHu5xhxXA==
+	b=CccjQa8+W/SPHP90S0a0rIHrJds7qypIqIZQKDeVvIcSzPHCi6+iDJcjhE1AT/cZz
+	 7M/V0ht9xCZ6paZNMkROvuy4hDBn1ni0IwwSLOVhr5qpE8iVP0aGkwFJhDxJ+o0oxc
+	 OqN2sVDh4gOgy6h8JFIKaXstalBg7epwTi8emt269y2oJ7W4r8htnENpElnitm4Vhu
+	 lhxu8krcbm0CTHmfgoW5n402emOLtxO4BF7bwlp753QchcCn7rA0ptOzY+s14KGKEg
+	 1usu8y1VVbFovLZsNrwNko4NYeJga2jib6hL0tj4QmyrFtipDcbotSpeRRyik/lx7Q
+	 Vk+ab7V4iApsA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 09 Jul 2026 15:02:30 -0400
-Subject: [PATCH pynfs 02/13] server41tests: test COPY with non-zero offsets
+Date: Thu, 09 Jul 2026 15:02:32 -0400
+Subject: [PATCH pynfs 04/13] server41tests: test OFFLOAD_STATUS persists
+ after async copy completes
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -36,8 +37,8 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 8bit
-Message-Id: <20260709-copy-v1-2-849bf581d7cb@kernel.org>
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260709-copy-v1-4-849bf581d7cb@kernel.org>
 References: <20260709-copy-v1-0-849bf581d7cb@kernel.org>
 In-Reply-To: <20260709-copy-v1-0-849bf581d7cb@kernel.org>
 To: Calum Mackay <calum.mackay@oracle.com>
@@ -46,237 +47,92 @@ Cc: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>,
  Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=8500; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=hl5tMB0HvJUzoF1zWiBoiE1lRdGxxavPe0HX2e8yYv8=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqT/BRQzeoq7Z+ah1AnOsxncWIbBYLxBwZy/0l5
- ulqZSKs0VuJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCak/wUQAKCRAADmhBGVaC
- FdzjD/9T6rUQnAVgxBdngY/rxVIpCeFI05vt24hGctyeqTUtquXuHiUjVrpXoAfR06xUcz1MJvF
- 7khRaFmIYR2h3JAiR7svmN9bAf/oMCAsdj3uQ37KoTXTs4cMBQyD+o3VOy4o7COz4RZ6Zh1aiZq
- dNHYxBGydShyKOSSeHVhbTI1HgdxFj5uvvrd/1P5UQiBGZS3RNC8/kWWLZukFI6RWrj5sl2VTb7
- IB8ogwKLcyTwq2yX2crbjccUwLq1jOHfiFByeZKk/fXS63LYcUDhk/YBjIRTkHn5nZbF5Np4XnX
- EhbNkyyDmijgH0Paxb2uw8xoxL+B1QQHmplGa5G/84NHC8GfXVfPRQ6obsnQR8jXl5tZdqFMR8r
- DYAqsP9gE0KyBO0d2ySayPZaA3Ntl948Dzwc9234GvVCk145Gbq6IWo50MoM9S/B4pBhFCQEO72
- WJcgos5/SiV4kSyQ405WZqZagbD18mUfxGxDajajvVvqRqiY3ov520Oc5xQguOEDQN9Hn/pJPxm
- t4vcb3S9c1BfRNZI5mD5T7NrZa4sAlK42ur5hz3NVS/DIMtY5EOs/HMR+9PJkCk3k4fFXpP2VwZ
- k+NUQ9d2CPQ9bpbMeZokxSO2h73iaVc/Xrn8eH3yD9ZpfiChvrL+zAkRIFwnGzBKE4GMhcp/syI
- Y3egLr1vTw76oPg==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2986; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=GXNYm7uSz0giHj43Rp0tsCBNhC0jsHG1m1ICSzqNNaQ=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqT/BSSgCCbx19vfATxrrs9XN0qNdf/1Q1VOxnX
+ FyymTmzPuuJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCak/wUgAKCRAADmhBGVaC
+ FW3SEAC2nEsRDEuick2VD145SMbJwSX2Y3dfDiSpkKEywLb60jwEk1RpyztRCI85Vqeg7Mwrwyg
+ E7vwWOy66J3n5p9nMxJzcdBsTzcDAarqU78X9cTU4T/CYH4ir2bMVnEBJ6dqe0eioGw7n4Gzczr
+ pV3MLsnS4B3HIZyUx1hRiRZYXc283FKliRLwrYOmmWXu/iy2a68irVjnyA8fmXM7Fj/M8KNFv7H
+ JTi1Dg5EZncZ+FLhFC6l7G2wIa2Japb5Lf0SYmcZ9Dt+z3CuXHrQ5+zBnfAlHh0XQTm7YrZ6e2p
+ PY6OwseK/Th6V0xRrunH81mrbgIyaqBLfIru/PBI6MyxUEk0DWqYmwoybHoTNpu1SdZ3KZFfPWN
+ 3aa/ZYkG1u9+64s71WqlxFB5pSYdxRX59yGMEK3L3n5ax3r9vBlIAwlzLH9bWt3InTPIpVdNlan
+ UcSE88FSLd8zhOxypR1UiJnwNimcuobdcxieIG4w+cTNnTNfAIuf9QBG+gEJMwf9xcXHi0Ub+a1
+ n6NOe6fiJa/iFXNhDatxGgvWXGSx2h76y1o6RQ0r9qxRllQlbgMonWrbLdDNbFg0+xxDkj/zkDF
+ QI6kRGtPtJxeHbosTe91dbOiXRKA9TfyQUg+j18kWOmB4Gqs9SDx3ibXBb7hILtsDDrAv6a/1Md
+ Kc3NJP5Bn2+vFvg==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Add testCopyWithOffset (COPY2) which copies 4KB from source offset
-1024 to destination offset 512, then reads back the destination to
-verify the data landed at the correct position.
+Add testAsyncCopyOffloadStatusAfterComplete (COPY6) which performs an
+async copy, waits for completion, then re-queries OFFLOAD_STATUS after
+a delay to verify the server still returns valid copy state.
+
+This catches a kernel bug where the async copy reaper has an inverted
+TTL check (if (--cp_ttl) instead of if (!--cp_ttl)), causing the copy
+state to be destroyed on the first laundromat tick after completion
+rather than surviving for the full TTL window.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- CLAUDE.md                                          | 100 +++++++++++++++++++++
- ...ts-add-a-test-for-rename-within-a-dir-wit.patch |  55 ++++++++++++
- nfs4.1/server41tests/st_copy.py                    |  25 ++++++
- 3 files changed, 180 insertions(+)
+ nfs4.1/server41tests/st_copy.py | 47 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 47 insertions(+)
 
-diff --git a/CLAUDE.md b/CLAUDE.md
-new file mode 100644
-index 000000000000..91a499884990
---- /dev/null
-+++ b/CLAUDE.md
-@@ -0,0 +1,100 @@
-+# CLAUDE.md
-+
-+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-+
-+## What is pynfs?
-+
-+pynfs is an NFS protocol conformance testing framework written in Python. It tests NFSv4.0 and NFSv4.1/4.2 servers by sending crafted NFS COMPOUND operations over RPC and verifying responses. Tests require a live NFS server with an exported filesystem.
-+
-+## Build
-+
-+```bash
-+# Install dependencies (Fedora)
-+yum install krb5-devel python3-devel swig python3-gssapi python3-ply
-+pip install xdrlib3
-+
-+# Build (generates XDR code from .x files -- must be done before running tests)
-+./setup.py build
-+```
-+
-+Build order matters: xdr → rpc → nfs4.1 → nfs4.0. The top-level setup.py handles this.
-+
-+## Running Tests
-+
-+Tests use a **custom test framework** (not pytest). They require a live NFS server.
-+
-+```bash
-+cd nfs4.1
-+
-+# First run: create test directory tree on server
-+./testserver.py SERVER:/export --maketree -v all
-+
-+# Run all tests
-+./testserver.py SERVER:/export -v all
-+
-+# Run a single test by code
-+./testserver.py SERVER:/export OPEN1
-+
-+# Run a flag group
-+./testserver.py SERVER:/export dirdeleg
-+
-+# Exclude tests: prefix with "no"
-+./testserver.py SERVER:/export all nodirdeleg
-+./testserver.py SERVER:/export dirdeleg noDIRDELEG3
-+
-+# Run with dependencies auto-resolved
-+./testserver.py SERVER:/export --rundeps DIRDELEG5
-+
-+# Skip initial tree cleanup (faster for tests that don't need it)
-+./testserver.py SERVER:/export --noinit EXID1
-+```
-+
-+NFSv4.0 tests work the same way from the `nfs4.0/` directory.
-+
-+## Architecture
-+
-+- **`xdr/`** — XDR parser/code generator (`xdrgen.py` uses PLY). Generates `*_const.py`, `*_type.py`, `*_pack.py` from `.x` definition files. These generated files are gitignored.
-+- **`rpc/`** — Shared RPC client library with AUTH_SYS and RPCSEC_GSS support.
-+- **`nfs4.1/`** — NFSv4.1/4.2 test suite and utilities. Active development happens here.
-+- **`nfs4.0/`** — NFSv4.0 test suite. Older codebase with its own copy of rpc/testmod in `lib/`.
-+- **`nfs4.1/testmod.py`** — The custom test framework engine (discovery, dependencies, execution).
-+- **`nfs4.1/nfs4client.py`** — NFS4 client implementation built on RPC.
-+- **`nfs4.1/nfs_ops.py`** — Operation factory (`op.open()`, `op.putfh()`, `op.rename()`, etc.).
-+
-+## Writing Tests (NFSv4.1)
-+
-+Tests live in `nfs4.1/server41tests/st_*.py`. Each test is a function:
-+
-+```python
-+def testMyFeature(t, env):
-+    """Describe what this test verifies
-+
-+    FLAGS: myfeature all
-+    CODE: MYFEAT1
-+    DEPEND: MYFEAT0
-+    """
-+    sess = env.c1.new_client_session(env.testname(t))
-+    res = sess.compound([op.putrootfh()])
-+    check(res)
-+```
-+
-+Key conventions:
-+- Function name starts with `test`, takes `(t, env)`.
-+- **CODE** (required): unique identifier like `OPEN1`, `DIRDELEG5`.
-+- **FLAGS**: space-separated group tags. Include `all` for general tests.
-+- **DEPEND**: test codes that must pass first.
-+- **VERS**: minor version range (e.g., `1-2`).
-+- `check(res, NFS4_OK)` is the primary assertion — compares compound result status.
-+- `t.fail("msg")` signals failure; `t.pass_warn("msg")` for warnings; `t.fail_support("msg")` for unsupported features.
-+- New test modules must be added to `server41tests/__init__.py`'s `__all__` list.
-+- Environment helpers in `server41tests/environment.py`: `create_file()`, `open_file()`, `close_file()`, `clean_dir()`, `do_readdir()`, etc.
-+
-+## Contributing
-+
-+Patches go to linux-nfs@vger.kernel.org via `git format-patch` / `git send-email`. Commits should be signed off (`git commit -s`). Follow Linux kernel patch submission conventions.
-+
-+## Notes
-+
-+- The NFS server under test must allow high-port connections (`insecure` export option on Linux).
-+- `use_local.py` in each package manipulates `sys.path` so tests can run directly from the source tree without installation.
-+- Test results are not authoritative protocol statements — consult the RFCs if a server fails a test.
-diff --git a/nfs4.1/0001-server41tests-add-a-test-for-rename-within-a-dir-wit.patch b/nfs4.1/0001-server41tests-add-a-test-for-rename-within-a-dir-wit.patch
-new file mode 100644
-index 000000000000..7e855592da85
---- /dev/null
-+++ b/nfs4.1/0001-server41tests-add-a-test-for-rename-within-a-dir-wit.patch
-@@ -0,0 +1,55 @@
-+From 0ce942390b36e00547ea9ea56afdc449a9a50699 Mon Sep 17 00:00:00 2001
-+From: Jeff Layton <jlayton@kernel.org>
-+Date: Wed, 28 May 2025 12:10:22 -0400
-+Subject: [PATCH] server41tests: add a test for rename within a dir with a
-+ delegation
-+
-+Signed-off-by: Jeff Layton <jlayton@kernel.org>
-+---
-+ nfs4.1/server41tests/st_dir_deleg.py | 33 ++++++++++++++++++++++++++++
-+ 1 file changed, 33 insertions(+)
-+
-+diff --git a/nfs4.1/server41tests/st_dir_deleg.py b/nfs4.1/server41tests/st_dir_deleg.py
-+index 1fbeb6e0efb9..505e46680197 100644
-+--- a/nfs4.1/server41tests/st_dir_deleg.py
-++++ b/nfs4.1/server41tests/st_dir_deleg.py
-+@@ -102,3 +102,36 @@ def testDirDelegRemove(t, env):
-+ 
-+     if (not completed):
-+         fail("I didn't receive a CB_NOTIFY from the server!")
-++
-++def testDirDelegRename(t, env):
-++    """Create a dir_deleg that accepts notification of RENAME events
-++
-++    FLAGS: dirdeleg all
-++    CODE: DIRDELEG2
-++    """
-++    c = env.c1
-++    recall = threading.Event()
-++    notify = threading.Event()
-++    sess1, fh, deleg = _getDirDeleg(t, env, [NOTIFY4_RENAME_ENTRY], recall, notify)
-++
-++    claim = open_claim4(CLAIM_NULL, env.testname(t))
-++    owner = open_owner4(0, b"owner")
-++    how = openflag4(OPEN4_CREATE, createhow4(GUARDED4, {FATTR4_SIZE:0}))
-++    open_op = [ op.putfh(fh), op.open(0, OPEN4_SHARE_ACCESS_WRITE,
-++                                      OPEN4_SHARE_DENY_NONE, owner, how, claim) ]
-++    res = sess1.compound(open_op)
-++    check(res)
-++
-++    sess2 = c.new_client_session(b"%s_2" % env.testname(t))
-++    topdir = c.homedir + [t.code.encode('utf8')]
-++    oldpath = b"%s/%s" % (topdir, env.testname(t))
-++    newpath = b"%s_2" % oldpath)
-++    res = rename_obj(sess2, oldpath, newpath)
-++    check(res)
-++
-++    completed = notify.wait(5)
-++    ops = [ op.putfh(fh), op.delegreturn(deleg) ]
-++    res = sess1.compound(ops)
-++
-++    if (not completed):
-++        fail("I didn't receive a CB_NOTIFY from the server!")
-+-- 
-+2.49.0
-+
 diff --git a/nfs4.1/server41tests/st_copy.py b/nfs4.1/server41tests/st_copy.py
-index c7e48adf6fbe..bfc64bbe1584 100644
+index 8c320173db1f..4b207d35049d 100644
 --- a/nfs4.1/server41tests/st_copy.py
 +++ b/nfs4.1/server41tests/st_copy.py
-@@ -97,6 +97,31 @@ def testSyncCopy(t, env):
- 
-     _verify_data(sess, dst_fh, dst_stateid, data)
- 
-+def testCopyWithOffset(t, env):
-+    """copy with non-zero source and destination offsets
+@@ -178,3 +178,50 @@ def testZeroLengthCopy(t, env):
+     l = res.resarray[-1].cr_response.wr_count
+     if l != len(data):
+         fail("Copy to end of %d-byte file copied %d bytes" % (len(data), l))
++
++def testAsyncCopyOffloadStatusAfterComplete(t, env):
++    """verify OFFLOAD_STATUS works after async copy completes
++
++    The server should keep copy state around for a TTL window after
++    completion so clients can query final status.  This catches the
++    inverted TTL check bug where the reaper destroys the state on
++    the first tick instead of the last.
 +
 +    FLAGS: copy
-+    CODE: COPY2
++    CODE: COPY6
 +    """
 +    sess = env.c1.new_client_session(env.testname(t))
 +    src_fh, src_stateid = _create_and_open(sess, env.testname(t))
-+    data = b"\x00" * 1024 + b"B" * 4096 + b"\x00" * 1024
++    data = b"D" * (1024 * 1024)
 +    _write_data(sess, src_fh, src_stateid, data)
 +
 +    dst_fh, dst_stateid = _create_and_open(sess, env.testname(t) + b"_dst")
 +
 +    res = _do_copy(sess, src_fh, src_stateid, dst_fh, dst_stateid,
-+                   src_offset=1024, dst_offset=512, count=4096, synchronous=1)
++                   count=len(data), synchronous=0)
 +    check(res)
 +    cr = res.resarray[-1]
-+    if cr.cr_response.wr_count != 4096:
-+        fail("Expected to copy 4096 bytes, got %d" % cr.cr_response.wr_count)
 +
-+    res = read_file(sess, dst_fh, 512, 4096, dst_stateid)
-+    check(res)
-+    if res.data != b"B" * 4096:
-+        fail("Destination data at offset 512 does not match expected content")
++    if cr.cr_resok4.cr_requirements.cr_synchronous:
++        if cr.cr_response.wr_count != len(data):
++            fail("Sync copy returned %d bytes, expected %d" %
++                 (cr.cr_response.wr_count, len(data)))
++        return
 +
- def testZeroLengthCopy(t, env):
-     """test that zero-length copy copies to EOF
- 
++    copy_stateid = cr.cr_response.wr_callback_id[0]
++    status = _poll_offload_status(sess, dst_fh, copy_stateid)
++    if status.osr_complete[0] != NFS4_OK:
++        fail("Async copy completed with error: %d" % status.osr_complete[0])
++
++    # Copy is done. Wait a bit then re-query -- state should still be valid.
++    time.sleep(5)
++
++    ops = [op.putfh(dst_fh), op.offload_status(copy_stateid)]
++    res = sess.compound(ops)
++    check(res, msg="OFFLOAD_STATUS after completion should still succeed")
++    recheck = res.resarray[-1]
++    if not recheck.osr_complete:
++        fail("OFFLOAD_STATUS lost completion status")
++    if recheck.osr_complete[0] != NFS4_OK:
++        fail("OFFLOAD_STATUS completion changed to error: %d" %
++             recheck.osr_complete[0])
 
 -- 
 2.55.0
