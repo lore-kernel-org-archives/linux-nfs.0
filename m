@@ -1,302 +1,146 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 76F8A39A057
-	for <linux-nfs@vger.kernel.org>; Thu,  9 Jul 2026 19:02:56 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8331244999A
+	for <linux-nfs@vger.kernel.org>; Thu,  9 Jul 2026 19:55:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783623788; cv=none; b=tAjuYpVPohdpqX7jKACOq/CGQhT7VPC5pQEVQ5fn2TNm5xBL1pOk5VYUgxTgVvb5IXw6q0ZdiwKP6OJ0CMJtXDRt/NoVwWCPi00HyxChFE9yDLX7gxSGFBiqWT6x4Uy7YMDL+D0p2bTyRLOCHhRjE3NbDAaiY+Ru4WzmdOA4Y9w=
+	t=1783626923; cv=none; b=A6/cg3YOEtplwphIv6yegr0WL93kxGLp1LyNXGOgyX7mLjYPjWrZ+kFDSF00USyWQPK7dajDCeMPFtQvw+YhYFbl5BOXhMdWvOPKvFPkNBn/zjSWZ+KsBxOL2GOV284hw3mEnoLIvHFQAOxE2B2unF+Yan6MI1kDnki4FWL2R0E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783623788; c=relaxed/simple;
-	bh=5g9VmIxvmwWkzgYnZqs2aA8ejF1eyNTzjFA+syyUc5w=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=YHFITyzmaDkC5aV24RkHww6zBYY2yOJGHOrhspmxGWuRayeySjZ8Vks8m5QA2TXIFkhdkIg6ktUMrP7bGmjVxZAgqnqMd/FSEn3cQ0KJTyCgReGwkhDHy0Gj4NtR1iOzrkUEeZAkmMqS6nvRVBuQ9VdL6S3EhpOUgIaKlyuWFmE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=arzXV0o3; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1783626923; c=relaxed/simple;
+	bh=vB5ef3CjicVSgwCtd2eOHHL/izaG/8hSIjg8oe+70LI=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=rVmv9zUT7buG0FsmOY2v5+Hf5uz/Np9Jy86lhsNR117gGPvxMOcPy9Vfp+1faJHdVhrLVLE7QaVGlUj11gdu40Ekgy2u+6ZizJPqgVw6AJwqQoQYMzLRgozBZ2RwTt+SI+QtQePr6AAb9qvGWItdAECkaZtdbez9Qb955PFdT2w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cml4UFqz; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="arzXV0o3"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C568C1F00A3A;
-	Thu,  9 Jul 2026 19:02:55 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cml4UFqz"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 77B191F000E9;
+	Thu,  9 Jul 2026 19:55:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783623776;
-	bh=ssqSyy6PD1j/fv8Wb2ttS6dHMztoMMBy2RbQSRbfR0o=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=arzXV0o38G1DclONNBCKkmINuZqSyhZCQJjHq9+LhWs05ttCqqQozEzD7lF4+jO6d
-	 JPgY5RhD3j9wHJ3hPYlfbrAlQ1/eoB4APrN0hD68QJogOxRS1y+dl9bq/Df7i7SDKX
-	 N80tJbfmC7QQ8RkkLeTNeKoH01xmnR4V8B0Ey2Dycu0tkkbqBN5uZODC0ARTwpryRq
-	 JxNvTew3t4P+uv1RvJZbW20FxqBrEuH6lr1e3M0bJ5vNWfWivOuGtVgPzbCPcFJp10
-	 WQHW7hN7nHdh7h3oz0xEk4sPklIf71VQpKorYMYoQNwqp0bO60hwqc90OuJdTU1Q7A
-	 T7hZq5p6a5/gw==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 09 Jul 2026 15:02:40 -0400
-Subject: [PATCH pynfs 12/13] server41tests: support a second server for
- inter-server copy
+	s=k20260515; t=1783626921;
+	bh=QehIRXfaSslViHGlxa/4fwubHddtIj1CC3xCGbWWv8c=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=cml4UFqzGRAXz5ucwGyvdnk9q6YyOosAl5cZvO05yOjJUOOs/xnB8NfIubeWdXqmn
+	 ICXVwWfDRCqtYznM6zS3jajKLEG51ISWaPKCuSIFvR3oQyof2XvB6Gi5makY+os4FS
+	 jwSwp+fLTk+Mxxd/5+X0JyrxYh+Wane5gi2S8EhUA5oQDO6f2/aLcdI1N+jI3QDwKV
+	 /Q4N3w8n8VTWcUykUraxiwtQqOKNiux4xzkWOZ5Al5OMaNu+BVbGwgSkprbDVl26Sv
+	 3pBKtyJgezti5chd/af8BebadE40lLq/aDm2AzvbtcisW9RnTFC8JdhcbcS4aQofn1
+	 n2Sd6rjtkVA3Q==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 897E3F4007A;
+	Thu,  9 Jul 2026 15:55:20 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Thu, 09 Jul 2026 15:55:20 -0400
+X-ME-Sender: <xms:qPxPanJKvcGeyYcYFq7HszucV6iN0Bc-4XHhYZWs6-VllOED1QVy0g>
+    <xme:qPxPal_yIedE-tkd9UctRp3PgpTjLTQliv7BLw0SjCktYT3RDKtPvUWj2ddrsjy3Q
+    w8P6i5NS5SWcO3cn1CDkTvRDuPCe-dtHIMjKkWs_Lc2ZxVyzwHH0g>
+X-ME-Proxy-Cause: dmFkZTGpxNdCv2SyuiG5PkycyXZZbK/ZHIg1XenU8iRecF0Zhpqk2ES2xEgACHxmW+FxfI
+    UXmEDLcm+OE6Lydr7PFxRdsd6J1nDSKvAGUg/TClZJLbCRToStCIDUpH+TiN6kgAgkPyPi
+    zBJ+oqSZNLaTN2SIpzs0AyiP5+CpVRzcKB+Fikzl1cDfAoYkjqPMQEPAopBlS4o/RMoiB4
+    NgtPMPIGoFwuk7fKdbCafzjBC79QzS3KNfp7FiB7RWvWIFiqSNvLDE7Az6gNOrmiLVDbbf
+    7dIBCBLI8YD/zyvUXzieiagCVU/EBOCXB8pO5hvb6fgYtOKEmlc4yxPEClUjKecLORVUU5
+    ogutnj+OgH9lHc3414BQKAGXar17+Ajl35ISSsSYmiE6zx1UDIbWsqvJ113sOdGyCfLQ3E
+    OCPl3N/DR0hs/v9IRrtlae69eRAJFFspnVzkMXZPDzjh1o08sm6rR/p6t6n5EysZ0WkjVP
+    lsksoM354joLpAYBYYAVaFQ0iR0/S+2pgZZ8DWCEdiEjalAungu7oSnAxFapuUqn+nbHl1
+    DBix3Loeuo9R4HNDNOhHRviqdacn1AGtFR6ygmDi70zbw3SKYSMZtFqj5WkjI1pG+3UOXp
+    sPYZYPZipSk6JGZhT0Ofm/xckClgF8UqwINSbmHgTNvKQZN9dCiUaPu1TwHg
+X-ME-Proxy: <xmx:qPxParAUP4h0LhK-Icp0pPwUeLra9v0xvyovMY0NQNJkr1M54v7P7w>
+    <xmx:qPxPaiNdYfAFugdnbWo6LfZz9TVHDKRgK_hU_kfUcPJ3E7xpnT2esQ>
+    <xmx:qPxPakzuGlHTP58DISYTMNG4lJoF8hXQiLLrSSCYdrWJhZIKK1fbFw>
+    <xmx:qPxPaiUe7aKDocczVG6nrQRjWfZKrx7xj9-Hcdl0vzY60l2RIz0BaA>
+    <xmx:qPxPamNvAbzzlKeOXS6hpGps_IWMAZb3bl6gNBspfy3J4Q0i7weNJuDL>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 676C3780AB8; Thu,  9 Jul 2026 15:55:20 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+X-ThreadId: Amiak35LOpZN
+Date: Thu, 09 Jul 2026 15:55:00 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, sashiko-bot <sashiko-bot@kernel.org>
+Message-Id: <2b2a1ec1-e2dd-4e87-b812-08fe17a993bd@app.fastmail.com>
+In-Reply-To: <62b35e8e3073f16c7ffc514fc30f23c788d25486.camel@kernel.org>
+References: <20260709-cel-v4-0-1d519d9be0cb@kernel.org>
+ <20260709-cel-v4-9-1d519d9be0cb@kernel.org>
+ <62b35e8e3073f16c7ffc514fc30f23c788d25486.camel@kernel.org>
+Subject: Re: [PATCH v4 9/9] NFSD: Release the export reference when reaping open
+ stateids
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260709-copy-v1-12-849bf581d7cb@kernel.org>
-References: <20260709-copy-v1-0-849bf581d7cb@kernel.org>
-In-Reply-To: <20260709-copy-v1-0-849bf581d7cb@kernel.org>
-To: Calum Mackay <calum.mackay@oracle.com>
-Cc: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org, 
- Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=10529; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=5g9VmIxvmwWkzgYnZqs2aA8ejF1eyNTzjFA+syyUc5w=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqT/BVJa76mTJR/SfqusrV+ZXz8OecVpZnpFssG
- dL3TF4Nh5KJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCak/wVQAKCRAADmhBGVaC
- Ff9rD/9baLm+0wu5bD5tsO+qhoyBU1rm1ZIrfxHH0hr6YPO6gN1pRdO4CO1C+VUFgOcDqPWeIpQ
- x6G2YJ6NRa+eTq7Y26jphwZI2BdgJxN2QAcDMi/SeIBc74mZlNAHU81dmDClVIcZ3QnPQbjO7Jo
- UDjxtvf4XX2fg7K5gQAxFHTuDj5c2pzydKUjC5KFywwSCk3zWst1k81rog7ziy/+t0FNXZYmK+O
- uzjh0kxMLwCbqljsFCPU9qExllNDk6qK7mIAPtZO2QT6NYgFxZceuXtTbksYsmbq52+Df7D2Fxa
- 440mVrNDi0nxBUV2VKfBZBzMwztgHairja+2a69xNGmmdwMAao4wB/jsEvFivT5gNqXNgsxCgly
- ce+nvJVq0VvCZZlSS5k5bAWLbKLNRDmhph84BaEf7uxVx+CI4LX8xE60sluoLpPe7a5weah1qPD
- pReQwHdMzlaVnI4biREYZ7BomQyW0n2Xqmz+fgKDvMoQLJi4vk8wnHv95OdxlzwrpRgtPUn+ygU
- 8nvrz6TlkUnaPcc5OlHczjWZ0gALzlmdBCWnGfVjkSz36DB4ZNO04/Uo+75NvF4kjY8oLbzK+Sy
- DJVA/4aSTTfUrfgu/4kt/zi3W1Bqmmi6i80QOHfk9j0sDuXj6JhN30+VmNPhHcTBGFkD27S9Jo3
- Js/NX47yxJvkTfQ==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Inter-server (server-to-server) COPY tests need to talk to two servers.
-Add a --server2 SERVER:/PATH option, parsed with parse_nfs_url, and an
-optional second client env.c2 in the test environment.
 
-The environment now creates, initializes, and cleans up the test tree on
-both servers, and factors credential creation into a helper so c2 gets a
-credential built the same way as c1.  When --server2 is not given, c2 is
-None and single-server runs are unaffected.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- nfs4.1/server41tests/environment.py | 127 ++++++++++++++++++++++++------------
- nfs4.1/testserver.py                |  14 ++++
- 2 files changed, 98 insertions(+), 43 deletions(-)
+On Thu, Jul 9, 2026, at 2:40 PM, Jeff Layton wrote:
+> On Thu, 2026-07-09 at 13:40 -0400, Chuck Lever wrote:
+>> nfs4_put_stid() releases the svc_export tracked in
+>> nfs4_stid.sc_export, but free_ol_stateid_reaplist() frees open and
+>> lock stateids by calling ->sc_free() directly, bypassing that path.
+>> An open stateid takes an sc_export reference in nfs4_open() and a
+>> lock stateid takes its own in init_lock_stateid(); both reach
+>> free_ol_stateid_reaplist() through their normal teardown, the open
+>> stateid via release_open_stateid() and the lock stateid via
+>> nfsd4_release_lockowner(), each through put_ol_stateid_locked().
+>> The reference is therefore never dropped, pinning the export and
+>> blocking unmount for the lifetime of the stateid.
+>> 
+>> Release sc_export in free_ol_stateid_reaplist() the way
+>> nfs4_put_stid() does. ->sc_free() runs once per stateid, and a
+>> stateid reaches free_ol_stateid_reaplist() or nfs4_put_stid() but
+>> never both, so the reference is dropped exactly once. Revoked
+>> stateids reach this path with sc_export already cleared by
+>> drop_stid_export(), so they are skipped rather than double-freed.
+>> 
+>> nfs4_put_stid() itself read sc_export before acquiring cl_lock.
+>> drop_stid_export() clears that field and releases the reference
+>> under cl_lock, so a concurrent revocation could drop the export in
+>> the window between the read and the final put, releasing the same
+>> reference twice. Read sc_export while cl_lock is held so the two
+>> paths serialize and the reference is released exactly once.
+>> 
+>> Fixes: ba0cde5dc81d ("NFSD: Track svc_export in nfs4_stid")
+>> Reported-by: sashiko-bot <sashiko-bot@kernel.org>
+>> Closes: https://sashiko.dev/#/patchset/20260707-cel-v3-0-7c0cc16fd54f@kernel.org?part=9
+>> Signed-off-by: Chuck Lever <cel@kernel.org>
+>> ---
+>>  fs/nfsd/nfs4state.c | 8 +++++++-
+>>  1 file changed, 7 insertions(+), 1 deletion(-)
+>> 
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 20556b8f186a..e988dfebf75e 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
 
-diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
-index c14b12cbfca5..38cd5a7a7185 100644
---- a/nfs4.1/server41tests/environment.py
-+++ b/nfs4.1/server41tests/environment.py
-@@ -119,23 +119,23 @@ class Environment(testmod.Environment):
-         self._lock = Lock()
-         self.opts = opts
-         self.c1 = nfs4client.NFS4Client(opts.server, opts.port, opts.minorversion, secure=opts.secure)
--        s1 = rpc.security.instance(opts.flavor)
--        if opts.flavor == rpc.AUTH_NONE:
--            self.cred1 = s1.init_cred()
--        elif opts.flavor == rpc.AUTH_SYS:
--            self.cred1 = s1.init_cred(uid=opts.uid, gid=opts.gid, name=opts.machinename)
--        elif opts.flavor == rpc.RPCSEC_GSS:
--            call = self.c1.make_call_function(self.c1.c1, 0,
--                                              self.c1.default_prog,
--                                              self.c1.default_vers)
--            krb5_cred = AuthGss().init_cred(call, target="nfs@%s" % opts.server)
--            krb5_cred.service = opts.service
--            self.cred1 = krb5_cred
--        self.c1.set_cred(self.cred1)
-+        self.cred1 = self._make_cred(self.c1, opts.server)
-         self.cred2 = AuthSys().init_cred(uid=1111, gid=37, name=b"shampoo")
- 
-         opts.home = opts.path + [b'tmp']
-         self.c1.homedir = opts.home
-+
-+        # Optional second server, used only by inter-server (server-to-server)
-+        # COPY tests.  Enabled by passing --server2 SERVER:/PATH on the
-+        # command line; None otherwise so single-server runs are unaffected.
-+        self.c2 = None
-+        if getattr(opts, "server2", None):
-+            self.c2 = nfs4client.NFS4Client(opts.server2_host, opts.server2_port,
-+                                            opts.minorversion, secure=opts.secure)
-+            opts.server2_home = opts.server2_path + [b'tmp']
-+            self.c2.homedir = opts.server2_home
-+            self._make_cred(self.c2, opts.server2_host)
-+
-         # Put this after client creation, to ensure _last_verf bigger than
-         # any natural client verifiers
-         self.timestamp = int(time.time())
-@@ -146,38 +146,72 @@ class Environment(testmod.Environment):
-         self.stateid1 = stateid4(0xffffffff, b'\xff'*12)
- 
-         log.info("Created client to %s, %i" % (opts.server, opts.port))
-+        if self.c2 is not None:
-+            log.info("Created second client to %s, %i" %
-+                     (opts.server2_host, opts.server2_port))
-+
-+    def _make_cred(self, client, server_host):
-+        """Build and install an RPC credential on client for server_host."""
-+        s = rpc.security.instance(self.opts.flavor)
-+        if self.opts.flavor == rpc.AUTH_NONE:
-+            cred = s.init_cred()
-+        elif self.opts.flavor == rpc.AUTH_SYS:
-+            cred = s.init_cred(uid=self.opts.uid, gid=self.opts.gid,
-+                               name=self.opts.machinename)
-+        elif self.opts.flavor == rpc.RPCSEC_GSS:
-+            call = client.make_call_function(client.c1, 0,
-+                                             client.default_prog,
-+                                             client.default_vers)
-+            cred = AuthGss().init_cred(call, target="nfs@%s" % server_host)
-+            cred.service = self.opts.service
-+        client.set_cred(cred)
-+        return cred
-+
-+    def _all_clients(self):
-+        """All configured clients (c1, and c2 if a second server was given)."""
-+        return [c for c in (self.c1, self.c2) if c is not None]
- 
-     def init(self):
-         """Run once before any test is run"""
-         if self.opts.noinit:
-             return
--        sess = self.c1.new_client_session(b"Environment.init_%i" %
--                                                    self.timestamp)
-+        self._init_server(self.c1, self.opts.path, self.opts.home)
-+        if self.c2 is not None:
-+            self._init_server(self.c2, self.opts.server2_path,
-+                              self.opts.server2_home)
-+        self.clean_sessions()
-+        self.clean_clients()
-+
-+    def _init_server(self, c, path, home):
-+        """Prepare (and optionally build) the test tree on a single server."""
-+        sess = c.new_client_session(b"Environment.init_%i" % self.timestamp)
-         if self.opts.maketree:
--            self._maketree(sess)
--        # Make sure opts.home exists
--        res = sess.compound(use_obj(self.opts.home))
--        check(res, msg="Could not LOOKUP /%s," % b'/'.join(self.opts.home))
-+            self._maketree(sess, path, home)
-+        # Make sure home exists
-+        res = sess.compound(use_obj(home))
-+        check(res, msg="Could not LOOKUP /%s," % b'/'.join(home))
-         # Make sure it is empty
--        clean_dir(sess, self.opts.home)
-+        clean_dir(sess, home)
-         sess.c.null()
--        self.clean_sessions()
--        self.clean_clients()
- 
--    def _maketree(self, sess):
-+    def _maketree(self, sess, path=None, home=None):
-         """Make test tree"""
-+        if path is None:
-+            path = self.opts.path
-+        if home is None:
-+            home = self.opts.home
-         # ensure /tmp (and path leading up) exists
--        path = []
--        for comp in self.opts.home:
--            path.append(comp)
--            res = sess.compound(use_obj(path))
-+        p = []
-+        for comp in home:
-+            p.append(comp)
-+            res = sess.compound(use_obj(p))
-             check(res, [NFS4_OK, NFS4ERR_NOENT],
--                      "LOOKUP /%s," % b'/'.join(path))
-+                      "LOOKUP /%s," % b'/'.join(p))
-             if res.status == NFS4ERR_NOENT:
--                res = create_obj(sess, path, NF4DIR)
--                check(res, msg="Trying to create /%s," % b'/'.join(path))
-+                res = create_obj(sess, p, NF4DIR)
-+                check(res, msg="Trying to create /%s," % b'/'.join(p))
-         # ensure /tree exists and is empty
--        tree = self.opts.path + [b'tree']
-+        tree = path + [b'tree']
-         res = sess.compound(use_obj(tree))
-         check(res, [NFS4_OK, NFS4ERR_NOENT])
-         if res.status == NFS4ERR_NOENT:
-@@ -210,16 +244,21 @@ class Environment(testmod.Environment):
-         """Run once after all tests are run"""
-         if self.opts.nocleanup:
-             return
--        sess = self.c1.new_client_session(b"Environment.init_%i" % self.timestamp)
--        clean_dir(sess, self.opts.home)
--        sess.c.null()
-+        homes = [(self.c1, self.opts.home)]
-+        if self.c2 is not None:
-+            homes.append((self.c2, self.opts.server2_home))
-+        for c, home in homes:
-+            sess = c.new_client_session(b"Environment.init_%i" % self.timestamp)
-+            clean_dir(sess, home)
-+            sess.c.null()
-         self.clean_sessions()
-         self.clean_clients()
- 
-     def startUp(self):
-         """Run before each test"""
-         log.debug("Sending pretest NULL")
--        self.c1.null()
-+        for c in self._all_clients():
-+            c.null()
-         log.debug("Got pretest NULL response")
- 
-     def sleep(self, sec, msg=''):
-@@ -260,16 +299,18 @@ class Environment(testmod.Environment):
-         return b"%s_%i" % (os.fsencode(t.code), self.timestamp)
- 
-     def clean_sessions(self):
--        """Destroy client name env.c1"""
--        for sessionid in list(self.c1.sessions):
--            self.c1.compound([op.destroy_session(sessionid)])
--            del(self.c1.sessions[sessionid])
-+        """Destroy all sessions on all configured clients"""
-+        for c in self._all_clients():
-+            for sessionid in list(c.sessions):
-+                c.compound([op.destroy_session(sessionid)])
-+                del(c.sessions[sessionid])
- 
-     def clean_clients(self):
--        """Destroy client name env.c1"""
--        for clientid in list(self.c1.clients):
--            self.c1.compound([op.destroy_clientid(clientid)])
--            del(self.c1.clients[clientid])
-+        """Destroy all client ids on all configured clients"""
-+        for c in self._all_clients():
-+            for clientid in list(c.clients):
-+                c.compound([op.destroy_clientid(clientid)])
-+                del(c.clients[clientid])
- 
- #########################################
- debug_fail = False
-diff --git a/nfs4.1/testserver.py b/nfs4.1/testserver.py
-index 0970c64efe34..f38279b36cba 100755
---- a/nfs4.1/testserver.py
-+++ b/nfs4.1/testserver.py
-@@ -153,6 +153,13 @@ def scan_options(p):
-                  help="Use FH for certain specialized tests")
-     p.add_option_group(g)
- 
-+    g = OptionGroup(p, "Inter-server copy options",
-+                    "A second server enables NFSv4.2 inter-server "
-+                    "(server-to-server) COPY tests.")
-+    g.add_option("--server2", default=None, metavar="SERVER:/PATH",
-+                 help="Second server and export for inter-server copy tests")
-+    p.add_option_group(g)
-+
-     g = OptionGroup(p, "Server workaround options",
-                     "Certain servers handle certain things in unexpected ways."
-                     " These options allow you to alter test behavior so that "
-@@ -259,6 +266,13 @@ def main():
- 
-     opt.server, opt.port = server_list[0]
- 
-+    # Optional second server for inter-server copy tests
-+    if opt.server2 is not None:
-+        server2_list, opt.server2_path = nfs4lib.parse_nfs_url(opt.server2)
-+        if not server2_list:
-+            p.error("%s not a valid server name" % opt.server2)
-+        opt.server2_host, opt.server2_port = server2_list[0]
-+
-     if not args:
-         p.error("No tests given")
- 
+>> @@ -1753,9 +1756,12 @@ free_ol_stateid_reaplist(struct list_head *reaplist)
+>>  				       st_locks);
+>>  		list_del(&stp->st_locks);
+>>  		fp = stp->st_stid.sc_file;
+>> +		exp = stp->st_stid.sc_export;
+>>  		stp->st_stid.sc_free(&stp->st_stid);
+>>  		if (fp)
+>>  			put_nfs4_file(fp);
+>> +		if (exp)
+>> +			exp_put(exp);
+>
+> nit: nfs4_put_stid() does this in the reverse order. It doesn't
+> actually matter, but it looks a bit weird if you want to fix it up
+> before merging.
+>
+>>  	}
+>>  }
+>>  
+>
+> Reviewed-by: Jeff Layton <jlayton@kernel.org>
+
+Swap applied, series pushed to nfsd-testing. Thanks for your review!
+
 
 -- 
-2.55.0
-
+Chuck Lever
