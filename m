@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 91E293B4417
-	for <linux-nfs@vger.kernel.org>; Sun, 12 Jul 2026 20:34:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D60BC3B47FC
+	for <linux-nfs@vger.kernel.org>; Sun, 12 Jul 2026 20:34:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783888499; cv=none; b=IqwvH6P5t8DFFSv+8h1DVnA41DJtQJykaOpvDwH5ng8rWH3x+hmVALFLNShaYi34VZZMwJR6B17y5y2rqKIkd3sJ5/CX4IgKjTDAWjklt2u1sMG5dsrybnEmZdJHsZXX/DJoBsGD26mYuX2+87SFY797q7rVAPAZhI7cQqbBDjQ=
+	t=1783888500; cv=none; b=CfzxXbZJYNvgpKpIlBIHWnNVvEUJgXbSx5MbAm3jdoPv9g4gTHtrNC855cBYKwZGDUVsrrhxC9jdFJlpXFGkKbZV4Pyx0st0pIbk3nNTJb2fQfs+LyKhPFtxq+qT8dMgwZ2zS2U2zA4p7PTQceP957+XEVM0wqOo/oO2tXeoKak=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783888499; c=relaxed/simple;
-	bh=XCPjDoAiuoS0+LP0EB6C+ExWClbU07AvQEoQiI5Q+yA=;
+	s=arc-20240116; t=1783888500; c=relaxed/simple;
+	bh=GKxLU6ivIzlX1fKDl54mYfFo+fkN561zCHL50/yVXio=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=XV5JA7/aFAZg+G6qbvUYWtjujJusbc6U1cveUQFeB9m5OvmMSV4/xUuwYSP23ME3Nw5det6sm/PNa37+Vp6TOjr2xHBzPcu5R7KrAWHy3bCJy1UuLy4qkWMv7d+UxDzJHvxb1UyPHijlw006Gg4ci99Ec3AotTUJlSjWQvmVenQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=a4fvLukz; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=lCEIpP8c2PEnN+JGdEDMy9MGO5bqkQxlNdkRM94vYULnHKczM9TnH5XAkBb3+z3HqHNALpKnNXdX0liKe2lJA51RCg5cPzNifLEjPiiFQJSeJw7C64p717R3yJv1vOYeAsN1pCTCKug+HBYCG26Ba5MYiSAMocuL4dAYhMDOmdw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=C4xgUMgj; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="a4fvLukz"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1814A1F000E9;
-	Sun, 12 Jul 2026 20:34:53 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="C4xgUMgj"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 528D41F00A3E;
+	Sun, 12 Jul 2026 20:34:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783888493;
-	bh=BBsuhEDSs7hVBvNSptbyIvtN/GwPGlxfC6FWLIRAtSo=;
+	s=k20260515; t=1783888495;
+	bh=RjZTc0SbAiKWndREUXGqdIAi3pcXRiTG0EPzTWzN+ik=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=a4fvLukzPRh53S8IgQfc9noK4egw7M6Myn+G1SmjBTb15gwkiqB9gRvu5MC+2w2ho
-	 iFNFm7DOVS+vSB6B+fWjqCE1/FUHP7iAkcN6E57bl9SsFL5jLfqDShEiCoCwMUwd8r
-	 EIr+kNvbYcNkGA+sNwo90NhFjlSrO1FMHRSuw9M3aj3vXljpfchAPYQkuUxcptXzyB
-	 q09NrsDMcbm2GLyrGBVFigBcAvCOvtijMCLuLHt5pYmXa2jMiWMo4ld7G4iBTAMaLm
-	 PjvO4CSJpTc65sF3gJ/DH0JVXUuccJjAE3uEADKYVdg3OGmGWx7Pam40qUOsDswxU7
-	 JcLKrm4yVupqA==
+	b=C4xgUMgjQW6boYDXoCVjG0i2VkuItJ3hJvSxSLk5we/1Pdfx+JpvL61I64aVMF+Nq
+	 N4+ww9Eg5kHR0MGRpADqjuHpBjFU49tQDFVl5fB/4M8L/xtctXXy9aO1LoGt3vMrd2
+	 l7lasdvuMUb+ysIQ0O7BKDjPKOJ+NNMEWsD3lD/4Tz9VY5KqWw3BB44OJWaOT8PR+M
+	 yEEJL6QlD8A6Gept6QqY3/dvmFLMcgAYKmmoPVX6dSk9IiHYqiL36SPlyyLSD2GRLY
+	 c9FhUXipknkfWO92EJb6LO253y456dLp8IzkDFUUEvYweBPBq3Pnpf7az3RMl9l2AI
+	 /GekaJkVzSi8Q==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/5] xdrgen: Align the error caret under tab-indented source
-Date: Sun, 12 Jul 2026 16:34:47 -0400
-Message-ID: <20260712203451.124902-2-cel@kernel.org>
+Subject: [PATCH 4/5] xdrgen: Enforce RFC 5531 name and number scoping for RPC programs
+Date: Sun, 12 Jul 2026 16:34:50 -0400
+Message-ID: <20260712203451.124902-5-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260712203451.124902-1-cel@kernel.org>
 References: <20260712203451.124902-1-cel@kernel.org>
@@ -47,77 +47,105 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When xdrgen reports a parse or transform error, it prints the
-offending source line followed by a caret marking the column. The
-source line is emitted with its tab characters intact, but the caret
-offset is computed from a tab-expanded copy of the text ahead of the
-column. A terminal expands the line's leading tabs relative to the
-four-space output indent, while the caret math expands the same tabs
-from column zero, so the two disagree whenever the line is indented
-with tabs and the caret lands past the token it should mark.
+The duplicate-identifier check enforces the RFC 4506 name space
+for XDR type and constant identifiers but ignores what an RPC
+program definition adds. RFC 5531 Section 12.3 completes the
+model: a program identifier shares the specification-wide name
+space with constant and type identifiers, a version name and
+number are unique within their program, and a procedure name and
+number are unique within their version.
 
-Render the displayed line with its tabs already expanded so the line
-and the caret share one tab origin and the four-space indent cancels.
-Fold the now-identical line-and-caret formatting out of both error
-handlers into a single helper, so every caller reports the same
-aligned output.
+xdrgen currently accepts a specification that breaks any of these
+rules, and the symptom depends on which rule. A duplicate procedure
+name reaches the generated header as a redeclared enumerator,
+which the C compiler rejects. A duplicate procedure number is
+more dangerous because it is silent: the two procedures emit
+enumerators of equal value -- valid C that compiles cleanly --
+leaving a dispatch collision to surface only at run time. A
+duplicate program name shares the specification-wide name space
+with constants and types and is caught alongside them.
+
+Extend the check to enforce RFC 5531 scoping in full.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- tools/net/sunrpc/xdrgen/xdr_parse.py | 26 ++++++++++++++++++--------
- 1 file changed, 18 insertions(+), 8 deletions(-)
+ tools/net/sunrpc/xdrgen/xdr_ast.py | 49 ++++++++++++++++++++++++++++++
+ 1 file changed, 49 insertions(+)
 
-diff --git a/tools/net/sunrpc/xdrgen/xdr_parse.py b/tools/net/sunrpc/xdrgen/xdr_parse.py
-index 241e96c1fdd9..3e76717d2f85 100644
---- a/tools/net/sunrpc/xdrgen/xdr_parse.py
-+++ b/tools/net/sunrpc/xdrgen/xdr_parse.py
-@@ -63,6 +63,22 @@ def get_xdr_enum_validation() -> bool:
-     return enum_validation
- 
- 
-+def format_source_caret(line_text: str, column: int) -> list[str]:
-+    """Render an offending source line with a caret beneath a column.
+diff --git a/tools/net/sunrpc/xdrgen/xdr_ast.py b/tools/net/sunrpc/xdrgen/xdr_ast.py
+index cf68ff5dfe17..ec48506b239a 100644
+--- a/tools/net/sunrpc/xdrgen/xdr_ast.py
++++ b/tools/net/sunrpc/xdrgen/xdr_ast.py
+@@ -862,6 +862,50 @@ def _introduced_names(value):
+         yield value.declaration.name, value.declaration
+     elif isinstance(value, _XdrConstant):
+         yield value.name, value
++    elif isinstance(value, _RpcProgram):
++        yield value.name, value
 +
-+    Args:
-+        line_text: The raw source line containing the error
-+        column: 1-based column of the offending token within line_text
 +
-+    Returns:
-+        Output lines for the diagnostic: a blank separator, the source
-+        line with tabs expanded, and a caret aligned under the column.
++def _check_rpc_scope_names(program: "_RpcProgram") -> None:
++    """Enforce RFC 5531 Section 12.3 scoping within an RPC program.
++
++    A version name and number are unique within the program and a
++    procedure name and number are unique within its version.
 +    """
-+    expanded = line_text.expandtabs()
-+    caret = len(line_text[: column - 1].expandtabs())
-+    return ["", f"    {expanded}", f"    {' ' * caret}^"]
-+
-+
- def make_error_handler(source: str, filename: str) -> Callable[[UnexpectedInput], bool]:
-     """Create an error handler that reports the first parse error and aborts.
++    version_names = set()
++    version_numbers = set()
++    for version in program.versions:
++        if version.name in version_names:
++            raise XdrSemanticError(
++                f"duplicate version name '{version.name}'"
++                f" in program '{program.name}'",
++                version,
++            )
++        version_names.add(version.name)
++        if version.number in version_numbers:
++            raise XdrSemanticError(
++                f"duplicate version number {version.number}"
++                f" in program '{program.name}'",
++                version,
++            )
++        version_numbers.add(version.number)
++        procedure_names = set()
++        procedure_numbers = set()
++        for procedure in version.procedures:
++            if procedure.name in procedure_names:
++                raise XdrSemanticError(
++                    f"duplicate procedure name '{procedure.name}'"
++                    f" in version '{version.name}'",
++                    procedure,
++                )
++            procedure_names.add(procedure.name)
++            if procedure.number in procedure_numbers:
++                raise XdrSemanticError(
++                    f"duplicate procedure number {procedure.number}"
++                    f" in version '{version.name}'",
++                    procedure,
++                )
++            procedure_numbers.add(procedure.number)
  
-@@ -110,10 +126,7 @@ def make_error_handler(source: str, filename: str) -> Callable[[UnexpectedInput]
-             msg_parts.append(str(e).split("\n")[0])
  
-         # Show the offending line with a caret pointing to the error
--        msg_parts.append("")
--        msg_parts.append(f"    {line_text}")
--        prefix = line_text[: column - 1].expandtabs()
--        msg_parts.append(f"    {' ' * len(prefix)}^")
-+        msg_parts.extend(format_source_caret(line_text, column))
+ def check_duplicate_definitions(root: "Specification") -> None:
+@@ -869,6 +913,9 @@ def check_duplicate_definitions(root: "Specification") -> None:
  
-         sys.stderr.write("\n".join(msg_parts) + "\n")
-         raise XdrParseError()
-@@ -151,10 +164,7 @@ def handle_transform_error(e: VisitError, source: str, filename: str) -> None:
+     RFC 4506 Section 6.4 places constant and type identifiers in a
+     single name space that must be unique within a specification.
++    RFC 5531 Section 12.3 adds RPC program names to that name space
++    and scopes version names and numbers to their program and
++    procedure names and numbers to their version.
+     """
+     seen = {}
+     for definition in root.definitions:
+@@ -882,6 +929,8 @@ def check_duplicate_definitions(root: "Specification") -> None:
+                     where,
+                 )
+             seen[name] = where
++        if isinstance(definition.value, _RpcProgram):
++            _check_rpc_scope_names(definition.value)
  
-     # Show the offending line with a caret pointing to the error
-     if line_text:
--        msg_parts.append("")
--        msg_parts.append(f"    {line_text}")
--        prefix = line_text[: column - 1].expandtabs()
--        msg_parts.append(f"    {' ' * len(prefix)}^")
-+        msg_parts.extend(format_source_caret(line_text, column))
  
-     sys.stderr.write("\n".join(msg_parts) + "\n")
- 
+ def transform_parse_tree(parse_tree):
 -- 
 2.54.0
 
