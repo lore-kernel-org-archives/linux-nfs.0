@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7DF233B2D14
-	for <linux-nfs@vger.kernel.org>; Sun, 12 Jul 2026 20:45:58 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 4ADFB352C28
+	for <linux-nfs@vger.kernel.org>; Sun, 12 Jul 2026 20:45:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783889160; cv=none; b=aroa8I5vdGOQ7rTgYTGqK61IeGL9xmgvyuXVhk0KbH7cXWbGBV+4alXX5dDObnrOervcYGv78WhL5Thw8YzFEDKEsLlO7vBMe93vc0ccsov3ZoFq1wh8Tl+V8XBRGMza6V6lwLrbfJdKpK3dAbvz0wMAt/m+bgb/lz8lQT+o4xo=
+	t=1783889161; cv=none; b=PT80ix23/bWrNd17YBLpEIu2+u7i8nCWfLc6gHlJ+5W+cYgXvlfH0/aBaacmdWg58zRhwydC1Jn5/j/oW92aTqHCkUWVGaNV3M92wZrrpdzFWipskU3LEJddewHNPZ6P+2I3J5K1/NGz89SxyxlY6JqdtKWI7G63U7nWbstweR0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783889160; c=relaxed/simple;
-	bh=xirf/NacVe+RWNPRGKcbpugNVxqG38QdCOYf0uOmDvc=;
+	s=arc-20240116; t=1783889161; c=relaxed/simple;
+	bh=FiYF5JkJFBiibf1IE69q7qzqCicjTk0g3fmxAtYhhks=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=fostcTBldOUgRcWLOhUz+wgrO2bryouG7dKeLc69ObT6yMyMTKeW8B2kH5+X/I97E2gEsHPJARe86+7VZIhmFOd4PZUDQqum5TOIYan7/jarbpBiXsKYUPDPCDeC1I3geZQUW1vw5PF7CtC3+CAy1SMTm2yXoSHDYPyPdzzlzoc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=i3Od8WN/; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=Ptwfb5d+zkCrT+tRvwMPGbWNuAkR7OBRw6JWtzm4sBsFyYM3X4XPXCzoCEB8kUifGttlfLmZB5c/C19EmSez+PKYUwvKs4nNVj2ZBhmUcHddCM9gqZ6Vcq2vZJrDMLs7qCD/udkceYsBmkvL7Iy2Sd+vfOxSil17ZAmqLC4ujmE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eis1QJ2g; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="i3Od8WN/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id DC5D21F000E9;
-	Sun, 12 Jul 2026 20:45:57 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eis1QJ2g"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 624811F00A3E;
+	Sun, 12 Jul 2026 20:45:59 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1783889158;
-	bh=t5g/dnG/VpqHQuwRkwWWaRwXgqDdtLbqwrZJKqkYaXY=;
+	s=k20260515; t=1783889159;
+	bh=aXOIlKR4yZy4vfHsMiZmXuzfnPzYyf1k9FaNsb9kDr0=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=i3Od8WN/DJ6iXlCfZJSrYS3VtrHdp7H3g/Oves4eH/mxIpN/vUa5dgra52MekZAhi
-	 +UgQZRnXQLay4A2g7j8pY0xVEcpaKnoxa1QzqoR7smWFiaUQrFECDhpXBZHXINaOBW
-	 a6zk5KcK9SKTDd5bWvRNpRUpS2pmmrnEr4qgMQss79mM3iS8RFDBJ4an/Rw4ILkdtS
-	 6NXfZEuYLk7rLcYnIFIcJV8t7GnrccHTDlIVfrBKOOdO3y7UNRHKBYsgaINF0bdH3v
-	 rs0uw2azGV9nvut8dcYGK1J7ZyVPOX5jV9XYFei25apcz0FqV86dEjH1hsB0wvj2dx
-	 KHULFrWufgvWA==
+	b=eis1QJ2gKf6P3qY77VZc37a8Z2DmHhWK+UE1Kqc1WUzYAwg+mkHWlFCW0NL/nIDjq
+	 7um1z13yvK+udUDgLI2qHwvtrGW+q8azOx9QvEZhIdD1k4Y5zG9IfawddcxOYyl6Hj
+	 0CwpFsJ6JeHWTc1R175H+vRurDldCHPTdF0Mi8em49f0YZkCZxmZL3NmWXTjkp8Zfk
+	 q2CshDAuew2yF4Sd0EkmyUsSC9p9/jt/cDyif6U6A4iuut10cFpTDPg5sPnaXvJmBt
+	 mzeuJqIrPNAJJe36oeh4QqkwFKHEeiun8z1YSMNq/8hwK8AKjIZTiR/7jQO94Aemy9
+	 KsyOhGGjJHaWQ==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/9] NFSD: include "netns.h"
-Date: Sun, 12 Jul 2026 16:45:48 -0400
-Message-ID: <20260712204554.125308-4-cel@kernel.org>
+Subject: [PATCH 5/9] NFSD: Move the export.h include from nfsd.h to auth.c
+Date: Sun, 12 Jul 2026 16:45:50 -0400
+Message-ID: <20260712204554.125308-6-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260712204554.125308-1-cel@kernel.org>
 References: <20260712204554.125308-1-cel@kernel.org>
@@ -47,163 +47,48 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Nothing in fs/nfsd/nfsd.h needs the contents of "netns.h"; the
-prototypes there that take a struct nfsd_net pointer need only a
-forward declaration of that type. Relocate the existing forward
-declaration ahead of the first such prototype, drop the "netns.h"
-include from nfsd.h, and include it directly in the translation
-units that operate on struct nfsd_net.
+Nothing declared in fs/nfsd/nfsd.h references a type, macro, or
+function that export.h defines. The include is present only so
+that source files including nfsd.h pick up export.h's definitions
+transitively. Of the twenty source files that include nfsd.h, only
+auth.c relies on that side effect: it names struct svc_export and the
+NFSEXP_* flags yet includes no header that supplies them.
 
-"netns.h" had also been the path by which <linux/filelock.h>
-reached nfsxdr.c and state.h. Both now include <linux/filelock.h>
-themselves.
+Add the export.h include directly to auth.c, then drop it from nfsd.h
+so the header carries only the dependencies its own declarations
+require.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/nfscache.c | 1 +
- fs/nfsd/nfsctl.c   | 1 +
- fs/nfsd/nfsd.h     | 6 ++----
- fs/nfsd/nfsfh.c    | 1 +
- fs/nfsd/nfsxdr.c   | 2 ++
- fs/nfsd/state.h    | 3 +++
- fs/nfsd/stats.c    | 1 +
- fs/nfsd/trace.h    | 1 +
- fs/nfsd/vfs.c      | 1 +
- 9 files changed, 13 insertions(+), 4 deletions(-)
+ fs/nfsd/auth.c | 1 +
+ fs/nfsd/nfsd.h | 2 --
+ 2 files changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index bdf92ec00e7e..07a53a5b3d37 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -19,6 +19,7 @@
- #include <net/checksum.h>
+diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
+index 4dc327e02456..e3b4a35caac6 100644
+--- a/fs/nfsd/auth.c
++++ b/fs/nfsd/auth.c
+@@ -3,6 +3,7 @@
  
+ #include <linux/sched.h>
  #include "nfsd.h"
-+#include "netns.h"
- #include "stats.h"
- #include "cache.h"
- #include "trace.h"
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 4de0a8dc7ebe..7e1d5a5d6511 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -23,6 +23,7 @@
++#include "export.h"
+ #include "auth.h"
  
- #include "idmap.h"
- #include "nfsd.h"
-+#include "netns.h"
- #include "stats.h"
- #include "cache.h"
- #include "state.h"
+ int nfsexp_flags(struct svc_cred *cred, struct svc_export *exp)
 diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 0b225eb3ef3f..4583d7d51a88 100644
+index 4583d7d51a88..b35e9a9a112d 100644
 --- a/fs/nfsd/nfsd.h
 +++ b/fs/nfsd/nfsd.h
-@@ -40,8 +40,6 @@
- #define NFSD_SUPPORTED_MINOR_VERSION	2
- bool nfsd_support_version(int vers);
+@@ -23,8 +23,6 @@
  
--#include "netns.h"
+ #include <uapi/linux/nfsd/debug.h>
+ 
+-#include "export.h"
 -
- /*
-  * Default and maximum payload size (NFS READ or WRITE), in bytes.
-  * The maximum is an implementation limit.
-@@ -100,6 +98,8 @@ struct nfsdfs_client {
- 	void (*cl_release)(struct kref *kref);
- };
- 
-+struct nfsd_net;
-+
- struct nfsdfs_client *get_nfsdfs_client(struct inode *);
- struct dentry *nfsd_client_mkdir(struct nfsd_net *nn,
- 				 struct nfsdfs_client *ncl, u32 id,
-@@ -125,8 +125,6 @@ extern const struct svc_version nfsd_acl_version3;
- extern const struct svc_version localio_version1;
- #endif
- 
--struct nfsd_net;
--
- enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
- int nfsd_vers(struct nfsd_net *nn, int vers, enum vers_op change);
- int nfsd_minorversion(struct nfsd_net *nn, u32 minorversion, enum vers_op change);
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index c23ae31f60e0..c7c60c35bdfc 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -13,6 +13,7 @@
- #include <linux/sunrpc/svcauth_gss.h>
- #include <crypto/utils.h>
- #include "nfsd.h"
-+#include "netns.h"
- #include "stats.h"
- #include "vfs.h"
- #include "auth.h"
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 86c9dd4b334b..019f0cc971a7 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -5,6 +5,8 @@
-  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
-  */
- 
-+#include <linux/filelock.h>
-+
- #include "vfs.h"
- #include "xdr.h"
- #include "auth.h"
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index bc0181ef1cb6..7255d184b41f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -36,9 +36,12 @@
- #define _NFSD4_STATE_H
- 
- #include <crypto/md5.h>
-+
-+#include <linux/filelock.h>
- #include <linux/idr.h>
- #include <linux/refcount.h>
- #include <linux/sunrpc/svc_xprt.h>
-+
- #include "nfsfh.h"
- #include "nfsd.h"
- 
-diff --git a/fs/nfsd/stats.c b/fs/nfsd/stats.c
-index d7edbda260f0..9a03e097cfe5 100644
---- a/fs/nfsd/stats.c
-+++ b/fs/nfsd/stats.c
-@@ -26,6 +26,7 @@
- #include <net/net_namespace.h>
- 
- #include "nfsd.h"
-+#include "netns.h"
- #include "stats.h"
- 
- static int nfsd_show(struct seq_file *seq, void *v)
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index db0a0dc70660..7d7a1483109a 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -19,6 +19,7 @@
- #include "export.h"
- #include "nfsfh.h"
- #include "xdr4.h"
-+#include "netns.h"
- 
- #define NFSD_TRACE_PROC_CALL_FIELDS(r) \
- 		__field(unsigned int, netns_ino) \
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 0a1e7bfea3c8..8923a9910a08 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -43,6 +43,7 @@
- #endif /* CONFIG_NFSD_V4 */
- 
- #include "nfsd.h"
-+#include "netns.h"
- #include "stats.h"
- #include "vfs.h"
- #include "filecache.h"
+ #undef ifdebug
+ #ifdef CONFIG_SUNRPC_DEBUG
+ # define ifdebug(flag)		if (nfsd_debug & NFSDDBG_##flag)
 -- 
 2.54.0
 
