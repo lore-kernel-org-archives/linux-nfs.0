@@ -1,73 +1,73 @@
 Received: from fhigh-b6-smtp.messagingengine.com (fhigh-b6-smtp.messagingengine.com [202.12.124.157])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9361835F165
-	for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2026 06:23:44 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ACF31361DC3
+	for <linux-nfs@vger.kernel.org>; Mon, 13 Jul 2026 06:23:49 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.157
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1783923825; cv=none; b=kqW5PvZaiMClCq1AAuLiGA5ZJrFlvSxGsE72eP0fbJrCoJnIwupIkkzAkY/vYP9WzSxnFuBFf6C4roZDdzQv6RpVVSI4/xt/xNCSE6jjCjebgmsSWTaNTtL2QYyqM8Is4yAKuwo72B1YTwvbZCg/QDWFkmQOkmtnmp5UsrwLOHY=
+	t=1783923831; cv=none; b=HePevneREpLswDspGOZ2eMqVfrzlTV8Fu8AnrCqGo+eBFAkw75q9gwmIa+QOPSbHB3XVPa6dfZVX0W2KgNsOQtscpD+y7aZIqfeoO972l5Vi8nRAPv0OUmLPuE050JHUxXwejgRScSPhK4ytF7DJA5fbCMRMbc5nCJ53vrF2YDY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1783923825; c=relaxed/simple;
-	bh=hDKeomlMc6l0TC1aP9vPIR5wV0sfuEF9KzC0+96fRBE=;
+	s=arc-20240116; t=1783923831; c=relaxed/simple;
+	bh=h6HJPb5mFy+vne7URFT3dgIkfFdykz0Rdy1kJTO7Ox4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=W+i9HCOCi+QWxcZ9xjJGsp1VedYBud9INHkZAtGyHei4qVJITUD+p6Pq07Iy6oDVsXxZI2zP/8qiEhV8zxHkhqm7k3MkLgQ0JPtZgk7+A5q4EMybG0VDeljTx+BvCGPKrfIzPwN4giZFJ+kpmxSYtlOsxbDGmkSUIl/lGNleE4g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=EsEmkaM5; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Y8cdFlWZ; arc=none smtp.client-ip=202.12.124.157
+	 MIME-Version; b=BZhKikdsNZD+C3J1CtDQgx9lnKINRxytCkjfhyGNix89Vv4vEjqv/u9RGyXv5mQwocJOKz54j4N7UaFiKHc4r2Ml5pN3LfzbpU+39N9bd7vgB0kQTWS+Lz0YT2KKamYnQ0Ml/veYagFt5erY1pGvinmimPSUM+BNQTOK3iaAqJQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=dxuzVJfK; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Y+bwypUf; arc=none smtp.client-ip=202.12.124.157
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="EsEmkaM5";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Y8cdFlWZ"
-Received: from phl-compute-08.internal (phl-compute-08.internal [10.202.2.48])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id 0DCB37A0055;
-	Mon, 13 Jul 2026 02:23:44 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-08.internal (MEProxy); Mon, 13 Jul 2026 02:23:44 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="dxuzVJfK";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Y+bwypUf"
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailfhigh.stl.internal (Postfix) with ESMTP id 023BC7A0055;
+	Mon, 13 Jul 2026 02:23:48 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-02.internal (MEProxy); Mon, 13 Jul 2026 02:23:49 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm2; t=1783923823;
-	 x=1784010223; bh=28Z6GgjacEqmptbDFw8ZJMnKD27HfJXPEoXDqUvgGcw=; b=
-	EsEmkaM5qv0sbEZo5PPvDCWcC2fTk2m12PqAz4XWRMuJMIfjaU1T2V0XaeMaBTNz
-	RKqBKU0oqV21d3zmJwK1lzU4blPfTJfNsTjR1KlNW83ofIwYA0cq0Z4PYLzXoX2z
-	iCXzol1ouytPZfbfWM5xu7WPfQiG6pcEJwkJmTHsazTf1Qhja75e3k+r/wybqauj
-	jY/LjQf8xOjleAkCNEazjAds/204NaWWTLi5gj2WY/Hbpxk/RzJsn/PH8Z+CSpcu
-	9YXiR3uteVL19V7ZT4RVvi9cOy5Rt+SKDJkbsMWRMWyXEuMfJccYz35+csmf+uAT
-	xay+whfV5mI6+kaHk5ZlNQ==
+	:reply-to:reply-to:subject:subject:to:to; s=fm2; t=1783923828;
+	 x=1784010228; bh=rKpqzBt5B+9u6fOuWuziLxVuJT+p/TbsJI2txfdboAE=; b=
+	dxuzVJfKtEJW3RODnKK2LB1ZXcIwo0rxIopm5NaVzA6O2payrfHDXcVJa4gB56/6
+	saroOWhIaQJctwwdZGFrvqw4SQ00T8eFArwm83elTIywoGxn9XtcuBHOw6GrgkKa
+	QmeVqhAoQr2cvNlm3+OrraEfUAmUSTDu4KKnPZfja+TJY+JidlWkrwLkbRGtPeAg
+	KUuLHRGQqdjIoD4LIxckesgIqwimF9mKKl8ZnV6XrniwpOfEraV4/iMLTMiY29j0
+	7NN/HMsytKGM+bVfboOQrfw4nGU+zRyAU9RooZplJFwCRpD6ukPiuL2Ocfk5XUEH
+	2yeN82UwrfbbuAeIKxzTmQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm2; t=1783923823; x=1784010223; bh=2
-	8Z6GgjacEqmptbDFw8ZJMnKD27HfJXPEoXDqUvgGcw=; b=Y8cdFlWZGm8Y5Qg6H
-	vJ07602bDeFh/3goeE8IuzneynuJFkQ1szK/QWiyBfb5uMd2P7U5ERHArIsRtrxr
-	PHZPVxDBOUV5KEdrt3DaHmUlj8mHGnxt/Lst/LS5FRATOXmbtQFyyAYVL2y5ZXhV
-	TsOY69u7ySdeU7msux60I/q/pZKH/RFmDd3YOyiobRpJA85VLz0JmsGG4EqeTSYI
-	trxs0WNKmtWxYyWXn3k8ZAsCe+qMnNyfvtrSPsUluz4Lvur1uZb9OcC9oVCiZ4X2
-	rD4hyICfSYYovc4Xf0WPr2hGqaiAcx0gy71dCryyGVJFzX6Ub6d2MKc+jBxXptOi
-	dhF+A==
-X-ME-Sender: <xms:b4RUaiUe5cwgWhaF-UPzcj7A95mY5w3wWY5VQfkDk3E_nblcwUIutA>
-    <xme:b4RUaiRVMO4yQu-RkO80PUEuukTImEyWfjlHYPE9oi_0OnZBcxRN9kysFpNbY2VHS
-    qmfTlFbIYhuBgXkftpKH-CsM207Q7xvKbqgHHh7b1T7888GtA>
-X-ME-Received: <xmr:b4RUagPzBdV5UdhQ2M4GrRngqtJVkjGhzKQwY3h6kS_iV_lIHg9RNPXpyTtEMuuRsR419kxVuUsICDn4C43dpdsl0erIECM>
-X-ME-Proxy-Cause: dmFkZTGCQLlV7rkBD/d/I31+FnWtoJqihf/xdHHsD1TT1SXgkZmv6s4HWqyOhFnVY9n5MU
-    BOJtfUQyVpUKpBykWA7VcVygcWfF57rWMRxVOWH1WLSaRWqIdVkOkFztYwGNBEJqYCGdER
-    lIjYSwxT52xjXFVZpJf8rJpvaK2n+rZveXXBjrP8wYzN/FLD3xS33T1EHtom553cqC8fjn
-    PrLIVOrVJtl+mjvVoS1EqhD6Dvk80GmCtdpbSpYdhpfrTqNe15e9hEbxs6wUV0rVyj4+GV
-    nLsskUnL0p4PWJePiP27X7oGhT/Dg2xDgvflUJ5tmToCi4jiK9SzoT7k7idnqqIq2oUzj5
-    h1EeuyapeVrxrhO6EingakkRnKpcckLU+89K4O9vli72M9y+TIrf5f67GkKCMFjng/AfRK
-    FQha3zyIR8ouCbrxgzU34kzjg0msjN1cMN3WNs0ht0VKjN3l86q+Mam8nyZxf2lDD8gWj8
-    8J1c++MQgMQD1gxnIFzBp+C6CxolL7OLUYVXD+B2mjusl/mkDyoe0r6NaQ0QDZ8z49xlJj
-    UZ0bII9Z/x+cZSjoefdbd9Cx2BxPVgM/Rm6vawrrIUWegjcV1fbKy+vRM8uayq5Ou/CI1B
-    ZEpckftkcBLfX5cqWWXa9GE0fN22ttXadkvXAlFrRwEg9d58ME3gjD8PEqlg
-X-ME-Proxy: <xmx:b4RUagSajpDN3VpexK9t-bGxSWPDHOwp631Rpf0S34F0k2AbDIqdzA>
-    <xmx:b4RUauj6PIUW3WXpgJ2q0m4oEgaM5Kdo9IRaWmXfkA6joPgw3cUBbQ>
-    <xmx:b4RUap9jc5Gp07JUqY3nRKx1z_0XP7EPvVDNaUQjq1Ou6kljlYshtg>
-    <xmx:b4RUalG7PmCqYkEur1xr3WnjhX-AsrrDHk-YZnEJom0spKoMUGVGsw>
-    <xmx:b4RUan0vTVO6UWcsXOg272pMrvjr7j4sTGNVIAD5Wxk5NFiS6xNS2Cq_>
+	:x-me-sender:x-sasl-enc; s=fm2; t=1783923828; x=1784010228; bh=r
+	KpqzBt5B+9u6fOuWuziLxVuJT+p/TbsJI2txfdboAE=; b=Y+bwypUf1Z8bolRKo
+	2+YJO1DfjaMNJYO9fsLoFOAS/OG2b1z10bn6rLX1mJA8ZdFHYj+NR0otXYpVQSsK
+	5NO4RDBp65jeo4ofzzA/48KrWtHDiozueajTcaTqhX5K3yxv6FtpU9g5WFnr7fE7
+	WeBJGBg85F2h5xy9yYHIR8yrP1qVU6c1kQ7A5YzbQzAku2vuOmTNfH1NZkNI6rW7
+	+8wZCZ8ySApboAJw4Kj+HadOdFPNXEmwtNs0zwOLIe1sXm9LiSwUgnyAEgnROWhA
+	ibhPyxZoyeGetiSLotUoOE5S2ud3yVM8Bt78fsTnN5e1kMcQPJQJC/08+XkjApIe
+	l0M6g==
+X-ME-Sender: <xms:dIRUah451O4dQjfdAAecWafPFjqOPIaWPEEBorTGbs_x1U34YVwTkQ>
+    <xme:dIRUaimHxv7LpaleBQ-e5uxjYoudYtqT2o1Vz21kqMWY2uq58MF8ERCHfpMOBI0qi
+    B7hoCqUqzutcjMbrLcx32ZLc9f718THyyKswxN00xYF6ndEtWk>
+X-ME-Received: <xmr:dIRUaiS9hUh4PdwURyiCMA0uMOMElQwb9GKXstRoaRfWX_z33_dfKiWJ9lfbqbUwEWL3f01GyWGOcMqvk7CHCPhs4UCvFWg>
+X-ME-Proxy-Cause: dmFkZTGmKIeXgeiDMHGC6kOzubAdf/Hemd0/b8bpy5s9p3wj7kq9tvae7xOTLsi3sO9Asy
+    rLzqsYz8SQGdBMUO6NMbl6+nBA/yUPbyh4J5EN+rXJ7kXw4zoKm3fJRez79xdYM3k5Rp8h
+    67KxgNA8uwOc3Y7yiRCAr6cD3zkjyMbkxEkhKGR7JeeZ1OUCOSkTaJr4g8tYKOzhhaH//v
+    De1kNErXz3EF4HKVdZNjZSEYk6fhxCyZFXZxuu1vbDbOnb+AZxuNRSNXlGIsWoBw7KUpkt
+    1r+h/UEJlQMvkx2nyQUPGIS7PhqzU0Qghj2GuIAJeyS9DnNYHtQvfa2tKsX/BWq4c/kOJX
+    o4q9pAhxeKP7ujk7yECh8GNZrL4ryzZoyA7vwGM0l33kW0E0mDg0cK0O6L0+vsZ28PGQL/
+    XFbHCcxFBl5W7fmIqbKqPZkCRGLZjVvqhnQGANKJ8KioH5zPaSph2NWgxKBmQt+YNoV45F
+    11GxWu1teJyh/xApT/Flp4Lh52ljQ3IAOez+nD9GkInlrjNtw05ubPEvlVAsM1kBzOJsdc
+    2rGvZyN0gSwDvboZliV9FLq3cWwcJDRBy3j+OIU5DtZuQuWdSOhZDbwNIA+k0alAK9e3c8
+    TckpjC0cGFYaEA8p/P5D+zP1fHARJkUMSsJMuduKQ02leoNkalwUlKXgAn8A
+X-ME-Proxy: <xmx:dIRUahFQ_YESw0ZBdgf2PHdWZ3ltR42TgEb1pvqId-7P5aEdDmarzA>
+    <xmx:dIRUanEs7OKthfNcD41G5fcOdamwcSyjp3zbulIdRLIwov0y6_7bUA>
+    <xmx:dIRUavSQ2FOaTmr4aRquQXqt1BOsopn4DchvBXZmTB7Wd5SiALCDUw>
+    <xmx:dIRUaoJmaYzXaR-pAWbqfSFC0lxPwJLY8VbMGt-o7wbbUSVhT6_hHg>
+    <xmx:dIRUarZbdUQcRuhdZGCRJQL5iWdUH1_D0bXouYSw2VZ65nI6A6ATD52L>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
- 13 Jul 2026 02:23:41 -0400 (EDT)
+ 13 Jul 2026 02:23:46 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Chuck Lever <chuck.lever@oracle.com>,
 	Jeff Layton <jlayton@kernel.org>
@@ -75,9 +75,9 @@ Cc: Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v3 14/17] nfsd: reduce want-write range in nfsd4_create_file()
-Date: Mon, 13 Jul 2026 16:15:37 +1000
-Message-ID: <20260713062219.6399-15-neilb@ownmail.net>
+Subject: [PATCH v3 15/17] nfsd: move v0 checking out of nfsd_check_obj_isreg()
+Date: Mon, 13 Jul 2026 16:15:38 +1000
+Message-ID: <20260713062219.6399-16-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260713062219.6399-1-neilb@ownmail.net>
 References: <20260713062219.6399-1-neilb@ownmail.net>
@@ -92,77 +92,117 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-nfsd4_create_file() needs write access to the mount for two purposes:
+A future patch will use nfsd_check_obj_isreg() in a context where the
+protocol version is not easily available.  So move the version check out
+and put it at the end of do_open_lookup().
 
-1/ to create/open the file.
-2/ to set attributes on the newly created (or pre-existing) file.
-
-Currently this is all handled by holding the write access across the
-open and the setattr.  A subsequent patch will necessarily change how
-write access is gained for the open.  So we reduce the range for the
-first want_write, and add another one to cover setattr.  If we failed to
-get write access, it is only fatal if there were attrs to set.
-
-We call nfsd_create_setattr() if at all possible, even when no attrs, as
-it also calls commit_metadata and we need to be certain that the file
-creation has been synced.  If the mount became read-only since the
-creation happened, we can safely assume that the sync happened as part
-of that.
+Also change to return errno error code and use nfserrno() to convert to
+nfs error codes.  Use -ELOOP for nfserr_symlink, which is an error
+indication a problem with symlinks.  -EFTYPE is a good match for
+nfserr_wrong_type.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/nfsd/nfs4proc.c | 17 ++++++++++++++---
- 1 file changed, 14 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4proc.c | 29 ++++++++++++-----------------
+ fs/nfsd/vfs.c      |  4 +++-
+ 2 files changed, 15 insertions(+), 18 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index adfc1f5ccd98..0d1bcb12ecbc 100644
+index 0d1bcb12ecbc..ffeda7214d66 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -344,6 +344,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 			       &QSTR_LEN(open->op_fname, open->op_fnamelen));
- 	if (IS_ERR(child)) {
- 		status = nfserrno(PTR_ERR(child));
-+		if (!want_write_err)
-+			fh_drop_write(fhp);
- 		goto out;
+@@ -168,23 +168,17 @@ do_open_permission(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfs
+ 	return fh_verify(rqstp, current_fh, S_IFREG, accmode);
+ }
+ 
+-static __be32 nfsd_check_obj_isreg(struct dentry *child, u32 minor_version)
++static __be32 nfsd_check_obj_isreg(struct dentry *child)
+ {
+ 	umode_t mode = d_inode(child)->i_mode;
+ 
+ 	if (S_ISREG(mode))
+-		return nfs_ok;
++		return 0;
+ 	if (S_ISDIR(mode))
+-		return nfserr_isdir;
++		return -EISDIR;
+ 	if (S_ISLNK(mode))
+-		return nfserr_symlink;
+-
+-	/* RFC 7530 - 16.16.6 */
+-	if (minor_version == 0)
+-		return nfserr_symlink;
+-	else
+-		return nfserr_wrong_type;
+-
++		return -ELOOP;
++	return -EFTYPE;
+ }
+ 
+ static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state *cstate, struct nfsd4_open *open, struct svc_fh *resfh)
+@@ -212,8 +206,6 @@ static __be32
+ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		  struct svc_fh *resfhp, struct nfsd4_open *open)
+ {
+-	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+-	struct nfsd4_compound_state *cstate = &resp->cstate;
+ 	struct iattr *iap = &open->op_iattr;
+ 	struct nfsd_attrs attrs = {
+ 		.na_iattr	= iap,
+@@ -356,8 +348,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		 * op_filp and consequently a valid ->f_path.dentry.
+ 		 */
+ 
+-		status = nfsd_check_obj_isreg(child, cstate->minorversion);
+-		if (status == nfs_ok) {
++		status = nfserrno(nfsd_check_obj_isreg(child));
++		if (!status) {
+ 			open->op_filp = dentry_open(&path, oflags,
+ 						    current_cred());
+ 			if (IS_ERR(open->op_filp)) {
+@@ -536,8 +528,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
  	}
- 	path.dentry = child;
-@@ -378,6 +380,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		}
- 	}
- 	end_creating(child);
-+	if (!want_write_err)
-+		fh_drop_write(fhp);
- 	if (status != nfs_ok)
+ 	if (status)
+ 		goto out;
+-	status = nfsd_check_obj_isreg((*resfh)->fh_dentry,
+-				      cstate->minorversion);
++	status = nfserrno(nfsd_check_obj_isreg((*resfh)->fh_dentry));
+ 	if (status)
  		goto out;
  
-@@ -421,7 +425,16 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if ((iap->ia_valid & ATTR_SIZE) && (iap->ia_size == 0))
- 		iap->ia_valid &= ~ATTR_SIZE;
- 
--	status = nfsd_create_setattr(rqstp, fhp, resfhp, &attrs);
-+	/* We will need write access to set the attrs */
-+	want_write_err = fh_want_write(fhp);
-+	if (!want_write_err) {
-+		status = nfsd_create_setattr(rqstp, fhp,
-+					     resfhp, &attrs);
-+		fh_drop_write(fhp);
-+	} else if (nfsd_attrs_valid(&attrs)) {
-+		/* Needed write access */
-+		status = nfserrno(want_write_err);
-+	}
- 
- 	if (attrs.na_labelerr)
- 		open->op_bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-@@ -432,8 +445,6 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (attrs.na_paclerr)
- 		open->op_bmval[2] &= ~FATTR4_WORD2_POSIX_ACCESS_ACL;
+@@ -549,6 +540,10 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
+ 	status = do_open_permission(rqstp, *resfh, open, accmode);
+ 	set_change_info(&open->op_cinfo, current_fh);
  out:
--	if (!want_write_err)
--		fh_drop_write(fhp);
- 	nfsd_attrs_free(&attrs);
++	if (status == nfserr_wrong_type && cstate->minorversion == 0)
++		/* RFC 7530 - 16.16.6 */
++		return nfserr_symlink;
++
  	return status;
  }
+ 
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 9e05c3949cc1..c0e8c87a5e00 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -61,7 +61,7 @@ u64 nfsd_io_cache_write __read_mostly = NFSD_IO_BUFFERED;
+  * it's an error we don't expect, log it once and return nfserr_io.
+  */
+ __be32
+-nfserrno (int errno)
++nfserrno(int errno)
+ {
+ 	static struct {
+ 		__be32	nfserr;
+@@ -105,6 +105,8 @@ nfserrno (int errno)
+ 		{ nfserr_perm, -ENOKEY },
+ 		{ nfserr_no_grace, -ENOGRACE},
+ 		{ nfserr_io, -EBADMSG },
++		{ nfserr_symlink, -ELOOP },
++		{ nfserr_wrong_type, -EFTYPE },
+ 	};
+ 	int	i;
+ 
 -- 
 2.50.0.107.gf914562f5916.dirty
 
