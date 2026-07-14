@@ -1,83 +1,101 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f43.google.com (mail-pj1-f43.google.com [209.85.216.43])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1497E2E88A4;
-	Tue, 14 Jul 2026 15:39:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784043542; cv=none; b=Ovxew8S2tvCh553/RJs0RsNzSIgvmYAFKo2S5ywLdun0vY9BouTafY+2GkLDROi2EVr+LpeiYfLBzQRlCrmd08VSR9P8J4reo3JLIrGfCrSzc0FlheHK461xVsmNAoChD4hx5cDorYblwiY/x7fyIhnZacogEGLjY9R+yc/c4Po=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784043542; c=relaxed/simple;
-	bh=QY6hsy/SsrM9r56OC5o+WO2wnq7DShSL8oUJlC+2Bo4=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=OdUX+Qr4esUdOEhDYvcJIsY8A4ra0YpZz9XformyX7/1BfLQXlzGEQgYEnMdJ6hf9NouLaQuYlT8NyrC7kGoikPc/QckQw4kndNSgKzRrKSpVccTHkbR9OJcIcIJVYsMygDIYOdt+mSkPT/OLNW2oYkY/CxIQpWaqmDh70boCNs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jEdaQUai; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D4D7735AC00
+	for <linux-nfs@vger.kernel.org>; Tue, 14 Jul 2026 16:28:51 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.216.43
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1784046533; cv=pass; b=rN//csf72MYRo/mjow5uuLGe2TAGzEANdZJpa/0L6qNxyoqiAvswb6twKxmS6wZ6mJhSwHwDmLNt8ZTlVgZWIV8ljy6hwu5IBCJvvM8K3SNZG0oO28omG8UmZxrKIx9lPBm23ydh2pDECrpR1AUvRY7M6qBZnCWJyDGGKgC4Xl0=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1784046533; c=relaxed/simple;
+	bh=r4ZPvkO0PIZxr5jG05A7aDkTNcKWmjPv1UmdQa03p9c=;
+	h=MIME-Version:From:Date:Message-ID:Subject:To:Content-Type; b=lfp45KPhWPCodlUQMn6yJ6dkDL4rXT5MFjLZrJ38odGkSqkAGuF45gwf8JDateIGvJEAQMMmdAUEU3MIz7Yea0I4nXG1f6Gdh3zG3rcqxM6USAh7TnFvP8Vk6gRFbXZjA0QRne3d18GlUZZggodCc+7lxuQOTW1/hWXkRpuMTZU=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=selfcaring.info; spf=pass smtp.mailfrom=selfcaring.info; dkim=pass (2048-bit key) header.d=selfcaring-info.20251104.gappssmtp.com header.i=@selfcaring-info.20251104.gappssmtp.com header.b=feaEwNie; arc=pass smtp.client-ip=209.85.216.43
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=selfcaring.info
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=selfcaring.info
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jEdaQUai"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7A8B11F000E9;
-	Tue, 14 Jul 2026 15:39:00 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784043541;
-	bh=QY6hsy/SsrM9r56OC5o+WO2wnq7DShSL8oUJlC+2Bo4=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=jEdaQUai5QSrcObq3VaAGv/Imc1PPz26Bta9L4xIqRW3BvltJP9pUDvFRrkY7ynqo
-	 GHg81WGKvMPoYfIfWLXHPFNfzX5zj5ZAELjf0tUgjvpMOgAlAymNlf0DsNIdqBdpBO
-	 BIhuA8cLr9mKZLxqzI+xF1hhaJc3wW+I7B/RV3tnNhrN2POsDV16gZ/BL1Mr9c+rJU
-	 Sltz+GiwSvPxMI/Kqp+ZxyDk2yDbIcPA+I6cTJ8ar0Q2LI4HjVuI/A+wKy3g0CYJnC
-	 bO4zvRAWrsw21+5sxxUqo5OOCaBnk+CkJNOYK7zy5RbRjLRKNhSKpDg+dUFbXLTSHB
-	 eoJyIWG4haIkA==
-Message-ID: <15b4d5a56e560d8b209f5ba7baa85473081e0743.camel@kernel.org>
-Subject: Re: [PATCH] pnfs/blocklayout: reject zero chunk_size and
- volumes_count in GETDEVICEINFO
-From: Trond Myklebust <trondmy@kernel.org>
-To: Michael Bommarito <michael.bommarito@gmail.com>
-Cc: Anna Schumaker <anna@kernel.org>, linux-nfs@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, stable@vger.kernel.org
-Date: Tue, 14 Jul 2026 11:38:59 -0400
-In-Reply-To: <CAJJ9bXx0HXLRZoDRBhMytZmifwG+V9fi3LL9Sj49DYoeh7-Ajw@mail.gmail.com>
-References: <20260711150547.2912006-1-michael.bommarito@gmail.com>
-	 <f5705b41fd63260c5b84343531f139fa72dfa57c.camel@kernel.org>
-	 <CAJJ9bXx0HXLRZoDRBhMytZmifwG+V9fi3LL9Sj49DYoeh7-Ajw@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	dkim=pass (2048-bit key) header.d=selfcaring-info.20251104.gappssmtp.com header.i=@selfcaring-info.20251104.gappssmtp.com header.b="feaEwNie"
+Received: by mail-pj1-f43.google.com with SMTP id 98e67ed59e1d1-38d489b6b71so4416193a91.0
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Jul 2026 09:28:51 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1784046531; cv=none;
+        d=google.com; s=arc-20260327;
+        b=NAoXgmShkEnACp1lWHrqk7Q5srdFadN5LNgHw2Qkf3gC1qPXZLrbbtF5VsYue7leeW
+         mtF+Pxs7ljXpjkqtkDNxYSw8g+4vSAt505tsoFkgNSDTYQfa5Yfh23/XqTHdY9P0Pa0y
+         3iXsq54kCbjvXOzoDxxYYBEomMUobTdPubm3scRSLGxAIrV7Z7f06r5PMg/nZcLOtp+u
+         E7vAX1up34jEyrH+Y1qlm2ktfpdb7WCZHy1ace8B3pfMMMV89CPWsBEQhNIwSQBfXNUK
+         g2jqkT46Jcmj/VmYARhe9dqhYgCBI6diYFc/98bARPBvDFgpUOYDzjz/cJiOEHMtFk83
+         Dd/g==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=r4ZPvkO0PIZxr5jG05A7aDkTNcKWmjPv1UmdQa03p9c=;
+        fh=Mys3y4MwsHRytUQMpdfGBn3oGRYLcLloxNwkFYMYMmg=;
+        b=ph5hKCCApmv/vh2GknxQ2Y7+F17BQ8bbrS1u10q/Aw6vj4SMM4tEsZajFQQuGDbrfV
+         fOUOHkJ/572wnPAvKkiodkEcYHWVlsjOryWUWPQyZEc7AoN0jw0jEEycQerSOMWT4Pj+
+         BHL2bCWKHSSnAqdndqzPdyVCAFd0wUoaoPYO8GZsH9mJD9UZGXza5Hqb5EgWtuEPUNh0
+         Os+AD8RJhX8+hL+lTNNKiD4ldmVAvKbY0JYi1I94hKbNYhBTX04jO7jvEpbTGpbNOG21
+         /i/1e1qC7vGqeZ4xVWDgaU4jAep2qCavgbyM+HWFtaDdPWf1vz4ggINaChhyTc4hk366
+         yMvw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=selfcaring-info.20251104.gappssmtp.com; s=20251104; t=1784046531; x=1784651331; darn=vger.kernel.org;
+        h=content-type:to:subject:message-id:date:from:mime-version:from:to
+         :cc:subject:date:message-id:reply-to:content-type;
+        bh=r4ZPvkO0PIZxr5jG05A7aDkTNcKWmjPv1UmdQa03p9c=;
+        b=feaEwNie8KXh85bqJC8XYufRhQiQf17ib5Azk4DHivl/6HB8/2gNVwio2Mz0TZLahB
+         TY7mTH/Sw+WGnT+EQ8bz9Idsek7xY2rC10TY6of7gaDNxzXH9jusTGZKFqvcHBD48Wva
+         x0HF6GQrkKDV3y+8gz87ZUVZtNRmNdiKejdOvJ9FRE9lo8QGg6F0KCk/0mfGD2QfqgWi
+         JLVA0hV2zb3lXgaQgZkycUzwTqkGBZFX2M01P35SFsX85G2teecWryTNq413qzMYCCT0
+         BeajbRdpnNoJrZ+UM3VrVqX9171oZMuHxXbktGoJge+aqGJlurKM9QVSgb42iHDSaL4H
+         Q1Kw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784046531; x=1784651331;
+        h=content-type:to:subject:message-id:date:from:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=r4ZPvkO0PIZxr5jG05A7aDkTNcKWmjPv1UmdQa03p9c=;
+        b=OFUwsDM3EUXvMtyUrG0c+CJqJ2xyhwczQ3LZCJZ7atBAYZRLAgqRTxXXZqJte2haQY
+         V2ha9MVSsjsTz/XMTev1zZOFEcerDoRF4ouzG8E5Us1J7WKfikma8IBkDpii80iYXj/8
+         ackdR3ZKdLDaXmgZotVURszelJQIaEQgx6MEXJRiRwue2QBdkyVpfqFCmeNi3xAvds/0
+         hXBTtrpzejVBAHU4jo28vzQCk0Wqq0ohtezUIsq5LugFPpxdtXVSYGNHXh5bf6nfA5v2
+         5Ao5jDtWPX4T2scvnBC6hPKjKpAXE8KxVK5SDS5ZF4noDFfFTOKvoEac08BkkAIQK1Ja
+         ReaA==
+X-Gm-Message-State: AOJu0YzRG5xGAo11ZlUUDxOa7eOXDrbeSE5Pp31qe9YblyShhvyqFx+/
+	aulpfrY4tYYXgsc1PpxN/cJRY5ud7ZUSoapWUvPxZgUN7qNNnIXLWTYUYdYsdoh2L00tRtNMe7I
+	281eZHCsDgpuSBDzoqCw4v8zAVc3Xax2HaYCsLKVngYaiUGMNLSD7
+X-Gm-Gg: AfdE7ckdsZE9atKBcFYD99LYnlEjjrdZ4XxxKDc2ALBhvG2Kge4xH47c6K4C5akU/S5
+	2gEogas27/jgIXi0xp+i6nfGQdDTwyDAH4lGRs/jw/ldxUgkB6+2t+UmLw9w4CGW/zKuiLekN+h
+	rQiv7a7KiEm/cK6IzhSPu0RXBk1LA0h7qZzSEHCqAjvmkU6QytMaWnwUPQyHT+3+s9xsRRlWXa6
+	AJpYbquIxacE2lvT0977qr5AH32HZ71YTTEQ15oGrTbgLlppVczqHVVM/r0vvzUPznXlfL2I7O/
+	CQGyf60z9juqxh5ifs4EZmDH4g==
+X-Received: by 2002:a17:90b:3951:b0:37e:b6a:6cdf with SMTP id
+ 98e67ed59e1d1-38e17e44414mr3813424a91.20.1784046531193; Tue, 14 Jul 2026
+ 09:28:51 -0700 (PDT)
+Received: from 785115219520 named unknown by gmailapi.google.com with
+ HTTPREST; Tue, 14 Jul 2026 12:28:50 -0400
+Received: from 785115219520 named unknown by gmailapi.google.com with
+ HTTPREST; Tue, 14 Jul 2026 12:28:50 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+From: Brad Krause <brad.krause@selfcaring.info>
+Date: Tue, 14 Jul 2026 12:28:50 -0400
+X-Gm-Features: AUfX_mxmMmioNqwLQy8iJyeR7M9MrP3ExhlJg13vAXHsBjYkxZfM91RST5JnH8s
+Message-ID: <CAAxYpsa0vbQsMhaA2bO5gPrWfTRS+58L3FmpbvnO4tEXwkU+vQ@mail.gmail.com>
+Subject: Thoughts on Our Collaboration Idea?
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-On Tue, 2026-07-14 at 10:41 -0400, Michael Bommarito wrote:
-> On Tue, Jul 14, 2026 at 10:37=E2=80=AFAM Trond Myklebust <trondmy@kernel.=
-org>
-> wrote:
-> > NACK to this, and all further patches with the words "malicious
-> > server"
-> > as their justification. It's time to stop this incessant flood of
-> > worthless AI slop...
->=20
-> Sure, I hear you.=C2=A0 I'll make a note to skip your subsystem going
-> forward.
->=20
-> FWIW though, these are often exacty the networks where ARP spoofing
-> still works and malicious server can be read to mean "anyone who can
-> pretend to be a server/peer" for the relevant packet/session.
->=20
-> Thanks,
-> Mike
+Hi,
 
-Then seeing this is a great opportunity to discover that you have an
-insecure network, and that you should have been using either krb5i,
-krb5p, TLS or secure VLAN technology to protect your on-the-wire
-message protocols against precisely this kind of man-in-the-middle
-attack.
+I wanted to check in to see if the article proposal on self-care
+strategies for cancer patients resonates with your audience. I believe
+these insights could greatly benefit those seeking support.
 
-Again, though, a savvy man-in-the-middle won't be trying to cause
-clients to crash when they have a golden opportunity to manipulate the
-stored data instead.
+If you already responded, thanks for that and sorry for the repeat.
 
---=20
-Trond Myklebust
-Linux NFS client maintainer, Hammerspace
-trondmy@kernel.org, trond.myklebust@hammerspace.com
+Best,
+Brad
