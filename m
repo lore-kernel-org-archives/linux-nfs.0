@@ -1,47 +1,47 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8DF16412BEE
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 10:33:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E0089409617
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 10:33:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784197997; cv=none; b=A3zmNRhVkOQBDp35BU3b3OPr5lbmyXvaW7TQXlVD4JRJejI4xQikdzKD04oXJSfKDTmIgPuFgD0HBDSdzhSTkVplO0zYnNTRhzVUxhKIwGHYI+eUTyU5MG30lhiJvQ+3IgD0GWGO6JKOjaw5KDQx0uCtMcvBjj1p3b6MMQmZ4w0=
+	t=1784198002; cv=none; b=OvczX51+CwJtUxFbGoXSiHGvbPEmqQbQ9mRY8CxS2ELjKe028GBdxo1aho+6fjglgjx8g85BqTz78saFJpedrHXdKISMtJTQ69A6H3wtxpLpis3evsr1YHky45MRInE2JIPHhedaaxL3Xz9d5MpyCbz15ihcxYtSqQq+uRye7zA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784197997; c=relaxed/simple;
-	bh=jn4D77Dz7TyFj3yuh1H711Up/Oy0ujyrXx8p8a5ERfY=;
+	s=arc-20240116; t=1784198002; c=relaxed/simple;
+	bh=VxXLxeXl9mamqGgSQlVT5t51sVx+/hwBY+DJzi9B4Rk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=cpMws8IJvmhrbCrRFKeEuK4/BSDWnCkdBjfW0xj5MPCDEb4TFwrbGN/Q16KYS+MKqR5080ZIPvfuqx5NtVdUt1RREGJIo5Rsfbnb5RKKigGkkShvlNIwoamI8qBdIdRV336WsjlfwMD7sugPh13nD14QIuYUKyv1hYC8xM8YnIw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=hIBQcFSz; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=QRSivNHTnrlA4m0NCwHarzcWt7KlucHd17sZiSZRtGhfVoi6oaxVFwimc0jHqcNHBrzyP3+M924l2blUNwBEKyx9yn8YHk/VAqTykPHQtrXKxLksGF4JI+Z+qqSkpZQmvtQ/JC3GMFP2pscELiCi5rAkckWrNdP19P2FcdMv710=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=ICJ48cp8; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="hIBQcFSz"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ICJ48cp8"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1784197994;
+	s=mimecast20190719; t=1784198000;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=BjMurCLWO0ABSGwoVAMVzJXBhWmh2vtP4MtSdwthwFE=;
-	b=hIBQcFSzMjZ2cTxu5DZ6v72+ot17PJhSFDjk0OQPYlCkWg03AT7ZHPnWhwjfMVBgiW/rgr
-	u9l5jUb+EkP4TU3YrYsbnvPKG0V0MsOXwNaL1KfkgbwHr4Qyc45LNdmnSi2kDP8ZkxVz0j
-	yLxoD6kPoBcJgGktN5Ajt88GzVYhSGw=
-Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+	bh=cLe4jReqasivp7npj9FJ7YGKTTbJL4fFSsJnif3w5cE=;
+	b=ICJ48cp8RhUU71gZZ6K3TQH6RxOTk5rlGwHQOVyoTRecuikVDrj5L8DkK5VriYE8RlatUb
+	rTMaRWQwU5uVooR2OaT5ooNx8oBdJ1TgXRw9dFyL1+ZEMtMgwrT1o40LWnymgJxPTBHP+u
+	TbVMBYuoBHlAp220jBmPmg2CbGYcwbw=
+Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
  (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-187-rwLgDHTiNIeNuVrtxwxTRA-1; Thu,
- 16 Jul 2026 06:33:09 -0400
-X-MC-Unique: rwLgDHTiNIeNuVrtxwxTRA-1
-X-Mimecast-MFC-AGG-ID: rwLgDHTiNIeNuVrtxwxTRA_1784197986
-Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-533--AS6eYu2PHKWNxg_y5F3Og-1; Thu,
+ 16 Jul 2026 06:33:16 -0400
+X-MC-Unique: -AS6eYu2PHKWNxg_y5F3Og-1
+X-Mimecast-MFC-AGG-ID: -AS6eYu2PHKWNxg_y5F3Og_1784197993
+Received: from mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.95])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 3539318002F2;
-	Thu, 16 Jul 2026 10:33:06 +0000 (UTC)
+	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id AEA4D1800674;
+	Thu, 16 Jul 2026 10:33:13 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.44.33.159])
-	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id C6ED41800286;
-	Thu, 16 Jul 2026 10:32:59 +0000 (UTC)
+	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id CE49C423;
+	Thu, 16 Jul 2026 10:33:07 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Matthew Wilcox <willy@infradead.org>,
@@ -65,12 +65,10 @@ Cc: David Howells <dhowells@redhat.com>,
 	v9fs@lists.linux.dev,
 	linux-erofs@lists.ozlabs.org,
 	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Shyam Prasad N <sprasad@microsoft.com>,
-	Tom Talpey <tom@talpey.com>
-Subject: [PATCH v6 17/24] smbdirect: Remove support for ITER_FOLIOQ from smbdirect_map_sges_from_iter()
-Date: Thu, 16 Jul 2026 11:30:16 +0100
-Message-ID: <20260716103030.3065561-18-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org
+Subject: [PATCH v6 18/24] netfs: Remove netfs_alloc/free_folioq_buffer()
+Date: Thu, 16 Jul 2026 11:30:17 +0100
+Message-ID: <20260716103030.3065561-19-dhowells@redhat.com>
 In-Reply-To: <20260716103030.3065561-1-dhowells@redhat.com>
 References: <20260716103030.3065561-1-dhowells@redhat.com>
 Precedence: bulk
@@ -80,121 +78,174 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
+X-Scanned-By: MIMEDefang 3.6 on 10.30.177.95
 
-netfslib now only presents an bvecq queue and an associated ITER_BVECQ
-iterator to the filesystem, so it isn't going to see the ITER_FOLIOQ
-iterator.  So remove that code.
-
-Netfslib also won't supply ITER_BVEC/KVEC iterators, though smbdirect
-might; further in future, it won't supply iterators at all, but rather a
-bvecq slice (that can be used to construct an iterator).
+Remove netfs_alloc/free_folioq_buffer() as bvecq_alloc_*() and bvecq_put()
+should now be used instead.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-Acked-by: Stefan Metzmacher <metze@samba.org>
-cc: Steve French <sfrench@samba.org>
 cc: Paulo Alcantara <pc@manguebit.org>
-cc: Stefan Metzmacher <metze@samba.org>
-cc: Shyam Prasad N <sprasad@microsoft.com>
-cc: Tom Talpey <tom@talpey.com>
+cc: Matthew Wilcox <willy@infradead.org>
+cc: Christoph Hellwig <hch@infradead.org>
+cc: Steve French <sfrench@samba.org>
 cc: linux-cifs@vger.kernel.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/smb/smbdirect/connection.c | 68 -----------------------------------
- 1 file changed, 68 deletions(-)
+ fs/afs/dir_edit.c       |  1 -
+ fs/netfs/misc.c         | 98 -----------------------------------------
+ fs/smb/client/smb2ops.c |  1 -
+ include/linux/netfs.h   |  6 ---
+ 4 files changed, 106 deletions(-)
 
-diff --git a/fs/smb/smbdirect/connection.c b/fs/smb/smbdirect/connection.c
-index 4d2a1700104e..8858e1dfbc25 100644
---- a/fs/smb/smbdirect/connection.c
-+++ b/fs/smb/smbdirect/connection.c
-@@ -6,7 +6,6 @@
- 
- #include "internal.h"
- #include <linux/bvecq.h>
+diff --git a/fs/afs/dir_edit.c b/fs/afs/dir_edit.c
+index 01c6265e8865..31fdef23c6b6 100644
+--- a/fs/afs/dir_edit.c
++++ b/fs/afs/dir_edit.c
+@@ -10,7 +10,6 @@
+ #include <linux/namei.h>
+ #include <linux/pagemap.h>
+ #include <linux/iversion.h>
 -#include <linux/folio_queue.h>
+ #include "internal.h"
+ #include "xdr_fs.h"
  
- struct smbdirect_map_sges {
- 	struct ib_sge *sge;
-@@ -2130,70 +2129,6 @@ static ssize_t smbdirect_map_sges_from_kvec(struct iov_iter *iter,
- 	return ret;
- }
+diff --git a/fs/netfs/misc.c b/fs/netfs/misc.c
+index ee67a0681784..8fc4e5ef2152 100644
+--- a/fs/netfs/misc.c
++++ b/fs/netfs/misc.c
+@@ -8,104 +8,6 @@
+ #include <linux/swap.h>
+ #include "internal.h"
  
--/*
-- * Extract folio fragments from a FOLIOQ-class iterator and add them to an
-- * ib_sge list.  The folios are not pinned.
+-#if 0
+-/**
+- * netfs_alloc_folioq_buffer - Allocate buffer space into a folio queue
+- * @mapping: Address space to set on the folio (or NULL).
+- * @_buffer: Pointer to the folio queue to add to (may point to a NULL; updated).
+- * @_cur_size: Current size of the buffer (updated).
+- * @size: Target size of the buffer.
+- * @gfp: The allocation constraints.
 - */
--static ssize_t smbdirect_map_sges_from_folioq(struct iov_iter *iter,
--					      struct smbdirect_map_sges *state,
--					      ssize_t maxsize)
+-int netfs_alloc_folioq_buffer(struct address_space *mapping,
+-			      struct folio_queue **_buffer,
+-			      size_t *_cur_size, ssize_t size, gfp_t gfp)
 -{
--	const struct folio_queue *folioq = iter->folioq;
--	unsigned int slot = iter->folioq_slot;
--	ssize_t ret = 0;
--	size_t offset = iter->iov_offset;
+-	struct folio_queue *tail = *_buffer, *p;
 -
--	if (WARN_ON_ONCE(!folioq))
--		return -EIO;
+-	size = round_up(size, PAGE_SIZE);
+-	if (*_cur_size >= size)
+-		return 0;
 -
--	if (slot >= folioq_nr_slots(folioq)) {
--		folioq = folioq->next;
--		if (WARN_ON_ONCE(!folioq))
--			return -EIO;
--		slot = 0;
--	}
+-	if (tail)
+-		while (tail->next)
+-			tail = tail->next;
 -
 -	do {
--		struct folio *folio = folioq_folio(folioq, slot);
--		size_t fsize = folioq_folio_size(folioq, slot);
+-		struct folio *folio;
+-		int order = 0, slot;
 -
--		if (offset < fsize) {
--			size_t part = umin(maxsize, fsize - offset);
--			bool ok;
--
--			ok = smbdirect_map_sges_single_page(state,
--							    folio_page(folio, 0),
--							    offset,
--							    part);
--			if (!ok)
--				return -EIO;
--
--			offset += part;
--			ret += part;
--			maxsize -= part;
--		}
--
--		if (offset >= fsize) {
--			offset = 0;
--			slot++;
--			if (slot >= folioq_nr_slots(folioq)) {
--				if (!folioq->next) {
--					WARN_ON_ONCE(ret < iter->count);
--					break;
--				}
--				folioq = folioq->next;
--				slot = 0;
+-		if (!tail || folioq_full(tail)) {
+-			p = netfs_folioq_alloc(0, GFP_NOFS, netfs_trace_folioq_alloc_buffer);
+-			if (!p)
+-				return -ENOMEM;
+-			if (tail) {
+-				tail->next = p;
+-				p->prev = tail;
+-			} else {
+-				*_buffer = p;
 -			}
+-			tail = p;
 -		}
--	} while (state->num_sge < state->max_sge && maxsize > 0);
 -
--	iter->folioq = folioq;
--	iter->folioq_slot = slot;
--	iter->iov_offset = offset;
--	iter->count -= ret;
--	return ret;
+-		if (size - *_cur_size > PAGE_SIZE)
+-			order = umin(ilog2(size - *_cur_size) - PAGE_SHIFT,
+-				     MAX_PAGECACHE_ORDER);
+-
+-		folio = folio_alloc(gfp, order);
+-		if (!folio && order > 0)
+-			folio = folio_alloc(gfp, 0);
+-		if (!folio)
+-			return -ENOMEM;
+-
+-		folio->mapping = mapping;
+-		folio->index = *_cur_size / PAGE_SIZE;
+-		trace_netfs_folio(folio, netfs_folio_trace_alloc_buffer);
+-		slot = folioq_append_mark(tail, folio);
+-		*_cur_size += folioq_folio_size(tail, slot);
+-	} while (*_cur_size < size);
+-
+-	return 0;
 -}
+-EXPORT_SYMBOL(netfs_alloc_folioq_buffer);
 -
- /*
-  * Extract page fragments from up to the given amount of the source iterator
-  * and build up an ib_sge list that refers to all of those bits.  The ib_sge list
-@@ -2224,9 +2159,6 @@ static ssize_t smbdirect_map_sges_from_iter(struct iov_iter *iter, size_t len,
- 	case ITER_KVEC:
- 		ret = smbdirect_map_sges_from_kvec(iter, state, len);
- 		break;
--	case ITER_FOLIOQ:
--		ret = smbdirect_map_sges_from_folioq(iter, state, len);
--		break;
- 	default:
- 		WARN_ONCE(1, "iov_iter_type[%u]\n", iov_iter_type(iter));
- 		return -EIO;
+-/**
+- * netfs_free_folioq_buffer - Free a folio queue.
+- * @fq: The start of the folio queue to free
+- *
+- * Free up a chain of folio_queues and, if marked, the marked folios they point
+- * to.
+- */
+-void netfs_free_folioq_buffer(struct folio_queue *fq)
+-{
+-	struct folio_queue *next;
+-	struct folio_batch fbatch;
+-
+-	folio_batch_init(&fbatch);
+-
+-	for (; fq; fq = next) {
+-		for (int slot = 0; slot < folioq_count(fq); slot++) {
+-			struct folio *folio = folioq_folio(fq, slot);
+-
+-			if (!folio ||
+-			    !folioq_is_marked(fq, slot))
+-				continue;
+-
+-			trace_netfs_folio(folio, netfs_folio_trace_put);
+-			if (folio_batch_add(&fbatch, folio))
+-				folio_batch_release(&fbatch);
+-		}
+-
+-		netfs_stat_d(&netfs_n_folioq);
+-		next = fq->next;
+-		kfree(fq);
+-	}
+-
+-	folio_batch_release(&fbatch);
+-}
+-EXPORT_SYMBOL(netfs_free_folioq_buffer);
+-#endif
+-
+ /**
+  * netfs_dirty_folio - Mark folio dirty and pin a cache object for writeback
+  * @mapping: The mapping the folio belongs to.
+diff --git a/fs/smb/client/smb2ops.c b/fs/smb/client/smb2ops.c
+index 25cbc01e6e38..91dd0f7cc0c3 100644
+--- a/fs/smb/client/smb2ops.c
++++ b/fs/smb/client/smb2ops.c
+@@ -13,7 +13,6 @@
+ #include <linux/sort.h>
+ #include <crypto/aead.h>
+ #include <linux/fiemap.h>
+-#include <linux/folio_queue.h>
+ #include <uapi/linux/magic.h>
+ #include "cifsfs.h"
+ #include "cifsglob.h"
+diff --git a/include/linux/netfs.h b/include/linux/netfs.h
+index a0a3c3687038..1d21a6c99cda 100644
+--- a/include/linux/netfs.h
++++ b/include/linux/netfs.h
+@@ -471,12 +471,6 @@ void netfs_end_io_write(struct inode *inode);
+ int netfs_start_io_direct(struct inode *inode);
+ void netfs_end_io_direct(struct inode *inode);
+ 
+-/* Buffer wrangling helpers API. */
+-int netfs_alloc_folioq_buffer(struct address_space *mapping,
+-			      struct folio_queue **_buffer,
+-			      size_t *_cur_size, ssize_t size, gfp_t gfp);
+-void netfs_free_folioq_buffer(struct folio_queue *fq);
+-
+ /* Writeback exclusion API. */
+ bool netfs_wb_begin(struct netfs_inode *ictx, bool nowait);
+ void netfs_wb_end(struct netfs_inode *ictx);
 
