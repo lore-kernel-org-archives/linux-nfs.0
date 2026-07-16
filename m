@@ -1,100 +1,98 @@
-Received: from out-177.mta0.migadu.com (out-177.mta0.migadu.com [91.218.175.177])
+Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C05043191C8
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 16:04:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=91.218.175.177
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CA2B390224;
+	Thu, 16 Jul 2026 16:48:59 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784217898; cv=none; b=i6AzC3vMQKIUxorou6poviqyjLYGD4xzdw7/+Kvb3BKJhrDbNKEzS7vcsMCTtNy5nh7QUX8t3vBqy0tSV7pGLOhu0brE5CqKnEn0UVQ/PouB1aicypL488Slm+mAfAeBzFzhO8zfvgXjOaGh7VbfVIih7YkJVpBJxt1gdlTIQA4=
+	t=1784220548; cv=none; b=ZacKKqFtnjSTyenYemEaC830U0U1Dop2eD8X4Ufsy6zx2gpvGygeLzAuX3w7Bh3HcClxgUm/SeDZsTTi40ghxBMSjeuxJEvQkSApwvaPINMcNjvOd+5ER0QnA1EzmJsj4ggT6DV2nPMs2T7kKGmBbMgbUsemn7PTcL6GwsibH0I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784217898; c=relaxed/simple;
-	bh=Tz9IYBII36hEmZ8WCkdw0Poo/VwDhmKC5JCuOyne4eQ=;
-	h=Mime-Version:Content-Type:Date:Message-Id:Cc:Subject:From:To:
-	 References:In-Reply-To; b=ffHfqG/fTbLciggd6tXHk7ZSxwbhteUNN83YV7HV4EUg9GJNX5/eM/YoHYqIRKKNkoKwOK8ZwjTQcAIHuNUE+J+xDooD3/2El5u6sO5UzHODO1TjxuwIxxzt0oRtNgAc4mp/nKztSj6fKfDESkdNUICPWMHf2CBA1pTtNpIG1W0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=Xsgwr6/T; arc=none smtp.client-ip=91.218.175.177
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
+	s=arc-20240116; t=1784220548; c=relaxed/simple;
+	bh=aG9c/oIWcQuP25QpQba87EDxqnP1ULgL/edfYWUR0vo=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=LXfSrRuOnnWlfp26f1wbWvykoTMBUVBWxZmX8LwG/lJBRQdE2SZ1CsCTD1VWAnobgeWZkXD/TLz4lCUHxviRTiBmEC2StHDKtDdGfQtFoLPQo21vzYgpa18xIhm0m5W4NUmAUN7KkhP+DWGV/3YMnIYtHO5xXCTkiKknQybxJU8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=DmRBhybb; arc=none smtp.client-ip=90.155.50.34
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="Xsgwr6/T"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="DmRBhybb"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
+	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=YolakZC7+j4Triip+5AUHmDQgBfWSYQIrahb3DvaRqQ=; b=DmRBhybbCSzjOTtB6P0D9mXEdU
+	yxc52/21jT9BQH1HCdU0Fxtxppp8xo7Cw8gmaLjV39caaOv/rod9RZJFZ47/ITb+erC8p7J00Soft
+	nwMO9EJQ6eB1liCZiaSV4Jr1z/9H7SMYlyvjtqn4tRmt9MteyMbAIblO8nUf6vEA6etbdfyyaq8Zq
+	39BQuu4wc7kk74TeSYD21Uw5zl0v25dRj69cW7lkeU5WtVK7wQSzBk/8wqzNKS+jgkmvKSBvcrbzM
+	6Mp/lqi2xahBjs3CMQmRzrmZMSsN3onlbw2DQwijz3r5hY3Pi6bRJqBLVSU7Yp7/w6BhOXNNFaRmg
+	bXiXDUiw==;
+Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wkPFr-00000002tsW-2hhO;
+	Thu, 16 Jul 2026 16:48:11 +0000
+Date: Thu, 16 Jul 2026 17:48:11 +0100
+From: Matthew Wilcox <willy@infradead.org>
+To: Brendan Jackman <jackmanb@google.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	David Hildenbrand <david@kernel.org>,
+	Lorenzo Stoakes <ljs@kernel.org>,
+	"Liam R. Howlett" <liam@infradead.org>,
+	Vlastimil Babka <vbabka@kernel.org>,
+	Mike Rapoport <rppt@kernel.org>,
+	Suren Baghdasaryan <surenb@google.com>,
+	Michal Hocko <mhocko@suse.com>,
+	Johannes Weiner <hannes@cmpxchg.org>, Zi Yan <ziy@nvidia.com>,
+	Jan Kara <jack@suse.cz>, Joshua Hahn <joshua.hahnjy@gmail.com>,
+	Byungchul Park <byungchul@sk.com>,
+	Gregory Price <gourry@gourry.net>,
+	Ying Huang <ying.huang@linux.alibaba.com>,
+	Alistair Popple <apopple@nvidia.com>,
+	Hugh Dickins <hughd@google.com>,
+	Baolin Wang <baolin.wang@linux.alibaba.com>,
+	Chris Li <chrisl@kernel.org>, Kairui Song <kasong@tencent.com>,
+	Kemeng Shi <shikemeng@huaweicloud.com>,
+	Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>,
+	Barry Song <baohua@kernel.org>,
+	Youngjun Park <youngjun.park@lge.com>,
+	"Joerg Roedel (AMD)" <joro@8bytes.org>,
+	Will Deacon <will@kernel.org>, Robin Murphy <robin.murphy@arm.com>,
+	Huacai Chen <chenhuacai@kernel.org>,
+	WANG Xuerui <kernel@xen0n.name>, Thomas Gleixner <tglx@kernel.org>,
+	Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	"David S. Miller" <davem@davemloft.net>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>, linux-kernel@vger.kernel.org,
+	linux-mm@kvack.org, linux-fsdevel@vger.kernel.org,
+	iommu@lists.linux.dev, loongarch@lists.linux.dev,
+	linux-nfs@vger.kernel.org, netdev@vger.kernel.org
+Subject: Re: [PATCH 1/3] mm: move internal mempolicy APIs to new internal
+ header
+Message-ID: <alkLSzQvzT9zJbY1@casper.infradead.org>
+References: <20260716-folio-alloc-cleanups-v1-0-5363b8e92d33@google.com>
+ <20260716-folio-alloc-cleanups-v1-1-5363b8e92d33@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
-Mime-Version: 1.0
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=linux.dev; s=key1;
-	t=1784217878;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Tz9IYBII36hEmZ8WCkdw0Poo/VwDhmKC5JCuOyne4eQ=;
-	b=Xsgwr6/T1iv1KWaE1PuNvf4s/O+/mxi0r+dxIsV2UrtO3cqwbAo/F13cifsh5A4y30WL0M
-	OAfBvENtdO2+WNOtB8b1YZ9VkWLo9N61R3G0xE+YVfNijzJSDAweY+G+J3yVeHK+S33Z3J
-	u3V4cUBGDVOKcydQVkb+bPN6FkiL5cw=
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain; charset=UTF-8
-Date: Thu, 16 Jul 2026 16:04:30 +0000
-Message-Id: <DK04G61IJ7OP.6MAP7T3WSU2C@linux.dev>
-Cc: <linux-kernel@vger.kernel.org>, <linux-mm@kvack.org>,
- <linux-fsdevel@vger.kernel.org>, <iommu@lists.linux.dev>,
- <loongarch@lists.linux.dev>, <linux-nfs@vger.kernel.org>,
- <netdev@vger.kernel.org>
-Subject: Re: [PATCH 1/3] mm: move internal mempolicy APIs to new internal
- header
-X-Report-Abuse: Please report any abuse attempt to abuse@migadu.com and include these headers.
-From: "Brendan Jackman" <brendan.jackman@linux.dev>
-To: "Vlastimil Babka (SUSE)" <vbabka@kernel.org>, "Brendan Jackman"
- <jackmanb@google.com>, "Andrew Morton" <akpm@linux-foundation.org>, "David
- Hildenbrand" <david@kernel.org>, "Lorenzo Stoakes" <ljs@kernel.org>, "Liam
- R. Howlett" <liam@infradead.org>, "Mike Rapoport" <rppt@kernel.org>, "Suren
- Baghdasaryan" <surenb@google.com>, "Michal Hocko" <mhocko@suse.com>,
- "Johannes Weiner" <hannes@cmpxchg.org>, "Zi Yan" <ziy@nvidia.com>, "Matthew
- Wilcox (Oracle)" <willy@infradead.org>, "Jan Kara" <jack@suse.cz>, "Joshua
- Hahn" <joshua.hahnjy@gmail.com>, "Byungchul Park" <byungchul@sk.com>,
- "Gregory Price" <gourry@gourry.net>, "Ying Huang"
- <ying.huang@linux.alibaba.com>, "Alistair Popple" <apopple@nvidia.com>,
- "Hugh Dickins" <hughd@google.com>, "Baolin Wang"
- <baolin.wang@linux.alibaba.com>, "Chris Li" <chrisl@kernel.org>, "Kairui
- Song" <kasong@tencent.com>, "Kemeng Shi" <shikemeng@huaweicloud.com>, "Nhat
- Pham" <nphamcs@gmail.com>, "Baoquan He" <baoquan.he@linux.dev>, "Barry
- Song" <baohua@kernel.org>, "Youngjun Park" <youngjun.park@lge.com>, "Joerg
- Roedel (AMD)" <joro@8bytes.org>, "Will Deacon" <will@kernel.org>, "Robin
- Murphy" <robin.murphy@arm.com>, "Huacai Chen" <chenhuacai@kernel.org>,
- "WANG Xuerui" <kernel@xen0n.name>, "Thomas Gleixner" <tglx@kernel.org>,
- "Chuck Lever" <cel@kernel.org>, "Jeff Layton" <jlayton@kernel.org>,
- "NeilBrown" <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>, "Trond
- Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>, "David
- S. Miller" <davem@davemloft.net>, "Eric Dumazet" <edumazet@google.com>,
- "Jakub Kicinski" <kuba@kernel.org>, "Paolo Abeni" <pabeni@redhat.com>,
- "Simon Horman" <horms@kernel.org>
-References: <20260716-folio-alloc-cleanups-v1-0-5363b8e92d33@google.com>
- <20260716-folio-alloc-cleanups-v1-1-5363b8e92d33@google.com>
- <73d3c545-dd8a-4131-9826-1a7096dd619a@kernel.org>
-In-Reply-To: <73d3c545-dd8a-4131-9826-1a7096dd619a@kernel.org>
-X-Migadu-Flow: FLOW_OUT
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260716-folio-alloc-cleanups-v1-1-5363b8e92d33@google.com>
 
-On Thu Jul 16, 2026 at 3:22 PM UTC, Vlastimil Babka (SUSE) wrote:
-> On 7/16/26 16:30, Brendan Jackman wrote:
->> There are no external users for this surface, reduce the scope.
->>=20
->> Ulterior motive: a later patch will add an alloc_flags arg to some parts
->> of this.
->>=20
->> Note it might seem like this could just go in internal.h, since it's
->> pretty small, but actually it will eventually need to import
->> page_alloc.h, we don't want to import that from internal.h so best to
->> proactively created this header now.
->
-> Hmm, maybe it could just go to page_alloc.h then? After all this is just
-> bunch of internal page allocation functions, which just take the mempolic=
-y
-> pointer?
+On Thu, Jul 16, 2026 at 02:30:10PM +0000, Brendan Jackman wrote:
+> There are no external users for this surface, reduce the scope.
+> -struct folio *folio_alloc_mpol_noprof(gfp_t gfp, unsigned int order,
+> -		struct mempolicy *mpol, pgoff_t ilx, int nid);
 
-That would work AFAICS, but I think it's quite tidy that, currently, all
-functions declared in page_alloc.h are defined in page_alloc.c. This
-would break that.
+Hm.  So what we're saying is that allocations which respect mempolicy are
+only for core mm and not for, eg, device drivers to do.  Is that really
+what we want to say?  I don't think so, because that's inconsistent
+with having just widened __filemap_get_folio_mpol to allow guest_memfd
+to specify a mempolicy.
 
-If you're certain you don't care about that then I could live with using
-page_alloc.h.
