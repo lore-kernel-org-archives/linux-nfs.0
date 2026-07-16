@@ -1,42 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 78D8241A76F
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 12:29:31 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 051092DF134
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 12:31:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784204972; cv=none; b=WmuYvhihdNlDOD3WweTzKQw8QaduMEP5XYDehexZFQM7Qt14Sxv4MC8QodyQM4ryD9v2KctuX8JHljeNqXkbjlSNNSaMm0pPdAcukDF2i/YfeRLK5DGlWCTIhKe6qhfI2vQirnngn1MJJUyA29CLhPUjmzR8/8buyaqVwWfBZMY=
+	t=1784205089; cv=none; b=tUgx+Yj6SFByD0czUtsK2EE4MVqoYn80Ye/U5ldQGlQGA2S2NJvW7H/g0FgP+/yI+fXMurwTXvq8W8Ty+NIIzhxB410B6ZVm+FlpI00XgG63BL5TpJHPYPQdeeji9FbqCL7moGlyz2BSKP96vMyAwxlHj90/EmrbnHUB+4eUm5Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784204972; c=relaxed/simple;
-	bh=C/6cGv/lh+CO2Afr/IiPdAUrYaT3SaP2cpXaXX223lA=;
+	s=arc-20240116; t=1784205089; c=relaxed/simple;
+	bh=QxdZAmTBOjSJS/PUnCabDKIMKqKGdcktRnuc20va640=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=nqEaAyuUMZjhRjK/79WD/32UoAknSwBcE29cIR3A/NpBxr2DW4YDYIY5kv0kuJDi3/8Oyh+tvtgrjsc5KRQDQh6zyDnVvMKmquYCPP+MCbuh0SH4/8EmH4bCdo2xJFEs0YcPkbDbY7Zlt+7sAJ+bvXYqr22QI3f9642Sp6zePeM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OYjwuM/Z; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=cqMRVBBNxvZaRfuqXoxn8ClUWDQTf29OvImFkXynEwAXiMkc+9eIF+4ZTmbcomsTqGrEGq2NO9fi4JO0EMQLqHdarUV0wg1PkZb8o0okWpsVloXQPahCvMcBBpgpaR79nMmKLfsvGCU73OVl6ujltiYHKu+Sw0quwuTnXzgVX2E=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Qe+ZSTQF; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OYjwuM/Z"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7563A1F00A3A;
-	Thu, 16 Jul 2026 12:29:30 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Qe+ZSTQF"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0933D1F000E9;
+	Thu, 16 Jul 2026 12:31:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784204971;
-	bh=FGOEAjD5cJg0KOqQUtXVtGfFcOKGbrimqwmp3FDk/2U=;
+	s=k20260515; t=1784205087;
+	bh=EOXQim70MScRN9b6eiZj2aZby/4CNdIP5enWI+ZE2vk=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=OYjwuM/ZqPaH2SF+3RGdyNnefkifdObx4AuV8Nqweub8rCyRBaaeTXiIElzWFx5Td
-	 PqSkxuu0yHKcPiq22qb9QXtorspxY+fYuOCaM1ewIqPD7DIhhg8jthEG79sTf5VVF6
-	 jG3s0cmsworqS+PGeikFPVBJiAaRwFGitzxCeZXRbLZS23JXsxDq0KjQeXa6DKTDuG
-	 t7Ozav0vKYfnRHto1vpxUv4ejUoC12aFKjLpGm4Y7b4oglvnpjYG9nhEnc7GMxHsp5
-	 b1f+cjIGBL2wN/9m9F1qhdy7gLhz2w2OVxZeD+lMsM63w2Ab7UtcZ0yFaQ9wwa1NrH
-	 wxFVfEYqqLa1A==
-Message-ID: <b8af8636b7268933395dae83b6088c5d7b602435.camel@kernel.org>
-Subject: Re: [PATCH v3 14/17] nfsd: reduce want-write range in
- nfsd4_create_file()
+	b=Qe+ZSTQFn60p/4YoeXb3YZt8s9Va+Hnb8O3T+JSfV7ez68f8t/q1oG3zmlsEA0hwY
+	 5cxo59B6nNL4QJ8W860LIetyvJO1uthw8Ply/5jydW+K6Ldu4FJ3BHR9iy9Cpl5uc6
+	 KBXyioxn7MPcFV+7zIvCxMIL3d5aydEAJpxeQ9/mIxkJCiBx9IDIXSxPK4OrZEeDXR
+	 nLDINkzktskdguTGDZmvishAwFLNQOsKKXtO6cxnB4LtROSzNiGoNzdCQ1ZjRyLnr9
+	 npZc/Tf/yWHFubZ2b0/Xa+SiOB+9G33xPlkneWaFz5TRtxA4zcomN4zfY6GrlXCDaP
+	 Osq6hFiwYmbEA==
+Message-ID: <22d3e319c9c739a6a79fa4e62b5a75817390e4a6.camel@kernel.org>
+Subject: Re: [PATCH v3 15/17] nfsd: move v0 checking out of
+ nfsd_check_obj_isreg()
 From: Jeff Layton <jlayton@kernel.org>
 To: NeilBrown <neil@brown.name>, Chuck Lever <chuck.lever@oracle.com>
 Cc: Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org
-Date: Thu, 16 Jul 2026 08:29:28 -0400
-In-Reply-To: <20260713062219.6399-15-neilb@ownmail.net>
+Date: Thu, 16 Jul 2026 08:31:25 -0400
+In-Reply-To: <20260713062219.6399-16-neilb@ownmail.net>
 References: <20260713062219.6399-1-neilb@ownmail.net>
-	 <20260713062219.6399-15-neilb@ownmail.net>
+	 <20260713062219.6399-16-neilb@ownmail.net>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -124,86 +124,123 @@ MIME-Version: 1.0
 On Mon, 2026-07-13 at 16:15 +1000, NeilBrown wrote:
 > From: NeilBrown <neil@brown.name>
 >=20
-> nfsd4_create_file() needs write access to the mount for two purposes:
+> A future patch will use nfsd_check_obj_isreg() in a context where the
+> protocol version is not easily available.  So move the version check out
+> and put it at the end of do_open_lookup().
 >=20
-> 1/ to create/open the file.
-> 2/ to set attributes on the newly created (or pre-existing) file.
->=20
-> Currently this is all handled by holding the write access across the
-> open and the setattr.  A subsequent patch will necessarily change how
-> write access is gained for the open.  So we reduce the range for the
-> first want_write, and add another one to cover setattr.  If we failed to
-> get write access, it is only fatal if there were attrs to set.
->=20
-> We call nfsd_create_setattr() if at all possible, even when no attrs, as
-> it also calls commit_metadata and we need to be certain that the file
-> creation has been synced.  If the mount became read-only since the
-> creation happened, we can safely assume that the sync happened as part
-> of that.
+> Also change to return errno error code and use nfserrno() to convert to
+> nfs error codes.  Use -ELOOP for nfserr_symlink, which is an error
+> indication a problem with symlinks.  -EFTYPE is a good match for
+> nfserr_wrong_type.
 >=20
 > Signed-off-by: NeilBrown <neil@brown.name>
 > ---
->  fs/nfsd/nfs4proc.c | 17 ++++++++++++++---
->  1 file changed, 14 insertions(+), 3 deletions(-)
+>  fs/nfsd/nfs4proc.c | 29 ++++++++++++-----------------
+>  fs/nfsd/vfs.c      |  4 +++-
+>  2 files changed, 15 insertions(+), 18 deletions(-)
 >=20
 > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index adfc1f5ccd98..0d1bcb12ecbc 100644
+> index 0d1bcb12ecbc..ffeda7214d66 100644
 > --- a/fs/nfsd/nfs4proc.c
 > +++ b/fs/nfsd/nfs4proc.c
-> @@ -344,6 +344,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
+> @@ -168,23 +168,17 @@ do_open_permission(struct svc_rqst *rqstp, struct s=
+vc_fh *current_fh, struct nfs
+>  	return fh_verify(rqstp, current_fh, S_IFREG, accmode);
+>  }
+> =20
+> -static __be32 nfsd_check_obj_isreg(struct dentry *child, u32 minor_versi=
+on)
+> +static __be32 nfsd_check_obj_isreg(struct dentry *child)
+>  {
+>  	umode_t mode =3D d_inode(child)->i_mode;
+> =20
+>  	if (S_ISREG(mode))
+> -		return nfs_ok;
+> +		return 0;
+>  	if (S_ISDIR(mode))
+> -		return nfserr_isdir;
+> +		return -EISDIR;
+>  	if (S_ISLNK(mode))
+> -		return nfserr_symlink;
+> -
+> -	/* RFC 7530 - 16.16.6 */
+> -	if (minor_version =3D=3D 0)
+> -		return nfserr_symlink;
+> -	else
+> -		return nfserr_wrong_type;
+> -
+> +		return -ELOOP;
+> +	return -EFTYPE;
+>  }
+> =20
+>  static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state=
+ *cstate, struct nfsd4_open *open, struct svc_fh *resfh)
+> @@ -212,8 +206,6 @@ static __be32
+>  nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  		  struct svc_fh *resfhp, struct nfsd4_open *open)
+>  {
+> -	struct nfsd4_compoundres *resp =3D rqstp->rq_resp;
+> -	struct nfsd4_compound_state *cstate =3D &resp->cstate;
+>  	struct iattr *iap =3D &open->op_iattr;
+>  	struct nfsd_attrs attrs =3D {
+>  		.na_iattr	=3D iap,
+> @@ -356,8 +348,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
 fh *fhp,
->  			       &QSTR_LEN(open->op_fname, open->op_fnamelen));
->  	if (IS_ERR(child)) {
->  		status =3D nfserrno(PTR_ERR(child));
-> +		if (!want_write_err)
-> +			fh_drop_write(fhp);
->  		goto out;
+>  		 * op_filp and consequently a valid ->f_path.dentry.
+>  		 */
+> =20
+> -		status =3D nfsd_check_obj_isreg(child, cstate->minorversion);
+> -		if (status =3D=3D nfs_ok) {
+> +		status =3D nfserrno(nfsd_check_obj_isreg(child));
+> +		if (!status) {
+>  			open->op_filp =3D dentry_open(&path, oflags,
+>  						    current_cred());
+>  			if (IS_ERR(open->op_filp)) {
+> @@ -536,8 +528,7 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_c=
+ompound_state *cstate, stru
 >  	}
->  	path.dentry =3D child;
-> @@ -378,6 +380,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
-fh *fhp,
->  		}
->  	}
->  	end_creating(child);
-> +	if (!want_write_err)
-> +		fh_drop_write(fhp);
->  	if (status !=3D nfs_ok)
+>  	if (status)
+>  		goto out;
+> -	status =3D nfsd_check_obj_isreg((*resfh)->fh_dentry,
+> -				      cstate->minorversion);
+> +	status =3D nfserrno(nfsd_check_obj_isreg((*resfh)->fh_dentry));
+>  	if (status)
 >  		goto out;
 > =20
-> @@ -421,7 +425,16 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc=
-_fh *fhp,
->  	if ((iap->ia_valid & ATTR_SIZE) && (iap->ia_size =3D=3D 0))
->  		iap->ia_valid &=3D ~ATTR_SIZE;
-> =20
-> -	status =3D nfsd_create_setattr(rqstp, fhp, resfhp, &attrs);
-> +	/* We will need write access to set the attrs */
-> +	want_write_err =3D fh_want_write(fhp);
-> +	if (!want_write_err) {
-> +		status =3D nfsd_create_setattr(rqstp, fhp,
-> +					     resfhp, &attrs);
-> +		fh_drop_write(fhp);
-> +	} else if (nfsd_attrs_valid(&attrs)) {
-> +		/* Needed write access */
-> +		status =3D nfserrno(want_write_err);
-> +	}
-> =20
->  	if (attrs.na_labelerr)
->  		open->op_bmval[2] &=3D ~FATTR4_WORD2_SECURITY_LABEL;
-> @@ -432,8 +445,6 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
-fh *fhp,
->  	if (attrs.na_paclerr)
->  		open->op_bmval[2] &=3D ~FATTR4_WORD2_POSIX_ACCESS_ACL;
+> @@ -549,6 +540,10 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_=
+compound_state *cstate, stru
+>  	status =3D do_open_permission(rqstp, *resfh, open, accmode);
+>  	set_change_info(&open->op_cinfo, current_fh);
 >  out:
-> -	if (!want_write_err)
-> -		fh_drop_write(fhp);
->  	nfsd_attrs_free(&attrs);
+> +	if (status =3D=3D nfserr_wrong_type && cstate->minorversion =3D=3D 0)
+> +		/* RFC 7530 - 16.16.6 */
+> +		return nfserr_symlink;
+> +
 >  	return status;
 >  }
-
-It sucks that file creation is so fraught with peril and places that
-things can go wrong and leave stuff sitting out on the fs. I wonder if
-we ought to be using O_TMPFILE where possible to do all of this setup
-and only later link it into the namespace. That's a much bigger change
-though of course.
+> =20
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 9e05c3949cc1..c0e8c87a5e00 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -61,7 +61,7 @@ u64 nfsd_io_cache_write __read_mostly =3D NFSD_IO_BUFFE=
+RED;
+>   * it's an error we don't expect, log it once and return nfserr_io.
+>   */
+>  __be32
+> -nfserrno (int errno)
+> +nfserrno(int errno)
+>  {
+>  	static struct {
+>  		__be32	nfserr;
+> @@ -105,6 +105,8 @@ nfserrno (int errno)
+>  		{ nfserr_perm, -ENOKEY },
+>  		{ nfserr_no_grace, -ENOGRACE},
+>  		{ nfserr_io, -EBADMSG },
+> +		{ nfserr_symlink, -ELOOP },
+> +		{ nfserr_wrong_type, -EFTYPE },
+>  	};
+>  	int	i;
+> =20
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
