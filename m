@@ -1,938 +1,209 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3E4B3932FF
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 10:35:01 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 78D8241A76F
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 12:29:31 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784198104; cv=none; b=k84KJ+SFeDugNvJGA8ubmn+V7MvSmiOyCstZ7z4000muwny0GxLB+WfqkLDtMPFp+5MZrqQhvSF+LeKuQpeGJEX76vuvhtKoulaPRCLCihCFBcWWOlpLA326jZRvvYoLSCQmB8c95itx0fJ2lvcyKhEy0qdgSAv4mFs12OKlxcc=
+	t=1784204972; cv=none; b=WmuYvhihdNlDOD3WweTzKQw8QaduMEP5XYDehexZFQM7Qt14Sxv4MC8QodyQM4ryD9v2KctuX8JHljeNqXkbjlSNNSaMm0pPdAcukDF2i/YfeRLK5DGlWCTIhKe6qhfI2vQirnngn1MJJUyA29CLhPUjmzR8/8buyaqVwWfBZMY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784198104; c=relaxed/simple;
-	bh=1mUmy99E/RDqPOC4SC21Liw0kMNF5ALkGpw+sn08cdY=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=P+CBcapXJ68exU0GCqVk+917w1w3JIS094d6yA7Z+VJYRz09rmYN8H+CwGXIuVLTKiT05Yq28QnEmCff18PQ9wp3awU7Q/B/NVm6rdoy8xENGlgmrFhskM/QSyXXhpz7Bsb6zuSQSVlzQOpOgjLBQcI4M+/ESK0fe/zn+/fg6Rw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=NdNw0MoN; arc=none smtp.client-ip=170.10.129.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1784204972; c=relaxed/simple;
+	bh=C/6cGv/lh+CO2Afr/IiPdAUrYaT3SaP2cpXaXX223lA=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=nqEaAyuUMZjhRjK/79WD/32UoAknSwBcE29cIR3A/NpBxr2DW4YDYIY5kv0kuJDi3/8Oyh+tvtgrjsc5KRQDQh6zyDnVvMKmquYCPP+MCbuh0SH4/8EmH4bCdo2xJFEs0YcPkbDbY7Zlt+7sAJ+bvXYqr22QI3f9642Sp6zePeM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OYjwuM/Z; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="NdNw0MoN"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1784198101;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=FiTpaMub5Ndu39gPgbGBgitazJihDop1L2y6ucTLZoA=;
-	b=NdNw0MoNj+5A65hWWbcx+rDW4aNi9eh0k3AYJNYFYjsGuPf5aTC7sayKBAvLkuHKuDMlW0
-	gfhWsCAR28rt4gcP3Uf6kT10AYxT7GLdJ772RYExLkyJIHrDJGT7Wc819RlioXSkE5Qm8M
-	Of5BNJ8VasbLvFZExnKbGffwCXfayWA=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-441-sWUUP_4XO2W40CGhFLUClA-1; Thu,
- 16 Jul 2026 06:33:35 -0400
-X-MC-Unique: sWUUP_4XO2W40CGhFLUClA-1
-X-Mimecast-MFC-AGG-ID: sWUUP_4XO2W40CGhFLUClA_1784198012
-Received: from mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.93])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id C8B6E195E90E;
-	Thu, 16 Jul 2026 10:33:31 +0000 (UTC)
-Received: from warthog.procyon.org.com (unknown [10.44.33.159])
-	by mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id A7AA61800480;
-	Thu, 16 Jul 2026 10:33:25 +0000 (UTC)
-From: David Howells <dhowells@redhat.com>
-To: Christian Brauner <christian@brauner.io>,
-	Matthew Wilcox <willy@infradead.org>,
-	Christoph Hellwig <hch@infradead.org>
-Cc: David Howells <dhowells@redhat.com>,
-	Paulo Alcantara <pc@manguebit.org>,
-	Jens Axboe <axboe@kernel.dk>,
-	Leon Romanovsky <leon@kernel.org>,
-	Steve French <sfrench@samba.org>,
-	ChenXiaoSong <chenxiaosong@chenxiaosong.com>,
-	Marc Dionne <marc.dionne@auristor.com>,
-	Stefan Metzmacher <metze@samba.org>,
-	Eric Van Hensbergen <ericvh@kernel.org>,
-	Dominique Martinet <asmadeus@codewreck.org>,
-	Ilya Dryomov <idryomov@gmail.com>,
-	netfs@lists.linux.dev,
-	linux-afs@lists.infradead.org,
-	linux-cifs@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	ceph-devel@vger.kernel.org,
-	v9fs@lists.linux.dev,
-	linux-erofs@lists.ozlabs.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v6 20/24] iov_iter: Remove ITER_FOLIOQ
-Date: Thu, 16 Jul 2026 11:30:19 +0100
-Message-ID: <20260716103030.3065561-21-dhowells@redhat.com>
-In-Reply-To: <20260716103030.3065561-1-dhowells@redhat.com>
-References: <20260716103030.3065561-1-dhowells@redhat.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OYjwuM/Z"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7563A1F00A3A;
+	Thu, 16 Jul 2026 12:29:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1784204971;
+	bh=FGOEAjD5cJg0KOqQUtXVtGfFcOKGbrimqwmp3FDk/2U=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=OYjwuM/ZqPaH2SF+3RGdyNnefkifdObx4AuV8Nqweub8rCyRBaaeTXiIElzWFx5Td
+	 PqSkxuu0yHKcPiq22qb9QXtorspxY+fYuOCaM1ewIqPD7DIhhg8jthEG79sTf5VVF6
+	 jG3s0cmsworqS+PGeikFPVBJiAaRwFGitzxCeZXRbLZS23JXsxDq0KjQeXa6DKTDuG
+	 t7Ozav0vKYfnRHto1vpxUv4ejUoC12aFKjLpGm4Y7b4oglvnpjYG9nhEnc7GMxHsp5
+	 b1f+cjIGBL2wN/9m9F1qhdy7gLhz2w2OVxZeD+lMsM63w2Ab7UtcZ0yFaQ9wwa1NrH
+	 wxFVfEYqqLa1A==
+Message-ID: <b8af8636b7268933395dae83b6088c5d7b602435.camel@kernel.org>
+Subject: Re: [PATCH v3 14/17] nfsd: reduce want-write range in
+ nfsd4_create_file()
+From: Jeff Layton <jlayton@kernel.org>
+To: NeilBrown <neil@brown.name>, Chuck Lever <chuck.lever@oracle.com>
+Cc: Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org
+Date: Thu, 16 Jul 2026 08:29:28 -0400
+In-Reply-To: <20260713062219.6399-15-neilb@ownmail.net>
+References: <20260713062219.6399-1-neilb@ownmail.net>
+	 <20260713062219.6399-15-neilb@ownmail.net>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.93
 
-Remove ITER_FOLIOQ as it's no longer used.
+On Mon, 2026-07-13 at 16:15 +1000, NeilBrown wrote:
+> From: NeilBrown <neil@brown.name>
+>=20
+> nfsd4_create_file() needs write access to the mount for two purposes:
+>=20
+> 1/ to create/open the file.
+> 2/ to set attributes on the newly created (or pre-existing) file.
+>=20
+> Currently this is all handled by holding the write access across the
+> open and the setattr.  A subsequent patch will necessarily change how
+> write access is gained for the open.  So we reduce the range for the
+> first want_write, and add another one to cover setattr.  If we failed to
+> get write access, it is only fatal if there were attrs to set.
+>=20
+> We call nfsd_create_setattr() if at all possible, even when no attrs, as
+> it also calls commit_metadata and we need to be certain that the file
+> creation has been synced.  If the mount became read-only since the
+> creation happened, we can safely assume that the sync happened as part
+> of that.
+>=20
+> Signed-off-by: NeilBrown <neil@brown.name>
+> ---
+>  fs/nfsd/nfs4proc.c | 17 ++++++++++++++---
+>  1 file changed, 14 insertions(+), 3 deletions(-)
+>=20
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index adfc1f5ccd98..0d1bcb12ecbc 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -344,6 +344,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
+fh *fhp,
+>  			       &QSTR_LEN(open->op_fname, open->op_fnamelen));
+>  	if (IS_ERR(child)) {
+>  		status =3D nfserrno(PTR_ERR(child));
+> +		if (!want_write_err)
+> +			fh_drop_write(fhp);
+>  		goto out;
+>  	}
+>  	path.dentry =3D child;
+> @@ -378,6 +380,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
+fh *fhp,
+>  		}
+>  	}
+>  	end_creating(child);
+> +	if (!want_write_err)
+> +		fh_drop_write(fhp);
+>  	if (status !=3D nfs_ok)
+>  		goto out;
+> =20
+> @@ -421,7 +425,16 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc=
+_fh *fhp,
+>  	if ((iap->ia_valid & ATTR_SIZE) && (iap->ia_size =3D=3D 0))
+>  		iap->ia_valid &=3D ~ATTR_SIZE;
+> =20
+> -	status =3D nfsd_create_setattr(rqstp, fhp, resfhp, &attrs);
+> +	/* We will need write access to set the attrs */
+> +	want_write_err =3D fh_want_write(fhp);
+> +	if (!want_write_err) {
+> +		status =3D nfsd_create_setattr(rqstp, fhp,
+> +					     resfhp, &attrs);
+> +		fh_drop_write(fhp);
+> +	} else if (nfsd_attrs_valid(&attrs)) {
+> +		/* Needed write access */
+> +		status =3D nfserrno(want_write_err);
+> +	}
+> =20
+>  	if (attrs.na_labelerr)
+>  		open->op_bmval[2] &=3D ~FATTR4_WORD2_SECURITY_LABEL;
+> @@ -432,8 +445,6 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
+fh *fhp,
+>  	if (attrs.na_paclerr)
+>  		open->op_bmval[2] &=3D ~FATTR4_WORD2_POSIX_ACCESS_ACL;
+>  out:
+> -	if (!want_write_err)
+> -		fh_drop_write(fhp);
+>  	nfsd_attrs_free(&attrs);
+>  	return status;
+>  }
 
-Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Paulo Alcantara <pc@manguebit.org>
-cc: Matthew Wilcox <willy@infradead.org>
-cc: Christoph Hellwig <hch@infradead.org>
-cc: Steve French <sfrench@samba.org>
-cc: linux-cifs@vger.kernel.org
-cc: netfs@lists.linux.dev
-cc: linux-fsdevel@vger.kernel.org
----
- include/linux/iov_iter.h   |  65 +--------
- include/linux/uio.h        |  12 --
- lib/iov_iter.c             | 175 +-----------------------
- lib/scatterlist.c          |  69 +---------
- lib/tests/kunit_iov_iter.c | 271 -------------------------------------
- 5 files changed, 7 insertions(+), 585 deletions(-)
+It sucks that file creation is so fraught with peril and places that
+things can go wrong and leave stuff sitting out on the fs. I wonder if
+we ought to be using O_TMPFILE where possible to do all of this setup
+and only later link it into the namespace. That's a much bigger change
+though of course.
 
-diff --git a/include/linux/iov_iter.h b/include/linux/iov_iter.h
-index 04b8a6d943fa..4e7d69b4ace2 100644
---- a/include/linux/iov_iter.h
-+++ b/include/linux/iov_iter.h
-@@ -11,7 +11,6 @@
- #include <linux/uio.h>
- #include <linux/bvec.h>
- #include <linux/bvecq.h>
--#include <linux/folio_queue.h>
- 
- typedef size_t (*iov_step_f)(void *iter_base, size_t progress, size_t len,
- 			     void *priv, void *priv2);
-@@ -207,62 +206,6 @@ size_t iterate_bvecq(struct iov_iter *iter, size_t len, void *priv, void *priv2,
- 	return progress;
- }
- 
--/*
-- * Handle ITER_FOLIOQ.
-- */
--static __always_inline
--size_t iterate_folioq(struct iov_iter *iter, size_t len, void *priv, void *priv2,
--		      iov_step_f step)
--{
--	const struct folio_queue *folioq = iter->folioq;
--	unsigned int slot = iter->folioq_slot;
--	size_t progress = 0, skip = iter->iov_offset;
--
--	if (slot == folioq_nr_slots(folioq)) {
--		/* The iterator may have been extended. */
--		folioq = folioq->next;
--		slot = 0;
--	}
--
--	do {
--		struct folio *folio = folioq_folio(folioq, slot);
--		size_t part, remain = 0, consumed;
--		size_t fsize;
--		void *base;
--
--		if (!folio)
--			break;
--
--		fsize = folioq_folio_size(folioq, slot);
--		if (skip < fsize) {
--			base = kmap_local_folio(folio, skip);
--			part = umin(len, PAGE_SIZE - skip % PAGE_SIZE);
--			remain = step(base, progress, part, priv, priv2);
--			kunmap_local(base);
--			consumed = part - remain;
--			len -= consumed;
--			progress += consumed;
--			skip += consumed;
--		}
--		if (skip >= fsize) {
--			skip = 0;
--			slot++;
--			if (slot == folioq_nr_slots(folioq) && folioq->next) {
--				folioq = folioq->next;
--				slot = 0;
--			}
--		}
--		if (remain)
--			break;
--	} while (len);
--
--	iter->folioq_slot = slot;
--	iter->folioq = folioq;
--	iter->iov_offset = skip;
--	iter->count -= progress;
--	return progress;
--}
--
- /*
-  * Handle ITER_XARRAY.
-  */
-@@ -374,8 +317,6 @@ size_t iterate_and_advance2(struct iov_iter *iter, size_t len, void *priv,
- 		return iterate_kvec(iter, len, priv, priv2, step);
- 	if (iov_iter_is_bvecq(iter))
- 		return iterate_bvecq(iter, len, priv, priv2, step);
--	if (iov_iter_is_folioq(iter))
--		return iterate_folioq(iter, len, priv, priv2, step);
- 	if (iov_iter_is_xarray(iter))
- 		return iterate_xarray(iter, len, priv, priv2, step);
- 	return iterate_discard(iter, len, priv, priv2, step);
-@@ -410,8 +351,8 @@ size_t iterate_and_advance(struct iov_iter *iter, size_t len, void *priv,
-  * buffer is presented in segments, which for kernel iteration are broken up by
-  * physical pages and mapped, with the mapped address being presented.
-  *
-- * [!] Note This will only handle BVEC, KVEC, BVECQ, FOLIOQ, XARRAY and
-- * DISCARD-type iterators; it will not handle UBUF or IOVEC-type iterators.
-+ * [!] Note This will only handle BVEC, KVEC, BVECQ, XARRAY and DISCARD-type
-+ * iterators; it will not handle UBUF or IOVEC-type iterators.
-  *
-  * A step functions, @step, must be provided, one for handling mapped kernel
-  * addresses and the other is given user addresses which have the potential to
-@@ -440,8 +381,6 @@ size_t iterate_and_advance_kernel(struct iov_iter *iter, size_t len, void *priv,
- 		return iterate_kvec(iter, len, priv, priv2, step);
- 	if (iov_iter_is_bvecq(iter))
- 		return iterate_bvecq(iter, len, priv, priv2, step);
--	if (iov_iter_is_folioq(iter))
--		return iterate_folioq(iter, len, priv, priv2, step);
- 	if (iov_iter_is_xarray(iter))
- 		return iterate_xarray(iter, len, priv, priv2, step);
- 	return iterate_discard(iter, len, priv, priv2, step);
-diff --git a/include/linux/uio.h b/include/linux/uio.h
-index f7cfa6ea8213..e84a0c4f28c6 100644
---- a/include/linux/uio.h
-+++ b/include/linux/uio.h
-@@ -11,7 +11,6 @@
- #include <uapi/linux/uio.h>
- 
- struct page;
--struct folio_queue;
- 
- typedef unsigned int __bitwise iov_iter_extraction_t;
- 
-@@ -27,7 +26,6 @@ enum iter_type {
- 	ITER_BVEC,
- 	ITER_KVEC,
- 	ITER_BVECQ,
--	ITER_FOLIOQ,
- 	ITER_XARRAY,
- 	ITER_DISCARD,
- };
-@@ -70,7 +68,6 @@ struct iov_iter {
- 				const struct kvec *kvec;
- 				const struct bio_vec *bvec;
- 				const struct bvecq *bvecq;
--				const struct folio_queue *folioq;
- 				struct xarray *xarray;
- 				void __user *ubuf;
- 			};
-@@ -80,7 +77,6 @@ struct iov_iter {
- 	union {
- 		unsigned long nr_segs;
- 		u16 bvecq_slot;
--		u8 folioq_slot;
- 		loff_t xarray_start;
- 	};
- };
-@@ -153,11 +149,6 @@ static inline bool iov_iter_is_bvecq(const struct iov_iter *i)
- 	return iov_iter_type(i) == ITER_BVECQ;
- }
- 
--static inline bool iov_iter_is_folioq(const struct iov_iter *i)
--{
--	return iov_iter_type(i) == ITER_FOLIOQ;
--}
--
- static inline bool iov_iter_is_xarray(const struct iov_iter *i)
- {
- 	return iov_iter_type(i) == ITER_XARRAY;
-@@ -306,9 +297,6 @@ void iov_iter_discard(struct iov_iter *i, unsigned int direction, size_t count);
- void iov_iter_bvec_queue(struct iov_iter *i, unsigned int direction,
- 			 const struct bvecq *bvecq,
- 			 unsigned int first_slot, unsigned int offset, size_t count);
--void iov_iter_folio_queue(struct iov_iter *i, unsigned int direction,
--			  const struct folio_queue *folioq,
--			  unsigned int first_slot, unsigned int offset, size_t count);
- void iov_iter_xarray(struct iov_iter *i, unsigned int direction, struct xarray *xarray,
- 		     loff_t start, size_t count);
- ssize_t iov_iter_get_pages2(struct iov_iter *i, struct page **pages,
-diff --git a/lib/iov_iter.c b/lib/iov_iter.c
-index ff12ddd917cd..b1d253f69862 100644
---- a/lib/iov_iter.c
-+++ b/lib/iov_iter.c
-@@ -572,39 +572,6 @@ static void iov_iter_bvecq_advance(struct iov_iter *i, size_t by)
- 	i->bvecq = bq;
- }
- 
--static void iov_iter_folioq_advance(struct iov_iter *i, size_t size)
--{
--	const struct folio_queue *folioq = i->folioq;
--	unsigned int slot = i->folioq_slot;
--
--	if (!i->count)
--		return;
--	i->count -= size;
--
--	if (slot >= folioq_nr_slots(folioq)) {
--		folioq = folioq->next;
--		slot = 0;
--	}
--
--	size += i->iov_offset; /* From beginning of current segment. */
--	do {
--		size_t fsize = folioq_folio_size(folioq, slot);
--
--		if (likely(size < fsize))
--			break;
--		size -= fsize;
--		slot++;
--		if (slot >= folioq_nr_slots(folioq) && folioq->next) {
--			folioq = folioq->next;
--			slot = 0;
--		}
--	} while (size);
--
--	i->iov_offset = size;
--	i->folioq_slot = slot;
--	i->folioq = folioq;
--}
--
- void iov_iter_advance(struct iov_iter *i, size_t size)
- {
- 	if (unlikely(i->count < size))
-@@ -619,8 +586,6 @@ void iov_iter_advance(struct iov_iter *i, size_t size)
- 		iov_iter_bvec_advance(i, size);
- 	} else if (iov_iter_is_bvecq(i)) {
- 		iov_iter_bvecq_advance(i, size);
--	} else if (iov_iter_is_folioq(i)) {
--		iov_iter_folioq_advance(i, size);
- 	} else if (iov_iter_is_discard(i)) {
- 		i->count -= size;
- 	}
-@@ -654,32 +619,6 @@ static void iov_iter_bvecq_revert(struct iov_iter *i, size_t unroll)
- 	i->bvecq = bq;
- }
- 
--static void iov_iter_folioq_revert(struct iov_iter *i, size_t unroll)
--{
--	const struct folio_queue *folioq = i->folioq;
--	unsigned int slot = i->folioq_slot;
--
--	for (;;) {
--		size_t fsize;
--
--		if (slot == 0) {
--			folioq = folioq->prev;
--			slot = folioq_nr_slots(folioq);
--		}
--		slot--;
--
--		fsize = folioq_folio_size(folioq, slot);
--		if (unroll <= fsize) {
--			i->iov_offset = fsize - unroll;
--			break;
--		}
--		unroll -= fsize;
--	}
--
--	i->folioq_slot = slot;
--	i->folioq = folioq;
--}
--
- void iov_iter_revert(struct iov_iter *i, size_t unroll)
- {
- 	if (!unroll)
-@@ -714,9 +653,6 @@ void iov_iter_revert(struct iov_iter *i, size_t unroll)
- 	} else if (iov_iter_is_bvecq(i)) {
- 		i->iov_offset = 0;
- 		iov_iter_bvecq_revert(i, unroll);
--	} else if (iov_iter_is_folioq(i)) {
--		i->iov_offset = 0;
--		iov_iter_folioq_revert(i, unroll);
- 	} else { /* same logics for iovec and kvec */
- 		const struct iovec *iov = iter_iov(i);
- 		while (1) {
-@@ -766,8 +702,6 @@ size_t iov_iter_single_seg_count(const struct iov_iter *i)
- 		}
- 		return umin(i->count, bq->bv[slot].bv_len - offset);
- 	}
--	if (unlikely(iov_iter_is_folioq(i)))
--		return umin(folioq_folio_size(i->folioq, i->folioq_slot), i->count);
- 	return i->count;
- }
- EXPORT_SYMBOL(iov_iter_single_seg_count);
-@@ -833,36 +767,6 @@ void iov_iter_bvec_queue(struct iov_iter *i, unsigned int direction,
- }
- EXPORT_SYMBOL(iov_iter_bvec_queue);
- 
--/**
-- * iov_iter_folio_queue - Initialise an I/O iterator to use the folios in a folio queue
-- * @i: The iterator to initialise.
-- * @direction: The direction of the transfer.
-- * @folioq: The starting point in the folio queue.
-- * @first_slot: The first slot in the folio queue to use
-- * @offset: The offset into the folio in the first slot to start at
-- * @count: The size of the I/O buffer in bytes.
-- *
-- * Set up an I/O iterator to either draw data out of the pages attached to an
-- * inode or to inject data into those pages.  The pages *must* be prevented
-- * from evaporation, either by taking a ref on them or locking them by the
-- * caller.
-- */
--void iov_iter_folio_queue(struct iov_iter *i, unsigned int direction,
--			  const struct folio_queue *folioq, unsigned int first_slot,
--			  unsigned int offset, size_t count)
--{
--	BUG_ON(direction & ~1);
--	*i = (struct iov_iter) {
--		.iter_type = ITER_FOLIOQ,
--		.data_source = direction,
--		.folioq = folioq,
--		.folioq_slot = first_slot,
--		.count = count,
--		.iov_offset = offset,
--	};
--}
--EXPORT_SYMBOL(iov_iter_folio_queue);
--
- /**
-  * iov_iter_xarray - Initialise an I/O iterator to use the pages in an xarray
-  * @i: The iterator to initialise.
-@@ -1006,9 +910,7 @@ unsigned long iov_iter_alignment(const struct iov_iter *i)
- 	if (iov_iter_is_bvecq(i))
- 		return iov_iter_alignment_bvecq(i);
- 
--	/* With both xarray and folioq types, we're dealing with whole folios. */
--	if (iov_iter_is_folioq(i))
--		return i->iov_offset | i->count;
-+	/* With the xarray type, we're dealing with whole folios. */
- 	if (iov_iter_is_xarray(i))
- 		return (i->xarray_start + i->iov_offset) | i->count;
- 
-@@ -1265,11 +1167,6 @@ int iov_iter_npages(const struct iov_iter *i, int maxpages)
- 		return bvec_npages(i, maxpages);
- 	if (iov_iter_is_bvecq(i))
- 		return iov_npages_bvecq(i, maxpages);
--	if (iov_iter_is_folioq(i)) {
--		unsigned offset = i->iov_offset % PAGE_SIZE;
--		int npages = DIV_ROUND_UP(offset + i->count, PAGE_SIZE);
--		return min(npages, maxpages);
--	}
- 	if (iov_iter_is_xarray(i)) {
- 		unsigned offset = (i->xarray_start + i->iov_offset) % PAGE_SIZE;
- 		int npages = DIV_ROUND_UP(offset + i->count, PAGE_SIZE);
-@@ -1692,68 +1589,6 @@ static ssize_t iov_iter_extract_bvecq_pages(struct iov_iter *iter,
- 	return extracted;
- }
- 
--/*
-- * Extract a list of contiguous pages from an ITER_FOLIOQ iterator.  This does
-- * not get references on the pages, nor does it get a pin on them.
-- */
--static ssize_t iov_iter_extract_folioq_pages(struct iov_iter *i,
--					     struct page ***pages, size_t maxsize,
--					     unsigned int maxpages,
--					     iov_iter_extraction_t extraction_flags,
--					     size_t *offset0)
--{
--	const struct folio_queue *folioq = i->folioq;
--	struct page **p;
--	unsigned int nr = 0;
--	size_t extracted = 0, offset, slot = i->folioq_slot;
--
--	if (slot >= folioq_nr_slots(folioq)) {
--		folioq = folioq->next;
--		slot = 0;
--		if (WARN_ON(i->iov_offset != 0))
--			return -EIO;
--	}
--
--	offset = i->iov_offset & ~PAGE_MASK;
--	*offset0 = offset;
--
--	maxpages = want_pages_array(pages, maxsize, offset, maxpages);
--	if (!maxpages)
--		return -ENOMEM;
--	p = *pages;
--
--	for (;;) {
--		struct folio *folio = folioq_folio(folioq, slot);
--		size_t offset = i->iov_offset, fsize = folioq_folio_size(folioq, slot);
--		size_t part = PAGE_SIZE - offset % PAGE_SIZE;
--
--		if (offset < fsize) {
--			part = umin(part, umin(maxsize - extracted, fsize - offset));
--			i->count -= part;
--			i->iov_offset += part;
--			extracted += part;
--
--			p[nr++] = folio_page(folio, offset / PAGE_SIZE);
--		}
--
--		if (nr >= maxpages || extracted >= maxsize)
--			break;
--
--		if (i->iov_offset >= fsize) {
--			i->iov_offset = 0;
--			slot++;
--			if (slot == folioq_nr_slots(folioq) && folioq->next) {
--				folioq = folioq->next;
--				slot = 0;
--			}
--		}
--	}
--
--	i->folioq = folioq;
--	i->folioq_slot = slot;
--	return extracted;
--}
--
- /*
-  * Extract a list of contiguous pages from an ITER_XARRAY iterator.  This does not
-  * get references on the pages, nor does it get a pin on them.
-@@ -2016,8 +1851,8 @@ static ssize_t iov_iter_extract_user_pages(struct iov_iter *i,
-  *      added to the pages, but refs will not be taken.
-  *      iov_iter_extract_will_pin() will return true.
-  *
-- *  (*) If the iterator is ITER_KVEC, ITER_BVEC, ITER_FOLIOQ or ITER_XARRAY, the
-- *      pages are merely listed; no extra refs or pins are obtained.
-+ *  (*) If the iterator is ITER_KVEC, ITER_BVEC, ITER_XARRAY, the pages are
-+ *      merely listed; no extra refs or pins are obtained.
-  *      iov_iter_extract_will_pin() will return 0.
-  *
-  * Note also:
-@@ -2056,10 +1891,6 @@ ssize_t iov_iter_extract_pages(struct iov_iter *i,
- 		return iov_iter_extract_bvecq_pages(i, pages, maxsize,
- 						    maxpages, extraction_flags,
- 						    offset0);
--	if (iov_iter_is_folioq(i))
--		return iov_iter_extract_folioq_pages(i, pages, maxsize,
--						     maxpages, extraction_flags,
--						     offset0);
- 	if (iov_iter_is_xarray(i))
- 		return iov_iter_extract_xarray_pages(i, pages, maxsize,
- 						     maxpages, extraction_flags,
-diff --git a/lib/scatterlist.c b/lib/scatterlist.c
-index 23e5a180103b..b9a7298306d9 100644
---- a/lib/scatterlist.c
-+++ b/lib/scatterlist.c
-@@ -12,7 +12,6 @@
- #include <linux/bvec.h>
- #include <linux/bvecq.h>
- #include <linux/uio.h>
--#include <linux/folio_queue.h>
- 
- /**
-  * sg_nents - return total count of entries in scatterlist
-@@ -1327,67 +1326,6 @@ static ssize_t extract_bvecq_to_sg(struct iov_iter *iter,
- 	return ret;
- }
- 
--/*
-- * Extract up to sg_max folios from an FOLIOQ-type iterator and add them to
-- * the scatterlist.  The pages are not pinned.
-- */
--static ssize_t extract_folioq_to_sg(struct iov_iter *iter,
--				   ssize_t maxsize,
--				   struct sg_table *sgtable,
--				   unsigned int sg_max,
--				   iov_iter_extraction_t extraction_flags)
--{
--	const struct folio_queue *folioq = iter->folioq;
--	struct scatterlist *sg = sgtable->sgl + sgtable->nents;
--	unsigned int slot = iter->folioq_slot;
--	ssize_t ret = 0;
--	size_t offset = iter->iov_offset;
--
--	BUG_ON(!folioq);
--
--	if (slot >= folioq_nr_slots(folioq)) {
--		folioq = folioq->next;
--		if (WARN_ON_ONCE(!folioq))
--			return 0;
--		slot = 0;
--	}
--
--	do {
--		struct folio *folio = folioq_folio(folioq, slot);
--		size_t fsize = folioq_folio_size(folioq, slot);
--
--		if (offset < fsize) {
--			size_t part = umin(maxsize - ret, fsize - offset);
--
--			sg_set_page(sg, folio_page(folio, 0), part, offset);
--			sgtable->nents++;
--			sg++;
--			sg_max--;
--			offset += part;
--			ret += part;
--		}
--
--		if (offset >= fsize) {
--			offset = 0;
--			slot++;
--			if (slot >= folioq_nr_slots(folioq)) {
--				if (!folioq->next) {
--					WARN_ON_ONCE(ret < iter->count);
--					break;
--				}
--				folioq = folioq->next;
--				slot = 0;
--			}
--		}
--	} while (sg_max > 0 && ret < maxsize);
--
--	iter->folioq = folioq;
--	iter->folioq_slot = slot;
--	iter->iov_offset = offset;
--	iter->count -= ret;
--	return ret;
--}
--
- /*
-  * Extract up to sg_max folios from an XARRAY-type iterator and add them to
-  * the scatterlist.  The pages are not pinned.
-@@ -1451,8 +1389,8 @@ static ssize_t extract_xarray_to_sg(struct iov_iter *iter,
-  * addition of @sg_max elements.
-  *
-  * The pages referred to by UBUF- and IOVEC-type iterators are extracted and
-- * pinned; BVEC-, BVECQ-, KVEC-, FOLIOQ- and XARRAY-type are extracted but
-- * aren't pinned; DISCARD-type is not supported.
-+ * pinned; BVEC-, BVECQ-, KVEC-, XARRAY-type are extracted but aren't pinned;
-+ * DISCARD-type is not supported.
-  *
-  * No end mark is placed on the scatterlist; that's left to the caller.
-  *
-@@ -1487,9 +1425,6 @@ ssize_t extract_iter_to_sg(struct iov_iter *iter, size_t maxsize,
- 	case ITER_BVECQ:
- 		return extract_bvecq_to_sg(iter, maxsize, sgtable, sg_max,
- 					   extraction_flags);
--	case ITER_FOLIOQ:
--		return extract_folioq_to_sg(iter, maxsize, sgtable, sg_max,
--					    extraction_flags);
- 	case ITER_XARRAY:
- 		return extract_xarray_to_sg(iter, maxsize, sgtable, sg_max,
- 					    extraction_flags);
-diff --git a/lib/tests/kunit_iov_iter.c b/lib/tests/kunit_iov_iter.c
-index 8426c33e48a4..3b1416b94af1 100644
---- a/lib/tests/kunit_iov_iter.c
-+++ b/lib/tests/kunit_iov_iter.c
-@@ -13,7 +13,6 @@
- #include <linux/uio.h>
- #include <linux/bvec.h>
- #include <linux/bvecq.h>
--#include <linux/folio_queue.h>
- #include <linux/scatterlist.h>
- #include <linux/minmax.h>
- #include <linux/mman.h>
-@@ -383,176 +382,6 @@ static void __init iov_kunit_copy_from_bvec(struct kunit *test)
- 	KUNIT_SUCCEED(test);
- }
- 
--static void iov_kunit_destroy_folioq(void *data)
--{
--	struct folio_queue *folioq, *next;
--
--	for (folioq = data; folioq; folioq = next) {
--		next = folioq->next;
--		kfree(folioq);
--	}
--}
--
--static void __init iov_kunit_load_folioq(struct kunit *test,
--					struct iov_iter *iter, int dir,
--					struct folio_queue *folioq,
--					struct page **pages, size_t npages)
--{
--	struct folio_queue *p = folioq;
--	size_t size = 0;
--	int i;
--
--	for (i = 0; i < npages; i++) {
--		if (folioq_full(p)) {
--			p->next = kzalloc_obj(struct folio_queue);
--			KUNIT_ASSERT_NOT_ERR_OR_NULL(test, p->next);
--			folioq_init(p->next, 0);
--			p->next->prev = p;
--			p = p->next;
--		}
--		folioq_append(p, page_folio(pages[i]));
--		size += PAGE_SIZE;
--	}
--	iov_iter_folio_queue(iter, dir, folioq, 0, 0, size);
--}
--
--static struct folio_queue *iov_kunit_create_folioq(struct kunit *test)
--{
--	struct folio_queue *folioq;
--
--	folioq = kzalloc_obj(struct folio_queue);
--	KUNIT_ASSERT_NOT_ERR_OR_NULL(test, folioq);
--	kunit_add_action_or_reset(test, iov_kunit_destroy_folioq, folioq);
--	folioq_init(folioq, 0);
--	return folioq;
--}
--
--/*
-- * Test copying to a ITER_FOLIOQ-type iterator.
-- */
--static void __init iov_kunit_copy_to_folioq(struct kunit *test)
--{
--	const struct kvec_test_range *pr;
--	struct iov_iter iter;
--	struct folio_queue *folioq;
--	struct page **spages, **bpages;
--	u8 *scratch, *buffer;
--	size_t bufsize, npages, size, copied;
--	int i, patt;
--
--	bufsize = 0x100000;
--	npages = bufsize / PAGE_SIZE;
--
--	folioq = iov_kunit_create_folioq(test);
--
--	scratch = iov_kunit_create_buffer(test, &spages, npages);
--	for (i = 0; i < bufsize; i++)
--		scratch[i] = pattern(i);
--
--	buffer = iov_kunit_create_buffer(test, &bpages, npages);
--	memset(buffer, 0, bufsize);
--
--	iov_kunit_load_folioq(test, &iter, READ, folioq, bpages, npages);
--
--	i = 0;
--	for (pr = kvec_test_ranges; pr->from >= 0; pr++) {
--		size = pr->to - pr->from;
--		KUNIT_ASSERT_LE(test, pr->to, bufsize);
--
--		iov_iter_folio_queue(&iter, READ, folioq, 0, 0, pr->to);
--		iov_iter_advance(&iter, pr->from);
--		copied = copy_to_iter(scratch + i, size, &iter);
--
--		KUNIT_EXPECT_EQ(test, copied, size);
--		KUNIT_EXPECT_EQ(test, iter.count, 0);
--		KUNIT_EXPECT_EQ(test, iter.iov_offset, pr->to % PAGE_SIZE);
--		i += size;
--		if (test->status == KUNIT_FAILURE)
--			goto stop;
--	}
--
--	/* Build the expected image in the scratch buffer. */
--	patt = 0;
--	memset(scratch, 0, bufsize);
--	for (pr = kvec_test_ranges; pr->from >= 0; pr++)
--		for (i = pr->from; i < pr->to; i++)
--			scratch[i] = pattern(patt++);
--
--	/* Compare the images */
--	for (i = 0; i < bufsize; i++) {
--		KUNIT_EXPECT_EQ_MSG(test, buffer[i], scratch[i], "at i=%x", i);
--		if (buffer[i] != scratch[i])
--			return;
--	}
--
--stop:
--	KUNIT_SUCCEED(test);
--}
--
--/*
-- * Test copying from a ITER_FOLIOQ-type iterator.
-- */
--static void __init iov_kunit_copy_from_folioq(struct kunit *test)
--{
--	const struct kvec_test_range *pr;
--	struct iov_iter iter;
--	struct folio_queue *folioq;
--	struct page **spages, **bpages;
--	u8 *scratch, *buffer;
--	size_t bufsize, npages, size, copied;
--	int i, j;
--
--	bufsize = 0x100000;
--	npages = bufsize / PAGE_SIZE;
--
--	folioq = iov_kunit_create_folioq(test);
--
--	buffer = iov_kunit_create_buffer(test, &bpages, npages);
--	for (i = 0; i < bufsize; i++)
--		buffer[i] = pattern(i);
--
--	scratch = iov_kunit_create_buffer(test, &spages, npages);
--	memset(scratch, 0, bufsize);
--
--	iov_kunit_load_folioq(test, &iter, READ, folioq, bpages, npages);
--
--	i = 0;
--	for (pr = kvec_test_ranges; pr->from >= 0; pr++) {
--		size = pr->to - pr->from;
--		KUNIT_ASSERT_LE(test, pr->to, bufsize);
--
--		iov_iter_folio_queue(&iter, WRITE, folioq, 0, 0, pr->to);
--		iov_iter_advance(&iter, pr->from);
--		copied = copy_from_iter(scratch + i, size, &iter);
--
--		KUNIT_EXPECT_EQ(test, copied, size);
--		KUNIT_EXPECT_EQ(test, iter.count, 0);
--		KUNIT_EXPECT_EQ(test, iter.iov_offset, pr->to % PAGE_SIZE);
--		i += size;
--	}
--
--	/* Build the expected image in the main buffer. */
--	i = 0;
--	memset(buffer, 0, bufsize);
--	for (pr = kvec_test_ranges; pr->from >= 0; pr++) {
--		for (j = pr->from; j < pr->to; j++) {
--			buffer[i++] = pattern(j);
--			if (i >= bufsize)
--				goto stop;
--		}
--	}
--stop:
--
--	/* Compare the images */
--	for (i = 0; i < bufsize; i++) {
--		KUNIT_EXPECT_EQ_MSG(test, scratch[i], buffer[i], "at i=%x", i);
--		if (scratch[i] != buffer[i])
--			return;
--	}
--
--	KUNIT_SUCCEED(test);
--}
--
- static void iov_kunit_destroy_bvecq(void *data)
- {
- 	struct bvecq *bq, *next;
-@@ -1126,85 +955,6 @@ static void __init iov_kunit_extract_pages_bvecq(struct kunit *test)
- 	KUNIT_SUCCEED(test);
- }
- 
--/*
-- * Test the extraction of ITER_FOLIOQ-type iterators.
-- */
--static void __init iov_kunit_extract_pages_folioq(struct kunit *test)
--{
--	const struct kvec_test_range *pr;
--	struct folio_queue *folioq;
--	struct iov_iter iter;
--	struct page **bpages, *pagelist[8], **pages = pagelist;
--	ssize_t len;
--	size_t bufsize, size = 0, npages;
--	int i, from;
--
--	bufsize = 0x100000;
--	npages = bufsize / PAGE_SIZE;
--
--	folioq = iov_kunit_create_folioq(test);
--
--	iov_kunit_create_buffer(test, &bpages, npages);
--	iov_kunit_load_folioq(test, &iter, READ, folioq, bpages, npages);
--
--	for (pr = kvec_test_ranges; pr->from >= 0; pr++) {
--		from = pr->from;
--		size = pr->to - from;
--		KUNIT_ASSERT_LE(test, pr->to, bufsize);
--
--		iov_iter_folio_queue(&iter, WRITE, folioq, 0, 0, pr->to);
--		iov_iter_advance(&iter, from);
--
--		do {
--			size_t offset0 = LONG_MAX;
--
--			for (i = 0; i < ARRAY_SIZE(pagelist); i++)
--				pagelist[i] = (void *)(unsigned long)0xaa55aa55aa55aa55ULL;
--
--			len = iov_iter_extract_pages(&iter, &pages, 100 * 1024,
--						     ARRAY_SIZE(pagelist), 0, &offset0);
--			KUNIT_EXPECT_GE(test, len, 0);
--			if (len < 0)
--				break;
--			KUNIT_EXPECT_LE(test, len, size);
--			KUNIT_EXPECT_EQ(test, iter.count, size - len);
--			if (len == 0)
--				break;
--			size -= len;
--			KUNIT_EXPECT_GE(test, (ssize_t)offset0, 0);
--			KUNIT_EXPECT_LT(test, offset0, PAGE_SIZE);
--
--			for (i = 0; i < ARRAY_SIZE(pagelist); i++) {
--				struct page *p;
--				ssize_t part = min_t(ssize_t, len, PAGE_SIZE - offset0);
--				int ix;
--
--				KUNIT_ASSERT_GE(test, part, 0);
--				ix = from / PAGE_SIZE;
--				KUNIT_ASSERT_LT(test, ix, npages);
--				p = bpages[ix];
--				KUNIT_EXPECT_PTR_EQ(test, pagelist[i], p);
--				KUNIT_EXPECT_EQ(test, offset0, from % PAGE_SIZE);
--				from += part;
--				len -= part;
--				KUNIT_ASSERT_GE(test, len, 0);
--				if (len == 0)
--					break;
--				offset0 = 0;
--			}
--
--			if (test->status == KUNIT_FAILURE)
--				goto stop;
--		} while (iov_iter_count(&iter) > 0);
--
--		KUNIT_EXPECT_EQ(test, size, 0);
--		KUNIT_EXPECT_EQ(test, iter.count, 0);
--	}
--
--stop:
--	KUNIT_SUCCEED(test);
--}
--
- /*
-  * Test the extraction of ITER_XARRAY-type iterators.
-  */
-@@ -1432,23 +1182,6 @@ static void __init iov_kunit_iter_to_sg_bvec(struct kunit *test)
- 	iov_kunit_iter_to_sg_check(test, &iter, bufsize, &data);
- }
- 
--static void __init iov_kunit_iter_to_sg_folioq(struct kunit *test)
--{
--	struct iov_kunit_iter_to_sg_data data;
--	struct folio_queue *folioq;
--	struct iov_iter iter;
--	size_t bufsize;
--
--	bufsize = 0x200000;
--	iov_kunit_iter_to_sg_init(test, bufsize, false, &data);
--
--	folioq = iov_kunit_create_folioq(test);
--	iov_kunit_load_folioq(test, &iter, READ, folioq, data.pages,
--			      data.npages);
--
--	iov_kunit_iter_to_sg_check(test, &iter, bufsize, &data);
--}
--
- static void __init iov_kunit_iter_to_sg_xarray(struct kunit *test)
- {
- 	struct iov_kunit_iter_to_sg_data data;
-@@ -1487,18 +1220,14 @@ static struct kunit_case __refdata iov_kunit_cases[] = {
- 	KUNIT_CASE(iov_kunit_copy_from_bvec),
- 	KUNIT_CASE(iov_kunit_copy_to_bvecq),
- 	KUNIT_CASE(iov_kunit_copy_from_bvecq),
--	KUNIT_CASE(iov_kunit_copy_to_folioq),
--	KUNIT_CASE(iov_kunit_copy_from_folioq),
- 	KUNIT_CASE(iov_kunit_copy_to_xarray),
- 	KUNIT_CASE(iov_kunit_copy_from_xarray),
- 	KUNIT_CASE(iov_kunit_extract_pages_kvec),
- 	KUNIT_CASE(iov_kunit_extract_pages_bvec),
- 	KUNIT_CASE(iov_kunit_extract_pages_bvecq),
--	KUNIT_CASE(iov_kunit_extract_pages_folioq),
- 	KUNIT_CASE(iov_kunit_extract_pages_xarray),
- 	KUNIT_CASE(iov_kunit_iter_to_sg_kvec),
- 	KUNIT_CASE(iov_kunit_iter_to_sg_bvec),
--	KUNIT_CASE(iov_kunit_iter_to_sg_folioq),
- 	KUNIT_CASE(iov_kunit_iter_to_sg_xarray),
- 	KUNIT_CASE(iov_kunit_iter_to_sg_ubuf),
- 	{}
-
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
