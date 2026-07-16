@@ -1,301 +1,288 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5DECA41A907;
-	Thu, 16 Jul 2026 14:54:37 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E385D329E7E;
+	Thu, 16 Jul 2026 15:22:17 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784213679; cv=none; b=pQdNyciASbRV6EEcGWZVYevIToe7c08rAx8qdQfVhpEMPUguUUcXJOfo/jFBPVyqXJ2pPbRuKIbdQcETglsRMOKlt59VdmgCR0AhEYPb1ljimqqX4eZoxLnoE9Ru00QwWT1w+z7w3NCGqL5u7FMqVx+b8n1h5sPiyQ7AmPbeZhs=
+	t=1784215339; cv=none; b=V1JvYbPlcn8mLPqXfTBBB+rdmp+g5LxOWj7VryoDVegC2H3SiAVQ1/D+lUYdnaXFO3Ht5RsC3ZCBC5Kn0re71OneGlFQMtamKaGLpELEn+b7T9BsA9HHqxJOIEuVQcntmdBuqh0NhrE7X2ax8RaKabFY+MSVsvhJd8lTAR5EsB0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784213679; c=relaxed/simple;
-	bh=nzpvrrSrtyaXsF9T3tUFTksoIGNscORDdpFpz91GBgs=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=oUd9wTPZBNMAsAZVXbOn7GWKfNIlGZw8ovHC+AHocJsIvtlqgcLaQm+JXeYA6uE08FuuWLKF2T1oaMKXD3GpOi9foYyy00AYJeHjA0OT/SlDtCiUInNHX4SyVIcg1OUh0VdV8YA8lBb66Zx9VK628ATLjiNIPV/n/PYYPsEP+y4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NAb0pkKn; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784215339; c=relaxed/simple;
+	bh=rxpuCNuKpyTBiIKuxYfszGMJHS6b0plXNAx2ALfLmhg=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=lobKjzxDpltL3ftPO+/8Kg/PhD+xCW12Fd/yBypuST0ZqvyCoPZxyk9wfcBwEwqcc0Rg3b4pSOx9qRfAIzyGIf7E9KlVon4WXkG9yVWNID4vQb/AQXCjFoPksWNsH9AdIY4p4nQoBKHvoXOEuT/naW7UAP/OPdZwYZ2Cz7MVmLg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MhItb7t5; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NAb0pkKn"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B78D71F000E9;
-	Thu, 16 Jul 2026 14:54:36 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MhItb7t5"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 11FB81F000E9;
+	Thu, 16 Jul 2026 15:22:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784213677;
-	bh=nC49a/7Cvm4lNgZafmpjAlXSEZ7NV50zTajPr5O3NGE=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=NAb0pkKnDy2gQpwjZT13PglnEPg2MWgbvlzB+cF0e9IGpmGr7+vpp9b6mK3453w/+
-	 FDde7yp9NYJMyeXPu5cohsfQyyRa2t8ZcCd64NYYD5pUKB2BbWjkXoRFynlcdvsZs5
-	 qpcaoSPSOz+jKBPrBeGkY2uLtM1LlKBN6B6PELrKDNRcvv/QYK0LSB62C/6kRrIYOf
-	 U+oN18IHyiH9bt/Qmu2UZu5RX5tKhYKC0VNp3voyxEPaBh/VnGosBGdAILPIInClaA
-	 AdCkhLb0RqqyrQ/925DZL4jsghCGN8ptypmRfyiAPUDwxBBuq5x6An1jpwFGVjB8cQ
-	 FgFiyxBeb+n6Q==
-Message-ID: <ba4366c69a21e42cd9da5a0314e762dd25240b97.camel@kernel.org>
-Subject: Re: [PATCH v6 3/6] nfsd: implement server-stats-get netlink handler
-From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org
-Date: Thu, 16 Jul 2026 10:54:34 -0400
-In-Reply-To: <c7ebc7af-9bb0-4c10-8295-7b60b8507bfd@app.fastmail.com>
-References: <20260619-exportd-netlink-v6-0-ddef3499793c@kernel.org>
-	 <20260619-exportd-netlink-v6-3-ddef3499793c@kernel.org>
-	 <8173debc-96fb-4354-ba11-dff99b772523@app.fastmail.com>
-	 <4ef6dd5a13bfb51f72452aa30f59c89a54037404.camel@kernel.org>
-	 <dace51f2-0d20-443b-841a-f8452fdb85e3@app.fastmail.com>
-	 <8608717db0afb2baee5536caa9cdcc5d4ac85623.camel@kernel.org>
-	 <4f38f857-8960-4cf6-9141-d133120f06f8@app.fastmail.com>
-	 <c7ebc7af-9bb0-4c10-8295-7b60b8507bfd@app.fastmail.com>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	s=k20260515; t=1784215337;
+	bh=9iUKaKWQgUmhoByo8PPUUf8IwOUE3JnNHfIAyoMta5w=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To;
+	b=MhItb7t5ytZUlRsU1B0Bk/pzL+kLJfVLF6hJZHugPO4vEngLOFShgLkBy/n1TDXIA
+	 g3DCLjmgWeIMhcCrnZDrYeVh15CoaJkgIurVoX/7Ndo4WFvwiPdBsCI3kFYEqh/Uia
+	 AW6egms8Hv2+ShjUIBdIlEqqE8XCMI+i6sWcZxUQ2F7LUStZf6VS0goN+HF3ZrnFjv
+	 KdZ7ZpMBP1f1MaT1ZUC4eBJwAiKmIXWgxG+2KDB6u0kA6Q5Zp+eEczO2IX7LF3Ip2x
+	 SqMIe+3nvJwy6/gpWEFiicWbPp4qM0Pm7tPHhRZB0+cNw8v6QrWUUAjWtsMX7KtBOk
+	 /LtacDoJduqww==
+Message-ID: <73d3c545-dd8a-4131-9826-1a7096dd619a@kernel.org>
+Date: Thu, 16 Jul 2026 17:22:06 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH 1/3] mm: move internal mempolicy APIs to new internal
+ header
+Content-Language: en-US
+To: Brendan Jackman <jackmanb@google.com>,
+ Andrew Morton <akpm@linux-foundation.org>,
+ David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <ljs@kernel.org>,
+ "Liam R. Howlett" <liam@infradead.org>, Mike Rapoport <rppt@kernel.org>,
+ Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>,
+ Johannes Weiner <hannes@cmpxchg.org>, Zi Yan <ziy@nvidia.com>,
+ "Matthew Wilcox (Oracle)" <willy@infradead.org>, Jan Kara <jack@suse.cz>,
+ Joshua Hahn <joshua.hahnjy@gmail.com>, Byungchul Park <byungchul@sk.com>,
+ Gregory Price <gourry@gourry.net>, Ying Huang
+ <ying.huang@linux.alibaba.com>, Alistair Popple <apopple@nvidia.com>,
+ Hugh Dickins <hughd@google.com>, Baolin Wang
+ <baolin.wang@linux.alibaba.com>, Chris Li <chrisl@kernel.org>,
+ Kairui Song <kasong@tencent.com>, Kemeng Shi <shikemeng@huaweicloud.com>,
+ Nhat Pham <nphamcs@gmail.com>, Baoquan He <baoquan.he@linux.dev>,
+ Barry Song <baohua@kernel.org>, Youngjun Park <youngjun.park@lge.com>,
+ "Joerg Roedel (AMD)" <joro@8bytes.org>, Will Deacon <will@kernel.org>,
+ Robin Murphy <robin.murphy@arm.com>, Huacai Chen <chenhuacai@kernel.org>,
+ WANG Xuerui <kernel@xen0n.name>, Thomas Gleixner <tglx@kernel.org>,
+ Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+ "David S. Miller" <davem@davemloft.net>, Eric Dumazet <edumazet@google.com>,
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+ Simon Horman <horms@kernel.org>
+Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+ linux-fsdevel@vger.kernel.org, iommu@lists.linux.dev,
+ loongarch@lists.linux.dev, linux-nfs@vger.kernel.org, netdev@vger.kernel.org
+References: <20260716-folio-alloc-cleanups-v1-0-5363b8e92d33@google.com>
+ <20260716-folio-alloc-cleanups-v1-1-5363b8e92d33@google.com>
+From: "Vlastimil Babka (SUSE)" <vbabka@kernel.org>
+Autocrypt: addr=vbabka@kernel.org; keydata=
+ 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
+In-Reply-To: <20260716-folio-alloc-cleanups-v1-1-5363b8e92d33@google.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-On Thu, 2026-07-16 at 10:28 -0400, Chuck Lever wrote:
->=20
-> On Thu, Jul 16, 2026, at 10:16 AM, Chuck Lever wrote:
-> > On Thu, Jul 16, 2026, at 10:12 AM, Jeff Layton wrote:
-> > > On Thu, 2026-07-16 at 10:04 -0400, Chuck Lever wrote:
-> > > >=20
-> > > > On Thu, Jul 16, 2026, at 9:53 AM, Jeff Layton wrote:
-> > > > > On Fri, 2026-06-19 at 16:40 -0400, Chuck Lever wrote:
-> > > > > >=20
-> > > > > > On Fri, Jun 19, 2026, at 11:26 AM, Jeff Layton wrote:
-> > > >=20
-> > > > > > > +		/* Per-version procedure counts */
-> > > > > > > +		if (statp->vs_count) {
-> > > > > > > +			static const int proc_attrs[] =3D {
-> > > > > > > +				[2] =3D NFSD_A_SERVER_STATS_PROC2_OPS,
-> > > > > > > +				[3] =3D NFSD_A_SERVER_STATS_PROC3_OPS,
-> > > > > > > +				[4] =3D NFSD_A_SERVER_STATS_PROC4_OPS,
-> > > > > > > +			};
-> > > > > > > +			unsigned int i;
-> > > > > > > +
-> > > > > > > +			for (i =3D 0; i < prog->pg_nvers &&
-> > > > > > > +			     i < ARRAY_SIZE(proc_attrs); i++) {
-> > > > > > > +				if (!prog->pg_vers[i] ||
-> > > > > > > +				    !statp->vs_count[i])
-> > > > > > > +					continue;
-> > > > > > > +				if (!proc_attrs[i])
-> > > > > > > +					continue;
-> > > > > > > +				if (nfsd_nl_fill_proc_ops(skb,
-> > > > > > > +						proc_attrs[i],
-> > > > > > > +						statp->vs_count[i],
-> > > > > > > +						prog->pg_vers[i]->vs_nproc))
-> > > > > > > +					goto err_cancel;
-> > > > > > > +			}
-> > > > > > > +		}
-> > > > > > > +
-> > > > > > > +#ifdef CONFIG_NFSD_V4
-> > > > > > > +		/* NFSv4 individual operation counts */
-> > > > > > > +		for (int i =3D 0; i <=3D LAST_NFS4_OP; i++) {
-> > > > > > > +			struct nlattr *nest;
-> > > > > > > +			u64 cnt;
-> > > > > > > +
-> > > > > > > +			cnt =3D percpu_counter_sum_positive(
-> > > > > > > +				&nn->counter[NFSD_STATS_NFS4_OP(i)]);
-> > > > > > > +
-> > > > > > > +			nest =3D nla_nest_start(skb,
-> > > > > > > +					NFSD_A_SERVER_STATS_PROC4OPS_OPS);
-> > > > > > > +			if (!nest)
-> > > > > > > +				goto err_cancel;
-> > > > > > > +			if (nla_put_u32(skb, NFSD_A_SERVER_PROC_ENTRY_OP, i) ||
-> > > > > > > +			    nla_put_u64_64bit(skb, NFSD_A_SERVER_PROC_ENTRY_COUNT=
-,
-> > > > > > > +					      cnt, NFSD_A_SERVER_PROC_ENTRY_PAD)) {
-> > > > > > > +				nla_nest_cancel(skb, nest);
-> > > > > > > +				goto err_cancel;
-> > > > > > > +			}
-> > > > > > > +			nla_nest_end(skb, nest);
-> > > > > > > +		}
-> > > > > > > +#endif
-> > > > > >=20
-> > > > > > This loop open-codes the same nest that nfsd_nl_fill_proc_ops()=
- builds just
-> > > > > > above -- nla_nest_start(), nla_put_u32(PROC_ENTRY_OP),
-> > > > > > nla_put_u64_64bit(PROC_ENTRY_COUNT), nla_nest_end() -- into the=
- same
-> > > > > > NFSD_A_SERVER_STATS_PROC4OPS_OPS attribute.  Could the helper b=
-e generalized
-> > > > > > to take the per-op counter source so this is not a second copy =
-of the same
-> > > > > > code?
-> > > > > >=20
-> > > > > > The per-version block above skips empty versions:
-> > > > > >=20
-> > > > > > 	if (!prog->pg_vers[i] || !statp->vs_count[i])
-> > > > > > 		continue;
-> > > > > >=20
-> > > > > > but this loop emits an entry for every op 0..LAST_NFS4_OP, zero=
--count ops
-> > > > > > included.  Is that difference intentional?  Skipping zero count=
-s here would
-> > > > > > also trim the worst-case message size above.
-> > > > > >=20
-> > > > > > There is also a counter that this dump does not emit.  /proc/ne=
-t/rpc/nfsd
-> > > > > > prints a wdeleg_getattr line after proc4ops:
-> > > > > >=20
-> > > > > > 	seq_printf(seq, "\nwdeleg_getattr %lld",
-> > > > > > 		percpu_counter_sum_positive(&nn->counter[NFSD_STATS_WDELEG_GE=
-TATTR]));
-> > > > > >=20
-> > > > > > incremented by nfsd_stats_wdeleg_getattr_inc().  Since the goal=
- is to expose
-> > > > > > the statistics currently available via /proc/net/rpc/nfsd, shou=
-ld
-> > > > > > wdeleg_getattr get an attribute here too, so nfsstat over netli=
-nk does not
-> > > > > > drop it relative to the procfs path?
-> > > > > >=20
-> > > > >=20
-> > > > > The only thing in this review that is not addressed in my current
-> > > > > series is the above comment, and I think we had agreed in an earl=
-ier
-> > > > > email thread that this was approximately the same value as the co=
-unter
-> > > > > for CB_GETATTR calls and so it's good enough for this purpose.
-> > > > >=20
-> > > > > Are you still ok with this approach?
-> > > >=20
-> > > > In spite of the email quoting, I=E2=80=99ve still forgotten most of=
- the context
-> > > > of that conversation.
-> > > >=20
-> > > > Looking at this now, I think someone later could get an urge to add=
- the
-> > > > wdeleg_getattr statistic to netlink=E2=80=A6 for symmetry, because =
-it smells like
-> > > > technical debt, or it might actually be useful for something.
-> > > >=20
-> > > > IMHO we should include it now.
-> > > >=20
-> > >=20
-> > > IDGI: what's the point of collecting that stat separately when we hav=
-e
-> > > stats for CB_GETATTR already? I'd prefer to avoid perpetuating
-> > > wdeleg_getattr as a stat here, since it's not directly tied to the
-> > > protocol in the same way as the others are.
-> > >=20
-> > > The only difference between the two is that if another client does a
-> > > GETATTR for the fh while there is already a CB_GETATTR in flight,
-> > > wdeleg_getattr gets bumped today, whereas CB_GETATTR counter does not
-> > > (since there is only a single CB_GETATTR for that).
-> > >=20
-> > > Is that difference relevant? I think Dai added wdeleg_getattr
-> > > originally, so I'd really like to hear his opinion on this.
-> >=20
-> > OK, so you are actually re-litigating whether the stat should exist
-> > at all. I confess I had forgotten that context.
-> >=20
+On 7/16/26 16:30, Brendan Jackman wrote:
+> There are no external users for this surface, reduce the scope.
+> 
+> Ulterior motive: a later patch will add an alloc_flags arg to some parts
+> of this.
+> 
+> Note it might seem like this could just go in internal.h, since it's
+> pretty small, but actually it will eventually need to import
+> page_alloc.h, we don't want to import that from internal.h so best to
+> proactively created this header now.
 
-More or less. IIRC:
+Hmm, maybe it could just go to page_alloc.h then? After all this is just
+bunch of internal page allocation functions, which just take the mempolicy
+pointer?
 
-We had decided that wdeleg_getattr was sort of an oddity that didn't
-really belong in this /proc file. The values in that file are mostly
-counting other very specific protocol operations, but wdeleg_getattr is
-basically counting GETATTR operations from other clients while there is
-an outstanding write delegation on a file.
+> Signed-off-by: Brendan Jackman <jackmanb@google.com>
+> ---
+>  MAINTAINERS         |  1 +
+>  include/linux/gfp.h |  9 ---------
+>  mm/filemap.c        |  2 ++
+>  mm/mempolicy.c      |  1 +
+>  mm/mempolicy.h      | 31 +++++++++++++++++++++++++++++++
+>  mm/shmem.c          |  1 +
+>  mm/swap_state.c     |  1 +
+>  7 files changed, 37 insertions(+), 9 deletions(-)
+> 
+> diff --git a/MAINTAINERS b/MAINTAINERS
+> index 8813d5d7eb0c1..9cde99c259639 100644
+> --- a/MAINTAINERS
+> +++ b/MAINTAINERS
+> @@ -17068,6 +17068,7 @@ F:	include/uapi/linux/mempolicy.h
+>  F:	include/linux/migrate.h
+>  F:	include/linux/migrate_mode.h
+>  F:	mm/mempolicy.c
+> +F:	mm/mempolicy.h
+>  F:	mm/migrate.c
+>  F:	mm/migrate_device.c
+>  
+> diff --git a/include/linux/gfp.h b/include/linux/gfp.h
+> index 872bc53f32ec8..e4e974a6e5f90 100644
+> --- a/include/linux/gfp.h
+> +++ b/include/linux/gfp.h
+> @@ -11,7 +11,6 @@
+>  #include <linux/sched.h>
+>  
+>  struct vm_area_struct;
+> -struct mempolicy;
+>  
+>  /* Helper macro to avoid gfp flags if they are the default one */
+>  #define __default_gfp(a,b,...) b
+> @@ -274,8 +273,6 @@ struct page *alloc_pages_node_noprof(int nid, gfp_t gfp_mask, unsigned int order
+>  #ifdef CONFIG_NUMA
+>  struct page *alloc_pages_noprof(gfp_t gfp, unsigned int order);
+>  struct folio *folio_alloc_noprof(gfp_t gfp, unsigned int order);
+> -struct folio *folio_alloc_mpol_noprof(gfp_t gfp, unsigned int order,
+> -		struct mempolicy *mpol, pgoff_t ilx, int nid);
+>  struct folio *vma_alloc_folio_noprof(gfp_t gfp, int order, struct vm_area_struct *vma,
+>  		unsigned long addr);
+>  #else
+> @@ -287,11 +284,6 @@ static inline struct folio *folio_alloc_noprof(gfp_t gfp, unsigned int order)
+>  {
+>  	return __folio_alloc_node_noprof(gfp, order, numa_node_id());
+>  }
+> -static inline struct folio *folio_alloc_mpol_noprof(gfp_t gfp, unsigned int order,
+> -		struct mempolicy *mpol, pgoff_t ilx, int nid)
+> -{
+> -	return folio_alloc_noprof(gfp, order);
+> -}
+>  static inline struct folio *vma_alloc_folio_noprof(gfp_t gfp, int order,
+>  		struct vm_area_struct *vma, unsigned long addr)
+>  {
+> @@ -301,7 +293,6 @@ static inline struct folio *vma_alloc_folio_noprof(gfp_t gfp, int order,
+>  
+>  #define alloc_pages(...)			alloc_hooks(alloc_pages_noprof(__VA_ARGS__))
+>  #define folio_alloc(...)			alloc_hooks(folio_alloc_noprof(__VA_ARGS__))
+> -#define folio_alloc_mpol(...)			alloc_hooks(folio_alloc_mpol_noprof(__VA_ARGS__))
+>  #define vma_alloc_folio(...)			alloc_hooks(vma_alloc_folio_noprof(__VA_ARGS__))
+>  
+>  #define alloc_page(gfp_mask) alloc_pages(gfp_mask, 0)
+> diff --git a/mm/filemap.c b/mm/filemap.c
+> index 1dbb4c6f824e9..0dd8e2a15d746 100644
+> --- a/mm/filemap.c
+> +++ b/mm/filemap.c
+> @@ -52,6 +52,7 @@
+>  
+>  #include <asm/tlbflush.h>
+>  #include "internal.h"
+> +#include "mempolicy.h"
+>  
+>  #define CREATE_TRACE_POINTS
+>  #include <trace/events/filemap.h>
+> @@ -63,6 +64,7 @@
+>  
+>  #include <asm/mman.h>
+>  
+> +#include "mempolicy.h"
+>  #include "swap.h"
+>  
+>  /*
+> diff --git a/mm/mempolicy.c b/mm/mempolicy.c
+> index 5720f7f54d942..31c4e9f49b5e9 100644
+> --- a/mm/mempolicy.c
+> +++ b/mm/mempolicy.c
+> @@ -119,6 +119,7 @@
+>  #include <linux/memory.h>
+>  
+>  #include "internal.h"
+> +#include "mempolicy.h"
+>  #include "page_alloc.h"
+>  
+>  /* Internal flags */
+> diff --git a/mm/mempolicy.h b/mm/mempolicy.h
+> new file mode 100644
+> index 0000000000000..d80fe4c559786
+> --- /dev/null
+> +++ b/mm/mempolicy.h
+> @@ -0,0 +1,31 @@
+> +/* SPDX-License-Identifier: GPL-2.0-or-later */
+> +/*
+> + * mm-internal API for mempolicy.c. Public API lives in
+> + * include/linux/mempolicy.h.
+> + */
+> +#ifndef __MM_MEMPOLICY_H
+> +#define __MM_MEMPOLICY_H
+> +
+> +#include <linux/gfp.h>
+> +#include <linux/mempolicy.h>
+> +
+> +#ifdef CONFIG_NUMA
+> +struct folio *folio_alloc_mpol_noprof(gfp_t gfp, unsigned int order,
+> +		struct mempolicy *mpol, pgoff_t ilx, int nid);
+> +#else
+> +static inline struct folio *folio_alloc_mpol_noprof(gfp_t gfp, unsigned int order,
+> +		struct mempolicy *mpol, pgoff_t ilx, int nid)
+> +{
+> +	return folio_alloc_noprof(gfp, order);
+> +}
+> +#endif
+> +
+> +#define folio_alloc_mpol(...)			alloc_hooks(folio_alloc_mpol_noprof(__VA_ARGS__))
+> +
+> +unsigned long alloc_pages_bulk_mempolicy_noprof(gfp_t gfp,
+> +				unsigned long nr_pages,
+> +				struct page **page_array);
+> +#define  alloc_pages_bulk_mempolicy(...)				\
+> +	alloc_hooks(alloc_pages_bulk_mempolicy_noprof(__VA_ARGS__))
+> +
+> +#endif /* __MM_MEMPOLICY_H */
+> diff --git a/mm/shmem.c b/mm/shmem.c
+> index 5071177059a96..69f561332bb93 100644
+> --- a/mm/shmem.c
+> +++ b/mm/shmem.c
+> @@ -41,6 +41,7 @@
+>  #include <linux/swapfile.h>
+>  #include <linux/iversion.h>
+>  #include <linux/unicode.h>
+> +#include "mempolicy.h"
+>  #include "swap.h"
+>  
+>  static struct vfsmount *shm_mnt __ro_after_init;
+> diff --git a/mm/swap_state.c b/mm/swap_state.c
+> index 5be825911e645..8ccd03c39a407 100644
+> --- a/mm/swap_state.c
+> +++ b/mm/swap_state.c
+> @@ -24,6 +24,7 @@
+>  #include <linux/shmem_fs.h>
+>  #include <linux/sysctl.h>
+>  #include "internal.h"
+> +#include "mempolicy.h"
+>  #include "swap_table.h"
+>  #include "swap.h"
+>  
+> 
 
-Since CB_GETATTR counts should approximate wdeleg_getattr, we decided
-to start counting those instead (along with all of the other callback
-ops). wdeleg_getattr in this series is changed to just report
-CB_GETATTR counts.
-
-> > I=E2=80=99m arguing only that the netlink and procfs APIs should remain
-> > equivalent, at least initially. Deleting the stat entirely probably
-> > has no consequences right now, but let=E2=80=99s hear from Dai when the=
- US
-> > west coast wakes up.
->=20
-> Another option is to keep the stat but report it some other way.
-> It is arguable whether nfsstat is the proper mechanism to report
-> the different reasons for sending a CB_GETATTR.
->=20
-
-Sure. We could add some way to keep reporting it (or just keep using
-/proc for this). AFAIK though, there is no (public) consumer of this
-stat. nfs-utils doesn't look at it.
-
-To wit: I'd like to head a clear use-case for this stat before we
-decide to we need to count it like we did before.
---=20
-Jeff Layton <jlayton@kernel.org>
