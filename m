@@ -1,41 +1,45 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 644CE41E6D4
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 13:35:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E52233F54B6;
+	Thu, 16 Jul 2026 13:53:30 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784208960; cv=none; b=F9QQtOAXHSKV5QZCoXEzEjvXjZZfL1tp1u9/QvoC+M+AEj5Qd1vVZZHT/oYVdTAj6tvWoE09GKiFX/scRULZap7Z2mtXlv6WW9v+AjWxHzDhsR1Jw3qfBgsIqmhpbt6zK244HrODMlfVIY/DYmgHzY2tT87EM3ha9X+GO5QcXtU=
+	t=1784210012; cv=none; b=sFKqpEHT2eqiU4n3wIpiI9GXAX/AbyMn5GqqySzumQ3+E8uOtu37lcV1VOaohz8KKeWx/XGt7dNuhHosMAbYa9xJdBtu1HGl3qX+op2OoOq23OiBt/R35AxjlhGZ5dPbqfH3zaBAFM8hmYBBQ6LWpTc33gtJsD5pUe05WCKPOvw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784208960; c=relaxed/simple;
-	bh=NIRMTSxc4olALt83GhQIj0WrumFcEB+9WPTyNYgZkeo=;
+	s=arc-20240116; t=1784210012; c=relaxed/simple;
+	bh=o2FMYpRHS+zhsw2qdQBfeWS5YsMyIw7aMRtPcXZRFCA=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=YD9aA9Z1jrB9kOVo/TkRGcQMTD/TpaYzA4NcG4iOaJESnFuir+OV0+r2Lkv64AfUfhmk6kLyuuwEw7jiY2UohHzh/9J+15X4uZ9iuB3jku6uMiI5XH1Ai30ToBN4UXR2jcrDJD8TFyPoIzyMRGbD6GVYnnJ3WKOgCArIPo+JHjU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=I4mcC5DF; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=G8QsFYgmmlNRSRKzAjdgyiiVeWmXaQ4XLvkso5Eomabc8AdXTlOQDKN3SAj8gN6a0CeN+sukYfewzEiuxZOv7TGjlY4HS38kxWG/9ofFr7l+cLBgximBt6pA7U21pB8eHn5nJX6jBZnLQdiEncfAmcIaB1LglBIt75fwcnLKwQY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BTTAgX1w; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="I4mcC5DF"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A21B71F000E9;
-	Thu, 16 Jul 2026 13:35:58 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BTTAgX1w"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F41F91F00A3A;
+	Thu, 16 Jul 2026 13:53:29 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784208959;
-	bh=Ufm06w4/Y00qHV60qCJQBY/GXJJt9Tm/fQKObTDFcWg=;
+	s=k20260515; t=1784210010;
+	bh=eEtiy5RcvunMEYeq/F+MrWWi428oKufCgwRjxTU2YSA=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=I4mcC5DFz4RoPDsSE/L/RuulnE6gTm7Eu7mcif89seotjktvyLZD3EqU5XG983f2X
-	 pNuhXxlps4ArjhfdET7Ny7NssgtIh6VeNkp9Gv6+j4206gUIPiql7rbEwf2+EsdHcU
-	 hvA1lVNFR1aq9PPe0hB+URr3i6j9nurL8mWkJjdKexAj/pY4/ERvbCCmukxyNWTmJ4
-	 eJeynZXkCPIzLWrrvbCUC8APD/puPFGpusWfcb3WNoFSckecpwAnTNSrqC7pJsrRlz
-	 pD3E+sT9RXIcjOpJmhWODEZhQx69tPXGWOOXuB3J6Ksh4EQEKBShQf+332a9gQtZYe
-	 hAKjfZVkQlfcQ==
-Message-ID: <545008d7262e836c3edd5e67ce8d715e24642e21.camel@kernel.org>
-Subject: Re: [PATCH 0/9] Start reorganizing fs/nfsd/nfsd.h
+	b=BTTAgX1wPqLgVJJm5aBSv/z1nAgbGfYrKOAhshHz790K8xr2F5LTEfNv5ceohjAfv
+	 QfQq2T7354fXt93IQemu2UiMdVIvUF8QYeJToD+iSxGmykNftt5q98Xp+yyyMmJuR9
+	 64uccJ2ACZfqd+cfuoJlGNpYnF+6D7yZ1KIVUUkY5OYlDs0eBaD/a9q/vBgSQ23PjY
+	 +SWPaT3My3tt9GQlVYiNZLFwOpgssaYTLjxbXnyLlGy/YWIGIjV/KGKkS45ct4YwEz
+	 +kEQZKpe2MAQOOPrmwbo6zpv9aK15Lf4N12VEfILN1wfVNpgacMYyXvyFkCZoWiJrn
+	 6yXyLkBBw+Q5A==
+Message-ID: <4ef6dd5a13bfb51f72452aa30f59c89a54037404.camel@kernel.org>
+Subject: Re: [PATCH v6 3/6] nfsd: implement server-stats-get netlink handler
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 16 Jul 2026 09:35:57 -0400
-In-Reply-To: <20260712204554.125308-1-cel@kernel.org>
-References: <20260712204554.125308-1-cel@kernel.org>
+Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org,
+ linux-kernel@vger.kernel.org
+Date: Thu, 16 Jul 2026 09:53:28 -0400
+In-Reply-To: <8173debc-96fb-4354-ba11-dff99b772523@app.fastmail.com>
+References: <20260619-exportd-netlink-v6-0-ddef3499793c@kernel.org>
+	 <20260619-exportd-netlink-v6-3-ddef3499793c@kernel.org>
+	 <8173debc-96fb-4354-ba11-dff99b772523@app.fastmail.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -120,56 +124,232 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2026-07-12 at 16:45 -0400, Chuck Lever wrote:
-> fs/nfsd/nfsd.h has become a kitchen sink of unrelated declarations
-> and definitions, including a broad swathe of headers and other
-> detritus in NFSD source files. This organization introduces
-> brittleness that makes it difficult to execute changes that cut
-> across layers and internal modules that might otherwise be cleanly
-> siloed. It also pulls in unused items into each TU, making
-> compilation of nfsd.ko needlessly slower and more computationally-
-> expensive.
+On Fri, 2026-06-19 at 16:40 -0400, Chuck Lever wrote:
 >=20
-> This series begins sorting through this pile to relocate items that
-> are obviously better placed in NFS version- or task-specific
-> headers.
+> On Fri, Jun 19, 2026, at 11:26 AM, Jeff Layton wrote:
+> > Implement nfsd_nl_server_stats_get_dumpit() which exposes the
+> > NFS server statistics currently available via /proc/net/rpc/nfsd
+> > through the nfsd generic netlink family.
 >=20
-> Chuck Lever (9):
->   NFSD: Make "stats.h" self-contained
->   NFSD: Explicitly include "stats.h"
->   NFSD: include "netns.h"
->   NFSD: Remove '#include "nfsd.h"' from fs/nfsd/cache.h
->   NFSD: Move the export.h include from nfsd.h to auth.c
->   NFSD: Move struct readdir_cd
->   NFSD: Relocate nfsd_user_namespace()
->   NFSD: Relocate nfsd4_set_netaddr()
->   NFSD: Relocate NFSv4 "supported attributes" to new header
+> A couple of questions on the dump design and one on the commit message,
+> then some smaller items.
 >=20
->  fs/nfsd/attr4.h     | 162 +++++++++++++++++++++++++++++++++++
->  fs/nfsd/auth.c      |  19 +++++
->  fs/nfsd/auth.h      |   6 ++
->  fs/nfsd/cache.h     |   3 +-
->  fs/nfsd/nfs4idmap.c |   1 +
->  fs/nfsd/nfs4proc.c  |  32 +++++++
->  fs/nfsd/nfs4state.c |   1 +
->  fs/nfsd/nfs4xdr.c   |   2 +
->  fs/nfsd/nfscache.c  |   2 +
->  fs/nfsd/nfsctl.c    |   2 +
->  fs/nfsd/nfsd.h      | 202 +-------------------------------------------
->  fs/nfsd/nfsfh.c     |   2 +
->  fs/nfsd/nfsxdr.c    |   2 +
->  fs/nfsd/state.h     |   3 +
->  fs/nfsd/stats.c     |   2 +
->  fs/nfsd/stats.h     |   3 +
->  fs/nfsd/trace.h     |   1 +
->  fs/nfsd/vfs.c       |   2 +
->  fs/nfsd/vfs.h       |   5 +-
->  fs/nfsd/xdr.h       |   1 +
->  fs/nfsd/xdr3.h      |   1 +
->  fs/nfsd/xdr4.h      |   2 +-
->  22 files changed, 253 insertions(+), 203 deletions(-)
->  create mode 100644 fs/nfsd/attr4.h
+> The commit message says:
+>=20
+> >   - First message: all scalar stats (reply cache, filehandle,
+> >     IO, network, RPC) plus per-version procedure counts
+> >     (proc2/3/4-ops) using per-netns vs_count arrays.
+> >=20
+> >   - Subsequent messages: NFSv4 per-operation counts
+> >     (proc4ops-ops), one entry per message, using cb->args[0]
+> >     to track the current operation index across dump calls.
+>=20
+> The code does not stream across subsequent messages.  The proc4ops-ops
+> nests are emitted in the first message, inside the same "if (start =3D=3D=
+ 0)"
+> block as the scalars, and cb->args[0] only ever holds 0 or -1, never an
+> operation index.  The function's own kerneldoc agrees: "The entire
+> server-stats object is emitted in a single netlink message on the first
+> invocation."
+>=20
+> Should the commit message be reworded to match the code, or should the co=
+de
+> move to the streaming design the message describes?  That second option t=
+ies
+> into the next question.
+>=20
+> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> > index 601301e34fc7..f0514d8149cd 100644
+> > --- a/fs/nfsd/nfsctl.c
+> > +++ b/fs/nfsd/nfsctl.c
+> > @@ -2329,6 +2329,185 @@ int nfsd_nl_cache_flush_doit(struct sk_buff *sk=
+b, struct genl_info *info)
+> >  	return 0;
+> >  }
+> >=20
+> > +static int nfsd_nl_fill_proc_ops(struct sk_buff *skb, int attr,
+> > +				 unsigned long __percpu *counts,
+> > +				 unsigned int nproc)
+> > +{
+> > +	struct nlattr *nest;
+> > +	unsigned int j;
+> > +	int k;
+> > +
+> > +	for (j =3D 0; j < nproc; j++) {
+> > +		unsigned long count =3D 0;
+> > +
+> > +		for_each_possible_cpu(k)
+> > +			count +=3D per_cpu(counts[j], k);
+> > +
+> > +		nest =3D nla_nest_start(skb, attr);
+> > +		if (!nest)
+> > +			return -EMSGSIZE;
+> > +		if (nla_put_u32(skb, NFSD_A_SERVER_PROC_ENTRY_OP, j) ||
+> > +		    nla_put_u64_64bit(skb, NFSD_A_SERVER_PROC_ENTRY_COUNT,
+> > +				      count, NFSD_A_SERVER_PROC_ENTRY_PAD)) {
+> > +			nla_nest_cancel(skb, nest);
+> > +			return -EMSGSIZE;
+> > +		}
+> > +		nla_nest_end(skb, nest);
+> > +	}
+> > +
+> > +	return 0;
+> > +}
+> > +
+> > +/**
+> > + * nfsd_nl_server_stats_get_dumpit - dump NFS server statistics
+> > + * @skb: reply buffer
+> > + * @cb: netlink metadata and command arguments
+> > + *
+> > + * The entire server-stats object is emitted in a single netlink messa=
+ge on
+> > + * the first invocation. cb->args[0] is set to -1 afterwards so that t=
+he next
+> > + * invocation terminates the dump.
+> > + *
+> > + * Returns the size of the reply or a negative errno.
+> > + */
+> > +int nfsd_nl_server_stats_get_dumpit(struct sk_buff *skb,
+> > +				    struct netlink_callback *cb)
+> > +{
+> > +	struct net *net =3D sock_net(skb->sk);
+> > +	struct nfsd_net *nn =3D net_generic(net, nfsd_net_id);
+> > +	struct svc_stat *statp =3D &nn->nfsd_svcstats;
+> > +	struct svc_program *prog =3D statp->program;
+> > +	int start =3D cb->args[0];
+> > +	void *hdr;
+> > +
+> > +	/*
+> > +	 * cb->args[0] =3D=3D 0: first call, emit the full server-stats objec=
+t
+> > +	 * cb->args[0] < 0: dump already complete
+> > +	 */
+> > +	if (start < 0)
+> > +		return 0;
+> > +
+> > +	if (start =3D=3D 0) {
+> > +		hdr =3D genlmsg_put(skb, NETLINK_CB(cb->skb).portid,
+> > +				  cb->nlh->nlmsg_seq, &nfsd_nl_family,
+> > +				  NLM_F_MULTI, NFSD_CMD_SERVER_STATS_GET);
+> > +		if (!hdr)
+> > +			return -ENOBUFS;
+> > +
+>=20
+> This handler assembles the entire server-stats object -- all scalars, the
+> proc2/3/4-ops nests, and one proc4ops-ops nest per NFSv4 operation -- in =
+one
+> message under "if (start =3D=3D 0)", then sets cb->args[0] =3D -1 so the =
+next call
+> ends the dump.
+>=20
+> Does that hold up once the assembled message no longer fits the dump buff=
+er?
+> A dump skb is allocated at max(cb->min_dump_alloc, NLMSG_GOODSIZE), and t=
+his
+> handler sets neither cb->min_dump_alloc nor a .start callback, so the flo=
+or
+> is NLMSG_GOODSIZE, which is SKB_WITH_OVERHEAD(PAGE_SIZE), roughly 3.7k on=
+ a
+> 4k-page host.  A larger skb is allocated only when userspace has previous=
+ly
+> grown its receive buffer.
+>=20
+> With LAST_NFS4_OP at 75, the proc4ops-ops loop alone emits 76 nests of ab=
+out
+> 28 bytes each (~2.1k); the proc2 and proc3 nests plus the scalar block br=
+ing
+> the total to roughly 3.5k -- already within a few hundred bytes of the fl=
+oor,
+> and growing by one nest for every NFSv4 operation added later.
+>=20
+> [ ... scalar puts for reply cache, fh, io, net, rpc snipped ... ]
+>=20
+> > +		/* Per-version procedure counts */
+> > +		if (statp->vs_count) {
+> > +			static const int proc_attrs[] =3D {
+> > +				[2] =3D NFSD_A_SERVER_STATS_PROC2_OPS,
+> > +				[3] =3D NFSD_A_SERVER_STATS_PROC3_OPS,
+> > +				[4] =3D NFSD_A_SERVER_STATS_PROC4_OPS,
+> > +			};
+> > +			unsigned int i;
+> > +
+> > +			for (i =3D 0; i < prog->pg_nvers &&
+> > +			     i < ARRAY_SIZE(proc_attrs); i++) {
+> > +				if (!prog->pg_vers[i] ||
+> > +				    !statp->vs_count[i])
+> > +					continue;
+> > +				if (!proc_attrs[i])
+> > +					continue;
+> > +				if (nfsd_nl_fill_proc_ops(skb,
+> > +						proc_attrs[i],
+> > +						statp->vs_count[i],
+> > +						prog->pg_vers[i]->vs_nproc))
+> > +					goto err_cancel;
+> > +			}
+> > +		}
+> > +
+> > +#ifdef CONFIG_NFSD_V4
+> > +		/* NFSv4 individual operation counts */
+> > +		for (int i =3D 0; i <=3D LAST_NFS4_OP; i++) {
+> > +			struct nlattr *nest;
+> > +			u64 cnt;
+> > +
+> > +			cnt =3D percpu_counter_sum_positive(
+> > +				&nn->counter[NFSD_STATS_NFS4_OP(i)]);
+> > +
+> > +			nest =3D nla_nest_start(skb,
+> > +					NFSD_A_SERVER_STATS_PROC4OPS_OPS);
+> > +			if (!nest)
+> > +				goto err_cancel;
+> > +			if (nla_put_u32(skb, NFSD_A_SERVER_PROC_ENTRY_OP, i) ||
+> > +			    nla_put_u64_64bit(skb, NFSD_A_SERVER_PROC_ENTRY_COUNT,
+> > +					      cnt, NFSD_A_SERVER_PROC_ENTRY_PAD)) {
+> > +				nla_nest_cancel(skb, nest);
+> > +				goto err_cancel;
+> > +			}
+> > +			nla_nest_end(skb, nest);
+> > +		}
+> > +#endif
+>=20
+> This loop open-codes the same nest that nfsd_nl_fill_proc_ops() builds ju=
+st
+> above -- nla_nest_start(), nla_put_u32(PROC_ENTRY_OP),
+> nla_put_u64_64bit(PROC_ENTRY_COUNT), nla_nest_end() -- into the same
+> NFSD_A_SERVER_STATS_PROC4OPS_OPS attribute.  Could the helper be generali=
+zed
+> to take the per-op counter source so this is not a second copy of the sam=
+e
+> code?
+>=20
+> The per-version block above skips empty versions:
+>=20
+> 	if (!prog->pg_vers[i] || !statp->vs_count[i])
+> 		continue;
+>=20
+> but this loop emits an entry for every op 0..LAST_NFS4_OP, zero-count ops
+> included.  Is that difference intentional?  Skipping zero counts here wou=
+ld
+> also trim the worst-case message size above.
+>=20
+> There is also a counter that this dump does not emit.  /proc/net/rpc/nfsd
+> prints a wdeleg_getattr line after proc4ops:
+>=20
+> 	seq_printf(seq, "\nwdeleg_getattr %lld",
+> 		percpu_counter_sum_positive(&nn->counter[NFSD_STATS_WDELEG_GETATTR]));
+>=20
+> incremented by nfsd_stats_wdeleg_getattr_inc().  Since the goal is to exp=
+ose
+> the statistics currently available via /proc/net/rpc/nfsd, should
+> wdeleg_getattr get an attribute here too, so nfsstat over netlink does no=
+t
+> drop it relative to the procfs path?
+>=20
 
-This all looks sane.
+The only thing in this review that is not addressed in my current
+series is the above comment, and I think we had agreed in an earlier
+email thread that this was approximately the same value as the counter
+for CB_GETATTR calls and so it's good enough for this purpose.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Are you still ok with this approach?
+--=20
+Jeff Layton <jlayton@kernel.org>
