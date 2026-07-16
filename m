@@ -1,47 +1,47 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EC2882773D8
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 10:32:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 24CDB40A937
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 10:32:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784197942; cv=none; b=rP/ikKaaHu0ZCMiBT7sppHSHYJG8Lsmoeww433Ka9f91uxfsf/T4lG75nvi7zQhGz6znJhhxsEVwfUCIkbVeEdHKCB8q441FclL6cOwSGbeltC1s0aBmECgCLMrtb8OrtCYaI4w6WcqgUMUaeBF6OHqIFNDrGkc1W+qj0vWJtJc=
+	t=1784197947; cv=none; b=uvW4ADeq+F0RH5e9akT3S2hwAtbBMDOVeOXlzII97nSSusuSZAHk4quqxswBJQs4cIo3ARVnAeJu6ZeqNGIcB5ELemwpAlyuo+S2/AekT1N+440aFzEoXZpzaNUVs2N+s4zWg7OiEfZaCUTiYBAZ/XAwV8ZwgHTRzwZFik5BV6U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784197942; c=relaxed/simple;
-	bh=LxHST2X436bFB7OzHXW7LBM+i6fZz0ksafycZppI3Tk=;
+	s=arc-20240116; t=1784197947; c=relaxed/simple;
+	bh=5ZGE+mho8ulJw6UH6KcBmvhNxbnh5+t8g4Xi+B7GKoE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gkATHDZzrK640Gd20E8i3SJiE1/v1ijsSjzlyiUKybR0W9Hu60MHVOkCvwhOEoEboTSQVEA5vCH/CmdoqAVWYy8+NtGxvvFu0gKhiG9lRsF7Do0twbz08wM4dSWl4D/cDolC35bi26o3XJGqCQqrbxuJOHJQKPWicg99H2ax20g=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=foqPJux2; arc=none smtp.client-ip=170.10.133.124
+	 MIME-Version; b=KhSLxoNtYMYGEQ4uioKWTQEqCLeimjMl3t5K6v7BCNU0lCxXngCvPry3mfL3Ix/y0Qu9iXib8/OYAdnvVgSIjbhymcRknO1wdzORw824ggAXrl9CWFsl0PexgIEOlXZk/3RAZgm6Aa0S5rqOP1n86tLWgdO8zjbsvySiLtf6bA4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=M09xufeA; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="foqPJux2"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="M09xufeA"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1784197939;
+	s=mimecast20190719; t=1784197945;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=18bm19niT7sH22JxiGiAnPte/D01KgtSKt9AZ/XjKZM=;
-	b=foqPJux2LaZgUIFrwLgdIeEN9QrZW/Fcxl4CDXzH5wjzOUP5vqSn0XL0yoiBDpYKLxQzW1
-	LtRTPEaes6eLKZ1rKwsSh+S29nULp9kOvIr67REc/fhS+BT2LaIFqvBuzdWcfXAgIfOThH
-	EXHEkGi23cVloTNtHtQLzHHFutyk2QM=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
+	bh=TC7u1wJqNrRG8z8GLvvATlIZdgquMp2P+436mVi2G3I=;
+	b=M09xufeADNp0scjrd5g/hgAziQZkOdF03bENk3rnNiwu1WAyjmHYOOu42AZMQr49ZqvPlS
+	almpwkDRVRwH356BcKI4i2hjzzrRMf4hMzfH/P2yyJl4XJeCty04cDciqNBUFb0qmC0Ymw
+	qzYjtQM1XUNYDURuuIbD+ugXj/v3RW8=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
  (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-636-ms7snaQhN3CppUhuYiZ8DQ-1; Thu,
- 16 Jul 2026 06:32:13 -0400
-X-MC-Unique: ms7snaQhN3CppUhuYiZ8DQ-1
-X-Mimecast-MFC-AGG-ID: ms7snaQhN3CppUhuYiZ8DQ_1784197922
-Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-658-gG-u_WZAM1GRnOj1UfxImQ-1; Thu,
+ 16 Jul 2026 06:32:20 -0400
+X-MC-Unique: gG-u_WZAM1GRnOj1UfxImQ-1
+X-Mimecast-MFC-AGG-ID: gG-u_WZAM1GRnOj1UfxImQ_1784197938
+Received: from mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.93])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 57FCF1955F75;
-	Thu, 16 Jul 2026 10:32:02 +0000 (UTC)
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id F1DAD1954B27;
+	Thu, 16 Jul 2026 10:32:17 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.44.33.159])
-	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id DBEBE1956042;
-	Thu, 16 Jul 2026 10:31:55 +0000 (UTC)
+	by mx-prod-int-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 9BAA61800347;
+	Thu, 16 Jul 2026 10:32:11 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Matthew Wilcox <willy@infradead.org>,
@@ -65,10 +65,12 @@ Cc: David Howells <dhowells@redhat.com>,
 	v9fs@lists.linux.dev,
 	linux-erofs@lists.ozlabs.org,
 	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v6 09/24] afs: Use a bvecq to hold dir content rather than folioq
-Date: Thu, 16 Jul 2026 11:30:08 +0100
-Message-ID: <20260716103030.3065561-10-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org,
+	Shyam Prasad N <sprasad@microsoft.com>,
+	Tom Talpey <tom@talpey.com>
+Subject: [PATCH v6 11/24] smbdirect: Support ITER_BVECQ in smbdirect_map_sges_from_iter()
+Date: Thu, 16 Jul 2026 11:30:10 +0100
+Message-ID: <20260716103030.3065561-12-dhowells@redhat.com>
 In-Reply-To: <20260716103030.3065561-1-dhowells@redhat.com>
 References: <20260716103030.3065561-1-dhowells@redhat.com>
 Precedence: bulk
@@ -78,597 +80,114 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
+X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.93
 
-Use a bvecq to hold the contents of a directory rather than the folioq so
-that the latter can be phased out.
+Add support for ITER_BVECQ to smbdirect_map_sges_from_iter().
 
 Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Stefan Metzmacher <metze@samba.org>
 cc: Paulo Alcantara <pc@manguebit.org>
 cc: Matthew Wilcox <willy@infradead.org>
 cc: Christoph Hellwig <hch@infradead.org>
-cc: Marc Dionne <marc.dionne@auristor.com>
-cc: linux-afs@lists.infradead.org
+cc: Steve French <sfrench@samba.org>
+cc: Shyam Prasad N <sprasad@microsoft.com>
+cc: Tom Talpey <tom@talpey.com>
+cc: linux-cifs@vger.kernel.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/afs/dir.c           |  35 +++++----
- fs/afs/dir_edit.c      |  42 +++++------
- fs/afs/dir_search.c    |  33 ++++-----
- fs/afs/inode.c         |   2 +-
- fs/afs/internal.h      |   6 +-
- fs/afs/symlink.c       |  34 ++++-----
- fs/netfs/write_issue.c | 156 ++++++-----------------------------------
- 7 files changed, 92 insertions(+), 216 deletions(-)
+ fs/smb/smbdirect/connection.c | 66 +++++++++++++++++++++++++++++++++++
+ 1 file changed, 66 insertions(+)
 
-diff --git a/fs/afs/dir.c b/fs/afs/dir.c
-index 6df56fe9163f..547faa06c80b 100644
---- a/fs/afs/dir.c
-+++ b/fs/afs/dir.c
-@@ -140,9 +140,9 @@ static void afs_dir_dump(struct afs_vnode *dvnode)
- 	pr_warn("DIR %llx:%llx is=%llx\n",
- 		dvnode->fid.vid, dvnode->fid.vnode, i_size);
- 
--	iov_iter_folio_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
--	iterate_folioq(&iter, iov_iter_count(&iter), NULL, NULL,
--		       afs_dir_dump_step);
-+	iov_iter_bvec_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
-+	iterate_bvecq(&iter, iov_iter_count(&iter), NULL, NULL,
-+		      afs_dir_dump_step);
- }
- 
- /*
-@@ -203,9 +203,9 @@ static int afs_dir_check(struct afs_vnode *dvnode)
- 	if (unlikely(!i_size))
- 		return 0;
- 
--	iov_iter_folio_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
--	checked = iterate_folioq(&iter, iov_iter_count(&iter), dvnode, NULL,
--				 afs_dir_check_step);
-+	iov_iter_bvec_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
-+	checked = iterate_bvecq(&iter, iov_iter_count(&iter), dvnode, NULL,
-+				afs_dir_check_step);
- 	if (checked != i_size) {
- 		afs_dir_dump(dvnode);
- 		return -EIO;
-@@ -250,15 +250,14 @@ static ssize_t afs_do_read_single(struct afs_vnode *dvnode, struct file *file)
- 	if (dvnode->directory_size < i_size) {
- 		size_t cur_size = dvnode->directory_size;
- 
--		ret = netfs_alloc_folioq_buffer(NULL,
--						&dvnode->directory, &cur_size, i_size,
--						mapping_gfp_mask(dvnode->netfs.inode.i_mapping));
-+		ret = bvecq_expand_buffer(&dvnode->directory, &cur_size, i_size,
-+					  GFP_KERNEL);
- 		dvnode->directory_size = cur_size;
- 		if (ret < 0)
- 			return ret;
- 	}
- 
--	iov_iter_folio_queue(&iter, ITER_DEST, dvnode->directory, 0, 0, dvnode->directory_size);
-+	iov_iter_bvec_queue(&iter, ITER_DEST, dvnode->directory, 0, 0, dvnode->directory_size);
- 
- 	/* AFS requires us to perform the read of a directory synchronously as
- 	 * a single unit to avoid issues with the directory contents being
-@@ -294,8 +293,8 @@ static ssize_t afs_read_single(struct afs_vnode *dvnode, struct file *file)
- }
- 
- /*
-- * Read the directory into a folio_queue buffer in one go, scrubbing the
-- * previous contents.  We return -ESTALE if the caller needs to call us again.
-+ * Read the directory into the buffer in one go, scrubbing the previous
-+ * contents.  We return -ESTALE if the caller needs to call us again.
+diff --git a/fs/smb/smbdirect/connection.c b/fs/smb/smbdirect/connection.c
+index 8adf58097534..4d2a1700104e 100644
+--- a/fs/smb/smbdirect/connection.c
++++ b/fs/smb/smbdirect/connection.c
+@@ -5,6 +5,7 @@
   */
- ssize_t afs_read_dir(struct afs_vnode *dvnode, struct file *file)
- 	__acquires(&dvnode->validate_lock)
-@@ -483,7 +482,7 @@ static size_t afs_dir_iterate_step(void *iter_base, size_t progress, size_t len,
- }
  
- /*
-- * Iterate through the directory folios.
-+ * Iterate through the directory content.
-  */
- static int afs_dir_iterate_contents(struct inode *dir, struct dir_context *dir_ctx)
- {
-@@ -498,11 +497,11 @@ static int afs_dir_iterate_contents(struct inode *dir, struct dir_context *dir_c
- 	if (i_size <= 0 || dir_ctx->pos >= i_size)
- 		return 0;
+ #include "internal.h"
++#include <linux/bvecq.h>
+ #include <linux/folio_queue.h>
  
--	iov_iter_folio_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
-+	iov_iter_bvec_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0, i_size);
- 	iov_iter_advance(&iter, round_down(dir_ctx->pos, AFS_DIR_BLOCK_SIZE));
- 
--	iterate_folioq(&iter, iov_iter_count(&iter), dvnode, &ctx,
--		       afs_dir_iterate_step);
-+	iterate_bvecq(&iter, iov_iter_count(&iter), dvnode, &ctx,
-+		      afs_dir_iterate_step);
- 
- 	if (ctx.error == -ESTALE)
- 		afs_invalidate_dir(dvnode, afs_dir_invalid_iter_stale);
-@@ -2228,8 +2227,8 @@ static int afs_dir_writepages(struct address_space *mapping,
- 	}
- 
- 	if (test_bit(AFS_VNODE_DIR_VALID, &dvnode->flags)) {
--		iov_iter_folio_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0,
--				     i_size_read(&dvnode->netfs.inode));
-+		iov_iter_bvec_queue(&iter, ITER_SOURCE, dvnode->directory, 0, 0,
-+				    i_size_read(&dvnode->netfs.inode));
- 		ret = netfs_writeback_single(mapping, wbc, &iter);
- 		if (ret == 1)
- 			ret = 0; /* Skipped write due to lock conflict. */
-diff --git a/fs/afs/dir_edit.c b/fs/afs/dir_edit.c
-index 3ead36a07048..01c6265e8865 100644
---- a/fs/afs/dir_edit.c
-+++ b/fs/afs/dir_edit.c
-@@ -110,9 +110,8 @@ static void afs_clear_contig_bits(union afs_xdr_dir_block *block,
-  */
- static union afs_xdr_dir_block *afs_dir_get_block(struct afs_dir_iter *iter, size_t block)
- {
--	struct folio_queue *fq;
- 	struct afs_vnode *dvnode = iter->dvnode;
--	struct folio *folio;
-+	struct bvecq *bq;
- 	size_t blpos = block * AFS_DIR_BLOCK_SIZE;
- 	size_t blend = (block + 1) * AFS_DIR_BLOCK_SIZE, fpos = iter->fpos;
- 	int ret;
-@@ -120,41 +119,38 @@ static union afs_xdr_dir_block *afs_dir_get_block(struct afs_dir_iter *iter, siz
- 	if (dvnode->directory_size < blend) {
- 		size_t cur_size = dvnode->directory_size;
- 
--		ret = netfs_alloc_folioq_buffer(
--			NULL, &dvnode->directory, &cur_size, blend,
--			mapping_gfp_mask(dvnode->netfs.inode.i_mapping));
-+		ret = bvecq_expand_buffer(&dvnode->directory, &cur_size, blend,
-+					  GFP_KERNEL);
- 		dvnode->directory_size = cur_size;
- 		if (ret < 0)
- 			goto fail;
- 	}
- 
--	fq = iter->fq;
--	if (!fq)
--		fq = dvnode->directory;
-+	bq = iter->bq;
-+	if (!bq)
-+		bq = dvnode->directory;
- 
--	/* Search the folio queue for the folio containing the block... */
--	for (; fq; fq = fq->next) {
--		for (int s = iter->fq_slot; s < folioq_count(fq); s++) {
--			size_t fsize = folioq_folio_size(fq, s);
-+	/* Search the contents for the region containing the block... */
-+	for (; bq; bq = bq->next) {
-+		for (int s = iter->bq_slot; s < bq->nr_slots; s++) {
-+			struct bio_vec *bv = &bq->bv[s];
-+			size_t bsize = bv->bv_len;
- 
--			if (blend <= fpos + fsize) {
-+			if (blend <= fpos + bsize) {
- 				/* ... and then return the mapped block. */
--				folio = folioq_folio(fq, s);
--				if (WARN_ON_ONCE(folio_pos(folio) != fpos))
--					goto fail;
--				iter->fq = fq;
--				iter->fq_slot = s;
-+				iter->bq = bq;
-+				iter->bq_slot = s;
- 				iter->fpos = fpos;
--				return kmap_local_folio(folio, blpos - fpos);
-+				return bvec_kmap_partial(bv, blpos - fpos);
- 			}
--			fpos += fsize;
-+			fpos += bsize;
- 		}
--		iter->fq_slot = 0;
-+		iter->bq_slot = 0;
- 	}
- 
- fail:
--	iter->fq = NULL;
--	iter->fq_slot = 0;
-+	iter->bq = NULL;
-+	iter->bq_slot = 0;
- 	afs_invalidate_dir(dvnode, afs_dir_invalid_edit_get_block);
- 	return NULL;
- }
-diff --git a/fs/afs/dir_search.c b/fs/afs/dir_search.c
-index 104411c0692f..01751c680115 100644
---- a/fs/afs/dir_search.c
-+++ b/fs/afs/dir_search.c
-@@ -66,12 +66,11 @@ bool afs_dir_init_iter(struct afs_dir_iter *iter, const struct qstr *name)
-  */
- union afs_xdr_dir_block *afs_dir_find_block(struct afs_dir_iter *iter, size_t block)
- {
--	struct folio_queue *fq = iter->fq;
- 	struct afs_vnode *dvnode = iter->dvnode;
--	struct folio *folio;
-+	struct bvecq *bq = iter->bq;
- 	size_t blpos = block * AFS_DIR_BLOCK_SIZE;
- 	size_t blend = (block + 1) * AFS_DIR_BLOCK_SIZE, fpos = iter->fpos;
--	int slot = iter->fq_slot;
-+	int slot = iter->bq_slot;
- 
- 	_enter("%zx,%d", block, slot);
- 
-@@ -83,36 +82,34 @@ union afs_xdr_dir_block *afs_dir_find_block(struct afs_dir_iter *iter, size_t bl
- 	if (dvnode->directory_size < blend)
- 		goto fail;
- 
--	if (!fq || blpos < fpos) {
--		fq = dvnode->directory;
-+	if (!bq || blpos < fpos) {
-+		bq = dvnode->directory;
- 		slot = 0;
- 		fpos = 0;
- 	}
- 
- 	/* Search the folio queue for the folio containing the block... */
--	for (; fq; fq = fq->next) {
--		for (; slot < folioq_count(fq); slot++) {
--			size_t fsize = folioq_folio_size(fq, slot);
-+	for (; bq; bq = bq->next) {
-+		for (; slot < bq->nr_slots; slot++) {
-+			struct bio_vec *bv = &bq->bv[slot];
-+			size_t bsize = bv->bv_len;
- 
--			if (blend <= fpos + fsize) {
-+			if (blend <= fpos + bsize) {
- 				/* ... and then return the mapped block. */
--				folio = folioq_folio(fq, slot);
--				if (WARN_ON_ONCE(folio_pos(folio) != fpos))
--					goto fail;
--				iter->fq = fq;
--				iter->fq_slot = slot;
-+				iter->bq = bq;
-+				iter->bq_slot = slot;
- 				iter->fpos = fpos;
--				iter->block = kmap_local_folio(folio, blpos - fpos);
-+				iter->block = bvec_kmap_partial(bv, blpos - fpos);
- 				return iter->block;
- 			}
--			fpos += fsize;
-+			fpos += bsize;
- 		}
- 		slot = 0;
- 	}
- 
- fail:
--	iter->fq = NULL;
--	iter->fq_slot = 0;
-+	iter->bq = NULL;
-+	iter->bq_slot = 0;
- 	afs_invalidate_dir(dvnode, afs_dir_invalid_edit_get_block);
- 	return NULL;
- }
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index 14f39a9bea6c..634fbf8eb212 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -683,7 +683,7 @@ void afs_evict_inode(struct inode *inode)
- 	flush_delayed_work(&vnode->lock_work);
- 	netfs_wait_for_outstanding_io(inode);
- 	truncate_inode_pages_final(&inode->i_data);
--	netfs_free_folioq_buffer(vnode->directory);
-+	bvecq_put(vnode->directory);
- 	if (vnode->symlink)
- 		afs_evict_symlink(vnode);
- 
-diff --git a/fs/afs/internal.h b/fs/afs/internal.h
-index 601f01e5c15f..e6b52c0039bf 100644
---- a/fs/afs/internal.h
-+++ b/fs/afs/internal.h
-@@ -710,7 +710,7 @@ struct afs_vnode {
- #define AFS_VNODE_MODIFYING	10		/* Set if we're performing a modification op */
- #define AFS_VNODE_DIR_READ	11		/* Set if we've read a dir's contents */
- 
--	struct folio_queue	*directory;	/* Directory contents */
-+	struct bvecq		*directory;	/* Directory contents */
- 	struct afs_symlink __rcu *symlink;	/* Symlink content */
- 	struct list_head	wb_keys;	/* List of keys available for writeback */
- 	struct list_head	pending_locks;	/* locks waiting to be granted */
-@@ -991,9 +991,9 @@ static inline void afs_invalidate_cache(struct afs_vnode *vnode, unsigned int fl
- struct afs_dir_iter {
- 	struct afs_vnode	*dvnode;
- 	union afs_xdr_dir_block *block;
--	struct folio_queue	*fq;
-+	struct bvecq		*bq;
- 	unsigned int		fpos;
--	int			fq_slot;
-+	int			bq_slot;
- 	unsigned int		loop_check;
- 	u8			nr_slots;
- 	u8			bucket;
-diff --git a/fs/afs/symlink.c b/fs/afs/symlink.c
-index 16b4823cb7b7..84f8ab222dd6 100644
---- a/fs/afs/symlink.c
-+++ b/fs/afs/symlink.c
-@@ -56,7 +56,6 @@ void afs_evict_symlink(struct afs_vnode *vnode)
- void afs_init_new_symlink(struct afs_vnode *vnode, struct afs_operation *op)
- {
- 	struct afs_symlink *symlink = op->create.symlink;
--	size_t dsize = 0;
- 	size_t size = strlen(symlink->content) + 1;
- 	char *p;
- 
-@@ -66,13 +65,15 @@ void afs_init_new_symlink(struct afs_vnode *vnode, struct afs_operation *op)
- 	if (!fscache_cookie_enabled(netfs_i_cookie(&vnode->netfs)))
- 		return;
- 
--	if (netfs_alloc_folioq_buffer(NULL, &vnode->directory, &dsize, size,
--				      mapping_gfp_mask(vnode->netfs.inode.i_mapping)) < 0)
-+	vnode->directory = bvecq_alloc_buffer(PAGE_SIZE, GFP_KERNEL);
-+	if (!vnode->directory)
- 		return;
- 
--	vnode->directory_size = dsize;
--	p = kmap_local_folio(folioq_folio(vnode->directory, 0), 0);
-+	vnode->directory_size = size;
-+	p = bvec_kmap_partial(&vnode->directory->bv[0], 0);
- 	memcpy(p, symlink->content, size);
-+	if (size < PAGE_SIZE)
-+		memset(p + size, 0, PAGE_SIZE - size);
- 	kunmap_local(p);
- 	netfs_single_mark_inode_dirty(&vnode->netfs.inode);
- }
-@@ -94,17 +95,12 @@ static ssize_t afs_do_read_symlink(struct afs_vnode *vnode)
- 	}
- 
- 	if (!vnode->directory) {
--		size_t cur_size = 0;
--
--		ret = netfs_alloc_folioq_buffer(NULL,
--						&vnode->directory, &cur_size, PAGE_SIZE,
--						mapping_gfp_mask(vnode->netfs.inode.i_mapping));
--		vnode->directory_size = PAGE_SIZE - 1;
--		if (ret < 0)
--			return ret;
-+		vnode->directory = bvecq_alloc_buffer(PAGE_SIZE, GFP_KERNEL);
-+		if (!vnode->directory)
-+			return -ENOMEM;
- 	}
- 
--	iov_iter_folio_queue(&iter, ITER_DEST, vnode->directory, 0, 0, PAGE_SIZE);
-+	iov_iter_bvec_queue(&iter, ITER_DEST, vnode->directory, 0, 0, PAGE_SIZE);
- 
- 	/* AFS requires us to perform the read of a symlink as a single unit to
- 	 * avoid issues with the content being changed between reads.
-@@ -127,7 +123,7 @@ static ssize_t afs_do_read_symlink(struct afs_vnode *vnode)
- 		refcount_set(&symlink->ref, 1);
- 		symlink->content[i_size] = 0;
- 
--		const char *s = kmap_local_folio(folioq_folio(vnode->directory, 0), 0);
-+		const char *s = bvec_kmap_partial(&vnode->directory->bv[0], 0);
- 
- 		memcpy(symlink->content, s, i_size);
- 		kunmap_local(s);
-@@ -136,7 +132,7 @@ static ssize_t afs_do_read_symlink(struct afs_vnode *vnode)
- 	}
- 
- 	if (!fscache_cookie_enabled(netfs_i_cookie(&vnode->netfs))) {
--		netfs_free_folioq_buffer(vnode->directory);
-+		bvecq_put(vnode->directory);
- 		vnode->directory = NULL;
- 		vnode->directory_size = 0;
- 	}
-@@ -249,14 +245,14 @@ int afs_symlink_writepages(struct address_space *mapping,
- 
- 	if (vnode->directory &&
- 	    atomic64_read(&vnode->cb_expires_at) != AFS_NO_CB_PROMISE) {
--		iov_iter_folio_queue(&iter, ITER_SOURCE, vnode->directory, 0, 0,
--				     i_size_read(&vnode->netfs.inode));
-+		iov_iter_bvec_queue(&iter, ITER_SOURCE, vnode->directory, 0, 0,
-+				    i_size_read(&vnode->netfs.inode));
- 		ret = netfs_writeback_single(mapping, wbc, &iter);
- 	}
- 
- 	if (ret == 0) {
- 		netfs_wb_begin(&vnode->netfs, false);
--		netfs_free_folioq_buffer(vnode->directory);
-+		bvecq_put(vnode->directory);
- 		vnode->directory = NULL;
- 		vnode->directory_size = 0;
- 		netfs_wb_end(&vnode->netfs);
-diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c
-index f2761c99795a..33cc7a8c8394 100644
---- a/fs/netfs/write_issue.c
-+++ b/fs/netfs/write_issue.c
-@@ -708,124 +708,11 @@ ssize_t netfs_end_writethrough(struct netfs_io_request *wreq, struct writeback_c
+ struct smbdirect_map_sges {
+@@ -2006,6 +2007,68 @@ static ssize_t smbdirect_map_sges_from_bvec(struct iov_iter *iter,
  	return ret;
  }
  
--/*
-- * Write some of a pending folio data back to the server and/or the cache.
-- */
--static int netfs_write_folio_single(struct netfs_io_request *wreq,
--				    struct folio *folio)
--{
--	struct netfs_io_stream *upload = &wreq->io_streams[0];
--	struct netfs_io_stream *cache  = &wreq->io_streams[1];
--	struct netfs_io_stream *stream;
--	size_t iter_off = 0;
--	size_t fsize = folio_size(folio), flen;
--	loff_t fpos = folio_pos(folio);
--	bool to_eof = false;
--	bool no_debug = false;
--
--	_enter("");
--
--	flen = folio_size(folio);
--	if (flen > wreq->i_size - fpos) {
--		flen = wreq->i_size - fpos;
--		folio_zero_segment(folio, flen, fsize);
--		to_eof = true;
--	} else if (flen == wreq->i_size - fpos) {
--		to_eof = true;
--	}
--
--	_debug("folio %zx/%zx", flen, fsize);
--
--	if (!upload->avail && !cache->avail) {
--		trace_netfs_folio(folio, netfs_folio_trace_cancel_store);
--		return 0;
--	}
--
--	if (!upload->construct)
--		trace_netfs_folio(folio, netfs_folio_trace_store);
--	else
--		trace_netfs_folio(folio, netfs_folio_trace_store_plus);
--
--	/* Attach the folio to the rolling buffer. */
--	folio_get(folio);
--	rolling_buffer_append(&wreq->buffer, folio, NETFS_ROLLBUF_PUT_MARK);
--
--	/* Move the submission point forward to allow for write-streaming data
--	 * not starting at the front of the page.  We don't do write-streaming
--	 * with the cache as the cache requires DIO alignment.
--	 *
--	 * Also skip uploading for data that's been read and just needs copying
--	 * to the cache.
--	 */
--	for (int s = 0; s < NR_IO_STREAMS; s++) {
--		stream = &wreq->io_streams[s];
--		stream->submit_off = 0;
--		stream->submit_len = flen;
--		if (!stream->avail) {
--			stream->submit_off = UINT_MAX;
--			stream->submit_len = 0;
--		}
--	}
--
--	/* Attach the folio to one or more subrequests.  For a big folio, we
--	 * could end up with thousands of subrequests if the wsize is small -
--	 * but we might need to wait during the creation of subrequests for
--	 * network resources (eg. SMB credits).
--	 */
--	for (;;) {
--		ssize_t part;
--		size_t lowest_off = ULONG_MAX;
--		int choose_s = -1;
--
--		/* Always add to the lowest-submitted stream first. */
--		for (int s = 0; s < NR_IO_STREAMS; s++) {
--			stream = &wreq->io_streams[s];
--			if (stream->submit_len > 0 &&
--			    stream->submit_off < lowest_off) {
--				lowest_off = stream->submit_off;
--				choose_s = s;
--			}
--		}
--
--		if (choose_s < 0)
--			break;
--		stream = &wreq->io_streams[choose_s];
--
--		/* Advance the iterator(s). */
--		if (stream->submit_off > iter_off) {
--			rolling_buffer_advance(&wreq->buffer, stream->submit_off - iter_off);
--			iter_off = stream->submit_off;
--		}
--
--		atomic64_set(&wreq->issued_to, fpos + stream->submit_off);
--		stream->submit_extendable_to = fsize - stream->submit_off;
--		part = netfs_advance_write(wreq, stream, fpos + stream->submit_off,
--					   stream->submit_len, to_eof);
--		stream->submit_off += part;
--		if (part > stream->submit_len)
--			stream->submit_len = 0;
--		else
--			stream->submit_len -= part;
--		if (part > 0)
--			no_debug = true;
--	}
--
--	wreq->buffer.iter.iov_offset = 0;
--	if (fsize > iter_off)
--		rolling_buffer_advance(&wreq->buffer, fsize - iter_off);
--	atomic64_set(&wreq->issued_to, fpos + fsize);
--
--	if (!no_debug)
--		kdebug("R=%x: No submit", wreq->debug_id);
--	_leave(" = 0");
--	return 0;
--}
--
- /**
-  * netfs_writeback_single - Write back a monolithic payload
-  * @mapping: The mapping to write from
-  * @wbc: Hints from the VM
-- * @iter: Data to write, must be ITER_FOLIOQ.
-+ * @iter: Data to write.
-  *
-  * Write a monolithic, non-pagecache object back to the server and/or
-  * the cache.
-@@ -839,13 +726,8 @@ int netfs_writeback_single(struct address_space *mapping,
- {
- 	struct netfs_io_request *wreq;
- 	struct netfs_inode *ictx = netfs_inode(mapping->host);
--	struct folio_queue *fq;
--	size_t size = iov_iter_count(iter);
- 	int ret;
- 
--	if (WARN_ON_ONCE(!iov_iter_is_folioq(iter)))
--		return -EIO;
--
- 	if (!netfs_wb_begin(ictx, wbc->sync_mode == WB_SYNC_NONE)) {
- 		/* The VFS will have undirtied the inode. */
- 		netfs_single_mark_inode_dirty(&ictx->inode);
-@@ -858,6 +740,9 @@ int netfs_writeback_single(struct address_space *mapping,
- 		goto couldnt_start;
- 	}
- 
-+	wreq->buffer.iter = *iter;
-+	wreq->len = iov_iter_count(iter);
++/*
++ * Extract memory fragments from a BVECQ-class iterator and add them to an RDMA
++ * list.  The fragments are not pinned.
++ */
++static ssize_t smbdirect_map_sges_from_bvecq(struct iov_iter *iter,
++					     struct smbdirect_map_sges *state,
++					     ssize_t maxsize)
++{
++	const struct bvecq *bq = iter->bvecq;
++	unsigned int slot = iter->bvecq_slot;
++	ssize_t extracted = 0;
++	size_t offset = iter->iov_offset;
 +
- 	__set_bit(NETFS_RREQ_OFFLOAD_COLLECTION, &wreq->flags);
- 	trace_netfs_write(wreq, netfs_write_trace_writeback_single);
- 	netfs_stat(&netfs_n_wh_writepages);
-@@ -865,30 +750,33 @@ int netfs_writeback_single(struct address_space *mapping,
- 	if (__test_and_set_bit(NETFS_RREQ_UPLOAD_TO_SERVER, &wreq->flags))
- 		wreq->netfs_ops->begin_writeback(wreq);
- 
--	for (fq = (struct folio_queue *)iter->folioq; fq; fq = fq->next) {
--		for (int slot = 0; slot < folioq_count(fq); slot++) {
--			struct folio *folio = folioq_folio(fq, slot);
--			size_t part = umin(folioq_folio_size(fq, slot), size);
-+	for (int s = 0; s < NR_IO_STREAMS; s++) {
-+		struct netfs_io_subrequest *subreq;
-+		struct netfs_io_stream *stream = &wreq->io_streams[s];
++	maxsize = umin(maxsize, iov_iter_count(iter));
 +
-+		if (!stream->avail)
-+			continue;
- 
--			_debug("wbiter %lx %llx", folio->index, atomic64_read(&wreq->issued_to));
-+		netfs_prepare_write(wreq, stream, 0);
- 
--			ret = netfs_write_folio_single(wreq, folio);
--			if (ret < 0)
--				goto stop;
--			size -= part;
--			if (size <= 0)
--				goto stop;
--		}
-+		subreq = stream->construct;
-+		subreq->len = wreq->len;
-+		stream->submit_len = subreq->len;
-+		stream->submit_extendable_to = round_up(wreq->len, PAGE_SIZE);
++	do {
++		struct bio_vec *bv;
++		size_t bsize;
 +
-+		netfs_issue_write(wreq, stream);
- 	}
- 
--stop:
--	for (int s = 0; s < NR_IO_STREAMS; s++)
--		netfs_issue_write(wreq, &wreq->io_streams[s]);
- 	smp_wmb(); /* Write lists before ALL_QUEUED. */
- 	set_bit(NETFS_RREQ_ALL_QUEUED, &wreq->flags);
- 
- 	netfs_wake_collector(wreq);
- 
-+	/* TODO: Might want to be async here if WB_SYNC_NONE, but then need to
-+	 * wait before modifying.
-+	 */
-+	ret = netfs_wait_for_write(wreq);
++		while (slot >= bq->nr_slots) {
++			if (!bq->next) {
++				if (WARN_ON_ONCE(maxsize > 0))
++					return -EIO;
++				goto out;
++			}
++			bq = bq->next;
++			slot = 0;
++		}
 +
- 	netfs_put_request(wreq, netfs_rreq_trace_put_return);
- 	_leave(" = %d", ret);
- 	return ret;
++		bv = &bq->bv[slot];
++		bsize = bv->bv_len;
++
++		if (offset < bsize) {
++			size_t part = umin(maxsize, bsize - offset);
++			bool ok;
++
++			ok = smbdirect_map_sges_single_page(state,
++							    bv->bv_page,
++							    bv->bv_offset + offset,
++							    part);
++			if (!ok)
++				return -EIO;
++
++			offset += part;
++			extracted += part;
++			maxsize -= part;
++		}
++
++		if (offset >= bsize) {
++			offset = 0;
++			slot++;
++		}
++	} while (state->num_sge < state->max_sge && maxsize > 0);
++
++out:
++	iter->bvecq = bq;
++	iter->bvecq_slot = slot;
++	iter->iov_offset = offset;
++	iter->count -= extracted;
++	return extracted;
++}
++
+ /*
+  * Extract fragments from a KVEC-class iterator and add them to an ib_sge list.
+  * This can deal with vmalloc'd buffers as well as kmalloc'd or static buffers.
+@@ -2155,6 +2218,9 @@ static ssize_t smbdirect_map_sges_from_iter(struct iov_iter *iter, size_t len,
+ 	case ITER_BVEC:
+ 		ret = smbdirect_map_sges_from_bvec(iter, state, len);
+ 		break;
++	case ITER_BVECQ:
++		ret = smbdirect_map_sges_from_bvecq(iter, state, len);
++		break;
+ 	case ITER_KVEC:
+ 		ret = smbdirect_map_sges_from_kvec(iter, state, len);
+ 		break;
 
