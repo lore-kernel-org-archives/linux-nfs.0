@@ -1,40 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7032542376D
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 13:29:43 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 644CE41E6D4
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Jul 2026 13:35:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784208584; cv=none; b=RBEt+ag/vbmBraCRh524G46fHDe7UFMECdNjiO5wBpN9j1wMRC9F+SYT2hZ39mbPKLd/Kfa1vi7fmF1cabf7irYu2Egx3JlmwrrswvlU+1/OaQSE5xL6T4anIfaokQCQZ6BHneKBO4K6/gEswJqxxYqbOOYzIO69v/CVGq7hwnk=
+	t=1784208960; cv=none; b=F9QQtOAXHSKV5QZCoXEzEjvXjZZfL1tp1u9/QvoC+M+AEj5Qd1vVZZHT/oYVdTAj6tvWoE09GKiFX/scRULZap7Z2mtXlv6WW9v+AjWxHzDhsR1Jw3qfBgsIqmhpbt6zK244HrODMlfVIY/DYmgHzY2tT87EM3ha9X+GO5QcXtU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784208584; c=relaxed/simple;
-	bh=nJji+JUsV3FNEsDaGC7aKciguPR8IpLDyN2m5CBvkOA=;
+	s=arc-20240116; t=1784208960; c=relaxed/simple;
+	bh=NIRMTSxc4olALt83GhQIj0WrumFcEB+9WPTyNYgZkeo=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=pFPRy3zjNEjEwZIhRV6FLkpdQbV+hRrWC8DbthRLnytLT+TdmKRpKk3cbSGEEWtK/fUFY2PF3hm0r8FRS1v4T9+yAa/lpABNnJ1vGaGDiUwzUPOZQ2sEbSGupD4WH5STvbxcGvH7dfBvXtE5JlBC4soQBgBfXYjBKTARWnPbOx4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mMkF3tdj; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=YD9aA9Z1jrB9kOVo/TkRGcQMTD/TpaYzA4NcG4iOaJESnFuir+OV0+r2Lkv64AfUfhmk6kLyuuwEw7jiY2UohHzh/9J+15X4uZ9iuB3jku6uMiI5XH1Ai30ToBN4UXR2jcrDJD8TFyPoIzyMRGbD6GVYnnJ3WKOgCArIPo+JHjU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=I4mcC5DF; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mMkF3tdj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8DA9A1F000E9;
-	Thu, 16 Jul 2026 13:29:42 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="I4mcC5DF"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A21B71F000E9;
+	Thu, 16 Jul 2026 13:35:58 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784208583;
-	bh=XZ8nj2YL0mqMVIYNdkj3miB9N0JevEXB/T1TxAUzg/U=;
+	s=k20260515; t=1784208959;
+	bh=Ufm06w4/Y00qHV60qCJQBY/GXJJt9Tm/fQKObTDFcWg=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=mMkF3tdjOtpXwt6rWzD95twrULP5/cTyhyt57myCKt5o7pVYe21Wmg/Dn/9TrxkLF
-	 wpvsdDBBHUdOouXP8FR0FShmBguPYXghKPzSBDm25ec9Nd+Y5ObmUT9xpihcXbMeQ4
-	 hBebdCtWqT3marqGizwXHPERUsvecAnPR1zZ1YPLt/ZCe8VnDwnnyRHC7A5G/i//0S
-	 ApXXyGe40wvFNJJB5qo60WIdsoilTGiMftd+icXHgkJikeL+26JBYzV9thmqkVHf/1
-	 PP6XXy1RPJPBpRRXw8B4V/nL7BDzKimyyrsS4HLM0G0SLhIZkVL/cxO+E0tpHU3Cof
-	 M5HuUTbuES0Zw==
-Message-ID: <9ab523157c18bb8968ae965dbc5aca76178ff2ac.camel@kernel.org>
-Subject: Re: [PATCH v3 00/17] nfsd: refactor nfs4_create_file()
+	b=I4mcC5DFz4RoPDsSE/L/RuulnE6gTm7Eu7mcif89seotjktvyLZD3EqU5XG983f2X
+	 pNuhXxlps4ArjhfdET7Ny7NssgtIh6VeNkp9Gv6+j4206gUIPiql7rbEwf2+EsdHcU
+	 hvA1lVNFR1aq9PPe0hB+URr3i6j9nurL8mWkJjdKexAj/pY4/ERvbCCmukxyNWTmJ4
+	 eJeynZXkCPIzLWrrvbCUC8APD/puPFGpusWfcb3WNoFSckecpwAnTNSrqC7pJsrRlz
+	 pD3E+sT9RXIcjOpJmhWODEZhQx69tPXGWOOXuB3J6Ksh4EQEKBShQf+332a9gQtZYe
+	 hAKjfZVkQlfcQ==
+Message-ID: <545008d7262e836c3edd5e67ce8d715e24642e21.camel@kernel.org>
+Subject: Re: [PATCH 0/9] Start reorganizing fs/nfsd/nfsd.h
 From: Jeff Layton <jlayton@kernel.org>
-To: NeilBrown <neil@brown.name>, Chuck Lever <chuck.lever@oracle.com>
-Cc: Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org
-Date: Thu, 16 Jul 2026 09:29:40 -0400
-In-Reply-To: <20260713062219.6399-1-neilb@ownmail.net>
-References: <20260713062219.6399-1-neilb@ownmail.net>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 16 Jul 2026 09:35:57 -0400
+In-Reply-To: <20260712204554.125308-1-cel@kernel.org>
+References: <20260712204554.125308-1-cel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -119,88 +120,56 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2026-07-13 at 16:15 +1000, NeilBrown wrote:
-> This v2 incorporates fixes for issues Chuck reported from "Codex
-> review".  These changes are distributed around the patches a bit, but
-> 02/17 is an interesting new bugfix.
+On Sun, 2026-07-12 at 16:45 -0400, Chuck Lever wrote:
+> fs/nfsd/nfsd.h has become a kitchen sink of unrelated declarations
+> and definitions, including a broad swathe of headers and other
+> detritus in NFSD source files. This organization introduces
+> brittleness that makes it difficult to execute changes that cut
+> across layers and internal modules that might otherwise be cleanly
+> siloed. It also pulls in unused items into each TU, making
+> compilation of nfsd.ko needlessly slower and more computationally-
+> expensive.
 >=20
-> This is against nfs-testing (5f5dc3d855cf).
+> This series begins sorting through this pile to relocate items that
+> are obviously better placed in NFS version- or task-specific
+> headers.
 >=20
-> Thanks,
-> NeilBrown
+> Chuck Lever (9):
+>   NFSD: Make "stats.h" self-contained
+>   NFSD: Explicitly include "stats.h"
+>   NFSD: include "netns.h"
+>   NFSD: Remove '#include "nfsd.h"' from fs/nfsd/cache.h
+>   NFSD: Move the export.h include from nfsd.h to auth.c
+>   NFSD: Move struct readdir_cd
+>   NFSD: Relocate nfsd_user_namespace()
+>   NFSD: Relocate nfsd4_set_netaddr()
+>   NFSD: Relocate NFSv4 "supported attributes" to new header
 >=20
->  [PATCH v3 01/17] nfsd: honour client-provided attributes for
->  [PATCH v3 02/17] nfsd: correctly handle CREATE of mounted-on files
->  [PATCH v3 03/17] nfsd: replace fh_fill_both_attrs() with
->  [PATCH v3 04/17] nfsd: move fh_want_write() after preamble in
->  [PATCH v3 05/17] nfsd: move more nfs-specific code into preamble of
->  [PATCH v3 06/17] nfsd: remove subtlety from nfsd4_create_file()
->  [PATCH v3 07/17] nfsd: in nfsd4_create_file() let VFS report if file
->  [PATCH v3 08/17] nfsd: nfsd4_create_file(): Move NFSD_MAY_CREATE
->  [PATCH v3 09/17] nfsd: fh_want_write) failure need not be immediately
->  [PATCH v3 10/17] nfsd: (almost) always open file in
->  [PATCH v3 11/17] nfsd: reduce range of directory lock in
->  [PATCH v3 12/17] nfsd: open-code nfsd4_vfs_create() into
->  [PATCH v3 13/17] nfsd: move some code out of the
->  [PATCH v3 14/17] nfsd: reduce want-write range in nfsd4_create_file()
->  [PATCH v3 15/17] nfsd: move v0 checking out of nfsd_check_obj_isreg()
->  [PATCH v3 16/17] nfsd: separate out VFS-specific code from
->  [PATCH v3 17/17] nfsd: use do_lookup_open() for non-creating open
+>  fs/nfsd/attr4.h     | 162 +++++++++++++++++++++++++++++++++++
+>  fs/nfsd/auth.c      |  19 +++++
+>  fs/nfsd/auth.h      |   6 ++
+>  fs/nfsd/cache.h     |   3 +-
+>  fs/nfsd/nfs4idmap.c |   1 +
+>  fs/nfsd/nfs4proc.c  |  32 +++++++
+>  fs/nfsd/nfs4state.c |   1 +
+>  fs/nfsd/nfs4xdr.c   |   2 +
+>  fs/nfsd/nfscache.c  |   2 +
+>  fs/nfsd/nfsctl.c    |   2 +
+>  fs/nfsd/nfsd.h      | 202 +-------------------------------------------
+>  fs/nfsd/nfsfh.c     |   2 +
+>  fs/nfsd/nfsxdr.c    |   2 +
+>  fs/nfsd/state.h     |   3 +
+>  fs/nfsd/stats.c     |   2 +
+>  fs/nfsd/stats.h     |   3 +
+>  fs/nfsd/trace.h     |   1 +
+>  fs/nfsd/vfs.c       |   2 +
+>  fs/nfsd/vfs.h       |   5 +-
+>  fs/nfsd/xdr.h       |   1 +
+>  fs/nfsd/xdr3.h      |   1 +
+>  fs/nfsd/xdr4.h      |   2 +-
+>  22 files changed, 253 insertions(+), 203 deletions(-)
+>  create mode 100644 fs/nfsd/attr4.h
 
-I ran a review pass over this with an LLM and it found a few issues.
-Let me know if you want the more detailed inline reviews:
+This all looks sane.
 
-Regressions found
------------------
-[high] 850097d914d3 "always open file in nfsd4_create_file()"
-  dentry_open() now runs on any positive dentry the client name resolves
-  to, before the nfsd_check_obj_isreg() type check in do_open_lookup().
-  For an existing fifo, the default O_RDONLY (no O_NONBLOCK) open blocks in
-  fifo_open() waiting for a writer, and does so while the parent directory
-  i_rwsem is held (start_creating..end_creating) - an nfsd thread stall
-  with the directory locked. Device nodes invoke the driver ->open. The
-  ordering persists to the series head (do_lookup_open). Detail:
-  series-review/850097d914d3/review-inline.txt.
-
-[medium] 90a149d88abc "reduce want-write range in nfsd4_create_file()"
-  Issue 1: For a write-mode create the setattr now runs without
-  sb_start_write() freeze protection. The reduced want_write is dropped
-  after end_creating(); only the O_RDONLY branch reacquires fh_want_write()
-  around nfsd_create_setattr(). A write-mode open holds the mnt writer
-  reference but not freeze protection, and nfsd_setattr() does not take its
-  own (resfhp->fh_dentry is set, so get_write_count is false). A concurrent
-  freeze_super() can complete in the window, after which notify_change()
-  modifies a frozen filesystem.
-  Issue 2 (low): commit message says "we add a call to dentry_open()" for
-  the already-exists case, but that call pre-exists; only the comment is
-  reworded. Detail: series-review/90a149d88abc/review-inline.txt.
-
-[medium] f467dd742c2d "separate out VFS-specific ... do_lookup_open()"
-  Issue 1: "if (status =3D=3D NFSERR_NOENT && create_status)" compares a __=
-be32
-  status against the raw host enum NFSERR_NOENT (2). status holds
-  nfserr_noent =3D=3D cpu_to_be32(2) =3D=3D 0x02000000 on little-endian, so=
- the
-  branch never fires and the create-permission error (create_status) is
-  masked by NFS4ERR_NOENT. Should be nfserr_noent. Persists to commit 14.
-  Issue 2 (trivial): duplicated word in the subject ("from from").
-  Detail: series-review/f467dd742c2d/review-inline.txt.
-
-[high] b4f1a9d54d0f "use do_lookup_open() for non-creating open requests to=
-o."
-  Issue 1: do_lookup_open() begins with an unconditional mnt_want_write().
-  Now that non-creating OPEN is routed through it (previously nfsd_lookup()=
-,
-  which needs no write access), a plain read-only OPEN of an existing file
-  returns NFS4ERR_ROFS when the exported filesystem is mounted read-only or
-  has a read-only superblock (squashfs, iso9660, erofs, ro-mounted
-  ext4/xfs). mnt_want_write() also calls sb_start_write(), so a read OPEN
-  now blocks while the filesystem is frozen.
-  Issue 2 (medium/perf): do_lookup_open() uses start_creating(), taking the
-  parent i_rwsem exclusively for every non-creating OPEN; nfsd_lookup()
-  previously used lookup_one_unlocked() (shared, or none on a dcache hit),
-  so concurrent opens in one directory are now serialised.
-  Detail: series-review/b4f1a9d54d0f/review-inline.txt.
-
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
