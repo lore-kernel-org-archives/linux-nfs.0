@@ -1,323 +1,545 @@
-Received: from fhigh-a7-smtp.messagingengine.com (fhigh-a7-smtp.messagingengine.com [103.168.172.158])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C16013BE17F
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Jul 2026 09:31:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.158
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 347193F787E;
+	Fri, 17 Jul 2026 11:09:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784280697; cv=none; b=AsQTcuOu5uSdroEG5GYwLGSpdpeoSta8qsUcpz3O31tHa+Iv20INys3KQuE/qmzA4Dv5jyOkG7qOHu3neGGn76k7l5ussqu8b4zl7eoEF8uU5h21d29yHDdB1pjr+rHc8BcoF7fxnS/XapG7qgYViwzi5uGQg3GFFUVyuGsWjlo=
+	t=1784286561; cv=none; b=TbSU5IkjAi1+ua3MQElXp/6x35XJ0Qf/qptg60kbohQi8BNNFILJtSvFAcXl7BvH4sSE2yrl5G/5pWO/0jxAtnzmSV1WxA23+Z7zQ7BbFSNmKmvk8HRCjiXgsoCb8dAfdofrMN9NnYaQQL8oH/v9x9ekKv/INeZo1JqnDYRrbmM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784280697; c=relaxed/simple;
-	bh=ZjbPtUdJkzvGLk4K8xeExbi3VERmDr+6dr6IAwnxqRI=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=M7T0/663mDDe2p5bWdbX0sdIDdGDQIUNsGT8qp+tCasQtvUZVG9rD1oVE1cbH9emuc1Yk7medRs+cDMuwGNbKQLgzk+rnBgkbCtUipN573bzxhfHQ2aKLKJpqIBOsqw5kcnVIObw+cGGmnSmY2+f+GCw6Ab7qBtU7Z7wOi0CJPg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=KKinY75U; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=g+aIVrPO; arc=none smtp.client-ip=103.168.172.158
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	s=arc-20240116; t=1784286561; c=relaxed/simple;
+	bh=59tnNmI81A+TE/ri3pJnS4uQdabX+PWqmK4HXTejSio=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=ocxRIkQXjFJkkDxn6KrZiR5srmRHcLuqovzOsYARlC3sCi73SeZqEREEqT2Ckp09qZp2YkKDkkmHEJCh7fi7JGhOtVB20Rpgv2N3JsNTpVQ8DHj2Zdv48V3NPni7kumPWfH/8HpZEnWE0oDUmcaNFkjq7WPl/arhswaDR9AQ/YQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RJ68CZux; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="KKinY75U";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="g+aIVrPO"
-Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailfhigh.phl.internal (Postfix) with ESMTP id E839E1400024;
-	Fri, 17 Jul 2026 05:31:34 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-04.internal (MEProxy); Fri, 17 Jul 2026 05:31:34 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:date:date:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm2; t=1784280694;
-	 x=1784367094; bh=wgRQnyl6hc2be41bDsSsJOMgKn2jIfLkyQY9osErq9g=; b=
-	KKinY75UphCAXmGbmBsvVFSAfqEOiY5GIpcpT4QSLUJUICBate9pTTMgCSbLtmbY
-	Fi+1zY1YtlS6notncCXxj0WwaxW0QzgoqL+cxDx+55O0AXPXv7Fh5NTXijq+z6us
-	q+feaIL4MMZVHyuH9Twjte2FbhQv7bZOQu44t5mLfJuU+bERL9QcQRq0fAeXRPnP
-	gP9zsvj3PJRWHVyoWElgQVByTudyJePE73yOM/pY7Dn9zZYs1hONNKyvZKWpuwAj
-	iggKeSQo6597L0PQve1VPKwLAMXL6ehUY2X7CxaEM3WXBOYtiGhXbWW/S6k8ghQr
-	6h9vP05rGNDB83ltwDSp2A==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:date:date:feedback-id:feedback-id:from:from
-	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm2; t=1784280694; x=1784367094; bh=w
-	gRQnyl6hc2be41bDsSsJOMgKn2jIfLkyQY9osErq9g=; b=g+aIVrPOSkgGsKD7c
-	wfJukW/E+iHo22jcbrPajs8E+8cGwf4TSRGXJEJ7NJUtzWcH2Er6xNi90un4bXnN
-	dtBw+AvC6osMbn791ni94kRfCN3z88CGVCcctq+eunwtn1ej8Omc03KsdWrZEl6D
-	WIX00oBz6DdteJgz+6m+bTEZhXW9QwjSKwSRulRkYLmUpQIg0OswAPduiF/JQjbl
-	zSqENwD/csKPa78BbZmOFWymBAkTfoXb1wVcL62HM1rhEAeu6kc6k4iwXp4VG3TE
-	vlJyJNmTMgM12mUYkX4F1kUbF97vaURtrww7d/i0+spx3SCr0DmYDK4Md9n7u3uC
-	qKA8w==
-X-ME-Sender: <xms:dvZZagVi0mg8lxjEvftb-FG8KRbhHSgd4r0G1Tl1FZWLm4xBofoWHg>
-    <xme:dvZZaoR7sU-Z5BsBg1PQmyeWGDn3bYwCyOOBTj1-SRRRYGqfmJQPzQc6MWdHCenIs
-    A0HgWRLA-f0jxfsr6Xbz24oxKqq9EaEDPvEchlXLfc6fGbuNg>
-X-ME-Received: <xmr:dvZZauOJ_QE2jX7BvgqQqv-OyDgdpWVBZgwrg3xkJrMgeV6n3mWLTE2A6dFqDKVQeyti3B0DEVlplP3e3ipXW7XDAVl47vI>
-X-ME-Proxy-Cause: dmFkZTEWR11FIoOU7sLBysZ6MvBVA6kk3IPNP6YE/I53vP2pOfWKjkNlUeP+s2aJ83e6ID
-    9m5wdHpLp28Kbqr8S3EO34JWG8UQDO4OgJ4NECiBfpWV6/jtmGuQ29O/t0+yaCKFdVxjCu
-    2+c4BPeFMmJNt9nQnqio9kGZURKlbZ6guJLeRZWGYbJgs6hFz2+k5Vp9dQmxbocHJRb2ez
-    Rbo/Hi+fKrHwlrp8u5Xo7hQobz5byTQlnnJy3OJdwVQ9MBNgzPG4Dhv4z9o9/FFJjSh/xM
-    dEhm7ru3yn9Nb2b0YE3EpvHOTNLm1T0bZE13FeDcU/3CmDxuC4iGIdb4w2ViFywDYdLiSn
-    +dLACHifog244tvtEWeayjKxA4iCP28Xd/6gh5voPF3YeGeHlmP+qkYyseYh0Bwgwn4p0z
-    9090kaEBYpdbLE5wldLTkPCe08eTwnRl453XOfhKfxKhbo5uZFYlMMaDeBbo0A5joGf38B
-    2aMTT34VOFn2gK2vNrbMPjZg1Y85x6ahhsGnLoMFX7KMtvE0GuzIWpILkKU89EATn1RVw+
-    J5Ua0wymn4qgo3WnbVCcdapU1UehkOsOkKbN/RfYqu4/TlmwQUDS0JPl4075pNxehgpmKB
-    9rXEd7rpjLv0tJxvGKhrLoQwshNIT1Aq2rL3tkofcG4OjxOHEcv6cfJ4m6YA
-X-ME-Proxy: <xmx:dvZZamQXB37exN6Q55-AY7uLRdyZEmTmiGr4EiTCXR9aaKoKpTC3fQ>
-    <xmx:dvZZasicrravwWiws8tQ7khYqeA7uUG8AK2RNAxL6pz91IrdFbW17Q>
-    <xmx:dvZZav-PxDAdSqRWCQkyzxRMxF9V6-FllSNvKEfCqoC_zPlxGS0CvQ>
-    <xmx:dvZZajHgLExVLpXPGDWgN-Yx6NGvcITxG55lZX9p45jadvcOmCA2BQ>
-    <xmx:dvZZal0LIrN8MlpO-A9DHb4Wx1x57KGygEMUpOUnI2IBCr5zEiiYX0xx>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 17 Jul 2026 05:31:32 -0400 (EDT)
-From: NeilBrown <neilb@ownmail.net>
-To: Chuck Lever <chuck.lever@oracle.com>,
-	Jeff Layton <jlayton@kernel.org>
-Cc: Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <Dai.Ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH v5 18/18] nfsd: use do_lookup_open() for non-creating open requests too.
-Date: Fri, 17 Jul 2026 19:28:06 +1000
-Message-ID: <20260717093001.1972119-19-neilb@ownmail.net>
-X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
-In-Reply-To: <20260717093001.1972119-1-neilb@ownmail.net>
-References: <20260717093001.1972119-1-neilb@ownmail.net>
-Reply-To: NeilBrown <neil@brown.name>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RJ68CZux"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9CEF1F00A3D;
+	Fri, 17 Jul 2026 11:09:11 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1784286552;
+	bh=qb1GlZisphJPQAbQd86M/SHe8tJzUUNE1J4JJINpITA=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=RJ68CZuxWKw+VU7359fPEB5Vm4q3PIQmShAH5+/k9pKM3W1JVl+QBRkcWjYMp73lh
+	 IrKPl8bKCnAk+EwAp6dUhkR2yLkMdB340BKv2AhbkCyJg0CNoO1nZefgNknJcMaArD
+	 3DvPLYGqbN5oZ8fNaANG/v1rAUIlPiu+pOkXMhIC8/XipQHQ8N/zJW9q5hEGLj3EIw
+	 S4x+YKg/urNTLUsPgdLM2ZZvaYwTLgAxPn08TFeyUeORyJKYFION1PYP0NokicWvFZ
+	 jxAl8WP0sj8wsOIQMDPeX2ym3ohI7W8SAlL+q7CvpDq0o0n/h2lspN01p0c4UZrX+V
+	 6K8tbBeWwlL5A==
+From: Jeff Layton <jlayton@kernel.org>
+Date: Fri, 17 Jul 2026 07:08:55 -0400
+Subject: [PATCH v7 3/6] nfsd: implement server-stats-get netlink handler
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Message-Id: <20260717-exportd-netlink-v7-3-b7ce17b83b60@kernel.org>
+References: <20260717-exportd-netlink-v7-0-b7ce17b83b60@kernel.org>
+In-Reply-To: <20260717-exportd-netlink-v7-0-b7ce17b83b60@kernel.org>
+To: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
+ Chuck Lever <cel@kernel.org>
+Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org, 
+ linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
+X-Mailer: b4 0.14.3
+X-Developer-Signature: v=1; a=openpgp-sha256; l=14529; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=59tnNmI81A+TE/ri3pJnS4uQdabX+PWqmK4HXTejSio=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqWg1TG/kIsAgi+zgk9UE9UKtOeg960vrYEyS9n
+ cBTvqN0NFWJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaloNUwAKCRAADmhBGVaC
+ FdhfD/sG0Lbmrs7w47m1wfxaniwnnoN1Y7gbnIZgROv4I4rGrsQc8GVCbfY4g9yaM/QrW85pUdf
+ R8DQckdsWdJQOo1xHWJCcdxDRNqH59l7XpGTPzXKYRDs5YU/BpUU5pofNUinL1oUDlqpUFZT3Ii
+ 26+ztMk8By/hOsSbLv0ul6P/XZmoCJJv1JV9ro1pOv9JnaCKXbivTdlfLYITtAzMmlWKeUIhZwg
+ 4O8zoS4xTd39LISvscxb9/h0nwuFbLb4lh82ib6iMRPVPGR+822bB02eSngYVhzmeZS0wkunVLE
+ HvkBsp96a03sgooJeZS5Jt31dm+F/j2Tat3UyrRJrcdYOv6Q96VgUNSAmEC9yYxLN0CKveRSsIm
+ wgtsbmEUX7vsirCoDbVoEkCP/0pMn7zO795XzWO8t2LquaeR+bA8AmW4YowFY0fuvLb4j3rr/MN
+ tAJ06gGWVFfHQfAd2F4f/YmL9Wbo2jO3pmBEg5H0gGRDSFTC57rSx8Ggv3hO7CQve1yPHz4DOnx
+ uTwZMrIUm0FnF7V8GH55Ckd32XR8W18T1Vns7Rfdgy/PlubMFrKRFDF6qjDd4GTs6x3dmZougqg
+ YnpHbcnuWQQpNggNH+PNjPA/aR58REG9cuegE/7lgNDsz/0jm9qvCezdNyuYXHCKOuQb4C5xchW
+ w20bIocEmh8bcxw==
+X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
+ fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-From: NeilBrown <neil@brown.name>
+Implement nfsd_nl_server_stats_get_dumpit() which exposes the
+NFS server statistics currently available via /proc/net/rpc/nfsd
+through the nfsd generic netlink family.
 
-Now that we have do_lookup_open() for creating open requests, we can use
-it for non-creating too as do_lookup_open() is already able to do that.
+The handler uses a dump operation to stream statistics across one
+or more netlink messages. The reply is divided into sections that
+are emitted in order:
 
-This prepares for switching to vfs_lookup_open() once the VFS provides
-that.  This will ensure consistent code and fs-interaction with VFS open().
+  - scalar stats (reply cache, filehandle, IO, network, RPC),
+    emitted once in the first message, then
 
-The resulting simplification allows fh_fill_pre_attrs_unlocked() to be
-moved into nfsd4_open_file() (renamed from nfsd4_create_file()) so it is
-closer to fh_full_post_attrs and fh_fill_post_noop calls.
+  - per-version procedure counts (proc2/3/4-ops) and the NFSv4
+    per-operation counts (proc4ops-ops), using the per-netns
+    vs_count arrays.
 
-As ->op_create_mode isn't defined when op_create is zero, we need a
-local create_mode which is -1 (illegal value) when op_create is zero.
+cb->args[0] tracks the current section and cb->args[1] the entry
+index within it, so a section that does not fit in the current
+message is closed and resumed in the next one. This matters because
+the first dump message is allocated at NLMSG_GOODSIZE (a single page
+on most architectures) regardless of the client's receive buffer;
+packing every counter into one message would overflow it and fail
+the dump with -EMSGSIZE. Userspace merges the attributes from every
+message.
 
-The non-create path now doesn't use nfsd_lookup().  As mount-point
-crossing including nfsd_check_access() is already included for existing
-names, this does not lose us anything.
+This allows nfsstat to retrieve server statistics via netlink
+with a procfs fallback for older kernels.
 
-We now only call mnt_want_write() is there is a flag which indicates we
-might want write access - previously O_CREAT was always set.
-
-Signed-off-by: NeilBrown <neil@brown.name>
+Assisted-by: LLM
+Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4proc.c | 113 ++++++++++++++++++++++-----------------------
- 1 file changed, 56 insertions(+), 57 deletions(-)
+ Documentation/netlink/specs/nfsd.yaml | 105 ++++++++++++++++
+ fs/nfsd/netlink.c                     |   5 +
+ fs/nfsd/netlink.h                     |   2 +
+ fs/nfsd/nfsctl.c                      | 222 ++++++++++++++++++++++++++++++++++
+ include/uapi/linux/nfsd_netlink.h     |  35 ++++++
+ 5 files changed, 369 insertions(+)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index b7fdc75c4b81..11d0411dec08 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -204,9 +204,10 @@ static struct file *do_lookup_open(struct path *parent,
- 	struct file *filp = NULL;
- 	struct path path;
- 	struct dentry *child;
--	int want_write_err = 0;
-+	int want_write_err = -ENOENT;
+diff --git a/Documentation/netlink/specs/nfsd.yaml b/Documentation/netlink/specs/nfsd.yaml
+index 8f36fadd68f7..2a89d355ee7b 100644
+--- a/Documentation/netlink/specs/nfsd.yaml
++++ b/Documentation/netlink/specs/nfsd.yaml
+@@ -330,6 +330,86 @@ attribute-sets:
+           of which client holds the state. Intended for use after
+           all clients have been unexported from a given path,
+           enabling the underlying filesystem to be unmounted.
++  -
++    name: server-proc-entry
++    attributes:
++      -
++        name: op
++        type: u32
++      -
++        name: count
++        type: u64
++      -
++        name: pad
++        type: pad
++  -
++    name: server-stats
++    attributes:
++      -
++        name: rc-hits
++        type: u64
++      -
++        name: rc-misses
++        type: u64
++      -
++        name: rc-nocache
++        type: u64
++      -
++        name: pad
++        type: pad
++      -
++        name: fh-stale
++        type: u64
++      -
++        name: io-read
++        type: u64
++      -
++        name: io-write
++        type: u64
++      -
++        name: netcnt
++        type: u32
++      -
++        name: netudpcnt
++        type: u32
++      -
++        name: nettcpcnt
++        type: u32
++      -
++        name: nettcpconn
++        type: u32
++      -
++        name: rpccnt
++        type: u32
++      -
++        name: rpcbadfmt
++        type: u32
++      -
++        name: rpcbadauth
++        type: u32
++      -
++        name: rpcbadclnt
++        type: u32
++      -
++        name: proc2-ops
++        type: nest
++        nested-attributes: server-proc-entry
++        multi-attr: true
++      -
++        name: proc3-ops
++        type: nest
++        nested-attributes: server-proc-entry
++        multi-attr: true
++      -
++        name: proc4-ops
++        type: nest
++        nested-attributes: server-proc-entry
++        multi-attr: true
++      -
++        name: proc4ops-ops
++        type: nest
++        nested-attributes: server-proc-entry
++        multi-attr: true
  
--	want_write_err = mnt_want_write(parent->mnt);
-+	if (oflags & (O_CREAT|O_RDONLY|O_RDWR|O_TRUNC))
-+		want_write_err = mnt_want_write(parent->mnt);
+ operations:
+   list:
+@@ -516,6 +596,31 @@ operations:
+         request:
+           attributes:
+             - path
++    -
++      name: server-stats-get
++      doc: dump NFS server statistics
++      attribute-set: server-stats
++      dump:
++        reply:
++          attributes:
++            - rc-hits
++            - rc-misses
++            - rc-nocache
++            - fh-stale
++            - io-read
++            - io-write
++            - netcnt
++            - netudpcnt
++            - nettcpcnt
++            - nettcpconn
++            - rpccnt
++            - rpcbadfmt
++            - rpcbadauth
++            - rpcbadclnt
++            - proc2-ops
++            - proc3-ops
++            - proc4-ops
++            - proc4ops-ops
  
- 	child = start_creating(&nop_mnt_idmap, parent->dentry, name);
- 	if (IS_ERR(child)) {
-@@ -242,29 +243,30 @@ static struct file *do_lookup_open(struct path *parent,
+ mcast-groups:
+   list:
+diff --git a/fs/nfsd/netlink.c b/fs/nfsd/netlink.c
+index fbee3676d253..eba8b353f412 100644
+--- a/fs/nfsd/netlink.c
++++ b/fs/nfsd/netlink.c
+@@ -225,6 +225,11 @@ static const struct genl_split_ops nfsd_nl_ops[] = {
+ 		.maxattr	= NFSD_A_UNLOCK_EXPORT_PATH,
+ 		.flags		= GENL_ADMIN_PERM | GENL_CMD_CAP_DO,
+ 	},
++	{
++		.cmd	= NFSD_CMD_SERVER_STATS_GET,
++		.dumpit	= nfsd_nl_server_stats_get_dumpit,
++		.flags	= GENL_CMD_CAP_DUMP,
++	},
+ };
+ 
+ static const struct genl_multicast_group nfsd_nl_mcgrps[] = {
+diff --git a/fs/nfsd/netlink.h b/fs/nfsd/netlink.h
+index af41aa0d4a65..027e2953db26 100644
+--- a/fs/nfsd/netlink.h
++++ b/fs/nfsd/netlink.h
+@@ -42,6 +42,8 @@ int nfsd_nl_cache_flush_doit(struct sk_buff *skb, struct genl_info *info);
+ int nfsd_nl_unlock_ip_doit(struct sk_buff *skb, struct genl_info *info);
+ int nfsd_nl_unlock_filesystem_doit(struct sk_buff *skb, struct genl_info *info);
+ int nfsd_nl_unlock_export_doit(struct sk_buff *skb, struct genl_info *info);
++int nfsd_nl_server_stats_get_dumpit(struct sk_buff *skb,
++				    struct netlink_callback *cb);
+ 
+ enum {
+ 	NFSD_NLGRP_NONE,
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index ae5a7f1ad917..7731051105c9 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -2331,6 +2331,228 @@ int nfsd_nl_cache_flush_doit(struct sk_buff *skb, struct genl_info *info)
+ 	return 0;
  }
  
- /*
-- * Implement NFSv4's unchecked, guarded, and exclusive create
-- * semantics for regular files. Open state for this new file is
-- * subsequently fabricated in nfsd4_process_open2().
-- *
-+ * Implement NFSv4's open semantics for regular files.
-+ * Both create (unchecked, guarded, and exclusive) and non-create.
-+ * Open state for this new file is subsequently fabricated in
-+ * nfsd4_process_open2().
-  * Upon return, caller must release @fhp and @resfhp.
-  */
- static __be32
--nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
--		  struct svc_fh *resfhp, struct nfsd4_open *open)
-+nfsd4_open_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+		struct svc_fh *resfhp, struct nfsd4_open *open)
- {
- 	struct iattr *iap = &open->op_iattr;
- 	struct nfsd_attrs attrs = {
- 		.na_iattr	= iap,
- 		.na_seclabel	= &open->op_label,
- 	};
--	int oflags = O_CREAT | O_LARGEFILE;
-+	int oflags = O_LARGEFILE;
- 	struct dentry *child = ERR_PTR(-EINVAL);
- 	struct path parent = {
- 		.mnt = fhp->fh_export->ex_path.mnt,
- 		.dentry = fhp->fh_dentry,
- 	};
- 	__u32 v_mtime, v_atime;
--	__be32 status, create_status;
-+	int createmode = -1;
-+	__be32 status, create_status = 0;
- 	int want_write_err;
- 
- 	if (name_is_dot_dotdot(open->op_fname, open->op_fnamelen))
-@@ -276,6 +278,10 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (status != nfs_ok)
- 		return status;
- 
-+	status = fh_fill_pre_attrs_unlocked(fhp);
-+	if (status)
-+		return status;
++/* Emit a single server-proc-entry nest: { op, count }. */
++static int nfsd_nl_put_proc_entry(struct sk_buff *skb, int attr,
++				  u32 op, u64 count)
++{
++	struct nlattr *nest;
 +
- 	if (open->op_createmode == NFS4_CREATE_UNCHECKED) {
- 		/*
- 		 * If name is already in dcache we need to check for mountpoints
-@@ -305,11 +311,15 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (!IS_POSIXACL(d_inode(parent.dentry)))
- 		iap->ia_mode &= ~current_umask();
- 
-+	if (open->op_create) {
-+		createmode = open->op_createmode;
-+		oflags |= O_CREAT;
++	nest = nla_nest_start(skb, attr);
++	if (!nest)
++		return -EMSGSIZE;
++	if (nla_put_u32(skb, NFSD_A_SERVER_PROC_ENTRY_OP, op) ||
++	    nla_put_u64_64bit(skb, NFSD_A_SERVER_PROC_ENTRY_COUNT,
++			      count, NFSD_A_SERVER_PROC_ENTRY_PAD)) {
++		nla_nest_cancel(skb, nest);
++		return -EMSGSIZE;
 +	}
- 	/*
- 	 * For the EXCLUSIVE modes we do our own uniqueness tests
- 	 * so don't want O_EXCL.
- 	 */
--	if (open->op_createmode == NFS4_CREATE_GUARDED)
-+	if (createmode == NFS4_CREATE_GUARDED)
- 		oflags |= O_EXCL;
- 
- 	switch (open->op_share_access & NFS4_SHARE_ACCESS_BOTH) {
-@@ -344,7 +354,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 
- 	v_mtime = 0;
- 	v_atime = 0;
--	if (nfsd4_create_is_exclusive(open->op_createmode)) {
-+	if (nfsd4_create_is_exclusive(createmode)) {
- 		u32 *verifier = (u32 *)open->op_verf.data;
- 
- 		/*
-@@ -366,11 +376,11 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		iap->ia_atime.tv_nsec = 0;
- 	}
- 
--	create_status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
--	if (create_status)
--		/* Might still succeed if no create is needed */
--		oflags &= ~O_CREAT;
--
-+	if (oflags & O_CREAT) {
-+		create_status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
-+		if (create_status)
-+			oflags &= ~O_CREAT;
++	nla_nest_end(skb, nest);
++	return 0;
++}
++
++/* Emit the scalar server-stats counters. Only ever called on a fresh skb. */
++static int nfsd_nl_server_stats_scalars(struct sk_buff *skb,
++					struct nfsd_net *nn,
++					struct svc_stat *statp)
++{
++	if (nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_RC_HITS,
++			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_HITS]),
++			NFSD_A_SERVER_STATS_PAD) ||
++	    nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_RC_MISSES,
++			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_MISSES]),
++			NFSD_A_SERVER_STATS_PAD) ||
++	    nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_RC_NOCACHE,
++			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_NOCACHE]),
++			NFSD_A_SERVER_STATS_PAD))
++		return -EMSGSIZE;
++
++	if (nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_FH_STALE,
++			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_FH_STALE]),
++			NFSD_A_SERVER_STATS_PAD))
++		return -EMSGSIZE;
++
++	if (nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_IO_READ,
++			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_IO_READ]),
++			NFSD_A_SERVER_STATS_PAD) ||
++	    nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_IO_WRITE,
++			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_IO_WRITE]),
++			NFSD_A_SERVER_STATS_PAD))
++		return -EMSGSIZE;
++
++	if (nla_put_u32(skb, NFSD_A_SERVER_STATS_NETCNT, statp->netcnt) ||
++	    nla_put_u32(skb, NFSD_A_SERVER_STATS_NETUDPCNT, statp->netudpcnt) ||
++	    nla_put_u32(skb, NFSD_A_SERVER_STATS_NETTCPCNT, statp->nettcpcnt) ||
++	    nla_put_u32(skb, NFSD_A_SERVER_STATS_NETTCPCONN, statp->nettcpconn))
++		return -EMSGSIZE;
++
++	if (nla_put_u32(skb, NFSD_A_SERVER_STATS_RPCCNT, statp->rpccnt) ||
++	    nla_put_u32(skb, NFSD_A_SERVER_STATS_RPCBADFMT, statp->rpcbadfmt) ||
++	    nla_put_u32(skb, NFSD_A_SERVER_STATS_RPCBADAUTH, statp->rpcbadauth) ||
++	    nla_put_u32(skb, NFSD_A_SERVER_STATS_RPCBADCLNT, statp->rpcbadclnt))
++		return -EMSGSIZE;
++
++	return 0;
++}
++
++/*
++ * Emit per-version procedure counts for one NFS version, resuming at *idx.
++ * Returns 0 when the version has been fully emitted (or is not present), or
++ * -EMSGSIZE when @skb filled up, leaving *idx at the entry still to emit.
++ */
++static int nfsd_nl_server_stats_proc(struct sk_buff *skb,
++				     struct svc_stat *statp,
++				     struct svc_program *prog,
++				     unsigned int ver, int attr, int *idx)
++{
++	unsigned long __percpu *counts;
++	unsigned int nproc;
++
++	if (!statp->vs_count || ver >= prog->pg_nvers ||
++	    !prog->pg_vers[ver] || !statp->vs_count[ver])
++		return 0;
++
++	counts = statp->vs_count[ver];
++	nproc = prog->pg_vers[ver]->vs_nproc;
++
++	for (; *idx < nproc; (*idx)++) {
++		unsigned long count = 0;
++		int cpu;
++
++		for_each_possible_cpu(cpu)
++			count += per_cpu(counts[*idx], cpu);
++
++		if (!count)
++			continue;
++		if (nfsd_nl_put_proc_entry(skb, attr, *idx, count))
++			return -EMSGSIZE;
 +	}
- 	open->op_filp = do_lookup_open(&parent,
- 				       &QSTR_LEN(open->op_fname,
- 						 open->op_fnamelen),
-@@ -392,14 +402,15 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		goto out;
- 
- 	if (!open->op_created &&
--	    nfsd4_create_is_exclusive(open->op_createmode) &&
-+	    nfsd4_create_is_exclusive(createmode) &&
- 	    inode_get_mtime_sec(d_inode(child)) == v_mtime &&
- 	    inode_get_atime_sec(d_inode(child)) == v_atime &&
- 	    d_inode(child)->i_size == 0)
- 		open->op_created = true;
- 
- 	if (!open->op_created) {
--		if (open->op_createmode == NFS4_CREATE_UNCHECKED) {
-+		if (open->op_create == NFS4_OPEN_NOCREATE ||
-+		    createmode == NFS4_CREATE_UNCHECKED) {
- 			/* NFSv4 protocol requires change attributes
- 			 * even though no change happened.
- 			 */
-@@ -494,46 +505,34 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
- 	fh_init(*resfh, NFS4_FHSIZE);
- 	open->op_truncate = false;
- 
--	status = fh_fill_pre_attrs_unlocked(current_fh);
--	if (status)
--		goto out;
--	if (open->op_create) {
--		/* FIXME: check session persistence and pnfs flags.
--		 * The nfsv4.1 spec requires the following semantics:
--		 *
--		 * Persistent   | pNFS   | Server REQUIRED | Client Allowed
--		 * Reply Cache  | server |                 |
--		 * -------------+--------+-----------------+--------------------
--		 * no           | no     | EXCLUSIVE4_1    | EXCLUSIVE4_1
--		 *              |        |                 | (SHOULD)
--		 *              |        | and EXCLUSIVE4  | or EXCLUSIVE4
--		 *              |        |                 | (SHOULD NOT)
--		 * no           | yes    | EXCLUSIVE4_1    | EXCLUSIVE4_1
--		 * yes          | no     | GUARDED4        | GUARDED4
--		 * yes          | yes    | GUARDED4        | GUARDED4
--		 */
-+	/* FIXME: check session persistence and pnfs flags.
-+	 * The nfsv4.1 spec requires the following semantics:
-+	 *
-+	 * Persistent   | pNFS   | Server REQUIRED | Client Allowed
-+	 * Reply Cache  | server |                 |
-+	 * -------------+--------+-----------------+--------------------
-+	 * no           | no     | EXCLUSIVE4_1    | EXCLUSIVE4_1
-+	 *              |        |                 | (SHOULD)
-+	 *              |        | and EXCLUSIVE4  | or EXCLUSIVE4
-+	 *              |        |                 | (SHOULD NOT)
-+	 * no           | yes    | EXCLUSIVE4_1    | EXCLUSIVE4_1
-+	 * yes          | no     | GUARDED4        | GUARDED4
-+	 * yes          | yes    | GUARDED4        | GUARDED4
-+	 */
- 
--		current->fs->umask = open->op_umask;
--		status = nfsd4_create_file(rqstp, current_fh, *resfh, open);
--		current->fs->umask = 0;
-+	current->fs->umask = open->op_umask;
-+	status = nfsd4_open_file(rqstp, current_fh, *resfh, open);
-+	current->fs->umask = 0;
- 
--		/*
--		 * Following rfc 3530 14.2.16, and rfc 5661 18.16.4
--		 * use the returned bitmask to indicate which attributes
--		 * we used to store the verifier:
--		 */
--		if (nfsd4_create_is_exclusive(open->op_createmode) && status == 0)
--			open->op_bmval[1] |= (FATTR4_WORD1_TIME_ACCESS |
--						FATTR4_WORD1_TIME_MODIFY);
--	} else {
--		status = nfsd_lookup(rqstp, current_fh,
--				     open->op_fname, open->op_fnamelen, *resfh);
--		/*
--		 * NFSv4 protocol requires change attributes even though
--		 * no change happened.
--		 */
--		fh_fill_post_noop(current_fh);
--	}
++
++	return 0;
++}
++
++#ifdef CONFIG_NFSD_V4
++/*
++ * Emit NFSv4 per-operation counts, resuming at *idx. Same return convention
++ * as nfsd_nl_server_stats_proc().
++ */
++static int nfsd_nl_server_stats_nfs4ops(struct sk_buff *skb,
++					struct nfsd_net *nn, int *idx)
++{
++	for (; *idx <= LAST_NFS4_OP; (*idx)++) {
++		u64 cnt = percpu_counter_sum_positive(
++				&nn->counter[NFSD_STATS_NFS4_OP(*idx)]);
++
++		if (!cnt)
++			continue;
++		if (nfsd_nl_put_proc_entry(skb, NFSD_A_SERVER_STATS_PROC4OPS_OPS,
++					   *idx, cnt))
++			return -EMSGSIZE;
++	}
++
++	return 0;
++}
++#endif
++
++/* Sections of the server-stats dump, emitted in order across messages. */
++enum {
++	NFSD_SERVER_STATS_SCALARS = 0,
++	NFSD_SERVER_STATS_PROC2,
++	NFSD_SERVER_STATS_PROC3,
++	NFSD_SERVER_STATS_PROC4,
++	NFSD_SERVER_STATS_PROC4OPS,
++	NFSD_SERVER_STATS_DONE,
++};
++
++/**
++ * nfsd_nl_server_stats_get_dumpit - dump NFS server statistics
++ * @skb: reply buffer
++ * @cb: netlink metadata and command arguments
++ *
++ * The server-stats object is emitted across one or more netlink messages.
++ * cb->args[0] tracks the current section and cb->args[1] the entry index
++ * within it, so a section that does not fit in the current message is resumed
++ * in the next one. The scalar counters are small and emitted once, in the
++ * first message; userspace merges the attributes from every message.
++ *
++ * Returns the size of the reply or a negative errno.
++ */
++int nfsd_nl_server_stats_get_dumpit(struct sk_buff *skb,
++				    struct netlink_callback *cb)
++{
++	struct net *net = sock_net(skb->sk);
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct svc_stat *statp = &nn->nfsd_svcstats;
++	struct svc_program *prog = statp->program;
++	int section = cb->args[0];
++	int idx = cb->args[1];
++	void *hdr;
++
++	if (section >= NFSD_SERVER_STATS_DONE)
++		return 0;
++
++	hdr = genlmsg_put(skb, NETLINK_CB(cb->skb).portid,
++			  cb->nlh->nlmsg_seq, &nfsd_nl_family,
++			  NLM_F_MULTI, NFSD_CMD_SERVER_STATS_GET);
++	if (!hdr)
++		return -ENOBUFS;
++
++	/* Scalar stats fit easily and are emitted in the first message. */
++	if (section == NFSD_SERVER_STATS_SCALARS) {
++		if (nfsd_nl_server_stats_scalars(skb, nn, statp))
++			goto err_cancel;
++		section = NFSD_SERVER_STATS_PROC2;
++		idx = 0;
++	}
++
 +	/*
-+	 * Following rfc 3530 14.2.16, and rfc 5661 18.16.4
-+	 * use the returned bitmask to indicate which attributes
-+	 * we used to store the verifier:
++	 * Emit as many of the remaining sections as fit. A section returning
++	 * -EMSGSIZE means the message is full: close it and resume from the
++	 * same section/index on the next call with a fresh skb. Each entry is
++	 * small enough to fit in a fresh skb, so forward progress is assured.
 +	 */
-+	if (open->op_create &&
-+	    nfsd4_create_is_exclusive(open->op_createmode) && status == 0)
-+		open->op_bmval[1] |= (FATTR4_WORD1_TIME_ACCESS |
-+				      FATTR4_WORD1_TIME_MODIFY);
- 	if (status)
- 		goto out;
- 	status = nfserrno(nfsd_check_obj_isreg((*resfh)->fh_dentry));
++	while (section < NFSD_SERVER_STATS_DONE) {
++		int ret = 0;
++
++		switch (section) {
++		case NFSD_SERVER_STATS_PROC2:
++			ret = nfsd_nl_server_stats_proc(skb, statp, prog, 2,
++					NFSD_A_SERVER_STATS_PROC2_OPS, &idx);
++			break;
++		case NFSD_SERVER_STATS_PROC3:
++			ret = nfsd_nl_server_stats_proc(skb, statp, prog, 3,
++					NFSD_A_SERVER_STATS_PROC3_OPS, &idx);
++			break;
++		case NFSD_SERVER_STATS_PROC4:
++			ret = nfsd_nl_server_stats_proc(skb, statp, prog, 4,
++					NFSD_A_SERVER_STATS_PROC4_OPS, &idx);
++			break;
++#ifdef CONFIG_NFSD_V4
++		case NFSD_SERVER_STATS_PROC4OPS:
++			ret = nfsd_nl_server_stats_nfs4ops(skb, nn, &idx);
++			break;
++#endif
++		}
++
++		if (ret == -EMSGSIZE)
++			goto out;
++		if (ret)
++			goto err_cancel;
++
++		section++;
++		idx = 0;
++	}
++
++out:
++	genlmsg_end(skb, hdr);
++	cb->args[0] = section;
++	cb->args[1] = idx;
++	return skb->len;
++
++err_cancel:
++	genlmsg_cancel(skb, hdr);
++	return -EMSGSIZE;
++}
++
+ int nfsd_cache_notify(struct cache_detail *cd, struct cache_head *h, u32 cache_type)
+ {
+ 	struct genlmsghdr *hdr;
+diff --git a/include/uapi/linux/nfsd_netlink.h b/include/uapi/linux/nfsd_netlink.h
+index f5b75d5caba9..3d076d173b1d 100644
+--- a/include/uapi/linux/nfsd_netlink.h
++++ b/include/uapi/linux/nfsd_netlink.h
+@@ -225,6 +225,40 @@ enum {
+ 	NFSD_A_UNLOCK_EXPORT_MAX = (__NFSD_A_UNLOCK_EXPORT_MAX - 1)
+ };
+ 
++enum {
++	NFSD_A_SERVER_PROC_ENTRY_OP = 1,
++	NFSD_A_SERVER_PROC_ENTRY_COUNT,
++	NFSD_A_SERVER_PROC_ENTRY_PAD,
++
++	__NFSD_A_SERVER_PROC_ENTRY_MAX,
++	NFSD_A_SERVER_PROC_ENTRY_MAX = (__NFSD_A_SERVER_PROC_ENTRY_MAX - 1)
++};
++
++enum {
++	NFSD_A_SERVER_STATS_RC_HITS = 1,
++	NFSD_A_SERVER_STATS_RC_MISSES,
++	NFSD_A_SERVER_STATS_RC_NOCACHE,
++	NFSD_A_SERVER_STATS_PAD,
++	NFSD_A_SERVER_STATS_FH_STALE,
++	NFSD_A_SERVER_STATS_IO_READ,
++	NFSD_A_SERVER_STATS_IO_WRITE,
++	NFSD_A_SERVER_STATS_NETCNT,
++	NFSD_A_SERVER_STATS_NETUDPCNT,
++	NFSD_A_SERVER_STATS_NETTCPCNT,
++	NFSD_A_SERVER_STATS_NETTCPCONN,
++	NFSD_A_SERVER_STATS_RPCCNT,
++	NFSD_A_SERVER_STATS_RPCBADFMT,
++	NFSD_A_SERVER_STATS_RPCBADAUTH,
++	NFSD_A_SERVER_STATS_RPCBADCLNT,
++	NFSD_A_SERVER_STATS_PROC2_OPS,
++	NFSD_A_SERVER_STATS_PROC3_OPS,
++	NFSD_A_SERVER_STATS_PROC4_OPS,
++	NFSD_A_SERVER_STATS_PROC4OPS_OPS,
++
++	__NFSD_A_SERVER_STATS_MAX,
++	NFSD_A_SERVER_STATS_MAX = (__NFSD_A_SERVER_STATS_MAX - 1)
++};
++
+ enum {
+ 	NFSD_CMD_RPC_STATUS_GET = 1,
+ 	NFSD_CMD_THREADS_SET,
+@@ -244,6 +278,7 @@ enum {
+ 	NFSD_CMD_UNLOCK_IP,
+ 	NFSD_CMD_UNLOCK_FILESYSTEM,
+ 	NFSD_CMD_UNLOCK_EXPORT,
++	NFSD_CMD_SERVER_STATS_GET,
+ 
+ 	__NFSD_CMD_MAX,
+ 	NFSD_CMD_MAX = (__NFSD_CMD_MAX - 1)
+
 -- 
-2.50.0.107.gf914562f5916.dirty
+2.55.0
 
