@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B467389DE0
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Jul 2026 18:41:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA64238B14B
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Jul 2026 18:41:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784313676; cv=none; b=O+wOR6YRQe2PB1tO493sIO1Q3C1Dev2ni72pO1bkLL6+U1JGdTzuLJWixaJIzY342x539EfIUqUksntSoMg+GycTOEDKEGUfuaqHI8muFlQ0hh3vbSeLoxXqAMom0N3T0qDEy4hfDPwhEHNkmHIRf8L3Yblvtf5xe6xP6rOiRPM=
+	t=1784313677; cv=none; b=OtLXhA0aIgR18EpjFbb7p1L2QWhVfU753Lw6vutmm3AiH/ltfMh/giey6tMO8326zMWisZqtgiKABc8/OtyQpqKngB/t2R1aLfH0/fjnhi9NVFTgqE93dKB8/2JJ/j19A+p9ZO2Ar2WC+6brjaMaP/UJLUcYlIlpDLk8fCRgIhA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784313676; c=relaxed/simple;
-	bh=4H1bmYWPAr+e03DNx7g6SNU53TtRbIavzrujgvDw7JY=;
+	s=arc-20240116; t=1784313677; c=relaxed/simple;
+	bh=tYotsjX1fZefXOfxJASGhsztZowfJCHXkSXWI7aXn3Q=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=gQeJ4cZ+XC80P1W3QBSz0Om65v5S9IcCO821bBfZTp+H03V5G6PGp4d71+jQxvm6uIqGRbD2uWfPZ0BOukmrBIJmXcjUvs6gpYCiOnzdwoNaNlqp/gxCAjCxVitSkOewn/+09r+Z/EEfliPSNA3YM5hHhKNt/MIEKfe53HO4xuM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TSTOFD06; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=Pz/dQitJcwOT1Wtc6/OakjaBpiT/kE4657usbUmn/+YselR0FYAJd6N8fwDVfGk6Cw6PDBaBNqG+j7wW4WZd/AS2hhGBkei34GwtYFb0FpYk57+PxzbMQF3/CodVi2t3CPKjg/xxTzs0O3EKskLqrodwVlfiD/OK18j0+VwR1Ww=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fqRhlVnC; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TSTOFD06"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9E9CC1F00A3A;
-	Fri, 17 Jul 2026 18:41:14 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fqRhlVnC"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2AA751F00A3D;
+	Fri, 17 Jul 2026 18:41:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784313675;
-	bh=p1sTOcjUJpRZe5BwvP/dqZw/7yCO7iJxO3ddBq6fvh8=;
+	s=k20260515; t=1784313676;
+	bh=uBEG3SiW5Uy8DquRssoXFl5ObOm13dY5+Rme+1X0ZZ8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=TSTOFD06liQzZijDKCRbtX4A2WXniQAldRCsFfjDjT0iorBZS+1QeGkPYHPbdr6z7
-	 pX8YpkO7YukgAuauVcsCWV8BUuqsNABL94G12LUrzvuj4AKCvR0vVefQYCQfx8k0sE
-	 k/ULpb0JqbI/0j5WWP6azR0AE8EBrlTG/XoVGIpWDCFL4Dg0yIqHm8oGLbCtdyLvSO
-	 HCHTMnDpH/n7f/avcZSP4q6mxIja+2G93KvHljdbzmLe/0K29jlkxuhTl1dOUkX2Rq
-	 Ow3W22izZv31A10hZhQYXbkFVzEBG+JOMHa0Y7MODnBsxPGAeEK5Vru5kfuviX0vXn
-	 cbjOkesVro3LQ==
+	b=fqRhlVnC4mKjYIjcasj3TlAiuXoqhstgtkDsJBLGmhYR1uAmIdWtTqpfi0lfKS40f
+	 2CYVpKHDyZ9yN2NCY64x5B9nnmnpWuAyknmUlLWaj+nsg1+wN4Bm17UFrBur8Vjaad
+	 7fL288WJD1zk5krfCezjkUlp/VZ539iM1UI2pg4Sl7j3btcuNqNyJDKo1LH1kCXCy2
+	 np9r0cZurqn3NhImaLL/xQYO5K+SCzh76ga0wPYlkM60KEdKyVyVlZARmSy9k6Zo8G
+	 eH9PXS9QioyuV+NJtKip76cGQdrjDx/+O5ZUF5Iqbaog+RrUpC2S72dtKJQifQg6V/
+	 c6YopxE6EkCoQ==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/6] NFSD: Move XDR encoding helpers out of xdr4.h
-Date: Fri, 17 Jul 2026 14:41:07 -0400
-Message-ID: <20260717184112.507548-2-cel@kernel.org>
+Subject: [PATCH 3/6] NFSD: Remove two unused NFSv4 constants
+Date: Fri, 17 Jul 2026 14:41:09 -0400
+Message-ID: <20260717184112.507548-4-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260717184112.507548-1-cel@kernel.org>
 References: <20260717184112.507548-1-cel@kernel.org>
@@ -47,312 +47,46 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-These static inline helpers use the nfserr_resource macro, which
-pulls in the whole rack of NFS status codes. Move those helpers
-into the only file that uses them, to get rid of the nfserr macro
-dependency globally.
-
-These helper were originally placed in xdr4.h because I thought
-they would be utilized in the rest of the NFSv4 XDR code, but
-XDR translation is eventually to be subsumed by xdrgen instead.
-I'm not converting them now because that is much more churn than
-this patch is.
+Neither COMPOUND_SLACK_SPACE nor NFSD_COURTESY_CLIENT_TIMEOUT has
+a remaining user. COMPOUND_SLACK_SPACE lost its last reference in
+commit ea8d7720b274 ("nfsd4: remove redundant encode buffer size
+checking"), which deleted the encode buffer-space check the macro
+fed; the comment above it still describes that departed check.
+NFSD_COURTESY_CLIENT_TIMEOUT is likewise unreferenced: the
+courteous-server code expires clients through the laundromat's
+reaper and conflict paths, never a fixed 24-hour timer.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/blocklayoutxdr.c |  10 +++
- fs/nfsd/nfs4xdr.c        |  92 ++++++++++++++++++++++++++
- fs/nfsd/xdr4.h           | 139 ---------------------------------------
- 3 files changed, 102 insertions(+), 139 deletions(-)
+ fs/nfsd/nfsd.h | 7 -------
+ 1 file changed, 7 deletions(-)
 
-diff --git a/fs/nfsd/blocklayoutxdr.c b/fs/nfsd/blocklayoutxdr.c
-index f80dbc41fd5f..51cc2a07d7b3 100644
---- a/fs/nfsd/blocklayoutxdr.c
-+++ b/fs/nfsd/blocklayoutxdr.c
-@@ -13,6 +13,16 @@
- 
- #define NFSDDBG_FACILITY	NFSDDBG_PNFS
- 
-+static __be32
-+nfsd4_decode_deviceid4(struct xdr_stream *xdr, struct nfsd4_deviceid *devid)
-+{
-+	__be32 *p = xdr_inline_decode(xdr, NFS4_DEVICEID4_SIZE);
-+
-+	if (unlikely(!p))
-+		return nfserr_bad_xdr;
-+	svcxdr_decode_deviceid4(p, devid);
-+	return nfs_ok;
-+}
- 
- /**
-  * nfsd4_block_encode_layoutget - encode block/scsi layout extent array
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 04755c41d871..05d64733094b 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1919,6 +1919,17 @@ nfsd4_decode_get_dir_delegation(struct nfsd4_compoundargs *argp,
- }
- 
- #ifdef CONFIG_NFSD_PNFS
-+static __be32
-+nfsd4_decode_deviceid4(struct xdr_stream *xdr, struct nfsd4_deviceid *devid)
-+{
-+	__be32 *p = xdr_inline_decode(xdr, NFS4_DEVICEID4_SIZE);
-+
-+	if (unlikely(!p))
-+		return nfserr_bad_xdr;
-+	svcxdr_decode_deviceid4(p, devid);
-+	return nfs_ok;
-+}
-+
- static __be32
- nfsd4_decode_getdeviceinfo(struct nfsd4_compoundargs *argp,
- 		union nfsd4_op_u *u)
-@@ -2733,6 +2744,87 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 	return true;
- }
- 
-+static __always_inline __be32
-+nfsd4_encode_bool(struct xdr_stream *xdr, bool val)
-+{
-+	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT);
-+
-+	if (unlikely(p == NULL))
-+		return nfserr_resource;
-+	*p = val ? xdr_one : xdr_zero;
-+	return nfs_ok;
-+}
-+
-+static __always_inline __be32
-+nfsd4_encode_uint32_t(struct xdr_stream *xdr, u32 val)
-+{
-+	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT);
-+
-+	if (unlikely(p == NULL))
-+		return nfserr_resource;
-+	*p = cpu_to_be32(val);
-+	return nfs_ok;
-+}
-+
-+#define nfsd4_encode_aceflag4(x, v)	nfsd4_encode_uint32_t(x, v)
-+#define nfsd4_encode_acemask4(x, v)	nfsd4_encode_uint32_t(x, v)
-+#define nfsd4_encode_acetype4(x, v)	nfsd4_encode_uint32_t(x, v)
-+#define nfsd4_encode_count4(x, v)	nfsd4_encode_uint32_t(x, v)
-+#define nfsd4_encode_mode4(x, v)	nfsd4_encode_uint32_t(x, v)
-+#define nfsd4_encode_nfs_lease4(x, v)	nfsd4_encode_uint32_t(x, v)
-+#define nfsd4_encode_qop4(x, v)		nfsd4_encode_uint32_t(x, v)
-+#define nfsd4_encode_sequenceid4(x, v)	nfsd4_encode_uint32_t(x, v)
-+#define nfsd4_encode_slotid4(x, v)	nfsd4_encode_uint32_t(x, v)
-+
-+static __always_inline __be32
-+nfsd4_encode_uint64_t(struct xdr_stream *xdr, u64 val)
-+{
-+	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT * 2);
-+
-+	if (unlikely(p == NULL))
-+		return nfserr_resource;
-+	put_unaligned_be64(val, p);
-+	return nfs_ok;
-+}
-+
-+#define nfsd4_encode_changeid4(x, v)	nfsd4_encode_uint64_t(x, v)
-+#define nfsd4_encode_nfs_cookie4(x, v)	nfsd4_encode_uint64_t(x, v)
-+#define nfsd4_encode_length4(x, v)	nfsd4_encode_uint64_t(x, v)
-+#define nfsd4_encode_offset4(x, v)	nfsd4_encode_uint64_t(x, v)
-+
-+static __always_inline __be32
-+nfsd4_encode_opaque_fixed(struct xdr_stream *xdr, const void *data,
-+			  size_t size)
-+{
-+	__be32 *p = xdr_reserve_space(xdr, xdr_align_size(size));
-+	size_t pad = xdr_pad_size(size);
-+
-+	if (unlikely(p == NULL))
-+		return nfserr_resource;
-+	memcpy(p, data, size);
-+	if (pad)
-+		memset((char *)p + size, 0, pad);
-+	return nfs_ok;
-+}
-+
-+static __always_inline __be32
-+nfsd4_encode_opaque(struct xdr_stream *xdr, const void *data, size_t size)
-+{
-+	size_t pad = xdr_pad_size(size);
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, XDR_UNIT + xdr_align_size(size));
-+	if (unlikely(p == NULL))
-+		return nfserr_resource;
-+	*p++ = cpu_to_be32(size);
-+	memcpy(p, data, size);
-+	if (pad)
-+		memset((char *)p + size, 0, pad);
-+	return nfs_ok;
-+}
-+
-+#define nfsd4_encode_component4(x, d, s)	nfsd4_encode_opaque(x, d, s)
-+
- static __be32 nfsd4_encode_nfs_fh4(struct xdr_stream *xdr,
- 				   const struct knfsd_fh *fh_handle)
- {
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index c7eda5bc833b..e833407859c8 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -50,134 +50,6 @@
- #define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
- #define CLEAR_CSTATE_FLAG(c, f) ((c)->sid_flags &= ~(f))
- 
--/**
-- * nfsd4_encode_bool - Encode an XDR bool type result
-- * @xdr: target XDR stream
-- * @val: boolean value to encode
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 384a2498b6a2..27e5384cd849 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -204,21 +204,14 @@ void		nfsd_lockd_shutdown(void);
+  * we might process an operation with side effects, and be unable to
+  * tell the client that the operation succeeded.
+  *
+- * COMPOUND_SLACK_SPACE - this is the minimum bytes of buffer space
+- * needed to encode an "ordinary" _successful_ operation.  (GETATTR,
+- * READ, READDIR, and READLINK have their own buffer checks.)  if we
+- * fall below this level, we fail the next operation with NFS4ERR_RESOURCE.
 - *
-- * Return values:
-- *    %nfs_ok: @val encoded; @xdr advanced to next position
-- *    %nfserr_resource: stream buffer space exhausted
-- */
--static __always_inline __be32
--nfsd4_encode_bool(struct xdr_stream *xdr, bool val)
--{
--	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT);
--
--	if (unlikely(p == NULL))
--		return nfserr_resource;
--	*p = val ? xdr_one : xdr_zero;
--	return nfs_ok;
--}
--
--/**
-- * nfsd4_encode_uint32_t - Encode an XDR uint32_t type result
-- * @xdr: target XDR stream
-- * @val: integer value to encode
-- *
-- * Return values:
-- *    %nfs_ok: @val encoded; @xdr advanced to next position
-- *    %nfserr_resource: stream buffer space exhausted
-- */
--static __always_inline __be32
--nfsd4_encode_uint32_t(struct xdr_stream *xdr, u32 val)
--{
--	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT);
--
--	if (unlikely(p == NULL))
--		return nfserr_resource;
--	*p = cpu_to_be32(val);
--	return nfs_ok;
--}
--
--#define nfsd4_encode_aceflag4(x, v)	nfsd4_encode_uint32_t(x, v)
--#define nfsd4_encode_acemask4(x, v)	nfsd4_encode_uint32_t(x, v)
--#define nfsd4_encode_acetype4(x, v)	nfsd4_encode_uint32_t(x, v)
--#define nfsd4_encode_count4(x, v)	nfsd4_encode_uint32_t(x, v)
--#define nfsd4_encode_mode4(x, v)	nfsd4_encode_uint32_t(x, v)
--#define nfsd4_encode_nfs_lease4(x, v)	nfsd4_encode_uint32_t(x, v)
--#define nfsd4_encode_qop4(x, v)		nfsd4_encode_uint32_t(x, v)
--#define nfsd4_encode_sequenceid4(x, v)	nfsd4_encode_uint32_t(x, v)
--#define nfsd4_encode_slotid4(x, v)	nfsd4_encode_uint32_t(x, v)
--
--/**
-- * nfsd4_encode_uint64_t - Encode an XDR uint64_t type result
-- * @xdr: target XDR stream
-- * @val: integer value to encode
-- *
-- * Return values:
-- *    %nfs_ok: @val encoded; @xdr advanced to next position
-- *    %nfserr_resource: stream buffer space exhausted
-- */
--static __always_inline __be32
--nfsd4_encode_uint64_t(struct xdr_stream *xdr, u64 val)
--{
--	__be32 *p = xdr_reserve_space(xdr, XDR_UNIT * 2);
--
--	if (unlikely(p == NULL))
--		return nfserr_resource;
--	put_unaligned_be64(val, p);
--	return nfs_ok;
--}
--
--#define nfsd4_encode_changeid4(x, v)	nfsd4_encode_uint64_t(x, v)
--#define nfsd4_encode_nfs_cookie4(x, v)	nfsd4_encode_uint64_t(x, v)
--#define nfsd4_encode_length4(x, v)	nfsd4_encode_uint64_t(x, v)
--#define nfsd4_encode_offset4(x, v)	nfsd4_encode_uint64_t(x, v)
--
--/**
-- * nfsd4_encode_opaque_fixed - Encode a fixed-length XDR opaque type result
-- * @xdr: target XDR stream
-- * @data: pointer to data
-- * @size: length of data in bytes
-- *
-- * Return values:
-- *    %nfs_ok: @data encoded; @xdr advanced to next position
-- *    %nfserr_resource: stream buffer space exhausted
-- */
--static __always_inline __be32
--nfsd4_encode_opaque_fixed(struct xdr_stream *xdr, const void *data,
--			  size_t size)
--{
--	__be32 *p = xdr_reserve_space(xdr, xdr_align_size(size));
--	size_t pad = xdr_pad_size(size);
--
--	if (unlikely(p == NULL))
--		return nfserr_resource;
--	memcpy(p, data, size);
--	if (pad)
--		memset((char *)p + size, 0, pad);
--	return nfs_ok;
--}
--
--/**
-- * nfsd4_encode_opaque - Encode a variable-length XDR opaque type result
-- * @xdr: target XDR stream
-- * @data: pointer to data
-- * @size: length of data in bytes
-- *
-- * Return values:
-- *    %nfs_ok: @data encoded; @xdr advanced to next position
-- *    %nfserr_resource: stream buffer space exhausted
-- */
--static __always_inline __be32
--nfsd4_encode_opaque(struct xdr_stream *xdr, const void *data, size_t size)
--{
--	size_t pad = xdr_pad_size(size);
--	__be32 *p;
--
--	p = xdr_reserve_space(xdr, XDR_UNIT + xdr_align_size(size));
--	if (unlikely(p == NULL))
--		return nfserr_resource;
--	*p++ = cpu_to_be32(size);
--	memcpy(p, data, size);
--	if (pad)
--		memset((char *)p + size, 0, pad);
--	return nfs_ok;
--}
--
--#define nfsd4_encode_component4(x, d, s)	nfsd4_encode_opaque(x, d, s)
--
- struct nfsd4_compound_state {
- 	struct svc_fh		current_fh;
- 	struct svc_fh		save_fh;
-@@ -642,17 +514,6 @@ svcxdr_decode_deviceid4(__be32 *p, struct nfsd4_deviceid *devid)
- 	return p;
- }
+  * COMPOUND_ERR_SLACK_SPACE - this is the minimum bytes of buffer space
+  * needed to encode an operation which has failed with NFS4ERR_RESOURCE.
+  * care is taken to ensure that we never fall below this level for any
+  * reason.
+  */
+-#define	COMPOUND_SLACK_SPACE		140    /* OP_GETFH */
+ #define COMPOUND_ERR_SLACK_SPACE	16     /* OP_SETATTR */
  
--static inline __be32
--nfsd4_decode_deviceid4(struct xdr_stream *xdr, struct nfsd4_deviceid *devid)
--{
--	__be32 *p = xdr_inline_decode(xdr, NFS4_DEVICEID4_SIZE);
--
--	if (unlikely(!p))
--		return nfserr_bad_xdr;
--	svcxdr_decode_deviceid4(p, devid);
--	return nfs_ok;
--}
--
- struct nfsd4_layout_seg {
- 	u32			iomode;
- 	u64			offset;
+ #define NFSD_LAUNDROMAT_MINTIMEOUT      1   /* seconds */
+-#define	NFSD_COURTESY_CLIENT_TIMEOUT	(24 * 60 * 60)	/* seconds */
+ #define	NFSD_CLIENT_MAX_TRIM_PER_RUN	128
+ #define	NFS4_CLIENTS_PER_GB		1024
+ #define NFSD_DELEGRETURN_TIMEOUT	(HZ / 34)	/* 30ms */
 -- 
 2.54.0
 
