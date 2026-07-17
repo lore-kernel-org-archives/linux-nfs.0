@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 347193F787E;
-	Fri, 17 Jul 2026 11:09:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A84D3E5EFD;
+	Fri, 17 Jul 2026 11:09:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784286561; cv=none; b=TbSU5IkjAi1+ua3MQElXp/6x35XJ0Qf/qptg60kbohQi8BNNFILJtSvFAcXl7BvH4sSE2yrl5G/5pWO/0jxAtnzmSV1WxA23+Z7zQ7BbFSNmKmvk8HRCjiXgsoCb8dAfdofrMN9NnYaQQL8oH/v9x9ekKv/INeZo1JqnDYRrbmM=
+	t=1784286560; cv=none; b=BndCOEDR3l9PnYEU7hxNqtpWagLaQSsJ2JHrjMPRYhyhRY6kDVqDoBsAaghxggljjCWpY0/UWCyDT+i/reCtM7Dtxdot2cCsZt9j3iwLGjYW+VZsmAkJr6nWXjBtmPIeg4auuCuOWUcMIPNxQm+UCPhUm1rTBLTHZKFFQLFnnSA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784286561; c=relaxed/simple;
-	bh=59tnNmI81A+TE/ri3pJnS4uQdabX+PWqmK4HXTejSio=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=ocxRIkQXjFJkkDxn6KrZiR5srmRHcLuqovzOsYARlC3sCi73SeZqEREEqT2Ckp09qZp2YkKDkkmHEJCh7fi7JGhOtVB20Rpgv2N3JsNTpVQ8DHj2Zdv48V3NPni7kumPWfH/8HpZEnWE0oDUmcaNFkjq7WPl/arhswaDR9AQ/YQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RJ68CZux; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784286560; c=relaxed/simple;
+	bh=CxaqU/AoSol54+xEMyZJOVy6hq5VcWCtG0hhkKs5PnM=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=Qhji+40p3Ez1FW1rmX/N4JECwlho/hjBtUj/qKPcLDsgvhxgIknwXmkoXrd+ItQDO3b+f+4S36s4WHD6rWhh0x0osnorElP5Wtvi9x69znbwOr5yAjOdJq6Uj7LViCBrwF03P451T+4LcCiW37vSb4+bi/hNJki+/9t16jiRnyI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NrsElEtA; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RJ68CZux"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C9CEF1F00A3D;
-	Fri, 17 Jul 2026 11:09:11 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NrsElEtA"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AA8161F00A3A;
+	Fri, 17 Jul 2026 11:09:08 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784286552;
-	bh=qb1GlZisphJPQAbQd86M/SHe8tJzUUNE1J4JJINpITA=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=RJ68CZuxWKw+VU7359fPEB5Vm4q3PIQmShAH5+/k9pKM3W1JVl+QBRkcWjYMp73lh
-	 IrKPl8bKCnAk+EwAp6dUhkR2yLkMdB340BKv2AhbkCyJg0CNoO1nZefgNknJcMaArD
-	 3DvPLYGqbN5oZ8fNaANG/v1rAUIlPiu+pOkXMhIC8/XipQHQ8N/zJW9q5hEGLj3EIw
-	 S4x+YKg/urNTLUsPgdLM2ZZvaYwTLgAxPn08TFeyUeORyJKYFION1PYP0NokicWvFZ
-	 jxAl8WP0sj8wsOIQMDPeX2ym3ohI7W8SAlL+q7CvpDq0o0n/h2lspN01p0c4UZrX+V
-	 6K8tbBeWwlL5A==
+	s=k20260515; t=1784286549;
+	bh=CweCaQAxOgtoXV+iwImjyj5iVDSWjYOXAe9TbXqXHIY=;
+	h=From:Subject:Date:To:Cc;
+	b=NrsElEtAjTbb+cJRyBLgU94gPp+idJfEq3odTyxHujJ4wI4fCO/r3h93vYu29i0tC
+	 Um9r2Hsp92jgDPgoWnNtDzVBOPCcnKu/bYusr4K3o2F+uWMySLfoJGk7rKjbnnYrtY
+	 9Xvj9Mm4aHs/omu+OWL2Pbq4yOAiYm0wzFptfXuXmsGmMfUjKEXPP+O6oQuWUwsczW
+	 wHRbd/62zPDuHJGfm1BYQNCYNRSIcVB6GHfqhJF0OqKBAw1iEaS8w5OXlS7wBfX681
+	 /ycKCltLVUFXoPvS678Keis1k9co8fTMhhJH8dAa5atCC7iGSxKUhgfU6/tzsIE1S1
+	 bsCwLaSa7FMBw==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Fri, 17 Jul 2026 07:08:55 -0400
-Subject: [PATCH v7 3/6] nfsd: implement server-stats-get netlink handler
+Subject: [PATCH v7 0/6] nfsd/sunrpc: convert nfsstat server-side interfaces
+ to use netlink
+Date: Fri, 17 Jul 2026 07:08:52 -0400
+Message-Id: <20260717-exportd-netlink-v7-0-b7ce17b83b60@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,9 +38,12 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260717-exportd-netlink-v7-3-b7ce17b83b60@kernel.org>
-References: <20260717-exportd-netlink-v7-0-b7ce17b83b60@kernel.org>
-In-Reply-To: <20260717-exportd-netlink-v7-0-b7ce17b83b60@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3XQzW7CMAwH8FdBOS+TE8dps9PeY+KQNg5EoBalV
+ cWE+u4ELnQKO/4t+eePm5g4J57E1+4mMi9pSuNQQvOxE/3RDweWKZQsNGgLqKzk62XMc5ADz+c
+ 0nKTqXexIE1pGUboumWO6PsWffcnHNM1j/n0OWNSj+r+1KAnSKk2ht7pzRN8nzgOfP8d8EA9s0
+ S+gzKwBXQADABg5GIK+AvAFWHA1gAXwnghaT12nQgWYDfDuBFMAQALyzNi2WAG0BdoaoAKw8xy
+ daXzEegO7Bd6cYAsQAkc0zjUO//5gXdc7PxvOdvQBAAA=
+X-Change-ID: 20260316-exportd-netlink-1c9fb52536e3
 To: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
  Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
  Chuck Lever <cel@kernel.org>
@@ -47,499 +51,106 @@ Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
  Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org, 
  linux-kernel@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=14529; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=59tnNmI81A+TE/ri3pJnS4uQdabX+PWqmK4HXTejSio=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqWg1TG/kIsAgi+zgk9UE9UKtOeg960vrYEyS9n
- cBTvqN0NFWJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaloNUwAKCRAADmhBGVaC
- FdhfD/sG0Lbmrs7w47m1wfxaniwnnoN1Y7gbnIZgROv4I4rGrsQc8GVCbfY4g9yaM/QrW85pUdf
- R8DQckdsWdJQOo1xHWJCcdxDRNqH59l7XpGTPzXKYRDs5YU/BpUU5pofNUinL1oUDlqpUFZT3Ii
- 26+ztMk8By/hOsSbLv0ul6P/XZmoCJJv1JV9ro1pOv9JnaCKXbivTdlfLYITtAzMmlWKeUIhZwg
- 4O8zoS4xTd39LISvscxb9/h0nwuFbLb4lh82ib6iMRPVPGR+822bB02eSngYVhzmeZS0wkunVLE
- HvkBsp96a03sgooJeZS5Jt31dm+F/j2Tat3UyrRJrcdYOv6Q96VgUNSAmEC9yYxLN0CKveRSsIm
- wgtsbmEUX7vsirCoDbVoEkCP/0pMn7zO795XzWO8t2LquaeR+bA8AmW4YowFY0fuvLb4j3rr/MN
- tAJ06gGWVFfHQfAd2F4f/YmL9Wbo2jO3pmBEg5H0gGRDSFTC57rSx8Ggv3hO7CQve1yPHz4DOnx
- uTwZMrIUm0FnF7V8GH55Ckd32XR8W18T1Vns7Rfdgy/PlubMFrKRFDF6qjDd4GTs6x3dmZougqg
- YnpHbcnuWQQpNggNH+PNjPA/aR58REG9cuegE/7lgNDsz/0jm9qvCezdNyuYXHCKOuQb4C5xchW
- w20bIocEmh8bcxw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3835; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=CxaqU/AoSol54+xEMyZJOVy6hq5VcWCtG0hhkKs5PnM=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqWg1O2Cp9R5fVfJyQowur4oPlDPc0QDd55UGlx
+ /8AeRNWBMyJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCaloNTgAKCRAADmhBGVaC
+ FVAjEADTJFYB3CrZwPCspgvb+d08YLUyxW/VuAJwh5RbB6kgHNl9HEjKmjdX8wy4DlT00av0Aob
+ uxE8N1L/YfYt6w5maUZifKehquWqtu9eBf+P8Gso+NpeMp9Etbwo/3oIbD7ha0mgBU+fMZz7CBn
+ zo31wLP5sE9OdiyQabAILS+NponfMJR4veVOtVt8f5CEUQNEyFa3znEwCI2Ry8QYESK+5JiNLtM
+ Az33p4Uk9Jzje8s7bL+FjBPxVFHwHsvOPqIzqfUanqNEfUB5c6K/VBV6yxYRrSMJmlAKJhDtX6U
+ +cnScDzT/NWgstW4iKPHoM+bU2FfnRmhETAstFlDJlmm3YNfwlg1VwNn5nHvGaVKmaUE4Qf55ZP
+ rxgPSg+28NzJb1teqq3HZwoVHNgBbsMVSRlGtm9wzsroROFscfSpY2nSKokSETkn0ZOYBHKrnLS
+ QV9o0uylLYSapgWT/xuuoOe2xB2E1V4Te6WxTDPdad1LLbiREbaExQhO71jVY+cymqPoUybbzCP
+ D/QJ+3gVLa0N4sGwvkQCwEl1sxoOjE3eBwECIEutXMupQJQogYsZHJZpcR+ZGi4WZ08l7cGsYhS
+ NmL4bQJwPWGw+vv3nQSdO8KYFhAihhjUrT0y7U48AwHmgDbf9KYqHXGsP7W6l9LStYoZ0nkUYyd
+ Bjw3CVV/fOTpl1w==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Implement nfsd_nl_server_stats_get_dumpit() which exposes the
-NFS server statistics currently available via /proc/net/rpc/nfsd
-through the nfsd generic netlink family.
+I last sent this series about a month ago, and dropped the ball on
+sending out a newer version afterward. This version fixes some minor
+issues that Chuck and Sashiko pointed out in review.
 
-The handler uses a dump operation to stream statistics across one
-or more netlink messages. The reply is divided into sections that
-are emitted in order:
+The nfsstat tool currently scrapes /proc/net/rpc/nfsd for server
+statistics. This procfs interface has several limitations: the
+counters are global (not network-namespace-aware), the format is
+fragile to parse, and it cannot be extended without breaking
+existing parsers.
 
-  - scalar stats (reply cache, filehandle, IO, network, RPC),
-    emitted once in the first message, then
+This series adds per-network-namespace procedure call counts to
+the sunrpc layer and exposes them through a new netlink handler
+in the nfsd generic netlink family, allowing nfsstat to retrieve
+server statistics via netlink with a procfs fallback for older
+kernels. The nfs-utils patch for that part is already merged.
 
-  - per-version procedure counts (proc2/3/4-ops) and the NFSv4
-    per-operation counts (proc4ops-ops), using the per-netns
-    vs_count arrays.
+Additionally, this version adds tracking of callback operation counts.
 
-cb->args[0] tracks the current section and cb->args[1] the entry
-index within it, so a section that does not fit in the current
-message is closed and resumed in the next one. This matters because
-the first dump message is allocated at NLMSG_GOODSIZE (a single page
-on most architectures) regardless of the client's receive buffer;
-packing every counter into one message would overflow it and fail
-the dump with -EMSGSIZE. Userspace merges the attributes from every
-message.
+Ideally, I'd like to see this go into v7.3.
 
-This allows nfsstat to retrieve server statistics via netlink
-with a procfs fallback for older kernels.
-
-Assisted-by: LLM
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- Documentation/netlink/specs/nfsd.yaml | 105 ++++++++++++++++
+Changes in v7:
+- Skip never-called operations in the server-stats netlink dump instead
+  of emitting a zero-count entry for every opcode
+- Link to v6: https://lore.kernel.org/r/20260619-exportd-netlink-v6-0-ddef3499793c@kernel.org
+
+Changes in v6:
+- Emit the entire server-stats object in a single netlink dump message
+- Count CB_SEQUENCE on v4.1+ callbacks, for parity with the forechannel SEQUENCE count
+- Fix a use-after-free in nfsd4_run_cb() by snapshotting the opcode, net, and minorversion
+- Link to v5: https://lore.kernel.org/r/20260618-exportd-netlink-v5-0-e9aef947af3d@kernel.org
+
+Changes in v5:
+- Add NFSv4 callback call counts to nfsstat upcall
+- Link to v4: https://lore.kernel.org/r/20260616-exportd-netlink-v4-0-03505aee3883@kernel.org
+
+Changes in v4:
+- Ensure error is returned when nla_put_*() calls fail
+- Link to v3: https://lore.kernel.org/r/20260609-exportd-netlink-v3-0-aa5508a5bb1d@kernel.org
+
+Changes in v3:
+- Only increment per-net stats for the "primary" program
+- Link to v2: https://lore.kernel.org/r/20260525-exportd-netlink-v2-0-40003fed450c@kernel.org
+
+---
+Jeff Layton (6):
+      sunrpc: add per-netns per-procedure call counts to svc_stat
+      sunrpc: use per-net counts in svc_seq_show()
+      nfsd: implement server-stats-get netlink handler
+      sunrpc: remove unused svc_version vs_count field
+      nfsd: count NFSv4 callback operations per netns
+      nfsd: export NFSv4 callback op stats via netlink
+
+ Documentation/netlink/specs/nfsd.yaml | 111 ++++++++++++++
+ fs/lockd/svc4proc.c                   |   4 -
+ fs/lockd/svcproc.c                    |   7 -
+ fs/nfs/callback_xdr.c                 |   6 -
+ fs/nfsd/localio.c                     |   3 -
  fs/nfsd/netlink.c                     |   5 +
  fs/nfsd/netlink.h                     |   2 +
- fs/nfsd/nfsctl.c                      | 222 ++++++++++++++++++++++++++++++++++
- include/uapi/linux/nfsd_netlink.h     |  35 ++++++
- 5 files changed, 369 insertions(+)
+ fs/nfsd/netns.h                       |  12 +-
+ fs/nfsd/nfs2acl.c                     |   3 -
+ fs/nfsd/nfs3acl.c                     |   3 -
+ fs/nfsd/nfs3proc.c                    |   3 -
+ fs/nfsd/nfs4callback.c                |  22 ++-
+ fs/nfsd/nfs4proc.c                    |   3 -
+ fs/nfsd/nfs4state.c                   |   2 -
+ fs/nfsd/nfsctl.c                      | 271 +++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfsproc.c                     |   3 -
+ fs/nfsd/stats.c                       |   2 +-
+ fs/nfsd/stats.h                       |   5 +-
+ include/linux/sunrpc/stats.h          |   6 +
+ include/linux/sunrpc/svc.h            |   1 -
+ include/uapi/linux/nfsd_netlink.h     |  36 +++++
+ net/sunrpc/stats.c                    |   2 +-
+ net/sunrpc/svc.c                      |  63 +++++++-
+ 23 files changed, 528 insertions(+), 47 deletions(-)
+---
+base-commit: 4f30ae575e0541214c6b5afe5ee29068b6fab9e1
+change-id: 20260316-exportd-netlink-1c9fb52536e3
 
-diff --git a/Documentation/netlink/specs/nfsd.yaml b/Documentation/netlink/specs/nfsd.yaml
-index 8f36fadd68f7..2a89d355ee7b 100644
---- a/Documentation/netlink/specs/nfsd.yaml
-+++ b/Documentation/netlink/specs/nfsd.yaml
-@@ -330,6 +330,86 @@ attribute-sets:
-           of which client holds the state. Intended for use after
-           all clients have been unexported from a given path,
-           enabling the underlying filesystem to be unmounted.
-+  -
-+    name: server-proc-entry
-+    attributes:
-+      -
-+        name: op
-+        type: u32
-+      -
-+        name: count
-+        type: u64
-+      -
-+        name: pad
-+        type: pad
-+  -
-+    name: server-stats
-+    attributes:
-+      -
-+        name: rc-hits
-+        type: u64
-+      -
-+        name: rc-misses
-+        type: u64
-+      -
-+        name: rc-nocache
-+        type: u64
-+      -
-+        name: pad
-+        type: pad
-+      -
-+        name: fh-stale
-+        type: u64
-+      -
-+        name: io-read
-+        type: u64
-+      -
-+        name: io-write
-+        type: u64
-+      -
-+        name: netcnt
-+        type: u32
-+      -
-+        name: netudpcnt
-+        type: u32
-+      -
-+        name: nettcpcnt
-+        type: u32
-+      -
-+        name: nettcpconn
-+        type: u32
-+      -
-+        name: rpccnt
-+        type: u32
-+      -
-+        name: rpcbadfmt
-+        type: u32
-+      -
-+        name: rpcbadauth
-+        type: u32
-+      -
-+        name: rpcbadclnt
-+        type: u32
-+      -
-+        name: proc2-ops
-+        type: nest
-+        nested-attributes: server-proc-entry
-+        multi-attr: true
-+      -
-+        name: proc3-ops
-+        type: nest
-+        nested-attributes: server-proc-entry
-+        multi-attr: true
-+      -
-+        name: proc4-ops
-+        type: nest
-+        nested-attributes: server-proc-entry
-+        multi-attr: true
-+      -
-+        name: proc4ops-ops
-+        type: nest
-+        nested-attributes: server-proc-entry
-+        multi-attr: true
- 
- operations:
-   list:
-@@ -516,6 +596,31 @@ operations:
-         request:
-           attributes:
-             - path
-+    -
-+      name: server-stats-get
-+      doc: dump NFS server statistics
-+      attribute-set: server-stats
-+      dump:
-+        reply:
-+          attributes:
-+            - rc-hits
-+            - rc-misses
-+            - rc-nocache
-+            - fh-stale
-+            - io-read
-+            - io-write
-+            - netcnt
-+            - netudpcnt
-+            - nettcpcnt
-+            - nettcpconn
-+            - rpccnt
-+            - rpcbadfmt
-+            - rpcbadauth
-+            - rpcbadclnt
-+            - proc2-ops
-+            - proc3-ops
-+            - proc4-ops
-+            - proc4ops-ops
- 
- mcast-groups:
-   list:
-diff --git a/fs/nfsd/netlink.c b/fs/nfsd/netlink.c
-index fbee3676d253..eba8b353f412 100644
---- a/fs/nfsd/netlink.c
-+++ b/fs/nfsd/netlink.c
-@@ -225,6 +225,11 @@ static const struct genl_split_ops nfsd_nl_ops[] = {
- 		.maxattr	= NFSD_A_UNLOCK_EXPORT_PATH,
- 		.flags		= GENL_ADMIN_PERM | GENL_CMD_CAP_DO,
- 	},
-+	{
-+		.cmd	= NFSD_CMD_SERVER_STATS_GET,
-+		.dumpit	= nfsd_nl_server_stats_get_dumpit,
-+		.flags	= GENL_CMD_CAP_DUMP,
-+	},
- };
- 
- static const struct genl_multicast_group nfsd_nl_mcgrps[] = {
-diff --git a/fs/nfsd/netlink.h b/fs/nfsd/netlink.h
-index af41aa0d4a65..027e2953db26 100644
---- a/fs/nfsd/netlink.h
-+++ b/fs/nfsd/netlink.h
-@@ -42,6 +42,8 @@ int nfsd_nl_cache_flush_doit(struct sk_buff *skb, struct genl_info *info);
- int nfsd_nl_unlock_ip_doit(struct sk_buff *skb, struct genl_info *info);
- int nfsd_nl_unlock_filesystem_doit(struct sk_buff *skb, struct genl_info *info);
- int nfsd_nl_unlock_export_doit(struct sk_buff *skb, struct genl_info *info);
-+int nfsd_nl_server_stats_get_dumpit(struct sk_buff *skb,
-+				    struct netlink_callback *cb);
- 
- enum {
- 	NFSD_NLGRP_NONE,
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index ae5a7f1ad917..7731051105c9 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -2331,6 +2331,228 @@ int nfsd_nl_cache_flush_doit(struct sk_buff *skb, struct genl_info *info)
- 	return 0;
- }
- 
-+/* Emit a single server-proc-entry nest: { op, count }. */
-+static int nfsd_nl_put_proc_entry(struct sk_buff *skb, int attr,
-+				  u32 op, u64 count)
-+{
-+	struct nlattr *nest;
-+
-+	nest = nla_nest_start(skb, attr);
-+	if (!nest)
-+		return -EMSGSIZE;
-+	if (nla_put_u32(skb, NFSD_A_SERVER_PROC_ENTRY_OP, op) ||
-+	    nla_put_u64_64bit(skb, NFSD_A_SERVER_PROC_ENTRY_COUNT,
-+			      count, NFSD_A_SERVER_PROC_ENTRY_PAD)) {
-+		nla_nest_cancel(skb, nest);
-+		return -EMSGSIZE;
-+	}
-+	nla_nest_end(skb, nest);
-+	return 0;
-+}
-+
-+/* Emit the scalar server-stats counters. Only ever called on a fresh skb. */
-+static int nfsd_nl_server_stats_scalars(struct sk_buff *skb,
-+					struct nfsd_net *nn,
-+					struct svc_stat *statp)
-+{
-+	if (nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_RC_HITS,
-+			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_HITS]),
-+			NFSD_A_SERVER_STATS_PAD) ||
-+	    nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_RC_MISSES,
-+			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_MISSES]),
-+			NFSD_A_SERVER_STATS_PAD) ||
-+	    nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_RC_NOCACHE,
-+			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_RC_NOCACHE]),
-+			NFSD_A_SERVER_STATS_PAD))
-+		return -EMSGSIZE;
-+
-+	if (nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_FH_STALE,
-+			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_FH_STALE]),
-+			NFSD_A_SERVER_STATS_PAD))
-+		return -EMSGSIZE;
-+
-+	if (nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_IO_READ,
-+			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_IO_READ]),
-+			NFSD_A_SERVER_STATS_PAD) ||
-+	    nla_put_u64_64bit(skb, NFSD_A_SERVER_STATS_IO_WRITE,
-+			percpu_counter_sum_positive(&nn->counter[NFSD_STATS_IO_WRITE]),
-+			NFSD_A_SERVER_STATS_PAD))
-+		return -EMSGSIZE;
-+
-+	if (nla_put_u32(skb, NFSD_A_SERVER_STATS_NETCNT, statp->netcnt) ||
-+	    nla_put_u32(skb, NFSD_A_SERVER_STATS_NETUDPCNT, statp->netudpcnt) ||
-+	    nla_put_u32(skb, NFSD_A_SERVER_STATS_NETTCPCNT, statp->nettcpcnt) ||
-+	    nla_put_u32(skb, NFSD_A_SERVER_STATS_NETTCPCONN, statp->nettcpconn))
-+		return -EMSGSIZE;
-+
-+	if (nla_put_u32(skb, NFSD_A_SERVER_STATS_RPCCNT, statp->rpccnt) ||
-+	    nla_put_u32(skb, NFSD_A_SERVER_STATS_RPCBADFMT, statp->rpcbadfmt) ||
-+	    nla_put_u32(skb, NFSD_A_SERVER_STATS_RPCBADAUTH, statp->rpcbadauth) ||
-+	    nla_put_u32(skb, NFSD_A_SERVER_STATS_RPCBADCLNT, statp->rpcbadclnt))
-+		return -EMSGSIZE;
-+
-+	return 0;
-+}
-+
-+/*
-+ * Emit per-version procedure counts for one NFS version, resuming at *idx.
-+ * Returns 0 when the version has been fully emitted (or is not present), or
-+ * -EMSGSIZE when @skb filled up, leaving *idx at the entry still to emit.
-+ */
-+static int nfsd_nl_server_stats_proc(struct sk_buff *skb,
-+				     struct svc_stat *statp,
-+				     struct svc_program *prog,
-+				     unsigned int ver, int attr, int *idx)
-+{
-+	unsigned long __percpu *counts;
-+	unsigned int nproc;
-+
-+	if (!statp->vs_count || ver >= prog->pg_nvers ||
-+	    !prog->pg_vers[ver] || !statp->vs_count[ver])
-+		return 0;
-+
-+	counts = statp->vs_count[ver];
-+	nproc = prog->pg_vers[ver]->vs_nproc;
-+
-+	for (; *idx < nproc; (*idx)++) {
-+		unsigned long count = 0;
-+		int cpu;
-+
-+		for_each_possible_cpu(cpu)
-+			count += per_cpu(counts[*idx], cpu);
-+
-+		if (!count)
-+			continue;
-+		if (nfsd_nl_put_proc_entry(skb, attr, *idx, count))
-+			return -EMSGSIZE;
-+	}
-+
-+	return 0;
-+}
-+
-+#ifdef CONFIG_NFSD_V4
-+/*
-+ * Emit NFSv4 per-operation counts, resuming at *idx. Same return convention
-+ * as nfsd_nl_server_stats_proc().
-+ */
-+static int nfsd_nl_server_stats_nfs4ops(struct sk_buff *skb,
-+					struct nfsd_net *nn, int *idx)
-+{
-+	for (; *idx <= LAST_NFS4_OP; (*idx)++) {
-+		u64 cnt = percpu_counter_sum_positive(
-+				&nn->counter[NFSD_STATS_NFS4_OP(*idx)]);
-+
-+		if (!cnt)
-+			continue;
-+		if (nfsd_nl_put_proc_entry(skb, NFSD_A_SERVER_STATS_PROC4OPS_OPS,
-+					   *idx, cnt))
-+			return -EMSGSIZE;
-+	}
-+
-+	return 0;
-+}
-+#endif
-+
-+/* Sections of the server-stats dump, emitted in order across messages. */
-+enum {
-+	NFSD_SERVER_STATS_SCALARS = 0,
-+	NFSD_SERVER_STATS_PROC2,
-+	NFSD_SERVER_STATS_PROC3,
-+	NFSD_SERVER_STATS_PROC4,
-+	NFSD_SERVER_STATS_PROC4OPS,
-+	NFSD_SERVER_STATS_DONE,
-+};
-+
-+/**
-+ * nfsd_nl_server_stats_get_dumpit - dump NFS server statistics
-+ * @skb: reply buffer
-+ * @cb: netlink metadata and command arguments
-+ *
-+ * The server-stats object is emitted across one or more netlink messages.
-+ * cb->args[0] tracks the current section and cb->args[1] the entry index
-+ * within it, so a section that does not fit in the current message is resumed
-+ * in the next one. The scalar counters are small and emitted once, in the
-+ * first message; userspace merges the attributes from every message.
-+ *
-+ * Returns the size of the reply or a negative errno.
-+ */
-+int nfsd_nl_server_stats_get_dumpit(struct sk_buff *skb,
-+				    struct netlink_callback *cb)
-+{
-+	struct net *net = sock_net(skb->sk);
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+	struct svc_stat *statp = &nn->nfsd_svcstats;
-+	struct svc_program *prog = statp->program;
-+	int section = cb->args[0];
-+	int idx = cb->args[1];
-+	void *hdr;
-+
-+	if (section >= NFSD_SERVER_STATS_DONE)
-+		return 0;
-+
-+	hdr = genlmsg_put(skb, NETLINK_CB(cb->skb).portid,
-+			  cb->nlh->nlmsg_seq, &nfsd_nl_family,
-+			  NLM_F_MULTI, NFSD_CMD_SERVER_STATS_GET);
-+	if (!hdr)
-+		return -ENOBUFS;
-+
-+	/* Scalar stats fit easily and are emitted in the first message. */
-+	if (section == NFSD_SERVER_STATS_SCALARS) {
-+		if (nfsd_nl_server_stats_scalars(skb, nn, statp))
-+			goto err_cancel;
-+		section = NFSD_SERVER_STATS_PROC2;
-+		idx = 0;
-+	}
-+
-+	/*
-+	 * Emit as many of the remaining sections as fit. A section returning
-+	 * -EMSGSIZE means the message is full: close it and resume from the
-+	 * same section/index on the next call with a fresh skb. Each entry is
-+	 * small enough to fit in a fresh skb, so forward progress is assured.
-+	 */
-+	while (section < NFSD_SERVER_STATS_DONE) {
-+		int ret = 0;
-+
-+		switch (section) {
-+		case NFSD_SERVER_STATS_PROC2:
-+			ret = nfsd_nl_server_stats_proc(skb, statp, prog, 2,
-+					NFSD_A_SERVER_STATS_PROC2_OPS, &idx);
-+			break;
-+		case NFSD_SERVER_STATS_PROC3:
-+			ret = nfsd_nl_server_stats_proc(skb, statp, prog, 3,
-+					NFSD_A_SERVER_STATS_PROC3_OPS, &idx);
-+			break;
-+		case NFSD_SERVER_STATS_PROC4:
-+			ret = nfsd_nl_server_stats_proc(skb, statp, prog, 4,
-+					NFSD_A_SERVER_STATS_PROC4_OPS, &idx);
-+			break;
-+#ifdef CONFIG_NFSD_V4
-+		case NFSD_SERVER_STATS_PROC4OPS:
-+			ret = nfsd_nl_server_stats_nfs4ops(skb, nn, &idx);
-+			break;
-+#endif
-+		}
-+
-+		if (ret == -EMSGSIZE)
-+			goto out;
-+		if (ret)
-+			goto err_cancel;
-+
-+		section++;
-+		idx = 0;
-+	}
-+
-+out:
-+	genlmsg_end(skb, hdr);
-+	cb->args[0] = section;
-+	cb->args[1] = idx;
-+	return skb->len;
-+
-+err_cancel:
-+	genlmsg_cancel(skb, hdr);
-+	return -EMSGSIZE;
-+}
-+
- int nfsd_cache_notify(struct cache_detail *cd, struct cache_head *h, u32 cache_type)
- {
- 	struct genlmsghdr *hdr;
-diff --git a/include/uapi/linux/nfsd_netlink.h b/include/uapi/linux/nfsd_netlink.h
-index f5b75d5caba9..3d076d173b1d 100644
---- a/include/uapi/linux/nfsd_netlink.h
-+++ b/include/uapi/linux/nfsd_netlink.h
-@@ -225,6 +225,40 @@ enum {
- 	NFSD_A_UNLOCK_EXPORT_MAX = (__NFSD_A_UNLOCK_EXPORT_MAX - 1)
- };
- 
-+enum {
-+	NFSD_A_SERVER_PROC_ENTRY_OP = 1,
-+	NFSD_A_SERVER_PROC_ENTRY_COUNT,
-+	NFSD_A_SERVER_PROC_ENTRY_PAD,
-+
-+	__NFSD_A_SERVER_PROC_ENTRY_MAX,
-+	NFSD_A_SERVER_PROC_ENTRY_MAX = (__NFSD_A_SERVER_PROC_ENTRY_MAX - 1)
-+};
-+
-+enum {
-+	NFSD_A_SERVER_STATS_RC_HITS = 1,
-+	NFSD_A_SERVER_STATS_RC_MISSES,
-+	NFSD_A_SERVER_STATS_RC_NOCACHE,
-+	NFSD_A_SERVER_STATS_PAD,
-+	NFSD_A_SERVER_STATS_FH_STALE,
-+	NFSD_A_SERVER_STATS_IO_READ,
-+	NFSD_A_SERVER_STATS_IO_WRITE,
-+	NFSD_A_SERVER_STATS_NETCNT,
-+	NFSD_A_SERVER_STATS_NETUDPCNT,
-+	NFSD_A_SERVER_STATS_NETTCPCNT,
-+	NFSD_A_SERVER_STATS_NETTCPCONN,
-+	NFSD_A_SERVER_STATS_RPCCNT,
-+	NFSD_A_SERVER_STATS_RPCBADFMT,
-+	NFSD_A_SERVER_STATS_RPCBADAUTH,
-+	NFSD_A_SERVER_STATS_RPCBADCLNT,
-+	NFSD_A_SERVER_STATS_PROC2_OPS,
-+	NFSD_A_SERVER_STATS_PROC3_OPS,
-+	NFSD_A_SERVER_STATS_PROC4_OPS,
-+	NFSD_A_SERVER_STATS_PROC4OPS_OPS,
-+
-+	__NFSD_A_SERVER_STATS_MAX,
-+	NFSD_A_SERVER_STATS_MAX = (__NFSD_A_SERVER_STATS_MAX - 1)
-+};
-+
- enum {
- 	NFSD_CMD_RPC_STATUS_GET = 1,
- 	NFSD_CMD_THREADS_SET,
-@@ -244,6 +278,7 @@ enum {
- 	NFSD_CMD_UNLOCK_IP,
- 	NFSD_CMD_UNLOCK_FILESYSTEM,
- 	NFSD_CMD_UNLOCK_EXPORT,
-+	NFSD_CMD_SERVER_STATS_GET,
- 
- 	__NFSD_CMD_MAX,
- 	NFSD_CMD_MAX = (__NFSD_CMD_MAX - 1)
-
+Best regards,
 -- 
-2.55.0
+Jeff Layton <jlayton@kernel.org>
 
