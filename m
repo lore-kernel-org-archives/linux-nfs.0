@@ -1,73 +1,73 @@
 Received: from fhigh-b3-smtp.messagingengine.com (fhigh-b3-smtp.messagingengine.com [202.12.124.154])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 937A1285C91
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Jul 2026 04:33:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9038F32A3FE
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Jul 2026 04:33:40 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.154
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784262821; cv=none; b=dD5Q18yfYVoIb9sauJvb0/Y1verqRDSsoDx0RGUKh6dZKVYrPNbEOQx5kSTF6bk8/Bwp3DcVltTFXD/Y0iX1umaGktSaOzwLvK4deb/2OzYYXEAu0vWBGWKI008g6YBE7cdns3ECEcAZMMmgyqMKf0u6yZSOyCWrcQ7KI479QJg=
+	t=1784262824; cv=none; b=oeRlJgJp2+9ZEerPrMZdvSSdjrRAhKs9UVj45s0JPYTMdmaVGH/rBGxKQpQ5ZsvEKLopI/4x2nehftOU5C0F9xPQhmEhu/8ZJ6aYSbKoz+cpl3Ibygt9CiNB/5bJVmd2RpbBEy+2fYkywiZmKzUr5csJfcr7Ebfj/sRUrmIiBls=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784262821; c=relaxed/simple;
-	bh=1XGcYYgO08V6+3wsvZjALQZQRSkksTkUTx7tKd9lvbw=;
+	s=arc-20240116; t=1784262824; c=relaxed/simple;
+	bh=UVw52gCzKon6IbZGeD6X/feiToU4aAcqlzjlnr+cNKc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Ci4HqxAGk04ER44pziWFdFRI/Me405EhYB8bdwxb0WakTT3YAEWZg86jNbhNWhdJNyOwlsNUJagug+Weo+QK/ffPpX+tezYh/yeIkv1bHLUVsISg+OflTRsOAVSvXmHtKDLla2JWRIJP8/Ax6eP35lTs6prPr5RzVeyxSA2bVWs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=O0G0hCAa; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=mRtTdjcf; arc=none smtp.client-ip=202.12.124.154
+	 MIME-Version; b=tBg8hSzOwePPQJ+IEN40sXyHrpbIi6me81/MSCPsM4OMXy6Uk2Mmc4DBKsGVr/xQ9QIf7HeYYaKZfmiMaqlmpY3wqrl0TnGmLtgKdDXB4BDHq2o6S1He9D1AkZzkwzCszvcX1FZmvUJdrwqOKQvmV9yw1cvgXYZ9rK/kM3D85F0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=WmxQP+oC; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=SpZmkIKR; arc=none smtp.client-ip=202.12.124.154
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="O0G0hCAa";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="mRtTdjcf"
-Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
-	by mailfhigh.stl.internal (Postfix) with ESMTP id 3BCB97A011B;
-	Fri, 17 Jul 2026 00:33:34 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-06.internal (MEProxy); Fri, 17 Jul 2026 00:33:34 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="WmxQP+oC";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="SpZmkIKR"
+Received: from phl-compute-12.internal (phl-compute-12.internal [10.202.2.52])
+	by mailfhigh.stl.internal (Postfix) with ESMTP id 0229B7A011C;
+	Fri, 17 Jul 2026 00:33:38 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-12.internal (MEProxy); Fri, 17 Jul 2026 00:33:39 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm2; t=1784262814;
-	 x=1784349214; bh=Hm1WB/QfGfNUuILJ4U+cIkrJel13v79Ig5A6omWtSM0=; b=
-	O0G0hCAaubWCH08SuyMSaR5PudI/nj8d6OxKTRrNX3D+xdfv6PTaj3KB+99IWpDF
-	UWIPWNPFvinfT5+uLIod7Em9o4UxMMW+nuiJTlu48As6MBbKArOC69h1ELKaVOfm
-	0BJGBVxsYbcc8OmV4duZ2lmwNfhvMm9Bj3ofyBm/0V41JS5dyFBNETU4o+tzzNsI
-	jHZrdHiRNb6uLpxlHZqtov4SWDItmkXsmUzRBcHy/2o26Dn/53HBIcSe92kYhPe/
-	uRuN6am1jjIdlO0sJd+g0SeIavB3NLuh8T56GTQi0YFwCECZS8MQ+oJfW3wj8vOl
-	skVK5fQ+1PV4lEXSqyaalg==
+	:reply-to:reply-to:subject:subject:to:to; s=fm2; t=1784262818;
+	 x=1784349218; bh=ADUn0PC5CG/DLUIL0eBM1CneE2bcs2zv8ljGeSAPpNQ=; b=
+	WmxQP+oCelUCYz4yFqDsdgbsIitrEgW5jVgksIOKD3MqNmr+wH5mi3f7thTspBpp
+	tt11Fni5F4rYshYKYspuj12DOEV+/21ZAyJprNh6BJLPu8pLqsbXHxjB5Hqe4E8U
+	Xa4Kd7gZvV5T525atFo/m7iq/X1QM8JGpH6ENd+8bUn/pTz9kJzh30zLAIsIbeZF
+	XKtobLEYjR7iFSDw0gW/D5wZf0OwfwZKsEAk4oALbmpqYXwD1wuBN7lyx3Is16yr
+	9742ZeuNqP0oWZg9nptaOu7Nbts4kxDN2SrDcDiQ4lNHe9LV9TCvifi0xjLgWD+A
+	2TDEYNFRLVQWMksXrxsiEg==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm2; t=1784262814; x=1784349214; bh=H
-	m1WB/QfGfNUuILJ4U+cIkrJel13v79Ig5A6omWtSM0=; b=mRtTdjcfUprZ2BF//
-	q00toHk6ak0/pnViWte8soE8NZTEmFVzgSPYnQasnW/0i66UJFcKje8oCjNwAiTw
-	c1ek3cnccmOK5L3L4tWH33Bnile3+I1XERJbBDGdAof9i6udvEVSGJavoFMVidbb
-	Y/Cao9wRPhyy/RnI1YQVtTE1SmzDSEwwG7k0Ld9veiiULpdEaYx1EPqqIdQUu4Gb
-	qkwLuElq9DK3gm+f6WlHITDHxGDldMuwH7VSSXQvTZHX1Dv4WIbaw+O2hf7Zbs8t
-	cOx1ctA8eT8yKtuaFh5f64XPr7vNHycPajd6Ca2vc0N9ELQXDhFedu1jcpHtA55e
-	YYqIw==
-X-ME-Sender: <xms:nrBZaoIRHDokhfJXXhO2E8t79kcpqldZ5PbsY4Wh8Zs6K_ZKqroFkg>
-    <xme:nrBZar2B98z4F5MmRRqwMBGVngWQbkLLEWuv6JofosOoAmSzdL2MxRkptgEv-XupZ
-    9Xm1Gf2oSp2Fyl-MDiT3HdRyplogQ-djjjeAdnE31da0Q8B8g>
-X-ME-Received: <xmr:nrBZaihm8WzJctP65pelGhrLCreNNIyXEAhusy6BKnh0kERSs49WQ6BEwJoPajeloo0TewuwpugD9dSUeIMxU9CJDgMsCLc>
-X-ME-Proxy-Cause: dmFkZTFe1fPNt0teZMz+igsEg0Yi62Nw1HA3RWU9lajtn/KqgzCHwE0SDkRLEuN+X2bdVn
-    +JxjBa/aSTWuozTeEfNHmtuHiUV9Fs0BisuGE4A6T2CuSFG0Kbv+f8y8Mx+y2wKStdSD9p
-    PaPx17A/9gdYw6sCXZWoqwe8lNQRn2EzH+qt+7c1YcHbUG//gzMSJJTZ/alz3WThwvIjtT
-    idS8iFF3/6rHUzD/jtcaZ1nbGsquEb2JQSEJPSew5ZS0S8U3+gbXCpYfG8PNx1QnJfm2Ft
-    pgkeO93PTIHeEUjFLtz/B0GOYhyxjLHHwxBr0+PWJNH+dGjEfqQKxE8vXo/hgjfbNoODKK
-    0/Xm2o8Bkdpx7ioKBDyWNa6VlELBkSwZR5tboifejFjj9kBAK/lq8qf0/T71XH2Hh/7y0O
-    qknEViIG2iwRIoMUno3HdB6mSYc/XaXzfzqpGfRxeeYx7UK9ERUAygUXq3GEc2fS226cEk
-    DTyMvhow+VHEkfBUfdGzj/W0wMqdiR0LDcEtjlDGqane+hpa8UMKPU2BdUPKjWj2cg7wKF
-    o5gwafWjQnCA1IgaXSigxq5kATRxjIbKXdZ7VwEeT7ejcz/WbWeb2iMP7vyIaO/ZiDcTGT
-    zBfiVhDZfV4T1yc8KQrkOMG9siv8heRUU/ZkqVKdp28CYd2nuLkb9wRmrIVg
-X-ME-Proxy: <xmx:nrBZasXeXQXZSlL8G-bWv7BwmBMGNA0SIJb34Lkt9N_4Qs-SyN1G4w>
-    <xmx:nrBZahWnLjn-oIXsv6YRFyXtWZrh-v4OvP9adsCDr1Aykojb2JUm0w>
-    <xmx:nrBZasgghg-F4PSvVQXovRmK-9Rvjugl2LqPYbz9kaARn5wdqkdIHQ>
-    <xmx:nrBZasYb-NNuOM7co58d5C8yBL4BQPEnOuYhmHN4AYoBZpmKp_qkdA>
-    <xmx:nrBZahoZ9ieNEuq4ZIYb9cnHEOPtIufQFzulyNBwDk4aZ-66IDQycQxf>
+	:x-me-sender:x-sasl-enc; s=fm2; t=1784262818; x=1784349218; bh=A
+	DUn0PC5CG/DLUIL0eBM1CneE2bcs2zv8ljGeSAPpNQ=; b=SpZmkIKRqstd7vKiY
+	BFalWeUSOId8CxtpruY+M8A6eVKNNozD6xSzsg7M6dwHZwUaDijmUj1T0rP0bNYB
+	Cld9BQVaDoKmiWdZugrKIxqkTPG2jfPFFojjXLW3q8aAIvR4kfPR8YEe0zPgKcRD
+	fE55jpFWmWWPhYLnMPAkWCOst+kJe7xwimIRTrGQ6rZv8z+DAYSg3dct7hztoAkz
+	6IhkQu446munAD2S0Ks9tln1kjXFEtxA6+Toqoe58YsDlOCxk7cdPk/CX8cyOc7z
+	GeSKSboa7i8gPRdPLG0wLBJBaTOhhYQ5srAvRSp7V2XcXzVCa0/XpMH3lTI1kAES
+	TEXNA==
+X-ME-Sender: <xms:orBZaiUiY4bJNouDab-782awiPh2ckMH5bS1oTyA8UIA-X_JCV3NAg>
+    <xme:orBZaiQJcNBxeVm_stVxNEuySFKtOPeYQ0ukkpNk2pWP-959q-5UedXkq0f9hwraz
+    IENgrvnzyl8JmjFGxNgQUuEZmWHX_e8SnzKdoDY09rVqDuF>
+X-ME-Received: <xmr:orBZagOX3VWrDJ-kAmEaM_y5K6kdIzr4CMMQS7IxvyhujGGQlcBoN7lFiNclgXeLZ3iD7S-XgS6vf7pvl6hHsdB-n5z4z8g>
+X-ME-Proxy-Cause: dmFkZTFf1QU68ccbCX8W2k8Y1nGREK2lfBZ8muLx/9jWiTseOaEvZ5XgO1veuwpDDLDOh8
+    GTBUmiRJRPyTQkIt2BUTpACGqxcYNQqe9Tcjx6k+JMfW40TZxrio5AhHmqjioKB7znJTir
+    ATb1v/hlECnvAs6heOVcOHOlHDBfVnNe9pooX5hb/po3RqsBkktpkbuLKQfQYMMzr+JzB9
+    /njxHQoF8AY+jho0jMT1tubTiNoCuayOLJLgFmAfFIsropGRO+BVYqdpkyAIA5dLkXTXCV
+    Ha4vNgb6VzTYvk/ZKP8hUsX7dik9VUXtlC+e2jQNq5KVv1wL7YMoKmhY7BOqudAWlfzyf8
+    Ln+Nw8fodbwZ+VNRKaLfXMphktAkQJB6zBvJbrRVnGa0FPXpy1q2dySMvFXdGtKrWBZw1H
+    IjLWvQ6jxVeAYD3bqJ3TymFZFnzM3eJiuGOczGwkDxk/RL/5seBVl6vsuvl3jP9TGrfcB9
+    5Tj/DUCCYQfv8k51wq32rliFkm9lw35/hx56/RCxiWQnjy8MV30/5oBTmHMFMULodZRGxp
+    sMvxuSnSocXga1Ex06iQQJBFJRnuPiqev8RXtHx288/bi26RLqPUDwLsx/IAkdOYBBZshe
+    n8GwoYKvktUSxTW7JlXqDE9PDq91zjW20upwm83N61bA4I2n/qwzesdoIfEw
+X-ME-Proxy: <xmx:orBZagRut1nuxZMObBMaQDZ2vln-rBOCvv5IbDBdl8DDFFtFkYRWJw>
+    <xmx:orBZaug-F0qVNmKMk2jztoD3Dyobhkk1RxXZSLiCrg8P9LrfpvH8IA>
+    <xmx:orBZap9Xeiv8WNmP7IVK78RuO_f1a37eHCCt8PPR_h8b5geBgGTG5w>
+    <xmx:orBZalGfbCQ1YHT7Kn-pG6NOMxf-c3WRqwIJZ2TA8KKMgaVI3OekFw>
+    <xmx:orBZan0z-BDQkrM9PXwPMqtVH0yP1lFFbo5B4r-Ixq2qto9Br7HIzCvR>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Fri,
- 17 Jul 2026 00:33:31 -0400 (EDT)
+ 17 Jul 2026 00:33:36 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Chuck Lever <chuck.lever@oracle.com>,
 	Jeff Layton <jlayton@kernel.org>
@@ -75,9 +75,9 @@ Cc: Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <Dai.Ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v4 09/18] nfsd: nfsd4_create_file(): Move NFSD_MAY_CREATE check earlier
-Date: Fri, 17 Jul 2026 14:31:07 +1000
-Message-ID: <20260717043242.1865905-10-neilb@ownmail.net>
+Subject: [PATCH v4 10/18] nfsd: fh_want_write) failure need not be immediately fatal for  nfsd4_create_file()
+Date: Fri, 17 Jul 2026 14:31:08 +1000
+Message-ID: <20260717043242.1865905-11-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260717043242.1865905-1-neilb@ownmail.net>
 References: <20260717043242.1865905-1-neilb@ownmail.net>
@@ -92,70 +92,65 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-We only need NFS_MAY_CREATE check if the file doesn't exist, but it is
-nfsd-specific code as it needs to check NFSEXP_READONLY and I want that
-to be separate from vfs-specific code, which eventually all be provided
-by the VFS.
+If nfsd4_create_file() is asked to create a file, then failure to get
+write access to the mount need not be fatal if the file already exists.
+So we can delay handling the error until it is known if creation was
+needed, just like with the error from testing for write permission in
+parent.
 
-So move that check earlier, but hold the error status until needed.
+This is similar to want_write error handling in lookup_open() in
+fs/namei.c.
 
-The if/else chain here looks a bit clumsy, but it will make a later
-patch cleaner.
+Note that getting mnt write access to support O_RDWR is handled
+separately in do_dentry_open(), and op_truncate is handled in
+do_open_permission(), so  nfsd doesn't need to be concerned
+with these.  It only needs to be concerned with creation, and setattr.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/nfsd/nfs4proc.c | 21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs4proc.c | 15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 8840f6dd8a0a..5e56bf6e6bd9 100644
+index 5e56bf6e6bd9..a4838d36885b 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -261,7 +261,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	struct dentry *parent, *child = ERR_PTR(-EINVAL);
+@@ -262,7 +262,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
  	__u32 v_mtime, v_atime;
  	struct inode *inode;
--	__be32 status;
-+	__be32 status, create_status;
- 	int host_err;
+ 	__be32 status, create_status;
+-	int host_err;
++	int want_write_err;
  
  	if (name_is_dot_dotdot(open->op_fname, open->op_fnamelen))
-@@ -347,6 +347,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		iap->ia_atime.tv_nsec = 0;
- 	}
+ 		return nfserr_exist;
+@@ -349,11 +349,10 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
  
-+	create_status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
-+
- 	host_err = fh_want_write(fhp);
- 	if (host_err) {
- 		status = nfserrno(host_err);
-@@ -360,16 +362,17 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		goto out;
- 	}
+ 	create_status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
  
--	if (d_really_is_negative(child)) {
--		status = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
--		if (status != nfs_ok)
--			goto out;
--
-+	if (d_really_is_positive(child)) {
-+		/* No creation needed */
-+	} else if (create_status) {
-+		status = create_status;
-+	} else {
- 		status = nfsd4_vfs_create(fhp, &child, open);
--		if (status != nfs_ok)
--			goto out;
--		open->op_created = open->op_filp->f_mode & FMODE_CREATED;
-+		if (status == nfs_ok)
-+			open->op_created = open->op_filp->f_mode & FMODE_CREATED;
- 	}
-+	if (status != nfs_ok)
-+		goto out;
+-	host_err = fh_want_write(fhp);
+-	if (host_err) {
+-		status = nfserrno(host_err);
+-		goto out_free;
+-	}
++	want_write_err = fh_want_write(fhp);
++	if (want_write_err)
++		/* Might still succeed if no create is needed */
++		create_status = nfserrno(want_write_err);
  
- 	status = fh_compose(resfhp, fhp->fh_export, child, fhp);
- 	if (status != nfs_ok)
+ 	child = start_creating(&nop_mnt_idmap, parent,
+ 			       &QSTR_LEN(open->op_fname, open->op_fnamelen));
+@@ -424,8 +423,8 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		open->op_bmval[2] &= ~FATTR4_WORD2_POSIX_ACCESS_ACL;
+ out:
+ 	end_creating(child);
+-	fh_drop_write(fhp);
+-out_free:
++	if (!want_write_err)
++		fh_drop_write(fhp);
+ 	nfsd_attrs_free(&attrs);
+ 	return status;
+ }
 -- 
 2.50.0.107.gf914562f5916.dirty
 
