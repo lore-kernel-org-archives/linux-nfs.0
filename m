@@ -1,40 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7946F21ABB1
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Jul 2026 11:29:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6DFD7331EC5
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Jul 2026 11:35:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784287773; cv=none; b=aoybpChRwerK49qCr3rjTUjYngKLD5nBdgMMuoePnkMQ/yd2ziw7O/g3RUg8Oaa90dhWz7VjIPmI93/kAe/Rotn/H3dTnyMS5FaiKi+BaIz860M4Prq/ar9IKiJFX+KOI1Aq5lNuqTcDlJNa1mB3r/DsUlZg9oQmzi6oXO6nMH4=
+	t=1784288158; cv=none; b=IlPw03XDWWFy+63+poNlKWD0IyCufizSWffR0G3uhyhvT7GaSdeip5Oa/lhUSTc5vIINSFatQ2mWXKvTWheUe3nhPa/dAg2X0fyxpQmnI5LwwVYxZFqEfaHcEMPf0mLCm3XtQyC93oeLromYdyUPjZvWDCEdtNNrH2lfbZNUm7c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784287773; c=relaxed/simple;
-	bh=vWc/KKlXmaiOuWYBjw4mlwkufAQB4qQ36R5lqPQiBlI=;
+	s=arc-20240116; t=1784288158; c=relaxed/simple;
+	bh=82U1+UMrTzT4rmqQWJloju6D9yjrGQZU+Bz8pVl8ChU=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=KkmMAIhJ3EauuaTOXaJfZ7+p35oyiffaoyJMlYbh8rxTPtjdzPYdGB3ZSsr4hE8KS645wF7IKt45m9maYFKXqis7q3GMFWyqK9/DZZ4AxgkxPsfBbPe0z3aJdjPv6Krcza21bT83PKsHpe9QxO58pmDnIwpLtvBTtozGM+3VPz4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=g4+0sBJA; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=ueIG8z1l4+K6Vg80uspF0JMMTlbx2mNLANsGpbmBub3p9ePpJJ/mrw03D+6vbHz/FO4QOBqC1H6tVjqVC4mU+VXwDNZGiyaw0Nlq+lhnoK9Cshn9D62kOcJLxUP3coplti9oKtFf8cp/MS39MxfuFI63p41O3PMvU2bnfEPYkvc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Z5z7DVZO; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="g4+0sBJA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 947E11F000E9;
-	Fri, 17 Jul 2026 11:29:31 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Z5z7DVZO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 864171F000E9;
+	Fri, 17 Jul 2026 11:35:56 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784287772;
-	bh=eozr77kql7u3XmhyeM//qJ7pw8+UrObu+TdBD7UwB5c=;
+	s=k20260515; t=1784288157;
+	bh=76voUCLbe9z7oaBdCoJKMOtFlskW9N+CskNxLnjuyP0=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=g4+0sBJAidfCbx9I/zbEJ/BuazGmQN6MeCl6HmtT4Qk0jB0aS1XSs4YeBHOJNPUEF
-	 eZtibOg9R0Hf0Qi5fjZ/0hlpJSwd2nUtWRop8GD/V2ILA/y8w2ym+8iMuMUAzgqhYW
-	 PObIpir25xWod5hD54PmP/6uzUAUN1abXh0YUYtrc1cqGqhQu0SAqGrGBMej4Uot9z
-	 aYD8WKrql7UBdTfVvTWeo+mjfvgVTVGCqG1iODc5ksPj87HTWTJXiySUGyssLbl/mW
-	 +Xo0WG+q42gX4g/3NdgqIJKjdJxg6fD07+uLm2A/KA2RHrg0rAmBLBoOkj4jd1COci
-	 gOBAEDGp5a85Q==
-Message-ID: <1a8a163c9ad06d83b2be9d0083303bc28596bf1a.camel@kernel.org>
-Subject: Re: [PATCH v5 00/18] nfsd: refactor nfs4_create_file()
+	b=Z5z7DVZO4Gy7hzIAuNKTzBbtFXW61U2vUJZOrwAoMa3/Kj0OthYPAJUs8yPTiZsaK
+	 Ql+gdSfTvsZz/xIb6hdq2hspki2OZFB7SEwXM+wm1YWQItlel0biBJQKRRB8P5amGh
+	 auKAJfsirk+xVcUqeOcZvtNgJhLgxm0PL9H3HLsX87ikJNS8mfVxUNUhOysAKFDzu5
+	 2XfQFaeYN4LmlnAg4YyB8DGAx2G4otYHLnzk5JpdMzr2FsHd8ymmhT3Dt4LYcltvXb
+	 ai011jl/iGWVgPLyRMI9dP18ANaz5uD6ose22pq9KM9r1Z4Na1xr3UFkDz4Ex+MXUi
+	 pOdhUKnLOb1gw==
+Message-ID: <8468bd59a86850d7aee57186ef53feff2f493a61.camel@kernel.org>
+Subject: Re: [PATCH 2/5] NFSD: Eliminate percpu counter contention in DRC
+ memory accounting
 From: Jeff Layton <jlayton@kernel.org>
-To: NeilBrown <neil@brown.name>, Chuck Lever <chuck.lever@oracle.com>
-Cc: Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org
-Date: Fri, 17 Jul 2026 07:29:29 -0400
-In-Reply-To: <20260717093001.1972119-1-neilb@ownmail.net>
-References: <20260717093001.1972119-1-neilb@ownmail.net>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 17 Jul 2026 07:35:54 -0400
+In-Reply-To: <20260717001232.438792-3-cel@kernel.org>
+References: <20260717001232.438792-1-cel@kernel.org>
+	 <20260717001232.438792-3-cel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -119,35 +122,78 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2026-07-17 at 19:27 +1000, NeilBrown wrote:
-> For for another version so soon - I hadn't noticed Jeff's LLM results.
-> Most of the issue raised there were already addressed I think, but the
-> using  nfserr_noent instead of NFSERR_NOENT, and adding a condition on
-> the call to mnt_want_write() in the final patch were still needed.
+On Thu, 2026-07-16 at 20:12 -0400, Chuck Lever wrote:
+> The DRC memory usage counter (NFSD_STATS_DRC_MEM_USAGE) tracks
+> bytes, but percpu_counter_add() uses the global percpu_counter_batch
+> threshold of max(32, 2*nr_cpus). Each DRC entry add or removal
+> updates the counter by sizeof(struct nfsd_cacherep) (~144 bytes),
+> which always exceeds the batch threshold. percpu_counter_add()
+> then acquires the counter's global spinlock on every update,
+> serializing all nfsd threads.
 >=20
-> Thanks,
-> NeilBrown
->=20
->=20
->  [PATCH v5 01/18] nfsd: honour client-provided attributes for
->  [PATCH v5 02/18] nfsd: move check_nfsd_access() call into
->  [PATCH v5 03/18] nfsd: correctly handle CREATE of mounted-on files
->  [PATCH v5 04/18] nfsd: replace fh_fill_both_attrs() with
->  [PATCH v5 05/18] nfsd: move fh_want_write() after preamble in
->  [PATCH v5 06/18] nfsd: move more nfs-specific code into preamble of
->  [PATCH v5 07/18] nfsd: remove subtlety from nfsd4_create_file()
->  [PATCH v5 08/18] nfsd: in nfsd4_create_file() let VFS report if file
->  [PATCH v5 09/18] nfsd: nfsd4_create_file(): Move NFSD_MAY_CREATE
->  [PATCH v5 10/18] nfsd: fh_want_write) failure need not be immediately
->  [PATCH v5 11/18] nfsd: (almost) always open file in
->  [PATCH v5 12/18] nfsd: reduce range of directory lock in
->  [PATCH v5 13/18] nfsd: open-code nfsd4_vfs_create() into
->  [PATCH v5 14/18] nfsd: move some code out of the
->  [PATCH v5 15/18] nfsd: reduce want-write range in nfsd4_create_file()
->  [PATCH v5 16/18] nfsd: move v0 checking out of nfsd_check_obj_isreg()
->  [PATCH v5 17/18] nfsd: separate out VFS-specific code from
->  [PATCH v5 18/18] nfsd: use do_lookup_open() for non-creating open
 
-Nice work, Neil. You can add this to any that don't already have it:
+Dear god -- I had no idea that this was a thing. I wonder if we have
+other places we're using percpu_counter_add() where we shouldn't?
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+> On a 10-CPU NFS server handling a high rate of non-idempotent
+> NFSv3 operations, this lock accounts for a measurable fraction
+> of total spin lock overhead because nfsd_cache_lookup() both
+> inserts a new entry and prunes up to three old entries per RPC,
+> producing 4-7 global lock acquisitions per operation.
+>=20
+> Switch to percpu_counter_add_local() and percpu_counter_sub_local(),
+> which batch with INT_MAX so that updates always remain on the per-CPU
+> fast path regardless of the amount. The only reader of this counter uses
+> percpu_counter_sum_positive(), which sums the per-CPU deltas under the
+> global lock, so read accuracy is unaffected.
+>=20
+> Signed-off-by: Chuck Lever <cel@kernel.org>
+> ---
+>  fs/nfsd/stats.h | 22 ++++++++++++++++++++--
+>  1 file changed, 20 insertions(+), 2 deletions(-)
+>=20
+> diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
+> index 87736b7fbf28..15d30c045dc3 100644
+> --- a/fs/nfsd/stats.h
+> +++ b/fs/nfsd/stats.h
+> @@ -60,14 +60,32 @@ static inline void nfsd_stats_payload_misses_inc(stru=
+ct nfsd_net *nn)
+>  	percpu_counter_inc(&nn->counter[NFSD_STATS_PAYLOAD_MISSES]);
+>  }
+> =20
+> +/**
+> + * nfsd_stats_drc_mem_usage_add - Add memory used by a cache item
+> + * @nn: target network namespace
+> + * @amount: byte count
+> + *
+> + * percpu_counter_add_local() keeps updates on the per-CPU fast
+> + * path. The sole reader, percpu_counter_sum_positive(), sums the
+> + * per-CPU deltas, so batching locally does not lose accuracy.
+> + */
+>  static inline void nfsd_stats_drc_mem_usage_add(struct nfsd_net *nn, s64=
+ amount)
+>  {
+> -	percpu_counter_add(&nn->counter[NFSD_STATS_DRC_MEM_USAGE], amount);
+> +	percpu_counter_add_local(&nn->counter[NFSD_STATS_DRC_MEM_USAGE],
+> +				 amount);
+>  }
+> =20
+> +/**
+> + * nfsd_stats_drc_mem_usage_sub - Subtract memory used by a cache item
+> + * @nn: target network namespace
+> + * @amount: byte count
+> + *
+> + * See nfsd_stats_drc_mem_usage_add() for batching rationale.
+> + */
+>  static inline void nfsd_stats_drc_mem_usage_sub(struct nfsd_net *nn, s64=
+ amount)
+>  {
+> -	percpu_counter_sub(&nn->counter[NFSD_STATS_DRC_MEM_USAGE], amount);
+> +	percpu_counter_sub_local(&nn->counter[NFSD_STATS_DRC_MEM_USAGE],
+> +				 amount);
+>  }
+> =20
+>  #ifdef CONFIG_NFSD_V4
+
+--=20
+Jeff Layton <jlayton@kernel.org>
