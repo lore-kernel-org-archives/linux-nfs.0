@@ -1,43 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6DFD7331EC5
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Jul 2026 11:35:57 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E33993750CB
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Jul 2026 11:38:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784288158; cv=none; b=IlPw03XDWWFy+63+poNlKWD0IyCufizSWffR0G3uhyhvT7GaSdeip5Oa/lhUSTc5vIINSFatQ2mWXKvTWheUe3nhPa/dAg2X0fyxpQmnI5LwwVYxZFqEfaHcEMPf0mLCm3XtQyC93oeLromYdyUPjZvWDCEdtNNrH2lfbZNUm7c=
+	t=1784288308; cv=none; b=TW7vH9NtNAqbHGqVnFBwrFHE3ntfQnvk1h2BPgrJ5vPmjW8iys7NkTcSmE66gP8fX1yXSXebQ4UajMrsW9C/6BTJiYrtZmTmyRpIx2lK6EbxRIO/hlso+Sg75aYFdKmI8MNdLtg17BnWvbj7LsAsPS+/hBvMV+wq5QZCrpGrhd0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784288158; c=relaxed/simple;
-	bh=82U1+UMrTzT4rmqQWJloju6D9yjrGQZU+Bz8pVl8ChU=;
+	s=arc-20240116; t=1784288308; c=relaxed/simple;
+	bh=c5yKctsfuc+2A7rulZ1S/hAYCZDhZ34TotY6bOOpdEM=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=ueIG8z1l4+K6Vg80uspF0JMMTlbx2mNLANsGpbmBub3p9ePpJJ/mrw03D+6vbHz/FO4QOBqC1H6tVjqVC4mU+VXwDNZGiyaw0Nlq+lhnoK9Cshn9D62kOcJLxUP3coplti9oKtFf8cp/MS39MxfuFI63p41O3PMvU2bnfEPYkvc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Z5z7DVZO; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=Bu1RMUIwCzbklyidQCE3je6N/JzGTe68JajbKS20CAuTFR0Vw6YAY5Yzt07TpDCpDlbMsIxZpcigeKdGO+87ltRjFqgLpwVNQGn7cEep9Vzazj74OwMYCmJPyZgNjL+BWRXzUcJSEZ6RTYOlm1U9lk1bZcxOA6dIEOeYqF4Hklc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oqsRugm7; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Z5z7DVZO"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 864171F000E9;
-	Fri, 17 Jul 2026 11:35:56 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oqsRugm7"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0024F1F000E9;
+	Fri, 17 Jul 2026 11:38:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784288157;
-	bh=76voUCLbe9z7oaBdCoJKMOtFlskW9N+CskNxLnjuyP0=;
+	s=k20260515; t=1784288307;
+	bh=lu+KT82rWV6xqqfXiv1mVn8VzXermiTS8kp/gRYgr0A=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=Z5z7DVZO4Gy7hzIAuNKTzBbtFXW61U2vUJZOrwAoMa3/Kj0OthYPAJUs8yPTiZsaK
-	 Ql+gdSfTvsZz/xIb6hdq2hspki2OZFB7SEwXM+wm1YWQItlel0biBJQKRRB8P5amGh
-	 auKAJfsirk+xVcUqeOcZvtNgJhLgxm0PL9H3HLsX87ikJNS8mfVxUNUhOysAKFDzu5
-	 2XfQFaeYN4LmlnAg4YyB8DGAx2G4otYHLnzk5JpdMzr2FsHd8ymmhT3Dt4LYcltvXb
-	 ai011jl/iGWVgPLyRMI9dP18ANaz5uD6ose22pq9KM9r1Z4Na1xr3UFkDz4Ex+MXUi
-	 pOdhUKnLOb1gw==
-Message-ID: <8468bd59a86850d7aee57186ef53feff2f493a61.camel@kernel.org>
-Subject: Re: [PATCH 2/5] NFSD: Eliminate percpu counter contention in DRC
- memory accounting
+	b=oqsRugm7yTFVY1d6JnOlxWCHIQyX1ObBCA9iX+Pd6xLhMpKgsa5L+5BJxGQBt/jOH
+	 L1oquUtyJOeEkjSQIPivy+2Bbbnt5CSrEXQJ36dPld3JvHGfnMqx/QJnf6lmuz5hRZ
+	 MgMvsRkhFlrrJj7bMHooJMFDKQDKbuq3wANRzzm8aFnSuLCL8VzA3+gi7NDKeyXBgr
+	 1WEpJkxd9BJhMAyGXcSCz1vb333w4iBXgxpNsboYXBiAoCbdnjk63N/WIOtQevlIXN
+	 aGA95j5GsU8USPxbCzz822cUqzQQDtxF9zkb3yPC6PrR9mXNRxqAPkfEr/pDSswnbv
+	 kXOx6uoJNWSUg==
+Message-ID: <6542630e20d90e5cc32bfe3af1a3beb06575ef67.camel@kernel.org>
+Subject: Re: [PATCH 0/5] Minor NFSD global DRC clean-ups
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Fri, 17 Jul 2026 07:35:54 -0400
-In-Reply-To: <20260717001232.438792-3-cel@kernel.org>
+Date: Fri, 17 Jul 2026 07:38:25 -0400
+In-Reply-To: <20260717001232.438792-1-cel@kernel.org>
 References: <20260717001232.438792-1-cel@kernel.org>
-	 <20260717001232.438792-3-cel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -123,77 +121,28 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
 On Thu, 2026-07-16 at 20:12 -0400, Chuck Lever wrote:
-> The DRC memory usage counter (NFSD_STATS_DRC_MEM_USAGE) tracks
-> bytes, but percpu_counter_add() uses the global percpu_counter_batch
-> threshold of max(32, 2*nr_cpus). Each DRC entry add or removal
-> updates the counter by sizeof(struct nfsd_cacherep) (~144 bytes),
-> which always exceeds the batch threshold. percpu_counter_add()
-> then acquires the counter's global spinlock on every update,
-> serializing all nfsd threads.
+> I'm working on a series of global DRC improvements. A few minor
+> clean-ups are ready for merge now.
 >=20
+> Chuck Lever (5):
+>   NFSD: Fix off-by-one in DRC bucket pruning limit
+>   NFSD: Eliminate percpu counter contention in DRC memory accounting
+>   NFSD: Eliminate percpu counter contention in reply cache statistics
+>   NFSD: Eliminate percpu counter contention in IO byte accounting
+>   NFSD: Document reply_cache_stats ABI
+>=20
+>  .../ABI/testing/procfs-nfsd-reply_cache_stats | 38 +++++++++
+>  fs/nfsd/nfscache.c                            |  2 +-
+>  fs/nfsd/stats.h                               | 78 ++++++++++++++++---
+>  3 files changed, 108 insertions(+), 10 deletions(-)
+>  create mode 100644 Documentation/ABI/testing/procfs-nfsd-reply_cache_sta=
+ts
 
-Dear god -- I had no idea that this was a thing. I wonder if we have
-other places we're using percpu_counter_add() where we shouldn't?
+I had no idea that percpu counters could devolve into spinlocking in
+certain conditions. Ick. I wonder if we need to do a pass over all of
+our percpu counter usage for the same sort of thing. ISTM that we
+pretty much always want to use the *_local versions for our use-cases.
 
-> On a 10-CPU NFS server handling a high rate of non-idempotent
-> NFSv3 operations, this lock accounts for a measurable fraction
-> of total spin lock overhead because nfsd_cache_lookup() both
-> inserts a new entry and prunes up to three old entries per RPC,
-> producing 4-7 global lock acquisitions per operation.
->=20
-> Switch to percpu_counter_add_local() and percpu_counter_sub_local(),
-> which batch with INT_MAX so that updates always remain on the per-CPU
-> fast path regardless of the amount. The only reader of this counter uses
-> percpu_counter_sum_positive(), which sums the per-CPU deltas under the
-> global lock, so read accuracy is unaffected.
->=20
-> Signed-off-by: Chuck Lever <cel@kernel.org>
-> ---
->  fs/nfsd/stats.h | 22 ++++++++++++++++++++--
->  1 file changed, 20 insertions(+), 2 deletions(-)
->=20
-> diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
-> index 87736b7fbf28..15d30c045dc3 100644
-> --- a/fs/nfsd/stats.h
-> +++ b/fs/nfsd/stats.h
-> @@ -60,14 +60,32 @@ static inline void nfsd_stats_payload_misses_inc(stru=
-ct nfsd_net *nn)
->  	percpu_counter_inc(&nn->counter[NFSD_STATS_PAYLOAD_MISSES]);
->  }
-> =20
-> +/**
-> + * nfsd_stats_drc_mem_usage_add - Add memory used by a cache item
-> + * @nn: target network namespace
-> + * @amount: byte count
-> + *
-> + * percpu_counter_add_local() keeps updates on the per-CPU fast
-> + * path. The sole reader, percpu_counter_sum_positive(), sums the
-> + * per-CPU deltas, so batching locally does not lose accuracy.
-> + */
->  static inline void nfsd_stats_drc_mem_usage_add(struct nfsd_net *nn, s64=
- amount)
->  {
-> -	percpu_counter_add(&nn->counter[NFSD_STATS_DRC_MEM_USAGE], amount);
-> +	percpu_counter_add_local(&nn->counter[NFSD_STATS_DRC_MEM_USAGE],
-> +				 amount);
->  }
-> =20
-> +/**
-> + * nfsd_stats_drc_mem_usage_sub - Subtract memory used by a cache item
-> + * @nn: target network namespace
-> + * @amount: byte count
-> + *
-> + * See nfsd_stats_drc_mem_usage_add() for batching rationale.
-> + */
->  static inline void nfsd_stats_drc_mem_usage_sub(struct nfsd_net *nn, s64=
- amount)
->  {
-> -	percpu_counter_sub(&nn->counter[NFSD_STATS_DRC_MEM_USAGE], amount);
-> +	percpu_counter_sub_local(&nn->counter[NFSD_STATS_DRC_MEM_USAGE],
-> +				 amount);
->  }
-> =20
->  #ifdef CONFIG_NFSD_V4
+In any case, for this series:
 
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
