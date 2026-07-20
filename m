@@ -1,127 +1,137 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pl1-f173.google.com (mail-pl1-f173.google.com [209.85.214.173])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64CFA25228C
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2026 14:14:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9784E42A7B8
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2026 14:24:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784556888; cv=none; b=JjMFGHWB9O2YHPGvId05JQBMtgEoEjP+KFYexcFg+/ZX9RhsjRDLoi1/QZ4Z+s16dDhZb0UijXOVrtxGwXcgjznDwZ+ORUhSc9EPC9aRgypy69VAdO2/aKobnB5KyWgdi3euu7a+imUzW41hDARrPoJTPlNueqofDpYTNEL93Q4=
+	t=1784557498; cv=none; b=F0Gd8nUJhqKPT9X/WXISCO83/JPslihaOkhX/JJjZylyZFnyA/mIeaIjVi1Rcn5+PcvbjAiXIMHRsRsuaJ3ngaXDCD8xcGKS4xAecyRVha3srdPN2AYnecz4eszXaPFtV/mZgpqkuS8L93gfYeEMJFEiFMi14R/ONH3h0Uzy+5k=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784556888; c=relaxed/simple;
-	bh=92ybayLMCREM3TxAdcTQ8hF4Y10r5nhmb0HkhnEINsE=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=lfgrlACNyO6TZw+QmBfEYdJq3f3pnnt6TDqMu0rwPEX/TC7RrnowXrYjY+pDx+whhRCoph8s1NHO8WpchBBZPViMzGVsrX5gYko4rbYXXETws8DyTzntMVIS8KXJgQrNnY36n27QNbJs4eENAPTw5gH+53ZWCp/jms6CYqid9KE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=T5xGTvnd; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784557498; c=relaxed/simple;
+	bh=5YOz07pqrRzHc/y5gK+zPeW+ZinkUbIdk5AyTHFzBQQ=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=fTrhHKG7JG46wX+AFBYjN2FkcOlQDWA5CFkarGnnlUaKyZIq3kdGIjOqcWcSwyqwlcXAkt8CqQzo3GStnVih8quE6KnTWeihikLwn7RNT+66UpExZzcEPCiuxz4nUz4SBBF3TI8itXYALfg9k26Oey8KeNXD8OtCAd2bHhrpqZg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=eyYrC7qL; arc=none smtp.client-ip=209.85.214.173
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="T5xGTvnd"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7C9DD1F00A3A;
-	Mon, 20 Jul 2026 14:14:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784556887;
-	bh=R4YrV76xN1ob1+4T6T9jAjkLi6dPUsJsvxPYoFSsSns=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=T5xGTvndIrWj0dTJiMqI2mHLZ0yBhFYccubhygO+JJp78OoF88h+qPCOO4rp8TtbG
-	 GeF1gFCFZoAOSuREqMqk/xy4VltxBSCp/to2Adrcx0rEXHPSaw6zXFsDOrepb3kWRa
-	 ioqH9wTBLMZpr3rmYA/Y21zRDqLN8RbmwEHh/yGWklycYfOlZi23G/avHTzM90+SMZ
-	 3Fbkv41llGjQl1XWkk1JXeen9e8A8sE3lucmyx7bi5iXjuk6I5+nEE4tg4WDvoWnjJ
-	 MWgJPf2UrN8ia/zowaHaIxUDOGzxyJ0wXgzdTTcDa7CyBmdbZ6qzcvZGKF1nnM6Xji
-	 eckeHYwS+NR6A==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neil@brown.name>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>,
-	Thomas Haynes <loghyr@hammerspace.com>
-Subject: [PATCH 3/3] NFSD: Use struct knfsd_fh in struct pnfs_ff_layout
-Date: Mon, 20 Jul 2026 10:14:42 -0400
-Message-ID: <20260720141442.783935-4-cel@kernel.org>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260720141442.783935-1-cel@kernel.org>
-References: <20260720141442.783935-1-cel@kernel.org>
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="eyYrC7qL"
+Received: by mail-pl1-f173.google.com with SMTP id d9443c01a7336-2ccdf36f63dso360685ad.0
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2026 07:24:56 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20251104; t=1784557496; x=1785162296; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=8cwKQpI83P5FqESUgzNcjIOqIVaxCRz594tRNYraCzw=;
+        b=eyYrC7qLGTAnFMKsv6ZcinzzifSSJUnqW8Llm7a114KjX2qM2U0pMVj4iDKzW/FC0L
+         HmyLwDcFzzFhuqCts1v3b/T6+4QJaYwAEjVSlD25eAZjW/I9ZzbUfiuzPnvmWgMcpHuA
+         7EV2ZKMoV1EV5hQiW1egHYlI5Y6fn9gaMJq1ECzvQeRT/DOA7JDIkap3HUcdWJow/dVy
+         m1rn8k6ocpYkVzrScuTibx9W/0HpjX76Uo7PCjTRd/e38pVeIdAWN9J+pHHjxVI0YytQ
+         40/0sHBM1XtVF4n01B7nQpMdPHNEIpYfbCoiJYGsBZRk7tEbFaxwjrYK29+6PB9iJqx4
+         3EsA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784557496; x=1785162296;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=8cwKQpI83P5FqESUgzNcjIOqIVaxCRz594tRNYraCzw=;
+        b=mCcO/19zKr66fw7MFjc2lfjhsJYlgK7zUK1RBTUaKUpuRtZBFYQ7McwYGIpNOaLBey
+         ldIKk8NSBRJIxq7bIs7TlkCrofr4cS0mlIj1EvcBZ318fPmHZH3RTtC58NObXM4HLzUN
+         GBzaaVNGyrfw9uJvc4JUFRNBwq8td3omvd6CWPqBIjuW5LGeqchJ08QpLkFoOhfe14do
+         AOrnYiwD723V4Px2Wx95MlJ9NqBB4kyvfrC7fNxyAUIygXakkRL5dIN5HmCvDre26hdJ
+         SVQBjRU8dVGC2BgXHw1IX70cluueFlOBQbG34aaPi6WLCa8ziXXZM0HLJNSZhESZJoU1
+         3R/Q==
+X-Forwarded-Encrypted: i=1; AHgh+Rqy9ak6O44v2Hv1PUdk1fMnXM+nXClwAC3P7USXpnP/eg7iYzVSnJJsdkdgwVljRXa4LFc3Gj3WjPo=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yzk7b9bbDuzZii54kGOcg0QIQiG4OE1+OEF1BXv86Tb6qbbCdo4
+	ycfp9mxBOC6jN6UKOYs4zbm66xT9CGX1g/DigB1aKZale3oeLsvMR6o1RBVkoGkT7g==
+X-Gm-Gg: AR+sD11PlAvNcR1QezPiNUOxyjYCYlesl92/QGFEueWfPYGQhZ53A03IcCenRI5OA9C
+	6TP3WtTO6CEWtKjCtd3yJTiRosuGuzBpFJwvupUIPLyEc32EmNc8z9myzmfNrh8Em9TKqmEQ+A1
+	J6zlc4o/WGVbWAhFeR7H0TqiThwJCUytVoB7JHL0385R60Wwl0DqA9pDId15h/tDcQXocGztchu
+	IhOVtvzdmmjlR5GlsGnIZd16p3EDa3neIX6vS6Yk3jvVlK+52fv0QEu2A2n9fLfdW7QpQ4uqPSN
+	Pg3SNRbIFBC54I/JYyUIYaOyQqawAdx9Ey7Orwh+SK6BRp8Fj61fY/CZJIPvvDoyfRQ5Tkl5jCp
+	Y58f4kWZS7azQOzlIUR5YIlNpBY13a6VifNbt2r5Od3DJOSzLNgVA02xZtvxiqJb9BAL4Eneg8l
+	D0wxNjXt+o/0mop4KZ9fmiD3w0/Vx4LyKybSsZEzWj2EUBNew=
+X-Received: by 2002:a17:902:ecd2:b0:2ca:bf8e:360b with SMTP id d9443c01a7336-2cf7b52947fmr768815ad.9.1784557495303;
+        Mon, 20 Jul 2026 07:24:55 -0700 (PDT)
+Received: from google.com (10.129.124.34.bc.googleusercontent.com. [34.124.129.10])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2cf34743105sm58050985ad.69.2026.07.20.07.24.52
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 20 Jul 2026 07:24:54 -0700 (PDT)
+Date: Mon, 20 Jul 2026 14:24:49 +0000
+From: Pranjal Shrivastava <praan@google.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
+	linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>, linux-kernel@vger.kernel.org,
+	Logan Gunthorpe <logang@deltatee.com>,
+	Jason Gunthorpe <jgg@ziepe.ca>, linux-pci@vger.kernel.org,
+	linux-rdma@vger.kernel.org, Shivaji Kant <shivajikant@google.com>
+Subject: Re: [PATCH v3 3/5] nfs: Introduce nfs_release_request_list helper
+Message-ID: <al4vsf9ELpS9-4ed@google.com>
+References: <20260715143540.3597616-1-praan@google.com>
+ <20260715143540.3597616-4-praan@google.com>
+ <20260720091505.GC24298@lst.de>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260720091505.GC24298@lst.de>
 
-The file handle held in struct pnfs_ff_layout is copied directly out
-of a struct svc_fh, whose fh_handle member is a struct knfsd_fh.
-Storing the layout's copy as struct nfs_fh instead forced an
-open-coded field-by-field copy between two unrelated structures.
+On Mon, Jul 20, 2026 at 11:15:05AM +0200, Christoph Hellwig wrote:
+> On Wed, Jul 15, 2026 at 02:35:38PM +0000, Pranjal Shrivastava wrote:
+> > Introduce a centralized helper, nfs_release_request_list, to handle
+> > the bulk release of nfs_page requests from a list.
+> > 
+> > This serves as a preparatory step for two upcoming improvements:
+> > 
+> >    1. Pin-Aware Cleanup: As we migrate to iov_iter_extract_* API,
+> >       requests will hold pins (GUP) instead of standard references. The
+> >       helper ensures that the correct unpinning logic gets applied
+> >       consistently across all requests in a list.
+> > 
+> >    2. Folio Support: In subsequent patches where nfs_page structures
+> >       will cover multi-page folios, this helper provides a clean
+> >       infrastructure to unlock these larger units of I/O in bulk during
+> >       completion, similat to the pattern in bio_release_pages.
+> > 
+> > Additionally, refactor nfs_read_sync_pgio_error() to utilize this new
+> > helper.
+> > 
 
-Hold the layout's file handle in struct knfsd_fh so the copy uses the
-canonical fh_copy_shallow() helper and server code no longer reaches
-into a separate file handle representation.
+[...]
 
-Cc: Thomas Haynes <loghyr@hammerspace.com>
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfsd/flexfilelayout.c    | 3 +--
- fs/nfsd/flexfilelayoutxdr.c | 4 ++--
- fs/nfsd/flexfilelayoutxdr.h | 3 ++-
- 3 files changed, 5 insertions(+), 5 deletions(-)
+> > +/*
+> > + * nfs_release_request_list - Release a list of NFS read/write requests
+> > + * @head: list of requests to release
+> > + *
+> > + * Removes each request from the list and drops it's refcount.
+> > + */
+> > +void nfs_release_request_list(struct list_head *head)
+> > +{
+> > +	struct nfs_page *req;
+> > +
+> > +	while (!list_empty(head)) {
+> > +		req = nfs_list_entry(head->next);
+> 
+> req could/should be local here.  Or you switch to list_first_or_null,
+> which some folks prefer.
+> 
 
-diff --git a/fs/nfsd/flexfilelayout.c b/fs/nfsd/flexfilelayout.c
-index 9f532418cac8..89298e77daa6 100644
---- a/fs/nfsd/flexfilelayout.c
-+++ b/fs/nfsd/flexfilelayout.c
-@@ -62,8 +62,7 @@ nfsd4_ff_proc_layoutget(struct svc_rqst *rqstp, struct inode *inode,
- 	if (error)
- 		goto out_error;
- 
--	fl->fh.size = fhp->fh_handle.fh_size;
--	memcpy(fl->fh.data, &fhp->fh_handle.fh_raw, fl->fh.size);
-+	fh_copy_shallow(&fl->fh, &fhp->fh_handle);
- 
- 	/* Give whole file layout segments */
- 	seg->offset = 0;
-diff --git a/fs/nfsd/flexfilelayoutxdr.c b/fs/nfsd/flexfilelayoutxdr.c
-index 97d8a28dd3a0..5c48d35f4bd8 100644
---- a/fs/nfsd/flexfilelayoutxdr.c
-+++ b/fs/nfsd/flexfilelayoutxdr.c
-@@ -31,7 +31,7 @@ nfsd4_ff_encode_layoutget(struct xdr_stream *xdr,
- 	struct ff_idmap uid;
- 	struct ff_idmap gid;
- 
--	fh_len = 4 + xdr_align_size(fl->fh.size);
-+	fh_len = 4 + xdr_align_size(fl->fh.fh_size);
- 
- 	uid.len = sprintf(uid.buf, "%u", from_kuid(&init_user_ns, fl->uid));
- 	gid.len = sprintf(gid.buf, "%u", from_kgid(&init_user_ns, fl->gid));
-@@ -69,7 +69,7 @@ nfsd4_ff_encode_layoutget(struct xdr_stream *xdr,
- 				    sizeof(stateid_opaque_t));
- 
- 	*p++ = cpu_to_be32(1);			/* single file handle */
--	p = xdr_encode_opaque(p, fl->fh.data, fl->fh.size);
-+	p = xdr_encode_opaque(p, fl->fh.fh_raw, fl->fh.fh_size);
- 
- 	p = xdr_encode_opaque(p, uid.buf, uid.len);
- 	p = xdr_encode_opaque(p, gid.buf, gid.len);
-diff --git a/fs/nfsd/flexfilelayoutxdr.h b/fs/nfsd/flexfilelayoutxdr.h
-index 6d5a1066a903..92752092e2f8 100644
---- a/fs/nfsd/flexfilelayoutxdr.h
-+++ b/fs/nfsd/flexfilelayoutxdr.h
-@@ -6,6 +6,7 @@
- #define _NFSD_FLEXFILELAYOUTXDR_H 1
- 
- #include <linux/inet.h>
-+#include "nfsfh.h"
- #include "xdr4.h"
- 
- #define FF_FLAGS_NO_LAYOUTCOMMIT 1
-@@ -39,7 +40,7 @@ struct pnfs_ff_layout {
- 	kgid_t				gid;
- 	struct nfsd4_deviceid		deviceid;
- 	stateid_t			stateid;
--	struct nfs_fh			fh;
-+	struct knfsd_fh			fh;
- };
- 
- __be32 nfsd4_ff_encode_getdeviceinfo(struct xdr_stream *xdr,
--- 
-2.54.0
+Ack. Made it local
 
+> > +extern void nfs_release_request(struct nfs_page *req);
+> > +extern void nfs_release_request_list(struct list_head *head);
+> 
+> Please drop the superflous externs for new code.
+> 
+
+Ack. Dropping the externs.
+
+Thanks,
+Praan
