@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 84C7642A14E;
-	Mon, 20 Jul 2026 14:28:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3F41D42586C;
+	Mon, 20 Jul 2026 14:28:18 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784557697; cv=none; b=lVmqpzinVPDzfDVpBAB7bQpPzPNpGMEZC7ZrvTDf9blFIRfYGaTEWAlmmjRGQNaywoLEVCsVbvxlUCNwo8U/5VZ0AYXL7LpNLFp0xwsx2QJ95iLXdWCtbJmMZRqs1hEHlSbAp28w6PqCs10fssHZw70gwt23rtrLrcIllfnffts=
+	t=1784557699; cv=none; b=Trjq+kzwg3AGsjOMLMzoQI3OX3+H6cZE99bRIwgSNxhuyM9FYeVWD1LD26RlQtdVLvJrsC6TkYdCv5owA9+nE4wUSAO0pKox14qEPkbmPYnyGEuY6YUMMBjE3KcsLjwhQiU5MZN6eKvT8vuUQ8z5p8Z5g33Z3b2W2yyiU3XlbiM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784557697; c=relaxed/simple;
-	bh=on+G882KjZTShdkmEvEByWqLywXr3VQ77ncm3kyBQNc=;
+	s=arc-20240116; t=1784557699; c=relaxed/simple;
+	bh=u7U5N5wDiMy4eBTnkiJZUFOyXOnXebkzwDbLfAuXDtg=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=GWkAQPLlpC2dhV7DCoUKyjpvtCm3uSh3bEpukn5BGZhZsYxotw0mAhy+Slw1iL1ARbcuTQKLN3Ip9cwbXjdVvrmWa7zxHFJKLipHmpky5XSiUhmUDLtO9TvcLcuKpNmUiZO5dBodTE6xnYO3sOiO4qCdNxuM36s21fa5gy+Y86E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bOzPSQxj; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=Ys3hglwO09uv4AhfDKlBS/lRYmxN2GTbc606+uyU1GHSM5Tegar15XU/pMsqk/p0EaHPTG731Tm6Y2D4fdB0JENuU7U31ej9PbmRzOEzXJCJvbNgkyibpxw/iL2q9F6cJ2H7wjzlsx5OA7fjLt48Oyum3OAL1Kw1uWuQ5B/KCek=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=No53ePxY; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bOzPSQxj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 24A2C1F00A3A;
-	Mon, 20 Jul 2026 14:28:14 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="No53ePxY"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C0B561F00A3F;
+	Mon, 20 Jul 2026 14:28:16 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784557695;
-	bh=3rNs2JeT6guvgdkKirduA8NjGGPjD3GPBTBGrwZW6Ps=;
+	s=k20260515; t=1784557697;
+	bh=HeK+7WAe1j9DLbre9kaKG26xAJJ07uQ1XfFW/xxfFOE=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=bOzPSQxj8TIOSAtUzLwVZXzdZj/uNIXAla7VQh1KiTPeqPWs3ud/1Ztr+5psTCeqD
-	 1O+veCiZr1Ca1pMsnWAcsKcflF9HwxLNdp+V8wMK8IMqtHaEK97cZqrET0Hw4MY26p
-	 leuZkVqXm17CzgxZGWl06L2nrMKGdWp8948HIQmAmZbT5A2m80JSCOLVtFgq/YF1Gl
-	 YhksmhCBc/d4DlBE5tDP/ZKhYeWQ4ZJ9U22pJZZLCSAoGy4PClQTLyMlUeN/6b2mN2
-	 cMgw+68vcG3P8s1315z8AS/sWYb3gpqtxvUO6l7dJwsZJp8C3MQUUkxXFjY+MXmgM0
-	 emZC0+SdQcAJQ==
+	b=No53ePxYmI8OkpzhvdQ2njNr02q4a2k987+tZkyleMTgnPSGTs2VozqLPBGt4R+tV
+	 /kAraW0e5k66S2/bD7kq2pN2vBXN1ZdAquVe2lfcMBLk2SQvbLf0ymUeat50BdVybC
+	 qOcFzK7yLsek/5TH40mJn9I+d87fpa+NoayBG4CNwtEF5akSKckMNnxolYBk2hzDKf
+	 FquCvqe+mvVlAIKL5ZOj9GyM/2/An6fta7DE6AfFKu41ppzqvvZR6rGcGdSxn3KvEt
+	 Gy1eci0qfh548gSayOhbFjG2zgHAGrFdP0pbfQm8OeQpH/TR9e8KVKmgJaxzdF1cBp
+	 +h79Gy8ldP7MA==
 From: Chuck Lever <cel@kernel.org>
-Date: Mon, 20 Jul 2026 10:27:55 -0400
-Subject: [PATCH net-next v2 1/6] net/tls: Bound consecutive no-data records
- in tls_sw_read_sock()
+Date: Mon, 20 Jul 2026 10:27:57 -0400
+Subject: [PATCH net-next v2 3/6] tls: Implement read_sock_rectype for kTLS
+ software path
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260720-tcp-read-sock-v2-1-29545d034f3c@kernel.org>
+Message-Id: <20260720-tcp-read-sock-v2-3-29545d034f3c@kernel.org>
 References: <20260720-tcp-read-sock-v2-0-29545d034f3c@kernel.org>
 In-Reply-To: <20260720-tcp-read-sock-v2-0-29545d034f3c@kernel.org>
 To: Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>, 
@@ -48,103 +48,146 @@ To: Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>, Chuck Lever <cel@kernel.org>
 Cc: netdev@vger.kernel.org, kernel-tls-handshake@lists.linux.dev, 
- linux-kselftest@vger.kernel.org, linux-nfs@vger.kernel.org, 
- Chuck Lever <cel@kernel.org>
+ linux-kselftest@vger.kernel.org, linux-nfs@vger.kernel.org
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3121; i=cel@kernel.org;
- h=from:subject:message-id; bh=on+G882KjZTShdkmEvEByWqLywXr3VQ77ncm3kyBQNc=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqXjB8Eyx+HkU1IJBnxXOCXvrz8j2e+AfbHheQT
- SKBwSv01PKJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCal4wfAAKCRAzarMzb2Z/
- l3KdEACrbpNZjZ0YyxuUYgMyYE6fA71CGt2ErQsLea8sgfjLf+urCWNDFhkqkQOyjqRMY3+UfPH
- iZQIlVxutFAW99DjGxjLe4sD6AQVE1iIIR6Zhg4FTBhxMMiqg56XwQV6+9znzODpRjlJ6qmTJJL
- S+TtZFyHhdHiPRe+KCyYwpc1AN1eP2nHstPlhKnlGbpH+cPmEBKeqaQeHhlkcKtSyp4Ldu+6Tup
- 441NqdfdoFOxrXGTtdxrrueigea1m3eDy2wbFzTNytpPfx9nfocUIPTd7gYz1sx3G0UqTxkivKc
- Xj8D0Bp09EJMdqJ+zQbNUVonZljk7O5QWOr8DyEWDo2qQYQ/JBHMVpF5Kubqfs2G+YLziSbX4Kr
- ufoqbGaJImHFR7ULFYrt0MKTEaMo57fwwkbhEHbmGY+5XIhEJyoDF1N2wW2KhIirmm8Zl4iq50H
- orNmMo7ZoBI+0ckB3gi2OvxEOtOQ7q1ELie6OCtIUtBbNWyTO8RWoZjV0tE789LPbx59XyT6Qpg
- BiLOaRmccUH1XWt2qkjiy+rQILd5sIbyd8DIEedxdg9vh4K0Oemze6PxzzQNrhNjUCU3ao7AEV9
- FdwyI7r6aztQ7vLc/E3kiDGpmuOEmfIEwJNpbKebEisja16Z0wsJwOzndx2k4LiVc1aateQ2jA2
- WOkAalW/LJz22xQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=4508; i=cel@kernel.org;
+ h=from:subject:message-id; bh=oJObk2kNjvM+ukhGUGgZGEq4NeHvZsgwwkul/qLO0W4=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqXjB8DOLxloNnzNFR8eb6YjzGR0uICumzhaOyK
+ dimRo6SXp+JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCal4wfAAKCRAzarMzb2Z/
+ l4leD/9IHF8/DyM5KiRS/94GR7xT8ERexktSyvKJZOqBSFXfXeZQU6kR6PB9HFawEvPV3WL1aQX
+ DehLrW0FcI+ZQhfSrBypSiLH67hlm4Iirt+8tLk7RvnA78ZbtScDZtkQYPmyIQAwp0LmPN9AIyl
+ MunmWdmDT4LhOHutwLoGhGYu1U59+xtWGhCq6r+9xECPmvZIEOVLhkRSaxca8Tz59hy5y7fbQ2Z
+ 29asPPupbZ75BvGJBhDU34/vE7uYRT9+M9XXIGmxhtg2EtQKgbyJYTATlIV1Ij0WNIlyH/IErz4
+ oGEWRI48Y4BB9ZRj/kUBOEDlp0mweY9VZK4FAISz+qEK+GpoDR3iTJLPWKADeedmFZFR51tXBHE
+ R3QdrW0RxXwLDIRhkB2zo9MeBzFipioQNAePmkj1z49CoItuAMF+ONMl3sw+3fKd50u+IIlGYKN
+ 0+XJJelvNAk7zR0BYtdOqyPhUaZvWh+rm6lKHhqb/AXIU6/pk6J4IKxzg90mXlSMHiIRaRlwZo8
+ MQMcmMr0PLZ9sRr83DKozx+XIOdPuf4k3i/U7cf2AyXp4ur4/rg6OVE/qATuKb513PDefhBqh57
+ StR+Z+qxtdDpSoqgwfkEhz6I9WOJMpwQ7FA6uXwM2bdDDc7wL94Ws5iY317tVdSlnOTIdWwOx9k
+ I/JGgDjILcz2yTA==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-A record that delivers no payload -- an empty TLS 1.3 data record
-today, a control record once read_sock_rectype() lands -- leaves
-tls_sw_read_sock() in its loop without advancing the caller's read
-descriptor. A peer that streams such records keeps the receive loop
-running, and the socket lock held, for as long as the records
-arrive.
+From: Chuck Lever <chuck.lever@oracle.com>
 
-Cap the number of consecutive no-data records consumed per call. The
-count resets on any record that delivers bytes, so a normal stream
-is unaffected; a peer supplying only empty records is bounded to
-TLS_RX_NODATA_LIMIT iterations before the call returns 0. read_sock
-consumers treat that as "no progress, re-poll" rather than EOF, so
-the connection stays up and makes progress once real data arrives.
+tls_sw_read_sock() rejects non-data records (alerts, handshake
+messages) with -EINVAL. Kernel consumers that need TLS alert
+delivery, such as NFSD, NFS client, and NVMe target, must fall back
+to the sock_recvmsg() API to receive control messages via CMSG.
 
-Only tls_sw_read_sock() needs this cap. Its consumers drive the receive
-loop from kernel context -- a work item or service thread holding the
-socket lock across the whole call with no return to userspace -- so an
-unbounded empty-record stream keeps that context and the lock pinned
-for as long as the flood lasts. The cap supplies the return boundary
-that a system call would otherwise provide. tls_sw_splice_read()
-and tls_sw_recvmsg() already have one: they run in the calling task's
-context, reschedule while draining the socket backlog (cond_resched()
-in __release_sock()), and drop the socket lock when the call returns. A
-flood there costs the caller only its own scheduler time, so the cap
-would add nothing.
+Implement the new read_sock_rectype() method for these consumers,
+delivering non-data records to a callback through the kTLS software
+receive path.
 
-Signed-off-by: Chuck Lever <cel@kernel.org>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/tls/tls_sw.c | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+ net/tls/tls.h      |  3 +++
+ net/tls/tls_main.c |  5 +++++
+ net/tls/tls_sw.c   | 41 ++++++++++++++++++++++++++++++++++++-----
+ 3 files changed, 44 insertions(+), 5 deletions(-)
 
+diff --git a/net/tls/tls.h b/net/tls/tls.h
+index 60a37bdaaa25..c21d2a985e13 100644
+--- a/net/tls/tls.h
++++ b/net/tls/tls.h
+@@ -168,6 +168,9 @@ ssize_t tls_sw_splice_read(struct socket *sock, loff_t *ppos,
+ 			   size_t len, unsigned int flags);
+ int tls_sw_read_sock(struct sock *sk, read_descriptor_t *desc,
+ 		     sk_read_actor_t read_actor);
++int tls_sw_read_sock_rectype(struct sock *sk, read_descriptor_t *desc,
++			     sk_read_actor_t read_actor,
++			     sk_read_rectype_actor_t rectype_actor);
+ 
+ int tls_device_sendmsg(struct sock *sk, struct msghdr *msg, size_t size);
+ void tls_device_splice_eof(struct socket *sock);
+diff --git a/net/tls/tls_main.c b/net/tls/tls_main.c
+index 8c588cdab733..4963e0caf6d5 100644
+--- a/net/tls/tls_main.c
++++ b/net/tls/tls_main.c
+@@ -949,12 +949,17 @@ static void build_proto_ops(struct proto_ops ops[TLS_NUM_CONFIG][TLS_NUM_CONFIG]
+ 	ops[TLS_BASE][TLS_SW  ].splice_read	= tls_sw_splice_read;
+ 	ops[TLS_BASE][TLS_SW  ].poll		= tls_sk_poll;
+ 	ops[TLS_BASE][TLS_SW  ].read_sock	= tls_sw_read_sock;
++	ops[TLS_BASE][TLS_SW  ].read_sock_rectype	= tls_sw_read_sock_rectype;
+ 
+ 	ops[TLS_SW  ][TLS_SW  ] = ops[TLS_SW  ][TLS_BASE];
+ 	ops[TLS_SW  ][TLS_SW  ].splice_read	= tls_sw_splice_read;
+ 	ops[TLS_SW  ][TLS_SW  ].poll		= tls_sk_poll;
+ 	ops[TLS_SW  ][TLS_SW  ].read_sock	= tls_sw_read_sock;
++	ops[TLS_SW  ][TLS_SW  ].read_sock_rectype	= tls_sw_read_sock_rectype;
+ 
++	/* TLS_HW (device offload) RX entries inherit
++	 * read_sock{,_rectype} from SW via the struct copies below.
++	 */
+ #ifdef CONFIG_TLS_DEVICE
+ 	ops[TLS_HW  ][TLS_BASE] = ops[TLS_BASE][TLS_BASE];
+ 
 diff --git a/net/tls/tls_sw.c b/net/tls/tls_sw.c
-index d4afc90fd796..087950ca639c 100644
+index 087950ca639c..af347b5b17fa 100644
 --- a/net/tls/tls_sw.c
 +++ b/net/tls/tls_sw.c
-@@ -2049,6 +2049,11 @@ ssize_t tls_sw_splice_read(struct socket *sock,  loff_t *ppos,
- 	goto splice_read_end;
- }
+@@ -2054,8 +2054,9 @@ ssize_t tls_sw_splice_read(struct socket *sock,  loff_t *ppos,
+  */
+ #define TLS_RX_NODATA_LIMIT 16
  
-+/* Consecutive empty data records deliver no bytes; cap them per
-+ * call so a peer streaming them cannot hold the socket lock here.
-+ */
-+#define TLS_RX_NODATA_LIMIT 16
-+
- int tls_sw_read_sock(struct sock *sk, read_descriptor_t *desc,
- 		     sk_read_actor_t read_actor)
+-int tls_sw_read_sock(struct sock *sk, read_descriptor_t *desc,
+-		     sk_read_actor_t read_actor)
++static int __tls_sw_read_sock(struct sock *sk, read_descriptor_t *desc,
++			      sk_read_actor_t read_actor,
++			      sk_read_rectype_actor_t rectype_actor)
  {
-@@ -2057,6 +2062,7 @@ int tls_sw_read_sock(struct sock *sk, read_descriptor_t *desc,
- 	struct tls_prot_info *prot = &tls_ctx->prot_info;
- 	struct strp_msg *rxm = NULL;
- 	struct sk_buff *skb = NULL;
-+	unsigned int nodata_count = 0;
- 	struct sk_psock *psock;
- 	size_t flushed_at = 0;
- 	bool released = true;
-@@ -2122,7 +2128,13 @@ int tls_sw_read_sock(struct sock *sk, read_descriptor_t *desc,
- 		 * here instead.
- 		 */
- 		if (rxm->full_len == 0) {
+ 	struct tls_context *tls_ctx = tls_get_ctx(sk);
+ 	struct tls_sw_context_rx *ctx = tls_sw_ctx_rx(tls_ctx);
+@@ -2115,10 +2116,27 @@ int tls_sw_read_sock(struct sock *sk, read_descriptor_t *desc,
+ 			tls_rx_rec_done(ctx);
+ 		}
+ 
+-		/* read_sock does not support reading control messages */
++		/* Control records (alerts, handshake) reach a consumer
++		 * only through rectype_actor; without one, read_sock
++		 * rejects them.
++		 */
+ 		if (tlm->control != TLS_RECORD_TYPE_DATA) {
+-			err = -EINVAL;
+-			goto read_sock_requeue;
++			if (!rectype_actor) {
++				err = -EINVAL;
++				goto read_sock_requeue;
++			}
++			err = rectype_actor(desc, skb, rxm->offset,
++					 rxm->full_len,
++					 tlm->control);
++			if (err < 0)
++				goto read_sock_requeue;
 +			err = 0;
- 			consume_skb(skb);
-+			/* tls_rx_reader_release() announces any parsed record
-+			 * on exit, so returning 0 here cannot strand it.
-+			 */
++			/* rectype_actor consumes the whole record; no partial path */
++			consume_skb(skb);
++			skb = NULL;
 +			if (++nodata_count >= TLS_RX_NODATA_LIMIT)
 +				break;
- 			continue;
++			continue;
  		}
  
-@@ -2133,6 +2145,7 @@ int tls_sw_read_sock(struct sock *sk, read_descriptor_t *desc,
- 			goto read_sock_requeue;
- 		}
- 		copied += used;
-+		nodata_count = 0;
- 		if (used < rxm->full_len) {
- 			rxm->offset += used;
- 			rxm->full_len -= used;
+ 		/* An empty data record (legal in TLS 1.3) gives a zero
+@@ -2164,6 +2182,19 @@ int tls_sw_read_sock(struct sock *sk, read_descriptor_t *desc,
+ 	goto read_sock_end;
+ }
+ 
++int tls_sw_read_sock(struct sock *sk, read_descriptor_t *desc,
++		     sk_read_actor_t read_actor)
++{
++	return __tls_sw_read_sock(sk, desc, read_actor, NULL);
++}
++
++int tls_sw_read_sock_rectype(struct sock *sk, read_descriptor_t *desc,
++			     sk_read_actor_t read_actor,
++			     sk_read_rectype_actor_t rectype_actor)
++{
++	return __tls_sw_read_sock(sk, desc, read_actor, rectype_actor);
++}
++
+ bool tls_sw_sock_is_readable(struct sock *sk)
+ {
+ 	struct tls_context *tls_ctx = tls_get_ctx(sk);
 
 -- 
 2.54.0
