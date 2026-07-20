@@ -1,105 +1,151 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from mail-43101.protonmail.ch (mail-43101.protonmail.ch [185.70.43.101])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60EC51A0728
-	for <linux-nfs@vger.kernel.org>; Sat, 18 Jul 2026 18:39:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 338AD38C2A0
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2026 03:18:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=185.70.43.101
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784399964; cv=none; b=boZTMns4tGz72d1OnNyfsbKBFz1fYZLgSzVcBTDbraPxNc0BB+Sc732wirg4la85vBOPhYcUJ9p5DgSfkYTf3FJVVaC5QsahGmejPXFfabskGNNXL19lszPkqJG3ib3Iq7HU6TfNz3olZi3l6zwS/NOj9vG7fpGoSpeiMxkutHs=
+	t=1784517523; cv=none; b=TSDb7OXt3+euDm71M3WNy44gPOWSbW2ADYiZbVMoO7x6CpkPubcFxcpkoi7zN7tiCcnr/5gpnSzMENGfXQ9CV5EOQqoLbInp9LuhmudwSnd8qc8orlqpfRuXNSeiOgsB4Llv8FXkm7G2vBgAgU97jMNuwD78om3MwDbccQf5Zjc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784399964; c=relaxed/simple;
-	bh=9sAd6/Ec10SyApDxG31nVZ8QeT3QE6GQ0ktT+AZUkDw=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=J5Yn0MHoqZIU5p1kiZIlLhrINC2bGsruO4vVUEVH9lIj4cG413TK+xu45054w28okbmxB07rsoO/IxURmAjFjxamqDo8kxBIqWg1D6/9nqHn88z52keV953zHh6LOXtTqKniWrCVe8jGyCgminctMTOJ8f3pEvTzTSnAgI+kVkw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=oZ3BMQsj; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784517523; c=relaxed/simple;
+	bh=iAh58rF1DzP2PBwFYBBXRLMHW04vBLDsH0Uaz1PZNVQ=;
+	h=Date:To:From:Subject:Message-ID:MIME-Version:Content-Type; b=CFG8jhVhIz8auQ4B6XWrw6eDg1y1PPklJzUgO5CSqpdLR71EWowKCmhUtVTX1KwnGJO+8Xa1EY5iRKOFqXAbWe1bAQ+bBhRwTBhlagfs4fGoxQ8Kkh0P9jvEIjd+Gs4gK368Bd/LYhs285wuMrPjeGfKbYmI8lMRHiiTL3AMZEQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=proton.me; spf=pass smtp.mailfrom=proton.me; dkim=pass (2048-bit key) header.d=proton.me header.i=@proton.me header.b=SPEZHu2q; arc=none smtp.client-ip=185.70.43.101
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=proton.me
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=proton.me
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="oZ3BMQsj"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5B5051F000E9;
-	Sat, 18 Jul 2026 18:39:22 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784399963;
-	bh=9sAd6/Ec10SyApDxG31nVZ8QeT3QE6GQ0ktT+AZUkDw=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=oZ3BMQsjoWDvMok6o7gKLNh2sy6XrJc+wyqlC0LHnK03jJb5UpT41g/7uzuaAMLsB
-	 WN3U1yu+Z3IDpBs2lE4245MgjadeTsyQ7/Q7ne4+F7kqhoiH8ieIxTqrLNFC/pHiOb
-	 VpfbW2FOTTvF97irnYeAFWuyM3DRahk9YnyFcbYhqacECAhRHSePuKvVcafMR53PkF
-	 EyKoz0ADLrRYo/Ss+TyLsZ+KjcZId7CAZNMzykV322ijUPnkhwngkLl+OvME/gYhRO
-	 XaNE0XGnxCLrwUtuOTw9S9JhHgpXwfmkukELUtShgKlmiiQLxv4zmuQ/h1oQ/Z3nLF
-	 lHx2J/nVRQFGA==
-Message-ID: <e12340598024349c232f455cfcff420c71450e82.camel@kernel.org>
-Subject: Re: NFS mount option rdirplus
-From: Trond Myklebust <trondmy@kernel.org>
-To: "Mora, Jorge" <Jorge.Mora@netapp.com>, "linux-nfs@vger.kernel.org"
-	 <linux-nfs@vger.kernel.org>
-Cc: "Williams, Keith" <Keith.Williams@netapp.com>, 
- "ben.coddington@hammerspace.com"	 <ben.coddington@hammerspace.com>,
- "sabbene@nvidia.com" <sabbene@nvidia.com>,  "pyoo@nvidia.com"	
- <pyoo@nvidia.com>
-Date: Sat, 18 Jul 2026 14:39:21 -0400
-In-Reply-To: <SA1PR06MB11353323AA28FA09C4EC56163E1C62@SA1PR06MB11353.namprd06.prod.outlook.com>
-References: 
-	<SA1PR06MB1135309B2E478CE0323EF04BCE1FF2@SA1PR06MB11353.namprd06.prod.outlook.com>
-	 <SA1PR06MB11353323AA28FA09C4EC56163E1C62@SA1PR06MB11353.namprd06.prod.outlook.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	dkim=pass (2048-bit key) header.d=proton.me header.i=@proton.me header.b="SPEZHu2q"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=proton.me;
+	s=protonmail; t=1784517514; x=1784776714;
+	bh=3kJro2eOBqhsrvHp7va/fsg9z3nYmeF3TL9wm56mPKs=;
+	h=Date:To:From:Subject:Message-ID:Feedback-ID:From:To:Cc:Date:
+	 Subject:Reply-To:Feedback-ID:Message-ID:BIMI-Selector;
+	b=SPEZHu2qsevXFanheOQjPHvk0VUN9jmXbvtP+cVV4OwydS1YoEhJBoYQTAl7KO7TD
+	 X1wMLLSYODUXQDU56YbA2IZJQELTSUOplFWJMVTWRndGKOUHHvvBozcYAHIiEI7YKX
+	 cn4LEzVJ9QprgQPfvUEgIckIzCfEQQLj49oPY0eJ5Z/TmKJnWHqbDxqitWXQaupW4i
+	 vZALrQaKh3AS5J79WRXbddCyp2SvXK8yhe3ODqwuCRwllJt0g9QcnPS8ru/8cxfdsj
+	 iFR56Z5Cyl7h42gYKHbVJZzUqmVe1X7dtiiQVPBB2mABpsYKSjZNBBujwF2pPv9BfZ
+	 cw67Ay2GIac8A==
+Date: Mon, 20 Jul 2026 03:18:30 +0000
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Michael <michaely4ng@proton.me>
+Subject: [BUG] NFSv4.2: futimens() returns success without sending SETATTR
+Message-ID: <nMlXgkbm-9ZP_fFN16OpzFd4kwNlyXq169-6CoOE4nuHyTsmGaFeJgzuhj3grRboJKg9RapKov2_FJ1E3BCL0oZ7UNzF0pgwwhVC6VOVJYQ=@proton.me>
+Feedback-ID: 153107444:user:proton
+X-Pm-Message-ID: 0b8c65af1041a86a4c0c50969c9c542dbdca64d7
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-Hi Jorge
+Hello,
 
-On Fri, 2026-07-17 at 16:35 +0000, Mora, Jorge wrote:
-> +Stephen Abbene
-> +Peter Yoo
->=20
-> --Jorge
-> ________________________________________
-> From: Mora, Jorge
-> Sent: Wednesday, July 8, 2026 2:59 PM
-> To: linux-nfs@vger.kernel.org; Trond Myklebust
-> Cc: Williams, Keith
-> Subject: NFS mount option rdirplus
->=20
-> Hello Trond,
->=20
-> A customer is experiencing significant performance degradation after
-> switching from Rocky Linux 8.7 clients to a 6.12 upstream kernel. The
-> clients with the newer kernel are seeing a dramatic increase in
-> GETATTR/LOOKUP operations. Their workload primarily involves
-> traversing a read-only directory tree and reading or retrieving file
-> attributes.
->=20
-> This issue is related to changes made to add heuristics to
-> READDIRPLUS. We have been testing on RHEL 9.7 using the mount option
-> 'rdirplus=3Dforce' to reduce the number of GETATTR/LOOKUP operations.
-> However, this option introduces other issues.
->=20
-> Is it possible to add a mount option to completely bypass the readdir
-> heuristics, such as 'rdirplus=3Dlegacy'? Alternatively, could a mount
-> option be added to make the client less aggressive in sending
-> READDIRPLUS requests, such as 'rdirplus=3Deager'?
+I am seeing a reproducible NFSv4.2 timestamp issue where an fd-based timest=
+amp update returns success but does not appear to send an NFS SETATTR opera=
+tion or update the server-side inode.
 
-We already have 3 different modes for readdirplus: the default
-heuristic based rdirplus, off (nordirplus/rdirplus=3Dnone) and always on
-(rdirplus=3Dforce). I'm violently opposed to adding yet another, and
-particularly if it is just tagging a slightly different heuristic.
+Client environment:
 
-So if you're seeing problems with a read-only directory, then I suggest
-you use the tracepoints that are already in the code to show what is
-going wrong, and determine why. We can then have an informed discussion
-as to whether or not we need to have another round of changes for the
-current default heuristics.
+Distribution: Fedora 44
+Kernel version: 7.1.3 x86_64
+GNU coreutils version: 9.10
+NFS utilities version: 2.8.7
 
-That said, if the directory contents are also read-only and not
-expected to change, then why can't your customer use statx() with the
-AT_STATX_DONT_SYNC flag to just retrieve whatever is currently in the
-cache?
+Reproducible with both 7.1.3-cachyos1.lto.fc44.x86_64 and the stock Fedora =
+7.1.3-201.fc44.x86_64 kernel.
 
---=20
-Trond Myklebust
-Linux NFS client maintainer, Hammerspace
-trondmy@kernel.org, trond.myklebust@hammerspace.com
+NFS mount options:
+
+home:/tank on /mnt/tank type nfs4 (rw,relatime,vers=3D4.2,rsize=3D1048576,w=
+size=3D1048576,namlen=3D255,hard,fatal_neterrors=3Dnone,proto=3Dtcp,timeo=
+=3D50,retrans=3D2,sec=3Dsys,clientaddr=3D169.254.87.187,local_lock=3Dnone,a=
+ddr=3D169.254.42.42,_netdev,x-systemd.automount,x-systemd.mount-timeout=3D5=
+,x-systemd.idle-timeout=3D15min)
+
+Also reproducible with the noac option.
+
+NFS server export options:
+
+/tank           169.254.0.0/16(rw)
+
+
+The failing case is the fd-based form (futimens) used by GNU touch:
+
+touch -d '2004-02-29 16:21:42' /mnt/tank/test
+
+Relevant strace output:
+
+openat(AT_FDCWD, "/mnt/tank/test",
+       O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666)
+    =3D 3</mnt/tank/test>
+
+utimensat(0</mnt/tank/test>, NULL,
+          [{tv_sec=3D1078032102, tv_nsec=3D0},
+           {tv_sec=3D1078032102, tv_nsec=3D0}], 0)
+    =3D 0
+
+The file descriptor has been duplicated to fd 0 by coreutils before the uti=
+mensat() call.
+
+Observed behaviour:
+
+1. utimensat() returns success.
+2. stat on the NFS client temporarily shows the requested atime and mtime.
+3. The server-side backing inode remains unchanged.
+4. The NFS client SETATTR counter does not increment.
+5. After client attribute revalidation, the client timestamp reverts to the=
+ unchanged server timestamp.
+6. sync and a clean unmount do not propagate the timestamp change.
+
+Example client-side result immediately after touch:
+
+Access: 2004-02-29 16:21:42.000000000 +1100
+Modify: 2004-02-29 16:21:42.000000000 +1100
+Change: 2026-07-20 09:54:29.303441484 +1000
+
+At the same time, the server-side inode still shows:
+
+Access: 2026-07-20 09:50:16.502885123 +1000
+Modify: 2026-07-20 09:50:16.502885123 +1000
+Change: 2026-07-20 09:50:16.502885123 +1000
+
+The client and server report the same inode number and birth timestamp, so =
+they appear to be referring to the same file.
+
+As a control, a pathname-based utimensat() works correctly:
+
+utimensat(AT_FDCWD, "/mnt/tank/test",
+          [{tv_sec=3D1078032102, tv_nsec=3D0},
+           {tv_sec=3D1078032102, tv_nsec=3D0}], 0)
+    =3D 0
+
+For the pathname-based call:
+
+1. The NFS client SETATTR counter increments.
+2. The server-side inode timestamp is updated immediately.
+
+This therefore appears specific to the fd-based futimens() / utimensat(fd, =
+NULL, ...) path.
+
+
+The minimal distinction is:
+
+fd-based timestamp update:
+    returns success
+    no SETATTR observed
+    server inode unchanged
+    update later disappears
+
+pathname-based timestamp update:
+    returns success
+    SETATTR observed
+    server inode updated
+
+Please let me know if further information or testing is required.
+
+Regards,
+Michael Yang
