@@ -1,63 +1,67 @@
-Received: from mail-pl1-f198.google.com (mail-pl1-f198.google.com [209.85.214.198])
+Received: from mail-pg1-f198.google.com (mail-pg1-f198.google.com [209.85.215.198])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 46417432BC9
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2026 15:06:11 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.198
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D599432E9C
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2026 15:06:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.215.198
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784559973; cv=none; b=O+QgO8DkuZfIeqOJrpwUfSRmY62npncNiK8QDZc+yhJfm/TFtuf9c0IoUGGkFz5lq/ja/dmxX88vquMnA+rPkOhsSxUP2kP9LeSE+kgfCflSiWlr97Ef2EKe1jBWW65+gcQJSyTaIrgK/IN49l42p/3fDmBidghHMSfdp6LnACs=
+	t=1784559984; cv=none; b=tSHC1sJZc5NrUX+w3/shtyOXO/xBVXtTS/PmudPt3IxxixJaxIXnsAYkyZ71gFHoHPcHNWd87QTQjfwLB4GNBLkqo4co82w9SEcoAa0P7eMhJe6l/mUTHlV76auYKIdjW8hVhy3KDPWkLphrGv86UE2ExgnpIN1LEvQcF54bZKU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784559973; c=relaxed/simple;
-	bh=F1EHaoYJQ650p5KGpCXZKVjiIi5a38caSRNmMXgWBLc=;
-	h=Date:Mime-Version:Message-ID:Subject:From:To:Cc:Content-Type; b=r89RCm/kSQ2kfjHq8vtmJ6tPuKzaC/VdJgAu9Xa80Do15Dmd3hfFHUQir05NpQ3KRoORvr15I3kUlJnRLeYmDQHONcg48Q9Mv5SPWyIjaWDGjdt7lBHyhYVl2LlS1LNdka2RjaL9M0vxZrFn29y8ksljqHcv6I9qU3pkzRfVac0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=flex--praan.bounces.google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=gNNP6p6q; arc=none smtp.client-ip=209.85.214.198
+	s=arc-20240116; t=1784559984; c=relaxed/simple;
+	bh=rN8ZeAOD3iV4q2ZsscdmQWM+P3gd+DLW6a5Z9hGR9ZY=;
+	h=Date:In-Reply-To:Mime-Version:References:Message-ID:Subject:From:
+	 To:Cc:Content-Type; b=LZ9bO/7Nc38qNOb8IAV0xQLzuKUIEU0EVv85xL/oKyqt5tvEB65XEFLkFlxpkH64ynfLecBe7c9uN7pfe/5KQsmArwEQNjICwoFiCNRcAQrq0eVNQBXs1IrL4LbEMvjaqxCbeKX1/Ba/ffHNjxFy07d0eVDHTWiUohEjUQ/3+H8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=flex--praan.bounces.google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=ZauAqCrm; arc=none smtp.client-ip=209.85.215.198
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=flex--praan.bounces.google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="gNNP6p6q"
-Received: by mail-pl1-f198.google.com with SMTP id d9443c01a7336-2cefa1a2be6so80845885ad.0
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2026 08:06:11 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="ZauAqCrm"
+Received: by mail-pg1-f198.google.com with SMTP id 41be03b00d2f7-c85798977dcso12085019a12.0
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2026 08:06:21 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1784559971; x=1785164771; darn=vger.kernel.org;
-        h=content-type:cc:to:from:subject:message-id:mime-version:date:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=k+6cTr1jCJ8/nUqKf9ILuxOaSMXLbUb8f8DhcRcxvFc=;
-        b=gNNP6p6qbmvdiXBJLc7OIpzBoUx145+ucsjbQIal1zoY9mJPOsijTC+JjMz9E4HhP1
-         HEOZ+ixLbVaUBCEYWf5WNaalxWrZUuEkgPfUNLaTunjiqaiqpVkX+zlhxciTiGS6et4C
-         M8WtXHFC+pWBfad0hqIOBuGOj0D85A0AY8ac+UQMDIDM5VT6egvEbjEeFg5jhXFBjDXX
-         p/SxXl1LoD2T+Hv5wAGu5jETGNs3v3qg4/eajxD9aQqUselIfDCnotFroGONKH64+gsQ
-         OBNh4ws3KlWpfonp8+eNWzb0iM8ne5KMYV5l80RZx0OZPuxISEpgn7o49Lt47TnRDqyb
-         sycw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1784559971; x=1785164771;
-        h=content-type:cc:to:from:subject:message-id:mime-version:date
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+        d=google.com; s=20251104; t=1784559980; x=1785164780; darn=vger.kernel.org;
+        h=content-type:cc:to:from:subject:message-id:references:mime-version
+         :in-reply-to:date:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=k+6cTr1jCJ8/nUqKf9ILuxOaSMXLbUb8f8DhcRcxvFc=;
-        b=lhLfvC7ZzoexFYqvVlcHuAN7STtRXWTb65lXlenJXYnfHcItKnWRy+lfaB4sNwP/38
-         7HlbmV085VlVd+E7HyCpRxotLuDTFuBgS0haoqSIoI1no4x710LY8cHvMw6YvqXTRTVb
-         DhU7akUvqis43c8QnAdJrS/vDV/5t/CJY4zsktdVmUXMJc7W7qN7IS0Gvgc9UH33Zcnk
-         UpIduf/AnByjyi8Zu35chMSzDEI1V9S1pcijJR91jGxrmwv4uH0yhXHLayvIKzcHcl8v
-         dhB8ldWlWW2933G9wwM9A1QpUuxKWf6GdLvurnPwwhzneBMUfvslv3WjRBPsi7AlclnR
-         b6/A==
-X-Gm-Message-State: AOJu0YzSGYEAthJVlqnT5hEyYIjwLmhDdZeXeHGUbWlNAt+qpVMpIK0G
-	xE5n0XPbqXMOTzQ+ZkOOONqiRYqByze2np4H6HQUJbfq97UfAhwiFCPz2LnQLSg12A9IMPzV1da
-	Qjn/4LmkJJpsBX2yQV3CI1dH0uBhvJSwTsh2kT4/XQvqk21sdHPSIMUk10VGIsj1zrdTKIHYSL7
-	xY9OyXYo/XEE0DQ0yPv/zVTC194WbveGjhR3E=
-X-Received: from plcx22.prod.google.com ([2002:a17:903:d6:b0:2ce:d12d:d6f5])
- (user=praan job=prod-delivery.src-stubby-dispatcher) by 2002:a17:902:ccd1:b0:2ca:1bbe:c3d0
- with SMTP id d9443c01a7336-2cf34a07b66mr161083065ad.43.1784559970295; Mon, 20
- Jul 2026 08:06:10 -0700 (PDT)
-Date: Mon, 20 Jul 2026 15:05:56 +0000
+        bh=SElWhs1HXhhTA/0qZRPqck5kLRpflzqDz4YDN+8eL6I=;
+        b=ZauAqCrm4JQR1uOI7HQgMbvS7Ck6ydj5ApEYqAl68kkIIIDxFXhNti4APKdLxcel9c
+         GbU1JiSw5qYyo5k1xrMDVLrBVJD7ICq19OxS11xUFOjKFGMwQwOi+AH6VMHJ/6kfanMR
+         B77nak+x4tX5pAdg8u7fvFsIDEQNqRsbAAc8/vhsMw+tp4MITVbLx7UvMpf5HgQUDIMK
+         3zKTSJMrBTwCDTU76jnh0llNFrctBm5pG1uSYtcRzXbogBJ3o2vk4PE+U10WZEXlONDL
+         btxjJfMxzN2G6oHZXc/GEbRWgWjVEiCux/+5QzKKkJmTaQHmKFtsiVAWscug2wGK295M
+         gO4g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784559980; x=1785164780;
+        h=content-type:cc:to:from:subject:message-id:references:mime-version
+         :in-reply-to:date:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=SElWhs1HXhhTA/0qZRPqck5kLRpflzqDz4YDN+8eL6I=;
+        b=lS2b0PsHuxf7N8jtDpMhev4t+wXDMof6PNipwVnfYSfxMBWnRx1pviXpS/Vp7jJDsm
+         4r3YrEDcNoB6yHkp0luPT3X/HoKm2mdHWtNCREzkPyVVjWv8cwlV/q0RJngdOCe3+ncl
+         Iicoy7Alinat8wZjAA8nb6M0zqdyHVb2KAQMNBJjNgiMIA2tDW7bsqFU2H3L0YZE6lr6
+         fRkrCmgX8FUy4/LNWp1pY4RxuIcWznkaH8PiIHgp0quhgcCxTUz48+rz7Hy/pKQUt318
+         bubM2nkOT5ujdAN61TXo+baaSlPPeO6wpovsNWwNCH3p7ZsU8pnrlupCMOxsQCtkSKCO
+         ZBLQ==
+X-Gm-Message-State: AOJu0YzfBiYd2ApTjyusqPvkhkHb/5fG4ABWwj+P50lLS0UfQWVnz6r+
+	YIt7lnMYGiREF2AaTnsXHJ6kyxXSCPT8EDSAL/CuvfX8FeaFmUK1eUEAorE41YkMth10PgWPf/T
+	2O0MeZliW7/SlHWXZgZX8XFn1HVEjxlTSLuabrwm+QKahRGbwgC1NRyztq724uc/EzFsQevCgpk
+	BsMRUQlsFQAjgsDF74x9U4KdHYjwZKiJNDh8o=
+X-Received: from pgax10.prod.google.com ([2002:a05:6a02:2e4a:b0:c9e:3c0b:5818])
+ (user=praan job=prod-delivery.src-stubby-dispatcher) by 2002:a05:6a21:6110:b0:3c3:a140:938a
+ with SMTP id adf61e73a8af0-3c3ad947db0mr16533384637.45.1784559980051; Mon, 20
+ Jul 2026 08:06:20 -0700 (PDT)
+Date: Mon, 20 Jul 2026 15:05:57 +0000
+In-Reply-To: <20260720150601.2702700-1-praan@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 Mime-Version: 1.0
+References: <20260720150601.2702700-1-praan@google.com>
 X-Mailer: git-send-email 2.55.0.229.g6434b31f56-goog
-Message-ID: <20260720150601.2702700-1-praan@google.com>
-Subject: [PATCH v4 0/5] nfs: modernize direct I/O path
+Message-ID: <20260720150601.2702700-2-praan@google.com>
+Subject: [PATCH v4 1/5] nfs: make nfs_page pin-aware
 From: Pranjal Shrivastava <praan@google.com>
 To: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>, 
 	Anna Schumaker <anna@kernel.org>
@@ -67,152 +71,267 @@ Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, linux-kernel
 	Shivaji Kant <shivajikant@google.com>, Pranjal Shrivastava <praan@google.com>
 Content-Type: text/plain; charset="UTF-8"
 
-Modernize the NFS Direct I/O path as a preparatory step to enable PCI
-Peer-to-Peer DMA (P2PDMA) support. Following feedback on the initial
-RFC [1], the modernization and architectural changes are split into
-different series. Additionally, based on the discussion in the v2 [2]
-of this series, the migration of NFS Direct I/O to folios would be
-handled in a separate follow-up series.
+Modernizing the NFS Direct I/O path to use iov_iter_extract_pages()
+introduces page pinning (GUP) instead of standard page referencing.
+To handle this correctly, nfs_page must track whether it holds a
+pin or a standard reference.
 
-Currently, NFS O_DIRECT relies on the legacy iov_iter_get_pages_alloc2()
-API which does not support the pinning requirements for P2P memory.
-The implementation moves NFS to the modern iov_iter_extract_pages() API.
+Introduce a new flag, PG_PINNED, to struct nfs_page. Update the creation
+path (nfs_page_create_from_page and nfs_page_create_from_folio) to
+accept a pinned bool and set the flag accordingly. If the page is pinned,
+we skip the existing reference increment (get_page/folio_get) as the pin
+itself acts as a reference.
 
-Design
-======
+Update nfs_clear_request() & nfs_direct_release_pages() to use
+unpin_user_page() or unpin_user_folio() instead of only refcount
+decrement (put_page) when PG_PINNED flag is set. Finally, ensure
+subrequests inherit the pinning status from their parent request.
 
-1. Pin-Awareness
-Standard NFS requests use get_page() and put_page() for memory
-management. However, memory extracted via iov_iter_extract_pages()
-requires explicit pinning.
+Signed-off-by: Pranjal Shrivastava <praan@google.com>
+---
+ fs/nfs/direct.c          | 22 +++++++++++++++-------
+ fs/nfs/pagelist.c        | 40 ++++++++++++++++++++++++++++++----------
+ fs/nfs/read.c            |  2 +-
+ fs/nfs/write.c           |  2 +-
+ include/linux/nfs_page.h |  3 +++
+ 5 files changed, 50 insertions(+), 19 deletions(-)
 
-Introduce a PG_PINNED flag and a wb_nr_pinned count to struct nfs_page.
-This allows the request lifecycle to track ownership of physical pins
-and ensure that unpinning is performed only when the I/O is complete.
-
-2. API Migration
-Migrate the Direct I/O path to the modern iov_iter_extract_pages()
-API. This aligns NFS with the modern extraction model and serves as
-the foundation for passing ITER_ALLOW_P2PDMA in a follow-up series.
-
-Upcoming Work / Roadmap
-================================
-
-As decided in the RFC [1] & v2 [2], there will be separate series for
-P2PDMA Enablement and Migrating NFS Direct I/O to use folios.
-
-This series lays the necessary groundwork for the upcoming work.
-Following this, two additional series are planned:
-
-1. Migrating NFS Direct I/O to Folios
-A series that introduces and exports helper from iov_iter.c to allow
-the nfs_direct_extract_pages() helper introduced here to aggregate
-multiple pages into a single large folio-based request, aiming to reduce
-the RPC overhead for hugepage I/O.
-
-2. P2PDMA Enablement for NFS
-Enabling ITER_ALLOW_P2PDMA for the Direct I/O path and introducing transport-level
-negotiation (discovery of P2P-capable RDMA/NVMe devices). This will build
-upon the PG_PINNED infrastructure introduced by this series.
-
-Testing
-=======
-This series has been tested with xfstests [3] on RDMA & TCP transports
-by running the quick test suite for each transport vs. version combo:
-
-./check -g quick -s rdma3 -s rdma40 -s rdma41 -s rdma42 -s tcp3 -s tcp40 -s tcp41 -s tcp42
-
-The tests were run before & after applying the series. No regressions were observed. 
-
-The following summary was tabulated via a custom script [4] (on github)
-to depict that the tests failing in v1 [5] are now passing.
-
-python3 display.py results/*/check.log
-
-+--------------+--------------+--------------+--------------+--------------+--------------+--------------+--------------+--------------+
-| testcase     | rdma-sys-3   | rdma-sys-4.0 | rdma-sys-4.1 | rdma-sys-4.2 | tcp-sys-3    | tcp-sys-4.0  | tcp-sys-4.1  | tcp-sys-4.2  |
-+--------------+--------------+--------------+--------------+--------------+--------------+--------------+--------------+--------------+
-| generic/091  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/130  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/139  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/143  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/154  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/155  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/183  | skipped      | skipped      | skipped      | pass         | skipped      | skipped      | skipped      | pass         |
-| generic/188  | skipped      | skipped      | skipped      | pass         | skipped      | skipped      | skipped      | pass         |
-| generic/190  | skipped      | skipped      | skipped      | pass         | skipped      | skipped      | skipped      | pass         |
-| generic/196  | skipped      | skipped      | skipped      | pass         | skipped      | skipped      | skipped      | pass         |
-| generic/198  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/203  | skipped      | skipped      | skipped      | pass         | skipped      | skipped      | skipped      | pass         |
-| generic/214  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/240  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/263  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/287  | skipped      | skipped      | skipped      | pass         | skipped      | skipped      | skipped      | pass         |
-| generic/290  | skipped      | skipped      | skipped      | pass         | skipped      | skipped      | skipped      | pass         |
-| generic/292  | skipped      | skipped      | skipped      | pass         | skipped      | skipped      | skipped      | pass         |
-| generic/330  | skipped      | skipped      | skipped      | pass         | skipped      | skipped      | skipped      | pass         |
-| generic/444  | skipped      | skipped      | skipped      | skipped      | skipped      | skipped      | skipped      | skipped      |
-| generic/450  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/451  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/586  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/647  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/708  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/729  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-| generic/760  | pass         | pass         | pass         | pass         | pass         | pass         | pass         | pass         |
-+--------------+--------------+--------------+--------------+--------------+--------------+--------------+--------------+--------------+
-
-Thanks,
-Praan
-
-[1] https://lore.kernel.org/all/20260401194501.2269200-1-praan@google.com/
-[2] https://lore.kernel.org/all/ak8-NMsNPOB3zpF-@infradead.org/
-[3] https://git.kernel.org/pub/scm/fs/xfs/xfstests-dev.git
-[4] https://github.com/pran005/tools/blob/main/display.py
-[5] https://lore.kernel.org/all/29a0511d-5216-46f2-a7e4-9c04ae9b1890@app.fastmail.com/
-
-[v4]
- - Dropped superfluous externs in include/linux/nfs_page.h
- - Scoped `req` locally inside the loop in nfs_release_request_list()
- - Wrapped >80 character lines in Patch 1 to adhere to coding style.
- - Fixed typos and capitalization convention in the commit msgs
- - Collected Reviewed-by tags from Christoph and Shivaji
- - Rebased on fs-next
-
-[v3]
- - https://lore.kernel.org/all/20260715143540.3597616-1-praan@google.com/
- - Dropped patches that added folio support for NFS Direct I/O
- - Folded requested_bytes accounting in patch 5 due to dropped folio support
- - Rebased on fs-next
-
-[v2] 
- - https://lore.kernel.org/all/20260616134000.2733403-1-praan@google.com/
- - Fix data corruption in nfs_direct_extract_pages() by correctly
-   calculating intra-page offsets using offset_in_page().
- - Fix requested_bytes accounting in direct read/write paths to only
-   increment after successful RPC scheduling.
- - Add missing kernel-doc descriptions for the @pinned parameter in
-   nfs_page_create_from_page() and nfs_page_create_from_folio().
- - Rebase on fs-next/
-
-[v1] https://lore.kernel.org/all/20260603053033.3300318-1-praan@google.com/
-
-
-Pranjal Shrivastava (5):
-  nfs: make nfs_page pin-aware
-  nfs: track number of pinned pages in nfs_page
-  nfs: introduce nfs_release_request_list helper
-  nfs: migrate direct I/O to iov_iter_extract_pages
-  nfs: introduce nfs_direct_extract_pages helper
-
- fs/nfs/direct.c          | 143 ++++++++++++++++++++-------------------
- fs/nfs/pagelist.c        |  62 ++++++++++++++---
- fs/nfs/read.c            |   2 +-
- fs/nfs/write.c           |   2 +-
- include/linux/nfs_page.h |   8 ++-
- 5 files changed, 135 insertions(+), 82 deletions(-)
-
-
-base-commit: 070f41f072722437b7edda13037a400459630a5e
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index e626c72495e6..19792a38c924 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -165,11 +165,17 @@ int nfs_swap_rw(struct kiocb *iocb, struct iov_iter *iter)
+ 	return 0;
+ }
+ 
+-static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
++static void nfs_direct_release_pages(struct page **pages, unsigned int npages,
++				     bool pinned)
+ {
+ 	unsigned int i;
+-	for (i = 0; i < npages; i++)
+-		put_page(pages[i]);
++
++	if (pinned) {
++		unpin_user_pages(pages, npages);
++	} else {
++		for (i = 0; i < npages; i++)
++			put_page(pages[i]);
++	}
+ }
+ 
+ void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
+@@ -371,7 +377,8 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
+ 			/* XXX do we need to do the eof zeroing found in async_filler? */
+ 			req = nfs_page_create_from_page(dreq->ctx, pagevec[i],
+-							pgbase, pos, req_len);
++							false, pgbase, pos,
++							req_len);
+ 			if (IS_ERR(req)) {
+ 				result = PTR_ERR(req);
+ 				break;
+@@ -386,7 +393,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 			requested_bytes += req_len;
+ 			pos += req_len;
+ 		}
+-		nfs_direct_release_pages(pagevec, npages);
++		nfs_direct_release_pages(pagevec, npages, false);
+ 		kvfree(pagevec);
+ 		if (result < 0)
+ 			break;
+@@ -907,7 +914,8 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
+ 
+ 			req = nfs_page_create_from_page(dreq->ctx, pagevec[i],
+-							pgbase, pos, req_len);
++							false, pgbase, pos,
++							req_len);
+ 			if (IS_ERR(req)) {
+ 				result = PTR_ERR(req);
+ 				break;
+@@ -950,7 +958,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 			desc.pg_error = 0;
+ 			defer = true;
+ 		}
+-		nfs_direct_release_pages(pagevec, npages);
++		nfs_direct_release_pages(pagevec, npages, false);
+ 		kvfree(pagevec);
+ 		if (result < 0)
+ 			break;
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 7dd478ffc2fa..606b518fa204 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -404,20 +404,28 @@ static struct nfs_page *nfs_page_create(struct nfs_lock_context *l_ctx,
+ 	return req;
+ }
+ 
+-static void nfs_page_assign_folio(struct nfs_page *req, struct folio *folio)
++static void nfs_page_assign_folio(struct nfs_page *req, struct folio *folio,
++				  bool pinned)
+ {
+ 	if (folio != NULL) {
+ 		req->wb_folio = folio;
+-		folio_get(folio);
++		if (pinned)
++			set_bit(PG_PINNED, &req->wb_flags);
++		else
++			folio_get(folio);
+ 		set_bit(PG_FOLIO, &req->wb_flags);
+ 	}
+ }
+ 
+-static void nfs_page_assign_page(struct nfs_page *req, struct page *page)
++static void nfs_page_assign_page(struct nfs_page *req, struct page *page,
++				 bool pinned)
+ {
+ 	if (page != NULL) {
+ 		req->wb_page = page;
+-		get_page(page);
++		if (pinned)
++			set_bit(PG_PINNED, &req->wb_flags);
++		else
++			get_page(page);
+ 	}
+ }
+ 
+@@ -425,6 +433,7 @@ static void nfs_page_assign_page(struct nfs_page *req, struct page *page)
+  * nfs_page_create_from_page - Create an NFS read/write request.
+  * @ctx: open context to use
+  * @page: page to write
++ * @pinned: true if page is pinned
+  * @pgbase: starting offset within the page for the write
+  * @offset: file offset for the write
+  * @count: number of bytes to read/write
+@@ -435,6 +444,7 @@ static void nfs_page_assign_page(struct nfs_page *req, struct page *page)
+  */
+ struct nfs_page *nfs_page_create_from_page(struct nfs_open_context *ctx,
+ 					   struct page *page,
++					   bool pinned,
+ 					   unsigned int pgbase, loff_t offset,
+ 					   unsigned int count)
+ {
+@@ -446,7 +456,7 @@ struct nfs_page *nfs_page_create_from_page(struct nfs_open_context *ctx,
+ 	ret = nfs_page_create(l_ctx, pgbase, offset >> PAGE_SHIFT,
+ 			      offset_in_page(offset), count);
+ 	if (!IS_ERR(ret)) {
+-		nfs_page_assign_page(ret, page);
++		nfs_page_assign_page(ret, page, pinned);
+ 		nfs_page_group_init(ret, NULL);
+ 	}
+ 	nfs_put_lock_context(l_ctx);
+@@ -457,6 +467,7 @@ struct nfs_page *nfs_page_create_from_page(struct nfs_open_context *ctx,
+  * nfs_page_create_from_folio - Create an NFS read/write request.
+  * @ctx: open context to use
+  * @folio: folio to write
++ * @pinned: true if folio is pinned
+  * @offset: starting offset within the folio for the write
+  * @count: number of bytes to read/write
+  *
+@@ -466,6 +477,7 @@ struct nfs_page *nfs_page_create_from_page(struct nfs_open_context *ctx,
+  */
+ struct nfs_page *nfs_page_create_from_folio(struct nfs_open_context *ctx,
+ 					    struct folio *folio,
++					    bool pinned,
+ 					    unsigned int offset,
+ 					    unsigned int count)
+ {
+@@ -476,7 +488,7 @@ struct nfs_page *nfs_page_create_from_folio(struct nfs_open_context *ctx,
+ 		return ERR_CAST(l_ctx);
+ 	ret = nfs_page_create(l_ctx, offset, folio->index, offset, count);
+ 	if (!IS_ERR(ret)) {
+-		nfs_page_assign_folio(ret, folio);
++		nfs_page_assign_folio(ret, folio, pinned);
+ 		nfs_page_group_init(ret, NULL);
+ 	}
+ 	nfs_put_lock_context(l_ctx);
+@@ -498,9 +510,11 @@ nfs_create_subreq(struct nfs_page *req,
+ 			      offset, count);
+ 	if (!IS_ERR(ret)) {
+ 		if (folio)
+-			nfs_page_assign_folio(ret, folio);
++			nfs_page_assign_folio(ret, folio,
++					      test_bit(PG_PINNED, &req->wb_flags));
+ 		else
+-			nfs_page_assign_page(ret, page);
++			nfs_page_assign_page(ret, page,
++					     test_bit(PG_PINNED, &req->wb_flags));
+ 		/* find the last request */
+ 		for (last = req->wb_head;
+ 		     last->wb_this_page != req->wb_head;
+@@ -552,11 +566,17 @@ static void nfs_clear_request(struct nfs_page *req)
+ 	struct nfs_open_context *ctx;
+ 
+ 	if (folio != NULL) {
+-		folio_put(folio);
++		if (test_and_clear_bit(PG_PINNED, &req->wb_flags))
++			unpin_user_folio(folio, 1);
++		else
++			folio_put(folio);
+ 		req->wb_folio = NULL;
+ 		clear_bit(PG_FOLIO, &req->wb_flags);
+ 	} else if (page != NULL) {
+-		put_page(page);
++		if (test_and_clear_bit(PG_PINNED, &req->wb_flags))
++			unpin_user_page(page);
++		else
++			put_page(page);
+ 		req->wb_page = NULL;
+ 	}
+ 	if (l_ctx != NULL) {
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 2b70bd2b934b..e7497b029d6c 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -324,7 +324,7 @@ int nfs_read_add_folio(struct nfs_pageio_descriptor *pgio,
+ 
+ 	aligned_len = min_t(unsigned int, ALIGN(len, rsize), fsize);
+ 
+-	new = nfs_page_create_from_folio(ctx, folio, 0, aligned_len);
++	new = nfs_page_create_from_folio(ctx, folio, false, 0, aligned_len);
+ 	if (IS_ERR(new)) {
+ 		error = PTR_ERR(new);
+ 		if (nfs_netfs_folio_unlock(folio))
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index d2b03ceaeb4f..e565b811d8b7 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1088,7 +1088,7 @@ static struct nfs_page *nfs_setup_write_request(struct nfs_open_context *ctx,
+ 	req = nfs_try_to_update_request(folio, offset, bytes);
+ 	if (req != NULL)
+ 		goto out;
+-	req = nfs_page_create_from_folio(ctx, folio, offset, bytes);
++	req = nfs_page_create_from_folio(ctx, folio, false, offset, bytes);
+ 	if (IS_ERR(req))
+ 		goto out;
+ 	nfs_inode_add_request(req);
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 4b9a35dbc062..fd7aafe7cb54 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -38,6 +38,7 @@ enum {
+ 	PG_REMOVE,		/* page group sync bit in write path */
+ 	PG_CONTENDED1,		/* Is someone waiting for a lock? */
+ 	PG_CONTENDED2,		/* Is someone waiting for a lock? */
++	PG_PINNED,		/* page is pinned by GUP */
+ };
+ 
+ struct nfs_inode;
+@@ -125,11 +126,13 @@ struct nfs_pageio_descriptor {
+ 
+ extern struct nfs_page *nfs_page_create_from_page(struct nfs_open_context *ctx,
+ 						  struct page *page,
++						  bool pinned,
+ 						  unsigned int pgbase,
+ 						  loff_t offset,
+ 						  unsigned int count);
+ extern struct nfs_page *nfs_page_create_from_folio(struct nfs_open_context *ctx,
+ 						   struct folio *folio,
++						   bool pinned,
+ 						   unsigned int offset,
+ 						   unsigned int count);
+ extern	void nfs_release_request(struct nfs_page *);
 -- 
 2.55.0.229.g6434b31f56-goog
 
