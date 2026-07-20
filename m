@@ -1,41 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 48AF2429CCA
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2026 14:14:45 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64CFA25228C
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Jul 2026 14:14:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784556886; cv=none; b=F7fPWx4bHCXsiPZCIE1WyBNsyCuVOGhI+M0umxdvM6g3l2QFBEq9UOzvzFzHcXareMSJk89IHuHe/LN7LkbhUmnejqjXSkIuUVUrp/jH+EZRIOi4Zp2+elHbxtQcP2D2M5rwZfIFdiddFRDmGBDcoXqfq4E3JHr8uTJdOtD2f9E=
+	t=1784556888; cv=none; b=JjMFGHWB9O2YHPGvId05JQBMtgEoEjP+KFYexcFg+/ZX9RhsjRDLoi1/QZ4Z+s16dDhZb0UijXOVrtxGwXcgjznDwZ+ORUhSc9EPC9aRgypy69VAdO2/aKobnB5KyWgdi3euu7a+imUzW41hDARrPoJTPlNueqofDpYTNEL93Q4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784556886; c=relaxed/simple;
-	bh=00AqXzYmzJwQdaMMFy09CoP+/hwZ1d+GqM8KbEOl0j4=;
+	s=arc-20240116; t=1784556888; c=relaxed/simple;
+	bh=92ybayLMCREM3TxAdcTQ8hF4Y10r5nhmb0HkhnEINsE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=GS4b1yu6tY1wMFRMchYGgbJWYT9HFBQ6R4IhsrYdZbg/Tre4Y3/VAQHUDDeLtPrqZiWAIf7ETeRNSTYTenI1QUsSEMZ7Ev13CVOVcP90dO+dG48mTUnPPMtxXjyD1wZLti4J6Qi6g/1E4nsFpM5mtEmQwG9NcqvfcvmuLrWw7ww=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=n7xlJolq; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=lfgrlACNyO6TZw+QmBfEYdJq3f3pnnt6TDqMu0rwPEX/TC7RrnowXrYjY+pDx+whhRCoph8s1NHO8WpchBBZPViMzGVsrX5gYko4rbYXXETws8DyTzntMVIS8KXJgQrNnY36n27QNbJs4eENAPTw5gH+53ZWCp/jms6CYqid9KE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=T5xGTvnd; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="n7xlJolq"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A8D3A1F000E9;
-	Mon, 20 Jul 2026 14:14:44 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="T5xGTvnd"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7C9DD1F00A3A;
+	Mon, 20 Jul 2026 14:14:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784556885;
-	bh=bRpMRpqpGR54qmeFRctcDHMrh7v7oYapJKCOQVdaIMU=;
+	s=k20260515; t=1784556887;
+	bh=R4YrV76xN1ob1+4T6T9jAjkLi6dPUsJsvxPYoFSsSns=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=n7xlJolqvT2dFnUEb43uStiArsV3tRJyu9FyW5k/orzodP7cMc34/4tLeAWVwRirw
-	 8BmuUJMbsmeRix6Uaui6lGTo32G4lnx6xtOrEFFyPRDzD1uAVfLGtVUEzESqYl+OYv
-	 SoAvzazlssBDuEV5E1trjYe4CjA7rb61nA0pIernGLLFXmADmwhzmyPSZxZ/3zQ4zo
-	 y7/6fim0HMAPqpzc4BtYJgic5c7ajNnBFbM/GA/EEK/U+YReDgZLuBDAHGtA2Vs2IH
-	 pWMQ2cYmwpqGOr4ymixGsp4RyWZ3QLGbGBUunE2FVczRK5s9B39Y4gM2tyvlZ362lI
-	 a1pNvC7/5aNGw==
+	b=T5xGTvndIrWj0dTJiMqI2mHLZ0yBhFYccubhygO+JJp78OoF88h+qPCOO4rp8TtbG
+	 GeF1gFCFZoAOSuREqMqk/xy4VltxBSCp/to2Adrcx0rEXHPSaw6zXFsDOrepb3kWRa
+	 ioqH9wTBLMZpr3rmYA/Y21zRDqLN8RbmwEHh/yGWklycYfOlZi23G/avHTzM90+SMZ
+	 3Fbkv41llGjQl1XWkk1JXeen9e8A8sE3lucmyx7bi5iXjuk6I5+nEE4tg4WDvoWnjJ
+	 MWgJPf2UrN8ia/zowaHaIxUDOGzxyJ0wXgzdTTcDa7CyBmdbZ6qzcvZGKF1nnM6Xji
+	 eckeHYwS+NR6A==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
 	Olga Kornievskaia <okorniev@redhat.com>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/3] lockd: Switch linux/nfs.h to linux/nfs_fh.h
-Date: Mon, 20 Jul 2026 10:14:41 -0400
-Message-ID: <20260720141442.783935-3-cel@kernel.org>
+Cc: <linux-nfs@vger.kernel.org>,
+	Thomas Haynes <loghyr@hammerspace.com>
+Subject: [PATCH 3/3] NFSD: Use struct knfsd_fh in struct pnfs_ff_layout
+Date: Mon, 20 Jul 2026 10:14:42 -0400
+Message-ID: <20260720141442.783935-4-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260720141442.783935-1-cel@kernel.org>
 References: <20260720141442.783935-1-cel@kernel.org>
@@ -47,59 +48,80 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-lockd references "struct nfs_fh" but none of the other definitions
-in linux/nfs.h. That header also pulls in cred.h, several sunrpc
-headers, and uapi/linux/nfs.h, none of which lockd needs. A new
-linux/nfs_fh.h provides "struct nfs_fh" and its helpers without the
-rest of that surface.
+The file handle held in struct pnfs_ff_layout is copied directly out
+of a struct svc_fh, whose fh_handle member is a struct knfsd_fh.
+Storing the layout's copy as struct nfs_fh instead forced an
+open-coded field-by-field copy between two unrelated structures.
 
-Switch lockd's xdr.h to linux/nfs_fh.h, and drop the now-redundant
-linux/nfs.h includes from svc.c and trace.h.
+Hold the layout's file handle in struct knfsd_fh so the copy uses the
+canonical fh_copy_shallow() helper and server code no longer reaches
+into a separate file handle representation.
 
+Cc: Thomas Haynes <loghyr@hammerspace.com>
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/lockd/svc.c   | 1 -
- fs/lockd/trace.h | 1 -
- fs/lockd/xdr.h   | 2 +-
- 3 files changed, 1 insertion(+), 3 deletions(-)
+ fs/nfsd/flexfilelayout.c    | 3 +--
+ fs/nfsd/flexfilelayoutxdr.c | 4 ++--
+ fs/nfsd/flexfilelayoutxdr.h | 3 ++-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index ee90e743064a..f0e1a58c9106 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -36,7 +36,6 @@
- #include <net/ip.h>
- #include <net/addrconf.h>
- #include <net/ipv6.h>
--#include <linux/nfs.h>
+diff --git a/fs/nfsd/flexfilelayout.c b/fs/nfsd/flexfilelayout.c
+index 9f532418cac8..89298e77daa6 100644
+--- a/fs/nfsd/flexfilelayout.c
++++ b/fs/nfsd/flexfilelayout.c
+@@ -62,8 +62,7 @@ nfsd4_ff_proc_layoutget(struct svc_rqst *rqstp, struct inode *inode,
+ 	if (error)
+ 		goto out_error;
  
- #include "lockd.h"
- #include "netns.h"
-diff --git a/fs/lockd/trace.h b/fs/lockd/trace.h
-index a11d04e8c835..1f79955ea0f5 100644
---- a/fs/lockd/trace.h
-+++ b/fs/lockd/trace.h
-@@ -7,7 +7,6 @@
+-	fl->fh.size = fhp->fh_handle.fh_size;
+-	memcpy(fl->fh.data, &fhp->fh_handle.fh_raw, fl->fh.size);
++	fh_copy_shallow(&fl->fh, &fhp->fh_handle);
  
- #include <linux/tracepoint.h>
- #include <linux/crc32.h>
--#include <linux/nfs.h>
+ 	/* Give whole file layout segments */
+ 	seg->offset = 0;
+diff --git a/fs/nfsd/flexfilelayoutxdr.c b/fs/nfsd/flexfilelayoutxdr.c
+index 97d8a28dd3a0..5c48d35f4bd8 100644
+--- a/fs/nfsd/flexfilelayoutxdr.c
++++ b/fs/nfsd/flexfilelayoutxdr.c
+@@ -31,7 +31,7 @@ nfsd4_ff_encode_layoutget(struct xdr_stream *xdr,
+ 	struct ff_idmap uid;
+ 	struct ff_idmap gid;
  
- #include "lockd.h"
+-	fh_len = 4 + xdr_align_size(fl->fh.size);
++	fh_len = 4 + xdr_align_size(fl->fh.fh_size);
  
-diff --git a/fs/lockd/xdr.h b/fs/lockd/xdr.h
-index a1126cca98c6..56b9796aa39d 100644
---- a/fs/lockd/xdr.h
-+++ b/fs/lockd/xdr.h
-@@ -10,7 +10,7 @@
+ 	uid.len = sprintf(uid.buf, "%u", from_kuid(&init_user_ns, fl->uid));
+ 	gid.len = sprintf(gid.buf, "%u", from_kgid(&init_user_ns, fl->gid));
+@@ -69,7 +69,7 @@ nfsd4_ff_encode_layoutget(struct xdr_stream *xdr,
+ 				    sizeof(stateid_opaque_t));
  
- #include <linux/fs.h>
- #include <linux/filelock.h>
--#include <linux/nfs.h>
-+#include <linux/nfs_fh.h>
- #include <linux/sunrpc/xdr.h>
+ 	*p++ = cpu_to_be32(1);			/* single file handle */
+-	p = xdr_encode_opaque(p, fl->fh.data, fl->fh.size);
++	p = xdr_encode_opaque(p, fl->fh.fh_raw, fl->fh.fh_size);
  
- #define SM_MAXSTRLEN		1024
+ 	p = xdr_encode_opaque(p, uid.buf, uid.len);
+ 	p = xdr_encode_opaque(p, gid.buf, gid.len);
+diff --git a/fs/nfsd/flexfilelayoutxdr.h b/fs/nfsd/flexfilelayoutxdr.h
+index 6d5a1066a903..92752092e2f8 100644
+--- a/fs/nfsd/flexfilelayoutxdr.h
++++ b/fs/nfsd/flexfilelayoutxdr.h
+@@ -6,6 +6,7 @@
+ #define _NFSD_FLEXFILELAYOUTXDR_H 1
+ 
+ #include <linux/inet.h>
++#include "nfsfh.h"
+ #include "xdr4.h"
+ 
+ #define FF_FLAGS_NO_LAYOUTCOMMIT 1
+@@ -39,7 +40,7 @@ struct pnfs_ff_layout {
+ 	kgid_t				gid;
+ 	struct nfsd4_deviceid		deviceid;
+ 	stateid_t			stateid;
+-	struct nfs_fh			fh;
++	struct knfsd_fh			fh;
+ };
+ 
+ __be32 nfsd4_ff_encode_getdeviceinfo(struct xdr_stream *xdr,
 -- 
 2.54.0
 
