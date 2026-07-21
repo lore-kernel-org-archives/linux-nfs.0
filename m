@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1182419CD1D
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Jul 2026 16:23:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D414233FE0F
+	for <linux-nfs@vger.kernel.org>; Tue, 21 Jul 2026 16:23:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784650992; cv=none; b=hwHJOwnuNW6p45TDAJ966amINjw7U0IMe90kQviUjwvCMzUlya43VhUrt0wKBh3v1kgwT93tRwNb+JNVAXmDzt/30PRSXgJmT8pmlodgNMAcoTNwJTeO2WFkMp0K3yXpaZ/yfumZwEhkRiJ+7xN7/482Mz4qb6IhUvUnpPEe35A=
+	t=1784650993; cv=none; b=pwfn4g1p/lyT3Gzdpa8HQ1xESuxLAZc2oNl3xe+c+c1V2R8KhOOaXe3lEvxtrJm9mNzhejIHGzspPxC8KJQhi7tsYYURZ9xxvFudeNb46f0xHJ3EPs4dr7AJCv2gsLgMUjYtnfNTEpT6pkAeyoLXlvAjsaSzBxt9Lq6Fh8kCjN8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784650992; c=relaxed/simple;
-	bh=UL3h9xVX3vvSP5Q5zTTM4q5y1UR8pjghtjuAWf11EXc=;
+	s=arc-20240116; t=1784650993; c=relaxed/simple;
+	bh=lBAq4tge68eBeEbHPkKuOwvoqse9zzuOUKaPK1SyeMo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=T626UB2NjZ0UjAXp6ptsnE8ldHA0XqJUz/ggsnKb+P2sKdrdsNDE8s9ebSXQj5KkZ7arLYIUgj21d7fcIMaPOWuHt1TyzdFrKZ0OVbgs/pYhUsON4WcMH2X/fa6bOLZNlC/5WYBUCgzKmR7kXgd8LqJynSOBtioc9cdMgRiomfg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=U7wZUxRe; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=UN8Li/rll80qbkJr+bHraqLK7ExNbT+6n0M+MULewo0OeVld0AKnCnjRKOLvt4DMqoJd6Aii9855F48k1YH6RR3u5vM8xxZ/4h3j3RpPDw8Q72yXGhcXh3YNgR1/qbM8OOPuyT35Ty8Al7lAOZXNFUqaR2Rf0Hlw5chRXCFAZA0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NcM735MK; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="U7wZUxRe"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 606231F00A3D;
-	Tue, 21 Jul 2026 16:23:10 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NcM735MK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1D29F1F00A3E;
+	Tue, 21 Jul 2026 16:23:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784650990;
-	bh=SC+RaZuksBHWXVGvBHK6ChXeNsRdTi+1CwO6eSAuGOU=;
+	s=k20260515; t=1784650991;
+	bh=sv6w5b1tOzeP2ROvobICbFJHLe7385uzNTjdgqmzrCI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=U7wZUxRej5YE0wlqGS90qynVu7iT94T9YGJ5NLfHJEskoPu9DnXbrsT04tTrskSxd
-	 o+DYKLmJsLuLRyhHXdx1ETLPxTR0RlxpulQW+2K4k1nn9fsELSELCoVLjcsFG3S22k
-	 Z+fUkmy5S6rJwEZYJM7juIO1NRCAel4RF8unwMn2mk8i9sI9Jbau+ZDj2F0eoppsxb
-	 TrYgIaO5chEhxbyQRr66ugjEvVkKs+be3LN1sEpir/odOQYZR1/78heE7rs94OENEV
-	 cXH75PXxFnqpdfTbNMtF9HSrzdsC//CGAtwF8TFVQ3VM2KmuMReqygJwVDEgE3fPXi
-	 NPVLmot6aJjAA==
+	b=NcM735MKMZVC5mhTQqn4/mBr/3MyxS9cB8Qc4Fdq6zfNvRW4sTbdGcAj0aAYzoLQA
+	 cxMbBGC1TcfPOLmrtJh0rCEq49ougiOnilZAsRCxDJ79hPqdTq7dC6f02A5bsRitpn
+	 OVymzPvhkrcbsI7cVJUqt1ZkhLLU0XVF84Rl+H4ji5KjcR7Eu3dGJMktATAybVbkoo
+	 f37r/VLNFZ7uFvAVLKU/brMcaB765rr2EFgmmkNv84A4SCxmnQ3dKnvtttKosYhQyR
+	 rumvjCw9VA9jJgRyTlT8W2RJBP7FZzXSPe2ZetsHGAImPxMZD8E7yzFKaiaS0j0CJC
+	 tRpKGRejjqctQ==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/4] NFSD: Hoist nfs42_ssc_open() into fs/nfs_common/nfs_ssc.c
-Date: Tue, 21 Jul 2026 12:23:04 -0400
-Message-ID: <20260721162306.894558-3-cel@kernel.org>
+Subject: [PATCH 3/4] nfs_common: Synchronize access to the SSC client ops table
+Date: Tue, 21 Jul 2026 12:23:05 -0400
+Message-ID: <20260721162306.894558-4-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260721162306.894558-1-cel@kernel.org>
 References: <20260721162306.894558-1-cel@kernel.org>
@@ -47,193 +47,156 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Refactor: The infrastructure and details for calling the client's
-ssc_open method can be hidden in nfs_ssc.c. This reduces the SSC
-footprint in fs/nfsd/nfs4proc.c, a step toward removing that
-file's dependency on <linux/nfs_fs.h>, which indirectly includes
-<uapi/linux/nfs.h>.
+nfsd42_ssc_open() and nfsd42_ssc_close() load ssc_nfs4_ops without
+synchronization while nfs42_ssc_register() and nfs42_ssc_unregister()
+store to it. Those reads are safe today only through a non-obvious
+invariant: an inter-server copy holds an active vers=4.2 mount of the
+source across both calls, the mount pins the nfsv4 module through the
+nfs_client's cl_nfs_mod reference, and unregister runs only at nfsv4
+module exit, so it cannot run while a call is in flight. Replace that
+implicit contract with synchronization local to the broker, so its
+safety no longer rests on a caller in another subsystem.
 
-The open and close functions are named "nfsd42_" since they are
-meant to be invoked only by NFSD.
+Read the pointer under RCU so a reader observes it atomically as a
+valid table or NULL. nfs42_ssc_unregister() stores NULL and then calls
+synchronize_rcu(), so it cannot return while a reader still holds the
+pointer.
+
+The two readers need different handling because one sleeps and the
+other does not. sco_close() does not sleep, so nfsd42_ssc_close() runs
+it to completion inside the RCU read-side section and the
+synchronize_rcu() in unregister waits for it. __nfs42_ssc_open() does
+sleep -- it issues a GETATTR RPC to the source server and allocates
+with GFP_KERNEL -- so it must not run inside an RCU read-side section.
+Pin the provider module with try_module_get() while still under
+rcu_read_lock(), drop the lock, invoke the open, then release the
+module. The reference keeps the provider mapped across the sleep
+without relying on the caller's mount. If the table has already been
+torn down the copy gets -EIO.
 
 Cc: Olga Kornievskaia <okorniev@redhat.com>
 Cc: Dai Ngo <dai.ngo@oracle.com>
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfs_common/nfs_ssc.c | 56 +++++++++++++++++++++++++++++++++++++++--
- fs/nfsd/nfs4proc.c      | 17 +++----------
- include/linux/nfs_ssc.h | 23 +++++++----------
- 3 files changed, 66 insertions(+), 30 deletions(-)
+ fs/nfs/nfs4file.c       |  1 +
+ fs/nfs_common/nfs_ssc.c | 40 ++++++++++++++++++++++++++++++----------
+ include/linux/nfs_ssc.h |  1 +
+ 3 files changed, 32 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index be40e126c539..b9ffd00e467c 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -400,6 +400,7 @@ static void __nfs42_ssc_close(struct file *filep)
+ }
+ 
+ static const struct nfs4_ssc_client_ops nfs4_ssc_clnt_ops_tbl = {
++	.owner = THIS_MODULE,
+ 	.sco_open = __nfs42_ssc_open,
+ 	.sco_close = __nfs42_ssc_close,
+ };
 diff --git a/fs/nfs_common/nfs_ssc.c b/fs/nfs_common/nfs_ssc.c
-index 8d8b7344ab4f..a8e79ec68701 100644
+index a8e79ec68701..ef158008b803 100644
 --- a/fs/nfs_common/nfs_ssc.c
 +++ b/fs/nfs_common/nfs_ssc.c
-@@ -12,9 +12,61 @@
- #include <linux/nfs_ssc.h>
+@@ -13,7 +13,7 @@
  #include "../nfs/nfs4_fs.h"
  
-+struct nfs_ssc_client_ops_tbl {
-+	const struct nfs4_ssc_client_ops *ssc_nfs4_ops;
-+};
- 
--struct nfs_ssc_client_ops_tbl nfs_ssc_client_tbl;
--EXPORT_SYMBOL_GPL(nfs_ssc_client_tbl);
-+static struct nfs_ssc_client_ops_tbl nfs_ssc_client_tbl __read_mostly;
-+
-+/**
-+ * nfsd42_ssc_open - Open a file to be used for server-to-server copy
-+ * @ss_mnt: active mount point on which the source file resides
-+ * @src_fh: file handle of the source file to be copied
-+ * @stateid: stateid to use for COPY operation
-+ *
-+ * Caller must close the returned file using nfsd42_ssc_close().
-+ *
-+ * Return: an open file, or an ERR_PTR on error
-+ */
-+struct file *nfsd42_ssc_open(struct vfsmount *ss_mnt, struct nfs_fh *src_fh,
-+			     nfs4_stateid *stateid)
-+{
-+	/*
-+	 * Built under CONFIG_NFS_V4_2_SSC_HELPER, which the NFS client
-+	 * enables on its own. The dispatch below is live only when the
-+	 * server also sets CONFIG_NFSD_V4_2_INTER_SSC; without it the
-+	 * source file cannot be opened, so callers get -EIO.
-+	 */
-+#if IS_ENABLED(CONFIG_NFSD_V4_2_INTER_SSC)
-+	const struct nfs4_ssc_client_ops *ops = nfs_ssc_client_tbl.ssc_nfs4_ops;
-+
-+	if (ops)
-+		return ops->sco_open(ss_mnt, src_fh, stateid);
-+#endif
-+
-+	return ERR_PTR(-EIO);
-+}
-+EXPORT_SYMBOL_GPL(nfsd42_ssc_open);
-+
-+/**
-+ * nfsd42_ssc_close - Close a file opened with nfsd42_ssc_open()
-+ * @filp: struct file to be closed
-+ *
-+ * The real cleanup happens unconditionally in nfsd4_cleanup_inter_ssc().
-+ * The vfsmount is pinned until this function is called, preventing
-+ * the client from unregistering its SSC ops.
-+ */
-+void nfsd42_ssc_close(struct file *filp)
-+{
-+	/* Live only under CONFIG_NFSD_V4_2_INTER_SSC; see nfsd42_ssc_open(). */
-+#if IS_ENABLED(CONFIG_NFSD_V4_2_INTER_SSC)
-+	const struct nfs4_ssc_client_ops *ops = nfs_ssc_client_tbl.ssc_nfs4_ops;
-+
-+	if (ops)
-+		ops->sco_close(filp);
-+#endif
-+}
-+EXPORT_SYMBOL_GPL(nfsd42_ssc_close);
- 
- #ifdef CONFIG_NFS_V4_2
- /**
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 83715ba38b6a..dbea2da7b1ea 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1692,11 +1692,6 @@ void nfsd4_cancel_copy_by_sb(struct net *net, struct super_block *sb)
- 
- #ifdef CONFIG_NFSD_V4_2_INTER_SSC
- 
--extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
--				   struct nfs_fh *src_fh,
--				   nfs4_stateid *stateid);
--extern void nfs42_ssc_close(struct file *filep);
--
- #define NFSD42_INTERSSC_MOUNTOPS "vers=4.2,addr=%s,sec=sys"
- 
- /*
-@@ -1919,7 +1914,7 @@ nfsd4_cleanup_inter_ssc(struct nfsd4_ssc_umount_item *nsui, struct file *filp,
- 	struct nfsd_net *nn = net_generic(dst->nf_net, nfsd_net_id);
- 	long timeout = msecs_to_jiffies(nfsd4_ssc_umount_timeout);
- 
--	nfs42_ssc_close(filp);
-+	nfsd42_ssc_close(filp);
- 	fput(filp);
- 
- 	spin_lock(&nn->nfsd_ssc_lock);
-@@ -1951,12 +1946,6 @@ nfsd4_cleanup_inter_ssc(struct nfsd4_ssc_umount_item *nsui, struct file *filp,
- {
- }
- 
--static struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
--				   struct nfs_fh *src_fh,
--				   nfs4_stateid *stateid)
--{
--	return NULL;
--}
- #endif /* CONFIG_NFSD_V4_2_INTER_SSC */
- 
- static __be32
-@@ -2179,8 +2168,8 @@ static int nfsd4_do_async_copy(void *data)
- 	if (nfsd4_ssc_is_inter(copy)) {
- 		struct file *filp;
- 
--		filp = nfs42_ssc_open(copy->ss_nsui->nsui_vfsmount,
--				      &copy->c_fh, &copy->stateid);
-+		filp = nfsd42_ssc_open(copy->ss_nsui->nsui_vfsmount,
-+				       &copy->c_fh, &copy->stateid);
- 		if (IS_ERR(filp)) {
- 			switch (PTR_ERR(filp)) {
- 			case -EBADF:
-diff --git a/include/linux/nfs_ssc.h b/include/linux/nfs_ssc.h
-index ba236dba8975..fc0d5d48dec2 100644
---- a/include/linux/nfs_ssc.h
-+++ b/include/linux/nfs_ssc.h
-@@ -10,8 +10,6 @@
- #include <linux/nfs_fs.h>
- #include <linux/sunrpc/svc.h>
- 
--extern struct nfs_ssc_client_ops_tbl nfs_ssc_client_tbl;
--
- /*
-  * NFS_V4
-  */
-@@ -21,29 +19,26 @@ struct nfs4_ssc_client_ops {
- 	void (*sco_close)(struct file *filep);
+ struct nfs_ssc_client_ops_tbl {
+-	const struct nfs4_ssc_client_ops *ssc_nfs4_ops;
++	const struct nfs4_ssc_client_ops __rcu *ssc_nfs4_ops;
  };
  
--struct nfs_ssc_client_ops_tbl {
--	const struct nfs4_ssc_client_ops *ssc_nfs4_ops;
--};
--
- extern void nfs42_ssc_register_ops(void);
- extern void nfs42_ssc_unregister_ops(void);
+ static struct nfs_ssc_client_ops_tbl nfs_ssc_client_tbl __read_mostly;
+@@ -38,10 +38,24 @@ struct file *nfsd42_ssc_open(struct vfsmount *ss_mnt, struct nfs_fh *src_fh,
+ 	 * source file cannot be opened, so callers get -EIO.
+ 	 */
+ #if IS_ENABLED(CONFIG_NFSD_V4_2_INTER_SSC)
+-	const struct nfs4_ssc_client_ops *ops = nfs_ssc_client_tbl.ssc_nfs4_ops;
++	const struct nfs4_ssc_client_ops *ops;
++	struct file *res;
  
- extern void nfs42_ssc_register(const struct nfs4_ssc_client_ops *ops);
- extern void nfs42_ssc_unregister(const struct nfs4_ssc_client_ops *ops);
- 
--#ifdef CONFIG_NFSD_V4_2_INTER_SSC
--static inline struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
--		struct nfs_fh *src_fh, nfs4_stateid *stateid)
-+#if IS_ENABLED(CONFIG_NFS_V4_2_SSC_HELPER)
-+struct file *nfsd42_ssc_open(struct vfsmount *ss_mnt, struct nfs_fh *src_fh,
-+			     nfs4_stateid *stateid);
-+void nfsd42_ssc_close(struct file *filp);
-+#else
-+static inline struct file *nfsd42_ssc_open(struct vfsmount *ss_mnt,
-+					   struct nfs_fh *src_fh,
-+					   nfs4_stateid *stateid)
- {
--	if (nfs_ssc_client_tbl.ssc_nfs4_ops)
--		return (*nfs_ssc_client_tbl.ssc_nfs4_ops->sco_open)(ss_mnt, src_fh, stateid);
- 	return ERR_PTR(-EIO);
- }
- 
--static inline void nfs42_ssc_close(struct file *filep)
-+static inline void nfsd42_ssc_close(struct file *filp)
- {
--	if (nfs_ssc_client_tbl.ssc_nfs4_ops)
--		(*nfs_ssc_client_tbl.ssc_nfs4_ops->sco_close)(filep);
- }
+-	if (ops)
+-		return ops->sco_open(ss_mnt, src_fh, stateid);
++	/*
++	 * sco_open() sleeps and must not run inside an RCU read-side
++	 * section. Pin the provider module so the open runs with the
++	 * module held; try_module_get() fails once unregister begins,
++	 * and the copy then gets -EIO.
++	 */
++	rcu_read_lock();
++	ops = rcu_dereference(nfs_ssc_client_tbl.ssc_nfs4_ops);
++	if (ops && try_module_get(ops->owner)) {
++		rcu_read_unlock();
++		res = ops->sco_open(ss_mnt, src_fh, stateid);
++		module_put(ops->owner);
++		return res;
++	}
++	rcu_read_unlock();
  #endif
  
+ 	return ERR_PTR(-EIO);
+@@ -53,17 +67,21 @@ EXPORT_SYMBOL_GPL(nfsd42_ssc_open);
+  * @filp: struct file to be closed
+  *
+  * The real cleanup happens unconditionally in nfsd4_cleanup_inter_ssc().
+- * The vfsmount is pinned until this function is called, preventing
+- * the client from unregistering its SSC ops.
++ * The client ops table is read under RCU; nfs42_ssc_unregister() calls
++ * synchronize_rcu() so unregistration cannot complete while a close is
++ * in flight.
+  */
+ void nfsd42_ssc_close(struct file *filp)
+ {
+ 	/* Live only under CONFIG_NFSD_V4_2_INTER_SSC; see nfsd42_ssc_open(). */
+ #if IS_ENABLED(CONFIG_NFSD_V4_2_INTER_SSC)
+-	const struct nfs4_ssc_client_ops *ops = nfs_ssc_client_tbl.ssc_nfs4_ops;
++	const struct nfs4_ssc_client_ops *ops;
+ 
++	rcu_read_lock();
++	ops = rcu_dereference(nfs_ssc_client_tbl.ssc_nfs4_ops);
+ 	if (ops)
+ 		ops->sco_close(filp);
++	rcu_read_unlock();
+ #endif
+ }
+ EXPORT_SYMBOL_GPL(nfsd42_ssc_close);
+@@ -78,7 +96,7 @@ EXPORT_SYMBOL_GPL(nfsd42_ssc_close);
+  */
+ void nfs42_ssc_register(const struct nfs4_ssc_client_ops *ops)
+ {
+-	nfs_ssc_client_tbl.ssc_nfs4_ops = ops;
++	rcu_assign_pointer(nfs_ssc_client_tbl.ssc_nfs4_ops, ops);
+ }
+ EXPORT_SYMBOL_GPL(nfs42_ssc_register);
+ 
+@@ -92,10 +110,12 @@ EXPORT_SYMBOL_GPL(nfs42_ssc_register);
+  */
+ void nfs42_ssc_unregister(const struct nfs4_ssc_client_ops *ops)
+ {
+-	if (nfs_ssc_client_tbl.ssc_nfs4_ops != ops)
++	if (rcu_dereference_protected(nfs_ssc_client_tbl.ssc_nfs4_ops,
++				      true) != ops)
+ 		return;
+ 
+-	nfs_ssc_client_tbl.ssc_nfs4_ops = NULL;
++	rcu_assign_pointer(nfs_ssc_client_tbl.ssc_nfs4_ops, NULL);
++	synchronize_rcu();
+ }
+ EXPORT_SYMBOL_GPL(nfs42_ssc_unregister);
+ #endif /* CONFIG_NFS_V4_2 */
+diff --git a/include/linux/nfs_ssc.h b/include/linux/nfs_ssc.h
+index fc0d5d48dec2..b392d56a4dc2 100644
+--- a/include/linux/nfs_ssc.h
++++ b/include/linux/nfs_ssc.h
+@@ -14,6 +14,7 @@
+  * NFS_V4
+  */
+ struct nfs4_ssc_client_ops {
++	struct module *owner;
+ 	struct file *(*sco_open)(struct vfsmount *ss_mnt,
+ 		struct nfs_fh *src_fh, nfs4_stateid *stateid);
+ 	void (*sco_close)(struct file *filep);
 -- 
 2.54.0
 
