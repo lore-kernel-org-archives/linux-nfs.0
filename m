@@ -1,42 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5C0BA39D6CC
-	for <linux-nfs@vger.kernel.org>; Tue, 21 Jul 2026 11:25:47 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EFA0A22097;
+	Tue, 21 Jul 2026 12:17:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784633153; cv=none; b=A/GMd0wEU6zBG+MYmaBcTYz0AbVxgEQlagKddlH0f82bUUOcQeMEGKdhlATlUBRFQD77DgTbDE3idVdXvGAJ4NAr6uZezIEpVu+M56Uc8DGVHJky3/hYEQUW+4PsrR/MVd0jousEDZO9Vxe6MSKTkBqJR/sdksW05J+uJ4Uba+Q=
+	t=1784636241; cv=none; b=lre8Rn6Pz3kUuBk+iC4VWl3IuWeor0dIDFfhS/UsDfoyS8K8DfXnolJADyqo4thO652AfzUPntEdm0Ldivo8qVbY2SS8wIxOUETleCdCjDFYLx4J5hpBEi4P2AchBK3PhtQLojaRUkELdVp0VhTAPsJx+0LwnA8BTGPUGWFtA9c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784633153; c=relaxed/simple;
-	bh=y9sSCfK1YD5juqRjlPYCrPMh1U7muN4uNZVQUKSnb2g=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=EI/KNMlqJsFPbfQQrhs+dpV56oRJWm2/rC3TNR8Kn0w51fJuDNMOBtRqQX00dMT8vIdw5ViyE+uWB67ip1NadrgUrLHXDEj4fj2IBcJ4VEbRwpCd/ROfzPm3s8xejsfOgQin1yBamcibgpwbt4++ND32+HdUTW40eLC4yqvpplo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jXegD8c5; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784636241; c=relaxed/simple;
+	bh=8o268RMX17B28V12qGPaChRb9g1c9EMDDmW0WGBpQno=;
+	h=Message-ID:Subject:From:To:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=noOYCu2gocKVFOtsa8gTLsWDVmKbje8zNNYC7gsA51YV8ryXiKn0YDPqOJvkKnV7PVsut0Q1eDM1RVcOa0KqZwmBSB2nlvCIVH/ryL3XX5fPOIhLJvU2skoFGPhF1W2EuWBzSdf998dUp+xh37Gjgb1mqwwCwFpOL+4/4mTt/jU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PodcKtoo; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jXegD8c5"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3E6EF1F00A3A;
-	Tue, 21 Jul 2026 11:25:43 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PodcKtoo"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C81351F000E9;
+	Tue, 21 Jul 2026 12:17:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784633143;
-	bh=OuvZWNmbh2bwBRdXFNvFwFIr3hi1+xA0mmVvYzDT3cg=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=jXegD8c5vxnyVZyYyRSlggsLf6EFsyTQ9w1zLGn8f5JSa4H0wk8q2TSlIjQNGtg/y
-	 3Didk6ZmFL8Nub3gOHStQrL67/6O1L3xnAZyzUCfWDGWYhIrYKX+Pbe3XZLe9Fi1+C
-	 Dr5zw9w0RGoTKykjuPqw3d+UaxUh+wuhVt24P4pX9zay2u/UxGqWABm3+GA7B2tfzf
-	 JjnhgLEB8eeuv9SB6LOo1sMauoy9VILn6S9cAomy3+DtRVzsieLqQIydboi4dDfCei
-	 fkUwRW4HzVUBEW97RRKSYbzCphRduRo6/u82FoQPe/IFYi1evJ0MSLJXPKiEZ64krh
-	 m3YyDZO/G+Vyw==
-Message-ID: <eff408b69ef6bc3b790d94d356e3abbf382f8ec7.camel@kernel.org>
-Subject: Re: [PATCH] NFSD: Map flex file layout IDs through the request's
- user namespace
+	s=k20260515; t=1784636239;
+	bh=Nae4JjQxNPXyvmM/kO8z3WG3ITULCsv29oZZeYxWZak=;
+	h=Subject:From:To:Date:In-Reply-To:References;
+	b=PodcKtooHgjNffBjFgMBKZI6mlAoOIR/KAgaibd+JweCgDyB/CFtS2lU6ROUUbmZq
+	 E+U80S7u4qltEVxjIxID0lksaEkCHkzWDb3hGjbvbEDqLLNfaj/7d56MsEeAC3kwcd
+	 k8oBhYOK0WxysxzaFvC44CDiO0iYL6SDFxFZQAo1schoXWqhG7dUi1XjxoPVpAvVTK
+	 ibHDSrc/PQkWmp3i//rQOUaurl/gjxxCSUJZ5rkELIqZwwgIoQUCAGtRPwkgLX0SJq
+	 Fu9Hy0hP6H4pQKWqt90CheA8Tbuwt6rjbRe3YfLXIISH7U4IdiwC1vj7rdVrewpC5I
+	 n52Vn+DdueRgw==
+Message-ID: <a16279675545df12a15c2c6ccc8deee1164d6d57.camel@kernel.org>
+Subject: Re: [syzbot] [nfs?] INFO: task hung in nfsd_nl_cache_flush_doit
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, sashiko-bot <sashiko-bot@kernel.org>
-Date: Tue, 21 Jul 2026 07:25:41 -0400
-In-Reply-To: <20260720163724.810227-1-cel@kernel.org>
-References: <20260720163724.810227-1-cel@kernel.org>
+To: syzbot <syzbot+c7eae0eb80858a2dba0f@syzkaller.appspotmail.com>, 
+	Dai.Ngo@oracle.com, cel@kernel.org, linux-kernel@vger.kernel.org, 
+	linux-nfs@vger.kernel.org, neil@brown.name, okorniev@redhat.com, 
+	syzkaller-bugs@googlegroups.com, tom@talpey.com
+Date: Tue, 21 Jul 2026 08:17:17 -0400
+In-Reply-To: <6a590ea0.ccd3b023.4fae3.0000.GAE@google.com>
+References: <6a590ea0.ccd3b023.4fae3.0000.GAE@google.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,124 +120,284 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2026-07-20 at 12:37 -0400, Chuck Lever wrote:
-> nfsd4_ff_proc_layoutget() and nfsd4_ff_encode_layoutget() translate
-> the file's owner and group with init_user_ns, but every other identity
-> nfsd places on the wire goes through nfsd_user_namespace(). When the
-> transport carries a credential from a non-initial user namespace, the
-> flex file layout reports host-global IDs. The client copies those IDs
-> into the AUTH_SYS credential it presents to the data server, and
-> svcauth_unix_accept() resolves that credential in the transport's
-> namespace, so data server I/O runs under an identity unrelated to the
-> file's owner.
+On Thu, 2026-07-16 at 10:02 -0700, syzbot wrote:
+> Hello,
 >=20
-> Switching to the request's namespace introduces a second hazard.
-> from_kuid() returns (uid_t)-1 when the target namespace has no
-> mapping for the owner, and the IOMODE_READ arm adds one to that
-> result to derive an identity for which the data server denies
-> writes. The addition would wrap to zero, handing the client uid 0
-> instead of an identity distinct from the owner.
+> syzbot found the following issue on:
 >=20
-> Translate both IDs in nfsd4_ff_proc_layoutget(), which has the
-> svc_rqst, and carry the wire values in struct pnfs_ff_layout.
-> from_kuid_munged() substitutes overflowuid for an unmapped owner and
-> thus never returns (uid_t)-1, so the increment cannot wrap to zero.
+> HEAD commit:    44696aa3a489 Merge tag 'input-for-v7.2-rc2' of git://git.=
+k..
+> git tree:       upstream
+> console output: https://syzkaller.appspot.com/x/log.txt?x=3D17efd0b958000=
+0
+> kernel config:  https://syzkaller.appspot.com/x/.config?x=3D5c4196ba0e336=
+31d
+> dashboard link: https://syzkaller.appspot.com/bug?extid=3Dc7eae0eb80858a2=
+dba0f
+> compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e25=
+5-1~exp1~20260613092250.77), Debian LLD 22.1.8
 >=20
-> Fixes: 9b9960a0ca47 ("nfsd: Add a super simple flex file server")
-> Reported-by: sashiko-bot <sashiko-bot@kernel.org>
-> Closes: https://sashiko.dev/#/patchset/20260720141442.783935-1-cel@kernel=
-.org?part=3D3
-> Signed-off-by: Chuck Lever <cel@kernel.org>
+> Unfortunately, I don't have any reproducer for this issue yet.
+>=20
+> Downloadable assets:
+> disk image: https://storage.googleapis.com/syzbot-assets/14807749cfb0/dis=
+k-44696aa3.raw.xz
+> vmlinux: https://storage.googleapis.com/syzbot-assets/7f966ce4e5e9/vmlinu=
+x-44696aa3.xz
+> kernel image: https://storage.googleapis.com/syzbot-assets/c821bcd9ea8c/b=
+zImage-44696aa3.xz
+>=20
+> IMPORTANT: if you fix the issue, please add the following tag to the comm=
+it:
+> Reported-by: syzbot+c7eae0eb80858a2dba0f@syzkaller.appspotmail.com
+>=20
+> INFO: task syz.3.4381:22405 blocked for more than 143 seconds.
+>       Tainted: G             L      syzkaller #0
+> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> task:syz.3.4381      state:D stack:27200 pid:22405 tgid:22404 ppid:17244 =
+ task_flags:0x400140 flags:0x00080002
+> Call Trace:
+>  <TASK>
+>  context_switch kernel/sched/core.c:5510 [inline]
+>  __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+>  __schedule_loop kernel/sched/core.c:7311 [inline]
+>  schedule+0x164/0x2b0 kernel/sched/core.c:7326
+>  schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+>  __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+>  __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+>  nfsd_nl_cache_flush_doit+0xb5/0x1b0 fs/nfsd/nfsctl.c:2236
+>  genl_family_rcv_msg_doit+0x233/0x340 net/netlink/genetlink.c:1114
+>  genl_family_rcv_msg net/netlink/genetlink.c:1194 [inline]
+>  genl_rcv_msg+0x614/0x7a0 net/netlink/genetlink.c:1209
+>  netlink_rcv_skb+0x226/0x4a0 net/netlink/af_netlink.c:2556
+>  genl_rcv+0x28/0x40 net/netlink/genetlink.c:1218
+>  netlink_unicast_kernel net/netlink/af_netlink.c:1319 [inline]
+>  netlink_unicast+0x7bb/0x940 net/netlink/af_netlink.c:1345
+>  netlink_sendmsg+0x813/0xb40 net/netlink/af_netlink.c:1900
+>  sock_sendmsg_nosec+0x13a/0x180 net/socket.c:775
+>  __sock_sendmsg net/socket.c:790 [inline]
+>  ____sys_sendmsg+0x54e/0x850 net/socket.c:2684
+>  ___sys_sendmsg+0x2a5/0x360 net/socket.c:2738
+>  __sys_sendmsg net/socket.c:2770 [inline]
+>  __do_sys_sendmsg net/socket.c:2775 [inline]
+>  __se_sys_sendmsg net/socket.c:2773 [inline]
+>  __x64_sys_sendmsg+0x1b1/0x290 net/socket.c:2773
+>  do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+>  do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+>  entry_SYSCALL_64_after_hwframe+0x77/0x7f
+> RIP: 0033:0x7f5cbdf9de59
+> RSP: 002b:00007f5cbef3b028 EFLAGS: 00000246 ORIG_RAX: 000000000000002e
+> RAX: ffffffffffffffda RBX: 00007f5cbe225fa0 RCX: 00007f5cbdf9de59
+> RDX: 0000000004000080 RSI: 0000200000000100 RDI: 0000000000000003
+> RBP: 00007f5cbe033e6f R08: 0000000000000000 R09: 0000000000000000
+> R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+> R13: 00007f5cbe226038 R14: 00007f5cbe225fa0 R15: 00007ffd5ffd5b58
+>  </TASK>
+>=20
+> Showing all locks held in the system:
+> 6 locks held by kworker/1:1/29:
+>  #0: ffff888021e85140 ((wq_completion)usb_hub_wq){+.+.}-{0:0}, at: proces=
+s_one_work kernel/workqueue.c:3297 [inline]
+>  #0: ffff888021e85140 ((wq_completion)usb_hub_wq){+.+.}-{0:0}, at: proces=
+s_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+>  #1: ffffc90000a57c40 ((work_completion)(&hub->events)){+.+.}-{0:0}, at: =
+process_one_work kernel/workqueue.c:3297 [inline]
+>  #1: ffffc90000a57c40 ((work_completion)(&hub->events)){+.+.}-{0:0}, at: =
+process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+>  #2: ffff888029d3c1d8 (&dev->mutex){....}-{4:4}, at: device_lock include/=
+linux/device.h:1102 [inline]
+>  #2: ffff888029d3c1d8 (&dev->mutex){....}-{4:4}, at: hub_event+0x184/0x4d=
+30 drivers/usb/core/hub.c:5899
+>  #3: ffff8880297a9568 (&port_dev->status_lock){+.+.}-{4:4}, at: usb_lock_=
+port drivers/usb/core/hub.c:3252 [inline]
+>  #3: ffff8880297a9568 (&port_dev->status_lock){+.+.}-{4:4}, at: hub_port_=
+connect drivers/usb/core/hub.c:5464 [inline]
+>  #3: ffff8880297a9568 (&port_dev->status_lock){+.+.}-{4:4}, at: hub_port_=
+connect_change drivers/usb/core/hub.c:5707 [inline]
+>  #3: ffff8880297a9568 (&port_dev->status_lock){+.+.}-{4:4}, at: port_even=
+t drivers/usb/core/hub.c:5871 [inline]
+>  #3: ffff8880297a9568 (&port_dev->status_lock){+.+.}-{4:4}, at: hub_event=
++0x20a1/0x4d30 drivers/usb/core/hub.c:5953
+>  #4: ffff888029beba60 (hcd->address0_mutex){+.+.}-{4:4}, at: hub_port_con=
+nect drivers/usb/core/hub.c:5465 [inline]
+>  #4: ffff888029beba60 (hcd->address0_mutex){+.+.}-{4:4}, at: hub_port_con=
+nect_change drivers/usb/core/hub.c:5707 [inline]
+>  #4: ffff888029beba60 (hcd->address0_mutex){+.+.}-{4:4}, at: port_event d=
+rivers/usb/core/hub.c:5871 [inline]
+>  #4: ffff888029beba60 (hcd->address0_mutex){+.+.}-{4:4}, at: hub_event+0x=
+20c9/0x4d30 drivers/usb/core/hub.c:5953
+>  #5: ffffffff8f8daaa8 (ehci_cf_port_reset_rwsem){.+.+}-{4:4}, at: hub_por=
+t_reset+0x14d/0x17e0 drivers/usb/core/hub.c:3067
+> 1 lock held by khungtaskd/32:
+>  #0: ffffffff8eb59c60 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire i=
+nclude/linux/rcupdate.h:300 [inline]
+>  #0: ffffffff8eb59c60 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock incl=
+ude/linux/rcupdate.h:840 [inline]
+>  #0: ffffffff8eb59c60 (rcu_read_lock){....}-{1:3}, at: debug_show_all_loc=
+ks+0x2e/0x180 kernel/locking/lockdep.c:6775
+> 1 lock held by dhcpcd/5281:
+>  #0: ffffffff9002c4c0 (rtnl_mutex){+.+.}-{4:4}, at: rtnl_lock net/core/rt=
+netlink.c:80 [inline]
+>  #0: ffffffff9002c4c0 (rtnl_mutex){+.+.}-{4:4}, at: rtnl_nets_lock net/co=
+re/rtnetlink.c:341 [inline]
+>  #0: ffffffff9002c4c0 (rtnl_mutex){+.+.}-{4:4}, at: rtnl_newlink+0x8a3/0x=
+1bd0 net/core/rtnetlink.c:4158
+> 2 locks held by getty/5371:
+>  #0: ffff8880359000a0 (&tty->ldisc_sem){++++}-{0:0}, at: tty_ldisc_ref_wa=
+it+0x25/0x70 drivers/tty/tty_ldisc.c:243
+>  #1: ffffc900032332e8 (&ldata->atomic_read_lock){+.+.}-{4:4}, at: n_tty_r=
+ead+0x45a/0x1360 drivers/tty/n_tty.c:2211
+> 3 locks held by kworker/1:6/5771:
+>  #0: ffff888021e85140 ((wq_completion)usb_hub_wq){+.+.}-{0:0}, at: proces=
+s_one_work kernel/workqueue.c:3297 [inline]
+>  #0: ffff888021e85140 ((wq_completion)usb_hub_wq){+.+.}-{0:0}, at: proces=
+s_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+>  #1: ffffc900041efc40 ((work_completion)(&hub->events)){+.+.}-{0:0}, at: =
+process_one_work kernel/workqueue.c:3297 [inline]
+>  #1: ffffc900041efc40 ((work_completion)(&hub->events)){+.+.}-{0:0}, at: =
+process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+>  #2: ffff8880b8728ea0 (lock#6){..-.}-{3:3}, at: local_lock_acquire includ=
+e/linux/local_lock_internal.h:46 [inline]
+>  #2: ffff8880b8728ea0 (lock#6){..-.}-{3:3}, at: kcov_remote_stop+0x69/0x6=
+c0 kernel/kcov.c:1040
+> 2 locks held by syz.1.3757/20367:
+>  #0: ffffffff9009cd28 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/n=
+etlink/genetlink.c:1217
+>  #1: ffffffff8ee8e5e0 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_listener_set_=
+doit+0x135/0x1750 fs/nfsd/nfsctl.c:1964
+> 2 locks held by syz.3.4381/22405:
+>  #0: ffffffff9009cd28 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/n=
+etlink/genetlink.c:1217
+>  #1: ffffffff8ee8e5e0 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_cache_flush_d=
+oit+0xb5/0x1b0 fs/nfsd/nfsctl.c:2236
+> 1 lock held by syz-executor/24167:
+>  #0: ffffffff9002c4c0 (rtnl_mutex){+.+.}-{4:4}, at: rtnl_lock net/core/rt=
+netlink.c:80 [inline]
+>  #0: ffffffff9002c4c0 (rtnl_mutex){+.+.}-{4:4}, at: rtnl_nets_lock net/co=
+re/rtnetlink.c:341 [inline]
+>  #0: ffffffff9002c4c0 (rtnl_mutex){+.+.}-{4:4}, at: rtnl_newlink+0x8a3/0x=
+1bd0 net/core/rtnetlink.c:4158
+> 1 lock held by syz.5.4972/24470:
+> 2 locks held by syz.5.4972/24471:
+>  #0: ffffffff9002c4c0 (rtnl_mutex){+.+.}-{4:4}, at: do_ip_setsockopt+0xe9=
+5/0x2e30 net/ipv4/ip_sockglue.c:1077
+>  #1: ffff88803b271c60 (sk_lock-AF_INET){+.+.}-{0:0}, at: do_ip_setsockopt=
++0x1556/0x2e30 net/ipv4/ip_sockglue.c:1078
+>=20
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+>=20
+> NMI backtrace for cpu 1
+> CPU: 1 UID: 0 PID: 32 Comm: khungtaskd Tainted: G             L      syzk=
+aller #0 PREEMPT(full)=20
+> Tainted: [L]=3DSOFTLOCKUP
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS G=
+oogle 06/10/2026
+> Call Trace:
+>  <TASK>
+>  dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
+>  nmi_cpu_backtrace+0x274/0x2d0 lib/nmi_backtrace.c:122
+>  nmi_trigger_cpumask_backtrace+0x17a/0x380 lib/nmi_backtrace.c:65
+>  trigger_all_cpu_backtrace include/linux/nmi.h:162 [inline]
+>  __sys_info lib/sys_info.c:157 [inline]
+>  sys_info+0x135/0x170 lib/sys_info.c:165
+>  check_hung_uninterruptible_tasks kernel/hung_task.c:353 [inline]
+>  watchdog+0xfd7/0x1030 kernel/hung_task.c:561
+>  kthread+0x388/0x470 kernel/kthread.c:436
+>  ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
+>  ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+>  </TASK>
+> Sending NMI from CPU 1 to CPUs 0:
+> NMI backtrace for cpu 0
+> CPU: 0 UID: 0 PID: 4986 Comm: udevd Tainted: G             L      syzkall=
+er #0 PREEMPT(full)=20
+> Tainted: [L]=3DSOFTLOCKUP
+> Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS G=
+oogle 06/10/2026
+> RIP: 0010:get_current arch/x86/include/asm/current.h:25 [inline]
+> RIP: 0010:write_comp_data kernel/kcov.c:245 [inline]
+> RIP: 0010:__sanitizer_cov_trace_const_cmp4+0x8/0x90 kernel/kcov.c:314
+> Code: 89 44 11 20 e9 84 cb 49 ff cc 0f 1f 84 00 00 00 00 00 90 90 90 90 9=
+0 90 90 90 90 90 90 90 90 90 90 90 f3 0f 1e fa 48 8b 04 24 <65> 48 8b 15 58=
+ 0a a6 11 65 8b 0d 79 0a a6 11 81 e1 00 01 ff 00 74
+> RSP: 0018:ffffc9000502fcb0 EFLAGS: 00000246
+> RAX: ffffffff8273d85d RBX: ffffffff8273d78c RCX: ffff88807f523e00
+> RDX: 0000000000000000 RSI: 0000000000000001 RDI: 0000000000000000
+> RBP: 0000000000000001 R08: ffffffff8273d78c R09: 0000000000000000
+> R10: 0000000000000000 R11: ffffffff8eb59c60 R12: dffffc0000000000
+> R13: ffff888026b8bc70 R14: ffff888026b8bc30 R15: ffff888026b8d000
+> FS:  00007fe18881d880(0000) GS:ffff888124f58000(0000) knlGS:0000000000000=
+000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 0000200000e4c000 CR3: 0000000029310000 CR4: 0000000000350ef0
+> Call Trace:
+>  <TASK>
+>  kernfs_root+0xed/0x230 fs/kernfs/kernfs-internal.h:77
+>  kernfs_active fs/kernfs/dir.c:40 [inline]
+>  kernfs_dir_next_pos fs/kernfs/dir.c:1964 [inline]
+>  kernfs_fop_readdir+0x647/0x960 fs/kernfs/dir.c:1989
+>  iterate_dir+0x2e2/0x4d0 fs/readdir.c:110
+>  __do_sys_getdents64 fs/readdir.c:399 [inline]
+>  __se_sys_getdents64+0xf1/0x280 fs/readdir.c:384
+>  do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+>  do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+>  entry_SYSCALL_64_after_hwframe+0x77/0x7f
+> RIP: 0033:0x7fe1880f0d23
+> Code: 8b 05 d9 00 10 00 64 c7 00 16 00 00 00 31 c0 eb b0 66 0f 1f 44 00 0=
+0 b8 ff ff ff 7f 48 39 c2 48 0f 47 d0 b8 d9 00 00 00 0f 05 <48> 3d 00 f0 ff=
+ ff 77 05 c3 0f 1f 40 00 48 8b 15 a1 00 10 00 f7 d8
+> RSP: 002b:00007ffc1ee77458 EFLAGS: 00000293 ORIG_RAX: 00000000000000d9
+> RAX: ffffffffffffffda RBX: 00005652ff7d3a20 RCX: 00007fe1880f0d23
+> RDX: 0000000000008000 RSI: 00005652ff7d3a50 RDI: 000000000000000d
+> RBP: 00005652ff7d3a24 R08: 00007fe1881f1ac0 R09: 0000000000000000
+> R10: 0000000000000003 R11: 0000000000000293 R12: 00005652ff7d3a50
+> R13: fffffffffffffe68 R14: 0000000000000002 R15: 00007ffc1ee77700
+>  </TASK>
+>=20
+>=20
 > ---
-> =C2=A0fs/nfsd/flexfilelayout.c=C2=A0=C2=A0=C2=A0 | 20 ++++++++++++-------=
--
-> =C2=A0fs/nfsd/flexfilelayoutxdr.c |=C2=A0 4 ++--
-> =C2=A0fs/nfsd/flexfilelayoutxdr.h |=C2=A0 5 +++--
-> =C2=A03 files changed, 17 insertions(+), 12 deletions(-)
+> This report is generated by a bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for more information about syzbot.
+> syzbot engineers can be reached at syzkaller@googlegroups.com.
 >=20
-> diff --git a/fs/nfsd/flexfilelayout.c b/fs/nfsd/flexfilelayout.c
-> index 9f532418cac8..c6e6b9106a83 100644
-> --- a/fs/nfsd/flexfilelayout.c
-> +++ b/fs/nfsd/flexfilelayout.c
-> @@ -15,6 +15,7 @@
-> =C2=A0
-> =C2=A0#include "nfserr.h"
-> =C2=A0#include "flexfilelayoutxdr.h"
-> +#include "auth.h"
-> =C2=A0#include "pnfs.h"
-> =C2=A0#include "vfs.h"
-> =C2=A0
-> @@ -24,10 +25,10 @@ static __be32
-> =C2=A0nfsd4_ff_proc_layoutget(struct svc_rqst *rqstp, struct inode *inode=
-,
-> =C2=A0		const struct svc_fh *fhp, struct nfsd4_layoutget *args)
-> =C2=A0{
-> +	struct user_namespace *userns =3D nfsd_user_namespace(rqstp);
-> =C2=A0	struct nfsd4_layout_seg *seg =3D &args->lg_seg;
-> =C2=A0	u32 device_generation =3D 0;
-> =C2=A0	int error;
-> -	uid_t u;
-> =C2=A0
-> =C2=A0	struct pnfs_ff_layout *fl;
-> =C2=A0
-> @@ -50,13 +51,16 @@ nfsd4_ff_proc_layoutget(struct svc_rqst *rqstp, struc=
-t inode *inode,
-> =C2=A0	fl->flags =3D FF_FLAGS_NO_LAYOUTCOMMIT | FF_FLAGS_NO_IO_THRU_MDS |
-> =C2=A0		=C2=A0=C2=A0=C2=A0 FF_FLAGS_NO_READ_IO;
-> =C2=A0
-> -	/* Do not allow a IOMODE_READ segment to have write pemissions */
-> -	if (seg->iomode =3D=3D IOMODE_READ) {
-> -		u =3D from_kuid(&init_user_ns, inode->i_uid) + 1;
-> -		fl->uid =3D make_kuid(&init_user_ns, u);
-> -	} else
-> -		fl->uid =3D inode->i_uid;
-> -	fl->gid =3D inode->i_gid;
-> +	fl->uid =3D from_kuid_munged(userns, inode->i_uid);
-> +	fl->gid =3D from_kgid_munged(userns, inode->i_gid);
-> +
-> +	/*
-> +	 * Do not allow an IOMODE_READ segment to have write permissions.
-> +	 * The group is left intact so group-readable files stay readable;
-> +	 * nfsd_setuser() squashes an unmapped uid to the export's anon ID.
-> +	 */
-> +	if (seg->iomode =3D=3D IOMODE_READ)
-> +		fl->uid++;
-> =C2=A0
-> =C2=A0	error =3D nfsd4_set_deviceid(&fl->deviceid, fhp, device_generation=
-);
-> =C2=A0	if (error)
-> diff --git a/fs/nfsd/flexfilelayoutxdr.c b/fs/nfsd/flexfilelayoutxdr.c
-> index 97d8a28dd3a0..c12bb7c371b0 100644
-> --- a/fs/nfsd/flexfilelayoutxdr.c
-> +++ b/fs/nfsd/flexfilelayoutxdr.c
-> @@ -33,8 +33,8 @@ nfsd4_ff_encode_layoutget(struct xdr_stream *xdr,
-> =C2=A0
-> =C2=A0	fh_len =3D 4 + xdr_align_size(fl->fh.size);
-> =C2=A0
-> -	uid.len =3D sprintf(uid.buf, "%u", from_kuid(&init_user_ns, fl->uid));
-> -	gid.len =3D sprintf(gid.buf, "%u", from_kgid(&init_user_ns, fl->gid));
-> +	uid.len =3D sprintf(uid.buf, "%u", fl->uid);
-> +	gid.len =3D sprintf(gid.buf, "%u", fl->gid);
-> =C2=A0
-> =C2=A0	/* data server entry: deviceid + efficiency + stateid + fh list +
-> =C2=A0	 * user + group + flags + stats_collect_hint
-> diff --git a/fs/nfsd/flexfilelayoutxdr.h b/fs/nfsd/flexfilelayoutxdr.h
-> index 6d5a1066a903..3e1876d49db2 100644
-> --- a/fs/nfsd/flexfilelayoutxdr.h
-> +++ b/fs/nfsd/flexfilelayoutxdr.h
-> @@ -35,8 +35,9 @@ struct pnfs_ff_device_addr {
-> =C2=A0struct pnfs_ff_layout {
-> =C2=A0	u32				flags;
-> =C2=A0	u32				stats_collect_hint;
-> -	kuid_t				uid;
-> -	kgid_t				gid;
-> +	/* Values to encode; nfsd4_ff_proc_layoutget() has mapped these */
-> +	u32				uid;
-> +	u32				gid;
-> =C2=A0	struct nfsd4_deviceid		deviceid;
-> =C2=A0	stateid_t			stateid;
-> =C2=A0	struct nfs_fh			fh;
-> --
-> 2.54.0
+> syzbot will keep track of this issue. See:
+> https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+>=20
+> If the report is already addressed, let syzbot know by replying with:
+> #syz fix: exact-commit-title
+>=20
+> If you want to overwrite report's subsystems, reply with:
+> #syz set subsystems: new-subsystem
+> (See the list of subsystem names on the web dashboard)
+>=20
+> If the report is a duplicate of another one, reply with:
+> #syz dup: exact-subject-of-another-report
+>=20
+> If you want to undo deduplication, reply with:
+> #syz undup
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+
+I've been doing some investigation on this problem, and I think I
+pretty much understand it now. There are actually a few different DoS
+vectors here. Most of them are fairly simple to patch (and I have a few
+patches for those problems).
+
+The hard problem here is that rpcbind registration is done
+synchronously under the nfsd_mutex. To talk to rpcbind, the kernel has
+to create a RPC client, which does a RPC ping first. If rpcbind is down
+then it can take up to a minute for the RPC ping to time out.=C2=A0rpcbind
+registration failure is not considered fatal, so if it fails the kernel
+keeps going on. If we couple those delays with a long list of
+listeners, then it's easy to see how to reproduce the hang.
+
+I think the only real fix here is to do the listener registration
+outside of the nfsd_mutex. We can either try to drop and reacquire the
+nfsd_mutex to do the registration or we could move to doing the
+registration asynchronously outside of the mutex.
+
+I personally like the latter idea better, but I haven't thought enough
+about how we'd deal with racing listener netlink calls in that case.
+
+Thoughts?
+--=20
+Jeff Layton <jlayton@kernel.org>
