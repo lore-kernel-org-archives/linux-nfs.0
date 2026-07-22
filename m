@@ -1,47 +1,47 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37978339376
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Jul 2026 13:05:13 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 54A6533A014
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Jul 2026 13:05:29 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784725518; cv=none; b=TvMlSRAkGJwAqTVnLDKo3PIHAJrjsXIKaP73Wd8QZpvt9GKHCYqwXv+mGxxRIlJUES0APxh3YrHVyt8HlT5Plbrk9gVtcKr8zGed5zkgXTwciw8h+8X4FzaO2vV+6xX8ir2TfS+ur9G5glKYpXzSOZXSM865Pk5tDv7McB7JnhU=
+	t=1784725538; cv=none; b=gdHrZVsBbhxFRRQjZEWzlKmDIAaNJroy2UkLDUIIGwYyLkwvfz5JGTXLCFbuiE83qfriPvKpakepadVr/kvJ02G2Bh1MZoxxxhnv5gn692t8DV8xUzSWTPfDMeyGqZ7oQrqJ2S3eoJujqWPnW2YIrkFXNhkAbrkZ6tTryZaHYgU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784725518; c=relaxed/simple;
-	bh=NQtjBH6DcjYKMTh9jol1USzcLbyU3rFnCiCvjmUMaXk=;
+	s=arc-20240116; t=1784725538; c=relaxed/simple;
+	bh=FnCHShIWsdpyZz39blnbwCQAEBO9ZIYnlBNpDQQfQ9Y=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=aa4+I3pf7wrFP6Sq4Z4F+aKRa8WRseUSBtPpcUJ7AwHAY3pbghB8+tTF0r2D3gV3bromOIxUVKd9d6yteOYqcD5Up/ixd2CckrQwqNTXsZ7uBxot7sVeWr86dOhCGiekKoiHm64OwJtaE3F/K8YjHydnYZSVlolvVhoOsWfS05k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=TPb+b7sT; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=q95zxAVIaW7hZlTL+hKdPhpuQy5LccvL24+TyKfZyXpOH1Zn7nVc7vfUfU3KhNyapzV9fn0tFe5D3c6yHsrLT6YWjXHgqyURhlZq0ogO/kzBA+oiQIc76GALz1by0p13eql5U5yZG+tmc8KQnifoLrDZ3ZqEu2eSHMlWYLSgw0Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=SJZhw99K; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="TPb+b7sT"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="SJZhw99K"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1784725512;
+	s=mimecast20190719; t=1784725528;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=L7ihziS0XXOwnUrDdF/ebWojKQQYn6M6w+J32Bne9lE=;
-	b=TPb+b7sTjg+/R9Cn8GB4pxlHs5bgpafts4yY2+o3n0sQQ12bAvrIO5uZPkkFttyIetTKuT
-	7jvXGRjuLdqhiC3iqIFX2KqNxd/f3QwT9WgUzA09CiwgU/omuPlON6hpUPIoSQs1goLB/M
-	oVzp2zeezlT2QMbWEmcfYc0W42yF3Q0=
-Received: from mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
+	bh=+c0Tn3/nwpjwl/SzJB6i1zzkfo0DcRTtgqehU7LGhLk=;
+	b=SJZhw99KlY7AyywXYEcjzk3MK9C0kEtS59+LaenzETC9ZRrIDHCKDixeP0u4Vit1tTTuUo
+	axaedOT1NMOeIRlPNbC5LlXc66Dj3mwlogJjzW6wgORh5CXXB7hJ0mloEbK/MpeqHHYIJh
+	Kxfv7thnU2NotgKTnJfeBzIkfCcouLU=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-329-qx6BTlm1OKSNzUi_M03AIA-1; Wed,
- 22 Jul 2026 09:05:08 -0400
-X-MC-Unique: qx6BTlm1OKSNzUi_M03AIA-1
-X-Mimecast-MFC-AGG-ID: qx6BTlm1OKSNzUi_M03AIA_1784725505
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-358-N_YfxX7vNXaZsrGazc1u2w-1; Wed,
+ 22 Jul 2026 09:05:24 -0400
+X-MC-Unique: N_YfxX7vNXaZsrGazc1u2w-1
+X-Mimecast-MFC-AGG-ID: N_YfxX7vNXaZsrGazc1u2w_1784725521
 Received: from mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.95])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-01.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 7A1A0195FDCA;
-	Wed, 22 Jul 2026 13:05:05 +0000 (UTC)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id B2CD2182A128;
+	Wed, 22 Jul 2026 13:05:21 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.44.33.159])
-	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 2F436D70;
-	Wed, 22 Jul 2026 13:04:58 +0000 (UTC)
+	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id A9DB9763;
+	Wed, 22 Jul 2026 13:05:14 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Matthew Wilcox <willy@infradead.org>,
@@ -65,10 +65,12 @@ Cc: David Howells <dhowells@redhat.com>,
 	v9fs@lists.linux.dev,
 	linux-erofs@lists.ozlabs.org,
 	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH v7 19/29] cachefiles: Don't rely on backing fs storage map for most use cases
-Date: Wed, 22 Jul 2026 14:02:06 +0100
-Message-ID: <20260722130218.78958-20-dhowells@redhat.com>
+	linux-kernel@vger.kernel.org,
+	Shyam Prasad N <sprasad@microsoft.com>,
+	Tom Talpey <tom@talpey.com>
+Subject: [PATCH v7 21/29] netfs: Switch to using bvecq rather than folio_queue and rolling_buffer
+Date: Wed, 22 Jul 2026 14:02:08 +0100
+Message-ID: <20260722130218.78958-22-dhowells@redhat.com>
 In-Reply-To: <20260722130218.78958-1-dhowells@redhat.com>
 References: <20260722130218.78958-1-dhowells@redhat.com>
 Precedence: bulk
@@ -80,1848 +82,2309 @@ MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 X-Scanned-By: MIMEDefang 3.6 on 10.30.177.95
 
-Cachefiles currently uses the backing filesystem's idea of what data is
-held in a backing file and queries this by means of SEEK_DATA and
-SEEK_HOLE.  However, this means it does two seek operations on the backing
-file for each individual read call it wants to prepare (unless the first
-returns -ENXIO).  Worse, the backing filesystem is at liberty to insert or
-remove blocks of zeros in order to optimise its layout which may cause
-false positives and false negatives.
+Switch netfslib to using bvecq, a segmented bio_vec[] queue, instead of the
+folio_queue and rolling_buffer constructs, to keep track of the regions of
+memory it is performing I/O upon.  Each bvecq struct in the chain is marked
+with the starting file position of that sequence so that discontiguities
+can be handled (the contents of each individual bvecq must be contiguous).
 
-The problem is that keeping track of what is dirty is tricky (if storing
-info in xattrs, which may have limited capacity and must be read and
-written as one piece) and expensive (in terms of diskspace at least) and is
-basically duplicating what a filesystem does.
+For unbuffered/direct I/O, the iterator is extracted into the queue up
+front.  For buffered I/O, the folios are added to the queue as the
+operation proceeds, much as it does now with folio_queues.  There is one
+important change for buffered writes: only the relevant part of the folio
+is included; this is expanded for writes to the cache in a copy of the
+bvecq segment (it is known that each bio_vec corresponds to part of a
+folio in this case).
 
-However, the most common write case, in which the application does {
-open(O_TRUNC); write(); write(); ... write(); close(); } where each write
-follows directly on from the previous and leaves no gaps in the file is
-reasonably easy to detect and can be noted in the primary xattr as
-CACHEFILES_CONTENT_ALL, indicating we have everything up to the object size
-stored.
+The bvecq structs are marked with information as to how the regions
+contained therein should be disposed of (unlock-only, free, unpin).
 
-In this specific case, given that it is known that there are no holes in
-the file, there's no need to call SEEK_DATA/HOLE or use any other mechanism
-to track the contents.  That speeds things up enormously.
+When setting up a subrequest, netfslib will furnish it with a slice of the
+main buffer queue as a pointer to starting bvecq, slot and offset and, for
+the moment, an ITER_BVECQ iterator is set to cover the slice in
+subreq->io_iter.
 
-Even when it is necessary to use SEEK_DATA/HOLE, it may not be necessary to
-call it for each cache read subrequest generated.
+Notes on the implementation:
 
-Implement this by adding support for the CACHEFILES_CONTENT_ALL content
-type (which is defined, but currently unused), which requires a slight
-adjustment in how backing files are managed.  Specifically, the driver
-needs to know how much of the tail block is data and whether storing more
-data will create a hole.
+ (1) This patch uses the concept of a 'bvecq position', which is a tuple of
+     { bvecq, slot, offset }.  This is lighter weight than using a full
+     iov_iter, though that would also suffice.  If not NULL, the position
+     also holds a reference on the bvecq it is pointing to.  This is
+     probably overkill as only the hindmost position (that of collection)
+     needs to hold a reference.
 
-To this end, the way that the size of a backing file is managed is changed.
-Currently, the backing file is expanded to strictly match the size of the
-network file, but this can be changed to carry more useful information.
-This makes two pieces of metadata available: xattr.object_size and the
-backing file's i_size.  Apply the following schema:
+ (2) There are three positions on the netfs_io_request struct.  Not all are
+     used by every request type.
 
-  (a) i_size is always a multiple of the DIO block size.
+     Firstly, there's ->load_cursor, which is used by buffered read and
+     write to point to the next slot to have a folio inserted into it
+     (either loaded from the readahead_control or from writeback_iter()).
 
-  (b) i_size is only updated to the end of the highest write stored.  This
-      is used to work out if we are following on without leaving a hole.
+     Secondly, there's ->dispatch_cursor, which is used to provide the
+     position in the buffer from which we start dispatching a subrequest.
 
-  (c) xattr.object_size is the size of the network filesystem file cached
-      in this backing file.
+     Thirdly, there's the ->collect_cursor, which is used by the collection
+     routines to point to the next memory region to be cleaned up.
 
-  (d) xattr.object_size must point after the start of the last block
-      (unless both are 0).
+ (3) There are two positions on the netfs_io_subrequest struct.
 
-  (e) If xattr.object_size is at or after the block at the current end of
-      the backing file (ie. i_size), then we have all the contents of the
-      block (if xattr.content == CACHEFILES_CONTENT_ALL).
+     Firstly, there's ->dispatch_pos, which indicates the position from
+     which a subrequest's buffer begins.  This is used as the base of the
+     position from which to retry (advanced by ->transfer).
 
-  (f) If xattr.object_size is somewhere in the middle of the last block,
-      then the data following it is invalid and must be ignored.
+     Secondly, there's ->content, which is normally the same as
+     ->dispatch_pos but if the bvecq chain got duplicated or the content
+     got copied, then this will point to that and will that will be
+     disposed of on retry.
 
-  (g) If data is added to the last block, then that block must be fetched,
-      modified and rewritten (it must be a buffered write through the
-      pagecache and not DIO).
+ (4) Maintenance of the position structs is done with helper functions,
+     such as bvecq_pos_attach() to hide the refcounting.
 
-  (h) Writes to cache are rounded out to blocks on both sides and the
-      folios used as sources must contain data for any lower gap and must
-      have been cleared for any upper gap, and so will rewrite any
-      non-data area in the tail block.
+ (5) When sending a write to the cache, the bvecq will be duplicated and
+     the ends rounded up/down to the backing file's DIO block alignment.
 
-To implement this, the following changes are made:
+ (6) bvec_slice() is used to select a slice of the source buffer and assign
+     it to a subrequest.  The source buffer position is advanced.
 
- (1) cookie->object_size is no longer updated when writes are copied into
-     the pagecache, but rather only updated when a write request completes.
+ (7) netfs_extract_iter() is used by unbuffered/direct I/O API functions to
+     decant a chunk of the iov_iter supplied by the VFS into a bvecq chain
+     - and to label the bvecqs with appropriate disposal information
+     (e.g. unpin, free, nothing).
 
-     This prevents object size miscomparison when checking the xattr
-     causing the backing file to be invalidated (opening and marking the
-     backing file and modifying the pagecache run in parallel).
+There are further options that can be explored in the future:
 
- (2) The cache's current idea of the amount of data that should be stored
-     in the backing file is kept track of in object->object_size.
+ (1) Allow the provision of a duplicated bvecq chain for just that region
+     so that the filesystem can add bits on either end (such as adding
+     protocol headers and trailers and gluing several things together into
+     a compound operation).
 
-     Possibly this is redundant with cookie->object_size, but the latter
-     gets updated in some addition circumstances.
+ (2) If a filesystem supports vectored/sparse read and write ops, it can be
+     given a chain with discontiguities in it to perform in a single op
+     (Ceph, for example, can do this).
 
- (3) The size of the backing file at the start of a request is now tracked
-     in struct netfs_cache_resources so that the partial EOF block can be
-     located and cleaned.
+ (3) Because each bvecq notes the start file position of the regions
+     contained therein, there's no need to translate the info in the
+     bio_vec into folio pointers in order to unlock the page after I/O.
+     Instead, the inode's pagecache can be iterated over and the xarray
+     marks cleared en masse.
 
- (4) The cache block size is now used consistently rather than using
-     CACHEFILES_DIO_BLOCK_SIZE (4096).
+ (4) Make MSG_SPLICE_PAGES handling read the disposal info in the bvecq and
+     use that to indicate how it should get rid of the stuff it pasted into
+     a sk_buff.
 
- (5) The backing file size is no longer adjusted when looking up an object.
+ (5) If a bounce buffer is needed (encryption, for example), the bounce
+     buffer can be held in a bvecq and sliced up instead of the main buffer
+     queue.
 
- (6) When shortening a file, if the new size is not block aligned, the part
-     beyond the new size is cleared.  If the file is truncated to zero, the
-     content_info gets reset to CACHEFILES_CONTENT_NO_DATA.
+ (6) Get rid of subreq->io_iter and move the iov_iter stuff down into the
+     filesystem.  The I/O iterators are normally only needed transitorily,
+     and the one currently in netfs_io_subrequest is unnecessary most of
+     the time.
 
- (7) A new struct, fscache_occupancy, is instituted to track the region
-     being read.  Netfslib allocates it and fills in the start and end of
-     the region to be read then calls the ->query_occupancy() method to
-     find and fill in the extents.  It also indicates whether a recorded
-     extent contains data or just contains a region that's all zeros
-     (FSCACHE_EXTENT_DATA or FSCACHE_EXTENT_ZERO).
-
- (8) The ->prepare_read() cache method is changed such that, if given, it
-     just limits the amount that can be read from the cache in one go.  It
-     no longer indicates what source of read should be done; that
-     information is now obtained from ->query_occupancy().
-
- (9) A new cache method, ->collect_write(), is added that is called when a
-     contiguous series of writes have completed and a discontiguity or the
-     end of the request has been hit.  It it supplied with the start and
-     length of the write made to the backing file and can use this
-     information to update the cache metadata.
-
-(10) cachefiles_query_occupancy() is altered to find the next two "extents"
-     of data stored in the backing file by doing SEEK_DATA/HOLE between the
-     bounds set - unless it is known that there are no holes, in which case
-     a whole-file first extent can be set.
-
-(11) cachefiles_collect_write() is implemented to take the collated write
-     completion information and use this to update the cache metadata, in
-     particular working out whether there's now a hole in the backing file
-     requiring future use of SEEK_DATA/HOLE instead of just assuming the
-     data is all present.
-
-     It also uses fallocate(FALLOC_FL_ZERO_RANGE) to clean the part of a
-     partial block that extended beyond the old object size.  It might be
-     better to perform a synchronous DIO write for this purpose, but that
-     would mandate an RMW cycle.  Ideally, it should be all zeros anyway,
-     but, unfortunately, shared-writable mmap can interfere.
-
-(12) cachefiles_begin_operation() is updated to note the current backing
-     file size and the cache DIO size.
-
-(13) cachefiles_create_tmpfile() no longer expands the backing file when it
-     creates it.
-
-(14) cachefiles_set_object_xattr() is changed to use object->object_size
-     rather than cookie->object_size.
-
-(15) cachefiles_check_auxdata() is altered to actually store the content
-     type and to also set object->object_size.  The cachefiles_coherency
-     tracepoint is also modified to display xattr.object_size.
-
-(16) netfs_read_to_pagecache() is reworked.  The cache ->prepare_read()
-     method is replaced with ->query_occupancy() as the arbiter of what
-     region of the file is read from where, and that retrieves up to two
-     occupied extents of the backing file at once.
-
-     The cache ->prepare_read() method is now repurposed to be the same as
-     the equivalent network filesystem method and allows the cache to limit
-     the size of the read before the iterator is prepared.
-
-     netfs_single_dispatch_read() is similarly modified.
-
-(17) netfs_update_i_size() and afs_update_i_size() no longer call
-     fscache_update_cookie() to update cookie->object_size.
-
-(18) Write collection now collates contiguous sequences of writes to the
-     cache and calls the cache ->collect_write() method.
+folio_queue and rolling_buffer will be removed in a follow up patch.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 cc: Paulo Alcantara <pc@manguebit.org>
 cc: Matthew Wilcox <willy@infradead.org>
 cc: Christoph Hellwig <hch@infradead.org>
+cc: Steve French <sfrench@samba.org>
+cc: Shyam Prasad N <sprasad@microsoft.com>
+cc: Tom Talpey <tom@talpey.com>
 cc: linux-cifs@vger.kernel.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/afs/file.c                     |   1 -
- fs/cachefiles/interface.c         |  90 ++-------
- fs/cachefiles/internal.h          |  13 +-
- fs/cachefiles/io.c                | 312 +++++++++++++++++++++++-------
- fs/cachefiles/namei.c             |  19 +-
- fs/cachefiles/xattr.c             |  24 ++-
- fs/netfs/buffered_read.c          | 176 +++++++++++------
- fs/netfs/buffered_write.c         |   3 -
- fs/netfs/internal.h               |   2 +
- fs/netfs/read_retry.c             |   2 +
- fs/netfs/read_single.c            |  39 ++--
- fs/netfs/write_collect.c          | 132 ++++++++++---
- fs/netfs/write_issue.c            |  18 ++
- fs/netfs/write_retry.c            |   3 +
- include/linux/fscache.h           |  17 ++
- include/linux/netfs.h             |  40 +++-
- include/trace/events/cachefiles.h |  17 +-
- include/trace/events/netfs.h      |   9 +-
- 18 files changed, 631 insertions(+), 286 deletions(-)
+ fs/cachefiles/io.c           |  12 ---
+ fs/netfs/Makefile            |   1 -
+ fs/netfs/buffered_read.c     | 122 +++++++++++++---------
+ fs/netfs/direct_read.c       |  78 ++++++--------
+ fs/netfs/direct_write.c      |  69 +++++++------
+ fs/netfs/internal.h          |  10 +-
+ fs/netfs/iterator.c          |   2 +
+ fs/netfs/misc.c              |  20 +---
+ fs/netfs/objects.c           |  17 ++--
+ fs/netfs/read_collect.c      |  98 ++++++++++--------
+ fs/netfs/read_pgpriv2.c      |  93 +++++++++++------
+ fs/netfs/read_retry.c        | 102 +++++++++++--------
+ fs/netfs/read_single.c       |  16 ++-
+ fs/netfs/stats.c             |   4 +-
+ fs/netfs/write_collect.c     |  60 +++++------
+ fs/netfs/write_issue.c       | 192 ++++++++++++++++++++++++++---------
+ fs/netfs/write_retry.c       |  62 ++++++-----
+ include/linux/netfs.h        |  25 ++---
+ include/trace/events/netfs.h |  46 ++++-----
+ 19 files changed, 591 insertions(+), 438 deletions(-)
 
-diff --git a/fs/afs/file.c b/fs/afs/file.c
-index 3617c245f319..92380dc25781 100644
---- a/fs/afs/file.c
-+++ b/fs/afs/file.c
-@@ -447,7 +447,6 @@ void afs_set_i_size(struct afs_vnode *vnode, loff_t new_i_size)
- 	}
- 	spin_unlock(&inode->i_lock);
- 	write_sequnlock(&vnode->cb_lock);
--	fscache_update_cookie(afs_vnode_cache(vnode), NULL, &new_i_size);
- }
- 
- static void afs_update_i_size(struct inode *inode, loff_t new_i_size)
-diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-index 50a000310a8c..638e00717119 100644
---- a/fs/cachefiles/interface.c
-+++ b/fs/cachefiles/interface.c
-@@ -99,73 +99,6 @@ void cachefiles_put_object(struct cachefiles_object *object,
- 	_leave("");
- }
- 
--/*
-- * Adjust the size of a cache file if necessary to match the DIO size.  We keep
-- * the EOF marker a multiple of DIO blocks so that we don't fall back to doing
-- * non-DIO for a partial block straddling the EOF, but we also have to be
-- * careful of someone expanding the file and accidentally accreting the
-- * padding.
-- */
--static int cachefiles_adjust_size(struct cachefiles_object *object)
--{
--	struct iattr newattrs;
--	struct file *file = object->file;
--	uint64_t ni_size;
--	loff_t oi_size;
--	int ret;
--
--	ni_size = object->cookie->object_size;
--	ni_size = round_up(ni_size, CACHEFILES_DIO_BLOCK_SIZE);
--
--	_enter("{OBJ%x},[%llu]",
--	       object->debug_id, (unsigned long long) ni_size);
--
--	if (!file)
--		return -ENOBUFS;
--
--	oi_size = i_size_read(file_inode(file));
--	if (oi_size == ni_size)
--		return 0;
--
--	inode_lock(file_inode(file));
--
--	/* if there's an extension to a partial page at the end of the backing
--	 * file, we need to discard the partial page so that we pick up new
--	 * data after it */
--	if (oi_size & ~PAGE_MASK && ni_size > oi_size) {
--		_debug("discard tail %llx", oi_size);
--		newattrs.ia_valid = ATTR_SIZE;
--		newattrs.ia_size = oi_size & PAGE_MASK;
--		ret = cachefiles_inject_remove_error();
--		if (ret == 0)
--			ret = notify_change(&nop_mnt_idmap, file->f_path.dentry,
--					    &newattrs, NULL);
--		if (ret < 0)
--			goto truncate_failed;
--	}
--
--	newattrs.ia_valid = ATTR_SIZE;
--	newattrs.ia_size = ni_size;
--	ret = cachefiles_inject_write_error();
--	if (ret == 0)
--		ret = notify_change(&nop_mnt_idmap, file->f_path.dentry,
--				    &newattrs, NULL);
--
--truncate_failed:
--	inode_unlock(file_inode(file));
--
--	if (ret < 0)
--		trace_cachefiles_io_error(NULL, file_inode(file), ret,
--					  cachefiles_trace_notify_change_error);
--	if (ret == -EIO) {
--		cachefiles_io_error_obj(object, "Size set failed");
--		ret = -ENOBUFS;
--	}
--
--	_leave(" = %d", ret);
--	return ret;
--}
--
- /*
-  * Attempt to look up the nominated node in this cache
-  */
-@@ -198,7 +131,6 @@ static bool cachefiles_lookup_cookie(struct fscache_cookie *cookie)
- 	spin_lock(&cache->object_list_lock);
- 	list_add(&object->cache_link, &cache->object_list);
- 	spin_unlock(&cache->object_list_lock);
--	cachefiles_adjust_size(object);
- 
- 	cachefiles_end_secure(cache, saved_cred);
- 	_leave(" = t");
-@@ -232,7 +164,7 @@ static bool cachefiles_shorten_object(struct cachefiles_object *object,
- 	loff_t i_size, dio_size;
- 	int ret;
- 
--	dio_size = round_up(new_size, CACHEFILES_DIO_BLOCK_SIZE);
-+	dio_size = round_up(new_size, cache->bsize);
- 	i_size = i_size_read(inode);
- 
- 	trace_cachefiles_trunc(object, inode, i_size, dio_size,
-@@ -264,6 +196,7 @@ static bool cachefiles_shorten_object(struct cachefiles_object *object,
- 		}
- 	}
- 
-+	object->object_size = new_size;
- 	return true;
- }
- 
-@@ -278,22 +211,31 @@ static void cachefiles_resize_cookie(struct netfs_cache_resources *cres,
- 	struct fscache_cookie *cookie = object->cookie;
- 	const struct cred *saved_cred;
- 	struct file *file = cachefiles_cres_file(cres);
--	loff_t old_size = cookie->object_size;
-+	unsigned long long i_size = i_size_read(file_inode(file));
- 
--	_enter("%llu->%llu", old_size, new_size);
-+	_enter("%llu->%llu", object->object_size, new_size);
- 
--	if (new_size < old_size) {
-+	/* If the file is being shrunk, we need to downsize the backing file
-+	 * and clear the end of the final block.
-+	 */
-+	if (new_size < object->object_size) {
-+		if (new_size >= i_size)
-+			goto out;
- 		cachefiles_begin_secure(cache, &saved_cred);
- 		cachefiles_shorten_object(object, file, new_size);
- 		cachefiles_end_secure(cache, saved_cred);
- 		object->cookie->object_size = new_size;
-+		if (new_size == 0)
-+			object->content_info = CACHEFILES_CONTENT_NO_DATA;
- 		return;
- 	}
- 
- 	/* The file is being expanded.  We don't need to do anything
--	 * particularly.  cookie->initial_size doesn't change and so the point
--	 * at which we have to download before doesn't change.
-+	 * particularly.  The tail of the last block should have been cleared
-+	 * both when it is written and when it is shrunk.
- 	 */
-+out:
-+	object->object_size = new_size;
- 	cookie->object_size = new_size;
- }
- 
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index 39300d61f419..b31d7e93fe99 100644
---- a/fs/cachefiles/internal.h
-+++ b/fs/cachefiles/internal.h
-@@ -17,8 +17,6 @@
- #include <linux/security.h>
- #include <linux/cachefiles.h>
- 
--#define CACHEFILES_DIO_BLOCK_SIZE 4096
--
- struct cachefiles_cache;
- struct cachefiles_object;
- 
-@@ -52,12 +50,17 @@ struct cachefiles_object {
- 	struct list_head		cache_link;	/* Link in cache->*_list */
- 	struct file			*file;		/* The file representing this object */
- 	char				*d_name;	/* Backing file name */
-+	unsigned long			flags;
-+#define CACHEFILES_OBJECT_USING_TMPFILE	0		/* Have an unlinked tmpfile */
-+	unsigned long long		object_size;	/* Size of the object stored
-+							 * (independent of cookie->object_size for
-+							 * coherency reasons)
-+							 */
-+	atomic64_t			read_limit;	/* Point beyond which uncommitted writes */
- 	int				debug_id;
- 	spinlock_t			lock;
- 	refcount_t			ref;
--	enum cachefiles_content		content_info:8;	/* Info about content presence */
--	unsigned long			flags;
--#define CACHEFILES_OBJECT_USING_TMPFILE	0		/* Have an unlinked tmpfile */
-+	enum cachefiles_content		content_info;	/* Info about content presence */
- };
- 
- /*
 diff --git a/fs/cachefiles/io.c b/fs/cachefiles/io.c
-index 9540ec25b3cb..042c8d7d3c91 100644
+index 00feb2622ff1..7afb6e7ae5a6 100644
 --- a/fs/cachefiles/io.c
 +++ b/fs/cachefiles/io.c
-@@ -32,6 +32,8 @@ struct cachefiles_kiocb {
- 	u64			b_writing;
- };
+@@ -636,7 +636,6 @@ static void cachefiles_issue_write(struct netfs_io_subrequest *subreq)
+ 	struct netfs_cache_resources *cres = &wreq->cache_resources;
+ 	struct cachefiles_object *object = cachefiles_cres_object(cres);
+ 	struct cachefiles_cache *cache = object->volume->cache;
+-	struct netfs_io_stream *stream = &wreq->io_streams[subreq->stream_nr];
+ 	const struct cred *saved_cred;
+ 	size_t off, pre, post, len = subreq->len;
+ 	loff_t start = subreq->start;
+@@ -661,17 +660,6 @@ static void cachefiles_issue_write(struct netfs_io_subrequest *subreq)
+ 	}
  
-+#define IS_ERR_VALUE_LL(x) unlikely((x) >= (unsigned long long)-MAX_ERRNO)
-+
- static inline void cachefiles_put_kiocb(struct cachefiles_kiocb *ki)
+ 	/* We also need to end on the cache granularity boundary */
+-	if (start + len == wreq->i_size) {
+-		size_t part = len & (cache->bsize - 1);
+-		size_t need = cache->bsize - part;
+-
+-		if (part && stream->submit_extendable_to >= need) {
+-			len += need;
+-			subreq->len += need;
+-			subreq->io_iter.count += need;
+-		}
+-	}
+-
+ 	post = len & (cache->bsize - 1);
+ 	if (post) {
+ 		len -= post;
+diff --git a/fs/netfs/Makefile b/fs/netfs/Makefile
+index e1f12ecb5abf..0621e6870cbd 100644
+--- a/fs/netfs/Makefile
++++ b/fs/netfs/Makefile
+@@ -15,7 +15,6 @@ netfs-y := \
+ 	read_pgpriv2.o \
+ 	read_retry.o \
+ 	read_single.o \
+-	rolling_buffer.o \
+ 	write_collect.o \
+ 	write_issue.o \
+ 	write_retry.o
+diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
+index 70ccc92d03ae..01b3251fa306 100644
+--- a/fs/netfs/buffered_read.c
++++ b/fs/netfs/buffered_read.c
+@@ -114,26 +114,21 @@ static int netfs_begin_cache_read(struct netfs_io_request *rreq, struct netfs_in
+ static ssize_t netfs_prepare_read_iterator(struct netfs_io_subrequest *subreq)
  {
- 	if (refcount_dec_and_test(&ki->ki_refcnt)) {
-@@ -193,60 +195,81 @@ static int cachefiles_read(struct netfs_cache_resources *cres,
+ 	struct netfs_io_request *rreq = subreq->rreq;
++	struct netfs_io_stream *stream = &rreq->io_streams[0];
++	ssize_t extracted;
+ 	size_t rsize = subreq->len;
+ 
+ 	if (subreq->source == NETFS_DOWNLOAD_FROM_SERVER)
+-		rsize = umin(rsize, rreq->io_streams[0].sreq_max_len);
+-
+-	subreq->len = rsize;
+-	if (unlikely(rreq->io_streams[0].sreq_max_segs)) {
+-		size_t limit = netfs_limit_iter(&rreq->buffer.iter, 0, rsize,
+-						rreq->io_streams[0].sreq_max_segs);
+-
+-		if (limit < rsize) {
+-			subreq->len = limit;
+-			trace_netfs_sreq(subreq, netfs_sreq_trace_limited);
+-		}
++		rsize = umin(rsize, stream->sreq_max_len);
++
++	bvecq_pos_set(&subreq->dispatch_pos, &rreq->dispatch_cursor);
++	extracted = bvecq_slice(&rreq->dispatch_cursor, rsize,
++				stream->sreq_max_segs, &subreq->nr_segs);
++	if (extracted < rsize) {
++		subreq->len = extracted;
++		trace_netfs_sreq(subreq, netfs_sreq_trace_limited);
+ 	}
+ 
+-	subreq->io_iter	= rreq->buffer.iter;
+-
+-	iov_iter_truncate(&subreq->io_iter, subreq->len);
+-	rolling_buffer_advance(&rreq->buffer, subreq->len);
+ 	return subreq->len;
  }
  
- /*
-- * Query the occupancy of the cache in a region, returning where the next chunk
-- * of data starts and how long it is.
-+ * Query the occupancy of the cache in a region, returning the extent of the
-+ * next two chunks of cached data and the next hole.
-  */
- static int cachefiles_query_occupancy(struct netfs_cache_resources *cres,
--				      loff_t start, size_t len, size_t granularity,
--				      loff_t *_data_start, size_t *_data_len)
-+				      struct fscache_occupancy *occ)
+@@ -192,6 +187,10 @@ void netfs_queue_read(struct netfs_io_request *rreq,
+ static void netfs_issue_read(struct netfs_io_request *rreq,
+ 			     struct netfs_io_subrequest *subreq)
  {
- 	struct cachefiles_object *object;
-+	struct inode *inode;
- 	struct file *file;
--	loff_t off, off2;
--
--	*_data_start = -1;
--	*_data_len = 0;
-+	unsigned long long read_limit;
-+	loff_t ret;
-+	int i;
- 
- 	if (!fscache_wait_for_operation(cres, FSCACHE_WANT_READ))
- 		return -ENOBUFS;
- 
- 	object = cachefiles_cres_object(cres);
- 	file = cachefiles_cres_file(cres);
--	granularity = max_t(size_t, object->volume->cache->bsize, granularity);
-+	inode = file_inode(file);
-+	occ->granularity = object->volume->cache->bsize;
-+	/* Read read_limit before content_info. */
-+	read_limit = atomic64_read_acquire(&object->read_limit);
++	bvecq_pos_set(&subreq->content, &subreq->dispatch_pos);
++	iov_iter_bvec_queue(&subreq->io_iter, ITER_DEST, subreq->content.bvecq,
++			    subreq->content.slot, subreq->content.offset, subreq->len);
 +
-+	_enter("%pD,%llu,%llx-%llx/%llx",
-+	       file, inode->i_ino, occ->query_from, occ->query_to, read_limit);
-+
-+	if (read_limit == 0)
-+		goto done;
-+
-+	switch (READ_ONCE(object->content_info)) {
-+	case CACHEFILES_CONTENT_ALL:
-+	case CACHEFILES_CONTENT_SINGLE:
-+		if (read_limit > occ->query_from) {
-+			occ->cached_from[0] = 0;
-+			occ->cached_to[0] = read_limit;
-+			occ->cached_type[0] = FSCACHE_EXTENT_DATA;
-+			occ->query_from = ULLONG_MAX;
-+		}
-+		goto done;
-+	default:
-+		break;
-+	}
+ 	switch (subreq->source) {
+ 	case NETFS_DOWNLOAD_FROM_SERVER:
+ 		rreq->netfs_ops->issue_read(subreq);
+@@ -200,7 +199,8 @@ static void netfs_issue_read(struct netfs_io_request *rreq,
+ 		netfs_read_cache_to_pagecache(rreq, subreq);
+ 		break;
+ 	default:
+-		__set_bit(NETFS_SREQ_CLEAR_TAIL, &subreq->flags);
++		bvecq_zero(&subreq->content, subreq->len);
++		subreq->transferred = subreq->len;
+ 		subreq->error = 0;
+ 		iov_iter_zero(subreq->len, &subreq->io_iter);
+ 		subreq->transferred = subreq->len;
+@@ -229,6 +229,11 @@ static void netfs_read_to_pagecache(struct netfs_io_request *rreq)
+ 	ssize_t size = rreq->len;
+ 	int ret = 0;
  
--	_enter("%pD,%llu,%llx,%zx/%llx",
--	       file, file_inode(file)->i_ino, start, len,
--	       i_size_read(file_inode(file)));
-+	for (i = 0; i < ARRAY_SIZE(occ->cached_from); i++) {
-+		ret = cachefiles_inject_read_error();
-+		if (ret == 0)
-+			ret = vfs_llseek(file, occ->query_from, SEEK_DATA);
-+		if (IS_ERR_VALUE_LL(ret)) {
-+			if (ret != -ENXIO)
-+				return ret;
-+			occ->query_from = ULLONG_MAX;
-+			goto done;
-+		}
-+		occ->cached_type[i] = FSCACHE_EXTENT_DATA;
-+		occ->cached_from[i] = ret;
-+		occ->query_from = ret;
++	_enter("R=%08x", rreq->debug_id);
 +
-+		ret = cachefiles_inject_read_error();
-+		if (ret == 0)
-+			ret = vfs_llseek(file, occ->query_from, SEEK_HOLE);
-+		if (IS_ERR_VALUE_LL(ret)) {
-+			if (ret != -ENXIO)
-+				return ret;
-+			occ->query_from = ULLONG_MAX;
-+			goto done;
-+		}
-+		occ->cached_to[i] = ret;
-+		occ->query_from = ret;
-+		if (occ->query_from >= occ->query_to)
-+			break;
-+	}
++	bvecq_pos_set(&rreq->dispatch_cursor, &rreq->load_cursor);
++	bvecq_pos_set(&rreq->collect_cursor, &rreq->dispatch_cursor);
++
+ 	do {
+ 		int (*prepare_read)(struct netfs_io_subrequest *subreq) = NULL;
+ 		struct netfs_io_subrequest *subreq;
+@@ -376,6 +381,9 @@ static void netfs_read_to_pagecache(struct netfs_io_request *rreq)
  
--	off = cachefiles_inject_read_error();
--	if (off == 0)
--		off = vfs_llseek(file, start, SEEK_DATA);
--	if (off == -ENXIO)
--		return -ENODATA; /* Beyond EOF */
--	if (off < 0 && off >= (loff_t)-MAX_ERRNO)
--		return -ENOBUFS; /* Error. */
--	if (round_up(off, granularity) >= start + len)
--		return -ENODATA; /* No data in range */
--
--	off2 = cachefiles_inject_read_error();
--	if (off2 == 0)
--		off2 = vfs_llseek(file, off, SEEK_HOLE);
--	if (off2 == -ENXIO)
--		return -ENODATA; /* Beyond EOF */
--	if (off2 < 0 && off2 >= (loff_t)-MAX_ERRNO)
--		return -ENOBUFS; /* Error. */
--
--	/* Round away partial blocks */
--	off = round_up(off, granularity);
--	off2 = round_down(off2, granularity);
--	if (off2 <= off)
--		return -ENODATA;
--
--	*_data_start = off;
--	if (off2 > start + len)
--		*_data_len = len;
--	else
--		*_data_len = off2 - off;
-+done:
-+	_debug("query[0] %llx-%llx", occ->cached_from[0], occ->cached_to[0]);
-+	_debug("query[1] %llx-%llx", occ->cached_from[1], occ->cached_to[1]);
+ 	/* Defer error return as we may need to wait for outstanding I/O. */
+ 	cmpxchg(&rreq->error, 0, ret);
++
++	bvecq_pos_unset(&rreq->load_cursor);
++	bvecq_pos_unset(&rreq->dispatch_cursor);
+ }
+ 
+ /**
+@@ -423,7 +431,7 @@ void netfs_readahead(struct readahead_control *ractl)
+ 	 * acquires a ref on each folio that we will need to release later -
+ 	 * but we don't want to do that until after we've started the I/O.
+ 	 */
+-	added = rolling_buffer_bulk_load_from_ra(&rreq->buffer, ractl, rreq->debug_id);
++	added = bvecq_load_from_ra(&rreq->load_cursor, ractl);
+ 	if (added < 0) {
+ 		ret = added;
+ 		goto cleanup_free;
+@@ -432,7 +440,7 @@ void netfs_readahead(struct readahead_control *ractl)
+ 
+ 	rreq->submitted = rreq->start + added;
+ 	rreq->cleaned_to = rreq->start;
+-	rreq->front_folio_order = folio_order(rreq->buffer.tail->vec.folios[0]);
++	rreq->front_folio_order = get_order(rreq->load_cursor.bvecq->bv[0].bv_len);
+ 
+ 	netfs_read_to_pagecache(rreq);
+ 	netfs_maybe_bulk_drop_ra_refs(rreq);
+@@ -444,20 +452,20 @@ void netfs_readahead(struct readahead_control *ractl)
+ EXPORT_SYMBOL(netfs_readahead);
+ 
+ /*
+- * Create a rolling buffer with a single occupying folio.
++ * Create a buffer queue with a single occupying folio.
+  */
+-static int netfs_create_singular_buffer(struct netfs_io_request *rreq, struct folio *folio,
+-					unsigned int rollbuf_flags)
++static int netfs_create_singular_buffer(struct netfs_io_request *rreq, struct folio *folio)
+ {
+-	ssize_t added;
++	struct bvecq *bq;
++	size_t fsize = folio_size(folio);
+ 
+-	if (rolling_buffer_init(&rreq->buffer, rreq->debug_id, ITER_DEST) < 0)
++	if (bvecq_buffer_init(&rreq->load_cursor, GFP_KERNEL) < 0)
+ 		return -ENOMEM;
+ 
+-	added = rolling_buffer_append(&rreq->buffer, folio, rollbuf_flags);
+-	if (added < 0)
+-		return added;
+-	rreq->submitted = rreq->start + added;
++	bq = rreq->load_cursor.bvecq;
++	bvec_set_folio(&bq->bv[0], folio, fsize, 0);
++	bvecq_filled_to(bq, 1);
++	rreq->submitted = rreq->start + fsize;
  	return 0;
  }
  
-@@ -478,18 +501,6 @@ cachefiles_do_prepare_read(struct netfs_cache_resources *cres,
- 	return ret;
- }
+@@ -471,11 +479,11 @@ static int netfs_read_gaps(struct file *file, struct folio *folio)
+ 	struct netfs_group *group = netfs_folio_group(folio);
+ 	struct netfs_folio *finfo = netfs_folio_info(folio);
+ 	struct netfs_inode *ctx = netfs_inode(mapping->host);
+-	struct folio *sink = NULL;
+-	struct bio_vec *bvec;
++	struct bvecq *bq = NULL;
++	struct page *sink = NULL;
+ 	unsigned int from = finfo->dirty_offset;
+ 	unsigned int to = from + finfo->dirty_len;
+-	unsigned int off = 0, i = 0;
++	unsigned int off = 0, slot = 0;
+ 	size_t flen = folio_size(folio);
+ 	size_t nr_bvec = flen / PAGE_SIZE + 2;
+ 	size_t part;
+@@ -500,32 +508,47 @@ static int netfs_read_gaps(struct file *file, struct folio *folio)
+ 	 * end get copied to, but the middle is discarded.
+ 	 */
+ 	ret = -ENOMEM;
+-	bvec = kmalloc_objs(*bvec, nr_bvec);
+-	if (!bvec)
++	bq = bvecq_alloc_chain(nr_bvec, GFP_KERNEL);
++	if (!bq)
+ 		goto discard;
++	rreq->load_cursor.bvecq = bq;
  
--/*
-- * Prepare a read operation, shortening it to a cached/uncached
-- * boundary as appropriate.
-- */
--static enum netfs_io_source cachefiles_prepare_read(struct netfs_io_subrequest *subreq,
--						    unsigned long long i_size)
+-	sink = folio_alloc(GFP_KERNEL, 0);
+-	if (!sink) {
+-		kfree(bvec);
++	sink = alloc_page(GFP_KERNEL);
++	if (!sink)
+ 		goto discard;
+-	}
+ 
+ 	trace_netfs_folio(folio, netfs_folio_trace_read_gaps);
+ 
+-	rreq->direct_bv = bvec;
+-	rreq->direct_bv_count = nr_bvec;
++	for (struct bvecq *p = bq; p; p = p->next)
++		p->mem_type = BVECQ_MEM_PAGECACHE;
++
+ 	if (from > 0) {
+-		bvec_set_folio(&bvec[i++], folio, from, 0);
++		folio_get(folio);
++		bvec_set_folio(&bq->bv[slot++], folio, from, 0);
+ 		off = from;
+ 	}
+ 	while (off < to) {
+-		part = min_t(size_t, to - off, PAGE_SIZE);
+-		bvec_set_folio(&bvec[i++], sink, part, 0);
++		if (slot >= bq->max_slots) {
++			bvecq_filled_to(bq, slot);
++			bq = bq->next;
++			slot = 0;
++		}
++		part = min(to - off, PAGE_SIZE);
++		get_page(sink);
++		bvec_set_page(&bq->bv[slot++], sink, part, 0);
+ 		off += part;
+ 	}
+-	if (to < flen)
+-		bvec_set_folio(&bvec[i++], folio, flen - to, to);
+-	iov_iter_bvec(&rreq->buffer.iter, ITER_DEST, bvec, i, rreq->len);
++	if (to < flen) {
++		if (slot >= bq->max_slots) {
++			bvecq_filled_to(bq, slot);
++			bq = bq->next;
++			slot = 0;
++		}
++		folio_get(folio);
++		bvec_set_folio(&bq->bv[slot++], folio, flen - to, to);
++	}
++	bvecq_filled_to(bq, slot);
++
+ 	rreq->submitted = rreq->start + flen;
+ 
+ 	netfs_read_to_pagecache(rreq);
+@@ -542,13 +565,14 @@ static int netfs_read_gaps(struct file *file, struct folio *folio)
+ 		folio_mark_uptodate(folio);
+ 	}
+ 
+-	if (sink)
+-		folio_put(sink);
++	put_page(sink);
+ 	folio_unlock(folio);
+ 	netfs_put_request(rreq, netfs_rreq_trace_put_return);
+ 	return ret < 0 ? ret : 0;
+ 
+ discard:
++	if (sink)
++		put_page(sink);
+ 	netfs_put_failed_request(rreq);
+ alloc_error:
+ 	folio_unlock(folio);
+@@ -599,7 +623,7 @@ int netfs_read_folio(struct file *file, struct folio *folio)
+ 	trace_netfs_read(rreq, rreq->start, rreq->len, netfs_read_trace_readpage);
+ 
+ 	/* Set up the output buffer */
+-	ret = netfs_create_singular_buffer(rreq, folio, 0);
++	ret = netfs_create_singular_buffer(rreq, folio);
+ 	if (ret < 0)
+ 		goto discard;
+ 
+@@ -756,7 +780,7 @@ int netfs_write_begin(struct netfs_inode *ctx,
+ 	trace_netfs_read(rreq, pos, len, netfs_read_trace_write_begin);
+ 
+ 	/* Set up the output buffer */
+-	ret = netfs_create_singular_buffer(rreq, folio, 0);
++	ret = netfs_create_singular_buffer(rreq, folio);
+ 	if (ret < 0)
+ 		goto error_put;
+ 
+@@ -821,7 +845,7 @@ int netfs_prefetch_for_write(struct file *file, struct folio *folio,
+ 	trace_netfs_read(rreq, start, flen, netfs_read_trace_prefetch_for_write);
+ 
+ 	/* Set up the output buffer */
+-	ret = netfs_create_singular_buffer(rreq, folio, NETFS_ROLLBUF_PAGECACHE_MARK);
++	ret = netfs_create_singular_buffer(rreq, folio);
+ 	if (ret < 0)
+ 		goto error_put;
+ 
+diff --git a/fs/netfs/direct_read.c b/fs/netfs/direct_read.c
+index 6a8fb0d55e04..1c1f622bbbe8 100644
+--- a/fs/netfs/direct_read.c
++++ b/fs/netfs/direct_read.c
+@@ -16,44 +16,22 @@
+ #include <linux/netfs.h>
+ #include "internal.h"
+ 
+-static void netfs_prepare_dio_read_iterator(struct netfs_io_subrequest *subreq)
 -{
--	return cachefiles_do_prepare_read(&subreq->rreq->cache_resources,
--					  subreq->start, &subreq->len, i_size,
--					  &subreq->flags, subreq->rreq->inode->i_ino);
+-	struct netfs_io_request *rreq = subreq->rreq;
+-	size_t rsize;
+-
+-	rsize = umin(subreq->len, rreq->io_streams[0].sreq_max_len);
+-	subreq->len = rsize;
+-
+-	if (unlikely(rreq->io_streams[0].sreq_max_segs)) {
+-		size_t limit = netfs_limit_iter(&rreq->buffer.iter, 0, rsize,
+-						rreq->io_streams[0].sreq_max_segs);
+-
+-		if (limit < rsize) {
+-			subreq->len = limit;
+-			trace_netfs_sreq(subreq, netfs_sreq_trace_limited);
+-		}
+-	}
+-
+-	trace_netfs_sreq(subreq, netfs_sreq_trace_prepare);
+-
+-	subreq->io_iter	= rreq->buffer.iter;
+-	iov_iter_truncate(&subreq->io_iter, subreq->len);
+-	iov_iter_advance(&rreq->buffer.iter, subreq->len);
 -}
 -
  /*
-  * Prepare for a write to occur.
+  * Perform a read to a buffer from the server, slicing up the region to be read
+  * according to the network rsize.
   */
-@@ -504,7 +515,7 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
+ static void netfs_dispatch_unbuffered_reads(struct netfs_io_request *rreq)
+ {
++	struct netfs_io_stream *stream = &rreq->io_streams[0];
+ 	unsigned long long start = rreq->start;
+ 	ssize_t size = rreq->len;
  	int ret;
  
- 	/* Round to DIO size */
--	start = round_down(*_start, PAGE_SIZE);
-+	start = round_down(*_start, cache->bsize);
- 	if (start != *_start || *_len > upper_len) {
- 		/* Probably asked to cache a streaming write written into the
- 		 * pagecache when the cookie was temporarily out of service to
-@@ -514,7 +525,7 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
- 		return -ENOBUFS;
++	bvecq_pos_set(&rreq->dispatch_cursor, &rreq->load_cursor);
++	bvecq_pos_transfer(&rreq->collect_cursor, &rreq->load_cursor);
++
+ 	do {
+ 		struct netfs_io_subrequest *subreq;
+-		ssize_t slice;
+ 
+ 		subreq = netfs_alloc_subrequest(rreq);
+ 		if (!subreq) {
+@@ -79,16 +57,24 @@ static void netfs_dispatch_unbuffered_reads(struct netfs_io_request *rreq)
+ 			}
+ 		}
+ 
+-		netfs_prepare_dio_read_iterator(subreq);
+-		slice = subreq->len;
+-		size -= slice;
+-		start += slice;
+-		rreq->submitted += slice;
++		bvecq_pos_set(&subreq->dispatch_pos, &rreq->dispatch_cursor);
++		bvecq_pos_set(&subreq->content, &rreq->dispatch_cursor);
++		subreq->len = bvecq_slice(&rreq->dispatch_cursor,
++					  umin(size, stream->sreq_max_len),
++					  stream->sreq_max_segs,
++					  &subreq->nr_segs);
++
++		size -= subreq->len;
++		start += subreq->len;
++		rreq->submitted += subreq->len;
+ 		if (size <= 0) {
+ 			smp_wmb(); /* Write lists before ALL_QUEUED. */
+ 			set_bit(NETFS_RREQ_ALL_QUEUED, &rreq->flags);
+ 		}
+ 
++		iov_iter_bvec_queue(&subreq->io_iter, ITER_DEST, subreq->content.bvecq,
++				    subreq->content.slot, subreq->content.offset, subreq->len);
++
+ 		rreq->netfs_ops->issue_read(subreq);
+ 
+ 		if (test_bit(NETFS_RREQ_PAUSE, &rreq->flags))
+@@ -103,6 +89,8 @@ static void netfs_dispatch_unbuffered_reads(struct netfs_io_request *rreq)
+ 		set_bit(NETFS_RREQ_ALL_QUEUED, &rreq->flags);
+ 		netfs_wake_collector(rreq);
  	}
- 
--	*_len = round_up(len, PAGE_SIZE);
-+	*_len = round_up(len, cache->bsize);
- 
- 	/* We need to work out whether there's sufficient disk space to perform
- 	 * the write - but we can skip that check if we have space already
-@@ -540,7 +551,7 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
- 	 * space, we need to see if it's fully allocated.  If it's not, we may
- 	 * want to cull it.
- 	 */
--	if (cachefiles_has_space(cache, 0, *_len / PAGE_SIZE,
-+	if (cachefiles_has_space(cache, 0, *_len / cache->bsize,
- 				 cachefiles_has_space_check) == 0)
- 		return 0; /* Enough space to simply overwrite the whole block */
- 
-@@ -572,7 +583,7 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
- 	return ret;
- 
- check_space:
--	return cachefiles_has_space(cache, 0, *_len / PAGE_SIZE,
-+	return cachefiles_has_space(cache, 0, *_len / cache->bsize,
- 				    cachefiles_has_space_for_write);
++
++	bvecq_pos_unset(&rreq->dispatch_cursor);
  }
  
-@@ -635,9 +646,9 @@ static void cachefiles_issue_write(struct netfs_io_subrequest *subreq)
- 	       wreq->debug_id, subreq->debug_index, start, start + len - 1);
+ /*
+@@ -181,25 +169,17 @@ ssize_t netfs_unbuffered_read_iter_locked(struct kiocb *iocb, struct iov_iter *i
+ 	 * buffer for ourselves as the caller's iterator will be trashed when
+ 	 * we return.
+ 	 *
+-	 * In such a case, extract an iterator to represent as much of the the
+-	 * output buffer as we can manage.  Note that the extraction might not
+-	 * be able to allocate a sufficiently large bvec array and may shorten
+-	 * the request.
++	 * Extract a buffer queue to represent as much of the output buffer as
++	 * we can manage.  The fragments are extracted into a bvecq which will
++	 * have sufficient nodes allocated to hold all the data, though this
++	 * may end up truncated if ENOMEM is encountered.
+ 	 */
+-	if (user_backed_iter(iter)) {
+-		ret = netfs_extract_user_iter(iter, rreq->len, &rreq->buffer.iter, 0);
+-		if (ret < 0)
+-			goto error_put;
+-		rreq->direct_bv = (struct bio_vec *)rreq->buffer.iter.bvec;
+-		rreq->direct_bv_count = ret;
+-		rreq->direct_bv_unpin = iov_iter_extract_will_pin(iter);
+-		rreq->len = iov_iter_count(&rreq->buffer.iter);
+-	} else {
+-		rreq->buffer.iter = *iter;
+-		rreq->len = orig_count;
+-		rreq->direct_bv_unpin = false;
+-		iov_iter_advance(iter, orig_count);
+-	}
++	ret = netfs_extract_iter(iter, rreq->len, INT_MAX, iocb->ki_pos,
++				 &rreq->load_cursor.bvecq, 0);
++	if (ret < 0)
++		goto error_put;
++
++	rreq->len = ret;
  
- 	/* We need to start on the cache granularity boundary */
--	off = start & (CACHEFILES_DIO_BLOCK_SIZE - 1);
-+	off = start & (cache->bsize - 1);
- 	if (off) {
--		pre = CACHEFILES_DIO_BLOCK_SIZE - off;
-+		pre = cache->bsize - off;
- 		if (pre >= len) {
- 			fscache_count_dio_misfit();
- 			netfs_write_subrequest_terminated(subreq, len);
-@@ -651,8 +662,8 @@ static void cachefiles_issue_write(struct netfs_io_subrequest *subreq)
+ 	// TODO: Set up bounce buffer if needed
  
- 	/* We also need to end on the cache granularity boundary */
- 	if (start + len == wreq->i_size) {
--		size_t part = len % CACHEFILES_DIO_BLOCK_SIZE;
--		size_t need = CACHEFILES_DIO_BLOCK_SIZE - part;
-+		size_t part = len & (cache->bsize - 1);
-+		size_t need = cache->bsize - part;
+diff --git a/fs/netfs/direct_write.c b/fs/netfs/direct_write.c
+index c16fbad286a1..56abcdd73d46 100644
+--- a/fs/netfs/direct_write.c
++++ b/fs/netfs/direct_write.c
+@@ -73,7 +73,11 @@ static void netfs_unbuffered_write_collect(struct netfs_io_request *wreq,
+ 	spin_unlock(&wreq->lock);
  
- 		if (part && stream->submit_extendable_to >= need) {
- 			len += need;
-@@ -661,7 +672,7 @@ static void cachefiles_issue_write(struct netfs_io_subrequest *subreq)
+ 	wreq->transferred += subreq->transferred;
+-	iov_iter_advance(&wreq->buffer.iter, subreq->transferred);
++	if (subreq->transferred < subreq->len) {
++		bvecq_pos_unset(&wreq->dispatch_cursor);
++		bvecq_pos_transfer(&wreq->dispatch_cursor, &subreq->dispatch_pos);
++		bvecq_pos_advance(&wreq->dispatch_cursor, subreq->transferred);
++	}
+ 
+ 	stream->collected_to = subreq->start + subreq->transferred;
+ 	wreq->collected_to = stream->collected_to;
+@@ -99,6 +103,9 @@ static int netfs_unbuffered_write(struct netfs_io_request *wreq)
+ 
+ 	_enter("%llx", wreq->len);
+ 
++	bvecq_pos_set(&wreq->dispatch_cursor, &wreq->load_cursor);
++	bvecq_pos_set(&wreq->collect_cursor, &wreq->dispatch_cursor);
++
+ 	if (wreq->origin == NETFS_DIO_WRITE)
+ 		inode_dio_begin(wreq->inode);
+ 
+@@ -111,6 +118,8 @@ static int netfs_unbuffered_write(struct netfs_io_request *wreq)
+ 			netfs_prepare_write(wreq, stream, wreq->start + wreq->transferred);
+ 			subreq = stream->construct;
+ 			stream->construct = NULL;
++		} else {
++			bvecq_pos_set(&subreq->dispatch_pos, &wreq->dispatch_cursor);
+ 		}
+ 
+ 		/* Check if (re-)preparation failed. */
+@@ -120,16 +129,18 @@ static int netfs_unbuffered_write(struct netfs_io_request *wreq)
+ 			break;
+ 		}
+ 
+-		iov_iter_truncate(&subreq->io_iter, wreq->len - wreq->transferred);
++		subreq->len = bvecq_slice(&wreq->dispatch_cursor, stream->sreq_max_len,
++					  stream->sreq_max_segs, &subreq->nr_segs);
++		bvecq_pos_set(&subreq->content, &subreq->dispatch_pos);
++
++		iov_iter_bvec_queue(&subreq->io_iter, ITER_SOURCE,
++				    subreq->content.bvecq, subreq->content.slot,
++				    subreq->content.offset,
++				    subreq->len);
++
+ 		if (!iov_iter_count(&subreq->io_iter))
+ 			break;
+ 
+-		subreq->len = netfs_limit_iter(&subreq->io_iter, 0,
+-					       stream->sreq_max_len,
+-					       stream->sreq_max_segs);
+-		iov_iter_truncate(&subreq->io_iter, subreq->len);
+-		stream->submit_extendable_to = subreq->len;
+-
+ 		trace_netfs_sreq(subreq, netfs_sreq_trace_submit);
+ 		stream->issue_write(subreq);
+ 
+@@ -166,9 +177,14 @@ static int netfs_unbuffered_write(struct netfs_io_request *wreq)
+ 		 */
+ 		subreq->error = -EAGAIN;
+ 		trace_netfs_sreq(subreq, netfs_sreq_trace_retry);
++
++		bvecq_pos_unset(&subreq->content);
++		bvecq_pos_unset(&wreq->dispatch_cursor);
++		bvecq_pos_transfer(&wreq->dispatch_cursor, &subreq->dispatch_pos);
++
+ 		if (subreq->transferred > 0) {
+-			iov_iter_advance(&wreq->buffer.iter, subreq->transferred);
+ 			wreq->transferred += subreq->transferred;
++			bvecq_pos_advance(&wreq->dispatch_cursor, subreq->transferred);
+ 		}
+ 
+ 		if (stream->source == NETFS_UPLOAD_TO_SERVER &&
+@@ -179,7 +195,6 @@ static int netfs_unbuffered_write(struct netfs_io_request *wreq)
+ 		__clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags);
+ 		__clear_bit(NETFS_SREQ_BOUNDARY, &subreq->flags);
+ 		__clear_bit(NETFS_SREQ_FAILED, &subreq->flags);
+-		subreq->io_iter		= wreq->buffer.iter;
+ 		subreq->start		= wreq->start + wreq->transferred;
+ 		subreq->len		= wreq->len   - wreq->transferred;
+ 		subreq->transferred	= 0;
+@@ -195,6 +210,8 @@ static int netfs_unbuffered_write(struct netfs_io_request *wreq)
+ 		netfs_stat(&netfs_n_wh_retry_write_subreq);
+ 	}
+ 
++	bvecq_pos_unset(&wreq->dispatch_cursor);
++	bvecq_pos_unset(&wreq->load_cursor);
+ 	netfs_unbuffered_write_done(wreq);
+ 	_leave(" = %d", ret);
+ 	return ret;
+@@ -213,12 +230,12 @@ static void netfs_unbuffered_write_async(struct work_struct *work)
+  * encrypted file.  This can also be used for direct I/O writes.
+  */
+ ssize_t netfs_unbuffered_write_iter_locked(struct kiocb *iocb, struct iov_iter *iter,
+-						  struct netfs_group *netfs_group)
++					   struct netfs_group *netfs_group)
+ {
+ 	struct netfs_io_request *wreq;
+ 	unsigned long long start = iocb->ki_pos;
+ 	unsigned long long end = start + iov_iter_count(iter);
+-	ssize_t ret, n;
++	ssize_t ret;
+ 	size_t len = iov_iter_count(iter);
+ 	bool async = !is_sync_kiocb(iocb);
+ 
+@@ -252,25 +269,17 @@ ssize_t netfs_unbuffered_write_iter_locked(struct kiocb *iocb, struct iov_iter *
+ 		 * allocate a sufficiently large bvec array and may shorten the
+ 		 * request.
+ 		 */
+-		if (user_backed_iter(iter)) {
+-			n = netfs_extract_user_iter(iter, len, &wreq->buffer.iter, 0);
+-			if (n < 0) {
+-				ret = n;
+-				goto error_put;
+-			}
+-			wreq->direct_bv = (struct bio_vec *)wreq->buffer.iter.bvec;
+-			wreq->direct_bv_count = n;
+-			wreq->direct_bv_unpin = iov_iter_extract_will_pin(iter);
+-		} else {
+-			/* If this is a kernel-generated async DIO request,
+-			 * assume that any resources the iterator points to
+-			 * (eg. a bio_vec array) will persist till the end of
+-			 * the op.
+-			 */
+-			wreq->buffer.iter = *iter;
+-		}
++		ssize_t n = netfs_extract_iter(iter, len, INT_MAX, iocb->ki_pos,
++					       &wreq->load_cursor.bvecq, 0);
+ 
+-		wreq->len = iov_iter_count(&wreq->buffer.iter);
++		if (n < 0) {
++			ret = n;
++			goto error_put;
++		}
++		wreq->len = n;
++		_debug("dio-write %zx/%zx %u/%u",
++		       n, len, wreq->load_cursor.bvecq->nr_slots,
++		       wreq->load_cursor.bvecq->max_slots);
+ 	}
+ 
+ 	__set_bit(NETFS_RREQ_USE_IO_ITER, &wreq->flags);
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index e12c921fba0f..ab0923f95e27 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -7,7 +7,6 @@
+ 
+ #include <linux/slab.h>
+ #include <linux/seq_file.h>
+-#include <linux/folio_queue.h>
+ #include <linux/netfs.h>
+ #include <linux/fscache.h>
+ #include <linux/fscache-cache.h>
+@@ -69,9 +68,8 @@ static inline void netfs_proc_del_rreq(struct netfs_io_request *rreq) {}
+ /*
+  * misc.c
+  */
+-struct folio_queue *netfs_buffer_make_space(struct netfs_io_request *rreq,
+-					    enum netfs_folioq_trace trace);
+-void netfs_reset_iter(struct netfs_io_subrequest *subreq);
++struct bvecq *netfs_buffer_make_space(struct netfs_io_request *rreq,
++				      enum netfs_bvecq_trace trace);
+ void netfs_wake_collector(struct netfs_io_request *rreq);
+ void netfs_subreq_clear_in_progress(struct netfs_io_subrequest *subreq);
+ void netfs_wait_for_in_progress_stream(struct netfs_io_request *rreq,
+@@ -170,7 +168,6 @@ extern atomic_t netfs_n_wh_retry_write_req;
+ extern atomic_t netfs_n_wh_retry_write_subreq;
+ extern atomic_t netfs_n_wb_lock_skip;
+ extern atomic_t netfs_n_wb_lock_wait;
+-extern atomic_t netfs_n_folioq;
+ extern atomic_t netfs_n_bvecq;
+ 
+ int netfs_stats_show(struct seq_file *m, void *v);
+@@ -208,8 +205,7 @@ void netfs_prepare_write(struct netfs_io_request *wreq,
+ 			 struct netfs_io_stream *stream,
+ 			 loff_t start);
+ void netfs_reissue_write(struct netfs_io_stream *stream,
+-			 struct netfs_io_subrequest *subreq,
+-			 struct iov_iter *source);
++			 struct netfs_io_subrequest *subreq);
+ void netfs_issue_write(struct netfs_io_request *wreq,
+ 		       struct netfs_io_stream *stream);
+ size_t netfs_advance_write(struct netfs_io_request *wreq,
+diff --git a/fs/netfs/iterator.c b/fs/netfs/iterator.c
+index 8dbe1211873c..35483f75fded 100644
+--- a/fs/netfs/iterator.c
++++ b/fs/netfs/iterator.c
+@@ -155,6 +155,7 @@ ssize_t netfs_extract_iter(struct iov_iter *orig, size_t max_len, size_t max_pag
+ }
+ EXPORT_SYMBOL_GPL(netfs_extract_iter);
+ 
++#if 0
+ /**
+  * netfs_extract_user_iter - Extract the pages from a user iterator into a bvec
+  * @orig: The original iterator
+@@ -448,3 +449,4 @@ size_t netfs_limit_iter(const struct iov_iter *iter, size_t start_offset,
+ 	BUG();
+ }
+ EXPORT_SYMBOL(netfs_limit_iter);
++#endif
+diff --git a/fs/netfs/misc.c b/fs/netfs/misc.c
+index f5c1c463f4ff..ee67a0681784 100644
+--- a/fs/netfs/misc.c
++++ b/fs/netfs/misc.c
+@@ -8,6 +8,7 @@
+ #include <linux/swap.h>
+ #include "internal.h"
+ 
++#if 0
+ /**
+  * netfs_alloc_folioq_buffer - Allocate buffer space into a folio queue
+  * @mapping: Address space to set on the folio (or NULL).
+@@ -103,24 +104,7 @@ void netfs_free_folioq_buffer(struct folio_queue *fq)
+ 	folio_batch_release(&fbatch);
+ }
+ EXPORT_SYMBOL(netfs_free_folioq_buffer);
+-
+-/*
+- * Reset the subrequest iterator to refer just to the region remaining to be
+- * read.  The iterator may or may not have been advanced by socket ops or
+- * extraction ops to an extent that may or may not match the amount actually
+- * read.
+- */
+-void netfs_reset_iter(struct netfs_io_subrequest *subreq)
+-{
+-	struct iov_iter *io_iter = &subreq->io_iter;
+-	size_t remain = subreq->len - subreq->transferred;
+-
+-	if (io_iter->count > remain)
+-		iov_iter_advance(io_iter, io_iter->count - remain);
+-	else if (io_iter->count < remain)
+-		iov_iter_revert(io_iter, remain - io_iter->count);
+-	iov_iter_truncate(&subreq->io_iter, remain);
+-}
++#endif
+ 
+ /**
+  * netfs_dirty_folio - Mark folio dirty and pin a cache object for writeback
+diff --git a/fs/netfs/objects.c b/fs/netfs/objects.c
+index b8c4918d3dcd..7f5187c64ae9 100644
+--- a/fs/netfs/objects.c
++++ b/fs/netfs/objects.c
+@@ -119,7 +119,6 @@ static void netfs_free_request_rcu(struct rcu_head *rcu)
+ static void netfs_deinit_request(struct netfs_io_request *rreq)
+ {
+ 	struct netfs_inode *ictx = netfs_inode(rreq->inode);
+-	unsigned int i;
+ 
+ 	trace_netfs_rreq(rreq, netfs_rreq_trace_free);
+ 
+@@ -134,16 +133,10 @@ static void netfs_deinit_request(struct netfs_io_request *rreq)
+ 		rreq->netfs_ops->free_request(rreq);
+ 	if (rreq->cache_resources.ops)
+ 		rreq->cache_resources.ops->end_operation(&rreq->cache_resources);
+-	if (rreq->direct_bv) {
+-		for (i = 0; i < rreq->direct_bv_count; i++) {
+-			if (rreq->direct_bv[i].bv_page) {
+-				if (rreq->direct_bv_unpin)
+-					unpin_user_page(rreq->direct_bv[i].bv_page);
+-			}
+-		}
+-		kvfree(rreq->direct_bv);
+-	}
+-	rolling_buffer_clear(&rreq->buffer);
++	bvecq_pos_unset(&rreq->load_cursor);
++	bvecq_pos_unset(&rreq->dispatch_cursor);
++	bvecq_pos_unset(&rreq->collect_cursor);
++	bvecq_put(rreq->spare);
+ 
+ 	if (atomic_dec_and_test(&ictx->io_count))
+ 		wake_up_var(&ictx->io_count);
+@@ -236,6 +229,8 @@ static void netfs_free_subrequest(struct netfs_io_subrequest *subreq)
+ 	trace_netfs_sreq(subreq, netfs_sreq_trace_free);
+ 	if (rreq->netfs_ops->free_subrequest)
+ 		rreq->netfs_ops->free_subrequest(subreq);
++	bvecq_pos_unset(&subreq->dispatch_pos);
++	bvecq_pos_unset(&subreq->content);
+ 	mempool_free(subreq, rreq->netfs_ops->subrequest_pool ?: &netfs_subrequest_pool);
+ 	netfs_stat_d(&netfs_n_rh_sreq);
+ 	netfs_put_request(rreq, netfs_rreq_trace_put_subreq);
+diff --git a/fs/netfs/read_collect.c b/fs/netfs/read_collect.c
+index edf7cea7e2f9..e0fe7b13dd7a 100644
+--- a/fs/netfs/read_collect.c
++++ b/fs/netfs/read_collect.c
+@@ -27,9 +27,13 @@
+  */
+ static void netfs_clear_unread(struct netfs_io_subrequest *subreq)
+ {
+-	netfs_reset_iter(subreq);
+-	WARN_ON_ONCE(subreq->len - subreq->transferred != iov_iter_count(&subreq->io_iter));
+-	iov_iter_zero(iov_iter_count(&subreq->io_iter), &subreq->io_iter);
++	struct iov_iter iter;
++
++	iov_iter_bvec_queue(&iter, ITER_DEST, subreq->content.bvecq,
++			    subreq->content.slot, subreq->content.offset, subreq->len);
++	iov_iter_advance(&iter, subreq->transferred);
++	iov_iter_zero(subreq->len, &iter);
++
+ 	if (subreq->start + subreq->transferred >= subreq->rreq->i_size)
+ 		__set_bit(NETFS_SREQ_HIT_EOF, &subreq->flags);
+ }
+@@ -40,11 +44,11 @@ static void netfs_clear_unread(struct netfs_io_subrequest *subreq)
+  * dirty and let writeback handle it.
+  */
+ static void netfs_unlock_read_folio(struct netfs_io_request *rreq,
+-				    struct folio_queue *folioq,
++				    struct bvecq *bvecq,
+ 				    int slot)
+ {
+ 	struct netfs_folio *finfo;
+-	struct folio *folio = folioq_folio(folioq, slot);
++	struct folio *folio = page_folio(bvecq->bv[slot].bv_page);
+ 
+ 	if (unlikely(folio_pos(folio) < rreq->abandon_to)) {
+ 		trace_netfs_folio(folio, netfs_folio_trace_abandon);
+@@ -75,7 +79,7 @@ static void netfs_unlock_read_folio(struct netfs_io_request *rreq,
+ 			trace_netfs_folio(folio, netfs_folio_trace_read_done);
+ 		}
+ 
+-		folioq_clear(folioq, slot);
++		bvecq->bv[slot].bv_page = NULL;
+ 	} else {
+ 		// TODO: Use of PG_private_2 is deprecated.
+ 		if (test_bit(NETFS_RREQ_FOLIO_COPY_TO_CACHE, &rreq->flags))
+@@ -91,7 +95,7 @@ static void netfs_unlock_read_folio(struct netfs_io_request *rreq,
+ 		folio_unlock(folio);
+ 	}
+ 
+-	folioq_clear(folioq, slot);
++	bvecq->bv[slot].bv_page = NULL;
+ }
+ 
+ /*
+@@ -100,24 +104,15 @@ static void netfs_unlock_read_folio(struct netfs_io_request *rreq,
+ static void netfs_read_unlock_folios(struct netfs_io_request *rreq,
+ 				     unsigned int *notes)
+ {
+-	struct folio_queue *folioq = rreq->buffer.tail;
++	struct bvecq *bvecq = rreq->collect_cursor.bvecq;
+ 	unsigned long long collected_to = rreq->collected_to;
+-	unsigned int slot = rreq->buffer.first_tail_slot;
++	unsigned int slot = rreq->collect_cursor.slot;
+ 
+ 	if (rreq->cleaned_to >= rreq->collected_to)
+ 		return;
+ 
+ 	// TODO: Begin decryption
+ 
+-	if (slot >= folioq_nr_slots(folioq)) {
+-		folioq = rolling_buffer_delete_spent(&rreq->buffer);
+-		if (!folioq) {
+-			rreq->front_folio_order = 0;
+-			return;
+-		}
+-		slot = 0;
+-	}
+-
+ 	/* We have to wait for readahead refs to have been released before we
+ 	 * can unlock any folios as the ref-dropper walks i_pages and the only
+ 	 * thing preventing these folios from being removed is the folio lock.
+@@ -131,16 +126,30 @@ static void netfs_read_unlock_folios(struct netfs_io_request *rreq,
+ 		unsigned int order;
+ 		size_t fsize;
+ 
++		/* Clean up the head bvecq segment.  If we clear an entire
++		 * segment, then we can get rid of it provided it's not also
++		 * the tail segment being filled by the issuer.
++		 */
++		if (!bvecq_acquire_slot(bvecq, slot)) {
++			rreq->collect_cursor.slot = slot;
++			if (!bvecq_delete_spent(&rreq->collect_cursor)) {
++				rreq->front_folio_order = 0;
++				return;
++			}
++			bvecq = rreq->collect_cursor.bvecq;
++			slot  = rreq->collect_cursor.slot;
++		}
++
+ 		if (*notes & COPY_TO_CACHE)
+ 			set_bit(NETFS_RREQ_FOLIO_COPY_TO_CACHE, &rreq->flags);
+ 
+-		folio = folioq_folio(folioq, slot);
++		folio = page_folio(bvecq->bv[slot].bv_page);
+ 		if (WARN_ONCE(!folio_test_locked(folio),
+ 			      "R=%08x: folio %lx is not locked\n",
+ 			      rreq->debug_id, folio->index))
+ 			trace_netfs_folio(folio, netfs_folio_trace_not_locked);
+ 
+-		order = folioq_folio_order(folioq, slot);
++		order = folio_order(folio);
+ 		rreq->front_folio_order = order;
+ 		fsize = PAGE_SIZE << order;
+ 		fpos = folio_pos(folio);
+@@ -152,33 +161,19 @@ static void netfs_read_unlock_folios(struct netfs_io_request *rreq,
+ 		if (collected_to < fend)
+ 			break;
+ 
+-		netfs_unlock_read_folio(rreq, folioq, slot);
++		netfs_unlock_read_folio(rreq, bvecq, slot);
++		slot++;
+ 		WRITE_ONCE(rreq->cleaned_to, fpos + fsize);
+ 		*notes |= MADE_PROGRESS;
+ 
+ 		clear_bit(NETFS_RREQ_FOLIO_COPY_TO_CACHE, &rreq->flags);
+ 
+-		/* Clean up the head folioq.  If we clear an entire folioq, then
+-		 * we can get rid of it provided it's not also the tail folioq
+-		 * being filled by the issuer.
+-		 */
+-		folioq_clear(folioq, slot);
+-		slot++;
+-		if (slot >= folioq_nr_slots(folioq)) {
+-			folioq = rolling_buffer_delete_spent(&rreq->buffer);
+-			if (!folioq)
+-				goto done;
+-			slot = 0;
+-			trace_netfs_folioq(folioq, netfs_trace_folioq_read_progress);
+-		}
+-
+ 		if (fpos + fsize >= collected_to)
+ 			break;
+ 	}
+ 
+-	rreq->buffer.tail = folioq;
+-done:
+-	rreq->buffer.first_tail_slot = slot;
++	bvecq_pos_move(&rreq->collect_cursor, bvecq);
++	rreq->collect_cursor.slot = slot;
+ }
+ 
+ /*
+@@ -355,12 +350,17 @@ static void netfs_rreq_assess_dio(struct netfs_io_request *rreq)
+ 
+ 	if (rreq->origin == NETFS_UNBUFFERED_READ ||
+ 	    rreq->origin == NETFS_DIO_READ) {
+-		for (i = 0; i < rreq->direct_bv_count; i++) {
+-			flush_dcache_page(rreq->direct_bv[i].bv_page);
+-			// TODO: cifs marks pages in the destination buffer
+-			// dirty under some circumstances after a read.  Do we
+-			// need to do that too?
+-			set_page_dirty(rreq->direct_bv[i].bv_page);
++		for (struct bvecq *bq = rreq->collect_cursor.bvecq; bq; bq = bvecq_next(bq)) {
++			unsigned int nr_slots = bvecq_nr_slots_acquire(bq);
++			/* Read the slot count before the slots. */
++
++			for (i = 0; i < nr_slots; i++) {
++				flush_dcache_page(bq->bv[i].bv_page);
++				// TODO: cifs marks pages in the destination buffer
++				// dirty under some circumstances after a read.  Do we
++				// need to do that too?
++				set_page_dirty(bq->bv[i].bv_page);
++			}
  		}
  	}
  
--	post = len & (CACHEFILES_DIO_BLOCK_SIZE - 1);
-+	post = len & (cache->bsize - 1);
- 	if (post) {
- 		len -= post;
- 		if (len == 0) {
-@@ -688,6 +699,172 @@ static void cachefiles_issue_write(struct netfs_io_subrequest *subreq)
- 			 netfs_write_subrequest_terminated, subreq);
- }
+@@ -451,7 +451,15 @@ bool netfs_read_collection(struct netfs_io_request *rreq)
  
-+/*
-+ * Collect the result of buffered writeback to the cache.  This includes
-+ * copying a read to the cache.  Netfslib collates the results, which might
-+ * occur out of order, and delivers them to the cache so that it can update its
-+ * content record.
-+ *
-+ * block_type is one of:
-+ * - NETFS_CACHE_COLLECT_WRITE_DATA for a contiguous block of data
-+ * - NETFS_CACHE_COLLECT_WRITE_GAP if a discontiguity was skipped
-+ * - NETFS_CACHE_COLLECT_WRITE_CANCEL for a hole due to a failed/cancelled write
-+ *
-+ * The writes we made are all rounded out at both sides to the nearest DIO
-+ * block boundary, so if the final block contains the EOF in the middle of it
-+ * (rather than at the end), padding will have been written to the file.  The
-+ * backing file's filesize will have been updated if the write extended the
-+ * file; the filesize may still change due to outstanding subreqs.
-+ *
-+ * The metadata in the cache file xattr records the size of the object we have
-+ * stored, but the cache file EOF only goes up to where we've cached data to
-+ * and, furthermore, is rounded up to the nearest DIO block boundary.
-+ *
-+ * Concurrent updates should be protected against by the caller.  Netfslib
-+ * holds NETFS_ICTX_WB_LOCK as a lock on writeback requests.  DIO writes
-+ * invalidate the cookie and caching is kept disabled until all users have
-+ * unused the cookie.
-+ */
-+static void cachefiles_collect_write(struct netfs_io_request *wreq,
-+				     unsigned long long start, size_t len,
-+				     enum netfs_cache_collect block_type)
-+{
-+	struct netfs_cache_resources *cres = &wreq->cache_resources;
-+	struct cachefiles_object *object = cachefiles_cres_object(cres);
-+	struct cachefiles_cache *cache = object->volume->cache;
-+	struct file *file = cachefiles_cres_file(cres);
-+	struct inode *inode = file_inode(file);
-+	unsigned long long read_limit;
-+	unsigned long long old_size = cres->cache_i_size;
-+	unsigned long long new_size = i_size_read(inode);
-+	unsigned long long data_to = object->object_size;
-+	unsigned long long end = start + len;
-+	int ret;
-+
-+	_enter("%llx,%zx,%x", start, len, cache->bsize);
-+
-+	if (WARN_ON(old_size	& (cache->bsize - 1)) ||
-+	    WARN_ON(new_size	& (cache->bsize - 1)) ||
-+	    WARN_ON(start	& (cache->bsize - 1)) ||
-+	    WARN_ON(len		& (cache->bsize - 1))) {
-+		trace_cachefiles_io_error(object, inode, -EIO,
-+					  cachefiles_trace_alignment_error);
-+		cachefiles_remove_object_xattr(cache, object, file->f_path.dentry);
-+		return;
+ 	trace_netfs_rreq(rreq, netfs_rreq_trace_done);
+ 	netfs_clear_subrequests(rreq);
+-	netfs_unlock_abandoned_read_pages(rreq);
++	switch (rreq->origin) {
++	case NETFS_READAHEAD:
++	case NETFS_READPAGE:
++	case NETFS_READ_FOR_WRITE:
++		netfs_unlock_abandoned_read_pages(rreq);
++		break;
++	default:
++		break;
 +	}
+ 	if (unlikely(rreq->copy_to_cache))
+ 		netfs_pgpriv2_end_copy_to_cache(rreq);
+ 	return true;
+diff --git a/fs/netfs/read_pgpriv2.c b/fs/netfs/read_pgpriv2.c
+index 7eacc58abadb..94ae3d9d53c4 100644
+--- a/fs/netfs/read_pgpriv2.c
++++ b/fs/netfs/read_pgpriv2.c
+@@ -19,6 +19,9 @@
+ static void netfs_pgpriv2_copy_folio(struct netfs_io_request *creq, struct folio *folio)
+ {
+ 	struct netfs_io_stream *cache = &creq->io_streams[1];
++	struct bvecq *queue;
++	unsigned int slot;
++	size_t dio_size = PAGE_SIZE;
+ 	size_t fsize = folio_size(folio), flen = fsize;
+ 	loff_t fpos = folio_pos(folio), i_size;
+ 	bool to_eof = false;
+@@ -48,18 +51,40 @@ static void netfs_pgpriv2_copy_folio(struct netfs_io_request *creq, struct folio
+ 		to_eof = true;
+ 	}
+ 
++	flen = round_up(flen, dio_size);
 +
-+	/* If this is recording a gap, due to discontiguous writes or lack of
-+	 * cache space, then a hole may have been introduced into the backing
-+	 * file.  Treat it as a zero-length data block.
+ 	_debug("folio %zx %zx", flen, fsize);
+ 
+ 	trace_netfs_folio(folio, netfs_folio_trace_store_copy);
+ 
+-	/* Attach the folio to the rolling buffer. */
+-	if (rolling_buffer_append(&creq->buffer, folio, 0) < 0) {
+-		folio_end_private_2(folio);
+-		clear_bit(NETFS_RREQ_FOLIO_COPY_TO_CACHE, &creq->flags);
+-		return;
++	/* Institute a new bvec queue segment if the current one is full or if
++	 * we encounter a discontiguity.  The discontiguity break is important
++	 * when it comes to bulk unlocking folios by file range.
 +	 */
-+	if (block_type == NETFS_CACHE_COLLECT_WRITE_GAP ||
-+	    block_type == NETFS_CACHE_COLLECT_WRITE_CANCEL) {
-+		start = end;
-+		len = 0;
-+	}
++	queue = creq->load_cursor.bvecq;
++	if (bvecq_is_full(queue) ||
++	    (fpos != creq->last_end && creq->last_end > 0 && queue->nr_slots > 0)) {
++		bvecq_buffer_append(&creq->load_cursor, creq->spare);
++		creq->spare = NULL;
 +
-+	/* Zeroth case: Single monolithic files are handled specially.
-+	 */
-+	if (wreq->origin == NETFS_WRITEBACK_SINGLE) {
-+		object->content_info = CACHEFILES_CONTENT_SINGLE;
-+		goto update_sizes;
-+	}
++		queue = creq->load_cursor.bvecq;
++		queue->fpos = fpos;
++		if (fpos != creq->last_end)
++			queue->discontig = true;
+ 	}
+ 
+-	cache->submit_extendable_to = fsize;
++	/* Attach the folio to the rolling buffer. */
++	slot = queue->nr_slots;
++	bvec_set_folio(&queue->bv[slot], folio, fsize, 0);
++	trace_netfs_bv_slot(queue, slot);
++	slot++;
++	bvecq_filled_to(queue, slot);
++	creq->load_cursor.slot = slot;
++	creq->load_cursor.offset = 0;
++	creq->last_end = fpos + flen;
 +
-+	/* First case: The backing file was empty. */
-+	if (old_size == 0) {
-+		if (start == 0)
-+			object->content_info = CACHEFILES_CONTENT_ALL;
-+		else
-+			object->content_info = CACHEFILES_CONTENT_BACKFS_MAP;
-+		goto update_sizes;
-+	}
++	bvecq_pos_nudge(&creq->dispatch_cursor);
++	
+ 	cache->submit_off = 0;
+ 	cache->submit_len = flen;
+ 
+@@ -71,10 +96,9 @@ static void netfs_pgpriv2_copy_folio(struct netfs_io_request *creq, struct folio
+ 	do {
+ 		ssize_t part;
+ 
+-		creq->buffer.iter.iov_offset = cache->submit_off;
++		creq->dispatch_cursor.offset = cache->submit_off;
+ 
+ 		atomic64_set(&creq->issued_to, fpos + cache->submit_off);
+-		cache->submit_extendable_to = fsize - cache->submit_off;
+ 		part = netfs_advance_write(creq, cache, fpos + cache->submit_off,
+ 					   cache->submit_len, to_eof);
+ 		cache->submit_off += part;
+@@ -84,8 +108,7 @@ static void netfs_pgpriv2_copy_folio(struct netfs_io_request *creq, struct folio
+ 			cache->submit_len -= part;
+ 	} while (cache->submit_len > 0);
+ 
+-	creq->buffer.iter.iov_offset = 0;
+-	rolling_buffer_advance(&creq->buffer, fsize);
++	bvecq_pos_step(&creq->dispatch_cursor);
+ 	atomic64_set(&creq->issued_to, fpos + fsize);
+ 
+ 	if (flen < fsize)
+@@ -111,6 +134,10 @@ static struct netfs_io_request *netfs_pgpriv2_begin_copy_to_cache(
+ 	if (!creq->io_streams[1].avail)
+ 		goto cancel_put;
+ 
++	bvecq_buffer_init(&creq->load_cursor, GFP_KERNEL);
++	bvecq_pos_set(&creq->dispatch_cursor, &creq->load_cursor);
++	bvecq_pos_set(&creq->collect_cursor, &creq->dispatch_cursor);
 +
-+	/* Second case: The backing file is entirely within the old object size
-+	 * and thus there can be no partial tail block to deal with in the
-+	 * cache file.
-+	 */
-+	if (old_size <= data_to) {
-+		if (start > old_size)
-+			goto discontiguous;
-+		goto update_sizes;
-+	}
-+
-+	/* Third case: The write happened entirely within the bounds of the
-+	 * current cache file's size.
-+	 */
-+	if (end <= old_size)
-+		goto update_sizes;
-+
-+	/* Fourth case: The write overwrote the partial tail block and extended
-+	 * the file.  We only need to update the object size because netfslib
-+	 * rounds out/pads cache writes to whole disk blocks.
-+	 */
-+	if (start < old_size)
-+		goto update_sizes;
-+
-+	/* Fifth case: The write started from the end of the whole tail block
-+	 * and extended the file.  Just extend our notion of the filesize.
-+	 */
-+	if (start == old_size && old_size == data_to)
-+		goto update_sizes;
-+
-+	/* Sixth case: The write continued on from the partial tail block and
-+	 * extended the file.  Need to clear the gap.
-+	 */
-+	if (start == old_size && old_size > data_to)
-+		goto clear_gap;
-+
-+discontiguous:
-+	/* Seventh case: The write was beyond the EOF on the cache file, so now
-+	 * there's a hole in the file and we can no longer say in the metadata
-+	 * that we can assume we have it all.  We may also need to clear the
-+	 * end of the partial tail block.
-+	 */
-+	/* TODO: For the moment, we will have to use SEEK_HOLE/SEEK_DATA. */
-+	if (object->content_info != CACHEFILES_CONTENT_BACKFS_MAP) {
-+		object->content_info = CACHEFILES_CONTENT_BACKFS_MAP;
-+		trace_cachefiles_coherency(object, inode->i_ino, data_to,
-+					   be64_to_cpup((__be64 *)object->cookie->inline_aux),
-+					   CACHEFILES_CONTENT_BACKFS_MAP,
-+					   cachefiles_coherency_discontiguous);
-+	}
-+
-+clear_gap:
-+	/* We need to clear any partial padding that got jumped over.  It
-+	 * *should* be all zeros, but shared-writable mmap exists...
-+	 */
-+	if (old_size > data_to) {
-+		trace_cachefiles_trunc(object, inode, data_to, old_size,
-+				       cachefiles_trunc_clear_padding);
-+		ret = cachefiles_inject_write_error();
-+		if (ret == 0)
-+			ret = vfs_fallocate(file, FALLOC_FL_ZERO_RANGE,
-+					    data_to, old_size - data_to);
-+		if (ret < 0) {
-+			trace_cachefiles_io_error(object, inode, ret,
-+						  cachefiles_trace_fallocate_error);
-+			cachefiles_io_error_obj(object, "fallocate zero pad failed %d", ret);
-+			cachefiles_remove_object_xattr(cache, object, file->f_path.dentry);
+ 	__set_bit(NETFS_RREQ_OFFLOAD_COLLECTION, &creq->flags);
+ 	trace_netfs_copy2cache(rreq, creq);
+ 	trace_netfs_write(creq, netfs_write_trace_copy_to_cache);
+@@ -139,6 +166,14 @@ void netfs_pgpriv2_copy_to_cache(struct netfs_io_request *rreq, struct folio *fo
+ 	if (IS_ERR(creq))
+ 		return;
+ 
++	if (!creq->spare) {
++		creq->spare = bvecq_alloc_one(BVECQ_STD_SLOTS, GFP_NOFS);
++		if (!creq->spare) {
++			clear_bit(NETFS_RREQ_FOLIO_COPY_TO_CACHE, &creq->flags);
 +			return;
 +		}
 +	}
 +
-+update_sizes:
-+	read_limit = umax(old_size, end);
-+	cres->cache_i_size = read_limit;
-+
-+	/* We need to be careful setting the object_size: we may have written
-+	 * more to the cache than to the server (due to cache DIO rounding) and
-+	 * the i_size set on the netfs inode may include unwritten data that
-+	 * the server doesn't know about yet.
-+	 */
-+	object->object_size = umin(read_limit, wreq->i_size);
-+
-+	/* Raise the limit at which reads can access the file. */
-+	/* Update read_limit after content_info */
-+	atomic64_set_release(&object->read_limit, read_limit);
-+}
-+
- /*
-  * Clean up an operation.
+ 	trace_netfs_folio(folio, netfs_folio_trace_copy_to_cache);
+ 	folio_start_private_2(folio);
+ 	netfs_pgpriv2_copy_folio(creq, folio);
+@@ -171,22 +206,27 @@ void netfs_pgpriv2_end_copy_to_cache(struct netfs_io_request *rreq)
   */
-@@ -705,10 +882,10 @@ static const struct netfs_cache_ops cachefiles_netfs_cache_ops = {
- 	.read			= cachefiles_read,
- 	.write			= cachefiles_write,
- 	.issue_write		= cachefiles_issue_write,
--	.prepare_read		= cachefiles_prepare_read,
- 	.prepare_write		= cachefiles_prepare_write,
- 	.prepare_write_subreq	= cachefiles_prepare_write_subreq,
- 	.query_occupancy	= cachefiles_query_occupancy,
-+	.collect_write		= cachefiles_collect_write,
- };
- 
- /*
-@@ -718,13 +895,18 @@ bool cachefiles_begin_operation(struct netfs_cache_resources *cres,
- 				enum fscache_want_state want_state)
+ bool netfs_pgpriv2_unlock_copied_folios(struct netfs_io_request *creq)
  {
- 	struct cachefiles_object *object = cachefiles_cres_object(cres);
-+	struct file *file;
+-	struct folio_queue *folioq = creq->buffer.tail;
++	struct bvecq *bq = creq->collect_cursor.bvecq;
+ 	unsigned long long collected_to = creq->collected_to;
+-	unsigned int slot = creq->buffer.first_tail_slot;
++	unsigned int slot;
+ 	bool made_progress = false;
  
- 	if (!cachefiles_cres_file(cres)) {
- 		cres->ops = &cachefiles_netfs_cache_ops;
- 		if (object->file) {
- 			spin_lock(&object->lock);
--			if (!cres->cache_priv2 && object->file)
--				cres->cache_priv2 = get_file(object->file);
-+			file = object->file;
-+			if (!cres->cache_priv2 && file) {
-+				cres->cache_priv2 = get_file(file);
-+				cres->cache_i_size = i_size_read(file_inode(file));
-+				cres->dio_size = object->volume->cache->bsize;
-+			}
- 			spin_unlock(&object->lock);
- 		}
- 	}
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index 88955249a1a6..a30df0f91e5e 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -414,7 +414,6 @@ struct file *cachefiles_create_tmpfile(struct cachefiles_object *object)
- 	struct dentry *fan = volume->fanout[(u8)object->cookie->key_hash];
- 	struct file *file;
- 	const struct path parentpath = { .mnt = cache->mnt, .dentry = fan };
--	uint64_t ni_size;
- 	long ret;
- 
- 
-@@ -442,23 +441,6 @@ struct file *cachefiles_create_tmpfile(struct cachefiles_object *object)
- 	if (!cachefiles_mark_inode_in_use(object, file_inode(file)))
- 		WARN_ON(1);
- 
--	ni_size = object->cookie->object_size;
--	ni_size = round_up(ni_size, CACHEFILES_DIO_BLOCK_SIZE);
--
--	if (ni_size > 0) {
--		trace_cachefiles_trunc(object, file_inode(file), 0, ni_size,
--				       cachefiles_trunc_expand_tmpfile);
--		ret = cachefiles_inject_write_error();
--		if (ret == 0)
--			ret = vfs_truncate(&file->f_path, ni_size);
--		if (ret < 0) {
--			trace_cachefiles_vfs_error(
--				object, file_inode(file), ret,
--				cachefiles_trace_trunc_error);
--			goto err_unuse;
--		}
+-	if (slot >= folioq_nr_slots(folioq)) {
+-		folioq = rolling_buffer_delete_spent(&creq->buffer);
+-		slot = 0;
 -	}
--
- 	ret = -EINVAL;
- 	if (unlikely(!file->f_op->read_iter) ||
- 	    unlikely(!file->f_op->write_iter)) {
-@@ -467,6 +449,7 @@ struct file *cachefiles_create_tmpfile(struct cachefiles_object *object)
- 	}
- out:
- 	cachefiles_end_secure(cache, saved_cred);
-+	object->content_info = CACHEFILES_CONTENT_ALL;
- 	return file;
++	slot = creq->collect_cursor.slot;
  
- err_unuse:
-diff --git a/fs/cachefiles/xattr.c b/fs/cachefiles/xattr.c
-index f8ae78b3f7b6..25f2a906f984 100644
---- a/fs/cachefiles/xattr.c
-+++ b/fs/cachefiles/xattr.c
-@@ -54,7 +54,7 @@ int cachefiles_set_object_xattr(struct cachefiles_object *object)
- 	if (!buf)
- 		return -ENOMEM;
+ 	for (;;) {
+ 		struct folio *folio;
+ 		unsigned long long fpos, fend;
+ 		size_t fsize, flen;
  
--	buf->object_size	= cpu_to_be64(object->cookie->object_size);
-+	buf->object_size	= cpu_to_be64(object->object_size);
- 	buf->zero_point		= 0;
- 	buf->type		= CACHEFILES_COOKIE_TYPE_DATA;
- 	buf->content		= object->content_info;
-@@ -77,6 +77,7 @@ int cachefiles_set_object_xattr(struct cachefiles_object *object)
- 		trace_cachefiles_vfs_error(object, file_inode(file), ret,
- 					   cachefiles_trace_setxattr_error);
- 		trace_cachefiles_coherency(object, file_inode(file)->i_ino,
-+					   object->object_size,
- 					   be64_to_cpup((__be64 *)buf->data),
- 					   buf->content,
- 					   cachefiles_coherency_set_fail);
-@@ -86,6 +87,7 @@ int cachefiles_set_object_xattr(struct cachefiles_object *object)
- 				"Failed to set xattr with error %d", ret);
- 	} else {
- 		trace_cachefiles_coherency(object, file_inode(file)->i_ino,
-+					   object->object_size,
- 					   be64_to_cpup((__be64 *)buf->data),
- 					   buf->content,
- 					   cachefiles_coherency_set_ok);
-@@ -103,9 +105,11 @@ int cachefiles_check_auxdata(struct cachefiles_object *object, struct file *file
- {
- 	struct cachefiles_xattr *buf;
- 	struct dentry *dentry = file->f_path.dentry;
-+	struct inode *inode = file_inode(file);
- 	unsigned int len = object->cookie->aux_len, tlen;
- 	const void *p = fscache_get_aux(object->cookie);
- 	enum cachefiles_coherency_trace why;
-+	unsigned long long obj_size;
- 	ssize_t xlen;
- 	int ret = -ESTALE;
- 
-@@ -120,36 +124,41 @@ int cachefiles_check_auxdata(struct cachefiles_object *object, struct file *file
- 	if (xlen != tlen) {
- 		if (xlen < 0) {
- 			ret = xlen;
--			trace_cachefiles_vfs_error(object, file_inode(file), xlen,
-+			trace_cachefiles_vfs_error(object, inode, xlen,
- 						   cachefiles_trace_getxattr_error);
- 		}
- 		if (xlen == -EIO)
- 			cachefiles_io_error_obj(
- 				object,
- 				"Failed to read aux with error %zd", xlen);
--		why = cachefiles_coherency_check_xattr;
-+		trace_cachefiles_coherency(object, inode->i_ino, 0, 0, 0,
-+					   cachefiles_coherency_check_xattr);
- 		goto out;
- 	}
- 
-+	obj_size = be64_to_cpu(buf->object_size);
- 	if (buf->type != CACHEFILES_COOKIE_TYPE_DATA) {
- 		why = cachefiles_coherency_check_type;
- 	} else if (memcmp(buf->data, p, len) != 0) {
- 		why = cachefiles_coherency_check_aux;
--	} else if (be64_to_cpu(buf->object_size) != object->cookie->object_size) {
-+	} else if (obj_size != object->cookie->object_size) {
- 		why = cachefiles_coherency_check_objsize;
- 	} else if (buf->content == CACHEFILES_CONTENT_DIRTY) {
- 		// TODO: Begin conflict resolution
- 		pr_warn("Dirty object in cache\n");
- 		why = cachefiles_coherency_check_dirty;
- 	} else {
-+		object->content_info = buf->content;
-+		object->object_size = obj_size;
-+		atomic64_set(&object->read_limit, i_size_read(inode));
- 		why = cachefiles_coherency_check_ok;
- 		ret = 0;
- 	}
- 
--out:
--	trace_cachefiles_coherency(object, file_inode(file)->i_ino,
-+	trace_cachefiles_coherency(object, inode->i_ino, obj_size,
- 				   be64_to_cpup((__be64 *)buf->data),
- 				   buf->content, why);
-+out:
- 	kfree(buf);
- 	return ret;
- }
-@@ -163,6 +172,9 @@ int cachefiles_remove_object_xattr(struct cachefiles_cache *cache,
- {
- 	int ret;
- 
-+	trace_cachefiles_coherency(object, d_inode(dentry)->i_ino, 0, 0, 0,
-+				   cachefiles_coherency_remove);
-+
- 	ret = cachefiles_inject_remove_error();
- 	if (ret == 0) {
- 		ret = mnt_want_write(cache->mnt);
-diff --git a/fs/netfs/buffered_read.c b/fs/netfs/buffered_read.c
-index 19e026ce5d47..70ccc92d03ae 100644
---- a/fs/netfs/buffered_read.c
-+++ b/fs/netfs/buffered_read.c
-@@ -137,21 +137,6 @@ static ssize_t netfs_prepare_read_iterator(struct netfs_io_subrequest *subreq)
- 	return subreq->len;
- }
- 
--static enum netfs_io_source netfs_cache_prepare_read(struct netfs_io_request *rreq,
--						     struct netfs_io_subrequest *subreq,
--						     loff_t i_size)
--{
--	struct netfs_cache_resources *cres = &rreq->cache_resources;
--	enum netfs_io_source source;
--
--	if (!cres->ops)
--		return NETFS_DOWNLOAD_FROM_SERVER;
--	source = cres->ops->prepare_read(subreq, i_size);
--	trace_netfs_sreq(subreq, netfs_sreq_trace_prepare);
--	return source;
--
--}
--
- /*
-  * Issue a read against the cache.
-  * - Eats the caller's ref on subreq.
-@@ -166,6 +151,19 @@ static void netfs_read_cache_to_pagecache(struct netfs_io_request *rreq,
- 			netfs_cache_read_terminated, subreq);
- }
- 
-+int netfs_read_query_cache(struct netfs_io_request *rreq, struct fscache_occupancy *occ)
-+{
-+	struct netfs_cache_resources *cres = &rreq->cache_resources;
-+
-+	occ->granularity = PAGE_SIZE;
-+	if (occ->query_from >= occ->query_to)
-+		return 0;
-+	if (!cres->ops)
-+		return 0;
-+	occ->query_from = round_up(occ->query_from, occ->granularity);
-+	return cres->ops->query_occupancy(cres, occ);
-+}
-+
- void netfs_queue_read(struct netfs_io_request *rreq,
- 		      struct netfs_io_subrequest *subreq)
- {
-@@ -218,15 +216,54 @@ static void netfs_issue_read(struct netfs_io_request *rreq,
-  */
- static void netfs_read_to_pagecache(struct netfs_io_request *rreq)
- {
-+	struct fscache_occupancy _occ = {
-+		.query_from	= rreq->start,
-+		.query_to	= rreq->start + rreq->len,
-+		.cached_from[0]	= 0,
-+		.cached_to[0]	= 0,
-+		.cached_from[1]	= ULLONG_MAX,
-+		.cached_to[1]	= ULLONG_MAX,
-+	};
-+	struct fscache_occupancy *occ = &_occ;
- 	unsigned long long start = rreq->start;
- 	ssize_t size = rreq->len;
- 	int ret = 0;
- 
- 	do {
-+		int (*prepare_read)(struct netfs_io_subrequest *subreq) = NULL;
- 		struct netfs_io_subrequest *subreq;
--		enum netfs_io_source source = NETFS_SOURCE_UNKNOWN;
-+		unsigned long long hole_to, cache_to;
- 		ssize_t slice;
- 
-+		/* If we don't have any, find out the next couple of data
-+		 * extents from the cache, containing of following the
-+		 * specified start offset.  Holes have to be fetched from the
-+		 * server; data regions from the cache.
-+		 */
-+		hole_to = occ->cached_from[0];
-+		cache_to = occ->cached_to[0];
-+		if (start >= cache_to) {
-+			/* Extent exhausted; shuffle down. */
-+			int i;
-+
-+			for (i = 0; i < ARRAY_SIZE(occ->cached_from) - 1; i++) {
-+				occ->cached_from[i] = occ->cached_from[i + 1];
-+				occ->cached_to[i]   = occ->cached_to[i + 1];
-+				occ->cached_type[i] = occ->cached_type[i + 1];
-+			}
-+			occ->cached_from[i] = ULLONG_MAX;
-+			occ->cached_to[i]   = ULLONG_MAX;
-+
-+			if (occ->cached_from[0] != ULLONG_MAX)
-+				continue;
-+
-+			/* Get new extents */
-+			ret = netfs_read_query_cache(rreq, occ);
-+			if (ret < 0)
-+				break;
-+			continue;
+-		folio = folioq_folio(folioq, slot);
++		if (!bvecq_acquire_slot(bq, slot)) {
++			creq->collect_cursor.slot = slot;
++			if (!bvecq_delete_spent(&creq->collect_cursor))
++				goto out;
++			bq   = creq->collect_cursor.bvecq;
++			slot = creq->collect_cursor.slot;
 +		}
 +
- 		subreq = netfs_alloc_subrequest(rreq);
- 		if (!subreq) {
- 			ret = -ENOMEM;
-@@ -238,63 +275,75 @@ static void netfs_read_to_pagecache(struct netfs_io_request *rreq)
++		folio = page_folio(bq->bv[slot].bv_page);
+ 		if (WARN_ONCE(!folio_test_private_2(folio),
+ 			      "R=%08x: folio %lx is not marked private_2\n",
+ 			      creq->debug_id, folio->index))
+@@ -209,25 +249,18 @@ bool netfs_pgpriv2_unlock_copied_folios(struct netfs_io_request *creq)
+ 		creq->cleaned_to = fpos + fsize;
+ 		made_progress = true;
  
- 		netfs_queue_read(rreq, subreq);
- 
--		source = netfs_cache_prepare_read(rreq, subreq, rreq->i_size);
--		subreq->source = source;
--		if (source == NETFS_DOWNLOAD_FROM_SERVER) {
--			unsigned long long zero_point = netfs_read_zero_point(rreq->inode);
--			unsigned long long zp = umin(zero_point, rreq->i_size);
--			size_t len = subreq->len;
--
--			if (unlikely(rreq->origin == NETFS_READ_SINGLE))
--				zp = rreq->i_size;
--			if (subreq->start >= zp) {
--				subreq->source = source = NETFS_FILL_WITH_ZEROES;
--				goto fill_with_zeroes;
-+		unsigned long long zero_point = netfs_read_zero_point(rreq->inode);
-+		unsigned long long zlimit = umin(zero_point, rreq->i_size);
-+
-+		_debug("rsub %llx %llx-%llx", subreq->start, hole_to, cache_to);
-+
-+		if (start >= hole_to && start < cache_to) {
-+			/* Overlap with a cached region, where the cache may
-+			 * record a block of zeroes.
-+			 */
-+			_debug("cached s=%llx c=%llx l=%zx", start, cache_to, size);
-+			subreq->len = umin(cache_to - start, size);
-+			subreq->len = round_up(subreq->len, occ->granularity);
-+			if (occ->cached_type[0] == FSCACHE_EXTENT_ZERO) {
-+				subreq->source = NETFS_FILL_WITH_ZEROES;
-+				netfs_stat(&netfs_n_rh_zero);
-+			} else {
-+				subreq->source = NETFS_READ_FROM_CACHE;
-+				prepare_read = rreq->cache_resources.ops->prepare_read;
- 			}
- 
--			if (len > zp - subreq->start)
--				len = zp - subreq->start;
--			if (len == 0) {
--				pr_err("ZERO-LEN READ: R=%08x[%x] l=%zx/%zx s=%llx z=%llx i=%llx",
--				       rreq->debug_id, subreq->debug_index,
--				       subreq->len, size,
--				       subreq->start, zero_point, rreq->i_size);
--				netfs_cancel_read(subreq, ret);
--				break;
--			}
--			subreq->len = len;
--
--			netfs_stat(&netfs_n_rh_download);
--			if (rreq->netfs_ops->prepare_read) {
--				ret = rreq->netfs_ops->prepare_read(subreq);
--				if (ret < 0) {
--					netfs_cancel_read(subreq, ret);
--					break;
--				}
--				trace_netfs_sreq(subreq, netfs_sreq_trace_prepare);
--			}
--			goto issue;
+-		/* Clean up the head folioq.  If we clear an entire folioq, then
+-		 * we can get rid of it provided it's not also the tail folioq
+-		 * being filled by the issuer.
++		/* Clean up the head segment.  If we clear an entire segment,
++		 * then we can get rid of it provided it's not also the tail
++		 * segment being filled by the issuer.
+ 		 */
+-		folioq_clear(folioq, slot);
++		bq->bv[slot].bv_page = NULL;
+ 		slot++;
+-		if (slot >= folioq_nr_slots(folioq)) {
+-			folioq = rolling_buffer_delete_spent(&creq->buffer);
+-			if (!folioq)
+-				goto done;
+-			slot = 0;
 -		}
-+			trace_netfs_sreq(subreq, netfs_sreq_trace_prepare);
  
--	fill_with_zeroes:
--		if (source == NETFS_FILL_WITH_ZEROES) {
-+		} else if (subreq->start >= zlimit && size > 0) {
-+			/* If this range lies beyond the zero-point, that part
-+			 * can just be cleared locally.
-+			 */
-+			_debug("zero %llx-%llx", start, start + size);
-+			subreq->len = size;
- 			subreq->source = NETFS_FILL_WITH_ZEROES;
--			trace_netfs_sreq(subreq, netfs_sreq_trace_submit);
-+			if (rreq->cache_resources.ops)
-+				__set_bit(NETFS_SREQ_COPY_TO_CACHE, &subreq->flags);
- 			netfs_stat(&netfs_n_rh_zero);
--			goto issue;
-+		} else {
-+			/* Read a cache hole from the server.  If any part of
-+			 * this range lies beyond the zero-point or the EOF,
-+			 * that part can just be cleared locally.
-+			 */
-+			unsigned long long limit = min3(zlimit, start + size, hole_to);
-+
-+			_debug("limit %llx %llx", rreq->i_size, zero_point);
-+			_debug("download %llx-%llx", start, start + size);
-+			subreq->len = umin(limit - subreq->start, ULONG_MAX);
-+			subreq->source = NETFS_DOWNLOAD_FROM_SERVER;
-+			if (rreq->cache_resources.ops)
-+				__set_bit(NETFS_SREQ_COPY_TO_CACHE, &subreq->flags);
-+			netfs_stat(&netfs_n_rh_download);
- 		}
+ 		if (fpos + fsize >= collected_to)
+ 			break;
+ 	}
  
--		if (source == NETFS_READ_FROM_CACHE) {
--			trace_netfs_sreq(subreq, netfs_sreq_trace_submit);
--			goto issue;
-+		if (size == 0) {
-+			pr_err("ZERO-LEN READ: R=%08x[%x] l=%zx/%zx s=%llx z=%llx i=%llx",
-+			       rreq->debug_id, subreq->debug_index,
-+			       subreq->len, size,
-+			       subreq->start, zero_point, rreq->i_size);
-+			netfs_cancel_read(subreq, ret);
-+			break;
- 		}
- 
--		pr_err("Unexpected read source %u\n", source);
--		WARN_ON_ONCE(1);
--		netfs_cancel_read(subreq, ret);
--		break;
-+		rreq->io_streams[0].sreq_max_len = MAX_RW_COUNT;
-+		rreq->io_streams[0].sreq_max_segs = INT_MAX;
-+
-+		if (prepare_read) {
-+			ret = prepare_read(subreq);
-+			if (ret < 0) {
-+				netfs_cancel_read(subreq, ret);
-+				break;
-+			}
-+			trace_netfs_sreq(subreq, netfs_sreq_trace_prepare);
-+		}
- 
--	issue:
- 		slice = netfs_prepare_read_iterator(subreq);
- 		if (slice < 0) {
- 			ret = slice;
-@@ -308,6 +357,7 @@ static void netfs_read_to_pagecache(struct netfs_io_request *rreq)
- 			set_bit(NETFS_RREQ_ALL_QUEUED, &rreq->flags);
- 		}
- 
-+		trace_netfs_sreq(subreq, netfs_sreq_trace_submit);
- 		netfs_issue_read(rreq, subreq);
- 		netfs_maybe_bulk_drop_ra_refs(rreq);
- 
-diff --git a/fs/netfs/buffered_write.c b/fs/netfs/buffered_write.c
-index 39f00b326e0f..8e84ec6d26c6 100644
---- a/fs/netfs/buffered_write.c
-+++ b/fs/netfs/buffered_write.c
-@@ -54,9 +54,6 @@ void netfs_update_i_size(struct netfs_inode *ctx, struct inode *inode,
- 	i_size = i_size_read(inode);
- 	if (end > i_size) {
- 		i_size_write(inode, end);
--#if IS_ENABLED(CONFIG_FSCACHE)
--		fscache_update_cookie(ctx->cache, NULL, &end);
--#endif
- 
- 		gap = SECTOR_SIZE - (i_size & (SECTOR_SIZE - 1));
- 		if (copied > gap) {
-diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
-index 5160f14f861c..e12c921fba0f 100644
---- a/fs/netfs/internal.h
-+++ b/fs/netfs/internal.h
-@@ -23,6 +23,8 @@
- /*
-  * buffered_read.c
-  */
-+int netfs_read_query_cache(struct netfs_io_request *rreq,
-+			   struct fscache_occupancy *occ);
- void netfs_queue_read(struct netfs_io_request *rreq,
- 		      struct netfs_io_subrequest *subreq);
- void netfs_cache_read_terminated(void *priv, ssize_t transferred_or_error);
+-	creq->buffer.tail = folioq;
+-done:
+-	creq->buffer.first_tail_slot = slot;
++	creq->collect_cursor.slot = slot;
++out:
+ 	return made_progress;
+ }
 diff --git a/fs/netfs/read_retry.c b/fs/netfs/read_retry.c
-index 2b42758e01ec..ce61f4d8d301 100644
+index ce61f4d8d301..e88af0eacd05 100644
 --- a/fs/netfs/read_retry.c
 +++ b/fs/netfs/read_retry.c
-@@ -272,6 +272,7 @@ void netfs_retry_reads(struct netfs_io_request *rreq)
+@@ -12,6 +12,12 @@
+ static void netfs_reissue_read(struct netfs_io_request *rreq,
+ 			       struct netfs_io_subrequest *subreq)
+ {
++	bvecq_pos_unset(&subreq->content);
++	bvecq_pos_set(&subreq->content, &subreq->dispatch_pos);
++	iov_iter_bvec_queue(&subreq->io_iter, ITER_DEST, subreq->content.bvecq,
++			    subreq->content.slot, subreq->content.offset, subreq->len);
++	iov_iter_advance(&subreq->io_iter, subreq->transferred);
++
+ 	subreq->error = 0;
+ 	__clear_bit(NETFS_SREQ_MADE_PROGRESS, &subreq->flags);
+ 	__set_bit(NETFS_SREQ_IN_PROGRESS, &subreq->flags);
+@@ -27,6 +33,7 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
+ {
+ 	struct netfs_io_subrequest *subreq;
  	struct netfs_io_stream *stream = &rreq->io_streams[0];
++	struct bvecq_pos dispatch_cursor = {};
+ 	struct list_head *next;
  
- 	netfs_stat(&netfs_n_rh_retry_read_req);
-+	trace_netfs_rreq(rreq, netfs_rreq_trace_retry_begin);
+ 	_enter("R=%x", rreq->debug_id);
+@@ -46,9 +53,7 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
+ 			if (test_bit(NETFS_SREQ_FAILED, &subreq->flags))
+ 				break;
+ 			if (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {
+-				__clear_bit(NETFS_SREQ_MADE_PROGRESS, &subreq->flags);
+ 				subreq->retry_count++;
+-				netfs_reset_iter(subreq);
+ 				netfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);
+ 				netfs_reissue_read(rreq, subreq);
+ 			}
+@@ -74,11 +79,12 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
  
- 	/* Wait for all outstanding I/O to quiesce before performing retries as
- 	 * we may need to renegotiate the I/O sizes.
-@@ -282,6 +283,7 @@ void netfs_retry_reads(struct netfs_io_request *rreq)
+ 	do {
+ 		struct netfs_io_subrequest *from, *to, *tmp;
+-		struct iov_iter source;
+ 		unsigned long long start, len;
+ 		size_t part;
+ 		bool boundary = false, subreq_superfluous = false;
  
- 	trace_netfs_rreq(rreq, netfs_rreq_trace_resubmit);
- 	netfs_retry_read_subrequests(rreq);
-+	trace_netfs_rreq(rreq, netfs_rreq_trace_retry_end);
++		bvecq_pos_unset(&dispatch_cursor);
++
+ 		/* Go through the subreqs and find the next span of contiguous
+ 		 * buffer that we then rejig (cifs, for example, needs the
+ 		 * rsize renegotiating) and reissue.
+@@ -105,7 +111,8 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
+ 				break;
+ 
+ 			subreq = list_entry(next, struct netfs_io_subrequest, rreq_link);
+-			if (subreq->start + subreq->transferred != start + len ||
++			if (subreq->start != start + len ||
++			    subreq->transferred > 0 ||
+ 			    test_bit(NETFS_SREQ_BOUNDARY, &subreq->flags) ||
+ 			    !test_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags))
+ 				break;
+@@ -118,11 +125,14 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
+ 		/* Determine the set of buffers we're going to use.  Each
+ 		 * subreq gets a subset of a single overall contiguous buffer.
+ 		 */
+-		netfs_reset_iter(from);
+-		source = from->io_iter;
+-		source.count = len;
++		bvecq_pos_transfer(&dispatch_cursor, &from->dispatch_pos);
++		bvecq_pos_advance(&dispatch_cursor, from->transferred);
++		from->transferred = 0;
+ 
+-		/* Work through the sublist. */
++		/* Work through the sublist.  The chain of buffers we're going
++		 * to fill is attached to dispatch_cursor and we need to read
++		 * 'len' amount of data from 'start'.
++		 */
+ 		subreq = from;
+ 		list_for_each_entry_from(subreq, &stream->subrequests, rreq_link) {
+ 			if (!len) {
+@@ -130,16 +140,22 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
+ 				break;
+ 			}
+ 			subreq->source	= NETFS_DOWNLOAD_FROM_SERVER;
+-			subreq->start	= start - subreq->transferred;
+-			subreq->len	= len   + subreq->transferred;
++			subreq->start	= start;
++			subreq->len	= len;
+ 			__clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags);
+ 			__clear_bit(NETFS_SREQ_MADE_PROGRESS, &subreq->flags);
+ 			subreq->retry_count++;
++			subreq->transferred = 0;
++
++			bvecq_pos_unset(&subreq->content);
++			bvecq_pos_unset(&subreq->dispatch_pos);
++			bvecq_pos_set(&subreq->dispatch_pos, &dispatch_cursor);
+ 
+ 			trace_netfs_sreq(subreq, netfs_sreq_trace_retry);
+ 
+ 			/* Renegotiate max_len (rsize) */
+-			stream->sreq_max_len = subreq->len;
++			stream->sreq_max_len = len;
++			stream->sreq_max_segs = INT_MAX;
+ 			if (rreq->netfs_ops->prepare_read &&
+ 			    rreq->netfs_ops->prepare_read(subreq) < 0) {
+ 				trace_netfs_sreq(subreq, netfs_sreq_trace_reprep_failed);
+@@ -147,13 +163,12 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
+ 				goto abandon;
+ 			}
+ 
+-			part = umin(len, stream->sreq_max_len);
+-			if (unlikely(stream->sreq_max_segs))
+-				part = netfs_limit_iter(&source, 0, part, stream->sreq_max_segs);
+-			subreq->len = subreq->transferred + part;
+-			subreq->io_iter = source;
+-			iov_iter_truncate(&subreq->io_iter, part);
+-			iov_iter_advance(&source, part);
++			part = bvecq_slice(&dispatch_cursor,
++					   umin(len, stream->sreq_max_len),
++					   stream->sreq_max_segs,
++					   &subreq->nr_segs);
++			subreq->len = part;
++
+ 			len -= part;
+ 			start += part;
+ 			if (!len) {
+@@ -217,9 +232,7 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
+ 			trace_netfs_sreq(subreq, netfs_sreq_trace_retry);
+ 
+ 			stream->sreq_max_len	= umin(len, rreq->rsize);
+-			stream->sreq_max_segs	= 0;
+-			if (unlikely(stream->sreq_max_segs))
+-				part = netfs_limit_iter(&source, 0, part, stream->sreq_max_segs);
++			stream->sreq_max_segs	= INT_MAX;
+ 
+ 			netfs_stat(&netfs_n_rh_download);
+ 			if (rreq->netfs_ops->prepare_read(subreq) < 0) {
+@@ -228,11 +241,12 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
+ 				goto abandon;
+ 			}
+ 
+-			part = umin(len, stream->sreq_max_len);
+-			subreq->len = subreq->transferred + part;
+-			subreq->io_iter = source;
+-			iov_iter_truncate(&subreq->io_iter, part);
+-			iov_iter_advance(&source, part);
++			bvecq_pos_set(&subreq->dispatch_pos, &dispatch_cursor);
++			part = bvecq_slice(&dispatch_cursor,
++					   umin(len, stream->sreq_max_len),
++					   stream->sreq_max_segs,
++					   &subreq->nr_segs);
++			subreq->len = part;
+ 
+ 			len -= part;
+ 			start += part;
+@@ -246,6 +260,8 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
+ 
+ 	} while (!list_is_head(next, &stream->subrequests));
+ 
++out:
++	bvecq_pos_unset(&dispatch_cursor);
+ 	return;
+ 
+ 	/* If we hit an error, fail all remaining incomplete subrequests */
+@@ -262,6 +278,7 @@ static void netfs_retry_read_subrequests(struct netfs_io_request *rreq)
+ 		__set_bit(NETFS_SREQ_FAILED, &subreq->flags);
+ 		__clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags);
+ 	}
++	goto out;
  }
  
  /*
+@@ -292,23 +309,24 @@ void netfs_retry_reads(struct netfs_io_request *rreq)
+  */
+ void netfs_unlock_abandoned_read_pages(struct netfs_io_request *rreq)
+ {
+-	struct folio_queue *p;
+-
+-	for (p = rreq->buffer.tail; p; p = p->next) {
+-		for (int slot = 0; slot < folioq_count(p); slot++) {
+-			struct folio *folio = folioq_folio(p, slot);
+-
+-			if (folio && !folioq_is_marked2(p, slot)) {
+-				if (folio == rreq->no_unlock_folio &&
+-				    test_bit(NETFS_RREQ_NO_UNLOCK_FOLIO,
+-					     &rreq->flags)) {
+-					_debug("no unlock");
+-				} else {
+-					trace_netfs_folio(folio,
+-						netfs_folio_trace_abandon);
+-					folio_unlock(folio);
+-				}
++	struct bvecq *p;
++
++	for (p = rreq->collect_cursor.bvecq; p; p = bvecq_next(p)) {
++		unsigned int nr_slots = bvecq_nr_slots_acquire(p);
++
++		for (int slot = 0; slot < nr_slots; slot++) {
++			if (!p->bv[slot].bv_page)
++				continue;
++
++			struct folio *folio = page_folio(p->bv[slot].bv_page);
++
++			if (folio == rreq->no_unlock_folio &&
++			    test_bit(NETFS_RREQ_NO_UNLOCK_FOLIO, &rreq->flags)) {
++				_debug("no unlock");
++				continue;
+ 			}
++			trace_netfs_folio(folio, netfs_folio_trace_abandon);
++			folio_unlock(folio);
+ 		}
+ 	}
+ }
 diff --git a/fs/netfs/read_single.c b/fs/netfs/read_single.c
-index 8833550d2eb6..65ef16ada1bf 100644
+index 65ef16ada1bf..78e3de4c2e44 100644
 --- a/fs/netfs/read_single.c
 +++ b/fs/netfs/read_single.c
-@@ -58,20 +58,6 @@ static int netfs_single_begin_cache_read(struct netfs_io_request *rreq, struct n
- 	return fscache_begin_read_operation(&rreq->cache_resources, netfs_i_cookie(ctx));
- }
- 
--static void netfs_single_cache_prepare_read(struct netfs_io_request *rreq,
--					    struct netfs_io_subrequest *subreq)
--{
--	struct netfs_cache_resources *cres = &rreq->cache_resources;
--
--	if (!cres->ops) {
--		subreq->source = NETFS_DOWNLOAD_FROM_SERVER;
--		return;
--	}
--	subreq->source = cres->ops->prepare_read(subreq, rreq->i_size);
--	trace_netfs_sreq(subreq, netfs_sreq_trace_prepare);
--
--}
--
- static void netfs_single_read_cache(struct netfs_io_request *rreq,
- 				    struct netfs_io_subrequest *subreq)
- {
-@@ -89,6 +75,14 @@ static void netfs_single_read_cache(struct netfs_io_request *rreq,
-  */
- static int netfs_single_dispatch_read(struct netfs_io_request *rreq)
- {
-+	struct fscache_occupancy occ = {
-+		.query_from	= 0,
-+		.query_to	= rreq->len,
-+		.cached_from[0]	= ULLONG_MAX,
-+		.cached_to[0]	= ULLONG_MAX,
-+		.cached_from[1]	= ULLONG_MAX,
-+		.cached_to[1]	= ULLONG_MAX,
-+	};
- 	struct netfs_io_subrequest *subreq;
- 	int ret = 0;
- 
-@@ -96,14 +90,21 @@ static int netfs_single_dispatch_read(struct netfs_io_request *rreq)
- 	if (!subreq)
- 		return -ENOMEM;
- 
--	subreq->source	= NETFS_SOURCE_UNKNOWN;
-+	subreq->source	= NETFS_DOWNLOAD_FROM_SERVER;
+@@ -93,7 +93,12 @@ static int netfs_single_dispatch_read(struct netfs_io_request *rreq)
+ 	subreq->source	= NETFS_DOWNLOAD_FROM_SERVER;
  	subreq->start	= 0;
  	subreq->len	= rreq->len;
- 	subreq->io_iter	= rreq->buffer.iter;
+-	subreq->io_iter	= rreq->buffer.iter;
++
++	bvecq_pos_set(&subreq->dispatch_pos, &rreq->dispatch_cursor);
++	bvecq_pos_set(&subreq->content, &rreq->dispatch_cursor);
++
++	iov_iter_bvec_queue(&subreq->io_iter, ITER_DEST, subreq->content.bvecq,
++			    subreq->content.slot, subreq->content.offset, subreq->len);
  
  	netfs_queue_read(rreq, subreq);
  
--	netfs_single_cache_prepare_read(rreq, subreq);
-+	/* Try to use the cache if the cache content matches the size of the
-+	 * remote file.
-+	 */
-+	netfs_read_query_cache(rreq, &occ);
-+	if (occ.cached_from[0] == 0 &&
-+	    occ.cached_to[0] >= rreq->len)
-+		subreq->source = NETFS_READ_FROM_CACHE;
-+
- 	switch (subreq->source) {
- 	case NETFS_DOWNLOAD_FROM_SERVER:
- 		netfs_stat(&netfs_n_rh_download);
-@@ -119,6 +120,12 @@ static int netfs_single_dispatch_read(struct netfs_io_request *rreq)
- 		rreq->submitted += subreq->len;
- 		break;
- 	case NETFS_READ_FROM_CACHE:
-+		if (rreq->cache_resources.ops->prepare_read) {
-+			ret = rreq->cache_resources.ops->prepare_read(subreq);
-+			if (ret < 0)
-+				goto cancel;
-+		}
-+
- 		smp_wmb(); /* Write lists before ALL_QUEUED. */
- 		set_bit(NETFS_RREQ_ALL_QUEUED, &rreq->flags);
- 		trace_netfs_sreq(subreq, netfs_sreq_trace_submit);
-diff --git a/fs/netfs/write_collect.c b/fs/netfs/write_collect.c
-index 2eac588e37de..5b96463808d5 100644
---- a/fs/netfs/write_collect.c
-+++ b/fs/netfs/write_collect.c
-@@ -188,6 +188,26 @@ static void netfs_writeback_unlock_folios(struct netfs_io_request *wreq,
- 	wreq->buffer.first_tail_slot = slot;
- }
+@@ -177,6 +182,14 @@ ssize_t netfs_read_single(struct inode *inode, struct file *file, struct iov_ite
+ 	if (IS_ERR(rreq))
+ 		return PTR_ERR(rreq);
  
-+/*
-+ * Collect cache results.
-+ */
-+static void netfs_cache_collect(struct netfs_io_request *wreq,
-+				struct netfs_io_stream *stream,
-+				enum netfs_cache_collect block_type)
-+{
-+	struct netfs_cache_resources *cres = &wreq->cache_resources;
-+
-+	if (stream->source != NETFS_WRITE_TO_CACHE ||
-+	    wreq->cache_coll_to >= stream->collected_to)
-+		return;
-+
-+	if (cres->ops && cres->ops->collect_write)
-+		cres->ops->collect_write(wreq, wreq->cache_coll_to,
-+					 stream->collected_to - wreq->cache_coll_to,
-+					 block_type);
-+	wreq->cache_coll_to = stream->collected_to;
-+}
-+
- /*
-  * Collect and assess the results of various write subrequests.  We may need to
-  * retry some of the results - or even do an RMW cycle for content crypto.
-@@ -235,13 +255,16 @@ static void netfs_collect_write_results(struct netfs_io_request *wreq)
- 		/* Read first subreq pointer before IN_PROGRESS flag. */
- 
- 		while (front) {
-+			bool cancelled;
- 			trace_netfs_collect_sreq(wreq, front);
- 			//_debug("sreq [%x] %llx %zx/%zx",
- 			//       front->debug_index, front->start, front->transferred, front->len);
- 
- 			if (stream->collected_to < front->start) {
- 				trace_netfs_collect_gap(wreq, stream, issued_to, 'F');
-+				netfs_cache_collect(wreq, stream, NETFS_CACHE_COLLECT_WRITE_DATA);
- 				stream->collected_to = front->start;
-+				netfs_cache_collect(wreq, stream, NETFS_CACHE_COLLECT_WRITE_GAP);
- 			}
- 
- 			/* Stall if the front is still undergoing I/O. */
-@@ -249,7 +272,6 @@ static void netfs_collect_write_results(struct netfs_io_request *wreq)
- 				notes |= HIT_PENDING;
- 				break;
- 			}
--			smp_rmb(); /* Read counters after I-P flag. */
- 
- 			if (stream->failed) {
- 				stream->collected_to = front->start + front->len;
-@@ -262,15 +284,44 @@ static void netfs_collect_write_results(struct netfs_io_request *wreq)
- 				stream->transferred_valid = true;
- 				notes |= MADE_PROGRESS;
- 			}
--			if (test_bit(NETFS_SREQ_FAILED, &front->flags)) {
--				stream->failed = true;
--				stream->error = front->error;
--				if (stream->source == NETFS_UPLOAD_TO_SERVER)
--					mapping_set_error(wreq->mapping, front->error);
--				notes |= NEED_REASSESS | SAW_FAILURE;
-+
-+			/* Handle failed or cancelled subreqs.  Failure of
-+			 * cache writes are handled differently to upload
-+			 * failures.  Cache writes aren't fatal, provided we're
-+			 * not doing disconnected operation, and so we can kind
-+			 * of treat them as if they had succeeded - except that
-+			 * we need to log any holes they cause.
-+			 */
-+			switch (stream->source) {
-+			case NETFS_UPLOAD_TO_SERVER:
-+				if (test_bit(NETFS_SREQ_FAILED, &front->flags)) {
-+					if (!stream->failed) {
-+						stream->failed = true;
-+						stream->error = front->error;
-+						mapping_set_error(wreq->mapping, front->error);
-+						break;
-+					}
-+					notes |= NEED_REASSESS | SAW_FAILURE;
-+				}
-+				break;
-+
-+			case NETFS_WRITE_TO_CACHE:
-+				cancelled = test_bit(NETFS_SREQ_CANCELLED, &front->flags);
-+				if (cancelled != stream->cancelled) {
-+					trace_netfs_rreq(wreq, netfs_rreq_trace_cache_fail_collect);
-+					netfs_cache_collect(wreq, stream,
-+							    cancelled ?
-+							    NETFS_CACHE_COLLECT_WRITE_CANCEL :
-+							    NETFS_CACHE_COLLECT_WRITE_DATA);
-+					stream->cancelled = !stream->cancelled;
-+				}
-+				break;
-+
-+			default:
-+				WARN_ON(1);
- 				break;
- 			}
--			if (front->transferred < front->len) {
-+			if (test_bit(NETFS_SREQ_NEED_RETRY, &front->flags)) {
- 				stream->need_retry = true;
- 				notes |= NEED_RETRY | MADE_PROGRESS;
- 				break;
-@@ -359,6 +410,7 @@ static void netfs_collect_write_results(struct netfs_io_request *wreq)
-  */
- bool netfs_write_collection(struct netfs_io_request *wreq)
- {
-+	struct netfs_io_stream *cstream = &wreq->io_streams[1];
- 	struct netfs_inode *ictx = netfs_inode(wreq->inode);
- 	size_t transferred;
- 	bool transferred_valid = false;
-@@ -394,13 +446,22 @@ bool netfs_write_collection(struct netfs_io_request *wreq)
- 		wreq->transferred = transferred;
- 	trace_netfs_rreq(wreq, netfs_rreq_trace_write_done);
- 
--	if (wreq->io_streams[1].active &&
--	    wreq->io_streams[1].failed &&
--	    ictx->ops->invalidate_cache) {
--		/* Cache write failure doesn't prevent writeback completion
--		 * unless we're in disconnected mode.
--		 */
--		ictx->ops->invalidate_cache(wreq);
-+	if (cstream->active) {
-+		if (test_bit(NETFS_RREQ_CACHE_ERROR, &wreq->flags)) {
-+			if (ictx->ops->invalidate_cache) {
-+				/* Cache write failure doesn't prevent
-+				 * writeback completion unless we're in
-+				 * disconnected mode.
-+				 */
-+				trace_netfs_rreq(wreq, netfs_rreq_trace_inval_cache);
-+				ictx->ops->invalidate_cache(wreq);
-+			}
-+		} else if (!cstream->failed) {
-+			netfs_cache_collect(wreq, cstream,
-+					    cstream->cancelled ?
-+					    NETFS_CACHE_COLLECT_WRITE_CANCEL :
-+					    NETFS_CACHE_COLLECT_WRITE_DATA);
-+		}
- 	}
- 
- 	_debug("finished");
-@@ -484,24 +545,51 @@ void netfs_write_subrequest_terminated(void *_op, ssize_t transferred_or_error)
- 
- 	if (IS_ERR_VALUE(transferred_or_error)) {
- 		subreq->error = transferred_or_error;
--		/* if need retry is set, error should not matter */
--		if (!test_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {
--			set_bit(NETFS_SREQ_FAILED, &subreq->flags);
--			trace_netfs_failure(wreq, subreq, transferred_or_error, netfs_fail_write);
--		}
- 
- 		switch (subreq->source) {
- 		case NETFS_WRITE_TO_CACHE:
-+			/* We don't mark a cache-write subreq as failed.
-+			 * Instead we tell the issuer to produce dummy subreqs
-+			 * instead and make a note if we need to invalidate the
-+			 * cache at the end.  We also don't pause the loop that
-+			 * grabs pages and launches upload subreqs.
-+			 *
-+			 * Note that we need to distinguish between -ENOBUFS
-+			 * (no space available in the cache) and other errors.
-+			 * In the former case, we can keep the data we have,
-+			 * though we might have to change the way the on-disk
-+			 * data is tracked.
-+			 */
- 			netfs_stat(&netfs_n_wh_write_failed);
-+			if (test_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags))
-+				break;
-+
-+			trace_netfs_failure(wreq, subreq, transferred_or_error, netfs_fail_write);
-+			__set_bit(NETFS_SREQ_CANCELLED, &subreq->flags);
-+			set_bit(NETFS_RREQ_CACHE_STOP, &wreq->flags);
-+			if (transferred_or_error == -ENOBUFS)
-+				trace_netfs_rreq(wreq, netfs_rreq_trace_cache_no_space);
-+			else if (!test_and_set_bit(NETFS_RREQ_CACHE_ERROR, &wreq->flags))
-+				trace_netfs_rreq(wreq, netfs_rreq_trace_cache_failed);
-+			subreq->transferred = subreq->len;
- 			break;
-+
- 		case NETFS_UPLOAD_TO_SERVER:
-+			/* If need_retry is set, error should not matter */
-+			if (!test_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {
-+				set_bit(NETFS_SREQ_FAILED, &subreq->flags);
-+				trace_netfs_failure(wreq, subreq, transferred_or_error,
-+						    netfs_fail_upload);
-+			}
-+
-+			set_bit(NETFS_RREQ_PAUSE, &wreq->flags);
-+			trace_netfs_rreq(wreq, netfs_rreq_trace_set_pause);
- 			netfs_stat(&netfs_n_wh_upload_failed);
- 			break;
-+
- 		default:
- 			break;
- 		}
--		trace_netfs_rreq(wreq, netfs_rreq_trace_set_pause);
--		set_bit(NETFS_RREQ_PAUSE, &wreq->flags);
- 	} else {
- 		if (WARN(transferred_or_error > subreq->len - subreq->transferred,
- 			 "Subreq excess write: R=%x[%x] %zd > %zu - %zu",
-diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c
-index 7cb679b0de8f..a282cf64990c 100644
---- a/fs/netfs/write_issue.c
-+++ b/fs/netfs/write_issue.c
-@@ -111,6 +111,8 @@ struct netfs_io_request *netfs_create_write_req(struct address_space *mapping,
- 		goto nomem;
- 
- 	wreq->cleaned_to = wreq->start;
-+	if (wreq->cache_resources.dio_size > 1)
-+		wreq->cache_coll_to = round_down(wreq->start, wreq->cache_resources.dio_size);
- 
- 	wreq->io_streams[0].stream_nr		= 0;
- 	wreq->io_streams[0].source		= NETFS_UPLOAD_TO_SERVER;
-@@ -230,6 +232,21 @@ static void netfs_do_issue_write(struct netfs_io_stream *stream,
- 
- 	_enter("R=%x[%x],%zx", wreq->debug_id, subreq->debug_index, subreq->len);
- 
-+	if (stream->source == NETFS_WRITE_TO_CACHE &&
-+	    unlikely(test_bit(NETFS_RREQ_CACHE_STOP, &wreq->flags))) {
-+		size_t dio_size = wreq->cache_resources.dio_size;
-+		size_t len, disp;
-+
-+		disp = subreq->start & (dio_size - 1);
-+		len = round_up(subreq->len + disp, dio_size);
-+
-+		subreq->start -= disp;
-+		subreq->len = len;
-+
-+		__set_bit(NETFS_SREQ_CANCELLED, &subreq->flags);
-+		return netfs_write_subrequest_terminated(subreq, subreq->len);
++	ret = netfs_extract_iter(iter, rreq->len, INT_MAX, 0, &rreq->dispatch_cursor.bvecq, 0);
++	if (ret < 0)
++		goto cleanup_free;
++	if (ret < rreq->len) {
++		ret = -EIO;
++		goto cleanup_free;
 +	}
 +
- 	if (test_bit(NETFS_SREQ_FAILED, &subreq->flags))
- 		return netfs_write_subrequest_terminated(subreq, subreq->error);
+ 	ret = netfs_single_begin_cache_read(rreq, ictx);
+ 	if (ret == -ENOMEM || ret == -EINTR || ret == -ERESTARTSYS)
+ 		goto cleanup_free;
+@@ -184,7 +197,6 @@ ssize_t netfs_read_single(struct inode *inode, struct file *file, struct iov_ite
+ 	netfs_stat(&netfs_n_rh_read_single);
+ 	trace_netfs_read(rreq, 0, rreq->len, netfs_read_trace_read_single);
  
-@@ -263,6 +280,7 @@ void netfs_issue_write(struct netfs_io_request *wreq,
+-	rreq->buffer.iter = *iter;
+ 	netfs_single_dispatch_read(rreq);
  
+ 	ret = netfs_wait_for_read(rreq);
+diff --git a/fs/netfs/stats.c b/fs/netfs/stats.c
+index a10d34f88597..0ba6ce9295b2 100644
+--- a/fs/netfs/stats.c
++++ b/fs/netfs/stats.c
+@@ -46,7 +46,6 @@ atomic_t netfs_n_wh_retry_write_req;
+ atomic_t netfs_n_wh_retry_write_subreq;
+ atomic_t netfs_n_wb_lock_skip;
+ atomic_t netfs_n_wb_lock_wait;
+-atomic_t netfs_n_folioq;
+ atomic_t netfs_n_bvecq;
+ 
+ int netfs_stats_show(struct seq_file *m, void *v)
+@@ -89,11 +88,10 @@ int netfs_stats_show(struct seq_file *m, void *v)
+ 		   atomic_read(&netfs_n_rh_retry_read_subreq),
+ 		   atomic_read(&netfs_n_wh_retry_write_req),
+ 		   atomic_read(&netfs_n_wh_retry_write_subreq));
+-	seq_printf(m, "Objs   : rr=%u sr=%u bq=%u foq=%u wsc=%u\n",
++	seq_printf(m, "Objs   : rr=%u sr=%u bq=%u wsc=%u\n",
+ 		   atomic_read(&netfs_n_rh_rreq),
+ 		   atomic_read(&netfs_n_rh_sreq),
+ 		   atomic_read(&netfs_n_bvecq),
+-		   atomic_read(&netfs_n_folioq),
+ 		   atomic_read(&netfs_n_wh_wstream_conflict));
+ 	seq_printf(m, "WbLock : skip=%u wait=%u\n",
+ 		   atomic_read(&netfs_n_wb_lock_skip),
+diff --git a/fs/netfs/write_collect.c b/fs/netfs/write_collect.c
+index 5b96463808d5..0cd145472a17 100644
+--- a/fs/netfs/write_collect.c
++++ b/fs/netfs/write_collect.c
+@@ -114,12 +114,12 @@ int netfs_folio_written_back(struct folio *folio)
+ static void netfs_writeback_unlock_folios(struct netfs_io_request *wreq,
+ 					  unsigned int *notes)
+ {
+-	struct folio_queue *folioq = wreq->buffer.tail;
++	struct bvecq *bvecq = wreq->collect_cursor.bvecq;
+ 	unsigned long long collected_to = wreq->collected_to;
+-	unsigned int slot = wreq->buffer.first_tail_slot;
++	unsigned int slot = wreq->collect_cursor.slot;
+ 
+-	if (WARN_ON_ONCE(!folioq)) {
+-		pr_err("[!] Writeback unlock found empty rolling buffer!\n");
++	if (WARN_ON_ONCE(!bvecq)) {
++		pr_err("[!] Writeback unlock found empty buffer!\n");
+ 		netfs_dump_request(wreq);
+ 		return;
+ 	}
+@@ -130,20 +130,28 @@ static void netfs_writeback_unlock_folios(struct netfs_io_request *wreq,
+ 		return;
+ 	}
+ 
+-	if (slot >= folioq_nr_slots(folioq)) {
+-		folioq = rolling_buffer_delete_spent(&wreq->buffer);
+-		if (!folioq)
+-			return;
+-		slot = 0;
+-	}
+-
+ 	for (;;) {
+ 		struct folio *folio;
+ 		struct netfs_folio *finfo;
+ 		unsigned long long fpos, fend;
+ 		size_t fsize, flen;
+ 
+-		folio = folioq_folio(folioq, slot);
++		/* Try to clean up the head of the queue if it appears to be
++		 * used up, but we need to be very careful - the cleanup can
++		 * catch the dispatcher, which could lead to us having nothing
++		 * left in the queue, causing the front and back pointers to
++		 * end up on different tracks.  To avoid this, we must always
++		 * keep at least one segment in the queue.
++		 */
++		if (!bvecq_acquire_slot(bvecq, slot)) {
++			wreq->collect_cursor.slot = slot;
++			if (!bvecq_delete_spent(&wreq->collect_cursor))
++				return;
++			bvecq = wreq->collect_cursor.bvecq;
++			slot  = wreq->collect_cursor.slot;
++		}
++
++		folio = page_folio(bvecq->bv[slot].bv_page);
+ 		if (WARN_ONCE(!folio_test_writeback(folio),
+ 			      "R=%08x: folio %lx is not under writeback\n",
+ 			      wreq->debug_id, folio->index))
+@@ -166,26 +174,13 @@ static void netfs_writeback_unlock_folios(struct netfs_io_request *wreq,
+ 		wreq->cleaned_to = fpos + fsize;
+ 		*notes |= MADE_PROGRESS;
+ 
+-		/* Clean up the head folioq.  If we clear an entire folioq, then
+-		 * we can get rid of it provided it's not also the tail folioq
+-		 * being filled by the issuer.
+-		 */
+-		folioq_clear(folioq, slot);
++		bvecq->bv[slot].bv_page = NULL;
+ 		slot++;
+-		if (slot >= folioq_nr_slots(folioq)) {
+-			folioq = rolling_buffer_delete_spent(&wreq->buffer);
+-			if (!folioq)
+-				goto done;
+-			slot = 0;
+-		}
+-
+ 		if (fpos + fsize >= collected_to)
+ 			break;
+ 	}
+ 
+-	wreq->buffer.tail = folioq;
+-done:
+-	wreq->buffer.first_tail_slot = slot;
++	wreq->collect_cursor.slot = slot;
+ }
+ 
+ /*
+@@ -230,7 +225,8 @@ static void netfs_collect_write_results(struct netfs_io_request *wreq)
+ 	trace_netfs_rreq(wreq, netfs_rreq_trace_collect);
+ 
+ reassess_streams:
+-	issued_to = atomic64_read(&wreq->issued_to);
++	/* Order reading the issued_to point before reading the queue it refers to. */
++	issued_to = atomic64_read_acquire(&wreq->issued_to);
+ 	smp_rmb();
+ 	collected_to = ULLONG_MAX;
+ 	if (wreq->origin == NETFS_WRITEBACK ||
+@@ -561,8 +557,12 @@ void netfs_write_subrequest_terminated(void *_op, ssize_t transferred_or_error)
+ 			 * data is tracked.
+ 			 */
+ 			netfs_stat(&netfs_n_wh_write_failed);
+-			if (test_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags))
+-				break;
++			if (test_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {
++				/* We don't retry failed cache writes. */
++				__clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags);
++				if (!subreq->error)
++					subreq->error = -ENOBUFS;
++			}
+ 
+ 			trace_netfs_failure(wreq, subreq, transferred_or_error, netfs_fail_write);
+ 			__set_bit(NETFS_SREQ_CANCELLED, &subreq->flags);
+diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c
+index a282cf64990c..2bf9d20d7b5c 100644
+--- a/fs/netfs/write_issue.c
++++ b/fs/netfs/write_issue.c
+@@ -107,8 +107,6 @@ struct netfs_io_request *netfs_create_write_req(struct address_space *mapping,
+ 	ictx = netfs_inode(wreq->inode);
+ 	if (is_cacheable)
+ 		fscache_begin_write_operation(&wreq->cache_resources, netfs_i_cookie(ictx));
+-	if (rolling_buffer_init(&wreq->buffer, wreq->debug_id, ITER_SOURCE) < 0)
+-		goto nomem;
+ 
+ 	wreq->cleaned_to = wreq->start;
+ 	if (wreq->cache_resources.dio_size > 1)
+@@ -133,9 +131,6 @@ struct netfs_io_request *netfs_create_write_req(struct address_space *mapping,
+ 	}
+ 
+ 	return wreq;
+-nomem:
+-	netfs_put_failed_request(wreq);
+-	return ERR_PTR(-ENOMEM);
+ }
+ 
+ /**
+@@ -160,21 +155,13 @@ void netfs_prepare_write(struct netfs_io_request *wreq,
+ 			 loff_t start)
+ {
+ 	struct netfs_io_subrequest *subreq;
+-	struct iov_iter *wreq_iter = &wreq->buffer.iter;
+-
+-	/* Make sure we don't point the iterator at a used-up folio_queue
+-	 * struct being used as a placeholder to prevent the queue from
+-	 * collapsing.  In such a case, extend the queue.
+-	 */
+-	if (iov_iter_is_folioq(wreq_iter) &&
+-	    wreq_iter->folioq_slot >= folioq_nr_slots(wreq_iter->folioq))
+-		rolling_buffer_make_space(&wreq->buffer);
+ 
+ 	subreq = netfs_alloc_subrequest(wreq);
+ 	subreq->source		= stream->source;
+ 	subreq->start		= start;
+ 	subreq->stream_nr	= stream->stream_nr;
+-	subreq->io_iter		= *wreq_iter;
++
++	bvecq_pos_set(&subreq->dispatch_pos, &wreq->dispatch_cursor);
+ 
+ 	_enter("R=%x[%x]", wreq->debug_id, subreq->debug_index);
+ 
+@@ -255,15 +242,16 @@ static void netfs_do_issue_write(struct netfs_io_stream *stream,
+ }
+ 
+ void netfs_reissue_write(struct netfs_io_stream *stream,
+-			 struct netfs_io_subrequest *subreq,
+-			 struct iov_iter *source)
++			 struct netfs_io_subrequest *subreq)
+ {
+-	size_t size = subreq->len - subreq->transferred;
+-
+ 	// TODO: Use encrypted buffer
+-	subreq->io_iter = *source;
+-	iov_iter_advance(source, size);
+-	iov_iter_truncate(&subreq->io_iter, size);
++	bvecq_pos_unset(&subreq->content);
++	bvecq_pos_set(&subreq->content, &subreq->dispatch_pos);
++	iov_iter_bvec_queue(&subreq->io_iter, ITER_SOURCE,
++			    subreq->content.bvecq, subreq->content.slot,
++			    subreq->content.offset,
++			    subreq->len);
++	iov_iter_advance(&subreq->io_iter, subreq->transferred);
+ 
+ 	subreq->retry_count++;
+ 	subreq->error = 0;
+@@ -281,8 +269,67 @@ void netfs_issue_write(struct netfs_io_request *wreq,
  	if (!subreq)
  		return;
+ 
++	/* If we have a write to the cache, we need to round out the first and
++	 * last entries (only those as the data will be on virtually contiguous
++	 * folios) to cache DIO boundaries.
++	 */
++	if (subreq->source == NETFS_WRITE_TO_CACHE) {
++		struct bvecq_pos tmp_pos;
++		struct bio_vec *bv;
++		struct bvecq *bq;
++		size_t dio_size = wreq->cache_resources.dio_size;
++		size_t disp, len;
++		int ret;
++
++		bvecq_pos_set(&tmp_pos, &subreq->dispatch_pos);
++		ret = bvecq_extract(&tmp_pos, subreq->len, INT_MAX, &subreq->content.bvecq);
++		bvecq_pos_unset(&tmp_pos);
++		if (ret < 0) {
++			netfs_write_subrequest_terminated(subreq, -ENOMEM);
++			return;
++		}
++
++		/* Round the first entry down.  We should be able to get away
++		 * with this as this path only happens for buffered reads and
++		 * writes.  As such, a bio_vec must always point to a whole
++		 * folio (or part thereof) in the pagecache with writeback set,
++		 * so presuming that dio_size < folio size, we should be able
++		 * to round out bv_offset and bv_len.
++		 *
++		 * Further, streaming-write pages don't get sent to the cache
++		 * (and aren't normally generated if there is a cache), so we
++		 * only see fully uptodate pages here.
++		 */
++		bq = subreq->content.bvecq;
++		bv = &bq->bv[0];
++		disp = bv->bv_offset & (dio_size - 1);
++		if (disp) {
++			bv->bv_offset -= disp;
++			bv->bv_len += disp;
++			bq->fpos -= disp;
++			subreq->start -= disp;
++			subreq->len += disp;
++		}
++
++		/* Round the end of the last entry up. */
++		while (bq->next)
++			bq = bq->next;
++		bv = &bq->bv[bq->nr_slots - 1];
++		len = round_up(bv->bv_len, dio_size);
++		if (len > bv->bv_len) {
++			subreq->len += len - bv->bv_len;
++			bv->bv_len = len;
++		}
++	} else {
++		bvecq_pos_set(&subreq->content, &subreq->dispatch_pos);
++	}
++
++	iov_iter_bvec_queue(&subreq->io_iter, ITER_SOURCE,
++			    subreq->content.bvecq, subreq->content.slot,
++			    subreq->content.offset,
++			    subreq->len);
 +
  	stream->construct = NULL;
- 	subreq->io_iter.count = subreq->len;
+-	subreq->io_iter.count = subreq->len;
  	netfs_do_issue_write(stream, subreq);
+ }
+ 
+@@ -319,7 +366,6 @@ size_t netfs_advance_write(struct netfs_io_request *wreq,
+ 	_debug("part %zx/%zx %zx/%zx", subreq->len, stream->sreq_max_len, part, len);
+ 	subreq->len += part;
+ 	subreq->nr_segs++;
+-	stream->submit_extendable_to -= part;
+ 
+ 	if (subreq->len >= stream->sreq_max_len ||
+ 	    subreq->nr_segs >= stream->sreq_max_segs ||
+@@ -343,7 +389,8 @@ static int netfs_write_folio(struct netfs_io_request *wreq,
+ 	struct netfs_io_stream *stream;
+ 	struct netfs_group *fgroup; /* TODO: Use this with ceph */
+ 	struct netfs_folio *finfo;
+-	size_t iter_off = 0;
++	struct bvecq *queue = wreq->load_cursor.bvecq;
++	unsigned int slot;
+ 	size_t fsize = folio_size(folio), flen = fsize, foff = 0;
+ 	loff_t fpos = folio_pos(folio), i_size;
+ 	bool to_eof = false, streamw = false;
+@@ -351,12 +398,20 @@ static int netfs_write_folio(struct netfs_io_request *wreq,
+ 
+ 	_enter("");
+ 
+-	if (rolling_buffer_make_space(&wreq->buffer) < 0)
+-		return -ENOMEM;
++	if (!wreq->spare) {
++		wreq->spare = bvecq_alloc_one(BVECQ_STD_SLOTS, GFP_NOFS);
++		if (!wreq->spare)
++			return -ENOMEM;
++	}
+ 
+-	/* netfs_perform_write() may shift i_size around the page or from out
+-	 * of the page to beyond it, but cannot move i_size into or through the
+-	 * page since we have it locked.
++	/* netfs_perform_write() may shift i_size around the folio or from out
++	 * of the folio to beyond it, but cannot move i_size into or through
++	 * the folio since we have it locked.
++	 *
++	 * Truncate could in theory move i_size into or before the folio, but
++	 * it should take steps to prevent writeback from happening
++	 * concurrently and should wait for any in-progress writebacks before
++	 * proceeding.
+ 	 */
+ 	i_size = i_size_read(wreq->inode);
+ 
+@@ -448,8 +503,32 @@ static int netfs_write_folio(struct netfs_io_request *wreq,
+ 		trace_netfs_folio(folio, netfs_folio_trace_store_plus);
+ 	}
+ 
++	/* Institute a new bvec queue segment if the current one is full or if
++	 * we encounter a discontiguity.  The discontiguity break is important
++	 * when it comes to bulk unlocking folios by file range.
++	 */
++	if (bvecq_is_full(queue) ||
++	    (fpos != wreq->last_end && wreq->last_end > 0)) {
++		bvecq_buffer_append(&wreq->load_cursor, wreq->spare);
++		wreq->spare = NULL;
++
++		queue = wreq->load_cursor.bvecq;
++		queue->fpos = fpos;
++		if (fpos != wreq->last_end)
++			queue->discontig = true;
++		bvecq_pos_move(&wreq->dispatch_cursor, queue);
++		wreq->dispatch_cursor.slot = 0;
++	}
++
+ 	/* Attach the folio to the rolling buffer. */
+-	rolling_buffer_append(&wreq->buffer, folio, 0);
++	slot = queue->nr_slots;
++	bvec_set_folio(&queue->bv[slot], folio, flen, foff);
++	trace_netfs_bv_slot(queue, slot);
++	slot++;
++	bvecq_filled_to(queue, slot);
++	wreq->load_cursor.slot = slot;
++	wreq->load_cursor.offset = 0;
++	wreq->last_end = fpos + foff + flen;
+ 
+ 	/* Move the submission point forward to allow for write-streaming data
+ 	 * not starting at the front of the page.  We don't do write-streaming
+@@ -458,9 +537,11 @@ static int netfs_write_folio(struct netfs_io_request *wreq,
+ 	 * Also skip uploading for data that's been read and just needs copying
+ 	 * to the cache.
+ 	 */
++	bvecq_pos_nudge(&wreq->dispatch_cursor);
++	
+ 	for (int s = 0; s < NR_IO_STREAMS; s++) {
+ 		stream = &wreq->io_streams[s];
+-		stream->submit_off = foff;
++		stream->submit_off = 0;
+ 		stream->submit_len = flen;
+ 		if (!stream->avail ||
+ 		    (stream->source == NETFS_WRITE_TO_CACHE && streamw) ||
+@@ -495,15 +576,11 @@ static int netfs_write_folio(struct netfs_io_request *wreq,
+ 			break;
+ 		stream = &wreq->io_streams[choose_s];
+ 
+-		/* Advance the iterator(s). */
+-		if (stream->submit_off > iter_off) {
+-			rolling_buffer_advance(&wreq->buffer, stream->submit_off - iter_off);
+-			iter_off = stream->submit_off;
+-		}
++		/* Advance the cursor. */
++		wreq->dispatch_cursor.offset = stream->submit_off;
+ 
+-		atomic64_set(&wreq->issued_to, fpos + stream->submit_off);
+-		stream->submit_extendable_to = fsize - stream->submit_off;
+-		part = netfs_advance_write(wreq, stream, fpos + stream->submit_off,
++		atomic64_set(&wreq->issued_to, fpos + foff + stream->submit_off);
++		part = netfs_advance_write(wreq, stream, fpos + foff + stream->submit_off,
+ 					   stream->submit_len, to_eof);
+ 		stream->submit_off += part;
+ 		if (part > stream->submit_len)
+@@ -514,9 +591,9 @@ static int netfs_write_folio(struct netfs_io_request *wreq,
+ 			debug = true;
+ 	}
+ 
+-	if (fsize > iter_off)
+-		rolling_buffer_advance(&wreq->buffer, fsize - iter_off);
+-	atomic64_set(&wreq->issued_to, fpos + fsize);
++	bvecq_pos_step(&wreq->dispatch_cursor);
++	/* Order loading the queue before updating the issue_to point */
++	atomic64_set_release(&wreq->issued_to, fpos + fsize);
+ 
+ 	if (!debug)
+ 		kdebug("R=%x: No submit", wreq->debug_id);
+@@ -578,6 +655,11 @@ int netfs_writepages(struct address_space *mapping,
+ 		goto couldnt_start;
+ 	}
+ 
++	if (bvecq_buffer_init(&wreq->load_cursor, GFP_NOFS) < 0)
++		goto nomem;
++	bvecq_pos_set(&wreq->dispatch_cursor, &wreq->load_cursor);
++	bvecq_pos_set(&wreq->collect_cursor, &wreq->dispatch_cursor);
++
+ 	__set_bit(NETFS_RREQ_OFFLOAD_COLLECTION, &wreq->flags);
+ 	trace_netfs_write(wreq, netfs_write_trace_writeback);
+ 	netfs_stat(&netfs_n_wh_writepages);
+@@ -602,12 +684,17 @@ int netfs_writepages(struct address_space *mapping,
+ 	} while ((folio = writeback_iter(mapping, wbc, folio, &error)));
+ 
+ 	netfs_end_issue_write(wreq);
++	bvecq_pos_unset(&wreq->load_cursor);
++	bvecq_pos_unset(&wreq->dispatch_cursor);
+ 	netfs_wake_collector(wreq);
+ 
+ 	netfs_put_request(wreq, netfs_rreq_trace_put_return);
+ 	_leave(" = %d", error);
+ 	return error;
+ 
++nomem:
++	error = -ENOMEM;
++	netfs_put_failed_request(wreq);
+ couldnt_start:
+ 	if (error == -ENOMEM) {
+ 		folio_redirty_for_writepage(wbc, folio);
+@@ -631,10 +718,11 @@ EXPORT_SYMBOL(netfs_writepages);
+  * @iter: Data to write.
+  *
+  * Write a monolithic, non-pagecache object back to the server and/or
+- * the cache.
++ * the cache.  There's a maximum of one subrequest per stream.
+  *
+  * Return: 0 if successful; 1 if skipped due to lock conflict and WB_SYNC_NONE;
+  * or a negative error code.
++ * the cache.  There's a maximum of one subrequest per stream.
+  */
+ int netfs_writeback_single(struct address_space *mapping,
+ 			   struct writeback_control *wbc,
+@@ -655,10 +743,18 @@ int netfs_writeback_single(struct address_space *mapping,
+ 		ret = PTR_ERR(wreq);
+ 		goto couldnt_start;
+ 	}
+-
+-	wreq->buffer.iter = *iter;
+ 	wreq->len = iov_iter_count(iter);
+ 
++	ret = netfs_extract_iter(iter, wreq->len, INT_MAX, 0, &wreq->dispatch_cursor.bvecq, 0);
++	if (ret < 0)
++		goto cleanup_free;
++	if (ret < wreq->len) {
++		ret = -EIO;
++		goto cleanup_free;
++	}
++
++	bvecq_pos_set(&wreq->collect_cursor, &wreq->dispatch_cursor);
++
+ 	__set_bit(NETFS_RREQ_OFFLOAD_COLLECTION, &wreq->flags);
+ 	trace_netfs_write(wreq, netfs_write_trace_writeback_single);
+ 	netfs_stat(&netfs_n_wh_writepages);
+@@ -678,11 +774,11 @@ int netfs_writeback_single(struct address_space *mapping,
+ 		subreq = stream->construct;
+ 		subreq->len = wreq->len;
+ 		stream->submit_len = subreq->len;
+-		stream->submit_extendable_to = round_up(wreq->len, PAGE_SIZE);
+ 
+ 		netfs_issue_write(wreq, stream);
+ 	}
+ 
++	wreq->submitted = wreq->len;
+ 	smp_wmb(); /* Write lists before ALL_QUEUED. */
+ 	set_bit(NETFS_RREQ_ALL_QUEUED, &wreq->flags);
+ 
+@@ -697,6 +793,8 @@ int netfs_writeback_single(struct address_space *mapping,
+ 	_leave(" = %d", ret);
+ 	return ret;
+ 
++cleanup_free:
++	netfs_put_failed_request(wreq);
+ couldnt_start:
+ 	netfs_wb_end(ictx);
+ 	_leave(" = %d", ret);
 diff --git a/fs/netfs/write_retry.c b/fs/netfs/write_retry.c
-index 058bc7a166a5..508dbcbb3b19 100644
+index 508dbcbb3b19..4e320591f83a 100644
 --- a/fs/netfs/write_retry.c
 +++ b/fs/netfs/write_retry.c
-@@ -211,6 +211,7 @@ void netfs_retry_writes(struct netfs_io_request *wreq)
- 	int s;
+@@ -17,15 +17,17 @@
+ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 				     struct netfs_io_stream *stream)
+ {
++	struct bvecq_pos dispatch_cursor = {};
+ 	struct list_head *next;
  
- 	netfs_stat(&netfs_n_wh_retry_write_req);
-+	trace_netfs_rreq(wreq, netfs_rreq_trace_retry_begin);
+ 	_enter("R=%x[%x:]", wreq->debug_id, stream->stream_nr);
  
- 	/* Wait for all outstanding I/O to quiesce before performing retries as
- 	 * we may need to renegotiate the I/O sizes.
-@@ -235,4 +236,6 @@ void netfs_retry_writes(struct netfs_io_request *wreq)
- 			netfs_retry_write_stream(wreq, stream);
+ 	if (list_empty(&stream->subrequests))
+ 		return;
++	if (WARN_ON_ONCE(stream->source != NETFS_UPLOAD_TO_SERVER))
++		return; /* Shouldn't be retrying cache writes. */
+ 
+-	if (stream->source == NETFS_UPLOAD_TO_SERVER &&
+-	    wreq->netfs_ops->retry_request)
++	if (wreq->netfs_ops->retry_request)
+ 		wreq->netfs_ops->retry_request(wreq, stream);
+ 
+ 	if (unlikely(stream->failed))
+@@ -39,12 +41,8 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 			if (test_bit(NETFS_SREQ_FAILED, &subreq->flags))
+ 				break;
+ 			if (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {
+-				struct iov_iter source;
+-
+-				netfs_reset_iter(subreq);
+-				source = subreq->io_iter;
+ 				netfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);
+-				netfs_reissue_write(stream, subreq, &source);
++				netfs_reissue_write(stream, subreq);
+ 			}
  		}
- 	}
-+
-+	trace_netfs_rreq(wreq, netfs_rreq_trace_retry_end);
- }
-diff --git a/include/linux/fscache.h b/include/linux/fscache.h
-index 58fdb9605425..850d20241075 100644
---- a/include/linux/fscache.h
-+++ b/include/linux/fscache.h
-@@ -147,6 +147,23 @@ struct fscache_cookie {
- 	};
- };
+ 		return;
+@@ -54,11 +52,12 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
  
-+enum fscache_extent_type {
-+	FSCACHE_EXTENT_DATA,
-+	FSCACHE_EXTENT_ZERO,
-+} __mode(byte);
+ 	do {
+ 		struct netfs_io_subrequest *subreq = NULL, *from, *to, *tmp;
+-		struct iov_iter source;
+ 		unsigned long long start, len;
+ 		size_t part;
+ 		bool boundary = false;
+ 
++		bvecq_pos_unset(&dispatch_cursor);
 +
-+/*
-+ * Cache occupancy information.
-+ */
-+struct fscache_occupancy {
-+	unsigned long long	query_from;	/* Point to query from */
-+	unsigned long long	query_to;	/* Point to query to */
-+	unsigned long long	cached_from[2];	/* Point at which cache extents start */
-+	unsigned long long	cached_to[2];	/* Point at which cache extents end */
-+	unsigned int		granularity;	/* Granularity desired */
-+	enum fscache_extent_type cached_type[2];	/* Type of cache extent */
-+};
+ 		/* Go through the stream and find the next span of contiguous
+ 		 * data that we then rejig (cifs, for example, needs the wsize
+ 		 * renegotiating) and reissue.
+@@ -70,7 +69,7 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 
+ 		if (test_bit(NETFS_SREQ_FAILED, &from->flags) ||
+ 		    !test_bit(NETFS_SREQ_NEED_RETRY, &from->flags))
+-			return;
++			goto out;
+ 
+ 		for (;;) {
+ 			/* Read pointer to subreq before reading subreq state. */
+@@ -79,7 +78,8 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 				break;
+ 
+ 			subreq = list_entry(next, struct netfs_io_subrequest, rreq_link);
+-			if (subreq->start + subreq->transferred != start + len ||
++			if (subreq->start != start + len ||
++			    subreq->transferred > 0 ||
+ 			    test_bit(NETFS_SREQ_BOUNDARY, &subreq->flags) ||
+ 			    !test_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags))
+ 				break;
+@@ -90,11 +90,13 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 		/* Determine the set of buffers we're going to use.  Each
+ 		 * subreq gets a subset of a single overall contiguous buffer.
+ 		 */
+-		netfs_reset_iter(from);
+-		source = from->io_iter;
+-		source.count = len;
++		bvecq_pos_transfer(&dispatch_cursor, &from->dispatch_pos);
++		bvecq_pos_advance(&dispatch_cursor, from->transferred);
+ 
+-		/* Work through the sublist. */
++		/* Work through the sublist.  The chain of buffers we're going
++		 * to fill is attached to dispatch_cursor and we need to read
++		 * 'len' amount of data from 'start'.
++		 */
+ 		subreq = from;
+ 		list_for_each_entry_from(subreq, &stream->subrequests, rreq_link) {
+ 			if (!len)
+@@ -104,16 +106,23 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 			subreq->len	= len;
+ 			__clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags);
+ 			trace_netfs_sreq(subreq, netfs_sreq_trace_retry);
++			subreq->transferred = 0;
 +
++			bvecq_pos_unset(&subreq->content);
++			bvecq_pos_unset(&subreq->dispatch_pos);
+ 
+ 			/* Renegotiate max_len (wsize) */
+ 			stream->sreq_max_len = len;
++			stream->sreq_max_segs = INT_MAX;
+ 			stream->prepare_write(subreq);
+ 
+-			part = umin(len, stream->sreq_max_len);
+-			if (unlikely(stream->sreq_max_segs))
+-				part = netfs_limit_iter(&source, 0, part, stream->sreq_max_segs);
++			bvecq_pos_set(&subreq->dispatch_pos, &dispatch_cursor);
++			part = bvecq_slice(&dispatch_cursor,
++					   umin(len, stream->sreq_max_len),
++					   stream->sreq_max_segs,
++					   &subreq->nr_segs);
+ 			subreq->len = part;
+-			subreq->transferred = 0;
++
+ 			len -= part;
+ 			start += part;
+ 			if (len && subreq == to &&
+@@ -121,7 +130,7 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 				boundary = true;
+ 
+ 			netfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);
+-			netfs_reissue_write(stream, subreq, &source);
++			netfs_reissue_write(stream, subreq);
+ 			if (subreq == to)
+ 				break;
+ 		}
+@@ -173,17 +182,19 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 				netfs_stat(&netfs_n_wh_upload);
+ 				stream->sreq_max_len = umin(len, wreq->wsize);
+ 				break;
+-			case NETFS_WRITE_TO_CACHE:
+-				netfs_stat(&netfs_n_wh_write);
+-				break;
+ 			default:
+ 				WARN_ON_ONCE(1);
+ 			}
+ 
+ 			stream->prepare_write(subreq);
+ 
+-			part = umin(len, stream->sreq_max_len);
++			bvecq_pos_set(&subreq->dispatch_pos, &dispatch_cursor);
++			part = bvecq_slice(&dispatch_cursor,
++					   umin(len, stream->sreq_max_len),
++					   stream->sreq_max_segs,
++					   &subreq->nr_segs);
+ 			subreq->len = subreq->transferred + part;
++
+ 			len -= part;
+ 			start += part;
+ 			if (!len && boundary) {
+@@ -191,13 +202,16 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,
+ 				boundary = false;
+ 			}
+ 
+-			netfs_reissue_write(stream, subreq, &source);
++			netfs_reissue_write(stream, subreq);
+ 			if (!len)
+ 				break;
+ 
+ 		} while (len);
+ 
+ 	} while (!list_is_head(next, &stream->subrequests));
++
++out:
++	bvecq_pos_unset(&dispatch_cursor);
+ }
+ 
  /*
-  * slow-path functions for when there is actually caching available, and the
-  * netfs does actually have a valid token
 diff --git a/include/linux/netfs.h b/include/linux/netfs.h
-index e12d8f393354..723143762b80 100644
+index d52d44727f86..a0a3c3687038 100644
 --- a/include/linux/netfs.h
 +++ b/include/linux/netfs.h
-@@ -23,6 +23,7 @@
+@@ -19,12 +19,13 @@
+ #include <linux/pagemap.h>
+ #include <linux/bvecq.h>
+ #include <linux/uio.h>
+-#include <linux/rolling_buffer.h>
  
  enum netfs_sreq_ref_trace;
  typedef struct mempool mempool_t;
-+struct fscache_occupancy;
- struct folio_queue;
++struct readahead_control;
++struct netfs_io_request;
++struct netfs_io_subrequest;
+ struct fscache_occupancy;
+-struct folio_queue;
  
  /**
-@@ -153,6 +154,7 @@ struct netfs_io_stream {
- 	bool			need_retry;	/* T if this stream needs retrying */
- 	bool			failed;		/* T if this stream failed */
- 	bool			transferred_valid; /* T is ->transferred is valid */
-+	bool			cancelled;	/* T if stream is cancelled */
- };
- 
- /*
-@@ -162,8 +164,10 @@ struct netfs_cache_resources {
- 	const struct netfs_cache_ops	*ops;
- 	void				*cache_priv;
- 	void				*cache_priv2;
-+	unsigned long long		cache_i_size;	/* Initial size of cache file */
- 	unsigned int			debug_id;	/* Cookie debug ID */
- 	unsigned int			inval_counter;	/* object->inval_counter at begin_op */
-+	unsigned int			dio_size;	/* DIO block size */
- };
- 
- /*
-@@ -197,6 +201,7 @@ struct netfs_io_subrequest {
- #define NETFS_SREQ_IN_PROGRESS		8	/* Unlocked when the subrequest completes */
- #define NETFS_SREQ_NEED_RETRY		9	/* Set if the filesystem requests a retry */
- #define NETFS_SREQ_FAILED		10	/* Set if the subreq failed unretryably */
-+#define NETFS_SREQ_CANCELLED		11	/* Set if the subreq was cancelled by netfslib */
- };
- 
- enum netfs_io_origin {
-@@ -251,6 +256,7 @@ struct netfs_io_request {
- 	unsigned long long	start;		/* Start position */
- 	atomic64_t		issued_to;	/* Write issuer folio cursor */
- 	unsigned long long	collected_to;	/* Point we've collected to */
-+	unsigned long long	cache_coll_to;	/* Point the cache has collected to */
+  * folio_start_private_2 - Start an fscache write on a folio.  [DEPRECATED]
+@@ -139,7 +140,6 @@ struct netfs_io_stream {
+ 	unsigned int		sreq_max_segs;	/* 0 or max number of segments in an iterator */
+ 	unsigned int		submit_off;	/* Folio offset we're submitting from */
+ 	unsigned int		submit_len;	/* Amount of data left to submit */
+-	unsigned int		submit_extendable_to; /* Amount I/O can be rounded up to */
+ 	void (*prepare_write)(struct netfs_io_subrequest *subreq);
+ 	void (*issue_write)(struct netfs_io_subrequest *subreq);
+ 	/* Collection tracking */
+@@ -182,6 +182,8 @@ struct netfs_io_subrequest {
+ 	struct netfs_io_request *rreq;		/* Supervising I/O request */
+ 	struct work_struct	work;
+ 	struct list_head	rreq_link;	/* Link in rreq->subrequests */
++	struct bvecq_pos	dispatch_pos;	/* Bookmark in the combined queue of the start */
++	struct bvecq_pos	content;	/* The (copied) content of the subrequest */
+ 	struct iov_iter		io_iter;	/* Iterator for this subrequest */
+ 	unsigned long long	start;		/* Where to start the I/O */
+ 	size_t			len;		/* Size of the I/O */
+@@ -242,13 +244,14 @@ struct netfs_io_request {
+ 	struct netfs_io_stream	io_streams[2];	/* Streams of parallel I/O operations */
+ #define NR_IO_STREAMS 2 //wreq->nr_io_streams
+ 	struct netfs_group	*group;		/* Writeback group being written back */
+-	struct rolling_buffer	buffer;		/* Unencrypted buffer */
+-#define NETFS_ROLLBUF_PUT_MARK		ROLLBUF_MARK_1
+-#define NETFS_ROLLBUF_PAGECACHE_MARK	ROLLBUF_MARK_2
++	struct bvecq		*spare;		/* Advance allocation of bvecq */
++	struct bvecq_pos	load_cursor;	/* Point at which new folios are loaded in */
++	struct bvecq_pos	dispatch_cursor; /* Point from which buffers are dispatched */
++	struct bvecq_pos	collect_cursor;	/* Clear-up point of I/O buffer */
+ 	wait_queue_head_t	waitq;		/* Processor waiter */
+ 	void			*netfs_priv;	/* Private data for the netfs */
+ 	void			*netfs_priv2;	/* Private data for the netfs */
+-	struct bio_vec		*direct_bv;	/* DIO buffer list (when handling iovec-iter) */
++	unsigned long long	last_end;	/* End pos of last folio submitted */
+ 	unsigned long long	submitted;	/* Amount submitted for I/O so far */
+ 	unsigned long long	len;		/* Length of the request */
+ 	size_t			transferred;	/* Amount to be indicated as transferred */
+@@ -261,7 +264,6 @@ struct netfs_io_request {
  	unsigned long long	cleaned_to;	/* Position we've cleaned folios to */
  	unsigned long long	abandon_to;	/* Position to abandon folios to */
  	const struct folio	*no_unlock_folio; /* Don't unlock this folio after read */
-@@ -272,11 +278,13 @@ struct netfs_io_request {
- #define NETFS_RREQ_FAILED		3	/* The request failed */
- #define NETFS_RREQ_RETRYING		4	/* Set if we're in the retry path */
- #define NETFS_RREQ_SHORT_TRANSFER	5	/* Set if we have a short transfer */
--#define NETFS_RREQ_OFFLOAD_COLLECTION	8	/* Offload collection to workqueue */
--#define NETFS_RREQ_NO_UNLOCK_FOLIO	9	/* Don't unlock no_unlock_folio on completion */
--#define NETFS_RREQ_FOLIO_COPY_TO_CACHE	10	/* Copy current folio to cache from read */
--#define NETFS_RREQ_UPLOAD_TO_SERVER	11	/* Need to write to the server */
--#define NETFS_RREQ_USE_IO_ITER		12	/* Use ->io_iter rather than ->i_pages */
-+#define NETFS_RREQ_CACHE_STOP		8	/* Set to stop caching (ENOBUFS or error) */
-+#define NETFS_RREQ_CACHE_ERROR		9	/* Set if we got an error from the cache */
-+#define NETFS_RREQ_OFFLOAD_COLLECTION	12	/* Offload collection to workqueue */
-+#define NETFS_RREQ_NO_UNLOCK_FOLIO	13	/* Don't unlock no_unlock_folio on completion */
-+#define NETFS_RREQ_FOLIO_COPY_TO_CACHE	14	/* Copy current folio to cache from read */
-+#define NETFS_RREQ_UPLOAD_TO_SERVER	15	/* Need to write to the server */
-+#define NETFS_RREQ_USE_IO_ITER		16	/* Use ->io_iter rather than ->i_pages */
- #define NETFS_RREQ_NEED_PUT_RA_REFS	17	/* Need to put the folio refs RA gave us */
- #define NETFS_RREQ_USE_PGPRIV2		31	/* [DEPRECATED] Use PG_private_2 to mark
- 						 * write to cache on read */
-@@ -322,6 +330,12 @@ enum netfs_read_from_hole {
- 	NETFS_READ_HOLE_FAIL,
- };
+-	unsigned int		direct_bv_count; /* Number of elements in direct_bv[] */
+ 	unsigned int		debug_id;
+ 	unsigned int		rsize;		/* Maximum read size (0 for none) */
+ 	unsigned int		wsize;		/* Maximum write size (0 for none) */
+@@ -270,7 +272,6 @@ struct netfs_io_request {
+ 	spinlock_t		lock;		/* Lock for queuing subreqs */
+ 	unsigned char		front_folio_order; /* Order (size) of front folio */
+ 	enum netfs_io_origin	origin;		/* Origin of the request */
+-	bool			direct_bv_unpin; /* T if direct_bv[] must be unpinned */
+ 	refcount_t		ref;
+ 	unsigned long		flags;
+ #define NETFS_RREQ_IN_PROGRESS		0	/* Unlocked when the request completes (has ref) */
+@@ -470,12 +471,6 @@ void netfs_end_io_write(struct inode *inode);
+ int netfs_start_io_direct(struct inode *inode);
+ void netfs_end_io_direct(struct inode *inode);
  
-+enum netfs_cache_collect {
-+	NETFS_CACHE_COLLECT_WRITE_DATA,
-+	NETFS_CACHE_COLLECT_WRITE_GAP,
-+	NETFS_CACHE_COLLECT_WRITE_CANCEL,
-+};
-+
- /*
-  * Table of operations for access to a cache.
-  */
-@@ -356,8 +370,7 @@ struct netfs_cache_ops {
- 	/* Prepare a read operation, shortening it to a cached/uncached
- 	 * boundary as appropriate.
- 	 */
--	enum netfs_io_source (*prepare_read)(struct netfs_io_subrequest *subreq,
--					     unsigned long long i_size);
-+	int (*prepare_read)(struct netfs_io_subrequest *subreq);
- 
- 	/* Prepare a write subrequest, working out if we're allowed to do it
- 	 * and finding out the maximum amount of data to gather before
-@@ -377,8 +390,17 @@ struct netfs_cache_ops {
- 	 * next chunk of data starts and how long it is.
- 	 */
- 	int (*query_occupancy)(struct netfs_cache_resources *cres,
--			       loff_t start, size_t len, size_t granularity,
--			       loff_t *_data_start, size_t *_data_len);
-+			       struct fscache_occupancy *occ);
-+
-+	/* Collect the result of buffered writeback to the cache.  This
-+	 * includes copying a read to the cache.  block_type is one of:
-+	 * - NETFS_CACHE_COLLECT_WRITE_DATA for a block of data
-+	 * - NETFS_CACHE_COLLECT_WRITE_GAP if a discontiguity was skipped
-+	 * - NETFS_CACHE_COLLECT_WRITE_CANCEL for a cancellation gap
-+	 */
-+	void (*collect_write)(struct netfs_io_request *wreq,
-+			      unsigned long long start, size_t len,
-+			      enum netfs_cache_collect block_type);
- };
- 
- /* High-level read API. */
-diff --git a/include/trace/events/cachefiles.h b/include/trace/events/cachefiles.h
-index f1631bb02454..b13322b376e9 100644
---- a/include/trace/events/cachefiles.h
-+++ b/include/trace/events/cachefiles.h
-@@ -54,6 +54,8 @@ enum cachefiles_coherency_trace {
- 	cachefiles_coherency_check_ok,
- 	cachefiles_coherency_check_type,
- 	cachefiles_coherency_check_xattr,
-+	cachefiles_coherency_discontiguous,
-+	cachefiles_coherency_remove,
- 	cachefiles_coherency_set_fail,
- 	cachefiles_coherency_set_ok,
- 	cachefiles_coherency_vol_check_cmp,
-@@ -65,6 +67,7 @@ enum cachefiles_coherency_trace {
- };
- 
- enum cachefiles_trunc_trace {
-+	cachefiles_trunc_clear_padding,
- 	cachefiles_trunc_dio_adjust,
- 	cachefiles_trunc_expand_tmpfile,
- 	cachefiles_trunc_shrink,
-@@ -82,6 +85,7 @@ enum cachefiles_prepare_read_trace {
- };
- 
- enum cachefiles_error_trace {
-+	cachefiles_trace_alignment_error,
- 	cachefiles_trace_fallocate_error,
- 	cachefiles_trace_getxattr_error,
- 	cachefiles_trace_link_error,
-@@ -140,6 +144,8 @@ enum cachefiles_error_trace {
- 	EM(cachefiles_coherency_check_ok,	"OK      ")		\
- 	EM(cachefiles_coherency_check_type,	"BAD type")		\
- 	EM(cachefiles_coherency_check_xattr,	"BAD xatt")		\
-+	EM(cachefiles_coherency_discontiguous,	"--- gap ")		\
-+	EM(cachefiles_coherency_remove,		"REMOVE  ")		\
- 	EM(cachefiles_coherency_set_fail,	"SET fail")		\
- 	EM(cachefiles_coherency_set_ok,		"SET ok  ")		\
- 	EM(cachefiles_coherency_vol_check_cmp,	"VOL BAD cmp ")		\
-@@ -150,6 +156,7 @@ enum cachefiles_error_trace {
- 	E_(cachefiles_coherency_vol_set_ok,	"VOL SET ok  ")
- 
- #define cachefiles_trunc_traces						\
-+	EM(cachefiles_trunc_clear_padding,	"CLRPAD")		\
- 	EM(cachefiles_trunc_dio_adjust,		"DIOADJ")		\
- 	EM(cachefiles_trunc_expand_tmpfile,	"EXPTMP")		\
- 	E_(cachefiles_trunc_shrink,		"SHRINK")
-@@ -165,6 +172,7 @@ enum cachefiles_error_trace {
- 	E_(cachefiles_trace_read_seek_nxio,	"seek-enxio")
- 
- #define cachefiles_error_traces						\
-+	EM(cachefiles_trace_alignment_error,	"align")		\
- 	EM(cachefiles_trace_fallocate_error,	"fallocate")		\
- 	EM(cachefiles_trace_getxattr_error,	"getxattr")		\
- 	EM(cachefiles_trace_link_error,		"link")			\
-@@ -375,12 +383,12 @@ TRACE_EVENT(cachefiles_rename,
- 
- TRACE_EVENT(cachefiles_coherency,
- 	    TP_PROTO(struct cachefiles_object *obj,
--		     ino_t ino,
-+		     ino_t ino, unsigned long long obj_size,
- 		     u64 disk_aux,
- 		     enum cachefiles_content content,
- 		     enum cachefiles_coherency_trace why),
- 
--	    TP_ARGS(obj, ino, disk_aux, content, why),
-+	    TP_ARGS(obj, ino, obj_size, disk_aux, content, why),
- 
- 	    /* Note that obj may be NULL */
- 	    TP_STRUCT__entry(
-@@ -388,6 +396,7 @@ TRACE_EVENT(cachefiles_coherency,
- 		    __field(enum cachefiles_coherency_trace,	why)
- 		    __field(enum cachefiles_content,		content)
- 		    __field(u64,				ino)
-+		    __field(u64,				obj_size)
- 		    __field(u64,				aux)
- 		    __field(u64,				disk_aux)
- 			     ),
-@@ -397,14 +406,16 @@ TRACE_EVENT(cachefiles_coherency,
- 		    __entry->why	= why;
- 		    __entry->content	= content;
- 		    __entry->ino	= ino;
-+		    __entry->obj_size	= obj_size;
- 		    __entry->aux	= be64_to_cpup((__be64 *)obj->cookie->inline_aux);
- 		    __entry->disk_aux	= disk_aux;
- 			   ),
- 
--	    TP_printk("o=%08x %s B=%llx c=%u aux=%llx dsk=%llx",
-+	    TP_printk("o=%08x %s B=%llx oz=%llx c=%u aux=%llx dsk=%llx",
- 		      __entry->obj,
- 		      __print_symbolic(__entry->why, cachefiles_coherency_traces),
- 		      __entry->ino,
-+		      __entry->obj_size,
- 		      __entry->content,
- 		      __entry->aux,
- 		      __entry->disk_aux)
+-/* Miscellaneous APIs. */
+-struct folio_queue *netfs_folioq_alloc(unsigned int rreq_id, gfp_t gfp,
+-				       unsigned int trace /*enum netfs_folioq_trace*/);
+-void netfs_folioq_free(struct folio_queue *folioq,
+-		       unsigned int trace /*enum netfs_trace_folioq*/);
+-
+ /* Buffer wrangling helpers API. */
+ int netfs_alloc_folioq_buffer(struct address_space *mapping,
+ 			      struct folio_queue **_buffer,
 diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
-index 2ce162baaad1..cc3806e383f5 100644
+index 5dc61a4ba5f0..071d20e80f13 100644
 --- a/include/trace/events/netfs.h
 +++ b/include/trace/events/netfs.h
-@@ -48,6 +48,10 @@
+@@ -226,7 +226,9 @@
+ 	EM(netfs_folio_trace_redirtied,		"redirtied")	\
+ 	EM(netfs_folio_trace_store,		"store")	\
+ 	EM(netfs_folio_trace_store_copy,	"store-copy")	\
+-	E_(netfs_folio_trace_store_plus,	"store+")
++	EM(netfs_folio_trace_store_plus,	"store+")	\
++	EM(netfs_folio_trace_zero,		"zero")		\
++	E_(netfs_folio_trace_zero_ra,		"zero-ra")
  
- #define netfs_rreq_traces					\
- 	EM(netfs_rreq_trace_assess,		"ASSESS ")	\
-+	EM(netfs_rreq_trace_cache_cancelled,	"CA-CNCL")	\
-+	EM(netfs_rreq_trace_cache_failed,	"CA-FAIL")	\
-+	EM(netfs_rreq_trace_cache_fail_collect,	"CA-F-CO")	\
-+	EM(netfs_rreq_trace_cache_no_space,	"CA-NOSP")	\
- 	EM(netfs_rreq_trace_collect,		"COLLECT")	\
- 	EM(netfs_rreq_trace_complete,		"COMPLET")	\
- 	EM(netfs_rreq_trace_copy,		"COPY   ")	\
-@@ -56,11 +60,14 @@
- 	EM(netfs_rreq_trace_end_copy_to_cache,	"END-C2C")	\
- 	EM(netfs_rreq_trace_free,		"FREE   ")	\
- 	EM(netfs_rreq_trace_intr,		"INTR   ")	\
-+	EM(netfs_rreq_trace_inval_cache,	"INVL-CA")	\
- 	EM(netfs_rreq_trace_ki_complete,	"KI-CMPL")	\
- 	EM(netfs_rreq_trace_ra_put_ref,		"RA-PUT ")	\
- 	EM(netfs_rreq_trace_recollect,		"RECLLCT")	\
- 	EM(netfs_rreq_trace_redirty,		"REDIRTY")	\
- 	EM(netfs_rreq_trace_resubmit,		"RESUBMT")	\
-+	EM(netfs_rreq_trace_retry_begin,	"RETRY-BEGIN")	\
-+	EM(netfs_rreq_trace_retry_end,		"RETRY-END")	\
- 	EM(netfs_rreq_trace_set_abandon,	"S-ABNDN")	\
- 	EM(netfs_rreq_trace_set_pause,		"PAUSE  ")	\
- 	EM(netfs_rreq_trace_unlock,		"UNLOCK ")	\
-@@ -132,12 +139,12 @@
+ #define netfs_collect_contig_traces				\
+ 	EM(netfs_contig_trace_collect,		"Collect")	\
+@@ -239,13 +241,13 @@
+ 	EM(netfs_trace_donate_to_next,		"to-next")	\
+ 	E_(netfs_trace_donate_to_deferred_next,	"defer-next")
  
- #define netfs_failures							\
- 	EM(netfs_fail_check_write_begin,	"check-write-begin")	\
--	EM(netfs_fail_copy_to_cache,		"copy-to-cache")	\
- 	EM(netfs_fail_dio_read_short,		"dio-read-short")	\
- 	EM(netfs_fail_dio_read_zero,		"dio-read-zero")	\
- 	EM(netfs_fail_read,			"read")			\
- 	EM(netfs_fail_short_read,		"short-read")		\
- 	EM(netfs_fail_prepare_write,		"prep-write")		\
-+	EM(netfs_fail_upload,			"upload")		\
- 	E_(netfs_fail_write,			"write")
+-#define netfs_folioq_traces					\
+-	EM(netfs_trace_folioq_alloc_buffer,	"alloc-buf")	\
+-	EM(netfs_trace_folioq_clear,		"clear")	\
+-	EM(netfs_trace_folioq_delete,		"delete")	\
+-	EM(netfs_trace_folioq_make_space,	"make-space")	\
+-	EM(netfs_trace_folioq_rollbuf_init,	"roll-init")	\
+-	E_(netfs_trace_folioq_read_progress,	"r-progress")
++#define netfs_bvecq_traces					\
++	EM(netfs_trace_bvecq_alloc_buffer,	"alloc-buf")	\
++	EM(netfs_trace_bvecq_clear,		"clear")	\
++	EM(netfs_trace_bvecq_delete,		"delete")	\
++	EM(netfs_trace_bvecq_make_space,	"make-space")	\
++	EM(netfs_trace_bvecq_rollbuf_init,	"roll-init")	\
++	E_(netfs_trace_bvecq_read_progress,	"r-progress")
  
- #define netfs_rreq_ref_traces					\
+ #ifndef __NETFS_DECLARE_TRACE_ENUMS_ONCE_ONLY
+ #define __NETFS_DECLARE_TRACE_ENUMS_ONCE_ONLY
+@@ -265,7 +267,7 @@ enum netfs_sreq_ref_trace { netfs_sreq_ref_traces } __mode(byte);
+ enum netfs_folio_trace { netfs_folio_traces } __mode(byte);
+ enum netfs_collect_contig_trace { netfs_collect_contig_traces } __mode(byte);
+ enum netfs_donate_trace { netfs_donate_traces } __mode(byte);
+-enum netfs_folioq_trace { netfs_folioq_traces } __mode(byte);
++enum netfs_bvecq_trace { netfs_bvecq_traces } __mode(byte);
+ 
+ #endif
+ 
+@@ -289,7 +291,7 @@ netfs_sreq_ref_traces;
+ netfs_folio_traces;
+ netfs_collect_contig_traces;
+ netfs_donate_traces;
+-netfs_folioq_traces;
++netfs_bvecq_traces;
+ 
+ /*
+  * Now redefine the EM() and E_() macros to map the enums to the strings that
+@@ -393,10 +395,10 @@ TRACE_EVENT(netfs_sreq,
+ 		    __entry->len	= sreq->len;
+ 		    __entry->transferred = sreq->transferred;
+ 		    __entry->start	= sreq->start;
+-		    __entry->slot	= sreq->io_iter.folioq_slot;
++		    __entry->slot	= sreq->dispatch_pos.slot;
+ 			   ),
+ 
+-	    TP_printk("R=%08x[%x] %s %s f=%03x s=%llx %zx/%zx s=%u e=%d",
++	    TP_printk("R=%08x[%x] %s %s f=%03x s=%llx %zx/%zx qs=%u e=%d",
+ 		      __entry->rreq, __entry->index,
+ 		      __print_symbolic(__entry->source, netfs_sreq_sources),
+ 		      __print_symbolic(__entry->what, netfs_sreq_traces),
+@@ -772,27 +774,25 @@ TRACE_EVENT(netfs_collect_stream,
+ 		      __entry->collected_to, __entry->issued_to)
+ 	    );
+ 
+-TRACE_EVENT(netfs_folioq,
+-	    TP_PROTO(const struct folio_queue *fq,
+-		     enum netfs_folioq_trace trace),
++TRACE_EVENT(netfs_bvecq,
++	    TP_PROTO(const struct bvecq *bq,
++		     enum netfs_bvecq_trace trace),
+ 
+-	    TP_ARGS(fq, trace),
++	    TP_ARGS(bq, trace),
+ 
+ 	    TP_STRUCT__entry(
+-		    __field(unsigned int,		rreq)
+ 		    __field(unsigned int,		id)
+-		    __field(enum netfs_folioq_trace,	trace)
++		    __field(enum netfs_bvecq_trace,	trace)
+ 			     ),
+ 
+ 	    TP_fast_assign(
+-		    __entry->rreq	= fq ? fq->rreq_id : 0;
+-		    __entry->id		= fq ? fq->debug_id : 0;
++		    __entry->id		= bq ? bq->priv : 0;
+ 		    __entry->trace	= trace;
+ 			   ),
+ 
+-	    TP_printk("R=%08x fq=%x %s",
+-		      __entry->rreq, __entry->id,
+-		      __print_symbolic(__entry->trace, netfs_folioq_traces))
++	    TP_printk("fq=%x %s",
++		      __entry->id,
++		      __print_symbolic(__entry->trace, netfs_bvecq_traces))
+ 	    );
+ 
+ TRACE_EVENT(netfs_bv_slot,
 
