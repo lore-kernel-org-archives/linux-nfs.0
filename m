@@ -1,141 +1,147 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from relay.yourmailgateway.de (relay.yourmailgateway.de [46.38.247.119])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 412FC352013
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Jul 2026 13:48:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B9D893382DE
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Jul 2026 14:33:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=46.38.247.119
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784728141; cv=none; b=NJ1J4qpAchtgpNfM4MZGlO5ZiH86Z2kuT9/4xRSUlJfm2ikLgx58M1+X84LzlpmTC6bmgQ/+QOCbd2vMe3PdB2pKr2KWrfXCzQ3OGTWKrlNJ6+I+Mw28OeAhLXNklsA3To8HY+2vAwOOsdlnTrAttIa+/3a9lOBseKHxIURK1xw=
+	t=1784730827; cv=none; b=mh7yRNUjv2npnKPLNa4CQsm8fPg/x6AUWu1OUDNKLDPEcd5RttvWKKWZo9yJTEv3kAvgTOySiyN3XTNIfwdNT5EFrb9WfMkenHzH9YDAHZpEgypF0gKyoNp2GO4Ys/pw6y7qKQPlQ59c0bv6SzviHqgPn+E9CZn0Zm3qq4cn9Sc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784728141; c=relaxed/simple;
-	bh=72aZ42nCrNBR8HBYkCKS3M0upwuiievg7V8XTKDpxKw=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=GTVOqrYCC7UKzffXRje1kb/AjPT6KiG1Gvo68e4Bpl0ksCmj50ATtVEQo2oRQ3BnbiLZLvC9K8du63SdQ0EDI8JAsYHNomkTdgoOsdmMu0jUw7ZTX4CE2dg5Y/bnqXR0aUkOQVVUshEbphoHi30NogXqvNlk7jjLLLJMrrbAmOc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=TkCDidmz; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1784730827; c=relaxed/simple;
+	bh=+kOX3Xtu9EsNtk03iP5mLB76zlKk/UYMSTKMwWMCV/U=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=S1M96JFMBxL/yYN5DeHtIfdOOEhcZZv474yRV83hI7ACI9tImk8gp+a7QDKU7gcjO4IzkISyNuElsI3oYhoCvkL6q2fcT2lnqXz2rkB6OIjujBK9OngulLkfNDioIal81wkIyVK2lYs5JhMeZiAXqdMeJpRqTiiPD6tP4yspXF4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=leemhuis.info; spf=pass smtp.mailfrom=leemhuis.info; dkim=pass (2048-bit key) header.d=leemhuis.info header.i=@leemhuis.info header.b=hj7Xq7rJ; arc=none smtp.client-ip=46.38.247.119
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=leemhuis.info
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=leemhuis.info
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="TkCDidmz"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A1F671F01558;
-	Wed, 22 Jul 2026 13:48:58 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1784728138;
-	bh=wjg2W6eO66GseJ/is+z4AClw1tXHM1Wd634LdHOzhlc=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=TkCDidmzTj8zYvYjfc32ytUuh7sbJOVcSd1t8hPZQumpOFdaTfqA13quIrvMQ+16c
-	 pIL0Yc+CbbsFwt6IJM0eKWJoINU3SToZFxxV8RFIhxVbSPogWuxswd8WdQleE2t4Hc
-	 yGv09wBig/TW+1hYc+1tcuEfi8MJZXDuLHSPQ5def1XGyXDj+vC1hVDK/4q9PcQ8rj
-	 Wk4rUFLMWY9UR9bBm4tIMblJIAe/LC3sWqtVpGImSWsDEO6HCkeGtBodnovmZy801K
-	 /LWA+1AUnawVaZyxGc/0CLQ1uRBAhkGGXJ1QWj26OkMTrq+0WMNdDLvkFabw2qNAMB
-	 ZuryqE4t7E7ag==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 9EF85F4007C;
-	Wed, 22 Jul 2026 09:48:57 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 22 Jul 2026 09:48:57 -0400
-X-ME-Sender: <xms:ScpgaqJY9zhJs9SXO6gH0hGognHXmU50XLgrZI5QBing0Tlj0zj2Kg>
-    <xme:Scpgas8c2YdGnyapWqnVHcSh4l9k9AJY8LN002hy6zaJRQyZkp-2mwfGbIPkHqKR4
-    Qh1BLKchuvAq2r_30-EoNs66oGkyf0BSYSO7-qVfKrsGEo176t0MoE>
-X-ME-Proxy-Cause: dmFkZTGC94Q8EPBhYiR7MMTYOusgRuT21HG/j/oSAnhV3QTHrC+wP+X4J00oDu3FoGe6ZU
-    KcFavrzTPJCrHY+1+VOrUaB/WiMMSPR6Yndq3T+UOIwjDAd6fLYUJQKJNAu6BJVX7BuhzR
-    VLCcg/i+20rxwlT7Q6EU/yyLm4hBZC7Nm90axeLcnLMG5FxL5OUdJo0rfoLPuY+q+cQ6gz
-    2NpXE9CvDO0H7iLtYYAE6TNz5aMAa5PeymlQmcdtsoAY97FBgOaMoJav6bZvJm3JoTicuK
-    hEwX3BIM/KGNlsUxpi2DZb1qZMN1Yylhus2ralHA4wXtjT2bzWX6xsI2ACV1l0EO35XIMG
-    bJO/Cg2Ewt95rWuLysyix0xX+Y/VxPGf4U1/beWiPkAahslC1ZcKyuC6/dz7y/bb1/NYFZ
-    xjgEzN2Pcf8WLYtC0EX9giE7BsZcvGk4iYSuQafmVN/rFIffnC5VFrNdvui3PQlG2wivuG
-    Qjew4LStntaiZmyIL7n9200tm3fAGY0UB8vD7BdAN029EsaFdLuDHCs+tjxenJOXY0d9T/
-    AeSSuIjahJEM8+r/0xfyxitPJGRGk0R3LGh8eXKI1/UJZUdlpBe0qQ4aErbV60Ws3sAtBi
-    pKxLtlJD1om+K5vyjDsIl4MoVGyl4+JnXbOmf15+X+8x/zKvmcCWYOdGC8HA
-X-ME-Proxy: <xmx:Scpgapar1D_HMDwTAGVNjhSRp0JuyJoOBQZL5uHr1HeiISRG-4Dn_g>
-    <xmx:Scpgag2Jn5OHjPRn2Mk7nkKXgH_IR2LDvTfZyY1MWFzFIuxaQ9HKkA>
-    <xmx:ScpgasoEEpdHuh0RK0bNZibTsJpl_9VDLSy_Kp1VkUC1Wun9VglaIg>
-    <xmx:ScpgavNs_ZDM3VyxIrUUXIZKfhCT37Nz0qPQ7yFb18w6pw5I33uX2g>
-    <xmx:Scpgalrucwn1eL9DSCEL7KIbQh1ufCBIZ_MBvECQXRxwEUHGJ9MK9Z84>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 7D944780070; Wed, 22 Jul 2026 09:48:57 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=leemhuis.info header.i=@leemhuis.info header.b="hj7Xq7rJ"
+Received: from mors-relay-8404.netcup.net (localhost [127.0.0.1])
+	by mors-relay-8404.netcup.net (Postfix) with ESMTPS id 4h4xZG5jnsz83yP;
+	Wed, 22 Jul 2026 16:33:26 +0200 (CEST)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=leemhuis.info;
+	s=key2; t=1784730806;
+	bh=+kOX3Xtu9EsNtk03iP5mLB76zlKk/UYMSTKMwWMCV/U=;
+	h=Date:Subject:To:Cc:References:From:In-Reply-To:From;
+	b=hj7Xq7rJWhsYgwx2JFIs40MJhSvuyoLDbO11l8eHOoSBmX9NJKf5+/eTHcKuSRCew
+	 Jf1KAvTEi2mcSsVi8gQjnXFsae1yDXmz+hpyzT8Hf/KLz3CVdt+JJUJwqPzEZE9nyR
+	 wD1eOH1pHuX8V7wFnB4IXQ2mKnqirTrcWX9prs536ZXkt3QXvC0phIaYBST4ief4bf
+	 uA2m+Idcba9UUodCOvvcjgvJ7PCbwXFNJbYN1REg4M7jtmV1r4zX/oB0BnO+iY/8Ci
+	 /bAiWyYMaI+SOBxf2ou4o7G0oyXtc0GKyyUkTNqYqe8wbaXZt/wZR0uS2qB8yX+nOE
+	 hhqdPjW2kVhPw==
+Received: from policy02-mors.netcup.net (unknown [46.38.225.35])
+	by mors-relay-8404.netcup.net (Postfix) with ESMTPS id 4h4xZG50Vxz4y8q;
+	Wed, 22 Jul 2026 16:33:26 +0200 (CEST)
+Received: from mxe9fb.netcup.net (unknown [10.243.12.53])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange ECDHE (P-256) server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by policy02-mors.netcup.net (Postfix) with ESMTPS id 4h4xZF4qRlz8svW;
+	Wed, 22 Jul 2026 16:33:25 +0200 (CEST)
+Received: from [IPV6:2a02:8108:8984:1d00:a0cf:1912:4be:477f] (unknown [IPv6:2a02:8108:8984:1d00:a0cf:1912:4be:477f])
+	by mxe9fb.netcup.net (Postfix) with ESMTPSA id 120275FA12;
+	Wed, 22 Jul 2026 16:33:25 +0200 (CEST)
+Authentication-Results: mxe9fb;
+        spf=pass (sender IP is 2a02:8108:8984:1d00:a0cf:1912:4be:477f) smtp.mailfrom=regressions@leemhuis.info smtp.helo=[IPV6:2a02:8108:8984:1d00:a0cf:1912:4be:477f]
+Received-SPF: pass (mxe9fb: connection is authenticated)
+Message-ID: <27667adc-3dab-424d-9e6f-52c91c47a51d@leemhuis.info>
+Date: Wed, 22 Jul 2026 16:33:24 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: A6eHHh02FZ7o
-Date: Wed, 22 Jul 2026 09:48:36 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Thorsten Leemhuis" <regressions@leemhuis.info>,
- "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, "Wolfgang Walter" <linux@stwm.de>,
- "Linux kernel regressions list" <regressions@lists.linux.dev>
-Message-Id: <255376e5-9fba-4da1-ae0b-2b116ebf6fcb@app.fastmail.com>
-In-Reply-To: <0a0a98af-2004-4926-a7d8-1a0acb78df5a@leemhuis.info>
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v4 1/9] NFSD: Prevent lock owner use-after-free during
+ client teardown
+To: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>,
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, Wolfgang Walter <linux@stwm.de>,
+ Linux kernel regressions list <regressions@lists.linux.dev>
 References: <20260709-cel-v4-0-1d519d9be0cb@kernel.org>
  <20260709-cel-v4-1-1d519d9be0cb@kernel.org>
  <0a0a98af-2004-4926-a7d8-1a0acb78df5a@leemhuis.info>
-Subject: Re: [PATCH v4 1/9] NFSD: Prevent lock owner use-after-free during client
- teardown
-Content-Type: text/plain
+ <255376e5-9fba-4da1-ae0b-2b116ebf6fcb@app.fastmail.com>
+From: Thorsten Leemhuis <regressions@leemhuis.info>
+Content-Language: de-DE, en-US
+In-Reply-To: <255376e5-9fba-4da1-ae0b-2b116ebf6fcb@app.fastmail.com>
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
+X-PPP-Message-ID: <178473080540.2236016.9044575877088627403@mxe9fb.netcup.net>
+X-NC-CID: NqT06h1UC4FBekCImEexrNokib539fM27ka7bgLMLlBCP/+JWJs=
 
-
-On Wed, Jul 22, 2026, at 6:24 AM, Thorsten Leemhuis wrote:
-> On 7/9/26 19:40, Chuck Lever wrote:
->> __destroy_client() releases a client's open owners, but a lock owner
->> whose only reference is a blocked lock (nbl) stays on
->> cl_ownerstr_hashtbl.  client_has_state() does not count a bare owner,
->> so DESTROY_CLIENTID can reach __destroy_client() with such owners
->> present.
+On 7/22/26 15:48, Chuck Lever wrote:
+> On Wed, Jul 22, 2026, at 6:24 AM, Thorsten Leemhuis wrote:
+>> On 7/9/26 19:40, Chuck Lever wrote:
+>>> __destroy_client() releases a client's open owners, but a lock owner
+>>> whose only reference is a blocked lock (nbl) stays on
+>>> cl_ownerstr_hashtbl.  client_has_state() does not count a bare owner,
+>>> so DESTROY_CLIENTID can reach __destroy_client() with such owners
+>>> present.
+>>>
+>>> [...]
+>>>
+>>> Reported-by: Wolfgang Walter <linux@stwm.de>
+>>> Closes: https://lore.kernel.org/linux-nfs/6eccafaaaa60651ef091257c3439c46b@stwm.de/
+>>> Fixes: 68ef3bc31664 ("nfsd: remove blocked locks on client teardown")
 >>
->> [...]
+>> What's the plan to merge this change? From the outside it looks like a
+>> fix for a user reported regression from this merge window, as Wolfgang
+>> afaics blamed commit 516403d4d85607 ("Revert "NFSD: Defer sub-object
+>> cleanup in export put callbacks""), which also made it to various stable
+>> trees.
 >>
->> Reported-by: Wolfgang Walter <linux@stwm.de>
->> Closes: https://lore.kernel.org/linux-nfs/6eccafaaaa60651ef091257c3439c46b@stwm.de/
->> Fixes: 68ef3bc31664 ("nfsd: remove blocked locks on client teardown")
->
-> What's the plan to merge this change? From the outside it looks like a
-> fix for a user reported regression from this merge window, as Wolfgang
-> afaics blamed commit 516403d4d85607 ("Revert "NFSD: Defer sub-object
-> cleanup in export put callbacks""), which also made it to various stable
-> trees.
->
-> So shouldn't this change ideally be on it's way to Linus by now? Ideally
-> with a stable tag to ensure quick backporting? Or is it not a good idea
-> to have this in without the follow-up patches from this series?
->
-> Or did I get something totally wrong (which is easily possible from my
-> external point)?
+>> So shouldn't this change ideally be on it's way to Linus by now? Ideally
+>> with a stable tag to ensure quick backporting? Or is it not a good idea
+>> to have this in without the follow-up patches from this series?
+>>
+>> Or did I get something totally wrong (which is easily possible from my
+>> external point)?
+> 
+> Thorsten, thanks for your attention to this issue.
 
-Thorsten, thanks for your attention to this issue.
+Thank you for the answer!
+> Here is the plan of record:
+> 
+> This commit is currently in nfsd-testing:
+> 
+> https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git/commit/?h=nfsd-testing&id=3055ac7c996369876342aa22a33bcc68cd4abca1
 
-Here is the plan of record:
+Ahh, I see, the change gained a stable tag somewhere along the way, great!
 
-This commit is currently in nfsd-testing:
+> It will matriculate to nfsd-next in a week or so and then be
+> sent to Linus in the initial nfsd-7.3 pull request.
 
-https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git/commit/?h=nfsd-testing&id=3055ac7c996369876342aa22a33bcc68cd4abca1
+Hmmm. Just reread your reply to Wolfgang's report where you explain
+things in more detail:
+https://lore.kernel.org/stable/20260703160306.1651327-1-cel@kernel.org/
 
-It will matriculate to nfsd-next in a week or so and then be
-sent to Linus in the initial nfsd-7.3 pull request.
+I now understand this better and it still feels to me like a situation
+where Linus would want the fix to be included in mainline quickly[1] --
+among others to not have another release with the bug[2] and because
+it's something a user reported[3]. Yes, the root of the problem might be
+in an older commit the Fixes: tag quoted above refers to -- but
+apparently something (maybe the change Wolfgang and you suspected) seems
+to have exposed the problem or made it happen more often at least in
+6.18.y.
 
-A stable tag is on this commit, so it will get picked up by
-stable automation as soon as Linus merges it. That will
-include 7.2.y, which will still be open at that point.
+Anyway, if Wolfgang is the only one that seems to hit this and is happy
+with the state of things I guess it's not worth arguing further about.
 
-Notes:
+Thanks again for taking the time to answer my mail!
 
-The Fixes tag refers to a commit in v4.16. That makes it
-technically a fix for a bug that was introduced not in the
-most recent merge window.
+Ciao, Thorsten
 
-My general policy is to subject fixes to the same review
-and CI that is mandated for any other change regardless
-of urgency, since historically getting such fixes in
-quickly has been the source of defects in released
-kernels.
+[1] and Greg likely as well, as situations like that are the reason why
+stable kernels released during or shortly after the merge window have
+many hundreds of changes that have seen little testing (and we are
+currently at the point where it could get some testing before hitting a
+new release)
 
-Both CI and review latency are subject to forces outside
-of my control so I leave a lengthy window for both.
+[2]
+https://lore.kernel.org/all/CAHk-=wis_qQy4oDNynNKi5b7Qhosmxtoj1jxo5wmB6SRUwQUBQ@mail.gmail.com/
 
-
--- 
-Chuck Lever
+[3]
+https://www.kernel.org/doc/html/latest/process/handling-regressions.html#on-how-quickly-regressions-should-be-fixed
