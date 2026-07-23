@@ -1,163 +1,155 @@
-Received: from email.studentenwerk.mhn.de (email.studentenwerk.mhn.de [141.84.225.229])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 30B264399FF
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Jul 2026 09:56:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=141.84.225.229
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 39C184963A4
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Jul 2026 12:26:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784800611; cv=none; b=u7AmY+qPSeExrRqB/6TGJBOneKuFZrIGQ/x/vZ715FhAOdQaZwBARDqgmiT7kPdXSDqIem9a7PSuZS+f8ZXYQlVPRbDzSz5sLi5YgIEtlqzB1ev/JziOIRF1AqGnfXNIMQ72CLwQ0hvLI2Iynk9xIXEvezogsZo5DAirHHADGko=
+	t=1784809601; cv=none; b=Q2tMCkVE/d4DlmU6GWwUBuGGIFmLz3ncoTj76B2SNxcRH/Rq70xeeeXgJkhBiZp0ZxNnl9T4p66HUs7I4D8FqToa0zCL6cLp1A57RiNa3husKPqLKsbEbEh0b2jnlnXiIttR04Ou7bqe2xAnzeJMkGfjEs2QPAawYhrnZbUP20Y=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784800611; c=relaxed/simple;
-	bh=jhXZHrdVem/tdTftT1WzCi+U+6BNfJpt8ZY9pIQnduI=;
-	h=MIME-Version:Date:From:To:Cc:Subject:In-Reply-To:References:
-	 Message-ID:Content-Type; b=KZ9s3jSLz0SVeKcx4I1A6Try+2x31fWJWbhJ0FGFuKcij5PRaKftyhm5spcDkQOdIRiu/8iT2hkRZbfgRHkc+mJvzJUuygT+rW4gvNjepSQQzd2mbW+vZIt1sWDoXipN/TYqsABYdWA7bDkmPzBL2oXE0GbAQ0KhYsKVIuftv1k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=stwm.de; spf=pass smtp.mailfrom=stwm.de; dkim=pass (2048-bit key) header.d=stwm.de header.i=@stwm.de header.b=bOwnlwlf; arc=none smtp.client-ip=141.84.225.229
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=stwm.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=stwm.de
+	s=arc-20240116; t=1784809601; c=relaxed/simple;
+	bh=Gl0Taoyb5uCt46ZR7B1CDIQeufnG8D3rH+PJXOKA+7w=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=b3dWssPCw7PnW1Y1qy2Vm6UN3cnLPAVj/XkTkUAUZ3h+GvX6Vtpk0eCGVpmcsdqhqUV2+EHClaoJuoVlaA0tAeuJtajSAh31jZGX2/bMtjheuchDWtq3tmPX05bbltCwaK4t/ts75Q0FU+aUSz/xRyeZXzHuEdzilaXWRQxDUk4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=bT4zPsNE; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=JD+6763a; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=stwm.de header.i=@stwm.de header.b="bOwnlwlf"
-Received: from mailhub.studentenwerk.mhn.de (mailhub.studentenwerk.mhn.de [127.0.0.1])
-	by email.studentenwerk.mhn.de (Postfix) with ESMTPS id 4h5RC16Zn2zRhRh;
-	Thu, 23 Jul 2026 11:48:29 +0200 (CEST)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=stwm.de; s=stwm-20170627;
-	t=1784800109;
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="bT4zPsNE";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="JD+6763a"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1784809599;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=zNqfVl9aqOBcvUizsHiYDMuyMpSMH55YUWJhOb5PVlY=;
-	b=bOwnlwlfnGfX9eqpQNcwkZBz1xMVGZ0WBsx1meqLOKIfj1CEsjFzGc/O4byVsKqqxCv79i
-	Qv91nJneGLjiLi+oC6zRZfWtIyGPc8FbRvcipALSZUHW7ep05ThGGleGBJgl60utXmyzxk
-	gKG/ve9EMcP2xQkUiDwv9ULOlwjROcXEou1hqDNsXJCYi4M00LezcH6MRRz8kPM6VmtxYB
-	M04AbBzem/MHngX5im2od65awg3gOElHSueNzmY8zewm3Mt3QOLAWflYRiGHTwv7GponV3
-	oNi8I8zZ3yoqQdDILFzfHkklSrAnXzHlxzlwFsoGHqc4wEvBSyiCJqjVBe5/FQ==
+	bh=n2KAkhNZSxf8FD+Ug85QW3Jz29t4fKh/YWHQoMZuTLQ=;
+	b=bT4zPsNEcdgZLB1pjNavu7qovIzHoaYEYIgGSIGiOy65KMU3XN+F4mj/TZzwWeSEpmeH71
+	zngeZqpzZR6IBdXAKIAqJc66HO//lfxJohHFyYsA7E54TaJxCV+Gtusg2ZfG4fNkCISL+w
+	oO1MNnbXt+Plz2arsiINcJ+OjywrZCM=
+Received: from mail-qt1-f198.google.com (mail-qt1-f198.google.com
+ [209.85.160.198]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-344-SAdPdUezPGGb5Qj-im7Apw-1; Thu, 23 Jul 2026 08:26:38 -0400
+X-MC-Unique: SAdPdUezPGGb5Qj-im7Apw-1
+X-Mimecast-MFC-AGG-ID: SAdPdUezPGGb5Qj-im7Apw_1784809597
+Received: by mail-qt1-f198.google.com with SMTP id d75a77b69052e-522de3c645dso16673901cf.3
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Jul 2026 05:26:37 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1784809597; x=1785414397; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=n2KAkhNZSxf8FD+Ug85QW3Jz29t4fKh/YWHQoMZuTLQ=;
+        b=JD+6763aZRq7V08qsX0OQmkLHE9i4UFJ51iHXU/huxO5JYmLuaSJa7oGuUFkcEuU85
+         YFj/ZZOFN/MnaZgKEMFBYSjbeSkSzV3dxlV11fd+cuJjzXN+etK35/z/88a2XEtyeBzj
+         +t4xtzLbGYIQS1b/vDuWre1rBPnWQmtPOp+xujmcig9nf46Sidhh7eFUZ3lzrytpnYxc
+         iTCy5FBd0bkEHhWPWsZRj8Ii97IKUmeRVx3DwJeGvwHE9KROKC7Ro4ndgdiwQyv18usE
+         WvQRGNYwD6DNdmGTUldtHZ9gSc3dcKtey8OcXpyzi2zcN6c3KfQc6qAQFIfnhZ5Qksrg
+         Tjag==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1784809597; x=1785414397;
+        h=content-transfer-encoding:content-type:in-reply-to:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=n2KAkhNZSxf8FD+Ug85QW3Jz29t4fKh/YWHQoMZuTLQ=;
+        b=i19ukiGAaW/M9wH/dZDnBmi5YJDwhUFuOjMx5ZznKoZHnFFKlQk4kCGBAYriV0LQNA
+         xNsEu4GKzOab4VgYmJv/IUv3chX5bsr0/Kh7+03ZyWnNQ5H4Y0PJtaMhQvdBnHxXJ2Ll
+         XD98lwpXf7aZN62IUrm3/YCLU2cn9LbwLQdQT90F2U8/gZo9YqUSdeSMNR+ifcu4+HFx
+         oPwFniMNT0fFGEYfX4NPOzA8K/TDlDkDfWwUenvcIBRlM6+FCIgqIHQBj1Fk/uqIyK6Y
+         Xy6fs8TT1COGBZmwEZ/UMQJRm8z4JAQck4QjtNvT+xoCSEUyou8HxH+yTWwTn68RXZgC
+         0jNQ==
+X-Gm-Message-State: AOJu0YxNiA/7OvoSG0SF9o16NAMoROgTPSC2Fa8w49gW/z+FKm3vED20
+	juT6VKMFYCTiUnrAz6bWJYkqWU+XSPh1jwox5A0rOyXyU5MWyu61MMI8ds3VYo+Ak0dKfMIHYoF
+	v4ZDYPIyQVq/DZcd9O6pp9N3kgSrEmtVIohVCCviDc+N+cZClB93c0fyfs+kfjA==
+X-Gm-Gg: AR+sD135FoOUckYa7Udwjoq7vB60hJhVk3YDBkU9fQeUdz+UompP6zPudgAVZ23S+Pe
+	uNlZ0D6t0W2SRV+p21pVoGLEXGomBE8zOOxt/yNDDqKXsP12sZS4uqi3JYDxJzmeSiKpZ/OL4RF
+	hkTEh/Sv2/DDOmbp9rVrF3yeGzt31wfneU3iv/K29FAtMaHEPz990fT+qoLtEzi7arW4/X6kh6X
+	ED/3QMwBmx7Vk3iSJQEcazLaUkXDqta6ylE7soItdE/Nb+yQM++U0LnAj506hDUW2BrxYMHN+dI
+	ysp2Q1NY/9EknvTMIw5t/u57qJu+sw/+dM/4SN5EE0HqsnxpVXrtSzz0+DT4BV2UmXvm5IjDBC7
+	f
+X-Received: by 2002:a05:622a:400f:b0:51a:8dc5:bf89 with SMTP id d75a77b69052e-5283ddd1617mr27088871cf.5.1784809597360;
+        Thu, 23 Jul 2026 05:26:37 -0700 (PDT)
+X-Received: by 2002:a05:622a:400f:b0:51a:8dc5:bf89 with SMTP id d75a77b69052e-5283ddd1617mr27088551cf.5.1784809596948;
+        Thu, 23 Jul 2026 05:26:36 -0700 (PDT)
+Received: from [172.31.1.12] ([70.105.243.135])
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-907ba8b31dcsm43697476d6.3.2026.07.23.05.26.35
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Thu, 23 Jul 2026 05:26:36 -0700 (PDT)
+Message-ID: <edef7e36-215c-4d04-b35e-acd090e9bd56@redhat.com>
+Date: Thu, 23 Jul 2026 08:26:34 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Date: Thu, 23 Jul 2026 11:48:29 +0200
-From: Wolfgang Walter <linux@stwm.de>
-To: Thorsten Leemhuis <regressions@leemhuis.info>
-Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai
- Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
- linux-nfs@vger.kernel.org, Linux kernel regressions list
- <regressions@lists.linux.dev>
-Subject: Re: [PATCH v4 1/9] NFSD: Prevent lock owner use-after-free during
- client teardown
-In-Reply-To: <27667adc-3dab-424d-9e6f-52c91c47a51d@leemhuis.info>
-References: <20260709-cel-v4-0-1d519d9be0cb@kernel.org>
- <20260709-cel-v4-1-1d519d9be0cb@kernel.org>
- <0a0a98af-2004-4926-a7d8-1a0acb78df5a@leemhuis.info>
- <255376e5-9fba-4da1-ae0b-2b116ebf6fcb@app.fastmail.com>
- <27667adc-3dab-424d-9e6f-52c91c47a51d@leemhuis.info>
-Message-ID: <eb5d774709b3cbb01f5ed081a587305c@stwm.de>
-X-Sender: linux@stwm.de
-Organization: =?UTF-8?Q?Studierendenwerk_M=C3=BCnchen_Oberbayern?=
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Content-Transfer-Encoding: 8bit
+User-Agent: Mozilla Thunderbird
+Subject: Re: gssd: fix memory leak in gssd_free_client
+To: "zhangjian (CG)" <zhangjian496@huawei.com>, chuck.lever@oracle.com
+Cc: linux-nfs@vger.kernel.org
+References: <a0df2e1c-27fe-44cd-9a97-f04134f029f5@huawei.com>
+Content-Language: en-US
+From: Steve Dickson <steved@redhat.com>
+In-Reply-To: <a0df2e1c-27fe-44cd-9a97-f04134f029f5@huawei.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Hello Thorsten!
 
-Am 2026-07-22 16:33, schrieb Thorsten Leemhuis:
-> On 7/22/26 15:48, Chuck Lever wrote:
->> On Wed, Jul 22, 2026, at 6:24 AM, Thorsten Leemhuis wrote:
->>> On 7/9/26 19:40, Chuck Lever wrote:
->>>> __destroy_client() releases a client's open owners, but a lock owner
->>>> whose only reference is a blocked lock (nbl) stays on
->>>> cl_ownerstr_hashtbl.  client_has_state() does not count a bare 
->>>> owner,
->>>> so DESTROY_CLIENTID can reach __destroy_client() with such owners
->>>> present.
->>>> 
->>>> [...]
->>>> 
->>>> Reported-by: Wolfgang Walter <linux@stwm.de>
->>>> Closes: 
->>>> https://lore.kernel.org/linux-nfs/6eccafaaaa60651ef091257c3439c46b@stwm.de/
->>>> Fixes: 68ef3bc31664 ("nfsd: remove blocked locks on client 
->>>> teardown")
->>> 
->>> What's the plan to merge this change? From the outside it looks like 
->>> a
->>> fix for a user reported regression from this merge window, as 
->>> Wolfgang
->>> afaics blamed commit 516403d4d85607 ("Revert "NFSD: Defer sub-object
->>> cleanup in export put callbacks""), which also made it to various 
->>> stable
->>> trees.
->>> 
->>> So shouldn't this change ideally be on it's way to Linus by now? 
->>> Ideally
->>> with a stable tag to ensure quick backporting? Or is it not a good 
->>> idea
->>> to have this in without the follow-up patches from this series?
->>> 
->>> Or did I get something totally wrong (which is easily possible from 
->>> my
->>> external point)?
->> 
->> Thorsten, thanks for your attention to this issue.
-> 
-> Thank you for the answer!
->> Here is the plan of record:
->> 
->> This commit is currently in nfsd-testing:
->> 
->> https://git.kernel.org/pub/scm/linux/kernel/git/cel/linux.git/commit/?h=nfsd-testing&id=3055ac7c996369876342aa22a33bcc68cd4abca1
-> 
-> Ahh, I see, the change gained a stable tag somewhere along the way, 
-> great!
-> 
->> It will matriculate to nfsd-next in a week or so and then be
->> sent to Linus in the initial nfsd-7.3 pull request.
-> 
-> Hmmm. Just reread your reply to Wolfgang's report where you explain
-> things in more detail:
-> https://lore.kernel.org/stable/20260703160306.1651327-1-cel@kernel.org/
-> 
-> I now understand this better and it still feels to me like a situation
-> where Linus would want the fix to be included in mainline quickly[1] --
-> among others to not have another release with the bug[2] and because
-> it's something a user reported[3]. Yes, the root of the problem might 
-> be
-> in an older commit the Fixes: tag quoted above refers to -- but
-> apparently something (maybe the change Wolfgang and you suspected) 
-> seems
-> to have exposed the problem or made it happen more often at least in
-> 6.18.y.
-> 
-> Anyway, if Wolfgang is the only one that seems to hit this and is happy
-> with the state of things I guess it's not worth arguing further about.
-> 
 
-I'm very happy having this patch and especially that I got it so fast. 
-If I build a new version of a stable kernel I just rebase this patch on 
-top of it. Git makes carrying such patches very easy.
+On 7/14/26 4:42 AM, zhangjian (CG) wrote:
+> clp->servername is always not null, so upcall_* is never free.
+> 
+> Signed-off-by: zhangjian <zhangjian496@huawei.com>
+Committed... (tag: nfs-utils-2-9-2-rc6)
 
-So I'm pefectly fine if this goes into stable/lts a bit later.
+steved.
+> ---
+>   utils/gssd/gssd.c | 24 ++++++++++++++----------
+>   1 file changed, 14 insertions(+), 10 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 1c901991..bad92321 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -360,6 +360,10 @@ gssd_read_service_info(int dirfd, struct clnt_info *clp)
+>   	clp->prog = program;
+>   	clp->vers = version;
+>   	clp->protocol = protoname;
+> +	clp->upcall_address = NULL;
+> +	clp->upcall_port = NULL;
+> +	clp->upcall_protoname = NULL;
+> +	clp->upcall_service = NULL;
+>   
+>   	goto out;
+>   
+> @@ -414,16 +418,16 @@ gssd_free_client(struct clnt_info *clp)
+>   	free(clp->servicename);
+>   	free(clp->servername);
+>   	free(clp->protocol);
+> -	if (!clp->servername) {
+> -		if (clp->upcall_address)
+> -			free(clp->upcall_address);
+> -		if (clp->upcall_port)
+> -			free(clp->upcall_port);
+> -		if (clp->upcall_protoname)
+> -			free(clp->upcall_protoname);
+> -		if (clp->upcall_service)
+> -			free(clp->upcall_service);
+> -	}
+> +
+> +	if (clp->upcall_address)
+> +		free(clp->upcall_address);
+> +	if (clp->upcall_port)
+> +		free(clp->upcall_port);
+> +	if (clp->upcall_protoname)
+> +		free(clp->upcall_protoname);
+> +	if (clp->upcall_service)
+> +		free(clp->upcall_service);
+> +
+>   	free(clp);
+>   }
+>   
 
-> Thanks again for taking the time to answer my mail!
-> 
-> Ciao, Thorsten
-> 
-> [1] and Greg likely as well, as situations like that are the reason why
-> stable kernels released during or shortly after the merge window have
-> many hundreds of changes that have seen little testing (and we are
-> currently at the point where it could get some testing before hitting a
-> new release)
-> 
-> [2]
-> https://lore.kernel.org/all/CAHk-=wis_qQy4oDNynNKi5b7Qhosmxtoj1jxo5wmB6SRUwQUBQ@mail.gmail.com/
-> 
-> [3]
-> https://www.kernel.org/doc/html/latest/process/handling-regressions.html#on-how-quickly-regressions-should-be-fixed
-
-Ciao,
--- 
-Wolfgang Walter
-Studierendenwerk München Oberbayern
-Anstalt des öffentlichen Rechts
