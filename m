@@ -1,508 +1,184 @@
-Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 162833B42F5;
-	Thu, 23 Jul 2026 05:48:16 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8CF883E0749
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Jul 2026 07:11:07 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1784785702; cv=none; b=UgyzmbEbzsxL8olQ1m9evFo7+XnN4LegXxVCkO2LEKTKAyAi97X3FMsxkoL5XVFqwjy5VtSt+DpOrsuCmNmL6xI2O4uC/J7GrqY93id1w4TE+b1eFws6nlAGiGCBANzK6o6iKLGJ5s1nd06tPfle23hlL8QhyuDYFtgx7A0ZoG0=
+	t=1784790671; cv=none; b=b1w0+fWr2Gw0LHyVraaUHphgI+x1jffN0bn0AVrJTMUvrpK++t/zVwYX6nDn2Hn23CIijyLGW/1fRWNJ10h+tWogGliYm6ScVUH3IlXuIOMRVBfbN/jLnQVx0I4ZqjjpBghQr7ILkkJpEYr0hFRFIUvJKax0g1SOwPXKS56F/A0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1784785702; c=relaxed/simple;
-	bh=8LGskH6ysanbCElO+vpg1wazAKk0JQ38yaHZ0xX65II=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=uxmPJ7xmiuMmw0efAz+PVOllqvHNm0dI4J9KnlYZfRl5g0pFzvU7Vo0RHz9+/YHmjoik20BG7os0oQDcGs3ancRKPR7fpYjNAl8O0tLTjvBLS6/bCC2CjFSrkXIS8KYGeeG0Rb9jeL3M0UfgGdo240nxGnYi0OndStI1I88Xmlg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=lst.de; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=ZBcT8OlQ; arc=none smtp.client-ip=198.137.202.133
-Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=lst.de
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
+	s=arc-20240116; t=1784790671; c=relaxed/simple;
+	bh=f5E+dOCwOx0RiauSvRPBcwecN0mdygZg/0b/OtDAPbA=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=r+uPnROj53goj0Zt72osMk6G+vbDmjbKV8nhfXM3pxpiaU5+C4Ofg/HV/Nrofcv1+6XrlcnDbOMu20cC9MNnawMJ8OlhiP8MPRCe+y/bQa6TIuKLKESLxSdFilelGeKksW12yVxWP59ZRn8NdEN9sqSmHMfTTZqZ7gVl262aueg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de; spf=pass smtp.mailfrom=suse.de; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=sCokvfMl; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=7SOGszTb; dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b=o8Xx31TZ; dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b=5gaaDsS0; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=suse.de
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="ZBcT8OlQ"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=bombadil.20210309; h=Content-Transfer-Encoding:
-	MIME-Version:References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender
-	:Reply-To:Content-Type:Content-ID:Content-Description;
-	bh=RIH8UNfTlllm2HFjT/WCwKV/Qb+WxpoviCcAFoDcajA=; b=ZBcT8OlQ+YiO713utXVhpsQrnN
-	v8dhquSlXqUX+ZJLW+f76uHx4YeKieC9NRb44/O4N2MDqG2BiIpx6jewvTE9Ti1Bh8X3nwzSO2gqn
-	ar5Hx8I4hCr+kuZcboQs1Izvgh+wtdX4uVLKyzpfYOp95bOOP3Iu7JIyq3H4sRSp6yjiHK0uzfQXh
-	Q8vcFrHMpGjU11A8OwO0ugwYkFF6mwwlbIgWZbGyIGBx/TfVU5XVtlrWtA04q48gwV9oZG6yCVKpq
-	PRXOPEUODY80+puclaWSkFkZya/tDxQ/ba5WPH8cxOIYkFNvc7VPoiVMtdonJocQ+zlwGoA4ANs8R
-	nspk7WtQ==;
-Received: from 217-76-162-32.static.highway.a1.net ([217.76.162.32] helo=localhost)
-	by bombadil.infradead.org with esmtpsa (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wmmHW-0000000DV5R-20kD;
-	Thu, 23 Jul 2026 05:48:05 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: 
-Cc: baoquan.he@linux.dev,
-	akpm@linux-foundation.org,
-	chrisl@kernel.org,
-	usama.arif@linux.dev,
-	kasong@tencent.com,
-	nphamcs@gmail.com,
-	shikemeng@huaweicloud.com,
-	youngjun.park@lge.com,
-	ryncsn@gmail.com,
-	trondmy@kernel.org,
-	anna@kernel.org,
-	sfrench@samba.org,
-	linux-mm@kvack.org,
-	linux-cifs@vger.kernel.org,
-	linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] mm/swap: move swap_ops into file systems for file system-based swap
-Date: Thu, 23 Jul 2026 07:46:06 +0200
-Message-ID: <20260723054622.3460249-4-hch@lst.de>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260723054622.3460249-1-hch@lst.de>
-References: <20260723054622.3460249-1-hch@lst.de>
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="sCokvfMl";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="7SOGszTb";
+	dkim=pass (1024-bit key) header.d=suse.de header.i=@suse.de header.b="o8Xx31TZ";
+	dkim=permerror (0-bit key) header.d=suse.de header.i=@suse.de header.b="5gaaDsS0"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id ED5A27AF3C;
+	Thu, 23 Jul 2026 07:11:03 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1784790664; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1vBic9fzEbY2RTI7IGcScLgVaEbp4PemRL1Z+QTakxg=;
+	b=sCokvfMlX+WQJ6keLjyUIfMCNrjfPbMG7rTgGqI/ELcFfJYHObSIFuzAj7nXjI2gJqOuFx
+	Wa5BSpXM4+mZcP/ovoHiKpa3uGLzbSq7eXJZvXLzDBWYNe3qUAG3JgWMdu6br0BZs4GefF
+	ajLmEi4jYLOuEgH4sxsj9bm2END+FQ4=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1784790664;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1vBic9fzEbY2RTI7IGcScLgVaEbp4PemRL1Z+QTakxg=;
+	b=7SOGszTbEYgUFQsGbNcRqjicPaQiWqUSvbDR9eMo56ff9Tjjt5/ywRKWdQVHpcAS504knP
+	cMEFsBSSIoDz9WBw==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.de header.s=susede2_rsa header.b=o8Xx31TZ;
+	dkim=pass header.d=suse.de header.s=susede2_ed25519 header.b=5gaaDsS0
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.de; s=susede2_rsa;
+	t=1784790663; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1vBic9fzEbY2RTI7IGcScLgVaEbp4PemRL1Z+QTakxg=;
+	b=o8Xx31TZpG8BN1ny4W81YiZ/Np0P4oe/1uUH+Qb+1hiGS9FWctH/xJXB9wfkWMhzlIhipU
+	xO3sQanvpCwEMELZtOax2KtQIBfGPGt/0e4aXq7AWSRnf7oGVsbnWPSbVvJUBBVs9D1ULW
+	s5siCmsKxlqzSEg/7pOMxMjPqefVN54=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.de;
+	s=susede2_ed25519; t=1784790663;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 content-transfer-encoding:content-transfer-encoding:
+	 in-reply-to:in-reply-to:references:references;
+	bh=1vBic9fzEbY2RTI7IGcScLgVaEbp4PemRL1Z+QTakxg=;
+	b=5gaaDsS027UoxFokIWZ1OXzL1HnvsifktYUFOoYXX2w6QrivZ/Q8128qXtIJXvhyB5rNl1
+	1f1eU2aIu/O0NoAA==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 8B3CA779B5;
+	Thu, 23 Jul 2026 07:11:03 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id tREJIIe+YWpiNQAAD6G6ig
+	(envelope-from <hare@suse.de>); Thu, 23 Jul 2026 07:11:03 +0000
+Message-ID: <b9d60674-1ba7-4f23-beee-4ddfffd4dda9@suse.de>
+Date: Thu, 23 Jul 2026 09:11:03 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH net-next v2 1/6] net/tls: Bound consecutive no-data
+ records in tls_sw_read_sock()
+To: Chuck Lever <cel@kernel.org>, Jakub Kicinski <kuba@kernel.org>,
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>,
+ John Fastabend <john.fastabend@gmail.com>,
+ Sabrina Dubroca <sd@queasysnail.net>, Shuah Khan <shuah@kernel.org>,
+ Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>,
+ Tom Talpey <tom@talpey.com>
+Cc: netdev@vger.kernel.org, kernel-tls-handshake@lists.linux.dev,
+ linux-kselftest@vger.kernel.org, linux-nfs@vger.kernel.org
+References: <20260720-tcp-read-sock-v2-0-29545d034f3c@kernel.org>
+ <20260720-tcp-read-sock-v2-1-29545d034f3c@kernel.org>
+Content-Language: en-US
+From: Hannes Reinecke <hare@suse.de>
+In-Reply-To: <20260720-tcp-read-sock-v2-1-29545d034f3c@kernel.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
-X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
+X-Spamd-Result: default: False [-3.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	SUSPICIOUS_RECIPS(1.50)[];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	R_DKIM_ALLOW(-0.20)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.de:s=susede2_rsa,suse.de:s=susede2_ed25519];
+	FREEMAIL_TO(0.00)[kernel.org,redhat.com,gmail.com,queasysnail.net,brown.name,oracle.com,talpey.com];
+	ARC_NA(0.00)[];
+	FUZZY_RATELIMITED(0.00)[rspamd.com];
+	RCPT_COUNT_TWELVE(0.00)[16];
+	MIME_TRACE(0.00)[0:+];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	RCVD_TLS_ALL(0.00)[];
+	DKIM_TRACE(0.00)[suse.de:+];
+	RCVD_COUNT_TWO(0.00)[2];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	TO_DN_SOME(0.00)[];
+	DNSWL_BLOCKED(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	TAGGED_RCPT(0.00)[];
+	MID_RHS_MATCH_FROM(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[imap1.dmz-prg2.suse.org:rdns,imap1.dmz-prg2.suse.org:helo,suse.de:email,suse.de:mid,suse.de:dkim]
+X-Spam-Flag: NO
+X-Spam-Score: -3.01
+X-Spam-Level: 
+X-Rspamd-Queue-Id: ED5A27AF3C
+X-Rspamd-Server: rspamd2.dmz-prg2.suse.org
+X-Rspamd-Action: no action
 
-Currently swap to and from file systems goes through two indirect calls
-between the swap ops and the swap_rw method.  Reduce this by directly
-providing the swap_ops from the file system.
+On 7/20/26 4:27 PM, Chuck Lever wrote:
+> A record that delivers no payload -- an empty TLS 1.3 data record
+> today, a control record once read_sock_rectype() lands -- leaves
+> tls_sw_read_sock() in its loop without advancing the caller's read
+> descriptor. A peer that streams such records keeps the receive loop
+> running, and the socket lock held, for as long as the records
+> arrive.
+> 
+> Cap the number of consecutive no-data records consumed per call. The
+> count resets on any record that delivers bytes, so a normal stream
+> is unaffected; a peer supplying only empty records is bounded to
+> TLS_RX_NODATA_LIMIT iterations before the call returns 0. read_sock
+> consumers treat that as "no progress, re-poll" rather than EOF, so
+> the connection stays up and makes progress once real data arrives.
+> 
+> Only tls_sw_read_sock() needs this cap. Its consumers drive the receive
+> loop from kernel context -- a work item or service thread holding the
+> socket lock across the whole call with no return to userspace -- so an
+> unbounded empty-record stream keeps that context and the lock pinned
+> for as long as the flood lasts. The cap supplies the return boundary
+> that a system call would otherwise provide. tls_sw_splice_read()
+> and tls_sw_recvmsg() already have one: they run in the calling task's
+> context, reschedule while draining the socket backlog (cond_resched()
+> in __release_sock()), and drop the socket lock when the call returns. A
+> flood there costs the caller only its own scheduler time, so the cap
+> would add nothing.
+> 
+> Signed-off-by: Chuck Lever <cel@kernel.org>
+> ---
+>   net/tls/tls_sw.c | 13 +++++++++++++
+>   1 file changed, 13 insertions(+)
+> 
+This is technically a fix, so it might be worthwhile sending it
+on its own.
 
-For this refactor swap_fs_submit into a swap_fs_prepare_rw helper that
-initializes the iov_iter on the callers stack so that file systems can
-call it directly, and use that to initialize file system specific ops
-in the NFS and SMB clients, which then get passed to swap_fs_activate.
+Otherwise:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Acked-by: Chris Li <chrisl@kernel.org>
----
- Documentation/filesystems/locking.rst |  9 +---
- Documentation/filesystems/vfs.rst     |  8 +---
- fs/nfs/direct.c                       | 20 ---------
- fs/nfs/file.c                         | 42 ++++++++++++++++--
- fs/smb/client/file.c                  | 63 +++++++++++++++++----------
- include/linux/fs.h                    |  1 -
- include/linux/nfs_fs.h                |  1 -
- include/linux/swap.h                  |  6 ---
- include/linux/swap_ops.h              |  5 +++
- mm/page_io.c                          | 34 +++------------
- 10 files changed, 93 insertions(+), 96 deletions(-)
+Reviewed-by: Hannes Reinecke <hare@kernel.org>
 
-diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-index 1a50d41a39a1..f58a8d7d5897 100644
---- a/Documentation/filesystems/locking.rst
-+++ b/Documentation/filesystems/locking.rst
-@@ -266,7 +266,6 @@ prototypes::
- 	int (*error_remove_folio)(struct address_space *, struct folio *);
- 	int (*swap_activate)(struct swap_info_struct *sis, struct file *f, sector_t *span)
- 	int (*swap_deactivate)(struct file *);
--	int (*swap_rw)(struct kiocb *iocb, struct iov_iter *iter);
- 
- locking rules:
- 	All except dirty_folio and free_folio may block
-@@ -291,7 +290,6 @@ is_partially_uptodate:	yes
- error_remove_folio:	yes
- swap_activate:		no
- swap_deactivate:	no
--swap_rw:		yes, unlocks
- ======================	======================== =========	===============
- 
- ->write_begin(), ->write_end() and ->read_folio() may be called from
-@@ -355,15 +353,12 @@ should perform any validation and preparation necessary to ensure that
- writes can be performed with minimal memory allocation.  It should call
- add_swap_extent(), or the helper iomap_swapfile_activate(), and return
- the number of extents added.  If IO should be submitted through
--->swap_rw(), it should call swap_fs_activate, otherwise IO will be submitted
--directly to the block device ``sis->bdev``.
-+the file system it should call swap_fs_activate, otherwise IO will be
-+submitted directly to the block device ``sis->bdev``.
- 
- ->swap_deactivate() will be called in the sys_swapoff()
- path after ->swap_activate() returned success.
- 
--->swap_rw will be called for swap IO if swap_fs_activate was called by
--->swap_activate().
--
- file_lock_operations
- ====================
- 
-diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
-index e7677423a20f..c437a342d4f3 100644
---- a/Documentation/filesystems/vfs.rst
-+++ b/Documentation/filesystems/vfs.rst
-@@ -776,7 +776,6 @@ cache in your filesystem.  The following members are defined:
- 		int (*error_remove_folio)(struct mapping *mapping, struct folio *);
- 		int (*swap_activate)(struct swap_info_struct *sis, struct file *f, sector_t *span)
- 		int (*swap_deactivate)(struct file *);
--		int (*swap_rw)(struct kiocb *iocb, struct iov_iter *iter);
- 	};
- 
- ``read_folio``
-@@ -977,16 +976,13 @@ cache in your filesystem.  The following members are defined:
- 	can be performed with minimal memory allocation.  It should call
- 	add_swap_extent(), or the helper iomap_swapfile_activate(), and
- 	return the number of extents added.  If IO should be submitted
--	through ->swap_rw(), it should call swap_fs_activate, otherwise IO will
--	be submitted directly to the block device ``sis->bdev``.
-+	through the file system it should call swap_fs_activate, otherwise IO
-+	will be submitted directly to the block device ``sis->bdev``.
- 
- ``swap_deactivate``
- 	Called during swapoff on files where swap_activate was
- 	successful.
- 
--``swap_rw``
--	Called to read or write swap pages when swap_fs_activate was called.
--
- The File Object
- ===============
- 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index e626c72495e6..ccafdc1ce64d 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -145,26 +145,6 @@ static void nfs_direct_file_adjust_size_locked(struct inode *inode,
- 	}
- }
- 
--/**
-- * nfs_swap_rw - NFS address space operation for swap I/O
-- * @iocb: target I/O control block
-- * @iter: I/O buffer
-- *
-- * Perform IO to the swap-file.  This is much like direct IO.
-- */
--int nfs_swap_rw(struct kiocb *iocb, struct iov_iter *iter)
--{
--	ssize_t ret;
--
--	if (iov_iter_rw(iter) == READ)
--		ret = nfs_file_direct_read(iocb, iter, true);
--	else
--		ret = nfs_file_direct_write(iocb, iter, true);
--	if (ret < 0)
--		return ret;
--	return 0;
--}
--
- static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
- {
- 	unsigned int i;
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 851d93a09988..e1bdd10b35f1 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -29,9 +29,8 @@
- #include <linux/pagemap.h>
- #include <linux/gfp.h>
- #include <linux/rmap.h>
--#include <linux/swap.h>
- #include <linux/compaction.h>
--
-+#include <linux/swap_ops.h>
- #include <linux/uaccess.h>
- #include <linux/filelock.h>
- 
-@@ -575,6 +574,38 @@ static int nfs_launder_folio(struct folio *folio)
- 	return ret;
- }
- 
-+#ifdef CONFIG_SWAP
-+static void nfs_swap_submit_write(struct swap_io_ctx *ctx)
-+{
-+	struct swap_iocb *sio = ctx->sio;
-+	struct iov_iter iter;
-+	int ret;
-+
-+	swap_fs_prepare_rw(ctx, WRITE, &iter);
-+	ret = nfs_file_direct_write(&sio->iocb, &iter, true);
-+	if (ret != -EIOCBQUEUED)
-+		sio->iocb.ki_complete(&sio->iocb, ret);
-+}
-+
-+static void nfs_swap_submit_read(struct swap_io_ctx *ctx)
-+{
-+	struct swap_iocb *sio = ctx->sio;
-+	struct iov_iter iter;
-+	int ret;
-+
-+	swap_fs_prepare_rw(ctx, READ, &iter);
-+	ret = nfs_file_direct_read(&sio->iocb, &iter, true);
-+	if (ret != -EIOCBQUEUED)
-+		sio->iocb.ki_complete(&sio->iocb, ret);
-+}
-+
-+static const struct swap_ops nfs_swap_ops = {
-+	.flags			= SWAP_OPS_F_REQUIRE_NOFS,
-+	.submit_write		= nfs_swap_submit_write,
-+	.submit_read		= nfs_swap_submit_read,
-+	.can_merge		= swap_fs_can_merge,
-+};
-+
- static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
- 						sector_t *span)
- {
-@@ -597,7 +628,7 @@ static int nfs_swap_activate(struct swap_info_struct *sis, struct file *file,
- 	ret = rpc_clnt_swap_activate(clnt);
- 	if (ret)
- 		return ret;
--	ret = swap_fs_activate(sis);
-+	ret = swap_fs_activate(sis, &nfs_swap_ops);
- 	if (ret < 0) {
- 		rpc_clnt_swap_deactivate(clnt);
- 		return ret;
-@@ -620,6 +651,10 @@ static void nfs_swap_deactivate(struct file *file)
- 	if (cl->rpc_ops->disable_swap)
- 		cl->rpc_ops->disable_swap(file_inode(file));
- }
-+#else
-+#define nfs_swap_activate	NULL
-+#define nfs_swap_deactivate	NULL
-+#endif /* CONFIG_SWAP */
- 
- const struct address_space_operations nfs_file_aops = {
- 	.read_folio = nfs_read_folio,
-@@ -636,7 +671,6 @@ const struct address_space_operations nfs_file_aops = {
- 	.error_remove_folio = generic_error_remove_folio,
- 	.swap_activate = nfs_swap_activate,
- 	.swap_deactivate = nfs_swap_deactivate,
--	.swap_rw = nfs_swap_rw,
- };
- 
- /*
-diff --git a/fs/smb/client/file.c b/fs/smb/client/file.c
-index 081bb16abeb4..190e24199fa1 100644
---- a/fs/smb/client/file.c
-+++ b/fs/smb/client/file.c
-@@ -20,7 +20,7 @@
- #include <linux/delay.h>
- #include <linux/mount.h>
- #include <linux/slab.h>
--#include <linux/swap.h>
-+#include <linux/swap_ops.h>
- #include <linux/mm.h>
- #include <asm/div64.h>
- #include "cifsfs.h"
-@@ -3351,6 +3351,38 @@ void cifs_oplock_break(struct work_struct *work)
- 	cifs_done_oplock_break(cinode);
- }
- 
-+#ifdef CONFIG_SWAP
-+static void cifs_swap_submit_write(struct swap_io_ctx *ctx)
-+{
-+	struct swap_iocb *sio = ctx->sio;
-+	struct iov_iter iter;
-+	int ret;
-+
-+	swap_fs_prepare_rw(ctx, WRITE, &iter);
-+	ret = netfs_unbuffered_write_iter_locked(&sio->iocb, &iter, NULL);
-+	if (ret != -EIOCBQUEUED)
-+		sio->iocb.ki_complete(&sio->iocb, ret);
-+}
-+
-+static void cifs_swap_submit_read(struct swap_io_ctx *ctx)
-+{
-+	struct swap_iocb *sio = ctx->sio;
-+	struct iov_iter iter;
-+	int ret;
-+
-+	swap_fs_prepare_rw(ctx, READ, &iter);
-+	ret = netfs_unbuffered_read_iter_locked(&sio->iocb, &iter);
-+	if (ret != -EIOCBQUEUED)
-+		sio->iocb.ki_complete(&sio->iocb, ret);
-+}
-+
-+static const struct swap_ops cifs_swap_ops = {
-+	.flags			= SWAP_OPS_F_REQUIRE_NOFS,
-+	.submit_write		= cifs_swap_submit_write,
-+	.submit_read		= cifs_swap_submit_read,
-+	.can_merge		= swap_fs_can_merge,
-+};
-+
- static int cifs_swap_activate(struct swap_info_struct *sis,
- 			      struct file *swap_file, sector_t *span)
- {
-@@ -3361,7 +3393,7 @@ static int cifs_swap_activate(struct swap_info_struct *sis,
- 
- 	cifs_dbg(FYI, "swap activate\n");
- 
--	if (!swap_file->f_mapping->a_ops->swap_rw)
-+	if (swap_file->f_mapping->a_ops != &cifs_addr_ops)
- 		/* Cannot support swap */
- 		return -EINVAL;
- 
-@@ -3392,7 +3424,7 @@ static int cifs_swap_activate(struct swap_info_struct *sis,
- 	 * but we could add call to grab a byte range lock to prevent others
- 	 * from reading or writing the file
- 	 */
--	return swap_fs_activate(sis);
-+	return swap_fs_activate(sis, &cifs_swap_ops);
- }
- 
- static void cifs_swap_deactivate(struct file *file)
-@@ -3408,26 +3440,10 @@ static void cifs_swap_deactivate(struct file *file)
- 
- 	/* do we need to unpin (or unlock) the file */
- }
--
--/**
-- * cifs_swap_rw - SMB3 address space operation for swap I/O
-- * @iocb: target I/O control block
-- * @iter: I/O buffer
-- *
-- * Perform IO to the swap-file.  This is much like direct IO.
-- */
--static int cifs_swap_rw(struct kiocb *iocb, struct iov_iter *iter)
--{
--	ssize_t ret;
--
--	if (iov_iter_rw(iter) == READ)
--		ret = netfs_unbuffered_read_iter_locked(iocb, iter);
--	else
--		ret = netfs_unbuffered_write_iter_locked(iocb, iter, NULL);
--	if (ret < 0)
--		return ret;
--	return 0;
--}
-+#else
-+#define cifs_swap_activate	NULL
-+#define cifs_swap_deactivate	NULL
-+#endif /* CONFIG_SWAP */
- 
- const struct address_space_operations cifs_addr_ops = {
- 	.read_folio	= netfs_read_folio,
-@@ -3444,7 +3460,6 @@ const struct address_space_operations cifs_addr_ops = {
- 	 */
- 	.swap_activate	= cifs_swap_activate,
- 	.swap_deactivate = cifs_swap_deactivate,
--	.swap_rw = cifs_swap_rw,
- };
- 
- /*
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 50ce731a2b78..87b5e9957c00 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -438,7 +438,6 @@ struct address_space_operations {
- 	int (*swap_activate)(struct swap_info_struct *sis, struct file *file,
- 				sector_t *span);
- 	void (*swap_deactivate)(struct file *file);
--	int (*swap_rw)(struct kiocb *iocb, struct iov_iter *iter);
- };
- 
- extern const struct address_space_operations empty_aops;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index ec17e602c979..764056498eba 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -548,7 +548,6 @@ static inline const struct cred *nfs_file_cred(struct file *file)
- /*
-  * linux/fs/nfs/direct.c
-  */
--int nfs_swap_rw(struct kiocb *iocb, struct iov_iter *iter);
- ssize_t nfs_file_direct_read(struct kiocb *iocb,
- 			     struct iov_iter *iter, bool swap);
- ssize_t nfs_file_direct_write(struct kiocb *iocb,
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 0544b2ec4c56..d8584f53a6e4 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -334,8 +334,6 @@ extern void __meminit kswapd_run(int nid);
- extern void __meminit kswapd_stop(int nid);
- 
- #ifdef CONFIG_SWAP
--
--int swap_fs_activate(struct swap_info_struct *sis);
- int add_swap_extent(struct swap_info_struct *sis, unsigned long start_page,
- 		unsigned long nr_pages, sector_t start_block);
- int generic_swapfile_activate(struct swap_info_struct *, struct file *,
-@@ -461,10 +459,6 @@ static inline bool folio_free_swap(struct folio *folio)
- 	return false;
- }
- 
--static inline int swap_fs_activate(struct swap_info_struct *sis)
--{
--	return -EINVAL;
--}
- static inline int add_swap_extent(struct swap_info_struct *sis,
- 				  unsigned long start_page,
- 				  unsigned long nr_pages, sector_t start_block)
-diff --git a/include/linux/swap_ops.h b/include/linux/swap_ops.h
-index e92b4f532604..57ac6c703f68 100644
---- a/include/linux/swap_ops.h
-+++ b/include/linux/swap_ops.h
-@@ -36,4 +36,9 @@ struct swap_ops {
- 	void (*submit_read)(struct swap_io_ctx *ctx);
- };
- 
-+void swap_fs_prepare_rw(struct swap_io_ctx *ctx, int rw, struct iov_iter *iter);
-+bool swap_fs_can_merge(struct folio *folio, struct folio *prev_folio,
-+		size_t prev_folio_size, int rw);
-+int swap_fs_activate(struct swap_info_struct *sis, const struct swap_ops *ops);
-+
- #endif /* _MM_SWAP_OPS_H */
-diff --git a/mm/page_io.c b/mm/page_io.c
-index e741e67d6592..88962571cb93 100644
---- a/mm/page_io.c
-+++ b/mm/page_io.c
-@@ -650,11 +650,9 @@ const struct swap_ops swap_bdev_ops = {
- 	.can_merge		= swap_bdev_can_merge,
- };
- 
--static void swap_fs_submit(struct swap_io_ctx *ctx, int rw)
-+void swap_fs_prepare_rw(struct swap_io_ctx *ctx, int rw, struct iov_iter *iter)
- {
- 	struct swap_iocb *sio = ctx->sio;
--	struct iov_iter iter;
--	int ret;
- 
- 	init_sync_kiocb(&sio->iocb, ctx->sis->swap_file);
- 	sio->iocb.ki_pos = swap_dev_pos(bvec_folio(&sio->bvecs[0])->swap);
-@@ -663,40 +661,22 @@ static void swap_fs_submit(struct swap_io_ctx *ctx, int rw)
- 	else
- 		sio->iocb.ki_complete = swap_fs_read_complete;
- 
--	iov_iter_bvec(&iter, rw == WRITE ? ITER_SOURCE : ITER_DEST,
-+	iov_iter_bvec(iter, rw == WRITE ? ITER_SOURCE : ITER_DEST,
- 			sio->bvecs, sio->nr_bvecs, sio->len);
--	ret = sio->iocb.ki_filp->f_mapping->a_ops->swap_rw(&sio->iocb, &iter);
--	if (ret != -EIOCBQUEUED)
--		sio->iocb.ki_complete(&sio->iocb, ret);
- }
-+EXPORT_SYMBOL_GPL(swap_fs_prepare_rw);
- 
--static void swap_fs_submit_write(struct swap_io_ctx *ctx)
--{
--	swap_fs_submit(ctx, WRITE);
--}
--
--static void swap_fs_submit_read(struct swap_io_ctx *ctx)
--{
--	swap_fs_submit(ctx, READ);
--}
--
--static bool swap_fs_can_merge(struct folio *folio, struct folio *prev_folio,
-+bool swap_fs_can_merge(struct folio *folio, struct folio *prev_folio,
- 		size_t prev_folio_size, int rw)
- {
- 	return swap_dev_pos(folio->swap) ==
- 		swap_dev_pos(prev_folio->swap) + prev_folio_size;
- }
-+EXPORT_SYMBOL_GPL(swap_fs_can_merge);
- 
--static const struct swap_ops swap_fs_ops = {
--	.flags			= SWAP_OPS_F_REQUIRE_NOFS,
--	.submit_write		= swap_fs_submit_write,
--	.submit_read		= swap_fs_submit_read,
--	.can_merge		= swap_fs_can_merge,
--};
--
--int swap_fs_activate(struct swap_info_struct *sis)
-+int swap_fs_activate(struct swap_info_struct *sis, const struct swap_ops *ops)
- {
--	sis->ops = &swap_fs_ops;
-+	sis->ops = ops;
- 	return add_swap_extent(sis, 0, sis->max, 0);
- }
- EXPORT_SYMBOL_GPL(swap_fs_activate);
+Cheers,
+
+Hannes
 -- 
-2.53.0
-
+Dr. Hannes Reinecke                  Kernel Storage Architect
+hare@suse.de                                +49 911 74053 688
+SUSE Software Solutions GmbH, Frankenstr. 146, 90461 Nürnberg
+HRB 36809 (AG Nürnberg), GF: I. Totev, A. McDonald, W. Knoblich
