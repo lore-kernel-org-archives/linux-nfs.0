@@ -1,124 +1,107 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A368540E8FA;
-	Sat, 25 Jul 2026 20:14:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2D0BC625;
+	Sat, 25 Jul 2026 20:31:10 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785010501; cv=none; b=tkInkUNAYU/6xoxfYvqloOuNugJTcc1mlYg4aGS2RS416TCGvdcdyTMUIV2t3NY8nYQ1ZoR0E7O+AQGhkwSFIS+rtWZ3BvprG/JnbhWuEFR6Y118feEvqGLvwhp0YazHw2cZmD2Kpk16t49uUQMY2JTckwW4IjaBVNKTAD79KwI=
+	t=1785011472; cv=none; b=aTgBjb9cj0tsiNCIRNgwNLQgX0d4hZvqBukP+Rg2l7tWTaje0908uRIqsphDDLpNn90NS7itft0NcPZn0kT/lLzw0lkWg+AGJ+lbKUrBFyLPInQnST1u4p1GrXrFF2jSYORyEQQo4xyOyaRpTavkuvEMlc1C2OJHvum7JLtMtJs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785010501; c=relaxed/simple;
-	bh=Db3f9Hkbr1czRMuS6sEqyNruq5sN9vgK788hDrtE69w=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=pfmjZ/qT8C+vTXpGa+qwQceAN5G3cLoQmu17WGH7rizOb4UWk85oX2KVsHN9krkqPTsfkqG9i7j6IPOPfqzlDcmfeycNI32LHILL/GAO5+9tDsBNZNg0YDZt2w5yxOQj1ANK93+covYMB0OSRQCh8udqYdA8vYLMHwK0n/nLDSc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LOb7WuPP; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1785011472; c=relaxed/simple;
+	bh=e6KMoD3bd5/q6p3xQeg23qgiuejFXySUo/aGZ6esyCc=;
+	h=From:To:Cc:Subject:In-Reply-To:References:Date:Message-ID:
+	 MIME-Version:Content-Type; b=JKAGydDvVpvukxAV9Q1NF4vPSEA0b15yWfsrQ+p8Z/gHAJTBkG3dE+5eiVca8cKXSa3+Noh0ZRnip2j1grPveDwhnKx5JBqbrqP+cZ/zdtyC9p92rmeO423HfMKXTQCZvNPA2mBE33TwVY9FNnKOF7f2Gxtd/dBn9DwNGDP2Zzo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hAfTn9kP; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LOb7WuPP"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 231BC1F000E9;
-	Sat, 25 Jul 2026 20:14:52 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hAfTn9kP"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DFFA01F000E9;
+	Sat, 25 Jul 2026 20:31:09 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785010492;
-	bh=RTyMHzE0NoKBxtjm0Pr5tmlD2a81LRHCxcfNNyoc3PI=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=LOb7WuPPFMZoBJ8pvZS2vIzbus1m/mggu4XTTwJkwxY0aFDfcnPL3Och1dcPKQTYR
-	 Pr5ZHzRwGWAiUw/MALqbJn2JqH3x9+HFbWPaYYvx4kALhmDdQmGf3kWQ5GfzGppFVR
-	 sBjVV1aJOF7BH+MhXizPMZm5aKBTZVXKMOXNS4zJTJdJQOFwinOY8/htG0C0+XqIr9
-	 z9RgvU2NhvEIaX6nPRDHtIPVZRGJYwQ4wVG7NHyUHjcF2t/dsCywjdNEZEiNke+rKP
-	 5/Z0ZVQ9QeyJzy5ekdC6LWhm8QoYcWvh0xyAp/ps1DfjVQDePQ1sie8Fi5FaSH8eiV
-	 8QNvxS2LPANAA==
-From: Chuck Lever <cel@kernel.org>
-To: Stephen Smalley <stephen.smalley.work@gmail.com>,
-	Paul Moore <paul@paul-moore.com>,
-	Anna Schumaker <anna@kernel.org>
-Cc: Achilles Gaikwad <achillesgaikwad@gmail.com>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Casey Schaufler <casey@schaufler-ca.com>,
-	Christian Brauner <brauner@kernel.org>,
-	linux-nfs@vger.kernel.org,
-	linux-security-module@vger.kernel.org,
-	selinux@vger.kernel.org
-Subject: Re: [PATCH v2] security,fs,nfs,net: update security_inode_listsecurity() interface
-Date: Sat, 25 Jul 2026 16:14:48 -0400
-Message-ID: <20260725200958.4471-1-cel@kernel.org>
-X-Mailer: git-send-email 2.55.0
-In-Reply-To: <20250428195022.24587-2-stephen.smalley.work@gmail.com>
-References: <20250428195022.24587-2-stephen.smalley.work@gmail.com>
+	s=k20260515; t=1785011470;
+	bh=e6KMoD3bd5/q6p3xQeg23qgiuejFXySUo/aGZ6esyCc=;
+	h=From:To:Cc:Subject:In-Reply-To:References:Date;
+	b=hAfTn9kP3ZABFKIwidJBkzkwUEnV03/r5N7p8kmUos3uDtUKUWtEJzQPpdypzC87s
+	 s8zXrjsDbl2M4eM1W7J86H4KiLLuZnMtxMMILtEw98qiQcngdzhm3Z933lwVaUuZ1u
+	 NLkyUWEUlaRXQiJD2BrV3+doGFNu5m2sLbsSq0EGZklaA6R4wtvLOLLa2OnPQe5qNl
+	 qRc/eqpUyUDjcyObmg1ruSpXH9PI078U1i4aarlF7k3SAVuPPwJdBfCiYHUHqv1JgK
+	 gHSHbd+Pb+4KEwvFVr0Xj05kVhoMd7+HPlRE8f80fEhbz02ckPWPFwbzdqixw/v4UL
+	 pVfAw00n8dMXA==
+From: Thomas Gleixner <tglx@kernel.org>
+To: Petr Pavlu <petr.pavlu@suse.com>, Tony Luck <tony.luck@intel.com>,
+ Borislav Petkov <bp@alien8.de>, Ingo Molnar <mingo@redhat.com>, Dave
+ Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, "H. Peter Anvin"
+ <hpa@zytor.com>, Philipp Reisner <philipp.reisner@linbit.com>, Lars
+ Ellenberg <lars.ellenberg@linbit.com>, Christoph =?utf-8?Q?B=C3=B6hmwalde?=
+ =?utf-8?Q?r?=
+ <christoph.boehmwalder@linbit.com>, Jens Axboe <axboe@kernel.dk>, Johan
+ Hovold <johan@kernel.org>, Alex Elder <elder@kernel.org>, Greg
+ Kroah-Hartman <gregkh@linuxfoundation.org>, "Rafael J. Wysocki"
+ <rafael@kernel.org>, Michal Januszewski <spock@gentoo.org>, Helge Deller
+ <deller@gmx.de>, Alexander Viro <viro@zeniv.linux.org.uk>, Christian
+ Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, Trond Myklebust
+ <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, Chuck Lever
+ <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, NeilBrown
+ <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo
+ <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, Mark Fasheh
+ <mark@fasheh.com>, Joel Becker <jlbec@evilplan.org>, Joseph Qi
+ <joseph.qi@linux.alibaba.com>, Tejun Heo <tj@kernel.org>, Johannes Weiner
+ <hannes@cmpxchg.org>, Michal =?utf-8?Q?Koutn=C3=BD?= <mkoutny@suse.com>,
+ Luis Chamberlain
+ <mcgrof@kernel.org>, Petr Pavlu <petr.pavlu@suse.com>, Daniel Gomez
+ <da.gomez@kernel.org>, Sami Tolvanen <samitolvanen@google.com>, Aaron
+ Tomlin <atomlin@atomlin.com>, Pavel Machek <pavel@kernel.org>, Len Brown
+ <lenb@kernel.org>, Andrew Morton <akpm@linux-foundation.org>, Danilo
+ Krummrich <dakr@kernel.org>, Nikolay Aleksandrov <razor@blackwall.org>,
+ Ido Schimmel <idosch@nvidia.com>, "David S. Miller" <davem@davemloft.net>,
+ Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
+ Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, David
+ Howells <dhowells@redhat.com>, Jarkko Sakkinen <jarkko@kernel.org>, Paul
+ Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>, "Serge E.
+ Hallyn" <serge@hallyn.com>, Kentaro Takeda <takedakn@nttdata.co.jp>,
+ Tetsuo Handa <penguin-kernel@I-love.SAKURA.ne.jp>
+Cc: linux-edac@vger.kernel.org, linux-kernel@vger.kernel.org,
+ drbd-dev@lists.linux.dev, linux-block@vger.kernel.org,
+ greybus-dev@lists.linaro.org, linuxppc-dev@lists.ozlabs.org,
+ linux-acpi@vger.kernel.org, linux-fbdev@vger.kernel.org,
+ dri-devel@lists.freedesktop.org, linux-fsdevel@vger.kernel.org,
+ linux-nfs@vger.kernel.org, ocfs2-devel@lists.linux.dev,
+ cgroups@vger.kernel.org, linux-modules@vger.kernel.org,
+ linux-pm@vger.kernel.org, driver-core@lists.linux.dev,
+ bridge@lists.linux.dev, netdev@vger.kernel.org, keyrings@vger.kernel.org,
+ linux-security-module@vger.kernel.org
+Subject: Re: [PATCH v2 2/3] time/jiffies: Include linux/sysctl.h for
+ proc_int_u2k_conv_uop(), ...
+In-Reply-To: <20260721131207.803760-3-petr.pavlu@suse.com>
+References: <20260721131207.803760-1-petr.pavlu@suse.com>
+ <20260721131207.803760-3-petr.pavlu@suse.com>
+Date: Sat, 25 Jul 2026 22:31:07 +0200
+Message-ID: <874ihmke0k.ffs@fw13>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
 
-On Mon, Apr 28, 2025 at 03:50:19PM -0400, Stephen Smalley wrote:
-> Update the security_inode_listsecurity() interface to allow
-> use of the xattr_list_one() helper and update the hook
-> implementations.
+On Tue, Jul 21 2026 at 15:11, Petr Pavlu wrote:
 
-This commit wedges an NFSv4.2 client running fstests.
+> The kernel/time/jiffies.c file uses proc_int_u2k_conv_uop(),
 
-A kdevops fstests run against nfsd-next hangs at generic/086.  The
-client stops making progress and never recovers:
+jiffies.c uses ...
 
-  watchdog: BUG: soft lockup - CPU#3 stuck for 250s! [086:60396]
-  Comm: 086 Tainted: G  D  L  7.2.0-rc4
-    __pv_queued_spin_lock_slowpath
-    _raw_spin_lock
-    nfs4_xattr_set_listcache [nfsv4]
-    nfs4_xattr_discard_cache [nfsv4]
-    nfs4_xattr_cache_scan [nfsv4]
-    do_shrink_slab
-    drop_caches_sysctl_handler
+> proc_int_k2u_conv_kop(), proc_int_conv(), proc_dointvec_conv() and
+> proc_doulongvec_minmax_conv(), which are declared in linux/sysctl.h. It
+> currently relies on this header being included indirectly through
+> linux/module.h -> linux/kmod.h. Add the missing include in preparation for
+> removing the linux/sysctl.h include from linux/kmod.h.
 
-The D taint says something died earlier.  It did: by the time the
-lockup fires, the client has already taken two dozen NULL pointer
-dereferences, all of them in the same place:
+Can you please split that spaghetti sentence into paragraphs?
 
-  BUG: kernel NULL pointer dereference, address: 0000000000000000
-  RIP: _copy_from_pages+0x44/0xd0 [sunrpc]
-    nfs4_xattr_cache_list [nfsv4]
-    nfs4_listxattr [nfsv4]
-    vfs_listxattr
-    __x64_sys_listxattr
+https://docs.kernel.org/process/maintainer-tip.html#changelog
 
-The two stages are connected.  nfs4_listxattr() declares its
-remaining-size accumulator as an unsigned size_t.  On a size query,
-where listxattr(2) passes a NULL buffer and a length of zero,
-xattr_list_one() decrements that accumulator for the SELinux label
-without regard to the NULL buffer, so it wraps to a very large
-value.  nfs4_xattr_cache_list() then sees a NULL buffer paired with
-a buffer length large enough to pass its own bounds check, and
-copies into it.  The fault happens while the xattr listcache
-spinlock is held.  Task exit does not release spinlocks, so the
-lock is orphaned, and the next shrinker pass spins on it until the
-watchdog fires.
+> Signed-off-by: Petr Pavlu <petr.pavlu@suse.com>
 
-The reproducer is a plain getfattr on a file on an NFSv4.2 mount
-with SELinux enforcing, which is what fstests generic/086 arrives
-at by way of a drop_caches write.  No fstests machinery is needed
-to see the oops.
+Other than that.
 
-An audit of the listxattr path pointed here, so I built nfsd-next
-with this commit reverted and reran the full fstests nfs_v42
-section on the same pair of guests.  745 tests, no soft lockup, no
-oops, and generic/086 passes.  The two failures that remain,
-generic/033 and generic/258, are unrelated to xattrs.
-
-I am not proposing the revert as the fix.  Achilles Gaikwad has
-already posted a targeted patch for the accounting itself:
-
-  https://lore.kernel.org/linux-nfs/20260707152305.15324-1-achillesgaikwad@gmail.com/
-
-Whether the right answer is that patch, a change to
-xattr_list_one() so it leaves the remaining size alone when the
-buffer is NULL, or hardening nfs4_xattr_cache_list() against a NULL
-buffer, is for the three of you to settle.  I am reporting the
-severity, because the accounting bug is not confined to a short
-size query: on a filesystem that caches xattrs behind a lock, it
-takes the whole machine down.
-
-I can test whatever you settle on against the same setup.
-
---
-Chuck Lever
+Acked-by: Thomas Gleixner <tglx@kernel.org>
