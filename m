@@ -1,171 +1,184 @@
-Received: from mail-wm1-f50.google.com (mail-wm1-f50.google.com [209.85.128.50])
+Received: from mail-pl1-f181.google.com (mail-pl1-f181.google.com [209.85.214.181])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7EACD2AD0C
-	for <linux-nfs@vger.kernel.org>; Sun, 26 Jul 2026 12:47:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.50
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785070043; cv=none; b=Th8k6CYmrGQNPQ1F1SbQzWpQ3v+jYk+tpCYx+L28k6sOicLiMGIn+wQW55WO+QX35wBkCnNNHHKNDCpAv9BlSnmTzKP/7S0GNEoaERX5Lh8xtJxtyxetvnVVnJAqKfyzAS0nx5jvA5N7nKXtNsWxu05nLQWttnLX9cllfXF7vWQ=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785070043; c=relaxed/simple;
-	bh=ETwgpic4AxV4z6t6xS8Pv4sGx1TgnRkisPH97UQ4Zks=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=dcIvhDaCJmADdoQcVv6YJ2Lt3tupqVyySiEDiTIMLJNeDRB9CCbKcG+8dVpVD8+lGfnLCjT+m8+bEQlm2bLGAo14pcOmkBtYSNPwM2ZzAuh1y7eifsA93Zy/FuEueqhN3UrzNULW36w0vISw/OOo7eYWSVb6mKWdWdLp1O+/Dqw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com; spf=pass smtp.mailfrom=truenas.com; dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b=b5SSLJFu; arc=none smtp.client-ip=209.85.128.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=truenas.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 44DA334B682
+	for <linux-nfs@vger.kernel.org>; Sun, 26 Jul 2026 15:03:54 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.214.181
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1785078236; cv=pass; b=OMwBrJ9fOiz6SoL+an4OitlnVrNjWGo2atuhT9L3uXeO82qja0H35MLXj6bEsAnQGMV41t6KF/DY6WcV0afdxGNURHO3tAvt/OaNRuN/GmGg6KlLGaq9ZMEVYs4cLQH6FDySsCOTrDX4z9wQe9i+bpkYCxKpELj6gF2tJ+bAB14=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1785078236; c=relaxed/simple;
+	bh=liVqCRED6A0BSTJ8Z+3vALEAqve/O95RkgsCR7qCf1Y=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=KuUptKqEUkdxqq0ibauHxqzKTxBl1QP9EkpVrhBgs3NI8SPJ/jYm108IZmEcuaDK0jTU1DQVFGdh/K5RJa0IchLdOXyWmpttd7ZFi7J867OaESDUFSLPiINkEo4W3CE+T1T5OVOV5Q3bP6XZ0WCl/vQm59X02Q2I4vfW2BXai54=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com; spf=pass smtp.mailfrom=paul-moore.com; dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b=Yz6Zdn7T; arc=pass smtp.client-ip=209.85.214.181
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=paul-moore.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=paul-moore.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b="b5SSLJFu"
-Received: by mail-wm1-f50.google.com with SMTP id 5b1f17b1804b1-495590dde14so19796065e9.0
-        for <linux-nfs@vger.kernel.org>; Sun, 26 Jul 2026 05:47:21 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=paul-moore.com header.i=@paul-moore.com header.b="Yz6Zdn7T"
+Received: by mail-pl1-f181.google.com with SMTP id d9443c01a7336-2cf50c6f235so23131515ad.0
+        for <linux-nfs@vger.kernel.org>; Sun, 26 Jul 2026 08:03:54 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1785078233; cv=none;
+        d=google.com; s=arc-20260327;
+        b=nZqRH/q4s2lIU4figz/D006VDOMSQYDbyzv6dzoe/D9PKgTdcmzZeRMZNPLISJJJcb
+         PC9sEAi7jp58sf3oiGtwIJG39HRJ4HmyjgSQzbCigCGznIRQL4nA3+MqJ/DcEFeub5SW
+         W4kUmO7DP9k0tVwi3AE7HjWOxzhTNUqD9cSeTU8HXsEqIRondKxK0Q7GDEf4nXiJCli/
+         +v5Y1cttsjJi2X6VUEs05PkNdHHAsAFuyMJrTTN6SmngKdfa/hrdixNyBeexXSs55Hv4
+         2tgPhuNeDTpTH2dd3z+eulfYd0loo0xrDruBvziH+50J3ZOgtLtUYj1MLSMVGt/s4RKi
+         EcgQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=AVVFhj9Tg/lZH22og1Dqg9nlkd6DUn5RYOOV5kPf53Y=;
+        fh=Qd7QpFlUEoFcK1VgbgxLGhLhk6PncEWuSLmcYDMm4B0=;
+        b=r6g4G/Tl+5B5DizJWbTNIrYAY+C5alcqNUM50Yuddu9Vv6nMCd4Hoo43mo3xxxoQ2R
+         2de84Ar1tUt/UDVqeiNV7oSX8P7SEKUYM+U33GWN9WBQgd7dsf2es959D1hhMNkp8U2a
+         6QQYv6AAaDV/yqv2yfAZ3sHx9YZxw37FBVQW7eEYh7+7Uu4q3fh7yJ4/4opvzdbVsi+L
+         mbG8KIvlflEtexwexEnwgjKtSgZQLd77a0VjhT9FoRqQVNYIBG70nkSHpLNxA9a0yiux
+         rO5JUZEkaOjN0IRTuSxVRe1mJiNKJzHy2aq7BzHQJMp2D17d8LnKO1do1nUCBXR2LeAY
+         qDLg==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=truenas.com; s=google; t=1785070040; x=1785674840; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=NGZDh/MbIRdQ1s+o464mf9UQFMNafwm2SIf/zrfLjF4=;
-        b=b5SSLJFuhPXKdBQBfRqks67ChHVk7P7wtnALVU0HHcz2eJG/3exxIsnBimpwEJAQFi
-         qHzab7mY3vD8dXkETcKLCVBFwVox53b5yODcXNzmH5b+8Cm5ud8K9wL1kwBW6Xv2VKlV
-         4ghrrMmwLqtvrmSE+W/oa2ufC9I1DylYy7jrO5WGvaG9jX92RfAE1pYov+fDIG75vgGf
-         mC3v/83jiYdUkTZ9Vn5uEMyvW3+er3UUVfzET9Yxwf7xsrTgZdOZ8NehmyXl3IheDeOz
-         mABq0S/z5XJu3CaFtaPCS2tmqY761nEHvIOsORh6didJMhepvvg3FZwWce4AKYJ/KP6e
-         gJFA==
+        d=paul-moore.com; s=google; t=1785078233; x=1785683033; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=AVVFhj9Tg/lZH22og1Dqg9nlkd6DUn5RYOOV5kPf53Y=;
+        b=Yz6Zdn7T20F8lM71MtP2/eb4IqGfaMqCihPxuXsRQstQiOYca0aIsQgU2rxZI8muTs
+         hOVjiCEHANpHw/MV21TE+BDEfVECa8ZwOQmfdGNhqkJG3yoiR9JRHBlazpZy663yGpk4
+         ucJa8Nk5tiiNl2QGD2VUPhdeD+uObANl378OMTVqMrOmaQTHqO1VpSyAfiw0eY72/M+t
+         extIU06kmTztKJWB7IE/jGwlmJjFUP8YrwzE3fMpQLZPOQubTB99EP8U1nurbio1iQb4
+         +x99cKeJCLpgkn6CGAQrsETiiATW+AMK2RFYg1UpGGgnCR6ViZqqrdnHp/IIk47BdSfr
+         0u+Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785070040; x=1785674840;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=NGZDh/MbIRdQ1s+o464mf9UQFMNafwm2SIf/zrfLjF4=;
-        b=KwKHYSQnhNqFXWGPVX9OGvq00nlM5ClXbMyoIzwHIsJRbJWfb1EmAGlFDS6+lG5FzF
-         xE7OC1j3yL1sQWijIvmQqK69h5u6oHln6TLKyJ4coLwdhIMnr0pNGMXKSZvjvPX4n8XK
-         5WqLiNeOKt88ApTjNcxl58yN7DP2tHZvnLIWTG8hEJnpgnwYwdGzN5EfgjGNY1Z9PDcB
-         flI88icUgfknFxoJKCGNnV7PVS57bLd4nrW/VHL7722DuBmM7wSyj3ewgUYWBBB6NJg4
-         7XU4vFtTKpv2u/6qgfcFmuN3TejeXqxlGUgRrfKEYVeqSVafINV/wmvQP9KT1c9pOLuq
-         P/aA==
-X-Gm-Message-State: AOJu0Ywy3lJd7VOO6k+IhwSrq+KdZONzzDk6ZlRfNpdlphhQERTpiXTa
-	hutKb2g9pcSJY7nUjaopX6uQFZCaZQpMFbfg49gShvk8hqpQDkub5XMFwfgpyiEg3w==
-X-Gm-Gg: AR+sD13WxssZQZ23ZU98cyrDNFbjHnj4w2HoFXgKDR+QMf15Iq/62eW4d4XiXJ5sp3E
-	PKwW/We66Nmy9NkgJZC5ZzOM+BgqtOUmuoDue5RB5zOi0IfouTsY30ZeIWEA8Sgky2C4/S/9egk
-	2VIkqZwJfErxWWJ27JZyuMRnyMQ/Ixr72EGskVwFK7abXEVMmMlIKiINSi0RoIf+hjr/ida9xhm
-	as9yy6bXm/ukl3hQnpSQ9LrM55czIICdEQuecQIypiJh2i6ZN+Gs48EZssd9HTHLxle+qv/s4/f
-	LCEVrjFlUEU5XnO+eCkK5+SEopHN2JEdnpIScMfG1lA7Y5Tg0Vt0BeoxwjXD36nmxWnQXRxDZuI
-	Ba0dq+Wt6ydTJVD+HrhWyl377txBncMXrQjhSQZItCwBITrlJSV7+Nl3bag==
-X-Received: by 2002:a05:600c:1395:b0:495:6b8f:7e7a with SMTP id 5b1f17b1804b1-496b564afa3mr57538615e9.0.1785070039550;
-        Sun, 26 Jul 2026 05:47:19 -0700 (PDT)
-Received: from hamza-PC ([2400:adc1:158:c700::5])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-496b49a5f98sm143619745e9.12.2026.07.26.05.47.17
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Sun, 26 Jul 2026 05:47:19 -0700 (PDT)
-From: Ameer Hamza <ameer.hamza@truenas.com>
-To: cel@kernel.org,
-	jlayton@kernel.org,
-	neil@brown.name,
-	okorniev@redhat.com,
-	Dai.Ngo@oracle.com,
-	tom@talpey.com
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	nicholas.wolff@truenas.com,
-	alexander.motin@truenas.com,
-	caleb.stjohn@truenas.com,
-	ameer.hamza@truenas.com
-Subject: [PATCH] nfsd: fix race between client_info_show() and free_client()
-Date: Sun, 26 Jul 2026 17:46:58 +0500
-Message-ID: <20260726124658.1715711-1-ameer.hamza@truenas.com>
-X-Mailer: git-send-email 2.53.0
+        d=1e100.net; s=20251104; t=1785078233; x=1785683033;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=AVVFhj9Tg/lZH22og1Dqg9nlkd6DUn5RYOOV5kPf53Y=;
+        b=EKY7msk4b7YXTJBJdDux3IdnL7uzRNOQxzg+42HigdKtPZFb+gGQ3Q8IqFgUcj6a5e
+         7I9DBMCP1uq7EKoeqDnwGvL4SD/W7e1DbG1JMBGNHH4xNy8HmnaTYYX6H2x1S2U7Zjtq
+         Zo3G9AvL6BqCBt2RC1/xondvqyYZKT8S1BrBSggtm0Z3pjB/aTjGiwlCBnbSHhsYogYH
+         WusROWIivZLsIenWrhyJ7KrQoSvVOgPMvBVFmJYVPYs/WDnFncpONYEwLd0ICI2Udq/w
+         h4v15CI+A+GOPbaF6q7nz30qWEncvd1XlnnHjiaVLnL6g9XqgpvIApG6kSbDI4XOQZ6w
+         cGag==
+X-Forwarded-Encrypted: i=1; AHgh+RqWDfRP2QQ1LZMTJ6pVqXTT7w8B0l4Az7dDkD/ElFyKgNlE9zyGfkoTiPqZD5nRq8XIuriHub0tQJU=@vger.kernel.org
+X-Gm-Message-State: AOJu0YzsOpu8X+Ku688rSN0SIbNkCXUsKga48jCHDMMqzulTvzrnY/3i
+	UfRqqjyWIKZVintLUYiTQ3BJl9CIcqNWsnHJdt/oAgwHLLM6ItSGbOJo80OqEhc0fg1Xo/scKYq
+	v7NmdykNrjLPRzshu5u8ZuR5uXW5cEkKxa35uD8V5rCz9eCttNAVblrZF
+X-Gm-Gg: AR+sD13GY1x9I19oKJPQKJptYcdMTdK0d09gZjuBKd1Xe+R2CLKPSXHy6wD1nCL4FS6
+	XXVPraIVqSjJ7JYQGDAVMb68TtQ7t8PgYNIRFvDDbgTtFHQUPlrVlpuCGhW4gIRr49bA+niulAe
+	REUvecZQoO51lxz2WeVshrV8gYAxAVJ4NNNVaj3/jgMlcM0WAS8ps1LB5CaVoPEiOO6yxEp+EZd
+	CT46jURwrC7iDlkkKHsZMObB/oHQAOpbhx10ONYs2wsPTklDqtTsvQBogbaMw==
+X-Received: by 2002:a17:903:32c4:b0:2bf:9760:b94d with SMTP id
+ d9443c01a7336-2cfde7ac5bfmr54965065ad.15.1785078233465; Sun, 26 Jul 2026
+ 08:03:53 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+References: <20250428195022.24587-2-stephen.smalley.work@gmail.com> <20260725200958.4471-1-cel@kernel.org>
+In-Reply-To: <20260725200958.4471-1-cel@kernel.org>
+From: Paul Moore <paul@paul-moore.com>
+Date: Sun, 26 Jul 2026 11:03:40 -0400
+X-Gm-Features: AUfX_mwCAvSQk4-T9fyvhCQsQ9yZrf7lX28MCwcHk6mPXjDrRJUIBZdmEFtEkeY
+Message-ID: <CAHC9VhSGn6UQ1__HtqjKWD1KgyMOhHYYKny5HnVuPAuvqZR9aw@mail.gmail.com>
+Subject: Re: [PATCH v2] security,fs,nfs,net: update security_inode_listsecurity()
+ interface
+To: Chuck Lever <cel@kernel.org>
+Cc: Stephen Smalley <stephen.smalley.work@gmail.com>, Anna Schumaker <anna@kernel.org>, 
+	Achilles Gaikwad <achillesgaikwad@gmail.com>, Trond Myklebust <trondmy@kernel.org>, 
+	Casey Schaufler <casey@schaufler-ca.com>, Christian Brauner <brauner@kernel.org>, linux-nfs@vger.kernel.org, 
+	linux-security-module@vger.kernel.org, selinux@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-client_info_show() renders /proc/fs/nfsd/clients/<id>/info and walks
-clp->cl_sessions under clp->cl_lock to print each session's slot
-counts.  free_client() tears down the same list without taking
-cl_lock, and is the only unlocked mutator of cl_sessions.  A reader
-can observe a client mid-teardown because get_nfsdfs_clp() pins the
-nfs4_client but not its sessions: free_client() frees every session
-before calling nfsd_client_rmdir(), so an in-flight seq_file reader
-can follow a list_del()'d node whose ->next now holds LIST_POISON1
-and take a general protection fault:
+On Sat, Jul 25, 2026 at 4:14=E2=80=AFPM Chuck Lever <cel@kernel.org> wrote:
+>
+> On Mon, Apr 28, 2025 at 03:50:19PM -0400, Stephen Smalley wrote:
+> > Update the security_inode_listsecurity() interface to allow
+> > use of the xattr_list_one() helper and update the hook
+> > implementations.
+>
+> This commit wedges an NFSv4.2 client running fstests.
+>
+> A kdevops fstests run against nfsd-next hangs at generic/086.  The
+> client stops making progress and never recovers:
+>
+>   watchdog: BUG: soft lockup - CPU#3 stuck for 250s! [086:60396]
+>   Comm: 086 Tainted: G  D  L  7.2.0-rc4
+>     __pv_queued_spin_lock_slowpath
+>     _raw_spin_lock
+>     nfs4_xattr_set_listcache [nfsv4]
+>     nfs4_xattr_discard_cache [nfsv4]
+>     nfs4_xattr_cache_scan [nfsv4]
+>     do_shrink_slab
+>     drop_caches_sysctl_handler
+>
+> The D taint says something died earlier.  It did: by the time the
+> lockup fires, the client has already taken two dozen NULL pointer
+> dereferences, all of them in the same place:
+>
+>   BUG: kernel NULL pointer dereference, address: 0000000000000000
+>   RIP: _copy_from_pages+0x44/0xd0 [sunrpc]
+>     nfs4_xattr_cache_list [nfsv4]
+>     nfs4_listxattr [nfsv4]
+>     vfs_listxattr
+>     __x64_sys_listxattr
+>
+> The two stages are connected.  nfs4_listxattr() declares its
+> remaining-size accumulator as an unsigned size_t.  On a size query,
+> where listxattr(2) passes a NULL buffer and a length of zero,
+> xattr_list_one() decrements that accumulator for the SELinux label
+> without regard to the NULL buffer, so it wraps to a very large
+> value.  nfs4_xattr_cache_list() then sees a NULL buffer paired with
+> a buffer length large enough to pass its own bounds check, and
+> copies into it.  The fault happens while the xattr listcache
+> spinlock is held.  Task exit does not release spinlocks, so the
+> lock is orphaned, and the next shrinker pass spins on it until the
+> watchdog fires.
+>
+> The reproducer is a plain getfattr on a file on an NFSv4.2 mount
+> with SELinux enforcing, which is what fstests generic/086 arrives
+> at by way of a drop_caches write.  No fstests machinery is needed
+> to see the oops.
+>
+> An audit of the listxattr path pointed here, so I built nfsd-next
+> with this commit reverted and reran the full fstests nfs_v42
+> section on the same pair of guests.  745 tests, no soft lockup, no
+> oops, and generic/086 passes.  The two failures that remain,
+> generic/033 and generic/258, are unrelated to xattrs.
+>
+> I am not proposing the revert as the fix.  Achilles Gaikwad has
+> already posted a targeted patch for the accounting itself:
+>
+>   https://lore.kernel.org/linux-nfs/20260707152305.15324-1-achillesgaikwa=
+d@gmail.com/
+>
+> Whether the right answer is that patch, a change to
+> xattr_list_one() so it leaves the remaining size alone when the
+> buffer is NULL, or hardening nfs4_xattr_cache_list() against a NULL
+> buffer, is for the three of you to settle.  I am reporting the
+> severity, because the accounting bug is not confined to a short
+> size query: on a filesystem that caches xattrs behind a lock, it
+> takes the whole machine down.
+>
+> I can test whatever you settle on against the same setup.
 
-  Oops: general protection fault, probably for non-canonical address
-        0xdead00000000014c
-  CPU: 1 UID: 0 PID: 132488 Comm: cat
-  RIP: 0010:client_info_show+0x2bf/0x3d0
-  RAX: dead000000000100
-  Call Trace:
-   seq_read_iter+0x12a/0x4b0
-   seq_read+0xf1/0x130
-   vfs_read+0xbf/0x350
-   ksys_read+0x6f/0xf0
-   do_syscall_64+0x8b/0xcb0
-   entry_SYSCALL_64_after_hwframe+0x76/0x7e
-  Kernel panic - not syncing: Fatal exception
+I reviewed Achilles's patch back in early July and it looked okay to
+me (see my tag in my email in that thread from July 7th).  I had
+figured that the NFS folks would have wanted to pull that via the NFS
+tree since it only touches NFS code.  If they would prefer I send it
+up to Linus via the LSM tree I can do that, but I would appreciate an
+ACK and Tested-by from someone on the NFS side.
 
-Detach cl_sessions onto a local reaplist under cl_lock, then free the
-sessions after dropping the lock.  Removing entries from cl_sessions
-under cl_lock matches unhash_session(), and the detach-then-reap shape
-matches how __destroy_client() reaps cl_delegations.  The sessions
-cannot be freed while cl_lock is held, since free_session() calls
-nfsd4_del_conns(), which re-acquires it.
+While I don't suspect it will be very interesting, I just started
+building a test kernel with Achilles's patch that I'll run through the
+normal selinux-testsuite automated testing.
 
-Reported-by: Nicholas Wolff <nicholas.wolff@truenas.com>
-Fixes: 601c8cb349c2 ("nfsd: add session slot count to /proc/fs/nfsd/clients/*/info")
-Signed-off-by: Ameer Hamza <ameer.hamza@truenas.com>
----
-Reproducer, on a throwaway NFSv4.1 server (panics within a couple of
-minutes without this patch):
-
-  sysctl -w kernel.panic_on_oops=1
-  mkdir -p /export /mnt/loopback
-  echo '/export 127.0.0.1(rw,no_root_squash,fsid=0)' >/etc/exports
-  systemctl start nfs-server; exportfs -ra
-  mount -t nfs -o vers=4.1 127.0.0.1:/ /mnt/loopback
-
-  for i in $(seq $(nproc)); do
-      ( while :; do cat /proc/fs/nfsd/clients/*/info >/dev/null 2>&1; done ) &
-  done
-
-  shopt -s nullglob
-  while :; do
-      ls /mnt/loopback >/dev/null 2>&1
-      for c in /proc/fs/nfsd/clients/*/; do printf 'expire\n' >"${c}ctl"; done
-  done
-
-The "expire" write is what drives free_client(); a reader-only loop
-does not reproduce this. panic_on_oops is needed because the fault
-happens while the reader holds cl_lock.
-
- fs/nfsd/nfs4state.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d7731bb4959c..d93672e6fa26 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2791,10 +2791,16 @@ void nfsd4_put_client(struct nfs4_client *clp)
- static void
- free_client(struct nfs4_client *clp)
- {
--	while (!list_empty(&clp->cl_sessions)) {
-+	LIST_HEAD(reaplist);
-+
-+	/* client_info_show() walks cl_sessions under cl_lock */
-+	spin_lock(&clp->cl_lock);
-+	list_splice_init(&clp->cl_sessions, &reaplist);
-+	spin_unlock(&clp->cl_lock);
-+	while (!list_empty(&reaplist)) {
- 		struct nfsd4_session *ses;
--		ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
--				se_perclnt);
-+		ses = list_entry(reaplist.next, struct nfsd4_session,
-+				 se_perclnt);
- 		list_del(&ses->se_perclnt);
- 		WARN_ON_ONCE(atomic_read(&ses->se_ref));
- 		free_session(ses);
-
-base-commit: 8d4fbec07074c98f4b16c7e38964227fdf4d5cd3
--- 
-2.53.0
-
+--=20
+paul-moore.com
