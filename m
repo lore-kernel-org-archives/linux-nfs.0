@@ -1,38 +1,38 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 13D833E5EFB
-	for <linux-nfs@vger.kernel.org>; Mon, 27 Jul 2026 21:09:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 672FF37CD4E
+	for <linux-nfs@vger.kernel.org>; Mon, 27 Jul 2026 21:09:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785186592; cv=none; b=OGD5GT8xzFRmV0Yv7WLqX7qA2W6+716QPCXY30oryhW/SenTeJqTXU7fzu4Up09cA3YMCPrGVkrRSwWJe5g9aUBPk9mad5+qTtIxyGwsw6R6vBFny4z/KiAdkyV2xQ5F52JqWgxHN3EBhj86MtnPxfMLS70MP/HyUsGJnTBgL+k=
+	t=1785186593; cv=none; b=XLcEI4ELv6E30Qj4MDr81lI1a187zlPvOP+yieTG7B+xT5b8NY+Qut0NEw12d8hDZcIw79ra/GilLhUiNgbS0eyUJcdmaoy/gbYg+M5yRiBqEzKvfbcbt0e48zwcPn3LF7QVabzX5OpBsjqwuF3twOJg93ZzFC72d9QOHW6HgW4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785186592; c=relaxed/simple;
-	bh=E8SwOtfJI0sUoHWyqS5LorMU0zTWVnNCbAIGY/xf8qE=;
+	s=arc-20240116; t=1785186593; c=relaxed/simple;
+	bh=MdgTkyrgg0C5h4SSJjkqEryoSvxR8sBMKz6HerKLOMo=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=InF42PJDl0SSIB0ApBj9AmAnbc48WusWUXDqH8IO8zN/xfchcGk1Hdzs6KcbtLVyzqpTgV52+XDjh6dOJOIfY4gUWbXkkIiOloodbjDaPxbw5ZFT76Cf8vOpO4q4Icy4lDSE5Y41LlUzLl2SjKLZTIommY1LroPtr1TEbeyw+jk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Bpkp+9BU; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=guw5lLsXCA7a/KfZ/Dcl6WPf0l9uthKcyetRb4yVNMtgLmStk7IEsMZxZNlIsvysIXHdIjAy2ay+AUzJowDRJZttDAJ8GQ1yll2NmJwRg1GWrZh7ka6lCZQacTVwGRsT85tzk5ADuHccfj8JbCQrPZyZEs3ZR1MhuQbCbvxBGLk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CR2hMWqi; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Bpkp+9BU"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id BC1581F00A3A;
-	Mon, 27 Jul 2026 21:09:50 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CR2hMWqi"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 1269B1F000E9;
+	Mon, 27 Jul 2026 21:09:51 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785186591;
-	bh=b2+MHKwiEOmsE9McDoG2OyEIWc9gFMNu6PH93K/GfDw=;
+	s=k20260515; t=1785186592;
+	bh=RZOG8qpbJK/s4eCMgXRfuUSxMLuI5jnf4I3Ie5snHYo=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=Bpkp+9BUjKO2pyZqJsEWlEnN0BtCc78V75GqYUaw6RBJ/vK3vzkbzEfBJ2Ojh5zvu
-	 IvR2w9Q+DCrtbFkFJyYCphyr4aQAxl6B4Ct0zZgwYQ13GuUbxEkCwSOE7iqMRxXEcu
-	 PypuIZFBPt5xgPid9J5nBFXCWBy/vTO/ayVtPPBYa0VwFg48IOrCGIKH/C/Tgvj0Bw
-	 CNJXynX6okR/6z15kbEZ/RPSkIlPjy5tybC5kWHN39hIkI111/woSoCaL28MTj/qg9
-	 IMHeh9LogSWNfJqiUBXqd3ZPordupo8w/jg69GAEACkaVQ3mAPbVP6RDmjH7Bry03R
-	 dARQgvroxuovQ==
+	b=CR2hMWqinr342GUJ9aTMlWzHrlpITGafdmLNOyYU+GKX/h8YG66N1ymR3dbpJy9eo
+	 1SecIehrxEbc012mIodPKm4PQFWsLAVRmlVtSrz8k+IXSD7s//KV8QkJ/o/VdQUlfl
+	 bjwDbqQYd4aTumwPqwxzP3rHnNZ3uQUnAIVP1hqWZP/MnzqXU8C3f2jgS0BHqsfv4B
+	 PyErjHrhMnFLFjTxAveDfgeFUV4xfYEuzizcNBDROlNZB5ehgzThlAUjOcajgaZXqu
+	 yWv0skRyNGT1g2+3MtfaJoUWhcpCk4ekQ5xZjfP1Co2uU8Vrqsp3GRGy5mNPlAi5+p
+	 IXgU6cna9ZcNg==
 From: Mike Snitzer <snitzer@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 5/6] nfs4.2: request UNCACHEABLE_DIRENT_METADATA only for directories
-Date: Mon, 27 Jul 2026 17:09:42 -0400
-Message-ID: <0949ae8eb880fe0fbe702fc1c3e5fbd70ec356da.1785140181.git.snitzer@kernel.org>
+Subject: [PATCH v4 6/6] nfs4.2: honor UNCACHEABLE_DIRENT_METADATA by refetching readdir
+Date: Mon, 27 Jul 2026 17:09:43 -0400
+Message-ID: <77b72759ad7beee334abfda36098cc310f6e96a5.1785140181.git.snitzer@kernel.org>
 X-Mailer: git-send-email 2.44.0
 In-Reply-To: <cover.1785140181.git.snitzer@kernel.org>
 References: <cover.1785140181.git.snitzer@kernel.org>
@@ -44,80 +44,94 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The UNCACHEABLE_DIRENT_METADATA attribute (attr 88) applies only to
-directory objects (NF4DIR); per draft-ietf-nfsv4-uncacheable-directories
-a server must reject a query of it on any other object type with
-NFS4ERR_INVAL.
+Honor the per-directory UNCACHEABLE_DIRENT_METADATA attribute: when a
+directory is marked uncacheable, nfs_readdir() bypasses the readdir page
+cache and refetches directory-entry metadata from the server on every
+readdir, satisfying the always-refetch semantics the attribute requires
+(draft-ietf-nfsv4-uncacheable-directories Section 5.1).
 
-Request it by object type at the single choke point
-nfs4_bitmap_copy_adjust(): add FATTR4_WORD2_UNCACHEABLE_DIRENT_METADATA
-for a directory target (gated on server->attr_bitmask, i.e. only when the
-server supports it) and strip it for any non-directory or unknown target
-(callers with an unknown object type, e.g. LOOKUP/LOOKUPP/CREATE, pass a
-NULL inode and are already routed through this helper).
+Rather than searching the cached readdir folios, nfs_readdir() forces the
+-EBADCOOKIE path so the request is served by uncached_readdir(); the
+dir_cookie == 0 (start-of-directory) case is included so the very first
+readdir of an uncacheable directory also goes to the server.  A
+tracepoint records when an uncacheable directory bypasses the cache.
 
-Crucially, attr 88 is NOT carried in the shared request bitmaps
-(nfs4_fattr_bitmap, nfs4_pnfs_open_bitmap).  Those are used verbatim as
-the OPEN "open_bitmap" -- the GETATTR embedded in OPEN, which is masked
-only by the server's supported set and is not type-gated -- so a
-directory-only attribute placed there would be requested on every
-regular-file OPEN and draw NFS4ERR_INVAL.  Adding it in copy_adjust
-instead keeps it off OPEN while still requesting it on directory GETATTRs.
+The metadata the attribute governs is the per-entry size and timestamps,
+which are carried only by READDIRPLUS (a plain READDIR refreshes names
+but leaves the entries' attributes to the inode attribute caches).  So
+also force READDIRPLUS for an uncacheable directory (when the server is
+capable): nfs_use_readdirplus() otherwise enables it only at the start of
+the directory or once cache usage crosses a threshold, and the cache-
+bypassing path above never accrues that usage -- which would leave
+continuation READDIRs of a large directory refreshing names but serving
+stale per-entry attributes.  Forcing READDIRPLUS makes each READDIR
+refresh the entries' attribute caches (via nfs_prime_dcache() ->
+nfs_refresh_inode()), so a subsequent stat() observes current values.
 
-This differs from the companion NF4REG-only UNCACHEABLE_FILE_DATA
-attribute, which does ride the shared bitmaps: it is legal on the OPEN of
-a regular file (where it is wanted, to drive O_DIRECT), so copy_adjust
-merely strips it for non-regular targets.  Net: a regular file requests
-file_data and never dirent_metadata, a directory requests dirent_metadata
-and never file_data, and an unknown/other object requests neither.
-
-The type gate runs before the helper's read/write (file) delegation
-handling and is the only adjustment the directory attribute needs: a
-directory cannot hold a file delegation, so the delegation-based
-suppression below it never applies.
+The attribute does not change NFSv4.2 change-attribute semantics: the
+client continues to use the directory change attribute for validation;
+this only suppresses serving READDIR responses from the local cache.
 
 Link: https://datatracker.ietf.org/doc/draft-ietf-nfsv4-uncacheable-directories/
 
 Signed-off-by: Mike Snitzer <snitzer@kernel.org>
 Assisted-by: Claude:claude-opus-4-8
 ---
- fs/nfs/nfs4proc.c | 21 +++++++++++++++++----
- 1 file changed, 17 insertions(+), 4 deletions(-)
+ fs/nfs/dir.c      | 18 ++++++++++++++++--
+ fs/nfs/nfstrace.h |  1 +
+ 2 files changed, 17 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 35156c54dac3..e4b4012d1f49 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -310,13 +310,26 @@ static void nfs4_bitmap_copy_adjust(__u32 *dst, const __u32 *src,
- 	memcpy(dst, src, NFS4_BITMASK_SZ*sizeof(*dst));
- 	/*
- 	 * The uncacheable_file_data attribute applies only to regular files
--	 * (NF4REG); a server must reject a query of it on any other object
--	 * type with NFS4ERR_INVAL.  Never request it unless the target is
--	 * known to be a regular file (callers with an unknown object type,
--	 * e.g. LOOKUP, pass a NULL inode).
-+	 * (NF4REG) and the uncacheable_dirent_metadata attribute only to
-+	 * directories (NF4DIR); a server must reject a query of either on any
-+	 * other object type with NFS4ERR_INVAL.  Never request either unless
-+	 * the target is known to be of the matching type (callers with an
-+	 * unknown object type, e.g. LOOKUP, pass a NULL inode).
-+	 *
-+	 * uncacheable_file_data rides the shared request bitmaps (it is legal
-+	 * on the OPEN of a regular file, where it is wanted); strip it here for
-+	 * any non-regular target.  uncacheable_dirent_metadata must NOT ride
-+	 * those bitmaps -- they are used verbatim by OPEN on regular files,
-+	 * where a directory-only attribute would draw NFS4ERR_INVAL -- so it is
-+	 * added here for directories only, gated on server support.
- 	 */
- 	if (!inode || !S_ISREG(inode->i_mode))
- 		dst[2] &= ~FATTR4_WORD2_UNCACHEABLE_FILE_DATA;
-+	if (inode && S_ISDIR(inode->i_mode))
-+		dst[2] |= NFS_SERVER(inode)->attr_bitmask[2] &
-+			  FATTR4_WORD2_UNCACHEABLE_DIRENT_METADATA;
-+	else
-+		dst[2] &= ~FATTR4_WORD2_UNCACHEABLE_DIRENT_METADATA;
- 	if (!inode || !nfs_have_read_or_write_delegation(inode))
- 		return;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 6b07abf272b1..2162e93992c2 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -667,6 +667,14 @@ static bool nfs_use_readdirplus(struct inode *dir, struct dir_context *ctx,
+ 		return false;
+ 	if (NFS_SERVER(dir)->flags & NFS_MOUNT_FORCE_RDIRPLUS)
+ 		return true;
++	/*
++	 * An uncacheable directory must refetch directory-entry metadata
++	 * (including per-entry size and timestamps) from the server on each
++	 * READDIR; force READDIRPLUS so those attributes are refreshed on
++	 * every call rather than left stale in the inode attribute caches.
++	 */
++	if (NFS_I(dir)->uncacheable_dirent_metadata)
++		return true;
+ 	if (ctx->pos == 0 ||
+ 	    cache_hits + cache_misses > NFS_READDIR_CACHE_USAGE_THRESHOLD)
+ 		return true;
+@@ -1274,12 +1282,18 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+ 	desc->clear_cache = force_clear;
+ 
+ 	do {
+-		res = readdir_search_pagecache(desc);
++		if (nfsi->uncacheable_dirent_metadata) {
++			res = -EBADCOOKIE;
++			trace_nfs_readdir_uncacheable_directory(inode);
++		} else {
++			res = readdir_search_pagecache(desc);
++		}
+ 
+ 		if (res == -EBADCOOKIE) {
+ 			res = 0;
+ 			/* This means either end of directory */
+-			if (desc->dir_cookie && !desc->eof) {
++			if ((desc->dir_cookie || nfsi->uncacheable_dirent_metadata) &&
++			    !desc->eof) {
+ 				/* Or that the server has 'lost' a cookie */
+ 				res = uncached_readdir(desc);
+ 				if (res == 0)
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index b15c1732c869..a9930d59c610 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -181,6 +181,7 @@ DEFINE_NFS_INODE_EVENT_DONE(nfs_fsync_exit);
+ DEFINE_NFS_INODE_EVENT(nfs_access_enter);
+ DEFINE_NFS_INODE_EVENT_DONE(nfs_set_cache_invalid);
+ DEFINE_NFS_INODE_EVENT(nfs_readdir_force_readdirplus);
++DEFINE_NFS_INODE_EVENT(nfs_readdir_uncacheable_directory);
+ DEFINE_NFS_INODE_EVENT_DONE(nfs_readdir_cache_fill_done);
+ DEFINE_NFS_INODE_EVENT_DONE(nfs_readdir_uncached_done);
  
 -- 
 2.47.3
