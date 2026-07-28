@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 09150392C36
-	for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2026 16:59:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7B391391E74
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2026 16:59:19 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785257958; cv=none; b=F5SfKejE7xMO6TQA4ystq4Q92K/peVoatIs5sWk6L+RNaVOJtXPAysxmHzKDgVQfFIw7/izWZK34+l4f7S9xT+pxq8pkSR/NysP0wMhCfMCNT/fjV+XoyLDj/KBBcmO+oTc6Hg/E9nZ2lP9yJ2KtS8jVPA68qFikC0ZM4O18ay0=
+	t=1785257960; cv=none; b=qo2AAJuDNh7hBsIuBAdunm3vRZZRmv213v5ovF4P+Q+goB0McPIT+eirunPH89S3mHnGsLObjnhaJhwGmnwlAVWNidUM+x/zpNnHX1f1A50QdWTefYE4bB8jcuBLm3fREf+yQMWEAsg06KVb48MEzt/gizFH6aTq1xD+u9TSxXU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785257958; c=relaxed/simple;
-	bh=9yxKKw1AbvpXv0+1asikklpm/hp5/xfxWDPal66XPy0=;
+	s=arc-20240116; t=1785257960; c=relaxed/simple;
+	bh=9Ypsum1dIVY8tfej2pPQRZVuLdBF8/u6r72L0Pb5ijI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ugKzVwINzqiV0Bulak+bmPEdxgyS8KPhIjJSrO8uKPamJ8N9fkzPe1cY+2Nr2wQCejmErgiiC4tyHrqzpiIpXCqB1segzwAZjyXr62r5gREyfQjOKVvphWkecPWyWQZ9W5Vc6F0AnVK4KkuiBPyIDW4cw3pVqWYV6SR0V3ilY/0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=FE9cSjXl; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=lt122Kv9Y6Lcls/S+hvpsZl0tqY+2RcFjFQNuOwixS1jKrjfb/cb0OblVVl5UnqximXq6eK7Hd7y6WqCLyQkhfcnPEhZ7V7MPSigYTcuoJrq4nR5FEMVBMq7t96kTne5Ib/KVPeuNhQjgMNc+t37gqNyeW+05NXPzhm1egFxEi8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=cyifd0kC; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="FE9cSjXl"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2C5E61F00A3E;
-	Tue, 28 Jul 2026 16:59:16 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="cyifd0kC"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C28C11F000E9;
+	Tue, 28 Jul 2026 16:59:18 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785257956;
-	bh=jo8acNkZBwVCV8NzBrhhIpz+95OvLgm8jMSmOcXCHZs=;
+	s=k20260515; t=1785257959;
+	bh=G80AHMIO/Qcez6cVGM3ILTIltsfsm4Y42150pnJlzfI=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=FE9cSjXlVDbaCmsCJ5tIgEI8qLGJC22BMEBWlqlnFqTrKdQt/9fllKHvar4+T7OVX
-	 InZ/mLK82xHggLtqUB88XBcAsMtaknPmRjcVW9tUiCA1s7wV+9Aw4Us7IF8W58Tdk0
-	 Yvhjn3imXHOG+JhYFZRpGs42QDFC5oGj4QNB8Bd2wXggJgKLRbtqoW5Z9Hu7g6M+Eq
-	 E/stj8mrNboxV6V6WTm5AJKRw8QYUZ1GnwGSDld8MD5NF1dFPJUrO1z0lhi44mTPWn
-	 KgD/w+bGc12+sOEtciUENqBT7ZzmOyoyl/AKxqiEp+T2psx3RmHhnVFL3Q8UMicsYk
-	 ces7LH8AAho6Q==
+	b=cyifd0kCG3yRiL8PW6UXhw7/FlL/VtCnjRpRnBLupIEr+StXEBjSWcjMQ7kDtS5sy
+	 W8B+WpDW8Pa4oKN+hN69QFVzwiLuyOyPJQ6o+uJreYOAWZBU1ZmHTxY2kiv0+Nv2ju
+	 YEgUQbdzWcY1GQup3otnplkpcnMnmn1s4MU1wz1381PqbTwsbc3M9ISOMtWj/Wzcp+
+	 0AJIhhA1B4hblh+ThK4iQZg9vd9etUgU0KVE2wpdIps8SLXxsl4Pl2f+/d3UvVV1jV
+	 KSOUBfver186ysd2C8b/NXRAhebnbuBT+0pF7Gi40PSB0g+ePmyRxZ7LaZermuyTOx
+	 RU7CQtV0Brt7Q==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 4/5] NFSD: Name the fh_maxsize value that carries no NFS version
-Date: Tue, 28 Jul 2026 12:59:10 -0400
-Message-ID: <20260728165911.462534-5-cel@kernel.org>
+Subject: [PATCH v2 5/5] NFSD: Don't apply NFS version-specific behavior to LOCALIO requests
+Date: Tue, 28 Jul 2026 12:59:11 -0400
+Message-ID: <20260728165911.462534-6-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260728165911.462534-1-cel@kernel.org>
 References: <20260728165911.462534-1-cel@kernel.org>
@@ -47,72 +47,58 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-nfsd_set_fh_dentry() selects behavior specific to an NFS protocol
-version by matching fh_maxsize against NFS_FHSIZE, NFS3_FHSIZE, or
-NFS4_FHSIZE. A filehandle that reaches NFSD outside an NFS request has
-no such version. nlm_fopen() opts out of the switch by passing a bare
-0, which matches no arm, and the literal says nothing about why, so an
-adjacent comment has to carry it.
+LOCALIO serves NFS clients of every version through one entry point,
+so no protocol version is associated with such a request.
+nfsd_set_fh_dentry() selects version-specific behavior anyway: its
+switch keys off fh_maxsize, and nfsd_open_local_fh() passes
+NFS4_FHSIZE because that is the size of the buffer it copies into, so
+LOCALIO lands in the NFSv4 arm. fh_getattr() keys off fh_maxsize too
+and does run on a LOCALIO open, adding STATX_BTIME and
+STATX_CHANGE_COOKIE to the mask it requests: work on filesystems that
+compute them for a caller that never reads them.
 
+nfsd_open_local_fh() only verifies a handle it received, so it has no
+maximum size to state. Pass NFSD_FHSIZE_UNSPEC as nlm_fopen() already
+does, which selects the switch arm that applies no version-specific
+behavior, and state the bound on the copy out of struct nfs_fh as
+NFS_MAXFHSIZE.
+
+Suggested-by: NeilBrown <neil@brown.name>
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/lockd.c |  3 +--
- fs/nfsd/nfsfh.c |  2 ++
- fs/nfsd/nfsfh.h | 14 ++++++++++++++
- 3 files changed, 17 insertions(+), 2 deletions(-)
+ fs/nfsd/localio.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
-index f5a4f352f8ab..5ec0f5456063 100644
---- a/fs/nfsd/lockd.c
-+++ b/fs/nfsd/lockd.c
-@@ -34,8 +34,7 @@ static int nlm_fopen(struct svc_rqst *rqstp, struct nfs_fh *f,
- 	int		access;
- 	struct svc_fh	fh;
+diff --git a/fs/nfsd/localio.c b/fs/nfsd/localio.c
+index 4110be02b750..33b56d1b3f44 100644
+--- a/fs/nfsd/localio.c
++++ b/fs/nfsd/localio.c
+@@ -11,7 +11,6 @@
+ #include <linux/exportfs.h>
+ #include <linux/sunrpc/svcauth.h>
+ #include <linux/sunrpc/clnt.h>
+-#include <linux/nfs4.h>
+ #include <linux/nfs_common.h>
+ #include <linux/nfs_fh.h>
+ #include <linux/nfslocalio.h>
+@@ -54,7 +53,7 @@ nfsd_open_local_fh(struct net *net, struct auth_domain *dom,
+ 	struct nfsd_file *localio;
+ 	__be32 beres;
  
--	/* must initialize before using! but maxsize doesn't matter */
--	fh_init(&fh,0);
+-	if (nfs_fh->size > NFS4_FHSIZE)
++	if (nfs_fh->size > NFS_MAXFHSIZE)
+ 		return ERR_PTR(-EINVAL);
+ 
+ 	if (!nfsd_net_try_get(net))
+@@ -67,7 +66,7 @@ nfsd_open_local_fh(struct net *net, struct auth_domain *dom,
+ 		return localio;
+ 
+ 	/* nfs_fh -> svc_fh */
+-	fh_init(&fh, NFS4_FHSIZE);
 +	fh_init(&fh, NFSD_FHSIZE_UNSPEC);
- 	fh.fh_handle.fh_size = f->size;
- 	memcpy(&fh.fh_handle.fh_raw, f->data, f->size);
- 	fh.fh_export = NULL;
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index fd721a5a6b37..b1f3c22af525 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -335,6 +335,8 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct net *net,
- 	}
+ 	fh.fh_handle.fh_size = nfs_fh->size;
+ 	memcpy(fh.fh_handle.fh_raw, nfs_fh->data, nfs_fh->size);
  
- 	switch (fhp->fh_maxsize) {
-+	case NFSD_FHSIZE_UNSPEC:
-+		break;
- 	case NFS4_FHSIZE:
- 		if (dentry->d_sb->s_export_op->flags & EXPORT_OP_NOATOMIC_ATTR)
- 			fhp->fh_no_atomic_attr = true;
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index ab15b59ac7b3..7d8e3f015307 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -246,6 +246,20 @@ fh_copy_shallow(struct knfsd_fh *dst, const struct knfsd_fh *src)
- 	memcpy(&dst->fh_raw, &src->fh_raw, src->fh_size);
- }
- 
-+#define NFSD_FHSIZE_UNSPEC	0
-+
-+/**
-+ * fh_init - Prepare a file handle for fh_compose() or fh_verify()
-+ * @fhp: File handle to initialize
-+ * @maxsize: Largest file handle, in bytes, to build in @fhp
-+ *
-+ * @maxsize bounds the handle fh_compose() may build: NFS_FHSIZE,
-+ * NFS3_FHSIZE, and NFS4_FHSIZE additionally select version-specific
-+ * handling in fh_verify(). Callers that only verify an incoming
-+ * handle pass NFSD_FHSIZE_UNSPEC, which cannot be composed.
-+ *
-+ * Return: @fhp
-+ */
- static __inline__ struct svc_fh *
- fh_init(struct svc_fh *fhp, int maxsize)
- {
 -- 
 2.54.0
 
