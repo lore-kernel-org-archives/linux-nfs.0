@@ -1,30 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B3A343921DB
-	for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2026 16:59:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC6B2392C56
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2026 16:59:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785257955; cv=none; b=cij5hamwR2NX/0KmXyZa31O43i3I6OcZaJfuFz3an4jxMJthmmjrJb2ZXhqwrTQV2JK8UI/KOk8FLyJpQr2ovMLJhHWIoU+7msGDk4GR+UBSsb8WK/NrGJzyfo+MFM0OgRaPvVNbDXxXnxlKRZkedEZz9n0zFe/ZjQd4gsl8xi0=
+	t=1785257956; cv=none; b=DTCZmE+j5TfJUIqJoJhHwsmoGXhWTv5xbX3SheM0UmVcBHJmCoWyXoxkCN4Nq7TFmR3IfTXJSRJZiyD1ELdV+RbBvbamOQepYnweImm4U3+ThOzrszo7DHA4kw6VKqzjNbm5ztrRdjr1h1zGA8+zQMcC0hHZyv893ORotSldM/U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785257955; c=relaxed/simple;
-	bh=LlMgsLAUkklC+Klm0fA1eJHalOo5NSNtT9f8mQVBCxA=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=ptkEus0KYMwmFaYbi22HvL0yXKOFWQGGAyNlc3kSUVFjXaZQfcPwcw9JKzKyw4sE7XT8X16RHKJu76dZ7RwhmxE/eR1ik5AsiZHm2JK8eAgBBAO3VYdDwDCAvgk3t+T+f2LT7RgJBIEGJrZC+xJImOwzPxAzaaTo14YucehsE2A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OZk7DlLw; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1785257956; c=relaxed/simple;
+	bh=0OMXLGr75rV2gj/2dQ5U5tVfpzd/Xd/cL9L0F7eOkO8=;
+	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
+	 MIME-Version; b=D2lwzrUxrfgN/Ene0GrMdPAk6InPcPhhdKXuLOlNHGCpPse4vKyz/jjT+E/jGqnLEYktZy/VuD6hla+Vw9Za/5TxLdZMeYo3up+MUAHRfigAqGpN8ncqtF751Im25fEdGUEcpOmsgsaIPnWB6j7SHGqRPdlsJXKORhdrmT1Oo28=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EWkoVMV/; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OZk7DlLw"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B90751F000E9;
-	Tue, 28 Jul 2026 16:59:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EWkoVMV/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 95B5E1F00A3A;
+	Tue, 28 Jul 2026 16:59:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785257953;
-	bh=Kv+QaDB/7GR0IqkL9RRE/qgAp6ij4PzKZ+huUjrk8Bg=;
-	h=From:To:Cc:Subject:Date;
-	b=OZk7DlLwLt275SIlhgncuNYwnUp0kfilj9LxwcUbEth/cOBfp5UYXuwrzeKnbnQYG
-	 7NsSc+ZJXNDX1EF9xh+RusLy+JNx/5FF0VTn/pXTQN8+UTeNzV0f95v2Cr1poB+bqP
-	 9RjTSSbh3rQDNFZZprQ0vGv0W9KHvLlUg44mx4OUmhPkWbyp8NAQRPRCFBcGKZs5A4
-	 YsCGiQY7eTb2RlRy/BIqn4d7lXYKfF8gp6cQyKqkvIoifltechELwbuoU3/e8Czbfc
-	 E2WNYIS9734EBteYEfLfiQbBfUibAWFYV+A1y4tUUFf4+wcSNj2EeLl9H4oEorJFC1
-	 uvrtQ/z8UNI9g==
+	s=k20260515; t=1785257954;
+	bh=GxB5w0WEG/CalsLk7Dd6qPYCUrbXo7h9U4mjrd7c+tQ=;
+	h=From:To:Cc:Subject:Date:In-Reply-To:References;
+	b=EWkoVMV/pCLAkY4ChX5SbuN9bjXzX4iJLF8juh5+t6hu1PPqyJIvTvK4b+hytFIji
+	 +Q0j4QAkkpHdtq7BUs5TQjwNRLUYylXIud2/Hc6mEACiE1bm7X8Iyp+PwcUaSa+oTe
+	 CkDzt5mURmjkAwITybbdUKbzJlKFFbg1+kp/kDmSr8hrIuU4EYngzuCviwcJX7Jiwk
+	 8fuzZSv5cXquCLb1nJGB17s1a+fZByCfopxRMXDAUukkiSW5qKeGgbLm3kib/nhkv3
+	 zGYqR/wWeTC/Afl/yaB1XTkGkWX45Pj+xWQZNTpYHThkcJ78CMSfEaKqc2UtaiZzq6
+	 sN7s6uF3PkXaw==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -32,10 +33,12 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 0/5] Remove NFS client header dependencies from LOCALIO
-Date: Tue, 28 Jul 2026 12:59:06 -0400
-Message-ID: <20260728165911.462534-1-cel@kernel.org>
+Subject: [PATCH v2 1/5] NFSD: Move the RPC program definition for LOCALIO
+Date: Tue, 28 Jul 2026 12:59:07 -0400
+Message-ID: <20260728165911.462534-2-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
+In-Reply-To: <20260728165911.462534-1-cel@kernel.org>
+References: <20260728165911.462534-1-cel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -44,30 +47,52 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Clean up: fs/nfsd/localio.c is a server-side component, so it should
-avoid dependency on client-specific headers and XDR utilities.
+Clean up: The definitions for the LOCALIO program are not needed by
+most files that include linux/nfs.h. Following the convention used
+by most other in-kernel RPC program implementations, relocate the
+LOCALIO program definitions to a localio-specific header.
 
-No change in behavior is expected.
-
+Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
-Changes in v2:
-- Including <linux/nfs4.h> is also no longer needed (Neil Brown)
+ include/linux/nfs.h        | 7 -------
+ include/linux/nfslocalio.h | 8 ++++++++
+ 2 files changed, 8 insertions(+), 7 deletions(-)
 
-Chuck Lever (5):
-  NFSD: Move the RPC program definition for LOCALIO
-  nfs_common: Remove "#include <linux/nfs.h>" from linux/nfslocalio.h
-  NFSD: Tighten header includes in localio.c
-  NFSD: Name the fh_maxsize value that carries no NFS version
-  NFSD: Don't apply NFS version-specific behavior to LOCALIO requests
-
- fs/nfsd/localio.c          | 10 ++++------
- fs/nfsd/lockd.c            |  3 +--
- fs/nfsd/nfsfh.c            |  2 ++
- fs/nfsd/nfsfh.h            | 14 ++++++++++++++
- include/linux/nfs.h        |  7 -------
- include/linux/nfslocalio.h | 11 ++++++++++-
- 6 files changed, 31 insertions(+), 16 deletions(-)
-
+diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+index 0e2b210c103b..8c2818db43c5 100644
+--- a/include/linux/nfs.h
++++ b/include/linux/nfs.h
+@@ -15,11 +15,4 @@
+ 
+ #include <uapi/linux/nfs.h>
+ 
+-/* The LOCALIO program is entirely private to Linux and is
+- * NOT part of the uapi.
+- */
+-#define NFS_LOCALIO_PROGRAM		400122
+-#define LOCALIOPROC_NULL		0
+-#define LOCALIOPROC_UUID_IS_LOCAL	1
+-
+ #endif /* _LINUX_NFS_H */
+diff --git a/include/linux/nfslocalio.h b/include/linux/nfslocalio.h
+index 3d91043254e6..d2b39e6e6c6a 100644
+--- a/include/linux/nfslocalio.h
++++ b/include/linux/nfslocalio.h
+@@ -16,6 +16,14 @@
+ #include <linux/nfs.h>
+ #include <net/net_namespace.h>
+ 
++/*
++ * The LOCALIO program is entirely private to Linux and is NOT part of
++ * the uapi.
++ */
++#define NFS_LOCALIO_PROGRAM		400122
++#define LOCALIOPROC_NULL		0
++#define LOCALIOPROC_UUID_IS_LOCAL	1
++
+ struct nfs_client;
+ struct nfs_file_localio;
+ 
 -- 
 2.54.0
 
