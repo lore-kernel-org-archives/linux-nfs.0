@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EED0C337688
-	for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2026 16:59:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 49B083932F7
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Jul 2026 16:59:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785257957; cv=none; b=FZ3Z64sEQTV1Ml+8tU5nCLQ/LW5Uud2174BxI0xCHXtD8kMMfrJSoBVCTASfTUFifssySPKsMAo9lly+lgygvBT0LepAy7FuNMTz8t4d5XCrVEzdFxRyM7hrBMbuUuHa0tfYpuxbkfx3xCvmO8nMTdHdG4C/idiN24EDalKoxAQ=
+	t=1785257957; cv=none; b=P1Q9ve92CqqfTRLmyuxntfTRtSClD8xrEC3pMZb2a4gmvN/UrLDr5TgNdPahUTJ6VR1iJLFofJCxyd14dv+xWbNSPxOXqPt60WIr/6L1bD3NZFpfOUo1TMw8KKh8JJrSZmtv0aNzpDFZQSU0hlZEpHT4OY3wFEDtdAyBugNNC1w=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1785257957; c=relaxed/simple;
-	bh=btf5/jyp1ea5UmbSS/9VqqxRx0CZ05PW8+eS3ow5DOM=;
+	bh=rKt/vZO5IU4MOn7gFchQsKV7znKYeyi7aj8Y9GyU6Ig=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=DkyDpKkDjv1yNoxpcVblX6Uos4hJTuMUNgre2yCjC3nxejTt3Jw6q0O1/DWA3ZRuBQ/GM0U5h1jVAZGLp4xzh5d2lN2QFb8jTyIruse+o4gW9jPWSImrlOwL1M8HvLo2tZ3ZeZuJgtq2a4amBFeSGyDOKrvtI3/m22aInZducCA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=PzCv56X/; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=c+ItRuwHS+gfKFoVWFr6Fd1iEhQRQfr2i5qQt91rYD/bb8cqjh+cOOuVnzOnSSy9tF4g6ZMpDIX4l5VpbGF1peZLuMkSHg1WnUa0DcH1g689W34m9xbuOrDTUwjtiOrBIbJqb+7UbwhjAgqIFbAC9Pm3j/y6PZQ0Cev/jl8fi6Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NT7lZC8q; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="PzCv56X/"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6F8C51F00A3D;
-	Tue, 28 Jul 2026 16:59:14 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NT7lZC8q"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5341E1F00A3F;
+	Tue, 28 Jul 2026 16:59:15 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1785257955;
-	bh=+q0hcPGaoQHtZ/qb+abFqypwRoKLjoranxuRlqLWt2E=;
+	bh=W+UdcdA1sbgsLgWKw+8nyFK0GBzzpxyQmJNPhShlzk8=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=PzCv56X/zEEFfRwQcPARmQ8eKXnBcIpxWCK77RkWRrAt46rrwAI07LYdadSlX56lb
-	 lo5pPn38fsEIYsEVa+aysK6PnsvlSMJLRWa+i1OjGoVzQ+monZ+jlBvOZAXWCuqoAt
-	 xRnrC29Bv1VrayhgX1jCBSvhChm/pFTqM/ssPX0PXkPHg+j1WMhyzcCfV3r2KyBFoQ
-	 x8x9snKibj5l9adxQ/4gtILpKgwsVqFOVkcGqxAcLcmQ5g0vv59OlDacPJ+YvLmyiP
-	 XTHjW83VoKOKYNChwZ1C9/Pr3Ev3Q/KJ4Mrby+/IH0GEofdGkABQee0Ws3zsnRRt2H
-	 hkfihHr2KGYeg==
+	b=NT7lZC8q5vhUQVRct8pT2BEiLLmrWdP7dcmLbx3nP4bMdPsGtp6/ohyCeScTeao+3
+	 WxmfAtvBQ1zJkdZCqbKba9aOJ2aS9XLBCoHGQXcABI7IScCkDtkqiucfjzSdkxXe9M
+	 Ed7fbs6Q8waVcho+juhzLPhHaCVnQAdLjI4PsIywqoM6A8rs3Gv+Ly85NPYTNP3phF
+	 VI2obGz5Eiw62pJXCVA4LCokEbZLlQYmVC6eH1FNq4vJs75K+UboSga4TddpnJ/W0v
+	 yp32+xXwrrdv6mlm0vCMWnQeJ3X6tUjMDcKeJV3BPROvkOlS9Mp6R89+6yN1vM+7++
+	 3axxc1zLY6nVg==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 2/5] nfs_common: Remove "#include <linux/nfs.h>" from linux/nfslocalio.h
-Date: Tue, 28 Jul 2026 12:59:08 -0400
-Message-ID: <20260728165911.462534-3-cel@kernel.org>
+Subject: [PATCH v2 3/5] NFSD: Tighten header includes in localio.c
+Date: Tue, 28 Jul 2026 12:59:09 -0400
+Message-ID: <20260728165911.462534-4-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260728165911.462534-1-cel@kernel.org>
 References: <20260728165911.462534-1-cel@kernel.org>
@@ -47,31 +47,63 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Clean up: linux/nfslocalio.h pulls in linux/nfs.h only for the
-definition of struct nfs_fh, which now lives in linux/nfs_fh.h.
+As a prerequisite to converting NFSD to use xdrgen more broadly,
+NFSD source files should not depend on NFS client headers.
+fs/nfsd/localio.c is server-side LOCALIO code, yet it pulled in
+three of them: <linux/nfs_fs.h>, the client inode header (struct
+nfs_inode, NFS_I(), writeback helpers), which server code never
+uses; <linux/nfs_xdr.h>, whose only referenced symbol is
+decode_opaque_fixed(), a static inline that exists to remap the
+error return to -EIO for client call sites; and the catch-all
+<linux/nfs.h>.
 
-Replace linux/nfs.h with linux/nfs_fh.h so that nfslocalio.h no longer
-carries uapi/linux/nfs.h into its consumers.
+Convert the UUID decoder to call the canonical SUNRPC primitive
+xdr_stream_decode_opaque_fixed() directly. It is shared by client
+and server, performs the identical bounds check, and is already
+reachable through <linux/sunrpc/clnt.h>. With the wrapper gone,
+localio.c references no symbol from <linux/nfs_xdr.h>, and with
+that header gone, none of the NFSv3 definitions its structs embed
+are needed here.
+
+Drop all three client includes and add what the file actually
+uses: struct nfs_fh comes from <linux/nfs_fh.h>, included directly
+rather than through nfslocalio.h's conditional re-export, and
+NFS4_FHSIZE from <linux/nfs4.h>. enum nfs_stat and
+nfs_stat_to_errno continue to come from the already-included
+<linux/nfs_common.h>.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- include/linux/nfslocalio.h | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfsd/localio.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/nfslocalio.h b/include/linux/nfslocalio.h
-index d2b39e6e6c6a..8ce4d978a636 100644
---- a/include/linux/nfslocalio.h
-+++ b/include/linux/nfslocalio.h
-@@ -13,7 +13,8 @@
- #include <linux/uuid.h>
- #include <linux/sunrpc/clnt.h>
+diff --git a/fs/nfsd/localio.c b/fs/nfsd/localio.c
+index c458c01e9478..4110be02b750 100644
+--- a/fs/nfsd/localio.c
++++ b/fs/nfsd/localio.c
+@@ -11,11 +11,10 @@
+ #include <linux/exportfs.h>
  #include <linux/sunrpc/svcauth.h>
+ #include <linux/sunrpc/clnt.h>
 -#include <linux/nfs.h>
++#include <linux/nfs4.h>
+ #include <linux/nfs_common.h>
 +#include <linux/nfs_fh.h>
-+
- #include <net/net_namespace.h>
+ #include <linux/nfslocalio.h>
+-#include <linux/nfs_fs.h>
+-#include <linux/nfs_xdr.h>
+ #include <linux/string.h>
  
- /*
+ #include "nfsd.h"
+@@ -179,7 +178,7 @@ static bool localio_decode_uuidarg(struct svc_rqst *rqstp,
+ 	struct localio_uuidarg *argp = rqstp->rq_argp;
+ 	u8 uuid[UUID_SIZE];
+ 
+-	if (decode_opaque_fixed(xdr, uuid, UUID_SIZE))
++	if (xdr_stream_decode_opaque_fixed(xdr, uuid, UUID_SIZE) < 0)
+ 		return false;
+ 	import_uuid(&argp->uuid, uuid);
+ 
 -- 
 2.54.0
 
