@@ -1,32 +1,32 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0B31322AE65;
-	Wed, 29 Jul 2026 01:43:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 83F82261B8D;
+	Wed, 29 Jul 2026 01:47:13 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785289395; cv=none; b=V/W+Ea7Je369Yw4cgnWDsGVD+/LM5Ba+P1T4/jo+dh3d65BhAoYHGh0i9mk6ywQaZNOfDsGbTvjQ/k70SZ2w33I60v2kf7w5mPUqdk1NS1QG5/Djl0VzICtie/7hvpdlwaW6SZPeE+0S/0XPol3JoH+02h7o4QXirC7Q1H8+ATI=
+	t=1785289634; cv=none; b=p9NGYfY0/korba398wJ/TqBBFD/LcAmpLqDdQ1HZ3m14xJptXI0Csj24lngl3ixQzuJE88QI6bmMfX4Fx9GRlZdXronx4Q9fdGFoasGGR4bZp6KbUh2BtwtDTttAhW8z/6/xpXKZQh1EUsJ1Nrd2/U3GjBBTp08KAbJ+WBbV31c=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785289395; c=relaxed/simple;
-	bh=oIyk41X5ZpSCbosSjqo1UkivYY2/+g7Tcggvw0G0X/Q=;
+	s=arc-20240116; t=1785289634; c=relaxed/simple;
+	bh=c0YNd4IZUBkYF9akZWEfpi0Z/dqK2k8TKJlAyFGgE9Q=;
 	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=mEMHg5zMrx8bK6g0WDNwffM9gjYyFoYa90cV5zGjETO84z5rBBmvz8ojInGQ4DranGGQTMctMiWvFpALQ1c3KvYGb0NwS7gmkfAdRLbdHU8w9DOX7zVhNkxdsCX+akFo0g9MgqNMpDCMQrIZ4QtKTi02f9ULoLNUrzrExkeDNoQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MquVpH+e; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version:Content-Type; b=iwyelAzpUZDBoZ9YyNugdAn9OEfdLhBfoZie5FAElhcJtzy6gWWQ3DfrUTzB54HJXO44f4z8SzSPk8VDHiy6eJwL5VMgnzCj/Lc5KXvVJR94icywV6jI8p92WYbb8Xmn5mlkP81xbbVWgmBov2OE7BPj2zU93VmC21nivSJTlmU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BocqlgQW; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MquVpH+e"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 215A21F000E9;
-	Wed, 29 Jul 2026 01:43:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BocqlgQW"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id F0A471F000E9;
+	Wed, 29 Jul 2026 01:47:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785289393;
-	bh=N00GLSISRz/Ulv4ykckOj8Kr6pruetBm+OdZ1a7fNvg=;
+	s=k20260515; t=1785289633;
+	bh=FZ9bLhEfXbtuqJs939McUYwR4v0HFoiHTRDeayXY/nQ=;
 	h=Date:From:To:Cc:Subject:In-Reply-To:References;
-	b=MquVpH+eCPFM0djjXbRFFv7zpASpcXul1uTcZwMAaDSrEutTuwrGgvTbxYWBWjQyh
-	 LfNn9AKi9gZFAxvyPMjp4Et4O8r6KzTVTvc1gmvp6geqEVvuNHtyExRNWc3aDOukrX
-	 beXnCdikhA7ERa2lJC1OraPyxTH9MAZN/mZJZoCA7o41z9v+NDbbutXg54TzAvsptZ
-	 p5qBb6illfLzB+GLqzMTZGt6iOM8BIAoPgLkXgHeNCZljHEC/Tb4Ggvknu+IQygkdu
-	 B8N32050omrgVnKCWagtEleZhGJ4smzpcyDFUCxFPp6HHOZnDcTxUzZ/Q0o4eRBiV9
-	 um+xm1qAC296g==
-Date: Tue, 28 Jul 2026 18:43:12 -0700
+	b=BocqlgQW4YhNWOGbFwHJF42wBOQU+PBshUUx55RZwGTLZN4veGcN6ryLjnWrZEOIl
+	 33aPmdsg8taW5lK1g6AiR6sZRj2G1toL0EtVSfYHRO63UG1Wc9mhraBwk5cW51jnSA
+	 50eSjjM0HzyrSz6mPxCQqBdCjmLdYNQAygJWOlUt4zSTOC7+BCMWPcJ8WbYZeVpjvb
+	 82ApdL1QRIPT0dhGSRFoXmvI+Ebuw3pbqXhbtv7DicWvazYlZXXRgIbJrElXTnJGEU
+	 EO+FEM+PnH2PZLOme3SaEq5BkCCJZKZ17i7rbScAaV1a/Sy20QEMCQ9akCAHnSqWoW
+	 2UFcdMyWJDojQ==
+Date: Tue, 28 Jul 2026 18:47:12 -0700
 From: Jakub Kicinski <kuba@kernel.org>
 To: Chuck Lever <cel@kernel.org>
 Cc: Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, John
@@ -36,11 +36,12 @@ Cc: Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>, John
  <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, netdev@vger.kernel.org,
  kernel-tls-handshake@lists.linux.dev, linux-kselftest@vger.kernel.org,
  linux-nfs@vger.kernel.org
-Subject: Re: [PATCH net-next v2 0/6] Deliver TLS control records to kernel
- read_sock consumers
-Message-ID: <20260728184312.20b21582@kernel.org>
-In-Reply-To: <20260720-tcp-read-sock-v2-0-29545d034f3c@kernel.org>
+Subject: Re: [PATCH net-next v2 1/6] net/tls: Bound consecutive no-data
+ records in tls_sw_read_sock()
+Message-ID: <20260728184712.09cc50f4@kernel.org>
+In-Reply-To: <20260720-tcp-read-sock-v2-1-29545d034f3c@kernel.org>
 References: <20260720-tcp-read-sock-v2-0-29545d034f3c@kernel.org>
+	<20260720-tcp-read-sock-v2-1-29545d034f3c@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -50,16 +51,32 @@ MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
 
-On Mon, 20 Jul 2026 10:27:54 -0400 Chuck Lever wrote:
-> - The no-data cap (patch 1) is a prerequisite, not a stand-alone fix.
->   Once control records reach read_sock, a record carrying no payload
->   stops advancing the caller's read descriptor, so a peer streaming
->   such records would pin the socket lock and the kernel receive
->   context for as long as the flood lasts. Bounding consecutive
->   no-data records supplies the return boundary a system call would
->   otherwise provide. The cap is scoped to tls_sw_read_sock() alone:
->   splice and recvmsg run in the caller's own context, reschedule, and
->   drop the lock on return, so they need nothing.
+On Mon, 20 Jul 2026 10:27:55 -0400 Chuck Lever wrote:
+> A record that delivers no payload -- an empty TLS 1.3 data record
+> today, a control record once read_sock_rectype() lands -- leaves
+> tls_sw_read_sock() in its loop without advancing the caller's read
+> descriptor. A peer that streams such records keeps the receive loop
+> running, and the socket lock held, for as long as the records
+> arrive.
+> 
+> Cap the number of consecutive no-data records consumed per call. The
+> count resets on any record that delivers bytes, so a normal stream
+> is unaffected; a peer supplying only empty records is bounded to
+> TLS_RX_NODATA_LIMIT iterations before the call returns 0. read_sock
+> consumers treat that as "no progress, re-poll" rather than EOF, so
+> the connection stays up and makes progress once real data arrives.
+> 
+> Only tls_sw_read_sock() needs this cap. Its consumers drive the receive
+> loop from kernel context -- a work item or service thread holding the
+> socket lock across the whole call with no return to userspace -- so an
+> unbounded empty-record stream keeps that context and the lock pinned
+> for as long as the flood lasts. The cap supplies the return boundary
+> that a system call would otherwise provide. tls_sw_splice_read()
+> and tls_sw_recvmsg() already have one: they run in the calling task's
+> context, reschedule while draining the socket backlog (cond_resched()
+> in __release_sock()), and drop the socket lock when the call returns. A
+> flood there costs the caller only its own scheduler time, so the cap
+> would add nothing.
 
-Is it just me or this is incomprehensible slop? Run on sentences 
-full of terms no kernel developer would use?
+Is this alluding to PREEMPT_NONE (which for practical purposes is 
+no longer a thing AFAIU)?
