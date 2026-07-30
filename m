@@ -1,203 +1,136 @@
-Received: from mail-wr1-f53.google.com (mail-wr1-f53.google.com [209.85.221.53])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from fout-a6-smtp.messagingengine.com (fout-a6-smtp.messagingengine.com [103.168.172.149])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA79C4307A1
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2026 13:11:53 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.53
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785417116; cv=pass; b=MpPMiZh9lySpuj510nXhosgUWKiXVVWFFevk4jQ9Ll+QahgpCRKgKyCkSNeL1uKsE4pNeGeOdkaHxAmOeHWVndFDyWm+wUKXHn5xZWx/h4fpDj2mxRDc8HiRjm6E2OI1jnPZogoWNq+CsPOJGCpqyIUU7/A3Trz7vhASdR2cNd8=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785417116; c=relaxed/simple;
-	bh=XHgYqQdbd6UXYLAfCM4eLJgkL7Zop9dsJ7MDxabavq8=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=JBiTkGFIsFD1EGAe7Ij/I7neigc+rn6UuVfyE3VJ7R5WUmUviFyNlnvJZFde6CC7vtbAG0qgtd5g8NfBRM2BbDcPiPZ38VSroxmpB4HOMhVtJJ0z8YacUrP/DBF8xOmAoWJaWIfFW147yy2KuAn+FxGPcl9yhvk0kqzfxTdpMLo=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=loUHIMtl; arc=pass smtp.client-ip=209.85.221.53
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6769043BDCB;
+	Thu, 30 Jul 2026 14:16:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.149
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1785420999; cv=none; b=OCeDUIJn7qpPenYV82Ar8xWp5mXJwZ+oNCxATJZT0uVFo/HaXntLRDfyg2h9orQi3tS0UXlGSrs0RRvEgGH/aSPmked8Y8iqS7C3PT4f65OGkn6uYt9n4vgnjQuedw+oTU2pgX9BNUgc4a0uoXEfCV3hU0P7aJSai3zmmFjZGN4=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1785420999; c=relaxed/simple;
+	bh=neyuCrtmmIrWJ/iVD0cqPhZqHnNftIit3tNwhhtFy2Q=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=bVMoUzsKIJxb4MhLApP8bboF9CCB7csC2y0Qa3FaAoti0A7q2iK5VmRyN5oAAqu5prIccYU+I77R1DXvQK8b/HYdUhlyQKlXEvJYCkWw69UOv8DNABdMj1rBDY2pO+W+SIVpB9Ba3t7h/hVnwYjKmXm0NmA01y9ruu3Tsx5hCPA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=queasysnail.net; spf=pass smtp.mailfrom=queasysnail.net; dkim=pass (2048-bit key) header.d=queasysnail.net header.i=@queasysnail.net header.b=klOTFwzt; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=FYxXsxHz; arc=none smtp.client-ip=103.168.172.149
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=queasysnail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=queasysnail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="loUHIMtl"
-Received: by mail-wr1-f53.google.com with SMTP id ffacd0b85a97d-47362928f65so1830626f8f.2
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2026 06:11:53 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1785417112; cv=none;
-        d=google.com; s=arc-20260327;
-        b=m6NkEsbNNUtzNPL4X2zKiXCxc5EQX9S0eMAsDf51OOSo/quBTD76P3uJeR3OcAY6uq
-         KgDKMEXrctkmIYITAZt8Y1tRkTwLdEoFQB6D/9lV29+19w2rYbWwObOJsiWmt7cAcTCg
-         KOYC4ETnibC962hLiojlg6anRxKiZTmQwrZ1ZU4lTEp7bcLJvYK6v+mwM20OqBVpijKD
-         RDSmB+53sZpudYEpuiIO/LdxYiziUbeOS+2GmjEIt4HODVWuBeihUAyhSet7GGBUyCjY
-         PxfptEiEZIShdOs43wmvJo1RcedgCDj5c5UxW21bAUIx/e3MHevenDJ/IS/eSUQ41szY
-         Dy7g==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=JZxWQFrq5yQB1yLfY/DlKbs1Vg/HpnWd2qZlXhsqsB4=;
-        fh=irwSlTAn4GcuW24qaWSJ2DWaz6FyiRySZxTj+bbBfnc=;
-        b=OPYdnqV4Z4q6ZNTfcCX18msaFvahICxeqDlyd2AOEP8HJagu0Tl+NdVTz/uEY4aj4V
-         ugB8PM2hD7I+6VM6NOhrUpIIsTh4QBQUrLtow948l7GuYGEXYhLT8H8MyLFvPOpl0mHf
-         3hKk0HfwU1ZPaZwuoWuvtbDDfvBZuKCzYOnFLNsHwcRvTxzWNAUIC+YshamGOxe9o5uL
-         niZz6EySnUDczxRqbtyWHU8GWu8tqM/kC79FeCGNL2L8R4FiuBC/HFsSwghjZISCeI+T
-         JTZnXurLZbXjviLbHC6XxhzQM5/RMrgPOrK3xzrh88glH9AA9pSqOBydMQWEn/MRogsT
-         ArRg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785417112; x=1786021912; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=JZxWQFrq5yQB1yLfY/DlKbs1Vg/HpnWd2qZlXhsqsB4=;
-        b=loUHIMtl+zQI1xPUlk7eEZeGWKbzEBToj3bbihMtFfaZijsztsPEXcVo/SCxH8VSkC
-         3nzdrgBq2PuKAr9/+IJjBjRDG7B58pxYe0JuRKh5EjK/DblzLvZZ3wzLHZjtQGEiBFVj
-         4FEoN6FRNE6xKg7WAJM8RyTx6CFc/LKlaaHpjl1kqgqQDy3Si+5W05w9QTrtVZZTBApx
-         jZt7l6Z1U7/U1Kqmvj17RdiSBmY4ctECm91m01sSy2hmGsZTRWuiosrqO7uK8j4pfCdH
-         wirMkfvQl0bUZOUpCW5ZIbFAqL7gpPoC8MmVtsE8cUrK+3miJlM3mYl6sGOKBJsJQ+ln
-         0yuw==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785417112; x=1786021912;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=JZxWQFrq5yQB1yLfY/DlKbs1Vg/HpnWd2qZlXhsqsB4=;
-        b=TvgbZosD5fjKj9LsHYirxry80479u+vuUQeiSgi0OKzwSEDINIy3n4Arcc5cjWp1wn
-         j+/clgvUbYBKjF+UvLuim9rUTUeERCrJmrA3bzZFtSY/n/1v0QrQWEmF79JYf7Dn+czK
-         CHyZJfwIWRQNYgHQ7eSQJqDXRWkGwlnmUoLAhq82BKja4WK06RnWvDb/eNWcRWi9gcye
-         eDSb1WGIXxGBXnvgf/Jcdwwc2meLfka+YyE1akFck68GqpvtTq9xTQYaf4m6IsBHU34V
-         B+H0XZ1vxsQcqoRe8u/zF9OLcbGQ/ZrePReUOwwKE3G+CD7R1vMhLR4Xy4wwU0UC3HI6
-         G6Pg==
-X-Forwarded-Encrypted: i=1; AHgh+RoOpSAgZ/D8WTc8Fwv37e21+NCYmdk+UYyB3YttJv4nrha/wA1zs7L4/Mc5mLfMRE5u8aTjw5Yxtp0=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yw8F4kDKsii1uFhsUWMbNKId7sQnKD2B9dvE7HgTlwfzbCnXa31
-	RO0oV8YiIdNVSbTorujCovnccJG4umpCOAjdhWZqK+06DpQOM/OITdXJIKPNfPJ3JpVPkGc/C4b
-	F/5YR73gjGu6el4vlFzv3o5OXbERXKXo=
-X-Gm-Gg: AR+sD12unhHAyfmpeOjfCTT4WlfzAHO9kQqR7Kb3SOp1nbDKPyofa65lxfgsQKsb9zt
-	zb4pUjp1Ur/lnvCt/K2aWxFfvp9fopaJfMXctfEUUIQ0Zvo9pXfJsVSz/sb1g7Lt1j5T6EEWksO
-	gaY4m2fmZmCTsGWLSxa86R6QSBl12Rp8ODNPQxrIAQdMcQvpxI0d0fA5+R+s1XAZgugY7bx5j9S
-	+/QuL0qei0eQc2u4cpruhDyX7v9sf0A02ymfdQ4rsv7on/sNXU3V7DLK9mCxjdguIDPu2+OKMB/
-	1B5jRXSG9x398BU0wgllelMnyTXMN3i0NY4LjJtb3FNu
-X-Received: by 2002:a05:600c:8707:b0:493:c182:6b08 with SMTP id
- 5b1f17b1804b1-49800ed12f2mr35808775e9.36.1785417111834; Thu, 30 Jul 2026
- 06:11:51 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=queasysnail.net header.i=@queasysnail.net header.b="klOTFwzt";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="FYxXsxHz"
+Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
+	by mailfout.phl.internal (Postfix) with ESMTP id 85D3AEC01B5;
+	Thu, 30 Jul 2026 10:16:36 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-04.internal (MEProxy); Thu, 30 Jul 2026 10:16:36 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=queasysnail.net;
+	 h=cc:cc:content-transfer-encoding:content-type:content-type
+	:date:date:from:from:in-reply-to:in-reply-to:message-id
+	:mime-version:references:reply-to:subject:subject:to:to; s=fm3;
+	 t=1785420996; x=1785507396; bh=e22OP4qR6VMUdIgHXf2EU5bTioavoTrM
+	CQbP68IkrAE=; b=klOTFwztwLwOvU+Ij0HSQKn+FFBcU+0olmBds+XGv4Xyv3/q
+	36+uwEfDwmjSo3JnPbrtv0v6mb6mIfTGUtl95YyjdxWInXFfqOSo3CXNmBUnIWZk
+	PSNWIVXSdHFlRoF/ja2E+/b+tpPZaLMaIg7k7tbVdjPnaVp2OY6GEroj4jx2Mhn0
+	kStcH/3WqkXxc6SXUItSa849njsVn5JK0wls5j6JdEt/HP7qXu4mitksdlBa1h09
+	kfWC1WhGqKQRSSZ01sGQ5oKJzJ6hGw+X2/H8WjTaYfKy3QEvKZpDwmTjUp/EUwyx
+	QDiEUISaWKpnuAuPfAcis7Khmhqo25379ecBoQ==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm2; t=1785420996; x=
+	1785507396; bh=e22OP4qR6VMUdIgHXf2EU5bTioavoTrMCQbP68IkrAE=; b=F
+	YxXsxHznsnmxH/fwkJWG/+r04Qeyuk1DSEUvR9rBarZJCTWfTjbilO85Iwb8X+yz
+	zLy/a6sa74dTqE7Nnnt0G5GFRN5gAnDE4+G+X6XuPIpDSuArW333zimD50D/e292
+	i3yce+oIpwJqNpEBKFU+DeOR6/+G1w4WGu+KzWPJu5lTCxHV3EV/vz6ohKDA3U/F
+	7BS0QEhj0Ypwzy2llmxVdKaMIsQbQ1zA4Pxt2LOFHT02hFWJf8fuRj38M28DYH29
+	Gl34svSWzD+C9zP+T0Enc3RBVaFzFgEEYSitr+sYcB/AybaZ03zguDkwVbQ95AKr
+	akq1/SRzB0aSsd8eUmamQ==
+X-ME-Sender: <xms:xFxrarAmApjk6kYeOgKZVL5l4DTA_pqWG4m-tlkPDBMM3pS5m2XWzw>
+    <xme:xFxrah8MlyVJH95dqiJNtuCSVSXEesSie3-lnoll89EvmCZxC7PtPzQpss9TtQ6Ac
+    yEVdXi0wgkALkLRJD-8xYkXR35vkUsysU0dODnFlmErKuetuS6XDg>
+X-ME-Received: <xmr:xFxramVzqyWEl4i7nCM0FdBRInUvkM34x9S1dkYP5C2EPnx3LXZ2hOHT-0A>
+X-ME-Proxy-Cause: dmFkZTGLLBkJ6ZVUV3LnEzngFLMlIUsRBFCHzkrYUmJPwtiwCHdQ9B5yaqM8iUq5/SltAJ
+    klJUul8cCDtP0rQokE2+Penaiue+l4yIWbmSj5GMWfw7oynZ1iZY/EfteVnQI04GhtLeFG
+    MqXOzquqaCe/ClHBLXoI2JZI4WNnRXh8FjQlVJ3K4w+TLoqvQ3IMRZMer1ghUfzD+JTIQC
+    fySNcnLDpWqPMbrq41raFnQJDnfv3P1hI+QDCuFio32/VEuPTneCThV53IVVmerKZ//pU6
+    RQC6QC3qiEznB5TmkGL8td57xpCpum0qmsBw8cIluX5z1vqFevzhB+ZkmPJnKgRtUJXpNj
+    EKoGRfwmsZR6qTVAzvJFZW+9P9r4gxI8rtL1ni+YGfSt91LylhC5qiCybaok6aEhbA2cjF
+    gcBhXg6T4zqFn8WqySpFjwx6XLxOl3G1+vtYCSBE7WuMoSE0GgNZySA/x7kciyA9nKYd+6
+    RC0uebugREK9ceHc6Da1kWTyztFEIyaeutM7hV7HTrkamTdPQ9/VUebXrhK2GgEbowlLNJ
+    OSVWwejG+qYk5ugPOkgyDMicLP9kTHv8P2wAsNJNGzRCzb/X5buLjZPfoKa7W3hDM6LZgb
+    tSJ6fkQLTW9VXLDo9fbYBqQlqmqpMuw+EyeEE0EL98sjzPUKx9fkl399oEgA
+X-ME-Proxy: <xmx:xFxraqKvWmF2XzPio1jfdTSW4RpFxnEFIXGZ1iGt2tcKhpUQ1ncjiw>
+    <xmx:xFxraqBea23UmzspUnK87GLTC1TowILwiuhGjDdY0Sko21h--ETngg>
+    <xmx:xFxraqFp7rxU4PF-v3H-TBhqLaytFcm9RtRQFhw-W5hLODDnKp3OrQ>
+    <xmx:xFxranInJ7f3Z6aN61gL46NYwGaR7HmsBuYedezBFQ722RJFEnF9Ew>
+    <xmx:xFxraj2DnPopppfeLJ_vxYyopw9ezLRXYpPlvw9TFJBBCXtXnYj6VWVj>
+Feedback-ID: i934648bf:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Thu,
+ 30 Jul 2026 10:16:35 -0400 (EDT)
+Date: Thu, 30 Jul 2026 16:16:33 +0200
+From: Sabrina Dubroca <sd@queasysnail.net>
+To: Jakub Kicinski <kuba@kernel.org>
+Cc: Chuck Lever <cel@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	John Fastabend <john.fastabend@gmail.com>,
+	Shuah Khan <shuah@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+	netdev@vger.kernel.org, kernel-tls-handshake@lists.linux.dev,
+	linux-kselftest@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH net-next v2 2/6] net: Introduce read_sock_rectype
+ proto_ops for control record delivery
+Message-ID: <amtcwSO24GGq_qd0@krikkit>
+References: <20260720-tcp-read-sock-v2-0-29545d034f3c@kernel.org>
+ <20260720-tcp-read-sock-v2-2-29545d034f3c@kernel.org>
+ <20260728185124.72e421c8@kernel.org>
+ <480a8337-a91e-40e5-8dbd-d165599fba4b@app.fastmail.com>
+ <20260728193058.7f6b453b@kernel.org>
+ <a6fb364d-8344-408e-bcd5-0cee4ffabdc3@app.fastmail.com>
+ <20260729163142.4f41484f@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260526-rfc-nt-demote-v1-0-eb9c9422daef@zptcorp.com>
- <20260526-rfc-nt-demote-v1-3-eb9c9422daef@zptcorp.com> <ahW7gwgaF0zIPTAz@gourry-fedora-PF4VCD3F>
-In-Reply-To: <ahW7gwgaF0zIPTAz@gourry-fedora-PF4VCD3F>
-From: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
-Date: Thu, 30 Jul 2026 16:11:38 +0300
-X-Gm-Features: AUfX_mwGq9AjTR5NxgyxAqgBeEwNx--Sq9pL4ych9I9IxB6UA5FR819gtzB2mWI
-Message-ID: <CAOi6=wQ7CxHf8QMFXm5oyHZFc9n6BQecL45rBud=hMubmayCnA@mail.gmail.com>
-Subject: Re: [PATCH RFC 3/3] mm: use non-temporal stores for demotion
-To: Gregory Price <gourry@gourry.net>
-Cc: Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
-	Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
-	"H. Peter Anvin" <hpa@zytor.com>, Andrew Morton <akpm@linux-foundation.org>, 
-	David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
-	"Liam R. Howlett" <Liam.Howlett@oracle.com>, Vlastimil Babka <vbabka@kernel.org>, 
-	Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
-	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, Zi Yan <ziy@nvidia.com>, 
-	Matthew Brost <matthew.brost@intel.com>, Joshua Hahn <joshua.hahnjy@gmail.com>, 
-	Rakie Kim <rakie.kim@sk.com>, Byungchul Park <byungchul@sk.com>, 
-	Ying Huang <ying.huang@linux.alibaba.com>, Alistair Popple <apopple@nvidia.com>, 
-	Steven Rostedt <rostedt@goodmis.org>, Masami Hiramatsu <mhiramat@kernel.org>, 
-	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, Brendan Jackman <jackmanb@google.com>, 
-	Johannes Weiner <hannes@cmpxchg.org>, David Rientjes <rientjes@google.com>, 
-	Davidlohr Bueso <dave@stgolabs.net>, Fan Ni <nifan.cxl@gmail.com>, 
-	Frank van der Linden <fvdl@google.com>, Jonathan Cameron <jic23@kernel.org>, Raghavendra K T <rkodsara@amd.com>, 
-	"Rao, Bharata Bhasker" <bharata@amd.com>, SeongJae Park <sj@kernel.org>, Wei Xu <weixugc@google.com>, 
-	Xuezheng Chu <xuezhengchu@huawei.com>, Yiannis Nikolakopoulos <yiannis@zptcorp.com>, dimitrios@palyvos.net, 
-	Ryan Roberts <ryan.roberts@arm.com>, linux-kernel@vger.kernel.org, linux-mm@kvack.org, 
-	linux-nfs@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
-	Alirad Malek <alirad.malek@zptcorp.com>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <20260729163142.4f41484f@kernel.org>
 
-On Tue, May 26, 2026 at 6:25=E2=80=AFPM Gregory Price <gourry@gourry.net> w=
-rote:
->
-> On Tue, May 26, 2026 at 01:37:04PM +0200, Yiannis Nikolakopoulos wrote:
-> > From: Alirad Malek <alirad.malek@zptcorp.com>
-> >
-> > Memory demoted to a lower tier is assumed to be cold and most likely ou=
-t of
-> > the CPU's last level cache. Additionally, in certain demotion targets (=
-e.g.
-> > CXL devices with compressed memory) the bandwidth can be negatively
-> > impacted by the eviction patterns of the last level cache when standard
-> > memcpy is used. When the feature is enabled, use the
-> > MIGRATE_ASYNC_NON_TEMPORAL_STORES flag in demotions to trigger the foli=
-o
-> > copy path using non-temporal stores.
-> >
-> > Signed-off-by: Alirad Malek <alirad.malek@zptcorp.com>
-> > Co-developed-by: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
-> > Signed-off-by: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
-> > ---
-> >  mm/Kconfig   | 8 ++++++++
-> >  mm/migrate.c | 9 ++++++++-
-> >  2 files changed, 16 insertions(+), 1 deletion(-)
-> >
-> > diff --git a/mm/Kconfig b/mm/Kconfig
-> > index ebd8ea353687..4b7a75b57f6e 100644
-> > --- a/mm/Kconfig
-> > +++ b/mm/Kconfig
-> > @@ -645,6 +645,14 @@ config MIGRATION
-> >         pages as migration can relocate pages to satisfy a huge page
-> >         allocation instead of reclaiming.
-> >
-> > +config DEMOTION_WITH_NON_TEMPORAL_STORES
-> > +     bool "Use non-temporal stores for demotion"
-> > +     default n
-> > +     depends on MIGRATION
-> > +     help
-> > +       Enable non-temporal stores when migrating pages due to demotion=
-.
-> > +       If disabled, demotion uses regular migration copy paths.
-> > +
->
-> Do we actually need this config flag or should we just default to this
-> (if the arch supports NT stores)?
-As discussed in the sync call, I was just being defensive :).
-In fact the non-temporal instructions should be in all x86_64 afaict.
-So I've removed this in the next version (landing soon).
+2026-07-29, 16:31:42 -0700, Jakub Kicinski wrote:
+> On Tue, 28 Jul 2026 22:51:30 -0400 Chuck Lever wrote:
+> > >> It’s not about LOC. It’s about not cluttering the normal I/O
+> > >> path with a lot of exception processing to handle TLS Alert
+> > >> records. The CMSG API is very difficult to use and leaks the
+> > >> alert messages into I/O buffers (which for in-kernel consumers
+> > >> are page cache pages). It’s piss-poor API design.  
+> > >
+> > > I'm not arguing that it's amazing. Doesn't mean we will YOLO
+> > > a special proto callback for every protocol stacking :/  
+> > 
+> > No-one is asking you to roll over. Review means you get to steer
+> > us in the right direction, and I promise to do the leg work. Terse
+> > rejection doesn’t move the discussion forward. It stops it cold.
+> 
+> With LLMs tho, the entire human effort is in finding the right design,
+> rather than the code. So asking maintainers to hand hold everyone thru
+> their features is unrealistic.
+> 
+> Off the top of my head I think a setsockopt which pre-seeds the content
+> type so that the read returns an errno if the queued content type is
+> different could be a simple fix. You'd configure that on your sockets
+> to DATA and once you see a EWHATEVER you'd assume that some special
+> record arrived and the socket has to be handed back over to the TLS
+> control path. This is literally the first thing that comes to mind,
+> IDK how ugly it will look in reality so no promises.
 
-/Yiannis
->
-> >  config DEVICE_MIGRATION
-> >       def_bool MIGRATION && ZONE_DEVICE
-> >
-> > diff --git a/mm/migrate.c b/mm/migrate.c
-> > index ff6cf50e7b0b..368d40dc8772 100644
-> > --- a/mm/migrate.c
-> > +++ b/mm/migrate.c
-> > @@ -862,7 +862,10 @@ static int __migrate_folio(struct address_space *m=
-apping, struct folio *dst,
-> >       if (folio_ref_count(src) !=3D expected_count)
-> >               return -EAGAIN;
-> >
-> > -     rc =3D folio_mc_copy(dst, src);
-> > +     if (mode =3D=3D MIGRATE_ASYNC_NON_TEMPORAL_STORES)
-> > +             rc =3D folio_mc_copy_nt(dst, src);
-> > +     else
-> > +             rc =3D folio_mc_copy(dst, src);
-> >       if (unlikely(rc))
-> >               return rc;
-> >
-> > @@ -2081,6 +2084,10 @@ int migrate_pages(struct list_head *from, new_fo=
-lio_t get_new_folio,
-> >       LIST_HEAD(split_folios);
-> >       struct migrate_pages_stats stats;
-> >
-> > +     if (IS_ENABLED(CONFIG_DEMOTION_WITH_NON_TEMPORAL_STORES) &&
-> > +             reason =3D=3D MR_DEMOTION && mode =3D=3D MIGRATE_ASYNC)
-> > +             mode =3D MIGRATE_ASYNC_NON_TEMPORAL_STORES;
-> > +
-> >       trace_mm_migrate_pages_start(mode, reason);
-> >
-> >       memset(&stats, 0, sizeof(stats));
-> >
-> > --
-> > 2.43.0
-> >
+But then you're back to "read_sock stopped, caller has to take some
+special action to handle the next bit of payload". It's not better
+than "read_sock, and do a recvmsg when read_sock says it's not DATA".
+
+-- 
+Sabrina
