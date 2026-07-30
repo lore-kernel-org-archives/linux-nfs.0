@@ -1,68 +1,68 @@
-Received: from mail-ej1-f47.google.com (mail-ej1-f47.google.com [209.85.218.47])
+Received: from mail-ej1-f44.google.com (mail-ej1-f44.google.com [209.85.218.44])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A41643CE68
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2026 15:03:25 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.47
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D8502407597
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2026 15:03:27 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.44
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785423807; cv=none; b=pm0UwYwmGncIfuUhhDgi58BiS8eA+5MPjyelwxCYPcwgkw2pRWx7c+8Cuk1aKwzX64HAji8qOn/L9Gqkt7iBa5fQE2eDXmSr50PRIjo3u8pCx5yQdYvlNmqT+RK+fjrXdWPvQXihXjtkG8OYHdCZZoG3ZtQvHEXy5OhPRUdYs8A=
+	t=1785423809; cv=none; b=JBe4JfWBxkRU5EHO2vOabwmNH9ycXSSgq3pD6Pr2Uj8iSzIY4rpHMwoLbcBZVOt26B8Lbsg5giM9MAW9yHGR9dulC2QvDYrqkLs+UMynJU/cy4H5fo571v+CfB4cdwVItF26atnpE4je837+K4FO1In8oTWLXNU1BlreakgDMZ4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785423807; c=relaxed/simple;
-	bh=5MIHgChRNy12kVUm5iWs8ChIekHBsvSP0fhUEXrwf9U=;
+	s=arc-20240116; t=1785423809; c=relaxed/simple;
+	bh=YkONpgjarkoyetvAWGsRSwGxKORs8lGBbP3iuK2k+jI=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=T/UMnH6zbdTV6EsPRfhD+bGYdmj9IcR87z84mwz5nKxQxm2+hVKWJUCzz8EtlhIVYJWG0ZJUE9R3jdGJiimBEOFfvu2tXCpo6xPbYkTSJHWDOX6FmjtwwjQx8NS+ON+Qz2a6Htw0xaPwiMWptzkwQplhHXEE6tnAoZGC2edC51E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=QbQsHu3+; arc=none smtp.client-ip=209.85.218.47
+	 In-Reply-To:To:Cc; b=Vnq66RuhNF3lX0iguSoU5Gm/gRc7iorLDabVCbNr85ZDsW8kcmhrpVR9PNYMp0tM7ouN05qjS/EGjrsM+c52oVD5leTyLdhWz1XIJCzm3KUvRLF/K/U13v928ArThObB1k1nnOxyNpUmT2KHZdh4Srlf7aeal1+S4IqYD0XtNxU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=cO8M5QRu; arc=none smtp.client-ip=209.85.218.44
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="QbQsHu3+"
-Received: by mail-ej1-f47.google.com with SMTP id a640c23a62f3a-c15cb6f5c12so362336366b.0
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2026 08:03:25 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="cO8M5QRu"
+Received: by mail-ej1-f44.google.com with SMTP id a640c23a62f3a-c15cf78d1a2so274186266b.1
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2026 08:03:27 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785423803; x=1786028603; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1785423806; x=1786028606; darn=vger.kernel.org;
         h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
          :content-type:mime-version:subject:date:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=RepOlA7uegAkHRX0rdEAbivBLVoGLgApQvWSVyuj8bk=;
-        b=QbQsHu3+JqhaRjXqsLBTJ+FkpQQ/8mBLgNCsoWNxdfWaESRCjncau+oVJLEb5T0bSi
-         VYMTv2+5Bya+2bIy95JGLScHfNlJcSMUzyZrFoqFk1+uFSjFx0jjk74ITUYsSGzLCBgk
-         Ayg5cK6a7IXLPFRLphy5dMMqu1aWbcbnCI4UrYdeiRvL84Xb0QeJloTYFQQ6Nio0NjXT
-         Fv8+3QS2vB0ORWDhRHjYILRu1iLaGNjNOB8wTO70jtE+07BnIvmx8AY5Ez/tfi0IHuC8
-         NXqgAkIZPs+WU+MxzZuOWzqdy/V1X//qanJRfy0nHuq0gPYLxSwK0mUsFJ7Wb2NCgwNL
-         9q2g==
+        bh=4YrtHMEYPI1tjDQiF/FNeUbCwB0JCeO1sQzq3zX3f00=;
+        b=cO8M5QRu+q2DFDsZVmc3dQebQjmTX/DT4tkxiRAB95wysc9lgXswKjTpcMquE0HipM
+         DQNpWHTBrbvwrra9iTPENZDemX+VWToafXnjyAVJhCeEv5JEcROHGretoeYCZnkQyVPd
+         B6+Awp6MKZ75ymLz1pIkH7S1wIHELCTbd8Esj6zmJgKiY85rg7Fb4J0lZ2N6aXPAxvYv
+         ub4sN2i7yhIeDdSurTV8NWEyhqnEx05R8dLxjjy/kcIfkjtPfrNOPGaUPiSCkTu4Kzuu
+         qW9TSEDlbVnJxbTjlzvsyYbcVTNbGAtHHl5bW5qmx7NAcS3PVlHFj2/mYC4hNMx+U1Yv
+         6l/A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785423803; x=1786028603;
+        d=1e100.net; s=20251104; t=1785423806; x=1786028606;
         h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
          :content-type:mime-version:subject:date:from:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=RepOlA7uegAkHRX0rdEAbivBLVoGLgApQvWSVyuj8bk=;
-        b=FY1u7odUSVVDBr8K7Ha1WZrpq4alVCcUO1i1aQYhvK5NWAgAU/9WodXvuBVQ+lYx7J
-         Us4mRbzq+lAKQxt2JBl+eQU8myLS1QddHbjs4JXGMlgnD5xa+tctpgpo3sPvQpHJSaGX
-         btTpgP0mg0ijMO5rX8Gr1OVfgZvDKT16aMTe0N5hN4zrGxL6m9FMr/QXaUkdEf2MJr26
-         +xGtFV45TdmKchfQiZZ6qkEMlNDeKXJ21btdsw76M1lMHq3R2KADNijWImjDW9RYtsKL
-         pABLvC0IDzLKLwgw9m5eTc0Bv7xbnfi4LZymf/ZTpsKu7j5e59j7fY7rnQFo5hdHMi6R
-         mr9A==
-X-Forwarded-Encrypted: i=1; AHgh+RqbZO53ZrE5rK9ne5OB0yGv57ypDJKA2UURKc4Tt5hAzyVhhYvISzVwpS07vkQFjiaBPWWCmxvRai8=@vger.kernel.org
-X-Gm-Message-State: AOJu0Ywcwv6QtpPTHz/8JD2LhYPjOieyk71PR7waXVp+RcySCdXgwlll
-	bgaD0y1oVRXUitHb1KMHucaxbQB/u5z+XG4NSoRfyaD8y8VfyoQFjkFv
-X-Gm-Gg: AR+sD13A505YzoiavnQt5dmC4JkJ/CNYHQp2UvuE29wEA2tlCimoS2TPLcLYeXD07Jt
-	dd+Or9uNC8ptvBjCQId7bQFUNdo6CNJGSnuogSFRZWg0bxIJ07IEorf9kyE4PCVq8Q8W1m6Qgtw
-	bDLpvD3K5AEosL6+6y43tAaAauJBvNMPaGhvbYodJ10TSLIK1RIYml1zl8X29KsdSH4HkkAMHyj
-	yD605m09vVANZAtPi7v2UYIqeW+ni2O6hKuvD8oj9FBUKS4vVbRVNZMlMu6bMcQsBh2do9k06IE
-	lS/yQDhEPsqWdE7IVdAjzI5417IpJbBp1xE7G3+dM2QWKC3+yGg4nK5DbDcHmTH/8ego0NK6PdS
-	ejGWK/EHLFabPjxIYtjAq/zs4LCz655jsVglkP0gVcp8U9p9mjcZMGnJCLGyEVoVi/16Mqi3no2
-	b0EnEAP+sEyh9pp+V8m6wxHboyyerZlmF+FzLYP4M4FHEvKHDQWP0IqKDGE6I2I1vLxAXYoFcaz
-	UiyYQi0WAlZY3EsdX9rGA1HNphct7ifmA==
-X-Received: by 2002:a17:906:ee87:b0:c16:318:34e3 with SMTP id a640c23a62f3a-c1fa5457a44mr140525966b.16.1785423803124;
-        Thu, 30 Jul 2026 08:03:23 -0700 (PDT)
+        bh=4YrtHMEYPI1tjDQiF/FNeUbCwB0JCeO1sQzq3zX3f00=;
+        b=hGlCDrGYuTklHZsR380gCFDFMxUNJ//8nUsEgo2F5cMs06O4l5yimTRB2K4wowl37C
+         Vodr/pDR3ma637Ym+7szqVMWNh00MziO0hH0c9yLHrwhK6pyR5duNkQpeLSILAzXkb69
+         fuEmniH7GJlGf71dpQ09gPi1Y8h9GP53XF0mEZz1mmJiciH++dYR2RlxZNQDZnVjMVXy
+         cY3/h67RDAosWVs08awVUF2Xnt/qxyD9k+CRMzFNU5ostLLL1uWKAXmKawlOBgrwATZo
+         s9ncs5Z/I6v0s7OW7mflIzHUuiu3mjJL/AOfsYRMC5OStFUfFu4Co3OxLWPonR8U1WYo
+         sZDw==
+X-Forwarded-Encrypted: i=1; AHgh+Rrh3nn8TM5iRjRpKJ/0Y05QcgRPkS0+ELAa4kzolRrsOKEJXWTu+XMMyRsXO+D7CZ6IcYxenKyPbAI=@vger.kernel.org
+X-Gm-Message-State: AOJu0YxpPVOSqqThAADsEvvdBagcTg6YsoMJZ0ixaAdODceDP0SktdMZ
+	jTvHbDy6EgR0pXGoxeiJt0iZssastj2ui/QZTdXiRwMZ33Nq9Ac8HB5f
+X-Gm-Gg: AR+sD11WQvMX42ioHp54qxtvWoYS2JFBZJegBzckBLnk6J1fqWBYAItf3cJEZB8/pM4
+	6L9rqYN/7Fk//b4iFUP9FGM8V8NHXAqQpdcDkirfGWszegUSvmFM8eKE8fR1xqNtbRjNel7gwfd
+	Kfwx15BajsxtJd3IgX7v5vKOlAUmQ5yzQ8UsQn4fUpae/sYKdrMZqEoVKtXgEPaIIxmAxG/qBhF
+	tSZkAm36gHzeaBWrIFPYysek2ypJbV1hz/XeZ5NS/jUPqggjFzg9Fwj70K4+4ScOWEr4cRGHnaa
+	u7D7PQMSe4oUYkOH+rQp/CofEtbT9PZUREkRpdOi7BnP6jNFDB+K8gIcWVq0+vpSu3ds+b0pf4/
+	BdIL42PRwKCHdCAxulONirxkbJ1G9hDOqotsBwIhJ/+4XH41okR/G/xETHl58lcCLuauxr1HsGo
+	G+1bTsO0PpvfBxhBg237wFDDbvTV8lq8VkY3uzZ9HLb4JHNThA388glpaP8tMecX9L2OVyp75Nb
+	B2PHAT9fQm80y59OHe9PRLZwr4TG/5qWg==
+X-Received: by 2002:a17:907:3c83:b0:c17:cf99:6154 with SMTP id a640c23a62f3a-c1fa55db339mr152575066b.16.1785423805407;
+        Thu, 30 Jul 2026 08:03:25 -0700 (PDT)
 Received: from [127.0.1.1] (h-62-63-197-109.NA.cust.bahnhof.se. [62.63.197.109])
-        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6a07bf18ff8sm729116a12.0.2026.07.30.08.03.20
+        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6a07bf18ff8sm729116a12.0.2026.07.30.08.03.23
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 30 Jul 2026 08:03:22 -0700 (PDT)
+        Thu, 30 Jul 2026 08:03:24 -0700 (PDT)
 From: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
-Date: Thu, 30 Jul 2026 17:02:57 +0200
-Subject: [PATCH RFC v2 1/3] mm, x86: support copying a folio using
+Date: Thu, 30 Jul 2026 17:02:58 +0200
+Subject: [PATCH RFC v2 2/3] mm: new migrate_mode flag for async using
  non-temporal stores
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -72,7 +72,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260730-rfc-nt-demote-v2-1-452dbe3b5073@zptcorp.com>
+Message-Id: <20260730-rfc-nt-demote-v2-2-452dbe3b5073@zptcorp.com>
 References: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com>
 In-Reply-To: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com>
 To: Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, 
@@ -109,164 +109,221 @@ X-Mailer: b4 0.15.2
 
 From: Alirad Malek <alirad.malek@zptcorp.com>
 
-In x86, use memcpy_flushcache (that uses non-temporal store
-instructions) to copy a folio. To achieve that, starting from folio_mc_copy
-down to copy_mc_to_kernel, create a series of helpers (named with an _nt
-suffix) that have similar behavior to the original counterparts.
+In preparation for the following patch, add a new migrate_mode which is
+still async but will use non-temporal stores. Add a helper function
+that checks for both async modes and replace all plain checks of
+MIGRATE_ASYNC.
 
 Signed-off-by: Alirad Malek <alirad.malek@zptcorp.com>
 Co-developed-by: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
 Signed-off-by: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
 ---
- arch/x86/include/asm/uaccess.h |  4 ++++
- arch/x86/lib/copy_mc.c         | 26 ++++++++++++++++++++++++++
- include/linux/highmem.h        | 32 ++++++++++++++++++++++++++++++++
- include/linux/mm.h             |  1 +
- mm/util.c                      | 17 +++++++++++++++++
- 5 files changed, 80 insertions(+)
+ fs/nfs/write.c                 |  2 +-
+ include/linux/migrate_mode.h   |  9 +++++++++
+ include/trace/events/migrate.h |  1 +
+ mm/compaction.c                | 18 +++++++++---------
+ mm/migrate.c                   | 12 ++++++------
+ 5 files changed, 26 insertions(+), 16 deletions(-)
 
-diff --git a/arch/x86/include/asm/uaccess.h b/arch/x86/include/asm/uaccess.h
-index 367297b188c3..2d0938d3e372 100644
---- a/arch/x86/include/asm/uaccess.h
-+++ b/arch/x86/include/asm/uaccess.h
-@@ -494,6 +494,10 @@ unsigned long __must_check
- copy_mc_to_kernel(void *to, const void *from, unsigned len);
- #define copy_mc_to_kernel copy_mc_to_kernel
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 1ed4b3590b1a..beae4441e080 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -2119,7 +2119,7 @@ int nfs_migrate_folio(struct address_space *mapping, struct folio *dst,
+ 	}
  
-+unsigned long __must_check
-+copy_mc_to_kernel_nt(void *to, const void *from, unsigned len);
-+#define copy_mc_to_kernel_nt copy_mc_to_kernel_nt
-+
- unsigned long __must_check
- copy_mc_to_user(void __user *to, const void *from, unsigned len);
- #endif
-diff --git a/arch/x86/lib/copy_mc.c b/arch/x86/lib/copy_mc.c
-index 97e88e58567b..5a2ee5c2211e 100644
---- a/arch/x86/lib/copy_mc.c
-+++ b/arch/x86/lib/copy_mc.c
-@@ -81,6 +81,32 @@ unsigned long __must_check copy_mc_to_kernel(void *dst, const void *src, unsigne
- }
- EXPORT_SYMBOL_GPL(copy_mc_to_kernel);
+ 	if (folio_test_private_2(src)) { /* [DEPRECATED] */
+-		if (mode == MIGRATE_ASYNC)
++		if (migrate_mode_is_async(mode))
+ 			return -EBUSY;
+ 		folio_wait_private_2(src);
+ 	}
+diff --git a/include/linux/migrate_mode.h b/include/linux/migrate_mode.h
+index 265c4328b36a..f7186e705b48 100644
+--- a/include/linux/migrate_mode.h
++++ b/include/linux/migrate_mode.h
+@@ -3,6 +3,8 @@
+ #define MIGRATE_MODE_H_INCLUDED
+ /*
+  * MIGRATE_ASYNC means never block
++ * MIGRATE_ASYNC_NON_TEMPORAL_STORES means never block and use non-temporal
++ * stores if supported by the architecture
+  * MIGRATE_SYNC_LIGHT in the current implementation means to allow blocking
+  *	on most operations but not ->writepage as the potential stall time
+  *	is too significant
+@@ -10,10 +12,17 @@
+  */
+ enum migrate_mode {
+ 	MIGRATE_ASYNC,
++	MIGRATE_ASYNC_NON_TEMPORAL_STORES,
+ 	MIGRATE_SYNC_LIGHT,
+ 	MIGRATE_SYNC,
+ };
  
-+/**
-+ * copy_mc_to_kernel_nt - memory copy that handles source exceptions
-+ * if enabled, otherwise uses non-temporal stores
-+ * @dst: destination address
-+ * @src: source address
-+ * @len: number of bytes to copy
-+ *
-+ * Return 0 for success, or number of bytes not copied if there was an
-+ * exception.
-+ */
-+unsigned long __must_check copy_mc_to_kernel_nt(void *dst, const void *src, unsigned len)
++static inline bool migrate_mode_is_async(enum migrate_mode mode)
 +{
-+	unsigned long ret;
-+
-+	if (copy_mc_fragile_enabled) {
-+		instrument_memcpy_before(dst, src, len);
-+		ret = copy_mc_fragile(dst, src, len);
-+		instrument_memcpy_after(dst, src, len, ret);
-+		return ret;
-+	}
-+
-+	memcpy_flushcache(dst, src, len);
-+	return 0;
++	return mode == MIGRATE_ASYNC ||
++		mode == MIGRATE_ASYNC_NON_TEMPORAL_STORES;
 +}
-+EXPORT_SYMBOL_GPL(copy_mc_to_kernel_nt);
 +
- unsigned long __must_check copy_mc_to_user(void __user *dst, const void *src, unsigned len)
+ enum migrate_reason {
+ 	MR_COMPACTION,
+ 	MR_MEMORY_FAILURE,
+diff --git a/include/trace/events/migrate.h b/include/trace/events/migrate.h
+index cd01dd7b3640..e493207a3f46 100644
+--- a/include/trace/events/migrate.h
++++ b/include/trace/events/migrate.h
+@@ -9,6 +9,7 @@
+ 
+ #define MIGRATE_MODE						\
+ 	EM( MIGRATE_ASYNC,	"MIGRATE_ASYNC")		\
++	EM(MIGRATE_ASYNC_NON_TEMPORAL_STORES,		"MIGRATE_ASYNC_NON_TEMPORAL_STORES")	\
+ 	EM( MIGRATE_SYNC_LIGHT,	"MIGRATE_SYNC_LIGHT")		\
+ 	EMe(MIGRATE_SYNC,	"MIGRATE_SYNC")
+ 
+diff --git a/mm/compaction.c b/mm/compaction.c
+index 1e8f8eca318c..cd26781b7376 100644
+--- a/mm/compaction.c
++++ b/mm/compaction.c
+@@ -444,7 +444,7 @@ static void update_cached_migrate(struct compact_control *cc, unsigned long pfn)
+ 	/* Update where async and sync compaction should restart */
+ 	if (pfn > zone->compact_cached_migrate_pfn[0])
+ 		zone->compact_cached_migrate_pfn[0] = pfn;
+-	if (cc->mode != MIGRATE_ASYNC &&
++	if (!migrate_mode_is_async(cc->mode) &&
+ 	    pfn > zone->compact_cached_migrate_pfn[1])
+ 		zone->compact_cached_migrate_pfn[1] = pfn;
+ }
+@@ -507,7 +507,7 @@ static bool compact_lock_irqsave(spinlock_t *lock, unsigned long *flags,
+ 	__acquires(lock)
  {
- 	unsigned long ret;
-diff --git a/include/linux/highmem.h b/include/linux/highmem.h
-index af03db851a1d..a5cb435b9ffe 100644
---- a/include/linux/highmem.h
-+++ b/include/linux/highmem.h
-@@ -468,6 +468,32 @@ static inline int copy_mc_highpage(struct page *to, struct page *from)
+ 	/* Track if the lock is contended in async mode */
+-	if (cc->mode == MIGRATE_ASYNC && !cc->contended) {
++	if (migrate_mode_is_async(cc->mode) && !cc->contended) {
+ 		if (spin_trylock_irqsave(lock, *flags))
+ 			return true;
  
- 	return ret;
- }
-+
-+#ifdef copy_mc_to_kernel_nt
-+static inline int copy_mc_highpage_nt(struct page *to, struct page *from)
-+{
-+	unsigned long ret;
-+	char *vfrom, *vto;
-+
-+	vfrom = kmap_local_page(from);
-+	vto = kmap_local_page(to);
-+	ret = copy_mc_to_kernel_nt(vto, vfrom, PAGE_SIZE);
-+	if (!ret)
-+		kmsan_copy_page_meta(to, from);
-+	kunmap_local(vto);
-+	kunmap_local(vfrom);
-+
-+	if (ret)
-+		memory_failure_queue(page_to_pfn(from), 0);
-+
-+	return ret;
-+}
-+#else
-+static inline int copy_mc_highpage_nt(struct page *to, struct page *from)
-+{
-+	return copy_mc_highpage(to, from);
-+}
-+#endif
- #else
- static inline int copy_mc_user_highpage(struct page *to, struct page *from,
- 					unsigned long vaddr, struct vm_area_struct *vma)
-@@ -481,6 +507,12 @@ static inline int copy_mc_highpage(struct page *to, struct page *from)
- 	copy_highpage(to, from);
- 	return 0;
- }
-+
-+static inline int copy_mc_highpage_nt(struct page *to, struct page *from)
-+{
-+	copy_highpage(to, from);
-+	return 0;
-+}
- #endif
+@@ -864,7 +864,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
+ 			return -EAGAIN;
  
- static inline void memcpy_page(struct page *dst_page, size_t dst_off,
-diff --git a/include/linux/mm.h b/include/linux/mm.h
-index 5be3d8a8f806..d07ce478582d 100644
---- a/include/linux/mm.h
-+++ b/include/linux/mm.h
-@@ -1644,6 +1644,7 @@ void __folio_put(struct folio *folio);
- void split_page(struct page *page, unsigned int order);
- void folio_copy(struct folio *dst, struct folio *src);
- int folio_mc_copy(struct folio *dst, struct folio *src);
-+int folio_mc_copy_nt(struct folio *dst, struct folio *src);
+ 		/* async migration should just abort */
+-		if (cc->mode == MIGRATE_ASYNC)
++		if (migrate_mode_is_async(cc->mode))
+ 			return -EAGAIN;
  
- unsigned long nr_free_buffer_pages(void);
+ 		reclaim_throttle(pgdat, VMSCAN_THROTTLE_ISOLATED);
+@@ -875,7 +875,7 @@ isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
  
-diff --git a/mm/util.c b/mm/util.c
-index b05ab6f97e11..e09e9b5f8eee 100644
---- a/mm/util.c
-+++ b/mm/util.c
-@@ -749,6 +749,23 @@ int folio_mc_copy(struct folio *dst, struct folio *src)
- }
- EXPORT_SYMBOL(folio_mc_copy);
+ 	cond_resched();
  
-+int folio_mc_copy_nt(struct folio *dst, struct folio *src)
-+{
-+	long nr = folio_nr_pages(src);
-+	long i = 0;
-+
-+	for (;;) {
-+		if (copy_mc_highpage_nt(folio_page(dst, i), folio_page(src, i)))
-+			return -EHWPOISON;
-+		if (++i == nr)
-+			break;
-+		cond_resched();
-+	}
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL(folio_mc_copy_nt);
-+
- int sysctl_overcommit_memory __read_mostly = OVERCOMMIT_GUESS;
- static int sysctl_overcommit_ratio __read_mostly = 50;
- static unsigned long sysctl_overcommit_kbytes __read_mostly;
+-	if (cc->direct_compaction && (cc->mode == MIGRATE_ASYNC)) {
++	if (cc->direct_compaction && migrate_mode_is_async(cc->mode)) {
+ 		skip_on_failure = true;
+ 		next_skip_pfn = block_end_pfn(low_pfn, cc->order);
+ 	}
+@@ -1364,7 +1364,7 @@ static bool suitable_migration_source(struct compact_control *cc,
+ 	if (pageblock_skip_persistent(page))
+ 		return false;
+ 
+-	if ((cc->mode != MIGRATE_ASYNC) || !cc->direct_compaction)
++	if (!migrate_mode_is_async(cc->mode) || !cc->direct_compaction)
+ 		return true;
+ 
+ 	block_mt = get_pageblock_migratetype(page);
+@@ -1465,7 +1465,7 @@ fast_isolate_around(struct compact_control *cc, unsigned long pfn)
+ 		return;
+ 
+ 	/* Minimise scanning during async compaction */
+-	if (cc->direct_compaction && cc->mode == MIGRATE_ASYNC)
++	if (cc->direct_compaction && migrate_mode_is_async(cc->mode))
+ 		return;
+ 
+ 	/* Pageblock boundaries */
+@@ -1705,7 +1705,7 @@ static void isolate_freepages(struct compact_control *cc)
+ 	block_end_pfn = min(block_start_pfn + pageblock_nr_pages,
+ 						zone_end_pfn(zone));
+ 	low_pfn = pageblock_end_pfn(cc->migrate_pfn);
+-	stride = cc->mode == MIGRATE_ASYNC ? COMPACT_CLUSTER_MAX : 1;
++	stride = migrate_mode_is_async(cc->mode) ? COMPACT_CLUSTER_MAX : 1;
+ 
+ 	/*
+ 	 * Isolate free pages until enough are available to migrate the
+@@ -2514,7 +2514,7 @@ compact_zone(struct compact_control *cc, struct capture_control *capc)
+ 	unsigned long start_pfn = cc->zone->zone_start_pfn;
+ 	unsigned long end_pfn = zone_end_pfn(cc->zone);
+ 	unsigned long last_migrated_pfn;
+-	const bool sync = cc->mode != MIGRATE_ASYNC;
++	const bool sync = !migrate_mode_is_async(cc->mode);
+ 	bool update_cached;
+ 	unsigned int nr_succeeded = 0, nr_migratepages;
+ 	int order;
+@@ -2537,7 +2537,7 @@ compact_zone(struct compact_control *cc, struct capture_control *capc)
+ 		ret = compaction_suit_allocation_order(cc->zone, cc->order,
+ 						       cc->highest_zoneidx,
+ 						       cc->alloc_flags,
+-						       cc->mode == MIGRATE_ASYNC,
++						       migrate_mode_is_async(cc->mode),
+ 						       !cc->direct_compaction);
+ 		if (ret != COMPACT_CONTINUE)
+ 			return ret;
+diff --git a/mm/migrate.c b/mm/migrate.c
+index 2c3d489ecf51..ff6cf50e7b0b 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -907,7 +907,7 @@ static bool buffer_migrate_lock_buffers(struct buffer_head *head,
+ 
+ 	do {
+ 		if (!trylock_buffer(bh)) {
+-			if (mode == MIGRATE_ASYNC)
++			if (migrate_mode_is_async(mode))
+ 				goto unlock;
+ 			if (mode == MIGRATE_SYNC_LIGHT && !buffer_uptodate(bh))
+ 				goto unlock;
+@@ -1220,7 +1220,7 @@ static int migrate_folio_unmap(new_folio_t get_new_folio,
+ 	dst->private = NULL;
+ 
+ 	if (!folio_trylock(src)) {
+-		if (mode == MIGRATE_ASYNC)
++		if (migrate_mode_is_async(mode))
+ 			goto out;
+ 
+ 		/*
+@@ -1325,7 +1325,7 @@ static int migrate_folio_unmap(new_folio_t get_new_folio,
+ 		/* Establish migration ptes */
+ 		VM_BUG_ON_FOLIO(folio_test_anon(src) &&
+ 			       !folio_test_ksm(src) && !anon_vma, src);
+-		try_to_migrate(src, mode == MIGRATE_ASYNC ? TTU_BATCH_FLUSH : 0);
++		try_to_migrate(src, migrate_mode_is_async(mode) ? TTU_BATCH_FLUSH : 0);
+ 		old_page_state |= PAGE_WAS_MAPPED;
+ 	}
+ 
+@@ -1565,7 +1565,7 @@ static inline int try_split_folio(struct folio *folio, struct list_head *split_f
+ {
+ 	int rc;
+ 
+-	if (mode == MIGRATE_ASYNC) {
++	if (migrate_mode_is_async(mode)) {
+ 		if (!folio_trylock(folio))
+ 			return -EAGAIN;
+ 	} else {
+@@ -1799,7 +1799,7 @@ static int migrate_pages_batch(struct list_head *from,
+ 	LIST_HEAD(dst_folios);
+ 	bool nosplit = (reason == MR_NUMA_MISPLACED);
+ 
+-	VM_WARN_ON_ONCE(mode != MIGRATE_ASYNC &&
++	VM_WARN_ON_ONCE(!migrate_mode_is_async(mode) &&
+ 			!list_empty(from) && !list_is_singular(from));
+ 
+ 	for (pass = 0; pass < nr_pass && retry; pass++) {
+@@ -2107,7 +2107,7 @@ int migrate_pages(struct list_head *from, new_folio_t get_new_folio,
+ 		list_cut_before(&folios, from, &folio2->lru);
+ 	else
+ 		list_splice_init(from, &folios);
+-	if (mode == MIGRATE_ASYNC)
++	if (migrate_mode_is_async(mode))
+ 		rc = migrate_pages_batch(&folios, get_new_folio, put_new_folio,
+ 				private, mode, reason, &ret_folios,
+ 				&split_folios, &stats,
 
 -- 
 2.43.0
