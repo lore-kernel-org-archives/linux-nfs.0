@@ -1,157 +1,145 @@
-Received: from mail-ed1-f50.google.com (mail-ed1-f50.google.com [209.85.208.50])
+Received: from mail-qk1-f173.google.com (mail-qk1-f173.google.com [209.85.222.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8FC6E44162B
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2026 15:03:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.208.50
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6624839C013
+	for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2026 17:30:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.222.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785423812; cv=none; b=jj4jmwU8es+b1s1t8EOP06eKRzCOJ3Q4uNt9BkcneJ/2LtEpDCwRkjY3/Ro8h2LY4OZoDO3EcnCIlmz6/FZ+9C4CgfIDBJjP0rrjojrtJG2lzpNl0VZa5/Zw8lnPTuej7TZA0TpIvdzg7cxk2+yaVmqVbYz9y0BqCiKzkymgegA=
+	t=1785432635; cv=none; b=Y6FsnfGae+431cOPlAP3THHcDDb+eMLDqcAtNJThloLnAMRAO38qEYZSHv5QGDkcGEe//HgxyPXWUZLfI3xwN+SAD+0pVy1AYakoM8PyDq61rCvmAsmKrqWXP2mT+fihbEL3/7HNNzpA0Nppg6mbeN1gjXC2LwnqY67+UMHk1kI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785423812; c=relaxed/simple;
-	bh=PLHblDJYyXTlsqe+7yffW40SqnFtuBNOpxiyUDpA/Js=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=DiopcmcHwR4Kqyyqp9mpNabqQAoND+SdL0sIr0F9luOtaQJ9HcZu2V2LkXE16liAVwgL2z4c2coJkhW0s0NqalwB+21PH7bm86coYbLvqbTMTHHeVvGKcGZMcFBFQIBer0UtCwHfzBb5tC0H/L2dWrGSUyHPyxz28Xa8EiIxGpk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=AnVz+PrL; arc=none smtp.client-ip=209.85.208.50
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1785432635; c=relaxed/simple;
+	bh=ZarrVrdKj2n3aaebkA5FovkqHBfFNmuG5d9kWTyUTbc=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=dGG5Mp7PERdIqbLcrjdb/KutHTESxMiT1WJnbi9Qwwtezrl9S9+MbLzhLdN+aIbrhr6yfsiDpMvlnbUvLXcJe33BOoi7CMl/Qvm5caBqaROvc6wiCQxzW60Vs8JaXn4OGTP/rISldI25lxJ0LskldaSIoluLZLIq7yBQV0yWvCU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=gourry.net; spf=pass smtp.mailfrom=gourry.net; dkim=pass (2048-bit key) header.d=gourry.net header.i=@gourry.net header.b=du4CQIwW; arc=none smtp.client-ip=209.85.222.173
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=gourry.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gourry.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="AnVz+PrL"
-Received: by mail-ed1-f50.google.com with SMTP id 4fb4d7f45d1cf-69fab5a852cso3313221a12.0
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2026 08:03:29 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gourry.net header.i=@gourry.net header.b="du4CQIwW"
+Received: by mail-qk1-f173.google.com with SMTP id af79cd13be357-92e5cb052edso7927685a.2
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jul 2026 10:30:33 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1785423808; x=1786028608; darn=vger.kernel.org;
-        h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
-         :content-type:mime-version:subject:date:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=jbxhIHpP+P+duAb0b+RpjF7CmIf+HVEI8a2PNCDtUeY=;
-        b=AnVz+PrLnbk6AzMQ0Yuxn+6uilON49za8ASZjVWYMAyDVDlrKxuy66/hW+5iQCPPxF
-         GwV/X3M+f+urHvIVucTbgw8srrb4lfcnEkT0EFLK6eHy6Ux4xfO5hRvQIxlC21WQN00Z
-         CGM12gU5uukZ98XLvm23Y8AakvglUutncVvNS1KcPhYHAFAuHyfj3o6kJ9+ReNipBKE/
-         nGxe+yoHuQfe6uo1rd1MT8Ht8WoYHxd4H1YrB76h3k1TMlhRbh1FlVyH+2Zjo5MvZt+H
-         1ei7Sf8fCWboWSvtuBXQDeP3DqRVxPxBzEDqYwFD8kFEW/FfakRO/Itmb025p78oNE0P
-         1EYA==
+        d=gourry.net; s=google; t=1785432632; x=1786037432; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=O1gNcDYuy2kFPtuMWDBBdwYzU3pwqwyp43h1K8eiHJI=;
+        b=du4CQIwWEG7O6ckuHbU2xpM5rHc3KCc9Y6gGN06uDGZBul7DsSItwEtQUpmGwTL0uw
+         MPdSC3xxvcne7biwuRXC6W0+0Q6dOL3s2t7LkHrTW2WqOcZp5zkxwZ4rKw0OjQ/P4lv8
+         OiRNtl7pf/xdZvUUav5gmKC3O4Kfuy5FG7ce7DijnCp8/EY8VjnfaVmaMu1OfNctBAAr
+         XWAdQTyQAgTcRPEWL0jBj/08dGNup1ctehZpCjS/655Po/ZtyZYM77TGBLAPJUL14pLB
+         0d/6Ukpm1n8il1xPY3GJIkPZaTXYkNUkhIRM4pgsbu7e9Pq5Aq3VjsJCkkIXdh03UwMc
+         lHaw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785423808; x=1786028608;
-        h=cc:to:in-reply-to:references:message-id:content-transfer-encoding
-         :content-type:mime-version:subject:date:from:x-gm-gg
+        d=1e100.net; s=20251104; t=1785432632; x=1786037432;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:x-gm-gg
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=jbxhIHpP+P+duAb0b+RpjF7CmIf+HVEI8a2PNCDtUeY=;
-        b=SCLuX9o+hsfsNvuBQtsrmeKVs+AEJ/ZF1Vx0HQH/zTImBjLcNa78QDiHagg1tRWlt8
-         cIshI+VTZjtddxOF1/hSwvjfb4TbHYVmrlse03fpQqRFrkRaBe+3HpPoinbdS6jR4hyB
-         1Lns5s1mGkVyY2zt91rGkDR/fgeZNcT5jTH3DSAVALZsXE6DLOc7xPmgcLR+5eVtSVBf
-         fIMBFweRrMlVSQyFN9ehTYiXNY44VO+jRLfU+ZRpD+t6d7VS3m4OYNMwnkYh0M6TOJfE
-         un7p5VVSe14GXIlEvJKhWb/kbIM181V9caVJtPxn6qO1L/C8OtSKfWxvHOwocDtGfNXG
-         0gHw==
-X-Forwarded-Encrypted: i=1; AHgh+Rq4HYHRnC+2pCVdXJNH7gBhPzjPgygIvXBJxNlpreyrJwLM2WbAJpSiUaofGWzKkhsU9vu1L6P66xY=@vger.kernel.org
-X-Gm-Message-State: AOJu0YyLv64LGC42YNcTTNiHvWZGJ60JWOu7FikDvHqwLfj9nzejDVEl
-	76NpiKYkXrH7y2jxAJmO+cL7moD7t4joQduTY15+oOqrAJ+uTYFxZM15
-X-Gm-Gg: AR+sD11ryYz4qpqLVfwFimxfy7VKvRQD6xu14xGT5zhJZBXxaXqKf5+gWkvZQcZk/wH
-	1oxM1+DYGmhRAM9sK0rli3j5eK54NzUnFjqzcczAAyTQY2ipMziOVwvrpFQsiXqTozWsilN/6LO
-	H7Tm3k+zzqA/ku1Zg6AmzGKgUWoc0CNEwA5my5CMTlSQJiuHI/KjTMVtv434t7qh4UELdR7yg1I
-	VUU+VD6BSlMxEVm7wHv6AZnBpsFZshzYH9prBmPbPLdYlX85kQoPBnpCRC9Eyo8HvoVboiuSXnY
-	Y95uzaTitnwDq3c5ASNsJfTljUkxMgNUbXcg6JCsJlfzY+J6i5g5laqpj07H022Ygu3ER+KiXj6
-	oKGOXqT3ksNW2WIBzZ36IVrg/U6+A+Osw0chN26EbafY+3OwpGnrxVmagiqIWzZ+hscQ7jDNQnv
-	XZV4RiBZFBS7TJ/bPis4zZVfnZ1k5TmHSLw4og+vY5BTYRYW5NLn5vZjoZdHQIxBrdJdWpRM9od
-	37twQJ1ARqZZyjwBuhAjIdav0v7rKKekA==
-X-Received: by 2002:a05:6402:5418:b0:697:e953:d14d with SMTP id 4fb4d7f45d1cf-6a07b8148acmr1397265a12.17.1785423807694;
-        Thu, 30 Jul 2026 08:03:27 -0700 (PDT)
-Received: from [127.0.1.1] (h-62-63-197-109.NA.cust.bahnhof.se. [62.63.197.109])
-        by smtp.gmail.com with ESMTPSA id 4fb4d7f45d1cf-6a07bf18ff8sm729116a12.0.2026.07.30.08.03.25
+        bh=O1gNcDYuy2kFPtuMWDBBdwYzU3pwqwyp43h1K8eiHJI=;
+        b=LaWEEOMuLF846EvHKK+vY0k0l7oxTGTsT9/w+1N1ByrHglYZ+85rZhJFd43S0Vm2Ng
+         puVOsOJuBVcsT76EJH5ce81e+j1OCIv9VhGP2OJv7m397zzgGW6x6kO2nF0O3fYwcrlZ
+         IKXR0eqOJEMKMEUSw5xkP1oILxgDJam/6cxd8DdnIsJfU1RWR0StkUEPu/VUS1NtaFpI
+         43GG5Xzyfa6B+ak2nu8TZyyyn02cAzkEMuE0AqM2/NpAX22A99i05w6x/F7T7q+rx/AQ
+         zyj5bd3wlpZ2OODDPR6wikvbgib0LbrqtWJVPPE1Na8C3X72FGGOU95ny6zDhpjNLaUK
+         bBNw==
+X-Forwarded-Encrypted: i=1; AHgh+RoKJcbUB+1k7bnd+cXhEGC+EqNca47TvGoouUtBzltFue5mEsU+7h3+BkXaQkGrN33JxSoH4RwjrDE=@vger.kernel.org
+X-Gm-Message-State: AOJu0YyWJRQsqEGfkKscLA8ex+j+nc2Sy4B2CIQ/4aOx1RQS8wd7PUau
+	uLRuNC7eaWNeVKePqM+vZawoH1P3ud79W0Ou43M4y53XIjgptUAJbfhs2elJQMfIuus=
+X-Gm-Gg: AR+sD122QplJPJp9UgU9hZNQ/dOD0Y6uXK471SwbLJIPgiP3K0Q8pukbmsfRxOh3qTQ
+	/GsCCnQG0XbbUee2axjB11jRO7t0274ziTPoebbsfIdPyNt17EqtWd+G30/8i9Yc2P2AcPkiD4j
+	QNKGdKTLpfMWH3uqjYL2P3BykvBRRjVWxWXhpkc5DKEDHQSegGkuWJRN5erUvL6FeAwLyW2HgzQ
+	3rFTk5Wp2o4Pr4bHDmxfAXeF8bdlhImG+zhZLSbsGtz9IWwnvB1ePwYG3EXqZL4HxOGA5XEXwBM
+	CHuRdBWsoyBYMbl7aPNvlq/GlcgYoKYm/kPVUO6oEmgHCFjnnZuGRraxighJWIaDFavkw+whofz
+	s662cFvuknQ2XPJaBdWKsgVdgQTvvVXi7ZA1tS5CWx73vTLkudSGzi7SlCfTafZJ9ESO7WZNBPy
+	7msCmXO/zeK86U0YxLeW9+jCn5I75M99uq0V+LYQ3361YnFMSlHIIcOBJmlhm15Lwpz75ni0WNq
+	4VpEAiJHQVZexBbPQIFaA6ZQ9/BKhuhypdR3hHOV+iX
+X-Received: by 2002:a05:620a:27c5:b0:92e:56f7:c5fb with SMTP id af79cd13be357-93485f9c0a0mr372532985a.12.1785432632074;
+        Thu, 30 Jul 2026 10:30:32 -0700 (PDT)
+Received: from gourry-fedora-PF4VCD3F (pool-173-79-60-52.washdc.fios.verizon.net. [173.79.60.52])
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-933d325a17fsm457745885a.13.2026.07.30.10.30.30
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 30 Jul 2026 08:03:27 -0700 (PDT)
-From: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
-Date: Thu, 30 Jul 2026 17:02:59 +0200
-Subject: [PATCH RFC v2 3/3] mm: use non-temporal stores for demotion
+        Thu, 30 Jul 2026 10:30:31 -0700 (PDT)
+Date: Thu, 30 Jul 2026 13:30:29 -0400
+From: Gregory Price <gourry@gourry.net>
+To: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
+Cc: Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, 
+	Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
+	"H. Peter Anvin" <hpa@zytor.com>, Andrew Morton <akpm@linux-foundation.org>, 
+	David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
+	"Liam R. Howlett" <Liam.Howlett@oracle.com>, Vlastimil Babka <vbabka@kernel.org>, 
+	Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, 
+	Michal Hocko <mhocko@suse.com>, Trond Myklebust <trondmy@kernel.org>, 
+	Anna Schumaker <anna@kernel.org>, Zi Yan <ziy@nvidia.com>, Matthew Brost <matthew.brost@intel.com>, 
+	Joshua Hahn <joshua.hahnjy@gmail.com>, Rakie Kim <rakie.kim@sk.com>, Byungchul Park <byungchul@sk.com>, 
+	Ying Huang <ying.huang@linux.alibaba.com>, Alistair Popple <apopple@nvidia.com>, 
+	Steven Rostedt <rostedt@goodmis.org>, Masami Hiramatsu <mhiramat@kernel.org>, 
+	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, Brendan Jackman <jackmanb@google.com>, 
+	Johannes Weiner <hannes@cmpxchg.org>, David Rientjes <rientjes@google.com>, 
+	Davidlohr Bueso <dave@stgolabs.net>, Fan Ni <nifan.cxl@gmail.com>, 
+	Frank van der Linden <fvdl@google.com>, Jonathan Cameron <jic23@kernel.org>, 
+	Raghavendra K T <rkodsara@amd.com>, "Rao, Bharata Bhasker" <bharata@amd.com>, 
+	SeongJae Park <sj@kernel.org>, Wei Xu <weixugc@google.com>, 
+	Xuezheng Chu <xuezhengchu@huawei.com>, Yiannis Nikolakopoulos <yiannis@zptcorp.com>, 
+	dimitrios@palyvos.net, Ryan Roberts <ryan.roberts@arm.com>, 
+	Huan Nguyen <nhuhuan@google.com>, linux-kernel@vger.kernel.org, linux-mm@kvack.org, 
+	linux-nfs@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
+	Alirad Malek <alirad.malek@zptcorp.com>
+Subject: Re: [PATCH RFC v2 0/3] Demote to lower tier using non-temporal stores
+Message-ID: <amuJbBrTW9W6_sx8@gourry-fedora-PF4VCD3F>
+References: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260730-rfc-nt-demote-v2-3-452dbe3b5073@zptcorp.com>
-References: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 In-Reply-To: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com>
-To: Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, 
- Borislav Petkov <bp@alien8.de>, Dave Hansen <dave.hansen@linux.intel.com>, 
- x86@kernel.org, "H. Peter Anvin" <hpa@zytor.com>, 
- Andrew Morton <akpm@linux-foundation.org>, 
- David Hildenbrand <david@kernel.org>, 
- Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
- "Liam R. Howlett" <Liam.Howlett@oracle.com>, 
- Vlastimil Babka <vbabka@kernel.org>, Mike Rapoport <rppt@kernel.org>, 
- Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
- Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Zi Yan <ziy@nvidia.com>, Matthew Brost <matthew.brost@intel.com>, 
- Joshua Hahn <joshua.hahnjy@gmail.com>, Rakie Kim <rakie.kim@sk.com>, 
- Byungchul Park <byungchul@sk.com>, Gregory Price <gourry@gourry.net>, 
- Ying Huang <ying.huang@linux.alibaba.com>, 
- Alistair Popple <apopple@nvidia.com>, Steven Rostedt <rostedt@goodmis.org>, 
- Masami Hiramatsu <mhiramat@kernel.org>, 
- Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, 
- Brendan Jackman <jackmanb@google.com>, Johannes Weiner <hannes@cmpxchg.org>
-Cc: David Rientjes <rientjes@google.com>, 
- Davidlohr Bueso <dave@stgolabs.net>, Fan Ni <nifan.cxl@gmail.com>, 
- Frank van der Linden <fvdl@google.com>, Jonathan Cameron <jic23@kernel.org>, 
- Raghavendra K T <rkodsara@amd.com>, 
- "Rao, Bharata Bhasker" <bharata@amd.com>, SeongJae Park <sj@kernel.org>, 
- Wei Xu <weixugc@google.com>, Xuezheng Chu <xuezhengchu@huawei.com>, 
- Yiannis Nikolakopoulos <yiannis@zptcorp.com>, dimitrios@palyvos.net, 
- Ryan Roberts <ryan.roberts@arm.com>, Huan Nguyen <nhuhuan@google.com>, 
- linux-kernel@vger.kernel.org, linux-mm@kvack.org, linux-nfs@vger.kernel.org, 
- linux-trace-kernel@vger.kernel.org, 
- Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>, 
- Alirad Malek <alirad.malek@zptcorp.com>
-X-Mailer: b4 0.15.2
 
-From: Alirad Malek <alirad.malek@zptcorp.com>
+On Thu, Jul 30, 2026 at 05:02:56PM +0200, Yiannis Nikolakopoulos wrote:
+> In most memory tiering scenarios, the memory to be demoted is expected
+> to be cold and most likely out of the node's last-level cache (as well
+> as target pages in the target node). Using non-temporal stores instead
+> of a standard memcpy path can reduce the cache pollution in the local
+> node and the bandwidth overhead to the target node. Furthermore, for
+> certain types of CXL devices that support in-line memory compression,
+> the last-level cache eviction patterns can negatively affect the
+> bandwidth of the device. Non-temporal stores can mitigate this.
+> 
+> This patch-set introduces a new migrate_mode flag for using non-temporal
+> stores that is used only in the demotion path. Patch 1 adds some helpers in
+> x86 and mm to bring non-temporal stores support to a respective folio_copy
+> function. Patch 2 adds the new flag and necessary changes for compatibility
+> with the existing behavior. Patch 3 uses the new flag for demotions.
+> 
+> Experimental data: in a CXL system with 1 memory expander, a microbenchmark
+> that allocates N=64 GB memory in the local node and then triggers demotion
+> using memory.reclaim, shows a practically complete elimination of read
+> traffic on the device, i.e. write traffic is N GB with and without the
+> patch, while read traffic drops from N to almost 0 with the patch.
+> 
+> Opens:
+> 1. There is some "duplication" in the x86 tree and a bit in mm. Can we do
+>    something better there? As it is now in copy_mc_to_kernel_nt we
+> duplicate the machine check functionality, which if available will override
+> the non-temporal. We were not sure how to prioritize these two and what's
+> the best approach here. Can we completely skip the machine checked for this
+> path? Huan Nguyen has some ideas here that we will align for the next
+> version.
+> 2. I am not sure how this should be structured so that it is easily
+> adopted in other architecture trees (e.g. aarch64). We rely on
+> memcpy_flushcache for x86_64 but this does not use non temporal stores
+> in ARM. ARM support is currently out of our scope but any input is
+> appreciated.
+> 
 
-Memory demoted to a lower tier is assumed to be cold and most likely out of
-the CPU's last level cache. Additionally, in certain demotion targets (e.g.
-CXL devices with compressed memory) the bandwidth can be negatively
-impacted by the eviction patterns of the last level cache when standard
-memcpy is used. In supported architectures (currently X86_64), use the
-MIGRATE_ASYNC_NON_TEMPORAL_STORES flag in demotions to trigger the folio
-copy path using non-temporal stores.
+I'm still a bit confused why using NT Stores needs to be an explicit
+option - rather than the default behavior if NT Store is available.
 
-Signed-off-by: Alirad Malek <alirad.malek@zptcorp.com>
-Co-developed-by: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
-Signed-off-by: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
----
- mm/migrate.c | 10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+Lets assume we did this for all ASYNC requests, is there a negative
+effect? A positive effect? Why the new ASYNC type? Is there a
+correctness issue?
 
-diff --git a/mm/migrate.c b/mm/migrate.c
-index ff6cf50e7b0b..c7c62700d541 100644
---- a/mm/migrate.c
-+++ b/mm/migrate.c
-@@ -862,7 +862,10 @@ static int __migrate_folio(struct address_space *mapping, struct folio *dst,
- 	if (folio_ref_count(src) != expected_count)
- 		return -EAGAIN;
- 
--	rc = folio_mc_copy(dst, src);
-+	if (mode == MIGRATE_ASYNC_NON_TEMPORAL_STORES)
-+		rc = folio_mc_copy_nt(dst, src);
-+	else
-+		rc = folio_mc_copy(dst, src);
- 	if (unlikely(rc))
- 		return rc;
- 
-@@ -2081,6 +2084,11 @@ int migrate_pages(struct list_head *from, new_folio_t get_new_folio,
- 	LIST_HEAD(split_folios);
- 	struct migrate_pages_stats stats;
- 
-+	if (IS_ENABLED(CONFIG_X86_64) &&
-+		IS_ENABLED(CONFIG_ARCH_HAS_UACCESS_FLUSHCACHE) &&
-+		reason == MR_DEMOTION && mode == MIGRATE_ASYNC)
-+		mode = MIGRATE_ASYNC_NON_TEMPORAL_STORES;
-+
- 	trace_mm_migrate_pages_start(mode, reason);
- 
- 	memset(&stats, 0, sizeof(stats));
-
--- 
-2.43.0
-
+~Gregory
