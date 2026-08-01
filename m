@@ -1,334 +1,511 @@
-Received: from mail-qt1-f180.google.com (mail-qt1-f180.google.com [209.85.160.180])
+Received: from mail-oi1-f207.google.com (mail-oi1-f207.google.com [209.85.167.207])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8EC9C3314B9
-	for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2026 21:54:10 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.160.180
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785534852; cv=pass; b=GUM2N8uzZEH3zt6wAffGTN8/1FygIboqTkMXEfbySnU5yF1RqTqAdEdnHTV8rdI9cSK63RNJ7YeMeE4HWlq18rowYc0HzSpAEbYlUbVNs/hHcC8lm+G7jz3c5Uec1fnDkTZGdVypN0ls1BEp/snNMzV5wi27S39OekAVIcY8Kk4=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785534852; c=relaxed/simple;
-	bh=Pnq7zcb7OBStwmFk/cMGV9jIpASQJAMtNs9n3iP/UR8=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=bQlDdAPeS8SSxKHAL3yWP6yTiv0I+kWcvlVOCtq26UB5wHhx1EpvcSAymVbCfzr+rFE6vvEpVZd685V5bgudEMuoCDOmz+dv7yN5ueessf3aJRbtxMJ+JTZ3CU5AeMzGiK3P2ecT/pjEo0cL+EjIwZ9r8wWZISsF3R+gTylBVbU=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=WPw5QrVl; arc=pass smtp.client-ip=209.85.160.180
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
-Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="WPw5QrVl"
-Received: by mail-qt1-f180.google.com with SMTP id d75a77b69052e-51c01c79467so76881cf.0
-        for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2026 14:54:10 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1785534849; cv=none;
-        d=google.com; s=arc-20260327;
-        b=hc0UALPL+rrj4cgt7jniSYF+a5aRgiwYHHOW6nrHrcc4hbLQrj+T+ZEzkP9KjmuyH2
-         FC5qePKfP1pMxmxgwsTro57zsYRuI37i7mDcBBcexhk6AZkT7U6rWwUc37Oy/II3EY9r
-         NFGe2cbf/7rEJsFG1BhWrDjfh1l5T558TRlmSjeYlqDhNmb5CGTl+Fa2s1rmY9uveXSq
-         7qSS0Nii/iAU7HLEParYJpvUXKwqDUcosEBLkHWvz8f5JbDbVrAL0BXprlLd++4f2XUv
-         JY4zZMvgz3voNYwu6xWNgoOf7V4FsN318GbvUksD0qjFaZPM2oUboiebAErspuM9Ke6K
-         xT8g==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=8gIfdsfjbn1z2tePFkfGVAXUb4NElj5vr2DMSWId60A=;
-        fh=uPkIfVpdfSWyl+ilXVu7Di6gq3SUBKRDV3z1XAjchgE=;
-        b=nGWc96dqQlsdN1to8oPVrsBGeDN5lX2zaUl4j8rsdVwPIqhyc/U+f5oI2PPZVJXU+b
-         6Y8SSnE477loNMePgxD/dogPX80DjZPVU9tiVxRPdUreRdET6RguAiNSEL6hDi2P+yiM
-         1N9FMies7leNo1YMUUuRPmHeElgGCAKUVmNdgxLa3nOSHFBiWGoPM+gv097o+nlGhGtW
-         oASOYm9BOekHzu10vj2pYPF1qLHaEtfNXJ+FYFi6L5cUaHuV934WsxSuKwBQ3wcAxcBT
-         ZBuKWbo5KgTcYaeJUnXT7I9LGUnVrYi5Pbkq8uQBAu5aKDJaVf2dgy5ju4R8ZOisKsKI
-         g6Ew==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1785534849; x=1786139649; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=8gIfdsfjbn1z2tePFkfGVAXUb4NElj5vr2DMSWId60A=;
-        b=WPw5QrVl7wHiUNdO+wBqIIEWBieujcatT2sfJbBqWtYP3xOu4FbZ0lBZ+GF7UDpayT
-         zuJtPDoW8JLrijBwY9lL9lKYvbEwUSaLeaI5tPUIXSowpkEyKh4nQkPZbVcEMYVAJJQp
-         FHdFOWH2Xm1s+/dNnBe7P5/Vnwppfu+Fm9wlQEj7yH6cwKO1WZ17KknlGr/a5ONi+hT6
-         5gmykv4B8quSjIvQe3SISP1xgMufD47BRuwpTr2gZtzAncOQWaHCNzejcWKHE/xkL86c
-         vs7G/bi8DEod4D2MFlHYWw2B6guzsJDKwjbnNVWYZNHi/nsU4V5BgCKAFYqOwL3vf+yc
-         axVA==
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B0F44215075
+	for <linux-nfs@vger.kernel.org>; Sat,  1 Aug 2026 00:01:35 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.207
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1785542499; cv=none; b=btcO+Id3UoSCv5UQ92rMsASLAvcvRFck+loItRc/kSeKM1+GhKcQ0EuYFpvj8VDV5TZ9rZn11UN4noVe50wlDMXsB6y8FyFYLx3KAmzEjeGUB6LPYGiKNzIIhsu4ye0eMHmxzDd2jzoHsH5UMSGhdL5VZ7KjsWgSyo6VU/LjFxU=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1785542499; c=relaxed/simple;
+	bh=9rTwtUK6N5py99t5gNz6a6dHqff69BW7CqU/JEA7HNQ=;
+	h=MIME-Version:Date:Message-ID:Subject:From:To:Content-Type; b=Pn7CtFOeN/XqHf1X8U7oprE0qqzQzvsHGth3PMn6/vVWfU7OJj83lvwhqxJulW21ahTgIKgWIQiOBNPo6KGeqDtHGCxinco1tE7JsuhQq4U1Ydq7h/39CAUvTMAXKxh6Vb9wNl1RDlHPd/4kcZR0PCMa/wnV3W4VszFUoBGbrgY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.167.207
+Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
+Received: by mail-oi1-f207.google.com with SMTP id 5614622812f47-495b0cf250dso1028573b6e.3
+        for <linux-nfs@vger.kernel.org>; Fri, 31 Jul 2026 17:01:35 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1785534849; x=1786139649;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
+        d=1e100.net; s=20251104; t=1785542494; x=1786147294;
+        h=content-type:to:from:subject:message-id:date:mime-version
          :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=8gIfdsfjbn1z2tePFkfGVAXUb4NElj5vr2DMSWId60A=;
-        b=jKSuYc8CGIBfHhgc8VH7N6YqjdzBUWgXmeMmxmtNZkgmBBO8OtEy7T+ctkzQeXxy6h
-         pB1LVUn5g453/qfCjcQems5yn2qKXcGqx1W3OR5mugwLSztWs93l33exHRyTHnv/fovr
-         fBFTmWixEog69mpGa7Ri1S4yat2ioNuEyvbjRmWb9AKhCYAE1GihrwaXQxGxRxlQvE9z
-         X8btKDysMYvPT3Y8Vo7eq/DC4BqTrJKi/xj/dov8rByTv9POi9JTCeYM8xKsEi/fSno8
-         38cnTNmgo53mM7vLkjYG1OWzEl7RyFEEzjvAN8Jh2b2WmbUyzo6rsZ+MVdDifIKA+IlN
-         fTfg==
-X-Forwarded-Encrypted: i=1; AHgh+RrPAh87AwKH5ucGpnf6pAV8NMg2UeqZmVYxP/m4oiNR+5IuFfFnaScishtyv16x7mVslUrN0lc94dI=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yyq6XunDRbBlpyFwjXoVgGfYOc66kq51vQaQ4GZM3cU2MVZTrrN
-	KxGLkyVRsU8+g+f5wqPHc29a/hr6U6Erq3HAUy4qJKlyeRf4+dMUsBxTX+RGyJgkdvrFMuW/Ne2
-	bP9TtFUggFouI/3o0fssD0gSIIx7tIR1O9RIBBQkb
-X-Gm-Gg: AR+sD13L6OO0INnPSCVuhR3Y6wWpHngziQsNFKLo9odwsCbrt8Zk2ltLfD1/fXePCr6
-	ZixkffcVx+HBn+rWZecwH2gsjmlwGX+WC4jgXJS0zMxpwQr1GYpETgNsoFiuu7AygEHqvlv1xIz
-	8yffrHWrxeKfhJFaah+q9mLhdjydxxdRzo/t8IyZJN9z9FB27C2bU067RXEeMP1+oRyEsOABAT3
-	aieCPJ5TpaJWTUG+QlkMJIkh2cAaeyr6Y+/vyQGfd3wl+icAFUZ+GUMHSwWVOgPVPnmUi2POaQv
-	4h2MFGGQZy9hkUj71RzzjkwvWDr437ZG/hA6ubcR1o5iYnDwuWKJ7W5AcFR8QfdYLmER5jCKfTo
-	=
-X-Received: by 2002:a05:622a:134f:b0:517:5e32:2d14 with SMTP id
- d75a77b69052e-52b59a19ea6mr5408341cf.10.1785534848971; Fri, 31 Jul 2026
- 14:54:08 -0700 (PDT)
+        bh=ZygoyrJx+CJoTNK3/+0Puk0CyfKJLOZSA4fCHuBLMbU=;
+        b=rDCDGop1wkS4mRim9g07f9a64wBdZnHA9Glw+2c4A3xtJ0QLM1DQHpqzfsAYaTN8zg
+         AfQcSicRmp8MUYwrNL3vnQqhIDBfpUrEBYvdiZZ6phDXyPM7t0+szR09lohu9ecweRer
+         Z03XzR2GEf01xK5qgZMlcOwyu6fkUSKdkgujHYxFkeKCOMNBGCKio3WQuipIoALir3Vg
+         Z26kInZTnSHvqhhD6UiBe5z3Un7fr2xgL5itMC25bH1K+MdkHNFAbSDUCHfY0dsdpLI7
+         KRY3R2Vw7AbxH+eQI/KE5/53wEYAD0IuzAxKXjuqxJNFURNF1qN8MCU6dtp8UIST8X9Y
+         SjRQ==
+X-Forwarded-Encrypted: i=1; AHgh+RrSKc5R+3OsGQNxLaKYFzobLJ+zJ490ROE0IL0+38HupMo6Zlo7fgMgzcrNhVCSo9rACv04leDxur8=@vger.kernel.org
+X-Gm-Message-State: AOJu0YybOCDBatyRpk9T0FPC9Y/kqvK05+ZkSPWLM4kR2OAnRUFmxHZp
+	QdErg6CjK/BDt7qEyoMEJnZ2DTE7d/itSz9L8OfKG9Bqd1ZYZ/de8gqldoArA/PlV6MJCktCFXG
+	csXEUO9sYcU6kBv2aY9V9MqZwRl9jBxxuLq2gJE14zu64woxPukfIDj/KtrA=
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260730-rfc-nt-demote-v2-0-452dbe3b5073@zptcorp.com> <20260730-rfc-nt-demote-v2-1-452dbe3b5073@zptcorp.com>
-In-Reply-To: <20260730-rfc-nt-demote-v2-1-452dbe3b5073@zptcorp.com>
-From: Huan Nguyen <nhuhuan@google.com>
-Date: Fri, 31 Jul 2026 14:53:31 -0700
-X-Gm-Features: AUfX_mydSrv99P-U14w6L8Rc9PDoTTKUxRYzjtIKVF_wWri1fRV1Nci3jK142jQ
-Message-ID: <CALwWd5usu+e=MgX95zGPUeqRjEu_SARLoiMPQpyMYBoUVQkk_g@mail.gmail.com>
-Subject: Re: [PATCH RFC v2 1/3] mm, x86: support copying a folio using
- non-temporal stores
-To: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
-Cc: Thomas Gleixner <tglx@kernel.org>, Ingo Molnar <mingo@redhat.com>, Borislav Petkov <bp@alien8.de>, 
-	Dave Hansen <dave.hansen@linux.intel.com>, x86@kernel.org, 
-	"H. Peter Anvin" <hpa@zytor.com>, Andrew Morton <akpm@linux-foundation.org>, 
-	David Hildenbrand <david@kernel.org>, Lorenzo Stoakes <lorenzo.stoakes@oracle.com>, 
-	"Liam R. Howlett" <Liam.Howlett@oracle.com>, Vlastimil Babka <vbabka@kernel.org>, 
-	Mike Rapoport <rppt@kernel.org>, Suren Baghdasaryan <surenb@google.com>, Michal Hocko <mhocko@suse.com>, 
-	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, Zi Yan <ziy@nvidia.com>, 
-	Matthew Brost <matthew.brost@intel.com>, Joshua Hahn <joshua.hahnjy@gmail.com>, 
-	Rakie Kim <rakie.kim@sk.com>, Byungchul Park <byungchul@sk.com>, Gregory Price <gourry@gourry.net>, 
-	Ying Huang <ying.huang@linux.alibaba.com>, Alistair Popple <apopple@nvidia.com>, 
-	Steven Rostedt <rostedt@goodmis.org>, Masami Hiramatsu <mhiramat@kernel.org>, 
-	Mathieu Desnoyers <mathieu.desnoyers@efficios.com>, Brendan Jackman <jackmanb@google.com>, 
-	Johannes Weiner <hannes@cmpxchg.org>, David Rientjes <rientjes@google.com>, 
-	Davidlohr Bueso <dave@stgolabs.net>, Fan Ni <nifan.cxl@gmail.com>, 
-	Frank van der Linden <fvdl@google.com>, Jonathan Cameron <jic23@kernel.org>, Raghavendra K T <rkodsara@amd.com>, 
-	"Rao, Bharata Bhasker" <bharata@amd.com>, SeongJae Park <sj@kernel.org>, Wei Xu <weixugc@google.com>, 
-	Xuezheng Chu <xuezhengchu@huawei.com>, Yiannis Nikolakopoulos <yiannis@zptcorp.com>, dimitrios@palyvos.net, 
-	Ryan Roberts <ryan.roberts@arm.com>, linux-kernel@vger.kernel.org, linux-mm@kvack.org, 
-	linux-nfs@vger.kernel.org, linux-trace-kernel@vger.kernel.org, 
-	Alirad Malek <alirad.malek@zptcorp.com>
+X-Received: by 2002:a05:6808:f08:b0:496:b7c:274b with SMTP id
+ 5614622812f47-4af5e2f5ca4mr4020897b6e.19.1785542494586; Fri, 31 Jul 2026
+ 17:01:34 -0700 (PDT)
+Date: Fri, 31 Jul 2026 17:01:34 -0700
+X-Google-Appengine-App-Id: s~syzkaller
+X-Google-Appengine-App-Id-Alias: syzkaller
+Message-ID: <6a6d375e.2d659fcc.1d46f5.01a3.GAE@google.com>
+Subject: [syzbot] [nfs?] INFO: task hung in write_ports
+From: syzbot <syzbot+0f7085f07e9cfba423cd@syzkaller.appspotmail.com>
+To: Dai.Ngo@oracle.com, cel@kernel.org, jlayton@kernel.org, 
+	linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, neil@brown.name, 
+	okorniev@redhat.com, syzkaller-bugs@googlegroups.com, tom@talpey.com
 Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-Hi Yiannis,
+Hello,
 
-Although copy_mc_to_kernel_nt() asserts both "mc" (machine check exception)
-and "nt" (non-temporal store), the implementation fails to deliver both:
-1. copy_mc_fragile() is MCE-safe, but it does not use movnti.
-2. memcpy_flushcache() uses movnti, but it is not MCE-safe.
+syzbot found the following issue on:
 
-Additionally, according to the Intel manual, since movnti uses the WC proto=
-col
-(a weakly-ordered memory model), a fencing operation is required. Because
-memcpy_flushcache() lacks an sfence, it can result in reading stale or corr=
-upted
-data after folio_unlock().
+HEAD commit:    f5098b6bae76 Linux 7.2-rc5
+git tree:       upstream
+console output: https://syzkaller.appspot.com/x/log.txt?x=136ad8c6580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=4e38b15c29e6a1d9
+dashboard link: https://syzkaller.appspot.com/bug?extid=0f7085f07e9cfba423cd
+compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
+syz repro:      https://syzkaller.appspot.com/x/repro.syz?x=124b7fde580000
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=137391b9580000
 
-Furthermore, copy_mc_highpage() is unoptimized for page migration operation=
-s
-because it reuses copy_mc_to_kernel(), built to handle
-variable-length, unaligned
-memory. As copy_mc_highpage_nt() follows copy_mc_highpage(), it inherits th=
-is
-flaw. In contrast, copy_highpage() is optimized for page migration by lever=
-aging
-copy_page(), dedicated to 4KiB-aligned memory.
+Downloadable assets:
+disk image: https://storage.googleapis.com/syzbot-assets/7d76d25427fa/disk-f5098b6b.raw.xz
+vmlinux: https://storage.googleapis.com/syzbot-assets/b2a3f9e7cb3e/vmlinux-f5098b6b.xz
+kernel image: https://storage.googleapis.com/syzbot-assets/e4d49cdcd799/bzImage-f5098b6b.xz
 
-Therefore, copy_mc_highpage_nt() should call a dedicated page-copy assembly
-routine that provides MCE safety, movnti stores, and an sfence, rather than=
- the
-generic copy_mc_to_kernel_nt(). We can name it copy_mc_page_nt(), following
-the naming convention of copy_page().
+IMPORTANT: if you fix the issue, please add the following tag to the commit:
+Reported-by: syzbot+0f7085f07e9cfba423cd@syzkaller.appspotmail.com
 
-What are your thoughts on this direction? Any feedback or suggestions would=
- be
-greatly appreciated.
+INFO: task syz.0.17:6054 blocked for more than 143 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz.0.17        state:D stack:27304 pid:6054  tgid:6054  ppid:5761   task_flags:0x400140 flags:0x00080002
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+ nfsctl_transaction_write+0x10f/0x160 fs/nfsd/nfsctl.c:112
+ vfs_write+0x296/0xba0 fs/read_write.c:685
+ ksys_write+0x150/0x270 fs/read_write.c:739
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f0fa5b9de99
+RSP: 002b:00007ffc681b68d8 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 00007f0fa5e25fa0 RCX: 00007f0fa5b9de99
+RDX: 0000000000000009 RSI: 00002000000001c0 RDI: 0000000000000003
+RBP: 00007f0fa5c33eaf R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007f0fa5e25fac R14: 00007f0fa5e25fa0 R15: 00007f0fa5e25fa0
+ </TASK>
+INFO: task syz.2.19:6059 blocked for more than 143 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz.2.19        state:D stack:27192 pid:6059  tgid:6059  ppid:5769   task_flags:0x400140 flags:0x00080002
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+ nfsctl_transaction_write+0x10f/0x160 fs/nfsd/nfsctl.c:112
+ vfs_write+0x296/0xba0 fs/read_write.c:685
+ ksys_write+0x150/0x270 fs/read_write.c:739
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f8ff879de99
+RSP: 002b:00007ffe5a9bf368 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 00007f8ff8a25fa0 RCX: 00007f8ff879de99
+RDX: 0000000000000009 RSI: 00002000000001c0 RDI: 0000000000000003
+RBP: 00007f8ff8833eaf R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007f8ff8a25fac R14: 00007f8ff8a25fa0 R15: 00007f8ff8a25fa0
+ </TASK>
+INFO: task syz.3.20:6060 blocked for more than 144 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz.3.20        state:D stack:27304 pid:6060  tgid:6060  ppid:5781   task_flags:0x400140 flags:0x00080002
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+ nfsctl_transaction_write+0x10f/0x160 fs/nfsd/nfsctl.c:112
+ vfs_write+0x296/0xba0 fs/read_write.c:685
+ ksys_write+0x150/0x270 fs/read_write.c:739
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f566399de99
+RSP: 002b:00007ffe568d8408 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 00007f5663c25fa0 RCX: 00007f566399de99
+RDX: 0000000000000009 RSI: 00002000000001c0 RDI: 0000000000000003
+RBP: 00007f5663a33eaf R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007f5663c25fac R14: 00007f5663c25fa0 R15: 00007f5663c25fa0
+ </TASK>
+INFO: task syz.4.21:6061 blocked for more than 144 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz.4.21        state:D stack:27304 pid:6061  tgid:6061  ppid:5772   task_flags:0x400140 flags:0x00080002
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+ nfsctl_transaction_write+0x10f/0x160 fs/nfsd/nfsctl.c:112
+ vfs_write+0x296/0xba0 fs/read_write.c:685
+ ksys_write+0x150/0x270 fs/read_write.c:739
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7f766159de99
+RSP: 002b:00007ffef3842888 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 00007f7661825fa0 RCX: 00007f766159de99
+RDX: 0000000000000009 RSI: 00002000000001c0 RDI: 0000000000000003
+RBP: 00007f7661633eaf R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007f7661825fac R14: 00007f7661825fa0 R15: 00007f7661825fa0
+ </TASK>
+INFO: task syz.5.22:6062 blocked for more than 144 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz.5.22        state:D stack:26128 pid:6062  tgid:6062  ppid:5776   task_flags:0x400140 flags:0x00080002
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+ nfsctl_transaction_write+0x10f/0x160 fs/nfsd/nfsctl.c:112
+ vfs_write+0x296/0xba0 fs/read_write.c:685
+ ksys_write+0x150/0x270 fs/read_write.c:739
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7ffba1b9de99
+RSP: 002b:00007ffe462e6b48 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+RAX: ffffffffffffffda RBX: 00007ffba1e25fa0 RCX: 00007ffba1b9de99
+RDX: 0000000000000009 RSI: 00002000000001c0 RDI: 0000000000000003
+RBP: 00007ffba1c33eaf R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000000
+R13: 00007ffba1e25fac R14: 00007ffba1e25fa0 R15: 00007ffba1e25fa0
+ </TASK>
 
-Huan Nguyen
+Showing all locks held in the system:
+2 locks held by ksoftirqd/1/23:
+1 lock held by khungtaskd/32:
+ #0: ffffffff8eb59c60 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
+ #0: ffffffff8eb59c60 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:840 [inline]
+ #0: ffffffff8eb59c60 (rcu_read_lock){....}-{1:3}, at: debug_show_all_locks+0x2e/0x180 kernel/locking/lockdep.c:6775
+2 locks held by kworker/u8:2/37:
+ #0: ffff8880b863b160 (&rq->__lock){-.-.}-{2:2}, at: raw_spin_rq_lock_nested+0x2d/0x160 kernel/sched/core.c:667
+ #1: ffff8880b8624440 (psi_seq){-.-.}-{0:0}, at: psi_task_switch+0x57/0x7d0 kernel/sched/psi.c:933
+3 locks held by kworker/u9:0/51:
+ #0: ffff888053d1d940 ((wq_completion)hci16){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #0: ffff888053d1d940 ((wq_completion)hci16){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #1: ffffc90000bb7c40 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #1: ffffc90000bb7c40 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #2: ffff888056114ea0 (&hdev->req_lock){+.+.}-{4:4}, at: hci_cmd_sync_work+0x1cb/0x3f0 net/bluetooth/hci_sync.c:331
+3 locks held by kworker/u9:1/4937:
+ #0: ffff888036cb5140 ((wq_completion)hci14){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #0: ffff888036cb5140 ((wq_completion)hci14){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #1: ffffc9000fb77c40 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #1: ffffc9000fb77c40 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #2: ffff8880560d0ea0 (&hdev->req_lock){+.+.}-{4:4}, at: hci_cmd_sync_work+0x1cb/0x3f0 net/bluetooth/hci_sync.c:331
+1 lock held by klogd/4976:
+ #0: ffff8880b873b160 (&rq->__lock){-.-.}-{2:2}, at: raw_spin_rq_lock_nested+0x2d/0x160 kernel/sched/core.c:667
+2 locks held by getty/5378:
+ #0: ffff8880368890a0 (&tty->ldisc_sem){++++}-{0:0}, at: tty_ldisc_ref_wait+0x25/0x70 drivers/tty/tty_ldisc.c:243
+ #1: ffffc9000322b2e8 (&ldata->atomic_read_lock){+.+.}-{4:4}, at: n_tty_read+0x45a/0x1360 drivers/tty/n_tty.c:2211
+3 locks held by kworker/u9:2/5658:
+ #0: ffff88807b416140 ((wq_completion)hci13){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #0: ffff88807b416140 ((wq_completion)hci13){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #1: ffffc900031e7c40 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #1: ffffc900031e7c40 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #2: ffff8880560c0ea0 (&hdev->req_lock){+.+.}-{4:4}, at: hci_cmd_sync_work+0x1cb/0x3f0 net/bluetooth/hci_sync.c:331
+2 locks held by syz-executor/5763:
+ #0: ffff88803587c0d8 (&type->s_umount_key#54){+.+.}-{4:4}, at: __super_lock fs/super.c:58 [inline]
+ #0: ffff88803587c0d8 (&type->s_umount_key#54){+.+.}-{4:4}, at: __super_lock_excl fs/super.c:73 [inline]
+ #0: ffff88803587c0d8 (&type->s_umount_key#54){+.+.}-{4:4}, at: deactivate_super+0xa9/0xe0 fs/super.c:509
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_shutdown_threads+0x4e/0xd0 fs/nfsd/nfssvc.c:576
+3 locks held by kworker/u9:3/5764:
+ #0: ffff888036cb2140 ((wq_completion)hci15){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #0: ffff888036cb2140 ((wq_completion)hci15){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #1: ffffc90003267c40 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #1: ffffc90003267c40 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #2: ffff888056134ea0 (&hdev->req_lock){+.+.}-{4:4}, at: hci_cmd_sync_work+0x1cb/0x3f0 net/bluetooth/hci_sync.c:331
+3 locks held by kworker/u9:4/5767:
+ #0: ffff88807fb25140 ((wq_completion)hci12){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #0: ffff88807fb25140 ((wq_completion)hci12){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #1: ffffc90003227c40 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_one_work kernel/workqueue.c:3297 [inline]
+ #1: ffffc90003227c40 ((work_completion)(&hdev->cmd_sync_work)){+.+.}-{0:0}, at: process_scheduled_works+0xa20/0x14e0 kernel/workqueue.c:3405
+ #2: ffff88805026cea0 (&hdev->req_lock){+.+.}-{4:4}, at: hci_cmd_sync_work+0x1cb/0x3f0 net/bluetooth/hci_sync.c:331
+2 locks held by syz.0.17/6054:
+ #0: ffff888055c4a450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888055c4a450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.2.19/6059:
+ #0: ffff88802d648450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88802d648450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.3.20/6060:
+ #0: ffff8880317dc450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff8880317dc450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.4.21/6061:
+ #0: ffff88807afa0450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88807afa0450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.5.22/6062:
+ #0: ffff8880291b2450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff8880291b2450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.6.24/6224:
+ #0: ffff8880212bc450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff8880212bc450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.9.27/6306:
+ #0: ffff888035878450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888035878450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.7.25/6307:
+ #0: ffff888026a9e450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888026a9e450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.8.26/6308:
+ #0: ffff888035008450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888035008450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.1.28/6309:
+ #0: ffff88802959c450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88802959c450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.0.29/6310:
+ #0: ffff88802a752450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88802a752450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.2.30/6347:
+ #0: ffff888078dee450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888078dee450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.6.34/6540:
+ #0: ffff88805dee0450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88805dee0450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.4.32/6547:
+ #0: ffff88807949c450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88807949c450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.3.31/6548:
+ #0: ffff8880570d0450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff8880570d0450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.5.33/6549:
+ #0: ffff88807d9d6450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88807d9d6450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.7.35/6550:
+ #0: ffff8880520c6450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff8880520c6450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.8.36/6592:
+ #0: ffff888077862450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888077862450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.9.37/6772:
+ #0: ffff88804c034450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88804c034450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.1.38/6788:
+ #0: ffff8880519a4450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff8880519a4450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.2.40/6789:
+ #0: ffff8880335a2450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff8880335a2450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.0.39/6814:
+ #0: ffff88805784e450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88805784e450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.6.41/6821:
+ #0: ffff88804e726450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88804e726450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.3.42/6822:
+ #0: ffff88804d306450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88804d306450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.4.43/6955:
+ #0: ffff8880457c4450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff8880457c4450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.5.44/7035:
+ #0: ffff888047402450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888047402450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.7.45/7050:
+ #0: ffff888046504450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888046504450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.8.46/7058:
+ #0: ffff888021b2c450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888021b2c450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.1.48/7064:
+ #0: ffff888044452450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888044452450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.9.47/7065:
+ #0: ffff888031862450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888031862450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.2.49/7104:
+ #0: ffff8880343da450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff8880343da450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.0.50/7251:
+ #0: ffff888050c6a450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888050c6a450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.6.52/7272:
+ #0: ffff88807b882450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88807b882450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.3.51/7293:
+ #0: ffff888046016450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888046016450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.4.53/7297:
+ #0: ffff88804ca3c450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88804ca3c450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.5.54/7306:
+ #0: ffff88802b398450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88802b398450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.8.55/7338:
+ #0: ffff88805fd62450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88805fd62450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.7.56/7456:
+ #0: ffff888040928450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888040928450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.1.57/7551:
+ #0: ffff888044578450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888044578450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.9.58/7565:
+ #0: ffff888057422450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888057422450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.2.59/7571:
+ #0: ffff888038b0e450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff888038b0e450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.0.60/7574:
+ #0: ffff88803525c450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88803525c450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
+2 locks held by syz.6.61/7575:
+ #0: ffff88803d480450 (sb_writers#12){.+.+}-{0:0}, at: file_start_write include/linux/fs.h:2733 [inline]
+ #0: ffff88803d480450 (sb_writers#12){.+.+}-{0:0}, at: vfs_write+0x22b/0xba0 fs/read_write.c:683
+ #1: ffffffff8ee8e620 (nfsd_mutex){+.+.}-{4:4}, at: write_ports+0xb5/0xd10 fs/nfsd/nfsctl.c:860
 
-On Thu, Jul 30, 2026 at 8:03=E2=80=AFAM Yiannis Nikolakopoulos
-<yiannis.nikolakop@gmail.com> wrote:
->
-> From: Alirad Malek <alirad.malek@zptcorp.com>
->
-> In x86, use memcpy_flushcache (that uses non-temporal store
-> instructions) to copy a folio. To achieve that, starting from folio_mc_co=
-py
-> down to copy_mc_to_kernel, create a series of helpers (named with an _nt
-> suffix) that have similar behavior to the original counterparts.
->
-> Signed-off-by: Alirad Malek <alirad.malek@zptcorp.com>
-> Co-developed-by: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
-> Signed-off-by: Yiannis Nikolakopoulos <yiannis.nikolakop@gmail.com>
-> ---
->  arch/x86/include/asm/uaccess.h |  4 ++++
->  arch/x86/lib/copy_mc.c         | 26 ++++++++++++++++++++++++++
->  include/linux/highmem.h        | 32 ++++++++++++++++++++++++++++++++
->  include/linux/mm.h             |  1 +
->  mm/util.c                      | 17 +++++++++++++++++
->  5 files changed, 80 insertions(+)
->
-> diff --git a/arch/x86/include/asm/uaccess.h b/arch/x86/include/asm/uacces=
-s.h
-> index 367297b188c3..2d0938d3e372 100644
-> --- a/arch/x86/include/asm/uaccess.h
-> +++ b/arch/x86/include/asm/uaccess.h
-> @@ -494,6 +494,10 @@ unsigned long __must_check
->  copy_mc_to_kernel(void *to, const void *from, unsigned len);
->  #define copy_mc_to_kernel copy_mc_to_kernel
->
-> +unsigned long __must_check
-> +copy_mc_to_kernel_nt(void *to, const void *from, unsigned len);
-> +#define copy_mc_to_kernel_nt copy_mc_to_kernel_nt
-> +
->  unsigned long __must_check
->  copy_mc_to_user(void __user *to, const void *from, unsigned len);
->  #endif
-> diff --git a/arch/x86/lib/copy_mc.c b/arch/x86/lib/copy_mc.c
-> index 97e88e58567b..5a2ee5c2211e 100644
-> --- a/arch/x86/lib/copy_mc.c
-> +++ b/arch/x86/lib/copy_mc.c
-> @@ -81,6 +81,32 @@ unsigned long __must_check copy_mc_to_kernel(void *dst=
-, const void *src, unsigne
->  }
->  EXPORT_SYMBOL_GPL(copy_mc_to_kernel);
->
-> +/**
-> + * copy_mc_to_kernel_nt - memory copy that handles source exceptions
-> + * if enabled, otherwise uses non-temporal stores
-> + * @dst: destination address
-> + * @src: source address
-> + * @len: number of bytes to copy
-> + *
-> + * Return 0 for success, or number of bytes not copied if there was an
-> + * exception.
-> + */
-> +unsigned long __must_check copy_mc_to_kernel_nt(void *dst, const void *s=
-rc, unsigned len)
-> +{
-> +       unsigned long ret;
-> +
-> +       if (copy_mc_fragile_enabled) {
-> +               instrument_memcpy_before(dst, src, len);
-> +               ret =3D copy_mc_fragile(dst, src, len);
-> +               instrument_memcpy_after(dst, src, len, ret);
-> +               return ret;
-> +       }
-> +
-> +       memcpy_flushcache(dst, src, len);
-> +       return 0;
-> +}
-> +EXPORT_SYMBOL_GPL(copy_mc_to_kernel_nt);
-> +
->  unsigned long __must_check copy_mc_to_user(void __user *dst, const void =
-*src, unsigned len)
->  {
->         unsigned long ret;
-> diff --git a/include/linux/highmem.h b/include/linux/highmem.h
-> index af03db851a1d..a5cb435b9ffe 100644
-> --- a/include/linux/highmem.h
-> +++ b/include/linux/highmem.h
-> @@ -468,6 +468,32 @@ static inline int copy_mc_highpage(struct page *to, =
-struct page *from)
->
->         return ret;
->  }
-> +
-> +#ifdef copy_mc_to_kernel_nt
-> +static inline int copy_mc_highpage_nt(struct page *to, struct page *from=
-)
-> +{
-> +       unsigned long ret;
-> +       char *vfrom, *vto;
-> +
-> +       vfrom =3D kmap_local_page(from);
-> +       vto =3D kmap_local_page(to);
-> +       ret =3D copy_mc_to_kernel_nt(vto, vfrom, PAGE_SIZE);
-> +       if (!ret)
-> +               kmsan_copy_page_meta(to, from);
-> +       kunmap_local(vto);
-> +       kunmap_local(vfrom);
-> +
-> +       if (ret)
-> +               memory_failure_queue(page_to_pfn(from), 0);
-> +
-> +       return ret;
-> +}
-> +#else
-> +static inline int copy_mc_highpage_nt(struct page *to, struct page *from=
-)
-> +{
-> +       return copy_mc_highpage(to, from);
-> +}
-> +#endif
->  #else
->  static inline int copy_mc_user_highpage(struct page *to, struct page *fr=
-om,
->                                         unsigned long vaddr, struct vm_ar=
-ea_struct *vma)
-> @@ -481,6 +507,12 @@ static inline int copy_mc_highpage(struct page *to, =
-struct page *from)
->         copy_highpage(to, from);
->         return 0;
->  }
-> +
-> +static inline int copy_mc_highpage_nt(struct page *to, struct page *from=
-)
-> +{
-> +       copy_highpage(to, from);
-> +       return 0;
-> +}
->  #endif
->
->  static inline void memcpy_page(struct page *dst_page, size_t dst_off,
-> diff --git a/include/linux/mm.h b/include/linux/mm.h
-> index 5be3d8a8f806..d07ce478582d 100644
-> --- a/include/linux/mm.h
-> +++ b/include/linux/mm.h
-> @@ -1644,6 +1644,7 @@ void __folio_put(struct folio *folio);
->  void split_page(struct page *page, unsigned int order);
->  void folio_copy(struct folio *dst, struct folio *src);
->  int folio_mc_copy(struct folio *dst, struct folio *src);
-> +int folio_mc_copy_nt(struct folio *dst, struct folio *src);
->
->  unsigned long nr_free_buffer_pages(void);
->
-> diff --git a/mm/util.c b/mm/util.c
-> index b05ab6f97e11..e09e9b5f8eee 100644
-> --- a/mm/util.c
-> +++ b/mm/util.c
-> @@ -749,6 +749,23 @@ int folio_mc_copy(struct folio *dst, struct folio *s=
-rc)
->  }
->  EXPORT_SYMBOL(folio_mc_copy);
->
-> +int folio_mc_copy_nt(struct folio *dst, struct folio *src)
-> +{
-> +       long nr =3D folio_nr_pages(src);
-> +       long i =3D 0;
-> +
-> +       for (;;) {
-> +               if (copy_mc_highpage_nt(folio_page(dst, i), folio_page(sr=
-c, i)))
-> +                       return -EHWPOISON;
-> +               if (++i =3D=3D nr)
-> +                       break;
-> +               cond_resched();
-> +       }
-> +
-> +       return 0;
-> +}
-> +EXPORT_SYMBOL(folio_mc_copy_nt);
-> +
->  int sysctl_overcommit_memory __read_mostly =3D OVERCOMMIT_GUESS;
->  static int sysctl_overcommit_ratio __read_mostly =3D 50;
->  static unsigned long sysctl_overcommit_kbytes __read_mostly;
->
-> --
-> 2.43.0
->
+=============================================
+
+NMI backtrace for cpu 1
+CPU: 1 UID: 0 PID: 32 Comm: khungtaskd Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/16/2026
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
+ nmi_cpu_backtrace+0x274/0x2d0 lib/nmi_backtrace.c:122
+ nmi_trigger_cpumask_backtrace+0x17a/0x380 lib/nmi_backtrace.c:65
+ trigger_all_cpu_backtrace include/linux/nmi.h:162 [inline]
+ __sys_info lib/sys_info.c:157 [inline]
+ sys_info+0x135/0x170 lib/sys_info.c:165
+ check_hung_uninterruptible_tasks kernel/hung_task.c:353 [inline]
+ watchdog+0xfd7/0x1030 kernel/hung_task.c:561
+ kthread+0x388/0x470 kernel/kthread.c:436
+ ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
+ ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
+ </TASK>
+Sending NMI from CPU 1 to CPUs 0:
+NMI backtrace for cpu 0
+CPU: 0 UID: 0 PID: 0 Comm: swapper/0 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/16/2026
+RIP: 0010:pv_native_safe_halt+0xf/0x20 arch/x86/kernel/paravirt.c:64
+Code: dc 7e 02 e9 fe 5f 3f f5 cc cc cc 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 f3 0f 1e fa 66 90 0f 00 2d 53 8e 18 00 fb f4 <e9> d7 5f 3f f5 cc cc cc cc cc cc cc cc cc cc cc cc 90 90 90 90 90
+RSP: 0018:ffffffff8e807de0 EFLAGS: 00000242
+RAX: 000000000020275d RBX: ffffffff819b433c RCX: 0000000080000001
+RDX: 0000000000000001 RSI: ffffffff8e22d06b RDI: ffffffff8c4bdc80
+RBP: ffffffff8e807eb8 R08: ffff8880b86338db R09: 1ffff110170c671b
+R10: dffffc0000000000 R11: ffffed10170c671c R12: 0000000000000000
+R13: 1ffffffff1d11de8 R14: 1ffffffff1d00fc4 R15: dffffc0000000000
+FS:  0000000000000000(0000) GS:ffff888124f4e000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 000055af1b803ed0 CR3: 000000007f555000 CR4: 0000000000350ef0
+Call Trace:
+ <TASK>
+ arch_safe_halt arch/x86/kernel/process.c:767 [inline]
+ default_idle+0x9/0x20 arch/x86/kernel/process.c:768
+ default_idle_call+0x72/0xb0 kernel/sched/idle.c:122
+ cpuidle_idle_call kernel/sched/idle.c:199 [inline]
+ do_idle+0x1cc/0x540 kernel/sched/idle.c:355
+ cpu_startup_entry+0x43/0x60 kernel/sched/idle.c:454
+ rest_init+0x2de/0x300 init/main.c:717
+ start_kernel+0x392/0x3e0 init/main.c:1175
+ x86_64_start_reservations+0x24/0x30 arch/x86/kernel/head64.c:310
+ x86_64_start_kernel+0x137/0x1b0 arch/x86/kernel/head64.c:291
+ common_startup_64+0x13e/0x157
+ </TASK>
+
+
+---
+This report is generated by a bot. It may contain errors.
+See https://goo.gl/tpsmEJ for more information about syzbot.
+syzbot engineers can be reached at syzkaller@googlegroups.com.
+
+syzbot will keep track of this issue. See:
+https://goo.gl/tpsmEJ#status for how to communicate with syzbot.
+
+If the report is already addressed, let syzbot know by replying with:
+#syz fix: exact-commit-title
+
+If you want syzbot to run the reproducer, reply with:
+#syz test: git://repo/address.git branch-or-commit-hash
+If you attach or paste a git patch, syzbot will apply it before testing.
+
+If you want to overwrite report's subsystems, reply with:
+#syz set subsystems: new-subsystem
+(See the list of subsystem names on the web dashboard)
+
+If the report is a duplicate of another one, reply with:
+#syz dup: exact-subject-of-another-report
+
+If you want to undo deduplication, reply with:
+#syz undup
