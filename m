@@ -1,189 +1,203 @@
-Received: from mout.gmx.net (mout.gmx.net [212.227.17.22])
+Received: from flow-b6-smtp.messagingengine.com (flow-b6-smtp.messagingengine.com [202.12.124.141])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9379733372A;
-	Sun,  2 Aug 2026 19:53:58 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=212.227.17.22
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8156C234994;
+	Mon,  3 Aug 2026 01:37:01 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.141
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785700441; cv=none; b=BEZ9P0/PwncKSwt78y/euoUSms30A6Wc3pVM3ruAklG5jUXe1HvvJ4w5pFQcj3K7RB1St6+gzcIEgZUMcKPgukM+TsEw7iP2V3Uu4O/18VuEMUkn+n5Yf4nv0qsObZx1ClFzIThMv3FurjRHF0Wj/MhuMxBedolgGQuFs1dNJX4=
+	t=1785721024; cv=none; b=GXXz65ywOpoGoeZyUYkYFypKYGuJjQe1A3GZ8otGwsGZ+F0fcf413AkzshbZDSTnLNjI25Ab/Gw0yyzq0SH5yIFPmXD+K8X5hZYQE7qun9E/s+WtyKsVZrkW/TPjjaSCFsvYX9+ZmGqkgq5eoqEBmSiON0T8mnxTDBBuJv4wr6E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785700441; c=relaxed/simple;
-	bh=tOyL1MX/wrLgobpgrKYAPsa6BdEV4e/5Vj4kKXXEwtU=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=stWBV60XAVFo05KHmCOSVSKwV9hy1nY0RoWlufAhzOrHp3ptL2M/5Jcn9aX7cy0kvvN9DW46aoj4WG7ZW564pyovUWq/ypkzY9Lx49OLVe2y1kzS8TQWSyiALHn6eLpTYOjq/dwfFwTW4RHCeEGmogK/+djpzwpbHM5CeDw0L2w=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=gmx.de; spf=pass smtp.mailfrom=gmx.de; dkim=pass (2048-bit key) header.d=gmx.de header.i=f3lix.dev@gmx.de header.b=Bsts+v3W; arc=none smtp.client-ip=212.227.17.22
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=gmx.de
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmx.de
+	s=arc-20240116; t=1785721024; c=relaxed/simple;
+	bh=pC3W2Vu/zXCsiSoWjl25+t1uFdTl040qXYOdTe2P1Ec=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=qOp0yjYIx2z07kWCS17ZTCfdm6oGyRzbePWz47oNOl5RvBSGoswElHvBTnYzHBxAZKE6u29mepjVVNnngweb7mN1aucS9v8wgJiyzMJBbudzptf3XKvxgJ4aD5ZGOK7LCxYLbJsMF2mwEQ1eJEQyt70nI4ww+rL7tanxzS76AL8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=Jr5gtqj+; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=BJZgfqtM; arc=none smtp.client-ip=202.12.124.141
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmx.de header.i=f3lix.dev@gmx.de header.b="Bsts+v3W"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=gmx.de;
-	s=s31663417; t=1785700416; x=1786305216; i=f3lix.dev@gmx.de;
-	bh=y9Zv9UpFpTKW3PFQAXIO0YB9OSuAlzqIekC9g9ZXVy0=;
-	h=X-UI-Sender-Class:From:To:Cc:Subject:Date:Message-ID:
-	 MIME-Version:Content-Transfer-Encoding:cc:
-	 content-transfer-encoding:content-type:date:from:message-id:
-	 mime-version:reply-to:subject:to;
-	b=Bsts+v3WC11a5/RmQ84wW/c7UTahjmx1zQm2aPUFLeOi78ffVEbw4ejVy6ozixNY
-	 pjybKp97TNlvl0r4wn4C54GXJ+Z5FktruZXWinH0VaTXWAH04oVs9nE5NRV4DAGEt
-	 JlNF9YIi4VtFarztjg3YDQ/am8QmCCbrSPVUsFp25KGZ+yfeGRodlsjWOMRenaoc0
-	 kD9pr4hF4fZ/736TB41RoUUwlhiP7My74PN5gkX8wMWHjuwVh2wyZsTXCJx61VAX2
-	 eFWAtVuqpNWqWXA/ZSjxL3pH1IVCpH+zUVKbB8zXwlXSAvKD6FvmVwYdKwj3fXc2m
-	 9mSNjtQp6NZTYBnYbA==
-X-UI-Sender-Class: 724b4f7f-cbec-4199-ad4e-598c01a50d3a
-Received: from client.hidden.invalid by mail.gmx.net (mrgmx104
- [212.227.17.168]) with ESMTPSA (Nemesis) id 1N2V4J-1wvCiV19Fn-00vnO4; Sun, 02
- Aug 2026 21:53:36 +0200
-From: Felix Hoffmann <f3lix.dev@gmx.de>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: Peng Tao <tao.peng@primarydata.com>,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [PATCH] NFSv4.2: request mode after CLONE
-Date: Sun,  2 Aug 2026 21:53:28 +0200
-Message-ID: <20260802195328.175328-1-f3lix.dev@gmx.de>
-X-Mailer: git-send-email 2.43.0
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="Jr5gtqj+";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="BJZgfqtM"
+Received: from phl-compute-03.internal (phl-compute-03.internal [10.202.2.43])
+	by mailflow.stl.internal (Postfix) with ESMTP id ED10A13000EC;
+	Sun,  2 Aug 2026 21:36:59 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-03.internal (MEProxy); Sun, 02 Aug 2026 21:37:00 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:date:date:from:from
+	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
+	:subject:to:to; s=fm3; t=1785721019; x=1785728219; bh=hj7vVySkI2
+	yxJswQO8e4CqCndOSm6xw5GmVI7rCuyQ0=; b=Jr5gtqj+mqViXSntRhXXXORkxy
+	bQv0Muvcz5NXHgqNKLgnxM8aj2no1pyGjnqp7bWbueOahx19iIH5wW6G7FQwn1Sp
+	m/X7d9ZXB8FPA71WOuxSfzhgj+3RSYl+2rgQpsfbcK1oej+W5y4D0+OUaaEwtGzy
+	DNHEq3Gvzrdly0NnKGMpkgeKpijeCre3Ui6AZc/rdt9xqHrBfmnR2rg3CHpBTb4s
+	krj0hGE5WbEQmVrfWPffyPv61OO8DN4C8k73+tPXHOxWMFuw9LubjZkvSI3wRvmU
+	jobA88xziQiKpXnlFV4+ogLG0viSvPsnVb3jAiCFRwPj361xrYQrteZfKIFg==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:date:date:feedback-id:feedback-id:from:from
+	:in-reply-to:message-id:mime-version:reply-to:reply-to:subject
+	:subject:to:to:x-me-proxy:x-me-sender:x-me-sender:x-sasl-enc; s=
+	fm3; t=1785721019; x=1785728219; bh=hj7vVySkI2yxJswQO8e4CqCndOSm
+	6xw5GmVI7rCuyQ0=; b=BJZgfqtMe7SiJUu+KulwM9I29Li6db5BftC3XwemXo1G
+	/WEIHDz8Xi2yoALKaaGfGZtrcQoNXrIIVpfuYIe/4VCcS66thzJmlXNfOKa/nRMM
+	4Y6AV+MEY91KcYAr205ykapEEgYWsEE9RXFAV4J89pgGVTJUIFHPGF+TQpYcrVfj
+	ix4iQQSBRszDbV34zyx6m8621ChduYRV5nyakTL4uqb2U8nntrsk9ti/Gj/VrjPW
+	7JSymljtdFbOjqTIkUuuHY3K1uK07IT5H5iyLhk+GzkiLJSJwyqwilQf9BByDk+H
+	Hy1SaNgLD8pJ8kh1iYPaAXNGZUOXcvwxyWDYhHkkwQ==
+X-ME-Sender: <xms:u_BvatX-v2807U49m5G6pYxqtr06ooUSdlyFrIU8L16W2if5g8vC3Q>
+    <xme:u_Bvaonv6ifXwAShCuu6vAhDkQfhkWC5VFU2MrdthQxk086c_HFKYDTb4UreJP3jy
+    yAS5-kk5GkSecNyfiJBfCks_3ncCTUmFvFGlkah3wI1enohx2k>
+X-ME-Received: <xmr:u_BvagBmUYFnMOTS0MRZhuHhTTj4iEJzJkarzdgq9N-E9qSs3WCnva_lyPV2ZnIOVnNMxdJdj5rve4omUbsZJQ3A9BiKFrc>
+X-ME-Proxy-Cause: dmFkZTEAF9WySxFfIy8Gk965K95nE0ICFQuQ0ULZDgfyo7FS1VDKhQiDFOZkmr+/yfa228
+    0uHag9iZbVDyTRCWbp3YAZHBJLzuisMukqt345UCr18E5mngdaf/ZkoC4Pj7ucKKYC4/Ka
+    3JH0/Y+49i1w31Mc/C60fAt4CYeoJeNGsr2foDqAlREFYOuYElde+cD6PeV/1i5RgvQnqe
+    BDTZCcBeexnhv2Egd4X3qE2IRfzCmi08Zv6FthHZ+i96zKuqZ5piAwEQ4fsf3w5QbVAZWM
+    AhLeVfidI8dToCizssD4jm1KOf0GWVcspGYuYtAE11Xwh/i70QxLzQXV5cfhGgh214SucF
+    oA349+sio/1YV8B8Q+PAhlFXOceAkh53ncW7C01Ly8TfeMyYoug8f2g46vX+BacrEVs5jM
+    ao1pSRdOPsgflqF8M0JWYSahkCHraY+bKqqSl6O6Lel7EIrUd18HbNAbJt0qtq5ZtkdgrH
+    c4cJTpAThslvE+btweu/ULGxXEnV1uKbuGNoIjDaSudeJFt0C1/iTFnr9WteXapiC0DFIC
+    p7eQ+rmB9u0XSrnGw62ZUWYfbl/5/2CUr7o8XYZvLlXFmzVLm2dyy8Itv5BKqNACTMM8Oo
+    jqqT6nWD8kTDFJeEJx+XCXJOOngjBTewoPpaDwPdB0HtfgFlnVkIHu31WAkA
+X-ME-Proxy: <xmx:u_Bvat9_lTiWDDf24LJJWdMa6OUngS9FBzp4lRfffFrkc_CrygVntw>
+    <xmx:u_BvaiTyDvzhRWUK5iYsor4rxYiYcS2OXW8WjkTaWc7dD1vf8qD2Kw>
+    <xmx:u_Bvaj6gu4kCeWW_pc117kEWWeD2CIFmvIvFshUbBcjldGBlBoQ7qg>
+    <xmx:u_Bvaro6TdwLtIQ55ISJdX-nwg2RA2WcNDIG5KqX3_tHmDfMpQeQ3w>
+    <xmx:u_Bvah9nXjoLwYG9k0TGvibnQa0jGIcg1-0pT-zMRHlmM9CgXbn2W8ap>
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Sun,
+ 2 Aug 2026 21:36:51 -0400 (EDT)
+From: NeilBrown <neilb@ownmail.net>
+To: Ian Kent <raven@themaw.net>,
+	Chuck Lever <cel@kernel.org>,
+	Jake Edge <jake@lwn.net>,
+	Ilya Dryomov <idryomov@gmail.com>,
+	Alex Markuze <amarkuze@redhat.com>,
+	Viacheslav Dubeyko <slava@dubeyko.com>,
+	Jan Harkes <jaharkes@cs.cmu.edu>,
+	coda@cs.cmu.edu,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>,
+	Jan Kara <jack@suse.cz>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Amir Goldstein <amir73il@gmail.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Miklos Szeredi <mszeredi@redhat.com>
+Cc: autofs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	ceph-devel@vger.kernel.org,
+	codalist@coda.cs.cmu.edu,
+	linux-fsdevel@vger.kernel.org,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH RFC/RFT v1 00/12] Fix easy bits of the negative dentry problem
+Date: Mon,  3 Aug 2026 11:21:09 +1000
+Message-ID: <20260803012648.2195405-1-neilb@ownmail.net>
+X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
+Reply-To: NeilBrown <neil@brown.name>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: quoted-printable
-X-Provags-ID: V03:K1:ITsA7HnDJ31piaBdi8ltGLagdBx0I87PCdFnC/2MSq1+tDj88DB
- Opb0h38hP0MvAdFC21YakXPp7a8Wd8yxiM1XUAqhafKf0YEUGvb3oOCtDRj1Pm9b2cqZ16S
- ILiVHbdtcNM+rgj3diBiyifbgrs1eFZKySDMDCfanLkEbN5nzZwMegfq2UBRUoHa8ybco6w
- lxIPQgZqrF7tJTYVeEFrA==
-X-Spam-Flag: NO
-UI-OutboundReport: notjunk:1;M01:P0:NhsNSUC8QEs=;GAucF6F4t0bgjrZXYKYGxGMRH8G
- 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
+Content-Transfer-Encoding: 8bit
 
-The NFS server can clear setuid and setgid bits when CLONE modifies the
-destination.  The client currently omits mode from the post-operation
-attributes, so the cached mode can retain setid bits after the server has
-removed them.  A local process can then execute the file using those stale
-privilege bits.
+Hi all,
 
-Request mode in the CLONE compound's GETATTR.  This lets the ordered
-post-operation update install the server's mode before CLONE returns.
+ I was reading about the negative dentry problem in
+ https://lwn.net/Articles/1079407/ and thought I would have ago at the
+ easy bits.  Given how involved some of that was I'm glad I didn't try
+ the tricky bits!
 
-Fixes: e5341f3a5762 ("nfs42: add CLONE proc functions")
-Cc: stable@vger.kernel.org
-Assisted-by: Codex:gpt-5
-Signed-off-by: Felix Hoffmann <f3lix.dev@gmx.de>
-=2D--
-Tested on x86-64 using an NFSv4.2 loopback mount with Linux NFSD and a
-Btrfs export:
+ So I didn't try to reduce the number of negative dentries or handle
+ them differently to positive dentries.  I just tried to address
+ specific symptoms.
 
-  - before this change, the client retained mode 04775 while the server
-    stored mode 0775, and the privilege transition reproduced in 10/10
-    non-debug runs
-  - with this change, both client and server reported mode 0775 and no
-    privilege transition occurred in 10/10 non-debug runs or 3/3 KASAN
-    runs
+ This series addresses two reported symptoms.
+  1/ refcounts on parents can potentially overflow if there are billions
+     of (negative) children.  This was the easiest easy bit.  The first
+     patch is all that is needed.
 
-The reproducer requires write authorization to the destination; NFSD
-rejected the same operation against a non-writable 04755 file with EACCES.
-A working reproducer is available privately on request.
+  2/ Walking the ->d_children list can take arbitrarily long and can
+     trigger soft lockups.  I haven't addresses the "arbitrarily long"
+     part, but the "soft lockups" only takes another 11 patches.
+     With these in place I would feel more confident addressing
+     the "arbitrarily long" part.
 
- fs/nfs/nfs42proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ The core idea is to use a common helper for all walking of
+ ->d_children, and teach it to drop the lock and schedule when needed,
+ inserting a cursor to keep its place.
+ This simple idea requires:
+   - nothing should be holding any other lock while walking ->d_children
+   - dentries shouldn't be moved around needlessly, else things might
+     get missed.
+   - quite a bit of refactoring in libfs for readdir code.
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index ab86246fc364..35a4909d51b7 100644
-=2D-- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -1302,7 +1302,8 @@ static int _nfs42_proc_clone(struct rpc_message *msg=
-, struct file *src_f,
- 		return -ENOMEM;
-=20
- 	nfs4_bitmask_set(dst_bitmask, server->cache_consistency_bitmask,
--			 dst_inode, NFS_INO_INVALID_BLOCKS);
-+			 dst_inode,
-+			 NFS_INO_INVALID_BLOCKS | NFS_INO_INVALID_MODE);
-=20
- 	status =3D nfs4_call_sync(server->client, server, msg,
- 				&args.seq_args, &res.seq_res, 0);
-=2D-=20
-2.43.0
+ so I have probably missed some bits and would be very happy to be told
+ what I have missed.
+ I would also be very happy if someone who can trigger the soft lockups
+ can try this code and confirm that the locks are gone, and nothing bad
+ happens.
+ I have done some basic testing including the "notify" parts of
+ ltp, but that is all.
+
+ I haven't addressed d_walk() in this series - I thought it was big
+ enough for now.  Most of d_walk() already schedules as needed, but I
+ think there is still room for improvement, but that can come later.
+
+Details worth checking in various modules:
+
+NFS: patch 02 drops the parent lock between calling
+        nfs_unset_verifier_delegated()
+     on the parent and calling it on all the children.  I don't
+     think this is significant.
+
+autofs:  patch 09 removes the ->lookup_lock from
+             get_next_positive_subdir() 
+         and
+             get_next_positive_dentry()
+         I cannot see that this is serving any purpose
+
+cephfs:  nothing interesting
+coda:  patch 02 dropped the rcu_read_lock() because the spinlock() implies it.
+
+libfs: the offset_dir code has been changed (08) quite a bit but should
+      have identical behaviour.  It now uses scan_positives() (which has
+      been substantially refactored (05, 06, 07, 12)) in place of
+      find_positive_dentry()
+
+fsnotify: a few changes (03 04) to move the ->d_children walk out from under
+     various spinlocks.  This is the change I'm least confident of
+     as it is non-trivial code that I'm not familiar with.
+
+dcache: patch 11 uses an on-stack dentry as a dcache cursor.  This is
+     not something that other code does so I would appreciate it if
+     someone checked my logic.
+
+dcache: patch 10 changed d_move to *not* move dentries in the
+     ->d_children list when they are both in the same parent.
+     This brings no value and could cause some instability in
+     a d_children walk.
+
+Thanks for any review or testing that you have time for.
+
+NeilBrown
+
+This series is against v7.2-rc6 and can be found at the 
+   vfs-neg-dentries
+branch of
+   https://github.com/neilbrown/linux
+where top commit is
+   56768a600dd9145fea601649dbc74031aa25e459
+
+ [PATCH v1 01/12] VFS: don't count references through ->d_parent
+ [PATCH v1 02/12] Add and use d_for_each_positive_child family of
+ [PATCH v1 03/12] fsnotify: don't hold a spin_lock across
+ [PATCH v1 04/12] fsnotify: reduce i_lock hold time in
+ [PATCH v1 05/12] libfs: simplify scan_positives()
+ [PATCH v1 06/12] libfs: change scan_positives() to use
+ [PATCH v1 07/12] libfs: allow scan_positives() to be called without a
+ [PATCH v1 08/12] libfs: replace find_positive_dentry() with
+ [PATCH v1 09/12] autofs: don't hold ->lookup_lock in
+ [PATCH v1 10/12] VFS: don't move dentries in d_sib list when they
+ [PATCH v1 11/12] Call cond_reshed() as needed in
+ [PATCH v1 12/12] libfs: remove cond_resched() from scan_positives()
