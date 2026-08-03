@@ -1,73 +1,73 @@
 Received: from flow-b6-smtp.messagingengine.com (flow-b6-smtp.messagingengine.com [202.12.124.141])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0A1362E62B7;
-	Mon,  3 Aug 2026 01:38:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 070142EAB6F;
+	Mon,  3 Aug 2026 01:38:20 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.141
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785721090; cv=none; b=WhSEw5jK6g8iRWsUFtqJA+nDeDSlPj8wx9ETEaPXbjCGKK/w5CqdnyMmb/QL9rquGDUD9jJX+dt47AO71qUqf/x7gQG3Qs3FwbxXNBj7ymFdind55w8vmha8czqbQQYMH4MtsUcMoYpsHFUZRq7vmOYSkETPpYR7damfQh52Pr0=
+	t=1785721101; cv=none; b=NK8g6IjRn7yG6A7Xxq8SnS/N94YA8pUmMg6Q2UdgiSGrEZuTYUyC7sdyFek8PQP1yIyNQ1KeOTS04UryUkY5dY5avbwPafT3+J86stU9ZCAjlMjdvIy7+zn9ConlPRQantKLGGIrxBzfKaUTVAxsDdFiCaBSyT5aEsQriM3bzBQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785721090; c=relaxed/simple;
-	bh=aB5XCh3sI7aPq9H6AooS1XuOPKUD2qGI9YwuJoSTcww=;
+	s=arc-20240116; t=1785721101; c=relaxed/simple;
+	bh=2cufU8yvi9RClrUlLLXvb9cfqVLrKy+3OTzuskkAQBk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=uCMVG2aneirHIYaam1B/Rs+4laydRD/mtM8yiZBvAUsq2j2a7Ra5sIB56b7wNiI6LppLxiMhl8lDoug1vfYAHrhBb8+bR7PjQiPxNIIHBuCwkesj+VTMveSuIyl2avyggrGqKWo2k/zmqk7l9fYEWK1alRHUJ/8WzkJSR3hNhDY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=NfV8h9Is; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=PUiEhnLW; arc=none smtp.client-ip=202.12.124.141
+	 MIME-Version; b=b9dJQs340V78B07/1oMO5dajKZnxiK5CEgkEvnU4mtMQ80zxduGm4QbNb+PZOdvj/gFmHIAJmmErgw6SXVAs1BJu9LcafX1rdS7rzA/cyVqfb5pM0gjHsHEsMG6RfKKMjLtaJgaX4rAXh/a7mz4oRftxC2ZjdxLEYt3MeUTAQnA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=ST9djPHD; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=N24QlYEm; arc=none smtp.client-ip=202.12.124.141
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="NfV8h9Is";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="PUiEhnLW"
-Received: from phl-compute-05.internal (phl-compute-05.internal [10.202.2.45])
-	by mailflow.stl.internal (Postfix) with ESMTP id CA8F51300104;
-	Sun,  2 Aug 2026 21:38:07 -0400 (EDT)
-Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-05.internal (MEProxy); Sun, 02 Aug 2026 21:38:08 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="ST9djPHD";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="N24QlYEm"
+Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
+	by mailflow.stl.internal (Postfix) with ESMTP id 037421300107;
+	Sun,  2 Aug 2026 21:38:18 -0400 (EDT)
+Received: from phl-frontend-03 ([10.202.2.162])
+  by phl-compute-04.internal (MEProxy); Sun, 02 Aug 2026 21:38:19 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1785721087;
-	 x=1785728287; bh=GKZh/3B5CaR2ylbw+QK2bTTg4cFoSWL0/KYsAA3wzEQ=; b=
-	NfV8h9IsOaCXlT8oULh0l35P5CvWujiXl3Y0oVKNnmb2/R7EkyOPyQ2m3yVBp+rS
-	2dxf0pwaZMcUx33ycTlfLY9Vzu1y33jLKok5bJiL4M5Ge8G0kOoyh8gTORGi0e6r
-	v4ElBosy3l+IGSmDCa+ju2LDLAyT9Kt5s/gIb+A3neTwnd+G4O3jutBAWy12hVa5
-	vzSKWrIgAFIPCjQuRAVUVEs75OIRUtxojDzMgNdNgnvQiK945IFIAOfTfVMe6Hi4
-	3NclvktRSwl+GSQa766ejuEUn3t+JNSdgNypiHHaAtymu71KrruIo7WRVvcobZb6
-	IgM1+wO7eTULzEGiM8MWUw==
+	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1785721098;
+	 x=1785728298; bh=wCundvHl8EUp99cshH7SIKdPk3plPH4lsyT7KtputbA=; b=
+	ST9djPHDzh8eHNLZ+kmtRf5xz2AM1vTFMmigPkYOo5c3+y6Lm8OVxUf0BQaNSC9t
+	j+t/zoIEP7NtF5zcEJfONCxmvylyXBL8fC9scxMoABsjCPTgkEI8FSNNgUe8xVvz
+	1MDmxkyeN9kIAy1t8NHhpwkEhyK17qMc085TyhHjdpRGs/EJ7JLzQYHfe5xQVyRD
+	rseY+fQs+gp7X++zXwjMPg4wUiSh/GcShds/jMnyKHhPCGER75ZIhXDRIo647YIw
+	jXTWQkBFobis26Tth0EyHFDuCu0uxhgbaZmKS/d0uUA70TcgE9a7wNIbvKS0Qm5b
+	Hc5YjXzSRGS+2flL5iq6MA==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm3; t=1785721087; x=1785728287; bh=G
-	KZh/3B5CaR2ylbw+QK2bTTg4cFoSWL0/KYsAA3wzEQ=; b=PUiEhnLWws3/Y5ArE
-	NCBjZm8MArowNhlIFt7I82/rMrYH1u2lOUFalCqQNH9oTQwrSHvN+htF1TbU1HQj
-	9gSWjCct/DCMsGUFWojxQe7+Xa54rVJVC32XwddL4Z+2w5aRJUUixUlpEtGuJH4f
-	d/InlJKnidxhfdDGHGnE+O4aj14cDCn773jhKttg9FO0fYkiT4Pa7sO+Izka0gYu
-	lHxHRde8496pK8I6cLo4O+bRWPZ3k+QGBE6XqMmyKsQJ1R2/k5OclIWVtvnBvMeu
-	NJwqPRxc2SfjBVG4XJ9e6dnaXCEA6gMYXUrY80mRTsatQwxe+JsqnBHyYY+Ekxxg
-	g2YWg==
-X-ME-Sender: <xms:__Bval4L6gJXLfMjh3Q4dhd7KsWJx5KfBVj9HFpv1KbsMrxN6jzLsw>
-    <xme:__Bvat5bYfTDpBss_4snbBa4-HboHwt1zDO_mFhl2-JLOGjWbLsLFOjCLDi4hB8u7
-    rywCuVDA01O2IyKxSmovYxuSyPcDnGRE8A2YsvXu-IpOT8L7A>
-X-ME-Received: <xmr:__BvajHkbYlAiN-gyYz5VcWTpigdX5d8M5joSDLl0iENTE-TLHNk1ulnLSwvHKU-CGo-JdhWoYzga04ZV5qhAAEKJAU5lZw>
-X-ME-Proxy-Cause: dmFkZTEu0UNNG3Y5ooWE0RW0hb4az30oOOCqiR21A+NF5dBXRIXwF7e1ZQQcPeI1Y+2g3G
-    2p5taGZPwiaaM3/xeTLW1FCz9U/vJJJskTdg41lYE8VUiZH3MPaQbRkjgX9sOC9ECG/cTt
-    EsmfJCIwMKXkPJdCSK/JXV+uNx8CZDrRBVBEoFtsVP6zXAB6qeB8/w/DykMlOqIBtf3Btj
-    xISH9DdsaZIjdYArnJRbVHFMU7yzbJxCLAWmCc9hUaSiSdlTAIOT4N2Kv8CS0tgpHV+N+f
-    k8nNXssq6c7SmtuWSNjzKUGklZ3BjLsq0xMUopueJIhR+ZPYvLBJVSK2Tqb5Oui4sXj8pa
-    LA+RA8It3pPbvsYOL+YUfdzRtKGoHHWwOx5L4zVveeCdJsXJwkSfFeTY+5F8NrJC5gBxDt
-    WNl0jirfhS19W53+YqUyMEFomX6ldS5Cc2Mt4rDzyRlVO91iX/xoQH66zIH6s7FAyYN5B7
-    WHRqLUk6XJQMCfTRjSzXQ+7VWJ9A1tdfj63/BnwvzxK3NIAhjUWJip9v99ioHdAEURDGG4
-    IHZwCMe2vXUALOvG/xejUwMaf7gbfK1U6VS8vgoU6WTnpnCmmXWhHO7NtmthPuRAQiY/Kg
-    dobJf8L9XSRliO3uilUmtZWfWnq0Vh3VMo9uzY5SNP8HsOGrziFp2JGMF59w
-X-ME-Proxy: <xmx:__BvarxAQxlEMeOVfdCbUQ8PWue8duoqEQGixeqjZk8IDHVMubYSLg>
-    <xmx:__Bvaj2eDDP5UEvFn4g0d-WQcwe2vpHjbxRDUnytYdaUFvF1DqmW9A>
-    <xmx:__BvauNcaDFuU6EK9QN1Jdz7wxdmyldQjr1Xm04GaeVZ1p7tRF4yrA>
-    <xmx:__BvavvKcXDjcS1EUGCVg_xAPDKzllkIJuHSSsJ7kfEuahzTRugL7A>
-    <xmx:__BvapQ-TkJAbYp2P6CtNJpiD5A24keBKcBwKYozdqL6s87cYhCwFhvj>
+	:x-me-sender:x-sasl-enc; s=fm3; t=1785721098; x=1785728298; bh=w
+	CundvHl8EUp99cshH7SIKdPk3plPH4lsyT7KtputbA=; b=N24QlYEmtl04bNLDq
+	Szzi8Ev1eSo9hWQSnBguudAKJhG/CHvPi9Jl/tdj3vFt43MXOK2QcjHC79GmvHwa
+	soGJGMKubTaVRaENetIwEYC/lAUlInp5RQrcFQ7ToKNAnwS90blUB3UQxISMH8Q5
+	5H4NuWbRsC6NSqWh6UekdRbkxRjUWNfB6t7pFgPrw72Sye0GbH5jEHilfvvVd69l
+	ro8QFXY0NXSbPwcWBInT5cWxNgEo9VqS/8QiJ5RQJqz57A03yg8sludrluK7t5O7
+	d0yD5xZhbmwkewa2RCutYxoG/vcmnY6+KGVYOLnzvi45Ac2mRXXgi58LrituzRSC
+	a9nWQ==
+X-ME-Sender: <xms:CvFvau5bXBvbqYdm42Kgz2Y_s_y8MR6zk8cTFc2qiRWJYBe7Ep-RGA>
+    <xme:CvFvai4JLzZB41y2loGLveh1OSS7nSSW0fleBzOWMLed7oR2p-Y7vrMfbIE7BnRKr
+    SFBTyIy69qT_T-nIbx00ShfSS3d7PiN9dgkrnXrPjxKWl3SsU8>
+X-ME-Received: <xmr:CvFvakGPdn3KQYMX6I93M2TAWt40_O8_UFpS_NwaFcY1e9eo-oAu_97-znCePNb2u2owIrHDFdMVSDbDSDkbHXDTM0Z_yok>
+X-ME-Proxy-Cause: dmFkZTFswjlVGtOMO0DJ/yAygp0kikcHV2WSXHSGnlIkcuf0k9rLUdswY4SNsXMvUWMhfJ
+    kpfPtsQuVQ8vSHADhVm4IRY0nolbqOkRQBDAEaT6PViWtUiGaZ1RuyP3TKdnsto1GxdvO6
+    EDjVnoxMaix/qwxYa/EnmBrWSMWR71Xsepg0lYJWsNgdazP7uMjE+vSD+hiwoRYUCYwqMd
+    8UCnzcTzoJOqEB2P0a4xlmt6Vi448YXJsDRRsyN3s901toR6OrLn7/rtKpBURTUpkDqxh0
+    ISJdNDy7NZx3er7DV1F6c9yJO9k8PkZEqBrF2awe8iwc4c7xBw+lDoz5IzuZ4fXetXOOZs
+    fOOcpgH4bfLIMB6lfSWNYIEXPzN2voLEMVehyX/DBMYrFJBkeAsJY/hM3y3eq4V24EeHfE
+    mSreAumr4Wl3f6zX+Z1SnyoR2GJjoTdHJASploR208WaujK1nAz1Z8ykDjFNbN8teGTF1D
+    VX/KnV+gmbkkC5nvswMjFrPvGIA8EJkBEPbBrWEANDVPQx1MC/3YY8s/WN1nW7LEzTBoLp
+    qOFUMHxKw22AgN8XVYyGmwOdhcxMJQLdvKNDZ0d6mxd3UE4n8sg0uKKTaqFubCLu0ntHPY
+    SseGkI2vaFs8rHQhv5xfYt8E/hbrB9AhfzEH5rnEbpthsGN+kHhlhNPtYPIg
+X-ME-Proxy: <xmx:CvFvaox2ZF2foI9Bih_Cx86yMp4-flvcalpPaWKrdpEmJYGhg6h2LA>
+    <xmx:CvFvas1nSQd2Upc7efiKMyrDcO6IiK-BI_RxjQwqbeZmNBNd9ONlEQ>
+    <xmx:CvFvajOPId1Z5dTfBWuaC_YKgV9gx6cVbcWtFq7WQKztEhQPhnXF4Q>
+    <xmx:CvFvagsXQLPwnAbzhHV_ugX7KxhEIJSs6UILRsPva0LcS9E2_pHjJw>
+    <xmx:CvFvamJ-lGr7tlE3OvySjSFp0o_SktIx_sw385sh0b4wsSofxS-nYgyU>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Sun,
- 2 Aug 2026 21:38:00 -0400 (EDT)
+ 2 Aug 2026 21:38:11 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Ian Kent <raven@themaw.net>,
 	Chuck Lever <cel@kernel.org>,
@@ -91,9 +91,9 @@ Cc: autofs@vger.kernel.org,
 	codalist@coda.cs.cmu.edu,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v1 06/12] libfs: change scan_positives() to use d_for_each_positive_child_continue()
-Date: Mon,  3 Aug 2026 11:21:15 +1000
-Message-ID: <20260803012648.2195405-7-neilb@ownmail.net>
+Subject: [PATCH v1 07/12] libfs: allow scan_positives() to be called without a cursor.
+Date: Mon,  3 Aug 2026 11:21:16 +1000
+Message-ID: <20260803012648.2195405-8-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260803012648.2195405-1-neilb@ownmail.net>
 References: <20260803012648.2195405-1-neilb@ownmail.net>
@@ -108,53 +108,61 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-Using d_for_each_positive_child_continue() simplifies this code
-slightly and make is easier to read.
+Rather than taking parent from cursor, pass it in explicitly.  And only
+cond_sched() if a cursor is available.  This will allow scan_positives()
+to be used in place of find_positive_dentry().
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/libfs.c | 15 +++------------
- 1 file changed, 3 insertions(+), 12 deletions(-)
+ fs/libfs.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/fs/libfs.c b/fs/libfs.c
-index 080ca615593c..c2369ea9196f 100644
+index c2369ea9196f..260f56863742 100644
 --- a/fs/libfs.c
 +++ b/fs/libfs.c
-@@ -109,17 +109,9 @@ static struct dentry *scan_positives(struct dentry *cursor,
+@@ -104,11 +104,12 @@ EXPORT_SYMBOL(dcache_dir_close);
+  * found, dentry is grabbed and returned to caller.
+  * If no such element exists, NULL is returned.
+  */
+-static struct dentry *scan_positives(struct dentry *cursor,
++static struct dentry *scan_positives(struct dentry *dentry,
++				     struct dentry *cursor,
+ 				     struct dentry *last,
  				     loff_t count)
  {
- 	struct dentry *dentry = cursor->d_parent, *found = NULL;
--	struct dentry *next;
-+	struct dentry *d = last;
+-	struct dentry *dentry = cursor->d_parent, *found = NULL;
++	struct dentry *found = NULL;
+ 	struct dentry *d = last;
  
--	spin_lock(&dentry->d_lock);
--	next = last ? d_next_sibling(last) : d_first_child(dentry);
--	while (next) {
--		struct dentry *d = next;
--
--		next = d_next_sibling(next);
--		// we must at least skip cursors, to avoid livelocks
--		if (d->d_flags & DCACHE_DENTRY_CURSOR)
--			continue;
-+	d_for_each_positive_child_continue(d, dentry) {
- 		if (simple_positive(d) && !--count) {
- 			spin_lock_nested(&d->d_lock, DENTRY_D_LOCK_NESTED);
- 			if (simple_positive(d))
-@@ -133,13 +125,12 @@ static struct dentry *scan_positives(struct dentry *cursor,
+ 	d_for_each_positive_child_continue(d, dentry) {
+@@ -121,7 +122,7 @@ static struct dentry *scan_positives(struct dentry *cursor,
+ 				break;
+ 			count = 1;
+ 		}
+-		if (need_resched()) {
++		if (cursor && need_resched()) {
  			if (!hlist_unhashed(&cursor->d_sib))
  				__hlist_del(&cursor->d_sib);
  			hlist_add_behind(&cursor->d_sib, &d->d_sib);
-+			d = cursor;
- 			spin_unlock(&dentry->d_lock);
- 			cond_resched();
- 			spin_lock(&dentry->d_lock);
--			next = d_next_sibling(cursor);
- 		}
- 	}
--	spin_unlock(&dentry->d_lock);
- 	dput(last);
- 	return found;
- }
+@@ -156,7 +157,7 @@ loff_t dcache_dir_lseek(struct file *file, loff_t offset, int whence)
+ 		inode_lock_shared(dentry->d_inode);
+ 
+ 		if (offset > 2)
+-			to = scan_positives(cursor, NULL, offset - 2);
++			to = scan_positives(dentry, cursor, NULL, offset - 2);
+ 		spin_lock(&dentry->d_lock);
+ 		hlist_del_init(&cursor->d_sib);
+ 		if (to)
+@@ -190,7 +191,7 @@ int dcache_readdir(struct file *file, struct dir_context *ctx)
+ 	if (ctx->pos > 2)
+ 		next = dget(cursor);
+ 
+-	while ((next = scan_positives(cursor, next, 1)) != NULL) {
++	while ((next = scan_positives(dentry, cursor, next, 1)) != NULL) {
+ 		if (!dir_emit(ctx, next->d_name.name, next->d_name.len,
+ 			      d_inode(next)->i_ino,
+ 			      fs_umode_to_dtype(d_inode(next)->i_mode)))
 -- 
 2.50.0.107.gf914562f5916.dirty
 
