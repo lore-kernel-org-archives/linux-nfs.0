@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ECC09307AC6;
-	Mon,  3 Aug 2026 14:49:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 06C913B774F;
+	Mon,  3 Aug 2026 14:49:43 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785768584; cv=none; b=IrvQGwtybSnllcu0dNlkvTZl/HhQeEeVG7Kg6/AqnRlSqTOSLQu3CN3nVAe+n7DncJDfB5syPPyWrPF98iArviiTIH68KgtaRTVA3dVvpC3Fqonk1OTQc4arAVSV/dpryldWqbtdIeZmYB1NtQfhi483uEaktaTS+2iYyA3McOE=
+	t=1785768585; cv=none; b=j6nPRXozHQutwk+BC/NeP+d6dtX2HosgzCAjcid+IHv86pmqUhdoBaz2BKceartDXEn1vY7ywXyHHSEiJR7pToN9Jq6yRVdQCetMiq9Dea9vSN1LEYmCZ5MEAf28HB8A4GrAmK7pXt0udGuNYRSVQLNT97oesAcDr30vALLUNf0=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785768584; c=relaxed/simple;
-	bh=m8rcrEbKFxNhyol4zn6wKFY0EhxfkTOjFMGq4MnUE6w=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=iKB2DYR3yR6LZ3V6UzvbD+N+bPn51cyOy5+aGwo256ZxCpiJbIHNr7sI59zsZZulv1zwTOgHFeblAo9zjkTu+Z9L4i9yzF5y2lbIxz4qkFUkkybzNjDAZ8txAok+jvgMk5w/U2vPCzmDtUQi0qlPtfvlJAsY4zualqz9dRYhzMk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=l45vvSW1; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1785768585; c=relaxed/simple;
+	bh=000qLjhFfY8t5uphrRUHp2XXS77Xpjci3Rb8DbEgLiU=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=ewQHMNaEiwdZD+ecVwu7HsoP3e7SeVYOcJ6rgd+8Mv4iVZuB3Qm+LE0+5GmNPYLZzz1ufjA7oVaDyh4UDLCoxNO1d5L8nfJGWCRt+wCcpT8sSxkfbV/pulyRWnkg8zgSaPZuIs9z4TXrpnyjsqvA5fQF7kO/5RxpUh96+VBOiGU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=d3ja4ae/; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="l45vvSW1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3B8C71F000E9;
-	Mon,  3 Aug 2026 14:49:42 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="d3ja4ae/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 159041F00A3D;
+	Mon,  3 Aug 2026 14:49:43 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785768582;
-	bh=8zMFFmNzVfQTybRk7SGD5eJgRjX2AyybzU5Kv0VTAMI=;
-	h=From:Subject:Date:To:Cc;
-	b=l45vvSW12o9+qkapKwlemT+gyuiwfMPhNah6Q3yPFJmTu0w1znjY7r391o0aqLFx0
-	 /I+h6TPbu/YWMnPrB0zU5JV40ggI4CtcBi91oKm26G3Gz2n9TnUO6PyWsbrCjjF6uv
-	 0z85ZlMChRhoM6eXze8c3IYi6aEnFBLGjQwtP5D6jsTpN44laSmyuNOn+JQefTBDCg
-	 GG1A7CGNjN/a+Y2xxgdw3C19s5059r6uNHwbljJ5tLqPc8+UKEgTF4wgsbpDNUIs8d
-	 UdSIEm/YvydutX/Lp7sOTIUDLcz28T4S/vd8e7ekccChe+bDojcZDz6WAEKIFHBwgz
-	 cT0Hx2oIrNK/w==
+	s=k20260515; t=1785768583;
+	bh=61HqsWs4WViN6j6FlSMsLvv/uPKYGpyaC//E9oV9veI=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=d3ja4ae/DR4F+6N6bj3hm+XoAXx17nmAOyf9dkAAdAFGOSXd4tzv54Ve8FPhAjAJK
+	 6rzMW+2z+x9OM/Se4REAYKaLqV+qK1nmIIKB9F2pA1UTPpgn3fAOjvjv8cXucFBn0z
+	 N/r4yTm45oBgR/NpoEeVusmv20KuPuqAjP4+0I5CwQZg5rb6aWnPqWeSSSVyNyFzDh
+	 K5gdQtKjTXAC6l9ajHXcZY4Kk3HUuZv2FE3qWLYQwThSkj+ouD51bSUzkhgAdDkBTC
+	 8MCpwV7eqSnUnY2fXjSqqf2gkzvRij5BotjqZp28wHGTvCDs7u7rV6/CoKlO7wbalB
+	 BhCqx859+XFmw==
 From: Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 0/2] nfsd: fix up some sparse warnings
-Date: Mon, 03 Aug 2026 10:49:26 -0400
-Message-Id: <20260803-dir-deleg-v1-0-51be76861821@kernel.org>
+Date: Mon, 03 Aug 2026 10:49:27 -0400
+Subject: [PATCH 1/2] nfsd: fix type mismatch and explain host-endian xdr
+ buffer usage
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,53 +38,70 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDCwNj3ZTMIt2U1JzUdF1Dc3OTNNOURAPzVAMloPqCotS0zAqwWdGxtbU
- A6M8sFlsAAAA=
-X-Change-ID: 20260803-dir-deleg-1774f5da07e0
+Message-Id: <20260803-dir-deleg-v1-1-51be76861821@kernel.org>
+References: <20260803-dir-deleg-v1-0-51be76861821@kernel.org>
+In-Reply-To: <20260803-dir-deleg-v1-0-51be76861821@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jeff Layton <jlayton@kernel.org>, kernel test robot <lkp@intel.com>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=723; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=m8rcrEbKFxNhyol4zn6wKFY0EhxfkTOjFMGq4MnUE6w=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqcKqA00/70enBtLKk/iZoeabqqrcwmTFyiz+t5
- XAYxNEe/5GJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCanCqgAAKCRAADmhBGVaC
- Ff9LEADEle5PChIYjX556MhMZiRNwpSgvWIR412shY1NuQOKED8MCuItTFkEnC95NE+i7QqD5fX
- OWPXt9YeS5gO7+RkMknfF+81OIQ2Gm5yfxgXLqq/Ykra0EiCe+Jefm3Xkktrfc4DoqGBcj7kuBc
- KVIUqAHPrXMkyaxMVola7ydNA836nyLMupSf8WakT8TbZgmkGPPbO8AhQZiQ0XVfc8gh4PBY+ap
- UuHxI6Ac2sgyiGfMeMz7yj38LxEX//K15IzRsPp65PO+KHDjUH0VLTLYiFXRGm2ZHc2pMgmU6Q8
- ZJ/2zJEeSZQpauUQHp9/06LGhX96RsRh85uVidhokA84tmNGN8jGL7QhfdUgQP6oz+L6YLvYZsK
- RdeVNHwyNZvonSIgWK8ecaRiGTLm5GH1lp2BPPxpC3Mj582DxVf1rZnTONDIZwh2+yjPNO2+ONf
- rA9lnugvzez6GVXYwHp7dBT+ulvJq1TEGEuga/I2vaKY15hJINy7vbDzdW+WCdNymcaHPWijFiT
- n3UVufM60XxDuZ/x/g7YkuqXeEpeJpTY32EQIYLyLgAA2Ktagooiq6lu68DtOrIIN4H1nWALHDy
- RMkpUdAnu1UUjBVEsLJ91Poh3JT7euhkDVg9gejuLD7Sry6nYADRhOMzwgnJLa2LLqCnt7b/ckd
- KFBZ1wTWXdsyyNw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=1367; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=000qLjhFfY8t5uphrRUHp2XXS77Xpjci3Rb8DbEgLiU=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqcKqFIR8heAKC1nVhUQlnyRiv5Q/NpjUYfXmrs
+ NkqgFvvPdSJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCanCqhQAKCRAADmhBGVaC
+ FQZmEACZ/fQEgwE43+1WQkg7B8v1hIZ69LH3J26hP9ZRD2+wrvUJxbR6K0kDnUz8E0Rz0IIGCPU
+ yBK1lFpHAGskQgzTzXNMFWx/BYDeThCovqIqeV1o0/koBtoXNJtqOztWNUQstOoYGpslTwV2yep
+ sXAxMidq+JcJLCUqLLL96P9QjLXQ0AWpPvsjbF/h5dSxpquKvtneUo0dDiMOTBASN4r/cexY5rg
+ SXrEjLRz3eyU5wnJsGm3X+byhaNIX5wNGOVT0X9deKU/yLVVxxcARVdC4zqeEXmla9fGA0ViXz2
+ vcuTzQfcIaFVo+LKkja1Rz05Y7A4chfwTq8H1UxXQXD+PbXvNZSwWAwWNEBkiro3+TfjWFotqHj
+ 4OOT/rCjZJkNZc8lxkqk7oZx7AGuq2aECzgNtT7+KV6QQLRjbFvbV+qci5u/VpXcTef6j4nRjMC
+ r3WCM93TEsud8kNq5aeBv80bsscLc+zvhs3K9u9hZLrnpIx4upZ4iUaTvpVbyW7BYjTfpBKjZHz
+ wAhf4rWQ8fleK1awo4f9rhoBw7miyKzmeDS4FUIWuSyEgGerIpdWtf/aJnWmOBkd4FJIoa5gRd2
+ g7SMHJkKX6Q5EwB7mZsn/exAeN2jNuIQFuuJ4XY7GSt/0aEjj3pq7z75lxAzMq4slNrbsliymWj
+ 8CmiEm6IQkSY8XQ==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-The first patch should fix the sparse warning that the KTR noticed last
-week. I also took the opportunity to add a comment over the weird xdr
-stream (ab)use we're doing there.
+sparse flagged this type mismatch. Also the xdr buffer usage is a bit
+non-standard, so explain what we're doing and why.
 
-The second patch just fixes up a sparse warning that I noticed.
-
+Fixes: 4b64b811f368 ("nfsd: add notification handlers for dir events")
+Reported-by: kernel test robot <lkp@intel.com>
+Closes: https://lore.kernel.org/oe-kbuild-all/202607310455.AT0GoC5j-lkp@intel.com/
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
-Jeff Layton (2):
-      nfsd: fix type mismatch and explain host-endian xdr buffer usage
-      nfsd: fix nfserr type in nfsd_lookup_dentry()
-
  fs/nfsd/nfs4xdr.c | 11 ++++++++---
- fs/nfsd/vfs.c     |  2 +-
- 2 files changed, 9 insertions(+), 4 deletions(-)
----
-base-commit: 106c31f3d72c56fce98bb2f0e8b3de1a0024228d
-change-id: 20260803-dir-deleg-1774f5da07e0
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-Best regards,
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a47eb544b99f..5cbb4a415384 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4383,13 +4383,18 @@ nfsd4_setup_notify_entry4(struct notify_entry4 *ne, struct xdr_stream *xdr,
+ 	struct path path = nf->nf_file->f_path;
+ 	struct nfsd4_fattr_args args = { };
+ 	const u32 *reqmask;
+-	uint32_t *attrmask;
++	u32 *attrmask;
+ 	__be32 status;
+ 	bool parent;
+ 	int ret;
+ 
+-	/* Reserve space for attrmask */
+-	attrmask = xdr_reserve_space(xdr, 3 * sizeof(uint32_t));
++	/*
++	 * attrmask is the host-order bmval[3] that nfsd4_encode_attr_vals()
++	 * consumes and that ne_attrs.attrmask.element points at. It must
++	 * outlive this call, so steal a few words from the xdr stream to hold
++	 * it.
++	 */
++	attrmask = (u32 *)xdr_reserve_space(xdr, 3 * sizeof(*attrmask));
+ 	if (!attrmask)
+ 		return false;
+ 
+
 -- 
-Jeff Layton <jlayton@kernel.org>
+2.55.0
 
