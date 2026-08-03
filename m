@@ -1,73 +1,73 @@
 Received: from flow-b6-smtp.messagingengine.com (flow-b6-smtp.messagingengine.com [202.12.124.141])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B2822571A0;
-	Mon,  3 Aug 2026 01:39:05 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8646F2E6CAB;
+	Mon,  3 Aug 2026 01:39:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.141
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785721147; cv=none; b=rWi9uoja/W953YMWC+aCXwpQltLViLYVQtmauzZYKZFXiBkrne3mr0tZvdm/hDsDnbQ/MTtXznPQViYbW2k1WMTzfNwWNT8KHvJrh/fpFdrJfAeCWtk5/BHUFFvRyKoAhLPK8fJdirnvbe8fooToR6k7NlJg8M6P2AKH9T6dq4E=
+	t=1785721157; cv=none; b=TffIN9hop90xkJ2NwkdJTYuiH1T2tBBGOZi0J3gjfCyYjGlrG2UODiaU9lD2Bj+qSCNeUN9p6QCUO4eNgerzjch4ut+GSNNNG+klbdVx9hKSsGUHyp3J/IBrB2MomUC1OzyTj3tvrR7d0YllqzyZBgjBpj/TOn4umLMZQf/sLrY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785721147; c=relaxed/simple;
-	bh=80x5dRqEVgRZsTTLHRvw75oA1m3g+7bZHj0ZG8oOnKA=;
+	s=arc-20240116; t=1785721157; c=relaxed/simple;
+	bh=xah1IZBUivqmQDuiMbVbkX4ugtrL2Xtzx9N4QCKerkc=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=fqYS1HvkRDtPWg6iruxnzizyVoy1q/+cS88dNlA1FrYUSQycaOhC5qmcT6KBQUE7RbEht5dYiGuCrdzR5SBZ/P5h5boyO4PXddnEBqRdondI0iBl5sQjSmYmr0ULUR8vRHINTDHpRPeIaYnjC9PV1aInomGmSMfBchQbwkurVS8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=A6Rmhhhf; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Eh76sA7a; arc=none smtp.client-ip=202.12.124.141
+	 MIME-Version; b=p1+gWGu2VN8d1zz1uIL58yyzz1F1mCIS9uVDy2CiIp1Q1Nm7W7ZXbzwJY+6h3b/8Qn3k/vH/G9VOcVC/f4sQzsSwbGPeWY2LPD091yDilUsoSveWFzKhtnhtfexxBoynsAf90eL/ndunU8UZ9RIyPzVhaFuDWjn97rTMxkm70FQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=MmTcyLcM; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Kcsz9Wpk; arc=none smtp.client-ip=202.12.124.141
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="A6Rmhhhf";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Eh76sA7a"
-Received: from phl-compute-09.internal (phl-compute-09.internal [10.202.2.49])
-	by mailflow.stl.internal (Postfix) with ESMTP id 40A731300120;
-	Sun,  2 Aug 2026 21:39:04 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-09.internal (MEProxy); Sun, 02 Aug 2026 21:39:04 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="MmTcyLcM";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Kcsz9Wpk"
+Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
+	by mailflow.stl.internal (Postfix) with ESMTP id 7C7B51300128;
+	Sun,  2 Aug 2026 21:39:15 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-06.internal (MEProxy); Sun, 02 Aug 2026 21:39:16 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1785721144;
-	 x=1785728344; bh=S3v8RX+VmBHxPtS8fSNJM421/tOiLSUqqUod+SOCtME=; b=
-	A6Rmhhhf0nO1XtDsEoDaMtKjAPwdXKOI1sEE9w5rnodRZEclpfCO5IE8XnTg35H2
-	rTj0Qfr1zNC2zHS36usP+Dx/09CwAkYseKjSAPxQPOLWzqqLc8P3Ejz1xgLD/qRR
-	rlUFzINLzBRSW7g9/VSqBNOxcN8TDn2aTtdngBRnExovkGFJrD/ENcAky4eLC9bT
-	vh9P0+lF8YIGloSysx513T/rbLrB91oY1NsclNKwvSzUHS4BhWCNoNE9Qfd0jWJj
-	oW08QozXbipYVX0t0D6H+lnQ68kjinSQsVPCT3beL5/iP1el1sy5CFAvCuptLZ5C
-	UZ3F9eRQzah03h46i5vQ9A==
+	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1785721155;
+	 x=1785728355; bh=48Fkc2hhO16ufhmd1558xtjY3jyS/m26wkZxQxAYLN4=; b=
+	MmTcyLcMzoglUJq5DvMYnZYd5dxPosypo6M/Czfn6KbZhjhaV5cGXYOeTv4oR0TT
+	sgQeNmTSOWtAIK1eFjh0CppB+cW3OJOGTEKFbINbZG+7FMGsDxBdw7q2B9GXviVm
+	trc4zXspmN/Ddr2UGslL7EdXUOGsx0inSYQAn4Tnm8JA5WXxbhw2lujtXlZ2j5uS
+	Oi9DUHD2G5p/kuC+nIFF9/K/rDiy2GpJykkv6lPqSgOCTwIpZKFEz2Yang/bbglA
+	//wkYWxj5HmN/ShJAlYORy8aCkVzy4YMuaUlsR7cM2m80DBbodnC+Qyl3uUgFxwg
+	JFOaflya03Xaiy9RAjuWoQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm3; t=1785721144; x=1785728344; bh=S
-	3v8RX+VmBHxPtS8fSNJM421/tOiLSUqqUod+SOCtME=; b=Eh76sA7axP5FH1G6I
-	MTzLs4OF0dDWwZejFEwU4Er5K5gTyCjewiJUMLyrKNB8WZwmJyCc3nEqCNKPmw3S
-	QreJx9No+JUEcfxqXPdZdqbnL71fpwSPCF3moc9KpY443NraOHbhLfYG2PH6/fk6
-	1TtBEvnEQnxOtiGPfNWmeFYIbCaZdg9ci0bs7ZfKpujDZYLx/hb1b+3Ttd8411gz
-	lT2JNNFOqNehlmvLE3j/THHgo3MY3Ak2EFKaUmNPlLOjhp4GZIrEtFPh9JJsKPbT
-	XH/eBhZIg1etNggSP553UdAt9t/6LtT8JpP5DL759iNG0vnn2Y4D59edWHlwV3h7
-	Xvq3g==
-X-ME-Sender: <xms:N_Fvas6mKsDf2KvNGZ0gR2S7UIeE8s1VMlpir7kW4JbNDt32u4duNQ>
-    <xme:N_Fvao4qyv87B2U1mQ9w7m-AaK-hVYiZ9O5BQaxX4HgYasAIq7RhN5m26m0-G71_K
-    nabdCyQsKDfuyNZl_3pRXZgTFn2wrwxN-Nw4p_Vr6E0_TlcOg>
-X-ME-Received: <xmr:N_FvaiEFALnHc9HyBPsRgPUGc4qjIUbSMAwvxMX9blUpObhNL7asp3FtBAR7GtxPZQVUwpbYBQ9qjY_RMYB0qq1gELdBVNg>
-X-ME-Proxy-Cause: dmFkZTFA/0zm7OzeplXRNvaNNmULnG0bsSwLfs+E1fp/q4OBdNvpsKhweFt4elT9lXHd+G
-    hTM4MVvIxFfT4f1Y7HBQ1gMr4yL539AvDYksd/SsisrtMNq+EqTkOTQTuzQd8lMMFdAmse
-    D1YJ0L60HAoZcUzOgHo9DuzP/4Ow8ItiPyTEjn1bK4Jn1nUlo/POLPXyt3mK9JNNNPqU7Y
-    mubipfwUkLYy5ewC3+/+p9hwcyapoHG+ZZ5DTw872VYmOR7ZRvjLOxdnM0/DOmk3uvO26k
-    9qw+ssl1tYKsL3hrlaerGXMHiVZx0h5rxUc2yzrUGeaNiWDuoRhf7M39GqD2tmd17RvPGA
-    Nr/VxsXZBplXEAzBChxm88250A1v7ImXXn9vSt/kjZ/fLZMvNZFxcO7wit8ESUGvRJbroT
-    dco1dZxYhxEva7KW0Mh7TTDpH7gTLCJQV4jppJl/pYrCEI3+FaPMpeVLdDUxRfCeHNFDrC
-    vt+Xuwj7p2ZtAvCIZ/h3nKpW6Eagc0h45M1fqYM5z3bWcoRliflVWoWDDtQuKbTnftf4N4
-    AK3R4b+vDLPWp59zNLSVq8UprwFtD1cQwyO7/noMDm+ZaF2YZsTxomZcIu2KT+XpTfFPtR
-    zsxUZa0fgLNil6LtdGWmrCIJaUpCJ1+wJpydsM7+UIWiCnHO3qPtzb6ssi5w
-X-ME-Proxy: <xmx:N_FvauzmUiEeqXbpwZpU5hFiljVUQkgo4yWZVfdyZNcxeqkgU4ckMw>
-    <xmx:OPFvaq2ARYW_NDL1euuhBl1_4h6efRRvOdVM3byt56kso8Gnw-ATBw>
-    <xmx:OPFvapNmUS4qFlYhZP2QGTFZPrdUwkt31HZVl79fi6BOTMbwOTeJQw>
-    <xmx:OPFvausKnww1IWu6dBqS960lDKTRTTmddEcGrLng3Eix_SyeWVDl9Q>
-    <xmx:OPFvakLgv9klWiox17V9SaLwbRF5eXHzFlbbqhRr1eOMHdYfHlNHuZ2A>
+	:x-me-sender:x-sasl-enc; s=fm3; t=1785721155; x=1785728355; bh=4
+	8Fkc2hhO16ufhmd1558xtjY3jyS/m26wkZxQxAYLN4=; b=Kcsz9WpkZmbKKAn7R
+	BSWde2q3tmv1TuCv/DZM6/QYpvZdyb4+1GtF0ImDSLUDaSYmHIEXV7e3AiN1/idL
+	4hyTU7pBZjIKFjfwp7w/NuJuT+GJgpmz/RnV8PIZrcPawUhFJ6/bCFw6T3KuHeKe
+	FfXEpr4K+fRWcUFeMt/hgZm38kep6eBowrLSAijJJdo9NIS0vpYXcz76uzCigAYS
+	LE3zGsGX7ATZz+Ce1bTJtoum4SRvYsAW7S5oqdV2vXJKwHPVprraItJvn2SidkDF
+	Et0n8U4syijG6V2teDdrN9r9IYsdi6JiZ3lEAIkpaVyxkkrr1HgGA0G8kccUYo7g
+	MhIfg==
+X-ME-Sender: <xms:Q_Fvao4OVt1w0DDQ-nTkHW0vRax88fuU8qfppt0KxI4PzNqT92Uoog>
+    <xme:Q_FvaiEZaOxw5w0nvqFa6h4kHWc88-GWzJOiJkhKb71AWUItQyZA2x36nSP4DJdJX
+    FLdCo903k0Rr1gjV_M2JxJDH7GK4zB_r1Dk_xXqjXZ8rCRRjFg>
+X-ME-Received: <xmr:Q_Fvauxqm_Z2j-DFGTtsnAgP44uhKD1605Lqs1xzbn31NI--xqChYDCF5aRzxMMZRQ26gGe9Wny5eI_0GsLV2P2Lf-S5SWc>
+X-ME-Proxy-Cause: dmFkZTEkjpQitAtmxGBQYKqyuxI2Zkeo3c6RoaKCNErqeb7OpTUkwok+umPK8wjjzKilLR
+    oEkJ4cvJVGjSJ84RQAU1yMp4OnVAa0j48I+IZh9Fdm8T9NlXb22vW2b++I/w1xpR0D9cGg
+    PY5vxXMwbazIrQndnHZZeUaDjtiO7oMO4JfvURQOW8xpTRIAhWmk/yj3tGiTCFDkK11PUi
+    8zP+PAM6p9S6yYk+YxJK09JqJLxfofUFwglAMcxid0fjJ/8eCuMBF6ZgJ9khwYNTvmmvDv
+    XHb98vv+s9pbhqVhgG7tjgoBPJWqvJT0PbLNRH63wXqa3Yd9frMtJBXjxnj2koyaKciEdl
+    uFMMz/4CEUcGyouzkIImU/OhVANGkyFS72dBLv8gabALYxnV5Tqh6acfylQZWUdliw+z9E
+    bY051siIlw2Ox7ryWHJ5c0bt3NjEccKlc099E7t+VNREBTdm8Jj+6iKP0C+r6YGgyGTDcw
+    q4sQLDcx7PBXLdmd26XcAXfyMzQu66MviRh0kq6A4mXxLyX9JOUvnTnZ3BoCPIz3FNVnj/
+    brhwej9bFhJXHOMEsW1uxSwNwWTzwQeozhxzEJicXviJfH0NqSaAH6OGUX5cgpxPJgji6/
+    N74k5PdE+TwvVvSOKrfR2olAgDTA2/Y+MSeg4U8X3elFfFCDTVNchi2yLV9g
+X-ME-Proxy: <xmx:Q_Fvaq20vStdJhBNvOoSTb4g19GsvIWQlei5GuXvWwvPK7NMNTvZCA>
+    <xmx:Q_FvapOKN_432hnaW59iQu0Nu7qbmCS9Eu2SC5VVgO2g60pxwiJ8NQ>
+    <xmx:Q_Fvaute9IUlAcE3n2mumi95ElbmkuaWisvaItgo5JRVmkm3TYiBzA>
+    <xmx:Q_FvalInVHTSd5EPpi7oprbXA0FqpodVYjtUJg7J4sBNztjtGScCVw>
+    <xmx:Q_FvakJ0jH_MWyiL7sI7PtHnFADOaliSXLBWRfFFhdNaTJMwlL03Z6kv>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Sun,
- 2 Aug 2026 21:38:56 -0400 (EDT)
+ 2 Aug 2026 21:39:07 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Ian Kent <raven@themaw.net>,
 	Chuck Lever <cel@kernel.org>,
@@ -91,9 +91,9 @@ Cc: autofs@vger.kernel.org,
 	codalist@coda.cs.cmu.edu,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v1 11/12] Call cond_reshed() as needed in d_for_each_positive_child().
-Date: Mon,  3 Aug 2026 11:21:20 +1000
-Message-ID: <20260803012648.2195405-12-neilb@ownmail.net>
+Subject: [PATCH v1 12/12] libfs: remove cond_resched() from scan_positives()
+Date: Mon,  3 Aug 2026 11:21:21 +1000
+Message-ID: <20260803012648.2195405-13-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260803012648.2195405-1-neilb@ownmail.net>
 References: <20260803012648.2195405-1-neilb@ownmail.net>
@@ -108,248 +108,87 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-There are reports that large numbers of negative dentries can lead to
-soft lockups when walking the d_children/d_sib list, particularly in
-fsnotify_set_children_dentry_flags(). (See link below)
+Now that d_for_each_positive_child_continue() calls cond_resced() as
+needed, scan_positives() doesn't need to any more.
 
-This can be addressed by allowing a schedule during the walk in the same
-way that scan_positives() (in libfs.c) already does.
-
-As we now walk the list in common code, we can add that schedule call to
-all places that walk the list using d_for_each_positive_child iterators.
-
-Doing this involves using an on-stack dentry (about 330 bytes) which is
-not standard practice but should be safe since
-
-Commit 3df5153c5f12 ("make cursors NORCU")
-
-made cursors NORCU, confirming that they can safely be released without
-waiting.  Also importantly nothing ever takes a reference on a cursor
-that it doesn't own.
-
-To facilitate this, a new __d_init() is split out of __d_alloc() and
-used in d_init_cursor() which can be called on an on-stack dentry as is
-done in the new d_next_sibling_sched().
-
-d_for_each_positive_child*() now use d_next_sibling_sched() if appropriate
-and they now assert they might_sleep()).
-
-Note that d_walk() also walks this list and does not use the new helper.
-Some instances of d_walk() do abort when a resched is needed, others do
-not.  This patch does not help with those.
-
-Link https://lwn.net/Articles/1079407/
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/dcache.c            | 109 ++++++++++++++++++++++++++++++++++-------
- include/linux/dcache.h |  23 ++++++---
- 2 files changed, 108 insertions(+), 24 deletions(-)
+ fs/libfs.c | 20 +++++---------------
+ 1 file changed, 5 insertions(+), 15 deletions(-)
 
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 50fbbcceca01..3678f86fe693 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1885,6 +1885,24 @@ void d_invalidate(struct dentry *dentry)
- }
- EXPORT_SYMBOL(d_invalidate);
- 
-+static void __d_init(struct dentry *dentry, struct super_block *sb)
-+{
-+	dentry->d_flags = 0;
-+	lockref_init(&dentry->d_lockref);
-+	seqcount_spinlock_init(&dentry->d_seq, &dentry->d_lock);
-+	dentry->d_inode = NULL;
-+	dentry->d_parent = dentry;
-+	dentry->d_sb = sb;
-+	dentry->d_op = sb->__s_d_op;
-+	dentry->d_flags = sb->s_d_flags;
-+	dentry->d_fsdata = NULL;
-+	INIT_HLIST_BL_NODE(&dentry->d_hash);
-+	INIT_LIST_HEAD(&dentry->d_lru);
-+	INIT_HLIST_HEAD(&dentry->d_children);
-+	dentry->waiters = NULL;
-+	INIT_HLIST_NODE(&dentry->d_sib);
-+}
-+
- /**
-  * __d_alloc - allocate a dcache entry
-  * @sb: filesystem it will belong to
-@@ -1894,7 +1912,6 @@ EXPORT_SYMBOL(d_invalidate);
-  * available. On a success the dentry is returned. The name passed in is
-  * copied and the copy passed in may be reused after this call.
+diff --git a/fs/libfs.c b/fs/libfs.c
+index c0771e8b645c..b4c9cfdc1907 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -105,7 +105,6 @@ EXPORT_SYMBOL(dcache_dir_close);
+  * If no such element exists, NULL is returned.
   */
-- 
- static struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
+ static struct dentry *scan_positives(struct dentry *dentry,
+-				     struct dentry *cursor,
+ 				     struct dentry *last,
+ 				     loff_t count)
  {
- 	struct dentry *dentry;
-@@ -1922,14 +1939,14 @@ static struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
- 		p = kmalloc_flex(*p, name, name->len + 1,
- 				 GFP_KERNEL_ACCOUNT | __GFP_RECLAIMABLE);
- 		if (!p) {
--			kmem_cache_free(dentry_cache, dentry); 
-+			kmem_cache_free(dentry_cache, dentry);
- 			return NULL;
+@@ -122,15 +121,6 @@ static struct dentry *scan_positives(struct dentry *dentry,
+ 				break;
+ 			count = 1;
  		}
- 		atomic_set(&p->count, 1);
- 		dname = p->name;
- 	} else  {
- 		dname = dentry->d_shortname.string;
--	}	
-+	}
+-		if (cursor && need_resched()) {
+-			if (!hlist_unhashed(&cursor->d_sib))
+-				__hlist_del(&cursor->d_sib);
+-			hlist_add_behind(&cursor->d_sib, &d->d_sib);
+-			d = cursor;
+-			spin_unlock(&dentry->d_lock);
+-			cond_resched();
+-			spin_lock(&dentry->d_lock);
+-		}
+ 	}
+ 	dput(last);
+ 	return found;
+@@ -157,7 +147,7 @@ loff_t dcache_dir_lseek(struct file *file, loff_t offset, int whence)
+ 		inode_lock_shared(dentry->d_inode);
  
- 	dentry->__d_name.len = name->len;
- 	dentry->__d_name.hash = name->hash;
-@@ -1939,20 +1956,7 @@ static struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
- 	/* Make sure we always see the terminating NUL character */
- 	smp_store_release(&dentry->__d_name.name, dname); /* ^^^ */
+ 		if (offset > 2)
+-			to = scan_positives(dentry, cursor, NULL, offset - 2);
++			to = scan_positives(dentry, NULL, offset - 2);
+ 		spin_lock(&dentry->d_lock);
+ 		hlist_del_init(&cursor->d_sib);
+ 		if (to)
+@@ -191,7 +181,7 @@ int dcache_readdir(struct file *file, struct dir_context *ctx)
+ 	if (ctx->pos > 2)
+ 		next = dget(cursor);
  
--	dentry->d_flags = 0;
--	lockref_init(&dentry->d_lockref);
--	seqcount_spinlock_init(&dentry->d_seq, &dentry->d_lock);
--	dentry->d_inode = NULL;
--	dentry->d_parent = dentry;
--	dentry->d_sb = sb;
--	dentry->d_op = sb->__s_d_op;
--	dentry->d_flags = sb->s_d_flags;
--	dentry->d_fsdata = NULL;
--	INIT_HLIST_BL_NODE(&dentry->d_hash);
--	INIT_LIST_HEAD(&dentry->d_lru);
--	INIT_HLIST_HEAD(&dentry->d_children);
--	dentry->waiters = NULL;
--	INIT_HLIST_NODE(&dentry->d_sib);
-+	__d_init(dentry, sb);
+-	while ((next = scan_positives(dentry, cursor, next, 1)) != NULL) {
++	while ((next = scan_positives(dentry, next, 1)) != NULL) {
+ 		if (!dir_emit(ctx, next->d_name.name, next->d_name.len,
+ 			      d_inode(next)->i_ino,
+ 			      fs_umode_to_dtype(d_inode(next)->i_mode)))
+@@ -445,7 +435,7 @@ offset_dir_lookup(struct dentry *parent, loff_t offset)
+ 	MA_STATE(mas, &octx->mt, offset, offset);
  
- 	if (dentry->d_op && dentry->d_op->d_init) {
- 		err = dentry->d_op->d_init(dentry);
-@@ -1969,6 +1973,77 @@ static struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
- 	return dentry;
+ 	if (offset == DIR_OFFSET_FIRST)
+-		found = scan_positives(parent, NULL, NULL, 1);
++		found = scan_positives(parent, NULL, 1);
+ 	else {
+ 		rcu_read_lock();
+ 		spin_lock(&parent->d_lock);
+@@ -467,7 +457,7 @@ offset_dir_lookup(struct dentry *parent, loff_t offset)
+ 		spin_unlock(&parent->d_lock);
+ 		rcu_read_unlock();
+ 		if (found && !simple_positive(found))
+-			found = scan_positives(parent, NULL, found, 1);
++			found = scan_positives(parent, found, 1);
+ 	}
+ 	return found;
  }
+@@ -493,7 +483,7 @@ static void offset_iterate_dir(struct file *file, struct dir_context *ctx)
+ 		if (!offset_dir_emit(ctx, dentry))
+ 			break;
  
-+/**
-+ * d_init_cursor - initialise an on-stack dentry cursor
-+ * @dentry: the dentry to be initialised
-+ * @parent: dentry of parent where cursor will be used.
-+ *
-+ * A DCACHE_DENTRY_CURSOR is initalised for use in marking
-+ * a place in the d_children/d_sib list.  While sb-related
-+ * fields are filled in, they should never be used.
-+ * The filesystems d_init is not called and a final d_put()
-+ * should not be called, else d_release would be called.
-+ */
-+static void d_init_cursor(struct dentry *dentry, struct dentry *parent)
-+{
-+	const struct qstr *name = &slash_name;
-+	char *dname;
-+
-+	/*
-+	 * We guarantee that the inline name is always NUL-terminated.
-+	 * This way the memcpy() done by the name switching in rename
-+	 * will still always have a NUL at the end, even if we might
-+	 * be overwriting an internal NUL character
-+	 */
-+	dentry->d_shortname.string[DNAME_INLINE_LEN-1] = 0;
-+	name = &slash_name;
-+	dname = dentry->d_shortname.string;
-+
-+	dentry->__d_name.len = name->len;
-+	dentry->__d_name.hash = name->hash;
-+	memcpy(dname, name->name, name->len);
-+	dname[name->len] = 0;
-+
-+	/* Make sure we always see the terminating NUL character */
-+	smp_store_release(&dentry->__d_name.name, dname); /* ^^^ */
-+
-+	__d_init(dentry, parent->d_sb);
-+	dentry->d_parent = parent;
-+	dentry->d_flags |= DCACHE_DENTRY_CURSOR | DCACHE_NORCU;
-+}
-+
-+/**
-+ * d_next_sibling_sched - return next sibling, but schedule() first
-+ * @child:  current child
-+ *
-+ * This behaves like d_next_sibling(), but drops the parent d_lock
-+ * and calls cond_resched() to avoid any soft-lockup.  A cursor
-+ * is inserted as place holder.
-+ *
-+ * Caller must hold the parents d_lock, and must hold a counted
-+ * reference on the parent.
-+ *
-+ * Returns: the next sibling, or NULL if there is none.
-+ */
-+struct dentry *d_next_sibling_sched(struct dentry *child)
-+__must_hold(&child->d_parent->d_lock)
-+{
-+	struct dentry cursor;
-+
-+	d_init_cursor(&cursor, child->d_parent);
-+	hlist_add_behind(&cursor.d_sib, &child->d_sib);
-+	spin_unlock(&cursor.d_parent->d_lock);
-+	cond_resched();
-+	spin_lock(&cursor.d_parent->d_lock);
-+	child = d_next_sibling(&cursor);
-+	__hlist_del(&cursor.d_sib);
-+	if (hlist_empty(&cursor.d_parent->d_children))
-+		dput_dlock(cursor.d_parent);
-+	WARN_ON(d_count(&cursor) != 1);
-+	return child;
-+}
-+EXPORT_SYMBOL(d_next_sibling_sched);
-+
- /**
-  * d_alloc - allocate a dcache entry
-  * @parent: parent of entry to allocate
-diff --git a/include/linux/dcache.h b/include/linux/dcache.h
-index cabf05e74b1f..f7d5954c58da 100644
---- a/include/linux/dcache.h
-+++ b/include/linux/dcache.h
-@@ -656,10 +656,15 @@ static inline struct dentry *d_next_sibling(const struct dentry *dentry)
- 	return hlist_entry_safe(dentry->d_sib.next, struct dentry, d_sib);
- }
+-		dentry = scan_positives(dir, NULL, dentry, 1);
++		dentry = scan_positives(dir, dentry, 1);
  
-+struct dentry *d_next_sibling_sched(struct dentry *child);
-+
- static inline struct dentry *d_next_positive(struct dentry *child)
- {
- 	do {
--		child = d_next_sibling(child);
-+		if (need_resched())
-+			child = d_next_sibling_sched(child);
-+		else
-+			child = d_next_sibling(child);
- 	} while (child && !d_really_is_positive(child));
- 	return child;
- }
-@@ -691,9 +696,11 @@ static inline struct dentry *d_first_positive(const struct dentry *parent,
-  * which have at some point in the past been positive.
-  */
- #define d_for_each_positive_child(child, parent)			\
--	scoped_guard(spinlock, &parent->d_lock)				\
--		for (child = d_first_positive(parent, NULL); child;	\
--		     child = d_next_positive(child))
-+	if (({might_sleep();0;})) ; else				\
-+		scoped_guard(spinlock, &parent->d_lock)			\
-+			for (child = d_first_positive(parent, NULL);	\
-+			     child;					\
-+			     child = d_next_positive(child))
- 
- /**
-  * d_for_each_positive_child_continue - iterate over remaining positive children
-@@ -710,9 +717,11 @@ static inline struct dentry *d_first_positive(const struct dentry *parent,
-  *
-  */
- #define d_for_each_positive_child_continue(child, parent)		\
--	scoped_guard(spinlock, &parent->d_lock)				\
--		for (child = d_first_positive(parent, child); child;	\
--		     child = d_next_positive(child))
-+	if (({might_sleep();0;})) ; else				\
-+		scoped_guard(spinlock, &parent->d_lock)			\
-+			for (child = d_first_positive(parent, child);	\
-+			     child;					\
-+			     child = d_next_positive(child))
- 
- void set_default_d_op(struct super_block *, const struct dentry_operations *);
- struct dentry *d_make_persistent(struct dentry *, struct inode *);
+ 		if (!dentry)
+ 			goto out_eod;
 -- 
 2.50.0.107.gf914562f5916.dirty
 
