@@ -1,38 +1,37 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-1.web.codeaurora.org [10.30.226.201])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 86C4F4570F1;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 85C7143747B;
 	Tue,  4 Aug 2026 10:55:27 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=10.30.226.201
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785840927; cv=none; b=iIgTPiNCbVOdpMUT5tXb07s92HbQU6/6Ifb7nS+KiVmlVpFdRczWUPYmZl9+L276h8gc3jvmK53vkyLCAPlXNkB+5X5mODMRQmiXthhXretY1ylGPnSnQLVHAUSoxSeSdRAVKS2yEc3+by8Emh7mPBOYUkOmVX0QLQRx8DSRh1s=
+	t=1785840927; cv=none; b=Jr3iBfZhYniZic0x/yW8e5prTfrUg+Xy/dBKwM8LZ7Dst1nul9BtTC8Rn5xeY10beFI56LRUoLCCdyTzIXE92/bF/2yr4g7scnyAEBXrf944h0jiKedAHAMRxzjUhuJyRHvIaM9KHFfawhss1sF9XX4z6ugFqM9ygWs5rSmddKw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1785840927; c=relaxed/simple;
-	bh=hhGrI/mzu3aPM7QOJT92Awih3YCME5wdzbeEt4sTwTE=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=s10uwBlxo3gyZlGEnXjwzdI/hD1Dwkcv/WeXTbBuzGsG0sl+m1o5ZB51/IVub/8qy7f47I6JPAPoc2xtYXvi+x0Eyz3AP4wWI2zZUFEJ0q9VoHOEeGDi9b9yFnroKzAJJJmsY1NxP+Bp0CzNR6xm5CuhkRhd9af2gx+A+rFVlmY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QQOA80Ol; arc=none smtp.client-ip=10.30.226.201
+	bh=/zX1dK5pUUwfUUMgp/WjTg2pjQrJvqcIYBJwxISBk4k=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=skLjRqGKWXsKciYkJfFRBHSj6/ccv4sWekGHcGigHjhJ/xrblUHXpOBjat/3aNcCscYtBPnucmxUNc4rUtPDXP7K9dE7v/W3/9EK9obrZs+IIO7kvSjY7gTRg3q37IkCevNfftEvoif5sLEeb9vniXmzWHYMmZRnb4v6a7uHCS4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=XtYgSNmU; arc=none smtp.client-ip=10.30.226.201
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QQOA80Ol"
-Received: by smtp.kernel.org (Postfix) with ESMTPS id 990BAC2BCF4;
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="XtYgSNmU"
+Received: by smtp.kernel.org (Postfix) with ESMTPS id A442BC2BCF6;
 	Tue,  4 Aug 2026 10:55:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=kernel.org;
 	s=k20201202; t=1785840926;
-	bh=hhGrI/mzu3aPM7QOJT92Awih3YCME5wdzbeEt4sTwTE=;
-	h=From:Subject:Date:To:Cc:Reply-To:From;
-	b=QQOA80OlDZyrZoaO+HuPeEGkqdi+aH/zi6LpxVRBMtLxk7WShdNcM/uZYW+QmkCC6
-	 fZiuC3yH1dHEqoRN4+4AkHYMhL5LApSGYPDsCCpNihZbqUHU7gApwYX9sfadLhpGPi
-	 oC0JTDQUmYntbnixFt2D+IoFLIliK976NUs/9NBmviErWv0SUMleF2VICmA4/Te6fq
-	 lzevpOU5R25CDa1L96WE68x++yCQhHacJHmR/yMMCd/kdLunVKZsJlDPv5eZ2BciMz
-	 Snc2NS4bdssepDxjys9H5lOcm6V0NsF6SxoH9/1bwA9MS13Y7xtie5lkLN4lhtmHaK
-	 gHlKWP7cynpmg==
+	bh=/zX1dK5pUUwfUUMgp/WjTg2pjQrJvqcIYBJwxISBk4k=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc:Reply-To:From;
+	b=XtYgSNmUw1N+43MoNDdnc670SG/gZcUOVmDEZbWK86886C6R9Jnyf9zb+KpvFS/Tn
+	 Esm3aKpvH65qCy2M8MxcUtFKENfax4G1ZuSyHIunQDLNvTrUYljqPOiiuYy0CJxKYd
+	 FPIKVRNA9csszA6MKZCVKx4AHtyN6LwOFv3UTsd3xHRSP1gfzNigD0HDQFqQZp2Roc
+	 4CiHLIjBmMb69c4AvHFIA/t+9lgfE2gE+GIbaXXNnPQX9Eqxux9v8CzsuwZvtuM1mE
+	 fB7FhdokQavUVoOfUJjh0lMwCmHjIUC571Jrum5IxWNZbdGMb0frEbVbUuA+tLkDWO
+	 dsRdIrDuKW6bQ==
 Received: from aws-us-west-2-korg-lkml-1.web.codeaurora.org (localhost.localdomain [127.0.0.1])
-	by smtp.lore.kernel.org (Postfix) with ESMTP id 7524BC55184;
+	by smtp.lore.kernel.org (Postfix) with ESMTP id 86D27C55ABA;
 	Tue,  4 Aug 2026 10:55:26 +0000 (UTC)
 From: Junrui Luo via B4 Relay <devnull+moonafterrain.outlook.com@kernel.org>
-Subject: [PATCH 0/5] NFSv4/flexfiles: harden LAYOUTGET and GETDEVICEINFO
- decode
-Date: Tue, 04 Aug 2026 18:55:00 +0800
-Message-Id: <20260804-nfs-fixes-v1-0-1544df970e7c@outlook.com>
+Date: Tue, 04 Aug 2026 18:55:01 +0800
+Subject: [PATCH 1/5] NFSv4/flexfiles: bound the multipath address count
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -41,10 +40,9 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAATFcWoC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDCwMT3by0Yt20zIrUYt0ky0STFOM0k1RTA3MloPqColSwBFB5dGxtLQB
- CNjQkWwAAAA==
-X-Change-ID: 20260804-nfs-fixes-b9a4d3f4e507
+Message-Id: <20260804-nfs-fixes-v1-1-1544df970e7c@outlook.com>
+References: <20260804-nfs-fixes-v1-0-1544df970e7c@outlook.com>
+In-Reply-To: <20260804-nfs-fixes-v1-0-1544df970e7c@outlook.com>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
  Jonathan Curley <jcurley@purestorage.com>, 
@@ -52,13 +50,13 @@ Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
  Junrui Luo <moonafterrain@outlook.com>, Yuhao Jiang <danisjiang@gmail.com>, 
  stable@vger.kernel.org
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2609;
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2777;
  i=moonafterrain@outlook.com; h=from:subject:message-id;
- bh=hhGrI/mzu3aPM7QOJT92Awih3YCME5wdzbeEt4sTwTE=;
- b=kA0DAAoWceg4UIuO8EAByyZiAGpxxRehjihg2fa9p7l612YNlk+omlLFaNcayWpISPql/qkaA
- Yh1BAAWCgAdFiEEx3DS9jhNtC20TLRjceg4UIuO8EAFAmpxxRcACgkQceg4UIuO8EA38wD+NFSS
- t2R5KI1Lq9icoRtW7TkkbE/EhQNa6bL+1BrI1igBALxCjQAGVXTYqLYtEphKxM+FZqnPzwaZUbP
- lA0REHCAA
+ bh=P//3MuVFQOmbnVMiCO1Tok8Ub0duINavLD89ty/UirE=;
+ b=owJ4nJvAy8zAJVb4wiKgu++DA+NptSSGrMKj0lencjE0C4WblrXsYp/Rcy7yYd609HPb7srF/
+ 35Tdbbv/5SOUhYGMS4GWTFFluMFl75Z+G7R3eKzJRlmDisTyBAGLk4BmIjITEaG/62+nILezh4n
+ b73SZ3V7GplUd21nJJNFl9W1uQsfpMunMDKc0uSRMly77kPLkY416VHr48LebK71n2K0O8fjxgz
+ W6VN5AaIpShg=
 X-Developer-Key: i=moonafterrain@outlook.com; a=openpgp;
  fpr=C770D2F6384DB42DB44CB46371E838508B8EF040
 X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with
@@ -66,63 +64,70 @@ X-Endpoint-Received: by B4 Relay for moonafterrain@outlook.com/default with
 X-Original-From: Junrui Luo <moonafterrain@outlook.com>
 Reply-To: moonafterrain@outlook.com
 
-All five patches fix bugs the flexfiles layout driver hits while decoding
-a reply body from the metadata server.
+From: Junrui Luo <moonafterrain@outlook.com>
 
-Patches 1-3 are on the GETDEVICEINFO side.
+nfs4_ff_alloc_deviceid_node() decodes the multipath address list of a
+flexfiles device from the GETDEVICEINFO reply body. mp_count is taken
+straight off the wire and used as the loop bound for the
+nfs4_decode_mp_ds_addr() calls. nfs4_get_device_info() bounds pdev->pglen
+but not the counts encoded inside it, so a server can advertise up to
+2^32 - 1 addresses in a body that holds none of them.
 
-Patch 1 bounds the multipath address count. Once the xdr_stream is
-exhausted, nfs4_decode_mp_ds_addr() returns NULL without consuming a
-byte, so every remaining iteration re-fails at the same offset. A server
-advertising 0xffffffff addresses in a body that holds none of them spins
-the loop for roughly 2^32 iterations with no rescheduling point.
+Once the xdr_stream is exhausted the loop stops making progress:
+xdr_stream_decode_string_dup() fails in xdr_stream_decode_opaque_inline()
+, so nfs4_decode_mp_ds_addr() returns NULL without consuming a byte and
+every remaining iteration re-fails at the same offset. With mp_count set
+to 0xffffffff this spins for roughly 2^32 iterations with no rescheduling
+point, potentially tripping the soft lockup watchdog and the RCU stall
+detector on non-preemptible kernels. The list_empty(&dsaddrs) check
+below the loop only runs once the loop has finished.
 
-Patch 2 fixes a leak of the r_netid string. Both loops in
-nfs4_ff_alloc_deviceid_node() that drain the local dsaddrs list free
-da_remotestr and the da itself but not da_netid.
+Reject implausible counts up front, as ff_layout_alloc_lseg() already
+does for mirror_array_cnt and dss_count.
 
-Patch 3 checks the sscanf return in nfs4_decode_mp_ds_addr(). Nothing
-constrains the characters after the last two dots of r_addr, so an
-address such as "192.168.1.1.x.y" leaves the uninitialised tmp[] array
-unwritten. The stale stack contents become the data server port and are
-rendered into da_remotestr, which can leak client stack memory back to
-the metadata server.
-
-Patches 4-5 are on the LAYOUTGET side.
-
-Patch 4 bounds the filehandle version count, which sizes a kzalloc_objs()
-of struct nfs_fh. sizeof(struct nfs_fh) is 130, so a count of 32264 or
-more pushes get_order() past MAX_PAGE_ORDER and trips the page
-allocator's WARN_ON_ONCE_GFP().
-
-Patch 5 rejects a stripe_unit above U32_MAX. It is decoded and validated
-as a u64, but ff_layout_pg_test() narrows it to u32 and
-nfs4_ff_layout_calc_dss_id() passes it to do_div(), which narrows the
-divisor itself. A non-zero multiple of 2^32 therefore passes the
-existing zero check and reaches both dividers as a zero divisor.
-
-The five are independent of each other and can be applied in any order.
-
+Fixes: d67ae825a59d ("pnfs/flexfiles: Add the FlexFile Layout Driver")
+Reported-by: Yuhao Jiang <danisjiang@gmail.com>
+Assisted-by: Claude:claude-opus-5
+Cc: stable@vger.kernel.org
 Signed-off-by: Junrui Luo <moonafterrain@outlook.com>
 ---
-Junrui Luo (5):
-      NFSv4/flexfiles: bound the multipath address count
-      NFSv4/flexfiles: fix da_netid leak in nfs4_ff_alloc_deviceid_node()
-      NFSv4/pNFS: check the sscanf return in nfs4_decode_mp_ds_addr
-      NFSv4/flexfiles: bound the filehandle version count
-      NFSv4/flexfiles: bound stripe_unit to 32 bits
+ fs/nfs/flexfilelayout/flexfilelayout.h    | 4 ++++
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 5 +++++
+ 2 files changed, 9 insertions(+)
 
- fs/nfs/flexfilelayout/flexfilelayout.c    | 6 ++++--
- fs/nfs/flexfilelayout/flexfilelayout.h    | 9 +++++++++
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 7 +++++++
- fs/nfs/pnfs_nfs.c                         | 3 ++-
- 4 files changed, 22 insertions(+), 3 deletions(-)
----
-base-commit: 075b74841bd0065a3bda3440873c747938e69b68
-change-id: 20260804-nfs-fixes-b9a4d3f4e507
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index a5bd00f69e82..d024b8db4ce0 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -23,6 +23,10 @@
+ 
+ #define NFS4_FLEXFILE_LAYOUT_MAX_STRIPE_CNT 4096
+ 
++/* Filter out insanely large multipath address counts, which would
++ * otherwise let a server spin the GETDEVICEINFO decode loop. */
++#define NFS4_FLEXFILE_LAYOUT_MAX_MULTIPATH_CNT 4096
++
+ /* LAYOUTSTATS report interval in ms */
+ #define FF_LAYOUTSTATS_REPORT_INTERVAL (60000L)
+ #define FF_LAYOUTSTATS_MAXDEV 4
+diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+index 1109462a9699..659a2bf7b502 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
++++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+@@ -79,6 +79,11 @@ nfs4_ff_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
+ 	mp_count = be32_to_cpup(p);
+ 	dprintk("%s: multipath ds count %d\n", __func__, mp_count);
+ 
++	if (mp_count > NFS4_FLEXFILE_LAYOUT_MAX_MULTIPATH_CNT) {
++		ret = -EINVAL;
++		goto out_err_drain_dsaddrs;
++	}
++
+ 	for (i = 0; i < mp_count; i++) {
+ 		/* multipath ds */
+ 		da = nfs4_decode_mp_ds_addr(net, &stream, gfp_flags);
 
-Best regards,
 -- 
-Junrui Luo <moonafterrain@outlook.com>
+2.51.2
 
 
