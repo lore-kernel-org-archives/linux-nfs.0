@@ -1,205 +1,145 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 485CE3D3CFD;
-	Wed,  5 Aug 2026 18:31:17 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3D1D3ACEE2
+	for <linux-nfs@vger.kernel.org>; Wed,  5 Aug 2026 19:50:32 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785954682; cv=none; b=pmkQ2TtFlmaYLkGUymxTVLMMQZ7Rio2EOsimKzRDQZ32ZpFpINTsoYWTQ2mwP/+QBUtOUL1yFIsSAvvyrZvctSVZJ/F76ZdkUz4usoloUm5ei9kkXY9QhAEKyHBVqrQ4nrXA3SGEBFLq4RzyYTZHFmQEUDIWFJcQUMHTvdJY+Fc=
+	t=1785959434; cv=none; b=OxLdUgoWz7CYVR0MXbLrtf4ed6erlRMp8mLhGn1NtA5CHjTt55Xtba3vCqI53pAUEyrDr6cJWCAYnB43Hg2DkxrqjOT0b7pemZHFvdei+Q7J4yET+AH7t4OlgnSNjdZRLV6PpiOQWt4ZLr/RgxItFUj/yCDZEFCT6PP78WtmkKg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785954682; c=relaxed/simple;
-	bh=3oVNotWFtrAD9Xeka2+GhQHWAcGZfaj/Rdoma6xNEvE=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=E37aCDjchx0GiBEBHU//Fhej0aRRJAZauMRXPIFQdra7+NE5MRgDEdJprfEbvEu0sXCVveXpCBFtHBpDnvwKBWQRdk30x14zug8R+H6jwBe8e8nwMHDvXjWK8KJsY9+lY/VUnII7G5k+/eGkx68KBNd2TZizJAZzQjYF/U2ySCM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=UZCPeDF1; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1785959434; c=relaxed/simple;
+	bh=JX8cy79pJlbjx72ImZcLdmJCGFZssRBLYMijoi1njUA=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=U7Tk2JSBzw+liF90JInXMQLYOu7g9BRWwHAxt6aTglrxp6pjA8XXy7+owF70WvADLi6hpkX6q9wM0m+E0RuKkmQDms/Ao35bXgjLm/t0IlYJvyGcPAE8nvb/reZ24Xn15j9Sv/sb4EyBVhnUHhCglrtXgJJDCnNKCC/zyrZ0cJc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VxYoBPu9; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="UZCPeDF1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4BCCA1F000E9;
-	Wed,  5 Aug 2026 18:31:16 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VxYoBPu9"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 632B41F000E9;
+	Wed,  5 Aug 2026 19:50:32 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785954677;
-	bh=6MFLVkziX3hANiicO2h9CJB3xgQAuAMAQlVIbnpFQHw=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=UZCPeDF1C61F/rPFYQHnu9dZe7Nga1HdlU+dZTl1XG6j7igroxu/E7sUmedvq9JRR
-	 IqhSyYJkJY6z7D/KfQony0Sx4RO/falwXWWDyGCmBXdQiJ3AuX3CyKsK+59JgFN5Xq
-	 I4hglJcgrxglYfDepWwla8XDf46ybWdW+esBlndF6vV5OjjDIzAE6z3gw/1W+eo5OE
-	 wiguV8PjWKmbWYazDt3Yb/2J970L99qeLGJqQclm9GoZmX8JMgY3yWZ5DSPiGPpvGe
-	 kMIHBCRoPfrrbUeR9vWZ2qZOyr0X5wokVctNTymhlzovS8DXwVkIdh9malpeBhG66q
-	 +2O31pYEbFB/g==
-From: Chuck Lever <cel@kernel.org>
-Date: Wed, 05 Aug 2026 14:30:59 -0400
-Subject: [PATCH 8/8] SUNRPC: fold xs_sock_process_cmsg() into its only
- caller
+	s=k20260515; t=1785959432;
+	bh=jSX9/++yPs+X44XwS0REM7OiQ0eoXeoF7h2koRRLdAo=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=VxYoBPu96pW4qr+/gD4hV5QCQPpqTFjTJLHAmOmqEGDz+VOSzSmJt4MOpLKk5u1df
+	 LExlHSm5YMS8peO8SKo7yRQAasdvUAVyyXmXDHoHiWQUAVt1FwafYfh2baqf4TDOGf
+	 x+Ks8RopenzREQ1/nh6IcC9sgxcRTqY1LdadFCdVgwNvOFeH7g7cyzoGGW0vLAJmH3
+	 +NK7mJ1Q/OZWnabIGmOYBtSNRrbyadKHdOA3Q7Ktr3LFBZ+tl4p/b4VJScWc23rrFB
+	 na1l8215FHRND8I3808c8lGBSipnqSB7/Xwa8TYcPfo9qGFSRs3Pb5Cl6zIKZkyd6a
+	 gBhCO/HfhGYqg==
+Message-ID: <dc92eb66b8a78429eb81039fde982849e5ef6bee.camel@kernel.org>
+Subject: Re: [PATCH] nfs: fix ENXIO on O_CREAT open of existing symlink over
+ NFSv3
+From: Trond Myklebust <trondmy@kernel.org>
+To: Michael Nemanov <michael.nemanov@vastdata.com>, anna@kernel.org, 
+	neil@brown.name
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 05 Aug 2026 12:50:31 -0700
+In-Reply-To: <20260614122911.3485467-1-michael.nemanov@vastdata.com>
+References: <20260614122911.3485467-1-michael.nemanov@vastdata.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260805-svcsock-cmsg-fixes-v1-8-43514a32da9b@kernel.org>
-References: <20260805-svcsock-cmsg-fixes-v1-0-43514a32da9b@kernel.org>
-In-Reply-To: <20260805-svcsock-cmsg-fixes-v1-0-43514a32da9b@kernel.org>
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
- Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
- NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
- Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=4767; i=cel@kernel.org;
- h=from:subject:message-id; bh=3oVNotWFtrAD9Xeka2+GhQHWAcGZfaj/Rdoma6xNEvE=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqc4Fspouxp5p/KhrCamK9ZYwdhriXxsNUNPAn4
- bDqxSENAGGJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCanOBbAAKCRAzarMzb2Z/
- lyQsD/0TFdaepNsyWDafKfVLsE/5nGhGA5h8hRR2x5OwX0ldr/DSbxTMhpnBITsWBt15Mo9hEJD
- 7QDFaXu8xHZHQIdT82vtyAiAY6bVfB1iiE78Y/YulQY8ft18RbePQjlNz1XWiI0AdX/RE099fnC
- r0WZQspOfUfB00kzgxQ53ZobAJtB4s+lE8kD/jY/2zJ53aP/rWPlHKVbq1mophf9KgQj1KgY7Rr
- bUOSb/AZ1jpOKyGmppy0jIpe9emhOV/+988s510u8MzevoLamSVva1wMUwOjMLQ+6VuZUZquapv
- oGyKOLm4zFMdSBgRmeu/SliPDeADs2C1BY8LyqGImGimYKw3KKwNYH7QAh7yYzTA+URzVVZJpGH
- OsE0sAcwT7zsL9uHPQ3vyX/GzkCWmmebT036UzbuxYX4vM0ZhfqNDBVz7uKU25ochnk7MTG06xt
- 19i8qNGCC0Y8N7FIiFfmXtkU24AOXCv6W4CGAKSHUltnm5XxTOtTNkswV62f2St/WEppFlMILR+
- t2/1qtnfQTf4cxuUVSIVtBOviU2+bX2pcOLvYIOJRihBzqFuIlkoxCN91QLx49YixFiVCep1KCs
- 1jd+aqhNCVT2OT1re1QplU0lkIcZlqpm4MU6RoMATptXUP4lzTXAWtqP910mGV5PegT7tevEXNR
- Bz4ZZeQDJlgAlLA==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-xs_sock_process_cmsg() switches on the TLS record type, and every arm
-but TLS_RECORD_TYPE_ALERT returns the -EAGAIN its caller passed in.
-The DATA arm clears MSG_EOR in the caller's msghdr, but
-xs_sock_recvmsg() has already cleared that flag before the call.
-Deriving the record type a second time inside the helper also fires
-trace_tls_contenttype() twice for every alert.
+On Sun, 2026-06-14 at 12:29 +0000, Michael Nemanov wrote:
+> When open(2) is called with O_CREAT on a path that already exists as
+> a
+> symlink, over an NFSv3 mount with a cold dcache, the kernel returns
+> ENXIO instead of following the symlink to its target.
+>=20
+> Reproducer script (MNT is an NFSv3 mount, kernel is 7.1-rc6):
+>=20
+> MNT=3D/mnt/export
+> ln -sf /tmp/target $MNT/mylink
+> echo 3 | sudo tee /proc/sys/vm/drop_caches=C2=A0=C2=A0 # cold dcache
+>=20
+> python3 - <<'EOF'
+> import os
+> fd =3D os.open('/mnt/export/mylink', os.O_WRONLY | os.O_CREAT |
+> os.O_APPEND, 0o666)
+> os.close(fd)
+> EOF
+>=20
+> Expected: success (follow symlink, open target)
+> Actual:=C2=A0=C2=A0 OSError: [Errno 6] No such device or address
+>=20
+> The bug does not trigger when the dcache is warm (e.g. after a prior
+> stat(2)), because lookup_open() then finds a positive dentry and
+> skips
+> atomic_open entirely, leaving symlink resolution to the VFS.
+>=20
+> Root cause:
+> nfs_atomic_open_v23(), registered as inode->i_op->atomic_open for
+> NFSv3, handles O_CREAT by sending a CREATE UNCHECKED RPC. As
+> implemented in nfsd3_create_file() (fs/nfsd/nfs3proc.c) and as
+> required
+> by RFC 1813 (3.3.8), when the name already exists as a non-regular
+> file
+> the server returns NFS3_OK with the existing object's file handle
+> rather
+> than NFS3ERR_EXIST causing nfs_do_create() to return 0 with the
+> dentry now pointing to a symlink.
+> The code then unconditionally calls finish_open(), which dispatches
+> through inode->i_fop->open(). Symlink inodes never have i_fop set =E2=80=
+=94
+> the
+> VFS initialises it to &no_open_fops because POSIX requires open(2) to
+> follow symlinks, never open them directly. no_open() returns -ENXIO.
+>=20
+> Fix:
+> After nfs_do_create() succeeds, verify the returned inode is a
+> regular
+> file before calling finish_open(). If the object is not regular,
+> return
+> finish_no_open() so the VFS follows the symlink through the normal
+> open path.
+> !S_ISREG() is used rather than S_ISLNK() to cover any other non-
+> regular types
+> a server might return.
+>=20
+> Fixes: 7c6c5249f061 ("NFS: add atomic_open for NFSv3 to handle
+> O_TRUNC correctly.")
+> Signed-off-by: Michael Nemanov <michael.nemanov@vastdata.com>
+> Tested-by: Michael Nemanov <michael.nemanov@vastdata.com>
+> ---
+> =C2=A0fs/nfs/dir.c | 7 +++++++
+> =C2=A01 file changed, 7 insertions(+)
+>=20
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index e9ce1883288c5..6c78b06dd8699 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -2317,6 +2317,13 @@ int nfs_atomic_open_v23(struct inode *dir,
+> struct dentry *dentry,
+> =C2=A0	if (open_flags & O_CREAT) {
+> =C2=A0		error =3D nfs_do_create(dir, dentry, mode,
+> open_flags);
+> =C2=A0		if (!error) {
+> +			/* With UNCHECKED mode, a server may return
+> NFS3_OK for
+> +			 * a pre-existing non-regular file (e.g. a
+> symlink).
+> +			 * Let the VFS handle it; calling
+> finish_open() would
+> +			 * hit no_open() and return -ENXIO.
+> +			 */
+> +			if (d_inode(dentry) &&
+> !S_ISREG(d_inode(dentry)->i_mode))
+> +				return finish_no_open(file, dentry);
 
-Move the alert handling into xs_sock_recv_cmsg() and delete the
-helper. Every other record type still returns -EAGAIN. The DATA arm's
-account of MSG_EOR moves to xs_sock_recvmsg(), where the flag is
-cleared.
+This will cause the dentry to underflow the refcount. It needs to be
+finish_no_open(file, NULL).
 
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- net/sunrpc/xprtsock.c | 85 ++++++++++++++++++---------------------------------
- 1 file changed, 30 insertions(+), 55 deletions(-)
+> =C2=A0			file->f_mode |=3D FMODE_CREATED;
+> =C2=A0			return finish_open(file, dentry, NULL);
+> =C2=A0		} else if (error !=3D -EEXIST || open_flags & O_EXCL)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 5527f7f8a185..38dd75a23af7 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -356,45 +356,6 @@ xs_alloc_sparse_pages(struct xdr_buf *buf, size_t want, gfp_t gfp)
- 	return want;
- }
- 
--static int
--xs_sock_process_cmsg(struct socket *sock, struct msghdr *msg,
--		     unsigned int *msg_flags, struct cmsghdr *cmsg, int ret)
--{
--	u8 content_type = tls_get_record_type(sock->sk, cmsg);
--	u8 level, description;
--
--	switch (content_type) {
--	case 0:
--		break;
--	case TLS_RECORD_TYPE_DATA:
--		/* TLS sets EOR at the end of each application data
--		 * record, even though there might be more frames
--		 * waiting to be decrypted.
--		 */
--		*msg_flags &= ~MSG_EOR;
--		break;
--	case TLS_RECORD_TYPE_ALERT:
--		tls_alert_recv(sock->sk, msg, &level, &description);
--		/* RFC 8446 Section 6: every alert but a closure alert is
--		 * an error alert, whatever the legacy AlertLevel octet
--		 * says.
--		 */
--		switch (description) {
--		case TLS_ALERT_DESC_CLOSE_NOTIFY:
--		case TLS_ALERT_DESC_USER_CANCELED:
--			ret = -EAGAIN;
--			break;
--		default:
--			ret = -EACCES;
--		}
--		break;
--	default:
--		/* discard this record type */
--		ret = -EAGAIN;
--	}
--	return ret;
--}
--
- static int
- xs_sock_recv_cmsg(struct socket *sock, unsigned int *msg_flags, int flags)
- {
-@@ -412,6 +373,7 @@ xs_sock_recv_cmsg(struct socket *sock, unsigned int *msg_flags, int flags)
- 		.msg_control = &u,
- 		.msg_controllen = sizeof(u),
- 	};
-+	u8 level, description;
- 	int ret;
- 
- 	iov_iter_kvec(&msg.msg_iter, ITER_DEST, &alert_kvec, 1,
-@@ -421,23 +383,32 @@ xs_sock_recv_cmsg(struct socket *sock, unsigned int *msg_flags, int flags)
- 	 * kTLS filled in u.cmsg.
- 	 */
- 	if (ret >= 0 && msg.msg_controllen < sizeof(u)) {
--		if (tls_get_record_type(sock->sk, &u.cmsg) ==
--		    TLS_RECORD_TYPE_ALERT) {
--			/* RFC 8446 Section 5.1 requires a record with an
--			 * Alert type to carry exactly one message. An alert
--			 * is two octets. tls_alert_recv() reads both without
--			 * checking the length. alert_kvec caps the count at
--			 * two, so a longer record fills it as well. kTLS
--			 * sets MSG_EOR only once the record has been
--			 * drained.
--			 */
--			if (ret != sizeof(alert) ||
--			    !(msg.msg_flags & MSG_EOR))
--				return -EACCES;
--			iov_iter_revert(&msg.msg_iter, ret);
-+		if (tls_get_record_type(sock->sk, &u.cmsg) !=
-+		    TLS_RECORD_TYPE_ALERT)
-+			return -EAGAIN;
-+		/* RFC 8446 Section 5.1: a record with an Alert type carries
-+		 * exactly one message, and an alert is two octets.
-+		 * tls_alert_recv() reads both without checking the length.
-+		 * alert_kvec caps the count at two, so a longer record
-+		 * fills it as well. kTLS sets MSG_EOR only once the
-+		 * record has been drained.
-+		 */
-+		if (ret != sizeof(alert) || !(msg.msg_flags & MSG_EOR))
-+			return -EACCES;
-+		iov_iter_revert(&msg.msg_iter, ret);
-+		tls_alert_recv(sock->sk, &msg, &level, &description);
-+		/* RFC 8446 Section 6: every alert but a closure alert is
-+		 * an error alert, whatever the legacy AlertLevel octet
-+		 * says.
-+		 */
-+		switch (description) {
-+		case TLS_ALERT_DESC_CLOSE_NOTIFY:
-+		case TLS_ALERT_DESC_USER_CANCELED:
-+			ret = -EAGAIN;
-+			break;
-+		default:
-+			ret = -EACCES;
- 		}
--		ret = xs_sock_process_cmsg(sock, &msg, msg_flags, &u.cmsg,
--					   -EAGAIN);
- 	}
- 	return ret;
- }
-@@ -451,6 +422,10 @@ xs_sock_recvmsg(struct socket *sock, struct msghdr *msg, int flags, size_t seek)
- 	ret = sock_recvmsg(sock, msg, flags);
- 	/* Handle TLS inband control message lazily */
- 	if (msg->msg_flags & MSG_CTRUNC) {
-+		/* TLS sets EOR at the end of each application data
-+		 * record, even though there might be more frames
-+		 * waiting to be decrypted.
-+		 */
- 		msg->msg_flags &= ~(MSG_CTRUNC | MSG_EOR);
- 		if (ret == 0 || ret == -EIO)
- 			ret = xs_sock_recv_cmsg(sock, &msg->msg_flags, flags);
-
--- 
-2.54.0
-
+--=20
+Trond Myklebust
+Linux NFS client maintainer, Hammerspace
+trondmy@kernel.org, trond.myklebust@hammerspace.com
