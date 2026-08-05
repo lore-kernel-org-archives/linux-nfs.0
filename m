@@ -1,41 +1,45 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E3D1D3ACEE2
-	for <linux-nfs@vger.kernel.org>; Wed,  5 Aug 2026 19:50:32 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 551473D5C23;
+	Wed,  5 Aug 2026 20:12:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1785959434; cv=none; b=OxLdUgoWz7CYVR0MXbLrtf4ed6erlRMp8mLhGn1NtA5CHjTt55Xtba3vCqI53pAUEyrDr6cJWCAYnB43Hg2DkxrqjOT0b7pemZHFvdei+Q7J4yET+AH7t4OlgnSNjdZRLV6PpiOQWt4ZLr/RgxItFUj/yCDZEFCT6PP78WtmkKg=
+	t=1785960750; cv=none; b=P4m3Mfd6r8JEOsD3LXwEb0p8cNZA8RlCDT6sN5t/wa2AdLRQUA7JqVK+AuV+Ho5xPBeRO6nIq+0DzoqGZVyLFLvec5Vz92CAgTuCbEb+3U4Z75uSSW52fmz0GTMwWHU4cEXrn0yBugRUDspxJk6G0m+az4MOfOXhkrKxpZN+jMk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1785959434; c=relaxed/simple;
-	bh=JX8cy79pJlbjx72ImZcLdmJCGFZssRBLYMijoi1njUA=;
+	s=arc-20240116; t=1785960750; c=relaxed/simple;
+	bh=HpPe5n1hdt+tdtFIiHbWgETDQGeqXLmppg4EelkUM3g=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=U7Tk2JSBzw+liF90JInXMQLYOu7g9BRWwHAxt6aTglrxp6pjA8XXy7+owF70WvADLi6hpkX6q9wM0m+E0RuKkmQDms/Ao35bXgjLm/t0IlYJvyGcPAE8nvb/reZ24Xn15j9Sv/sb4EyBVhnUHhCglrtXgJJDCnNKCC/zyrZ0cJc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=VxYoBPu9; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=cO9DpV5tU1CtAQiKvGwiH3L+FDIJJkhYJQOnm/vFtswrZCddOHsYYbYQ/Z/FdsytpGpjB8rFyEyNz3bN4vjnA5HYVeOunDH9gLw4BRVGCPFkjP2oQbqY8P7G+vNm1sHeQpx0ogsTJM6pGi5cPxwLxgltbHxhqfSHf2lOt6cwoYM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mT+XTq2B; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="VxYoBPu9"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 632B41F000E9;
-	Wed,  5 Aug 2026 19:50:32 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mT+XTq2B"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 834D11F000E9;
+	Wed,  5 Aug 2026 20:12:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1785959432;
-	bh=jSX9/++yPs+X44XwS0REM7OiQ0eoXeoF7h2koRRLdAo=;
+	s=k20260515; t=1785960748;
+	bh=qKhFZjwoh9Z7eU7u5SE3stvRd+5tWHmU3iujv6Zqs9o=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=VxYoBPu96pW4qr+/gD4hV5QCQPpqTFjTJLHAmOmqEGDz+VOSzSmJt4MOpLKk5u1df
-	 LExlHSm5YMS8peO8SKo7yRQAasdvUAVyyXmXDHoHiWQUAVt1FwafYfh2baqf4TDOGf
-	 x+Ks8RopenzREQ1/nh6IcC9sgxcRTqY1LdadFCdVgwNvOFeH7g7cyzoGGW0vLAJmH3
-	 +NK7mJ1Q/OZWnabIGmOYBtSNRrbyadKHdOA3Q7Ktr3LFBZ+tl4p/b4VJScWc23rrFB
-	 na1l8215FHRND8I3808c8lGBSipnqSB7/Xwa8TYcPfo9qGFSRs3Pb5Cl6zIKZkyd6a
-	 gBhCO/HfhGYqg==
-Message-ID: <dc92eb66b8a78429eb81039fde982849e5ef6bee.camel@kernel.org>
-Subject: Re: [PATCH] nfs: fix ENXIO on O_CREAT open of existing symlink over
- NFSv3
+	b=mT+XTq2BfoSjPDlU9PyzvB/WtaP3b68LUWHOQJXMFIbiI7NOPxSmb38BPMhlBg1OJ
+	 urrSbyln5OArGUsMad+g7iB3f8FeTYULIrs87MlqNJzaHF+Gzxy/h8XRlsI25BHBwQ
+	 YJq2oxxs6qJInAoMUR44sdNNjikbXHW5BgCxi4Mzlyh8s8Vzbd3derZbGrDlliQpcL
+	 B58XbcZGE1s/a8zi2D7+VRUoOOIxndMbaxkYaGKUd6ZtvrH0CrLEv38GqBmlhoa4lq
+	 9CwWzvbJ2GtuGi927kivy1AHfPZDYkcK/bfp5lyIpLVH4sed4b8sWuFCtIwVSlgCL2
+	 Al1My28izQvzA==
+Message-ID: <a7fe5eadb2999b8d95595e73d3b99d76df6895a4.camel@kernel.org>
+Subject: Re: [PATCH v3 5/5] nfs: introduce nfs_direct_extract_pages helper
 From: Trond Myklebust <trondmy@kernel.org>
-To: Michael Nemanov <michael.nemanov@vastdata.com>, anna@kernel.org, 
-	neil@brown.name
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 05 Aug 2026 12:50:31 -0700
-In-Reply-To: <20260614122911.3485467-1-michael.nemanov@vastdata.com>
-References: <20260614122911.3485467-1-michael.nemanov@vastdata.com>
+To: Pranjal Shrivastava <praan@google.com>, Anna Schumaker
+ <anna@kernel.org>, 	linux-nfs@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+	linux-kernel@vger.kernel.org, Christoph Hellwig <hch@lst.de>, Logan
+ Gunthorpe	 <logang@deltatee.com>, Jason Gunthorpe <jgg@ziepe.ca>, 
+	linux-pci@vger.kernel.org, linux-rdma@vger.kernel.org, Shivaji Kant	
+ <shivajikant@google.com>
+Date: Wed, 05 Aug 2026 13:12:28 -0700
+In-Reply-To: <20260715143540.3597616-6-praan@google.com>
+References: <20260715143540.3597616-1-praan@google.com>
+	 <20260715143540.3597616-6-praan@google.com>
 Content-Type: text/plain; charset="UTF-8"
 Content-Transfer-Encoding: quoted-printable
 User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
@@ -46,98 +50,266 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Sun, 2026-06-14 at 12:29 +0000, Michael Nemanov wrote:
-> When open(2) is called with O_CREAT on a path that already exists as
-> a
-> symlink, over an NFSv3 mount with a cold dcache, the kernel returns
-> ENXIO instead of following the symlink to its target.
+On Wed, 2026-07-15 at 14:35 +0000, Pranjal Shrivastava wrote:
+> Introduce nfs_direct_extract_pages() in direct.c to centralize page
+> extraction and request creation for the Direct I/O path. The helper
+> manages extraction from the iters and builds a list of nfs_page
+> requests
 >=20
-> Reproducer script (MNT is an NFSv3 mount, kernel is 7.1-rc6):
+> Refactor nfs_direct_read_schedule_iovec() and
+> nfs_direct_write_schedule_iovec() to utilize the new helper, unifying
+> the extraction logic on both paths.
 >=20
-> MNT=3D/mnt/export
-> ln -sf /tmp/target $MNT/mylink
-> echo 3 | sudo tee /proc/sys/vm/drop_caches=C2=A0=C2=A0 # cold dcache
->=20
-> python3 - <<'EOF'
-> import os
-> fd =3D os.open('/mnt/export/mylink', os.O_WRONLY | os.O_CREAT |
-> os.O_APPEND, 0o666)
-> os.close(fd)
-> EOF
->=20
-> Expected: success (follow symlink, open target)
-> Actual:=C2=A0=C2=A0 OSError: [Errno 6] No such device or address
->=20
-> The bug does not trigger when the dcache is warm (e.g. after a prior
-> stat(2)), because lookup_open() then finds a positive dentry and
-> skips
-> atomic_open entirely, leaving symlink resolution to the VFS.
->=20
-> Root cause:
-> nfs_atomic_open_v23(), registered as inode->i_op->atomic_open for
-> NFSv3, handles O_CREAT by sending a CREATE UNCHECKED RPC. As
-> implemented in nfsd3_create_file() (fs/nfsd/nfs3proc.c) and as
-> required
-> by RFC 1813 (3.3.8), when the name already exists as a non-regular
-> file
-> the server returns NFS3_OK with the existing object's file handle
-> rather
-> than NFS3ERR_EXIST causing nfs_do_create() to return 0 with the
-> dentry now pointing to a symlink.
-> The code then unconditionally calls finish_open(), which dispatches
-> through inode->i_fop->open(). Symlink inodes never have i_fop set =E2=80=
-=94
-> the
-> VFS initialises it to &no_open_fops because POSIX requires open(2) to
-> follow symlinks, never open them directly. no_open() returns -ENXIO.
->=20
-> Fix:
-> After nfs_do_create() succeeds, verify the returned inode is a
-> regular
-> file before calling finish_open(). If the object is not regular,
-> return
-> finish_no_open() so the VFS follows the symlink through the normal
-> open path.
-> !S_ISREG() is used rather than S_ISLNK() to cover any other non-
-> regular types
-> a server might return.
->=20
-> Fixes: 7c6c5249f061 ("NFS: add atomic_open for NFSv3 to handle
-> O_TRUNC correctly.")
-> Signed-off-by: Michael Nemanov <michael.nemanov@vastdata.com>
-> Tested-by: Michael Nemanov <michael.nemanov@vastdata.com>
+> Signed-off-by: Pranjal Shrivastava <praan@google.com>
 > ---
-> =C2=A0fs/nfs/dir.c | 7 +++++++
-> =C2=A01 file changed, 7 insertions(+)
+> =C2=A0fs/nfs/direct.c | 127 ++++++++++++++++++++++++---------------------=
+-
+> --
+> =C2=A01 file changed, 64 insertions(+), 63 deletions(-)
 >=20
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index e9ce1883288c5..6c78b06dd8699 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -2317,6 +2317,13 @@ int nfs_atomic_open_v23(struct inode *dir,
-> struct dentry *dentry,
-> =C2=A0	if (open_flags & O_CREAT) {
-> =C2=A0		error =3D nfs_do_create(dir, dentry, mode,
-> open_flags);
-> =C2=A0		if (!error) {
-> +			/* With UNCHECKED mode, a server may return
-> NFS3_OK for
-> +			 * a pre-existing non-regular file (e.g. a
-> symlink).
-> +			 * Let the VFS handle it; calling
-> finish_open() would
-> +			 * hit no_open() and return -ENXIO.
-> +			 */
-> +			if (d_inode(dentry) &&
-> !S_ISREG(d_inode(dentry)->i_mode))
-> +				return finish_no_open(file, dentry);
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index b9ac0a67693c..d31e4720ffff 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -178,6 +178,50 @@ static void nfs_direct_release_pages(struct page
+> **pages, unsigned int npages,
+> =C2=A0	}
+> =C2=A0}
+> =C2=A0
+> +static ssize_t nfs_direct_extract_pages(struct nfs_direct_req *dreq,
+> +					 struct iov_iter *iter,
+> +					 size_t size, loff_t *pos,
+> +					 struct list_head *list)
+> +{
+> +	bool pinned =3D iov_iter_extract_will_pin(iter);
+> +	struct page **pagevec =3D NULL;
+> +	ssize_t result, bytes =3D 0;
+> +	unsigned int npages, i;
+> +	size_t pgbase;
+> +
+> +	result =3D iov_iter_extract_pages(iter, &pagevec, size, ~0U,
+> 0, &pgbase);
+> +	if (result <=3D 0)
+> +		return result;
+> +
+> +	npages =3D (result + pgbase + PAGE_SIZE - 1) >> PAGE_SHIFT;
+> +	for (i =3D 0; i < npages; i++) {
+> +		struct nfs_page *req;
+> +		unsigned int req_len =3D min_t(size_t, result - bytes,
+> PAGE_SIZE - pgbase);
+> +
+> +		req =3D nfs_page_create_from_page(dreq->ctx,
+> pagevec[i],
+> +						pinned, pgbase,
+> *pos,
+> +						req_len);
+> +		if (IS_ERR(req)) {
+> +			if (!bytes)
+> +				bytes =3D PTR_ERR(req);
+> +			break;
+> +		}
+> +
+> +		list_add_tail(&req->wb_list, list);
+> +		pgbase =3D 0;
+> +		bytes +=3D req_len;
+> +		*pos +=3D req_len;
+> +	}
+> +
+> +	if (i < npages) {
+> +		iov_iter_revert(iter, result - bytes);
 
-This will cause the dentry to underflow the refcount. It needs to be
-finish_no_open(file, NULL).
+Oopsable if bytes =3D=3D PTR_ERR(req)
 
-> =C2=A0			file->f_mode |=3D FMODE_CREATED;
-> =C2=A0			return finish_open(file, dentry, NULL);
-> =C2=A0		} else if (error !=3D -EEXIST || open_flags & O_EXCL)
+> +		nfs_direct_release_pages(pagevec + i, npages - i,
+> pinned);
+
+See what happens above with swap over NFS (which sets pinned =3D false).
+
+> +	}
+> +
+> +	kvfree(pagevec);
+> +	return bytes;
+> +}
+> +
+> =C2=A0void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
+> =C2=A0			=C2=A0=C2=A0=C2=A0=C2=A0=C2=A0 struct nfs_direct_req *dreq)
+> =C2=A0{
+> @@ -346,6 +390,7 @@ static ssize_t
+> nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+> =C2=A0	ssize_t result =3D -EINVAL;
+> =C2=A0	size_t requested_bytes =3D 0;
+> =C2=A0	size_t rsize =3D max_t(size_t, NFS_SERVER(inode)->rsize,
+> PAGE_SIZE);
+> +	LIST_HEAD(nfs_page_list);
+> =C2=A0
+> =C2=A0	nfs_pageio_init_read(&desc, dreq->inode, false,
+> =C2=A0			=C2=A0=C2=A0=C2=A0=C2=A0 &nfs_direct_read_completion_ops);
+> @@ -354,43 +399,23 @@ static ssize_t
+> nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+> =C2=A0	inode_dio_begin(inode);
+> =C2=A0
+> =C2=A0	while (iov_iter_count(iter)) {
+> -		struct page **pagevec =3D NULL;
+> -		size_t bytes;
+> -		size_t pgbase;
+> -		unsigned npages, i;
+> -		bool pinned =3D iov_iter_extract_will_pin(iter);
+> -
+> -		result =3D iov_iter_extract_pages(iter, &pagevec,
+> -						rsize, ~0U, 0,
+> &pgbase);
+> +		result =3D nfs_direct_extract_pages(dreq, iter, rsize,
+> &pos, &nfs_page_list);
+> =C2=A0		if (result < 0)
+> =C2=A0			break;
+> =C2=A0
+> -		bytes =3D result;
+> -		npages =3D (result + pgbase + PAGE_SIZE - 1) /
+> PAGE_SIZE;
+> -		for (i =3D 0; i < npages; i++) {
+> -			struct nfs_page *req;
+> -			unsigned int req_len =3D min_t(size_t, bytes,
+> PAGE_SIZE - pgbase);
+> -			/* XXX do we need to do the eof zeroing
+> found in async_filler? */
+> -			req =3D nfs_page_create_from_page(dreq->ctx,
+> pagevec[i],
+> -							pinned,
+> pgbase, pos,
+> -							req_len);
+> -			if (IS_ERR(req)) {
+> -				result =3D PTR_ERR(req);
+> -				break;
+> -			}
+> +		while (!list_empty(&nfs_page_list)) {
+> +			struct nfs_page *req =3D
+> nfs_list_entry(nfs_page_list.next);
+> +			size_t req_len =3D req->wb_bytes;
+> +
+> +			nfs_list_remove_request(req);
+> =C2=A0			if (!nfs_pageio_add_request(&desc, req)) {
+> =C2=A0				result =3D desc.pg_error;
+> =C2=A0				nfs_release_request(req);
+> +				nfs_release_request_list(&nfs_page_l
+> ist);
+> =C2=A0				break;
+> =C2=A0			}
+> -			pgbase =3D 0;
+> -			bytes -=3D req_len;
+> =C2=A0			requested_bytes +=3D req_len;
+> -			pos +=3D req_len;
+> =C2=A0		}
+> -		if (i < npages)
+> -			nfs_direct_release_pages(pagevec + i, npages
+> - i, pinned);
+> -		kvfree(pagevec);
+> =C2=A0		if (result < 0)
+> =C2=A0			break;
+> =C2=A0	}
+> @@ -881,6 +906,7 @@ static ssize_t
+> nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+> =C2=A0	ssize_t result =3D 0;
+> =C2=A0	size_t requested_bytes =3D 0;
+> =C2=A0	size_t wsize =3D max_t(size_t, NFS_SERVER(inode)->wsize,
+> PAGE_SIZE);
+> +	LIST_HEAD(nfs_page_list);
+> =C2=A0	bool defer =3D false;
+> =C2=A0
+> =C2=A0	trace_nfs_direct_write_schedule_iovec(dreq);
+> @@ -893,55 +919,32 @@ static ssize_t
+> nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+> =C2=A0
+> =C2=A0	NFS_I(inode)->write_io +=3D iov_iter_count(iter);
+> =C2=A0	while (iov_iter_count(iter)) {
+> -		struct page **pagevec =3D NULL;
+> -		size_t bytes;
+> -		size_t pgbase;
+> -		unsigned npages, i;
+> -		bool pinned =3D iov_iter_extract_will_pin(iter);
+> -
+> -		result =3D iov_iter_extract_pages(iter, &pagevec,
+> -						wsize, ~0U, 0,
+> &pgbase);
+> +		result =3D nfs_direct_extract_pages(dreq, iter, wsize,
+> &pos, &nfs_page_list);
+> =C2=A0		if (result < 0)
+> =C2=A0			break;
+> =C2=A0
+> -		bytes =3D result;
+> -		npages =3D (result + pgbase + PAGE_SIZE - 1) /
+> PAGE_SIZE;
+> -		for (i =3D 0; i < npages; i++) {
+> -			struct nfs_page *req;
+> -			unsigned int req_len =3D min_t(size_t, bytes,
+> PAGE_SIZE - pgbase);
+> -
+> -			req =3D nfs_page_create_from_page(dreq->ctx,
+> pagevec[i],
+> -							pinned,
+> pgbase, pos,
+> -							req_len);
+> -			if (IS_ERR(req)) {
+> -				result =3D PTR_ERR(req);
+> -				break;
+> -			}
+> -
+> -			if (desc.pg_error < 0) {
+> -				nfs_free_request(req);
+> -				result =3D desc.pg_error;
+> -				break;
+> -			}
+> -
+> -			pgbase =3D 0;
+> -			bytes -=3D req_len;
+> -			requested_bytes +=3D req_len;
+> -			pos +=3D req_len;
+> +		while (!list_empty(&nfs_page_list)) {
+> +			struct nfs_page *req =3D
+> nfs_list_entry(nfs_page_list.next);
+> +			size_t req_len =3D req->wb_bytes;
+> =C2=A0
+> +			nfs_list_remove_request(req);
+> =C2=A0			if (defer) {
+> =C2=A0				nfs_mark_request_commit(req, NULL,
+> &cinfo, 0);
+> +				requested_bytes +=3D req_len;
+> =C2=A0				continue;
+> =C2=A0			}
+> =C2=A0
+> =C2=A0			nfs_lock_request(req);
+> -			if (nfs_pageio_add_request(&desc, req))
+> +			if (nfs_pageio_add_request(&desc, req)) {
+> +				requested_bytes +=3D req_len;
+> =C2=A0				continue;
+> +			}
+> =C2=A0
+> =C2=A0			/* Exit on hard errors */
+> =C2=A0			if (desc.pg_error < 0 && desc.pg_error !=3D -
+> EAGAIN) {
+> =C2=A0				result =3D desc.pg_error;
+> =C2=A0				nfs_unlock_and_release_request(req);
+> +				nfs_release_request_list(&nfs_page_l
+> ist);
+> =C2=A0				break;
+> =C2=A0			}
+> =C2=A0
+> @@ -952,12 +955,10 @@ static ssize_t
+> nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+> =C2=A0			spin_unlock(&dreq->lock);
+> =C2=A0			nfs_unlock_request(req);
+> =C2=A0			nfs_mark_request_commit(req, NULL, &cinfo,
+> 0);
+> +			requested_bytes +=3D req_len;
+> =C2=A0			desc.pg_error =3D 0;
+> =C2=A0			defer =3D true;
+> =C2=A0		}
+> -		if (i < npages)
+> -			nfs_direct_release_pages(pagevec + i, npages
+> - i, pinned);
+> -		kvfree(pagevec);
+> =C2=A0		if (result < 0)
+> =C2=A0			break;
+> =C2=A0	}
 
 --=20
 Trond Myklebust
