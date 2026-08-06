@@ -1,129 +1,134 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9A006390CA6
-	for <linux-nfs@vger.kernel.org>; Thu,  6 Aug 2026 13:53:10 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D160E490C0C;
+	Thu,  6 Aug 2026 20:20:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786024393; cv=none; b=CbcArBHc5k2uHZA5LQzM3Dxnhr3nZRx9yS7V6UXb5sRIPb9ev5Nq+uaN6wu064hlVQn4kWC4czjwIne+HorCtJTgDQgCah86p4ja3l7sQ5EuKFlizVRNZUAQUvInIRpynXNwugGyowSfD4TqEx/Ql19aw+NpnISkIAqDtgmw1iw=
+	t=1786047631; cv=none; b=kFsjrp92owejfjyHOScGXm2NpmerbdBZSVewI81uA+q1B1SmttI1Hadl/s33mdJMuJ4egz24oU/QavL7DkOHcSl9sg+Zp/9ND5t+5PGOe5rrP6K3w77ffm+8HgFo7BTtxVnkuoNbbiBtyF+q9pJ5WIjal/n7EyKnk3DlUdUz/es=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786024393; c=relaxed/simple;
-	bh=lu4N1hy1Tw3akjvHoiNm6PmdBBM5xTGFmojGa5ch3/Q=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=LYMe1l6uZ04tmAEVUYia4UKHJ794iN+3+vcwm7AL3Nl7EXkZPUY/ClEMAVzwQV0eTBKPDZMrxd/P2IILcJ78jp0o98QW3E9ipfEzBTvIWShCoETYEEZ1HXPrkjgoG4LqeagAyplLILTgFD9kV4vXDjDfnP8yPc2qHlqWCkOCTjU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=X4gI1idt; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786047631; c=relaxed/simple;
+	bh=gOy84EJeuacq41WL5JoUaZlQrNu2y755XW2zveknySY=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=AW7QcN1R1kjgl09LKAEluah3HYUzARqmC0PEGYePL2VPVQMbiVGnN5RLrF66LR5/tt/1canfr61yUrmdjSZcNguLrwUztblzglJlV2qbE8EzmzzOQNbRQJ0RsnPxL1fue4nB0XFcao8Pl2XyQylJVUGPNHxyG8gUqwJw4bcCvaI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=DfszwPU2; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="X4gI1idt"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 014411F00A3D;
-	Thu,  6 Aug 2026 13:53:09 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="DfszwPU2"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AF3B61F000E9;
+	Thu,  6 Aug 2026 20:20:28 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786024390;
-	bh=GB4AZUIRmL3Fcnxl/7t+ZjAv1enQyqzy2IaxSBuICes=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=X4gI1idtpOMYC0Lvq+4zkf06GkMXwAUP+yuPOR7RZr3iHzB/RMNodxe2+P4f8m58C
-	 cXvH5zRHw92O71hS+isqLMQLainRehVdpXw2DnYBeDWiqTNduWg2PVZSDFwByEA3YO
-	 KDh2rItoFD9FyYRxXZqk4lbBbbZUlnNpFR/BX1ptAtjFQ7sNhwiXFD0+4pPIt0liw8
-	 4E8kmsZ7DtQAH4GkIv9f4Ah1+iMJ5hN8Qbza4U5Sw3TJ/4QL/RoE88bhXHlQs3snGj
-	 E1zt+nl6kjsJ+JG32zDlQ8nMDhIjKKqiKLdpBN6rHcEKuUsb082C7zjJvWrV6D/ohm
-	 5i98fVcz9iiog==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id E7DA6F40069;
-	Thu,  6 Aug 2026 09:53:08 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Thu, 06 Aug 2026 09:53:08 -0400
-X-ME-Sender: <xms:xJF0atIJdpV8GTyYSBbINRluFW0rp4sAwh1ZprGH9bivWMWJUil9bA>
-    <xme:xJF0aj-uO7WmtcjhWtHXY5uALrX_Ly0z25l9EDkKj0oc-UrdSwIoAwTUttEJAJ7s6
-    dK97detygV-Xan6kPGXQn4kpELPjODqBWBFrDXOjBT4mG6bTXGIgNFl>
-X-ME-Proxy-Cause: dmFkZTFIgW+40EDoq6W30tZ+hqIeKpRJJIL259269s71nD6+MMjDBs9/SOpMKdAUJQCL0W
-    YkRNIX6kf/ULdpxJGMncXe3O9qwefnFpCioQD1grvHaZZA1qOwAmkCrWiPW/3wPR2MyxmO
-    znZierfMpv3Nk9XmF+rtuzt/n4bc8yw99vGdAkt5xThaMiSft7qKUgREW0F5lGLtBO5udh
-    sgXKriiK6IGbQgZfv4lW8ZWa8JqPSOng4dOKXidTK8Y3YJo+Gf4Wt1DryYsGochcLawznZ
-    Rz3GZKXwOWdAOtISA7Tf9/LG9pprXJ8pBiBEuNaRpDUVZlbWJqM5uQK2kMbGJY8s5bRIGq
-    2fsWWq9UOfmodNXtplT+qThHI8yK1OzkEdyVDBC/fpqBSiE950EC3Dk5kOaBvy//lkeCTr
-    LYFtJ8J5KnYAZo/s8vTHnqS7cnA3c+IGllSOEYRu9pKnZsO+YjhqJVn8/oujVKP4hFF6J+
-    VWb5gEycGpx3JCELVcRhqSLPw31BlbWGhkmXKvM9/yO3GyBlYTr/f9d/Io/I+QWFWUElET
-    NtgSXG/71xhuMOyI5XVUmb5S4UGjQg/EY45PVd/2jm35apQQ6oXa6gvmkDUOhrH573+we8
-    5zLklxjgnk1IP9UZ0VBb+QT82Rrv6bck8MQ5Qh2rc8utaE8F+0/lyqk1xqUQ
-X-ME-Proxy: <xmx:xJF0auvQpSqlwIjkze3euuQDcDunenOaP6CX_p3y5UQShxeGzzn0PA>
-    <xmx:xJF0avXo1XsXU0npvE2OiJfTLCdR_BAeeLHwSrc6mWyS0kcQRhK4Dg>
-    <xmx:xJF0amxpB_Hv4K_C6lgjW4_nG-WT1QqHLWWZ1Gu0tG5Q2uh41YqsrA>
-    <xmx:xJF0auFVoN39Swtg9rzFTP0kQx-EnLWleOKZWrFEDwzf8hcQ6xp4LA>
-    <xmx:xJF0ajvwKXxkRO-Vpk8-IwaT1HzaHQ9EEbFgZiAIb_pMLVvvklGZJTQD>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id C8C56780070; Thu,  6 Aug 2026 09:53:08 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	s=k20260515; t=1786047629;
+	bh=P7xR4kJ3TzeQAibDRUXYrSK8ohiNUtnD9JpvD99AZhw=;
+	h=From:Subject:Date:To:Cc;
+	b=DfszwPU2wWmOkRKFmIptfTLN2n8541bu3nCAbGSmiRDJhwUfZrLxRSzFAOPe5cji+
+	 YSUC5a4titSRIJQ4wBzYxo9SgkaZqvPhgNZZqHQ+hzCSVAQOwHgUAljSvyJTwtC0YZ
+	 FC3cv8Ytj3EbiZ3qUZSrAsNGqnM7Z332lZ5YdOBDMGh4pNFNt7dIyLLEUSzw/Nd6KM
+	 EETNTiTgXuXLRTnsSyZ0hirlp7k6gNOkLhShtH70SesltTC5Vt8zbf7oC/iLqvqVMr
+	 9nMx+TLj/30smdGd68Uxey1FhBBOxIhHsBHThMwMnUBLmXsgRzdiHcVgNx85DKiLZp
+	 cIuqmfBsdQLRg==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH v2 0/8] SUNRPC: Fix TLS control record handling
+Date: Thu, 06 Aug 2026 16:20:15 -0400
+Message-Id: <20260806-svcsock-cmsg-fixes-v2-0-ef1b1fa7219a@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AMugUo73TJ9c
-Date: Thu, 06 Aug 2026 09:52:48 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Lai Zewei" <laizewei3@huawei.com>, "Jeff Layton" <jlayton@kernel.org>,
- NeilBrown <neil@brown.name>, "Olga Kornievskaia" <okorniev@redhat.com>,
- "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom Talpey" <tom@talpey.com>,
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: "Zhihao Cheng" <chengzhihao1@huawei.com>, yi.zhang@huawei.com,
- yangerkun <yangerkun@huawei.com>
-Message-Id: <ebaef949-41fc-4a17-807a-9343510e6419@app.fastmail.com>
-In-Reply-To: <20260806073714.3513158-1-laizewei3@huawei.com>
-References: <20260806073714.3513158-1-laizewei3@huawei.com>
-Subject: Re: [PATCH V5] nfsd: fix nfsd4_create_reclaim_record_grace crp null-ptr-deref
- in nfs4recover
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/32Oyw6CMBBFf8V07WjLK+DK/zAs2jKUChbTqURD+
+ Hdb3Ls895W7MkJvkdjlsDKPiyU7uwjZ8cD0IJ1BsF1klvGs4jUvgRZNsx5BP8hAb99I0Iiq7Cu
+ tVN0hi8Wnx92IvVv7Y3qpO+qQllJCSUJQXjo9JEnjdHY9dRCQgnUmRQZLYfaf/dgi0tTfD4sAD
+ kVeikLmWScbdR3RO5xOszes3bbtC7wlLDvqAAAA
+X-Change-ID: 20260805-svcsock-cmsg-fixes-9165f6cbb8de
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+ Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+ NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org
+X-Mailer: b4 0.16-dev-da966
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3402; i=cel@kernel.org;
+ h=from:subject:message-id; bh=gOy84EJeuacq41WL5JoUaZlQrNu2y755XW2zveknySY=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqdOyDeg8VoERQ1MImhaw0sJ+N3U8NrLgT7F8Ya
+ LaqBUkY0NGJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCanTsgwAKCRAzarMzb2Z/
+ l5I1D/9FZ++qNHOxaUNKrkoEwWEy/PKodG+nyA6e6bEYd3A6fdmBTVnwd1PT9UJMSpBqzGz8PDQ
+ cyx1uGVkQ+MfLbbhGZ2SZkNrh4HxBDPKT6iSAIIJvnWRbsy4CYr+4LFHwVeswv2Rae3jcDTVMjJ
+ Bxqvvhjc/wiRfEKMKA5IEMPAF3T10qg+5UW8vABFspC1WivFyNK4W/KoVIiBtLhOOk6HKFbDUyr
+ wYwg8GiruoGX4JFE6K/pHtxGQLhI+CUXus+TFoy/543XfSEIxOnFYwCK1RXxnLnnr17n1tnGgGD
+ D2qI1fesRC1hpQQWgiR9OhVTW/Qdsuu8iR/Br5xQUtKwmuKPtfvWHe4OxekJHZYlamr67VKWwe2
+ 5pqh45WLjM8j07O2bPDTZs1YDvgEQSbIQmn9bRiq+IimiV9BozeKsbXNPSG1+dH1V9UzvrTRjhH
+ PmbYS9J3DdpK47sXO+Fl5IVjUbqTgzx0C2ZhzHfSTn2Gaw0jFErYBIA58jG5/XZqKIRam5+RWHt
+ DhriU5aYqnqdzzN/LW8AUQ2PU17VZuIAcrtt96SZXmKP9XH1dDQLQoGqu/AMZWzzWeJvSkuVIU/
+ dI2mEv+U0DHfCkqydtvB+gOtHT34vkoO/Q4JSx+G4lgwOgEq9u4JxIjoumvIjVG6v77IOlMwoCA
+ xmSNV+xYgIi0e9A==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
+The read_sock_rectype proto_ops method is not going forward. Designing
+its replacement meant another pass over the receive path it was meant to
+replace, and that pass turned up the defects fixed here. None arrived as
+a bug report.
 
+The code path that handles TLS Alerts on behalf of in-kernel kTLS
+consumers has been reworked twice already. For the record: 5e052dda121e
+added control message recognition, and 39067dda1d86 moved the parsing
+into the net/handshake helpers. bee47cb026e7 and cc5d59081fa2 then
+reworked both sides after Scott Mayhew reported that kTLS was writing
+alert bodies into the RPC receive buffer. Mounts against a FreeBSD
+server over mutual TLS broke, and 9559d2fffd4f restored the other cmsg
+types. The same rework moved the receive into a local buffer, but the
+length accounting did not follow. A control record's octets are credited
+to the RPC stream, and a consumed control record leaves the server
+transport unmarked. The peer still controls the alert body's length, and
+nothing checks it before tls_alert_recv() reads two octets. A peer that
+aborts with an error alert while leaving that octet set to warning
+currently leaves a dead TLS session attached to a live transport.
 
-On Thu, Aug 6, 2026, at 3:37 AM, Lai Zewei wrote:
-> nfs4_client_to_reclaim() may return NULL if alloc_reclaim() fails. 
-> The caller __nfsd4_create_reclaim_record_grace() then unconditionally
-> dereferences the returned pointer via crp->cr_clp = clp, leading to a
-> null-ptr-deref crash.
->
-> Add a NULL check before assignment. If crp is NULL, just return.
->
-> Fixes: 4552f4e3f2c9 ("nfsd: change nfs4_client_to_reclaim() to allocate data")
-> Signed-off-by: Lai Zewei <laizewei3@huawei.com>
+These accounting defects do not have a trigger today. Both need a peer
+that sends a post-handshake control record (e.g., KeyUpdate). However,
+no existing RPC-with-TLS implementation does this today. Therefore these
+patches are posted as individual fixes that can be backported if LTS
+kernels should need to interoperate when KeyUpdate subsequently arrives
+in clients and servers.
 
-First a process note: I don't see v1 through v4 on linux-nfs, and this
-posting carries no changelog. If those were internal review rounds, you
-should post the first public version as v1, or add a changelog saying
-what changed between the previous revisions.
+Eagle-eyed reviewers might notice that the two call sites this series
+touches are the last consumers of <net/tls_prot.h> in net/sunrpc/. Both
+sites now state the same record-type test, the same two-octet rule, and
+the same closure classification. A helper in net/handshake/alert.c
+could hold all three and return a verdict, which would let net/sunrpc/
+drop the header and keep only the transport policy. That is deferred to
+a next step rather than included as part of this series to keep LTS
+backports practical.
 
-The code change is nominally correct. Commit 4552f4e3f2c9 moved the
-allocations into nfs4_client_to_reclaim() and removed this caller's
-NULL check along with the kfree() that check guarded. Restoring it
-keeps this caller consistent with load_recdir() and
-__cld_pipe_inprogress_downcall(), and both handle a NULL return.
+I'd appreciate an Acked-by from the client maintainers for the three
+patches that touch xprtsock.c.
 
-However, IMO a UAF crash is not reachable. struct nfs4_client_reclaim
-is just 48 bytes, and a GFP_KERNEL allocation of that size is almost
-guaranteed to succeed 100% of the time on production systems. (I'll
-redact the analysis of the allocator code path here).
+---
+Changes in v2:
+- Series reorder: length check goes before the severity change it guards
+- Reword the XPT_DATA comment to drop an overstated guarantee
+- Link to v1: https://patch.msgid.link/20260805-svcsock-cmsg-fixes-v1-0-43514a32da9b@kernel.org
 
-The Fixes: tag then asks stable maintainers to backport a fix for it,
-and I wonder if there's any need to.
+---
+Chuck Lever (8):
+      SUNRPC: do not credit control-record octets to the RPC stream
+      SUNRPC: reject a TLS alert record that is not two octets
+      SUNRPC: treat every TLS error alert as fatal
+      SUNRPC: resume receiving after a TLS control record
+      SUNRPC: fold svc_tcp_sock_process_cmsg() into its only caller
+      SUNRPC: reject a client-side TLS alert record that is not two octets
+      SUNRPC: treat every client-side TLS error alert as fatal
+      SUNRPC: fold xs_sock_process_cmsg() into its only caller
 
-Please send a v6 whose description says the check was dropped by
-commit 4552f4e3f2c9 and is being restored, removes the Fixes: tag, and
-states that the NULL return is not reachable from this caller. If the
-defect was found using a static analysis tool or from slab fault
-injection rather than observed in production, mention that in the
-description too.
+ net/sunrpc/svcsock.c  | 108 +++++++++++++++++++++++++++++++++++++-------------
+ net/sunrpc/xprtsock.c |  69 ++++++++++++++++----------------
+ 2 files changed, 115 insertions(+), 62 deletions(-)
+---
+base-commit: 0b6d2c7e3abca8d17fddeecb6e4c32a8438ec2fb
+change-id: 20260805-svcsock-cmsg-fixes-9165f6cbb8de
 
-In addition, the subject names nfsd4_create_reclaim_record_grace, but
-the function is __nfsd4_create_reclaim_record_grace; and "in
-nfs4recover" repeats what the "nfsd:" prefix already says. Something
-like "nfsd: restore nfs4_client_to_reclaim() error check" would be
-more accurate.
+Best regards,
+--  
+Chuck Lever <cel@kernel.org>
 
-Do let me know if I've missed something that makes this patch more
-than a clean-up.
-
-
--- 
-Chuck Lever
