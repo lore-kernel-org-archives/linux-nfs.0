@@ -1,53 +1,53 @@
-Received: from mail-oo1-f72.google.com (mail-oo1-f72.google.com [209.85.161.72])
+Received: from mail-oo1-f70.google.com (mail-oo1-f70.google.com [209.85.161.70])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A91E13C1A
-	for <linux-nfs@vger.kernel.org>; Fri,  7 Aug 2026 00:00:36 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.72
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15C91379C48
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Aug 2026 07:38:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.70
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786060838; cv=none; b=HhIJvpJ+nW+iD9FHUyLdbBSrNffbRorlGTNHRiwnix5/VtY2W909SLJAFvgJQcjnuyU3TGLvdVjDVKQo9D67M7pU58BPQKII+LIUMRUSNp+mMtpyMzbdx9zqMQT6NL3zSkFaVcFM3+IHV9EZDvUIuWzI3NpBKVjo73+EkbGz9bs=
+	t=1786088315; cv=none; b=DjlxMclEtKL1I3/gKGPOU1qKS3FuQNYzY8ixOlqaeOM+UQahHJs8NGJU7QyeWXJJMwfGIq2CkSiaDEeAUt2QbhKw7zMI7XJcw2V49CxdyPg9pq9M9X8ml9iMaB8ZQt8OOB08HP8e5DcAPcfmuSeue7m1JXPwPJwLGRnFatKK/BQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786060838; c=relaxed/simple;
-	bh=RWcunV0LMVXicwnvnw7+9o6tgBHwsUqauE+s+07UtMw=;
+	s=arc-20240116; t=1786088315; c=relaxed/simple;
+	bh=HbB8HoAy5To05bJe2uOPZTb8pNaplfNx35gNG5Zv1X4=;
 	h=MIME-Version:Date:In-Reply-To:Message-ID:Subject:From:To:
-	 Content-Type; b=Qfa22qjhz3kb9qqPEqOy2OT7TvjAjhPncrqK+J5hS4b7kxeS1MMFAiJi1KT5kZcnJpGNZkOLkHZDTFU2ByNVfGgI4/AA5Q3w1ymZnr3OmdXYRClLz+IMYWNTdCAYSekhrxjpWc4Z5Nws8sGu7titg56HUFn6sWsMolnYMRA0xDA=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.72
+	 Content-Type; b=paFdQrUqt9acAsnduTnKApln9jzTvMtBFVPLdYZxrTnuVp7EW9RppRXuhdt3QbHsDzlNaowLoO/NbEPEfWiZ9YFdosohgnsdKWgewdDng5Y515SqJbHlxRh3Xj13p4YisnragdX6KFW1oTX41AwBNoBg+yxDQG6dcQqvVFljnMY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com; arc=none smtp.client-ip=209.85.161.70
 Authentication-Results: smtp.subspace.kernel.org; dmarc=fail (p=none dis=none) header.from=syzkaller.appspotmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=M3KW2WVRGUFZ5GODRSRYTGD7.apphosting.bounces.google.com
-Received: by mail-oo1-f72.google.com with SMTP id 006d021491bc7-6ab0ed783aeso1707440eaf.1
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Aug 2026 17:00:36 -0700 (PDT)
+Received: by mail-oo1-f70.google.com with SMTP id 006d021491bc7-6ae41d34275so2339056eaf.3
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Aug 2026 00:38:32 -0700 (PDT)
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786060835; x=1786665635;
+        d=1e100.net; s=20251104; t=1786088312; x=1786693112;
         h=content-type:to:from:subject:message-id:in-reply-to:date
          :mime-version:x-gm-message-state:from:to:cc:subject:date:message-id
          :reply-to:content-type;
-        bh=/n9KGsHRCQsz8PbCYvcSu3nHH4IJAyft64FVOKi4SDU=;
-        b=EygPY6D2XgGc5mGuo01l8X9S3EGwWQO1MF+yv2DKzplk9rx8UqijUPO0he7fMaB/y0
-         wd5ILoxFXDBSIWTQ5uhrWXVqnmjuxCkOkWrd4rDv2ipNtxcf/6YzX4phv2NwQr7/Evv/
-         vm+Y3eSvlNksAKj3AjbHD1F2GFhISK7pyFFIKu9sq96Dc+CNT17Tu4QJ8vpvX/XMyGOD
-         GTbxBxaeq1iU6HuKBXl8jibd9Iaq2q0C8gLpHrD6+MRuyjJIS0XCDFgvdsPSvvULd55p
-         6BJe5XbhklG5E9x3tobn3ECbqIPj5MWybOELx+n840CSgDeHhPQ/eWTq56YKR8jlGzNH
-         Uf1Q==
-X-Forwarded-Encrypted: i=1; AHgh+RogFf6Ph9X4n7e6foZn9lPtFNPqZ6Tw4iF+5Sx5TsD9flLS0iWgV0aVohBBS8BPYuT7LPACJupuKM8=@vger.kernel.org
-X-Gm-Message-State: AOJu0YwCC9fvU2fDwUz3/aZhHH6gDX+zJQ6zAhg6Dsi1PNv2rbFyK5z1
-	y6DZQqX7LjUoFgqY9N0rTBWxL/pLvCDG2bWuqLaik8JKtd2C0CT0Ebw4sD/VYdjw1XjpL0jRn8X
-	dyL/DDq7eW0KGqxeARwpRNMUvWVa3Sw2yFY3GAp89PSEavmywZ8JbpTyfzP4=
+        bh=zTLx6psb2Y6AIJXwnDryypZ4TGxHjwRmR6E9LTg9lgA=;
+        b=I3mACDgk2k90XUin0zuIcA+xMgNHFi54DNpj87AzqOvdVKGEyeLEYon7mcTvekn5AA
+         jRDlERmmwHn+OxVtc+yK3cgimf8mxjGojRgmaOKYOrOjGoF07krGQxZZAf3vY7Q7j3kZ
+         llfpvOu5ILN6ZslrHiaWY6Z/BjKLzdyn2rzOV6SqYicNZQvNauSY8xVHN5SwgAYvE5D8
+         zmMMwQvrmNMup+HJoDA2XUVXcDbq2uuymWugc3X8T3VNCg1D/OHMpdyDqMjAcIQ7cbQV
+         qgk8SfafNXuZjb3SRBluJy4LLKiAKJmeWicnUPO390ROyMbQSEG5/Eql68WsLepl9eN6
+         AI8w==
+X-Forwarded-Encrypted: i=1; AHgh+Rp10bELZdtIfupTmgKK1bw+RsIOhuvvuBOJx0B04uuy1PO9cBgU2DbbjzWvZ02axAELI29l14NyatA=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yx7Z6eKDO0JtleFKuG+ytrPymykJzQ2yoaYxiEZC3E7/1HC5yjf
+	hOinsxhp9XghsyoPr6apKvL3KKUQzGV5AgOMJlOGYF7TOXzw9V1Yuuhn28kNpY90p4vXMQq98Oy
+	z97PMIJHdHxZyrWKjIFbnPZxwvBnMQtzgjM6dTvH2V3kmumaPv/4pHDsnvwc=
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-Received: by 2002:a05:6820:4dfb:b0:69d:7fdb:3416 with SMTP id
- 006d021491bc7-6aebcc4bfd4mr5864216eaf.21.1786060835634; Thu, 06 Aug 2026
- 17:00:35 -0700 (PDT)
-Date: Thu, 06 Aug 2026 17:00:35 -0700
-In-Reply-To: <00000000000063fd99061ba29d87@google.com>
+X-Received: by 2002:a05:6820:188f:b0:6ae:52a7:1be3 with SMTP id
+ 006d021491bc7-6ae96f10c8cmr10374776eaf.20.1786088312097; Fri, 07 Aug 2026
+ 00:38:32 -0700 (PDT)
+Date: Fri, 07 Aug 2026 00:38:32 -0700
+In-Reply-To: <000000000000689a2b061ba29db3@google.com>
 X-Google-Appengine-App-Id: s~syzkaller
 X-Google-Appengine-App-Id-Alias: syzkaller
-Message-ID: <6a752023.b50370da.49fe0.0015.GAE@google.com>
-Subject: Re: [syzbot] [nfs?] INFO: task hung in nfsd_nl_version_get_doit
-From: syzbot <syzbot+41bc60511c2884783c27@syzkaller.appspotmail.com>
+Message-ID: <6a758b78.9c11d2ce.289b96.00a7.GAE@google.com>
+Subject: Re: [syzbot] [nfs?] INFO: task hung in nfsd_nl_threads_get_doit
+From: syzbot <syzbot+c0831b61d6ade1e2d098@syzkaller.appspotmail.com>
 To: chuck.lever@oracle.com, dai.ngo@oracle.com, jlayton@kernel.org, 
 	kolga@netapp.com, linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org, 
 	neilb@suse.de, syzkaller-bugs@googlegroups.com, tom@talpey.com
@@ -55,137 +55,329 @@ Content-Type: text/plain; charset="UTF-8"
 
 syzbot has found a reproducer for the following issue on:
 
-HEAD commit:    fcaeecb8b0cd Merge tag 'probes-fixes-v7.2-rc6' of git://gi..
+HEAD commit:    364465ab19de Merge tag 'v7.2-rc6-smb3-server-fixes' of git..
 git tree:       upstream
-console output: https://syzkaller.appspot.com/x/log.txt?x=10403e49580000
-kernel config:  https://syzkaller.appspot.com/x/.config?x=d69870d5e052935f
-dashboard link: https://syzkaller.appspot.com/bug?extid=41bc60511c2884783c27
-compiler:       gcc (Debian 14.2.0-19) 14.2.0, GNU ld (GNU Binutils for Debian) 2.44
-C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=135e57b9580000
+console output: https://syzkaller.appspot.com/x/log.txt?x=15980fb9580000
+kernel config:  https://syzkaller.appspot.com/x/.config?x=4e38b15c29e6a1d9
+dashboard link: https://syzkaller.appspot.com/bug?extid=c0831b61d6ade1e2d098
+compiler:       Debian clang version 22.1.8 (++20260613092233+e80beda6e255-1~exp1~20260613092250.77), Debian LLD 22.1.8
+C reproducer:   https://syzkaller.appspot.com/x/repro.c?x=11f6cfb9580000
 
 IMPORTANT: if you fix the issue, please add the following tag to the commit:
-Reported-by: syzbot+41bc60511c2884783c27@syzkaller.appspotmail.com
+Reported-by: syzbot+c0831b61d6ade1e2d098@syzkaller.appspotmail.com
 
-INFO: task syz-executor371:5953 blocked for more than 10 seconds.
+INFO: task syz-executor549:5964 blocked for more than 15 seconds.
       Not tainted syzkaller #0
 "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-task:syz-executor371 state:D stack:28568 pid:5953  tgid:5952  ppid:5951   task_flags:0x400040 flags:0x00080000
+task:syz-executor549 state:D stack:27848 pid:5964  tgid:5961  ppid:5960   task_flags:0x400040 flags:0x00080000
 Call Trace:
  <TASK>
  context_switch kernel/sched/core.c:5510 [inline]
- __schedule+0x125c/0x6730 kernel/sched/core.c:7234
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
  __schedule_loop kernel/sched/core.c:7311 [inline]
- schedule+0xdd/0x2c0 kernel/sched/core.c:7326
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
  schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
  __mutex_lock_common kernel/locking/mutex.c:726 [inline]
- __mutex_lock+0xccc/0x1bd0 kernel/locking/mutex.c:821
- nfsd_nl_version_get_doit+0x18c/0x810 fs/nfsd/nfsctl.c:1889
- genl_family_rcv_msg_doit+0x214/0x300 net/netlink/genetlink.c:1114
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ nfsd_nl_threads_get_doit+0x1c0/0x790 fs/nfsd/nfsctl.c:1754
+ genl_family_rcv_msg_doit+0x233/0x340 net/netlink/genetlink.c:1114
  genl_family_rcv_msg net/netlink/genetlink.c:1194 [inline]
- genl_rcv_msg+0x560/0x800 net/netlink/genetlink.c:1209
- netlink_rcv_skb+0x159/0x420 net/netlink/af_netlink.c:2556
+ genl_rcv_msg+0x614/0x7a0 net/netlink/genetlink.c:1209
+ netlink_rcv_skb+0x226/0x4a0 net/netlink/af_netlink.c:2556
  genl_rcv+0x28/0x40 net/netlink/genetlink.c:1218
  netlink_unicast_kernel net/netlink/af_netlink.c:1319 [inline]
- netlink_unicast+0x585/0x850 net/netlink/af_netlink.c:1345
- netlink_sendmsg+0x8b0/0xda0 net/netlink/af_netlink.c:1900
- sock_sendmsg_nosec net/socket.c:775 [inline]
+ netlink_unicast+0x7bb/0x940 net/netlink/af_netlink.c:1345
+ netlink_sendmsg+0x813/0xb40 net/netlink/af_netlink.c:1900
+ sock_sendmsg_nosec+0x13a/0x180 net/socket.c:775
  __sock_sendmsg net/socket.c:790 [inline]
- __sys_sendto+0x48b/0x4e0 net/socket.c:2252
+ __sys_sendto+0x408/0x5a0 net/socket.c:2252
  __do_sys_sendto net/socket.c:2259 [inline]
  __se_sys_sendto net/socket.c:2255 [inline]
- __x64_sys_sendto+0xe0/0x1c0 net/socket.c:2255
+ __x64_sys_sendto+0xde/0x100 net/socket.c:2255
  do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x115/0x870 arch/x86/entry/syscall_64.c:94
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
  entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7fae5b4580de
-RSP: 002b:00007fae5b402168 EFLAGS: 00000246 ORIG_RAX: 000000000000002c
-RAX: ffffffffffffffda RBX: 00007fae5b4026c0 RCX: 00007fae5b4580de
-RDX: 0000000000000014 RSI: 00007fae5b4021e0 RDI: 0000000000000004
-RBP: 0000000000000027 R08: 00007fae5b4021d4 R09: 000000000000000c
-R10: 0000000000000000 R11: 0000000000000246 R12: ffffffffffffffd0
-R13: 0000000000000000 R14: 00007fff8af2b580 R15: 00007fff8af2b668
+RIP: 0033:0x7efe968188de
+RSP: 002b:00007efe95fc0058 EFLAGS: 00000246 ORIG_RAX: 000000000000002c
+RAX: ffffffffffffffda RBX: 00007efe95fc16c0 RCX: 00007efe968188de
+RDX: 0000000000000014 RSI: 00007efe95fc00d0 RDI: 0000000000000005
+RBP: 00007efe95fc00d0 R08: 00007efe95fc00c4 R09: 000000000000000c
+R10: 0000000000000000 R11: 0000000000000246 R12: 00007efe95fc00c4
+R13: 00007efe95fc01f0 R14: 00007ffddaf6a850 R15: 00007ffddaf6a938
+ </TASK>
+INFO: task syz-executor549:5965 blocked for more than 15 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz-executor549 state:D stack:27848 pid:5965  tgid:5961  ppid:5960   task_flags:0x400040 flags:0x00080000
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ nfsd_nl_threads_get_doit+0x1c0/0x790 fs/nfsd/nfsctl.c:1754
+ genl_family_rcv_msg_doit+0x233/0x340 net/netlink/genetlink.c:1114
+ genl_family_rcv_msg net/netlink/genetlink.c:1194 [inline]
+ genl_rcv_msg+0x614/0x7a0 net/netlink/genetlink.c:1209
+ netlink_rcv_skb+0x226/0x4a0 net/netlink/af_netlink.c:2556
+ genl_rcv+0x28/0x40 net/netlink/genetlink.c:1218
+ netlink_unicast_kernel net/netlink/af_netlink.c:1319 [inline]
+ netlink_unicast+0x7bb/0x940 net/netlink/af_netlink.c:1345
+ netlink_sendmsg+0x813/0xb40 net/netlink/af_netlink.c:1900
+ sock_sendmsg_nosec+0x13a/0x180 net/socket.c:775
+ __sock_sendmsg net/socket.c:790 [inline]
+ __sys_sendto+0x408/0x5a0 net/socket.c:2252
+ __do_sys_sendto net/socket.c:2259 [inline]
+ __se_sys_sendto net/socket.c:2255 [inline]
+ __x64_sys_sendto+0xde/0x100 net/socket.c:2255
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7efe968188de
+RSP: 002b:00007efe957bf058 EFLAGS: 00000246 ORIG_RAX: 000000000000002c
+RAX: ffffffffffffffda RBX: 00007efe957c06c0 RCX: 00007efe968188de
+RDX: 0000000000000014 RSI: 00007efe957bf0d0 RDI: 0000000000000006
+RBP: 00007efe957bf0d0 R08: 00007efe957bf0c4 R09: 000000000000000c
+R10: 0000000000000000 R11: 0000000000000246 R12: 00007efe957bf0c4
+R13: 00007efe957bf1f0 R14: 00007ffddaf6a850 R15: 00007ffddaf6a938
+ </TASK>
+INFO: task syz-executor549:5966 blocked for more than 16 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz-executor549 state:D stack:27848 pid:5966  tgid:5961  ppid:5960   task_flags:0x400040 flags:0x00080000
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ nfsd_nl_threads_get_doit+0x1c0/0x790 fs/nfsd/nfsctl.c:1754
+ genl_family_rcv_msg_doit+0x233/0x340 net/netlink/genetlink.c:1114
+ genl_family_rcv_msg net/netlink/genetlink.c:1194 [inline]
+ genl_rcv_msg+0x614/0x7a0 net/netlink/genetlink.c:1209
+ netlink_rcv_skb+0x226/0x4a0 net/netlink/af_netlink.c:2556
+ genl_rcv+0x28/0x40 net/netlink/genetlink.c:1218
+ netlink_unicast_kernel net/netlink/af_netlink.c:1319 [inline]
+ netlink_unicast+0x7bb/0x940 net/netlink/af_netlink.c:1345
+ netlink_sendmsg+0x813/0xb40 net/netlink/af_netlink.c:1900
+ sock_sendmsg_nosec+0x13a/0x180 net/socket.c:775
+ __sock_sendmsg net/socket.c:790 [inline]
+ __sys_sendto+0x408/0x5a0 net/socket.c:2252
+ __do_sys_sendto net/socket.c:2259 [inline]
+ __se_sys_sendto net/socket.c:2255 [inline]
+ __x64_sys_sendto+0xde/0x100 net/socket.c:2255
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7efe968188de
+RSP: 002b:00007efe94fbe058 EFLAGS: 00000246 ORIG_RAX: 000000000000002c
+RAX: ffffffffffffffda RBX: 00007efe94fbf6c0 RCX: 00007efe968188de
+RDX: 0000000000000014 RSI: 00007efe94fbe0d0 RDI: 0000000000000007
+RBP: 00007efe94fbe0d0 R08: 00007efe94fbe0c4 R09: 000000000000000c
+R10: 0000000000000000 R11: 0000000000000246 R12: 00007efe94fbe0c4
+R13: 00007efe94fbe1f0 R14: 00007ffddaf6a850 R15: 00007ffddaf6a938
+ </TASK>
+INFO: task syz-executor549:5967 blocked for more than 16 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz-executor549 state:D stack:27848 pid:5967  tgid:5961  ppid:5960   task_flags:0x400040 flags:0x00080000
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ nfsd_nl_threads_get_doit+0x1c0/0x790 fs/nfsd/nfsctl.c:1754
+ genl_family_rcv_msg_doit+0x233/0x340 net/netlink/genetlink.c:1114
+ genl_family_rcv_msg net/netlink/genetlink.c:1194 [inline]
+ genl_rcv_msg+0x614/0x7a0 net/netlink/genetlink.c:1209
+ netlink_rcv_skb+0x226/0x4a0 net/netlink/af_netlink.c:2556
+ genl_rcv+0x28/0x40 net/netlink/genetlink.c:1218
+ netlink_unicast_kernel net/netlink/af_netlink.c:1319 [inline]
+ netlink_unicast+0x7bb/0x940 net/netlink/af_netlink.c:1345
+ netlink_sendmsg+0x813/0xb40 net/netlink/af_netlink.c:1900
+ sock_sendmsg_nosec+0x13a/0x180 net/socket.c:775
+ __sock_sendmsg net/socket.c:790 [inline]
+ __sys_sendto+0x408/0x5a0 net/socket.c:2252
+ __do_sys_sendto net/socket.c:2259 [inline]
+ __se_sys_sendto net/socket.c:2255 [inline]
+ __x64_sys_sendto+0xde/0x100 net/socket.c:2255
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7efe968188de
+RSP: 002b:00007efe947bd058 EFLAGS: 00000246 ORIG_RAX: 000000000000002c
+RAX: ffffffffffffffda RBX: 00007efe947be6c0 RCX: 00007efe968188de
+RDX: 0000000000000014 RSI: 00007efe947bd0d0 RDI: 0000000000000008
+RBP: 00007efe947bd0d0 R08: 00007efe947bd0c4 R09: 000000000000000c
+R10: 0000000000000000 R11: 0000000000000246 R12: 00007efe947bd0c4
+R13: 00007efe947bd1f0 R14: 00007ffddaf6a850 R15: 00007ffddaf6a938
+ </TASK>
+INFO: task syz-executor549:5968 blocked for more than 16 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz-executor549 state:D stack:27848 pid:5968  tgid:5961  ppid:5960   task_flags:0x400040 flags:0x00080000
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ nfsd_nl_threads_get_doit+0x1c0/0x790 fs/nfsd/nfsctl.c:1754
+ genl_family_rcv_msg_doit+0x233/0x340 net/netlink/genetlink.c:1114
+ genl_family_rcv_msg net/netlink/genetlink.c:1194 [inline]
+ genl_rcv_msg+0x614/0x7a0 net/netlink/genetlink.c:1209
+ netlink_rcv_skb+0x226/0x4a0 net/netlink/af_netlink.c:2556
+ genl_rcv+0x28/0x40 net/netlink/genetlink.c:1218
+ netlink_unicast_kernel net/netlink/af_netlink.c:1319 [inline]
+ netlink_unicast+0x7bb/0x940 net/netlink/af_netlink.c:1345
+ netlink_sendmsg+0x813/0xb40 net/netlink/af_netlink.c:1900
+ sock_sendmsg_nosec+0x13a/0x180 net/socket.c:775
+ __sock_sendmsg net/socket.c:790 [inline]
+ __sys_sendto+0x408/0x5a0 net/socket.c:2252
+ __do_sys_sendto net/socket.c:2259 [inline]
+ __se_sys_sendto net/socket.c:2255 [inline]
+ __x64_sys_sendto+0xde/0x100 net/socket.c:2255
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7efe968188de
+RSP: 002b:00007efe93fbc058 EFLAGS: 00000246 ORIG_RAX: 000000000000002c
+RAX: ffffffffffffffda RBX: 00007efe93fbd6c0 RCX: 00007efe968188de
+RDX: 0000000000000014 RSI: 00007efe93fbc0d0 RDI: 0000000000000009
+RBP: 00007efe93fbc0d0 R08: 00007efe93fbc0c4 R09: 000000000000000c
+R10: 0000000000000000 R11: 0000000000000246 R12: 00007efe93fbc0c4
+R13: 00007efe93fbc1f0 R14: 00007ffddaf6a850 R15: 00007ffddaf6a938
+ </TASK>
+INFO: task syz-executor549:6028 blocked for more than 17 seconds.
+      Not tainted syzkaller #0
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+task:syz-executor549 state:D stack:27232 pid:6028  tgid:5961  ppid:5960   task_flags:0x400140 flags:0x00080000
+Call Trace:
+ <TASK>
+ context_switch kernel/sched/core.c:5510 [inline]
+ __schedule+0x17d9/0x56c0 kernel/sched/core.c:7234
+ __schedule_loop kernel/sched/core.c:7311 [inline]
+ schedule+0x164/0x2b0 kernel/sched/core.c:7326
+ schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
+ __mutex_lock_common kernel/locking/mutex.c:726 [inline]
+ __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
+ nfsd_nl_listener_set_doit+0x135/0x1750 fs/nfsd/nfsctl.c:1964
+ genl_family_rcv_msg_doit+0x233/0x340 net/netlink/genetlink.c:1114
+ genl_family_rcv_msg net/netlink/genetlink.c:1194 [inline]
+ genl_rcv_msg+0x614/0x7a0 net/netlink/genetlink.c:1209
+ netlink_rcv_skb+0x226/0x4a0 net/netlink/af_netlink.c:2556
+ genl_rcv+0x28/0x40 net/netlink/genetlink.c:1218
+ netlink_unicast_kernel net/netlink/af_netlink.c:1319 [inline]
+ netlink_unicast+0x7bb/0x940 net/netlink/af_netlink.c:1345
+ netlink_sendmsg+0x813/0xb40 net/netlink/af_netlink.c:1900
+ sock_sendmsg_nosec+0x13a/0x180 net/socket.c:775
+ __sock_sendmsg net/socket.c:790 [inline]
+ __sys_sendto+0x408/0x5a0 net/socket.c:2252
+ __do_sys_sendto net/socket.c:2259 [inline]
+ __se_sys_sendto net/socket.c:2255 [inline]
+ __x64_sys_sendto+0xde/0x100 net/socket.c:2255
+ do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
+ do_syscall_64+0x174/0x580 arch/x86/entry/syscall_64.c:94
+ entry_SYSCALL_64_after_hwframe+0x77/0x7f
+RIP: 0033:0x7efe968188de
+RSP: 002b:00007efe927b6148 EFLAGS: 00000246 ORIG_RAX: 000000000000002c
+RAX: ffffffffffffffda RBX: 00007efe927ba6c0 RCX: 00007efe968188de
+RDX: 0000000000000014 RSI: 00007efe927b81c0 RDI: 000000000000000c
+RBP: 0000000000000000 R08: 00007efe927b61b4 R09: 000000000000000c
+R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000027
+R13: 0000000000000011 R14: 00007ffddaf6a850 R15: 00007ffddaf6a938
  </TASK>
 
 Showing all locks held in the system:
 1 lock held by khungtaskd/31:
- #0: ffffffff8ebe6200 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
- #0: ffffffff8ebe6200 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:840 [inline]
- #0: ffffffff8ebe6200 (rcu_read_lock){....}-{1:3}, at: debug_show_all_locks+0x3d/0x184 kernel/locking/lockdep.c:6775
-2 locks held by kworker/u8:6/501:
- #0: ffff88801bc44140 ((wq_completion)events_unbound){+.+.}-{0:0}, at: process_one_work+0x12b1/0x1940 kernel/workqueue.c:3297
- #1: ffffc900037cfd08 ((work_completion)(&sub_info->work)){+.+.}-{0:0}, at: process_one_work+0x988/0x1940 kernel/workqueue.c:3298
-2 locks held by getty/5370:
- #0: ffff8880338d00a0 (&tty->ldisc_sem){++++}-{0:0}, at: tty_ldisc_ref_wait+0x24/0x80 drivers/tty/tty_ldisc.c:243
- #1: ffffc900032332e8 (&ldata->atomic_read_lock){+.+.}-{4:4}, at: n_tty_read+0x419/0x14e0 drivers/tty/n_tty.c:2211
-2 locks held by syz-executor371/5952:
- #0: ffffffff90b4d5a8 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
- #1: ffffffff8f070880 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_listener_set_doit+0xd5/0x1a80 fs/nfsd/nfsctl.c:1964
-2 locks held by syz-executor371/5953:
- #0: ffffffff90b4d5a8 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
- #1: ffffffff8f070880 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_version_get_doit+0x18c/0x810 fs/nfsd/nfsctl.c:1889
-1 lock held by modprobe/7138:
+ #0: ffffffff8eb59c60 (rcu_read_lock){....}-{1:3}, at: rcu_lock_acquire include/linux/rcupdate.h:300 [inline]
+ #0: ffffffff8eb59c60 (rcu_read_lock){....}-{1:3}, at: rcu_read_lock include/linux/rcupdate.h:840 [inline]
+ #0: ffffffff8eb59c60 (rcu_read_lock){....}-{1:3}, at: debug_show_all_locks+0x2e/0x180 kernel/locking/lockdep.c:6775
+2 locks held by getty/5379:
+ #0: ffff8880332c20a0 (&tty->ldisc_sem){++++}-{0:0}, at: tty_ldisc_ref_wait+0x25/0x70 drivers/tty/tty_ldisc.c:243
+ #1: ffffc9000322b2e8 (&ldata->atomic_read_lock){+.+.}-{4:4}, at: n_tty_read+0x45a/0x1360 drivers/tty/n_tty.c:2211
+2 locks held by syz-executor549/5964:
+ #0: ffffffff9009f8e8 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
+ #1: ffffffff8ee8e6c0 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_threads_get_doit+0x1c0/0x790 fs/nfsd/nfsctl.c:1754
+2 locks held by syz-executor549/5965:
+ #0: ffffffff9009f8e8 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
+ #1: ffffffff8ee8e6c0 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_threads_get_doit+0x1c0/0x790 fs/nfsd/nfsctl.c:1754
+2 locks held by syz-executor549/5966:
+ #0: ffffffff9009f8e8 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
+ #1: ffffffff8ee8e6c0 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_threads_get_doit+0x1c0/0x790 fs/nfsd/nfsctl.c:1754
+2 locks held by syz-executor549/5967:
+ #0: ffffffff9009f8e8 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
+ #1: ffffffff8ee8e6c0 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_threads_get_doit+0x1c0/0x790 fs/nfsd/nfsctl.c:1754
+2 locks held by syz-executor549/5968:
+ #0: ffffffff9009f8e8 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
+ #1: ffffffff8ee8e6c0 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_threads_get_doit+0x1c0/0x790 fs/nfsd/nfsctl.c:1754
+2 locks held by syz-executor549/5969:
+ #0: ffffffff9009f8e8 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
+ #1: ffffffff8ee8e6c0 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_listener_set_doit+0x135/0x1750 fs/nfsd/nfsctl.c:1964
+2 locks held by syz-executor549/6028:
+ #0: ffffffff9009f8e8 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40 net/netlink/genetlink.c:1217
+ #1: ffffffff8ee8e6c0 (nfsd_mutex){+.+.}-{4:4}, at: nfsd_nl_listener_set_doit+0x135/0x1750 fs/nfsd/nfsctl.c:1964
 
 =============================================
 
 NMI backtrace for cpu 1
 CPU: 1 UID: 0 PID: 31 Comm: khungtaskd Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/16/2026
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/24/2026
 Call Trace:
  <TASK>
- __dump_stack lib/dump_stack.c:94 [inline]
- dump_stack_lvl+0x100/0x190 lib/dump_stack.c:120
- nmi_cpu_backtrace.cold+0x12d/0x151 lib/nmi_backtrace.c:122
- nmi_trigger_cpumask_backtrace+0x21c/0x2a0 lib/nmi_backtrace.c:65
+ dump_stack_lvl+0xe8/0x150 lib/dump_stack.c:120
+ nmi_cpu_backtrace+0x274/0x2d0 lib/nmi_backtrace.c:122
+ nmi_trigger_cpumask_backtrace+0x17a/0x380 lib/nmi_backtrace.c:65
  trigger_all_cpu_backtrace include/linux/nmi.h:162 [inline]
  __sys_info lib/sys_info.c:157 [inline]
- sys_info+0x141/0x190 lib/sys_info.c:165
+ sys_info+0x135/0x170 lib/sys_info.c:165
  check_hung_uninterruptible_tasks kernel/hung_task.c:353 [inline]
- watchdog+0xcb1/0x1030 kernel/hung_task.c:561
- kthread+0x370/0x450 kernel/kthread.c:436
- ret_from_fork+0x72b/0xd50 arch/x86/kernel/process.c:158
+ watchdog+0xfd7/0x1030 kernel/hung_task.c:561
+ kthread+0x388/0x470 kernel/kthread.c:436
+ ret_from_fork+0x514/0xb70 arch/x86/kernel/process.c:158
  ret_from_fork_asm+0x1a/0x30 arch/x86/entry/entry_64.S:245
  </TASK>
 Sending NMI from CPU 1 to CPUs 0:
 NMI backtrace for cpu 0
-CPU: 0 UID: 0 PID: 7141 Comm: modprobe Not tainted syzkaller #0 PREEMPT(full) 
-Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/16/2026
-RIP: 0010:__sanitizer_cov_trace_pc+0xb/0x70 kernel/kcov.c:213
-Code: 64 00 be 03 00 00 00 5b e9 42 5e 13 03 66 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 f3 0f 1e fa 65 8b 05 45 5b 5a 12 <48> 8b 34 24 65 48 8b 15 21 5b 5a 12 a9 00 01 ff 00 74 1b f6 c4 01
-RSP: 0018:ffffc90005907130 EFLAGS: 00000202
-RAX: 0000000080000000 RBX: ffff88807253d408 RCX: ffffffff8bb34482
-RDX: 0000000000000002 RSI: 0000000000000000 RDI: ffff88802034ca80
-RBP: ffff88807253d450 R08: 0000000000000005 R09: 0000000000000000
-R10: 0000000000000002 R11: 0000000000000000 R12: 0000000000000002
-R13: 0000000000000009 R14: dffffc0000000000 R15: ffff88807253d458
-FS:  0000000000000000(0000) GS:ffff888123ddd000(0000) knlGS:0000000000000000
+CPU: 0 UID: 0 PID: 0 Comm: swapper/0 Not tainted syzkaller #0 PREEMPT(full) 
+Hardware name: Google Google Compute Engine/Google Compute Engine, BIOS Google 07/24/2026
+RIP: 0010:pv_native_safe_halt+0xf/0x20 arch/x86/kernel/paravirt.c:64
+Code: 0b 7d 02 c3 cc cc cc cc cc cc cc 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 f3 0f 1e fa 66 90 0f 00 2d 73 7e 16 00 fb f4 <e9> 4c 06 03 00 cc cc cc cc cc cc cc cc cc cc cc cc 90 90 90 90 90
+RSP: 0018:ffffffff8e807de0 EFLAGS: 00000242
+RAX: 00000000000dbf31 RBX: ffffffff819b533c RCX: 0000000080000001
+RDX: 0000000000000001 RSI: ffffffff8e230b02 RDI: ffffffff8c4be280
+RBP: ffffffff8e807eb8 R08: ffff8880b86338db R09: 1ffff110170c671b
+R10: dffffc0000000000 R11: ffffed10170c671c R12: 0000000000000000
+R13: 1ffffffff1d11de8 R14: 1ffffffff1d00fc4 R15: dffffc0000000000
+FS:  0000000000000000(0000) GS:ffff888124f42000(0000) knlGS:0000000000000000
 CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007fed66708440 CR3: 000000002b11f000 CR4: 00000000003526f0
+CR2: 00005643a21cea30 CR3: 000000000e946000 CR4: 00000000003526f0
 Call Trace:
  <TASK>
- mas_validate_child_slot lib/maple_tree.c:6784 [inline]
- mt_validate+0x11b0/0x31e0 lib/maple_tree.c:6951
- validate_mm+0xa8/0x4e0 mm/vma.c:652
- vms_complete_munmap_vmas+0x83b/0xdd0 mm/vma.c:1364
- __mmap_complete mm/vma.c:2617 [inline]
- __mmap_region+0xb42/0x2db0 mm/vma.c:2783
- mmap_region+0x35d/0x620 mm/vma.c:2860
- do_mmap+0xc63/0x12f0 mm/mmap.c:560
- vm_mmap_pgoff+0x29e/0x470 mm/util.c:581
- ksys_mmap_pgoff+0x3cb/0x610 mm/mmap.c:606
- __do_sys_mmap arch/x86/kernel/sys_x86_64.c:89 [inline]
- __se_sys_mmap arch/x86/kernel/sys_x86_64.c:82 [inline]
- __x64_sys_mmap+0x125/0x190 arch/x86/kernel/sys_x86_64.c:82
- do_syscall_x64 arch/x86/entry/syscall_64.c:63 [inline]
- do_syscall_64+0x115/0x870 arch/x86/entry/syscall_64.c:94
- entry_SYSCALL_64_after_hwframe+0x77/0x7f
-RIP: 0033:0x7fed669ea242
-Code: 08 00 04 00 00 eb e2 90 41 f7 c1 ff 0f 00 00 75 27 55 89 cd 53 48 89 fb 48 85 ff 74 33 41 89 ea 48 89 df b8 09 00 00 00 0f 05 <48> 3d 00 f0 ff ff 77 5e 5b 5d c3 0f 1f 00 c7 05 46 40 01 00 16 00
-RSP: 002b:00007ffee569ce78 EFLAGS: 00000206 ORIG_RAX: 0000000000000009
-RAX: ffffffffffffffda RBX: 00007fed666f6000 RCX: 00007fed669ea242
-RDX: 0000000000000005 RSI: 0000000000008000 RDI: 00007fed666f6000
-RBP: 0000000000000812 R08: 0000000000000000 R09: 0000000000003000
-R10: 0000000000000812 R11: 0000000000000206 R12: 00007ffee569cec8
-R13: 00007fed669bf580 R14: 00007ffee569d2f0 R15: 00000fffdcad39d2
+ arch_safe_halt arch/x86/kernel/process.c:767 [inline]
+ default_idle+0x9/0x20 arch/x86/kernel/process.c:768
+ default_idle_call+0x72/0xb0 kernel/sched/idle.c:122
+ cpuidle_idle_call kernel/sched/idle.c:199 [inline]
+ do_idle+0x1cc/0x540 kernel/sched/idle.c:355
+ cpu_startup_entry+0x43/0x60 kernel/sched/idle.c:454
+ rest_init+0x2de/0x300 init/main.c:717
+ start_kernel+0x392/0x3e0 init/main.c:1175
+ x86_64_start_reservations+0x24/0x30 arch/x86/kernel/head64.c:310
+ x86_64_start_kernel+0x137/0x1b0 arch/x86/kernel/head64.c:291
+ common_startup_64+0x13e/0x157
  </TASK>
 
 
