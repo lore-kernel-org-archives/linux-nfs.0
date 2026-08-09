@@ -1,172 +1,116 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from oss.cyber.gouv.fr (oss.cyber.gouv.fr [51.159.188.251])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D917C28640B
-	for <linux-nfs@vger.kernel.org>; Sat,  8 Aug 2026 16:53:09 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 00CCE3D47A1;
+	Sun,  9 Aug 2026 17:08:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=51.159.188.251
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786207991; cv=none; b=bN2NSO88vSV4wNDMa4lb0rIFAsc6HWGdyKqusiiiyF75nzQudNF1cxf5u3WnYn9nscabH6TNkG0RgKg0otE/qJp72n2F1AINcQ0u5pxH4kVBcObUBUYB4hWuK82LJBPQ/tMsewCrnULEZu6E/63fgdW9k0AN2UncjkmO1H6wmgI=
+	t=1786295301; cv=none; b=Qe4EWegv1bgK2eR7aGeW5USx/zrQAuksQz0xCN2NgTHHXW9B/qWSRMful2qjoxWajIo4zsgMZEHVpaZcMXQmA+mDt4gAhMYXZSJp/rlg+m/dwY1Bks3leZxiWUKZyRnTKid+IuZnH9TNUjan2d3ORYkJJG1kJT7iaHDerN1WEwM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786207991; c=relaxed/simple;
-	bh=azst+Eid+sOZxCmDS6vQnX6IsTcbYhP62ZJZKdmVtTM=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=NWiTv+anmfzczFDxxmoei60YK6Exf7nw4+H1DdsGbgOBWqGSZAM5sgOnT2oVPr32xqom0OUvsp8RJ1KJXeI+6UzWz9tmh7270/E1wCrdo+i6nJjeQl29I+5wUeUmkT+IVrJ/EcIagbXIMN7CkVbNJUmoy1NBAxw6IlcNMlGCY4A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jLghDhu1; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786295301; c=relaxed/simple;
+	bh=7aNEHYfyslsP7oX+R4PWoJMClHJzuQH/4ZEHQ8y03mE=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version:Content-Type; b=o2ANU5N2TFDwnf/L/CqB8oS14x/YMpKRwyomvT7SNBsHgFuP/IEOzPxfLUjjAVtnjAsB8oSwtDhlyHbzb/NTs3OKQlxvX5KsHdVNtAVWKB7D8pGqCIVriOk/dpB7nsBMgtz3E6SQ1gmXGkGKpwFku0FWWKdcGCebbOhIYGFQ3WU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr; spf=pass smtp.mailfrom=oss.cyber.gouv.fr; dkim=pass (2048-bit key) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.b=QhhD8JH3; arc=none smtp.client-ip=51.159.188.251
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=oss.cyber.gouv.fr
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=oss.cyber.gouv.fr
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jLghDhu1"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 6BFA51F000E9;
-	Sat,  8 Aug 2026 16:53:09 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786207989;
-	bh=GoGXtT/Ya8vf5l1R8u7mNtkOls2TKRtlYz6Ole3mn1s=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=jLghDhu1RtZtjPXlVnz/f+m7Gf0u6eGX/Uulfv0fJci83BbgRKU3wFdVjLdbdgud0
-	 UvwrANJsC9FBtJfid6mIaE4rWJjtoIHZT6bjhwSQj6/OrgnW5Ck9/IhJA7ZT9+At6X
-	 O6FoNp4s/JxPG62cy2QU8HeUzKcRHGZd/c3FrqpeQhXpc9cR0+aX5faTqq7y+2Wi4B
-	 IdOQ9oWc06ZoJtQaK+kf6Bl74xHpH+iQ9RSjWJAioWGQcACIhRc0jHJE34rap4L+AA
-	 25xkMo0l5s5iqfKwWzYir5S6QMXH6pRFA6mwMnT6oKlYiTZK0RCAw3+Q22Bp+rSS89
-	 6Trxu8/D6idUg==
-Message-ID: <1c8a4b344ffa6617ba20891a9094899595346007.camel@kernel.org>
-Subject: Re: [PATCH v2] nfs: fix ENXIO on O_CREAT open of existing symlink
- over NFSv3
-From: Trond Myklebust <trondmy@kernel.org>
-To: Michael Nemanov <michael.nemanov@vastdata.com>, anna@kernel.org, 
-	neil@brown.name
-Cc: linux-nfs@vger.kernel.org
-Date: Sat, 08 Aug 2026 12:53:08 -0400
-In-Reply-To: <c887ed23d456542f97168ffeda4abb5d55ba0fa6.camel@kernel.org>
-References: <20260806131358.398096-1-michael.nemanov@vastdata.com>
-	 <c887ed23d456542f97168ffeda4abb5d55ba0fa6.camel@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	dkim=pass (2048-bit key) header.d=oss.cyber.gouv.fr header.i=@oss.cyber.gouv.fr header.b="QhhD8JH3"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=oss.cyber.gouv.fr; s=default; h=Content-Transfer-Encoding:Content-Type:
+	MIME-Version:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:Content-ID:
+	Content-Description:Resent-Date:Resent-From:Resent-Sender:Resent-To:Resent-Cc
+	:Resent-Message-ID:In-Reply-To:References:List-Id:List-Help:List-Unsubscribe:
+	List-Subscribe:List-Post:List-Owner:List-Archive;
+	bh=u9fWn4ygqx+uQhvS2EUG15adx5MNgmyBETfH/glUia4=; b=QhhD8JH3TtrtEB1xTD/wje7rS9
+	2mVZ/FZ0/+WpMt0ns4TZsst6uGdcYcTfhoEj6vWuIANGc3d0WA8INuvgZOiUt65tvek9RuEC538BI
+	twAJEi3boVDRMJqIB04JuIvF5NAq3m7eG0B24ouQPRETJvl/MrBFcjmP6Bswt8pd4NwB2NsNXajAq
+	zgOvDgRsixQwd96h5VGdWvFLXJDRxfGFXVoY4l3B0IItzMLT+8vzRf8hc9dkVyIhXbr+dJ8kd/6wt
+	snY85QxmMflszm53ZlwrZ+c0h6eSp9VKtk12wS1BdYYbwmYkcLK8+Prjnd2Is7OgbBMOV5RsRKehn
+	wmpnVDjg==;
+Received: from [151.115.150.205] (port=54320 helo=gepetto..)
+	by pf-012.whm.fr-par.scw.cloud with esmtpsa  (TLS1.3) tls TLS_AES_256_GCM_SHA384
+	(Exim 4.99.5)
+	(envelope-from <Jeremy.Jean@oss.cyber.gouv.fr>)
+	id 1wt70N-0000000B9wA-3Dss;
+	Sun, 09 Aug 2026 19:08:11 +0200
+From: =?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	=?UTF-8?q?J=C3=A9r=C3=A9my=20Jean?= <Jeremy.Jean@oss.cyber.gouv.fr>,
+	stable@vger.kernel.org
+Subject: [PATCH] SUNRPC: wait for in-flight client TLS handshake callback
+Date: Sun,  9 Aug 2026 17:07:48 +0000
+Message-ID: <20260809170748.1223617-1-Jeremy.Jean@oss.cyber.gouv.fr>
+X-Mailer: git-send-email 2.47.3
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+X-AntiAbuse: This header was added to track abuse, please include it with any abuse report
+X-AntiAbuse: Primary Hostname - pf-012.whm.fr-par.scw.cloud
+X-AntiAbuse: Original Domain - vger.kernel.org
+X-AntiAbuse: Originator/Caller UID/GID - [47 12] / [47 12]
+X-AntiAbuse: Sender Address Domain - oss.cyber.gouv.fr
+X-Get-Message-Sender-Via: pf-012.whm.fr-par.scw.cloud: authenticated_id: jeremy.jean@oss.cyber.gouv.fr
+X-Authenticated-Sender: pf-012.whm.fr-par.scw.cloud: jeremy.jean@oss.cyber.gouv.fr
+X-Source: 
+X-Source-Args: 
+X-Source-Dir: 
 
-On Sat, 2026-08-08 at 12:34 -0400, Trond Myklebust wrote:
-> On Thu, 2026-08-06 at 13:13 +0000, Michael Nemanov wrote:
-> > When open(2) is called with O_CREAT on a path that already exists
-> > as
-> > a
-> > symlink, over an NFSv3 mount with a cold dcache, the kernel returns
-> > ENXIO instead of following the symlink to its target.
-> >=20
-> > Reproducer script (MNT is an NFSv3 mount, kernel is 7.1-rc6):
-> >=20
-> > MNT=3D/mnt/export
-> > ln -sf /tmp/target $MNT/mylink
-> > echo 3 | sudo tee /proc/sys/vm/drop_caches=C2=A0=C2=A0 # cold dcache
-> >=20
-> > python3 - <<'EOF'
-> > import os
-> > fd =3D os.open('/mnt/export/mylink', os.O_WRONLY | os.O_CREAT |
-> > os.O_APPEND, 0o666)
-> > os.close(fd)
-> > EOF
-> >=20
-> > Expected: success (follow symlink, open target)
-> > Actual:=C2=A0=C2=A0 OSError: [Errno 6] No such device or address
-> >=20
-> > The bug does not trigger when the dcache is warm (e.g. after a
-> > prior
-> > stat(2)), because lookup_open() then finds a positive dentry and
-> > skips
-> > atomic_open entirely, leaving symlink resolution to the VFS.
-> >=20
-> > Root cause:
-> > nfs_atomic_open_v23(), registered as inode->i_op->atomic_open for
-> > NFSv3, handles O_CREAT by sending a CREATE UNCHECKED RPC. As
-> > implemented in nfsd3_create_file() (fs/nfsd/nfs3proc.c) and as
-> > required
-> > by RFC 1813 (3.3.8), when the name already exists as a non-regular
-> > file
-> > the server returns NFS3_OK with the existing object's file handle
-> > rather
-> > than NFS3ERR_EXIST causing nfs_do_create() to return 0 with the
-> > dentry now pointing to a symlink.
-> > The code then unconditionally calls finish_open(), which dispatches
-> > through inode->i_fop->open(). Symlink inodes never have i_fop set =E2=
-=80=94
-> > the
-> > VFS initialises it to &no_open_fops because POSIX requires open(2)
-> > to
-> > follow symlinks, never open them directly. no_open() returns -
-> > ENXIO.
-> >=20
-> > Fix:
-> > After nfs_do_create() succeeds, verify the returned inode is a
-> > regular
-> > file before calling finish_open(). If the object is not regular,
-> > return
-> > finish_no_open(file, NULL) so the VFS follows the symlink through
-> > the
-> > normal open path. NULL is passed because nfs_do_create()
-> > instantiates
-> > the inode on the dentry already owned by the caller; passing dentry
-> > back
-> > would cause atomic_open() to dput() it a second time.
-> > !S_ISREG() is used rather than S_ISLNK() to cover any other non-
-> > regular
-> > types a server might return.
-> >=20
-> > Changes in v2:
-> > - Pass NULL to finish_no_open() per Trond's feedback.
-> >=20
-> > Fixes: 7c6c5249f061 ("NFS: add atomic_open for NFSv3 to handle
-> > O_TRUNC correctly.")
-> > Link:
-> > https://lore.kernel.org/linux-nfs/20260614122911.3485467-1-michael.nema=
-nov@vastdata.com/
-> > =C2=A0(v1)
-> > Signed-off-by: Michael Nemanov <michael.nemanov@vastdata.com>
-> > Tested-by: Michael Nemanov <michael.nemanov@vastdata.com>
-> > ---
-> > =C2=A0fs/nfs/dir.c | 7 +++++++
-> > =C2=A01 file changed, 7 insertions(+)
-> >=20
-> > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> > index e9ce1883288c5..c3481d9c74334 100644
-> > --- a/fs/nfs/dir.c
-> > +++ b/fs/nfs/dir.c
-> > @@ -2317,6 +2317,13 @@ int nfs_atomic_open_v23(struct inode *dir,
-> > struct dentry *dentry,
-> > =C2=A0	if (open_flags & O_CREAT) {
-> > =C2=A0		error =3D nfs_do_create(dir, dentry, mode,
-> > open_flags);
-> > =C2=A0		if (!error) {
-> > +			/* With UNCHECKED mode, a server may
-> > return
-> > NFS3_OK for
-> > +			 * a pre-existing non-regular file (e.g. a
-> > symlink).
-> > +			 * Let the VFS handle it; calling
-> > finish_open() would
-> > +			 * hit no_open() and return -ENXIO.
-> > +			 */
-> > +			if (d_inode(dentry) &&
-> > !S_ISREG(d_inode(dentry)->i_mode))
->=20
-> Hmm... I'm changing the above to "if (!d_inode(dentry) ||
-> !S_ISREG(....))" so that we don't inadvertently try to open a
-> negative
-> dentry. That can happen with NFSv2 if we hit an existing directory
-> that
-> has been renamed on the server.
+xs_tls_handshake_sync() gives xs_tls_handshake_done() a reference to the
+lower transport before submitting the handshake request. On timeout or
+signal, the synchronous waiter drops that reference after calling
+tls_handshake_cancel().
 
-Actually, "if (!d_is_reg(dentry))" is even better.
+handshake_req_cancel() returns false when handshake_complete() has
+already marked the request complete. In that case the completion callback
+can still be running, so dropping the callback-owned reference in the
+waiter can free the lower transport before xs_tls_handshake_done() stores
+xprt_err or drops its own reference.
 
->=20
-> > +				return finish_no_open(file, NULL);
-> > =C2=A0			file->f_mode |=3D FMODE_CREATED;
-> > =C2=A0			return finish_open(file, dentry, NULL);
-> > =C2=A0		} else if (error !=3D -EEXIST || open_flags &
-> > O_EXCL)
+If cancellation loses to completion, wait until xs_tls_handshake_done()
+signals handshake_done and let the callback release its reference. This
+mirrors the server-side handshake lifetime handling and keeps the timeout
+or signal return value unchanged.
 
---=20
-Trond Myklebust
-Linux NFS client maintainer, Hammerspace
-trondmy@kernel.org, trond.myklebust@hammerspace.com
+Fixes: 75eb6af7acdf ("SUNRPC: Add a TCP-with-TLS RPC transport class")
+Cc: stable@vger.kernel.org
+Assisted-by: Codex:gpt-5
+Signed-off-by: Jérémy Jean <Jeremy.Jean@oss.cyber.gouv.fr>
+---
+ net/sunrpc/xprtsock.c | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 359407aae03e..5f7955e4c404 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2648,7 +2648,17 @@ static int xs_tls_handshake_sync(struct rpc_xprt *lower_xprt, struct xprtsec_par
+ 	rc = wait_for_completion_interruptible_timeout(&lower_transport->handshake_done,
+ 						       XS_TLS_HANDSHAKE_TO);
+ 	if (rc <= 0) {
+-		tls_handshake_cancel(sk);
++		if (!tls_handshake_cancel(sk)) {
++			/*
++			 * Cancellation lost to handshake_complete(): the
++			 * callback still owns its xprt reference and is in
++			 * flight. Wait for it to finish before returning.
++			 */
++			wait_for_completion(&lower_transport->handshake_done);
++			if (rc == 0)
++				rc = -ETIMEDOUT;
++			goto out;
++		}
+ 		if (rc == 0)
+ 			rc = -ETIMEDOUT;
+ 		goto out_put_xprt;
+-- 
+2.47.3
+
