@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id ABCCE4322F4;
-	Mon, 10 Aug 2026 17:39:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 001D4433E89;
+	Mon, 10 Aug 2026 17:39:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786383555; cv=none; b=oUTlGwCFchiIin54C7txGGeXv9myx363MlENvLGAfTvEeyA7DgnF8150WxTzycPVdOk4/IKuzInXM1QdCdZEKwxmnc5vv6LZgQ01UoHdYfq+Oc8eKU0TiDS5GariBgF9mpXfa1p8olO0JC1HNM6xyK6OBNtcDd1/E57RgkisZKg=
+	t=1786383563; cv=none; b=MjmJxgdeSeJNvcXbIz6dZKUzcho78AX0J0kW4gUiy412t3s+7VqlbUL+2UyFJ9OpnS8RI9HqTi+MKi1wV8g0PU65EAYZVPlMrfAHc5txHZWX2BH8OOeNMkzN+MUl/ujDITRbIiF2g3wkFec8CRIYHvFr4DOmg2WtUEGPBCnMM9Q=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786383555; c=relaxed/simple;
-	bh=R3woNQi9oGCf9GbRzPNsOP1NNIFGpQMUcmCS3wj4UXQ=;
+	s=arc-20240116; t=1786383563; c=relaxed/simple;
+	bh=OL4dg/suKjkKoJBC6wXTDjwITGW/3JNAhtxddzSH180=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=k1Cy1Qit2AZg3gebREni9GmNTHOtTDHZP5fhCb3GJRz3uGREAqxBHiAOeeO5O+ouhlaqJPj9qoMPhhYBQzXQERKUrd3Inn5PjVrQwxpfm94pAaezP3GH4HMpr2IBZSl5G/mWGKHJ2Y8KIPtsEo/hKiKckuligja7xAVVktyZLkQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=CbxefDuL; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=qv66TpCrr8ZP3hY01fEazSBW/0P5EjyjxfGxTNei9Qd3a+lp8z6qXZXvgSK/HovVGMbn1XU3+wsFeWGprbNyJFAoNoEfGP8/R0rh5cwOJZgMUnGzhzzip/jWgtc/YVlWKFP1DVSyLRxrX7i6R30eF9KA3MyJ6USUkLxZl/ElnP4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=aGj++8ny; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="CbxefDuL"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2250E1F00A3A;
-	Mon, 10 Aug 2026 17:39:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="aGj++8ny"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5CFB31F00AC4;
+	Mon, 10 Aug 2026 17:39:10 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786383553;
-	bh=UaWwWq3StU66+Eg/0V1UlDxQAXL7Uw/wC8/hFceq28o=;
+	s=k20260515; t=1786383551;
+	bh=lqrq5wwTC5/J09LYCTcsE4eXPGtB6fXiyfPiysou/oA=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=CbxefDuLsOaoHRZjqe2VRmVramqwanUFnB1thzaSGyzT1Mfsr1MZ4qjJWPyWfbIMq
-	 kxlTs0oSwL49jqVd4XVzdl73y7PED1Ioifmmn8tbgIAQFS370UjdZUZsnreLtXc4RJ
-	 v6eW1k+296ehacd+1KBRYDOaFtvn0+RiPHQtBspNJUAlgUlK3U8i0nc7b9zEYvLJkv
-	 Jaad6RQtMGu71Oq3aPklDMqNywjLzazWCUpOzgELMZLvHBk0RZLN4qbP3HnL0ZMERy
-	 SHOFq0y4NPuKbZ49UAHJI93Zni/m7j8lh8Nnr4mZaosRsWwqA5+5keredXfOgdHjpa
-	 zRlciNFAtCmQw==
+	b=aGj++8ny8yt6eQzc6CrcgMoSBjNgviH9QKvGu0/EcBh3biCnJVgQhE3GU6PwoBi9w
+	 zvczXwo+vyUazdUaXViAywtDo7FpshrkeYkpcBPWF/QFsYImydOAnrrY4T/q7ianHR
+	 yFMwa9qNjBJdAOm4u4pLgI/INMAtnZNgrgwX9VZx+zXzvCIT58cn20QPWOxQgA/Kvl
+	 XuTRkQ7lmHipqeiJm1Q/lu6VokPxs1bAmpdRLM12TFRtY6lHpEi0NFgJgSQzf3sl40
+	 OyEH5uParN/sf0XLBMMxj9NmLGXB9ihheVNReV8FoC2G7IvgijHlQUTF+Zwfre3Xrj
+	 Fjd266nePDsMA==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Mon, 10 Aug 2026 13:38:54 -0400
-Subject: [PATCH 7/7] selftests/nfsd: add a per-netns rpcbind stub and the
- listener round-trips
+Date: Mon, 10 Aug 2026 13:38:53 -0400
+Subject: [PATCH 6/7] selftests/nfsd: exercise listener_set request
+ validation
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260810-nfsd-nl-hang-v1-7-2519fdd5bc1a@kernel.org>
+Message-Id: <20260810-nfsd-nl-hang-v1-6-2519fdd5bc1a@kernel.org>
 References: <20260810-nfsd-nl-hang-v1-0-2519fdd5bc1a@kernel.org>
 In-Reply-To: <20260810-nfsd-nl-hang-v1-0-2519fdd5bc1a@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -52,588 +52,591 @@ Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
  netdev@vger.kernel.org, Trond Myklebust <trondmy@gmail.com>, 
  linux-kselftest@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=18843; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=R3woNQi9oGCf9GbRzPNsOP1NNIFGpQMUcmCS3wj4UXQ=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqegyzwnfR8omsjDt2uMOIq5iiST8x6PYf8KRFF
- CbN1HkCAYqJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCanoMswAKCRAADmhBGVaC
- FZzID/99Mt4cmw5GUOCDNAvGY1576EfcbTWBcOQVL93fh3NB35PBpN1S+AXBPRSIGP1QqWU+ov0
- huxF1FCE4D5TY1NOYutd21wCLfQ13DH65eiizD0lHbI5GHGMVfIWXtedetiHItHtIPf9k5+++kL
- 1WkKnR+0C7K6+vJabhN0kxvavjpo4PYlS9N8GGs62xXe2y34qbl4/XAQsb+xK+VQmBf0/pbrt7F
- UfwKQnE54LWxBpvLHWhkphexI3xGajMtFCy/q98HMaA1LeBzoOs7VnoNcg1Bm5kPCE3IF6NDRMy
- sIN8YzBX2tK7eKH47N0BhqFFKnjF8v7lVASgpEc+4uGiIOGMGAwB4Ey1OUgmrRfqiJnesPDhhgE
- 7aC6/jK4p/nrBxOfMy/pFrAwUWbjrSPT9ST1/wPM2XMGK+udCPbXIxo7wMIOqvl+pV3spgPywzd
- dQ0nbsdBPLZ5HcWJT+rL+wsK8tv/feppDZMLHDRDe5Ci156r4o3mYpQQkcq/WV1dk7a7nXMJ/gf
- 1R608H1DdnKD9tzlIMfZHjJm2Znj2wJ5uC9R0gPbhjWl74feM7lBBDZphzB6V9NFBfgj2nM0qCF
- Pw+t9UdESb/Gx/Rv6s7ep7ZpQ4SZiYAhTYYcyfwMCpHbsz02t2gpvdxY94hlXxglALz3rDWwQpa
- SWhvAPrZOgdjyRw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=18242; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=OL4dg/suKjkKoJBC6wXTDjwITGW/3JNAhtxddzSH180=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqegyzzwp9u+RO9vcsurYq+Y1qWRG7SvzuOjh/x
+ 6GEiNmFlCWJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCanoMswAKCRAADmhBGVaC
+ FUVmEACfAGIJ2E1ULMD095keNhHA2VLmD8Mq3ARprhcz7cpFPyaj4LbXdiv0F5n9r6sW6DrZfJj
+ sUKr+2K3jQjYXamorlaSIo7P/eXIabFPRtKrJVB19trKnqYdrsFwSFrbOfpnMIdkpGIHLyAgMqW
+ 6X4NMJ5z7Rup1f8b7DPzWxviL3hdkAU4Pz+0d5uus5Cf0/JfatxEjF9GXUE55FPZHXW46rfceMz
+ Pbdku2ZNCiArlWfL9zdUQmEwj4rZTf/yJuS13TNd6nqkdUT2FGNB5D/yhATZJB5rFiVlgLRuqqq
+ shcmSVZDnRDwAGbZaOVAAW57096E2BwHQkquHSkS+djF99wKpfqBh3eQTuUPwTRRUetJhnOFmq4
+ LXBOea2zQOkRn4ulA4S6kLbkgSnlxLQO96jKVylWXZnSo0UtKu6RzkOvQwQD0WKchydbYMCIs9Q
+ tPNEuCw5EATOfyuKHM0RiDWFDUiVwzf9OBzFmwD5xRhu/asF2GPK2hpatmpO6pCb9SjtdomJg8I
+ wHtzELnPwXV/EoiBrFgasRSQ4dHhbJj0IMfxNOepd52V3T13cYIQ+qERNbw+ERYM4GvTN9ZUeH7
+ MJAksqu1k4Zo26AI9PdVBZo8lr7EVfZxgIbQmJgLL/rUPHxqKFidrUO8jfrXRpkPEiXnWFH0Xss
+ xsXRy8N1/JPZU0g==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-Creating a listener registers with rpcbind: svc_xprt_create_from_sa() passes
-flags of 0, so pmap_register is true in svc_setup_socket(), and
-nfsd_version3 is enabled by default and does not set vs_rpcb_optnl, so a
-registration failure aborts listener creation. A fresh netns has no rpcbind,
-and reaching the host's is not an option -- svc_rpcb_setup() opens by
-calling svc_unregister(), which would clear the host's nfsd entries.
+Regression tests for the NFSD_CMD_LISTENER_SET checks that
+nfsd_nl_validate_listeners() runs before nfsd_mutex is taken: bad or absent
+transport name, missing address, truncated or unsupported sockaddr, bad
+address family, a malformed entry behind a well-formed one, and more than
+NFSD_NL_LISTENER_MAX entries. Plus a LISTENER_GET against an empty netns.
 
-Serve it from within the namespace instead. The abstract AF_LOCAL name the
-kernel tries first is per-netns (unix_find_abstract() takes a struct net),
-so bind "\0/run/rpcbind.sock" and fork a minimal responder:
+None of these reach nfsd_create_serv(), so nothing here creates a serv or
+registers with rpcbind. Tests that do need one come next, with a stub.
 
-- arguments are never decoded; the NULL procedure gets an empty success and
-  SET/UNSET get TRUE
-- RPCBVERS_4 is answered as well as RPCBVERS_2, because
-  __svc_rpcb_register6() turns a v4 refusal into -EAFNOSUPPORT and that
-  would fail every IPv6 listener
-- PR_SET_PDEATHSIG plus an explicit kill in FIXTURE_TEARDOWN, so no stub
-  outlives its test
-
-With that in place, add the tests that need a serv: create/add/remove and
-LISTENER_GET round-trips (tcp, udp, multi, idempotent re-set, subset
-removal, empty-list serv destroy, IPv6), the empty-list request, and the
--EBUSY refusal once THREADS_SET has started threads.
-
-Two of the new tests exist to catch a revert rather than to describe the
-interface, since neither is visible in the errno alone:
-
-- val_reject_keeps_listeners. An unknown transport name ends in
-  -EPROTONOSUPPORT either way, because svc_xprt_create_from_sa() returns
-  that too. What differs is that without the up-front check
-  nfsd_nl_listener_set_doit() has already destroyed the listeners that did
-  not match by the time the name fails.
-- sem_register_refused, which restarts the stub in a mode that answers
-  RPCBPROC_SET with FALSE. rpcb_register_call() turns that into -EACCES,
-  which must reach userland and leave no listener behind. On
-  CONFIG_NFS_LOCALIO=y it does not, unless svc_register() keeps the first
-  error: nfslocalio is last in nfsd_programs and its NULL and vs_hidden
-  versions both report success, overwriting the failure.
+Uses kselftest_harness.h so each test runs in its own net+mount namespace.
+/run is masked there: unix_find_bsd() resolves by inode and takes no struct
+net, so a "/var/run/rpcbind.sock" connect from this netns would otherwise
+reach the rpcbind on the host -- and svc_rpcb_setup() opens by calling
+svc_unregister(), which would clear the host's nfsd registrations.
 
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 Assisted-by: LLM
 ---
- .../testing/selftests/nfsd/nfsd_netlink_listener.c | 444 ++++++++++++++++++++-
- 1 file changed, 438 insertions(+), 6 deletions(-)
+ tools/testing/selftests/Makefile                   |   1 +
+ tools/testing/selftests/nfsd/.gitignore            |   1 +
+ tools/testing/selftests/nfsd/Makefile              |   6 +
+ tools/testing/selftests/nfsd/config                |   4 +
+ .../testing/selftests/nfsd/nfsd_netlink_listener.c | 488 +++++++++++++++++++++
+ tools/testing/selftests/nfsd/settings              |   1 +
+ 6 files changed, 501 insertions(+)
 
+diff --git a/tools/testing/selftests/Makefile b/tools/testing/selftests/Makefile
+index 8d4db2241cc2..5d615301d368 100644
+--- a/tools/testing/selftests/Makefile
++++ b/tools/testing/selftests/Makefile
+@@ -85,6 +85,7 @@ TARGETS += net/packetdrill
+ TARGETS += net/ppp
+ TARGETS += net/rds
+ TARGETS += net/tcp_ao
++TARGETS += nfsd
+ TARGETS += nolibc
+ TARGETS += pci_endpoint
+ TARGETS += pcie_bwctrl
+diff --git a/tools/testing/selftests/nfsd/.gitignore b/tools/testing/selftests/nfsd/.gitignore
+new file mode 100644
+index 000000000000..19e6dec04d8e
+--- /dev/null
++++ b/tools/testing/selftests/nfsd/.gitignore
+@@ -0,0 +1 @@
++nfsd_netlink_listener
+diff --git a/tools/testing/selftests/nfsd/Makefile b/tools/testing/selftests/nfsd/Makefile
+new file mode 100644
+index 000000000000..15ac65549d25
+--- /dev/null
++++ b/tools/testing/selftests/nfsd/Makefile
+@@ -0,0 +1,6 @@
++# SPDX-License-Identifier: GPL-2.0
++CFLAGS += $(KHDR_INCLUDES) -Wall
++
++TEST_GEN_PROGS := nfsd_netlink_listener
++
++include ../lib.mk
+diff --git a/tools/testing/selftests/nfsd/config b/tools/testing/selftests/nfsd/config
+new file mode 100644
+index 000000000000..e6945ff9551c
+--- /dev/null
++++ b/tools/testing/selftests/nfsd/config
+@@ -0,0 +1,4 @@
++CONFIG_NET_NS=y
++CONFIG_IPV6=y
++CONFIG_NFSD=y
++CONFIG_NFSD_V4=y
 diff --git a/tools/testing/selftests/nfsd/nfsd_netlink_listener.c b/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
-index ae28c224255f..3e3307680d7d 100644
---- a/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
+new file mode 100644
+index 000000000000..ae28c224255f
+--- /dev/null
 +++ b/tools/testing/selftests/nfsd/nfsd_netlink_listener.c
-@@ -3,30 +3,40 @@
-  * Regression tests for the NFSD generic-netlink listener interface
-  * (NFSD_CMD_LISTENER_SET / NFSD_CMD_LISTENER_GET).
-  *
-- * These cover the request validation that nfsd_nl_validate_listeners() does
-- * before nfsd_mutex is taken: bad or absent transport name, missing address,
-- * truncated or unsupported sockaddr, oversized list. None of them reach
-- * nfsd_create_serv(), so nothing here creates a serv or talks to rpcbind.
-+ * Three groups:
-+ *   validation  - malformed/abusive LISTENER_SET requests are rejected by
-+ *                 nfsd_nl_validate_listeners(), before nfsd_mutex is taken.
-+ *   functional  - create/add/remove listeners and verify LISTENER_GET
-+ *                 reflects the set (round-trip of transport + addr:port).
-+ *   semantics   - once threads are running (THREADS_SET) a listener change
-+ *                 is refused with -EBUSY.
-  *
-  * Each test runs in its own private net + mount namespace (unshare in
-  * FIXTURE_SETUP). /run is masked there: a pathname AF_LOCAL connect is not
-  * scoped by the network namespace, since unix_find_bsd() resolves by inode
-  * and takes no struct net, so the kernel's rpcbind client would otherwise be
-- * able to reach the rpcbind running on the host.
-+ * able to reach the rpcbind running on the host. Anything that creates a
-+ * serv is served by the per-netns rpcbind stub below instead.
-  */
- #define _GNU_SOURCE
- #include <errno.h>
-+#include <poll.h>
- #include <sched.h>
-+#include <signal.h>
-+#include <stddef.h>
- #include <stdint.h>
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
- #include <unistd.h>
- #include <sys/mount.h>
-+#include <sys/prctl.h>
- #include <sys/socket.h>
- #include <sys/ioctl.h>
- #include <sys/stat.h>
- #include <sys/time.h>
-+#include <sys/un.h>
-+#include <sys/wait.h>
- #include <net/if.h>
- #include <netinet/in.h>
- #include <linux/netlink.h>
-@@ -36,8 +46,10 @@
- 
- /* NFSD generic-netlink constants (from linux/nfsd_netlink.h). */
- #define NFSD_FAMILY_NAME		"nfsd"
-+#define NFSD_CMD_THREADS_SET		2
- #define NFSD_CMD_LISTENER_SET		6
- #define NFSD_CMD_LISTENER_GET		7
-+#define NFSD_A_SERVER_THREADS		1
- #define NFSD_A_SERVER_SOCK_ADDR		1	/* per-listener nest */
- #define NFSD_A_SOCK_ADDR		1	/* inside the nest */
- #define NFSD_A_SOCK_TRANSPORT_NAME	2	/* inside the nest */
-@@ -327,10 +339,233 @@ static int listener_get(struct listener_ent *out, int max)
- 	return parse_listener_get(rbuf, n, out, max);
- }
- 
-+static struct listener_ent *find_listener(struct listener_ent *e, int n,
-+					  const char *xprt, int family,
-+					  uint16_t port)
-+{
-+	int i;
-+
-+	for (i = 0; i < n; i++)
-+		if (e[i].family == family && e[i].port == port &&
-+		    !strcmp(e[i].xprt, xprt))
-+			return &e[i];
-+	return NULL;
-+}
-+
-+/* Start (@n > 0) or stop (@n == 0) nfsd threads in this netns. */
-+static int threads_set(int n)
-+{
-+	char attrs[64];
-+	uint32_t v = n;
-+	int off = put_attr(attrs, 0, NFSD_A_SERVER_THREADS, &v, sizeof(v));
-+
-+	return genl_request(NFSD_CMD_THREADS_SET, attrs, off);
-+}
-+
-+/* ------------------- per-netns local rpcbind stub ------------------- */
-+
+@@ -0,0 +1,488 @@
++// SPDX-License-Identifier: GPL-2.0
 +/*
-+ * Creating a listener registers with rpcbind: svc_xprt_create_from_sa()
-+ * passes flags of 0, so pmap_register is true in svc_setup_socket(), and
-+ * nfsd_version3 is registerable by default and does not set vs_rpcb_optnl,
-+ * so a registration failure aborts listener creation. The abstract AF_LOCAL
-+ * name the kernel tries first is per-netns (unix_find_abstract() takes a
-+ * struct net), so answer it here and stay out of the host's rpcbind.
++ * Regression tests for the NFSD generic-netlink listener interface
++ * (NFSD_CMD_LISTENER_SET / NFSD_CMD_LISTENER_GET).
 + *
-+ * Arguments are never decoded. The NULL procedure gets an empty success and
-+ * SET/UNSET get TRUE, for both RPCBVERS_2 and RPCBVERS_4. v4 has to be
-+ * answered because __svc_rpcb_register6() turns a v4 refusal into
-+ * -EAFNOSUPPORT, which would fail every IPv6 listener.
++ * These cover the request validation that nfsd_nl_validate_listeners() does
++ * before nfsd_mutex is taken: bad or absent transport name, missing address,
++ * truncated or unsupported sockaddr, oversized list. None of them reach
++ * nfsd_create_serv(), so nothing here creates a serv or talks to rpcbind.
 + *
-+ * In RPCB_STUB_REFUSE mode SET is answered FALSE instead, which
-+ * rpcb_register_call() reports as -EACCES. UNSET is left alone: only
-+ * svc_unregister() issues it, and it discards the result.
++ * Each test runs in its own private net + mount namespace (unshare in
++ * FIXTURE_SETUP). /run is masked there: a pathname AF_LOCAL connect is not
++ * scoped by the network namespace, since unix_find_bsd() resolves by inode
++ * and takes no struct net, so the kernel's rpcbind client would otherwise be
++ * able to reach the rpcbind running on the host.
 + */
-+#define RPCB_PROGRAM		100000
-+#define RPCB_PROC_NULL		0
-+#define RPCB_PROC_SET		1
-+#define RPCB_PROC_UNSET		2
-+#define RPCB_ABSTRACT_NAME	"/run/rpcbind.sock"
-+#define RPCB_STUB_MAXCONN	4
++#define _GNU_SOURCE
++#include <errno.h>
++#include <sched.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++#include <sys/mount.h>
++#include <sys/socket.h>
++#include <sys/ioctl.h>
++#include <sys/stat.h>
++#include <sys/time.h>
++#include <net/if.h>
++#include <netinet/in.h>
++#include <linux/netlink.h>
++#include <linux/genetlink.h>
 +
-+enum { RPCB_STUB_ACCEPT, RPCB_STUB_REFUSE };
++#include "../kselftest_harness.h"
 +
-+static int rpcb_stub_listen(void)
++/* NFSD generic-netlink constants (from linux/nfsd_netlink.h). */
++#define NFSD_FAMILY_NAME		"nfsd"
++#define NFSD_CMD_LISTENER_SET		6
++#define NFSD_CMD_LISTENER_GET		7
++#define NFSD_A_SERVER_SOCK_ADDR		1	/* per-listener nest */
++#define NFSD_A_SOCK_ADDR		1	/* inside the nest */
++#define NFSD_A_SOCK_TRANSPORT_NAME	2	/* inside the nest */
++
++#define NLA_ALIGN4(len)			(((len) + 3) & ~3)
++#define TEST_PORT			20049
++#define MAX_LISTENERS			8
++#define RECV_TIMEO_SEC			30
++
++static int nfsd_family;			/* set per-test in FIXTURE_SETUP */
++
++static void die(const char *msg)
 +{
-+	struct sockaddr_un sun = { .sun_family = AF_UNIX };
-+	size_t nlen = strlen(RPCB_ABSTRACT_NAME);
-+	socklen_t alen;
-+	int fd;
++	perror(msg);
++	exit(1);
++}
 +
-+	/* Abstract names are length-delimited, so the length must match. */
-+	memcpy(sun.sun_path + 1, RPCB_ABSTRACT_NAME, nlen);
-+	alen = offsetof(struct sockaddr_un, sun_path) + 1 + nlen;
++/* ------------------- minimal generic-netlink plumbing ------------------- */
 +
-+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
++static int genl_open(void)
++{
++	struct sockaddr_nl sa = { .nl_family = AF_NETLINK };
++	struct timeval tv = { .tv_sec = RECV_TIMEO_SEC };
++	int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
++
 +	if (fd < 0)
-+		return -1;
-+	if (bind(fd, (struct sockaddr *)&sun, alen) < 0 ||
-+	    listen(fd, RPCB_STUB_MAXCONN) < 0) {
-+		close(fd);
-+		return -1;
-+	}
++		die("socket(NETLINK_GENERIC)");
++	if (bind(fd, (void *)&sa, sizeof(sa)) < 0)
++		die("bind(netlink)");
++	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 +	return fd;
 +}
 +
-+static int rpcb_stub_read(int fd, void *buf, size_t len)
++/* Append an attribute at @off; return the new (aligned) offset. */
++static int put_attr(char *buf, int off, uint16_t type,
++		    const void *data, int len)
 +{
-+	size_t done = 0;
++	struct nlattr *na = (void *)(buf + off);
 +
-+	while (done < len) {
-+		ssize_t n = read(fd, (char *)buf + done, len - done);
-+
-+		if (n <= 0)
-+			return -1;
-+		done += n;
-+	}
-+	return 0;
++	na->nla_type = type;
++	na->nla_len = NLA_HDRLEN + len;
++	if (len)
++		memcpy(buf + off + NLA_HDRLEN, data, len);
++	return off + NLA_ALIGN4(NLA_HDRLEN + len);
 +}
 +
-+/* Handle one record-marked RPC call. Returns -1 when the peer is done. */
-+static int rpcb_stub_call(int fd, int mode)
++/* Build a genl message header into @buf; return the offset past it. */
++static int genl_hdr(char *buf, uint16_t type, uint16_t flags, uint8_t cmd)
 +{
-+	uint32_t mark, call[6], rep[7];
-+	unsigned int len, nrep = 6;
-+	size_t replen;
++	struct nlmsghdr *nlh = (void *)buf;
++	struct genlmsghdr *gnl = (void *)(buf + NLMSG_HDRLEN);
 +
-+	if (rpcb_stub_read(fd, &mark, sizeof(mark)))
-+		return -1;
-+	len = ntohl(mark) & 0x7fffffff;
-+	if (len < sizeof(call) || len > 4096)
-+		return -1;
-+	if (rpcb_stub_read(fd, call, sizeof(call)))
-+		return -1;
++	memset(buf, 0, NLMSG_HDRLEN + GENL_HDRLEN);
++	nlh->nlmsg_type = type;
++	nlh->nlmsg_flags = flags;
++	nlh->nlmsg_seq = 1;
++	gnl->cmd = cmd;
++	gnl->version = 1;
++	return NLMSG_HDRLEN + GENL_HDRLEN;
++}
 +
-+	/* xid, msg_type, rpcvers, prog, vers, proc; the rest is discarded */
-+	for (len -= sizeof(call); len; ) {
-+		char sink[256];
-+		unsigned int n = len > sizeof(sink) ? sizeof(sink) : len;
++/* Send an nfsd command with an ACK; return the ACK errno (<= 0). */
++static int genl_request(uint8_t cmd, const char *attrs, int attrs_len)
++{
++	char buf[1 << 20], rbuf[4096];
++	struct nlmsghdr *nlh = (void *)buf;
++	int fd = genl_open();
++	int off, n, ret;
 +
-+		if (rpcb_stub_read(fd, sink, n))
-+			return -1;
-+		len -= n;
++	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST | NLM_F_ACK, cmd);
++	if (attrs_len) {
++		memcpy(buf + off, attrs, attrs_len);
++		off += attrs_len;
 +	}
++	nlh->nlmsg_len = off;
 +
-+	rep[0] = call[0];		/* xid */
-+	rep[1] = htonl(1);		/* REPLY */
-+	rep[2] = htonl(0);		/* MSG_ACCEPTED */
-+	rep[3] = htonl(0);		/* verifier flavor AUTH_NULL */
-+	rep[4] = htonl(0);		/* verifier length */
-+	rep[5] = htonl(0);		/* SUCCESS */
++	if (send(fd, buf, off, 0) < 0)
++		die("send(genl)");
 +
-+	if (ntohl(call[3]) != RPCB_PROGRAM) {
-+		rep[5] = htonl(1);	/* PROG_UNAVAIL */
++	n = recv(fd, rbuf, sizeof(rbuf), 0);
++	if (n < 0)
++		ret = (errno == EAGAIN || errno == EWOULDBLOCK) ? -ETIMEDOUT : -errno;
++	else if (((struct nlmsghdr *)rbuf)->nlmsg_type == NLMSG_ERROR)
++		ret = ((struct nlmsgerr *)NLMSG_DATA(rbuf))->error;
++	else
++		ret = 0;
++	close(fd);
++	return ret;
++}
++
++/* Send a command and return the full reply message; -errno on failure. */
++static int genl_request_reply(uint8_t cmd, char *rbuf, size_t rlen)
++{
++	char buf[256];
++	struct nlmsghdr *nlh = (void *)buf;
++	int fd = genl_open();
++	int off, n, ret;
++
++	off = genl_hdr(buf, nfsd_family, NLM_F_REQUEST, cmd);
++	nlh->nlmsg_len = off;
++
++	if (send(fd, buf, off, 0) < 0)
++		die("send(genl reply)");
++
++	n = recv(fd, rbuf, rlen, 0);
++	if (n < 0)
++		ret = (errno == EAGAIN || errno == EWOULDBLOCK) ? -ETIMEDOUT : -errno;
++	else if (((struct nlmsghdr *)rbuf)->nlmsg_type == NLMSG_ERROR)
++		ret = ((struct nlmsgerr *)NLMSG_DATA(rbuf))->error;
++	else
++		ret = n;
++	close(fd);
++	return ret;
++}
++
++/* Resolve the "nfsd" genl family id; -1 if not registered. */
++static int genl_resolve_nfsd(void)
++{
++	char buf[1024], rbuf[4096];
++	struct nlmsghdr *nlh = (void *)buf;
++	struct nlmsghdr *rh = (void *)rbuf;
++	struct nlattr *na;
++	int fd, off, left, id = -1;
++
++	fd = genl_open();
++	off = genl_hdr(buf, GENL_ID_CTRL, NLM_F_REQUEST, CTRL_CMD_GETFAMILY);
++	off = put_attr(buf, off, CTRL_ATTR_FAMILY_NAME,
++		       NFSD_FAMILY_NAME, sizeof(NFSD_FAMILY_NAME));
++	nlh->nlmsg_len = off;
++
++	if (send(fd, buf, off, 0) < 0)
++		die("send(GETFAMILY)");
++	if (recv(fd, rbuf, sizeof(rbuf), 0) < 0)
++		die("recv(GETFAMILY)");
++	close(fd);
++
++	if (rh->nlmsg_type == NLMSG_ERROR)
++		return -1;
++
++	na = (void *)((char *)NLMSG_DATA(rh) + GENL_HDRLEN);
++	left = rh->nlmsg_len - NLMSG_HDRLEN - GENL_HDRLEN;
++	while (left >= (int)NLA_HDRLEN) {
++		if (na->nla_type == CTRL_ATTR_FAMILY_ID) {
++			id = *(uint16_t *)((char *)na + NLA_HDRLEN);
++			break;
++		}
++		left -= NLA_ALIGN4(na->nla_len);
++		na = (void *)((char *)na + NLA_ALIGN4(na->nla_len));
++	}
++	return id;
++}
++
++/* ------------------- listener request builders ------------------- */
++
++/* Fine-grained control for negative tests: any field can be omitted/malformed. */
++struct raw_listener {
++	const char *xprt;	/* NULL -> omit NFSD_A_SOCK_TRANSPORT_NAME */
++	int emit_addr;		/* 0 -> omit NFSD_A_SOCK_ADDR */
++	const void *addr;
++	int addr_len;		/* bytes to emit for NFSD_A_SOCK_ADDR */
++};
++
++static int put_raw_listener(char *buf, int off, const struct raw_listener *r)
++{
++	struct nlattr *nest = (void *)(buf + off);
++	int inner = off + NLA_HDRLEN;
++
++	if (r->emit_addr)
++		inner = put_attr(buf, inner, NFSD_A_SOCK_ADDR, r->addr, r->addr_len);
++	if (r->xprt)
++		inner = put_attr(buf, inner, NFSD_A_SOCK_TRANSPORT_NAME,
++				 r->xprt, strlen(r->xprt) + 1);
++	nest->nla_type = NFSD_A_SERVER_SOCK_ADDR | NLA_F_NESTED;
++	nest->nla_len = inner - off;
++	return off + NLA_ALIGN4(nest->nla_len);
++}
++
++/* Well-formed loopback listener for @family (AF_INET or AF_INET6). */
++static int put_listener_af(char *buf, int off, const char *xprt, int family,
++			   uint16_t port)
++{
++	struct sockaddr_storage ss = {0};
++	struct raw_listener r = { .xprt = xprt, .emit_addr = 1, .addr = &ss };
++
++	if (family == AF_INET6) {
++		struct sockaddr_in6 *s6 = (void *)&ss;
++
++		s6->sin6_family = AF_INET6;
++		s6->sin6_port = htons(port);
++		s6->sin6_addr = in6addr_loopback;
++		r.addr_len = sizeof(*s6);
 +	} else {
-+		switch (ntohl(call[5])) {
-+		case RPCB_PROC_NULL:
-+			break;
-+		case RPCB_PROC_SET:
-+			rep[6] = htonl(mode == RPCB_STUB_REFUSE ? 0 : 1);
-+			nrep = 7;
-+			break;
-+		case RPCB_PROC_UNSET:
-+			rep[6] = htonl(1);	/* TRUE */
-+			nrep = 7;
-+			break;
-+		default:
-+			rep[5] = htonl(3);	/* PROC_UNAVAIL */
-+		}
-+	}
++		struct sockaddr_in *s4 = (void *)&ss;
 +
-+	replen = nrep * sizeof(rep[0]);
-+	mark = htonl(0x80000000 | replen);
-+	if (write(fd, &mark, sizeof(mark)) != (ssize_t)sizeof(mark) ||
-+	    write(fd, rep, replen) != (ssize_t)replen)
-+		return -1;
-+	return 0;
++		s4->sin_family = AF_INET;
++		s4->sin_port = htons(port);
++		s4->sin_addr.s_addr = htonl(INADDR_LOOPBACK);
++		r.addr_len = sizeof(*s4);
++	}
++	return put_raw_listener(buf, off, &r);
 +}
 +
-+static void rpcb_stub_serve(int lfd, int mode)
++static int put_listener(char *buf, int off, const char *xprt, uint16_t port)
 +{
-+	struct pollfd pfd[1 + RPCB_STUB_MAXCONN];
-+	nfds_t n = 1, i;
-+
-+	pfd[0].fd = lfd;
-+
-+	for (;;) {
-+		/* stop polling the listener when full, or poll() spins */
-+		pfd[0].events = n < 1 + RPCB_STUB_MAXCONN ? POLLIN : 0;
-+
-+		if (poll(pfd, n, -1) < 0)
-+			return;
-+
-+		if (pfd[0].revents & POLLIN) {
-+			int c = accept(lfd, NULL, NULL);
-+
-+			if (c >= 0) {
-+				pfd[n].fd = c;
-+				pfd[n].events = POLLIN;
-+				n++;
-+			}
-+		}
-+
-+		for (i = 1; i < n; i++) {
-+			if (!(pfd[i].revents & (POLLIN | POLLHUP | POLLERR)))
-+				continue;
-+			if (rpcb_stub_call(pfd[i].fd, mode)) {
-+				close(pfd[i].fd);
-+				pfd[i] = pfd[--n];
-+			}
-+		}
-+	}
++	return put_listener_af(buf, off, xprt, AF_INET, port);
 +}
 +
-+/* Returns the stub's pid, or -1. The socket is listening before we fork. */
-+static pid_t rpcb_stub_start(int mode)
++/* ------------------- LISTENER_GET parsing ------------------- */
++
++struct listener_ent {
++	char xprt[16];
++	int family;
++	uint16_t port;
++	struct in_addr a4;
++	struct in6_addr a6;
++};
++
++static int parse_listener_get(const char *rbuf, int len,
++			      struct listener_ent *out, int max)
 +{
-+	int lfd = rpcb_stub_listen();
-+	pid_t pid;
++	const struct nlmsghdr *nlh = (const void *)rbuf;
++	const struct nlattr *na;
++	int left, count = 0;
 +
-+	if (lfd < 0)
-+		return -1;
++	(void)len;
++	na = (const void *)(rbuf + NLMSG_HDRLEN + GENL_HDRLEN);
++	left = nlh->nlmsg_len - NLMSG_HDRLEN - GENL_HDRLEN;
 +
-+	pid = fork();
-+	if (pid < 0) {
-+		close(lfd);
-+		return -1;
++	while (left >= (int)NLA_HDRLEN) {
++		int alen = na->nla_len;
++
++		if ((na->nla_type & NLA_TYPE_MASK) == NFSD_A_SERVER_SOCK_ADDR &&
++		    count < max) {
++			const struct nlattr *in = (const void *)((char *)na + NLA_HDRLEN);
++			int ileft = alen - NLA_HDRLEN;
++			struct listener_ent *e = &out[count];
++
++			memset(e, 0, sizeof(*e));
++			while (ileft >= (int)NLA_HDRLEN) {
++				const void *d = (const char *)in + NLA_HDRLEN;
++				int t = in->nla_type & NLA_TYPE_MASK;
++
++				if (t == NFSD_A_SOCK_TRANSPORT_NAME) {
++					strncpy(e->xprt, d, sizeof(e->xprt) - 1);
++				} else if (t == NFSD_A_SOCK_ADDR) {
++					const struct sockaddr_storage *ss = d;
++
++					e->family = ss->ss_family;
++					if (ss->ss_family == AF_INET) {
++						const struct sockaddr_in *s = d;
++
++						e->a4 = s->sin_addr;
++						e->port = ntohs(s->sin_port);
++					} else if (ss->ss_family == AF_INET6) {
++						const struct sockaddr_in6 *s = d;
++
++						e->a6 = s->sin6_addr;
++						e->port = ntohs(s->sin6_port);
++					}
++				}
++				ileft -= NLA_ALIGN4(in->nla_len);
++				in = (const void *)((char *)in + NLA_ALIGN4(in->nla_len));
++			}
++			count++;
++		}
++		left -= NLA_ALIGN4(alen);
++		na = (const void *)((char *)na + NLA_ALIGN4(alen));
 +	}
-+	if (pid == 0) {
-+		signal(SIGPIPE, SIG_IGN);
-+		prctl(PR_SET_PDEATHSIG, SIGKILL);
-+		if (getppid() == 1)		/* raced with parent exit */
-+			_exit(0);
-+		rpcb_stub_serve(lfd, mode);
-+		_exit(0);
-+	}
++	return count;
++}
 +
-+	close(lfd);
-+	return pid;
++/* ------------------- convenience wrappers ------------------- */
++
++static int listener_set(const char *attrs, int len)
++{
++	return genl_request(NFSD_CMD_LISTENER_SET, attrs, len);
++}
++
++/* Fetch the current listeners; returns count (>=0) or -errno. */
++static int listener_get(struct listener_ent *out, int max)
++{
++	char rbuf[8192];
++	int n = genl_request_reply(NFSD_CMD_LISTENER_GET, rbuf, sizeof(rbuf));
++
++	if (n < 0)
++		return n;
++	return parse_listener_get(rbuf, n, out, max);
++}
++
++/* --------------------------- fixture --------------------------- */
++
++FIXTURE(nfsd_listener) {
++	int placeholder;
++};
++
++FIXTURE_SETUP(nfsd_listener)
++{
++	struct ifreq ifr = {0};
++	struct stat st;
++	int s;
++
++	if (geteuid() != 0)
++		SKIP(return, "must be run as root");
++	if (unshare(CLONE_NEWNET | CLONE_NEWNS) < 0)
++		SKIP(return, "unshare(NEWNET|NEWNS): %s", strerror(errno));
++	if (mount("", "/", NULL, MS_REC | MS_PRIVATE, NULL) < 0)
++		SKIP(return, "mount(/ private): %s", strerror(errno));
++
++	/*
++	 * Keep the kernel's rpcbind client inside this namespace. The
++	 * abstract socket it tries first is per-netns, but the
++	 * "/var/run/rpcbind.sock" fallback is not, so hide the path.
++	 */
++	if (mount("tmpfs", "/run", "tmpfs", 0, NULL) < 0)
++		SKIP(return, "mount(tmpfs on /run): %s", strerror(errno));
++	if (lstat("/var/run", &st) == 0 && S_ISDIR(st.st_mode) &&
++	    mount("tmpfs", "/var/run", "tmpfs", 0, NULL) < 0)
++		SKIP(return, "mount(tmpfs on /var/run): %s", strerror(errno));
++
++	/* Bring loopback up so listener binds (127.0.0.1 / ::1) work. */
++	s = socket(AF_INET, SOCK_DGRAM, 0);
++	ASSERT_GE(s, 0);
++	strcpy(ifr.ifr_name, "lo");
++	ASSERT_EQ(0, ioctl(s, SIOCGIFFLAGS, &ifr));
++	ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
++	ASSERT_EQ(0, ioctl(s, SIOCSIFFLAGS, &ifr));
++	close(s);
++
++	nfsd_family = genl_resolve_nfsd();
++	if (nfsd_family < 0)
++		SKIP(return, "nfsd genl family not found (modprobe nfsd?)");
++}
++
++FIXTURE_TEARDOWN(nfsd_listener)
++{
++}
++
++/* ===================== validation / negative ===================== */
++
++TEST_F(nfsd_listener, val_too_many)
++{
++	static char attrs[1 << 20];
++	int i, off = 0;
++
++	for (i = 0; i < 1025; i++)		/* > NFSD_NL_LISTENER_MAX (1024) */
++		off = put_listener(attrs, off, "udp", TEST_PORT);
++	EXPECT_EQ(-E2BIG, listener_set(attrs, off));
++}
++
++TEST_F(nfsd_listener, val_missing_addr)
++{
++	char attrs[64];
++	struct raw_listener r = { .xprt = "tcp", .emit_addr = 0 };
++	int off = put_raw_listener(attrs, 0, &r);
++
++	EXPECT_EQ(-EINVAL, listener_set(attrs, off));
++}
++
++TEST_F(nfsd_listener, val_missing_transport)
++{
++	struct sockaddr_in s4 = { .sin_family = AF_INET, .sin_port = htons(TEST_PORT) };
++	struct raw_listener r = { .xprt = NULL, .emit_addr = 1,
++				  .addr = &s4, .addr_len = sizeof(s4) };
++	char attrs[64];
++	int off = put_raw_listener(attrs, 0, &r);
++
++	EXPECT_EQ(-EINVAL, listener_set(attrs, off));
 +}
 +
 +/*
-+ * Swap the stub for one in @mode. Safe before the first request: no serv
-+ * exists yet, so the kernel has not connected and the abstract name is free
-+ * again once the old stub has been reaped.
++ * A name matching no transport class must be refused before nfsd_mutex is
++ * taken, so it never reaches svc_xprt_create_from_sa() and its
++ * request_module("svc%s", name) upcall.
 + */
-+static int rpcb_stub_restart(pid_t *pid, int mode)
++TEST_F(nfsd_listener, val_bad_transport)
 +{
-+	if (*pid > 0) {
-+		kill(*pid, SIGKILL);
-+		waitpid(*pid, NULL, 0);
-+	}
-+	*pid = rpcb_stub_start(mode);
-+	return *pid > 0 ? 0 : -1;
-+}
-+
- /* --------------------------- fixture --------------------------- */
- 
- FIXTURE(nfsd_listener) {
--	int placeholder;
-+	pid_t rpcbd;
- };
- 
- FIXTURE_SETUP(nfsd_listener)
-@@ -369,14 +604,28 @@ FIXTURE_SETUP(nfsd_listener)
- 	nfsd_family = genl_resolve_nfsd();
- 	if (nfsd_family < 0)
- 		SKIP(return, "nfsd genl family not found (modprobe nfsd?)");
-+
-+	self->rpcbd = rpcb_stub_start(RPCB_STUB_ACCEPT);
-+	if (self->rpcbd < 0)
-+		SKIP(return, "cannot start the rpcbind stub: %s",
-+		     strerror(errno));
- }
- 
- FIXTURE_TEARDOWN(nfsd_listener)
- {
-+	if (self->rpcbd > 0) {
-+		kill(self->rpcbd, SIGKILL);
-+		waitpid(self->rpcbd, NULL, 0);
-+	}
- }
- 
- /* ===================== validation / negative ===================== */
- 
-+TEST_F(nfsd_listener, val_empty_list_ok)
-+{
-+	EXPECT_EQ(0, listener_set(NULL, 0));
-+}
-+
- TEST_F(nfsd_listener, val_too_many)
- {
- 	static char attrs[1 << 20];
-@@ -477,6 +726,33 @@ TEST_F(nfsd_listener, val_second_entry_bad)
- 	EXPECT_EQ(-EAFNOSUPPORT, listener_set(attrs, off));
- }
- 
-+/*
-+ * A rejected request must leave the listeners that are already up alone.
-+ * The errno alone does not show that: svc_xprt_create_from_sa() returns
-+ * -EPROTONOSUPPORT for an unknown name too. What differs is how far the
-+ * request gets -- without the check in nfsd_nl_validate_listeners(),
-+ * nfsd_nl_listener_set_doit() has already moved the unmatched tcp listener
-+ * off sv_permsocks and run svc_xprt_destroy_all() on it by the time the
-+ * name fails.
-+ */
-+TEST_F(nfsd_listener, val_reject_keeps_listeners)
-+{
-+	struct listener_ent got[MAX_LISTENERS];
-+	char good[64], bad[64];
-+	int og = put_listener(good, 0, "tcp", TEST_PORT);
-+	int ob = put_listener(bad, 0, "bogus_xprt", TEST_PORT);
-+
-+	ASSERT_EQ(0, listener_set(good, og));
-+	ASSERT_EQ(1, listener_get(got, MAX_LISTENERS));
-+
-+	EXPECT_EQ(-EPROTONOSUPPORT, listener_set(bad, ob));
-+
-+	ASSERT_EQ(1, listener_get(got, MAX_LISTENERS));
-+	EXPECT_NE(NULL, find_listener(got, 1, "tcp", AF_INET, TEST_PORT));
-+}
-+
-+/* ===================== functional / round-trip ===================== */
-+
- /* LISTENER_GET with no serv in this netns returns an empty list. */
- TEST_F(nfsd_listener, func_get_empty)
- {
-@@ -485,4 +761,160 @@ TEST_F(nfsd_listener, func_get_empty)
- 	EXPECT_EQ(0, listener_get(got, MAX_LISTENERS));
- }
- 
-+TEST_F(nfsd_listener, func_create_tcp)
-+{
-+	struct listener_ent got[MAX_LISTENERS];
 +	char attrs[64];
-+	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
++	int off = put_listener(attrs, 0, "bogus_xprt", TEST_PORT);
 +
-+	ASSERT_EQ(0, listener_set(attrs, off));
-+	ASSERT_EQ(1, listener_get(got, MAX_LISTENERS));
-+	EXPECT_NE(NULL, find_listener(got, 1, "tcp", AF_INET, TEST_PORT));
-+	EXPECT_EQ(htonl(INADDR_LOOPBACK), got[0].a4.s_addr);
++	EXPECT_EQ(-EPROTONOSUPPORT, listener_set(attrs, off));
 +}
 +
-+TEST_F(nfsd_listener, func_create_udp)
++TEST_F(nfsd_listener, val_addr_too_short)
 +{
-+	struct listener_ent got[MAX_LISTENERS];
++	unsigned char tiny = 0;
++	struct raw_listener r = { .xprt = "tcp", .emit_addr = 1,
++				  .addr = &tiny, .addr_len = 1 };
 +	char attrs[64];
-+	int off = put_listener(attrs, 0, "udp", TEST_PORT);
++	int off = put_raw_listener(attrs, 0, &r);
 +
-+	ASSERT_EQ(0, listener_set(attrs, off));
-+	ASSERT_EQ(1, listener_get(got, MAX_LISTENERS));
-+	EXPECT_NE(NULL, find_listener(got, 1, "udp", AF_INET, TEST_PORT));
++	EXPECT_EQ(-EINVAL, listener_set(attrs, off));
 +}
 +
-+TEST_F(nfsd_listener, func_create_multi)
++TEST_F(nfsd_listener, val_inet_short)
 +{
-+	struct listener_ent got[MAX_LISTENERS];
++	struct sockaddr_in s4 = { .sin_family = AF_INET, .sin_port = htons(TEST_PORT) };
++	struct raw_listener r = { .xprt = "tcp", .emit_addr = 1, .addr = &s4,
++				  .addr_len = sizeof(sa_family_t) + 2 };
++	char attrs[64];
++	int off = put_raw_listener(attrs, 0, &r);
++
++	EXPECT_EQ(-EINVAL, listener_set(attrs, off));
++}
++
++TEST_F(nfsd_listener, val_inet6_short)
++{
++	struct sockaddr_in6 s6 = { .sin6_family = AF_INET6, .sin6_port = htons(TEST_PORT) };
++	struct raw_listener r = { .xprt = "tcp", .emit_addr = 1, .addr = &s6,
++				  .addr_len = sizeof(struct sockaddr_in) };
++	char attrs[64];
++	int off = put_raw_listener(attrs, 0, &r);
++
++	EXPECT_EQ(-EINVAL, listener_set(attrs, off));
++}
++
++TEST_F(nfsd_listener, val_bad_family)
++{
++	struct sockaddr_storage ss = { .ss_family = AF_UNIX };
++	struct raw_listener r = { .xprt = "tcp", .emit_addr = 1, .addr = &ss,
++				  .addr_len = sizeof(struct sockaddr_in) };
++	char attrs[64];
++	int off = put_raw_listener(attrs, 0, &r);
++
++	EXPECT_EQ(-EAFNOSUPPORT, listener_set(attrs, off));
++}
++
++TEST_F(nfsd_listener, val_second_entry_bad)
++{
++	struct sockaddr_storage ss = { .ss_family = AF_UNIX };
++	struct raw_listener bad = { .xprt = "tcp", .emit_addr = 1, .addr = &ss,
++				    .addr_len = sizeof(struct sockaddr_in) };
 +	char attrs[128];
 +	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
 +
-+	off = put_listener(attrs, off, "udp", TEST_PORT);
-+	ASSERT_EQ(0, listener_set(attrs, off));
-+	ASSERT_EQ(2, listener_get(got, MAX_LISTENERS));
-+	EXPECT_NE(NULL, find_listener(got, 2, "tcp", AF_INET, TEST_PORT));
-+	EXPECT_NE(NULL, find_listener(got, 2, "udp", AF_INET, TEST_PORT));
++	off = put_raw_listener(attrs, off, &bad);
++	/* The whole request is rejected during validation; nothing applied. */
++	EXPECT_EQ(-EAFNOSUPPORT, listener_set(attrs, off));
 +}
 +
-+TEST_F(nfsd_listener, func_idempotent)
++/* LISTENER_GET with no serv in this netns returns an empty list. */
++TEST_F(nfsd_listener, func_get_empty)
 +{
 +	struct listener_ent got[MAX_LISTENERS];
-+	char attrs[64];
-+	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
 +
-+	ASSERT_EQ(0, listener_set(attrs, off));
-+	EXPECT_EQ(0, listener_set(attrs, off));		/* re-set same list */
-+	ASSERT_EQ(1, listener_get(got, MAX_LISTENERS));
-+	EXPECT_NE(NULL, find_listener(got, 1, "tcp", AF_INET, TEST_PORT));
-+}
-+
-+TEST_F(nfsd_listener, func_add)
-+{
-+	struct listener_ent got[MAX_LISTENERS];
-+	char one[64], two[128];
-+	int o1 = put_listener(one, 0, "tcp", TEST_PORT);
-+	int o2 = put_listener(two, 0, "tcp", TEST_PORT);
-+
-+	o2 = put_listener(two, o2, "udp", TEST_PORT);
-+	ASSERT_EQ(0, listener_set(one, o1));
-+	ASSERT_EQ(0, listener_set(two, o2));		/* add udp, keep tcp */
-+	ASSERT_EQ(2, listener_get(got, MAX_LISTENERS));
-+	EXPECT_NE(NULL, find_listener(got, 2, "tcp", AF_INET, TEST_PORT));
-+	EXPECT_NE(NULL, find_listener(got, 2, "udp", AF_INET, TEST_PORT));
-+}
-+
-+TEST_F(nfsd_listener, func_remove_subset)
-+{
-+	struct listener_ent got[MAX_LISTENERS];
-+	char both[128], one[64];
-+	int ob = put_listener(both, 0, "tcp", TEST_PORT);
-+	int oo = put_listener(one, 0, "tcp", TEST_PORT);
-+
-+	ob = put_listener(both, ob, "udp", TEST_PORT);
-+	ASSERT_EQ(0, listener_set(both, ob));
-+	ASSERT_EQ(0, listener_set(one, oo));		/* drop udp */
-+	ASSERT_EQ(1, listener_get(got, MAX_LISTENERS));
-+	EXPECT_NE(NULL, find_listener(got, 1, "tcp", AF_INET, TEST_PORT));
-+}
-+
-+TEST_F(nfsd_listener, func_empty_destroys)
-+{
-+	struct listener_ent got[MAX_LISTENERS];
-+	char attrs[64];
-+	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
-+
-+	ASSERT_EQ(0, listener_set(attrs, off));
-+	EXPECT_EQ(0, listener_set(NULL, 0));		/* empty -> destroy serv */
 +	EXPECT_EQ(0, listener_get(got, MAX_LISTENERS));
 +}
 +
-+TEST_F(nfsd_listener, func_ipv6)
-+{
-+	struct listener_ent got[MAX_LISTENERS];
-+	char attrs[64];
-+	int off, s;
-+
-+	s = socket(AF_INET6, SOCK_STREAM, 0);
-+	if (s < 0)
-+		SKIP(return, "IPv6 unavailable: %s", strerror(errno));
-+	close(s);
-+
-+	off = put_listener_af(attrs, 0, "tcp", AF_INET6, TEST_PORT);
-+	ASSERT_EQ(0, listener_set(attrs, off));
-+	ASSERT_EQ(1, listener_get(got, MAX_LISTENERS));
-+	EXPECT_NE(NULL, find_listener(got, 1, "tcp", AF_INET6, TEST_PORT));
-+	EXPECT_EQ(0, memcmp(&got[0].a6, &in6addr_loopback, sizeof(in6addr_loopback)));
-+}
-+
-+/* ===================== rpcbind registration ===================== */
-+
-+/*
-+ * A rpcbind that refuses the registration must fail listener creation,
-+ * whatever CONFIG_NFS_LOCALIO is set to.
-+ *
-+ * The error has to survive svc_register()'s walk over sv_programs to get
-+ * here. With CONFIG_NFS_LOCALIO=y the trailing nfslocalio program has only
-+ * a NULL and a vs_hidden version, and svc_generic_rpcbind_set() reports 0
-+ * for both, so an svc_register() that keeps the last result rather than the
-+ * first hands back success and the listener comes up regardless.
-+ */
-+TEST_F(nfsd_listener, sem_register_refused)
-+{
-+	struct listener_ent got[MAX_LISTENERS];
-+	char attrs[64];
-+	int off = put_listener(attrs, 0, "tcp", TEST_PORT);
-+
-+	ASSERT_EQ(0, rpcb_stub_restart(&self->rpcbd, RPCB_STUB_REFUSE));
-+
-+	EXPECT_EQ(-EACCES, listener_set(attrs, off));
-+	EXPECT_EQ(0, listener_get(got, MAX_LISTENERS));
-+}
-+
-+/* ===================== threads / -EBUSY semantics ===================== */
-+
-+TEST_F(nfsd_listener, sem_busy_on_change)
-+{
-+	char one[64], two[128];
-+	int o1 = put_listener(one, 0, "tcp", TEST_PORT);
-+	int o2 = put_listener(two, 0, "tcp", TEST_PORT);
-+
-+	o2 = put_listener(two, o2, "udp", TEST_PORT);
-+	ASSERT_EQ(0, listener_set(one, o1));
-+	ASSERT_EQ(0, threads_set(1));			/* threads now running */
-+	EXPECT_EQ(-EBUSY, listener_set(two, o2));	/* add refused */
-+	threads_set(0);					/* stop before netns exit */
-+}
-+
-+TEST_F(nfsd_listener, sem_busy_on_remove)
-+{
-+	char one[64];
-+	int o1 = put_listener(one, 0, "tcp", TEST_PORT);
-+
-+	ASSERT_EQ(0, listener_set(one, o1));
-+	ASSERT_EQ(0, threads_set(1));
-+	EXPECT_EQ(-EBUSY, listener_set(NULL, 0));	/* remove refused */
-+	threads_set(0);
-+}
-+
- TEST_HARNESS_MAIN
++TEST_HARNESS_MAIN
+diff --git a/tools/testing/selftests/nfsd/settings b/tools/testing/selftests/nfsd/settings
+new file mode 100644
+index 000000000000..6091b45d226b
+--- /dev/null
++++ b/tools/testing/selftests/nfsd/settings
+@@ -0,0 +1 @@
++timeout=120
 
 -- 
 2.55.0
