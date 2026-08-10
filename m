@@ -1,47 +1,47 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5357D42A144
-	for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 14:51:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 114BB404BF9
+	for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 14:56:02 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786373499; cv=none; b=TD630P8kJn0YPVBjZZl+BAix+15k51RdMeo7QDNwbO/WCIq3AYLCkX9yXiwG7IvnCql29paLr4FQ7PzJK9gg441l0TxL7V4d+6bxbBpZ1p4nwRLEEPpWTEP1FPIcLEAsMGsyPgnCGf/ZOGDL+ZKbY9Q3Wu8EW3MSEQZyaq4Guks=
+	t=1786373764; cv=none; b=I+YFG0WN6or21ANiNGh1/0sDStjNBgWDfj01hNLgOLLKeFzz6Bnh3LIAtdWOO1FxR7aRggjLhlOfdEqYOnc8l5T5yTV8JNkhXfybHspmCMArC/YGVjF8e5LeoXyDOJAWe7j3V5o2oPy1PVWwBUjpITp2KwWvYiYQTlaE+9DVQVc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786373499; c=relaxed/simple;
-	bh=rvQ77PBBd4KPemZm6h5BSfQ5+Srv9LEouXV1ofEhBHE=;
+	s=arc-20240116; t=1786373764; c=relaxed/simple;
+	bh=QCkls553+myii8CV8hW3dGhjQDKNdRPtq/cVYpt+JfM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=TIjMtpuLSaqlr1ofM4MWKW/pz+pK3s3AuVdPYS46eJJyq51yRI6cjw+BtIzmb0YtoBETN0yKRGb7gvHdYdAA/w0wtMOYfGyQeaofLqVZ9y4ztp8hzJ/Fe4sxQMNVlqfQQkAC6YGF3BjzYxyWsw611YEm3tmYhGM0wlbMIyP4JFo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=KdSVz6Mi; arc=none smtp.client-ip=170.10.129.124
+	 MIME-Version; b=TZVlrlTSXBvbBcJWdJFyc1i65WrfRScKMtG55sDkeS1OR21Z7fw7o2fyuYv2zrcbBC9Is3Rmr8GznPWdwiyScfqC966ySiIsXW8yRyrXFVOKwenYU35ktRSKj08Qarwf273L2ZBTQyO0UGReBVGIdrXaWYBbTqJHZmlm6TbKMSQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=NM1CCBEC; arc=none smtp.client-ip=170.10.129.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="KdSVz6Mi"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="NM1CCBEC"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1786373495;
+	s=mimecast20190719; t=1786373762;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=dow+ueDia+e2ar9tsMaX24YsIOIt/Dhst5+qYzdtomo=;
-	b=KdSVz6MiZ9gCOUV6y+ehF+pwSSEI5u1FbsBiTceSUM+LG+DyIa0cwADY2YJU3THPBKKAIq
-	VDpwflEhZARTt6jQEKHP3/VaREkeQIj7DKSVJJxHxpAIate/zK1jdE5rMSH7hS6OgzsePo
-	FvVkO3zBVUOgeH/1UH/DYgKuI/eA9Ig=
-Received: from mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+	bh=wCLVIPyRJO+17jNIARf8WGfJUanR984luunwDbbCbyc=;
+	b=NM1CCBECraPbJjsftL4A4OtuCn1+mPM+g/hjTM+hyfjvXJsttAI8b2Fq9V2M+x2jdaYTN/
+	bmI7Ojl/GgUv6958YtIBBFHjrVXyEkEvzklWCaT6zUIPLS6aKxzTKDUjodDCjP6tG02fNN
+	BI3gRO5s7dKAAZsuOmrj40g5/TdB4Zo=
+Received: from mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
  relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-55-r5OlhImuPGGXD9I_t0t82Q-1; Mon,
- 10 Aug 2026 10:51:28 -0400
-X-MC-Unique: r5OlhImuPGGXD9I_t0t82Q-1
-X-Mimecast-MFC-AGG-ID: r5OlhImuPGGXD9I_t0t82Q_1786373485
-Received: from mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.17])
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-617-xn-yMVDjMhO4tFjI5D1j9A-1; Mon,
+ 10 Aug 2026 10:49:11 -0400
+X-MC-Unique: xn-yMVDjMhO4tFjI5D1j9A-1
+X-Mimecast-MFC-AGG-ID: xn-yMVDjMhO4tFjI5D1j9A_1786373348
+Received: from mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.12])
 	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
 	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
 	(No client certificate requested)
-	by mx-prod-mc-06.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 685CA18007E9;
-	Mon, 10 Aug 2026 14:51:25 +0000 (UTC)
+	by mx-prod-mc-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id B97371956054;
+	Mon, 10 Aug 2026 14:49:07 +0000 (UTC)
 Received: from warthog.procyon.org.com (unknown [10.44.32.44])
-	by mx-prod-int-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 37D4D19560AB;
-	Mon, 10 Aug 2026 14:51:19 +0000 (UTC)
+	by mx-prod-int-03.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id EF6AA195DF95;
+	Mon, 10 Aug 2026 14:49:01 +0000 (UTC)
 From: David Howells <dhowells@redhat.com>
 To: Christian Brauner <christian@brauner.io>,
 	Matthew Wilcox <willy@infradead.org>,
@@ -66,9 +66,9 @@ Cc: David Howells <dhowells@redhat.com>,
 	linux-erofs@lists.ozlabs.org,
 	linux-fsdevel@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-Subject: [PATCH v9 26/26] cachefiles: Preset the state xattr when creating a new file
-Date: Mon, 10 Aug 2026 15:47:43 +0100
-Message-ID: <20260810144746.574036-27-dhowells@redhat.com>
+Subject: [PATCH v9 08/26] netfs: Make mempool available for bvecq
+Date: Mon, 10 Aug 2026 15:47:25 +0100
+Message-ID: <20260810144746.574036-9-dhowells@redhat.com>
 In-Reply-To: <20260810144746.574036-1-dhowells@redhat.com>
 References: <20260810144746.574036-1-dhowells@redhat.com>
 Precedence: bulk
@@ -78,317 +78,174 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
-X-Scanned-By: MIMEDefang 3.0 on 10.30.177.17
+X-Scanned-By: MIMEDefang 3.0 on 10.30.177.12
 
-With a really small cache, cachefiles is likely to see a lot of writes
-hitting ENOSPC - and this can include setxattr that sets the state xattr on
-a cachefile - but we don't really want to successfully fill a cache file
-only to have to scrap it because we can't set the xattr.
-
-Instead, preset the xattr when we create the tmpfile we're going to use,
-and scrap the file at that point if we get ENOSPC.  Only if setxattr
-succeeds do we allow data to be written to the file.
-
-Note that there is a potential performance loss in that writes to the cache
-have to be delayed until this is completed - but we do the tmpfile/setxattr
-in parallel, starting when the file is opened and only have to wait once
-writeback occurs.
-
-Further, a new tracepoint, cachefiles_no_space, has been added to log ENOSPC
-events, along with a couple of subreq traces to log failure detection in
-netfslib.
+Make a mempool available for allocating bvecq structs.  Use it
+automatically if anything other than GFP_KERNEL (with GFP_ZONEMASK flags
+masked off) is specified.  Reading from a file can use GFP_KERNEL as the
+failure mode is straightforward and the same for DIO reads and writes.
+When it comes to writeback, however, the writeback_iter() API does not
+permit temporary failure, including ENOMEM, if WB_SYNC_ALL is set and the
+caller must process all folios to completion.  (I'm not sure if EINTR
+constitutes an acceptable failure).
 
 Signed-off-by: David Howells <dhowells@redhat.com>
-cc: Marc Dionne <marc.dionne@auristor.com>
 cc: Paulo Alcantara <pc@manguebit.org>
+cc: Matthew Wilcox <willy@infradead.org>
+cc: Christoph Hellwig <hch@infradead.org>
+cc: linux-cifs@vger.kernel.org
 cc: netfs@lists.linux.dev
 cc: linux-fsdevel@vger.kernel.org
 ---
- fs/cachefiles/internal.h          |  1 +
- fs/cachefiles/io.c                | 23 ++++++++----
- fs/cachefiles/namei.c             | 15 ++++++--
- fs/cachefiles/xattr.c             | 60 ++++++++++++++++++++++++++++++-
- include/trace/events/cachefiles.h | 28 ++++++++++++++-
- include/trace/events/netfs.h      |  2 ++
- 6 files changed, 119 insertions(+), 10 deletions(-)
+ fs/netfs/bvecq.c      | 39 +++++++++++++++++++++++++++++++++------
+ fs/netfs/internal.h   |  1 +
+ fs/netfs/main.c       |  7 +++++++
+ include/linux/bvecq.h |  3 +++
+ 4 files changed, 44 insertions(+), 6 deletions(-)
 
-diff --git a/fs/cachefiles/internal.h b/fs/cachefiles/internal.h
-index de5e5ef01c8f..59a7599d3f2f 100644
---- a/fs/cachefiles/internal.h
-+++ b/fs/cachefiles/internal.h
-@@ -284,6 +284,7 @@ void cachefiles_withdraw_volume(struct cachefiles_volume *volume);
- /*
-  * xattr.c
+diff --git a/fs/netfs/bvecq.c b/fs/netfs/bvecq.c
+index 00e321a796c9..0bd2ee70c656 100644
+--- a/fs/netfs/bvecq.c
++++ b/fs/netfs/bvecq.c
+@@ -46,8 +46,9 @@ EXPORT_SYMBOL(bvecq_dump);
+  *
+  * Allocate a single bvecq node and initialise the header.  A number of inline
+  * slots are also allocated, rounded up to fit after the header in a power-of-2
+- * slab object of up to 512 bytes (up to 29 slots on a 64-bit cpu).  The slot
+- * array is not initialised.
++ * slab object of up to 512 bytes (up to 29 slots on a 64-bit cpu).  The caller
++ * should be aware that the number of slots allocated may be more or less than
++ * the number requested.  The slot array is not initialised.
+  *
+  * Return: The node pointer or NULL on allocation failure.
   */
-+int cachefiles_preset_object_xattr(struct cachefiles_object *object, struct file *file);
- extern int cachefiles_set_object_xattr(struct cachefiles_object *object);
- extern int cachefiles_check_auxdata(struct cachefiles_object *object,
- 				    struct file *file);
-diff --git a/fs/cachefiles/io.c b/fs/cachefiles/io.c
-index 24a93cc0aae8..f2e8fc25c94e 100644
---- a/fs/cachefiles/io.c
-+++ b/fs/cachefiles/io.c
-@@ -672,10 +672,14 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
- 	 * space, we need to see if it's fully allocated.  If it's not, we may
- 	 * want to cull it.
- 	 */
--	if (cachefiles_has_space(cache, 0, *_len / cache->bsize,
--				 cachefiles_has_space_check) == 0)
-+	ret = cachefiles_has_space(cache, 0, *_len / cache->bsize,
-+				   cachefiles_has_space_check);
-+	if (ret == 0)
- 		return 0; /* Enough space to simply overwrite the whole block */
+@@ -58,16 +59,39 @@ struct bvecq *bvecq_alloc_one(size_t nr_slots, gfp_t gfp, bool for_writeback)
+ 	const size_t max_slots = (max_size - sizeof(*bq)) / sizeof(bq->__bv[0]);
+ 	size_t part = umin(nr_slots, max_slots);
+ 	size_t size = roundup_pow_of_two(struct_size(bq, __bv, part));
++	bool from_pool = false;
  
-+	if (ret == -ENOBUFS)
-+		trace_cachefiles_no_space(object, cachefiles_trace_write_nospace);
+-	bq = kmalloc(size, gfp & ~GFP_ZONEMASK);
+-	if (!bq)
+-		return bq;
++	gfp &= ~GFP_ZONEMASK;
 +
- 	pos = cachefiles_inject_read_error();
- 	if (pos == 0)
- 		pos = vfs_llseek(file, start, SEEK_HOLE);
-@@ -704,8 +708,11 @@ int __cachefiles_prepare_write(struct cachefiles_object *object,
- 	return ret;
++	if (for_writeback) {
++		if (size != BVECQ_STD_SIZE) {
++			gfp_t gfp_temp = gfp;
  
- check_space:
--	return cachefiles_has_space(cache, 0, *_len / cache->bsize,
--				    cachefiles_has_space_for_write);
-+	ret = cachefiles_has_space(cache, 0, *_len / cache->bsize,
-+				   cachefiles_has_space_for_write);
-+	if (ret == -ENOBUFS)
-+		trace_cachefiles_no_space(object, cachefiles_trace_write_nospace);
-+	return ret;
++			gfp_temp |= __GFP_NOMEMALLOC | __GFP_NORETRY | __GFP_NOWARN;
++			gfp_temp &= ~(__GFP_DIRECT_RECLAIM | __GFP_IO);
++			bq = kmalloc(size, gfp_temp);
++			if (bq)
++				goto success;
++		}
++
++		bq = mempool_alloc(&netfs_bvecq_pool, gfp);
++		if (!bq)
++			return bq;
++		from_pool = true;
++		size = BVECQ_STD_SIZE;
++	} else {
++		bq = kmalloc(size, gfp);
++		if (!bq)
++			return bq;
++	}
++
++success:
+ 	*bq = (struct bvecq) {
+ 		.ref		= REFCOUNT_INIT(1),
+ 		.bv		= bq->__bv,
+ 		.inline_bv	= true,
+ 		.max_slots	= (size - sizeof(*bq)) / sizeof(bq->__bv[0]),
++		.from_pool	= from_pool,
+ 	};
+ 	netfs_stat(&netfs_n_bvecq);
+ 	return bq;
+@@ -247,7 +271,10 @@ void bvecq_put(struct bvecq *bq)
+ 			bvecq_free_slot(bq, slot);
+ 		next = bq->next;
+ 		netfs_stat_d(&netfs_n_bvecq);
+-		kfree(bq);
++		if (bq->from_pool)
++			mempool_free(bq, &netfs_bvecq_pool);
++		else
++			kfree(bq);
+ 	}
  }
+ EXPORT_SYMBOL(bvecq_put);
+diff --git a/fs/netfs/internal.h b/fs/netfs/internal.h
+index 46fb92601774..c68eea2ecc60 100644
+--- a/fs/netfs/internal.h
++++ b/fs/netfs/internal.h
+@@ -43,6 +43,7 @@ extern struct list_head netfs_io_requests;
+ extern spinlock_t netfs_proc_lock;
+ extern mempool_t netfs_request_pool;
+ extern mempool_t netfs_subrequest_pool;
++extern mempool_t netfs_bvecq_pool;
+ extern mempool_t netfs_folioq_pool;
  
- static int cachefiles_prepare_write_old(struct netfs_cache_resources *cres,
-@@ -757,10 +764,14 @@ static int cachefiles_issue_write(struct netfs_io_subrequest *subreq)
- 	       wreq->debug_id, subreq->debug_index, start, start + len - 1);
+ #ifdef CONFIG_PROC_FS
+diff --git a/fs/netfs/main.c b/fs/netfs/main.c
+index 927badf3989d..9f72e5054aff 100644
+--- a/fs/netfs/main.c
++++ b/fs/netfs/main.c
+@@ -28,6 +28,7 @@ static struct kmem_cache *netfs_request_slab;
+ static struct kmem_cache *netfs_subrequest_slab;
+ mempool_t netfs_request_pool;
+ mempool_t netfs_subrequest_pool;
++mempool_t netfs_bvecq_pool;
+ mempool_t netfs_folioq_pool;
  
- 	if (!cachefiles_cres_file(cres)) {
--		if (!fscache_wait_for_operation(cres, FSCACHE_WANT_WRITE))
-+		if (!fscache_wait_for_operation(cres, FSCACHE_WANT_WRITE)) {
-+			trace_netfs_sreq(subreq, netfs_sreq_trace_cache_waitfail);
- 			return -ENOBUFS;
--		if (!cachefiles_cres_file(cres))
-+		}
-+		if (!cachefiles_cres_file(cres)) {
-+			trace_netfs_sreq(subreq, netfs_sreq_trace_cache_nofile);
- 			return -ENOBUFS;
-+		}
- 	}
+ #ifdef CONFIG_PROC_FS
+@@ -112,6 +113,9 @@ static int __init netfs_init(void)
+ 	if (mempool_init_kmalloc_pool(&netfs_folioq_pool, 100, sizeof(struct folio_queue)) < 0)
+ 		goto error_folioq_pool;
  
- 	ret = netfs_prepare_write_buffer(subreq, BIO_MAX_VECS);
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index a30df0f91e5e..ef656a319ede 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -117,8 +117,11 @@ struct dentry *cachefiles_get_directory(struct cachefiles_cache *cache,
- 	if (d_is_negative(subdir)) {
- 		ret = cachefiles_has_space(cache, 1, 0,
- 					   cachefiles_has_space_for_create);
--		if (ret < 0)
-+		if (ret < 0) {
-+			if (ret == -ENOBUFS)
-+				trace_cachefiles_no_space(NULL, cachefiles_trace_mkdir_nospace);
- 			goto mkdir_error;
-+		}
- 
- 		_debug("attempt mkdir");
- 
-@@ -447,6 +450,11 @@ struct file *cachefiles_create_tmpfile(struct cachefiles_object *object)
- 		pr_notice("Cache does not support read_iter and write_iter\n");
- 		goto err_unuse;
- 	}
++	if (mempool_init_kmalloc_pool(&netfs_bvecq_pool, 100, BVECQ_STD_SIZE) < 0)
++		goto error_bvecq_pool;
 +
-+	/* Preallocate space for the xattr. */
-+	ret = cachefiles_preset_object_xattr(object, file);
-+	if (ret < 0)
-+		goto err_unuse;
- out:
- 	cachefiles_end_secure(cache, saved_cred);
- 	object->content_info = CACHEFILES_CONTENT_ALL;
-@@ -470,8 +478,11 @@ static bool cachefiles_create_file(struct cachefiles_object *object)
- 
- 	ret = cachefiles_has_space(object->volume->cache, 1, 0,
- 				   cachefiles_has_space_for_create);
--	if (ret < 0)
-+	if (ret < 0) {
-+		if (ret == -ENOBUFS)
-+			trace_cachefiles_no_space(object, cachefiles_trace_create_nospace);
- 		return false;
-+	}
- 
- 	file = cachefiles_create_tmpfile(object);
- 	if (IS_ERR(file))
-diff --git a/fs/cachefiles/xattr.c b/fs/cachefiles/xattr.c
-index 25f2a906f984..2a7cc514f1a5 100644
---- a/fs/cachefiles/xattr.c
-+++ b/fs/cachefiles/xattr.c
-@@ -33,6 +33,58 @@ struct cachefiles_vol_xattr {
- 	__u8	data[];		/* netfs volume coherency data */
- } __packed;
- 
-+/*
-+ * Preset the state xattr on a cache file to allocate space for it.
-+ */
-+int cachefiles_preset_object_xattr(struct cachefiles_object *object, struct file *file)
-+{
-+	struct cachefiles_xattr *buf;
-+	struct dentry *dentry = file->f_path.dentry;
-+	unsigned int len = object->cookie->aux_len;
-+	int ret;
-+
-+	buf = kzalloc(sizeof(struct cachefiles_xattr) + len, GFP_KERNEL);
-+	if (!buf)
-+		return -ENOMEM;
-+
-+	buf->type		= CACHEFILES_COOKIE_TYPE_DATA;
-+	buf->content		= CACHEFILES_CONTENT_DIRTY;
-+
-+	ret = cachefiles_inject_write_error();
-+	if (ret == 0) {
-+		ret = mnt_want_write_file(file);
-+		if (ret == 0) {
-+			ret = vfs_setxattr(&nop_mnt_idmap, dentry,
-+					   cachefiles_xattr_cache, buf,
-+					   sizeof(struct cachefiles_xattr) + len, 0);
-+			mnt_drop_write_file(file);
-+		}
-+	}
-+	if (ret < 0) {
-+		trace_cachefiles_vfs_error(object, file_inode(file), ret,
-+					   cachefiles_trace_setxattr_error);
-+		trace_cachefiles_coherency(object, file_inode(file)->i_ino,
-+					   object->object_size,
-+					   be64_to_cpup((__be64 *)buf->data),
-+					   buf->content,
-+					   cachefiles_coherency_set_fail);
-+		switch (ret) {
-+		case -ENOMEM:
-+		case -ENOSPC:
-+			break;
-+		default:
-+			cachefiles_io_error_obj(
-+				object,
-+				"Failed to set xattr with error %d", ret);
-+			break;
-+		}
-+	}
-+
-+	kfree(buf);
-+	_leave(" = %d", ret);
-+	return ret;
-+}
-+
- /*
-  * set the state xattr on a cache file
-  */
-@@ -81,10 +133,16 @@ int cachefiles_set_object_xattr(struct cachefiles_object *object)
- 					   be64_to_cpup((__be64 *)buf->data),
- 					   buf->content,
- 					   cachefiles_coherency_set_fail);
--		if (ret != -ENOMEM)
-+		switch (ret) {
-+		case -ENOMEM:
-+			break;
-+		case -ENOSPC:
-+		default:
- 			cachefiles_io_error_obj(
- 				object,
- 				"Failed to set xattr with error %d", ret);
-+			break;
-+		}
- 	} else {
- 		trace_cachefiles_coherency(object, file_inode(file)->i_ino,
- 					   object->object_size,
-diff --git a/include/trace/events/cachefiles.h b/include/trace/events/cachefiles.h
-index eccdb5abeedc..c7b5b8587cca 100644
---- a/include/trace/events/cachefiles.h
-+++ b/include/trace/events/cachefiles.h
-@@ -85,11 +85,13 @@ enum cachefiles_prepare_read_trace {
- 
- enum cachefiles_error_trace {
- 	cachefiles_trace_alignment_error,
-+	cachefiles_trace_create_nospace,
- 	cachefiles_trace_fallocate_error,
- 	cachefiles_trace_getxattr_error,
- 	cachefiles_trace_link_error,
- 	cachefiles_trace_lookup_error,
- 	cachefiles_trace_mkdir_error,
-+	cachefiles_trace_mkdir_nospace,
- 	cachefiles_trace_notify_change_error,
- 	cachefiles_trace_open_error,
- 	cachefiles_trace_read_error,
-@@ -102,6 +104,7 @@ enum cachefiles_error_trace {
- 	cachefiles_trace_trunc_error,
- 	cachefiles_trace_unlink_error,
- 	cachefiles_trace_write_error,
-+	cachefiles_trace_write_nospace,
+ 	netfs_request_slab = kmem_cache_create("netfs_request",
+ 					       sizeof(struct netfs_io_request), 0,
+ 					       SLAB_HWCACHE_ALIGN | SLAB_ACCOUNT,
+@@ -164,6 +168,8 @@ static int __init netfs_init(void)
+ error_reqpool:
+ 	kmem_cache_destroy(netfs_request_slab);
+ error_req:
++	mempool_exit(&netfs_bvecq_pool);
++error_bvecq_pool:
+ 	mempool_exit(&netfs_folioq_pool);
+ error_folioq_pool:
+ 	return ret;
+@@ -178,6 +184,7 @@ static void __exit netfs_exit(void)
+ 	kmem_cache_destroy(netfs_subrequest_slab);
+ 	mempool_exit(&netfs_request_pool);
+ 	kmem_cache_destroy(netfs_request_slab);
++	mempool_exit(&netfs_bvecq_pool);
+ 	mempool_exit(&netfs_folioq_pool);
+ }
+ module_exit(netfs_exit);
+diff --git a/include/linux/bvecq.h b/include/linux/bvecq.h
+index 3d4ab0e554d4..07c96d1fa4b2 100644
+--- a/include/linux/bvecq.h
++++ b/include/linux/bvecq.h
+@@ -49,15 +49,18 @@ struct bvecq {
+ 	enum bvecq_mem	mem_type:3;	/* What sort of memory and how to free it */
+ 	bool		inline_bv:1;	/* T if __bv[] is being used */
+ 	bool		discontig:1;	/* T if not contiguous with previous bvecq */
++	bool		from_pool:1;	/* T if bvecq from mempool */
+ 	struct bio_vec	*bv;		/* Pointer to array of page fragments */
+ 	struct bio_vec	__bv[];		/* Default array (if ->inline_bv) */
  };
  
- #endif
-@@ -171,11 +174,13 @@ enum cachefiles_error_trace {
- 
- #define cachefiles_error_traces						\
- 	EM(cachefiles_trace_alignment_error,	"align")		\
-+	EM(cachefiles_trace_create_nospace,	"create-nospace")	\
- 	EM(cachefiles_trace_fallocate_error,	"fallocate")		\
- 	EM(cachefiles_trace_getxattr_error,	"getxattr")		\
- 	EM(cachefiles_trace_link_error,		"link")			\
- 	EM(cachefiles_trace_lookup_error,	"lookup")		\
- 	EM(cachefiles_trace_mkdir_error,	"mkdir")		\
-+	EM(cachefiles_trace_mkdir_nospace,	"mkdir-nospace")	\
- 	EM(cachefiles_trace_notify_change_error, "notify_change")	\
- 	EM(cachefiles_trace_open_error,		"open")			\
- 	EM(cachefiles_trace_read_error,		"read")			\
-@@ -187,7 +192,8 @@ enum cachefiles_error_trace {
- 	EM(cachefiles_trace_tmpfile_error,	"tmpfile")		\
- 	EM(cachefiles_trace_trunc_error,	"trunc")		\
- 	EM(cachefiles_trace_unlink_error,	"unlink")		\
--	E_(cachefiles_trace_write_error,	"write")
-+	EM(cachefiles_trace_write_error,	"write")		\
-+	E_(cachefiles_trace_write_nospace,	"write-nospace")
- 
- 
- /*
-@@ -692,6 +698,26 @@ TRACE_EVENT(cachefiles_io_error,
- 		      __entry->error)
- 	    );
- 
-+TRACE_EVENT(cachefiles_no_space,
-+	    TP_PROTO(struct cachefiles_object *obj, enum cachefiles_error_trace trace),
-+
-+	    TP_ARGS(obj, trace),
-+
-+	    TP_STRUCT__entry(
-+		    __field(unsigned int,			obj)
-+		    __field(enum cachefiles_error_trace,	trace)
-+			     ),
-+
-+	    TP_fast_assign(
-+		    __entry->obj	= obj ? obj->debug_id : 0;
-+		    __entry->trace	= trace;
-+			   ),
-+
-+	    TP_printk("o=%08x %s",
-+		      __entry->obj,
-+		      __print_symbolic(__entry->trace, cachefiles_error_traces))
-+	    );
-+
- #endif /* _TRACE_CACHEFILES_H */
- 
- /* This part must be outside protection */
-diff --git a/include/trace/events/netfs.h b/include/trace/events/netfs.h
-index 8b40fe870d21..e30358f99906 100644
---- a/include/trace/events/netfs.h
-+++ b/include/trace/events/netfs.h
-@@ -102,8 +102,10 @@
- 	EM(netfs_sreq_trace_abandoned,		"ABNDN")	\
- 	EM(netfs_sreq_trace_add_donations,	"+DON ")	\
- 	EM(netfs_sreq_trace_added,		"ADD  ")	\
-+	EM(netfs_sreq_trace_cache_nofile,	"CA-!F")	\
- 	EM(netfs_sreq_trace_cache_nowrite,	"CA-NW")	\
- 	EM(netfs_sreq_trace_cache_prepare,	"CA-PR")	\
-+	EM(netfs_sreq_trace_cache_waitfail,	"CA-!W")	\
- 	EM(netfs_sreq_trace_cache_write,	"CA-WR")	\
- 	EM(netfs_sreq_trace_cancel,		"CANCL")	\
- 	EM(netfs_sreq_trace_clear,		"CLEAR")	\
+ #if BITS_PER_LONG == 64
+ /* Number of slots in __bv[] for a bvecq in a 512-byte kmalloc block. */
++#define BVECQ_STD_SIZE		512
+ #define BVECQ_STD_SLOTS		29	/* 2 words/slot; 32 slots; bvecq is 6 words (3 slots) */
+ #elif  BITS_PER_LONG == 32
+ /* Number of slots in __bv[] for a bvecq in a 256-byte kmalloc block. */
++#define BVECQ_STD_SIZE		256
+ #define BVECQ_STD_SLOTS		18	/* 3 words/slot; 21 slots; bvecq is 9 words (3 slots) */
+ #else
+ #error BVECQ_STD_SLOTS undetermined
 
