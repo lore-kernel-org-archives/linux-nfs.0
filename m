@@ -1,94 +1,171 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id EFBB944213C
-	for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 20:31:23 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E893B442134
+	for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 20:38:57 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786393885; cv=none; b=Xo0WCH6doVUoQq6kfvZxzxn8UaVlpUTzoQ9m86hTkUACYKoojUrUv5XHHQPOsBIjDmgJAZfulIivkv+6f12z+RSwEs8IR1blsAg6ZboAc1fD0QW8CA3kKj6eVVA7UIIPZoUq5/Lc6qkfGBXwTO5o7a0xrU3htBxyuU5uXlhJ84Y=
+	t=1786394339; cv=none; b=cLNFhDvZPwbHZzzEBkXbTmx/R0AOV2a0xT57T1lDFxZZuix/vCxPx76f9sYuMftozlImpRDEs+karVkYqeqMgggRQIwwOpspsFMlhTcOIDW9pyYpxHeWQ6igUZJTO66+A7N+jYrWAO4KIAV86+JtfDXL8w/ZAy/zKv7NK68Aaqc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786393885; c=relaxed/simple;
-	bh=SqaRd//dvVr9mB50I7wn+QndPUln3nLYJ57OMJu5Bos=;
-	h=From:In-Reply-To:References:To:Cc:Subject:MIME-Version:
-	 Content-Type:Date:Message-ID; b=ockE8t0uiu+9EgTeB6gAPmkYsU9eikf6cJnU5nR17Fu15oIwoEJ/KgEMGFOaZvrt7EKg1J0Gd9RREoSnISN4v+m2VHMNy85IQ5GCLU52UBS8SByBK5yFbl0Tu2LwgJ2He2wm1EIVqREmks/btV5Cu6Y4bvRzUzyGkTjhb1jtfw4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=cWLbI9Dj; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	s=arc-20240116; t=1786394339; c=relaxed/simple;
+	bh=uJSRGu+secrn6ELFiY8mCeDfdirixJZ+Vh+vWqrsCQs=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=ontMZ+miXM9yWezKzDlfGw7D7lYUAKRg50cs6Z6MMJ84t56ovnU/tbRv/COj21uI5sSR0Mwd1yoyLUVclV2zcS4rGUQi3wGHgEnIqEz7W7Gr50rNtGRtNWVa7d9H2cx5xH+YeX36A9OHt+bvhDsb1xEJDjPGR5aTjORj9Sy3Lp0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=casQjVQX; arc=none smtp.client-ip=209.85.214.169
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="cWLbI9Dj"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1786393883;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=N+nHIX4qndv3AfBXSobDAVXCw7W2PVPh2/yZZQrRWZU=;
-	b=cWLbI9DjNZqP0bOUzpNFWt4VUzsxt6tCIww0Ph97nrSdcZFKCYwjcVCddbpcrG4O4LJJa4
-	DE7QACMNte5lUMzuMX7mZWsc+HOQR86/6vFdJvLe1vbImzaLoJF1w3kKi3BfSY79taWME2
-	b2qxD0gRoL7DF8ClSY3qDTNmEGsRYQ8=
-Received: from mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com
- (ec2-54-186-198-63.us-west-2.compute.amazonaws.com [54.186.198.63]) by
- relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
- cipher=TLS_AES_256_GCM_SHA384) id us-mta-278-8366SUk-OtWzAoVznGm_-g-1; Mon,
- 10 Aug 2026 16:31:19 -0400
-X-MC-Unique: 8366SUk-OtWzAoVznGm_-g-1
-X-Mimecast-MFC-AGG-ID: 8366SUk-OtWzAoVznGm_-g_1786393877
-Received: from mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.111])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
-	(No client certificate requested)
-	by mx-prod-mc-05.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 03F33195608A;
-	Mon, 10 Aug 2026 20:31:15 +0000 (UTC)
-Received: from warthog.procyon.org.uk (unknown [10.44.32.44])
-	by mx-prod-int-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 2A89D1800346;
-	Mon, 10 Aug 2026 20:31:04 +0000 (UTC)
-Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
-	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
-	Kingdom.
-	Registered in England and Wales under Company Registration No. 3798903
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <anooK9-UCNTmoSAq@casper.infradead.org>
-References: <anooK9-UCNTmoSAq@casper.infradead.org> <20260810144746.574036-1-dhowells@redhat.com> <20260810144746.574036-5-dhowells@redhat.com>
-To: Matthew Wilcox <willy@infradead.org>
-Cc: dhowells@redhat.com, Christian Brauner <christian@brauner.io>,
-    Christoph Hellwig <hch@infradead.org>,
-    Paulo Alcantara <pc@manguebit.org>, Jens Axboe <axboe@kernel.dk>,
-    Leon Romanovsky <leon@kernel.org>, Steve French <sfrench@samba.org>,
-    ChenXiaoSong <chenxiaosong@chenxiaosong.com>,
-    Marc Dionne <marc.dionne@auristor.com>,
-    Stefan Metzmacher <metze@samba.org>,
-    Eric Van Hensbergen <ericvh@kernel.org>,
-    Dominique Martinet <asmadeus@codewreck.org>,
-    Ilya Dryomov <idryomov@gmail.com>, netfs@lists.linux.dev,
-    linux-afs@lists.infradead.org, linux-cifs@vger.kernel.org,
-    linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-    v9fs@lists.linux.dev, linux-erofs@lists.ozlabs.org,
-    linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-    linux-block@vger.kernel.org
-Subject: Re: [PATCH v9 04/26] Add a function to kmap one page of a multipage bio_vec
+	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="casQjVQX"
+Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2cab97c86bdso9065ad.1
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 13:38:57 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=google.com; s=20251104; t=1786394337; x=1786999137; darn=vger.kernel.org;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=VYp2Tfa4a+eGAB6Piu2ik5k2VivENudTsuNWEkco40o=;
+        b=casQjVQXgfPfT4a8Rp7+tK3rt+5o/mi5RbhcDsjjGAzOL2r6d06I10Q9enGM6r6yes
+         3M2P/tLm/hEI23sLbSOyiCGW9dcSPqZhBwUfQ2S1/OSosPqq8tgqGWDjVm15q4WGN3n3
+         gpqdbdGOJlPkLZ3Obkswmp9AhJ0OFFjV/Hj0/048RiNhIVby1lR9PezcTluSpmUy4UG2
+         d/AU2zEuQZ1cqO+dRJv8+zwg8qaI72PQhNY4MFEIPkwcbKEf1VQ8wtBmNI6McGqMlLv5
+         fiyQDNYSNsd+Pu9uIP4QLPeNWea076/z/0OJI9uadnXFeT9zMsrRYmo61AQ9wDQaHLCu
+         l35w==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786394337; x=1786999137;
+        h=in-reply-to:content-disposition:content-type:mime-version
+         :references:message-id:subject:cc:to:from:date:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=VYp2Tfa4a+eGAB6Piu2ik5k2VivENudTsuNWEkco40o=;
+        b=f2rC6HJmTdOcGjBz8aIstc5x2E9tfCNAhYrwMZACII9Kw8TgjpTY0hXG8d1uTI5qUB
+         cPzi2wyFsAmebEw3QSfulX/ahe+GC2LepwJ70GJ1Cewabt9MCkfb3vpdpxk637ZfmlAX
+         2g4VaEwwH5Z1VAJ/+vZJz2sXd4JPvNboxUdzvI75j0NmtXGXD4Idw5rGaQQ8mP83sCxI
+         mKZbmB8v99fNLqxmMGRrIGC4aONDkfcdh6go02VaHJXZT43m5VbvtbINseYdtDdcQPhf
+         beJseiCbz2LJfIpGluB1UuOj0WIOoJoBWCVYCiGpPcPlIB6QwqwBTJpZs9P20YTXhcUl
+         eQIA==
+X-Gm-Message-State: AOJu0Yy4mA/xKDSGuLeEbWZi5tgr1tHF1yFzCl+WlD2ANh6VNQ/n+KdZ
+	agcX1ul4a+5uqEuFSFzMvDpZS1wKUQH7ckbUpNs371LVuqSRdbjW4vk4pdsFUFwD3lHKQU0moJk
+	LRWR1mg==
+X-Gm-Gg: AR+sD12GY6SdMmOxC0bIp05w7WAIYC+AYZbM1VgFCSsAsORVJjkPqKYdSL8zeLsjqRO
+	aI16gyggbEDiNJWQa8cbt0gJPrBMsiv12+4x5xBym9E0MJFX/zexPQZHN2eyATbZoPUCU129Wax
+	j7EtpXntComWmlXFgQfrPTNLThaI0PJJ0C56vpAIrxKpv/ha9Zy3bu2YRpWCSYE6VyTs/lpwMK7
+	E9fbOjwlAfCMXlx0zPcPc+RbZpzUyWNitq3Zkw/i8PFKD0NDQ5qfcItllwe9HAOv+0ObHVrtgXy
+	re2NIIKPS84oSEHyZcunkBNAcx+WW1UZr1bd1YqcSmsmY47MYar9CE2Igwknp0LqPBfGMvGVGC8
+	1+1ZX8A9KEJguuUByEExliP3CETcmJ26TmkLPC2vTnyw6BLyeV8xxm/DolTgIRDjeTnJXmr35OL
+	ZZspRQTolji6osUb+jX8EQUYancafesldIZ7mVr7BcK6sXLO95qQjp4veiVTRHwJPN/bcf0gLH7
+	tteIgmRuiDbE3VCNR5OUnQ=
+X-Received: by 2002:a17:902:ea0a:b0:2ce:b436:272a with SMTP id d9443c01a7336-2d31201ad00mr133605ad.3.1786394336550;
+        Mon, 10 Aug 2026 13:38:56 -0700 (PDT)
+Received: from google.com (21.168.124.34.bc.googleusercontent.com. [34.124.168.21])
+        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2d14ccd8f1bsm41025825ad.25.2026.08.10.13.38.53
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 10 Aug 2026 13:38:55 -0700 (PDT)
+Date: Mon, 10 Aug 2026 20:38:49 +0000
+From: Pranjal Shrivastava <praan@google.com>
+To: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
+	linux-kernel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
+	Logan Gunthorpe <logang@deltatee.com>,
+	Jason Gunthorpe <jgg@ziepe.ca>, linux-pci@vger.kernel.org,
+	linux-rdma@vger.kernel.org, Shivaji Kant <shivajikant@google.com>
+Subject: Re: [PATCH v4 0/5] nfs: modernize direct I/O path
+Message-ID: <ano2R8fAeGmsNt9f@google.com>
+References: <20260810195040.2877784-1-praan@google.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-ID: <586047.1786393863.1@warthog.procyon.org.uk>
-Date: Mon, 10 Aug 2026 21:31:03 +0100
-Message-ID: <586048.1786393863@warthog.procyon.org.uk>
-X-Scanned-By: MIMEDefang 3.4.1 on 10.30.177.111
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260810195040.2877784-1-praan@google.com>
 
-Matthew Wilcox <willy@infradead.org> wrote:
-
-> On Mon, Aug 10, 2026 at 03:47:21PM +0100, David Howells wrote:
-> > Add a function to kmap one page of a multipage bio_vec by offset (which is
-> > added to the offset in the bio_vec internally).  The caller is responsible
-> > for calculating how much of the page is then available.
+On Mon, Aug 10, 2026 at 07:50:34PM +0000, Pranjal Shrivastava wrote:
+> Modernize the NFS Direct I/O path as a preparatory step to enable PCI
+> Peer-to-Peer DMA (P2PDMA) support. Following feedback on the initial
+> RFC [1], the modernization and architectural changes are split into
+> different series. Additionally, based on the discussion in the v2 [2]
+> of this series, the migration of NFS Direct I/O to folios would be
+> handled in a separate follow-up series.
 > 
-> I think this should be kmap_local_bvec().  Living in bvec.h makes sense,
-> but keeping it in the kmap_local_ namespace is better than putting it in
-> the bvec_ namespace.
+> Currently, NFS O_DIRECT relies on the legacy iov_iter_get_pages_alloc2()
+> API which does not support the pinning requirements for P2P memory.
+> The implementation moves NFS to the modern iov_iter_extract_pages() API.
+> 
 
-Christoph disagrees with you:-/
+[...]
 
-David
+I'm calling out a few typos / non-code mistakes:
+
+1. On the cover letter I missed updating the subject to v5 for this series
+  (the changelog is noted below).
+
+2. I also accidentally dropped Christoph's Reviewed-by tags on patches 
+   1, 2, and 3 during the rebase (given while reviewing v4 [1]).
+
+Everything else in the series is correct as per the v5 changelog.
+Please let me know what the right etiquette is? Shall I resend the series?
+
+Apologies for the noise!
+
+> 
+> [v5]
+>  - Fixed an iov_iter_revert oops in nfs_direct_extract_pages().
+>  - Fixed a refcount underflow in nfs_direct_release_pages() during
+>    swap-over-NFS by ensuring we do not call put_page() on unpinned memory.
+>  - Rebased on fs-next
+> 
+> [v4]
+>  - https://lore.kernel.org/all/20260720150601.2702700-1-praan@google.com/
+>  - Dropped superfluous externs in include/linux/nfs_page.h
+>  - Scoped `req` locally inside the loop in nfs_release_request_list()
+>  - Wrapped >80 character lines in Patch 1 to adhere to coding style.
+>  - Fixed typos and capitalization convention in the commit msgs
+>  - Collected Reviewed-by tags from Christoph and Shivaji
+>  - Rebased on fs-next
+> 
+> [v3]
+>  - https://lore.kernel.org/all/20260715143540.3597616-1-praan@google.com/
+>  - Dropped patches that added folio support for NFS Direct I/O
+>  - Folded requested_bytes accounting in patch 5 due to dropped folio support
+>  - Rebased on fs-next
+> 
+> [v2] 
+>  - https://lore.kernel.org/all/20260616134000.2733403-1-praan@google.com/
+>  - Fix data corruption in nfs_direct_extract_pages() by correctly
+>    calculating intra-page offsets using offset_in_page().
+>  - Fix requested_bytes accounting in direct read/write paths to only
+>    increment after successful RPC scheduling.
+>  - Add missing kernel-doc descriptions for the @pinned parameter in
+>    nfs_page_create_from_page() and nfs_page_create_from_folio().
+>  - Rebase on fs-next/
+> 
+> [v1] https://lore.kernel.org/all/20260603053033.3300318-1-praan@google.com/
+> 
+> Pranjal Shrivastava (5):
+>   nfs: make nfs_page pin-aware
+>   nfs: track number of pinned pages in nfs_page
+>   nfs: introduce nfs_release_request_list helper
+>   nfs: migrate direct I/O to iov_iter_extract_pages
+>   nfs: introduce nfs_direct_extract_pages helper
+> 
+>  fs/nfs/direct.c          | 139 ++++++++++++++++++++-------------------
+>  fs/nfs/pagelist.c        |  62 ++++++++++++++---
+>  fs/nfs/read.c            |   2 +-
+>  fs/nfs/write.c           |   2 +-
+>  include/linux/nfs_page.h |   8 ++-
+>  5 files changed, 130 insertions(+), 83 deletions(-)
+> 
+> 
+> base-commit: 5b57716ed7ad2f4b1724461c8777015c4e4befb1
+> -- 
+> 2.55.0.679.g6767b8d81c-goog
+> 
+
+Thanks,
+Praan
+
+[1] https://lore.kernel.org/all/20260720150601.2702700-1-praan@google.com/
 
