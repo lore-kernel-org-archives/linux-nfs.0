@@ -1,61 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 05ADA3C2775;
-	Mon, 10 Aug 2026 13:12:33 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F9BB3DD50D;
+	Mon, 10 Aug 2026 13:24:57 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786367555; cv=none; b=TBCiwlaWkdiE5NDckuag8ZSXj/84oPiOUTZ2jnwI6u0SYjf1ZWvdbQDiwqs2lsKAnkIJsuXm5/fdf8pXZcdpTPd6ijaZya5vkz5kk22BCnKtBcS3JRr3L4qucFeB+/WcSHKu8Yqdo7g4i3fyLgwRfPKwsGNxmwtWNIiSZfFzDMI=
+	t=1786368298; cv=none; b=C6gi4qylRsONma7J7f9JsEKvFqCVKdGVRPYqWdpR+ecCZiavkiJqQ0fgJGReqob1W+CpJd9JYfqdnvLW6OhHWGDywGBIsmnMXf2z4nT7jXcJc3my5GPNv+WJMExAzwz76e7oaHu/RtySzCHjmnz+o62EBBVH7CLP8urBttNFGVY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786367555; c=relaxed/simple;
-	bh=H4bkzjyn5PYFF1fjCINLDBhQNmdAHkuGSmghaii28ks=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=GHHTYLnCjo3LXs2p6f3xXaDdmCjgY1/cTkPZjPm7YW69lhd6STRnEga5eGkXE21cCkTtHNm64VPohS1X70g/Esi6pu9IHF1yoZZvrCGgxBnpYmezW83VU0uXoeQicVaq/GZYYH8PLJdsJKooCwWgRo152BEurVUXDUu1ktuCJiE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gD7tKxwY; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786368298; c=relaxed/simple;
+	bh=maQOpdiE0Nzwl9nHvXTPD7Hmop2fglx39GVbR/iCWLc=;
+	h=MIME-Version:Content-Type:Subject:From:To:Cc:In-Reply-To:
+	 References:Date:Message-Id; b=FXpoB7L/9ya+H21NNE2U4xi8bRwqRVtOxV9vKXfFr1fuziCO7TFpcQVVE28a17PjWaUHY2mKEsmhrBoJRnsTsd09X+kR5d01wMWSsReyNB+h0+FDtvj9qSjk3X6dvbtb3fsQbookUzioVykh41JMCtswHHPZ4lwjyWlcxybkMus=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QHU9+DmU; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gD7tKxwY"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C4B801F000E9;
-	Mon, 10 Aug 2026 13:12:28 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QHU9+DmU"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id A65A11F000E9;
+	Mon, 10 Aug 2026 13:24:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786367553;
-	bh=gzwFhtE0Ek2LlVIsTwETJaTv5SvMI/8Bx08qLe2Vxtc=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=gD7tKxwYhcI7DHlrAioW2qhKgIAABui+x7xOWM4yNge/+pxISG8Prmuy7Nw1PWEo8
-	 h0IXKke3j8f3JhEchHd2VYAiFknegfIvqbj3fZvne9Z4HdzC/03nUZtBJ3AOBDzi81
-	 hmRrKeUHFkWBTJtgJ0EWBy5jiJS6xIgAOu56flgrDCUqxAJJ5fc0PbJZSysDPVWS2s
-	 kMoQfcWZGyQuL/xvmYbiBn3teBRTbCUUa9+nLUu3qTZQke/zsjObGWHu7PyyAjg6TY
-	 XPEotAtFQm884B2uRvPVe+xj3Qo8xDW3CUdlrdupZzS2yqdcUNZodAqzXiW3qvf52C
-	 AbGgrCKjIgvcw==
-From: Christian Brauner <brauner@kernel.org>
-To: Matthew Wilcox <willy@infradead.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	Christian Brauner <brauner@kernel.org>,
-	David Howells <dhowells@redhat.com>
-Cc: Paulo Alcantara <pc@manguebit.org>,
-	Jens Axboe <axboe@kernel.dk>,
-	Leon Romanovsky <leon@kernel.org>,
-	Steve French <sfrench@samba.org>,
-	ChenXiaoSong <chenxiaosong@chenxiaosong.com>,
-	Marc Dionne <marc.dionne@auristor.com>,
-	Stefan Metzmacher <metze@samba.org>,
-	Eric Van Hensbergen <ericvh@kernel.org>,
-	Dominique Martinet <asmadeus@codewreck.org>,
-	Ilya Dryomov <idryomov@gmail.com>,
-	netfs@lists.linux.dev,
-	linux-afs@lists.infradead.org,
-	linux-cifs@vger.kernel.org,
-	linux-nfs@vger.kernel.org,
-	ceph-devel@vger.kernel.org,
-	v9fs@lists.linux.dev,
-	linux-erofs@lists.ozlabs.org,
-	linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v8 00/25] netfs: Keep track of folios in a segmented bio_vec[] chain
-Date: Mon, 10 Aug 2026 15:12:23 +0200
-Message-ID: <20260810-luftdicht-popmusik-hypen-61dd8d9e3c06@brauner>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <20260804100224.2748935-1-dhowells@redhat.com>
-References: <20260804100224.2748935-1-dhowells@redhat.com>
+	s=k20260515; t=1786368297;
+	bh=LqbXuIW1AzbFRLlq+BlUwIYUreMyPkDhS0NmZzNzwDs=;
+	h=Subject:From:To:Cc:In-Reply-To:References:Date;
+	b=QHU9+DmUad00AqAVMjudvnPWCwaquhLGto8OXMhUsDoF0L2J1FS/N7uW7ZpszY7Wj
+	 svXfOgfonUAlX1R9cDhLEWl1MhvlPG1IoLYDIL6/QskY1wwKDXM6Zb61KAkAozVv5Q
+	 fxKRahgEQFAXZmA87gDXoJssKUE9mvATq0EMm7RZtniRgYrPkzXvy8C4hp+plDyczo
+	 3cqtBSMmKZo96+AYKJ4wpuFljIJNA4HQN6H+WemMK0+ciUxIMNX+yksGgen3pPLjQI
+	 kQQFZ/fZ/PZ+d4A0RPWHVErYAXPnddIKGVWrk9K8LR1CEBvIBbLPy2smFisKgRDnDl
+	 mZuHErsvEMGoA==
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -63,82 +33,90 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3993; i=brauner@kernel.org; h=from:subject:message-id; bh=H4bkzjyn5PYFF1fjCINLDBhQNmdAHkuGSmghaii28ks=; b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWRVnrN4Erc35H3fhn/clms7GJ4uEZWeJhcuUrNrW+arA JGQ3SaJHaUsDGJcDLJiiiwO7Sbhcst5KjYbZWrAzGFlAhnCwMUpABfhYPinGptzyGzilt/72nwE E3ab2vZrKqdG7hRYYeuScWP2gbQTjAwHlysWdRuZxNts5j2tfWFGkW/arCzbN+KvBaYoVvILruU DAA==
-X-Developer-Key: i=brauner@kernel.org; a=openpgp; fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7bit
+Subject: Re: [PATCH v3 0/2] vfs, afs, bash: Fix miscomparison of foreign
+ user IDs in the VFS
+From: Christian Brauner <brauner@kernel.org>
+To: David Howells <dhowells@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, 
+ Christian Brauner <christian@brauner.io>, 
+ Marc Dionne <marc.dionne@auristor.com>, 
+ Jeffrey Altman <jaltman@auristor.com>, Steve French <sfrench@samba.org>, 
+ linux-afs@lists.infradead.org, openafs-devel@openafs.org, 
+ linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org, 
+ linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+In-Reply-To: <20260728141344.1811120-1-dhowells@redhat.com>
+References: <20260728141344.1811120-1-dhowells@redhat.com>
+Date: Mon, 10 Aug 2026 15:24:52 +0200
+Message-Id: <20260810-jazzfest-unglaubhaft-miene-4d1cf4cf42d3@brauner>
+X-Mailer: b4 0.17-dev-362b8
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3040; i=brauner@kernel.org;
+ h=from:subject:message-id; bh=maQOpdiE0Nzwl9nHvXTPD7Hmop2fglx39GVbR/iCWLc=;
+ b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWRVXlQ7qvirz0TGy/+jfkrD3qrvbHfKHnVtnxah3OMv8
+ OlIdqVtRykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwESWbGdkmD7z7cU7Rf83ynz8
+ aunf97QkmDXU6aNwW4rntXOSW0p5fzP8FWm+FW2+PGfxtlPvJQzFXh6M3SJ+4pdxecTHSon8s5a
+ BDAA=
+X-Developer-Key: i=brauner@kernel.org; a=openpgp;
+ fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
 
-On Tue, 04 Aug 2026 11:01:55 +0100, David Howells wrote:
-> Could you add these patches to the VFS tree for next?
+On 2026-07-28 15:13 +0100, David Howells wrote:
+> Hi Al, Christian,
 > 
-> The patches get rid of folio_queue, rolling_buffer and ITER_FOLIOQ,
-> replacing the folio queue construct used to manage buffers in netfslib with
-> one based around a segmented chain of bio_vec arrays instead.  There are
-> three main aims here:
+> Here's a pair of fixes that deal with some places the VFS mishandles
+> foreign user ID checks.  By "foreign" I mean that the user IDs from the
+> filesystem do not belong in the same number space as the system's user IDs.
+> Network filesystems are prime examples of this, but it may also impact
+> things like USB drives or cdroms.
 > 
-> [...]
+> Take AFS as example: Whilst each file does have a numeric user ID, the file
+> may be accessed from a world-accessible public-facing server from some
+> other organisation with its own idea of what that user ID refers to.  IDs
+> from AFS may also collide with the system's own set of IDs and may also be
+> unrepresentable as a 32-bit UID (in the case of AuriStor servers).
+> 
+> Further, kAFS uses a key containing an authentication token to specify the
+> subject doing an RPC operation to the server - and, as such, this needs to
+> be used instead of current_fsuid() in determining whether the current user
+> has ownership rights over a file.
+> 
+> Additionally, filesystems (CIFS being a notable example) may also have user
+> identifiers that aren't simple integers.
+> 
+> Now the problem in the VFS is that there are a number of places where it
+> assumes it can directly compare i_uid (possibly id-mapped) to either than
+> on another inode or a UID drawn from elsewhere (e.g. current_uid()) - but
+> this doesn't work right.
+> 
+> This causes the write-to-sticky check to work incorrectly for AFS (though
+> this is currently masked by a workaround in bash that has now been removed
+> as of bash-5.3) whereby open(O_CREAT) of such a file will fail when it
+> shouldn't.
+> 
+> Two patches are provided:
+> 
+>  (1) Add a pair of inode operations, one to compare the ownership of a pair
+>      of inodes and the other to see if the current process has ownership
+>      rights over an inode with an IOP flag to control access to them.
+> 
+>      Usage of this is then extended out into the VFS, replacing comparisons
+>      between i_uid and i_uid and between i_uid and current_fsuid().  The
+>      default, it the inode ops are unimplemented, is to do those direct i_uid
+>      comparisons.
+> 
+>  (2) Fixes the bash workaround issue with regard to AFS, overriding the
+>      checks as to whether two inodes have the same owner and the check as
+>      to whether the current user owns an inode to work within the AFS
+>      model.
+> 
+> kAFS uses the result of a status-fetch with a suitable key to determine
+> file ownership (if the ADMINISTER bit is set) and just compares the 64-bit
+> owner IDs to determine if two inodes have the same ownership.
+> 
+> Note that chown may also need modifying in some way - but that can't
+> necessarily supply the information required (for instance, an AuriStor YFS ID
+> is 64 bits, but chown can only handle a 32-bit integer; CIFS might use a
+> GUID).
 
-Applied to the vfs-7.3.netfs branch of the vfs/vfs.git tree.
-Patches in the vfs-7.3.netfs branch should appear in linux-next soon.
+Seems that some other changes are required for this. I'll take a look
+once a new version is out.
 
-Please report any outstanding bugs that were missed during review in a
-new review to the original patch series allowing us to drop it.
-
-It's encouraged to provide Acked-bys and Reviewed-bys even though the
-patch has now been applied. If possible patch trailers will be updated.
-
-Note that commit hashes shown below are subject to change due to rebase,
-trailer updates or similar. If in doubt, please check the listed branch.
-
-tree:   https://git.kernel.org/pub/scm/linux/kernel/git/vfs/vfs.git
-branch: vfs-7.3.netfs
-
-[01/25] mm: Make readahead store folio count in readahead_control
-        https://git.kernel.org/vfs/vfs/c/bb16bd52f872
-[02/25] netfs: Bulk load the readahead-provided folios up front
-        https://git.kernel.org/vfs/vfs/c/49fe2955409b
-[03/25] Add a function to kmap one page of a multipage bio_vec
-        https://git.kernel.org/vfs/vfs/c/71947db0b6b2
-[04/25] iov_iter: Make iov_iter_get_pages*() wrap iov_iter_extract_pages()
-        https://git.kernel.org/vfs/vfs/c/fc0f8aa28cb0
-[05/25] iov_iter: Add a segmented queue of bio_vec[]
-        https://git.kernel.org/vfs/vfs/c/b7eab1a852c3
-[06/25] netfs: Add some tools for managing bvecq chains
-        https://git.kernel.org/vfs/vfs/c/a8e973126d3f
-[07/25] netfs: Make mempool available for bvecq
-        https://git.kernel.org/vfs/vfs/c/c95787e047bf
-[08/25] netfs: Add a function to extract from an iter into a bvecq
-        https://git.kernel.org/vfs/vfs/c/8854b625d977
-[09/25] afs: Use a bvecq to hold dir content rather than folioq
-        https://git.kernel.org/vfs/vfs/c/acb8eed74013
-[10/25] cifs: Use a bvecq for buffering instead of a folioq
-        https://git.kernel.org/vfs/vfs/c/b0d72aea6001
-[11/25] smbdirect: Support ITER_BVECQ in smbdirect_map_sges_from_iter()
-        https://git.kernel.org/vfs/vfs/c/27a6832d7b93
-[12/25] netfs: Remove the writethrough code
-        https://git.kernel.org/vfs/vfs/c/de4a0d855ae3
-[13/25] cachefiles,netfs: sunset ondemand mode
-        https://git.kernel.org/vfs/vfs/c/3b09163b7bed
-[14/25] cachefiles: Don't rely on backing fs storage map for most use cases
-        https://git.kernel.org/vfs/vfs/c/f3ac229c89a0
-[15/25] netfs: Add the cache object ID to netfs_read/write tracepoints
-        https://git.kernel.org/vfs/vfs/c/592472ff5a77
-[16/25] netfs: Switch to using bvecq rather than folio_queue and rolling_buffer
-        https://git.kernel.org/vfs/vfs/c/4c9ea0ae64f9
-[17/25] smbdirect: Remove support for ITER_FOLIOQ from smbdirect_map_sges_from_iter()
-        https://git.kernel.org/vfs/vfs/c/c9529300bd22
-[18/25] netfs: Remove netfs_alloc/free_folioq_buffer()
-        https://git.kernel.org/vfs/vfs/c/bc89b7f32adb
-[19/25] netfs: Remove netfs_extract_user_iter()
-        https://git.kernel.org/vfs/vfs/c/e533d0d598c4
-[20/25] iov_iter: Remove ITER_FOLIOQ
-        https://git.kernel.org/vfs/vfs/c/ca929d6a6044
-[21/25] netfs: Remove folio_queue and rolling_buffer
-        https://git.kernel.org/vfs/vfs/c/6440cb5fd08b
-[22/25] netfs: Check for too much data being read
-        https://git.kernel.org/vfs/vfs/c/353f336ead13
-[23/25] netfs: Limit the minimum trigger for progress reporting
-        https://git.kernel.org/vfs/vfs/c/0150b23b0a63
-[24/25] netfs: Combine prepare and issue ops and grab the buffers on request
-        https://git.kernel.org/vfs/vfs/c/473527604b71
-[25/25] cachefiles: Preset the state xattr when creating a new file
-        https://git.kernel.org/vfs/vfs/c/9476c221814c
