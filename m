@@ -1,122 +1,159 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-qv1-f42.google.com (mail-qv1-f42.google.com [209.85.219.42])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7F9BB3DD50D;
-	Mon, 10 Aug 2026 13:24:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786368298; cv=none; b=C6gi4qylRsONma7J7f9JsEKvFqCVKdGVRPYqWdpR+ecCZiavkiJqQ0fgJGReqob1W+CpJd9JYfqdnvLW6OhHWGDywGBIsmnMXf2z4nT7jXcJc3my5GPNv+WJMExAzwz76e7oaHu/RtySzCHjmnz+o62EBBVH7CLP8urBttNFGVY=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786368298; c=relaxed/simple;
-	bh=maQOpdiE0Nzwl9nHvXTPD7Hmop2fglx39GVbR/iCWLc=;
-	h=MIME-Version:Content-Type:Subject:From:To:Cc:In-Reply-To:
-	 References:Date:Message-Id; b=FXpoB7L/9ya+H21NNE2U4xi8bRwqRVtOxV9vKXfFr1fuziCO7TFpcQVVE28a17PjWaUHY2mKEsmhrBoJRnsTsd09X+kR5d01wMWSsReyNB+h0+FDtvj9qSjk3X6dvbtb3fsQbookUzioVykh41JMCtswHHPZ4lwjyWlcxybkMus=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QHU9+DmU; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 378063AF66E
+	for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 14:05:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.219.42
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1786370713; cv=pass; b=F9tGFSPE2/n+oa0ApvRsEWlVqECWJKV+AyKbuksI76LnOO04WnmuBg1XGgWwY6tAKS6MiVeLWh3PgsPqAo3NfTLzYZfELIy/toLDkgHaTBk6LU0cXfeLKqtEOviSk/AOktG10pa0VcrprGXVhGi0ux71NkTr9VVXf8w0gaICHCU=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1786370713; c=relaxed/simple;
+	bh=wQK4iC+iVboZVQ0TbBvuUd5c8pU8uXP8R69wO9Cbm1Q=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=q12wFt6TLku69jXxYpaTaqaZGGFd+V2ejZ8/DhRKtGH/lbr0WqZMnuT113fGjyR6ohLKD6tjRtv5pIk0PJK2SysC/WUlcH/jfOH6XoutRvxK7bf1C2WNJl+kBXNkg5+F4mELJ7mWp74cGP2654l7ocezK0w5cOytqCwxusJBk38=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=szeredi.hu; spf=pass smtp.mailfrom=szeredi.hu; dkim=pass (1024-bit key) header.d=szeredi.hu header.i=@szeredi.hu header.b=myhmKgHT; arc=pass smtp.client-ip=209.85.219.42
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=szeredi.hu
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=szeredi.hu
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QHU9+DmU"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A65A11F000E9;
-	Mon, 10 Aug 2026 13:24:54 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786368297;
-	bh=LqbXuIW1AzbFRLlq+BlUwIYUreMyPkDhS0NmZzNzwDs=;
-	h=Subject:From:To:Cc:In-Reply-To:References:Date;
-	b=QHU9+DmUad00AqAVMjudvnPWCwaquhLGto8OXMhUsDoF0L2J1FS/N7uW7ZpszY7Wj
-	 svXfOgfonUAlX1R9cDhLEWl1MhvlPG1IoLYDIL6/QskY1wwKDXM6Zb61KAkAozVv5Q
-	 fxKRahgEQFAXZmA87gDXoJssKUE9mvATq0EMm7RZtniRgYrPkzXvy8C4hp+plDyczo
-	 3cqtBSMmKZo96+AYKJ4wpuFljIJNA4HQN6H+WemMK0+ciUxIMNX+yksGgen3pPLjQI
-	 kQQFZ/fZ/PZ+d4A0RPWHVErYAXPnddIKGVWrk9K8LR1CEBvIBbLPy2smFisKgRDnDl
-	 mZuHErsvEMGoA==
+	dkim=pass (1024-bit key) header.d=szeredi.hu header.i=@szeredi.hu header.b="myhmKgHT"
+Received: by mail-qv1-f42.google.com with SMTP id 6a1803df08f44-8efec2c28f8so11392756d6.2
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 07:05:10 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1786370710; cv=none;
+        d=google.com; s=arc-20260327;
+        b=JXa4eXLS4i3OZoPJlQzi359n1kyTeISgTLPHl02VM00/5iuyMC/5RTlHmk6MxgzT4b
+         EOhmpHZfG5yJAd8+Eg+1g+YypGUbKjcl/KUVPp6+j/OTcIUYRnzeuOlMbUDVLahh/F0W
+         pWVH/faNKUoHYYG/UkYsgVqWm0ZV2xU4etCHvz4enmk+oCqUoZ2RKOSM5rE4CG+jFM4B
+         ayECAuEfYCP27cM6TqsDNxeRuM5NtzlI0NiptXd2p+dB64HMmec4OSdTijUV/fm5E5qo
+         sZVF6RRaKeo/e3z/3jPI9UBopa9fIaVdM4nwD1ICFjd5cvpLZ4G/zbABjeyddL7B3bur
+         9Xgw==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=cc:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:dkim-signature;
+        bh=NV+45oOv6d8nxP4iat2b7fdyPFUDUzYrSvuxe5NbF8Q=;
+        fh=+6uOEDJWNWyNMZc8CfmpAEapJvcJgrgqfgZwek1uU1M=;
+        b=EcI9ABtEmDf0AYxhdCPvitp1XGTRdoWdgFRVaJi3wBtKfgQNlI1Eshw5XaKUln6KMe
+         17ycrUBZvFek3HaB2qdZNmPc6uzkRM/KgkarQHiyVfCkPMlmCTdRzofoDN+SB2YqAqZC
+         SXurd+hHfX0q0a2b3oN/993DYUpvn9yZWd7X5oV22s7PFpJcxNOfQSN4BARSPzfqVuCv
+         sxRW8LVpEyE4b2ONxH3rw9mEZNxWX5y5iXFLIm6HWG/7/OskalavO3Jf301nDx3lMOsU
+         /QaVHZXuZGNUHcV7n9Mv9JX+StHWgQ2X1F6W71kye4cqMXcrmMxpR/FOnxEPvS02NT0v
+         NDuw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=szeredi.hu; s=google; t=1786370710; x=1786975510; darn=vger.kernel.org;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=NV+45oOv6d8nxP4iat2b7fdyPFUDUzYrSvuxe5NbF8Q=;
+        b=myhmKgHTG1hXWp+ZWdXS/rOTTX/n2t2qUF8gwZnkEQrZniSCmin6lDe/80YepezVa6
+         121u1I/avdUEU9WLXbOvUTKTDZnRMENu9eDMm34cdrmTSuVA63UMoNjjk1PYE/pAvemd
+         YBbtcfpvyQ4CvlD5YmCvZn51m6vllAzMISc9c=
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786370710; x=1786975510;
+        h=content-type:cc:to:subject:message-id:date:from:in-reply-to
+         :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
+         :subject:date:message-id:reply-to:content-type;
+        bh=NV+45oOv6d8nxP4iat2b7fdyPFUDUzYrSvuxe5NbF8Q=;
+        b=XhJ0rKoghkWjFMjm71JWhMBcaq2tFo5K1aC2YbMNqTqOZ/OAf5/dtZPyWCHqEGDQI2
+         Rof9sg1C+c+uaCTL9UgC/7AHJIE7dqW76hEJTPMA4vEwX0sE1euOwl/C6TNW4n6eH0lj
+         NW+ept545n3yiC9PjDt0fpWGmBkHjKz8f+Wn7TwYF24c9fwKNNLpJf8YfBj/4ICfFQRh
+         wiW7BSURLn9gnt6WsKP+US0gKE7+E/6kbnY0os/YTiT+n6f7R74HMPFuXZAKeEgqBplr
+         8IqI25mlnpKGQQt33+DrOFq7jnqlKmZ11S4ybgnqnRBJxSfvQLXkESRWERAqIpv+Uou8
+         hYBg==
+X-Forwarded-Encrypted: i=1; AHgh+RpLsIOkhz5KaI0HoDUvD9dW27KePySWBzMUvLB1y9BTVeCpFwCN+c9H9EmlRXrKH1xUAvwvgpLgUDs=@vger.kernel.org
+X-Gm-Message-State: AOJu0YyCRXotuoO0MF5SwiUDdoB/dFaO6cyFLNZYYde7UrxMqHx2WMVC
+	BaYVDidtpUiI7s06vBnlRPvqPgZEOUvg8z+keBbBnUJoV2su1hdQjHRiI/x9RvxSCEYQpbchpdb
+	y2QBGbP+VE6BW0MXIqMR2rtO/KFKCU+OQ3UG+HwmMIQ==
+X-Gm-Gg: AR+sD137Ji7MuHsbkblp47UFBfzGaoDeIGftmfXkGyh0R7pZT6JyUXx3G/fkqyXkELu
+	E7OS4FptA9NfgvPcvSqVpHSgZzuVcr1ZoZjmSFX1gfc6Sx3bPq4/MhMrVCw09L4AYoSWbbJV0kA
+	cwBxFQnuGrXhevZ9EmBf28lhkfftKTEFA7fVbnyHvxjjSe7+yJs/DfU0syKnAZlX8AT+GdZ3jD3
+	huDEs7x16owJMYHM5mN3+aPaujJjgUNh5Vr6pIpzwgwE5ocKR1h7hZlUldKxxGJ9CVr1NQKkSn7
+	hnsiFIevjgmF8nMqy7zimZH0ATMmAtyOpHEqChYkV0grkwKpArw7zi55OwrjHW0nBtMdhYB0ZNE
+	=
+X-Received: by 2002:ac8:5cc5:0:b0:51c:207f:6524 with SMTP id
+ d75a77b69052e-52d1919e59dmr254953691cf.37.1786370709751; Mon, 10 Aug 2026
+ 07:05:09 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Subject: Re: [PATCH v3 0/2] vfs, afs, bash: Fix miscomparison of foreign
- user IDs in the VFS
-From: Christian Brauner <brauner@kernel.org>
-To: David Howells <dhowells@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, 
- Christian Brauner <christian@brauner.io>, 
- Marc Dionne <marc.dionne@auristor.com>, 
- Jeffrey Altman <jaltman@auristor.com>, Steve French <sfrench@samba.org>, 
- linux-afs@lists.infradead.org, openafs-devel@openafs.org, 
- linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org, 
- linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-In-Reply-To: <20260728141344.1811120-1-dhowells@redhat.com>
-References: <20260728141344.1811120-1-dhowells@redhat.com>
-Date: Mon, 10 Aug 2026 15:24:52 +0200
-Message-Id: <20260810-jazzfest-unglaubhaft-miene-4d1cf4cf42d3@brauner>
-X-Mailer: b4 0.17-dev-362b8
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3040; i=brauner@kernel.org;
- h=from:subject:message-id; bh=maQOpdiE0Nzwl9nHvXTPD7Hmop2fglx39GVbR/iCWLc=;
- b=owGbwMvMwCU28Zj0gdSKO4sYT6slMWRVXlQ7qvirz0TGy/+jfkrD3qrvbHfKHnVtnxah3OMv8
- OlIdqVtRykLgxgXg6yYIotDu0m43HKeis1GmRowc1iZQIYwcHEKwESWbGdkmD7z7cU7Rf83ynz8
- aunf97QkmDXU6aNwW4rntXOSW0p5fzP8FWm+FW2+PGfxtlPvJQzFXh6M3SJ+4pdxecTHSon8s5a
- BDAA=
-X-Developer-Key: i=brauner@kernel.org; a=openpgp;
- fpr=4880B8C9BD0E5106FC070F4F7B3C391EFEA93624
+References: <20260803012648.2195405-1-neilb@ownmail.net> <20260803012648.2195405-3-neilb@ownmail.net>
+In-Reply-To: <20260803012648.2195405-3-neilb@ownmail.net>
+From: Miklos Szeredi <miklos@szeredi.hu>
+Date: Mon, 10 Aug 2026 16:04:56 +0200
+X-Gm-Features: AUfX_mwOr6H9OqGZCernhbLrr_tuorcVZn-K7EOk-lg62vULXKmdHLNqnvpAUNY
+Message-ID: <CAJfpegvTXG_kJHyFB115zdQvbyvDNtfqA_Mv9UKiEf9BE5qXwQ@mail.gmail.com>
+Subject: Re: [PATCH v1 02/12] Add and use d_for_each_positive_child family of iterators
+To: NeilBrown <neil@brown.name>
+Cc: Ian Kent <raven@themaw.net>, Chuck Lever <cel@kernel.org>, Jake Edge <jake@lwn.net>, 
+	Ilya Dryomov <idryomov@gmail.com>, Alex Markuze <amarkuze@redhat.com>, 
+	Viacheslav Dubeyko <slava@dubeyko.com>, Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu, 
+	Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, 
+	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+	Amir Goldstein <amir73il@gmail.com>, Andrew Morton <akpm@linux-foundation.org>, 
+	Miklos Szeredi <mszeredi@redhat.com>, autofs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	ceph-devel@vger.kernel.org, codalist@coda.cs.cmu.edu, 
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
-On 2026-07-28 15:13 +0100, David Howells wrote:
-> Hi Al, Christian,
-> 
-> Here's a pair of fixes that deal with some places the VFS mishandles
-> foreign user ID checks.  By "foreign" I mean that the user IDs from the
-> filesystem do not belong in the same number space as the system's user IDs.
-> Network filesystems are prime examples of this, but it may also impact
-> things like USB drives or cdroms.
-> 
-> Take AFS as example: Whilst each file does have a numeric user ID, the file
-> may be accessed from a world-accessible public-facing server from some
-> other organisation with its own idea of what that user ID refers to.  IDs
-> from AFS may also collide with the system's own set of IDs and may also be
-> unrepresentable as a 32-bit UID (in the case of AuriStor servers).
-> 
-> Further, kAFS uses a key containing an authentication token to specify the
-> subject doing an RPC operation to the server - and, as such, this needs to
-> be used instead of current_fsuid() in determining whether the current user
-> has ownership rights over a file.
-> 
-> Additionally, filesystems (CIFS being a notable example) may also have user
-> identifiers that aren't simple integers.
-> 
-> Now the problem in the VFS is that there are a number of places where it
-> assumes it can directly compare i_uid (possibly id-mapped) to either than
-> on another inode or a UID drawn from elsewhere (e.g. current_uid()) - but
-> this doesn't work right.
-> 
-> This causes the write-to-sticky check to work incorrectly for AFS (though
-> this is currently masked by a workaround in bash that has now been removed
-> as of bash-5.3) whereby open(O_CREAT) of such a file will fail when it
-> shouldn't.
-> 
-> Two patches are provided:
-> 
->  (1) Add a pair of inode operations, one to compare the ownership of a pair
->      of inodes and the other to see if the current process has ownership
->      rights over an inode with an IOP flag to control access to them.
-> 
->      Usage of this is then extended out into the VFS, replacing comparisons
->      between i_uid and i_uid and between i_uid and current_fsuid().  The
->      default, it the inode ops are unimplemented, is to do those direct i_uid
->      comparisons.
-> 
->  (2) Fixes the bash workaround issue with regard to AFS, overriding the
->      checks as to whether two inodes have the same owner and the check as
->      to whether the current user owns an inode to work within the AFS
->      model.
-> 
-> kAFS uses the result of a status-fetch with a suitable key to determine
-> file ownership (if the ADMINISTER bit is set) and just compares the 64-bit
-> owner IDs to determine if two inodes have the same ownership.
-> 
-> Note that chown may also need modifying in some way - but that can't
-> necessarily supply the information required (for instance, an AuriStor YFS ID
-> is 64 bits, but chown can only handle a 32-bit integer; CIFS might use a
-> GUID).
+On Mon, 3 Aug 2026 at 03:38, NeilBrown <neilb@ownmail.net> wrote:
 
-Seems that some other changes are required for this. I'll take a look
-once a new version is out.
+> coda_flag_children() doesn't need rcu_read_lock() as holding any
+> spinlock prevents an RCU critical section from finishing.
 
+I think prep changes should go in separate patches.
+
+The conversion should be an equivalent transformation.
+
+> nfs_clear_verifier_directory() is changed slightly so the parent lock is
+> dropped and retaken between clearing the verifier on the parent and on
+> all the children.  I think this is safe.
+
+This can also be a prep patch.
+
+> get_next_postive_dentry() in autofs now holds the parent lock a bit
+> less.  The only non-trivial code that is no locked any more is
+>    parent = p->d_parent
+> This cannot need the lock as autofs doesn't support rename and
+> a ref is held on a descendent of parent, so ->d_parent cannot
+> change.  And if it could, the lock wouldn't help.
+
+And this too.
+
+> diff --git a/fs/autofs/expire.c b/fs/autofs/expire.c
+> index 5c2d459e1e48..7b0a22629415 100644
+> --- a/fs/autofs/expire.c
+> +++ b/fs/autofs/expire.c
+> @@ -70,12 +70,9 @@ static int autofs_mount_busy(struct vfsmount *mnt,
+>         return status;
+>  }
+>
+> -/* p->d_lock held */
+>  static struct dentry *positive_after(struct dentry *p, struct dentry *child)
+
+Move this primitive to libfs.c?
+
+> --- a/fs/ceph/mds_client.c
+> +++ b/fs/ceph/mds_client.c
+> @@ -2182,14 +2182,10 @@ static bool drop_negative_children(struct dentry *dentry)
+>         if (!d_is_dir(dentry))
+>                 goto out;
+>
+> -       spin_lock(&dentry->d_lock);
+> -       hlist_for_each_entry(child, &dentry->d_children, d_sib) {
+> -               if (d_really_is_positive(child)) {
+> -                       all_negative = false;
+> -                       break;
+> -               }
+> +       d_for_each_positive_child(child, dentry) {
+> +               all_negative = false;
+> +               break;
+>         }
+> -       spin_unlock(&dentry->d_lock);
+
+simple_empty()?
+
+Thanks,
+Miklos
