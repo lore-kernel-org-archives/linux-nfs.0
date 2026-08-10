@@ -1,41 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A7D0E40D588
-	for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 17:23:41 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DD0D2318EF6
+	for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 17:23:50 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786382622; cv=none; b=K/EuJd6QbQl3QGN8N5J668xADP/Zed/luMtmUkhtEwA/lKjJK+hhcQC2nOHCY9fbTXh8sd/8bBe9PQ36bQLOa8fy2rEKEyshhbhLq5jXi+5mrO4oWOR1UOuFUs8OEGMF1P+NeDyfYiMDrmhv6dFCdEPCrnPQN4+cF4NqlcvPNxo=
+	t=1786382632; cv=none; b=HVcqve9xaAZyCb2Rdd0C73Mf6jS9XMg25TgRYE7Cr2qw4na+ApdgyfU6rwuq1bYlY1v0UoK+5KeP6tsW6G6A1GhU94t29TfzEOUcvL+G3ViUZmnwO+MJXEakOmjAODeGa+45nJBEy1Mf2Y0W9fHnmoMtiz1X2FFe8RSxsuhrakA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786382622; c=relaxed/simple;
-	bh=24KtnxG+ORWAlvhs22pZvVc0z8Vnyw2vnGIprqSTLGc=;
+	s=arc-20240116; t=1786382632; c=relaxed/simple;
+	bh=hHL7ubEqyNEsp8OA8CIg4qzaupxhzaeVc0gBySAOuzU=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=Dw8oXUlB5gjoZvZR8m6gACcgcnV3/WDcZfO80lSodUVQlxKZl4LL9woJDDJ6uXDOkhXwjiJ4DqvyWShJLou5K+ZBoK8GvQCgsJo97gcMHsH9JaX6x1xpH1Vnqgtwm8smjdtcHdyuZWiWS8P6ByIv1RAz86t2Scn0N8upHTRKjB4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hU6ZGnUe; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=mXkgSiyqsmmo1x89sPQnTDFtyCkh8aRt7jgz+30yO5BRBr7LayhFxI4eLySrZz0INwgqEsN4uiYueiVQV0TOQ3gbEDnMmVcW8OUTEqZNWEyF0hNhn8eAH1rl4zHh9fAQF2qjPJpgz43yP9ta3u5O9D7gnzJc3pshdQtzmyC4M3s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=dChReD1N; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hU6ZGnUe"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id C46F71F000E9;
-	Mon, 10 Aug 2026 17:23:40 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="dChReD1N"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id C19F91F000E9;
+	Mon, 10 Aug 2026 17:23:49 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786382621;
-	bh=0OgJ9KZVomiU6Eio1OS/W1/dCn8OK1+OfeAW1lbvYtg=;
+	s=k20260515; t=1786382630;
+	bh=SdpgsnOQ1/3BvmQw0tUJ4VdMlOEaZ/C+A6WRLsoMa6E=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=hU6ZGnUesgqf6znacHurE67bC9VsQeoNp69yYlvUASW/vfneP8NIXHyfUbRar3SEI
-	 QKpFRzofGQA9UdzfKXzcfhtiksAKvj2FW4EulosvbOeSn40y1JTt1CwVICG+nJs8ae
-	 DrKORQrQflA+OIHl8RB0JbTWVJH8A8DNZIUPIE80A5YSjm8nhXNCbHZLx+hidTNECT
-	 l9w45CG/zNiemJqjsMN84Vzl+czbjwZBgN29fpVNZlMvvxbEB5LRlc6ESLaGwP2EE5
-	 u798e+azdVX+bjkR9NX3AFz8kRqELv4aSbYwTbNEG1Fjm7H0uPz/OBrsPnmN8ZFVgw
-	 qo/beKvU6wj9g==
-Message-ID: <8e3bdc70fce8138b11a69891983b646bf51dc8da.camel@kernel.org>
-Subject: Re: [PATCH v1 1/2] NFSD: Replace NFS3_ACCESS_FULL in nfsd4_access()
+	b=dChReD1N/esPm9dLttZ6ratjSBFtm+XZeY6mbUfAmKsbcDWEDLRSh0z81Q+ag01uL
+	 O1Z5hqxCi7CaoZeit4tahMvYhfGZ/wPnC9Wh6yfuYaZX0pOki0yXXrXhxxpP+9Ma22
+	 V6NZnKK7WAIeFP9+TfU9wuXQ5Dy9kA4HsU0qwGnoZEe/bAUodffy012T/4CnL7iVX2
+	 zNGLKgoBX/q7OUZqV3YS8kJ/7N4stUcxIhDSjExHCoQpbjmq1ZUetkLoL/2zct742d
+	 5Ba5NXG6JNbpF8SvQbUpvnG+zDhlVnkNdh7IOltd7DutNUiiuVPb44CwvEOlOLmWIs
+	 G9DsuSJY4jW8Q==
+Message-ID: <00e0823c793e0783244237e9d3b1bddab74788ab.camel@kernel.org>
+Subject: Re: [PATCH v1 2/2] NFSD: Move version-specific ACCESS maps into
+ per-version code
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 10 Aug 2026 13:23:39 -0400
-In-Reply-To: <20260810141900.33846-1-cel@kernel.org>
+Date: Mon, 10 Aug 2026 13:23:49 -0400
+In-Reply-To: <20260810141900.33846-2-cel@kernel.org>
 References: <20260810141900.33846-1-cel@kernel.org>
+	 <20260810141900.33846-2-cel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -120,34 +122,362 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Mon, 2026-08-10 at 10:18 -0400, Chuck Lever wrote:
-> Clean up: Remove an NFSv3 constant (NFS3_ACCESS_FULL) used inside an
-> NFSv4 code path.
+On Mon, 2026-08-10 at 10:19 -0400, Chuck Lever wrote:
+> nfsd_access() owns three static tables that map on-the-wire ACCESS
+> bits to NFSD_MAY flags, and every NFS version shares them. That puts
+> protocol-version specifics in the version-agnostic VFS layer. The
+> NFSv4.2 extended-attribute bits are wedged into the NFSv3 tables
+> under CONFIG_NFSD_V4.
 >=20
-> After this patch is applied, the nfs3.h header is no longer an
-> implicit dependency of nfs4proc.c for this value. The definition
-> itself stays in nfs3.h to avoid a kernel-user space API regression.
+> Give each version its own tables in its proc code and pass the
+> matching set into nfsd_access() as a new argument.
+>=20
+> Splitting the tables also stops the NFSv2-ACL and NFSv3 ACCESS paths
+> from answering for the NFSv4.2 extended-attribute bits. Both use the
+> NFSv4-augmented table whenever CONFIG_NFSD_V4 is set, so an NFSv3
+> request that sets an xattr bit has it echoed back in the reply even
+> though those bits are undefined for v3.
 >=20
 > Signed-off-by: Chuck Lever <cel@kernel.org>
 > ---
->  fs/nfsd/nfs4proc.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
+>  fs/nfsd/nfs2acl.c  | 46 ++++++++++++++++++++++++++-
+>  fs/nfsd/nfs3proc.c | 41 +++++++++++++++++++++++-
+>  fs/nfsd/nfs4proc.c | 42 +++++++++++++++++++++++--
+>  fs/nfsd/vfs.c      | 78 ++++++++++------------------------------------
+>  fs/nfsd/vfs.h      | 15 ++++++++-
+>  5 files changed, 155 insertions(+), 67 deletions(-)
 >=20
+> diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+> index aba69dd278a1..33610deda3b0 100644
+> --- a/fs/nfsd/nfs2acl.c
+> +++ b/fs/nfsd/nfs2acl.c
+> @@ -16,6 +16,48 @@
+> =20
+>  #define NFSDDBG_FACILITY		NFSDDBG_PROC
+> =20
+> +/*
+> + * These maps are identical to the NFSv3 maps (nfs3proc.c). This enables
+> + * the behavior of the two versions to diverge if needed.
+> + */
+> +static const struct nfsd_access_map nfsd2_regaccess[] =3D {
+> +	{ NFS3_ACCESS_READ,	NFSD_MAY_READ				},
+> +	{ NFS3_ACCESS_EXECUTE,	NFSD_MAY_EXEC				},
+> +	{ NFS3_ACCESS_MODIFY,	NFSD_MAY_WRITE|NFSD_MAY_TRUNC		},
+> +	{ NFS3_ACCESS_EXTEND,	NFSD_MAY_WRITE				},
+> +	{ 0,			0					}
+> +};
+> +
+> +static const struct nfsd_access_map nfsd2_diraccess[] =3D {
+> +	{ NFS3_ACCESS_READ,	NFSD_MAY_READ				},
+> +	{ NFS3_ACCESS_LOOKUP,	NFSD_MAY_EXEC				},
+> +	{ NFS3_ACCESS_MODIFY,	NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC },
+> +	{ NFS3_ACCESS_EXTEND,	NFSD_MAY_EXEC|NFSD_MAY_WRITE		},
+> +	{ NFS3_ACCESS_DELETE,	NFSD_MAY_REMOVE				},
+> +	{ 0,			0					}
+> +};
+> +
+> +/*
+> + * Some clients - Solaris 2.6 at least, make an access call to the NFS
+> + * server to check for access for things like /dev/null (which really,
+> + * NFSD doesn't care about).  So NFSD provides simple access checking
+> + * for those objects, looking mainly at mode bits, ignoring read-only
+> + * filesystem checks.
+> + */
+> +static const struct nfsd_access_map nfsd2_otheraccess[] =3D {
+> +	{ NFS3_ACCESS_READ,	NFSD_MAY_READ				},
+> +	{ NFS3_ACCESS_EXECUTE,	NFSD_MAY_EXEC				},
+> +	{ NFS3_ACCESS_MODIFY,	NFSD_MAY_WRITE|NFSD_MAY_LOCAL_ACCESS	},
+> +	{ NFS3_ACCESS_EXTEND,	NFSD_MAY_WRITE|NFSD_MAY_LOCAL_ACCESS	},
+> +	{ 0,			0					}
+> +};
+> +
+> +static const struct nfsd_access_maps nfsd2_access_maps =3D {
+> +	.regular	=3D nfsd2_regaccess,
+> +	.directory	=3D nfsd2_diraccess,
+> +	.other		=3D nfsd2_otheraccess,
+> +};
+> +
+>  /*
+>   * NULL call.
+>   */
+> @@ -181,7 +223,9 @@ static __be32 nfsacld_proc_access(struct svc_rqst *rq=
+stp)
+> =20
+>  	fh_copy(&resp->fh, &argp->fh);
+>  	resp->access =3D argp->access;
+> -	resp->status =3D nfsd_access(rqstp, &resp->fh, &resp->access, NULL);
+> +
+> +	resp->status =3D nfsd_access(rqstp, &resp->fh, &nfsd2_access_maps,
+> +				   &resp->access, NULL);
+>  	if (resp->status !=3D nfs_ok)
+>  		goto out;
+>  	resp->status =3D fh_getattr(&resp->fh, &resp->stat);
+> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+> index 19ab0a713d82..17bbe5d13f18 100644
+> --- a/fs/nfsd/nfs3proc.c
+> +++ b/fs/nfsd/nfs3proc.c
+> @@ -49,6 +49,44 @@ static bool nfsd3_time_in_range(const struct iattr *ia=
+p)
+>  	return true;
+>  }
+> =20
+> +static const struct nfsd_access_map nfsd3_regaccess[] =3D {
+> +	{ NFS3_ACCESS_READ,	NFSD_MAY_READ				},
+> +	{ NFS3_ACCESS_EXECUTE,	NFSD_MAY_EXEC				},
+> +	{ NFS3_ACCESS_MODIFY,	NFSD_MAY_WRITE|NFSD_MAY_TRUNC		},
+> +	{ NFS3_ACCESS_EXTEND,	NFSD_MAY_WRITE				},
+> +	{ 0,			0					}
+> +};
+> +
+> +static const struct nfsd_access_map nfsd3_diraccess[] =3D {
+> +	{ NFS3_ACCESS_READ,	NFSD_MAY_READ				},
+> +	{ NFS3_ACCESS_LOOKUP,	NFSD_MAY_EXEC				},
+> +	{ NFS3_ACCESS_MODIFY,	NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC },
+> +	{ NFS3_ACCESS_EXTEND,	NFSD_MAY_EXEC|NFSD_MAY_WRITE		},
+> +	{ NFS3_ACCESS_DELETE,	NFSD_MAY_REMOVE				},
+> +	{ 0,			0					}
+> +};
+> +
+> +/*
+> + * Some clients - Solaris 2.6 at least, make an access call to the NFS
+> + * server to check for access for things like /dev/null (which really,
+> + * NFSD doesn't care about).  So NFSD provides simple access checking
+> + * for those objects, looking mainly at mode bits, ignoring read-only
+> + * filesystem checks.
+> + */
+> +static const struct nfsd_access_map nfsd3_otheraccess[] =3D {
+> +	{ NFS3_ACCESS_READ,	NFSD_MAY_READ				},
+> +	{ NFS3_ACCESS_EXECUTE,	NFSD_MAY_EXEC				},
+> +	{ NFS3_ACCESS_MODIFY,	NFSD_MAY_WRITE|NFSD_MAY_LOCAL_ACCESS	},
+> +	{ NFS3_ACCESS_EXTEND,	NFSD_MAY_WRITE|NFSD_MAY_LOCAL_ACCESS	},
+> +	{ 0,			0					}
+> +};
+> +
+> +static const struct nfsd_access_maps nfsd3_access_maps =3D {
+> +	.regular	=3D nfsd3_regaccess,
+> +	.directory	=3D nfsd3_diraccess,
+> +	.other		=3D nfsd3_otheraccess,
+> +};
+> +
+>  static int nfsd3_iocb_flags(enum nfs3_stable_how how)
+>  {
+>  	switch (how) {
+> @@ -186,7 +224,8 @@ nfsd3_proc_access(struct svc_rqst *rqstp)
+> =20
+>  	fh_copy(&resp->fh, &argp->fh);
+>  	resp->access =3D argp->access;
+> -	resp->status =3D nfsd_access(rqstp, &resp->fh, &resp->access, NULL);
+> +	resp->status =3D nfsd_access(rqstp, &resp->fh, &nfsd3_access_maps,
+> +				   &resp->access, NULL);
+>  	resp->status =3D nfsd3_map_status(resp->status);
+>  	return rpc_success;
+>  }
 > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 03c32db618cd..a2bea8947ef5 100644
+> index a2bea8947ef5..54593f4667f8 100644
 > --- a/fs/nfsd/nfs4proc.c
 > +++ b/fs/nfsd/nfs4proc.c
-> @@ -842,7 +842,9 @@ nfsd4_access(struct svc_rqst *rqstp, struct nfsd4_com=
-pound_state *cstate,
->  	struct nfsd4_access *access =3D &u->access;
->  	u32 access_full;
+> @@ -72,6 +72,43 @@ MODULE_PARM_DESC(nfsd4_ssc_umount_timeout,
 > =20
-> -	access_full =3D NFS3_ACCESS_FULL;
-> +	access_full =3D NFS4_ACCESS_READ | NFS4_ACCESS_LOOKUP |
-> +		      NFS4_ACCESS_MODIFY | NFS4_ACCESS_EXTEND |
-> +		      NFS4_ACCESS_DELETE | NFS4_ACCESS_EXECUTE;
->  	if (cstate->minorversion >=3D 2)
->  		access_full |=3D NFS4_ACCESS_XALIST | NFS4_ACCESS_XAREAD |
->  			       NFS4_ACCESS_XAWRITE;
+>  #define NFSDDBG_FACILITY		NFSDDBG_PROC
+> =20
+> +static const struct nfsd_access_map nfsd4_regaccess[] =3D {
+> +	{ NFS4_ACCESS_READ,	NFSD_MAY_READ				},
+> +	{ NFS4_ACCESS_EXECUTE,	NFSD_MAY_EXEC				},
+> +	{ NFS4_ACCESS_MODIFY,	NFSD_MAY_WRITE|NFSD_MAY_TRUNC		},
+> +	{ NFS4_ACCESS_EXTEND,	NFSD_MAY_WRITE				},
+> +	{ NFS4_ACCESS_XAREAD,	NFSD_MAY_READ				},
+> +	{ NFS4_ACCESS_XAWRITE,	NFSD_MAY_WRITE				},
+> +	{ NFS4_ACCESS_XALIST,	NFSD_MAY_READ				},
+> +	{ 0,			0					}
+> +};
+> +
+> +static const struct nfsd_access_map nfsd4_diraccess[] =3D {
+> +	{ NFS4_ACCESS_READ,	NFSD_MAY_READ				},
+> +	{ NFS4_ACCESS_LOOKUP,	NFSD_MAY_EXEC				},
+> +	{ NFS4_ACCESS_MODIFY,	NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC },
+> +	{ NFS4_ACCESS_EXTEND,	NFSD_MAY_EXEC|NFSD_MAY_WRITE		},
+> +	{ NFS4_ACCESS_DELETE,	NFSD_MAY_REMOVE				},
+> +	{ NFS4_ACCESS_XAREAD,	NFSD_MAY_READ				},
+> +	{ NFS4_ACCESS_XAWRITE,	NFSD_MAY_WRITE				},
+> +	{ NFS4_ACCESS_XALIST,	NFSD_MAY_READ				},
+> +	{ 0,			0					}
+> +};
+> +
+> +static const struct nfsd_access_map nfsd4_otheraccess[] =3D {
+> +	{ NFS4_ACCESS_READ,	NFSD_MAY_READ				},
+> +	{ NFS4_ACCESS_EXECUTE,	NFSD_MAY_EXEC				},
+> +	{ NFS4_ACCESS_MODIFY,	NFSD_MAY_WRITE|NFSD_MAY_LOCAL_ACCESS	},
+> +	{ NFS4_ACCESS_EXTEND,	NFSD_MAY_WRITE|NFSD_MAY_LOCAL_ACCESS	},
+> +	{ 0,			0					}
+> +};
+> +
+> +static const struct nfsd_access_maps nfsd4_access_maps =3D {
+> +	.regular	=3D nfsd4_regaccess,
+> +	.directory	=3D nfsd4_diraccess,
+> +	.other		=3D nfsd4_otheraccess,
+> +};
+> +
+>  static int nfsd4_iocb_flags(enum stable_how4 how)
+>  {
+>  	switch (how) {
+> @@ -851,10 +888,9 @@ nfsd4_access(struct svc_rqst *rqstp, struct nfsd4_co=
+mpound_state *cstate,
+> =20
+>  	if (access->ac_req_access & ~access_full)
+>  		return nfserr_inval;
+> -
+>  	access->ac_resp_access =3D access->ac_req_access;
+> -	return nfsd_access(rqstp, &cstate->current_fh, &access->ac_resp_access,
+> -			   &access->ac_supported);
+> +	return nfsd_access(rqstp, &cstate->current_fh, &nfsd4_access_maps,
+> +			   &access->ac_resp_access, &access->ac_supported);
+>  }
+> =20
+>  static __be32
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 807e09521e0c..6d865f4f9ba3 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -782,64 +782,21 @@ __be32 nfsd4_vfs_fallocate(struct svc_rqst *rqstp, =
+struct svc_fh *fhp,
+>  }
+>  #endif /* defined(CONFIG_NFSD_V4) */
+> =20
+> -/*
+> - * Check server access rights to a file system object
+> +/**
+> + * nfsd_access - Check caller's access rights to a file system object
+> + * @rqstp: RPC transaction context
+> + * @fhp: target NFS filehandle
+> + * @maps: tables mapping on-the-wire access bits to NFSD_MAY flags
+> + * @access: requested access bits on entry, permitted bits on return
+> + * @supported: optional output of the access bits the server supports
+> + *
+> + * Return: nfs_ok on success, otherwise an nfserr status code
+>   */
+> -struct accessmap {
+> -	u32		access;
+> -	int		how;
+> -};
+> -static struct accessmap	nfs3_regaccess[] =3D {
+> -    {	NFS3_ACCESS_READ,	NFSD_MAY_READ			},
+> -    {	NFS3_ACCESS_EXECUTE,	NFSD_MAY_EXEC			},
+> -    {	NFS3_ACCESS_MODIFY,	NFSD_MAY_WRITE|NFSD_MAY_TRUNC	},
+> -    {	NFS3_ACCESS_EXTEND,	NFSD_MAY_WRITE			},
+> -
+> -#ifdef CONFIG_NFSD_V4
+> -    {	NFS4_ACCESS_XAREAD,	NFSD_MAY_READ			},
+> -    {	NFS4_ACCESS_XAWRITE,	NFSD_MAY_WRITE			},
+> -    {	NFS4_ACCESS_XALIST,	NFSD_MAY_READ			},
+> -#endif
+> -
+> -    {	0,			0				}
+> -};
+> -
+> -static struct accessmap	nfs3_diraccess[] =3D {
+> -    {	NFS3_ACCESS_READ,	NFSD_MAY_READ			},
+> -    {	NFS3_ACCESS_LOOKUP,	NFSD_MAY_EXEC			},
+> -    {	NFS3_ACCESS_MODIFY,	NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC},
+> -    {	NFS3_ACCESS_EXTEND,	NFSD_MAY_EXEC|NFSD_MAY_WRITE	},
+> -    {	NFS3_ACCESS_DELETE,	NFSD_MAY_REMOVE			},
+> -
+> -#ifdef CONFIG_NFSD_V4
+> -    {	NFS4_ACCESS_XAREAD,	NFSD_MAY_READ			},
+> -    {	NFS4_ACCESS_XAWRITE,	NFSD_MAY_WRITE			},
+> -    {	NFS4_ACCESS_XALIST,	NFSD_MAY_READ			},
+> -#endif
+> -
+> -    {	0,			0				}
+> -};
+> -
+> -static struct accessmap	nfs3_anyaccess[] =3D {
+> -	/* Some clients - Solaris 2.6 at least, make an access call
+> -	 * to the server to check for access for things like /dev/null
+> -	 * (which really, the server doesn't care about).  So
+> -	 * We provide simple access checking for them, looking
+> -	 * mainly at mode bits, and we make sure to ignore read-only
+> -	 * filesystem checks
+> -	 */
+> -    {	NFS3_ACCESS_READ,	NFSD_MAY_READ			},
+> -    {	NFS3_ACCESS_EXECUTE,	NFSD_MAY_EXEC			},
+> -    {	NFS3_ACCESS_MODIFY,	NFSD_MAY_WRITE|NFSD_MAY_LOCAL_ACCESS	},
+> -    {	NFS3_ACCESS_EXTEND,	NFSD_MAY_WRITE|NFSD_MAY_LOCAL_ACCESS	},
+> -
+> -    {	0,			0				}
+> -};
+> -
+> -__be32
+> -nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp, u32 *access, u32=
+ *supported)
+> +__be32 nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> +		   const struct nfsd_access_maps *maps,
+> +		   u32 *access, u32 *supported)
+>  {
+> -	struct accessmap	*map;
+> +	const struct nfsd_access_map *map;
+>  	struct svc_export	*export;
+>  	struct dentry		*dentry;
+>  	u32			query, result =3D 0, sresult =3D 0;
+> @@ -853,12 +810,11 @@ nfsd_access(struct svc_rqst *rqstp, struct svc_fh *=
+fhp, u32 *access, u32 *suppor
+>  	dentry =3D fhp->fh_dentry;
+> =20
+>  	if (d_is_reg(dentry))
+> -		map =3D nfs3_regaccess;
+> +		map =3D maps->regular;
+>  	else if (d_is_dir(dentry))
+> -		map =3D nfs3_diraccess;
+> +		map =3D maps->directory;
+>  	else
+> -		map =3D nfs3_anyaccess;
+> -
+> +		map =3D maps->other;
+> =20
+>  	query =3D *access;
+>  	for  (; map->access; map++) {
+> @@ -868,7 +824,7 @@ nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fh=
+p, u32 *access, u32 *suppor
+>  			sresult |=3D map->access;
+> =20
+>  			err2 =3D nfsd_permission(&rqstp->rq_cred, export,
+> -					       dentry, map->how);
+> +					       dentry, map->may);
+>  			switch (err2) {
+>  			case nfs_ok:
+>  				result |=3D map->access;
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index aa7679d4c54a..3aa4522ca0a4 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -37,6 +37,17 @@
+>  #define NFSD_MAY_CREATE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE)
+>  #define NFSD_MAY_REMOVE		(NFSD_MAY_EXEC|NFSD_MAY_WRITE|NFSD_MAY_TRUNC)
+> =20
+> +struct nfsd_access_map {
+> +	u32		access;
+> +	int		may;
+> +};
+> +
+> +struct nfsd_access_maps {
+> +	const struct nfsd_access_map	*regular;
+> +	const struct nfsd_access_map	*directory;
+> +	const struct nfsd_access_map	*other;
+> +};
+> +
+>  struct nfsd_file;
+> =20
+>  /*
+> @@ -100,7 +111,9 @@ __be32		nfsd_create_locked(struct svc_rqst *, struct =
+svc_fh *,
+>  __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
+>  				char *name, int len, struct nfsd_attrs *attrs,
+>  				int type, dev_t rdev, struct svc_fh *res);
+> -__be32		nfsd_access(struct svc_rqst *, struct svc_fh *, u32 *, u32 *);
+> +__be32		nfsd_access(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> +				const struct nfsd_access_maps *maps,
+> +				u32 *access, u32 *supported);
+>  __be32		nfsd_create_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  				struct svc_fh *resfhp, struct nfsd_attrs *iap);
+>  __be32		nfsd_commit(struct svc_rqst *rqst, struct svc_fh *fhp,
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
