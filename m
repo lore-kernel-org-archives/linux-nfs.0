@@ -1,75 +1,75 @@
 Received: from flow-a2-smtp.messagingengine.com (flow-a2-smtp.messagingengine.com [103.168.172.137])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF1451C860C;
-	Tue, 11 Aug 2026 04:52:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A7D72E06D2;
+	Tue, 11 Aug 2026 05:18:59 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.137
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786423942; cv=none; b=kZ85nPMDQnr+DXjKsJ9UM3syfGpK7PUPd5FVHn0KFC3jrUktmOImNtrsMsMy+FF96bDMwhVjLHyreT/h9kqfkyMcwOOeBV6NroYYf0Yddbdk6OL2V7C2wfcCPFODrMMp2yGMwQALi8f6nDTwS/DbeW9g8TdMv0RoaOH8Nt2Sup0=
+	t=1786425544; cv=none; b=WBoxALPOiGvR5lma6yhtTA+SzL2GbDa/pVwmK4OSZFXDspKOUxMKX4MZtdBf+XQ1rTurUbKAttOljQEhI+KJYwTfyNP5fkv6qK7wri6O0pPyZAE1HVe4vMAeVyEF5hkCOjKy+etWkDP7W0mwaReUC35uC+Sv0GV4rL37cB+3tJY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786423942; c=relaxed/simple;
-	bh=X/2QnnsktF4WXKr/vX4FVIwRKMveAg0TaT0OXQxA/rA=;
+	s=arc-20240116; t=1786425544; c=relaxed/simple;
+	bh=qV3QUciC5jpkDDS6x7iOwPa1PgpN4Lu9TJCjFpiEWgA=;
 	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=cB03fgDfuL8lq5TsWt4unEh6e2vhR7VJjuQu4wto2QWRnuW1y/cpB8+wmJ9wyPaHJMwSDEb+Z8rZEOo0g+A4s/O70LIMjMczo2PxEb9GnK5LdmkLJScn3FIdX8Dg7sAjBJ2m7TINV0ldQu/mRHvSjRJ/pTw98Rj5Fh/7Y4y1kQ4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=Lz9+VXLU; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=SOx3JixF; arc=none smtp.client-ip=103.168.172.137
+	 References:Date:Message-id; b=MiA3gC3OKGJmSOkXrWxPC5sZLYVlRvFTKUJJNkPrBqgT2johsmY0vHzSRxBZOCoGu6wh4Xzzw5AgX9m/BLCdh1j0wkP0n32y6UZE3kxiru1eTZfHFUVoGZmBPyRE/N+f9J96prBRFj0XhuzUH/Ftx42n5P5HftnqJfZCqtHNVj0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=F8iWoKdA; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=PknB7V/w; arc=none smtp.client-ip=103.168.172.137
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="Lz9+VXLU";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="SOx3JixF"
-Received: from phl-compute-09.internal (phl-compute-09.internal [10.202.2.49])
-	by mailflow.phl.internal (Postfix) with ESMTP id C524B1380013;
-	Tue, 11 Aug 2026 00:52:18 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="F8iWoKdA";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="PknB7V/w"
+Received: from phl-compute-05.internal (phl-compute-05.internal [10.202.2.45])
+	by mailflow.phl.internal (Postfix) with ESMTP id 023C5138014C;
+	Tue, 11 Aug 2026 01:18:57 -0400 (EDT)
 Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-09.internal (MEProxy); Tue, 11 Aug 2026 00:52:18 -0400
+  by phl-compute-05.internal (MEProxy); Tue, 11 Aug 2026 01:18:58 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
-	1786423938; x=1786431138; bh=ekTBr3doJmrrAeJj4ehw8/L9FJAkO0UqerH
-	r2gMD4JY=; b=Lz9+VXLU44VgkUNkfXkF8BBsrluBO7OWZQpFxfIHRjBShF/bQYL
-	a889Qimvz5on00P59tfvjhCAD+9XFMdKSBd6vpI/V8JKmk7I3CdHYrVkFxOlQyHS
-	ASptwydJRufLHSW2zL62Q9HKTG4uKhWzMwI6b3CJ4cWS0DfeYrFL8betFGf9lZ6D
-	VyCa8DOSLuwbcV5FN1MTpnnBeY/3UZ3Wym9OK2cFaaiZnOW1JVmQQzvbIyhcgTgR
-	AMT97okADeXl/Vw0v1AcnKSYlgEPAlKlP3iBqGnWh5aYGi51f1qi3MniW3egUXwH
-	h/hXNP7LogH8PZlLqqFKwj6i1DnSoiBjVZA==
+	1786425537; x=1786432737; bh=yIPzOZPj6bFZVGzFQgSwtywJ8VHP6g1rxC/
+	O4hZ/kD0=; b=F8iWoKdAN0epDjXqUe9BJXmkXzGADQHZ4W9nsxIb1xhJxJDI22k
+	5b+j48rlryp7mMtRcxj/Vv6uxPAWeASqUU6IkZIBxTuvmwVHb9iV04qYH1KPIxpM
+	AdtF4hXlf24M27foBj1YPxJtByHHwRQ2SamGnEd2AZ8hEvwmf6JFwkXAwihGxD6U
+	TsxsJQXHEmfqRpr1Z+wK7KNGOqsk16QD/Nu2lS9gsx4dCvfG8rsX19pFkaYcTdfU
+	E0Cb7sqDO8fJ5YYXQ6gwUrPBYUOCRX8LyzLve8XF0CeDSb8fykX2+XUdTZIxDQJY
+	T7eVYnviQWDfpmKe8nLkNfqG0XXyHYTcJRQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786423938; x=
-	1786431138; bh=ekTBr3doJmrrAeJj4ehw8/L9FJAkO0UqerHr2gMD4JY=; b=S
-	Ox3JixFn9rwHIl2mjSRy+zFJhYZZdblV+lW6MIRuHh1UNBZxL7FqvXZxnNpmdFXU
-	uYaiN3gPV0adt7P37zQgazkd+6icaaGuKz/O2EYauJ125QufCoXjtabO41RLVctc
-	l6WF9keqDksCXZoosx0rO6Te0xj4jM9XydbsAO7SZzjChptE8utBhAsnqrdYMvcB
-	GavDlgbDjfpsVquSYiKtm3Dai4NutwLWjyH6QNm5VGvndNuyV45lg1QJA7oGIfEL
-	C/Fez7tOfaVgU4zqmruP7N6EQonKwPnixlYRbyMhhX/lTlVGdYRaPs324r+7g6i2
-	2tApu6mokwcfOrn04xrzA==
-X-ME-Sender: <xms:gap6ah6fkGyzTcu4ufMufQMgYaJcL77sjevaboRp_0QVJ03Rl-5cwg>
-    <xme:gap6aglPjW_PPkYvJJgqLIiL17CaZu_z7SUXvzS0YzpTYNRDK-zpOYThU-BED4JCb
-    KHgx8GMbJDgs7P_P8YwiyLaTZwIlzFq6X2Gb0jj0agw44o>
-X-ME-Received: <xmr:gap6ar5tdxu7oF9MoV8qpsQJQXk6dUEo6Vo1BVy5QqkpUTBLDKmgwVJvfoTomvtqiViVhi8x0sLXB8DNz38lz92KtwPA8ZA>
-X-ME-Proxy-Cause: dmFkZTE1dc9CbechtpXaWl+dm7IoP012eGu+JbmaMQmZ3E5PnUICFQoF84rE9FxW+eoV0N
-    XbVHtzOC8A/iKr3YxvxxEGlhIVSoVA0ELtjoQuWqoRvcJJTE8jzJihiWJ0FLNyqMzf/uUL
-    ncAYArvR9mUpu9BXiGC//bgv/8XcXCJdx+V9rpCY8UHd+FX4tCNOqOkTE4ek9QCCLFp6Fe
-    ftd/fXGKyVhYeNrysK6DQqvZoebt/zzww4Iv5ye12W+andjR2gG/QXZ4Xka2v+ZSrng2tZ
-    Ho3bYFyxbAuYc36s69aRDDrbvhO8L1Iys3CTKcc5diyM7p78MhxhhSEoTocjZC4WrO76No
-    62ziB3wkww419qqj6KGV5PPjpVQGzkVrZM75D1iFWyEyeJ47WOU1nbOgwKwJp3rn2VpixO
-    nu8wei88nKeZAJKYCCzyagJcG4VMZ8xe6cpSSM/KAtF0JLIYkkyudJOuDTdf/PZ2s5IoEG
-    sKh+JNCWEST2pz7PYlGN07zC5PbuLSUsdKvxqooG956BZq2NkMI8okEM5/uNFxiwnpLGpe
-    FoSy3wIhsbEhwMt8U5roFoRJSgzAjzxzLs4e1pKoxHlB7t33biCOVY6zOCdUceGUBMSlDk
-    DYmuF0StS07DL2KqdcrEEQA4kPie1Bbp9yB9fxZhhm4gQMhwz0t/ha6+HkXA
-X-ME-Proxy: <xmx:gap6ap9jCUepx8n1FcSiVcS5dEYu8oJdINHtjw-zHCsFCcZTrraSJw>
-    <xmx:gap6arihgGtK9lwCJFNHuyjdtnjWgwxYY8FeALzded4LdoQkiLcA2Q>
-    <xmx:gap6an6qkh1A-fGAL8NjV_EeT6yCTalTmUIp52EiKLwPe2yyXbunDQ>
-    <xmx:gap6aobSnyNCcWW0-TDM9qWJd6ujLIl_ItjIMyxSZXovdquRMury8g>
-    <xmx:gqp6aqkl2hQ7wjyWLuvarOIcNnODXYbALCir6xSeyr5wNfOh-GpnSsUZ>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786425537; x=
+	1786432737; bh=yIPzOZPj6bFZVGzFQgSwtywJ8VHP6g1rxC/O4hZ/kD0=; b=P
+	knB7V/wEftW1n6i2bh61vuqN5hAJ98R0xajmWMa/1nodebn4UQM0EcwG5jiZLoBZ
+	Nw4sIq0N8vjBP8iprvw1l6IBF7Y7vnALKj29pklj5bO6ALvjMIsmQZnuO3K09SC5
+	gRy5vNhpahD5PM+wUmPeYEV2yEiuoA/eyQ6PNuGx0+Ac2Lbz9mKk0rjwwN4z2/SS
+	PJbhZhgbOU6n46UnVsCCAzYIXze3ldlgYNIUhSgeNWggUHzPpo9sxJG2v/hJnYp9
+	JXvZU28JP74qM2+aGJjxb5d517TZ9VQYBFo0NOZWjiOtqssTsN0HCytFJusNx498
+	EI0Ce27C67sAVzRud7MOg==
+X-ME-Sender: <xms:wLB6ah4Gj1xwB3_Ij1DqwAU7bIB-wVRIhu7BnWDbM2s7rZXxHkhYNg>
+    <xme:wLB6agkqaSPwwhZn8cYaSG9yBuW50Vug80q7g766wmoSnYWUrc6ugjODG7zpBubzi
+    aTvyuWFHoUeEn7qhvE_amVQvrFOj3ZC0MkpbX1ZTMUacFew>
+X-ME-Received: <xmr:wLB6ar6s1Roo1v3Nymb-zjpil1WfYAdiu5Df2DUQRQpdRgwRZN3JKyY7Id2aIi3-TzMZaE4VbmUvi-TSB9GdlDiw899bOBg>
+X-ME-Proxy-Cause: dmFkZTFCiCyrumSR7jngdWcHxN7jbp3z+mT9Bg09XSTh4ZlvO7zoSvAlSPKhh5se8+5XVR
+    7B+WVTfTNr9ys98GsP47siw0jcBUAN/azkEOzKloAbavC4TLXPa0GPqTKO8/sl5lAcYMvq
+    7hZQD+IPf18+NRSWbpR23WiHzwL8rSK4WIX11LL83p78t1ponL8YeO2TmITu6cn+nCVctM
+    hjr8QnUgyRO04Ccf2ttn6cLUKx0nWQkkUIf8JQI0bt9gIi+s1UE6tnqgrhFVFwtim0oaF4
+    C422WgHhab/FIE6dB2/+1Cn6e/KdkL6z4y85QMKu2JR2hF4IPMN1GRNl6no826C0twLmn+
+    WhTXMBOUJWKCwaJP7d0XGmzZwR10F2tqqCbzlf0ITEAm7zPXJX6Zp/TaKYm++qv8afXAeO
+    pUrfsqLbG4l+uvbe/+oXBPmU/qtlpPrx953h6pmjAOO1wukt0B+Z7lWT2nL++iwyd9ds42
+    ky+TYilQcLSFURkiRhMeK6fn3tv0spRZpnXqsvyfnWjqmihxpetCULdxWKVxVIicaBLaeO
+    CMF0oDL3SMgTL0QZUIcDuBMFeBZjOo06jD3dGNrHdl0hxmzry0x41xGXmRxKU0M52V+1Sk
+    zcFtoaBoEpIRoVxJgeuLaqTK7Jw6KcKq43AJKg5Z/q4BCFsTFX3ECJD6sntg
+X-ME-Proxy: <xmx:wLB6ap82xMJv3vcQxGYSXQmIdqh7wmdn9s-sTOK71WJuS53VkNLzAw>
+    <xmx:wLB6arh4nnc1CykmMstrRzhfJhA7BUIlaxEUV6-b7mjCDvr26minUA>
+    <xmx:wLB6an41cUm659Auy2pDO5cChEmh3fYLhS0xJBSFbVccCL2xrwq95g>
+    <xmx:wLB6aoYBQ-Z29sxa1zw5Ke61RJoxA1FU5Eqvg8uMfYGncwsA5K0VAg>
+    <xmx:wbB6aqn4wIxc6jAWyewEj5XZ5oABGdrZARbVg-JbcjXLYlT5lvb1Hi9a>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 11 Aug 2026 00:52:11 -0400 (EDT)
+ 11 Aug 2026 01:18:50 -0400 (EDT)
 Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -91,42 +91,81 @@ Cc: "Ian Kent" <raven@themaw.net>, "Chuck Lever" <cel@kernel.org>,
  linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
  codalist@coda.cs.cmu.edu, linux-fsdevel@vger.kernel.org,
  linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 04/12] fsnotify: reduce i_lock hold time in
- fsnotify_set_children_dentry_flags()
+Subject: Re: [PATCH v1 03/12] fsnotify: don't hold a spin_lock across
+ fsnotify_recalc_mask() calls.
 In-reply-to:
- <CAJfpegv2TTEGgfFBvAB1j2ixyEMXruG0AhL=R9iMC-LMJToiAg@mail.gmail.com>
+ <CAJfpegs-k3skRGiwZvQLzD7OrAK4KL8zwmpmJKyjRHSQ-rqX+Q@mail.gmail.com>
 References: <20260803012648.2195405-1-neilb@ownmail.net>
-  <20260803012648.2195405-5-neilb@ownmail.net>
-  <CAJfpegv2TTEGgfFBvAB1j2ixyEMXruG0AhL=R9iMC-LMJToiAg@mail.gmail.com>
-Date: Tue, 11 Aug 2026 14:52:08 +1000
-Message-id: <178642392818.2852630.1335784298767574361@noble.neil.brown.name>
+  <20260803012648.2195405-4-neilb@ownmail.net>
+  <CAJfpegs-k3skRGiwZvQLzD7OrAK4KL8zwmpmJKyjRHSQ-rqX+Q@mail.gmail.com>
+Date: Tue, 11 Aug 2026 15:18:48 +1000
+Message-id: <178642552869.2852630.11443303758249822243@noble.neil.brown.name>
 Reply-To: NeilBrown <neil@brown.name>
 
 On Tue, 11 Aug 2026, Miklos Szeredi wrote:
 > On Mon, 3 Aug 2026 at 03:39, NeilBrown <neilb@ownmail.net> wrote:
-> 
-> > +       /* Find the dentry for inode - there can only be one */
-> > +       for_each_alias(alias, inode)
-> > +               break;
-> > +       dget(alias);
-> 
-> This is __d_find_dir_alias().
+>=20
+> > @@ -116,11 +117,15 @@ static int dnotify_handle_event(struct fsnotify_mar=
+k *inode_mark, u32 mask,
+> >                 else {
+> >                         *prev =3D dn->dn_next;
+> >                         kmem_cache_free(dnotify_struct_cache, dn);
+> > -                       dnotify_recalc_inode_mask(inode_mark);
+> > +                       need_recalc =3D true;
+> >                 }
+> >         }
+> >
+> > +       if (need_recalc)
+> > +               need_recalc =3D dnotify_recalc_inode_mask(inode_mark);
+> >         spin_unlock(&inode_mark->lock);
+> > +       if (need_recalc)
+> > +               fsnotify_recalc_mask(inode_mark->connector);
+>=20
+> Is the fsnotify_group_lock() held in this case?   I don't see it.
 
-True.
+It isn't held.  Doesn't it need to be...
+It seems to protect marks, so maybe it does.
 
-> 
-> Could add a get_dir_alias() primitive that does the i_lock locking as well?
+srcu seems to be used to protect this section, so maybe we can rely on
+that.
+Maybe:
 
-We already have d_find_alias() and d_find_any_alias().
-They seem much the same for directories, so I'll use d_find_alias().
+diff --git a/fs/notify/dnotify/dnotify.c b/fs/notify/dnotify/dnotify.c
+index 7553fe0d7850..ba746284bded 100644
+--- a/fs/notify/dnotify/dnotify.c
++++ b/fs/notify/dnotify/dnotify.c
+@@ -17,6 +17,7 @@
+ #include <linux/spinlock.h>
+ #include <linux/slab.h>
+ #include <linux/fsnotify_backend.h>
++#include "../fsnotify.h"
+=20
+ static int dir_notify_enable __read_mostly =3D 1;
+ #ifdef CONFIG_SYSCTL
+@@ -94,6 +95,7 @@ static int dnotify_handle_event(struct fsnotify_mark *inode=
+_mark, u32 mask,
+ 	struct dnotify_struct *dn;
+ 	struct dnotify_struct **prev;
+ 	struct fown_struct *fown;
++	struct fsnotify_mark_connector *conn;
+ 	bool need_recalc =3D false;
+ 	__u32 test_mask =3D mask & ~FS_EVENT_ON_CHILD;
+=20
+@@ -123,9 +125,10 @@ static int dnotify_handle_event(struct fsnotify_mark *in=
+ode_mark, u32 mask,
+=20
+ 	if (need_recalc)
+ 		need_recalc =3D dnotify_recalc_inode_mask(inode_mark);
++	conn =3D srcu_dereference(inode_mark->connector, &fsnotify_mark_srcu);
+ 	spin_unlock(&inode_mark->lock);
+ 	if (need_recalc)
+-		fsnotify_recalc_mask(inode_mark->connector);
++		fsnotify_recalc_mask(conn);
+=20
+ 	return 0;
+ }
 
-Thanks for the suggestion.
+Does that make sense?
 
+Thanks,
 NeilBrown
-
-
-> 
-> Thanks,
-> Miklos
-> 
-
