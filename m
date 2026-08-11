@@ -1,171 +1,164 @@
-Received: from mail-pl1-f169.google.com (mail-pl1-f169.google.com [209.85.214.169])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from flow-a4-smtp.messagingengine.com (flow-a4-smtp.messagingengine.com [103.168.172.139])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E893B442134
-	for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 20:38:57 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.214.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 84A664B04B7;
+	Tue, 11 Aug 2026 02:12:02 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.139
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786394339; cv=none; b=cLNFhDvZPwbHZzzEBkXbTmx/R0AOV2a0xT57T1lDFxZZuix/vCxPx76f9sYuMftozlImpRDEs+karVkYqeqMgggRQIwwOpspsFMlhTcOIDW9pyYpxHeWQ6igUZJTO66+A7N+jYrWAO4KIAV86+JtfDXL8w/ZAy/zKv7NK68Aaqc=
+	t=1786414324; cv=none; b=a4pYKy1AfpKunKdpvjGjwVR916i3FNWmwwFYvN0Y6GETWI2e94LTUq8yOIBK1PmTlEZqyCkPInpMGacCE83zGFlJqsHh6apdgqN0K5reawD5LVxhcJqFOkfh5W1GesRhKBiJq5xP2KtYNqHS6meXTyegAs7cWYv1FEqERIG1UMc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786394339; c=relaxed/simple;
-	bh=uJSRGu+secrn6ELFiY8mCeDfdirixJZ+Vh+vWqrsCQs=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=ontMZ+miXM9yWezKzDlfGw7D7lYUAKRg50cs6Z6MMJ84t56ovnU/tbRv/COj21uI5sSR0Mwd1yoyLUVclV2zcS4rGUQi3wGHgEnIqEz7W7Gr50rNtGRtNWVa7d9H2cx5xH+YeX36A9OHt+bvhDsb1xEJDjPGR5aTjORj9Sy3Lp0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=casQjVQX; arc=none smtp.client-ip=209.85.214.169
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	s=arc-20240116; t=1786414324; c=relaxed/simple;
+	bh=KwaRZdlc7REB2zDbfklX0C4zMUsVEiT3D81VVqMcX+4=;
+	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
+	 References:Date:Message-id; b=RAUp/Sk/E49YXXN81a9Lese58NqzXHmkXoLwmvTDxVbSw1y5Gjt3Cu9m4Z7H2i4zT0lwQCWarnMrvgS3EMeBtWzGUB19cJhBS8OgybdW0nFPIQ/XlVq5TwDCBKlC8dNsFamduMtkLff03nO1ASOT1OG6J8JDAA2HGxpQVY5N0cI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=ev/Z7da9; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=BeRe5VzN; arc=none smtp.client-ip=103.168.172.139
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="casQjVQX"
-Received: by mail-pl1-f169.google.com with SMTP id d9443c01a7336-2cab97c86bdso9065ad.1
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Aug 2026 13:38:57 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1786394337; x=1786999137; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=VYp2Tfa4a+eGAB6Piu2ik5k2VivENudTsuNWEkco40o=;
-        b=casQjVQXgfPfT4a8Rp7+tK3rt+5o/mi5RbhcDsjjGAzOL2r6d06I10Q9enGM6r6yes
-         3M2P/tLm/hEI23sLbSOyiCGW9dcSPqZhBwUfQ2S1/OSosPqq8tgqGWDjVm15q4WGN3n3
-         gpqdbdGOJlPkLZ3Obkswmp9AhJ0OFFjV/Hj0/048RiNhIVby1lR9PezcTluSpmUy4UG2
-         d/AU2zEuQZ1cqO+dRJv8+zwg8qaI72PQhNY4MFEIPkwcbKEf1VQ8wtBmNI6McGqMlLv5
-         fiyQDNYSNsd+Pu9uIP4QLPeNWea076/z/0OJI9uadnXFeT9zMsrRYmo61AQ9wDQaHLCu
-         l35w==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786394337; x=1786999137;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=VYp2Tfa4a+eGAB6Piu2ik5k2VivENudTsuNWEkco40o=;
-        b=f2rC6HJmTdOcGjBz8aIstc5x2E9tfCNAhYrwMZACII9Kw8TgjpTY0hXG8d1uTI5qUB
-         cPzi2wyFsAmebEw3QSfulX/ahe+GC2LepwJ70GJ1Cewabt9MCkfb3vpdpxk637ZfmlAX
-         2g4VaEwwH5Z1VAJ/+vZJz2sXd4JPvNboxUdzvI75j0NmtXGXD4Idw5rGaQQ8mP83sCxI
-         mKZbmB8v99fNLqxmMGRrIGC4aONDkfcdh6go02VaHJXZT43m5VbvtbINseYdtDdcQPhf
-         beJseiCbz2LJfIpGluB1UuOj0WIOoJoBWCVYCiGpPcPlIB6QwqwBTJpZs9P20YTXhcUl
-         eQIA==
-X-Gm-Message-State: AOJu0Yy4mA/xKDSGuLeEbWZi5tgr1tHF1yFzCl+WlD2ANh6VNQ/n+KdZ
-	agcX1ul4a+5uqEuFSFzMvDpZS1wKUQH7ckbUpNs371LVuqSRdbjW4vk4pdsFUFwD3lHKQU0moJk
-	LRWR1mg==
-X-Gm-Gg: AR+sD12GY6SdMmOxC0bIp05w7WAIYC+AYZbM1VgFCSsAsORVJjkPqKYdSL8zeLsjqRO
-	aI16gyggbEDiNJWQa8cbt0gJPrBMsiv12+4x5xBym9E0MJFX/zexPQZHN2eyATbZoPUCU129Wax
-	j7EtpXntComWmlXFgQfrPTNLThaI0PJJ0C56vpAIrxKpv/ha9Zy3bu2YRpWCSYE6VyTs/lpwMK7
-	E9fbOjwlAfCMXlx0zPcPc+RbZpzUyWNitq3Zkw/i8PFKD0NDQ5qfcItllwe9HAOv+0ObHVrtgXy
-	re2NIIKPS84oSEHyZcunkBNAcx+WW1UZr1bd1YqcSmsmY47MYar9CE2Igwknp0LqPBfGMvGVGC8
-	1+1ZX8A9KEJguuUByEExliP3CETcmJ26TmkLPC2vTnyw6BLyeV8xxm/DolTgIRDjeTnJXmr35OL
-	ZZspRQTolji6osUb+jX8EQUYancafesldIZ7mVr7BcK6sXLO95qQjp4veiVTRHwJPN/bcf0gLH7
-	tteIgmRuiDbE3VCNR5OUnQ=
-X-Received: by 2002:a17:902:ea0a:b0:2ce:b436:272a with SMTP id d9443c01a7336-2d31201ad00mr133605ad.3.1786394336550;
-        Mon, 10 Aug 2026 13:38:56 -0700 (PDT)
-Received: from google.com (21.168.124.34.bc.googleusercontent.com. [34.124.168.21])
-        by smtp.gmail.com with ESMTPSA id d9443c01a7336-2d14ccd8f1bsm41025825ad.25.2026.08.10.13.38.53
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 10 Aug 2026 13:38:55 -0700 (PDT)
-Date: Mon, 10 Aug 2026 20:38:49 +0000
-From: Pranjal Shrivastava <praan@google.com>
-To: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
-	linux-kernel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-	Logan Gunthorpe <logang@deltatee.com>,
-	Jason Gunthorpe <jgg@ziepe.ca>, linux-pci@vger.kernel.org,
-	linux-rdma@vger.kernel.org, Shivaji Kant <shivajikant@google.com>
-Subject: Re: [PATCH v4 0/5] nfs: modernize direct I/O path
-Message-ID: <ano2R8fAeGmsNt9f@google.com>
-References: <20260810195040.2877784-1-praan@google.com>
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="ev/Z7da9";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="BeRe5VzN"
+Received: from phl-compute-11.internal (phl-compute-11.internal [10.202.2.51])
+	by mailflow.phl.internal (Postfix) with ESMTP id 8B8DB13800E9;
+	Mon, 10 Aug 2026 22:12:01 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-11.internal (MEProxy); Mon, 10 Aug 2026 22:12:01 -0400
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
+	cc:cc:content-transfer-encoding:content-type:content-type:date
+	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
+	1786414321; x=1786421521; bh=z59H84mGp5chtaSVDA9MWaRAa7fU4ciWmVM
+	LKTtAoYg=; b=ev/Z7da9p8cwQcaNeHVWhphBQkNLxbkRm7S0l36OJ+d8S+Q9qpb
+	uvJOjgeeRpjUEJ7vH9Hzu1hp8K9wMiH4myBGCqCvLwUNr/+4HLkcSfYzDJfHM1Ba
+	sVPa1Bp460YU8A6TEn9xJtSpeCr6hmLdZ6IF1TBbVB74B23WJWet3Trz/Wl3pj8E
+	Me83adV8XvpvoMPF6JPHYLs9g74+D4cwXDv8ttU06KE5hvSCe5LMjFlMfo03r3nn
+	hJ4qn3ILZgZXwdvYlXaQ/YaFPRkU6GhA76dnZYNL7R8yvSiZ3gb6jZcMCJ9muNB7
+	CkwLzC0gHO5OY+b8adPpq+45ish4ZgqX69g==
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
+	messagingengine.com; h=cc:cc:content-transfer-encoding
+	:content-type:content-type:date:date:feedback-id:feedback-id
+	:from:from:in-reply-to:in-reply-to:message-id:mime-version
+	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786414321; x=
+	1786421521; bh=z59H84mGp5chtaSVDA9MWaRAa7fU4ciWmVMLKTtAoYg=; b=B
+	eRe5VzNt+LlY+tHSbVayqPRJjuRndPXKsRDh2jvrEkojis7w41tucjBajRhLI/kA
+	e94Rt+BmEIGyNanp0UHl5YWgSGA2kC11ZG7JpgpUkF0folXSIfRh/2oHT/lzZvCL
+	RPs2J6nXbVqmYk7/T3awEz4F/N+J5rFU14GK7sknHOTI0fwcn6jjXGLzpIQlVlrX
+	y52lb91ii9cvBG9AZ216p/gYo7VONmxgtcXLbQuKT4hfvrYdYpzFG1eNoTinMpsc
+	sEp0QN511yAtN7bMDua8b59atPmGHL8awiKHWj1dp7kcPoVzM7fkFoknuvtYVuR7
+	yhWITatRJj4Efjl6w9CUA==
+X-ME-Sender: <xms:8IR6arCyA7tyPch4iET4Mq2YTh60wDVI7XdLMOFPY1yaD0e7c4fHJg>
+    <xme:8IR6ajPQueAIyi5ky1_QHldQ7gIArqfmoPo0FfQ2rjti7jiigoXe9-1654kC3Ufuf
+    L_mRprFvOSckEhXffPQzDanAuwJIJIIw-7iW4D74BScFxmqr9A>
+X-ME-Received: <xmr:8IR6aqAoLsYqYihWGkohZ22EauJJQnelGTKqwIhODNaIhrzWrx7ICl2NXF9MswSpDboaKxgxViyXoo3oCnO8eLIgrXJKbwA>
+X-ME-Proxy-Cause: dmFkZTGiFhqbMavz1GnHNgGnrM7aRU5foa/cHmUyoXxGd+EScvvMJzvJekNH/ltV7v2YtA
+    KKbMVreFRkOyPn5sqVW2TgecBr3u2xPZOvs//haZKfCkUETFc9Dc+20w7B10YcIOqo4B3E
+    TabCpIpl6/tH0XT0IGvOLprJTGWis8gKtNk1Rjm9VB88Tx3PzlLryvVLrq5lxuhVtQseO1
+    1etPysa+a2nh8j/Ut8fnJ9KZdaeKaUwp61VZN57Xdd9LTnyPmhtnDkEuLIj5n3pyqWyG6x
+    cZSa+pOJNSOie1q67PHP7DSVBVmOr1Pm3I4UkDSGGBMfN3tV9DodOiU8cpEWqDKzTuRcGz
+    m6rPQvpdVdnLZODlanSGCKc6LKgwo2VUHapaar4Te0Y37NMl9dwAL4JfTjddJwQafGWl6H
+    K0n0cgZrmq72mitnu6Z5gPbxIp6sNJXZvSVIgD8TVZkO/Tu9euem23e4SgO4b3BOT4Yo7L
+    Q6CUJDi+O4BbUTVXw+dOPqEJCip/vPCwlW2GkmsViDuJnwRkkKVq2H3NSvmVQgHRteloxi
+    WvTqS9HIEr+yVHLyrtHaEhwFcR1r7Zxz61HH3QO1RsmRtXfZQoqFnQzHrAnlZ5RduTyQaN
+    NzNXd4Mswgswb4fo1mWdAIKNF3RdkBypQw8KE6kvXkHMEzF1cigCX6iUJd4w
+X-ME-Proxy: <xmx:8IR6atkBFmfF5mlzsOM77rPYCO3p0-Y4ysejWCirCPvTVrTkTiR8Gg>
+    <xmx:8IR6amocgJDydj6SrAkFnif_fEF5D5D2xwf8EcFtD-1B8bDhr74GdQ>
+    <xmx:8IR6akjUrd7A9aBU37mBBRx5sulvzXqcBEHY9XR2gC7r4tMFmYYjdw>
+    <xmx:8IR6aogZ9HXVMHvePRPh4E20z1v7OEizhENFM97ib_U6rbT-AWR8cQ>
+    <xmx:8YR6an_MxMSzzg6Gcknh3_Ntgu1j2vBeMa0aMQyuwwdOJgwGNVTYpik6>
+Feedback-ID: i9d664b8f:Fastmail
+Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
+ 10 Aug 2026 22:11:54 -0400 (EDT)
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <20260810195040.2877784-1-praan@google.com>
+From: NeilBrown <neilb@ownmail.net>
+To: "Miklos Szeredi" <miklos@szeredi.hu>
+Cc: "Ian Kent" <raven@themaw.net>, "Chuck Lever" <cel@kernel.org>,
+ "Jake Edge" <jake@lwn.net>, "Ilya Dryomov" <idryomov@gmail.com>,
+ "Alex Markuze" <amarkuze@redhat.com>,
+ "Viacheslav Dubeyko" <slava@dubeyko.com>, "Jan Harkes" <jaharkes@cs.cmu.edu>,
+ coda@cs.cmu.edu, "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
+ "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
+ "Amir Goldstein" <amir73il@gmail.com>,
+ "Andrew Morton" <akpm@linux-foundation.org>,
+ "Miklos Szeredi" <mszeredi@redhat.com>, autofs@vger.kernel.org,
+ linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
+ codalist@coda.cs.cmu.edu, linux-fsdevel@vger.kernel.org,
+ linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 01/12] VFS: don't count references through ->d_parent
+In-reply-to:
+ <CAJfpegt1wHngLs9uR943gT6zxV67D53k3n4GiFKowsAb3C6LJw@mail.gmail.com>
+References: <20260803012648.2195405-1-neilb@ownmail.net>
+  <20260803012648.2195405-2-neilb@ownmail.net>
+  <CAJfpegt1wHngLs9uR943gT6zxV67D53k3n4GiFKowsAb3C6LJw@mail.gmail.com>
+Date: Tue, 11 Aug 2026 12:11:50 +1000
+Message-id: <178641431036.2852630.14175693646176331672@noble.neil.brown.name>
+Reply-To: NeilBrown <neil@brown.name>
 
-On Mon, Aug 10, 2026 at 07:50:34PM +0000, Pranjal Shrivastava wrote:
-> Modernize the NFS Direct I/O path as a preparatory step to enable PCI
-> Peer-to-Peer DMA (P2PDMA) support. Following feedback on the initial
-> RFC [1], the modernization and architectural changes are split into
-> different series. Additionally, based on the discussion in the v2 [2]
-> of this series, the migration of NFS Direct I/O to folios would be
-> handled in a separate follow-up series.
-> 
-> Currently, NFS O_DIRECT relies on the legacy iov_iter_get_pages_alloc2()
-> API which does not support the pinning requirements for P2P memory.
-> The implementation moves NFS to the modern iov_iter_extract_pages() API.
-> 
+On Mon, 10 Aug 2026, Miklos Szeredi wrote:
+> On Mon, 3 Aug 2026 at 03:37, NeilBrown <neilb@ownmail.net> wrote:
+>=20
+> > When a DCACHE_CURSOR dentry is added to d_children, it is only ever
+> > added "before" or "behind" an existing child, so it will never be the
+> > first and so never needs to adjust the refcount on the parent.  If it
+> > remains on the list until dput() it could be the last child to be
+> > removed, in which case normal handling applies in dentry_unlist() (where
+> > it has been moved from dentry_kill().
+>=20
+> Not handling the parent refcount together with cursor removal can
+> result in inconsistency, e.g:
+>=20
+>  - add cursor (seek between two positive dentries)
+>  - remove all real children (parent refcount not touched, since cursor
+> is still on d_children)
+>  - remove cursor (seek to zero offset)
+>  - close directory (dentry_unlist() will skip parent refcount update
+> since dentry->d_sib is no longer linked)
+>=20
+> Repro attached, produces "BUG: Dentry ffff888107ef75d0{i=3D143e,n=3Ddir}
+> still in use (1) [unm
+> ount of hugetlbfs hugetlbfs]".
+>=20
+> Thanks,
+> Milklos
+>=20
 
-[...]
+Thanks for the review.  I realised that when I was doing patch 11 which
+changes d_for_each_positive_child() to use a cursor, but I didn't think
+the apply that understand back at this patch.
 
-I'm calling out a few typos / non-code mistakes:
-
-1. On the cover letter I missed updating the subject to v5 for this series
-  (the changelog is noted below).
-
-2. I also accidentally dropped Christoph's Reviewed-by tags on patches 
-   1, 2, and 3 during the rebase (given while reviewing v4 [1]).
-
-Everything else in the series is correct as per the v5 changelog.
-Please let me know what the right etiquette is? Shall I resend the series?
-
-Apologies for the noise!
-
-> 
-> [v5]
->  - Fixed an iov_iter_revert oops in nfs_direct_extract_pages().
->  - Fixed a refcount underflow in nfs_direct_release_pages() during
->    swap-over-NFS by ensuring we do not call put_page() on unpinned memory.
->  - Rebased on fs-next
-> 
-> [v4]
->  - https://lore.kernel.org/all/20260720150601.2702700-1-praan@google.com/
->  - Dropped superfluous externs in include/linux/nfs_page.h
->  - Scoped `req` locally inside the loop in nfs_release_request_list()
->  - Wrapped >80 character lines in Patch 1 to adhere to coding style.
->  - Fixed typos and capitalization convention in the commit msgs
->  - Collected Reviewed-by tags from Christoph and Shivaji
->  - Rebased on fs-next
-> 
-> [v3]
->  - https://lore.kernel.org/all/20260715143540.3597616-1-praan@google.com/
->  - Dropped patches that added folio support for NFS Direct I/O
->  - Folded requested_bytes accounting in patch 5 due to dropped folio support
->  - Rebased on fs-next
-> 
-> [v2] 
->  - https://lore.kernel.org/all/20260616134000.2733403-1-praan@google.com/
->  - Fix data corruption in nfs_direct_extract_pages() by correctly
->    calculating intra-page offsets using offset_in_page().
->  - Fix requested_bytes accounting in direct read/write paths to only
->    increment after successful RPC scheduling.
->  - Add missing kernel-doc descriptions for the @pinned parameter in
->    nfs_page_create_from_page() and nfs_page_create_from_folio().
->  - Rebase on fs-next/
-> 
-> [v1] https://lore.kernel.org/all/20260603053033.3300318-1-praan@google.com/
-> 
-> Pranjal Shrivastava (5):
->   nfs: make nfs_page pin-aware
->   nfs: track number of pinned pages in nfs_page
->   nfs: introduce nfs_release_request_list helper
->   nfs: migrate direct I/O to iov_iter_extract_pages
->   nfs: introduce nfs_direct_extract_pages helper
-> 
->  fs/nfs/direct.c          | 139 ++++++++++++++++++++-------------------
->  fs/nfs/pagelist.c        |  62 ++++++++++++++---
->  fs/nfs/read.c            |   2 +-
->  fs/nfs/write.c           |   2 +-
->  include/linux/nfs_page.h |   8 ++-
->  5 files changed, 130 insertions(+), 83 deletions(-)
-> 
-> 
-> base-commit: 5b57716ed7ad2f4b1724461c8777015c4e4befb1
-> -- 
-> 2.55.0.679.g6767b8d81c-goog
-> 
+There is only on user of cursors so it can be easily fixed as follows.
 
 Thanks,
-Praan
+NeilBrown
 
-[1] https://lore.kernel.org/all/20260720150601.2702700-1-praan@google.com/
+index 5a0d276379d1..91f535192ee2 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -169,6 +169,8 @@ loff_t dcache_dir_lseek(struct file *file, loff_t offset,=
+ int whence)
+ 		hlist_del_init(&cursor->d_sib);
+ 		if (to)
+ 			hlist_add_behind(&cursor->d_sib, &to->d_sib);
++		else if (hlist_empty(&dentry->d_children)
++			dput_dlock(dentry);
+ 		spin_unlock(&dentry->d_lock);
+ 		dput(to);
+=20
+@@ -213,6 +215,8 @@ int dcache_readdir(struct file *file, struct dir_context =
+*ctx)
+ 	hlist_del_init(&cursor->d_sib);
+ 	if (next)
+ 		hlist_add_before(&cursor->d_sib, &next->d_sib);
++	else if (hlist_empty(&dentry->d_children))
++		dput_dlock(dentry);
+ 	spin_unlock(&dentry->d_lock);
+ 	dput(next);
+=20
 
