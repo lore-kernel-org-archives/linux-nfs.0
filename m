@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AB459442B1B;
-	Tue, 11 Aug 2026 12:03:13 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5A06E443AA1;
+	Tue, 11 Aug 2026 12:03:15 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786449794; cv=none; b=NoMtoE+sw13FCNFcKRp0o9dV8W8UH3BBgqz9+yF7kWHfk0TRpB+RwhkfMl1KmsaHTJ8+nEh5rqv3+bhy5rMjP9Avt48lk/364lVBX3tH4eicBBVJI6Q2EejaKK4OPNK+GNzsXcFFYYMTt6du6CXCGe3YOlf+LrJOhB+hCVEiZCc=
+	t=1786449796; cv=none; b=CfePTdWvGnzlA1VkGsRkLMWBuyu5biuHFlo41PNXYWaja76wfswWWvzblZltV8C8CXmics1zSagyHzuIhsJlnSBFeYTfKlusSATdXY3gfc63znN1k8EVxMRM3wK+0YwlriHQ/wIhm3Sw/EhO9+3zglL+0aha9tgeGIhjt7ZKiok=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786449794; c=relaxed/simple;
-	bh=5rSg4dAcvVQv/gwh6ajdjqTKnjmHWmRK73iIdvgeZj0=;
+	s=arc-20240116; t=1786449796; c=relaxed/simple;
+	bh=sRE5xJke2nxFvarK96HksthibPjar8XUFDzJSUVh8bo=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=nfVp7XmIrQzNwJsmKz4mH1QRJ0eFhW4QkhTfpJ1FX8BS5xrkP9T3wEPknaGBL7RI597merr4HGtQovXQ4pVqKbjJcUlj1hP94cXcLqhRFIAsCZt1NdmFhsmHlhLf5Ji9GJkVbyGoLQ9w4UcJm0kH2YsNkEfZxKAdrqfHFq8gZOE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=a3FtI9uS; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=slyDIZPFj8PL1hZ0IHLOU36rh9c/O+wM3BC1BRzr0V6dQHPH/T1Gz2eL4lRKzmrUCtScfdpJ4nO0yupFnk6h8MmpFngK0cS2zlI3guV109uAMiQoTEcnuT14xx8g5HhH6xljHcTKc1i3oix70lKwGF9Id0Rn7Z9Il+e11jlSkc4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ii1uYS8i; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="a3FtI9uS"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id E2CE11F00A3A;
-	Tue, 11 Aug 2026 12:03:11 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ii1uYS8i"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 965871F00A3D;
+	Tue, 11 Aug 2026 12:03:13 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786449793;
-	bh=q9kotpnhc3C3OSb7dmtZK9XgIYyfRPrPIg0cQGtxKB0=;
+	s=k20260515; t=1786449795;
+	bh=SDK8NtQYSDFTW8YWu3lKgc5WnA2MpTS+NwrEmTlcZac=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=a3FtI9uSq4+QlpfOi/sG8KFmljaR7k5HyLNSe1hBtUZfqKKr5+Wcg0/dZ3u7+Gdh+
-	 My3I8vxK9pQuhONkAJBG8t0O8w5kQYiaAmFr15bOb03KF6yVioYDqZNPYgfb1tDj4Y
-	 RUzZCkhFGtjd2cvaAb91t+uWGL5LLsUQ2ii7jhkLUvp1IFSMPM67CzbaX+sh+j/yij
-	 +FtES12gwc1+tpSP2K/yF30l28YVH5b3UhMWsP+mV3OSidInZhsLfT30HN4p9gRP/T
-	 vWkWjmwNyAo0Cf2PwQMfledQORqLcdJ0GG7Ln9pPJf/dL+GDvtni7GSfhthZYJg3Fw
-	 qTEnmdm63K37g==
+	b=ii1uYS8iZMMKnwKKAC7rOhMBID4NYZ8YnT+lXTegXS2jFrAdRGNfCc8FU9NRp1AQy
+	 78O0zUjtGHEIOyRrBkpTfvv9ONTlaWnTsHY8g2W7djYQjixim3U6xfePGrfn5hDvWQ
+	 ozV36HjDWdZi3hPtpzO2PsBvoneCYJpKpBgQZeItSigFNdIimgDupIXTtzg/Rg9VAl
+	 LIRtyB++0hvb5TIubVTH7wElIJVb2nTCBE3YCcPzhNTC474G066WoIOTdtBovOZEOQ
+	 LvtVsYY+evibV+IPHsZuS9HLMFA3lLkC6ABSUGXVmhhXx6ScNWeC1go4ZewIiR2FCU
+	 QvlpuffUMjqug==
 From: Jeff Layton <jlayton@kernel.org>
-Date: Tue, 11 Aug 2026 08:03:00 -0400
-Subject: [PATCH v2 1/8] NFSD: validate transport name in listener_set
- before serv creation
+Date: Tue, 11 Aug 2026 08:03:01 -0400
+Subject: [PATCH v2 2/8] NFSD: cap the number of listeners accepted in
+ listener_set
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-nfsd-nl-hang-v2-1-c0c92b3953c3@kernel.org>
+Message-Id: <20260811-nfsd-nl-hang-v2-2-c0c92b3953c3@kernel.org>
 References: <20260811-nfsd-nl-hang-v2-0-c0c92b3953c3@kernel.org>
 In-Reply-To: <20260811-nfsd-nl-hang-v2-0-c0c92b3953c3@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -52,93 +52,89 @@ Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
  netdev@vger.kernel.org, Trond Myklebust <trondmy@gmail.com>, 
  linux-kselftest@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
 X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2981; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=5rSg4dAcvVQv/gwh6ajdjqTKnjmHWmRK73iIdvgeZj0=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqew98cqbUEml+nrQcyt4CLQwFwc/dSd408L7xi
- hsc1X+aIcCJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCansPfAAKCRAADmhBGVaC
- FQHgEACEMbOWPsNYfHKRaxjwnybKG3uRSazAlvcOsRI05qbUxbhvcV5uSLxKNyzHEwP1dSho3ld
- r5aOJkjj+J0er3z6SqIkA5/jDKvUVmFeqqvUlXA1dNHD5HrsHK8BoDFbaHg5N839JHgxd36xH4K
- 4ZmQWvrBbJPAVKztEZxx5MShzbQmmP/snuQWrlouyqsw6IL3J6YWTsMwegU1lZEhAx90CVLtgAc
- MFJxfs9kO5C6aiB/vuFMTWU6b+tsqFX3+ym/kvnsJTarFJm4XWfZNaPIMDrcJILoYjgrpqMdy3g
- INvKeGoTjeklp5lfkqnvDLPDlIGAREzH2IseaNxr3TTemqWUfq8pgPkbaTlGttCicYJMOBr+vPg
- 5ZLutSlw0gJHFk082YURk7Gq+9MTOU5dEl9oM0hbjmkU5knjTn9DHGbGy+xsE7wenQiLy7/U3G7
- FgBqukeadKf8/dLf4R9zkpyF4vHEC1F6hN4R3T2f130qisM+nBX31ogGrYK2xLb0mTBo+/qAiIu
- Dl6RcPp+c6M24yK+/MkMlBGhtxP0nrr5vC6J+vB/m+YWFCs1erzt2Pv9bMt5XwGpETRTlD85PuE
- QHL6HFWW+LDJIGJInN9jguCqXCXEGKEuw5dqeFjjbGPkq+mCJwqaSNV6Paso/TTnBvmKHDfhp1q
- mA93ipKDIim3+1A==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2696; i=jlayton@kernel.org;
+ h=from:subject:message-id; bh=sRE5xJke2nxFvarK96HksthibPjar8XUFDzJSUVh8bo=;
+ b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqew98XTQDgLMe7bvAu0fdCVA3rcTHXuGoSiv1a
+ 5BQZ2upMoSJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCansPfAAKCRAADmhBGVaC
+ FetJD/9o5UVHTfjPGqJBDukxVWWrBJCaqTcKGyWQvFOg9ymf/8y4yHCwG6zTwJ2qxBWNtSV5twH
+ /Ber1Am0zqBijyq33LV510AysbKQk2I2XKDAR/eaXIYc86+Q/Vu05iZ2RseKqgAvSt+XoyAfTUg
+ ka6gO28ZB84v84XjcILeOlDi5eG7REO3S8j8B73RbZjVbausaj+CDr0ESY8NEVrRsb/AWHR5Nt3
+ oXOAcEreBp/NtD0Ad6MH5CBKLt96IWaWYy2czMCH9BzKdqRU32oyWQfqdmcM7DjKUbC8tm5J1yQ
+ X6Fc3x+T/EACvEYUFZQ7TJnjaS6TnV8cT7RC8mA++hJDYLWyk/y9I80UAsvXjbiQebk0W9eV2Q4
+ kFHyJQ2wuAGhZxA4ePaozPZitzfX4fBbZ29ZRVZdzNW9i3h+OXC9PDb7aSZaXmKpz6XLybTXMX0
+ RKLwwwVMjHCUXsIvI/8WR+leNmlUPg0bfC6ffz5+C36tVGRmqvc/b+JSaegKfedetP0dO7CnurT
+ 1tMDwl97dD0FhwZA5lMHOWn2s1MKmXNh1c/2HQIZo4nd1+KLmbmBZljR3UoZlxaIODDTJC8qQCR
+ scAsGgYCln2vFyVl9bLaLaNkUoxppRgtEAagA3NPtNWeA/xBUy46lclRxlvQZhXklwi/pvEuSKk
+ cCMkZ/Rco4GGiiw==
 X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
  fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
 
-nfsd_nl_listener_set_doit() holds nfsd_mutex across the whole listener
-teardown/rebuild. NFSD_A_SOCK_TRANSPORT_NAME is only checked for
-presence, not content, so an arbitrary name reaches
-svc_xprt_create_from_sa(), where a name matching no registered class
-triggers request_module("svc%s", name) -- a TASK_KILLABLE usermode-helper
-upcall run under nfsd_mutex.
+nfsd_nl_listener_set_doit() matches each requested listener against the
+existing set in a nested loop that is O(N * M) in the requested (N) and
+existing (M) counts, run under sv_lock with bottom halves disabled. A
+userland request with a very large listener list can therefore spin in
+atomic context for a long time.
 
-Vet the name against the classes NFSD can instantiate (tcp, udp, rdma) in
-nfsd_nl_validate_listeners(), which runs before nfsd_mutex is taken.
+Reject requests carrying more than NFSD_NL_LISTENER_MAX (1024) entries in
+nfsd_nl_validate_listeners(), before any lock is taken. The limit is far
+above any realistic configuration.
 
-This narrows the upcall rather than removing it. "rdma" is accepted
-unconditionally, so on a kernel where svcrdma is not built it still
-reaches request_module("svcrdma") under nfsd_mutex -- as it must for the
-modular case, where autoloading is legitimate.
+M is not capped here: write_ports() can add listeners too, via
+svc_addsock() and svc_xprt_create(). But each one costs a real socket, so M
+is bounded by resources, where N was bounded only by the message size.
+Capping N leaves ~1M iterations plus 1024 nla_parse_nested() calls under
+sv_lock as the worst case.
 
 Assisted-by: LLM
-Link: https://syzkaller.appspot.com/bug?extid=c7eae0eb80858a2dba0f
 Signed-off-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfsctl.c | 24 ++++++++++++++++++++++--
- 1 file changed, 22 insertions(+), 2 deletions(-)
+ fs/nfsd/nfsctl.c | 16 +++++++++++-----
+ 1 file changed, 11 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 4e5e083d8477..e5844d8454b8 100644
+index e5844d8454b8..66931caaaaed 100644
 --- a/fs/nfsd/nfsctl.c
 +++ b/fs/nfsd/nfsctl.c
-@@ -1975,14 +1975,31 @@ int nfsd_nl_version_get_doit(struct sk_buff *skb, struct genl_info *info)
- 	return err;
+@@ -1992,21 +1992,22 @@ static bool nfsd_nl_transport_supported(const char *name)
+ 	return false;
  }
  
-+/*
-+ * Transport classes NFSD knows how to instantiate. Vetting the name here
-+ * keeps a bogus string from reaching svc_xprt_create_from_sa(), where an
-+ * unknown name triggers a request_module("svc%s", name) upcall under
-+ * nfsd_mutex.
-+ */
-+static bool nfsd_nl_transport_supported(const char *name)
-+{
-+	static const char * const supported[] = { "tcp", "udp", "rdma" };
-+	int i;
-+
-+	for (i = 0; i < ARRAY_SIZE(supported); i++)
-+		if (!strcmp(name, supported[i]))
-+			return true;
-+	return false;
-+}
++/* Upper bound on the number of listeners a single request may carry. */
++#define NFSD_NL_LISTENER_MAX	1024
 +
  /**
   * nfsd_nl_validate_listeners - sanity-check the listener list from userland
   * @info: netlink metadata and command arguments
   *
-  * Walk every NFSD_A_SERVER_SOCK_ADDR attribute and confirm that each entry
-  * is well-formed: it parses against the policy, carries both an address and
-- * a transport name, and the address is long enough for its family. Doing
-- * this up front lets the callers below assume every entry is valid and
-+ * a supported transport name, and the address is long enough for its family.
-+ * Doing this up front lets the callers below assume every entry is valid and
-  * guarantees we make no changes when the request is malformed.
+- * Walk every NFSD_A_SERVER_SOCK_ADDR attribute and confirm that each entry
+- * is well-formed: it parses against the policy, carries both an address and
+- * a supported transport name, and the address is long enough for its family.
+- * Doing this up front lets the callers below assume every entry is valid and
+- * guarantees we make no changes when the request is malformed.
++ * Walk every NFSD_A_SERVER_SOCK_ADDR attribute and confirm that the list is
++ * not oversized and that each entry is well-formed.
   *
   * Return: 0 if every entry is valid, or a negative errno otherwise.
-@@ -2006,6 +2023,9 @@ static int nfsd_nl_validate_listeners(struct genl_info *info)
- 		if (!tb[NFSD_A_SOCK_ADDR] || !tb[NFSD_A_SOCK_TRANSPORT_NAME])
- 			return -EINVAL;
+  */
+ static int nfsd_nl_validate_listeners(struct genl_info *info)
+ {
+ 	const struct nlattr *attr;
++	unsigned int count = 0;
+ 	int rem;
  
-+		if (!nfsd_nl_transport_supported(nla_data(tb[NFSD_A_SOCK_TRANSPORT_NAME])))
-+			return -EPROTONOSUPPORT;
+ 	nlmsg_for_each_attr_type(attr, NFSD_A_SERVER_SOCK_ADDR, info->nlhdr,
+@@ -2015,6 +2016,11 @@ static int nfsd_nl_validate_listeners(struct genl_info *info)
+ 		struct sockaddr *sa;
+ 		int err;
+ 
++		if (++count > NFSD_NL_LISTENER_MAX) {
++			NL_SET_ERR_MSG(info->extack, "too many listeners");
++			return -E2BIG;
++		}
 +
- 		sa = nla_data(tb[NFSD_A_SOCK_ADDR]);
- 		if (nla_len(tb[NFSD_A_SOCK_ADDR]) < sizeof(sa->sa_family))
- 			return -EINVAL;
+ 		err = nla_parse_nested(tb, NFSD_A_SOCK_MAX, attr,
+ 				       nfsd_sock_nl_policy, info->extack);
+ 		if (err < 0)
 
 -- 
 2.55.0
