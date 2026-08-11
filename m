@@ -1,77 +1,77 @@
 Received: from flow-b7-smtp.messagingengine.com (flow-b7-smtp.messagingengine.com [202.12.124.142])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1ED1A360EE4;
-	Tue, 11 Aug 2026 17:54:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E059835B65D;
+	Tue, 11 Aug 2026 17:54:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.142
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786470857; cv=none; b=SIGW5SW7BhiG5cCFkKzyB00dRQPN+wqh62NdN0ugdcNRhZmUY711hdcbjv8thAVgNfGmTYuoDIz05rn65ZLZ7W3dQTrDr+kzwiD5xe2It4o4zLoAKTBzM1ZgppaItCUxON0jvsmtj0WXlyoY7F3MGFckxinsqT/qx6WFJ3PzrKM=
+	t=1786470866; cv=none; b=mMrbum3KONV23epK3IjyO/l8bFKMFDjFpOJbrqJ0/i20lJ5mFlgc6794VzW48TM80yMXP/jnjFaysr3VpOYSpcf8VEuSByr6O4eaSTnAPzn+Fk25KxbtI3D9R+tnW2zu1s4AfGTFtvNVU7aDpsYL8u5Ce6HYBc62SsptyCsG79g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786470857; c=relaxed/simple;
-	bh=647dHowxYyRQyO+sUKOtz6G8zNBCMu1y2kwFN1XIyZw=;
+	s=arc-20240116; t=1786470866; c=relaxed/simple;
+	bh=pFhp6xnik0wvtR0KY8MWR4dOyalbUlDaPKD/cfIHUmA=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=V6LYn4UyXMO87FUadYtZYgktX+D0a60dxg/ts8x1pdVjOBukdj/gIvln50RvzfkVd4yMm0YuXMSWf3XkEqrZUeiEV6zv7aktujUqJHbsOhHpjpTr8bHajeG/5G4uQqyiC9nToQ2TkQIdGEFDmPDeSciMc0YueBABoMPUkMfwDqY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de; spf=pass smtp.mailfrom=jaseg.de; dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b=U3I428v4; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=NFVSFrFr; arc=none smtp.client-ip=202.12.124.142
+	 In-Reply-To:To:Cc; b=W6u41UyEdDqPxvG7+HzQU8M7IE5oXKWkg87EzNWaX2W6chbZkGr4DOQ9PbAfxtpD1Sd9WthL5X20x7BsPfxDQtVrel0EznAmIqaG2PxSPQZAx4wcLAIYi4+bqae8V4NXhMsXctZyCU5XclObQvomo/5VTDnCbzmIUbBeJjUD1DQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de; spf=pass smtp.mailfrom=jaseg.de; dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b=qB2Jy7vX; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=TRxBuSxw; arc=none smtp.client-ip=202.12.124.142
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=jaseg.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b="U3I428v4";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="NFVSFrFr"
-Received: from phl-compute-08.internal (phl-compute-08.internal [10.202.2.48])
-	by mailflow.stl.internal (Postfix) with ESMTP id E7CC4130039C;
-	Tue, 11 Aug 2026 13:54:13 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b="qB2Jy7vX";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="TRxBuSxw"
+Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
+	by mailflow.stl.internal (Postfix) with ESMTP id C358513003A6;
+	Tue, 11 Aug 2026 13:54:22 -0400 (EDT)
 Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-08.internal (MEProxy); Tue, 11 Aug 2026 13:54:15 -0400
+  by phl-compute-01.internal (MEProxy); Tue, 11 Aug 2026 13:54:24 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=jaseg.de; h=cc
 	:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to; s=fm3; t=1786470853;
-	 x=1786478053; bh=FZBYWhL5n7JQ+WX8bMFfUS0qJovxuh7QkbRbWkvh2HQ=; b=
-	U3I428v4Xek0tSEHP9VEkmh84J7xFx2TdU9S8LG8Hnyrt9FFLS3afQgWc4pLxMUh
-	oDOB6G5O6t7bhE7LBdDe7Xd9k/LUDmytiRYGMYxaetH4N17pKTtDPgG3q1z6H0a3
-	n4bfRz3VifmOrPkTBoHURT9d88Xjb8ZNs4IcVbOStH++mstZ1HzzikSXnbDdM5AR
-	cmqQjmAR7Ht+lxSsR9pE6KZ0pEOwmVYwt5c9IWgrVHohtRzyTh+Q9pgb+T6Y8ggs
-	vZ56sq37RhJOa3ubp9HuVWHnMzWAeOzxc4Y5zb5Je1U7IWLAxVfnOXNOfayNvO5/
-	gbYudKk97aPgWYyIByBOOQ==
+	:references:reply-to:subject:subject:to:to; s=fm3; t=1786470862;
+	 x=1786478062; bh=6GTy/7ZYnhxwkN3CoOvmK6vIIxg2qB1mjCGqyHajM1A=; b=
+	qB2Jy7vX5C5g7HFTE11w3KW7iFGS08Hi2Z6fdKdbd+NH+vR4665E+YY32z+VrqHW
+	e8VqhnOhmjyMa+NhOcxYaLSFJm4O2aPGvq4PP0flRu/uCP3GXTHNw4uZQN9Jdn5m
+	iDDZ/byDI9F+wTQibuac57c6zH2r3wPapyRCaq71th2vwXrzwW1kJwv4/K+v10Xc
+	S/HsLRiVsm96zzjZc3hnudlFMXt4fH2Ygh4Y6AoAzx9jJsK9iJAN2YUhK9QqJCvd
+	mQzgHE16IfdSAAeBDmYhEdflm5INZlpdetbk6F4+XseJ8OSLrgHIidqZ7Tvl6149
+	gZM82j6UrZMR4gFcY37t3g==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786470853; x=
-	1786478053; bh=FZBYWhL5n7JQ+WX8bMFfUS0qJovxuh7QkbRbWkvh2HQ=; b=N
-	FVSFrFrsdHDuwX5bmwEFi+vfM4jbvPi1714oBu1Pe04LTQ4ur68y0wRIxq8PvQ/d
-	CK5ZGpzx+b0HGehJPn6zOIyrzHk/fGVB5FsDztbzGbCNFUuW3H0GhsS6WsR3vv6Z
-	BcB+8GzdZv2ZYrvwtzxpKcc6jVQrIpKkmaNznEjvmBPKa6D2QAMF1RqYLeKx/JPO
-	6FXrwSg7EIiA7UuparnXo61bTYDNTFy4zcXHHvvcPINcmkoilfMZj4hVTChqLkl7
-	mtUmU/6kAdq5UxKLWXnh2n2Q/VTAv/mlYQ4g00356aF5Px9u2TMDaBPeEvhaI8Pf
-	/0Wg9vZV7YHTADO1cCo0A==
-X-ME-Sender: <xms:xWF7agcUcHV810dBcwVWO-0wByEQ2xBhPXEwl2NknpB0F6K3NW67Mw>
-    <xme:xWF7arDfhYtv79rmwh-5DfRRdValYWTUL59GVlWFS3q7lnbndGfy1VmkjJRIP-hSF
-    RRPVTRDvknzlGjOPXU8GULe3UyNitYlp7cm-7yjQquxBeX46Yf6>
-X-ME-Received: <xmr:xWF7aoFLXxX4gYoHmQsdhuqDAgVmSvThwlCFyR3Y49qbILa9WSLPXbi_DlaluXse02X_vcyXa9c6ghT327XDOBA>
-X-ME-Proxy-Cause: dmFkZTFqRXkqeRY8YxPaiPG6bKtumQZ44ueOyE0ycsRtkYHYtMPeLw9KqkFTfoymoPXANQ
-    f8xIE59to9muOon1MQaYxt7DdSPzezKDm/5lwbw25fHysrcDraGpHHDQDBxbs7DNakPMfM
-    e6H9gUHyYw6Jnjx4Hrnr8P0aqcdlkP/OQCvkpK5i8nwVpDOUjiFIrGc2aHzhOHJwaTCmvE
-    SohzxPZY/BMExH4tATsvbW62+v/yi0C/jL+BZWLe9AwElVYGEpH8rm9jM3a5qxQfAZo+/L
-    Re7VHgx53z5HSeOGiZCoxmlFJwvoInomet06PrQYp2gmHd77fq1CpUHnH937B47mzUIvku
-    yUh4mUkbwyIu2ja7cJVK9b5XTWYB3dNvbtYJydefJ79hiiQApVeOYD7m1nli1tUKbs9WrY
-    rf6TqxumbHWQJhS9dRF7SycnMHQ6BSeUFwSC0Jc9Hnz+CpcUylmf2b4TB1iS15234kpK4m
-    awbwTHUT4h4bvy2Idl4MLcnpcyjQdT8Ab8gCmErQCN0e7s7wL39Q0j7anatprW32BrU2u5
-    COL6aNgtIPHavUk6F00gHusdEiFqlhHp0D1PYqraDFPTljJ+i0kxTOlnCQbqK1AkW0Osfk
-    J/vfxzuBWvaQmujMPvnwYblwydfhIlNC7DKYrx/NLuL6fNaINYhWN84Nk/Lg
-X-ME-Proxy: <xmx:xWF7ajWhWCACvP5bO-pmqXmBAmRXeF-U0U3przamkrmnRLj8AOCsvw>
-    <xmx:xWF7amYs0Zv_2aczeJOHicvIVvmoAn3YVBhfzpngMyYgZFoGtUyl7g>
-    <xmx:xWF7alBRfTlpL7kuASpGVnPd6eHEPUmnsKJ6PY5hfTOJ2mj8Lqkvgw>
-    <xmx:xWF7ajEW0QbI9MLp3s-6tY5Kr01DqRBB2uSkRGUl_9OjEvosCg4t9A>
-    <xmx:xWF7ag0IsNk0BBs9Q4B2iViJjlp5tI2fmcCO7rByHXbNsuc466shgXK0>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786470862; x=
+	1786478062; bh=6GTy/7ZYnhxwkN3CoOvmK6vIIxg2qB1mjCGqyHajM1A=; b=T
+	RxBuSxw+xYevsT25Hc1JPuxXZqY/uEsl8wSxfZhf/AnKlFUhLhxDA6OAGexc/MPq
+	yo4PqNgNydIVClSZ3ANQkB+z3UkR32qE7fBDOKJlV2ywY71eXlLfNkDQmBS75Caw
+	Gb5aPaFEYzA/RZqFwZZ7kP8Mj31loYQbhJfKe9D7873Xr2U0jy0m6K9ka6JILxIb
+	npR/zyq+eq6XNbfqaIWlAGkJucqyPYs4Y1Uw/X4bU1kkyrXwCZ0N8BcWdYyVXSI1
+	1/D5iiCrk0Ijt8TBdbCTi30INqZ8bShadFPJ4WPiTgAbfc52SukdVu0W4GMsCW+L
+	n5fdbrFiJ8s2Rm29o5wZw==
+X-ME-Sender: <xms:zmF7ai_Zs1u6hV2jKxhqrcmi2g4fPeq5mYeMVGalh6VRy0_rEPJ8SQ>
+    <xme:zmF7arjBYupbF0QtI3fQ6K3iDO3yXS_DD6X8uY5PNvKM_DZM7Oov2AUNLqc_vJb1_
+    XoRSZQyoiHQyvs0SSqbEnE7I9j2_yxhLuaETEs0R4seyWWRT0a__A>
+X-ME-Received: <xmr:zmF7aum43js_e2C7xRDlq-oNYfs2k3-LQyC7IMVMZzVMq_cQuDUY0kKQzQa0JnTQlIDv1EMq5DCMC4U1awBhRHg>
+X-ME-Proxy-Cause: dmFkZTFz4vgNe8oY8QyUL0mlPqEECv57Qi7HCBIaM0H0fEpf1xbY2+8hZG6UpCbiC57xgk
+    VavagF0YgIkokz9w1ZYP1FsIKkSgwmPUkWwZZopzEj1hsTumYxogfZ8LsE2lIsmrvQrzxe
+    DNsAmjkffjDdnK7Hikwb1PBijPzdc+/pLDsJWa/G9io4Zr2WihJBScLGTtc/AAEph99TK7
+    KMYjrfPBzTMOGahPoGoXnc0LQ7Z6pMXIRNlA+PEZw+HSeBor1z9UME1MTUTi3zab2cdg5l
+    S2ygLFXboS6erW/oqrZ0wC4vZEyPuJEZAHdMIjRfMGBWirnE5Gt0LHQJATpVfpt20aHeDl
+    XyB37WkgHmCL0bqV/gwYjrSWwACRVv3L2mFYMT6Mo8TeRqIhBfn+EZ+AprPeNbPdQGricJ
+    fO7wnskH9wB1YuqUpy/Yx4yIVrnrUMhSspS5ClTRyNPxGziAfpZ/o6pFI/pcdBeJrhWtVd
+    c/IPXtIPiAGqw8VslzaK5j2qHpjEI9MJdVRoNbyWuxPSNIqfN/6kAbwCFumcLChonGTjyx
+    H616czHqhxUWbir/Tq/u5KYre5BpB9QBmnbWNbZpMwYCQH7GlGObbgqRwGUDDtBN3ktFC5
+    fRYyjzm6ZZWpXmztHWaeJ2+3hyK7XjHM2TIVurBh/oB9ziDN7H8PBTB/+KCw
+X-ME-Proxy: <xmx:zmF7an2mxQxYibZJ0Vc8f-12U_TtbV1qjsbmxtvBc36oNvgma10L0w>
+    <xmx:zmF7ag4cW4egXWZhGkNKj4xWcwr0Qvhl0CDNsmZy2blqSXy7nPYpwA>
+    <xmx:zmF7athLaQ8JhBVZx4QUPOKI1_ZDgp0jQdH1181gcQnl8eeGhA0XBg>
+    <xmx:zmF7ahnywASeh6bXo1Y-9SkkriNPy8-KxFnJsTQ0daM8WYvknajE1Q>
+    <xmx:zmF7al3sbciruhHrY45Vzi7-LbLTUplldIvu9zOXsR3LZrVj5NfYvtVK>
 Feedback-ID: i60a14417:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 11 Aug 2026 13:54:07 -0400 (EDT)
+ 11 Aug 2026 13:54:15 -0400 (EDT)
 From: =?utf-8?q?Jan_Sebastian_G=C3=B6tte?= <linux@jaseg.de>
-Date: Tue, 11 Aug 2026 19:52:57 +0200
-Subject: [PATCH v2 08/13] security/keys: implement wipe op for trusted and
- encrypted keys
+Date: Tue, 11 Aug 2026 19:52:58 +0200
+Subject: [PATCH v2 09/13] security/keys: implement wipe op for asymmetric
+ keys
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -80,7 +80,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260811-crash-zeroize-rework-v2-8-9561d13c2340@jaseg.de>
+Message-Id: <20260811-crash-zeroize-rework-v2-9-9561d13c2340@jaseg.de>
 References: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
 In-Reply-To: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
 To: Andrew Morton <akpm@linux-foundation.org>,
@@ -123,90 +123,102 @@ Cc: kexec@lists.infradead.org, linux-kernel@vger.kernel.org,
  =?utf-8?q?Jan_Sebastian_G=C3=B6tte?= <linux@jaseg.de>
 X-Mailer: b4 0.15.2
 
-Wipe the decrypted key material and the sealed blob held in the payload.
+Add wipe op to the subtype and implement it for public_key.
 
 Used by CONFIG_CRASH_WIPE_SECRETS.
 
 Signed-off-by: Jan Sebastian Götte <linux@jaseg.de>
 ---
- security/keys/encrypted-keys/encrypted.c  | 13 +++++++++++++
- security/keys/trusted-keys/trusted_core.c | 15 +++++++++++++++
- 2 files changed, 28 insertions(+)
+ crypto/asymmetric_keys/asymmetric_type.c | 11 +++++++++++
+ crypto/asymmetric_keys/public_key.c      | 15 +++++++++++++++
+ include/keys/asymmetric-subtype.h        |  5 +++++
+ 3 files changed, 31 insertions(+)
 
-diff --git a/security/keys/encrypted-keys/encrypted.c b/security/keys/encrypted-keys/encrypted.c
-index 59cb77b237b3..9d6fe08ecb7a 100644
---- a/security/keys/encrypted-keys/encrypted.c
-+++ b/security/keys/encrypted-keys/encrypted.c
-@@ -12,6 +12,7 @@
-  */
- 
- #include <linux/uaccess.h>
-+#include <linux/crash_core.h>
- #include <linux/module.h>
- #include <linux/hex.h>
- #include <linux/init.h>
-@@ -970,11 +971,23 @@ static void encrypted_destroy(struct key *key)
- 	kfree_sensitive(key->payload.data[0]);
+diff --git a/crypto/asymmetric_keys/asymmetric_type.c b/crypto/asymmetric_keys/asymmetric_type.c
+index 16a7ae16593c..a0a68ebd0746 100644
+--- a/crypto/asymmetric_keys/asymmetric_type.c
++++ b/crypto/asymmetric_keys/asymmetric_type.c
+@@ -481,6 +481,16 @@ static void asymmetric_key_destroy(struct key *key)
+ 	asymmetric_key_free_kids(kids);
  }
  
-+static void encrypted_wipe(struct key *key)
++/* wipe the key without freeing. used by CONFIG_CRASH_WIPE_SECRETS. */
++static void asymmetric_key_wipe(struct key *key)
 +{
-+	struct encrypted_key_payload *epayload = key->payload.data[0];
++	struct asymmetric_key_subtype *subtype = asymmetric_key_subtype(key);
 +
-+	if (!epayload)
-+		return;
-+
-+	crash_wipe_memzero(epayload->payload_data,
-+			   epayload->payload_datalen + epayload->datablob_len);
++	if (subtype && subtype->wipe)
++		subtype->wipe(key->payload.data[asym_crypto],
++				key->payload.data[asym_auth]);
 +}
 +
- struct key_type key_type_encrypted = {
- 	.name = "encrypted",
- 	.instantiate = encrypted_instantiate,
- 	.update = encrypted_update,
- 	.destroy = encrypted_destroy,
-+	.wipe = encrypted_wipe,
- 	.describe = user_describe,
- 	.read = encrypted_read,
- };
-diff --git a/security/keys/trusted-keys/trusted_core.c b/security/keys/trusted-keys/trusted_core.c
-index 0509d9955f2a..7b220c6381b5 100644
---- a/security/keys/trusted-keys/trusted_core.c
-+++ b/security/keys/trusted-keys/trusted_core.c
-@@ -14,6 +14,7 @@
- #include <keys/trusted_tpm.h>
- #include <keys/trusted_pkwm.h>
- #include <linux/capability.h>
+ static struct key_restriction *asymmetric_restriction_alloc(
+ 	key_restrict_link_func_t check,
+ 	struct key *key)
+@@ -612,6 +622,7 @@ struct key_type key_type_asymmetric = {
+ 	.match_preparse		= asymmetric_key_match_preparse,
+ 	.match_free		= asymmetric_key_match_free,
+ 	.destroy		= asymmetric_key_destroy,
++	.wipe			= asymmetric_key_wipe,
+ 	.describe		= asymmetric_key_describe,
+ 	.lookup_restriction	= asymmetric_lookup_restriction,
+ 	.asym_query		= query_asymmetric_key,
+diff --git a/crypto/asymmetric_keys/public_key.c b/crypto/asymmetric_keys/public_key.c
+index 09a0b83d5d77..9931d56337e5 100644
+--- a/crypto/asymmetric_keys/public_key.c
++++ b/crypto/asymmetric_keys/public_key.c
+@@ -13,6 +13,7 @@
+ #include <crypto/sig.h>
+ #include <keys/asymmetric-subtype.h>
+ #include <linux/asn1.h>
 +#include <linux/crash_core.h>
  #include <linux/err.h>
- #include <linux/hex.h>
- #include <linux/init.h>
-@@ -325,11 +326,25 @@ static void trusted_destroy(struct key *key)
- 	kfree_sensitive(key->payload.data[0]);
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+@@ -58,6 +59,19 @@ static void public_key_destroy(void *payload0, void *payload3)
+ 	public_key_signature_free(payload3);
  }
  
-+static void trusted_wipe(struct key *key)
++/* wipe the key without freeing. used by CONFIG_CRASH_WIPE_SECRETS. */
++static void public_key_wipe(void *payload0, void *payload3)
 +{
-+	struct trusted_key_payload *p = key->payload.data[0];
++	struct public_key *key = payload0;
 +
-+	if (!p)
-+		return;
-+
-+	crash_wipe_memzero(p->key, sizeof(p->key));
-+	crash_wipe_memzero(p->blob, sizeof(p->blob));
-+	p->key_len = 0;
-+	p->blob_len = 0;
++	if (key) {
++		if (key->key)
++			crash_wipe_memzero(key->key, key->keylen);
++		if (key->params)
++			crash_wipe_memzero(key->params, key->paramlen);
++	}
 +}
 +
- struct key_type key_type_trusted = {
- 	.name = "trusted",
- 	.instantiate = trusted_instantiate,
- 	.update = trusted_update,
- 	.destroy = trusted_destroy,
-+	.wipe = trusted_wipe,
- 	.describe = user_describe,
- 	.read = trusted_read,
- };
+ /*
+  * Given a public_key, and an encoding and hash_algo to be used for signing
+  * and/or verification with that key, determine the name of the corresponding
+@@ -464,6 +478,7 @@ struct asymmetric_key_subtype public_key_subtype = {
+ 	.name_len		= sizeof("public_key") - 1,
+ 	.describe		= public_key_describe,
+ 	.destroy		= public_key_destroy,
++	.wipe			= public_key_wipe,
+ 	.query			= software_key_query,
+ 	.eds_op			= software_key_eds_op,
+ 	.verify_signature	= public_key_verify_signature_2,
+diff --git a/include/keys/asymmetric-subtype.h b/include/keys/asymmetric-subtype.h
+index d55171f640a0..17c74070c101 100644
+--- a/include/keys/asymmetric-subtype.h
++++ b/include/keys/asymmetric-subtype.h
+@@ -32,6 +32,11 @@ struct asymmetric_key_subtype {
+ 	/* Destroy a key of this subtype */
+ 	void (*destroy)(void *payload_crypto, void *payload_auth);
+ 
++	/* Wipe a key of this subtype without freeing it (optional).  Used by
++	 * CONFIG_CRASH_WIPE_SECRETS from the panic path.
++	 */
++	void (*wipe)(void *payload_crypto, void *payload_auth);
++
+ 	int (*query)(const struct kernel_pkey_params *params,
+ 		     struct kernel_pkey_query *info);
+ 
 
 -- 
 2.53.0
