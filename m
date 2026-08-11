@@ -1,153 +1,196 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wr1-f54.google.com (mail-wr1-f54.google.com [209.85.221.54])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 315703BB9FD
-	for <linux-nfs@vger.kernel.org>; Tue, 11 Aug 2026 19:52:17 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 1E8983FAE19
+	for <linux-nfs@vger.kernel.org>; Tue, 11 Aug 2026 20:18:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.221.54
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786477938; cv=none; b=STQGJ2FomqpV8hYPtkDAUK3yOYXo6sH8nYPV2foKeTek9hojftuzMG7DktC686gOee6QcTK3BDYjsvk3QzRG+Apmxk+8y7jF8z/ec5ynojSIEa0qkM/KkzQ1JfW+qDLA/kQYv4URCP2XCfpMDj+DJGXgd/QVfSXoILw+cq1pmsE=
+	t=1786479515; cv=none; b=JcqlV0xaazFgiXSpHKtVlBXrxFoRX2/VMWfDbzmgy0ZtXDOTLKEdTbDg8KfMRngH+AV1Kxv46w9fiz1Z/NCzR+U5PSo9l2CEPH2ds4VI4z3rK1wVFGfAgAE14GKac4BB965Bt2VbilnDk5/C7vCBEWAV94sWruiLQmXmyHb+vEo=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786477938; c=relaxed/simple;
-	bh=FIggDbicM/VY1oJv2w+zaXSgiawE8lcg2RPuxs54tj8=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=jxHihV6I3msud2weQ1kJVUaAYUGgoZIzVxUanqxIzSqfPjR0JCo79GCkxfFmKYdP4MB/PYk3TA18GFKSGYbNxWrXUbPBjO0sDmiNiuDLW6vSQwLf+ezTEXaiFdJRqLOeAmy2jOP5ZiwN1q/05mv154mj3Dc82NKIyjCQSR2PV74=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=WyKhcTa3; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786479515; c=relaxed/simple;
+	bh=ccUlQITujjKDxvsizPgp3QY5vJYvUp9kjFimThDnMxk=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=oYSYbOdC5Z/IGt8FW+CynGgiUHsmzY6o6kSBcJHBLTAH6agL88hNBa2ruXI3Ay/9/FAPvXwFmEpYyHylQd+n2f+3z5I7Ne3BBbIVCtKJFcgh/0rLXuI45cLxQznWM4lTxeCvDFBtV7WBZNxs2or5T9X56tZASFWjQeU2G5n2zck=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=Pa7YLGEj; arc=none smtp.client-ip=209.85.221.54
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="WyKhcTa3"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 842D31F00A3D;
-	Tue, 11 Aug 2026 19:52:16 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786477937;
-	bh=mLxsDeilH7yrbnG5Fdh2CAlqJFlLh5WsDr4WR+yCT4k=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=WyKhcTa37EJwkUJc8Z15tOAcPYDxV6qsSspUEkCgO1k4MYUM8seMsSqbbwg5yKR1T
-	 LGmPWK2lHrX5QM4VNI984XXw3P+5/QxHYqlMcwbnLmcQYpDo+K8QDPD8ad7Nnu7J23
-	 8Qn8MnCeWzFtUHvc9slXzugVtj3ft83nZx7xMOdYZJwKP6OBoZtMzHdx3IwOvn1EY4
-	 7+Tai4UZt5Dv1Mu53EmL6QYx0gtXYkcnaZcs5QtHxiK95yecd8hZfnLOG5RfiJHl2m
-	 6PAa4DQzfj1dB0A7MEGfzyvRVFLQyqhXmi8ubz8dnVmaDjrGHwrUC+GeED2krmuiiC
-	 gPalHqhMb/7yQ==
-From: Chuck Lever <cel@kernel.org>
-Date: Tue, 11 Aug 2026 15:52:05 -0400
-Subject: [PATCH 4/4] NFSD: Send a meaningful CB_RECALL_ANY keep count
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="Pa7YLGEj"
+Received: by mail-wr1-f54.google.com with SMTP id ffacd0b85a97d-47fde295992so213352f8f.0
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Aug 2026 13:18:32 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1786479511; x=1787084311; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:in-reply-to:autocrypt:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=JFLe6tkLYuEC2gnEl/GsgjOSVqwPRw7abghLXfye9/g=;
+        b=Pa7YLGEjq+OIlzTFZMUQczrnv8nhodyrexeB8TosOw5rd2s7hrHMHVv2IxRnKOxePx
+         iHhHvEtRUoR06HeffIfbA0Ffu7+N9K4t0D/dC6xnu+gHofT7gtQJ5iVnjqtTZJ3lNEGE
+         2n/+ciBMi4W3n3MVJz6jXrIBlQubrTfFR7rXzRp9Plqdd9Kk/ub2nnX5WyOzstA/t1YI
+         kR0GvxM1Z/phs/XDzVJEs81p4NjrhUei7611y8D/QTZk1Z+g9SNQ4U+zVR+J8pIS23NP
+         SsT8q8ZWd+UJOgKSnCoe38k2JzvrEemASF53MWxAqvL51fYBLWe6KY4pZYDHyWaGdCIq
+         Wqzg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786479511; x=1787084311;
+        h=content-transfer-encoding:content-type:in-reply-to:autocrypt:from
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=JFLe6tkLYuEC2gnEl/GsgjOSVqwPRw7abghLXfye9/g=;
+        b=ctuq0ICvaYA19mV4sXgfySb3NCRVoyRc/fECMw7EkIN90uWfBSY4xKmH33XoNRyw4m
+         kdwm04r1zyWy1o9a5DkWUkPdEdx+C2vPLhQw/WhmOwiIGw3zeeTfHbAqVJwh04er4Lg3
+         s2loZ0Awhyz7dW+Oseimb2rsWdG4chPH4U6vhkiXwT+X4V5bgPb0Sr/9XzI4Bz/g2H01
+         o1gKNCwc/VrQRTrEv24zaC6VsIZf9rEn8xjLZmsa/xnbivmDSNN6pHyHoRoUjyNkBl/S
+         3GpNzT+FZRJd5IHZ6UZ32apmMqNnW8FQ+Nsz7mAcGxoqqizA/HDVVvTQCRcyHzsfBm77
+         GjgQ==
+X-Forwarded-Encrypted: i=1; AHgh+RoCVhjUs/NTaJUfTlb83yhFHkxqZyqq60IUu8Q8mTrvxOlWfWLr327bXxfyz2aCSgQdMtgIt2t06wE=@vger.kernel.org
+X-Gm-Message-State: AOJu0YzOQDsdDB07Ye1YxWMfUC2tWc6PqbPyepNGaPDJxRS6dyyXgZJO
+	W7a5JkH64CRL3HfxF6mvclwRYxMOKAsG/rbgEGpgu2orQ6G4nX7JoG2t
+X-Gm-Gg: AR+sD10YukZNiKN2vGuGmKOM2/FuucVNId0rf8seAQTWWRPcWQX+SGolUqgt7bfVjUs
+	slVqIC655+BN32muF6Tekiq88Y3YORYgIUjpcKN40H3fRI0GlOH6HnjWXTdyLVxuUsgshwOkPVz
+	Vyk/x85RpBwkwou2bHHH7CX5lIuuCKOIgpBC1NkbkbKO5+JI1ibSTNpXwrbTPYchaEWvcxZA1dI
+	SUpmYxffmC2VXlQtilOJU9wLwvjypKeGtzaAbBE8WqiJL9uvIyGkyRETBCzXpHNK9rL9WiL1oZG
+	QQQ4B4RrDNNZro7mszWwSlZr7vDLjq/hUmjWtoH2O5Ox4FnrHwzUjwsvsiWHBGs1Fj2gQqFg/sM
+	zeWk6srB15TZX5bCApzN6N/NEOgvG6L34lqmS7q3pOS7/YS3U9rwBUzorbgutn7SYi17qakMx0a
+	LN3ytG/Ax30zz3/ul5CjoPOPjqOuAS6roxqO/lw672Nv5pQ42WqNzBayETIoOZE6jnZBdwtDbBI
+	R6F8YE23L23XQ==
+X-Received: by 2002:a05:6000:430d:b0:47f:e7f9:5251 with SMTP id ffacd0b85a97d-4814ffe28b1mr3367485f8f.3.1786479511163;
+        Tue, 11 Aug 2026 13:18:31 -0700 (PDT)
+Received: from [192.168.2.14] (85-70-151-113.rcd.o2.cz. [85.70.151.113])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-48150bf5c5fsm976683f8f.3.2026.08.11.13.18.28
+        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
+        Tue, 11 Aug 2026 13:18:30 -0700 (PDT)
+Message-ID: <8654c2d4-8d9d-43f5-9256-adf2915209e9@gmail.com>
+Date: Tue, 11 Aug 2026 22:18:27 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260811-recall-any-keep-count-v1-4-de9ca00493b7@kernel.org>
-References: <20260811-recall-any-keep-count-v1-0-de9ca00493b7@kernel.org>
-In-Reply-To: <20260811-recall-any-keep-count-v1-0-de9ca00493b7@kernel.org>
-To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
-X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3488; i=cel@kernel.org;
- h=from:subject:message-id; bh=FIggDbicM/VY1oJv2w+zaXSgiawE8lcg2RPuxs54tj8=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqe31tEHF41PrCAnS7y1dSFk+aFlTd6qxOdB8xC
- YJDCx9lxWOJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCant9bQAKCRAzarMzb2Z/
- lzxPD/45h7A/Fnrrar6UDyhS7dPc1fFYHeDddK8yY3wuWW04IJ1BoRcu6P/u2Kwc4DwZVbC8rZ9
- GP32XIHtZ9U2tk8nM4hy+n7Cmc614eaQloDCt1HWwJnv+B3OnPlV8YqRoQWOOjuORdPEy3YGJ+R
- kp2YdHHpzRmE8xHhYiOqMcoPHhXZk9AriBQFHBX3CQHkFSDWim7gbOGFGDMWEUvV7A2bj50iRJm
- 3tFxpKmhoA6WtrCaFyx8BEPU+V8lwAmkV5cAhLx3NxoKirvY/aIUTTWxwTt3TXrhwzRcM9zcrvB
- imHqaKmU07MJr8x6e67xzEMG9ZPZd1/e3x7Usp62i4roYKeN6UrTuv4jw5IQ6wrL0W2qKZBCIQ0
- UPywfyQzW1jo7X5YheSDeg6Bv1ELcL0KJRyU/AOCxGQYdcVa6pztbrh1kGYCyhg+tm4JDOHh2vp
- 110ZJ98pq2CGDY8AoX49WZwPO26Gun8DGlpXrBXo0i7nCIVvi47iKwijJGjZKHa6p0ARm9fW99O
- 43DnDUgULxTqxGQKYjUxcaDzfYCJEiC/feluNUBmvT1l3u9i1NPj8QgNBgvCuTm2dx2JvWfnTVO
- JbJCvahSZ4adNC1lAhZOlUrltV/mY5YKwNTxbOJWXBJbXIYNobriP4DAlNRmHnWooBo341qjHeK
- n2r/l2VMboeDjfQ==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+User-Agent: Mozilla Thunderbird
+Subject: Re: [PATCH v2 13/13] dm crypt: wipe key material before kdump
+To: =?UTF-8?Q?Jan_Sebastian_G=C3=B6tte?= <linux@jaseg.de>
+Cc: kexec@lists.infradead.org, linux-kernel@vger.kernel.org,
+ linux-arm-kernel@lists.infradead.org, linux-mm@kvack.org,
+ keyrings@vger.kernel.org, linux-doc@vger.kernel.org,
+ linux-security-module@vger.kernel.org, linux-crypto@vger.kernel.org,
+ linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org,
+ linux-integrity@vger.kernel.org, linux-afs@lists.infradead.org,
+ netdev@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, dm-devel@lists.linux.dev,
+ Andrew Morton <akpm@linux-foundation.org>, Baoquan He
+ <baoquan.he@linux.dev>, Mike Rapoport <rppt@kernel.org>,
+ Pasha Tatashin <pasha.tatashin@soleen.com>,
+ Pratyush Yadav <pratyush@kernel.org>, Dave Young <ruirui.yang@linux.dev>,
+ Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>,
+ David Howells <dhowells@redhat.com>, Jarkko Sakkinen <jarkko@kernel.org>,
+ Jonathan Corbet <corbet@lwn.net>, Shuah Khan <skhan@linuxfoundation.org>,
+ Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>,
+ "Serge E. Hallyn" <serge@hallyn.com>, Lukas Wunner <lukas@wunner.de>,
+ Ignat Korchagin <ignat@linux.win>, Herbert Xu <herbert@gondor.apana.org.au>,
+ "David S. Miller" <davem@davemloft.net>, Keith Busch <kbusch@kernel.org>,
+ Jens Axboe <axboe@kernel.dk>, Christoph Hellwig <hch@lst.de>,
+ Sagi Grimberg <sagi@grimberg.me>, Trond Myklebust <trondmy@kernel.org>,
+ Anna Schumaker <anna@kernel.org>, Mimi Zohar <zohar@linux.ibm.com>,
+ James Bottomley <James.Bottomley@HansenPartnership.com>,
+ Marc Dionne <marc.dionne@auristor.com>, Eric Dumazet <edumazet@google.com>,
+ Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+ Simon Horman <horms@kernel.org>, Eric Biggers <ebiggers@kernel.org>,
+ "Theodore Y. Ts'o" <tytso@mit.edu>, Jaegeuk Kim <jaegeuk@kernel.org>,
+ Alexander Viro <viro@zeniv.linux.org.uk>,
+ Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+ Alasdair Kergon <agk@redhat.com>, Mike Snitzer <snitzer@kernel.org>,
+ Mikulas Patocka <mpatocka@redhat.com>,
+ Benjamin Marzinski <bmarzins@redhat.com>
+References: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
+ <20260811-crash-zeroize-rework-v2-13-9561d13c2340@jaseg.de>
+Content-Language: en-US
+From: Milan Broz <gmazyland@gmail.com>
+Autocrypt: addr=gmazyland@gmail.com; keydata=
+ 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
+In-Reply-To: <20260811-crash-zeroize-rework-v2-13-9561d13c2340@jaseg.de>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 8bit
 
-deleg_reaper() sets craa_objects_to_keep to zero on every
-CB_RECALL_ANY. Per RFC 8881 Section 20.6.3, that asks the client to
-retain no read or write delegation at all, whether or not the
-delegation backs an open file.
+On 8/11/26 7:53 PM, Jan Sebastian GÃ¶tte wrote:
+> Wipe volume key/iv copies kept by dm-crypt with
+> CONFIG_CRASH_WIPE_SECRETS. The backend tfms are already handled
+> separately.
+> 
+> Add a list tracking struct crypt_config instances when
+> CONFIG_CRASH_WIPE_SECRETS is set. Structs are tracked here to avoid
+> having to enumerate them through some roundabout way before kdump, when
+> we can't safely take locks anymore.
 
-The field names a count the client may keep. The client picks which
-objects to return, because the server cannot read lack of recent
-use as lack of usefulness. Zero leaves nothing to choose among. A
-client that complies returns the delegations backing its open files
-and reopens each one with CLAIM_DELEGATE_CUR, so NFSD trades a
-delegation for an open stateid and recovers nothing. A client that
-reads the zero as "unspecified" does nothing instead, and
-nfsd4_cb_recall_any_done() inspects only the reply status, so NFSD
-cannot tell the two apart.
+Well, dm-crypt has crypt_wipe_key(), which can be called through a device-mapper message.
+It also sets keys to zero in the crypto API.
 
-Derive the keep count from cl_deleg_count and ask each client for a
-single delegation. A larger request reaches delegations an
-application still has open, and both callers re-arm while their
-condition lasts. Skip a client holding one delegation rather than
-send the zero again. That gate subsumes the list_empty() test above
-it, and it belongs above the NFSD4_CALLBACK_RUNNING test_and_set. A
-continue below that point latches the bit with no callback in
-flight to clear it.
+Why do we need yet another way to wipe keys here, reimplementing everything twice?
 
-The Linux client ignores craa_objs_to_keep and returns unused
-delegations from the type mask alone, so the count changes nothing
-for it. The gate does. The reaper goes quiet for a client walked
-down to one delegation.
+I can imagine an emergency wrapper callback that will suspend dm-crypt and call existing code.
 
-Fixes: 44df6f439a17 ("NFSD: add delegation reaper to react to low memory condition")
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfsd/nfs4state.c | 20 +++++++++++++++++---
- 1 file changed, 17 insertions(+), 3 deletions(-)
+> Use custom wipe handlers even for things like ivs that have existing
+> wipe functions elsewhere because we need to use crash_wipe_memzero
+> instead of memzero_explicit. The crash_wipe helper memzero_explicit's
+> the target buffers and flushes data caches. On ARM64, missing that cache
+> flush could lead to the zeros not being written to DRAM before the kdump
+> code turns off the data caches moments later.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3017a93261ff..e825ecb2ddfc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -7944,6 +7944,7 @@ deleg_reaper(struct nfsd_net *nn)
- {
- 	struct list_head *pos, *next;
- 	struct nfs4_client *clp;
-+	unsigned int count;
- 
- 	spin_lock(&nn->client_lock);
- 	list_for_each_safe(pos, next, &nn->client_lru) {
-@@ -7953,21 +7954,34 @@ deleg_reaper(struct nfsd_net *nn)
- 			continue;
- 		if (clp->cl_state != NFSD4_ACTIVE)
- 			continue;
--		if (list_empty(&clp->cl_delegations))
--			continue;
- 		if (atomic_read(&clp->cl_delegs_in_recall))
- 			continue;
- 		if (ktime_get_boottime_seconds() - clp->cl_ra_time < 5)
- 			continue;
- 		if (clp->cl_cb_state != NFSD4_CB_UP)
- 			continue;
-+		/*
-+		 * This read races with hash_delegation_locked() and
-+		 * unhash_delegation_locked() on other CPUs. A stale
-+		 * value only defers this client to the next
-+		 * laundromat pass.
-+		 */
-+		count = data_race(READ_ONCE(clp->cl_deleg_count));
-+		if (count < 2)
-+			continue;
- 		if (test_and_set_bit(NFSD4_CALLBACK_RUNNING, &clp->cl_ra->ra_cb.cb_flags))
- 			continue;
- 
- 		/* release in nfsd4_cb_recall_any_release */
- 		kref_get(&clp->cl_nfsdfs.cl_ref);
- 		clp->cl_ra_time = ktime_get_boottime_seconds();
--		clp->cl_ra->ra_keep = 0;
-+		/*
-+		 * Ask for one delegation at a time. A larger request
-+		 * reaches delegations backing files that applications
-+		 * still have open. Returning one of those trades a DELEG
-+		 * stateid for an OPEN stateid and frees nothing.
-+		 */
-+		clp->cl_ra->ra_keep = count - 1;
- 		clp->cl_ra->ra_bmval[0] = BIT(RCA4_TYPE_MASK_RDATA_DLG) |
- 						BIT(RCA4_TYPE_MASK_WDATA_DLG) |
- 						BIT(RCA4_TYPE_MASK_DIR_DLG);
+Please no. It looks to me like you are trying to fix this on the wrong layer.
+This way everyone will need their own memzero...
 
--- 
-2.54.0
+Dunno, but I really do not like dm-crypt becoming completely bloated with code
+that has nothing to do with the original purpose of this driver.
 
+Milan
+
+
+> 
+> Signed-off-by: Jan Sebastian Götte <linux@jaseg.de>
+> ---
+>   drivers/md/dm-crypt.c | 151 ++++++++++++++++++++++++++++++++++++++++++++------
+>   1 file changed, 134 insertions(+), 17 deletions(-)
+> 
