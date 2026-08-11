@@ -1,77 +1,76 @@
 Received: from flow-b7-smtp.messagingengine.com (flow-b7-smtp.messagingengine.com [202.12.124.142])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21C883546DC;
-	Tue, 11 Aug 2026 17:53:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 933723546D7;
+	Tue, 11 Aug 2026 17:54:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.142
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786470840; cv=none; b=Q4bnIjFPJKNeR7LTLKiix/JbUacKoDFPlbPV5zSjxL0h0JABtU4VPo5XcuUiXhgrDaiGPexlX+os6eDOQWd50vYvp6DgZJQY2FYFSAAu2TcdaR0evtcHo2Di04veCnK1DPcz+71ocnFe/WAL7xd4v+M2jx60bZMuodsir5p4DLo=
+	t=1786470848; cv=none; b=IiLtm3pEP59DzgGc7JaQAukR2k7LWyjYgycoa3XyPOkXTCAGbd1X3074AN6haePsxxkDeHq4JCM+3KFcvZrXTHjeh/mVSlLIL4YZrM+UoRHTf7w2kCPQf1uyqXbl8G6bXjjPIWkALnq2cMFgE/w1//BbvqvvQQ6BHEAMMcJwWug=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786470840; c=relaxed/simple;
-	bh=+WO5tcXU5gpFFK/RhD6QSfAv9Wy2LNZra39n6oSqBJE=;
+	s=arc-20240116; t=1786470848; c=relaxed/simple;
+	bh=dLmnCMrwGiZmuxsn1+1ltOBeSqEbD7lNdGjE68Bw/IA=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=Cq6WuRUEvBhGsiQB/m+dk31RspyJm8Z++hJeB4LVvL8F7Z1s9bagikXqUGcadaKM+W25cj68VrOU2d/LBK3hgwwvES306oI4hH+sMY1hAxZ6Pk1JCPvl2OeeZkMUUAneUXqfNepFN/6CEmtFPXu2b+m49X/nM+tjELOnPbojn3M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de; spf=pass smtp.mailfrom=jaseg.de; dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b=CZJ+DP1c; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=Yto8vG2b; arc=none smtp.client-ip=202.12.124.142
+	 In-Reply-To:To:Cc; b=fRBI9tFhcHYrC0zz6uYlzrRc7NdgPwy5we8UxYQXhGRSSx4vbidBxr5WJ8mIMES4RAoJiWycrk7natDYN5v9sCtGHF2DtR1tJAna8TyO1Fl212CJmI+FWJYhs8AiUjqkDNuGO9kVp+iHyRo5699nsN4k3yM+nTSIhDfKUtt/tCY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de; spf=pass smtp.mailfrom=jaseg.de; dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b=CO0Kje71; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=koLw6IQ5; arc=none smtp.client-ip=202.12.124.142
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=jaseg.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b="CZJ+DP1c";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="Yto8vG2b"
-Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailflow.stl.internal (Postfix) with ESMTP id 0645A1300397;
-	Tue, 11 Aug 2026 13:53:57 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b="CO0Kje71";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="koLw6IQ5"
+Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
+	by mailflow.stl.internal (Postfix) with ESMTP id 768401300399;
+	Tue, 11 Aug 2026 13:54:05 -0400 (EDT)
 Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-04.internal (MEProxy); Tue, 11 Aug 2026 13:53:58 -0400
+  by phl-compute-06.internal (MEProxy); Tue, 11 Aug 2026 13:54:06 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=jaseg.de; h=cc
 	:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to; s=fm3; t=1786470836;
-	 x=1786478036; bh=3JSH/iI45wy3MD9zA4sQib4hD7ZbkdXLzpNiNtsaJcE=; b=
-	CZJ+DP1ctATAeRR/KJYvTUIM3t8q9GDjhKCZJvatoQooWR6rVWNSly772PQ/TfUy
-	ENUwOmU25bKc8x8iO+5/ZiNSoxDpy65ZsBKcuwerOM0xJtAMRQlKbIA2r4+K7cpo
-	4bjjS9E5oRvoOp38MPHnL+07j7CKJyZfjvfarLFn9unjoYWs69bl7jCUKKr8Ndsa
-	JTNOUd8st5x+6dnD+tzTK+EJVuqdzDYdM5RKFtGLtt2fo6MdxoDxsQEmWWm+1h5h
-	9r0ieubu+uMTq53Onf1eIiRRGrIEDqzqRf1iGgAN3ZRTwO/3zZolwRXxQuwQVsSO
-	JLp/WAXW/e6HViLutxDuDA==
+	:references:reply-to:subject:subject:to:to; s=fm3; t=1786470845;
+	 x=1786478045; bh=ZpsnlNCccEzAx1VvGs1BtMr3ZszQOnPZ7Dvx24ZVOoQ=; b=
+	CO0Kje71ADHAkCmXbnQAZokL+eSWvgwPZWPHmSNOEOVHrTnQpYRqXb1hqK2Uh/r/
+	Yd3x7VDfQYmeW35C1EDJN1ovLe9G9sdhLEjE0SMuPLGt7/sOh1Wd8prN4/uu6Lqm
+	qha8bFKTOzaB8Xl1n8NkI2GfBXs1RX2UJHbEueS78UVr7xN+39obSLaQs6q0l5Dq
+	EANeKWNx1Q4PWyA8udr9f3AfbbuhlciRtcPB1Z8t3mMBdrnykbUwsqViH6leJRVs
+	PF3UGXQF48IPvFdkDna56xKJyD6BHZwD6coo+eOmMthRuKaA7WeKH/2uHqZpzrYY
+	6UMvpA7pj39GegQSfpmpMQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786470836; x=
-	1786478036; bh=3JSH/iI45wy3MD9zA4sQib4hD7ZbkdXLzpNiNtsaJcE=; b=Y
-	to8vG2bwv0UUn+XNWPlW4HltiAZMSeXAls7xJHf405to9maLImvQ9bJiV7xuBJPt
-	xUIZWEgivpvjAZ/1QdoIo+b9/FKpN+LOU/6eXGlSokf48mJSnxOdoAhuJl9haavG
-	p1QQ0O5H31ulz2f1KK09UhIo4WQbcFU/ccZ7Ax2MFwad5tcauqP8cfc3flFLwxGe
-	Y75oecP+XNv5iwLqvldxhGrdvSZiAdo1RNEgog64rZDGoXYdeDr3/Tn4wnsVZDlr
-	v5P57anNA1u+0/KQAx/G2WWflCk6nIRdXxiG9tYHoiaBV0XQv8Cuv39dxLYqb4Hf
-	eNT7F4OO6XotcScVosu+Q==
-X-ME-Sender: <xms:tGF7aiJKno3z67rxtm3MwFWmSr1qq3YuYzcqq6y63Z8oTuM-n8nhVw>
-    <xme:tGF7ak8Hu_jhjkU4e82Xz7I9J6AizYJgLpYww1XpLix4ozUrHA2hHKre4tCCegENF
-    JKguZ2uOe7Yz-h17ITstcjZNXyrafTMgUbUcfzPTjfN-QuWyVja_w>
-X-ME-Received: <xmr:tGF7aoXciMDUTi6hA0_x7ZQsNOwlQ4EtBC8NLT6gl4HIwkC-AsF3-PTrFq6F3Ak_1-9hb2fTU-q8NQzKzWR_o4Q>
-X-ME-Proxy-Cause: dmFkZTFP5tmiXRyqpvhao8uWnDWsuVG58E3QcpY8nNF+TN3d4+2z3XaWQJ1+2uEKcUq9Jg
-    +xH/KDfBOi31TfxVE5vy2aZ5W5Eono+bvv7mBiiNvVW/C9tjIvrxCLzv7Tz6GJOSvAG1cd
-    t11+FzpQNbill+yp1ZC7JKPVzEaxQ4CH2HewKTU1gYEn0mNFldMXWgoBvZ/c5OhwLZogLW
-    sZeOMCUfQY9vOvCjGHA0ivpYn+5HBy3sK6RswFREIaUm9jlhbU7pV5ZXGDLpJAMlUAJ/Lo
-    y1vjaaTNNEiBF07QqH8YbZg0fsVTsE2lSAku2XiqZRlB3GAWdGnDFC/NxQNHJZjZwh0bM3
-    cLQaepUv4mccOXTYHSJClVmCRVjSn+gHGZSrZSr9AIOtFX696ePpwSJ3GivOeqzsZkLmTk
-    yyYQq6X2LYjRyPVZRsKI2XFbuaBY59zZqLm0Ubjaf2Up6v/CUhpiejbTg9OndalmiNo1NB
-    TgyZExpcvXKCRncIx0T/h5V17Yq+BBkt1Lp9C6cm0M6/7WFjIX6uj79fa7WzCqocBHAItx
-    lYJGO4yn0BYCEOUjuH4msbchVi4ZaVb/zXzuqFPnUz6EFLEG1rjqsToNrsNvdQ0zdS7Ksc
-    iAXcKrD3AR2kiGeCuPM2c70LXnp+ct6Uu0ATWnPyvkCwQAMtKo2ec5wQGj0w
-X-ME-Proxy: <xmx:tGF7asL5qDC481n5yJUehDCZHwRaJL4UwVQrDFm98jQ0hiVJMLyalw>
-    <xmx:tGF7ai30rrImeq9T90IIpB94BB1urAX1qiXxvs9BhUZjke5_4nNXEA>
-    <xmx:tGF7am4zJuXzY0djzripvWMbDrNrupcdCQQZTxKukPDBk7oCLv2Crg>
-    <xmx:tGF7aqDX5cdfqklMb2Ex7760XSkgmpeDBXmZI4o_6ZxqlfsL1Bb5ug>
-    <xmx:tGF7aroe6voaYG2F9rSNjt3fN3R27pPqoKVo5MIMqwC34HAnQgRdkqhC>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786470845; x=
+	1786478045; bh=ZpsnlNCccEzAx1VvGs1BtMr3ZszQOnPZ7Dvx24ZVOoQ=; b=k
+	oLw6IQ54IYbzIorzGo/Fm0B2EF48jdeMVhpkER6hAlAzec9z9ubOQ6rRjdPVTFcc
+	MubOaAcsdMKqhJkjfR/utkUOiNg+8gEExZHQMDjQa59TqonNX06lcrgg8XkjpTb4
+	pnacKb6GoWq2VHJU70pbHR2oEK19mZk2PvSoj5X8jk4vD10oej5X/bb6bWaz3eU3
+	YYzcZU9/r753lY6x867A1rWK4WybMP5WuuH9Zoi+DwdxDogx1dBFXyxxTT1hy8/t
+	1ZAeV9pkJoYJ/b5bVN0hfT4BQqAFEklAkju521/YsTD7qA1u50yFPH++xKyGKKCp
+	PH4kIQZwcW7p8gtl1lzEg==
+X-ME-Sender: <xms:vGF7ap-78Cw810gkzWisJUAzuiMpXwBK7ozuqxBLIcNUgARH8MADFg>
+    <xme:vGF7amjL_5OwyUN72qGopD0KVc-DCcP7fvdq_mjaprq89Y6hJuefK8C4h8ZDyG0ja
+    1ssePlZZb0rQDz871exzHBdmC6Dq_lIEhgJDAojuPSFy14xVWIT>
+X-ME-Received: <xmr:vGF7atn4rxipHGchHUmh1LwuQ3ShBMoBsR87w1J2fN-MpT0rYMoCqIa1ap8CFEOM90WFY0lbHShBlJV71bW8rSs>
+X-ME-Proxy-Cause: dmFkZTFz4vgNe8oY8QyUL0mlPqEECv57Qi7HCBIaM0H0fEpf1xbY2+8hZG6UpCbiC57xgk
+    VavagF0YgIkokz9w1ZYP1FsIKkSgwmPUkWwZZopzEj1hsTumYxogfZ8LsE2lIsmrvQrzxe
+    DNsAmjkffjDdnK7Hikwb1PBijPzdc+/pLDsJWa/G9io4Zr2WihJBScLGTtc/AAEph99TK7
+    KMYjrfPBzTMOGahPoGoXnc0LQ7Z6pMXIRNlA+PEZw+HSeBor1z9UME1MTUTi3zab2cdg5l
+    S2ygLFXboS6erW/oqrZ0wC4vZEyPuJEZAHdMIjRfMGBWirnE5Gt0LHQJATpVfpt20aHeVC
+    WVD3qwZKQUbal0U+m98B4JhWUSNaJDclWMKiggs1inMalAO0xRnRH3Oouto/luMbNsCB2k
+    eSSMm2vjcQBKUvPCfA9hEqFDdbvDb3quCu37KQrVNZypjOu6fL7cprPZRqICDDKVtkztFU
+    yrFIasOIyWnuenf8eW7I1Zps/ju1bW9xOHNoW4ln3/bmbFFIXA1cNSJEjke0FYBk7fwY26
+    UXB3NzWKPPR2sQ+sCGiPGl0CFHNyi7yjk0GLrJPi2Yr6boERxx1j+qh0F9fuatJNPph+i3
+    qUZDH/7D50/AxoO6XxEpOgSyBH2Tr99IP5LbQWtXdp+AhwI4U5A+5y275YDg
+X-ME-Proxy: <xmx:vGF7aq1_jyJ3orlciFCUouprVANRIpGlkWCFcyvQc_aJBo0eKcNFOg>
+    <xmx:vGF7an61rf_JljW_69O71GwKPMZx349kMnGhgDw_-ouNaIEVpYCCNQ>
+    <xmx:vGF7aohArxPwGkmaLkAm1gbdwtxkaVYdmXSi-SXyVYuUkiwN-ay-HQ>
+    <xmx:vGF7aglBoOLkcA3og2op4zVMarAqmM_uURQoA1x32QUsN8vPKT9uIw>
+    <xmx:vWF7as3ir_QgDzIGYjVblmX7CRlZmtJIgtJFpPtTacPxRUOwiYwKxR3e>
 Feedback-ID: i60a14417:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 11 Aug 2026 13:53:50 -0400 (EDT)
+ 11 Aug 2026 13:53:58 -0400 (EDT)
 From: =?utf-8?q?Jan_Sebastian_G=C3=B6tte?= <linux@jaseg.de>
-Date: Tue, 11 Aug 2026 19:52:55 +0200
-Subject: [PATCH v2 06/13] security/keys: implement wipe op for user-type
- keys
+Date: Tue, 11 Aug 2026 19:52:56 +0200
+Subject: [PATCH v2 07/13] security/keys: implement wipe op for big_key
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -80,7 +79,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260811-crash-zeroize-rework-v2-6-9561d13c2340@jaseg.de>
+Message-Id: <20260811-crash-zeroize-rework-v2-7-9561d13c2340@jaseg.de>
 References: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
 In-Reply-To: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
 To: Andrew Morton <akpm@linux-foundation.org>,
@@ -123,122 +122,64 @@ Cc: kexec@lists.infradead.org, linux-kernel@vger.kernel.org,
  =?utf-8?q?Jan_Sebastian_G=C3=B6tte?= <linux@jaseg.de>
 X-Mailer: b4 0.15.2
 
-Wipe the payload of "user" and "logon" keys, and of the key types reusing
-the user-type ops: s390 cert_store, NVMe TLS PSK, NFS idmap and PKCS#7.
+For keys stored in shmem only the ChaCha20-Poly1305 key is reachable here,
+so wiping it is enough to render the payload unreadable.
 
 Used by CONFIG_CRASH_WIPE_SECRETS.
 
 Signed-off-by: Jan Sebastian Götte <linux@jaseg.de>
 ---
- crypto/asymmetric_keys/pkcs7_key_type.c |  1 +
- drivers/nvme/common/keyring.c           |  1 +
- fs/nfs/nfs4idmap.c                      |  2 ++
- include/keys/user-type.h                |  1 +
- security/keys/user_defined.c            | 15 +++++++++++++++
- 5 files changed, 20 insertions(+)
+ security/keys/big_key.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
 
-diff --git a/crypto/asymmetric_keys/pkcs7_key_type.c b/crypto/asymmetric_keys/pkcs7_key_type.c
-index b930d3bbf1af..663a246742f7 100644
---- a/crypto/asymmetric_keys/pkcs7_key_type.c
-+++ b/crypto/asymmetric_keys/pkcs7_key_type.c
-@@ -74,6 +74,7 @@ static struct key_type key_type_pkcs7 = {
- 	.instantiate		= generic_key_instantiate,
- 	.revoke			= user_revoke,
- 	.destroy		= user_destroy,
-+	.wipe			= user_wipe,
- 	.describe		= user_describe,
- 	.read			= user_read,
- };
-diff --git a/drivers/nvme/common/keyring.c b/drivers/nvme/common/keyring.c
-index 32d16c53133b..33303f035fb1 100644
---- a/drivers/nvme/common/keyring.c
-+++ b/drivers/nvme/common/keyring.c
-@@ -84,6 +84,7 @@ static struct key_type nvme_tls_psk_key_type = {
- 	.instantiate    = generic_key_instantiate,
- 	.revoke         = user_revoke,
- 	.destroy        = user_destroy,
-+	.wipe		= user_wipe,
- 	.describe       = nvme_tls_psk_describe,
- 	.read           = user_read,
- };
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index bc397110d977..26f579ae2c73 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -190,6 +190,7 @@ static struct key_type key_type_id_resolver = {
- 	.instantiate	= generic_key_instantiate,
- 	.revoke		= user_revoke,
- 	.destroy	= user_destroy,
-+	.wipe		= user_wipe,
- 	.describe	= user_describe,
- 	.read		= user_read,
- };
-@@ -412,6 +413,7 @@ static struct key_type key_type_id_resolver_legacy = {
- 	.instantiate	= generic_key_instantiate,
- 	.revoke		= user_revoke,
- 	.destroy	= user_destroy,
-+	.wipe		= user_wipe,
- 	.describe	= user_describe,
- 	.read		= user_read,
- 	.request_key	= nfs_idmap_legacy_upcall,
-diff --git a/include/keys/user-type.h b/include/keys/user-type.h
-index 386c31432789..685fa054b0ac 100644
---- a/include/keys/user-type.h
-+++ b/include/keys/user-type.h
-@@ -40,6 +40,7 @@ extern void user_free_preparse(struct key_preparsed_payload *prep);
- extern int user_update(struct key *key, struct key_preparsed_payload *prep);
- extern void user_revoke(struct key *key);
- extern void user_destroy(struct key *key);
-+extern void user_wipe(struct key *key);
- extern void user_describe(const struct key *user, struct seq_file *m);
- extern long user_read(const struct key *key, char *buffer, size_t buflen);
+diff --git a/security/keys/big_key.c b/security/keys/big_key.c
+index 268f702df380..c01a212bec90 100644
+--- a/security/keys/big_key.c
++++ b/security/keys/big_key.c
+@@ -8,6 +8,7 @@
  
-diff --git a/security/keys/user_defined.c b/security/keys/user_defined.c
-index 6f88b507f927..f4897c19c2dd 100644
---- a/security/keys/user_defined.c
-+++ b/security/keys/user_defined.c
-@@ -6,6 +6,7 @@
-  */
- 
- #include <linux/export.h>
-+#include <linux/crash_core.h>
+ #define pr_fmt(fmt) "big_key: "fmt
  #include <linux/init.h>
- #include <linux/slab.h>
++#include <linux/crash_core.h>
  #include <linux/seq_file.h>
-@@ -28,6 +29,7 @@ struct key_type key_type_user = {
- 	.update			= user_update,
- 	.revoke			= user_revoke,
- 	.destroy		= user_destroy,
-+	.wipe			= user_wipe,
- 	.describe		= user_describe,
- 	.read			= user_read,
- };
-@@ -48,6 +50,7 @@ struct key_type key_type_logon = {
- 	.update			= user_update,
- 	.revoke			= user_revoke,
- 	.destroy		= user_destroy,
-+	.wipe			= user_wipe,
- 	.describe		= user_describe,
- 	.vet_description	= logon_vet_description,
- };
-@@ -152,6 +155,18 @@ void user_destroy(struct key *key)
+ #include <linux/file.h>
+ #include <linux/shmem_fs.h>
+@@ -35,6 +36,8 @@ struct big_key_payload {
+  */
+ #define BIG_KEY_FILE_THRESHOLD (sizeof(struct inode) + sizeof(struct dentry))
  
- EXPORT_SYMBOL_GPL(user_destroy);
- 
-+void user_wipe(struct key *key)
-+{
-+	struct user_key_payload *upayload = key->payload.data[0];
-+
-+	if (upayload)
-+		crash_wipe_memzero(upayload->data, upayload->datalen);
-+	key->payload.data[1] = NULL;
-+	key->payload.data[2] = NULL;
-+	key->payload.data[3] = NULL;
-+}
-+EXPORT_SYMBOL_GPL(user_wipe);
++static void big_key_wipe(struct key *key);
 +
  /*
-  * describe the user key
+  * big_key defined keys take an arbitrary string as the description and an
+  * arbitrary blob of data as the payload
+@@ -46,6 +49,7 @@ struct key_type key_type_big_key = {
+ 	.instantiate		= generic_key_instantiate,
+ 	.revoke			= big_key_revoke,
+ 	.destroy		= big_key_destroy,
++	.wipe			= big_key_wipe,
+ 	.describe		= big_key_describe,
+ 	.read			= big_key_read,
+ 	.update			= big_key_update,
+@@ -279,6 +283,19 @@ long big_key_read(const struct key *key, char *buffer, size_t buflen)
+ 	return ret;
+ }
+ 
++static void big_key_wipe(struct key *key)
++{
++	struct big_key_payload *payload = to_big_key_payload(key->payload);
++
++	if (payload->data) {
++		if (payload->length > BIG_KEY_FILE_THRESHOLD)
++			crash_wipe_memzero(payload->data,
++					   CHACHA20POLY1305_KEY_SIZE);
++		else
++			crash_wipe_memzero(payload->data, payload->length);
++	}
++}
++
+ /*
+  * Register key type
   */
 
 -- 
