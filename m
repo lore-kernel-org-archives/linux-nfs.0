@@ -1,73 +1,73 @@
-Received: from flow-a4-smtp.messagingengine.com (flow-a4-smtp.messagingengine.com [103.168.172.139])
+Received: from flow-a6-smtp.messagingengine.com (flow-a6-smtp.messagingengine.com [103.168.172.141])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 84A664B04B7;
-	Tue, 11 Aug 2026 02:12:02 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.139
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DA4582D7DEF;
+	Tue, 11 Aug 2026 02:37:10 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.141
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786414324; cv=none; b=a4pYKy1AfpKunKdpvjGjwVR916i3FNWmwwFYvN0Y6GETWI2e94LTUq8yOIBK1PmTlEZqyCkPInpMGacCE83zGFlJqsHh6apdgqN0K5reawD5LVxhcJqFOkfh5W1GesRhKBiJq5xP2KtYNqHS6meXTyegAs7cWYv1FEqERIG1UMc=
+	t=1786415833; cv=none; b=PRFWiPM7YSPwIQCJaKyYwP8Ahmo2HEWJpE2XWClMz7feiZNMz8jq85oYSraZuSPNgpauhfhzWccUmSQIZ5nkZD7zUZzHwipUxrh7+O83BL6ukJoOxFHkTBOZcgty+OloKFEmlCFdXb3/3sa5GIRVryjrb5DkktcrxyM9CZXR9vQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786414324; c=relaxed/simple;
-	bh=KwaRZdlc7REB2zDbfklX0C4zMUsVEiT3D81VVqMcX+4=;
+	s=arc-20240116; t=1786415833; c=relaxed/simple;
+	bh=PvCRmW0I4sXX2lyRuNN2lenlarZnGysEI/lJoAxPaT0=;
 	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=RAUp/Sk/E49YXXN81a9Lese58NqzXHmkXoLwmvTDxVbSw1y5Gjt3Cu9m4Z7H2i4zT0lwQCWarnMrvgS3EMeBtWzGUB19cJhBS8OgybdW0nFPIQ/XlVq5TwDCBKlC8dNsFamduMtkLff03nO1ASOT1OG6J8JDAA2HGxpQVY5N0cI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=ev/Z7da9; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=BeRe5VzN; arc=none smtp.client-ip=103.168.172.139
+	 References:Date:Message-id; b=ujdjJSJN4W5Z1IwnnA+RCk8QVklsMdVRtprMg8QRnee+HhuFrcynVhgrO5Z8W0kTh5P/pwAx+9LYW32chncqshoy0/CwTS0JKtiPfnBdVLGMs4Xt6u7KA+T8uIUP1gvKp7hOUOr6Nn6KWFaBWnCSKJxksoX7ptxBqVBdxtYUj40=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=IQe3frLR; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=XIzRUhVE; arc=none smtp.client-ip=103.168.172.141
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="ev/Z7da9";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="BeRe5VzN"
-Received: from phl-compute-11.internal (phl-compute-11.internal [10.202.2.51])
-	by mailflow.phl.internal (Postfix) with ESMTP id 8B8DB13800E9;
-	Mon, 10 Aug 2026 22:12:01 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="IQe3frLR";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="XIzRUhVE"
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailflow.phl.internal (Postfix) with ESMTP id C96FE13801A0;
+	Mon, 10 Aug 2026 22:37:09 -0400 (EDT)
 Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-11.internal (MEProxy); Mon, 10 Aug 2026 22:12:01 -0400
+  by phl-compute-02.internal (MEProxy); Mon, 10 Aug 2026 22:37:09 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
-	1786414321; x=1786421521; bh=z59H84mGp5chtaSVDA9MWaRAa7fU4ciWmVM
-	LKTtAoYg=; b=ev/Z7da9p8cwQcaNeHVWhphBQkNLxbkRm7S0l36OJ+d8S+Q9qpb
-	uvJOjgeeRpjUEJ7vH9Hzu1hp8K9wMiH4myBGCqCvLwUNr/+4HLkcSfYzDJfHM1Ba
-	sVPa1Bp460YU8A6TEn9xJtSpeCr6hmLdZ6IF1TBbVB74B23WJWet3Trz/Wl3pj8E
-	Me83adV8XvpvoMPF6JPHYLs9g74+D4cwXDv8ttU06KE5hvSCe5LMjFlMfo03r3nn
-	hJ4qn3ILZgZXwdvYlXaQ/YaFPRkU6GhA76dnZYNL7R8yvSiZ3gb6jZcMCJ9muNB7
-	CkwLzC0gHO5OY+b8adPpq+45ish4ZgqX69g==
+	1786415829; x=1786423029; bh=AJICugo9YIPu7sFPHM1uhNH1CDar73i69gO
+	Kv84ZcT0=; b=IQe3frLR+OFW6aeW5snfIqcarSr0vpzZcHeEfIxj+cDaNbCiN5d
+	IqBd4A8nAoSMGjZnQl8jnF/YLhuf1EKRdA7oVnwfLESGjyH7Lkx0gkR9Mxt+1/+U
+	iMd5JkLZ+iz5e0MLG9XTmWCtUqBO1MjKvChBBgV7b6uaP1VxkSAVD6FxhDz3mXWD
+	u6NZh8AzSWTydLjbPk410CethSvHQDko7KhZw0BX05kKoaoB7KZgT9asppdLfa+E
+	1Z1daowGvvGxBORBxw0DR4SMbFwnSxfWYAJvTuinxl07UHpDfyKTtdzGAQBSQcMJ
+	1QHOrrBG/NiqsEAnlgKr2HJ/D5venAz6EQg==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786414321; x=
-	1786421521; bh=z59H84mGp5chtaSVDA9MWaRAa7fU4ciWmVMLKTtAoYg=; b=B
-	eRe5VzNt+LlY+tHSbVayqPRJjuRndPXKsRDh2jvrEkojis7w41tucjBajRhLI/kA
-	e94Rt+BmEIGyNanp0UHl5YWgSGA2kC11ZG7JpgpUkF0folXSIfRh/2oHT/lzZvCL
-	RPs2J6nXbVqmYk7/T3awEz4F/N+J5rFU14GK7sknHOTI0fwcn6jjXGLzpIQlVlrX
-	y52lb91ii9cvBG9AZ216p/gYo7VONmxgtcXLbQuKT4hfvrYdYpzFG1eNoTinMpsc
-	sEp0QN511yAtN7bMDua8b59atPmGHL8awiKHWj1dp7kcPoVzM7fkFoknuvtYVuR7
-	yhWITatRJj4Efjl6w9CUA==
-X-ME-Sender: <xms:8IR6arCyA7tyPch4iET4Mq2YTh60wDVI7XdLMOFPY1yaD0e7c4fHJg>
-    <xme:8IR6ajPQueAIyi5ky1_QHldQ7gIArqfmoPo0FfQ2rjti7jiigoXe9-1654kC3Ufuf
-    L_mRprFvOSckEhXffPQzDanAuwJIJIIw-7iW4D74BScFxmqr9A>
-X-ME-Received: <xmr:8IR6aqAoLsYqYihWGkohZ22EauJJQnelGTKqwIhODNaIhrzWrx7ICl2NXF9MswSpDboaKxgxViyXoo3oCnO8eLIgrXJKbwA>
-X-ME-Proxy-Cause: dmFkZTGiFhqbMavz1GnHNgGnrM7aRU5foa/cHmUyoXxGd+EScvvMJzvJekNH/ltV7v2YtA
-    KKbMVreFRkOyPn5sqVW2TgecBr3u2xPZOvs//haZKfCkUETFc9Dc+20w7B10YcIOqo4B3E
-    TabCpIpl6/tH0XT0IGvOLprJTGWis8gKtNk1Rjm9VB88Tx3PzlLryvVLrq5lxuhVtQseO1
-    1etPysa+a2nh8j/Ut8fnJ9KZdaeKaUwp61VZN57Xdd9LTnyPmhtnDkEuLIj5n3pyqWyG6x
-    cZSa+pOJNSOie1q67PHP7DSVBVmOr1Pm3I4UkDSGGBMfN3tV9DodOiU8cpEWqDKzTuRcGz
-    m6rPQvpdVdnLZODlanSGCKc6LKgwo2VUHapaar4Te0Y37NMl9dwAL4JfTjddJwQafGWl6H
-    K0n0cgZrmq72mitnu6Z5gPbxIp6sNJXZvSVIgD8TVZkO/Tu9euem23e4SgO4b3BOT4Yo7L
-    Q6CUJDi+O4BbUTVXw+dOPqEJCip/vPCwlW2GkmsViDuJnwRkkKVq2H3NSvmVQgHRteloxi
-    WvTqS9HIEr+yVHLyrtHaEhwFcR1r7Zxz61HH3QO1RsmRtXfZQoqFnQzHrAnlZ5RduTyQaN
-    NzNXd4Mswgswb4fo1mWdAIKNF3RdkBypQw8KE6kvXkHMEzF1cigCX6iUJd4w
-X-ME-Proxy: <xmx:8IR6atkBFmfF5mlzsOM77rPYCO3p0-Y4ysejWCirCPvTVrTkTiR8Gg>
-    <xmx:8IR6amocgJDydj6SrAkFnif_fEF5D5D2xwf8EcFtD-1B8bDhr74GdQ>
-    <xmx:8IR6akjUrd7A9aBU37mBBRx5sulvzXqcBEHY9XR2gC7r4tMFmYYjdw>
-    <xmx:8IR6aogZ9HXVMHvePRPh4E20z1v7OEizhENFM97ib_U6rbT-AWR8cQ>
-    <xmx:8YR6an_MxMSzzg6Gcknh3_Ntgu1j2vBeMa0aMQyuwwdOJgwGNVTYpik6>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786415829; x=
+	1786423029; bh=AJICugo9YIPu7sFPHM1uhNH1CDar73i69gOKv84ZcT0=; b=X
+	IzRUhVESAisoJ33Eqm5Dky/NiP6clzQDtaZVYZRcCwUWJ2PMKmCcjkkPVPwXobr+
+	6H1HPSj9LDNe7vXk40QVQWNAqw77KGToRTKK5s4Ab0eRaLae2HNo7G7l2AOOPXIl
+	BdY1qqwHyPj8vvolTwVTNSgl8+s/cLUDsgRzo4azWjdGr6Nkewpb8OLtO8msEwkC
+	h1H6up0iaiyKVbK/+IofmqsdVz8zvhELnjAbiLDQb2mnokgRp/CZ8+3HJ7IEOyEG
+	tGXW/3q706Cpw/AWuVkPvAR0bcePXHAFeCHew7C+HstbhjqWzFJJfKcSFotIA1iM
+	M1B/QSEqcntSj/I1imARw==
+X-ME-Sender: <xms:1Yp6ahNcDTN_vXWtCRg7ODrnjiJ0QjaryoRDkioUhYA6wT5q76P2yw>
+    <xme:1Yp6alrhSaw2vMk_-1aHovyjV0MpRljcQ52TtpVVOr4HkaIflnDglLTKaEGcCQr02
+    X9NwrxafkRImwaYFnoFnb5824QqaYafNNvrnPh0O3vG9232JQ>
+X-ME-Received: <xmr:1Yp6ajuA4oP974sBmvBaj2OPDKIJrrUxP23CWaMN_qmthtg-VeZWlRifNC_CWwZa6u9xZoigI1IZ3n3Lc2TS68VU3dyBMDE>
+X-ME-Proxy-Cause: dmFkZTEfdCq7QEw5hqn94XqsJYuYH99flEPEwzpisxCC2chNvHbKOmyQik/TvWypJ5/kSz
+    4CIHkScVg5wKpqxeLZqMA5bXEftQ3sS5T5cIGlWJgWN4ev0CXL33J/xhTvQW/zQRe3F9JQ
+    VUFodRL8942ok8P5dlE33d19tI+Zl3EjonXOkMhmSWVBdjK7gVoIONNU3TPVijDg9nGlNq
+    82rOmRr1XtLtnUjXin0GwsoadGX53JduN9iupI2ePKet+b39Lc+eQO/SCewFRLcL6ZHkQd
+    7qiky1Mh7/uOPB/pUQX1t0PyPfIkXmVdAmBwupHTNVRGmA0UOjSFqdjZuYzNM21KAYVUdM
+    /8T3JiOmuWZt7TFqwsSOv2I6DKyQ5RQSj0KOz/+1O6ZJglfow7yA1R/ydRvxlnzgUnwkvY
+    s7siHWebYsStDCK04wBA0bs/6050T/ucxEHE8qyjxqAY13zV9KjqlqXtJa86MhxiccRosY
+    O8n7lwatpHIysg0nTIUgQoC1tyjoTyHDNNQ9v3Zck5N+wu/zHrCVUpPOyX6WPEG0YDldBs
+    xIwUxO3G6g/Ts7u9tx1hw2pm77l0K8tAHr/4s1OgcCxpUFdRjoq8cRY6O3diG34JZimzPQ
+    4BW+qFqEXEW9FB45wLHUrBTcZqFBfKMldpaUyQhobF8S9RRtsh2iJ/I/JjWw
+X-ME-Proxy: <xmx:1Yp6atiQeGBSs0MF7bb0_6WtwEv2o4zV389YfX1g6OkbGhy1aBHuzQ>
+    <xmx:1Yp6av0YBEEfuRXhPhukSLdz-hsAP07xNiy_tkPpm5WSPuoW0QXMBA>
+    <xmx:1Yp6at9wUO2Nncc51EleUl2irlH4yQtK35cvisjETEC4mKyoM0wIgw>
+    <xmx:1Yp6atNvFBc2JkJ9l3JCkIF7wjo8XV2wTBWvT6FZrnIQQtU19nFVAQ>
+    <xmx:1Yp6ahpwHU1J8PNWo1NzFHgJAwUDvkL0C5DVaxtTeFmF3xDQPGeb94MZ>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Mon,
- 10 Aug 2026 22:11:54 -0400 (EDT)
+ 10 Aug 2026 22:37:03 -0400 (EDT)
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: quoted-printable
 Precedence: bulk
@@ -91,74 +91,116 @@ Cc: "Ian Kent" <raven@themaw.net>, "Chuck Lever" <cel@kernel.org>,
  linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org,
  codalist@coda.cs.cmu.edu, linux-fsdevel@vger.kernel.org,
  linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 01/12] VFS: don't count references through ->d_parent
+Subject: Re: [PATCH v1 02/12] Add and use d_for_each_positive_child family of
+ iterators
 In-reply-to:
- <CAJfpegt1wHngLs9uR943gT6zxV67D53k3n4GiFKowsAb3C6LJw@mail.gmail.com>
+ <CAJfpegvTXG_kJHyFB115zdQvbyvDNtfqA_Mv9UKiEf9BE5qXwQ@mail.gmail.com>
 References: <20260803012648.2195405-1-neilb@ownmail.net>
-  <20260803012648.2195405-2-neilb@ownmail.net>
-  <CAJfpegt1wHngLs9uR943gT6zxV67D53k3n4GiFKowsAb3C6LJw@mail.gmail.com>
-Date: Tue, 11 Aug 2026 12:11:50 +1000
-Message-id: <178641431036.2852630.14175693646176331672@noble.neil.brown.name>
+  <20260803012648.2195405-3-neilb@ownmail.net>
+  <CAJfpegvTXG_kJHyFB115zdQvbyvDNtfqA_Mv9UKiEf9BE5qXwQ@mail.gmail.com>
+Date: Tue, 11 Aug 2026 12:36:59 +1000
+Message-id: <178641581980.2852630.8389705136744176114@noble.neil.brown.name>
 Reply-To: NeilBrown <neil@brown.name>
 
-On Mon, 10 Aug 2026, Miklos Szeredi wrote:
-> On Mon, 3 Aug 2026 at 03:37, NeilBrown <neilb@ownmail.net> wrote:
+On Tue, 11 Aug 2026, Miklos Szeredi wrote:
+> On Mon, 3 Aug 2026 at 03:38, NeilBrown <neilb@ownmail.net> wrote:
 >=20
-> > When a DCACHE_CURSOR dentry is added to d_children, it is only ever
-> > added "before" or "behind" an existing child, so it will never be the
-> > first and so never needs to adjust the refcount on the parent.  If it
-> > remains on the list until dput() it could be the last child to be
-> > removed, in which case normal handling applies in dentry_unlist() (where
-> > it has been moved from dentry_kill().
+> > coda_flag_children() doesn't need rcu_read_lock() as holding any
+> > spinlock prevents an RCU critical section from finishing.
 >=20
-> Not handling the parent refcount together with cursor removal can
-> result in inconsistency, e.g:
+> I think prep changes should go in separate patches.
 >=20
->  - add cursor (seek between two positive dentries)
->  - remove all real children (parent refcount not touched, since cursor
-> is still on d_children)
->  - remove cursor (seek to zero offset)
->  - close directory (dentry_unlist() will skip parent refcount update
-> since dentry->d_sib is no longer linked)
->=20
-> Repro attached, produces "BUG: Dentry ffff888107ef75d0{i=3D143e,n=3Ddir}
-> still in use (1) [unm
-> ount of hugetlbfs hugetlbfs]".
->=20
-> Thanks,
-> Milklos
->=20
+> The conversion should be an equivalent transformation.
 
-Thanks for the review.  I realised that when I was doing patch 11 which
-changes d_for_each_positive_child() to use a cursor, but I didn't think
-the apply that understand back at this patch.
+Ok, that's reasonable.
 
-There is only on user of cursors so it can be easily fixed as follows.
+>=20
+> > nfs_clear_verifier_directory() is changed slightly so the parent lock is
+> > dropped and retaken between clearing the verifier on the parent and on
+> > all the children.  I think this is safe.
+>=20
+> This can also be a prep patch.
+>=20
+> > get_next_postive_dentry() in autofs now holds the parent lock a bit
+> > less.  The only non-trivial code that is no locked any more is
+> >    parent =3D p->d_parent
+> > This cannot need the lock as autofs doesn't support rename and
+> > a ref is held on a descendent of parent, so ->d_parent cannot
+> > change.  And if it could, the lock wouldn't help.
+>=20
+> And this too.
+>=20
+> > diff --git a/fs/autofs/expire.c b/fs/autofs/expire.c
+> > index 5c2d459e1e48..7b0a22629415 100644
+> > --- a/fs/autofs/expire.c
+> > +++ b/fs/autofs/expire.c
+> > @@ -70,12 +70,9 @@ static int autofs_mount_busy(struct vfsmount *mnt,
+> >         return status;
+> >  }
+> >
+> > -/* p->d_lock held */
+> >  static struct dentry *positive_after(struct dentry *p, struct dentry *ch=
+ild)
+>=20
+> Move this primitive to libfs.c?
 
-Thanks,
+By the end of the series it is nearly identical to scan_positives().
+So maybe I could add a patch which exports that and uses it instead
+of positive_after().
+
+>=20
+> > --- a/fs/ceph/mds_client.c
+> > +++ b/fs/ceph/mds_client.c
+> > @@ -2182,14 +2182,10 @@ static bool drop_negative_children(struct dentry =
+*dentry)
+> >         if (!d_is_dir(dentry))
+> >                 goto out;
+> >
+> > -       spin_lock(&dentry->d_lock);
+> > -       hlist_for_each_entry(child, &dentry->d_children, d_sib) {
+> > -               if (d_really_is_positive(child)) {
+> > -                       all_negative =3D false;
+> > -                       break;
+> > -               }
+> > +       d_for_each_positive_child(child, dentry) {
+> > +               all_negative =3D false;
+> > +               break;
+> >         }
+> > -       spin_unlock(&dentry->d_lock);
+>=20
+> simple_empty()?
+
+Maybe...
+They aren't quite the same in that simple_empty() locks the found
+positive dentry and checks again.  drop_negative_children() doesn't pay
+the cost of that spin lock.
+Does that matter?  Is the spinlock needed?  Should I remove it from
+simple_empty()?
+
+Also they are called in different circumstances.
+
+simple_empty() is used for an in-dcache filesystem.  It is called with
+the directory locked (i_rwsem) so nothing can be added/removed and it
+gives an answer about the directory (and so shouldn't need the spinlock
+as it has the i_rwsem).
+
+drop_negative_children() is called on a caching filesystem so it is
+reporting on the cache, not on the directory.  Also i_rwsem isn't held
+(so maybe it does need the spinlock???)
+
+I wonder if ceph really wants a version of shrink_dcache_parent() which
+only drops negative children.....  looking at the history is probably
+doesn't and probably isn't bothered by TOCTOU races between checking for
+positives, and calling shrink_dcache_parent().
+
+I think I would rather keep the to separate.
+
+Thanks again,
 NeilBrown
 
-index 5a0d276379d1..91f535192ee2 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -169,6 +169,8 @@ loff_t dcache_dir_lseek(struct file *file, loff_t offset,=
- int whence)
- 		hlist_del_init(&cursor->d_sib);
- 		if (to)
- 			hlist_add_behind(&cursor->d_sib, &to->d_sib);
-+		else if (hlist_empty(&dentry->d_children)
-+			dput_dlock(dentry);
- 		spin_unlock(&dentry->d_lock);
- 		dput(to);
-=20
-@@ -213,6 +215,8 @@ int dcache_readdir(struct file *file, struct dir_context =
-*ctx)
- 	hlist_del_init(&cursor->d_sib);
- 	if (next)
- 		hlist_add_before(&cursor->d_sib, &next->d_sib);
-+	else if (hlist_empty(&dentry->d_children))
-+		dput_dlock(dentry);
- 	spin_unlock(&dentry->d_lock);
- 	dput(next);
-=20
+
+>=20
+> Thanks,
+> Miklos
+>=20
 
