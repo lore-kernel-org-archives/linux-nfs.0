@@ -1,77 +1,76 @@
 Received: from flow-b7-smtp.messagingengine.com (flow-b7-smtp.messagingengine.com [202.12.124.142])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E059835B65D;
-	Tue, 11 Aug 2026 17:54:24 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E5248363C46;
+	Tue, 11 Aug 2026 17:54:33 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.142
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786470866; cv=none; b=mMrbum3KONV23epK3IjyO/l8bFKMFDjFpOJbrqJ0/i20lJ5mFlgc6794VzW48TM80yMXP/jnjFaysr3VpOYSpcf8VEuSByr6O4eaSTnAPzn+Fk25KxbtI3D9R+tnW2zu1s4AfGTFtvNVU7aDpsYL8u5Ce6HYBc62SsptyCsG79g=
+	t=1786470875; cv=none; b=hLXn2OqajOaPKsrktYKs6M8/gnaqgksaNABUj7JWPM8zJKLAZNhvNgOOD4NTpIsBwli0u2dJext8omeBbcr5iaelM1ryQ18Tqc3Lp52A+AKvDTfm5EglbsePAzXW3yssq9EXLP0PBDTQrtl3At6M+IgmmK+GJmKmPIoK+0PpYjg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786470866; c=relaxed/simple;
-	bh=pFhp6xnik0wvtR0KY8MWR4dOyalbUlDaPKD/cfIHUmA=;
+	s=arc-20240116; t=1786470875; c=relaxed/simple;
+	bh=jsjzOPXRhYaJq2rSEgIsrW20GZctQWh42g/kY4t0bCk=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=W6u41UyEdDqPxvG7+HzQU8M7IE5oXKWkg87EzNWaX2W6chbZkGr4DOQ9PbAfxtpD1Sd9WthL5X20x7BsPfxDQtVrel0EznAmIqaG2PxSPQZAx4wcLAIYi4+bqae8V4NXhMsXctZyCU5XclObQvomo/5VTDnCbzmIUbBeJjUD1DQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de; spf=pass smtp.mailfrom=jaseg.de; dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b=qB2Jy7vX; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=TRxBuSxw; arc=none smtp.client-ip=202.12.124.142
+	 In-Reply-To:To:Cc; b=PuAPVZhTGgLkI3stTkJqfOOknMdx+tNtyJqIonUUExiVDRMRjuEcze0A2PQ6c6WO6IuMzQJirKbA9mQNDDzMMC/bql2eToXSJFfYyq7i6UqpL5QYCDW/vfMa4SnhtAQhYJd+u+vTocqtBJqg00MfLzym6HcgCK0GuqW5fFtXT7k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de; spf=pass smtp.mailfrom=jaseg.de; dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b=hU63RqXY; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=SPD0YyzA; arc=none smtp.client-ip=202.12.124.142
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=jaseg.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b="qB2Jy7vX";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="TRxBuSxw"
-Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
-	by mailflow.stl.internal (Postfix) with ESMTP id C358513003A6;
-	Tue, 11 Aug 2026 13:54:22 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b="hU63RqXY";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="SPD0YyzA"
+Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
+	by mailflow.stl.internal (Postfix) with ESMTP id D650813003AD;
+	Tue, 11 Aug 2026 13:54:31 -0400 (EDT)
 Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-01.internal (MEProxy); Tue, 11 Aug 2026 13:54:24 -0400
+  by phl-compute-06.internal (MEProxy); Tue, 11 Aug 2026 13:54:33 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=jaseg.de; h=cc
 	:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to; s=fm3; t=1786470862;
-	 x=1786478062; bh=6GTy/7ZYnhxwkN3CoOvmK6vIIxg2qB1mjCGqyHajM1A=; b=
-	qB2Jy7vX5C5g7HFTE11w3KW7iFGS08Hi2Z6fdKdbd+NH+vR4665E+YY32z+VrqHW
-	e8VqhnOhmjyMa+NhOcxYaLSFJm4O2aPGvq4PP0flRu/uCP3GXTHNw4uZQN9Jdn5m
-	iDDZ/byDI9F+wTQibuac57c6zH2r3wPapyRCaq71th2vwXrzwW1kJwv4/K+v10Xc
-	S/HsLRiVsm96zzjZc3hnudlFMXt4fH2Ygh4Y6AoAzx9jJsK9iJAN2YUhK9QqJCvd
-	mQzgHE16IfdSAAeBDmYhEdflm5INZlpdetbk6F4+XseJ8OSLrgHIidqZ7Tvl6149
-	gZM82j6UrZMR4gFcY37t3g==
+	:references:reply-to:subject:subject:to:to; s=fm3; t=1786470871;
+	 x=1786478071; bh=xAM3Q/HBwmz4JVRL14+ds0PYCfNcU1k9FDcBLO4TEyw=; b=
+	hU63RqXYUX7dR3ti5JXHaOPEYLzV7fuN96eKtn8RUYFDvNMfAYH+xRYP8mUkO4Vr
+	bJAoEHBb4WkzdXQvxKfgNUa5V+iOXoY/WDKSx8UvHrDz8Nvv9CpbktshEpZwp9RC
+	TZ6Okhcxu45Mnblk92hN99ie9UvB6eAUgbIx8f71QKwTCsMRHIjgcAa53XGzZ3OE
+	z9D56yxEAng2g2B1NWyGEONfMAkTrinvBSTCVnlO0LER9KqdHu/GXWSRhGrxtRaW
+	dUU1BpVP67ufQHSXd4Wfwi8Mk2FtbOwNW1uVZmZR1PfwEHthRYgnK7oZLMBWdXXa
+	kQ+X/QJXfM/soI1Ayn6E4A==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786470862; x=
-	1786478062; bh=6GTy/7ZYnhxwkN3CoOvmK6vIIxg2qB1mjCGqyHajM1A=; b=T
-	RxBuSxw+xYevsT25Hc1JPuxXZqY/uEsl8wSxfZhf/AnKlFUhLhxDA6OAGexc/MPq
-	yo4PqNgNydIVClSZ3ANQkB+z3UkR32qE7fBDOKJlV2ywY71eXlLfNkDQmBS75Caw
-	Gb5aPaFEYzA/RZqFwZZ7kP8Mj31loYQbhJfKe9D7873Xr2U0jy0m6K9ka6JILxIb
-	npR/zyq+eq6XNbfqaIWlAGkJucqyPYs4Y1Uw/X4bU1kkyrXwCZ0N8BcWdYyVXSI1
-	1/D5iiCrk0Ijt8TBdbCTi30INqZ8bShadFPJ4WPiTgAbfc52SukdVu0W4GMsCW+L
-	n5fdbrFiJ8s2Rm29o5wZw==
-X-ME-Sender: <xms:zmF7ai_Zs1u6hV2jKxhqrcmi2g4fPeq5mYeMVGalh6VRy0_rEPJ8SQ>
-    <xme:zmF7arjBYupbF0QtI3fQ6K3iDO3yXS_DD6X8uY5PNvKM_DZM7Oov2AUNLqc_vJb1_
-    XoRSZQyoiHQyvs0SSqbEnE7I9j2_yxhLuaETEs0R4seyWWRT0a__A>
-X-ME-Received: <xmr:zmF7aum43js_e2C7xRDlq-oNYfs2k3-LQyC7IMVMZzVMq_cQuDUY0kKQzQa0JnTQlIDv1EMq5DCMC4U1awBhRHg>
-X-ME-Proxy-Cause: dmFkZTFz4vgNe8oY8QyUL0mlPqEECv57Qi7HCBIaM0H0fEpf1xbY2+8hZG6UpCbiC57xgk
-    VavagF0YgIkokz9w1ZYP1FsIKkSgwmPUkWwZZopzEj1hsTumYxogfZ8LsE2lIsmrvQrzxe
-    DNsAmjkffjDdnK7Hikwb1PBijPzdc+/pLDsJWa/G9io4Zr2WihJBScLGTtc/AAEph99TK7
-    KMYjrfPBzTMOGahPoGoXnc0LQ7Z6pMXIRNlA+PEZw+HSeBor1z9UME1MTUTi3zab2cdg5l
-    S2ygLFXboS6erW/oqrZ0wC4vZEyPuJEZAHdMIjRfMGBWirnE5Gt0LHQJATpVfpt20aHeDl
-    XyB37WkgHmCL0bqV/gwYjrSWwACRVv3L2mFYMT6Mo8TeRqIhBfn+EZ+AprPeNbPdQGricJ
-    fO7wnskH9wB1YuqUpy/Yx4yIVrnrUMhSspS5ClTRyNPxGziAfpZ/o6pFI/pcdBeJrhWtVd
-    c/IPXtIPiAGqw8VslzaK5j2qHpjEI9MJdVRoNbyWuxPSNIqfN/6kAbwCFumcLChonGTjyx
-    H616czHqhxUWbir/Tq/u5KYre5BpB9QBmnbWNbZpMwYCQH7GlGObbgqRwGUDDtBN3ktFC5
-    fRYyjzm6ZZWpXmztHWaeJ2+3hyK7XjHM2TIVurBh/oB9ziDN7H8PBTB/+KCw
-X-ME-Proxy: <xmx:zmF7an2mxQxYibZJ0Vc8f-12U_TtbV1qjsbmxtvBc36oNvgma10L0w>
-    <xmx:zmF7ag4cW4egXWZhGkNKj4xWcwr0Qvhl0CDNsmZy2blqSXy7nPYpwA>
-    <xmx:zmF7athLaQ8JhBVZx4QUPOKI1_ZDgp0jQdH1181gcQnl8eeGhA0XBg>
-    <xmx:zmF7ahnywASeh6bXo1Y-9SkkriNPy8-KxFnJsTQ0daM8WYvknajE1Q>
-    <xmx:zmF7al3sbciruhHrY45Vzi7-LbLTUplldIvu9zOXsR3LZrVj5NfYvtVK>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786470871; x=
+	1786478071; bh=xAM3Q/HBwmz4JVRL14+ds0PYCfNcU1k9FDcBLO4TEyw=; b=S
+	PD0YyzAO3i0iPOSceA/VwD8y9HsrVhqBs81kDs44awp1UE25tBjzrQIjJ2X3hLIp
+	UqqsAD4FTBx4AaFBTdOq8UEOPJK2yCc8SKAHcfgUaHW7mjP5lRNMPN24kgBxQ3tD
+	pPlnFEKMSiWn1BanUYpHRtsoRaCaGU9eEc3H8tqDCtIPzeCzRk0qdxln/phxzvYH
+	1o0rhSNQPxowCccqdfuoj00u3AmmTD9WCN1qNEhSNY3SZl4u8IAUgJd/cDOuVH0g
+	1Wryg4mVjyqjY1NgzXhFwnbdF+O6PvwO6EPpKgayWnnl9hrWSUMXBA7wCjoExGY3
+	szwyCbvR2yQaY36T81Leg==
+X-ME-Sender: <xms:12F7auKHQfrqWZVMa9ODtgV7DOIB9GWd8oQzsULgrnNYN7xiwtdGew>
+    <xme:12F7au_1rv4vqQYKlz3p2iIwRPOSVf7FE9DFYTwOLTcRrNXFmASwAYPtHHMnUSErA
+    2YO7nPSNYqhi_vBEr_2iDK1GDq0PRUKFh6k3tEGwG0qG1Z4fvXNFw>
+X-ME-Received: <xmr:12F7alRe7itEE3naI48j9z3YSoRaaA9GcJyx6ETVwlHrT1e1AOm0rYAlUfPYOq3tIyi8Wkyue-Ohmurl0GbO8VM>
+X-ME-Proxy-Cause: dmFkZTFGa2nY7jnTk2Iw9v4bB0J0yF1ICaJd32/qXm98Bvn0uDADx+C3Kw/Flk6iixyPGu
+    72/phBwy47Kg8FJyFrGdC++k215U13L/0xFYZCpTa0z/w1NtK5dvlR08GndYlyZFvTP5gF
+    Dlk263KcILQ417hZPN5ksrl0Nvpbmk/SlilTO3h+HTntssEQr1ld/ICv8lLA9/v6l7Z51B
+    Ox2NlVVO9b906SW9ppu7yHcQtehxM0oDmo9WAr6dDp967nPaXzwEavIcDXzrIMh6NogcTT
+    QJsGa7BorA3mOK9lmdQq3QUA5wm6ullbc5aPHMSxvblIqqAHtDNqCX4Ur6Kq6Hz6embcdc
+    vYdRVb13nBNQZMEFR3UDwQKUUNDw/OfDBUUzUeypFz90S2GfV8DZBApkiCuQjPmksk3nWc
+    wCsKwOoVmEb4wZSE3HdwY+yNaBF/rm6bOSeuJtLdyT3FY6SAATvIkCdjNh2rdNEkIi+AwH
+    s1tX9R58abOkm3pxLdRrMBhxKEKfqdzDrrDOcup8QPmcON/iMcAk8BZWNh9KftZnP6dqXp
+    AX30EG1VB3mNP30/5c6IurQTvxF/NyGreDSbmjc+cGCYdq2ypAFzLTKOGh2gE9QHdT/XOF
+    4Qyzi+DQRPh2c/zeEebScgmFshMBa9nAjTvnIyZqJn5W80oSWHo8Yc23MYpw
+X-ME-Proxy: <xmx:12F7agw3sZqacIIp1XWtBuyhH5uhSkxY5F2qOLVKE1NiUoOA2akNtg>
+    <xmx:12F7avEiXN5Nj66bL5Va-K8JasSRGRn0dxVDl3K_ChPQViATU6U51A>
+    <xmx:12F7an8sTTo81NNrev7hlmg4qazhhN3Ty75VuPYofsR20GmNn3VMbg>
+    <xmx:12F7ajSjke9279DpulhV-A_ITXIM6r21C4cQeDBQwQRhvPzz_L32WQ>
+    <xmx:12F7arWmntqMmainny0jjaMu2_j-7GTbEeB5nJqzF9oKJTBsfCHSTosB>
 Feedback-ID: i60a14417:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 11 Aug 2026 13:54:15 -0400 (EDT)
+ 11 Aug 2026 13:54:24 -0400 (EDT)
 From: =?utf-8?q?Jan_Sebastian_G=C3=B6tte?= <linux@jaseg.de>
-Date: Tue, 11 Aug 2026 19:52:58 +0200
-Subject: [PATCH v2 09/13] security/keys: implement wipe op for asymmetric
- keys
+Date: Tue, 11 Aug 2026 19:52:59 +0200
+Subject: [PATCH v2 10/13] rxrpc: implement wipe op for rxrpc keys
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -80,7 +79,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260811-crash-zeroize-rework-v2-9-9561d13c2340@jaseg.de>
+Message-Id: <20260811-crash-zeroize-rework-v2-10-9561d13c2340@jaseg.de>
 References: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
 In-Reply-To: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
 To: Andrew Morton <akpm@linux-foundation.org>,
@@ -123,102 +122,220 @@ Cc: kexec@lists.infradead.org, linux-kernel@vger.kernel.org,
  =?utf-8?q?Jan_Sebastian_G=C3=B6tte?= <linux@jaseg.de>
 X-Mailer: b4 0.15.2
 
-Add wipe op to the subtype and implement it for public_key.
+Wipe session keys and tickets of client key tokens, and add a server key
+wipe op implemented by rxkad and rxgk.
 
 Used by CONFIG_CRASH_WIPE_SECRETS.
 
 Signed-off-by: Jan Sebastian Götte <linux@jaseg.de>
 ---
- crypto/asymmetric_keys/asymmetric_type.c | 11 +++++++++++
- crypto/asymmetric_keys/public_key.c      | 15 +++++++++++++++
- include/keys/asymmetric-subtype.h        |  5 +++++
- 3 files changed, 31 insertions(+)
+ net/rxrpc/ar-internal.h |  5 +++++
+ net/rxrpc/key.c         | 34 ++++++++++++++++++++++++++++++++++
+ net/rxrpc/rxgk.c        | 11 +++++++++++
+ net/rxrpc/rxkad.c       | 14 ++++++++++++++
+ net/rxrpc/server_key.c  | 11 +++++++++++
+ 5 files changed, 75 insertions(+)
 
-diff --git a/crypto/asymmetric_keys/asymmetric_type.c b/crypto/asymmetric_keys/asymmetric_type.c
-index 16a7ae16593c..a0a68ebd0746 100644
---- a/crypto/asymmetric_keys/asymmetric_type.c
-+++ b/crypto/asymmetric_keys/asymmetric_type.c
-@@ -481,6 +481,16 @@ static void asymmetric_key_destroy(struct key *key)
- 	asymmetric_key_free_kids(kids);
- }
+diff --git a/net/rxrpc/ar-internal.h b/net/rxrpc/ar-internal.h
+index 865f05fe37ab..6466eb5a9929 100644
+--- a/net/rxrpc/ar-internal.h
++++ b/net/rxrpc/ar-internal.h
+@@ -282,6 +282,11 @@ struct rxrpc_security {
+ 	/* Destroy the payload of a server key */
+ 	void (*destroy_server_key)(struct key *);
  
-+/* wipe the key without freeing. used by CONFIG_CRASH_WIPE_SECRETS. */
-+static void asymmetric_key_wipe(struct key *key)
-+{
-+	struct asymmetric_key_subtype *subtype = asymmetric_key_subtype(key);
++	/* Wipe the payload of a server key without freeing it.  Used by
++	 * CONFIG_CRASH_WIPE_SECRETS from the panic path.
++	 */
++	void (*wipe_server_key)(struct key *);
 +
-+	if (subtype && subtype->wipe)
-+		subtype->wipe(key->payload.data[asym_crypto],
-+				key->payload.data[asym_auth]);
-+}
-+
- static struct key_restriction *asymmetric_restriction_alloc(
- 	key_restrict_link_func_t check,
- 	struct key *key)
-@@ -612,6 +622,7 @@ struct key_type key_type_asymmetric = {
- 	.match_preparse		= asymmetric_key_match_preparse,
- 	.match_free		= asymmetric_key_match_free,
- 	.destroy		= asymmetric_key_destroy,
-+	.wipe			= asymmetric_key_wipe,
- 	.describe		= asymmetric_key_describe,
- 	.lookup_restriction	= asymmetric_lookup_restriction,
- 	.asym_query		= query_asymmetric_key,
-diff --git a/crypto/asymmetric_keys/public_key.c b/crypto/asymmetric_keys/public_key.c
-index 09a0b83d5d77..9931d56337e5 100644
---- a/crypto/asymmetric_keys/public_key.c
-+++ b/crypto/asymmetric_keys/public_key.c
-@@ -13,6 +13,7 @@
- #include <crypto/sig.h>
- #include <keys/asymmetric-subtype.h>
- #include <linux/asn1.h>
-+#include <linux/crash_core.h>
- #include <linux/err.h>
- #include <linux/kernel.h>
+ 	/* Describe a server key */
+ 	void (*describe_server_key)(const struct key *, struct seq_file *);
+ 
+diff --git a/net/rxrpc/key.c b/net/rxrpc/key.c
+index a0aa78d89289..e612b7a8df13 100644
+--- a/net/rxrpc/key.c
++++ b/net/rxrpc/key.c
+@@ -11,6 +11,7 @@
+ #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+ 
  #include <linux/module.h>
-@@ -58,6 +59,19 @@ static void public_key_destroy(void *payload0, void *payload3)
- 	public_key_signature_free(payload3);
++#include <linux/crash_core.h>
+ #include <linux/net.h>
+ #include <linux/overflow.h>
+ #include <linux/skbuff.h>
+@@ -26,6 +27,7 @@
+ static int rxrpc_preparse(struct key_preparsed_payload *);
+ static void rxrpc_free_preparse(struct key_preparsed_payload *);
+ static void rxrpc_destroy(struct key *);
++static void rxrpc_wipe(struct key *);
+ static void rxrpc_describe(const struct key *, struct seq_file *);
+ static long rxrpc_read(const struct key *, char *, size_t);
+ 
+@@ -40,6 +42,7 @@ struct key_type key_type_rxrpc = {
+ 	.free_preparse	= rxrpc_free_preparse,
+ 	.instantiate	= generic_key_instantiate,
+ 	.destroy	= rxrpc_destroy,
++	.wipe		= rxrpc_wipe,
+ 	.describe	= rxrpc_describe,
+ 	.read		= rxrpc_read,
+ };
+@@ -570,6 +573,31 @@ static void rxrpc_free_token_list(struct rxrpc_key_token *token)
+ 	}
  }
  
-+/* wipe the key without freeing. used by CONFIG_CRASH_WIPE_SECRETS. */
-+static void public_key_wipe(void *payload0, void *payload3)
++static void rxrpc_wipe_token_list(struct rxrpc_key_token *token)
 +{
-+	struct public_key *key = payload0;
++	struct rxrpc_key_token *next;
 +
-+	if (key) {
-+		if (key->key)
-+			crash_wipe_memzero(key->key, key->keylen);
-+		if (key->params)
-+			crash_wipe_memzero(key->params, key->paramlen);
++	for (; token; token = next) {
++		next = token->next;
++		switch (token->security_index) {
++		case RXRPC_SECURITY_RXKAD:
++			crash_wipe_memzero(token->kad->session_key,
++					   sizeof(token->kad->session_key));
++			crash_wipe_memzero(token->kad->ticket,
++					   token->kad->ticket_len);
++			break;
++		case RXRPC_SECURITY_YFS_RXGK:
++			crash_wipe_memzero(token->rxgk->key.data,
++					   token->rxgk->key.len);
++			crash_wipe_memzero(token->rxgk->ticket.data,
++					   token->rxgk->ticket.len);
++			break;
++		default:
++			break;
++		}
 +	}
 +}
 +
  /*
-  * Given a public_key, and an encoding and hash_algo to be used for signing
-  * and/or verification with that key, determine the name of the corresponding
-@@ -464,6 +478,7 @@ struct asymmetric_key_subtype public_key_subtype = {
- 	.name_len		= sizeof("public_key") - 1,
- 	.describe		= public_key_describe,
- 	.destroy		= public_key_destroy,
-+	.wipe			= public_key_wipe,
- 	.query			= software_key_query,
- 	.eds_op			= software_key_eds_op,
- 	.verify_signature	= public_key_verify_signature_2,
-diff --git a/include/keys/asymmetric-subtype.h b/include/keys/asymmetric-subtype.h
-index d55171f640a0..17c74070c101 100644
---- a/include/keys/asymmetric-subtype.h
-+++ b/include/keys/asymmetric-subtype.h
-@@ -32,6 +32,11 @@ struct asymmetric_key_subtype {
- 	/* Destroy a key of this subtype */
- 	void (*destroy)(void *payload_crypto, void *payload_auth);
+  * Clean up preparse data.
+  */
+@@ -586,6 +614,12 @@ static void rxrpc_destroy(struct key *key)
+ 	rxrpc_free_token_list(key->payload.data[0]);
+ }
  
-+	/* Wipe a key of this subtype without freeing it (optional).  Used by
-+	 * CONFIG_CRASH_WIPE_SECRETS from the panic path.
-+	 */
-+	void (*wipe)(void *payload_crypto, void *payload_auth);
++/* wipe the key without freeing. used by CONFIG_CRASH_WIPE_SECRETS. */
++static void rxrpc_wipe(struct key *key)
++{
++	rxrpc_wipe_token_list(key->payload.data[0]);
++}
 +
- 	int (*query)(const struct kernel_pkey_params *params,
- 		     struct kernel_pkey_query *info);
+ /*
+  * describe the rxrpc key
+  */
+diff --git a/net/rxrpc/rxgk.c b/net/rxrpc/rxgk.c
+index 77a67ace1d24..51c428fb3a60 100644
+--- a/net/rxrpc/rxgk.c
++++ b/net/rxrpc/rxgk.c
+@@ -8,6 +8,7 @@
+ #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
  
+ #include <linux/net.h>
++#include <linux/crash_core.h>
+ #include <linux/skbuff.h>
+ #include <linux/slab.h>
+ #include <linux/key-type.h>
+@@ -68,6 +69,15 @@ static void rxgk_destroy_server_key(struct key *key)
+ 	rxgk_free_server_key(&key->payload);
+ }
+ 
++/* wipe the key without freeing. used by CONFIG_CRASH_WIPE_SECRETS. */
++static void rxgk_wipe_server_key(struct key *key)
++{
++	struct krb5_buffer *server_key = (void *)&key->payload.data[2];
++
++	if (server_key->data)
++		crash_wipe_memzero(server_key->data, server_key->len);
++}
++
+ static void rxgk_describe_server_key(const struct key *key, struct seq_file *m)
+ {
+ 	const struct krb5_enctype *krb5 = key->payload.data[0];
+@@ -1338,6 +1348,7 @@ const struct rxrpc_security rxgk_yfs = {
+ 	.preparse_server_key		= rxgk_preparse_server_key,
+ 	.free_preparse_server_key	= rxgk_free_preparse_server_key,
+ 	.destroy_server_key		= rxgk_destroy_server_key,
++	.wipe_server_key		= rxgk_wipe_server_key,
+ 	.describe_server_key		= rxgk_describe_server_key,
+ 	.init_connection_security	= rxgk_init_connection_security,
+ 	.alloc_txbuf			= rxgk_alloc_txbuf,
+diff --git a/net/rxrpc/rxkad.c b/net/rxrpc/rxkad.c
+index ca9f0e82cb9a..054ab67aca32 100644
+--- a/net/rxrpc/rxkad.c
++++ b/net/rxrpc/rxkad.c
+@@ -10,6 +10,7 @@
+ #include <crypto/des.h>
+ #include <kunit/visibility.h>
+ #include <linux/export.h>
++#include <linux/crash_core.h>
+ #include <linux/fips.h>
+ #include <linux/module.h>
+ #include <linux/net.h>
+@@ -91,6 +92,18 @@ static void rxkad_destroy_server_key(struct key *key)
+ 	key->payload.data[0] = NULL;
+ }
+ 
++/* wipe the key without freeing. used by CONFIG_CRASH_WIPE_SECRETS. */
++static void rxkad_wipe_server_key(struct key *key)
++{
++	struct des_ctx *des_key = key->payload.data[0];
++
++	if (des_key)
++		crash_wipe_memzero(des_key, sizeof(*des_key));
++
++	/* the raw 8-byte key is kept inline in the payload union */
++	crash_wipe_memzero(&key->payload.data[2], 8);
++}
++
+ /*
+  * initialise connection security
+  */
+@@ -1127,6 +1140,7 @@ const struct rxrpc_security rxkad = {
+ 	.preparse_server_key		= rxkad_preparse_server_key,
+ 	.free_preparse_server_key	= rxkad_free_preparse_server_key,
+ 	.destroy_server_key		= rxkad_destroy_server_key,
++	.wipe_server_key		= rxkad_wipe_server_key,
+ 	.init_connection_security	= rxkad_init_connection_security,
+ 	.alloc_txbuf			= rxkad_alloc_txbuf,
+ 	.secure_packet			= rxkad_secure_packet,
+diff --git a/net/rxrpc/server_key.c b/net/rxrpc/server_key.c
+index 3efe104b1930..a8e736d58793 100644
+--- a/net/rxrpc/server_key.c
++++ b/net/rxrpc/server_key.c
+@@ -26,6 +26,7 @@ static int rxrpc_vet_description_s(const char *);
+ static int rxrpc_preparse_s(struct key_preparsed_payload *);
+ static void rxrpc_free_preparse_s(struct key_preparsed_payload *);
+ static void rxrpc_destroy_s(struct key *);
++static void rxrpc_wipe_s(struct key *);
+ static void rxrpc_describe_s(const struct key *, struct seq_file *);
+ 
+ /*
+@@ -40,6 +41,7 @@ struct key_type key_type_rxrpc_s = {
+ 	.free_preparse	= rxrpc_free_preparse_s,
+ 	.instantiate	= generic_key_instantiate,
+ 	.destroy	= rxrpc_destroy_s,
++	.wipe		= rxrpc_wipe_s,
+ 	.describe	= rxrpc_describe_s,
+ };
+ 
+@@ -105,6 +107,15 @@ static void rxrpc_destroy_s(struct key *key)
+ 		sec->destroy_server_key(key);
+ }
+ 
++/* wipe the key without freeing. used by CONFIG_CRASH_WIPE_SECRETS. */
++static void rxrpc_wipe_s(struct key *key)
++{
++	const struct rxrpc_security *sec = key->payload.data[1];
++
++	if (sec && sec->wipe_server_key)
++		sec->wipe_server_key(key);
++}
++
+ static void rxrpc_describe_s(const struct key *key, struct seq_file *m)
+ {
+ 	const struct rxrpc_security *sec = key->payload.data[1];
 
 -- 
 2.53.0
