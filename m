@@ -1,76 +1,76 @@
 Received: from flow-b7-smtp.messagingengine.com (flow-b7-smtp.messagingengine.com [202.12.124.142])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AC9603793CE;
-	Tue, 11 Aug 2026 17:54:50 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E59A4352022;
+	Tue, 11 Aug 2026 17:54:58 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=202.12.124.142
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786470892; cv=none; b=N8mV0uEDc7NWJBZaD71n8hWohzri201q/G/MlDXlOJSP5HbUiuE2Nd240b1plJqMzr6dpGdvlO3AhsUu7kN5siU+tCZ8VAJTd0jlTFIinS1UdIutcBs8whbBvwtjnDeUEi+5X/+/tPcB3qcD7Q/kjDLcJXrbC0oKiHOtCJXWtNk=
+	t=1786470900; cv=none; b=SOWOQ/2psOIvwjLURNoGE5tuDNHyiO6LrrvjJBjYCqAVVkifypFUzINbyf58TpywG7tO6HUI0DOqEQLoJ7E0Ea1xiCbmPqKv4jjYXjdtU2+bHvN75Gn7t7uWbhABHcl35nwslbXBo00J/Myjk+AQmAlqf7z/GS3OIF77xypMrtQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786470892; c=relaxed/simple;
-	bh=TIZ+okVHrCyUtsr8WbeYKknQaRJKbYF43YJPJkdZtTM=;
+	s=arc-20240116; t=1786470900; c=relaxed/simple;
+	bh=T47lbZ/5Ik9XFF2I7gSkXtBswUfH4MhklVGOicIW3mg=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=hMrevhqdAYlzhGr857bJDmY0E2zf3+1vT6vMrP/BigEyPVBLCyTP7QtC5Fgkrg8o+PfLZmvWSyroXc1ROrsWkcr4GxQVVRG7eMweL8A66euqS0FMsA1fKDG0qs19/kPHAg4JgYQiMiGdqT2/7Hj4uga0dIoaWj3sFmDHFGPRuXg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de; spf=pass smtp.mailfrom=jaseg.de; dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b=bYeDYVhg; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=GI03wCRG; arc=none smtp.client-ip=202.12.124.142
+	 In-Reply-To:To:Cc; b=T8F7mpdJ7X1uuAPzu8fNjUZX09aqofBaxgnXTfUPCTJ8zASYksYcDHxo2WlUf+eW0+MaZ0BOOU6UE3TOu0+AhtdSqSX04drHaaIwYo4/05nuxylIXz3O0/tGz0ppOLHKA1GaM0nbrhB6oWoaYIJI0EXmCbOvDSrak4tQKmiI2XQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de; spf=pass smtp.mailfrom=jaseg.de; dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b=VxLE2qEQ; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=SSkpNzd/; arc=none smtp.client-ip=202.12.124.142
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=jaseg.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b="bYeDYVhg";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="GI03wCRG"
-Received: from phl-compute-12.internal (phl-compute-12.internal [10.202.2.52])
-	by mailflow.stl.internal (Postfix) with ESMTP id A131F130038D;
-	Tue, 11 Aug 2026 13:54:48 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b="VxLE2qEQ";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="SSkpNzd/"
+Received: from phl-compute-05.internal (phl-compute-05.internal [10.202.2.45])
+	by mailflow.stl.internal (Postfix) with ESMTP id E4B6A13003B7;
+	Tue, 11 Aug 2026 13:54:56 -0400 (EDT)
 Received: from phl-frontend-04 ([10.202.2.163])
-  by phl-compute-12.internal (MEProxy); Tue, 11 Aug 2026 13:54:50 -0400
+  by phl-compute-05.internal (MEProxy); Tue, 11 Aug 2026 13:54:58 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=jaseg.de; h=cc
 	:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to; s=fm3; t=1786470888;
-	 x=1786478088; bh=jFYKhNM35RpDRZh/43hulCmfEJyGilMf3A0rl4qWOVM=; b=
-	bYeDYVhgtPE017gK8myw81IgEJUTe3W99CDML8CpqHp7fU6iAnzN86+mOx7pU8Z/
-	Xz25faE9dCrff2JgEY85A8il0GldVKWSWgOy4hiTb9CwSrAu1UA8ybprakhSKiLG
-	oIITSW+Nrjy2Sq/XXAbDUY1ZyI6YiBMXr9Yk2a9seCS5IMaaJ7N61dHXvoUtlz8j
-	3p4rf5eJtJC2ubYbpyEbWFEarW2qhkEHelWMe2AjTl6Xz3oyvWcBgxSp9m5mz04M
-	PiZPAArXKeBHB+U1EAtjh1PXTUxgcDuNYNeEWLP/jcovinleNGmuNB3spTKuDtdC
-	x6aphUNJ+Y8113Z0XSyupg==
+	:references:reply-to:subject:subject:to:to; s=fm3; t=1786470896;
+	 x=1786478096; bh=VywNlkxt81T21aE3I2g5wIsi8+Y5h/Z8ZTT1u80XjqQ=; b=
+	VxLE2qEQb7RhsyFopOdNb1xsSG9C6lDp17xIF/tW5fjKC1h018h/TlWsm/mt1Idn
+	ZSK2E16qh46bW4rFguHdnSDeoawg47gLExP576bp6CIE8pmJO1p3VJR4godaM57E
+	hegomH+Tm6aRDm7eapdKWDIRCOLutTQUOXkcdoqTQUYkPUlYwNK4AiE2GEjntV8D
+	nOZUZE1dsHD7l7B6o6I0E+Z7KOFHSCwfmpbVItkOnDXBlwdg/KI6LFsv1O4fgK8C
+	sNIXlyLHP/J1eRm5b34phMIq8G1I046mN12Eh2YjdyHKUEiWE8gOIdkKynoaeOtc
+	hry+Xrxf5w8noY46zpYPgQ==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786470888; x=
-	1786478088; bh=jFYKhNM35RpDRZh/43hulCmfEJyGilMf3A0rl4qWOVM=; b=G
-	I03wCRG7sUINfnlJx1HoFrWP/Blr/bsvRmMMtdVhY+z8ikl856vyYKiKSfxJk7TJ
-	+Du+2B8fdmMwoashdCtrBOjKrt7zkIVhzPJwU97BFtkm9yeBnyEW9wLTOSe9RXan
-	IF1LrphRdo4Uk3avywoso/2ZA+IcNlIwlF46V0biEWeEsORBdaR7O6+Kzp+FqjId
-	by1N2tuNRk4YQ/cm2z2zowmmSbKc+xqSKdOTtViGytJI12Acn61UHhiLYE0YFZ+l
-	o+fCUXptxoEXuPVdfPm34ZKvgqE/lbkjRsqBea+Ym0d7dKpsuXfQrUtlDEY+S3wi
-	JfrtqmZ9utgGiPwezfe5A==
-X-ME-Sender: <xms:6GF7ak2aeI67ME2whQjDRFEFUSap2dHoqV5gaRqdIpQaKczG27_ffg>
-    <xme:6GF7alrOHZkIbt809LfaVJrW_HTu4cTVBGd32Dlfo2aA52FhJgt1HcVDGGXEZ53Pd
-    ie9ejQQf-9bWsIntw6gRpVKcWOLFyyIJofloeBpzpVC4wR9gPSNBA>
-X-ME-Received: <xmr:6GF7appNETAxMOIJoMSSYEXVLzHtyEW4fHehW-qDFB4UzD9f0PJdzjffpHYSEDkJg7_lcX-JIFlYipUTyCzV-xQ>
-X-ME-Proxy-Cause: dmFkZTFP5tmiXRyqpvhao8uWnDWsuVG58E3QcpY8nNF+TN3d4+2z3XaWQJ1+2uEKcUq9Jg
-    +xH/KDfBOi31TfxVE5vy2aZ5W5Eono+bvv7mBiiNvVW/C9tjIvrxCLzv7Tz6GJOSvAG1cd
-    t11+FzpQNbill+yp1ZC7JKPVzEaxQ4CH2HewKTU1gYEn0mNFldMXWgoBvZ/c5OhwLZogLW
-    sZeOMCUfQY9vOvCjGHA0ivpYn+5HBy3sK6RswFREIaUm9jlhbU7pV5ZXGDLpJAMlUAJ/Lo
-    y1vjaaTNNEiBF07QqH8YbZg0fsVTsE2lSAku2XiqZRlB3GAWdGnDFC/NxQNHJZjZwh0bMi
-    3ropPtGEXwJYJAu285XzhREMMjarFs0U0qMD7zjrDHqt6fJ8xSO2sk61ZxfqGLG5LEahc7
-    vwAk5zUO0ZCCm9fM+L422IUoCWwqFOjz+0aNT0kFyZ0Q1Ln5ckpifI68KSJbkT7he4JGsz
-    gnYBtMLYaheT0cogeUK3622EJ3Z+e4Ukbofzl4+gPfWHBkTRbmKjtE6P4Ot7qNxDbkBV9f
-    6r8fT1r6KlUCPnqErm914p+GFvLXJ9n92U6RxanpRYnFHvVP6n6k2ggCnlgrXR6Uub55UK
-    uDCtbwOviWOwgtdaHKlTAzhxVcXj+aqh2aNk2mWVG/8eK7aDZGpVw69gy5wQ
-X-ME-Proxy: <xmx:6GF7amdRcbsx2qfRi8Cd7iqirsDyMVXLbbc0EFhgE-YV-qN-A-n8YA>
-    <xmx:6GF7ar3414zMwqGprCZiQmHYu9pyMRwm63XrVoSErX6qc-cgchR1Pg>
-    <xmx:6GF7appNUtXCAZ3BPwO2kwj0wrqDcwnqsypWPF3DoBa2ZTNBOw4Q1w>
-    <xmx:6GF7aiW3O4vSZ6P4QnlVVOEiR378mmPRjHDcwpHayiuZTg9-sqozcg>
-    <xmx:6GF7aq85EqVYPI90O7QDsJHYjnOV5PSwDC15fyrxlypXGHf1F3HESgUy>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786470896; x=
+	1786478096; bh=VywNlkxt81T21aE3I2g5wIsi8+Y5h/Z8ZTT1u80XjqQ=; b=S
+	SkpNzd/1QrAjL9XQuiY+AkLt5lhLMYS3fgQngrswG+ix3NYfCF51zDhtGkf9E3it
+	EQyT+Rd7EOEwWw0vxrrZ4kZgKv2EaomfwB4Q4IfGJXY5OLdoKREMy6SWMXJE2hkQ
+	Gh27Q1huZYbWz0FezXE2ibsfSAkFa8EzFJTwZZvodEhUTI3ayQ1c1LlpFvNjnscD
+	eEMLauBLJnWFJ+YEiJrj4V6aLPml0dvZnT68l8/ygPykF6BpcpZvnPx1T3IY0Hx0
+	CyS6cPyQrBjHT9LKQGDvcLFnAxB0OmdCrqj6Y7qHTBK/z6ZMRmdQQkdO+AJ8uv2e
+	59gY7aIp+7XNH/xQlIfhA==
+X-ME-Sender: <xms:8GF7anDtUhMVogtIaF90eVohO54NG6fXU9fcJcr-PVrP6uV-EQMAsQ>
+    <xme:8GF7amXHPA-M36SqWIaoOOfC0KAXmAh8RqSljUWbXl5gA-ZdNXp3YnS24rY7uSAPZ
+    QzFeSW1aLArq1iVhVcarr_eR9r8_Ng7vq7v3QK5RebjW_stD86P>
+X-ME-Received: <xmr:8GF7apKRSA-4AtWEVZN0vEz0zHtt51ctuF2j_4YNkvmM_Ueovh_yp8kgTwn6TBnQO3FEzYRwb1ZL_InFNDWbb1Y>
+X-ME-Proxy-Cause: dmFkZTFz4vgNe8oY8QyUL0mlPqEECv57Qi7HCBIaM0H0fEpf1xbY2+8hZG6UpCbiC57xgk
+    VavagF0YgIkokz9w1ZYP1FsIKkSgwmPUkWwZZopzEj1hsTumYxogfZ8LsE2lIsmrvQrzxe
+    DNsAmjkffjDdnK7Hikwb1PBijPzdc+/pLDsJWa/G9io4Zr2WihJBScLGTtc/AAEph99TK7
+    KMYjrfPBzTMOGahPoGoXnc0LQ7Z6pMXIRNlA+PEZw+HSeBor1z9UME1MTUTi3zab2cdg5l
+    S2ygLFXboS6erW/oqrZ0wC4vZEyPuJEZAHdMIjRfMGBWirnE5Gt0LHQJATpVfpt20aHeqK
+    Vr9NQnZCOXNfk60Be2/UTgwxliwGfCsjAkA0QYgfJNinx6Wwn1xj1scz+ZOK1UcMfrRo3H
+    GCXnRzeaKRJs42Gl0t0l71rV4rTv2MuB04VclqcHrLKbriLjI7PchBKyX9kKyt8FtiadHn
+    kgkLCoKG8Tq29peNW3i083C3qqLlJiA31CXtZwOLh0hzkw0OD7PaCvxdbvZqcmgF/2MQXw
+    ok2S4ZpzbXxDIPa2svuYyCoOyztu/wUpLoiJbWVNlNpLTwmQbxnU0qlYkEMtS1gPXfoUt0
+    +shDuurgOLjLUdMZz5xGuS9e2Efp7ZYl0UQf/a+Ej/KDT1ub33VVQNiznkQA
+X-ME-Proxy: <xmx:8GF7anK8SnN8j0nsdIirDkp8C-b2cS0dQ1GW_PnwrjuEtqsmXmdx9w>
+    <xmx:8GF7al-Tm3NpfKZDQ_6NCnm_aTVZv1oKr_Ao3YmlaNotR-5SdCUNDA>
+    <xmx:8GF7alXfus4HujHBcwGz6nBKsHMbDL6OmwQa1ZKeZqSpAmYWSKHCtA>
+    <xmx:8GF7alIMOyKbcmgUZaZwY45TO6dUB6_p7zKIiIR4DbwJ7h6hJDPWHQ>
+    <xmx:8GF7asdY0A9ZOpiiTn5RpxE8VLjFbOKBq5nTSgG4p52Ol3XlmVKbNOhH>
 Feedback-ID: i60a14417:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 11 Aug 2026 13:54:41 -0400 (EDT)
+ 11 Aug 2026 13:54:50 -0400 (EDT)
 From: =?utf-8?q?Jan_Sebastian_G=C3=B6tte?= <linux@jaseg.de>
-Date: Tue, 11 Aug 2026 19:53:01 +0200
-Subject: [PATCH v2 12/13] crypto: api - wipe tfm contexts before kdump
+Date: Tue, 11 Aug 2026 19:53:02 +0200
+Subject: [PATCH v2 13/13] dm crypt: wipe key material before kdump
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -79,7 +79,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 8bit
-Message-Id: <20260811-crash-zeroize-rework-v2-12-9561d13c2340@jaseg.de>
+Message-Id: <20260811-crash-zeroize-rework-v2-13-9561d13c2340@jaseg.de>
 References: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
 In-Reply-To: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
 To: Andrew Morton <akpm@linux-foundation.org>,
@@ -122,202 +122,282 @@ Cc: kexec@lists.infradead.org, linux-kernel@vger.kernel.org,
  =?utf-8?q?Jan_Sebastian_G=C3=B6tte?= <linux@jaseg.de>
 X-Mailer: b4 0.15.2
 
-tfm structs contain key material like expanded key schedules. Under
-CONFIG_CRASH_WIPE_SECRETS, wipe all tfms before kdump to prevent
-leakage. Copies outside the tfm context, e.g. on the stack or in
-hardware key registers, are not covered.
+Wipe volume key/iv copies kept by dm-crypt with
+CONFIG_CRASH_WIPE_SECRETS. The backend tfms are already handled
+separately.
 
-Also change two kfree() calls to kfree_sensitive() for good measure.
+Add a list tracking struct crypt_config instances when
+CONFIG_CRASH_WIPE_SECRETS is set. Structs are tracked here to avoid
+having to enumerate them through some roundabout way before kdump, when
+we can't safely take locks anymore.
+
+Use custom wipe handlers even for things like ivs that have existing
+wipe functions elsewhere because we need to use crash_wipe_memzero
+instead of memzero_explicit. The crash_wipe helper memzero_explicit's
+the target buffers and flushes data caches. On ARM64, missing that cache
+flush could lead to the zeros not being written to DRAM before the kdump
+code turns off the data caches moments later.
 
 Signed-off-by: Jan Sebastian Götte <linux@jaseg.de>
 ---
- crypto/api.c           | 78 ++++++++++++++++++++++++++++++++++++++++++++------
- include/linux/crypto.h | 11 +++++++
- 2 files changed, 81 insertions(+), 8 deletions(-)
+ drivers/md/dm-crypt.c | 151 ++++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 134 insertions(+), 17 deletions(-)
 
-diff --git a/crypto/api.c b/crypto/api.c
-index 24227582cfcf..f919f52e8b5f 100644
---- a/crypto/api.c
-+++ b/crypto/api.c
-@@ -10,13 +10,16 @@
-  * and Nettle, by Niels Möller.
+diff --git a/drivers/md/dm-crypt.c b/drivers/md/dm-crypt.c
+index 608b617fb817..86adb2f9b94c 100644
+--- a/drivers/md/dm-crypt.c
++++ b/drivers/md/dm-crypt.c
+@@ -9,12 +9,14 @@
   */
  
+ #include <linux/completion.h>
 +#include <linux/crash_core.h>
  #include <linux/err.h>
- #include <linux/errno.h>
- #include <linux/jump_label.h>
- #include <linux/kernel.h>
- #include <linux/kmod.h>
  #include <linux/module.h>
-+#include <linux/notifier.h>
- #include <linux/param.h>
-+#include <linux/rculist.h>
- #include <linux/sched/signal.h>
- #include <linux/slab.h>
- #include <linux/string.h>
-@@ -397,6 +400,60 @@ static unsigned int crypto_ctxsize(struct crypto_alg *alg, u32 type, u32 mask)
- 	return len;
+ #include <linux/hex.h>
+ #include <linux/init.h>
+ #include <linux/kernel.h>
+ #include <linux/key.h>
++#include <linux/list.h>
+ #include <linux/bio.h>
+ #include <linux/blkdev.h>
+ #include <linux/blk-integrity.h>
+@@ -234,6 +236,11 @@ struct crypt_config {
+ 	struct mutex bio_alloc_lock;
+ 
+ 	u8 *authenc_key; /* space for keys in authenc() format (if used) */
++
++#ifdef CONFIG_CRASH_WIPE_SECRETS
++	struct list_head wipe_list;
++#endif
++
+ 	u8 key[] __counted_by(key_size);
+ };
+ 
+@@ -243,6 +250,12 @@ struct crypt_config {
+ 
+ static DEFINE_SPINLOCK(dm_crypt_clients_lock);
+ static unsigned int dm_crypt_clients_n;
++
++#ifdef CONFIG_CRASH_WIPE_SECRETS
++static LIST_HEAD(dm_crypt_wipe_list);
++static DEFINE_SPINLOCK(dm_crypt_wipe_list_lock);
++#endif
++
+ static volatile unsigned long dm_crypt_pages_per_client;
+ #define DM_CRYPT_MEMORY_PERCENT			2
+ #define DM_CRYPT_MIN_PAGES_PER_CLIENT		(BIO_MAX_VECS * 16)
+@@ -460,8 +473,7 @@ static void crypt_iv_lmk_dtr(struct crypt_config *cc)
+ {
+ 	struct iv_lmk_private *lmk = &cc->iv_gen_private.lmk;
+ 
+-	kfree_sensitive(lmk->seed);
+-	lmk->seed = NULL;
++	kfree_sensitive(xchg(&lmk->seed, NULL));
+ }
+ 
+ static int crypt_iv_lmk_ctr(struct crypt_config *cc, struct dm_target *ti,
+@@ -582,10 +594,8 @@ static void crypt_iv_tcw_dtr(struct crypt_config *cc)
+ {
+ 	struct iv_tcw_private *tcw = &cc->iv_gen_private.tcw;
+ 
+-	kfree_sensitive(tcw->iv_seed);
+-	tcw->iv_seed = NULL;
+-	kfree_sensitive(tcw->whitening);
+-	tcw->whitening = NULL;
++	kfree_sensitive(xchg(&tcw->iv_seed, NULL));
++	kfree_sensitive(xchg(&tcw->whitening, NULL));
+ }
+ 
+ static int crypt_iv_tcw_ctr(struct crypt_config *cc, struct dm_target *ti,
+@@ -761,8 +771,7 @@ static void crypt_iv_elephant_dtr(struct crypt_config *cc)
+ {
+ 	struct iv_elephant_private *elephant = &cc->iv_gen_private.elephant;
+ 
+-	kfree_sensitive(elephant->key);
+-	elephant->key = NULL;
++	kfree_sensitive(xchg(&elephant->key, NULL));
+ }
+ 
+ static int crypt_iv_elephant_ctr(struct crypt_config *cc, struct dm_target *ti,
+@@ -2547,8 +2556,7 @@ static int crypt_set_keyring_key(struct crypt_config *cc, const char *key_string
+ 		goto free_new_key_string;
+ 
+ 	set_bit(DM_CRYPT_KEY_VALID, &cc->flags);
+-	kfree_sensitive(cc->key_string);
+-	cc->key_string = new_key_string;
++	kfree_sensitive(xchg(&cc->key_string, new_key_string));
+ 	return 0;
+ 
+ free_new_key_string:
+@@ -2612,8 +2620,7 @@ static int crypt_set_key(struct crypt_config *cc, char *key)
+ 	clear_bit(DM_CRYPT_KEY_VALID, &cc->flags);
+ 
+ 	/* wipe references to any kernel keyring key */
+-	kfree_sensitive(cc->key_string);
+-	cc->key_string = NULL;
++	kfree_sensitive(xchg(&cc->key_string, NULL));
+ 
+ 	/* Decode key from its hex representation. */
+ 	if (cc->key_size && hex2bin(cc->key, key, cc->key_size) < 0)
+@@ -2641,14 +2648,97 @@ static int crypt_wipe_key(struct crypt_config *cc)
+ 	if (cc->iv_gen_ops && cc->iv_gen_ops->wipe)
+ 		cc->iv_gen_ops->wipe(cc);
+ 
+-	kfree_sensitive(cc->key_string);
+-	cc->key_string = NULL;
++	kfree_sensitive(xchg(&cc->key_string, NULL));
+ 	r = crypt_setkey(cc);
+ 	memset(&cc->key, 0, cc->key_size * sizeof(u8));
+ 
+ 	return r;
  }
  
 +#ifdef CONFIG_CRASH_WIPE_SECRETS
-+/*
-+ * tfm allocations are tracked on crypto_tfm_list so that they can be wiped
-+ * before kdump.
-+ */
-+static HLIST_HEAD(crypto_tfm_list);
-+static DEFINE_SPINLOCK(crypto_tfm_list_lock);
-+
-+static int crypto_crash_wipe(struct notifier_block *nb, unsigned long action,
-+		void *data)
++static void crypt_crash_wipe_iv(struct crypt_config *cc)
 +{
-+	struct crypto_tfm *tfm;
++	if (cc->iv_gen_ops == &crypt_iv_lmk_ops) {
++		struct iv_lmk_private *lmk = &cc->iv_gen_private.lmk;
 +
-+	rcu_read_lock();
-+	hlist_for_each_entry_rcu(tfm, &crypto_tfm_list, wipe_list)
-+		crash_wipe_memzero(tfm->__crt_ctx, tfm->wipe_size);
-+	rcu_read_unlock();
++		if (lmk->seed)
++			crash_wipe_memzero(lmk->seed, LMK_SEED_SIZE);
++	} else if (cc->iv_gen_ops == &crypt_iv_tcw_ops) {
++		struct iv_tcw_private *tcw = &cc->iv_gen_private.tcw;
 +
-+	/* off to kexec()! */
++		if (tcw->iv_seed)
++			crash_wipe_memzero(tcw->iv_seed, cc->iv_size);
++		if (tcw->whitening)
++			crash_wipe_memzero(tcw->whitening, TCW_WHITENING_SIZE);
++	} else if (cc->iv_gen_ops == &crypt_iv_elephant_ops) {
++		struct iv_elephant_private *elephant =
++			&cc->iv_gen_private.elephant;
++
++		if (elephant->key)
++			crash_wipe_memzero(elephant->key,
++					   sizeof(*elephant->key));
++	}
++}
++
++static int crypt_crash_wipe(struct notifier_block *nb, unsigned long action,
++			    void *data)
++{
++	struct crypt_config *cc;
++
++	/* No locking: all other CPUs are stopped, and a cc is unlinked before
++	 * it is freed, so the forward walk can't reach freed memory.
++	 */
++	list_for_each_entry(cc, &dm_crypt_wipe_list, wipe_list) {
++		crash_wipe_memzero(cc->key, cc->key_size);
++
++		if (cc->authenc_key)
++			crash_wipe_memzero(cc->authenc_key,
++					   crypt_authenckey_size(cc));
++
++		if (cc->key_string)
++			crash_wipe_memzero(cc->key_string,
++					   strlen(cc->key_string));
++
++		crypt_crash_wipe_iv(cc);
++	}
++
 +	return NOTIFY_DONE;
 +}
 +
-+static struct notifier_block crypto_wipe_nb = {
-+	.notifier_call = crypto_crash_wipe
++static struct notifier_block crypt_crash_wipe_nb = {
++	.notifier_call = crypt_crash_wipe
 +};
 +
-+static int __init crypto_tfm_track_init(void)
++static void crypt_track_cc(struct crypt_config *cc)
 +{
-+	crash_wipe_secrets_register(&crypto_wipe_nb);
-+	return 0;
-+}
-+core_initcall(crypto_tfm_track_init);
-+
-+/* @size is the size of __crt_ctx */
-+static void crypto_track_tfm(struct crypto_tfm *tfm, size_t size)
-+{
-+	tfm->wipe_size = size;
-+
-+	spin_lock(&crypto_tfm_list_lock);
-+	hlist_add_head_rcu(&tfm->wipe_list, &crypto_tfm_list);
-+	spin_unlock(&crypto_tfm_list_lock);
++	spin_lock(&dm_crypt_wipe_list_lock);
++	list_add(&cc->wipe_list, &dm_crypt_wipe_list);
++	spin_unlock(&dm_crypt_wipe_list_lock);
 +}
 +
-+static void crypto_untrack_tfm(struct crypto_tfm *tfm)
++static void crypt_untrack_cc(struct crypt_config *cc)
 +{
-+	spin_lock(&crypto_tfm_list_lock);
-+	hlist_del_rcu(&tfm->wipe_list);
-+	spin_unlock(&crypto_tfm_list_lock);
++	spin_lock(&dm_crypt_wipe_list_lock);
++	list_del(&cc->wipe_list);
++	spin_unlock(&dm_crypt_wipe_list_lock);
++}
++
++static void crypt_crash_wipe_init(void)
++{
++	crash_wipe_secrets_register(&crypt_crash_wipe_nb);
++}
++
++static void crypt_crash_wipe_exit(void)
++{
++	crash_wipe_secrets_unregister(&crypt_crash_wipe_nb);
 +}
 +#else
-+static void crypto_track_tfm(struct crypto_tfm *tfm, size_t size) { }
-+static void crypto_untrack_tfm(struct crypto_tfm *tfm) { }
++static void crypt_track_cc(struct crypt_config *cc) { }
++static void crypt_untrack_cc(struct crypt_config *cc) { }
++static void crypt_crash_wipe_init(void) { }
++static void crypt_crash_wipe_exit(void) { }
 +#endif /* CONFIG_CRASH_WIPE_SECRETS */
 +
- void crypto_shoot_alg(struct crypto_alg *alg)
+ static void crypt_calculate_pages_per_client(void)
  {
- 	down_write(&crypto_alg_sem);
-@@ -409,15 +466,16 @@ struct crypto_tfm *__crypto_alloc_tfm(struct crypto_alg *alg, u32 type,
- 				      u32 mask)
- {
- 	struct crypto_tfm *tfm;
--	unsigned int tfm_size;
-+	unsigned int ctx_size;
- 	int err = -ENOMEM;
+ 	unsigned long pages = (totalram_pages() - totalhigh_pages()) * DM_CRYPT_MEMORY_PERCENT / 100;
+@@ -2729,12 +2819,15 @@ static void crypt_dtr(struct dm_target *ti)
+ 		dm_put_device(ti, cc->dev);
  
--	tfm_size = sizeof(*tfm) + crypto_ctxsize(alg, type, mask);
--	tfm = kzalloc(tfm_size, GFP_KERNEL);
-+	ctx_size = crypto_ctxsize(alg, type, mask);
-+	tfm = kzalloc(sizeof(*tfm) + ctx_size, GFP_KERNEL);
- 	if (tfm == NULL)
- 		goto out_err;
+ 	kfree_sensitive(cc->cipher_string);
+-	kfree_sensitive(cc->key_string);
++	kfree_sensitive(xchg(&cc->key_string, NULL));
+ 	kfree_sensitive(cc->cipher_auth);
+-	kfree_sensitive(cc->authenc_key);
++	kfree_sensitive(xchg(&cc->authenc_key, NULL));
  
- 	tfm->__crt_alg = alg;
-+	crypto_track_tfm(tfm, ctx_size);
+ 	mutex_destroy(&cc->bio_alloc_lock);
  
- 	if (!tfm->exit && alg->cra_init && (err = alg->cra_init(tfm)))
- 		goto cra_init_failed;
-@@ -428,7 +486,8 @@ struct crypto_tfm *__crypto_alloc_tfm(struct crypto_alg *alg, u32 type,
- 	crypto_exit_ops(tfm);
- 	if (err == -EAGAIN)
- 		crypto_shoot_alg(alg);
--	kfree(tfm);
-+	crypto_untrack_tfm(tfm);
-+	kfree_sensitive(tfm);
- out_err:
- 	tfm = ERR_PTR(err);
- out:
-@@ -497,12 +556,12 @@ void *crypto_create_tfm_node(struct crypto_alg *alg,
- 			     int node)
- {
- 	struct crypto_tfm *tfm;
--	size_t size;
- 	char *mem;
- 	int err;
-+	size_t ctx_size = frontend->extsize(alg);
- 
--	size = frontend->tfmsize + sizeof(*tfm) + frontend->extsize(alg);
--	mem = kzalloc_node(size, GFP_KERNEL, node);
-+	mem = kzalloc_node(frontend->tfmsize + sizeof(*tfm) + ctx_size,
-+			GFP_KERNEL, node);
- 	if (!mem)
- 		return ERR_PTR(-ENOMEM);
- 
-@@ -510,6 +569,7 @@ void *crypto_create_tfm_node(struct crypto_alg *alg,
- 	tfm->__crt_alg = alg;
- 	tfm->node = node;
- 	tfm->fb = tfm;
-+	crypto_track_tfm(tfm, ctx_size);
- 
- 	err = frontend->init_tfm(tfm);
- 	if (err)
-@@ -525,7 +585,8 @@ void *crypto_create_tfm_node(struct crypto_alg *alg,
- out_free_tfm:
- 	if (err == -EAGAIN)
- 		crypto_shoot_alg(alg);
--	kfree(mem);
-+	crypto_untrack_tfm(tfm);
-+	kfree_sensitive(mem);
- 	mem = ERR_PTR(err);
- out:
- 	return mem;
-@@ -627,6 +688,7 @@ void crypto_destroy_tfm(void *mem, struct crypto_tfm *tfm)
- 		alg->cra_exit(tfm);
- 	crypto_exit_ops(tfm);
- 	crypto_mod_put(alg);
-+	crypto_untrack_tfm(tfm);
- 	kfree_sensitive(mem);
- }
- EXPORT_SYMBOL_GPL(crypto_destroy_tfm);
-diff --git a/include/linux/crypto.h b/include/linux/crypto.h
-index b7c97f1c47c9..59d6d62180fd 100644
---- a/include/linux/crypto.h
-+++ b/include/linux/crypto.h
-@@ -14,6 +14,7 @@
- 
- #include <linux/completion.h>
- #include <linux/errno.h>
-+#include <linux/list.h>
- #include <linux/refcount_types.h>
- #include <linux/slab.h>
- #include <linux/types.h>
-@@ -420,6 +421,16 @@ struct crypto_tfm {
- 
- 	struct crypto_alg *__crt_alg;
- 
-+#ifdef CONFIG_CRASH_WIPE_SECRETS
-+	/*
-+	 * Link on crypto_tfm_list, used to wipe the expanded key schedule in
-+	 * __crt_ctx before kdump. wipe_size covers __crt_ctx only, excluding
-+	 * this struct and any frontend preceding it.
-+	 */
-+	struct hlist_node wipe_list;
-+	size_t wipe_size;
-+#endif
++	memzero_explicit(cc->key, cc->key_size);
++	crypt_untrack_cc(cc);
 +
- 	void *__crt_ctx[] CRYPTO_MINALIGN_ATTR;
- };
+ 	/* Must zero key material before freeing */
+ 	kfree_sensitive(cc);
  
+@@ -3210,6 +3303,8 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
+ 
+ 	ti->private = cc;
+ 
++	crypt_track_cc(cc);
++
+ 	spin_lock(&dm_crypt_clients_lock);
+ 	dm_crypt_clients_n++;
+ 	crypt_calculate_pages_per_client();
+@@ -3716,7 +3811,29 @@ static struct target_type crypt_target = {
+ 	.iterate_devices = crypt_iterate_devices,
+ 	.io_hints = crypt_io_hints,
+ };
+-module_dm(crypt);
++
++static int __init dm_crypt_init(void)
++{
++	int r;
++
++	crypt_crash_wipe_init();
++
++	r = dm_register_target(&crypt_target);
++	if (r) {
++		crypt_crash_wipe_exit();
++		return r;
++	}
++
++	return 0;
++}
++module_init(dm_crypt_init);
++
++static void __exit dm_crypt_exit(void)
++{
++	crypt_crash_wipe_exit();
++	dm_unregister_target(&crypt_target);
++}
++module_exit(dm_crypt_exit);
+ 
+ MODULE_AUTHOR("Jana Saout <jana@saout.de>");
+ MODULE_DESCRIPTION(DM_NAME " target for transparent encryption / decryption");
 
 -- 
 2.53.0
