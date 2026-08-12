@@ -1,42 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 620A6470128
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 17:12:49 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B722D430CEC
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 17:36:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786554771; cv=none; b=n9S63LMnOfcflq4w5tIzlLGrELtbhj42MdjbftWzav/tZBAHetVGDs5JxD+SlnZQaSx6hAWP783fjy5AGKAYN25/gVP3xKw0kOy0X0SnmL/5Px14bxkBy/HGL9OKUV7wiWoaOis9g2eGpwCbiWgX6+Jz68WURCIVjpNH1dxAT6c=
+	t=1786556187; cv=none; b=k201eVQGPe/jQ+t8yUH9Ih6GvbaW2uBpgkoPExKd5hoQK170Ki0fxcqd31Z0mRsePtRxUkI4QqHpxtN6qDgMbQ7eWD9SfsH34D6CI8ntnXWk9+B2iHEt2psyzWPavd2U7J5aoe0yWjPaw4d+UI5apykoJPcsvo5WtjevoQPNMjE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786554771; c=relaxed/simple;
-	bh=SutH1+UlxkFpxbPBlzK9gtrn6D3YmnGDscPvJZaHvJE=;
+	s=arc-20240116; t=1786556187; c=relaxed/simple;
+	bh=/gzHbDG7vy8PN6CUgxpgJ8RAPkcE8UaxHg0mu7y4ank=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=H+FcpO1Cmi3Lg9Z3mTHU45s/PTRovEQYrN8jVb3Q6bY0MnHSfwpccDygRBjoQ96LwwXkUJRbOT+GLU+VLB0zUI4/vTV0KpgcmDL2HsDoylSreiUc4FBYJSMyNRHcEyZ7fiUj744V9tqLerxeqz0K0iV583Zx36Gsa4Vmt/V6A/8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NzyGbPSb; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=DOiLw8T3qrB+M967fWkqSqLnuURemj8RQz/I7m+hf5cxXzXNFUr0u6uCuhCKGuaqaNt3Nsq96ni0GVJdROptvhEELoDDoHuMXAZh++/82IwrdpjJrTccyfdl7FNC6Pf+18EcxxXUK+xxDUd2xMTyGAman1wgTb3tEFdh7CTqXv4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=c12F3MSV; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NzyGbPSb"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B69C21F000E9;
-	Wed, 12 Aug 2026 17:12:48 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="c12F3MSV"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D60B11F00A3A;
+	Wed, 12 Aug 2026 17:36:25 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786554769;
-	bh=uTB7o6HQ0tL1G1EpvDnE33+EHoi52MTp8KEjnxP1Kxg=;
+	s=k20260515; t=1786556186;
+	bh=9cb8uUbalsXtMHyy/BoQe2z2DtXQyl58rcRHuazpJqI=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=NzyGbPSbLBbNlhXbnIbIdrTbrysWNIojiyMZSBC0r9az6mUfOSOUO1QhX43N1xwa7
-	 UVSI4x6OFdMGPMLEa1rD7/QyQ9AHwooyz1otwnyR3YX/uQmpc4tT+ioj2gcp0nv68o
-	 qFN9cyyeYkKXV+6k778bYlRdRuBEHFni0wsCRskme6IhLQgbc4xNTly8e5gHMXYFaM
-	 /UVlXI4ZCJmfGu4AxKw5HkvfJQ+HI8sH8uSrQElS5q6+BNTzKD1CbXgIZvb3SAF+2v
-	 ibbFbdXkso1gJPZtm3KYGhlPyR7M/ZievBnk7Nh5rJ6y+u9nmm5K2H4dUCGMULofky
-	 TmAgrd0aDOCGw==
-Message-ID: <bb2eb0ef5172cbfc4452f7a8a2afc866f629557f.camel@kernel.org>
-Subject: Re: [PATCH v5 18/18] nfsd: use do_lookup_open() for non-creating
- open requests too.
+	b=c12F3MSVafUNJQq2Ycf3mfcpqq7L+x5VtmzlHEJfX/mrKtYNplMt8JSFwrCujDk8X
+	 iXuRuS5WMGAWR9CkGwvxNKOEntCmkz6cXVCg+LJOioAICchdwXdmjstGpQJQFvvEIV
+	 L9UVdpInfoarDExpQ6n1QBDqXRhF+n6bYYIK7nUOSxDhz0TB2dtTBs1Fx/8JNWfpSA
+	 V8vckeg3ld1Als9IOClRkOOwmcskLy7J63z8Plv5xJSubBKOJuGhPRF+eXH7aq344S
+	 hDnACFgCZmRiXzUi3t5z7SfQ38M/ZLxdUPUOCN81/ol+KCrn1wvP0WL+0FcRus6Cs5
+	 hB2YW+CwDCsKA==
+Message-ID: <a2cfbd0dc381f3ebb40f5702be83c0ae4fd693c7.camel@kernel.org>
+Subject: Re: [PATCH v2 0/4] NFSD: CB_RECALL_ANY fixes and a meaningful keep
+ count
 From: Jeff Layton <jlayton@kernel.org>
-To: NeilBrown <neil@brown.name>, Chuck Lever <chuck.lever@oracle.com>
-Cc: Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>, linux-nfs@vger.kernel.org
-Date: Wed, 12 Aug 2026 13:12:46 -0400
-In-Reply-To: <20260717093001.1972119-19-neilb@ownmail.net>
-References: <20260717093001.1972119-1-neilb@ownmail.net>
-	 <20260717093001.1972119-19-neilb@ownmail.net>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 12 Aug 2026 13:36:24 -0400
+In-Reply-To: <20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org>
+References: <20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,249 +121,60 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Fri, 2026-07-17 at 19:28 +1000, NeilBrown wrote:
-> From: NeilBrown <neil@brown.name>
+On Wed, 2026-08-12 at 10:59 -0400, Chuck Lever wrote:
+> NFSD sends every CB_RECALL_ANY with craa_objects_to_keep set to
+> zero, as RFC 8881 Section 20.6.3 does not mandate any particular
+> way for a client to choose which delegations to choose, if any.
 >=20
-> Now that we have do_lookup_open() for creating open requests, we can use
-> it for non-creating too as do_lookup_open() is already able to do that.
+> However, a zero value can result in some clients giving back more
+> delegations than is necessary to relieve temporary memory pressure
+> on the server, which needlessly impacts performance.
 >=20
-> This prepares for switching to vfs_lookup_open() once the VFS provides
-> that.  This will ensure consistent code and fs-interaction with VFS open(=
-).
+> NFSD intends the callback as a signal to return unused delegations.
+> Only the Linux client has been tested against it, and that client
+> ignores craa_objects_to_keep and returns only one unused delegation
+> of the named types, so the fixed zero never produced visible
+> misbehavior during our testing.
 >=20
-> The resulting simplification allows fh_fill_pre_attrs_unlocked() to be
-> moved into nfsd4_open_file() (renamed from nfsd4_create_file()) so it is
-> closer to fh_full_post_attrs and fh_fill_post_noop calls.
+> So, change NFSD so that each CB_RECALL_ANY asks a client to give up
+> one delegation. Both reaper callers (the shrinker to relieve memory
+> pressure, and the laundromat to cap the total number of delegations
+> the server tracks) re-arm while their condition lasts.
 >=20
-> As ->op_create_mode isn't defined when op_create is zero, we need a
-> local create_mode which is -1 (illegal value) when op_create is zero.
+> NFSD sets no recall target and remembers nothing across CB_RECALL_ANY
+> callbacks. RFC 8881 Section 20.6.4 prescribes the use of CB_RECALL
+> to target specific delegations if a client fails to return any. NFSD
+> does not take that step yet. CB_RECALL_ANY is asynchronous and
+> reports no completion, so NFSD treats it as advisory.
 >=20
-> The non-create path now doesn't use nfsd_lookup().  As mount-point
-> crossing including nfsd_check_access() is already included for existing
-> names, this does not lose us anything.
->=20
-> We now only call mnt_want_write() is there is a flag which indicates we
-> might want write access - previously O_CREAT was always set.
->=20
-> Signed-off-by: NeilBrown <neil@brown.name>
 > ---
->  fs/nfsd/nfs4proc.c | 113 ++++++++++++++++++++++-----------------------
->  1 file changed, 56 insertions(+), 57 deletions(-)
+> Changes in v2:
+> - Drop the gate that skipped clients holding a single delegation.
+> - Cover letter rewritten to give performance rationale.
+> - Link to v1: https://patch.msgid.link/20260811-recall-any-keep-count-v1-=
+0-de9ca00493b7@kernel.org
 >=20
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index b7fdc75c4b81..11d0411dec08 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -204,9 +204,10 @@ static struct file *do_lookup_open(struct path *pare=
-nt,
->  	struct file *filp =3D NULL;
->  	struct path path;
->  	struct dentry *child;
-> -	int want_write_err =3D 0;
-> +	int want_write_err =3D -ENOENT;
-> =20
-> -	want_write_err =3D mnt_want_write(parent->mnt);
-> +	if (oflags & (O_CREAT|O_RDONLY|O_RDWR|O_TRUNC))
-> +		want_write_err =3D mnt_want_write(parent->mnt);
-> =20
->  	child =3D start_creating(&nop_mnt_idmap, parent->dentry, name);
->  	if (IS_ERR(child)) {
-> @@ -242,29 +243,30 @@ static struct file *do_lookup_open(struct path *par=
-ent,
->  }
-> =20
->  /*
-> - * Implement NFSv4's unchecked, guarded, and exclusive create
-> - * semantics for regular files. Open state for this new file is
-> - * subsequently fabricated in nfsd4_process_open2().
-> - *
-> + * Implement NFSv4's open semantics for regular files.
-> + * Both create (unchecked, guarded, and exclusive) and non-create.
-> + * Open state for this new file is subsequently fabricated in
-> + * nfsd4_process_open2().
->   * Upon return, caller must release @fhp and @resfhp.
->   */
->  static __be32
-> -nfsd4_create_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> -		  struct svc_fh *resfhp, struct nfsd4_open *open)
-> +nfsd4_open_file(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> +		struct svc_fh *resfhp, struct nfsd4_open *open)
->  {
->  	struct iattr *iap =3D &open->op_iattr;
->  	struct nfsd_attrs attrs =3D {
->  		.na_iattr	=3D iap,
->  		.na_seclabel	=3D &open->op_label,
->  	};
-> -	int oflags =3D O_CREAT | O_LARGEFILE;
-> +	int oflags =3D O_LARGEFILE;
->  	struct dentry *child =3D ERR_PTR(-EINVAL);
->  	struct path parent =3D {
->  		.mnt =3D fhp->fh_export->ex_path.mnt,
->  		.dentry =3D fhp->fh_dentry,
->  	};
->  	__u32 v_mtime, v_atime;
-> -	__be32 status, create_status;
-> +	int createmode =3D -1;
-> +	__be32 status, create_status =3D 0;
->  	int want_write_err;
-> =20
->  	if (name_is_dot_dotdot(open->op_fname, open->op_fnamelen))
-> @@ -276,6 +278,10 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc=
-_fh *fhp,
->  	if (status !=3D nfs_ok)
->  		return status;
-> =20
-> +	status =3D fh_fill_pre_attrs_unlocked(fhp);
-> +	if (status)
-> +		return status;
-> +
->  	if (open->op_createmode =3D=3D NFS4_CREATE_UNCHECKED) {
->  		/*
->  		 * If name is already in dcache we need to check for mountpoints
-> @@ -305,11 +311,15 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct sv=
-c_fh *fhp,
->  	if (!IS_POSIXACL(d_inode(parent.dentry)))
->  		iap->ia_mode &=3D ~current_umask();
-> =20
-> +	if (open->op_create) {
-> +		createmode =3D open->op_createmode;
-> +		oflags |=3D O_CREAT;
-> +	}
->  	/*
->  	 * For the EXCLUSIVE modes we do our own uniqueness tests
->  	 * so don't want O_EXCL.
->  	 */
-> -	if (open->op_createmode =3D=3D NFS4_CREATE_GUARDED)
-> +	if (createmode =3D=3D NFS4_CREATE_GUARDED)
->  		oflags |=3D O_EXCL;
-> =20
->  	switch (open->op_share_access & NFS4_SHARE_ACCESS_BOTH) {
-> @@ -344,7 +354,7 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct svc_=
-fh *fhp,
-> =20
->  	v_mtime =3D 0;
->  	v_atime =3D 0;
-> -	if (nfsd4_create_is_exclusive(open->op_createmode)) {
-> +	if (nfsd4_create_is_exclusive(createmode)) {
->  		u32 *verifier =3D (u32 *)open->op_verf.data;
-> =20
->  		/*
-> @@ -366,11 +376,11 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct sv=
-c_fh *fhp,
->  		iap->ia_atime.tv_nsec =3D 0;
->  	}
-> =20
-> -	create_status =3D fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
-> -	if (create_status)
-> -		/* Might still succeed if no create is needed */
-> -		oflags &=3D ~O_CREAT;
-> -
-> +	if (oflags & O_CREAT) {
-> +		create_status =3D fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE);
-> +		if (create_status)
-> +			oflags &=3D ~O_CREAT;
-> +	}
->  	open->op_filp =3D do_lookup_open(&parent,
->  				       &QSTR_LEN(open->op_fname,
->  						 open->op_fnamelen),
-> @@ -392,14 +402,15 @@ nfsd4_create_file(struct svc_rqst *rqstp, struct sv=
-c_fh *fhp,
->  		goto out;
-> =20
->  	if (!open->op_created &&
-> -	    nfsd4_create_is_exclusive(open->op_createmode) &&
-> +	    nfsd4_create_is_exclusive(createmode) &&
->  	    inode_get_mtime_sec(d_inode(child)) =3D=3D v_mtime &&
->  	    inode_get_atime_sec(d_inode(child)) =3D=3D v_atime &&
->  	    d_inode(child)->i_size =3D=3D 0)
->  		open->op_created =3D true;
-> =20
->  	if (!open->op_created) {
-> -		if (open->op_createmode =3D=3D NFS4_CREATE_UNCHECKED) {
-> +		if (open->op_create =3D=3D NFS4_OPEN_NOCREATE ||
-> +		    createmode =3D=3D NFS4_CREATE_UNCHECKED) {
->  			/* NFSv4 protocol requires change attributes
->  			 * even though no change happened.
->  			 */
-> @@ -494,46 +505,34 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4=
-_compound_state *cstate, stru
->  	fh_init(*resfh, NFS4_FHSIZE);
->  	open->op_truncate =3D false;
-> =20
-> -	status =3D fh_fill_pre_attrs_unlocked(current_fh);
-> -	if (status)
-> -		goto out;
-> -	if (open->op_create) {
-> -		/* FIXME: check session persistence and pnfs flags.
-> -		 * The nfsv4.1 spec requires the following semantics:
-> -		 *
-> -		 * Persistent   | pNFS   | Server REQUIRED | Client Allowed
-> -		 * Reply Cache  | server |                 |
-> -		 * -------------+--------+-----------------+--------------------
-> -		 * no           | no     | EXCLUSIVE4_1    | EXCLUSIVE4_1
-> -		 *              |        |                 | (SHOULD)
-> -		 *              |        | and EXCLUSIVE4  | or EXCLUSIVE4
-> -		 *              |        |                 | (SHOULD NOT)
-> -		 * no           | yes    | EXCLUSIVE4_1    | EXCLUSIVE4_1
-> -		 * yes          | no     | GUARDED4        | GUARDED4
-> -		 * yes          | yes    | GUARDED4        | GUARDED4
-> -		 */
-> +	/* FIXME: check session persistence and pnfs flags.
-> +	 * The nfsv4.1 spec requires the following semantics:
-> +	 *
-> +	 * Persistent   | pNFS   | Server REQUIRED | Client Allowed
-> +	 * Reply Cache  | server |                 |
-> +	 * -------------+--------+-----------------+--------------------
-> +	 * no           | no     | EXCLUSIVE4_1    | EXCLUSIVE4_1
-> +	 *              |        |                 | (SHOULD)
-> +	 *              |        | and EXCLUSIVE4  | or EXCLUSIVE4
-> +	 *              |        |                 | (SHOULD NOT)
-> +	 * no           | yes    | EXCLUSIVE4_1    | EXCLUSIVE4_1
-> +	 * yes          | no     | GUARDED4        | GUARDED4
-> +	 * yes          | yes    | GUARDED4        | GUARDED4
-> +	 */
-> =20
-> -		current->fs->umask =3D open->op_umask;
-> -		status =3D nfsd4_create_file(rqstp, current_fh, *resfh, open);
-> -		current->fs->umask =3D 0;
-> +	current->fs->umask =3D open->op_umask;
-> +	status =3D nfsd4_open_file(rqstp, current_fh, *resfh, open);
-> +	current->fs->umask =3D 0;
-> =20
-> -		/*
-> -		 * Following rfc 3530 14.2.16, and rfc 5661 18.16.4
-> -		 * use the returned bitmask to indicate which attributes
-> -		 * we used to store the verifier:
-> -		 */
-> -		if (nfsd4_create_is_exclusive(open->op_createmode) && status =3D=3D 0)
-> -			open->op_bmval[1] |=3D (FATTR4_WORD1_TIME_ACCESS |
-> -						FATTR4_WORD1_TIME_MODIFY);
-> -	} else {
-> -		status =3D nfsd_lookup(rqstp, current_fh,
-> -				     open->op_fname, open->op_fnamelen, *resfh);
-> -		/*
-> -		 * NFSv4 protocol requires change attributes even though
-> -		 * no change happened.
-> -		 */
-> -		fh_fill_post_noop(current_fh);
-> -	}
-> +	/*
-> +	 * Following rfc 3530 14.2.16, and rfc 5661 18.16.4
-> +	 * use the returned bitmask to indicate which attributes
-> +	 * we used to store the verifier:
-> +	 */
-> +	if (open->op_create &&
-> +	    nfsd4_create_is_exclusive(open->op_createmode) && status =3D=3D 0)
-> +		open->op_bmval[1] |=3D (FATTR4_WORD1_TIME_ACCESS |
-> +				      FATTR4_WORD1_TIME_MODIFY);
->  	if (status)
->  		goto out;
->  	status =3D nfserrno(nfsd_check_obj_isreg((*resfh)->fh_dentry));
+> ---
+> Chuck Lever (4):
+>       NFSD: Do not send CB_RECALL_ANY to NFSv4.0 clients
+>       NFSD: Count the delegations held by each client
+>       NFSD: Name directory delegations in the CB_RECALL_ANY type mask
+>       NFSD: Send a meaningful CB_RECALL_ANY keep count
+>=20
+>  fs/nfsd/nfs4state.c | 27 +++++++++++++++++++++++----
+>  fs/nfsd/state.h     |  2 ++
+>  2 files changed, 25 insertions(+), 4 deletions(-)
+> ---
+> base-commit: 1d479c6b53f684b27da84ec352b7efb97f7f115f
+> change-id: 20260810-recall-any-keep-count-f50c2ae1b792
+>=20
+> Best regards,
+> -- =20
+> Chuck Lever <cel@kernel.org>
 
-This patch is making the pynfs DELEG8 test fail. It seems like this
-patch breaks the behavior where the server sends back NFS4ERR_DELAY on
-an OPEN while waiting for a DELEGRETURN. The server just doesn't send a
-reply until the delegation times out with it.
+Looks reasonable. Given that the Linux client ignores
+craa_objects_to_keep and just sends back a single delegation, this
+should keep things working the same even when it's brought into
+compliance.
 
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
