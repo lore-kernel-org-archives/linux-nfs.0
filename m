@@ -1,35 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5F84B4562BF
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 15:00:16 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B43FC473C8C
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 15:00:24 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786546824; cv=none; b=VhVd/SFvsHLV9n0w38U4fCD7N2sbi6+7oSrWl9jjx8K1WMNHb96egCR/ajl6FhujQbeSQFRd3AtNkoDGCMa921YXfq84ODFOl2Y3sn7hCvlYndiYJuRXrpzq2/umsvq7Pli5hMmKbmdmJ6VErTzK8pxDciDloEGhdIG342i2uBY=
+	t=1786546830; cv=none; b=rYKT8nAc2cVWkq4sqfRqtcpH2YgiVbUGKZkMCQ9VwPQvuPrlAq/BJEsKAx28T4YibJwcGSjhaZyK4kCggjofDbs2wH/WrH6ZHeJJer8ONMcRXvVZfAa2Khc56WCsK+P+uxnhcx1DjlsnkYdJKaFZw1IOOFJuItK7I08pM4vdlgQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786546824; c=relaxed/simple;
-	bh=eok3CyhHlg6Ahjqls7XMFtcX0LwYiM2dmJeBtlXraVo=;
-	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=cEWWOw8V0NtobZUDixuS4P4SJcpP+KEknZBbagcXpHO+3TkuP5w6DMHpo2nH5r6vEVEIho1ZIIuIh+kx415Nf0CGU272w93M5LsS39IkhsNJ11d8531ynDf97iS6aPVI69nleTUJCL2d+ysup529NmdmV9ljfaausbTVxQVt8l8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZUGbaVNw; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786546830; c=relaxed/simple;
+	bh=E7o11+OBgJEhb3VdL2UDBs5YekVOvKNcrDXxHCXuRrs=;
+	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
+	 In-Reply-To:To:Cc; b=NfJbzzmq675ynOUt8TAo6AsauFz77fyVHthcTR+rOqEOl4PV0Iyb8eIHDWbd1QeNZYiauWWJ3Z42WG2yG1RqhA9xUIDWgjNDrG9wjyUgoBJJN51N2e4GnfkRROBfn1s3bXBjZMK/8myJ6uTH/XV8lSh1rBonY+CmnhH2T10HNGM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gqEoLDN6; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZUGbaVNw"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id ECAA11F00A3A;
-	Wed, 12 Aug 2026 15:00:11 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gqEoLDN6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0790A1F00AC4;
+	Wed, 12 Aug 2026 15:00:14 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786546812;
-	bh=0RgjFZ/+AqApvNwZTGZ9wWOaE8LWx4eqd8kc3vpCzYI=;
-	h=From:Subject:Date:To:Cc;
-	b=ZUGbaVNwHLCLyoQ4OGB9lQQFdd3PhdsdTC+PiHwT7Zpf3NFgISGImTRSjE0tTEWcm
-	 e/k4bXHLfFTogqUFklEWlK3DdjxB0K92ybklGCEnW3Q0hjjCQd4MnrURVzzhxaMKm1
-	 ySONxe1qFgMLS3eVRgjBgFrzUY3Rs4XejMIiKruGI9cSbp3Z7wfyB90EFU82LIwv6z
-	 Q+CzsCW8dwr1g52K5cEhlQGzSwA0bnYdWkDGaaVL3dy1GhGAO+5VPYjqOAsVGWjEaC
-	 CxLyZ2qouk/XvzVZzeBUaP9hAXmgSzek8YYR3lo+pPa9w9+ST264e1+MrLpLJN7MbO
-	 REDQ2CvOJSaPA==
+	s=k20260515; t=1786546815;
+	bh=tdxB8vBDra85oOq1QPUfnHxAtpZxUMaT78Mh5WQQw8o=;
+	h=From:Date:Subject:References:In-Reply-To:To:Cc;
+	b=gqEoLDN6fDV5lLdT6F9APW43Paa5kYVu2hlnt0mMvEg8k40iDWlV2kCNNWT8ASBz2
+	 ThCIZk14slrmpBWllqML5cfNEd2W2g2pMePp9bX4aUYihAIxLBZotvFqZFtfo9647x
+	 EJqxDI7o9PVM0eIMpGMb7zlBzGvThALbsGQpIOvOzB6gDfhP7bWoTRgJpEhqubWzuc
+	 YTvk2gKxmgvCjtqr7lvvdsAIgb/ChtGjrhMB3+7003IGS1T+FpDfiesb9Z342mhRiT
+	 C0a3BNnSsL6Rz+TIwzKMCy8VCzn5EoXV/qjV4iRlVPcp7kNbyYB2bNkGWSLSumazck
+	 WkfCrasu4oycA==
 From: Chuck Lever <cel@kernel.org>
-Subject: [PATCH v2 0/4] NFSD: CB_RECALL_ANY fixes and a meaningful keep
- count
-Date: Wed, 12 Aug 2026 10:59:54 -0400
-Message-Id: <20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org>
+Date: Wed, 12 Aug 2026 10:59:58 -0400
+Subject: [PATCH v2 4/4] NFSD: Send a meaningful CB_RECALL_ANY keep count
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,79 +37,110 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WOzQ6CMBAGX8X07GpbfxBPvofh0JYFKk0h3UIkh
- HeXYjx6nM23k5kZYbBI7L6bWcDRku38CnK/Y6ZRvkaw5cpMcnnlN8EhoFHOgfITtIg9mG7wEao
- LN1Kh0Fku2frbB6zse/M+iy/ToF9oYpKlhVaEoIPypkkng+7oKyohIkXr6zRpLMUuTFvbKJLql
- yH+ZIwCOJSYG8X5OT/p7NFi8OgOXahZsSzLB+APfwDwAAAA
-X-Change-ID: 20260810-recall-any-keep-count-f50c2ae1b792
+Message-Id: <20260812-recall-any-keep-count-v2-4-a82f4ca23812@kernel.org>
+References: <20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org>
+In-Reply-To: <20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2104; i=cel@kernel.org;
- h=from:subject:message-id; bh=eok3CyhHlg6Ahjqls7XMFtcX0LwYiM2dmJeBtlXraVo=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqfIp0XrnZVNPJQdlppvL58Tf6zYMKNDslhWops
- 1TpQ/K17diJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCanyKdAAKCRAzarMzb2Z/
- l0QND/9y8Ejg7On2/q+QwEVeNjmkc1AcR6A4PsVernOUM6CKJFFhmQD26z48mv8hGAObkxZ11CO
- 1/xXCFWVdTyI2nMQmC7G3W24X0X3hawrDCpr0Z/bzIrV28P7VPTSjgEr02lNe6wL4Gb26kgcajJ
- JxmdERhbffw5KJTC0IpYK97tWBka86R73rgKfF0WASi8X27cvBvL7aS/jFtxxd5hTlrBOevn9Uc
- ZCdXP+4FcFbnprdPG7urhUgCiEa+eFFp5mPVteYADeK2Mk+BBDm/7EHOK5IizPEt1oNwgyWWxNw
- 6ryuQ10mGF16SPhSnAvbbVQxBSlETlpaODXwf4tYhuOq7jh3hbHSU1APWhpuRHO0ciUjswjvtzj
- I/D0xu12Znajp1Ad0c0ciTcmIWUUBpMqmQSCz+dyNK97ChjVgrYfjSvjw/+eumbLzD1JXPstVkV
- VVxkZ35gStmHKeeeyO7wyeOhI5l93uZuBEnrE6/7QubdIa5AOFPNnQZDM1Kng6Yht0BueUUbDPH
- rmkvE5qOAe/gTbs3EuwhRhZAeBUeHNXpiHBlLiEnDE4POlg65l6LgUn+NNKYh7EuYXY1mHqLZy1
- PYWXnHRTUfqSJZn7Av23czmI93EVKM3TXZYz8y+iKlmtvnE9u6iujotolGhxXsbQwrxTE/dHKXg
- gnXIazsgTnSpziQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3070; i=cel@kernel.org;
+ h=from:subject:message-id; bh=E7o11+OBgJEhb3VdL2UDBs5YekVOvKNcrDXxHCXuRrs=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqfIp7uwag+zBVT8qzb2+HyX1tD1V3BhElLS07r
+ YAgvaapNh2JAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCanyKewAKCRAzarMzb2Z/
+ lyEpEACac3pVnQTkCH5Td8wWbWsnA2qr86yogVKRsLdJ2n3hD/Hsfun0hwAjyzDMv850jRB3niO
+ PPs04ZDm4sRnPmTvozwdOWW01cA9hAsLMDjbvrTe6eKRAA7w+XzxmHu/6KxJJ63SeiN5YjvA52S
+ u3P3ZFOSSAmaYpDCSV5dEgOfcZraBrXmjzCEYhTHdkRCf7lK9kLdsRwFtclsRJOAl6pvQb8JiS/
+ fxGLTivSd5u9RE0G9H5Aenwb5X/92yBxni+9+85c50bv3WVTX4gic0wWB8mQKQtXmlG4FjUDhLi
+ K913AJjdPO2M4DfTfrRb4ySJcFZDHMaNKpNVX5rBedzmvVIc0eDNlEntUa1CkP9acDk5NUQjNrS
+ B8SN80s3ZJj7CKR2SocF1OAkZePwamCUGTpDKZLQ5ZqSxFo6uAm3HenZWc7Qost6qFNo4KT5R/y
+ C56SyjfHfGdMv0sxmJrGuj0Dby+Snq/8CAFFkUuNQWsmhRwLFOZXwYzdCF1+0eu0JhxIaneQMOO
+ q3ntFT5oy8qO+Cke44PPeaJUVgNddiRppJljAV3YORyK5b4LedSJkYoaycvRLJfRal1E8CZvqEu
+ 1TFfy2auYdXRrImQXM3naNWG1CVLypWZdXdBTHW0xwSBfx049yxguSLOOZ1eLuz5GmlFp9VFEgf
+ hHl6LepPmk0B1gw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-NFSD sends every CB_RECALL_ANY with craa_objects_to_keep set to
-zero, as RFC 8881 Section 20.6.3 does not mandate any particular
-way for a client to choose which delegations to choose, if any.
+deleg_reaper() sets craa_objects_to_keep to zero on every
+CB_RECALL_ANY. RFC 8881 Section 20.6.3 defines that field as the
+number of objects the client may keep, leaving the client to choose
+which of the excess to return, because the server cannot read lack
+of recent use as lack of usefulness. Zero asks for every delegation
+the client holds, including the ones backing files an application
+still has open.
 
-However, a zero value can result in some clients giving back more
-delegations than is necessary to relieve temporary memory pressure
-on the server, which needlessly impacts performance.
+A client that returns those must keep an OPEN stateid anyway, so
+NFSD trades a delegation for an open stateid and recovers nothing.
+Plus there's no reason NFSD has to reclaim the entire delegation
+working set on the first sign of memory pressure.
 
-NFSD intends the callback as a signal to return unused delegations.
-Only the Linux client has been tested against it, and that client
-ignores craa_objects_to_keep and returns only one unused delegation
-of the named types, so the fixed zero never produced visible
-misbehavior during our testing.
+Derive the keep count from cl_deleg_count so that each callback
+asks for one delegation. Both the shrinker and the laundromat re-arm
+while their condition lasts, so a client with more to give is asked
+again on the next pass.
 
-So, change NFSD so that each CB_RECALL_ANY asks a client to give up
-one delegation. Both reaper callers (the shrinker to relieve memory
-pressure, and the laundromat to cap the total number of delegations
-the server tracks) re-arm while their condition lasts.
+The Linux client ignores craa_objects_to_keep and returns unused
+delegations selected from the type mask alone, so the count changes
+nothing for it.
 
-NFSD sets no recall target and remembers nothing across CB_RECALL_ANY
-callbacks. RFC 8881 Section 20.6.4 prescribes the use of CB_RECALL
-to target specific delegations if a client fails to return any. NFSD
-does not take that step yet. CB_RECALL_ANY is asynchronous and
-reports no completion, so NFSD treats it as advisory.
-
+Fixes: 44df6f439a17 ("NFSD: add delegation reaper to react to low memory condition")
+Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
-Changes in v2:
-- Drop the gate that skipped clients holding a single delegation.
-- Cover letter rewritten to give performance rationale.
-- Link to v1: https://patch.msgid.link/20260811-recall-any-keep-count-v1-0-de9ca00493b7@kernel.org
+ fs/nfsd/nfs4state.c | 20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
 
----
-Chuck Lever (4):
-      NFSD: Do not send CB_RECALL_ANY to NFSv4.0 clients
-      NFSD: Count the delegations held by each client
-      NFSD: Name directory delegations in the CB_RECALL_ANY type mask
-      NFSD: Send a meaningful CB_RECALL_ANY keep count
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3017a93261ff..c8be38bc3c76 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -7944,6 +7944,7 @@ deleg_reaper(struct nfsd_net *nn)
+ {
+ 	struct list_head *pos, *next;
+ 	struct nfs4_client *clp;
++	unsigned int count;
+ 
+ 	spin_lock(&nn->client_lock);
+ 	list_for_each_safe(pos, next, &nn->client_lru) {
+@@ -7953,21 +7954,34 @@ deleg_reaper(struct nfsd_net *nn)
+ 			continue;
+ 		if (clp->cl_state != NFSD4_ACTIVE)
+ 			continue;
+-		if (list_empty(&clp->cl_delegations))
+-			continue;
+ 		if (atomic_read(&clp->cl_delegs_in_recall))
+ 			continue;
+ 		if (ktime_get_boottime_seconds() - clp->cl_ra_time < 5)
+ 			continue;
+ 		if (clp->cl_cb_state != NFSD4_CB_UP)
+ 			continue;
++		/*
++		 * This read races with hash_delegation_locked() and
++		 * unhash_delegation_locked() on other CPUs. A stale
++		 * count only skews the keep value; the next
++		 * laundromat pass sees a more current one.
++		 */
++		count = data_race(READ_ONCE(clp->cl_deleg_count));
++		if (!count)
++			continue;
+ 		if (test_and_set_bit(NFSD4_CALLBACK_RUNNING, &clp->cl_ra->ra_cb.cb_flags))
+ 			continue;
+ 
+ 		/* release in nfsd4_cb_recall_any_release */
+ 		kref_get(&clp->cl_nfsdfs.cl_ref);
+ 		clp->cl_ra_time = ktime_get_boottime_seconds();
+-		clp->cl_ra->ra_keep = 0;
++		/*
++		 * Ask for one delegation at a time. A larger request
++		 * reaches delegations backing files that applications
++		 * still have open. Returning one of those trades a DELEG
++		 * stateid for an OPEN stateid and frees nothing.
++		 */
++		clp->cl_ra->ra_keep = count - 1;
+ 		clp->cl_ra->ra_bmval[0] = BIT(RCA4_TYPE_MASK_RDATA_DLG) |
+ 						BIT(RCA4_TYPE_MASK_WDATA_DLG) |
+ 						BIT(RCA4_TYPE_MASK_DIR_DLG);
 
- fs/nfsd/nfs4state.c | 27 +++++++++++++++++++++++----
- fs/nfsd/state.h     |  2 ++
- 2 files changed, 25 insertions(+), 4 deletions(-)
----
-base-commit: 1d479c6b53f684b27da84ec352b7efb97f7f115f
-change-id: 20260810-recall-any-keep-count-f50c2ae1b792
-
-Best regards,
---  
-Chuck Lever <cel@kernel.org>
+-- 
+2.54.0
 
