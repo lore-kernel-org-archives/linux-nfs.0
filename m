@@ -1,42 +1,41 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B722D430CEC
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 17:36:26 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 53A1F470EA3
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 17:36:53 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786556187; cv=none; b=k201eVQGPe/jQ+t8yUH9Ih6GvbaW2uBpgkoPExKd5hoQK170Ki0fxcqd31Z0mRsePtRxUkI4QqHpxtN6qDgMbQ7eWD9SfsH34D6CI8ntnXWk9+B2iHEt2psyzWPavd2U7J5aoe0yWjPaw4d+UI5apykoJPcsvo5WtjevoQPNMjE=
+	t=1786556214; cv=none; b=Qk/jrNeaIIfXX6KxFsfLr/HNKl7WFMrY3+3DMTADXyfmuX6AVwSTC00jlJFkuO14ToR+0AdE4g9bFPP/ZHZtt+WZUnUA+uQYOw0LdiGAHWs6d2xSI+3hJj1z2wy4A3pH2xWd5iD92wZ44+xWlKzljkGBEA1t57uvE8JSpFJocnY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786556187; c=relaxed/simple;
-	bh=/gzHbDG7vy8PN6CUgxpgJ8RAPkcE8UaxHg0mu7y4ank=;
+	s=arc-20240116; t=1786556214; c=relaxed/simple;
+	bh=gYsQQfRbkDVPA15pGZ6xkgQG/sqAxcMSZMIGsO8GMZY=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=DOiLw8T3qrB+M967fWkqSqLnuURemj8RQz/I7m+hf5cxXzXNFUr0u6uCuhCKGuaqaNt3Nsq96ni0GVJdROptvhEELoDDoHuMXAZh++/82IwrdpjJrTccyfdl7FNC6Pf+18EcxxXUK+xxDUd2xMTyGAman1wgTb3tEFdh7CTqXv4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=c12F3MSV; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=kpm0gtQVpaU2XdqSOM5dZhrFlhkTJq/3Bg+QvyDEQOc+vTBToR1YYOUzBv2xXg8YK8B5veikNHyGqm2wSaWKsajjXVTfkhcxNn2bSOpE3MUh2En9pgcnE6+RwvKAyNTHykMqH6HNDIbLctJXgmHjd6Yb76jwM18N5TgEyKe2Jho=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Diok6rlM; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="c12F3MSV"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id D60B11F00A3A;
-	Wed, 12 Aug 2026 17:36:25 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Diok6rlM"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 85A341F000E9;
+	Wed, 12 Aug 2026 17:36:52 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786556186;
-	bh=9cb8uUbalsXtMHyy/BoQe2z2DtXQyl58rcRHuazpJqI=;
+	s=k20260515; t=1786556213;
+	bh=i2BBAqefsFN69LHwK29XBhCkUClBd7aFVvSkR69JF58=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=c12F3MSVafUNJQq2Ycf3mfcpqq7L+x5VtmzlHEJfX/mrKtYNplMt8JSFwrCujDk8X
-	 iXuRuS5WMGAWR9CkGwvxNKOEntCmkz6cXVCg+LJOioAICchdwXdmjstGpQJQFvvEIV
-	 L9UVdpInfoarDExpQ6n1QBDqXRhF+n6bYYIK7nUOSxDhz0TB2dtTBs1Fx/8JNWfpSA
-	 V8vckeg3ld1Als9IOClRkOOwmcskLy7J63z8Plv5xJSubBKOJuGhPRF+eXH7aq344S
-	 hDnACFgCZmRiXzUi3t5z7SfQ38M/ZLxdUPUOCN81/ol+KCrn1wvP0WL+0FcRus6Cs5
-	 hB2YW+CwDCsKA==
-Message-ID: <a2cfbd0dc381f3ebb40f5702be83c0ae4fd693c7.camel@kernel.org>
-Subject: Re: [PATCH v2 0/4] NFSD: CB_RECALL_ANY fixes and a meaningful keep
- count
+	b=Diok6rlMvtVsoVP69BK23CgCE/lPOHA0CVToxROQtC67zVNX5aoeg0Adkn+jOV3LT
+	 Fx3WMtRGbzi2DJ66oA4KC795CHFCqcsaeEjvt7JhVQRqE3XcJcjFQMiIESe0WhAoVu
+	 1DYZ7Nmtsc2Fu8BA3y6B++VbySGUHU4dWGoH/zSjnH2JW350ijgw/NnuPRdvg7iOVX
+	 JSn4L18dXdDDZHyR0BfMjQ3+/gCLg7eCfZ1CG161Afou/qJZxNLSnGT5aEB3o1N8fG
+	 txuq9ecuJMTdYaVjx8esEW5R4TBlHUMjqgEsAxVns7jjr1Yvxe5F7F8jYGNDUfzAhH
+	 wdOf+eY7MJalw==
+Message-ID: <b3a1318aff094018b6ca858f2ee9d4ee6d4340eb.camel@kernel.org>
+Subject: Re: [PATCH v1 0/3] Clean up fs/nfsd/vfs.c includes
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Wed, 12 Aug 2026 13:36:24 -0400
-In-Reply-To: <20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org>
-References: <20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org>
+Date: Wed, 12 Aug 2026 13:36:50 -0400
+In-Reply-To: <20260812142436.35042-1-cel@kernel.org>
+References: <20260812142436.35042-1-cel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,60 +120,20 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2026-08-12 at 10:59 -0400, Chuck Lever wrote:
-> NFSD sends every CB_RECALL_ANY with craa_objects_to_keep set to
-> zero, as RFC 8881 Section 20.6.3 does not mandate any particular
-> way for a client to choose which delegations to choose, if any.
+On Wed, 2026-08-12 at 10:24 -0400, Chuck Lever wrote:
+> A quick set of clean-ups that permit us to remove more version-
+> specific material from fs/nfsd/vfs.c.
 >=20
-> However, a zero value can result in some clients giving back more
-> delegations than is necessary to relieve temporary memory pressure
-> on the server, which needlessly impacts performance.
+> [ re-posting v1; the first post did not include linux-nfs@ ]
 >=20
-> NFSD intends the callback as a signal to return unused delegations.
-> Only the Linux client has been tested against it, and that client
-> ignores craa_objects_to_keep and returns only one unused delegation
-> of the named types, so the fixed zero never produced visible
-> misbehavior during our testing.
+> Chuck Lever (3):
+>   NFSD: Make the write verifier reset helper available outside vfs.c
+>   NFSD: Move NFSv4-specific CLONE logic into nfsd4_clone()
+>   NFSD: Remove xdr-related headers from fs/nfsd/vfs.c
 >=20
-> So, change NFSD so that each CB_RECALL_ANY asks a client to give up
-> one delegation. Both reaper callers (the shrinker to relieve memory
-> pressure, and the laundromat to cap the total number of delegations
-> the server tracks) re-arm while their condition lasts.
->=20
-> NFSD sets no recall target and remembers nothing across CB_RECALL_ANY
-> callbacks. RFC 8881 Section 20.6.4 prescribes the use of CB_RECALL
-> to target specific delegations if a client fails to return any. NFSD
-> does not take that step yet. CB_RECALL_ANY is asynchronous and
-> reports no completion, so NFSD treats it as advisory.
->=20
-> ---
-> Changes in v2:
-> - Drop the gate that skipped clients holding a single delegation.
-> - Cover letter rewritten to give performance rationale.
-> - Link to v1: https://patch.msgid.link/20260811-recall-any-keep-count-v1-=
-0-de9ca00493b7@kernel.org
->=20
-> ---
-> Chuck Lever (4):
->       NFSD: Do not send CB_RECALL_ANY to NFSv4.0 clients
->       NFSD: Count the delegations held by each client
->       NFSD: Name directory delegations in the CB_RECALL_ANY type mask
->       NFSD: Send a meaningful CB_RECALL_ANY keep count
->=20
->  fs/nfsd/nfs4state.c | 27 +++++++++++++++++++++++----
->  fs/nfsd/state.h     |  2 ++
->  2 files changed, 25 insertions(+), 4 deletions(-)
-> ---
-> base-commit: 1d479c6b53f684b27da84ec352b7efb97f7f115f
-> change-id: 20260810-recall-any-keep-count-f50c2ae1b792
->=20
-> Best regards,
-> -- =20
-> Chuck Lever <cel@kernel.org>
-
-Looks reasonable. Given that the Linux client ignores
-craa_objects_to_keep and just sends back a single delegation, this
-should keep things working the same even when it's brought into
-compliance.
+>  fs/nfsd/nfs4proc.c |  27 ++++++++--
+>  fs/nfsd/vfs.c      | 129 ++++++++++++++++++++++++++-------------------
+>  fs/nfsd/vfs.h      |  14 +++--
+>  3 files changed, 108 insertions(+), 62 deletions(-)
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
