@@ -1,99 +1,88 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DB49F434E47;
-	Wed, 12 Aug 2026 11:32:34 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 37AE943F0A6
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 13:08:11 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786534355; cv=none; b=CjYRadKxIo4QJRTuaK9xzgG9G6t+VsJcNL4Wet6Niwhr5r45CnDg+eO+mZBUnMwPB1fEKBO2vJFNmGMS+ZdDK0E4WrJ6Fx9Y1jVzTp24z8NwuTghQpRGTeWa/A9fohT9XZmeYeQyTZcq8KVGKSTfSRJowKnwp27Tw8dmbxv4B7A=
+	t=1786540092; cv=none; b=dQ+1RNt4yzrA1UWZT1segcKrpcWTi/bSYvhXKOQtjScikH5EpjVBKhHlWRh8Qg0Jo4NJnJNIF21ZcNNSYyD6ID5qRh36NawehXSsNMvmIIY0c3el4REy4m5oo8zeMBwiKj2d9JOs0Ggnj7DK0HfECKezDQgMbYMhg1TcaLp/A4o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786534355; c=relaxed/simple;
-	bh=sn+ts2ZQNfSNAwAtXCoxbTpeHPjyiWcgneDSzAIxzww=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:To:Cc; b=g/9vYh/Ly9cvc+KGahx4A4OI+Da7lVZ/ueAzKqFqNzSSg0t6WRXucq5Dtk6tGlAfKxktS8KrATAirSwjjrbR/YVYsW3Kup8jUNAqTnt5TVfsZOrkALPpJM+nYBF4ZJXMY2wUePbXtXsIiMHFF2S6fXN6VBZjHAXjWeKrK12pEFU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SNDiU84k; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786540092; c=relaxed/simple;
+	bh=MxtxiHUFGbpG7wyR5W/M29tb30zag0BJASeiKHwLsI0=;
+	h=From:In-Reply-To:References:To:Cc:Subject:MIME-Version:
+	 Content-Type:Date:Message-ID; b=nsA9T/GU6zjUDcyPovGk6pTOo8DZbNSeJPC692B4/SCPwYtajU1tNRP/m134OSb6ej5ObeGinPnnKkHKS+T6CP01oYp6K3wuxX6sFyuRiT/ydKGEoHEwCUVYPtBE2SofuOKl+rx4DmrRZI5LNVUHcshLOkLmCcJqJLqCzCA7RjA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=HBNVuXPb; arc=none smtp.client-ip=170.10.133.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SNDiU84k"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2D5321F000E9;
-	Wed, 12 Aug 2026 11:32:34 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786534354;
-	bh=pDBY8zosY0dtrX7wxrg+3LZhgYOykB9y0Qe0VTawtRw=;
-	h=From:Date:Subject:To:Cc;
-	b=SNDiU84k3x+vNeI+MqH2V5VBThuSvYdij5N+Co/zeO9E9k4c+ZGsEed1FnyEurziv
-	 PEIlD38hZxZKKwUxQlOF7L7pUTsEjqwdGjl49Q1vgKhsAdo5kwdziZCxcaV0v511v8
-	 HrI/LPjKinx6IT2i01f18mMz8CkiXlY8yiNDOLllxA1pahuQH6jwDuO6TKzs0UdSin
-	 jW1vjnmXcSG3yqZydIicNohfsqy7sDGpXZlMBr+zBIkWdb9eL3yFScup0ZmGVK2TcE
-	 sBOUzKa0Wk3ZiLOUi479nltEq1luUmFFPGyAWosGvQehbXdYs1LTErYgEjPBiNlddj
-	 oKtm6ixdggWwQ==
-From: Jeff Layton <jlayton@kernel.org>
-Date: Wed, 12 Aug 2026 07:32:27 -0400
-Subject: [PATCH] nfs: allow nfs4_handle_delegation_recall_error() to
- silently handle -ERESTARTSYS
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="HBNVuXPb"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1786540090;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=I3xqDyj2MmpztW1ops8Nu205Xj6JE2nK9d9TnUz1EEA=;
+	b=HBNVuXPbneWBsLBMIvbJZu4HQi2xE+5TSGcp+UEpGBMGCsXOiKl3/UzsBZOBx/hLPhbcMP
+	1orE0Yqz8y1Dm33VcZGg+r/lEfY2M8IzUuisFvIVqw/8Ifko+vEKLcB605BI9oJzJd0FK7
+	+lkIzTPsnvELLIVsinr1S14Cys3XZQ0=
+Received: from mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com
+ (ec2-35-165-154-97.us-west-2.compute.amazonaws.com [35.165.154.97]) by
+ relay.mimecast.com with ESMTP with STARTTLS (version=TLSv1.3,
+ cipher=TLS_AES_256_GCM_SHA384) id us-mta-588-szUloSf1MwK4mgbg-tv4vQ-1; Wed,
+ 12 Aug 2026 09:08:04 -0400
+X-MC-Unique: szUloSf1MwK4mgbg-tv4vQ-1
+X-Mimecast-MFC-AGG-ID: szUloSf1MwK4mgbg-tv4vQ_1786540083
+Received: from mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com [10.30.177.95])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (2048 bits) server-digest SHA256)
+	(No client certificate requested)
+	by mx-prod-mc-08.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTPS id 6A0831800646;
+	Wed, 12 Aug 2026 13:08:02 +0000 (UTC)
+Received: from warthog.procyon.org.uk (unknown [10.44.32.44])
+	by mx-prod-int-10.mail-002.prod.us-west-2.aws.redhat.com (Postfix) with ESMTP id 9B6A2426;
+	Wed, 12 Aug 2026 13:07:57 +0000 (UTC)
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+	Kingdom.
+	Registered in England and Wales under Company Registration No. 3798903
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20260810-jazzfest-unglaubhaft-miene-4d1cf4cf42d3@brauner>
+References: <20260810-jazzfest-unglaubhaft-miene-4d1cf4cf42d3@brauner> <20260728141344.1811120-1-dhowells@redhat.com>
+To: Christian Brauner <brauner@kernel.org>
+Cc: dhowells@redhat.com, Al Viro <viro@zeniv.linux.org.uk>,
+    Christian Brauner <christian@brauner.io>,
+    Marc Dionne <marc.dionne@auristor.com>,
+    Jeffrey Altman <jaltman@auristor.com>,
+    Steve French <sfrench@samba.org>, linux-afs@lists.infradead.org,
+    openafs-devel@openafs.org, linux-cifs@vger.kernel.org,
+    linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+    linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v3 0/2] vfs, afs, bash: Fix miscomparison of foreign user IDs in the VFS
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260812-nfserr-v1-1-620e439ec124@kernel.org>
-X-B4-Tracking: v=1; b=H4sIAAAAAAAC/6tWKk4tykwtVrJSqFYqSi3LLM7MzwNyDHUUlJIzE
- vPSU3UzU4B8JSMDIzMDC0Mj3bw0oI4iXcOkRAuztNREc0sDQyWg4oKi1LTMCrBB0bG1tQCd0qC
- 5WAAAAA==
-X-Change-ID: 20260812-nfserr-1ba86fea7901
-To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
- Jeff Layton <jlayton@kernel.org>
-X-Mailer: b4 0.14.3
-X-Developer-Signature: v=1; a=openpgp-sha256; l=957; i=jlayton@kernel.org;
- h=from:subject:message-id; bh=sn+ts2ZQNfSNAwAtXCoxbTpeHPjyiWcgneDSzAIxzww=;
- b=owEBbQKS/ZANAwAKAQAOaEEZVoIVAcsmYgBqfFnNCH/wwfF2GxIibDVBj8OfYs/Hh6srBRA/9
- BF2tydcHPGJAjMEAAEKAB0WIQRLwNeyRHGyoYTq9dMADmhBGVaCFQUCanxZzQAKCRAADmhBGVaC
- FaaQEACcvjY9fyGg/Kn02xZG5wtgJ+KTt6DwYvakr1DHzdwpzI4y0kQxO6GH1qYWJRqw6eL2lNj
- hDyLXuiZ0z0hKxYQfpgG7974qTtODEufFi83o8PydQ2sx7qRigXU5WH+AXIbfUnGt7RIc7qQt7u
- bB0es9y0zWul7S4J8VSUPhV0j0nwS6ttU4z7r4qEi4z44M55pULGu0eLtHvlST6XdZvPf2TWbnl
- AQseBlg3VoV6J1G/mfDykd0wfkDrBmaeFzz+RzVPlihnAtWbPedk3V+c+9peOsU8babxj4Hr4eM
- PGCd9T0K1gmNE2vQ/MM8GD/7NofQRJZJU0ll332L/cPBIPozq84OxoD/KWt13D1jCBeLquq5Eu1
- 7wHpf7tCC2HvTOqTn/uuDwVKCicqBNaZRBAV58YKxUJyW9ZOw0SeVL99KzyMj5fR/c1KygBvTgh
- G4FF/6EVMVH6OYe/kjVR8SoPSy9P9HKR++8uh9eYguZGHV8O5COWT7oze+7T+xkivfLdki1nokJ
- ih3LzvTDMzgYghgf7bACnILqLP+3pBPQDgvDTOGs1aM1ej/dmbICjoPiu/GE7s4cwweDtRd/AZC
- poBTBB/pS+BWmkmUpUocpjHWCsAaGTxxxgxTP5EnUKnyuvCvvvpdn2ICsJIYLE9o1fO7z7cWnzw
- p4mcHs5ADO2NCGg==
-X-Developer-Key: i=jlayton@kernel.org; a=openpgp;
- fpr=4BC0D7B24471B2A184EAF5D3000E684119568215
+Content-Type: text/plain; charset="us-ascii"
+Content-ID: <986589.1786540076.1@warthog.procyon.org.uk>
+Date: Wed, 12 Aug 2026 14:07:56 +0100
+Message-ID: <986590.1786540076@warthog.procyon.org.uk>
+X-Scanned-By: MIMEDefang 3.6 on 10.30.177.95
 
-Currently, when a process stuck waiting on a delegrecall catches a
-signal, it emits a scary looking printk():
+Christian Brauner <brauner@kernel.org> wrote:
 
-    NFS: nfs4_handle_delegation_recall_error: unhandled error -512.
+> > Note that chown may also need modifying in some way - but that can't
+> > necessarily supply the information required (for instance, an AuriStor YFS
+> > ID is 64 bits, but chown can only handle a 32-bit integer; CIFS might use
+> > a GUID).
+> 
+> Seems that some other changes are required for this. I'll take a look
+> once a new version is out.
 
-Allow nfs4_handle_delegation_recall_error() to accept and return that
-value without the printk().
+If you're referring to the chown thing, can we ignore that for now?  It would
+probably need some sort of new system call, but I don't know how that should
+look for now.
 
-Signed-off-by: Jeff Layton <jlayton@kernel.org>
----
- fs/nfs/nfs4proc.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5709c6fea85b..3354d84c5a9a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2302,6 +2302,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
- 		case -EAGAIN:
- 		case -ESTALE:
- 		case -ETIMEDOUT:
-+		case -ERESTARTSYS:
- 			break;
- 		case -NFS4ERR_BADSESSION:
- 		case -NFS4ERR_BADSLOT:
-
----
-base-commit: f5bbbfec59b4e2fb7520a91de3df8a6174325d6a
-change-id: 20260812-nfserr-1ba86fea7901
-
-Best regards,
--- 
-Jeff Layton <jlayton@kernel.org>
+David
 
