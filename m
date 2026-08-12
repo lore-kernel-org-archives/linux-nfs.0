@@ -1,42 +1,45 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 58800410D0F
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 10:26:36 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 578D53FCB1C
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 10:29:51 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786530397; cv=none; b=rmASUwmnlkinK4oVjqc4OpZauQ52bnOopOHpbtkACaeAE36V4h+hAi1vyS7cYRBTS27Yn1ay6aTU+pe66Bwr+sXPIvPcCSmpuiWljMqdBGhQ6xQ3iYa/7sWz3nL2cBQ484MvuQE/1g4qNSeRE37pvu8QrQoDcTn4l3PxEALnt3Q=
+	t=1786530592; cv=none; b=X6UsT0Hxgng13SoIJ5VfNn/Nw2pQCjqWwZ0dUNKCkmiA6IH806tktC/LXui+DaNhF+HyKyeXObSbmJOsJrlX/JKGTWUMNc6HvlN8m0hj77AVDqu7uu601da0bdL+D+p1kQTx9gBzE6f+2TvnDryh8WKggocgBd9JGK1RLIrG36g=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786530397; c=relaxed/simple;
-	bh=mP1bHXT+HGc26MMj3NmG/wjBXVn6qqREGy51Pt2v1TM=;
+	s=arc-20240116; t=1786530592; c=relaxed/simple;
+	bh=9IZQKZpk6XEZ/Ghv+l+tVNwPJXQg0lHo2KxddbYof0A=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=YtgaP6s6ioFi+vOWFo3w85vYKDoPvceEdkfylsBV4lL1n5Xoh3zJ6Mb1UUe+zn+RwwM5/4qySxL1n8u7jFAU0oG/lR4JkccpSpbR5BqICOmH+CR1TFKvfTJ9CVRkpFkGuQJzJ1dkPnu1PKBxyyUsoQFhkRY5vPT1YkQmyXaB5yk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=nXYZwM/6; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=iHGBSBL7yf1sJFTj88/qhrM43H4YzsTt9eLbg08ASzxk4kOdXMM8LcIlFAf4NdDyt41fzKLDX94hF1otfbmDOPC7pvkXZ3OKgCOSUs4iBpCs8SVPSg6w4IURpB1PMxUfOdTc6rP944NlKEYF6o55FzNHiT6HwY14CIHEceBuFEQ=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gSKJWfHK; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="nXYZwM/6"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 64BE01F000E9;
-	Wed, 12 Aug 2026 10:26:35 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gSKJWfHK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5063C1F000E9;
+	Wed, 12 Aug 2026 10:29:50 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786530395;
-	bh=OzhKbVULxu22k3JgEPHhSSG8qZfj0vgyxG0xzSokr14=;
+	s=k20260515; t=1786530590;
+	bh=9IZQKZpk6XEZ/Ghv+l+tVNwPJXQg0lHo2KxddbYof0A=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=nXYZwM/6fo8t7c2zQsED0jO5FWgH6IeYosDbkbggu6qOMpf5i58jzucgJjH1bvjQE
-	 zhkZIn1acsw7HeqSlKmW6wImpFi21kTYqHJff37i4XFPfTNjjpAJ0N8Fb/ROsfePlG
-	 8twrqrIkI6rRM7/eaRnVnrT2/1l8byBk6fzhi/IeGvBh4FhJIdqZ299k7ntNHTfpJP
-	 rYuquhQ14MjEjMZdady0/U2+DBfNvijrK53cSnyKwgmPPbCk7LWlcluVAdFrHTTuPe
-	 Or8qty2GDjNFR6wOg003MGE9XrLreBeCtuPVFpWFNbFqJtNQiEkQFhV4Ke5JCEbbYh
-	 CO61dcmkELbQw==
-Message-ID: <fdf2b1208d6bfcafbffff7a4a757e46b9a0a7c16.camel@kernel.org>
-Subject: Re: [PATCH 0/4] NFSD: CB_RECALL_ANY fixes and a meaningful keep
- count
+	b=gSKJWfHKGgvGYdFP9RR/9GxJuK0irkAvEMVeG0/+88v/T/eubCVe+sGQ/F0YPLZ8y
+	 jczc7u6J8EksNwBg+fqvYY1KMjkpRJaYhUka7bG2wBiSZhGQRe+cfkV8cHggiGDmBu
+	 g3sxBmJIcOnd63+Q7zfCMGaadvygL0jn6BNDvO1V8gWVIgRQVAvxhSYhDauBf98+Yk
+	 iK9n61+YUm7Gw+YdKudfb+MWLMFrV++TJBUkqrmjlex9PMi3CcGHnkWqcMRlyWcBM9
+	 0p6cW0xT12478gQU7QPukx5L89wI0gHpxsU8F0ObexA0GNdTtdaKIf7H4ZqCktfVDD
+	 pSgSR9cow4Wlw==
+Message-ID: <dece989f5e1df1343713183f068fcb6d8c63ddbf.camel@kernel.org>
+Subject: Re: [PATCH 4/4] NFSD: Send a meaningful CB_RECALL_ANY keep count
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 12 Aug 2026 06:26:33 -0400
-In-Reply-To: <20260811-recall-any-keep-count-v1-0-de9ca00493b7@kernel.org>
+To: Cedric Blancher <cedric.blancher@gmail.com>, Chuck Lever
+ <cel@kernel.org>,  "ms-nfs41-client-devel@lists.sourceforge.net"	
+ <Ms-nfs41-client-devel@lists.sourceforge.net>
+Cc: NeilBrown <neil@brown.name>, Olga Kornievskaia <okorniev@redhat.com>, 
+ Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>,
+ linux-nfs@vger.kernel.org
+Date: Wed, 12 Aug 2026 06:29:49 -0400
+In-Reply-To: <CALXu0UeKoYPq0FOGe2vQP2p9txTzEkscc10hy4Lw_S6=wK1a3Q@mail.gmail.com>
 References: <20260811-recall-any-keep-count-v1-0-de9ca00493b7@kernel.org>
+	 <20260811-recall-any-keep-count-v1-4-de9ca00493b7@kernel.org>
+	 <CALXu0UeKoYPq0FOGe2vQP2p9txTzEkscc10hy4Lw_S6=wK1a3Q@mail.gmail.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,60 +124,62 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2026-08-11 at 15:52 -0400, Chuck Lever wrote:
-> NFSD sends every CB_RECALL_ANY with craa_objects_to_keep set to
-> zero. RFC 8881 Section 20.6.3 reads that as a request to retain no
-> delegation at all, whether or not the delegation backs a file an
-> application still has open.
+On Wed, 2026-08-12 at 08:17 +0200, Cedric Blancher wrote:
+> On Tue, 11 Aug 2026 at 21:57, Chuck Lever <cel@kernel.org> wrote:
+> >=20
+> > deleg_reaper() sets craa_objects_to_keep to zero on every
+> > CB_RECALL_ANY. Per RFC 8881 Section 20.6.3, that asks the client to
+> > retain no read or write delegation at all, whether or not the
+> > delegation backs an open file.
+> >=20
+> > The field names a count the client may keep. The client picks which
+> > objects to return, because the server cannot read lack of recent
+> > use as lack of usefulness. Zero leaves nothing to choose among. A
+> > client that complies returns the delegations backing its open files
+> > and reopens each one with CLAIM_DELEGATE_CUR, so NFSD trades a
+> > delegation for an open stateid and recovers nothing. A client that
+> > reads the zero as "unspecified" does nothing instead, and
+> > nfsd4_cb_recall_any_done() inspects only the reply status, so NFSD
+> > cannot tell the two apart.
+> >=20
+> > Derive the keep count from cl_deleg_count and ask each client for a
+> > single delegation. A larger request reaches delegations an
+> > application still has open, and both callers re-arm while their
+> > condition lasts. Skip a client holding one delegation rather than
+> > send the zero again. That gate subsumes the list_empty() test above
+> > it, and it belongs above the NFSD4_CALLBACK_RUNNING test_and_set. A
+> > continue below that point latches the bit with no callback in
+> > flight to clear it.
+> >=20
+> > The Linux client ignores craa_objs_to_keep and returns unused
+> > delegations from the type mask alone, so the count changes nothing
+> > for it. The gate does. The reaper goes quiet for a client walked
+> > down to one delegation.
+> >=20
+> > Fixes: 44df6f439a17 ("NFSD: add delegation reaper to react to low memor=
+y condition")
+> > Signed-off-by: Chuck Lever <cel@kernel.org>
 >=20
-> NFSD meant the callback as a signal to return unused delegations.
-> Only the Linux client has been tested against it, and that client
-> ignores craa_objects_to_keep and returns every unused delegation of
-> the named types, so the fixed zero never produced visible
-> misbehavior.
+> ms-nfs41-client hit that bug when implementing CB_RECALL_ANY
+> (https://github.com/kofemann/ms-nfs41-client/commit/3abe73c8ab0d924450a1c=
+1c480f0b14f963f9531)
+> with Linux 7.0 nfsd.
+> What should existing NFSv4.1 clients do if they encounter a
+> objects_to_keep value of 0? Right now it recalls ALL delegations,
+> which basically is a "reset" of all delegations.
 >=20
-> The NFSv4.0 recipient bug is fixed on its own so it can be
-> backported to LTS ahead of the rest. An NFSv4.0 callback service
-> rejects CB_RECALL_ANY, and nothing brings the callback channel back
-> up afterward (patch 1).
 >=20
-> The keep count comes from a new per-client delegation count rather
-> than a walk of cl_delegations (patch 2). deleg_reaper() runs under
-> nn->client_lock, and cl_delegations is serialized by nn->deleg_lock,
-> which nests outside it, so the reaper cannot count the list. It
-> reads the counter without the lock and may not depend on the value.
->=20
-> Each callback asks a client to give up one delegation. A larger
-> request reaches delegations that applications still have open, and
-> both reaper callers re-arm while their condition lasts. A client
-> holding a single delegation is skipped rather than sent the old
-> zero. That strands one delegation per client, which this
-> best-effort design accepts for now.
->=20
-> NFSD sets no recall target and remembers nothing across callbacks.
-> RFC 8881 Section 20.6.4 prescribes CB_RECALL against specific
-> delegations once a client fails to return any. NFSD does not take
-> that step yet. CB_RECALL_ANY is asynchronous and reports no
-> completion, so NFSD treats it as advisory.
->=20
-> ---
-> Chuck Lever (4):
->       NFSD: Do not send CB_RECALL_ANY to NFSv4.0 clients
->       NFSD: Count the delegations held by each client
->       NFSD: Name directory delegations in the CB_RECALL_ANY type mask
->       NFSD: Send a meaningful CB_RECALL_ANY keep count
->=20
->  fs/nfsd/nfs4state.c | 27 +++++++++++++++++++++++----
->  fs/nfsd/state.h     |  2 ++
->  2 files changed, 25 insertions(+), 4 deletions(-)
-> ---
-> base-commit: 1d479c6b53f684b27da84ec352b7efb97f7f115f
-> change-id: 20260810-recall-any-keep-count-f50c2ae1b792
->=20
-> Best regards,
-> -- =20
-> Chuck Lever <cel@kernel.org>
 
-Looks reasonable.
+Like Chuck quotes above:
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+"Per RFC 8881 Section 20.6.3, that asks the client to retain no read or
+write delegation at all, whether or not the delegation backs an open
+file."
+
+I think a compliant client would need to continue to return everything.
+
+We should note that the Linux client apparently ignores
+craa_objects_to_keep and just returns a single delegation, so you could
+follow suit (but know that it's not following the spec).
+--=20
+Jeff Layton <jlayton@kernel.org>
