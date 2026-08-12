@@ -1,143 +1,152 @@
-Received: from mail-oa1-f54.google.com (mail-oa1-f54.google.com [209.85.160.54])
+Received: from mail-oa1-f47.google.com (mail-oa1-f47.google.com [209.85.160.47])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3FB7634EF0C
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 06:17:03 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.160.54
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 64F05370AD7
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 06:26:21 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.160.47
 ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786515426; cv=pass; b=p7wbnsN3Pwpzs7MBXSN/RR4oZp9WtDoWdi1A+hcU1sO2GjjSzLtV3lgZUzkYRHnf/B5NS4eVz0vRiCWomrb9z6MDi2YSuOHGl8K3Uqlw9xG290s1/rFmzKy3FW83HLZPbJNn6Yslagi8df8eEdNI/9ccBxV2i/EH16b+m0YZNsE=
+	t=1786515984; cv=pass; b=Q65s+ccgkNSYYmu/oZqim3a7PEiacasNQoqHZsqf6qcwJgEzeXWpEDUYe9U4ObytDBc+DUuPwP9y4Q9u3xsVQShv60BgYT4GLct/TLBKQwb7neXKJ8ZQaaUhrZTPsx9VJCb7P63d4XAvzTGmTT6lmDj+W+JtphvWZwfmkLZp6BE=
 ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786515426; c=relaxed/simple;
-	bh=LXl7BrqzqXwTRS8jMN1RBu6UzEntwVKt1rN8dzTDVqk=;
+	s=arc-20240116; t=1786515984; c=relaxed/simple;
+	bh=Qk+f7qUpisuefi5qZX0Yny7kz4qTIrW8Nup/wNmAHos=;
 	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=TW/b2MbOIxpOejK8p9jv8d7CyCiWOLkCtaEEH62NGTffoscL8BF7eibSsh0WShiydaOJ2hXCCBdiabi9UgSJwBX/Fj5jtleg3UKhSWmRgebRnRfIykHDK+QOhsjoViNN7o040KHtHUZIXU7rpL0hys2qQ8N0IQRk6l88n8wrWB8=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=fTVImhat; arc=pass smtp.client-ip=209.85.160.54
+	 To:Cc:Content-Type; b=FZvNqcX6x28IAHq6XP15U3HvrRSJf+2RiWkgZcULF7zKEXT9MaW2NCz2/Lw7bl7TaEcQOezVk/IUFPJgElRFYlkDvJt5K2zvSPOZZkpszCE9ZrLsGKedwj4WcMNro1yJFa3XYQhapXdPXTYmngRu7yXfWWjRGqCKMHnf+hX26IU=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=nEU40JE5; arc=pass smtp.client-ip=209.85.160.47
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="fTVImhat"
-Received: by mail-oa1-f54.google.com with SMTP id 586e51a60fabf-459281bc13bso368995fac.2
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Aug 2026 23:17:03 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1786515422; cv=none;
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="nEU40JE5"
+Received: by mail-oa1-f47.google.com with SMTP id 586e51a60fabf-448b69cfc6dso702051fac.3
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Aug 2026 23:26:20 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1786515979; cv=none;
         d=google.com; s=arc-20260327;
-        b=no1XkqNgLiyO5HSYG2aHniOvGZaoF9PtaW/ZF6daa35VEOBOn/SPffptQZRZoGKsb0
-         a2Y79BseL+WyUy7vrzjYpAz/omr+xDz54Oi5sMfeiMKJ3U7CSPtrmPhpJ6Zv8oDNnSdU
-         SpO4MOFhygzqNAT5YZBH5QXHrd9xEngBxcd/vJ8tOM8ufg2jZrijeZgL9wQNC8XPof9E
-         yZkKISGnDNySJiiGEbrBWHCoiRYaTU78rwMshB69rnyL3BOJgjZJtUiGK1FEeTtkJMSK
-         0rlwW2q6LZ2nDxHOZNIcztfW4nalwzREYFResBTpo3NAxXp7OIieCsH5Kxbw54jljENr
-         8S4A==
+        b=kb8gDewAQuKtgbOPrBRVGcIn9inTzFAVi6VcmFYudOEYwhD35WdJpCotsoidZuXWys
+         0OXc6zvJ1kEVuUX7Q35MgVNOxlvU9K24xhFs56YFDhYg2Ie7zZAdk0uc1qvSzcVFjlK3
+         hmaCXrAOXOtvcuERPhC0LfHee2DprfdLSA/4+Ucy4zPOZb4oplVcZ5ilHS4Bc56YHpVl
+         DukmyYeh72sRXEphpoPSC8aHzEtxMR9RbybIM/qKzWAty1oFKOl/vqfSTtU2YtMktEJK
+         yTXawvHoKUEvlJBUdALnMfJgKtPUhMXqE48PksDk6HODxQwjovJxQzHjkqjU16jIbj/0
+         yOEw==
 ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
         h=cc:to:subject:message-id:date:from:in-reply-to:references
          :mime-version:dkim-signature;
-        bh=IQ9zGywIcuABVN/oeLCBGsPZxOuB0JajQofLjw/eNss=;
-        fh=MvBGFMmnTRizgudY9xcE9tJ4CejMKQ9kUJ/aPkButX8=;
-        b=NSmlAlseK1rteKHyHphSFJhD0Aybr1m1N5j3oC7O5wC9UJCk2f3KsHbaD0iPRIPXEn
-         FpxSp7IeId2OhMQjZldaM9AvL/ynBkmZbtndpuyrtl3/YNwcKUJMjmyXnjfv023yndC9
-         cV0gEdgMHISa21kkcIs8GJiMUQ6lkmTEu93vYmSzX1Y1xQ00s4YZJL1P+mR7SWmUg05z
-         PWEnFrS31BLOiZc4n7wpIaqicxd2RdoFVmozOBHF+igmCaAGIcgico2I30kNV8tc9wpY
-         YNdMgUt8PQbPPERMrlPNPKSlHzKHtHCJhBnOAEYdVi4IQSYDSdCXaAojCjhbQrCv/iJ6
-         r2sw==;
+        bh=fFqugCRDKSBfvtZWDMDqD/M/4b3jiz9j7nvBE43yWwc=;
+        fh=sNFcx3E5+MHIuF7+QDvApCYG39vFHPuxOJmf4rGcdEE=;
+        b=g4O0W5d0Xe1JXPbooog1LKj9GB7oE2KIyEUheVv97BBDpjU5uiJcm8P4+5DT80p666
+         sZ84J5+mF1P2S5afDoXovjMHdI2o5HYu9q6Lymv8Mv1y4sc8LCFlEs5pS13Kpot2ec3p
+         tseLAI6BoI7sK3VRJSHK18Bw2FbBES3rZkPfrcuLirKx9ZceKdHhKer2ZHGYPjK2YPfh
+         Ytkr6MGn+uaseotM5O/8UQ5wn/gcU/+osZwzOJt2L7LXW4IYRSz96X+LrOXanDmF/yv+
+         uBsigY2hn8Uj5ynGd6jAtkD2Wxrv/4JgTusF1FDcVOTEolwJitpBAXlCC4EHbfbIAJso
+         hnrg==;
         darn=vger.kernel.org
 ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786515422; x=1787120222; darn=vger.kernel.org;
+        d=gmail.com; s=20251104; t=1786515979; x=1787120779; darn=vger.kernel.org;
         h=content-type:cc:to:subject:message-id:date:from:in-reply-to
          :references:mime-version:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=IQ9zGywIcuABVN/oeLCBGsPZxOuB0JajQofLjw/eNss=;
-        b=fTVImhatse6sN4J/7APg+QqO7Z9zwP55tgzF30zE3Pwc92sNh2PQZ2c5+KP2YZd5Iv
-         NTfEeeBRXq+fGxujsbXcKVJjlH1HMbMToMFL1C2l1u5dk4qszFXVD1ON01PRQZaJJBaF
-         rcHzvz9dpLhX/ZK3O2gy0CvLd5JlharW9zO0Bi/HqCZR2RtWjIB2repmIWJTarLQ3BO8
-         q2Kbn+/NfIjeoHN3ymZ2jjjiLZ+lZq3qbmQt9H7/ZGncDZ6mA+ugSoZLGdkxoc0uIdtw
-         puCDg3Bj69fFj0ypAGhadB4xc5p0rkIeGZhGSYmRbs38TPXr+bstCT/belBHVBHONrRF
-         4L/A==
+        bh=fFqugCRDKSBfvtZWDMDqD/M/4b3jiz9j7nvBE43yWwc=;
+        b=nEU40JE52EtkTGFf6QD0Dr4inqAlD/YzDxenFdLN3sDGUpTiLc7iq2LkGMRXlWR1K8
+         /uQBM3YcE+yBYrboYFxzbcFFYihGXk9UVG2Eh1wNIW6rwQANK+b3TN8Tys22ObKcwwPP
+         OxewT3TlP0ojGBOQlPIHDw/v1VgmArIEMIS0SY6IGNhjSosm4qajFUhHTHVrKISRzIIp
+         f+aY0PNiOOs9mjutvs9i2UgwSEaSrhnTgIJqw+DhBDcA+64O2tDMMwuIGqyw4KkTzhYQ
+         KxjfkPlSLtVhP47hk99pd21E2RlPDtz0tl+RWrFAERN3+j4XD0kOOvv3ki5uERznrl+t
+         w8oQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786515422; x=1787120222;
+        d=1e100.net; s=20251104; t=1786515979; x=1787120779;
         h=content-type:cc:to:subject:message-id:date:from:in-reply-to
          :references:mime-version:x-gm-gg:x-gm-message-state:from:to:cc
          :subject:date:message-id:reply-to:content-type;
-        bh=IQ9zGywIcuABVN/oeLCBGsPZxOuB0JajQofLjw/eNss=;
-        b=hsaCjQzhJSEfChBI6uWVdPPPWrJgPV+dNzvsDtzrz3AeTax5LOwjUlFcAgBqCXDRWW
-         7s00nJmJfJe5+rTU0nFiu7dCehLKTulsuOI+XbxYs//fVTXbehF1b/P3Tb+hDMzcm+8v
-         MMq8NLkcfw0mtvCYUJFT5beYKaMUs2EZPDUjcp8ulVG8N+vJkHKomBWfGz+hPf9HwL6e
-         o/D00VxOET/rBkyJzT6GHHpC3awYOhkuwEQ9nMj5iN9E7EGDAR4X8fSx9fuphZx2YyKE
-         JP+Y702jfPZra3nGeOIeMo4Wl6LYpOfmEXjDH9/EugIohZ2zx6jWpgeuRTR9L44qZiaP
-         ZCGw==
-X-Forwarded-Encrypted: i=1; AHgh+RqhC6WL6+qF0n5orO+zF4uSA1GzkljTIAIG9REbMphjuH/+mqt1aA7MPM5ry6zEcSsWTDIT1fV0kKU=@vger.kernel.org
-X-Gm-Message-State: AOJu0YyaVO+BTSRMR+F1K+AlHUNk4pmJqrX1i5MmfGRBCGATEErYOUcX
-	MSZiiF6v0L4EB+rgst8k7Vaqu3hDcP9u8tb/59302Cn+3P3EPQKEzzGATeeNkNecr+fwxjIkjxi
-	hV0yw2LVqzbfZyWRi/U9yEnwck5PaI4I=
-X-Gm-Gg: AR+sD10HjUnn5DDH9FX7hmaY5X3vNP4j/Cw6lE0XpVpdZuvr7PJmqZoCm93hi0u//+7
-	yvnU7e6NqOROQohZL1dl98hOHyOPwyP5+Bso/gShIWUlL7tJ9pkLd5As9+Qa5dOWf60BG67cR8Y
-	HApYSOFnGyxfxqo8I4UZwYcJB3nG+cSMfTrj7W6hGcIn0BaOUtUSQclMgSX66rs11mRS54WGrrb
-	CSeaUapX/EpZ2HhCR0pC6TtY8T45fpvgVBtFYMiWni7OYB0lpvRmbtxWaR2zoIQHZ98BqOmhasV
-	pKoK1dQzrFQ5mxX0sC2vSywYQjxHKNI4UcM1BrCtxRaWzA==
-X-Received: by 2002:a05:6870:ff98:b0:442:175:cea7 with SMTP id
- 586e51a60fabf-45e3e634ce6mr2516216fac.1.1786515421866; Tue, 11 Aug 2026
- 23:17:01 -0700 (PDT)
+        bh=fFqugCRDKSBfvtZWDMDqD/M/4b3jiz9j7nvBE43yWwc=;
+        b=fSax61G4H4aM+WhQjMapw0FS9re1Rh6ccuGIF4NX//EkTw+aAGv/73ikNlFL7QE8L4
+         wrh4KKYLf9eQqTlM3OBvSRYAVfYRfxrNiMkshsdMGWT+r3gIJIR4H+NgDR5PODT2Yh1x
+         JCLjirSGcbXE3MxU7W+xjGj2nr/oree1aNO6uJzPd5YBoCP8Sb/vUidEMV4TYbPBMik2
+         /uk3uEF1XFlbvtnkgonBhv5vfgCa1pvwmkjIpFI6rYwHHSK0yH77zoZqdDQOIgNebVpT
+         cec3aGWwAEKELaL917ma0P0DWdbqjZqeoKuXAUUPLfvHlhH0m6mrIqcGoLuqjDEjvCO3
+         BxWQ==
+X-Forwarded-Encrypted: i=1; AHgh+Rpw2kUx59vBWnM1U3SiODDvxAOc6mGF5ASzMmI0KM0kXa24dG2zjQBJCGZ4EiUUGVORiDwsGejHA1E=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yw90SVEX5bcmu5hKDYQN+I2FzNT7CPggnoXtjHpjYMcF70IHnRE
+	9X30sMCWmS1sq4nYV59zgKFfP4Muqfbb/HKkU6QRrNgWqAXWyMRiS5Qfih0xF91H2ZUnbnrsyaU
+	rY7t5lw1yL3xH2ismGnVWfyMbpkAXykg=
+X-Gm-Gg: AR+sD11kuZ57Ld7yxLUoYHHXjCzOW62+omReeFIBZua+s5+5jkxg0F/+jJGF+F6fZr/
+	H6lzMqm7MIlSoGe9g+c4YCPqgEXE51+N3OT2npkrlJy0Hh41rVVB7dENPorChFaGfDkK/yNk6CX
+	zhIBm/6H80yHoPIQAGV7Mda1tnHZfOW53+7YhXUBCFYQYKbk5ewmeLlVua+6mDBby5xtq8j65GM
+	f+V+zYKBV3WQvud5ARYJsQiVF29RSoGv6hBllJzD6UdE7LDSd3y2Vkc5uIVV4KmbjgqHz8Xpv8R
+	yOeJwLv8pr7dDNDjsFvr6yiT/t7lW5AuKNFZRCu5Z/y0bQ==
+X-Received: by 2002:a05:6871:2313:b0:451:d946:1dbc with SMTP id
+ 586e51a60fabf-45e3e71ebc8mr2082014fac.7.1786515979221; Tue, 11 Aug 2026
+ 23:26:19 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260811-recall-any-keep-count-v1-0-de9ca00493b7@kernel.org> <20260811-recall-any-keep-count-v1-4-de9ca00493b7@kernel.org>
-In-Reply-To: <20260811-recall-any-keep-count-v1-4-de9ca00493b7@kernel.org>
+References: <20260802195328.175328-1-f3lix.dev@gmx.de>
+In-Reply-To: <20260802195328.175328-1-f3lix.dev@gmx.de>
 From: Cedric Blancher <cedric.blancher@gmail.com>
-Date: Wed, 12 Aug 2026 08:17:00 +0200
-X-Gm-Features: AUfX_mwkR5QWa7OEAOSEIdcfNjEbM-go0maaprDm2bc1WoyXYyUFSE718za2dwI
-Message-ID: <CALXu0UeKoYPq0FOGe2vQP2p9txTzEkscc10hy4Lw_S6=wK1a3Q@mail.gmail.com>
-Subject: Re: [PATCH 4/4] NFSD: Send a meaningful CB_RECALL_ANY keep count
-To: Chuck Lever <cel@kernel.org>, 
-	"ms-nfs41-client-devel@lists.sourceforge.net" <Ms-nfs41-client-devel@lists.sourceforge.net>
-Cc: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
-	Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom Talpey <tom@talpey.com>, 
-	linux-nfs@vger.kernel.org
+Date: Wed, 12 Aug 2026 08:25:00 +0200
+X-Gm-Features: AUfX_mwnAxnwXmyL1JUGoqSQyh0wzY3M8rODdd-LpchdDuzABPnjW8H3WsJT1CM
+Message-ID: <CALXu0UehYh4Kdjj3ioTy+c_9C5504ke18RufKZ0r79VfyPAEqw@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4.2: request mode after CLONE
+To: Chuck Lever III <chuck.lever@oracle.com>
+Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+	Peng Tao <tao.peng@primarydata.com>, Felix Hoffmann <f3lix.dev@gmx.de>, linux-nfs@vger.kernel.org, 
+	linux-kernel@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 
-On Tue, 11 Aug 2026 at 21:57, Chuck Lever <cel@kernel.org> wrote:
+On Sun, 2 Aug 2026 at 21:58, Felix Hoffmann <f3lix.dev@gmx.de> wrote:
 >
-> deleg_reaper() sets craa_objects_to_keep to zero on every
-> CB_RECALL_ANY. Per RFC 8881 Section 20.6.3, that asks the client to
-> retain no read or write delegation at all, whether or not the
-> delegation backs an open file.
+> The NFS server can clear setuid and setgid bits when CLONE modifies the
+> destination.  The client currently omits mode from the post-operation
+> attributes, so the cached mode can retain setid bits after the server has
+> removed them.  A local process can then execute the file using those stale
+> privilege bits.
 >
-> The field names a count the client may keep. The client picks which
-> objects to return, because the server cannot read lack of recent
-> use as lack of usefulness. Zero leaves nothing to choose among. A
-> client that complies returns the delegations backing its open files
-> and reopens each one with CLAIM_DELEGATE_CUR, so NFSD trades a
-> delegation for an open stateid and recovers nothing. A client that
-> reads the zero as "unspecified" does nothing instead, and
-> nfsd4_cb_recall_any_done() inspects only the reply status, so NFSD
-> cannot tell the two apart.
+> Request mode in the CLONE compound's GETATTR.  This lets the ordered
+> post-operation update install the server's mode before CLONE returns.
 >
-> Derive the keep count from cl_deleg_count and ask each client for a
-> single delegation. A larger request reaches delegations an
-> application still has open, and both callers re-arm while their
-> condition lasts. Skip a client holding one delegation rather than
-> send the zero again. That gate subsumes the list_empty() test above
-> it, and it belongs above the NFSD4_CALLBACK_RUNNING test_and_set. A
-> continue below that point latches the bit with no callback in
-> flight to clear it.
+> Fixes: e5341f3a5762 ("nfs42: add CLONE proc functions")
+> Cc: stable@vger.kernel.org
+> Assisted-by: Codex:gpt-5
+> Signed-off-by: Felix Hoffmann <f3lix.dev@gmx.de>
+> ---
+> Tested on x86-64 using an NFSv4.2 loopback mount with Linux NFSD and a
+> Btrfs export:
 >
-> The Linux client ignores craa_objs_to_keep and returns unused
-> delegations from the type mask alone, so the count changes nothing
-> for it. The gate does. The reaper goes quiet for a client walked
-> down to one delegation.
+>   - before this change, the client retained mode 04775 while the server
+>     stored mode 0775, and the privilege transition reproduced in 10/10
+>     non-debug runs
+>   - with this change, both client and server reported mode 0775 and no
+>     privilege transition occurred in 10/10 non-debug runs or 3/3 KASAN
+>     runs
 >
-> Fixes: 44df6f439a17 ("NFSD: add delegation reaper to react to low memory condition")
-> Signed-off-by: Chuck Lever <cel@kernel.org>
+> The reproducer requires write authorization to the destination; NFSD
+> rejected the same operation against a non-writable 04755 file with EACCES.
+> A working reproducer is available privately on request.
+>
+>  fs/nfs/nfs42proc.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+> index ab86246fc364..35a4909d51b7 100644
+> --- a/fs/nfs/nfs42proc.c
+> +++ b/fs/nfs/nfs42proc.c
+> @@ -1302,7 +1302,8 @@ static int _nfs42_proc_clone(struct rpc_message *msg, struct file *src_f,
+>                 return -ENOMEM;
+>
+>         nfs4_bitmask_set(dst_bitmask, server->cache_consistency_bitmask,
+> -                        dst_inode, NFS_INO_INVALID_BLOCKS);
+> +                        dst_inode,
+> +                        NFS_INO_INVALID_BLOCKS | NFS_INO_INVALID_MODE);
+>
+>         status = nfs4_call_sync(server->client, server, msg,
+>                                 &args.seq_args, &res.seq_res, 0);
 
-ms-nfs41-client hit that bug when implementing CB_RECALL_ANY
-(https://github.com/kofemann/ms-nfs41-client/commit/3abe73c8ab0d924450a1c1c480f0b14f963f9531)
-with Linux 7.0 nfsd.
-What should existing NFSv4.1 clients do if they encounter a
-objects_to_keep value of 0? Right now it recalls ALL delegations,
-which basically is a "reset" of all delegations.
+Chuck, what do you think? Does this apply only to NFS CLONE, or to NFS COPY too?
 
 Ced
--- 
+
+--
 Cedric Blancher <cedric.blancher@gmail.com>
 [https://plus.google.com/u/0/+CedricBlancher/]
 Institute Pasteur
