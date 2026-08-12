@@ -1,75 +1,75 @@
 Received: from flow-a7-smtp.messagingengine.com (flow-a7-smtp.messagingengine.com [103.168.172.142])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 45B4F41CB2D;
-	Wed, 12 Aug 2026 09:57:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A1ACC41379E;
+	Wed, 12 Aug 2026 10:08:52 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.142
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786528634; cv=none; b=lvNQp+rgVJGqnpT9rVuXkGQXdGY+MJj4dCHELk6MkYsyempUR7ETDEh3aC2q3sxY9rs8pCl4i1lMhKqyX1MYbbnRfEA/09UTUyutSEY5/3ejQ19NA+JtzY6BqkKRcSMnZR3gtE0WS0l67DOMxqqm8WbhmL9zKaMSFdvXfPTNTMc=
+	t=1786529334; cv=none; b=DvpkIACyyJoTKelXJ9P4iw/1nXcC/ds96T8wBJTEGmEJSUS7P3sYscsL0j4vCy5bfe0JIo6IHRfbDJapsBmMwaK5m7F2kruqwqN4IF+jypIYPyi9701h00MXGp3//dTXApElA3i9luqNdXLQF7jC9WE2aT/ZLdzAu3BJDCep89E=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786528634; c=relaxed/simple;
-	bh=Zx8pDB6g8Kii5wqtqGe7ppeuYLhSjJgKSbBBGDRiPU0=;
+	s=arc-20240116; t=1786529334; c=relaxed/simple;
+	bh=g+DD3uHXa4UUhT/lPNztmr+/Ptgyo2Iymel1zvvVQDY=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=q0DiEuXHQLV2ryGMB7bVXfVkYLS+kaiv9rOkbL4NIfPijBIqv7t7oG92JqEUQWxu6ly0lWb2zLQhvNpvcLYY7KccF6RGpCidRZdLFw2DXgcXQRdB/LmeYpQ7OsRe20raBCeqpBgf1i6wvgCprimffVgTPMZOc49T8w6l1GpVZbM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de; spf=pass smtp.mailfrom=jaseg.de; dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b=ZWurAWcr; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=jnFJzfto; arc=none smtp.client-ip=103.168.172.142
+	 In-Reply-To:Content-Type; b=f1/RAlCN4gAHfLQ1LPMyixT00GxZ818MzyN1/Ka9flSYG01GIcEdiYCyDP0QQY5t1cA9TT2zBCNx2z/RkV9u8/wxx8z+xzhCb189VdNSw46ExaVg9Vf1EU7y8qhZhL5ioGVofX9qn9OCtvXUdSy7D7vw8Fjo1UcTR4FRwYEot3I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de; spf=pass smtp.mailfrom=jaseg.de; dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b=DcXGvPte; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=UjdjRg4+; arc=none smtp.client-ip=103.168.172.142
 Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=jaseg.de
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=jaseg.de
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b="ZWurAWcr";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="jnFJzfto"
-Received: from phl-compute-01.internal (phl-compute-01.internal [10.202.2.41])
-	by mailflow.phl.internal (Postfix) with ESMTP id 3C9FD1380188;
-	Wed, 12 Aug 2026 05:57:11 -0400 (EDT)
+	dkim=pass (2048-bit key) header.d=jaseg.de header.i=@jaseg.de header.b="DcXGvPte";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="UjdjRg4+"
+Received: from phl-compute-05.internal (phl-compute-05.internal [10.202.2.45])
+	by mailflow.phl.internal (Postfix) with ESMTP id BBF2A1380318;
+	Wed, 12 Aug 2026 06:08:51 -0400 (EDT)
 Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-01.internal (MEProxy); Wed, 12 Aug 2026 05:57:11 -0400
+  by phl-compute-05.internal (MEProxy); Wed, 12 Aug 2026 06:08:51 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=jaseg.de; h=cc
 	:cc:content-transfer-encoding:content-type:content-type:date
 	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:subject:subject:to:to; s=fm3; t=1786528631;
-	 x=1786535831; bh=EhHKwdKM1yc/CfVWe4UOIDuPAVGA3p3ZiR3TRLo68EY=; b=
-	ZWurAWcrO5oZdtEPmZtocYvy6AV01AahFXUyTdHsT0+DJwJJrfSK0XQBWf4CNmxi
-	JWHrdfN8DiWC8vUKb/jJzPWGzQDCPMGFjDPajtnKN3N1uLnVtYyIzllHAjBmmvYN
-	HdtTXSyy+6cgcE/GYna4jIGNzn0zTfnRmAeHvc/KSQhSF19nZAqT2Y0dGe0oRWJ8
-	OcJWO1LS1UCXQ7cvITgclieSIJAIPF6DK77jiuh9Upms/QmSAIMAwZ3+Tt/I4ltz
-	yiktEDVxZhTYHmU4USUsev3A4H+F4LGpGd1S+/3Cq/j3cD/WRZZwfGjyc3U1oTzf
-	WYZedHoU963WaJO2FqmTKg==
+	:references:reply-to:subject:subject:to:to; s=fm3; t=1786529331;
+	 x=1786536531; bh=bW88MBwEWiHxXalK9p7mEtRxunSdhzNV0Ppwj/k9i1k=; b=
+	DcXGvPteCscZI/GwRFTH4mv+X4SBB/L2nxEuJXbaNHkr7F0smm74zCR8ytyfyDK2
+	deNYonkvGo9MorQPdzMgQpumMiqEhc8kh7MDjUKKqGqjt+dgXudLF2NAd+JuTt7x
+	UOp9kU5qnPaxYmSlfLw9SLn1YvREorfEChCB8Vdv59wlD+g3/yCoYgGcpIqSe4Rc
+	Qq1tBLIylDAWQwRLdfmoCCE0zKkoMgVOuw4NGvt6C++AcqG/yFKk+wuMQ/frzzUe
+	WpyHueUkS66e1tAjVlj6aRNRY0MVy/A61UttJXizY4zHHKHxwuCQ04mYK+JdJibV
+	BW5DkvddWVJNd+e4921zzA==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:content-type:date:date:feedback-id:feedback-id
 	:from:from:in-reply-to:in-reply-to:message-id:mime-version
 	:references:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786528631; x=
-	1786535831; bh=EhHKwdKM1yc/CfVWe4UOIDuPAVGA3p3ZiR3TRLo68EY=; b=j
-	nFJzftoUyOhx0iuIsp809iKT+Vl5BM7p4K21mivtVLaE0Q3O/axViMtkHhq0PNx8
-	fnPUPUqWOil5GNeG1qX5kc2x1H1y8SBNGuSMKphq6Cp+eI1jmXmFm5w11mlNLp/H
-	Q8WRc4xU5Sm5KdidKmAbs+cVZ6KKytmxd390MreUAK4+A9saBgdrOIcEhTcM9zma
-	ijVk3zVDSyLCkUR84HCt40x6MEsvtKO+Qjuwf2m/l8pQXK/JOCPfskJscMvc5vWH
-	4IBHN+wdv5DpzLz+V8C6hZ/ZAaLSDJUMjMKPr1Z0eRjBE3Bsp9Gyak+5RKR+uAMi
-	uMUgF60LOJws9qOdZMiyQ==
-X-ME-Sender: <xms:dUN8akp1LtgF57mkMifyjGWooDezmto2YOXMyfBugosGI-EhK6TgbQ>
-    <xme:dUN8ahW94MRFVaDZxI_WFQYULpafOYFTyR32ZrcMs3nz1ENZPkbGc1n9lm2XMvz9y
-    B60n1Bgd9BOjm4dSuxm7nWkB-eqYwDGyZVqV-ogZ4DjQEEJy-82BU0>
-X-ME-Received: <xmr:dUN8ajYuucSdJiCHU9oRJJINGse1tOWKmr52dSrvuX5E6UtoWaZ3vmNpz5gDeG8p6t2yL_k-csynv8K_Ty1VN6E>
-X-ME-Proxy-Cause: dmFkZTFnqHB+QAaKfDQjW9D4jGyVFcpA4ZfYq+XsdCheHQ1Cv+90Ot8B4MS4g5RXsHrbcY
-    gkt1BA1rw9cagEz/S0Ac2U7EsqF7DLCgLpCkDa3C3WCjc3GZUwmc8bAjltKjJg0QKxG+Ph
-    rCspg0M4YQ8Fy4cHxWZ/khO1XnIDW+6xK0bHpn2Lq6jz2nni7TmGeqVE1rgVRKTf1WXo85
-    MVmoAxHTC/Z1NGMQVl+rPEBclzLpstBKfZAeNsWOWqzlnZ+3zsPux/r2Jct9Z8fJu7q8WC
-    SulO5qzLxjLLfZSlQmmTNVxiMNXhFc6dPqOOXyoB3oNdktGtJaiAQoajvh6xJX5DSgT1bO
-    WUTjoUPf0j0DZZkAWs5IwNekrtaIiQmJ2dlG9RvXqn8bjfwwOq8hcbNNvw0LRe1efISe8I
-    15xJstyd7QgXtyqSN+1wHnSOBY141cLgwg0PgyvSXXSEBnPc9LzFoY+X5ZnH3CFu4XSvtp
-    KWPwMN9WL4yL8fZ8F0qzgZ29rFA1zMENVBaBghXUMQPRsQpFce2otNqARuI8aXSPMwx6/D
-    MeyBNNwe6M2Li4+tZoEpDORU338B8LESQJBvfQuokfJx6E2P6S3FSx4EnwYIA982P8d8+1
-    wcEuaRezgU4FT+SyMbJHMrw4hZ9cMBP0nlxhyvYbffJ267v7eqGfbxx+rO1A
-X-ME-Proxy: <xmx:dUN8ashOKqdbSREO4OhcBfuqehnSCJlMy2cq4ssM8S3OJkH7LfDiUw>
-    <xmx:dUN8anrEBBRoAoDpuO7jWY4FJMu9GcTvmXAzItNMPB5gWIPanbcZjQ>
-    <xmx:dUN8aoUVQT0F4EubYVwtGqEJg9AXbMVlPLQ3itWQ2HIHge51WBR2Ag>
-    <xmx:dUN8aor8VZw9gKb62idBD1DVFey6ThUyP4isRVDtfutcsNOAahB_aw>
-    <xmx:d0N8av6L8ecf0NiQyi07oEvZGVap3m5iH2aoSzwRsMwHVxu_ypMg_olu>
+	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1786529331; x=
+	1786536531; bh=bW88MBwEWiHxXalK9p7mEtRxunSdhzNV0Ppwj/k9i1k=; b=U
+	jdjRg4+0h4GBVHbZWuRmenc5MOZBfXytCFvmTozoVejQhqsVKAEMlXEwYPkPtGUf
+	ngjYTyAlntHn8cPfnVBmFXK6yymSNOQjVjq/zODcJ/9KAsZQleveajikxRPmdHh+
+	f0699mdyLBUNwQDcrQyRiireEzWnN1ycYuWE7UFyW7W5Vk+y62fJjCiUztDkiwHF
+	hSPudpSXapetWUF82JoBdX+pfYcfIkKdL7WAcPaR+mxL4Agav8Dq2b1FFMhPkhW0
+	HB0CWybFVT+kC+5ykPmgP4BfbRihc8/zeqNji8x9JptmpqNW06HCLUF8eo8SwZoq
+	IYnBLOl1NKyId+2gBMSzQ==
+X-ME-Sender: <xms:M0Z8agx7iq5l6vNO6xYCruRD2E00yv5vuI2Kb3O7lpjSeZknJuQQxg>
+    <xme:M0Z8atE67uJ8acOVlANAZcbJPqLF1EXgJHG8w-W29FC42CpoMUpPc6zJZrUmQ15pJ
+    vbAW4CmdwXunbNC3IL4ubajn9C7kB0m_c4Th5Y1NuVPh6cIuhZOS6A>
+X-ME-Received: <xmr:M0Z8ao6-Ga9RNzEg3L_Tve-n8wkgt46prWBGzOHpl3dDvS1SWuS8m7L0jyPxpVTOqCKd2Q0SAuTvsdN3islXKgI>
+X-ME-Proxy-Cause: dmFkZTFhXuUc5zonLNYLcZR1VVfiawIf/DLo3p0z5ttoTk/im5FO3AIzDhACbr4L+QCnil
+    kioW5B72/SP07lPyYbCILOUlCTgqnf/GMHpVt2rW3DvDsF8fWXLyV6Ac927tGENmhoEL+J
+    Z6CH2rvUSCSrM3xrC6dBhmoeT9oKOxUe4lTyzrsaEkFV1JXqZigC3Blmzh555hht6TIiKi
+    4nTF00vMvYIsG9kgYkE+A7k3OF7cYtOAnFjzfRjDuHBWPJ8P5jOo39HJ5TosgHthcL4QlG
+    P7LPfpZKOLHflDDP05PIzu6Ek0lvi9TNUbB3XsXC6/c/eoqN+joQ+KYmRU6qOJdnW6tfk2
+    b3LcfBVqFT/qDJEWQC1jHMYXTbxwbN1oIMefnFPjOiXoCu9W7XlYR2+Vi6xD+4IcDtaHDf
+    3Pk7JEFjV5aRi/7eHGIdN9qQLITdCzsUHDcCHNYmXmuCjX0de6WRjIKRBxkr9zr/UoSGMy
+    BNKaooHXOUsyG6uKaR7kNVptOhuOAnNTQ7wosLA3fxbSinTppxLVYVo701XXDmkSXpvxOt
+    2fnf6YwlDC373uXVWWSjQbW5oUSUiaeZBnj2S+q+kGyVEaXlZUP3YiSxUlbXsnbIPZIJSU
+    LpZLpLWNEokxMls5XhgH+3e+Mki9vSCEGaM/bL8SmICNy1uQbJHeVjIUfaAg
+X-ME-Proxy: <xmx:M0Z8ar5LFW4HLTNx65wrmfFVFhE9YUH4fWdaEbGOL_R2dQ7JIIx9kQ>
+    <xmx:M0Z8arveqDruVQu_W3KqNZ2-dNqOPrxild92m5A8icNTm2aZXyRXQQ>
+    <xmx:M0Z8aoGd6MFhQRaDPRdZ0DLf5Q5xuyIoonETpFoTn-LlvXMTUatv4g>
+    <xmx:M0Z8ag6NID7YDETuV96A4Hm8RKzm3lppAKyjDREHWTD8S7uA_ah42g>
+    <xmx:M0Z8ajPt2vz0J2SwGT_bgJZVQ8rEA86QoRBfb4QhSwW7QoKJpm_Hd2Xr>
 Feedback-ID: i60a14417:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Wed,
- 12 Aug 2026 05:57:01 -0400 (EDT)
-Message-ID: <c5376b88-cc68-420a-ad8f-d494db9c7b1b@jaseg.de>
-Date: Wed, 12 Aug 2026 11:56:59 +0200
+ 12 Aug 2026 06:08:41 -0400 (EDT)
+Message-ID: <9765f7ea-36bb-4c7b-a19b-7facec97b762@jaseg.de>
+Date: Wed, 12 Aug 2026 12:08:39 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -77,19 +77,12 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH v2 13/13] dm crypt: wipe key material before kdump
-To: Milan Broz <gmazyland@gmail.com>, =?UTF-8?Q?Jan_Sebastian_G=C3=B6tte?=
+Subject: Re: [PATCH v2 01/13] kexec: add CRASH_WIPE_SECRETS to wipe secrets
+ before kdump
+To: Baoquan He <baoquan.he@linux.dev>, =?UTF-8?Q?Jan_Sebastian_G=C3=B6tte?=
  <linux@jaseg.de>
-Cc: kexec@lists.infradead.org, linux-kernel@vger.kernel.org,
- linux-arm-kernel@lists.infradead.org, linux-mm@kvack.org,
- keyrings@vger.kernel.org, linux-doc@vger.kernel.org,
- linux-security-module@vger.kernel.org, linux-crypto@vger.kernel.org,
- linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org,
- linux-integrity@vger.kernel.org, linux-afs@lists.infradead.org,
- netdev@vger.kernel.org, linux-fscrypt@vger.kernel.org,
- linux-fsdevel@vger.kernel.org, dm-devel@lists.linux.dev,
- Andrew Morton <akpm@linux-foundation.org>,
- Baoquan He <baoquan.he@linux.dev>, Mike Rapoport <rppt@kernel.org>,
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+ Mike Rapoport <rppt@kernel.org>,
  Pasha Tatashin <pasha.tatashin@soleen.com>,
  Pratyush Yadav <pratyush@kernel.org>, Dave Young <ruirui.yang@linux.dev>,
  Catalin Marinas <catalin.marinas@arm.com>, Will Deacon <will@kernel.org>,
@@ -103,7 +96,7 @@ Cc: kexec@lists.infradead.org, linux-kernel@vger.kernel.org,
  Jens Axboe <axboe@kernel.dk>, Christoph Hellwig <hch@lst.de>,
  Sagi Grimberg <sagi@grimberg.me>, Trond Myklebust <trondmy@kernel.org>,
  Anna Schumaker <anna@kernel.org>, Mimi Zohar <zohar@linux.ibm.com>,
- James Bottomley <James.Bottomley@HansenPartnership.com>,
+ James Bottomley <James.Bottomley@hansenpartnership.com>,
  Marc Dionne <marc.dionne@auristor.com>,
  Eric Dumazet <edumazet@google.com>, Jakub Kicinski <kuba@kernel.org>,
  Paolo Abeni <pabeni@redhat.com>, Simon Horman <horms@kernel.org>,
@@ -113,64 +106,68 @@ Cc: kexec@lists.infradead.org, linux-kernel@vger.kernel.org,
  Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
  Alasdair Kergon <agk@redhat.com>, Mike Snitzer <snitzer@kernel.org>,
  Mikulas Patocka <mpatocka@redhat.com>,
- Benjamin Marzinski <bmarzins@redhat.com>
+ Benjamin Marzinski <bmarzins@redhat.com>, kexec@lists.infradead.org,
+ linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+ linux-mm@kvack.org, keyrings@vger.kernel.org, linux-doc@vger.kernel.org,
+ linux-security-module@vger.kernel.org, linux-crypto@vger.kernel.org,
+ linux-nvme@lists.infradead.org, linux-nfs@vger.kernel.org,
+ linux-integrity@vger.kernel.org, linux-afs@lists.infradead.org,
+ netdev@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+ linux-fsdevel@vger.kernel.org, dm-devel@lists.linux.dev
 References: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
- <20260811-crash-zeroize-rework-v2-13-9561d13c2340@jaseg.de>
- <8654c2d4-8d9d-43f5-9256-adf2915209e9@gmail.com>
+ <20260811-crash-zeroize-rework-v2-1-9561d13c2340@jaseg.de>
+ <anw9ILJiO5xIjP4f@MiWiFi-R3L-srv>
 Content-Language: en-US
 From: =?UTF-8?Q?Jan_Sebastian_G=C3=B6tte?= <contact@jaseg.de>
-In-Reply-To: <8654c2d4-8d9d-43f5-9256-adf2915209e9@gmail.com>
+In-Reply-To: <anw9ILJiO5xIjP4f@MiWiFi-R3L-srv>
 Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 8bit
 
-On 8/11/26 22:18, Milan Broz wrote:
-> On 8/11/26 7:53 PM, Jan Sebastian GÃ¶tte wrote:
->> Wipe volume key/iv copies kept by dm-crypt with
->> CONFIG_CRASH_WIPE_SECRETS. The backend tfms are already handled
->> separately.
->>
->> Add a list tracking struct crypt_config instances when
->> CONFIG_CRASH_WIPE_SECRETS is set. Structs are tracked here to avoid
->> having to enumerate them through some roundabout way before kdump, when
->> we can't safely take locks anymore.
+On 8/12/26 11:30, Baoquan He wrote:
+> On 08/11/26 at 07:52pm, Jan Sebastian Götte wrote:
+> .....snip...
+>> @@ -142,6 +170,7 @@ void __noclone __crash_kexec(struct pt_regs *regs)
+>>   			crash_save_vmcoreinfo();
+>>   			machine_crash_shutdown(&fixed_regs);
+>>   			crash_cma_clear_pending_dma();
+>> +			crash_wipe_secrets();
 > 
-> Well, dm-crypt has crypt_wipe_key(), which can be called through a 
-> device-mapper message.
-> It also sets keys to zero in the crypto API.
-> 
-> Why do we need yet another way to wipe keys here, reimplementing 
-> everything twice?
-> 
-> I can imagine an emergency wrapper callback that will suspend dm-crypt 
-> and call existing code.
+> I remember when crash_cma added this, we argued a lot about the risk,
+> finally it's added in with an added note to tell it's an opt-in feature
+> and risky. I don't know if it opens a Pandora box, I think anything
+> wanted being here need prove anything else has been tried, and the thing
+> is very very important. If we don't guard the door well, one day one guy
+> cold come and said I need ask Oracle database to do some transactions
+> before juming into kdump kernel because the actions will save billions
+> of dollar.
 
-I originally decided I'd keep these function separate since you can't 
-rely on memory allocation/freeing to work during panic. crypt_wipe_key 
-currently calls kfree_sensitive, and inside crypto_*_setkey there's also 
-kalloc/kfree calls hiding.
+I see your point.
 
-I could rework the patch to call into crypt_wipe_key, but I'd have to 
-make that avoid memory allocation/freeing. The direct kfree_sensitive 
-call can be replaced with a memzero_explicit, but I think I'd have to 
-add a dedicated "wipe without allocations" function to the crypto 
-backends as an alternative to setkey with a zero key.
+> And what does security people say about this wiping? Is it very
+> important information and wiping is mandotary? There's no any other way
+> to wipe it or pollute it, no way in kdump kernel?
 
->> Use custom wipe handlers even for things like ivs that have existing
->> wipe functions elsewhere because we need to use crash_wipe_memzero
->> instead of memzero_explicit. The crash_wipe helper memzero_explicit's
->> the target buffers and flushes data caches. On ARM64, missing that cache
->> flush could lead to the zeros not being written to DRAM before the kdump
->> code turns off the data caches moments later.
-> 
-> Please no. It looks to me like you are trying to fix this on the wrong 
-> layer.
-> This way everyone will need their own memzero...
+I'm doing both - my kdump kernel does a linear memzero of all of DRAM. 
+However, that's too slow - it takes several hundred milliseconds, and I 
+want these cryptographic keys gone within no more than 10 ms.
 
-You're probably right. I'll remove this from the next version and make 
-sure the caches are flushed properly during kexec instead.
+Doing this in the original kernel is cleanest I think, because to do a 
+targeted erase in the kdump kernel, that kernel would have to know all 
+the original kernel's symbols, and it would have to forensically 
+reconstruct it's memory content similar to the crash utility. I think 
+that's too complex and error-prone to do in this use case.
 
- > Dunno, but I really do not like dm-crypt becoming completely bloated 
- > with code
-> that has nothing to do with the original purpose of this driver.
+I can imagine one alternative way to approach this, tell me what you 
+think: Instead of registering wipe handlers that memzero places on 
+panic, I could put an optional registry of (addr, len) descriptors into 
+crashkernel memory that the original kernel populates with the PAs of 
+buffers to clear ahead of time. Then the kdump kernel could do the 
+actual memzero. This would remove all code from the actual kdump path 
+here. The registry could be made per-core to avoid locks.
 
-I feel like "delete key quick" is a pretty normal function for crypto code.
+> I noticed it's
+> happening on en embedded target, is it possible you do this on your
+> embedded kernel tree, but not mainline tree?
+
+I could keep it in a vendor tree, but I think the functionality is 
+useful beyond my particular use case.
