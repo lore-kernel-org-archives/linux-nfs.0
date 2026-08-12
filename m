@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8E0C846EC8B
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 15:00:18 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5F84B4562BF
+	for <linux-nfs@vger.kernel.org>; Wed, 12 Aug 2026 15:00:16 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786546824; cv=none; b=JX0jXJy3Ze1XXVbuWlOlhiP3WuyAscMArj528WlKvP2/PLqndsJt2i6s+/NaGrVHwPgxIi1h3syabesJy5CfBT+IPzJj5MMig6MSLNvuIcvne4C1w/eAtoaQAEOCiqitzH3un6T29s3qb7zx+ScI4vHYosSvc+hKQZYpNxyMyE8=
+	t=1786546824; cv=none; b=VhVd/SFvsHLV9n0w38U4fCD7N2sbi6+7oSrWl9jjx8K1WMNHb96egCR/ajl6FhujQbeSQFRd3AtNkoDGCMa921YXfq84ODFOl2Y3sn7hCvlYndiYJuRXrpzq2/umsvq7Pli5hMmKbmdmJ6VErTzK8pxDciDloEGhdIG342i2uBY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
 	s=arc-20240116; t=1786546824; c=relaxed/simple;
-	bh=0in4Ax2goUIi92RZ669bQFXmx2GvATN4Ol6lL/N4kGo=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=Q19t2R/k0CYyMgjYEarOQP/QXV6vDV2nYhXsZ6rXepgizu+aZXZkelmqr89WVtg2tSzL7WaXfOY4l9ltyzxVUsMGTdfvs38kiVDw1+hz5nJhPyQZaSlmwJJeIiR9taxfD3cQp+9+QkQ80zP9jtuTCRdqxHI9joprzWJEqZ8MMTg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hET/+OUv; arc=none smtp.client-ip=100.103.45.18
+	bh=eok3CyhHlg6Ahjqls7XMFtcX0LwYiM2dmJeBtlXraVo=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=cEWWOw8V0NtobZUDixuS4P4SJcpP+KEknZBbagcXpHO+3TkuP5w6DMHpo2nH5r6vEVEIho1ZIIuIh+kx415Nf0CGU272w93M5LsS39IkhsNJ11d8531ynDf97iS6aPVI69nleTUJCL2d+ysup529NmdmV9ljfaausbTVxQVt8l8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ZUGbaVNw; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hET/+OUv"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 790361F00A3D;
-	Wed, 12 Aug 2026 15:00:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ZUGbaVNw"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id ECAA11F00A3A;
+	Wed, 12 Aug 2026 15:00:11 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786546814;
-	bh=dQL60BagKfwY8iFoqFTVXgGICu2R2/Wt0ZneckGnFTQ=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=hET/+OUvJkoW6VAiVFBnvc4o80thpKoVLvYz2DGZCyQmn1iyXGJYdlJrfaRkOJoz2
-	 VOBgH7RNzhypQuVAc0e6tMc/eMwtR85lCt4Iehyo+xGRcRy8/xILYJLCWtl/OXT3p1
-	 3VRVw+Irg/bG01IeBNuYrtmaqJFn6iwsSA0PhHEbPfZygWgSV6om+ItnqwIJ4xmXIc
-	 F7rIiR/1+0QMYpztNIQl3Z8YAV2bo0O9qOzxGVAgq7DuIAuaXFhQ/KkQbNCfL+acjk
-	 U4Z2UUQIxdWDR8mtwtgb8LjJSh5Uzhppv+SG0wHfSEJEpiRyDMQjfUKYMR2XTFle/F
-	 8/3mWPuGikuHw==
+	s=k20260515; t=1786546812;
+	bh=0RgjFZ/+AqApvNwZTGZ9wWOaE8LWx4eqd8kc3vpCzYI=;
+	h=From:Subject:Date:To:Cc;
+	b=ZUGbaVNwHLCLyoQ4OGB9lQQFdd3PhdsdTC+PiHwT7Zpf3NFgISGImTRSjE0tTEWcm
+	 e/k4bXHLfFTogqUFklEWlK3DdjxB0K92ybklGCEnW3Q0hjjCQd4MnrURVzzhxaMKm1
+	 ySONxe1qFgMLS3eVRgjBgFrzUY3Rs4XejMIiKruGI9cSbp3Z7wfyB90EFU82LIwv6z
+	 Q+CzsCW8dwr1g52K5cEhlQGzSwA0bnYdWkDGaaVL3dy1GhGAO+5VPYjqOAsVGWjEaC
+	 CxLyZ2qouk/XvzVZzeBUaP9hAXmgSzek8YYR3lo+pPa9w9+ST264e1+MrLpLJN7MbO
+	 REDQ2CvOJSaPA==
 From: Chuck Lever <cel@kernel.org>
-Date: Wed, 12 Aug 2026 10:59:56 -0400
-Subject: [PATCH v2 2/4] NFSD: Count the delegations held by each client
+Subject: [PATCH v2 0/4] NFSD: CB_RECALL_ANY fixes and a meaningful keep
+ count
+Date: Wed, 12 Aug 2026 10:59:54 -0400
+Message-Id: <20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,92 +38,79 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260812-recall-any-keep-count-v2-2-a82f4ca23812@kernel.org>
-References: <20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org>
-In-Reply-To: <20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org>
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WOzQ6CMBAGX8X07GpbfxBPvofh0JYFKk0h3UIkh
+ HeXYjx6nM23k5kZYbBI7L6bWcDRku38CnK/Y6ZRvkaw5cpMcnnlN8EhoFHOgfITtIg9mG7wEao
+ LN1Kh0Fku2frbB6zse/M+iy/ToF9oYpKlhVaEoIPypkkng+7oKyohIkXr6zRpLMUuTFvbKJLql
+ yH+ZIwCOJSYG8X5OT/p7NFi8OgOXahZsSzLB+APfwDwAAAA
+X-Change-ID: 20260810-recall-any-keep-count-f50c2ae1b792
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
  Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
  Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2376; i=cel@kernel.org;
- h=from:subject:message-id; bh=0in4Ax2goUIi92RZ669bQFXmx2GvATN4Ol6lL/N4kGo=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqfIp7inxB5OeBk2t7IvqM4y3VPrOVeYnYAlx95
- 2/7t14hWyGJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCanyKewAKCRAzarMzb2Z/
- l++eD/0SVybaybibbi3cgf4Katcvr+SOkWbLZoOsrD2j3bal4kQtcYS1KXsrf4A7vWSJY6mWok/
- Uftc4avjLebfumgVE0dwWq508CalIvHOvcvhoVH6AZaTb5ZXfbqz1X3aW0nQvz4mfx/gzO7Ar4T
- fMgkS+wAsWTGpsfSRG1xGV6XcRhXUl7+q4SeqgjBo2VqNAZEw2+u3zBFdhmB9co5ewkOLDg9kI4
- 1QHgkdsw24EAJiWytXxduLhW3Co97wCIwAyNpup3BZmLeeBh+YG6iVYG6ynSql/PDBypHFGw0WH
- RizWN7RB5UdPpFUDrLNirimdFNjR3vvUEne2PalFD0z5IVYKYFk5gA1yHDA6yo0BXMUstiVVHPc
- kmU6Ob/gDh5gdbiRRUe6hmALtIs0H13eGR3imAia11YMb6x0VvIkYId7VaOItcp035w0d1B+5zK
- GLAo1w5Gmi/8wSh9SlNOig6/B3+oDCLwPERdvvZ3gyP1kQZlcb4hYAmq57kRhHQn3FAewF0SOG9
- FcmpgHboe+dRKdvSDKxlh+B6jjP9oJHDN64DDUKR74yf6240yBJVB3uYD2VB2BfUSU12AY3QY4U
- 49VwazZzc1EN27zt22Hv8/PWOzgMf9MgMK/vHbideEKd9n1rlT+xJgx6PIVswZmoC8OCP8Uh7KJ
- lGHYtNO9YFHpNaQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2104; i=cel@kernel.org;
+ h=from:subject:message-id; bh=eok3CyhHlg6Ahjqls7XMFtcX0LwYiM2dmJeBtlXraVo=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqfIp0XrnZVNPJQdlppvL58Tf6zYMKNDslhWops
+ 1TpQ/K17diJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCanyKdAAKCRAzarMzb2Z/
+ l0QND/9y8Ejg7On2/q+QwEVeNjmkc1AcR6A4PsVernOUM6CKJFFhmQD26z48mv8hGAObkxZ11CO
+ 1/xXCFWVdTyI2nMQmC7G3W24X0X3hawrDCpr0Z/bzIrV28P7VPTSjgEr02lNe6wL4Gb26kgcajJ
+ JxmdERhbffw5KJTC0IpYK97tWBka86R73rgKfF0WASi8X27cvBvL7aS/jFtxxd5hTlrBOevn9Uc
+ ZCdXP+4FcFbnprdPG7urhUgCiEa+eFFp5mPVteYADeK2Mk+BBDm/7EHOK5IizPEt1oNwgyWWxNw
+ 6ryuQ10mGF16SPhSnAvbbVQxBSlETlpaODXwf4tYhuOq7jh3hbHSU1APWhpuRHO0ciUjswjvtzj
+ I/D0xu12Znajp1Ad0c0ciTcmIWUUBpMqmQSCz+dyNK97ChjVgrYfjSvjw/+eumbLzD1JXPstVkV
+ VVxkZ35gStmHKeeeyO7wyeOhI5l93uZuBEnrE6/7QubdIa5AOFPNnQZDM1Kng6Yht0BueUUbDPH
+ rmkvE5qOAe/gTbs3EuwhRhZAeBUeHNXpiHBlLiEnDE4POlg65l6LgUn+NNKYh7EuYXY1mHqLZy1
+ PYWXnHRTUfqSJZn7Av23czmI93EVKM3TXZYz8y+iKlmtvnE9u6iujotolGhxXsbQwrxTE/dHKXg
+ gnXIazsgTnSpziQ==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-struct nfs4_client records the delegations it holds on cl_delegations
-but keeps no count of them. deleg_reaper() walks nn->client_lru under
-nn->client_lock, but cl_delegations is serialized by nn->deleg_lock,
-which nests outside nn->client_lock. A caller there cannot take
-nn->deleg_lock to count the list. The cost tells against the walk as
-well: an O(n) count per client, on a pass that already visits every
-client.
+NFSD sends every CB_RECALL_ANY with craa_objects_to_keep set to
+zero, as RFC 8881 Section 20.6.3 does not mandate any particular
+way for a client to choose which delegations to choose, if any.
 
-Add cl_deleg_count, maintained at the two sites that mutate
-cl_delegations. Both hold nn->deleg_lock, so the counter is already
-serialized against itself and needs no atomic of its own. The decrement
-sits below the delegation_hashed() test, next to the list_del_init it
-pairs with, so it runs only when the delegation really leaves the list.
+However, a zero value can result in some clients giving back more
+delegations than is necessary to relieve temporary memory pressure
+on the server, which needlessly impacts performance.
 
-A reader that holds only nn->client_lock is not synchronized against
-either update site, so it can see a count that does not match the
-list. Such a reader marks the access with data_race() and may not
-depend on the value for correctness.
+NFSD intends the callback as a signal to return unused delegations.
+Only the Linux client has been tested against it, and that client
+ignores craa_objects_to_keep and returns only one unused delegation
+of the named types, so the fixed zero never produced visible
+misbehavior during our testing.
 
-No functional change.
+So, change NFSD so that each CB_RECALL_ANY asks a client to give up
+one delegation. Both reaper callers (the shrinker to relieve memory
+pressure, and the laundromat to cap the total number of delegations
+the server tracks) re-arm while their condition lasts.
 
-Signed-off-by: Chuck Lever <cel@kernel.org>
+NFSD sets no recall target and remembers nothing across CB_RECALL_ANY
+callbacks. RFC 8881 Section 20.6.4 prescribes the use of CB_RECALL
+to target specific delegations if a client fails to return any. NFSD
+does not take that step yet. CB_RECALL_ANY is asynchronous and
+reports no completion, so NFSD treats it as advisory.
+
 ---
- fs/nfsd/nfs4state.c | 2 ++
- fs/nfsd/state.h     | 2 ++
- 2 files changed, 4 insertions(+)
+Changes in v2:
+- Drop the gate that skipped clients holding a single delegation.
+- Cover letter rewritten to give performance rationale.
+- Link to v1: https://patch.msgid.link/20260811-recall-any-keep-count-v1-0-de9ca00493b7@kernel.org
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 09b1aa2914bc..2ddc77ac7312 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1521,6 +1521,7 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	dp->dl_stid.sc_type = SC_TYPE_DELEG;
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
- 	list_add(&dp->dl_perclnt, &clp->cl_delegations);
-+	clp->cl_deleg_count++;
- 	return 0;
- }
- 
-@@ -1552,6 +1553,7 @@ unhash_delegation_locked(struct nfs4_delegation *dp, unsigned short statusmask)
- 	++dp->dl_time;
- 	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
-+	dp->dl_stid.sc_client->cl_deleg_count--;
- 	list_del_init(&dp->dl_recall_lru);
- 	list_del_init(&dp->dl_perfile);
- 	spin_unlock(&fp->fi_lock);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index ff1c9fa731aa..10beeb851cf6 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -632,6 +632,8 @@ struct nfs4_client {
- 
- 	unsigned int		cl_state;
- 	atomic_t		cl_delegs_in_recall;
-+	/* Length of cl_delegations, updated under nn->deleg_lock */
-+	unsigned int		cl_deleg_count;
- 
- 	struct nfsd4_cb_recall_any	*cl_ra;
- 	time64_t		cl_ra_time;
+---
+Chuck Lever (4):
+      NFSD: Do not send CB_RECALL_ANY to NFSv4.0 clients
+      NFSD: Count the delegations held by each client
+      NFSD: Name directory delegations in the CB_RECALL_ANY type mask
+      NFSD: Send a meaningful CB_RECALL_ANY keep count
 
--- 
-2.54.0
+ fs/nfsd/nfs4state.c | 27 +++++++++++++++++++++++----
+ fs/nfsd/state.h     |  2 ++
+ 2 files changed, 25 insertions(+), 4 deletions(-)
+---
+base-commit: 1d479c6b53f684b27da84ec352b7efb97f7f115f
+change-id: 20260810-recall-any-keep-count-f50c2ae1b792
+
+Best regards,
+--  
+Chuck Lever <cel@kernel.org>
 
