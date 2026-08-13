@@ -1,247 +1,159 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ot1-f52.google.com (mail-ot1-f52.google.com [209.85.210.52])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E4023EA66
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 18:40:56 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DFDA8374E48
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 20:41:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.52
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786646457; cv=none; b=eFOuWfhkiPR8iLoK4MywQSDA8kQ/uhjT6ZyQAuQEH/lsluRuHdRxhEDD0VDiJurUnvYQYsNlKTTA6R3P/DMWg4QbsqW9tTC5PRQLch9b4UxBTixb7QG+RwER0EgxVp8Bti6qJ/cPBaGn+eAtnXJUS3Kj6Vq59emrhfI/dpUdQb8=
+	t=1786653696; cv=none; b=UiBIm7aAZzzs4vPCXNrRXkW509AFB0bBrLGTdvwEbBquJr0aKFzEuaG3IG/UTkPQb0db1rVtfeE/dh3e56KxnxCEw4KVNiy4T3eLvvmks7g49xOmY/QPsTfA6ghDkH3leF/tNlo8qxH8IC//bprF884PWUfz8xhK/SmPwvfX2e8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786646457; c=relaxed/simple;
-	bh=jp0NEgSq1J79ubDFXwIxprQsdoCPnlI27eyJlZ8ba6w=;
-	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=qHJZYo89cyN5LP91F6Yvb7lncflnvj573RmNmAcC1y4sP+71sjy+N3orFLe4/dkRffb62u1O5xRWE0VsJliDdnXx/RXt57JIHLe4/ilI18Lp3ZMHEswGz32p+7E/QSVBDTRC3766NZJh8ZLl4N9n/roDEqueXJ8fCkvdm+9PFnU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ONlV3CC6; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786653696; c=relaxed/simple;
+	bh=blm3DEJAuTYyhcYX8hcxv8ecDTKBsaUO3jkGOK5k+8A=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=DxmOir8te2AM44h4A0yMYUvTJgewJJkd22gzsEPD3IrAwc99GjqHqsJxV/j8l30ab9LuYpDSmTIssI5pdWX7N0A2EigLgmmO+aF7UWQcWCQCfS6W9ybeDuqMi+Bby9QctMsJ5kI9WIw95z0pb5vLQlrwjRF/1KDfHwONRRjz/14=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=DKkB7xTu; arc=none smtp.client-ip=209.85.210.52
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ONlV3CC6"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B8CCB1F00A3A;
-	Thu, 13 Aug 2026 18:40:55 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786646456;
-	bh=FwoSbYAaCGAPkcPPXSM3w6HjNnJZSeoKAwr3BcVFJpY=;
-	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=ONlV3CC6p+GzQo9K528LO9e485OyDMvO3ZOUao0DSla+Rv8nhBIDnO6AnWTQ2TpIx
-	 3p3hxr4iLss9bBfQZkv68IMMpQP8CVuxz6Jah/sS6y+mxMlwt1IYKKmQFmM1dtuHI7
-	 diJ73cBtAQAvwg9RgNQYUxeahN0ZIfp9BaHZLOSOndUVKdPVJ3NZCRMkZaM/Rn6N15
-	 eSEEDt5MgBycBACS0dp09viuiSfPR4/+edOIcN466OUx1dhEG1pfNsQi7lNUbWGyG3
-	 2Bwz72NWvgXPh0UV9EQXsFjMDtQiOObH46EA/tBD58WoebXqZloyxFxBqBnZo6BOCP
-	 e3HJPgKpa2rRQ==
-From: Chuck Lever <cel@kernel.org>
-Date: Thu, 13 Aug 2026 14:40:37 -0400
-Subject: [PATCH v3 8/8] NFSD: Apportion CB_RECALL_ANY recalls among clients
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="DKkB7xTu"
+Received: by mail-ot1-f52.google.com with SMTP id 46e09a7af769-7eb4d532e65so211972a34.0
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 13:41:34 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=hammerspace.com; s=google; t=1786653694; x=1787258494; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=KTLYLxPZnL2SMMFyVHUM3lu87Ae8BA3fHhBwBoQzexw=;
+        b=DKkB7xTuSOzMdXlyoEwEIO8lA/BwPVkonWp2XHZ5txi0PR9iUC11WUT9Ce7f4HNv8K
+         dui5TdPLm+WX1g6NlJTSWTADTeksFckLAr2kdEqMDdk63n51uTXM9GCi5qmY2kEZbEzL
+         DQpEYNDMUJTMVPSgJhC2GBeBOtZpueg2JJVZgdC6D4D0weq9R/5hb/nWvdEBY9CBMQOj
+         dzVXfQ0SdYarYSBt+WawKYB55PE+ZlxvTNGNj2XRJFRedecs5PD8E0uKoi2wdPXChICe
+         6FDdQsdrtmAmn8Tnc3J5ArEH+ZB45wfgFl0uNYs23DARGk1Tgb7zZsfctMayXojKAvRU
+         6l5g==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786653694; x=1787258494;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=KTLYLxPZnL2SMMFyVHUM3lu87Ae8BA3fHhBwBoQzexw=;
+        b=KQUYi9FOim6fp7tSDnWhvCTM5bkJ8bzMSs8fWhIRW7xMuCX8dY67kwI5LdHQ3zb1J/
+         gK2SUhbBZV2RxN8IlYYKE7k2gz5YVzBZVq5L0tCoXdYAOo9mOMd0B48AZEEJ+5mv0BdT
+         YFVTGAGk4pjjSoxrMEAY70HoSgSJMNJEzgEJmtlHP1E3yiW7G3OZaN+odqLXjrwWmqL/
+         5fX3QPRb9HxDlstRrTC1V/Yn1Vs0IAq50u/niWODtUIwQ+/qJXxQtirxocF6zdHLYjq4
+         UFmi+giYBJxub7uumL3uWC/sr00UIljfZOI+WE3iToXwVJptOitM/sMk+dSqgMAbXUxn
+         iOYA==
+X-Gm-Message-State: AOJu0YxBYH60wahuwIPFTlNvbPaA1Env5ugz2uw9NPp0TeH8guCTYNAA
+	bjl57NGEVBZKuWOaJGkF5cay6YbPU5uQmDqtWYXj1ncHJ13XJe2BMIUd5V6wensy9OE=
+X-Gm-Gg: AR+sD13qUCKlj6budFo++wzGKpfK4PoDYIQWV8goK/kXCo81hMDT2HIr5AK3DaMEUSt
+	05BritEq6FSe2XbjSMLxrn5PkwQo32wlpE3+INzYxthJS24fRBGtqabn3s12kB1n71WJD7wrp4C
+	3DA434QCK6f4FbSOfkwwBCOh4d0ZRuNZ8CGV9d9wGJOMaVXkbm1Jpw4ll2VcpgFRr5A5qFenWJ4
+	DhdIrwjlhw3vXOXe9QSGwtOj5lHmf2rLy7E1pRg1c3wv4hIjwUv+S657Gs1CO7DW+10ZCi7y6Id
+	OHGqxmoDMfW2EWPvvTO8Y1jpqLl0vAIEJqpTANfg09+ZoMdgHxjt6EhggxC1OYgtOIq2Pvdouey
+	7sIifn3n0KdL0DLTccleZ0edZ0IV74M0lpqORXPpwTXijXIRGvTOcNvXdgceCTbnLUAPida6oIX
+	S6Y7tEJKijmlMNPK9oP4Q5IeszKJt08LYtB/g9kMb/1UIrL0zvfYmnZd3aAcsKbkyZ15vza0nby
+	SdkDCMAxNOAgm8nsaKZ7pdU
+X-Received: by 2002:a05:6830:3694:b0:7eb:9464:ac2e with SMTP id 46e09a7af769-7f3de74131fmr478280a34.11.1786653693550;
+        Thu, 13 Aug 2026 13:41:33 -0700 (PDT)
+Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-7f3c9e23b6fsm3087958a34.25.2026.08.13.13.41.32
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Thu, 13 Aug 2026 13:41:33 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org,
+	Jonathan Curley <jcurley@purestorage.com>,
+	Mike Snitzer <snitzer@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH 0/6] NFS: size the LAYOUTGET reply buffer for wide flexfiles layouts
+Date: Thu, 13 Aug 2026 16:41:25 -0400
+Message-ID: <cover.1786653456.git.bcodding@hammerspace.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-recall-any-keep-count-v3-8-a96d243c0b13@kernel.org>
-References: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
-In-Reply-To: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
-To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
- Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
- Tom Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
-X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6798; i=cel@kernel.org;
- h=from:subject:message-id; bh=jp0NEgSq1J79ubDFXwIxprQsdoCPnlI27eyJlZ8ba6w=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqfg+xXpMjNdAedrdKd9NdXYEMwbenm+0+uIN1A
- NRWqwyOAlqJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCan4PsQAKCRAzarMzb2Z/
- l9FdD/0Z+uLJOyfgTVJqd7o9qCsNvo/dRX5vYMt3wcXRVUP3BEFcjx0V2QmiPk7Pmo6VeAu5CS3
- PvPtTC73e95x++hIiyEdJ9lsfXC0KgY+OUJ07asxPCestNyTpQ77BjqPYtl3k+zOU3ZJFVlnofi
- RaeN7EJUbmSxupYLGT6y2ulqeWUumy7rih6t43FnhXekcxafr/YE/swMy65iLFkxP4Xx31sKRr+
- B6T4hnbDbSKux2WOvWZ4kXm4+HLn+LnDuGBF4TnQVDRUY8Wjxqm6om+tdD94eHjtdMQ1ZZ9SbNX
- DNN+gV7lcLt9uCny0eB6HbUF1Aruwx8dLPwL7IusitPv2jNRLqQyoBaAMtBSfRyA95sXzOcGlVN
- JEl6TM+K8r9twOnU0F2MnjUtAyy1XcuInStdy4erRN0A+4dipJx3ruav6pN5z1Pqfp5hiGx0qVw
- owqxEuUr7rI7G+QmPKEdThrFYK2I5pfJLu618rADoRFLrjFnFt2K/7vBQHvikV6t5D0ct1Qrx6L
- Ue6wPKXLOxWwcfBwM9kXLBE9P+wtvt69qSeIxTQZ84a8ULcq99+4M/M6XBR6ja9+YM2VvtLPSGU
- NHpTbGSVR9owPEqD76QiESKAKOaDfM8veDEDGcOdnXzFKIh23tS7GaDbpBpddwkESPsuT0FpGvv
- 4Y2qeuYBd+jWnQA==
-X-Developer-Key: i=cel@kernel.org; a=openpgp;
- fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
+Content-Transfer-Encoding: 8bit
 
-deleg_reaper() asks each eligible client to return one delegation
-whenever it runs, whether or not anything needs the memory. A
-delegation returned before it is needed costs the client an OPEN
-when it next touches the file. Nothing sizes the request either.
-The delegation scan callback discards nr_to_scan, which is reclaim's
-statement of how many objects it wants back.
+The flexfiles layout driver caps its LAYOUTGET reply buffer at a single
+page, which limits a striped layout segment to roughly 28 ff_data_server4
+entries -- far below the 4096-stripe decode limit the client otherwise
+advertises.  A server striping wider than that has no way to hand the
+client a layout: it returns NFS4ERR_TOOSMALL, the client falls back to
+I/O through the MDS, and pNFS never engages for those files.
 
-Record each delegation scan request in nfsd_deleg_backlog and pass
-the accumulated total to deleg_reaper(). Handing that total to
-every client would ask for it once per client, so scale it by each
-client's share of nn->nfsd_delegations. cl_ra_time keeps the next
-sweep from returning to the clients this one reached.
+This series first makes the client behave sanely when a layout does not
+fit the size it advertised in loga_maxcount, and then lets the reply
+buffer grow on demand up to the session's maximum response size.
 
-Nothing is recalled until a scan arrives. nfs4_laundromat() is the
-exception. It has no scan request to pass, so it computes what must
-go for num_delegations to fall below max_delegations, and passes
-only this namespace's share.
+Patch 1 is a standalone fix (Cc: stable).  A server's NFS4ERR_TOOSMALL
+is mapped to -ETOOSMALL at decode and then handled nowhere, so the
+client falls back to the MDS for that one request and re-sends a doomed
+LAYOUTGET on every subsequent pageio attempt.  Suspend pNFS via the
+layout fail bit instead, the way NFS4ERR_LAYOUTUNAVAILABLE already does.
 
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfsd/netns.h     |  3 +++
- fs/nfsd/nfs4state.c | 63 ++++++++++++++++++++++++++++++++++++++++++++---------
- 2 files changed, 56 insertions(+), 10 deletions(-)
+Patches 2-5 make wide layouts work.  loga_maxcount is derived from the
+reply buffer actually allocated rather than a fixed 4096 (block and SCSI
+layouts were advertising 4KB against a session-sized buffer, so a server
+whose extent list encodes larger than a page got a needless TOOSMALL).
+A TOOSMALL LAYOUTGET is then retried once with the buffer raised to the
+session's maximum response size -- the same bound GETDEVICEINFO already
+uses -- and a non-conformant server that ignores loga_maxcount and
+overruns the buffer outright takes that same recovery path instead of
+today's -EINVAL.  Finally the escalated size is remembered per-server, so
+subsequent opens skip the attempt that is known to fail; this is also
+what lets the LAYOUTGET attached to OPEN succeed against a wide-striping
+server, since that path is best-effort and has no retry of its own.
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 23923cc4aa47..0ce7da20aba3 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -248,6 +248,9 @@ struct nfsd_net {
- 	/* courtesy scan requests the reaper has not retired yet */
- 	atomic_long_t		nfsd_shrink_backlog;
- 
-+	/* delegation scan requests the reaper has not retired yet */
-+	atomic_long_t		nfsd_deleg_backlog;
-+
- 	/* when deleg_reaper() last swept the client list */
- 	time64_t		nfsd_last_recall_any;
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2b3056ffe08c..9897c4831016 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -93,7 +93,7 @@ static void nfs4_free_ol_stateid(struct nfs4_stid *stid);
- static void nfsd4_end_grace(struct nfsd_net *nn);
- static void _free_cpntf_state_locked(struct nfsd_net *nn, struct nfs4_cpntf_state *cps);
- static void nfsd4_file_hash_remove(struct nfs4_file *fi);
--static void deleg_reaper(struct nfsd_net *nn);
-+static void deleg_reaper(struct nfsd_net *nn, unsigned long backlog);
- static void nfsd4_drop_revoked_stid(struct nfs4_stid *s)
- 	__releases(&s->sc_client->cl_lock);
- 
-@@ -5605,7 +5605,10 @@ nfsd4_deleg_shrinker_count(struct shrinker *shrink, struct shrink_control *sc)
- 	if (elapsed < NFSD_RECALL_ANY_COOLDOWN_SECS)
- 		return 0;
- 
--	queue_work(laundry_wq, &nn->nfsd_deleg_work);
-+	/*
-+	 * Unlike the courtesy shrinker, this one queues no work.
-+	 * Nothing is recalled until a scan request arrives.
-+	 */
- 	return count;
- }
- 
-@@ -5630,6 +5633,7 @@ nfsd4_deleg_shrinker_scan(struct shrinker *shrink, struct shrink_control *sc)
- {
- 	struct nfsd_net *nn = shrink->private_data;
- 
-+	atomic_long_add(sc->nr_to_scan, &nn->nfsd_deleg_backlog);
- 	queue_work(laundry_wq, &nn->nfsd_deleg_work);
- 
- 	/*
-@@ -7879,6 +7883,7 @@ nfs4_laundromat(struct nfsd_net *nn)
- 	struct nfs4_cpntf_state *cps;
- 	struct nfs4_client *clp;
- 	copy_stateid_t *cps_t;
-+	long held, host, n;
- 	int i;
- 
- 	if (clients_still_reclaiming(nn)) {
-@@ -7992,8 +7997,18 @@ nfs4_laundromat(struct nfsd_net *nn)
- 	/* service the server-to-server copy delayed unmount list */
- 	nfsd4_ssc_expire_umount(nn);
- #endif
--	if (atomic_long_read(&num_delegations) >= max_delegations)
--		deleg_reaper(nn);
-+	host = atomic_long_read(&num_delegations);
-+	if (host >= max_delegations) {
-+		/*
-+		 * max_delegations bounds the host, but the laundromat
-+		 * runs once per network namespace. Requesting the whole
-+		 * overage in each would multiply the request, so take
-+		 * only this namespace's share.
-+		 */
-+		held = atomic_long_read(&nn->nfsd_delegations);
-+		n = host - max_delegations + 1;
-+		deleg_reaper(nn, DIV64_U64_ROUND_UP((u64)n * held, host));
-+	}
- out:
- 	return max_t(time64_t, lt.new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
- }
-@@ -8022,12 +8037,32 @@ courtesy_client_reaper(struct nfsd_net *nn)
- }
- 
- static void
--deleg_reaper(struct nfsd_net *nn)
-+deleg_reaper(struct nfsd_net *nn, unsigned long backlog)
- {
- 	struct list_head *pos, *next;
- 	struct nfs4_client *clp;
-+	unsigned long remaining, share, total;
- 	unsigned int count;
- 
-+	/*
-+	 * Recalling a delegation before it is needed costs the client
-+	 * an OPEN when it next touches the file. @total is also the
-+	 * apportionment's divisor. Leave nfsd_last_recall_any
-+	 * unstamped so the next sweep is not delayed.
-+	 */
-+	total = atomic_long_read(&nn->nfsd_delegations);
-+	if (!backlog || !total)
-+		return;
-+
-+	/*
-+	 * Reclaim asks in batches and is not bound by what the count
-+	 * callback reported, so the backlog can exceed what this
-+	 * namespace holds. Cap it to keep each share within the
-+	 * client's own count.
-+	 */
-+	backlog = min(backlog, total);
-+	remaining = backlog;
-+
- 	spin_lock(&nn->client_lock);
- 	list_for_each_safe(pos, next, &nn->client_lru) {
- 		clp = list_entry(pos, struct nfs4_client, cl_lru);
-@@ -8059,16 +8094,23 @@ deleg_reaper(struct nfsd_net *nn)
- 		kref_get(&clp->cl_nfsdfs.cl_ref);
- 		clp->cl_ra_time = ktime_get_boottime_seconds();
- 		/*
--		 * Ask for a single delegation. Recalling one before it
--		 * is needed costs the client an OPEN when it next
--		 * touches the file.
-+		 * Rounding up guarantees every holder gives up at least
-+		 * one. The round-up can overshoot @backlog, so stop
-+		 * once the request is met. client_lru is ordered by
-+		 * last renewal, so the least active clients are asked
-+		 * first.
- 		 */
--		clp->cl_ra->ra_keep = count - 1;
-+		share = DIV64_U64_ROUND_UP((u64)backlog * count, total);
-+		share = min(share, remaining);
-+		remaining -= share;
-+		clp->cl_ra->ra_keep = count - share;
- 		clp->cl_ra->ra_bmval[0] = BIT(RCA4_TYPE_MASK_RDATA_DLG) |
- 						BIT(RCA4_TYPE_MASK_WDATA_DLG) |
- 						BIT(RCA4_TYPE_MASK_DIR_DLG);
- 		trace_nfsd_cb_recall_any(clp->cl_ra);
- 		nfsd4_run_cb(&clp->cl_ra->ra_cb);
-+		if (!remaining)
-+			break;
- 	}
- 	spin_unlock(&nn->client_lock);
- 
-@@ -8102,7 +8144,7 @@ nfsd4_deleg_shrinker_worker(struct work_struct *work)
- 	struct nfsd_net *nn = container_of(work, struct nfsd_net,
- 				nfsd_deleg_work);
- 
--	deleg_reaper(nn);
-+	deleg_reaper(nn, atomic_long_xchg(&nn->nfsd_deleg_backlog, 0));
- }
- 
- static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid *stp)
-@@ -10067,6 +10109,7 @@ static int nfs4_state_create_net(struct net *net)
- 	INIT_WORK(&nn->nfsd_courtesy_work, nfsd4_courtesy_shrinker_worker);
- 	INIT_WORK(&nn->nfsd_deleg_work, nfsd4_deleg_shrinker_worker);
- 	atomic_long_set(&nn->nfsd_shrink_backlog, 0);
-+	atomic_long_set(&nn->nfsd_deleg_backlog, 0);
- 	nn->nfsd_last_recall_any = 0;
- 	get_net(net);
- 
+The common path is unchanged throughout: the first LAYOUTGET for a
+layout still goes out with the layout driver's default reply buffer, and
+larger buffers are only ever allocated against servers that actually
+hand out wide layouts.
 
+Patch 6 moves the decoded per-mirror stripe array to kvzalloc_objs(), so
+that a wide stripe array does not depend on a high-order allocation
+succeeding.
+
+Wire-validated against reffs at stripe widths 2 and 64, exercising both
+the conformant NFS4ERR_TOOSMALL path and the buffer-overrun path.
+
+Two known gaps are deliberately left for follow-up work:
+
+  - The decoded per-stripe footprint is heavy: nfs4_ff_layout_ds_stripe
+    is roughly 300 bytes and embeds localio and layoutstats state that
+    most stripes never use.  Both the structure and its array container
+    want rework before very large stripe counts are comfortable.
+
+  - The client decodes only the first logr_layout entry of a LAYOUTGET
+    reply and silently discards the rest, so it can accept less coverage
+    than it asked for in loga_minlength, and cannot amortize a
+    multi-segment reply.
+
+A related series, "NFS: flexfiles device notifications and caching for
+wide striped layouts", handles CB_NOTIFY_DEVICEID and scales the device
+caches for the layouts this one makes fetchable.  The two are
+independent and apply cleanly in either order.
+
+Benjamin Coddington (6):
+  NFSv4.1/pnfs: suspend pNFS on NFS4ERR_TOOSMALL from LAYOUTGET
+  NFSv4.1/pnfs: derive loga_maxcount from the LAYOUTGET reply buffer
+  NFSv4.1/pnfs: retry LAYOUTGET with a larger reply buffer on
+    NFS4ERR_TOOSMALL
+  NFSv4.1/pnfs: treat an oversized LAYOUTGET reply as -EMSGSIZE
+  NFSv4.1/pnfs: remember when a server needs a larger LAYOUTGET reply
+    buffer
+  NFSv4/flexfiles: allocate the per-mirror stripe array with
+    kvzalloc_objs
+
+ fs/nfs/flexfilelayout/flexfilelayout.c |  6 +--
+ fs/nfs/nfs4proc.c                      |  9 +++++
+ fs/nfs/nfs4xdr.c                       |  2 +-
+ fs/nfs/pnfs.c                          | 54 +++++++++++++++++++++++---
+ include/linux/nfs_fs_sb.h              |  4 ++
+ 5 files changed, 65 insertions(+), 10 deletions(-)
+
+base-commit: db2ddb87143519e20a95aa36c60b36107b736a58
 -- 
-2.54.0
+2.53.0
 
