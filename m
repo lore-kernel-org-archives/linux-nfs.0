@@ -1,166 +1,128 @@
-Received: from mail-oa1-f52.google.com (mail-oa1-f52.google.com [209.85.160.52])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E44E538E8B9
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 18:07:22 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.52
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 80B8F3EA66
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 18:40:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786644445; cv=none; b=IznaiCHUxpnqp974IWWkBrSNJGUHz8AizfLgqK+vYYI0FsGJmld7UvoPedikHQ6qJGuS6MsmOpMpKqGA1N63ypGyp7dIxTgHqn7WxSUyNkjRKz4nDiNSawvoISPAJY4CBmh4UQ5iGtU3Xok1uJHy1PZ+8C+cQCOGHK27J+HoDN0=
+	t=1786646451; cv=none; b=dRPMT4FwJ+vZx75mdQgXlhfyYQVoFd1NV0+VDCz93xo2nUHBKhQnxzbjhzKazPcjR/5Ele7I/ojJNr9am9gC2qN4XnAXhdBYvTHlbYAtE8tmv0aAkD7YqtjPY9sAvit0cQcUAe6xUJRww7rUDIcJR+hQfKjenueOBr7zzu1zuHA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786644445; c=relaxed/simple;
-	bh=FWV5a2AM0TNofkdSdcm+IbMw0Wqoq2ULqOveCKkbsEg=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=cjYP+FSlWuYyWLFHNFex3HKzz8/8eW+3UatbGHt4jNSqKl6esVxTXy/SzfBfuvjmknRBIRAo1Ut9Yl9wZfu0Y4wqQrtLpVN3ipIzcA3gIXU9npnAInBBnuycwLPOYoXVKxTRSBteoWUMBRqJoam16c3GFO/jZKurDk24g0fnnZQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=gHM6tP9q; arc=none smtp.client-ip=209.85.160.52
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
+	s=arc-20240116; t=1786646451; c=relaxed/simple;
+	bh=t5zipk/N/1SpQiUHJWwZsM4wRUBxq8F6xaA37j75Gx0=;
+	h=From:Subject:Date:Message-Id:MIME-Version:Content-Type:To:Cc; b=OuDeLQkxuxCNqc1z0GNc1tQkMiSJTc/1Atuv4I3Yy+XLEJHlmxcI7plnnlXxfJKFvHhGL4NTF0b5hUBaJj4xcxHFNq1OH6PXIBpFlC0q5NuirGRpzDM2017Y27CeRjK4CGouIW/jZNpgC/6SCNKF+mTlZwZZByaDrJesmUnIoR8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Jo+QwpVi; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="gHM6tP9q"
-Received: by mail-oa1-f52.google.com with SMTP id 586e51a60fabf-43bf9548df4so143494fac.0
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 11:07:22 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1786644441; x=1787249241; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=jcpuE6yNahPJy9OiB83UF3LqCubdNGvKp3GM0iSYrL0=;
-        b=gHM6tP9qKj5d0GBhq6OuQtzRo/GqITPbNGP1qBgPablPPzHIvpD90SeIVnhn9eo0r9
-         MTBhgnQwmAHsM5P+TJ3zbUfbS1q2UNuvM+b9rkKO1n+FiNIIwXeuD4Z8SDbDgx3jbAmd
-         CdtXeLt4BiZqiUqo8XohVkQIU/2rJXDWXWyjynOyhWtu0QvGXM2xy+iE03QE5tuofrJb
-         Q0Lqo5gWB6fom8wVc3y+8IhXlrkEyAcshAdbeqCs78gcWab1Go0ewbco/9cVSFc+rbpP
-         mPTANBuy6ciRuZyFGa1rHwKgfEEM5z9BqqOnZYBVK3f8n4gjWL9so6+lZ41fjJdrEfSZ
-         xqSg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786644441; x=1787249241;
-        h=content-transfer-encoding:mime-version:references:in-reply-to
-         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
-         :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=jcpuE6yNahPJy9OiB83UF3LqCubdNGvKp3GM0iSYrL0=;
-        b=P9XUItjoZgiycyxfJricmZQeQ1Y1WEoWFXj9n3mCwc9FiD57g94SoCtL0sONRF1aPq
-         IE1HmOH6V1Z79HqM9buXUTFE5837VNAloxgo8wl5pNeNuroFab+QxRWlcEzPPbsLAQAC
-         s3doony+RrVLHr9rpNPiS+D9VP+UXRmJzQfZgRQmbnUDn3M++I/X66Mmwgozs7yQfSoN
-         aEus9VBzFhel2CzcuGGtptw9Mti7/5L1XBpbgqiE0sOfGFPpPuRABvDoT6cxRCjzO/h+
-         Nfi8/hX84fQlF6nMbeZvtI3+L98VAIG1VWAR1iZsczPsV7q4Y6PmayAE05b/kUY59PQZ
-         F1Eg==
-X-Gm-Message-State: AOJu0Yy6uytVeJoKaqoMV3jOVoreywIleV+NrBURwen+lyixerdlE439
-	yIY0Jg0niokM8YW9LHrRmhgnBdhy2wvAtlFLPyUXKQ9rs7SrYO4oiUbK6nJa6f5i/5M=
-X-Gm-Gg: AR+sD10V0B6dPD2WneMKxSr/hu3BFH/Ie7TyfjLJmgS0OhjPph23WCeF3IzXy1SD9Ih
-	auC5QpAyzxU3ni0JNK0/HeC3e7+7bj31pYNvfp6yfZ5Kn3o+LBk0dNVJAp+pZSvCrYl4rwXEiPo
-	viGXF+o//x8YoMd2WjoJ0pUhWa2FfYFe1I8CiGE0u7GJRwf7XrNm4XWcWcJI5OBYd0LhTRAp0iY
-	e4IPyetaHhg099onmwVx9RRGXtOgR8McjNOYpS+68BVcejjC7efExMloP5K4WnlralyYJZuwWjJ
-	rLokfnvc+u1C03eel3cpMRBkMMtStEo0RvSnmWXH8R12qgE20Jx+t4R+LxSsd6wB2jo8U1fGWj0
-	DC6wZ7i7WbN4IYAwt5nJeJ+BCfNPAsky/JAHjlXIWzSqdJw7pUPZOMbUlriw2ZbHX/6F7JBy+/I
-	E5VFxdrFjP0p1TgukgO365KWgJg8O6ydUm84ZcBE5UFo6ynsMWxozfeUIzA4CqRHZt2kuGjRzEa
-	oqmXWmllJdHtWcwdFvV9UaT
-X-Received: by 2002:a05:6871:706:b0:456:b3d9:336d with SMTP id 586e51a60fabf-45e9239c776mr17500fac.20.1786644441334;
-        Thu, 13 Aug 2026 11:07:21 -0700 (PDT)
-Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-45e8f96010fsm211730fac.7.2026.08.13.11.07.20
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 13 Aug 2026 11:07:20 -0700 (PDT)
-From: Benjamin Coddington <ben.coddington@hammerspace.com>
-X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
-To: Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFSv4/flexfiles: only cancel I/O to a failed mirror instance
-Date: Thu, 13 Aug 2026 14:07:15 -0400
-Message-ID: <d5a90f5d570648792789f815cec7a62084fe2401.1786636529.git.bcodding@hammerspace.com>
-X-Mailer: git-send-email 2.53.0
-In-Reply-To: <cover.1786636529.git.bcodding@hammerspace.com>
-References: <cover.1786636529.git.bcodding@hammerspace.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Jo+QwpVi"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 80DF61F000E9;
+	Thu, 13 Aug 2026 18:40:49 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1786646450;
+	bh=w1FotSVmG2rPaLK13Yf30i75TkSFPrFF0xvePOOr9rc=;
+	h=From:Subject:Date:To:Cc;
+	b=Jo+QwpVi5ii3bW2W/wmEGOJ1EKUK9a8JxkoG+/8v9vYqW/70c+XvKtwdsDgwTuc63
+	 N5KhVOeQiXnydyrwhNPE0sw/VmH4f7E294h7PT7pPKZLHcRBGhWFQOa7P+9337Z+N+
+	 fxWdM/cke2mp5xiIvFDJUa6EHYbpRZezT5mPJa+x74+HXNDBBE09VYZZ+WZ1eX0jLH
+	 XnnAwfT8Q/nvrox3fRiXrBFxoDGWR0VZopb5+ZEmu/hj/FAove2y5b1EkmvBOM+FpZ
+	 cZKsOB1Fv8uPwefYq1ziIWOMNm7qZ+IbGtWH6b+Bz3QsBpSSWCTDahWf45YgQ6ZWWm
+	 PO/aoUeECHLtw==
+From: Chuck Lever <cel@kernel.org>
+Subject: [PATCH v3 0/8] NFSD: CB_RECALL_ANY fixes and a meaningful keep
+ count
+Date: Thu, 13 Aug 2026 14:40:29 -0400
+Message-Id: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-B4-Tracking: v=1; b=H4sIAAAAAAAC/3WOQW7CMBBFr4K8Zlp7QgthxT0qFuPJJDFETmSbq
+ Ajl7thUSHTB8o3+PL2bihKcRLVf3VSQ2UU3+gzVeqW4J98JuCazQo3femc0BGEaBiB/hbPIBDx
+ efIL2SzOSGLutUeXfKUjrfh/en+Mfx4s9CaciKwtLUcAG8tyXE8vw6dvYQJKYnO/KpHcxjeH6a
+ JtNUT0zzJuM2YCGRmomrTd1ZbeHswQvw8cYOlU6ZnzV4DsNZg3tsN0wYZV3/zTLstwB+DJwiDc
+ BAAA=
+X-Change-ID: 20260810-recall-any-keep-count-f50c2ae1b792
+To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
+ Olga Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, 
+ Tom Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
+X-Mailer: b4 0.16-dev-da966
+X-Developer-Signature: v=1; a=openpgp-sha256; l=2678; i=cel@kernel.org;
+ h=from:subject:message-id; bh=t5zipk/N/1SpQiUHJWwZsM4wRUBxq8F6xaA37j75Gx0=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqfg+ikXAbFjaXwfrTEzAduneFWXZj/7mDjEK8u
+ vblITvs1tCJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCan4PogAKCRAzarMzb2Z/
+ l3UZEACioJ791dV8d+gdRXNocx+JpDZ4F3ubf8DrWUaLh/YDYGOJHvq/WYL9WCDLBeOL/gq1sQv
+ wtzgZMqA2NmoryG4xXcBGI7n4sHs7KZd2AeMSY99s+qmGqZKA/V8pez/4Q9t9Dg1B9A5TG1bapQ
+ 5UVWA6jnV4+GQ9F077cuMjOjwFErIDSjotuCaBAlXiIusASjXr39f9ydP6ZNr9vhLTYHxAUhRSJ
+ 4MtAyGIqr63DrjmR27JsM8M3U7NBxS+SXe/T1FOyZaFCHsZCUg4tIIEFd3HcMi06yocMfVXMvsa
+ pH3rvbq5tf2axB9HBUznvRf3Sic6cHnwpnaAJ2MyfSx2Bg7hBI8MAgQ7XHk4GaF3CqKbczJq9Bw
+ 3vRIOA52nmJqDO+oBaGnYYwvbGc7AjLyrdprQPgqp0P1X4TCil0iN/idED0kLZqyl4jsvFnBlwe
+ zzqan7S9+tbH9NViB75dcVw3ZZvrj0ggaZK6SYLo/hg+XgoywkAS1nwN+BacAsDGrHw2ZFEbAKm
+ sp4tQuOsnCgYDKw3Ddio5BWUGCRcOswBYJLF2LzgAMUKRvhrrdzsysJlCQHUINrRCxh8WjHn93q
+ 2C750S16p3Jep4T4lz5tsQ9+tNh/fimjmhLVsJ22a/KH2tMLoC1uhyraJtb1rzi5ymndVJZgkmw
+ N1QNoUibmWQE98A==
+X-Developer-Key: i=cel@kernel.org; a=openpgp;
+ fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-When an error causes the flexfiles driver to return a layout,
-ff_layout_cancel_io() kills every in-flight RPC for the layout
-segment, across all mirror instances.  Cancelled requests that had
-already been transmitted to a healthy data server cannot be un-sent:
-they complete on the data server after the client has sent its
-LAYOUTRETURN, and the metadata server then observes writes to a file
-for which no write layout is outstanding.
+NFSD currently sends every CB_RECALL_ANY with craa_objects_to_keep
+set to zero, as RFC 8881 Section 20.6.3 does not mandate any
+particular way for a client to choose which delegations to return,
+if any.
 
-RFC 8881 Section 20.3.4 recommends that the client wait for the
-response from in-process or in-flight READ, WRITE, or COMMIT
-operations before returning the layout, and the machinery for that
-wait already exists: the LAYOUTRETURN is deferred until every request
-drops its layout segment reference, and requests that have not yet
-been transmitted exit at RPC prepare time once the segment has been
-invalidated.  Cancellation is only needed to avoid waiting forever on
-a device that will never answer.
+NFSD intends CB_RECALL_ANY only as a signal to return currently
+unused delegations. To date, only the Linux NFS client has been
+deeply tested against it. That implementation ignores the
+craa_objects_to_keep value and returns only one unused delegation
+of the named types. Therefore the fixed zero craa_objects_to_keep
+value never produced visible misbehavior during our testing.
 
-Pass the failed instance's device ID when marking the layout for
-return, so that ff_layout_cancel_io() cancels only I/O directed at
-the device we have given up on.  In-flight I/O to the remaining
-healthy instances drains normally -- typically within a round trip --
-before the LAYOUTRETURN is sent.  If a spared instance turns out to
-be unresponsive, its requests fail with their own device error, and
-the resulting layout return cancels its I/O in turn.
+However, a zero value can result in non-Linux clients giving back
+more delegations than is necessary to relieve temporary memory
+pressure on the server, which needlessly punctures the clients'
+delegation working set.
 
-Layout recalls with clora_changed set, bulk returns, and layout
-revocations continue to cancel I/O to every device, as do error
-paths where no single failed device can be identified.
+Change NFSD so that each CB_RECALL_ANY asks a client to give up a
+sensible number of delegations instead of all of them at once. To
+handle the accounting correctly, it is necessary for this series to
+split the current state shrinker mechanism. The patch descriptions
+have those details.
 
-Assisted-by: Claude:claude-fable-5
-Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c    | 9 ++++++---
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 3 ++-
- 2 files changed, 8 insertions(+), 4 deletions(-)
+Changes in v3:
+- Count delegations per namespace so each shrinker reports its own.
+- Give courtesy clients and delegations separate state shrinkers.
+- Record the shrinker's scan requests and discount the count by them.
+- Scale each client's CB_RECALL_ANY by its share of the scan request.
+- Reword the keep-count rationale in the commit message and comment.
+- Link to v2: https://patch.msgid.link/20260812-recall-any-keep-count-v2-0-a82f4ca23812@kernel.org
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index b0c90e6cdccb..b976c922cb62 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1590,7 +1590,8 @@ static void ff_layout_io_track_ds_error(struct pnfs_layout_segment *lseg,
- 		fallthrough;
- 	default:
- 		pnfs_error_mark_layout_for_return(lseg->pls_layout->plh_inode,
--						  lseg, NULL);
-+						  lseg,
-+						  &mirror->dss[dss_id].devid);
- 	}
- 
- out:
-@@ -2244,7 +2245,8 @@ ff_layout_read_pagelist(struct nfs_pgio_header *hdr)
- 		 * FF_FLAGS_NO_IO_THRU_MDS: force fresh LAYOUTGET,
- 		 * never fall through to MDS I/O.
- 		 */
--		pnfs_error_mark_layout_for_return(hdr->inode, lseg, NULL);
-+		pnfs_error_mark_layout_for_return(hdr->inode, lseg,
-+						  &mirror->dss[dss_id].devid);
- 		return PNFS_TRY_AGAIN;
- 	}
- 	trace_pnfs_mds_fallback_read_pagelist(hdr->inode,
-@@ -2337,7 +2339,8 @@ ff_layout_write_pagelist(struct nfs_pgio_header *hdr, int sync)
- 		 * FF_FLAGS_NO_IO_THRU_MDS: force fresh LAYOUTGET,
- 		 * never fall through to MDS I/O.
- 		 */
--		pnfs_error_mark_layout_for_return(hdr->inode, lseg, NULL);
-+		pnfs_error_mark_layout_for_return(hdr->inode, lseg,
-+						  &mirror->dss[dss_id].devid);
- 		return PNFS_TRY_AGAIN;
- 	}
- 	trace_pnfs_mds_fallback_write_pagelist(hdr->inode,
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 33ee3ed1f546..16868645cd15 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -428,7 +428,8 @@ nfs4_ff_layout_prepare_ds(struct pnfs_layout_segment *lseg,
- 				 opnum, GFP_NOIO);
- 	ff_layout_send_layouterror(lseg);
- 	if (opnum != OP_READ || !ff_layout_has_available_ds(lseg))
--		pnfs_error_mark_layout_for_return(ino, lseg, NULL);
-+		pnfs_error_mark_layout_for_return(ino, lseg,
-+						  &mirror->dss[dss_id].devid);
- 	ds = ERR_PTR(status);
- out:
- 	return ds;
--- 
-2.53.0
+Changes in v2:
+- Drop the gate that skipped clients holding a single delegation.
+- Cover letter rewritten to give performance rationale.
+- Link to v1: https://patch.msgid.link/20260811-recall-any-keep-count-v1-0-de9ca00493b7@kernel.org
+
+---
+Chuck Lever (8):
+      NFSD: Do not send CB_RECALL_ANY to NFSv4.0 clients
+      NFSD: Count the delegations held by each client
+      NFSD: Name directory delegations in the CB_RECALL_ANY type mask
+      NFSD: Send a meaningful CB_RECALL_ANY keep count
+      NFSD: Count delegations per network namespace
+      NFSD: Give delegations their own state shrinker
+      NFSD: Pace the state shrinker's scan requests
+      NFSD: Apportion CB_RECALL_ANY recalls among clients
+
+ fs/nfsd/netns.h     |  17 +++-
+ fs/nfsd/nfs4state.c | 235 +++++++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfsd/state.h     |   2 +
+ 3 files changed, 223 insertions(+), 31 deletions(-)
+---
+base-commit: 1d479c6b53f684b27da84ec352b7efb97f7f115f
+change-id: 20260810-recall-any-keep-count-f50c2ae1b792
+
+Best regards,
+--  
+Chuck Lever <cel@kernel.org>
 
