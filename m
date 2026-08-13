@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0AFC6483BD6
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id CA4E448425A
 	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 18:40:54 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786646455; cv=none; b=O7lwFAQntx7TZKbQeidrxvFcGTTCj7QpBVmqgIM6+LMRhMQO8ERNF241daSpxG83ZcOub+vYS2BO//ox12j85SzAfsbhnmVOxAhxN3azA0h3SuypqA5Gdv4LYPA/l8j+9ahznUa5BYWTJNutG6DJ9N/DDQZu3EDo7H4chPDs45A=
+	t=1786646456; cv=none; b=C/koOCowHwBekpr7iWvwpTwwzyf9mD1HG9ACb7T29NyQMeyUqNNH3c8HGwuozd8vLAHfQhuUtgmiYRWOas/dsK+QzVKehQ7nRQRpKCyfrY0ucb6dURne7Iecqfjhhq8lfgc25Kj5Qo46YvU9ipOnTBqqwOng8L3SLinZl5fPHEc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786646455; c=relaxed/simple;
-	bh=QzwVxHPhLHari5sUO3sYFbbftTNAcslZhoj30ZyNzY8=;
+	s=arc-20240116; t=1786646456; c=relaxed/simple;
+	bh=GwQ/DGoePjGx7R/tMlONFlADTnKCq8hY6X/KcV7zltk=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=gMl6J1xWm7X5hbyF6VI9R+yB1k/G3RadLQ+gYaZaEQpUR5ydHonRQ0RaGyPapEGcPpBbdCpU0hmbxtmJDRi99jQ7RJBIsAFKUlVMl04gz+XVsATxAAlZOp127nftqelDsbW8U5ehnVOLDrJ+TK4r6JSkuCg4cEzFcygzy5zvp6Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=hfIS71lt; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=qwF77Jvgilh3g9NhfW+2Vs03+2Dn/eZCifOVCsOmP7MtV4yHWnG/aVjfhFNQvgglreSyL4VAK7yDYdJJT+LcNSnUycIabJuiC0x7GjCmbsc/xnw7+YgYOTBK5D6b7R5xh0eY+yINbuvJ+q+Fjmi7QmVoMuooZRRaKqItpPE6Zi8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=H5knb9E/; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="hfIS71lt"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 61BCB1F00ACA;
-	Thu, 13 Aug 2026 18:40:53 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="H5knb9E/"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2E1A41F000E9;
+	Thu, 13 Aug 2026 18:40:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786646453;
-	bh=XcntQQsmx3oDDnx4GFlRaCQJUsXTjtyy10tqruCl1Sk=;
+	s=k20260515; t=1786646454;
+	bh=Y372niizHeFWiBC5soq1Ar2mSGfI9Tl4XJnEJIPz0SM=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=hfIS71ltfO101fYCWf5yl4Zc0KMJFpyLQlV3OlqxHWs/BEAcxQXtOrFhR956KSS/x
-	 nciuEJpPXPcc81WKoEPvw8IzNlWj41Hl794SkF8kJg4ROQUV0eJ3iVjYR6URoW97vz
-	 r8eOhV7lAddxV8w1hYqccu+Xy1ST6QzzLXZhVIzIYpNR11kWcv9sVFoEz49tK+hD/q
-	 hJBY7jnafKV+pAh7oDd3aQXhJC2Y0BYbnn1VXJ7OSmKYnOAPzPhKh/q+EMc7QWFEM5
-	 cbGgD97pXioUQbabibspGR0hS2SK3UImXmJo2P4hHkPVHIgM1nBT9iYvCbrgUURzSg
-	 t/p4FDa7lLvTw==
+	b=H5knb9E/nz2FZWLCoeEbOUw0c7n39enxTQEMXrBI4mo4c1j/LCPUSqksDng3fS3dc
+	 W3DWw9TM9sDUUYeaxR4YNknFqB4nei5A77gbUYkTIy5r34+BJkq/osm3qRQSfj4SLW
+	 /+h+/QKFDfN9zoF1R1tZRBMzbgVchHLCB66MP+L/45Olo/5t4d8sXb7O9iLSzVr2wt
+	 EnCXzLTgh5lCtKcjoLCS35+kN95cAIEu7yz/6QgQcQkIbCjJVIiMtO0te9/uHwlmkN
+	 xWYUUNx2rvZDTfdDSA5mxe2hocU2DddR//PKfYOysXO1P6jbEu0szmS0oQhpsFcXfl
+	 NxsjqrOdgpjCg==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 13 Aug 2026 14:40:34 -0400
-Subject: [PATCH v3 5/8] NFSD: Count delegations per network namespace
+Date: Thu, 13 Aug 2026 14:40:35 -0400
+Subject: [PATCH v3 6/8] NFSD: Give delegations their own state shrinker
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-recall-any-keep-count-v3-5-a96d243c0b13@kernel.org>
+Message-Id: <20260813-recall-any-keep-count-v3-6-a96d243c0b13@kernel.org>
 References: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
 In-Reply-To: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -45,110 +45,203 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
  Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=3291; i=cel@kernel.org;
- h=from:subject:message-id; bh=QzwVxHPhLHari5sUO3sYFbbftTNAcslZhoj30ZyNzY8=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqfg+xmkJR14TOUtOkU3J6127XZKDkSu1J0j3nT
- g0B97I55WuJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCan4PsQAKCRAzarMzb2Z/
- ly+RD/4pkTcxKGuhZ1Dn93Z5MLvn/kR4fAmYk0wBEE7XU5IjAKvSvGHzK40vK8faPWDjxVx2EEs
- th5pywU9gxGEtRvSEqCRJRLpwzB2Wzo8rYS0/zv/BAu3fnB4Zs8f3fTZ7ne9opWg2GvnjxySp4y
- gHqlE4nrILx9nwsIc36jq//L0ZTV0xYa2q5NqkObSYyOS5SfKP8808Z/89pS9YKG0kUINnG+KTl
- A0Ul9oLQcPzYZnfRXttGinbUOtOH80wDacX1bsOyZts9Rtk3NvZcD0WnrZrHb64fYnEgiGzlHkX
- NwubNfK6AprPTfFV7mdHrXjXOjS+II8P0n5pH4v7d9HB6GO77AmCArOdOFua1pnlhwkbwafUA2h
- DhCGNJkQo/cLssg9El0l6Xvpih6ZCt8JfpITinDJJ1vbfEgL7freaIclml/L+YRP/wQIRXNJey6
- 85Y3mMP3NX5Ksv59DcoNCXMSpGP1sftN7cySSNwrP8xb5qtNohnxBMZen0fhqeD9DwKzMnBwsVA
- PGquoSdC5H2HXM6jWdssZ5gEfpjQzUnKDQC5YRjswHEJgle/ky7ZB2I04VAri3U1wVx5OH0CVD4
- /zHmugKiZv4LgwC/Bjeu8adSq+IKnmQumeAsjaxyMJu6hq9F3RI3LltPm4KIdtVtcUIBuwbTru5
- hXremS9BmDIOBqw==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6157; i=cel@kernel.org;
+ h=from:subject:message-id; bh=GwQ/DGoePjGx7R/tMlONFlADTnKCq8hY6X/KcV7zltk=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqfg+xR03ozjvJZiAbJxWtAgEpW2RKXnqrkQaIm
+ TsRm5b1nIGJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCan4PsQAKCRAzarMzb2Z/
+ lxhIEAC3rN5XHAlv8vvztSwuaTm3B59PXjgjnsquhpthOdUf8pf5oicFt1pRAinQoq7thHbpDC9
+ ANVb5q+iuadGn7l8VtLtux91QXMaB52J2fOLr89V/wPlG+iCWJm5KBzhi1AUT3rq1W6ttgZw713
+ GwBkObceocckgGsnL83vvlvKROCfNdPQ6Yn1OPW4tL3Hkvj5XMLFTmyZHRoE+te0jbeFzXZkJLy
+ P34lsMH9vnXK+F6PBMogPR2y/zmbjaKR9QihaUDmhMe0oXhz+t2SqMXp0dfhOYbeFlHzjaNmYLL
+ UrbAjx+wclCAph/8NyxwN3lt16nvhWVBIRpXcF603okKGM8HYXD0IFKX1pNYH3pLdoZSTCvJ6VM
+ ph4jSXk28wrf2DmU6H34HCrGoYmh3k/Wpwe/DIErJsh0Iysvud04jWO80k2gCeFxQw0dbknACqs
+ eGnKQl5oZcIozcRUAvH9qrQ+/OzwyljSp1HWUhz/z61HWR5qVavnuwidvTfy24k18KHIfg2XJl0
+ HRvkcGO2sznAMmoS+rOdmf/l8qVTHmcOZs1GAxjVo21M4VO+Bc4z4ETMzrxystbNHVgqFJLL0rg
+ wIh0V+alVvDdXonQjVfZx6VveVlzx/my90YtxZwcikEXwfGD2UrJcy2YYeJutBRjWrB7B1VOl1w
+ tuMGYqQG6lQfBsw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-The state shrinker is allocated per network namespace, but
-nfsd4_state_shrinker_count() reports num_delegations, which counts
-the delegations held by the whole host. Every namespace therefore
-reports every delegation on the server. Reclaim sees the
-population multiplied by the number of namespaces running NFSD. A
-namespace holding no delegations of its own still reports a
-nonzero count and queues its reaper, which then finds nothing to
-recall.
+Since commit 44df6f439a17 ("NFSD: add delegation reaper to react to
+low memory condition"), nfsd_client_shrinker has managed two
+unrelated populations of objects.
 
-Count the delegations in each namespace and report that instead.
-num_delegations stays for the admission check in
-__alloc_init_deleg() and the ceiling check in nfs4_laundromat().
-Both compare against max_delegations, which is sized from host
-memory and so remains a host-wide limit.
+One population is courtesy clients. Shrinking that population can
+be done synchronously and without risk of deadlock. The shrinker
+callback could return a precise count of the number of objects
+that were released.
+
+The other population is delegations. Shrinking that population
+requires sending a CB_RECALL_ANY; clients are not obligated to
+return any delegation. The shrinker callback is structurally
+unable to report progress.
+
+What's more, the single shrinker callback falls back to
+delegation reaping only when there are no courtesy clients left to
+reclaim. A single courtesy client is enough to keep a namespace's
+delegations out of the count it reports.
+
+To begin to resolve these issues, refactor the existing state
+shrinker into two: one for courtesy clients and one for reaping
+delegations. Each manages the size of its own population, and the
+shrinker names become namespace-specific.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/netns.h     | 2 ++
- fs/nfsd/nfs4state.c | 7 ++++++-
- 2 files changed, 8 insertions(+), 1 deletion(-)
+ fs/nfsd/netns.h     |  6 +++--
+ fs/nfsd/nfs4state.c | 77 ++++++++++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 65 insertions(+), 18 deletions(-)
 
 diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 71eebfea020d..bb62d19430bc 100644
+index bb62d19430bc..ef01a1cf72ac 100644
 --- a/fs/nfsd/netns.h
 +++ b/fs/nfsd/netns.h
-@@ -238,6 +238,8 @@ struct nfsd_net {
- 	int			nfs4_max_clients;
- 
+@@ -240,8 +240,10 @@ struct nfsd_net {
  	atomic_t		nfsd_courtesy_clients;
-+	/* per-namespace; num_delegations in nfs4state.c is host-wide */
-+	atomic_long_t		nfsd_delegations;
- 	struct shrinker		*nfsd_client_shrinker;
- 	struct work_struct	nfsd_shrinker_work;
+ 	/* per-namespace; num_delegations in nfs4state.c is host-wide */
+ 	atomic_long_t		nfsd_delegations;
+-	struct shrinker		*nfsd_client_shrinker;
+-	struct work_struct	nfsd_shrinker_work;
++	struct shrinker		*nfsd_courtesy_shrinker;
++	struct shrinker		*nfsd_deleg_shrinker;
++	struct work_struct	nfsd_courtesy_work;
++	struct work_struct	nfsd_deleg_work;
  
+ 	/* last time an admin-revoke happened for NFSv4.0 */
+ 	time64_t		nfs40_last_revoke;
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7d8d7df9953b..f818e8a60099 100644
+index f818e8a60099..d38fccb42e61 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1161,6 +1161,7 @@ static struct nfs4_ol_stateid * nfs4_alloc_open_stateid(struct nfs4_client *clp)
-  */
- static void nfs4_free_deleg(struct nfs4_stid *stid)
- {
-+	struct nfsd_net *nn = net_generic(stid->sc_client->net, nfsd_net_id);
- 	struct nfs4_delegation *dp = delegstateid(stid);
- 
- 	WARN_ON_ONCE(!list_empty(&stid->sc_cp_list));
-@@ -1171,6 +1172,7 @@ static void nfs4_free_deleg(struct nfs4_stid *stid)
- 	nfsd41_cb_destroy_referring_call_list(&dp->dl_recall);
- 	kmem_cache_free(deleg_slab, stid);
- 	atomic_long_dec(&num_delegations);
-+	atomic_long_dec(&nn->nfsd_delegations);
+@@ -5564,16 +5564,27 @@ nfsd4_init_slabs(void)
  }
  
- /*
-@@ -1255,6 +1257,7 @@ __alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
- 		   struct nfs4_clnt_odstate *odstate, u32 dl_type,
- 		   void (*sc_free)(struct nfs4_stid *))
+ static unsigned long
+-nfsd4_state_shrinker_count(struct shrinker *shrink, struct shrink_control *sc)
++nfsd4_courtesy_shrinker_count(struct shrinker *shrink,
++			      struct shrink_control *sc)
  {
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	struct nfs4_delegation *dp;
- 	struct nfs4_stid *stid;
- 	long n;
-@@ -1263,6 +1266,7 @@ __alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
- 		return NULL;
- 
- 	n = atomic_long_inc_return(&num_delegations);
-+	atomic_long_inc(&nn->nfsd_delegations);
- 	if (n < 0 || n > max_delegations)
- 		goto out_dec;
- 
-@@ -1295,6 +1299,7 @@ __alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
- 	return dp;
- out_dec:
- 	atomic_long_dec(&num_delegations);
-+	atomic_long_dec(&nn->nfsd_delegations);
- 	return NULL;
- }
- 
-@@ -5566,7 +5571,7 @@ nfsd4_state_shrinker_count(struct shrinker *shrink, struct shrink_control *sc)
+ 	struct nfsd_net *nn = shrink->private_data;
+ 	long count;
  
  	count = atomic_read(&nn->nfsd_courtesy_clients);
- 	if (!count)
--		count = atomic_long_read(&num_delegations);
-+		count = atomic_long_read(&nn->nfsd_delegations);
+-	if (!count)
+-		count = atomic_long_read(&nn->nfsd_delegations);
  	if (count)
- 		queue_work(laundry_wq, &nn->nfsd_shrinker_work);
+-		queue_work(laundry_wq, &nn->nfsd_shrinker_work);
++		queue_work(laundry_wq, &nn->nfsd_courtesy_work);
++	return (unsigned long)count;
++}
++
++static unsigned long
++nfsd4_deleg_shrinker_count(struct shrinker *shrink, struct shrink_control *sc)
++{
++	struct nfsd_net *nn = shrink->private_data;
++	long count;
++
++	count = atomic_long_read(&nn->nfsd_delegations);
++	if (count)
++		queue_work(laundry_wq, &nn->nfsd_deleg_work);
  	return (unsigned long)count;
+ }
+ 
+@@ -5583,6 +5594,25 @@ nfsd4_state_shrinker_scan(struct shrinker *shrink, struct shrink_control *sc)
+ 	return SHRINK_STOP;
+ }
+ 
++static struct shrinker *
++nfsd4_alloc_state_shrinker(struct nfsd_net *nn, const char *name,
++			   unsigned long (*count)(struct shrinker *,
++						  struct shrink_control *))
++{
++	struct shrinker *shrink;
++
++	shrink = shrinker_alloc(0, "%s:%s", name, nn->nfsd_name);
++	if (!shrink)
++		return NULL;
++
++	shrink->count_objects = count;
++	shrink->scan_objects = nfsd4_state_shrinker_scan;
++	shrink->private_data = nn;
++
++	shrinker_register(shrink);
++	return shrink;
++}
++
+ void
+ nfsd4_init_leases_net(struct nfsd_net *nn)
+ {
+@@ -7996,12 +8026,20 @@ deleg_reaper(struct nfsd_net *nn)
+ }
+ 
+ static void
+-nfsd4_state_shrinker_worker(struct work_struct *work)
++nfsd4_courtesy_shrinker_worker(struct work_struct *work)
+ {
+ 	struct nfsd_net *nn = container_of(work, struct nfsd_net,
+-				nfsd_shrinker_work);
++				nfsd_courtesy_work);
+ 
+ 	courtesy_client_reaper(nn);
++}
++
++static void
++nfsd4_deleg_shrinker_worker(struct work_struct *work)
++{
++	struct nfsd_net *nn = container_of(work, struct nfsd_net,
++				nfsd_deleg_work);
++
+ 	deleg_reaper(nn);
+ }
+ 
+@@ -9964,21 +10002,26 @@ static int nfs4_state_create_net(struct net *net)
+ 	INIT_DELAYED_WORK(&nn->laundromat_work, laundromat_main);
+ 	/* Make sure this cannot run until client tracking is initialised */
+ 	disable_delayed_work(&nn->laundromat_work);
+-	INIT_WORK(&nn->nfsd_shrinker_work, nfsd4_state_shrinker_worker);
++	INIT_WORK(&nn->nfsd_courtesy_work, nfsd4_courtesy_shrinker_worker);
++	INIT_WORK(&nn->nfsd_deleg_work, nfsd4_deleg_shrinker_worker);
+ 	get_net(net);
+ 
+-	nn->nfsd_client_shrinker = shrinker_alloc(0, "nfsd-client");
+-	if (!nn->nfsd_client_shrinker)
++	nn->nfsd_courtesy_shrinker =
++		nfsd4_alloc_state_shrinker(nn, "nfsd-courtesy",
++					   nfsd4_courtesy_shrinker_count);
++	if (!nn->nfsd_courtesy_shrinker)
+ 		goto err_shrinker;
+ 
+-	nn->nfsd_client_shrinker->scan_objects = nfsd4_state_shrinker_scan;
+-	nn->nfsd_client_shrinker->count_objects = nfsd4_state_shrinker_count;
+-	nn->nfsd_client_shrinker->private_data = nn;
+-
+-	shrinker_register(nn->nfsd_client_shrinker);
++	nn->nfsd_deleg_shrinker =
++		nfsd4_alloc_state_shrinker(nn, "nfsd-delegation",
++					   nfsd4_deleg_shrinker_count);
++	if (!nn->nfsd_deleg_shrinker)
++		goto err_deleg_shrinker;
+ 
+ 	return 0;
+ 
++err_deleg_shrinker:
++	shrinker_free(nn->nfsd_courtesy_shrinker);
+ err_shrinker:
+ 	put_net(net);
+ 	kfree(nn->sessionid_hashtbl);
+@@ -10079,8 +10122,10 @@ nfs4_state_shutdown_net(struct net *net)
+ 	struct list_head *pos, *next, reaplist;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+-	shrinker_free(nn->nfsd_client_shrinker);
+-	cancel_work_sync(&nn->nfsd_shrinker_work);
++	shrinker_free(nn->nfsd_courtesy_shrinker);
++	shrinker_free(nn->nfsd_deleg_shrinker);
++	cancel_work_sync(&nn->nfsd_courtesy_work);
++	cancel_work_sync(&nn->nfsd_deleg_work);
+ 	disable_delayed_work_sync(&nn->laundromat_work);
+ 	locks_end_grace(&nn->nfsd4_manager);
+ 
 
 -- 
 2.54.0
