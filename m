@@ -1,63 +1,63 @@
-Received: from mail-ot1-f51.google.com (mail-ot1-f51.google.com [209.85.210.51])
+Received: from mail-ot1-f49.google.com (mail-ot1-f49.google.com [209.85.210.49])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B872B3314AC
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 20:41:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C14AF42C508
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 20:41:36 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.49
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786653697; cv=none; b=F5ogFveoil70i+4J12AfYdBHtD8W6LZX1CIvycEbbCDtvLVn5Jwms0mqcSg950nEIPrQzu5wb3bp6k+Pcma66IeNlq1o6diqDzy1QoPHTajCtAikWKhNb6tiwYgFOSICuPBVA6qGH7kTQMmAmZ9Dte5wwcTbuk9NxerW1n7VlCM=
+	t=1786653698; cv=none; b=pwHUVtiihC7SAqvvECnLb09UXjw7KX86UeF+50V8D+KK3mOF9JpO2r72KVVmvnlhG12Se9trQgFYHFIAtfIX5CLX3jrjyLpfYhVyShRyTzk2tgi8yvm1WsISfythwASRyP2lgoeeVhbfKEtBEm4Sg0H9xOWNBwKgAkf8MaNX6HI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786653697; c=relaxed/simple;
-	bh=jQwsp+kD+7yDIcD+8A5wa2tQDC70Cbbjz6pndDIFHrk=;
+	s=arc-20240116; t=1786653698; c=relaxed/simple;
+	bh=N5JDZtbP1oVQQsjMPbNmcHJ5TqCW5ho6wka/grv4FzE=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=Sbws/wMAmDRI7+fITsDlj9oOOXKM51dINihOs2fK5UC1NraeLAgOx33+f3D21LXLOjUegxZmzCmfQWZVqm1RTKpcqD8hfk+3rbXrzPOmZ6dGWSsX5ORsRGV7erDLuMoYv97XyuIKLMgXHCTo0HY3lP/+At+G48z5hb4lBEP8BgI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=dfAFUuo7; arc=none smtp.client-ip=209.85.210.51
+	 MIME-Version; b=odcfY2G3M5PeQ6CH9TBGnl3q7Hy1noXjEp9JnRJGQtUMcS1F5bs6yMh1NUYMSFNakqWqm+Sus3fpHm39njaK1ZeDULnSHtyUZ0LBSSYUAJaqfl4+/5m668hR3YwMgAW0cuDvOyAseC5BXdiIzrPrVvUjPvU7EiAFB/nZEIwwX6w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=NsJaHRrd; arc=none smtp.client-ip=209.85.210.49
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="dfAFUuo7"
-Received: by mail-ot1-f51.google.com with SMTP id 46e09a7af769-7eb5bdb50fcso250623a34.1
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 13:41:35 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="NsJaHRrd"
+Received: by mail-ot1-f49.google.com with SMTP id 46e09a7af769-7ebd88be784so251239a34.2
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 13:41:36 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=hammerspace.com; s=google; t=1786653695; x=1787258495; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=EB51Ju9QPfx0ISg4yMNUT+Y+r7FvuyZkraj30KlCQFo=;
-        b=dfAFUuo7wIeTOIrh9Duz+ZcZmXhoxwA1WnTMMSb3pMn4Px6FA847Zvi+1WibjeodLV
-         7mG/uWF/gd12zLxUETh858DMdmhl87c/ccyhoLLaPUDgoqZT1JtoU1wl73bJ/qQuPMHj
-         9mKzOQmVUJrsSDgO2oFf8VZYo0j6HyT9WiYP9wP6VQIqC1lPirR1IPGGjk4jMukiZ/5Q
-         tp+frYhxRhW74DAlIKyPkuUT3n9vqN+KDGs+9B44FIDQmUVwVzrmDLjw584lN2NM1r8q
-         eS8hPPbV0SwFO0dxwNX/Fv3NVdH6UC23clSoCpjK3e50LsQsE8rWi4npE7dvruDl6mwH
-         Jvbg==
+        bh=Fx+DSzvMV7xbckhhOTBdms1ca/lfgUKsq/ZcBMJSVss=;
+        b=NsJaHRrdeEnm0huoqTM7edEJHO+0O8tXBeoy40GEsCMqWhoZ66EhQ+0MLz7KwR18mJ
+         pqS4eIh8mbOF3tkJzOS2U4xrcJNG0gbwP04DPWaTvDIpRjf1yN+lvuUC9Aw+6VjuYCxM
+         cpF8rkHySXiVpaqNnoHA6pD2SYVOSgB2jdC0qN/OSpA+ZcUtAXz+9dB3sqzCZEdMcWk8
+         xwRBw199IztOIs3Qm3jYgTR3AmAI/05g6MDxcOcX0hL+GllQC3NQT+6dSdm9lhwZxBd2
+         zOypCUT88xjpnrXt+1HzkdUn3DxBJSbZhxbjNOXBc0kxPdNB+KOky8TdbWQJLNxKetaU
+         9EUQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
         d=1e100.net; s=20251104; t=1786653695; x=1787258495;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=EB51Ju9QPfx0ISg4yMNUT+Y+r7FvuyZkraj30KlCQFo=;
-        b=Own/Jp5y+bftbvVmLWZ9kqMkw5EjLsk8RXxKwb5d4+jXyXOqwpZit0denW4x5MWcCe
-         yvrFyPZnK5zo6VuwnBe17IzpU+LXh/c6RLe7WnW2hPBAHoiuWeO8tCs4Yikwe8KXGFYD
-         HLm3jQrril9BK+POecDQwi0TWQRqExS9d5/NibWSrfE1cC5cVA2FK04PAmIPZeVwHy9b
-         IhdIz9QZ8JUQpAr6DfpdWCzMSGKEzOy+8XpwV2KhRanyXRpotUqjd/JPmRYGGQhRsHl6
-         uM83zAgPP9zlJEunzMKznrChyK0MvIncVcT2GXPu1exaFhO66VnjF9RnQSGsZbWZXqjf
-         agtA==
-X-Gm-Message-State: AOJu0YzKyTWC6jHqRp7tOsxiJ/RDcmEFIXlAI7/Raeg9zjBEdICRIGny
-	QPLZlupHZ6MXrgEXbPMe6K4Ui54GCPncxIHYMNwcIibNvWubXhyZDAcuRV/GSeL5FT8=
-X-Gm-Gg: AR+sD11woAwAuR+B10lAmYUW4aOD44MyOs7vCwmETGZN0lbi3229k9SxmNiGi8tsDfW
-	IEgSfbhpePbzAdvSpLC/MZTz0RufYRktHa30oFrr1sbd/fgPz6+3W7xfdVpzICbNZQZeKCJUUJ+
-	S/6SuhFAXxD8D59nEEkpOrKtiywdr5FO45X26InBt+JSJx+v3062A4HV5HcsCdN+1bSMLz3vH0j
-	LjvcCLvk4uph855VDvI8crTnDviAM/FW5w8knOROnT/52nnwy9kxDyTN9xsg7JMyfvhK2Df9+RW
-	hQsRAw7qdfDVTvrdpEFSRwTGHw+nBWHDpThnQ4pqh4CnSFbw1L5SQUYxWgwr9zTwTRKo5NnGrgG
-	jC3aSEo0LY8s/C+YE1aDTyPnl3EHfH+e8G/gWm7pR012cOMyTWh4kphR7UY/u34dJEf17QDfoQ3
-	1S88AvuULns3bHa5BDmT/0WYPBqkoK7C70glS61n1xbgHvI1KEpbB6n7UvaRuNA9mdK9REGnTFf
-	zpPy1LQUZ9y9VvRxRF6SPF2
-X-Received: by 2002:a05:6830:6b03:b0:7e9:cd7a:7c34 with SMTP id 46e09a7af769-7f3de5b33f3mr566825a34.10.1786653694625;
-        Thu, 13 Aug 2026 13:41:34 -0700 (PDT)
+        bh=Fx+DSzvMV7xbckhhOTBdms1ca/lfgUKsq/ZcBMJSVss=;
+        b=YXDAhNeGrLwRI1uYsOVWUciY/s+zE/cYdK5qzm7C2NooYo8fqTzjGYxEy5zwAZrhDx
+         TP+5MXfvdYk6ov09SVoCJ+C91C7s3Lkw1WECyahSkhKpqX0sG3GrwwAP8OyxnqaefeLJ
+         dTC/2EcfNjZSg9n0yw5+fDS5xSfMHEyfHPHlBSvn7INNGATxTN29rS13k7pygx5P5Y6W
+         Uxdh0XZxtH9qmKxzJhs3JjK91DDk4ZzxAYlQjOZLAN5BpEGDj3NPYI7p9+lqE6S8sYSt
+         B3yuZip0L0XE+LxtXxyVUCpRZ6NJsRfjZYQIwKqlpkNplYnEWOEiiV1BzRtGNds14ITq
+         grLw==
+X-Gm-Message-State: AOJu0YzBfBfucvTvl1V8qJVQl26hVfpVgCUQdfddnLlLuO/em/Szh8lJ
+	u7ZJDlaa4nvabC0QErKDfjek4knn0jvaVichyBjvzaEoBe/iDn9lEVmO6HGyrg/Vv9w=
+X-Gm-Gg: AR+sD13Ra+kVLpCQoSh5PFBNju/ZUY2aC0/1COiAkAJL6F9b2zhRV2nzCHSz/aDhjxy
+	fl+flTV3n+nbVyzgYoRobq5xEUDW9j2LDMSxYCQs5IbXwvtaUfaLcqUrOgbfR1I/kBBkR4zpGIW
+	1FWYG6LPfESn3sXkNGS4HuT++HzA1SSPud5F6Od2cQgxcmc9QYVYF93RMHz9vnWNiUDmOk74Sft
+	laB8DKmlkOm5wctcBadGoejmgdJnyU9Wmo6jPkXN3GgOzwLaI4cdZ95AqoNhMzOxOqXcB7H1H20
+	OowBfTI0lg7Wgg5ZnIabgJXc35jM/MeL1N6LqGIzf56qQCmY0eHWRl5u3xI9jxaGyKAvKJb0+7d
+	N8+7jKcgIjEoRKXi+gBbJOHG6TvnQObFcdtHz0tEcD9jw8gPAQItT4Oir7ABdSFdTgLMQaDTKVI
+	RqKkrGpYYKnqS9G4ACCAD2fdy0OMpPds+vQyBoJXA2NYkmMZAs7sfelGviH46wdTrXc+U1uqqmQ
+	mjCOA/uroonnkDLxfMqe8im
+X-Received: by 2002:a05:6830:2b0e:b0:7dc:4a43:fb5c with SMTP id 46e09a7af769-7f3de64c451mr480008a34.11.1786653695504;
+        Thu, 13 Aug 2026 13:41:35 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-7f3c9e23b6fsm3087958a34.25.2026.08.13.13.41.33
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-7f3c9e23b6fsm3087958a34.25.2026.08.13.13.41.34
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 13 Aug 2026 13:41:34 -0700 (PDT)
+        Thu, 13 Aug 2026 13:41:35 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -66,9 +66,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Jonathan Curley <jcurley@purestorage.com>,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 1/6] NFSv4.1/pnfs: suspend pNFS on NFS4ERR_TOOSMALL from LAYOUTGET
-Date: Thu, 13 Aug 2026 16:41:26 -0400
-Message-ID: <57c201555a87e999cd2de1747901f3b6cc3d5792.1786653456.git.bcodding@hammerspace.com>
+Subject: [PATCH 2/6] NFSv4.1/pnfs: derive loga_maxcount from the LAYOUTGET reply buffer
+Date: Thu, 13 Aug 2026 16:41:27 -0400
+Message-ID: <0653ae1c2d2565701982bd8887fbce987e406308.1786653456.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1786653456.git.bcodding@hammerspace.com>
 References: <cover.1786653456.git.bcodding@hammerspace.com>
@@ -80,69 +80,39 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-If the layout for the requested range is larger than the size the
-client advertised in loga_maxcount, RFC 8881 Section 18.43.3 has the
-metadata server return NFS4ERR_TOOSMALL.  The client caps
-loga_maxcount at a single page, so a flexfiles server that stripes a
-layout segment across several dozen data servers produces this error
-today.
+The client advertises a fixed PNFS_LAYOUT_MAXSIZE (4096) in
+loga_maxcount no matter what reply buffer it actually allocated.  The
+two only happen to agree for layout drivers that cap
+max_layoutget_response at a single page.  Block and SCSI layouts
+allocate a session-sized reply buffer, yet still tell the server it
+must not send more than 4KB of layout: a server whose extent list
+encodes larger than a page returns NFS4ERR_TOOSMALL even though the
+client has ample room to receive it.
 
-The client has no handling for it: nfs4_stat_to_errno() maps the
-error to -ETOOSMALL during decode, which nothing in the layoutget
-path recognizes and nfs_error_is_fatal() does not consider fatal, so
-pnfs_update_layout() clears the layout fail bit and returns no
-segment.  The I/O falls back to the MDS, but because no fail bit was
-set, every subsequent pageio attempt sends another LAYOUTGET that is
-doomed to the same NFS4ERR_TOOSMALL.  Files whose layouts do not fit
-the reply buffer never use pNFS and pay an extra round trip on every
-pageio.
+Set loga_maxcount from the size of the page array allocated for the
+reply.  The client never advertises more than it can receive, and any
+future change to the reply buffer sizing automatically carries its
+wire advertisement with it.
 
-Map -ETOOSMALL to -EMSGSIZE in the layoutget exception handler and
-have pnfs_update_layout() treat it like NFS4ERR_LAYOUTUNAVAILABLE:
-mark the layout mode as failed and fall back to I/O through the MDS.
-
-Fixes: d600ad1f2bdb ("NFS41: pop some layoutget errors to application")
-Cc: stable@vger.kernel.org
 Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/nfs4proc.c | 9 +++++++++
- fs/nfs/pnfs.c     | 2 ++
- 2 files changed, 11 insertions(+)
+ fs/nfs/pnfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5709c6fea85b..016e8b38b87b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -9623,6 +9623,15 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
- 	case -NFS4ERR_BADLAYOUT:
- 		status = -EOVERFLOW;
- 		goto out;
-+	/*
-+	 * NFS4ERR_TOOSMALL means the layout for the requested range
-+	 * exceeds what the client advertised in loga_maxcount (see
-+	 * RFC8881 section 18.43.3).  Note nfs4_stat_to_errno() has
-+	 * already mapped it to -ETOOSMALL during decode.
-+	 */
-+	case -ETOOSMALL:
-+		status = -EMSGSIZE;
-+		goto out;
- 	/*
- 	 * NFS4ERR_LAYOUTTRYLATER is a conflict with another client
- 	 * (or clients) writing to the same RAID stripe except when
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7715e2bd5871..10102bda6a38 100644
+index 10102bda6a38..88deefd45202 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -2338,6 +2338,8 @@ pnfs_update_layout(struct inode *ino,
- 			break;
- 		case -ENODATA:
- 			/* The server returned NFS4ERR_LAYOUTUNAVAILABLE */
-+		case -EMSGSIZE:
-+			/* The layout exceeded loga_maxcount (NFS4ERR_TOOSMALL) */
- 			pnfs_layout_set_fail_bit(
- 				lo, pnfs_iomode_to_fail_bit(iomode));
- 			lseg = NULL;
+@@ -1209,7 +1209,7 @@ pnfs_alloc_init_layoutget_args(struct inode *ino,
+ 				lgp->args.minlength = i_size - range->offset;
+ 		}
+ 	}
+-	lgp->args.maxcount = PNFS_LAYOUT_MAXSIZE;
++	lgp->args.maxcount = lgp->args.layout.pglen;
+ 	pnfs_copy_range(&lgp->args.range, range);
+ 	lgp->args.type = server->pnfs_curr_ld->id;
+ 	lgp->args.inode = ino;
 -- 
 2.53.0
 
