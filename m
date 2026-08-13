@@ -1,63 +1,63 @@
-Received: from mail-oi1-f181.google.com (mail-oi1-f181.google.com [209.85.167.181])
+Received: from mail-oa1-f53.google.com (mail-oa1-f53.google.com [209.85.160.53])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B459542C4EF
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 20:43:41 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.181
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 61F9D42C508
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 20:43:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.53
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786653823; cv=none; b=qwcsfQgwKDWppUG6J95Dgrp4C1q20t59E9SToASiFYduNXlOREh4SxqSqep00o9yR5kKjpOBtTRYjlAU6dCf9w+/nr2IMBJQ36xMkP5r4N65cw/d3aCXS7cJKPBwVh2FO6KOwftSCmaAoM9l6dBTBO27qQhVlVcK2ev60+cwMGw=
+	t=1786653825; cv=none; b=lQkeAP1NpWFHR9xV4wXotJd3zYAGlmptUC3BB7iZwxyNFNsAuE8VnyL1u5pCJ6eQVwLtViRmTyAJPqd29+mW6Al8T6G4Je+yO55bvqoK2MDQ2qWJSBWfzyVzdu5/HYppj/hqSs4Pt/J+Y2G/4Nys3qYTJOrYpH1EyKlI57cPBnw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786653823; c=relaxed/simple;
-	bh=/f+bZ9KZPt84LMSIwwhlk5nQELV6vLd1NvoV4tkfB8Y=;
+	s=arc-20240116; t=1786653825; c=relaxed/simple;
+	bh=2B0+muiIFMkPe4KZTaU1Sa/V5q+/lo6pLpkUHJM6bW8=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=WJa29MXIyxcwp5Lw2K5Zz5If583ml7bF3MasOpt/6xLjI/LDww5PgCTTcWliSezNjhwxVxe2cYEb4W9rBW+KETtElUsjEOVOkqZK3yJcJc5Cv3OIu3hY2WXSnwqMMz9dx2YztKN64oYF58colPrrnoka+tNmA9KAmuRIfJ+agfI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=JL3nXMtm; arc=none smtp.client-ip=209.85.167.181
+	 MIME-Version; b=iaRKYNyR8iJtXr1whzIG80d7t2ggyocjp52W2LbTzGsdQpVf0OJsmQHHLSrD1ddZYefCQQvqo+2zv5TQwLESeAUVzJqITMJQNvi5fkYv8J/AafJIG0178fXSig9cYEMTZ7Bca1lLyGQ5HJ9n+H9qoD/o6H1VT6nK0+xerWhmr3w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=hlvPpAVY; arc=none smtp.client-ip=209.85.160.53
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="JL3nXMtm"
-Received: by mail-oi1-f181.google.com with SMTP id 5614622812f47-4ab47c40e7eso151497b6e.3
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 13:43:41 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="hlvPpAVY"
+Received: by mail-oa1-f53.google.com with SMTP id 586e51a60fabf-4569e871502so213416fac.1
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 13:43:43 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1786653820; x=1787258620; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1786653822; x=1787258622; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=DOkmhEZoTiIOghmXnQgRNxDKH2kzj/FEWLdizeMkRuk=;
-        b=JL3nXMtmSJxh8/VLSdy/YCcfWIJyg6d+WN6B0qFCqgO82qpJVdI+M+7BVOG3mBBPl9
-         3ZTdz0sCAYKmckITlRjT15LPYKKkSdhLT3quKek24c7VwLYe248TbzsnITElBqlraGPY
-         xtnaQ/sQDuGGI2EM38HLGhwE2T727U304JCPLGww3KNrquIALzaqgoH7WIjarZI1NMaD
-         9spaZHwIW/2nZBOGYdK+VtVUsBVQs/OYrI0nB1yDPZ5RGGLb+N9YoM8LzqUhAgUgszP7
-         +QpOJHrqAgXop3o+wuGORBzjDtoGwrA7s/v2H+8dpQeZJKUeWq61tt/baV/kwX1B6k+2
-         8J5A==
+        bh=W76JcT/E82Yj1vh+FcJjjVkk2u2kFELvtIxbGfLJjLM=;
+        b=hlvPpAVYyHTSd7eECwojoaL3ZZkHAJWJg0nUnkdNcpjBZHuB7tOFsAuMSIT7gFhCfD
+         IfnKQBuPuuMu0AuOyx7oKQllm6MHLQz+yc75RV2JlU0o02jADVyaEIcRsHnTRUtDCByp
+         a/C0cjLaZrpOmJeKSvuXU5Y2ujeq4W673bmXSNLzr/vlVG5vRsa5SoDGKedJMThVLANz
+         JaJYJoyd7fZ2olRVMdw6xvLjPOjY2+AbazFjaPVEZcKtgN18jE68QmUdbQBR6EOnXc6W
+         m4kVQ1dKGSlfXQa2dse6J0ZTJ6JGw4gjA8tLSCo3X3yqW83gRx3IvPjCjciohUu5Fuil
+         qLKQ==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786653820; x=1787258620;
+        d=1e100.net; s=20251104; t=1786653822; x=1787258622;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=DOkmhEZoTiIOghmXnQgRNxDKH2kzj/FEWLdizeMkRuk=;
-        b=IGCHqI0B3iPXB82gLmhkaxLjglSoCXyxPJWfuEIorMBDg+rtQLUT82NaNuwYtyZq6p
-         5o2hN3yBl9oJ+VtJcNGKpu1WeHntSE1eq7M2h8ynALMqgRqusXUSSlaTJaDCVXYYURR7
-         KZtq/4WdfA8LEP47Ko7EAYiDe/EpVa26P9oaFOHhVdcH+w8fau/9lFtQ3sr4zMdUMYDN
-         PKSAspPfkxN2qX5z3WOMlxfxJxP4tIjQEFTZN0C9SXLO+nxd6tqFwTA/aQxqNsrjDgaB
-         jRQiOP+OpZb8NZnYgPFs3nvycFJBJQSa2SSUoQVCFKPea4253VGyWh8jTaeSMw871nsP
-         NsUA==
-X-Gm-Message-State: AOJu0YxkKnQXAuNcdrA4Nr78yuYtvLLo9ZSKSvzi4DS1W6wuVYG9VN9R
-	FcKb4p8DPDG//7tfHQ792/qJMo4K/hkxbaUdQ5LMrJ5NzjYeKJ7PBW69eLZjTeLfamM=
-X-Gm-Gg: AR+sD12Bi3E7/wsM3j7QdQXXV/bYX8YOemn5EbMWtR1RcQ/VBEXkEplibfO4key+Ju6
-	gVSNxP76E6RiUs4lHIhEMX7rBh7Mbo1fezts/xalPImPY6gFtg0XxiFmOnpn8IQ2UrexnsoJzeB
-	TGI23+aRvYPYZBu8xpNffe/vI2lwMJXiUiNS8FcxLX94hgBINUlKm7qWyUXmGsAvxnRpaISVYKt
-	a6rUYt/oww7sA9c1sGNL3slXaYtyDwqqqGl4I9fU+tQE0ZEihAW4e5A3J8rrH5G2Ijiq6/XYS23
-	dlMkIMP7BywXSoxAh3bUqdXHlqbdinug/nnOB/L5AE49VUEA3gXJDjzBawoSGzIw/sE1azda+i+
-	ctZmlt1bbr4sjAEq/8sMLPnmlbNqZxNbqRM6i7ju4kT0BMsrg0h1wMLX4mK3W+KWg0y/y9sU20m
-	BNSJBX09GLnHe4RL4qYB2hSj9RfcZ5RxhfvZ7/788V6lIT6mTP2tKLal9C+U4jMrjv8jRcSw0xr
-	8EUaqyf4S0P7NFFwtwdyuPj
-X-Received: by 2002:a05:6808:1a03:b0:497:e0bc:afe2 with SMTP id 5614622812f47-4b2412e2cb1mr623215b6e.4.1786653820496;
-        Thu, 13 Aug 2026 13:43:40 -0700 (PDT)
+        bh=W76JcT/E82Yj1vh+FcJjjVkk2u2kFELvtIxbGfLJjLM=;
+        b=ayfZcgKpkdkMpRUeIg5rylLvyiLKoNz8pB8rTlsJSu/HbzYGcdF2EdypqMsvj/i64v
+         Sdzx3JLG7lCw/+/e01EjGyfgOU2eru364pMgElTCxPRiksdSCuAVRHjh9Ju2Ry6jGndQ
+         4zSZBNtpaFOTgLboh2alNqSqggVsjc6J3o7mNrT/NyvgjcKS4OWBHFV9IXKaFMkVfbNo
+         6ZsYLSiP7ZKlTBojOxfEk578yJiWPZCBAitBoTmVas1lKzyuRfHXiHPXN5s1ANbe7IG6
+         CvwBArKdhEMkTc3WxGI0QiPZ/UhA1jupEx94lx2vzgbmmqDLbhY04U9SOQjcn7wAY5+8
+         Nn7Q==
+X-Gm-Message-State: AOJu0Yz6VCJo4YxBwsfSjTQcmwpz+HWmHmgUYW+bIGWkoXRpoJwTicji
+	2+EWGYqqD4lBW5VEk57teS1XdWOvTUunJkkVNVrNzfIaUTuQN6Snob1Qcr4s7RJonIY=
+X-Gm-Gg: AR+sD1230rlKK3h9+dOKf4wVCv87LBNvzhTshA2KmATA5BhR9rdZ47cGSBbhU52+dKq
+	i2NSjlyKZvV6y2VWzrShqsxRFc6UdeS2ACKDyyCKHw9dr+PeR8bHVyqfYxTBfpvIRxox/MFkxcA
+	3nULqla/7+z32Ue+9qZVQDwllfjf1v1ITpyxVBDRXpbsSdQubZnK1EFNRnEyfp3QxcG1i16AY0a
+	Qpf5hJThsNZTHr+cWlc1UdYHV/6//wkSDC2/xI6lPL7Rb+WvLcSZa9SsW7GMf8gyBwT03Ak/I1L
+	toTi4jyMkoE55R1c1RbwlEcYMvNrEEUdVeyS6aoHyhGwW2yU4jUDSa0hD2XMd2175ADAeF/N7kO
+	mXlrVvBlFzkEJ2acbhZh7iY1mTEsR+pkSCh4R9r/9x1/31U3ngX2SrXjMpYW54vrAFZXClsVZyb
+	9JsPK4eyhOT+sPSUznj0PrUbFjYl/xe85p3FCzIUo8QPvM25TUV89xJkW9/VB4kfO9oMI2BM/ZE
+	h9v9WUmclLkJuUUfpGbhNIWQ56CHWXda10=
+X-Received: by 2002:a05:6808:1496:b0:497:e7e2:756e with SMTP id 5614622812f47-4b241e05d17mr719711b6e.13.1786653821959;
+        Thu, 13 Aug 2026 13:43:41 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b22c8c09e4sm2484254b6e.0.2026.08.13.13.43.39
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b22c8c09e4sm2484254b6e.0.2026.08.13.13.43.40
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 13 Aug 2026 13:43:40 -0700 (PDT)
+        Thu, 13 Aug 2026 13:43:41 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -66,9 +66,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Jonathan Curley <jcurley@purestorage.com>,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 14/21] pNFS: Add deviceid reference query and collection walkers
-Date: Thu, 13 Aug 2026 16:43:10 -0400
-Message-ID: <297301fa6d1208c3be634cbd07464ef86fea0935.1786653063.git.bcodding@hammerspace.com>
+Subject: [PATCH 15/21] NFSv4/pnfs: Recover revoked layouts on a deleted deviceID
+Date: Thu, 13 Aug 2026 16:43:11 -0400
+Message-ID: <1651897f3902b16401f28196a6f676ade190560f.1786653063.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1786653063.git.bcodding@hammerspace.com>
 References: <cover.1786653063.git.bcodding@hammerspace.com>
@@ -80,228 +80,245 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The CB_NOTIFY_DEVICEID DELETE race recovery (RFC 8881 Section
-18.40.4) needs to ask whether any live layout still references a
-deviceID, and to enumerate those layouts for TEST_STATEID.  Add a
-layout_references_deviceid hook (sibling of reresolve_deviceid; the
-flexfiles implementation memcmps each mirror stripe's decoded devid,
-valid independent of the pinned device node) and two walkers over
-the byserver pattern:
+RFC 8881 Section 18.40.4: when CB_NOTIFY_DEVICEID deletes a deviceID
+the client believes live layouts still reference, layouts referring
+to it may have been revoked -- TEST_STATEID each referring layout's
+stateid and recover the revoked ones (mark the layout stateid
+invalid, free the lsegs, FREE_STATEID to acknowledge).
 
-- pnfs_layout_deviceid_referenced_byclid(): boolean existence query,
-  early-stopping, entirely under i_lock.
-- pnfs_layout_collect_deviceid_refs(): collects each matching layout
-  with the hdr pinned, the inode grabbed with its superblock active
-  (a pinned hdr does not hold its inode -- same discipline as the
-  bulk-destroy walker), and the layout stateid and cred snapshotted
-  under i_lock, so the caller can issue sleeping RPCs against the
-  collection.
+The callback thread cannot issue fore-channel RPCs, so suspects are
+queued on the nfs_client (dedup'd, holding a layoutdriver reference)
+and resolved by a new state-manager step keyed on
+NFS4CLNT_DEVICEID_DELETE.  The worker re-collects the referring
+layouts via the deviceid-ref walker rather than trusting a carried
+snapshot, so layouts legitimately returned or recalled in between
+are skipped.  If every referring layout turned out revoked, the
+delete is confirmed by the revocations themselves and the cached
+device is dropped; a layout the server still considers valid leaves
+the device cached (verifying the delete with GETDEVICEINFO comes
+next).
 
-No callers yet; no behavior change.
+Nothing enqueues suspects yet, so no behavior change.
 
 Assisted-by: Claude:claude-fable-5
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c |  17 +++
- fs/nfs/pnfs.c                          | 155 +++++++++++++++++++++++++
- fs/nfs/pnfs.h                          |  29 +++++
- 3 files changed, 201 insertions(+)
+ fs/nfs/nfs4_fs.h          |  2 ++
+ fs/nfs/nfs4client.c       |  2 ++
+ fs/nfs/nfs4proc.c         | 70 +++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4state.c        |  3 ++
+ fs/nfs/pnfs.c             | 67 +++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.h             | 19 +++++++++++
+ include/linux/nfs_fs_sb.h |  2 ++
+ 7 files changed, 165 insertions(+)
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index f042551dd23a..5b88584f4163 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -2505,6 +2505,22 @@ static void ff_layout_cancel_io(struct pnfs_layout_segment *lseg)
- 	}
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index b48e5b87cb2a..d642aca0adc3 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -52,6 +52,7 @@ enum nfs4_client_state {
+ 	NFS4CLNT_RECALL_ANY_LAYOUT_READ,
+ 	NFS4CLNT_RECALL_ANY_LAYOUT_RW,
+ 	NFS4CLNT_DELEGRETURN_DELAYED,
++	NFS4CLNT_DEVICEID_DELETE,
+ };
+ 
+ #define NFS4_RENEW_TIMEOUT		0x01
+@@ -493,6 +494,7 @@ int nfs41_discover_server_trunking(struct nfs_client *clp,
+ 			struct nfs_client **, const struct cred *);
+ extern void nfs4_schedule_session_recovery(struct nfs4_session *, int);
+ extern void nfs41_notify_server(struct nfs_client *);
++extern void nfs4_deviceid_delete_recover_run(struct nfs_client *clp);
+ bool nfs4_check_serverowner_major_id(struct nfs41_server_owner *o1,
+ 			struct nfs41_server_owner *o2);
+ 
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 71c271a1700a..6a2f7522179c 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -217,6 +217,7 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ 	clp->cl_last_renewal = jiffies;
+ 	init_waitqueue_head(&clp->cl_lock_waitq);
+ 	INIT_LIST_HEAD(&clp->pending_cb_stateids);
++	INIT_LIST_HEAD(&clp->cl_deviceid_deletes);
+ 
+ 	if (cl_init->minorversion != 0)
+ 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
+@@ -285,6 +286,7 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
+ 		nfs4_kill_renewd(clp);
+ 	clp->cl_mvops->shutdown_client(clp);
+ 	nfs4_destroy_callback(clp);
++	pnfs_deviceid_delete_queue_free(clp);
+ 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
+ 		nfs_idmap_delete(clp);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5709c6fea85b..aa1414d2d891 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -10441,6 +10441,76 @@ static int nfs41_free_stateid(struct nfs_server *server,
+ 	return ret;
  }
  
-+/* Called under @lo's inode i_lock. */
-+static bool ff_layout_references_deviceid(struct pnfs_layout_hdr *lo,
-+					  const struct nfs4_deviceid *id)
++/*
++ * A CB_NOTIFY_DEVICEID DELETE named a deviceID that live layouts still
++ * referenced -- a conformant server never does this (RFC 8881 Section
++ * 20.12), so run the Section 18.40.4 recovery: TEST_STATEID each
++ * referring layout; recover revoked layouts (mark the layout stateid
++ * invalid, free the lsegs, FREE_STATEID).  If every referring layout
++ * turned out revoked, the delete is confirmed by the revocations and
++ * the cached device is dropped.  A layout the server still considers
++ * valid means the delete cannot be trusted; leave the device cached.
++ */
++static void nfs4_deviceid_delete_recover(struct nfs_client *clp,
++		const struct pnfs_layoutdriver_type *ld,
++		const struct nfs4_deviceid *id)
 +{
-+	struct nfs4_flexfile_layout *flo = FF_LAYOUT_FROM_HDR(lo);
-+	struct nfs4_ff_layout_mirror *mirror;
-+	u32 dss_id;
++	LIST_HEAD(layouts);
++	struct nfs4_deviceid_ref *ref;
++	bool revoked = false;
++	bool referenced = false;
 +
-+	list_for_each_entry(mirror, &flo->mirrors, mirrors)
-+		for (dss_id = 0; dss_id < mirror->dss_count; dss_id++)
-+			if (memcmp(&mirror->dss[dss_id].devid, id,
-+				   sizeof(*id)) == 0)
-+				return true;
-+	return false;
++	pnfs_layout_collect_deviceid_refs(clp, ld, id, &layouts);
++
++	list_for_each_entry(ref, &layouts, node) {
++		struct pnfs_layout_hdr *lo = ref->lo;
++		struct inode *inode = ref->inode;
++		LIST_HEAD(head);
++		int status;
++
++		status = nfs41_test_stateid(NFS_SERVER(inode), &ref->stateid,
++					    ref->cred);
++		switch (status) {
++		case NFS_OK:
++			referenced = true;
++			break;
++		case -NFS4ERR_ADMIN_REVOKED:
++		case -NFS4ERR_DELEG_REVOKED:
++		case -NFS4ERR_EXPIRED:
++		case -NFS4ERR_BAD_STATEID:
++			spin_lock(&inode->i_lock);
++			if (pnfs_layout_is_valid(lo) &&
++			    nfs4_stateid_match_other(&ref->stateid,
++						     &lo->plh_stateid))
++				pnfs_mark_layout_stateid_invalid(lo, &head);
++			spin_unlock(&inode->i_lock);
++			pnfs_free_lseg_list(&head);
++			nfs41_free_stateid(NFS_SERVER(inode), &ref->stateid,
++					   ref->cred, true);
++			revoked = true;
++			break;
++		default:
++			/* inconclusive; leave the device alone */
++			break;
++		}
++	}
++	pnfs_layout_put_deviceid_refs(&layouts);
++
++	if (revoked && !referenced)
++		nfs4_delete_deviceid(ld, clp, id);
 +}
 +
- /*
-  * The server changed the mapping for deviceid @id (CB_NOTIFY_DEVICEID
-  * CHANGE).  Un-pin every stripe device node resolved from @id in @lo's
-@@ -3141,6 +3157,7 @@ static struct pnfs_layoutdriver_type flexfilelayout_type = {
- 	.get_ds_info		= ff_layout_get_ds_info,
- 	.free_deviceid_node	= ff_layout_free_deviceid_node,
- 	.reresolve_deviceid	= ff_layout_reresolve_deviceid,
-+	.layout_references_deviceid = ff_layout_references_deviceid,
- 	.read_pagelist		= ff_layout_read_pagelist,
- 	.write_pagelist		= ff_layout_write_pagelist,
- 	.alloc_deviceid_node    = ff_layout_alloc_deviceid_node,
++void nfs4_deviceid_delete_recover_run(struct nfs_client *clp)
++{
++	struct nfs4_deviceid_delete *dd;
++
++	while ((dd = pnfs_deviceid_delete_dequeue(clp)) != NULL) {
++		nfs4_deviceid_delete_recover(clp, dd->ld, &dd->id);
++		pnfs_put_layoutdriver(dd->ld);
++		kfree(dd);
++	}
++}
++
+ static void
+ nfs41_free_lock_state(struct nfs_server *server, struct nfs4_lock_state *lsp)
+ {
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 305a772e5497..fcdb4b55c98a 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2643,6 +2643,9 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 				set_bit(NFS4CLNT_RUN_MANAGER, &clp->cl_state);
+ 			}
+ 			nfs4_layoutreturn_any_run(clp);
++			if (test_and_clear_bit(NFS4CLNT_DEVICEID_DELETE,
++					       &clp->cl_state))
++				nfs4_deviceid_delete_recover_run(clp);
+ 			clear_bit(NFS4CLNT_RECALL_RUNNING, &clp->cl_state);
+ 		}
+ 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 3020eee50918..101fd23f2547 100644
+index 101fd23f2547..368d065cdb20 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -2944,6 +2944,161 @@ pnfs_layout_reresolve_deviceid_byclid(struct nfs_client *clp,
+@@ -3099,6 +3099,73 @@ pnfs_layout_put_deviceid_refs(struct list_head *result)
  	}
  }
  
-+struct pnfs_deviceid_ref_args {
-+	const struct pnfs_layoutdriver_type *ld;
-+	const struct nfs4_deviceid *id;
-+	struct list_head *result;
-+	bool found;
-+};
-+
-+static int pnfs_layout_deviceid_referenced_byserver(
-+		struct nfs_server *server, void *data)
-+{
-+	struct pnfs_deviceid_ref_args *args = data;
-+	struct pnfs_layout_hdr *lo;
-+	struct inode *inode;
-+
-+	if (server->pnfs_curr_ld != args->ld)
-+		return 0;
-+
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(lo, &server->layouts, plh_layouts) {
-+		inode = lo->plh_inode;
-+		if (!inode)
-+			continue;
-+		spin_lock(&inode->i_lock);
-+		if (lo->plh_inode == inode && pnfs_layout_is_valid(lo) &&
-+		    args->ld->layout_references_deviceid(lo, args->id))
-+			args->found = true;
-+		spin_unlock(&inode->i_lock);
-+		if (args->found)
-+			break;
-+	}
-+	rcu_read_unlock();
-+	return args->found;
-+}
-+
 +/*
-+ * pnfs_layout_deviceid_referenced_byclid - does any live layout of
-+ * @clp's servers using @ld still reference deviceid @id?
-+ */
-+bool
-+pnfs_layout_deviceid_referenced_byclid(struct nfs_client *clp,
-+				const struct pnfs_layoutdriver_type *ld,
-+				const struct nfs4_deviceid *id)
-+{
-+	struct pnfs_deviceid_ref_args args = {
-+		.ld = ld,
-+		.id = id,
-+	};
-+
-+	if (!ld->layout_references_deviceid)
-+		return false;
-+
-+	nfs_client_for_each_server(clp,
-+			pnfs_layout_deviceid_referenced_byserver, &args);
-+	return args.found;
-+}
-+
-+static int pnfs_layout_collect_deviceid_refs_byserver(
-+		struct nfs_server *server, void *data)
-+{
-+	struct pnfs_deviceid_ref_args *args = data;
-+	struct nfs4_deviceid_ref *ref;
-+	struct pnfs_layout_hdr *lo;
-+	struct inode *inode;
-+	bool matched;
-+
-+	if (server->pnfs_curr_ld != args->ld)
-+		return 0;
-+
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(lo, &server->layouts, plh_layouts) {
-+		inode = lo->plh_inode;
-+		if (!inode ||
-+		    test_bit(NFS_LAYOUT_INODE_FREEING, &lo->plh_flags))
-+			continue;
-+
-+		ref = kzalloc_obj(*ref, GFP_ATOMIC);
-+		if (!ref)
-+			break;	/* act on what was collected */
-+
-+		spin_lock(&inode->i_lock);
-+		matched = lo->plh_inode == inode && pnfs_layout_is_valid(lo) &&
-+			  args->ld->layout_references_deviceid(lo, args->id);
-+		if (matched) {
-+			/* a valid layout's lsegs hold hdr references, so
-+			 * this cannot become the last reference
-+			 */
-+			pnfs_get_layout_hdr(lo);
-+			ref->lo = lo;
-+			nfs4_stateid_copy(&ref->stateid, &lo->plh_stateid);
-+			ref->cred = get_cred(lo->plh_lc_cred);
-+		}
-+		spin_unlock(&inode->i_lock);
-+
-+		if (!matched) {
-+			kfree(ref);
-+			continue;
-+		}
-+		/* the pinned hdr does not hold the inode: grab it (and
-+		 * keep the superblock active) for use across RPCs
-+		 */
-+		ref->inode = nfs_igrab_and_active(inode);
-+		if (!ref->inode) {
-+			pnfs_put_layout_hdr(lo);
-+			put_cred(ref->cred);
-+			kfree(ref);
-+			continue;
-+		}
-+		list_add_tail(&ref->node, args->result);
-+	}
-+	rcu_read_unlock();
-+	return 0;
-+}
-+
-+/*
-+ * pnfs_layout_collect_deviceid_refs - collect live layouts
-+ * referencing a deviceid
++ * pnfs_deviceid_delete_mark - queue a suspect deviceID delete
 + *
-+ * Collect every valid layout of @clp's servers using @ld whose
-+ * layout_references_deviceid hook matches @id onto @result as
-+ * nfs4_deviceid_ref entries safe to use across sleeping RPCs.
-+ * Release with pnfs_layout_put_deviceid_refs().
++ * A CB_NOTIFY_DEVICEID DELETE named @id while a live layout still
++ * references it.  Queue it for the state manager, which runs the
++ * RFC 8881 Section 18.40.4 recovery (TEST_STATEID the referring
++ * layouts, then confirm or refute the delete).  Duplicates of an
++ * already-queued suspect are dropped.
 + */
-+void
-+pnfs_layout_collect_deviceid_refs(struct nfs_client *clp,
-+				const struct pnfs_layoutdriver_type *ld,
-+				const struct nfs4_deviceid *id,
-+				struct list_head *result)
++void pnfs_deviceid_delete_mark(struct nfs_client *clp,
++			       const struct pnfs_layoutdriver_type *ld,
++			       const struct nfs4_deviceid *id)
 +{
-+	struct pnfs_deviceid_ref_args args = {
-+		.ld = ld,
-+		.id = id,
-+		.result = result,
-+	};
++	struct nfs4_deviceid_delete *dd, *new;
 +
-+	if (!ld->layout_references_deviceid)
++	new = kzalloc_obj(*new, GFP_KERNEL);
++	if (!new)
++		return;	/* lost notification; recovery waits for the next */
++	new->ld = pnfs_find_layoutdriver(ld->id);
++	if (!new->ld) {
++		kfree(new);
 +		return;
++	}
++	memcpy(&new->id, id, sizeof(new->id));
 +
-+	nfs_client_for_each_server(clp,
-+			pnfs_layout_collect_deviceid_refs_byserver, &args);
++	spin_lock(&clp->cl_lock);
++	list_for_each_entry(dd, &clp->cl_deviceid_deletes, list) {
++		if (dd->ld == new->ld &&
++		    !memcmp(&dd->id, &new->id, sizeof(dd->id))) {
++			spin_unlock(&clp->cl_lock);
++			pnfs_put_layoutdriver(new->ld);
++			kfree(new);
++			return;
++		}
++	}
++	list_add_tail(&new->list, &clp->cl_deviceid_deletes);
++	spin_unlock(&clp->cl_lock);
++
++	set_bit(NFS4CLNT_DEVICEID_DELETE, &clp->cl_state);
++	nfs4_schedule_state_manager(clp);
 +}
 +
-+void
-+pnfs_layout_put_deviceid_refs(struct list_head *result)
++struct nfs4_deviceid_delete *pnfs_deviceid_delete_dequeue(
++			       struct nfs_client *clp)
 +{
-+	struct nfs4_deviceid_ref *ref, *tmp;
++	struct nfs4_deviceid_delete *dd = NULL;
 +
-+	list_for_each_entry_safe(ref, tmp, result, node) {
-+		list_del(&ref->node);
-+		put_cred(ref->cred);
-+		pnfs_put_layout_hdr(ref->lo);
-+		nfs_iput_and_deactive(ref->inode);
-+		kfree(ref);
++	spin_lock(&clp->cl_lock);
++	if (!list_empty(&clp->cl_deviceid_deletes)) {
++		dd = list_first_entry(&clp->cl_deviceid_deletes,
++				      struct nfs4_deviceid_delete, list);
++		list_del(&dd->list);
++	}
++	spin_unlock(&clp->cl_lock);
++	return dd;
++}
++
++void pnfs_deviceid_delete_queue_free(struct nfs_client *clp)
++{
++	struct nfs4_deviceid_delete *dd;
++
++	while ((dd = pnfs_deviceid_delete_dequeue(clp)) != NULL) {
++		pnfs_put_layoutdriver(dd->ld);
++		kfree(dd);
 +	}
 +}
 +
@@ -309,52 +326,48 @@ index 3020eee50918..101fd23f2547 100644
   * between the request and the pgio->pg_lseg, put this pgio->pg_lseg away.
   */
 diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index f3c55c86c256..96ab15c5c6ad 100644
+index 96ab15c5c6ad..1ce1cbc32f77 100644
 --- a/fs/nfs/pnfs.h
 +++ b/fs/nfs/pnfs.h
-@@ -181,6 +181,12 @@ struct pnfs_layoutdriver_type {
- 				   const struct nfs4_deviceid *id,
- 				   bool immediate,
- 				   struct list_head *put_list);
-+	/*
-+	 * Does @lo hold any reference to deviceid @id?  Called under
-+	 * @lo's inode i_lock; must not sleep.
-+	 */
-+	bool (*layout_references_deviceid)(struct pnfs_layout_hdr *lo,
-+					   const struct nfs4_deviceid *id);
- 
- 	int (*prepare_layoutreturn) (struct nfs4_layoutreturn_args *);
- 
-@@ -368,6 +374,29 @@ void pnfs_layout_reresolve_deviceid_byclid(struct nfs_client *clp,
- 				const struct pnfs_layoutdriver_type *ld,
+@@ -397,6 +397,25 @@ void pnfs_layout_collect_deviceid_refs(struct nfs_client *clp,
  				const struct nfs4_deviceid *id,
- 				bool immediate);
-+bool pnfs_layout_deviceid_referenced_byclid(struct nfs_client *clp,
-+				const struct pnfs_layoutdriver_type *ld,
-+				const struct nfs4_deviceid *id);
+ 				struct list_head *result);
+ void pnfs_layout_put_deviceid_refs(struct list_head *result);
 +
 +/*
-+ * One live layout referencing a deviceID, collected for the
-+ * CB_NOTIFY_DEVICEID DELETE recovery: the hdr is pinned, the inode
-+ * igrab'd with its superblock active, and the layout stateid and
-+ * cred snapshotted for TEST_STATEID.
++ * A CB_NOTIFY_DEVICEID DELETE naming a deviceID that live layouts
++ * still reference (RFC 8881 Section 18.40.4).  Queued on
++ * nfs_client.cl_deviceid_deletes under cl_lock for the state manager
++ * to resolve; holds a layoutdriver reference.
 + */
-+struct nfs4_deviceid_ref {
-+	struct list_head node;
-+	struct pnfs_layout_hdr *lo;
-+	struct inode *inode;
-+	nfs4_stateid stateid;
-+	const struct cred *cred;
++struct nfs4_deviceid_delete {
++	struct list_head list;
++	const struct pnfs_layoutdriver_type *ld;
++	struct nfs4_deviceid id;
 +};
 +
-+void pnfs_layout_collect_deviceid_refs(struct nfs_client *clp,
-+				const struct pnfs_layoutdriver_type *ld,
-+				const struct nfs4_deviceid *id,
-+				struct list_head *result);
-+void pnfs_layout_put_deviceid_refs(struct list_head *result);
++void pnfs_deviceid_delete_mark(struct nfs_client *clp,
++			       const struct pnfs_layoutdriver_type *ld,
++			       const struct nfs4_deviceid *id);
++struct nfs4_deviceid_delete *pnfs_deviceid_delete_dequeue(
++			       struct nfs_client *clp);
++void pnfs_deviceid_delete_queue_free(struct nfs_client *clp);
  int pnfs_layout_handle_reboot(struct nfs_client *clp);
  
  /* nfs4_deviceid_flags */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 34d294774f8c..c21220f26675 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -101,6 +101,8 @@ struct nfs_client {
+ 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
+ 	u32			cl_exchange_flags;
+ 	struct nfs4_session	*cl_session;	/* shared session */
++	/* CB_NOTIFY_DEVICEID DELETE suspects, protected by cl_lock */
++	struct list_head	cl_deviceid_deletes;
+ 	bool			cl_preserve_clid;
+ 	struct nfs41_server_owner *cl_serverowner;
+ 	struct nfs41_server_scope *cl_serverscope;
 -- 
 2.53.0
 
