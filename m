@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9584D485CF2
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 18:40:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5E4023EA66
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 18:40:56 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786646456; cv=none; b=CNh7By5JVBTNq3Ka7sTQWaVF3VSH47Q4EvgcXGiYa7poq0d1Q1z1x+dWZBMe0qmNJSiRtDek6Afu2UYN8N7B1KZh5CbBFwzCdxWwdV0UUgOv/erAeP5R5ZgCbL3ugIPEz1z7EVUHmkX+SpMovxK29uCRNOtiTK0GoPTc5Esf/Nc=
+	t=1786646457; cv=none; b=eFOuWfhkiPR8iLoK4MywQSDA8kQ/uhjT6ZyQAuQEH/lsluRuHdRxhEDD0VDiJurUnvYQYsNlKTTA6R3P/DMWg4QbsqW9tTC5PRQLch9b4UxBTixb7QG+RwER0EgxVp8Bti6qJ/cPBaGn+eAtnXJUS3Kj6Vq59emrhfI/dpUdQb8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786646456; c=relaxed/simple;
-	bh=qZyMi60jKJ0l5Vn+mbu3XiSM81rI/nB+GqWct0x8EQE=;
+	s=arc-20240116; t=1786646457; c=relaxed/simple;
+	bh=jp0NEgSq1J79ubDFXwIxprQsdoCPnlI27eyJlZ8ba6w=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=QKY8SY5igrb1Layrfoq8wn4C5Az7WTX1cHqa2Feq7MSjQdPM6PrNmDCLjpG+3QqvN6/hF/M4Ru7cGOfB+crHjKJX5AeKfEUZRmPyLlwSNpuMpnU1+BoqAq+t6rKafOIHsRzw8urXT+SG1FC+2kYrOqOKSg7kfzir13b9hdhS25Q=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=OQ992gdT; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=qHJZYo89cyN5LP91F6Yvb7lncflnvj573RmNmAcC1y4sP+71sjy+N3orFLe4/dkRffb62u1O5xRWE0VsJliDdnXx/RXt57JIHLe4/ilI18Lp3ZMHEswGz32p+7E/QSVBDTRC3766NZJh8ZLl4N9n/roDEqueXJ8fCkvdm+9PFnU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=ONlV3CC6; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="OQ992gdT"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id EC95C1F00A3E;
-	Thu, 13 Aug 2026 18:40:54 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="ONlV3CC6"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id B8CCB1F00A3A;
+	Thu, 13 Aug 2026 18:40:55 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786646455;
-	bh=gcKeAb//cApTIHGcdm0bxgAFed+Rems4UFuw3e6V8Xc=;
+	s=k20260515; t=1786646456;
+	bh=FwoSbYAaCGAPkcPPXSM3w6HjNnJZSeoKAwr3BcVFJpY=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=OQ992gdTvlEzj2l6jLdvG00yWrrO1BnLPrgl0h9PiFa0U9f0afTOZrt/5BtDSZHs8
-	 IQWBvnLaDvE4VqdBIO6OTS6Gnpzku7ZkXigGN67oaN/ezzX+UNg7AVx3YyicG6zXu/
-	 BhEU02VC8mvmJL6++Si1bzrTmlE4GSlLIRwS00EXih95iORKEzXp1QcyVtZVU7B9ZL
-	 yGrH56AOA3Etiqmox2NTzxrumQpVybXx09sauUJ0S6ktSdGu7a9uxztgKfnsb1HA9q
-	 t6QpFhL0asXfGC8XpmJvdfYYDK0ER/F9fD1MMFNecuGXl41csHuLwTdfA1I3PevZNl
-	 CcAnu6+fl/Yaw==
+	b=ONlV3CC6p+GzQo9K528LO9e485OyDMvO3ZOUao0DSla+Rv8nhBIDnO6AnWTQ2TpIx
+	 3p3hxr4iLss9bBfQZkv68IMMpQP8CVuxz6Jah/sS6y+mxMlwt1IYKKmQFmM1dtuHI7
+	 diJ73cBtAQAvwg9RgNQYUxeahN0ZIfp9BaHZLOSOndUVKdPVJ3NZCRMkZaM/Rn6N15
+	 eSEEDt5MgBycBACS0dp09viuiSfPR4/+edOIcN466OUx1dhEG1pfNsQi7lNUbWGyG3
+	 2Bwz72NWvgXPh0UV9EQXsFjMDtQiOObH46EA/tBD58WoebXqZloyxFxBqBnZo6BOCP
+	 e3HJPgKpa2rRQ==
 From: Chuck Lever <cel@kernel.org>
-Date: Thu, 13 Aug 2026 14:40:36 -0400
-Subject: [PATCH v3 7/8] NFSD: Pace the state shrinker's scan requests
+Date: Thu, 13 Aug 2026 14:40:37 -0400
+Subject: [PATCH v3 8/8] NFSD: Apportion CB_RECALL_ANY recalls among clients
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260813-recall-any-keep-count-v3-7-a96d243c0b13@kernel.org>
+Message-Id: <20260813-recall-any-keep-count-v3-8-a96d243c0b13@kernel.org>
 References: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
 In-Reply-To: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -45,242 +45,201 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
  Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=7253; i=cel@kernel.org;
- h=from:subject:message-id; bh=qZyMi60jKJ0l5Vn+mbu3XiSM81rI/nB+GqWct0x8EQE=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqfg+xn0YT2catT4qDSTkqlsmVZDQWLRl53sbTI
- atxhWYeTYaJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCan4PsQAKCRAzarMzb2Z/
- l5okD/oD0AMGqYuOCkL86Xpfxb4hJwboCstYdiIAIz8GdYagkwtKXqLmkCtN1G0AXDuNbfhLstG
- kYUNWGGDCUEAXRuE19901a37M7TiEla5UOUpU2azz0A9CpSvODqnHhT01CmfqHtTE0+thupW3d2
- gZZRM+zwF3N3sUT4n6a8NBaFr0GWev/WIEuhLS5UgAEv6z1xn1tKOxNzJMOq+MpUQh6WSAoByeW
- a0E67eLYf08GpxsoFyxIAP6ZLljHdukHj31T+1yskUHB3eVKUoTknkpMjl5Ati0U6qvVli+880D
- DqH9X02FKF4Mn6kA+/aeyTA6J/i6mKrN6h+Yv0LBZOdCXZbhOIk7386JqyLpy3++tMepyOTWCwx
- WK4fMM8Wfby2nHdGsKstYR0hbk4TQjtZXTe1Zz5BWhWjQegynCRvm3oGvoFoAKTn4pt6wXEAhwj
- agka74/x1au66STHkHfN4mtTFGsXBVQNMvQaWzbQEcLrCmx+ILZRACIqKJQ/+11vuvRIhZwjjwo
- SIU6hrhekOXoYXbC9VwWxsLDUTuOxQrX9oMt74AKOMyH3fyQK4iyHiHCf+H+UtU6BgK6gmRZQjf
- DI9xbU0WwrwcrPx1JoaFMCK6drJWcIQcZAF9z2OdLV7FRZxyPgY6YLK7RwWGp6rq8hIW/BIEWJD
- 43zx3aBfVZAeS7Q==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=6798; i=cel@kernel.org;
+ h=from:subject:message-id; bh=jp0NEgSq1J79ubDFXwIxprQsdoCPnlI27eyJlZ8ba6w=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqfg+xXpMjNdAedrdKd9NdXYEMwbenm+0+uIN1A
+ NRWqwyOAlqJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCan4PsQAKCRAzarMzb2Z/
+ l9FdD/0Z+uLJOyfgTVJqd7o9qCsNvo/dRX5vYMt3wcXRVUP3BEFcjx0V2QmiPk7Pmo6VeAu5CS3
+ PvPtTC73e95x++hIiyEdJ9lsfXC0KgY+OUJ07asxPCestNyTpQ77BjqPYtl3k+zOU3ZJFVlnofi
+ RaeN7EJUbmSxupYLGT6y2ulqeWUumy7rih6t43FnhXekcxafr/YE/swMy65iLFkxP4Xx31sKRr+
+ B6T4hnbDbSKux2WOvWZ4kXm4+HLn+LnDuGBF4TnQVDRUY8Wjxqm6om+tdD94eHjtdMQ1ZZ9SbNX
+ DNN+gV7lcLt9uCny0eB6HbUF1Aruwx8dLPwL7IusitPv2jNRLqQyoBaAMtBSfRyA95sXzOcGlVN
+ JEl6TM+K8r9twOnU0F2MnjUtAyy1XcuInStdy4erRN0A+4dipJx3ruav6pN5z1Pqfp5hiGx0qVw
+ owqxEuUr7rI7G+QmPKEdThrFYK2I5pfJLu618rADoRFLrjFnFt2K/7vBQHvikV6t5D0ct1Qrx6L
+ Ue6wPKXLOxWwcfBwM9kXLBE9P+wtvt69qSeIxTQZ84a8ULcq99+4M/M6XBR6ja9+YM2VvtLPSGU
+ NHpTbGSVR9owPEqD76QiESKAKOaDfM8veDEDGcOdnXzFKIh23tS7GaDbpBpddwkESPsuT0FpGvv
+ 4Y2qeuYBd+jWnQA==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-Currently, neither of the scan callback functions records anything
-before returning SHRINK_STOP, so the size of each scan request is
-discarded. That size is the only real measure NFSD gets of reclaim
-pressure. Both count callbacks report their population whether or
-not the reaper is already queued to reclaim it, so reclaim asks
-again for work that is pending.
+deleg_reaper() asks each eligible client to return one delegation
+whenever it runs, whether or not anything needs the memory. A
+delegation returned before it is needed costs the client an OPEN
+when it next touches the file. Nothing sizes the request either.
+The delegation scan callback discards nr_to_scan, which is reclaim's
+statement of how many objects it wants back.
 
-Accumulate each courtesy scan request in nfsd_shrink_backlog and
-subtract the backlog from what that count callback reports. The
-worker retires the backlog once courtesy_client_reaper() has run.
-That reaper expires the clients synchronously, so the discount
-covers exactly the interval the work is pending.
+Record each delegation scan request in nfsd_deleg_backlog and pass
+the accumulated total to deleg_reaper(). Handing that total to
+every client would ask for it once per client, so scale it by each
+client's share of nn->nfsd_delegations. cl_ra_time keeps the next
+sweep from returning to the clients this one reached.
 
-Delegations need a different bound. This is because deleg_reaper()
-only sends CB_RECALL_ANY and does not track how many delegations
-were actually returned by the targeted client.
-
-Report the delegations only once NFSD_RECALL_ANY_COOLDOWN_SECS have
-passed since the last sweep. deleg_reaper() skips any client it
-recalled from within that window, so an earlier scan request cannot
-produce another recall.
+Nothing is recalled until a scan arrives. nfs4_laundromat() is the
+exception. It has no scan request to pass, so it computes what must
+go for num_delegations to fall below max_delegations, and passes
+only this namespace's share.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/netns.h     |  6 ++++
- fs/nfsd/nfs4state.c | 92 +++++++++++++++++++++++++++++++++++++++++++++--------
- 2 files changed, 85 insertions(+), 13 deletions(-)
+ fs/nfsd/netns.h     |  3 +++
+ fs/nfsd/nfs4state.c | 63 ++++++++++++++++++++++++++++++++++++++++++++---------
+ 2 files changed, 56 insertions(+), 10 deletions(-)
 
 diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index ef01a1cf72ac..23923cc4aa47 100644
+index 23923cc4aa47..0ce7da20aba3 100644
 --- a/fs/nfsd/netns.h
 +++ b/fs/nfsd/netns.h
-@@ -245,6 +245,12 @@ struct nfsd_net {
- 	struct work_struct	nfsd_courtesy_work;
- 	struct work_struct	nfsd_deleg_work;
+@@ -248,6 +248,9 @@ struct nfsd_net {
+ 	/* courtesy scan requests the reaper has not retired yet */
+ 	atomic_long_t		nfsd_shrink_backlog;
  
-+	/* courtesy scan requests the reaper has not retired yet */
-+	atomic_long_t		nfsd_shrink_backlog;
++	/* delegation scan requests the reaper has not retired yet */
++	atomic_long_t		nfsd_deleg_backlog;
 +
-+	/* when deleg_reaper() last swept the client list */
-+	time64_t		nfsd_last_recall_any;
-+
- 	/* last time an admin-revoke happened for NFSv4.0 */
- 	time64_t		nfs40_last_revoke;
+ 	/* when deleg_reaper() last swept the client list */
+ 	time64_t		nfsd_last_recall_any;
  
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d38fccb42e61..2b3056ffe08c 100644
+index 2b3056ffe08c..9897c4831016 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5563,41 +5563,88 @@ nfsd4_init_slabs(void)
- 	return -ENOMEM;
+@@ -93,7 +93,7 @@ static void nfs4_free_ol_stateid(struct nfs4_stid *stid);
+ static void nfsd4_end_grace(struct nfsd_net *nn);
+ static void _free_cpntf_state_locked(struct nfsd_net *nn, struct nfs4_cpntf_state *cps);
+ static void nfsd4_file_hash_remove(struct nfs4_file *fi);
+-static void deleg_reaper(struct nfsd_net *nn);
++static void deleg_reaper(struct nfsd_net *nn, unsigned long backlog);
+ static void nfsd4_drop_revoked_stid(struct nfs4_stid *s)
+ 	__releases(&s->sc_client->cl_lock);
+ 
+@@ -5605,7 +5605,10 @@ nfsd4_deleg_shrinker_count(struct shrinker *shrink, struct shrink_control *sc)
+ 	if (elapsed < NFSD_RECALL_ANY_COOLDOWN_SECS)
+ 		return 0;
+ 
+-	queue_work(laundry_wq, &nn->nfsd_deleg_work);
++	/*
++	 * Unlike the courtesy shrinker, this one queues no work.
++	 * Nothing is recalled until a scan request arrives.
++	 */
+ 	return count;
  }
  
-+#define NFSD_RECALL_ANY_COOLDOWN_SECS	5
-+
- static unsigned long
- nfsd4_courtesy_shrinker_count(struct shrinker *shrink,
- 			      struct shrink_control *sc)
+@@ -5630,6 +5633,7 @@ nfsd4_deleg_shrinker_scan(struct shrinker *shrink, struct shrink_control *sc)
  {
  	struct nfsd_net *nn = shrink->private_data;
--	long count;
-+	long backlog, count;
  
- 	count = atomic_read(&nn->nfsd_courtesy_clients);
--	if (count)
--		queue_work(laundry_wq, &nn->nfsd_courtesy_work);
--	return (unsigned long)count;
-+	if (!count)
-+		return 0;
-+
-+	queue_work(laundry_wq, &nn->nfsd_courtesy_work);
-+
-+	/* Work already queued is not available to reclaim again. */
-+	backlog = atomic_long_read(&nn->nfsd_shrink_backlog);
-+	return count > backlog ? count - backlog : 0;
++	atomic_long_add(sc->nr_to_scan, &nn->nfsd_deleg_backlog);
+ 	queue_work(laundry_wq, &nn->nfsd_deleg_work);
+ 
+ 	/*
+@@ -7879,6 +7883,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	struct nfs4_cpntf_state *cps;
+ 	struct nfs4_client *clp;
+ 	copy_stateid_t *cps_t;
++	long held, host, n;
+ 	int i;
+ 
+ 	if (clients_still_reclaiming(nn)) {
+@@ -7992,8 +7997,18 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	/* service the server-to-server copy delayed unmount list */
+ 	nfsd4_ssc_expire_umount(nn);
+ #endif
+-	if (atomic_long_read(&num_delegations) >= max_delegations)
+-		deleg_reaper(nn);
++	host = atomic_long_read(&num_delegations);
++	if (host >= max_delegations) {
++		/*
++		 * max_delegations bounds the host, but the laundromat
++		 * runs once per network namespace. Requesting the whole
++		 * overage in each would multiply the request, so take
++		 * only this namespace's share.
++		 */
++		held = atomic_long_read(&nn->nfsd_delegations);
++		n = host - max_delegations + 1;
++		deleg_reaper(nn, DIV64_U64_ROUND_UP((u64)n * held, host));
++	}
+ out:
+ 	return max_t(time64_t, lt.new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+ }
+@@ -8022,12 +8037,32 @@ courtesy_client_reaper(struct nfsd_net *nn)
  }
  
- static unsigned long
- nfsd4_deleg_shrinker_count(struct shrinker *shrink, struct shrink_control *sc)
+ static void
+-deleg_reaper(struct nfsd_net *nn)
++deleg_reaper(struct nfsd_net *nn, unsigned long backlog)
  {
- 	struct nfsd_net *nn = shrink->private_data;
-+	time64_t elapsed;
- 	long count;
+ 	struct list_head *pos, *next;
+ 	struct nfs4_client *clp;
++	unsigned long remaining, share, total;
+ 	unsigned int count;
  
- 	count = atomic_long_read(&nn->nfsd_delegations);
--	if (count)
--		queue_work(laundry_wq, &nn->nfsd_deleg_work);
--	return (unsigned long)count;
-+	if (!count)
-+		return 0;
++	/*
++	 * Recalling a delegation before it is needed costs the client
++	 * an OPEN when it next touches the file. @total is also the
++	 * apportionment's divisor. Leave nfsd_last_recall_any
++	 * unstamped so the next sweep is not delayed.
++	 */
++	total = atomic_long_read(&nn->nfsd_delegations);
++	if (!backlog || !total)
++		return;
 +
 +	/*
-+	 * Delegations the last sweep reached stay unreclaimable until
-+	 * deleg_reaper()'s cooldown expires. CB_RECALL_ANY leaves the
-+	 * choice of delegations to the client, so there is no return
-+	 * to wait on instead.
++	 * Reclaim asks in batches and is not bound by what the count
++	 * callback reported, so the backlog can exceed what this
++	 * namespace holds. Cap it to keep each share within the
++	 * client's own count.
 +	 */
-+	elapsed = ktime_get_boottime_seconds() -
-+			READ_ONCE(nn->nfsd_last_recall_any);
-+	if (elapsed < NFSD_RECALL_ANY_COOLDOWN_SECS)
-+		return 0;
++	backlog = min(backlog, total);
++	remaining = backlog;
 +
-+	queue_work(laundry_wq, &nn->nfsd_deleg_work);
-+	return count;
- }
- 
- static unsigned long
--nfsd4_state_shrinker_scan(struct shrinker *shrink, struct shrink_control *sc)
-+nfsd4_courtesy_shrinker_scan(struct shrinker *shrink,
-+			     struct shrink_control *sc)
- {
-+	struct nfsd_net *nn = shrink->private_data;
-+
-+	atomic_long_add(sc->nr_to_scan, &nn->nfsd_shrink_backlog);
-+	queue_work(laundry_wq, &nn->nfsd_courtesy_work);
-+
-+	/*
-+	 * The reaper runs from laundry_wq. Report no progress rather
-+	 * than claim memory that is not free yet.
-+	 */
-+	return SHRINK_STOP;
-+}
-+
-+static unsigned long
-+nfsd4_deleg_shrinker_scan(struct shrinker *shrink, struct shrink_control *sc)
-+{
-+	struct nfsd_net *nn = shrink->private_data;
-+
-+	queue_work(laundry_wq, &nn->nfsd_deleg_work);
-+
-+	/*
-+	 * The reaper sends CB_RECALL_ANY, so nothing is free when
-+	 * this returns.
-+	 */
- 	return SHRINK_STOP;
- }
- 
- static struct shrinker *
- nfsd4_alloc_state_shrinker(struct nfsd_net *nn, const char *name,
- 			   unsigned long (*count)(struct shrinker *,
--						  struct shrink_control *))
-+						  struct shrink_control *),
-+			   unsigned long (*scan)(struct shrinker *,
-+						 struct shrink_control *))
- {
- 	struct shrinker *shrink;
- 
-@@ -5606,7 +5653,7 @@ nfsd4_alloc_state_shrinker(struct nfsd_net *nn, const char *name,
- 		return NULL;
- 
- 	shrink->count_objects = count;
--	shrink->scan_objects = nfsd4_state_shrinker_scan;
-+	shrink->scan_objects = scan;
- 	shrink->private_data = nn;
- 
- 	shrinker_register(shrink);
-@@ -7991,7 +8038,8 @@ deleg_reaper(struct nfsd_net *nn)
- 			continue;
- 		if (atomic_read(&clp->cl_delegs_in_recall))
- 			continue;
--		if (ktime_get_boottime_seconds() - clp->cl_ra_time < 5)
-+		if (ktime_get_boottime_seconds() - clp->cl_ra_time <
-+				NFSD_RECALL_ANY_COOLDOWN_SECS)
- 			continue;
- 		if (clp->cl_cb_state != NFSD4_CB_UP)
- 			continue;
-@@ -8023,6 +8071,12 @@ deleg_reaper(struct nfsd_net *nn)
+ 	spin_lock(&nn->client_lock);
+ 	list_for_each_safe(pos, next, &nn->client_lru) {
+ 		clp = list_entry(pos, struct nfs4_client, cl_lru);
+@@ -8059,16 +8094,23 @@ deleg_reaper(struct nfsd_net *nn)
+ 		kref_get(&clp->cl_nfsdfs.cl_ref);
+ 		clp->cl_ra_time = ktime_get_boottime_seconds();
+ 		/*
+-		 * Ask for a single delegation. Recalling one before it
+-		 * is needed costs the client an OPEN when it next
+-		 * touches the file.
++		 * Rounding up guarantees every holder gives up at least
++		 * one. The round-up can overshoot @backlog, so stop
++		 * once the request is met. client_lru is ordered by
++		 * last renewal, so the least active clients are asked
++		 * first.
+ 		 */
+-		clp->cl_ra->ra_keep = count - 1;
++		share = DIV64_U64_ROUND_UP((u64)backlog * count, total);
++		share = min(share, remaining);
++		remaining -= share;
++		clp->cl_ra->ra_keep = count - share;
+ 		clp->cl_ra->ra_bmval[0] = BIT(RCA4_TYPE_MASK_RDATA_DLG) |
+ 						BIT(RCA4_TYPE_MASK_WDATA_DLG) |
+ 						BIT(RCA4_TYPE_MASK_DIR_DLG);
+ 		trace_nfsd_cb_recall_any(clp->cl_ra);
  		nfsd4_run_cb(&clp->cl_ra->ra_cb);
++		if (!remaining)
++			break;
  	}
  	spin_unlock(&nn->client_lock);
-+
-+	/*
-+	 * Stamp the sweep even when no recall went out. A sweep that
-+	 * found nothing eligible finds nothing on an immediate retry.
-+	 */
-+	WRITE_ONCE(nn->nfsd_last_recall_any, ktime_get_boottime_seconds());
- }
  
- static void
-@@ -8030,8 +8084,16 @@ nfsd4_courtesy_shrinker_worker(struct work_struct *work)
- {
+@@ -8102,7 +8144,7 @@ nfsd4_deleg_shrinker_worker(struct work_struct *work)
  	struct nfsd_net *nn = container_of(work, struct nfsd_net,
- 				nfsd_courtesy_work);
-+	long backlog;
+ 				nfsd_deleg_work);
  
-+	/*
-+	 * Retire only the requests sampled here, so that requests
-+	 * arriving while the reaper runs are still discounted by
-+	 * nfsd4_courtesy_shrinker_count().
-+	 */
-+	backlog = atomic_long_read(&nn->nfsd_shrink_backlog);
- 	courtesy_client_reaper(nn);
-+	atomic_long_sub(backlog, &nn->nfsd_shrink_backlog);
+-	deleg_reaper(nn);
++	deleg_reaper(nn, atomic_long_xchg(&nn->nfsd_deleg_backlog, 0));
  }
  
- static void
-@@ -10004,17 +10066,21 @@ static int nfs4_state_create_net(struct net *net)
- 	disable_delayed_work(&nn->laundromat_work);
+ static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_stid *stp)
+@@ -10067,6 +10109,7 @@ static int nfs4_state_create_net(struct net *net)
  	INIT_WORK(&nn->nfsd_courtesy_work, nfsd4_courtesy_shrinker_worker);
  	INIT_WORK(&nn->nfsd_deleg_work, nfsd4_deleg_shrinker_worker);
-+	atomic_long_set(&nn->nfsd_shrink_backlog, 0);
-+	nn->nfsd_last_recall_any = 0;
+ 	atomic_long_set(&nn->nfsd_shrink_backlog, 0);
++	atomic_long_set(&nn->nfsd_deleg_backlog, 0);
+ 	nn->nfsd_last_recall_any = 0;
  	get_net(net);
- 
- 	nn->nfsd_courtesy_shrinker =
- 		nfsd4_alloc_state_shrinker(nn, "nfsd-courtesy",
--					   nfsd4_courtesy_shrinker_count);
-+					   nfsd4_courtesy_shrinker_count,
-+					   nfsd4_courtesy_shrinker_scan);
- 	if (!nn->nfsd_courtesy_shrinker)
- 		goto err_shrinker;
- 
- 	nn->nfsd_deleg_shrinker =
- 		nfsd4_alloc_state_shrinker(nn, "nfsd-delegation",
--					   nfsd4_deleg_shrinker_count);
-+					   nfsd4_deleg_shrinker_count,
-+					   nfsd4_deleg_shrinker_scan);
- 	if (!nn->nfsd_deleg_shrinker)
- 		goto err_deleg_shrinker;
  
 
 -- 
