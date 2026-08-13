@@ -1,75 +1,71 @@
-Received: from mail-wm1-f98.google.com (mail-wm1-f98.google.com [209.85.128.98])
+Received: from mail-oo1-f54.google.com (mail-oo1-f54.google.com [209.85.161.54])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 535A04772B0
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 13:58:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.98
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 914693546DF
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 18:07:19 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.161.54
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786629521; cv=none; b=X5iw51VpacZvNvWIY1rUAbtwXV27AnM4ys7Q9MWHXXeq/BX1Xx1OeRx1cdAPrIiQhpx5hDLF4ItOv8Vk+fRK348+OViode0jThNbZVpwx/C1lgjptYHuFw38C4+60BI1wdt5v+v++B+bc2s4dPlSKelt136WPJ0ZlWZopB3bljM=
+	t=1786644441; cv=none; b=sho0dQ5PddgP7jOcNZstFLqZMnzOmgfkLg37EYSO+lP3VBQ/yho/T01P1wGR7f9R/EZqcMRMvJ4Re4IFb47gHyzZ7/cHuOkTILtzbv2jEFTTkuoveOhVHBNrkJ4fYR+4CwqXlmaadEbkIFJ3VcNAa9HOrw8EyZEfNX/POI32ld4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786629521; c=relaxed/simple;
-	bh=InMdX+pdiDloclCPV/zVlqIYNtiNdrfnmA7sVFiIrcI=;
-	h=From:To:Cc:Subject:Date:Message-Id:MIME-Version; b=e313u1Ul1l2UKe1Gn2klhIwJVv+SNFVmDiVGbFqqDPlbTGA9O9iA9SY5hYsa9tkZrrbz2EQ+P61OiiTDMJp476v5RHu0oZ+EpmBuYyniP/28+U6u1g2MhUprjolzjdmNoHDHfiqJsRK/Bl6afGrfNXqlVWpBH4Va/3Pi/R5bZrQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=purestorage.com; spf=pass smtp.mailfrom=purestorage.com; dkim=pass (2048-bit key) header.d=purestorage.com header.i=@purestorage.com header.b=SE2h3KT0; arc=none smtp.client-ip=209.85.128.98
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=purestorage.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=purestorage.com
+	s=arc-20240116; t=1786644441; c=relaxed/simple;
+	bh=1SvZ7ICB1d9VxEx07hZexCWQFj4gTp8rUWAbYOR5peY=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=tF73/J0whGJLmGMTz43CzjQbQun7FqhyY9O1N4XDZksbmE4b6g5724nT9anBP8bt5quW5Uu4c5NPBL7DVjHmX0vCMOTXHf4QR0WepEznD7Tb/iJ7fH5kewg1satARK8YZlmt2QQAcMPsBiO60xaugujQ5nTiv9E+UmdjdtJKNFE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=bWCFaNna; arc=none smtp.client-ip=209.85.161.54
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=purestorage.com header.i=@purestorage.com header.b="SE2h3KT0"
-Received: by mail-wm1-f98.google.com with SMTP id 5b1f17b1804b1-4953de5be0aso15556455e9.0
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 06:58:39 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="bWCFaNna"
+Received: by mail-oo1-f54.google.com with SMTP id 006d021491bc7-6acbf97e9a1so136458eaf.1
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 11:07:19 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=purestorage.com; s=google2022; t=1786629518; x=1787234318; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1786644438; x=1787249238; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=1y55hehoVssabJRQyQs56fbqkSj+SkZHKxYRNj9+z/c=;
-        b=SE2h3KT0c+mQiD2kFkBdK0wfk3IqXx83TCjYMmV+5emoz14Rg9AGj0diRBn/EVH77B
-         GUFpNja0MJ9OO61O6JtxS1f+031i/qhtrGicMNMpaNchR7eUGK2GwMTEwM+Vnqz0sJee
-         M3YvaJIQg1NLAxQPBYQaHdSQ6Bq5GPHOA/BUTzp1xpq+6M9eJ5UVOgzhYIHTGhFxBtnr
-         oKMKfk5u09qhQ7YiCgBjYH+Oe+NEumq5t+6FL+DMTNex4itLvdXAAbIDzH8xR8Dr9ovD
-         Gj58u4lfUKDRHDAmgnKZlAt3UVEEE4vQi87v8yf4Qwyn1sQWfEF3PzYhYuO74Qeqt3Ik
-         2VWA==
+        bh=CaTqYX+qot3iPITPtixpdj1Sw6ugoaUAM2Zv53a8v4M=;
+        b=bWCFaNna5nfUtkj+Fzc/TEEzZUNKOLPKXOjzjbtaFas3/hh0iIE8iE3WeveWhgkO9d
+         70FAP3qTOXKZZ0XJwWh1fyM2D9i59DfzQ6tE8Zl35Y6hzW74RSvCPOm/uPwtGX4kq99Y
+         Ph+9JQ7QOHMcPNc8FqtAQ6VldrUIW5cxSdt/H1UwVHn9D6JGmXjerTqUUn/XfaI9upJ9
+         HreSEY/TUklqEAYZL+eNTXApiwIDrruqod38AS8DaUWfIO5uGJZ2RDBQpoknWWy1HgTc
+         DGh88bcS0SRmNbFQFl06ZpXkqDFwsZQW18SyD1N4Mre/xIhb5yP/YsoBpySXtfEbBJHA
+         sDlg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786629518; x=1787234318;
+        d=1e100.net; s=20251104; t=1786644438; x=1787249238;
         h=content-transfer-encoding:mime-version:message-id:date:subject:cc
          :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=1y55hehoVssabJRQyQs56fbqkSj+SkZHKxYRNj9+z/c=;
-        b=eejq4LWaFLcfIYNiGDkoVTMmrIe6tCKHS7tIbpnoZiWHsEHPmzZDIrSGs+0WfpP8/U
-         NGnfLHDg+HPcKMrwX9VbHDN8wSe4xkdvuM36aAkPvOeRfqIfRlZq3ta96RHWo2/9B6ko
-         ea+JlAWX/68zj6WBfyYZZtD/wEUwwIpSC+ARyY3WvtbwqccR9MNY4KYhWp+4wIl8pquk
-         2i2TUZH+P2y5V6weyHrp5ChSGYXHE4BVOOEZSDRzldtBNrhaX9KIWG5PVRu8+ba/2r2r
-         OvzMolSS9qQ9q5sPvpRpXh+zXPx/yb5+iWyj6dpZBqSRDBuXa3JEgKfXwvfpjXgwVeFD
-         jPRg==
-X-Gm-Message-State: AOJu0YwDuZDHPuHlGNOWCVnxH7RZpGToMsgLt6Zok4sI1asIEVfWB93W
-	bB/DB/x0/E1eAdlEQj3IJZM3mOswPBr5fanjWR5IyIfOUngVL+Ph3NEhRgBAiwGtMBb/hbHMNxc
-	yMyiQrT60+CgO6n0oFFCyN6fDCN5GUjZ2HRy3jQz27nzu1DrQH7WD
-X-Gm-Gg: AR+sD13PyqqHHyFmWzBNTz1ZMBqUQrPo32Ltr6FmqUdIkXdJqDvizIOvvaKkRfz9Pxz
-	UzjNstDD4tzkPWOLyJy+URFdpFo6ROBWJHJgOJv2aqBwIaM1UQ3Ul6eSv8rQ/Opm/QcUltokVnP
-	4KmiDNAijHUhD1Mm0lkzLcDwvhUAFAMdWLNGylcX+WuaDQRbmvp2pNmLRXKi/w45eZ5yRT+xUAa
-	7gFdyjDDLzCn9x+aaTdNhTGlirKriHvs+biFJw1Y233rnbJlnGCqv2Ligdp/5T4+pYgkUQ0iUoY
-	pa4NIB9qNqxKyyoV4082c7xmcDlf561A9t3EWFdTkFRtWkvKsFBQ+Y6p5hbb1haZ58/HRI/Mn13
-	S2as0riAXIfBDGgVJbs37NUq1UQpA
-X-Received: by 2002:a05:600c:1385:b0:495:5fdf:2075 with SMTP id 5b1f17b1804b1-49982109cc1mr75225985e9.0.1786629517600;
-        Thu, 13 Aug 2026 06:58:37 -0700 (PDT)
-Received: from c14-smtp-2023.dev.purestorage.com ([2620:125:9008:8012:36:131:5:0])
-        by smtp-relay.gmail.com with ESMTPS id 5b1f17b1804b1-49981b16dd0sm9042585e9.7.2026.08.13.06.58.37
+        bh=CaTqYX+qot3iPITPtixpdj1Sw6ugoaUAM2Zv53a8v4M=;
+        b=spDzpWUMmEfDexQNp6wEEp9htWmzZApxdBUulQB9LFVByaGKZIWFAb5lGydzO/FOV3
+         1yGE5eYYp9nEtwyXeojRemqHr57jCIzZOoiRMKeRN7CyA4thaZ5K2G9GmNpGyLujzJFp
+         g+BjeeaAl3xf1Bx2qXSiAQo5fM2LQiRVDb1e5k/v5QUHXLE0LgKFmhNfB8c+IGtzbZ7W
+         hsPZb4I0+AKZs+ygYYRxoj1AfjsYcjMg2WhAXxy8HD0unaYI26KOs2idBCcDtP2Z6ZZB
+         RzaFY7uzVrNhJyyL5AqRUx54wPeFH7tZwrrnBgB7g6FjZuP5QhziyLwvS+UrCZMrzuv2
+         8Lcg==
+X-Gm-Message-State: AOJu0YwXDhkS4ruz8jqEAzXMuxL+iJAspf1tLPrMmlaS52kHkWokK15Y
+	CAooPF1Z2qlINi8vSio4c61QK9FsFGHGloYNprG6qXCNMv8TwGJ+R680J5wUk13XGWxTcV+RmKZ
+	6cKaW
+X-Gm-Gg: AR+sD105mOUM3250BbkJYi1aVR3FJV5DO5Qw+B0VM9EuodAG/yCxNFgUtLqToQjKvS7
+	vlihAswhQaZbCI0L8zP7Y9jjbXTAB5ezrhXvADjkzyqnpjGaYL8WQsYEgqBAmJGRG4PWTxUYRIF
+	VumtP7es2F5vAVUgx8heMT3NfWxVhoaGVk4S/Qv40/62AK4tE3s8kJ6ekmzCIvfBqB49STz04C4
+	W5lbfaHJDGYt6pYAkuzxNTUcthHT5SyS2bCRoA47m/Goch8ODdsH3q4acdYdDf8ghBHoukVTBrn
+	r4ueQQRPb8k/uFFj+j8vzjZzC6Glw8y2g66/Ip5rw2SisBwFaygrImmxSzHgqhwpqXv+fYotnuU
+	yHTWzHJijvhEyruqBoHtSCV0Hc5a8NTxHi0LW06AjvFQh31bq8ClckLlq1vcMFxXgaCwBp1MfrF
+	QS3L/aQ2aKe+3Xd6vYfZiSat6WSl8CKzly54dcRBDtYeF3iOam//od+nzoEr6FifbjXqYnXoAF+
+	Q4tspmPLYAd/6ZaZkHmjtbwRvmGJmB5iZA=
+X-Received: by 2002:a05:6820:2017:b0:6aa:d8d9:a4bb with SMTP id 006d021491bc7-6b0d740d5c6mr211591eaf.36.1786644438277;
+        Thu, 13 Aug 2026 11:07:18 -0700 (PDT)
+Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
+        by smtp.gmail.com with ESMTPSA id 586e51a60fabf-45e8f96010fsm211730fac.7.2026.08.13.11.07.17
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 13 Aug 2026 06:58:37 -0700 (PDT)
-X-Relaying-Domain: purestorage.com
-Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
-	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 3A43634029C;
-	Thu, 13 Aug 2026 06:58:36 -0700 (PDT)
-From: tmenninger@purestorage.com
+        Thu, 13 Aug 2026 11:07:17 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
 	Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	Tim Menninger <tmenninger@purestorage.com>,
-	stable@vger.kernel.org
-Subject: [PATCH] pNFS: Check lseg validity before marking a layout for return
-Date: Thu, 13 Aug 2026 13:58:34 +0000
-Message-Id: <20260813135834.22278-1-tmenninger@purestorage.com>
-X-Mailer: git-send-email 2.34.1
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/3] pNFS/flexfiles: mirror instance error handling
+Date: Thu, 13 Aug 2026 14:07:12 -0400
+Message-ID: <cover.1786636529.git.bcodding@hammerspace.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -78,101 +74,40 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-From: Tim Menninger <tmenninger@purestorage.com>
+When a flexfiles data server fails, the client marks the layout for return
+and cancels the layout segment's in-flight I/O.  ff_layout_cancel_io()
+cancels I/O to every mirror instance rather than just the failed one, and
+cancelling a request that has already been transmitted does not stop the
+data server from executing it.  Those writes may complete after the client
+has sent its LAYOUTRETURN, and the metadata server will see writes to a file
+for which no write layout is outstanding.
 
-pnfs_error_mark_layout_for_return() receives the lseg associated with
-the failed I/O but previously used only its I/O mode, operating on the
-inode's current layout header regardless of whether the lseg itself was
-still valid.
+Patch 1 reports the operation the client was preparing to send when a
+data server connection fails, instead of OP_ILLEGAL.
 
-A layout stateid can be invalidated while RPCs still hold references to
-its lsegs. pnfs_mark_layout_stateid_invalid() clears NFS_LSEG_VALID on
-those lsegs through pnfs_clear_lseg_state(). A subsequent LAYOUTGET can
-install a replacement stateid in the same pnfs_layout_hdr. If an RPC
-using one of the old lsegs later reports an error, the current code can
-therefore mark the replacement layout for return.
+Patches 2 and 3 let a layout driver cancel I/O to a single device, and
+pass the failed device down from the flexfiles error paths, so that I/O
+to the remaining mirrors drains before the LAYOUTRETURN is sent.
 
-Once NFS_LSEG_VALID has been cleared, the lseg is no longer eligible for
-selection for new I/O and must not initiate another error-driven return
-of the inode's current layout. Fold pnfs_mark_layout_for_return() into
-pnfs_error_mark_layout_for_return() and check pnfs_is_valid_lseg()
-alongside pnfs_layout_is_valid() before setting return info, so a stale
-lseg cannot drive an error return of the current layout.
+Layout recalls that set clora_changed, bulk returns and revocations are
+unchanged: they continue to cancel I/O to every device.
 
-This was reproduced by restarting a FlexFiles data server during a
-high-throughput read workload. Stale lsegs repeatedly caused the
-replacement layout to be marked for return, triggering I/O cancellation,
-RPC/RDMA transport reconnects, and sustained contention on
-inode->i_lock. The client did not recover on its own and consumed about
-94 CPU cores on a 96-CPU system. With this change, I/O recovered within
-about 20 seconds and recovery load peaked at about 15 CPU cores.
+Benjamin Coddington (3):
+  NFSv4/flexfiles: report the intended opnum when DS connection setup
+    fails
+  pNFS: allow layout drivers to cancel I/O to a single device
+  NFSv4/flexfiles: only cancel I/O to a failed mirror instance
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Tim Menninger <tmenninger@purestorage.com>
----
- fs/nfs/pnfs.c | 28 ++++++++++------------------
- 1 file changed, 10 insertions(+), 18 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c          |  6 +++--
+ fs/nfs/callback_proc.c                    |  2 +-
+ fs/nfs/filelayout/filelayout.c            |  4 +--
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 29 ++++++++++++--------
+ fs/nfs/flexfilelayout/flexfilelayout.h    |  2 +-
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 17 +++++++-----
+ fs/nfs/pnfs.c                             | 32 ++++++++++++++---------
+ fs/nfs/pnfs.h                             | 14 ++++++----
+ 8 files changed, 64 insertions(+), 42 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 7715e2bd5871..9f32dd7c4c63 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -2708,26 +2708,30 @@ pnfs_mark_matching_lsegs_return(struct pnfs_layout_hdr *lo,
- 	return -ENOENT;
- }
- 
--static void
--pnfs_mark_layout_for_return(struct inode *inode,
--			    const struct pnfs_layout_range *range)
-+void pnfs_error_mark_layout_for_return(struct inode *inode,
-+				       struct pnfs_layout_segment *lseg)
- {
- 	struct pnfs_layout_hdr *lo;
- 	bool return_now = false;
-+	struct pnfs_layout_range range = {
-+		.iomode = lseg->pls_range.iomode,
-+		.offset = 0,
-+		.length = NFS4_MAX_UINT64,
-+	};
- 
- 	spin_lock(&inode->i_lock);
- 	lo = NFS_I(inode)->layout;
--	if (!pnfs_layout_is_valid(lo)) {
-+	if (!pnfs_layout_is_valid(lo) || !pnfs_is_valid_lseg(lseg)) {
- 		spin_unlock(&inode->i_lock);
- 		return;
- 	}
--	pnfs_set_plh_return_info(lo, range->iomode, 0);
-+	pnfs_set_plh_return_info(lo, range.iomode, 0);
- 	/*
- 	 * mark all matching lsegs so that we are sure to have no live
- 	 * segments at hand when sending layoutreturn. See pnfs_put_lseg()
- 	 * for how it works.
- 	 */
--	if (pnfs_mark_matching_lsegs_return(lo, &lo->plh_return_segs, range, 0) != -EBUSY) {
-+	if (pnfs_mark_matching_lsegs_return(lo, &lo->plh_return_segs, &range, 0) != -EBUSY) {
- 		const struct cred *cred;
- 		nfs4_stateid stateid;
- 		enum pnfs_iomode iomode;
-@@ -2742,18 +2746,6 @@ pnfs_mark_layout_for_return(struct inode *inode,
- 		nfs_commit_inode(inode, 0);
- 	}
- }
--
--void pnfs_error_mark_layout_for_return(struct inode *inode,
--				       struct pnfs_layout_segment *lseg)
--{
--	struct pnfs_layout_range range = {
--		.iomode = lseg->pls_range.iomode,
--		.offset = 0,
--		.length = NFS4_MAX_UINT64,
--	};
--
--	pnfs_mark_layout_for_return(inode, &range);
--}
- EXPORT_SYMBOL_GPL(pnfs_error_mark_layout_for_return);
- 
- static bool
 -- 
-2.34.1
+2.53.0
 
