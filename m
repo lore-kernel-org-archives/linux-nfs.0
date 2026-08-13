@@ -1,63 +1,64 @@
-Received: from mail-oi1-f180.google.com (mail-oi1-f180.google.com [209.85.167.180])
+Received: from mail-oi1-f175.google.com (mail-oi1-f175.google.com [209.85.167.175])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2F04E42C51D
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 20:43:48 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.180
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2C18242C51D
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 20:43:50 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.175
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786653829; cv=none; b=keZL2VK2u0gCBk6xH/BQ4YuncpOXRTUH4G0u54hvo4xmg/CTYU4khkFS5Ge3Rny1Nj/LQIPR69FehmKepkxV9J1f4zmhvqzzZ9Ple0c7p7btB1Qxr7FyKShjijVuYWwNZw+gqxTh5mxZWbFQeAx7x6vTVMhP8JflqCyntVUBGyM=
+	t=1786653831; cv=none; b=Ckw0aSGYgFRKp08Rmm5EloUXZ5LAOxNlHhVSsrIV7mduZP5G2BYEe5nv87Wj5WwWD0ZmNSWguMxpEopwQzEYv7KsRZWBh1+fjDnDFm4YUM0K43BpnKwzjTLllh+mRrEabZZB9teAe1nJcR7OrwJgOI3FIyOKOzcy1ekLsbCjo8I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786653829; c=relaxed/simple;
-	bh=2dQP59pI6wfWgIFahR0zL+/0tKRW3AYXzV7wZcKdA1I=;
+	s=arc-20240116; t=1786653831; c=relaxed/simple;
+	bh=k6ZwzIPQs4h92PgzWCs41BeAnnMKefxmBCle9WbaSS4=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ic4+SMj6UORV3VpCx46Si0VzywiHjBpsa6Yz4sZGkR/0GCM7sD+L+I4PGMU8F77CGdUCvlAWWiD0/8UARs/muyAUutmssL81oh32xNBEk2pNn0+wOtYNIPRktv3zCTWC0NPY1XjH5M3dRKBnTgfXBpeVvxHRu778/YHAaWpr0Fs=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=XsX482x/; arc=none smtp.client-ip=209.85.167.180
+	 MIME-Version; b=YZpM2iTv9WkH9R5Xku8Ten1Xx70PInsToLdF3fiOrMyrB2mEcv5YvOgv2X/XGYOIT/KBX3elF7IHTwYLXsdvbzoBfoyz9WIzqVRpicoO2MOXMjP0WWHPLq3SFhkyYW6Ar5I+plqj2oqW74lXF31OGnWetlSV5YuqDJ/X2R/ORgs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=bJEZP+0N; arc=none smtp.client-ip=209.85.167.175
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="XsX482x/"
-Received: by mail-oi1-f180.google.com with SMTP id 5614622812f47-4ab8cb2a6e4so173464b6e.0
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 13:43:48 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="bJEZP+0N"
+Received: by mail-oi1-f175.google.com with SMTP id 5614622812f47-4af81963f35so150964b6e.0
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 13:43:50 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1786653827; x=1787258627; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1786653829; x=1787258629; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=rinWyt/IfqBNcIfy2yQNgaLqOtvYErKLbAcRv++5RR4=;
-        b=XsX482x/K4IOSbKSi6TpB9QDhzOM0Zwd5JggrohNvWEVYV8wedhxLz+/GnvtU1MA7m
-         HTeDSC3Lsech8dNcRXhaOSFo3wRSZwAYiVkeG3eeI2AiKZi7pfhsojs6PZzWRdar0DRJ
-         i3E04vmCWQyPBhPIF03Pmeh7UoEHcAObfncrKh46jNKGEtzPnFDHWN+ESKY2sJlo70MX
-         7NcxtujWaJg6y1BbtmUzyiWlKUycI2/w06SIfbSaEwhMg0JvBtnVThSe/fCga4ni+QJw
-         gCiYBBtTvJuyvlm+9bp4/wLTG0MD8iCpL3pVZFvbX9NBKS0u+PS6+zOcGcA3pQn5cuN7
-         4hlg==
+        bh=3r7qyH5qgBKbDwbCAoa6M5CoaeA0sXScn3uJhj2Oesk=;
+        b=bJEZP+0NN/2lXtNCbmQyUoWv3FL3PRZK4Hfn/ujBQNavBA2Fx9dM59mwiwSGIhc1r0
+         Xz9G4vrqVPOji3zNltZ5GkNDRtA1Ngb+zXbzMePacTMyAqSPw6+djv34oCErMzoc8/xa
+         XA0QDEpW2ne3txuk8G+VTjf5dvWA80Oj5kNuzVw1IfVqhiJdUOO8jlAdbTu5b+cfsgIt
+         KpiKfbEMltWaYwz/u4V7qQGNPlayn7XRrinSuF0JHFFVMZir64lbIGriMzHzJ9+slkRl
+         COP6cAS0ch1xoRZPvi6DTy0awAgsVjPkHwM4UAxWw0ZfJVG0NGj+iXciIwtiLo/mibXY
+         vGJw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786653827; x=1787258627;
+        d=1e100.net; s=20251104; t=1786653829; x=1787258629;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=rinWyt/IfqBNcIfy2yQNgaLqOtvYErKLbAcRv++5RR4=;
-        b=G4DUHA1z4Y3Dczhs83VXv+j2t2MNng1K1RdQ3LOy4OesidCA9nvg5H2dXtGoI60tzk
-         HMQ1a7mwWwNIGpzAjTkvTYPNlOC/dI4pyrdjWIrYGKqfZ2RYPcL8RfS+2pGDeIQNb7TW
-         vFWNeB9TSTgvUAxDmlZbGoqgS+LaHdRZFR7iOLtaPLtRK2cczHUl6zRgiNYKvQ0eo8E4
-         oyySLBZM1UpSVv2SVsfB3BQbQAjbqM0M9k6qznEHDlCUAAbpGK0xu/xyV5f2zbRdGBiy
-         X5R8aNBPQ0RlFUqn2gxRC9YUxcHISmQdIRxfTPsPEa0MuqxfCYd4iz2XEx6XTxO/w0qX
-         Q0og==
-X-Gm-Message-State: AOJu0Yx4UMxyFHMqK+cI+zZAAW5+Kh9gc7ammrtDpVPRuL2b4w/3JfaO
-	KNliPrnlvO45rqPxq0vV/LWNyrNau97+Yam1jJggirLKsQn/50/Sw4WUkP+UsFFq8HE=
-X-Gm-Gg: AR+sD10SuGBzYWhLGg69fC9L4SGCXUXZfvKkAiMHbeuFSY1HQIH+EpL4u7xWRmxrEEE
-	6uKnXitVuocVw7pxP0cX5gLu3HzHZNmwMULGvxMvM/1hYmI7JjQj86Zs6cZUq+Dwu6UvxSYSsIj
-	881+Tf9/oQ13xIbZ8QbY5qCpyJhn0t+2b3PzzWQREDvyZathPus17v9PAbp62pw68fpdg0Ul3Ix
-	KurPzCmhioTvKGLipIee9GvQcdG5rzLhGsLN7Z3E5Jf0ual9TMlm+cCTFnoEDRQVMXbhg3+tJQr
-	JoY99wCU06wIWi47sGR4nnhifafx0Gbk3HyDVQRT8SrxWMaNT58vGLPsruxzxU+SXxxshNBDVX/
-	ssG/bJjz9ixzr6adALIoiCpgNB5bY5r8M0MNzjUrxdBM9JyE7AJiRZ5TfCQBGBZM/DDa/Ldjfbm
-	BiQA5NR+/S8qKSU6NqXGhfosfQQr0Tc0T0u8HJZNAdCFYhUp2F5lJ140wxJni1BGBapl5XLCr1R
-	Y5Vdmv3UGbBxGcOJmqsSzUp
-X-Received: by 2002:a05:6808:23c6:b0:486:8a11:6e8b with SMTP id 5614622812f47-4b2412f17c5mr792890b6e.2.1786653827074;
-        Thu, 13 Aug 2026 13:43:47 -0700 (PDT)
+        bh=3r7qyH5qgBKbDwbCAoa6M5CoaeA0sXScn3uJhj2Oesk=;
+        b=i3KV//qZGEovH993uYZSCKyIrtEfSb7+FdKq0hEiRPXLxPCUwUllxHBssYjInkk3Ig
+         jPFFpUqqhbZn0RU/74jhon3Qi8jpd6bgWeU57zzsNpP7VjmCS8PvTyMaN6Jq8hFUpuQw
+         avJb9KBmI07ThlqyZfjtVpHu65o8RDCSJ8LiCSutK31BaBdLoI8ROZjI/zm78ZyMlJ0e
+         ekJw6FITfcDqj5jeytvmcm2GTmjK6Z66pA6OMdNOfkAeaimzfy04i2yA960wkQk6+OD3
+         LXYq9lG5AiVqGkayItD7kFo+R3+kvpRpMPlgJqU2yLS0Vc+5lBJd3aZdqqZt2Nq5HyY0
+         Mddw==
+X-Gm-Message-State: AOJu0Yx8Z78EqnkAlFlBnDxySiWMsJWEWwMQIuu14D6TTEZyt05QOXA3
+	ODm9eSZxR1jEWh07KIRbT4dyJaRREnRSqIL6cefkX68p25O7uWq9E3JuIqODKYfT/kyMcIPWdtO
+	H7QFy
+X-Gm-Gg: AR+sD10s6VEepYCAS4Ne2GqXXBxKOrWC+brQonM/fgEXam5kc+vpqrs1WsqZu17qa4J
+	FCQ0VxySJ578OLX3uEBI/NCtlNmAgAAZisqjq8MxT3PLHKE09Wscx/RI9lkOVH1f/Y6E7WbW1et
+	WJNKmqsEgfrpyLKFOvK/wKhOCN1+aD5zaE4HuTEr1CVkOGEZaqr3XDSUSthCXjViAwwm+WExpbs
+	ECgDN59rjAHU3ouum1JVT//G2FdZUSlrwI/qPUwF/8vRrz1dyH+eLost001CaTVfQF1QWSkCTXn
+	w9z8sB+IBJDH+B+U8lilkDcxGO8+g7l4JvSIoULsqhUt8d3m5Wh2y/vaXwi1T0JRCyREDVJ4hWp
+	GNjbdxn8/QYwjuE6z+IN02cvxjV4VDiNYH8B1VE6AHJnBmrAvDGJAM3M1EkIlSmfTZPzBpUzNGu
+	CgHFZ/ujtFvCRG2pN5CP9xiOK8YYl6b+lxSMp9LaEMjApRrYi0EZu33T8+K3zoxMkPOFc4aWVOE
+	Ul4k9d9iGFYC/RzBZ9/L7SH
+X-Received: by 2002:a05:6808:138a:b0:497:c1f1:1511 with SMTP id 5614622812f47-4b241e783e7mr701874b6e.16.1786653829012;
+        Thu, 13 Aug 2026 13:43:49 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b22c8c09e4sm2484254b6e.0.2026.08.13.13.43.46
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b22c8c09e4sm2484254b6e.0.2026.08.13.13.43.47
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 13 Aug 2026 13:43:46 -0700 (PDT)
+        Thu, 13 Aug 2026 13:43:48 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -66,9 +67,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Jonathan Curley <jcurley@purestorage.com>,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 19/21] NFSv4/pnfs: Re-home the data-server cache onto hash buckets
-Date: Thu, 13 Aug 2026 16:43:15 -0400
-Message-ID: <844b2583b5d0dd08575909b9dae7fdfe804c73ad.1786653063.git.bcodding@hammerspace.com>
+Subject: [PATCH 20/21] NFSv4/pnfs: Key the data-server cache by its address set
+Date: Thu, 13 Aug 2026 16:43:16 -0400
+Message-ID: <80584abd9bb30509483e42ad12ba75543c9d5d1f.1786653063.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1786653063.git.bcodding@hammerspace.com>
 References: <cover.1786653063.git.bcodding@hammerspace.com>
@@ -80,126 +81,149 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Mechanical conversion of the per-net data-server cache from a single
-list_head to an array of hlist buckets: nfs4_pnfs_ds.ds_node becomes
-an hlist_node, netns init/teardown cover every bucket, and removal
-uses hlist_del_init (which needs no bucket reference).
+Populating the data-server cache was quadratic: every GETDEVICEINFO
+decode scanned the whole per-net cache under one spinlock, with an
+O(n*m) address-set comparison per entry.  A striping mount with
+hundreds to ~1000 distinct data servers pays that in a burst at
+first access and again on notification-driven re-resolution.
 
-Insertion still targets bucket 0 and lookup still scans every entry,
-so behavior and cost are unchanged -- keying the buckets by the DS
-address set comes next.  Splitting the structural churn from the
-keying keeps a bisect able to tell a list-conversion bug from a
-hash-key bug.
+Hash each DS to a bucket keyed on its address set: per-address
+jhash over exactly the fields same_sockaddr() compares, combined by
+addition so multipath ordering cannot change the bucket, and the
+existing comparator as the in-bucket tiebreaker.  Lookup and insert
+now touch one bucket; teardown is unchanged (hlist_del_init needs no
+bucket).
+
+The comparator also tightens from subset to set-equality to agree
+with the order-independent key.  The subset test was itself a latent
+bug: two data servers where one's address set contained the other's
+were wrongly merged into whichever was cached first.  A flexfiles or
+files-layout device decodes a deterministic multipath list per
+GETDEVICEINFO, so equal sets are what servers actually hand out.
 
 Assisted-by: Claude:claude-fable-5
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/client.c   |  6 ++++--
- fs/nfs/netns.h    |  5 ++++-
- fs/nfs/pnfs.h     |  2 +-
- fs/nfs/pnfs_nfs.c | 17 ++++++++++-------
- 4 files changed, 19 insertions(+), 11 deletions(-)
+ fs/nfs/pnfs_nfs.c | 73 +++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 64 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 4dcb91ab3039..10eeb14d251b 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1283,7 +1283,8 @@ void nfs_clients_init(struct net *net)
- 	INIT_LIST_HEAD(&nn->nfs_volume_list);
- #if IS_ENABLED(CONFIG_NFS_V4)
- 	idr_init(&nn->cb_ident_idr);
--	INIT_LIST_HEAD(&nn->nfs4_data_server_cache);
-+	for (int i = 0; i < NFS4_DS_CACHE_HASH_SIZE; i++)
-+		INIT_HLIST_HEAD(&nn->nfs4_data_server_cache[i]);
- 	spin_lock_init(&nn->nfs4_data_server_lock);
- #endif /* CONFIG_NFS_V4 */
- 	spin_lock_init(&nn->nfs_client_lock);
-@@ -1303,7 +1304,8 @@ void nfs_clients_exit(struct net *net)
- 	WARN_ON_ONCE(!list_empty(&nn->nfs_client_list));
- 	WARN_ON_ONCE(!list_empty(&nn->nfs_volume_list));
- #if IS_ENABLED(CONFIG_NFS_V4)
--	WARN_ON_ONCE(!list_empty(&nn->nfs4_data_server_cache));
-+	for (int i = 0; i < NFS4_DS_CACHE_HASH_SIZE; i++)
-+		WARN_ON_ONCE(!hlist_empty(&nn->nfs4_data_server_cache[i]));
- #endif /* CONFIG_NFS_V4 */
- }
- 
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index 36658579100d..f21118554272 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -31,7 +31,10 @@ struct nfs_net {
- 	unsigned short nfs_callback_tcpport;
- 	unsigned short nfs_callback_tcpport6;
- 	int cb_users[NFS4_MAX_MINOR_VERSION + 1];
--	struct list_head nfs4_data_server_cache;
-+#define NFS4_DS_CACHE_HASH_BITS 8
-+#define NFS4_DS_CACHE_HASH_SIZE (1 << NFS4_DS_CACHE_HASH_BITS)
-+	/* hashed by nfs4_ds_addrs_hash() over the DS's address set */
-+	struct hlist_head nfs4_data_server_cache[NFS4_DS_CACHE_HASH_SIZE];
- 	spinlock_t nfs4_data_server_lock;
- #endif /* CONFIG_NFS_V4 */
- 	struct nfs_netns_client *nfs_client;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 1ce1cbc32f77..e0a7ae5fe8e9 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -57,7 +57,7 @@ struct nfs4_pnfs_ds_addr {
- };
- 
- struct nfs4_pnfs_ds {
--	struct list_head	ds_node;  /* nfs4_pnfs_dev_hlist dev_dslist */
-+	struct hlist_node	ds_node;  /* nfs_net nfs4_data_server_cache */
- 	char			*ds_remotestr;	/* comma sep list of addrs */
- 	struct list_head	ds_addrs;
- 	const struct net	*ds_net;
 diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
-index f40368f839d0..e15e0059c56b 100644
+index e15e0059c56b..a94f4a2933cd 100644
 --- a/fs/nfs/pnfs_nfs.c
 +++ b/fs/nfs/pnfs_nfs.c
-@@ -604,16 +604,19 @@ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
+@@ -15,6 +15,8 @@
+ 
+ #include "nfs4session.h"
+ #include "internal.h"
++#include <linux/hash.h>
++#include <linux/jhash.h>
+ #include "pnfs.h"
+ #include "netns.h"
+ #include "nfs4trace.h"
+@@ -577,8 +579,10 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
  }
  
  /*
-- * Lookup DS by addresses.  nfs4_ds_cache_lock is held
-+ * Lookup DS by addresses.  nfs4_data_server_lock is held
+- * Checks if 'dsaddrs1' contains a subset of 'dsaddrs2'. If it does,
+- * declare a match.
++ * Checks if 'dsaddrs1' and 'dsaddrs2' contain the same set of
++ * addresses.  If they do, declare a match.  Equal element counts
++ * plus a subset test give set equality (neither side can hold
++ * duplicates: each list decodes one device's multipath addresses).
   */
- static struct nfs4_pnfs_ds *
+ static bool
+ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
+@@ -588,6 +592,10 @@ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
+ 	struct sockaddr *sa1, *sa2;
+ 	bool match = false;
+ 
++	if (list_count_nodes((struct list_head *)dsaddrs1) !=
++	    list_count_nodes((struct list_head *)dsaddrs2))
++		return false;
++
+ 	list_for_each_entry(da1, dsaddrs1, da_node) {
+ 		sa1 = (struct sockaddr *)&da1->da_addr;
+ 		match = false;
+@@ -603,6 +611,53 @@ _same_data_server_addrs_locked(const struct list_head *dsaddrs1,
+ 	return match;
+ }
+ 
++/*
++ * Hash exactly the fields same_sockaddr() compares: family, address
++ * bytes and port.  The v6 scope id is deliberately left out -- it
++ * only discriminates link-local addresses, and hashing it would be
++ * harmless but pointless: unequal link-local addresses that share a
++ * bucket are still separated by the comparator.
++ */
++static u32
++nfs4_ds_addr_hash(const struct sockaddr *sa)
++{
++	u32 h = sa->sa_family;
++
++	switch (sa->sa_family) {
++	case AF_INET: {
++		const struct sockaddr_in *a = (const struct sockaddr_in *)sa;
++
++		h = jhash(&a->sin_addr.s_addr, sizeof(a->sin_addr.s_addr), h);
++		h = jhash(&a->sin_port, sizeof(a->sin_port), h);
++		break;
++	}
++	case AF_INET6: {
++		const struct sockaddr_in6 *a = (const struct sockaddr_in6 *)sa;
++
++		h = jhash(&a->sin6_addr, sizeof(a->sin6_addr), h);
++		h = jhash(&a->sin6_port, sizeof(a->sin6_port), h);
++		break;
++	}
++	}
++	return h;
++}
++
++/*
++ * Bucket index for a DS's address set.  Per-address hashes combine
++ * by addition so the multipath list order cannot change the bucket,
++ * matching the order-independent set comparison above.
++ */
++static u32
++nfs4_ds_addrs_hash(const struct list_head *dsaddrs)
++{
++	const struct nfs4_pnfs_ds_addr *da;
++	u32 h = 0;
++
++	list_for_each_entry(da, dsaddrs, da_node)
++		h += nfs4_ds_addr_hash((const struct sockaddr *)&da->da_addr);
++	return hash_32(h, NFS4_DS_CACHE_HASH_BITS);
++}
++
+ /*
+  * Lookup DS by addresses.  nfs4_data_server_lock is held
+  */
+@@ -610,13 +665,11 @@ static struct nfs4_pnfs_ds *
  _data_server_lookup_locked(const struct nfs_net *nn, const struct list_head *dsaddrs)
  {
  	struct nfs4_pnfs_ds *ds;
++	u32 bucket = nfs4_ds_addrs_hash(dsaddrs);
  
--	list_for_each_entry(ds, &nn->nfs4_data_server_cache, ds_node)
--		if (_same_data_server_addrs_locked(&ds->ds_addrs, dsaddrs))
--			return ds;
-+	for (int i = 0; i < NFS4_DS_CACHE_HASH_SIZE; i++)
-+		hlist_for_each_entry(ds, &nn->nfs4_data_server_cache[i],
-+				     ds_node)
-+			if (_same_data_server_addrs_locked(&ds->ds_addrs,
-+							   dsaddrs))
-+				return ds;
+-	for (int i = 0; i < NFS4_DS_CACHE_HASH_SIZE; i++)
+-		hlist_for_each_entry(ds, &nn->nfs4_data_server_cache[i],
+-				     ds_node)
+-			if (_same_data_server_addrs_locked(&ds->ds_addrs,
+-							   dsaddrs))
+-				return ds;
++	hlist_for_each_entry(ds, &nn->nfs4_data_server_cache[bucket], ds_node)
++		if (_same_data_server_addrs_locked(&ds->ds_addrs, dsaddrs))
++			return ds;
  	return NULL;
  }
  
-@@ -659,7 +662,7 @@ void nfs4_pnfs_ds_put(struct nfs4_pnfs_ds *ds)
- 	struct nfs_net *nn = net_generic(ds->ds_net, nfs_net_id);
- 
- 	if (refcount_dec_and_lock(&ds->ds_count, &nn->nfs4_data_server_lock)) {
--		list_del_init(&ds->ds_node);
-+		hlist_del_init(&ds->ds_node);
- 		spin_unlock(&nn->nfs4_data_server_lock);
- 		destroy_ds(ds);
- 	}
-@@ -745,10 +748,10 @@ nfs4_pnfs_ds_add(const struct net *net, struct list_head *dsaddrs, gfp_t gfp_fla
- 		list_splice_init(dsaddrs, &ds->ds_addrs);
- 		ds->ds_remotestr = remotestr;
- 		refcount_set(&ds->ds_count, 1);
--		INIT_LIST_HEAD(&ds->ds_node);
-+		INIT_HLIST_NODE(&ds->ds_node);
+@@ -751,7 +804,9 @@ nfs4_pnfs_ds_add(const struct net *net, struct list_head *dsaddrs, gfp_t gfp_fla
+ 		INIT_HLIST_NODE(&ds->ds_node);
  		ds->ds_net = net;
  		ds->ds_clp = NULL;
--		list_add(&ds->ds_node, &nn->nfs4_data_server_cache);
-+		hlist_add_head(&ds->ds_node, &nn->nfs4_data_server_cache[0]);
+-		hlist_add_head(&ds->ds_node, &nn->nfs4_data_server_cache[0]);
++		hlist_add_head(&ds->ds_node,
++			&nn->nfs4_data_server_cache[
++				nfs4_ds_addrs_hash(&ds->ds_addrs)]);
  		dprintk("%s add new data server %s\n", __func__,
  			ds->ds_remotestr);
  	} else {
