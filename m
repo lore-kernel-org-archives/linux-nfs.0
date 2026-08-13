@@ -1,63 +1,63 @@
-Received: from mail-ot1-f42.google.com (mail-ot1-f42.google.com [209.85.210.42])
+Received: from mail-ot1-f51.google.com (mail-ot1-f51.google.com [209.85.210.51])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 076F23314AC
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 20:41:37 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.42
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 42211374E48
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 20:41:39 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.210.51
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786653699; cv=none; b=Zh0B06B+K82aI/GcgWyGROibgBcAcr1BWTR2trF8JoAPCS7YFGcYddKPJfH5cMPmjW7/1AdbOTaT3Zs4Bhxkw5644fYy3ZgfCubErQvCky5idjf5Z4qz6yNz5itp1MqHBv3pJI7herKTWcD44jk/T4yeWiL5UU+oSR/A++0BLNI=
+	t=1786653700; cv=none; b=tgmxkWlTQx8fB7aa+GT3ytFaRY00yhm19wM4Y0QGBoyQhj7r/DMIhdLjIYa+txvMxosVFxR6MYwC2M8IOELgvU3gV1IY3KfrtOkpEaPT/4tRFFzJf0T5zG4HlCpLyZCFhonZFU4+3DLiMSrMgN6tMNak2tg2pSh/qAS75YK9YBs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786653699; c=relaxed/simple;
-	bh=8T9qH6Ue7HhZ1+TOj6dLYLbpGk5GPGf6Qvxa6NuNaKc=;
+	s=arc-20240116; t=1786653700; c=relaxed/simple;
+	bh=u+ORa+RKNbjRVg2sFjZF9wc7JldnQnUZSIUHHGSdJGg=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=VkdLdzvzdMbKMnFeEs2NeXhoHtXNWZJcH8yFD4CgIKKg3viirvKkTU7sDzj26rFNsRYcOsIZ2cLgwz1+6uF9nX96MK3c7rL0omwRT5UtyBvyRrd7VoZET503DfPssldHkegrqMGG++f/LfmhBVswKVLi9Kwcvqi3hYsK8KqnzdU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=HSbxGXFh; arc=none smtp.client-ip=209.85.210.42
+	 MIME-Version; b=tEDyJ5JQgRxkYOvAhaVF22xektN2550bTtk7vVItUMs6bqUlu7qHK+tnIcU9ZdkQk3uUcNyjLr5rl/mxmd8NxpvVOQVsuyWsWtQ9EuHIKSzpc36hiAMQl2RR1tYF6srN/MCSq/Bw6GzdLCNNepot+vjdGxnT+gSP5R4YYvA87YU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=PFwGhfOk; arc=none smtp.client-ip=209.85.210.51
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="HSbxGXFh"
-Received: by mail-ot1-f42.google.com with SMTP id 46e09a7af769-7ee125ec926so287708a34.2
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 13:41:37 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="PFwGhfOk"
+Received: by mail-ot1-f51.google.com with SMTP id 46e09a7af769-7ec1e9d3359so305149a34.0
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Aug 2026 13:41:39 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1786653697; x=1787258497; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1786653698; x=1787258498; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=tHhWs4zYCRLNsguF+/vmy2fysO8HLmu/JuFHef0qnMc=;
-        b=HSbxGXFhpk56iBEQ+8uL6ylKhJObOxYJnZhYrfio/GNh7v0IWNKplpEMmr44wPB4JG
-         NnVIXwEY0FerahuWof0/3ELeXM7Iw1guIMwqssOj3sQgphHjAXoVv1OWzp1UtlHZ43TX
-         rfPRDRXGcxGWbVvWrpoPIL2t1q+rfFs1V9kLqnaCfppC1yFfvYWnpLvGlCo7uKtLcQqR
-         ViRJ0ftZVTviWgYDuxqh9A085RxSV47dWfB9BKo44Vsx/A2SeIE5/DMb5VKksDxa3vgR
-         radQx5p88tHCxQd46kMiQdNe/csiVd1fbBkIhzKWhlKlLd1GjshiL2BwFK4kf4y6pZ4N
-         Ge8g==
+        bh=VplqIesP/lbUj0psrSYInwxjGxamaCJ+7Qq2TJ4ICt0=;
+        b=PFwGhfOkffE6uTRyPSADs+ThOv1uVEtz6Y4Ipm5Jw4AGhMW/t8nbSGle3Y/49RDJ+/
+         MeNhZrrlPbDsBTfbg0HxKa4VbK7WIiDGjdDdaZLeCG+llcxR+C8nhlQ2bl9Ds7Cnw/J4
+         whv+HBZkQ6kEnsHSiHwGxi6OzeNnTsVEAXLK4A8cwMnGXs0M24zhk7Ggi6KpokUZ/jPO
+         djIoXihckkEpTvQkgkxLvkDuVb+XKUnnbCMrApQLxPK1amaPg5KrptSzX9MamORoHspu
+         Rdhtf9IuAiURgBjewBtSPvYnVQaIOeU9n8J8QLr7r0uevXxcw6wc+yijeIVdrp/X2LZB
+         bq6Q==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786653697; x=1787258497;
+        d=1e100.net; s=20251104; t=1786653698; x=1787258498;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=tHhWs4zYCRLNsguF+/vmy2fysO8HLmu/JuFHef0qnMc=;
-        b=BDoJ3Q9s84qspbUuAv9AhFUw3O4DXpP78j9YkeyRQtNREQKvwQnTaBVSNHHtZgQnwD
-         0orrxdJTpUGx5Wi7OJMAnzXbZvOlL3IKGUgjHWUQOtJrtjsNJ3hKsXUhntIIZZyYkdnC
-         wU258xTHYLtSObVD2eN4iYBMlhkTMYVkA8C9cC+yfISMhTTvUI947k4hNB3HMBp+5hw/
-         GuxW2kyBqZcMb+2tHlxUCkP1z/dC15UubUV0sK6Ub1qYCD5Ygm+ecRCv95SXu+1B8GS8
-         bNR1EUhXffLuQSPc7k8i3xBegaAlxIi9jzkY7EqpniF1jkn+LVeZ0RID91k4eys+PhQH
-         01mw==
-X-Gm-Message-State: AOJu0Yy/Mi/xOzdP2Lxqwd+lPYaFP4K3e4iZfx5adokqIPFlIfdjzsBg
-	Pqmu8rWC0s6pY9wd1Z1bo/3ddbKJ6EIaXSwjo4ZUY6wPF3CojI9DWMysmsEmPCWhhLA=
-X-Gm-Gg: AR+sD102rIkZzevxLvyDq4lmj3AKF4CXT4Io1hRZD9lCkFv1ZgBgAYKhuIEnBbh0dcR
-	rpcFiqfRNAhZ8H9/r6P7c00LnWCaYiD5xjftOsuqujQgzqHOxVl0oQEdjih1icsYD8cteNjb+3n
-	cQBBNHyhCsf0qsC31oo8hCuNIJ9PTN0MvoRAwpIRTFB152xcOlbMXDgLVFFCprkueKByk1LTRJH
-	1KbHPScCUh2VJJF3VMFvEuLuO4dG+2cA9rAwB9JUErJgN18+rfpq3pbSKXcHBrNF+pBz1/emuJO
-	DxktIiQbvW3VUvD+QCZbyRpsjnw3CrdLzPFfKA6u2ZmVKwfojRozeS2ACTAIyqixpYYkpkp1N+7
-	Lr6wiIRJiSL0QOZXXyr4Bvi1l4Jdv3BAf8iU6rvJxtu4LnFlFnllh3ulHkhtkAgkmAtOFWIycTm
-	sNF0uae3RlqHOz8izvOpKGwqT7aqF67QAeZYrYQpdxasyLzXd0BbkMkI1QUiiGHWT44c2tZ8BOT
-	deLVFL/GVvFctE/lWK9q/z6py13wMg2G7Y=
-X-Received: by 2002:a05:6830:6602:b0:7ee:36e8:d0ba with SMTP id 46e09a7af769-7f3de5d783fmr572606a34.11.1786653696681;
-        Thu, 13 Aug 2026 13:41:36 -0700 (PDT)
+        bh=VplqIesP/lbUj0psrSYInwxjGxamaCJ+7Qq2TJ4ICt0=;
+        b=PJSexhwP1R1jSji75BfnrGPToDgGqyjtXTRjvIFcA0KP5Db163YXPgoVqpayJ2UafU
+         zzbFI9Jnt5l9W08cp/aiJ6XxOta0Y/Gl/WOyxF8the/c1g8ktWN74GxVHFRNA/LIaUW+
+         MXs8lZ5TJcZrFCx3s3OXhKtZ6rShdYze/+aJnfwRwP+hDLBfTsU/wXWVYfqgmDj3GfCd
+         seqALnWRaJWnOTXC7PD5CopL0RP8fGgd2Mn2G4qtlH3Qzj9RUA4Bpvu1UUbxW5xAODmA
+         h98CENgiffwJt/xFkPy72O7x5UVFZeydc+C9DPyoG0pfyvU3pi2Bu+EYbazVd7+rBrnc
+         sgsw==
+X-Gm-Message-State: AOJu0YxHDWura4ForRgqPTdLkk9AGzmuGPMjDyxVPu2OjuuNHaKKwJy1
+	FPiJLXowqteuOQm92WF/Ob/tO2UuHVbrSrBfQ50jQry3MWdV+ItjxinTabNsnzonxkQ=
+X-Gm-Gg: AR+sD10ecXz/bgQzu8Vq5ZHZ5IwfVAQzc5PM9YaTd+58V8thg/0PJakaD8QDJkrbZIA
+	4BOdwEyPKsmtqoJnJ7VT27hkt8hUJSexdHoCLugPTsfGcKSoQjlcAYtmS/U0rX3iBM7fCOOtMpo
+	AXEgnkfJP0AkElVHlYL0Y9Vp0Ofj/Y1A4oJ5WXazDNbbn7kUEc/H7UNCvA4k8ivdBVqfPdovW5j
+	r1/mzSD6OFkTPZKAUGV44Csv0G/UviK+e3ZxBKTHeYeSrnK5Xr8Sb7bLf03tYVmu6wXuze9P1jf
+	dXUutLwIpHz2o5Jd/lWobol0mnpJWZTiWtRHVDmcbpmKCad2JIgtPwh+trZBhF6z3wR1IjNzPba
+	2U8iow0NlzZVXxrsz/fIIhNs1fyiaklKCRsNZPaUKF8bM53V4Dw8jeTH/XiA8FTmiwVGF26Os/3
+	gMGG01cgmGVdbqTXvjcq4cyVXwlWr+hr+70eHVD5DiPBpPQHR7s/BjmZfU3a4Uopl7LjART+TOd
+	qqLciso1jjipFDzprX4pXurNEzRZYYCaCHB9XjFwI2gUqg=
+X-Received: by 2002:a05:6830:6085:b0:7e6:d0ad:5254 with SMTP id 46e09a7af769-7f3de50a311mr489399a34.8.1786653698007;
+        Thu, 13 Aug 2026 13:41:38 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 46e09a7af769-7f3c9e23b6fsm3087958a34.25.2026.08.13.13.41.35
+        by smtp.gmail.com with ESMTPSA id 46e09a7af769-7f3c9e23b6fsm3087958a34.25.2026.08.13.13.41.36
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Thu, 13 Aug 2026 13:41:36 -0700 (PDT)
+        Thu, 13 Aug 2026 13:41:37 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -66,9 +66,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Jonathan Curley <jcurley@purestorage.com>,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH 3/6] NFSv4.1/pnfs: retry LAYOUTGET with a larger reply buffer on NFS4ERR_TOOSMALL
-Date: Thu, 13 Aug 2026 16:41:28 -0400
-Message-ID: <fc0b7acee2bb88de24825e27d6598bbeca9669db.1786653456.git.bcodding@hammerspace.com>
+Subject: [PATCH 4/6] NFSv4.1/pnfs: treat an oversized LAYOUTGET reply as -EMSGSIZE
+Date: Thu, 13 Aug 2026 16:41:29 -0400
+Message-ID: <c883c5d4c08ae3f7ec605e69beebd0145792ab13.1786653456.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1786653456.git.bcodding@hammerspace.com>
 References: <cover.1786653456.git.bcodding@hammerspace.com>
@@ -80,137 +80,38 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Layout drivers cap the LAYOUTGET reply buffer with
-max_layoutget_response; the flexfiles driver caps it at a single page,
-which limits a striped layout segment to roughly 28 stripes.  A server
-striping wider than that returns NFS4ERR_TOOSMALL, and the client
-falls back to I/O through the MDS -- pNFS never engages for those
-files.
+decode_layoutget() already detects a server that sends a layout body
+larger than the reply buffer we provided ("server cheating in
+layoutget reply") but maps it to -EINVAL, which pnfs_update_layout()
+treats as a transient error: the client falls back to the MDS for
+this I/O only and re-sends a doomed LAYOUTGET on every subsequent
+pageio attempt.
 
-Instead of failing over to the MDS on the first NFS4ERR_TOOSMALL,
-retry the LAYOUTGET once with the reply buffer raised to the session's
-maximum response size, the same bound GETDEVICEINFO already uses.  The
-server offers no size hint in the TOOSMALL error, and the page array
-is transient (freed when the RPC completes), so a single jump to the
-ceiling is preferred over incremental growth.  If the layout does not
-fit even the session-sized buffer, fall back to the MDS as before.
-
-The common path is unchanged: the first LAYOUTGET for a layout is
-still sent with the driver's default reply buffer, and larger buffers
-are only ever allocated against servers that actually hand out wide
-layouts.
+A server that overruns the reply buffer has ignored loga_maxcount, but
+the client can recover the same way it recovers from a conformant
+server's NFS4ERR_TOOSMALL: return -EMSGSIZE from exactly this check so
+that the layoutget path retries once with a session-sized reply buffer
+and otherwise marks the layout mode failed and falls back to the MDS.
 
 Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/pnfs.c | 45 ++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 38 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4xdr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 88deefd45202..b596a65c7ef2 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1166,11 +1166,12 @@ pnfs_alloc_init_layoutget_args(struct inode *ino,
- 	   struct nfs_open_context *ctx,
- 	   const nfs4_stateid *stateid,
- 	   const struct pnfs_layout_range *range,
--	   gfp_t gfp_flags)
-+	   size_t min_reply_sz, gfp_t gfp_flags)
- {
- 	struct nfs_server *server = pnfs_find_server(ino, ctx);
- 	size_t max_reply_sz = server->pnfs_curr_ld->max_layoutget_response;
--	size_t max_pages = max_response_pages(server);
-+	size_t session_pages = max_response_pages(server);
-+	size_t max_pages = session_pages;
- 	struct nfs4_layoutget *lgp;
- 
- 	dprintk("--> %s\n", __func__);
-@@ -1185,6 +1186,17 @@ pnfs_alloc_init_layoutget_args(struct inode *ino,
- 			max_pages = npages;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index c23c2eee1b5c..6b46ed346a77 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -6154,7 +6154,7 @@ static int decode_layoutget(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 		dprintk("NFS: server cheating in layoutget reply: "
+ 				"layout len %u > recvd %u\n",
+ 				res->layoutp->len, recvd);
+-		status = -EINVAL;
++		status = -EMSGSIZE;
+ 		goto out;
  	}
  
-+	/*
-+	 * A previous LAYOUTGET for this layout did not fit the reply
-+	 * buffer: raise the layout driver's default up to the session's
-+	 * maximum response size.
-+	 */
-+	if (min_reply_sz) {
-+		size_t npages = (min_reply_sz + PAGE_SIZE - 1) >> PAGE_SHIFT;
-+		if (npages > max_pages)
-+			max_pages = min(npages, session_pages);
-+	}
-+
- 	lgp->args.layout.pages = nfs4_alloc_pages(max_pages, gfp_flags);
- 	if (!lgp->args.layout.pages) {
- 		kfree(lgp);
-@@ -2153,6 +2165,7 @@ pnfs_update_layout(struct inode *ino,
- 		.inode = ino,
- 	};
- 	unsigned long giveup = jiffies + (clp->cl_lease_time << 1);
-+	size_t reply_sz = 0;
- 	bool first;
- 
- 	if (!pnfs_enabled_sb(NFS_SERVER(ino))) {
-@@ -2311,7 +2324,8 @@ pnfs_update_layout(struct inode *ino,
- 	if (arg.length != NFS4_MAX_UINT64)
- 		arg.length = PAGE_ALIGN(arg.length);
- 
--	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &stateid, &arg, gfp_flags);
-+	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &stateid, &arg, reply_sz,
-+					     gfp_flags);
- 	if (!lgp) {
- 		lseg = ERR_PTR(-ENOMEM);
- 		trace_pnfs_update_layout(ino, pos, count, iomode, lo, NULL,
-@@ -2338,12 +2352,29 @@ pnfs_update_layout(struct inode *ino,
- 			break;
- 		case -ENODATA:
- 			/* The server returned NFS4ERR_LAYOUTUNAVAILABLE */
--		case -EMSGSIZE:
--			/* The layout exceeded loga_maxcount (NFS4ERR_TOOSMALL) */
- 			pnfs_layout_set_fail_bit(
- 				lo, pnfs_iomode_to_fail_bit(iomode));
- 			lseg = NULL;
- 			goto out_put_layout_hdr;
-+		case -EMSGSIZE: {
-+			/*
-+			 * The layout exceeded loga_maxcount (NFS4ERR_TOOSMALL):
-+			 * retry once with the reply buffer raised to the
-+			 * session's maximum response size before falling back
-+			 * to I/O through the MDS.
-+			 */
-+			size_t max = max_response_pages(server) << PAGE_SHIFT;
-+
-+			if (reply_sz < max) {
-+				reply_sz = max;
-+				exception.retry = 1;
-+				break;
-+			}
-+			pnfs_layout_set_fail_bit(
-+				lo, pnfs_iomode_to_fail_bit(iomode));
-+			lseg = NULL;
-+			goto out_put_layout_hdr;
-+		}
- 		default:
- 			if (!nfs_error_is_fatal(PTR_ERR(lseg))) {
- 				pnfs_layout_clear_fail_bit(lo, pnfs_iomode_to_fail_bit(iomode));
-@@ -2456,7 +2487,7 @@ static void _lgopen_prepare_attached(struct nfs4_opendata *data,
- 	lo = _pnfs_grab_empty_layout(ino, ctx);
- 	if (!lo)
- 		return;
--	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid, &rng,
-+	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid, &rng, 0,
- 					     nfs_io_gfp_mask());
- 	if (!lgp) {
- 		pnfs_clear_first_layoutget(lo);
-@@ -2482,7 +2513,7 @@ static void _lgopen_prepare_floating(struct nfs4_opendata *data,
- 	};
- 	struct nfs4_layoutget *lgp;
- 
--	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid, &rng,
-+	lgp = pnfs_alloc_init_layoutget_args(ino, ctx, &current_stateid, &rng, 0,
- 					     nfs_io_gfp_mask());
- 	if (!lgp)
- 		return;
 -- 
 2.53.0
 
