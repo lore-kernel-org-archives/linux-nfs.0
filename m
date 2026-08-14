@@ -1,146 +1,116 @@
-Received: from mail-yw1-f181.google.com (mail-yw1-f181.google.com [209.85.128.181])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0BA184908DA
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 17:26:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.181
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2A76133936B
+	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 20:02:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786728395; cv=none; b=Doe4KyWmoYClonk/WAFtlOz1K5NtMh7NSUn03BDmwKJJtMQoQ7a4oJdbrkxGAZ2LAc67rLkZ560+S2bgO2KIECl6gzvmLsLwSiX8uVVpprDdrDdZwpZwWcoYm/gjShuDkhqPtqaKAhCInOT1CB9IacX3uNM5A7nQMp0BObBAr0o=
+	t=1786737766; cv=none; b=SJ0j2d9Ftu0N+nYcXyjvdfKaELxD5vabM9wfht4SKbOY4n/nNsQdZ8mlVzGPw9DJsneYPWR8XoZY8/PvdK1p31NUBqUr3LoKXDWPZIPVF41Ozquy4/OmR7ra74GbxAFxbW8OAHLCwmQWlzF7e9ZQrbnj4l4DuOueLIdgkkOT7zY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786728395; c=relaxed/simple;
-	bh=Qu1HyqOGUSjznwJJfhi+VZle8XJpGlHvF5BD86xXBF8=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=deeuXGRpBQoeSlTtPyZ0D2jka9xLQuNbA1HHM4MOVm5pDw5atRm+IwR4b2KURPUXQ7DalUjVyC5HXGcV/mOx/6egMvjw+TzQ/i0v+q7PVzzECSKlvXAVC9Xep+bGpIZa2fBY0b/LdXDuWm8j44sfprYP8u/CSOxYTSdTEVa2Kt0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com; spf=pass smtp.mailfrom=truenas.com; dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b=WDRDhO5f; arc=none smtp.client-ip=209.85.128.181
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=truenas.com
+	s=arc-20240116; t=1786737766; c=relaxed/simple;
+	bh=QfyIYPwQVMYJcsskvqlheennBV7yshFkdCV4SiXJtxE=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=usKMsMTRnmzsxQLtkeb4mxFdKS30u2tdsAhd0W2HCEIS8oE/m8Z391HsrhokLcP41RsI1IrfyFs4pIzbZNPyyaVbb5IQFD2Yh+gdFeWv9tTyVazXaHHx0KfvUFuhCMOhEhM3y5vulzRyTSF5ScfZtWZVQwjp3BTiDyD21KUM980=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=SesYUFna; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b="WDRDhO5f"
-Received: by mail-yw1-f181.google.com with SMTP id 00721157ae682-81ecf499af9so19340137b3.1
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 10:26:32 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=truenas.com; s=google; t=1786728392; x=1787333192; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=QhVVR7CPJPyXFN0ZneAP94GAaINXOiRBL560ZjbrBXs=;
-        b=WDRDhO5fn2Ed1Sk4TadRlocRADRMu7P4kTVSS4BKhe+1fB8OY2HYoLrUoiEafaYgn5
-         CsQMb9TpYvVDD8lS1D3vOBnuMONtZIkTvuINj6KL84+MP8mZho45+G46KXtOS5btNH8l
-         BFTdGyA+PuWOjMkXTXlW2tvn6XmiZ1RUCLw6V8lraEN4vEq2N/d47zck6MDD3BWGjyEp
-         FTG0px4uItzGLJ6mdOkwq5WVkN5ng4hZLb5TjDhFJqi5xxdh65K1uuTEVCNNIQSV3wDE
-         mzivt1GcbumZX6vK5YIX6uCv2m1qk2CXBp/z8LfK3abX8PfAWk8xQbyeZFSNlxqv3tkC
-         oaRQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786728392; x=1787333192;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=QhVVR7CPJPyXFN0ZneAP94GAaINXOiRBL560ZjbrBXs=;
-        b=W4+0d4JIUGzqIJeFahWQ/RoPmciKq2IGhiSNzA9CzUx8kkzXsDGXwWsa64Y8VNaSF3
-         e3SMrPmytNt+SVUD14GiCB/vHf+eBuOvou5aF67nE8DqmfApWqGB+gbCFoQHQoQIMkwL
-         lT84eJVQNzDRbsJdOJ3bLfnENoW0RHRAalrbzvJn437RotXrGM+yjifUNJ2aErdJOrpu
-         z8hHsK5YAHPLwVtoog6BvnsPuf8BFaPEpi67t63E2EAEnQB7C9E3eSSYTUOJ8s1bglGA
-         TvAvUgueqUP/ehyQiQANA6pzPwutEjqPOlEdtlp6n+jx5rIIyztTDtco02jeGEdOMAXc
-         AC5Q==
-X-Gm-Message-State: AOJu0Yzdhelg4//VYTk8mdTftWPbPfU/H5NkkiXnM5KuvaAeKIEzHYp0
-	vTfjnYfA3yzfPR8WC574uXzdCH5tfFNHlxf9BVljJQHVfPXJcU11pYvbdDuDVzjzAg==
-X-Gm-Gg: AR+sD10XfQJeWTqc8THgJNx8nODWCZC7ZnOV76WmqihbuwJDO4c5i2GopKzlh3zF9F8
-	51Fw1u0ioSsSx3EUTB36JhN2sppZ9HqjPo7W2JxZGxjjeAMdjdN9kCaAyLglZ7l+cTMXnplYYnL
-	TkPkq82fi3lkX/Yt0llfoM+pluPTUh/+bef5CAQSf82uLlDJJMs67pIr4cjnIjh+J1l7vFLKrt0
-	QYyV4fqCHj/zBeJpHmwn8oCRsH55FSVyeLlHsOPsKrsWkHvkk0ppZVqeUUbwggGR0KbFS18emaq
-	wTPl837kNaaWE78oO8AA0Pz8ubuC5MhNZf+NNLqtKUKNzfiIpobkBuuxM4QrhfE76EReyHVHuQZ
-	vY1FEYyXlm8b+x1ke6jHGgM4cGmH6BmIRwUU32FnhfcK472g/mLN5Fimqv1QbutYq2WcmMfu97m
-	1Idv8WlgBHhR0mUtUlrCqwF/A7R7LTivm/cYKf6h5pte9FE5u/j3LxJBnEnCKG4fuQfyw/S8s=
-X-Received: by 2002:a05:690e:1c0a:b0:66c:82ea:573d with SMTP id 956f58d0204a3-66c82ea5886mr1343630d50.47.1786728391485;
-        Fri, 14 Aug 2026 10:26:31 -0700 (PDT)
-Received: from hamza-PC ([124.29.197.38])
-        by smtp.gmail.com with ESMTPSA id 956f58d0204a3-66c7934cf98sm1178663d50.16.2026.08.14.10.26.27
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 14 Aug 2026 10:26:30 -0700 (PDT)
-From: Ameer Hamza <ameer.hamza@truenas.com>
-To: cel@kernel.org,
-	jlayton@kernel.org,
-	neil@brown.name,
-	okorniev@redhat.com,
-	Dai.Ngo@oracle.com,
-	tom@talpey.com
-Cc: linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org,
-	alexander.motin@truenas.com,
-	caleb.stjohn@truenas.com,
-	ameer.hamza@truenas.com
-Subject: [PATCH] sunrpc: treat empty auth.unix.gid replies as negative entries
-Date: Fri, 14 Aug 2026 22:25:07 +0500
-Message-ID: <20260814172507.1474519-1-ameer.hamza@truenas.com>
-X-Mailer: git-send-email 2.53.0
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="SesYUFna"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id DBF7A1F00A3D;
+	Fri, 14 Aug 2026 20:02:44 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1786737765;
+	bh=h1T1/tR/yszN/xC8azMp+NmBJB4NiWwGbykeyZLMJRA=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=SesYUFnaK6wPwC/VMA02bwQwmOccSKyHjYd5uwHJcK/nrKm5pAVtkEfesRTXvtckP
+	 8fMCmVsNOE8jB/oiVg4K46n8jptzdWHWxDhkkfkWh2wYArVnlOTVJlAIDCSgvBoZts
+	 nyK0s0r7A6PvJagGiZcUikjun2UQ2lZPFBTMH2AXF6vXFedjYvQz/S2OqEt6olRzyo
+	 Jqq7FVsJ5SL9eU+tpcOKEmP4A9+KGdUNsWkM8BnDWzwIq2mOb1v/9XIxX8o9QRBn7J
+	 UKudN0kzq3hxIBXmmPxKnHjUhxw/2SDxmYoHq6epWGy8DSYWNZiyciXd0IBP5/dzs2
+	 +ECIhOkDrOejg==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id EA674F4006F;
+	Fri, 14 Aug 2026 16:02:43 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 14 Aug 2026 16:02:43 -0400
+X-ME-Sender: <xms:Y3R_agulNs68hB_6K4b8XxVO3K_tliyEXy1eFrfqiTVh6D3kWnsOpQ>
+    <xme:Y3R_aoT7PnEpQMf2vx2A5FCEucIBmKHdyH8o2I-drt4TeonjxmqJubU7S6ag97hDY
+    vJ7a2wEi8TH79WHGPhCj_GHMzCDyQmtoeFLA9tNi6yv0MiJj6FnQo4>
+X-ME-Proxy-Cause: dmFkZTFWzNV8Cvui3TwmJmesG6QbKTWtwdOqiRVHyr72N/VHPiYL+6VXIO29Vtm4p78JlL
+    KaheeJ9/sd15jeA7rceET4QhfhMQq9YU8lgN+cPl7YzhxN7JAY7MQv7rbXgU3Q/MbQWsiE
+    Jldcd+n8weGIaoaefPXV0Z+Z4syk2KbRBDE3Hwn25CjSoPJFu93Z4jgCh3R4fHt010KsZk
+    zt4Sxs6JFNhBVKIrg9ytcCAA6P2Q5Ilxq5SwjqEo6c+PuoFJUdpYo3ZF5HwtykhhO7YOXS
+    eCsDfXv5UGuuS1FDDvKng2SjO+kalK6VGyZRZKTWYiP8JQNpmQXoqfUk8qu1qLLPzaZJjj
+    tl1A3llCbAIG492nfzR/RjYB3Xpqm1XoL4YD0YtLOw/B8XGq5srdNvzWMMOtephSpzS/3W
+    7Fru/jECLzIMkY28Ru39dqKZZ1CjdHsMZGd+49Pu1r++xdnQQ4HaoH+IcDP9JoK3QPOWVF
+    9htZ1i+/J5Z2f28cjJUy8tx2Net1euuOE1cmZGHH5bB/kYa4jHviantNRybEZ1lQWqLEta
+    7bRZckAEp4ZVOqbGVhBKUAF46fBHotsG7ycVOfKmBWlQfRVKiANV6BR5IigERT8OnYSE3L
+    yRwpHzdF0M8jx6Oo8apMPRDG/sJJUIJOqo6d2+78EfA8V0ZFEoh85fayFMVw
+X-ME-Proxy: <xmx:Y3R_at4R3ojv7uAf_OKUXD5U5coo7y8cdiGudnTZn7SP5L-BoxA4hw>
+    <xmx:Y3R_ag6HRaA6qqG5oMbbuA8EEPaV1UJzixVhDJIYEitzpSnfs8P9AA>
+    <xmx:Y3R_avR9me0ijjjiX9DbpImChWHjt5_hVxN3GOBPQxQ0tVDqTMIHwQ>
+    <xmx:Y3R_ao_p5Yjv0jn5LzASJ7v5dvlEClXLtn7OgIB1zMm4rgki9wFngA>
+    <xmx:Y3R_agauCbU4ccI4dW04fcp9pya3HKdL7BNXMyEqEPo93gzBgDLKlGAE>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id C95087811F0; Fri, 14 Aug 2026 16:02:43 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+X-ThreadId: AEl4SWtoThqF
+Date: Fri, 14 Aug 2026 16:02:23 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Ameer Hamza" <ameer.hamza@truenas.com>,
+ "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+ alexander.motin@truenas.com, caleb.stjohn@truenas.com
+Message-Id: <032eae35-e958-4c87-9185-3896250eb7e1@app.fastmail.com>
+In-Reply-To: <20260814172507.1474519-1-ameer.hamza@truenas.com>
+References: <20260814172507.1474519-1-ameer.hamza@truenas.com>
+Subject: Re: [PATCH] sunrpc: treat empty auth.unix.gid replies as negative entries
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-When rpc.mountd cannot resolve a uid (getpwuid() or getgrouplist()
-failure, e.g. while winbind or sssd is briefly unreachable), it
-answers the auth.unix.gid upcall with zero groups. unix_gid_parse()
-installs that as a valid positive entry, and svcauth_unix_set_client()
-then replaces the credential's group list with the empty one on
-every request, RPCSEC_GSS included via svcauth_gss_set_client().
-One failed lookup strips that uid of all supplementary groups on
-every export for up to mountd's configured TTL (30 minutes by
-default), long after the NSS backend has recovered.
 
-mountd cannot send an empty list for a successful lookup, since
-getgrouplist(3) always includes at least the user's primary group,
-so a zero-group reply can only mean the lookup failed. Record it as
-a negative entry: unix_gid_find() then returns -ENOENT and
-svcauth_unix_set_client() keeps the groups the RPC credential
-already carries. This is the fallback that
-commit 3fc605a2aa38 ("[PATCH] knfsd: allow the server to provide a
-gid list when using AUTH_UNIX authentication") promised when no
-answer is available, and the same state try_to_negate_entry()
-already creates when no listener holds the channel open.
 
-Fixes: 3fc605a2aa38 ("[PATCH] knfsd: allow the server to provide a gid list when using AUTH_UNIX authentication")
-Assisted-by: Claude:claude-fable-5
-Signed-off-by: Ameer Hamza <ameer.hamza@truenas.com>
----
-Reproducer (any server with rpc.mountd --manage-gids; 'alice' is a
-member of group 'proj' *supplementary*, /srv/proj is root:proj 0750):
+On Fri, Aug 14, 2026, at 1:25 PM, Ameer Hamza wrote:
+> When rpc.mountd cannot resolve a uid (getpwuid() or getgrouplist()
+> failure, e.g. while winbind or sssd is briefly unreachable), it
+> answers the auth.unix.gid upcall with zero groups. unix_gid_parse()
+> installs that as a valid positive entry, and svcauth_unix_set_client()
+> then replaces the credential's group list with the empty one on
+> every request, RPCSEC_GSS included via svcauth_gss_set_client().
+> One failed lookup strips that uid of all supplementary groups on
+> every export for up to mountd's configured TTL (30 minutes by
+> default), long after the NSS backend has recovered.
+>
+> mountd cannot send an empty list for a successful lookup, since
+> getgrouplist(3) always includes at least the user's primary group,
+> so a zero-group reply can only mean the lookup failed. Record it as
+> a negative entry: unix_gid_find() then returns -ENOENT and
+> svcauth_unix_set_client() keeps the groups the RPC credential
+> already carries. This is the fallback that
+> commit 3fc605a2aa38 ("[PATCH] knfsd: allow the server to provide a
+> gid list when using AUTH_UNIX authentication") promised when no
+> answer is available, and the same state try_to_negate_entry()
+> already creates when no listener holds the channel open.
+>
+> Fixes: 3fc605a2aa38 ("[PATCH] knfsd: allow the server to provide a gid 
+> list when using AUTH_UNIX authentication")
+> Assisted-by: Claude:claude-fable-5
+> Signed-off-by: Ameer Hamza <ameer.hamza@truenas.com>
 
-    runuser -u alice -- cat /mnt/proj/data          # ok
-    # the reply mountd sends when getpwuid()/getgrouplist() fail:
-    echo "$(id -u alice) $(( $(date +%s) + 600 )) 0" \
-        > /proc/net/rpc/auth.unix.gid/channel
-    runuser -u alice -- cat /mnt/proj/data          # EACCES until
-                                                    # refresh/flush/expiry
+Looks like the same bug exists for the new mountd netlink
+mechanism. Since that instance of the bug arrived in a
+different commit, that fix needs to be a separate patch
+with its own Fixes: tag.
 
-Applies unmodified (fuzz 0) to every maintained stable tree, 5.10.y
-through 7.1.y. Tested on a live 6.12-based server over NFSv3 and
-v4.0-v4.2, with sec=sys and sec=krb5.
+Can you make this a two-patch series?
 
- net/sunrpc/svcauth_unix.c | 7 +++++++
- 1 file changed, 7 insertions(+)
 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index aebd97e7f66c7..2f592ba54a366 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -540,6 +540,13 @@ static int unix_gid_parse(struct cache_detail *cd,
- 	if (ugp) {
- 		struct cache_head *ch;
- 		ug.h.flags = 0;
-+		/*
-+		 * mountd sends at least the user's primary group on
-+		 * success, so an empty list can only mean the lookup
-+		 * failed. Keep the credential's own groups instead.
-+		 */
-+		if (gids == 0)
-+			set_bit(CACHE_NEGATIVE, &ug.h.flags);
- 		ug.h.expiry_time = expiry;
- 		ch = sunrpc_cache_update(cd,
- 					 &ug.h, &ugp->h,
-
-base-commit: 46db3c8a1be96a354758b44b1d4fbb4b70d09a20
 -- 
-2.53.0
-
+Chuck Lever
