@@ -1,42 +1,43 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3C9E45D1BF
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 11:03:42 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12CDC3CB565
+	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 14:19:14 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786705427; cv=none; b=H8ywHAIKPj2N3SgkgikKx72kmhmE1M9J85zZRq0v9iAPl8A1zkk7XvyW6SmwAMnHyBZ410S1ELGKpy5DIwu7V78aOYOZKTh09ObJ94QQOu/lzAV6XH/iOq/0nxv3G8TlM9yj9Mxzune3qugECWXBbbKNQzZ8eUT+SCQPMdQQXb8=
+	t=1786717159; cv=none; b=sBfkZGOo6YcwVIKaivKLvrvO896ff1+WUE5MgOFignyp3qwzuUxDdZLi4X8dixAs/rV5K0onH8oOmKcBNS44NVZl0+TmLtIZCDTiIdvulFQVniEWjFr+dFjMnu8/PdHgUxWu+GsWAAEm7YHZJ2oJ9vhkB93HcWxfDwdJaZVR+CM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786705427; c=relaxed/simple;
-	bh=RxtL80FNVXx9mASk2Ned47wK0sePGPvkYctYxNSreDA=;
+	s=arc-20240116; t=1786717159; c=relaxed/simple;
+	bh=KFKy5TPWVe+TZbRu6aAN+MKlfZM6aeHR4YSLK02wYAo=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=PkkhZC2S0WEXWHBIy2Cn30cC6LaSl07smDEAsnSqwceFekaCfmpBURCL5J8ln4C6I3kwJOUKR076wQgiaW0DMvPWgyd+J9zuxsAmCirMLXMlKNBlLbElH63CXI8SWdPJLNTHzHvSaKEEhn6igr5tO9kmOxTtIhlVMn79xz6VKwc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eap2NtvA; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=rk1qGZupvPzXu60gXYypWu+0zLurCQgHbK7j9uo+m/R3Bc4W85rtiEvToqeQPs1mNBALpLPfN6RII14DRJUUe4h9eax2s2KXPBPGvJ0vYVSZ+yQv6eIQSmJyJtoU3E6ZZRgA2GrMpUF25tjYp4EtAyUjKJH7je3Dts+2Q7HVxV4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=gmVMUSjS; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eap2NtvA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0C3CB1F000E9;
-	Fri, 14 Aug 2026 11:03:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="gmVMUSjS"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2A63D1F000E9;
+	Fri, 14 Aug 2026 14:19:12 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786705418;
-	bh=4zKHagYXf/qVC3Q/itpI27B/KHi//hOMfOi20fOakD8=;
+	s=k20260515; t=1786717152;
+	bh=rgsuZSiKwoX2vp49DUhcWtLeaXj7sV508iPG16gJWzA=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=eap2NtvAZoTxyxYqThrLu5mOXETbcO6DdLRHAX5rKkE97Bgd9JnOeSRW/RePfqsFM
-	 M0qNgTPer1Ujbu4le7B5fjotEP7DAycM1co6DMr+CeBw0LOCUDLgO1b+IsUT44JyFT
-	 i3SY1sr9uvwH9mq4ZVRY4882E8Wg92WvwBSGyZx9EsBzlhtlw77BRy+3rrun8tWrXC
-	 x56EwKLJqBqUMTb/lqnYgGk0nDYQmttDehAXJvInfu2U3skzfC5KJja4Hx0zdTkHgj
-	 NbYxL8ISWvqfDus72A1xZiAYaxSGhRu987tB5W5gWxURcmp7ZIq2saH4db2MeI3D5n
-	 sZt1/WDCX0+1Q==
-Message-ID: <36409b40bd92bbdc8f85661f58afaeac3fb3eeef.camel@kernel.org>
-Subject: Re: [PATCH v3 0/8] NFSD: CB_RECALL_ANY fixes and a meaningful keep
- count
+	b=gmVMUSjS1vCbIFtnJBElGEa8togIWZzCIuZCNlcuzZ/O3ZRDFVx5XcwIDGn92Rxxc
+	 6UZaQUrHeUhfrNbeKubWEQSwqv+PgYmW877m5ckHMMUcwla3lUaY3bW0kxlqIR4dAO
+	 nza46HF67goyxtAwWk4KRwaRYsKt7o32WWxpDrRfBKRJB9GlG2XT1hxHNMOIIEjAJd
+	 a36TUCs74vJ9pdeXNHWIpvfEJiCP58HJPghATN38R0ZNly0XpUBGh5D5dnvotzLrK7
+	 q5WtSZl6BBtn+F6brVnB4AMtySJQRt5LJcyAydKXudGofeVGe/wjePkjttHii28d5N
+	 dUlShNp/EuVYA==
+Message-ID: <0386c7cf81b5028b790e5dc6962b69a31d745ffc.camel@kernel.org>
+Subject: Re: [PATCH 1/6] NFSv4.1/pnfs: suspend pNFS on NFS4ERR_TOOSMALL from
+ LAYOUTGET
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 14 Aug 2026 07:03:36 -0400
-In-Reply-To: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
-References: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
+To: Benjamin Coddington <ben.coddington@hammerspace.com>, Trond Myklebust
+	 <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org, Jonathan Curley <jcurley@purestorage.com>, 
+ Mike Snitzer <snitzer@kernel.org>
+Date: Fri, 14 Aug 2026 10:19:10 -0400
+In-Reply-To: <57c201555a87e999cd2de1747901f3b6cc3d5792.1786653456.git.bcodding@hammerspace.com>
+References: <cover.1786653456.git.bcodding@hammerspace.com>
+	 <57c201555a87e999cd2de1747901f3b6cc3d5792.1786653456.git.bcodding@hammerspace.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,70 +122,76 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Thu, 2026-08-13 at 14:40 -0400, Chuck Lever wrote:
-> NFSD currently sends every CB_RECALL_ANY with craa_objects_to_keep
-> set to zero, as RFC 8881 Section 20.6.3 does not mandate any
-> particular way for a client to choose which delegations to return,
-> if any.
+On Thu, 2026-08-13 at 16:41 -0400, Benjamin Coddington wrote:
+> If the layout for the requested range is larger than the size the
+> client advertised in loga_maxcount, RFC 8881 Section 18.43.3 has the
+> metadata server return NFS4ERR_TOOSMALL.  The client caps
+> loga_maxcount at a single page, so a flexfiles server that stripes a
+> layout segment across several dozen data servers produces this error
+> today.
 >=20
-> NFSD intends CB_RECALL_ANY only as a signal to return currently
-> unused delegations. To date, only the Linux NFS client has been
-> deeply tested against it. That implementation ignores the
-> craa_objects_to_keep value and returns only one unused delegation
-> of the named types. Therefore the fixed zero craa_objects_to_keep
-> value never produced visible misbehavior during our testing.
+> The client has no handling for it: nfs4_stat_to_errno() maps the
+> error to -ETOOSMALL during decode, which nothing in the layoutget
+> path recognizes and nfs_error_is_fatal() does not consider fatal, so
+> pnfs_update_layout() clears the layout fail bit and returns no
+> segment.  The I/O falls back to the MDS, but because no fail bit was
+> set, every subsequent pageio attempt sends another LAYOUTGET that is
+> doomed to the same NFS4ERR_TOOSMALL.  Files whose layouts do not fit
+> the reply buffer never use pNFS and pay an extra round trip on every
+> pageio.
 >=20
-> However, a zero value can result in non-Linux clients giving back
-> more delegations than is necessary to relieve temporary memory
-> pressure on the server, which needlessly punctures the clients'
-> delegation working set.
+> Map -ETOOSMALL to -EMSGSIZE in the layoutget exception handler and
+> have pnfs_update_layout() treat it like NFS4ERR_LAYOUTUNAVAILABLE:
+> mark the layout mode as failed and fall back to I/O through the MDS.
 >=20
-> Change NFSD so that each CB_RECALL_ANY asks a client to give up a
-> sensible number of delegations instead of all of them at once. To
-> handle the accounting correctly, it is necessary for this series to
-> split the current state shrinker mechanism. The patch descriptions
-> have those details.
->=20
+> Fixes: d600ad1f2bdb ("NFS41: pop some layoutget errors to application")
+> Cc: stable@vger.kernel.org
+> Assisted-by: Claude:claude-opus-4-8
+> Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 > ---
-> Changes in v3:
-> - Count delegations per namespace so each shrinker reports its own.
-> - Give courtesy clients and delegations separate state shrinkers.
-> - Record the shrinker's scan requests and discount the count by them.
-> - Scale each client's CB_RECALL_ANY by its share of the scan request.
-> - Reword the keep-count rationale in the commit message and comment.
-> - Link to v2: https://patch.msgid.link/20260812-recall-any-keep-count-v2-=
-0-a82f4ca23812@kernel.org
+>  fs/nfs/nfs4proc.c | 9 +++++++++
+>  fs/nfs/pnfs.c     | 2 ++
+>  2 files changed, 11 insertions(+)
 >=20
-> Changes in v2:
-> - Drop the gate that skipped clients holding a single delegation.
-> - Cover letter rewritten to give performance rationale.
-> - Link to v1: https://patch.msgid.link/20260811-recall-any-keep-count-v1-=
-0-de9ca00493b7@kernel.org
->=20
-> ---
-> Chuck Lever (8):
->       NFSD: Do not send CB_RECALL_ANY to NFSv4.0 clients
->       NFSD: Count the delegations held by each client
->       NFSD: Name directory delegations in the CB_RECALL_ANY type mask
->       NFSD: Send a meaningful CB_RECALL_ANY keep count
->       NFSD: Count delegations per network namespace
->       NFSD: Give delegations their own state shrinker
->       NFSD: Pace the state shrinker's scan requests
->       NFSD: Apportion CB_RECALL_ANY recalls among clients
->=20
->  fs/nfsd/netns.h     |  17 +++-
->  fs/nfsd/nfs4state.c | 235 +++++++++++++++++++++++++++++++++++++++++++++-=
-------
->  fs/nfsd/state.h     |   2 +
->  3 files changed, 223 insertions(+), 31 deletions(-)
-> ---
-> base-commit: 1d479c6b53f684b27da84ec352b7efb97f7f115f
-> change-id: 20260810-recall-any-keep-count-f50c2ae1b792
->=20
-> Best regards,
-> -- =20
-> Chuck Lever <cel@kernel.org>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 5709c6fea85b..016e8b38b87b 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -9623,6 +9623,15 @@ nfs4_layoutget_handle_exception(struct rpc_task *t=
+ask,
+>  	case -NFS4ERR_BADLAYOUT:
+>  		status =3D -EOVERFLOW;
+>  		goto out;
+> +	/*
+> +	 * NFS4ERR_TOOSMALL means the layout for the requested range
+> +	 * exceeds what the client advertised in loga_maxcount (see
+> +	 * RFC8881 section 18.43.3).  Note nfs4_stat_to_errno() has
+> +	 * already mapped it to -ETOOSMALL during decode.
+> +	 */
 
-You can add this to 5-8:
+nit: LLMs sure love to generate some overly-wordy comments. I think the
+last sentence here is not particularly helpful, and subject to bitrot
+as the code changes over time. I'd just drop it.
+=20
+> +	case -ETOOSMALL:
+> +		status =3D -EMSGSIZE;
+> +		goto out;
+>  	/*
+>  	 * NFS4ERR_LAYOUTTRYLATER is a conflict with another client
+>  	 * (or clients) writing to the same RAID stripe except when
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 7715e2bd5871..10102bda6a38 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -2338,6 +2338,8 @@ pnfs_update_layout(struct inode *ino,
+>  			break;
+>  		case -ENODATA:
+>  			/* The server returned NFS4ERR_LAYOUTUNAVAILABLE */
+> +		case -EMSGSIZE:
+> +			/* The layout exceeded loga_maxcount (NFS4ERR_TOOSMALL) */
+>  			pnfs_layout_set_fail_bit(
+>  				lo, pnfs_iomode_to_fail_bit(iomode));
+>  			lseg =3D NULL;
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+--=20
+Jeff Layton <jlayton@kernel.org>
