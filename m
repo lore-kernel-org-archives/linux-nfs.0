@@ -1,52 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 46D68448B9C;
-	Fri, 14 Aug 2026 11:02:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D3C9E45D1BF
+	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 11:03:42 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786705328; cv=none; b=EnI/bGipJWwCXqhY1lD3FeXzKmAPnW68Zf5DAt9i/IXkHD4JJ1jHXHfOu/FiB8qX4Lc31xqJBGf8Pa1WquXoy8mYPKcF40/jt7fTa8681x9nzjNaeHIOgSmmFdJoDkT4p5aCaNOKlmcHi/0209rdYZppokjaigngU5S+V6lyIv4=
+	t=1786705427; cv=none; b=H8ywHAIKPj2N3SgkgikKx72kmhmE1M9J85zZRq0v9iAPl8A1zkk7XvyW6SmwAMnHyBZ410S1ELGKpy5DIwu7V78aOYOZKTh09ObJ94QQOu/lzAV6XH/iOq/0nxv3G8TlM9yj9Mxzune3qugECWXBbbKNQzZ8eUT+SCQPMdQQXb8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786705328; c=relaxed/simple;
-	bh=B58AR9SQxBsV/7KuARWZd24/yABrrClZf+v4qU7pT3Q=;
+	s=arc-20240116; t=1786705427; c=relaxed/simple;
+	bh=RxtL80FNVXx9mASk2Ned47wK0sePGPvkYctYxNSreDA=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=f2tmGrJWlM0gSkyowSvJi0U4coJA++WqTKQdMprMLiAWdufrdhtpUXn1fKwGmCPf6Z/wL3YLeH/bBZ91IUvvDxIx/RHHFos/qM/E8UwsnOwrXz9Q+BoBkI6kUO/o/kIoeXhLSFphmnzQ3uJ6njc7GfwX0Nbwo7CCcIjNQF8K4U8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=AAIzFiaq; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=PkkhZC2S0WEXWHBIy2Cn30cC6LaSl07smDEAsnSqwceFekaCfmpBURCL5J8ln4C6I3kwJOUKR076wQgiaW0DMvPWgyd+J9zuxsAmCirMLXMlKNBlLbElH63CXI8SWdPJLNTHzHvSaKEEhn6igr5tO9kmOxTtIhlVMn79xz6VKwc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=eap2NtvA; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="AAIzFiaq"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id B76EC1F000E9;
-	Fri, 14 Aug 2026 11:01:57 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="eap2NtvA"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0C3CB1F000E9;
+	Fri, 14 Aug 2026 11:03:37 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786705319;
-	bh=B58AR9SQxBsV/7KuARWZd24/yABrrClZf+v4qU7pT3Q=;
+	s=k20260515; t=1786705418;
+	bh=4zKHagYXf/qVC3Q/itpI27B/KHi//hOMfOi20fOakD8=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=AAIzFiaq2dOHpKq0+Ggb5pBcRqHh26XNnXgCQt2n2JtPhVercUzKMgIHx4dMGL1x6
-	 /+anNoh/KgVuFBIeWu7xMDr+dBKNNhUfv5GqKCJek3KE8DTjverL/XVYSiCVZyKgSo
-	 mRE+pVPiktBslvFYTG+g3jIvsQTnxH2TcdcZVdiEk0ZShv3XynnquzrVHgmbpgnjHP
-	 spCljb/3R102e99PvHaakJug63nc7hOT08HhLUnrAWvt9nvFWfgUTrdXxKZ/+vOi6/
-	 Rwgu+1uIhnxphT3bc5PzyTE28C7NwOhKA/ul26RNdUTU5cR7jVY3MIYpuDf82yCc7F
-	 LPCdrau9EfPQQ==
-Message-ID: <a8f5840cf3f2cbf71de7a1f3957f70d9897adfa2.camel@kernel.org>
-Subject: Re: [PATCH v2 4/8] SUNRPC: undo partial rpcbind registrations when
- svc_register() fails
+	b=eap2NtvAZoTxyxYqThrLu5mOXETbcO6DdLRHAX5rKkE97Bgd9JnOeSRW/RePfqsFM
+	 M0qNgTPer1Ujbu4le7B5fjotEP7DAycM1co6DMr+CeBw0LOCUDLgO1b+IsUT44JyFT
+	 i3SY1sr9uvwH9mq4ZVRY4882E8Wg92WvwBSGyZx9EsBzlhtlw77BRy+3rrun8tWrXC
+	 x56EwKLJqBqUMTb/lqnYgGk0nDYQmttDehAXJvInfu2U3skzfC5KJja4Hx0zdTkHgj
+	 NbYxL8ISWvqfDus72A1xZiAYaxSGhRu987tB5W5gWxURcmp7ZIq2saH4db2MeI3D5n
+	 sZt1/WDCX0+1Q==
+Message-ID: <36409b40bd92bbdc8f85661f58afaeac3fb3eeef.camel@kernel.org>
+Subject: Re: [PATCH v3 0/8] NFSD: CB_RECALL_ANY fixes and a meaningful keep
+ count
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <Dai.Ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, Anna
- Schumaker <anna@kernel.org>, "David S. Miller"	 <davem@davemloft.net>, Eric
- Dumazet <edumazet@google.com>, Jakub Kicinski	 <kuba@kernel.org>, Paolo
- Abeni <pabeni@redhat.com>, Simon Horman	 <horms@kernel.org>, "J. Bruce
- Fields" <bfields@fieldses.org>, Shuah Khan	 <shuah@kernel.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	netdev@vger.kernel.org, Trond Myklebust <trondmy@gmail.com>, 
-	linux-kselftest@vger.kernel.org
-Date: Fri, 14 Aug 2026 07:01:55 -0400
-In-Reply-To: <572f0269-9bf4-4a80-8e9c-3c4614d45f7e@app.fastmail.com>
-References: <20260811-nfsd-nl-hang-v2-0-c0c92b3953c3@kernel.org>
-	 <20260811-nfsd-nl-hang-v2-4-c0c92b3953c3@kernel.org>
-	 <e1706a70-d9f8-423e-9462-2d77b2e444b1@app.fastmail.com>
-	 <26486c88075a0b1e3c1cb088fe97d39e0051b5d3.camel@kernel.org>
-	 <572f0269-9bf4-4a80-8e9c-3c4614d45f7e@app.fastmail.com>
+ Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 14 Aug 2026 07:03:36 -0400
+In-Reply-To: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
+References: <20260813-recall-any-keep-count-v3-0-a96d243c0b13@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -131,69 +121,70 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Wed, 2026-08-12 at 15:57 -0400, Chuck Lever wrote:
+On Thu, 2026-08-13 at 14:40 -0400, Chuck Lever wrote:
+> NFSD currently sends every CB_RECALL_ANY with craa_objects_to_keep
+> set to zero, as RFC 8881 Section 20.6.3 does not mandate any
+> particular way for a client to choose which delegations to return,
+> if any.
 >=20
-> On Wed, Aug 12, 2026, at 3:38 PM, Jeff Layton wrote:
-> > On Tue, 2026-08-11 at 15:19 -0400, Chuck Lever wrote:
+> NFSD intends CB_RECALL_ANY only as a signal to return currently
+> unused delegations. To date, only the Linux NFS client has been
+> deeply tested against it. That implementation ignores the
+> craa_objects_to_keep value and returns only one unused delegation
+> of the named types. Therefore the fixed zero craa_objects_to_keep
+> value never produced visible misbehavior during our testing.
 >=20
-> > > For an IPv4 listener, the port-zero callback falls back through
-> > > __svc_rpcb_register4() to rpcb_register(). PMAPPROC_UNSET ignores
-> > > its protocol argument, so unwinding a partially successful TCP
-> > > registration also removes the mappings for existing listeners on
-> > > other transports, I would think.
-> > >=20
-> > > It might be that the best the kernel can do here is tear everything
-> > > down if one registration fails.
-> > >=20
-> >=20
-> > What I was thinking for NFSv2/3 was to just have the listener set
-> > netlink call wait for registration to complete before returning to
-> > userland. That would mean we'd have to block even longer to try and
-> > unregister things if things fail.
-> >=20
-> > Alternate proposal: let's just declare rpcbind reg errors to be non-
-> > fatal: do a pr_warn() and just leave it up to the admin to sort it out
-> > if that happens instead of trying to fail the startup.
-> >=20
-> > The resulting situation for the server is no worse off (it's just
-> > running instead of being down), and I move that we're better off
-> > leaving it up to a human to clean up the mess instead of trying to fix
-> > things up from the kernel.
+> However, a zero value can result in non-Linux clients giving back
+> more delegations than is necessary to relieve temporary memory
+> pressure on the server, which needlessly punctures the clients'
+> delegation working set.
 >=20
-> I was thinking of this in terms of a declarative administrative UI:
-> If the kernel can't set the requested configuration, it should
-> fail back to the previous configuration. Maybe that's not possible.
+> Change NFSD so that each CB_RECALL_ANY asks a client to give up a
+> sensible number of delegations instead of all of them at once. To
+> handle the accounting correctly, it is necessary for this series to
+> split the current state shrinker mechanism. The patch descriptions
+> have those details.
 >=20
-
-It's possible, but difficult. The original /proc interfaces were never
-this clean, so making the underlying bits behave this way for the
-netlink interfaces, but not the legacy /proc ones will be hard.
-
-Also, today we don't take any steps to try and preserve the old
-listener table. That would have to be done here as well.
-
-> On the other hand, what might be better is to handle the rpcbind
-> registration from user space instead of the kernel, after the
-> kernel listener is set up.
+> ---
+> Changes in v3:
+> - Count delegations per namespace so each shrinker reports its own.
+> - Give courtesy clients and delegations separate state shrinkers.
+> - Record the shrinker's scan requests and discount the count by them.
+> - Scale each client's CB_RECALL_ANY by its share of the scan request.
+> - Reword the keep-count rationale in the commit message and comment.
+> - Link to v2: https://patch.msgid.link/20260812-recall-any-keep-count-v2-=
+0-a82f4ca23812@kernel.org
 >=20
+> Changes in v2:
+> - Drop the gate that skipped clients holding a single delegation.
+> - Cover letter rewritten to give performance rationale.
+> - Link to v1: https://patch.msgid.link/20260811-recall-any-keep-count-v1-=
+0-de9ca00493b7@kernel.org
+>=20
+> ---
+> Chuck Lever (8):
+>       NFSD: Do not send CB_RECALL_ANY to NFSv4.0 clients
+>       NFSD: Count the delegations held by each client
+>       NFSD: Name directory delegations in the CB_RECALL_ANY type mask
+>       NFSD: Send a meaningful CB_RECALL_ANY keep count
+>       NFSD: Count delegations per network namespace
+>       NFSD: Give delegations their own state shrinker
+>       NFSD: Pace the state shrinker's scan requests
+>       NFSD: Apportion CB_RECALL_ANY recalls among clients
+>=20
+>  fs/nfsd/netns.h     |  17 +++-
+>  fs/nfsd/nfs4state.c | 235 +++++++++++++++++++++++++++++++++++++++++++++-=
+------
+>  fs/nfsd/state.h     |   2 +
+>  3 files changed, 223 insertions(+), 31 deletions(-)
+> ---
+> base-commit: 1d479c6b53f684b27da84ec352b7efb97f7f115f
+> change-id: 20260810-recall-any-keep-count-f50c2ae1b792
+>=20
+> Best regards,
+> -- =20
+> Chuck Lever <cel@kernel.org>
 
-That's possible I guess. We could send a new boolean down in the
-listener call that says "don't do any rpcbind registration" and then if
-the kernel indicates that it understands that message then userland
-could do the registration.
+You can add this to 5-8:
 
-That's a major undertaking though and I don't like fundamentally
-changing the interface here, particularly when we'll still have to cope
-with doing this from the kernel for legacy cases.
-
-I still think the best solution of all would be to just say
-"henceforth, rpcbind registration is non-fatal". That just leaves the
-kernel succeeding the listener set today when it would have failed
-before, but will still printk() an appropriate warning in that case, so
-the admin should be aware that rpcbind registration failed, even though
-the server is up.
-
-Right now, I'm really unclear on what sort of changes you want to see
-here as a final patchset. What would make this mergeable for you?
---=20
-Jeff Layton <jlayton@kernel.org>
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
