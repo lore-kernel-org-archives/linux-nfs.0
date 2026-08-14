@@ -1,206 +1,146 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-yw1-f181.google.com (mail-yw1-f181.google.com [209.85.128.181])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 149C22E739D
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 15:39:28 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0BA184908DA
+	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 17:26:32 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.181
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786721970; cv=none; b=rhtgMOiFVl/4IaH2H5AXSqlnrl3XPukGKsf3nQPD351rm/+0O3E4ZA0jirUTdbQV0lwzJo+KRIwcasiys7eTgvzDDfmRqSyNsjbpHzcyUN5sSG3IUgdj5rznn8lC8lkevGShPZVW7RP/VufDsbWA8UN3QJaR5d6osqgRYEV7eHE=
+	t=1786728395; cv=none; b=Doe4KyWmoYClonk/WAFtlOz1K5NtMh7NSUn03BDmwKJJtMQoQ7a4oJdbrkxGAZ2LAc67rLkZ560+S2bgO2KIECl6gzvmLsLwSiX8uVVpprDdrDdZwpZwWcoYm/gjShuDkhqPtqaKAhCInOT1CB9IacX3uNM5A7nQMp0BObBAr0o=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786721970; c=relaxed/simple;
-	bh=QNlrQgha4w2j7yVxDKDrygwo2hkva169J4nqpFzhOjo=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=CfEpvnJQKyWGJdz/eaT0eU/igQm1cAvU7288bXtZSxi2IgTxUpG1Tg1GXGmhyVllaRRCMmE//S7zL7NiM4vbu+0TjI6qcQETlLiJ1qV925exsh2WAYi4jtekuTbNUu5HY6RkxLBNu17vphGEi3Tto+NbR/8rZloc/okKgK7RT8o=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=NdSOtkZE; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786728395; c=relaxed/simple;
+	bh=Qu1HyqOGUSjznwJJfhi+VZle8XJpGlHvF5BD86xXBF8=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=deeuXGRpBQoeSlTtPyZ0D2jka9xLQuNbA1HHM4MOVm5pDw5atRm+IwR4b2KURPUXQ7DalUjVyC5HXGcV/mOx/6egMvjw+TzQ/i0v+q7PVzzECSKlvXAVC9Xep+bGpIZa2fBY0b/LdXDuWm8j44sfprYP8u/CSOxYTSdTEVa2Kt0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com; spf=pass smtp.mailfrom=truenas.com; dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b=WDRDhO5f; arc=none smtp.client-ip=209.85.128.181
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=truenas.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="NdSOtkZE"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 380291F000E9;
-	Fri, 14 Aug 2026 15:39:28 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786721968;
-	bh=RSa7D630eHxTxAtxxPmjRIKJfen4rDnPV/sbt5045yg=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=NdSOtkZEH3OPzk3zgqyE3Cg/HylAKoPVyTMMjD78k0726nCotzJfgmuTK7eCUQYO4
-	 0nvBCvyr9fHoIMvfzZzXxvz+WMxn1fa9q+HZOvg+dUDAW+7AEmz04/GJtcZpHI+fiU
-	 /IJZeZtDMk3i0PWfYHNvYiRj58Q3+FU36BTF32HkF+8PKJs8U3Yvv850fjhV2rX1QF
-	 cJWEMG2UezmdYxh4OoKp+tS8iF7nYI5YxUAamGpcr4NsbqYOJxH+deUQjXVZGzF/3j
-	 pvQjvyzyl2WOLMVnESml9ZmLPzqoyqG79nQSvJ4bvyqS2/rIeFlePMl/OVaWG3BsAC
-	 CUHPuEQ+8NQrg==
-Message-ID: <87bd83fcbd5622579460411db8862b7e5fcbc076.camel@kernel.org>
-Subject: Re: [PATCH 0/6] NFS: size the LAYOUTGET reply buffer for wide
- flexfiles layouts
-From: Jeff Layton <jlayton@kernel.org>
-To: Benjamin Coddington <ben.coddington@hammerspace.com>, Trond Myklebust
-	 <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
-Cc: linux-nfs@vger.kernel.org, Jonathan Curley <jcurley@purestorage.com>, 
- Mike Snitzer <snitzer@kernel.org>
-Date: Fri, 14 Aug 2026 11:39:26 -0400
-In-Reply-To: <cover.1786653456.git.bcodding@hammerspace.com>
-References: <cover.1786653456.git.bcodding@hammerspace.com>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b="WDRDhO5f"
+Received: by mail-yw1-f181.google.com with SMTP id 00721157ae682-81ecf499af9so19340137b3.1
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 10:26:32 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=truenas.com; s=google; t=1786728392; x=1787333192; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=QhVVR7CPJPyXFN0ZneAP94GAaINXOiRBL560ZjbrBXs=;
+        b=WDRDhO5fn2Ed1Sk4TadRlocRADRMu7P4kTVSS4BKhe+1fB8OY2HYoLrUoiEafaYgn5
+         CsQMb9TpYvVDD8lS1D3vOBnuMONtZIkTvuINj6KL84+MP8mZho45+G46KXtOS5btNH8l
+         BFTdGyA+PuWOjMkXTXlW2tvn6XmiZ1RUCLw6V8lraEN4vEq2N/d47zck6MDD3BWGjyEp
+         FTG0px4uItzGLJ6mdOkwq5WVkN5ng4hZLb5TjDhFJqi5xxdh65K1uuTEVCNNIQSV3wDE
+         mzivt1GcbumZX6vK5YIX6uCv2m1qk2CXBp/z8LfK3abX8PfAWk8xQbyeZFSNlxqv3tkC
+         oaRQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786728392; x=1787333192;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=QhVVR7CPJPyXFN0ZneAP94GAaINXOiRBL560ZjbrBXs=;
+        b=W4+0d4JIUGzqIJeFahWQ/RoPmciKq2IGhiSNzA9CzUx8kkzXsDGXwWsa64Y8VNaSF3
+         e3SMrPmytNt+SVUD14GiCB/vHf+eBuOvou5aF67nE8DqmfApWqGB+gbCFoQHQoQIMkwL
+         lT84eJVQNzDRbsJdOJ3bLfnENoW0RHRAalrbzvJn437RotXrGM+yjifUNJ2aErdJOrpu
+         z8hHsK5YAHPLwVtoog6BvnsPuf8BFaPEpi67t63E2EAEnQB7C9E3eSSYTUOJ8s1bglGA
+         TvAvUgueqUP/ehyQiQANA6pzPwutEjqPOlEdtlp6n+jx5rIIyztTDtco02jeGEdOMAXc
+         AC5Q==
+X-Gm-Message-State: AOJu0Yzdhelg4//VYTk8mdTftWPbPfU/H5NkkiXnM5KuvaAeKIEzHYp0
+	vTfjnYfA3yzfPR8WC574uXzdCH5tfFNHlxf9BVljJQHVfPXJcU11pYvbdDuDVzjzAg==
+X-Gm-Gg: AR+sD10XfQJeWTqc8THgJNx8nODWCZC7ZnOV76WmqihbuwJDO4c5i2GopKzlh3zF9F8
+	51Fw1u0ioSsSx3EUTB36JhN2sppZ9HqjPo7W2JxZGxjjeAMdjdN9kCaAyLglZ7l+cTMXnplYYnL
+	TkPkq82fi3lkX/Yt0llfoM+pluPTUh/+bef5CAQSf82uLlDJJMs67pIr4cjnIjh+J1l7vFLKrt0
+	QYyV4fqCHj/zBeJpHmwn8oCRsH55FSVyeLlHsOPsKrsWkHvkk0ppZVqeUUbwggGR0KbFS18emaq
+	wTPl837kNaaWE78oO8AA0Pz8ubuC5MhNZf+NNLqtKUKNzfiIpobkBuuxM4QrhfE76EReyHVHuQZ
+	vY1FEYyXlm8b+x1ke6jHGgM4cGmH6BmIRwUU32FnhfcK472g/mLN5Fimqv1QbutYq2WcmMfu97m
+	1Idv8WlgBHhR0mUtUlrCqwF/A7R7LTivm/cYKf6h5pte9FE5u/j3LxJBnEnCKG4fuQfyw/S8s=
+X-Received: by 2002:a05:690e:1c0a:b0:66c:82ea:573d with SMTP id 956f58d0204a3-66c82ea5886mr1343630d50.47.1786728391485;
+        Fri, 14 Aug 2026 10:26:31 -0700 (PDT)
+Received: from hamza-PC ([124.29.197.38])
+        by smtp.gmail.com with ESMTPSA id 956f58d0204a3-66c7934cf98sm1178663d50.16.2026.08.14.10.26.27
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 14 Aug 2026 10:26:30 -0700 (PDT)
+From: Ameer Hamza <ameer.hamza@truenas.com>
+To: cel@kernel.org,
+	jlayton@kernel.org,
+	neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com
+Cc: linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	alexander.motin@truenas.com,
+	caleb.stjohn@truenas.com,
+	ameer.hamza@truenas.com
+Subject: [PATCH] sunrpc: treat empty auth.unix.gid replies as negative entries
+Date: Fri, 14 Aug 2026 22:25:07 +0500
+Message-ID: <20260814172507.1474519-1-ameer.hamza@truenas.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-On Thu, 2026-08-13 at 16:41 -0400, Benjamin Coddington wrote:
-> The flexfiles layout driver caps its LAYOUTGET reply buffer at a single
-> page, which limits a striped layout segment to roughly 28 ff_data_server4
-> entries -- far below the 4096-stripe decode limit the client otherwise
-> advertises.  A server striping wider than that has no way to hand the
-> client a layout: it returns NFS4ERR_TOOSMALL, the client falls back to
-> I/O through the MDS, and pNFS never engages for those files.
->=20
-> This series first makes the client behave sanely when a layout does not
-> fit the size it advertised in loga_maxcount, and then lets the reply
-> buffer grow on demand up to the session's maximum response size.
->=20
-> Patch 1 is a standalone fix (Cc: stable).  A server's NFS4ERR_TOOSMALL
-> is mapped to -ETOOSMALL at decode and then handled nowhere, so the
-> client falls back to the MDS for that one request and re-sends a doomed
-> LAYOUTGET on every subsequent pageio attempt.  Suspend pNFS via the
-> layout fail bit instead, the way NFS4ERR_LAYOUTUNAVAILABLE already does.
->=20
-> Patches 2-5 make wide layouts work.  loga_maxcount is derived from the
-> reply buffer actually allocated rather than a fixed 4096 (block and SCSI
-> layouts were advertising 4KB against a session-sized buffer, so a server
-> whose extent list encodes larger than a page got a needless TOOSMALL).
-> A TOOSMALL LAYOUTGET is then retried once with the buffer raised to the
-> session's maximum response size -- the same bound GETDEVICEINFO already
-> uses -- and a non-conformant server that ignores loga_maxcount and
-> overruns the buffer outright takes that same recovery path instead of
-> today's -EINVAL.  Finally the escalated size is remembered per-server, so
-> subsequent opens skip the attempt that is known to fail; this is also
-> what lets the LAYOUTGET attached to OPEN succeed against a wide-striping
-> server, since that path is best-effort and has no retry of its own.
->=20
-> The common path is unchanged throughout: the first LAYOUTGET for a
-> layout still goes out with the layout driver's default reply buffer, and
-> larger buffers are only ever allocated against servers that actually
-> hand out wide layouts.
->=20
-> Patch 6 moves the decoded per-mirror stripe array to kvzalloc_objs(), so
-> that a wide stripe array does not depend on a high-order allocation
-> succeeding.
->=20
-> Wire-validated against reffs at stripe widths 2 and 64, exercising both
-> the conformant NFS4ERR_TOOSMALL path and the buffer-overrun path.
->=20
-> Two known gaps are deliberately left for follow-up work:
->=20
->   - The decoded per-stripe footprint is heavy: nfs4_ff_layout_ds_stripe
->     is roughly 300 bytes and embeds localio and layoutstats state that
->     most stripes never use.  Both the structure and its array container
->     want rework before very large stripe counts are comfortable.
->=20
->   - The client decodes only the first logr_layout entry of a LAYOUTGET
->     reply and silently discards the rest, so it can accept less coverage
->     than it asked for in loga_minlength, and cannot amortize a
->     multi-segment reply.
->=20
-> A related series, "NFS: flexfiles device notifications and caching for
-> wide striped layouts", handles CB_NOTIFY_DEVICEID and scales the device
-> caches for the layouts this one makes fetchable.  The two are
-> independent and apply cleanly in either order.
->=20
-> Benjamin Coddington (6):
->   NFSv4.1/pnfs: suspend pNFS on NFS4ERR_TOOSMALL from LAYOUTGET
->   NFSv4.1/pnfs: derive loga_maxcount from the LAYOUTGET reply buffer
->   NFSv4.1/pnfs: retry LAYOUTGET with a larger reply buffer on
->     NFS4ERR_TOOSMALL
->   NFSv4.1/pnfs: treat an oversized LAYOUTGET reply as -EMSGSIZE
->   NFSv4.1/pnfs: remember when a server needs a larger LAYOUTGET reply
->     buffer
->   NFSv4/flexfiles: allocate the per-mirror stripe array with
->     kvzalloc_objs
->=20
->  fs/nfs/flexfilelayout/flexfilelayout.c |  6 +--
->  fs/nfs/nfs4proc.c                      |  9 +++++
->  fs/nfs/nfs4xdr.c                       |  2 +-
->  fs/nfs/pnfs.c                          | 54 +++++++++++++++++++++++---
->  include/linux/nfs_fs_sb.h              |  4 ++
->  5 files changed, 65 insertions(+), 10 deletions(-)
->=20
-> base-commit: db2ddb87143519e20a95aa36c60b36107b736a58
+When rpc.mountd cannot resolve a uid (getpwuid() or getgrouplist()
+failure, e.g. while winbind or sssd is briefly unreachable), it
+answers the auth.unix.gid upcall with zero groups. unix_gid_parse()
+installs that as a valid positive entry, and svcauth_unix_set_client()
+then replaces the credential's group list with the empty one on
+every request, RPCSEC_GSS included via svcauth_gss_set_client().
+One failed lookup strips that uid of all supplementary groups on
+every export for up to mountd's configured TTL (30 minutes by
+default), long after the NSS backend has recovered.
 
-Aside from my minor comment nit, this looks good.=20
+mountd cannot send an empty list for a successful lookup, since
+getgrouplist(3) always includes at least the user's primary group,
+so a zero-group reply can only mean the lookup failed. Record it as
+a negative entry: unix_gid_find() then returns -ENOENT and
+svcauth_unix_set_client() keeps the groups the RPC credential
+already carries. This is the fallback that
+commit 3fc605a2aa38 ("[PATCH] knfsd: allow the server to provide a
+gid list when using AUTH_UNIX authentication") promised when no
+answer is available, and the same state try_to_negate_entry()
+already creates when no listener holds the channel open.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Fixes: 3fc605a2aa38 ("[PATCH] knfsd: allow the server to provide a gid list when using AUTH_UNIX authentication")
+Assisted-by: Claude:claude-fable-5
+Signed-off-by: Ameer Hamza <ameer.hamza@truenas.com>
+---
+Reproducer (any server with rpc.mountd --manage-gids; 'alice' is a
+member of group 'proj' *supplementary*, /srv/proj is root:proj 0750):
+
+    runuser -u alice -- cat /mnt/proj/data          # ok
+    # the reply mountd sends when getpwuid()/getgrouplist() fail:
+    echo "$(id -u alice) $(( $(date +%s) + 600 )) 0" \
+        > /proc/net/rpc/auth.unix.gid/channel
+    runuser -u alice -- cat /mnt/proj/data          # EACCES until
+                                                    # refresh/flush/expiry
+
+Applies unmodified (fuzz 0) to every maintained stable tree, 5.10.y
+through 7.1.y. Tested on a live 6.12-based server over NFSv3 and
+v4.0-v4.2, with sec=sys and sec=krb5.
+
+ net/sunrpc/svcauth_unix.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index aebd97e7f66c7..2f592ba54a366 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -540,6 +540,13 @@ static int unix_gid_parse(struct cache_detail *cd,
+ 	if (ugp) {
+ 		struct cache_head *ch;
+ 		ug.h.flags = 0;
++		/*
++		 * mountd sends at least the user's primary group on
++		 * success, so an empty list can only mean the lookup
++		 * failed. Keep the credential's own groups instead.
++		 */
++		if (gids == 0)
++			set_bit(CACHE_NEGATIVE, &ug.h.flags);
+ 		ug.h.expiry_time = expiry;
+ 		ch = sunrpc_cache_update(cd,
+ 					 &ug.h, &ugp->h,
+
+base-commit: 46db3c8a1be96a354758b44b1d4fbb4b70d09a20
+-- 
+2.53.0
+
