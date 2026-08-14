@@ -1,124 +1,120 @@
-Received: from mail-qt1-f181.google.com (mail-qt1-f181.google.com [209.85.160.181])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8F30147141B
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 14:37:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.181
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 23AB946C844;
+	Fri, 14 Aug 2026 15:28:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786718256; cv=none; b=RTRaGLa3dXzWhbqNm1FtStF2NN67aULtVtx/hi1+oq9rZNR+uPuVBnwMmWpVmEvVf3favNvUUvcZLwcvLZIdsjPenDgp4wBL5QRAPcAqM057NzMmtqA/hi7MW9QkC+LL9mognh9jpf4O6iAOHJW+HAMQr4oXTB1IkSLIWpD04Xw=
+	t=1786721323; cv=none; b=HWqKYAe26pKys1R4Pz64ktVV92VKqVsTwJjOAJzGrVK7ZUefiprGPCnEsUfVM69jqeHqCKN/skrU7kmtO5340BBY1aypiFUSHGf6ctb+ETvIlUYWy9y0I76ynhDRT3F4BzIT+7rozBE3pgTt9as4mJZWd3Jdp5H5zfgESasDJzQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786718256; c=relaxed/simple;
-	bh=8HY0wtknzHE1zM0Bt/3qPku0pGktneOD8Vol90D/JnA=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=R4x8y8w3vnyN3XLLPkB4lyNESyuFP3a2vRu/NdkWRSssS4SJUJQpnh/xv0LZtb2X3LRyCii0FWxwrkdcCHLRKGRYX9hxwgQEahuxxUv556mKHHUj3ML5xvlajIoiUTCElYkUK7vD5WgVCLc8wb4IJcUpFnU8dF6mVUNpyRLzJWY=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=aihDdt9L; arc=none smtp.client-ip=209.85.160.181
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	s=arc-20240116; t=1786721323; c=relaxed/simple;
+	bh=nM2KpLAD+dQ4Lc9S8GqnM/gjeb+efgIynIrAPZqM9Bk=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=aMJxCxELIlsbvOfrcQTyjEbCeZymLN1HRPiGIQ6MvOTro/4AvVG1s9sxmIDoDwUd+wu7AyaaE4q9KheGuCUs/6GmTV5sVVvwFC994J9oSZe44fQ0OntjIkmzBquz4d4UMEz++IVEqdGGCtLqHn2idUnRIhNIPY7slkzeOLCNO9w=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GLqgq6Fg; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="aihDdt9L"
-Received: by mail-qt1-f181.google.com with SMTP id d75a77b69052e-51c01c79467so304071cf.0
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 07:37:32 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1786718249; x=1787323049; darn=vger.kernel.org;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=pnSp8kF5uifmNKvBVfAG+ZOgXVW+rCKTiYJb35Z6MS8=;
-        b=aihDdt9L1ektfKzp9mKuZNAUZaxydoOhm28YFwiX5GnLvkomUaSLq429uUyiubOvxf
-         buTHnNI6bZk04Oe9ibf+/VkXp8ZcgNCq4vh7s1raqPjhBNcYyfTK6eDkYwaPukiJ+XMo
-         58LPuXBBadUkr80PKvpQmp+ViB9GEERoMZS92BrGTCpmSDqJX+UMW350+dU2iwDk4rT+
-         MGE365CJN9Jx+eNIuvPEwI18LBTmuO/L+TcNcg8n6noyOrf7P4YLjorncU89z27YsfVp
-         UguiCh6qlEDvESLMovkrAuYxSLvzQR1uHdeQ/zdGj7HoiUZGfyGP/iZlFT4ceipl5IkJ
-         TbeQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786718249; x=1787323049;
-        h=in-reply-to:content-disposition:content-type:mime-version
-         :references:message-id:subject:cc:to:from:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=pnSp8kF5uifmNKvBVfAG+ZOgXVW+rCKTiYJb35Z6MS8=;
-        b=a2YwQSbVoq4vrmomhl2UJPujY57QnoLCd0ZQ4KYnAf3p8gV+Olomou1wIeap8O4eMd
-         kGVMLZbuqKaUbc77zP/U3gGSlFBIKs6RCA53J3iwTvLkQT+4trpgPGr67RUcQUFVD2c6
-         DemhFVvibBynXSZ0sR3JKZ6izimLTp6JQu3/3zc9CBtEEefAGfCM5vybRrbgPaXB08ja
-         TzB+IE12X1+qwAIw0y3bgyuRcKPE5Od8cfKRopeHYqoqjUA+47DIlJAeW+VZ5D3jcg4u
-         lJKhvE0bJM2NmQUpO8fS8tNQ630gRw3v5cg8hQ9s5DHmVAin9qkWEPT47YFtlqctBxdd
-         cPYA==
-X-Gm-Message-State: AOJu0Yw0SnyNdN7s54Y83rxh8UUgDcTiba3QixisPtmQLgQg1oOv489U
-	MV8ATa8QgxqDUJKW3sg2v9cMYufa5olFtLyUzB8WC1VnH6Rse3Z046YynaUYNdgxE2TzpW6Vd7J
-	1s8rwoA==
-X-Gm-Gg: AR+sD12so7u8wsRq8djzbvjMeA3VtdBUhfHu4HkEcIyXNuAMmZs7v2N5trlX+ydlrf3
-	d2Z0Q5sVtYEg/6FmlpoRf5CL0s1Lh34SJ/7XgDDw3V61GQ1DeQq7rPxYr6G+dOe68aS7lYf5fhO
-	XN3k74ms20Jvafore54AitH7w/yJry3co4Uueu1kv5zLZke/k/AUH33bhmeEbK56g7rptSMoLBQ
-	/04kXVHWhcPgP0MTZK4+8rID3+gL0cusO3Xk5WYhfdQQ3QOtHN7BZOt/ykcKbyco5pQ+nM7Z3kG
-	V7zh+1oxqxP5d3VHVKRBENNqVJ2YIpcYdn2srVvyVE6tQygRLZiIW0agASAQS4PYo0WrjQWaycO
-	rMzLP9rNwuUTD785ESs/4N/rxDDZ9/oh+pqR6PLdwV5JN9JJFasDwt4Oj6o8RlBnNVlO+yNjfyp
-	LcKkZ8W+70DoCMn5HEAkL/GHdlotBVqNngh/C8X471r5h18Dx7Qy4FYuE4M/vtZvCXKfsy98cmI
-	LvVsC+4/7diqWxjPUMx8BY=
-X-Received: by 2002:ac8:5f8b:0:b0:50d:edb1:6bd1 with SMTP id d75a77b69052e-52d8631482cmr14545171cf.13.1786718248227;
-        Fri, 14 Aug 2026 07:37:28 -0700 (PDT)
-Received: from google.com (21.168.124.34.bc.googleusercontent.com. [34.124.168.21])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-90a921e6f51sm20444946d6.8.2026.08.14.07.37.24
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 14 Aug 2026 07:37:27 -0700 (PDT)
-Date: Fri, 14 Aug 2026 14:37:21 +0000
-From: Pranjal Shrivastava <praan@google.com>
-To: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>,
-	linux-kernel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-	Logan Gunthorpe <logang@deltatee.com>,
-	Jason Gunthorpe <jgg@ziepe.ca>, linux-pci@vger.kernel.org,
-	linux-rdma@vger.kernel.org, Shivaji Kant <shivajikant@google.com>
-Subject: Re: [PATCH v4 0/5] nfs: modernize direct I/O path
-Message-ID: <an8oIS2WA5CdQGVQ@google.com>
-References: <20260810195040.2877784-1-praan@google.com>
- <ano2R8fAeGmsNt9f@google.com>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GLqgq6Fg"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3C4CE1F00A3A;
+	Fri, 14 Aug 2026 15:28:41 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1786721321;
+	bh=KitOUslk+18qH3Fpmqr2kv9IYMnx8rgJ/awcl8hCp38=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=GLqgq6FgjleJZrv/0WD+jXDedrNVZ6uzo1BN4AjyGbxKeJBMXbxYtpLBLC5TaRnl0
+	 gOi7bTv3T7DolDqm7NaT8uyXcx4k4IkePEQNQA4E9rLAZRnXYqf6nNS1t4T3WsomHJ
+	 xSRaEpggt6SdBn+/NFIT4M9ii4lIXZSFDpnR1Ag16dfPGNSQwddGnSZ7tgdn9Ujv+h
+	 YVMIfIO+2V+EzbHU80c+qxTjg5Zc7BKX/Z15te/NHV4qMGdtthYzqDy6ovzqYRsSns
+	 I7BzQkb6wjlitagN09CuC3ZkJXDNn43AuTFHeMdxLFuwyXG7gtaTnujGGKyLxzkGU7
+	 ZkjfOFp06yP3w==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 55858F4006B;
+	Fri, 14 Aug 2026 11:28:40 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Fri, 14 Aug 2026 11:28:40 -0400
+X-ME-Sender: <xms:KDR_agih36I9vX1bg8KhMnC9qpSpApSxNSt1N0lUuDrULj6NeclTRQ>
+    <xme:KDR_aj2U04JPrni11F1cOcFDR-ZZm4x9MmrqHNjwW81ijlkhptYcCakaWMFLYfMvo
+    62gJh4V907Af0FYuCLzEOa_XZs7DqqebBSOdWQUTT4vpkQWUI6Hfc4a>
+X-ME-Proxy-Cause: dmFkZTEGStmNNX26DAxDIcjkyicgJ1tisH3i7jCTFxIriRsENLcLDfFwm35RsshH3i7m24
+    9rNg7ApoXWaNiQrVA0Nbw6RBpIYzLVwv8O95ks12I8jLDG2yXWmRCPZukUox0O65+o2W7b
+    O+pQTdMu+6TXOmWt7k7NsAZHcenVbcd4afn/pi2im5yxTIMTTOWz+0JigG4tGQORGjmRgK
+    3k14CR2zxuERiDQjf8CuWF96H80skMEOFyNQULD7m9vB6ECO0MhXp1ESiZCAR7JD+3vsy0
+    rl0zIT6vn05s59S8W7vacK/RVSGq9w3iQqBCYitxdOcBm3P3dg9wmBjaMgHQ8nXf1A8PRi
+    TxQOwap/SQtHBe91A6+X+pjvtkxQXFmUpnlxuHI04XnRo/MN3Ivpehv8B7klgHbuB01sXP
+    Qkp3HSDV1AARXL2ocoHfETcYGThYRO3TFUuLWplhZPVnO93prYzNcR2d0VLN2AsOBrdRFg
+    Xr1HDLzpY3D9ctvIOKbx1v1ulcGtbeNJ/JhMFJBXltMBaRnKL7tuLpWr4LwmejeY5bLwuW
+    9NC8yDimzFST1RTvRUbaMMdZoVXNqrWVXA9jD7JT5B5QUjnx5gHqPRT0wFd56v9AJtHI33
+    fiy1zDQBwNkrQ8fhbArqjPBEBYOgVPJ52Lbo8tsbzneEmJOTo02qFOJv6S2g
+X-ME-Proxy: <xmx:KDR_aoRXc_F1yjO5AScwdica1xhpeuMS5wspOXn6ow2a91II2-tXLQ>
+    <xmx:KDR_aq7Py65iwuXISfcB5cAGFe78eIxGLpnaI7OmmRPlp7DIc8DbJA>
+    <xmx:KDR_aoyYl178X7ozW28irZzYWeG2ZuAM4NYseOzU3RnUin26oF2i3w>
+    <xmx:KDR_aiAE9rUg60aB-qv385KDa-W-8sjd63rtdzDLXjQhfxaQudgTsQ>
+    <xmx:KDR_aobQ9-pWhwctq5qs7FcakZ62r7kyRVOO83qUWgBLlgyDgWYq0ORY>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id 2E3897811F0; Fri, 14 Aug 2026 11:28:40 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <ano2R8fAeGmsNt9f@google.com>
+X-ThreadId: A4afRqWdro9F
+Date: Fri, 14 Aug 2026 11:28:20 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
+ "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
+ "Tom Talpey" <tom@talpey.com>, "Trond Myklebust" <trondmy@kernel.org>,
+ "Anna Schumaker" <anna@kernel.org>, "David S. Miller" <davem@davemloft.net>,
+ "Eric Dumazet" <edumazet@google.com>, "Jakub Kicinski" <kuba@kernel.org>,
+ "Paolo Abeni" <pabeni@redhat.com>, "Simon Horman" <horms@kernel.org>,
+ "J. Bruce Fields" <bfields@fieldses.org>, "Shuah Khan" <shuah@kernel.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+ netdev@vger.kernel.org, "Trond Myklebust" <trondmy@gmail.com>,
+ linux-kselftest@vger.kernel.org
+Message-Id: <a33c928b-d579-47c5-8a54-714277398f05@app.fastmail.com>
+In-Reply-To: <a8f5840cf3f2cbf71de7a1f3957f70d9897adfa2.camel@kernel.org>
+References: <20260811-nfsd-nl-hang-v2-0-c0c92b3953c3@kernel.org>
+ <20260811-nfsd-nl-hang-v2-4-c0c92b3953c3@kernel.org>
+ <e1706a70-d9f8-423e-9462-2d77b2e444b1@app.fastmail.com>
+ <26486c88075a0b1e3c1cb088fe97d39e0051b5d3.camel@kernel.org>
+ <572f0269-9bf4-4a80-8e9c-3c4614d45f7e@app.fastmail.com>
+ <a8f5840cf3f2cbf71de7a1f3957f70d9897adfa2.camel@kernel.org>
+Subject: Re: [PATCH v2 4/8] SUNRPC: undo partial rpcbind registrations when
+ svc_register() fails
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
-On Mon, Aug 10, 2026 at 08:38:49PM +0000, Pranjal Shrivastava wrote:
-> On Mon, Aug 10, 2026 at 07:50:34PM +0000, Pranjal Shrivastava wrote:
-> > Modernize the NFS Direct I/O path as a preparatory step to enable PCI
-> > Peer-to-Peer DMA (P2PDMA) support. Following feedback on the initial
-> > RFC [1], the modernization and architectural changes are split into
-> > different series. Additionally, based on the discussion in the v2 [2]
-> > of this series, the migration of NFS Direct I/O to folios would be
-> > handled in a separate follow-up series.
-> > 
-> > Currently, NFS O_DIRECT relies on the legacy iov_iter_get_pages_alloc2()
-> > API which does not support the pinning requirements for P2P memory.
-> > The implementation moves NFS to the modern iov_iter_extract_pages() API.
-> > 
-> 
-> [...]
-> 
-> I'm calling out a few typos / non-code mistakes:
-> 
-> 1. On the cover letter I missed updating the subject to v5 for this series
->   (the changelog is noted below).
-> 
-> 2. I also accidentally dropped Christoph's Reviewed-by tags on patches 
->    1, 2, and 3 during the rebase (given while reviewing v4 [1]).
-> 
-> Everything else in the series is correct as per the v5 changelog.
-> Please let me know what the right etiquette is? Shall I resend the series?
-> 
-> Apologies for the noise!
-> 
 
-Quick update: 
-I've posted a v6 [1] with fixes for unpin bugs reported by Sashiko [2]
-and with R-bs from Christoph that were dropped mistakenly in v5.
+On Fri, Aug 14, 2026, at 7:01 AM, Jeff Layton wrote:
+> I still think the best solution of all would be to just say
+> "henceforth, rpcbind registration is non-fatal".
 
-Thanks,
-Praan
+Fair enough, let's go with that.
 
-[1] https://lore.kernel.org/all/20260814143255.861084-1-praan@google.com/
-[2] https://sashiko.dev/#/patchset/20260810195040.2877784-1-praan%40google.com
+
+> Right now, I'm really unclear on what sort of changes you want to see
+> here as a final patchset. What would make this mergeable for you?
+
+Sorry for the ambiguity. For the re-roll:
+
+- 1, 2, 3 and 5 don't need change.
+
+- Let's drop patch 4/8.
+
+- Make registration failure non-fatal for NFSv2 and NFSv3, as
+  proposed.
+  
+- Extend the extack in 6/8 to report a listener that came up without
+  registering. dmesg is the only channel write_ports() has. Perhaps
+  the netlink path can do better?
+
+- Fix the netns leak in 8/8.
+
+- Ensure that any test that asserts the unwind or the abort is moved
+  over to the new failure policy.
+
+HTH.
+
+-- 
+Chuck Lever
