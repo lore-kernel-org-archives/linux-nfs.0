@@ -1,189 +1,127 @@
-Received: from smtp-o-3.desy.de (smtp-o-3.desy.de [131.169.56.156])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-yw1-f175.google.com (mail-yw1-f175.google.com [209.85.128.175])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C387922D4C3
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 21:15:46 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=131.169.56.156
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8A08E3A450F
+	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 22:25:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.175
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786742150; cv=none; b=uZLGgehuk/2hp3LV2sBUNang9GRttuIvrh82zf6bQWbOzyQzO8sPdN9UlHlTHxNeIt3xBoPO4Q5xlSWP3wTmE7gyfPXLtidlEwRPstcdqENmj47CXoxiXEZnwFHdi6SMH+IzOMrp9YE/NiJS7GpMmTPKRBzXPE+EkSHQ5xGLp7M=
+	t=1786746344; cv=none; b=pV/ToL9PBUeBetVzYQG8qM55vtJnziAKq5f3629zs6fdpEpKUKvIz1hwGk1NY31mmr7L+OLQJfaDdh5U63UhjQ3sBjVdMUemmwW7aeqZH1kCYuO17U5tvVaSIQWct4Vm2X76ZlOzE55iBDwruyCm3i073YWAhg1ZIfUMngKt9qg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786742150; c=relaxed/simple;
-	bh=tzxfxF/RTry5qVCCKf+GOUmn9mOfdo+E+p7bC4ojbj4=;
-	h=From:MIME-Version:Subject:Date:Message-Id:References:Cc:
-	 In-Reply-To:To:Content-Type; b=YrGyo7/O0jQGHGJBz7/JuS8CkvCYvmnr4bufreH20oDsBKkyH3KPfs7pFPJoPLsHA2L49XLGDtXbKqD7ablGhSAJlcIOyqeReOQv5l8aA96BLbY1eJEK7jPCIbs/0DAmFA1LL8CJy9VBQzZwo3PAHGvsFUEG0ENqAfl3SHy+aU0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mail.desy.de; spf=none smtp.mailfrom=mail.desy.de; dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b=ma4bkmj8; arc=none smtp.client-ip=131.169.56.156
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=mail.desy.de
-Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=mail.desy.de
+	s=arc-20240116; t=1786746344; c=relaxed/simple;
+	bh=QpCg1coYctY6lqy/4VlceyICqqeUnz5voKnkE4JQaHU=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=G1EBmBgMzE7GIGDteTKirr16bXGoSvEiwGfApB53gvGzWVvo2Ouz7kXn2jjr7fy30oTZ+bDDZMlM7YYmoGmY08uBMmDoG+C0OvaabUv/j5DbaQfrcP+0q37Ud83tkSRI6fLAOXnJB0Wu/k7B/zn2vQcZ5E7CkTOSeCMSjvwX2u8=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com; spf=pass smtp.mailfrom=truenas.com; dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b=iu/+AY8N; arc=none smtp.client-ip=209.85.128.175
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=truenas.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=desy.de header.i=@desy.de header.b="ma4bkmj8"
-Received: from smtp-o-1.desy.de (smtp-o-1.desy.de [131.169.56.154])
-	by smtp-o-3.desy.de (Postfix) with ESMTP id CF5BD11FA23
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 23:06:59 +0200 (CEST)
-Received: from smtp-buf-2.desy.de (smtp-buf-2.desy.de [131.169.56.165])
-	by smtp-o-1.desy.de (Postfix) with ESMTP id 2E6F811F746
-	for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 23:06:52 +0200 (CEST)
-DKIM-Filter: OpenDKIM Filter v2.11.0 smtp-o-1.desy.de 2E6F811F746
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=desy.de; s=default;
-	t=1786741612; bh=tzxfxF/RTry5qVCCKf+GOUmn9mOfdo+E+p7bC4ojbj4=;
-	h=From:Subject:Date:References:Cc:In-Reply-To:To:From;
-	b=ma4bkmj8KVtF2Y9NkS/ByRnghmEJkLTpFRHOysgHVu+G94dpO9sYQNKPxfUABbCxp
-	 A9pnZvtI4jQLzEcLoQKNlyQDS8pEz1mRQ19BBRvymhiZLmvKL1AtlJluDhSpnu0H2F
-	 PqvXQN+AugBcDJMs76cr/dexRbuY6ZuofGJetWcE=
-Received: from smtp-m-3.desy.de (smtp-m-3.desy.de [IPv6:2001:638:700:1038::1:83])
-	by smtp-buf-2.desy.de (Postfix) with ESMTP id 0FADC120043;
-	Fri, 14 Aug 2026 23:06:52 +0200 (CEST)
-Received: from c1722.mx.srv.dfn.de (c1722.mx.srv.dfn.de [194.95.239.47])
-	by smtp-m-3.desy.de (Postfix) with ESMTP id EE7481A004F;
-	Fri, 14 Aug 2026 23:06:51 +0200 (CEST)
-Received: from smtp-intra-1.desy.de (smtp-intra-1.desy.de [IPv6:2001:638:700:1038::1:52])
-	by c1722.mx.srv.dfn.de (Postfix) with ESMTP id 1EDAE100034;
-	Fri, 14 Aug 2026 23:06:51 +0200 (CEST)
-Received: from z-mbx-3.desy.de (z-mbx-3.desy.de [131.169.55.141])
-	by smtp-intra-1.desy.de (Postfix) with ESMTP id E58BA80046;
-	Fri, 14 Aug 2026 23:06:47 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran@mail.desy.de>
+	dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b="iu/+AY8N"
+Received: by mail-yw1-f175.google.com with SMTP id 00721157ae682-836f34a0ceaso27312717b3.1
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Aug 2026 15:25:39 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=truenas.com; s=google; t=1786746338; x=1787351138; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=jwB1C+RNhjAgt1UbZNR2QMeClPWif5hxjvqzBTXQXKY=;
+        b=iu/+AY8NohAVQEnJn1FPgK6BoJ2H+FyBX+mlRJMoF1imnM53O+w13qdU+3oDRcA21J
+         mxpKzVSkCSuU9xGUBsjza7QCsOCX+Nzkk7VOdMHbvPqbv4ai+w4Vl+nzQoG1s467kMo1
+         WBpIF/2hJfMNDYurfNFnjwAAw3865QfJqs5Z4gvtKSdFS4oFFNmu8arLYgwVNzMiQggK
+         zgLhzqGf7VJDsmqvClQf5zLg6z8nLNLYz+RFJ1WJd5h5T3Wudq+XbdTh5C38ajy0nX5N
+         MI7SPtB82UIp+gJp3UgWCstxMQw+1EUmj+OPRizmo7AlNcvsLdzvQc3SESk8p4MTrDrY
+         fLeg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786746338; x=1787351138;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=jwB1C+RNhjAgt1UbZNR2QMeClPWif5hxjvqzBTXQXKY=;
+        b=JgKsxSooyXXJ7c7LFkxZQaKOR/GYF2kVVGwsaEweavbN8u3xO1BbFTCBNUeGVh7gIs
+         YDDhyb/K6Lh0zA/oWPUlW5X9il14hjiys7uUzUxkLEooG49UxNZmvNI+PDHwJsJEbQFh
+         OB9/7l9l+8M/cTQNONscsWlzT+S3qAxq6kGUK9sD4EH9DvKlBZLgzmKyJzHW6T9cFDu8
+         oJrKpKCfkimE3RFPSHZYjcPWEXBbWq6GMQ2VP1rA8JIoq88C3DgodaRBvkwFgTjy457+
+         5NvfeG6rADvuAuVFc/HrCnKi5ZPeDUMkqxQVujqGm+aa0DyD3KsAQAwmgyKBZnc4go+V
+         KRfw==
+X-Gm-Message-State: AOJu0YzmFtdS04U8176Jozj7jCLFSuG2OPEvBUCcjfKH4VzQaAOBIezo
+	Nfqek1eQ8EwA5pVSaTtqXji58HKEvI2V2X/bfbPA0WYqPwtm+hoRPM2/2xNjMdUsHIAv81uReCI
+	k5Tuo9r1D
+X-Gm-Gg: AR+sD11hvFJ9XVGqjChzvbmKuTzan7UxuyJzg008/ogsPk4mnVBdHu7ovhoQjDMqtAX
+	FPqMVCGgigvKVw5TgnQv9UZcMkVV9Ff9cysX/5lqKbUqpCPe2YxdCjUnv1HFU5hg3NFff/U8bZh
+	0WGUp10GqsTBpipaI+sqLXNX7gRXB/2R9oyGPqFc00PNmq/oTd584NWgq1Z0p8GFhnx0bv8rJcJ
+	0V0JBetBwHtsPEht/dcCKdXoI8f7SIexpZ9ezK+BRBy+VQeMiH0FeiFnVNoyvlWPtPOnWkaLEkW
+	tTTwAjGrHrYorD0s9MSbMhxHFWHt+DQzG8/NJwGm6RxEK+pFcKx4kC9X3MkRtdUIXfCaeg/oUl3
+	qfUgWVn9PnWC9G+IUu5mEltf8Ah/oa7+6IGpw+6MpHLU6/fQhsUTZKllMd9d+m9U0uUv2yjLvMo
+	TeRJwHjKQWsoGBppS5G7Mm6+qCX4YmX7MAI0cPdd9qnew+u6pLbFgGa2ekW1GT
+X-Received: by 2002:a05:690c:60c7:b0:7f0:38f7:6ca6 with SMTP id 00721157ae682-834840e734bmr74383837b3.5.1786746338166;
+        Fri, 14 Aug 2026 15:25:38 -0700 (PDT)
+Received: from hamza-PC ([124.29.197.38])
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-836c1777c5esm19859857b3.26.2026.08.14.15.25.33
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 14 Aug 2026 15:25:37 -0700 (PDT)
+From: Ameer Hamza <ameer.hamza@truenas.com>
+To: cel@kernel.org,
+	jlayton@kernel.org,
+	neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com
+Cc: linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	alexander.motin@truenas.com,
+	caleb.stjohn@truenas.com,
+	ameer.hamza@truenas.com
+Subject: [PATCH v2 0/2] sunrpc: don't strip a uid's groups when the mountd group lookup fails
+Date: Sat, 15 Aug 2026 03:19:51 +0500
+Message-ID: <20260814221953.108837-1-ameer.hamza@truenas.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Subject: Re: [PATCH 1/3] NFSv4/flexfiles: report the intended opnum when DS connection setup fails
-Date: Fri, 14 Aug 2026 23:06:47 +0200 (CEST)
-Message-Id: <EF00E0BC-B562-47DB-916D-F6BD6431A111@mail.desy.de>
-References: <716acff789261dade8d1f530f2bac243e9c7791e.1786636529.git.bcodding@hammerspace.com>
-Cc: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
- linux-nfs@vger.kernel.org
-In-Reply-To: <716acff789261dade8d1f530f2bac243e9c7791e.1786636529.git.bcodding@hammerspace.com>
-To: Benjamin Coddington <ben.coddington@hammerspace.com>
-Content-Transfer-Encoding: base64
-Content-Type: text/plain;
-	charset=utf-8
-X-Mailer: Zimbra 10.1.20_GA_4893 (MobileSync - Apple-iPad14C3/2307.71)
-Thread-Topic: NFSv4/flexfiles: report the intended opnum when DS connection setup fails
-Thread-Index: S/VDxT4ILa67J5qtVy8kRWMCusYzlg==
+Content-Transfer-Encoding: 8bit
 
-DQpIaSBCZW4sDQoNCk91ciBsb2dzIGFyZSBmdWxsIG9mIHRob3NlICBPUF9JTExFR0FMIGVycm9y
-cy4gVGhhbmtzIGZvciBtYWtpbmcgdGhlbSBtb3JlIHVzZWZ1bC4NClRoZSBjaGFuZ2UgbWFrZXMg
-c2Vuc2UgYW5kIGxvb2tzIHZhbGlkLg0KDQpSZXZpZXdlZC1ieTogVGlncmFuIE1rcnRjaHlhbiA8
-dGlncmFuLm1rcnRjaHlhbkBkZXN5LmRlPg0KDQrigJQgVGlncmFuDQoNCj4gT24gMTMuIEF1ZyAy
-MDI2LCBhdCAyMDowNywgQmVuamFtaW4gQ29kZGluZ3RvbiA8YmVuLmNvZGRpbmd0b25AaGFtbWVy
-c3BhY2UuY29tPiB3cm90ZToNCj4gDQo+IO+7v1doZW4gbmZzNF9mZl9sYXlvdXRfcHJlcGFyZV9k
-cygpIGNhbm5vdCBlc3RhYmxpc2ggYSBjb25uZWN0aW9uIHRvIGENCj4gZGF0YSBzZXJ2ZXIsIGl0
-IHJlY29yZHMgYSBkZXZpY2UgZXJyb3Igd2l0aCBvcG51bSBPUF9JTExFR0FMLCBzaW5jZSBubw0K
-PiBvcGVyYXRpb24gZXZlciBtYWRlIGl0IHRvIHRoZSB3aXJlLiAgQnV0IHNlcnZlcnMgY2FuIHVz
-ZSB0aGUgZmZfaW9lcnI0DQo+IG9wbnVtIHRvIGRpc3Rpbmd1aXNoIGZhaWxlZCByZWFkLWNsYXNz
-IG9wZXJhdGlvbnMgZnJvbSB3cml0ZS1jbGFzcw0KPiBvcGVyYXRpb25zIHdoZW4gZGVjaWRpbmcg
-aG93IHRvIHJlY292ZXIgdGhlIGFmZmVjdGVkIG1pcnJvciAtLSBhIG1pcnJvcg0KPiB0aGF0IG1h
-eSBoYXZlIG1pc3NlZCB3cml0ZXMgbmVlZHMgdG8gYmUgYnJvdWdodCBiYWNrIGluIHN5bmMsIHdo
-aWxlIG9uZQ0KPiB0aGF0IG1lcmVseSBmYWlsZWQgdG8gc2VydmUgYSByZWFkIGRvZXMgbm90LiAg
-T1BfSUxMRUdBTCBnaXZlcyB0aGUNCj4gc2VydmVyIG5vdGhpbmcgdG8gYWN0IG9uLg0KPiANCj4g
-RXZlcnkgY2FsbGVyIG9mIG5mczRfZmZfbGF5b3V0X3ByZXBhcmVfZHMoKSBrbm93cyB3aGljaCBv
-cGVyYXRpb24gaXQNCj4gd2FzIHByZXBhcmluZyB0byBzZW5kLCBhbmQgdGhlIGV4aXN0aW5nIGZh
-aWxfcmV0dXJuIGFyZ3VtZW50IGFscmVhZHkNCj4gZGl2aWRlcyB0aGUgY2FsbGVycyBhbG9uZyB0
-aGUgc2FtZSBib3VuZGFyeSAoZmFsc2UgZm9yIFJFQUQsIHRydWUgZm9yDQo+IFdSSVRFIGFuZCBD
-T01NSVQpLiAgUmVwbGFjZSB0aGUgYm9vbGVhbiB3aXRoIHRoZSBpbnRlbmRlZCBvcG51bSwgZGVy
-aXZlDQo+IHRoZSBsYXlvdXQgcmV0dXJuIGRlY2lzaW9uIGZyb20gaXQsIGFuZCByZXBvcnQgaXQg
-aW4gdGhlIHRyYWNrZWQgZGV2aWNlDQo+IGVycm9yIGluc3RlYWQgb2YgT1BfSUxMRUdBTC4NCj4g
-DQo+IEFzc2lzdGVkLWJ5OiBDbGF1ZGU6Y2xhdWRlLWZhYmxlLTUNCj4gU2lnbmVkLW9mZi1ieTog
-QmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAaGFtbWVyc3BhY2UuY29tPg0KPiAtLS0NCj4g
-ZnMvbmZzL2ZsZXhmaWxlbGF5b3V0L2ZsZXhmaWxlbGF5b3V0LmMgICAgfCAxMCArKysrKy0tLS0t
-DQo+IGZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dC5oICAgIHwgIDIgKy0NCj4g
-ZnMvbmZzL2ZsZXhmaWxlbGF5b3V0L2ZsZXhmaWxlbGF5b3V0ZGV2LmMgfCAxNCArKysrKysrKy0t
-LS0tLQ0KPiAzIGZpbGVzIGNoYW5nZWQsIDE0IGluc2VydGlvbnMoKyksIDEyIGRlbGV0aW9ucygt
-KQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91
-dC5jIGIvZnMvbmZzL2ZsZXhmaWxlbGF5b3V0L2ZsZXhmaWxlbGF5b3V0LmMNCj4gaW5kZXggN2Zl
-OGI5MWZhNDdjLi4yYzMwZTYyODgxYTEgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9mbGV4ZmlsZWxh
-eW91dC9mbGV4ZmlsZWxheW91dC5jDQo+ICsrKyBiL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4
-ZmlsZWxheW91dC5jDQo+IEBAIC04OTMsNyArODkzLDcgQEAgZmZfbGF5b3V0X2Nob29zZV9kc19m
-b3JfcmVhZChzdHJ1Y3QgcG5mc19sYXlvdXRfc2VnbWVudCAqbHNlZywNCj4gICAgICAgICAgICBm
-bHMtPnN0cmlwZV91bml0LA0KPiAgICAgICAgICAgIGZscy0+bWlycm9yX2FycmF5W2lkeF0tPmRz
-c19jb3VudCwNCj4gICAgICAgICAgICBvZmZzZXQpOw0KPiAtICAgICAgICBkcyA9IG5mczRfZmZf
-bGF5b3V0X3ByZXBhcmVfZHMobHNlZywgbWlycm9yLCAqZHNzX2lkLCBmYWxzZSk7DQo+ICsgICAg
-ICAgIGRzID0gbmZzNF9mZl9sYXlvdXRfcHJlcGFyZV9kcyhsc2VnLCBtaXJyb3IsICpkc3NfaWQs
-IE9QX1JFQUQpOw0KPiAgICAgICAgaWYgKElTX0VSUihkcykpDQo+ICAgICAgICAgICAgY29udGlu
-dWU7DQo+IA0KPiBAQCAtMTEzNSw3ICsxMTM1LDcgQEAgZmZfbGF5b3V0X3BnX2luaXRfd3JpdGUo
-c3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqcGdpbywNCj4gICAgICAgICAgICBtaXJyb3It
-PmRzc19jb3VudCwNCj4gICAgICAgICAgICByZXFfb2Zmc2V0KHJlcSkpOw0KPiAgICAgICAgZHMg
-PSBuZnM0X2ZmX2xheW91dF9wcmVwYXJlX2RzKHBnaW8tPnBnX2xzZWcsIG1pcnJvciwNCj4gLSAg
-ICAgICAgICAgICAgICAgICAgICAgICAgIGRzc19pZCwgdHJ1ZSk7DQo+ICsgICAgICAgICAgICAg
-ICAgICAgICAgICAgICBkc3NfaWQsIE9QX1dSSVRFKTsNCj4gICAgICAgIGlmIChJU19FUlIoZHMp
-KSB7DQo+ICAgICAgICAgICAgaWYgKCFmZl9sYXlvdXRfbm9fZmFsbGJhY2tfdG9fbWRzKHBnaW8t
-PnBnX2xzZWcpKQ0KPiAgICAgICAgICAgICAgICBnb3RvIG91dF9tZHM7DQo+IEBAIC0yMTg0LDcg
-KzIxODQsNyBAQCBmZl9sYXlvdXRfcmVhZF9wYWdlbGlzdChzdHJ1Y3QgbmZzX3BnaW9faGVhZGVy
-ICpoZHIpDQo+ICAgICAgICBGRl9MQVlPVVRfTFNFRyhsc2VnKS0+c3RyaXBlX3VuaXQsDQo+ICAg
-ICAgICBtaXJyb3ItPmRzc19jb3VudCwNCj4gICAgICAgIG9mZnNldCk7DQo+IC0gICAgZHMgPSBu
-ZnM0X2ZmX2xheW91dF9wcmVwYXJlX2RzKGxzZWcsIG1pcnJvciwgZHNzX2lkLCBmYWxzZSk7DQo+
-ICsgICAgZHMgPSBuZnM0X2ZmX2xheW91dF9wcmVwYXJlX2RzKGxzZWcsIG1pcnJvciwgZHNzX2lk
-LCBPUF9SRUFEKTsNCj4gICAgaWYgKElTX0VSUihkcykpIHsNCj4gICAgICAgIGRzX2ZhdGFsX2Vy
-cm9yID0gbmZzX2Vycm9yX2lzX2ZhdGFsKFBUUl9FUlIoZHMpKTsNCj4gICAgICAgIGdvdG8gb3V0
-X2ZhaWxlZDsNCj4gQEAgLTIyNzUsNyArMjI3NSw3IEBAIGZmX2xheW91dF93cml0ZV9wYWdlbGlz
-dChzdHJ1Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIsIGludCBzeW5jKQ0KPiAgICAgICAgRkZfTEFZ
-T1VUX0xTRUcobHNlZyktPnN0cmlwZV91bml0LA0KPiAgICAgICAgbWlycm9yLT5kc3NfY291bnQs
-DQo+ICAgICAgICBvZmZzZXQpOw0KPiAtICAgIGRzID0gbmZzNF9mZl9sYXlvdXRfcHJlcGFyZV9k
-cyhsc2VnLCBtaXJyb3IsIGRzc19pZCwgdHJ1ZSk7DQo+ICsgICAgZHMgPSBuZnM0X2ZmX2xheW91
-dF9wcmVwYXJlX2RzKGxzZWcsIG1pcnJvciwgZHNzX2lkLCBPUF9XUklURSk7DQo+ICAgIGlmIChJ
-U19FUlIoZHMpKSB7DQo+ICAgICAgICBkc19mYXRhbF9lcnJvciA9IG5mc19lcnJvcl9pc19mYXRh
-bChQVFJfRVJSKGRzKSk7DQo+ICAgICAgICBnb3RvIG91dF9mYWlsZWQ7DQo+IEBAIC0yMzc2LDcg
-KzIzNzYsNyBAQCBzdGF0aWMgaW50IGZmX2xheW91dF9pbml0aWF0ZV9jb21taXQoc3RydWN0IG5m
-c19jb21taXRfZGF0YSAqZGF0YSwgaW50IGhvdykNCj4gICAgaWR4ID0gY2FsY19taXJyb3JfaWR4
-X2Zyb21fY29tbWl0KGxzZWcsIGRhdGEtPmRzX2NvbW1pdF9pbmRleCk7DQo+ICAgIG1pcnJvciA9
-IEZGX0xBWU9VVF9DT01QKGxzZWcsIGlkeCk7DQo+ICAgIGRzc19pZCA9IGNhbGNfZHNzX2lkX2Zy
-b21fY29tbWl0KGxzZWcsIGRhdGEtPmRzX2NvbW1pdF9pbmRleCk7DQo+IC0gICAgZHMgPSBuZnM0
-X2ZmX2xheW91dF9wcmVwYXJlX2RzKGxzZWcsIG1pcnJvciwgZHNzX2lkLCB0cnVlKTsNCj4gKyAg
-ICBkcyA9IG5mczRfZmZfbGF5b3V0X3ByZXBhcmVfZHMobHNlZywgbWlycm9yLCBkc3NfaWQsIE9Q
-X0NPTU1JVCk7DQo+ICAgIGlmIChJU19FUlIoZHMpKQ0KPiAgICAgICAgZ290byBvdXRfZXJyOw0K
-PiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dC5o
-IGIvZnMvbmZzL2ZsZXhmaWxlbGF5b3V0L2ZsZXhmaWxlbGF5b3V0LmgNCj4gaW5kZXggYTViZDAw
-ZjY5ZTgyLi44ZTNhMWU0NWVhNjggMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9mbGV4ZmlsZWxheW91
-dC9mbGV4ZmlsZWxheW91dC5oDQo+ICsrKyBiL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4Zmls
-ZWxheW91dC5oDQo+IEBAIC0yNTIsNyArMjUyLDcgQEAgc3RydWN0IG5mczRfcG5mc19kcyAqDQo+
-IG5mczRfZmZfbGF5b3V0X3ByZXBhcmVfZHMoc3RydWN0IHBuZnNfbGF5b3V0X3NlZ21lbnQgKmxz
-ZWcsDQo+ICAgICAgICAgICAgICBzdHJ1Y3QgbmZzNF9mZl9sYXlvdXRfbWlycm9yICptaXJyb3Is
-DQo+ICAgICAgICAgICAgICB1MzIgZHNzX2lkLA0KPiAtICAgICAgICAgICAgICBib29sIGZhaWxf
-cmV0dXJuKTsNCj4gKyAgICAgICAgICAgICAgZW51bSBuZnNfb3BudW00IG9wbnVtKTsNCj4gDQo+
-IHN0cnVjdCBycGNfY2xudCAqDQo+IG5mczRfZmZfZmluZF9vcl9jcmVhdGVfZHNfY2xpZW50KHN0
-cnVjdCBuZnM0X2ZmX2xheW91dF9taXJyb3IgKm1pcnJvciwNCj4gZGlmZiAtLWdpdCBhL2ZzL25m
-cy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dGRldi5jIGIvZnMvbmZzL2ZsZXhmaWxlbGF5
-b3V0L2ZsZXhmaWxlbGF5b3V0ZGV2LmMNCj4gaW5kZXggOGJlNWM3MzBlMTAxLi41OTIwYmE1Mjlh
-MGIgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dGRl
-di5jDQo+ICsrKyBiL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dGRldi5jDQo+
-IEBAIC0zNTksNyArMzU5LDcgQEAgZmZfbGF5b3V0X2luaXRfbWlycm9yX2RzKHN0cnVjdCBwbmZz
-X2xheW91dF9oZHIgKmxvLA0KPiAgKiBAbHNlZzogdGhlIGxheW91dCBzZWdtZW50IHdlJ3JlIG9w
-ZXJhdGluZyBvbg0KPiAgKiBAbWlycm9yOiBsYXlvdXQgbWlycm9yIGRlc2NyaWJpbmcgdGhlIERT
-IHRvIHVzZQ0KPiAgKiBAZHNzX2lkOiBEUyBzdHJpcGUgaWQgdG8gc2VsZWN0IHN0cmlwZSB0byB1
-c2UNCj4gLSAqIEBmYWlsX3JldHVybjogcmV0dXJuIGxheW91dCBvbiBjb25uZWN0IGZhaWx1cmU/
-DQo+ICsgKiBAb3BudW06IG9wZXJhdGlvbiB0aGlzIGNvbm5lY3Rpb24gaXMgYmVpbmcgcHJlcGFy
-ZWQgZm9yDQo+ICAqDQo+ICAqIFRyeSB0byBwcmVwYXJlIGEgRFMgY29ubmVjdGlvbiB0byBhY2Nl
-cHQgYW4gUlBDIGNhbGwuIFRoaXMgaW52b2x2ZXMNCj4gICogc2VsZWN0aW5nIGEgbWlycm9yIHRv
-IHVzZSBhbmQgY29ubmVjdGluZyB0aGUgY2xpZW50IHRvIGl0IGlmIGl0J3Mgbm90DQo+IEBAIC0z
-NjcsOCArMzY3LDEwIEBAIGZmX2xheW91dF9pbml0X21pcnJvcl9kcyhzdHJ1Y3QgcG5mc19sYXlv
-dXRfaGRyICpsbywNCj4gICoNCj4gICogU2luY2Ugd2Ugb25seSBuZWVkIGEgc2luZ2xlIGZ1bmN0
-aW9uaW5nIG1pcnJvciB0byBzYXRpc2Z5IGEgcmVhZCwgd2UgZG9uJ3QNCj4gICogd2FudCB0byBy
-ZXR1cm4gdGhlIGxheW91dCBpZiB0aGVyZSBpcyBvbmUuIEZvciB3cml0ZXMgdGhvdWdoLCBhbnkg
-ZG93bg0KPiAtICogbWlycm9yIHNob3VsZCByZXN1bHQgaW4gYSBMQVlPVVRSRVRVUk4uIEBmYWls
-X3JldHVybiBpcyBob3cgd2UgZGlzdGluZ3Vpc2gNCj4gLSAqIGJldHdlZW4gdGhlIHR3byBjYXNl
-cy4NCj4gKyAqIG1pcnJvciBzaG91bGQgcmVzdWx0IGluIGEgTEFZT1VUUkVUVVJOLiBAb3BudW0g
-aXMgaG93IHdlIGRpc3Rpbmd1aXNoDQo+ICsgKiBiZXR3ZWVuIHRoZSB0d28gY2FzZXMuIE9uIGZh
-aWx1cmUsIEBvcG51bSBpcyBhbHNvIHJlcG9ydGVkIGluIHRoZSB0cmFja2VkDQo+ICsgKiBkZXZp
-Y2UgZXJyb3Igc28gdGhhdCB0aGUgc2VydmVyIGNhbiB0ZWxsIHdoaWNoIGNsYXNzIG9mIEkvTyB0
-aGUgY2xpZW50DQo+ICsgKiB3YXMgdW5hYmxlIHRvIHNlbmQgdG8gdGhlIG1pcnJvci4NCj4gICoN
-Cj4gICogUmV0dXJucyBhIHBvaW50ZXIgdG8gYSBjb25uZWN0ZWQgRFMgb2JqZWN0IG9uIHN1Y2Nl
-c3Mgb3IgTlVMTCBvbiBmYWlsdXJlLg0KPiAgKi8NCj4gQEAgLTM3Niw3ICszNzgsNyBAQCBzdHJ1
-Y3QgbmZzNF9wbmZzX2RzICoNCj4gbmZzNF9mZl9sYXlvdXRfcHJlcGFyZV9kcyhzdHJ1Y3QgcG5m
-c19sYXlvdXRfc2VnbWVudCAqbHNlZywNCj4gICAgICAgICAgICAgIHN0cnVjdCBuZnM0X2ZmX2xh
-eW91dF9taXJyb3IgKm1pcnJvciwNCj4gICAgICAgICAgICAgIHUzMiBkc3NfaWQsDQo+IC0gICAg
-ICAgICAgICAgIGJvb2wgZmFpbF9yZXR1cm4pDQo+ICsgICAgICAgICAgICAgIGVudW0gbmZzX29w
-bnVtNCBvcG51bSkNCj4gew0KPiAgICBzdHJ1Y3QgbmZzNF9wbmZzX2RzICpkczsNCj4gICAgc3Ry
-dWN0IGlub2RlICppbm8gPSBsc2VnLT5wbHNfbGF5b3V0LT5wbGhfaW5vZGU7DQo+IEBAIC00MjMs
-OSArNDI1LDkgQEAgbmZzNF9mZl9sYXlvdXRfcHJlcGFyZV9kcyhzdHJ1Y3QgcG5mc19sYXlvdXRf
-c2VnbWVudCAqbHNlZywNCj4gICAgZmZfbGF5b3V0X3RyYWNrX2RzX2Vycm9yKEZGX0xBWU9VVF9G
-Uk9NX0hEUihsc2VnLT5wbHNfbGF5b3V0KSwNCj4gICAgICAgICAgICAgICAgIG1pcnJvciwgZHNz
-X2lkLCBsc2VnLT5wbHNfcmFuZ2Uub2Zmc2V0LA0KPiAgICAgICAgICAgICAgICAgbHNlZy0+cGxz
-X3JhbmdlLmxlbmd0aCwgTkZTNEVSUl9OWElPLA0KPiAtICAgICAgICAgICAgICAgICBPUF9JTExF
-R0FMLCBHRlBfTk9JTyk7DQo+ICsgICAgICAgICAgICAgICAgIG9wbnVtLCBHRlBfTk9JTyk7DQo+
-ICAgIGZmX2xheW91dF9zZW5kX2xheW91dGVycm9yKGxzZWcpOw0KPiAtICAgIGlmIChmYWlsX3Jl
-dHVybiB8fCAhZmZfbGF5b3V0X2hhc19hdmFpbGFibGVfZHMobHNlZykpDQo+ICsgICAgaWYgKG9w
-bnVtICE9IE9QX1JFQUQgfHwgIWZmX2xheW91dF9oYXNfYXZhaWxhYmxlX2RzKGxzZWcpKQ0KPiAg
-ICAgICAgcG5mc19lcnJvcl9tYXJrX2xheW91dF9mb3JfcmV0dXJuKGlubywgbHNlZyk7DQo+ICAg
-IGRzID0gRVJSX1BUUihzdGF0dXMpOw0KPiBvdXQ6DQo+IC0tDQo+IDIuNTMuMA0KPiANCj4gDQo=
+On a server running rpc.mountd with --manage-gids, a transient
+name-service failure makes mountd answer the auth.unix.gid upcall
+with a zero-group reply, which the kernel installs as a valid
+positive entry.  Patch 1 records such replies as negative entries
+on the classic /proc channel, so the credential keeps the groups
+it already carries.  Patch 2 does the same for the netlink upcall,
+which has an explicit NEGATIVE flag the parser does not propagate.
+
+One observation from reviewing the netlink path: in steady-state
+netlink-only operation, mountd currently receives no unix_gid
+upcalls, because unix_gid_upcall() still gates request generation
+on cache_listeners_exist(), which counts only classic-channel
+writers, and netlink-mode mountd opens no /proc channels.  A
+flagged reply reaches the parser today only via the 30-second
+post-close grace window, a concurrent classic-channel writer, or
+a direct SUNRPC_CMD_UNIX_GID_SET_REQS.  Patch 2 fixes the parser
+semantics ahead of that; making upcall generation netlink-aware
+needs a per-cache listener signal (mountd subscribes to the
+notification group even without --manage-gids) and is left for a
+separate, runtime-tested series.
+
+Patch 1 was tested on a live 6.12 server over NFSv3 and v4.0-v4.2
+with sec=sys and sec=krb5, and applies unmodified to every
+maintained stable tree, 5.10.y through 7.1.y.  Patch 2 is build-
+and static-checked (sparse, W=1) but not runtime-tested.
+
+Changes since v1:
+- split the netlink fix into its own patch with its own Fixes:
+  tag, as requested by Chuck
+- patch 1 is unchanged
+
+v1: https://lore.kernel.org/linux-nfs/20260814172507.1474519-1-ameer.hamza@truenas.com/
+
+Ameer Hamza (2):
+  sunrpc: treat empty auth.unix.gid replies as negative entries
+  sunrpc: honor the netlink unix_gid NEGATIVE flag
+
+ net/sunrpc/svcauth_unix.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+
+base-commit: 46db3c8a1be96a354758b44b1d4fbb4b70d09a20
+-- 
+2.53.0
+
