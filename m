@@ -1,73 +1,73 @@
 Received: from flow-a8-smtp.messagingengine.com (flow-a8-smtp.messagingengine.com [103.168.172.143])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 902C92DB7BF;
-	Sat, 15 Aug 2026 04:29:19 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D57492222CC;
+	Sat, 15 Aug 2026 04:29:29 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.143
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786768160; cv=none; b=k6cYprQpOeKIdTsrEvK8HI9bz7WYJZx6mnJIQLceogZ7ODfCFFsrpTqb1eNOQjgoESJQ7h1tqV6ma/jpHsKS5Abm5P5id8hoL7xM7e9ouUDFTKnpbSU1Ri3BKZ6BIldo8/5LmEITN1KL0u2+fdfBI63TsE58i8M5yeBEGizVqi0=
+	t=1786768171; cv=none; b=DHtsX8BZahHwVqC1mvHzHP7FI14vAt6npw/NVg1YAbqtYgm1sOs8B7qIYonexM79wt8QGYeKIrKTodhSIiaoEjMBul8Li+7GikCSCcqjIV7wChfQKyquSSx8jzsQwdXyYiiSZHnDp+M/Wv6BzvSLaxIFGweLD/GjxWLUsKwxKL8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786768160; c=relaxed/simple;
-	bh=ZE2AWEM7O60kQNA58ZkvgPkhSH4ss7eUl3SaCWj191U=;
+	s=arc-20240116; t=1786768171; c=relaxed/simple;
+	bh=AdhooIjboAu3YKY/yuVksKwU8xau5i7EOd+Vl1SZzvQ=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=kmLP48Ca4YjyzURRGyVidjVqiQh0DBriPxMA65X/OPTjWw7db0ewItxqJVU3E9Nfyn7ge7owMllJrn4VwTcSRFBc923adu9U8hyZ0KT7BS+5J3+S3G8ytvDF1xH4h4AqLUe2Wkm1jmveWckFxznK2d+omSV+A9CNaYms02cgbmw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=iQYsNxHm; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=hyWnXGeB; arc=none smtp.client-ip=103.168.172.143
+	 MIME-Version; b=sAjGKMIXutpUoaCcikkXhizi4SABtvJIPQqCCX3rbVqGW8aRv4r6ss/p1lul/7vNXVRQfv5lcOcL495okcK7mYPHjBKvTowzDWZZK0SJVCIZcrtPlf5IX5Ch5L7wQPc1MOuAuzHRCcmrSqXCeo7KOJVlE6BTBti/qRbNrbawYKU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=ZR4KrllY; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=OHQh6o/D; arc=none smtp.client-ip=103.168.172.143
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="iQYsNxHm";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="hyWnXGeB"
-Received: from phl-compute-04.internal (phl-compute-04.internal [10.202.2.44])
-	by mailflow.phl.internal (Postfix) with ESMTP id DB9DB13803F8;
-	Sat, 15 Aug 2026 00:29:18 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-04.internal (MEProxy); Sat, 15 Aug 2026 00:29:18 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="ZR4KrllY";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="OHQh6o/D"
+Received: from phl-compute-02.internal (phl-compute-02.internal [10.202.2.42])
+	by mailflow.phl.internal (Postfix) with ESMTP id EAA3213803F8;
+	Sat, 15 Aug 2026 00:29:28 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-02.internal (MEProxy); Sat, 15 Aug 2026 00:29:28 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1786768158;
-	 x=1786775358; bh=MTJXqUkyboP6nT1GdTre2i6fxL2R8FyE2y1tAnQFr54=; b=
-	iQYsNxHmTqnqXN9YIEHGTBNqeP90eSrxSPZEDBAstp6pqBfxQNOGYYj0Ob+LrCX0
-	IeJFxZuRNkjRToAglDkBPadPiVj3blQYQA2Yjt3Vv67SmrFA+T07XrXO9GU+3ksQ
-	0yq2JfM92++mqmYBnG/k5D7HraoAr76TypGIFwJNSjSsRsk3GHwx075wQ0t3ZAQ6
-	hUPIuKOL1SBGQk4HM2WAL8qrI07pfzZvXgZyziktOMS2UaWOHb06zTs9cD5s69tk
-	ZT1E4z0JHB5++7i5Q8XMakocUpDJcbs63uSHs0qUT+DuKX7BgoQ72VnBYgUPE8os
-	PxeVj046br0Fkrc2vnhHDA==
+	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1786768168;
+	 x=1786775368; bh=2qeLuelJx2/+SBs2S68hwoXODkH6n7+CkxfeqKI7W2s=; b=
+	ZR4KrllYxWnBYgC4dsMIDPZkLXfN6UK1oOr1OqWkALKcfMzAeG8LVg/viclNxycS
+	4kqiDGc3DE4Z4yIxhSDaYQ0QDmxWzIF8mr2jP2Qnj5dfr6kTmpd0piI5+IwCDt4m
+	Gr/y7zY8nygnvK3DoQEaf0Sv8RWji+l1Sqh51WJwD00Jv7ozQMgTpHHj+Bdyv0xL
+	oqeJJ3ZN9MRTnNqbyypNIVnB6DrfkA2nIdwdmAxK5IXT2mg/zD9HUG2iXQbK7toZ
+	eaeU9Axb2/T4xC9p8CkKfN3cjeDC1vj9M7Z7NZhnXIxy2Ut5fQaIw3f0B8PnHWgP
+	sQ+OUVgbcjDSmkjTHUHSkg==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm3; t=1786768158; x=1786775358; bh=M
-	TJXqUkyboP6nT1GdTre2i6fxL2R8FyE2y1tAnQFr54=; b=hyWnXGeBGBjoTLk4B
-	tcBhYbvO3hKJ3RL6PBhXODlknM2ULrDYX83e5FsHeNG8L2lvCr0hmzTTdxNQRXUu
-	Mdjcum5s9qXNzugGN86r21ldea9SY8pHyxK6AM2//RlBO1B8oqmnXIU2zUO1XCqz
-	qx6iOGXnITXWE41WjJjOoDN6hTtSKE3TP/nWRCEhH4ll7GpE8ALdD3ZFMj7sSA4s
-	uk2nEsFUWPUUYpOhac+Yfp16KWoZN6tteoXfY6+2fbhZQxdJR/1SLpwHRw+DWfNw
-	A0FPcz7M6K5BWCJOrxSG6OJmQRYfYyG0HQO966gEUizJxHngRyShygSoINB3etiF
-	PTwOg==
-X-ME-Sender: <xms:Hut_asdfAjerTEj2B-EwSAkAqgr3Tc25GaL1JQT9rJYxFAlRiK4D4g>
-    <xme:Hut_ambkSzrpv_BL_ckl89MM0bXa5TfpG7ZJRGIysRlDwLl1aGfbQDwZ2P8_dZwGP
-    GrcjHB1RpZX2aKhZ3qdUCjb9dZzbdYPNAK5mz2VGvGa0J8U>
-X-ME-Received: <xmr:Hut_ak311AIruE79TvSdyMmPRciPh22hwaMYpjiT8G2GIh59x6exbpezzzrS0v1DiKUld9FDRfycyVJTQf5dNJ03yJNRqj8>
-X-ME-Proxy-Cause: dmFkZTF9KskX6ORZkk2qDbanJAqhpO1c3Xju1rB/XGbwQvOGWemlAS7RTfehH6z/blxuZu
-    ndq9JpuBON/sKJpHNFmlA8NZthzZuohefFsXvvzkhDLNc/boPY1CbYwGZ3ejocQdZP5Ev/
-    BXLTdsGGIGk/QWYctoHjfRUZGHXRv5et6FUSLml8RkvDkfsb7WSgppX3LyXjWcFTLwfp/k
-    XOfgf9r/SZsCIW4bEY4xzTmE8sCd1BMMrUIBiSLPUM5HPZAu9IGndquxD0N2k1kJS4EkJO
-    uSSxartPr+p/2sBY7kb8VaiOyCHt8JoqHMJjX2cNsGCbf1T449z1owAvKjvcnWl37FvYCJ
-    /8WMwfkQVLpPQ3C5lHBVZt7sM9Uzikm2MYqCDrsEuafBjLRBE7DuzED7NYTvSWa5sMEDTa
-    CWGxclX/6PIYcR6Qh4v4AE/hAtA2N/j+G+pO9cs9TV6Jla1UrDHwg1knSwGjwVRrUsN678
-    MQNZvJxAXot0nE/7DgKB2wKTCeGMl6arvqMiYDPs3Gj0wgiC2CCl7DmITUMPy6yeVjbhf2
-    p974jswAGkRxBAJrLKcVaaxk7q27/hZZ52PuTqKQrg8861pX+HdOhyEHBjAwn+I0hNmpoC
-    JHQP+fYk2DSVo9q16f7P0FoZSicAzwlBZ0DXk7V60ijseMYd+sS2uuEhkPDQ
-X-ME-Proxy: <xmx:Hut_avrF_MEOd4vnvma6IZQBFH9d1p6rIocpqJtqi-gAd5gdODBrOA>
-    <xmx:Hut_alwWmVmoTbnYwS3mZPHS42M3c-Wd_X6AiqBjoXzo6KHaikpvoQ>
-    <xmx:Hut_aoB5Xz33ogaLeTXaYEF1UKaZ2mLm4IKnaPssaZTf3DnpQLe-iw>
-    <xmx:Hut_asNWLH4zvikobLldDl-hbS9LvY7vosU0DFlxwm0OOM21NVdMgw>
-    <xmx:Hut_aqcgWXpPWFWM1Y9NYShN3dpdkk1rt5yK0cf2P1bxAqkh3S9YaLrb>
+	:x-me-sender:x-sasl-enc; s=fm3; t=1786768168; x=1786775368; bh=2
+	qeLuelJx2/+SBs2S68hwoXODkH6n7+CkxfeqKI7W2s=; b=OHQh6o/Dp9Bohl9Er
+	mPbsOGSvRBLcxD+15NWWBFgozYJVvJbRqsP8YPuC+t3e8/sS8PH29EU00mD4SNy0
+	HEZ2Jm66WfGX2j/VXv6p2XM6XwvrpUlx6ptHVqd1VmxuffYtCIbjMiXnX2P+zaZ+
+	aaOpaxkLvd1ceDBqaSD3N1/SxPoP+++OxOeql1TKQrbqaTTX2BFFRJbvzbtEU+1w
+	LOAWw25tdazkuIBzYJhnt3+wshR23vZUuIpP+b3hVj6usI5QgXrDKfMgETlD1WO5
+	UMtSTj8+UOyFCUXhuUDLd0BYiUeZsiAxVFO94U3iViUXF40rkvjPxcWRDguaVdqm
+	rhzGw==
+X-ME-Sender: <xms:KOt_aiY7IPfazNj8YKzDH52LIjAlYlWOlynUL7Yn-wm4buPkB9lwWw>
+    <xme:KOt_agZkwRpwDcsdHoJC_Tje86xPwpgB5n_yh0D20WV8Wa2pyat4s1-Qeo621IyGJ
+    bICpn1IgFhxnxYrACcJ1A0ftDOFOadEgao_33qcJ0o0mMp1>
+X-ME-Received: <xmr:KOt_ajlNhVwlCAl6J6ghU8JqWYBipnV1Tw2Ujkhgt-MPqvzJbxP2XgeaDdAqGX685dGEnzrBdqMQ-RSjxCW0ViDNF7zoSto>
+X-ME-Proxy-Cause: dmFkZTE47D4+VfwQFQzr11DJvQLYIXqMi0hZV0dErVHB+rL0DNVNd8lKaFjc/DBGC/9Z+e
+    1XqqSxG1COnVE2p0h+gE+3sT3WHc2s4pfHSbkJDPkdz9l078ivxoBUX7LaQuIqMUvNfdCK
+    OTO6fH4CbhonnMAQrCy6mAjkD3yfDfiioSRLElGFQqu4IKzk74/3+ETPYsMsadCTSlIE72
+    pFesoG42fVWkR1DR5x8Czt3y4MWTPZ7Vk8PZOOBmt7LfMXAwJXwlpNe3RczRrG53IXGKeB
+    lZ2vtwNbgIUpnHC00hTYciEg8pKF9qQ82JcZyji4nf8ZRkE3Cre+0W/dXUWlpbwnOwzitG
+    Ch201FCa68CyyiT9UPUmL5R7nuDBzo5e54dDHD3COMxf2yP3fi4ndKcc5O3oDVsmb8S9IM
+    uD97AUUD4DvwjItpp22V3agGLAivOVOMAxrGXyWbiRnxRL7icIV7jaNx5Ex7prYayXIhz+
+    UiJnuYexXYZqo/dTaf3PSaDa1G0yv4qQ14LPP8t18GvE0/hMWZK9fN4vRqCZvSUFN/9pf8
+    8+7NFwQt6UpJSF7mbuayno783GhQQp4OnNMMJsvnH8nTAKSCwMURpLsm2fiPBycyVs4rLl
+    XGUdWkZ+A6H2vRDD1uefDY7BuiGnaAq2rEXxnRt7xvYCvGZ5cogLMUAe4QxQ
+X-ME-Proxy: <xmx:KOt_aiQp-MV5nhI1XSnHfA1ySPkObXNjj6zYMonTdQwCxSuyuQ90_A>
+    <xmx:KOt_aoUCwbSZnQ5J21WZp9hCgWdmMWibhw-jzzbauSr0fSqCSByYJw>
+    <xmx:KOt_aou_r1-JqTlt-HPIgEjB2dLgbSW-zoQbF_oDWM8_NqCaWb6lTA>
+    <xmx:KOt_aoO8WepLtfZNgJfgt5Xkeu7v7M8TrNebEvgTdxghHbNgOhh0WA>
+    <xmx:KOt_arwP5iWUvpdMnt8ffASxkajRwvfmaK35cIljFLJE4KEoGjR47KFh>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Sat,
- 15 Aug 2026 00:29:12 -0400 (EDT)
+ 15 Aug 2026 00:29:22 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Ian Kent <raven@themaw.net>,
 	Chuck Lever <cel@kernel.org>,
@@ -91,9 +91,9 @@ Cc: autofs@vger.kernel.org,
 	codalist@coda.cs.cmu.edu,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v2 07/18] fsnotify: reduce i_lock hold time in fsnotify_set_children_dentry_flags()
-Date: Sat, 15 Aug 2026 14:21:24 +1000
-Message-ID: <20260815042707.2535717-8-neilb@ownmail.net>
+Subject: [PATCH v2 08/18] libfs: simplify scan_positives()
+Date: Sat, 15 Aug 2026 14:21:25 +1000
+Message-ID: <20260815042707.2535717-9-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260815042707.2535717-1-neilb@ownmail.net>
 References: <20260815042707.2535717-1-neilb@ownmail.net>
@@ -108,67 +108,118 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-Rather than hold i_lock across a d_children walk, dget() a reference to
-the dentry and drop the i_lock before the walk.  This is easily done
-with d_find_alias().
+This patch removes explicit use of hlist_node from scan_positives() and
+callers, and consistently uses struct dentry instead.
 
-This requires that we dput() which can sleep.  Now that no locks are
-held across calls to fsnotify_set_children_dentry_flags(), this is safe.
+Previously scan_positives() had two args which were closely related: p
+and last.
+If last was not NULL, p was precisely &last->d_sib.next.
+If last WAS NULL, then p was
+   &cursor->d_parent->d_children.first or
+   &cursor->d_sib.next
+
+If, for the final case, we pass 'cursor' as 'last', then we only need
+'last' not 'p'.  For this to work we must dget(cursor) before passing
+it, as scan_positives() calls dput() on last.
+
+So now to scan from the start, pass NULL; to scan from a particular
+dentry, pass that dentry.
+
+Note that scan_positives() can be given a "last' which is unhashed.
+This happens if, for example, dcache_dir_lseek is called to seek beyond
+the end of the directory - thus leaving the cursor detached - and then
+dcache_readdir() is called.  "next" will be the detached cursor which
+will be passed in to scan_positives() as "last".  d_next_sibling()
+of this will be NULL.
 
 Signed-off-by: NeilBrown <neil@brown.name>
 ---
- fs/notify/fsnotify.c | 33 +++++++++++++++++----------------
- 1 file changed, 17 insertions(+), 16 deletions(-)
+ fs/libfs.c | 32 ++++++++++++++++----------------
+ 1 file changed, 16 insertions(+), 16 deletions(-)
 
-diff --git a/fs/notify/fsnotify.c b/fs/notify/fsnotify.c
-index 90a2121fc54a..4a383d4d8a7b 100644
---- a/fs/notify/fsnotify.c
-+++ b/fs/notify/fsnotify.c
-@@ -71,27 +71,28 @@ void fsnotify_sb_free(struct super_block *sb)
+diff --git a/fs/libfs.c b/fs/libfs.c
+index 8e99067079e8..c2b09e72cbd8 100644
+--- a/fs/libfs.c
++++ b/fs/libfs.c
+@@ -103,18 +103,23 @@ EXPORT_SYMBOL(dcache_dir_close);
+  * We are looking for <count>th positive after <p>; if
+  * found, dentry is grabbed and returned to caller.
+  * If no such element exists, NULL is returned.
++ * If last has been removed from the d_children list
++ * (i.e. last->d_sib is unhashed) then it is treated like
++ * the last element of the list and %NULL is returned.
   */
- void fsnotify_set_children_dentry_flags(struct inode *inode)
+ static struct dentry *scan_positives(struct dentry *cursor,
+-					struct hlist_node **p,
+-					loff_t count,
+-					struct dentry *last)
++				     struct dentry *last,
++				     loff_t count)
  {
--	struct dentry *alias;
-+	struct dentry *alias, *child;
+ 	struct dentry *dentry = cursor->d_parent, *found = NULL;
++	struct dentry *next;
  
- 	if (!S_ISDIR(inode->i_mode))
- 		return;
- 
--	spin_lock(&inode->i_lock);
--	/* run all of the dentries associated with this inode.  Since this is a
--	 * directory, there damn well better only be one item on this list */
--	for_each_alias(alias, inode) {
--		struct dentry *child;
--
--		/* run all of the children of the original inode and fix their
--		 * d_flags to indicate parental interest (their parent is the
--		 * original inode) */
--		d_for_each_positive_child(child, alias) {
--			spin_lock_nested(&child->d_lock, DENTRY_D_LOCK_NESTED);
--			child->d_flags |= DCACHE_FSNOTIFY_PARENT_WATCHED;
--			spin_unlock(&child->d_lock);
--		}
-+	/* Find the dentry for inode - there can only be one */
-+	alias = d_find_alias(inode);
+ 	spin_lock(&dentry->d_lock);
+-	while (*p) {
+-		struct dentry *d = hlist_entry(*p, struct dentry, d_sib);
+-		p = &d->d_sib.next;
++	next = last ? d_next_sibling(last) : d_first_child(dentry);
++	while (next) {
++		struct dentry *d = next;
 +
-+	if (!alias)
-+		return;
-+
-+	/*
-+	 * run all of the children of the original inode and fix their
-+	 * d_flags to indicate parental interest (their parent is the
-+	 * original inode)
-+	 */
-+	d_for_each_positive_child(child, alias) {
-+		spin_lock_nested(&child->d_lock, DENTRY_D_LOCK_NESTED);
-+		child->d_flags |= DCACHE_FSNOTIFY_PARENT_WATCHED;
-+		spin_unlock(&child->d_lock);
++		next = d_next_sibling(next);
+ 		// we must at least skip cursors, to avoid livelocks
+ 		if (d->d_flags & DCACHE_DENTRY_CURSOR)
+ 			continue;
+@@ -129,10 +134,10 @@ static struct dentry *scan_positives(struct dentry *cursor,
+ 		}
+ 		if (need_resched()) {
+ 			hlist_move_behind(&cursor->d_sib, &d->d_sib);
+-			p = &cursor->d_sib.next;
+ 			spin_unlock(&dentry->d_lock);
+ 			cond_resched();
+ 			spin_lock(&dentry->d_lock);
++			next = d_next_sibling(cursor);
+ 		}
  	}
--	spin_unlock(&inode->i_lock);
-+	dput(alias);
- }
+ 	spin_unlock(&dentry->d_lock);
+@@ -161,8 +166,7 @@ loff_t dcache_dir_lseek(struct file *file, loff_t offset, int whence)
+ 		inode_lock_shared(dentry->d_inode);
  
- /*
+ 		if (offset > 2)
+-			to = scan_positives(cursor, &dentry->d_children.first,
+-					    offset - 2, NULL);
++			to = scan_positives(cursor, NULL, offset - 2);
+ 		spin_lock(&dentry->d_lock);
+ 		if (to)
+ 			hlist_move_behind(&cursor->d_sib, &to->d_sib);
+@@ -190,23 +194,19 @@ int dcache_readdir(struct file *file, struct dir_context *ctx)
+ 	struct dentry *dentry = file->f_path.dentry;
+ 	struct dentry *cursor = file->private_data;
+ 	struct dentry *next = NULL;
+-	struct hlist_node **p;
+ 
+ 	if (!dir_emit_dots(file, ctx))
+ 		return 0;
+ 
+-	if (ctx->pos == 2)
+-		p = &dentry->d_children.first;
+-	else
+-		p = &cursor->d_sib.next;
++	if (ctx->pos > 2)
++		next = dget(cursor);
+ 
+-	while ((next = scan_positives(cursor, p, 1, next)) != NULL) {
++	while ((next = scan_positives(cursor, next, 1)) != NULL) {
+ 		if (!dir_emit(ctx, next->d_name.name, next->d_name.len,
+ 			      d_inode(next)->i_ino,
+ 			      fs_umode_to_dtype(d_inode(next)->i_mode)))
+ 			break;
+ 		ctx->pos++;
+-		p = &next->d_sib.next;
+ 	}
+ 	spin_lock(&dentry->d_lock);
+ 	if (next)
 -- 
 2.50.0.107.gf914562f5916.dirty
 
