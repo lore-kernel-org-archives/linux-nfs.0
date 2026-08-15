@@ -1,73 +1,73 @@
 Received: from flow-a8-smtp.messagingengine.com (flow-a8-smtp.messagingengine.com [103.168.172.143])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8FF13148C9;
-	Sat, 15 Aug 2026 04:29:55 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A255427467F;
+	Sat, 15 Aug 2026 04:30:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.143
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786768197; cv=none; b=LCI9oUh9HXNxHNQptlgnltlKuULrY1EqjlBhkuB6yvrlGy6ub6wXAcCaZOoUJCdCQSYaUtNZWPpdziQG8xT0nenBOldKdQWb++TPQyCu1gMzxwwaTYAqxYkbv+6SNckGBgnXRnwjNgYw9DVies/ze01azl1d7efoopujxSyxQwI=
+	t=1786768206; cv=none; b=h25606D2HfJG2JjyxkAL4o1/+1EhmYU/HT5JOR8GkFlTtqDVs1gdHYc/vso2KD/sMu4j3JH+sPBJiUADjZIzgDywyonk6Ib/f+TA/hjIGBRC4tciIkIYigBOXmREX23Y8dI2yuveVptpB/5ISzc3ACHDIea6h8nBMyv3Ic0NBJw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786768197; c=relaxed/simple;
-	bh=Iw3VALCpZlU5FoCwNGf9vMOQGrtTMvPWAyD6VVPWZnQ=;
+	s=arc-20240116; t=1786768206; c=relaxed/simple;
+	bh=TvnHV2tefMSKKygyPTlwcvcsvYYV1QRkGVk9vr+npJU=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=cPe2syUOP5EV2J5Sso+BDOFRBU44dxsehunk50Shrdz3wLKMuodpzo4tCx0f6RJZbJvnk7mT8Ty6RWF7BZuVhH6GGpJigt7p0YYMOCSu2jCRMlRN9w8pnC6+Ihc+UUb6Lt2jiOkgrWeltmDsvL1VhyyWleJoMEcgbMqe2jNjheM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=Vau827fi; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=B0I1+2iu; arc=none smtp.client-ip=103.168.172.143
+	 MIME-Version; b=MsbngSuLLnj/tMPbD7+T5eI4qWrv6tLYPdVra9Hp+s+qx6yuqBlp9Rwrk54XCeRW++HOri0qBiljOCMOXzaMIoWTGeqTPMGiylb8RV70IrVZt/xiQ+HJfDwUVu/6iCBC2wRbcb/wtDRFgyYhL+/Hmszt2pc/DF60gMOsOpou2hA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=c4fRsT0f; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=UecsG8+z; arc=none smtp.client-ip=103.168.172.143
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="Vau827fi";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="B0I1+2iu"
-Received: from phl-compute-06.internal (phl-compute-06.internal [10.202.2.46])
-	by mailflow.phl.internal (Postfix) with ESMTP id CECF01380415;
-	Sat, 15 Aug 2026 00:29:54 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-06.internal (MEProxy); Sat, 15 Aug 2026 00:29:54 -0400
+	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="c4fRsT0f";
+	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="UecsG8+z"
+Received: from phl-compute-08.internal (phl-compute-08.internal [10.202.2.48])
+	by mailflow.phl.internal (Postfix) with ESMTP id 77F2113803F8;
+	Sat, 15 Aug 2026 00:30:04 -0400 (EDT)
+Received: from phl-frontend-04 ([10.202.2.163])
+  by phl-compute-08.internal (MEProxy); Sat, 15 Aug 2026 00:30:04 -0400
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
 	cc:cc:content-transfer-encoding:content-type:date:date:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
-	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1786768194;
-	 x=1786775394; bh=ipVqCw+8UnsuKe/hZ8nVpr7wwOvOMF0TbptTc3tK3HQ=; b=
-	Vau827fixuD0uFsqSIYWVABs5FAKMTfHxa1uHY652TuKM1fxMil8ZAZin4n1bUfF
-	MKhbf0pdP+TZiOHy5piffVp1m42V+BsL2Amuxt4fZtQNJ1uEVOn5FELgdqsZGtHS
-	H4PeBnBjnKv+I5oZWWfwS73llJzB3Z9kLnka+WaE+nnFlUGjDgdjHHW/mXxj5Ms6
-	JEoD59T8F9JdV7Oi5Ng0J+NpsI+wHoupn+/u8MWhpSGH0s+gLw81tGsYRvfwyhMO
-	OPtI7oEixQgqwktzqwNpYorNnoh7mfbx0N+ZCHbNkpRxBGYm47IJ0nx+hYBlLGh2
-	cBbmeNJ52nON3ojH+WaixQ==
+	:reply-to:reply-to:subject:subject:to:to; s=fm3; t=1786768204;
+	 x=1786775404; bh=4cbY3Uqqm5XV1+h9pYF3ZXa/Sv0rEkjLG5ntSp96UKk=; b=
+	c4fRsT0fg6nwYYgsGA1q93hIxSTIZjpxiT9Ay31esGJSqYEgIjUHKVhchWdsojXr
+	qZEltrvE9G4DiS8ianNPWwDPX0BRjyUK5XWSuFJCcQ2QqRzUTqpWkhCYPt3pahnz
+	5DZN0iRWsufcTWihUAkllb/ae3mCWJ5YrbW+DHtvwn3AITQkJ9zjcQMV8uksQaEJ
+	UJarSReeilb61lBc63QUlpRKANpsIQTT/eXzmnDzsshy+FeXJUqPqKNFyjpB21lx
+	2Lnhhk4OV9YkNCXfiCZmrixJ0mGhT6+1lx1hxs9zFQtbqYhzoOcy+U+mBWRXDoY4
+	CmtS3294wrJeNLLA00ohgg==
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
 	messagingengine.com; h=cc:cc:content-transfer-encoding
 	:content-type:date:date:feedback-id:feedback-id:from:from
 	:in-reply-to:in-reply-to:message-id:mime-version:references
 	:reply-to:reply-to:subject:subject:to:to:x-me-proxy:x-me-sender
-	:x-me-sender:x-sasl-enc; s=fm3; t=1786768194; x=1786775394; bh=i
-	pVqCw+8UnsuKe/hZ8nVpr7wwOvOMF0TbptTc3tK3HQ=; b=B0I1+2iu+030Hltrv
-	5gs4XjIBIQc44/0jsYIRyfL634tHP8c4gzATlYzfGShVWK9k5mO3HVz7riCQpshf
-	F4CoqUDKmlnnINAJxMVqgU3O5fazijrbPCwQxAYVkWzMGsb74unHHjUsA4bAE9bZ
-	V3pJ3NjjqovbMLSdlrX3P9DZEpRvPHmtdsKBRgq+jhiMG+sm7XbtuWlRSL+Ebt5b
-	hAdK6Mc6ugB+jipSrf2DEmCSR4aDw4Ast072I20L+rAZFLj763VooKOSqAwDYBhR
-	fxun3CrOQSL48hY9FmL8Pb4tlzAwoPPpARWJAlKsX/zXSvqWVIPa3XAhFgg9X7tK
-	nyc3Q==
-X-ME-Sender: <xms:Qut_arpTbLKLV78A44ImQ-zibhNE2X87CTy7W3zRGVWzwmPiVnP9Qg>
-    <xme:Qut_agrTrDhnGJV3-1GvmTXc2sq6pQrUEgt-5IvZK6HEaIbdGnrPYjM_oSW6Y8KzV
-    BmWkMicvNSMSzDwDAVkWczNeITsRU2vwUiG4nfK312tluB22Q>
-X-ME-Received: <xmr:Qut_au0pMW-IUiOtmLMolKLMPgIKZZvTJcR57olRsJ0BSIEed_5-VLzh0YmYKxLAy1-tatb9zIkPeOiD4GbsTNK95JLl9Ao>
-X-ME-Proxy-Cause: dmFkZTECw6EEPYbx+7BaaLSeXge8TL0IFS/e22W0DFWlbDFG9eII2nLkfnvZprtL9LDp1m
-    HNcIj6bmqu83Qm/YUapqU6PBN6WcNm8P6Gy6RDWT6cAAmyaKdoJVe4WWntEcEJw7UAQpab
-    Ivov0q9n39VXDrfptfrf0jUwc+MgicKL4WCNr5zVI2XTGGzlh1W80uuvtEo9Ovpf8kur1R
-    vP/VXSxnYRhNfcG7+F4fSgFn0Gt4iNMYjiANVHauJEWjElKvMPdOxk4oexwOk01N0r04qi
-    8M218+E0MCoqYMSR4rZhl0wfvSlTNBrLCF/rmquNqRbB0zK7AmmuLtO4fjAl8K2V5bn2Ju
-    AkPgxmk04sv0SEleau/gWRpcN9fQrqXpmy9K17LojMc+D7IS+ERklte0Egn2YkzKsSXell
-    FR52E1sdUw2TizUIpW4CEZcLbUJBhNvYBFS+2dvY093H2f8p4N5j8fgjdIebRRd/FJGjbB
-    djQb4dbqK67dbUq7WVngecIPIps8ykAO0KLmpOYpLSwCd90mOAtZmRVIQHEm5zZR305rko
-    Zzh899W5OkAR69cb95xBD4+5R9sG3O94/j9jk8Y1PlTsYCwdV2n2p7ZgbvwPygbpYg3XbA
-    dXWNy7bJhPiXQtzZglXYUm7766vkbKqSY4J4LlwQX07M90uIC4o33mWR2I8Q
-X-ME-Proxy: <xmx:Qut_asjZXq_S-RO6s18NhAo0y8-gVR1zBEFl_FLjWsibFFCaPzPRYw>
-    <xmx:Qut_almQXWciEF9-BqsAFq7fXiJjJ5eVe-z-fBoFQ9oR4m-Ajc9HZw>
-    <xmx:Qut_as-aNKt10uYsfZ3pluWkDYHVD_gzmKNaNVV3tUiOKU4hCHypsw>
-    <xmx:Qut_ancwmolcTj9IiOVqCSIiAf2tiPdsd6ELUYYmrpDlfgZTVj6cmQ>
-    <xmx:Qut_akBZDIPmjt7RE_hZXK_EODRWvyCN5-9rQYIRPijOUDGcNMLUskdf>
+	:x-me-sender:x-sasl-enc; s=fm3; t=1786768204; x=1786775404; bh=4
+	cbY3Uqqm5XV1+h9pYF3ZXa/Sv0rEkjLG5ntSp96UKk=; b=UecsG8+zJNKMPIbVl
+	L/z3RJtUEBInIuMFRolLm32td4gXm+x+0z1Mq4gZ6bpUqzpJN+zbTXJ9yUJCWhoP
+	Al8Lgt5ND8t9rYgF7vSYMSdbRhWH2694ZDbF2N6k+lw3v876ktRrD4X709ERFPF4
+	Iz+A77Q6cuVP0lW/+LRjSoRvD3GQfiEvnSVel7rwn5/2nPcZ0l0egn4H2DINz2vS
+	LwUtY5yRvMI8ErOU73xTymzkZYxIaY1FBbFSpd6OOkTYkJ3BJ6gbsvIpll8QSgmT
+	H+cYO7ebp+Wjvu4/vGMO0AWLknq5zHpyJea9Lu0OAdBArXJQOWVNZ1orZGY85B4w
+	yjl4Q==
+X-ME-Sender: <xms:S-t_arc7wYa9qbzRxiTZNhOTtLfCvfGBrHLHpviiiSJNHZet5amAjw>
+    <xme:S-t_asPnfCw3pGLRJ5hLPxxlW31C9FVY5WA-iFG2KnihMDU25QmxcT2iyIz59_O-Z
+    JXs1AaZ0o6Dxnwvqjf16Gr2H824E0UbGslvd3tje57kAdih5A>
+X-ME-Received: <xmr:S-t_arIy9LkL8pDf6_7VrdslTfPu9GH_nYrCN37cniCXjF9ybdwr3EFWjQ04bjXZcNVNNhUwEXL_-nBW3Mz7DnpXlabBvss>
+X-ME-Proxy-Cause: dmFkZTEYOd3tLu5dATIbifwhlYvY0qyYOt7s1LgDprEXebOtP02E/NfWDhmB6dUHRD18Mw
+    M/OVd5zhrG+UTD+zvSQphReiWNJaCd0AqwUD63tHfAJF2OAEGvFg1iC8SkfXHW4Cbq3Pnv
+    XZPdOI+4XvyfDrMe9ntOWfnHEDm7Vl4MwVM6/98uzVFr9W5lPBzuk8llcQfOSsZLGGgf8M
+    1akEE1al0EFoJJ4d9fnySO8LzXZFHrFib9IETFD1LEL7DAdqppQ7UcHFMAN4HHBzYumdeq
+    UmiiM2nwa1tgBmTDGFT6cgwcylPb6+Qw0oEVRuLdEgoMQRjiQsSj7nR2Cv5Z5tDGgputQ4
+    3+29daZolV23NZs67T+NuJROfBzyINC57Qfs+ZJtKr/KqOA/fZd/+0ZQZ1tNA3t6B8ILOj
+    iYES9QArdR4N7gdbzOKvJ0DBFl4+Xk+YPHKHzL0eHfVFsctb5btjDWMZNRKyNJMeBzStK0
+    L0B8Yrfeg2eOcN8seNvbU35+K7CLgJJ/fZciO6VJHt9mhN7Ok0Rvlbt90/ZlI42NCCPuzy
+    yGPaiNier6PhwmUM7Wv8aUc75ectYgFjCqDgbN4cHyqhAt/I/7k/SFLzejrm9wXr5LEAa/
+    oEywIfC6u3zephV6oquEp25psWerxRf7Uk4PXJWbC6J+KxTmp3O5Ixj/U/UQ
+X-ME-Proxy: <xmx:S-t_aqmT5qn3KZkb5yLgan5hI3Ovs0qGUx_rDYnfm1ZXDyljCSlz8Q>
+    <xmx:S-t_aibbk30fLQN30Qi2hzKmm8SAL2uc6eOz_N3BxUCdZJo4WNYhag>
+    <xmx:S-t_ahiigqInwOBCNpzcw22Zob7SVaTQhEdMi1yKbmENomXc4a0RTw>
+    <xmx:S-t_aozgqvXRMbca3foHnM4SlNbKCj_qkMZYuG5QAkXXIUyBLKxa-g>
+    <xmx:TOt_apnPtUtNoDUmsIqIevBn7sZqypymNWrz2_zQ3SOYO8T-8cqdxOHX>
 Feedback-ID: i9d664b8f:Fastmail
 Received: by mail.messagingengine.com (Postfix) with ESMTPA; Sat,
- 15 Aug 2026 00:29:49 -0400 (EDT)
+ 15 Aug 2026 00:29:57 -0400 (EDT)
 From: NeilBrown <neilb@ownmail.net>
 To: Ian Kent <raven@themaw.net>,
 	Chuck Lever <cel@kernel.org>,
@@ -91,9 +91,9 @@ Cc: autofs@vger.kernel.org,
 	codalist@coda.cs.cmu.edu,
 	linux-fsdevel@vger.kernel.org,
 	linux-nfs@vger.kernel.org
-Subject: [PATCH v2 11/18] libfs: replace find_positive_dentry() with scan_positives()
-Date: Sat, 15 Aug 2026 14:21:28 +1000
-Message-ID: <20260815042707.2535717-12-neilb@ownmail.net>
+Subject: [PATCH v2 12/18] autofs: don't hold ->lookup_lock in get_next_positive_*
+Date: Sat, 15 Aug 2026 14:21:29 +1000
+Message-ID: <20260815042707.2535717-13-neilb@ownmail.net>
 X-Mailer: git-send-email 2.50.0.107.gf914562f5916.dirty
 In-Reply-To: <20260815042707.2535717-1-neilb@ownmail.net>
 References: <20260815042707.2535717-1-neilb@ownmail.net>
@@ -108,183 +108,62 @@ Content-Transfer-Encoding: 8bit
 
 From: NeilBrown <neil@brown.name>
 
-scan_positives() can be used in place of find_positive_dentry().
+get_next_positive_subdir() and get_next_positive_dentry() currently hold
+->lookup_lock while walking the d_children list, which a subsequent
+patch will add schedule points to.  So this spinlock will be a problem.
 
-This makes offset_iterate_dir() simpler as 'next' is no longer needed.
+The only data structures that a protected by ->lookup_lock are the
+  sbi->expiring and sbi->active_list
+lists of inodes.  Neither of these are accessed in these functions,
+so the lock cannot be needed.
 
-offset_dir_lookup() needs an extra loop to find a child on which a ref
-can be taken, as scan_positives() requires a dentry with a ref.  I think
-this makes a cleaner separation as the RCU read lock no longer needs to
-be held over the scan call.  This will be important in a future patch.
+I think the presence of these locks is a hold-over from a previous
+locking scheme.
 
-Using scan_positives() means, after the next patch, that cursors can
-appear on the d_sib list, so when finding a dentry from the offset,
-which might be dead by now (dentry_kill()) we need to step over any
-cursors to find something we can take a reference on.  This requires
-parent->d_lock as cursors are not RCU-safe.
-
-We add lockref_get_not_dead_nested() so that we can opportunistically
-get a ref on a child while holding the lock on the parent.
-
-Signed-off-by: NeilBrown <neil@brown.name>
+Signed-Off-By: NeilBrown <neil@brown.name>
 ---
- fs/libfs.c              | 58 ++++++++++++++++-------------------------
- include/linux/lockref.h | 12 ++++++++-
- lib/lockref.c           | 10 ++++---
- 3 files changed, 40 insertions(+), 40 deletions(-)
+ fs/autofs/expire.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 21abe0074c77..44e8dec51237 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -438,47 +438,39 @@ static loff_t offset_dir_llseek(struct file *file, loff_t offset, int whence)
- 	return vfs_setpos(file, offset, LONG_MAX);
- }
- 
--static struct dentry *find_positive_dentry(struct dentry *parent,
--					   struct dentry *dentry,
--					   bool next)
--{
--	struct dentry *found = NULL;
--
--	spin_lock(&parent->d_lock);
--	if (next)
--		dentry = d_next_sibling(dentry);
--	else if (!dentry)
--		dentry = d_first_child(parent);
--	hlist_for_each_entry_from(dentry, d_sib) {
--		if (!simple_positive(dentry))
--			continue;
--		spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
--		if (simple_positive(dentry))
--			found = dget_dlock(dentry);
--		spin_unlock(&dentry->d_lock);
--		if (likely(found))
--			break;
--	}
--	spin_unlock(&parent->d_lock);
--	return found;
--}
--
- static noinline_for_stack struct dentry *
- offset_dir_lookup(struct dentry *parent, loff_t offset)
+diff --git a/fs/autofs/expire.c b/fs/autofs/expire.c
+index ba1a3a2bfc9a..b6937c5936a5 100644
+--- a/fs/autofs/expire.c
++++ b/fs/autofs/expire.c
+@@ -90,12 +90,9 @@ static struct dentry *positive_after(struct dentry *p, struct dentry *child)
+ static struct dentry *get_next_positive_subdir(struct dentry *prev,
+ 					       struct dentry *root)
  {
- 	struct inode *inode = d_inode(parent);
- 	struct offset_ctx *octx = inode->i_op->get_offset_ctx(inode);
--	struct dentry *child, *found = NULL;
-+	struct dentry *found = NULL;
+-	struct autofs_sb_info *sbi = autofs_sbi(root->d_sb);
+ 	struct dentry *q;
  
- 	MA_STATE(mas, &octx->mt, offset, offset);
- 
- 	if (offset == DIR_OFFSET_FIRST)
--		found = find_positive_dentry(parent, NULL, false);
-+		found = scan_positives(parent, NULL, NULL, 1);
- 	else {
- 		rcu_read_lock();
--		child = mas_find_rev(&mas, DIR_OFFSET_MIN);
--		found = find_positive_dentry(parent, child, false);
-+		spin_lock(&parent->d_lock);
-+		found = mas_find_rev(&mas, DIR_OFFSET_MIN);
-+		if (found) {
-+			/*
-+			 * parent lock ensures found is still on
-+			 * the d_sib list, but it could be have been marked dead.
-+			 * So we need to find something we can get a ref on,
-+			 * which isn't a cursor, and isn't anything NORCU.
-+			 */
-+			hlist_for_each_entry_from(found, d_sib) {
-+				if (!(found->d_flags & DCACHE_NORCU) &&
-+				    lockref_get_not_dead_nested(&found->d_lockref,
-+								DENTRY_D_LOCK_NESTED))
-+					break;
-+			}
-+		}
-+		spin_unlock(&parent->d_lock);
- 		rcu_read_unlock();
-+		if (found && !simple_positive(found))
-+			found = scan_positives(parent, NULL, found, 1);
- 	}
- 	return found;
+-	spin_lock(&sbi->lookup_lock);
+ 	q = positive_after(root, prev);
+-	spin_unlock(&sbi->lookup_lock);
+ 	dput(prev);
+ 	return q;
  }
-@@ -500,18 +492,14 @@ static void offset_iterate_dir(struct file *file, struct dir_context *ctx)
- 	if (!dentry)
- 		goto out_eod;
- 	while (true) {
--		struct dentry *next;
--
- 		ctx->pos = dentry2offset(dentry);
- 		if (!offset_dir_emit(ctx, dentry))
- 			break;
- 
--		next = find_positive_dentry(dir, dentry, true);
--		dput(dentry);
-+		dentry = scan_positives(dir, NULL, dentry, 1);
- 
--		if (!next)
-+		if (!dentry)
- 			goto out_eod;
--		dentry = next;
- 	}
- 	dput(dentry);
- 	return;
-diff --git a/include/linux/lockref.h b/include/linux/lockref.h
-index 6ded24cdb4a8..9da4fbc2cd13 100644
---- a/include/linux/lockref.h
-+++ b/include/linux/lockref.h
-@@ -52,7 +52,17 @@ bool lockref_get_not_zero(struct lockref *lockref);
- bool lockref_put_or_lock(struct lockref *lockref) __cond_acquires(false, &lockref->lock);
- 
- void lockref_mark_dead(struct lockref *lockref);
--bool lockref_get_not_dead(struct lockref *lockref);
-+bool lockref_get_not_dead_nested(struct lockref *lockref, int subclass);
-+/**
-+ * lockref_get_not_dead - Increments count unless the ref is dead
-+ * @lockref: pointer to lockref structure
-+ *
-+ * Return: 1 if count updated successfully or 0 if lockref was dead
-+ */
-+static inline bool lockref_get_not_dead(struct lockref *lockref)
-+{
-+	return lockref_get_not_dead_nested(lockref, 0);
-+}
- 
- /* Must be called under spinlock for reliable results */
- static inline bool __lockref_is_dead(const struct lockref *l)
-diff --git a/lib/lockref.c b/lib/lockref.c
-index 5d8e3ef3860e..dddd26100a51 100644
---- a/lib/lockref.c
-+++ b/lib/lockref.c
-@@ -136,11 +136,13 @@ void lockref_mark_dead(struct lockref *lockref)
- EXPORT_SYMBOL(lockref_mark_dead);
- 
- /**
-- * lockref_get_not_dead - Increments count unless the ref is dead
-+ * lockref_get_not_dead_nested - Increments count unless the ref is dead
-  * @lockref: pointer to lockref structure
-+ * @subclass: lockdep class for taking ->lock
-+ *
-  * Return: 1 if count updated successfully or 0 if lockref was dead
-  */
--bool lockref_get_not_dead(struct lockref *lockref)
-+bool lockref_get_not_dead_nested(struct lockref *lockref, int subclass)
+@@ -106,13 +103,11 @@ static struct dentry *get_next_positive_subdir(struct dentry *prev,
+ static struct dentry *get_next_positive_dentry(struct dentry *prev,
+ 					       struct dentry *root)
  {
- 	bool retval = false;
+-	struct autofs_sb_info *sbi = autofs_sbi(root->d_sb);
+ 	struct dentry *p = prev, *ret = NULL, *d = NULL;
  
-@@ -152,7 +154,7 @@ bool lockref_get_not_dead(struct lockref *lockref)
- 		return true;
- 	);
+ 	if (prev == NULL)
+ 		return dget(root);
  
--	spin_lock(&lockref->lock);
-+	spin_lock_nested(&lockref->lock, subclass);
- 	if (lockref->count >= 0) {
- 		lockref->count++;
- 		retval = true;
-@@ -160,4 +162,4 @@ bool lockref_get_not_dead(struct lockref *lockref)
- 	spin_unlock(&lockref->lock);
- 	return retval;
+-	spin_lock(&sbi->lookup_lock);
+ 	while (1) {
+ 		struct dentry *parent;
+ 
+@@ -123,7 +118,6 @@ static struct dentry *get_next_positive_dentry(struct dentry *prev,
+ 		d = p;
+ 		p = parent;
+ 	}
+-	spin_unlock(&sbi->lookup_lock);
+ 	dput(prev);
+ 	return ret;
  }
--EXPORT_SYMBOL(lockref_get_not_dead);
-+EXPORT_SYMBOL(lockref_get_not_dead_nested);
 -- 
 2.50.0.107.gf914562f5916.dirty
 
