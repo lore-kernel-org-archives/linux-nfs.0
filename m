@@ -1,34 +1,34 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3CDDA42587A
-	for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 16:39:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3644D41D626
+	for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 16:39:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786811943; cv=none; b=PFrd62F1xkWEpOV/LgRZHrH5Ho1Yi78SJt5tjbM3Vzj3nsSx+kCSCNHAIjMA7YyD5C10Z9GOl0gH5XbvbwnbtooCmiVJ/CUx+zLn63Rv2uwg6F2wC3zJA7JISZcy8G3yF39zwgA2A9q1VrQkRtg3EGRqwkBY/whLTE37LUWSQPM=
+	t=1786811944; cv=none; b=P7GEQqkA7Oik3Sh7jr684NHI42yU0GZwx+Vp7e+JpktQvVflvu6m735/0deniGZHJI+d3gj6A28/iJWtOPXXYJLt5sloY2gOHdi1Y+Nxye+HYoh+OTCAlWi9CfbgOwlcyopayyHo+fCtwZjShmY/EU/jSY9yLn0OgqO+PwkIOoA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786811943; c=relaxed/simple;
-	bh=FZsq+9H7Q5fAxhgkglEcuqefApTWQEiYLIyVHMQ1wT4=;
+	s=arc-20240116; t=1786811944; c=relaxed/simple;
+	bh=6gxEda1bs/KRoQALu90aDCby3CKqfUsNFvbZ25kwX4w=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=JBEraXjoNnvTG05xrGx/xMTtyyibpiVkOH7xoRva+V1b+A+Nvsr+XAys/6xjU43nZT0ksHqwxrHgeoATSKXAhnwJOo8PnLVZQYcy1gtM4CZq3tO9zhnU+afvRSF6p5xabHHvOZLixbmJxAkOxFVIGoZR2uUqfwbCcFUGis5sQGQ=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=U+Qiu9VM; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=M5c1pMqO5UzltHyqz7tIETTvd0b8Fe/YwsNE440jAX+FQG13NKRaR9masRh4QEAV/gyxfhP7Lx47NWmzZ0VdQRdpzixUWQNsMqTTdXjz5kC/SxOXAvXGygqDC7OvGcSsA4wGwIyRXsSBQzhn8abEP3kt8NwvSKUMyuabIWcFCy4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=EgaOfmDH; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="U+Qiu9VM"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 948171F00A3F;
-	Sat, 15 Aug 2026 16:39:01 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="EgaOfmDH"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5ED9D1F000E9;
+	Sat, 15 Aug 2026 16:39:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1786811942;
-	bh=D7Ts7qKLlqwxo2FOw4zSh6HAyYJILBWUNEubXBlB0ec=;
+	bh=RahMs4vn3aH/kioWRL7QEaIjgwqJei0EssjGjceUJno=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=U+Qiu9VM09UFdBUUSNRfWtY6WmwEhZ1PxbegzF8bBVaVSSFt7FyZz/kr8+HjeftaR
-	 vbYWiYRkoCE/MsujX4TPRLLw8/tZB0nz07F+v4Aam8Fm/IVnc7uc9/Oi0scsDHGf1+
-	 ssO9+RouUdWdB9jaK+V0WxuCSli6P/S2PjedShFEWwsl//ZyVt2puMnm7iRjhmqsua
-	 Dt2aFxgQWoXSx4htvgPU7PWxTUmZ9eh/D8SrojPUo4L/kBAQxAbdArK/2/P75gnida
-	 Yzn7qoGXIAIO5W/zqLRrolz3Kj8NYI/N0IKN+q7RmvlcvglYtYPdgRjsKTh2JSc/Zl
-	 4GmSC6bZhmrIg==
+	b=EgaOfmDHiP10Oe33IQKPdMgiFfvZYUC+W8WgWw6LE+oVUGTz7Ugmrd+ffzh1uR4Fd
+	 f0TWx64+VBxlb8cQnDJyqF36ggnoCHIi0qdhksXGb+0jIv4ChPHnE1+mWgYFzgE3dG
+	 wluAykvJ9AjaUiLYAWJ6zuR9k5j5qZE+Gg0WruZgC0gtEmI3dRxaT5kF+AEJL6n2YE
+	 LL6E3b1t2ypgp6+YJEOloedPUdfk+jSx26M2jbRVL8XOaDKKQhV0ShLSwsrWv2ALUP
+	 C1lesmpjO2Afe+Mg7af4LZezLL4vQnp3nOeBpvBwqnAjwdo1x8JR6kfdVyXkrijJGf
+	 HuyA19kSiD9yA==
 From: Chuck Lever <cel@kernel.org>
-Date: Sat, 15 Aug 2026 12:38:52 -0400
-Subject: [PATCH v4 4/8] NFSD: Send a meaningful CB_RECALL_ANY keep count
+Date: Sat, 15 Aug 2026 12:38:53 -0400
+Subject: [PATCH v4 5/8] NFSD: Count delegations per network namespace
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +37,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260815-recall-any-keep-count-v4-4-bfb5b83d6cb1@kernel.org>
+Message-Id: <20260815-recall-any-keep-count-v4-5-bfb5b83d6cb1@kernel.org>
 References: <20260815-recall-any-keep-count-v4-0-bfb5b83d6cb1@kernel.org>
 In-Reply-To: <20260815-recall-any-keep-count-v4-0-bfb5b83d6cb1@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -45,99 +45,111 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
  Tom Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2890; i=cel@kernel.org;
- h=from:subject:message-id; bh=FZsq+9H7Q5fAxhgkglEcuqefApTWQEiYLIyVHMQ1wT4=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqgJYhBrvvstLxq4GA1Q79bgOZ1waH+yhroc7FR
- 4TocgLokNiJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaoCWIQAKCRAzarMzb2Z/
- l3CXD/40eC9hUPc/U2hH4nyNHEAhCiogOGzOjEPAQY7yv2zQJsy5faMM64BOow0vP45ZNgOpmqq
- jWNE2M1pj/TMMgzXvJRIWohP44Ya4qjxun3fuilfrXCx0s0JipqXYV0hdV860Xs5h6s3vZ8zJv+
- 62hosQKkqHmXO49Qpb8wgwNXjUfJ6/e0ksC1dOt6MmUdxoS+lPZI0Ee0jOWDwTYwIOBsDFlYxEc
- j8ER3112zxMC9L3clZjWOKQDv9K07ceS6hWtMASTt7wNnw3EvWl0kv4oDdGa+ivASXL7UKla60b
- hC2JpwJla/9WEouUpmla0bEVAUqZzjDqVXfWizTH+W9wUFa7TZ87JCJ6oy7P/CPTr5dImmMgLI5
- A+iXHkbw4mwwCgO/HjZcgmcn4Zi1rUujxJ3d9e8GDQXYjGdpqQ430vFb3/SeXPQtY3ET5cWAbMI
- hwhAVLzTid7GuqViWt6t1gWH+so9Hr4Na12lXsypZHF+PYcRJmhdc9ESA5591ZsGyKDJwlM1otf
- hBtQGnblqqXQhIgjDIeZySWQETI5Qf/G6d1+4gxjh5KU3VQc2LeRru4XlAq0+hDx4IttQi35e//
- ucXRYiyBq+CM+LJW+FdmIni+rPXYlJUlmZm9gLzh95epIL/raqECGnMMToH9nGSFhrLwbZCywOQ
- YtEktxgS7EgiI3g==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3338; i=cel@kernel.org;
+ h=from:subject:message-id; bh=6gxEda1bs/KRoQALu90aDCby3CKqfUsNFvbZ25kwX4w=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqgJYhukaGTpNDaFNFlyBk/QlpKkQTUwyhV3wiy
+ /fO07c0W3eJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaoCWIQAKCRAzarMzb2Z/
+ ly7sD/wLYLl2Gt40gzBNTyrUXbOYqzA7BW9gh/d0J4OoliwYerGKyktJffjYo9P159rU5YTO/JE
+ J11cM/bSxmaVY0QvLQrwdE+97Zir79gh/Ld9qPv/3qZPDvTEbs4lg++9/0tQ64nETCMR9iUWY5l
+ KWRNWgu/EyKJVqwCvlZi5xXT35XAPVGZr5XZF7FQ2Juq748gO9crHvH3KfWLN3KDR1TUxmYxatG
+ pIuBRgDN28l4limGa5aZxW6L+q1hOJRtKGMCZcyG5oHETSbaf4nOsGBTEUpLwQlcY4B1CQl8y3y
+ g8DweUUvCdVkIWrN2eOU7srGU4QliucKihrbHl7FWCTa3SkR2C/G7gpxdgAVSQxZW3NdA8z7Yop
+ ljVzkoUW+L+mWkil5R8oZd2OO7Iuh/JNO7vaU2rDaWyuccKoW9RxX2EqXJT0RWrVSGdxotqi0rH
+ +lRWqV3a5u/AKr4izOit2MHh4iUQVCwMbhunbgk/3bI3x7bhFc1hOJolM4svGQzDnW5Ih2Ue2TL
+ 02QLmxpPPixGo4qpCEjm6fxVqhIQyA32/25K4PK34fTqKhDtH+SzPay834JV2x59hU1oxuFUf/t
+ 6VUs7EBJx3FjaFuNJu32nP86uTRU9LM04gjYAKR0g1m8NoXx6A2elwNHrDTsZv+yXX3beOql7WS
+ 1rvOCLurutzsxPw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-deleg_reaper() sets craa_objects_to_keep to zero on every
-CB_RECALL_ANY. RFC 8881 Section 20.6.3 defines that field as the
-number of objects the client may keep, leaving the client to choose
-which of the excess to return, because the server cannot read lack
-of recent use as lack of usefulness. Zero asks for every delegation
-the client holds, including the ones backing files an application
-still has open.
+The state shrinker is allocated per network namespace, but
+nfsd4_state_shrinker_count() reports num_delegations, which counts
+the delegations held by the whole host. Every namespace therefore
+reports every delegation on the server. Reclaim sees the
+population multiplied by the number of namespaces running NFSD. A
+namespace holding no delegations of its own still reports a
+nonzero count and queues its reaper, which then finds nothing to
+recall.
 
-There is also no reason NFSD has to reclaim the entire delegation
-working set on the first sign of memory pressure.
+Count the delegations in each namespace and report that instead.
+num_delegations stays for the admission check in
+__alloc_init_deleg() and the ceiling check in nfs4_laundromat().
+Both compare against max_delegations, which is sized from host
+memory and so remains a host-wide limit.
 
-Derive the keep count from cl_deleg_count so that each callback
-asks for one delegation. Both the shrinker and the laundromat re-arm
-while their condition lasts, so a client with more to give is asked
-again on the next pass.
-
-The Linux client ignores craa_objects_to_keep and returns unused
-delegations selected from the type mask alone, so the count changes
-nothing for it.
-
-Fixes: 44df6f439a17 ("NFSD: add delegation reaper to react to low memory condition")
 Signed-off-by: Chuck Lever <cel@kernel.org>
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 19 ++++++++++++++++---
- 1 file changed, 16 insertions(+), 3 deletions(-)
+ fs/nfsd/netns.h     | 2 ++
+ fs/nfsd/nfs4state.c | 7 ++++++-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
 
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 71eebfea020d..bb62d19430bc 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -238,6 +238,8 @@ struct nfsd_net {
+ 	int			nfs4_max_clients;
+ 
+ 	atomic_t		nfsd_courtesy_clients;
++	/* per-namespace; num_delegations in nfs4state.c is host-wide */
++	atomic_long_t		nfsd_delegations;
+ 	struct shrinker		*nfsd_client_shrinker;
+ 	struct work_struct	nfsd_shrinker_work;
+ 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2214b4d60c7e..5c2dd6657fac 100644
+index 5c2dd6657fac..2c169bfabfbe 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -7942,6 +7942,7 @@ deleg_reaper(struct nfsd_net *nn)
+@@ -1161,6 +1161,7 @@ static struct nfs4_ol_stateid * nfs4_alloc_open_stateid(struct nfs4_client *clp)
+  */
+ static void nfs4_free_deleg(struct nfs4_stid *stid)
  {
- 	struct list_head *pos, *next;
- 	struct nfs4_client *clp;
-+	unsigned int count;
++	struct nfsd_net *nn = net_generic(stid->sc_client->net, nfsd_net_id);
+ 	struct nfs4_delegation *dp = delegstateid(stid);
  
- 	spin_lock(&nn->client_lock);
- 	list_for_each_safe(pos, next, &nn->client_lru) {
-@@ -7951,21 +7952,33 @@ deleg_reaper(struct nfsd_net *nn)
- 			continue;
- 		if (clp->cl_state != NFSD4_ACTIVE)
- 			continue;
--		if (list_empty(&clp->cl_delegations))
--			continue;
- 		if (atomic_read(&clp->cl_delegs_in_recall))
- 			continue;
- 		if (ktime_get_boottime_seconds() - clp->cl_ra_time < 5)
- 			continue;
- 		if (clp->cl_cb_state != NFSD4_CB_UP)
- 			continue;
-+		/*
-+		 * This read races with hash_delegation_locked() and
-+		 * unhash_delegation_locked() on other CPUs. A stale
-+		 * count only skews the keep value; the next
-+		 * laundromat pass sees a more current one.
-+		 */
-+		count = data_race(READ_ONCE(clp->cl_deleg_count));
-+		if (!count)
-+			continue;
- 		if (test_and_set_bit(NFSD4_CALLBACK_RUNNING, &clp->cl_ra->ra_cb.cb_flags))
- 			continue;
+ 	WARN_ON_ONCE(!list_empty(&stid->sc_cp_list));
+@@ -1171,6 +1172,7 @@ static void nfs4_free_deleg(struct nfs4_stid *stid)
+ 	nfsd41_cb_destroy_referring_call_list(&dp->dl_recall);
+ 	kmem_cache_free(deleg_slab, stid);
+ 	atomic_long_dec(&num_delegations);
++	atomic_long_dec(&nn->nfsd_delegations);
+ }
  
- 		/* release in nfsd4_cb_recall_any_release */
- 		kref_get(&clp->cl_nfsdfs.cl_ref);
- 		clp->cl_ra_time = ktime_get_boottime_seconds();
--		clp->cl_ra->ra_keep = 0;
-+		/*
-+		 * Ask for a single delegation. Recalling one before it
-+		 * is needed costs the client an OPEN when it next
-+		 * touches the file.
-+		 */
-+		clp->cl_ra->ra_keep = count - 1;
- 		clp->cl_ra->ra_bmval[0] = BIT(RCA4_TYPE_MASK_RDATA_DLG) |
- 						BIT(RCA4_TYPE_MASK_WDATA_DLG) |
- 						BIT(RCA4_TYPE_MASK_DIR_DLG);
+ /*
+@@ -1255,6 +1257,7 @@ __alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
+ 		   struct nfs4_clnt_odstate *odstate, u32 dl_type,
+ 		   void (*sc_free)(struct nfs4_stid *))
+ {
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct nfs4_delegation *dp;
+ 	struct nfs4_stid *stid;
+ 	long n;
+@@ -1263,6 +1266,7 @@ __alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
+ 		return NULL;
+ 
+ 	n = atomic_long_inc_return(&num_delegations);
++	atomic_long_inc(&nn->nfsd_delegations);
+ 	if (n < 0 || n > max_delegations)
+ 		goto out_dec;
+ 
+@@ -1295,6 +1299,7 @@ __alloc_init_deleg(struct nfs4_client *clp, struct nfs4_file *fp,
+ 	return dp;
+ out_dec:
+ 	atomic_long_dec(&num_delegations);
++	atomic_long_dec(&nn->nfsd_delegations);
+ 	return NULL;
+ }
+ 
+@@ -5564,7 +5569,7 @@ nfsd4_state_shrinker_count(struct shrinker *shrink, struct shrink_control *sc)
+ 
+ 	count = atomic_read(&nn->nfsd_courtesy_clients);
+ 	if (!count)
+-		count = atomic_long_read(&num_delegations);
++		count = atomic_long_read(&nn->nfsd_delegations);
+ 	if (count)
+ 		queue_work(laundry_wq, &nn->nfsd_shrinker_work);
+ 	return (unsigned long)count;
 
 -- 
 2.54.0
