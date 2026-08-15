@@ -1,86 +1,86 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 483EC422552
-	for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 18:22:09 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9493E230BE9
+	for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 20:46:46 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786818133; cv=none; b=k/+yGTMllCrHjz7cfpyR8oc/KK2qTyicM50sUEEdFwvMHAFFUH1hpembmQkZ+eTId3X1L5IVIlK0BIgBfZbvzQkUpMpQ/4XIxVFon6auJ3/RYDMGyGdoNDwy03soQa6Gd6zdfNLwIBYkxz7nRznW/3q8Rm1h7fvP5k+LHbD5xWM=
+	t=1786826808; cv=none; b=ISu4PuSFqR/78AmGOh5xwrp171x530JeT87I+ZgIvwGkIS+yVcNpIFT0WqiYWAt2hmTV8HVHQKs3rc5JOPYB8GTH8Hj9dhWX5sk/+SFy6SOtGU2zWhvQPoVTKezfxOwGWeC6BTEAq/aPA1yBb8mXAJqxrtwFwQ2ekvPKVvX5NJs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786818133; c=relaxed/simple;
-	bh=5rj2onx40hReB0t3KlFxlO9rw5sVk24ymDcF3mYHYCQ=;
+	s=arc-20240116; t=1786826808; c=relaxed/simple;
+	bh=TQfNKP22bKcbNhhZK2BRVYXu9bcBcEuN7wusyrlD+c0=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=j1eS91FgbNFBNyfhm020CSsr6IskOLXRZIGAbAMg34j99gLScj75i66Vi7d+zPEai6cvhesz/IeI+tUAPc0QLyZzXrJ033QQCQLu+drQPjHhR8aF5gOvZgjQ9lhu9uj5kXTbMUVwMXQ3wbryw3vesiG/sb1/FpGQzQm5OqQOKIc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=I6nn/QF5; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=I/AWo3g6; arc=none smtp.client-ip=170.10.133.124
+	 In-Reply-To:Content-Type; b=d7yDDUw4mDpi6ps6UGFXSRer8pV/MZkoYslMTDFqCUFKh/Nz4cva58+aZvzBiqis+WnQgjasIHwZd6zkCGbmj7HsAh5uMIiqUMqRkn+/oqOP6j2IFHRbM8F3m4CHMnfwsS7LxDQ508Q14VDJDa8g2hsjM+Lt6m9zHXYDgYUHNlU=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=L/Hu4cbS; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=OZGxa339; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="I6nn/QF5";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="I/AWo3g6"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="L/Hu4cbS";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="OZGxa339"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1786818128;
+	s=mimecast20190719; t=1786826805;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
 	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=y5ncH4C2Hv2u1F63zOlWlqbEj+bMSjbAG0xzrx3y14U=;
-	b=I6nn/QF5t14Xgahok5krvi4L2RsfJ+b6IpMhsemYdyl7En+0GC9f8lZ/f7moO1vXC46Rj1
-	W0m+6CCl/IwrMTGFuqFDTsJ5tIsyHImseQ1qe3ZruUID1jQJkTbU6q1tf29SXkC2OQvUqk
-	rHsv1e+BppRLxIgI8gI7oE4MOSAv+Ic=
-Received: from mail-qt1-f198.google.com (mail-qt1-f198.google.com
- [209.85.160.198]) by relay.mimecast.com with ESMTP with STARTTLS
+	bh=AuQv+RQSgg6IvSNsJiAyClMWfmlMxSjbvbK5o6qdnsE=;
+	b=L/Hu4cbSPbp9Vn/tvjOFvov1qosLgY/6cbV0bdZIzuao64p1zMtnFCJP0wT7UF9wLmlvrX
+	KR9YgDAgPTcEuXQFelvoYnABxK/cJdHDnq+KF4NXsoI49Wrxcqj5+pWNB+9O30KsRjM8QM
+	6DlzyQdXvXcJz3BkK0Rgd/rqjqyd8Ww=
+Received: from mail-qv1-f70.google.com (mail-qv1-f70.google.com
+ [209.85.219.70]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-186-NwxLpIgxPO2WSHzOy8ihcw-1; Sat, 15 Aug 2026 14:22:02 -0400
-X-MC-Unique: NwxLpIgxPO2WSHzOy8ihcw-1
-X-Mimecast-MFC-AGG-ID: NwxLpIgxPO2WSHzOy8ihcw_1786818121
-Received: by mail-qt1-f198.google.com with SMTP id d75a77b69052e-51c1c7f135bso36861221cf.0
-        for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 11:22:01 -0700 (PDT)
+ us-mta-6-W_yfhXi5N3q8sqsIrcVZqw-1; Sat, 15 Aug 2026 16:46:38 -0400
+X-MC-Unique: W_yfhXi5N3q8sqsIrcVZqw-1
+X-Mimecast-MFC-AGG-ID: W_yfhXi5N3q8sqsIrcVZqw_1786826798
+Received: by mail-qv1-f70.google.com with SMTP id 6a1803df08f44-8e9489f62bfso25327066d6.2
+        for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 13:46:38 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1786818121; x=1787422921; darn=vger.kernel.org;
+        d=redhat.com; s=google; t=1786826798; x=1787431598; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=y5ncH4C2Hv2u1F63zOlWlqbEj+bMSjbAG0xzrx3y14U=;
-        b=I/AWo3g6QNOCzfaKS9Vce/o3Mw/nNjeJM2y8mWsoVhKxaojEOYj9Jv8Yh8tbaAvNzW
-         SVIyPNIs+0Qz5wmIwgVIMcy3rfiL7+l+xMd7/VQEbCcAhY6ygHoBuvh78Rr3RGTeGeTJ
-         9ffsq3wazXu4vJUQYetejQmi9AevdSkY61tKr9IMu0b//CJVf5nmkb+ix8CFMt3sfRtE
-         3yrN6OiAji8ieAiQ7JFOzesLAQ3SnumRtM3espdpyuDYYJOUp22s2ursYCAIUWDaIzor
-         AAPlSzwfL4/6eEsIX/pha2TbqMJ2K/VRlkNgLfnbah6HZfkCXRSiqGdTGyAATIZ2M+q+
-         +uIg==
+        bh=AuQv+RQSgg6IvSNsJiAyClMWfmlMxSjbvbK5o6qdnsE=;
+        b=OZGxa339SAyvkcgEYIgd4iy9+8/EakEqIOZIJMZschRtMPDEjE0WvthaelVc2YUzci
+         KJBwMtNRtbSnjS11sAYgOjnuHoSDapztv1uW2R/5X8pVilLzXMPLLSn814UeuHimK7K7
+         PbrXMtXBrcZCy0cYSr/15J3vc5Gf+jh3OdaZA+o9MIOzntYr5OMGDfDjJuNuCwgnn/CF
+         iHOe0sdiGZsZuhsRjX9m2XUDQJiBOoT2D2gBtyY/e06qMQl0TYxaXyw4x8K44rgqvAIl
+         Q7dEisv4oZ4Ii46ONdXtGVpa1WpaBCo4hada0k+c33+u+d2DAXg4ALnd34Z8fV5CxTsm
+         y35g==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786818121; x=1787422921;
+        d=1e100.net; s=20251104; t=1786826798; x=1787431598;
         h=content-transfer-encoding:content-type:in-reply-to:from
          :content-language:references:cc:to:subject:user-agent:mime-version
          :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=y5ncH4C2Hv2u1F63zOlWlqbEj+bMSjbAG0xzrx3y14U=;
-        b=btoULyvihtzwGZ0l1+PYlvzhPTcqaLdR+HwuYs+znOHIPi7DKSxtJHAiMxHrdbLgEA
-         Qoy094Q5cY5YCEA2mCrNH87W6/5XE62hJGNwqrb0o4ywHo5eHldQE6AVbWS68rs/R7hQ
-         evsUxQgJIpZgEu7HP9cPMaF628q7y9To6oDj6oHN+ZjqxWlDCSfNqFIYr3jupj6YgCGF
-         XCyQMW8Vmpx6+muIxaAqVccLYhoozWAMMdsRURnddMdKDARG5OIw5pDiqqbj0KQ3vrEX
-         KkleWS7Bu4NLUZSj0/x/aBiGh0PBrc935q9dird8zmOzGpjqlxP6x49ZNCiJxSAgyt63
-         6OXA==
-X-Forwarded-Encrypted: i=1; AHgh+Ro3S6IihnV+WmmfWMjDblEQLk3a63jxu5q/H1tusuAxuqX0WxHYfmLxdhNhZHidEAm9Dd04yRwBxBc=@vger.kernel.org
-X-Gm-Message-State: AOJu0YzVaeAK1lVasmDBLm9elL7Jupj9HLQrxaNTeRTUrYM/J0dQgwyN
-	TXV5VPR3v+mCOshKaZYwC8Lm7JS3sv/jHo6SiNwvWSI5JAsKQj1KffXxoCuE31y6F8WRNcojXD4
-	ewVsv5u0Onctv773Qoxnr9Sut3rRcblH6cCjpJIU0cFvt0HksAPqAR57iPg3aBg==
-X-Gm-Gg: AR+sD13duh16D/cMoMHg2eyj7b0gvDlXZ7DUNbL5D4HQ9ExmsFzvQYQuk575XDQwf2G
-	mqjAVbrBc94zrkQp2TxZFkhFxNCAdl4jc8o0Ri4iKxmUPZ6RqU93kxR7O3Hp48JXKVXtYMlyJJt
-	kO2ji9f0kpXFecKM7rzkRnnCgk42eteLcUe0QxExwX4dDm7Lgx2wADN0EwVnJIuXQzzGRuDJwwr
-	q1w9yRMq01Q9WjyJxocSJf5pWhq/o5Nj/LOk6se1mvCmaPgg0wdBYBbKfnWexJFpApnnYuwd39P
-	bCBAB/AvJjS7yy3TUBJerkFfo/3VcyuZYoS+xP31nKGl4ww41mH7a9mTA25d8HJdBAePFgcf1A=
+        bh=AuQv+RQSgg6IvSNsJiAyClMWfmlMxSjbvbK5o6qdnsE=;
+        b=XhsCUK1tENtDfonSmx1ri8X4LiPPU8DxV0gwxNo+7z65zjo4DObvkvPoSi/S0Ej8cE
+         CQw2QA58/O7YqL/JpDd5fvcGzrmsplCmQfWdxa7IR1zS14zPdXYibcOxQT4o/JcIwoem
+         jDOwhKLbDud9V23Imj0ZW9shDw9lFM5c+h0TJIJhe020YIcZsKM+/gTjmBaKSMOhAIk7
+         UAiH/w3GdsgrRsXyn6BmMXY9AFn+y9wXDc3r+KT0ifcFp6o20rJkruwVgag50btTCBC6
+         SvbcEDQzwGdFWtG6eSWb5lkajwLIe/P3c2INlY/AAWv/cbFh/D4dUCK4F+YAhn4PyuWA
+         1eiQ==
+X-Forwarded-Encrypted: i=1; AHgh+Rqk1ZZGVmjwKkZQQwmEUlZ9v6eylXS3Rrre2J6WZN0dbRLHGJ0TpK3viF4uvFoqdSmiEDNITzkqoxc=@vger.kernel.org
+X-Gm-Message-State: AOJu0YwRXDGKj5JIQU4z1gkNu64LgZhlqpHx5bN6MBEgNPVbkI/schaw
+	njRm5cymFe0TrJuPRZMyH8g/uNDBNjpac/zRRF7IQ0mNrrx5euMe0IdQkL4TrmgDhNYkiyUEpzS
+	uqvgJR9MOE9wOCxI073hjj6UMAGEKMQvyinj6VY+MibcxZVh/vgJaMJIZUAv7aA==
+X-Gm-Gg: AR+sD128EuyWVh4tIW7S2IqbKyOEKJvFo2/aXSJwxKQIbX7xWUhuB3QAbYCXm3Ghbwh
+	nCniXskORKyOdoI//tgDNIm5JP+dflAGssk6HeEX6AJf16k0D4qorn3iP8o7v1F7XiL/lXg/O0z
+	bBw5TJk0eq6n2LFwM0rMP/z+L7qiBqjOIQpVGk3Yk5Qk6fco1YlxT4/kEBQCrsQ4sWLwWdDCpYj
+	JcL7ZfHBcBhWaoKVhFkW+exMbLZpaRnrVqn6m1qtdvP50y+EL0mAB4eXOa6pEeuZ/RlQXApqN/2
+	6pxCBeAwRPZGLPAmTgQbvmKQe8O9t0mh++TA0noVSk4xvhSJltcBf/3rcxRU7HBV2Ar4f9YkFg=
 	=
-X-Received: by 2002:a05:622a:28f:b0:51c:1291:911c with SMTP id d75a77b69052e-52d85361b13mr178295631cf.14.1786818121255;
-        Sat, 15 Aug 2026 11:22:01 -0700 (PDT)
-X-Received: by 2002:a05:622a:28f:b0:51c:1291:911c with SMTP id d75a77b69052e-52d85361b13mr178295191cf.14.1786818120830;
-        Sat, 15 Aug 2026 11:22:00 -0700 (PDT)
+X-Received: by 2002:ad4:5cc5:0:b0:8ce:e651:5d63 with SMTP id 6a1803df08f44-90a91dda541mr164979106d6.31.1786826798307;
+        Sat, 15 Aug 2026 13:46:38 -0700 (PDT)
+X-Received: by 2002:ad4:5cc5:0:b0:8ce:e651:5d63 with SMTP id 6a1803df08f44-90a91dda541mr164978896d6.31.1786826797917;
+        Sat, 15 Aug 2026 13:46:37 -0700 (PDT)
 Received: from [172.31.1.12] ([70.105.241.57])
-        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-90a921e74dbsm47337646d6.4.2026.08.15.11.21.58
+        by smtp.gmail.com with ESMTPSA id 6a1803df08f44-90a93544957sm47220206d6.34.2026.08.15.13.46.35
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 15 Aug 2026 11:21:59 -0700 (PDT)
-Message-ID: <f27338e8-5056-4bda-80ca-1a951afbd630@redhat.com>
-Date: Sat, 15 Aug 2026 14:21:57 -0400
+        Sat, 15 Aug 2026 13:46:36 -0700 (PDT)
+Message-ID: <df08f184-2fdd-4102-97dd-e7b513f33868@redhat.com>
+Date: Sat, 15 Aug 2026 16:46:35 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -88,119 +88,51 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [BUG] nfs-utils 2.9.2: exportfs link failure with
- --disable-nfsdctl
-To: Jaipaul Cheernam <jaipaul.cheernam@est.tech>, linux-nfs@vger.kernel.org
-Cc: David Partain <david.partain@est.tech>,
- Daniel Turull <daniel.turull@ericsson.com>, roland.kovacs@est.tech
-References: <9fec9f1b-1c10-4a20-8282-dfc9addb4ee8@est.tech>
+Subject: Re: [PATCH] statd: fix memory leak in sm_mon_1_svc() when existing
+ host re-monitors
+To: xuchenchen <xu18736995897@163.com>, linux-nfs@vger.kernel.org
+Cc: xuchenchen <xuchenchen@kylinos.cn>
+References: <20260728083347.6132-1-xu18736995897@163.com>
 Content-Language: en-US
 From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <9fec9f1b-1c10-4a20-8282-dfc9addb4ee8@est.tech>
+In-Reply-To: <20260728083347.6132-1-xu18736995897@163.com>
 Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+Content-Transfer-Encoding: 7bit
 
 
 
-On 8/5/26 3:32 AM, Jaipaul Cheernam wrote:
-> Hi,
+On 7/28/26 4:33 AM, xuchenchen wrote:
+> From: xuchenchen <xuchenchen@kylinos.cn>
 > 
->    Building nfs-utils 2.9.2 with --disable-nfsdctl fails to link
->    exportfs. This is a regression from 2.9.1.
+> When an already-monitored host sends a new SM_MON request with a
+> different priv cookie, the code sets existing=1 and reuses the
+> existing notify_list entry. However, clnt->dns_name is overwritten
+> with the newly allocated dnsname without freeing the old value,
+> causing a memory leak.
 > 
->    Reproducer:
+> Since statd is a long-running daemon, repeated SM_MON requests with
+> changing cookies will accumulate leaked strings.
 > 
->    tar xf nfs-utils-2.9.2.tar.xz
->    cd nfs-utils-2.9.2
->    ./configure --disable-nfsdctl --disable-gss --disable-svcgss
->    make
+> Fix by freeing the old dns_name before overwriting it.
 > 
->    (--disable-gss is just to avoid the krb5 dependency; the bug is
->    triggered by --disable-nfsdctl alone.)
-> 
->    Error:
-> 
->    /usr/bin/ld: exportfs-exportfs.o: in function `unexportfs_parsed':
->    exportfs.c:491: undefined reference to `nfsd_nl_cmd_str'
->    collect2: error: ld returned 1 exit status
-> 
->    Root cause:
-> 
->    nfsdnl.c (new in 2.9.2) provides nfsd_nl_cmd_str() and is compiled
->    into libnfs only under if CONFIG_NFSDCTL in support/nfs/Makefile.am.
->    But exportfs.c calls it under #ifdef HAVE_NFSD_NETLINK, which
->    configure.ac defines unconditionally:
-> 
->    AC_DEFINE([HAVE_NFSD_NETLINK], 1,
->              [Define to 1 if nfsd generic netlink support is available])
-> 
->    So exportfs always compiles the netlink code path, but the
->    implementation isn't linked in when --disable-nfsdctl is used.
-> 
->    This isn't triggered with the default configuration because
->    enable_nfsdctl defaults to "yes".
-> 
->    Possible fixes:
-> 
->    Option A — always compile nfsdnl.c into libnfs (remove the
->    CONFIG_NFSDCTL guard from support/nfs/Makefile.am). exportfs would
->    always have netlink unlock-export support. libnl is already
->    unconditionally required so this adds no new dependency:
-> 
->    --- a/support/nfs/Makefile.am
->    +++ b/support/nfs/Makefile.am
->    @@ -11,14 +11,10 @@
->     libnfs_la_LIBADD = libnfsconf.la -luuid
->     libnfs_la_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) -I$(top_srcdir)/ 
-> support/reexport
-> 
->    -if CONFIG_NFSDCTL
->     libnfs_la_SOURCES += nfsdnl.c
->    -libnfs_la_CPPFLAGS += $(LIBNL3_CFLAGS) $(LIBNLGENL3_CFLAGS) \
->    -         -I$(top_srcdir)/utils/nfsdctl
->    +libnfs_la_CPPFLAGS += $(LIBNL3_CFLAGS) $(LIBNLGENL3_CFLAGS)
->     libnfs_la_LIBADD += $(LIBNL3_LIBS) $(LIBNLGENL3_LIBS)
->    -endif
-> 
->     libnfsconf_la_SOURCES = conffile.c xlog.c
-> 
->    Option B — gate HAVE_NFSD_NETLINK on --enable-nfsdctl, so exportfs
->    skips the netlink path when nfsdctl is disabled. nfsdnl.h already
->    provides a static inline stub returning -ENOSYS for this case:
-> 
->    --- a/configure.ac
->    +++ b/configure.ac
->    @@ -256,8 +256,6 @@
->     PKG_CHECK_MODULES(LIBNLGENL3, libnl-genl-3.0 >= 3.1)
-> 
->     AC_CHECK_HEADERS(linux/nfsd_netlink.h)
->    -AC_DEFINE([HAVE_NFSD_NETLINK], 1,
->    -   [Define to 1 if nfsd generic netlink support is available])
-> 
->     # ensure the system netlink headers have the latest features
->   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <linux/nfsd_netlink.h>]],
->    @@ -279,6 +277,8 @@
->      enable_nfsdctl="yes")
->      AM_CONDITIONAL(CONFIG_NFSDCTL, [test "$enable_nfsdctl" = "yes" ])
->      if test "$enable_nfsdctl" = yes; then
->    +   AC_DEFINE([HAVE_NFSD_NETLINK], 1,
->    +       [Define to 1 if nfsd generic netlink support is available])
->        PKG_CHECK_MODULES(LIBREADLINE, readline)
->      fi
-> 
-> 
->    Both build cleanly. I lean towards Option B as it preserves the design
->    intent that --disable-nfsdctl disables all netlink interaction with
->    nfsd, and keeps the feature gating consistent between configure.ac and
->    Makefile.am. But Option A has merit if exportfs should always release
->    state via netlink regardless of whether the nfsdctl utility is built.
-> 
->    Which approach is preferred? Happy to send a formal patch either way.
-Option B does work... I can just added and make you the author...
+> Signed-off-by: xuchenchen <xuchenchen@kylinos.cn>
+Committed... (tag: nfs-utils-2-9-3-rc1)
 
-steved.>
->    Thanks,
->    Jaipaul
+steved.> ---
+>   utils/statd/monitor.c | 2 ++
+>   1 file changed, 2 insertions(+)
 > 
-> 
+> diff --git a/utils/statd/monitor.c b/utils/statd/monitor.c
+> index c76589ca..76ef16f1 100644
+> --- a/utils/statd/monitor.c
+> +++ b/utils/statd/monitor.c
+> @@ -187,6 +187,8 @@ sm_mon_1_svc(struct mon *argp, struct svc_req *rqstp)
+>   	NL_MY_VERS(clnt) = id->my_vers;
+>   	NL_MY_PROC(clnt) = id->my_proc;
+>   	memcpy(NL_PRIV(clnt), argp->priv, SM_PRIV_SIZE);
+> +	if (existing)
+> +		free(clnt->dns_name);
+>   	clnt->dns_name = dnsname;
+>   
+>   	/*
 
