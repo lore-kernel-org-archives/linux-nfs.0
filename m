@@ -1,85 +1,86 @@
 Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9C9D730B529
-	for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 20:47:22 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60B6717AE11
+	for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 20:50:21 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786826844; cv=none; b=TIbqkuKKS7wg8Io7B7ZT7OI/wIVG0gghIW8H46XqLI5yJP2aqsVp/iqykWvCvx9GcJhy/DUHGqyqDKuL87uxF3xaH/1Ebugguau7Ft80RhC2SRF8t7GVfc1vV8u3G+DNLKR/C1TpqmnkJh9NnaD3Pd0qwLoW8UkhOqpRiL66Akk=
+	t=1786827023; cv=none; b=Wv5W8HvwvtJs8GNFPtWl1/xXR/auXzGv4om7utS4VNVcSuc//eK9WckDVoQqXiR9NHwL/4aQyX68xjVzi0lwBHOrIymFASeZDijUUZUSDZ+TLM/lBO03sb4pWaMJllOX+Q/RiIK2J4gTbQfoPF6aRF+kKaH1OQM1GrX1L001PpE=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786826844; c=relaxed/simple;
-	bh=I1MW398Mi+F+dzzlGW9GGPtV5pFt1yVf+AlmyA4KPyA=;
-	h=Message-ID:Date:MIME-Version:Subject:To:References:From:
-	 In-Reply-To:Content-Type; b=PouLVe3W2cdKUnrOgNvDYWkhGt3Y1YsGhKPzegt1z1rgrRzvaAPVRsHSBz+U1pZy6MhQy8L35T6ukXEdBi5nNVsjxFTG40rbthWZJmWRStub/Jgn0ss6GKTsH5C/bpTVMVzNBaM5CwD4StX5EcWloZABRyz4s2/t7XDPZy87Q6M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=O+8yUYlV; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=ka6v333i; arc=none smtp.client-ip=170.10.133.124
+	s=arc-20240116; t=1786827023; c=relaxed/simple;
+	bh=nG+K6zftXd4sajWRXjLzbf3OrJ87pGrvgdDAv894lDA=;
+	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
+	 In-Reply-To:Content-Type; b=aJF5N7MLy0IJD8wnc6eEt0E3Ch7FZvx1O8dnJaGXSjhwhcGWZAOBihkmap35jeE4nDZeFm3aVVADwnCCfOIBF7uRCTDkJPwR+3ge2QugpYfaTjamDZinLs4HxZjgsRk0XbbFD/A+Y8mntn8L8EilMIDuYSE56EqOutBX9wAw18A=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=RJunFVQB; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=jtWg7d/f; arc=none smtp.client-ip=170.10.133.124
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="O+8yUYlV";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="ka6v333i"
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="RJunFVQB";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="jtWg7d/f"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1786826841;
+	s=mimecast20190719; t=1786827020;
 	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:mime-version:mime-version:content-type:content-type:
+	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
 	 content-transfer-encoding:content-transfer-encoding:
 	 in-reply-to:in-reply-to:references:references;
-	bh=P/hN3HjtnFL+1ljWedR+qJiUDHBJ4cS0i+/cUMK9Pa8=;
-	b=O+8yUYlVZAOWVOW/2kwmC15h7T4vMv/s6YpZsKnnebSzCWGgjyQ1cpYKmgb7TG6omNFCYo
-	C7YJ5o9jNE5Xp/1Bukl96H7M3EjaxLSn5nYxW7xwoaoj4S5MqVTowulc3Jm6OpqkevC3YP
-	CoiIxTfpvKvog6e0aYHYgSMD7stHh0c=
-Received: from mail-qk1-f200.google.com (mail-qk1-f200.google.com
- [209.85.222.200]) by relay.mimecast.com with ESMTP with STARTTLS
+	bh=Hje57RuuhJc0OBRQmVeOBtk7H9gcOBSnj5VR1CpqSJw=;
+	b=RJunFVQBuVNGfY73PGcU3+lTE4LDxWHz2lRPmel65fFXEptPnufPeKpNYw4MCVvZbBOFyo
+	XF/A32b+tWwLVeg8sE5LQFOhXwsnhXIP2ytQxIvdxg7Vg1DTgXDBtBEzfTqWHvoyTPB2/W
+	qft8zpDyHXk2eQI8BCgZubSnssQkMvU=
+Received: from mail-qk1-f199.google.com (mail-qk1-f199.google.com
+ [209.85.222.199]) by relay.mimecast.com with ESMTP with STARTTLS
  (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-124-hBna1KXcN9q0aWBqDMTR7A-1; Sat, 15 Aug 2026 16:47:20 -0400
-X-MC-Unique: hBna1KXcN9q0aWBqDMTR7A-1
-X-Mimecast-MFC-AGG-ID: hBna1KXcN9q0aWBqDMTR7A_1786826839
-Received: by mail-qk1-f200.google.com with SMTP id af79cd13be357-92e8004d60eso397192485a.1
-        for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 13:47:19 -0700 (PDT)
+ us-mta-148-6mpGHQlqOu-RM1TAVTN_ZQ-1; Sat, 15 Aug 2026 16:50:18 -0400
+X-MC-Unique: 6mpGHQlqOu-RM1TAVTN_ZQ-1
+X-Mimecast-MFC-AGG-ID: 6mpGHQlqOu-RM1TAVTN_ZQ_1786827018
+Received: by mail-qk1-f199.google.com with SMTP id af79cd13be357-92e5fc4c7e9so281134385a.3
+        for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 13:50:18 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1786826839; x=1787431639; darn=vger.kernel.org;
+        d=redhat.com; s=google; t=1786827018; x=1787431818; darn=vger.kernel.org;
         h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:to:subject:user-agent:mime-version:date
-         :message-id:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=P/hN3HjtnFL+1ljWedR+qJiUDHBJ4cS0i+/cUMK9Pa8=;
-        b=ka6v333i8zpjOFrW9R3vJlV2ru9gXbC+92ek6ubhuH3Tdw7/pQJS7BjFY729ntSpe5
-         1XLZ90IEBlyA2XqKEQzTGVqQx23yYaFNeFMdI2Dl7ZrT0TxMBwzYZ76SdarFXqlZ1RPf
-         IKn4LFFXTDxUBISTESCjhAd8In3DkMhtw/6z5y0xZBq1s+GOHAPssmnl9yPvy6hovnLh
-         vp1vaSYNARh/WxPw6j3BqoIZ8MNWsYC0LfK1LxD1OIzQXvFQ4eXZhzH/ahjprqDOaBOD
-         L9kIg2JFdUHQEHTeGmsEzJI+0kmI7GYr2dxih39z/b4lm9OFFC9tlgJvIBip6kpFvDGW
-         hwiQ==
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=Hje57RuuhJc0OBRQmVeOBtk7H9gcOBSnj5VR1CpqSJw=;
+        b=jtWg7d/fYgwPYtqJ7qPH0+uxRUkoJgef1jBH7Ewo0bhOBOhI2MyReQypNZtBbNn0yb
+         bqDqqrvpOcEHmykJpXzzPiD/8TXfr5dRdyAlLOD7pk/P1LY+q/BoxrF9+lKMFfPPTFOB
+         6EuXca3jesdHMw1G34sr8nl5a/GG3i3WNwlT/SQaO4lmoy+D6F+x3PzXsetrLheY+NFe
+         6smQqNfflKj63rLJl/Dvue6TMTZEqZtluBAAiXOD+/faJV1KuwZILGysX7WlGrheUsbU
+         +HaFTOG52GN8gjjr3GjrWVbH9WIYXZp3RKsW48c803UKJ331Bd5UhzARXkre7+1pOYnn
+         3elA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786826839; x=1787431639;
+        d=1e100.net; s=20251104; t=1786827018; x=1787431818;
         h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:to:subject:user-agent:mime-version:date
-         :message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :content-language:references:cc:to:subject:user-agent:mime-version
+         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=P/hN3HjtnFL+1ljWedR+qJiUDHBJ4cS0i+/cUMK9Pa8=;
-        b=Q/wGnYCgTUFJZgkdfpwmc4AfEPSl1d3l6A4XcyUNPRkKfZdOlr7sue0x7KBv4ZDz9I
-         7wqX3Mrf4m/ispKuZtjVvjngJOyzhIZdg5aHezkvT279xEvYYdINa7w0zt124mQtmSqJ
-         nfjo0dgnOjam+5QZD12MAJaa3eFBPNSV+gksptLWrlMtbEPAboZI3TGvheCVXpdSJM8t
-         p7jfYJMP75y75rALcOwFxeqOKpBsegcL0Zi1b3PnOqo73i41GU9QibS6ObNZmVfB7PAT
-         m23iI06f7q5fIJl6TAar5oGGdyTi0XYK1PJhEkd8ahu39OvRdQsjWWg/YN8Ymx/hTjiD
-         dowQ==
-X-Forwarded-Encrypted: i=1; AHgh+RopnexXbwMv9hqq3aHWDF7pRTTWQGDRxPy57RvWrnrMN0Nn8u3kNrtohERQGPWjslwB3Jr+5SNdl0o=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yydk8FmwgJg7UJX4nJQtFm4u3ZxcOVGPP8ee5FxuGLzjPO8PXGc
-	9NsHNYT5ADxINrUMXuMR+V6/Ma7N/JlY1jmUBUPXUa0YdRFxzr5Sdb+3Xh/iRQMdpESUFc61gPz
-	Uavp7SgHpv2k/ftY0TvNOVwb5OLqBTNxY8bY7bX+Tx8gVQgan7d03gqFOZpgtPg==
-X-Gm-Gg: AR+sD11rmn1w5B7sfcyv+LmdOX1H5xPeo9rmyEn82B/hXAtlqdancwNzVD6Vv5J8Hjf
-	Vt7KNMolZ/T6rnfWetcG+6VRicWK6ZXuVpzPjogUXkdkxOFXeja0GpXw0ylNmgrjAg3Xgr2d6s/
-	QmFZbjoeKYWqPSFZF0fQe5PIpNUw8+mmaJcZomVe6aFd3HJ9QNgSa+Jd9wx2CZwSGZds2aJlafX
-	gvrwaZ4C9gjh8h2uU/CfkFcXIrtBZ/+jOIGcwPI3NDG4OSby3jqtayEDEtJQdGNVF+081+OSkVg
-	2RnH7Xb/ZZmXCGagAkg5s7hCDX3I78x0SS3m8crNBLkri7JjNuU6cJ7EQ3hHgR5FLhc4b5kcQg=
+        bh=Hje57RuuhJc0OBRQmVeOBtk7H9gcOBSnj5VR1CpqSJw=;
+        b=ZOCdtyvuwfwhYxiOHMm0x5wEKy9dWEWJ39YW39szcYJWil3Luck9DttnsnphIzRH8l
+         eB9/uNXE8PmuvWhQZeftVxsdmxywNuqnMy1ih9ONsFo5rCMe8dscMNnI2IF2fsUI/Jdf
+         7oLj0XU0b5c0YhE0soS0NegRQ9e3B65pCdnOQxnyL+/Rgq7WsN9bdFYWIcgxoXrm76yN
+         k2WzjOazIHEjEGnSqumnCTL0XXKDMlM17U5tp9GMAMFXK2+gBQZJ0KuOewuHfMzN37/B
+         hQoR5MW8mjDEWHx92FBVBPt3SeZYwzkcLN6Zm89nZ0Cp/OaweTDLJ1F4Ceq/V98JBziZ
+         XVrw==
+X-Forwarded-Encrypted: i=1; AHgh+RquCYyEfFzRAwf+CgHZQSo3t5wEbGPed+B3zUuav+PucEaMEMUai+bPMsRrD5Pfx5g0h5p5jq5mzHc=@vger.kernel.org
+X-Gm-Message-State: AOJu0YydeehFHDjT8j0xv4ZEGVnYYFEfelBXqpYIECGbolo+L5CvgiGn
+	i4tMWiuzlDbK4o7t+m3UgVVLEDFVgQmtfeNLphnxxOZ92VzTi78oQlB1kjFxkd/gU2DSzP29EFa
+	UeEnvxFqE7whLm6AGqTpA8ek0x3ztmxwed0RXxqkWK2pmIdV0xB9so+8AyQwOY40gJzjllQ==
+X-Gm-Gg: AR+sD10PHDQaGPg2cdM7ss0WntALljrNKPY+wJe70W4Gmnrz2QELkgv6Nf6EcvXthXx
+	Zxa3ENtHS1I34Sz22tBf/8zidhKGapOgfBGGKu5eqDjCQCnvvOCzFWk7NfNW8iTwZVE6TjXF/an
+	noETEdnRqvkyiA+B/YoIDGvZiDqQCb+0lwJGcu4D5MKm5Xvge8k7PUJClOyJ6TnnECie4MVWNQa
+	5dS4gvo+2Kf5IsnNJIwHM/PeVYa05EgGc4h/aNbGDDoxtjiT7sSF8LxRuPGuKMLXbJdkXctNgPh
+	8PsYn+Uwg1a8RKzsu/wlhV5eKioXw+PMQ1Y1OZBfANVh/jLiQOv72Govg6cwVP2SBvpj2mXNyQ=
 	=
-X-Received: by 2002:a05:620a:2814:b0:934:a12b:1d41 with SMTP id af79cd13be357-936d22ff13dmr1583095285a.33.1786826839326;
-        Sat, 15 Aug 2026 13:47:19 -0700 (PDT)
-X-Received: by 2002:a05:620a:2814:b0:934:a12b:1d41 with SMTP id af79cd13be357-936d22ff13dmr1583092685a.33.1786826838918;
-        Sat, 15 Aug 2026 13:47:18 -0700 (PDT)
+X-Received: by 2002:a05:620a:2683:b0:915:83fa:b3e0 with SMTP id af79cd13be357-936d1fdb95bmr1407793085a.5.1786827018318;
+        Sat, 15 Aug 2026 13:50:18 -0700 (PDT)
+X-Received: by 2002:a05:620a:2683:b0:915:83fa:b3e0 with SMTP id af79cd13be357-936d1fdb95bmr1407789485a.5.1786827017825;
+        Sat, 15 Aug 2026 13:50:17 -0700 (PDT)
 Received: from [172.31.1.12] ([70.105.241.57])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-936ce250c20sm594431885a.47.2026.08.15.13.47.16
+        by smtp.gmail.com with ESMTPSA id af79cd13be357-936ce22b36asm619016685a.39.2026.08.15.13.50.15
         (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 15 Aug 2026 13:47:17 -0700 (PDT)
-Message-ID: <949be130-42e2-4ad3-a22c-4718d72f0cbe@redhat.com>
-Date: Sat, 15 Aug 2026 16:47:16 -0400
+        Sat, 15 Aug 2026 13:50:16 -0700 (PDT)
+Message-ID: <009eafee-5f36-4955-a07e-3df47d5018e3@redhat.com>
+Date: Sat, 15 Aug 2026 16:50:15 -0400
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -87,42 +88,126 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
-Subject: Re: [PATCH] getport: fix missing stddef.h inclusion
+Subject: Re: [BUG] nfs-utils 2.9.2: exportfs link failure with
+ --disable-nfsdctl
 To: Jaipaul Cheernam <jaipaul.cheernam@est.tech>, linux-nfs@vger.kernel.org
-References: <20260806112023.25090-1-jaipaul.cheernam@est.tech>
+Cc: David Partain <david.partain@est.tech>,
+ Daniel Turull <daniel.turull@ericsson.com>, roland.kovacs@est.tech
+References: <9fec9f1b-1c10-4a20-8282-dfc9addb4ee8@est.tech>
 Content-Language: en-US
 From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <20260806112023.25090-1-jaipaul.cheernam@est.tech>
+In-Reply-To: <9fec9f1b-1c10-4a20-8282-dfc9addb4ee8@est.tech>
 Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
 
 
-On 8/6/26 7:20 AM, Jaipaul Cheernam wrote:
-> getport.c uses offsetof() but does not include <stddef.h>. On glibc
-> this works because offsetof is pulled in transitively, but on musl it
-> is not available without the explicit include, causing:
+On 8/5/26 3:32 AM, Jaipaul Cheernam wrote:
+> Hi,
 > 
->    getport.c:459:41: error: implicit declaration of function 'offsetof'
+>    Building nfs-utils 2.9.2 with --disable-nfsdctl fails to link
+>    exportfs. This is a regression from 2.9.1.
 > 
-> Signed-off-by: Jaipaul Cheernam <jaipaul.cheernam@est.tech>
-Committed... (tag: nfs-utils-2-9-3-rc1)
+>    Reproducer:
+> 
+>    tar xf nfs-utils-2.9.2.tar.xz
+>    cd nfs-utils-2.9.2
+>    ./configure --disable-nfsdctl --disable-gss --disable-svcgss
+>    make
+> 
+>    (--disable-gss is just to avoid the krb5 dependency; the bug is
+>    triggered by --disable-nfsdctl alone.)
+> 
+>    Error:
+> 
+>    /usr/bin/ld: exportfs-exportfs.o: in function `unexportfs_parsed':
+>    exportfs.c:491: undefined reference to `nfsd_nl_cmd_str'
+>    collect2: error: ld returned 1 exit status
+> 
+>    Root cause:
+> 
+>    nfsdnl.c (new in 2.9.2) provides nfsd_nl_cmd_str() and is compiled
+>    into libnfs only under if CONFIG_NFSDCTL in support/nfs/Makefile.am.
+>    But exportfs.c calls it under #ifdef HAVE_NFSD_NETLINK, which
+>    configure.ac defines unconditionally:
+> 
+>    AC_DEFINE([HAVE_NFSD_NETLINK], 1,
+>              [Define to 1 if nfsd generic netlink support is available])
+> 
+>    So exportfs always compiles the netlink code path, but the
+>    implementation isn't linked in when --disable-nfsdctl is used.
+> 
+>    This isn't triggered with the default configuration because
+>    enable_nfsdctl defaults to "yes".
+> 
+>    Possible fixes:
+> 
+>    Option A — always compile nfsdnl.c into libnfs (remove the
+>    CONFIG_NFSDCTL guard from support/nfs/Makefile.am). exportfs would
+>    always have netlink unlock-export support. libnl is already
+>    unconditionally required so this adds no new dependency:
+> 
+>    --- a/support/nfs/Makefile.am
+>    +++ b/support/nfs/Makefile.am
+>    @@ -11,14 +11,10 @@
+>     libnfs_la_LIBADD = libnfsconf.la -luuid
+>     libnfs_la_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) -I$(top_srcdir)/ 
+> support/reexport
+> 
+>    -if CONFIG_NFSDCTL
+>     libnfs_la_SOURCES += nfsdnl.c
+>    -libnfs_la_CPPFLAGS += $(LIBNL3_CFLAGS) $(LIBNLGENL3_CFLAGS) \
+>    -         -I$(top_srcdir)/utils/nfsdctl
+>    +libnfs_la_CPPFLAGS += $(LIBNL3_CFLAGS) $(LIBNLGENL3_CFLAGS)
+>     libnfs_la_LIBADD += $(LIBNL3_LIBS) $(LIBNLGENL3_LIBS)
+>    -endif
+> 
+>     libnfsconf_la_SOURCES = conffile.c xlog.c
+> 
+>    Option B — gate HAVE_NFSD_NETLINK on --enable-nfsdctl, so exportfs
+>    skips the netlink path when nfsdctl is disabled. nfsdnl.h already
+>    provides a static inline stub returning -ENOSYS for this case:
+> 
+>    --- a/configure.ac
+>    +++ b/configure.ac
+>    @@ -256,8 +256,6 @@
+>     PKG_CHECK_MODULES(LIBNLGENL3, libnl-genl-3.0 >= 3.1)
+> 
+>     AC_CHECK_HEADERS(linux/nfsd_netlink.h)
+>    -AC_DEFINE([HAVE_NFSD_NETLINK], 1,
+>    -   [Define to 1 if nfsd generic netlink support is available])
+> 
+>     # ensure the system netlink headers have the latest features
+>   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <linux/nfsd_netlink.h>]],
+>    @@ -279,6 +277,8 @@
+>      enable_nfsdctl="yes")
+>      AM_CONDITIONAL(CONFIG_NFSDCTL, [test "$enable_nfsdctl" = "yes" ])
+>      if test "$enable_nfsdctl" = yes; then
+>    +   AC_DEFINE([HAVE_NFSD_NETLINK], 1,
+>    +       [Define to 1 if nfsd generic netlink support is available])
+>        PKG_CHECK_MODULES(LIBREADLINE, readline)
+>      fi
+> 
+> 
+>    Both build cleanly. I lean towards Option B as it preserves the design
+>    intent that --disable-nfsdctl disables all netlink interaction with
+>    nfsd, and keeps the feature gating consistent between configure.ac and
+>    Makefile.am. But Option A has merit if exportfs should always release
+>    state via netlink regardless of whether the nfsdctl utility is built.
+> 
+>    Which approach is preferred? Happy to send a formal patch either way.
+I just went ahead an took Option B adding you as the author
+and I did the Signed-off-by: since it did fix the bug.
 
-steved.> ---
->   support/nfs/getport.c | 1 +
->   1 file changed, 1 insertion(+)
+Committed (tag: nfs-utils-2-9-3-rc1)
+
+thanks!
+
+steved.
+
 > 
-> diff --git a/support/nfs/getport.c b/support/nfs/getport.c
-> index 608e185..6bd2f71 100644
-> --- a/support/nfs/getport.c
-> +++ b/support/nfs/getport.c
-> @@ -27,6 +27,7 @@
->   #endif
->   
->   #include <sys/types.h>
-> +#include <stddef.h>
->   #include <sys/time.h>
->   #include <unistd.h>
->   #include <fcntl.h>
+>    Thanks,
+>    Jaipaul
+> 
 > 
 
