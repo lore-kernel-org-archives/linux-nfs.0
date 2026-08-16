@@ -1,213 +1,182 @@
-Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.133.124])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-oo1-f41.google.com (mail-oo1-f41.google.com [209.85.161.41])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 60B6717AE11
-	for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 20:50:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.133.124
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786827023; cv=none; b=Wv5W8HvwvtJs8GNFPtWl1/xXR/auXzGv4om7utS4VNVcSuc//eK9WckDVoQqXiR9NHwL/4aQyX68xjVzi0lwBHOrIymFASeZDijUUZUSDZ+TLM/lBO03sb4pWaMJllOX+Q/RiIK2J4gTbQfoPF6aRF+kKaH1OQM1GrX1L001PpE=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786827023; c=relaxed/simple;
-	bh=nG+K6zftXd4sajWRXjLzbf3OrJ87pGrvgdDAv894lDA=;
-	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=aJF5N7MLy0IJD8wnc6eEt0E3Ch7FZvx1O8dnJaGXSjhwhcGWZAOBihkmap35jeE4nDZeFm3aVVADwnCCfOIBF7uRCTDkJPwR+3ge2QugpYfaTjamDZinLs4HxZjgsRk0XbbFD/A+Y8mntn8L8EilMIDuYSE56EqOutBX9wAw18A=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=RJunFVQB; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=jtWg7d/f; arc=none smtp.client-ip=170.10.133.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BB9AA45000
+	for <linux-nfs@vger.kernel.org>; Sun, 16 Aug 2026 06:43:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.161.41
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1786862598; cv=pass; b=NCsNeJSAOepFEV2IS9anoleKmRDhoZGOaBJR5OX+UU0DwpvDky06cpuuPuFnSymRRw4KJrEBNLmIRrlpxIPnYwasC4pcIQHCToJW0/0jzPfmu50ZQFS0ZRRS7QUJxXAElustZySxVV7VUnPo0kssMabz5n1aGlE16Z5eqVDbpRM=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1786862598; c=relaxed/simple;
+	bh=4EhlUtqI0ZQR5ej3cHGdmGP2zw4JEnoPb+AFwXKPrk8=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Content-Type; b=H3WnPkc/9068xB5l/7mjA0i+85T7e8BoRBpcC3xV+ItKMPIWXqkgop7PoDMHH+MTXDbh3cWCbiPKtM40nMcKS6Kv5gkmh+STz8T/DKld03HrtLfom6RjrmsfgqnWeNxlTLpyZ167kKYMvi8UYWaGlSPAMe1ry/WpDLzPrD4qVos=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=HzMihKoQ; arc=pass smtp.client-ip=209.85.161.41
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="RJunFVQB";
-	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="jtWg7d/f"
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
-	s=mimecast20190719; t=1786827020;
-	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
-	 to:to:cc:cc:mime-version:mime-version:content-type:content-type:
-	 content-transfer-encoding:content-transfer-encoding:
-	 in-reply-to:in-reply-to:references:references;
-	bh=Hje57RuuhJc0OBRQmVeOBtk7H9gcOBSnj5VR1CpqSJw=;
-	b=RJunFVQBuVNGfY73PGcU3+lTE4LDxWHz2lRPmel65fFXEptPnufPeKpNYw4MCVvZbBOFyo
-	XF/A32b+tWwLVeg8sE5LQFOhXwsnhXIP2ytQxIvdxg7Vg1DTgXDBtBEzfTqWHvoyTPB2/W
-	qft8zpDyHXk2eQI8BCgZubSnssQkMvU=
-Received: from mail-qk1-f199.google.com (mail-qk1-f199.google.com
- [209.85.222.199]) by relay.mimecast.com with ESMTP with STARTTLS
- (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
- us-mta-148-6mpGHQlqOu-RM1TAVTN_ZQ-1; Sat, 15 Aug 2026 16:50:18 -0400
-X-MC-Unique: 6mpGHQlqOu-RM1TAVTN_ZQ-1
-X-Mimecast-MFC-AGG-ID: 6mpGHQlqOu-RM1TAVTN_ZQ_1786827018
-Received: by mail-qk1-f199.google.com with SMTP id af79cd13be357-92e5fc4c7e9so281134385a.3
-        for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 13:50:18 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="HzMihKoQ"
+Received: by mail-oo1-f41.google.com with SMTP id 006d021491bc7-6ae8445b7b6so1065314eaf.0
+        for <linux-nfs@vger.kernel.org>; Sat, 15 Aug 2026 23:43:16 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1786862595; cv=none;
+        d=google.com; s=arc-20260327;
+        b=U6j9HaQS/AeggMJe2wKiNUTSs3jL18afPPBS7HY2IkhkyvOc8T81N4D4084EuLCjqS
+         DlAsA4r//sZ75rkTXGb+EiKJZ43JgloG41J1HeIdNcuP1S0JqgGqK7yerhM8ejLAqhox
+         J0d2Q1yrWr0/4qUZIGQ61t2pMS5eyyayySTij10QWk16YBkZI606d3KCdBrPS1bON2KR
+         CKLZRakQVzpC/vkFok3Oc0NM+TE16zDB9V4NZwsKJEjIndjLzkldHniTy6Aq5oNY/CpD
+         o6jyXfi2XIC/V/xZDRx2y/wy9BimT4UW12acZOKZzoMNXBjzV5q6B49Ml8Fjp7Ck0wd+
+         Wx6w==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=to:subject:message-id:date:from:in-reply-to:references:mime-version
+         :dkim-signature;
+        bh=xHy2XC2Tp+BRD4bd8zHCFWzo07C1nxgQlyHueqmbM/U=;
+        fh=Mys3y4MwsHRytUQMpdfGBn3oGRYLcLloxNwkFYMYMmg=;
+        b=DdWu9H7uofqGva4fq3WC61SNXMwlO45+irM7RGeAtOfJapcp4RJKLUsS11CapDT2ql
+         wkBBOAdHlpJ6YcLYKdYr3X8kxMEDveq3crYIT+SZSfp9hwLcaIB0mwkNS42eutrmOYm6
+         Yc+UWw+vW2nrY4ewzjLew+5XEoM8+jH3JvmaONNwuaadK/c6No21w0OrEu7J3HHMiUAb
+         Z3BjKEzBmhh97zqSs/PMKzWddxqPNXWO5gAJEyxh3cEZWtUeWuoiI2/TZEeFi5GAQ4Ax
+         AyCrhnsGKloQUxBKdW+rc3MQ5D9GqJsDuAMNasrwWVXGc0gHTTJ1t+wYxrefp0OTttHn
+         TGqw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=redhat.com; s=google; t=1786827018; x=1787431818; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:from:to:cc:subject:date:message-id:reply-to
+        d=gmail.com; s=20251104; t=1786862595; x=1787467395; darn=vger.kernel.org;
+        h=content-type:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:from:to:cc:subject:date:message-id:reply-to
          :content-type;
-        bh=Hje57RuuhJc0OBRQmVeOBtk7H9gcOBSnj5VR1CpqSJw=;
-        b=jtWg7d/fYgwPYtqJ7qPH0+uxRUkoJgef1jBH7Ewo0bhOBOhI2MyReQypNZtBbNn0yb
-         bqDqqrvpOcEHmykJpXzzPiD/8TXfr5dRdyAlLOD7pk/P1LY+q/BoxrF9+lKMFfPPTFOB
-         6EuXca3jesdHMw1G34sr8nl5a/GG3i3WNwlT/SQaO4lmoy+D6F+x3PzXsetrLheY+NFe
-         6smQqNfflKj63rLJl/Dvue6TMTZEqZtluBAAiXOD+/faJV1KuwZILGysX7WlGrheUsbU
-         +HaFTOG52GN8gjjr3GjrWVbH9WIYXZp3RKsW48c803UKJ331Bd5UhzARXkre7+1pOYnn
-         3elA==
+        bh=xHy2XC2Tp+BRD4bd8zHCFWzo07C1nxgQlyHueqmbM/U=;
+        b=HzMihKoQ1J0ThrMG3aImSrpc3KgFCiVTfbjuLZE6LneMD8SRD0vn0XyugEZDsmtvK0
+         I27sTu6NABE3OTAnn+Xt72eWlvGhl0TFLjGoKqd/1MVaxrfvUXWwxQAl1soKpvHeo/sn
+         EA+IqobliavQPJc8w3q2T+ZD2fnEaYOi+UqUzNfuUnxXO0StbZlYDwXVkyQQ4imEdIOf
+         pKMetcTtdRt6My+3xTOyUyHj36M+wd6c9imquieRB5COA80KelH6Qh+Xl3LY4WK2cZ9I
+         +kyhdNj+IdgPikhWtTvrj5/vZka8M5/Uu/D+ygZSD5kD0wjz03scKKFAesVIjQ7eeiOw
+         ihhg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786827018; x=1787431818;
-        h=content-transfer-encoding:content-type:in-reply-to:from
-         :content-language:references:cc:to:subject:user-agent:mime-version
-         :date:message-id:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+        d=1e100.net; s=20251104; t=1786862595; x=1787467395;
+        h=content-type:to:subject:message-id:date:from:in-reply-to:references
+         :mime-version:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=Hje57RuuhJc0OBRQmVeOBtk7H9gcOBSnj5VR1CpqSJw=;
-        b=ZOCdtyvuwfwhYxiOHMm0x5wEKy9dWEWJ39YW39szcYJWil3Luck9DttnsnphIzRH8l
-         eB9/uNXE8PmuvWhQZeftVxsdmxywNuqnMy1ih9ONsFo5rCMe8dscMNnI2IF2fsUI/Jdf
-         7oLj0XU0b5c0YhE0soS0NegRQ9e3B65pCdnOQxnyL+/Rgq7WsN9bdFYWIcgxoXrm76yN
-         k2WzjOazIHEjEGnSqumnCTL0XXKDMlM17U5tp9GMAMFXK2+gBQZJ0KuOewuHfMzN37/B
-         hQoR5MW8mjDEWHx92FBVBPt3SeZYwzkcLN6Zm89nZ0Cp/OaweTDLJ1F4Ceq/V98JBziZ
-         XVrw==
-X-Forwarded-Encrypted: i=1; AHgh+RquCYyEfFzRAwf+CgHZQSo3t5wEbGPed+B3zUuav+PucEaMEMUai+bPMsRrD5Pfx5g0h5p5jq5mzHc=@vger.kernel.org
-X-Gm-Message-State: AOJu0YydeehFHDjT8j0xv4ZEGVnYYFEfelBXqpYIECGbolo+L5CvgiGn
-	i4tMWiuzlDbK4o7t+m3UgVVLEDFVgQmtfeNLphnxxOZ92VzTi78oQlB1kjFxkd/gU2DSzP29EFa
-	UeEnvxFqE7whLm6AGqTpA8ek0x3ztmxwed0RXxqkWK2pmIdV0xB9so+8AyQwOY40gJzjllQ==
-X-Gm-Gg: AR+sD10PHDQaGPg2cdM7ss0WntALljrNKPY+wJe70W4Gmnrz2QELkgv6Nf6EcvXthXx
-	Zxa3ENtHS1I34Sz22tBf/8zidhKGapOgfBGGKu5eqDjCQCnvvOCzFWk7NfNW8iTwZVE6TjXF/an
-	noETEdnRqvkyiA+B/YoIDGvZiDqQCb+0lwJGcu4D5MKm5Xvge8k7PUJClOyJ6TnnECie4MVWNQa
-	5dS4gvo+2Kf5IsnNJIwHM/PeVYa05EgGc4h/aNbGDDoxtjiT7sSF8LxRuPGuKMLXbJdkXctNgPh
-	8PsYn+Uwg1a8RKzsu/wlhV5eKioXw+PMQ1Y1OZBfANVh/jLiQOv72Govg6cwVP2SBvpj2mXNyQ=
-	=
-X-Received: by 2002:a05:620a:2683:b0:915:83fa:b3e0 with SMTP id af79cd13be357-936d1fdb95bmr1407793085a.5.1786827018318;
-        Sat, 15 Aug 2026 13:50:18 -0700 (PDT)
-X-Received: by 2002:a05:620a:2683:b0:915:83fa:b3e0 with SMTP id af79cd13be357-936d1fdb95bmr1407789485a.5.1786827017825;
-        Sat, 15 Aug 2026 13:50:17 -0700 (PDT)
-Received: from [172.31.1.12] ([70.105.241.57])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-936ce22b36asm619016685a.39.2026.08.15.13.50.15
-        (version=TLS1_3 cipher=TLS_AES_128_GCM_SHA256 bits=128/128);
-        Sat, 15 Aug 2026 13:50:16 -0700 (PDT)
-Message-ID: <009eafee-5f36-4955-a07e-3df47d5018e3@redhat.com>
-Date: Sat, 15 Aug 2026 16:50:15 -0400
+        bh=xHy2XC2Tp+BRD4bd8zHCFWzo07C1nxgQlyHueqmbM/U=;
+        b=QlxmLcJwC8Vddkz6Qpi62uJ3QYlGuECSrMPe8wxW1dharPM6KccBqd2h2dACq6oNad
+         PNvGLhFM1tZKIywqOd+YhFUQh8IncS10JjyV69vv0yEqB7mR7zjydapQDgJZx0oACTy/
+         66jPhk9vsrVx6/6W4ueh90+zylBPYG7wvyGiE6PmxAEB8ZkKM+UX+ROAw92TnwEBHVDc
+         FWUr2tHgj8SHVRMA9dOkzy6Uu2fudenmj+5vcmI5+Dm+oKvOekXVjdDNFV64j+fqC5g8
+         EtLH0NKYmDWf+3yhfTjU/r704XbGZ5pU1wHbTiY7rkiK5U+0nIeg5t+X1orklEGo6s4E
+         RQEw==
+X-Gm-Message-State: AOJu0Yy2AeoAAR3hBxR42Os0A/z7a7MNgeDvUOtnx0YE0HOQgxdC4FXb
+	naF3Pf/wBFfi+5mUwyUwZzjhM5iw93w6kHgc8r8GK3XZ6ag+Ol4O24JtV0g9fwJDwaBiXObYL+R
+	WZAQo0+8vi/zvWjQGoGkIqSy8sTN14JWgHOYbC98=
+X-Gm-Gg: AR+sD12IvvjppHWx5B1O3M9XTy4E3drH9Wd4RRmc1cAYqBxkVcBmPzsaYBp2VBnfajJ
+	HE/dkEhd5Wo0LMFIQjJBTTZyrnpXLZyebTrBtoDRBvU9pjcBZvy3bVXQFqHQ0NFgk22gC5Cs8Io
+	FmReFO/MNxDl/Xd7JQIgnVTOP6U9iPGzhymMPdfRDSJHDgAixnpTtpR8kn2+oMFYxK2TYkAcWWt
+	ZGpDye5W2sohXXwEmFFXwbRN8MqpsKVpLek8Y5UWR9XCnAheeJTFzRSApVbdC1Yjp+brKTwq/fe
+	yI1s2lAcIWdhtdnFTtyCl9tqCzvZ7n2NyVazJ9BE+qb3
+X-Received: by 2002:a05:6820:6ae3:b0:6aa:f7ac:faf3 with SMTP id
+ 006d021491bc7-6b0d6246224mr14928730eaf.19.1786862595514; Sat, 15 Aug 2026
+ 23:43:15 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-User-Agent: Mozilla Thunderbird
-Subject: Re: [BUG] nfs-utils 2.9.2: exportfs link failure with
- --disable-nfsdctl
-To: Jaipaul Cheernam <jaipaul.cheernam@est.tech>, linux-nfs@vger.kernel.org
-Cc: David Partain <david.partain@est.tech>,
- Daniel Turull <daniel.turull@ericsson.com>, roland.kovacs@est.tech
-References: <9fec9f1b-1c10-4a20-8282-dfc9addb4ee8@est.tech>
-Content-Language: en-US
-From: Steve Dickson <steved@redhat.com>
-In-Reply-To: <9fec9f1b-1c10-4a20-8282-dfc9addb4ee8@est.tech>
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 8bit
+References: <20260815-recall-any-keep-count-v4-0-bfb5b83d6cb1@kernel.org> <20260815-recall-any-keep-count-v4-4-bfb5b83d6cb1@kernel.org>
+In-Reply-To: <20260815-recall-any-keep-count-v4-4-bfb5b83d6cb1@kernel.org>
+From: Cedric Blancher <cedric.blancher@gmail.com>
+Date: Sun, 16 Aug 2026 08:42:00 +0200
+X-Gm-Features: AcwNN1VJrRiCQVDrIMUlnwUN9S6rOtdJ_H5RJznuYF-U3u5I0x65dPagz49mzCM
+Message-ID: <CALXu0Udh--HV_H-90PxVzGA8vuP-u54fkwsqkf0_gkDnEg_C6w@mail.gmail.com>
+Subject: Re: [PATCH v4 4/8] NFSD: Send a meaningful CB_RECALL_ANY keep count
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 
+On Sat, 15 Aug 2026 at 18:39, Chuck Lever <cel@kernel.org> wrote:
+>
+> deleg_reaper() sets craa_objects_to_keep to zero on every
+> CB_RECALL_ANY. RFC 8881 Section 20.6.3 defines that field as the
+> number of objects the client may keep, leaving the client to choose
+> which of the excess to return, because the server cannot read lack
+> of recent use as lack of usefulness. Zero asks for every delegation
+> the client holds, including the ones backing files an application
+> still has open.
+>
+> There is also no reason NFSD has to reclaim the entire delegation
+> working set on the first sign of memory pressure.
+>
+> Derive the keep count from cl_deleg_count so that each callback
+> asks for one delegation. Both the shrinker and the laundromat re-arm
+> while their condition lasts, so a client with more to give is asked
+> again on the next pass.
+>
+> The Linux client ignores craa_objects_to_keep and returns unused
+> delegations selected from the type mask alone, so the count changes
+> nothing for it.
+>
+> Fixes: 44df6f439a17 ("NFSD: add delegation reaper to react to low memory condition")
+> Signed-off-by: Chuck Lever <cel@kernel.org>
+> Reviewed-by: Jeff Layton <jlayton@kernel.org>
+> ---
+>  fs/nfsd/nfs4state.c | 19 ++++++++++++++++---
+>  1 file changed, 16 insertions(+), 3 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2214b4d60c7e..5c2dd6657fac 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -7942,6 +7942,7 @@ deleg_reaper(struct nfsd_net *nn)
+>  {
+>         struct list_head *pos, *next;
+>         struct nfs4_client *clp;
+> +       unsigned int count;
+>
+>         spin_lock(&nn->client_lock);
+>         list_for_each_safe(pos, next, &nn->client_lru) {
+> @@ -7951,21 +7952,33 @@ deleg_reaper(struct nfsd_net *nn)
+>                         continue;
+>                 if (clp->cl_state != NFSD4_ACTIVE)
+>                         continue;
+> -               if (list_empty(&clp->cl_delegations))
+> -                       continue;
+>                 if (atomic_read(&clp->cl_delegs_in_recall))
+>                         continue;
+>                 if (ktime_get_boottime_seconds() - clp->cl_ra_time < 5)
+>                         continue;
+>                 if (clp->cl_cb_state != NFSD4_CB_UP)
+>                         continue;
+> +               /*
+> +                * This read races with hash_delegation_locked() and
+> +                * unhash_delegation_locked() on other CPUs. A stale
+> +                * count only skews the keep value; the next
+> +                * laundromat pass sees a more current one.
+> +                */
+> +               count = data_race(READ_ONCE(clp->cl_deleg_count));
+> +               if (!count)
+> +                       continue;
+>                 if (test_and_set_bit(NFSD4_CALLBACK_RUNNING, &clp->cl_ra->ra_cb.cb_flags))
+>                         continue;
+>
+>                 /* release in nfsd4_cb_recall_any_release */
+>                 kref_get(&clp->cl_nfsdfs.cl_ref);
+>                 clp->cl_ra_time = ktime_get_boottime_seconds();
+> -               clp->cl_ra->ra_keep = 0;
+> +               /*
+> +                * Ask for a single delegation. Recalling one before it
+> +                * is needed costs the client an OPEN when it next
+> +                * touches the file.
+> +                */
+> +               clp->cl_ra->ra_keep = count - 1;
+>                 clp->cl_ra->ra_bmval[0] = BIT(RCA4_TYPE_MASK_RDATA_DLG) |
+>                                                 BIT(RCA4_TYPE_MASK_WDATA_DLG) |
+>                                                 BIT(RCA4_TYPE_MASK_DIR_DLG);
 
+You can add a Reviewed-by: Cedric Blancher <cedric.blancher@gmail.com>.
 
-On 8/5/26 3:32 AM, Jaipaul Cheernam wrote:
-> Hi,
-> 
->    Building nfs-utils 2.9.2 with --disable-nfsdctl fails to link
->    exportfs. This is a regression from 2.9.1.
-> 
->    Reproducer:
-> 
->    tar xf nfs-utils-2.9.2.tar.xz
->    cd nfs-utils-2.9.2
->    ./configure --disable-nfsdctl --disable-gss --disable-svcgss
->    make
-> 
->    (--disable-gss is just to avoid the krb5 dependency; the bug is
->    triggered by --disable-nfsdctl alone.)
-> 
->    Error:
-> 
->    /usr/bin/ld: exportfs-exportfs.o: in function `unexportfs_parsed':
->    exportfs.c:491: undefined reference to `nfsd_nl_cmd_str'
->    collect2: error: ld returned 1 exit status
-> 
->    Root cause:
-> 
->    nfsdnl.c (new in 2.9.2) provides nfsd_nl_cmd_str() and is compiled
->    into libnfs only under if CONFIG_NFSDCTL in support/nfs/Makefile.am.
->    But exportfs.c calls it under #ifdef HAVE_NFSD_NETLINK, which
->    configure.ac defines unconditionally:
-> 
->    AC_DEFINE([HAVE_NFSD_NETLINK], 1,
->              [Define to 1 if nfsd generic netlink support is available])
-> 
->    So exportfs always compiles the netlink code path, but the
->    implementation isn't linked in when --disable-nfsdctl is used.
-> 
->    This isn't triggered with the default configuration because
->    enable_nfsdctl defaults to "yes".
-> 
->    Possible fixes:
-> 
->    Option A — always compile nfsdnl.c into libnfs (remove the
->    CONFIG_NFSDCTL guard from support/nfs/Makefile.am). exportfs would
->    always have netlink unlock-export support. libnl is already
->    unconditionally required so this adds no new dependency:
-> 
->    --- a/support/nfs/Makefile.am
->    +++ b/support/nfs/Makefile.am
->    @@ -11,14 +11,10 @@
->     libnfs_la_LIBADD = libnfsconf.la -luuid
->     libnfs_la_CPPFLAGS = $(AM_CPPFLAGS) $(CPPFLAGS) -I$(top_srcdir)/ 
-> support/reexport
-> 
->    -if CONFIG_NFSDCTL
->     libnfs_la_SOURCES += nfsdnl.c
->    -libnfs_la_CPPFLAGS += $(LIBNL3_CFLAGS) $(LIBNLGENL3_CFLAGS) \
->    -         -I$(top_srcdir)/utils/nfsdctl
->    +libnfs_la_CPPFLAGS += $(LIBNL3_CFLAGS) $(LIBNLGENL3_CFLAGS)
->     libnfs_la_LIBADD += $(LIBNL3_LIBS) $(LIBNLGENL3_LIBS)
->    -endif
-> 
->     libnfsconf_la_SOURCES = conffile.c xlog.c
-> 
->    Option B — gate HAVE_NFSD_NETLINK on --enable-nfsdctl, so exportfs
->    skips the netlink path when nfsdctl is disabled. nfsdnl.h already
->    provides a static inline stub returning -ENOSYS for this case:
-> 
->    --- a/configure.ac
->    +++ b/configure.ac
->    @@ -256,8 +256,6 @@
->     PKG_CHECK_MODULES(LIBNLGENL3, libnl-genl-3.0 >= 3.1)
-> 
->     AC_CHECK_HEADERS(linux/nfsd_netlink.h)
->    -AC_DEFINE([HAVE_NFSD_NETLINK], 1,
->    -   [Define to 1 if nfsd generic netlink support is available])
-> 
->     # ensure the system netlink headers have the latest features
->   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <linux/nfsd_netlink.h>]],
->    @@ -279,6 +277,8 @@
->      enable_nfsdctl="yes")
->      AM_CONDITIONAL(CONFIG_NFSDCTL, [test "$enable_nfsdctl" = "yes" ])
->      if test "$enable_nfsdctl" = yes; then
->    +   AC_DEFINE([HAVE_NFSD_NETLINK], 1,
->    +       [Define to 1 if nfsd generic netlink support is available])
->        PKG_CHECK_MODULES(LIBREADLINE, readline)
->      fi
-> 
-> 
->    Both build cleanly. I lean towards Option B as it preserves the design
->    intent that --disable-nfsdctl disables all netlink interaction with
->    nfsd, and keeps the feature gating consistent between configure.ac and
->    Makefile.am. But Option A has merit if exportfs should always release
->    state via netlink regardless of whether the nfsdctl utility is built.
-> 
->    Which approach is preferred? Happy to send a formal patch either way.
-I just went ahead an took Option B adding you as the author
-and I did the Signed-off-by: since it did fix the bug.
+Could you please backport this to the stable branches up to Linux
+5.10, because conforming NFSv4.1 clients get robbed of all their
+delegations if craa_objects_to_keep=0.
 
-Committed (tag: nfs-utils-2-9-3-rc1)
-
-thanks!
-
-steved.
-
-> 
->    Thanks,
->    Jaipaul
-> 
-> 
-
+Ced
+-- 
+Cedric Blancher <cedric.blancher@gmail.com>
+[https://plus.google.com/u/0/+CedricBlancher/]
+Institute Pasteur
