@@ -1,176 +1,220 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej1-f53.google.com (mail-ej1-f53.google.com [209.85.218.53])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 304D0431A48;
-	Mon, 17 Aug 2026 13:18:47 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786972728; cv=none; b=lIFL3qjCAjd1hr2nDCLDKl69A1TGw9WahXVtxB0iWtd4W+NUH/c0yUqJ3fdxWiBaEOid/NS6MEEitWXJC26KD1NUhQVhrVPl3oNUccTKI4Oj5yI5ttyFHVCzkvcHD6gGgrtnlvBCL1tTnn0mIekvLPwy5FJTKywVrqUO9SPHjgc=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786972728; c=relaxed/simple;
-	bh=OWePMOmwdyShVhOmzWbcXXZUZcMzehJKIqCfmwdipOM=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=Lxz1vwpoQZPAld+spTRzsTzlrJLQ3XHQJUh+nryb/abzQ7cBpxiAXxGTubU0EQ61u7zHV7lLxPNWBt24xebsvvGaDPq4RBv2VlwHi88iUlod3NwIVc0wWMt/k9TDIZ9FlHqOcpMnew9gar1u1GzhDTlcyDpU6xF4Js1FZMeJYPw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fSHC72zT; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3077042E8CB
+	for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 13:27:42 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.218.53
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1786973264; cv=pass; b=FdUciahS9F/ejTOzlAilDVkOnNjp38nsM9p/j3Eg5vrcEvDGdIo36oYtuRv14/ySRZK865FUX/dSE9uwKBtiX9L1hyRjYg7cJKpqWbMTkaTna7fWqL5hAr26aXT0H81CtxR7msfkWRQkPRgjxzOEqh1EfeyPvqmiXCiImB7QRjk=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1786973264; c=relaxed/simple;
+	bh=1DlLwTW104OszDT/1II5RPaSBCaItMuBX3O6KwNsB5w=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=sBRKMng+UGTzLoPLlkTuo4TgtkGoQu27ynQaEMEyGva/gQwsUy3W17lFB1qw0uxEvs5sLd2OD6erIoWbtim/p3ErIQiTnjkTZrvmIVUt9xnXYz1/SGKhtMXrodERuf2Op+ULFg+85m82uYC5+Hu6377KvhD4nK8lu6zNvaHLN5M=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=aFjYFU1t; arc=pass smtp.client-ip=209.85.218.53
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fSHC72zT"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3F5C31F00A3D;
-	Mon, 17 Aug 2026 13:18:46 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786972727;
-	bh=P4mcfXtxvAc8wd7J9tSmqaTRpcpUcJTv24dB9nbPHvk=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=fSHC72zTjNjqE+VQ83++VEfiyEIWGwu1SaOplEOIBSINmjqXwqPhUhrqEMZmrz014
-	 u5x9FtG3Cw8moHzLw13RMikTeqP89XZRR7d7NrAOS9GQztGKV2ip4XhtAoK13s3cGh
-	 A7V8X1c+rx89bg4tOlYSRXqZF97MoBQkzy0csoRImIDl2yJxX0vCkB+sReIhI+Boti
-	 npjA/xkkOi8xCTHLbAKMpp7O7u/+RVJ5mBxRUmu9Z692dxRheDSiQRLC+wwQ+gm+/9
-	 HkS8XtoEBDeTbXnNAlIdOXMg6R3bF5hkA7bunSrl1aunZV++tDdcXb6W8yswEmbY+b
-	 TLgvBTNVHbS1g==
-Message-ID: <e7b2ae795a489a07f6f494b8f596f05db0ddc688.camel@kernel.org>
-Subject: Re: [PATCH] lockd: fix NULL pointer dereference in
- nlmclnt_locks_release_private
-From: Jeff Layton <jlayton@kernel.org>
-To: Ran Hongyun <ranhongyun1@huawei.com>, cel@kernel.org,
- trondmy@kernel.org, 	anna@kernel.org, viro@zeniv.linux.org.uk
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	chengzhihao1@huawei.com, yangerkun@huawei.com, yi.zhang@huawei.com
-Date: Mon, 17 Aug 2026 09:18:44 -0400
-In-Reply-To: <20260817060820.963195-1-ranhongyun1@huawei.com>
-References: <20260817060820.963195-1-ranhongyun1@huawei.com>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="aFjYFU1t"
+Received: by mail-ej1-f53.google.com with SMTP id a640c23a62f3a-c2020421077so557063666b.3
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 06:27:42 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1786973260; cv=none;
+        d=google.com; s=arc-20260327;
+        b=RGvFV+ZvY0cPhy8KBO48Rwfr2LH7ErX5GyVtupb1a/55mlvDFI33q3gQs9BaLZqZT+
+         ybPZvuOk0cxytgxbpz0+CACtk+hSAFDxBhQa0gGsTiwsZMyswnbG2i4FiGdrSIXJtTV+
+         OzXdP5f09vaTGGoPecCAz6GFcMs09Un8H1QE3q71tTpJ5aAe8mFuq8nNBTfoeo/40P+4
+         29nKS7uaWOxPTT6zsE2A8G05cDjCtd8yonHfyKfdR2K6C5tsFrX+xt+YPebRoYvcWj+X
+         mifqxoiO6ZV2iZsJPBXAMw2trBTgnkVZ0f3gr6vwG3VVVPTRYlnkFE9MSWCCAq6IS/F4
+         CRng==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=5PImzGjw1as2Qy3XGkcxUdLAPTNoN5hAmeBUTq6U/L8=;
+        fh=0GWXJUnoVyfn8G8ZWyGXK/AnUAdzjZwhYuxC4H5hGM8=;
+        b=EHqn0nCwFmga53VwG11tEaYIhCamwJQA2nLKHVSxSuThCCSET2cPsc2QDxASdb8FDp
+         ZoLfLx8bAGX2ynJSLzT2JyzhnGgvCUb6SELHt4TI/D4v1gcBpbwKOktZqO++yUZwmyiX
+         fW9MObMz4m2N7uEdag1fpfxOnbAIdCFdFnvncMo+UPNESdVUusN/rh7rhuAHOddyVil6
+         ot15K/za+qIIYy3WKK8NYTnIRlPqW9DTDQp62SMmAxggv2EscV0vbWf1b3uPDzGqFt4a
+         tZsh04DQ9s5xoiRTORUBjeaK6J0Hbp5z/NzZ+oxH8RQN5V6YrjsTDYDbZTuYj0Dh9W78
+         XtGw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=gmail.com; s=20251104; t=1786973260; x=1787578060; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=5PImzGjw1as2Qy3XGkcxUdLAPTNoN5hAmeBUTq6U/L8=;
+        b=aFjYFU1tlLPMRER4pipHl3ANVxgkOpp+ndm/NLf7Pq83xOKblowW91NietJHufVnaU
+         mG6fHdWFmqeqE7Za+MQqPL6w4geucj6kn1XHrsbXH9fB5A51lgvvXUgpWIP+3Pf/Kr/6
+         E3yOuOXV2xWiDnVOHp+WQEOghMjyssS26hPeiD6oTng8zPUYOFghMQwJWe0lRL0POps+
+         SuzQa+NquXQZJGM9fqIgYAOg6FkJKEnN6kYmTkEj7Mdz7+EuQF2GKfaT1P53L8FxYxdF
+         9+WaDR8hgyKro9QERMbIB8mymp8IjIl17/FmueYmhk4/X5idZLePC/Umu/42+ULghIi/
+         1Zjg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786973260; x=1787578060;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=5PImzGjw1as2Qy3XGkcxUdLAPTNoN5hAmeBUTq6U/L8=;
+        b=BJhW69NfzjiNuWiYrCkh2WGGWxY5DmKLdy+chOdOoJLYJoIApA9rGIXy/SuCNVljZE
+         m9K4UKNnY0VaOXOt1u2yK2EVtUbHw8bsm8AXTt+bTSJspvhQYuEJym//zC3YCCUHLtIH
+         /DywJs0hL0/5LTgMujw6ccn3B9SLsseDzt1Vd12+6bv4OzFr31i7riLX+1m8rR7mcWAs
+         RnSD6JrXfoR6UbTOqcmNs71FqzaEE2ts/VhQkKFyyhY4mwzwy4Rt3aFsqzuR0NxJXrbM
+         bpth96a44KOKzFxf8Er/+MSWIHGM12U/hsbZP3vuf3iHxTMmMwj8s4Moca8mSdE2SGCA
+         gQJA==
+X-Forwarded-Encrypted: i=1; AHgh+RqKiBlqdRM2ZvM+Vnt2n/6mHWCcaU0d0f4GaQmE55PBR+xrJBmNrdBmgq9e9C+axpPDOaG0DtiePMI=@vger.kernel.org
+X-Gm-Message-State: AOJu0Yy/Rth12C5JeGEXwK42aNkOUaG2wQUWWsQLZRtYdHthC+YQ4hCV
+	ineyMHoflKJ+wsaxB1nS9sBm0hi9HOvhWFPjLmf1gz0/7S5tnB3QHxJAOAmO7RdXhNphKAx0fyB
+	sj4OrvO+swzKOw7ygA61NV/2oZ3/6fFQ=
+X-Gm-Gg: AR+sD136Kx64KCF13vvpo3fj0+hxo7ikUOrvH9jRjw/paFLZpzgULxeezVR4po0UuWB
+	VUDydmfukpYUZK+OXsqPdXwJkRr/CHTq+XA/QjwE5FAz1xMiF2/qQBwJyBMgdZAEpCYKBZfgbY0
+	lhHHcKNUFN8ml5iDPXLIng7b0OfVxNAN/bBfv4QKaWtvZ+bS3b2Co2cEXR4/cr4SrakQKOHf3TH
+	qbBFSNFvb1Z7iqxdHod5pBbQxskAoiFaZhaZqlZt9t+upQL0oofKE5TbddQfY/lkSK5KWrhosPX
+	HV1BYNBWKB92CeOX6niXHNFzne8DpBseHHAVGWV4nxjuJQ==
+X-Received: by 2002:a17:907:5c2:b0:c16:1227:e3d8 with SMTP id
+ a640c23a62f3a-c2129c1bd00mr1250866166b.13.1786973259962; Mon, 17 Aug 2026
+ 06:27:39 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+References: <20260803012648.2195405-1-neilb@ownmail.net> <20260803012648.2195405-4-neilb@ownmail.net>
+ <CAJfpegs-k3skRGiwZvQLzD7OrAK4KL8zwmpmJKyjRHSQ-rqX+Q@mail.gmail.com>
+ <178642552869.2852630.11443303758249822243@noble.neil.brown.name>
+ <178675372176.2852630.1305553887009521382@noble.neil.brown.name> <oh2lg2agqxwqopecacq6sfdnky5faxidwsybkvbwbq24r6tw6o@4swfog5ocwwb>
+In-Reply-To: <oh2lg2agqxwqopecacq6sfdnky5faxidwsybkvbwbq24r6tw6o@4swfog5ocwwb>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Mon, 17 Aug 2026 15:27:28 +0200
+X-Gm-Features: AcwNN1XGT7C9D5visKW_eW7eV24-4iD41ayTDyPPniVL030x1LtgVNaa9P7WcV8
+Message-ID: <CAOQ4uxgtKvKmPaK8rPAZDSwu0Hr9JAmqJi0a1VX_Rg7jDo8HrQ@mail.gmail.com>
+Subject: Re: [PATCH v1 03/12] fsnotify: don't hold a spin_lock across
+ fsnotify_recalc_mask() calls.
+To: Jan Kara <jack@suse.cz>
+Cc: NeilBrown <neil@brown.name>, Miklos Szeredi <miklos@szeredi.hu>, Ian Kent <raven@themaw.net>, 
+	Chuck Lever <cel@kernel.org>, Jake Edge <jake@lwn.net>, Ilya Dryomov <idryomov@gmail.com>, 
+	Alex Markuze <amarkuze@redhat.com>, Viacheslav Dubeyko <slava@dubeyko.com>, 
+	Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu, 
+	Alexander Viro <viro@zeniv.linux.org.uk>, Christian Brauner <brauner@kernel.org>, 
+	Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
+	Andrew Morton <akpm@linux-foundation.org>, Miklos Szeredi <mszeredi@redhat.com>, autofs@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org, 
+	codalist@coda.cs.cmu.edu, linux-fsdevel@vger.kernel.org, 
+	linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On Mon, 2026-08-17 at 14:08 +0800, Ran Hongyun wrote:
-> nlmclnt_locks_init_private() unconditionally sets fl->fl_ops even when
-> nlmclnt_find_lockowner() returns NULL due to allocation failure. When
-> locks_release_private() later sees a non-NULL fl_ops, it calls
-> fl_release_private, which dereferences fl->fl_u.nfs_fl.owner.
->=20
-> nlmclnt_proc()
-> 	nlmclnt_locks_init_private <----set fl->fl_ops unconditionally
-> 		if (!fl->fl_u.nfs_fl.owner) <----forget to clear fl->fl_ops
->=20
-> locks_release_private()
-> 	if (fl->fl_ops) <----fl->fl_ops is not NULL but owner is NULL
-> 		fl->fl_ops->fl_release_private()
-> 			nlmclnt_locks_release_private() <----NULL ptr dereference
->=20
-> Fix this by clearing fl_ops when nlmclnt_find_lockowner() fails in
-> nlmclnt_proc(), so that locks_release_private() skips the
-> fl_release_private call path.
->=20
-> Fixes: bf8848918d75 ("lockd: handle lockowner allocation failure in nlmcl=
-nt_proc()")
-> Signed-off-by: Ran Hongyun <ranhongyun1@huawei.com>
-> ---
->  fs/lockd/clntproc.c | 1 +
->  1 file changed, 1 insertion(+)
->=20
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index f06faf577cea..4b54481fecd5 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -176,6 +176,7 @@ int nlmclnt_proc(struct nlm_host *host, int cmd, stru=
-ct file_lock *fl, void *dat
->  	if (!fl->fl_u.nfs_fl.owner) {
->  		/* lockowner allocation has failed */
->  		nlmclnt_release_call(call);
-> +		fl->fl_ops =3D NULL;
->  		return -ENOMEM;
->  	}
->  	/* Set up the argument struct */
+On Mon, Aug 17, 2026 at 1:03=E2=80=AFPM Jan Kara <jack@suse.cz> wrote:
+>
+> On Sat 15-08-26 10:28:41, NeilBrown wrote:
+> > On Tue, 11 Aug 2026, NeilBrown wrote:
+> > > On Tue, 11 Aug 2026, Miklos Szeredi wrote:
+> > > > On Mon, 3 Aug 2026 at 03:39, NeilBrown <neilb@ownmail.net> wrote:
+> > > >
+> > > > > @@ -116,11 +117,15 @@ static int dnotify_handle_event(struct fsno=
+tify_mark *inode_mark, u32 mask,
+> > > > >                 else {
+> > > > >                         *prev =3D dn->dn_next;
+> > > > >                         kmem_cache_free(dnotify_struct_cache, dn)=
+;
+> > > > > -                       dnotify_recalc_inode_mask(inode_mark);
+> > > > > +                       need_recalc =3D true;
+> > > > >                 }
+> > > > >         }
+> > > > >
+> > > > > +       if (need_recalc)
+> > > > > +               need_recalc =3D dnotify_recalc_inode_mask(inode_m=
+ark);
+> > > > >         spin_unlock(&inode_mark->lock);
+> > > > > +       if (need_recalc)
+> > > > > +               fsnotify_recalc_mask(inode_mark->connector);
+> > > >
+> > > > Is the fsnotify_group_lock() held in this case?   I don't see it.
+> > >
+> > > It isn't held.  Doesn't it need to be...
+> > > It seems to protect marks, so maybe it does.
+> > >
+> > > srcu seems to be used to protect this section, so maybe we can rely o=
+n
+> > > that.
+> >
+> > I dug into this some more, and we do rely on srcu, but don't need the
+> > extra code below.
+> > inode_mark->lock doesn't protect inode_mark->connector, so moving the
+> > dereference out of the lock has no effect.
+> > srcu_read_lock is taken before we get the ref to the mark, so the mark
+> > and the connector cannot disappear underneath us.
+> > A race could result in inode_mark->connector reading as NULL, but
+> > fsnotify_recalc_mask() checks for NULL, so there is no risk for harm.
+> >
+> > Thanks for encouraging me to dig into this.
+>
+> Sorry for not replying earlier but I was on vacation. The lifetime rules
+> around marks & connectors are subtle so we have to be really careful and
+> dnotify with its single shot marks is peculiar which makes things even
+> harder. fsnotify_recalc_mask() has a comment about locking in front of it=
+:
+>
+> /*
+>  * Calculate mask of events for a list of marks. The caller must make sur=
+e
+>  * connector and connector->obj cannot disappear under us.  Callers achie=
+ve
+>  * this by holding a mark->lock or mark->group->mark_mutex for a mark on =
+this
+>  * list.
+>  */
+>
+> and you very obviously start violating these rules with your changes. Now=
+ I
+> admit I've forgotten all the details why I did it like this so let me
+> reconstruct it :).
+>
+> Connector stays alive as long as there's any mark in its list. Both marks
+> and connectors are protected by the srcu. Mark also has
+> FSNOTIFY_MARK_FLAG_ATTACHED flag which is set iff the connector->obj is
+> pointing to valid inode/mount/... FSNOTIFY_MARK_FLAG_ATTACHED changes onl=
+y
+> under mark_mutex so that's why mark_mutex is stabilizing the connector (a=
+nd
+> also connector->obj). This is what is used by most places calling
+> fsnotify_recalc_mask(). But dnotify needs to mess with notification mark
+> mask from event handling and there we cannot take mark_mutex due to lock
+> ordering constraints. That's where the mark->lock rule comes into play
+> because mark->lock also needs to be acquired to clear
+> FSNOTIFY_MARK_FLAG_ATTACHED. That being said this dnotify use of
+> fsnotify_recalc_mask() still looks somewhat racy because
+> dnotify_handle_event() can get called after FSNOTIFY_MARK_FLAG_ATTACHED i=
+s
+> cleared.
+>
+> Anyway if you move fsnotify_recalc_mask() call outside of mark->lock, you
+> seem to make the race with dnotify clearing the mark from
+> fcntl_dirnotify() easier to hit. Now in the notification path the inode
+> itself is guaranteed to stay alive and the rest is protected by the SRCU =
+so
+> there's no direct UAF. But fsnotify_recalc_mask() simply isn't prepared f=
+or
+> the connector changing under it due to object getting detached and so we
+> could end up doing weird things like NULL ptr derefs or similar stuff.
+>
+> So this call to fsnotify_recalc_mask() from dnotify needs a more careful
+> handling. Which is sad because I doubt anybody still uses dnotify...
 
-The fix looks correct, but I don't like the way that the initialization
-and cleanup is spread across multiple functions. I think it would be
-better to just get rid of nlmclnt_locks_init_private() altogether and
-open code what it does in the single caller (nlmclnt_proc()). Then you
-could just not initialize fl_ops if nlmclnt_find_lockowner() fails.
+Maybe this is the way out.
 
-There's also another preexisting bug here. If the lockowner allocation
-fails, this function also leaks the references taken in
-nlmclnt_alloc_call().
+dnotify_recalc_inode_mask() can only remove bits from i_fsnotify_mask,
+so it is an optimization.
 
-Want to spin up a v2 that fixes all of this?
---=20
-Jeff Layton <jlayton@kernel.org>
+If we just remove fsnotify_recalc_mask() call from
+dnotify_recalc_inode_mask(), then i_fsnotify_mask will be updated when
+dnotify_mask gets removed eventually.
+
+If nobody uses dnotify, noone is likely to notice the loss of the optimizat=
+ion.
+
+Thanks,
+Amir.
