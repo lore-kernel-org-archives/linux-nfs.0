@@ -1,116 +1,203 @@
-Received: from mta1.migadu.com (out-194.mta1.migadu.com [95.215.58.194])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from us-smtp-delivery-124.mimecast.com (us-smtp-delivery-124.mimecast.com [170.10.129.124])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C24822264A7
-	for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 07:39:00 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.194
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 63EDA3BED6A
+	for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 08:00:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=170.10.129.124
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786952342; cv=none; b=mVLtrc5jvgFzBdBQeaOWRwQo7mKYHMjhib2xsKYsFvqZCumT6gTdS63AxANYizk/Yp2+Ar33QGLzxuXTfCvBCtslmDlB+du4e8eNwwZJ4lZfNpezY4ALKTNVhTszxNc7d6F+2ZYZ9ksYH9W3UeHFhvf++hBLyTqbuB/aojenD84=
+	t=1786953626; cv=none; b=g1XxP7pMKkOAn2GwXwCgjDpD47SIABISKjEysQIVAHmrY+DdDwgjfNMSSNJa5rqA/PDLSq4Cc+YfGFE82EnLUKN/I/wOq8yYgn75Dw21dhUbOOTeRAVk4jsgMfMFV8wIrWOxT74jWKvVgNaPFUow2Lze+r2up5QY0X57SwDiEHw=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786952342; c=relaxed/simple;
-	bh=4YGgPm1wRAd8vr5pINF7lmz4ylld4f9QdvgoaXgstqU=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=je6ICXD1RtLuVNLiiMRII0hHuS8wmgJsMxI0YLD3NncRqqwAk14IMD2bxXyFj/0eEL+iiT4V0CN/SrAyjOkYmnlkyVhFWGJzWlOSvuV2bsN2p1r2TlnizBvZo3NKGYMReZPsKOOJrgS5dZaRH4IF7SJU09R2oWYnkRyU8DuiH44=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=drKkCzKS; arc=none smtp.client-ip=95.215.58.194
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
+	s=arc-20240116; t=1786953626; c=relaxed/simple;
+	bh=nEbPJirofNZR8YP113Zh20revId+ONhKdsLyIjSEW/Y=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=FHyiI2VR0U/sxvbCDzh+Itb8BG36YEVeCXphJzcdV0dV8RpsDyVS434EduUfZIhAIoVR6uO6W0ci46d9OBgwMAVN0lozfUSN35CaGnK/E4McmX2i5GWDLlczBeMru1/ziwZYA0g3gyfiQktPevbq/KnnewfJWoeEusGYNfV48AA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com; spf=pass smtp.mailfrom=redhat.com; dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b=ADAdNXds; dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b=EImnwTna; arc=none smtp.client-ip=170.10.129.124
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=redhat.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=redhat.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="drKkCzKS"
-X-Envelope-To: linux-nfs@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=4YGgPm1wRAd8vr5pINF7lmz4ylld4f9QdvgoaXgstqU=;
- c=simple/simple; d=linux.dev;
- h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1786952338; v=1; x=1787557138;
- b=drKkCzKSsin9zuHKenvfN9Z2FT92faus9G8LzAbDREnbR3c36ZnwAZwQ92sXsS+0GRnErubh
- jak7uy/R270dwWU2uNt0CkImdFXguvI2TIumQCaIJyEBLAIyuyEDzuo49xBXaGmyuG+Zalx6zp6
- sUzdcJHuBYYvj+Fdx2BMVJ9g=
-X-Envelope-To: linux-nfs@vger.kernel.org
-Received: from localhost (3.112.29.171)
-	by mta12.migadu.com with ESMTPS id 17e9312474d067d5;
-	Mon, 17 Aug 2026 07:38:57 +0000
-X-Migadu-Flow: FLOW_OUT
-Date: Mon, 17 Aug 2026 15:38:53 +0800
-From: Baoquan He <baoquan.he@linux.dev>
-To: Lukas Wunner <lukas@wunner.de>,
-	Jan Sebastian =?iso-8859-1?Q?G=F6tte?= <contact@jaseg.de>
-Cc: Jan Sebastian =?iso-8859-1?Q?G=F6tte?= <linux@jaseg.de>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Mike Rapoport <rppt@kernel.org>,
-	Pasha Tatashin <pasha.tatashin@soleen.com>,
-	Pratyush Yadav <pratyush@kernel.org>,
-	Dave Young <ruirui.yang@linux.dev>,
-	Catalin Marinas <catalin.marinas@arm.com>,
-	Will Deacon <will@kernel.org>, David Howells <dhowells@redhat.com>,
-	Jarkko Sakkinen <jarkko@kernel.org>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Shuah Khan <skhan@linuxfoundation.org>,
-	Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>,
-	"Serge E. Hallyn" <serge@hallyn.com>,
-	Ignat Korchagin <ignat@linux.win>,
-	Herbert Xu <herbert@gondor.apana.org.au>,
+	dkim=pass (1024-bit key) header.d=redhat.com header.i=@redhat.com header.b="ADAdNXds";
+	dkim=pass (2048-bit key) header.d=redhat.com header.i=@redhat.com header.b="EImnwTna"
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=redhat.com;
+	s=mimecast20190719; t=1786953623;
+	h=from:from:reply-to:subject:subject:date:date:message-id:message-id:
+	 to:to:cc:cc:mime-version:mime-version:
+	 content-transfer-encoding:content-transfer-encoding;
+	bh=DwTYrOnwpgdP2owyQAuLgoS9oPtit+Bxu8ttOzaSjxA=;
+	b=ADAdNXdsXxnWUmN0BGGJ/6Y1CMHuP8QypRQUkdDOvP0Pr3afSaUv39xKsiAqgzXdB8yFHY
+	4hA96GxUDxxO0XoGCuspYyOirOPnZdR6JfI/wRyrdYnfdNBAfdq6Vo096+N+bVvoaJoDT8
+	xdeHyVWM6wJFYGGLM5YirAdBg3i6CX0=
+Received: from mail-pf1-f197.google.com (mail-pf1-f197.google.com
+ [209.85.210.197]) by relay.mimecast.com with ESMTP with STARTTLS
+ (version=TLSv1.3, cipher=TLS_AES_256_GCM_SHA384) id
+ us-mta-683-uSyfyc-MMq6T77uXPONPCQ-1; Mon, 17 Aug 2026 04:00:21 -0400
+X-MC-Unique: uSyfyc-MMq6T77uXPONPCQ-1
+X-Mimecast-MFC-AGG-ID: uSyfyc-MMq6T77uXPONPCQ_1786953621
+Received: by mail-pf1-f197.google.com with SMTP id d2e1a72fcca58-84eee2147ffso4011527b3a.0
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 01:00:21 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=redhat.com; s=google; t=1786953621; x=1787558421; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=DwTYrOnwpgdP2owyQAuLgoS9oPtit+Bxu8ttOzaSjxA=;
+        b=EImnwTnadRQUhicZ7DPFs5igEE2iopWozE8ksbjRnWyCrGLmjPFwHqYTYo6Yg9Ru66
+         +XQeQLbcLtVYNS+dntfdNsRMBYNY0SOHiislPtAl4ZDHaa+TAt5Zai7yF5cmkR+4uQrZ
+         3MCo5G9VtN0Tj+pH2MZjAZHoheVRnASbg3MyxBhRHUmNiRjZEUZJ5KDTRvW6cM5+KM2v
+         Bf/FGXi93ESAVNuv9BElzENwuN/+1JXFrfLEFZJX/BQ+U6z04Ho5klLidFO4VLmQq4zW
+         AkLJwUWI3VU0M7AAIb356b4zIQ2pYU6twz6SU9lAo1VWnzsBRjEH7o5sCMe8mTIrX24P
+         ooWg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1786953621; x=1787558421;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=DwTYrOnwpgdP2owyQAuLgoS9oPtit+Bxu8ttOzaSjxA=;
+        b=Dh45FUy67NvkUfVrmU7i0lSboYiJCEhNScCsnPLQ7Y2mz7VxqDqcQFatqP/2S8ZMVd
+         Q/0EbkupntOafpbewx5x8wbjFfHZNSN4kISqqE3nwBiEM7s5J1EOk3uHC60DvUZzlD0d
+         lyypd8K1NO7i7HQv460sU6O5U4fzgBHGUL73Cmfpc334M2Xqv1RYpx2gWLjhRXf3dFkS
+         rz4ifzhgEV+IX9VkG4iRY9gW9UOcBQh7sOKpoQA1YvGPfAZtjx5HRdZ1EdogHDHXzW3/
+         zyOw4tAX74VddkIJt0iNjdbbenS3j6E6ted3hkEgRXKbk1qIo/cDI2JJAAw8WS9XKHeP
+         M+Og==
+X-Forwarded-Encrypted: i=1; AHgh+RpsBiZCDiTgnin6n+pMQlZWJNSplRV/GQ4sc2//bGsxwGhkV4llPWnOXNUDbp5rAy03GxbYeB7OU6g=@vger.kernel.org
+X-Gm-Message-State: AOJu0YzGtpU6Q3+8XQ2aGo9cjDaFPAMFLqfhzpMq9HuKaEWPixTeGFoz
+	bqmgVYv3Ly/JQm2xhhyGKU+ULXfeau5zqZNM9ZlxeLeqziAaFPvGDEEMZQLNPgUqynGppsUqMyE
+	CdiiRSiUV1tTQHNSFf7WFDfyiFxQvpHuqC6pjcel52cAV+OdWy47TAdqpOWOlfF9nEJp8Z3Ma
+X-Gm-Gg: AR+sD13Ut3vE2aSDJiLXb/moN1cPGbuILjYNmoE+JocM7eB7YqISwV+AUXHRCLCkiHJ
+	5VZia13WZT1maMfXQdZU1OA2OagL6YCLz4tQIWyeFpKfcPfiCcVES3rpCqKYSGRptEWKysUbodw
+	GJODRFR2HKGER6jWegIu4pQUUoxSRePqPpDHC/090td475Po1tvTYLk1cSH8nZcuoe0OdIOU5hE
+	98yV6rdfvNffJCK94QsfpLf1DtXWx7ZCUCnekh7uGDxnXuFW8j1wzpJTre+HT7LbzFLElEY2j3B
+	o+Kiqe2jZv43UMDCwx6YzeuyIjjxPpJuZX+h6S/OSzH09drcRnhlqbNLi7BOCezxGgsDalashMw
+	lX/rxpu7F9TlUPCwhu4MnwodU
+X-Received: by 2002:a05:6a00:4ac1:b0:847:9aa8:d3bb with SMTP id d2e1a72fcca58-84fde15f1a9mr21594358b3a.12.1786953620459;
+        Mon, 17 Aug 2026 01:00:20 -0700 (PDT)
+X-Received: by 2002:a05:6a00:4ac1:b0:847:9aa8:d3bb with SMTP id d2e1a72fcca58-84fde15f1a9mr21594266b3a.12.1786953619846;
+        Mon, 17 Aug 2026 01:00:19 -0700 (PDT)
+Received: from kernel-devel.tail62cea.ts.net ([240d:1a:c0d:9f00:be24:11ff:fe35:71b3])
+        by smtp.gmail.com with ESMTPSA id d2e1a72fcca58-8517d249b39sm2310673b3a.47.2026.08.17.01.00.16
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 17 Aug 2026 01:00:18 -0700 (PDT)
+From: Shigeru Yoshida <syoshida@redhat.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>,
+	Chuck Lever <cel@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>,
+	NeilBrown <neil@brown.name>,
+	Olga Kornievskaia <okorniev@redhat.com>,
+	Dai Ngo <Dai.Ngo@oracle.com>,
+	Tom Talpey <tom@talpey.com>,
 	"David S. Miller" <davem@davemloft.net>,
-	Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
-	Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>, Mimi Zohar <zohar@linux.ibm.com>,
-	James Bottomley <James.Bottomley@hansenpartnership.com>,
-	Marc Dionne <marc.dionne@auristor.com>,
 	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>, Eric Biggers <ebiggers@kernel.org>,
-	"Theodore Y. Ts'o" <tytso@mit.edu>,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-	Alasdair Kergon <agk@redhat.com>, Mike Snitzer <snitzer@kernel.org>,
-	Mikulas Patocka <mpatocka@redhat.com>,
-	Benjamin Marzinski <bmarzins@redhat.com>, kexec@lists.infradead.org,
-	linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-	linux-mm@kvack.org, keyrings@vger.kernel.org,
-	linux-doc@vger.kernel.org, linux-security-module@vger.kernel.org,
-	linux-crypto@vger.kernel.org, linux-nvme@lists.infradead.org,
-	linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
-	linux-afs@lists.infradead.org, netdev@vger.kernel.org,
-	linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	dm-devel@lists.linux.dev
-Subject: Re: [PATCH v2 01/13] kexec: add CRASH_WIPE_SECRETS to wipe secrets
- before kdump
-Message-ID: <aoK6jXA-tF9qfKOZ@MiWiFi-R3L-srv>
-References: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
- <20260811-crash-zeroize-rework-v2-1-9561d13c2340@jaseg.de>
- <anw9ILJiO5xIjP4f@MiWiFi-R3L-srv>
- <9765f7ea-36bb-4c7b-a19b-7facec97b762@jaseg.de>
- <aoGpcczo5GkBsPwt@wunner.de>
+	Jakub Kicinski <kuba@kernel.org>,
+	Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>,
+	felix <fuzhen5@huawei.com>
+Cc: Shigeru Yoshida <syoshida@redhat.com>,
+	linux-nfs@vger.kernel.org,
+	netdev@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Subject: [PATCH] SUNRPC: update clnt->pipefs_sb on pipefs MOUNT/UMOUNT events
+Date: Mon, 17 Aug 2026 17:00:12 +0900
+Message-ID: <20260817080013.564939-1-syoshida@redhat.com>
+X-Mailer: git-send-email 2.55.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
 Content-Transfer-Encoding: 8bit
-In-Reply-To: <aoGpcczo5GkBsPwt@wunner.de>
 
-On 08/16/26 at 02:13pm, Lukas Wunner wrote:
-> On Wed, Aug 12, 2026 at 12:08:39PM +0200, Jan Sebastian Götte wrote:
-> > I can imagine one alternative way to approach this, tell me what you think:
-> > Instead of registering wipe handlers that memzero places on panic, I could
-> > put an optional registry of (addr, len) descriptors into crashkernel memory
-> > that the original kernel populates with the PAs of buffers to clear ahead of
-> > time. Then the kdump kernel could do the actual memzero. This would remove
-> > all code from the actual kdump path here. The registry could be made
-> > per-core to avoid locks.
+Commit bfca5fb4e97c ("SUNRPC: Fix RPC client cleaned up the freed
+pipefs dentries") added a clnt->pipefs_sb field and a consistency
+check in rpc_clnt_remove_pipedir() so that pipedir cleanup is skipped
+when the current superblock does not match the one recorded in the
+client.
 
-Since there are a lot of security expert in CC, I am wondering what's
-the risk if we wipe secrets during dumping. System is located in
-user's place, and vmcore is dumped and collected in user's place. If we
-filter out secrets memory when we dumping, what could be leaked out?
+However, __rpc_clnt_handle_event() never updates clnt->pipefs_sb when
+it creates or removes pipedirs in response to RPC_PIPEFS_MOUNT and
+RPC_PIPEFS_UMOUNT notifications.
 
-> 
-> Or create a dedicated mempool from which all sensitive data is allocated,
-> then call mempool_free_bulk() on kexec to poison everything in that pool?
-> 
-> Thanks,
-> 
-> Lukas
+This causes a problem for RPC clients that are registered before
+rpc_pipefs is mounted (e.g., before rpc_pipefs is mounted during boot,
+or after it has been unmounted). Such clients have clnt->pipefs_sb set
+to NULL at registration time because rpc_get_sb_net() returns NULL.
+When rpc_pipefs is mounted later, __rpc_clnt_handle_event(MOUNT)
+creates the pipedir but leaves clnt->pipefs_sb as NULL. When the
+client is later destroyed, rpc_clnt_remove_pipedir() sees that the
+current superblock does not match clnt->pipefs_sb and skips cleanup,
+leaving orphaned dentries whose RPC_I(inode)->private pointers
+reference freed rpc_clnt memory. Any subsequent access to these
+orphaned info files triggers a use-after-free [1].
+
+Fix this by setting clnt->pipefs_sb in __rpc_clnt_handle_event() on
+MOUNT and clearing it on UMOUNT, mirroring what rpc_setup_pipedir()
+already does at client registration time.
+
+[1]
+BUG: KASAN: slab-use-after-free in rpc_info_open (net/sunrpc/rpc_pipe.c:426)
+Read of size 4 at addr ffff88802ebe0800 by task cat/5079
+
+Call Trace:
+ <TASK>
+ ...
+ rpc_info_open (net/sunrpc/rpc_pipe.c:426)
+ do_dentry_open (fs/open.c:947)
+ vfs_open (fs/open.c:1052)
+ path_openat (fs/namei.c:4700 fs/namei.c:4863)
+ do_file_open (fs/namei.c:4892)
+ do_sys_openat2 (fs/open.c:1368)
+ __x64_sys_openat (fs/open.c:1385)
+ do_syscall_64 (arch/x86/entry/syscall_64.c:94)
+ entry_SYSCALL_64_after_hwframe (arch/x86/entry/entry_64.S:121)
+ </TASK>
+
+Allocated by task 5048:
+ ...
+ rpc_new_client (net/sunrpc/clnt.c:377)
+ __rpc_clone_client (net/sunrpc/clnt.c:645)
+ rpc_clone_client_set_auth (net/sunrpc/clnt.c:706)
+ nfs_init_server_rpcclient (fs/nfs/client.c:640)
+ nfs_clone_server (fs/nfs/client.c:1247)
+ nfs4_clone_server (fs/nfs/nfs4proc.c:10683)
+ nfs_do_submount (fs/nfs/namespace.c:288)
+ ...
+
+Freed by task 24:
+ ...
+ kfree (mm/slub.c:6692)
+ rpc_free_client_work (net/sunrpc/clnt.c:987)
+ process_scheduled_works (kernel/workqueue.c:3405)
+ worker_thread (kernel/workqueue.c:3486)
+ ...
+
+Fixes: bfca5fb4e97c ("SUNRPC: Fix RPC client cleaned up the freed pipefs dentries")
+Assisted-by: Claude:claude-opus-4-6
+Signed-off-by: Shigeru Yoshida <syoshida@redhat.com>
+---
+ net/sunrpc/clnt.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index efa26899bc7d..55617d263d2f 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -179,11 +179,17 @@ static int rpc_clnt_skip_event(struct rpc_clnt *clnt, unsigned long event)
+ static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
+ 				   struct super_block *sb)
+ {
++	int err;
++
+ 	switch (event) {
+ 	case RPC_PIPEFS_MOUNT:
+-		return rpc_setup_pipedir_sb(sb, clnt);
++		err = rpc_setup_pipedir_sb(sb, clnt);
++		if (!err)
++			clnt->pipefs_sb = sb;
++		return err;
+ 	case RPC_PIPEFS_UMOUNT:
+ 		__rpc_clnt_remove_pipedir(clnt);
++		clnt->pipefs_sb = NULL;
+ 		break;
+ 	default:
+ 		printk(KERN_ERR "%s: unknown event: %ld\n", __func__, event);
+-- 
+2.55.0
+
