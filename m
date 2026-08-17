@@ -1,183 +1,158 @@
-Received: from mail-wm1-f41.google.com (mail-wm1-f41.google.com [209.85.128.41])
+Received: from mta1.migadu.com (out-197.mta1.migadu.com [95.215.58.197])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 77EDE3B8D4F
-	for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 08:06:45 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B17EA3BFE2F
+	for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 08:25:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.197
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786954006; cv=none; b=l16eFjPGVWNLlw0eGXBEK494hOp+qWShUcadiT/ivV1GIwYm8XdfoHDS2ihgFmh6WK2zhdlzBMhvRJHnt6kPX4EijkxTryHa3Iv5b8QDCSrMLUQ4qkHiIwYwbDfDaqOYafXvfZ/SzgEadQF6W2OuZk5nVfiOqcNmM1DYq61+uUQ=
+	t=1786955136; cv=none; b=kobqwkcASO8uy1ROT+A3vlg/RdPzRbilKql6XAuPNd8sNLJJEJwLu7+H4SB3/RvE99eOUOkxIZxQySxiSJQsnzFD883REBz2e3BtT2uXfJYEEbEfLrK0n8J1sXSp+9g0MptXajr/1psKcPENDVI81gGKIjrs6yxw6uYwp3GyKjI=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786954006; c=relaxed/simple;
-	bh=abKrljJPGtqWjp9jAoJrgahJFX0CG9RCRFUlDtLcCsQ=;
-	h=Date:From:To:Cc:Subject:Message-ID:In-Reply-To:References:
-	 MIME-Version:Content-Type; b=CFKXCT2gU2NMWW1CDwW6yWPOCwaDy8uMbTxKReGeVNKWB8uw9tUkLJz4V+GVy4AFLIth2AHRJ4Bj/6OIepxqwMJc2VeShswOqt99IjslCHiUm7yMgzKEe0COrO5DFSHf+HW7YvWfLE1O+NjqqtHlkKYYLzgzBPuCVEB0xhw/jxM=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=WKwVGzpN; arc=none smtp.client-ip=209.85.128.41
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1786955136; c=relaxed/simple;
+	bh=eYNadUi07A8AhvVYvTwlB5KEurgeLlJSPKo7wDdWLLE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=lhGSn3qvFGHQUoQH1UMnvBZIW/G7JjuqqCNH72s8305PGkM2ZaXrddysH0jFuvALizLKqKuPSFCQEDwwfAhKefAxklWIrOwJqR3uAZMs8hNti913/POrAeYqI4mFePHCUZy+OCIsNsDRFT1ax/+WPfxPssx6sfp+0BkTC/c5c/k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=LOyqKIP8; arc=none smtp.client-ip=95.215.58.197
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="WKwVGzpN"
-Received: by mail-wm1-f41.google.com with SMTP id 5b1f17b1804b1-4998590d392so32935135e9.0
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 01:06:45 -0700 (PDT)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1786954004; x=1787558804; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:subject:cc:to:from:date:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=6V+PnlGPEGd/JqnRb9cp/wDX0jZf3GBuIE7C3r4UIRk=;
-        b=WKwVGzpNyAZcVcYwDzX20JjeBymkQaJFx9Xrgwe2ERRhQcSdc0CWmLsVt4eRC4ZgRD
-         GfXjLi5uhJl7QD7dUZd7vL3CCy1cc3qsbumi1Th0RBKRYWHRK5fFkQrCIfiWPJRh389Y
-         fLCO4zq9ST+adfZCyA+VO0foyYYmmnZhDgGanDj8qJc9Tt0ZFqvPKDv7OkDVYBbIdp8S
-         Dnk8j8gJLHOvuGNBBbabrggWu+b+FMA6k+ndoJPQ25c8PTt1YJucGj7hiJAFINbdv69v
-         KnWlIHVEjmiclVK3Y6I9SpQRUtCwfP+CU60FaFaCSj+KtaebfmxluvUG3KDSQr0CS/pz
-         gmJQ==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786954004; x=1787558804;
-        h=content-transfer-encoding:content-type:mime-version:references
-         :in-reply-to:message-id:subject:cc:to:from:date:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=6V+PnlGPEGd/JqnRb9cp/wDX0jZf3GBuIE7C3r4UIRk=;
-        b=rmkF7u/tBSy8AByM9yuPvzzpByw/jMCxE65GfbZKwgHPFsJ/QQUeEh4OzrT94mkWfv
-         JqE0YYbSGloncP+Dgb+r+pMmM3M7KpiIxt4WQciIFBWNSXzK4As9a00ghsL6PZMNqoGS
-         iE0S+YRY7jC616KhFcgVhoq6Xow5HNBs6XzcFsCYW3M8h9vC+620/LSD9DOoEQsCqKFB
-         P2vO9tuc3R9FY6GwPmlThOVJ3cLs1Lb6LVOuAJ1z7o+Wxhtov01bBzjeLz4qbK6H93BN
-         rkC/WZrnByVXOTD8dnAvgbIMX7NSr7fabg6/ylYO+J7+5FYleOs2nb+fZItwdauVE+Ti
-         DT0A==
-X-Forwarded-Encrypted: i=1; AHgh+RprjMPZwHjCaYCnh0mbPb6MVhjdAvH87f5t6VfgQWWm9nFnslQjPHluk0Xpg1PVsMc6A+dw5u297/I=@vger.kernel.org
-X-Gm-Message-State: AOJu0Yxu4/kdQQchtrhBsftJtWihLgkN2Anzu2MPbrjQSgCDWl/bzZb0
-	V1AbyCF8z2Lt3vfT/zCHeTCTd424sY5YPl7FSiamjxMCSJMNfizY15Fw
-X-Gm-Gg: AR+sD11iq0N7qPvEc4a/y1GgsjtMDS0k4tuIf2gVkwyNJyai9XjPINFecTe4T6jRxZd
-	rb8UfsrAfWyNiUj0daq1H5Me5MrxEk/4TfiN19At39hRvHcRlmIvJq/qJmWkseatoYJ/H3WkwfO
-	8PYVtdtFr1aU+BjyTkhM6fL9PczjUNM1dEVC1lBYZYNHA2WdQvnDo5A/gpojaUidoxXW5clkbtr
-	DQQbuygLB7HChW9K7caByFvseU0BA6Ogf69othIa6veP+3BNfuGtrRAvHyVJQBIeFsLS4DvpMRO
-	rqtiL8++RKYO+RxI1X7H6+W6ncznR2RQ12PwMMYo6iqExDPj2s2hC7d//OscXYVXVJuS+DDEyYu
-	/v6LLQHnmRtoBF0oP4sgw1WCuqNJzXvDG3IWWHVz64tkAdNkHKjK6a1jzfWHIu61fPrqXmiR5VC
-	AVp65I8NnfZMSuKB3efmxR5qW+DkwOVLeExAVNHpb0E2vib1V1osttFU648jnkiqzNy23zIvYEl
-	QzorygTnKlJXIrGqohhZEkBe5dN8p+LVQmr
-X-Received: by 2002:a05:600c:3113:b0:499:83f1:398 with SMTP id 5b1f17b1804b1-49987977373mr315241675e9.9.1786954003281;
-        Mon, 17 Aug 2026 01:06:43 -0700 (PDT)
-Received: from pumpkin (82-69-66-36.dsl.in-addr.zen.co.uk. [82.69.66.36])
-        by smtp.gmail.com with ESMTPSA id 5b1f17b1804b1-4999610ed6dsm162407355e9.8.2026.08.17.01.06.42
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Mon, 17 Aug 2026 01:06:42 -0700 (PDT)
-Date: Mon, 17 Aug 2026 09:06:41 +0100
-From: David Laight <david.laight.linux@gmail.com>
-To: "Chuck Lever" <cel@kernel.org>
-Cc: "Chuck Lever" <chuck.lever@oracle.com>, "Jeff Layton"
- <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, "Olga
- Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>, "Tom
- Talpey" <tom@talpey.com>, "Andrew Morton" <akpm@osdl.org>, "Linus Torvalds"
- <torvalds@linux-foundation.org>
-Subject: Re: [PATCH net-next] fs: nfsd: Fix buffer overflow in
- write_pool_threads()
-Message-ID: <20260817090641.082489a5@pumpkin>
-In-Reply-To: <9e99253f-99d9-4ecd-8911-2844621a6ae6@app.fastmail.com>
-References: <20260812193349.13347-1-david.laight.linux@gmail.com>
-	<35a12022-518b-4c66-b3d5-c850376bfca7@app.fastmail.com>
-	<20260812220457.6dc4d5ec@pumpkin>
-	<9e99253f-99d9-4ecd-8911-2844621a6ae6@app.fastmail.com>
-X-Mailer: Claws Mail 4.1.1 (GTK 3.24.38; arm-unknown-linux-gnueabihf)
+	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="LOyqKIP8"
+X-Envelope-To: linux-nfs@vger.kernel.org
+DKIM-Signature: a=rsa-sha256; bh=eYNadUi07A8AhvVYvTwlB5KEurgeLlJSPKo7wDdWLLE=;
+ c=simple/simple; d=linux.dev;
+ h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
+ t=1786955128; v=1; x=1787559928;
+ b=LOyqKIP8U/DmD1VoXOueW2cNHTUY3/mO+breI1tQhH1n/PEE4g8zlyymbMmdIYFnFcrv6RvC
+ pVvzJcfFBnQDqpvY1sCEcQN/mBN9OQtSc2BU1Xz7W+DoGA3BCDQYWKOezSiLUw8E1W5e2I7LTZe
+ wbwmY96SzDjJiffKJm3Ai8SM=
+X-Envelope-To: linux-nfs@vger.kernel.org
+Received: from localhost (3.112.29.171)
+	by mta10.migadu.com with ESMTPS id 5d0fb72b720b7f63;
+	Mon, 17 Aug 2026 08:25:17 +0000
+X-Migadu-Flow: FLOW_OUT
+Date: Mon, 17 Aug 2026 16:25:14 +0800
+From: Baoquan He <baoquan.he@linux.dev>
+To: Lukas Wunner <lukas@wunner.de>,
+	Jan Sebastian =?iso-8859-1?Q?G=F6tte?= <contact@jaseg.de>
+Cc: Jan Sebastian =?iso-8859-1?Q?G=F6tte?= <linux@jaseg.de>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Mike Rapoport <rppt@kernel.org>,
+	Pasha Tatashin <pasha.tatashin@soleen.com>,
+	Pratyush Yadav <pratyush@kernel.org>,
+	Dave Young <ruirui.yang@linux.dev>,
+	Catalin Marinas <catalin.marinas@arm.com>,
+	Will Deacon <will@kernel.org>, David Howells <dhowells@redhat.com>,
+	Jarkko Sakkinen <jarkko@kernel.org>,
+	Jonathan Corbet <corbet@lwn.net>,
+	Shuah Khan <skhan@linuxfoundation.org>,
+	Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>,
+	"Serge E. Hallyn" <serge@hallyn.com>,
+	Ignat Korchagin <ignat@linux.win>,
+	Herbert Xu <herbert@gondor.apana.org.au>,
+	"David S. Miller" <davem@davemloft.net>,
+	Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
+	Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>,
+	Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>, Mimi Zohar <zohar@linux.ibm.com>,
+	James Bottomley <James.Bottomley@hansenpartnership.com>,
+	Marc Dionne <marc.dionne@auristor.com>,
+	Eric Dumazet <edumazet@google.com>,
+	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
+	Simon Horman <horms@kernel.org>, Eric Biggers <ebiggers@kernel.org>,
+	"Theodore Y. Ts'o" <tytso@mit.edu>,
+	Jaegeuk Kim <jaegeuk@kernel.org>,
+	Alexander Viro <viro@zeniv.linux.org.uk>,
+	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
+	Alasdair Kergon <agk@redhat.com>, Mike Snitzer <snitzer@kernel.org>,
+	Mikulas Patocka <mpatocka@redhat.com>,
+	Benjamin Marzinski <bmarzins@redhat.com>, kexec@lists.infradead.org,
+	linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
+	linux-mm@kvack.org, keyrings@vger.kernel.org,
+	linux-doc@vger.kernel.org, linux-security-module@vger.kernel.org,
+	linux-crypto@vger.kernel.org, linux-nvme@lists.infradead.org,
+	linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
+	linux-afs@lists.infradead.org, netdev@vger.kernel.org,
+	linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	dm-devel@lists.linux.dev
+Subject: Re: [PATCH v2 01/13] kexec: add CRASH_WIPE_SECRETS to wipe secrets
+ before kdump
+Message-ID: <aoLFai0gzzH2bGgy@MiWiFi-R3L-srv>
+References: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
+ <20260811-crash-zeroize-rework-v2-1-9561d13c2340@jaseg.de>
+ <anw9ILJiO5xIjP4f@MiWiFi-R3L-srv>
+ <9765f7ea-36bb-4c7b-a19b-7facec97b762@jaseg.de>
+ <aoGpcczo5GkBsPwt@wunner.de>
+ <aoK6jXA-tF9qfKOZ@MiWiFi-R3L-srv>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=utf-8
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+In-Reply-To: <aoK6jXA-tF9qfKOZ@MiWiFi-R3L-srv>
 
-On Sun, 16 Aug 2026 13:43:58 -0400
-"Chuck Lever" <cel@kernel.org> wrote:
+On 08/17/26 at 03:38pm, Baoquan He wrote:
+> On 08/16/26 at 02:13pm, Lukas Wunner wrote:
+> > On Wed, Aug 12, 2026 at 12:08:39PM +0200, Jan Sebastian Götte wrote:
+> > > I can imagine one alternative way to approach this, tell me what you think:
+> > > Instead of registering wipe handlers that memzero places on panic, I could
+> > > put an optional registry of (addr, len) descriptors into crashkernel memory
+> > > that the original kernel populates with the PAs of buffers to clear ahead of
+> > > time. Then the kdump kernel could do the actual memzero. This would remove
+> > > all code from the actual kdump path here. The registry could be made
+> > > per-core to avoid locks.
 
-> On Wed, Aug 12, 2026, at 5:04 PM, David Laight wrote:
-> > On Wed, 12 Aug 2026 16:19:22 -0400
-> > "Chuck Lever" <cel@kernel.org> wrote:
-> >  
-> >> On Wed, Aug 12, 2026, at 3:33 PM, David Laight wrote:  
-> >> > write_pool_threads() writes the number of threads in each pool into a
-> >> > caller-supplied 'almost PAGE_SIZE' buffer.
-> >> > If there are enough pools to overflow the buffer the code continues
-> >> > writing beynd its end.
-> >> >
-> >> > Fix the overflow check so that it actually works.
-> >> >
-> >> > Fixes: eed2965af1bae "knfsd: allow admin to set nthreads per node"
-> >> > Signed-off-by: David Laight <david.laight.linux@gmail.com>
-> >> > ---
-> >> >
-> >> > I'm pretty sure this is 'root only' code.
-> >> > So you'd have to try very hard to actually get the overflow.
-> >> >
-> >> >  fs/nfsd/nfsctl.c | 10 +++++-----
-> >> >  1 file changed, 5 insertions(+), 5 deletions(-)
-> >> >
-> >> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> >> > index 39e7012a60d8..b74048aa2402 100644
-> >> > --- a/fs/nfsd/nfsctl.c
-> >> > +++ b/fs/nfsd/nfsctl.c
-> >> > @@ -483,8 +483,7 @@ static ssize_t write_pool_threads(struct file 
-> >> > *file, char *buf, size_t size)
-> >> >  		 * file, sorry.  Report zero threads.
-> >> >  		 */
-> >> >  		mutex_unlock(&nfsd_mutex);
-> >> > -		strcpy(buf, "0\n");
-> >> > -		return strlen(buf);
-> >> > +		return strscpy(buf, "0\n", SIMPLE_TRANSACTION_LIMIT);
-> >> >  	}
-> >> > 
-> >> >  	nthreads = kzalloc_objs(int, npools);
-> >> > @@ -523,13 +522,14 @@ static ssize_t write_pool_threads(struct file 
-> >> > *file, char *buf, size_t size)
-> >> > 
-> >> >  	mesg = buf;
-> >> >  	size = SIMPLE_TRANSACTION_LIMIT;
-> >> > -	for (i = 0; i < npools && size > 0; i++) {
-> >> > -		snprintf(mesg, size, "%d%c", nthreads[i], (i == npools-1 ? '\n' : ' '));
-> >> > -		len = strlen(mesg);
-> >> > +	for (i = 0; i < npools; i++) {
-> >> > +		len = scnprintf(mesg, size, "%d ", nthreads[i]);
-> >> >  		size -= len;
-> >> >  		mesg += len;
-> >> >  	}
-> >> >  	rv = mesg - buf;
-> >> > +	if (rv != SIMPLE_TRANSACTION_LIMIT - 1)
-> >> > +		msg[-1] = '\n';    
-> >> 
-> >> Did you mean "mesg[-1] = '\n';" here?  
-> >
-> > Yes - and I thought I'd compiled it ...
-> > I did decide not to worry about the missing '\n' when the output 'just fits'.
-> > After all you need over 1300 pools with 10 threads to get to 4k.
-> > I'd bet something else dies first.
-> >
-> > 	David
-> >
-> > (Oh I've replaced Linus's 20 year old email I copied from the commit with
-> > his current one (he acked it) and deleted the broken one from the author.)  
+If this has to be done in kernel, your (addr, len) registry idea is a
+better direction, and we can make it a bit more general.
+
+Instead of a secrets-only wipe registry, consider a small "crash memory
+region" table with an action per entry:
+
+enum crash_region_action {
+    CRASH_REG_WIPE,   /* memzero, then dump normally (leave zeros) */
+    CRASH_REG_SKIP,   /* do not include in the vmcore at all */
+};
+
+struct crash_region {
+    phys_addr_t addr;
+    size_t      len;
+    enum crash_region_action action;
+};
+
+void crash_reg_add(phys_addr_t addr, size_t len,
+                   enum crash_region_action action);
+void crash_reg_del(phys_addr_t addr, size_t len);
+
+Two actions because the use cases differ:
+
+- WIPE is what you need: zero the secret, 
+- SKIP covers things people do not want in the dump at all
+   — Registering as SKIP reduce dump size. I have been considering how
+     to shrink vmcore size on some big system with huge memory, the
+     vmcore size usually is several or tens of GB.
+
+If this is OK to you, you can start a regiestry table
+infrastructure with wiping secrets, we can add SKIP later and plus some
+driver used memory.
+
+I am not sure if it's satisfactory, but you can give it a shot to show
+what it looks like.
+
+Thanks
+Baoquan
+
 > 
-> I've convinced myself that the actual problem is the truncation. The
-> buffer overflow cannot occur.
-
-My analysis was:
-size is size_t so unsigned.
-So after snprintf() truncates the 'size -= len' is going to generate a
-big number, so the 'size > 0' check doesn't terminate the loop.
-Which would mean that the next iteration would write beyond the buffer.
-But I think there is a check in snprintf() for 'silly' lengths that may
-stop the overwrite.
-That doesn't stop the length returned to the caller being longer that
-the buffer.
-I didn't look what happens as the call site, the buffer will be copied
-back to user, if the user provided a long enough buffer that might read
-beyond the end of the page.
-
-Of course this is all likely impossible for other reasons.
-(and root only).
-
-	David
-
-> I've posted a patch to address that.
+> Since there are a lot of security expert in CC, I am wondering what's
+> the risk if we wipe secrets during dumping. System is located in
+> user's place, and vmcore is dumped and collected in user's place. If we
+> filter out secrets memory when we dumping, what could be leaked out?
 > 
-> 
-
+> > 
+> > Or create a dedicated mempool from which all sensitive data is allocated,
+> > then call mempool_free_bulk() on kexec to poison everything in that pool?
+> > 
+> > Thanks,
+> > 
+> > Lukas
