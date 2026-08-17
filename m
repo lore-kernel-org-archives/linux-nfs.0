@@ -1,221 +1,248 @@
-Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DED403F926B;
-	Mon, 17 Aug 2026 11:03:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF463423EAB;
+	Mon, 17 Aug 2026 13:06:12 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786964615; cv=none; b=UEODOiTXY14LrqTbRstT+7K0qGBsvqkniisEgkNzD0o6eJNjbvinOBGNzW8DBRmsSk0G7Dpsdm5MX/lQpBHgMnEitWXONKLxyKzW5cXYtmBC+SmfiMmVTLfFojeMyVUmGsraZ/YZRdVqSgGA6w0JgPN+Y+ABciD8Kci2L6eey6U=
+	t=1786971974; cv=none; b=o3n0mN/9Ij1qieDuWauF5fdcURFslNAU/cX12sujItetQ9mHzbz1CMTXFE2bbG0xFxkxX5HHx29JRICKWGG3dFmdjoGDqw6xxvUaJ+bR7zqr9RqrHKTTZlVlBZ3wrRp+SggiwZQwzJnBE5/JPWwXyEr3MtoQHOLwAUsDkZTRidU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786964615; c=relaxed/simple;
-	bh=UC01y+N70K2YYwuhiD63941gnut7CPgk2/EOWTUjvrY=;
-	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=fPg2OkM/B9bKMSGbNqqP7Md58bClgL7M4v+iFJzVefH+LdpafLzGFEQNhS0tc2C371YjgrPnrMV+dBaziV1rHqnwXZ7DOR7ZaH3mHED53piEfXHLZLBcwB+SNk2a/6x5wptWQVsLSW2QP44AsihILy/Dp1C6RU4V5d9x2jhsXV4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=tLT3QW9b; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=8X8znelA; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zLM3nScL; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=GgaExUB1; arc=none smtp.client-ip=195.135.223.130
-Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
+	s=arc-20240116; t=1786971974; c=relaxed/simple;
+	bh=tajMC1o2lJbEnAvJo9cu6ifNA4M2SO31OrAW3DNdXaw=;
+	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
+	 Content-Type:MIME-Version; b=T+Jg8zb0C6wtTPUy8a6cltHsKFKlO5QlZ7Widgjv3U27kJuarsJVN/9kAymDE7EGektYVVNahl4LG2fYyjs6ooNLSxel1HF7DkTYrPRy+snoWwbPqS/Q9gkh8agrvIr1+fwWX+tNJOjAAOFWrdseR3LMNBtoxNzQ84q7NzI6P2Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MFknYHRC; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="tLT3QW9b";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="8X8znelA";
-	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zLM3nScL";
-	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="GgaExUB1"
-Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by smtp-out1.suse.de (Postfix) with ESMTPS id AA4AA83F70;
-	Mon, 17 Aug 2026 11:03:23 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1786964607; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=7iC/4+DbNi/oVt0tkupTCs6iE9SsTBaX7RuvRMSdNNA=;
-	b=tLT3QW9b6/xDV9Ixy4zoLm+Sym5e8UrpRnGsWoBcLJhjPkST6lMELTRxUJUQGpZF0lx6cZ
-	CrQzaPfddU0JJoItEfD5PdYMA2htwZJU679KcKyN462F3b1zhN1ApxrzzGiqLBP4jGET9N
-	Cns17l2zKnZ4DDxsGjPi8d14DXwFnPY=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1786964607;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=7iC/4+DbNi/oVt0tkupTCs6iE9SsTBaX7RuvRMSdNNA=;
-	b=8X8znelAvCLGvHFOr74Pet9Ho88Mm/5toK4DxVXyvYUa9ubhq21sXaTOiQtiIi7tW55O0W
-	q6XlLziszMheBACQ==
-Authentication-Results: smtp-out1.suse.de;
-	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=zLM3nScL;
-	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=GgaExUB1
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
-	t=1786964603; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=7iC/4+DbNi/oVt0tkupTCs6iE9SsTBaX7RuvRMSdNNA=;
-	b=zLM3nScLqmXi359QoWe5LBqf2TSEnkVLmycbkb0qVY3mOjBS//cftPffZe7QxbNmKBXHjk
-	PL1/leHGjigoWbJZurYzuZGXlmSL14eEDbPz6Jf3KkUg9nE33E+sV86nBZzSDN2h7wFzWi
-	FItMyjngdoagwlKBs+/cNuTpme73IPg=
-DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
-	s=susede2_ed25519; t=1786964603;
-	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
-	 mime-version:mime-version:content-type:content-type:
-	 in-reply-to:in-reply-to:references:references;
-	bh=7iC/4+DbNi/oVt0tkupTCs6iE9SsTBaX7RuvRMSdNNA=;
-	b=GgaExUB129+gqMFavDlXWKVcOKduNpBj1fW8CrvokjGE7BdpSzA4FvYOIcQ0/0rb7Xzw1p
-	3eifOk+FRaFWRLCw==
-Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
-	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
-	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
-	(No client certificate requested)
-	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 9FD407941C;
-	Mon, 17 Aug 2026 11:03:23 +0000 (UTC)
-Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
-	by imap1.dmz-prg2.suse.org with ESMTPSA
-	id VSoAJ3vqgmpoIgAAD6G6ig
-	(envelope-from <jack@suse.cz>); Mon, 17 Aug 2026 11:03:23 +0000
-Received: by quack3.suse.cz (Postfix, from userid 1000)
-	id 3EE52A13B5; Mon, 17 Aug 2026 13:03:19 +0200 (CEST)
-Date: Mon, 17 Aug 2026 13:03:19 +0200
-From: Jan Kara <jack@suse.cz>
-To: NeilBrown <neil@brown.name>
-Cc: Miklos Szeredi <miklos@szeredi.hu>, Ian Kent <raven@themaw.net>, 
-	Chuck Lever <cel@kernel.org>, Jake Edge <jake@lwn.net>, Ilya Dryomov <idryomov@gmail.com>, 
-	Alex Markuze <amarkuze@redhat.com>, Viacheslav Dubeyko <slava@dubeyko.com>, 
-	Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu, Alexander Viro <viro@zeniv.linux.org.uk>, 
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, Trond Myklebust <trondmy@kernel.org>, 
-	Anna Schumaker <anna@kernel.org>, Amir Goldstein <amir73il@gmail.com>, 
-	Andrew Morton <akpm@linux-foundation.org>, Miklos Szeredi <mszeredi@redhat.com>, autofs@vger.kernel.org, 
-	linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org, codalist@coda.cs.cmu.edu, 
-	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 03/12] fsnotify: don't hold a spin_lock across
- fsnotify_recalc_mask() calls.
-Message-ID: <oh2lg2agqxwqopecacq6sfdnky5faxidwsybkvbwbq24r6tw6o@4swfog5ocwwb>
-References: <20260803012648.2195405-1-neilb@ownmail.net>
- <20260803012648.2195405-4-neilb@ownmail.net>
- <CAJfpegs-k3skRGiwZvQLzD7OrAK4KL8zwmpmJKyjRHSQ-rqX+Q@mail.gmail.com>
- <178642552869.2852630.11443303758249822243@noble.neil.brown.name>
- <178675372176.2852630.1305553887009521382@noble.neil.brown.name>
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MFknYHRC"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 163F91F000E9;
+	Mon, 17 Aug 2026 13:06:12 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1786971972;
+	bh=hKGpUIrNxodDsOVoJv1RPOzms6R0bvYfWxFdg1zmg1w=;
+	h=Subject:From:To:Cc:Date:In-Reply-To:References;
+	b=MFknYHRC0TzJV7a1UXP95tGSTOcGC7RLsU+OwMTjxv5RyR+HTg+3UrhH4+MQtvilr
+	 xTc6u5fLWUYxMGEcvasEjjlGP8nfRtWHT5uOIw/2U1TiJSOgtz7ZUBJWKbw3LPPiuC
+	 AxAcItBQE9q8TUpzE4X2IFPBGVngLfFJweOef6EtCgvfwOyX18ABOzwR9BzaGsAaQA
+	 m3tJ3oWzXM8YMZ7JOugnY4uHogduTAW2X1j9JcaYo2N1Hfww937rhZpbiZk0L2MmBT
+	 aqNlVp9+wMqurOp6q3YRRml5z6F7ydbwUdoTcl5CF1I0kjLkhTSqwmmR4hopHxZyWn
+	 5GEdTc2i7GZ/Q==
+Message-ID: <9223c486ff90585a56556d810901c2cbcec85bae.camel@kernel.org>
+Subject: Re: [PATCH v1] SUNRPC: Reject a socket that already has an svc_sock
+ attached
+From: Jeff Layton <jlayton@kernel.org>
+To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
+ Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
+ Talpey <tom@talpey.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	netdev@vger.kernel.org,
+ syzbot+54cdc566f64abf51b7f1@syzkaller.appspotmail.com
+Date: Mon, 17 Aug 2026 09:06:10 -0400
+In-Reply-To: <20260815162844.8219-1-cel@kernel.org>
+References: <20260815162844.8219-1-cel@kernel.org>
+Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
+ keydata=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
+ QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-In-Reply-To: <178675372176.2852630.1305553887009521382@noble.neil.brown.name>
-X-Spam-Score: -4.01
-X-Spam-Level: 
-X-Rspamd-Action: no action
-X-Rspamd-Queue-Id: AA4AA83F70
-X-Spamd-Result: default: False [-4.01 / 50.00];
-	BAYES_HAM(-3.00)[100.00%];
-	NEURAL_HAM_LONG(-1.00)[-1.000];
-	MID_RHS_NOT_FQDN(0.50)[];
-	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	NEURAL_HAM_SHORT(-0.20)[-1.000];
-	MIME_GOOD(-0.10)[text/plain];
-	MX_GOOD(-0.01)[];
-	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
-	ARC_NA(0.00)[];
-	MISSING_XM_UA(0.00)[];
-	RCVD_VIA_SMTP_AUTH(0.00)[];
-	RCPT_COUNT_TWELVE(0.00)[24];
-	MIME_TRACE(0.00)[0:+];
-	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
-	FREEMAIL_ENVRCPT(0.00)[gmail.com];
-	TO_DN_SOME(0.00)[];
-	FROM_EQ_ENVFROM(0.00)[];
-	FROM_HAS_DN(0.00)[];
-	FREEMAIL_CC(0.00)[szeredi.hu,themaw.net,kernel.org,lwn.net,gmail.com,redhat.com,dubeyko.com,cs.cmu.edu,zeniv.linux.org.uk,suse.cz,linux-foundation.org,vger.kernel.org,coda.cs.cmu.edu];
-	RCVD_COUNT_THREE(0.00)[3];
-	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:dkim,ownmail.net:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
-	RCVD_TLS_LAST(0.00)[];
-	TO_MATCH_ENVRCPT_ALL(0.00)[];
-	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
-	DKIM_TRACE(0.00)[suse.cz:+]
-X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
-X-Spam-Flag: NO
 
-On Sat 15-08-26 10:28:41, NeilBrown wrote:
-> On Tue, 11 Aug 2026, NeilBrown wrote:
-> > On Tue, 11 Aug 2026, Miklos Szeredi wrote:
-> > > On Mon, 3 Aug 2026 at 03:39, NeilBrown <neilb@ownmail.net> wrote:
-> > > 
-> > > > @@ -116,11 +117,15 @@ static int dnotify_handle_event(struct fsnotify_mark *inode_mark, u32 mask,
-> > > >                 else {
-> > > >                         *prev = dn->dn_next;
-> > > >                         kmem_cache_free(dnotify_struct_cache, dn);
-> > > > -                       dnotify_recalc_inode_mask(inode_mark);
-> > > > +                       need_recalc = true;
-> > > >                 }
-> > > >         }
-> > > >
-> > > > +       if (need_recalc)
-> > > > +               need_recalc = dnotify_recalc_inode_mask(inode_mark);
-> > > >         spin_unlock(&inode_mark->lock);
-> > > > +       if (need_recalc)
-> > > > +               fsnotify_recalc_mask(inode_mark->connector);
-> > > 
-> > > Is the fsnotify_group_lock() held in this case?   I don't see it.
-> > 
-> > It isn't held.  Doesn't it need to be...
-> > It seems to protect marks, so maybe it does.
-> > 
-> > srcu seems to be used to protect this section, so maybe we can rely on
-> > that.
-> 
-> I dug into this some more, and we do rely on srcu, but don't need the
-> extra code below.
-> inode_mark->lock doesn't protect inode_mark->connector, so moving the
-> dereference out of the lock has no effect.
-> srcu_read_lock is taken before we get the ref to the mark, so the mark
-> and the connector cannot disappear underneath us.
-> A race could result in inode_mark->connector reading as NULL, but
-> fsnotify_recalc_mask() checks for NULL, so there is no risk for harm.
-> 
-> Thanks for encouraging me to dig into this.
+On Sat, 2026-08-15 at 12:28 -0400, Chuck Lever wrote:
+> Writing the same socket descriptor to /proc/fs/nfsd/portlist twice
+> attaches a second svc_sock to one socket. svc_setup_socket() saves
+> the socket's callbacks before installing its own, so the second
+> attach records svc_write_space() as the old write_space callback.
+> svc_udp_init() invokes that callback by way of svc_sock_setbufsize(),
+> and svc_write_space() then calls itself until the kernel stack is
+> exhausted:
+>=20
+>   BUG: TASK stack guard page was hit at ffffc900037d7ff8
+>    svc_write_space+0x90/0x2b0 net/sunrpc/svcsock.c:429
+>    svc_write_space+0xe6/0x2b0 net/sunrpc/svcsock.c:430
+>    ... 700 more ...
+>    svc_sock_setbufsize+0x18d/0x220 net/sunrpc/svcsock.c:386
+>    svc_udp_init net/sunrpc/svcsock.c:854 [inline]
+>    svc_setup_socket+0xb2f/0x1090 net/sunrpc/svcsock.c:1498
+>    svc_addsock+0x2fd/0x760 net/sunrpc/svcsock.c:1547
+>    __write_ports_addfd fs/nfsd/nfsctl.c:742 [inline]
+>    write_ports+0xa5b/0xcc0 fs/nfsd/nfsctl.c:861
+>    nfsctl_transaction_write+0x106/0x1a0 fs/nfsd/nfsctl.c:112
+>=20
+> svc_data_ready() and svc_tcp_state_change() chain through their saved
+> callbacks the same way, so a TCP descriptor added twice recurses on
+> the next incoming segment instead. Reaching any of this takes a
+> writer on portlist, and the nfsd filesystem sets no FS_USERNS_MOUNT,
+> so the reproducer needs CAP_SYS_ADMIN in the initial user namespace.
+>=20
+> Reject a socket that already carries sk_user_data. svc_setup_socket()
+> overwrites that field unconditionally, so a socket some other
+> consumer has claimed is one NFSD would corrupt whether or not the
+> callbacks recurse.
+>=20
+> Fixes: b41b66d63c73 ("[PATCH] knfsd: allow sockets to be passed to nfsd v=
+ia 'portlist'")
+> Reported-by: syzbot+54cdc566f64abf51b7f1@syzkaller.appspotmail.com
+> Closes: https://syzkaller.appspot.com/bug?extid=3D54cdc566f64abf51b7f1
+> Signed-off-by: Chuck Lever <cel@kernel.org>
+> ---
+>  net/sunrpc/svcsock.c | 3 +++
+>  1 file changed, 3 insertions(+)
+>=20
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 7a423e9ee74d..5a2d52284d75 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -1614,6 +1614,9 @@ int svc_addsock(struct svc_serv *serv, struct net *=
+net, const int fd,
+>  	err =3D -EISCONN;
+>  	if (so->state > SS_UNCONNECTED)
+>  		goto out;
+> +	err =3D -EBUSY;
+> +	if (so->sk->sk_user_data)
+> +		goto out;
+>  	err =3D -ENOENT;
+>  	if (!try_module_get(THIS_MODULE))
+>  		goto out;
 
-Sorry for not replying earlier but I was on vacation. The lifetime rules
-around marks & connectors are subtle so we have to be really careful and
-dnotify with its single shot marks is peculiar which makes things even
-harder. fsnotify_recalc_mask() has a comment about locking in front of it:
+Nice catch!
 
-/*
- * Calculate mask of events for a list of marks. The caller must make sure
- * connector and connector->obj cannot disappear under us.  Callers achieve
- * this by holding a mark->lock or mark->group->mark_mutex for a mark on this
- * list.
- */
+Reviewed-by: Jeff Layton <jlayton@kernel.org>
 
-and you very obviously start violating these rules with your changes. Now I
-admit I've forgotten all the details why I did it like this so let me
-reconstruct it :).
+Claude had some pedantry about the changelog though. Regurgitated
+verbatim here:
 
-Connector stays alive as long as there's any mark in its list. Both marks
-and connectors are protected by the srcu. Mark also has
-FSNOTIFY_MARK_FLAG_ATTACHED flag which is set iff the connector->obj is
-pointing to valid inode/mount/... FSNOTIFY_MARK_FLAG_ATTACHED changes only
-under mark_mutex so that's why mark_mutex is stabilizing the connector (and
-also connector->obj). This is what is used by most places calling
-fsnotify_recalc_mask(). But dnotify needs to mess with notification mark
-mask from event handling and there we cannot take mark_mutex due to lock
-ordering constraints. That's where the mark->lock rule comes into play
-because mark->lock also needs to be acquired to clear
-FSNOTIFY_MARK_FLAG_ATTACHED. That being said this dnotify use of
-fsnotify_recalc_mask() still looks somewhat racy because
-dnotify_handle_event() can get called after FSNOTIFY_MARK_FLAG_ATTACHED is
-cleared.
+> svc_data_ready() and svc_tcp_state_change() chain through their saved
+> callbacks the same way, so a TCP descriptor added twice recurses on
+> the next incoming segment instead.
 
-Anyway if you move fsnotify_recalc_mask() call outside of mark->lock, you
-seem to make the race with dnotify clearing the mark from 
-fcntl_dirnotify() easier to hit. Now in the notification path the inode
-itself is guaranteed to stay alive and the rest is protected by the SRCU so
-there's no direct UAF. But fsnotify_recalc_mask() simply isn't prepared for
-the connector changing under it due to object getting detached and so we
-could end up doing weird things like NULL ptr derefs or similar stuff.
+Are those the two callbacks that recurse for tcp?
 
-So this call to fsnotify_recalc_mask() from dnotify needs a more careful
-handling. Which is sad because I doubt anybody still uses dnotify...
+The write_ports kerneldoc says "listen(3) must be called for a
+SOCK_STREAM socket", and for a listening socket svc_tcp_init() only
+replaces sk_data_ready:
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+net/sunrpc/svcsock.c:svc_tcp_init() {
+	...
+	if (sk->sk_state =3D=3D TCP_LISTEN) {
+		strcpy(svsk->sk_xprt.xpt_remotebuf, "listener");
+		set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
+		set_bit(XPT_RPCB_UNREG, &svsk->sk_xprt.xpt_flags);
+		sk->sk_data_ready =3D svc_tcp_listen_data_ready;
+		set_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
+	} else {
+		sk->sk_state_change =3D svc_tcp_state_change;
+		sk->sk_data_ready =3D svc_data_ready;
+		sk->sk_write_space =3D svc_write_space;
+	...
+}
+
+sk_state_change and sk_write_space are left alone on a listener, so the
+second svc_setup_socket() saves svc_tcp_listen_data_ready() into
+sk_odata and the recursion runs there instead:
+
+net/sunrpc/svcsock.c:svc_tcp_listen_data_ready() {
+	struct svc_sock	*svsk =3D (struct svc_sock *)sk-
+>sk_user_data;
+	...
+	if (svsk) {
+		/* Refer to svc_setup_socket() for details. */
+		rmb();
+		svsk->sk_odata(sk);
+	...
+}
+
+The else branch does install svc_data_ready() and
+svc_tcp_state_change(), but svc_addsock() only reaches it for a
+descriptor that is not listening, and svc_tcp_init() then closes that
+transport right away:
+
+net/sunrpc/svcsock.c:svc_tcp_init() {
+	...
+		switch (sk->sk_state) {
+		case TCP_SYN_RECV:
+		case TCP_ESTABLISHED:
+			break;
+		default:
+			svc_xprt_deferred_close(&svsk->sk_xprt);
+		}
+	...
+}
+
+Should the paragraph name svc_tcp_listen_data_ready() instead?
+
