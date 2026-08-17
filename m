@@ -1,154 +1,105 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from szxga01-in.huawei.com (szxga01-in.huawei.com [45.249.212.187])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9B1F44B04B6
-	for <linux-nfs@vger.kernel.org>; Sun, 16 Aug 2026 17:44:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 68665319601;
+	Mon, 17 Aug 2026 06:14:43 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=45.249.212.187
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786902261; cv=none; b=DRu0RKQLpNx9x+z6/jPZGg5uuyiMx6sYip7CpfCsNdVulpTaIpuwg3rL0cf1zpcB717z+vWwnT7YQNkMAmAoUakgjVv1/dZym/vqfQTF9huuWuhK/nr2v1rQsD1MtrkJvIOjFedli+0kspQkGynGYGlDYD//AjacZX5kIuehXp8=
+	t=1786947287; cv=none; b=kuuYYt6KgnTgl4rDiCuT+CxFh4lqyBm90Qi7vPFavKyCh83XyagHB5o1t4evV4iGm45fsm+Xqu9JxC7UdylngU1B5wNZECn0j7JZ/qxrzMODRx57OY9HHdYkI3L+vSuUiko6/ZSxYJKxiWfRGmx6qYDiVMrXOWEM6WrpWSrXv9I=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786902261; c=relaxed/simple;
-	bh=ikCHD4uz8Sv5Zp+ogOVi+wL4lrTx/7z9bY8tOlH4dko=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=dHNvrzw56K64f8AtSa4X0t95b68B0Cb4Z1nvuvSQKKkmcb6B+GPONXhAypKKoMM8OOC/F0wEk8cF7zTJ2tSqwkkBwrVB7wkU1hMsX5CHIduuIe55TnHu6ftufjy2/+JBQViPnc8nJg7m9gsEmCTGpKITFEvCvk4U3oAJVuSNCgk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Up9/VeiL; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1786947287; c=relaxed/simple;
+	bh=en23Wo/1Efu4e8c4+HV0A40Kkdt49pHjM//oXjD6TRY=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=B7K+5qeOGHTDC2KqDM6EMwfxZRoVFw3nVaiMqmZnihYSKooNTN35a0BQcj50olU0eUr3yyFIwH0xhvcEzUWOJy4VTLGQZ0L3pTKbFcy12Yhtl9nRp2TJF7V3ljaYshyB5S8FqYRZB7jj58pPswVSXwPZ/uJDOrQKwcbC7lB8L/Q=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com; spf=pass smtp.mailfrom=huawei.com; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=jab2KOK0; dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b=jab2KOK0; arc=none smtp.client-ip=45.249.212.187
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=huawei.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=huawei.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Up9/VeiL"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 0503D1F00A3D;
-	Sun, 16 Aug 2026 17:44:19 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786902260;
-	bh=3koC8qQeXJT1PcHy8iw2Wca65JqUYiFncphUA8glpMc=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=Up9/VeiLMNjSUc+Z3O6ffnctgN+myYtg6XRjbnRcK+5ibfb8s4qKeECQC28rfRMgq
-	 5qJAOzqj8php2pUSu+g6tNk35/dpH1VKb+XufCMKMI3HeBuNhjDikzoBqqdG/BmfqO
-	 zRlLmJM+LyukeLaWSWvzXePq1EGo2vqdPTrmyU4en+FREXkE8QYKit2xPsJbUL+Yh6
-	 wwpwYtNp3bAOVuoMPDkBfbe3QkIKdSiufZT+vouhNvaTvnqgTbQ2Sc0BC51em51+DM
-	 NK2zTeb3W+sdQpEPrDDM+khBTWeR1C+qOivBZuP0mQo47s1KtTWTwSTPl1RfOV6Ltw
-	 hIUUdkpyWdisA==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 20083F40066;
-	Sun, 16 Aug 2026 13:44:19 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Sun, 16 Aug 2026 13:44:19 -0400
-X-ME-Sender: <xms:8_aBapoC0xnRxhXrLdCYUWWMe3AlhFUN8WhHnMIS9bLWoGCff_bDPA>
-    <xme:8_aBamdLtWCgBYNTEHdjmDYLj4Vf1gqlpgQvhnwRB-1LRrGjCyO9t3tvAELml5hl8
-    JOGm18ZOHrGjdjWBk7RU8EFHJt5RsChN4OLffZgEVG4q-IU4ry6c0w>
-X-ME-Proxy-Cause: dmFkZTFYDtM91glfzLd46r91F0+xfaR6kW3HyR5E07wiz6J94gDRwXikdW0vGDhp7BGxPg
-    i8+BbxvWJo15WI2SewmJ23WVl/H/QYX+7NcyVcLwBXYt4MUxsr6gvjZehFM9aQWR9GUes0
-    Q3aCz96HIE9OcwKV2rYptV6u7/6LImgR/P+7Pvrao9R5mKEmhS07JSCXHaD8ehSuxH4rry
-    kR3aizXPiZWS2JkC7UYxm5JIXASe5vfUnp9JEfArqJeq6hBYApIn/TY35M+lDq7dYBtJLh
-    8GxoXmhCXT+B4TY5g+7naKYC6aBUMIs0bDOQLZujC959PHUm7m2u7iOetb55MFSxrUkMm0
-    QYzrgFhkKSbBAg848asSjIGD91P/Uuve5lUIhGd5UjOh6gUqC+3v+hi9YAefqevjOCxSzx
-    LpsMXpEzQmeyKg5ZayVpQmntfvD1ITEqvJdf/968ujTqdMne7e4iLZwKLqHTGxkFeh7zfn
-    +/cp92KfQE6uXrWLGGwt07QcKVBZNoMphS1UmNmrePhhNUhAjN2bqkJDQvAsdKE8OCWmnk
-    9KzTpoPLNM7S/xh1cehb82KDey9xDtTYyD4v9BUQFczofSl/HNgMZY0deaygx+f1Jtw8pT
-    FpQUJ4xDhV5Ay3BSpFu01foyd2JIG/BjVbxfgy9Kj+oQrnJGTHYoP9AwzUcQ
-X-ME-Proxy: <xmx:8_aBah1rUXEqO9Z0sF9ExmKxURDxlXUVpFXpG3G0raXUHTnJc0eCIg>
-    <xmx:8_aBanTEbRriVHJVxUpsMVObApVwbyPjs9jyVsDhnjhF8TebqGZ9JA>
-    <xmx:8_aBaklIXk9gEde6rqJuCx9_b2NoSDEOVld1gok4dy5x59iXtCbE-w>
-    <xmx:8_aBaoOWszks8ji03MAao01_kf-lBXydk4jw3sKS0tld1BXth8M-uw>
-    <xmx:8_aBaggFI3g1EhvMTSYE1XPhSDEmWrxyY54KTokuVtpHGR775LVW_wzR>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id E84347811F0; Sun, 16 Aug 2026 13:44:18 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="jab2KOK0";
+	dkim=pass (1024-bit key) header.d=huawei.com header.i=@huawei.com header.b="jab2KOK0"
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=wEO9JOScI1pE2p9TUhPPcnDsPsquEu4SuzovJASV3qY=;
+	b=jab2KOK0XvbO7rDik2T/2XCUCYjNrx3tU3WvmrCJhzBjKw2YUMD09zSWwZmT7U/7u02gxUE6M
+	Fyf1CdynnCicfcPJd9um+ci5PT1NyzZEHr075VdjzS6CcqHRD/vC4egUr3Q2zN0SuYzMbXpPJZl
+	vKG5pDJWGmy+1UeOMizmiOg=
+Received: from canpmsgout12.his.huawei.com (unknown [172.19.92.144])
+	by szxga01-in.huawei.com (SkyGuard) with ESMTPS id 4hNjGS68QVz1BFmt;
+	Mon, 17 Aug 2026 14:14:24 +0800 (CST)
+dkim-signature: v=1; a=rsa-sha256; d=huawei.com; s=dkim;
+	c=relaxed/relaxed; q=dns/txt;
+	h=From;
+	bh=wEO9JOScI1pE2p9TUhPPcnDsPsquEu4SuzovJASV3qY=;
+	b=jab2KOK0XvbO7rDik2T/2XCUCYjNrx3tU3WvmrCJhzBjKw2YUMD09zSWwZmT7U/7u02gxUE6M
+	Fyf1CdynnCicfcPJd9um+ci5PT1NyzZEHr075VdjzS6CcqHRD/vC4egUr3Q2zN0SuYzMbXpPJZl
+	vKG5pDJWGmy+1UeOMizmiOg=
+Received: from mail.maildlp.com (unknown [172.19.163.200])
+	by canpmsgout12.his.huawei.com (SkyGuard) with ESMTPS id 4hNj2Y3K3mznTwN;
+	Mon, 17 Aug 2026 14:04:05 +0800 (CST)
+Received: from dggpemr200001.china.huawei.com (unknown [7.185.36.96])
+	by mail.maildlp.com (Postfix) with ESMTPS id 2EA5740563;
+	Mon, 17 Aug 2026 14:14:25 +0800 (CST)
+Received: from huawei.com (10.50.85.155) by dggpemr200001.china.huawei.com
+ (7.185.36.96) with Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.2.1544.11; Mon, 17 Aug
+ 2026 14:14:24 +0800
+From: Ran Hongyun <ranhongyun1@huawei.com>
+To: <cel@kernel.org>, <jlayton@kernel.org>, <trondmy@kernel.org>,
+	<anna@kernel.org>, <viro@zeniv.linux.org.uk>
+CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+	<ranhongyun1@huawei.com>, <chengzhihao1@huawei.com>, <yangerkun@huawei.com>,
+	<yi.zhang@huawei.com>
+Subject: [PATCH] lockd: fix NULL pointer dereference in nlmclnt_locks_release_private
+Date: Mon, 17 Aug 2026 14:08:20 +0800
+Message-ID: <20260817060820.963195-1-ranhongyun1@huawei.com>
+X-Mailer: git-send-email 2.52.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: ANRTDGv-SKPo
-Date: Sun, 16 Aug 2026 13:43:58 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "David Laight" <david.laight.linux@gmail.com>
-Cc: "Chuck Lever" <chuck.lever@oracle.com>,
- "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
- "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
- "Tom Talpey" <tom@talpey.com>, "Andrew Morton" <akpm@osdl.org>,
- "Linus Torvalds" <torvalds@linux-foundation.org>
-Message-Id: <9e99253f-99d9-4ecd-8911-2844621a6ae6@app.fastmail.com>
-In-Reply-To: <20260812220457.6dc4d5ec@pumpkin>
-References: <20260812193349.13347-1-david.laight.linux@gmail.com>
- <35a12022-518b-4c66-b3d5-c850376bfca7@app.fastmail.com>
- <20260812220457.6dc4d5ec@pumpkin>
-Subject: Re: [PATCH net-next] fs: nfsd: Fix buffer overflow in write_pool_threads()
+Content-Transfer-Encoding: 8bit
 Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+X-ClientProxiedBy: kwepems100001.china.huawei.com (7.221.188.238) To
+ dggpemr200001.china.huawei.com (7.185.36.96)
 
+nlmclnt_locks_init_private() unconditionally sets fl->fl_ops even when
+nlmclnt_find_lockowner() returns NULL due to allocation failure. When
+locks_release_private() later sees a non-NULL fl_ops, it calls
+fl_release_private, which dereferences fl->fl_u.nfs_fl.owner.
 
+nlmclnt_proc()
+	nlmclnt_locks_init_private <----set fl->fl_ops unconditionally
+		if (!fl->fl_u.nfs_fl.owner) <----forget to clear fl->fl_ops
 
-On Wed, Aug 12, 2026, at 5:04 PM, David Laight wrote:
-> On Wed, 12 Aug 2026 16:19:22 -0400
-> "Chuck Lever" <cel@kernel.org> wrote:
->
->> On Wed, Aug 12, 2026, at 3:33 PM, David Laight wrote:
->> > write_pool_threads() writes the number of threads in each pool into a
->> > caller-supplied 'almost PAGE_SIZE' buffer.
->> > If there are enough pools to overflow the buffer the code continues
->> > writing beynd its end.
->> >
->> > Fix the overflow check so that it actually works.
->> >
->> > Fixes: eed2965af1bae "knfsd: allow admin to set nthreads per node"
->> > Signed-off-by: David Laight <david.laight.linux@gmail.com>
->> > ---
->> >
->> > I'm pretty sure this is 'root only' code.
->> > So you'd have to try very hard to actually get the overflow.
->> >
->> >  fs/nfsd/nfsctl.c | 10 +++++-----
->> >  1 file changed, 5 insertions(+), 5 deletions(-)
->> >
->> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->> > index 39e7012a60d8..b74048aa2402 100644
->> > --- a/fs/nfsd/nfsctl.c
->> > +++ b/fs/nfsd/nfsctl.c
->> > @@ -483,8 +483,7 @@ static ssize_t write_pool_threads(struct file 
->> > *file, char *buf, size_t size)
->> >  		 * file, sorry.  Report zero threads.
->> >  		 */
->> >  		mutex_unlock(&nfsd_mutex);
->> > -		strcpy(buf, "0\n");
->> > -		return strlen(buf);
->> > +		return strscpy(buf, "0\n", SIMPLE_TRANSACTION_LIMIT);
->> >  	}
->> > 
->> >  	nthreads = kzalloc_objs(int, npools);
->> > @@ -523,13 +522,14 @@ static ssize_t write_pool_threads(struct file 
->> > *file, char *buf, size_t size)
->> > 
->> >  	mesg = buf;
->> >  	size = SIMPLE_TRANSACTION_LIMIT;
->> > -	for (i = 0; i < npools && size > 0; i++) {
->> > -		snprintf(mesg, size, "%d%c", nthreads[i], (i == npools-1 ? '\n' : ' '));
->> > -		len = strlen(mesg);
->> > +	for (i = 0; i < npools; i++) {
->> > +		len = scnprintf(mesg, size, "%d ", nthreads[i]);
->> >  		size -= len;
->> >  		mesg += len;
->> >  	}
->> >  	rv = mesg - buf;
->> > +	if (rv != SIMPLE_TRANSACTION_LIMIT - 1)
->> > +		msg[-1] = '\n';  
->> 
->> Did you mean "mesg[-1] = '\n';" here?
->
-> Yes - and I thought I'd compiled it ...
-> I did decide not to worry about the missing '\n' when the output 'just fits'.
-> After all you need over 1300 pools with 10 threads to get to 4k.
-> I'd bet something else dies first.
->
-> 	David
->
-> (Oh I've replaced Linus's 20 year old email I copied from the commit with
-> his current one (he acked it) and deleted the broken one from the author.)
+locks_release_private()
+	if (fl->fl_ops) <----fl->fl_ops is not NULL but owner is NULL
+		fl->fl_ops->fl_release_private()
+			nlmclnt_locks_release_private() <----NULL ptr dereference
 
-I've convinced myself that the actual problem is the truncation. The
-buffer overflow cannot occur. I've posted a patch to address that.
+Fix this by clearing fl_ops when nlmclnt_find_lockowner() fails in
+nlmclnt_proc(), so that locks_release_private() skips the
+fl_release_private call path.
 
+Fixes: bf8848918d75 ("lockd: handle lockowner allocation failure in nlmclnt_proc()")
+Signed-off-by: Ran Hongyun <ranhongyun1@huawei.com>
+---
+ fs/lockd/clntproc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index f06faf577cea..4b54481fecd5 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -176,6 +176,7 @@ int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl, void *dat
+ 	if (!fl->fl_u.nfs_fl.owner) {
+ 		/* lockowner allocation has failed */
+ 		nlmclnt_release_call(call);
++		fl->fl_ops = NULL;
+ 		return -ENOMEM;
+ 	}
+ 	/* Set up the argument struct */
 -- 
-Chuck Lever
+2.52.0
+
