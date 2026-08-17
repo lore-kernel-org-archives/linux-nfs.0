@@ -1,44 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DF463423EAB;
-	Mon, 17 Aug 2026 13:06:12 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 304D0431A48;
+	Mon, 17 Aug 2026 13:18:47 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786971974; cv=none; b=o3n0mN/9Ij1qieDuWauF5fdcURFslNAU/cX12sujItetQ9mHzbz1CMTXFE2bbG0xFxkxX5HHx29JRICKWGG3dFmdjoGDqw6xxvUaJ+bR7zqr9RqrHKTTZlVlBZ3wrRp+SggiwZQwzJnBE5/JPWwXyEr3MtoQHOLwAUsDkZTRidU=
+	t=1786972728; cv=none; b=lIFL3qjCAjd1hr2nDCLDKl69A1TGw9WahXVtxB0iWtd4W+NUH/c0yUqJ3fdxWiBaEOid/NS6MEEitWXJC26KD1NUhQVhrVPl3oNUccTKI4Oj5yI5ttyFHVCzkvcHD6gGgrtnlvBCL1tTnn0mIekvLPwy5FJTKywVrqUO9SPHjgc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786971974; c=relaxed/simple;
-	bh=tajMC1o2lJbEnAvJo9cu6ifNA4M2SO31OrAW3DNdXaw=;
+	s=arc-20240116; t=1786972728; c=relaxed/simple;
+	bh=OWePMOmwdyShVhOmzWbcXXZUZcMzehJKIqCfmwdipOM=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=T+Jg8zb0C6wtTPUy8a6cltHsKFKlO5QlZ7Widgjv3U27kJuarsJVN/9kAymDE7EGektYVVNahl4LG2fYyjs6ooNLSxel1HF7DkTYrPRy+snoWwbPqS/Q9gkh8agrvIr1+fwWX+tNJOjAAOFWrdseR3LMNBtoxNzQ84q7NzI6P2Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MFknYHRC; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=Lxz1vwpoQZPAld+spTRzsTzlrJLQ3XHQJUh+nryb/abzQ7cBpxiAXxGTubU0EQ61u7zHV7lLxPNWBt24xebsvvGaDPq4RBv2VlwHi88iUlod3NwIVc0wWMt/k9TDIZ9FlHqOcpMnew9gar1u1GzhDTlcyDpU6xF4Js1FZMeJYPw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=fSHC72zT; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MFknYHRC"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 163F91F000E9;
-	Mon, 17 Aug 2026 13:06:12 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="fSHC72zT"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3F5C31F00A3D;
+	Mon, 17 Aug 2026 13:18:46 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1786971972;
-	bh=hKGpUIrNxodDsOVoJv1RPOzms6R0bvYfWxFdg1zmg1w=;
+	s=k20260515; t=1786972727;
+	bh=P4mcfXtxvAc8wd7J9tSmqaTRpcpUcJTv24dB9nbPHvk=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=MFknYHRC0TzJV7a1UXP95tGSTOcGC7RLsU+OwMTjxv5RyR+HTg+3UrhH4+MQtvilr
-	 xTc6u5fLWUYxMGEcvasEjjlGP8nfRtWHT5uOIw/2U1TiJSOgtz7ZUBJWKbw3LPPiuC
-	 AxAcItBQE9q8TUpzE4X2IFPBGVngLfFJweOef6EtCgvfwOyX18ABOzwR9BzaGsAaQA
-	 m3tJ3oWzXM8YMZ7JOugnY4uHogduTAW2X1j9JcaYo2N1Hfww937rhZpbiZk0L2MmBT
-	 aqNlVp9+wMqurOp6q3YRRml5z6F7ydbwUdoTcl5CF1I0kjLkhTSqwmmR4hopHxZyWn
-	 5GEdTc2i7GZ/Q==
-Message-ID: <9223c486ff90585a56556d810901c2cbcec85bae.camel@kernel.org>
-Subject: Re: [PATCH v1] SUNRPC: Reject a socket that already has an svc_sock
- attached
+	b=fSHC72zTjNjqE+VQ83++VEfiyEIWGwu1SaOplEOIBSINmjqXwqPhUhrqEMZmrz014
+	 u5x9FtG3Cw8moHzLw13RMikTeqP89XZRR7d7NrAOS9GQztGKV2ip4XhtAoK13s3cGh
+	 A7V8X1c+rx89bg4tOlYSRXqZF97MoBQkzy0csoRImIDl2yJxX0vCkB+sReIhI+Boti
+	 npjA/xkkOi8xCTHLbAKMpp7O7u/+RVJ5mBxRUmu9Z692dxRheDSiQRLC+wwQ+gm+/9
+	 HkS8XtoEBDeTbXnNAlIdOXMg6R3bF5hkA7bunSrl1aunZV++tDdcXb6W8yswEmbY+b
+	 TLgvBTNVHbS1g==
+Message-ID: <e7b2ae795a489a07f6f494b8f596f05db0ddc688.camel@kernel.org>
+Subject: Re: [PATCH] lockd: fix NULL pointer dereference in
+ nlmclnt_locks_release_private
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
+To: Ran Hongyun <ranhongyun1@huawei.com>, cel@kernel.org,
+ trondmy@kernel.org, 	anna@kernel.org, viro@zeniv.linux.org.uk
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	netdev@vger.kernel.org,
- syzbot+54cdc566f64abf51b7f1@syzkaller.appspotmail.com
-Date: Mon, 17 Aug 2026 09:06:10 -0400
-In-Reply-To: <20260815162844.8219-1-cel@kernel.org>
-References: <20260815162844.8219-1-cel@kernel.org>
+	chengzhihao1@huawei.com, yangerkun@huawei.com, yi.zhang@huawei.com
+Date: Mon, 17 Aug 2026 09:18:44 -0400
+In-Reply-To: <20260817060820.963195-1-ranhongyun1@huawei.com>
+References: <20260817060820.963195-1-ranhongyun1@huawei.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -123,126 +121,56 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Sat, 2026-08-15 at 12:28 -0400, Chuck Lever wrote:
-> Writing the same socket descriptor to /proc/fs/nfsd/portlist twice
-> attaches a second svc_sock to one socket. svc_setup_socket() saves
-> the socket's callbacks before installing its own, so the second
-> attach records svc_write_space() as the old write_space callback.
-> svc_udp_init() invokes that callback by way of svc_sock_setbufsize(),
-> and svc_write_space() then calls itself until the kernel stack is
-> exhausted:
+On Mon, 2026-08-17 at 14:08 +0800, Ran Hongyun wrote:
+> nlmclnt_locks_init_private() unconditionally sets fl->fl_ops even when
+> nlmclnt_find_lockowner() returns NULL due to allocation failure. When
+> locks_release_private() later sees a non-NULL fl_ops, it calls
+> fl_release_private, which dereferences fl->fl_u.nfs_fl.owner.
 >=20
->   BUG: TASK stack guard page was hit at ffffc900037d7ff8
->    svc_write_space+0x90/0x2b0 net/sunrpc/svcsock.c:429
->    svc_write_space+0xe6/0x2b0 net/sunrpc/svcsock.c:430
->    ... 700 more ...
->    svc_sock_setbufsize+0x18d/0x220 net/sunrpc/svcsock.c:386
->    svc_udp_init net/sunrpc/svcsock.c:854 [inline]
->    svc_setup_socket+0xb2f/0x1090 net/sunrpc/svcsock.c:1498
->    svc_addsock+0x2fd/0x760 net/sunrpc/svcsock.c:1547
->    __write_ports_addfd fs/nfsd/nfsctl.c:742 [inline]
->    write_ports+0xa5b/0xcc0 fs/nfsd/nfsctl.c:861
->    nfsctl_transaction_write+0x106/0x1a0 fs/nfsd/nfsctl.c:112
+> nlmclnt_proc()
+> 	nlmclnt_locks_init_private <----set fl->fl_ops unconditionally
+> 		if (!fl->fl_u.nfs_fl.owner) <----forget to clear fl->fl_ops
 >=20
-> svc_data_ready() and svc_tcp_state_change() chain through their saved
-> callbacks the same way, so a TCP descriptor added twice recurses on
-> the next incoming segment instead. Reaching any of this takes a
-> writer on portlist, and the nfsd filesystem sets no FS_USERNS_MOUNT,
-> so the reproducer needs CAP_SYS_ADMIN in the initial user namespace.
+> locks_release_private()
+> 	if (fl->fl_ops) <----fl->fl_ops is not NULL but owner is NULL
+> 		fl->fl_ops->fl_release_private()
+> 			nlmclnt_locks_release_private() <----NULL ptr dereference
 >=20
-> Reject a socket that already carries sk_user_data. svc_setup_socket()
-> overwrites that field unconditionally, so a socket some other
-> consumer has claimed is one NFSD would corrupt whether or not the
-> callbacks recurse.
+> Fix this by clearing fl_ops when nlmclnt_find_lockowner() fails in
+> nlmclnt_proc(), so that locks_release_private() skips the
+> fl_release_private call path.
 >=20
-> Fixes: b41b66d63c73 ("[PATCH] knfsd: allow sockets to be passed to nfsd v=
-ia 'portlist'")
-> Reported-by: syzbot+54cdc566f64abf51b7f1@syzkaller.appspotmail.com
-> Closes: https://syzkaller.appspot.com/bug?extid=3D54cdc566f64abf51b7f1
-> Signed-off-by: Chuck Lever <cel@kernel.org>
+> Fixes: bf8848918d75 ("lockd: handle lockowner allocation failure in nlmcl=
+nt_proc()")
+> Signed-off-by: Ran Hongyun <ranhongyun1@huawei.com>
 > ---
->  net/sunrpc/svcsock.c | 3 +++
->  1 file changed, 3 insertions(+)
+>  fs/lockd/clntproc.c | 1 +
+>  1 file changed, 1 insertion(+)
 >=20
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 7a423e9ee74d..5a2d52284d75 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -1614,6 +1614,9 @@ int svc_addsock(struct svc_serv *serv, struct net *=
-net, const int fd,
->  	err =3D -EISCONN;
->  	if (so->state > SS_UNCONNECTED)
->  		goto out;
-> +	err =3D -EBUSY;
-> +	if (so->sk->sk_user_data)
-> +		goto out;
->  	err =3D -ENOENT;
->  	if (!try_module_get(THIS_MODULE))
->  		goto out;
+> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+> index f06faf577cea..4b54481fecd5 100644
+> --- a/fs/lockd/clntproc.c
+> +++ b/fs/lockd/clntproc.c
+> @@ -176,6 +176,7 @@ int nlmclnt_proc(struct nlm_host *host, int cmd, stru=
+ct file_lock *fl, void *dat
+>  	if (!fl->fl_u.nfs_fl.owner) {
+>  		/* lockowner allocation has failed */
+>  		nlmclnt_release_call(call);
+> +		fl->fl_ops =3D NULL;
+>  		return -ENOMEM;
+>  	}
+>  	/* Set up the argument struct */
 
-Nice catch!
+The fix looks correct, but I don't like the way that the initialization
+and cleanup is spread across multiple functions. I think it would be
+better to just get rid of nlmclnt_locks_init_private() altogether and
+open code what it does in the single caller (nlmclnt_proc()). Then you
+could just not initialize fl_ops if nlmclnt_find_lockowner() fails.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+There's also another preexisting bug here. If the lockowner allocation
+fails, this function also leaks the references taken in
+nlmclnt_alloc_call().
 
-Claude had some pedantry about the changelog though. Regurgitated
-verbatim here:
-
-> svc_data_ready() and svc_tcp_state_change() chain through their saved
-> callbacks the same way, so a TCP descriptor added twice recurses on
-> the next incoming segment instead.
-
-Are those the two callbacks that recurse for tcp?
-
-The write_ports kerneldoc says "listen(3) must be called for a
-SOCK_STREAM socket", and for a listening socket svc_tcp_init() only
-replaces sk_data_ready:
-
-net/sunrpc/svcsock.c:svc_tcp_init() {
-	...
-	if (sk->sk_state =3D=3D TCP_LISTEN) {
-		strcpy(svsk->sk_xprt.xpt_remotebuf, "listener");
-		set_bit(XPT_LISTENER, &svsk->sk_xprt.xpt_flags);
-		set_bit(XPT_RPCB_UNREG, &svsk->sk_xprt.xpt_flags);
-		sk->sk_data_ready =3D svc_tcp_listen_data_ready;
-		set_bit(XPT_CONN, &svsk->sk_xprt.xpt_flags);
-	} else {
-		sk->sk_state_change =3D svc_tcp_state_change;
-		sk->sk_data_ready =3D svc_data_ready;
-		sk->sk_write_space =3D svc_write_space;
-	...
-}
-
-sk_state_change and sk_write_space are left alone on a listener, so the
-second svc_setup_socket() saves svc_tcp_listen_data_ready() into
-sk_odata and the recursion runs there instead:
-
-net/sunrpc/svcsock.c:svc_tcp_listen_data_ready() {
-	struct svc_sock	*svsk =3D (struct svc_sock *)sk-
->sk_user_data;
-	...
-	if (svsk) {
-		/* Refer to svc_setup_socket() for details. */
-		rmb();
-		svsk->sk_odata(sk);
-	...
-}
-
-The else branch does install svc_data_ready() and
-svc_tcp_state_change(), but svc_addsock() only reaches it for a
-descriptor that is not listening, and svc_tcp_init() then closes that
-transport right away:
-
-net/sunrpc/svcsock.c:svc_tcp_init() {
-	...
-		switch (sk->sk_state) {
-		case TCP_SYN_RECV:
-		case TCP_ESTABLISHED:
-			break;
-		default:
-			svc_xprt_deferred_close(&svsk->sk_xprt);
-		}
-	...
-}
-
-Should the paragraph name svc_tcp_listen_data_ready() instead?
-
+Want to spin up a v2 that fixes all of this?
+--=20
+Jeff Layton <jlayton@kernel.org>
