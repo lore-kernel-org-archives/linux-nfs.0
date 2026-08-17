@@ -1,158 +1,221 @@
-Received: from mta1.migadu.com (out-197.mta1.migadu.com [95.215.58.197])
+Received: from smtp-out1.suse.de (smtp-out1.suse.de [195.135.223.130])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B17EA3BFE2F
-	for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 08:25:30 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=95.215.58.197
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DED403F926B;
+	Mon, 17 Aug 2026 11:03:33 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.130
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786955136; cv=none; b=kobqwkcASO8uy1ROT+A3vlg/RdPzRbilKql6XAuPNd8sNLJJEJwLu7+H4SB3/RvE99eOUOkxIZxQySxiSJQsnzFD883REBz2e3BtT2uXfJYEEbEfLrK0n8J1sXSp+9g0MptXajr/1psKcPENDVI81gGKIjrs6yxw6uYwp3GyKjI=
+	t=1786964615; cv=none; b=UEODOiTXY14LrqTbRstT+7K0qGBsvqkniisEgkNzD0o6eJNjbvinOBGNzW8DBRmsSk0G7Dpsdm5MX/lQpBHgMnEitWXONKLxyKzW5cXYtmBC+SmfiMmVTLfFojeMyVUmGsraZ/YZRdVqSgGA6w0JgPN+Y+ABciD8Kci2L6eey6U=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786955136; c=relaxed/simple;
-	bh=eYNadUi07A8AhvVYvTwlB5KEurgeLlJSPKo7wDdWLLE=;
+	s=arc-20240116; t=1786964615; c=relaxed/simple;
+	bh=UC01y+N70K2YYwuhiD63941gnut7CPgk2/EOWTUjvrY=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=lhGSn3qvFGHQUoQH1UMnvBZIW/G7JjuqqCNH72s8305PGkM2ZaXrddysH0jFuvALizLKqKuPSFCQEDwwfAhKefAxklWIrOwJqR3uAZMs8hNti913/POrAeYqI4mFePHCUZy+OCIsNsDRFT1ax/+WPfxPssx6sfp+0BkTC/c5c/k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev; spf=pass smtp.mailfrom=linux.dev; dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b=LOyqKIP8; arc=none smtp.client-ip=95.215.58.197
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.dev
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.dev
+	 Content-Type:Content-Disposition:In-Reply-To; b=fPg2OkM/B9bKMSGbNqqP7Md58bClgL7M4v+iFJzVefH+LdpafLzGFEQNhS0tc2C371YjgrPnrMV+dBaziV1rHqnwXZ7DOR7ZaH3mHED53piEfXHLZLBcwB+SNk2a/6x5wptWQVsLSW2QP44AsihILy/Dp1C6RU4V5d9x2jhsXV4=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=tLT3QW9b; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=8X8znelA; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=zLM3nScL; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=GgaExUB1; arc=none smtp.client-ip=195.135.223.130
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.dev header.i=@linux.dev header.b="LOyqKIP8"
-X-Envelope-To: linux-nfs@vger.kernel.org
-DKIM-Signature: a=rsa-sha256; bh=eYNadUi07A8AhvVYvTwlB5KEurgeLlJSPKo7wDdWLLE=;
- c=simple/simple; d=linux.dev;
- h=from:to:subject:date:message-id:mime-version:content-type; s=key1;
- t=1786955128; v=1; x=1787559928;
- b=LOyqKIP8U/DmD1VoXOueW2cNHTUY3/mO+breI1tQhH1n/PEE4g8zlyymbMmdIYFnFcrv6RvC
- pVvzJcfFBnQDqpvY1sCEcQN/mBN9OQtSc2BU1Xz7W+DoGA3BCDQYWKOezSiLUw8E1W5e2I7LTZe
- wbwmY96SzDjJiffKJm3Ai8SM=
-X-Envelope-To: linux-nfs@vger.kernel.org
-Received: from localhost (3.112.29.171)
-	by mta10.migadu.com with ESMTPS id 5d0fb72b720b7f63;
-	Mon, 17 Aug 2026 08:25:17 +0000
-X-Migadu-Flow: FLOW_OUT
-Date: Mon, 17 Aug 2026 16:25:14 +0800
-From: Baoquan He <baoquan.he@linux.dev>
-To: Lukas Wunner <lukas@wunner.de>,
-	Jan Sebastian =?iso-8859-1?Q?G=F6tte?= <contact@jaseg.de>
-Cc: Jan Sebastian =?iso-8859-1?Q?G=F6tte?= <linux@jaseg.de>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Mike Rapoport <rppt@kernel.org>,
-	Pasha Tatashin <pasha.tatashin@soleen.com>,
-	Pratyush Yadav <pratyush@kernel.org>,
-	Dave Young <ruirui.yang@linux.dev>,
-	Catalin Marinas <catalin.marinas@arm.com>,
-	Will Deacon <will@kernel.org>, David Howells <dhowells@redhat.com>,
-	Jarkko Sakkinen <jarkko@kernel.org>,
-	Jonathan Corbet <corbet@lwn.net>,
-	Shuah Khan <skhan@linuxfoundation.org>,
-	Paul Moore <paul@paul-moore.com>, James Morris <jmorris@namei.org>,
-	"Serge E. Hallyn" <serge@hallyn.com>,
-	Ignat Korchagin <ignat@linux.win>,
-	Herbert Xu <herbert@gondor.apana.org.au>,
-	"David S. Miller" <davem@davemloft.net>,
-	Keith Busch <kbusch@kernel.org>, Jens Axboe <axboe@kernel.dk>,
-	Christoph Hellwig <hch@lst.de>, Sagi Grimberg <sagi@grimberg.me>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>, Mimi Zohar <zohar@linux.ibm.com>,
-	James Bottomley <James.Bottomley@hansenpartnership.com>,
-	Marc Dionne <marc.dionne@auristor.com>,
-	Eric Dumazet <edumazet@google.com>,
-	Jakub Kicinski <kuba@kernel.org>, Paolo Abeni <pabeni@redhat.com>,
-	Simon Horman <horms@kernel.org>, Eric Biggers <ebiggers@kernel.org>,
-	"Theodore Y. Ts'o" <tytso@mit.edu>,
-	Jaegeuk Kim <jaegeuk@kernel.org>,
-	Alexander Viro <viro@zeniv.linux.org.uk>,
-	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>,
-	Alasdair Kergon <agk@redhat.com>, Mike Snitzer <snitzer@kernel.org>,
-	Mikulas Patocka <mpatocka@redhat.com>,
-	Benjamin Marzinski <bmarzins@redhat.com>, kexec@lists.infradead.org,
-	linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-	linux-mm@kvack.org, keyrings@vger.kernel.org,
-	linux-doc@vger.kernel.org, linux-security-module@vger.kernel.org,
-	linux-crypto@vger.kernel.org, linux-nvme@lists.infradead.org,
-	linux-nfs@vger.kernel.org, linux-integrity@vger.kernel.org,
-	linux-afs@lists.infradead.org, netdev@vger.kernel.org,
-	linux-fscrypt@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	dm-devel@lists.linux.dev
-Subject: Re: [PATCH v2 01/13] kexec: add CRASH_WIPE_SECRETS to wipe secrets
- before kdump
-Message-ID: <aoLFai0gzzH2bGgy@MiWiFi-R3L-srv>
-References: <20260811-crash-zeroize-rework-v2-0-9561d13c2340@jaseg.de>
- <20260811-crash-zeroize-rework-v2-1-9561d13c2340@jaseg.de>
- <anw9ILJiO5xIjP4f@MiWiFi-R3L-srv>
- <9765f7ea-36bb-4c7b-a19b-7facec97b762@jaseg.de>
- <aoGpcczo5GkBsPwt@wunner.de>
- <aoK6jXA-tF9qfKOZ@MiWiFi-R3L-srv>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="tLT3QW9b";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="8X8znelA";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="zLM3nScL";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="GgaExUB1"
+Received: from imap1.dmz-prg2.suse.org (imap1.dmz-prg2.suse.org [IPv6:2a07:de40:b281:104:10:150:64:97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out1.suse.de (Postfix) with ESMTPS id AA4AA83F70;
+	Mon, 17 Aug 2026 11:03:23 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1786964607; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=7iC/4+DbNi/oVt0tkupTCs6iE9SsTBaX7RuvRMSdNNA=;
+	b=tLT3QW9b6/xDV9Ixy4zoLm+Sym5e8UrpRnGsWoBcLJhjPkST6lMELTRxUJUQGpZF0lx6cZ
+	CrQzaPfddU0JJoItEfD5PdYMA2htwZJU679KcKyN462F3b1zhN1ApxrzzGiqLBP4jGET9N
+	Cns17l2zKnZ4DDxsGjPi8d14DXwFnPY=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1786964607;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=7iC/4+DbNi/oVt0tkupTCs6iE9SsTBaX7RuvRMSdNNA=;
+	b=8X8znelAvCLGvHFOr74Pet9Ho88Mm/5toK4DxVXyvYUa9ubhq21sXaTOiQtiIi7tW55O0W
+	q6XlLziszMheBACQ==
+Authentication-Results: smtp-out1.suse.de;
+	dkim=pass header.d=suse.cz header.s=susede2_rsa header.b=zLM3nScL;
+	dkim=pass header.d=suse.cz header.s=susede2_ed25519 header.b=GgaExUB1
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1786964603; h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=7iC/4+DbNi/oVt0tkupTCs6iE9SsTBaX7RuvRMSdNNA=;
+	b=zLM3nScLqmXi359QoWe5LBqf2TSEnkVLmycbkb0qVY3mOjBS//cftPffZe7QxbNmKBXHjk
+	PL1/leHGjigoWbJZurYzuZGXlmSL14eEDbPz6Jf3KkUg9nE33E+sV86nBZzSDN2h7wFzWi
+	FItMyjngdoagwlKBs+/cNuTpme73IPg=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1786964603;
+	h=from:from:reply-to:date:date:message-id:message-id:to:to:cc:cc:
+	 mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=7iC/4+DbNi/oVt0tkupTCs6iE9SsTBaX7RuvRMSdNNA=;
+	b=GgaExUB129+gqMFavDlXWKVcOKduNpBj1fW8CrvokjGE7BdpSzA4FvYOIcQ0/0rb7Xzw1p
+	3eifOk+FRaFWRLCw==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 9FD407941C;
+	Mon, 17 Aug 2026 11:03:23 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id VSoAJ3vqgmpoIgAAD6G6ig
+	(envelope-from <jack@suse.cz>); Mon, 17 Aug 2026 11:03:23 +0000
+Received: by quack3.suse.cz (Postfix, from userid 1000)
+	id 3EE52A13B5; Mon, 17 Aug 2026 13:03:19 +0200 (CEST)
+Date: Mon, 17 Aug 2026 13:03:19 +0200
+From: Jan Kara <jack@suse.cz>
+To: NeilBrown <neil@brown.name>
+Cc: Miklos Szeredi <miklos@szeredi.hu>, Ian Kent <raven@themaw.net>, 
+	Chuck Lever <cel@kernel.org>, Jake Edge <jake@lwn.net>, Ilya Dryomov <idryomov@gmail.com>, 
+	Alex Markuze <amarkuze@redhat.com>, Viacheslav Dubeyko <slava@dubeyko.com>, 
+	Jan Harkes <jaharkes@cs.cmu.edu>, coda@cs.cmu.edu, Alexander Viro <viro@zeniv.linux.org.uk>, 
+	Christian Brauner <brauner@kernel.org>, Jan Kara <jack@suse.cz>, Trond Myklebust <trondmy@kernel.org>, 
+	Anna Schumaker <anna@kernel.org>, Amir Goldstein <amir73il@gmail.com>, 
+	Andrew Morton <akpm@linux-foundation.org>, Miklos Szeredi <mszeredi@redhat.com>, autofs@vger.kernel.org, 
+	linux-kernel@vger.kernel.org, ceph-devel@vger.kernel.org, codalist@coda.cs.cmu.edu, 
+	linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 03/12] fsnotify: don't hold a spin_lock across
+ fsnotify_recalc_mask() calls.
+Message-ID: <oh2lg2agqxwqopecacq6sfdnky5faxidwsybkvbwbq24r6tw6o@4swfog5ocwwb>
+References: <20260803012648.2195405-1-neilb@ownmail.net>
+ <20260803012648.2195405-4-neilb@ownmail.net>
+ <CAJfpegs-k3skRGiwZvQLzD7OrAK4KL8zwmpmJKyjRHSQ-rqX+Q@mail.gmail.com>
+ <178642552869.2852630.11443303758249822243@noble.neil.brown.name>
+ <178675372176.2852630.1305553887009521382@noble.neil.brown.name>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
-In-Reply-To: <aoK6jXA-tF9qfKOZ@MiWiFi-R3L-srv>
+In-Reply-To: <178675372176.2852630.1305553887009521382@noble.neil.brown.name>
+X-Spam-Score: -4.01
+X-Spam-Level: 
+X-Rspamd-Action: no action
+X-Rspamd-Queue-Id: AA4AA83F70
+X-Spamd-Result: default: False [-4.01 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	R_DKIM_ALLOW(-0.20)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	MX_GOOD(-0.01)[];
+	RBL_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:104:10:150:64:97:from];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	RCPT_COUNT_TWELVE(0.00)[24];
+	MIME_TRACE(0.00)[0:+];
+	RECEIVED_SPAMHAUS_BLOCKED_OPENRESOLVER(0.00)[2a07:de40:b281:106:10:150:64:167:received];
+	FREEMAIL_ENVRCPT(0.00)[gmail.com];
+	TO_DN_SOME(0.00)[];
+	FROM_EQ_ENVFROM(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	FREEMAIL_CC(0.00)[szeredi.hu,themaw.net,kernel.org,lwn.net,gmail.com,redhat.com,dubeyko.com,cs.cmu.edu,zeniv.linux.org.uk,suse.cz,linux-foundation.org,vger.kernel.org,coda.cs.cmu.edu];
+	RCVD_COUNT_THREE(0.00)[3];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[suse.com:email,suse.cz:dkim,ownmail.net:email,imap1.dmz-prg2.suse.org:helo,imap1.dmz-prg2.suse.org:rdns];
+	RCVD_TLS_LAST(0.00)[];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	DKIM_TRACE(0.00)[suse.cz:+]
+X-Rspamd-Server: rspamd1.dmz-prg2.suse.org
+X-Spam-Flag: NO
 
-On 08/17/26 at 03:38pm, Baoquan He wrote:
-> On 08/16/26 at 02:13pm, Lukas Wunner wrote:
-> > On Wed, Aug 12, 2026 at 12:08:39PM +0200, Jan Sebastian Götte wrote:
-> > > I can imagine one alternative way to approach this, tell me what you think:
-> > > Instead of registering wipe handlers that memzero places on panic, I could
-> > > put an optional registry of (addr, len) descriptors into crashkernel memory
-> > > that the original kernel populates with the PAs of buffers to clear ahead of
-> > > time. Then the kdump kernel could do the actual memzero. This would remove
-> > > all code from the actual kdump path here. The registry could be made
-> > > per-core to avoid locks.
-
-If this has to be done in kernel, your (addr, len) registry idea is a
-better direction, and we can make it a bit more general.
-
-Instead of a secrets-only wipe registry, consider a small "crash memory
-region" table with an action per entry:
-
-enum crash_region_action {
-    CRASH_REG_WIPE,   /* memzero, then dump normally (leave zeros) */
-    CRASH_REG_SKIP,   /* do not include in the vmcore at all */
-};
-
-struct crash_region {
-    phys_addr_t addr;
-    size_t      len;
-    enum crash_region_action action;
-};
-
-void crash_reg_add(phys_addr_t addr, size_t len,
-                   enum crash_region_action action);
-void crash_reg_del(phys_addr_t addr, size_t len);
-
-Two actions because the use cases differ:
-
-- WIPE is what you need: zero the secret, 
-- SKIP covers things people do not want in the dump at all
-   — Registering as SKIP reduce dump size. I have been considering how
-     to shrink vmcore size on some big system with huge memory, the
-     vmcore size usually is several or tens of GB.
-
-If this is OK to you, you can start a regiestry table
-infrastructure with wiping secrets, we can add SKIP later and plus some
-driver used memory.
-
-I am not sure if it's satisfactory, but you can give it a shot to show
-what it looks like.
-
-Thanks
-Baoquan
-
+On Sat 15-08-26 10:28:41, NeilBrown wrote:
+> On Tue, 11 Aug 2026, NeilBrown wrote:
+> > On Tue, 11 Aug 2026, Miklos Szeredi wrote:
+> > > On Mon, 3 Aug 2026 at 03:39, NeilBrown <neilb@ownmail.net> wrote:
+> > > 
+> > > > @@ -116,11 +117,15 @@ static int dnotify_handle_event(struct fsnotify_mark *inode_mark, u32 mask,
+> > > >                 else {
+> > > >                         *prev = dn->dn_next;
+> > > >                         kmem_cache_free(dnotify_struct_cache, dn);
+> > > > -                       dnotify_recalc_inode_mask(inode_mark);
+> > > > +                       need_recalc = true;
+> > > >                 }
+> > > >         }
+> > > >
+> > > > +       if (need_recalc)
+> > > > +               need_recalc = dnotify_recalc_inode_mask(inode_mark);
+> > > >         spin_unlock(&inode_mark->lock);
+> > > > +       if (need_recalc)
+> > > > +               fsnotify_recalc_mask(inode_mark->connector);
+> > > 
+> > > Is the fsnotify_group_lock() held in this case?   I don't see it.
+> > 
+> > It isn't held.  Doesn't it need to be...
+> > It seems to protect marks, so maybe it does.
+> > 
+> > srcu seems to be used to protect this section, so maybe we can rely on
+> > that.
 > 
-> Since there are a lot of security expert in CC, I am wondering what's
-> the risk if we wipe secrets during dumping. System is located in
-> user's place, and vmcore is dumped and collected in user's place. If we
-> filter out secrets memory when we dumping, what could be leaked out?
+> I dug into this some more, and we do rely on srcu, but don't need the
+> extra code below.
+> inode_mark->lock doesn't protect inode_mark->connector, so moving the
+> dereference out of the lock has no effect.
+> srcu_read_lock is taken before we get the ref to the mark, so the mark
+> and the connector cannot disappear underneath us.
+> A race could result in inode_mark->connector reading as NULL, but
+> fsnotify_recalc_mask() checks for NULL, so there is no risk for harm.
 > 
-> > 
-> > Or create a dedicated mempool from which all sensitive data is allocated,
-> > then call mempool_free_bulk() on kexec to poison everything in that pool?
-> > 
-> > Thanks,
-> > 
-> > Lukas
+> Thanks for encouraging me to dig into this.
+
+Sorry for not replying earlier but I was on vacation. The lifetime rules
+around marks & connectors are subtle so we have to be really careful and
+dnotify with its single shot marks is peculiar which makes things even
+harder. fsnotify_recalc_mask() has a comment about locking in front of it:
+
+/*
+ * Calculate mask of events for a list of marks. The caller must make sure
+ * connector and connector->obj cannot disappear under us.  Callers achieve
+ * this by holding a mark->lock or mark->group->mark_mutex for a mark on this
+ * list.
+ */
+
+and you very obviously start violating these rules with your changes. Now I
+admit I've forgotten all the details why I did it like this so let me
+reconstruct it :).
+
+Connector stays alive as long as there's any mark in its list. Both marks
+and connectors are protected by the srcu. Mark also has
+FSNOTIFY_MARK_FLAG_ATTACHED flag which is set iff the connector->obj is
+pointing to valid inode/mount/... FSNOTIFY_MARK_FLAG_ATTACHED changes only
+under mark_mutex so that's why mark_mutex is stabilizing the connector (and
+also connector->obj). This is what is used by most places calling
+fsnotify_recalc_mask(). But dnotify needs to mess with notification mark
+mask from event handling and there we cannot take mark_mutex due to lock
+ordering constraints. That's where the mark->lock rule comes into play
+because mark->lock also needs to be acquired to clear
+FSNOTIFY_MARK_FLAG_ATTACHED. That being said this dnotify use of
+fsnotify_recalc_mask() still looks somewhat racy because
+dnotify_handle_event() can get called after FSNOTIFY_MARK_FLAG_ATTACHED is
+cleared.
+
+Anyway if you move fsnotify_recalc_mask() call outside of mark->lock, you
+seem to make the race with dnotify clearing the mark from 
+fcntl_dirnotify() easier to hit. Now in the notification path the inode
+itself is guaranteed to stay alive and the rest is protected by the SRCU so
+there's no direct UAF. But fsnotify_recalc_mask() simply isn't prepared for
+the connector changing under it due to object getting detached and so we
+could end up doing weird things like NULL ptr derefs or similar stuff.
+
+So this call to fsnotify_recalc_mask() from dnotify needs a more careful
+handling. Which is sad because I doubt anybody still uses dnotify...
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
