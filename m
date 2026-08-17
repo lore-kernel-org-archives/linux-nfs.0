@@ -1,161 +1,174 @@
-Received: from mail-vk1-f175.google.com (mail-vk1-f175.google.com [209.85.221.175])
+Received: from mail-yw1-f169.google.com (mail-yw1-f169.google.com [209.85.128.169])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B2C5A3E1208
-	for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 20:51:59 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.175
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1786999922; cv=pass; b=IUnlGXFQPoqs7hahfxN9unbrO1jgpQS7b1xv/rgbeWEpR90ny+7ztwsx6pQGMEQaAY8cMhj5rtYW+u8kVvcW04XWUs2VBRwch7R8n1+6sYTLr6CmCoTqADD8MVFlxIM1Hh8XGqQ6UElwDrE0FQYmKk795m5CfcBF0fJ0ja1vOyc=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1786999922; c=relaxed/simple;
-	bh=6WuzAbspB1ExSogF8kqjQzSwSHTkgCAcgZZwabnez2Q=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=lggAYTGp/is8hEWPU6MgpQrwolBOdSpFlCgVFVlXzljzb9Jqnb+FuwM80wt6GIMDiu6IlZHojbwwg7qNUhxc4CPRD6KWWvqR0qGdIgl9LswbBDU6zcFkEUZkNvWsDTyvG/Q2y9iCDNWFh1hKUZF9LMO0RPj8vxFnTdVRIbZO0S8=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com; spf=pass smtp.mailfrom=google.com; dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b=PhOHFZ3g; arc=pass smtp.client-ip=209.85.221.175
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=google.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=google.com
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C338A3BFAEB
+	for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 21:10:06 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.169
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787001009; cv=none; b=JQiGy1v8ExI/5OgGS3o7pko64IObnWfqAnLy65mksnUG7gt2YUPtikCqycKrHlMpO8xReCjWFHXXNazW2lRaK7/5CY7liuaLgRDWRf1G2kL6r3y4bOkHbhuYeooolB3/Ffoas859t3NlEXffH24RVGooGcwkIFhUZRO20FxsEZc=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787001009; c=relaxed/simple;
+	bh=0wieJskIyM+BlIxVdb53fTjVxJUSZM5MJP5sY3w8fDs=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=qkJthPQA+vVRZ268Wc2xJSVhdVSmCuv9B3IZvivXvJoeAzQ0sZUVnB9WPzlQE7++N/xf0Sufrha1D7KZUZnhKmKIn5f2C42xVgflJMpOdWu8Z5yh8kkEQp194nxijN5ndPo8+PZ99Q2A2tmUOKexWVAC1peEpHkVQE22vYlv6ps=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com; spf=pass smtp.mailfrom=truenas.com; dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b=aJ+K6KNq; arc=none smtp.client-ip=209.85.128.169
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=truenas.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=google.com header.i=@google.com header.b="PhOHFZ3g"
-Received: by mail-vk1-f175.google.com with SMTP id 71dfb90a1353d-5bf95ade656so1435213e0c.1
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 13:51:59 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1786999918; cv=none;
-        d=google.com; s=arc-20260327;
-        b=qHoSY+kxiFz7aia3AKQf/SAgeOzxyUWJTqn3yCvw5LhMMQxE3LJwODpF+Ofr+Urrw7
-         5E/AZk+vJy0IQi3LkVJCGGBMkcVHUr9rsYIiFyIH6z5TW6x1GL3T7mgAR32HQJFgQR3f
-         5XSG/P6Lq+fZmtxhvl1krIDAw4oBbJZxHnAwnPAbVbrFlJ/4MPTPEYNx9MMvt0GhvFJx
-         nwB3lu9xy8eSAJJFgrfL1ep6oHZwXlPsJBJFFVQICq5wKxFJSuXEfYvy8xGDKzcmcLcR
-         OAHugqmR7h45/pKJXGV6Uj0NRRr/NTNfGyEpS9g559lfJy1Cqrq+lwhsQBavH7brNb2n
-         ah3Q==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=eF1JE8DesWnKgF2u3tRIF8wb7IKv2IB08SAz4bl5DYk=;
-        fh=SZQRNNBEmgSWYaqVqcE5EBr/cLOUAC+r8YIw22qT/6k=;
-        b=NLjFidIKTQy3IAc+fEnZAvFCick5htWKUk357h+caTJKYJP9jrKBKSveJrZvHaAtsP
-         jye0d6jUChAdLeESPjxG8lMBl5n4KSuSfB2MR/tydOYYfK3k2U8ue4+RJN3bDDa6Yleh
-         I/eYWJ03OG62sbMhNePwkLyeG8VZWGjzo9Xl0KKLaCwtHDXjan0tsJlVEJykkqoxiVsp
-         60MwGhFQm1oSysASwk0JsSX9HyVAqtowDFh20ZaqYGrcmk1GHEtth651MIBly7g227eY
-         7u/qWCBXeaPxosscdD+O6ana7+1Nt67YxETIpNa9S0wpvTpGvgJpEM6CFi5K9czq5Wb6
-         Tkrg==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b="aJ+K6KNq"
+Received: by mail-yw1-f169.google.com with SMTP id 00721157ae682-836cb2fa1bcso56334857b3.1
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Aug 2026 14:10:06 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20251104; t=1786999918; x=1787604718; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=eF1JE8DesWnKgF2u3tRIF8wb7IKv2IB08SAz4bl5DYk=;
-        b=PhOHFZ3gQ1FZ+GWctd96IbMbpV5YEaOZSE+jYQtO6tlA4KD2uopyvtbH75bpkgLMOV
-         89mGyZOoAZsEeG5p/wWUipMMoIPpGakqtboWTJ8YOOIqg6Vh73XJYVj5HR+Aa9JGQlMe
-         A/9tXHSmLfUALEuEaNwrIgy7J6n6mRQ8yJvE0bkqfIVofeLzoJlQofntO1xbCDUOhHRh
-         wE39K1ggOhGYAe6mhJqnBW/ETZgKAk9OTwEaRpNt+4WG6tATYwAASem42VClIvsskmXR
-         o/XWQeYzC00vOItTMLVPnoeFdCBFFWuM5oNLU1JDITwwtgbL0nhRZrlenC35EUbj2pSC
-         Z6hg==
+        d=truenas.com; s=google; t=1787001005; x=1787605805; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=iSHxKLLNlRXf2Is3sXlD0N0WMToVUJbjSLkiqwrplNE=;
+        b=aJ+K6KNqj+ECqsbWTAlHXoLzewXf86kBj7Yb38+dClpHdJqBxvIbBzg4r76ieyDgC9
+         rrpxZaf3wr8j1vwlNebg5bdzr3a1FPXE427u8eTpaqxBXXJHQXJoJp6w+EBr6g4UJ0cm
+         jjFUA24todHE8LjZs6lkmdRYMusLUT4+dNIb5oMfZxWJElKAvufbUMvdJYm6qaf0Lfdq
+         ETMeZD+vSfsLuwZpqaGCVKGoCGrdMFGV8e2Uc8/U/EPQ72fh4sz07fQIgeCbxaCO6kay
+         9GJgGwRRtC5dPWb1dMeiBJ86dv3BwbK+SDfJypbkvNS74CIPqScKN7/RXOJy4Q0xP3Eb
+         wM6A==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1786999918; x=1787604718;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=eF1JE8DesWnKgF2u3tRIF8wb7IKv2IB08SAz4bl5DYk=;
-        b=almTVT84hY2uBQYNzTLl3j0dsnx/54nuxEr2127qa6wEitmVkR38I60vt1KNu/3TaD
-         V8n3bliKY+VVEj0W0ZAbH+hKOs5MQ+1R8Lk5hl0SAztsleIDgtjkusJ6fpu1yBiiZtFF
-         xNNwslsM8I6/P3+lR0KpJ85SOxUUDtP+UWzG1QAG7IBSqUfwZhv/B2jijOdo08Dmvrck
-         TYtwlb+sJutFXCjQ0PJ5PFQl8q+192qlmlWQ2SnB7RtfiCDJ14NQrNhW8HCYtwJ/uXiU
-         sqGN86mofEgtM25WRzyP+cfusk5zGQ3fGOQPItLbUcMArBUkvHSVRAq2Rq0xIJJaTx4a
-         abbA==
-X-Forwarded-Encrypted: i=1; AHgh+RqMFuQgFRe/OBvPKYBpJqWXm4zI6MBye/TXB8lsfr9ki/CGXPHMieUDK9KrBJkE3g+FqDUpAB0njyg=@vger.kernel.org
-X-Gm-Message-State: AOJu0YzBHMUnuwOhlD+YgUjT9pyBHenkCdwfWjhmOGZW+liOZiL2q86+
-	x7VYo8KCwiW5JTRe84O/O4P+XjUPrf4qJoG10IyATvR2tFf4hL3H6f9KuHlFKvLeHOAkvKseeLM
-	ViAOjmJe4WTN0r4bYzwuzQurfpg1+SEkxmS6zuQU=
-X-Gm-Gg: AR+sD12sFVEzxcu6UQwsHlTWN0OdEs4QqYmXPm2VjTRymN1kI1HygyB9BhE9XzwQ0DR
-	9L4fD1Rhv+5YMC3xGp2azjxryTTbWOCHebEcmB3Ii7THV5Z55H7n1D22eLI5pWctlm4XDmQ5XPO
-	9JskAhAMtC7NmNYq+/M61SKIJao1YTQPeid6W0KbLVWYxKK9s73yTI/I4n8TcFKelIZvUR204kn
-	3XDUbabZhMNwSGkT77iWteud9bmTAkuxzvNyxS3Cbx7ROfkOo5kXPJoMegOPwc/lg0rz6w4J0Va
-	VNOW75RzaYQiqMpPDQIyv/aY0BJy0TKpIJQv8ct8/775oKdQj6W8qVf18ge4x6x5HullClT2r+y
-	hsKygVrh5itpZXhB2xSWAru/hLPj/1nYftxVQJjpXjQ==
-X-Received: by 2002:a05:6122:1d8e:b0:5bf:7f98:9657 with SMTP id
- 71dfb90a1353d-5c591d1e4b3mr5206909e0c.6.1786999917761; Mon, 17 Aug 2026
- 13:51:57 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1787001005; x=1787605805;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=iSHxKLLNlRXf2Is3sXlD0N0WMToVUJbjSLkiqwrplNE=;
+        b=mijCDa5wYIddHWQpUTqDQOJZ5JlI0UkbXvpjTD5uMsd36AUhnObkxzMUhvbCsgPdG2
+         DJodpwdUqa5dPUGiEQlK8oPROBkxAlX/IuO9VkIdZkqRLRXRL6LQwNVszJtSg1rWZwh3
+         Wxv6eGOXuxehwaEn7F7Qm6gO2+4Sja04RJrff5mNAh1avmoJiVKFcr4M2zf810vzjomT
+         Tvg3zQbnQrxTDW496wcl6f2kiplY2Y6MDGgQfB4ienQXQNEGPLeH1+0lGELzh0/Gj28y
+         JqBPTsllZ7AE79M1WZ+LNVAKamSSeSmMuN0V6cFlLxpifBWS4biiiiKyK6rlhgsWtJL6
+         wLHg==
+X-Forwarded-Encrypted: i=1; AHgh+Rry2NaiEafSm/IG6UHOiXYfEaSf2BXAfiXAEiqZO79cXGtT2qq0ocLOWSM3BNm+IQeQKNvh2n0ocYA=@vger.kernel.org
+X-Gm-Message-State: AOJu0YxnBkKbboEBim8b6NzKDlChiwlOmwO0Kbr62SjqJqtPS5i2Jc/e
+	nOuqgf/cNMPGL+h4agIgmf2gvDVNKqDiDZ1JH2dOPpuySjtadS9TM187LSKmP262ZA==
+X-Gm-Gg: AR+sD11eXet7nEzdULWgogTRmD8wWOsmCudCTtghhVCB+39zc4vD1EPQYMd53QWkpDd
+	B/u7Hr95I3i06brOMhiWzw0H0CEpNLT6/D6rklVYxQKAX1ehUOFVRA/FtvoDnlDmODw+FrVP839
+	PF2uuOLPo4uy3boVyG5DyKfzTsJwyO5u9i7n8oneUFyRvMdWpd14nuxfUNXbquWLyqJGkASaDfX
+	oStWU9q7OO7Ps3BtLeB7Uv7GPFgv2ZSsPmuS+0Vvqn5wDReLitydFST11SRsEqIggT9+OM+3dh7
+	JXLRSvys7sujG0m/m5tL1TSsEsUCUxz7CgHqsiPY3lv7aYJ2QZ6iQ7NWs/feqevLsHn9FHzhYdr
+	ib71UL8qHo0N+WpdUaYBs3IiwIm/1Gat9wgLUerJ0OZbkP3XrvPfLehaiwiEAHjdPz+WZ6wQ55Z
+	+pLApzV/bto1eoJflBJzzI1i2D6XYePiDKO1iz5lCkPdCdWAx8JVE=
+X-Received: by 2002:a05:690c:c511:b0:81e:6cdf:b2f5 with SMTP id 00721157ae682-837077121e3mr106852047b3.0.1787001005073;
+        Mon, 17 Aug 2026 14:10:05 -0700 (PDT)
+Received: from hamza-PC ([2400:adc1:158:c700::1])
+        by smtp.gmail.com with ESMTPSA id 00721157ae682-840f25bed4csm9533557b3.29.2026.08.17.14.10.00
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Mon, 17 Aug 2026 14:10:04 -0700 (PDT)
+From: Ameer Hamza <ameer.hamza@truenas.com>
+To: cel@kernel.org,
+	jlayton@kernel.org,
+	neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com
+Cc: trondmy@kernel.org,
+	anna@kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	alexander.motin@truenas.com,
+	caleb.stjohn@truenas.com,
+	ameer.hamza@truenas.com
+Subject: [PATCH 0/2] SUNRPC: Recycle sent Reply pages instead of freeing them
+Date: Tue, 18 Aug 2026 02:08:09 +0500
+Message-ID: <20260817210811.3984663-1-ameer.hamza@truenas.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <27956255dde39f58d73a7b51cb53cbe3d7804f54.1786411026.git.mariianikitash@google.com>
- <aoNuOD6CLopCgxtU@google.com>
-In-Reply-To: <aoNuOD6CLopCgxtU@google.com>
-From: Bill Wendling <morbo@google.com>
-Date: Mon, 17 Aug 2026 13:51:41 -0700
-X-Gm-Features: AcwNN1UiSchRXIblAc0RIrxdgm7oeFqezFJfw_ciVQw3x4wTmpuPp3ASi6kdEAY
-Message-ID: <CAGG=3QXu=kioXx3dRB2GO=qGQ+SqSuenbqMrrLEFz8KcRbn35A@mail.gmail.com>
-Subject: Re: [PATCH] NFS: nfsroot: replace strlcat() with snprintf()
-To: Justin Stitt <justinstitt@google.com>
-Cc: Mariia Nikitash <mariianikitash@google.com>, trondmy@kernel.org, anna@kernel.org, 
-	keescook@google.com, linux-hardening@vger.kernel.org, 
-	linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	nikitash.mariiaw@gmail.com
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-On Mon, Aug 17, 2026 at 1:33=E2=80=AFPM Justin Stitt <justinstitt@google.co=
-m> wrote:
->
-> Hi,
->
-> On Fri, Aug 14, 2026 at 12:28:45AM -0700, Mariia Nikitash wrote:
-> > In preparation for removing the deprecated strlcat() API[1], replace it=
-s
-> > uses in root_nfs_cat() with snprintf().
-> >
-> > Build the separator and source string in a single call using the
-> > remaining space in the destination buffer. snprintf() returns the lengt=
-h
-> > it would have written excluding the terminating NUL, so comparing the
-> > return value against the remaining buffer space preserves the existing
-> > truncation check.
-> >
-> > Link: https://github.com/KSPP/linux/issues/370 [1]
-> > Signed-off-by: Mariia Nikitash <mariianikitash@google.com>
->
->
-> Reviewed-by: Justin Stitt <justinstitt@google.com>
->
-Acked-by: Bill Wendling <morbo@google.com>
+An NFS READ Reply built in pages the nfsd thread allocated has
+those pages freed from softirq, when the peer's ACK arrives. Since
+commit 574907741599 ("mm/page_alloc: leave IRQs enabled for per-cpu
+page allocations") such frees collide with alloc_pages_bulk()'s
+IRQs-on pcp window and fall back to free_one_page() under
+zone->lock; on a single memory node every thread contends for the
+same zone->lock and the collisions compound. Replies spliced from
+page-cache folios are immune, since the page cache still holds a
+reference and the ACK-time put never reaches the allocator. The
+rest are not. On gfs2, kernfs, cifs direct I/O and DAX files
+splicing runs copy_splice_read(), which allocates a fresh page for
+every page of payload, and nfsd allocates them too when it does not
+splice at all: under nfsd_disable_splice_read, and for sec=krb5i
+and sec=krb5p.
 
-> > ---
-> >  fs/nfs/nfsroot.c | 8 ++++----
-> >  1 file changed, 4 insertions(+), 4 deletions(-)
-> >
-> > diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
-> > index 432612d22437..e951fe731679 100644
-> > --- a/fs/nfs/nfsroot.c
-> > +++ b/fs/nfs/nfsroot.c
-> > @@ -173,12 +173,12 @@ static int __init root_nfs_cat(char *dest, const =
-char *src,
-> >                              const size_t destlen)
-> >  {
-> >       size_t len =3D strlen(dest);
-> > +     size_t remaining =3D destlen - len;
-> > +     const char *sep =3D "";
-> >
-> >       if (len && dest[len - 1] !=3D ',')
-> > -             if (strlcat(dest, ",", destlen) >=3D destlen)
-> > -                     return -1;
-> > -
-> > -     if (strlcat(dest, src, destlen) >=3D destlen)
-> > +             sep =3D ",";
-> > +     if (snprintf(dest + len, remaining, "%s%s", sep, src) >=3D remain=
-ing)
-> >               return -1;
-> >       return 0;
-> >  }
-> > --
-> > 2.55.0.679.g6767b8d81c-goog
-> >
-> >
->
-> Thanks
-> Justin
->
+Patch 1 removes a redundant allocation: on those files nfsd builds
+the Reply out of pages copy_splice_read() allocated for that one
+Reply and discards the pages it was already holding, so it
+allocates twice for every page of payload. Reading through
+nfsd_iter_read() does the same single copy straight into the pages
+nfsd already owns. Patch 2 removes the free: nfsd drops its own
+reference as soon as the Reply is sent, leaving the network with
+the last one. Keeping that reference instead and reusing the page
+once folio_ref_count() reads 1 keeps it out of the allocator. A
+thread holds at most 4 MiB of pages, trimmed as its own demand
+falls and freed when it exits.
+
+How much this is worth depends on contention: on the server below
+the ACK-time frees reach 43% of cycles, while on an uncontended
+machine the same change removes the allocations and leaves total
+CPU where it was.
+
+The measurements below use ext4 with DAX and tmpfs so they
+reproduce on a stock tree with a pmem device; ZFS is affected the
+same way, its ->splice_read being copy_splice_read() as well, but
+nothing here depends on it. Single-node server, 64 threads, one
+nfsd thread per CPU, eight clients, 1 MiB sequential cached reads
+over NFSv4.0, 60s a run, clients in network namespaces on the same
+box, so vmstat counts their allocations too.
+
+                              cycles in       pages allocated
+                            free_one_page    per payload page
+  ext4 dax  NFSv4            43%  ->   0%        2.97 -> 0.05
+  ext4 dax  NFSv4, knob      32%  ->   0%        1.99 -> 0.05
+  tmpfs     NFSv4, knob      33%  ->   0%        1.98 -> 0.05
+
+The knob rows have nfsd_disable_splice_read set, so they reach the
+same path without patch 1 and measure patch 2 alone. The first
+column is free_one_page()'s share of all CPU cycles on the box, the
+second is vmstat page allocations divided by the READ payload
+delivered, Call buffers included.
+
+The table is from the series backported to 6.18.38, where the
+release path is adapted to that tree's combined rq_pages array.
+The posted code was run only in a 20-CPU VM, not on that server.
+free_one_page() falls from 24628 calls per million pages served
+to 5990 and softirq time per page from 0.836 to 0.528 us, while
+total CPU per page does not move: svc_reuse_scan()'s 2.5% of
+cycles is paid back by the allocator work it removes. The
+scan's share falls to 0.7% when late ACKs leave little to
+reuse, since it stops after a pass in which no page is ready.
+
+Both read paths pass over NFSv3 and NFSv4.2 under KASAN, lockdep
+and DEBUG_VM, with xfstests -g quick and pynfs 4.0/4.1 matching
+the unpatched baseline, cthon04 passing, and byte-identical
+checksums over NFS/RDMA and NFSv3/UDP. All of that runs on a fast
+link, where a build with the folio_ref_count() gate deliberately
+removed also passes the checksum runs. Under a 40 ms ACK delay
+that build corrupts data and the series stays byte-identical.
+
+Ameer Hamza (2):
+  NFSD: Use nfsd_iter_read() when ->splice_read is not zero-copy
+  SUNRPC: Recycle sent Reply pages instead of freeing them
+
+ fs/nfsd/nfs4xdr.c               |   4 +-
+ fs/nfsd/vfs.c                   |   5 +-
+ fs/nfsd/vfs.h                   |  29 ++++
+ include/linux/sunrpc/svc.h      |  14 ++
+ include/linux/sunrpc/svc_xprt.h |  14 ++
+ include/trace/events/sunrpc.h   |  32 ++++-
+ net/sunrpc/svc.c                | 235 +++++++++++++++++++++++++++++++-
+ net/sunrpc/svc_xprt.c           |   7 +
+ net/sunrpc/svcsock.c            |   2 +
+ 9 files changed, 335 insertions(+), 7 deletions(-)
+
+
+base-commit: 76427d869120552a1a82e1f1488d9f8311827d84
+-- 
+2.53.0
+
