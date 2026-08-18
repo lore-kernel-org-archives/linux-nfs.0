@@ -1,31 +1,31 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 56F16224B13
-	for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2026 14:00:38 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A0E44756B1
+	for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2026 14:00:39 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787061639; cv=none; b=RPZRL0tuRPzWmV8KKTnBRmJ6JIILZLE8g5Mpu96/el0HIlNdIewpW4UI6EXfmSop0kYNr1wogpTJFFdD2VdFTecMD4YUqBQCOd9TzPc38zGM5LKYfcwchC6oer/ZzRyynNPo/29XI8VXdK+3SqShz3pcJJ9blDusnFeMvldNcWU=
+	t=1787061640; cv=none; b=qFidyeVZvLeeZwH4a0UOp3HYGxlo/ipVPg/t9tRRFuDb2y/pte7V+5zDvnUXLhoQjWFRO7+peSv6odDPDtWNv6k5WvLDbdZDEY9VSM9Powk1F1bGXAcRHut7GLTKkdurCSdvuOApmrn9ZUvDsEK2S4rUDsUJb9rAm58yWoVPgTg=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787061639; c=relaxed/simple;
-	bh=YDdoA+VaKBgUGyfQ4uqxQ5A8Wkdib36d7dUf4SGL/do=;
+	s=arc-20240116; t=1787061640; c=relaxed/simple;
+	bh=km1/OIW3iQCKSJQJrnUC4IV8gdH7oJfAy+PFB/hKOZI=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=ox0wTRR640mLziPxoi8AFUDjKCRfnNjurzopo7CUQXUneuQLkmi83pPqPDeNOfHcU/Jbtp86rsiGSSTljTqBLpzL9OBsJUjXiQXCtpN/qSmO+Vyc001oQNpq8Vcxe+ApvY/tEVG479EoleCGzVgppSTDgNmsKN38Who62wdS6nc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=RjjnE9aU; arc=none smtp.client-ip=100.103.45.18
+	 MIME-Version; b=iZ5tCWWgLu7kXRq7QqjHMKzV4KisUYBmxEooGu2W8fgoC5WR6Ka4ZtJLpiXze38WtUko/gW1JkjVMpVZZWyOrfls2of1nVFlvds9Tm1+Vzwqe4pz8JIrg77LpV+pp+jfFGWoYsvs7xWLV2ORYIMltnjPjVBCeWnf6b+bctSUK0k=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jPRXMfQM; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="RjjnE9aU"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8F15E1F00A3E;
-	Tue, 18 Aug 2026 14:00:37 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jPRXMfQM"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5A6F31F00A3A;
+	Tue, 18 Aug 2026 14:00:38 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
 	s=k20260515; t=1787061638;
-	bh=yVp2RbzEW2aVnIp2HQtJhQOVNQkcK6awwLHQvsYhFLk=;
+	bh=7myn3eLfJfXmvBkQszx6i3XIi8mhXlToVtOIcj72YLE=;
 	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=RjjnE9aUG67bGTnM8nJ25m8sCEj043hvK7A0/F/DlTzSnk4J2t/4rgQBfjvYDks0g
-	 9Kk83kLGXNYK9I6/aRVcX9UCsYq8EAHNKxeuvuZGFtIUiQEn9FgwHKooC83bBqKPDX
-	 7rUT+oc/2DE+HuYCj5+J74CQCXc0XNpAaiNza/fPfbXOvjVD2dmPV9vYAwPrQIPob0
-	 JbndxtGG68tepJ/t1hQhU6T5C6xy7llhfDmAHbIB7s7Af347P0ginGAq+1AjU/sLlr
-	 fmERD5y0Ffn1ffc1KRZP5f6SD59E7SRJtCQekGKF0liT9T1hocJ6shfwvoLCw6uFYW
-	 C7lfwdTjA+Z9w==
+	b=jPRXMfQM3hDOwj0bqYWSFXpwHmbfcfbC5Jasvvc8mUz7/VlgiLOw8XnUjexsAZiQr
+	 GLt+fsbtmuzfTJDdJ/2VDERXluYbVbObwoMmJ7kwCj5MFh34Y2nbfD7/8mSu1Ml5xA
+	 oeGe/OjMv2TdyRhekV2x/UErziBicnSQScE456F/Umrpt789NscVkZfQkzJ0rOc3fL
+	 7Fc3s+pSKAaM8Z7aBI+wJ/AwOqYEoviiMTWoONY08wydcaGu3eLpb2B0SZGmJ/cGfe
+	 zcdQKumerjKm3ZTeeqdlXOb+fdjnhDm08sfBItDQt0IFZuEiyhL+WaVXlbRcosUeSW
+	 3lObj7oIzHc4g==
 From: Chuck Lever <cel@kernel.org>
 To: NeilBrown <neil@brown.name>,
 	Jeff Layton <jlayton@kernel.org>,
@@ -33,9 +33,9 @@ To: NeilBrown <neil@brown.name>,
 	Dai Ngo <dai.ngo@oracle.com>,
 	Tom Talpey <tom@talpey.com>
 Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/3] NFSD: Include <linux/nfs_fh.h> where struct nfs_fh is used
-Date: Tue, 18 Aug 2026 10:00:34 -0400
-Message-ID: <20260818140035.12740-2-cel@kernel.org>
+Subject: [PATCH 3/3] NFSD: Clean up header guards in fs/nfsd/xdr.h
+Date: Tue, 18 Aug 2026 10:00:35 -0400
+Message-ID: <20260818140035.12740-3-cel@kernel.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260818140035.12740-1-cel@kernel.org>
 References: <20260818140035.12740-1-cel@kernel.org>
@@ -47,45 +47,34 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-struct nfsd4_copy embeds a struct nfs_fh, and nlm_fopen() reads the
-size and data fields of one. Neither fs/nfsd/xdr4.h nor
-fs/nfsd/lockd.c includes the header that defines the type; both
-reach it by way of nfsd.h, which pulls in <linux/nfs.h>.
-
-Add the direct include to both files, so nfsd.h can later drop the
-<linux/nfs.h> it carries for no use of its own.
+Make the header guards less ambiguous about their provenance.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/nfsd/lockd.c | 1 +
- fs/nfsd/xdr4.h  | 2 ++
- 2 files changed, 3 insertions(+)
+ fs/nfsd/xdr.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
-index 5ec0f5456063..f24e45dc37a0 100644
---- a/fs/nfsd/lockd.c
-+++ b/fs/nfsd/lockd.c
-@@ -9,6 +9,7 @@
+diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
+index df540c940cef..52660b9f8dde 100644
+--- a/fs/nfsd/xdr.h
++++ b/fs/nfsd/xdr.h
+@@ -1,8 +1,8 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
+ /* XDR types for nfsd. This is mainly a typing exercise. */
  
- #include <linux/file.h>
- #include <linux/lockd/bind.h>
-+#include <linux/nfs_fh.h>
+-#ifndef LINUX_NFSD_H
+-#define LINUX_NFSD_H
++#ifndef _LINUX_NFSD_XDR_H
++#define _LINUX_NFSD_XDR_H
+ 
+ #include <linux/vfs.h>
  #include "nfsd.h"
- #include "nfserr.h"
- #include "vfs.h"
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 7bbb375874ef..b841bc462dac 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -37,6 +37,8 @@
- #ifndef _LINUX_NFSD_XDR4_H
- #define _LINUX_NFSD_XDR4_H
+@@ -175,4 +175,4 @@ bool svcxdr_encode_stat(struct xdr_stream *xdr, __be32 status);
+ bool svcxdr_encode_fattr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+ 			 const struct svc_fh *fhp, const struct kstat *stat);
  
-+#include <linux/nfs_fh.h>
-+
- #include "state.h"
- #include "vfs.h"
- 
+-#endif /* LINUX_NFSD_H */
++#endif /* _LINUX_NFSD_XDR_H */
 -- 
 2.54.0
 
