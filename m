@@ -1,240 +1,138 @@
-Received: from fout-a8-smtp.messagingengine.com (fout-a8-smtp.messagingengine.com [103.168.172.151])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wm1-f43.google.com (mail-wm1-f43.google.com [209.85.128.43])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B88C137266E;
-	Tue, 18 Aug 2026 22:54:20 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=103.168.172.151
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id BAACF3815DC
+	for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2026 22:57:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.128.43
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787093663; cv=none; b=cCcj/tQUiLKT5pPaXKZVxn69t+nbeUuMU+5P8auzZLxb1eiOKNKwISKkKicBL7b1aOpdCx4SwcGpveI9LQU6ud692Wlv4vJYCxEeaxUkYcXL2x8AwGySf+n8C0564QwgoXBOEJEu0EegAKgbk9sgTkoiCHT9OIpK2Bte6Ugm8dw=
+	t=1787093847; cv=none; b=PsCQhGJZJZloXQnpEUzH4VkfkrtcWxYWJFXnKh4mIx8W6pLM5djsGQu0X3S7Bn1kAjKa29RWb39/REyFyIYZU0s4AHOfrjKoNhVmFAwGp89wUlPoU5It23a4uOZD4usvpgXuXw622CiqCPTHfsEmAADlL+aW/4q/tyxpRFrPcog=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787093663; c=relaxed/simple;
-	bh=jNGsnt7JxZDro4Dl9qDm75sVqt/MoHTpkOoVaRMFwUo=;
-	h=Content-Type:MIME-Version:From:To:Cc:Subject:In-reply-to:
-	 References:Date:Message-id; b=tSMVx2Sf6tcUHVcqA5wkoMVUVHKURxWrvK7N2wEVk4fvvp8jL3KXN1lsYlujpybcyItnF6rAbvemsP7l+FJ2yZ25g2sbBCcqIp+0UrT8UW6x1hjAw0bzCXYF1DmPJ8awkbh4d2MPvYANeTcD4wdxMGnZ8MYVNfpqJ7gIJdQePh8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net; spf=pass smtp.mailfrom=ownmail.net; dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b=D/Qi/Oca; dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b=TMjNT8Qq; arc=none smtp.client-ip=103.168.172.151
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=ownmail.net
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=ownmail.net
+	s=arc-20240116; t=1787093847; c=relaxed/simple;
+	bh=HTIdMGUHqS/osSpWpW46rgjJQbdTjfpN1jBAZx6ihik=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=BShcaa131LDBsy7Ho2b1V6KPZQl483HEw3BbMRfZ47NzCkk0HvwSGNZ5v5EQmBFbCkJ1q4TxQfjIXU8ACYyT1BNJTs8aVZeYUTpkXGpTcPo0V+o/RojJfKzlEQy0Z4sGYOIqDIVWP6puvu/igaHr2/Ay9eLnMfXq5fkuMJri9oM=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com; spf=pass smtp.mailfrom=truenas.com; dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b=kH40H3Y4; arc=none smtp.client-ip=209.85.128.43
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=truenas.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=truenas.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=ownmail.net header.i=@ownmail.net header.b="D/Qi/Oca";
-	dkim=pass (2048-bit key) header.d=messagingengine.com header.i=@messagingengine.com header.b="TMjNT8Qq"
-Received: from phl-compute-03.internal (phl-compute-03.internal [10.202.2.43])
-	by mailfout.phl.internal (Postfix) with ESMTP id 9FAF4EC0215;
-	Tue, 18 Aug 2026 18:54:19 -0400 (EDT)
-Received: from phl-frontend-03 ([10.202.2.162])
-  by phl-compute-03.internal (MEProxy); Tue, 18 Aug 2026 18:54:19 -0400
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=ownmail.net; h=
-	cc:cc:content-transfer-encoding:content-type:content-type:date
-	:date:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to; s=fm3; t=
-	1787093659; x=1787180059; bh=VrK/Fz/a6RMWuEL+llgYxO1oJmCF8OszZeA
-	OV6N0i+g=; b=D/Qi/OcaO4E4OEbuc7Xef/kGb8pExe9foo1IUFQ/Z9OjUm2z1EJ
-	PpeA1BfN1TCO9eIpgZ1jZGCndYjn2tEcgdykiMzPKEa6vEhCkFUyYtozCtOlbGmI
-	BPOQWrfJM2lwMTbcT/pV95jrWw4jbwBEgJ85fw/3tE6P/pu1xdAVydD4NujXLMVl
-	6QDoed0v0Ehytx20N5CIrTPYjs5VjMtBawd1FOJagOk2E/1oDze7CnEvkacdbZ75
-	gCERv8Z3lnZCAyBqkKwokRzseQEGd/gaaDB+dtqstNNVjf9J8vNxnC02l+cWf83x
-	zQV5WXakvSbrsrIgJ50KcjKxsk/xI3lieCw==
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=
-	messagingengine.com; h=cc:cc:content-transfer-encoding
-	:content-type:content-type:date:date:feedback-id:feedback-id
-	:from:from:in-reply-to:in-reply-to:message-id:mime-version
-	:references:reply-to:reply-to:subject:subject:to:to:x-me-proxy
-	:x-me-sender:x-me-sender:x-sasl-enc; s=fm3; t=1787093659; x=
-	1787180059; bh=VrK/Fz/a6RMWuEL+llgYxO1oJmCF8OszZeAOV6N0i+g=; b=T
-	MjNT8QqI6mJ7H1VCXMhyoStIUwWQ3VNKmv/NrqyWaulo3vsQI5gIeqeyLlnpyQhp
-	2RTQx2zCbB4suaJJGZXibydC+xP9/hNbaafjn7/IJLjSk+5e8XK8xf7ScMQhGZlb
-	r5Vg8et+K10f0UZBDsVtTDipetcNnGQgS0esguroYl1Sg1QaZ/bZMw+O3h+K/Gu2
-	hYO1S/Ycs+NCoFJ5q7uR2yn3UAGQ4w7Pcvkr+6dj4fHpS7avXpuwe35jga5YwwYf
-	ZvluBjYHvPLO3DDwUNuxg3T6X3AEOg0fGaX6SAR0gOhqKTDsUlSihdPyHhe9WGvr
-	34M5pLhTDDwgoIkgfIfwA==
-X-ME-Sender: <xms:m-KEahy6Tfv1KazsJAq1gdDafDg_v_p54PM2uynSXGB2nCU7pojtvA>
-    <xme:m-KEai2jy-FUHMMffIujctbau7NYVXxhxeTvQ5PiKu3n0tFeyF-Semp3xkEmcCpXw
-    L6n0BliqC9DDMApZrvX0ZhVuz_MXHLbguMFLrN3zdygj_Qt>
-X-ME-Received: <xmr:m-KEaql-VdKrT4te7_pHd31cQ1MPlYzTgHRHvIJ10haUkc2dZGielGla3VAHEnjA2ATVpzwtbNY-Q3W_ywzQo2Ut7yDrycg>
-X-ME-Proxy-Cause: dmFkZTEIxaJ+HKl/elznRl+9WLXno7X7iwj6Vz+PjkEidYkWpPyw6ofE8biRr5rxXukwgN
-    Z36zkKaNh5+ENDAJuIYHVC0Uc6uKkSWKculOJC5J2FSFm0eT9R1ayGa4/cZ/xspXGhfAfh
-    HY25VSsnq058i0axHzz44QZFDipD9P1QhNcOjDn8OLkRmMf0lce7+MPXsMggUfdVDGTiq+
-    4o47VAbGhcRT5Vbv7DaAUOjclVDkEZwo9tU4fkJMmZ4fm4HF4OQoVkTK1wbCRktRcHY4rv
-    +V7rt5A8WtFtnbMoy9H8zdYQM58faJcY7NWiGn29I8U/1GxDL7AWPdImUxqjCxf5FSRegc
-    dKpPLqhfnvFHgG4VnoX0/WxIJm00v3xcXTYkgxVMtaOd9sLcJkycNnPubND6mm/WJmKlvS
-    SCQ9zG82PpY245hzw70lMAZSaYpeEfbt0u7OUNc3phg94OTrmEQ2gbezpwX9JRoMxNeEUM
-    S4Px+xhW6TAleiz21KcGUGTSiJdBsUkCKFkm2SWv5oNnkVacvw4ZwKvUQe82lfsSFHZhyi
-    jPOJD/XLbmmuNg/zV1zcbaLiAmx/9EvVpLxgZ8d2B9Dk73z9kDySQ2Qhy1bKjJ0vOwp/jL
-    CBlXyn45ZxZEIwagdYd0yB1A47JEZkhbNS2Ohws5uPawKBhXUKSf0d8eWb7w
-X-ME-Proxy: <xmx:m-KEap-V_drzguSr3MtsNAKz5q9V-XlyU8yFQkjRqEbij2zfhKtpNg>
-    <xmx:m-KEaoKckqxYPumDzu8wRw5DAfq3I4DKXIO6A4HjeEXatubJl9m48Q>
-    <xmx:m-KEaujtS4k1RMWchJcLrGlPfioKVrwiBN75YU28vydBy_ynHPfI0Q>
-    <xmx:m-KEak_d4qsvsck2Ldlr-r8C8vjzCt2611yKcxpxVapYYibzksu4iA>
-    <xmx:m-KEakC4m-QA5TFdgLiDgoWpthOF_LzjosuyegZ01WvjQFqQYS4e35KT>
-Feedback-ID: i9d664b8f:Fastmail
-Received: by mail.messagingengine.com (Postfix) with ESMTPA; Tue,
- 18 Aug 2026 18:54:15 -0400 (EDT)
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=truenas.com header.i=@truenas.com header.b="kH40H3Y4"
+Received: by mail-wm1-f43.google.com with SMTP id 5b1f17b1804b1-4998e0916faso2923145e9.2
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2026 15:57:24 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=truenas.com; s=google; t=1787093843; x=1787698643; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=19HV3yb8dX6m7sjFj5qTXT28ekBXnozbu06g0duSsTk=;
+        b=kH40H3Y4E1JyGwZHQDb/EQ98K1Y2ldgpzkQ0N8Oq9mvSVkXtV22fDsos9Bn3lx8FeQ
+         Q4Lxnfe2Y582D3e/KYNo9tsuMjuz16GWG059yK71DXa2hG/5R+6YXnfNQViqAZCPHO7U
+         Bep2K4/aXqSy6stYxPJjYSMgKSKdXJCzSaMmZdM5iNmyUANkL+ebkr5hBzLZr4rcQvza
+         dJwMLHbFFs9ur4P133I/AkpfkW+i/IJ4W3hVpznR7h2AeQBEyiZl06Oi0WCPvROUryqw
+         Zd2MbCy0Mg6Q3R8rEQGjo2EcTUlyQB8djEahO1nuTOHjlmfVmUxWq2Nx+Po0xZbe/s59
+         u+oQ==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787093843; x=1787698643;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=19HV3yb8dX6m7sjFj5qTXT28ekBXnozbu06g0duSsTk=;
+        b=GR0gIeIseLuOn50GKMliSn+v3adLanGwJQ2xpHzLa/yhmsrq7l8S46GZkpnylb9oFq
+         MMOe9YRhaobRq3eK0C8Ffhv6TivI2y0fv9zhZdV0BNlkgD6AIbQ2bGJ2ZQgSYp4CqW8b
+         0EemKWxJCEsywBxY1H3C40rzEBcDEw4inciUNMUfpePKSZapw/QDXB7ADSqbszAjf7i8
+         vSuAgmjeY+4IoGZkFelX9/8yiH1/Lk2aK7l7HzccGbTGRNluASm0yPfinXVBYhasCzyc
+         5q0UGvRYtME1vU/R4jO7iNfrqnYEdMAYSGdfrH+AcZcvWmAYrs4xkWtXN47dc3U8tfyY
+         TEKQ==
+X-Gm-Message-State: AOJu0Yy1TO2+QbYi+luxM0DCCJOxeprIZDWsQLa1mGjqe1n9qBt36sjk
+	zpedJD4TPVD8PhDrz6lQlK0JpaZIztHNLAAYgIxZrVh/Icf7Nd/FvKWJ4CCDO302LA==
+X-Gm-Gg: AR+sD12rAr9+sEIPusYkzViUw9/S08JHqg0JWf0Om3fIiiq/iDuIyvVeJ+2ubMM8meV
+	MJD4L4NZVNGAce7vxdaWk0bH7FN+PU3494d8XjwCeKfLaGF+xrmvM6++6f8PsbWA5jYQ1BEREVf
+	vYwA/sjpDutIlB9ltlIvipOXX48Wp55tkqBg2b2BijoF+Pv7PuOJx5D2sQH5FQv5lz36FHHUbxq
+	S58dGvmcgicFyoqV0hEduhUnYIu14ua8RKXiqk8U0EUpHFI8+gqwloCPQXnOW0ffgRu3sE8d4Fi
+	3mFr7caN+51ds1HZlzZdIgNBv0WFmCAYVFwq/oFl2C5xJ7wz/HUYWIkCq01XTTbflVr22Psub0r
+	wuv7X7P/HKMaBMjnhpC0Jim2ZGswXOY+dEOxMDLMNDDRAm9XphSFb8fhLjMoF9dKtGDTYObndk5
+	BTK1ZlRcMVpMw8YHr5xaR1X5jOYhOkMr3R6xj6JdCX
+X-Received: by 2002:a05:600c:19cf:b0:499:728c:4704 with SMTP id 5b1f17b1804b1-499aa1b993bmr5258655e9.12.1787093842851;
+        Tue, 18 Aug 2026 15:57:22 -0700 (PDT)
+Received: from hamza-PC ([2400:adc1:158:c700::1])
+        by smtp.gmail.com with ESMTPSA id ffacd0b85a97d-482b14b8038sm508137f8f.20.2026.08.18.15.57.20
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Tue, 18 Aug 2026 15:57:22 -0700 (PDT)
+From: Ameer Hamza <ameer.hamza@truenas.com>
+To: cel@kernel.org,
+	jlayton@kernel.org,
+	neil@brown.name,
+	okorniev@redhat.com,
+	Dai.Ngo@oracle.com,
+	tom@talpey.com
+Cc: linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	alexander.motin@truenas.com,
+	caleb.stjohn@truenas.com,
+	ameer.hamza@truenas.com,
+	stable@vger.kernel.org
+Subject: [PATCH 1/2] NFSD: Fix duplicate fsnotify access events for iterator READs
+Date: Wed, 19 Aug 2026 03:57:14 +0500
+Message-ID: <20260818225715.572140-1-ameer.hamza@truenas.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-From: NeilBrown <neilb@ownmail.net>
-To: "Ameer Hamza" <ameer.hamza@truenas.com>
-Cc: cel@kernel.org, jlayton@kernel.org, okorniev@redhat.com,
- Dai.Ngo@oracle.com, tom@talpey.com, trondmy@kernel.org, anna@kernel.org,
- linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
- alexander.motin@truenas.com, caleb.stjohn@truenas.com,
- ameer.hamza@truenas.com
-Subject: Re: [PATCH 1/2] NFSD: Use nfsd_iter_read() when ->splice_read is not
- zero-copy
-In-reply-to: <20260817210811.3984663-2-ameer.hamza@truenas.com>
-References: <20260817210811.3984663-1-ameer.hamza@truenas.com>
-  <20260817210811.3984663-2-ameer.hamza@truenas.com>
-Date: Wed, 19 Aug 2026 08:54:11 +1000
-Message-id: <178709365192.2852630.5607658976022815566@noble.neil.brown.name>
-Reply-To: NeilBrown <neil@brown.name>
+Content-Transfer-Encoding: 8bit
 
-On Tue, 18 Aug 2026, Ameer Hamza wrote:
-> For some files splicing a READ cannot avoid a copy: gfs2, kernfs
-> and the cifs direct-I/O modes use copy_splice_read() as their
-> ->splice_read, and the VFS substitutes it for DAX files.
-> copy_splice_read() allocates a fresh page for every page of
-> payload and reads into it; nfsd_splice_actor() then installs
-> those pages in rq_respages, displacing Reply pages the thread
-> already owns. Both sets of pages are then freed.
->=20
-> Route these READs through nfsd_iter_read() instead. It performs
-> the same single copy, but into the thread's own Reply pages, so
-> the per-READ allocation and the displacement both disappear. On
-> its own this is not expected to raise throughput; it changes
-> which pages a Reply is built from so that the next patch can
-> recycle them.
->=20
-> 9p and ceph fall back to copy_splice_read() only inside their
-> own ->splice_read methods, which nfsd_splice_read_is_zero_copy()
-> cannot detect,
+A READ served without splice emits two fsnotify access events; a
+local read of the same file emits one. vfs_iocb_iter_read() emits
+an access event when the read succeeds, and nfsd_finish_read()
+emits a second one for the same READ. An inotify watch on an
+exported file sees each of these READs twice, so anything counting
+accesses counts double. READs take this path whenever nfsd does
+not use splice, for example with sec=krb5i or sec=krb5p, or when
+nfsd_disable_splice_read is set, as the NFSD_IO_DONTCACHE and
+NFSD_IO_DIRECT modes do. Spliced READs are not affected, since
+splice_direct_to_actor() emits no event and nfsd_finish_read()
+emits their only one.
 
-I think that if we are going to do this then we should do it properly
-and make it easy to detect these cases.
+Move the fsnotify_access() call from nfsd_finish_read() into
+nfsd_splice_read(), the one path whose VFS helper does not emit
+it. Each READ now emits exactly one access event whichever path
+serves it. Measured with an inotify watch: the iterator path drops
+from two events per READ to one, and the splice path is unchanged
+at one.
 
-Could we add an FMODE flags FMODE_DONT_COPY_FOR_SPLICE which causes
-copy_splice_read() to return -ENOTSUP or similar.
-Then nfsd can call splice_read if it appear to exist, but set that flag.
-If it fails with -ENOTSUP, fall back to iter_read.
+Suggested-by: Chuck Lever <cel@kernel.org>
+Link: https://lore.kernel.org/linux-nfs/2ed0ee16-c20e-44bd-9e7a-f5b71764f14f@app.fastmail.com/
+Fixes: 507df40ebf316 ("NFSD: Hoist rq_vec preparation into nfsd_read()")
+Cc: stable@vger.kernel.org
+Assisted-by: Claude:claude-fable-5
+Signed-off-by: Ameer Hamza <ameer.hamza@truenas.com>
+---
+ fs/nfsd/vfs.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-I really don't like the approach of explicitly testing whether
-f_op->splice_read is a particular value.
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index f9131827d391e..f45d4ad70b964 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1046,7 +1046,6 @@ static __be32 nfsd_finish_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		nfsd_stats_io_read_add(nn, fhp->fh_export, host_err);
+ 		*eof = nfsd_eof_on_read(file, offset, host_err, *count);
+ 		*count = host_err;
+-		fsnotify_access(file);
+ 		trace_nfsd_read_io_done(rqstp, fhp, offset, *count);
+ 		return 0;
+ 	} else {
+@@ -1084,6 +1083,9 @@ __be32 nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (!host_err)
+ 		host_err = splice_direct_to_actor(file, &sd,
+ 						  nfsd_direct_splice_actor);
++	/* splice_direct_to_actor() does not emit an fsnotify event */
++	if (host_err >= 0)
++		fsnotify_access(file);
+ 	return nfsd_finish_read(rqstp, fhp, file, offset, count, eof, host_err);
+ }
+ 
 
-Thanks,
-NeilBrown
-
-
-
->                 so they keep the splice path. nfsd_iter_read() is
-> the path sec=3Dkrb5i, sec=3Dkrb5p and nfsd_disable_splice_read READs
-> already take, and is unchanged here; the one visible difference
-> is that an fsnotify watcher now sees two access events per READ
-> instead of one, the extra one from vfs_iocb_iter_read().
->=20
-> Assisted-by: Claude:claude-fable-5
-> Signed-off-by: Ameer Hamza <ameer.hamza@truenas.com>
-> ---
->  fs/nfsd/nfs4xdr.c |  4 ++--
->  fs/nfsd/vfs.c     |  5 ++++-
->  fs/nfsd/vfs.h     | 29 +++++++++++++++++++++++++++++
->  3 files changed, 35 insertions(+), 3 deletions(-)
->=20
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 7d1b2d6f57f20..07a4bd8feb764 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -5369,7 +5369,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __b=
-e32 nfserr,
->  	maxcount =3D min_t(unsigned long, read->rd_length,
->  			 (xdr->buf->buflen - xdr->buf->len));
-> =20
-> -	if (file->f_op->splice_read && splice_ok)
-> +	if (nfsd_splice_read_is_zero_copy(file) && splice_ok)
->  		nfserr =3D nfsd4_encode_splice_read(resp, read, file, maxcount);
->  	else
->  		nfserr =3D nfsd4_encode_readv(resp, read, maxcount);
-> @@ -6267,7 +6267,7 @@ nfsd4_encode_read_plus_data(struct nfsd4_compoundres =
-*resp,
->  	maxcount =3D min_t(unsigned long, read->rd_length,
->  			 (xdr->buf->buflen - xdr->buf->len));
-> =20
-> -	if (file->f_op->splice_read && splice_ok)
-> +	if (nfsd_splice_read_is_zero_copy(file) && splice_ok)
->  		nfserr =3D nfsd4_encode_splice_read(resp, read, file, maxcount);
->  	else
->  		nfserr =3D nfsd4_encode_readv(resp, read, maxcount);
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index f9131827d391e..1a5fec4cf73d3 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1176,6 +1176,9 @@ nfsd_direct_read(struct svc_rqst *rqstp, struct svc_f=
-h *fhp,
->   *
->   * Some filesystems or situations cannot use nfsd_splice_read. This
->   * function is the slightly less-performant fallback for those cases.
-> + * It is also the preferred path where splicing would copy anyway
-> + * (see nfsd_splice_read_is_zero_copy()), because the copy then
-> + * lands directly in Reply pages nfsd already owns.
->   *
->   * Returns nfs_ok on success, otherwise an nfserr stat value is
->   * returned.
-> @@ -1576,7 +1579,7 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_f=
-h *fhp,
->  		return err;
-> =20
->  	file =3D nf->nf_file;
-> -	if (file->f_op->splice_read && nfsd_read_splice_ok(rqstp))
-> +	if (nfsd_splice_read_is_zero_copy(file) && nfsd_read_splice_ok(rqstp))
->  		err =3D nfsd_splice_read(rqstp, fhp, file, offset, count, eof);
->  	else
->  		err =3D nfsd_iter_read(rqstp, fhp, nf, offset, count, 0, eof);
-> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-> index f0cb184643f2f..70bd3c6fc1880 100644
-> --- a/fs/nfsd/vfs.h
-> +++ b/fs/nfsd/vfs.h
-> @@ -149,6 +149,35 @@ __be32		nfsd_iter_read(struct svc_rqst *rqstp, struct =
-svc_fh *fhp,
->  				unsigned long *count, unsigned int base,
->  				u32 *eof);
->  bool		nfsd_read_splice_ok(struct svc_rqst *rqstp);
-> +
-> +/**
-> + * nfsd_splice_read_is_zero_copy - check whether splice can avoid a data c=
-opy
-> + * @file: file to be read from
-> + *
-> + * copy_splice_read() reads via ->read_iter into freshly allocated
-> + * pages, exactly as nfsd_iter_read() does into pages nfsd already
-> + * holds. Filesystems that implement ->splice_read with it gain
-> + * nothing from the splice path, and neither do DAX files, for
-> + * which the VFS substitutes copy_splice_read() no matter what
-> + * the filesystem registered. The VFS substitutes it for O_DIRECT
-> + * files as well, but nfsd never opens files O_DIRECT.
-> + *
-> + * The test is one-sided: a filesystem's own ->splice_read method
-> + * may fall back to copy_splice_read() internally, as ceph and 9p
-> + * do, and that cannot be detected here.
-> + *
-> + * Return values:
-> + *   %true: splicing from @file is not known to copy
-> + *   %false: splicing from @file would copy, or is not supported
-> + *           at all; use nfsd_iter_read()
-> + */
-> +static inline bool nfsd_splice_read_is_zero_copy(const struct file *file)
-> +{
-> +	return file->f_op->splice_read &&
-> +	       file->f_op->splice_read !=3D copy_splice_read &&
-> +	       !IS_DAX(file_inode(file));
-> +}
-> +
->  __be32		nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  				loff_t offset, unsigned long *count,
->  				u32 *eof);
-> --=20
-> 2.53.0
->=20
->=20
+base-commit: c5f58d03c50196301ac2ce7da81e8be33eba57c6
+-- 
+2.53.0
 
