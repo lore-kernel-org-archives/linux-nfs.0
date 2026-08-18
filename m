@@ -1,98 +1,111 @@
-Received: from out30-124.freemail.mail.aliyun.com (out30-124.freemail.mail.aliyun.com [115.124.30.124])
+Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 12FA842903C
-	for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2026 16:24:29 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=115.124.30.124
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2540A533D6;
+	Tue, 18 Aug 2026 17:42:56 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787070272; cv=none; b=jZNbkIF7QEL63QMaPvTtA3BU/xMWiO2JdWb4j8lODQCPL8zpJVE+/UHhyWgdoiujYKhq5GeReyw3JjypOoCzfYxdQnT8aT/BJu++lU18JdQjtiCNim2un1c2Vp0fP8vLMJyqqSJaLcDlyAw4DRaV237ILk+hOQaP0sU4OQx9bYQ=
+	t=1787074978; cv=none; b=Pxc7iuExAqJ2HchI1a53qnCU51N2O2Ii9TsekRZvXeI214g8eq6qDO1LmhnRAIJsmMb4DB4mtGP7tfVa+WCITwFC3tMt+nAaLWqZ7Y+UAYOCigLpodlloJkuZHymcyjfIpiYU5IsN4CbZhUp8jcOdlwyk9Gy6UBC0m4QitLNS18=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787070272; c=relaxed/simple;
-	bh=yob/TGJ7MWWZkW3U3OHDywSTckgK8h5J5OeZfq7WiP0=;
-	h=From:To:Cc:Subject:Content-Type:MIME-Version; b=hjTqXBRy0NAYKIgc+VVRMpr7/r3ZQJ1sUXC/+1zlpB7VIZTkvB6Vi1YK34sbRHK3xpfNZqoP33UoW348Dy16NJ8v8gjf+RKY52FYSyhDEwWhxo2BNI6GUb2TiIC7IbKj7lg9NMTAjSOUd3gB5ESihFvpDl9jltMGx43IeRG+IJo=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com; spf=pass smtp.mailfrom=linux.alibaba.com; dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b=koRDf8c/; arc=none smtp.client-ip=115.124.30.124
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=linux.alibaba.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=linux.alibaba.com
+	s=arc-20240116; t=1787074978; c=relaxed/simple;
+	bh=O8KaTOFv46F3bnrEoLA5Ex5inSJyrwrbmolDkiWDfEo=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=cAejHBnc0q+AKZ5cx/OFnAIrvWDcUA17lYhnbBBl7VJB6BI2CDLA672YC0JATR2dmPRUELzCU7cip/zJsEDdglTxPwp+HsWLEie7ou8R4RTqChgvbMDy3+hWOZnikH+ORlrBpKJRJBHpev6jq0gm35kGuHZI4esTTa8lQOIR7lw=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=bZiXmP/n; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (1024-bit key) header.d=linux.alibaba.com header.i=@linux.alibaba.com header.b="koRDf8c/"
-DKIM-Signature:v=1; a=rsa-sha256; c=relaxed/relaxed;
-	d=linux.alibaba.com; s=default;
-	t=1787070262; h=From:To:Subject:Content-Type:MIME-Version;
-	bh=ApoxDo5UFpl6Vo4WAq/xNlmsnQnFJ6waSoV7ttiz60A=;
-	b=koRDf8c/MxUq6RVIxk+WxzpusTT1N0RmAYn5N6R5EAZTzVCuTS6xpg3lh7xxUCEf5wN1BO4L0AxUu79XthU10KTOvyK+nlF2sTRQUfT1y5n02m/dgSXcPgFfZeoUFBQhg0RlJnMsLnI1KQb1NKPIv+5rpkmjcz7XpbD+wLwit9Y=
-X-Alimail-AntiSpam:AC=PASS;BC=-1|-1;BR=01201311R111e4;CH=green;DM=||false|;DS=||;FP=0|-1|-1|-1|0|-1|-1|-1;HT=maildocker-contentspam033032089153;MF=chuyf26@linux.alibaba.com;NM=1;PH=DS;RN=3;SR=0;TI=SMTPD_---0X9E5B7G_1787070261;
-Received: from x31j07255.sqa.na131(mailfrom:Chuyf26@linux.alibaba.com fp:SMTPD_---0X9E5B7G_1787070261 cluster:ay36)
-          by smtp.aliyun-inc.com;
-          Wed, 19 Aug 2026 00:24:22 +0800
-From: Chuyf26 <Chuyf26@linux.alibaba.com>
-To: Trond Myklebust <trond.myklebust@hammerspace.com>
-Cc: Anna Schumaker<anna@kernel.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1: fix out-of-bounds read decoding GETDEVICEINFO
- notification bitmap
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="bZiXmP/n"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id AD5A51F000E9;
+	Tue, 18 Aug 2026 17:42:56 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
+	s=k20260515; t=1787074976;
+	bh=kQ8QBSt+g50Q8WDOGTP2v+pmrbFoNcApqCkakp+FL9g=;
+	h=Date:From:To:Cc:Subject:References:In-Reply-To;
+	b=bZiXmP/n9GUc57qZ1BBO05U6+WQ2BDYG4Yn8+J4Q0wrLow9G8zE0JwCcNmr2IkSvs
+	 2TWTcU9C4l/Ber2k8fWCWr93uHaUioYQW7fkDt4V41GJbqbHukansxD020Ypo4EFOh
+	 NTnMFtdl5u1ycskMZup/c/n58LKU2HSTnvNWjTca/3annUQH/hZ+DXTcPy+YT2xhug
+	 SdUTTKK83JWp5I80vP7fOXkf4usPsToB8UXISKv1J/nme+Pxt5MIrW7r8zmX9zQowf
+	 T78BfzDHRMqMkVSZtZaaUHVu/fY9S8O4+4w1qa0q8TG85AJGjZtDYmwAtpLg9mFWa5
+	 v0+moV6nS6wqQ==
+Date: Tue, 18 Aug 2026 10:42:56 -0700
+From: Kees Cook <kees@kernel.org>
+To: David Laight <david.laight.linux@gmail.com>
+Cc: Mariia Nikitash <mariianikitash@google.com>, trondmy@kernel.org,
+	anna@kernel.org, justinstitt@google.com,
+	linux-hardening@vger.kernel.org, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, nikitash.mariiaw@gmail.com
+Subject: Re: [PATCH] NFS: nfsroot: replace strlcat() with snprintf()
+Message-ID: <202608181041.0619C92@keescook>
+References: <27956255dde39f58d73a7b51cb53cbe3d7804f54.1786411026.git.mariianikitash@google.com>
+ <20260818095548.27e0edb2@pumpkin>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Message-ID: <20260818162429.hRkBfHzaSOJtsemwF3XqknX_wBRwf6WfB8WnVDvY5Rg@z>
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260818095548.27e0edb2@pumpkin>
 
-decode_getdeviceinfo() passes 4 * len to a single xdr_inline_decode()
-call, where len is the word count of the notification bitmap supplied
-by the server.  The multiplication can wrap around to a small value,
-so the bounds check only covers a few bytes while the following loop
-reads len words from the resulting pointer.  A malicious NFS server
-can trigger a large out-of-bounds read in the client by replying to
-GETDEVICEINFO with a huge bitmap word count.
+On Tue, Aug 18, 2026 at 09:55:48AM +0100, David Laight wrote:
+> On Fri, 14 Aug 2026 00:28:45 -0700
+> Mariia Nikitash <mariianikitash@google.com> wrote:
+> 
+> > In preparation for removing the deprecated strlcat() API[1], replace its
+> > uses in root_nfs_cat() with snprintf().
+> > 
+> > Build the separator and source string in a single call using the
+> > remaining space in the destination buffer. snprintf() returns the length
+> > it would have written excluding the terminating NUL, so comparing the
+> > return value against the remaining buffer space preserves the existing
+> > truncation check.
+> > 
+> > Link: https://github.com/KSPP/linux/issues/370 [1]
+> > Signed-off-by: Mariia Nikitash <mariianikitash@google.com>
+> > ---
+> >  fs/nfs/nfsroot.c | 8 ++++----
+> >  1 file changed, 4 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/nfs/nfsroot.c b/fs/nfs/nfsroot.c
+> > index 432612d22437..e951fe731679 100644
+> > --- a/fs/nfs/nfsroot.c
+> > +++ b/fs/nfs/nfsroot.c
+> > @@ -173,12 +173,12 @@ static int __init root_nfs_cat(char *dest, const char *src,
+> >  			       const size_t destlen)
+> >  {
+> >  	size_t len = strlen(dest);
+> > +	size_t remaining = destlen - len;
+> > +	const char *sep = "";
+> >  
+> >  	if (len && dest[len - 1] != ',')
+> > -		if (strlcat(dest, ",", destlen) >= destlen)
+> > -			return -1;
+> > -
+> > -	if (strlcat(dest, src, destlen) >= destlen)
+> > +		sep = ",";
+> > +	if (snprintf(dest + len, remaining, "%s%s", sep, src) >= remaining)
+> >  		return -1;
+> 
+> I think I'd have gone for:
+> 	size_t len = strlen(dest);
+> 	if (len && dest[len - 1] != ',' && ++len < destlen)
+> 		dest[len - 1] = ',';
+> 	if (strscpy(dest + len, src, destlen - len) < 0)
+> 		return -1;
 
-The path is: a pNFS client issues GETDEVICEINFO while discovering a
-layout, and the reply is decoded by nfs4_xdr_dec_getdeviceinfo() ->
-decode_getdeviceinfo().  With a wrapped 4 * len the pointer returned
-by xdr_inline_decode() sits at the very end of the receive buffer, and
-the loop then reads up to nearly a gigabyte of words past it.  The XDR
-receive buffer is built from pages, not slab objects, so KASAN does
-not instrument these reads; depending on what follows in memory the
-loop either consumes garbage notification bits or walks into unmapped
-memory.
+This is valid, but I just feel like %s%s is more readable for what it
+does. You've open-coded the first %s, and the ++len's interaction
+between the logic and the argument to strscpy is subtle. Since this
+isn't fast-path, let's use what Mariia has proposed.
 
-Decode the bitmap one word at a time so every read is bounds checked.
+> 
+> Although it would be better as an 'add_option()' function.
 
-Fixes: 4e59080397fa ("NFSv4.1: Allow getdeviceinfo to return notification inf=
-o back to caller")
-Reported-by: Abaci <abaci@linux.alibaba.com>
-Assisted-by: abaci:qwen3.8-max
-Signed-off-by: Chuyf26 <Chuyf26@linux.alibaba.com>
----
- fs/nfs/nfs4xdr.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+If this were done in more places, I'd agree, but as-is it's pretty
+limited.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index c8e073ef1d37..582f571689dc 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5958,13 +5958,13 @@ static int decode_getdeviceinfo(struct xdr_stream *xd=
-r,
- 	if (len) {
- 		uint32_t i;
-=20
--		p =3D xdr_inline_decode(xdr, 4 * len);
--		if (unlikely(!p))
--			return -EIO;
--
--		res->notification =3D be32_to_cpup(p++);
--		for (i =3D 1; i < len; i++) {
--			if (be32_to_cpup(p++)) {
-+		for (i =3D 0; i < len; i++) {
-+			p =3D xdr_inline_decode(xdr, 4);
-+			if (unlikely(!p))
-+				return -EIO;
-+			if (i =3D=3D 0)
-+				res->notification =3D be32_to_cpup(p);
-+			else if (be32_to_cpup(p)) {
- 				dprintk("%s: unsupported notification\n",
- 					__func__);
- 				return -EIO;
---=20
-2.43.5
+Reviewed-by: Kees Cook <kees@kernel.org>
+
+
+-- 
+Kees Cook
