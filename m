@@ -1,80 +1,70 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
+Received: from bombadil.infradead.org (bombadil.infradead.org [198.137.202.133])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3A0E44756B1
-	for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2026 14:00:39 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6AE2E37FF70;
+	Tue, 18 Aug 2026 14:42:16 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=198.137.202.133
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787061640; cv=none; b=qFidyeVZvLeeZwH4a0UOp3HYGxlo/ipVPg/t9tRRFuDb2y/pte7V+5zDvnUXLhoQjWFRO7+peSv6odDPDtWNv6k5WvLDbdZDEY9VSM9Powk1F1bGXAcRHut7GLTKkdurCSdvuOApmrn9ZUvDsEK2S4rUDsUJb9rAm58yWoVPgTg=
+	t=1787064140; cv=none; b=nQFxmIVLSv/UUb7BAonnJ9JI6aa4n1eghdVR3cltcPdTOiymfSbH43F221ml+V7JiPjtQC3STrpkRGIJvA9SSJey5NC28vC2EQl2pCV71rVw5SU+XlcjM6+O9EKURw81AonYMFEMWBZ2gKpRlKbExTz8VBBgCgFZRGeHIG1iPK8=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787061640; c=relaxed/simple;
-	bh=km1/OIW3iQCKSJQJrnUC4IV8gdH7oJfAy+PFB/hKOZI=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=iZ5tCWWgLu7kXRq7QqjHMKzV4KisUYBmxEooGu2W8fgoC5WR6Ka4ZtJLpiXze38WtUko/gW1JkjVMpVZZWyOrfls2of1nVFlvds9Tm1+Vzwqe4pz8JIrg77LpV+pp+jfFGWoYsvs7xWLV2ORYIMltnjPjVBCeWnf6b+bctSUK0k=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jPRXMfQM; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787064140; c=relaxed/simple;
+	bh=Id74b1B5cMLkkqKKwpOwPS1kDh8VNxQ3HcuAAR7EWrE=;
+	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
+	 Content-Type:Content-Disposition:In-Reply-To; b=cySBuBw+XbVfiQTH2gNEdUIc+gFcAFBmXod+KFGE8QtnB9Wr4BKZO43PjOceljeArqayZfqKJVnX5ciQ2jO5cHImHFF6LUyiDle71W6CJNVCI1Hpacd6miCFUUjaOsJtbCkAM/a5UcVxXWGY1673bCBrkKTbggEqYm4sCaATRrE=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=YPYOJ/eO; arc=none smtp.client-ip=198.137.202.133
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
+Authentication-Results: smtp.subspace.kernel.org; spf=none smtp.mailfrom=bombadil.srs.infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jPRXMfQM"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 5A6F31F00A3A;
-	Tue, 18 Aug 2026 14:00:38 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787061638;
-	bh=7myn3eLfJfXmvBkQszx6i3XIi8mhXlToVtOIcj72YLE=;
-	h=From:To:Cc:Subject:Date:In-Reply-To:References;
-	b=jPRXMfQM3hDOwj0bqYWSFXpwHmbfcfbC5Jasvvc8mUz7/VlgiLOw8XnUjexsAZiQr
-	 GLt+fsbtmuzfTJDdJ/2VDERXluYbVbObwoMmJ7kwCj5MFh34Y2nbfD7/8mSu1Ml5xA
-	 oeGe/OjMv2TdyRhekV2x/UErziBicnSQScE456F/Umrpt789NscVkZfQkzJ0rOc3fL
-	 7Fc3s+pSKAaM8Z7aBI+wJ/AwOqYEoviiMTWoONY08wydcaGu3eLpb2B0SZGmJ/cGfe
-	 zcdQKumerjKm3ZTeeqdlXOb+fdjnhDm08sfBItDQt0IFZuEiyhL+WaVXlbRcosUeSW
-	 3lObj7oIzHc4g==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neil@brown.name>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/3] NFSD: Clean up header guards in fs/nfsd/xdr.h
-Date: Tue, 18 Aug 2026 10:00:35 -0400
-Message-ID: <20260818140035.12740-3-cel@kernel.org>
-X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260818140035.12740-1-cel@kernel.org>
-References: <20260818140035.12740-1-cel@kernel.org>
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="YPYOJ/eO"
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
+	d=infradead.org; s=bombadil.20210309; h=In-Reply-To:Content-Type:MIME-Version
+	:References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
+	Content-Transfer-Encoding:Content-ID:Content-Description;
+	bh=YQv3t7geZIzXnJjXPeFn9F+0B6WArUjYzw0LCayjqNQ=; b=YPYOJ/eOpxJPeGEIe0GboGB1Gx
+	SJftE2f57AfElL0X4bUGT/aEUCDr3qLd/pgTNkdWAyHhcOYRebmapFt/NslaBAm/7N+KSvvnyzTO3
+	Tm5271Jv+HXl9Vg3dW467GGAVV6dimbqngOtXpSMnBtlQLPV0DgE6xpogVOwdDUHBAyw0Cf2VwY4D
+	63F8v4diJ3D4ovWP3wQJt5w8HWO/wtXt9ZpyCqNJS+fbbhFSgKrO3J0qXyrefZgWJoMXtwhkwD8CL
+	XMh/1sGdbdf70nT52nsOljEI/g4w35H15pe5mGzlGHQrOhYY/2IJb9Jo5Z2S/vz0Nfcee1jiIWxE4
+	D0blYKYQ==;
+Received: from hch by bombadil.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
+	id 1wwL0r-00000008C2F-0un9;
+	Tue, 18 Aug 2026 14:42:01 +0000
+Date: Tue, 18 Aug 2026 07:42:01 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Ameer Hamza <ameer.hamza@truenas.com>
+Cc: cel@kernel.org, jlayton@kernel.org, neil@brown.name,
+	okorniev@redhat.com, Dai.Ngo@oracle.com, tom@talpey.com,
+	trondmy@kernel.org, anna@kernel.org, linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org, alexander.motin@truenas.com,
+	caleb.stjohn@truenas.com
+Subject: Re: [PATCH 1/2] NFSD: Use nfsd_iter_read() when ->splice_read is not
+ zero-copy
+Message-ID: <aoRvOZTxA1kxBO9x@infradead.org>
+References: <20260817210811.3984663-1-ameer.hamza@truenas.com>
+ <20260817210811.3984663-2-ameer.hamza@truenas.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-Content-Transfer-Encoding: 8bit
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20260817210811.3984663-2-ameer.hamza@truenas.com>
+X-SRS-Rewrite: SMTP reverse-path rewritten from <hch@infradead.org> by bombadil.infradead.org. See http://www.infradead.org/rpr.html
 
-Make the header guards less ambiguous about their provenance.
+On Tue, Aug 18, 2026 at 02:08:10AM +0500, Ameer Hamza wrote:
+> For some files splicing a READ cannot avoid a copy: gfs2, kernfs
+> and the cifs direct-I/O modes use copy_splice_read() as their
+> ->splice_read, and the VFS substitutes it for DAX files.
+> copy_splice_read() allocates a fresh page for every page of
+> payload and reads into it; nfsd_splice_actor() then installs
+> those pages in rq_respages, displacing Reply pages the thread
+> already owns. Both sets of pages are then freed.
+> 
+> Route these READs through nfsd_iter_read() instead. It performs
 
-Signed-off-by: Chuck Lever <cel@kernel.org>
----
- fs/nfsd/xdr.h | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index df540c940cef..52660b9f8dde 100644
---- a/fs/nfsd/xdr.h
-+++ b/fs/nfsd/xdr.h
-@@ -1,8 +1,8 @@
- /* SPDX-License-Identifier: GPL-2.0 */
- /* XDR types for nfsd. This is mainly a typing exercise. */
- 
--#ifndef LINUX_NFSD_H
--#define LINUX_NFSD_H
-+#ifndef _LINUX_NFSD_XDR_H
-+#define _LINUX_NFSD_XDR_H
- 
- #include <linux/vfs.h>
- #include "nfsd.h"
-@@ -175,4 +175,4 @@ bool svcxdr_encode_stat(struct xdr_stream *xdr, __be32 status);
- bool svcxdr_encode_fattr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
- 			 const struct svc_fh *fhp, const struct kstat *stat);
- 
--#endif /* LINUX_NFSD_H */
-+#endif /* _LINUX_NFSD_XDR_H */
--- 
-2.54.0
+No.  None of the above are sensible use cases for NFSD exports.
+There is no good reason to add a barely maintained special code path
+thae pokes into internals for this.
 
