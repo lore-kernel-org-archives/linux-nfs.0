@@ -1,42 +1,73 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-ej1-f44.google.com (mail-ej1-f44.google.com [209.85.218.44])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 9FEF83AEF55
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 16:22:50 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 035422609FD
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 17:01:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.218.44
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787156571; cv=none; b=tBN8Fwlu7Ms1LGiXDaGyj8Quis23I3MwenqCXEs+Su2UNvuLCjWMC8eVlegWAnDftseN18XbI/JqU6tub9Xq9haHL2a8gwYIbxuIOsIl77Qfwn07X7j2TOIx1Zq0Xd65hZEkVxNnuv1Sg7Zi1so8hPN/YedancGCHnPMWPUkN5c=
+	t=1787158886; cv=none; b=HaHg7qe0Wyy532fzcKtCm5/SJ42Z6y6is81KgK0vTwJeckRa50hq/49UaZK5OJJ4F0O1icS4jOct40cNDJx42eMuezXAHKDwT/d0woCAXh/+r4NMDP1oElM6xiEvmedSoGA/2yKWQF3Oigk8BHY52qlGxuxv3Kn4iO6KtBxaEIA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787156571; c=relaxed/simple;
-	bh=CujLUEFMtewyH3JU6aIAjTy1BHfPfV1ngYQmo3ayzqI=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=Js2AIa439qj5HcZRg7HMard4YroJeUXHRgDq0Inxx/nOQuTCHmYkYxmluDZsag1Wl35n5tMhGmbo+SzkYHeHjJUHSJyW75+dtChxUW9zDjWwWp/UH/DE4cKgw5rArheP81/ryDBkpwxgmp9JvV4pf7IoUGxbpCsnQoFxtta5nvw=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=W6uKO7RD; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787158886; c=relaxed/simple;
+	bh=fwV+JDCI3nJfFhJewL7AP2S++Rp+BbZQQu6VkrL8T2o=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=uJ9c4gskn+WPRZfeYySIjcvRL8og/l7Rz733HdeTHPubW+dO/VfDv4AEDEizkXA5ObHjGSNDJFf0fXC7vZlbnfsKZF4ECvcLS9V2L+d/haiJB/eRXZjXoSycT5xTTF2kSzDv4FpABLlwWN+hp95QPRO1t8GdA0mxTFptN/BlXrs=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=bynar.io; spf=pass smtp.mailfrom=bynar.io; dkim=pass (2048-bit key) header.d=bynar.io header.i=@bynar.io header.b=XespfQRD; arc=none smtp.client-ip=209.85.218.44
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=bynar.io
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bynar.io
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="W6uKO7RD"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 9CFB21F000E9;
-	Wed, 19 Aug 2026 16:22:49 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787156570;
-	bh=4UmROjqQkD3ajmNfgyvEPQnF/WlVVe4GImycsDJtip8=;
-	h=From:To:Cc:Subject:Date;
-	b=W6uKO7RDhOwC983YwvgPGvDsSPvFKMb+EjGiKJNdUDMCRamF6+ksvQnsKYx90zFaf
-	 b0CqR7ZN1/qyp4CulBrPpqYbrAsF2w/b0jyJXtU9OrcP2bMa87YfcNDOgitCuax8U5
-	 vKABs6wOonGzB2sycIixIFcoyVN51KbLDr0zqsGupfvPJ+PywxDjIsmzCwroJBNFNL
-	 zoXIHNS/qPFSzx+RXex45VhTRcDgF/k6KnMrx0/TL8c6hwqoU1GVcRw3pRJd1V6MUU
-	 VvtKfN7lEcdEZWBAmBZzHamJrHoHX1fUbXbTNim0R9otI20aYo6Bu0s/tkTTWVZsrl
-	 I7J9NvWh1rkTA==
-From: Chuck Lever <cel@kernel.org>
-To: NeilBrown <neilb@ownmail.net>,
-	Jeff Layton <jlayton@kernel.org>,
-	Olga Kornievskaia <okorniev@redhat.com>,
-	Dai Ngo <dai.ngo@oracle.com>,
-	Tom Talpey <tom@talpey.com>
-Cc: <linux-nfs@vger.kernel.org>,
-	Shuangpeng Bai <shuangpeng.kernel@gmail.com>
-Subject: [PATCH] lockd: fix use-after-free in nlmsvc_retry_blocked
-Date: Wed, 19 Aug 2026 12:22:47 -0400
-Message-ID: <20260819162247.2970703-1-cel@kernel.org>
-X-Mailer: git-send-email 2.54.0
+	dkim=pass (2048-bit key) header.d=bynar.io header.i=@bynar.io header.b="XespfQRD"
+Received: by mail-ej1-f44.google.com with SMTP id a640c23a62f3a-c214e625259so185121266b.2
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 10:01:24 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=bynar.io; s=google; t=1787158883; x=1787763683; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=xAl6LZ0+0WULftqzAvcI3a0vNTBx8JGUNC+xMI0jl40=;
+        b=XespfQRD+OYg9a6Q86EuzIv2xKScX2J8IpCux/7HGDaTDS+A3tJ2gUXg3I5rGt99MH
+         vKOR4MHm8Blvm8adm7K7gXbx92oxvgoxoaUTGPq5qoXlT68f2tz1HUChLXvLFbRtZ9cS
+         tcALUMrczgMkOeCg9f6BPiNUm12onMSVCLQtr1z7r2sdKeyw58VHnvmLEL/WOqdp6eyf
+         iv2iKLhLpQnwCLU9Eh1iaDmFnmlMq2M4TO1TYgytEC0+F57LnSi0p8vbSLU6SnNIIlQg
+         2j5VmuPlw5nNktojm75/hUILElfis3xGUrXCm2V8o+SUsEapzxo12/GUR5UpYvzHIS8R
+         6Deg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787158883; x=1787763683;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=xAl6LZ0+0WULftqzAvcI3a0vNTBx8JGUNC+xMI0jl40=;
+        b=STkNQjggkakjZkBkwh4zXlCQ3NwwFKhlSc1bRGaGB7x/5C7l+PKzYVQEEynWKLxQm7
+         oId7oxLW+4iLnGL5T2K2H3UYOoGwtZ2T6kozjuPR/w3r14dhIXWdgXcDuTFlGRZC8DHu
+         3pVtIgzz8Ohomi3vycVXq5N9KitqG/LBQewv0k8pWIyZaCY8TFl+6oX4bhNI7QAwYeVs
+         MR5omCmogiGF9bgVpxedRIBZ74ECX3ymQEIaTL95nOgeEnBrmY38cIfWQ+9rnvrLIDM1
+         vVDSkjitf5nHGr5ps4061Koiv4vyBpdNOd5RCmlDpr0fGRkXNzK4NTTZ/PJhWhRY5iBJ
+         Jv3A==
+X-Forwarded-Encrypted: i=1; AHgh+RpqBZUA0a4jQxHNCw5aeRgAds8kr9So8qfYUm8pHVPWDgpIVztoziEeqfx7RQOQ/SVnTebmxETbuuI=@vger.kernel.org
+X-Gm-Message-State: AOJu0YwGaYVzPFpiEp3ve629dVYVPFccuikpErA0J7V/Jo2n94PjnUYt
+	hBTxQdrRtDpt4KoniBi56Fe+tp5td/EpLa+2696YX6w3+0UQ2ZK9AgLF8Mf1fnsndrfex3dbLI3
+	y8l8ktT4h
+X-Gm-Gg: AR+sD11nB4nK5jQexd2iYtlnV9g9ayo7kBKyLfin3P7OsaTbdYMS5GUz67gkn4mLE8N
+	gWrOcfKVFSrq84gKLNBV6pjw5S7ySvHv1KZnuGg7ElFcbOUaCp5SM9Vz8qTcaHVH3O7s5Fk83kT
+	v7KCIluXDwtiaKOVyHHkFrIfniiQIdfBQHlfPG7cObFfiuSnHMwWmZtIBcFDFaGLxU1gvn/zFqO
+	6htm6ZME4/lG6QYJaNIfZ6yoTYMSEycLVlqcD0prxmVYLVeM4G0ru9Ko7ceE3rcIAsuhm6kyfis
+	7+Fg+ofNxUOxcEc0SfE4QIqFiIl4qYQYHV4tYxw8ePcNz7rNLu2xCSL31CShtZZxqeTIIOqt4Wc
+	PEDhYIQcCJ6WyoXcRd5NINV9MajhYF7iGFfjS9dDf0nekMDij2KpNu26IB618xdRaaa/9zThPtN
+	yNibpletGCsnCM3Kc/PpP1RtwSLbaoxUYb2IrEnoGnc9kEbqJDrbRF0Z7v0fnnVSNV0c+qJ5zO0
+	xPSl/U0onGhcxklvE/c86qnRUQfmQcVrlOd3DZDrtJpqCWSfHdsvsylKzU=
+X-Received: by 2002:a17:907:3e18:b0:c20:33db:41d3 with SMTP id a640c23a62f3a-c242e1e6a65mr446099266b.11.1787158882885;
+        Wed, 19 Aug 2026 10:01:22 -0700 (PDT)
+Received: from localhost.localdomain (cpc69057-oxfd26-2-0-cust39.4-3.cable.virginm.net. [82.6.0.40])
+        by smtp.gmail.com with ESMTPSA id a640c23a62f3a-c243c7c2b45sm103155066b.13.2026.08.19.10.01.21
+        (version=TLS1_3 cipher=TLS_CHACHA20_POLY1305_SHA256 bits=256/256);
+        Wed, 19 Aug 2026 10:01:22 -0700 (PDT)
+From: Paula <paula@bynar.io>
+To: Trond Myklebust <trondmy@kernel.org>
+Cc: Anna Schumaker <anna@kernel.org>,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	Paula <paula@bynar.io>
+Subject: [PATCH] NFSv4.1: fix out-of-bounds write from zero back channel ca_maxrequests
+Date: Wed, 19 Aug 2026 18:01:09 +0100
+Message-ID: <20260819170109.8132-1-paula@bynar.io>
+X-Mailer: git-send-email 2.50.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -45,62 +76,93 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-nlmsvc_retry_blocked() examines the block at the head of nlm_blocked
-under nlm_blocked_lock, then releases the lock before calling
-nlmsvc_grant_blocked() or retry_deferred_block(). It holds no
-reference of its own across that window, so the nlm_blocked list
-reference is all that keeps the block alive. Unmounting the nfsd
-filesystem while a lock request is still blocked reaches
-nlmsvc_traverse_blocks(), which drops that reference.
-nlmsvc_grant_blocked() does take a reference, but only after
-nlm_blocked_lock has been dropped, so the block and the nlm_rqst
-hanging off it can be freed before it runs.
+nfs4_verify_back_channel_attrs() validates the channel attributes a
+server returns in a CREATE_SESSION reply before they are used to size
+the back channel slot table. Unlike its fore channel sibling
+nfs4_verify_fore_channel_attrs(), it never rejects a back channel
+ca_maxrequests (rcvd->max_reqs) of zero.
 
-  BUG: KASAN: slab-use-after-free in nlm_async_call+0xd6/0x230
-  Read of size 8 at addr ffff88811b04c808 by task lockd/8377
-    nlm_async_call+0xd6/0x230
-    nlmsvc_retry_blocked+0x61c/0x800
-    lockd+0x144/0x1c0
-  Freed by task 8392:
-    nlmsvc_release_block+0x231/0x290
-    nlmsvc_traverse_blocks+0x139/0x1b0
-    nlm_traverse_files+0x1aa/0xa00
-    nlmsvc_free_host_resources+0x12/0x60
-    nlm_shutdown_hosts_net+0x127/0x280
-    lockd_down+0xd5/0x1c0
+A zero value reaches nfs4_realloc_slot_table(), where
+nfs4_reset_slot_table() derives both server_highest_slotid and
+max_slotid from max_reqs - 1. The subtraction is unsigned, so zero
+underflows to 0xffffffff and is stored as the table's slot-id ceiling.
 
-Take a reference before releasing nlm_blocked_lock and drop it
-once the retry has run. retry_deferred_block() borrows its
-caller's reference as well, so this covers both arms of the loop.
+The attributes are chosen by the server in its CREATE_SESSION response:
+a malicious or compromised NFSv4.1 server, on the wire, with no
+authentication under sec=sys, and before the mount completes.
 
-Fixes: 0e4ac9d93515 ("lockd: handle fl_grant callbacks")
-Reported-by: Shuangpeng Bai <shuangpeng.kernel@gmail.com>
-Closes: https://lore.kernel.org/linux-nfs/20260818235808.3458075-1-shuangpeng.kernel@gmail.com/
-Signed-off-by: Chuck Lever <cel@kernel.org>
+With server_highest_slotid and max_slotid at 0xffffffff, the bounds
+checks in nfs4_lookup_slot() (slotid <= max_slotid) and validate_seqid()
+(csa_slotid > server_highest_slotid) no longer constrain the
+server-chosen CB_SEQUENCE csa_slotid. nfs4_lock_slot() then runs
+__set_bit(slotid, tbl->used_slots) against the fixed used_slots[] array,
+which is only SLOT_TABLE_SZ (16) unsigned longs / 1024 bits. A csa_slotid
+of 3584 sets a bit 448 bytes past the array, a slab-out-of-bounds write
+into the neighbouring allocation. The slot id is server-controlled, so
+the write offset is attacker-chosen and deterministic.
+
+KASAN labels the access below "Read of size 8" because __set_bit() is a
+read-modify-write and the sanitizer flags the load; the store is the
+actual defect, hence "out-of-bounds write".
+
+  BUG: KASAN: slab-out-of-bounds in nfs4_lock_slot+0x148/0x15c
+  Read of size 8 at addr ffff0000c7232bf0 by task NFSv4 callback/235
+  Call trace:
+   nfs4_lock_slot+0x148/0x15c
+   nfs4_try_to_lock_slot+0x74/0xc0
+   nfs4_callback_sequence+0x850/0x141c
+   nfs4_callback_compound+0x414/0x111c
+   nfs_callback_dispatch+0x6c/0xf4
+   svc_process_common+0xb3c/0x1ba4
+   svc_process_bc+0x400/0x9bc
+   svc_recv+0xb5c/0x23fc
+   nfs4_callback_svc+0xa8/0x140
+   kthread+0x32c/0x3e4
+   ret_from_fork+0x10/0x20
+
+  Allocated by task 234:
+   __kmalloc_cache_noprof+0x188/0x480
+   nfs4_alloc_session+0x44/0x260
+   nfs41_init_client+0x18/0x80
+   nfs4_init_client+0x120/0x440
+   nfs4_set_client+0x310/0x5a0
+   nfs4_create_server+0x124/0x234
+   nfs4_try_get_tree+0x70/0x240
+   vfs_get_tree+0x74/0x2c0
+
+Reachable with CONFIG_NFS_V4_1 whenever the client mounts an NFSv4.1
+export from a server the attacker controls or can spoof.
+
+Reject a zero back channel ca_maxrequests in
+nfs4_verify_back_channel_attrs(), as nfs4_verify_fore_channel_attrs()
+already does, so the underflow never sizes the slot table. The error
+propagates through nfs4_verify_channel_attrs() and aborts
+nfs4_proc_create_session() before nfs4_update_session() installs the
+poisoned ceiling.
+
+Fixes: 5405fc44c337 ("NFSv4.x: Add kernel parameter to control the callback server")
+Cc: stable@vger.kernel.org
+Assisted-by: Bynario AI
+Signed-off-by: Paula <paula@bynar.io>
 ---
- fs/lockd/svclock.c | 2 ++
+ fs/nfs/nfs4proc.c | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index e628b5d35507..8d83283d3e21 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -1023,6 +1023,7 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
- 			timeout = block->b_when - jiffies;
- 			break;
- 		}
-+		kref_get(&block->b_count);
- 		spin_unlock(&nlm_blocked_lock);
- 
- 		dprintk("nlmsvc_retry_blocked(%p, when=%ld)\n",
-@@ -1033,6 +1034,7 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
- 			retry_deferred_block(block);
- 		} else
- 			nlmsvc_grant_blocked(block);
-+		nlmsvc_release_block(block);
- 		spin_lock(&nlm_blocked_lock);
- 	}
- 	spin_unlock(&nlm_blocked_lock);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5709c6fea..182078c2e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -9161,6 +9161,8 @@ static int nfs4_verify_back_channel_attrs(struct nfs41_create_session_args *args
+ 		return -EINVAL;
+ 	if (rcvd->max_resp_sz_cached > sent->max_resp_sz_cached)
+ 		return -EINVAL;
++	if (rcvd->max_reqs == 0)
++		return -EINVAL;
+ 	if (rcvd->max_ops > sent->max_ops)
+ 		return -EINVAL;
+ 	if (rcvd->max_reqs > sent->max_reqs)
+
+base-commit: 3a0dd7ba4f44cdc116d83712f61e7c1a95be3588
 -- 
-2.54.0
+2.50.1 (Apple Git-155)
 
