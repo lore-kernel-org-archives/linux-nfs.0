@@ -1,159 +1,131 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-pj1-f100.google.com (mail-pj1-f100.google.com [209.85.216.100])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8627B37CD59;
-	Wed, 19 Aug 2026 12:06:06 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 3DDE934B697
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 12:41:45 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.216.100
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787141167; cv=none; b=qsjzzH9tvV1FZ0bNcnFr9bIbZgOFO5P5EyqGPKG2zQLb774ffkLSQ2ZS1AgGwilnTKiJLKjJ5ZdP7rP0Ypfn7oaMNbKUMDgxKr+/cqaw9JL2p78yMsXOCL1viE5fO6v6/oYrrvzNUKJ7H6KAHkTSEVZHJi9KFbDvn3MVlIygp94=
+	t=1787143308; cv=none; b=Ls1i5RDKDUoeJwq/L6kpYVTLrylt3W3R9CSlm6vLng0NcVBC8rL0AOSRV98+bWgu7x9ls+AeztUbsRYDn+D0hiGu/bsCrncG+8+EBcxmiUiE9XuEB1e0nDPtobPgIaJZ44eroEb++0eX2WG/52jiDyi/+W8WQqqdOAQbifWlieU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787141167; c=relaxed/simple;
-	bh=Rg6JeGgY2Qbj+FQQw5ZRYQp1FICjV6O17266adloyKY=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=gAiSCnm0xctNeIUQP8PbMpBegSqoixB1AGuc1uN+zGR3VGLzDuhCbVxtiHGa7jnTOr3maZXuxinG11gTs4z03I/lU9GeorCtNSpCOMYGcSDAclgROrMz2cQVdCWn2UPJufYLzC2DK9sKnEODkdCzuiQ2Xo5Qj9tgO6Ep8Ig/+LI=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Y17dMajl; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787143308; c=relaxed/simple;
+	bh=aQ3chw+TmLBBlFTIr8hyMuy13DfCMu7XaE/jGgy0w70=;
+	h=From:To:Cc:Subject:Date:Message-Id:In-Reply-To:References:
+	 MIME-Version; b=gBrI+0KKJZMU7GalEiGhz/0NtBV9qCG0JKFvLKvodQYQ2y5+s0mDor3RITTzzcLP7aUud1hkduSq+FdBfkQ/7Q3S7EZPI6O2/b/8z429SUAxrW1eJGn7MbamnlLC2uapXYDmVqIfc89HKKgt9q3PiY73HqLYNM2qUxeq2OYjAEI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=purestorage.com; spf=pass smtp.mailfrom=purestorage.com; dkim=pass (2048-bit key) header.d=purestorage.com header.i=@purestorage.com header.b=DcQRsoh/; arc=none smtp.client-ip=209.85.216.100
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=purestorage.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=purestorage.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Y17dMajl"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3BF101F000E9;
-	Wed, 19 Aug 2026 12:06:05 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787141166;
-	bh=BS5C096pC0C1xWSzS2ONpD9vWsZo+5Ki+HkGWW0BLpU=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=Y17dMajloCe2aOCVm4QCMFg45v3jzzqUTzN6i2Bk+vxTf8Ge9wI7VlcaMdcRKKxIQ
-	 GU9ep51aOcKd4d/bCgUa8D/IA24ZtIjxRsDSsA/iSD3wJo2Dfh1N46iU6GrTQmxf8F
-	 nKriFyiRehdm9ZtKlrWCuKx3mF3qUsM+3htGFtk33KqYNYwX2NzLamAZlte6K6Nd95
-	 bKRNeO2T3IyUiAQIUN0dR8V459cGTylIfcXdVyGxqo0h65pAuFxiBmUdxkPODD6SHi
-	 bhyYvsbNFVb98HBy37lcTGXZxKy3mOK2O9r1KmLa2Lg95Dr2uiPeXiLc9e704JvUgW
-	 HcHD3FLI02Nxg==
-Message-ID: <b1462b84906d030c65f6c6d8d9de46927e1f2c15.camel@kernel.org>
-Subject: Re: [PATCH 0/2] lockd: fix two bugs on nlmclnt_find_lockowner()
- failure path
-From: Jeff Layton <jlayton@kernel.org>
-To: Ran Hongyun <ranhongyun1@huawei.com>, trondmy@kernel.org,
- anna@kernel.org, 	cel@kernel.org, viro@zeniv.linux.org.uk,
- bcodding@redhat.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
-	chengzhihao1@huawei.com, yangerkun@huawei.com, yi.zhang@huawei.com,
- Shuangpeng Bai	 <shuangpeng.kernel@gmail.com>
-Date: Wed, 19 Aug 2026 08:06:03 -0400
-In-Reply-To: <20260819074641.1586137-1-ranhongyun1@huawei.com>
-References: <20260819074641.1586137-1-ranhongyun1@huawei.com>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	dkim=pass (2048-bit key) header.d=purestorage.com header.i=@purestorage.com header.b="DcQRsoh/"
+Received: by mail-pj1-f100.google.com with SMTP id 98e67ed59e1d1-38dfe910e9dso1158577a91.3
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 05:41:45 -0700 (PDT)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=purestorage.com; s=google2022; t=1787143305; x=1787748105; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=WfPoOzYuuPGzk7adfHONL8e3h8QVdygeJyFqLyOvqnM=;
+        b=DcQRsoh/tLlpPBIAxxPHqKWP3eD+EEG0FMQjMd8UHBy+ufOt30FYneWdPMzF4JKeZD
+         x8DuUqLj6u7SHXMLOg6YS0UChXvkpIdEPDWePY1Rl58pW0p/y2aCRt9IGFzeXxECTP+K
+         +vR5OG1eCrncq2JzzH86Q/DJbdvW+M4Z+VGDPHAggoOfTd6FENfOwyp5qmxweoJrXKZl
+         XzBAUfGyod9CG+srTscUibxuoIjbQ1vOxRQhoXWMAfzigvTyYYXndmqhS29AIlGdm5Hi
+         pNxaySskrOjyDkWk8NcV4tJdcTxPncqVViAIpET6j4TBCty+fsEZJ5oDgHyVwpzCaGUy
+         kKFA==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787143305; x=1787748105;
+        h=content-transfer-encoding:mime-version:references:in-reply-to
+         :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
+         :to:cc:subject:date:message-id:reply-to:content-type;
+        bh=WfPoOzYuuPGzk7adfHONL8e3h8QVdygeJyFqLyOvqnM=;
+        b=l4j4lfOYvJjUcd4m+7WIXGSN1MEU42QPCUxtXvSywv9Jwo69ZM2YUwKoB+BtLtxtgt
+         tltNP3LLrs+Sa3FcE56d8+156qeR32gJzo2bnJhFkc5RSC5Wf20YM7sruyrPdBSskLwf
+         DQ5hsjUgHyi/0PPNxaJqjSxJoTOr/NNUPaa8/sA0odOdZTCALRE3+x829YktlqnXyoBJ
+         2oZ90YwtJSCQh5o2iI2D5HGuc2HTArAHcA5jeeUZfhE23sCZXfbTMg3jdAa+2pF84OKU
+         iDXZQc6FRkfDPZTiIze/uCcSR3CWx3abApbVomY/hJ/HcoNf8mrQPEzLoXUTfqjHrYGq
+         c4Ow==
+X-Forwarded-Encrypted: i=1; AHgh+RrrCIcuedSWb2y4NmTOe51nxdppxuJrZXLlAaf/Dmx+ROqRacCfw248T2g7eH2OlF/gkB6hhSzlsHE=@vger.kernel.org
+X-Gm-Message-State: AFuF++m6152O/lii9LzPgRN2c6rOqi2R1hWyZiS7a+P9eAeOxmn3m+71
+	dhJGNF3qDpMGAIHKTslomOb5Gk8wRTjNMXWH28ONqcPEJlK2axCfesfciUIrJJvgd9GlQXGlL9/
+	hW63lysnCZpei9aFR0bhfAsS4G7Pvc8r5immY
+X-Gm-Gg: AR+sD10jXDEgPPtNtNgTpDFUZ6HqTnOqVYHYX0yXW/YcU+JzQli4VSq+XL4IdTfHXVU
+	BPrxhJZyCHgpzn4N4yKG0FfAJaWf8pgomfXxJUMo6X6kWufgBAf9PDE00FyqN1gesDHYKFAgvxU
+	DDjp1JfbPg1c/y2QYxI14fvBQjX8bn3GFjKYg05Rs5DEJ45N8xfeVs3MDggy0hzVEmiw4SAq/zg
+	IZ/ds2H+yAvzOzGEfFhTQ+gPOHuEUHuY1CR3zOqWcuBNlfL+W9aDfP2sMl69+ZU5ue91GiGWuth
+	9ssAeONeqqP8h/RlrfZKN+TAjOWUhzkJ8DzqkX5mlDVOlCwXUTL2w2xS35d5kuCwN1207UVItMM
+	lnAmVqJdGadTkAUJ1YNLbRf78vYg2qS4U4Y+4mg==
+X-Received: by 2002:a17:90b:4cc5:b0:37c:6130:7a5b with SMTP id 98e67ed59e1d1-39580ed0a57mr8772921a91.8.1787143305199;
+        Wed, 19 Aug 2026 05:41:45 -0700 (PDT)
+Received: from c14-smtp-2023.dev.purestorage.com ([208.88.158.128])
+        by smtp-relay.gmail.com with ESMTPS id 98e67ed59e1d1-3957f71eb70sm202407a91.0.2026.08.19.05.41.44
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Wed, 19 Aug 2026 05:41:45 -0700 (PDT)
+X-Relaying-Domain: purestorage.com
+Received: from irdv-tmenninger.dev.purestorage.com (irdv-tmenninger.dev.purestorage.com [10.32.149.15])
+	by c14-smtp-2023.dev.purestorage.com (Postfix) with ESMTPS id 6BFFC34029C;
+	Wed, 19 Aug 2026 05:41:44 -0700 (PDT)
+From: tmenninger@purestorage.com
+To: trondmy@kernel.org
+Cc: anna@kernel.org,
+	jlayton@kernel.org,
+	linux-nfs@vger.kernel.org,
+	linux-kernel@vger.kernel.org,
+	jcurley@everpuredata.com,
+	Tim Menninger <tmenninger@everpuredata.com>,
+	stable@vger.kernel.org
+Subject: [PATCH v2] pNFS: Fix EBUSY check in pnfs_layout_need_return
+Date: Wed, 19 Aug 2026 12:41:21 +0000
+Message-Id: <20260819124121.1587969-1-tmenninger@purestorage.com>
+X-Mailer: git-send-email 2.34.1
+In-Reply-To: <ee8f174933d00fc58e2f54fd2fdd98d67919884b.camel@kernel.org>
+References: <ee8f174933d00fc58e2f54fd2fdd98d67919884b.camel@kernel.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
+Content-Transfer-Encoding: 8bit
 
-nit: usually when you send a new version of a patchset you should
-declare it as "v2". So "PATCH v2 0/2", etc...
+From: Tim Menninger <tmenninger@everpuredata.com>
 
-Using the b4 command makes this easy to track.
+Commit 41d0a8ead9720 ("NFSv4/pnfs: Add support for the
+PNFS_LAYOUT_FILE_BULK_RETURN flag") replaced
+pnfs_layout_segments_returnable() in pnfs_layout_need_return() with a
+direct call to pnfs_mark_layout_stateid_return().
 
-On Wed, 2026-08-19 at 15:46 +0800, Ran Hongyun wrote:
-> Both bugs are triggered when nlmclnt_find_lockowner() returns NULL
-> due to allocation failure in nlmclnt_proc():
->=20
-> Patch 1 fixes a NULL pointer dereference: nlmclnt_locks_init_private()
-> unconditionally sets fl->fl_ops before checking whether owner is NULL,
-> so locks_release_private() later calls fl_release_private which
-> dereferences the NULL owner. Fix by inlining the function so that
-> fl_ops is only set after the owner is valid.
->=20
-> Patch 2 fixes a reference leak: call->a_callback_data has not been
-> assigned when nlmclnt_release_call() is invoked on the error path,
-> so nlmclnt_ops->nlmclnt_release_call(NULL) skips cleanup and the
-> references taken by nlmclnt_alloc_call() are never freed. Fix by
-> moving the assignment before the lockowner check.
->=20
-> Ran Hongyun (2):
->   lockd: fix NULL pointer dereference in nlmclnt_locks_release_private
->   lockd: fix reference leak on lockowner allocation failure in
->     nlmclnt_proc
->=20
->  fs/lockd/clntproc.c | 19 +++++++------------
->  1 file changed, 7 insertions(+), 12 deletions(-)
+The old helper checked the return value against -EBUSY, but the
+replacement compares against EBUSY. Since
+pnfs_mark_layout_stateid_return() returns negative errno values, the
+-EBUSY case is never detected.
 
-New version looks good. Note it looks like Shuangpeng Bai sent a less
-complete patch for this problem back in July that I just noticed. Your
-version seems more correct though.
+Fix the comparison in pnfs_layout_need_return() to check against -EBUSY.
 
-Reviewed-by: Jeff Layton <jlayton@kernel.org>
+Fixes: 41d0a8ead9720 ("NFSv4/pnfs: Add support for the PNFS_LAYOUT_FILE_BULK_RETURN flag")
+Cc: stable@vger.kernel.org
+Signed-off-by: Tim Menninger <tmenninger@everpuredata.com>
+---
+v1 -> v2:
+- Preserve the -ENOENT path so the client can respond to recalls when it
+  no longer holds matching layout segments, as pointed out by Trond.
+- Defer only on -EBUSY instead of requiring a zero return value.
+
+v1: https://lore.kernel.org/all/20260817154044.1799634-1-tmenninger@purestorage.com/
+
+ fs/nfs/pnfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 9f32dd7c4c63..594350f4ed2d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1389,7 +1389,7 @@ pnfs_layout_need_return(struct pnfs_layout_hdr *lo)
+ 		return false;
+ 	return pnfs_mark_layout_stateid_return(lo, &lo->plh_return_segs,
+ 					       lo->plh_return_iomode,
+-					       lo->plh_return_seq) != EBUSY;
++					       lo->plh_return_seq) != -EBUSY;
+ }
+ 
+ static void pnfs_layoutreturn_before_put_layout_hdr(struct pnfs_layout_hdr *lo)
+-- 
+2.34.1
+
