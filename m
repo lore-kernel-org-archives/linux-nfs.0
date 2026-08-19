@@ -1,57 +1,57 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8BD6E218EBA;
-	Wed, 19 Aug 2026 14:04:14 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6B47F353A98;
+	Wed, 19 Aug 2026 14:27:44 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787148255; cv=none; b=hBZfl9soeHYfk0TTGgK4FUYh5KmeN/pWy2Vw/mf8qcX+hC6FnISpifUH6fPSsv6xBpK2kf18BanPVONxBBj3KZHUGr3uLwvrtghlxOWq2cQDX48eUbRHuFe7rRhA0EfpmlZuLrIxFziMy6bwzZxRtNHBoHgX9RoDcUdT1cBy6YA=
+	t=1787149673; cv=none; b=eJ5e2HwldPAbQubY8wPZEvE7YDovK3K1QuDIEjFXtf6O8FyszwnQZEBRiP6YGq9/nBHiax1klJZtUjB6SSO6r9wJiPwrtcZV1dO8L6PGuGTadDBHblI7VYewz4N2WFGjgJWoeUsuhh4JzBANmGGNsbnp4mCWcYY8IxWpyUmXyew=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787148255; c=relaxed/simple;
-	bh=apNDhRbFmnn/yiT59xWfw8j8bzTaI20K1rB8aI+kddE=;
+	s=arc-20240116; t=1787149673; c=relaxed/simple;
+	bh=NHoUbGjcO2PvF2La8kqB4+59XvTXISg0J8YbFOlwcx4=;
 	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=kwJ6qybCJClg8OcAAm5DukdcG7yJBUuvyp4KQR52uX/C68Jw6JUlYwJfgB9iw4/Mf8NsBVCmz+AqCA7kB0elteQhgtqU3nGA+GIFPugUs2aYj2FTgLfluo9R/JijEoe8zZ4VMDFHaWaXKCBe4EcMdA9f7OUsfGA4cvdntRDC7Wg=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=MQhQSCvT; arc=none smtp.client-ip=100.103.45.18
+	 Subject:Content-Type; b=twQLFBPq7jO/ulDTSwBOzsw9FGq71ICi5bwSCLAt4JSPKXKhhgdbrjtTTxKTAYXe2Jiz2rI8Isab0N4DjKM4B3d8/JfjfF9oTwP1CmzRZ+O9xBfLFqaslEzXGP+uSkxS6DnBP9lHDGin0qKxNG8YikLtdnZty1r7nrXToI2Fn/s=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=M/9Jm1qK; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="MQhQSCvT"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id A5E171F00A3D;
-	Wed, 19 Aug 2026 14:04:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="M/9Jm1qK"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 781EA1F00A3D;
+	Wed, 19 Aug 2026 14:27:42 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787148254;
-	bh=fnm64RRHDG1XXLHpu0c3nVTM4iXCvZV71B5QXHfkl+g=;
+	s=k20260515; t=1787149662;
+	bh=EcDuSayj2m9qHiZorQeDqQh33qvlrFcDpLCoPmkp2l4=;
 	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=MQhQSCvTQ3mexEgEg6z4YgcgEbp1IUh+lUDE0TEIvEv6LwU5bt2aSeeRWGEamH5zm
-	 NB6FsfscSg9MMOChXm20yMb7VvkDKwFM/kODQ7o/uVv1Cie2OI+SV6qgS45GZyB63L
-	 w4hhzxlXJcoXyhEmNW2DcKVeptxxFJogeBkD/PsD2/WcBlXGIyK9ZECai/OXI2NRbf
-	 tLtodlEDjaxXtcBiwmDABFVhfkSBUCP3TMsDIQqwPTieRktOVYerulOWKfUyB6k3RH
-	 Jb6R4SBtlX+9LPkkPDu6qVvqkiKEup5krIxxtqpFme8lxAfd3p97UNVluygXNHJcJl
-	 isX8tn1EJ5b7Q==
+	b=M/9Jm1qKWk8JpAJGHwfxz7qiVSo0vAv8BkrOHbtfxW7PZJmx3v2UR/xG64aRQJ2ew
+	 GV+Nqja+OR0KaADKKiJdQ9O4eQvcSSRAEUeKVBZSSplhQIsd0pm7DJqJVrmYC4IIK0
+	 0+PwXdA+c6p1XgqhZW+2wlSeQpxJQZysPPWd3NnbKaKCguSrje5YRYQSVATiS7HDqk
+	 WmqdmiEbwiAbXCMWKzMzggm+D0gwQdLPPjiH/7CoTO3DBLpjvWsxUh6T/AXIIuOHSF
+	 iZbJAzPuf4iopROGK0SPG2BxIdIXkadO6ig3z4Oc3RXNOlEnCbkuMI7vGTKEFSoyMI
+	 63ij5m3wDgBNA==
 Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id D3EF0F40067;
-	Wed, 19 Aug 2026 10:04:12 -0400 (EDT)
+	by mailfauth.phl.internal (Postfix) with ESMTP id AD3B6F40068;
+	Wed, 19 Aug 2026 10:27:41 -0400 (EDT)
 Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Wed, 19 Aug 2026 10:04:12 -0400
-X-ME-Sender: <xms:3LeFaptO8nAng0f2zcT0HmbkzSFgObYnpJSVNcg3SMPFF78m0Z4uOA>
-    <xme:3LeFatSNPYZtvv1Yu8bzm8FnY86A6O19AqqLANH1mSQTqIdKmYHSw1ci52jvXcj_A
-    5jvSdCHsXlvOsuHnU6cOdvJG0Qy-HPPzG9bNTsy_JpZVh8DwFeKEcQ>
-X-ME-Proxy-Cause: dmFkZTEpi8Uljpi3TTVM2Qg4xk+Abm/RegXcZKumuRdbNTksiE3AmuXkQzzJ6sQ5N6Vk+8
-    KqsMf/VbyMkCNHmTc/ea5kLu7S8Z2syohPHWBniXPW/cMrHfuF0hXtr3l47UvWV5cmtyJ7
-    nchrHfKGNOMe/9diqUBpJSb7WqFKrtpudEwyg8QpHjp/ZTKjThq7jtY+/+ZHh1jkFK/VDu
-    iN/ulDeggbuQjmIcxg/y2u5Ij/uWjpu6NDZov5fdwzDl23bJe5AOw09aQf2YENY4UhSHgE
-    jPnatJrZLJNCCeZ087dk2kZrl7f/Xdm1MxmYB3zFLr3g3hmQm+ixRO1OWbbrWrtwrycAZp
-    gc5NnqVwa37ZRRIIZZQjC+uOHsJUOSzsH8bU9zDDEv6AMXNhmszraAPIBCUyWiAzwdO0sZ
-    Tya8pOkpphPKRC8n5E9rRQOVmqOYhcRjBOk34/XhRq9apRE57Jc/voqoc7xz7Bs56X3E0g
-    El68TKPSayMCgYibPDkkRdvcoDji+A9WPk4jGMf8WtPT5ANmGT5pOOkXszdGm+DXYnGSps
-    VM62rWdQ1OVZz72aevSlqnxP8FzewSQ5WJI1iXEVez0kmXDnlMwS6IrL1A28VYjgjKbTL6
-    cdrzco2u6FlDH/2iHTdxEZvTmKJ4TAk3r0Rsjt0fLpdWBK5lBSnar8imeXXw
-X-ME-Proxy: <xmx:3LeFatQWUgd4hpsZpjP4txGi0jEpVhTSFnO4S5xBMFDvFZbwY9jfQw>
-    <xmx:3LeFaioDy7iGXMFuPj4LniY7CkgjVY2H4AbnJSFRtV7exdwnlAp3yg>
-    <xmx:3LeFav0vyzn3k70T-dX2BUIVRHaxvAWQ0xioxpNC3iW_p6H95w0WBw>
-    <xmx:3LeFap4nDom8iq2cegsfx_bKS6MJKZdoU0FzC5z4gjmxIKFq34_mgA>
-    <xmx:3LeFarQLmGSvvfoje4Mvb1dlzZexaV65iIf49Sk82fNRZCb_DGuSr_Uh>
+  by phl-compute-10.internal (MEProxy); Wed, 19 Aug 2026 10:27:41 -0400
+X-ME-Sender: <xms:Xb2FaqRLQLymeKEeS9B1C8rheCwHXUu1aiQgptdu6Nx7pQtUO_KuBA>
+    <xme:Xb2FaqlgFLoKssxtJg5I8dLyTwWESmDLNo-fHCHILQqXeaeHNkf5tV1Ax_P8I0d3w
+    oX8AEPSH1M0F0oR8x9vN_BQ9vv1rTupnVChbcOT3-PkLqMsReGxqw>
+X-ME-Proxy-Cause: dmFkZTEObOTn4lioDOQKpwlAvb1nU/ped5RnpitX3ia030x7hA6/8N+cz7Y/wMhJH59b1J
+    5/EtQkGFO6NU3IOACNgnpYus5YXAYRSBumtE0hxydhH0qrX/+eOgL7Q82uAfkEpy+Sp/Xo
+    f73/JNoB4WN5daFgEeluA870XMKosxR46d1Th/JhOq+lianQmh6iP5O0nIO99hIVfBiP6r
+    ls1nii09H+fCi1VBNql0JSNxxSohcgkO8R4/30shXucjXwt4B1M1r65Qqo43x2GcBaWd5O
+    cIOV8qTolqcc8IYLQwmQO8BK6JzDKzDRTly22lQ3nS/1CwIGuf/HSxjbcjz+t/enwaQ+HO
+    c4sWocKSJ9yMcsqAnGAjWvmaWUPG3V7gYgExSKZz2eUi3GgojzEHR0XHCj7MCbkoib8Vmt
+    0EdJyp4soDIFIf3C2yarJsc6iVlmVJBiG1Pv4Y+cICP0VZH4xccJYGU7GfzcFsKgHP2qHW
+    mPQPPQlqGfOS8JBFKnYY6T6oTWdbZFFAyLjD6Ec+8J8qSOOJ3j4FKn8lgT3htveo7Tz0OV
+    yC3olf9ex9JQzXBFu8S+X2WU2EgOaCMsn9jJ6qYtly05sevHgq4UNCh4xhkcIOx1jokGkC
+    wsRqmMFLDGEa6IG/3eCiPzczEi7RkXLtL/HrcOCXb2/vXUM/Y235WKNdYgyQ
+X-ME-Proxy: <xmx:Xb2FauOxCZLlz3GxNckR1SNLWhzlIJAr_cylyTjw6gIkOnKy2bQMxw>
+    <xmx:Xb2FajUuoQ3OJZmFhURwqm1EjQOn0ALtKEsZk2BjI5VmV1cgTGjVfQ>
+    <xmx:Xb2Fahhs8KhTbIbRPPXmkoSIV2MmifJL4EBb2ycWazZGK-phkMRtcA>
+    <xmx:Xb2Fasg1CcvxWFNbtJVrxDPsJqwwULyrASGZ7rL37UKIg8ekmm-ICQ>
+    <xmx:Xb2FavGgh1Y3De_MoEbNj60c65J8gD-CQ3Pqz51vj2jYOzykKO9P9U8o>
 Feedback-ID: ifa6e4810:Fastmail
 Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id AEBA37811F0; Wed, 19 Aug 2026 10:04:12 -0400 (EDT)
+	id 86E3D7811F0; Wed, 19 Aug 2026 10:27:41 -0400 (EDT)
 X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
@@ -59,50 +59,45 @@ List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AJDur_V_LH-R
-Date: Wed, 19 Aug 2026 10:03:52 -0400
+X-ThreadId: A0_WlIPSeIZw
+Date: Wed, 19 Aug 2026 10:27:21 -0400
 From: "Chuck Lever" <cel@kernel.org>
 To: "Christoph Hellwig" <hch@infradead.org>,
  "Ameer Hamza" <ameer.hamza@truenas.com>
 Cc: "Jeff Layton" <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
  "Olga Kornievskaia" <okorniev@redhat.com>, "Dai Ngo" <Dai.Ngo@oracle.com>,
  "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
- linux-kernel@vger.kernel.org, "Jan Kara" <jack@suse.cz>,
- "Amir Goldstein" <amir73il@gmail.com>
-Message-Id: <9ad95194-983d-427d-9a07-c9eb0891d1a0@app.fastmail.com>
-In-Reply-To: <aoVHBkmPNSRakbYW@infradead.org>
+ linux-kernel@vger.kernel.org, alexander.motin@truenas.com,
+ caleb.stjohn@truenas.com, stable@vger.kernel.org
+Message-Id: <40f94c59-32e5-458e-bc48-80585beea7ff@app.fastmail.com>
+In-Reply-To: <aoVF8l3E6SjXOVlD@infradead.org>
 References: <20260818225715.572140-1-ameer.hamza@truenas.com>
- <aoVHBkmPNSRakbYW@infradead.org>
-Subject: Re: [PATCH 1/2] NFSD: Fix duplicate fsnotify access events for iterator READs
+ <20260818225715.572140-2-ameer.hamza@truenas.com>
+ <aoVF8l3E6SjXOVlD@infradead.org>
+Subject: Re: [PATCH 2/2] NFSD: Update the atime for iterator READs
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 
 
+On Wed, Aug 19, 2026, at 1:58 AM, Christoph Hellwig wrote:
+> Code outside of file systems and library code has absolutely no
+> business ever calling file_accessed.
 
-On Wed, Aug 19, 2026, at 2:02 AM, Christoph Hellwig wrote:
-> Well, that is the underlying bug here.  ->splice_read should not                                                                       
-> skip fsnotify events and nfsd should not work around this as
-> fsnotify is not the business of the users of VFS APIs.
+Every call site in the kernel is a filesystem, so indeed, NFSD would
+have been the first call site outside a filesystem.
 
-I asked for the duplicate event to be split out of Ameer's larger
-series as a backportable fix because there is clearly a bug here.
-But NFSD might not be the correct place to address it.
+I misread the FUSE code: I see now that FUSE does not maintain atime
+in the kernel. file_accessed() from NFSD would have stamped a kernel-
+side atime on an inode whose atime the user space filesystem manages.
 
-Today the fsnotify event comes from the system call implementations,
-not from the splice helpers. do_sendfile() calls fsnotify_access()
-once do_splice_direct() returns, and do_splice() does the same for
-splice(2), while vfs_splice_read() and splice_direct_to_actor()
-emit nothing. vfs_iocb_iter_read() is the outlier, emitting from
-inside the helper.
+I assumed FamFS would hit this very issue, but maybe it does not.
 
-NFSD calls splice_direct_to_actor() directly, so on that path it
-acts like do_sendfile() and emits the event itself. That is why
-the fsnotify event counts differ between NFSD's two read paths.
-Moving the fsnotify call site down into ->splice_read would double
-up sendfile events unless the system call implementations stop
-emitting it at the same time.
+The TODO in fuse_dax_read_iter() is a bit confusing. Implementing
+that should be a one-liner, or it should be replaced with a comment
+that explains why that callback is missing an explicit atime update.
 
-Jan, Amir, what are your thoughts?
+So we can drop 2/2. Sorry for the noise.
+
 
 -- 
 Chuck Lever
