@@ -1,42 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 816CD44BCBE
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 10:52:03 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15390443313
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 10:56:07 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787136724; cv=none; b=FiSpr75hvmpnvF6dH6p8A18M86OlflOk1ttFGqzmPGBIssiuYBE0LHWQE3d3WMbVu6CtBnrwgw4pX3zz4/0y6ZOY7omU5ZeOBKt9G0kdB3k5nU6fB/teqljDDgwQIbluKEpD/0jusyOpIWTHiHjtuldPLxHygLhxtWdHrGdEnSk=
+	t=1787136969; cv=none; b=EMjDDiMa5w7nI6KEvvL7vVrlGqOvyN/IC8DAJhdbiMp6Wlc8P2RfiO/d3JGVIHRdYPphIlqTZ0MaG1GWAFNi1DdJUWWv7eBBpRxkJnGzgPwN5TLhB/9R4ibenh4b8UFDSOGlj4GiFD0REsAVmgd2ioCqGna8R2L0UiNwCkaulwc=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787136724; c=relaxed/simple;
-	bh=g2gozsSoT5VSKj3WdQULUE24vUw7Fc5w9QiyC2kzk/k=;
+	s=arc-20240116; t=1787136969; c=relaxed/simple;
+	bh=mqNUIGTmGATq8jHnpjV74jA0Z6zJUa4KKMV8jD+7Y7Q=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=k7hhPvT8hfDYW0VxY5ng5Tvu1J6hBRb6sHSMkfKOJzBXnTfQqrfNStK1V6Ac4qrdeT+QAD5IEXKBjz+rTIwiH/3ZSMvHT0r94nLCcw5Sqx1olOyn0NXb6ESz7Pzw2pXUqIg02+ieWpKQEnsOCt1ynWBJfcClgRdvyd+iN1VXI2Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=StE1SUa8; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=scj5AL6gHfxn2LDTUwwko8yE+NTiq9N4FrLBYM32J/Uvl15KYLabphd4574qb81sjUuOPvh+ZNB1ppbH39JE2FCvzluNNnJuIOvMbYyV+cIn1funRZEfcOdugx0dYkftKHFrg/AJboz5Jgg3FLFW/BE9UN8fv3tT9+aBXZF4u38=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LwH42gh4; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="StE1SUa8"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 789C01F000E9;
-	Wed, 19 Aug 2026 10:52:02 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LwH42gh4"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4AA491F000E9;
+	Wed, 19 Aug 2026 10:56:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787136723;
-	bh=gZpY++ZqSbUQ//ZtNSH/QmRFXzMdoKOX3hYvd07KSvY=;
+	s=k20260515; t=1787136967;
+	bh=rT3V72BfPRLWvO0m3QjHgTk8xazarFxs9mSWZfXpPlg=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=StE1SUa8CzFuEopGyfdJtFviNOFc9By04a6chlQGirnU4FdHJrbLDHO0VgYSFX9Wc
-	 MEP75Ps9iLgeX4XbojLTZXj3WZOsrNSfe713egSqIgHcXNSHp5p5jpr8ZwAvUZpms2
-	 lUck2AmtavoYGYrsVqeLdt8YmlwnGR+ngtusRH4dPiXSAfwzvs//2Q2X927/HOrSYl
-	 lIt610oTIsq7BUvPJiL+Y9lyOpc5cI7HSGP9fNvXvJzdxU85NmiuOgZ6pHtRQCa3Jp
-	 DElRlTA5Yp07l/BrHIIR5RkIghC2Cm0SGKNqa+/2O2GbmZGAK32AKOQflHl8ZmnvCG
-	 Sc467IRz57E/w==
-Message-ID: <dab1f7a1c5c349eda6539c1059bd2364f7ed718c.camel@kernel.org>
-Subject: Re: [PATCH 3/3] NFSD: Clean up header guards in fs/nfsd/xdr.h
+	b=LwH42gh4AsZsF2SWvDVPtSdM3PJ9Xq+joRUbMcGx8MCtAeS4T1bl9d6wPJq1pjklI
+	 /f8g5+bkMaS0PGGqGD1+nLvrO2Z4nCSZlHoCxUxMSn9E7y6hCZGPsoE6Uq8PhdCZFK
+	 CODx86jqiGyA2LY5ZX5z7DGfu/BevapqujybLamx21d4oSC6Ognpy5KX19lxhxysWY
+	 lpz1obKFZSZuhA8F5lAubiG1SegN6kLlwAyOYaIH8GgwYYygcKmaootti/CUa3r1nv
+	 7Do1z7rHznS3Fji6UGkOSfcjigZcDjtjWbPQiZH6LG55baFUhQ9U/Zu4ktQCUmzFmZ
+	 y9pSpLc5Tvu7A==
+Message-ID: <f658b824d4d1a09119725a985e411ea2d28baefa.camel@kernel.org>
+Subject: Re: [PATCH] NFSD: Resolve the recall-any mask names in the trace
+ format
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Wed, 19 Aug 2026 06:52:00 -0400
-In-Reply-To: <20260818140035.12740-3-cel@kernel.org>
-References: <20260818140035.12740-1-cel@kernel.org>
-	 <20260818140035.12740-3-cel@kernel.org>
+Date: Wed, 19 Aug 2026 06:56:05 -0400
+In-Reply-To: <20260818184151.31180-1-cel@kernel.org>
+References: <20260818184151.31180-1-cel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,35 +121,44 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2026-08-18 at 10:00 -0400, Chuck Lever wrote:
-> Make the header guards less ambiguous about their provenance.
+On Tue, 2026-08-18 at 14:41 -0400, Chuck Lever wrote:
+> RCA4_TYPE_MASK_* are enum constants, so the preprocessor cannot fold
+> them into the print format that show_rca_mask() builds for the
+> nfsd_cb_recall_any event. Nothing declares an eval map for them
+> either, so trace_event_eval_update() has no substitution to apply at
+> module load, and the event's format file ships the enumerator names
+> verbatim. trace-cmd and perf cannot decode the bmval0 field.
 >=20
+> Declare the eval maps for the nine mask bits show_rca_mask() decodes.
+> The format then carries the shift counts as integers, the same shape
+> the SUNRPC trace points already emit from their BIT() flag decoders.
+>=20
+> Fixes: 638593be55c0 ("NFSD: add CB_RECALL_ANY tracepoints")
 > Signed-off-by: Chuck Lever <cel@kernel.org>
 > ---
->  fs/nfsd/xdr.h | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
+>  fs/nfsd/trace.h | 10 ++++++++++
+>  1 file changed, 10 insertions(+)
 >=20
-> diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-> index df540c940cef..52660b9f8dde 100644
-> --- a/fs/nfsd/xdr.h
-> +++ b/fs/nfsd/xdr.h
-> @@ -1,8 +1,8 @@
->  /* SPDX-License-Identifier: GPL-2.0 */
->  /* XDR types for nfsd. This is mainly a typing exercise. */
+> diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+> index 3fa4d63cd30f..4fb1f32a3787 100644
+> --- a/fs/nfsd/trace.h
+> +++ b/fs/nfsd/trace.h
+> @@ -1946,6 +1946,16 @@ TRACE_EVENT(nfsd_cb_offload,
+>  		__entry->fh_hash, __entry->count, __entry->status)
+>  );
 > =20
-> -#ifndef LINUX_NFSD_H
-> -#define LINUX_NFSD_H
-> +#ifndef _LINUX_NFSD_XDR_H
-> +#define _LINUX_NFSD_XDR_H
-> =20
->  #include <linux/vfs.h>
->  #include "nfsd.h"
-> @@ -175,4 +175,4 @@ bool svcxdr_encode_stat(struct xdr_stream *xdr, __be3=
-2 status);
->  bool svcxdr_encode_fattr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
->  			 const struct svc_fh *fhp, const struct kstat *stat);
-> =20
-> -#endif /* LINUX_NFSD_H */
-> +#endif /* _LINUX_NFSD_XDR_H */
+> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_RDATA_DLG);
+> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_WDATA_DLG);
+> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_DIR_DLG);
+> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_FILE_LAYOUT);
+> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_BLK_LAYOUT);
+> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_OBJ_LAYOUT_MIN);
+> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_OBJ_LAYOUT_MAX);
+> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_OTHER_LAYOUT_MIN);
+> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_OTHER_LAYOUT_MAX);
+> +
+>  #define show_rca_mask(x) \
+>  	__print_flags(x, "|", \
+>  		{ BIT(RCA4_TYPE_MASK_RDATA_DLG),	"RDATA_DLG" }, \
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
