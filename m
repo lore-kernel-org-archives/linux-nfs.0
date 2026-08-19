@@ -1,42 +1,44 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 15390443313
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 10:56:07 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8627B37CD59;
+	Wed, 19 Aug 2026 12:06:06 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787136969; cv=none; b=EMjDDiMa5w7nI6KEvvL7vVrlGqOvyN/IC8DAJhdbiMp6Wlc8P2RfiO/d3JGVIHRdYPphIlqTZ0MaG1GWAFNi1DdJUWWv7eBBpRxkJnGzgPwN5TLhB/9R4ibenh4b8UFDSOGlj4GiFD0REsAVmgd2ioCqGna8R2L0UiNwCkaulwc=
+	t=1787141167; cv=none; b=qsjzzH9tvV1FZ0bNcnFr9bIbZgOFO5P5EyqGPKG2zQLb774ffkLSQ2ZS1AgGwilnTKiJLKjJ5ZdP7rP0Ypfn7oaMNbKUMDgxKr+/cqaw9JL2p78yMsXOCL1viE5fO6v6/oYrrvzNUKJ7H6KAHkTSEVZHJi9KFbDvn3MVlIygp94=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787136969; c=relaxed/simple;
-	bh=mqNUIGTmGATq8jHnpjV74jA0Z6zJUa4KKMV8jD+7Y7Q=;
+	s=arc-20240116; t=1787141167; c=relaxed/simple;
+	bh=Rg6JeGgY2Qbj+FQQw5ZRYQp1FICjV6O17266adloyKY=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=scj5AL6gHfxn2LDTUwwko8yE+NTiq9N4FrLBYM32J/Uvl15KYLabphd4574qb81sjUuOPvh+ZNB1ppbH39JE2FCvzluNNnJuIOvMbYyV+cIn1funRZEfcOdugx0dYkftKHFrg/AJboz5Jgg3FLFW/BE9UN8fv3tT9+aBXZF4u38=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=LwH42gh4; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=gAiSCnm0xctNeIUQP8PbMpBegSqoixB1AGuc1uN+zGR3VGLzDuhCbVxtiHGa7jnTOr3maZXuxinG11gTs4z03I/lU9GeorCtNSpCOMYGcSDAclgROrMz2cQVdCWn2UPJufYLzC2DK9sKnEODkdCzuiQ2Xo5Qj9tgO6Ep8Ig/+LI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Y17dMajl; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="LwH42gh4"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 4AA491F000E9;
-	Wed, 19 Aug 2026 10:56:07 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Y17dMajl"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3BF101F000E9;
+	Wed, 19 Aug 2026 12:06:05 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787136967;
-	bh=rT3V72BfPRLWvO0m3QjHgTk8xazarFxs9mSWZfXpPlg=;
+	s=k20260515; t=1787141166;
+	bh=BS5C096pC0C1xWSzS2ONpD9vWsZo+5Ki+HkGWW0BLpU=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=LwH42gh4AsZsF2SWvDVPtSdM3PJ9Xq+joRUbMcGx8MCtAeS4T1bl9d6wPJq1pjklI
-	 /f8g5+bkMaS0PGGqGD1+nLvrO2Z4nCSZlHoCxUxMSn9E7y6hCZGPsoE6Uq8PhdCZFK
-	 CODx86jqiGyA2LY5ZX5z7DGfu/BevapqujybLamx21d4oSC6Ognpy5KX19lxhxysWY
-	 lpz1obKFZSZuhA8F5lAubiG1SegN6kLlwAyOYaIH8GgwYYygcKmaootti/CUa3r1nv
-	 7Do1z7rHznS3Fji6UGkOSfcjigZcDjtjWbPQiZH6LG55baFUhQ9U/Zu4ktQCUmzFmZ
-	 y9pSpLc5Tvu7A==
-Message-ID: <f658b824d4d1a09119725a985e411ea2d28baefa.camel@kernel.org>
-Subject: Re: [PATCH] NFSD: Resolve the recall-any mask names in the trace
- format
+	b=Y17dMajloCe2aOCVm4QCMFg45v3jzzqUTzN6i2Bk+vxTf8Ge9wI7VlcaMdcRKKxIQ
+	 GU9ep51aOcKd4d/bCgUa8D/IA24ZtIjxRsDSsA/iSD3wJo2Dfh1N46iU6GrTQmxf8F
+	 nKriFyiRehdm9ZtKlrWCuKx3mF3qUsM+3htGFtk33KqYNYwX2NzLamAZlte6K6Nd95
+	 bKRNeO2T3IyUiAQIUN0dR8V459cGTylIfcXdVyGxqo0h65pAuFxiBmUdxkPODD6SHi
+	 bhyYvsbNFVb98HBy37lcTGXZxKy3mOK2O9r1KmLa2Lg95Dr2uiPeXiLc9e704JvUgW
+	 HcHD3FLI02Nxg==
+Message-ID: <b1462b84906d030c65f6c6d8d9de46927e1f2c15.camel@kernel.org>
+Subject: Re: [PATCH 0/2] lockd: fix two bugs on nlmclnt_find_lockowner()
+ failure path
 From: Jeff Layton <jlayton@kernel.org>
-To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
- Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
- Talpey <tom@talpey.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 19 Aug 2026 06:56:05 -0400
-In-Reply-To: <20260818184151.31180-1-cel@kernel.org>
-References: <20260818184151.31180-1-cel@kernel.org>
+To: Ran Hongyun <ranhongyun1@huawei.com>, trondmy@kernel.org,
+ anna@kernel.org, 	cel@kernel.org, viro@zeniv.linux.org.uk,
+ bcodding@redhat.com
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, 
+	chengzhihao1@huawei.com, yangerkun@huawei.com, yi.zhang@huawei.com,
+ Shuangpeng Bai	 <shuangpeng.kernel@gmail.com>
+Date: Wed, 19 Aug 2026 08:06:03 -0400
+In-Reply-To: <20260819074641.1586137-1-ranhongyun1@huawei.com>
+References: <20260819074641.1586137-1-ranhongyun1@huawei.com>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -121,44 +123,37 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
-On Tue, 2026-08-18 at 14:41 -0400, Chuck Lever wrote:
-> RCA4_TYPE_MASK_* are enum constants, so the preprocessor cannot fold
-> them into the print format that show_rca_mask() builds for the
-> nfsd_cb_recall_any event. Nothing declares an eval map for them
-> either, so trace_event_eval_update() has no substitution to apply at
-> module load, and the event's format file ships the enumerator names
-> verbatim. trace-cmd and perf cannot decode the bmval0 field.
+nit: usually when you send a new version of a patchset you should
+declare it as "v2". So "PATCH v2 0/2", etc...
+
+Using the b4 command makes this easy to track.
+
+On Wed, 2026-08-19 at 15:46 +0800, Ran Hongyun wrote:
+> Both bugs are triggered when nlmclnt_find_lockowner() returns NULL
+> due to allocation failure in nlmclnt_proc():
 >=20
-> Declare the eval maps for the nine mask bits show_rca_mask() decodes.
-> The format then carries the shift counts as integers, the same shape
-> the SUNRPC trace points already emit from their BIT() flag decoders.
+> Patch 1 fixes a NULL pointer dereference: nlmclnt_locks_init_private()
+> unconditionally sets fl->fl_ops before checking whether owner is NULL,
+> so locks_release_private() later calls fl_release_private which
+> dereferences the NULL owner. Fix by inlining the function so that
+> fl_ops is only set after the owner is valid.
 >=20
-> Fixes: 638593be55c0 ("NFSD: add CB_RECALL_ANY tracepoints")
-> Signed-off-by: Chuck Lever <cel@kernel.org>
-> ---
->  fs/nfsd/trace.h | 10 ++++++++++
->  1 file changed, 10 insertions(+)
+> Patch 2 fixes a reference leak: call->a_callback_data has not been
+> assigned when nlmclnt_release_call() is invoked on the error path,
+> so nlmclnt_ops->nlmclnt_release_call(NULL) skips cleanup and the
+> references taken by nlmclnt_alloc_call() are never freed. Fix by
+> moving the assignment before the lockowner check.
 >=20
-> diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-> index 3fa4d63cd30f..4fb1f32a3787 100644
-> --- a/fs/nfsd/trace.h
-> +++ b/fs/nfsd/trace.h
-> @@ -1946,6 +1946,16 @@ TRACE_EVENT(nfsd_cb_offload,
->  		__entry->fh_hash, __entry->count, __entry->status)
->  );
-> =20
-> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_RDATA_DLG);
-> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_WDATA_DLG);
-> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_DIR_DLG);
-> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_FILE_LAYOUT);
-> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_BLK_LAYOUT);
-> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_OBJ_LAYOUT_MIN);
-> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_OBJ_LAYOUT_MAX);
-> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_OTHER_LAYOUT_MIN);
-> +TRACE_DEFINE_ENUM(RCA4_TYPE_MASK_OTHER_LAYOUT_MAX);
-> +
->  #define show_rca_mask(x) \
->  	__print_flags(x, "|", \
->  		{ BIT(RCA4_TYPE_MASK_RDATA_DLG),	"RDATA_DLG" }, \
+> Ran Hongyun (2):
+>   lockd: fix NULL pointer dereference in nlmclnt_locks_release_private
+>   lockd: fix reference leak on lockowner allocation failure in
+>     nlmclnt_proc
+>=20
+>  fs/lockd/clntproc.c | 19 +++++++------------
+>  1 file changed, 7 insertions(+), 12 deletions(-)
+
+New version looks good. Note it looks like Shuangpeng Bai sent a less
+complete patch for this problem back in July that I just noticed. Your
+version seems more correct though.
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
