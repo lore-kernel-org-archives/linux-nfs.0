@@ -1,43 +1,42 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C4AD3424D64
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 10:51:51 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 816CD44BCBE
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 10:52:03 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787136712; cv=none; b=uzGlHih3kRm7Fof5u5gkoesQS/NeIhpchqKbFOe6pU1D/LPxOj+zMu3lASQ2lr2Vlt896HXQARVPB1nrGZmwn49HUeLUXiv3+wdZ/kw3Pz3R26qE6TnlvsTy2COk0JIpUVB8b1RSVUDX4R5EY4ejXueHh9FXThZTLNmcoxOjshU=
+	t=1787136724; cv=none; b=FiSpr75hvmpnvF6dH6p8A18M86OlflOk1ttFGqzmPGBIssiuYBE0LHWQE3d3WMbVu6CtBnrwgw4pX3zz4/0y6ZOY7omU5ZeOBKt9G0kdB3k5nU6fB/teqljDDgwQIbluKEpD/0jusyOpIWTHiHjtuldPLxHygLhxtWdHrGdEnSk=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787136712; c=relaxed/simple;
-	bh=rpJG/IvtqxWD6sBfGxrF0Q5AJgl4OoVLqRPTlthU1qU=;
+	s=arc-20240116; t=1787136724; c=relaxed/simple;
+	bh=g2gozsSoT5VSKj3WdQULUE24vUw7Fc5w9QiyC2kzk/k=;
 	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=Hrr4ChOjcqC7fSJLFsnRVpQQp1giXIMjDCMl5//Z1crIML06IUbE2bhpII9Prj+ozSIb3+KgW/eSJLZ/Gn4B5GzA9VZuuW8Y8ELlYByZfrvIIz2pUttU60bKVXTc/VFtK8IZLS+XsnYiSUTZO6sBAjX9xRTQx6CERwT7May1g2Y=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Z4hKqH4b; arc=none smtp.client-ip=100.103.45.18
+	 Content-Type:MIME-Version; b=k7hhPvT8hfDYW0VxY5ng5Tvu1J6hBRb6sHSMkfKOJzBXnTfQqrfNStK1V6Ac4qrdeT+QAD5IEXKBjz+rTIwiH/3ZSMvHT0r94nLCcw5Sqx1olOyn0NXb6ESz7Pzw2pXUqIg02+ieWpKQEnsOCt1ynWBJfcClgRdvyd+iN1VXI2Y=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=StE1SUa8; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Z4hKqH4b"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 188751F000E9;
-	Wed, 19 Aug 2026 10:51:51 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="StE1SUa8"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 789C01F000E9;
+	Wed, 19 Aug 2026 10:52:02 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787136711;
-	bh=RYPkbhrqQgWH+trb8MoV1c5b9/X3RVcSZ8QQp+b/thw=;
+	s=k20260515; t=1787136723;
+	bh=gZpY++ZqSbUQ//ZtNSH/QmRFXzMdoKOX3hYvd07KSvY=;
 	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=Z4hKqH4bXmHfjiqpzyMvt/1wKRGHkaokgGRyds/urQfIfj5FY+r0rAj8B6Nvlq3Vd
-	 xamfGwgTRlxzCR8zaffYD3xvmsAcoiYGpqEQbRTfSAlEr4+qy0tnq1StqY3RqXlMjp
-	 PflWkx3/Nk2/mKIKvCbDWH595nwX9ofRLioFq/Y2Fw568zgNa9l5+BklZ+Xh/kg4dV
-	 VGWwNJ0hGKQUC5xnh4Q48T+G7SeCP9mQwli1jwJW1JxNZuUORLznrwMTPnuGi8LHZH
-	 5fpdaq5RzruG8dC/xopOZ8/QOgVg5sN3yRxWx0DxIDwuye0e5IVaWT68KLRZMXeN4Q
-	 EbfLpGYoRaNkg==
-Message-ID: <72f0650a983f9af16f774a772f01ee1e081dc381.camel@kernel.org>
-Subject: Re: [PATCH 2/3] NFSD: Include <linux/nfs_fh.h> where struct nfs_fh
- is used
+	b=StE1SUa8CzFuEopGyfdJtFviNOFc9By04a6chlQGirnU4FdHJrbLDHO0VgYSFX9Wc
+	 MEP75Ps9iLgeX4XbojLTZXj3WZOsrNSfe713egSqIgHcXNSHp5p5jpr8ZwAvUZpms2
+	 lUck2AmtavoYGYrsVqeLdt8YmlwnGR+ngtusRH4dPiXSAfwzvs//2Q2X927/HOrSYl
+	 lIt610oTIsq7BUvPJiL+Y9lyOpc5cI7HSGP9fNvXvJzdxU85NmiuOgZ6pHtRQCa3Jp
+	 DElRlTA5Yp07l/BrHIIR5RkIghC2Cm0SGKNqa+/2O2GbmZGAK32AKOQflHl8ZmnvCG
+	 Sc467IRz57E/w==
+Message-ID: <dab1f7a1c5c349eda6539c1059bd2364f7ed718c.camel@kernel.org>
+Subject: Re: [PATCH 3/3] NFSD: Clean up header guards in fs/nfsd/xdr.h
 From: Jeff Layton <jlayton@kernel.org>
 To: Chuck Lever <cel@kernel.org>, NeilBrown <neil@brown.name>, Olga
  Kornievskaia <okorniev@redhat.com>, Dai Ngo <dai.ngo@oracle.com>, Tom
  Talpey <tom@talpey.com>
 Cc: linux-nfs@vger.kernel.org
-Date: Wed, 19 Aug 2026 06:51:49 -0400
-In-Reply-To: <20260818140035.12740-2-cel@kernel.org>
+Date: Wed, 19 Aug 2026 06:52:00 -0400
+In-Reply-To: <20260818140035.12740-3-cel@kernel.org>
 References: <20260818140035.12740-1-cel@kernel.org>
-	 <20260818140035.12740-2-cel@kernel.org>
+	 <20260818140035.12740-3-cel@kernel.org>
 Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
  keydata=mQINBE6V0TwBEADXhJg7s8wFDwBMEvn0qyhAnzFLTOCHooMZyx7XO7dAiIhDSi7G1NPxw
  n8jdFUQMCR/GlpozMFlSFiZXiObE7sef9rTtM68ukUyZM4pJ9l0KjQNgDJ6Fr342Htkjxu/kFV1Wv
@@ -123,44 +122,34 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 
 On Tue, 2026-08-18 at 10:00 -0400, Chuck Lever wrote:
-> struct nfsd4_copy embeds a struct nfs_fh, and nlm_fopen() reads the
-> size and data fields of one. Neither fs/nfsd/xdr4.h nor
-> fs/nfsd/lockd.c includes the header that defines the type; both
-> reach it by way of nfsd.h, which pulls in <linux/nfs.h>.
->=20
-> Add the direct include to both files, so nfsd.h can later drop the
-> <linux/nfs.h> it carries for no use of its own.
+> Make the header guards less ambiguous about their provenance.
 >=20
 > Signed-off-by: Chuck Lever <cel@kernel.org>
 > ---
->  fs/nfsd/lockd.c | 1 +
->  fs/nfsd/xdr4.h  | 2 ++
->  2 files changed, 3 insertions(+)
+>  fs/nfsd/xdr.h | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
 >=20
-> diff --git a/fs/nfsd/lockd.c b/fs/nfsd/lockd.c
-> index 5ec0f5456063..f24e45dc37a0 100644
-> --- a/fs/nfsd/lockd.c
-> +++ b/fs/nfsd/lockd.c
-> @@ -9,6 +9,7 @@
+> diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
+> index df540c940cef..52660b9f8dde 100644
+> --- a/fs/nfsd/xdr.h
+> +++ b/fs/nfsd/xdr.h
+> @@ -1,8 +1,8 @@
+>  /* SPDX-License-Identifier: GPL-2.0 */
+>  /* XDR types for nfsd. This is mainly a typing exercise. */
 > =20
->  #include <linux/file.h>
->  #include <linux/lockd/bind.h>
-> +#include <linux/nfs_fh.h>
+> -#ifndef LINUX_NFSD_H
+> -#define LINUX_NFSD_H
+> +#ifndef _LINUX_NFSD_XDR_H
+> +#define _LINUX_NFSD_XDR_H
+> =20
+>  #include <linux/vfs.h>
 >  #include "nfsd.h"
->  #include "nfserr.h"
->  #include "vfs.h"
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 7bbb375874ef..b841bc462dac 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -37,6 +37,8 @@
->  #ifndef _LINUX_NFSD_XDR4_H
->  #define _LINUX_NFSD_XDR4_H
+> @@ -175,4 +175,4 @@ bool svcxdr_encode_stat(struct xdr_stream *xdr, __be3=
+2 status);
+>  bool svcxdr_encode_fattr(struct svc_rqst *rqstp, struct xdr_stream *xdr,
+>  			 const struct svc_fh *fhp, const struct kstat *stat);
 > =20
-> +#include <linux/nfs_fh.h>
-> +
->  #include "state.h"
->  #include "vfs.h"
-> =20
+> -#endif /* LINUX_NFSD_H */
+> +#endif /* _LINUX_NFSD_XDR_H */
 
 Reviewed-by: Jeff Layton <jlayton@kernel.org>
