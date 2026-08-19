@@ -1,74 +1,58 @@
-Received: from mail-qv1-f41.google.com (mail-qv1-f41.google.com [209.85.219.41])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+Received: from pdx-out-012.esa.us-west-2.outbound.mail-perimeter.amazon.com (pdx-out-012.esa.us-west-2.outbound.mail-perimeter.amazon.com [35.162.73.231])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F056928C037
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Aug 2026 00:00:15 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.219.41
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 55B9134A794;
+	Wed, 19 Aug 2026 01:51:24 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=35.162.73.231
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787097617; cv=none; b=bEVJK98B6rbG/AZ+EdbxS8R4i4U3SxovV0PwUVnNw3cAE7AzS6NtwSEXP/+gISKWPJvhHg/3UGkio+daLe6GjPL0qGvOgXECH8KDiX2zfoUQOlftGn1huYhDfUU7LQOj91U7zm9oQwq0NCUtWrlZhXTDCSLqWatl98ZaNd9ujIo=
+	t=1787104285; cv=none; b=fsLd30S5OjSsJzoqnxj8CC7E+uZFiZ79tsVDd9NnidJIACIH663oo2YKPAONd0vtAHX52NKy19y7jFMmuXSIJavZ7oSrpLPOhgy09F03Ra1PsZfcVgiJh11z/rASOFujTeRRzuYr9b3XXeb7fgNmz0AlNCFJAjc0mjMPx2JdGcY=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787097617; c=relaxed/simple;
-	bh=RGcF+u9DUavHVUXEAyTYRPC2JvtFSIsGnRlyN4lI1r0=;
-	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=R7o8uggM+CeJBVfdjxPsS5Q3gtMbJpptgHRVw73xNFv4I/JTliBA68QlsbfErOK3wH1BKhngxBB2sd4k+v/pPYwutCvNbFam08AZr+Bgu/T7r/RanEfcTjlIxWz7t0QH1+iDOPotyKNsyvSdmPI+Z96Iyf35pN+wnvaZwuIAEZc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com; spf=pass smtp.mailfrom=gmail.com; dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b=ColxfEZ8; arc=none smtp.client-ip=209.85.219.41
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=gmail.com
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=gmail.com
+	s=arc-20240116; t=1787104285; c=relaxed/simple;
+	bh=TtDXPjSQgh6eXszht/Uw0nqmkVVPuouayoXzs+66SyQ=;
+	h=From:To:CC:Subject:Date:Message-ID:MIME-Version:Content-Type; b=SVXXgtWukDMHIKuR224VgwTJWO9TsY98cvDs/pVp9MmOiXj+NN4uKUR8Oo3WHwnuxEgk0yi6OYeyDm8B3IKysnLkVM2pK3IQGO3VyIj4heQ4vERDujjEgfxLWKnvW8lyKG0CxgwaKRT0wN1LPlOxK+ipSkGCKxdyaYMXl7NVPyk=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.com; spf=pass smtp.mailfrom=amazon.com; dkim=pass (2048-bit key) header.d=amazon.com header.i=@amazon.com header.b=mbFNXNKK; arc=none smtp.client-ip=35.162.73.231
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=amazon.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=amazon.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=gmail.com header.i=@gmail.com header.b="ColxfEZ8"
-Received: by mail-qv1-f41.google.com with SMTP id 6a1803df08f44-8f29ec73064so3792936d6.1
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Aug 2026 17:00:15 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=amazon.com header.i=@amazon.com header.b="mbFNXNKK"
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=gmail.com; s=20251104; t=1787097615; x=1787702415; darn=vger.kernel.org;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
-        bh=bhMmjxVOtiNQPWpFJIbQMFC0gpto3yw0yEJp5AQOy60=;
-        b=ColxfEZ8pO5DIFHtVbvW5GUKNKrVHrwO0NkOQc1Md9LkGQevZdSBiN/NSTIwFTKJfH
-         +LUGwAAY1UTpx7fUMQQVICDNKz+M4P9kj+JGv1VWnjL3lLqyvC+0nQxp12kHcX7tWOUp
-         1iwZBv1OaK+dogCwQ01y88b1KMZKy8/0ePnV3sql4KFIV17Biz8sY8XwdRqozJd/vdzc
-         +xSE/70+V4mBWQZaRkGQt+uuS5ULkPPP737NZBPQr4EgZjLqQyttXIVMoIx6qKoqpw3F
-         O7ug3TVkttTp5ZbpZm7rD6MYq9hQIpScIITtkkrGDWFdn2PKgYHdpcSo23x+QCdBBpEO
-         s8Yg==
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787097615; x=1787702415;
-        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
-         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
-         :message-id:reply-to:content-type;
-        bh=bhMmjxVOtiNQPWpFJIbQMFC0gpto3yw0yEJp5AQOy60=;
-        b=IK+jIfk0IykRcYjhYV7zlaAy2DBM3XHYnUQWN3Loz52waGxEfaQShWlmpXVxVvLCGc
-         pDs6x5+QIBcy3aBO9TDQPtMAlplI1EQQSoR9p4YaNWa3aUHSqRHkAeXX8o5FWbueZTTL
-         NRC3ZIgytIm1CaXBTlbL0PUONh0azTlOfirvcJzm1alNFYnbL2b6iOkCq4aAFs8hnrqW
-         HCkBDtWMq/aCaOSZw2n3dqGfINGz/pEoABHCa9blKxaYgusK3MBTAWtG5XHxrPqDCG4/
-         7uGNRa+Eg+ZF5kExidNYfRNmIxIY6PFqWbswMlcObX61a9l/ZrGiHxQo+EW3I4eqstvQ
-         Oj3Q==
-X-Forwarded-Encrypted: i=1; AHgh+RqNBq+WBsXy0/d/9I5SSlW+hhyiIEffa1/0/nCzapkSrgrRI8KLWiZsh2wzF7xGIy2vPVwzyeLOa24=@vger.kernel.org
-X-Gm-Message-State: AOJu0YwrrKC2JyjtGo/J4eD0MflNnaDYbvwjjAelBBLpfbVGj1TqkF4k
-	jkc57oKShrGPA42DJ9Tzw4G/PNjEx1v2GT5QVWBlqhvu/aiaRXDdFdmN
-X-Gm-Gg: AR+sD119PWy2M0rzPfYuxArR1F4xzarOU/G5+AwKkmz17oSAYdsmMa4DiPzUrOE6k9H
-	diJccllDAxMOd5IZ0pOEHAZHziFsqghTlMU3FC/BlS3PZHf6if9TrYjUxiuV5SUMoRrCCjBx6IR
-	n7tJ2hr62QBIrQN5oC+Y23e8H0tVXjkeSXI4yASr0t4MPRI6lGTbdh58EjiAQmH17q3K5fQ884M
-	Cv8d/DeCy1yWyj2ValMJq7PLzqyc6pDEwQsaB2NnJFzx3CS+HbhaHHN1VuybFhcQcVJTbmezzTY
-	yvgK4p5kPXg/x1E+UKuh4Dun7hKaoaV11W54ILzKk/HjIfvJe6TahwqKtVb9YmXMiUOx7uYo7KQ
-	SG5kmUweeG7e9dyfUBcMfVSHZIsKGO0NMDIhD0CdbR1ufXy3uEzBy3UUwG+XnpKS0iBxaWkNRdO
-	zqc6c5Dc/rwssE4zab6IUC4GLaZBP3aKlwH7+3Zld6fy9/HYFBSG4Tf8k472bqIxITVo3Tu8WSd
-	lw5GvyKJAim4HAtkg==
-X-Received: by 2002:a05:620a:839a:b0:92e:7ba3:73e5 with SMTP id af79cd13be357-9371e670fdfmr120525385a.42.1787097614629;
-        Tue, 18 Aug 2026 17:00:14 -0700 (PDT)
-Received: from i4-l-hqh5357-03.ad.psu.edu ([130.203.139.71])
-        by smtp.gmail.com with ESMTPSA id af79cd13be357-9372058d4f2sm12424185a.40.2026.08.18.17.00.14
-        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Tue, 18 Aug 2026 17:00:14 -0700 (PDT)
-From: Shuangpeng Bai <shuangpeng.kernel@gmail.com>
-To: Chuck Lever <cel@kernel.org>,
-	Jeff Layton <jlayton@kernel.org>,
-	Trond Myklebust <trondmy@kernel.org>,
-	Anna Schumaker <anna@kernel.org>
-Cc: Shuangpeng Bai <shuangpeng.kernel@gmail.com>,
-	linux-nfs@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-Subject: [BUG] lockd: KASAN: slab-use-after-free in nlm_async_call
-Date: Tue, 18 Aug 2026 19:58:06 -0400
-Message-ID: <20260818235808.3458075-1-shuangpeng.kernel@gmail.com>
-X-Mailer: git-send-email 2.43.0
+  d=amazon.com; i=@amazon.com; q=dns/txt; s=amazoncorp2;
+  t=1787104284; x=1818640284;
+  h=from:to:cc:subject:date:message-id:mime-version:
+   content-transfer-encoding;
+  bh=fNFxyzwXx4egvQoky0aNg43HXU0YoaIERl3Va15WIPc=;
+  b=mbFNXNKKMawYQVELEmD/knWjYNxI0V8pPz7IM7tKG6P7p4AgfVM5KOm/
+   J40Eijw5mX5As1qc8CsHXB+a5CuUNZsih5xOi49qCJYNg2sFf37JR+LRC
+   rLX8YK3odVAhhc84Vx2HA/sNAhCIkosNMB5mDat4UK/NYAuPpCI/S+XCx
+   jE+r7uofy3qOFZD0B9iu/oqp3YNRn6KwASPF699VPfYYhJflZF5A3yu8M
+   JDb7iVK1jj2IycFti+PsVEB585GVJV6jOkh3de8UE+hKyDOTYkAjUEBEK
+   Ql3QNf/VnjV1LZpuQi9ysnCNhiqbFJOIWzSgm8J5Br680PJGpyEbik03u
+   w==;
+X-CSE-ConnectionGUID: XJWysQakTC6E3yob1hOB7w==
+X-CSE-MsgGUID: TJN4JoM3QT2FFxDRfTRyqg==
+X-IronPort-AV: E=Sophos;i="6.25,230,1779148800"; 
+   d="scan'208";a="26129028"
+Received: from ip-10-5-6-203.us-west-2.compute.internal (HELO smtpout.naws.us-west-2.prod.farcaster.email.amazon.dev) ([10.5.6.203])
+  by internal-pdx-out-012.esa.us-west-2.outbound.mail-perimeter.amazon.com with ESMTP/TLS/ECDHE-RSA-AES256-GCM-SHA384; 19 Aug 2026 01:51:24 +0000
+Received: from EX19MTAUWB002.ant.amazon.com [205.251.233.111:25548]
+ by smtpin.naws.us-west-2.prod.farcaster.email.amazon.dev [10.0.2.175:2525] with esmtp (Farcaster)
+ id 631cbdfd-0931-4b71-8847-bb25d97b3089; Wed, 19 Aug 2026 01:51:23 +0000 (UTC)
+X-Farcaster-Flow-ID: 631cbdfd-0931-4b71-8847-bb25d97b3089
+Received: from EX19D001UWA001.ant.amazon.com (10.13.138.214) by
+ EX19MTAUWB002.ant.amazon.com (10.250.64.231) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.2562.45;
+ Wed, 19 Aug 2026 01:51:23 +0000
+Received: from dev-dsk-jamz-1e-e35f4cd9.us-east-1.amazon.com (10.189.35.140)
+ by EX19D001UWA001.ant.amazon.com (10.13.138.214) with Microsoft SMTP Server
+ (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA) id 15.2.2562.45;
+ Wed, 19 Aug 2026 01:51:22 +0000
+From: Jimmy Zuber <jamz@amazon.com>
+To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>
+CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: [PATCH] NFS: Fix stale negative cache on failed nfs_mkdir()
+Date: Wed, 19 Aug 2026 01:51:11 +0000
+Message-ID: <20260819015111.2743908-1-jamz@amazon.com>
+X-Mailer: git-send-email 2.50.1
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -76,64 +60,63 @@ List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
+Content-Type: text/plain
+X-ClientProxiedBy: EX19D036UWB001.ant.amazon.com (10.13.139.133) To
+ EX19D001UWA001.ant.amazon.com (10.13.138.214)
 
-Hi Kernel Maintainers,
+Since commit 8376583b84a1 ("nfs: change mkdir inode_operation to return
+alternate dentry if needed"), nfs_mkdir() no longer drops the dentry on
+RPC failure.  A negative cache value can then result in spurious ENOENT
+results for further operations within that directory, such as open or
+stat.
 
-I hit the following report while testing current upstream kernel:
+We observed this breaking some applications where an EEXIST on mkdir
+caused the application to assume the directory to exist, only to fail
+operations within that directory due to the retained negative cache
+entry.  The other create paths, nfs_create() and nfs_mknod(), still drop
+the dentry on failure.  This patch restores the previous behavior.
 
-KASAN: slab-use-after-free in nlm_async_call
+Fixes: 8376583b84a1 ("nfs: change mkdir inode_operation to return alternate dentry if needed")
+Cc: stable@vger.kernel.org # v6.15+
+Signed-off-by: Jimmy Zuber <jamz@amazon.com>
+---
 
-on commit: 3aa1dcaa4f6f5ae08936491e08bd456f331f2d40 (2026-08-13)
+We reproduced this against a local knfsd export over NFSv4.1.  The export is
+mounted several times with "nosharecache" so that each mount acts as an
+independent client with its own dcache:
 
-To help trigger the bug more reliably, we applied a minimal diagnostic patch
-that only adds delays and print statements.
+  # /etc/exports
+  /srv/nfs 127.0.0.1(rw,sync,no_subtree_check,no_root_squash,fsid=0)
 
-The reproducer and .config files are here.
-https://gist.github.com/shuangpengbai/e0569a211da5a1738fb91b1833465662
+  for i in $(seq 0 5); do
+      mount -t nfs4 -o vers=4.1,nosharecache,acdirmin=30,acdirmax=60 \
+          127.0.0.1:/ /mnt/nfs$i
+  done
 
-I'm happy to test debug patches or provide additional information.
+For each of 40 new cache/<id> directories, every mount stats the directory to
+seed a negative entry, then all mounts race to mkdir it.  The winner writes a
+file and renames it, and the losers that got EEXIST then read that file back.
+On a vanilla v6.17 kernel, the 200 loser reads were:
 
-Reported-by: Shuangpeng Bai <shuangpeng.kernel@gmail.com>
+  unpatched:   read OK   0 / ENOENT 200
+  patched:     read OK 200 / ENOENT   0
 
-[  193.891339][ T8377] BUG: KASAN: slab-use-after-free in nlm_async_call+0xd6/0x230
-[  193.893522][ T8377] Read of size 8 at addr ffff88811b04c808 by task lockd/8377
-[  193.895154][ T8377]
-[  193.895574][ T8377] Call Trace:
-[  193.895578][ T8377]  <TASK>
-[  193.895581][ T8377]  dump_stack_lvl+0x26/0x80
-[  193.895592][ T8377]  print_report+0x147/0x790
-[  193.895619][ T8377]  kasan_report+0xc3/0x100
-[  193.895631][ T8377]  nlm_async_call+0xd6/0x230
-[  193.895688][ T8377]  nlmsvc_retry_blocked+0x61c/0x800
-[  193.895695][ T8377]  lockd+0x144/0x1c0
-[  193.895702][ T8377]  kthread+0x2f2/0x3c0
-[  193.895722][ T8377]  ret_from_fork+0x27d/0x670
-[  193.895747][ T8377]  ret_from_fork_asm+0x1a/0x30
-[  193.895754][ T8377]  </TASK>
-[  193.913276][ T8377] Allocated by task 8377 on cpu 1 at 181.704904s:
-[  193.914652][ T8377]  __kmalloc_cache_noprof+0x248/0x4b0
-[  193.915123][ T8377]  nlm_alloc_call+0x4b/0x1b0
-[  193.915527][ T8377]  nlmsvc_lock+0x3d2/0xfc0
-[  193.915922][ T8377]  nlm4svc_do_lock+0x291/0x480
-[  193.916341][ T8377]  nlmsvc_dispatch+0xac/0x1b0
-[  193.916752][ T8377]  svc_process_common+0x1229/0x1700
-[  193.917211][ T8377]  svc_process+0x26b/0x560
-[  193.917601][ T8377]  svc_recv+0x1690/0x1c70
-[  193.917986][ T8377]  lockd+0x14e/0x1c0
-[  193.919766][ T8377] Freed by task 8392 on cpu 1 at 192.290946s:
-[  193.921551][ T8377]  kfree+0x134/0x450
-[  193.921895][ T8377]  nlmsvc_release_block+0x231/0x290
-[  193.922345][ T8377]  nlmsvc_traverse_blocks+0x139/0x1b0
-[  193.922816][ T8377]  nlm_traverse_files+0x1aa/0xa00
-[  193.923250][ T8377]  nlmsvc_free_host_resources+0x12/0x60
-[  193.923726][ T8377]  nlm_shutdown_hosts_net+0x127/0x280
-[  193.924193][ T8377]  lockd_down+0xd5/0x1c0
-[  193.924561][ T8377]  nfsd_destroy_serv+0x265/0x400
-[  193.924994][ T8377]  nfsd_shutdown_threads+0xbb/0x100
-[  193.925443][ T8377]  nfsd_umount+0x3b/0xc0
-[  193.925815][ T8377]  deactivate_locked_super+0x9c/0x230
-[  193.926279][ T8377]  cleanup_mnt+0x3a8/0x420
+ fs/nfs/dir.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index d812179..f0b493a 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2437,6 +2437,8 @@ struct dentry *nfs_mkdir(struct mnt_idmap *idmap, struct inode *dir,
+ 	trace_nfs_mkdir_enter(dir, dentry);
+ 	ret = NFS_PROTO(dir)->mkdir(dir, dentry, &attr);
+ 	trace_nfs_mkdir_exit(dir, dentry, PTR_ERR_OR_ZERO(ret));
++	if (IS_ERR(ret))
++		d_drop(dentry);
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(nfs_mkdir);
+-- 
+2.51.0
 
-Best,
-Shuangpeng
