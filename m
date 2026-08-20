@@ -1,34 +1,34 @@
 Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA29A4734C0;
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA1153C1F45;
 	Thu, 20 Aug 2026 19:34:08 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787254450; cv=none; b=mpliajV4zamGoBELY2LLv1+JVLgaU26TmJJiii/FZ/1FGEDFQejE0GZPGzjQ6THjUqBuWgzC9KTuc8UFcZZrpgP0ovCs3+B/Rtryux6zC4HQrd2iFGiHLv4ufvUhW0LE4NoATLtM1ypPQgQuPDEphyPSQ4VsvorViZjPIBVPKJs=
+	t=1787254451; cv=none; b=PM8hOWg/dTjKu6uUKlo7zYBFxmi3BbpMwdwwtNx16AOqKPM8zB15wcWj1vRkjVeYpXwaqSqxL9wabrTP+FapG0iBb9SMzJ/8r1AybSrWQj0CW4X+f2Bf97PnAQUh7heny17Y8ap5nHAcmRf3qZr8mZmj4RFnFL5+QTWl4u5Mr38=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787254450; c=relaxed/simple;
-	bh=tOOgypxGFpbsd2maQfCxTl7AzpPdlKdMjXMjvS5RTJE=;
+	s=arc-20240116; t=1787254451; c=relaxed/simple;
+	bh=/tt+ZZ+YeQE4vNhe6t1V7fl6hqWMM3vqiCf4Bb37Vtk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=bMsMhtF9VwjuG7C/3pNQJwbCjsjdYRwJoMgK9WXz01lX6+CaV6AXhfj8AElHN10FBosGRtCParwzduOqQf7dN66ksn1963WGg0tmAjazhKiedJPeylG8OA/H8Xty0KGtm1n96amXjH/OMshTCumKWf7opwzzwdhaqSJcZ3dYMtk=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=c0JOFDjn; arc=none smtp.client-ip=90.155.50.34
+	 MIME-Version; b=YlWl7eJmTxVyq3xOuczlA/nhk6zMsGHmGwpCFm/JNZQeiiY6B7/eXEAQpMb9r8kBeQj0fpi1qrBrLPG+Mw1TIoJ5rz1K0QwGE5/S9lx+HvMVAMlUingbsbW8va6lRNWWTz72v5PlQ/fTV2I4pm2i4H3orRs0Kl5HZcmOzjU8CD0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=ksuF7ORq; arc=none smtp.client-ip=90.155.50.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="c0JOFDjn"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="ksuF7ORq"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
 	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
 	Content-Type:Content-ID:Content-Description;
-	bh=z1vvnVo1qN72SUUfR1JNLXgFtnDutTVMaAZGTKbqCPk=; b=c0JOFDjnq5+Q3iuUmyoZ/KXCC/
-	0dp/pEOPqaxq681nb8dhxypup5ezuM0vnxiMcxGmY4OFP8fWY2yyJqvx/rp6xuk/AuRT/Dd4OBIk3
-	zkrbV7TkD+j2Xvx3d83NE75fnefLTo7KvhhXTeQlUkJEH8KmpIYcLno3JO+/Q2Ro7UBR32K3AERO5
-	Qvh+FkwGEeSdmlfQNEaTFPyvJ/wEPf/HNfbB6hhFzfsMeJeBLbWpNy1JAdWNoBCg1lFhf7LbgzJLx
-	28ROfB3JkhRlbVxV9M6QbPOQ8WpJ7e8t4Eifi2SNjELqznhL011t2n9mAPNtbb7teYNStDhOvLKV2
-	DqD0iRVw==;
+	bh=bG85xRuzHVVqZ8P0/h1shN90I4cE/3g+AWY/WvJgU1A=; b=ksuF7ORq0L+VtcJ1VQiotclBx7
+	+sYXsMMqsaooFkyGOfi5USXd/tuS+32DcHRgo9+VWhWqeCn4zO/50qMPy0vxjFrHmN7TuGbokMdGN
+	sVaVqlM5RyRE/m9fayNF3VnTVVI2q1YNF9ZfgkMDMGlrLVuwjL7614TCd564e34ib86Kgt0GYa0qx
+	2j8q3B3n7Ho4HD8+C9KUQaWYaO1BLuTgCg8og5lZUraVVBSQ7LFXFfeEtQmZaOq94xYNsSfs9LxYQ
+	Zqm8ADQMOEBodO1e+nns5+X3cDZUr5VZSL5VN+tXM41zX5J+6zWnJcLyDBYqIQjJ7lE+dAwzyFaHV
+	54EOK2bQ==;
 Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wx8WH-0000000GALl-1nPQ;
-	Thu, 20 Aug 2026 19:33:45 +0000
+	id 1wx8WG-0000000GALb-3TwJ;
+	Thu, 20 Aug 2026 19:33:44 +0000
 From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To: Christian Brauner <brauner@kernel.org>
 Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -49,9 +49,9 @@ Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
 	linux-nfs@vger.kernel.org,
 	devel@lists.orangefs.org,
 	Pavel Begunkov <asml.silence@gmail.com>
-Subject: [PATCH 7/7] Remove folio_launder()
-Date: Thu, 20 Aug 2026 20:33:40 +0100
-Message-ID: <20260820193343.3852967-8-willy@infradead.org>
+Subject: [PATCH 2/7] fuse: Use filemap_invalidate_pages()
+Date: Thu, 20 Aug 2026 20:33:35 +0100
+Message-ID: <20260820193343.3852967-3-willy@infradead.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260820193343.3852967-1-willy@infradead.org>
 References: <20260820193343.3852967-1-willy@infradead.org>
@@ -63,138 +63,247 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-When we do direct I/O, we need to evict any page cache that overlaps
-the range in the file.  First we write back any dirty folios in the
-range, then we lock each folio and remove it from the CPU page tables.
-This leaves a wide window for userspace to re-dirty the folio by storing
-to a shared writable mmap.
+FUSE relies on invalidate_inode_pages2() / invalidate_inode_pages2_range()
+doing writeback by calling fuse_launder_folio().  While this works, it
+is inefficient as each page is written back and waited for individually.
+Far better to call filemap_invalidate_pages() which will do a bulk write
+first, then remove the page cache.
 
-Many filesystems respond to this situation by failing the call to
-release_folio(), but some try to writeback the dirty folio again, formerly
-in their release_folio() method and now in their launder_folio() method.
-
-Remove this inconsistency between filesystems by checking
-whether the folio is dirty in the VFS and failing the call to
-folio_unmap_invalidate().  Since we hold the folio locked and unmapped
-at this time, there is no way to dirty the folio after this point.
+With this done, fuse_launder_folio() no longer needs to exist so
+delete it.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- Documentation/filesystems/locking.rst |  8 --------
- Documentation/filesystems/vfs.rst     |  6 ------
- include/linux/fs.h                    |  1 -
- mm/truncate.c                         | 15 ++-------------
- 4 files changed, 2 insertions(+), 28 deletions(-)
+ fs/fuse/dax.c   | 15 +++------------
+ fs/fuse/dir.c   | 12 +++++++-----
+ fs/fuse/file.c  | 46 ++++++----------------------------------------
+ fs/fuse/inode.c | 17 +++++------------
+ 4 files changed, 21 insertions(+), 69 deletions(-)
 
-diff --git a/Documentation/filesystems/locking.rst b/Documentation/filesystems/locking.rst
-index 08d01bc62c31..fd11f5c5d91e 100644
---- a/Documentation/filesystems/locking.rst
-+++ b/Documentation/filesystems/locking.rst
-@@ -261,7 +261,6 @@ prototypes::
- 	int (*direct_IO)(struct kiocb *, struct iov_iter *iter);
- 	int (*migrate_folio)(struct address_space *, struct folio *dst,
- 			struct folio *src, enum migrate_mode);
--	int (*launder_folio)(struct folio *);
- 	bool (*is_partially_uptodate)(struct folio *, size_t from, size_t count);
- 	int (*error_remove_folio)(struct address_space *, struct folio *);
- 	int (*swap_activate)(struct swap_info_struct *sis, struct file *f, sector_t *span)
-@@ -286,7 +285,6 @@ release_folio:		yes
- free_folio:		yes
- direct_IO:
- migrate_folio:		yes (both)
--launder_folio:		yes
- is_partially_uptodate:	yes
- error_remove_folio:	yes
- swap_activate:		no
-@@ -344,12 +342,6 @@ try_to_free_buffers().
- ->free_folio() is called when the kernel has dropped the folio
- from the page cache.
+diff --git a/fs/fuse/dax.c b/fs/fuse/dax.c
+index 8b53625ac7ab..45843975e28b 100644
+--- a/fs/fuse/dax.c
++++ b/fs/fuse/dax.c
+@@ -835,19 +835,10 @@ static int dmap_writeback_invalidate(struct inode *inode,
+ 	loff_t start_pos = dmap->itn.start << FUSE_DAX_SHIFT;
+ 	loff_t end_pos = (start_pos + FUSE_DAX_SZ - 1);
  
--->launder_folio() may be called prior to releasing a folio if
--it is still found to be dirty. It returns zero if the folio was successfully
--cleaned, or an error value if not. Note that in order to prevent the folio
--getting mapped back in and redirtied, it needs to be kept locked
--across the entire operation.
+-	ret = filemap_fdatawrite_range(inode->i_mapping, start_pos, end_pos);
+-	if (ret) {
+-		pr_debug("fuse: filemap_fdatawrite_range() failed. err=%d start_pos=0x%llx, end_pos=0x%llx\n",
+-			 ret, start_pos, end_pos);
+-		return ret;
+-	}
 -
- ->swap_activate() will be called to prepare the given file for swap.  It
- should perform any validation and preparation necessary to ensure that
- writes can be performed with minimal memory allocation.  It should call
-diff --git a/Documentation/filesystems/vfs.rst b/Documentation/filesystems/vfs.rst
-index 7c753148af88..bff64713bd09 100644
---- a/Documentation/filesystems/vfs.rst
-+++ b/Documentation/filesystems/vfs.rst
-@@ -768,7 +768,6 @@ cache in your filesystem.  The following members are defined:
- 		ssize_t (*direct_IO)(struct kiocb *, struct iov_iter *iter);
- 		int (*migrate_folio)(struct mapping *, struct folio *dst,
- 				struct folio *src, enum migrate_mode);
--		int (*launder_folio) (struct folio *);
+-	ret = invalidate_inode_pages2_range(inode->i_mapping,
+-					    start_pos >> PAGE_SHIFT,
+-					    end_pos >> PAGE_SHIFT);
++	ret = filemap_invalidate_pages(inode->i_mapping, start_pos, end_pos);
+ 	if (ret)
+-		pr_debug("fuse: invalidate_inode_pages2_range() failed err=%d\n",
+-			 ret);
++		pr_debug("fuse: filemap_invalidate_pages() failed. err=%d start_pos=0x%llx, end_pos=0x%llx\n",
++			 ret, start_pos, end_pos);
  
- 		bool (*is_partially_uptodate) (struct folio *, size_t from,
- 					       size_t count);
-@@ -942,11 +941,6 @@ cache in your filesystem.  The following members are defined:
- 	folio to this function.  migrate_folio should transfer any private
- 	data across and update any references that it has to the folio.
- 
--``launder_folio``
--	Called before freeing a folio - it writes back the dirty folio.
--	To prevent redirtying the folio, it is kept locked during the
--	whole operation.
--
- ``is_partially_uptodate``
- 	Called by the VM when reading a file through the pagecache when
- 	the underlying blocksize is smaller than the size of the folio.
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 50ce731a2b78..e0f4f518fe24 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -428,7 +428,6 @@ struct address_space_operations {
- 	 */
- 	int (*migrate_folio)(struct address_space *, struct folio *dst,
- 			struct folio *src, enum migrate_mode);
--	int (*launder_folio)(struct folio *);
- 	bool (*is_partially_uptodate) (struct folio *, size_t from,
- 			size_t count);
- 	void (*is_dirty_writeback) (struct folio *, bool *dirty, bool *wb);
-diff --git a/mm/truncate.c b/mm/truncate.c
-index b58ba940be47..7f7d65fa926a 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -603,15 +603,6 @@ unsigned long invalidate_mapping_pages(struct address_space *mapping,
+ 	return ret;
  }
- EXPORT_SYMBOL(invalidate_mapping_pages);
+diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
+index 0e2a1039fa43..c6c72c0ee669 100644
+--- a/fs/fuse/dir.c
++++ b/fs/fuse/dir.c
+@@ -913,7 +913,8 @@ static int fuse_create_open(struct mnt_idmap *idmap, struct inode *dir,
+ 		if (fm->fc->atomic_o_trunc && trunc)
+ 			truncate_pagecache(inode, 0);
+ 		else if (!(ff->open_flags & FOPEN_KEEP_CACHE))
+-			invalidate_inode_pages2(inode->i_mapping);
++			filemap_invalidate_pages(inode->i_mapping, 0,
++					OFFSET_MAX);
+ 	}
+ 	return err;
  
--static int folio_launder(struct address_space *mapping, struct folio *folio)
+@@ -1904,7 +1905,8 @@ static int fuse_dir_open(struct inode *inode, struct file *file)
+ 		if (ff->open_flags & (FOPEN_STREAM | FOPEN_NONSEEKABLE))
+ 			nonseekable_open(inode, file);
+ 		if (!(ff->open_flags & FOPEN_KEEP_CACHE))
+-			invalidate_inode_pages2(inode->i_mapping);
++			filemap_invalidate_pages(inode->i_mapping, 0,
++					OFFSET_MAX);
+ 	}
+ 
+ 	return err;
+@@ -2277,13 +2279,13 @@ int fuse_do_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 	spin_unlock(&fi->lock);
+ 
+ 	/*
+-	 * Only call invalidate_inode_pages2() after removing
+-	 * FUSE_NOWRITE, otherwise fuse_launder_folio() would deadlock.
++	 * Only call filemap_invalidate_pages() after removing
++	 * FUSE_NOWRITE, otherwise it would deadlock.
+ 	 */
+ 	if ((is_truncate || !is_wb) &&
+ 	    S_ISREG(inode->i_mode) && oldsize != outarg.attr.size) {
+ 		truncate_pagecache(inode, outarg.attr.size);
+-		invalidate_inode_pages2(mapping);
++		filemap_invalidate_pages(mapping, 0, OFFSET_MAX);
+ 	}
+ 
+ 	clear_bit(FUSE_I_SIZE_UNSTABLE, &fi->state);
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index ceada75310b8..2496161f9298 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -294,7 +294,8 @@ static int fuse_open(struct inode *inode, struct file *file)
+ 		if (is_truncate)
+ 			truncate_pagecache(inode, 0);
+ 		else if (!(ff->open_flags & FOPEN_KEEP_CACHE))
+-			invalidate_inode_pages2(inode->i_mapping);
++			filemap_invalidate_pages(inode->i_mapping, 0,
++					OFFSET_MAX);
+ 	}
+ 	if (dax_truncate)
+ 		filemap_invalidate_unlock(inode->i_mapping);
+@@ -644,10 +645,8 @@ static void fuse_aio_invalidate_worker(struct work_struct *work)
+ 	struct fuse_io_priv *io = container_of(work, struct fuse_io_priv, work);
+ 	struct address_space *mapping = io->iocb->ki_filp->f_mapping;
+ 	ssize_t res = fuse_get_res_by_io(io);
+-	pgoff_t start = io->offset >> PAGE_SHIFT;
+-	pgoff_t end = (io->offset + res - 1) >> PAGE_SHIFT;
+ 
+-	invalidate_inode_pages2_range(mapping, start, end);
++	filemap_invalidate_pages(mapping, io->offset, io->offset + res - 1);
+ 	io->iocb->ki_complete(io->iocb, res);
+ 	kref_put(&io->refcnt, fuse_io_release);
+ }
+@@ -1675,8 +1674,6 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,
+ 	size_t nmax = write ? fc->max_write : fc->max_read;
+ 	loff_t pos = *ppos;
+ 	size_t count = iov_iter_count(iter);
+-	pgoff_t idx_from = pos >> PAGE_SHIFT;
+-	pgoff_t idx_to = (pos + count - 1) >> PAGE_SHIFT;
+ 	ssize_t res = 0;
+ 	int err = 0;
+ 	struct fuse_io_args *ia;
+@@ -1689,7 +1686,7 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,
+ 		return -ENOMEM;
+ 
+ 	if (fopen_direct_io) {
+-		res = filemap_write_and_wait_range(mapping, pos, pos + count - 1);
++		res = filemap_invalidate_pages(mapping, pos, pos + count - 1);
+ 		if (res) {
+ 			fuse_io_free(ia);
+ 			return res;
+@@ -1703,14 +1700,6 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,
+ 			inode_unlock(inode);
+ 	}
+ 
+-	if (fopen_direct_io && write) {
+-		res = invalidate_inode_pages2_range(mapping, idx_from, idx_to);
+-		if (res) {
+-			fuse_io_free(ia);
+-			return res;
+-		}
+-	}
+-
+ 	io->should_dirty = !write && user_backed_iter(iter);
+ 	while (count) {
+ 		ssize_t nres;
+@@ -1824,9 +1813,7 @@ static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 			 * write, to invalidate read-ahead cache that may have
+ 			 * with the write.
+ 			 */
+-			invalidate_inode_pages2_range(mapping,
+-				pos >> PAGE_SHIFT,
+-				(pos + res - 1) >> PAGE_SHIFT);
++			filemap_invalidate_pages(mapping, pos, pos + res - 1);
+ 		}
+ 	}
+ 	fuse_dio_unlock(iocb, exclusive);
+@@ -2324,26 +2311,6 @@ static int fuse_writepages(struct address_space *mapping,
+ 	return iomap_writepages(&wpc);
+ }
+ 
+-static int fuse_launder_folio(struct folio *folio)
 -{
--	if (!folio_test_dirty(folio))
--		return 0;
--	if (folio->mapping != mapping || mapping->a_ops->launder_folio == NULL)
--		return 0;
--	return mapping->a_ops->launder_folio(folio);
+-	int err = 0;
+-	struct fuse_fill_wb_data data = {};
+-	struct iomap_writepage_ctx wpc = {
+-		.inode = folio->mapping->host,
+-		.iomap.type = IOMAP_MAPPED,
+-		.ops = &fuse_writeback_ops,
+-		.wb_ctx	= &data,
+-	};
+-
+-	if (folio_clear_dirty_for_io(folio)) {
+-		err = iomap_writeback_folio(&wpc, folio);
+-		err = fuse_iomap_writeback_submit(&wpc, err);
+-		if (!err)
+-			folio_wait_writeback(folio);
+-	}
+-	return err;
 -}
 -
  /*
-  * This is like mapping_evict_folio(), except it ignores the folio's
-  * refcount.  We do this because invalidate_inode_pages2() needs stronger
-@@ -623,7 +614,6 @@ int folio_unmap_invalidate(struct address_space *mapping, struct folio *folio,
- 			   gfp_t gfp)
+  * Write back dirty data/metadata now (there may not be any suitable
+  * open files later for data)
+@@ -2427,7 +2394,7 @@ static int fuse_file_mmap(struct file *file, struct vm_area_struct *vma)
+ 		if ((vma->vm_flags & VM_MAYSHARE) && !fc->direct_io_allow_mmap)
+ 			return -ENODEV;
+ 
+-		invalidate_inode_pages2(file->f_mapping);
++		filemap_invalidate_pages(file->f_mapping, 0, OFFSET_MAX);
+ 
+ 		if (!(vma->vm_flags & VM_MAYSHARE)) {
+ 			/* MAP_PRIVATE */
+@@ -3102,7 +3069,6 @@ static const struct address_space_operations fuse_file_aops  = {
+ 	.read_folio	= fuse_read_folio,
+ 	.readahead	= fuse_readahead,
+ 	.writepages	= fuse_writepages,
+-	.launder_folio	= fuse_launder_folio,
+ 	.dirty_folio	= iomap_dirty_folio,
+ 	.release_folio	= iomap_release_folio,
+ 	.invalidate_folio = iomap_invalidate_folio,
+diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
+index d975073c6029..2c9a93a2173a 100644
+--- a/fs/fuse/inode.c
++++ b/fs/fuse/inode.c
+@@ -382,7 +382,8 @@ static void fuse_change_attributes_i(struct inode *inode, struct fuse_attr *attr
+ 		}
+ 
+ 		if (inval)
+-			invalidate_inode_pages2(inode->i_mapping);
++			filemap_invalidate_pages(inode->i_mapping, 0,
++					OFFSET_MAX);
+ 	}
+ 
+ 	if (IS_ENABLED(CONFIG_FUSE_DAX))
+@@ -547,8 +548,6 @@ int fuse_reverse_inval_inode(struct fuse_conn *fc, u64 nodeid,
  {
- 	void (*free_folio)(struct folio *);
--	int ret;
+ 	struct fuse_inode *fi;
+ 	struct inode *inode;
+-	pgoff_t pg_start;
+-	pgoff_t pg_end;
  
- 	VM_BUG_ON_FOLIO(!folio_test_locked(folio), folio);
+ 	inode = fuse_ilookup(fc, nodeid, NULL);
+ 	if (!inode)
+@@ -561,15 +560,9 @@ int fuse_reverse_inval_inode(struct fuse_conn *fc, u64 nodeid,
  
-@@ -631,9 +621,8 @@ int folio_unmap_invalidate(struct address_space *mapping, struct folio *folio,
- 		unmap_mapping_folio(folio);
- 	BUG_ON(folio_mapped(folio));
- 
--	ret = folio_launder(mapping, folio);
--	if (ret)
--		return ret;
-+	if (folio_test_dirty(folio))
-+		return -EBUSY;
- 	if (folio->mapping != mapping)
- 		return -EBUSY;
- 	if (!filemap_release_folio(folio, gfp))
+ 	fuse_invalidate_attr(inode);
+ 	forget_all_cached_acls(inode);
+-	if (offset >= 0) {
+-		pg_start = offset >> PAGE_SHIFT;
+-		if (len <= 0)
+-			pg_end = -1;
+-		else
+-			pg_end = (offset + len - 1) >> PAGE_SHIFT;
+-		invalidate_inode_pages2_range(inode->i_mapping,
+-					      pg_start, pg_end);
+-	}
++	if (offset >= 0)
++		filemap_invalidate_pages(inode->i_mapping, offset,
++				offset + len - 1);
+ 	iput(inode);
+ 	return 0;
+ }
 -- 
 2.47.3
 
