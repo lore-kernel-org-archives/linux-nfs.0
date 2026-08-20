@@ -1,33 +1,33 @@
 Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id AA1153C1F45;
-	Thu, 20 Aug 2026 19:34:08 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E142B3BD629;
+	Thu, 20 Aug 2026 19:34:11 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787254451; cv=none; b=PM8hOWg/dTjKu6uUKlo7zYBFxmi3BbpMwdwwtNx16AOqKPM8zB15wcWj1vRkjVeYpXwaqSqxL9wabrTP+FapG0iBb9SMzJ/8r1AybSrWQj0CW4X+f2Bf97PnAQUh7heny17Y8ap5nHAcmRf3qZr8mZmj4RFnFL5+QTWl4u5Mr38=
+	t=1787254456; cv=none; b=F+5BuWzSGe0Bz5DdFuIsPSRg8dDb5zNaAGnRwLhx1W8nXgjRBNvX/7r+aGRT65dlW8/+PNb5sN6oHRWuVIb0NLBkX+3N3Is/utLqC7X1F69vUN8bps6z2EhiN5A88NIzpEnduL4OfJvgLnRvGZDqiAYw9/PzozY8ItLboYdEzLs=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787254451; c=relaxed/simple;
-	bh=/tt+ZZ+YeQE4vNhe6t1V7fl6hqWMM3vqiCf4Bb37Vtk=;
+	s=arc-20240116; t=1787254456; c=relaxed/simple;
+	bh=PPm9uq/wE8Bplmg2Mf/B1FzyAjzt9Ki/NO5SjSeXWvA=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=YlWl7eJmTxVyq3xOuczlA/nhk6zMsGHmGwpCFm/JNZQeiiY6B7/eXEAQpMb9r8kBeQj0fpi1qrBrLPG+Mw1TIoJ5rz1K0QwGE5/S9lx+HvMVAMlUingbsbW8va6lRNWWTz72v5PlQ/fTV2I4pm2i4H3orRs0Kl5HZcmOzjU8CD0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=ksuF7ORq; arc=none smtp.client-ip=90.155.50.34
+	 MIME-Version; b=Sk4xYxSx1LKMJNo+sTBk7mx9cyWu1DmhczZrFLbm7ZWi74nmwN+ESewaQn70E6wk377ZVpdxavufY8L2xL/C6q4KFzpdWrpgtTDfmkLg356/Z+XwCV+qVVvIPP+YXgiVT+ym3N64BytuQ507GDQUtOKWAxv8MCr7nROb3oiHHqY=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=XrQL0Q3p; arc=none smtp.client-ip=90.155.50.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="ksuF7ORq"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="XrQL0Q3p"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
 	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
 	Content-Type:Content-ID:Content-Description;
-	bh=bG85xRuzHVVqZ8P0/h1shN90I4cE/3g+AWY/WvJgU1A=; b=ksuF7ORq0L+VtcJ1VQiotclBx7
-	+sYXsMMqsaooFkyGOfi5USXd/tuS+32DcHRgo9+VWhWqeCn4zO/50qMPy0vxjFrHmN7TuGbokMdGN
-	sVaVqlM5RyRE/m9fayNF3VnTVVI2q1YNF9ZfgkMDMGlrLVuwjL7614TCd564e34ib86Kgt0GYa0qx
-	2j8q3B3n7Ho4HD8+C9KUQaWYaO1BLuTgCg8og5lZUraVVBSQ7LFXFfeEtQmZaOq94xYNsSfs9LxYQ
-	Zqm8ADQMOEBodO1e+nns5+X3cDZUr5VZSL5VN+tXM41zX5J+6zWnJcLyDBYqIQjJ7lE+dAwzyFaHV
-	54EOK2bQ==;
+	bh=4VKTMcP0i+1jQJg4IREBIQusP9YVDXmuicUrrJXB4D8=; b=XrQL0Q3prpwN0Fz1aYd6dOfMWI
+	LVshGosyccqaZefpoTfBiI9z6sVc8R3ffIEQQB9xciXOZQtNNSfaKM3X5hav2VYB4EC1HLAkZkPwY
+	57iIuaXGxcr937gqukmvi7qWNtlhKSoNx4DLx2O2useD5TQ6YmtUddqLdUreRp8MapKXTVxZQ510+
+	G10LMv1PL8CjikpQWI734Yn8tnopaRH+22zS8wQ23Pp85wcdFgsMsZx9gAB+Ev0b8RSdI5Jr/so9A
+	bWH/RdqWJwqWzeD6r3ohD6MJQKzIKXnVAOz97q+yQwjynkniCOJ8Ts0pw1UJzcqVdOG4RgQDwrXf5
+	ZbZx0ccA==;
 Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wx8WG-0000000GALb-3TwJ;
+	id 1wx8WG-0000000GALX-2xrk;
 	Thu, 20 Aug 2026 19:33:44 +0000
 From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To: Christian Brauner <brauner@kernel.org>
@@ -49,9 +49,9 @@ Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
 	linux-nfs@vger.kernel.org,
 	devel@lists.orangefs.org,
 	Pavel Begunkov <asml.silence@gmail.com>
-Subject: [PATCH 2/7] fuse: Use filemap_invalidate_pages()
-Date: Thu, 20 Aug 2026 20:33:35 +0100
-Message-ID: <20260820193343.3852967-3-willy@infradead.org>
+Subject: [PATCH 1/7] filemap: Export filemap_invalidate_pages() to modules
+Date: Thu, 20 Aug 2026 20:33:34 +0100
+Message-ID: <20260820193343.3852967-2-willy@infradead.org>
 X-Mailer: git-send-email 2.54.0
 In-Reply-To: <20260820193343.3852967-1-willy@infradead.org>
 References: <20260820193343.3852967-1-willy@infradead.org>
@@ -63,247 +63,128 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-FUSE relies on invalidate_inode_pages2() / invalidate_inode_pages2_range()
-doing writeback by calling fuse_launder_folio().  While this works, it
-is inefficient as each page is written back and waited for individually.
-Far better to call filemap_invalidate_pages() which will do a bulk write
-first, then remove the page cache.
+This is a better API for filesystems to use than
+invalidate_inode_pages2() / invalidate_inode_pages2_range().
+However, the 'nowait' argument is unnecessary for them.  It's also
+wrongly implemented as it will call invalidate_inode_pages2_range()
+even after filemap_range_has_page() returns false.
 
-With this done, fuse_launder_folio() no longer needs to exist so
-delete it.
+Move the filemap_range_has_page() call into the two existing callers
+and add kernel-doc.
 
 Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
 ---
- fs/fuse/dax.c   | 15 +++------------
- fs/fuse/dir.c   | 12 +++++++-----
- fs/fuse/file.c  | 46 ++++++----------------------------------------
- fs/fuse/inode.c | 17 +++++------------
- 4 files changed, 21 insertions(+), 69 deletions(-)
+ block/ioctl.c           | 14 ++++++++++----
+ include/linux/pagemap.h |  2 +-
+ mm/filemap.c            | 42 +++++++++++++++++++++++++++--------------
+ 3 files changed, 39 insertions(+), 19 deletions(-)
 
-diff --git a/fs/fuse/dax.c b/fs/fuse/dax.c
-index 8b53625ac7ab..45843975e28b 100644
---- a/fs/fuse/dax.c
-+++ b/fs/fuse/dax.c
-@@ -835,19 +835,10 @@ static int dmap_writeback_invalidate(struct inode *inode,
- 	loff_t start_pos = dmap->itn.start << FUSE_DAX_SHIFT;
- 	loff_t end_pos = (start_pos + FUSE_DAX_SZ - 1);
+diff --git a/block/ioctl.c b/block/ioctl.c
+index 3d4ea1537457..db5238b817b4 100644
+--- a/block/ioctl.c
++++ b/block/ioctl.c
+@@ -908,10 +908,16 @@ static int blkdev_cmd_discard(struct io_uring_cmd *cmd,
+ 	if (err)
+ 		return err;
  
--	ret = filemap_fdatawrite_range(inode->i_mapping, start_pos, end_pos);
--	if (ret) {
--		pr_debug("fuse: filemap_fdatawrite_range() failed. err=%d start_pos=0x%llx, end_pos=0x%llx\n",
--			 ret, start_pos, end_pos);
--		return ret;
--	}
--
--	ret = invalidate_inode_pages2_range(inode->i_mapping,
--					    start_pos >> PAGE_SHIFT,
--					    end_pos >> PAGE_SHIFT);
-+	ret = filemap_invalidate_pages(inode->i_mapping, start_pos, end_pos);
- 	if (ret)
--		pr_debug("fuse: invalidate_inode_pages2_range() failed err=%d\n",
--			 ret);
-+		pr_debug("fuse: filemap_invalidate_pages() failed. err=%d start_pos=0x%llx, end_pos=0x%llx\n",
-+			 ret, start_pos, end_pos);
+-	err = filemap_invalidate_pages(bdev->bd_mapping, start,
+-					start + len - 1, nowait);
+-	if (err)
+-		return err;
++	if (nowait) {
++		if (filemap_range_has_page(bdev->bd_mapping, start,
++					start + len - 1))
++			return -EAGAIN;
++	} else {
++		err = filemap_invalidate_pages(bdev->bd_mapping, start,
++					start + len - 1);
++		if (err)
++			return err;
++	}
  
- 	return ret;
+ 	while (true) {
+ 		bio = blk_alloc_discard_bio(bdev, &sector, &nr_sects, gfp);
+diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
+index 2c3718d592d6..ed99c8ab196a 100644
+--- a/include/linux/pagemap.h
++++ b/include/linux/pagemap.h
+@@ -33,7 +33,7 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
+ int kiocb_invalidate_pages(struct kiocb *iocb, size_t count);
+ void kiocb_invalidate_post_direct_write(struct kiocb *iocb, size_t count);
+ int filemap_invalidate_pages(struct address_space *mapping,
+-			     loff_t pos, loff_t end, bool nowait);
++		loff_t pos, loff_t end);
+ 
+ int write_inode_now(struct inode *, int sync);
+ int filemap_fdatawrite(struct address_space *);
+diff --git a/mm/filemap.c b/mm/filemap.c
+index d721986d5f46..fedb521d773f 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2911,20 +2911,27 @@ int kiocb_write_and_wait(struct kiocb *iocb, size_t count)
  }
-diff --git a/fs/fuse/dir.c b/fs/fuse/dir.c
-index 0e2a1039fa43..c6c72c0ee669 100644
---- a/fs/fuse/dir.c
-+++ b/fs/fuse/dir.c
-@@ -913,7 +913,8 @@ static int fuse_create_open(struct mnt_idmap *idmap, struct inode *dir,
- 		if (fm->fc->atomic_o_trunc && trunc)
- 			truncate_pagecache(inode, 0);
- 		else if (!(ff->open_flags & FOPEN_KEEP_CACHE))
--			invalidate_inode_pages2(inode->i_mapping);
-+			filemap_invalidate_pages(inode->i_mapping, 0,
-+					OFFSET_MAX);
- 	}
- 	return err;
+ EXPORT_SYMBOL_GPL(kiocb_write_and_wait);
  
-@@ -1904,7 +1905,8 @@ static int fuse_dir_open(struct inode *inode, struct file *file)
- 		if (ff->open_flags & (FOPEN_STREAM | FOPEN_NONSEEKABLE))
- 			nonseekable_open(inode, file);
- 		if (!(ff->open_flags & FOPEN_KEEP_CACHE))
--			invalidate_inode_pages2(inode->i_mapping);
-+			filemap_invalidate_pages(inode->i_mapping, 0,
-+					OFFSET_MAX);
- 	}
++/**
++ * filemap_invalidate_pages - Invalidate pages from the page cache
++ * @mapping: Address space to invalidate
++ * @pos: First byte to invalidate
++ * @end: Last byte (inclusive) to invalidate
++ *
++ * Invalidates the folios containing @pos and @end from the page cache
++ * (as well as all folios between them), so may remove more pages from
++ * the page cache than you ask for.
++ *
++ * Context: May sleep.  Caller may wish to hold mapping_invalidate_lock to
++ * prevent new pages being instantiated in this range.
++ * Return: 0 on success or negative errno.
++ */
+ int filemap_invalidate_pages(struct address_space *mapping,
+-			     loff_t pos, loff_t end, bool nowait)
++		loff_t pos, loff_t end)
+ {
+-	int ret;
++	int ret = filemap_write_and_wait_range(mapping, pos, end);
  
- 	return err;
-@@ -2277,13 +2279,13 @@ int fuse_do_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
- 	spin_unlock(&fi->lock);
+-	if (nowait) {
+-		/* we could block if there are any pages in the range */
+-		if (filemap_range_has_page(mapping, pos, end))
+-			return -EAGAIN;
+-	} else {
+-		ret = filemap_write_and_wait_range(mapping, pos, end);
+-		if (ret)
+-			return ret;
+-	}
++	if (ret)
++		return ret;
  
  	/*
--	 * Only call invalidate_inode_pages2() after removing
--	 * FUSE_NOWRITE, otherwise fuse_launder_folio() would deadlock.
-+	 * Only call filemap_invalidate_pages() after removing
-+	 * FUSE_NOWRITE, otherwise it would deadlock.
- 	 */
- 	if ((is_truncate || !is_wb) &&
- 	    S_ISREG(inode->i_mode) && oldsize != outarg.attr.size) {
- 		truncate_pagecache(inode, outarg.attr.size);
--		invalidate_inode_pages2(mapping);
-+		filemap_invalidate_pages(mapping, 0, OFFSET_MAX);
- 	}
- 
- 	clear_bit(FUSE_I_SIZE_UNSTABLE, &fi->state);
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index ceada75310b8..2496161f9298 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -294,7 +294,8 @@ static int fuse_open(struct inode *inode, struct file *file)
- 		if (is_truncate)
- 			truncate_pagecache(inode, 0);
- 		else if (!(ff->open_flags & FOPEN_KEEP_CACHE))
--			invalidate_inode_pages2(inode->i_mapping);
-+			filemap_invalidate_pages(inode->i_mapping, 0,
-+					OFFSET_MAX);
- 	}
- 	if (dax_truncate)
- 		filemap_invalidate_unlock(inode->i_mapping);
-@@ -644,10 +645,8 @@ static void fuse_aio_invalidate_worker(struct work_struct *work)
- 	struct fuse_io_priv *io = container_of(work, struct fuse_io_priv, work);
- 	struct address_space *mapping = io->iocb->ki_filp->f_mapping;
- 	ssize_t res = fuse_get_res_by_io(io);
--	pgoff_t start = io->offset >> PAGE_SHIFT;
--	pgoff_t end = (io->offset + res - 1) >> PAGE_SHIFT;
- 
--	invalidate_inode_pages2_range(mapping, start, end);
-+	filemap_invalidate_pages(mapping, io->offset, io->offset + res - 1);
- 	io->iocb->ki_complete(io->iocb, res);
- 	kref_put(&io->refcnt, fuse_io_release);
+ 	 * After a write we want buffered reads to be sure to go to disk to get
+@@ -2935,14 +2942,21 @@ int filemap_invalidate_pages(struct address_space *mapping,
+ 	return invalidate_inode_pages2_range(mapping, pos >> PAGE_SHIFT,
+ 					     end >> PAGE_SHIFT);
  }
-@@ -1675,8 +1674,6 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,
- 	size_t nmax = write ? fc->max_write : fc->max_read;
- 	loff_t pos = *ppos;
- 	size_t count = iov_iter_count(iter);
--	pgoff_t idx_from = pos >> PAGE_SHIFT;
--	pgoff_t idx_to = (pos + count - 1) >> PAGE_SHIFT;
- 	ssize_t res = 0;
- 	int err = 0;
- 	struct fuse_io_args *ia;
-@@ -1689,7 +1686,7 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,
- 		return -ENOMEM;
++EXPORT_SYMBOL_GPL(filemap_invalidate_pages);
  
- 	if (fopen_direct_io) {
--		res = filemap_write_and_wait_range(mapping, pos, pos + count - 1);
-+		res = filemap_invalidate_pages(mapping, pos, pos + count - 1);
- 		if (res) {
- 			fuse_io_free(ia);
- 			return res;
-@@ -1703,14 +1700,6 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,
- 			inode_unlock(inode);
- 	}
- 
--	if (fopen_direct_io && write) {
--		res = invalidate_inode_pages2_range(mapping, idx_from, idx_to);
--		if (res) {
--			fuse_io_free(ia);
--			return res;
--		}
--	}
--
- 	io->should_dirty = !write && user_backed_iter(iter);
- 	while (count) {
- 		ssize_t nres;
-@@ -1824,9 +1813,7 @@ static ssize_t fuse_direct_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 			 * write, to invalidate read-ahead cache that may have
- 			 * with the write.
- 			 */
--			invalidate_inode_pages2_range(mapping,
--				pos >> PAGE_SHIFT,
--				(pos + res - 1) >> PAGE_SHIFT);
-+			filemap_invalidate_pages(mapping, pos, pos + res - 1);
- 		}
- 	}
- 	fuse_dio_unlock(iocb, exclusive);
-@@ -2324,26 +2311,6 @@ static int fuse_writepages(struct address_space *mapping,
- 	return iomap_writepages(&wpc);
- }
- 
--static int fuse_launder_folio(struct folio *folio)
--{
--	int err = 0;
--	struct fuse_fill_wb_data data = {};
--	struct iomap_writepage_ctx wpc = {
--		.inode = folio->mapping->host,
--		.iomap.type = IOMAP_MAPPED,
--		.ops = &fuse_writeback_ops,
--		.wb_ctx	= &data,
--	};
--
--	if (folio_clear_dirty_for_io(folio)) {
--		err = iomap_writeback_folio(&wpc, folio);
--		err = fuse_iomap_writeback_submit(&wpc, err);
--		if (!err)
--			folio_wait_writeback(folio);
--	}
--	return err;
--}
--
- /*
-  * Write back dirty data/metadata now (there may not be any suitable
-  * open files later for data)
-@@ -2427,7 +2394,7 @@ static int fuse_file_mmap(struct file *file, struct vm_area_struct *vma)
- 		if ((vma->vm_flags & VM_MAYSHARE) && !fc->direct_io_allow_mmap)
- 			return -ENODEV;
- 
--		invalidate_inode_pages2(file->f_mapping);
-+		filemap_invalidate_pages(file->f_mapping, 0, OFFSET_MAX);
- 
- 		if (!(vma->vm_flags & VM_MAYSHARE)) {
- 			/* MAP_PRIVATE */
-@@ -3102,7 +3069,6 @@ static const struct address_space_operations fuse_file_aops  = {
- 	.read_folio	= fuse_read_folio,
- 	.readahead	= fuse_readahead,
- 	.writepages	= fuse_writepages,
--	.launder_folio	= fuse_launder_folio,
- 	.dirty_folio	= iomap_dirty_folio,
- 	.release_folio	= iomap_release_folio,
- 	.invalidate_folio = iomap_invalidate_folio,
-diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
-index d975073c6029..2c9a93a2173a 100644
---- a/fs/fuse/inode.c
-+++ b/fs/fuse/inode.c
-@@ -382,7 +382,8 @@ static void fuse_change_attributes_i(struct inode *inode, struct fuse_attr *attr
- 		}
- 
- 		if (inval)
--			invalidate_inode_pages2(inode->i_mapping);
-+			filemap_invalidate_pages(inode->i_mapping, 0,
-+					OFFSET_MAX);
- 	}
- 
- 	if (IS_ENABLED(CONFIG_FUSE_DAX))
-@@ -547,8 +548,6 @@ int fuse_reverse_inval_inode(struct fuse_conn *fc, u64 nodeid,
+ int kiocb_invalidate_pages(struct kiocb *iocb, size_t count)
  {
- 	struct fuse_inode *fi;
- 	struct inode *inode;
--	pgoff_t pg_start;
--	pgoff_t pg_end;
+ 	struct address_space *mapping = iocb->ki_filp->f_mapping;
++	loff_t end = iocb->ki_pos + count - 1;
++
++	if (iocb->ki_flags & IOCB_NOWAIT) {
++		/* we could block if there are any pages in the range */
++		if (filemap_range_has_page(mapping, iocb->ki_pos, end))
++			return -EAGAIN;
++		return 0;
++	}
  
- 	inode = fuse_ilookup(fc, nodeid, NULL);
- 	if (!inode)
-@@ -561,15 +560,9 @@ int fuse_reverse_inval_inode(struct fuse_conn *fc, u64 nodeid,
- 
- 	fuse_invalidate_attr(inode);
- 	forget_all_cached_acls(inode);
--	if (offset >= 0) {
--		pg_start = offset >> PAGE_SHIFT;
--		if (len <= 0)
--			pg_end = -1;
--		else
--			pg_end = (offset + len - 1) >> PAGE_SHIFT;
--		invalidate_inode_pages2_range(inode->i_mapping,
--					      pg_start, pg_end);
--	}
-+	if (offset >= 0)
-+		filemap_invalidate_pages(inode->i_mapping, offset,
-+				offset + len - 1);
- 	iput(inode);
- 	return 0;
+-	return filemap_invalidate_pages(mapping, iocb->ki_pos,
+-					iocb->ki_pos + count - 1,
+-					iocb->ki_flags & IOCB_NOWAIT);
++	return filemap_invalidate_pages(mapping, iocb->ki_pos, end);
  }
+ EXPORT_SYMBOL_GPL(kiocb_invalidate_pages);
+ 
 -- 
 2.47.3
 
