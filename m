@@ -1,106 +1,88 @@
-Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from smtp-out2.suse.de (smtp-out2.suse.de [195.135.223.131])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 193574772A7;
-	Thu, 20 Aug 2026 17:51:33 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 6595E37FF61
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2026 18:59:40 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=195.135.223.131
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787248299; cv=none; b=KOJ5vifLwDLliH3ebZdtjdF5krTj4MPz/rCFyrWWm4+ka5c9SLM2bwW2u/EMro9feBy6QFdDq3gGgTpimcVmPBKbP5Q8WgKgv2b53AkdKR+9fWsvj52wzub3EmnAkquEkW9xs3v0bEQSapTuKmBBvUE8xL8s8UoHHYmy4a1MG18=
+	t=1787252382; cv=none; b=Yv7e4dgIgET9CR+mNZkRKGngUb5zUGcnLoiZVBnbXTLxMElajl1n8r+od5HVZ8GrvQTdaF868c63foDKNWAkSpAT8U0jvL/eUbbSF5X/vPnOuXv5WVVqKzwHm6nNP2MElJJUnblAZeHbJkNj6KsAOk86OKdl7MoCtknF7Ii9iKU=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787248299; c=relaxed/simple;
-	bh=chts6MzIHj/bJVBkghPzRmsWqaknd18UrkOwhvE4I/s=;
+	s=arc-20240116; t=1787252382; c=relaxed/simple;
+	bh=EaMtHokgTmQKzCm8bbjmnm3WJq0vfvTXE3GVGeZBbPc=;
 	h=Date:From:To:Cc:Subject:Message-ID:References:MIME-Version:
-	 Content-Type:Content-Disposition:In-Reply-To; b=sEYd10Tfnm/vspxErgLmgi6kgoceHQsDKq8LDsIfm7y6/kZcforDTAlriHHK1PoCTWzqW34Gfx5CL4ti2aDLlChSOWJmUQMAhnhA6AUe05L2IyuEebLH1UAbj87fybBo2un2lM/8IzcbcI/bUI54pK7k0pYvfnZwR0tCwn1DLv0=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=rTRFHt4F; arc=none smtp.client-ip=90.155.50.34
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
+	 Content-Type:Content-Disposition:In-Reply-To; b=BhpEaBHVFTFPfjXUXpjkyBG9Ic2xa8UaVsJxA0zA5qkRvCcC1g+FfcOdXqAtVCKHqZu+jH04qtiAoD+OKmFV9K/8zH9CPsn+oPZOHyWKXX2bGCDkELUhJHcwl69NLJu9ZZnrdcjiIPbDqPKT0KoZLEl3utvNiD3y5PuJObiFR2I=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz; spf=pass smtp.mailfrom=suse.cz; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=JUjUnTSK; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=TO+BT3JY; dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b=z9HvdeHS; dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b=6V0beoU6; arc=none smtp.client-ip=195.135.223.131
+Authentication-Results: smtp.subspace.kernel.org; dmarc=none (p=none dis=none) header.from=suse.cz
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=suse.cz
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="rTRFHt4F"
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
-	d=infradead.org; s=casper.20170209; h=In-Reply-To:Content-Type:MIME-Version:
-	References:Message-ID:Subject:Cc:To:From:Date:Sender:Reply-To:
-	Content-Transfer-Encoding:Content-ID:Content-Description;
-	bh=/nTZ7s1goF+GPCz6EL3sBTg9gNDkE+Bk0F4MEDCId3U=; b=rTRFHt4F8LNezy/fzAgoJCTaEn
-	Hu0D4RqGfIK9MUZUy7y5Vba3MurgAp9pBMd9z6PEiUlWaCso04QtHq/uQ4n17N1VQ2wPu6RajSIxt
-	5VjB0H2feVYd3mqUp5gCxaMbrQOO+i6lj9uOvypef8Qk/ac19GC7w3Hfcyxj83iTd9QOFZIzV0iBp
-	/SGM/O64CQwL9ZlzHX0Ox5TCul40K5Mnq+2KwcSaH/1h0KS1/qNKeUME6lYFYtYCfh4F7sNx59RpD
-	pLEI6i3LHvbHNk4ESUjf0GkAf6n+DO9ur6QkErSHO05zM44QUpEFH+mMqGSk1hMk5dNHlM0YQq3eB
-	Pzxk6gcA==;
-Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wx6uy-0000000G2y1-3Dxp;
-	Thu, 20 Aug 2026 17:51:08 +0000
-Date: Thu, 20 Aug 2026 18:51:08 +0100
-From: Matthew Wilcox <willy@infradead.org>
-To: "David Hildenbrand (Arm)" <david@kernel.org>
-Cc: Byungchul Park <byungchul@sk.com>, linux-kernel@vger.kernel.org,
-	max.byungchul.park@gmail.com, kernel_team@skhynix.com,
-	torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
-	linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
-	linux-ext4@vger.kernel.org, mingo@redhat.com, peterz@infradead.org,
-	will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
-	joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
-	duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org,
-	tytso@mit.edu, david@fromorbit.com, amir73il@gmail.com,
-	gregkh@linuxfoundation.org, kernel-team@lge.com, linux-mm@kvack.org,
-	akpm@linux-foundation.org, mhocko@kernel.org, minchan@kernel.org,
-	hannes@cmpxchg.org, vdavydov.dev@gmail.com, sj@kernel.org,
-	jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
-	penberg@kernel.org, rientjes@google.com, vbabka@suse.cz,
-	ngupta@vflare.org, linux-block@vger.kernel.org,
-	josef@toxicpanda.com, linux-fsdevel@vger.kernel.org, jack@suse.cz,
-	jlayton@kernel.org, dan.j.williams@intel.com, hch@infradead.org,
-	djwong@kernel.org, dri-devel@lists.freedesktop.org,
-	rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
-	hamohammed.sa@gmail.com, harry.yoo@oracle.com,
-	chris.p.wilson@intel.com, gwan-gyeong.mun@intel.com,
-	boqun.feng@gmail.com, longman@redhat.com, yunseong.kim@ericsson.com,
-	ysk@kzalloc.com, yeoreum.yun@arm.com, netdev@vger.kernel.org,
-	matthew.brost@intel.com, her0gyugyu@gmail.com, corbet@lwn.net,
-	catalin.marinas@arm.com, bp@alien8.de, x86@kernel.org,
-	hpa@zytor.com, luto@kernel.org, sumit.semwal@linaro.org,
-	gustavo@padovan.org, christian.koenig@amd.com,
-	andi.shyti@kernel.org, arnd@arndb.de, lorenzo.stoakes@oracle.com,
-	Liam.Howlett@oracle.com, rppt@kernel.org, surenb@google.com,
-	mcgrof@kernel.org, petr.pavlu@suse.com, da.gomez@kernel.org,
-	samitolvanen@google.com, paulmck@kernel.org, frederic@kernel.org,
-	neeraj.upadhyay@kernel.org, joelagnelf@nvidia.com,
-	josh@joshtriplett.org, urezki@gmail.com,
-	mathieu.desnoyers@efficios.com, jiangshanlai@gmail.com,
-	qiang.zhang@linux.dev, juri.lelli@redhat.com,
-	vincent.guittot@linaro.org, dietmar.eggemann@arm.com,
-	bsegall@google.com, mgorman@suse.de, vschneid@redhat.com,
-	chuck.lever@oracle.com, neil@brown.name, okorniev@redhat.com,
-	Dai.Ngo@oracle.com, tom@talpey.com, trondmy@kernel.org,
-	anna@kernel.org, kees@kernel.org, bigeasy@linutronix.de,
-	clrkwllms@kernel.org, mark.rutland@arm.com, ada.coupriediaz@arm.com,
-	kristina.martsenko@arm.com, wangkefeng.wang@huawei.com,
-	broonie@kernel.org, kevin.brodsky@arm.com, dwmw@amazon.co.uk,
-	shakeel.butt@linux.dev, ast@kernel.org, ziy@nvidia.com,
-	yuzhao@google.com, baolin.wang@linux.alibaba.com,
-	usamaarif642@gmail.com, joel.granados@kernel.org,
-	richard.weiyang@gmail.com, geert+renesas@glider.be,
-	tim.c.chen@linux.intel.com, linux@treblig.org,
-	alexander.shishkin@linux.intel.com, lillian@star-ark.net,
-	chenhuacai@kernel.org, francesco@valla.it,
-	guoweikang.kernel@gmail.com, link@vivo.com, jpoimboe@kernel.org,
-	masahiroy@kernel.org, brauner@kernel.org,
-	thomas.weissschuh@linutronix.de, oleg@redhat.com, mjguzik@gmail.com,
-	andrii@kernel.org, wangfushuai@baidu.com, linux-doc@vger.kernel.org,
-	linux-arm-kernel@lists.infradead.org, linux-media@vger.kernel.org,
-	linaro-mm-sig@lists.linaro.org, linux-i2c@vger.kernel.org,
-	linux-arch@vger.kernel.org, linux-modules@vger.kernel.org,
-	rcu@vger.kernel.org, linux-nfs@vger.kernel.org,
-	linux-rt-devel@lists.linux.dev, 2407018371@qq.com, dakr@kernel.org,
-	miguel.ojeda.sandonis@gmail.com, neilb@ownmail.net,
-	bagasdotme@gmail.com, wsa+renesas@sang-engineering.com,
-	dave.hansen@intel.com, geert@linux-m68k.org, ojeda@kernel.org,
-	alex.gaynor@gmail.com, gary@garyguo.net, bjorn3_gh@protonmail.com,
-	lossin@kernel.org, a.hindborg@kernel.org, aliceryhl@google.com,
-	tmgross@umich.edu, rust-for-linux@vger.kernel.org
-Subject: Re: [PATCH v19 00/40] DEPT(DEPendency Tracker)
-Message-ID: <aoc-jJ10op62jXFK@casper.infradead.org>
-References: <20260706061928.66713-1-byungchul@sk.com>
- <359ea967-9b97-4584-88e6-bddb4044de2e@kernel.org>
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="JUjUnTSK";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="TO+BT3JY";
+	dkim=pass (1024-bit key) header.d=suse.cz header.i=@suse.cz header.b="z9HvdeHS";
+	dkim=permerror (0-bit key) header.d=suse.cz header.i=@suse.cz header.b="6V0beoU6"
+Received: from imap1.dmz-prg2.suse.org (unknown [10.150.64.97])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by smtp-out2.suse.de (Postfix) with ESMTPS id 0BA053F1B;
+	Thu, 20 Aug 2026 18:59:30 +0000 (UTC)
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1787252374;
+	h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+	 cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=upzIzz6N6x4btw1CkO1HRk7IhNwv/O+gj33sRLG5uKU=;
+	b=JUjUnTSKt1nKI0E+iNQoScPkeYDrj5Xy0gLkgvGvonw8LiIGsu/XViYDpLhrC3SAcH0xBo
+	Dbc8sYfaSLmAFzWaBACE7RBrqMmjg0n8c7Slte2R4EmWDWx465tDaJ+FvhBGmGcRhEQIcP
+	Ppbh1OQ7ucnh7qgULU/1Cx/yHezzcpc=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1787252374;
+	h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+	 cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=upzIzz6N6x4btw1CkO1HRk7IhNwv/O+gj33sRLG5uKU=;
+	b=TO+BT3JYJqj/R0P0NUGTsyyb9uQYSVydr43zPKzwzP2taUhqQrWiogOQzYV1AuTN9GspdV
+	Ys7Bg5gk7sIyytBg==
+Authentication-Results: smtp-out2.suse.de;
+	none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=suse.cz; s=susede2_rsa;
+	t=1787252370;
+	h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+	 cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=upzIzz6N6x4btw1CkO1HRk7IhNwv/O+gj33sRLG5uKU=;
+	b=z9HvdeHSzxy0gRM2qBXQH1Lk+8BtgBBtVH18EujOdBwwo6SeVsutzckxowA0HB1hEGhbsC
+	zS9sJDYC2vORZmlUN4puaT9GOnXLbf44yqeprZwpIWIlpiq/ZhBlLtwKMJDjA2kOI27cws
+	rZrKW7aspVeE5NOn1HrStw5o9ofCukQ=
+DKIM-Signature: v=1; a=ed25519-sha256; c=relaxed/relaxed; d=suse.cz;
+	s=susede2_ed25519; t=1787252370;
+	h=from:from:reply-to:reply-to:date:date:message-id:message-id:to:to:
+	 cc:cc:mime-version:mime-version:content-type:content-type:
+	 in-reply-to:in-reply-to:references:references;
+	bh=upzIzz6N6x4btw1CkO1HRk7IhNwv/O+gj33sRLG5uKU=;
+	b=6V0beoU6uM+2qgDZZ1DzD+MAMuEaMPyLJDsp5lKG4/agAdM9lUPrCeBFNN4rNolHsUKACb
+	u4/dvptU4DVPtsDQ==
+Received: from imap1.dmz-prg2.suse.org (localhost [127.0.0.1])
+	(using TLSv1.3 with cipher TLS_AES_256_GCM_SHA384 (256/256 bits)
+	 key-exchange X25519 server-signature RSA-PSS (4096 bits) server-digest SHA256)
+	(No client certificate requested)
+	by imap1.dmz-prg2.suse.org (Postfix) with ESMTPS id 22ACC27A8;
+	Thu, 20 Aug 2026 18:59:29 +0000 (UTC)
+Received: from dovecot-director2.suse.de ([2a07:de40:b281:106:10:150:64:167])
+	by imap1.dmz-prg2.suse.org with ESMTPSA
+	id rQ5yBJFOh2r3cwAAD6G6ig
+	(envelope-from <pvorel@suse.cz>); Thu, 20 Aug 2026 18:59:29 +0000
+Date: Thu, 20 Aug 2026 20:59:22 +0200
+From: Petr Vorel <pvorel@suse.cz>
+To: manjunath.b.patil@oracle.com
+Cc: Dai.Ngo@oracle.com, anna@kernel.org, cel@kernel.org, jlayton@kernel.org,
+	linux-nfs@vger.kernel.org, neil@brown.name, okorniev@redhat.com,
+	tom@talpey.com, trondmy@kernel.org
+Subject: Re: [PATCH] SUNRPC: add transport details to timeout diagnostics
+Message-ID: <20260820185922.GA511595@pevik>
+Reply-To: Petr Vorel <pvorel@suse.cz>
+References: <20260819173055.1956882-1-manjunath.b.patil@oracle.com>
+ <20260820111303.455807-1-pvorel@suse.cz>
+ <8e43238e-f06d-4da1-a898-2bdc1d827e81@oracle.com>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -109,72 +91,159 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
-In-Reply-To: <359ea967-9b97-4584-88e6-bddb4044de2e@kernel.org>
+In-Reply-To: <8e43238e-f06d-4da1-a898-2bdc1d827e81@oracle.com>
+X-Spamd-Result: default: False [-3.50 / 50.00];
+	BAYES_HAM(-3.00)[100.00%];
+	NEURAL_HAM_LONG(-1.00)[-1.000];
+	MID_RHS_NOT_FQDN(0.50)[];
+	HAS_REPLYTO(0.30)[pvorel@suse.cz];
+	NEURAL_HAM_SHORT(-0.20)[-1.000];
+	MIME_GOOD(-0.10)[text/plain];
+	RCVD_TLS_ALL(0.00)[];
+	ARC_NA(0.00)[];
+	MISSING_XM_UA(0.00)[];
+	RCVD_VIA_SMTP_AUTH(0.00)[];
+	MIME_TRACE(0.00)[0:+];
+	RCPT_COUNT_SEVEN(0.00)[10];
+	DKIM_SIGNED(0.00)[suse.cz:s=susede2_rsa,suse.cz:s=susede2_ed25519];
+	TO_MATCH_ENVRCPT_ALL(0.00)[];
+	FROM_HAS_DN(0.00)[];
+	DBL_BLOCKED_OPENRESOLVER(0.00)[oracle.com:email,imap1.dmz-prg2.suse.org:helo];
+	FROM_EQ_ENVFROM(0.00)[];
+	TO_DN_NONE(0.00)[];
+	RCVD_COUNT_TWO(0.00)[2];
+	REPLYTO_EQ_FROM(0.00)[]
+X-Spam-Flag: NO
+X-Spam-Score: -3.50
+X-Spam-Level: 
 
-On Thu, Aug 20, 2026 at 07:16:05PM +0200, David Hildenbrand (Arm) wrote:
-> > Consider this real deadlock pattern that lockdep cannot detect:
-> > 
-> >    context X              context Y              context Z
-> > 
-> >                           mutex_lock A
-> >    folio_lock B
-> >                           folio_lock B <- DEADLOCK
-> >                                                  mutex_lock A <- DEADLOCK
-> >                                                  folio_unlock B
-> >                           folio_unlock B
-> >                           mutex_unlock A
-> >                                                  mutex_unlock A
-> 
-> But that really just boils down to folio lock being implemented as a PG_lock +
-> some advanced wait mechanism. And we must do that because of lack of bits in
-> struct page.
-> 
-> Willy mentioned in a previous version [1]: "I don't think it makes sense to
-> track lock state in the page (nor folio).  Partly because there's just so many
-> of them, but also because the locking rules don't really apply to individual
-> folios so much as they do to the mappings (or anon_vmas) that contain folios."
-> 
-> Given that lockdep is a debug feature, and we will at some point allocate struct
-> folio separately, I assume we could just squeeze a "struct lockdep_map" in there
-> in such debug configs and the world would not collapse.
-> 
-> Doing that today (one "struct lockdep_map" in each "struct page") wouldn't work
-> as mm_zero_struct_page() would not expect such large "struct page". But
-> conceptually, for a debug kernel with a special CONFIG_LOCKDEP_PAGE_LOCK, maybe
-> that would already be ok and we could just do that (and optimize it as we
-> allocate folios separately).
-> 
-> Not that it's ideal, but for a debug feature to at least check PG_lock, probably
-> an easier way to achieve it than some completely new infrastructure.
-> 
-> Now, Willy said "locking rules don't really apply to individual folios", I
-> wonder if that could just help to also let lockdep check PG_lock with less
-> metadata? (didn't fully wrap my head around the implications)
-> 
-> [1]
-> https://lore.kernel.org/all/aR3WHf9QZ_dizNun@casper.infradead.org/?utm_source=chatgpt.com
 
-There are a few things going on that make PG_lock special.  Let me try
-to explain again, only better this time.
 
-1. The current lifetime of a struct page is the lifetime of the system.
-But the semantics of its PG_lock bit change each time it is freed and
-allocated.
+> On 8/20/26 4:13 AM, Petr Vorel wrote:
+> >  > The existing RPC timeout messages identify only the RPC program and >
+> > server name. That makes it difficult to distinguish a server-side >
+> > response stall from a transport that is disconnected, reconnecting, > or
+> > using a different
 
-2. The position of PG_lock in the locking hierarchy only depend on
-what the folio is currently being used for.  That is, all folios in
-a given xfs inode behave exactly the same from a locking perspective.
-There's no need to build up state about how each PG_lock is used;
-they can all share.  Arguably all xfs file inodes are the same as
-each other (directory inodes might be different from file inodes),
-so we might want to go further than telling DEPT that "this folio
-belongs to this inode" and go to "this folio belongs to this xfs file
-inode".
 
-3. PG_lock can be taken in task context then released in interrupt
-context.  For full points, we need to mark the exact point at which
-we submit the folio for read.  Otherwise we can get into the situation
-alluded to by f2c817bed58d and better discussed at
-https://lore.kernel.org/linux-mm/20200127150024.GN1183@dhcp22.suse.cz/
-where we have the folio locked but haven't yet submitted it for I/O
-so it doesn't matter how long we wait, it will never come unlocked.
+> > > The existing RPC timeout messages identify only the RPC program and
+> > > server name. That makes it difficult to distinguish a server-side
+> > > response stall from a transport that is disconnected, reconnecting,
+> > > or using a different connection.
+
+> > > Include the RPC client id, transport id, current transport connection
+> > > cookie, and RPC task owner in the ratelimited timeout messages. These
+> > > fields provide a compact way to correlate a timeout message with
+> > > rpcctl and other transport state.
+
+> > > For example, an NFS timeout reports:
+
+> > >   nfs: server 192.168.50.1 clid=4 xprt=1 cc=1 owner=6245
+> > >   not responding, timed out
+
+> > Nice improvement, thanks!
+
+
+> > > Assisted-by: Codex:gpt-5
+> > > Signed-off-by: Manjunath Patil <manjunath.b.patil@oracle.com>
+> > > ---
+> > >  net/sunrpc/clnt.c | 20 +++++++++++++-------
+> > >  1 file changed, 13 insertions(+), 7 deletions(-)
+
+> > > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> > > index efa26899bc7d..6b5e2787dc81 100644
+> > > --- a/net/sunrpc/clnt.c
+> > > +++ b/net/sunrpc/clnt.c
+> > > @@ -2534,17 +2534,21 @@ static void
+> > >  rpc_check_timeout(struct rpc_task *task)
+> > >  {
+> > >  	struct rpc_clnt	*clnt = task->tk_client;
+> > > +	struct rpc_rqst	*req;
+> > > +	struct rpc_xprt	*xprt;
+
+> > nit: Would it work to assign req and task earlier (just readability?)
+> > Or is it not safe before checking RPC_SIGNALLED(task)?
+
+> > 	struct rpc_clnt	*clnt = task->tk_client;
+> > 	struct rpc_rqst	*req = task->tk_rqstp;
+> > 	struct rpc_xprt	*xprt = req->rq_xprt;
+
+> > The rest LGTM.
+> > Reviewed-by: Petr Vorel <pvorel@suse.cz>
+
+> > Kind regards,
+> > Petr
+
+> Hi Petr,
+
+Hi Manjunath,
+
+> Thanks for the review and the Reviewed-by tag.
+
+yw.
+
+> I kept the assignments after RPC_SIGNALLED(task) intentionally, preserving
+> the existing behavior where a signalled task returns before we dereference
+> task->tk_rqstp. xprt is also needed only after xprt_adjust_timeout(req)
+> reports an expired timeout.
+
+Understand, fair enough.
+
+> I would prefer to retain the current ordering for those reasons. Also I am
+> open if maintainers chose to alter it.
+
++1
+
+Kind regards,
+Petr
+
+> Thanks,                   Manjunath
+
+
+> > >  	if (RPC_SIGNALLED(task))
+> > >  		return;
+> > > -	if (xprt_adjust_timeout(task->tk_rqstp) == 0)
+> > > +	req = task->tk_rqstp;
+> > > +	if (xprt_adjust_timeout(req) == 0)
+> > >  		return;
+> > > +	xprt = req->rq_xprt;
+> > >  	trace_rpc_timeout_status(task);
+> > >  	task->tk_timeouts++;
+> > > -	if (RPC_IS_SOFTCONN(task) && !rpc_check_connected(task->tk_rqstp)) {
+> > > +	if (RPC_IS_SOFTCONN(task) && !rpc_check_connected(req)) {
+> > >  		rpc_call_rpcerror(task, -ETIMEDOUT);
+> > >  		return;
+> > >  	}
+> > > @@ -2556,14 +2560,15 @@ rpc_check_timeout(struct rpc_task *task)
+> > >  		 * connection gets terminally broken.
+> > >  		 */
+> > >  		if ((task->tk_flags & RPC_TASK_NO_RETRANS_TIMEOUT) &&
+> > > -		    rpc_check_connected(task->tk_rqstp))
+> > > +		    rpc_check_connected(req))
+> > >  			return;
+> > >  		if (clnt->cl_chatty) {
+> > >  			pr_notice_ratelimited(
+> > > -				"%s: server %s not responding, timed out\n",
+> > > +				"%s: server %s clid=%u xprt=%u cc=%u owner=%d not responding, timed out\n",
+> > >  				clnt->cl_program->name,
+> > > -				task->tk_xprt->servername);
+> > > +				xprt->servername, clnt->cl_clid, xprt->id,
+> > > +				READ_ONCE(xprt->connect_cookie), task->tk_owner);
+> > >  		}
+> > >  		if (task->tk_flags & RPC_TASK_TIMEOUT)
+> > >  			rpc_call_rpcerror(task, -ETIMEDOUT);
+> > > @@ -2576,9 +2581,10 @@ rpc_check_timeout(struct rpc_task *task)
+> > >  		task->tk_flags |= RPC_CALL_MAJORSEEN;
+> > >  		if (clnt->cl_chatty) {
+> > >  			pr_notice_ratelimited(
+> > > -				"%s: server %s not responding, still trying\n",
+> > > +				"%s: server %s clid=%u xprt=%u cc=%u owner=%d not responding, still trying\n",
+> > >  				clnt->cl_program->name,
+> > > -				task->tk_xprt->servername);
+> > > +				xprt->servername, clnt->cl_clid, xprt->id,
+> > > +				READ_ONCE(xprt->connect_cookie), task->tk_owner);
+> > >  		}
+> > >  	}
+> > >  	rpc_force_rebind(clnt);
+
+
