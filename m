@@ -1,34 +1,33 @@
 Received: from casper.infradead.org (casper.infradead.org [90.155.50.34])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0CC492DC321;
-	Thu, 20 Aug 2026 19:34:02 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E2CE53C10A7;
+	Thu, 20 Aug 2026 19:34:05 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=90.155.50.34
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787254445; cv=none; b=Up2JbtLLh227vjaG++wgfPhV/LUl94ouZW3lBfx7iEDTSCHJui4Hu8vE2aMpGOAm3z1rmRBmI/k0GASBSlzm03LH4317RAmy0thA9ulL+AZpHnSw0Y0hXB2rLdwQ0vG8C9OBEXnASxUXRbXXrwWz458HwwhA+gdmFeeQxn/pEC4=
+	t=1787254447; cv=none; b=L2PtxYHHwu6W5jg8F5XD0wQdj8HYRGieFSm1hlm49J4ercaMQp3s6tmj4R7SlQRZfd9km/mHMvU+ZaXZ1RKpEkMfr/o8of4Pw/TsS6F8H6yWR4eXTrx+NACg+d7Vcg/F1affTeZZiNg9Ftn05eywXHgMPpNl1s9fx2Yg5Qnx+pA=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787254445; c=relaxed/simple;
-	bh=vSAr1RpfpduBFOTvFwyav8Uq01E0kWFuwocOMX91SGk=;
-	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=MGjvv3DV3PDhmRLC5666oSU+JHk6JN0cTSB7ofyTV5ure6nPM4DmaOFbeL65WgW2rBbxMPne6fbOQ9VjtRiXOLmo3wE3ULrEzDuF5l+ZG3gQWf+uNMbNdhI48P3wDHTxj541F+6GKVH5R9j+4KN9zwYsDEh2pO/769QbqfZk9R4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=tq6Mqh4T; arc=none smtp.client-ip=90.155.50.34
+	s=arc-20240116; t=1787254447; c=relaxed/simple;
+	bh=RWxlkBlaSGy4jMTxU4/KGL5mW7uDhVriEc56hh+l3vA=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=HeSFklZCwWlod8sb8q2E8T75AoCc4jJCIUAGUH/WylwjCLUvR1f5rQ8xu3UKDwMMz3T+jezpPPLvbwU3yvcMmqVxdeA9djYg++BPd6MQZh88c4L3bFzsnXsNXHjH6znJBanvTULcfBwn8xnAuoGuz9apEJdNpkte6CRGMk0O9to=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org; spf=pass smtp.mailfrom=infradead.org; dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b=C00zMhG8; arc=none smtp.client-ip=90.155.50.34
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=none dis=none) header.from=infradead.org
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=infradead.org
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="tq6Mqh4T"
+	dkim=pass (2048-bit key) header.d=infradead.org header.i=@infradead.org header.b="C00zMhG8"
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed;
 	d=infradead.org; s=casper.20170209; h=Content-Transfer-Encoding:MIME-Version:
-	References:In-Reply-To:Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:
-	Content-Type:Content-ID:Content-Description;
-	bh=xKg7WlSpHg8zkU2PKR4Y+r4BI3Zw98IOJ25ILY50rro=; b=tq6Mqh4T48Jf3Da3GNPxAAU609
-	LuKgG3yortQBL557VvQ0sNunQjpRfZtt+QegAE0dc+d+LvNeVWyzfh2e35JYjQhHUwCZat4vHDaFZ
-	Mq175d4FecV7kkHIQQHXisYFB2pDFA4lHGs6CIhkPlbgFByTKlCG9XaPSne5BGB93pxFBeZAelkRS
-	f7trBxy2Y6Se94hlwmYcNmy+BE29xWxRo4bqMWY7cKSNurtRsDUSIsZr8BPgOTVKm0nfmLUZ9YgXC
-	SC8rE7xDMkJc0wXq05ny3VSRNhn7SU6zzneE9hRHfidDo/w4gX5cPh9mByyFugpbMkbbybEVMcZc6
-	xVxdJkNA==;
+	Message-ID:Date:Subject:Cc:To:From:Sender:Reply-To:Content-Type:Content-ID:
+	Content-Description:In-Reply-To:References;
+	bh=yAWljnoK+mvLqOvoWL/pFcjK82r/RJzikRAIfFTqyqY=; b=C00zMhG850WU4xETzkGWp3TH+/
+	PUkEAO3MfrJqpeL9uJ2FjdY+CEkLzKmXyFcIzfbCvf4OxOe2/+gV2ZN2KcvZ+pM7C8xwvvxear6rH
+	V1BT3J6G7WSU/Hqhc5r7m/kGddxOTrDs1SqwLrrvgNgh95Y8O5fNNx8rmdATP0NURw5xGH9hnZ+zm
+	4BoAUzj9B9jhKVg/tixHzG/jYKm5e6FcLyHizYp8tsd1mjChY/D2Lv5vcJIPfJMEkzZZCVw0ncayA
+	m7aYUGzSo6HADhCJdm90phuEz1RKeOPc3PPlWi+dg0x+BQWPmGfcVOfD0cgf1UeI8g2XDxv2H7w/E
+	z/+gF6OQ==;
 Received: from willy by casper.infradead.org with local (Exim 4.99.1 #2 (Red Hat Linux))
-	id 1wx8WH-0000000GALh-0i2b;
-	Thu, 20 Aug 2026 19:33:45 +0000
+	id 1wx8WG-0000000GALU-2Ve6;
+	Thu, 20 Aug 2026 19:33:44 +0000
 From: "Matthew Wilcox (Oracle)" <willy@infradead.org>
 To: Christian Brauner <brauner@kernel.org>
 Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
@@ -49,12 +48,10 @@ Cc: "Matthew Wilcox (Oracle)" <willy@infradead.org>,
 	linux-nfs@vger.kernel.org,
 	devel@lists.orangefs.org,
 	Pavel Begunkov <asml.silence@gmail.com>
-Subject: [PATCH 5/7] orangefs: Use filemap_invalidate_pages()
-Date: Thu, 20 Aug 2026 20:33:38 +0100
-Message-ID: <20260820193343.3852967-6-willy@infradead.org>
+Subject: [PATCH 0/7] Remove aops->launder_folio
+Date: Thu, 20 Aug 2026 20:33:33 +0100
+Message-ID: <20260820193343.3852967-1-willy@infradead.org>
 X-Mailer: git-send-email 2.54.0
-In-Reply-To: <20260820193343.3852967-1-willy@infradead.org>
-References: <20260820193343.3852967-1-willy@infradead.org>
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -63,29 +60,47 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-This pair of calls simply open-codes Use filemap_invalidate_pages(),
-so convert it.
+There's really no reason to implement ->launder_folio.  Most filesystems
+don't.  The only problem is that some filesystems rely on dirty folios
+being written back this way, so we need to make sure that folios are
+written back before invalidating them.  filemap_invalidate_pages()
+works well for that, once we remove the 'nowait' parameter.
 
-Signed-off-by: Matthew Wilcox (Oracle) <willy@infradead.org>
----
- fs/orangefs/file.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+Matthew Wilcox (Oracle) (7):
+  filemap: Export filemap_invalidate_pages() to modules
+  fuse: Use filemap_invalidate_pages()
+  btrfs: Use filemap_invalidate_pages()
+  nfs: Use filemap_invalidate_pages()
+  orangefs: Use filemap_invalidate_pages()
+  orangefs: Remove launder_folio implementation
+  Remove folio_launder()
 
-diff --git a/fs/orangefs/file.c b/fs/orangefs/file.c
-index 42591252e239..36e3685f7e89 100644
---- a/fs/orangefs/file.c
-+++ b/fs/orangefs/file.c
-@@ -306,9 +306,7 @@ int orangefs_revalidate_mapping(struct inode *inode)
- 	spin_unlock(&inode->i_lock);
- 
- 	unmap_mapping_range(mapping, 0, 0, 0);
--	ret = filemap_write_and_wait(mapping);
--	if (!ret)
--		ret = invalidate_inode_pages2(mapping);
-+	ret = filemap_invalidate_pages(mapping, 0, OFFSET_MAX);
- 
- 	orangefs_inode->mapping_time = jiffies +
- 	    orangefs_cache_timeout_msecs*HZ/1000;
+ Documentation/filesystems/locking.rst |  8 -----
+ Documentation/filesystems/vfs.rst     |  6 ----
+ block/ioctl.c                         | 14 +++++---
+ fs/btrfs/direct-io.c                  |  2 +-
+ fs/btrfs/disk-io.c                    | 11 ++++---
+ fs/btrfs/free-space-cache.c           |  4 +--
+ fs/btrfs/inode.c                      | 12 ++-----
+ fs/btrfs/volumes.c                    |  4 +--
+ fs/fuse/dax.c                         | 15 ++-------
+ fs/fuse/dir.c                         | 12 ++++---
+ fs/fuse/file.c                        | 46 ++++-----------------------
+ fs/fuse/inode.c                       | 17 +++-------
+ fs/nfs/dir.c                          |  7 ++--
+ fs/nfs/direct.c                       |  5 ++-
+ fs/nfs/file.c                         | 24 --------------
+ fs/nfs/inode.c                        |  5 +--
+ fs/nfs/nfs42proc.c                    |  3 +-
+ fs/nfs/nfstrace.h                     |  1 -
+ fs/orangefs/file.c                    |  4 +--
+ fs/orangefs/inode.c                   |  1 -
+ include/linux/fs.h                    |  1 -
+ include/linux/pagemap.h               |  2 +-
+ mm/filemap.c                          | 42 ++++++++++++++++--------
+ mm/truncate.c                         | 15 ++-------
+ 24 files changed, 87 insertions(+), 174 deletions(-)
+
 -- 
 2.47.3
 
