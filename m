@@ -1,256 +1,204 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id DC617438012;
-	Thu, 20 Aug 2026 11:37:15 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 8B39947045F
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Aug 2026 13:39:22 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787225847; cv=none; b=T6HuaP21FXgdZLF3/VCOUHnH3bTKrIEF2aF1Zmw5GR5F2qyR4/bW4Ze5k4CJlLxpc6LZRB69BkRvtTdVcEOivtSyZ1S4bQWgiSTde6abdPghaJbq67CLPTQfnAYYpUt8loGiYwGMBkJm2f1vut9ACeA5Fr+c+r79QAdPRvamLDo=
+	t=1787233163; cv=none; b=Mzvx3i7dwYTSCoa1cnUP2g1npxR59U6q6PUvS+icFypwFQTn0U+iihFzmnNaWGDCRMX6geoTDXeJa2HFpjLOMidoZtfPnxna8Ko0cOx8BA7PqzheK6IrFMySbqajhP13HQiTrOJHlB9GTHnJYBsPketuBCnnF5q8SLTInFAQJps=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787225847; c=relaxed/simple;
-	bh=oqTEbapJ7m7OJal1cTCQ+CBSUzwlIduS9wikKb3wDiw=;
-	h=Message-ID:Subject:From:To:Cc:Date:In-Reply-To:References:
-	 Content-Type:MIME-Version; b=H6PV8N0kwd4Bweb5sBJz4FtvcC2x6iAmyuCLObU10DRskWLfI1/Oy5Ey4hq3uLIS10Gf1a5YWopd1GeuXo6kA10ZK0lDYMs6miF9mt8JNJRzBCFZEA8a/oM0mFZPvfMpA2Bh3GNVD3JuEdi4JVtiCqYdhhwQ4mbWjsngoEupJ3E=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=GfgXJkGA; arc=none smtp.client-ip=100.103.45.18
+	s=arc-20240116; t=1787233163; c=relaxed/simple;
+	bh=c2aZTXsKotnTEQLxiQQU3f7OVBAi/23fQ8T+VGgh1Ls=;
+	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
+	 Subject:Content-Type; b=kjozd13YQtolE5Fnkv5oRk0U+ab12yu638+rgqrr0RhDg4I/vhVLPHWR9mCd/RSSJUUu6T8yAAtHUW6eZo8rTPEq89c5Jzhvy4ZXYXtZacBVC3z/HxIw8Av8vpjIu0UH7AUR9GhIHm37LTcZ4Zlh5ImJmzPdjJdNOaJX6DYPVPo=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=Sici3JbO; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="GfgXJkGA"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id F19F61F00A3F;
-	Thu, 20 Aug 2026 11:37:13 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="Sici3JbO"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id D0D261F000E9;
+	Thu, 20 Aug 2026 13:39:21 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787225834;
-	bh=blFnMC+DqJzzIMmp8d38EvkiAJPI2DffUzalk7L15Ro=;
-	h=Subject:From:To:Cc:Date:In-Reply-To:References;
-	b=GfgXJkGATjfRyfwTXEMZKd41dS9xb5UI9heYlSXnKuZEceP6aEPnrYhD1aXzDHVcU
-	 GF4D/ER/Q3o3dcm3ePSJVy8InDBw0TG/mv5vZ6+lK7LPyJ0TKOqik0fuKsZzUxS0pm
-	 4hdCaUqWvK/cNsuMgpbu4inZ95BIe/zVIjEa5DvzD7r/4kF/SdsFgpwITMFOpRj9pY
-	 +qOJ5EGG/gxrJrEW1B/i4A82pvvEAuSZjT9H7q3MoACauagf6YsGjHY1KtVrCXiXdz
-	 qE+/yuelGTzQhe7Sm3N1S8CFsozf3YOMdgjV1wutGq2Q3EdizfcfGriQ8aq985wRRA
-	 SWdYyRx6eKC3w==
-Message-ID: <699bacb503758fbe2ebf01f3e8aca95e3eee4128.camel@kernel.org>
-Subject: Re: [PATCH] nfsd: prevent hung task in nfsd_nl_listener_set_doit()
-From: Jeff Layton <jlayton@kernel.org>
-To: syzbot <syzbot@kernel.org>, syzkaller-bugs@googlegroups.com, Slawomir
- Stepien <sst@poczta.fm>, Chuck Lever <cel@kernel.org>,
- linux-nfs@vger.kernel.org, Lorenzo Bianconi	 <lorenzo@kernel.org>
-Cc: Dai.Ngo@oracle.com, linux-kernel@vger.kernel.org, neil@brown.name, 
-	okorniev@redhat.com, syzbot@lists.linux.dev, tom@talpey.com
-Date: Thu, 20 Aug 2026 07:37:12 -0400
-In-Reply-To: <4601ffd5-c662-4ab1-ab2f-50a67a0a990e@mail.kernel.org>
-References: <4601ffd5-c662-4ab1-ab2f-50a67a0a990e@mail.kernel.org>
-Autocrypt: addr=jlayton@kernel.org; prefer-encrypt=mutual;
- keydata=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
- QZIQXVeAA+smfTT0tDrisj1U5x6ZB9b3nBg65kc=
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-User-Agent: Evolution 3.60.2 (3.60.2-1.fc44) 
+	s=k20260515; t=1787233162;
+	bh=L2i2SfrrQ2kr3E4fUn58Y4XhMywnculujc8OIEZrVB8=;
+	h=Date:From:To:Cc:In-Reply-To:References:Subject;
+	b=Sici3JbOQizYFlIXggBwe7MgZeCN6TNjNk0ERw31GVUQmuZPEzQ01gpGnSWD1sMpn
+	 zQFwDnofgLU864atP6/tqDBtmujiZ5idyZKRyln3sZOW43Toj6YclyZbgS+cQf4FsQ
+	 0wnXzpg1K2jxJkxe3iBTUDJt5ptkFJWJ0rRUnb/KHE4tyRdxXYN7mo3PaUX7SrnqPK
+	 cse1ATo/8tWIduiy2izhC/2selzKFxLdKh6OItup/8+2yZ0y8E6QOQtMzxHraaA7E8
+	 I0D0kVKxwKYgSW2N3ZkA+64P85VTpqTaYA6GNTYmlZnJnLYTAWoJaPdUs07bk+zjRQ
+	 sUofwGU1LGYKQ==
+Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
+	by mailfauth.phl.internal (Postfix) with ESMTP id 0FE5BF40066;
+	Thu, 20 Aug 2026 09:39:21 -0400 (EDT)
+Received: from phl-imap-15 ([10.202.2.104])
+  by phl-compute-10.internal (MEProxy); Thu, 20 Aug 2026 09:39:21 -0400
+X-ME-Sender: <xms:iAOHalyG6G0dQLLCNtTw403Opb8WXevL_Isrb5Vfi7eSAFYybKdvgw>
+    <xme:iAOHagGxFjWfeEJPiCYOKBZtdmy1B8Y3f9glIYMBacwEAgcahh6tJtlyYARWLvAoh
+    baIweg3_NUd_JsMZHLisLaLfH--ibLgl2FP6Uc7fYlLCvWihluCtghg>
+X-ME-Proxy-Cause: dmFkZTFP4FeOKf5BWVYB8+8unwx4eT974UKuXMkwt0vKrk9dVZD4SogVp7fKs1rghfP3wk
+    dTtR/326e0hSsOaIRqwENRgZwqbVUQzksrt4doe6qD/sGy9sBJgTrBfl1DlOkB2ZUb6ugE
+    wUFcNBWtSqdk5qvptpFMIpNInTOxSbG8voiRmZMkw6zRyvfUaEV2LTwFfLtuO7BY6h2o3T
+    lERQMRhQZZ9ycKzOx0oIDSmaQWoLP71hMaeAmTYgmpifXOs7MkkeoSoFKkUnfytCjxuCl7
+    AeZB28U5c9ucyN+PjpCM69GE/OP/6kaY4S3vfbxVua2kaVQBjo+NnrPPc9KkPdzQn2xNTL
+    K8xD+UW9lzKTQUfyzgOsFf8lTQsQvzHN2wf7HMGLweqJs2iryTO1rOurRZpgdqO4oDBEBg
+    P7YrTu0JVQRyL53bo7nBH2EWH0VQbS3587m+DvMFVPLVIxRopXennsYfT62Czo5tx9641r
+    OPdfppR/DLW5BiEd1CgG8X6cqpFVxJmZxCgk7aBt24/CQQaiJPdmbL7WhF4v98JmQuBPco
+    RBgyGtd6G9b/NtEebf9jCfo5svJSy5bGxuau2FPm8SdElLKSfPwsErd4i3fajfbaM0Q6zZ
+    +mX8WIp7QpoteuD0ni6Pu8P99mwc0flZiPYqwqejPUhcAiKEVIRNL5pyNxSA
+X-ME-Proxy: <xmx:iAOHau7aBlFVUUUFvHPjiKktd9jQGkOYF86yb59gHtHMQzgB5LMGCQ>
+    <xmx:iQOHajUdTt8T2eeBjpk4vco6uHHGGpftn3-Fx3LtkIZwNrdxL4SA2Q>
+    <xmx:iQOHasIzTXXVSxfH9cV0onv3Ide0BxbFi8t9HkrKylfidCuBA8eK0w>
+    <xmx:iQOHaoSE2ZkeAsN-2NtBnwLdhZpYlPNgXP69jorYO39HBeQDd59bVA>
+    <xmx:iQOHaohQprhurksJT9XbgRMD6m5Bqf6ebxq-dZ2KJ_XX8eDXzaVIA5nP>
+Feedback-ID: ifa6e4810:Fastmail
+Received: by mailuser.phl.internal (Postfix, from userid 501)
+	id CFF8C7811F0; Thu, 20 Aug 2026 09:39:20 -0400 (EDT)
+X-Mailer: MessagingEngine.com Webmail Interface
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-
-On Thu, 2026-08-20 at 06:55 +0000, syzbot wrote:
-> From: Slawomir Stepien <sst@poczta.fm>
->=20
-> In nfsd_nl_listener_set_doit(), the kernel iterates over all
-> NFSD_A_SERVER_SOCK_ADDR attributes provided in a netlink message to
-> configure NFS server listeners. There is currently no limit on the number
-> of attributes a user can send.
->=20
-> For each attribute, svc_xprt_create_from_sa() is called, which may
-> synchronously invoke request_module() to load the corresponding transport
-> module. If a user provides a large number of invalid transport names,
-> request_module() is called sequentially for each, taking a massive amount
-> of time. Since this entire process occurs while holding the global
-> nfsd_mutex, it blocks other tasks attempting to acquire the mutex and
-> triggers a hung task timeout:
->=20
-
-My LLM latched onto the same explanation, but the request module
-upcalls are actually quite quick and have some other gates on them that
-make this problem hard to hit in practice.
-
-The real problem is rpcbind registration, which can be quite slow. The
-fix for that is to make the registration asynchronous, and to not
-trigger errors on rpcbind registration failure. That's a bigger
-project, but let us know if you're interested!
-
-In any case, I've sent a series that includes a similar fix to this
-one, along with some others:
-
-    https://lore.kernel.org/linux-nfs/20260811-nfsd-nl-hang-v2-0-c0c92b3953=
-c3@kernel.org/
-
-I'll try to get the follow-on series out later today or tomorrow.
+X-ThreadId: AvwrKSmIynuB
+Date: Thu, 20 Aug 2026 09:39:00 -0400
+From: "Chuck Lever" <cel@kernel.org>
+To: NeilBrown <neil@brown.name>, "Ian Kent" <raven@themaw.net>,
+ "Jake Edge" <jake@lwn.net>, "Ilya Dryomov" <idryomov@gmail.com>,
+ "Alex Markuze" <amarkuze@redhat.com>,
+ "Viacheslav Dubeyko" <slava@dubeyko.com>, "Jan Harkes" <jaharkes@cs.cmu.edu>,
+ coda@cs.cmu.edu, "Alexander Viro" <viro@zeniv.linux.org.uk>,
+ "Christian Brauner" <brauner@kernel.org>, "Jan Kara" <jack@suse.cz>,
+ "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>,
+ "Amir Goldstein" <amir73il@gmail.com>,
+ "Andrew Morton" <akpm@linux-foundation.org>,
+ "Miklos Szeredi" <mszeredi@redhat.com>
+Cc: autofs@vger.kernel.org, linux-kernel@vger.kernel.org,
+ ceph-devel@vger.kernel.org, codalist@coda.cs.cmu.edu,
+ linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Message-Id: <c3cc4175-1ca3-467d-849b-22462a7514fc@app.fastmail.com>
+In-Reply-To: <20260815042707.2535717-14-neilb@ownmail.net>
+References: <20260815042707.2535717-1-neilb@ownmail.net>
+ <20260815042707.2535717-14-neilb@ownmail.net>
+Subject: Re: [PATCH v2 13/18] VFS: don't move dentries in d_sib list when they have the
+ same parent
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 
 
->   INFO: task blocked for more than 10 seconds.
->   ...
->   Call Trace:
->    <TASK>
->    __schedule+0x17e7/0x5630 kernel/sched/core.c:7234
->    schedule+0x164/0x2b0 kernel/sched/core.c:7326
->    schedule_preempt_disabled+0x13/0x30 kernel/sched/core.c:7383
->    __mutex_lock_common kernel/locking/mutex.c:726 [inline]
->    __mutex_lock+0x7bf/0x1550 kernel/locking/mutex.c:821
->    nfsd_nl_version_get_doit+0x17c/0xd20 fs/nfsd/nfsctl.c:1889
->    genl_family_rcv_msg_doit+0x233/0x340 net/netlink/genetlink.c:1114
->    genl_family_rcv_msg net/netlink/genetlink.c:1194 [inline]
->    genl_rcv_msg+0x614/0x7a0 net/netlink/genetlink.c:1209
->   ...
->   2 locks held by task/5864:
->    #0: ffffffff90114168 (cb_lock){++++}-{4:4}, at: genl_rcv+0x19/0x40
->    net/netlink/genetlink.c:1217
->    #1: ffffffff8eeb1a60 (nfsd_mutex){+.+.}-{4:4}, at:
->    nfsd_nl_listener_set_doit+0x135/0x1750 fs/nfsd/nfsctl.c:1964
->=20
-> Furthermore, the function does not break out of the loop if
-> svc_xprt_create_from_sa() fails, and it suffers from an O(N^2) complexity
-> issue because svc_find_listener() iterates over the serv->sv_permsocks li=
-st
-> for each attribute.
->=20
-> Address this by introducing a hard limit of 128 NFSD_A_SERVER_SOCK_ADDR
-> attributes per netlink message. The limit is enforced before acquiring th=
-e
-> nfsd_mutex to prevent lock contention. Additionally, modify the loop to
-> break immediately if listener creation fails, avoiding needless sequentia=
-l
-> request_module() calls for invalid configurations.
->=20
-> Fixes: 16a471177496 ("NFSD: add listener-{set,get} netlink command")
-> Assisted-by: Gemini:gemini-3.6-flash Gemini:gemini-3.1-pro-preview syzbot
-> Reported-by: syzbot+41bc60511c2884783c27@syzkaller.appspotmail.com
-> Closes: https://syzkaller.appspot.com/bug?extid=3D41bc60511c2884783c27
-> Link: https://syzkaller.appspot.com/ai_job?id=3D30871f87-7a83-46b8-ab83-9=
-19894b0787b
-> Signed-off-by: Slawomir Stepien <sst@poczta.fm>
+
+On Sat, Aug 15, 2026, at 12:21 AM, NeilBrown wrote:
+> From: NeilBrown <neil@brown.name>
 >
+> When __d_move() moves or exchanges dentries it currently always moves
+> both dentries to the head of the ->d_children list of the respective
+> parents.
+>
+> When they have the same parent, this simply moves them from where they
+> are to the start in the same list.  So it achieves nothing useful.
+>
+> A future patch will allow d_for_each_positive_child() to drop and retake
+> the parent's d_lock during the iteration.  With the current __d_move
+> behaviour this would allow a dentry to be moved to the front and so
+> missed, even though it is still in the same directory.  This might be
+> unexpected.
+>
+> With this change the only dentries that d_for_each_positive_child()
+> might miss are those moved out of the directory, or those moved in after
+> the iteration started.  These are unavoidable and should not be
+> unexpected.
+>
+> Signed-off-by: NeilBrown <neil@brown.name>
 > ---
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index fa92e31d1..516c04c14 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -1943,6 +1943,8 @@ int nfsd_nl_version_get_doit(struct sk_buff *skb, s=
-truct genl_info *info)
->  	return err;
->  }
-> =20
-> +#define NFSD_MAX_LISTENERS 128
-> +
->  /**
->   * nfsd_nl_listener_set_doit - set the nfs running sockets
->   * @skb: reply buffer
-> @@ -1955,12 +1957,19 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb=
-, struct genl_info *info)
->  	struct net *net =3D genl_info_net(info);
->  	struct svc_xprt *xprt, *tmp;
->  	const struct nlattr *attr;
-> +	unsigned int count =3D 0;
->  	struct svc_serv *serv;
->  	LIST_HEAD(permsocks);
->  	struct nfsd_net *nn;
->  	bool delete =3D false;
->  	int err, rem;
-> =20
-> +	nlmsg_for_each_attr_type(attr, NFSD_A_SERVER_SOCK_ADDR, info->nlhdr,
-> +				 GENL_HDRLEN, rem) {
-> +		if (++count > NFSD_MAX_LISTENERS)
-> +			return -EINVAL;
-> +	}
-> +
->  	mutex_lock(&nfsd_mutex);
-> =20
->  	err =3D nfsd_create_serv(net);
-> @@ -2073,8 +2082,10 @@ int nfsd_nl_listener_set_doit(struct sk_buff *skb,=
- struct genl_info *info)
->  		ret =3D svc_xprt_create_from_sa(serv, xcl_name, net, sa, 0,
->  					      current_cred());
->  		/* always save the latest error */
-> -		if (ret < 0)
-> +		if (ret < 0) {
->  			err =3D ret;
-> +			break;
+>  fs/dcache.c | 20 ++++++++++++++------
+>  1 file changed, 14 insertions(+), 6 deletions(-)
+>
+> diff --git a/fs/dcache.c b/fs/dcache.c
+> index ae726f3ff0cb..50fbbcceca01 100644
+> --- a/fs/dcache.c
+> +++ b/fs/dcache.c
+> @@ -3052,6 +3052,9 @@ static void copy_name(struct dentry *dentry, 
+> struct dentry *target)
+>   * entries should not be moved in this way. Caller must hold 
+> rename_lock, the
+>   * i_rwsem of the source and target directories (exclusively), and the 
+> sb->
+>   * s_vfs_rename_mutex if they differ. See lock_rename().
+> + *
+> + * If @dentry and @target have the same parent, then neither is
+> + * moved in the d_sib list.
+>   */
+>  static void __d_move(struct dentry *dentry, struct dentry *target,
+>  		     bool exchange)
+> @@ -3119,15 +3122,20 @@ static void __d_move(struct dentry *dentry, 
+> struct dentry *target,
+>  	} else {
+>  		target->d_parent = old_parent;
+>  		swap_names(dentry, target);
+> -		if (!hlist_unhashed(&target->d_sib))
+> -			__hlist_del(&target->d_sib);
+> -		hlist_add_head(&target->d_sib, &target->d_parent->d_children);
+> +		if (target->d_parent != dentry->d_parent) {
+> +			if (!hlist_unhashed(&target->d_sib))
+> +				__hlist_del(&target->d_sib);
+> +			hlist_add_head(&target->d_sib,
+> +				       &target->d_parent->d_children);
 > +		}
+>  		__d_rehash(target);
+>  		fsnotify_update_flags(target);
 >  	}
-> =20
->  	if (!serv->sv_nrthreads && list_empty(&nn->nfsd_serv->sv_permsocks))
->=20
->=20
-> base-commit: 075b74841bd0065a3bda3440873c747938e69b68
+> -	if (!hlist_unhashed(&dentry->d_sib))
+> -		__hlist_del(&dentry->d_sib);
+> -	hlist_add_head(&dentry->d_sib, &dentry->d_parent->d_children);
+> +	if (dentry->d_parent != old_parent) {
+> +		if (!hlist_unhashed(&dentry->d_sib))
+> +			__hlist_del(&dentry->d_sib);
+> +		hlist_add_head(&dentry->d_sib, &dentry->d_parent->d_children);
+> +	}
+> 
+>  	/*
+>  	 * Adjust parent refcounts if either d_children ended up empty.
+> -- 
+> 2.50.0.107.gf914562f5916.dirty
 
-I have a patch series in progress for this already, which also=20
---=20
-Jeff Layton <jlayton@kernel.org>
+Both new guards are correct. In the exchange branch target->d_parent has
+already been set to old_parent, so testing it against dentry->d_parent
+asks whether the two dentries started in the same directory. In the
+common branch dentry->d_parent has been set to target's parent, so
+testing it against old_parent asks the same question. IS_ROOT()
+still takes the move, which it needs to because a root dentry has an
+unhashed d_sib, and the BUG_ON(p) above guarantees target->d_parent
+is not dentry.
+
+The opening sentence needs a qualifier. For an ordinary move only
+dentry->d_sib is relocated. target->d_sib is touched only on the
+exchange path, so "both dentries" describes just that case.
+
+This patch also does more for libfs than the patch description claims.
+I would like the description to say so, because it makes the patch
+worth applying on its own.
+
+offset_readdir() resolves a stale cookie with mas_find_rev() and then
+walks d_children from the dentry it lands on. That is correct only
+while offset order is the reverse of d_children order. d_alloc()
+inserts at the head and mtree_alloc_cyclic() hands out increasing
+offsets, so the two agree in a directory that is only created into.
+
+A rename within one directory breaks the agreement today.
+simple_offset_rename() gives the surviving dentry the offset of the
+entry it replaced, and d_move() then sends that dentry to the head of
+d_children. Create a, b and c in that order and the offsets are 3, 4
+and 5, with d_children holding c, b, a. After rename("a", "b") the
+dentry for a carries offset 4 and sits at the head, so d_children
+holds a, c while offset order still says c, a. Stop a readdir with a
+reported and c pending, remove c, and the next call resolves the
+cookie to a and reports a a second time.
+
+With this patch a stays where it is, d_children holds c, a, and the
+two orders agree again. Thus this is a fix for tmpfs readdir, not
+just preparation for 14/18.
+
+Reviewed-by: Chuck Lever <cel@kernel.org>
+
+
+-- 
+Chuck Lever
