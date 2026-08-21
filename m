@@ -1,63 +1,64 @@
-Received: from mail-oi1-f169.google.com (mail-oi1-f169.google.com [209.85.167.169])
+Received: from mail-oi1-f173.google.com (mail-oi1-f173.google.com [209.85.167.173])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 7D9B3493637
-	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 16:29:32 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.169
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id B1D81493637
+	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 16:29:34 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.173
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787329773; cv=none; b=kuhjA5/tvbegu9PVN4LQb7ppPi8JMsdGyGpIQhLMTPBo9VDAvTR9c+E4yMnBMNHkVdQ5hAtN3sZeM9maSP6JoWdMdbIAiq6Y4dNCG99HEYK4fatLvHkk7wWPvM6VC38RXrfoMF3ilA+GnwE35VfUHZI9ElD2xAiSNK38ZLstUOI=
+	t=1787329776; cv=none; b=dTKSqPOyVNgMINbvuuuiY3U/9xhChWRMQc9dCM1iZMr7HBX/O6VtcvL6ZLvmfRhm5xyVcg40dw7icwBOJYmJkxAwsNc3NTBN18MuV2UqeWYYEmPu26NFVKTflUQxtmMECcHnAh03725nSsd695J3jqVW7oe564HwjKr6ZVWekTM=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787329773; c=relaxed/simple;
-	bh=HYaOoKy+FnhAiKd8hbB5LUH4cJrkUaqj44CQiOe/JQE=;
+	s=arc-20240116; t=1787329776; c=relaxed/simple;
+	bh=vknl/QhcQ2vYMnPnp3B3HfXGaEuVlDf8RgDUdev9Qkk=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=sidPtkO4SYdh0iPks+wMamm13jA12651gxu8IFJD/2OdOCC5OoxipDbrNECbE9A9ix5iM6p+sb9vSV5jbvZZIt/7lGtvJFrVsI80Vzv/eAlvyW+bFVrX2A4NVhygBMfa0kYZQZP7GvLarF1nNnOlKEZUCBXAPiURWpOvxZDPTJ8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=fGvekEBW; arc=none smtp.client-ip=209.85.167.169
+	 MIME-Version; b=iuFxAPPtlBcRd6TSRmyN/9hO/TGQxwRsJAs/dKbBtlDuDJOFfz6ryp1WE3cQM1Zp891zPlqlkZdR7nOcfsh4ZjnJlaLptItoDBxRqtfQokqELW/7Y8Hx2dQP052BaYnieO/agHr/bHXnk2QKk23YS9jczfba+rZAWHXjpmKU3zI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=Z7FmZD2C; arc=none smtp.client-ip=209.85.167.173
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="fGvekEBW"
-Received: by mail-oi1-f169.google.com with SMTP id 5614622812f47-4a45b3f0becso1130323b6e.1
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 09:29:32 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="Z7FmZD2C"
+Received: by mail-oi1-f173.google.com with SMTP id 5614622812f47-4b21f09ea42so981701b6e.2
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 09:29:34 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1787329771; x=1787934571; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1787329773; x=1787934573; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=eTETFHL9xQKR5P+AfRsuEB1dZ7O7yRk11OHcyc8vX/U=;
-        b=fGvekEBWmCKsgItblMcTuR2WOphRfNStF65nxuVxFpF67YIpAYZxSLUUvLMSIwETWI
-         kLYEWJb1iRuSbJ6D88eDNh5uWfe2VLYzyb+0V8BXSwu3Kes0WPmQsXoLsv+Jl/E+8qQj
-         NQ7WHF9C12XgtvG+01EoRvKV0Ul/IQp95YLvolDK6sEnj8s2V+pHKBFGaaxCFtt7j9op
-         t1UHDUKoZeJ3mS63C2NxaN+eF4Z5cvaIAL2a51nDdYhswnkhVPNViuQ0B4VEmVQicVgc
-         JkjsV+CgOM6SNkqSXKytZF1lybFjQQmxZWnIYEqY0W0O/XuHtp4UzcdGNplKm3W1jDPq
-         yK4g==
+        bh=mOZ5ghgnHM4NaQLKbM8wRRQ9DpsBmpgyJnmMZPERWFw=;
+        b=Z7FmZD2CB0bH1+Mz8HW8Z2H78CTA2y0A8l+R6x8nMEl/p6iKF+bku2QdwIZUdwH387
+         nAfTIO6Qk7kvHiZKf0abWcuiYa8rLmBK8Inw6oCA/yV4senuwyRla6myyKIeRWdKH1sQ
+         olXOVObaVU/hv0t6c3JCABYaik35UnQlX+mugbQdJKo3Ljw0pMy2qxFn78gF0T+XE5U8
+         YIDPKAL0c/MomDqh1IkN9V9/T+JSFCVCsEjXPVcIY8myEvHEowGxhr1BFCKlTf3jLuKw
+         gHwLUNyN2CHTfAfKwmogLqgZY7d0P26W8kKAlAjD1vZI1qYUdPhKKRd1EF3bfbqPyO2N
+         Ob3w==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787329771; x=1787934571;
+        d=1e100.net; s=20251104; t=1787329773; x=1787934573;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=eTETFHL9xQKR5P+AfRsuEB1dZ7O7yRk11OHcyc8vX/U=;
-        b=OdfKKP9N5KHUqrbVSNyhl5MphyYgdySGNhEdS/lCtLJ6txT1FOQbxH2zDqzKUh8eNz
-         wwFTaBdjUv4gwPCI5ekO60WnCHc6Lm3VF6EzEf/eobjIBkq6DH/SkP9dzwArRC9Iyj9L
-         9/ebsM5i56Eg3Vb+jxedroJmZayqeZi6OEfmflSw30/rYs70PWnC38jMdEMiD0a/U4hG
-         j+crr70I3BbN2foOaB2DJa4yg7sTwGQiAnEkL2Kot/+DM5g4/spP/FFz0xfbuaLYDnDs
-         +GHlKgO+iBkL12qpCo7LaP/PQkx5fJUXkiu8z3SH33Ciyiih4VCP6aDvRvyyWBBJUJBh
-         9aZw==
-X-Gm-Message-State: AOJu0YxLavnby+kxuM58E0XDarON4o9sGEkWgLMfQ2JxtCmx2kV0qFpO
-	XZbAPnWdmjXk29F2o58oFu2guRYi2Yy9siVvUTwWBwhfEqHL1r52EPwV4XIs/MJTq1w=
-X-Gm-Gg: AR+sD13+3CVzi9dyK0W90YeV1HupNFEsGebUz6thDIekwGQQN7Xu6xCNjHIyeKAY3hD
-	vhI+svhsvzC3/ugJLacadtY9FmTUBbymV5rW230Sk1LC3WjOsB1+/UdSYvN/NL4H9fCtSBklcCJ
-	mntmzSqXOi9LfSABgH8npu9/8GdOsWkYlx17VRXV6z/sVGm0AaNo4agB42gp8l/qp3VOdQP8UO2
-	RkRvhUpECGgXMh1YC7IjoxYXc+ztPUHua5VzanI2Gnei+ZKVmYL6Ruz3dk8mPl4rKr7wX37jubF
-	j0yBn66G74xlgTpV/BWEJ6m8BvYyQ8yq5uTEBA7rud2wxRmV/jnsQbsHnRs8+n8x2IqkmRwXeKf
-	Tpa1XKaes86j8DFadqv4vr3A17TLOTrogJ2DItuAwzJjsHtB8eIlhaNZXiq+538N9djWhgg0Nyn
-	VbhKm4XMlWhanA5f7Y3aI2IhmCV/fYxxd48Xb2fNmH3V8O31rkSlMG2DSt1JtnkoTjybnIWGc3V
-	H/2Gyx4hv+M1c7SAbzSccA9
-X-Received: by 2002:a05:6808:144f:b0:4b2:8d91:ef6a with SMTP id 5614622812f47-4b2ef2b9c38mr7237852b6e.8.1787329771237;
-        Fri, 21 Aug 2026 09:29:31 -0700 (PDT)
+        bh=mOZ5ghgnHM4NaQLKbM8wRRQ9DpsBmpgyJnmMZPERWFw=;
+        b=ZRyL/DLi1djGewhZqS9Gt3PrVYmr5It9HH0t9+fk+ljEK45waxyzTqIvGxu8qJ8ezX
+         o69ksPXDbhzQP0FrEmmyGD0VUX6i3HeMQH5seOlqU5CXXXCLKONSVdAeUTRkQdeJcn15
+         4ebfofx3jGgEtS7pwDE9FEQwHyXFvhtqv1jZ5Kjo5bdXwXFDd23L6DfjgrHmNK8fIin/
+         Rm8kmmCufSlKnJMcp2i6euAqFw6M0Tjq8XHqsf8ObJ1a/3VnspGau9DxTYlrpBbEDNvL
+         qxryR72LKfK7D9R1chjZE3NuXU84nHE1EQrcuYB+qzUamngUvlcCFQ1JDJAobBpMyAl8
+         gscg==
+X-Gm-Message-State: AOJu0YwNQbj+4E4rKxDzRO7ICgCJRVfWq3k+DQLq8gCcdDn2hGWsNpb3
+	MsEf0Y1XSayJHnwCbaRpxhSNx7iwBIiZ1seXodW9oUDIuqO6ORnorcUMJjCWnyIdE3UvFnJzJsz
+	f5+In
+X-Gm-Gg: AR+sD13+RcyXvP7UG6zHvqYcs5QpoPVjxn6juL7bPX8dkY3zeC1rH/Vgy7ftW7txab4
+	AcvO8LsqMrhbOWI5+zT2nWMSKW2FWTzGaht3BU4WfpiLtxYFrkHnNTmBwEZrbWpNeVDXTSYWZnR
+	dl53qSOt1/hoxqku3Nnub2Kn5ouoTXGEZdfgZwkpRPlRG1ktcX/16VW9DKOSTsd8RI4SZLEWzvb
+	KxPf1J0SqcHNsyXtgvGf0o/JO7w8/Cm3XajjW/V6BVEEJpSLZORO34/c1r+cklWCSWNYdsgu2K1
+	PzTj2a5FX5u3jORquy5uKtbflD+76ZxLVE/Fs+xmjjc+NCmes7KOIcQTbnZoJNInTuEnXaAcTZi
+	Tsy2c4Axa80/ICkaoUh4dk9M/fPv88Q/gH6WeFAK/F3gCXeFn0uuLSF52uLDn0Xx2glaD8f9XIL
+	26ebRA8zFuDwgXh/rbwnmBnDvmjauG8N5OtBaFirUdJfNwelozVcaE77WWf9KRAWCcqjK+tK5k0
+	3Ud/sGJ0tn8lqdE12Zrrmoz
+X-Received: by 2002:a05:6808:5290:b0:495:d7ec:b6ae with SMTP id 5614622812f47-4b2ef3a0a02mr7192033b6e.16.1787329773538;
+        Fri, 21 Aug 2026 09:29:33 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b2d6d74145sm5002916b6e.15.2026.08.21.09.29.30
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b2d6d74145sm5002916b6e.15.2026.08.21.09.29.31
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 21 Aug 2026 09:29:30 -0700 (PDT)
+        Fri, 21 Aug 2026 09:29:31 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -66,9 +67,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Jonathan Curley <jcurley@purestorage.com>,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v2 02/23] NFSv4/pnfs: bound the CB_NOTIFY_DEVICEID array count before allocating
-Date: Fri, 21 Aug 2026 12:29:06 -0400
-Message-ID: <99d7b8043b5a609a9712e4bc40b4614088688f3b.1787327939.git.bcodding@hammerspace.com>
+Subject: [PATCH v2 03/23] pNFS: Fix CB_NOTIFY_DEVICEID CHANGE to consume ndc_immediate
+Date: Fri, 21 Aug 2026 12:29:07 -0400
+Message-ID: <7c8b7b9c08d588a52f68c27bf3cae8fb0b7347a2.1787327939.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1787327939.git.bcodding@hammerspace.com>
 References: <cover.1787327939.git.bcodding@hammerspace.com>
@@ -80,37 +81,32 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-decode_devicenotify_args() hands the server's notification count
-straight to kmalloc_objs() as the array length, without checking it
-against the message that carried it.  Bound it the way nfs4xdr.c bounds
-an attribute length, against xdr_stream_remaining().
+decode_devicenotify_args() gated the trailing ndc_immediate on
+cbd_layout_type rather than cbd_notify_type, so the flag was never
+consumed and a multi-item cnda_changes<> misaligned after the first
+entry.
 
 Fixes: 1be5683b03a7 ("pnfs: CB_NOTIFY_DEVICEID")
 Cc: stable@vger.kernel.org
-Assisted-by: Claude:claude-fable-5
+Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/callback_xdr.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+ fs/nfs/callback_xdr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 4382baddc9ee..2d3d0f237ba1 100644
+index 2d3d0f237ba1..8d1a446a8ad8 100644
 --- a/fs/nfs/callback_xdr.c
 +++ b/fs/nfs/callback_xdr.c
-@@ -271,6 +271,13 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
- 	if (n == 0)
- 		goto out;
+@@ -319,7 +319,7 @@ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
+ 		memcpy(dev->cbd_dev_id.data, p, NFS4_DEVICEID4_SIZE);
+ 		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
  
-+	/* sanity check the count against the remaining stream */
-+	if (n > xdr_stream_remaining(xdr) /
-+		((4 * sizeof(uint32_t)) + NFS4_DEVICEID4_SIZE)) {
-+		status = htonl(NFS4ERR_BADXDR);
-+		goto out;
-+	}
-+
- 	args->devs = kmalloc_objs(*args->devs, n);
- 	if (!args->devs) {
- 		status = htonl(NFS4ERR_DELAY);
+-		if (dev->cbd_layout_type == NOTIFY_DEVICEID4_CHANGE) {
++		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) {
+ 			p = xdr_inline_decode(xdr, sizeof(uint32_t));
+ 			if (unlikely(p == NULL)) {
+ 				status = htonl(NFS4ERR_BADXDR);
 -- 
 2.53.0
 
