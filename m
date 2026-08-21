@@ -1,63 +1,63 @@
-Received: from mail-oa1-f51.google.com (mail-oa1-f51.google.com [209.85.160.51])
+Received: from mail-oi1-f181.google.com (mail-oi1-f181.google.com [209.85.167.181])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id E6AB4493635
-	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 16:29:35 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.51
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0627B493635
+	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 16:29:37 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.181
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787329777; cv=none; b=T2wWvBrhdYaZ+fL4HejriErt28uSpVHTSZBG2hypB/MP2026KHMiTwbQtnMhH3AHW7RCPVYiK9kmPiw4sjXzjF29PNlSIODhM0XeXltXtXd3JSyx3p3DYGHM7huU3iXCzyzqYJAbNcVYN2/TUuLL9yxojqF5QgEwlKwXAjq7zsU=
+	t=1787329779; cv=none; b=fX1P0/zXZzlaa+rRfj0Xee5/aSgZl6h9mvdPSum/pSBlRHRpHP3eMM6JGWFsY8r7iD5N9TbHS0qvFaWDFu85WX0MDnZFcy2i0TNglQo8lYfKK1DCRNuf00zy8/ttAXWhcBG39r/h/Tr3VxRbnUEWNP+JNs1r890NvAjKBYX6Ye4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787329777; c=relaxed/simple;
-	bh=KBbtLLgU3AZo+dzvnywDsYYQaYy6I6RsmT32NTkJcWI=;
+	s=arc-20240116; t=1787329779; c=relaxed/simple;
+	bh=vmu0tEb4qcyOrlu5kXJnOphkT0IlZRFzSiAPB6rAtRM=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=QyfkSJQwSXiJwwWZniVOZb7TqgMWWuCmkFywjD9YJ0VA1SghDBCtBXviVgfnyUeIXk0pCNfbMeB7FQoq6AJ2G/khpDQB3de8xQe/oJPpFoTGfVBGV7ydbdJwEvoDmJpnKrTdSPp6lPEZ5Rgk/HgYdp3gbqJEaRlRDvqMsyy1Bqc=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=GZW8fXKn; arc=none smtp.client-ip=209.85.160.51
+	 MIME-Version; b=o+PtBM/eGHstOWq3HEO2PXo4uWZTKn3VIpJaKLr9a7djYKI7mgTiRKIr4DkP2tpe6RuW27OFIZeTTgNyXJ9ibtabEImKq0JvnauEOkCTgEDB1H71twxy9lh7ZfAzgfSfjEndwdYT0rtobH+/DahCkj+g6FsL9t5OzUQwV3VjQA0=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=QOKiHlgE; arc=none smtp.client-ip=209.85.167.181
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="GZW8fXKn"
-Received: by mail-oa1-f51.google.com with SMTP id 586e51a60fabf-45eb688c891so513173fac.2
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 09:29:35 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="QOKiHlgE"
+Received: by mail-oi1-f181.google.com with SMTP id 5614622812f47-4a40bcc8d69so1024822b6e.3
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 09:29:37 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1787329775; x=1787934575; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1787329777; x=1787934577; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=AQaWp2+1+CFEq8AEXUDjc1i2hB9ZIa/GtEH9nR1NkJc=;
-        b=GZW8fXKn85m3j0ZJEeJa2wNgacjSfFWd75+sNk8l/u/UD6AMEPVrIKZqLc3hinQKEU
-         NQQUHxousqY4HA4+2LW41cYF3g9ncoQK/ppG3cMG/d3/sG6cz5XJ1zpePE4jSb/Ax4Au
-         Hhs+mIFaeJfZtPCManvzVKmOsgfhCgxwfTqMBwou0T02mBYfGLLtUJSDouJTw31kE8C+
-         Fc4oeBozxVazNHSLGSKE4Mnzf52Py3yfzvtdX84Nm/7qrpuBleLb170VAuYEKIQCp5T2
-         Rsp4c2PFGGwN6TzhFpKuYhsolG/afENA/4YZp1fjNZGWGm1skZMrnjCTi03Yjmp0xWDz
-         490A==
+        bh=3eUQYEOqt4TQ9JlCh7GuqokMETaZtrWfS4n+rNm3FyA=;
+        b=QOKiHlgEOPfQ2Iv8eXFHloI7bNMlm52u7nP1rNz4yL9rhl8Za6OSJnpzes6z2HmhIb
+         lsldsK40vz4XoMbK23N/ad35E0qb3BmixiOX9pwP8eftil+cXLxPKCzcU1c5qWNuOyXk
+         kUZjYmh4m2CxnhGV59YH/MlcXfFzhq2N9P/DUxUfDZ0Xv+R60lTBpxSKP+X9cdiV9BiO
+         wSs7jzRa5/p0OQlg8qC5hnWMGnxhiAUQ3sP9PqeNRkd+ydMVKzLAN3EzVC/t8T4Dns49
+         5FiFVu2JxQKQCU5BUizVfDeEVH9WuocSJZZ4LqAt8w9uGmBaLJpSLeWo16M5J+v4sp5G
+         9jZA==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787329775; x=1787934575;
+        d=1e100.net; s=20251104; t=1787329777; x=1787934577;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=AQaWp2+1+CFEq8AEXUDjc1i2hB9ZIa/GtEH9nR1NkJc=;
-        b=qXQdRCCqM64zXOm8hte1x4MdxlQE5sO+5auP6PAGZesRBjs6tLwC5r1Lf0gRvxU+hu
-         0OOnVw9bzkd+fjoN9sEMNPsn0PvfIr/S8FGld+1b4B5v+uLI/Yx0QmMpvx/Ex5/QRUg/
-         SPKvN669TLd6Cb4kdhhaCrnQPQ5/HTnBamIG6V1vgjEKd0ey5iIYWnpvKczFK/BnZtZR
-         7Z/nlKiNvFotJEYGz6lzxsqzUVNErSCO3EBU8H/0/A+u08envCuDuDMJXkou2/wNus+d
-         W3zWGu+QA3zXjedIhtP4RR0Aq/ns9OxFw9rTmrb0qAmrULPnTh8vOUJpxDIDNqfC+yQm
-         Lpsg==
-X-Gm-Message-State: AOJu0YzKs2ok85L3e+OkRcNSCUeyz3K1LkcM/P0bb835Ef/iimGd2O0R
-	oFzCZytK+GrJBVoNdg6rW6eQaj+58LKyIvV63U1M8HXZsg128lqjhAP/jIREKQYJ2tQ=
-X-Gm-Gg: AR+sD1362RNNsFIipZRTZrNj1ALBx1qys2BSoknPekyJbNxOaxzvrbNVPHUklRkBgHh
-	7Vd0VdvZKnSwm99xy4+3RteyJRMPushbknz3EhRyyqT0TpzZoK0niXKPKpaPxv6tKRt4e2ikBxW
-	5OIe2DPpVjD0ou43JHVmcV8DQtVbpCzeWQS7W8EGIf+ZocghhcHTPAc1RtWa7I37oVyi8yfy7hs
-	FxnglH+Tu9dbQOZsRWuTQRTVYTTqfkYR4B9JlGASp0PqWzDFHlJfRTLPvO2lDjwimXiy6LlQKFF
-	bijexHl2Cqujq04RNsc8/lst9nG0a+irkJJ1gUvHM1JUBxZuSeMyMNZAPHSPwyEgenbRdLbyej4
-	eKVAKyhErKg40ZFHct9us+nJLVpruMxz4C2xUIBZAOD5d49KjBP17HtclIMRyQCvd5b2rEfaosT
-	NfPNUalPGY9C1Y55Ya+715CbRRduS89p7FPwhL04AqvqOjyZIuGnOeiT3VP3CacmqepIIHllPhW
-	Le9unSRSqh0xWxKV6ZtyEtO
-X-Received: by 2002:a05:6808:1185:b0:497:df42:1dff with SMTP id 5614622812f47-4b2ef1bda24mr7013719b6e.1.1787329774643;
-        Fri, 21 Aug 2026 09:29:34 -0700 (PDT)
+        bh=3eUQYEOqt4TQ9JlCh7GuqokMETaZtrWfS4n+rNm3FyA=;
+        b=fowWawIpbxlemVtUOkRGWXdv/doASTlZboKhEJakDBnJfF3Oiy8aoNUtpOJHn3xlXc
+         +TRrCGJWdZue5TTOZ1eMNuqalRhmlgHc0LlTssumWlqLUQg4vYm5GbJkPcWvCFrz7rNr
+         T21/FjKQJZDkiQg5OTduUOBzel4C8wDYpQCGVI7ec07BnPzlaQ1OSHVqYN36rE3L+9Fk
+         tmDfTMzV2MMSzMItGXhglO87a8U6p0UNCbuzAre7ebcbZbdLLUH8SgqJyJcah3CbvulN
+         ndPvCrC0UOjCGLkoaiJDQ4GQ24CsiZFsXp1nhBRHU0QhMkfJ+N0uCaQwvHOlkmOeigs8
+         N59w==
+X-Gm-Message-State: AOJu0Yy1/oGRNkFOx/p10S+GV6qkV0Ueyksi4ayiqQYpJe3Bu3lQQ0h1
+	0N0UmxBLV4WxwHYMiT47ByIlKQPKWYVHZx3AObL+GomlRysRWvBUmrzVlig3umsr/NU=
+X-Gm-Gg: AR+sD10lRt//hLRSDUpiNp+rgtxCs03xV66XPQyeCI1j5qTfmm4lMz5PqnxwhIQ5A1k
+	bpheExJl4oKXvk9typXYuwyYgaJLu5A43BOmYt2wJj9jDm48Np+s84ZDyMfNpSf+8Sx20H7f4iP
+	QXWEgm7ZZAknLjVaJMU/a9CK4uRiuq267S/KA5aLbdcoVfmd+c029bT85HikWSydC01WUEAl+fU
+	LGFbH5fD9lwE6sbog85HXcEzlATR0RrNjPSIZ7dMxcWNnh0CQf6zc/lqv0O0brqi5+SV5wBTo4J
+	OV50GodD7nadpy1KF9LBHZGSO9UmXb9CbQMOJ8evk+VgI3P3LuYyXChFeX6p8bdHmfbR8mazlVf
+	h8K6MS+umdkHYuu+gUp8nAtSyZkhCFCzaCYG4dMABKpCfeL7vm3El90dzw4ea0+Mok8wJE9/++m
+	SXTW3DROakYRBLxnXdsx3YQYVbcS1ZF/gwQCcCFKwrjR0CSbW5qo5P/U7raV+V6VbUmE/Hxi61B
+	fz9L2Rql8RwFm5Wm81OemLe
+X-Received: by 2002:a05:6808:524c:b0:4b2:5529:ed3c with SMTP id 5614622812f47-4b2ef23b082mr8728852b6e.7.1787329776684;
+        Fri, 21 Aug 2026 09:29:36 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b2d6d74145sm5002916b6e.15.2026.08.21.09.29.33
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b2d6d74145sm5002916b6e.15.2026.08.21.09.29.34
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 21 Aug 2026 09:29:34 -0700 (PDT)
+        Fri, 21 Aug 2026 09:29:35 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -66,9 +66,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Jonathan Curley <jcurley@purestorage.com>,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v2 04/23] NFSv4/flexfiles: Use the full 64-bit offset for read DS selection
-Date: Fri, 21 Aug 2026 12:29:08 -0400
-Message-ID: <75516b92b17c77cf269772bc4e2537c079edb799.1787327939.git.bcodding@hammerspace.com>
+Subject: [PATCH v2 05/23] NFSv4/flexfiles: Bound page coalescing on the absolute stripe offset
+Date: Fri, 21 Aug 2026 12:29:09 -0400
+Message-ID: <cdb5e053bb296b467d1890b6ddccd3664486bcc0.1787327939.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1787327939.git.bcodding@hammerspace.com>
 References: <cover.1787327939.git.bcodding@hammerspace.com>
@@ -80,68 +80,58 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-The read data-server selection helpers declare their offset parameter
-as u32, truncating the file offset before nfs4_ff_layout_calc_dss_id()
-computes the stripe index.  The write path already passes the full
-offset; make the read path match.
+ff_layout_pg_test() was copied from the files layout, which partitions
+data servers relative to pattern_offset and bounds coalescing with a
+segment-relative offset.  Flexfiles has no pattern_offset:
+nfs4_ff_layout_calc_dss_id() partitions on the absolute file offset
+(RFC 8435 Section 6).  So when a layout segment's offset is not
+stripe-unit-aligned, the segment-relative coalescing window is shifted
+off the absolute stripe grid and a coalesced I/O can straddle a stripe
+boundary, sending the bytes past it to the wrong data server.
+
+Bound coalescing on the absolute offset to match calc_dss_id().  Aligned
+segments, including all whole-file layouts, are unchanged.
 
 Fixes: 4934ccbeaed3 ("NFSv4/flexfiles: Read path updates for striped layouts")
 Cc: stable@vger.kernel.org
 Assisted-by: Claude:claude-opus-4-8
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/flexfilelayout/flexfilelayout.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 74b75d061c6f..6db8de2b1fb3 100644
+index 6db8de2b1fb3..46f9b528eb5d 100644
 --- a/fs/nfs/flexfilelayout/flexfilelayout.c
 +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -881,7 +881,7 @@ ff_layout_mark_ds_reachable(struct pnfs_layout_segment *lseg, u32 idx, u32 dss_i
- static struct nfs4_pnfs_ds *
- ff_layout_choose_ds_for_read(struct pnfs_layout_segment *lseg,
- 			     u32 start_idx, u32 *best_idx,
--			     u32 offset, u32 *dss_id,
-+			     u64 offset, u32 *dss_id,
- 			     bool check_device)
- {
- 	struct nfs4_ff_layout_segment *fls = FF_LAYOUT_LSEG(lseg);
-@@ -917,7 +917,7 @@ ff_layout_choose_ds_for_read(struct pnfs_layout_segment *lseg,
- static struct nfs4_pnfs_ds *
- ff_layout_choose_any_ds_for_read(struct pnfs_layout_segment *lseg,
- 				 u32 start_idx, u32 *best_idx,
--				 u32 offset, u32 *dss_id)
-+				 u64 offset, u32 *dss_id)
- {
- 	return ff_layout_choose_ds_for_read(lseg, start_idx, best_idx,
- 					    offset, dss_id, false);
-@@ -926,7 +926,7 @@ ff_layout_choose_any_ds_for_read(struct pnfs_layout_segment *lseg,
- static struct nfs4_pnfs_ds *
- ff_layout_choose_valid_ds_for_read(struct pnfs_layout_segment *lseg,
- 				   u32 start_idx, u32 *best_idx,
--				   u32 offset, u32 *dss_id)
-+				   u64 offset, u32 *dss_id)
- {
- 	return ff_layout_choose_ds_for_read(lseg, start_idx, best_idx,
- 					    offset, dss_id, true);
-@@ -935,7 +935,7 @@ ff_layout_choose_valid_ds_for_read(struct pnfs_layout_segment *lseg,
- static struct nfs4_pnfs_ds *
- ff_layout_choose_best_ds_for_read(struct pnfs_layout_segment *lseg,
- 				  u32 start_idx, u32 *best_idx,
--				  u32 offset, u32 *dss_id)
-+				  u64 offset, u32 *dss_id)
- {
- 	struct nfs4_pnfs_ds *ds;
+@@ -999,7 +999,6 @@ ff_layout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	unsigned int size;
+ 	u64 p_stripe, r_stripe;
+ 	u32 stripe_offset;
+-	u64 segment_offset = pgio->pg_lseg->pls_range.offset;
+ 	u32 stripe_unit = FF_LAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
  
-@@ -950,7 +950,7 @@ ff_layout_choose_best_ds_for_read(struct pnfs_layout_segment *lseg,
- static struct nfs4_pnfs_ds *
- ff_layout_get_ds_for_read(struct nfs_pageio_descriptor *pgio,
- 			  u32 *best_idx,
--			  u32 offset,
-+			  u64 offset,
- 			  u32 *dss_id)
- {
- 	struct pnfs_layout_segment *lseg = pgio->pg_lseg;
+ 	/* calls nfs_generic_pg_test */
+@@ -1011,8 +1010,8 @@ ff_layout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 
+ 	/* see if req and prev are in the same stripe */
+ 	if (prev) {
+-		p_stripe = (u64)req_offset(prev) - segment_offset;
+-		r_stripe = (u64)req_offset(req) - segment_offset;
++		p_stripe = (u64)req_offset(prev);
++		r_stripe = (u64)req_offset(req);
+ 		do_div(p_stripe, stripe_unit);
+ 		do_div(r_stripe, stripe_unit);
+ 
+@@ -1021,7 +1020,7 @@ ff_layout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	}
+ 
+ 	/* calculate remaining bytes in the current stripe */
+-	div_u64_rem((u64)req_offset(req) - segment_offset,
++	div_u64_rem((u64)req_offset(req),
+ 			stripe_unit,
+ 			&stripe_offset);
+ 	WARN_ON_ONCE(stripe_offset > stripe_unit);
 -- 
 2.53.0
 
