@@ -1,260 +1,335 @@
-Received: from mail-wr1-f53.google.com (mail-wr1-f53.google.com [209.85.221.53])
+Received: from mail-oi1-f182.google.com (mail-oi1-f182.google.com [209.85.167.182])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5ADB535F8C9
-	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 15:36:26 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.53
-ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787326588; cv=pass; b=Kq4scedlVCx6rYxm+GNz59JHe48HnFwtRYJF+HZw7lErAeNVJMz0Acnyeii740e7Co7S9ho2W21NBHC/RpEpMgCNt5lsOR2sTzn6PlXgIz6OPrzc0tQz8I4DljFBTkLcyjxwBMJ6okJFNKW3Eypk0H0wthGp8Wn1ok44UmEub6E=
-ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787326588; c=relaxed/simple;
-	bh=xyPMZlPfjW9T2//cbQa4rUL28GBJdEd/uDiDROLzzQ0=;
-	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
-	 To:Cc:Content-Type; b=XisxeKZUIt6767dYgU/y9fuDA/n0PQiZzOSxyNQCnz5f65Jyhv+mmUcZjuQzdjlf3A4fofaeloso6soddw8YcyTpunu5cqBiHKOj7CahPtMusY0KnaGp5bsCB61nmPcMP/kAeaoNrPGTgIGabTp/6WqyMDUcS6kcAKziWP/YhB0=
-ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=bynar.io; spf=pass smtp.mailfrom=bynar.io; dkim=pass (2048-bit key) header.d=bynar.io header.i=@bynar.io header.b=FILEliRB; arc=pass smtp.client-ip=209.85.221.53
-Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=bynar.io
-Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bynar.io
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id C466F493636
+	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 16:29:30 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.182
+ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787329772; cv=none; b=MojiBzI1UuTki4IWQpnRa04Y/a21qAVSv1g63trdIt9ef1gHZ8e90a9PaOkDg1a7WUXyPgnzWTYtGIzWjq9iPhdtbrQproN/pfVrC7oZ9NTk/7Iy0LFEIkpwH1NFQBfDRB2kUO9PMl0Kb9U7DqiOp6gSn3DeSJBg26+cSDipbvg=
+ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787329772; c=relaxed/simple;
+	bh=cPANrzh0jdiYtvw0nLmHmwM4pTWx+zm7/9e5cyymlAg=;
+	h=From:To:Cc:Subject:Date:Message-ID:MIME-Version; b=bQhbTcigewKadd1Ihh5/oGUrzQlV47v0C9VRaPIm2zwDDaVtirH4i28/i+rOdhAT64FoM2/UUbpegwthwV8kPkNy/QZ5kNCEkmO55qAanmkpOgUSDyWih+Acw45skQ3WekvCj8NW+ZuIs5F65fuKKAy/j6SFD0h4C9RVfPacWDg=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=gj3ZvM5U; arc=none smtp.client-ip=209.85.167.182
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=bynar.io header.i=@bynar.io header.b="FILEliRB"
-Received: by mail-wr1-f53.google.com with SMTP id ffacd0b85a97d-47f96c5b722so571173f8f.0
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 08:36:26 -0700 (PDT)
-ARC-Seal: i=1; a=rsa-sha256; t=1787326585; cv=none;
-        d=google.com; s=arc-20260327;
-        b=If7wn4bNrWYKJkSq8uc6lTg6GMttxkiVBHh2NYcDbYz5ALcmT0XyqZmx8q8Cr+zxIF
-         VTUMAofQ7EMpT7qdQAq+zfd9XBRIo1BshIolbWsisLz70rri5DisVXoUbk5NaZ7tqd5v
-         KvgylCJK4c0x7vXKHJZyrERw2WQx9W0Z2C3sFxpsJABw7Lue06jnOhbRnAzbqcWPzoLh
-         K2l7ZFpbr39J9Jaa/2s5j+4uLoa2BCg80GMAIwUkaPDZhRsJPcJiRriprqfrX2aP4mxq
-         jmiye67Cj3a/+IQMh+FLegz1DFqUp+jdI6C9AwHBAyWsrLLzbhwu1egNmaxY9RkGUv5b
-         FO1g==
-ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
-        h=content-transfer-encoding:cc:to:subject:message-id:date:from
-         :in-reply-to:references:mime-version:dkim-signature;
-        bh=xTFagY5lhfq4phRZNbHmMF0fyCdUlkT9RSwivJQEo90=;
-        fh=woarG7HuPafLixkr1GVKQQyEUcax4sba8pTDfhki6LU=;
-        b=dtmGM2UeMdyvvwffBGgHfGS3/U3hGoB7uRaSLUhVGANBypnBCp4pludfe5VlnVgDJB
-         VFVdoViuJWflZlY++P7yXww6/91l/jqaeDxORQ07FgfA3W3mc0dFYAQZ0gDTX3/Rkqpi
-         Xv1ctsx29Iz0isBbTWhIkEg87yAl+noSYxpAVWRKptdN4xzyjg77vyAw2C7YPHCXXI5P
-         sr+PlJU2cmLQgBoLWMW2M4z5oBbz5y+EYN9xc+0nJqNCRz7bLzjgboEp3GRhMITqTFIt
-         EaU+OpwiMRj0+O0bTcLmNyenQ175Itni/cZHr8QsZJQHxki6liUeJLganFw7UIUI2nAB
-         oTjw==;
-        darn=vger.kernel.org
-ARC-Authentication-Results: i=1; mx.google.com; arc=none
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="gj3ZvM5U"
+Received: by mail-oi1-f182.google.com with SMTP id 5614622812f47-4b2ff8ca537so332843b6e.3
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 09:29:30 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=bynar.io; s=google; t=1787326585; x=1787931385; darn=vger.kernel.org;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
-         :date:message-id:reply-to:content-type;
-        bh=xTFagY5lhfq4phRZNbHmMF0fyCdUlkT9RSwivJQEo90=;
-        b=FILEliRBTkJw/VVnKDPja2bXefyxMY+tfYy8sEomda7n4UEMuKIo3b3BJptA8osGdV
-         vE41HT+h4Wd6phv/VGj/6CcV3hE31uMSpaNlpn7HR/ZvZgWSunOkwJXP4QyrHrFmYcaK
-         GqWC7MLflhzG8bRBqhQyMtDsWYNRkSSO2OQ6dNwIWMDDQXjZSRG2jvTn9Hv+tJP5ZpF6
-         FLpU8lecguTq0ezu0VaHoQ/VRrXh0kh5FKFHbI3JquRwhgDxaewP2ckNL7JrAstpwwe/
-         fMDLFI/nxj6+T5WBdB51AcBVaWsy4HnnnGHSIp1XKKO4n6nr5rhf1XkecC9r+rMEWXqU
-         C+Zg==
+        d=hammerspace.com; s=google; t=1787329769; x=1787934569; darn=vger.kernel.org;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:from:to:cc:subject:date:message-id:reply-to:content-type;
+        bh=4Uu24Ur3K54MUZgw6hLVjk6iO+5zxm0eRopkz603VDg=;
+        b=gj3ZvM5UZNxqni2znAFZrpF0zkit4Q2TYIeZReZjZV/7H0FVPNB0EP8akOoIinHZWg
+         0DDRNLVEmXh1kJvG5XGfL4Z02iy0SZlyTRyu0rCzeDXfCJCwQ6TCA8R5JgVfMWjCHMcM
+         PMvVoz5bB4AKXaiOrRdk5MiRCs5XwzdOUuS8S3bKSrbz7dW9nCf68ZMyGsCpz2StsUcC
+         pEBbIHQ8+YN+cUD56sNSjVsQsHwoVsd4RBXfpQVwySVL/A9sjyZg/XCOijQk3yNkUhWT
+         aSP5vfXzPTxgeQ2+y71IrhCG2tYrDUlrFLCFFI0zKZ3PhcpR/Ut+HJG2tIHWDyDjsaR+
+         ulLg==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787326585; x=1787931385;
-        h=content-transfer-encoding:content-type:cc:to:subject:message-id
-         :date:from:in-reply-to:references:mime-version:x-gm-gg
-         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
-         :content-type;
-        bh=xTFagY5lhfq4phRZNbHmMF0fyCdUlkT9RSwivJQEo90=;
-        b=IhvRrlOkTdNqwTkJ+8cfzxSuA5XkqfBQbzVSZWPtmOCzpnccHoA+vacGu+vSvX+/xs
-         2eHHaXRu2dKuv10gIy3D/vqJX1aHY4x86VyXzWpz0peyV2fWMPCEQu1nUbJhKuVTRbFY
-         iHgwaW5n37eSpWu4PHJ1mJcqlZUXcZJMQnnyQlNAtmRTWTKRkdkY9ZWYeXDYLBLWR180
-         vnY+T5r5shvcndyUgrLch61BcZNeXr+0hvUeYEUYgnfNB14BM1i1haA6UeYdXegweXqR
-         WF2h36tczZXzy0BsrNhiv1YXpkx3J5+1tjgS//1DYtFa5TY5zqYpeLbDQWb2P9x9wyOK
-         0ieQ==
-X-Forwarded-Encrypted: i=1; AHgh+Rrlg8MaFY+YpgeWV+RmEHWb5YcvSRZs3sVWm7+dw/jQJD9sOMkGmo9QxIeOJSeqnN1zZF10guZaVtY=@vger.kernel.org
-X-Gm-Message-State: AFuF++lOTwopMv0nTyUAEcIjTdxZ09kn3FfxIJj92GHvb9J/qsLMcYWc
-	alVWZrBY0qWaTjqcEZ+YHb/zJeB/LXrRPAOAxzMSwbKGMQD3ARLSeQvb2LTLAowWzusXIT+zHvq
-	KoVisZz+Vkin1DhLHT9/XEuBC9O2fAoMbdcfgq1QoG5w=
-X-Gm-Gg: AR+sD12JE9hEwRVbgTZQhVugPjNx49F6QL8NWEla7Lk0hYfhoKj3qDbsiVnd2Slokwe
-	rbtQwszrdeEM+7R1fXyaK7kla4vG8byPaEDTL0iU8Ea9qimxW6bu0YkNVAU51VlAoaYSVgHyNh6
-	/m3z8CwM32pLhGhqUiv0i9tj2E7uPvuORhxMS7dPeiOtGaGoMZcmgqU4LXOOR/tzifbqvSd8i/+
-	7oWI+8i7/lXjVBUVSUmQx1yytxycVZybTvxSf3p6whcQElOJnvpD/VRCDF6ksrCD/eY+2Q4KDEj
-	eJIKuiPkxkW8IILfK1A44uVoB+aB9uYkLNYNjwyY
-X-Received: by 2002:a05:6000:2301:b0:481:f33d:6445 with SMTP id
- ffacd0b85a97d-482c0b587d1mr11038908f8f.7.1787326584418; Fri, 21 Aug 2026
- 08:36:24 -0700 (PDT)
+        d=1e100.net; s=20251104; t=1787329769; x=1787934569;
+        h=content-transfer-encoding:mime-version:message-id:date:subject:cc
+         :to:from:x-gm-gg:x-gm-message-state:from:to:cc:subject:date
+         :message-id:reply-to:content-type;
+        bh=4Uu24Ur3K54MUZgw6hLVjk6iO+5zxm0eRopkz603VDg=;
+        b=KKU8l5jQCYyrvho9yxB5z7gKQHZlVe3WZ6E392+HqCZbRl6JqUaVwaPn8ebU1fFbga
+         6xgJXrFcXq7VdxxtboScmdyUdXJFQR42ej6tB6r7uSsEeUaE0OuZ16UIHIAGHXNwpPyy
+         bTdly9U5NLDSECXIEHkw10GjSzIwCdicQLNKIHLnrrkzprrs1zb5pV5+G2cuLCsKMxy9
+         U1lVmLGcDsmU+MqNA+gG7vtjyI2jQSITjqX8kqXLXjNQClM8Ryh6P/+UTiQM/4wJRvOj
+         hY32fbeCrvaGNvW+M3Ak+5Ct+nJpYErASYtum4UBmhYv6TqQ11LjtmiOie+0cmiuCFoD
+         kPfQ==
+X-Gm-Message-State: AOJu0YzUwqdqNEjC47O5Th+R/k3YWnn0MSoRqCLHXRwGAS7rgJ5mA6Xk
+	5WSsI9u+vigNb5PH6vMK4aS/PtTBMOEiD0Dbr8g0MNyFjMro5pxg1Z1u29Lhhkz4gTA=
+X-Gm-Gg: AR+sD133Ta9NGu7JJECwQ3NN6SOqXBvzw56ODVw1xxJMAOGCxpKXmaYEVCRICrkT3Kn
+	agMuKTeBbPQhY6ynQ0F66UKwBDvvSUlpeRQcbxe7KtX2d2++Be3s4KcL9UU5pt10jhn5g/Oc1pb
+	KZPlWzYLAjm1JWVCj8Pm2L/AnDEu4tdneZZf/FaxnV1Voyay5XYoVFUBWEBMgKiG7d03Wv4kjG/
+	WlrK3tqS35x2gSeOq7dcASnF0a8RISc2rZ5/fw+hnxRZFKwisZhTXyaLvz5nFroXdiietT5Cy+V
+	YXCLJJ47NBAROMZWiXl6AYa4KSUrcdCcYOBf0aauYRot679C23h2PRTUwpt/ISp5bNtFmBCLsEI
+	36kPaYHFwmCXaaimO8JhWJb4LGbdD2Mp+bhjGmn0SjEm2WEs2Y20178iD64INlPKE4nxA9onPU/
+	PdJ8szo2juEKzlNl3am+6mlHu8CHRAdk20mDgvJ8C1wi4G85UzDX7LaurRxA2L0Z8+YvbAGqx0h
+	9a7DqvcZySnBNBm6YYYNR2p
+X-Received: by 2002:a05:6808:2512:b0:4b2:8e51:aac2 with SMTP id 5614622812f47-4b2ef19137dmr7471921b6e.8.1787329769159;
+        Fri, 21 Aug 2026 09:29:29 -0700 (PDT)
+Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b2d6d74145sm5002916b6e.15.2026.08.21.09.29.28
+        (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
+        Fri, 21 Aug 2026 09:29:28 -0700 (PDT)
+From: Benjamin Coddington <ben.coddington@hammerspace.com>
+X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
+To: Trond Myklebust <trondmy@kernel.org>,
+	Anna Schumaker <anna@kernel.org>
+Cc: linux-nfs@vger.kernel.org,
+	Jonathan Curley <jcurley@purestorage.com>,
+	Mike Snitzer <snitzer@kernel.org>,
+	Jeff Layton <jlayton@kernel.org>
+Subject: [PATCH v2 00/23] NFS: flexfiles device notifications and caching for wide striped layouts
+Date: Fri, 21 Aug 2026 12:29:04 -0400
+Message-ID: <cover.1787327939.git.bcodding@hammerspace.com>
+X-Mailer: git-send-email 2.53.0
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-References: <20260820143049.25712-1-paula@bynar.io> <b8744803-5b58-4c64-82da-73a802dd4b0f@app.fastmail.com>
- <CANegxYFKBfCKjEEn73n1-C1Ev9MY9RE-zQ4LW2C-BCoRpjAqhw@mail.gmail.com>
-In-Reply-To: <CANegxYFKBfCKjEEn73n1-C1Ev9MY9RE-zQ4LW2C-BCoRpjAqhw@mail.gmail.com>
-From: Paula Moutafian <paula@bynar.io>
-Date: Fri, 21 Aug 2026 16:36:13 +0100
-X-Gm-Features: AcwNN1UXPa-Wn9OfMIeYFhPMp2-pGl0vvhY4Qzk3l03UVVJZIvHlmXWLsAS30L0
-Message-ID: <CANegxYHr3=tB+OhemrJdLh2ciM4ZUjCPq9SXbJmh38NdRVtVGg@mail.gmail.com>
-Subject: Re: [PATCH] SUNRPC: fix out-of-bounds write in xdr_inline_pages()
-To: Anna Schumaker <anna@kernel.org>
-Cc: Trond Myklebust <trondmy@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
-	NeilBrown <neil@brown.name>, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Content-Transfer-Encoding: 8bit
 
-Hello Anna,
+Striping deployments initially anticipate device counts scaling to 1024
+or more devices, all in play for a single mount.  This series makes
+the client's CB_NOTIFY_DEVICEID handling actually work under live
+layouts, implements the deviceID-deletion race recovery RFC 8881 asks
+for, and scales the device caches to that number of devices.
 
-The note was a mistake, I confirm that it compiles fine and the patch works=
-. :)
+v1 posting:
+  https://lore.kernel.org/linux-nfs/cover.1786653063.git.bcodding@hammerspace.com/
 
-Kind regards,
-Paula
+Changes since v1, in patch order:
+
+ - Prepend two standalone fixes (patches 1-2), both preexisting in the
+   striped-layout paths:
+     * flexfiles: reject a stripe_unit that does not fit 32 bits.  The
+       read and write paths divide by a u32 stripe_unit via do_div(), so a
+       non-zero multiple of 4 GiB truncated to a zero divisor;
+       ff_layout_alloc_lseg() only rejected exactly zero.  Rejecting with
+       -EINVAL rather than the -EIO the surrounding decode errors use
+       discards the layout and falls back to the MDS instead of failing
+       the I/O -- which also changes the existing stripe_unit == 0 case,
+       since it shares that exit.
+     * CB_NOTIFY_DEVICEID: bound the notification array count against the
+       remaining XDR stream before allocating, so a bogus count from the
+       server cannot ask the allocator for an enormous array.
+
+ - Read the RCU-managed device pointer with rcu_dereference() under
+   rcu_read_lock() in ff_layout_mirror_prepare_stats() (patch 10).  It
+   used rcu_dereference_protected() naming i_lock, which does not exclude
+   the resolve path's cmpxchg -- that runs from I/O submission.
+
+ - Redesign the reresolve_deviceid deferred-put contract (patches 11-12,
+   14).  A device node is a shared, refcounted object that one re-resolve
+   pass can unpin more than once (multiple stripes, or multiple layouts
+   over a common data server), which a single list_head embedded in the
+   node cannot express -- a second list_add() corrupts the list and the
+   drain leaks the extra references.  Each dropped reference is now a
+   nfs4_deviceid_put entry that the hook allocates and the walker frees,
+   taken before the pointer is exchanged out so an allocation failure
+   leaves the reference pinned rather than lost.
+
+ - Do not gate the re-resolve walk on pnfs_layout_is_valid() (patch 11).
+   A header with NFS_LAYOUT_INVALID_STID set can still pin the stale node
+   through draining lsegs, the cached device is already unhashed so
+   nothing re-resolves it later, and a subsequent LAYOUTGET on that header
+   can pick the mirror back up.  Un-pinning does not need the stateid.
+   The collection walker keeps its check, which its layout-header
+   reference does depend on.
+
+ - Use hlist_unhashed_lockless() when testing whether a superseded node is
+   still hashed (patch 14): the hook does not hold nfs4_deviceid_lock, and
+   __hlist_del() stores a neighbour's pprev with WRITE_ONCE().
+
+ - Scope the CHANGE/GETDEVICEINFO race epoch per-nfs_client instead of a
+   single global counter (patch 15), so a CHANGE on one server no longer
+   forces unrelated servers' in-flight device lookups to discard and
+   refetch, and bound the refetch: the epoch moves at the server's rate,
+   so an unbounded retry let a server drive GETDEVICEINFO traffic without
+   limit.
+
+ - Harden the deviceid-ref collection walker (patch 16): allocate the ref
+   only after a layout matches, move pnfs_put_layout_hdr() out of the RCU
+   read-side critical section (it can send a layoutreturn and sleep), and
+   report a partial list rather than silently returning a short one the
+   caller would read as "no references" -- -ENOMEM on allocation failure,
+   -EAGAIN on an inode that can no longer be grabbed.  The layout-header
+   reference is now justified by NFS_I()->layout == lo under i_lock, which
+   pnfs_put_layout_hdr() clears in the same critical section that drops
+   the count to zero; the previous argument, that a header reaches a zero
+   refcount only once NFS_LAYOUT_INVALID_STID is set, is not true -- a
+   full LAYOUTRETURN resets the stateid rather than invalidating it.
+
+ - Fix deviceID delete recovery (patch 17): delete a deviceID that no
+   layout references any more (the referring layouts were returned before
+   recovery ran), and count only a layout actually invalidated as revoked
+   -- a stale stateid that no longer matches its layout no longer confirms
+   the delete on its own.  Treat NFS4ERR_OLD_STATEID as "not revoked" and
+   block the delete on any answer that resolves neither way: Section
+   18.48.3 lists OLD_STATEID among TEST_STATEID's answers, and it was
+   falling into the default arm, so one revoked layout plus one
+   OLD_STATEID answer deleted a deviceID a live layout still referenced,
+   with no GETDEVICEINFO confirmation.  Pair the layout-stateid
+   invalidation with nfs_commit_inode(), as every other such site does.
+
+ - Re-establish the client ID with nfs4_reset_all_state() (patch 18).
+   nfs4_schedule_lease_recovery() sets NFS4CLNT_CHECK_LEASE, which the
+   state manager turns into a lease renewal; on the healthy session this
+   recovery runs over, that renewal succeeds and the EXCHANGE_ID Section
+   18.40.4 prescribes was never sent.  The escalation is now announced
+   with a rate-limited warning, since it discards all client state.
+
+ - Bump the deviceid change epoch for DELETE as well as CHANGE (patch 19),
+   so a GETDEVICEINFO already in flight cannot re-cache a device the
+   notification has just invalidated.
+
+Patches 1-6 are standalone fixes (Cc: stable) for latent bugs in the
+striped-layout paths.  Beyond the two above: the CB_NOTIFY_DEVICEID
+decoder gated consuming ndc_immediate on the layout type instead of the
+notification type, so the flag was silently lost and any multi-item
+cnda_changes<> array misaligned after the first entry.  Read data-server
+selection truncated the file offset to 32 bits, picking the wrong
+stripe's DS for availability probing and coalescing above 4 GiB.  And
+page coalescing was bounded on a segment-relative offset in both the
+flexfiles and files layouts, so an unaligned segment let a coalesced I/O
+straddle a stripe boundary and send the bytes past it to the wrong data
+server.
+
+Patches 7-15 make CHANGE notifications work under live layouts.  RFC 8881
+Section 12.2.10 has CB_NOTIFY_DEVICEID CHANGE exist precisely so a server
+can re-point a deviceID without recalling the layouts that reference it,
+but the client's only response today is to unhash the cached device --
+which never reaches the references pinned inside the layout driver's
+segments, so I/O keeps going to the old mapping until the layouts are
+freed.  Each in-flight I/O is given its own device-node reference, the
+mirror's pinned pointer becomes RCU-managed, and a new layout-driver
+hook re-resolves the device in place, honoring ndc_immediate.  A
+GETDEVICEINFO reply that raced a CHANGE is discarded rather than
+installed stale, up to a bounded number of retries -- the epoch is
+bumped once per notification, so an unbounded retry would let a server
+drive GETDEVICEINFO traffic without limit.  Re-resolution is best
+effort: a lookup that hit the cache just before the unhash can still
+install that node after the walk has passed the stripe, which keeps a
+valid-but-superseded mapping until the next notification.
+
+Patches 16-19 implement the deviceID-deletion race of RFC 8881 Section
+18.40.4: layouts still referencing a deleted deviceID are tested with
+TEST_STATEID, revoked state is recovered, and the deletion is confirmed
+with GETDEVICEINFO before the client ID is re-established.  A DELETE
+that no live layout references keeps today's cheap path.
+
+This is not faulty-server handling.  Section 20.12 forbids the DELETE
+while the client holds a referring layout, but it is equally satisfied
+once the server has revoked those layouts, and a revocation is never
+announced -- so a conformant server does reach this path, and the
+client's view of which layouts are live is simply older than the
+server's.  Only the case where GETDEVICEINFO then reports the device
+gone under a layout the server still calls valid is a server fault,
+and that is the one that re-establishes the client ID; since that
+discards all state, it is announced with a warning naming the server.
+
+Patches 20-23 scale the device caches.  The global deviceid hash grows
+from 32 to 256 buckets -- four deep at that scale rather than 32 -- for
+2KB of BSS in nfsv4.ko, paid by every NFSv4 client rather than only by
+striping deployments; and the per-net data-server cache moves from a
+single list to hash buckets
+keyed by the DS address set, a second 256-entry table costing 2KB per
+network namespace.  Keying on the set requires the comparator
+to test set equality rather than the subset it tested before, which also
+corrects an aliasing bug: because the caller passes the cached list
+first, a cached data server whose address set was contained in an
+incoming one was returned for that incoming set (one-directional -- the
+reverse arrival order did not alias).  Its effect was lost path
+diversity and a truncated remote string, not misdirected I/O, since
+every address on a device's multipath list names the same server.
+Last, the flexfiles driver gains a dataserver_nconnect module parameter
+alongside its existing dataserver_timeo and dataserver_retrans knobs:
+data-server clients otherwise inherit the MDS nconnect, which at 1024
+data servers and nconnect=16 means 16k sockets and their slot tables,
+for little gain on a workload striping across them anyway.  It defaults
+to 0, preserving today's inherit-from-MDS behavior.
+
+Tested against reffs, a notification-capable reference server, on a
+KASAN + lockdep + PROVE_RCU kernel.  Every figure here is an exact wire
+count from mountstats, or a record-by-record check of the data-server
+backing files.
+
+Striping: at W=2, placement is record-exact -- DS1 holds stripe 0 and
+DS2 stripe 1, 1024/1024 blocks each.  The W=1 control shows the RFC
+8435 Section 5.1 "W == 1 implies stripe_unit == 0" requirement through
+its client-visible consequence: with no stripe boundary to chop on,
+writes coalesce to 8 WRITEs of exactly 1024 KiB where W=2 issues 4096
+small ones.
+
+Notifications: each CHANGE variant (ndc_immediate true and false)
+produces exactly one re-resolve and leaves the other device untouched.
+A DELETE naming an unreferenced deviceID takes the cheap path, with no
+TEST_STATEID.  A DELETE against a held layout runs the Section 18.40.4
+recovery -- TEST_STATEID twice, a confirming GETDEVICEINFO, the device
+correctly kept -- while 436 I/O operations continue through it.  A
+120-second storm of 30 triggers racing 4872 I/O operations drove 44
+re-resolves and 24 race recoveries with FREE_STATEID 0 and LAYOUTRETURN
+0: re-resolution happens in place under live layouts, with no recall
+and no layout return.
+
+Scale: 256 deviceIDs over 16 addresses cache exactly, stay cached
+across a full cold re-read, decouple onto 16 data-server clients, and a
+256-item batched CB_NOTIFY_DEVICEID chunks into 3 to fit the client's
+back channel.
+
+No KASAN, lockdep or RCU splat in any phase, including teardown.
+Lockdep stayed armed throughout: it never disabled itself, and its
+tables grew under load (2154 to 2366 lock classes, 21028 to 24880
+direct dependencies).
+
+Not covered by that run: the 256-distinct-address topology, which is
+what exercises the nconnect socket multiplier and the
+dataserver_nconnect cap of patch 23; the 1000-device topology; and
+targeted tests for patches 1 and 2, which were judged correct by
+inspection.
+
+A related series, "NFS: size the LAYOUTGET reply buffer for wide
+flexfiles layouts", lifts the single-page LAYOUTGET reply buffer that
+today caps a segment at roughly 28 stripes.  The two are independent and
+apply cleanly in either order.
+
+Benjamin Coddington (23):
+  NFSv4/flexfiles: reject a stripe_unit that does not fit 32 bits
+  NFSv4/pnfs: bound the CB_NOTIFY_DEVICEID array count before allocating
+  pNFS: Fix CB_NOTIFY_DEVICEID CHANGE to consume ndc_immediate
+  NFSv4/flexfiles: Use the full 64-bit offset for read DS selection
+  NFSv4/flexfiles: Bound page coalescing on the absolute stripe offset
+  NFSv4/filelayout: Anchor page coalescing on pattern_offset
+  NFSv4/flexfiles: Reference the device node across DS setup
+  NFSv4/flexfiles: Carry the device node reference across each I/O
+  NFSv4/flexfiles: Hold a device node reference for layoutstats encoding
+  NFSv4/flexfiles: Make the pinned device node pointer RCU-managed
+  pNFS: Add a reresolve_deviceid layout driver hook
+  NFSv4/flexfiles: Implement in-place device re-resolve on CHANGE
+  NFSv4: Dispatch CB_NOTIFY_DEVICEID CHANGE to an in-place refresh
+  NFSv4/flexfiles: Honor ndc_immediate on CB_NOTIFY_DEVICEID CHANGE
+  pNFS: Discard a GETDEVICEINFO reply that raced a CHANGE notification
+  pNFS: Add deviceid reference query and collection walkers
+  NFSv4/pnfs: Recover revoked layouts on a deleted deviceID
+  NFSv4/pnfs: Confirm a deviceID delete via GETDEVICEINFO
+  NFSv4/pnfs: Dispatch CB_NOTIFY_DEVICEID DELETE to race recovery
+  NFSv4/pnfs: Grow the deviceid cache hash table
+  NFSv4/pnfs: Re-home the data-server cache onto hash buckets
+  NFSv4/pnfs: Key the data-server cache by its address set
+  NFSv4/flexfiles: Add a dataserver_nconnect cap
+
+ fs/nfs/callback_proc.c                    |  21 +-
+ fs/nfs/callback_xdr.c                     |   9 +-
+ fs/nfs/client.c                           |   6 +-
+ fs/nfs/filelayout/filelayout.c            |   8 +-
+ fs/nfs/filelayout/filelayoutdev.c         |   2 +-
+ fs/nfs/flexfilelayout/flexfilelayout.c    | 381 ++++++++++++++--------
+ fs/nfs/flexfilelayout/flexfilelayout.h    |  44 +--
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 180 ++++++----
+ fs/nfs/internal.h                         |   3 +-
+ fs/nfs/netns.h                            |   5 +-
+ fs/nfs/nfs3client.c                       |   9 +-
+ fs/nfs/nfs4_fs.h                          |   3 +
+ fs/nfs/nfs4client.c                       |   7 +-
+ fs/nfs/nfs4proc.c                         | 128 ++++++++
+ fs/nfs/nfs4state.c                        |   5 +-
+ fs/nfs/pnfs.c                             | 291 +++++++++++++++++
+ fs/nfs/pnfs.h                             |  87 ++++-
+ fs/nfs/pnfs_dev.c                         |  30 +-
+ fs/nfs/pnfs_nfs.c                         |  86 ++++-
+ include/linux/nfs_fs_sb.h                 |   4 +
+ include/linux/nfs_xdr.h                   |   2 +
+ 21 files changed, 1065 insertions(+), 246 deletions(-)
 
 
-On Fri, Aug 21, 2026 at 4:32=E2=80=AFPM Paula Moutafian <paula@bynar.io> wr=
-ote:
->
-> Hello Anna,
->
-> The note was a mistake, I confirm that it compiles fine and the patch wor=
-ks. :)
->
-> Kind regards,
-> Paula
->
-> On Fri, Aug 21, 2026 at 1:56=E2=80=AFPM Anna Schumaker <anna@kernel.org> =
-wrote:
->>
->> Hi Paula,
->>
->> On Thu, Aug 20, 2026, at 10:30 AM, Paula Moutafian wrote:
->> > xdr_inline_pages() re-carves an existing receive buffer into a head, a
->> > page list and a tail at a caller-supplied offset, computing the tail
->> > length as buflen - offset.  It does not check that the offset lies
->> > within the buffer being carved, and iov_len is unsigned, so an offset
->> > past the end wraps the tail length instead of failing.
->> >
->> > The offset reaches it from wire data.  rpc_prepare_reply_pages() deriv=
-es
->> > it from the authentication flavour's au_ralign, which is read on every
->> > encode, while the receive buffer's size is fixed once in call_allocate=
-()
->> > from au_rslack.  unx_validate() raises au_verfsize, au_rslack and
->> > au_ralign from the reply verifier's length, and runs before
->> > rpc_decode_header() reads the accept_stat, so a GARBAGE_ARGS reply
->> > poisons the alignment and only then selects call_encode().
->> > call_allocate() short-circuits on the existing buffer, so rq_rcvsize i=
-s
->> > not recomputed and the retry carves a new offset against the old size.
->> > auth_unix keeps these fields in a file-scope static rpc_auth shared by
->> > every AUTH_SYS client.
->> >
->> > For an NFSv3 READ the design slack is exactly one XDR word, so the
->> > underflow needs only au_ralign at encode to exceed au_rslack at
->> > allocation by two -- a five-byte verifier body.  Observed with eight:
->> > rq_rcvsize is 132 with a 128-byte head and a 4-byte tail, the verifier
->> > raises au_ralign from 2 to 4, and the retry carves at (26 + 4 + 4) << =
-2
->> > =3D 136 against an unchanged 132-byte buffer.  The in-tree
->> > sunrpc:rpc_xdr_reply_pages tracepoint shows the transition on one task=
-:
->> >
->> >   rpc_xdr_reply_pages: head=3D[..a18,128] tail=3D[..a98,4]
->> >   rpc_xdr_reply_pages: head=3D[..a18,136] tail=3D[..aa0,4294967292]
->> >
->> > (one task, before and after the re-encode; addresses abbreviated)
->> >
->> > xs_read_xdr_buf() then fills the tail against that length, and the TCP
->> > record length is not capped against rq_rcvsize, so the reply to the
->> > retried call writes peer-controlled bytes past the object:
->> >
->> >   BUG: KASAN: slab-out-of-bounds in _copy_to_iter+0x7c8/0x1538
->> >   Write of size 1664 at addr ffff0000c7640aa0 by task kworker/u8:0/12
->> >   Workqueue: xprtiod xs_stream_data_receive_workfn
->> >    _copy_to_iter+0x7c8/0x1538
->> >    __skb_datagram_iter+0x33c/0x560
->> >    skb_copy_datagram_iter+0x3c/0x454
->> >    tcp_recvmsg_locked+0x110c/0x2308
->> >    xs_sock_recvmsg.constprop.0+0x34/0xe4
->> >    xs_read_stream_request.constprop.0+0x410/0x1140
->> >    xs_read_stream.constprop.0+0x680/0xe9c
->> >    xs_stream_data_receive_workfn+0xcc/0x420
->> >   Allocated by task 12:
->> >    rpc_malloc+0x174/0x2d0
->> >    call_allocate+0x25c/0x944
->> >   The buggy address belongs to the object at ffff0000c7640880
->> >    which belongs to the cache rpc_buffers of size 2048
->> >   The buggy address is located 544 bytes inside of
->> >    allocated 2048-byte region [ffff0000c7640880, ffff0000c7641080)
->> >
->> > That is 160 bytes past the object, with both the length and every byte
->> > chosen by the peer.  Under KASAN the interposed __asan_memcpy() return=
-s
->> > without calling __memcpy once the range check fails, so the report
->> > establishes that the write is reachable and out of bounds; it does not
->> > establish that the copy executed.  The enlarged head stays inside the
->> > same slab object and is not itself a violation.
->> >
->> > Reproduced twice on an unmodified v7.2-rc7 arm64 KASAN kernel with
->> > CONFIG_NFS_V3=3Dy and no other configuration change; the geometry abov=
-e
->> > came from tracepoints that already ship in the kernel, not from added
->> > instrumentation.  The trigger is an ordinary read(2) on an already
->> > mounted NFSv3 AUTH_SYS share over TCP and needs no client privilege;
->> > every byte the attacker supplies is a legal server reply.  Under
->> > RPCSEC_GSS the verifier is authenticated and cannot be forged.  UDP is
->> > bounded by the datagram length in xs_udp_data_read_skb() and is not
->> > affected.  NFSv4 does not take the retry path, since
->> > RPC_TASK_NO_RETRANS_TIMEOUT suppresses the re-encode.
->> >
->> > Commit 53bc19f17f21 ("SUNRPC: receive buffer size estimation values
->> > almost never change") placed the equivalent slack update behind
->> > RPCAUTH_AUTH_UPDATE_SLACK in gss_update_rslack(), but auth_unix was
->> > never converted and still assigns unconditionally.  Gating it the same
->> > way narrows the window without closing it, because the first update ca=
-n
->> > still land between the allocation and the re-encode of an in-flight
->> > request, and it would leave the other caller of xdr_inline_pages()
->> > unguarded.
->> >
->> > Clamp the offset to the length of the buffer being carved so the tail
->> > length cannot underflow.
->> >
->> > Assisted-by: Bynario AI
->> > Signed-off-by: Paula Moutafian <paula@bynar.io>
->> > ---
->> > Note: the defect is reproduced 2/2 on an unmodified v7.2-rc7 arm64 KAS=
-AN
->> > kernel; the patched kernel has not been built or booted.  A reproducer
->> > exists and can be shared privately on request.
->>
->> Question: Am I understanding you correctly that you have a reproducer, b=
-ut
->> haven't tested or even compiled the code to verify that it works?
->>
->> Thanks,
->> Anna
->>
->> >
->> > No Fixes: tag: the unbounded carve is original to xdr_inline_pages()
->> > (unchanged since the initial git import) and unx_validate() has writte=
-n
->> > the shared rpc_auth's slack from the reply verifier since at least
->> > v2.6.32, so there is no commit that introduced this.
->> >
->> >  net/sunrpc/xdr.c | 3 +++
->> >  1 file changed, 3 insertions(+)
->> >
->> > diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
->> > index fa6a30b..f77dbdb 100644
->> > --- a/net/sunrpc/xdr.c
->> > +++ b/net/sunrpc/xdr.c
->> > @@ -409,6 +409,9 @@ xdr_inline_pages(struct xdr_buf *xdr, unsigned int=
- offset,
->> >       char *buf =3D (char *)head->iov_base;
->> >       unsigned int buflen =3D head->iov_len;
->> >
->> > +     if (offset > buflen)
->> > +             offset =3D buflen;
->> > +
->> >       head->iov_len  =3D offset;
->> >
->> >       xdr->pages =3D pages;
->> >
->> > base-commit: a4ff2be345d0abc943da8dd8da98151843b750dc
->> > --
->> > 2.50.1 (Apple Git-155)
+base-commit: 8d3ae59288f1e7d58d76558a6ee96d533bc5019f
+-- 
+2.53.0
+
