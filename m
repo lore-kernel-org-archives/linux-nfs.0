@@ -1,35 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 997F036D9EB;
-	Fri, 21 Aug 2026 17:22:54 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 22586352019;
+	Fri, 21 Aug 2026 17:22:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787332976; cv=none; b=bgKqTGYuOqIKfyMIXS794R9EGDZxOT+gnZJ/uzc2QB23JoI0uCcZcBWzKK807HWrGf1sqaUx1fo0NJO6z2VyRoxLmlPFiXGUOtakql8qYsgpaG3Chr5n7JlM5ZjctKdkFT0KzTj4XW887HFNxZbr4iEB2TDL4b9Lpu/AzBT9nyk=
+	t=1787332977; cv=none; b=Yh+GgQDtOLol0EurZm4AAg5XGJaerC8K9GINoP1xYTnbCGMerIkLacuQV9zaQ2qmPMqsXCXCreE9pg/r11gDYVuBCpA452ohIrLVHEKtTjQFUoTWZGt83RJCb5jfnNgrQ301hHlefC3PwPLkUJSPfJeYKDGRV0mO0O+ceqp0kfQ=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787332976; c=relaxed/simple;
-	bh=SCwqRc0qRJ2Sgj77Vgd5bar2mfqiR93bIqyXfkNahgo=;
+	s=arc-20240116; t=1787332977; c=relaxed/simple;
+	bh=YWRoyNRw/ZqBY3oBVuVEe+FJ+VrcDamVs5TBq+2MGV0=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=X534EzvlAhzbzPrFvYNscEPQ1Wgn6mog3yHhTya3jOoJMsmH6zWtGf9Kza4pZuf1hY7uTXXcbLiQCsBA1LaseNVkGHCzL6eTuBByNTauoz9EXQiz9EL+hIAB1mdytDJhEdtAEA871f4FMQo7n+p/h5URPXm/yomyrm27jGTCk+M=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jA4VOGRn; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=pUqcXH/hv6A0j6GUQQMbzknFmEyZOGvEkWvW/+wVjJ1I6fOx4Y/5bQPa6FscJKoKLd2MBfP21eJpfI6kcWjZQfNuYGVYnvmfnOu7/B7LqW40c8nHhuRFXkNfX0NQJxtlWZCElf/UJA3eXoaE7fAPiMNf2/f2HPd606lyJ4fPjPA=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=BChz8YTh; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jA4VOGRn"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 3EDD41F00A3D;
-	Fri, 21 Aug 2026 17:22:53 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="BChz8YTh"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 8ABBB1F00A3A;
+	Fri, 21 Aug 2026 17:22:54 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787332974;
-	bh=Fml9jSaFQnrLG6ZxBnBAl3H/afGjzwGmvTfnVCrWV3w=;
+	s=k20260515; t=1787332975;
+	bh=wjxVgUs8E6V6zECpK1cnKmO4cIBV3xpjd1RMMbgM9G0=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=jA4VOGRnyVXE5K0iIOw97B5oIZgIVL+9j4oF9o6cSJtns9oJ5sYinjcb5HzFOYna/
-	 AIzzIlbZmr9ooCpt0Fci4ELFcTcXLUWhAgHOIahkNI05chfYc8DS/UA9CwASvAxMev
-	 N1yltLyosPzpWVXVmi7IlArMTmC2mU46nLco0+9VQ4jgMpJwawYQSUEjeGB3BnfJ0s
-	 LEl5hcjanpPHKZ5IhskWXc2fvUL2DN/Ul9l5qyjMhNdawELltkIwT/tpWB9taiGpTc
-	 zFj3UBH0QgkdX1qN9u0Uyhlif+gf6jwheZv8zFOshnOZVZtlptbQkgCdBYfV5SjuOP
-	 7OQZmZ1rWVlcA==
+	b=BChz8YTh72CqSBY4YS6hcgczSnTIpyueBbgr9IHxM4UOHTjFoP4zfKNXwg5RiGO71
+	 d6DrZjtFALSR7B6rQpxqBWm9eedECzdOQ/rPCQUK8Vws6nXNaAW16++qcAxWhXcdOt
+	 H0WUEJDyGu2JnyNF/k3wLAE9qplBCjSH+YtkdPhKfoNxyFSXZ/prD30/azhCwzJnb/
+	 IwcuSVSl8x7mc1RSBsUVDE7qPymGy7lrMiWs0i90uOvxfXlK0Vwyycwq6czBI+YP4q
+	 SgDHXJZq80pcId4NHGUrb548XQcmuPcNBDhS3lbfVLTwsARPGq4Mc8z7feExzI1yMT
+	 c8B5PTMElAemg==
 From: Chuck Lever <cel@kernel.org>
-Date: Fri, 21 Aug 2026 13:22:39 -0400
-Subject: [PATCH 1/5] SUNRPC: Separate the TLS control-record receive from
- its policy
+Date: Fri, 21 Aug 2026 13:22:40 -0400
+Subject: [PATCH 2/5] SUNRPC: Close the transport on an unhandled TLS record
+ type
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -38,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260821-tls-read-sock-2-v1-1-7ffce164eb45@kernel.org>
+Message-Id: <20260821-tls-read-sock-2-v1-2-7ffce164eb45@kernel.org>
 References: <20260821-tls-read-sock-2-v1-0-7ffce164eb45@kernel.org>
 In-Reply-To: <20260821-tls-read-sock-2-v1-0-7ffce164eb45@kernel.org>
 To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>, 
@@ -50,222 +50,108 @@ To: Trond Myklebust <trondmy@kernel.org>, Anna Schumaker <anna@kernel.org>,
 Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, 
  Chuck Lever <cel@kernel.org>
 X-Mailer: b4 0.16-dev-da966
-X-Developer-Signature: v=1; a=openpgp-sha256; l=6586; i=cel@kernel.org;
- h=from:subject:message-id; bh=SCwqRc0qRJ2Sgj77Vgd5bar2mfqiR93bIqyXfkNahgo=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqiIlrfBxZf7W7YjIu/oodG/jY9VUvd7ynYejpR
- c7C+P7wvEqJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaoiJawAKCRAzarMzb2Z/
- l7rLEAC+3Qh46bYjhE7BZ31sIowLuon8y6ypXhILD0B34xGKNrBFmp/9Nw60UKv+ghQoGw229px
- QDEklfbrkYUn1S37COe6Hdl1+9fb2YaMJSYLYXVPQ47BIeywWDS+YtjlRgtYbG1hV1a/uNz2yt+
- SVA9AHcWiaXYEMqXTtkzVAI4N/RWvpywnT0vuu0okEvl0S/ROG9+b/LczP1gvNNejjytL5qfYzJ
- LOHTBJXb4ZRHW4FycdpeoOofEcrC99riF/kYYCGvZvT9ih/vbxDkcFucMJaUeZYGj7Z5C9qu2Aq
- fAGtYg41uSraZszgNeIqZDyoI+o/+8z+0ToCYLRmUBfDb7A6ItCF7hON7G85XrBxY+9gxdU9FAA
- XKkCL1/hg4+bWNy3qbE/Cx9LOlGJh2prInWRYSuX1GFp04CI+yj6reTwTxCqlPaOh4F8oJrgU9+
- eqaey4Tjz+3IPwRUAeP4QSw2sU6kPJ9QFZEph1H9G7SNl7wSwE8NA5urtHn0wwzhhLB5h61XArw
- BJbHYxo7V/hxJAXSOuNV1s2aIsk0JyV64QytdqlqcETVn0ySDow6CWcpvEdYJHpmHsIZCgSseag
- Fp3GBcg3DMdHaDXug+fhtBQcBi942DWkXLXwB97DgCW7Zr3AIwHrCTkoLR7tNts2lR+xZzCejC1
- 9BcYe0LV2TI+jaQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3059; i=cel@kernel.org;
+ h=from:subject:message-id; bh=YWRoyNRw/ZqBY3oBVuVEe+FJ+VrcDamVs5TBq+2MGV0=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqiIlrNq+Uj9pEW9yyFwePDQHlwgbX9jKiLlfw0
+ gza7H47C9SJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaoiJawAKCRAzarMzb2Z/
+ l4RWEAC0np7g1U1uWphudONMjZT8zuizWuUsoo+oONXSEeen3f3qRuMJG8PqGxtddneCYpurzYe
+ IJJ7ummmW53a+97o5ytC1AmJrNpEoiq+RdHL9ZvpYic06yzjtrQzysFasiMwWR79G5HlxCHwlSl
+ SbPLn7HjGSkgD2tPuR9Sx623RhFgYc1lbVat3nEFgrEDD7xYST1hM6974zSFL/b2lh/lZq7zr9H
+ FbLbAjCNslIRDe255HuMZNYaH7wJlw47OUmv7fZwnRZgPiejf6XvTWDH8dV0Ig9RZ0KdTQC7EvU
+ /6lAL+eZpvfsC2yIMmw29gTbLwXzFQfOSjIa3GFYVxfC0FEBuGD3mOE0p7cR4hoYaob4EPJJg+X
+ fWvxknuL2om0mBnB7h468zrvMsegSGSR6ymAGInRBgwdx/VPCv+D/0zuIMPD7faIew1FidJOHRB
+ nOAymNI7GA+D8nzrT6+aYplKZPF8NVqT+FRHq5zL5X859n9xUc4D9tfAeTydWhYcy9qm2IG/HjX
+ I4pzo0cTNdef3yyuFX5rbTepcZG5RiNa22m3E7CzoxUYJysIiAJcLkRj9ljKAUJFkG8UTTMQyA1
+ 2pK7P9hZOK1+ynvoGzkgIURyYahfUI+X4rNTq+9XOZW2GQUclGIYRZpu8BMicYitaB9aX5gYq17
+ X71/mosVcAejjqw==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-svc_tcp_sock_recv_cmsg() receives the record at the head of the kTLS
-receive queue and decides what its content type means for the
-transport. The receive and the decision are one step, so a caller
-cannot learn a record's type without also acting on it. A later
-caller classifies the head of the queue with MSG_PEEK before it
-decides whether to consume the record. It needs the receive without
-the decision.
+svc_tcp_sock_recv_cmsg() drains a TLS record that is neither an alert
+nor application data, then returns -EAGAIN so the receive loop retries.
+It runs only on an established TLS session. A handshake record there
+carries a post-handshake message, and the server has no handler for
+one. Draining a KeyUpdate only delays the close. kTLS sets
+key_update_pending when it decrypts that record, and a later receive
+returns -EKEYEXPIRED. kTLS flags only a KeyUpdate, so any other
+post-handshake message disappears and the connection keeps running.
 
-Move the receive into svc_tcp_recv_cmsg(), which takes the recvmsg()
-flags and reports the octet count, the record type, and the message
-flags. The alert policy stays in svc_tcp_sock_recv_cmsg(), the
-helper's only caller in this patch.
-
-The zeroed control buffer replaces the msg_controllen check. An
-unfilled buffer reports record type zero, so a positive octet count
-with no record type now returns -EBADMSG instead of a count. The
-alert parse runs on a second msghdr over the alert buffer, so the
-copy and the parse share no iterator state. The rewind that commit
-bee47cb026e7 ("sunrpc: fix handling of server side tls alerts")
-added by hand is no longer needed.
+Return -EPROTO for an unhandled record type. Any error but -EAGAIN
+closes the transport. An application data record keeps its -EAGAIN
+return. No NFS client is known to send a handshake record on an
+established connection.
 
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- net/sunrpc/svcsock.c | 144 ++++++++++++++++++++++-----------------------------
- 1 file changed, 63 insertions(+), 81 deletions(-)
+ net/sunrpc/svcsock.c | 47 +++++++----------------------------------------
+ 1 file changed, 7 insertions(+), 40 deletions(-)
 
 diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 5a2d52284d75..b402923c40f1 100644
+index b402923c40f1..ae1f3c474f8b 100644
 --- a/net/sunrpc/svcsock.c
 +++ b/net/sunrpc/svcsock.c
-@@ -271,97 +271,79 @@ svc_tcp_sock_drain_record(struct socket *sock)
- 	}
+@@ -238,39 +238,6 @@ static int svc_one_sock_name(struct svc_sock *svsk, char *buf, int remaining)
+ 	return len;
  }
  
--static int
--svc_tcp_sock_process_cmsg(struct socket *sock, struct msghdr *msg,
--			  struct cmsghdr *cmsg, int ret)
+-/*
+- * kTLS delivers a record only up to the caller's buffer and keeps
+- * the remainder on its receive list, where no further data_ready
+- * announces it. Consume the whole record.
+- */
+-static void
+-svc_tcp_sock_drain_record(struct socket *sock)
 -{
--	u8 content_type = tls_get_record_type(sock->sk, cmsg);
--	u8 level, description;
+-	union {
+-		struct cmsghdr	cmsg;
+-		u8		buf[CMSG_SPACE(sizeof(u8))];
+-	} u;
+-	u8 discard[64];
+-	struct kvec discard_kvec = {
+-		.iov_base = discard,
+-		.iov_len = sizeof(discard),
+-	};
 -
--	switch (content_type) {
--	case 0:
--		break;
--	case TLS_RECORD_TYPE_DATA:
--		/* TLS sets EOR at the end of each application data
--		 * record, even though there might be more frames
--		 * waiting to be decrypted.
--		 */
--		msg->msg_flags &= ~MSG_EOR;
--		break;
--	case TLS_RECORD_TYPE_ALERT:
--		tls_alert_recv(sock->sk, msg, &level, &description);
--		/* RFC 8446 Section 6: every alert but a closure alert is
--		 * an error alert.
--		 */
--		switch (description) {
--		case TLS_ALERT_DESC_CLOSE_NOTIFY:
--		case TLS_ALERT_DESC_USER_CANCELED:
--			ret = -EAGAIN;
+-	for (;;) {
+-		struct msghdr msg = {
+-			.msg_control = &u,
+-			.msg_controllen = sizeof(u),
+-		};
+-
+-		iov_iter_kvec(&msg.msg_iter, ITER_DEST, &discard_kvec, 1,
+-			      discard_kvec.iov_len);
+-		if (sock_recvmsg(sock, &msg, MSG_DONTWAIT) <= 0)
 -			break;
--		default:
--			ret = -ENOTCONN;
--		}
--		break;
--	default:
--		/* discard this record type */
--		ret = -EAGAIN;
+-		if (msg.msg_flags & MSG_EOR)
+-			break;
 -	}
--	return ret;
 -}
 -
--static int
--svc_tcp_sock_recv_cmsg(struct socket *sock, unsigned int *msg_flags)
-+static int svc_tcp_recv_cmsg(struct socket *sock, int flags,
-+			     struct kvec *payload, u8 *type,
-+			     unsigned int *msg_flags)
- {
- 	union {
- 		struct cmsghdr	cmsg;
- 		u8		buf[CMSG_SPACE(sizeof(u8))];
--	} u;
--	u8 alert[2];
--	struct kvec alert_kvec = {
--		.iov_base = alert,
--		.iov_len = sizeof(alert),
--	};
-+	} u = {};
- 	struct msghdr msg = {
--		.msg_flags = *msg_flags,
--		.msg_control = &u,
--		.msg_controllen = sizeof(u),
-+		.msg_control	= &u,
-+		.msg_controllen	= sizeof(u),
- 	};
- 	int ret;
- 
--	iov_iter_kvec(&msg.msg_iter, ITER_DEST, &alert_kvec, 1,
--		      alert_kvec.iov_len);
--	ret = sock_recvmsg(sock, &msg, MSG_DONTWAIT);
--	/* put_cmsg() shrinks msg_controllen, so a short one means
--	 * kTLS filled in u.cmsg.
--	 */
--	if (ret >= 0 && msg.msg_controllen < sizeof(u)) {
--		u8 content_type = tls_get_record_type(sock->sk, &u.cmsg);
--
--		/* Returning the count would credit the RPC stream with
--		 * octets that never reached the caller's buffer.
+ static int svc_tcp_recv_cmsg(struct socket *sock, int flags,
+ 			     struct kvec *payload, u8 *type,
+ 			     unsigned int *msg_flags)
+@@ -312,14 +279,14 @@ svc_tcp_sock_recv_cmsg(struct socket *sock)
+ 				&msg_flags);
+ 	if (ret < 0 || !type)
+ 		return ret;
+-	if (type != TLS_RECORD_TYPE_ALERT) {
+-		/* An application data record carries RPC payload.
+-		 * Draining one breaks RPC fragment framing.
 -		 */
--		if (content_type != TLS_RECORD_TYPE_ALERT) {
--			/* An application data record carries RPC payload.
--			 * Draining one breaks RPC fragment framing.
--			 */
--			if (content_type != TLS_RECORD_TYPE_DATA &&
--			    !(msg.msg_flags & MSG_EOR))
--				svc_tcp_sock_drain_record(sock);
--			return -EAGAIN;
--		}
--		/* An Alert record carries exactly one two-octet message
--		 * (RFC 8446 Section 5.1). alert_kvec caps the receive at two,
--		 * so a longer record produces the same count. MSG_EOR appears
--		 * only once kTLS has drained the whole record.
--		 */
--		if (ret != sizeof(alert) || !(msg.msg_flags & MSG_EOR))
--			return -EBADMSG;
--		iov_iter_revert(&msg.msg_iter, ret);
--		ret = svc_tcp_sock_process_cmsg(sock, &msg, &u.cmsg, -EAGAIN);
+-		if (type != TLS_RECORD_TYPE_DATA && !(msg_flags & MSG_EOR))
+-			svc_tcp_sock_drain_record(sock);
++	/* A data record reaches here only when kTLS queued an empty one
++	 * ahead of the control record. Consuming it takes no payload,
++	 * and the retry picks up the control record.
++	 */
++	if (type == TLS_RECORD_TYPE_DATA)
+ 		return -EAGAIN;
 -	}
-+	iov_iter_kvec(&msg.msg_iter, ITER_DEST, payload, 1, payload->iov_len);
-+	ret = sock_recvmsg(sock, &msg, flags);
-+	if (ret < 0)
-+		return ret;
-+	*msg_flags = msg.msg_flags;
-+	*type = tls_get_record_type(sock->sk, &u.cmsg);
-+	if (!*type && ret)
-+		return -EBADMSG;
- 	return ret;
- }
- 
-+static int
-+svc_tcp_sock_recv_cmsg(struct socket *sock)
-+{
-+	u8 alert[2], type, level, description;
-+	struct kvec recv_kvec = {
-+		.iov_base	= alert,
-+		.iov_len	= sizeof(alert),
-+	};
-+	unsigned int msg_flags;
-+	struct msghdr msg = {};
-+	int ret;
-+
-+	ret = svc_tcp_recv_cmsg(sock, MSG_DONTWAIT, &recv_kvec, &type,
-+				&msg_flags);
-+	if (ret < 0 || !type)
-+		return ret;
-+	if (type != TLS_RECORD_TYPE_ALERT) {
-+		/* An application data record carries RPC payload.
-+		 * Draining one breaks RPC fragment framing.
-+		 */
-+		if (type != TLS_RECORD_TYPE_DATA && !(msg_flags & MSG_EOR))
-+			svc_tcp_sock_drain_record(sock);
-+		return -EAGAIN;
-+	}
-+	/* An Alert record carries exactly one two-octet message (RFC
-+	 * 8446 Section 5.1). recv_kvec caps the receive at two, so a
-+	 * longer record produces the same count. MSG_EOR appears only
-+	 * once kTLS has drained the whole record.
-+	 */
-+	if (ret != sizeof(alert) || !(msg_flags & MSG_EOR))
-+		return -EBADMSG;
-+
-+	iov_iter_kvec(&msg.msg_iter, ITER_DEST, &recv_kvec, 1,
-+		      recv_kvec.iov_len);
-+	tls_alert_recv(sock->sk, &msg, &level, &description);
-+
-+	/* RFC 8446 Section 6: every alert but a closure alert is
-+	 * an error alert.
-+	 */
-+	switch (description) {
-+	case TLS_ALERT_DESC_CLOSE_NOTIFY:
-+	case TLS_ALERT_DESC_USER_CANCELED:
-+		return -EAGAIN;
-+	default:
-+		return -ENOTCONN;
-+	}
-+}
-+
- static int
- svc_tcp_sock_recvmsg(struct svc_sock *svsk, struct msghdr *msg)
- {
-@@ -372,7 +354,7 @@ svc_tcp_sock_recvmsg(struct svc_sock *svsk, struct msghdr *msg)
- 	if (msg->msg_flags & MSG_CTRUNC) {
- 		msg->msg_flags &= ~(MSG_CTRUNC | MSG_EOR);
- 		if (ret == 0 || ret == -EIO) {
--			ret = svc_tcp_sock_recv_cmsg(sock, &msg->msg_flags);
-+			ret = svc_tcp_sock_recv_cmsg(sock);
- 			/* A control record delivers nothing to the caller,
- 			 * and kTLS announces no data_ready for records it
- 			 * already holds. Mark the transport ready so that
++	if (type != TLS_RECORD_TYPE_ALERT)
++		return -EPROTO;
+ 	/* An Alert record carries exactly one two-octet message (RFC
+ 	 * 8446 Section 5.1). recv_kvec caps the receive at two, so a
+ 	 * longer record produces the same count. MSG_EOR appears only
 
 -- 
 2.54.0
