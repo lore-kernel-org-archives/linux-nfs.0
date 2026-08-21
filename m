@@ -1,33 +1,33 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id A8F173ADBA7;
-	Fri, 21 Aug 2026 07:37:59 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 21C38415F36;
+	Fri, 21 Aug 2026 07:56:55 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787297898; cv=none; b=PcgTZImPPcN20aVDR+zubiKEzgbe/HPyTN136m/oxdENgaa96qyXQ74gHlAob2DYLbQqy/3e9Pyjct9JwLgjN+1+jhuBMcZRkI0TOi1JupjD0AQOlKxh+WKUwocRAyx2BWilUWJkaYI3wj1GGnubZB0hxLxRJPJYSRyivsVqtzY=
+	t=1787299017; cv=none; b=juBKrFGGjE7qBhsfa+rZSVV9vBRcQ9y0GxWgeWBzi+iYxlCu8i3kg1OColmoxV22pdPxM3xxQ4Ha9O2BMY+W4vWTbzwdZwDGhIEsKguhkMa2TgFlpBXLZltBKbWOVI2N7IKqz4bYV3hKTUqDupaP1b/bQWTzImFzRkt5IaxWo20=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787297898; c=relaxed/simple;
-	bh=rKCnKYEcumWl3JyfMbSEhreXXJgGzptLv9nA+mGVflE=;
+	s=arc-20240116; t=1787299017; c=relaxed/simple;
+	bh=Ktoz30SyulwVUFAipYMHhrBB8vsqFxIFo0/c4PKW/g8=;
 	h=Message-ID:Date:MIME-Version:Subject:To:Cc:References:From:
-	 In-Reply-To:Content-Type; b=ElRpY1GYtJlaHlx7wipfMsdXrL+3EKShO4BoCY3UhUK881X6Y1I2rY83eh04EVEyYes7nawch5mZJywg43SxfRE/F5iwMLQsMU4q1eX4nenxleeVcwDA2TlMryY2hh7Dk3+G0jzhzS9sBvu4Ur75z+/2F8+ZN9/L246cvppvryU=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=QQYZoZy5; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:Content-Type; b=f8gmwIZ32O2pqHLYX4wi4ln9onqDgJJCPPfDAdewE9wN+N0jmRGcFOvN/oo3OW9dWZPOXzJpU+TQWXEOOerM3cSk36MKI/JQuPZ8q+KBOEchwg92wZyA1aZ2PHjJIfRFND73pJEmpZK8shCAkMbqkfzZ/8oJl3scX+inltPJk6U=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=B7FKkvTN; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="QQYZoZy5"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 22BAA1F000E9;
-	Fri, 21 Aug 2026 07:37:09 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="B7FKkvTN"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 21AD01F000E9;
+	Fri, 21 Aug 2026 07:56:07 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787297876;
-	bh=e3HgVd1cxxmEjUBaLU/HIwYldnlIEKneQD/S3mbdmAw=;
+	s=k20260515; t=1787299015;
+	bh=tjjBBZ/k0RLbSDGZaWeN6t6IvNROJ7OMmNej421EHXw=;
 	h=Date:Subject:To:Cc:References:From:In-Reply-To;
-	b=QQYZoZy5XMUKRQ3cf2goz46XPoxmh58JVe2AGU+uh+MsIS4aHUXgKrB28hB092zbx
-	 I1Ca30A5zDO/BM6vXHOwQr9Ww+LL2RajKvWcmCnVxBdi5Gue+9kqdTMQfxbiSjaghv
-	 FlXE3DPbsU4C4c4alIYfBNXD5GCpd5K3spxKD8BU/W7WlILO5UQIX/mzPRGw7GHy1i
-	 HVEm3LZABnXfB2zRPj1WhiKoiTgjggZtcyGdvsaw9cJOtpDlfQFKCMMO8gqzkTIZWE
-	 w1z4aX4nM829Ub+PIjqaHJkXXyX6P6qyBaXSExMMdUL1TIHWJHe7y1cy7p1NSvUYFi
-	 ARYZ2gTtTrMPw==
-Message-ID: <f1657724-e7a9-45f6-9aef-af69d3c64a7d@kernel.org>
-Date: Fri, 21 Aug 2026 09:37:07 +0200
+	b=B7FKkvTN+AVvwFWaae0GEz5bWAYGMjhYykTrLQH6sZHxNtmwJSC06TT6oijP5rGyj
+	 05snL9vfZwtw3LreSzJcJqjZ+mG5lZDEdTI7rgZMcN83z1uikEHEHFp6A30/1kJ8xg
+	 MQZMOcXRp+Za4puQ9RCN8egvQkgBEJkMzE4BZXTAxNeqfyifjPZwrFCMZN/uQ8E5Yt
+	 IfHqTL4RoEmG+mjLKT4CyTVKh+p2vEprX8aMnavjB8RCBKRNBPSIVagli0TSSk1WTd
+	 JJ7dScWvo11ij5GhsRdhzrY2RwyJIcUIt9NYe5bcObHvjJmePWnU1OQpzeGEubLNlk
+	 G8Y435QyEiqcQ==
+Message-ID: <825134a8-ceae-430c-b2fc-d1d0c7240f39@kernel.org>
+Date: Fri, 21 Aug 2026 09:56:05 +0200
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -36,31 +36,30 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 User-Agent: Mozilla Thunderbird
 Subject: Re: [PATCH v19 00/40] DEPT(DEPendency Tracker)
-To: Matthew Wilcox <willy@infradead.org>
-Cc: Byungchul Park <byungchul@sk.com>, linux-kernel@vger.kernel.org,
- max.byungchul.park@gmail.com, kernel_team@skhynix.com,
- torvalds@linux-foundation.org, damien.lemoal@opensource.wdc.com,
- linux-ide@vger.kernel.org, adilger.kernel@dilger.ca,
- linux-ext4@vger.kernel.org, mingo@redhat.com, peterz@infradead.org,
- will@kernel.org, tglx@linutronix.de, rostedt@goodmis.org,
- joel@joelfernandes.org, sashal@kernel.org, daniel.vetter@ffwll.ch,
- duyuyang@gmail.com, johannes.berg@intel.com, tj@kernel.org, tytso@mit.edu,
- david@fromorbit.com, amir73il@gmail.com, gregkh@linuxfoundation.org,
- kernel-team@lge.com, linux-mm@kvack.org, akpm@linux-foundation.org,
- mhocko@kernel.org, minchan@kernel.org, hannes@cmpxchg.org,
- vdavydov.dev@gmail.com, sj@kernel.org, jglisse@redhat.com,
- dennis@kernel.org, cl@linux.com, penberg@kernel.org, rientjes@google.com,
- vbabka@suse.cz, ngupta@vflare.org, linux-block@vger.kernel.org,
- josef@toxicpanda.com, linux-fsdevel@vger.kernel.org, jack@suse.cz,
- jlayton@kernel.org, dan.j.williams@intel.com, hch@infradead.org,
- djwong@kernel.org, dri-devel@lists.freedesktop.org,
- rodrigosiqueiramelo@gmail.com, melissa.srw@gmail.com,
- hamohammed.sa@gmail.com, harry.yoo@oracle.com, chris.p.wilson@intel.com,
- gwan-gyeong.mun@intel.com, boqun.feng@gmail.com, longman@redhat.com,
- yunseong.kim@ericsson.com, ysk@kzalloc.com, yeoreum.yun@arm.com,
- netdev@vger.kernel.org, matthew.brost@intel.com, her0gyugyu@gmail.com,
- corbet@lwn.net, catalin.marinas@arm.com, bp@alien8.de, x86@kernel.org,
- hpa@zytor.com, luto@kernel.org, sumit.semwal@linaro.org,
+To: Byungchul Park <byungchul@sk.com>
+Cc: linux-kernel@vger.kernel.org, max.byungchul.park@gmail.com,
+ kernel_team@skhynix.com, torvalds@linux-foundation.org,
+ damien.lemoal@opensource.wdc.com, linux-ide@vger.kernel.org,
+ adilger.kernel@dilger.ca, linux-ext4@vger.kernel.org, mingo@redhat.com,
+ peterz@infradead.org, will@kernel.org, tglx@linutronix.de,
+ rostedt@goodmis.org, joel@joelfernandes.org, sashal@kernel.org,
+ daniel.vetter@ffwll.ch, duyuyang@gmail.com, johannes.berg@intel.com,
+ tj@kernel.org, tytso@mit.edu, willy@infradead.org, david@fromorbit.com,
+ amir73il@gmail.com, gregkh@linuxfoundation.org, kernel-team@lge.com,
+ linux-mm@kvack.org, akpm@linux-foundation.org, mhocko@kernel.org,
+ minchan@kernel.org, hannes@cmpxchg.org, vdavydov.dev@gmail.com,
+ sj@kernel.org, jglisse@redhat.com, dennis@kernel.org, cl@linux.com,
+ penberg@kernel.org, rientjes@google.com, vbabka@suse.cz, ngupta@vflare.org,
+ linux-block@vger.kernel.org, josef@toxicpanda.com,
+ linux-fsdevel@vger.kernel.org, jack@suse.cz, jlayton@kernel.org,
+ dan.j.williams@intel.com, hch@infradead.org, djwong@kernel.org,
+ dri-devel@lists.freedesktop.org, rodrigosiqueiramelo@gmail.com,
+ melissa.srw@gmail.com, hamohammed.sa@gmail.com, harry.yoo@oracle.com,
+ chris.p.wilson@intel.com, gwan-gyeong.mun@intel.com, boqun.feng@gmail.com,
+ longman@redhat.com, yunseong.kim@ericsson.com, ysk@kzalloc.com,
+ yeoreum.yun@arm.com, netdev@vger.kernel.org, matthew.brost@intel.com,
+ her0gyugyu@gmail.com, corbet@lwn.net, catalin.marinas@arm.com, bp@alien8.de,
+ x86@kernel.org, hpa@zytor.com, luto@kernel.org, sumit.semwal@linaro.org,
  gustavo@padovan.org, christian.koenig@amd.com, andi.shyti@kernel.org,
  arnd@arndb.de, lorenzo.stoakes@oracle.com, Liam.Howlett@oracle.com,
  rppt@kernel.org, surenb@google.com, mcgrof@kernel.org, petr.pavlu@suse.com,
@@ -97,7 +96,7 @@ Cc: Byungchul Park <byungchul@sk.com>, linux-kernel@vger.kernel.org,
  tmgross@umich.edu, rust-for-linux@vger.kernel.org
 References: <20260706061928.66713-1-byungchul@sk.com>
  <359ea967-9b97-4584-88e6-bddb4044de2e@kernel.org>
- <aoc-jJ10op62jXFK@casper.infradead.org>
+ <20260821042143.GA40890@system.software.com>
 From: "David Hildenbrand (Arm)" <david@kernel.org>
 Content-Language: en-US
 Autocrypt: addr=david@kernel.org; keydata=
@@ -144,115 +143,182 @@ Autocrypt: addr=david@kernel.org; keydata=
  3iyY2Nsd7JxfKu1PRhCGwXzRw5TlfEsoRI7V9A8isUCoqE2Dzh3FvYHVeX4Us+bRL/oqareJ
  CIFqgYMyvHj7Q06kTKmauOe4Nf0l0qEkIuIzfoLJ3qr5UyXc2hLtWyT9Ir+lYlX9efqh7mOY
  qIws/H2t
-In-Reply-To: <aoc-jJ10op62jXFK@casper.infradead.org>
+In-Reply-To: <20260821042143.GA40890@system.software.com>
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Transfer-Encoding: 8bit
 
-On 8/20/26 19:51, Matthew Wilcox wrote:
-> On Thu, Aug 20, 2026 at 07:16:05PM +0200, David Hildenbrand (Arm) wrote:
->>> Consider this real deadlock pattern that lockdep cannot detect:
->>>
->>>    context X              context Y              context Z
->>>
->>>                           mutex_lock A
->>>    folio_lock B
->>>                           folio_lock B <- DEADLOCK
->>>                                                  mutex_lock A <- DEADLOCK
->>>                                                  folio_unlock B
->>>                           folio_unlock B
->>>                           mutex_unlock A
->>>                                                  mutex_unlock A
->>
->> But that really just boils down to folio lock being implemented as a PG_lock +
->> some advanced wait mechanism. And we must do that because of lack of bits in
->> struct page.
->>
->> Willy mentioned in a previous version [1]: "I don't think it makes sense to
->> track lock state in the page (nor folio).  Partly because there's just so many
->> of them, but also because the locking rules don't really apply to individual
->> folios so much as they do to the mappings (or anon_vmas) that contain folios."
->>
+
+[...]
+
+> Exactly.  That's why we use classification e.g. lock class - DEPT also
+> makes use of the concept.
+> 
+> DEPT doesn't use a full map in each page but uses a minimum space for a
+> timestamp in each to track when each starts to wait so as to use the
+> recorded timestamp when the event occurs e.g. folio_unlock().
+
+Thanks for that information!
+
+> 
 >> Given that lockdep is a debug feature, and we will at some point allocate struct
 >> folio separately, I assume we could just squeeze a "struct lockdep_map" in there
 >> in such debug configs and the world would not collapse.
->>
+> 
+> That's a good news for lockdep.  (And even for DEPT :)
+
+He :) Where do you currently store the additional per-page information?
+
+> 
 >> Doing that today (one "struct lockdep_map" in each "struct page") wouldn't work
 >> as mm_zero_struct_page() would not expect such large "struct page". But
 >> conceptually, for a debug kernel with a special CONFIG_LOCKDEP_PAGE_LOCK, maybe
 >> that would already be ok and we could just do that (and optimize it as we
 >> allocate folios separately).
->>
+> 
+> Sounds great.
+> 
 >> Not that it's ideal, but for a debug feature to at least check PG_lock, probably
 >> an easier way to achieve it than some completely new infrastructure.
->>
+> 
+> I understand what you are going to tell.
+> 
+> However, it's worth noting that lockdep tracks dependencies basically
+> based on **lock acqusition orders** in the system.  To make it track
+> even rwlock and general synchronization mechanism as well, lockdep has
+> no choice but to get more complicated.
+
+Well, yes, sure :)
+
+> 
+> Focusing on only the dependency checking, the most parts of lockdep are
+> for the tricky things, so the reusable parts are not that big.
+> 
 >> Now, Willy said "locking rules don't really apply to individual folios", I
 >> wonder if that could just help to also let lockdep check PG_lock with less
 >> metadata? (didn't fully wrap my head around the implications)
->>
+> 
+> That's what DEPT did and what brought external wgen introduced in DEPT.
+> I was considering the exactly same thing :)
+> 
+> Again, lockdep that tracks lock acquisition orders can't do that.
+> 
 >> [1]
 >> https://lore.kernel.org/all/aR3WHf9QZ_dizNun@casper.infradead.org/?utm_source=chatgpt.com
+>>
+>>
+>> It's your guiding example, that's why I mention it. You do mention other wait
+>> cases here, I don't know anything about them, but for folios it's really just
+>> "we used a single bit so far" AFAIKs.
 > 
-> There are a few things going on that make PG_lock special.  Let me try
-> to explain again, only better this time.
-> 
+> It doesn't matter whether it's implemented using bit or not.  folio lock
+> is quite special since it's allowed to be released other than the
+> acquisition context that makes lockdep impossible to track them.
 
-Thanks for that information :)
+Does that really make lockdep *impossible* to track them? IOW, there is no way
+to extend lockdep to support lock release in different context?
 
-> 1. The current lifetime of a struct page is the lifetime of the system.
-> But the semantics of its PG_lock bit change each time it is freed and
-> allocated.
-
-Well, yeah, but that will effectively change once we dynamically allocate struct
-folio.
-
-Until then, don't we have the following two events:
-
-(a) Allocator handing out a page
-(b) Page getting returned to page allocator
-
-And while in the allocator, the PG_locked is essentially unused/unusable (and so
-would be lockdep data)?
-
-I'd argue there is a well defined lifetime for PG_locked and any additional
-lockdep metadata. At least theoretically ;)
+I guess there is a way, but the question is at which price (I seriously have no
+idea, maybe this was already discussed and people have a pointer for me).
 
 > 
-> 2. The position of PG_lock in the locking hierarchy only depend on
-> what the folio is currently being used for.  That is, all folios in
-> a given xfs inode behave exactly the same from a locking perspective.
-> There's no need to build up state about how each PG_lock is used;
-> they can all share.  Arguably all xfs file inodes are the same as
-> each other (directory inodes might be different from file inodes),
-> so we might want to go further than telling DEPT that "this folio
-> belongs to this inode" and go to "this folio belongs to this xfs file
-> inode".
+>> [...]
+>>
+>>>
+>>> Q. Why not build DEPT into lockdep?
+>>>
+>>> A. Lockdep is stable, battle-tested code. I chose separation because
+>>>    while DEPT borrows BFS and hashing ideas, the wait/event model
+>>>    requires rebuilding from scratch. Lockdep was designed for lock
+>>>    acquisition order — retrofitting it would risk its stability.
+>>
+>> Why can't this just be some configurable extension to lockdep
+>> (CONFIG_LOCKDEP_XYZ) until the feature is stable and can unconditionally be
+>> enabled along with it?
+> 
+> Answered?
 
-"There is no need", I am not entirely sure when it comes to anonymous folios.
+Not quite. I don't understand why this must be a completely separate machinery,
+even if, conceptually, it would do more than traditional lockdep.
 
-Even if there is actually no need, given that we are talking about debugging
-mechanisms, I am not sure if optimizing for less memory consumption is our
-highest priority. Debug kernels already consume plenty of memory on other things
-(page_ext, for example), so consuming some more to support the folio lock with
-lockdep does not sound too crazy for me.
-
-(maybe lockdep data could even life in page_ext)
-
-I understand that Dept applies to more things than just PG_locked, though.
+Is it either DEPT or LOCKDEP in current configurations? Can both run at the same
+time?
 
 > 
-> 3. PG_lock can be taken in task context then released in interrupt
-> context.  For full points, we need to mark the exact point at which
-> we submit the folio for read.  Otherwise we can get into the situation
-> alluded to by f2c817bed58d and better discussed at
-> https://lore.kernel.org/linux-mm/20200127150024.GN1183@dhcp22.suse.cz/
-> where we have the folio locked but haven't yet submitted it for I/O
-> so it doesn't matter how long we wait, it will never come unlocked.
+>> I don't quite buy the "would risk its stability" argument. A lot of stuff we do
+>> "risks stability", every day :)
+> 
+> That's awsome anyway :)
+> 
+>> Is there another good reason (incompatible with X, dangerous with Y, cinfusing
+>> Z) why this really must be a separate thing?
+> 
+> Roughly:
+> 
+>    1. Similar or less effort is needed for the new one - retrofitting
+>       lockdep is not easy and big changes are required since the
+>       reusable parts are not that big.
+> 
+>    2. Even though you didn't agree, retrofitting it would risk its
+>       stability.
 
-Yeah, it seems hard to squeeze different locking contexts into existing lockdep.
-I cannot tell whether lockdep could be adjusted to allow for that, or how much
-work it would involve.
+Well, I don't buy the stability argument, really :)
 
-So yeah, Dept might be a more natural fit for this scenario.
+Retrofitting effort for lockdep is an interesting point, though. Lockdep
+maintainers would have to make the call here regarding direction and feasibility.
+
+[...]
+
+>> But I am not a locking maintainer. I think there was plenty of discussion in the
+>> past, so I might just be raising points that were already discussed in the past,
+>> but I really just read some random pieces of earlier discussions. (ideally
+>> previous discussions would be summarized here)
+>>
+>> Long story short: we are now in v19 and I think there was pushback in the past.
+>> Did the opinion of locking maintainers change, or is there a way forward to
+>> integrate this in a way that would make locking maintainers accept this?
+> 
+> One of locking maintainers who I met in an LPC told me that he agrees
+> with the direction of DEPT and supports DEPT, not officially tho.
+
+Hm.
+
+> 
+> What he and other people are concerning w.r.t DEPT the most is, false
+> positives, which is the most important issue for now.
+
+Thanks for highlighting that. What's the main reason for false positives? Is it
+something conceptual that is mostly impossible to solve, or rather just
+implementation work to cover all edge cases?
+
+> 
+> At the same time, I think the most important thing is to make DEPT
+> useful in practice especially with folio locks involved.  Actually, I'm
+> planning to share DEPT's true reports periodically to LKML and work with
+> people who believe DEPT can make things better.
+> 
+> Any advices will be welcome.  Thanks for your opinions.
+
+I think we must come to some conclusion on how to proceed with DEPT. I see the
+following options:
+
+(1) Don't merge it and carry it OOT. Shame if it delivers real value.
+
+(2) Merge it (after proper review and acks from relevant maintainers ;) ),
+    keeping it entirely separate from lockdep.
+
+(3) Integrate it with lockdep on a high level, giving us a single locking
+    dependency checker, but mostly letting dept have a separate implementation.
+    Look into possible merging afterwards.
+
+(4) Retrofit and extend lockdep to really have one mechanism.
+
+As the saying goes, it's hard to teach old dogs new tricks, but in the end
+taking care of two dogs is likely harder than only a single dog? :)
+
+I tend to favor (4) (or 3 with possible future work to achieve 4), but I am not
+a locking maintainer, so really they have to voice what to do.
+
+I do see value in DEPT (even if the folio lock might be handled differently).
 
 -- 
 Cheers,
