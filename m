@@ -1,64 +1,63 @@
-Received: from mail-oa1-f42.google.com (mail-oa1-f42.google.com [209.85.160.42])
+Received: from mail-oi1-f182.google.com (mail-oi1-f182.google.com [209.85.167.182])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 0F97B49363C
-	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 16:29:54 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.160.42
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 19BA4493636
+	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 16:29:55 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=209.85.167.182
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787329796; cv=none; b=hIOdH2ekcBpUpUGFLxVRjANYsax44saz7GFD4LRssmX+RKTQ/whL5qDejl3zn7cgf0qZEixFMtGv4qO/S08ebTr5+m2yXQdHf9a1s98SPT6KwlV5nAyeMLV5bCQ0PXrnMFNWGsKtrpA7ReQEgphWa1DYIVOJVB5t+vOVpkmNmX4=
+	t=1787329797; cv=none; b=fRVNWFUUzXN/l1I5xzLu6Y2K3epZcSkYTqMiM6CAI34JFo1Cndg7BoPM/X3kOtrlA93fjxkjeK4LqCqaGDs2lrMuzO/HNtgOvY58iu1eTslWWjfNCGifEVypDYfpCOWXTTP8ONIDpx5OM3xRNJH3iOMN5vmhNTZ+xUGRKWX1tJ4=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787329796; c=relaxed/simple;
-	bh=VnWYdU83ZuCc+qJp9on16IX4DQqezg2KwAAwUTiNpVM=;
+	s=arc-20240116; t=1787329797; c=relaxed/simple;
+	bh=uwyW9w/1ZciAbVAqAmY0cI45bHrXrtOA8e0h6tY65/8=;
 	h=From:To:Cc:Subject:Date:Message-ID:In-Reply-To:References:
-	 MIME-Version; b=eJX54hxsScASsu6YbtYuYjEyxWJ8q55EAtkQDLZiwdHvBqzS6Xqs01nEcz65Mnm9UPumlMR8e6eQCUpV3p3fuS94qRCPziFqPOo3Kc+f6ifZCFw/PuXbtqS5fQ5fDceCKgtLtY+lHkuALHCaTbq/CAFqDwwJo5S0IHO/Kq0KXdE=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=fzRXPL1l; arc=none smtp.client-ip=209.85.160.42
+	 MIME-Version; b=tvqrVguDrcro9tnaGT8tGKtnyc5S1W5/iJlGGeptkPAbZC1X8A3HOpBOhFRJE0DVFFRQztDUl16dpNqssn1akwW+elfaIgzkQWzj42lqeH8RukTO/zZji6OeCvgIFBn0z+rgmx7M4aJ1iuhiQpMExk6X+Cjw/QVLjJBtX4eitdc=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com; spf=pass smtp.mailfrom=hammerspace.com; dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b=ltU84F9L; arc=none smtp.client-ip=209.85.167.182
 Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=quarantine dis=none) header.from=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=hammerspace.com
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="fzRXPL1l"
-Received: by mail-oa1-f42.google.com with SMTP id 586e51a60fabf-455ca262ccbso981236fac.1
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 09:29:54 -0700 (PDT)
+	dkim=pass (2048-bit key) header.d=hammerspace.com header.i=@hammerspace.com header.b="ltU84F9L"
+Received: by mail-oi1-f182.google.com with SMTP id 5614622812f47-4a45b3f0becso1130732b6e.1
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 09:29:55 -0700 (PDT)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=hammerspace.com; s=google; t=1787329794; x=1787934594; darn=vger.kernel.org;
+        d=hammerspace.com; s=google; t=1787329795; x=1787934595; darn=vger.kernel.org;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:from:to:cc:subject:date
          :message-id:reply-to:content-type;
-        bh=E6A7S6ZOBYp3SBoumrLoV6/dwyCw+xLsaOAWmFCPkK8=;
-        b=fzRXPL1lfxdwCyzbc2RXL+3QotE+Zsa4xh6PqQJJCIEwB+e77fS7xyB5ZT3mb7P7Bm
-         v4eQxdIqoaI9oVidpuFNJllI+Bb0qKdXWFIb/wMbVztXF23LaGAdSgculFOIuW9aQ5Eu
-         Gq0AyA3/ZGhGYxyX01j6VnAESLQHy5RbitPMtSV3wqmIIx2vTvMSNPgVToiL6wMe9ENb
-         ePIBHycVfusj+NG6TMBM7XYMvfRv8R+GvBlYtJ4Jb5AT6TyYWerwOuK8X/H+tJuKs3nT
-         SIVAgtCLlyNZjjqJbVn+fLySdirEmh5zwHKJeBsdmUQ4uU3hG8qkMBtERY+sNV+Nv68C
-         EJig==
+        bh=HxD/tKN5i/ZhMh3kPjgA/bAelNOrwdAP+IUTKzFlpc8=;
+        b=ltU84F9L5l8Tg/CRGT0KSsp1PgHywFUpDIIhw25++M5F1AunXWEZtUjIgNt3neUUae
+         MMWpQmrfJYG3G//ku1YRdM/+LH8MyHO9gqVyM3c/Tio6p8jS1ZpRkedW/eGBCNiwEHIm
+         F9O1DRGUp7bnUyq75nWhsd4FtS6urLjH+kes7VE6EGhwDYKmyTBdBxkE8eO805Pol5mq
+         qa6OndZd4PpuH7b0GUgwB3zsQi5MkX96oXazHixkpnipzrEmzij6MHhgJ7je9ICNUIEi
+         NaPRjB5x8tLaPtknsn0rr3ttjsj+Xeu+XjwdNe6/hpPs+uD2uKQdWUoXvhwZ29tGJegv
+         4Zjw==
 X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=1e100.net; s=20251104; t=1787329794; x=1787934594;
+        d=1e100.net; s=20251104; t=1787329795; x=1787934595;
         h=content-transfer-encoding:mime-version:references:in-reply-to
          :message-id:date:subject:cc:to:from:x-gm-gg:x-gm-message-state:from
          :to:cc:subject:date:message-id:reply-to:content-type;
-        bh=E6A7S6ZOBYp3SBoumrLoV6/dwyCw+xLsaOAWmFCPkK8=;
-        b=qKpRPRYN8o6rxOWHG4CJ05EGoEfQuBgVaY5cwEPL3zpCIgjpEzCo3Si4dLjiFCNzO7
-         g9ShQTLJ0wTG4yilz+mNQ83Bpbrxja/6NdXN3dYk5/uY8OT1gmqD+esjZQ6q9ATnmKJr
-         JTWcCAq1mV2rou8FImGz2c9TAf8fWUuhCKmgjdQz1XEwSPNq5mns4ry//gF0TTDT8LkC
-         tOo57UeoLeh9q3nBUkXKydvYrnSREKFmIXF7otfmM3onogQ3G9rJBYJCCGLRpTcWYHV5
-         Tesr1LfYo0zOuo4nRF1CtFJidIwh9ci5P3R2Ethyijo+aJ0uWQinefAwJeh4MPfmu1Pm
-         6X1A==
-X-Gm-Message-State: AOJu0Yya/rIB0XhvyriAwsQSOv0Vcx6lAN7PRLfU0O7Npj30gwg5FjGB
-	RG6ls+wc7aGNP03c0MZ8EXc1/9dvar88ZHZxXIGsGVMK/1y9IfyjUgl3YmdiXpyIGDG7C4yudgY
-	dpUVY
-X-Gm-Gg: AR+sD11D+GUfNCgsT3VCX1QR6AqIsO+btg1c5X/LpLIhnok07NxBVqf3yyIgLTb15T0
-	Avc78M8gvB+llJiV4GFHAFQ8ecqItgpTZRUOQPfmbtqEQlSWOduX4TaZd1L9CxT26Az8ry/7v/t
-	B52+BILGxVx7aJ02ykWbJ4ii12fA8Jrvfj3pALs+0YrYyOZJHM01eUNqoQnnkRToxf9tKVV/XzH
-	UXA+u+tKNw9KFO7YpNOfyIzi1Wv1SFtLmLH+eCzfTt05fr9zT0cluF210Tq5IiIfSDPGI0f7QNn
-	6d4YYQgz1kRGWGMkJNQhRqlD9QVmOVjw1M8e2ydMWt5zO87uMNGcbH2U+G6r0rFn5Fi1cQV1bfQ
-	ZXfhfnNysf2l1PeFXYTNPP2VB0zji91wHxb4CQRbXkKeH69Wggq4HFEVTCFywUtUcW5ugDXt7uH
-	3lqLF/Z8bfrCsoOgdVPD2DIQyGE4RlLVvNZsqLyPwrsMqk5kGpHaYKYXczNhK1925VcopKTMKc+
-	LV/E1wZGrjXOFLWrdzatsnsWLFo+t7TbaY=
-X-Received: by 2002:a05:6808:198e:b0:495:feaa:9e39 with SMTP id 5614622812f47-4b2ef11ee6emr8829488b6e.6.1787329793733;
-        Fri, 21 Aug 2026 09:29:53 -0700 (PDT)
+        bh=HxD/tKN5i/ZhMh3kPjgA/bAelNOrwdAP+IUTKzFlpc8=;
+        b=jJ3PAElnZye9yC/uWIz77iobB0s0VXJV6gYW0dVwjcU0CwR5qXVtkYJBsdcMfUFQ9P
+         cGiv6HwK71DIXWVRQtEb29MdOas8XFCcE4ut0UDWz8PZKV9bSWnyuf3F5jwRLhJrEaky
+         niX/eTf7sNmQcYE2sgN+k+eDZBuxCXgazjsa2eJ4jmYMATuZuA2kN/8eEeHlZRLgPTns
+         QA2wKKYLZMqkZU1fKaCw/8frdI3dnzgLHMG4/dbv8rafrEXhjgnSlp/djLx9dHrDmbip
+         52yEvMNypILSQZDE9263arI44kviJzzLS7QH387cN9bPChDR7XYon89if/G2nF+HmGUg
+         18Gw==
+X-Gm-Message-State: AOJu0YwPAcSB3on93eiBcDmLf6zcx/9l9GCeZetaGS1sz4DNUFBK7D/e
+	UEgRm+5FCzA+eEdACmKQP8hGN3CZfZdOMHTSk/WMWguJ7b25ia7nA8Dvn7f94jh46dM=
+X-Gm-Gg: AR+sD13isjOEMZCoFE1VtEfwwYpxVLfoOFR//xR684ymCjIeAKCk/Xq12asQdtJAcgM
+	x1gPYKzhP2SefEjQLRNLMofb01YfvBOksQ33p7DWGuMra9hfhBDtIRjMdQEhGQI4N9J7TXJbYD3
+	oLny4ItXc1/HNoSLie5DT/ta6m0ZMqyJyrNsJy3csyiLQR3LOgNxFfARFm6/HmKrXzb9ZjdrVaD
+	uCzr7ozg54sOd6ZpvsPo+8ofTWUj98Ukny1svOdF7zbnJX+GFFEuSAzpsTMCyckVDHqv53D9eKq
+	OR/awwOfAonqe9C0bqoxos72w9MfZx5H9Dtd50Rwry/2HhBWPj/l5EzfNu3jd9i9deridjtR1cz
+	CbBJ+mZcGDD4fOmTiRRtjNqbPog5M8adATRGYxB3sE4sqqLcaw+TNhEcF78ZLDRPl+b7OhbwBjZ
+	eov5bBQXKWF+fJXHPvQSoaybM5qyQD9uAjT1N5Ccba10B8e22GjA8CpPtGTTNQyQCANv/mTP2yA
+	ikGggaNVv9D5NXpQQbHl4pq9KAZPYOdiX8=
+X-Received: by 2002:a05:6808:2293:b0:4b2:98a3:a567 with SMTP id 5614622812f47-4b2ef1bea44mr8292181b6e.4.1787329794814;
+        Fri, 21 Aug 2026 09:29:54 -0700 (PDT)
 Received: from bcodding.csb.hammerspace.com ([66.97.168.37])
-        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b2d6d74145sm5002916b6e.15.2026.08.21.09.29.52
+        by smtp.gmail.com with ESMTPSA id 5614622812f47-4b2d6d74145sm5002916b6e.15.2026.08.21.09.29.53
         (version=TLS1_3 cipher=TLS_AES_256_GCM_SHA384 bits=256/256);
-        Fri, 21 Aug 2026 09:29:53 -0700 (PDT)
+        Fri, 21 Aug 2026 09:29:54 -0700 (PDT)
 From: Benjamin Coddington <ben.coddington@hammerspace.com>
 X-Google-Original-From: Benjamin Coddington <bcodding@hammerspace.com>
 To: Trond Myklebust <trondmy@kernel.org>,
@@ -67,9 +66,9 @@ Cc: linux-nfs@vger.kernel.org,
 	Jonathan Curley <jcurley@purestorage.com>,
 	Mike Snitzer <snitzer@kernel.org>,
 	Jeff Layton <jlayton@kernel.org>
-Subject: [PATCH v2 19/23] NFSv4/pnfs: Dispatch CB_NOTIFY_DEVICEID DELETE to race recovery
-Date: Fri, 21 Aug 2026 12:29:23 -0400
-Message-ID: <b431a1e7a21ea8612d6a82ac0b29cb4a6e656d7e.1787327939.git.bcodding@hammerspace.com>
+Subject: [PATCH v2 20/23] NFSv4/pnfs: Grow the deviceid cache hash table
+Date: Fri, 21 Aug 2026 12:29:24 -0400
+Message-ID: <b96440fcfa33e1f332c26c0e42133d05f51d532e.1787327939.git.bcodding@hammerspace.com>
 X-Mailer: git-send-email 2.53.0
 In-Reply-To: <cover.1787327939.git.bcodding@hammerspace.com>
 References: <cover.1787327939.git.bcodding@hammerspace.com>
@@ -81,69 +80,37 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Transfer-Encoding: 8bit
 
-Turn on the RFC 8881 Section 18.40.4 DELETE handling: a DELETE for a
-deviceID that no live layout references keeps today's cheap behavior
-(drop the cached device, no state-manager wake).  A DELETE for a
-deviceID that live layouts still reference is deferred to the state
-manager, which TEST_STATEIDs the referring layouts, recovers revoked
-ones, and confirms or refutes the delete with GETDEVICEINFO.
+The global deviceid cache has 32 buckets shared by every server and
+layout type.  Striping deployments initially anticipate device counts
+scaling to 1024 or more devices, which leaves those chains 32 entries
+deep for every resolution to walk.
 
-The deferred case no longer unhashes the device immediately: if the
-recovery concludes the DELETE was erroneous (the deviceID still
-exists and a referring layout is still valid), the client keeps
-using the cached device.
-
-Bump the deviceid change epoch for both notification types rather
-than only for CHANGE.  A GETDEVICEINFO whose reply is already in
-flight can otherwise re-cache a device the notification has just
-invalidated; that is as true of a delete as of a change, and Section
-18.40.4 opens by describing the race for the delete case.
+Grow to 256 buckets, four deep at that scale, for 2KB of BSS on
+64-bit.
 
 Assisted-by: Claude:claude-fable-5
 Signed-off-by: Benjamin Coddington <bcodding@hammerspace.com>
 ---
- fs/nfs/callback_proc.c | 24 +++++++++++++++---------
- 1 file changed, 15 insertions(+), 9 deletions(-)
+ fs/nfs/pnfs_dev.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 0d760749f481..0e606b63320e 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -391,19 +391,25 @@ __be32 nfs4_callback_devicenotify(void *argp, void *resp,
- 				continue;
- 		}
- 		/*
--		 * Unhash the cached device first so re-resolution cannot
--		 * re-pin the stale node, then re-point any references
--		 * pinned under live layouts (RFC 8881 Section 12.2.10).
--		 * The epoch bump lets an in-flight GETDEVICEINFO detect
--		 * that its reply may predate the change.
-+		 * Bump the epoch before touching the cache so a
-+		 * GETDEVICEINFO already in flight can detect that it
-+		 * predates the notification.  A referenced DELETE may be
-+		 * racing revocation, so defer it to the state manager --
-+		 * this thread cannot issue fore-channel RPCs.
- 		 */
--		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
--			nfs4_deviceid_bump_change_epoch(cps->clp);
--		nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
--		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
-+		nfs4_deviceid_bump_change_epoch(cps->clp);
-+		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE) {
-+			nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
- 			pnfs_layout_reresolve_deviceid_byclid(cps->clp, ld,
- 							&dev->cbd_dev_id,
- 							dev->cbd_immediate);
-+		} else if (pnfs_layout_deviceid_referenced_byclid(cps->clp,
-+						ld, &dev->cbd_dev_id)) {
-+			pnfs_deviceid_delete_mark(cps->clp, ld,
-+						  &dev->cbd_dev_id);
-+		} else {
-+			nfs4_delete_deviceid(ld, cps->clp, &dev->cbd_dev_id);
-+		}
- 	}
- 	pnfs_put_layoutdriver(ld);
- out:
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index a3b28409539a..e8143977965c 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -40,8 +40,11 @@
+ 
+ /*
+  * Device ID RCU cache. A device ID is unique per server and layout type.
++ *
++ * 256 buckets keeps the chains short at the 1024-or-more devices a
++ * striping deployment expects, for 2KB of BSS on 64-bit.
+  */
+-#define NFS4_DEVICE_ID_HASH_BITS	5
++#define NFS4_DEVICE_ID_HASH_BITS	8
+ #define NFS4_DEVICE_ID_HASH_SIZE	(1 << NFS4_DEVICE_ID_HASH_BITS)
+ #define NFS4_DEVICE_ID_HASH_MASK	(NFS4_DEVICE_ID_HASH_SIZE - 1)
+ 
 -- 
 2.53.0
 
