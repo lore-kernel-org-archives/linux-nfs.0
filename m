@@ -1,282 +1,260 @@
-Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
-	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+Received: from mail-wr1-f53.google.com (mail-wr1-f53.google.com [209.85.221.53])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id D05174248A9
-	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 15:17:21 +0000 (UTC)
-Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
-ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787325443; cv=none; b=VZCNx34qQSmXO1zBUrbV+MlUFotx3GZVtwKLQFK+xTJNJY3i0lkItFXPizeVZCPFxJPtbijGPhnljVWrC41BpP186NzVas4vzC5i1pI9trdk0eCQFlxaD/XFagCEE+Mdz7LDVKHGkQOj7q1RuXb0qjRT7JhbJufefvYVt+q9rzY=
-ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787325443; c=relaxed/simple;
-	bh=rAti/Zn6DkTzycBF1dJWEf3z6/b/B89LYvt8bIarUos=;
-	h=MIME-Version:Date:From:To:Cc:Message-Id:In-Reply-To:References:
-	 Subject:Content-Type; b=Io5pdenT5Ov3G7ChK1W3aOPHyoXG+lQ48Crf2QPNX9vijN406ehh+djoOsAVTaNfTeSjmSwSUD9cxU+tp4WxZX265CD7WKE7Vo4uVmmpT4ew/q62F3IvqjCa8j+Ed/XaB3yXAmYy1wNNyU1vGWwVG0Idawve4YQ5A+cUvVv70h4=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jMRmZ+ub; arc=none smtp.client-ip=100.103.45.18
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 5ADB535F8C9
+	for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 15:36:26 +0000 (UTC)
+Authentication-Results: smtp.subspace.kernel.org; arc=pass smtp.client-ip=209.85.221.53
+ARC-Seal:i=2; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
+	t=1787326588; cv=pass; b=Kq4scedlVCx6rYxm+GNz59JHe48HnFwtRYJF+HZw7lErAeNVJMz0Acnyeii740e7Co7S9ho2W21NBHC/RpEpMgCNt5lsOR2sTzn6PlXgIz6OPrzc0tQz8I4DljFBTkLcyjxwBMJ6okJFNKW3Eypk0H0wthGp8Wn1ok44UmEub6E=
+ARC-Message-Signature:i=2; a=rsa-sha256; d=subspace.kernel.org;
+	s=arc-20240116; t=1787326588; c=relaxed/simple;
+	bh=xyPMZlPfjW9T2//cbQa4rUL28GBJdEd/uDiDROLzzQ0=;
+	h=MIME-Version:References:In-Reply-To:From:Date:Message-ID:Subject:
+	 To:Cc:Content-Type; b=XisxeKZUIt6767dYgU/y9fuDA/n0PQiZzOSxyNQCnz5f65Jyhv+mmUcZjuQzdjlf3A4fofaeloso6soddw8YcyTpunu5cqBiHKOj7CahPtMusY0KnaGp5bsCB61nmPcMP/kAeaoNrPGTgIGabTp/6WqyMDUcS6kcAKziWP/YhB0=
+ARC-Authentication-Results:i=2; smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=bynar.io; spf=pass smtp.mailfrom=bynar.io; dkim=pass (2048-bit key) header.d=bynar.io header.i=@bynar.io header.b=FILEliRB; arc=pass smtp.client-ip=209.85.221.53
+Authentication-Results: smtp.subspace.kernel.org; dmarc=pass (p=reject dis=none) header.from=bynar.io
+Authentication-Results: smtp.subspace.kernel.org; spf=pass smtp.mailfrom=bynar.io
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jMRmZ+ub"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 7D3971F000E9;
-	Fri, 21 Aug 2026 15:17:21 +0000 (UTC)
-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787325441;
-	bh=m1VXekkZt6ZWgEF8dmC/B7eTTxTwM6mm+nxnhnetuwU=;
-	h=Date:From:To:Cc:In-Reply-To:References:Subject;
-	b=jMRmZ+ubU4kuYcCyegwI9p/YKLya83cRvb0eRZWBQG1ITNXLIRWVxyaiTN3yVTRlK
-	 Xih+V2BW0MeRmrot6HHwrdsaC68YPA80hBPo2wsbJOrdp2F/6/48WzIdWgfNW0+TT3
-	 nmc3hpUBaesKu8q0EjGSMo6nSjl4rzQ/T5krD1ogQZiTKzFtTKYjMTYCKzjqDX0dX6
-	 5h6vhMNRGDicqf3wfAmxYqxIsBxSZBRio9ENsznzso0FWIKMY5UnQfo8JBaSjhkrdm
-	 1hd09tZOdGWMBUTZ0L91EqqkVgxKnoXz7c2tDUcVQpGFngIwcXZd0kydL3OETrzMgR
-	 UEkc22VYzb3hg==
-Received: from phl-compute-10.internal (phl-compute-10.internal [10.202.2.50])
-	by mailfauth.phl.internal (Postfix) with ESMTP id 5DEBBF40068;
-	Fri, 21 Aug 2026 11:17:20 -0400 (EDT)
-Received: from phl-imap-15 ([10.202.2.104])
-  by phl-compute-10.internal (MEProxy); Fri, 21 Aug 2026 11:17:20 -0400
-X-ME-Sender: <xms:AGyIaniqX1uhbZoftz2KKM2C6NPCfLDQ2RNHQd_6M-ZqYJcsxHpJeg>
-    <xme:AGyIau04Eu3wcfXSAFfrMihAacq_t_elP6sMKpkhywiwKgpjZQgljHVhMAR-UxdRN
-    w1wQG2Vw_1jLBVlXePL44S3o4fuz3RksJtVcrKiSWYP6nO8gpRzXbzv>
-X-ME-Proxy-Cause: dmFkZTGk045WuMFe57NUgwfAI6Uo3r7ggHdXMlZFoeaae06Efvdqao9l1eF3ew9kDXhMMI
-    jGwUN3ovKWRWnrHu/byEbyQSbRWVb461kKnVsXslIcF4FHhj4QszFN+FckR18I2lQY/hXA
-    LumT2I/5K2hkWuyI+sAxhWQHjkHJC5hyRFVPs+szzqyS2PhxBR+RczDuQ1HCt66L+p+yJt
-    NCL1KGQRSqLXRYzH44bnFnFUxTcUC8uw2Lnxg7t09PxXLiRZ1Ost+46afk6fmpuFv/RIF5
-    Ny0jxDNNoqp3Y8kKm+OkLCgB4HBYRd5bhHqWlmWIf7J9BzkCgGj7lEh9Fb5OoaIiQ6IQGa
-    EUWgLJFQJYTvcX9cKtmazXVOXyLTVSr0GwNnRYaDp04U031rKAVtJlAOaWAtH+MdJ85NTF
-    aZwGt3sBE3lBkvJxptw+jJ3h1rqND5MA8xkCoaI6uAEJmTKHyrQ2vwQML0RbqkmxHXBN6N
-    H6kxl/gcXNQffitD6yHx/R/aWEJDVu2lRthDsWhgctuffzQ0AfGbdGIImznBrkw+hTZ+fV
-    Zxk9xKadhFt+4D9EP44rHm+gW4mtsfLwopAeytGeUVuqZ6BR2ELZ7v+CPdzp7FxhErUQMI
-    3mLIExHjom35XutqFVdB83IEnq0NvPAEy1MdRjA9uoKmIUeLlKmFgJlXNFyA
-X-ME-Proxy: <xmx:AGyIagySRZiBY02LFDgB7EXx_kxn9sv6Bqy3Il7VBplx-5XzaZHY0g>
-    <xmx:AGyIakuth3Oy0IaxFpITEN0TBxJ3AlH0JeGHnRGc-zua2YOaKkFtIA>
-    <xmx:AGyIajAnoapjdKFwuapK7RxW_UIv8ajh6lEcl_B5XwYBS59kBubv9A>
-    <xmx:AGyIamG23qewPdd2p_PW6QVSu6EVuBLfovF2KInbVlOS2Vu4NqBv8A>
-    <xmx:AGyIajAGwUSXKquFtPRUBLhS96OSMDsRwaD_gh7FFils9gJN8hC9vbK7>
-Feedback-ID: ifa6e4810:Fastmail
-Received: by mailuser.phl.internal (Postfix, from userid 501)
-	id 30CA17811F0; Fri, 21 Aug 2026 11:17:20 -0400 (EDT)
-X-Mailer: MessagingEngine.com Webmail Interface
+	dkim=pass (2048-bit key) header.d=bynar.io header.i=@bynar.io header.b="FILEliRB"
+Received: by mail-wr1-f53.google.com with SMTP id ffacd0b85a97d-47f96c5b722so571173f8f.0
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Aug 2026 08:36:26 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1787326585; cv=none;
+        d=google.com; s=arc-20260327;
+        b=If7wn4bNrWYKJkSq8uc6lTg6GMttxkiVBHh2NYcDbYz5ALcmT0XyqZmx8q8Cr+zxIF
+         VTUMAofQ7EMpT7qdQAq+zfd9XBRIo1BshIolbWsisLz70rri5DisVXoUbk5NaZ7tqd5v
+         KvgylCJK4c0x7vXKHJZyrERw2WQx9W0Z2C3sFxpsJABw7Lue06jnOhbRnAzbqcWPzoLh
+         K2l7ZFpbr39J9Jaa/2s5j+4uLoa2BCg80GMAIwUkaPDZhRsJPcJiRriprqfrX2aP4mxq
+         jmiye67Cj3a/+IQMh+FLegz1DFqUp+jdI6C9AwHBAyWsrLLzbhwu1egNmaxY9RkGUv5b
+         FO1g==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;
+        h=content-transfer-encoding:cc:to:subject:message-id:date:from
+         :in-reply-to:references:mime-version:dkim-signature;
+        bh=xTFagY5lhfq4phRZNbHmMF0fyCdUlkT9RSwivJQEo90=;
+        fh=woarG7HuPafLixkr1GVKQQyEUcax4sba8pTDfhki6LU=;
+        b=dtmGM2UeMdyvvwffBGgHfGS3/U3hGoB7uRaSLUhVGANBypnBCp4pludfe5VlnVgDJB
+         VFVdoViuJWflZlY++P7yXww6/91l/jqaeDxORQ07FgfA3W3mc0dFYAQZ0gDTX3/Rkqpi
+         Xv1ctsx29Iz0isBbTWhIkEg87yAl+noSYxpAVWRKptdN4xzyjg77vyAw2C7YPHCXXI5P
+         sr+PlJU2cmLQgBoLWMW2M4z5oBbz5y+EYN9xc+0nJqNCRz7bLzjgboEp3GRhMITqTFIt
+         EaU+OpwiMRj0+O0bTcLmNyenQ175Itni/cZHr8QsZJQHxki6liUeJLganFw7UIUI2nAB
+         oTjw==;
+        darn=vger.kernel.org
+ARC-Authentication-Results: i=1; mx.google.com; arc=none
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=bynar.io; s=google; t=1787326585; x=1787931385; darn=vger.kernel.org;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:from:to:cc:subject
+         :date:message-id:reply-to:content-type;
+        bh=xTFagY5lhfq4phRZNbHmMF0fyCdUlkT9RSwivJQEo90=;
+        b=FILEliRBTkJw/VVnKDPja2bXefyxMY+tfYy8sEomda7n4UEMuKIo3b3BJptA8osGdV
+         vE41HT+h4Wd6phv/VGj/6CcV3hE31uMSpaNlpn7HR/ZvZgWSunOkwJXP4QyrHrFmYcaK
+         GqWC7MLflhzG8bRBqhQyMtDsWYNRkSSO2OQ6dNwIWMDDQXjZSRG2jvTn9Hv+tJP5ZpF6
+         FLpU8lecguTq0ezu0VaHoQ/VRrXh0kh5FKFHbI3JquRwhgDxaewP2ckNL7JrAstpwwe/
+         fMDLFI/nxj6+T5WBdB51AcBVaWsy4HnnnGHSIp1XKKO4n6nr5rhf1XkecC9r+rMEWXqU
+         C+Zg==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20251104; t=1787326585; x=1787931385;
+        h=content-transfer-encoding:content-type:cc:to:subject:message-id
+         :date:from:in-reply-to:references:mime-version:x-gm-gg
+         :x-gm-message-state:from:to:cc:subject:date:message-id:reply-to
+         :content-type;
+        bh=xTFagY5lhfq4phRZNbHmMF0fyCdUlkT9RSwivJQEo90=;
+        b=IhvRrlOkTdNqwTkJ+8cfzxSuA5XkqfBQbzVSZWPtmOCzpnccHoA+vacGu+vSvX+/xs
+         2eHHaXRu2dKuv10gIy3D/vqJX1aHY4x86VyXzWpz0peyV2fWMPCEQu1nUbJhKuVTRbFY
+         iHgwaW5n37eSpWu4PHJ1mJcqlZUXcZJMQnnyQlNAtmRTWTKRkdkY9ZWYeXDYLBLWR180
+         vnY+T5r5shvcndyUgrLch61BcZNeXr+0hvUeYEUYgnfNB14BM1i1haA6UeYdXegweXqR
+         WF2h36tczZXzy0BsrNhiv1YXpkx3J5+1tjgS//1DYtFa5TY5zqYpeLbDQWb2P9x9wyOK
+         0ieQ==
+X-Forwarded-Encrypted: i=1; AHgh+Rrlg8MaFY+YpgeWV+RmEHWb5YcvSRZs3sVWm7+dw/jQJD9sOMkGmo9QxIeOJSeqnN1zZF10guZaVtY=@vger.kernel.org
+X-Gm-Message-State: AFuF++lOTwopMv0nTyUAEcIjTdxZ09kn3FfxIJj92GHvb9J/qsLMcYWc
+	alVWZrBY0qWaTjqcEZ+YHb/zJeB/LXrRPAOAxzMSwbKGMQD3ARLSeQvb2LTLAowWzusXIT+zHvq
+	KoVisZz+Vkin1DhLHT9/XEuBC9O2fAoMbdcfgq1QoG5w=
+X-Gm-Gg: AR+sD12JE9hEwRVbgTZQhVugPjNx49F6QL8NWEla7Lk0hYfhoKj3qDbsiVnd2Slokwe
+	rbtQwszrdeEM+7R1fXyaK7kla4vG8byPaEDTL0iU8Ea9qimxW6bu0YkNVAU51VlAoaYSVgHyNh6
+	/m3z8CwM32pLhGhqUiv0i9tj2E7uPvuORhxMS7dPeiOtGaGoMZcmgqU4LXOOR/tzifbqvSd8i/+
+	7oWI+8i7/lXjVBUVSUmQx1yytxycVZybTvxSf3p6whcQElOJnvpD/VRCDF6ksrCD/eY+2Q4KDEj
+	eJIKuiPkxkW8IILfK1A44uVoB+aB9uYkLNYNjwyY
+X-Received: by 2002:a05:6000:2301:b0:481:f33d:6445 with SMTP id
+ ffacd0b85a97d-482c0b587d1mr11038908f8f.7.1787326584418; Fri, 21 Aug 2026
+ 08:36:24 -0700 (PDT)
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
 List-Subscribe: <mailto:linux-nfs+subscribe@vger.kernel.org>
 List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
-X-ThreadId: AWMsfxfueHdw
-Date: Fri, 21 Aug 2026 11:17:00 -0400
-From: "Chuck Lever" <cel@kernel.org>
-To: "Tim Menninger" <tmenninger@everpuredata.com>,
- "Trond Myklebust" <trondmy@kernel.org>, "Anna Schumaker" <anna@kernel.org>
-Cc: "Tom Talpey" <tom@talpey.com>, linux-nfs@vger.kernel.org,
- stable@vger.kernel.org, slingappa@everpuredata.com, ebadger@everpuredata.com,
- jcurley@everpuredata.com
-Message-Id: <aa454838-8574-404e-94c8-cca6b15a796c@app.fastmail.com>
-In-Reply-To: <20260820211700.318824-1-tmenninger@everpuredata.com>
-References: <20260818122825.2347594-1-tmenninger@purestorage.com>
- <20260820211700.318824-1-tmenninger@everpuredata.com>
-Subject: Re: [PATCH v2] xprtrdma: serialize unmap_sync with xprt_disconnect
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+References: <20260820143049.25712-1-paula@bynar.io> <b8744803-5b58-4c64-82da-73a802dd4b0f@app.fastmail.com>
+ <CANegxYFKBfCKjEEn73n1-C1Ev9MY9RE-zQ4LW2C-BCoRpjAqhw@mail.gmail.com>
+In-Reply-To: <CANegxYFKBfCKjEEn73n1-C1Ev9MY9RE-zQ4LW2C-BCoRpjAqhw@mail.gmail.com>
+From: Paula Moutafian <paula@bynar.io>
+Date: Fri, 21 Aug 2026 16:36:13 +0100
+X-Gm-Features: AcwNN1UXPa-Wn9OfMIeYFhPMp2-pGl0vvhY4Qzk3l03UVVJZIvHlmXWLsAS30L0
+Message-ID: <CANegxYHr3=tB+OhemrJdLh2ciM4ZUjCPq9SXbJmh38NdRVtVGg@mail.gmail.com>
+Subject: Re: [PATCH] SUNRPC: fix out-of-bounds write in xdr_inline_pages()
+To: Anna Schumaker <anna@kernel.org>
+Cc: Trond Myklebust <trondmy@kernel.org>, Chuck Lever <cel@kernel.org>, Jeff Layton <jlayton@kernel.org>, 
+	NeilBrown <neil@brown.name>, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Hey Tim -
+Hello Anna,
 
-I didn't find any correctness issues in this one.
+The note was a mistake, I confirm that it compiles fine and the patch works=
+. :)
 
-Nits: A few comments were made stale, and a layering change.
+Kind regards,
+Paula
 
 
-On Thu, Aug 20, 2026, at 5:17 PM, Tim Menninger wrote:
-> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-> index e5c71cf705a3..77aff9c0533a 100644
-> --- a/net/sunrpc/xprtrdma/frwr_ops.c
-> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-
-[ ... ]
-
-> @@ -538,40 +541,62 @@ static void frwr_wc_localinv(struct ib_cq *cq, struct ib_wc *wc)
-
-[ ... ]
-
->  /**
-> - * frwr_unmap_sync - invalidate memory regions that were registered for @req
-> + * frwr_unmap_sync - synchronously invalidate MRs registered for @req
->   * @r_xprt: controlling transport instance
-> - * @req: rpcrdma_req with a non-empty list of MRs to process
-> + * @req: request whose registered MRs are to be invalidated
->   *
-> - * Sleeps until it is safe for the host CPU to access the previously mapped
-> - * memory regions. This guarantees that registered MRs are properly fenced
-> - * from the server before the RPC consumer accesses the data in them. It
-> - * also ensures proper Send flow control: waking the next RPC waits until
-> - * this RPC has relinquished all its Send Queue entries.
-> + * If @req still owns registered MRs after synchronizing with transport
-> + * disconnect, post a chain of LOCAL_INV Work Requests and wait for the
-> + * final completion. This fences the mapped regions from remote access
-> + * and preserves Send Queue flow control.
-> + *
-> + * A concurrent disconnect can reset @req while this function waits for
-> + * the read side. In that case the MRs have already been released and no
-> + * LOCAL_INV Work Requests are posted.
->   */
-
-The rewritten block drops the sleeping behavior the old text carried:
-
-  * Sleeps until it is safe for the host CPU to access the previously mapped
-  * memory regions.
-
-frwr_unmap_sync() now also takes and releases a transport-wide rwsem.
-Both facts belong in a Context: section.
-
-	 * Context: Process context. Takes and releases
-	 *	    @r_xprt->rx_unmap_rwsem for read. May sleep.
-
-[ ... ]
-
-> @@ -598,37 +623,44 @@ void frwr_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
-
-[ ... ]
-
->  	if (bad_wr != first)
-> -		wait_for_completion(&mr->mr_linv_done);
-> -	if (!rc)
-> -		return;
-> +		wait_for_completion(&req->rl_linv_done);
+On Fri, Aug 21, 2026 at 4:32=E2=80=AFPM Paula Moutafian <paula@bynar.io> wr=
+ote:
 >
-> -	/* On error, the MRs get destroyed once the QP has drained. */
-> -	trace_xprtrdma_post_linv_err(req, rc);
-> +	if (rc) {
-> +		/* On error, the MRs get destroyed once the QP has drained. */
-> +		trace_xprtrdma_post_linv_err(req, rc);
+> Hello Anna,
 >
-> -	/* Force a connection loss to ensure complete recovery.
-> -	 */
-> -	rpcrdma_force_disconnect(ep);
-> +		/* Force a connection loss to ensure complete recovery.
-> +		 */
-> +		rpcrdma_force_disconnect(ep);
-> +	}
-> +
-> +	if (rpcrdma_ep_put(ep))
-> +		rdma_destroy_id(id);
-
-This is not a defect, but it makes frwr_ops.c the only file outside
-verbs.c that destroys a CM ID.  The other three teardowns are all in
-verbs.c: rpcrdma_create_id() on its error path, rpcrdma_ep_create() on
-its error path, and rpcrdma_xprt_disconnect().
-
-The rule that a nonzero return obliges the caller to destroy the CM ID
-lives in a comment above rpcrdma_ep_put():
-
-net/sunrpc/xprtrdma/verbs.c {
-	/*
-	 *     %0 if @ep still has a positive kref count, or
-	 *     %1 if @ep was destroyed successfully.
-	 */
-	noinline int rpcrdma_ep_put(struct rpcrdma_ep *ep)
-	{
-		return kref_put(&ep->re_kref, rpcrdma_ep_destroy);
-	}
-}
-
-A small helper in verbs.c would carry that rule instead of open coding
-the idiom in a second file.
-
-	void rpcrdma_ep_release(struct rpcrdma_ep *ep)
-	{
-		struct rdma_cm_id *id = ep->re_id;
-
-		if (rpcrdma_ep_put(ep))
-			rdma_destroy_id(id);
-	}
-
-That exports rpcrdma_ep_get() and rpcrdma_ep_release() rather than the
-get/put pair.  The local id then goes away, because ib_post_send() can
-read ep->re_id->qp directly while the read side is still held.
-
-[ ... ]
-
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 04b286223b24..193a90c97f7a 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-
-[ ... ]
-
-> @@ -580,18 +578,22 @@ int rpcrdma_xprt_connect(struct rpcrdma_xprt *r_xprt)
->   */
->  void rpcrdma_xprt_disconnect(struct rpcrdma_xprt *r_xprt)
->  {
-> -	struct rpcrdma_ep *ep = r_xprt->rx_ep;
-> +	struct rpcrdma_ep *ep;
->  	struct rdma_cm_id *id;
->  	int rc;
+> The note was a mistake, I confirm that it compiles fine and the patch wor=
+ks. :)
 >
-> +	down_write(&r_xprt->rx_unmap_rwsem);
-> +
-> +	ep = r_xprt->rx_ep;
-
-rpcrdma_xprt_disconnect() now holds rx_unmap_rwsem for write across the
-QP drain and all of the resource teardown.  Its kernel-doc still records
-only the caller-side rule:
-
-  * Caller serializes. Either the transport send lock is held,
-  * or we're being called to destroy the transport.
-
-The rwsem belongs there as well.
-
-The same block goes on to say:
-
-  * On return, @r_xprt is completely divested of all hardware
-  * resources and prepared for the next ->connect operation.
-
-The first half of that no longer holds.  A concurrent frwr_unmap_sync()
-holds an endpoint reference across its completion wait, so
-rpcrdma_ep_put() below returns 0.  The QP, both completion queues, the
-PD and the CM ID then outlive this return.
-
-[ ... ]
-
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index 4cbc941e4a3e..e50b0af5adf8 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-
-[ ... ]
-
-> @@ -449,6 +450,12 @@ struct rpcrdma_xprt {
->  	struct delayed_work	rx_connect_worker;
->  	struct rpc_timeout	rx_timeout;
->  	struct rpcrdma_stats	rx_stats;
-> +
-> +	/*
-> +	 * Read side protects sampling rx_ep and posting synchronous LOCAL_INV
-> +	 * WRs; disconnect holds the write side across QP drain and teardown.
-> +	 */
-> +	struct rw_semaphore	rx_unmap_rwsem;
->  };
-
-This is not a defect, but the comment claims more than the lock
-delivers.  rx_ep is sampled without this rwsem in frwr_mr_init(),
-frwr_map(), frwr_send(), frwr_unmap_async(), frwr_wp_create(),
-rpcrdma_xprt_drain(), rpcrdma_mrs_create(), rpcrdma_mrs_refresh(),
-rpcrdma_rep_create(), rpcrdma_rep_resize() and rpcrdma_post_recvs().
-
-What the read side establishes is narrower: it orders
-frwr_unmap_sync()'s LOCAL_INV submission ahead of the QP drain in
-rpcrdma_xprt_disconnect().  Something closer to:
-
-	/*
-	 * Orders frwr_unmap_sync()'s LOCAL_INV submission ahead of the
-	 * QP drain.  Disconnect holds the write side across the drain
-	 * and resource teardown.
-	 */
-
-> @@ -479,6 +486,8 @@ extern unsigned int xprt_rdma_memreg_strategy;
->   * Endpoint calls - xprtrdma/verbs.c
->   */
->  void rpcrdma_force_disconnect(struct rpcrdma_ep *ep);
-> +void rpcrdma_ep_get(struct rpcrdma_ep *ep);
-> +int rpcrdma_ep_put(struct rpcrdma_ep *ep);
-
-Nothing here says that a return of 1 leaves the CM ID for the caller to
-destroy, which is the rule the frwr_unmap_sync() hunk above open codes.
-
--- 
-Chuck Lever
+> Kind regards,
+> Paula
+>
+> On Fri, Aug 21, 2026 at 1:56=E2=80=AFPM Anna Schumaker <anna@kernel.org> =
+wrote:
+>>
+>> Hi Paula,
+>>
+>> On Thu, Aug 20, 2026, at 10:30 AM, Paula Moutafian wrote:
+>> > xdr_inline_pages() re-carves an existing receive buffer into a head, a
+>> > page list and a tail at a caller-supplied offset, computing the tail
+>> > length as buflen - offset.  It does not check that the offset lies
+>> > within the buffer being carved, and iov_len is unsigned, so an offset
+>> > past the end wraps the tail length instead of failing.
+>> >
+>> > The offset reaches it from wire data.  rpc_prepare_reply_pages() deriv=
+es
+>> > it from the authentication flavour's au_ralign, which is read on every
+>> > encode, while the receive buffer's size is fixed once in call_allocate=
+()
+>> > from au_rslack.  unx_validate() raises au_verfsize, au_rslack and
+>> > au_ralign from the reply verifier's length, and runs before
+>> > rpc_decode_header() reads the accept_stat, so a GARBAGE_ARGS reply
+>> > poisons the alignment and only then selects call_encode().
+>> > call_allocate() short-circuits on the existing buffer, so rq_rcvsize i=
+s
+>> > not recomputed and the retry carves a new offset against the old size.
+>> > auth_unix keeps these fields in a file-scope static rpc_auth shared by
+>> > every AUTH_SYS client.
+>> >
+>> > For an NFSv3 READ the design slack is exactly one XDR word, so the
+>> > underflow needs only au_ralign at encode to exceed au_rslack at
+>> > allocation by two -- a five-byte verifier body.  Observed with eight:
+>> > rq_rcvsize is 132 with a 128-byte head and a 4-byte tail, the verifier
+>> > raises au_ralign from 2 to 4, and the retry carves at (26 + 4 + 4) << =
+2
+>> > =3D 136 against an unchanged 132-byte buffer.  The in-tree
+>> > sunrpc:rpc_xdr_reply_pages tracepoint shows the transition on one task=
+:
+>> >
+>> >   rpc_xdr_reply_pages: head=3D[..a18,128] tail=3D[..a98,4]
+>> >   rpc_xdr_reply_pages: head=3D[..a18,136] tail=3D[..aa0,4294967292]
+>> >
+>> > (one task, before and after the re-encode; addresses abbreviated)
+>> >
+>> > xs_read_xdr_buf() then fills the tail against that length, and the TCP
+>> > record length is not capped against rq_rcvsize, so the reply to the
+>> > retried call writes peer-controlled bytes past the object:
+>> >
+>> >   BUG: KASAN: slab-out-of-bounds in _copy_to_iter+0x7c8/0x1538
+>> >   Write of size 1664 at addr ffff0000c7640aa0 by task kworker/u8:0/12
+>> >   Workqueue: xprtiod xs_stream_data_receive_workfn
+>> >    _copy_to_iter+0x7c8/0x1538
+>> >    __skb_datagram_iter+0x33c/0x560
+>> >    skb_copy_datagram_iter+0x3c/0x454
+>> >    tcp_recvmsg_locked+0x110c/0x2308
+>> >    xs_sock_recvmsg.constprop.0+0x34/0xe4
+>> >    xs_read_stream_request.constprop.0+0x410/0x1140
+>> >    xs_read_stream.constprop.0+0x680/0xe9c
+>> >    xs_stream_data_receive_workfn+0xcc/0x420
+>> >   Allocated by task 12:
+>> >    rpc_malloc+0x174/0x2d0
+>> >    call_allocate+0x25c/0x944
+>> >   The buggy address belongs to the object at ffff0000c7640880
+>> >    which belongs to the cache rpc_buffers of size 2048
+>> >   The buggy address is located 544 bytes inside of
+>> >    allocated 2048-byte region [ffff0000c7640880, ffff0000c7641080)
+>> >
+>> > That is 160 bytes past the object, with both the length and every byte
+>> > chosen by the peer.  Under KASAN the interposed __asan_memcpy() return=
+s
+>> > without calling __memcpy once the range check fails, so the report
+>> > establishes that the write is reachable and out of bounds; it does not
+>> > establish that the copy executed.  The enlarged head stays inside the
+>> > same slab object and is not itself a violation.
+>> >
+>> > Reproduced twice on an unmodified v7.2-rc7 arm64 KASAN kernel with
+>> > CONFIG_NFS_V3=3Dy and no other configuration change; the geometry abov=
+e
+>> > came from tracepoints that already ship in the kernel, not from added
+>> > instrumentation.  The trigger is an ordinary read(2) on an already
+>> > mounted NFSv3 AUTH_SYS share over TCP and needs no client privilege;
+>> > every byte the attacker supplies is a legal server reply.  Under
+>> > RPCSEC_GSS the verifier is authenticated and cannot be forged.  UDP is
+>> > bounded by the datagram length in xs_udp_data_read_skb() and is not
+>> > affected.  NFSv4 does not take the retry path, since
+>> > RPC_TASK_NO_RETRANS_TIMEOUT suppresses the re-encode.
+>> >
+>> > Commit 53bc19f17f21 ("SUNRPC: receive buffer size estimation values
+>> > almost never change") placed the equivalent slack update behind
+>> > RPCAUTH_AUTH_UPDATE_SLACK in gss_update_rslack(), but auth_unix was
+>> > never converted and still assigns unconditionally.  Gating it the same
+>> > way narrows the window without closing it, because the first update ca=
+n
+>> > still land between the allocation and the re-encode of an in-flight
+>> > request, and it would leave the other caller of xdr_inline_pages()
+>> > unguarded.
+>> >
+>> > Clamp the offset to the length of the buffer being carved so the tail
+>> > length cannot underflow.
+>> >
+>> > Assisted-by: Bynario AI
+>> > Signed-off-by: Paula Moutafian <paula@bynar.io>
+>> > ---
+>> > Note: the defect is reproduced 2/2 on an unmodified v7.2-rc7 arm64 KAS=
+AN
+>> > kernel; the patched kernel has not been built or booted.  A reproducer
+>> > exists and can be shared privately on request.
+>>
+>> Question: Am I understanding you correctly that you have a reproducer, b=
+ut
+>> haven't tested or even compiled the code to verify that it works?
+>>
+>> Thanks,
+>> Anna
+>>
+>> >
+>> > No Fixes: tag: the unbounded carve is original to xdr_inline_pages()
+>> > (unchanged since the initial git import) and unx_validate() has writte=
+n
+>> > the shared rpc_auth's slack from the reply verifier since at least
+>> > v2.6.32, so there is no commit that introduced this.
+>> >
+>> >  net/sunrpc/xdr.c | 3 +++
+>> >  1 file changed, 3 insertions(+)
+>> >
+>> > diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+>> > index fa6a30b..f77dbdb 100644
+>> > --- a/net/sunrpc/xdr.c
+>> > +++ b/net/sunrpc/xdr.c
+>> > @@ -409,6 +409,9 @@ xdr_inline_pages(struct xdr_buf *xdr, unsigned int=
+ offset,
+>> >       char *buf =3D (char *)head->iov_base;
+>> >       unsigned int buflen =3D head->iov_len;
+>> >
+>> > +     if (offset > buflen)
+>> > +             offset =3D buflen;
+>> > +
+>> >       head->iov_len  =3D offset;
+>> >
+>> >       xdr->pages =3D pages;
+>> >
+>> > base-commit: a4ff2be345d0abc943da8dd8da98151843b750dc
+>> > --
+>> > 2.50.1 (Apple Git-155)
