@@ -1,34 +1,35 @@
 Received: from smtp.kernel.org (aws-us-west-2-korg-mail-alma10-1.taild15c8.ts.net [100.103.45.18])
 	(using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
 	(No client certificate requested)
-	by smtp.subspace.kernel.org (Postfix) with ESMTPS id F08B226F2BF
-	for <linux-nfs@vger.kernel.org>; Sun, 23 Aug 2026 01:40:25 +0000 (UTC)
+	by smtp.subspace.kernel.org (Postfix) with ESMTPS id 2DC553612D8
+	for <linux-nfs@vger.kernel.org>; Sun, 23 Aug 2026 01:40:26 +0000 (UTC)
 Authentication-Results: smtp.subspace.kernel.org; arc=none smtp.client-ip=100.103.45.18
 ARC-Seal:i=1; a=rsa-sha256; d=subspace.kernel.org; s=arc-20240116;
-	t=1787449227; cv=none; b=ammx39WtsSVI71tNsGxqP3r0TKCRI+jooXGuiTHY2HpOEJj34R9uPVeyerXVi3CPvvElpl1VQkzbu5ZTB1W4rlXMEiOctfze2xkJvXvonKxCGHdJbAvDmAsUd1duHE5wl8QEem6HDxZF8LlAdAAuoV5JdoLE2z1vV1eedQK63Og=
+	t=1787449228; cv=none; b=Z3JJ8JCkaVipVhQ9MPWEjWI/Prksdy02ErRnJQWabALQY3oGSl42MjemaIzo74NtfiO0tB2fc5VdShfuHyp3WNpZpUndapSF9Sz4HVw0+P6p79/z4UDFPhddN9MT7zQctK0BWWuP6P3Wn2pOVirJ6GRqbaNPtydQ2nnsqMPbors=
 ARC-Message-Signature:i=1; a=rsa-sha256; d=subspace.kernel.org;
-	s=arc-20240116; t=1787449227; c=relaxed/simple;
-	bh=aLpwcXrcvTGjjzm436iJYyobF8BiKm+87qnb5HfsBH4=;
+	s=arc-20240116; t=1787449228; c=relaxed/simple;
+	bh=ys1Tdxj8ouHjbwJtYte7q7Lwv356iCYaSxo2veTE0L4=;
 	h=From:Date:Subject:MIME-Version:Content-Type:Message-Id:References:
-	 In-Reply-To:To:Cc; b=igddz4zrUaljMHYDxtWoREzXqV3il272amVoS7aSNQQc80nN+TznPIcydzLAB1o0EUhFw1saoLPxUsPjrswhQ42t+FhN82RHrjQMYCb4VJAD9dJSgDSJ/4EXKp47ZfuqXSOXylyWHUlj44cWYzdEPmbibSH5qZy6S3F40CqjFJ8=
-ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=mN3WkDkd; arc=none smtp.client-ip=100.103.45.18
+	 In-Reply-To:To:Cc; b=kSn5A0J4a8MxZMI0yfBktJ26uBGq6v5GLc5zbLRr1tWTtvpONoKfXbrrrU4bs5pP8Sq0Q93CFFebPPxfholAw+VKO10A2QDYOUAb1ZMYWshpHAbNGYyhgiGupvXZSDDmUJZxa7E/Iy/RLEXiFPo4TVREBkmcvYLVFgTsQEPzyeI=
+ARC-Authentication-Results:i=1; smtp.subspace.kernel.org; dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b=jWKLFbSs; arc=none smtp.client-ip=100.103.45.18
 Authentication-Results: smtp.subspace.kernel.org;
-	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="mN3WkDkd"
-Received: by smtp.kernel.org (Postfix) with ESMTPSA id 2F4081F00A3A;
-	Sun, 23 Aug 2026 01:40:25 +0000 (UTC)
+	dkim=pass (2048-bit key) header.d=kernel.org header.i=@kernel.org header.b="jWKLFbSs"
+Received: by smtp.kernel.org (Postfix) with ESMTPSA id 17C1E1F00A3E;
+	Sun, 23 Aug 2026 01:40:26 +0000 (UTC)
 DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=kernel.org;
-	s=k20260515; t=1787449225;
-	bh=PhygjQgbvy5TttGgIaqGkRxl2XRfSIf536i3cTzZTm8=;
+	s=k20260515; t=1787449226;
+	bh=+0KNAk2fNKhKwYrh1f1sgiubznbU4e6nhKrT5lNB60w=;
 	h=From:Date:Subject:References:In-Reply-To:To:Cc;
-	b=mN3WkDkd2jwKS6x4IIJhY+mwM01Pb50wAJAZbInrPPQC9ywZxnAca2EahJy1zB/Sh
-	 udH2vsIS9wVLnKqYSeW1Xh6uKcB/PJPSUQoDa9b9FIRQa8bfJZh4L8ka03P2oJlNEt
-	 qSm9HZIUluS/Ecgv/u7M8S4d4vniFCOIIsQ+ZIuoK8W3hoSkOdKrNUh7nP+JuTk5mB
-	 2G4TAhDJXun32tOivTfCykUDZMWHEQ9bt5PSECpIUgcjG7n4b2/xyFh1Lwwrq30EBb
-	 Gi1VAi21IEQMycj4XmonDTvHkD6PDhKBTYLNdKcDAFSkWwQppbuocCfa5AV1i1wTv3
-	 rYcuhE1fqv1AQ==
+	b=jWKLFbSsBxpVs6pZP+WLgsT/vSN77nFjRklruMzZXsR4XYJAulKU64BTtbaMK8zzU
+	 aThbXWzQliIza4721fgcWXdaITifvR12EGSw/fVosMGl8kn2ITrHewc/zdlxNjh188
+	 fX+HIieg7/hAUDugOWNQNDFjFOOqbZWfX5DfEZHVbpmpCnhjtqfBFAURzDRseY+bH/
+	 j0tqpc/2gWwP9TUSxqpkoPKJj6EderqckzUrCQQxX7P0hSD0A0Y2WbLK9P0FgQb11i
+	 pdqMYBal5V15k2pOUoHqPf5RmbwxMkE93L/xr+IDCHgj4V30jiz5VIqC0oH12VWCnZ
+	 ctAG8YZrnI+NA==
 From: Chuck Lever <cel@kernel.org>
-Date: Sat, 22 Aug 2026 21:40:15 -0400
-Subject: [PATCH v3 1/2] lockd: Fix use-after-free in nlmsvc_retry_blocked
+Date: Sat, 22 Aug 2026 21:40:16 -0400
+Subject: [PATCH v3 2/2] lockd: Serialize block retries against host
+ teardown
 Precedence: bulk
 X-Mailing-List: linux-nfs@vger.kernel.org
 List-Id: <linux-nfs.vger.kernel.org>
@@ -37,7 +38,7 @@ List-Unsubscribe: <mailto:linux-nfs+unsubscribe@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
-Message-Id: <20260822-lockd-retry-blocked-uaf-v3-1-761661eae60c@kernel.org>
+Message-Id: <20260822-lockd-retry-blocked-uaf-v3-2-761661eae60c@kernel.org>
 References: <20260822-lockd-retry-blocked-uaf-v3-0-761661eae60c@kernel.org>
 In-Reply-To: <20260822-lockd-retry-blocked-uaf-v3-0-761661eae60c@kernel.org>
 To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>, 
@@ -45,79 +46,113 @@ To: Jeff Layton <jlayton@kernel.org>, NeilBrown <neil@brown.name>,
  Tom Talpey <tom@talpey.com>, Trond Myklebust <trondmy@kernel.org>, 
  Anna Schumaker <anna@kernel.org>
 Cc: linux-nfs@vger.kernel.org, Chuck Lever <cel@kernel.org>, 
- Shuangpeng Bai <shuangpeng.kernel@gmail.com>
+ sashiko-bot <sashiko-bot@kernel.org>
 X-Mailer: b4 0.16-dev
-X-Developer-Signature: v=1; a=openpgp-sha256; l=2116; i=cel@kernel.org;
- h=from:subject:message-id; bh=aLpwcXrcvTGjjzm436iJYyobF8BiKm+87qnb5HfsBH4=;
- b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqik+Ht9Ez4GAH0A137RdIMb0qnvn1hEJsFKGR2
- 8hgsFztnIyJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaopPhwAKCRAzarMzb2Z/
- l6VpEAChFFtQTEl1Umaplx+RxYAN0K5zoFFUW2j3LpM+Z8Oya/MwXgP9NK94iI6dRSjgeI6Y0Kh
- 2iMQcCbyLaJp/X9mkCTQCQMTeZ1sbdRgk5+Qj48UXHznJ8j5kl9eHQslcRCrBEIUHva3teDQpMw
- WUKA6iDAHdXFgIip+lL+8aacDMs/TcpnM7gA21fACZoExUPVbV9g/lGEWLrIxcCemNuk5F+HLVT
- NbAfCthgykHXY30T8MtsH7doMHuoikuM5DEYIWcPvT22UexCysfP4N0aF2o3fIEpwRHUiy6ivSs
- SkwxEcKrPYki1thbBgzKXiZKpmXWb8Hu4kzcv3UFR3UQ2/5AxydXJssMcavPh4s3lnxLqpoi8gO
- Onz5LU5oi2F/GbtHatQDUhJ4Wbh+JWddHRo885ZzBPGHz7G56XN1/C26GLLBC86EXoVXu/P2Gua
- pSPEJCgOeFjsB2cjo2j1OK7x0b09g8Lmm4SrgmBRWKYa8rrOWf6fbfvlqriiMlloLku+nKwEoT7
- wcrAhht55nDv6Cl7jyJPm1GGE6P4LvyCyWxNdVRl0sUnEhBYHbJ3yFZRid8wg0eweH08eUcuWr8
- DSnBDO9pjmLio/4NQf40bkiJcx96F52Gus99C4ugEXLVCqp5zO4Kc62MN+DuBfTvbHuLcKOWYs+
- RCN2NXpcZMH+bcQ==
+X-Developer-Signature: v=1; a=openpgp-sha256; l=3267; i=cel@kernel.org;
+ h=from:subject:message-id; bh=ys1Tdxj8ouHjbwJtYte7q7Lwv356iCYaSxo2veTE0L4=;
+ b=owEBbQKS/ZANAwAKATNqszNvZn+XAcsmYgBqik+IAzy43AbSBaHXZgEdnvVrLoTTfc+ez2zME
+ vDc8tKFIgiJAjMEAAEKAB0WIQQosuWwEobfJDzyPv4zarMzb2Z/lwUCaopPiAAKCRAzarMzb2Z/
+ l7r8D/0ckzdJ8s4gImY6Q20EVi+IAhF1z4N971RYjgviRxp6rXtO59croOqr83DwclwjiUC3GLj
+ uYrZdUdiKtYvYBWpaGnS9YXIASafvTB6nNREcQpdNIXi6UiA3gcz9/Jd6HfYFYcjevGzKXs9U6h
+ iWKrgHowoq0exx3GYmNJn1wFTcbrzKFThCGVURgW6V+dBhGSFv0rcrk58ZZapYlNjW5KFOnYQ3W
+ U0KV5ZQVKh6tU521Hj6HMdhD6s6tFBLiOmfNfAnvkxrIwHJP6Mgp4F67/d+Xmn9sLQN+nOi1Uoi
+ NSzzWfgrGU5VzFmezSWylDVpauh7uPqkC7LgfwAe1lUAkWG1Gy0pFsE7cbf9/cLLR3yKzeQn3V9
+ 8Dka7HonxcfTqLy5WpAN4jiQOOmpfy3tqAAVyd71uA2JGn2LIKS4TKB8K3ho3wvcm2YwzgZDu19
+ 2C0tLXvYhNYVTi3aFOSmfuO5zP3cN8m4vmCQUrMmCOZusquObGp3pKmT3k6Slfv2idAo22bqBFM
+ 8Nr1PNZxebcKodPQsn+fvt8gJ/ckHKqJrf6qcSIbLGhsIeSnlecyzaZwacXg00PxTnWpRGb6Rwk
+ FrIYWTF216dJ6jUABMZnUu6U1ppm4RDi3HQDQL20ncQcNt4rcTq7nGfMTk8GWHI9AgLvjAk6mBx
+ 2BjkHb6FtKTNveQ==
 X-Developer-Key: i=cel@kernel.org; a=openpgp;
  fpr=28B2E5B01286DF243CF23EFE336AB3336F667F97
 
-nlmsvc_retry_blocked() examines the block at the head of nlm_blocked
-under nlm_blocked_lock, then releases the lock before calling
-nlmsvc_grant_blocked() or retry_deferred_block(). The nlm_blocked list
-reference is all that keeps the block alive across that window.
-nlmsvc_grant_blocked() does take one of its own, but not until after
-the lock has been dropped. Unmounting the nfsd filesystem while a lock
-request is still blocked reaches nlmsvc_traverse_blocks(), which drops
-the list reference and frees the block along with the nlm_rqst hanging
-off it.
+nlmsvc_grant_blocked() unlinks a block from nlm_blocked before it
+retries the lock, then re-inserts it. nlmsvc_traverse_blocks() skips a
+block that is not on nlm_blocked, so a teardown scan that runs during a
+retry passes it by and the retry puts it back. The surviving block pins
+its host. lockd warns that it could not shut down the host module, and
+the host outlives its network namespace.
 
-  BUG: KASAN: slab-use-after-free in nlm_async_call+0xd6/0x230
-  Read of size 8 at addr ffff88811b04c808 by task lockd/8377
-    nlm_async_call+0xd6/0x230
-    nlmsvc_retry_blocked+0x61c/0x800
-    lockd+0x144/0x1c0
-  Freed by task 8392:
-    nlmsvc_release_block+0x231/0x290
-    nlmsvc_traverse_blocks+0x139/0x1b0
-    nlm_traverse_files+0x1aa/0xa00
-    nlmsvc_free_host_resources+0x12/0x60
-    nlm_shutdown_hosts_net+0x127/0x280
-    lockd_down+0xd5/0x1c0
+Hold the file's f_mutex across the retry, and extend the scan's hold
+across its unlink, so a scan and a retry of the same file can no longer
+interleave. Drop the mutex before releasing a block reference, since
+the last put takes f_mutex. A retry that waited out a scan re-checks
+under nlm_blocked_lock that its block is still queued and due.
 
-Take a reference before releasing nlm_blocked_lock and drop it once
-the retry has run.
-
-Fixes: 0e4ac9d93515 ("lockd: handle fl_grant callbacks")
-Reported-by: Shuangpeng Bai <shuangpeng.kernel@gmail.com>
-Closes: https://lore.kernel.org/linux-nfs/20260818235808.3458075-1-shuangpeng.kernel@gmail.com/
+Reported-by: sashiko-bot <sashiko-bot@kernel.org>
+Closes: https://sashiko.dev/#/patchset/20260819162247.2970703-1-cel@kernel.org?part=1
 Signed-off-by: Chuck Lever <cel@kernel.org>
 ---
- fs/lockd/svclock.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/lockd/svclock.c | 31 ++++++++++++++++++++++++++++---
+ 1 file changed, 28 insertions(+), 3 deletions(-)
 
 diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index e628b5d35507..8d83283d3e21 100644
+index 8d83283d3e21..495eacb3264f 100644
 --- a/fs/lockd/svclock.c
 +++ b/fs/lockd/svclock.c
-@@ -1023,6 +1023,7 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
- 			timeout = block->b_when - jiffies;
- 			break;
- 		}
-+		kref_get(&block->b_count);
+@@ -295,14 +295,17 @@ void nlmsvc_traverse_blocks(struct nlm_host *host,
+ 	list_for_each_entry_safe(block, next, &file->f_blocks, b_flist) {
+ 		if (!match(block->b_host, host))
+ 			continue;
+-		/* Do not destroy blocks that are not on
+-		 * the global retry list - why? */
++		/*
++		 * nlmsvc_retry_blocked() holds f_mutex while the block
++		 * is off nlm_blocked, so a block off the list here has
++		 * been retired.
++		 */
+ 		if (list_empty(&block->b_list))
+ 			continue;
+ 		kref_get(&block->b_count);
+ 		spin_unlock(&nlm_blocked_lock);
+-		mutex_unlock(&file->f_mutex);
+ 		nlmsvc_unlink_block(block);
++		mutex_unlock(&file->f_mutex);
+ 		nlmsvc_release_block(block);
+ 		goto restart;
+ 	}
+@@ -1012,6 +1015,8 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
+ {
+ 	unsigned long	timeout = MAX_SCHEDULE_TIMEOUT;
+ 	struct nlm_block *block;
++	struct nlm_file *file;
++	bool due;
+ 
+ 	spin_lock(&nlm_blocked_lock);
+ 	while (!list_empty(&nlm_blocked) && !svc_thread_should_stop(rqstp)) {
+@@ -1026,6 +1031,25 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
+ 		kref_get(&block->b_count);
  		spin_unlock(&nlm_blocked_lock);
  
++		/*
++		 * Hold f_mutex so nlmsvc_traverse_blocks() cannot scan
++		 * the file while the retry has the block off nlm_blocked.
++		 */
++		file = block->b_file;
++		mutex_lock(&file->f_mutex);
++		spin_lock(&nlm_blocked_lock);
++		due = !list_empty(&block->b_list) &&
++		      block->b_when != NLM_NEVER &&
++		      !time_after(block->b_when, jiffies);
++		spin_unlock(&nlm_blocked_lock);
++
++		if (!due) {
++			mutex_unlock(&file->f_mutex);
++			nlmsvc_release_block(block);
++			spin_lock(&nlm_blocked_lock);
++			continue;
++		}
++
  		dprintk("nlmsvc_retry_blocked(%p, when=%ld)\n",
-@@ -1033,6 +1034,7 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
+ 			block, block->b_when);
+ 		if (block->b_flags & B_QUEUED) {
+@@ -1034,6 +1058,7 @@ nlmsvc_retry_blocked(struct svc_rqst *rqstp)
  			retry_deferred_block(block);
  		} else
  			nlmsvc_grant_blocked(block);
-+		nlmsvc_release_block(block);
++		mutex_unlock(&file->f_mutex);
+ 		nlmsvc_release_block(block);
  		spin_lock(&nlm_blocked_lock);
  	}
- 	spin_unlock(&nlm_blocked_lock);
 
 -- 
 2.54.0
